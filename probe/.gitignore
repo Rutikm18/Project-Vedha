@@ -1,0 +1,5 @@
+tools/vendor_private.key
+dist/
+*.build/
+*.dist/
+scope*.txt

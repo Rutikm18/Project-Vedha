@@ -1,3 +1,0 @@
-#!/usr/bin/env bash
-# Standalone scan tester. Usage: ./scan <target> [scan_type] [key=value ...]
-cd "$(dirname "$0")" && exec python3 scan_cli.py "$@"

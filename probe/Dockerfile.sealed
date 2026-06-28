@@ -1,0 +1,45 @@
+# Dockerfile.sealed — ships ONLY the Nuitka-compiled native binary, no source.
+# Multi-stage: build compiles to machine code; the runtime image carries just
+# the executable. Combined with agent/license.py this is the "sealed probe".
+#
+#   docker build -f Dockerfile.sealed -t intrynx-probe:sealed \
+#     --build-arg PROBE_LICENSE_PUBKEY=<vendor pubkey hex> .
+
+# ── Stage 1: compile ──────────────────────────────────────────────────────────
+# Pin to bookworm so the binary's glibc matches the bookworm runtime below
+# (a 'slim' that floats to a newer Debian compiles against a newer glibc than
+# debian:12-slim has → "GLIBC_2.xx not found" at runtime).
+FROM python:3.12-slim-bookworm AS build
+WORKDIR /src
+# build-essential (NOT bare gcc) — slim images lack libc headers (stdlib.h),
+# which Nuitka's C backend needs. patchelf is required for --standalone.
+RUN apt-get update && apt-get install -y --no-install-recommends \
+      build-essential patchelf && rm -rf /var/lib/apt/lists/*
+# nuitka[onefile] pulls zstandard for compressed single-file output.
+RUN pip install --no-cache-dir "nuitka[onefile]" httpx cryptography
+COPY scanner/  ./scanner/
+COPY workflow/ ./workflow/
+COPY agent/    ./agent/
+ARG PROBE_LICENSE_PUBKEY=""
+ENV PROBE_LICENSE_PUBKEY=${PROBE_LICENSE_PUBKEY}
+RUN python3 -m nuitka --onefile --standalone --output-dir=/out \
+      --output-filename=intrynx-probe --follow-imports \
+      --include-package=scanner --include-package=workflow --include-package=agent \
+      --include-package=cryptography --include-package=httpx \
+      --remove-output --assume-yes-for-downloads agent/agent.py
+
+# ── Stage 2: minimal runtime (binary only — no Python, no source) ─────────────
+FROM debian:12-slim
+WORKDIR /app
+RUN mkdir -p /var/lib/adversa-probe
+# Force UTF-8 stdio — the probe's human-facing messages use characters like
+# the em-dash; a minimal container defaults to ASCII stdout and would crash
+# on print(). PYTHONIOENCODING covers it without needing a full locale.
+ENV STATE_FILE=/var/lib/adversa-probe/state.json \
+    PYTHONIOENCODING=utf-8 \
+    LANG=C.UTF-8
+# Bake the vendor public key so the binary can verify licenses at runtime.
+ARG PROBE_LICENSE_PUBKEY=""
+ENV PROBE_LICENSE_PUBKEY=${PROBE_LICENSE_PUBKEY}
+COPY --from=build /out/intrynx-probe /app/intrynx-probe
+ENTRYPOINT ["/app/intrynx-probe"]
