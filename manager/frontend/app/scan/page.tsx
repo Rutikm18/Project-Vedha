@@ -1,1129 +1,572 @@
 "use client";
 
-import React, { useState, useRef, useCallback, useEffect, useReducer } from "react";
+import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
-  Play, Square, AlertTriangle, Copy, Check, X,
-  Crosshair, Cpu, Terminal, Zap, Shield, Activity,
-  Eye, Network, Server, Globe, CheckCircle, XCircle,
-  RotateCcw, Lock, ChevronRight, Radio,
-  Target, Download, Wifi, ChevronDown, ChevronUp,
+  Play, Shield, Globe, Database, Server, Wifi,
+  Activity, Eye, RefreshCw, ChevronRight, ChevronDown,
+  CheckCircle, Clock, XCircle, Loader,
+  Cpu, Network, RotateCcw, Target,
 } from "lucide-react";
 import { PageShell } from "../../components/PageShell";
 import { useToast } from "../../hooks/useToast";
-import {
-  parseTargets, COMMON_RANGES, toApiTargets,
-  type ParseResult,
-} from "../../lib/target-parser";
 
-/* ══ TYPES ══════════════════════════════════════════ */
-type ScanTool    = "naabu"|"nmap"|"nuclei"|"openvas"|"netexec"|"impacket"|"testssl"|"eyewitness";
-type StageStatus = "idle"|"running"|"done"|"error"|"skipped";
-type ScanPhase   = "idle"|"running"|"complete"|"error";
+/* ══════════════════════════════════════════════════════
+   TYPES
+══════════════════════════════════════════════════════ */
 
-interface StageState  { status: StageStatus; progress: number; message: string; }
-interface FindingItem { id: string; title: string; severity: "CRITICAL"|"HIGH"|"MEDIUM"|"LOW"|"INFO"; host: string; source: string; timestamp: string; }
-interface DiscoveredHost { ip: string; ports: number; hasWeb: boolean; hasAD: boolean; risk: "critical"|"high"|"medium"|"low"|"none"; hostname?: string; }
-interface ScanState {
-  phase: ScanPhase; scanId: string|null; startedAt: number|null; elapsed: number;
-  stages: Record<ScanTool, StageState>; findings: FindingItem[];
-  hosts: DiscoveredHost[]; logs: string[]; overallProgress: number;
+interface UseCase {
+  use_case_id: string;
+  display_name: string;
+  description: string;
+  scan_type: string;
+  profile: "it" | "iot" | "ot";
+  expected_runtime_hint: string;
 }
 
-/* ══ PRESETS ════════════════════════════════════════ */
-interface ScanPreset {
-  id: string; label: string; sublabel: string; icon: React.ReactNode;
-  tools: ScanTool[]; eta: string; color: string; description: string; requiresCreds: boolean;
+interface Probe {
+  id: string;
+  name: string;
+  location: string | null;
+  status: string;
+  capabilities: string[];
+  network_segments: string[];
+  last_heartbeat: string | null;
+  current_job_id: string | null;
+  online: boolean;
 }
-const PRESETS: ScanPreset[] = [
-  { id:"recon",    label:"Recon",        sublabel:"Port sweep · minimal noise",       icon:<Crosshair size={13}/>, tools:["naabu"],                                                                      eta:"1–3m",   color:"var(--sev-low-color)",      description:"Fast SYN sweep, minimal noise, maximum speed.",              requiresCreds:false },
-  { id:"web",      label:"Web Survey",   sublabel:"Apps + CVEs + TLS",                icon:<Globe size={13}/>,     tools:["naabu","nmap","nuclei","testssl","eyewitness"],                                eta:"5–15m",  color:"var(--sev-medium-color)",   description:"Ports → services → CVE templates → TLS → screenshots.",        requiresCreds:false },
-  { id:"internal", label:"Internal",     sublabel:"LAN + SMB + services",             icon:<Network size={13}/>,   tools:["naabu","nmap","nuclei","netexec","testssl","eyewitness"],                      eta:"20–45m", color:"var(--sev-high-color)",     description:"Full internal sweep: SMB relay, null sessions, services.",    requiresCreds:false },
-  { id:"ad",       label:"AD Assess",    sublabel:"Kerberos + LDAP",                  icon:<Shield size={13}/>,    tools:["naabu","nmap","netexec","impacket","testssl"],                                 eta:"20–40m", color:"var(--sev-critical-color)", description:"AD: Kerberoasting, AS-REP roasting, LDAP anon bind, SMBv1.", requiresCreds:true  },
-  { id:"full",     label:"Full VAPT",    sublabel:"All 8 tools · deep scan",          icon:<Zap size={13}/>,       tools:["naabu","nmap","nuclei","openvas","netexec","impacket","testssl","eyewitness"],  eta:"60–180m",color:"var(--sev-critical-color)", description:"Complete assessment: all modules chained, deep authenticated scan.", requiresCreds:true  },
-  { id:"custom",   label:"Custom",       sublabel:"Expert mode · select tools",       icon:<Activity size={13}/>,  tools:[],                                                                              eta:"—",      color:"var(--text-secondary)",    description:"Manually select tools and tune every parameter.",             requiresCreds:false },
-];
 
-const ALL_TOOLS: ScanTool[] = ["naabu","nmap","nuclei","openvas","netexec","impacket","testssl","eyewitness"];
-const TOOL_META: Record<ScanTool,{label:string;desc:string;icon:React.ReactNode;color:string}> = {
-  naabu:     {label:"Port Scanner",    desc:"SYN port sweep",               icon:<Crosshair size={12}/>,     color:"var(--sev-low-color)"     },
-  nmap:      {label:"Service Probe",   desc:"Service + OS fingerprint",     icon:<Server size={12}/>,        color:"var(--accent)"            },
-  nuclei:    {label:"CVE Engine",      desc:"CVE + misconfiguration",       icon:<AlertTriangle size={12}/>, color:"var(--sev-high-color)"    },
-  openvas:   {label:"Vuln Scanner",    desc:"Authenticated CVE scan",       icon:<Shield size={12}/>,        color:"var(--sev-critical-color)"},
-  netexec:   {label:"SMB Auditor",     desc:"SMBv1, signing, null sessions",icon:<Network size={12}/>,       color:"#9C6FDE"                  },
-  impacket:  {label:"Kerberos Probe",  desc:"Kerberoast, AS-REP, LDAP",    icon:<Cpu size={12}/>,           color:"var(--sev-critical-color)"},
-  testssl:   {label:"TLS Analyzer",    desc:"TLS ciphers, cert, HSTS",     icon:<Lock size={12}/>,          color:"var(--sev-medium-color)"  },
-  eyewitness:{label:"Web Capture",     desc:"Web screenshots + panels",    icon:<Eye size={12}/>,           color:"var(--accent)"            },
+interface Engagement {
+  id: string;
+  name: string;
+  status: string;
+  scopeCidrs?: string[];
+}
+
+interface JobStatus {
+  job_id: string;
+  engagement_id: string;
+  status: "pending" | "running" | "completed" | "failed";
+  created_at: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+  agent_id: string | null;
+  agent_name: string | null;
+  use_case_id: string | null;
+  result: Record<string, unknown> | null;
+}
+
+/* ══════════════════════════════════════════════════════
+   USE-CASE METADATA
+══════════════════════════════════════════════════════ */
+
+const UC_META: Record<string, { cat: string; icon: React.ReactNode; risk: "passive" | "low" | "medium" | "high" }> = {
+  uc_discovery_only:       { cat: "Discovery",   icon: <Network size={16} />,   risk: "low"     },
+  uc_iot_device_survey:    { cat: "Discovery",   icon: <Wifi size={16} />,      risk: "low"     },
+  uc_full_assessment:      { cat: "Assessment",  icon: <Shield size={16} />,    risk: "high"    },
+  uc_rescan_delta:         { cat: "Assessment",  icon: <RefreshCw size={16} />, risk: "high"    },
+  uc_external_web_triage:  { cat: "Targeted",    icon: <Globe size={16} />,     risk: "medium"  },
+  uc_web_app_triage:       { cat: "Targeted",    icon: <Globe size={16} />,     risk: "medium"  },
+  uc_db_exposure:          { cat: "Targeted",    icon: <Database size={16} />,  risk: "medium"  },
+  uc_windows_estate:       { cat: "Targeted",    icon: <Server size={16} />,    risk: "medium"  },
+  uc_udp_service_exposure: { cat: "Targeted",    icon: <Activity size={16} />,  risk: "medium"  },
+  uc_ot_passive:           { cat: "Specialized", icon: <Eye size={16} />,       risk: "passive" },
+  uc_ai_endpoint_sweep:    { cat: "Specialized", icon: <Cpu size={16} />,       risk: "medium"  },
 };
 
-const STEALTH_OPTS = [
-  {id:1, label:"Ghost",     short:"G", color:"var(--sev-low-color)",      rate:50,   timing:"T1"},
-  {id:3, label:"Cautious",  short:"C", color:"var(--accent)",             rate:300,  timing:"T2"},
-  {id:5, label:"Balanced",  short:"B", color:"var(--sev-medium-color)",   rate:1000, timing:"T3"},
-  {id:7, label:"Aggressive",short:"A", color:"var(--sev-high-color)",     rate:3000, timing:"T4"},
-  {id:9, label:"Maximum",   short:"M", color:"var(--sev-critical-color)", rate:5000, timing:"T5"},
-];
+const RISK: Record<string, { color: string; bg: string; label: string }> = {
+  passive: { color: "#6ee7b7",                      bg: "rgba(110,231,183,0.10)", label: "Passive"   },
+  low:     { color: "var(--sev-low-color)",          bg: "var(--sev-low-bg)",      label: "Low noise" },
+  medium:  { color: "var(--sev-medium-color)",       bg: "var(--sev-medium-bg)",   label: "Moderate"  },
+  high:    { color: "var(--sev-high-color)",         bg: "var(--sev-high-bg)",     label: "Active"    },
+};
 
-/* ══ REDUCER ════════════════════════════════════════ */
-const EMPTY_STAGES = Object.fromEntries(ALL_TOOLS.map(t=>[t,{status:"idle" as StageStatus,progress:0,message:"Waiting"}])) as Record<ScanTool,StageState>;
-type Action =
-  |{type:"START";scanId:string}|{type:"LOG";line:string}
-  |{type:"STAGE_UPDATE";tool:ScanTool;partial:Partial<StageState>}
-  |{type:"FINDING";finding:FindingItem}|{type:"HOST";host:DiscoveredHost}
-  |{type:"PROGRESS";overall:number}|{type:"COMPLETE"}
-  |{type:"ERROR";msg:string}|{type:"RESET"}|{type:"TICK"};
+const PROFILE_BADGE: Record<string, { label: string; color: string }> = {
+  it:  { label: "IT",  color: "var(--accent)" },
+  iot: { label: "IoT", color: "#f59e0b"       },
+  ot:  { label: "OT",  color: "#10b981"       },
+};
 
-function scanReducer(state:ScanState,action:Action):ScanState {
-  switch(action.type){
-    case"START":    return{...state,phase:"running",scanId:action.scanId,startedAt:Date.now(),elapsed:0,findings:[],hosts:[],logs:[],stages:{...EMPTY_STAGES}};
-    case"LOG":      return{...state,logs:[...state.logs.slice(-500),action.line]};
-    case"STAGE_UPDATE": return{...state,stages:{...state.stages,[action.tool]:{...state.stages[action.tool],...action.partial}}};
-    case"FINDING":  return{...state,findings:[action.finding,...state.findings]};
-    case"HOST":     return{...state,hosts:[...state.hosts.filter(h=>h.ip!==action.host.ip),action.host]};
-    case"PROGRESS": return{...state,overallProgress:action.overall};
-    case"COMPLETE": return{...state,phase:"complete",overallProgress:100};
-    case"ERROR":    return{...state,phase:"error",logs:[...state.logs,`[ERROR] ${action.msg}`]};
-    case"TICK":     return state.startedAt?{...state,elapsed:Math.floor((Date.now()-state.startedAt)/1000)}:state;
-    case"RESET":    return{phase:"idle",scanId:null,startedAt:null,elapsed:0,stages:{...EMPTY_STAGES},findings:[],hosts:[],logs:[],overallProgress:0};
-    default: return state;
+/* ══════════════════════════════════════════════════════
+   AUTH HELPER
+══════════════════════════════════════════════════════ */
+
+function getToken(): string | null {
+  if (typeof window === "undefined") return null;
+  return localStorage.getItem("adversa_token") || sessionStorage.getItem("adversa_token");
+}
+
+async function apiFetch<T>(path: string, opts?: RequestInit): Promise<T> {
+  const token = getToken();
+  const res = await fetch(path, {
+    ...opts,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...(opts?.headers ?? {}),
+    },
+  });
+  if (!res.ok) {
+    const err = await res.json().catch(() => ({ error: res.statusText })) as { error?: string };
+    throw new Error(err.error ?? res.statusText);
   }
+  return res.json() as Promise<T>;
 }
 
-/* ══ HELPERS ════════════════════════════════════════ */
-const SEV:Record<string,{color:string;bg:string}> = {
-  CRITICAL:{color:"var(--sev-critical-color)",bg:"var(--sev-critical-bg)"},
-  HIGH:    {color:"var(--sev-high-color)",    bg:"var(--sev-high-bg)"    },
-  MEDIUM:  {color:"var(--sev-medium-color)",  bg:"var(--sev-medium-bg)"  },
-  LOW:     {color:"var(--sev-low-color)",     bg:"var(--sev-low-bg)"     },
-  INFO:    {color:"var(--text-muted)",        bg:"rgba(136,146,164,0.08)"},
-};
-function fmtTime(s:number){
-  if(s<60)return`${s}s`;
-  if(s<3600)return`${Math.floor(s/60)}m ${s%60}s`;
-  return`${Math.floor(s/3600)}h ${Math.floor((s%3600)/60)}m`;
+/* ══════════════════════════════════════════════════════
+   PROBE BAR
+══════════════════════════════════════════════════════ */
+
+function ProbeBar({ probes }: { probes: Probe[] }) {
+  if (!probes.length) {
+    return (
+      <div style={{ padding: "10px 14px", borderRadius: 8, background: "var(--bg-surface)", border: "0.5px solid var(--border-subtle)", fontSize: 12, color: "var(--text-muted)" }}>
+        No probes registered — deploy a probe agent to start scanning
+      </div>
+    );
+  }
+  const online = probes.filter((p) => p.online).length;
+  const busy   = probes.filter((p) => p.current_job_id).length;
+  return (
+    <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+      {probes.map((p) => {
+        const dot = !p.online ? "var(--text-faint)" : p.current_job_id ? "var(--sev-medium-color)" : "var(--sev-low-color)";
+        const label = !p.online ? "offline" : p.current_job_id ? "busy" : "idle";
+        return (
+          <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 7, padding: "6px 12px", borderRadius: 8, background: "var(--bg-surface)", border: `0.5px solid ${p.online ? "var(--border-accent)" : "var(--border-subtle)"}`, fontSize: 12 }}>
+            <span style={{ width: 7, height: 7, borderRadius: "50%", background: dot, flexShrink: 0 }} />
+            <span style={{ fontWeight: 600, color: "var(--text-primary)" }}>{p.name}</span>
+            {p.location && <span style={{ color: "var(--text-muted)" }}>{p.location}</span>}
+            <span style={{ color: dot }}>{label}</span>
+          </div>
+        );
+      })}
+      <div style={{ padding: "6px 12px", borderRadius: 8, background: "var(--bg-surface)", border: "0.5px solid var(--border-subtle)", fontSize: 11, color: "var(--text-secondary)" }}>
+        {online}/{probes.length} online · {busy} busy
+      </div>
+    </div>
+  );
 }
-function CopyBtn({text}:{text:string}){
-  const[c,setC]=useState(false);
-  return(
-    <button onClick={()=>{navigator.clipboard.writeText(text);setC(true);setTimeout(()=>setC(false),2000);}}
-      style={{background:"none",border:"none",cursor:"pointer",padding:"3px 6px",borderRadius:4,color:c?"var(--accent)":"var(--text-muted)",transition:"color 0.15s"}}>
-      {c?<Check size={11}/>:<Copy size={11}/>}
+
+/* ══════════════════════════════════════════════════════
+   USE-CASE CARD
+══════════════════════════════════════════════════════ */
+
+function UseCaseCard({ uc, selected, onClick }: { uc: UseCase; selected: boolean; onClick: () => void }) {
+  const meta  = UC_META[uc.use_case_id] ?? { cat: "Other", icon: <Target size={16} />, risk: "medium" as const };
+  const risk  = RISK[meta.risk];
+  const prof  = PROFILE_BADGE[uc.profile];
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        textAlign: "left", cursor: "pointer",
+        padding: "13px 14px", borderRadius: 10,
+        background: selected ? "var(--accent-ghost)" : "var(--bg-surface)",
+        border: `1px solid ${selected ? "var(--accent)" : "var(--border-subtle)"}`,
+        boxShadow: selected ? "0 0 0 1px var(--accent)" : "none",
+        transition: "all 0.12s", display: "flex", flexDirection: "column", gap: 8, width: "100%",
+      }}
+    >
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 10 }}>
+        <div style={{ width: 30, height: 30, borderRadius: 7, flexShrink: 0, background: selected ? "var(--accent-ghost)" : "var(--bg-card)", border: "0.5px solid var(--border-subtle)", display: "flex", alignItems: "center", justifyContent: "center", color: selected ? "var(--accent)" : "var(--text-secondary)" }}>
+          {meta.icon}
+        </div>
+        <div style={{ flex: 1 }}>
+          <div style={{ fontWeight: 600, fontSize: 12.5, color: "var(--text-primary)", lineHeight: 1.3 }}>{uc.display_name}</div>
+          <div style={{ display: "flex", gap: 4, marginTop: 4, flexWrap: "wrap" }}>
+            <span style={{ fontSize: 10, fontWeight: 700, color: prof.color, background: `${prof.color}18`, border: `0.5px solid ${prof.color}40`, borderRadius: 4, padding: "1px 5px" }}>{prof.label}</span>
+            <span style={{ fontSize: 10, fontWeight: 600, color: risk.color, background: risk.bg, border: `0.5px solid ${risk.color}40`, borderRadius: 4, padding: "1px 5px" }}>{risk.label}</span>
+            <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "'JetBrains Mono', monospace" }}>~{uc.expected_runtime_hint}</span>
+          </div>
+        </div>
+        {selected && <CheckCircle size={13} color="var(--accent)" style={{ flexShrink: 0, marginTop: 2 }} />}
+      </div>
+      <p style={{ margin: 0, fontSize: 11, color: "var(--text-secondary)", lineHeight: 1.5 }}>{uc.description}</p>
+      <code style={{ fontSize: 9.5, color: "var(--text-muted)", background: "var(--bg-card)", border: "0.5px solid var(--border-subtle)", borderRadius: 3, padding: "1px 6px" }}>
+        {uc.scan_type}
+      </code>
     </button>
   );
 }
 
-/* ══ PIPELINE NODE ══════════════════════════════════ */
-function PipeNode({tool,status,progress,isLast}:{tool:ScanTool;status:StageStatus;progress:number;isLast:boolean}){
-  const m=TOOL_META[tool];
-  const isRun=status==="running";
-  const isDone=status==="done";
-  const isErr=status==="error";
-  const isIdle=status==="idle"||status==="skipped";
-  const col=isDone?"var(--accent)":isErr?"var(--sev-critical-color)":isRun?m.color:"var(--border-strong)";
+/* ══════════════════════════════════════════════════════
+   JOB PANEL
+══════════════════════════════════════════════════════ */
 
-  return(
-    <div style={{display:"flex",alignItems:"center",flex:1,minWidth:0}}>
-      <div style={{
-        flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:5,
-        padding:"12px 8px 10px",
-        background:isRun?`color-mix(in srgb,${m.color} 6%,var(--bg-surface))`:isDone?"rgba(0,200,232,0.04)":"transparent",
-        border:`0.5px solid ${isRun?m.color:isDone?"rgba(0,200,232,0.15)":isErr?"rgba(255,77,77,0.2)":"var(--border-subtle)"}`,
-        borderRadius:10,
-        transition:"all 0.3s ease",
-        boxShadow:isRun?`0 0 20px color-mix(in srgb,${m.color} 12%,transparent)`:isDone?"0 0 8px rgba(0,200,232,0.08)":"none",
-        position:"relative",overflow:"hidden",
-      }}>
-        {/* shimmer when running */}
-        {isRun&&<div style={{position:"absolute",top:0,left:0,right:0,height:"100%",background:"linear-gradient(90deg,transparent,rgba(255,255,255,0.02),transparent)",backgroundSize:"200% 100%",animation:"shimmer 2s infinite"}}/>}
+function JobPanel({ job, ucName }: { job: JobStatus; ucName?: string }) {
+  const r = job.result ?? {};
+  const elapsed = job.started_at && job.completed_at
+    ? Math.round((new Date(job.completed_at).getTime() - new Date(job.started_at).getTime()) / 1000)
+    : null;
 
-        {/* Icon ring */}
-        <div style={{
-          width:36,height:36,borderRadius:"50%",
-          border:`1.5px solid ${col}`,
-          background:isRun?`color-mix(in srgb,${m.color} 10%,transparent)`:isDone?"rgba(0,200,232,0.08)":"var(--bg-surface)",
-          display:"flex",alignItems:"center",justifyContent:"center",
-          position:"relative",flexShrink:0,
-          boxShadow:isRun?`0 0 12px color-mix(in srgb,${m.color} 20%,transparent)`:isDone?"0 0 6px rgba(0,200,232,0.15)":"none",
-          transition:"all 0.3s",
-        }}>
-          {isRun&&<div style={{position:"absolute",inset:-4,borderRadius:"50%",border:"1.5px solid transparent",borderTopColor:m.color,animation:"spin 0.9s linear infinite",opacity:0.7}}/>}
-          {isDone?<Check size={14} color="var(--accent)"/>:isErr?<X size={14} color="var(--sev-critical-color)"/>:<div style={{color:col,opacity:isIdle?0.25:1}}>{m.icon}</div>}
-        </div>
+  const STATUS_ICON: Record<string, React.ReactNode> = {
+    pending:   <Clock size={12} />,
+    running:   <Loader size={12} style={{ animation: "spin 1s linear infinite" }} />,
+    completed: <CheckCircle size={12} />,
+    failed:    <XCircle size={12} />,
+  };
+  const STATUS_COLOR: Record<string, string> = {
+    pending:   "var(--text-muted)",
+    running:   "var(--accent)",
+    completed: "var(--sev-low-color)",
+    failed:    "var(--sev-critical-color)",
+  };
+  const sc = STATUS_COLOR[job.status] ?? "var(--text-muted)";
 
-        <span style={{
-          fontFamily:"'JetBrains Mono',monospace",fontSize:9,fontWeight:isRun?700:400,
-          color:col,letterSpacing:0.5,whiteSpace:"nowrap",
-        }}>{m.label}</span>
-
-        {/* Progress bar */}
-        <div style={{width:"80%",height:2,background:"rgba(255,255,255,0.06)",borderRadius:1,overflow:"hidden"}}>
-          <div style={{height:"100%",width:`${progress}%`,background:col,borderRadius:1,transition:"width 0.5s ease"}}/>
-        </div>
-
-        {isRun&&(
-          <span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:8,color:m.color,opacity:0.8}}>{progress}%</span>
-        )}
+  return (
+    <div style={{ borderRadius: 10, border: "0.5px solid var(--border-subtle)", background: "var(--bg-surface)", overflow: "hidden" }}>
+      {/* Header */}
+      <div style={{ padding: "10px 14px", display: "flex", alignItems: "center", gap: 10, background: `${sc}0d`, borderBottom: "0.5px solid var(--border-subtle)" }}>
+        <span style={{ display: "flex", alignItems: "center", gap: 5, color: sc, fontWeight: 700, fontSize: 12 }}>
+          {STATUS_ICON[job.status]} {job.status.toUpperCase()}
+        </span>
+        {ucName && <span style={{ fontSize: 12, color: "var(--text-secondary)" }}>{ucName}</span>}
+        {elapsed !== null && <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--text-muted)", fontFamily: "'JetBrains Mono', monospace" }}>{elapsed}s</span>}
       </div>
 
-      {!isLast&&(
-        <div style={{flexShrink:0,display:"flex",alignItems:"center",padding:"0 3px"}}>
-          <div style={{width:14,height:1,background:isDone?"rgba(0,200,232,0.20)":"var(--border-subtle)"}}/>
-          <div style={{
-            width:5,height:5,
-            borderTop:`1px solid ${isDone?"rgba(0,200,232,0.25)":"var(--border-subtle)"}`,
-            borderRight:`1px solid ${isDone?"rgba(0,200,232,0.25)":"var(--border-subtle)"}`,
-            transform:"rotate(45deg)",marginLeft:-4,
-          }}/>
+      {/* Stats */}
+      {job.status === "completed" && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)" }}>
+          {([
+            ["Hosts",      (r.host_count    ?? (r.run_stats as Record<string,unknown>)?.host_count    ?? "—")],
+            ["Open Ports", (r.open_ports    ?? (r.run_stats as Record<string,unknown>)?.open_ports    ?? "—")],
+            ["Facts",      (r.fact_count    ?? (r.run_stats as Record<string,unknown>)?.fact_count    ?? "—")],
+            ["Findings",   (r.finding_count ?? "0")],
+          ] as [string, unknown][]).map(([label, val], i) => (
+            <div key={label} style={{ padding: "14px 12px", textAlign: "center", borderRight: i < 3 ? "0.5px solid var(--border-subtle)" : "none" }}>
+              <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 22, fontWeight: 700, color: "var(--text-primary)", lineHeight: 1 }}>{String(val)}</div>
+              <div style={{ fontSize: 10, color: "var(--text-muted)", marginTop: 4, textTransform: "uppercase", letterSpacing: 0.8 }}>{label}</div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Meta */}
+      <div style={{ padding: "8px 14px", display: "flex", flexWrap: "wrap", gap: 12, borderTop: "0.5px solid var(--border-subtle)" }}>
+        {job.agent_name && <span style={{ fontSize: 11, color: "var(--text-muted)" }}>Probe: <strong style={{ color: "var(--text-secondary)" }}>{job.agent_name}</strong></span>}
+        {job.created_at && <span style={{ fontSize: 11, color: "var(--text-muted)" }}>Queued: <strong style={{ color: "var(--text-secondary)" }}>{new Date(job.created_at).toLocaleTimeString()}</strong></span>}
+        {job.started_at && <span style={{ fontSize: 11, color: "var(--text-muted)" }}>Started: <strong style={{ color: "var(--text-secondary)" }}>{new Date(job.started_at).toLocaleTimeString()}</strong></span>}
+        <span style={{ marginLeft: "auto", fontSize: 10, color: "var(--text-faint)", fontFamily: "'JetBrains Mono', monospace" }}>{job.job_id.slice(0, 8)}</span>
+      </div>
+
+      {/* Error */}
+      {job.status === "failed" && r.error && (
+        <div style={{ padding: "10px 14px", background: "rgba(248,113,113,0.06)", borderTop: "0.5px solid var(--border-subtle)", fontSize: 12, color: "var(--sev-critical-color)", fontFamily: "'JetBrains Mono', monospace" }}>
+          {String(r.error)}
         </div>
       )}
     </div>
   );
 }
 
-/* ══ MAIN PAGE ══════════════════════════════════════ */
-export default function ScanPage(){
-  const{success,error:toastError,info,warning}=useToast();
+/* ══════════════════════════════════════════════════════
+   PAGE
+══════════════════════════════════════════════════════ */
 
-  const[rawTargets,setRawTargets]=useState("");
-  const[exclusions,setExclusions]=useState("");
-  const[showExclusions,setShowExclusions]=useState(false);
-  const[selectedPreset,setSelectedPreset]=useState("internal");
-  const[customTools,setCustomTools]=useState<ScanTool[]>([...ALL_TOOLS]);
-  const[stealth,setStealth]=useState(STEALTH_OPTS[2]);
-  const[showCreds,setShowCreds]=useState(false);
-  const[creds,setCreds]=useState({domain:"",username:"",password:"",dcIp:""});
-  const[createFindings,setCreateFindings]=useState(true);
-  const[parseResult,setParseResult]=useState<ParseResult|null>(null);
-  const[activeTab,setActiveTab]=useState<"findings"|"hosts"|"terminal">("findings");
-  const[profileOpen,setProfileOpen]=useState(false);
-  const[profilePos,setProfilePos]=useState({top:0,left:0,width:0});
-  const profileBtnRef=useRef<HTMLButtonElement>(null);
-  const profileDropRef=useRef<HTMLDivElement>(null);
-  const parseTimer=useRef<ReturnType<typeof setTimeout>|null>(null);
+const CATS = ["Discovery", "Assessment", "Targeted", "Specialized"];
 
-  const[scan,dispatch]=useReducer(scanReducer,{
-    phase:"idle",scanId:null,startedAt:null,elapsed:0,
-    stages:{...EMPTY_STAGES},findings:[],hosts:[],logs:[],overallProgress:0,
-  });
+export default function ScanPage() {
+  const { success: toastOk, error: toastErr } = useToast();
 
-  const abortRef=useRef<AbortController|null>(null);
-  const logRef=useRef<HTMLDivElement>(null);
-  const tickRef=useRef<ReturnType<typeof setInterval>|null>(null);
+  const [useCases,     setUseCases]     = useState<UseCase[]>([]);
+  const [probes,       setProbes]       = useState<Probe[]>([]);
+  const [engagements,  setEngagements]  = useState<Engagement[]>([]);
+  const [loadingData,  setLoadingData]  = useState(true);
 
-  useEffect(()=>{
-    if(logRef.current)logRef.current.scrollTop=logRef.current.scrollHeight;
-  },[scan.logs]);
-  useEffect(()=>{
-    if(scan.phase==="running"){tickRef.current=setInterval(()=>dispatch({type:"TICK"}),1000);}
-    else{if(tickRef.current)clearInterval(tickRef.current);}
-    return()=>{if(tickRef.current)clearInterval(tickRef.current);};
-  },[scan.phase]);
-  useEffect(()=>{
-    function onDown(e:MouseEvent){
-      const t=e.target as Node;
-      if(profileBtnRef.current&&!profileBtnRef.current.contains(t)&&profileDropRef.current&&!profileDropRef.current.contains(t))
-        setProfileOpen(false);
-    }
-    document.addEventListener("mousedown",onDown);
-    return()=>document.removeEventListener("mousedown",onDown);
-  },[]);
+  const [selectedUc,   setSelectedUc]   = useState("");
+  const [selectedEng,  setSelectedEng]  = useState("");
+  const [targets,      setTargets]      = useState("");
+  const [expandedCat,  setExpandedCat]  = useState("Discovery");
 
-  const openProfile=useCallback(()=>{
-    if(!profileOpen&&profileBtnRef.current){
-      const r=profileBtnRef.current.getBoundingClientRect();
-      setProfilePos({top:r.bottom+6,left:r.left,width:r.width});
-    }
-    setProfileOpen(p=>!p);
-  },[profileOpen]);
+  const [launching,    setLaunching]    = useState(false);
+  const [job,          setJob]          = useState<JobStatus | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  useEffect(()=>{
-    if(parseTimer.current)clearTimeout(parseTimer.current);
-    parseTimer.current=setTimeout(()=>{
-      if(!rawTargets.trim()){setParseResult(null);return;}
-      setParseResult(parseTargets(rawTargets,exclusions.split(/[\n,;]+/).map(s=>s.trim()).filter(Boolean)));
-    },300);
-    return()=>{if(parseTimer.current)clearTimeout(parseTimer.current);};
-  },[rawTargets,exclusions]);
+  useEffect(() => {
+    let alive = true;
+    (async () => {
+      setLoadingData(true);
+      try {
+        const [uc, pr, engRaw] = await Promise.all([
+          apiFetch<UseCase[]>("/api/scan/use-cases"),
+          apiFetch<Probe[]>("/api/scan/probes"),
+          apiFetch<{ engagements?: Engagement[] } | Engagement[]>("/api/engagements"),
+        ]);
+        if (!alive) return;
+        setUseCases(uc);
+        setProbes(pr);
+        const engs = Array.isArray(engRaw) ? engRaw : (engRaw as { engagements?: Engagement[] }).engagements ?? [];
+        setEngagements(engs);
+        if (engs.length === 1) setSelectedEng(engs[0].id);
+      } catch (e) {
+        toastErr("Load failed", (e as Error).message);
+      } finally {
+        if (alive) setLoadingData(false);
+      }
+    })();
+    return () => { alive = false; };
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const preset=PRESETS.find(p=>p.id===selectedPreset)??PRESETS[2];
-  const activeTools=preset.id==="custom"?customTools:preset.tools;
-
-  const handleSseEvent=useCallback((ev:Record<string,unknown>)=>{
-    const ts=new Date().toISOString().slice(11,19);
-    switch(ev.type){
-      case"pipeline_started": dispatch({type:"LOG",line:`[${ts}] Pipeline ${ev.scanId} started`}); break;
-      case"progress":{
-        dispatch({type:"PROGRESS",overall:ev.overallProgress as number});
-        const stages=ev.stages as Record<ScanTool,StageState>;
-        for(const[tool,s]of Object.entries(stages)){
-          dispatch({type:"STAGE_UPDATE",tool:tool as ScanTool,partial:s});
-          if(s.status==="running")dispatch({type:"LOG",line:`[${ts}] ${TOOL_META[tool as ScanTool]?.label}: ${s.message}`});
+  const startPolling = useCallback((jobId: string) => {
+    if (pollRef.current) clearInterval(pollRef.current);
+    pollRef.current = setInterval(async () => {
+      try {
+        const j = await apiFetch<JobStatus>(`/api/scan/jobs/${jobId}`);
+        setJob(j);
+        if (j.status === "completed" || j.status === "failed") {
+          clearInterval(pollRef.current!);
+          pollRef.current = null;
+          if (j.status === "completed") toastOk("Scan complete");
+          else toastErr("Scan failed");
         }
-        break;
-      }
-      case"finding":{
-        const f=ev.finding as FindingItem;
-        dispatch({type:"FINDING",finding:{...f,timestamp:new Date().toISOString()}});
-        dispatch({type:"LOG",line:`[${ts}] ◆ [${f.severity}] ${f.title} — ${f.host}`});
-        break;
-      }
-      case"host_discovered":{
-        const h=ev.host as DiscoveredHost;
-        dispatch({type:"HOST",host:h});
-        dispatch({type:"LOG",line:`[${ts}] ↑ ${h.ip} · ${h.ports} ports`});
-        break;
-      }
-      case"pipeline_complete":
-        dispatch({type:"COMPLETE"});
-        dispatch({type:"LOG",line:`[${ts}] ✓ Complete · ${scan.findings.length} findings · ${scan.hosts.length} hosts`});
-        success("Scan complete",`${scan.findings.length} findings across ${scan.hosts.length} hosts`);
-        break;
-      case"error": dispatch({type:"ERROR",msg:String(ev.error)}); break;
-    }
-  },[scan.findings.length,scan.hosts.length,success]);
+      } catch { /* network blip */ }
+    }, 4000);
+  }, [toastOk, toastErr]);
 
-  const startScan=useCallback(async()=>{
-    if(!parseResult||parseResult.valid.length===0){toastError("No targets","Add at least one valid IP, CIDR, or hostname.");return;}
-    if(parseResult.hasPublicIPs)warning("Public IPs","Ensure you have written authorization.");
-    if(preset.requiresCreds&&!creds.username)info("Credentials recommended",`${preset.label} works best with domain credentials.`);
-    const targets=toApiTargets(parseResult);
-    const scanId=`scan-${Date.now()}`;
-    dispatch({type:"START",scanId});
-    dispatch({type:"LOG",line:`[${new Date().toISOString().slice(11,19)}] Launching ${preset.label} · ${targets.length} target(s) · stealth:${stealth.label} · ${activeTools.length} modules`});
-    abortRef.current=new AbortController();
-    try{
-      const res=await fetch("/api/scan/pipeline",{
-        method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({targets,profile:preset.id==="full"?"deep":"standard",tools:activeTools,credentials:showCreds&&creds.username?creds:{},createFindings,stealthLevel:stealth.id}),
-        signal:abortRef.current.signal,
+  useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current); }, []);
+
+  const ucObj       = useCases.find((u) => u.use_case_id === selectedUc);
+  const idleProbes  = probes.filter((p) => p.online && !p.current_job_id);
+
+  async function launch() {
+    if (!selectedUc)  { toastErr("Select a use-case"); return; }
+    if (!selectedEng) { toastErr("Select an engagement"); return; }
+
+    const targetList = targets.split(/[\s,\n]+/).map((t) => t.trim()).filter(Boolean);
+    setLaunching(true);
+    setJob(null);
+    try {
+      const res = await apiFetch<{ job_id: string; status: string }>("/api/scan/launch", {
+        method: "POST",
+        body: JSON.stringify({ engagement_id: selectedEng, use_case_id: selectedUc, targets: targetList.length ? targetList : undefined }),
       });
-      if(!res.ok||!res.body){dispatch({type:"ERROR",msg:"Failed to start pipeline"});toastError("Scan failed","Could not start pipeline.");return;}
-      const reader=res.body.getReader();const decoder=new TextDecoder();let buffer="";
-      while(true){
-        const{done,value}=await reader.read();if(done)break;
-        buffer+=decoder.decode(value,{stream:true});
-        const lines=buffer.split("\n");buffer=lines.pop()??"";
-        for(const line of lines){
-          if(!line.startsWith("data: "))continue;
-          try{handleSseEvent(JSON.parse(line.slice(6)) as Record<string,unknown>);}catch{}
-        }
-      }
-    }catch(e:unknown){
-      if(e instanceof Error&&e.name!=="AbortError"){dispatch({type:"ERROR",msg:String(e)});toastError("Scan error",String(e).slice(0,100));}
-      else if(e instanceof Error&&e.name==="AbortError"){dispatch({type:"LOG",line:`[${new Date().toISOString().slice(11,19)}] Aborted by user`});dispatch({type:"COMPLETE"});}
+      const newJob: JobStatus = {
+        job_id: res.job_id, engagement_id: selectedEng,
+        status: "pending", created_at: new Date().toISOString(),
+        started_at: null, completed_at: null,
+        agent_id: null, agent_name: null,
+        use_case_id: selectedUc, result: null,
+      };
+      setJob(newJob);
+      startPolling(res.job_id);
+      toastOk("Job queued", "Probe picks up on next poll (~10s)");
+    } catch (e) {
+      toastErr("Launch failed", (e as Error).message);
+    } finally {
+      setLaunching(false);
     }
-  },[parseResult,preset,activeTools,creds,showCreds,createFindings,stealth,toastError,info,warning,handleSseEvent]);
+  }
 
-  const running=scan.phase==="running";
-  const hasRun=scan.phase!=="idle";
-  const isDone=scan.phase==="complete"||scan.phase==="error";
-  const canLaunch=!!parseResult&&parseResult.valid.length>0;
+  // group by category
+  const byCat: Record<string, UseCase[]> = {};
+  for (const uc of useCases) {
+    const cat = UC_META[uc.use_case_id]?.cat ?? "Other";
+    (byCat[cat] ??= []).push(uc);
+  }
 
-  const sevCounts={
-    CRITICAL:scan.findings.filter(f=>f.severity==="CRITICAL").length,
-    HIGH:    scan.findings.filter(f=>f.severity==="HIGH").length,
-    MEDIUM:  scan.findings.filter(f=>f.severity==="MEDIUM").length,
-    LOW:     scan.findings.filter(f=>f.severity==="LOW").length,
-  };
+  const canLaunch = !!selectedUc && !!selectedEng && !launching;
 
-  /* ── RENDER ─────────────────────────────────────── */
-  return(
-    <PageShell
-      title="Scan Engine"
-      subtitle={running?`${scan.overallProgress}%  ·  ${fmtTime(scan.elapsed)}  ·  ${preset.label}`:"Offensive Vulnerability Pipeline"}
-      statusItems={hasRun?[
-        {label:"HOSTS",    value:String(scan.hosts.length),  color:"var(--accent)"},
-        {label:"CRITICAL", value:String(sevCounts.CRITICAL), color:sevCounts.CRITICAL>0?"var(--sev-critical-color)":"var(--text-muted)"},
-        {label:"HIGH",     value:String(sevCounts.HIGH),     color:sevCounts.HIGH>0?"var(--sev-high-color)":"var(--text-muted)"},
-        {label:"ELAPSED",  value:fmtTime(scan.elapsed),      color:"var(--text-secondary)"},
-      ]:[]}
-    >
-      <style>{`
-        @keyframes spin{to{transform:rotate(360deg)}}
-        @keyframes shimmer{0%{background-position:-200% 0}100%{background-position:200% 0}}
-        @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.4}}
-        @keyframes ring-pulse{0%,100%{opacity:0.05;transform:scale(1)}50%{opacity:0.1;transform:scale(1.03)}}
-        @keyframes radar-sweep{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
-        @keyframes scanline{0%{transform:translateY(-100%)}100%{transform:translateY(100vh)}}
-        @keyframes blink{0%,49%{opacity:1}50%,100%{opacity:0}}
-        @keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
-        @keyframes glow-pulse{0%,100%{box-shadow:0 0 20px var(--accent-glow)}50%{box-shadow:0 0 40px var(--accent-glow),0 0 60px var(--accent-glow)}}
-        @keyframes dropdownIn{from{opacity:0;transform:translateY(-8px) scale(0.97)}to{opacity:1;transform:translateY(0) scale(1)}}
-        .scan-finding-row{animation:fadeIn 0.25s ease both}
-      `}</style>
+  return (
+    <PageShell title="Scanner" subtitle="Dispatch scan jobs to field-deployed probes">
+      <style>{`@keyframes spin{to{transform:rotate(360deg)}}.spin{animation:spin 1s linear infinite}`}</style>
 
-      <div style={{display:"grid",gridTemplateColumns:"260px 1fr",gap:14,height:"calc(100vh - 108px)",overflow:"hidden"}}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 22, maxWidth: 1100 }}>
 
-        {/* ════════════════════════════════════
-            LEFT — CONFIG PANEL
-        ════════════════════════════════════ */}
-        <div style={{
-          display:"flex",flexDirection:"column",
-          background:"var(--bg-panel)",
-          border:"0.5px solid var(--border-subtle)",
-          borderRadius:14,overflow:"hidden",
-        }}>
+        {/* ── Probe health ── */}
+        <section>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-faint)", letterSpacing: 1.3, textTransform: "uppercase", marginBottom: 8 }}>Registered Probes</div>
+          {loadingData ? <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Loading...</div> : <ProbeBar probes={probes} />}
+        </section>
 
-          {/* Header */}
-          <div style={{
-            padding:"14px 16px 12px",
-            borderBottom:"0.5px solid var(--border-subtle)",
-            background:"linear-gradient(180deg,rgba(0,200,232,0.03) 0%,transparent 100%)",
-            flexShrink:0,
-          }}>
-            <div style={{display:"flex",alignItems:"center",gap:10}}>
-              <div style={{
-                width:30,height:30,borderRadius:8,
-                background:"var(--accent-ghost)",border:"0.5px solid var(--border-accent)",
-                display:"flex",alignItems:"center",justifyContent:"center",
-              }}>
-                <Target size={14} color="var(--accent)"/>
-              </div>
-              <div>
-                <div style={{fontFamily:"'JetBrains Mono',monospace",fontSize:11,fontWeight:700,color:"var(--text-primary)",letterSpacing:1.5}}>SCAN CONFIG</div>
-                <div style={{fontFamily:"'JetBrains Mono',monospace",fontSize:9,color:"var(--text-muted)",marginTop:2}}>
-                  {preset.label} · {stealth.label} · {activeTools.length} tools
-                </div>
-              </div>
-              {canLaunch&&!running&&(
-                <div style={{
-                  marginLeft:"auto",width:7,height:7,borderRadius:"50%",
-                  background:"var(--accent)",boxShadow:"0 0 8px var(--accent)",
-                  animation:"pulse 2s ease-in-out infinite",
-                }}/>
-              )}
-            </div>
-          </div>
+        {/* ── Two-column layout ── */}
+        <div style={{ display: "grid", gridTemplateColumns: "1fr 310px", gap: 18, alignItems: "start" }}>
 
-          <div style={{flex:1,overflowY:"auto",display:"flex",flexDirection:"column"}}>
-
-            {/* TARGETS */}
-            <div style={{padding:"12px 14px",borderBottom:"0.5px solid var(--border-subtle)"}}>
-              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:7}}>
-                <span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:9,fontWeight:700,color:"var(--text-faint)",letterSpacing:1.4,textTransform:"uppercase"}}>Targets</span>
-                {parseResult&&(
-                  <span style={{
-                    fontFamily:"'JetBrains Mono',monospace",fontSize:8,
-                    color:parseResult.invalid.length>0?"var(--sev-high-color)":"var(--accent)",
-                    background:parseResult.invalid.length>0?"var(--sev-high-bg)":"var(--accent-ghost)",
-                    border:`0.5px solid ${parseResult.invalid.length>0?"rgba(255,160,0,0.3)":"rgba(0,200,232,0.30)"}`,
-                    borderRadius:8,padding:"2px 7px",
-                  }}>{parseResult.valid.length} target{parseResult.valid.length!==1?"s":""} · {parseResult.totalHosts.toLocaleString()} hosts</span>
-                )}
-              </div>
-
-              <div style={{position:"relative"}}>
-                <textarea value={rawTargets} onChange={e=>setRawTargets(e.target.value)}
-                  placeholder={"10.0.0.0/24\n192.168.1.1-50\ndc01.corp.local\n\nPaste any scope — IPs extracted auto"}
-                  rows={5} style={{
-                    width:"100%",boxSizing:"border-box",
-                    background:"var(--bg-surface)",
-                    border:"0.5px solid var(--border-default)",
-                    borderRadius:8,padding:"9px 30px 9px 10px",
-                    fontFamily:"'JetBrains Mono',monospace",fontSize:10,
-                    color:"var(--text-primary)",resize:"none",outline:"none",lineHeight:1.7,
-                    transition:"border-color 0.15s,box-shadow 0.15s",
-                  }}
-                  onFocus={e=>{e.target.style.borderColor="var(--accent)";e.target.style.boxShadow="0 0 0 3px var(--accent-ghost)";}}
-                  onBlur={e=>{e.target.style.borderColor="var(--border-default)";e.target.style.boxShadow="none";}}
-                />
-                {rawTargets&&(
-                  <button onClick={()=>setRawTargets("")}
-                    style={{position:"absolute",top:7,right:7,background:"var(--bg-hover)",border:"none",borderRadius:4,cursor:"pointer",padding:"2px 4px",color:"var(--text-muted)"}}
-                    onMouseEnter={e=>(e.currentTarget.style.color="var(--sev-critical-color)")}
-                    onMouseLeave={e=>(e.currentTarget.style.color="var(--text-muted)")}
-                  ><X size={10}/></button>
-                )}
-              </div>
-
-              {parseResult?.hasPublicIPs&&(
-                <div style={{marginTop:5,display:"flex",alignItems:"center",gap:5,padding:"5px 8px",background:"rgba(255,77,77,0.06)",border:"0.5px solid rgba(255,77,77,0.2)",borderRadius:5}}>
-                  <AlertTriangle size={9} color="var(--sev-critical-color)"/>
-                  <span style={{fontFamily:"'Inter',sans-serif",fontSize:10,color:"var(--sev-critical-color)"}}>Public IPs — written authorization required</span>
-                </div>
-              )}
-
-              <div style={{display:"flex",flexWrap:"wrap",gap:3,marginTop:7}}>
-                {COMMON_RANGES.map(r=>(
-                  <button key={r.cidr} onClick={()=>setRawTargets(p=>p?`${p}\n${r.cidr}`:r.cidr)}
-                    style={{padding:"2px 6px",borderRadius:4,border:"0.5px solid var(--border-subtle)",background:"var(--bg-surface)",cursor:"pointer",fontFamily:"'JetBrains Mono',monospace",fontSize:8,color:"var(--text-muted)",transition:"all 0.12s"}}
-                    onMouseEnter={e=>{e.currentTarget.style.borderColor="var(--accent)";e.currentTarget.style.color="var(--accent)";e.currentTarget.style.background="var(--accent-ghost)";}}
-                    onMouseLeave={e=>{e.currentTarget.style.borderColor="var(--border-subtle)";e.currentTarget.style.color="var(--text-muted)";e.currentTarget.style.background="var(--bg-surface)";}}
-                  >{r.label}</button>
-                ))}
-              </div>
-
-              <button onClick={()=>setShowExclusions(p=>!p)}
-                style={{marginTop:6,display:"flex",alignItems:"center",gap:3,background:"none",border:"none",cursor:"pointer",color:"var(--text-muted)",fontFamily:"'Inter',sans-serif",fontSize:9,padding:0,transition:"color 0.12s"}}
-                onMouseEnter={e=>(e.currentTarget.style.color="var(--text-secondary)")}
-                onMouseLeave={e=>(e.currentTarget.style.color="var(--text-muted)")}
-              >
-                {showExclusions?<ChevronUp size={9}/>:<ChevronDown size={9}/>} Exclusions
-              </button>
-              {showExclusions&&(
-                <textarea value={exclusions} onChange={e=>setExclusions(e.target.value)}
-                  placeholder={"10.0.0.1\n192.168.1.0/24"} rows={2}
-                  style={{marginTop:4,width:"100%",boxSizing:"border-box",background:"rgba(255,77,77,0.04)",border:"0.5px solid rgba(255,77,77,0.2)",borderRadius:6,padding:"6px 8px",fontFamily:"'JetBrains Mono',monospace",fontSize:9,color:"var(--sev-critical-color)",resize:"none",outline:"none",lineHeight:1.6}}
-                />
-              )}
-            </div>
-
-            {/* SCAN PROFILE DROPDOWN */}
-            {/* ── SCAN PROFILE ── */}
-            <div style={{padding:"12px 14px",borderBottom:"0.5px solid var(--border-subtle)"}}>
-              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:8}}>
-                <span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:9,fontWeight:700,color:"var(--text-faint)",letterSpacing:1.4,textTransform:"uppercase"}}>Scan Profile</span>
-                <span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:8,color:"var(--text-muted)"}}>{activeTools.length} tools</span>
-              </div>
-
-              {/* Trigger button */}
-              <button ref={profileBtnRef} onClick={openProfile} style={{
-                width:"100%",display:"flex",alignItems:"center",gap:10,
-                padding:"10px 12px",cursor:"pointer",
-                background:profileOpen
-                  ?`color-mix(in srgb,${preset.color} 12%,var(--bg-surface))`
-                  :"var(--bg-surface)",
-                border:`0.5px solid ${profileOpen?preset.color:"var(--border-default)"}`,
-                borderRadius:10,transition:"all 0.15s",
-                boxShadow:profileOpen?`0 0 0 3px color-mix(in srgb,${preset.color} 12%,transparent),0 4px 16px rgba(0,0,0,0.3)`:"none",
-              }}
-                onMouseEnter={e=>{if(!profileOpen){e.currentTarget.style.borderColor="var(--border-strong)";e.currentTarget.style.background="var(--bg-hover)";}}}
-                onMouseLeave={e=>{if(!profileOpen){e.currentTarget.style.borderColor="var(--border-default)";e.currentTarget.style.background="var(--bg-surface)";}}}
-              >
-                {/* Icon tile */}
-                <div style={{
-                  width:32,height:32,borderRadius:8,flexShrink:0,
-                  background:`color-mix(in srgb,${preset.color} 14%,var(--bg-panel))`,
-                  border:`1px solid color-mix(in srgb,${preset.color} 28%,transparent)`,
-                  display:"flex",alignItems:"center",justifyContent:"center",
-                  color:preset.color,
-                  boxShadow:`0 0 12px color-mix(in srgb,${preset.color} 18%,transparent)`,
-                  transition:"all 0.15s",
-                }}>{preset.icon}</div>
-
-                {/* Labels */}
-                <div style={{flex:1,textAlign:"left",minWidth:0}}>
-                  <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:2}}>
-                    <span style={{fontFamily:"'Inter',sans-serif",fontSize:12,fontWeight:600,color:"var(--text-primary)",lineHeight:1}}>{preset.label}</span>
-                    {preset.requiresCreds&&(
-                      <span style={{display:"inline-flex",alignItems:"center",gap:2,fontFamily:"'JetBrains Mono',monospace",fontSize:7,color:"var(--sev-medium-color)",background:"var(--sev-medium-bg)",border:"0.5px solid var(--sev-medium-color)",borderRadius:3,padding:"1px 4px",fontWeight:700,lineHeight:1.4}}>
-                        <Lock size={6}/>CREDS
-                      </span>
-                    )}
-                  </div>
-                  <div style={{fontFamily:"'Inter',sans-serif",fontSize:9,color:"var(--text-muted)"}}>{preset.sublabel}</div>
-                </div>
-
-                {/* Right: ETA + chevron */}
-                <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
-                  <span style={{
-                    fontFamily:"'JetBrains Mono',monospace",fontSize:9,fontWeight:600,
-                    color:preset.color,
-                    background:`color-mix(in srgb,${preset.color} 10%,transparent)`,
-                    border:`0.5px solid color-mix(in srgb,${preset.color} 25%,transparent)`,
-                    borderRadius:4,padding:"2px 6px",
-                  }}>{preset.eta}</span>
-                  <div style={{
-                    width:20,height:20,borderRadius:6,
-                    background:"var(--bg-panel)",border:"0.5px solid var(--border-subtle)",
-                    display:"flex",alignItems:"center",justifyContent:"center",
-                    transition:"transform 0.2s var(--ease-out)",
-                    transform:profileOpen?"rotate(180deg)":"rotate(0deg)",
-                  }}>
-                    <ChevronDown size={11} color="var(--text-secondary)"/>
-                  </div>
-                </div>
-              </button>
-
-              {/* Tool chips — always visible below trigger */}
-              <div style={{marginTop:6,display:"flex",flexWrap:"wrap",gap:3}}>
-                {activeTools.map(t=>{
-                  const m=TOOL_META[t];
-                  return(
-                    <span key={t} style={{
-                      display:"inline-flex",alignItems:"center",padding:"2px 7px",borderRadius:4,
-                      background:"var(--bg-panel)",
-                      border:`0.5px solid ${m.color}38`,
-                      fontFamily:"'JetBrains Mono',monospace",fontSize:8,color:m.color,
-                    }}>{m.label}</span>
-                  );
-                })}
-              </div>
-
-              {/* Fixed-position floating dropdown — escapes overflow:hidden/auto */}
-              {profileOpen&&(
-                <div ref={profileDropRef} style={{
-                  position:"fixed",
-                  top:profilePos.top,
-                  left:profilePos.left,
-                  width:profilePos.width,
-                  zIndex:9999,
-                  background:"var(--bg-panel)",
-                  border:`1px solid color-mix(in srgb,${preset.color} 50%,var(--border-default))`,
-                  borderRadius:12,
-                  boxShadow:"0 20px 60px rgba(0,0,0,0.7), 0 4px 16px rgba(0,0,0,0.4)",
-                  overflow:"hidden",
-                  animation:"dropdownIn 0.18s var(--ease-out) both",
-                }}>
-                  {/* Color accent top stripe */}
-                  <div style={{height:2,background:`linear-gradient(90deg,transparent,${preset.color},transparent)`}}/>
-
-                  {/* Options */}
-                  {PRESETS.map(p=>{
-                    const active=selectedPreset===p.id;
-                    return(
-                      <button key={p.id}
-                        onClick={()=>{setSelectedPreset(p.id);setProfileOpen(false);}}
-                        style={{
-                          width:"100%",display:"flex",alignItems:"center",gap:10,
-                          padding:"9px 14px",
-                          background:active?`color-mix(in srgb,${p.color} 9%,var(--bg-surface))`:"transparent",
-                          border:"none",
-                          borderLeft:`3px solid ${active?p.color:"transparent"}`,
-                          cursor:"pointer",transition:"background 0.12s",
-                        }}
-                        onMouseEnter={e=>{if(!active)e.currentTarget.style.background="var(--bg-surface)";}}
-                        onMouseLeave={e=>{if(!active)e.currentTarget.style.background="transparent";}}
+          {/* Left: use-case picker */}
+          <section>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-faint)", letterSpacing: 1.3, textTransform: "uppercase", marginBottom: 12 }}>Select Use-Case</div>
+            {loadingData ? (
+              <div style={{ fontSize: 12, color: "var(--text-muted)" }}>Loading use-cases...</div>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {CATS.map((cat) => {
+                  const items = byCat[cat] ?? [];
+                  if (!items.length) return null;
+                  const open = expandedCat === cat;
+                  const hasSelected = items.some((u) => u.use_case_id === selectedUc);
+                  return (
+                    <div key={cat} style={{ borderRadius: 10, border: "0.5px solid var(--border-subtle)", overflow: "hidden" }}>
+                      <button
+                        onClick={() => setExpandedCat(open ? "" : cat)}
+                        style={{ width: "100%", textAlign: "left", cursor: "pointer", padding: "10px 14px", background: "var(--bg-surface)", border: "none", display: "flex", alignItems: "center", gap: 8 }}
                       >
-                        <div style={{
-                          width:28,height:28,borderRadius:7,flexShrink:0,
-                          background:active?`color-mix(in srgb,${p.color} 16%,var(--bg-panel))`:"var(--bg-hover)",
-                          border:`0.5px solid ${active?`color-mix(in srgb,${p.color} 35%,transparent)`:"var(--border-subtle)"}`,
-                          display:"flex",alignItems:"center",justifyContent:"center",
-                          color:active?p.color:"var(--text-muted)",
-                          transition:"all 0.15s",
-                          boxShadow:active?`0 0 10px color-mix(in srgb,${p.color} 20%,transparent)`:"none",
-                        }}>{p.icon}</div>
-
-                        <div style={{flex:1,textAlign:"left",minWidth:0}}>
-                          <div style={{fontFamily:"'Inter',sans-serif",fontSize:12,fontWeight:active?600:400,color:active?"var(--text-primary)":"var(--text-secondary)",lineHeight:1.1,marginBottom:1}}>
-                            {p.label}
-                            {p.requiresCreds&&<Lock size={8} style={{marginLeft:5,verticalAlign:"middle"}} color={active?p.color:"var(--text-faint)"}/>}
-                          </div>
-                          <div style={{fontFamily:"'Inter',sans-serif",fontSize:9,color:"var(--text-muted)"}}>{p.sublabel}</div>
-                        </div>
-
-                        <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0}}>
-                          <span style={{
-                            fontFamily:"'JetBrains Mono',monospace",fontSize:8,
-                            color:active?p.color:"var(--text-muted)",
-                            background:active?`color-mix(in srgb,${p.color} 10%,transparent)`:"transparent",
-                            border:active?`0.5px solid color-mix(in srgb,${p.color} 25%,transparent)`:"none",
-                            borderRadius:3,padding:active?"1px 5px":"0",
-                          }}>{p.eta}</span>
-                          {active
-                            ?<div style={{width:16,height:16,borderRadius:"50%",background:`color-mix(in srgb,${p.color} 15%,transparent)`,border:`1px solid ${p.color}`,display:"flex",alignItems:"center",justifyContent:"center"}}><Check size={9} color={p.color}/></div>
-                            :<div style={{width:16,height:16,borderRadius:"50%",border:"1px solid var(--border-subtle)"}}/>
-                          }
-                        </div>
+                        <span style={{ fontWeight: 700, fontSize: 12, color: "var(--text-primary)" }}>{cat}</span>
+                        <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{items.length} scan{items.length !== 1 ? "s" : ""}</span>
+                        {hasSelected && <span style={{ fontSize: 10, fontWeight: 700, color: "var(--accent)", background: "var(--accent-ghost)", borderRadius: 4, padding: "1px 6px" }}>SELECTED</span>}
+                        {open ? <ChevronDown size={13} color="var(--text-muted)" style={{ marginLeft: "auto" }} /> : <ChevronRight size={13} color="var(--text-muted)" style={{ marginLeft: "auto" }} />}
                       </button>
-                    );
-                  })}
-
-                  {/* Footer — description + tool chips for highlighted/hovered preset */}
-                  <div style={{padding:"8px 14px 10px",borderTop:"0.5px solid var(--border-subtle)",background:"var(--bg-sidebar)"}}>
-                    <div style={{fontFamily:"'Inter',sans-serif",fontSize:10,color:"var(--text-secondary)",lineHeight:1.5,marginBottom:6}}>{preset.description}</div>
-                    <div style={{display:"flex",flexWrap:"wrap",gap:3}}>
-                      {(preset.id==="custom"?customTools:preset.tools).map(t=>{
-                        const m=TOOL_META[t];
-                        return(
-                          <span key={t} style={{
-                            display:"inline-flex",alignItems:"center",padding:"2px 7px",borderRadius:4,
-                            background:"var(--bg-surface)",border:`0.5px solid ${m.color}45`,
-                            fontFamily:"'JetBrains Mono',monospace",fontSize:8,color:m.color,
-                          }}>{m.label}</span>
-                        );
-                      })}
-                      {preset.id==="custom"&&ALL_TOOLS.filter(t=>!customTools.includes(t)).map(t=>(
-                        <button key={t} onClick={e=>{e.stopPropagation();setCustomTools(p=>[...p,t]);}}
-                          style={{display:"inline-flex",alignItems:"center",padding:"2px 7px",borderRadius:4,background:"transparent",border:"0.5px dashed var(--border-subtle)",fontFamily:"'JetBrains Mono',monospace",fontSize:8,color:"var(--text-faint)",cursor:"pointer"}}
-                          onMouseEnter={e=>{e.currentTarget.style.borderColor="var(--border-strong)";e.currentTarget.style.color="var(--text-muted)";}}
-                          onMouseLeave={e=>{e.currentTarget.style.borderColor="var(--border-subtle)";e.currentTarget.style.color="var(--text-faint)";}}
-                        >+ {TOOL_META[t].label}</button>
-                      ))}
+                      {open && (
+                        <div style={{ padding: "8px 10px 10px", background: "var(--bg-card)", borderTop: "0.5px solid var(--border-subtle)", display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                          {items.map((uc) => (
+                            <UseCaseCard key={uc.use_case_id} uc={uc} selected={selectedUc === uc.use_case_id} onClick={() => setSelectedUc(uc.use_case_id)} />
+                          ))}
+                        </div>
+                      )}
                     </div>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* ── STEALTH — Segmented Control ── */}
-            <div style={{padding:"12px 14px",borderBottom:"0.5px solid var(--border-subtle)"}}>
-              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
-                <span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:9,fontWeight:700,color:"var(--text-faint)",letterSpacing:1.4,textTransform:"uppercase"}}>Stealth & Speed</span>
-                <div style={{display:"flex",alignItems:"center",gap:6}}>
-                  <span style={{fontFamily:"'Inter',sans-serif",fontSize:11,fontWeight:600,color:stealth.color,transition:"color 0.2s"}}>{stealth.label}</span>
-                  <span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:8,color:"var(--text-muted)"}}>{stealth.rate.toLocaleString()} pkt/s</span>
-                </div>
-              </div>
-
-              {/* Segmented pill bar */}
-              <div style={{
-                display:"grid",gridTemplateColumns:"repeat(5,1fr)",
-                background:"var(--bg-root)",
-                border:"0.5px solid var(--border-subtle)",
-                borderRadius:10,padding:3,gap:2,
-              }}>
-                {STEALTH_OPTS.map(s=>{
-                  const active=stealth.id===s.id;
-                  return(
-                    <button key={s.id} onClick={()=>setStealth(s)} style={{
-                      display:"flex",flexDirection:"column",alignItems:"center",gap:4,
-                      padding:"7px 4px",borderRadius:7,cursor:"pointer",
-                      background:active?`color-mix(in srgb,${s.color} 14%,var(--bg-panel))`:"transparent",
-                      border:`0.5px solid ${active?s.color:"transparent"}`,
-                      transition:"all 0.15s var(--ease-out)",
-                      boxShadow:active?`0 2px 10px color-mix(in srgb,${s.color} 22%,transparent),inset 0 0 0 0.5px color-mix(in srgb,${s.color} 15%,transparent)`:"none",
-                    }}
-                      onMouseEnter={e=>{if(!active){e.currentTarget.style.background="var(--bg-hover)";e.currentTarget.style.borderColor="var(--border-subtle)";}}}
-                      onMouseLeave={e=>{if(!active){e.currentTarget.style.background="transparent";e.currentTarget.style.borderColor="transparent";}}}
-                    >
-                      {/* Signal dot */}
-                      <div style={{
-                        width:7,height:7,borderRadius:"50%",
-                        background:active?s.color:"var(--border-strong)",
-                        boxShadow:active?`0 0 8px ${s.color},0 0 16px color-mix(in srgb,${s.color} 40%,transparent)`:"none",
-                        transition:"all 0.15s",
-                        flexShrink:0,
-                      }}/>
-                      {/* Short label */}
-                      <span style={{
-                        fontFamily:"'JetBrains Mono',monospace",fontSize:9,fontWeight:active?700:400,
-                        color:active?s.color:"var(--text-muted)",
-                        transition:"color 0.15s",letterSpacing:0.5,
-                      }}>{s.short}</span>
-                    </button>
                   );
                 })}
               </div>
+            )}
+          </section>
 
-              {/* Info row */}
-              <div style={{
-                marginTop:8,display:"flex",alignItems:"center",justifyContent:"space-between",
-                padding:"6px 10px",borderRadius:7,
-                background:`color-mix(in srgb,${stealth.color} 5%,var(--bg-surface))`,
-                border:`0.5px solid color-mix(in srgb,${stealth.color} 18%,transparent)`,
-                transition:"all 0.2s",
-              }}>
-                <div style={{display:"flex",alignItems:"center",gap:6}}>
-                  <div style={{width:5,height:5,borderRadius:"50%",background:stealth.color,boxShadow:`0 0 5px ${stealth.color}`}}/>
-                  <span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:9,color:"var(--text-muted)"}}>{stealth.timing} timing</span>
+          {/* Right: config + launch */}
+          <div style={{ display: "flex", flexDirection: "column", gap: 12, position: "sticky", top: 16 }}>
+
+            {/* Selected summary */}
+            {ucObj ? (
+              <div style={{ padding: "12px 14px", borderRadius: 10, background: "var(--accent-ghost)", border: "1px solid var(--border-accent)" }}>
+                <div style={{ fontSize: 10, fontWeight: 700, color: "var(--accent)", textTransform: "uppercase", letterSpacing: 1, marginBottom: 5 }}>Selected</div>
+                <div style={{ fontWeight: 600, fontSize: 13, color: "var(--text-primary)" }}>{ucObj.display_name}</div>
+                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: "var(--text-muted)", marginTop: 4 }}>
+                  {ucObj.scan_type} · {ucObj.profile.toUpperCase()} profile · ~{ucObj.expected_runtime_hint}
                 </div>
-                <span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:9,color:stealth.color,fontWeight:600}}>{stealth.rate.toLocaleString()} pkt/s</span>
               </div>
+            ) : (
+              <div style={{ padding: "12px 14px", borderRadius: 10, background: "var(--bg-surface)", border: "0.5px dashed var(--border-subtle)", textAlign: "center", fontSize: 12, color: "var(--text-muted)" }}>
+                Select a use-case from the left
+              </div>
+            )}
+
+            {/* Engagement */}
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: 5, textTransform: "uppercase", letterSpacing: 0.8 }}>Engagement</label>
+              <select
+                value={selectedEng}
+                onChange={(e) => setSelectedEng(e.target.value)}
+                style={{ width: "100%", padding: "8px 10px", borderRadius: 8, fontSize: 12, background: "var(--bg-surface)", border: "0.5px solid var(--border-subtle)", color: "var(--text-primary)", cursor: "pointer" }}
+              >
+                <option value="">— select engagement —</option>
+                {engagements.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+              </select>
             </div>
 
-            {/* CREDENTIALS */}
-            <div style={{padding:"10px 14px",borderBottom:"0.5px solid var(--border-subtle)"}}>
-              <button onClick={()=>setShowCreds(p=>!p)} style={{
-                width:"100%",display:"flex",alignItems:"center",gap:8,
-                padding:"7px 10px",borderRadius:7,cursor:"pointer",
-                border:`0.5px solid ${showCreds?"var(--accent)":"var(--border-subtle)"}`,
-                background:showCreds?"var(--accent-ghost)":"var(--bg-surface)",transition:"all 0.15s",
-              }}>
-                <Lock size={11} color={showCreds?"var(--accent)":"var(--text-muted)"}/>
-                <span style={{fontFamily:"'Inter',sans-serif",fontSize:11,color:showCreds?"var(--accent)":"var(--text-secondary)",flex:1,textAlign:"left"}}>
-                  {creds.username?`${creds.domain}\\${creds.username}`:"Domain credentials"}
-                </span>
-                {preset.requiresCreds&&<span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:7,color:"var(--sev-medium-color)",background:"var(--sev-medium-bg)",border:"0.5px solid var(--sev-medium-color)",borderRadius:3,padding:"1px 4px"}}>REQ</span>}
-                {showCreds?<ChevronUp size={10} color="var(--text-muted)"/>:<ChevronDown size={10} color="var(--text-muted)"/>}
+            {/* Target override */}
+            <div>
+              <label style={{ fontSize: 11, fontWeight: 600, color: "var(--text-secondary)", display: "block", marginBottom: 5, textTransform: "uppercase", letterSpacing: 0.8 }}>
+                Targets <span style={{ fontWeight: 400, color: "var(--text-muted)", textTransform: "none", letterSpacing: 0, fontSize: 10 }}>(optional — uses engagement scope if blank)</span>
+              </label>
+              <textarea
+                value={targets}
+                onChange={(e) => setTargets(e.target.value)}
+                placeholder={"192.168.1.0/24\n10.0.0.0/8\n172.16.0.5"}
+                rows={4}
+                style={{ width: "100%", padding: "8px 10px", borderRadius: 8, background: "var(--bg-surface)", border: "0.5px solid var(--border-subtle)", color: "var(--text-primary)", fontSize: 12, fontFamily: "'JetBrains Mono', monospace", resize: "vertical", boxSizing: "border-box" }}
+              />
+            </div>
+
+            {/* Probe note */}
+            {probes.length > 0 && (
+              <div style={{ fontSize: 11, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 5 }}>
+                <span style={{ width: 6, height: 6, borderRadius: "50%", background: idleProbes.length > 0 ? "var(--sev-low-color)" : "var(--sev-critical-color)", flexShrink: 0 }} />
+                {idleProbes.length > 0 ? `${idleProbes.length} idle probe${idleProbes.length > 1 ? "s" : ""} ready` : "All probes offline/busy — job will queue"}
+              </div>
+            )}
+
+            {/* OT warning */}
+            {ucObj?.profile === "ot" && (
+              <div style={{ padding: "8px 12px", borderRadius: 8, background: "rgba(16,185,129,0.08)", border: "0.5px solid rgba(16,185,129,0.3)", fontSize: 11, color: "#10b981" }}>
+                <strong>OT Safe Mode:</strong> Zero active packets — passive capture only. Safe for SCADA/ICS/PLC networks.
+              </div>
+            )}
+
+            {/* Launch */}
+            <button
+              onClick={launch}
+              disabled={!canLaunch}
+              style={{ width: "100%", padding: "11px 0", borderRadius: 9, background: canLaunch ? "var(--accent)" : "var(--bg-surface)", border: "none", cursor: canLaunch ? "pointer" : "not-allowed", color: canLaunch ? "#fff" : "var(--text-muted)", fontWeight: 700, fontSize: 14, display: "flex", alignItems: "center", justifyContent: "center", gap: 8, transition: "background 0.12s" }}
+            >
+              {launching ? <><Loader size={14} className="spin" /> Dispatching...</> : <><Play size={14} /> Launch Scan</>}
+            </button>
+
+            {(selectedUc || selectedEng || targets) && (
+              <button
+                onClick={() => { setSelectedUc(""); setSelectedEng(engagements.length === 1 ? engagements[0].id : ""); setTargets(""); setJob(null); }}
+                style={{ background: "none", border: "none", cursor: "pointer", fontSize: 11, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 4, padding: 0 }}
+              >
+                <RotateCcw size={10} /> Reset
               </button>
-              {showCreds&&(
-                <div style={{marginTop:8,display:"flex",flexDirection:"column",gap:5}}>
-                  {[{key:"domain",label:"Domain",ph:"corp.local",type:"text"},{key:"dcIp",label:"DC IP",ph:"10.0.0.1",type:"text"},{key:"username",label:"Username",ph:"administrator",type:"text"},{key:"password",label:"Password",ph:"••••••••",type:"password"}].map(({key,label,ph,type})=>(
-                    <div key={key}>
-                      <div style={{fontFamily:"'Inter',sans-serif",fontSize:8,fontWeight:600,color:"var(--text-muted)",marginBottom:2,letterSpacing:0.5}}>{label.toUpperCase()}</div>
-                      <input type={type} autoComplete="off" value={creds[key as keyof typeof creds]}
-                        onChange={e=>setCreds(c=>({...c,[key]:e.target.value}))} placeholder={ph}
-                        className="input-base" style={{fontSize:10,fontFamily:"'JetBrains Mono',monospace",height:28}}/>
-                    </div>
-                  ))}
-                  <div style={{padding:"4px 8px",background:"var(--sev-medium-bg)",border:"0.5px solid var(--sev-medium-color)",borderRadius:5,fontFamily:"'Inter',sans-serif",fontSize:9,color:"var(--sev-medium-color)",display:"flex",alignItems:"center",gap:4}}>
-                    <Lock size={8}/> Not logged or persisted
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {/* OPTIONS */}
-            <div style={{padding:"10px 14px"}}>
-              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-                <span style={{fontFamily:"'Inter',sans-serif",fontSize:11,color:"var(--text-secondary)"}}>Auto-create findings</span>
-                <div onClick={()=>setCreateFindings(p=>!p)} style={{width:32,height:17,borderRadius:9,position:"relative",cursor:"pointer",background:createFindings?"var(--accent)":"var(--bg-hover)",border:`0.5px solid ${createFindings?"var(--accent)":"var(--border-default)"}`,transition:"all 0.18s"}}>
-                  <div style={{position:"absolute",top:2,left:createFindings?17:2,width:11,height:11,borderRadius:"50%",background:"#fff",transition:"left 0.18s",boxShadow:"0 1px 3px rgba(0,0,0,0.4)"}}/>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* LAUNCH */}
-          <div style={{padding:"10px 12px",borderTop:"0.5px solid var(--border-subtle)",background:"rgba(0,0,0,0.2)",flexShrink:0}}>
-            {running?(
-              <button onClick={()=>abortRef.current?.abort()} style={{
-                width:"100%",padding:"11px",borderRadius:9,
-                border:"0.5px solid var(--sev-critical-color)",background:"var(--sev-critical-bg)",
-                color:"var(--sev-critical-color)",fontFamily:"'Inter',sans-serif",fontSize:12,fontWeight:700,cursor:"pointer",
-                display:"flex",alignItems:"center",justifyContent:"center",gap:7,transition:"all 0.15s",
-              }}
-                onMouseEnter={e=>(e.currentTarget.style.background="rgba(255,77,77,0.15)")}
-                onMouseLeave={e=>(e.currentTarget.style.background="var(--sev-critical-bg)")}
-              ><Square size={12}/> Abort Scan</button>
-            ):(
-              <>
-                <button onClick={startScan} disabled={!canLaunch} style={{
-                  width:"100%",padding:"12px",borderRadius:9,
-                  border:`0.5px solid ${canLaunch?"var(--accent)":"var(--border-subtle)"}`,
-                  background:canLaunch?"var(--accent)":"var(--bg-surface)",
-                  color:canLaunch?"#021820":"var(--text-muted)",
-                  fontFamily:"'Inter',sans-serif",fontSize:12,fontWeight:700,
-                  cursor:canLaunch?"pointer":"not-allowed",
-                  display:"flex",alignItems:"center",justifyContent:"center",gap:7,
-                  transition:"all 0.2s",
-                  boxShadow:canLaunch?"0 2px 16px rgba(0,200,232,0.20)":"none",
-                }}
-                  onMouseEnter={e=>{if(canLaunch){e.currentTarget.style.boxShadow="0 4px 28px rgba(0,200,232,0.35)";e.currentTarget.style.transform="translateY(-1px)";}}}
-                  onMouseLeave={e=>{e.currentTarget.style.boxShadow=canLaunch?"0 2px 16px rgba(0,200,232,0.20)":"none";e.currentTarget.style.transform="translateY(0)";}}
-                >
-                  <Play size={13} fill="currentColor"/>
-                  {scan.phase==="complete"?"Run Again":"Launch Scan"}
-                  {parseResult?.totalHosts?(
-                    <span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:8,opacity:0.55}}>· {parseResult.totalHosts.toLocaleString()}</span>
-                  ):null}
-                </button>
-                {isDone&&(
-                  <button onClick={()=>dispatch({type:"RESET"})} style={{
-                    marginTop:5,width:"100%",padding:"5px",borderRadius:7,
-                    border:"0.5px solid var(--border-subtle)",background:"transparent",
-                    color:"var(--text-muted)",fontFamily:"'Inter',sans-serif",fontSize:10,cursor:"pointer",
-                    display:"flex",alignItems:"center",justifyContent:"center",gap:4,transition:"all 0.12s",
-                  }}
-                    onMouseEnter={e=>{e.currentTarget.style.borderColor="var(--border-strong)";e.currentTarget.style.color="var(--text-primary)";}}
-                    onMouseLeave={e=>{e.currentTarget.style.borderColor="var(--border-subtle)";e.currentTarget.style.color="var(--text-muted)";}}
-                  ><RotateCcw size={10}/> New Scan</button>
-                )}
-              </>
             )}
           </div>
         </div>
 
-        {/* ════════════════════════════════════
-            RIGHT — EXECUTION CANVAS
-        ════════════════════════════════════ */}
-        <div style={{display:"flex",flexDirection:"column",gap:12,overflow:"hidden"}}>
-
-          {/* ── IDLE STATE ── */}
-          {!hasRun&&(
-            <div style={{
-              flex:1,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",
-              background:"var(--bg-panel)",border:"0.5px solid var(--border-subtle)",borderRadius:14,
-              position:"relative",overflow:"hidden",
-            }}>
-              {/* Scanline effect */}
-              <div style={{position:"absolute",inset:0,pointerEvents:"none",backgroundImage:"repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.04) 2px,rgba(0,0,0,0.04) 4px)",zIndex:0}}/>
-
-              {/* Radar rings */}
-              <div style={{position:"absolute",inset:0,display:"flex",alignItems:"center",justifyContent:"center",pointerEvents:"none",zIndex:1}}>
-                {[320,240,160,80].map((d,i)=>(
-                  <div key={d} style={{
-                    position:"absolute",width:d,height:d,borderRadius:"50%",
-                    border:"0.5px solid rgba(0,200,232,0.12)",
-                    animation:`ring-pulse ${2.8+i*0.5}s ease-in-out infinite`,
-                    animationDelay:`${i*0.5}s`,
-                  }}/>
-                ))}
-                {/* Sweep */}
-                <div style={{
-                  position:"absolute",width:320,height:320,borderRadius:"50%",
-                  background:"conic-gradient(from 0deg, transparent 0deg, rgba(0,200,232,0.05) 40deg, transparent 80deg)",
-                  animation:"radar-sweep 5s linear infinite",
-                }}/>
-              </div>
-
-              {/* Center content */}
-              <div style={{position:"relative",zIndex:2,display:"flex",flexDirection:"column",alignItems:"center",gap:24}}>
-                {/* Target reticle */}
-                <div style={{position:"relative"}}>
-                  {/* Outer ring */}
-                  <div style={{
-                    width:90,height:90,borderRadius:"50%",
-                    border:"0.5px solid rgba(0,200,232,0.25)",
-                    display:"flex",alignItems:"center",justifyContent:"center",
-                    position:"relative",
-                  }}>
-                    {/* Tick marks */}
-                    {[0,90,180,270].map(deg=>(
-                      <div key={deg} style={{
-                        position:"absolute",width:8,height:1,background:"rgba(0,200,232,0.30)",
-                        transformOrigin:"left center",
-                        transform:`rotate(${deg}deg) translateX(41px)`,
-                      }}/>
-                    ))}
-                    {/* Inner circle */}
-                    <div style={{
-                      width:62,height:62,borderRadius:"50%",
-                      border:"0.5px solid rgba(0,200,232,0.40)",
-                      display:"flex",alignItems:"center",justifyContent:"center",
-                      background:"rgba(0,200,232,0.04)",
-                    }}>
-                      <div style={{
-                        width:36,height:36,borderRadius:"50%",
-                        border:"1px solid var(--accent)",
-                        display:"flex",alignItems:"center",justifyContent:"center",
-                        background:"var(--accent-ghost)",
-                        boxShadow:"0 0 24px var(--accent-glow)",
-                      }}>
-                        <Radio size={16} color="var(--accent)"/>
-                      </div>
-                    </div>
-                  </div>
-                  {/* Corner ticks */}
-                  {[{t:-2,l:-2,btr:"1px solid var(--accent)",btl:"1px solid var(--accent)"},{t:-2,r:-2,btr:"1px solid var(--accent)",btr2:"1px solid var(--accent)"},{b:-2,l:-2},{b:-2,r:-2}].map((_,i)=>(
-                    <div key={i} style={{
-                      position:"absolute",
-                      ...(i===0?{top:-2,left:-2,borderTop:"1.5px solid var(--accent)",borderLeft:"1.5px solid var(--accent)"}:
-                         i===1?{top:-2,right:-2,borderTop:"1.5px solid var(--accent)",borderRight:"1.5px solid var(--accent)"}:
-                         i===2?{bottom:-2,left:-2,borderBottom:"1.5px solid var(--accent)",borderLeft:"1.5px solid var(--accent)"}:
-                               {bottom:-2,right:-2,borderBottom:"1.5px solid var(--accent)",borderRight:"1.5px solid var(--accent)"}),
-                      width:12,height:12,
-                    }}/>
-                  ))}
-                  {/* Blink dot */}
-                  <div style={{position:"absolute",top:0,right:0,width:8,height:8,borderRadius:"50%",background:"var(--accent)",boxShadow:"0 0 10px var(--accent)",animation:"blink 1.2s step-end infinite"}}/>
-                </div>
-
-                <div style={{textAlign:"center"}}>
-                  <div style={{fontFamily:"'JetBrains Mono',monospace",fontSize:12,fontWeight:700,color:"var(--text-muted)",letterSpacing:4,marginBottom:8}}>STANDBY</div>
-                  <div style={{fontFamily:"'Inter',sans-serif",fontSize:19,fontWeight:700,color:"var(--text-primary)",letterSpacing:-0.5,marginBottom:6}}>Ready to scan</div>
-                  <div style={{fontFamily:"'Inter',sans-serif",fontSize:12,color:"var(--text-secondary)",lineHeight:1.6}}>
-                    Configure targets · select a profile · press{" "}
-                    <span style={{color:"var(--accent)",fontWeight:600}}>Launch</span>
-                  </div>
-                </div>
-
-                {/* CLI preview */}
-                <div style={{
-                  padding:"10px 18px",
-                  background:"rgba(0,0,0,0.35)",
-                  border:"0.5px solid var(--border-default)",
-                  borderRadius:9,backdropFilter:"blur(4px)",
-                  fontFamily:"'JetBrains Mono',monospace",fontSize:11,color:"var(--text-secondary)",
-                  display:"flex",alignItems:"center",gap:8,
-                }}>
-                  <span style={{color:"var(--accent)"}}>$</span>
-                  <span> adversa scan </span>
-                  <span style={{color:"var(--sev-medium-color)"}}>--target</span>
-                  <span style={{color:"var(--text-primary)"}}>{rawTargets.split(/[\n,]+/)[0].trim()||"<target>"}</span>
-                  <span style={{color:"var(--sev-medium-color)"}}>--mode</span>
-                  <span style={{color:preset.color}}>{preset.id}</span>
-                  <span style={{color:"var(--sev-medium-color)"}}>--stealth</span>
-                  <span style={{color:stealth.color}}>{stealth.label.toLowerCase()}</span>
-                  <span style={{animation:"blink 1s step-end infinite",color:"var(--accent)"}}>▊</span>
-                </div>
-              </div>
+        {/* ── Active job ── */}
+        {job && (
+          <section>
+            <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-faint)", letterSpacing: 1.3, textTransform: "uppercase", marginBottom: 10 }}>
+              Job Status
+              {(job.status === "pending" || job.status === "running") && (
+                <span style={{ marginLeft: 8, fontSize: 10, color: "var(--accent)" }}>
+                  <Loader size={9} className="spin" style={{ display: "inline", verticalAlign: "middle" }} /> polling every 4s
+                </span>
+              )}
             </div>
-          )}
+            <JobPanel job={job} ucName={ucObj?.display_name} />
+          </section>
+        )}
 
-          {/* ── ACTIVE / DONE ── */}
-          {hasRun&&(
-            <div style={{display:"flex",flexDirection:"column",gap:12,flex:1,overflow:"hidden"}}>
+        {/* ── Legend ── */}
+        <section>
+          <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-faint)", letterSpacing: 1.3, textTransform: "uppercase", marginBottom: 12 }}>
+            Scanner Profiles &amp; Scan Types
+          </div>
 
-              {/* PIPELINE BAR */}
-              <div style={{
-                background:"var(--bg-panel)",
-                border:`0.5px solid ${scan.phase==="error"?"rgba(255,77,77,0.3)":scan.phase==="complete"?"rgba(0,200,232,0.20)":"var(--border-subtle)"}`,
-                borderRadius:12,padding:"12px 16px",flexShrink:0,
-              }}>
-                {/* Top row: progress + status */}
-                <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
-                  <div style={{display:"flex",alignItems:"center",gap:12}}>
-                    <span style={{
-                      fontFamily:"'JetBrains Mono',monospace",fontSize:24,fontWeight:800,lineHeight:1,
-                      color:scan.phase==="error"?"var(--sev-critical-color)":scan.phase==="complete"?"var(--accent)":"var(--text-primary)",
-                    }}>{scan.overallProgress}%</span>
-                    <div>
-                      <div style={{fontFamily:"'JetBrains Mono',monospace",fontSize:10,color:"var(--text-muted)"}}>{fmtTime(scan.elapsed)}</div>
-                      <div style={{fontFamily:"'Inter',sans-serif",fontSize:10,color:"var(--text-muted)"}}>{preset.label}</div>
-                    </div>
-                  </div>
-
-                  <div style={{display:"flex",alignItems:"center",gap:10}}>
-                    <div style={{width:160,height:4,background:"var(--border-subtle)",borderRadius:2,overflow:"hidden"}}>
-                      <div style={{
-                        height:"100%",width:`${scan.overallProgress}%`,borderRadius:2,transition:"width 0.5s ease",
-                        background:scan.phase==="error"?"var(--sev-critical-color)":"var(--accent)",
-                        position:"relative",overflow:"hidden",
-                      }}>
-                        {running&&<div style={{position:"absolute",inset:0,background:"linear-gradient(90deg,transparent,rgba(255,255,255,0.25),transparent)",backgroundSize:"200%",animation:"shimmer 1.5s infinite"}}/>}
-                      </div>
-                    </div>
-                    <div style={{display:"flex",alignItems:"center",gap:5}}>
-                      {scan.phase==="complete"&&<CheckCircle size={13} color="var(--accent)"/>}
-                      {scan.phase==="error"&&<XCircle size={13} color="var(--sev-critical-color)"/>}
-                      {running&&<div style={{width:6,height:6,borderRadius:"50%",background:"var(--accent)",animation:"pulse 1.5s ease-in-out infinite"}}/>}
-                      <span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:9,letterSpacing:1,color:scan.phase==="complete"?"var(--accent)":scan.phase==="error"?"var(--sev-critical-color)":running?"var(--text-secondary)":"var(--text-muted)"}}>
-                        {scan.phase==="complete"?"COMPLETE":scan.phase==="error"?"FAILED":running?"RUNNING":"–"}
-                      </span>
-                    </div>
-                    {scan.phase==="complete"&&(
-                      <button style={{display:"flex",alignItems:"center",gap:4,padding:"4px 10px",background:"rgba(0,200,232,0.08)",border:"0.5px solid rgba(0,200,232,0.20)",borderRadius:6,color:"var(--accent)",cursor:"pointer",fontFamily:"'Inter',sans-serif",fontSize:10,fontWeight:600}}>
-                        <Download size={10}/> Export
-                      </button>
-                    )}
-                  </div>
+          {/* Profile cards */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 10, marginBottom: 12 }}>
+            {([
+              { badge: "IT",  badgeColor: "var(--accent)", title: "IT Profile",       desc: "Standard enterprise IT network. 34-port sweep covering web, TLS, SMB, databases, SSH, RDP, LDAP, email services.", ports: "21-22, 25, 53, 80, 139, 389, 443, 445, 1433, 3306, 3389, 5432, 8080, 9200…", branches: ["TLS deep scan","Web app scan","SMB enum","DB fingerprint","UDP probe","AI endpoint"] },
+              { badge: "IoT", badgeColor: "#f59e0b",        title: "IoT Profile",      desc: "IoT and embedded device discovery using protocol-aware port list targeting MQTT, RTSP, CoAP, Modbus-adjacent ports.", ports: "22-23, 80, 443, 554 (RTSP), 1883 (MQTT), 5683 (CoAP), 8883, 9100, 37777…", branches: ["TLS surface","Web panel scan"] },
+              { badge: "OT",  badgeColor: "#10b981",        title: "OT/ICS Profile",   desc: "Operational Technology — PASSIVE ONLY. Zero active packets. Structurally enforced; cannot be overridden per job.", ports: "No active probing. Passive traffic capture only.", branches: ["Passive collection"] },
+            ] as { badge: string; badgeColor: string; title: string; desc: string; ports: string; branches: string[] }[]).map(({ badge, badgeColor, title, desc, ports, branches }) => (
+              <div key={badge} style={{ padding: 14, borderRadius: 10, background: "var(--bg-surface)", border: "0.5px solid var(--border-subtle)" }}>
+                <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 8 }}>
+                  <span style={{ fontWeight: 700, fontSize: 11, color: badgeColor, background: `${badgeColor}18`, border: `0.5px solid ${badgeColor}40`, borderRadius: 5, padding: "2px 7px" }}>{badge}</span>
+                  <span style={{ fontWeight: 600, fontSize: 12, color: "var(--text-primary)" }}>{title}</span>
                 </div>
-
-                {/* Pipeline nodes */}
-                <div style={{display:"flex",alignItems:"stretch",gap:0,overflowX:"auto",paddingBottom:2}}>
-                  {activeTools.map((tool,i)=>(
-                    <PipeNode key={tool} tool={tool} status={scan.stages[tool].status} progress={scan.stages[tool].progress} isLast={i===activeTools.length-1}/>
-                  ))}
+                <p style={{ margin: "0 0 8px", fontSize: 11, color: "var(--text-secondary)", lineHeight: 1.5 }}>{desc}</p>
+                <div style={{ fontSize: 10, fontFamily: "'JetBrains Mono', monospace", color: "var(--text-muted)", marginBottom: 8 }}>{ports}</div>
+                <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                  {branches.map((b) => <span key={b} style={{ fontSize: 10, color: "var(--text-secondary)", background: "var(--bg-card)", border: "0.5px solid var(--border-subtle)", borderRadius: 4, padding: "1px 5px" }}>{b}</span>)}
                 </div>
               </div>
+            ))}
+          </div>
 
-              {/* SEVERITY TILES */}
-              <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,flexShrink:0}}>
-                {(["CRITICAL","HIGH","MEDIUM","LOW"] as const).map(sev=>{
-                  const count=sevCounts[sev];
-                  const s=SEV[sev];
-                  return(
-                    <div key={sev} style={{
-                      background:"var(--bg-panel)",
-                      border:`0.5px solid ${count>0?s.color:"var(--border-subtle)"}`,
-                      borderTop:`2.5px solid ${count>0?s.color:"var(--border-subtle)"}`,
-                      borderRadius:10,padding:"10px 14px",
-                      transition:"all 0.3s",
-                      boxShadow:count>0?`0 4px 20px color-mix(in srgb,${s.color} 8%,transparent)`:"none",
-                    }}>
-                      <div style={{fontFamily:"'JetBrains Mono',monospace",fontSize:26,fontWeight:800,color:count>0?s.color:"var(--text-faint)",lineHeight:1}}>{count}</div>
-                      <div style={{fontFamily:"'JetBrains Mono',monospace",fontSize:8,color:"var(--text-muted)",marginTop:4,letterSpacing:1}}>{sev}</div>
-                    </div>
-                  );
-                })}
-              </div>
-
-              {/* MAIN BODY */}
-              <div style={{display:"grid",gridTemplateColumns:"1fr 220px",gap:12,flex:1,overflow:"hidden",minHeight:0}}>
-
-                {/* Left: findings */}
-                <div style={{background:"var(--bg-panel)",border:"0.5px solid var(--border-subtle)",borderRadius:12,overflow:"hidden",display:"flex",flexDirection:"column",minHeight:0}}>
-                  <div style={{padding:"10px 14px",borderBottom:"0.5px solid var(--border-subtle)",display:"flex",alignItems:"center",justifyContent:"space-between",flexShrink:0}}>
-                    <div style={{display:"flex",alignItems:"center",gap:8}}>
-                      <span style={{fontFamily:"'Inter',sans-serif",fontSize:12,fontWeight:600,color:"var(--text-primary)"}}>Live Findings</span>
-                      {scan.findings.length>0&&(
-                        <span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:9,color:"var(--accent)",background:"var(--accent-ghost)",borderRadius:10,padding:"1px 7px"}}>{scan.findings.length}</span>
-                      )}
-                    </div>
-                    {running&&(
-                      <div style={{display:"flex",alignItems:"center",gap:5}}>
-                        <div style={{width:5,height:5,borderRadius:"50%",background:"var(--accent)",animation:"pulse 1.5s ease-in-out infinite"}}/>
-                        <span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:8,color:"var(--accent)",letterSpacing:1}}>LIVE</span>
-                      </div>
-                    )}
-                  </div>
-                  <div style={{overflowY:"auto",flex:1}}>
-                    {scan.findings.length===0?(
-                      <div style={{padding:"40px 16px",textAlign:"center",fontFamily:"'Inter',sans-serif",fontSize:12,color:"var(--text-muted)"}}>
-                        {running?"Scanning… findings appear here in real time":"No findings recorded"}
-                      </div>
-                    ):(
-                      scan.findings.map((f,i)=>{
-                        const s=SEV[f.severity]??SEV.INFO;
-                        return(
-                          <div key={i} className="scan-finding-row" style={{
-                            padding:"9px 14px",borderBottom:"0.5px solid var(--border-subtle)",
-                            display:"flex",gap:10,alignItems:"flex-start",
-                            borderLeft:`3px solid ${s.color}`,
-                            cursor:"default",transition:"background 0.1s",
-                          }}
-                            onMouseEnter={e=>(e.currentTarget.style.background="var(--bg-hover)")}
-                            onMouseLeave={e=>(e.currentTarget.style.background="transparent")}
-                          >
-                            <div style={{flex:1,minWidth:0}}>
-                              <div style={{fontFamily:"'Inter',sans-serif",fontSize:12,fontWeight:500,color:"var(--text-primary)",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{f.title}</div>
-                              <div style={{fontFamily:"'JetBrains Mono',monospace",fontSize:9,color:"var(--text-muted)",marginTop:2}}>{f.host} · {f.source}</div>
-                            </div>
-                            <span style={{
-                              fontFamily:"'JetBrains Mono',monospace",fontSize:8,fontWeight:700,flexShrink:0,
-                              color:s.color,background:s.bg,
-                              border:`0.5px solid ${s.color}30`,borderRadius:4,padding:"2px 6px",
-                            }}>{f.severity}</span>
-                          </div>
-                        );
-                      })
-                    )}
-                  </div>
-                </div>
-
-                {/* Right: hosts + terminal stacked */}
-                <div style={{display:"flex",flexDirection:"column",gap:10,overflow:"hidden",minHeight:0}}>
-
-                  {/* Host grid */}
-                  <div style={{background:"var(--bg-panel)",border:"0.5px solid var(--border-subtle)",borderRadius:12,padding:"12px 14px",flexShrink:0}}>
-                    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:10}}>
-                      <span style={{fontFamily:"'Inter',sans-serif",fontSize:12,fontWeight:600,color:"var(--text-primary)"}}>Hosts</span>
-                      <span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:11,color:"var(--accent)"}}>{scan.hosts.length}</span>
-                    </div>
-                    {scan.hosts.length===0?(
-                      <div style={{fontFamily:"'Inter',sans-serif",fontSize:11,color:"var(--text-muted)",textAlign:"center",padding:"14px 0"}}>
-                        {running?"Discovering…":"None yet"}
-                      </div>
-                    ):(
-                      <div style={{display:"flex",flexWrap:"wrap",gap:5,maxHeight:120,overflowY:"auto"}}>
-                        {scan.hosts.map(h=>{
-                          const col=h.risk==="critical"?"var(--sev-critical-color)":h.risk==="high"?"var(--sev-high-color)":h.risk==="medium"?"var(--sev-medium-color)":"var(--accent)";
-                          return(
-                            <div key={h.ip} title={`${h.ip}${h.hostname?` (${h.hostname})`:""} · ${h.ports} ports`}
-                              style={{
-                                width:32,height:32,borderRadius:7,
-                                background:`color-mix(in srgb,${col} 8%,var(--bg-surface))`,
-                                border:`1px solid color-mix(in srgb,${col} 25%,var(--border-subtle))`,
-                                display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",
-                                transition:"all 0.15s",
-                              }}
-                              onMouseEnter={e=>{e.currentTarget.style.transform="scale(1.2)";e.currentTarget.style.boxShadow=`0 0 10px color-mix(in srgb,${col} 35%,transparent)`;e.currentTarget.style.borderColor=col;}}
-                              onMouseLeave={e=>{e.currentTarget.style.transform="scale(1)";e.currentTarget.style.boxShadow="none";e.currentTarget.style.borderColor=`color-mix(in srgb,${col} 25%,var(--border-subtle))`;}}
-                            >
-                              {h.hasAD?<Shield size={12} color={col}/>:h.hasWeb?<Globe size={12} color={col}/>:<Server size={12} color={col}/>}
-                            </div>
-                          );
-                        })}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Terminal */}
-                  <div style={{background:"#060a10",border:"0.5px solid #161c2a",borderRadius:12,overflow:"hidden",flex:1,display:"flex",flexDirection:"column",minHeight:0}}>
-                    <div style={{padding:"6px 10px",borderBottom:"0.5px solid #161c2a",display:"flex",alignItems:"center",gap:7,background:"#090e18",flexShrink:0}}>
-                      <div style={{display:"flex",gap:4}}>
-                        <div style={{width:8,height:8,borderRadius:"50%",background:"#FF5F57"}}/>
-                        <div style={{width:8,height:8,borderRadius:"50%",background:"#FEBC2E"}}/>
-                        <div style={{width:8,height:8,borderRadius:"50%",background:"#28C840"}}/>
-                      </div>
-                      <span style={{fontFamily:"'JetBrains Mono',monospace",fontSize:8,color:"rgba(255,255,255,0.2)",flex:1,textAlign:"center"}}>adversa · output</span>
-                      {scan.logs.length>0&&<CopyBtn text={scan.logs.join("\n")}/>}
-                    </div>
-                    <div ref={logRef} style={{flex:1,overflowY:"auto",padding:"8px 10px",fontFamily:"'JetBrains Mono',monospace",fontSize:9,lineHeight:1.9}}>
-                      {scan.logs.length===0?(
-                        <span style={{color:"rgba(255,255,255,0.12)"}}>Waiting…</span>
-                      ):(
-                        scan.logs.map((line,i)=>{
-                          const col=
-                            line.includes("[ERROR]")||line.includes("failed")?"#FF5252":
-                            line.includes("◆")||line.includes("[CRITICAL]")?"var(--sev-critical-color)":
-                            line.includes("[HIGH]")?"var(--sev-high-color)":
-                            line.includes("↑")||line.includes("HOST")?"#26C6DA":
-                            line.includes("✓")||line.includes("Complete")?"var(--accent)":
-                            line.includes("Launching")||line.includes("Tools")?"rgba(255,255,255,0.6)":
-                            "rgba(255,255,255,0.3)";
-                          return<div key={i} style={{color:col}}>{line}</div>;
-                        })
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
+          {/* Scan-type table */}
+          <div style={{ borderRadius: 10, border: "0.5px solid var(--border-subtle)", overflow: "hidden" }}>
+            <div style={{ padding: "8px 14px", background: "var(--bg-surface)", borderBottom: "0.5px solid var(--border-subtle)", fontSize: 11, fontWeight: 700, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: 0.8 }}>
+              Available Scan Types
             </div>
-          )}
-        </div>
+            <div style={{ display: "grid", gridTemplateColumns: "150px 1fr 60px" }}>
+              {([
+                ["discovery",         "Host liveness + port sweep (triage mode). Fastest scan — no deep service analysis. Uses profile port list.",           "IT/IoT"],
+                ["assessment",        "Full funnel: discovery → ports → banners → all service branches (TLS, web, SMB, DB, UDP, AI endpoints).",              "IT"],
+                ["tls_scan",          "TLS/HTTPS surface: cert chain, cipher suites, protocol versions, HSTS header, OCSP stapling.",                         "IT"],
+                ["web_scan",          "HTTP layer: request methods, response headers, server/framework fingerprinting, common web misconfigurations.",          "IT"],
+                ["db_fingerprint",    "Protocol handshake on DB ports: MySQL 3306, PostgreSQL 5432, MSSQL 1433, Redis 6379, MongoDB 27017, Oracle 1521.",     "IT"],
+                ["smb_enum",          "SMB dialect negotiation, message signing check, null session attempt, exposed share enumeration.",                      "IT"],
+                ["udp_scan",          "UDP attack surface: DNS (53), SNMP community strings (161), NTP monlist (123), NetBIOS (137).",                        "IT"],
+                ["mcp_discovery",     "AI inference and MCP server discovery: Ollama (11434), Gradio (7860), LMStudio (1234), vLLM (8000), OpenWebUI…",      "IT"],
+                ["passive_discovery", "Zero active packets. Passive traffic capture on the wire. OT/ICS structurally safe.",                                   "OT"],
+              ] as [string, string, string][]).map(([type, desc, profile], i) => (
+                <React.Fragment key={type}>
+                  <div style={{ padding: "9px 14px", background: i % 2 === 0 ? "var(--bg-card)" : "var(--bg-surface)", borderBottom: "0.5px solid var(--border-subtle)", fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: "var(--accent)" }}>{type}</div>
+                  <div style={{ padding: "9px 14px", background: i % 2 === 0 ? "var(--bg-card)" : "var(--bg-surface)", borderBottom: "0.5px solid var(--border-subtle)", fontSize: 11, color: "var(--text-secondary)", lineHeight: 1.4 }}>{desc}</div>
+                  <div style={{ padding: "9px 14px", background: i % 2 === 0 ? "var(--bg-card)" : "var(--bg-surface)", borderBottom: "0.5px solid var(--border-subtle)", fontSize: 10, color: "var(--text-muted)", textAlign: "center" }}>{profile}</div>
+                </React.Fragment>
+              ))}
+            </div>
+          </div>
+        </section>
+
       </div>
     </PageShell>
   );

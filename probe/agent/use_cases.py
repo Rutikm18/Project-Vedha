@@ -67,6 +67,41 @@ USE_CASES: dict[str, dict] = {
         "profile": "it",
         "expected_runtime_hint": "15–60 min per /24",
     },
+    # ── Real-world customer use-cases ──────────────────────────────────────────
+    "uc_iot_device_survey": {
+        "display_name": "IoT / Embedded Device Survey",
+        "description": (
+            "Inventory IoT and embedded devices using the IoT port list: "
+            "MQTT (1883/8883), RTSP (554), CoAP (5683), Telnet (23), Modbus-like ports. "
+            "No deep service branches — discovery + banner only."
+        ),
+        "scan_type": "discovery",
+        "profile": "iot",
+        "expected_runtime_hint": "3–10 min per /24",
+    },
+    "uc_web_app_triage": {
+        "display_name": "Web Application Triage",
+        "description": (
+            "Deep web-layer analysis: HTTP methods, response headers, server tech stack, "
+            "common misconfigurations on all web ports (80, 443, 8080, 8443, 8000…). "
+            "Use before a dedicated web application pentest."
+        ),
+        "scan_type": "web_scan",
+        "profile": "it",
+        "expected_runtime_hint": "5–15 min",
+    },
+    "uc_udp_service_exposure": {
+        "display_name": "UDP Service Exposure",
+        "description": (
+            "Probe UDP attack surface: DNS amplification risk (53/UDP), "
+            "SNMP community strings (161/UDP), NTP monlist (123/UDP), "
+            "NetBIOS Name Service (137/UDP). Common DDoS amplification and "
+            "lateral-movement vectors missed by TCP-only scans."
+        ),
+        "scan_type": "udp_scan",
+        "profile": "it",
+        "expected_runtime_hint": "2–8 min",
+    },
 }
 
 

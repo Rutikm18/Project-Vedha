@@ -152,6 +152,41 @@ _USE_CASES = {
         "profile": "it",
         "expected_runtime_hint": "15–60 min per /24",
     },
+    # ── Real-world customer use-cases (mirrored from probe/agent/use_cases.py) ──
+    "uc_iot_device_survey": {
+        "display_name": "IoT / Embedded Device Survey",
+        "description": (
+            "Inventory IoT and embedded devices using the IoT port list: "
+            "MQTT (1883/8883), RTSP (554), CoAP (5683), Telnet (23). "
+            "No deep service branches — discovery + banner only."
+        ),
+        "scan_type": "discovery",
+        "profile": "iot",
+        "expected_runtime_hint": "3–10 min per /24",
+    },
+    "uc_web_app_triage": {
+        "display_name": "Web Application Triage",
+        "description": (
+            "Deep web-layer analysis: HTTP methods, response headers, server tech stack, "
+            "common misconfigurations on all web ports (80, 443, 8080, 8443, 8000…). "
+            "Use before a dedicated web application pentest."
+        ),
+        "scan_type": "web_scan",
+        "profile": "it",
+        "expected_runtime_hint": "5–15 min",
+    },
+    "uc_udp_service_exposure": {
+        "display_name": "UDP Service Exposure",
+        "description": (
+            "Probe UDP attack surface: DNS amplification risk (53/UDP), "
+            "SNMP community strings (161/UDP), NTP monlist (123/UDP), "
+            "NetBIOS Name Service (137/UDP). Common DDoS amplification and "
+            "lateral-movement vectors missed by TCP-only scans."
+        ),
+        "scan_type": "udp_scan",
+        "profile": "it",
+        "expected_runtime_hint": "2–8 min",
+    },
 }
 
 
@@ -309,6 +344,43 @@ async def get_agent_jobs(
         }
         for j in jobs
     ]
+
+
+@router.get("/jobs/{job_id}", summary="Get job status for frontend polling")
+async def get_job_status(job_id: uuid.UUID, db: DB, current_user: AuthUser):
+    """Lets the frontend poll a specific job's status without knowing which agent has it."""
+    row = (await db.execute(
+        select(ScanJob)
+        .join(Engagement, ScanJob.engagement_id == Engagement.id)
+        .where(ScanJob.id == job_id, Engagement.tenant_id == current_user.tenant_id)
+    )).scalar_one_or_none()
+    if not row:
+        raise HTTPException(404, "Job not found")
+
+    agent_name = None
+    if row.agent_id:
+        a = (await db.execute(
+            select(Agent).where(Agent.id == uuid.UUID(str(row.agent_id)))
+        )).scalar_one_or_none()
+        agent_name = a.name if a else None
+
+    lean_result = None
+    if row.result:
+        lean_result = {k: v for k, v in row.result.items() if k != "facts"}
+
+    return {
+        "job_id": str(row.id),
+        "engagement_id": str(row.engagement_id),
+        "job_type": row.job_type.value,
+        "status": row.status.value,
+        "created_at": row.created_at.isoformat() if row.created_at else None,
+        "started_at": row.started_at.isoformat() if row.started_at else None,
+        "completed_at": row.completed_at.isoformat() if row.completed_at else None,
+        "agent_id": str(row.agent_id) if row.agent_id else None,
+        "agent_name": agent_name,
+        "use_case_id": (row.result or {}).get("use_case_id"),
+        "result": lean_result,
+    }
 
 
 @router.post(
