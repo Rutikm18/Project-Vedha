@@ -1,7 +1,7 @@
 /**
  * Bundled scanner tools manifest.
  *
- * ADVERSA downloads these into ~/.adversa/tools/ on install. Clients never
+ * VEDHA downloads these into ~/.vedha/tools/ on install. Clients never
  * need to run go install or homebrew.
  *
  * Pinning policy:
@@ -13,13 +13,13 @@
  *   1. Pick a new release on the upstream GitHub
  *   2. Update version + every platform URL
  *   3. Update sha256 from the release's checksums.txt
- *   4. Run `adversa tools update` to verify on every supported platform
+ *   4. Run `vedha tools update` to verify on every supported platform
  */
 import { homedir, arch as osArch, platform as osPlatform } from 'os';
 import { join } from 'path';
 
-export const ADVERSA_TOOLS_DIR = join(homedir(), '.adversa', 'tools');
-export const ADVERSA_MANIFEST_FILE = join(ADVERSA_TOOLS_DIR, '.installed.json');
+export const VEDHA_TOOLS_DIR = join(homedir(), '.vedha', 'tools');
+export const VEDHA_MANIFEST_FILE = join(VEDHA_TOOLS_DIR, '.installed.json');
 
 export type Platform =
   | 'darwin-arm64' | 'darwin-amd64'

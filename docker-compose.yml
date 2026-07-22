@@ -1,4 +1,4 @@
-# ADVERSA platform — single-command install.
+# VEDHA platform — single-command install.
 #
 #   cp .env.docker.example .env
 #   docker compose up -d --build         # postgres + redis + migrate + api
@@ -7,6 +7,10 @@
 #
 # The `migrate` service runs alembic + seeds the admin user once, then exits;
 # the `api` service starts only after it succeeds.
+
+# Project name → container/network/volume prefix (vedha-api-1, vedha_pgdata, …).
+# Without this, Compose defaults to the directory name.
+name: vedha
 
 x-backend-image: &backend-image
   build:
@@ -17,7 +21,7 @@ x-backend-image: &backend-image
       detection_engine: ./manager/detection_engine
     args:
       INSTALL_EXTRAS: ${INSTALL_EXTRAS:-0}
-  image: adversa-backend:local
+  image: vedha-backend:local
 
 x-backend-env: &backend-env
   DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-vapt}:${POSTGRES_PASSWORD:-secret}@postgres:5432/${POSTGRES_DB:-vapt_db}
@@ -28,9 +32,10 @@ x-backend-env: &backend-env
   NEO4J_ENABLED: ${NEO4J_ENABLED:-false}
   NEO4J_URI: bolt://neo4j:7687
   NEO4J_USER: ${NEO4J_USER:-neo4j}
-  NEO4J_PASSWORD: ${NEO4J_PASSWORD:-adversa-neo4j}
+  NEO4J_PASSWORD: ${NEO4J_PASSWORD:-vedha-neo4j}
   ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
   LLM_MODEL: ${LLM_MODEL:-claude-sonnet-4-6}
+  CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:3001}
   # detection_engine (sibling project) is mounted into the api container and
   # imported from here — it runs on raw probe facts to produce CVE findings.
   DETECTION_ENGINE_PATH: /opt/detection_engine
@@ -71,7 +76,7 @@ services:
     image: neo4j:5
     profiles: ["graph"]
     environment:
-      NEO4J_AUTH: ${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-adversa-neo4j}
+      NEO4J_AUTH: ${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-vedha-neo4j}
     ports:
       - "${NEO4J_HTTP_PORT:-7474}:7474"
       - "${NEO4J_BOLT_PORT:-7687}:7687"
@@ -88,7 +93,7 @@ services:
     <<: [*backend-image]
     environment:
       <<: *backend-env
-      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@adversa.io}
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@vedha.io}
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-ChangeMe123!}
       SEED_TENANT_NAME: ${SEED_TENANT_NAME:-Default Tenant}
     command: ["sh", "-c", "alembic upgrade head && python scripts/seed_admin.py"]
@@ -118,6 +123,23 @@ services:
       retries: 5
     restart: unless-stopped
 
+  # Durable background worker — drains the transactional outbox (outbox_events)
+  # and runs the detection pipeline off the request path. Shares the backend
+  # image (same code + baked detection_engine + pinned vuln DB). Scale it
+  # horizontally with `docker compose up -d --scale worker=N`; FOR UPDATE SKIP
+  # LOCKED makes concurrent workers claim disjoint events safely.
+  worker:
+    <<: [*backend-image]
+    environment:
+      <<: *backend-env
+    command: ["python", "-m", "app.workers.outbox"]
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+
   # Optional in-stack probe for local testing (real probes deploy on remote
   # networks — see docs/RUNBOOK.md Part B / probe/README.md). Self-registers using the seeded operator.
   probe:
@@ -125,18 +147,18 @@ services:
     # sibling scanner_module/ — one scan codebase, no duplicate.
     build:
       context: ./probe
-    image: adversa-probe:local
+    image: vedha-probe:local
     profiles: ["probe"]
     environment:
       PLATFORM_URL: http://api:8000
-      OPERATOR_EMAIL: ${SEED_ADMIN_EMAIL:-admin@adversa.io}
+      OPERATOR_EMAIL: ${SEED_ADMIN_EMAIL:-admin@vedha.io}
       OPERATOR_PASSWORD: ${SEED_ADMIN_PASSWORD:-ChangeMe123!}
       PROBE_NAME: ${PROBE_NAME:-local-probe}
       # capabilities auto-detected from the tools installed in the probe image
       PROBE_NETWORK_SEGMENTS: ${PROBE_NETWORK_SEGMENTS:-}
       LICENSE_ENFORCED: "false"   # container host-ID changes each restart; skip host-lock check
     volumes:
-      - probestate:/var/lib/adversa-probe   # persist identity so restarts reuse the same agent
+      - probestate:/var/lib/vedha-probe   # persist identity so restarts reuse the same agent
     depends_on:
       api:
         condition: service_healthy
@@ -148,7 +170,7 @@ services:
   frontend:
     build:
       context: ./manager/frontend
-    image: adversa-frontend:local
+    image: vedha-frontend:local
     profiles: ["ui"]
     environment:
       BACKEND_INTERNAL_URL: http://api:8000

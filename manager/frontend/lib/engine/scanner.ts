@@ -27,7 +27,7 @@ export async function runScan(opts: ScanOptions, cb: ScanCallbacks): Promise<voi
     let urls: string[] = [];
 
     // Pre-seed hosts from previous scan / manual input
-    const reusedRaw = process.env.ADVERSA_REUSED_HOSTS;
+    const reusedRaw = process.env.VEDHA_REUSED_HOSTS;
     if (reusedRaw) {
       try {
         const parsed = JSON.parse(reusedRaw) as DiscoveredHost[];

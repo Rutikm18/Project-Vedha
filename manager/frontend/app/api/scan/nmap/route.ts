@@ -235,7 +235,7 @@ export async function POST(req: NextRequest) {
     profileArgs = [...profileArgs, "--script", scripts.join(",")];
   }
 
-  const xmlFile = path.join(os.tmpdir(), `adversa-scan-${Date.now()}.xml`);
+  const xmlFile = path.join(os.tmpdir(), `vedha-scan-${Date.now()}.xml`);
   const args = [...profileArgs, "-oX", xmlFile, ...target.split(",").map((t) => t.trim())];
   const command = `nmap ${args.join(" ")}`;
 

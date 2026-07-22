@@ -1,3 +1,4 @@
+import gzip
 import logging
 from contextlib import asynccontextmanager
 
@@ -13,11 +14,16 @@ from app.auth.middleware import TenantIsolationMiddleware
 from app.auth.router import router as auth_router
 from app.config import get_settings
 from app.dependencies import close_redis
+from app.routers.activity import router as activity_router
+from app.routers.analytics import router as analytics_router
 from app.routers.ad import router as ad_router
 from app.routers.agents import router as agents_router
+from app.routers.agent_ws import router as agent_ws_router  # WebSocket probe push
 from app.routers.ai_report import router as ai_report_router
 from app.routers.attack_paths import router as attack_paths_router
 from app.routers.detection import router as detection_router
+from app.routers.detection_runs import router as detection_runs_router
+from app.routers.agent_advisor import router as agent_advisor_router
 from app.routers.engagements import router as eng_router
 from app.routers.exploits import router as exploits_router
 from app.routers.findings import router as findings_router
@@ -55,18 +61,18 @@ logger = structlog.get_logger()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    logger.info("adversa_api.startup", env=settings.app_env)
+    logger.info("vedha_api.startup", env=settings.app_env)
     yield
-    logger.info("adversa_api.shutdown")
+    logger.info("vedha_api.shutdown")
     await close_redis()
 
 
 # ── App factory ───────────────────────────────────────────────────────────────
 
 app = FastAPI(
-    title="ADVERSA VAPT Platform API",
+    title="Vedha VAPT Platform API",
     description=(
-        "Backend for the ADVERSA automated Network VAPT platform. "
+        "Backend for the Vedha automated Network VAPT platform. "
         "Handles multi-tenant engagements, asset management, finding triage, "
         "attack path analysis, and detection coverage."
     ),
@@ -76,6 +82,61 @@ app = FastAPI(
     openapi_url="/openapi.json",
     lifespan=lifespan,
 )
+
+# ── gzip request decoding ─────────────────────────────────────────────────────
+# Probes gzip large scan-result payloads (a /24 sweep is MBs of JSON). Starlette
+# decodes Content-Encoding on *responses* but not *requests*, so without this a
+# gzipped body reaches the route as raw compressed bytes and JSON parsing 400s.
+# We buffer + inflate only when the client advertises `Content-Encoding: gzip`;
+# every other request is passed through untouched (zero overhead).
+class GzipRequestMiddleware:
+    def __init__(self, app):
+        self.app = app
+
+    async def __call__(self, scope, receive, send):
+        if scope["type"] != "http":
+            return await self.app(scope, receive, send)
+        headers = dict(scope.get("headers") or [])
+        if b"gzip" not in headers.get(b"content-encoding", b"").lower():
+            return await self.app(scope, receive, send)
+
+        # Buffer the full (compressed) body.
+        chunks: list[bytes] = []
+        while True:
+            msg = await receive()
+            if msg["type"] == "http.request":
+                chunks.append(msg.get("body", b""))
+                if not msg.get("more_body", False):
+                    break
+            elif msg["type"] == "http.disconnect":
+                break
+        try:
+            body = gzip.decompress(b"".join(chunks))
+        except (OSError, EOFError):
+            # Not valid gzip — reject cleanly rather than corrupting the route.
+            return await JSONResponse(
+                {"detail": "malformed gzip request body"}, status_code=400,
+            )(scope, receive, send)
+
+        # Rewrite headers: drop content-encoding, fix content-length.
+        new_headers = [
+            (k, v) for (k, v) in scope["headers"]
+            if k not in (b"content-encoding", b"content-length")
+        ]
+        new_headers.append((b"content-length", str(len(body)).encode()))
+        scope = {**scope, "headers": new_headers}
+
+        delivered = False
+
+        async def receive_inflated():
+            nonlocal delivered
+            if not delivered:
+                delivered = True
+                return {"type": "http.request", "body": body, "more_body": False}
+            return {"type": "http.disconnect"}
+
+        return await self.app(scope, receive_inflated, send)
+
 
 # ── Middleware (order matters: outermost first) ───────────────────────────────
 
@@ -88,6 +149,7 @@ app.add_middleware(
 )
 
 app.add_middleware(TenantIsolationMiddleware)
+app.add_middleware(GzipRequestMiddleware)
 
 
 # ── Global exception handlers ─────────────────────────────────────────────────
@@ -108,12 +170,17 @@ app.include_router(auth_router)
 app.include_router(eng_router)
 app.include_router(findings_router)
 app.include_router(agents_router)
+app.include_router(agent_ws_router)
 app.include_router(vuln_router)
 app.include_router(exploits_router)
 app.include_router(ad_router)
 app.include_router(attack_paths_router)
 app.include_router(detection_router)
+app.include_router(detection_runs_router)
+app.include_router(agent_advisor_router)
 app.include_router(ai_report_router)
+app.include_router(activity_router)
+app.include_router(analytics_router)
 
 
 # ── P2: Prometheus metrics — request latency/count/in-progress at /metrics, so

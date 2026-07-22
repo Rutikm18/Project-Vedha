@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 1,
+  "branchName": "main",
+  "worktreePath": "/Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Agentic VA Scanner",
+  "upstream": "origin/main",
+  "mergeBase": "0510df3efb9374892a4822e5be4b3cdb4d0cdd4f",
+  "firstSeenHead": "0557559df67e8c0dcff8a3478ef636be891e24c5",
+  "lastSeenHead": "0557559df67e8c0dcff8a3478ef636be891e24c5",
+  "lastAnalyzedHead": "0557559df67e8c0dcff8a3478ef636be891e24c5",
+  "stale": false,
+  "staleReason": null,
+  "staleSince": null,
+  "lifecycleEvent": null,
+  "createdAt": "2026-07-15T19:45:36.273Z",
+  "updatedAt": "2026-07-22T07:09:46.534Z"
+}

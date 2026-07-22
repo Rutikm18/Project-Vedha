@@ -1,17 +1,41 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveTenantSubdomain, TENANT_HEADER } from "./lib/tenant";
 
-/**
- * Subdomain → tenant routing (C2). Edge-safe: resolves the tenant *subdomain string* only
- * (no clients-store / fs here) and injects it as a request header for Node route handlers and
- * server components to consume. Maps subdomain → Client happens server-side (lib/tenant-server).
- *
- * Dev override: ?tenant=acme (persisted to a cookie), X-Tenant header, or acme.localhost.
- */
+// Routes that don't need an auth token
+const PUBLIC_PATHS = new Set(["/login"]);
+// API routes carry their own Authorization header — don't block them at the middleware layer.
+// Only page routes need the cookie check so the browser can be redirected to /login.
+const PUBLIC_PREFIXES = [
+  "/_next/",
+  "/favicon",
+  "/api/",
+];
+
+function isPublic(pathname: string): boolean {
+  if (PUBLIC_PATHS.has(pathname)) return true;
+  return PUBLIC_PREFIXES.some((p) => pathname.startsWith(p));
+}
+
 export function middleware(req: NextRequest) {
   const url = req.nextUrl;
-  const queryTenant = url.searchParams.get("tenant");
+  const pathname = url.pathname;
 
+  // ── Auth gate ────────────────────────────────────────────────────────────
+  // Check for the session cookie (written by /api/auth/login).
+  // We only verify *presence* here — actual JWT validation happens inside
+  // withBackend → FastAPI on every BFF call. Edge middleware cannot import
+  // jsonwebtoken (Node.js only), so we keep this layer lightweight.
+  if (!isPublic(pathname)) {
+    const token = req.cookies.get("vedha_token")?.value;
+    if (!token) {
+      const loginUrl = new URL("/login", req.url);
+      loginUrl.searchParams.set("next", pathname);
+      return NextResponse.redirect(loginUrl);
+    }
+  }
+
+  // ── Tenant routing ──────────────────────────────────────────────────────
+  const queryTenant = url.searchParams.get("tenant");
   const sub = resolveTenantSubdomain({
     host: req.headers.get("host"),
     headerTenant: req.headers.get("x-tenant"),

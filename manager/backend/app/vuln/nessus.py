@@ -105,7 +105,7 @@ class NessusScanner:
         body: dict[str, Any] = {
             "uuid": await self._get_template_uuid(client, policy_id),
             "settings": {
-                "name": f"ADVERSA-{engagement_id[:8]}",
+                "name": f"VEDHA-{engagement_id[:8]}",
                 "description": f"Automated VAPT scan — engagement {engagement_id}",
                 "scanner_id": 1,
                 "policy_id": policy_id,

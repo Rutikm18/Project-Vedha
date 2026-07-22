@@ -42,7 +42,7 @@ function hasSystemBinary(bin: string): boolean {
 
 /**
  * Resolve which binary path to actually invoke for a tool. Priority:
- *   1. ADVERSA-managed (~/.adversa/tools/) — what we bundled
+ *   1. VEDHA-managed (~/.vedha/tools/) — what we bundled
  *   2. System PATH — power users who installed via brew / go install
  *   3. (caller falls back to native implementation if neither exists)
  *
@@ -289,7 +289,7 @@ export async function runNmap(
 if (typeof process !== 'undefined' && process.listenerCount && process.listenerCount('unhandledRejection') === 0) {
   process.on('unhandledRejection', (reason) => {
     // eslint-disable-next-line no-console
-    console.error('[adversa] unhandledRejection caught:', reason instanceof Error ? reason.message : reason);
+    console.error('[vedha] unhandledRejection caught:', reason instanceof Error ? reason.message : reason);
   });
 }
 
@@ -318,7 +318,7 @@ async function httpBannerGrab(host: string, port: number, https: boolean): Promi
     };
 
     try {
-      const baseOpts = { hostname: host, port, path: '/', method: 'GET', timeout: 3500, headers: { 'User-Agent': 'adversa-scanner/1.0' } };
+      const baseOpts = { hostname: host, port, path: '/', method: 'GET', timeout: 3500, headers: { 'User-Agent': 'vedha-scanner/1.0' } };
       const onResponse = (res: import('http').IncomingMessage) => {
         const server   = res.headers['server'];
         const xPowered = res.headers['x-powered-by'];
@@ -438,7 +438,7 @@ export async function runNuclei(
   const configCandidates = [
     process.env.NUCLEI_CONFIG_DIR,
     join(homedir(), '.config', 'nuclei'),
-    join(tmpdir(), 'adversa-nuclei-config'),
+    join(tmpdir(), 'vedha-nuclei-config'),
   ].filter(Boolean) as string[];
 
   let configDir = '';
@@ -863,7 +863,7 @@ export async function runFfuf(
   // Find a wordlist. Prefer the operator override, then common locations.
   const candidates = [
     wordlistPath,
-    process.env.ADVERSA_FFUF_WORDLIST,
+    process.env.VEDHA_FFUF_WORDLIST,
     '/opt/SecLists/Discovery/Web-Content/common.txt',
     '/usr/share/wordlists/dirb/common.txt',
     '/usr/local/share/seclists/Discovery/Web-Content/common.txt',
@@ -871,7 +871,7 @@ export async function runFfuf(
 
   const wordlist = candidates.find((p) => existsSync(p));
   if (!wordlist) {
-    cb.onError('ffuf', 'No wordlist found. Set ADVERSA_FFUF_WORDLIST to a path, or install SecLists (`brew install seclists`).');
+    cb.onError('ffuf', 'No wordlist found. Set VEDHA_FFUF_WORDLIST to a path, or install SecLists (`brew install seclists`).');
     return findings;
   }
 

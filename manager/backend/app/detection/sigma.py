@@ -124,7 +124,7 @@ class SigmaRuleGenerator:
 
         host = evidence.get("host") or evidence.get("target_ip")
         rule_doc: dict[str, Any] = {
-            "title": f"[ADVERSA gap] Detection for {technique}",
+            "title": f"[Vedha gap] Detection for {technique}",
             "id": evidence.get("rule_id") or _stable_rule_id(technique, host),
             "status": "experimental",
             "description": (
@@ -167,5 +167,5 @@ def _stable_rule_id(technique: str, host: str | None) -> str:
     import hashlib
     import uuid
 
-    seed = f"adversa-{technique}-{host or 'any'}"
+    seed = f"vedha-{technique}-{host or 'any'}"
     return str(uuid.UUID(hashlib.md5(seed.encode()).hexdigest()))

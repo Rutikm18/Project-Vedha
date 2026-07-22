@@ -1,43 +1,46 @@
 #!/usr/bin/env python3
 """
-agent.py — the probe's manager transport loop.
+agent.py — thin main loop for the Vedha Probe.
 
-  login (operator)  → POST /auth/login        (one-time, to get a register token)
-  register          → POST /agents/register   → {agent_id, token}, cached
-  heartbeat (30s)   → POST /agents/heartbeat
-  poll jobs         → GET  /agents/{id}/jobs
-  scope validation  → GET  /engagements/{id}/scope  (re-validate before any packet)
-  run scan          → scanner_module engine (RAW FACTS, via use-case library)
-  submit result     → POST /agents/{id}/jobs/{job_id}/result  (with local retry)
+Startup gauntlet (HW bind → license → register → flush spool → main loop).
+Delegates all actual work to focused submodules:
 
-Security properties (techprompt.md):
-  - Outbound-only. No inbound port is opened.
-  - Scope re-validated on probe against manager's engagement scope BEFORE any packet.
-    A buggy or compromised manager cannot widen scope beyond what the engagement allows.
-  - Use-case library: probe only runs pre-defined, finite scan scenarios.
-  - Local persistence: result saved locally, retried on upload failure.
+    transport.py       — HTTP + WebSocket (Phase 2) manager communication
+    task_runner.py     — job lifecycle orchestration
+    scope_validator.py — defense-in-depth scope re-validation
+    result_spool.py    — local spooling with upload retry
+    scope_crypt.py     — X25519 + AES-GCM scope decryption (Phase 4)
+    hw_bind.py         — hardware fingerprinting for binary host-locking
+    engine.py          — scan execution
+    use_cases.py       — finite use-case library
+
+Security properties (outbound-only, no inbound ports):
+  - Hardware-bound binary: binary only runs on specific machine
+  - License gate: host-locked Ed25519-signed license
+  - Scope re-validated independently of job params before any packet
+  - Use-case library: finite, pre-defined scan scenarios only
+  - Local spool: results never lost, retried on upload failure
 """
 from __future__ import annotations
 
-import ipaddress
+import asyncio
 import json
+import logging
 import os
 import random
 import socket
 import sys
 import time
 from pathlib import Path
-from typing import Any
 
-import httpx
-
-from agent.engine import CAPABILITIES, resolve_scan_type, run_scan
-from agent.use_cases import USE_CASES, resolve as resolve_use_case
+from agent.transport import Transport, TransportError
 
 VERSION = "2.0.0"
+LOG = logging.getLogger("agent")
 
 
 def _load_env(path: Path) -> None:
+    """Load key=value lines from probe.env for dev convenience."""
     try:
         for line in path.read_text().splitlines():
             line = line.strip()
@@ -48,306 +51,693 @@ def _load_env(path: Path) -> None:
         pass
 
 
-_load_env(Path(__file__).resolve().parent.parent / "probe.env")
-
-PLATFORM_URL = os.environ.get("PLATFORM_URL", "").rstrip("/")
-PROBE_NAME = os.environ.get("PROBE_NAME") or socket.gethostname()
-PROBE_LOCATION = os.environ.get("PROBE_LOCATION", "")
-NETWORK_SEGMENTS = [s.strip() for s in os.environ.get("PROBE_NETWORK_SEGMENTS", "").split(",") if s.strip()]
-OPERATOR_EMAIL = os.environ.get("OPERATOR_EMAIL", "")
-OPERATOR_PASSWORD = os.environ.get("OPERATOR_PASSWORD", "")
-AGENT_ID = os.environ.get("AGENT_ID", "")
-AGENT_TOKEN = os.environ.get("AGENT_TOKEN", "")
-HEARTBEAT_INTERVAL = int(os.environ.get("HEARTBEAT_INTERVAL", "30"))
-POLL_INTERVAL = int(os.environ.get("POLL_INTERVAL", "10"))
-JOB_LIMIT = int(os.environ.get("JOB_LIMIT", "1"))
-VERIFY_TLS = os.environ.get("VERIFY_TLS", "true").lower() not in ("false", "0", "no")
-STATE_FILE = Path(os.environ.get("STATE_FILE", "/var/lib/adversa-probe/state.json"))
-RESULT_SPOOL_DIR = Path(os.environ.get("RESULT_SPOOL_DIR", "/var/lib/adversa-probe/spool"))
-RESULT_UPLOAD_RETRIES = int(os.environ.get("RESULT_UPLOAD_RETRIES", "5"))
-RESULT_RETRY_DELAY = int(os.environ.get("RESULT_RETRY_DELAY", "15"))
-
-
 def say(msg: str = "", indent: int = 0) -> None:
     print(("  " * indent) + msg, flush=True)
 
 
-# ── identity (cached; host-bound encryption is a TODO — plaintext cache for now) ──
-
-def _load_state() -> dict[str, str]:
-    try:
-        return json.loads(STATE_FILE.read_text())
-    except (OSError, ValueError):
-        return {}
-
-
-def _save_state(state: dict[str, str]) -> None:
-    try:
-        STATE_FILE.parent.mkdir(parents=True, exist_ok=True)
-        STATE_FILE.write_text(json.dumps(state))
-    except OSError as exc:
-        say(f"warning: could not persist identity ({exc})", 1)
-
-
-def obtain_identity(client: httpx.Client) -> tuple[str, str, bool]:
-    """Return (agent_id, token, fresh) where fresh=True means we just registered."""
-    if AGENT_ID and AGENT_TOKEN:
-        return AGENT_ID, AGENT_TOKEN, False
-    cached = _load_state()
-    if cached.get("agent_id") and cached.get("token"):
-        return cached["agent_id"], cached["token"], False
-    if not (OPERATOR_EMAIL and OPERATOR_PASSWORD):
-        say("Setup needed: set OPERATOR_EMAIL and OPERATOR_PASSWORD in probe.env.")
-        raise SystemExit(1)
-    r = client.post("/auth/login", json={"email": OPERATOR_EMAIL, "password": OPERATOR_PASSWORD})
-    r.raise_for_status()
-    op_token = r.json()["access_token"]
-    r = client.post("/agents/register", headers={"Authorization": f"Bearer {op_token}"},
-                    json={"name": PROBE_NAME, "location": PROBE_LOCATION or None,
-                          "capabilities": CAPABILITIES, "network_segments": NETWORK_SEGMENTS})
-    r.raise_for_status()
-    data = r.json()
-    _save_state({"agent_id": data["agent_id"], "token": data["token"]})
-    return data["agent_id"], data["token"], True
-
-
-def connect_with_retry(client: httpx.Client) -> tuple[str, str, bool]:
-    while True:
-        try:
-            return obtain_identity(client)
-        except SystemExit:
-            raise
-        except httpx.HTTPStatusError as exc:
-            if exc.response.status_code in (401, 403):
-                say("Manager rejected sign-in — check OPERATOR_EMAIL / OPERATOR_PASSWORD.")
-                raise SystemExit(1)
-            say(f"Manager error (HTTP {exc.response.status_code}); retrying in {POLL_INTERVAL}s ...")
-        except httpx.HTTPError:
-            say(f"Can't reach the manager at {PLATFORM_URL} yet; retrying ...")
-        time.sleep(POLL_INTERVAL)
-
-
-def license_gate() -> None:
-    """Verify the host-locked license before doing anything. Honors
-    LICENSE_ENFORCED (default on). A copied probe or wrong-host license
-    fails here with a clear, actionable message and the machine's Host ID."""
-    from agent.license import check_license, LicenseError, short_id
-    try:
-        lic = check_license()
-    except LicenseError as exc:
-        say("License check failed:")
-        say(exc.friendly, 1)
-        say(f"This machine's Host ID: {short_id()}", 1)
-        raise SystemExit(2)
-    if lic:
-        say(f"License OK — {lic.get('customer','?')}, valid until {lic.get('expires','?')}")
-
-
 def main() -> None:
-    say("Intrynx Probe (scanner_module)")
+    # ── Load environment ──────────────────────────────────────────────────────
+    _load_env(Path(__file__).resolve().parent.parent / "probe.env")
+
+    PLATFORM_URL = os.environ.get("PLATFORM_URL", "").rstrip("/")
+    PROBE_NAME = os.environ.get("PROBE_NAME") or socket.gethostname()
+    PROBE_LOCATION = os.environ.get("PROBE_LOCATION", "")
+    NETWORK_SEGMENTS = [s.strip() for s in
+                        os.environ.get("PROBE_NETWORK_SEGMENTS", "").split(",") if s.strip()]
+    OPERATOR_EMAIL = os.environ.get("OPERATOR_EMAIL", "")
+    OPERATOR_PASSWORD = os.environ.get("OPERATOR_PASSWORD", "")
+    OPERATOR_TOKEN = (
+        os.environ.get("OPERATOR_TOKEN", "")
+        or os.environ.get("PROBE_PAT", "")
+        or os.environ.get("VEDHA_PAT", "")
+    )
+    AGENT_ID_ENV = os.environ.get("AGENT_ID", "")
+    AGENT_TOKEN_ENV = os.environ.get("AGENT_TOKEN", "")
+    HEARTBEAT_INTERVAL = int(os.environ.get("HEARTBEAT_INTERVAL", "30"))
+    POLL_INTERVAL = int(os.environ.get("POLL_INTERVAL", "10"))
+    JOB_LIMIT = int(os.environ.get("JOB_LIMIT", "1"))
+    VERIFY_TLS = os.environ.get("VERIFY_TLS", "true").lower() not in ("false", "0", "no")
+    STATE_FILE = Path(os.environ.get("STATE_FILE", "/var/lib/vedha-probe/state.json"))
+    SPOOL_DIR = Path(os.environ.get("RESULT_SPOOL_DIR", "/var/lib/vedha-probe/spool"))
+    # Secure transport (optional): a private-PKI CA bundle to trust, and an mTLS
+    # client cert/key so the manager can authenticate the probe at the TLS layer.
+    CA_BUNDLE = os.environ.get("PROBE_CA_BUNDLE") or None
+    CLIENT_CERT = os.environ.get("PROBE_CLIENT_CERT") or None
+    CLIENT_KEY = os.environ.get("PROBE_CLIENT_KEY") or None
+    # gzip result payloads at/above this many bytes (default 1 MiB; 0 disables).
+    COMPRESS_OVER = int(os.environ.get("RESULT_COMPRESS_OVER", str(1 << 20)))
+
+    # ── Banner ────────────────────────────────────────────────────────────────
+    say("Vedha Probe (scanner_module)")
     say("--------------------------------")
-    license_gate()
+
     if not PLATFORM_URL:
         say("Setup needed: PLATFORM_URL is not set.")
         raise SystemExit(1)
 
-    client = httpx.Client(base_url=PLATFORM_URL,
-                          timeout=httpx.Timeout(connect=10.0, read=30.0, write=30.0, pool=30.0),
-                          verify=VERIFY_TLS)
-    say(f"Connecting to the manager at {PLATFORM_URL} ...")
-    agent_id, token, fresh = connect_with_retry(client)
-    auth = {"Authorization": f"Bearer {token}"}
-    action = "Registered" if fresh else "Resumed"
-    say(f"{action} as '{PROBE_NAME}'. Capabilities: {', '.join(CAPABILITIES)}")
-    say(f"Use-case library: {', '.join(sorted(USE_CASES))}")
-    _flush_spool(client, auth, agent_id)
-    say("Waiting for scan jobs...")
+    # ── Transport security posture (warn loudly, never silently downgrade) ────
+    _is_local = ("localhost" in PLATFORM_URL) or ("127.0.0.1" in PLATFORM_URL)
+    if PLATFORM_URL.startswith("http://") and not _is_local:
+        say("WARNING: PLATFORM_URL is plain http:// to a non-local manager — scan "
+            "results and the agent token travel UNENCRYPTED. Use https://.")
+    if PLATFORM_URL.startswith("https://") and not VERIFY_TLS:
+        say("WARNING: VERIFY_TLS is off — the manager certificate is NOT verified "
+            "(MITM-exposed). Trusted links only; set PROBE_CA_BUNDLE for private PKI.")
+    if CLIENT_CERT:
+        say(f"mTLS enabled — presenting client certificate {CLIENT_CERT}.")
 
+    # ── Step 1: Startup gauntlet ─────────────────────────────────────────────
+    # One function: HW bind → license → anti-debug.  Fails fast with clear,
+    # actionable messages so the operator knows exactly why the probe refused
+    # to start.  The license dict is returned for logging/banner display.
+    try:
+        lic = _startup_gauntlet()
+    except SystemExit:
+        raise
+    if lic:
+        say(f"License OK — {lic.get('customer','?')}, valid until {lic.get('expires','?')}")
+
+    # ── Step 2: Setup transport ──────────────────────────────────────────────
+    transport = Transport(
+        PLATFORM_URL,
+        verify_tls=VERIFY_TLS,
+        agent_id=AGENT_ID_ENV,
+        agent_token=AGENT_TOKEN_ENV,
+        state_file=STATE_FILE,
+        ca_bundle=CA_BUNDLE,
+        client_cert=CLIENT_CERT,
+        client_key=CLIENT_KEY,
+        compress_over=COMPRESS_OVER,
+    )
+
+    from agent.result_spool import ResultSpool
+    spool = ResultSpool(spool_dir=SPOOL_DIR)
+
+    # ── Step 3: Register / resume identity ──────────────────────────────────
+    agent_id, token, fresh, identity_sk, identity_pk, _public_key_b64 = _obtain_identity(
+        transport, OPERATOR_EMAIL, OPERATOR_PASSWORD, OPERATOR_TOKEN,
+        PROBE_NAME, PROBE_LOCATION, NETWORK_SEGMENTS,
+    )
+    action = "Registered" if fresh else "Resumed"
+    say(f"{action} as '{PROBE_NAME}'.")
+
+    from agent.engine import CAPABILITIES
+    from agent.use_cases import USE_CASES
+    say(f"Capabilities: {', '.join(CAPABILITIES)}")
+    say(f"Use-case library: {', '.join(sorted(USE_CASES))}")
+
+    # ── Step 4: Create TaskRunner (with identity for scope decryption) ────────
+    from agent.task_runner import TaskRunner
+    runner = TaskRunner(
+        http_get=transport.http_get,
+        submit_result=lambda jid, p: transport.submit_result(jid, p),
+        spool_submit=spool.submit_with_retry,
+        identity_sk=identity_sk,   # Phase 4: X25519 private key for scope decryption
+    )
+
+    # ── Step 5: Try WebSocket push mode first ────────────────────────────────
+    # Phase 2: persistent WebSocket connection with manager push.
+    # If the manager supports WS, the probe stays in push mode indefinitely.
+    # If WS fails (manager down, network issue, unsupported), fall through
+    # to HTTP polling below.
+    ws_mode_available = os.environ.get("PROBE_WS_ENABLED", "true").lower() not in (
+        "false", "0", "no",
+    )
+
+    if ws_mode_available:
+        say("Attempting WebSocket push mode...")
+        try:
+            ws_result = asyncio.run(_run_ws_push_loop(
+                transport, runner, agent_id, spool, HEARTBEAT_INTERVAL, POLL_INTERVAL,
+            ))
+            if ws_result:
+                # WS loop exited cleanly (shutdown or unrecoverable error)
+                say("WebSocket loop exited. Probe stopping.")
+                return
+            # ws_result is False → WS unavailable, fall through to HTTP poll
+        except KeyboardInterrupt:
+            say("\nProbe stopped (WebSocket mode).")
+            raise SystemExit(0)
+        except Exception as exc:
+            say(f"WebSocket mode crashed ({exc}) — falling back to HTTP poll.")
+    else:
+        # Flush spool over HTTP before entering poll loop
+        flushed = spool.flush_spool(
+            lambda jid, p: transport.submit_result(jid, p),
+        )
+        if flushed:
+            say(f"Flushed {flushed} spooled result(s) from previous run(s).")
+
+    # ── Step 6: Main loop (HTTP polling — fallback) ──────────────────────────
+    say("Waiting for scan jobs (HTTP polling)...")
     last_hb = 0.0
+
     while True:
         now = time.monotonic()
         try:
             if now - last_hb >= HEARTBEAT_INTERVAL:
-                hb = client.post("/agents/heartbeat", headers=auth,
-                                 json={"agent_id": agent_id, "status": "online"})
-                if hb.status_code == 401:
-                    say("Heartbeat rejected (stale token) — will re-register on next poll.")
+                if not transport.heartbeat("online", None if not hasattr(runner, '_current_job') else None):
+                    say("Heartbeat rejected (stale token).")
                 last_hb = now
-            r = client.get(f"/agents/{agent_id}/jobs", headers=auth, params={"limit": JOB_LIMIT})
-            if r.status_code == 401:
-                say("Identity rejected — re-registering ...")
-                _save_state({})
-                agent_id, token, _ = connect_with_retry(client)
-                auth = {"Authorization": f"Bearer {token}"}
-                say(f"Re-registered as '{PROBE_NAME}'. Resuming job polling ...")
-                continue
-            r.raise_for_status()
-            for job in r.json():
-                _run_job(client, auth, agent_id, job)
-        except httpx.HTTPError:
-            say("Can't reach the manager right now — will keep retrying.")
-        # P2: jitter the poll so a fleet of probes doesn't synchronize into a
-        # thundering herd against the manager (±50% spread on each interval).
+
+            jobs = transport.poll_jobs(limit=JOB_LIMIT)
+
+        except TransportError:
+            say("Token rejected — re-registering...")
+            transport.clear_state()
+            agent_id, token, fresh, identity_sk, identity_pk, _ = _obtain_identity(
+                transport, OPERATOR_EMAIL, OPERATOR_PASSWORD, OPERATOR_TOKEN,
+                PROBE_NAME, PROBE_LOCATION, NETWORK_SEGMENTS,
+            )
+            # Update runner's identity (may have changed if state was wiped)
+            runner._identity_sk = identity_sk
+            say(f"Re-registered as '{PROBE_NAME}'. Resuming...")
+            continue
+        except Exception as exc:
+            say(f"Manager unreachable — retrying ({exc})")
+
+        for job in jobs:
+            # Mark busy before running
+            transport.heartbeat("busy", job.get("job_id"))
+            try:
+                result = runner.run_job(job, agent_id)
+                if result.error:
+                    say(f"Job {result.job_id}: {result.error}", 1)
+                else:
+                    say(f"Job {result.job_id} done — {result.scan_type}", 1)
+            except Exception as exc:
+                LOG.exception("Job %s crashed runner", job.get("job_id"))
+                transport.submit_result(job.get("job_id", "?"), {
+                    "success": False, "result": {},
+                    "error": f"Runner crashed: {exc}",
+                })
+
+        # Re-flush results spooled during an earlier manager outage. flush_spool
+        # makes a single upload attempt per file, so a transient partition
+        # recovers within the poll loop instead of waiting for a probe restart.
+        if spool.spool_count:
+            reflushed = spool.flush_spool(
+                lambda jid, p: transport.submit_result(jid, p),
+            )
+            if reflushed:
+                say(f"Re-flushed {reflushed} spooled result(s).", 1)
+
+        # P2: jitter to avoid thundering herd across a probe fleet
         time.sleep(POLL_INTERVAL + random.uniform(0, POLL_INTERVAL * 0.5))
 
 
-def _fetch_engagement_scope(client: httpx.Client, auth: dict, engagement_id: str) -> list[str] | None:
-    """Fetch the engagement's authoritative scope_cidrs from the manager.
+# ── P2: WebSocket push loop ────────────────────────────────────────────────
 
-    Returns a list of CIDR strings, or None if the fetch fails (caller falls
-    back to job-params scope in that case, which is still ScopeGuard-enforced).
+WS_RECONNECT_BACKOFF_MIN = 1.0
+WS_RECONNECT_BACKOFF_MAX = 60.0
+
+
+async def _run_ws_push_loop(
+    transport: "Transport",
+    runner,
+    agent_id: str,
+    spool,
+    heartbeat_interval: int,
+    poll_interval: int,
+) -> bool:
+    """Persistent WebSocket push loop.
+
+    Returns False if WebSocket is unavailable (caller should fall back to
+    HTTP polling). Returns True only on clean shutdown or unrecoverable error
+    (caller should exit).
     """
+    import websockets
+
+    backoff = WS_RECONNECT_BACKOFF_MIN
+
+    while True:
+        try:
+            say("Connecting via WebSocket (push mode)...")
+            ws = await transport.connect_ws()
+
+            # ── Auth: send hello ─────────────────────────────────────────
+            await ws.send(json.dumps({
+                "type": "hello",
+                "agent_id": agent_id,
+                "token": transport.agent_token,
+            }))
+
+            # Wait for hello_ok (with timeout)
+            try:
+                hello_raw = await asyncio.wait_for(ws.recv(), timeout=10.0)
+            except asyncio.TimeoutError:
+                say("WebSocket hello timed out — falling back to HTTP poll.")
+                await ws.close()
+                return False
+
+            hello_msg = json.loads(hello_raw)
+            if hello_msg.get("type") == "error":
+                say(f"WebSocket auth rejected: {hello_msg.get('message', '?')}")
+                await ws.close()
+                return False
+
+            if hello_msg.get("type") != "hello_ok":
+                say("WebSocket handshake unexpected — falling back to HTTP poll.")
+                await ws.close()
+                return False
+
+            say("WebSocket connected. Push mode active — waiting for jobs.")
+            backoff = WS_RECONNECT_BACKOFF_MIN  # reset on successful connect
+
+            # ── Flush previously spooled results over WS ──────────────────
+            await _ws_flush_spool(ws, spool, agent_id)
+
+            # ── Start heartbeat + HTTP poll fallback tasks ────────────────
+            # WebSocket pushes are process-local on the manager. With multiple
+            # API workers a launch request can land on a different worker than
+            # the probe's WS connection, so keep polling as a safety net.
+            job_state = {"current_job_id": None}
+            job_lock = asyncio.Lock()
+            hb_task = asyncio.create_task(
+                _ws_heartbeat_sender(ws, agent_id, heartbeat_interval, job_state),
+            )
+            poll_task = asyncio.create_task(
+                _ws_http_poll_fallback(
+                    ws, transport, runner, agent_id, spool,
+                    poll_interval, job_lock, job_state,
+                ),
+            )
+
+            # ── Main receive loop ────────────────────────────────────────
+            async for raw in ws:
+                try:
+                    msg = json.loads(raw)
+                except json.JSONDecodeError:
+                    continue
+
+                msg_type = msg.get("type", "")
+
+                if msg_type == "job_push":
+                    job = msg.get("job", {})
+                    async with job_lock:
+                        await _ws_run_job(ws, runner, agent_id, job, job_state,
+                                          ack_push=True)
+                        await _ws_flush_spool(ws, spool, agent_id)
+
+                elif msg_type == "error":
+                    say(f"Manager: {msg.get('message', 'unknown error')}")
+
+                elif msg_type == "result_ack":
+                    # Manager acknowledged our result
+                    pass
+
+                elif msg_type == "displaced":
+                    say(f"WebSocket displaced: {msg.get('message', '?')}")
+                    break
+
+            # Loop exited (ws closed by manager)
+            for task in (hb_task, poll_task):
+                task.cancel()
+                try:
+                    await task
+                except asyncio.CancelledError:
+                    pass
+
+        except websockets.exceptions.ConnectionClosed as exc:
+            say(f"WebSocket closed (code={exc.code}) — reconnecting in {backoff:.0f}s...")
+        except (OSError, asyncio.TimeoutError) as exc:
+            say(f"WebSocket unavailable ({exc}) — reconnecting in {backoff:.0f}s...")
+        except TransportError as exc:
+            say(f"WebSocket auth error: {exc} — falling back to HTTP poll.")
+            return False
+        except Exception as exc:
+            say(f"WebSocket error: {type(exc).__name__}: {exc} — reconnecting in {backoff:.0f}s...", 1)
+
+        # Exponential backoff
+        await asyncio.sleep(backoff)
+        backoff = min(backoff * 2, WS_RECONNECT_BACKOFF_MAX)
+
+    return True  # unreachable
+
+
+async def _ws_run_job(
+    ws,
+    runner,
+    agent_id: str,
+    job: dict,
+    job_state: dict,
+    *,
+    ack_push: bool,
+):
+    """Run one job while keeping WS status/result frames best-effort."""
+    job_id = job.get("job_id", "?")
+    if ack_push:
+        await ws.send(json.dumps({
+            "type": "job_ack",
+            "job_id": job_id,
+            "accepted": True,
+        }))
+        say(f"▶ Push: job {job_id} ({job.get('job_type', '?')})")
+    else:
+        say(f"▶ Poll fallback: job {job_id} ({job.get('job_type', '?')})")
+
+    job_state["current_job_id"] = job_id
+    await ws.send(json.dumps({
+        "type": "heartbeat",
+        "status": "busy",
+        "current_job_id": job_id,
+    }))
+
     try:
-        r = client.get(f"/engagements/{engagement_id}/scope", headers=auth)
-        if r.status_code == 200:
-            return r.json().get("scope_cidrs") or None
-        say(f"  scope fetch returned HTTP {r.status_code} — falling back to job params", 1)
-    except httpx.HTTPError as exc:
-        say(f"  scope fetch failed ({exc}) — falling back to job params", 1)
-    return None
+        # Run job in a thread — engine.run_scan() internally calls
+        # asyncio.run(), which can't run inside an existing event loop.
+        result = await asyncio.to_thread(runner.run_job, job, agent_id)
+
+        await ws.send(json.dumps({
+            "type": "result",
+            "job_id": job_id,
+            "success": result.success,
+            "result": result.result,
+            "error": result.error,
+        }))
+        if result.error:
+            say(f"  ✗ {result.error}", 1)
+        else:
+            say(f"  ✓ {result.scan_type}", 1)
+        return result
+    finally:
+        job_state["current_job_id"] = None
+        await ws.send(json.dumps({
+            "type": "heartbeat",
+            "status": "online",
+            "current_job_id": None,
+        }))
 
 
-def _validate_targets_in_scope(targets: list[str], scope_cidrs: list[str]) -> tuple[list[str], list[str]]:
-    """Return (allowed, rejected) by checking each target against scope_cidrs."""
-    networks = []
-    for cidr in scope_cidrs:
+async def _ws_http_poll_fallback(
+    ws,
+    transport: "Transport",
+    runner,
+    agent_id: str,
+    spool,
+    interval: int,
+    job_lock: asyncio.Lock,
+    job_state: dict,
+) -> None:
+    """Poll pending jobs even while WS is connected.
+
+    This makes result delivery reliable when manager WS pushes are missed, for
+    example under multi-worker API deployments with process-local WS state.
+    """
+    while True:
+        await asyncio.sleep(max(1, interval))
+        if job_state.get("current_job_id"):
+            continue
         try:
-            networks.append(ipaddress.ip_network(cidr, strict=False))
-        except ValueError:
-            pass
-
-    allowed, rejected = [], []
-    for t in targets:
-        host = t.split(":")[0] if ":" in t else t
-        try:
-            addr = ipaddress.ip_address(host)
-            in_scope = any(addr in net for net in networks)
-        except ValueError:
-            # hostname or CIDR — pass through, ScopeGuard handles it at packet level
-            in_scope = True
-        (allowed if in_scope else rejected).append(t)
-    return allowed, rejected
-
-
-def _spool_result(job_id: str, payload: dict) -> Path:
-    """Persist result to local spool so upload can be retried after failures."""
-    RESULT_SPOOL_DIR.mkdir(parents=True, exist_ok=True)
-    p = RESULT_SPOOL_DIR / f"{job_id}.json"
-    p.write_text(json.dumps(payload))
-    return p
+            jobs = await asyncio.to_thread(transport.poll_jobs, 1)
+        except TransportError as exc:
+            say(f"HTTP poll fallback auth error: {exc} — reconnecting.")
+            await ws.close()
+            return
+        except Exception as exc:
+            say(f"HTTP poll fallback failed ({exc})", 1)
+            continue
+        if not jobs:
+            continue
+        async with job_lock:
+            for job in jobs:
+                await _ws_run_job(ws, runner, agent_id, job, job_state,
+                                  ack_push=False)
+                await _ws_flush_spool(ws, spool, agent_id)
 
 
-def _submit_result(client: httpx.Client, auth: dict, agent_id: str,
-                   job_id: str, payload: dict) -> bool:
-    """Upload result with retry. Returns True on success."""
-    spool_file = _spool_result(job_id, payload)
-    for attempt in range(1, RESULT_UPLOAD_RETRIES + 1):
-        try:
-            r = client.post(f"/agents/{agent_id}/jobs/{job_id}/result",
-                            headers=auth, json=payload)
-            if r.status_code < 500:
-                spool_file.unlink(missing_ok=True)
-                return True
-            say(f"  upload attempt {attempt}/{RESULT_UPLOAD_RETRIES}: HTTP {r.status_code} — retrying in {RESULT_RETRY_DELAY}s", 1)
-        except httpx.HTTPError as exc:
-            say(f"  upload attempt {attempt}/{RESULT_UPLOAD_RETRIES}: {exc} — retrying in {RESULT_RETRY_DELAY}s", 1)
-        if attempt < RESULT_UPLOAD_RETRIES:
-            time.sleep(RESULT_RETRY_DELAY)
-    say(f"  upload failed after {RESULT_UPLOAD_RETRIES} attempts — result spooled at {spool_file}", 1)
-    return False
+async def _ws_heartbeat_sender(
+    ws,
+    agent_id: str,
+    interval: int,
+    job_state: dict | None = None,
+) -> None:
+    """Send periodic heartbeats over WebSocket."""
+    try:
+        while True:
+            await asyncio.sleep(interval)
+            current_job_id = (job_state or {}).get("current_job_id")
+            await ws.send(json.dumps({
+                "type": "heartbeat",
+                "status": "busy" if current_job_id else "online",
+                "current_job_id": current_job_id,
+            }))
+    except Exception:
+        pass  # ws closed, task will be cancelled
 
 
-def _flush_spool(client: httpx.Client, auth: dict, agent_id: str) -> None:
-    """Re-submit any results that failed to upload in a previous run."""
-    if not RESULT_SPOOL_DIR.exists():
+async def _ws_flush_spool(ws, spool, agent_id: str) -> None:
+    """Re-submit previously spooled results over WebSocket."""
+    if spool.spool_count == 0:
         return
-    for p in RESULT_SPOOL_DIR.glob("*.json"):
+
+    count = 0
+    for p in sorted(spool.spool_dir.glob("*.json")):
         job_id = p.stem
         try:
             payload = json.loads(p.read_text())
-            r = client.post(f"/agents/{agent_id}/jobs/{job_id}/result",
-                            headers=auth, json=payload)
-            if r.status_code < 500:
-                p.unlink(missing_ok=True)
-                say(f"Flushed spooled result for job {job_id}")
+            await ws.send(json.dumps({
+                "type": "result",
+                "job_id": job_id,
+                "success": payload.get("success", False),
+                "result": payload.get("result", {}),
+                "error": payload.get("error"),
+            }))
+            p.unlink(missing_ok=True)
+            count += 1
         except Exception:
             pass
 
+    if count:
+        say(f"  Flushed {count} spooled result(s) over WebSocket.", 1)
 
-def _run_job(client: httpx.Client, auth: dict, agent_id: str, job: dict[str, Any]) -> None:
-    job_id = job["job_id"]
-    engagement_id = job.get("engagement_id", "")
-    params = dict(job.get("params") or {})
-    use_case_id = params.get("use_case_id") or job.get("use_case_id")
 
-    # ── Use-case resolution ──────────────────────────────────────────────────
-    # The probe only executes use-cases from the finite library. An unknown
-    # use_case_id is rejected immediately without scanning.
+def _startup_gauntlet() -> dict | None:
+    """Run all startup security checks before any network I/O.
+
+    Order matters: HW bind first (hardest to bypass), then license,
+    then anti-debug (informational — doesn't block).
+
+    Returns the license dict (for logging), or None if enforcement is off.
+    Raises SystemExit on any hard failure.
+    """
+    # ── Gate 1: Hardware binding ──────────────────────────────────────────
+    from agent.hw_bind import check_hw_bind, HWBindError
     try:
-        scan_type, profile = resolve_use_case(use_case_id, job.get("job_type"), params)
-    except ValueError as exc:
-        say(f"Job {job_id} rejected: {exc}")
-        _submit_result(client, auth, agent_id, job_id, {
-            "success": False, "result": {}, "error": str(exc)})
-        return
+        check_hw_bind()
+    except HWBindError as exc:
+        say("╔══════════════════════════════════════════════════════════════╗")
+        say("║  HARDWARE BINDING CHECK FAILED                              ║")
+        say("╠══════════════════════════════════════════════════════════════╣")
+        for line in str(exc).splitlines():
+            say(f"║  {line:<60}║")
+        say("╚══════════════════════════════════════════════════════════════╝")
+        raise SystemExit(2)
 
-    # ── Scope re-validation (defense in depth) ───────────────────────────────
-    # Fetch the engagement's authoritative scope from the manager independently
-    # of the job params. This ensures a buggy or tampered job cannot widen scope
-    # beyond what the engagement actually allows.
-    targets_raw: list[str] = params.get("targets") or params.get("scope_cidrs") or []
-    if isinstance(targets_raw, str):
-        targets_raw = [targets_raw]
+    # ── Gate 2: License verification ──────────────────────────────────────
+    from agent.license import check_license, LicenseError, short_id
+    try:
+        lic = check_license()
+    except LicenseError as exc:
+        from agent.hw_bind import get_hw_id
+        say("╔══════════════════════════════════════════════════════════════╗")
+        say("║  LICENSE CHECK FAILED                                       ║")
+        say("╠══════════════════════════════════════════════════════════════╣")
+        for line in str(exc.friendly).splitlines():
+            say(f"║  {line:<60}║")
+        say(f"║  This machine's Host ID: {short_id():<39}║")
+        say("╠══════════════════════════════════════════════════════════════╣")
+        say("║  To get a license:                                          ║")
+        say("║    1. Run: ./vedha-probe hostid                           ║")
+        say("║    2. Send the Host ID to your administrator                ║")
+        say("║    3. Set PROBE_LICENSE=<token> in the environment          ║")
+        say("╚══════════════════════════════════════════════════════════════╝")
+        raise SystemExit(2)
 
-    engagement_scope = None
-    if engagement_id:
-        engagement_scope = _fetch_engagement_scope(client, auth, engagement_id)
+    # ── Gate 3: Anti-debug (informational) ────────────────────────────────
+    _check_anti_debug()
 
-    if engagement_scope and targets_raw:
-        allowed, rejected = _validate_targets_in_scope(targets_raw, engagement_scope)
-        if rejected:
-            say(f"  scope guard: {len(rejected)} target(s) outside engagement scope — skipped: {rejected}", 1)
-        if not allowed:
-            say(f"Job {job_id} rejected: all targets are outside the engagement scope {engagement_scope}")
-            _submit_result(client, auth, agent_id, job_id, {
-                "success": False, "result": {},
-                "error": f"All targets out of scope. Engagement scope: {engagement_scope}"})
-            return
-        params["targets"] = allowed
+    return lic
 
-    uc_label = f"use-case={use_case_id}" if use_case_id else f"scan_type={scan_type}"
-    say(f"Running {uc_label} on {params.get('targets') or params.get('scope_cidrs')} ...")
 
-    client.post("/agents/heartbeat", headers=auth,
-                json={"agent_id": agent_id, "status": "busy", "current_job_id": job_id})
+def _check_anti_debug() -> None:
+    """Detect common debugging/tracing tools.  Informational only — does
+    NOT block startup because legitimate operators may run the binary
+    under a profiler or in a monitored environment.
 
-    params["profile"] = profile
-    result = run_scan(scan_type, params,
-                      use_case_id=use_case_id,
-                      engagement_uuid=engagement_id,
-                      validated_scope=engagement_scope)
+    In a Nuitka-compiled binary these are harder to detect; in dev mode
+    (plain Python) they're just a warning.
+    """
+    import sys
+    indicators: list[str] = []
 
-    stats = result.get("run_stats") or {}
-    say(f"done — {stats.get('host_count', result.get('host_count', 0))} hosts, "
-        f"{stats.get('open_ports', result.get('open_ports', 0))} open ports", 1)
+    # ptrace / DTrace attached? (Linux/macOS)
+    if sys.platform == "linux":
+        try:
+            with open("/proc/self/status") as f:
+                for line in f:
+                    if line.startswith("TracerPid:"):
+                        pid = int(line.split(":")[1].strip())
+                        if pid > 0:
+                            indicators.append(f"ptrace attached (tracer PID {pid})")
+        except (OSError, ValueError):
+            pass
 
-    _submit_result(client, auth, agent_id, job_id, {
-        "success": bool(result.get("ok")),
-        "result": result,
-        "error": result.get("error"),
-    })
-    client.post("/agents/heartbeat", headers=auth, json={"agent_id": agent_id, "status": "online"})
+    if sys.platform == "darwin":
+        import subprocess
+        try:
+            out = subprocess.check_output(
+                ["launchctl", "getenv", "DYLD_INSERT_LIBRARIES"],
+                stderr=subprocess.DEVNULL, text=True,
+            ).strip()
+            if out:
+                indicators.append(f"DYLD_INSERT_LIBRARIES={out}")
+        except Exception:
+            pass
+
+    # Python-level debugging
+    if sys.gettrace() is not None:
+        indicators.append("Python debugger attached (sys.gettrace)")
+
+    if os.environ.get("NUITKA_DEBUG"):
+        indicators.append("NUITKA_DEBUG is set")
+
+    if indicators:
+        say("─ Anti-debug notice (informational, NOT blocking) ─")
+        for i in indicators:
+            say(f"  • {i}", 1)
+
+
+def _load_or_create_identity(transport) -> tuple[bytes, bytes, str]:
+    """Load the probe's X25519 identity from persistent state, or create one.
+
+    Returns (private_key_bytes, public_key_bytes, public_key_b64).
+    The identity is stored alongside the transport state in the state file.
+    Generating a new identity invalidates any previously encrypted scope
+    payloads from the manager (the manager stores the old public key until
+    the next re-registration).
+    """
+    identity_sk = None
+    identity_pk = None
+
+    # Try to load from the state file
+    if transport._state_file and transport._state_file.exists():
+        try:
+            state = json.loads(transport._state_file.read_text())
+            if state.get("identity_sk"):
+                from agent.scope_crypt import pubkey_to_bytes, bytes_to_pubkey_b64
+                identity_sk = pubkey_to_bytes(state["identity_sk"])
+                if identity_sk and len(identity_sk) == 32:
+                    # Reconstruct public key from private key
+                    from cryptography.hazmat.primitives.asymmetric.x25519 import X25519PrivateKey
+                    sk = X25519PrivateKey.from_private_bytes(identity_sk)
+                    identity_pk = sk.public_key().public_bytes_raw()
+                    public_key_b64 = bytes_to_pubkey_b64(identity_pk)
+                    return identity_sk, identity_pk, public_key_b64
+        except Exception:
+            identity_sk = None
+
+    # Generate a fresh identity
+    from agent.scope_crypt import generate_identity, bytes_to_pubkey_b64
+    identity_sk, identity_pk = generate_identity()
+    public_key_b64 = bytes_to_pubkey_b64(identity_pk)
+
+    # Persist alongside transport state
+    if transport._state_file:
+        try:
+            transport._state_file.parent.mkdir(parents=True, exist_ok=True)
+            existing = {}
+            if transport._state_file.exists():
+                try:
+                    existing = json.loads(transport._state_file.read_text())
+                except Exception:
+                    pass
+            from agent.scope_crypt import pubkey_to_bytes
+            import base64
+            existing["identity_sk"] = base64.b64encode(identity_sk).decode()
+            existing["identity_pk"] = public_key_b64
+            transport._state_file.write_text(json.dumps(existing))
+            say(f"Generated new X25519 identity (pk: {public_key_b64[:12]}…)", 1)
+        except OSError as exc:
+            say(f"warning: could not persist identity ({exc})", 1)
+
+    return identity_sk, identity_pk, public_key_b64
+
+
+def _obtain_identity(
+    transport: Transport,
+    email: str, password: str, operator_token: str,
+    probe_name: str, location: str, segments: list[str],
+) -> tuple[str, str, bool, bytes, bytes, str]:
+    """Return (agent_id, token, fresh, identity_sk, identity_pk, public_key_b64).
+
+    Tries cached identity first, then falls back to login + register.
+    Retries indefinitely until the manager is reachable.
+    """
+    from agent.engine import CAPABILITIES
+
+    # Phase 4: generate/load X25519 identity BEFORE registration
+    # (needed even when already authenticated so the caller has the keys)
+    identity_sk, identity_pk, public_key_b64 = _load_or_create_identity(transport)
+
+    # Check if we already have identity from env or state
+    if transport.is_authenticated():
+        return transport.agent_id, transport.agent_token, False, \
+               identity_sk, identity_pk, public_key_b64
+
+    while True:
+        try:
+            if not operator_token:
+                if not email or not password:
+                    say("Setup needed: set OPERATOR_TOKEN/PROBE_PAT, or OPERATOR_EMAIL and OPERATOR_PASSWORD.")
+                    raise SystemExit(1)
+
+                # Login as operator for development compatibility. Production
+                # deployments should pass a scoped PAT instead of a password.
+                r = transport._client.post(
+                    "/auth/login",
+                    json={"email": email, "password": password},
+                )
+                r.raise_for_status()
+                operator_token = r.json()["access_token"]
+
+            # Register as agent (send X25519 public key for scope encryption)
+            data = transport.register(
+                probe_name,
+                location=location or None,
+                capabilities=CAPABILITIES,
+                network_segments=segments,
+                public_key=public_key_b64,
+                operator_token=operator_token,
+            )
+            return data["agent_id"], data["token"], True, \
+                   identity_sk, identity_pk, public_key_b64
+
+        except TransportError:
+            say("Manager rejected sign-in — check credentials.")
+            raise SystemExit(1)
+        except Exception as exc:
+            say(f"Can't reach manager yet — retrying ({exc})")
+            time.sleep(10)
 
 
 if __name__ == "__main__":
     try:
         arg = sys.argv[1] if len(sys.argv) > 1 else "run"
         if arg in ("version", "-v", "--version"):
-            say(f"Intrynx Probe {VERSION}")
+            say(f"Vedha Probe {VERSION}")
         elif arg == "hostid":
-            # clients run this and send the Host ID to the vendor for a license
             from agent.license import short_id
             say(short_id())
+        elif arg == "self-test":
+            say("Running self-test...")
+            try:
+                lic = _startup_gauntlet()
+                say(f"  License: {'OK' if lic else 'SKIPPED (dev mode)'}")
+            except SystemExit:
+                say("  Self-test FAILED — see above for details.")
+                sys.exit(1)
+            say("Self-test passed.")
         else:
             main()
     except KeyboardInterrupt:

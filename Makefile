@@ -1,4 +1,4 @@
-# ADVERSA — convenience wrapper around docker compose.
+# VEDHA — convenience wrapper around docker compose.
 .DEFAULT_GOAL := help
 COMPOSE := docker compose
 
@@ -8,25 +8,40 @@ help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
 	  awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
 
+# NOTE: migrate, api, and worker all share `image: vedha-backend:local`. Building
+# with `up --build` makes buildx bake export that one tag from three targets in
+# parallel → "image already exists" failure. So every target below builds the
+# shared backend image ONCE (via the `api` service — migrate/worker then reuse the
+# tag), builds any other distinct-image services, and finally `up -d` WITHOUT
+# `--build`. Keep this shape when adding new up-style targets.
+
 run: ## Build + start platform + local probe (API + probe, no frontend) — fast
 	@test -f .env || cp .env.docker.example .env
-	$(COMPOSE) --profile probe up -d --build
+	$(COMPOSE) build api
+	$(COMPOSE) --profile probe build probe
+	$(COMPOSE) --profile probe up -d
 	@port=$$(grep -E '^API_PORT=' .env | cut -d= -f2); port=$${port:-18080}; \
 	  echo "API → http://localhost:$$port  (docs: /docs)  |  probe: docker compose logs -f probe"
 
 full: ## Build + start THE WHOLE PROJECT (API + probe + Next.js dashboard). First build is slow.
 	@test -f .env || cp .env.docker.example .env
-	$(COMPOSE) --profile probe --profile ui up -d --build
+	$(COMPOSE) build api
+	$(COMPOSE) --profile ui build frontend
+	$(COMPOSE) --profile probe build probe
+	$(COMPOSE) --profile probe --profile ui up -d
 	@fport=$$(grep -E '^FRONTEND_PORT=' .env | cut -d= -f2); fport=$${fport:-3000}; \
 	  echo "Dashboard → http://localhost:$$fport   (login with SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD)"
 
 ui: ## Build + start just the Next.js dashboard (API must be up)
 	@test -f .env || cp .env.docker.example .env
-	$(COMPOSE) --profile ui up -d --build frontend
+	$(COMPOSE) --profile ui build frontend
+	$(COMPOSE) --profile ui up -d frontend
 
 up: ## Build + start EVERYTHING incl. the dashboard (postgres, redis, migrate, api, frontend)
 	@test -f .env || cp .env.docker.example .env
-	$(COMPOSE) --profile ui up -d --build
+	$(COMPOSE) build api
+	$(COMPOSE) --profile ui build frontend
+	$(COMPOSE) --profile ui up -d
 	@aport=$$(grep -E '^API_PORT=' .env | cut -d= -f2); aport=$${aport:-18080}; \
 	 fport=$$(grep -E '^FRONTEND_PORT=' .env | cut -d= -f2); fport=$${fport:-3000}; \
 	 echo ""; \
@@ -37,15 +52,18 @@ up: ## Build + start EVERYTHING incl. the dashboard (postgres, redis, migrate, a
 
 api-only: ## Build + start the platform only (postgres, redis, migrate, api) — no dashboard
 	@test -f .env || cp .env.docker.example .env
-	$(COMPOSE) up -d --build
+	$(COMPOSE) build api
+	$(COMPOSE) up -d
 
 up-graph: ## Start the platform + Neo4j (attack-path graph)
 	@test -f .env || cp .env.docker.example .env
-	NEO4J_ENABLED=true $(COMPOSE) --profile graph up -d --build
+	$(COMPOSE) build api
+	NEO4J_ENABLED=true $(COMPOSE) --profile graph up -d
 
 up-ai: ## Build with AI/AD extras + start the platform
 	@test -f .env || cp .env.docker.example .env
-	INSTALL_EXTRAS=1 $(COMPOSE) up -d --build
+	INSTALL_EXTRAS=1 $(COMPOSE) build api
+	INSTALL_EXTRAS=1 $(COMPOSE) up -d
 
 down: ## Stop all services (keeps volumes)
 	$(COMPOSE) --profile graph --profile probe --profile ui down

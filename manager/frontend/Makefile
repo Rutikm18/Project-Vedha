@@ -1,13 +1,13 @@
 # ─────────────────────────────────────────────────────────────────────────────
-#  ADVERSA Platform — Makefile
+#  VEDHA Platform — Makefile
 # ─────────────────────────────────────────────────────────────────────────────
 #  Usage:  make <target>
 #  Tip:    Copy .env.example → .env.local and set ANTHROPIC_API_KEY
 # ─────────────────────────────────────────────────────────────────────────────
 
-IMAGE_NAME  ?= adversa
+IMAGE_NAME  ?= vedha
 IMAGE_TAG   ?= latest
-CONTAINER   ?= adversa-prod
+CONTAINER   ?= vedha-prod
 PORT        ?= 3000
 DEV_PORT    ?= 3001
 
@@ -27,7 +27,7 @@ COMPOSE := $(shell docker compose version > /dev/null 2>&1 && echo "docker compo
 .PHONY: help
 help: ## Show all available targets
 	@printf '\n'
-	@printf '  \033[1;36mADVERSA Platform\033[0m — Makefile targets\n'
+	@printf '  \033[1;36mVEDHA Platform\033[0m — Makefile targets\n'
 	@printf '\n'
 	@printf '  \033[1mLocal Development\033[0m\n'
 	@grep -E '^[a-zA-Z_-]+:.*##' $(MAKEFILE_LIST) | \
@@ -187,15 +187,15 @@ logs: ## Follow compose service logs (all services)
 
 .PHONY: logs-prod
 logs-prod: ## Follow logs for the production service only
-	$(COMPOSE) logs -f adversa
+	$(COMPOSE) logs -f vedha
 
 .PHONY: logs-dev
 logs-dev: ## Follow logs for the development service only
-	$(COMPOSE) logs -f adversa-dev
+	$(COMPOSE) logs -f vedha-dev
 
 .PHONY: shell
 shell: ## Open a shell inside the running production compose container
-	$(COMPOSE) exec adversa sh
+	$(COMPOSE) exec vedha sh
 
 .PHONY: ps
 ps: ## Show running compose services

@@ -10,22 +10,37 @@ detection layer decides that from these facts. Reporting raw facts keeps FP
 measurement clean (e.g. "server accepted TLSv1.0" is a verifiable fact).
 
 Pure standard library (ssl + socket); runs in a thread executor so it fits the
-async base without blocking the loop.
+async base without blocking the loop. The 'cryptography' package enables full
+DER cert parsing; without it we degrade gracefully to a byte count + hint.
 """
 
 from __future__ import annotations
 
-import argparse
 import asyncio
+import ipaddress
 import socket
 import ssl
 import warnings
-from datetime import datetime
+from datetime import datetime, timezone
 
 from .scanner_base import (
     BaseScanner, ScanResult, ScopeGuard, ResultWriter, expand_targets,
     parse_ports, setup_logging, base_argparser, main_entrypoint,
 )
+
+# Suppress the stdlib DeprecationWarning for TLS 1.0/1.1 version names once at
+# import. We probe those versions deliberately to learn whether servers still
+# accept them. Doing this per-handshake via warnings.catch_warnings() is not
+# thread-safe (it mutates global warning state) and these handshakes run
+# concurrently in a thread pool.
+warnings.filterwarnings("ignore", category=DeprecationWarning, module="ssl")
+
+try:
+    from cryptography import x509
+    from cryptography.hazmat.primitives import hashes
+    _HAVE_CRYPTO = True
+except ImportError:
+    _HAVE_CRYPTO = False
 
 # Protocol versions we probe individually to learn what the server accepts.
 _PROTOCOLS = [
@@ -38,48 +53,81 @@ _PROTOCOLS = [
 DEFAULT_TLS_PORTS = [443, 8443, 993, 995, 465, 636, 989, 990, 5986]
 
 
+def _sni(host: str) -> str | None:
+    """Never send an IP literal as SNI — non-conformant; some servers reject it."""
+    try:
+        ipaddress.ip_address(host)
+        return None
+    except ValueError:
+        return host
+
+
 def _try_version(host: str, port: int, version, timeout: float):
-    """Attempt a handshake forcing one protocol version. Returns cipher or None."""
+    """Attempt a handshake forcing one protocol version. Returns cipher dict or None."""
     ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     ctx.check_hostname = False
     ctx.verify_mode = ssl.CERT_NONE
     try:
-        # Pinning to TLSv1.0/1.1 deliberately, to find out whether the server
-        # still accepts them — silence the stdlib's DeprecationWarning about
-        # using those names, it would otherwise spam stderr on every probe.
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", DeprecationWarning)
-            ctx.minimum_version = version
-            ctx.maximum_version = version
+        ctx.minimum_version = version
+        ctx.maximum_version = version
     except (ValueError, OSError):
-        return None  # this Python/OpenSSL build can't pin that version
+        return None     # this Python/OpenSSL build can't pin that version
     try:
         with socket.create_connection((host, port), timeout=timeout) as sock:
-            with ctx.wrap_socket(sock, server_hostname=host) as ssock:
-                return {
-                    "cipher": ssock.cipher(),
-                    "version": ssock.version(),
-                }
+            with ctx.wrap_socket(sock, server_hostname=_sni(host)) as ssock:
+                return {"cipher": ssock.cipher(), "version": ssock.version()}
     except Exception:
         return None
 
 
-def _get_cert(host: str, port: int, timeout: float):
-    """Fetch the peer certificate (best-effort, no validation)."""
+def _get_cert_der(host: str, port: int, timeout: float) -> bytes | None:
     ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     ctx.check_hostname = False
     ctx.verify_mode = ssl.CERT_NONE
     try:
         with socket.create_connection((host, port), timeout=timeout) as sock:
-            with ctx.wrap_socket(sock, server_hostname=host) as ssock:
-                der = ssock.getpeercert(binary_form=True)
-                try:
-                    cert = ssock.getpeercert()  # parsed dict (may be empty w/o verify)
-                except Exception:
-                    cert = {}
-                return cert, len(der) if der else 0
+            with ctx.wrap_socket(sock, server_hostname=_sni(host)) as ssock:
+                return ssock.getpeercert(binary_form=True)
     except Exception:
-        return None, 0
+        return None
+
+
+def _parse_cert_der(der: bytes | None) -> dict:
+    if not der:
+        return {"raw_der_bytes": 0}
+    if not _HAVE_CRYPTO:
+        return {"raw_der_bytes": len(der),
+                "note": "install 'cryptography' for full certificate parsing"}
+    try:
+        cert = x509.load_der_x509_certificate(der)
+    except Exception as exc:
+        return {"raw_der_bytes": len(der), "parse_error": str(exc)}
+    try:
+        san = cert.extensions.get_extension_for_class(
+            x509.SubjectAlternativeName).value.get_values_for_type(x509.DNSName)
+    except Exception:
+        san = []
+    try:                                        # cryptography >= 42
+        not_before = cert.not_valid_before_utc
+        not_after = cert.not_valid_after_utc
+    except AttributeError:                      # older cryptography
+        not_before = cert.not_valid_before.replace(tzinfo=timezone.utc)
+        not_after = cert.not_valid_after.replace(tzinfo=timezone.utc)
+    try:
+        fp = cert.fingerprint(hashes.SHA256()).hex()
+    except Exception:
+        fp = None
+    return {
+        "subject": cert.subject.rfc4514_string(),
+        "issuer": cert.issuer.rfc4514_string(),
+        "not_before": not_before.isoformat(),
+        "not_after": not_after.isoformat(),
+        "san": san,
+        "expired": not_after < datetime.now(timezone.utc),
+        "self_signed": cert.subject == cert.issuer,
+        "sha256_fingerprint": fp,
+        "serial_hex": format(cert.serial_number, "x"),
+    }
 
 
 def _scan_tls_sync(host: str, port: int, timeout: float) -> dict | None:
@@ -96,42 +144,12 @@ def _scan_tls_sync(host: str, port: int, timeout: float) -> dict | None:
     if not accepted:
         return None  # not a TLS service / unreachable
 
-    cert, der_len = _get_cert(host, port, timeout)
-    cert_info = {}
-    if cert:
-        cert_info = {
-            "subject": _flatten_name(cert.get("subject")),
-            "issuer": _flatten_name(cert.get("issuer")),
-            "not_before": cert.get("notBefore"),
-            "not_after": cert.get("notAfter"),
-            "san": [v for k, v in cert.get("subjectAltName", []) if k == "DNS"],
-            "expired": _is_expired(cert.get("notAfter")),
-        }
+    der = _get_cert_der(host, port, timeout)
     return {
         "accepted_versions": accepted,
         "cipher_by_version": cipher_by_ver,
-        "certificate": cert_info or {"raw_der_bytes": der_len},
+        "certificate": _parse_cert_der(der),
     }
-
-
-def _flatten_name(rdn_seq) -> dict:
-    out = {}
-    if not rdn_seq:
-        return out
-    for rdn in rdn_seq:
-        for k, v in rdn:
-            out[k] = v
-    return out
-
-
-def _is_expired(not_after: str | None) -> bool | None:
-    if not not_after:
-        return None
-    try:
-        exp = datetime.strptime(not_after, "%b %d %H:%M:%S %Y %Z")
-        return exp < datetime.utcnow()
-    except Exception:
-        return None
 
 
 class TLSScanner(BaseScanner):

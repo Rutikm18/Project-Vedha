@@ -20,7 +20,7 @@ import socket
 
 from .scanner_base import (
     BaseScanner, ScanResult, ScopeGuard, ResultWriter, expand_targets,
-    setup_logging, base_argparser, main_entrypoint,
+    resolve, setup_logging, base_argparser, main_entrypoint,
 )
 
 COMMON_COMMUNITIES = ["public", "private", "community", "manager", "snmp"]
@@ -42,28 +42,29 @@ def _build_get(community: str) -> bytes:
 
 
 def _extract_sysdescr(resp: bytes) -> str | None:
-    # Very small BER walk: find the last OCTET STRING (0x04) in the response,
-    # which for a sysDescr GET-response is the description value.
+    # Minimal, bounds-checked BER walk: return the last OCTET STRING, which for
+    # a sysDescr GET-response is the description value (it follows the community).
     try:
-        i = 0
-        last = None
-        while i < len(resp):
+        i, last, n = 0, None, len(resp)
+        while i + 1 < n:
             tag = resp[i]
             ln = resp[i + 1]
-            # Handle long-form length (rare for these small packets).
-            if ln & 0x80:
+            if ln & 0x80:                       # long-form length
                 nbytes = ln & 0x7F
+                if nbytes == 0 or i + 2 + nbytes > n:
+                    break
                 ln = int.from_bytes(resp[i + 2:i + 2 + nbytes], "big")
                 val_start = i + 2 + nbytes
             else:
                 val_start = i + 2
-            if tag == 0x04:  # OCTET STRING
+            if val_start > n:
+                break
+            if tag == 0x04:                     # OCTET STRING
                 last = resp[val_start:val_start + ln]
-            # Descend into constructed types (SEQUENCE 0x30, context 0xa2 etc.)
             if tag in (0x30, 0xa0, 0xa1, 0xa2, 0xa3):
-                i = val_start
+                i = val_start                   # descend into constructed types
             else:
-                i = val_start + ln
+                i = val_start + ln              # skip primitive value
         if last:
             return last.decode("latin-1", "replace")
     except Exception:
@@ -81,10 +82,14 @@ class SNMPScanner(BaseScanner):
         self.communities = communities or COMMON_COMMUNITIES
 
     def _query(self, target: str, community: str) -> bytes | None:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            family, sockaddr = resolve(target, self.port, proto="udp")
+        except OSError:
+            return None
+        sock = socket.socket(family, socket.SOCK_DGRAM)
         sock.settimeout(self.timeout)
         try:
-            sock.sendto(_build_get(community), (target, self.port))
+            sock.sendto(_build_get(community), sockaddr)
             data, _ = sock.recvfrom(4096)
             return data
         except (socket.timeout, OSError):

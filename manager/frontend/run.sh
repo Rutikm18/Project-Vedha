@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# ADVERSA — one-stop runner script
+# VEDHA — one-stop runner script
 # Usage: ./run.sh <command>
 #   check     verify Node + scanner tools + env vars
 #   setup     install npm deps, create .env.local if missing
@@ -29,8 +29,8 @@ fail() { printf "  ${C_RED}✗${C_RESET} %s\n" "$*"; }
 info() { printf "  ${C_DIM}%s${C_RESET}\n" "$*"; }
 hdr()  { printf "\n${C_CYAN}── %s ──${C_RESET}\n\n" "$*"; }
 
-PID_FILE=".adversa-server.pid"
-LOG_FILE=".adversa-server.log"
+PID_FILE=".vedha-server.pid"
+LOG_FILE=".vedha-server.log"
 
 # ── check: verify prerequisites ─────────────────────────────────────
 cmd_check() {
@@ -117,7 +117,7 @@ cmd_doctor() {
 
 # ── start: launch the dev server in background ──────────────────────
 cmd_start() {
-  hdr "Starting ADVERSA API server"
+  hdr "Starting VEDHA API server"
 
   if [[ -f $PID_FILE ]] && kill -0 "$(cat "$PID_FILE")" 2>/dev/null; then
     warn "Server already running (PID $(cat "$PID_FILE"))"
@@ -158,7 +158,7 @@ cmd_start() {
 
 # ── stop: kill background server ────────────────────────────────────
 cmd_stop() {
-  hdr "Stopping ADVERSA API server"
+  hdr "Stopping VEDHA API server"
 
   if [[ ! -f $PID_FILE ]]; then
     warn "No PID file — server not started by this script"
@@ -191,7 +191,7 @@ cmd_app() {
 
 # ── demo: end-to-end smoke test ─────────────────────────────────────
 cmd_demo() {
-  hdr "ADVERSA end-to-end demo"
+  hdr "VEDHA end-to-end demo"
 
   info "Step 1/4 — checking prerequisites"
   cmd_check
@@ -221,7 +221,7 @@ cmd_demo() {
 cmd_help() {
   cat <<EOF
 
-${C_CYAN}ADVERSA${C_RESET} — Network VAPT Platform runner
+${C_CYAN}VEDHA${C_RESET} — Network VAPT Platform runner
 
 ${C_BOLD}USAGE${C_RESET}
   ./run.sh <command> [args]

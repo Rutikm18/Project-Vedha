@@ -13,7 +13,7 @@ import { buildReportCommand }     from "./commands/report";
 import { buildInteractiveCommand, runInteractive } from "./commands/interactive";
 import { buildDoctorCommand }    from "./commands/doctor";
 import { buildToolsCommand }     from "./commands/tools";
-import { AdversaError }          from "../lib/errors";
+import { VedhaError }          from "../lib/errors";
 
 const VERSION = "0.7.0";
 
@@ -32,7 +32,7 @@ process.on('uncaughtException', (err) => {
 const program = new Command();
 
 program
-  .name("adversa")
+  .name("vedha")
   .description("Network VAPT Platform — CLI (run with no arguments for interactive mode)")
   .version(VERSION, "-v, --version")
   .action(async () => {
@@ -70,7 +70,7 @@ program.addCommand(buildToolsCommand());
 program.parseAsync(process.argv).catch((e: unknown) => {
   // Typed errors render themselves with title + fix; raw errors get a generic
   // wrapping plus a pointer to the doctor command.
-  if (e instanceof AdversaError) {
+  if (e instanceof VedhaError) {
     process.stderr.write(e.render() + '\n');
     process.exit(1);
   }

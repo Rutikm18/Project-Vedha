@@ -8,7 +8,7 @@ export function buildWhoamiCommand(): Command {
       const s = requireAuth();
       const res = await apiFetch(s, '/api/auth/me').catch(() => null);
       if (!res?.ok) {
-        process.stderr.write('\x1b[1;31m[ERR]\x1b[0m Session invalid or server unreachable. Run: adversa login\n');
+        process.stderr.write('\x1b[1;31m[ERR]\x1b[0m Session invalid or server unreachable. Run: vedha login\n');
         process.exit(1);
       }
       const data = await res.json() as { email: string; role: string; allowedScopes: string[] };
@@ -18,7 +18,7 @@ export function buildWhoamiCommand(): Command {
       if (data.allowedScopes.length > 0) {
         process.stdout.write(`Scopes: ${data.allowedScopes.join(', ')}\n`);
       } else if (data.role !== 'admin') {
-        process.stdout.write('\x1b[33mNo scopes assigned. Ask an admin: adversa admin add-user\x1b[0m\n');
+        process.stdout.write('\x1b[33mNo scopes assigned. Ask an admin: vedha admin add-user\x1b[0m\n');
       } else {
         process.stdout.write('Scopes: \x1b[36mall (admin)\x1b[0m\n');
       }

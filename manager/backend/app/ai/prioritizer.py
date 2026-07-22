@@ -27,16 +27,19 @@ try:
     from sklearn.model_selection import train_test_split
 
     _HAS_XGB = True
-except ImportError:  # pragma: no cover - exercised only without ML libs
+except Exception as exc:  # pragma: no cover - exercised only without usable ML libs
+    logger.warning("ai.prioritizer.xgboost_unavailable", error=str(exc))
     np = None  # type: ignore
     xgb = None  # type: ignore
+    train_test_split = None  # type: ignore
     _HAS_XGB = False
 
 try:
     import shap
 
     _HAS_SHAP = True
-except ImportError:  # pragma: no cover
+except Exception as exc:  # pragma: no cover
+    logger.warning("ai.prioritizer.shap_unavailable", error=str(exc))
     shap = None  # type: ignore
     _HAS_SHAP = False
 

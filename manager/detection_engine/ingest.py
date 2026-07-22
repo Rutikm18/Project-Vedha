@@ -4,7 +4,7 @@ per-host Assets.
 
 SCOPE: this validates against scanner_module's ScanResult schema specifically
 (scanner/target/timestamp/port/proto/status/data/evidence/error — see
-scanner_module/scanner/scanner_base.py). Ingesting Intrynx probe's different
+scanner_module/scanner/scanner_base.py). Ingesting Vedha probe's different
 result envelope shape (scan_type/engine/tool/ok/hosts|findings) would be a
 separate, additive parser, not assumed here.
 

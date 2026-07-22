@@ -75,8 +75,8 @@ async function runOpenVASScanBackground(taskId: string, params: {
     const { default: path } = await import("path");
     const { default: fs }   = await import("fs");
 
-    const scriptPath = path.join(os.tmpdir(), `adversa-openvas-${taskId}.py`);
-    const outputPath = path.join(os.tmpdir(), `adversa-openvas-out-${taskId}.json`);
+    const scriptPath = path.join(os.tmpdir(), `vedha-openvas-${taskId}.py`);
+    const outputPath = path.join(os.tmpdir(), `vedha-openvas-out-${taskId}.json`);
 
     const pyScript = `
 import json, time
@@ -107,14 +107,14 @@ with TLSConnection(hostname=GVM_HOST, port=GVM_PORT) as conn:
         gmp.authenticate(GVM_USER, GVM_PASSWORD)
 
         target_resp = gmp.create_target(
-            name=f"adversa-{TASK_ID}",
+            name=f"vedha-{TASK_ID}",
             hosts=TARGETS,
             port_list_id=FULL_PORT_LIST_ID,
         )
         target_id = target_resp.get("id")
 
         task_resp = gmp.create_task(
-            name=f"adversa-task-{TASK_ID}",
+            name=f"vedha-task-{TASK_ID}",
             config_id=CONFIG_IDS.get(SCAN_CONFIG_NAME, CONFIG_IDS["full-fast"]),
             target_id=target_id,
             scanner_id=OPENVAS_SCANNER_ID,

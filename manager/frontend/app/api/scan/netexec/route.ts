@@ -69,9 +69,9 @@ export async function POST(req: NextRequest) {
   const findingsCreated: string[] = [];
 
   for (const cidr of targets) {
-    const baseFile = path.join(os.tmpdir(), `adversa-nxc-base-${Date.now()}.json`);
-    const nullFile = path.join(os.tmpdir(), `adversa-nxc-null-${Date.now()}.json`);
-    const authFile = path.join(os.tmpdir(), `adversa-nxc-auth-${Date.now()}.json`);
+    const baseFile = path.join(os.tmpdir(), `vedha-nxc-base-${Date.now()}.json`);
+    const nullFile = path.join(os.tmpdir(), `vedha-nxc-null-${Date.now()}.json`);
+    const authFile = path.join(os.tmpdir(), `vedha-nxc-auth-${Date.now()}.json`);
 
     if (checks.includes("smb")) {
       await runNxc(["smb", cidr, "--json", "-o", baseFile], baseFile);

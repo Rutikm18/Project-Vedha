@@ -1,18 +1,18 @@
 {
-  "name": "adversa",
+  "name": "vedha",
   "version": "0.5.0",
   "private": true,
   "bin": {
-    "adversa": "./bin/adversa"
+    "vedha": "./bin/vedha"
   },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint .",
     "cli": "npx tsx cli/index.ts",
     "build:cli": "tsc -p tsconfig.cli.json",
-    "adversa": "npx tsx cli/index.ts"
+    "vedha": "npx tsx cli/index.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.99.0",

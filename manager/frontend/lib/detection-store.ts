@@ -20,14 +20,14 @@ export interface AttackAction {
 
 // Mocked attack timeline — AttackLogger.log_action results
 const ATTACK_TIMELINE: AttackAction[] = [
-  { id: "ATK-001", engagementId: "ENG-001", findingId: "VAPT-HIGH-001",  mitreId: "T1557.001", mitreTechnique: "LLMNR/NBT-NS Poisoning & Relay", tactic: "Credential Access",    targetIp: "10.0.1.10", timestamp: "2026-05-10T09:05:00Z", actionDetail: "Responder started; LLMNR broadcast poisoning on eth0. Captured NTLMv2 hash from WS-042 within 12s.", actor: "analyst@adversa.io" },
-  { id: "ATK-002", engagementId: "ENG-001", findingId: "VAPT-CRIT-002",  mitreId: "T1558.003", mitreTechnique: "Kerberoasting",                   tactic: "Credential Access",    targetIp: "10.0.1.20", timestamp: "2026-05-10T09:18:00Z", actionDetail: "GetUserSPNs.py executed. 3 TGS hashes captured for svc_backup, svc_iis, svc_monitor.", actor: "analyst@adversa.io" },
-  { id: "ATK-003", engagementId: "ENG-001", findingId: "VAPT-CRIT-001",  mitreId: "T1134.001", mitreTechnique: "Token Impersonation/Theft",        tactic: "Privilege Escalation", targetIp: "10.0.1.10", timestamp: "2026-05-10T09:35:00Z", actionDetail: "Mimikatz sekurlsa::tickets executed on WS-042. DA token extracted from memory.", actor: "analyst@adversa.io" },
-  { id: "ATK-004", engagementId: "ENG-001",                              mitreId: "T1003.006", mitreTechnique: "DCSync",                            tactic: "Credential Access",    targetIp: "10.0.0.10", timestamp: "2026-05-10T09:52:00Z", actionDetail: "secretsdump.py /drsuapi DCSync against DC01. All domain hashes exfiltrated.", actor: "analyst@adversa.io" },
-  { id: "ATK-005", engagementId: "ENG-001", findingId: "VAPT-HIGH-002",  mitreId: "T1021.003", mitreTechnique: "DCOM Remote Execution",             tactic: "Lateral Movement",     targetIp: "10.0.1.11", timestamp: "2026-05-10T10:10:00Z", actionDetail: "WMI /node:WS-128 remote process creation via COMObject MMC20.Application.", actor: "analyst@adversa.io" },
-  { id: "ATK-006", engagementId: "ENG-001",                              mitreId: "T1550.002", mitreTechnique: "Pass the Hash",                     tactic: "Lateral Movement",     targetIp: "10.0.0.20", timestamp: "2026-05-10T10:28:00Z", actionDetail: "psexec.py with NTLM hash for local admin account. Authenticated to MGMT-SRV.", actor: "analyst@adversa.io" },
-  { id: "ATK-007", engagementId: "ENG-001",                              mitreId: "T1110.002", mitreTechnique: "Password Cracking",                  tactic: "Credential Access",    targetIp: "10.0.0.10", timestamp: "2026-05-10T11:00:00Z", actionDetail: "Offline hashcat cracking of RC4 TGS for svc_backup. Password 'Summer2023!' cracked in 4min.", actor: "analyst@adversa.io" },
-  { id: "ATK-008", engagementId: "ENG-001",                              mitreId: "T1055",     mitreTechnique: "Process Injection",                  tactic: "Defense Evasion",      targetIp: "10.0.1.10", timestamp: "2026-05-10T10:05:00Z", actionDetail: "Injected shellcode into svchost.exe via NtCreateThreadEx for C2 persistence.", actor: "analyst@adversa.io" },
+  { id: "ATK-001", engagementId: "ENG-001", findingId: "VAPT-HIGH-001",  mitreId: "T1557.001", mitreTechnique: "LLMNR/NBT-NS Poisoning & Relay", tactic: "Credential Access",    targetIp: "10.0.1.10", timestamp: "2026-05-10T09:05:00Z", actionDetail: "Responder started; LLMNR broadcast poisoning on eth0. Captured NTLMv2 hash from WS-042 within 12s.", actor: "analyst@vedha.io" },
+  { id: "ATK-002", engagementId: "ENG-001", findingId: "VAPT-CRIT-002",  mitreId: "T1558.003", mitreTechnique: "Kerberoasting",                   tactic: "Credential Access",    targetIp: "10.0.1.20", timestamp: "2026-05-10T09:18:00Z", actionDetail: "GetUserSPNs.py executed. 3 TGS hashes captured for svc_backup, svc_iis, svc_monitor.", actor: "analyst@vedha.io" },
+  { id: "ATK-003", engagementId: "ENG-001", findingId: "VAPT-CRIT-001",  mitreId: "T1134.001", mitreTechnique: "Token Impersonation/Theft",        tactic: "Privilege Escalation", targetIp: "10.0.1.10", timestamp: "2026-05-10T09:35:00Z", actionDetail: "Mimikatz sekurlsa::tickets executed on WS-042. DA token extracted from memory.", actor: "analyst@vedha.io" },
+  { id: "ATK-004", engagementId: "ENG-001",                              mitreId: "T1003.006", mitreTechnique: "DCSync",                            tactic: "Credential Access",    targetIp: "10.0.0.10", timestamp: "2026-05-10T09:52:00Z", actionDetail: "secretsdump.py /drsuapi DCSync against DC01. All domain hashes exfiltrated.", actor: "analyst@vedha.io" },
+  { id: "ATK-005", engagementId: "ENG-001", findingId: "VAPT-HIGH-002",  mitreId: "T1021.003", mitreTechnique: "DCOM Remote Execution",             tactic: "Lateral Movement",     targetIp: "10.0.1.11", timestamp: "2026-05-10T10:10:00Z", actionDetail: "WMI /node:WS-128 remote process creation via COMObject MMC20.Application.", actor: "analyst@vedha.io" },
+  { id: "ATK-006", engagementId: "ENG-001",                              mitreId: "T1550.002", mitreTechnique: "Pass the Hash",                     tactic: "Lateral Movement",     targetIp: "10.0.0.20", timestamp: "2026-05-10T10:28:00Z", actionDetail: "psexec.py with NTLM hash for local admin account. Authenticated to MGMT-SRV.", actor: "analyst@vedha.io" },
+  { id: "ATK-007", engagementId: "ENG-001",                              mitreId: "T1110.002", mitreTechnique: "Password Cracking",                  tactic: "Credential Access",    targetIp: "10.0.0.10", timestamp: "2026-05-10T11:00:00Z", actionDetail: "Offline hashcat cracking of RC4 TGS for svc_backup. Password 'Summer2023!' cracked in 4min.", actor: "analyst@vedha.io" },
+  { id: "ATK-008", engagementId: "ENG-001",                              mitreId: "T1055",     mitreTechnique: "Process Injection",                  tactic: "Defense Evasion",      targetIp: "10.0.1.10", timestamp: "2026-05-10T10:05:00Z", actionDetail: "Injected shellcode into svchost.exe via NtCreateThreadEx for C2 persistence.", actor: "analyst@vedha.io" },
 ];
 
 // ── Mocked SIEM/EDR responses (SIEMQueryEngine + EDRQueryEngine) ─────────────
@@ -157,7 +157,7 @@ status: experimental
 description: Detects LLMNR responses from hosts that are not authoritative DNS servers — indicator of Responder-style poisoning attack.
 references:
   - https://attack.mitre.org/techniques/T1557/001/
-author: ADVERSA Detection Engine
+author: Vedha Detection Engine
 date: 2026-05-10
 tags:
   - attack.credential_access
@@ -186,7 +186,7 @@ status: stable
 description: Detects multiple Kerberos TGS requests with RC4 encryption (Etype 23) from a single non-DC source — characteristic of Kerberoasting.
 references:
   - https://attack.mitre.org/techniques/T1558/003/
-author: ADVERSA Detection Engine
+author: Vedha Detection Engine
 date: 2026-05-10
 tags:
   - attack.credential_access
@@ -221,7 +221,7 @@ status: experimental
 description: Detects process access to LSASS memory with handle rights indicative of Mimikatz sekurlsa::tickets or credential dumping.
 references:
   - https://attack.mitre.org/techniques/T1134/001/
-author: ADVERSA Detection Engine
+author: Vedha Detection Engine
 date: 2026-05-10
 tags:
   - attack.privilege_escalation
@@ -257,7 +257,7 @@ status: experimental
 description: Detects DCOM-based lateral movement using MMC20.Application or ShellWindows objects spawning child processes on remote hosts.
 references:
   - https://attack.mitre.org/techniques/T1021/003/
-author: ADVERSA Detection Engine
+author: Vedha Detection Engine
 date: 2026-05-10
 tags:
   - attack.lateral_movement
@@ -291,7 +291,7 @@ status: stable
 description: Offline password cracking of Kerberos RC4 hashes is undetectable post-exfiltration. This rule detects the upstream condition — TGS request with weak encryption that enables offline cracking.
 references:
   - https://attack.mitre.org/techniques/T1110/002/
-author: ADVERSA Detection Engine
+author: Vedha Detection Engine
 date: 2026-05-10
 tags:
   - attack.credential_access
@@ -324,7 +324,7 @@ status: stable
 description: Detects Pass-the-Hash attacks by correlating NTLM logon type 3 events from sources that have not previously authenticated with passwords.
 references:
   - https://attack.mitre.org/techniques/T1550/002/
-author: ADVERSA Detection Engine
+author: Vedha Detection Engine
 date: 2026-05-10
 tags:
   - attack.lateral_movement

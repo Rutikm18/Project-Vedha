@@ -153,7 +153,7 @@ const frameworks: ComplianceFrameworkData[] = [
         requirement: "The organization employs an independent penetration agent or penetration team to perform penetration testing on the information system.",
         findingRefs: [],
         status: "COMPLIANT",
-        evidenceSummary: "Independent VAPT engagement conducted by Adversa Security. External + internal testing performed. Scope covered: network, AD, protocol, segmentation. Report serves as CA-8 evidence.",
+        evidenceSummary: "Independent VAPT engagement conducted by Vedha Security. External + internal testing performed. Scope covered: network, AD, protocol, segmentation. Report serves as CA-8 evidence.",
         remediationPriority: "LOW",
       },
       {
@@ -815,7 +815,7 @@ export default function ReportsPage() {
             <button className="md:hidden" onClick={() => setSidebarOpen(true)} style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}>
               <Menu size={20} color="#2563EB" />
             </button>
-            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 18, color: "var(--adv-accent)", letterSpacing: 3 }}>ADVERSA</span>
+            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 18, color: "var(--adv-accent)", letterSpacing: 3 }}>VEDHA</span>
             <span style={{ color: "var(--adv-border)" }}>|</span>
             <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: "var(--adv-text-muted)" }}>REPORTS v0.9.1</span>
             <FileText size={14} color="#2563EB" style={{ marginLeft: 4 }} />

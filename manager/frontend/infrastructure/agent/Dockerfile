@@ -18,10 +18,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY agent.py .
 
-RUN useradd -r -u 1001 -g root adversa-agent
-RUN mkdir -p /etc/adversa/certs && chown adversa-agent /etc/adversa/certs
+RUN useradd -r -u 1001 -g root vedha-agent
+RUN mkdir -p /etc/vedha/certs && chown vedha-agent /etc/vedha/certs
 
-USER adversa-agent
+USER vedha-agent
 
 HEALTHCHECK --interval=30s --timeout=10s --start-period=15s --retries=3 \
   CMD python3 -c "import sys; sys.exit(0)"

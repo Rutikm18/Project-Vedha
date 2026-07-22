@@ -36,10 +36,9 @@ class LicenseError(Exception):
 
 
 def host_fingerprint() -> str:
-    """Stable per-machine ID: MAC + node name, hashed. Deterministic on a
-    given host, different on any other — this is what the license binds to."""
-    raw = f"{uuid.getnode()}|{platform.node()}|{platform.machine()}"
-    return hashlib.sha256(raw.encode()).hexdigest()[:24]
+    """Stable per-machine ID, derived from hw_bind's hardware fingerprint."""
+    from agent.hw_bind import get_hw_id
+    return get_hw_id()[:24]  # license uses 24 chars; HW bind uses 32
 
 
 def short_id() -> str:
@@ -100,3 +99,29 @@ def check_license() -> dict | None:
         raise LicenseError(f"No license found. This machine's Host ID is "
                            f"{short_id()} — give it to your administrator to get a license.")
     return verify_license(token)
+
+
+def gauntlet() -> None:
+    """Combined startup gauntlet: HW bind → license check. Fails fast.
+
+    This is the first thing the compiled binary runs. If HW binding is
+    configured AND license enforcement is on, both must pass. If either
+    fails, the binary exits before any network I/O occurs.
+
+    Deployed probes that were compiled with a HW_BIND_FINGERPRINT always
+    run this check. Development builds (LICENSE_ENFORCED=false) skip it.
+    """
+    from agent.hw_bind import check_hw_bind, HWBindError
+
+    try:
+        check_hw_bind()
+    except HWBindError:
+        raise   # let the caller format the message
+
+    try:
+        lic = check_license()
+    except LicenseError:
+        raise
+
+    # If we got here, both checks passed. lic is the license dict or None
+    # (None = enforcement off in dev mode). Caller uses it for logging.

@@ -25,7 +25,7 @@ import urllib.error
 
 from .scanner_base import (
     BaseScanner, ScanResult, ScopeGuard, ResultWriter, expand_targets,
-    parse_ports, setup_logging, base_argparser, main_entrypoint,
+    parse_ports, bracket_host, setup_logging, base_argparser, main_entrypoint,
 )
 
 DEFAULT_WEB_PORTS = [80, 443, 8080, 8443, 8000, 8888, 9000, 9200]
@@ -37,6 +37,16 @@ _SECURITY_HEADERS = [
     "content-security-policy", "strict-transport-security",
     "x-frame-options", "x-content-type-options", "referrer-policy",
 ]
+
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None     # surface the 3xx instead of following it
+
+_WEB_CTX = ssl.create_default_context()
+_WEB_CTX.check_hostname = False
+_WEB_CTX.verify_mode = ssl.CERT_NONE
+_OPENER = urllib.request.build_opener(
+    _NoRedirect, urllib.request.HTTPSHandler(context=_WEB_CTX))
 
 _TECH_HINTS = {
     "wordpress": [b"wp-content", b"wp-includes"],
@@ -52,13 +62,10 @@ _TECH_HINTS = {
 
 
 def _fetch(url: str, timeout: float) -> dict | None:
-    ctx = ssl.create_default_context()
-    ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
     req = urllib.request.Request(
         url, headers={"User-Agent": "va-scanner/1.0"}, method="GET")
     try:
-        with urllib.request.urlopen(req, timeout=timeout, context=ctx) as resp:
+        with _OPENER.open(req, timeout=timeout) as resp:
             body = resp.read(8192)
             headers = {k.lower(): v for k, v in resp.headers.items()}
             status = resp.status
@@ -71,7 +78,7 @@ def _fetch(url: str, timeout: float) -> dict | None:
             pass
         headers = {k.lower(): v for k, v in (e.headers or {}).items()}
         status = e.code
-        final_url = url
+        final_url = e.geturl() if hasattr(e, "geturl") else url
     except Exception:
         return None
 
@@ -80,9 +87,9 @@ def _fetch(url: str, timeout: float) -> dict | None:
              if title_m else None)
 
     tech = []
-    hay = body + repr(headers).encode("latin-1", "replace")
+    hay = (body + repr(headers).encode("latin-1", "replace")).lower()
     for name, sigs in _TECH_HINTS.items():
-        if any(s.lower() in hay.lower() for s in sigs):
+        if any(s.lower() in hay for s in sigs):
             tech.append(name)
 
     missing_sec = [h for h in _SECURITY_HEADERS if h not in headers]
@@ -111,7 +118,7 @@ class WebScanner(BaseScanner):
 
     async def _scan_port(self, target: str, port: int) -> ScanResult | None:
         scheme = "https" if port in _TLS_PORTS else "http"
-        url = f"{scheme}://{target}:{port}/"
+        url = f"{scheme}://{bracket_host(target)}:{port}/"
         await self.limiter.wait()
         loop = asyncio.get_running_loop()
         async with self.sem:

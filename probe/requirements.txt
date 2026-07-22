@@ -19,6 +19,11 @@
 #     pip install -r requirements.txt
 # ----------------------------------------------------------------------------
 
+# --- agent transport (httpx + websockets) + license gate (cryptography) ------
+httpx>=0.27
+websockets>=12.0
+cryptography>=42.0
+
 # --- ssh_collector.py — credentialed Linux inventory (authorized creds) ------
 # Pure-Python SSH; key-based auth strongly preferred over passwords.
 paramiko>=3.4.0

@@ -25,6 +25,7 @@ import asyncio
 import ipaddress
 import json
 import logging
+import socket
 import sys
 import time
 from dataclasses import dataclass, field, asdict
@@ -77,9 +78,16 @@ class ScopeGuard:
     """
 
     def __init__(self, networks: list[ipaddress._BaseNetwork],
-                 hostnames: set[str]):
+                 hostnames: set[str],
+                 excludes: list[ipaddress._BaseNetwork] | None = None):
         self._networks = networks
         self._hostnames = {h.lower() for h in hostnames}
+        # Exclusions are subtracted from the allowlist and take precedence over
+        # it: a target inside an excluded range is out of scope even if it also
+        # falls inside an allowed range. This is the per-job "carve-out" the
+        # operator sets in the Scanner UI (e.g. scan 10.0.0.0/24 EXCEPT the
+        # fragile PLC at 10.0.0.5).
+        self._excludes = excludes or []
 
     @classmethod
     def from_file(cls, path: str | Path) -> "ScopeGuard":
@@ -105,7 +113,8 @@ class ScopeGuard:
         return cls(nets, hosts)
 
     @classmethod
-    def from_list(cls, entries: Iterable[str]) -> "ScopeGuard":
+    def from_list(cls, entries: Iterable[str],
+                  excludes: Iterable[str] | None = None) -> "ScopeGuard":
         nets, hosts = [], set()
         for line in entries:
             line = line.strip()
@@ -115,15 +124,32 @@ class ScopeGuard:
                 nets.append(ipaddress.ip_network(line, strict=False))
             except ValueError:
                 hosts.add(line.lower())
-        return cls(nets, hosts)
+        exc_nets: list[ipaddress._BaseNetwork] = []
+        for line in (excludes or []):
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                exc_nets.append(ipaddress.ip_network(line, strict=False))
+            except ValueError:
+                # a bare excluded hostname can't be range-matched; skip it
+                pass
+        if exc_nets:
+            LOG.info("scope excludes: %d network(s)", len(exc_nets))
+        return cls(nets, hosts, exc_nets)
 
     def in_scope(self, target: str) -> bool:
         t = target.strip().lower()
-        if t in self._hostnames:
-            return True
         try:
             ip = ipaddress.ip_address(t)
         except ValueError:
+            ip = None
+        # Exclusions win over the allowlist — checked first.
+        if ip is not None and any(ip in net for net in self._excludes):
+            return False
+        if t in self._hostnames:
+            return True
+        if ip is None:
             # a hostname not explicitly listed is out of scope by default
             return False
         return any(ip in net for net in self._networks)
@@ -138,6 +164,16 @@ class ScopeGuard:
                 yield t
             else:
                 LOG.warning("dropping out-of-scope target: %s", t)
+
+    @property
+    def networks(self) -> list[ipaddress._BaseNetwork]:
+        """Read-only view of allowed networks (for CIDR-level engines)."""
+        return list(self._networks)
+
+    @property
+    def excludes(self) -> list[ipaddress._BaseNetwork]:
+        """Read-only view of excluded networks (to build masscan --exclude)."""
+        return list(self._excludes)
 
 
 # --------------------------------------------------------------------------- #
@@ -224,6 +260,33 @@ def expand_targets(specs: Iterable[str], *, max_hosts: int = 200_000) -> list[st
             for ip in net.hosts():
                 add(str(ip))
     return out
+
+
+def resolve(target: str, port: int, *, proto: str = "tcp"):
+    """
+    Resolve `target` to a concrete (family, sockaddr) covering IPv4, IPv6, and
+    hostnames. Raw-socket scanners MUST use this instead of hardcoding AF_INET
+    or they silently miss every IPv6 target. getaddrinfo orders results per RFC
+    6724; we take the first usable result. Raises OSError if unresolvable.
+    """
+    socktype = socket.SOCK_DGRAM if proto == "udp" else socket.SOCK_STREAM
+    infos = socket.getaddrinfo(target, port, socket.AF_UNSPEC, socktype)
+    if not infos:
+        raise OSError(f"cannot resolve {target!r}")
+    family, _stype, _proto, _canon, sockaddr = infos[0]
+    return family, sockaddr
+
+
+def bracket_host(target: str) -> str:
+    """Wrap an IPv6 literal in [] for a URL authority; leave v4/hostnames as-is.
+    'http://::1:80/' is invalid — it must be 'http://[::1]:80/'."""
+    if ":" in target and not target.startswith("["):
+        try:
+            ipaddress.ip_address(target)
+            return f"[{target}]"
+        except ValueError:
+            return target
+    return target
 
 
 def parse_ports(spec: str) -> list[int]:
@@ -318,6 +381,7 @@ class BaseScanner:
         self.limiter = RateLimiter(rate)
         self.timeout = timeout
         self.sem = asyncio.Semaphore(concurrency)
+        self._concurrency = concurrency
 
     async def scan_target(self, target: str) -> list[ScanResult]:
         raise NotImplementedError
@@ -337,10 +401,34 @@ class BaseScanner:
     async def run(self, targets: Iterable[str], writer: ResultWriter) -> None:
         in_scope = list(self.scope.filter(targets))
         LOG.info("[%s] scanning %d in-scope target(s)", self.name, len(in_scope))
-        tasks = [asyncio.create_task(self._guarded(t)) for t in in_scope]
-        for fut in asyncio.as_completed(tasks):
-            for result in await fut:
-                writer.write(result)
+        if not in_scope:
+            return
+
+        # Sliding window: keep only `window` targets in flight at once so a huge
+        # target list doesn't allocate hundreds of thousands of task objects (plus
+        # their per-target port fan-out) simultaneously. self.sem still caps the
+        # total number of concurrent sockets; this is a separate, target-level bound.
+        window = max(self._concurrency, 64)
+        it = iter(in_scope)
+        inflight: set[asyncio.Task] = set()
+
+        def _fill() -> None:
+            while len(inflight) < window:
+                try:
+                    t = next(it)
+                except StopIteration:
+                    return
+                inflight.add(asyncio.create_task(self._guarded(t)))
+
+        _fill()
+        while inflight:
+            done, _ = await asyncio.wait(
+                inflight, return_when=asyncio.FIRST_COMPLETED)
+            for fut in done:
+                inflight.discard(fut)
+                for result in fut.result():   # _guarded never raises
+                    writer.write(result)
+            _fill()
 
 
 # --------------------------------------------------------------------------- #

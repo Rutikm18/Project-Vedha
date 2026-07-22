@@ -7,7 +7,7 @@ NaCl Box encryption, over HTTPS with a self-signed cert + SPKI pinning.
 ## Run
 
 ```bash
-cd adversa
+cd vedha
 python3 tests/e2e/run.py          # exit 0 = all scenarios pass
 ```
 

@@ -1,15 +1,15 @@
 "use client";
 
 import React, { useState, useRef } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { use } from "react";
 import Link from "next/link";
 import {
   ArrowLeft, RefreshCw, AlertTriangle, Upload, Loader2,
-  Network, Shield, Eye, FileText, BarChart2, Users,
+  Network, Shield, Eye, FileText, BarChart2, Users, Pencil, X, Check,
 } from "lucide-react";
 import { PageShell } from "../../../components/PageShell";
-import { fetchJson, isUnauthorized } from "../../../lib/fetcher";
+import { fetchJson, isUnauthorized, getStoredToken } from "../../../lib/fetcher";
 import { DataState, SkeletonRows, EmptyState } from "../../../components/states/DataState";
 import { useToast } from "../../../hooks/useToast";
 
@@ -83,6 +83,8 @@ function OverviewTab({ eng, activity }: { eng: Engagement; activity: { id: strin
               { label: "End",       value: eng.endDate },
               { label: "Scope",     value: eng.scopeCidrs.join(", ") || "—" },
               { label: "Excluded",  value: eng.excludedCidrs.join(", ") || "—" },
+              { label: "Tags",      value: eng.tags?.length ? eng.tags.join(", ") : "—" },
+              { label: "Description", value: eng.description || "—" },
             ].map((r) => (
               <div key={r.label} style={{ display: "flex", padding: "6px 0", borderBottom: "1px solid var(--adv-border)" }}>
                 <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: "var(--adv-text-muted)", width: 80, flexShrink: 0 }}>{r.label}</span>
@@ -224,8 +226,14 @@ function ImportScanButton({ engagementId }: { engagementId: string }) {
     try {
       const fd = new FormData();
       fd.append("file", file);
+      // Multipart upload — can't use fetchJson (it forces application/json and
+      // would break the boundary), so attach the Bearer token by hand. Without it
+      // the withBackend route 401s and the import silently fails.
+      const token = getStoredToken();
       const res = await fetch(`/api/engagements/${engagementId}/import-facts`, {
-        method: "POST", body: fd,
+        method: "POST",
+        body: fd,
+        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok) throw new Error(data?.error || data?.detail || `Import failed (${res.status}).`);
@@ -265,14 +273,107 @@ function ImportScanButton({ engagementId }: { engagementId: string }) {
   );
 }
 
+/* ─── Edit Engagement modal — makes every field editable (PATCH via BFF) ─── */
+const EDIT_STATUSES = ["PLANNING", "ACTIVE", "PAUSED", "COMPLETED"] as const;
+
+function EditEngagementModal({ eng, id, onClose }: { eng: Engagement; id: string; onClose: () => void }) {
+  const qc = useQueryClient();
+  const toast = useToast();
+  const dash = (v?: string) => (!v || v === "—" ? "" : v);
+  const [f, setF] = useState({
+    name: eng.name ?? "",
+    client: dash(eng.client),
+    assessor: dash(eng.assessor),
+    description: eng.description ?? "",
+    status: eng.status ?? "PLANNING",
+    startDate: (eng.startDate ?? "").slice(0, 10),
+    endDate: (eng.endDate ?? "").slice(0, 10),
+    scopeCidrs: (eng.scopeCidrs ?? []).join(", "),
+    excludedCidrs: (eng.excludedCidrs ?? []).join(", "),
+    tags: (eng.tags ?? []).join(", "),
+  });
+  const patch = (p: Partial<typeof f>) => setF((o) => ({ ...o, ...p }));
+
+  const save = useMutation({
+    // fetchJson injects the Authorization header (raw fetch would 401 at the BFF).
+    mutationFn: () => fetchJson(`/api/engagements/${id}`, {
+      method: "PUT",
+      body: JSON.stringify(f),
+    }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["engagement", id] });
+      qc.invalidateQueries({ queryKey: ["engagements"] });
+      toast.success("Saved", "Engagement updated.");
+      onClose();
+    },
+    onError: (e) => toast.error("Update failed", e instanceof Error ? e.message : "Could not save."),
+  });
+
+  const mono = "'JetBrains Mono', monospace";
+  const input: React.CSSProperties = {
+    width: "100%", boxSizing: "border-box", background: "var(--adv-bg)",
+    border: "1px solid var(--adv-border)", borderRadius: 5, padding: "8px 10px",
+    color: "var(--adv-text)", fontFamily: mono, fontSize: 12, outline: "none",
+  };
+  const label: React.CSSProperties = { fontFamily: mono, fontSize: 9, color: "var(--adv-text-muted)", marginBottom: 5, display: "block" };
+  const canSave = f.name.trim().length > 0 && f.scopeCidrs.split(/[\n,]/).some((s) => s.trim());
+
+  return (
+    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <div className="animate-scale-in" style={{ background: "var(--adv-panel)", border: "1px solid var(--adv-border)", borderRadius: 10, width: 540, maxHeight: "90vh", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+        <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--adv-border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <span style={{ fontFamily: mono, fontSize: 13, color: "var(--adv-text)", letterSpacing: 1 }}>EDIT ENGAGEMENT</span>
+          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--adv-text-muted)" }}><X size={16} /></button>
+        </div>
+
+        <div style={{ padding: "18px 22px", overflowY: "auto", display: "flex", flexDirection: "column", gap: 12 }}>
+          <div><label style={label}>ENGAGEMENT NAME *</label>
+            <input value={f.name} onChange={(e) => patch({ name: e.target.value })} style={input} /></div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+            <div><label style={label}>CLIENT</label><input value={f.client} onChange={(e) => patch({ client: e.target.value })} style={input} /></div>
+            <div><label style={label}>ASSESSOR</label><input value={f.assessor} onChange={(e) => patch({ assessor: e.target.value })} style={input} /></div>
+          </div>
+          <div><label style={label}>DESCRIPTION</label>
+            <textarea value={f.description} onChange={(e) => patch({ description: e.target.value })} rows={2} style={{ ...input, resize: "vertical", lineHeight: 1.5 }} /></div>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
+            <div><label style={label}>STATUS</label>
+              <select value={f.status} onChange={(e) => patch({ status: e.target.value })} style={{ ...input, cursor: "pointer" }}>
+                {EDIT_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
+              </select></div>
+            <div><label style={label}>START</label><input type="date" value={f.startDate} onChange={(e) => patch({ startDate: e.target.value })} style={input} /></div>
+            <div><label style={label}>END</label><input type="date" value={f.endDate} onChange={(e) => patch({ endDate: e.target.value })} style={input} /></div>
+          </div>
+          <div><label style={label}>SCOPE CIDRs * (comma-separated)</label>
+            <textarea value={f.scopeCidrs} onChange={(e) => patch({ scopeCidrs: e.target.value })} rows={2} style={{ ...input, resize: "vertical", lineHeight: 1.5 }} /></div>
+          <div><label style={label}>EXCLUDED IPs / CIDRs</label>
+            <textarea value={f.excludedCidrs} onChange={(e) => patch({ excludedCidrs: e.target.value })} rows={2} style={{ ...input, resize: "vertical", lineHeight: 1.5 }} /></div>
+          <div><label style={label}>TAGS (comma-separated)</label>
+            <input value={f.tags} onChange={(e) => patch({ tags: e.target.value })} placeholder="external, web, pci" style={input} /></div>
+        </div>
+
+        <div style={{ padding: "14px 20px", borderTop: "1px solid var(--adv-border)", display: "flex", justifyContent: "flex-end", gap: 8 }}>
+          <button onClick={onClose} style={{ fontFamily: mono, fontSize: 10, color: "var(--adv-text-muted)", background: "none", border: "1px solid var(--adv-border)", borderRadius: 4, padding: "6px 16px", cursor: "pointer" }}>CANCEL</button>
+          <button onClick={() => save.mutate()} disabled={!canSave || save.isPending}
+            style={{ display: "flex", alignItems: "center", gap: 6, fontFamily: mono, fontSize: 10, color: canSave ? "#00E676" : "#64748B", background: canSave ? "rgba(0,230,118,0.08)" : "transparent", border: `1px solid ${canSave ? "rgba(0,230,118,0.3)" : "var(--adv-border)"}`, borderRadius: 4, padding: "6px 20px", cursor: canSave ? "pointer" : "not-allowed" }}>
+            {save.isPending ? <RefreshCw size={11} style={{ animation: "spin 1s linear infinite" }} /> : <Check size={11} />} SAVE CHANGES
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ─── Main Page ─── */
 export default function EngagementDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
+  const [showEdit, setShowEdit] = useState(false);
 
   const { data, isLoading, isError } = useQuery({
     queryKey: ["engagement", id],
-    queryFn: () => fetch(`/api/engagements/${id}`).then((r) => r.json()),
+    // fetchJson injects the Bearer token; a raw fetch 401s against the
+    // withBackend route and the detail page renders empty.
+    queryFn: () => fetchJson<any>(`/api/engagements/${id}`),
   });
 
   const eng: Engagement | null = data?.engagement ?? null;
@@ -291,7 +392,16 @@ export default function EngagementDetailPage({ params }: { params: Promise<{ id:
     <PageShell
       title={isLoading ? "LOADING…" : eng?.name ?? "ENGAGEMENT"}
       subtitle={eng ? `${eng.client} · ${eng.assessor}` : ""}
-      headerActions={<ImportScanButton engagementId={id} />}
+      headerActions={
+        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          {eng && (
+            <button className="btn-secondary" onClick={() => setShowEdit(true)} title="Edit engagement fields">
+              <Pencil size={13} /> Edit
+            </button>
+          )}
+          <ImportScanButton engagementId={id} />
+        </div>
+      }
       statusItems={eng ? [
         { label: "STATUS",   value: eng.status,           color: statusColor(eng.status) },
         { label: "FINDINGS", value: String(eng.findingCount), color: eng.findingCount > 0 ? "#FF1744" : "var(--adv-text-muted)" },
@@ -345,6 +455,10 @@ export default function EngagementDetailPage({ params }: { params: Promise<{ id:
           </>
         )}
       </div>
+
+      {showEdit && eng && (
+        <EditEngagementModal eng={eng} id={id} onClose={() => setShowEdit(false)} />
+      )}
     </PageShell>
   );
 }

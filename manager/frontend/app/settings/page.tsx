@@ -17,12 +17,12 @@ const EMAIL_FIELDS: EnvSetting[] = [
   { key: "SMTP_PORT",  label: "SMTP Port",    type: "number", placeholder: "587", description: "587 for STARTTLS, 465 for SSL" },
   { key: "SMTP_USER",  label: "SMTP User",    placeholder: "alerts@corp.com",     description: "Auth username for the SMTP server" },
   { key: "SMTP_PASS",  label: "SMTP Password",type: "password", placeholder: "••••••••", description: "Auth password — stored in .env.local only" },
-  { key: "SMTP_FROM",  label: "From Address", placeholder: "adversa@corp.com",    description: "The From: header on outbound emails" },
+  { key: "SMTP_FROM",  label: "From Address", placeholder: "vedha@corp.com",    description: "The From: header on outbound emails" },
   { key: "SMTP_TO",    label: "Alert Recipients", placeholder: "sec-team@corp.com", description: "Comma-separated list of notification recipients" },
 ];
 
 const SLACK_FIELDS: EnvSetting[] = [
-  { key: "SLACK_WEBHOOK_URL", label: "Webhook URL", type: "password", placeholder: "https://hooks.slack.com/services/...", description: "Incoming webhook URL from MessageCircle App settings" },
+  { key: "SLACK_WEBHOOK_URL", label: "Webhook URL", type: "password", placeholder: "https://hooks.slack.com/services/...", description: "Incoming webhook URL from Slack app settings" },
 ];
 
 const JIRA_FIELDS: EnvSetting[] = [
@@ -55,12 +55,12 @@ function SectionHeader({ icon, label, badge }: { icon: React.ElementType; label:
   const Icon = icon;
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-      <div style={{ width: 32, height: 32, borderRadius: 6, background: "rgba(37,99,235,0.08)", border: "1px solid rgba(37,99,235,0.2)", display: "flex", alignItems: "center", justifyContent: "center" }}>
-        <Icon size={16} color="#2563EB" />
+      <div className="settings-section-icon">
+        <Icon size={16} color="var(--accent)" />
       </div>
-      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, color: "var(--adv-text)", letterSpacing: 1 }}>{label}</span>
+      <span style={{ fontFamily: "var(--font-body)", fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>{label}</span>
       {badge && (
-        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: "var(--adv-text-muted)", background: "rgba(100,116,139,0.1)", border: "1px solid var(--adv-border)", borderRadius: 10, padding: "2px 8px" }}>
+        <span className="badge badge-info">
           {badge}
         </span>
       )}
@@ -74,38 +74,33 @@ function IntegrationFields({ fields }: { fields: EnvSetting[] }) {
   const [vals, setVals] = useState<Record<string, string>>({});
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
+    <div className="settings-field-grid">
       {fields.map((f) => (
         <div key={f.key}>
-          <label style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: "var(--adv-text-muted)", display: "block", marginBottom: 5 }}>
-            {f.label}
-          </label>
+          <label className="settings-field-label">{f.label}</label>
           <div style={{ position: "relative" }}>
             <input
+              className="input-base"
               type={f.type === "password" && !visible[f.key] ? "password" : "text"}
               placeholder={f.placeholder}
               value={vals[f.key] ?? ""}
               onChange={(e) => setVals((p) => ({ ...p, [f.key]: e.target.value }))}
               style={{
-                width: "100%", boxSizing: "border-box",
-                background: "var(--adv-bg)", border: "1px solid var(--adv-border)", borderRadius: 5,
-                padding: `8px ${f.type === "password" ? "36px" : "12px"} 8px 12px`,
-                color: "var(--adv-text)", fontFamily: "'JetBrains Mono', monospace", fontSize: 11,
-                outline: "none",
+                fontFamily: "var(--font-mono)",
+                fontSize: 11,
+                paddingRight: f.type === "password" ? 36 : 12,
               }}
             />
             {f.type === "password" && (
               <button
                 onClick={() => setVisible((p) => ({ ...p, [f.key]: !p[f.key] }))}
-                style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--adv-text-muted)" }}
+                style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)" }}
               >
                 {visible[f.key] ? <EyeOff size={13} /> : <Eye size={13} />}
               </button>
             )}
           </div>
-          <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 11, color: "var(--adv-text-muted)", marginTop: 3 }}>
-            {f.description}
-          </div>
+          <div className="settings-field-help">{f.description}</div>
         </div>
       ))}
     </div>
@@ -149,7 +144,7 @@ function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void 
       onClick={() => onChange(!on)}
       style={{
         width: 36, height: 20, borderRadius: 10, cursor: "pointer",
-        background: on ? "rgba(37,99,235,0.8)" : "#E2E8F0",
+        background: on ? "var(--accent)" : "var(--bg-active)",
         position: "relative", transition: "background 0.2s ease", flexShrink: 0,
       }}
     >
@@ -174,7 +169,7 @@ export default function SettingsPage() {
   const sections = [
     { key: "engagement", label: "Engagement",    icon: Globe },
     { key: "email",      label: "Email / SMTP",  icon: Mail },
-    { key: "slack",      label: "MessageCircle",          icon: MessageCircle },
+    { key: "slack",      label: "Slack",          icon: MessageCircle },
     { key: "jira",       label: "Jira",           icon: ExternalLink },
     { key: "sla",        label: "SLA Policy",     icon: Shield },
     { key: "notify",     label: "Notifications",  icon: Bell },
@@ -184,42 +179,37 @@ export default function SettingsPage() {
 
   return (
     <PageShell
-      title="SETTINGS"
-      subtitle="INTEGRATIONS · SLA · NOTIFICATIONS · ENGAGEMENT"
+      title="Settings"
+      subtitle="Operations profile · Integrations · Alerts"
       headerActions={
         <button
+          className="btn btn-primary"
           onClick={save}
           style={{
-            display: "flex", alignItems: "center", gap: 6, padding: "6px 14px",
-            background: "#2563EB", border: "none", borderRadius: 4,
-            color: "#F8FAFC", fontFamily: "'JetBrains Mono', monospace", fontSize: 10,
-            cursor: "pointer", fontWeight: 700,
+            height: 32,
+            fontSize: 11,
           }}
         >
-          <Save size={13} /> SAVE ALL
+          <Save size={13} /> Save all
         </button>
       }
     >
-      <div style={{ display: "flex", gap: 20, height: "100%" }}>
+      <div className="settings-layout">
         {/* Left nav */}
-        <div style={{ width: 180, flexShrink: 0 }}>
-          <div style={{ background: "linear-gradient(160deg, rgba(37,99,235,0.05) 0%, #FFFFFF 55%)", border: "1px solid var(--adv-border)", borderRadius: 6, overflow: "hidden" }}>
+        <div>
+          <div className="settings-nav">
             {sections.map((s) => {
               const Icon = s.icon;
               const active = activeSection === s.key;
               return (
                 <button
                   key={s.key}
+                  className="settings-nav-button"
+                  data-active={active}
                   onClick={() => setActiveSection(s.key)}
-                  style={{
-                    width: "100%", display: "flex", alignItems: "center", gap: 10, padding: "11px 14px",
-                    background: active ? "rgba(37,99,235,0.06)" : "transparent",
-                    border: "none", borderLeft: `2px solid ${active ? "#2563EB" : "transparent"}`,
-                    cursor: "pointer", textAlign: "left",
-                  }}
                 >
-                  <Icon size={14} color={active ? "#2563EB" : "#64748B"} />
-                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: active ? "#0F172A" : "#64748B" }}>
+                  <Icon size={14} color={active ? "var(--accent)" : "currentColor"} />
+                  <span style={{ fontSize: 12, fontWeight: active ? 700 : 600 }}>
                     {s.label}
                   </span>
                 </button>
@@ -233,42 +223,31 @@ export default function SettingsPage() {
 
           {/* ── Engagement ── */}
           {activeSection === "engagement" && (
-            <div className="animate-slide-in" style={{ background: "linear-gradient(160deg, rgba(37,99,235,0.05) 0%, #FFFFFF 55%)", border: "1px solid var(--adv-border)", borderRadius: 8, padding: 24 }}>
+            <div className="settings-panel animate-slide-in">
               <SectionHeader icon={Globe} label="ENGAGEMENT METADATA" />
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
+              <div className="settings-field-grid">
                 {[
                   { label: "Engagement Name", val: engagementName, set: setEngagementName, ph: "Q2 2026 Internal VAPT" },
                   { label: "Client Name",      val: clientName,     set: setClientName,     ph: "ACME Corp" },
                   { label: "Lead Assessor",    val: assessorName,   set: setAssessorName,   ph: "Security Engineer" },
                 ].map((f) => (
                   <div key={f.label}>
-                    <label style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: "var(--adv-text-muted)", display: "block", marginBottom: 5 }}>{f.label}</label>
+                    <label className="settings-field-label">{f.label}</label>
                     <input
+                      className="input-base"
                       value={f.val}
                       onChange={(e) => f.set(e.target.value)}
                       placeholder={f.ph}
-                      style={{
-                        width: "100%", boxSizing: "border-box",
-                        background: "var(--adv-bg)", border: "1px solid var(--adv-border)", borderRadius: 5,
-                        padding: "8px 12px", color: "var(--adv-text)",
-                        fontFamily: "'Inter', sans-serif", fontSize: 14, outline: "none",
-                      }}
                     />
                   </div>
                 ))}
               </div>
               <div style={{ marginTop: 20 }}>
-                <label style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: "var(--adv-text-muted)", display: "block", marginBottom: 8 }}>SCOPE NETWORKS</label>
+                <label className="settings-field-label">SCOPE NETWORKS</label>
                 <textarea
+                  className="textarea-base"
                   rows={3}
                   placeholder="10.10.0.0/24, 10.10.10.0/24, 172.16.1.0/24"
-                  style={{
-                    width: "100%", boxSizing: "border-box",
-                    background: "var(--adv-bg)", border: "1px solid var(--adv-border)", borderRadius: 5,
-                    padding: "8px 12px", color: "var(--adv-text)",
-                    fontFamily: "'JetBrains Mono', monospace", fontSize: 11,
-                    resize: "vertical", outline: "none",
-                  }}
                 />
               </div>
             </div>
@@ -276,11 +255,11 @@ export default function SettingsPage() {
 
           {/* ── Email ── */}
           {activeSection === "email" && (
-            <div className="animate-slide-in" style={{ background: "linear-gradient(160deg, rgba(37,99,235,0.05) 0%, #FFFFFF 55%)", border: "1px solid var(--adv-border)", borderRadius: 8, padding: 24 }}>
+            <div className="settings-panel animate-slide-in">
               <SectionHeader icon={Mail} label="EMAIL / SMTP CONFIGURATION" badge="SMTP" />
-              <div style={{ background: "rgba(37,99,235,0.04)", border: "1px solid rgba(37,99,235,0.15)", borderRadius: 6, padding: 12, marginBottom: 20 }}>
-                <p style={{ fontFamily: "'Inter', sans-serif", fontSize: 13, color: "var(--adv-text-muted)", margin: 0, lineHeight: 1.5 }}>
-                  Set <code style={{ color: "var(--adv-accent)" }}>SMTP_HOST</code>, <code style={{ color: "var(--adv-accent)" }}>SMTP_TO</code>, and credentials in <code style={{ color: "var(--adv-accent)" }}>.env.local</code> for real email delivery. These fields show current config — changes require a server restart.
+              <div className="settings-note">
+                <p style={{ margin: 0 }}>
+                  Runtime values are sourced from <code style={{ color: "var(--accent)" }}>.env.local</code>; save updates before restart.
                 </p>
               </div>
               <IntegrationFields fields={EMAIL_FIELDS} />
@@ -291,26 +270,26 @@ export default function SettingsPage() {
             </div>
           )}
 
-          {/* ── MessageCircle ── */}
+          {/* ── Slack ── */}
           {activeSection === "slack" && (
-            <div className="animate-slide-in" style={{ background: "linear-gradient(160deg, rgba(37,99,235,0.05) 0%, #FFFFFF 55%)", border: "1px solid var(--adv-border)", borderRadius: 8, padding: 24 }}>
+            <div className="settings-panel animate-slide-in">
               <SectionHeader icon={MessageCircle} label="SLACK INTEGRATION" badge="WEBHOOK" />
-              <div style={{ marginBottom: 20, fontFamily: "'Inter', sans-serif", fontSize: 14, color: "var(--adv-text-muted)", lineHeight: 1.6 }}>
-                Create an Incoming Webhook in your MessageCircle App configuration and paste the URL below. Set <code style={{ color: "var(--adv-accent)" }}>SLACK_WEBHOOK_URL</code> in <code style={{ color: "var(--adv-accent)" }}>.env.local</code>.
+              <div className="settings-note">
+                Store <code style={{ color: "var(--accent)" }}>SLACK_WEBHOOK_URL</code> in <code style={{ color: "var(--accent)" }}>.env.local</code>.
               </div>
               <IntegrationFields fields={SLACK_FIELDS} />
               <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
-                <TestButton label="Send Test Message" color="#9C27B0" onTest={() => success("MessageCircle Test", "Rich block message sent to channel (preview mode).")} />
+                <TestButton label="Send Test Message" color="#4F46E5" onTest={() => success("Slack Test", "Rich block message sent to channel (preview mode).")} />
               </div>
             </div>
           )}
 
           {/* ── Jira ── */}
           {activeSection === "jira" && (
-            <div className="animate-slide-in" style={{ background: "linear-gradient(160deg, rgba(37,99,235,0.05) 0%, #FFFFFF 55%)", border: "1px solid var(--adv-border)", borderRadius: 8, padding: 24 }}>
+            <div className="settings-panel animate-slide-in">
               <SectionHeader icon={ExternalLink} label="JIRA INTEGRATION" badge="REST API v3" />
-              <div style={{ marginBottom: 20, fontFamily: "'Inter', sans-serif", fontSize: 14, color: "var(--adv-text-muted)", lineHeight: 1.6 }}>
-                Generates Jira issues in your security project when cases are escalated. Uses Atlassian REST API v3. Set env vars in <code style={{ color: "var(--adv-accent)" }}>.env.local</code>.
+              <div className="settings-note">
+                Escalated cases create issues in the configured Jira project.
               </div>
               <IntegrationFields fields={JIRA_FIELDS} />
               <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
@@ -321,16 +300,16 @@ export default function SettingsPage() {
 
           {/* ── SLA Policy ── */}
           {activeSection === "sla" && (
-            <div className="animate-slide-in" style={{ background: "linear-gradient(160deg, rgba(37,99,235,0.05) 0%, #FFFFFF 55%)", border: "1px solid var(--adv-border)", borderRadius: 8, padding: 24 }}>
+            <div className="settings-panel animate-slide-in">
               <SectionHeader icon={Shield} label="SLA POLICY CONFIGURATION" />
-              <div style={{ marginBottom: 16, fontFamily: "'Inter', sans-serif", fontSize: 14, color: "var(--adv-text-muted)" }}>
+              <div style={{ marginBottom: 16, fontFamily: "var(--font-body)", fontSize: 13, color: "var(--text-secondary)" }}>
                 SLA windows define the maximum time allowed to remediate findings by severity. Escalation triggers notification when the threshold is crossed.
               </div>
               <table style={{ width: "100%", borderCollapse: "collapse" }}>
                 <thead>
                   <tr>
                     {["SEVERITY", "SLA WINDOW", "ESCALATION TRIGGER", "COLOR"].map((h) => (
-                      <th key={h} style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: "var(--adv-text-muted)", padding: "8px 12px", textAlign: "left", borderBottom: "1px solid var(--adv-border)" }}>
+                      <th key={h} style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-secondary)", padding: "8px 12px", textAlign: "left", borderBottom: "0.5px solid var(--border-subtle)" }}>
                         {h}
                       </th>
                     ))}
@@ -338,16 +317,16 @@ export default function SettingsPage() {
                 </thead>
                 <tbody>
                   {SLA_POLICY.map((row, i) => (
-                    <tr key={row.severity} style={{ borderBottom: i < SLA_POLICY.length - 1 ? "1px solid rgba(37,99,235,0.06)" : "none" }}>
+                    <tr key={row.severity} style={{ borderBottom: i < SLA_POLICY.length - 1 ? "0.5px solid var(--border-subtle)" : "none" }}>
                       <td style={{ padding: "12px 12px" }}>
                         <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: row.color, background: `${row.color}15`, border: `1px solid ${row.color}30`, borderRadius: 4, padding: "2px 8px" }}>
                           {row.severity}
                         </span>
                       </td>
-                      <td style={{ padding: "12px 12px", fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: "var(--adv-text)" }}>
+                      <td style={{ padding: "12px 12px", fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--text-primary)" }}>
                         {row.hours}h
                       </td>
-                      <td style={{ padding: "12px 12px", fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: "var(--adv-text-muted)" }}>
+                      <td style={{ padding: "12px 12px", fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--text-secondary)" }}>
                         {row.escalate} remaining
                       </td>
                       <td style={{ padding: "12px 12px" }}>
@@ -357,15 +336,15 @@ export default function SettingsPage() {
                   ))}
                 </tbody>
               </table>
-              <div style={{ marginTop: 16, padding: "12px 16px", background: "rgba(37,99,235,0.04)", border: "1px solid rgba(37,99,235,0.15)", borderRadius: 6, fontFamily: "'Inter', sans-serif", fontSize: 13, color: "var(--adv-text-muted)" }}>
-                SLA windows are defined in <code style={{ color: "var(--adv-accent)" }}>lib/cases-store.ts</code>. Custom windows require a code change and redeploy.
+              <div className="settings-note" style={{ marginTop: 16, marginBottom: 0 }}>
+                SLA windows are controlled by policy configuration.
               </div>
             </div>
           )}
 
           {/* ── Notifications ── */}
           {activeSection === "notify" && (
-            <div className="animate-slide-in" style={{ background: "linear-gradient(160deg, rgba(37,99,235,0.05) 0%, #FFFFFF 55%)", border: "1px solid var(--adv-border)", borderRadius: 8, padding: 24 }}>
+            <div className="settings-panel animate-slide-in">
               <SectionHeader icon={Bell} label="NOTIFICATION RULES" />
               <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
                 {(Object.entries({
@@ -381,12 +360,12 @@ export default function SettingsPage() {
                     style={{
                       display: "flex", justifyContent: "space-between", alignItems: "center",
                       padding: "14px 0",
-                      borderBottom: i < 5 ? "1px solid rgba(37,99,235,0.06)" : "none",
+                      borderBottom: i < 5 ? "0.5px solid var(--border-subtle)" : "none",
                     }}
                   >
                     <div>
-                      <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 14, fontWeight: 600, color: "var(--adv-text)" }}>{ruleMeta.label}</div>
-                      <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 12, color: "var(--adv-text-muted)", marginTop: 2 }}>{ruleMeta.desc}</div>
+                      <div style={{ fontFamily: "var(--font-body)", fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>{ruleMeta.label}</div>
+                      <div style={{ fontFamily: "var(--font-body)", fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>{ruleMeta.desc}</div>
                     </div>
                     <Toggle on={rules[ruleKey]} onChange={(v) => setRules((p) => ({ ...p, [ruleKey]: v }))} />
                   </div>

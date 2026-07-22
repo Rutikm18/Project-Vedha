@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
   const t0 = Date.now();
 
   for (const target of targets) {
-    const outputFile = path.join(os.tmpdir(), `adversa-testssl-${Date.now()}-${Math.random().toString(36).slice(2)}.json`);
+    const outputFile = path.join(os.tmpdir(), `vedha-testssl-${Date.now()}-${Math.random().toString(36).slice(2)}.json`);
 
     await new Promise<void>((resolve) => {
       const args = [

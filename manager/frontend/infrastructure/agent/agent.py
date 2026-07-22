@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-ADVERSA ScanningAgent
+VEDHA ScanningAgent
 Polls the platform API for scan jobs, executes them, and reports results.
 Communication is secured via mTLS (client cert issued at registration).
 Credentials are fetched from HashiCorp Vault — never stored locally.
@@ -23,13 +23,13 @@ import hvac  # HashiCorp Vault client
 
 # ── Configuration ─────────────────────────────────────────────────────────────
 
-PLATFORM_API_URL   = os.environ.get("PLATFORM_API_URL",   "https://adversa.internal:8443")
+PLATFORM_API_URL   = os.environ.get("PLATFORM_API_URL",   "https://vedha.internal:8443")
 AGENT_ID           = os.environ.get("AGENT_ID",           "")
 VAULT_ADDR         = os.environ.get("VAULT_ADDR",         "https://vault.internal:8200")
 VAULT_ROLE_TOKEN   = os.environ.get("VAULT_ROLE_TOKEN",   "")
-TLS_CERT_PATH      = os.environ.get("TLS_CERT_PATH",      "/etc/adversa/certs/client.pem")
-TLS_KEY_PATH       = os.environ.get("TLS_KEY_PATH",       "/etc/adversa/certs/client.key")
-TLS_CA_PATH        = os.environ.get("TLS_CA_PATH",        "/etc/adversa/certs/ca.pem")
+TLS_CERT_PATH      = os.environ.get("TLS_CERT_PATH",      "/etc/vedha/certs/client.pem")
+TLS_KEY_PATH       = os.environ.get("TLS_KEY_PATH",       "/etc/vedha/certs/client.key")
+TLS_CA_PATH        = os.environ.get("TLS_CA_PATH",        "/etc/vedha/certs/ca.pem")
 POLL_INTERVAL      = int(os.environ.get("POLL_INTERVAL",  "10"))   # seconds
 HEARTBEAT_INTERVAL = int(os.environ.get("HEARTBEAT_INTERVAL", "30"))  # seconds
 LOG_LEVEL          = os.environ.get("LOG_LEVEL",          "INFO")
@@ -39,7 +39,7 @@ logging.basicConfig(
     format="%(asctime)s [%(levelname)s] %(name)s — %(message)s",
     datefmt="%Y-%m-%dT%H:%M:%SZ",
 )
-log = logging.getLogger("adversa.agent")
+log = logging.getLogger("vedha.agent")
 
 
 # ── Types ─────────────────────────────────────────────────────────────────────
@@ -701,7 +701,7 @@ class ScanningAgent:
         # Fetch credentials from Vault
         creds: dict = {}
         if self.vault:
-            vault_path = f"adversa/engagements/{job.engagement_id}/credentials"
+            vault_path = f"vedha/engagements/{job.engagement_id}/credentials"
             creds = self.vault.get_credentials(vault_path)
 
         async def report_progress(pct: int):

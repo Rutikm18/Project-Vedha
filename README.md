@@ -40,7 +40,7 @@ make full                       # postgres + redis + api + probe + dashboard
 | Dashboard | http://localhost:3000 | sign in with `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` |
 | API + docs | http://localhost:18080 · `/docs` | FastAPI |
 
-Defaults: `admin@adversa.io` / `ChangeMe123!` (change them in `.env`).
+Defaults: `admin@vedha.io` / `ChangeMe123!` (change them in `.env`).
 
 ### Make targets
 

@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# ADVERSA Platform — Docker Compose
+# VEDHA Platform — Docker Compose
 #
 # Profiles:
 #   prod  →  make up          (production image, port 3000)
@@ -11,14 +11,14 @@
 services:
 
   # ── Production ──────────────────────────────────────────────────────────────
-  adversa:
-    container_name: adversa-prod
+  vedha:
+    container_name: vedha-prod
     build:
       context: .
       dockerfile: Dockerfile
       target: runner
       network: host
-    image: adversa:latest
+    image: vedha:latest
     ports:
       - "${PORT:-3000}:3000"
     environment:
@@ -39,13 +39,13 @@ services:
     profiles: [prod]
 
   # ── Development (hot reload + scanning tools via runner image) ───────────────
-  adversa-dev:
-    container_name: adversa-dev
+  vedha-dev:
+    container_name: vedha-dev
     build:
       context: .
       dockerfile: Dockerfile
       target: runner          # Use runner so tools are present
-    image: adversa:dev
+    image: vedha:dev
     working_dir: /app
     # Override to run dev server; mount source for hot reload
     user: root                # Root needed for nmap SYN scan in dev

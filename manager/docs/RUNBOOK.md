@@ -1,4 +1,4 @@
-# ADVERSA — Operations Runbook
+# VEDHA — Operations Runbook
 
 Two machine roles. Run the right commands on the right box.
 
@@ -40,7 +40,7 @@ What `make up` does, in order:
 ## A2. Configure (`.env`) — change before production
 ```ini
 JWT_SECRET=...                     # >= 32 chars. Generate: openssl rand -base64 48
-SEED_ADMIN_EMAIL=admin@adversa.io  # must be a real TLD (NOT .local — email validation rejects it)
+SEED_ADMIN_EMAIL=admin@vedha.io  # must be a real TLD (NOT .local — email validation rejects it)
 SEED_ADMIN_PASSWORD=ChangeMe123!
 INSTALL_EXTRAS=0                   # 1 = build image with AI/AD/ML libs (heavy, slow)
 ANTHROPIC_API_KEY=                 # set to enable AI reports
@@ -48,7 +48,7 @@ ANTHROPIC_API_KEY=                 # set to enable AI reports
 
 ## A3. Verify it's up — easiest is the dashboard (handles auth/token for you)
 ```bash
-open http://localhost:18080/dashboard/             # sign in: admin@adversa.io / ChangeMe123!
+open http://localhost:18080/dashboard/             # sign in: admin@vedha.io / ChangeMe123!
 ```
 The dashboard logs in once, stores + auto-refreshes the token, and gives you buttons to
 queue scans, watch probe status, and view re
@@ -60,7 +60,7 @@ open http://localhost:18080/docs                    # Swagger UI
 
 # get an operator token (you'll reuse $TOKEN below)
 TOKEN=$(curl -s -X POST localhost:18080/auth/login -H 'Content-Type: application/json' \
-  -d '{"email":"admin@adversa.io","password":"ChangeMe123!"}' | python3 -c 'import sys,json;print(json.load(sys.stdin)["access_token"])')
+  -d '{"email":"admin@vedha.io","password":"ChangeMe123!"}' | python3 -c 'import sys,json;print(json.load(sys.stdin)["access_token"])')
 echo "$TOKEN"
 ```
 
@@ -130,7 +130,7 @@ docker compose logs -f probe
 A box **inside the network you want to scan**. It gathers host/port/service info with `nmap` and ships it to the platform. Repeat per segment.
 
 ## B0. Prerequisites
-- The probe machine must reach the platform over **outbound HTTPS** (e.g. `https://adversa.example.com`). It does **not** need any inbound ports open.
+- The probe machine must reach the platform over **outbound HTTPS** (e.g. `https://vedha.example.com`). It does **not** need any inbound ports open.
 - Docker **or** Linux+systemd (the installer supports both). `nmap` is bundled (Docker) or installed for you (native).
 - Operator credentials (or a pre-provisioned agent token) so the probe can register.
 
@@ -149,8 +149,8 @@ $EDITOR probe.env
 ```
 Minimum to set:
 ```ini
-PLATFORM_URL=https://adversa.example.com      # the hosting machine's URL (required)
-OPERATOR_EMAIL=admin@adversa.io               # probe logs in once and self-registers
+PLATFORM_URL=https://vedha.example.com      # the hosting machine's URL (required)
+OPERATOR_EMAIL=admin@vedha.io               # probe logs in once and self-registers
 OPERATOR_PASSWORD=ChangeMe123!
 PROBE_NAME=dmz-probe-01
 PROBE_NETWORK_SEGMENTS=10.0.1.0/24,10.0.2.0/24
@@ -168,9 +168,9 @@ PROBE_NETWORK_SEGMENTS=10.0.1.0/24,10.0.2.0/24
 ## B4. Verify the probe is gathering info
 ```bash
 # Docker:
-docker logs -f adversa-probe
+docker logs -f vedha-probe
 # native (systemd):
-journalctl -u adversa-probe -f
+journalctl -u vedha-probe -f
 ```
 Healthy log sequence:
 ```
@@ -208,8 +208,8 @@ job done                   success=True
 
 ## B8. Stop / remove the probe
 ```bash
-docker rm -f adversa-probe                       # Docker
-sudo systemctl disable --now adversa-probe       # native
+docker rm -f vedha-probe                       # Docker
+sudo systemctl disable --now vedha-probe       # native
 ```
 
 ---

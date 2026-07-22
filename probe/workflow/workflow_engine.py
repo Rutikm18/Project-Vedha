@@ -39,7 +39,8 @@ from scanner.windows_collector import WindowsCollector
 from .asset import Asset
 from .cache import WorkflowCache
 from .gates import (
-    PROFILE_PORTS, TLS_PORTS, WEB_PORTS, SMB_PORTS, DB_PORTS, AI_PORTS, UDP_PORTS,
+    PROFILE_PORTS, PROFILE_DEEP_BRANCHES,
+    TLS_PORTS, WEB_PORTS, SMB_PORTS, DB_PORTS, AI_PORTS, UDP_PORTS, SNMP_PORTS,
     gate_0_is_passive_profile, gate_2_host_discovery, gate_3_port_scan,
     gate_4_service_banner, gate_5_branch_eligible, gate_6_credentialed_collection,
 )
@@ -73,6 +74,30 @@ def _split_cached(cache: WorkflowCache, host: str, candidate_ports: list[int],
         else:
             reused.append(cache.get(host, port, scanner_name).result)
     return to_scan, reused
+
+
+def _port_candidates(profile: str, service_filter: set[str] | None) -> list[int]:
+    """Return TCP ports worth scanning for this profile and requested branch set.
+
+    The profile tables are intentionally small, but some branch-specific ports
+    (notably local AI/MCP runtimes) are outside the generic IT list. If an
+    assessment or service-specific run allows that branch, include its known
+    TCP ports up front or the later router has no open-port evidence to route.
+    """
+    allowed = PROFILE_DEEP_BRANCHES.get(profile, set())
+    requested = allowed if service_filter is None else (service_filter & allowed)
+    ports = set(PROFILE_PORTS.get(profile, []))
+    if "tls" in requested:
+        ports.update(TLS_PORTS)
+    if "web" in requested:
+        ports.update(WEB_PORTS)
+    if "smb" in requested:
+        ports.update(SMB_PORTS)
+    if "db" in requested:
+        ports.update(DB_PORTS)
+    if "mcp_ai" in requested:
+        ports.update(AI_PORTS)
+    return sorted(ports)
 
 
 class _Sink:
@@ -143,7 +168,7 @@ async def run_engagement(targets: list[str], scope: ScopeGuard, *, profile: str 
     # --- Gate 3: port scan ------------------------------------------------
     port_targets = [t for t in live_hosts if gate_3_port_scan(assets[t], profile)]
     if port_targets:
-        ports = PROFILE_PORTS.get(profile, [])
+        ports = _port_candidates(profile, service_filter)
         scanner = PortScanner(scope, ports=ports, rate=rate, concurrency=concurrency, timeout=timeout)
         for r in await _gather_per_host(scanner, port_targets):
             assets[r.target].merge_result(r)
@@ -227,6 +252,17 @@ async def run_engagement(targets: list[str], scope: ScopeGuard, *, profile: str 
             if to_scan:
                 ai = MCPAIScanner(scope, ports=to_scan, rate=rate, concurrency=concurrency, timeout=timeout)
                 for r in await ai.scan_target(host):
+                    asset.merge_result(r)
+                    cache.put(r)
+
+        if gate_5_branch_eligible("snmp", asset, profile, service_filter):
+            ports = sorted(SNMP_PORTS)
+            to_scan, reused = _split_cached(cache, host, ports, "snmp_scan", force_recheck_after)
+            for r in reused:
+                asset.merge_result(r)
+            if to_scan:
+                snmp = SNMPScanner(scope, rate=rate, concurrency=concurrency, timeout=timeout)
+                for r in await snmp.scan_target(host):
                     asset.merge_result(r)
                     cache.put(r)
 

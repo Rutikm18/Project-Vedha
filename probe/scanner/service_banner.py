@@ -19,7 +19,7 @@ import asyncio
 
 from .scanner_base import (
     BaseScanner, ScanResult, ScopeGuard, ResultWriter, expand_targets,
-    parse_ports, setup_logging, base_argparser, main_entrypoint,
+    parse_ports, bracket_host, setup_logging, base_argparser, main_entrypoint,
 )
 
 # Probe sent to a port if the service does not greet us first.
@@ -59,7 +59,7 @@ class ServiceBannerScanner(BaseScanner):
                         banner = b""
                 # If nothing yet, send a minimal probe and read the reply.
                 if not banner:
-                    probe = (_HTTP_PROBE % target.encode()
+                    probe = (_HTTP_PROBE % bracket_host(target).encode()
                              if port in _CLIENT_FIRST or port in (80, 8080, 8000, 8888)
                              else _GENERIC_PROBE)
                     try:

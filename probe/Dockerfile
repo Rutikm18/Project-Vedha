@@ -4,11 +4,12 @@
 # Dials OUT to the manager only — no inbound ports.
 FROM python:3.12-slim
 WORKDIR /app
-ENV PYTHONUNBUFFERED=1 STATE_FILE=/var/lib/adversa-probe/state.json
-
-RUN pip install --no-cache-dir httpx>=0.27 && mkdir -p /var/lib/adversa-probe
+ENV PYTHONUNBUFFERED=1 STATE_FILE=/var/lib/vedha-probe/state.json
 
 # Engine + sequencing + transport (scanner/ is frozen — never modified).
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt && mkdir -p /var/lib/vedha-probe
+
 COPY scanner/  ./scanner/
 COPY workflow/ ./workflow/
 COPY agent/    ./agent/

@@ -7,7 +7,7 @@ issue_license.py — VENDOR-SIDE tool. Keep the private key OFF client machines.
   python3 tools/issue_license.py keygen
 
   # issue a host-locked license for a client (get their Host ID from the probe:
-  #   docker run ... adversa-probe hostid   →  prints the Host ID)
+  #   docker run ... vedha-probe hostid   →  prints the Host ID)
   python3 tools/issue_license.py issue --hostid <id> --customer "Acme" --days 365
 
   # floating (any-machine) license:

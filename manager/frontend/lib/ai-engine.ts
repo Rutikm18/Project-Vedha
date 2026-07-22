@@ -152,7 +152,7 @@ export const vulnPrioritizer = {
 const MODEL = "claude-sonnet-4-20250514";
 const MAX_TOKENS = 4096;
 
-const SYSTEM_PROMPT = `You are ADVERSA's AI Report Engine — a professional security report writer for VAPT engagements.
+const SYSTEM_PROMPT = `You are Vedha's AI Report Engine — a professional security report writer for VAPT engagements.
 CRITICAL RULES (never violate):
 1. Only reference CVE IDs, CVSS scores, and technical details explicitly provided in the input data.
 2. Never invent CVE IDs, asset names, IP addresses, or vulnerability details.

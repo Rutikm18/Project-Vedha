@@ -22,7 +22,7 @@ Agentic VA Scanner/
     └── docs/
 ```
 
-> Naming maps: `scanner_module/`→`probe/`, `intrynx/`→`manager/`, the old standalone
+> Naming maps: `scanner_module/`→`probe/`, `vedha/`→`manager/`, the old standalone
 > `detection_engine/`→`manager/detection_engine/`. References to those old names in the
 > historical sections below now live at the paths above.
 
@@ -32,7 +32,7 @@ Agentic VA Scanner/
 
 | | **Probe** | **Manager** |
 |---|---|---|
-| **Is** | `scanner_module/` (scan engine + transport agent) | `intrynx/backend` + `detection_engine/` + `intrynx/frontend` |
+| **Is** | `scanner_module/` (scan engine + transport agent) | `vedha/backend` + `detection_engine/` + `vedha/frontend` |
 | **Runs** | inside each client's network (one per client) | central / cloud, multi-tenant |
 | **Does** | collection only — scans, produces **raw facts**, ships them up | analysis — facts → findings → attack mapping → reporting → dashboard |
 | **Holds** | no vulnerability DB, no client data at rest beyond its identity | the pinned vuln DB, all findings, all tenant data |
@@ -43,12 +43,12 @@ without re-scanning, and never copied into a client's network.
 
 ```
 ┌─ PROBE  (client network) ─────────────────┐        ┌─ MANAGER  (cloud) ─────────────────────┐
-│  scanner_module/                           │        │  intrynx/backend  (FastAPI + Postgres) │
+│  scanner_module/                           │        │  vedha/backend  (FastAPI + Postgres) │
 │    scanner/    13 scanners (ScanResult)    │  jobs  │    ingest facts → Asset                │
 │    workflow/   per-target sequencing+cache │◀───────│    detection_engine/  facts → findings │
 │    agent/      register·poll·scan·submit   │  facts │    ad/ graph/ exploit/  attack mapping │
 │                                            │───────▶│    ai/   AI reporting                  │
-│  enforces ScopeGuard before any packet     │        │  intrynx/frontend  (Next.js dashboard) │
+│  enforces ScopeGuard before any packet     │        │  vedha/frontend  (Next.js dashboard) │
 └────────────────────────────────────────────┘        └────────────────────────────────────────┘
 ```
 
@@ -58,10 +58,10 @@ without re-scanning, and never copied into a client's network.
 
 ### 2.1 Why it changes
 `scanner_module` today is **CLI-only** — it scans but cannot talk to the manager. The
-working transport already exists in `intrynx/probe/agent.py` (register → heartbeat → poll →
+working transport already exists in `vedha/probe/agent.py` (register → heartbeat → poll →
 submit, host-bound encrypted identity, anti-copy license, resilient retry, `./probe` CLI).
-We **port that transport in** and swap its duplicate engine (`intrynx/probe/scanners/`) for
-the real `scanner_module` engine. `intrynx/probe/` is then removed.
+We **port that transport in** and swap its duplicate engine (`vedha/probe/scanners/`) for
+the real `scanner_module` engine. `vedha/probe/` is then removed.
 
 ### 2.2 Target layout
 ```
@@ -72,7 +72,7 @@ scanner_module/                 ← THE PROBE (one deployable artifact)
 ├── workflow/                   ← per-target sequencing + caching (existing)
 │   ├── workflow_engine.py · asset.py · cache.py · gates.py
 │   ├── router.py · modes.py · report.py · cli.py
-├── agent/                      ← NEW: transport (ported from intrynx/probe)
+├── agent/                      ← NEW: transport (ported from vedha/probe)
 │   ├── agent.py                ←   register→heartbeat→poll→scan→submit loop
 │   ├── transport.py            ←   httpx client, retry, auth
 │   ├── identity.py             ←   host-bound encrypted state cache  (ported)
@@ -153,7 +153,7 @@ Rule: **the probe never emits a CVE or a vuln verdict.** Those come only from th
 
 ## 5. The manager
 
-### 5.1 Detection wiring (`detection_engine/` → `intrynx/backend`)
+### 5.1 Detection wiring (`detection_engine/` → `vedha/backend`)
 On job-result ingest the backend runs the deterministic pipeline already built:
 
 ```
@@ -195,13 +195,13 @@ by the canonical detection layer instead of the ad-hoc `backend/app/vuln` path.
 
 | Image | Contents | Where |
 |---|---|---|
-| `adversa-probe` | scanner_module + agent; **no vuln DB** | client network (Docker or systemd via `install.sh`) |
-| `adversa-backend` | FastAPI + detection_engine + **pinned vuln DB snapshot** | cloud |
-| `adversa-frontend` | Next.js dashboard (BFF → backend) | cloud |
+| `vedha-probe` | scanner_module + agent; **no vuln DB** | client network (Docker or systemd via `install.sh`) |
+| `vedha-backend` | FastAPI + detection_engine + **pinned vuln DB snapshot** | cloud |
+| `vedha-frontend` | Next.js dashboard (BFF → backend) | cloud |
 | `postgres`, `redis` | state / queue | cloud |
 
 **Probe deployment** (best approach for client-network placement):
-- **Docker** (default): `install.sh` → `docker run --env-file probe.env adversa-probe`. One
+- **Docker** (default): `install.sh` → `docker run --env-file probe.env vedha-probe`. One
   container, dials *out* only (no inbound ports), persists encrypted identity in a volume.
 - **systemd** (`install.sh --native`): for hosts without Docker.
 - Config via `probe.env`: `PLATFORM_URL`, operator creds (or pre-provisioned `AGENT_ID/TOKEN`),
@@ -224,12 +224,12 @@ by the canonical detection layer instead of the ad-hoc `backend/app/vuln` path.
 
 ## 9. Consolidation steps (ordered, each reversible)
 
-1. **Port transport** `intrynx/probe/{agent,security,toolchain,license}` → `scanner_module/agent/`, swapping the engine to scanner_module. *(no deletion yet)*
+1. **Port transport** `vedha/probe/{agent,security,toolchain,license}` → `scanner_module/agent/`, swapping the engine to scanner_module. *(no deletion yet)*
 2. **Scope** wiring + dual ScopeGuard enforcement + contract test.
 3. **Probe image** Dockerfile/install.sh/probe.env; bring up a probe from scanner_module.
 4. **Detection** wire detection_engine into backend job-result ingest; persist full findings.
 5. **End-to-end** validation (fixture → facts → findings → dashboard).
-6. **Remove** `intrynx/probe/` and the duplicate `Intrynx copy/` only after 1–5 pass.
+6. **Remove** `vedha/probe/` and the duplicate `Vedha copy/` only after 1–5 pass.
 
 ---
 

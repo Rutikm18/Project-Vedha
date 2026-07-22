@@ -2,16 +2,16 @@
 
 Scope: hardened `scanner_module` (Agentic VA Scanner), designed an agentic-AI
 integration architecture, then integrated `scanner_module`'s validated
-capabilities into the separate **Intrynx** VAPT platform — at the time
-located at `Security-projects/Intrynx copy/` — without creating a duplicate
+capabilities into the separate **Vedha** VAPT platform — at the time
+located at `Security-projects/Vedha copy/` — without creating a duplicate
 scanning engine. Two projects touched.
 
 **Update, 2026-06-24**: a clean, deduplicated copy of that work was
-consolidated into this workspace as `intrynx/` (sibling to `scanner_module/`,
+consolidated into this workspace as `vedha/` (sibling to `scanner_module/`,
 both under this single root) — see the note at the top of
-`intrynx/docs/ARCHITECTURE.md` for exactly what was dropped (build artifacts,
+`vedha/docs/ARCHITECTURE.md` for exactly what was dropped (build artifacts,
 a couple of already-flagged dead/duplicate prototype directories) and why.
-The original `Security-projects/Intrynx copy/` is untouched and remains the
+The original `Security-projects/Vedha copy/` is untouched and remains the
 source of truth for that project's own git history.
 
 ---
@@ -46,7 +46,7 @@ traversal, AI narrates) → AI Brain (Claude; remediation, compliance mapping,
 triage chat) → Dashboard.**
 
 ### Memory correction
-The existing memory for "ADVERSA" was 26 days stale — described a static
+The existing memory for "VEDHA" was 26 days stale — described a static
 Next.js demo. Reality: a full two-plane platform (FastAPI/Postgres manager +
 Python probe agent), already production-shaped. Memory rewritten; a new
 `project-agentic-va-scanner` memory and a `feedback-ground-truth-testing`
@@ -119,9 +119,9 @@ original test run.
 
 ---
 
-## 4. Intrynx integration — what already existed there
+## 4. Vedha integration — what already existed there
 
-Discovered (not assumed) via direct code reading: Intrynx already has a
+Discovered (not assumed) via direct code reading: Vedha already has a
 **real backend** (FastAPI + Postgres, 16-table schema, CVSS/EPSS/KEV
 enrichment, attack-path graph engine, AD assessment, AI reporting) and a
 **real, deployed probe** (`probe/`) with its own scanner registry,
@@ -235,6 +235,6 @@ infrastructure work, not rushed in as the last of several tasks.
 
 - `scanner_module`: `./test_all.sh 127.0.0.1` — 13/13 clean, every result
   cross-checked against live ground truth.
-- Intrynx backend: 233 tests passed, 3 skipped, 0 failed.
-- Intrynx probe: 55 tests passed, 0 failed.
+- Vedha backend: 233 tests passed, 3 skipped, 0 failed.
+- Vedha probe: 55 tests passed, 0 failed.
 - Zero regressions introduced across either project during this session.

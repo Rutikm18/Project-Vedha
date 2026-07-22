@@ -2,7 +2,7 @@
  * Typed error envelope.
  *
  * Every external interaction (spawn, fetch, fs, LLM) wraps its failure in an
- * AdversaError. Each error carries a user-facing title, an explanation, a
+ * VedhaError. Each error carries a user-facing title, an explanation, a
  * suggested remediation, and a structured code for automation / telemetry.
  *
  * Design rules:
@@ -45,7 +45,7 @@ export type ErrorCode =
   // Generic
   | 'UNKNOWN';
 
-export interface AdversaErrorOpts {
+export interface VedhaErrorOpts {
   code:     ErrorCode;
   title:    string;             // one-line summary, e.g. "naabu not found"
   detail?:  string;             // 1–3 sentences explaining what happened
@@ -54,7 +54,7 @@ export interface AdversaErrorOpts {
   cause?:   unknown;
 }
 
-export class AdversaError extends Error {
+export class VedhaError extends Error {
   readonly code:    ErrorCode;
   readonly title:   string;
   readonly detail?: string;
@@ -62,9 +62,9 @@ export class AdversaError extends Error {
   readonly context: Record<string, unknown>;
   readonly cause:   unknown;
 
-  constructor(opts: AdversaErrorOpts) {
+  constructor(opts: VedhaErrorOpts) {
     super(opts.title);
-    this.name    = 'AdversaError';
+    this.name    = 'VedhaError';
     this.code    = opts.code;
     this.title   = opts.title;
     this.detail  = opts.detail;
@@ -122,8 +122,8 @@ export class AdversaError extends Error {
 // ── Builders for common error classes ────────────────────────────────
 
 export const Errors = {
-  toolMissing(tool: string, installHint: string): AdversaError {
-    return new AdversaError({
+  toolMissing(tool: string, installHint: string): VedhaError {
+    return new VedhaError({
       code:   'TOOL_MISSING',
       title:  `${tool} is not installed or not on PATH`,
       detail: `The ${tool} binary could not be found. The scan stage that depends on it will be skipped.`,
@@ -132,28 +132,28 @@ export const Errors = {
     });
   },
 
-  toolSpawnFailed(tool: string, errMsg: string): AdversaError {
-    return new AdversaError({
+  toolSpawnFailed(tool: string, errMsg: string): VedhaError {
+    return new VedhaError({
       code:   'TOOL_SPAWN_FAILED',
       title:  `${tool} failed to start`,
       detail: errMsg,
-      fix:    `Run \`adversa doctor\` to diagnose. Most often this is a missing library (e.g. libpcap for naabu) — try \`brew install libpcap\` then re-run.`,
+      fix:    `Run \`vedha doctor\` to diagnose. Most often this is a missing library (e.g. libpcap for naabu) — try \`brew install libpcap\` then re-run.`,
       context:{ tool },
     });
   },
 
-  toolExitNonzero(tool: string, code: number, stderr?: string): AdversaError {
-    return new AdversaError({
+  toolExitNonzero(tool: string, code: number, stderr?: string): VedhaError {
+    return new VedhaError({
       code:   'TOOL_EXIT_NONZERO',
       title:  `${tool} exited with code ${code}`,
       detail: stderr ? stderr.slice(0, 500) : undefined,
-      fix:    `Run \`adversa doctor\` to check for common issues. For permission problems on Linux/macOS, some tools need raw socket access (sudo) for SYN scans — try lowering stealth or using TCP-connect mode.`,
+      fix:    `Run \`vedha doctor\` to check for common issues. For permission problems on Linux/macOS, some tools need raw socket access (sudo) for SYN scans — try lowering stealth or using TCP-connect mode.`,
       context:{ tool, code },
     });
   },
 
-  toolLibpcapMissing(tool: string): AdversaError {
-    return new AdversaError({
+  toolLibpcapMissing(tool: string): VedhaError {
+    return new VedhaError({
       code:   'TOOL_LIBPCAP_MISSING',
       title:  `${tool} cannot find libpcap`,
       detail: `On macOS this is the Homebrew libpcap not being on the dynamic linker path.`,
@@ -162,27 +162,27 @@ export const Errors = {
     });
   },
 
-  serverUnreachable(url: string, cause?: unknown): AdversaError {
-    return new AdversaError({
+  serverUnreachable(url: string, cause?: unknown): VedhaError {
+    return new VedhaError({
       code:   'SERVER_UNREACHABLE',
-      title:  `Cannot reach ADVERSA API server at ${url}`,
+      title:  `Cannot reach Vedha API server at ${url}`,
       detail: `The server may not be running, or a firewall is blocking the connection.`,
-      fix:    `Start the server with \`./run.sh start\`, or set ADVERSA_SERVER env var to the correct URL.`,
+      fix:    `Start the server with \`./run.sh start\`, or set VEDHA_SERVER env var to the correct URL.`,
       context:{ url },
       cause,
     });
   },
 
-  authNoSession(): AdversaError {
-    return new AdversaError({
+  authNoSession(): VedhaError {
+    return new VedhaError({
       code:   'AUTH_NO_SESSION',
       title:  `Not logged in`,
       fix:    `Run \`./run.sh app\` and log in, or \`./run.sh cli login\` for the command-line login.`,
     });
   },
 
-  authSessionExpired(): AdversaError {
-    return new AdversaError({
+  authSessionExpired(): VedhaError {
+    return new VedhaError({
       code:   'AUTH_SESSION_EXPIRED',
       title:  `Session expired`,
       detail: `JWT sessions last 7 days.`,
@@ -190,8 +190,8 @@ export const Errors = {
     });
   },
 
-  authOutOfScope(target: string): AdversaError {
-    return new AdversaError({
+  authOutOfScope(target: string): VedhaError {
+    return new VedhaError({
       code:   'AUTH_OUT_OF_SCOPE',
       title:  `Target ${target} is outside your authorized scopes`,
       detail: `Operators are restricted to the CIDRs an admin has assigned them.`,
@@ -200,8 +200,8 @@ export const Errors = {
     });
   },
 
-  llmKeyMissing(): AdversaError {
-    return new AdversaError({
+  llmKeyMissing(): VedhaError {
+    return new VedhaError({
       code:   'LLM_KEY_MISSING',
       title:  `ANTHROPIC_API_KEY is not set`,
       detail: `AI commentary, attack-path analysis, AI Q&A, and AI reports require an Anthropic API key.`,
@@ -209,8 +209,8 @@ export const Errors = {
     });
   },
 
-  llmUnreachable(cause?: unknown): AdversaError {
-    return new AdversaError({
+  llmUnreachable(cause?: unknown): VedhaError {
+    return new VedhaError({
       code:   'LLM_UNREACHABLE',
       title:  `Could not reach the Anthropic API`,
       detail: `Network failure, invalid key, or quota exceeded.`,
@@ -219,8 +219,8 @@ export const Errors = {
     });
   },
 
-  configMissing(name: string): AdversaError {
-    return new AdversaError({
+  configMissing(name: string): VedhaError {
+    return new VedhaError({
       code:   'CONFIG_MISSING',
       title:  `Required configuration missing: ${name}`,
       fix:    `Run \`./run.sh setup\` to generate a default .env.local, then edit ${name} to a valid value.`,
@@ -228,10 +228,10 @@ export const Errors = {
     });
   },
 
-  // ── Wrap an unknown error into an AdversaError ──────────────────
-  wrap(e: unknown, fallbackFix: string): AdversaError {
-    if (e instanceof AdversaError) return e;
-    return new AdversaError({
+  // ── Wrap an unknown error into an VedhaError ──────────────────
+  wrap(e: unknown, fallbackFix: string): VedhaError {
+    if (e instanceof VedhaError) return e;
+    return new VedhaError({
       code:   'UNKNOWN',
       title:  e instanceof Error ? e.message : String(e),
       fix:    fallbackFix,
@@ -240,11 +240,11 @@ export const Errors = {
   },
 };
 
-/** Detect the shape of common spawn/library failures and translate to AdversaError. */
-export function diagnoseSpawnError(tool: string, code: number, stderr: string): AdversaError {
+/** Detect the shape of common spawn/library failures and translate to VedhaError. */
+export function diagnoseSpawnError(tool: string, code: number, stderr: string): VedhaError {
   // nuclei exits 2 when it cannot find any templates to run — distinct from a real error
   if (tool === 'nuclei' && code === 2) {
-    return new AdversaError({
+    return new VedhaError({
       code:   'TOOL_EXIT_NONZERO',
       title:  'nuclei: no templates found',
       detail: 'nuclei exited with code 2 — it could not find any templates in its search paths.',
@@ -267,7 +267,7 @@ export function diagnoseSpawnError(tool: string, code: number, stderr: string): 
   // Config-dir creation failure — most common when the tool was invoked with a
   // non-writable HOME or XDG_CONFIG_HOME. Distinct from real OS permission denied.
   if (/mkdir.*permission denied|failed to create.*directory|failed to write config/i.test(stderr)) {
-    return new AdversaError({
+    return new VedhaError({
       code:   'TOOL_PERMISSION_DENIED',
       title:  `${tool} could not write its config directory`,
       detail: stderr.slice(0, 300),
@@ -277,7 +277,7 @@ export function diagnoseSpawnError(tool: string, code: number, stderr: string): 
   }
 
   if (/permission denied|operation not permitted/i.test(stderr)) {
-    return new AdversaError({
+    return new VedhaError({
       code:   'TOOL_PERMISSION_DENIED',
       title:  `${tool} blocked by OS permissions`,
       detail: stderr.slice(0, 300),
@@ -288,7 +288,7 @@ export function diagnoseSpawnError(tool: string, code: number, stderr: string): 
 
   // Rate-limited / connection failures — usually means the target wasn't reachable
   if (/connection refused|no route to host|timeout/i.test(stderr)) {
-    return new AdversaError({
+    return new VedhaError({
       code:   'TOOL_EXIT_NONZERO',
       title:  `${tool} could not reach the target`,
       detail: stderr.slice(0, 300),

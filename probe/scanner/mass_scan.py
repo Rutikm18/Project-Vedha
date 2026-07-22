@@ -75,13 +75,7 @@ def _run_masscan(target_specs: list[str], ports: str, rate: int,
     records: list[dict] = []
     try:
         with open(out_path, "r", encoding="utf-8") as fh:
-            text = fh.read().strip()
-        # masscan emits a JSON array, sometimes with a trailing comma / finished line.
-        text = text.rstrip(", \n")
-        if text and not text.endswith("]"):
-            text += "]"
-        if text:
-            records = json.loads(text)
+            records = _parse_masscan_json(fh.read())
     except (FileNotFoundError, json.JSONDecodeError) as exc:
         LOG.error("could not parse masscan output: %s", exc)
     finally:
@@ -89,6 +83,34 @@ def _run_masscan(target_specs: list[str], ports: str, rate: int,
             os.remove(out_path)
         except OSError:
             pass
+    return records
+
+
+def _parse_masscan_json(text: str) -> list[dict]:
+    """Parse masscan -oJ output robustly: handles trailing comma, 'finished'
+    sentinel line, and a missing closing bracket."""
+    text = text.strip()
+    if not text:
+        return []
+    try:
+        obj = json.loads(text)
+        if isinstance(obj, list):
+            return obj
+        if isinstance(obj, dict):
+            return [obj]
+    except json.JSONDecodeError:
+        pass
+    records: list[dict] = []
+    for line in text.splitlines():
+        line = line.strip().rstrip(",")
+        if not line or line in ("[", "]"):
+            continue
+        try:
+            o = json.loads(line)
+            if isinstance(o, dict):
+                records.append(o)
+        except json.JSONDecodeError:
+            continue
     return records
 
 
@@ -166,9 +188,15 @@ async def run_mass_scan(target_specs: list[str], scope: ScopeGuard, *,
 
     if _have_masscan() and not force_fallback:
         LOG.info("using masscan (fast path)")
+        extra: list[str] = []
+        excl = _masscan_excludes(scope)
+        if excl:
+            extra += ["--exclude", ",".join(excl)]
+            LOG.info("masscan: excluding %d out-of-scope network(s) at the "
+                     "packet level", len(excl))
         loop = asyncio.get_running_loop()
         records = await loop.run_in_executor(
-            None, _run_masscan, allowed_specs, ports, rate, timeout, [])
+            None, _run_masscan, allowed_specs, ports, rate, timeout, extra)
         for r in _masscan_records_to_results(records, scope):
             writer.write(r)
     else:
@@ -184,6 +212,11 @@ async def run_mass_scan(target_specs: list[str], scope: ScopeGuard, *,
         await sweeper.run(targets, writer)
 
 
+def _masscan_excludes(scope: ScopeGuard) -> list[str]:
+    """Excluded networks -> masscan --exclude specs, so they get ZERO packets."""
+    return [str(net) for net in scope.excludes]
+
+
 def _spec_in_scope(spec: str, scope: ScopeGuard) -> bool:
     """
     A CIDR spec is in scope only if it is fully contained in an allowed network.
@@ -197,7 +230,7 @@ def _spec_in_scope(spec: str, scope: ScopeGuard) -> bool:
     if net.num_addresses == 1:
         return scope.in_scope(str(net.network_address))
     # require every allowed network to contain it, or it to sit within one
-    for allowed in scope._networks:  # noqa: SLF001 (intentional internal use)
+    for allowed in scope.networks:
         try:
             if net.subnet_of(allowed):
                 return True

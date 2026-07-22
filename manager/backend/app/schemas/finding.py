@@ -31,6 +31,26 @@ class FindingPatch(BaseModel):
     risk_score: Decimal | None = Field(default=None, ge=0, le=100)
 
 
+class SlaItem(BaseModel):
+    finding_id: uuid.UUID
+    title: str
+    severity: FindingSeverity
+    deadline: datetime | None
+    hours_remaining: float | None
+    hours_total: int | None
+    state: str  # breached | at_risk | due_soon | on_track
+
+
+class SlaSummary(BaseModel):
+    breached: int
+    at_risk: int
+    due_soon: int
+    on_track: int
+    total_tracked: int
+    # The most urgent tracked findings (breached first, then soonest deadline).
+    items: list[SlaItem]
+
+
 class FindingOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

@@ -38,7 +38,7 @@ const quickPrompts = [
 const initialMessage: Message = {
   id: "init",
   role: "assistant",
-  content: `[ADVERSA ONLINE]
+  content: `[VEDHA ONLINE]
 AI Offensive Brain initialized. Multi-agent framework active.
 
 [READY]
@@ -255,14 +255,14 @@ export default function AIBrainPage() {
     activateAgents(userMsg.content, true);
 
     try {
+      // The /api/brain route is server-authoritative: it owns the system prompt
+      // and model (a security tool must not let the client inject either — that
+      // would be a prompt-injection / jailbreak vector). So we send only the
+      // conversation; model/system/max_tokens set here were dead params.
       const res = await fetch("/api/brain", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          model: "claude-sonnet-4-20250514",
-          max_tokens: 1500,
-          system:
-            "You are ADVERSA's AI Offensive Brain — an elite autonomous red-team AI.\nThink like a real offensive security operator. Respond in this structure:\n[THREAT ASSESSMENT] brief analysis of the query\n[ATTACK REASONING] step-by-step red team thinking\n[RECOMMENDED ATTACK VECTORS] numbered list of specific vectors\n[CONFIDENCE SCORE] X% — risk statement\nUse offensive security terminology. Reference real CVEs and TTPs.",
           messages: [
             ...messages.map((m) => ({ role: m.role, content: m.content })),
             { role: "user", content: userMsg.content },
@@ -272,8 +272,10 @@ export default function AIBrainPage() {
 
       let aiContent: string;
       if (res.ok) {
-        const data = await res.json();
-        aiContent = data.content[0].text;
+        // Route returns { content: string } (already extracted server-side),
+        // not a raw Anthropic content-block array.
+        const data = await res.json() as { content?: string };
+        aiContent = data.content ?? "[No response returned by the AI Brain.]";
       } else {
         aiContent = `[ERROR]
 Unable to connect to AI Offensive Brain. Check API configuration.
@@ -373,7 +375,7 @@ Verify network connectivity and API key configuration.`,
               <Menu size={20} color="#2563EB" />
             </button>
             <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 18, color: "var(--adv-accent)", letterSpacing: 3 }}>
-              ADVERSA
+              VEDHA
             </span>
             <span style={{ color: "var(--adv-border)" }}>|</span>
             <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: "var(--adv-text-muted)" }}>

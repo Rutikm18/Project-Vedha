@@ -102,6 +102,17 @@ USE_CASES: dict[str, dict] = {
         "profile": "it",
         "expected_runtime_hint": "2–8 min",
     },
+    "uc_snmp_exposure": {
+        "display_name": "SNMP Exposure Check",
+        "description": (
+            "Read-only SNMP sysDescr checks using common community strings. "
+            "Use to find default or weak read communities on routers, printers, "
+            "switches, and monitoring appliances."
+        ),
+        "scan_type": "snmp_scan",
+        "profile": "it",
+        "expected_runtime_hint": "2–8 min",
+    },
 }
 
 

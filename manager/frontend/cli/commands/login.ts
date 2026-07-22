@@ -45,17 +45,17 @@ function promptSilent(question: string): Promise<string> {
 
 export function buildLoginCommand(): Command {
   return new Command('login')
-    .description('Authenticate with ADVERSA via email magic code')
+    .description('Authenticate with VEDHA via email magic code')
     .action(async () => {
       const existing = loadSession();
       if (existing) {
         process.stdout.write(`\x1b[33mAlready logged in as \x1b[1m${existing.email}\x1b[0m\n`);
-        process.stdout.write(`Run \x1b[1madversa logout\x1b[0m first to switch accounts.\n`);
+        process.stdout.write(`Run \x1b[1mvedha logout\x1b[0m first to switch accounts.\n`);
         return;
       }
 
       const server = serverUrl();
-      process.stdout.write(`\x1b[1;36mADVERSA\x1b[0m  ${server}\n\n`);
+      process.stdout.write(`\x1b[1;36mVEDHA\x1b[0m  ${server}\n\n`);
 
       const email = await prompt('Email: ');
       if (!email || !email.includes('@')) {
@@ -72,7 +72,7 @@ export function buildLoginCommand(): Command {
       }).catch(() => null);
 
       if (!res?.ok) {
-        process.stderr.write('\x1b[1;31m[ERR]\x1b[0m Could not reach the ADVERSA server.\n');
+        process.stderr.write('\x1b[1;31m[ERR]\x1b[0m Could not reach the VEDHA server.\n');
         process.stderr.write(`Server: ${server}\n`);
         process.exit(1);
       }

@@ -9,6 +9,7 @@ import {
 import { AlertTriangle, TrendingUp, Users, ShieldAlert, ArrowUpRight, ArrowDownRight, Minus } from "lucide-react";
 import Link from "next/link";
 import { useCountUp } from "../hooks/useCountUp";
+import { fetchJson } from "../lib/fetcher";
 
 /* ─── Types ─── */
 interface TimelinePoint { date: string; CRITICAL: number; HIGH: number; MEDIUM: number; LOW: number; }
@@ -18,6 +19,10 @@ interface Engagement {
   findingCount: number; assetCount: number; status: string;
 }
 interface ActivityItem { id: string; timestamp: string; actor: string; action: string; detail: string; engagementId: string; }
+interface Finding {
+  id: string; title: string; severity: keyof typeof SEV | "INFO";
+  riskScore: number; affectedHost: string; status: string; kevListed?: boolean;
+}
 
 const SEV = {
   CRITICAL: { color: "var(--sev-critical-color)", bg: "var(--sev-critical-bg)", glow: "var(--sev-critical-glow)" },
@@ -36,9 +41,9 @@ function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: 
   if (!active || !payload?.length) return null;
   return (
     <div style={{
-      background: "var(--bg-sidebar)", border: "0.5px solid var(--border-strong)",
-      borderRadius: 10, padding: "10px 14px",
-      boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
+      background: "var(--bg-panel)", border: "0.5px solid var(--border-default)",
+      borderRadius: 8, padding: "10px 14px",
+      boxShadow: "var(--shadow-lg)",
       backdropFilter: "blur(8px)",
     }}>
       <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: "var(--text-muted)", marginBottom: 7 }}>{label}</div>
@@ -74,29 +79,30 @@ function KpiCard({
   return (
     <div
       ref={cardRef}
-      className="stagger-item"
+      className="stagger-item dashboard-kpi-surface"
       onMouseMove={onMouseMove}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => { setHovered(false); cardRef.current?.style.setProperty("--glow-x", "50%"); cardRef.current?.style.setProperty("--glow-y", "50%"); }}
       style={{
         "--glow-x": "50%", "--glow-y": "50%",
+        "--kpi-accent": accentColor,
         animationDelay: `${delay}ms`,
         background: "var(--bg-panel)",
         border: `0.5px solid ${hovered ? "var(--border-strong)" : "var(--border-subtle)"}`,
-        borderRadius: 14,
-        padding: "20px 22px 18px",
+        borderRadius: 8,
+        padding: "16px 18px 14px",
         position: "relative",
         overflow: "hidden",
         cursor: "default",
         transition: "transform 0.18s var(--ease-out), border-color 0.18s ease, box-shadow 0.2s ease",
         transform: hovered ? "translateY(-3px)" : "translateY(0)",
-        boxShadow: hovered ? `0 8px 32px ${accentGlow}, var(--shadow-md)` : "none",
+        boxShadow: hovered ? "var(--shadow-md)" : "var(--shadow-sm)",
       } as React.CSSProperties}
     >
       {/* Mouse-follow glow */}
       <div style={{
         position: "absolute", inset: 0, borderRadius: "inherit", pointerEvents: "none", zIndex: 0,
-        opacity: hovered ? 1 : 0,
+        opacity: hovered ? 0.35 : 0,
         transition: "opacity 0.2s ease",
         background: `radial-gradient(circle at var(--glow-x, 50%) var(--glow-y, 50%), ${accentGlow} 0%, transparent 65%)`,
       } as React.CSSProperties} />
@@ -117,8 +123,8 @@ function KpiCard({
           </>
         ) : (
           <>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 14 }}>
-              <span style={{ fontFamily: "'Inter', sans-serif", fontSize: 12, fontWeight: 500, color: "var(--text-secondary)" }}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
+              <span style={{ fontFamily: "'Inter', sans-serif", fontSize: 11, fontWeight: 500, color: "var(--text-secondary)" }}>
                 {label}
               </span>
               <div style={{
@@ -126,15 +132,23 @@ function KpiCard({
                 transition: "opacity 0.18s ease, transform 0.18s var(--ease-spring)",
                 transform: hovered ? "scale(1.15)" : "scale(1)",
                 color: accentColor,
+                width: 26,
+                height: 26,
+                borderRadius: 7,
+                background: "var(--bg-surface)",
+                border: "0.5px solid var(--border-subtle)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
               }}>
                 {icon}
               </div>
             </div>
             <div style={{ display: "flex", alignItems: "flex-end", gap: 10 }}>
               <span className="animate-count-up" style={{
-                fontFamily: "'Inter', sans-serif", fontSize: 36, fontWeight: 700,
+                fontFamily: "'Inter', sans-serif", fontSize: 30, fontWeight: 700,
                 color: "var(--text-primary)", lineHeight: 1,
-                letterSpacing: "-1px",
+                letterSpacing: 0,
                 animationDelay: `${delay + 100}ms`,
               }}>
                 {displayValue}
@@ -190,14 +204,6 @@ function ScoreBar({ score }: { score: number }) {
   );
 }
 
-const TOP_FINDINGS = [
-  { id: "VAPT-CRIT-001", title: "Unconstrained Delegation — DC01",      host: "DC01",    score: 970, severity: "CRITICAL" as const, status: "OPEN"          },
-  { id: "VAPT-CRIT-002", title: "Kerberoastable svc_backup → DA",       host: "SVC-SQL", score: 920, severity: "CRITICAL" as const, status: "IN_REMEDIATION"},
-  { id: "VAPT-CRIT-003", title: "Log4Shell (CVE-2021-44228)",            host: "WEB-01",  score: 910, severity: "CRITICAL" as const, status: "VERIFIED"      },
-  { id: "VAPT-HIGH-001", title: "SMB Signing Not Required — 4 Hosts",   host: "WS-042",  score: 730, severity: "HIGH"     as const, status: "OPEN"          },
-  { id: "VAPT-HIGH-003", title: "AD CS ESC1 — UserAuthentication Tmpl", host: "corp-CA", score: 720, severity: "HIGH"     as const, status: "OPEN"          },
-];
-
 const STATUS_STYLE: Record<string, { color: string; bg: string }> = {
   OPEN:           { color: "var(--sev-critical-color)", bg: "var(--sev-critical-bg)" },
   IN_REVIEW:      { color: "var(--sev-high-color)",     bg: "var(--sev-high-bg)"     },
@@ -210,13 +216,43 @@ const STATUS_STYLE: Record<string, { color: string; bg: string }> = {
 export function DashboardCharts() {
   const { data, isLoading } = useQuery({
     queryKey: ["engagements"],
-    queryFn: () => fetch("/api/engagements").then((r) => r.json()),
+    // Must use fetchJson (injects the Bearer token) — a raw fetch hits the
+    // withBackend route with no Authorization header and 401s, which is why the
+    // KPIs/charts previously rendered all-zero while LiveOverview showed real data.
+    queryFn: () => fetchJson<{
+      engagements?: Engagement[];
+      timeline?: TimelinePoint[];
+      activity?: ActivityItem[];
+      stats?: Record<string, number>;
+    }>("/api/engagements"),
   });
+
+  // Real findings drive the "Critical findings" table and the KEV count — same
+  // queryKey as LiveOverview so React Query serves one shared, deduped request.
+  const { data: findingsData } = useQuery({
+    queryKey: ["findings"],
+    queryFn: () => fetchJson<Finding[]>("/api/findings"),
+  });
+  const findings: Finding[] = findingsData ?? [];
+
+  // Real activity feed (merged scan + finding events) — replaces the engagements
+  // payload's always-empty activity array.
+  const { data: activityData, isLoading: activityLoading } = useQuery({
+    queryKey: ["activity"],
+    queryFn: () => fetchJson<ActivityItem[]>("/api/activity?limit=20"),
+    refetchInterval: 30_000,
+  });
+  const activity: ActivityItem[] = activityData ?? [];
 
   const engagements: Engagement[] = data?.engagements ?? [];
   const timeline: TimelinePoint[]  = data?.timeline ?? [];
-  const activity: ActivityItem[]   = data?.activity ?? [];
   const stats = data?.stats ?? {};
+
+  // Top findings by risk score (open first), replacing the old static list.
+  const topFindings = [...findings]
+    .sort((a, b) => (b.riskScore ?? 0) - (a.riskScore ?? 0))
+    .slice(0, 5);
+  const kevCount = findings.filter((f) => f.kevListed).length;
 
   const sevTotals = engagements.reduce(
     (acc, e) => ({
@@ -241,24 +277,27 @@ export function DashboardCharts() {
   }));
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
 
       {/* ── KPI Row ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
-        <KpiCard label="Total Findings"     value={isLoading ? 0 : totalFindings}    icon={<AlertTriangle size={15} />} accentColor="var(--sev-critical-color)" accentGlow="var(--sev-critical-glow)" trend={12}  delay={0}   loading={isLoading} />
-        <KpiCard label="Active Engagements" value={isLoading ? 0 : activeEngagements} icon={<TrendingUp    size={15} />} accentColor="var(--accent)"             accentGlow="var(--accent-glow)"       trend={0}   delay={60}  loading={isLoading} />
-        <KpiCard label="Assets Discovered"  value={isLoading ? 0 : totalAssets}       icon={<Users         size={15} />} accentColor="var(--sev-medium-color)"   accentGlow="var(--sev-medium-glow)"   trend={8}   delay={120} loading={isLoading} />
-        <KpiCard label="KEV Findings"        value={isLoading ? 0 : (stats.kevFindings ?? 3)} icon={<ShieldAlert size={15} />} accentColor="var(--sev-high-color)" accentGlow="var(--sev-high-glow)" trend={2} delay={180} loading={isLoading} />
+      <div className="dashboard-kpi-grid">
+        {/* Trend arrows removed: there is no historical snapshot store to compute
+            a real delta, and a security console must never show fabricated deltas. */}
+        <KpiCard label="Total Findings"     value={isLoading ? 0 : totalFindings}    icon={<AlertTriangle size={14} />} accentColor="var(--sev-critical-color)" accentGlow="var(--sev-critical-glow)" delay={0}   loading={isLoading} />
+        <KpiCard label="Active Engagements" value={isLoading ? 0 : activeEngagements} icon={<TrendingUp    size={14} />} accentColor="var(--accent)"             accentGlow="var(--accent-glow)"       delay={50}  loading={isLoading} />
+        <KpiCard label="Assets Discovered"  value={isLoading ? 0 : totalAssets}       icon={<Users         size={14} />} accentColor="var(--sev-medium-color)"   accentGlow="var(--sev-medium-glow)"   delay={100} loading={isLoading} />
+        <KpiCard label="KEV Findings"       value={isLoading ? 0 : kevCount}          icon={<ShieldAlert   size={14} />} accentColor="var(--sev-high-color)"     accentGlow="var(--sev-high-glow)"     delay={150} loading={isLoading} />
       </div>
 
       {/* ── Charts Row ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 228px", gap: 12 }}>
+      <div className="dashboard-chart-grid">
 
         {/* Area chart */}
-        <div className="stagger-item" style={{
+        <div className="stagger-item dashboard-card" style={{
           animationDelay: "120ms",
           background: "var(--bg-panel)", border: "0.5px solid var(--border-subtle)",
-          borderRadius: 14, padding: "20px 20px 14px",
+          borderRadius: 8, padding: "16px 18px 12px",
+          boxShadow: "var(--shadow-sm)",
           transition: "border-color 0.18s ease",
         }}
           onMouseEnter={(e) => (e.currentTarget.style.borderColor = "var(--border-strong)")}
@@ -274,6 +313,10 @@ export function DashboardCharts() {
           </div>
           {isLoading ? (
             <Bone w="100%" h={160} />
+          ) : slimTimeline.length === 0 ? (
+            <div style={{ height: 160, display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", fontFamily: "'Inter', sans-serif", fontSize: 13, color: "var(--text-muted)" }}>
+              Trend history not available yet — needs periodic finding snapshots.
+            </div>
           ) : (
             <ResponsiveContainer width="100%" height={160}>
               <AreaChart data={slimTimeline} margin={{ top: 4, right: 0, bottom: 0, left: -24 }}>
@@ -297,11 +340,12 @@ export function DashboardCharts() {
         </div>
 
         {/* Donut */}
-        <div className="stagger-item" style={{
+        <div className="stagger-item dashboard-card" style={{
           animationDelay: "160ms",
           background: "var(--bg-panel)", border: "0.5px solid var(--border-subtle)",
-          borderRadius: 14, padding: "20px 16px 16px",
+          borderRadius: 8, padding: "16px 16px 14px",
           display: "flex", flexDirection: "column",
+          boxShadow: "var(--shadow-sm)",
           transition: "border-color 0.18s ease",
         }}
           onMouseEnter={(e) => (e.currentTarget.style.borderColor = "var(--border-strong)")}
@@ -327,7 +371,7 @@ export function DashboardCharts() {
                     {pieData.map((e, i) => <Cell key={i} fill={e.color} />)}
                   </Pie>
                   <Tooltip formatter={(v: number, name: string) => [v, name]}
-                    contentStyle={{ background: "var(--bg-sidebar)", border: "0.5px solid var(--border-strong)", fontFamily: "'JetBrains Mono', monospace", fontSize: 10, borderRadius: 10 }} />
+                    contentStyle={{ background: "var(--bg-panel)", border: "0.5px solid var(--border-default)", fontFamily: "'JetBrains Mono', monospace", fontSize: 10, borderRadius: 8, boxShadow: "var(--shadow-lg)" }} />
                 </PieChart>
               </ResponsiveContainer>
               <div style={{ display: "flex", flexDirection: "column", gap: 7, marginTop: 4 }}>
@@ -348,19 +392,20 @@ export function DashboardCharts() {
       </div>
 
       {/* ── Findings + Activity ── */}
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 280px", gap: 12 }}>
+      <div className="dashboard-main-grid">
 
         {/* Top findings table */}
-        <div className="stagger-item" style={{
+        <div className="stagger-item dashboard-card" style={{
           animationDelay: "200ms",
           background: "var(--bg-panel)", border: "0.5px solid var(--border-subtle)",
-          borderRadius: 14, overflow: "hidden",
+          borderRadius: 8, overflow: "hidden",
+          boxShadow: "var(--shadow-sm)",
           transition: "border-color 0.18s ease",
         }}
           onMouseEnter={(e) => (e.currentTarget.style.borderColor = "var(--border-strong)")}
           onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--border-subtle)")}
         >
-          <div style={{ padding: "14px 20px", borderBottom: "0.5px solid var(--border-subtle)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <div className="dashboard-card-header">
             <span style={{ fontFamily: "'Inter', sans-serif", fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
               Critical findings
             </span>
@@ -379,7 +424,7 @@ export function DashboardCharts() {
 
           <table style={{ width: "100%", borderCollapse: "collapse" }}>
             <thead>
-              <tr style={{ background: "var(--bg-sidebar)" }}>
+              <tr className="dashboard-table-head">
                 {["Title", "Host", "Risk Score", "Status"].map((h) => (
                   <th key={h} style={{
                     padding: "8px 20px", textAlign: "left",
@@ -393,69 +438,85 @@ export function DashboardCharts() {
               </tr>
             </thead>
             <tbody>
-              {TOP_FINDINGS.map((f, i) => {
-                const ss = STATUS_STYLE[f.status] ?? STATUS_STYLE.OPEN;
-                return (
-                  <tr key={f.id} className="table-row-hover stagger-item" style={{
-                    animationDelay: `${240 + i * 40}ms`,
-                    borderBottom: i < TOP_FINDINGS.length - 1 ? "0.5px solid var(--border-subtle)" : "none",
-                    cursor: "pointer",
-                  }}>
-                    <td style={{ padding: "11px 20px", maxWidth: 280 }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
-                        <SevBadge sev={f.severity} />
-                        <span style={{ fontFamily: "'Inter', sans-serif", fontSize: 13, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
-                          {f.title}
-                        </span>
-                      </div>
-                    </td>
-                    <td style={{ padding: "11px 20px" }}>
-                      <span style={{
-                        fontFamily: "'JetBrains Mono', monospace", fontSize: 11,
-                        color: "var(--accent)", background: "var(--accent-ghost)",
-                        borderRadius: 5, padding: "2px 7px",
-                      }}>
-                        {f.host}
-                      </span>
-                    </td>
-                    <td style={{ padding: "11px 20px" }}>
-                      <ScoreBar score={f.score} />
-                    </td>
-                    <td style={{ padding: "11px 20px" }}>
-                      <span style={{
-                        fontFamily: "'Inter', sans-serif", fontSize: 11, fontWeight: 600,
-                        color: ss.color, background: ss.bg, borderRadius: 5, padding: "3px 8px",
-                      }}>
-                        {f.status.replace(/_/g, " ")}
-                      </span>
-                    </td>
+              {isLoading ? (
+                [0, 1, 2, 3, 4].map((i) => (
+                  <tr key={i} style={{ borderBottom: i < 4 ? "0.5px solid var(--border-subtle)" : "none" }}>
+                    <td style={{ padding: "11px 20px" }} colSpan={4}><Bone w="90%" h={12} /></td>
                   </tr>
-                );
-              })}
+                ))
+              ) : topFindings.length === 0 ? (
+                <tr>
+                  <td colSpan={4} style={{ padding: "36px 20px", textAlign: "center", fontFamily: "'Inter', sans-serif", fontSize: 13, color: "var(--text-muted)" }}>
+                    No findings yet — run a scan to populate this table.
+                  </td>
+                </tr>
+              ) : (
+                topFindings.map((f, i) => {
+                  const ss = STATUS_STYLE[f.status] ?? STATUS_STYLE.OPEN;
+                  const sev = (f.severity in SEV ? f.severity : "LOW") as keyof typeof SEV;
+                  return (
+                    <tr key={f.id} className="table-row-hover stagger-item" style={{
+                      animationDelay: `${240 + i * 40}ms`,
+                      borderBottom: i < topFindings.length - 1 ? "0.5px solid var(--border-subtle)" : "none",
+                      cursor: "pointer",
+                    }}>
+                      <td style={{ padding: "11px 20px", maxWidth: 280 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+                          <SevBadge sev={sev} />
+                          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: 13, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                            {f.title}
+                          </span>
+                        </div>
+                      </td>
+                      <td style={{ padding: "11px 20px" }}>
+                        <span style={{
+                          fontFamily: "'JetBrains Mono', monospace", fontSize: 11,
+                          color: "var(--accent)", background: "var(--accent-ghost)",
+                          borderRadius: 5, padding: "2px 7px",
+                        }}>
+                          {f.affectedHost}
+                        </span>
+                      </td>
+                      <td style={{ padding: "11px 20px" }}>
+                        <ScoreBar score={f.riskScore} />
+                      </td>
+                      <td style={{ padding: "11px 20px" }}>
+                        <span style={{
+                          fontFamily: "'Inter', sans-serif", fontSize: 11, fontWeight: 600,
+                          color: ss.color, background: ss.bg, borderRadius: 5, padding: "3px 8px",
+                        }}>
+                          {f.status.replace(/_/g, " ")}
+                        </span>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
             </tbody>
           </table>
         </div>
 
         {/* Activity feed */}
-        <div className="stagger-item" style={{
+        <div className="stagger-item dashboard-card" style={{
           animationDelay: "240ms",
           background: "var(--bg-panel)", border: "0.5px solid var(--border-subtle)",
-          borderRadius: 14, overflow: "hidden", display: "flex", flexDirection: "column",
+          borderRadius: 8, overflow: "hidden", display: "flex", flexDirection: "column",
+          boxShadow: "var(--shadow-sm)",
           transition: "border-color 0.18s ease",
         }}
           onMouseEnter={(e) => (e.currentTarget.style.borderColor = "var(--border-strong)")}
           onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--border-subtle)")}
         >
-          <div style={{ padding: "14px 16px", borderBottom: "0.5px solid var(--border-subtle)", display: "flex", alignItems: "center", justifyContent: "space-between", flexShrink: 0 }}>
+          <div className="dashboard-card-header" style={{ flexShrink: 0 }}>
             <span style={{ fontFamily: "'Inter', sans-serif", fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
               Recent activity
             </span>
-            <Link href="/engagements" style={{ fontFamily: "'Inter', sans-serif", fontSize: 12, fontWeight: 500, color: "var(--accent)", textDecoration: "none" }}>
-              All →
+            <Link href="/engagements" style={{ display: "flex", alignItems: "center", gap: 4, fontFamily: "'Inter', sans-serif", fontSize: 12, fontWeight: 500, color: "var(--accent)", textDecoration: "none" }}>
+              All <ArrowUpRight size={12} />
             </Link>
           </div>
           <div style={{ overflowY: "auto", flex: 1 }}>
-            {isLoading ? (
+            {activityLoading ? (
               [1, 2, 3, 4].map((i) => (
                 <div key={i} style={{ padding: "12px 16px", borderBottom: "0.5px solid var(--border-subtle)" }}>
                   <Bone w="75%" h={10} /><div style={{ marginTop: 5 }}><Bone w="55%" h={8} /></div>

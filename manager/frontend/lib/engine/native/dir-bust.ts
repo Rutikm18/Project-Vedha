@@ -1,6 +1,6 @@
 /**
  * Native directory busting — HTTP GET against an embedded wordlist.
- * Replaces ffuf for casual use; users can still set ADVERSA_FFUF_WORDLIST
+ * Replaces ffuf for casual use; users can still set VEDHA_FFUF_WORDLIST
  * to point at SecLists for deeper enumeration.
  *
  * Strategy:
@@ -72,7 +72,7 @@ function probe(url: string): Promise<ProbeResp> {
   return new Promise((resolve) => {
     const u = new URL(url);
     const port = Number(u.port) || (u.protocol === 'https:' ? 443 : 80);
-    const baseOpts = { hostname: u.hostname, port, path: u.pathname, method: 'GET', timeout: 3000, headers: { 'User-Agent': 'adversa-scanner/1.0' } };
+    const baseOpts = { hostname: u.hostname, port, path: u.pathname, method: 'GET', timeout: 3000, headers: { 'User-Agent': 'vedha-scanner/1.0' } };
     const onResponse = (res: import('http').IncomingMessage) => {
       let len = 0;
       res.on('data', (chunk: Buffer | string) => { len += chunk.length; if (len > 50_000) req.destroy(); });
@@ -95,7 +95,7 @@ export interface NativeDirOpts {
 }
 
 function loadWordlist(opts: NativeDirOpts): string[] {
-  const path = opts.wordlistPath || process.env.ADVERSA_FFUF_WORDLIST;
+  const path = opts.wordlistPath || process.env.VEDHA_FFUF_WORDLIST;
   if (path && existsSync(path)) {
     try {
       const lines = readFileSync(path, 'utf-8').split(/\r?\n/).map((s) => s.trim()).filter(Boolean);

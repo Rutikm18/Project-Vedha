@@ -35,30 +35,47 @@ function isOpen(s?: string) {
   return !s || ["OPEN", "CONFIRMED"].includes(s.toUpperCase());
 }
 
+/** Engagements use different statuses than findings. "PLANNING" (draft) and
+ *  "ACTIVE" are both considered open/in-progress. */
+function isActiveEngagement(s?: string) {
+  return !s || ["PLANNING", "ACTIVE"].includes(s.toUpperCase());
+}
+
 function Kpi({ icon, label, value, color, sub }: {
   icon: React.ReactNode; label: string; value: number | string; color: string; sub?: string;
 }) {
   return (
     <div
       tabIndex={0}
+      className="dashboard-kpi-surface"
       style={{
-        flex: "1 1 0", minWidth: 150, background: "var(--bg-panel)",
-        border: "1px solid var(--border-default)", borderRadius: "var(--radius-lg)",
-        padding: "16px 18px", display: "flex", flexDirection: "column", gap: 8,
-        transition: "transform var(--dur-fast) var(--ease-out), border-color var(--dur-fast)",
+        "--kpi-accent": color,
+        flex: "1 1 0", minWidth: 168,
+        padding: "18px 20px 16px", display: "flex", flexDirection: "column", gap: 12,
+        transition: "transform var(--dur-fast) var(--ease-out), border-color var(--dur-fast), box-shadow var(--dur-fast)",
         outlineColor: "var(--accent)", cursor: "default",
-      }}
-      onMouseEnter={(e) => { e.currentTarget.style.borderColor = color; e.currentTarget.style.transform = "translateY(-2px)"; }}
-      onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border-default)"; e.currentTarget.style.transform = "translateY(0)"; }}
+      } as React.CSSProperties}
+      onMouseEnter={(e) => { e.currentTarget.style.borderColor = color; e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = "var(--shadow-md)"; }}
+      onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border-subtle)"; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "var(--shadow-sm)"; }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <span style={{ color, display: "flex" }} aria-hidden>{icon}</span>
-        <span style={{ fontSize: 11, fontWeight: 600, letterSpacing: 0.4, textTransform: "uppercase",
+        <span style={{
+          color,
+          width: 28,
+          height: 28,
+          borderRadius: 7,
+          background: "var(--bg-surface)",
+          border: "0.5px solid var(--border-subtle)",
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+        }} aria-hidden>{icon}</span>
+        <span style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: 0.8, textTransform: "uppercase",
           color: "var(--text-muted)", fontFamily: "'Inter', sans-serif" }}>{label}</span>
       </div>
-      <div style={{ fontSize: 32, fontWeight: 700, lineHeight: 1, color: "var(--text-primary)",
-        fontFamily: "var(--font-display)", fontVariantNumeric: "tabular-nums", letterSpacing: "-0.02em" }}>{value}</div>
-      {sub && <div style={{ fontSize: 12, color: "var(--text-muted)" }}>{sub}</div>}
+      <div style={{ fontSize: 40, fontWeight: 650, lineHeight: 0.96, color: "var(--text-primary)",
+        fontFamily: "var(--font-display)", fontVariantNumeric: "tabular-nums", letterSpacing: 0 }}>{value}</div>
+      {sub && <div style={{ fontSize: 12, color: "var(--text-muted)", letterSpacing: 0.1 }}>{sub}</div>}
     </div>
   );
 }
@@ -77,7 +94,7 @@ export function LiveOverview() {
   const open = f.filter((x) => isOpen(x.status));
   const by = (s: Sev) => open.filter((x) => x.severity === s).length;
   const engs = engagements.data?.engagements ?? [];
-  const activeEngs = engs.filter((e) => isOpen(e.status)).length;
+  const activeEngs = engs.filter((e) => isActiveEngagement(e.status)).length;
   const total = open.length;
 
   // severity distribution bar segments (only non-zero, so it reads cleanly)
@@ -85,8 +102,9 @@ export function LiveOverview() {
     .map((s) => ({ s, n: by(s) })).filter((x) => x.n > 0);
 
   return (
-    <section aria-label="Live operations overview" style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      <div style={{ display: "flex", gap: 12, flexWrap: "wrap" }}>
+    <section aria-label="Live operations overview"
+      style={{ position: "relative", display: "flex", flexDirection: "column", gap: 14 }}>
+      <div style={{ position: "relative", zIndex: 1, display: "flex", gap: 14, flexWrap: "wrap" }}>
         <Kpi icon={<Layers size={16} />} label="Active Engagements" value={activeEngs} color="var(--accent)"
              sub={`${engs.length} total`} />
         <Kpi icon={<ShieldAlert size={16} />} label="Open Findings" value={total} color="var(--text-primary)"
@@ -99,7 +117,7 @@ export function LiveOverview() {
 
       {/* severity distribution — color + count label, never color alone */}
       {total > 0 ? (
-        <div>
+        <div style={{ position: "relative", zIndex: 1 }}>
           <div role="img" aria-label={`Severity distribution: ${segs.map((x) => `${by(x.s)} ${SEV[x.s].label}`).join(", ")}`}
             style={{ display: "flex", height: 8, borderRadius: 999, overflow: "hidden", background: "var(--bg-hover)" }}>
             {segs.map(({ s, n }) => (

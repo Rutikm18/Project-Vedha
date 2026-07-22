@@ -1,5 +1,5 @@
 /**
- * `adversa doctor` — system health check.
+ * `vedha doctor` — system health check.
  *
  * Reports the status of every component the product depends on. Each item
  * carries an actionable fix when red. Designed to be the first thing a user
@@ -41,7 +41,7 @@ function symbol(status: CheckResult['status']): string {
 
 function render(checks: CheckResult[]): void {
   ln();
-  ln(`  ${C.bold}ADVERSA system health${C.reset}`);
+  ln(`  ${C.bold}VEDHA system health${C.reset}`);
   ln(`  ${C.gray}${'─'.repeat(68)}${C.reset}`);
   ln();
 
@@ -64,7 +64,7 @@ function render(checks: CheckResult[]): void {
   if (failCount === 0) {
     ln(`  ${C.green}Ready to scan.${C.reset}  Run: ${C.bold}./run.sh app${C.reset}`);
   } else {
-    ln(`  ${C.red}${failCount} critical issue(s) — fix the items above and re-run \`adversa doctor\`.${C.reset}`);
+    ln(`  ${C.red}${failCount} critical issue(s) — fix the items above and re-run \`vedha doctor\`.${C.reset}`);
   }
   ln();
 }
@@ -207,7 +207,7 @@ async function checkServer(): Promise<CheckResult> {
       name:   'API server',
       status: 'fail',
       detail: `error: ${e instanceof Error ? e.message : String(e)}`,
-      fix:    'Run `./run.sh start` and check `.adversa-server.log`.',
+      fix:    'Run `./run.sh start` and check `.vedha-server.log`.',
     };
   }
 }

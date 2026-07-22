@@ -22,7 +22,15 @@ export async function POST(req: Request) {
       method: "POST",
       body: { email, password },
     });
-    return NextResponse.json({ token: d.access_token, refreshToken: d.refresh_token, email });
+    const res = NextResponse.json({ token: d.access_token, refreshToken: d.refresh_token, email });
+    // Set cookie so Edge middleware can gate routes without JS
+    res.cookies.set("vedha_token", d.access_token, {
+      httpOnly: false,   // must be readable by JS so fetchJson can also use it
+      sameSite: "lax",
+      path: "/",
+      maxAge: 7 * 24 * 3600,
+    });
+    return res;
   } catch (e) {
     const status = e instanceof BackendError ? e.status : 500;
     return NextResponse.json({ error: (e as Error).message || "login failed" }, { status });

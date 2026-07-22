@@ -30,6 +30,9 @@ async def _check(redis, bucket: str, limit: int, window_sec: int) -> None:
         await redis.expire(key, window_sec)
     if count > limit:
         ttl = await redis.ttl(key)
+        if ttl < 0:
+            await redis.expire(key, window_sec)
+            ttl = window_sec
         raise HTTPException(
             status_code=status.HTTP_429_TOO_MANY_REQUESTS,
             detail=f"Too many requests. Try again in {max(ttl, 1)}s.",

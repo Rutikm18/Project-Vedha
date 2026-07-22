@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# ADVERSA Platform — Full Local Development Stack
+# VEDHA Platform — Full Local Development Stack
 #
 # Services: api, worker, agent×3, postgres, redis, neo4j,
 #           kafka, zookeeper, vault (dev), minio
@@ -31,21 +31,21 @@ x-agent-defaults: &agent-defaults
 
 services:
 
-  # ── ADVERSA API (Next.js) ──────────────────────────────────────────────────
+  # ── VEDHA API (Next.js) ──────────────────────────────────────────────────
   api:
     build:
       context: ..
       dockerfile: Dockerfile
       target: runner
-    image: adversa-api:dev
-    container_name: adversa-api
+    image: vedha-api:dev
+    container_name: vedha-api
     ports:
       - "${API_PORT:-3000}:3000"
     environment:
       NODE_ENV:                production
       NEXT_TELEMETRY_DISABLED: "1"
       ANTHROPIC_API_KEY:       "${ANTHROPIC_API_KEY:-}"
-      DATABASE_URL:            "postgresql://adversa:${POSTGRES_PASSWORD:-changeme}@postgres:5432/adversa"
+      DATABASE_URL:            "postgresql://vedha:${POSTGRES_PASSWORD:-changeme}@postgres:5432/vedha"
       REDIS_URL:               "redis://redis:6379"
       NEO4J_URI:               "bolt://neo4j:7687"
       NEO4J_USER:              "neo4j"
@@ -69,12 +69,12 @@ services:
 
   # ── Background Worker ──────────────────────────────────────────────────────
   worker:
-    image: adversa-api:dev
-    container_name: adversa-worker
+    image: vedha-api:dev
+    container_name: vedha-worker
     command: ["node", "worker.js"]
     environment:
       NODE_ENV:        production
-      DATABASE_URL:    "postgresql://adversa:${POSTGRES_PASSWORD:-changeme}@postgres:5432/adversa"
+      DATABASE_URL:    "postgresql://vedha:${POSTGRES_PASSWORD:-changeme}@postgres:5432/vedha"
       REDIS_URL:       "redis://redis:6379"
       KAFKA_BROKERS:   "kafka:9092"
     depends_on:
@@ -86,7 +86,7 @@ services:
   # ── Scanning Agents (3 instances) ─────────────────────────────────────────
   agent-corp:
     <<: *agent-defaults
-    container_name: adversa-agent-corp
+    container_name: vedha-agent-corp
     environment:
       <<: *agent-defaults
       AGENT_ID:  "${AGENT_CORP_ID:-AGT-001}"
@@ -95,7 +95,7 @@ services:
 
   agent-dmz:
     <<: *agent-defaults
-    container_name: adversa-agent-dmz
+    container_name: vedha-agent-dmz
     environment:
       <<: *agent-defaults
       AGENT_ID:  "${AGENT_DMZ_ID:-AGT-002}"
@@ -104,7 +104,7 @@ services:
 
   agent-cloud:
     <<: *agent-defaults
-    container_name: adversa-agent-cloud
+    container_name: vedha-agent-cloud
     environment:
       <<: *agent-defaults
       AGENT_ID:  "${AGENT_CLOUD_ID:-AGT-003}"
@@ -114,15 +114,15 @@ services:
   # ── PostgreSQL ─────────────────────────────────────────────────────────────
   postgres:
     image: postgres:16-alpine
-    container_name: adversa-postgres
+    container_name: vedha-postgres
     environment:
-      POSTGRES_DB:       adversa
-      POSTGRES_USER:     adversa
+      POSTGRES_DB:       vedha
+      POSTGRES_USER:     vedha
       POSTGRES_PASSWORD: "${POSTGRES_PASSWORD:-changeme}"
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U adversa -d adversa"]
+      test: ["CMD-SHELL", "pg_isready -U vedha -d vedha"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -131,7 +131,7 @@ services:
   # ── Redis ──────────────────────────────────────────────────────────────────
   redis:
     image: redis:7-alpine
-    container_name: adversa-redis
+    container_name: vedha-redis
     command: redis-server --save 60 1 --loglevel warning
     volumes:
       - redis-data:/data
@@ -145,7 +145,7 @@ services:
   # ── Neo4j (attack graph) ───────────────────────────────────────────────────
   neo4j:
     image: neo4j:5-community
-    container_name: adversa-neo4j
+    container_name: vedha-neo4j
     ports:
       - "${NEO4J_HTTP_PORT:-7474}:7474"
       - "${NEO4J_BOLT_PORT:-7687}:7687"
@@ -167,7 +167,7 @@ services:
   # ── Zookeeper ─────────────────────────────────────────────────────────────
   zookeeper:
     image: confluentinc/cp-zookeeper:7.6.0
-    container_name: adversa-zookeeper
+    container_name: vedha-zookeeper
     environment:
       ZOOKEEPER_CLIENT_PORT: 2181
       ZOOKEEPER_TICK_TIME:   2000
@@ -179,7 +179,7 @@ services:
   # ── Kafka ─────────────────────────────────────────────────────────────────
   kafka:
     image: confluentinc/cp-kafka:7.6.0
-    container_name: adversa-kafka
+    container_name: vedha-kafka
     ports:
       - "${KAFKA_EXTERNAL_PORT:-9093}:9093"
     depends_on:
@@ -205,7 +205,7 @@ services:
   # ── HashiCorp Vault (dev mode) ─────────────────────────────────────────────
   vault:
     image: hashicorp/vault:1.16
-    container_name: adversa-vault
+    container_name: vedha-vault
     ports:
       - "${VAULT_PORT:-8200}:8200"
     environment:
@@ -224,7 +224,7 @@ services:
   # ── MinIO (S3-compatible artifact storage) ─────────────────────────────────
   minio:
     image: minio/minio:RELEASE.2024-05-10T01-41-38Z
-    container_name: adversa-minio
+    container_name: vedha-minio
     ports:
       - "${MINIO_API_PORT:-9000}:9000"
       - "${MINIO_CONSOLE_PORT:-9001}:9001"
@@ -253,4 +253,4 @@ volumes:
 
 networks:
   default:
-    name: adversa-network
+    name: vedha-network

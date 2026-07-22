@@ -9,6 +9,7 @@ import {
 } from "lucide-react";
 import { PageShell } from "../../components/PageShell";
 import { useToast } from "../../hooks/useToast";
+import { fetchJson, errorMessage } from "../../lib/fetcher";
 
 /* ─── Types ─── */
 type EngagementStatus = "PLANNING" | "ACTIVE" | "PAUSED" | "COMPLETED" | "ARCHIVED";
@@ -21,17 +22,24 @@ interface Engagement {
   progress: number; tags: string[];
 }
 
+interface EngagementsResponse {
+  engagements: Engagement[];
+  stats?: { totalFindings: number; activeEngagements: number; totalAssets: number };
+  activity?: unknown[];
+  timeline?: unknown[];
+}
+
 /* ─── Multi-step form state ─── */
 interface FormState {
   name: string; client: string; description: string;
-  startDate: string; endDate: string; assessor: string;
+  startDate: string; endDate: string; assessor: string; tags: string;
   scopeCidrs: string; excludedCidrs: string;
   credType: "ssh" | "winrm" | "domain" | "api"; credLabel: string; credUser: string;
 }
 
 const EMPTY_FORM: FormState = {
   name: "", client: "", description: "",
-  startDate: "", endDate: "", assessor: "analyst@adversa.io",
+  startDate: "", endDate: "", assessor: "analyst@vedha.io", tags: "",
   scopeCidrs: "", excludedCidrs: "",
   credType: "domain", credLabel: "", credUser: "",
 };
@@ -73,18 +81,22 @@ export default function EngagementsPage() {
   const { success, error: toastError } = useToast();
   const qc = useQueryClient();
 
-  const { data, isLoading, isError } = useQuery({
+  // fetchJson injects the stored Bearer token and THROWS on non-2xx. The BFF
+  // (withBackend) authenticates via the Authorization header, not the cookie —
+  // a raw fetch() sends only the cookie, so every call 401'd silently: the list
+  // came back empty and creates looked successful ("Created" toast) while
+  // nothing persisted. Throwing on error also makes isError / onError real.
+  const { data, isLoading, isError, refetch, isFetching } = useQuery<EngagementsResponse>({
     queryKey: ["engagements"],
-    queryFn: () => fetch("/api/engagements").then((r) => r.json()),
+    queryFn: () => fetchJson<EngagementsResponse>("/api/engagements"),
   });
 
   const createMutation = useMutation({
     mutationFn: (body: Record<string, unknown>) =>
-      fetch("/api/engagements", {
+      fetchJson<{ engagement: Engagement }>("/api/engagements", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(body),
-      }).then((r) => r.json()),
+      }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["engagements"] });
       success("Created", "Engagement created successfully.");
@@ -92,7 +104,7 @@ export default function EngagementsPage() {
       setStep(0);
       setForm(EMPTY_FORM);
     },
-    onError: () => toastError("Error", "Failed to create engagement."),
+    onError: (err) => toastError("Error", errorMessage(err)),
   });
 
   const [showModal, setShowModal] = useState(false);
@@ -119,6 +131,7 @@ export default function EngagementsPage() {
       startDate: form.startDate,
       endDate: form.endDate,
       assessor: form.assessor,
+      tags: form.tags.split(",").map((s) => s.trim()).filter(Boolean),
       scopeCidrs: form.scopeCidrs.split(",").map((s) => s.trim()).filter(Boolean),
       excludedCidrs: form.excludedCidrs.split(",").map((s) => s.trim()).filter(Boolean),
       credentials: form.credLabel.trim()
@@ -172,9 +185,13 @@ export default function EngagementsPage() {
             {isError && (
               <tr>
                 <td colSpan={9} style={{ padding: "40px 0", textAlign: "center" }}>
-                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 8 }}>
+                  <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 10 }}>
                     <AlertTriangle size={28} color="#FF1744" />
                     <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: "#FF1744" }}>Failed to load engagements</span>
+                    <button onClick={() => refetch()} disabled={isFetching}
+                      style={{ display: "flex", alignItems: "center", gap: 6, fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: "var(--adv-accent)", background: "none", border: "1px solid rgba(37,99,235,0.3)", borderRadius: 4, padding: "5px 14px", cursor: isFetching ? "not-allowed" : "pointer" }}>
+                      <RefreshCw size={11} style={isFetching ? { animation: "spin 1s linear infinite" } : undefined} /> Retry
+                    </button>
                   </div>
                 </td>
               </tr>
@@ -279,7 +296,8 @@ export default function EngagementsPage() {
                     { label: "ENGAGEMENT NAME *", key: "name" as const, placeholder: "ACME Corp — Q2 VAPT" },
                     { label: "CLIENT NAME *",     key: "client" as const, placeholder: "ACME Corporation" },
                     { label: "DESCRIPTION",       key: "description" as const, placeholder: "Scope and objectives…" },
-                    { label: "ASSESSOR",          key: "assessor" as const, placeholder: "analyst@adversa.io" },
+                    { label: "ASSESSOR",          key: "assessor" as const, placeholder: "analyst@vedha.io" },
+                    { label: "TAGS (comma-separated)", key: "tags" as const, placeholder: "external, web, pci" },
                   ].map(({ label, key, placeholder }) => (
                     <div key={key}>
                       <label style={labelStyle}>{label}</label>
@@ -366,6 +384,7 @@ export default function EngagementsPage() {
                     { label: "CLIENT",     value: form.client },
                     { label: "DATES",      value: `${form.startDate} → ${form.endDate}` },
                     { label: "ASSESSOR",   value: form.assessor },
+                    { label: "TAGS",       value: form.tags || "—" },
                     { label: "SCOPE",      value: `${form.scopeCidrs.split(",").filter((s) => s.trim()).length} CIDR(s): ${form.scopeCidrs}` },
                     { label: "EXCLUDED",   value: form.excludedCidrs || "—" },
                     { label: "CREDENTIAL", value: form.credLabel || "None added" },

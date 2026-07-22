@@ -3,7 +3,7 @@ import { clearSession, loadSession } from '../auth';
 
 export function buildLogoutCommand(): Command {
   return new Command('logout')
-    .description('Clear your ADVERSA session')
+    .description('Clear your VEDHA session')
     .action(() => {
       const s = loadSession();
       if (!s) {

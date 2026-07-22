@@ -1,5 +1,5 @@
 /**
- * Interactive wizard — the default `adversa` experience.
+ * Interactive wizard — the default `vedha` experience.
  * Users pick from menus and fill fields; the product does the rest.
  */
 import { Command }                       from 'commander';
@@ -103,7 +103,7 @@ async function choose<T>(
 
 function banner(): void {
   ln();
-  ln(`  ${A.blue}▄▄▄  ██▄  ▄  ██▄ ▄  ██▄ ██▄  ▄▄${A.reset}    ${A.bold}ADVERSA${A.reset}`);
+  ln(`  ${A.blue}▄▄▄  ██▄  ▄  ██▄ ▄  ██▄ ██▄  ▄▄${A.reset}    ${A.bold}VEDHA${A.reset}`);
   ln(`  ${A.blue}▀▀▀█  █ █  █  █   ██ █ █  █ █ █${A.reset}    ${A.dim}Network VAPT Platform${A.reset}`);
   ln(`  ${A.blue}▀▀▀▀  ▀▀▀  ▀  ▀▀▀ ▀  ▀▀▀  ▀▀▀${A.reset}     ${A.dim}Interactive mode${A.reset}`);
   ln();
@@ -564,11 +564,11 @@ async function wizardScan(): Promise<void> {
   // tool-runners' hosts parameter (built inside scanner.ts from naabu output)
   // is supplemented. Since the scanner currently reads from naabu's return,
   // when naabu is skipped, the hosts array stays empty. We patch that by
-  // exposing reusedHosts via env: tool-runners read process.env.ADVERSA_REUSED_HOSTS.
+  // exposing reusedHosts via env: tool-runners read process.env.VEDHA_REUSED_HOSTS.
   if (reusedHosts.length > 0) {
-    process.env.ADVERSA_REUSED_HOSTS = JSON.stringify(reusedHosts);
+    process.env.VEDHA_REUSED_HOSTS = JSON.stringify(reusedHosts);
   } else {
-    delete process.env.ADVERSA_REUSED_HOSTS;
+    delete process.env.VEDHA_REUSED_HOSTS;
   }
 
   try {
@@ -576,7 +576,7 @@ async function wizardScan(): Promise<void> {
   } catch (e) {
     out.error(`Scan failed: ${e instanceof Error ? e.message : String(e)}`);
   } finally {
-    delete process.env.ADVERSA_REUSED_HOSTS;
+    delete process.env.VEDHA_REUSED_HOSTS;
   }
 
   // ── Phase 2: Vuln assessment (only if user picked "Discovery + Vuln") ─
@@ -681,11 +681,11 @@ async function runHostDiscoveryOnly(targets: string[], source: string): Promise<
 
   if (next === 'port_scan') {
     // Hand off to iterative engagement, pre-seeding the discovered hosts
-    process.env.ADVERSA_REUSED_HOSTS = JSON.stringify(discovered);
+    process.env.VEDHA_REUSED_HOSTS = JSON.stringify(discovered);
     try {
       await runIterativeEngagement(discovered.map((h) => h.ip), false, `${source} (continued from host discovery)`);
     } finally {
-      delete process.env.ADVERSA_REUSED_HOSTS;
+      delete process.env.VEDHA_REUSED_HOSTS;
     }
   }
 }
@@ -974,13 +974,13 @@ async function runPhaseWithTools(hosts: DiscoveredHost[], tools: Tool[], targets
   };
 
   // Pass current host state via env (so port-scan/enum stages don't re-discover).
-  // For naabu / host-discovery phases we must NOT inherit a stale ADVERSA_REUSED_HOSTS
+  // For naabu / host-discovery phases we must NOT inherit a stale VEDHA_REUSED_HOSTS
   // value from a prior phase — that would cause scanner.ts to pre-seed and re-emit
   // every previously-discovered host even if the user selected only a subset to scan.
   if (hosts.length > 0 && !tools.includes('host-discovery') && !tools.includes('naabu')) {
-    process.env.ADVERSA_REUSED_HOSTS = JSON.stringify(hosts);
+    process.env.VEDHA_REUSED_HOSTS = JSON.stringify(hosts);
   } else {
-    delete process.env.ADVERSA_REUSED_HOSTS;
+    delete process.env.VEDHA_REUSED_HOSTS;
   }
 
   const cb: ScanCallbacks = {
@@ -1014,7 +1014,7 @@ async function runPhaseWithTools(hosts: DiscoveredHost[], tools: Tool[], targets
   } catch (e) {
     out.error(`Phase failed: ${e instanceof Error ? e.message : String(e)}`);
   } finally {
-    delete process.env.ADVERSA_REUSED_HOSTS;
+    delete process.env.VEDHA_REUSED_HOSTS;
   }
 
   return { hosts: newHosts, findings: newFindings };
@@ -1117,7 +1117,7 @@ async function runPhaseExploitation(state: PhaseState): Promise<void> {
 
   // ── Safety gate ─────────────────────────────────────────────────
   if (plan.risk === 'DESTRUCTIVE') {
-    ln(`  ${A.red}✗ DESTRUCTIVE actions are blocked.${A.reset} ADVERSA will not execute this.`);
+    ln(`  ${A.red}✗ DESTRUCTIVE actions are blocked.${A.reset} VEDHA will not execute this.`);
     return;
   }
   if (plan.requiresApproval || plan.risk === 'STATE_CHANGE') {
@@ -1129,7 +1129,7 @@ async function runPhaseExploitation(state: PhaseState): Promise<void> {
   }
 
   ln();
-  ln(`  ${A.dim}ADVERSA does not execute exploit commands directly.${A.reset}`);
+  ln(`  ${A.dim}VEDHA does not execute exploit commands directly.${A.reset}`);
   ln(`  ${A.dim}Copy the command above into your own terminal where you have authorization to run it.${A.reset}`);
   ln(`  ${A.dim}When you have results, return to the wizard and use Validate findings to record outcomes.${A.reset}`);
 }
@@ -1240,7 +1240,7 @@ async function runVulnAssessmentFlow(
   };
 
   // Seed hosts so engine doesn't re-discover
-  process.env.ADVERSA_REUSED_HOSTS = JSON.stringify(hosts);
+  process.env.VEDHA_REUSED_HOSTS = JSON.stringify(hosts);
 
   const newFindings: LiveFinding[] = [];
   const vulnCb: ScanCallbacks = {
@@ -1258,7 +1258,7 @@ async function runVulnAssessmentFlow(
   } catch (e) {
     out.error(`Vuln assessment failed: ${e instanceof Error ? e.message : String(e)}`);
   } finally {
-    delete process.env.ADVERSA_REUSED_HOSTS;
+    delete process.env.VEDHA_REUSED_HOSTS;
   }
 
   // ── Phase 3: Validation prompt ───────────────────────────────────
@@ -1559,7 +1559,7 @@ async function wizardValidate(): Promise<void> {
     };
 
     // Seed the single host so naabu can be skipped
-    process.env.ADVERSA_REUSED_HOSTS = JSON.stringify([{
+    process.env.VEDHA_REUSED_HOSTS = JSON.stringify([{
       ip: f.host, ports: [f.port], services: [{ port: f.port, proto: 'tcp' }],
     }]);
 
@@ -1580,7 +1580,7 @@ async function wizardValidate(): Promise<void> {
     try {
       await runScan(opts, callbacks);
     } finally {
-      delete process.env.ADVERSA_REUSED_HOSTS;
+      delete process.env.VEDHA_REUSED_HOSTS;
     }
 
     ln();

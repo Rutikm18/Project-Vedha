@@ -32,6 +32,7 @@ from .scanner_base import (
 # Default port -> probe kind. Multiple ports can map to the same engine.
 DEFAULT_DB_PORTS = {
     3306: "mysql",
+    33060: "mysqlx",
     5432: "postgres",
     1433: "mssql",
     6379: "redis",
@@ -148,9 +149,46 @@ async def _probe_mongodb(reader, writer, timeout) -> dict | None:
     return None
 
 
+# Mysqlx.ServerMessages.Type values (0..13) — used to validate an X-protocol reply.
+_XPROTO_SERVER_TYPES = frozenset(range(0, 14))
+
+
+async def _probe_mysqlx(reader, writer, timeout) -> dict | None:
+    # MySQL X Protocol (mysqlx, default port 33060). Unlike classic MySQL the
+    # server sends NO greeting — the client speaks first. We send a
+    # Connection.CapabilitiesGet (client message type 1, empty payload) framed as
+    # X protocol: [uint32 LE length][1-byte msg type][payload]. A genuine reply is
+    # itself an X-protocol frame: [uint32 LE length][1-byte ServerMessages type].
+    #
+    # The discriminator that separates this from Oracle TNS (whose loose matcher
+    # used to claim 33060) is the LITTLE-endian length prefix exactly bounding the
+    # frame AND a valid server message type at offset 4 — TNS uses a big-endian
+    # length at offset 0, so it cannot satisfy both.
+    try:
+        frame = struct.pack("<I", 1) + bytes([1])  # len=1 (type byte only), type=CAP_GET
+        writer.write(frame)
+        await writer.drain()
+        data = await asyncio.wait_for(reader.read(512), timeout=timeout)
+    except (asyncio.TimeoutError, OSError):
+        return None
+    if len(data) < 5:
+        return None
+    msg_len = struct.unpack("<I", data[:4])[0]
+    msg_type = data[4]
+    # First frame must be well-formed (its LE length fits what we read) and carry a
+    # known server message type (CONN_CAPABILITIES=2, ERROR=1, NOTICE=11, ...).
+    if 1 <= msg_len <= len(data) - 4 and msg_type in _XPROTO_SERVER_TYPES:
+        return {"engine": "mysql x protocol", "xproto_msg_type": msg_type}
+    return None
+
+
 async def _probe_oracle(reader, writer, timeout) -> dict | None:
     # Oracle TNS: a connect packet elicits a TNS response (type 2=accept,
-    # 4=refuse, 11=resend). Any TNS reply confirms an Oracle listener.
+    # 4=refuse, 5=redirect, 11=resend). A genuine TNS packet has a structured
+    # header — 2-byte BIG-endian total length, 2-byte packet checksum (0 on modern
+    # servers), then the type byte. We validate that structure instead of matching
+    # a single byte at offset 4, which previously false-positived on any binary
+    # protocol (notably MySQL X on 33060) whose 5th byte happened to be 2/4/11.
     try:
         # Minimal TNS connect packet.
         data_payload = (b"(CONNECT_DATA=(COMMAND=ping))")
@@ -162,9 +200,13 @@ async def _probe_oracle(reader, writer, timeout) -> dict | None:
         data = await asyncio.wait_for(reader.read(256), timeout=timeout)
     except (asyncio.TimeoutError, OSError):
         return None
-    if len(data) >= 5:
+    if len(data) >= 8:
+        declared_len = struct.unpack(">H", data[:2])[0]
+        checksum = struct.unpack(">H", data[2:4])[0]
         tns_type = data[4]
-        if tns_type in (2, 4, 11):
+        if (tns_type in (2, 4, 5, 11)
+                and 8 <= declared_len <= len(data)
+                and checksum == 0):
             return {"engine": "oracle tns", "tns_packet_type": tns_type}
     return None
 
@@ -175,6 +217,9 @@ _PROBES = {
     "mssql": _probe_mssql,
     "redis": _probe_redis,
     "mongodb": _probe_mongodb,
+    # mysqlx MUST precede oracle: the X-protocol reply is structurally specific,
+    # whereas the (now tightened) oracle probe must only match true TNS.
+    "mysqlx": _probe_mysqlx,
     "oracle": _probe_oracle,
 }
 

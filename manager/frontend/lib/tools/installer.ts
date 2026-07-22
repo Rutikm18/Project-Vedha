@@ -1,7 +1,7 @@
 /**
  * Scanner tool installer.
  *
- * Downloads each binary in TOOL_MANIFEST into ~/.adversa/tools/. Verifies
+ * Downloads each binary in TOOL_MANIFEST into ~/.vedha/tools/. Verifies
  * SHA256 against the pinned hash (warns if hash is empty). Uses streaming
  * download + native zip/tar.gz extraction — no external utilities required
  * beyond `tar` and `unzip` which ship on every Mac/Linux.
@@ -13,7 +13,7 @@ import { tmpdir } from 'os';
 import { join, dirname } from 'path';
 import { spawnSync } from 'child_process';
 import {
-  TOOL_MANIFEST, ADVERSA_TOOLS_DIR, ADVERSA_MANIFEST_FILE,
+  TOOL_MANIFEST, VEDHA_TOOLS_DIR, VEDHA_MANIFEST_FILE,
   currentPlatform, type ToolSpec, type ToolSource,
 } from './manifest';
 
@@ -31,28 +31,28 @@ interface InstalledManifest {
 }
 
 function readInstalled(): InstalledManifest {
-  if (!existsSync(ADVERSA_MANIFEST_FILE)) return { tools: [] };
+  if (!existsSync(VEDHA_MANIFEST_FILE)) return { tools: [] };
   try {
-    return JSON.parse(readFileSync(ADVERSA_MANIFEST_FILE, 'utf-8')) as InstalledManifest;
+    return JSON.parse(readFileSync(VEDHA_MANIFEST_FILE, 'utf-8')) as InstalledManifest;
   } catch {
     return { tools: [] };
   }
 }
 
 function writeInstalled(m: InstalledManifest): void {
-  mkdirSync(dirname(ADVERSA_MANIFEST_FILE), { recursive: true });
-  writeFileSync(ADVERSA_MANIFEST_FILE, JSON.stringify(m, null, 2));
+  mkdirSync(dirname(VEDHA_MANIFEST_FILE), { recursive: true });
+  writeFileSync(VEDHA_MANIFEST_FILE, JSON.stringify(m, null, 2));
 }
 
-/** Public: where ADVERSA-managed binaries live for a given tool id. */
+/** Public: where VEDHA-managed binaries live for a given tool id. */
 export function managedPath(id: string): string {
   const tool = TOOL_MANIFEST.find((t) => t.id === id);
   if (!tool) return '';
   const ext = currentPlatform() === 'windows-amd64' ? '.exe' : '';
-  return join(ADVERSA_TOOLS_DIR, tool.binary + ext);
+  return join(VEDHA_TOOLS_DIR, tool.binary + ext);
 }
 
-/** Public: is this tool currently installed under ADVERSA's management? */
+/** Public: is this tool currently installed under VEDHA's management? */
 export function isManaged(id: string): boolean {
   const p = managedPath(id);
   if (!p || !existsSync(p)) return false;
@@ -68,7 +68,7 @@ export function getInstalledRecord(id: string): InstalledRecord | undefined {
 function downloadFile(url: string, destPath: string, onProgress?: (pct: number) => void, redirects = 0): Promise<void> {
   return new Promise((resolve, reject) => {
     if (redirects > 5) return reject(new Error('Too many redirects'));
-    httpsGet(url, { headers: { 'User-Agent': 'adversa-installer/1.0' } }, (res) => {
+    httpsGet(url, { headers: { 'User-Agent': 'vedha-installer/1.0' } }, (res) => {
       // Follow 30x redirects (GitHub uses redirects for release assets)
       if (res.statusCode && res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
         res.resume();
@@ -166,10 +166,10 @@ export async function installTool(toolId: string, progress: InstallProgress = {}
     return;
   }
 
-  mkdirSync(ADVERSA_TOOLS_DIR, { recursive: true });
+  mkdirSync(VEDHA_TOOLS_DIR, { recursive: true });
 
   const src = pickSource(tool);
-  const archiveFile = join(tmpdir(), `adversa-${tool.id}-${tool.version}.${src.archiveType === 'tar.gz' ? 'tar.gz' : 'zip'}`);
+  const archiveFile = join(tmpdir(), `vedha-${tool.id}-${tool.version}.${src.archiveType === 'tar.gz' ? 'tar.gz' : 'zip'}`);
 
   // 1. Download
   progress.onPhase?.('download');
@@ -190,7 +190,7 @@ export async function installTool(toolId: string, progress: InstallProgress = {}
   // 3. Extract + chmod
   progress.onPhase?.('extract');
   const ext = currentPlatform() === 'windows-amd64' ? '.exe' : '';
-  extract(archiveFile, src.archiveType, ADVERSA_TOOLS_DIR, src.binaryInArchive, tool.binary + ext);
+  extract(archiveFile, src.archiveType, VEDHA_TOOLS_DIR, src.binaryInArchive, tool.binary + ext);
 
   // 4. Record
   const installed = readInstalled();

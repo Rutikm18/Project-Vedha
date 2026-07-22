@@ -13,7 +13,7 @@ const c = {
 export function buildAdminCommand(): Command {
   const admin = new Command('admin').description('User & permission management (admin only)');
 
-  // adversa admin list-users
+  // vedha admin list-users
   admin
     .command('list-users')
     .description('List all permitted users')
@@ -40,7 +40,7 @@ export function buildAdminCommand(): Command {
       process.stdout.write('\n');
     });
 
-  // adversa admin add-user <email> [--scope cidr,cidr] [--role operator|admin]
+  // vedha admin add-user <email> [--scope cidr,cidr] [--role operator|admin]
   admin
     .command('add-user <email>')
     .description('Add a user and set their allowed scan scope')
@@ -64,7 +64,7 @@ export function buildAdminCommand(): Command {
       process.stdout.write('\n');
     });
 
-  // adversa admin set-scope <email> --scope cidr,cidr
+  // vedha admin set-scope <email> --scope cidr,cidr
   admin
     .command('set-scope <email>')
     .description("Update a user's allowed scan scope")
@@ -85,7 +85,7 @@ export function buildAdminCommand(): Command {
       process.stdout.write(`${c.green('✓')} Scope updated for ${c.bold(email)}: ${scopes.join(', ')}\n`);
     });
 
-  // adversa admin remove-user <email>
+  // vedha admin remove-user <email>
   admin
     .command('remove-user <email>')
     .description('Remove a user')

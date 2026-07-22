@@ -28,13 +28,18 @@ SMB_PORTS = {139, 445}
 DB_PORTS = {3306, 5432, 1433, 6379, 27017, 1521}     # DEFAULT_DB_PORTS.keys() in db_scanner.py
 AI_PORTS = {11434, 8000, 8080, 5000, 3000, 1234, 8001, 7860, 11435}  # DEFAULT_AI_PORTS in mcp_ai_scanner.py
 UDP_PORTS = {53, 123, 161, 137}                       # UDP_PROBES.keys() in udp_scanner.py
+SNMP_PORTS = {161}
 
 PROFILE_PORTS = {"it": IT_PORTS, "iot": IOT_PORTS, "ot": []}
-PROFILE_DEEP_BRANCHES = {"it": {"tls", "web", "smb", "db"}, "iot": {"tls", "web"}, "ot": set()}
+PROFILE_DEEP_BRANCHES = {
+    "it": {"tls", "web", "smb", "db", "mcp_ai", "snmp"},
+    "iot": {"tls", "web"},
+    "ot": set(),
+}
 LIVENESS_RECHECK_THRESHOLD = {"it": timedelta(hours=1), "iot": timedelta(minutes=5)}
 
 _BRANCH_PORT_TABLE = {"tls": TLS_PORTS, "web": WEB_PORTS, "smb": SMB_PORTS,
-                      "db": DB_PORTS, "mcp_ai": AI_PORTS}
+                      "db": DB_PORTS, "mcp_ai": AI_PORTS, "snmp": SNMP_PORTS}
 
 
 def gate_0_is_passive_profile(profile: str) -> bool:
@@ -68,7 +73,8 @@ def gate_5_branch_eligible(branch: str, asset: Asset, profile: str,
       - Must be in this profile's allowed deep-scan set (ot allows none;
         iot allows tls/web only; it allows tls/web/smb/db).
       - If the caller passed an explicit --services filter, branch must be in it.
-      - Either router.py already determined this branch applies from
+      - SNMP is a UDP read probe, so it does not depend on TCP open-port state.
+      - Otherwise, either router.py already determined this branch applies from
         OBSERVED banner/handshake content (dynamically_routed=True — the
         HTTPS-on-9443 case, passed in by the caller, this function doesn't
         re-derive it), OR at least one open port falls in the branch's
@@ -79,6 +85,8 @@ def gate_5_branch_eligible(branch: str, asset: Asset, profile: str,
         return False
     if service_filter is not None and branch not in service_filter:
         return False
+    if branch == "snmp":
+        return asset.last_seen_alive is not None
     if dynamically_routed:
         return True
     open_ports = asset.open_ports_for_deep_scan()

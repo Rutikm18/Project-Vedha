@@ -1,4 +1,4 @@
-# ADVERSA Platform — Infrastructure Guide
+# VEDHA Platform — Infrastructure Guide
 
 ## Architecture Overview
 
@@ -26,8 +26,8 @@ Internet → ALB → EKS (api ×3, worker ×2, agent-manager)
 ### 1. Clone and configure
 
 ```bash
-git clone https://github.com/adversa-io/adversa
-cd adversa
+git clone https://github.com/vedha-io/vedha
+cd vedha
 cp infrastructure/.env.example infrastructure/.env
 # Edit .env — set ANTHROPIC_API_KEY at minimum
 ```
@@ -45,7 +45,7 @@ docker compose -f infrastructure/docker-compose.full.yml logs -f api
 
 | Service       | URL                          | Credentials         |
 |---------------|------------------------------|---------------------|
-| ADVERSA UI    | http://localhost:3000         | —                   |
+| VEDHA UI    | http://localhost:3000         | —                   |
 | Neo4j Browser | http://localhost:7474         | neo4j / changeme    |
 | MinIO Console | http://localhost:9001         | minioadmin / ...    |
 | Vault UI      | http://localhost:8200/ui      | Token: root-token   |
@@ -72,7 +72,7 @@ docker compose -f infrastructure/docker-compose.full.yml down -v
 ### 1. Register the agent
 
 ```bash
-curl -X POST https://adversa.yourdomain.com/api/agents/register \
+curl -X POST https://vedha.yourdomain.com/api/agents/register \
   -H "Content-Type: application/json" \
   -d '{
     "agentName": "corp-agent-03",
@@ -87,10 +87,10 @@ Response contains `tlsCert` and `vaultRoleToken`.
 ### 2. Store TLS cert
 
 ```bash
-mkdir -p /etc/adversa/certs
-echo "$TLS_CERT_RESPONSE" > /etc/adversa/certs/client.pem
-echo "$TLS_KEY_RESPONSE"  > /etc/adversa/certs/client.key
-chmod 600 /etc/adversa/certs/client.*
+mkdir -p /etc/vedha/certs
+echo "$TLS_CERT_RESPONSE" > /etc/vedha/certs/client.pem
+echo "$TLS_KEY_RESPONSE"  > /etc/vedha/certs/client.key
+chmod 600 /etc/vedha/certs/client.*
 ```
 
 ### 3. Run the agent
@@ -100,36 +100,36 @@ pip install -r infrastructure/agent/requirements.txt
 
 AGENT_ID=AGT-XXX \
 VAULT_ROLE_TOKEN=s.XXXXXXXXX \
-PLATFORM_API_URL=https://adversa.yourdomain.com \
+PLATFORM_API_URL=https://vedha.yourdomain.com \
 python3 infrastructure/agent/agent.py
 ```
 
 ### 4. Run via Docker
 
 ```bash
-docker build -t adversa-agent infrastructure/agent/
+docker build -t vedha-agent infrastructure/agent/
 
 docker run -d \
-  --name adversa-agent-corp \
+  --name vedha-agent-corp \
   -e AGENT_ID=AGT-XXX \
-  -e PLATFORM_API_URL=https://adversa.yourdomain.com \
+  -e PLATFORM_API_URL=https://vedha.yourdomain.com \
   -e VAULT_ROLE_TOKEN=s.XXXXXXXXX \
-  -v /etc/adversa/certs:/etc/adversa/certs:ro \
-  adversa-agent
+  -v /etc/vedha/certs:/etc/vedha/certs:ro \
+  vedha-agent
 ```
 
 ### 5. Systemd unit (on-premise)
 
 ```ini
 [Unit]
-Description=ADVERSA Scanning Agent
+Description=VEDHA Scanning Agent
 After=network.target
 
 [Service]
 Type=simple
-User=adversa-agent
-EnvironmentFile=/etc/adversa/agent.env
-ExecStart=/usr/bin/python3 /opt/adversa/agent/agent.py
+User=vedha-agent
+EnvironmentFile=/etc/vedha/agent.env
+ExecStart=/usr/bin/python3 /opt/vedha/agent/agent.py
 Restart=always
 RestartSec=10
 StandardOutput=journal
@@ -152,31 +152,31 @@ WantedBy=multi-user.target
 
 ```bash
 # Add any chart dependencies first
-helm dependency update infrastructure/helm/adversa
+helm dependency update infrastructure/helm/vedha
 
 # Dry run
-helm upgrade --install adversa infrastructure/helm/adversa \
-  --namespace adversa \
+helm upgrade --install vedha infrastructure/helm/vedha \
+  --namespace vedha \
   --create-namespace \
-  --values infrastructure/helm/adversa/values.yaml \
-  --set ingress.host=adversa.yourdomain.com \
+  --values infrastructure/helm/vedha/values.yaml \
+  --set ingress.host=vedha.yourdomain.com \
   --set api.image.tag=1.4.0 \
   --dry-run
 
 # Deploy
-helm upgrade --install adversa infrastructure/helm/adversa \
-  --namespace adversa \
+helm upgrade --install vedha infrastructure/helm/vedha \
+  --namespace vedha \
   --create-namespace \
-  --values infrastructure/helm/adversa/values.yaml \
-  --set ingress.host=adversa.yourdomain.com
+  --values infrastructure/helm/vedha/values.yaml \
+  --set ingress.host=vedha.yourdomain.com
 ```
 
 ### 2. Check rollout
 
 ```bash
-kubectl rollout status deployment/adversa-api -n adversa
-kubectl get pods -n adversa
-kubectl get hpa -n adversa
+kubectl rollout status deployment/vedha-api -n vedha
+kubectl get pods -n vedha
+kubectl get hpa -n vedha
 ```
 
 ---
@@ -194,7 +194,7 @@ kubectl get hpa -n adversa
 cd infrastructure/terraform
 
 terraform init \
-  -backend-config="bucket=adversa-terraform-state" \
+  -backend-config="bucket=vedha-terraform-state" \
   -backend-config="region=us-east-1"
 ```
 

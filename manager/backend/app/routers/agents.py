@@ -2,17 +2,18 @@
 Agent registration, heartbeat, job polling, and result submission.
 """
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
 import structlog
-from fastapi import APIRouter, BackgroundTasks, HTTPException, status
+from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, status
 from pydantic import BaseModel
-from sqlalchemy import select
+from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.jwt import create_access_token
 from app.auth.rbac import require_role
+from app.config import get_settings
 from app.dependencies import DB, AuthUser
 from app.discovery.finding_translator import create_findings_from_probe_result
 from app.models.agent import Agent, AgentStatus
@@ -22,6 +23,7 @@ from app.models.enums import AssetType, ScanJobStatus, ScanJobType
 from app.models.scan_job import ScanJob
 from app.models.scan_result import ScanResult
 from app.models.service import Service
+from app.services.job_result_service import _promote_assets as _promote_assets
 
 router = APIRouter(prefix="/agents", tags=["agents"])
 logger = structlog.get_logger()
@@ -63,6 +65,7 @@ class AgentRegisterRequest(BaseModel):
     location: str | None = None
     capabilities: list[str] = []
     network_segments: list[str] = []
+    public_key: str | None = None   # X25519 public key (base64) for scope encryption
 
 
 class AgentRegisterResponse(BaseModel):
@@ -187,7 +190,72 @@ _USE_CASES = {
         "profile": "it",
         "expected_runtime_hint": "2–8 min",
     },
+    "uc_snmp_exposure": {
+        "display_name": "SNMP Exposure Check",
+        "description": (
+            "Read-only SNMP sysDescr checks using common community strings. "
+            "Use to find default or weak read communities on routers, printers, "
+            "switches, and monitoring appliances."
+        ),
+        "scan_type": "snmp_scan",
+        "profile": "it",
+        "expected_runtime_hint": "2–8 min",
+    },
 }
+
+
+async def _encrypt_scope_for_agent(db, agent_id: str, job_params: dict) -> str | None:
+    """Encrypt the engagement scope for a specific agent's public key.
+
+    Reads agent.public_key from the DB. Returns None if the agent has no
+    public key (scope is sent in the clear inside the TLS tunnel).
+    """
+    scope_cidrs = job_params.get("_scope_cidrs") or job_params.get("scope_cidrs") or []
+    excluded_cidrs = job_params.get("_excluded_cidrs") or []
+    engagement_id = job_params.get("engagement_id", "")
+
+    if not scope_cidrs:
+        return None  # nothing to encrypt
+
+    agent = (await db.execute(
+        select(Agent).where(Agent.id == agent_id)
+    )).scalar_one_or_none()
+
+    if not agent or not agent.public_key:
+        return None  # agent hasn't registered a public key yet
+
+    from app.services.scope_crypto import public_key_from_b64, encrypt_scope_b64
+
+    pk_bytes = public_key_from_b64(agent.public_key)
+    if not pk_bytes:
+        return None
+
+    scope_dict = {
+        "scope_cidrs": list(scope_cidrs),
+        "excluded_cidrs": list(excluded_cidrs),
+        "engagement_id": engagement_id,
+    }
+    try:
+        return encrypt_scope_b64(scope_dict, pk_bytes)
+    except Exception as exc:
+        logger.warning("scope_crypto.encrypt_failed", agent_id=agent_id, error=str(exc))
+        return None
+
+
+def _agent_ownership_check(request: Request, agent_id_str: str) -> None:
+    """Verify that the JWT token bearer IS the agent they claim to be.
+
+    Every heartbeat, job poll, and result submission must pass this check.
+    Prevents a compromised low-privilege JWT from impersonating another agent.
+    """
+    token_sub = getattr(request.state, "user_id", None)
+    if token_sub is None:
+        raise HTTPException(status_code=401, detail="Not authenticated")
+    if str(token_sub) != str(agent_id_str):
+        raise HTTPException(
+            status_code=403,
+            detail="Token subject does not match the requested agent_id",
+        )
 
 
 # ── Routes ────────────────────────────────────────────────────────────────────
@@ -229,6 +297,9 @@ async def register_agent(
         agent.network_segments = body.network_segments
         agent.status = AgentStatus.online
         agent.last_heartbeat = datetime.now(timezone.utc)
+        # Phase 4: update public key if the probe sent one (re-registration)
+        if body.public_key:
+            agent.public_key = body.public_key
     else:
         agent = Agent(
             tenant_id=current_user.tenant_id,
@@ -236,6 +307,7 @@ async def register_agent(
             location=body.location,
             capabilities=body.capabilities,
             network_segments=body.network_segments,
+            public_key=body.public_key,
             status=AgentStatus.online,
             last_heartbeat=datetime.now(timezone.utc),
         )
@@ -281,20 +353,37 @@ async def list_agents(db: DB, current_user: AuthUser):
 
 
 @router.post("/heartbeat", summary="Agent sends health ping every 30s")
-async def heartbeat(body: HeartbeatRequest, db: DB):
+async def heartbeat(body: HeartbeatRequest, db: DB, request: Request):
+    # Verify the agent sending the heartbeat owns this agent_id (auth gap fix)
+    _agent_ownership_check(request, body.agent_id)
+
     agent_id = uuid.UUID(body.agent_id)
     result = await db.execute(select(Agent).where(Agent.id == agent_id))
     agent = result.scalar_one_or_none()
     if not agent:
         raise HTTPException(404, "Agent not found")
 
-    agent.last_heartbeat = datetime.now(timezone.utc)
+    now = datetime.now(timezone.utc)
+    agent.last_heartbeat = now
     try:
         agent.status = AgentStatus(body.status)
     except ValueError:
         agent.status = AgentStatus.online
     if body.current_job_id:
-        agent.current_job_id = uuid.UUID(body.current_job_id)
+        job_uuid = uuid.UUID(body.current_job_id)
+        agent.current_job_id = job_uuid
+        # Renew the lease on the job this probe is actively running, so the reaper
+        # doesn't requeue live work. Scoped to (job, this agent, running) so a probe
+        # can't extend a job it doesn't own or one already finished.
+        await db.execute(
+            update(ScanJob)
+            .where(
+                ScanJob.id == job_uuid,
+                ScanJob.agent_id == body.agent_id,
+                ScanJob.status == ScanJobStatus.running,
+            )
+            .values(lease_expires_at=now + timedelta(seconds=get_settings().job_lease_seconds))
+        )
 
     await db.flush()
     return {"ok": True}
@@ -304,8 +393,12 @@ async def heartbeat(body: HeartbeatRequest, db: DB):
 async def get_agent_jobs(
     agent_id: uuid.UUID,
     db: DB,
+    request: Request = None,
     limit: int = 1,
 ):
+    if request is not None:
+        _agent_ownership_check(request, str(agent_id))
+
     result = await db.execute(
         select(Agent).where(Agent.id == agent_id)
     )
@@ -313,6 +406,10 @@ async def get_agent_jobs(
     if not agent:
         raise HTTPException(404, "Agent not found")
 
+    # Atomic claim: FOR UPDATE SKIP LOCKED locks each pending row as we read it
+    # and skips rows another concurrent poller (or the WS job_ack path) already
+    # holds — so the same job can never be dispatched to two agents. Without this
+    # the read→assign gap is a TOCTOU race that double-runs scans at scale.
     jobs_result = await db.execute(
         select(ScanJob)
         .where(
@@ -322,28 +419,39 @@ async def get_agent_jobs(
         )
         .order_by(ScanJob.created_at)
         .limit(limit)
+        .with_for_update(skip_locked=True)
     )
     jobs = jobs_result.scalars().all()
 
-    # Assign jobs to this agent
+    # Assign jobs to this agent, with a lease the probe renews via heartbeat. If the
+    # probe dies mid-scan the lease expires and the reaper requeues the job.
+    now = datetime.now(timezone.utc)
+    lease_until = now + timedelta(seconds=get_settings().job_lease_seconds)
     for job in jobs:
         job.agent_id = str(agent_id)
         job.status = ScanJobStatus.running
-        job.started_at = datetime.now(timezone.utc)
+        job.started_at = now
+        job.lease_expires_at = lease_until
 
     await db.flush()
 
-    return [
-        {
+    # Build response — Phase 4: encrypt scope for this specific agent
+    response_jobs = []
+    for j in jobs:
+        params = j.result or {}
+        encrypted_scope = await _encrypt_scope_for_agent(db, str(agent_id), params)
+        job_dict = {
             "job_id": str(j.id),
             "engagement_id": str(j.engagement_id),
             "job_type": j.job_type.value,
             "status": j.status.value,
-            # Scan parameters (targets, ports, rate…) the probe needs to execute.
-            "params": j.result or {},
+            "params": params,
         }
-        for j in jobs
-    ]
+        if encrypted_scope:
+            job_dict["encrypted_scope"] = encrypted_scope
+        response_jobs.append(job_dict)
+
+    return response_jobs
 
 
 @router.get("/jobs/{job_id}", summary="Get job status for frontend polling")
@@ -364,9 +472,14 @@ async def get_job_status(job_id: uuid.UUID, db: DB, current_user: AuthUser):
         )).scalar_one_or_none()
         agent_name = a.name if a else None
 
+    # Echo the job's lean result to the frontend, but NEVER the raw facts blob
+    # (too large) and NEVER credential material. While a job is still pending the
+    # `result` field holds the dispatch params — which may contain ssh_creds/
+    # win_creds — so we strip those before they can travel back to the browser.
+    _REDACT = {"facts", "ssh_creds", "win_creds"}
     lean_result = None
     if row.result:
-        lean_result = {k: v for k, v in row.result.items() if k != "facts"}
+        lean_result = {k: v for k, v in row.result.items() if k not in _REDACT}
 
     return {
         "job_id": str(row.id),
@@ -444,6 +557,13 @@ async def enqueue_agent_job(
         job_params["use_case_id"] = body.use_case_id
     if eng.scope_cidrs:
         job_params.setdefault("scope_cidrs", eng.scope_cidrs)
+    # Phase 4: store engagement scope + exclusions so they can be encrypted
+    # at dispatch time (when a specific agent picks up the job).
+    if eng.scope_cidrs:
+        job_params.setdefault("_scope_cidrs", eng.scope_cidrs)
+    excluded_cidrs = getattr(eng, "excluded_cidrs", None) or []
+    if excluded_cidrs:
+        job_params.setdefault("_excluded_cidrs", excluded_cidrs)
 
     job = ScanJob(
         engagement_id=body.engagement_id,
@@ -456,6 +576,37 @@ async def enqueue_agent_job(
     await db.refresh(job)
     logger.info("agent.job.enqueued", job_id=str(job.id), job_type=body.job_type.value,
                 use_case_id=body.use_case_id)
+
+    # ── P2: Push job to connected agents via WebSocket ───────────────────────
+    # Fire-and-forget: the HTTP response returns immediately while the
+    # push is attempted in the background. If no agent is connected, the job
+    # stays as "pending" and will be picked up via HTTP polling.
+    from app.websocket.manager import agent_ws_manager
+    job_payload = {
+        "job_id": str(job.id),
+        "engagement_id": str(job.engagement_id),
+        "job_type": job.job_type.value,
+        "params": job_params,
+    }
+    # Phase 4: try to push to the first online agent.
+    # Build a fresh payload PER agent — encrypted_scope is per-agent (different
+    # public key for each), so mutating a shared dict would leak one agent's
+    # encrypted scope to the next agent in the loop.
+    for agent_id in agent_ws_manager.online_agents:
+        per_agent_payload = {**job_payload}  # shallow copy — params are read-only
+        encrypted = None
+        try:
+            encrypted = await _encrypt_scope_for_agent(db, agent_id, job_params)
+        except Exception:
+            pass
+        if encrypted:
+            per_agent_payload["encrypted_scope"] = encrypted
+        pushed = await agent_ws_manager.push_job(agent_id, per_agent_payload)
+        if pushed:
+            logger.info("agent.job.pushed_via_ws",
+                        job_id=str(job.id), agent_id=agent_id)
+            break
+
     return {
         "job_id": str(job.id),
         "job_type": body.job_type.value,
@@ -464,132 +615,21 @@ async def enqueue_agent_job(
     }
 
 
-async def _promote_assets(db, engagement_id: uuid.UUID, result: dict) -> int:
-    """Upsert hosts/services discovered by a probe into the assets/services tables.
-
-    Keyed by (engagement_id, ip) for assets and (asset, port, protocol) for services,
-    so repeated scans update in place instead of duplicating. Returns the number of
-    newly-created assets. Any host without an IP is skipped.
-    """
-    hosts = (result or {}).get("hosts") or []
-    promoted = 0
-    for h in hosts:
-        ip = h.get("ip")
-        if not ip:
-            continue
-        asset = (await db.execute(
-            select(Asset).where(Asset.engagement_id == engagement_id, Asset.ip_address == ip)
-        )).scalar_one_or_none()
-        if asset:
-            asset.hostname = h.get("hostname") or asset.hostname
-            asset.os = h.get("os") or asset.os
-            asset.last_seen = datetime.now(timezone.utc)
-        else:
-            asset = Asset(
-                engagement_id=engagement_id, ip_address=ip,
-                hostname=h.get("hostname"), os=h.get("os"),
-                asset_type=AssetType.server, last_seen=datetime.now(timezone.utc),
-            )
-            db.add(asset)
-            await db.flush()
-            promoted += 1
-
-        for p in h.get("ports") or []:
-            port_no = p.get("port")
-            if port_no is None:
-                continue
-            proto = p.get("protocol") or "tcp"
-            cpe = p.get("cpe")
-            cpe_str = ",".join(cpe) if isinstance(cpe, list) else cpe
-            svc = (await db.execute(
-                select(Service).where(
-                    Service.asset_id == asset.id, Service.port == port_no, Service.protocol == proto)
-            )).scalar_one_or_none()
-            if svc:
-                svc.service_name = p.get("service") or svc.service_name
-                svc.product = p.get("product") or svc.product
-                svc.version = p.get("version") or svc.version
-                svc.cpe = cpe_str or svc.cpe
-            else:
-                db.add(Service(
-                    asset_id=asset.id, port=port_no, protocol=proto,
-                    service_name=p.get("service"), product=p.get("product"),
-                    version=p.get("version"), cpe=cpe_str,
-                ))
-        await db.flush()
-    return promoted
-
-
 @router.post("/{agent_id}/jobs/{job_id}/result", summary="Agent submits job result")
 async def submit_job_result(
     agent_id: uuid.UUID,
     job_id: uuid.UUID,
     body: JobResultRequest,
     db: DB,
-    background_tasks: BackgroundTasks,
+    request: Request,
 ):
-    result = await db.execute(
-        select(ScanJob).where(ScanJob.id == job_id, ScanJob.agent_id == str(agent_id))
+    # Ownership check: agent submitting must own this agent_id
+    _agent_ownership_check(request, str(agent_id))
+
+    from app.services.job_result_service import process_job_result
+    summary = await process_job_result(
+        db, agent_id, job_id, body.success, body.result, body.error,
     )
-    job = result.scalar_one_or_none()
-    if not job:
-        raise HTTPException(404, "Job not found or not assigned to this agent")
-
-    job.status = ScanJobStatus.completed if body.success else ScanJobStatus.failed
-    job.completed_at = datetime.now(timezone.utc)
-
-    # P3-#10: persist raw facts to the append-only scan_results table and keep
-    # them OUT of scan_jobs.result (which would otherwise bloat every job row
-    # with the full facts array). The durable copy in scan_results is what makes
-    # re-detection-without-re-scan possible. job.result keeps the lean summary.
-    facts = body.result.get("facts") if isinstance(body.result, dict) else None
-    if isinstance(facts, list) and facts:
-        db.add(ScanResult(
-            engagement_id=job.engagement_id, job_id=job.id,
-            scan_type=body.result.get("scan_type"), fact_count=len(facts), facts=facts))
-        lean = {k: v for k, v in body.result.items() if k != "facts"}
-        job.result = {**lean, "fact_count": len(facts), "error": body.error}
-    else:
-        job.result = {**body.result, "error": body.error}
-    await db.flush()
-
-    # Promote discovered hosts into the attack-surface inventory (best-effort:
-    # a promotion failure must never fail the probe's result submission).
-    promoted = 0
-    findings_created = 0
-    if body.success and isinstance(body.result, dict):
-        if body.result.get("hosts"):
-            try:
-                promoted = await _promote_assets(db, job.engagement_id, body.result)
-            except Exception as exc:  # noqa: BLE001
-                logger.warning("agent.job.promote_failed", job_id=str(job_id), error=str(exc))
-
-        # tls_scan/smb_enum/mcp_discovery/ai_service_discovery already self-assess
-        # severity-tagged findings (see finding_translator.py) — without this,
-        # those findings landed only in job.result and never reached the
-        # dashboard's Findings table at all.
-        try:
-            findings_created = await create_findings_from_probe_result(
-                db, job.engagement_id, body.result)
-        except Exception as exc:  # noqa: BLE001
-            logger.warning("agent.job.findings_failed", job_id=str(job_id), error=str(exc))
-
-        # New raw-facts path: run detection_engine on result['facts']. P1 —
-        # detection is the EXPENSIVE step (full CPE→vuln-DB→verify pipeline over
-        # a potentially large facts payload), so it runs OFF the request path as
-        # a background task (its own DB session). The probe's submit returns
-        # immediately; findings appear shortly after. Keeps probe throughput
-        # decoupled from analysis cost.
-        if isinstance(body.result.get("facts"), list) and body.result["facts"]:
-            from app.detection.engine_bridge import run_detection_job
-            background_tasks.add_task(run_detection_job, job.engagement_id, body.result)
-
-    logger.info(
-        "agent.job.result",
-        agent_id=str(agent_id),
-        job_id=str(job_id),
-        success=body.success,
-        assets_promoted=promoted,
-        findings_created=findings_created,
-    )
-    return {"ok": True, "assets_promoted": promoted, "findings_created": findings_created}
+    if not summary.get("ok"):
+        raise HTTPException(404, summary.get("error", "Job not found"))
+    return summary

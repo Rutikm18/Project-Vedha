@@ -62,7 +62,7 @@ class TestEnqueueAgentJob:
     async def test_success_creates_pending_job(self):
         db = MagicMock()
         db.execute = AsyncMock(return_value=MagicMock(
-            scalar_one_or_none=lambda: SimpleNamespace(id=uuid.uuid4(), rules_of_engagement=None)))
+            scalar_one_or_none=lambda: SimpleNamespace(id=uuid.uuid4(), rules_of_engagement=None, scope_cidrs=None)))
         db.add = MagicMock()
         db.flush = AsyncMock()
         db.refresh = AsyncMock()
@@ -74,7 +74,6 @@ class TestEnqueueAgentJob:
         assert out["job_type"] == "discovery"
         assert out["status"] == "pending"
         db.add.assert_called_once()
-        # the params travel in the job's result field for the probe to read
         created = db.add.call_args[0][0]
         assert created.result == {"targets": ["10.0.1.0/24"], "ports": "1-1024"}
 
@@ -113,7 +112,7 @@ class TestOTProfileGate:
 
     @pytest.mark.asyncio
     async def test_allows_passive_discovery_on_ot_engagement(self):
-        eng = SimpleNamespace(id=uuid.uuid4(), rules_of_engagement={"scan_profile": "ot"})
+        eng = SimpleNamespace(id=uuid.uuid4(), rules_of_engagement={"scan_profile": "ot"}, scope_cidrs=None)
         db = MagicMock()
         db.execute = AsyncMock(return_value=MagicMock(scalar_one_or_none=lambda: eng))
         db.add = MagicMock(); db.flush = AsyncMock(); db.refresh = AsyncMock()
@@ -126,7 +125,7 @@ class TestOTProfileGate:
     async def test_it_and_iot_profiles_unaffected(self):
         for profile in ("it", "iot", None):
             roe = {"scan_profile": profile} if profile else None
-            eng = SimpleNamespace(id=uuid.uuid4(), rules_of_engagement=roe)
+            eng = SimpleNamespace(id=uuid.uuid4(), rules_of_engagement=roe, scope_cidrs=None)
             db = MagicMock()
             db.execute = AsyncMock(return_value=MagicMock(scalar_one_or_none=lambda: eng))
             db.add = MagicMock(); db.flush = AsyncMock(); db.refresh = AsyncMock()
@@ -283,6 +282,32 @@ class TestPromoteAssets:
         assert any(isinstance(a, ag.Asset) and a.ip_address == "10.0.0.5" for a in added)
         svc = next(s for s in added if isinstance(s, ag.Service))
         assert svc.port == 443 and svc.cpe == "cpe:/a:nginx:nginx:1.25"   # list → joined string
+
+    @pytest.mark.asyncio
+    async def test_dedupes_duplicate_services_in_same_probe_result(self):
+        """A single web scan can emit multiple facts for the same host:port."""
+        eng = uuid.uuid4()
+        result = {"hosts": [
+            {"ip": "10.0.0.5", "hostname": "api", "ports": [
+                {"port": 8000, "protocol": "tcp", "service": "HTTP/1.1 307 Temporary Redirect"},
+                {"port": 8000, "protocol": "tcp", "service": "http"},
+            ]},
+        ]}
+        db = MagicMock()
+        db.execute = AsyncMock(side_effect=[
+            MagicMock(scalar_one_or_none=lambda: None),   # asset lookup → new
+            MagicMock(scalar_one_or_none=lambda: None),   # service lookup → new
+        ])
+        db.add = MagicMock()
+        db.flush = AsyncMock()
+
+        promoted = await ag._promote_assets(db, eng, result)
+
+        assert promoted == 1
+        services = [c.args[0] for c in db.add.call_args_list if isinstance(c.args[0], ag.Service)]
+        assert len(services) == 1
+        assert services[0].port == 8000
+        assert services[0].service_name == "http"
 
     @pytest.mark.asyncio
     async def test_skips_host_without_ip(self):

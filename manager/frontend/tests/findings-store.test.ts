@@ -5,7 +5,7 @@ import fs   from 'node:fs';
 import path from 'node:path';
 
 // Use a unique temp file for each test run so tests are isolated
-const TMP_DIR  = path.join(os.tmpdir(), `adversa-test-${Date.now()}`);
+const TMP_DIR  = path.join(os.tmpdir(), `vedha-test-${Date.now()}`);
 const TMP_FILE = path.join(TMP_DIR, 'findings.json');
 
 // Override DATA_PATH before importing the store

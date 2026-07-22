@@ -33,3 +33,7 @@ class Agent(Base, TimestampMixin):
     )
     last_heartbeat: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     current_job_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    # X25519 public key for end-to-end scope encryption (Phase 4).
+    # base64-encoded 32-byte raw key. NULL = agent hasn't registered a key yet
+    # (scope is sent in the clear inside the TLS tunnel, as it always was).
+    public_key: Mapped[str | None] = mapped_column(String(64), nullable=True)

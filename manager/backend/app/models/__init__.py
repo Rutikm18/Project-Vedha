@@ -15,11 +15,16 @@ from app.models.audit_log import AuditLog
 from app.models.attack_timeline import AttackTimeline
 from app.models.detection_config import DetectionConfig
 from app.models.llm_output import LLMOutput
+from app.models.outbox import OutboxEvent
+from app.models.detection_run import DetectionRun
+from app.models.agent_recommendation import AgentRecommendation
+from app.models.personal_access_token import PersonalAccessToken
 
 __all__ = [
     "Tenant", "User", "Engagement", "Asset",
     "Finding", "AttackPath", "DetectionResult", "ScanJob", "ScanResult",
     "Service", "Agent",
     "ExploitResult", "ExploitApprovalRequest", "AuditLog",
-    "AttackTimeline", "DetectionConfig", "LLMOutput",
+    "AttackTimeline", "DetectionConfig", "LLMOutput", "OutboxEvent",
+    "DetectionRun", "AgentRecommendation", "PersonalAccessToken",
 ]

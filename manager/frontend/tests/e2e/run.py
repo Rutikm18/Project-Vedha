@@ -19,7 +19,7 @@ import time
 from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
-REPO = HERE.parent.parent                      # adversa/
+REPO = HERE.parent.parent                      # vedha/
 sys.path.insert(0, str(HERE))
 import mock_manager as MM                       # noqa: E402
 

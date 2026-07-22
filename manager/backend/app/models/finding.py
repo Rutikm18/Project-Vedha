@@ -1,7 +1,8 @@
 import uuid
+from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import Boolean, Enum, ForeignKey, Numeric, String, Text
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -42,6 +43,19 @@ class Finding(Base, TimestampMixin):
     )
     evidence: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     remediation: Mapped[str | None] = mapped_column(Text(), nullable=True)
+
+    # ── Temporal / provenance (detection-run time series) ──────────────────────
+    # first_seen: when detection FIRST produced this finding (stable across runs).
+    # last_seen:  the most recent run that reaffirmed it (advances each run).
+    # A finding whose last_seen lags the engagement's latest run was NOT observed
+    # in that run — i.e. a resolution candidate (surfaced, never auto-closed).
+    # detection_run_id: the run that last touched it (null for non-engine sources).
+    first_seen: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    last_seen: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    detection_run_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("detection_runs.id", ondelete="SET NULL"),
+        nullable=True, index=True,
+    )
 
     engagement: Mapped["Engagement"] = relationship(back_populates="findings", lazy="noload")
     asset: Mapped["Asset | None"] = relationship(back_populates="findings", lazy="noload")

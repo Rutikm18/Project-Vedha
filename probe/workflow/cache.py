@@ -88,12 +88,15 @@ class WorkflowCache:
 
     def _load(self) -> None:
         with self.path.open() as fh:
-            for line in fh:
+            for lineno, line in enumerate(fh, start=1):
                 line = line.strip()
                 if not line:
                     continue
-                entry = CacheEntry.from_jsonl_dict(json.loads(line))
-                self._store[(entry.host, entry.port, entry.scanner)] = entry
+                try:
+                    entry = CacheEntry.from_jsonl_dict(json.loads(line))
+                    self._store[(entry.host, entry.port, entry.scanner)] = entry
+                except (json.JSONDecodeError, TypeError, KeyError):
+                    pass
 
     def save(self) -> None:
         if not self.path:

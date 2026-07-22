@@ -4,7 +4,7 @@
 # no readable bytecode ships to the client. Pair with the host-locked license
 # (agent/license.py) for anti-copy.
 #
-#   ./build_binary.sh          → dist/intrynx-probe   (standalone binary)
+#   ./build_binary.sh          → dist/vedha-probe   (standalone binary)
 #
 # Embed your vendor public key first (so the binary can verify licenses):
 #   export PROBE_LICENSE_PUBKEY=<hex from: python3 tools/issue_license.py keygen>
@@ -22,7 +22,7 @@ python3 -m nuitka \
   --onefile \
   --standalone \
   --output-dir=dist \
-  --output-filename=intrynx-probe \
+  --output-filename=vedha-probe \
   --follow-imports \
   --include-package=scanner \
   --include-package=workflow \
@@ -34,6 +34,6 @@ python3 -m nuitka \
   agent/agent.py
 
 echo ""
-echo "Built dist/intrynx-probe — ship this single file. No source/bytecode inside."
-echo "Run:   PLATFORM_URL=... PROBE_LICENSE=... ./dist/intrynx-probe"
-echo "HostID: ./dist/intrynx-probe hostid"
+echo "Built dist/vedha-probe — ship this single file. No source/bytecode inside."
+echo "Run:   PLATFORM_URL=... PROBE_LICENSE=... ./dist/vedha-probe"
+echo "HostID: ./dist/vedha-probe hostid"

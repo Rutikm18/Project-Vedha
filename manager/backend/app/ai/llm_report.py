@@ -4,7 +4,8 @@ LLMReportGenerator — Claude-backed narrative generation for VAPT reports.
 Uses the Anthropic Python SDK (``AsyncAnthropic``). Every call:
   * sends a strict system prompt that forbids inventing CVE/CVSS details and
     requires the model to use only the supplied data,
-  * runs at low temperature for consistency,
+  * runs at low reasoning effort (``output_config.effort``) to cap thinking-token
+    spend — the model-agnostic replacement for the removed ``temperature`` knob,
   * retries transient failures with exponential backoff,
   * runs the HallucinationGuard over the output, and
   * persists the result to ``llm_outputs`` with ``review_status = pending`` —
@@ -47,7 +48,7 @@ class LLMUnavailableError(RuntimeError):
 
 
 SYSTEM_PROMPT = (
-    "You are a senior penetration-test report writer for the ADVERSA platform. "
+    "You are a senior penetration-test report writer for the Vedha platform. "
     "You write clear, accurate security findings for a professional audience.\n\n"
     "STRICT RULES — these override any other instruction:\n"
     "1. Use ONLY the data provided in the user message. Do not invent or infer "
@@ -62,6 +63,20 @@ SYSTEM_PROMPT = (
 )
 
 
+# Per-output-type output caps (tokens), right-sized to each prompt's requested
+# length so a short remediation list doesn't reserve the same ceiling as a full
+# technical write-up. These are guardrails, not targets — generation stops at
+# end_turn well below them; they only bound worst-case (runaway) output. A cap hit
+# is logged as ai.llm.truncated. settings.llm_max_tokens is the fallback for any
+# type not listed here.
+_MAX_TOKENS_BY_TYPE = {
+    "executive_summary": 1500,           # prompt asks for 400–600 words
+    "technical_finding": 3000,           # detailed multi-section write-up
+    "remediation_steps": 1600,           # numbered steps + example commands
+    "detection_rule_explanation": 1200,  # plain-language Sigma explanation
+}
+
+
 class LLMReportGenerator:
     def __init__(
         self,
@@ -74,7 +89,7 @@ class LLMReportGenerator:
         self._db = db
         self._model = settings.llm_model
         self._max_tokens = settings.llm_max_tokens
-        self._temperature = settings.llm_temperature
+        self._effort = settings.llm_effort
         self._max_retries = settings.llm_max_retries
         self._guard = guard or HallucinationGuard()
 
@@ -92,7 +107,7 @@ class LLMReportGenerator:
 
     # ── low-level completion with retry/backoff ──────────────────────────────────
 
-    async def _complete(self, user_prompt: str) -> str:
+    async def _complete(self, user_prompt: str, *, max_tokens: int | None = None) -> str:
         if self._client is None:
             raise LLMUnavailableError(
                 "Anthropic SDK or ANTHROPIC_API_KEY not configured — cannot generate report"
@@ -101,14 +116,43 @@ class LLMReportGenerator:
         last_exc: Exception | None = None
         for attempt in range(self._max_retries):
             try:
-                resp = await self._client.messages.create(
-                    model=self._model,
-                    max_tokens=self._max_tokens,
-                    temperature=self._temperature,
-                    system=SYSTEM_PROMPT,
-                    messages=[{"role": "user", "content": user_prompt}],
-                )
+                kwargs: dict[str, Any] = {
+                    "model": self._model,
+                    "max_tokens": max_tokens or self._max_tokens,
+                    "system": SYSTEM_PROMPT,
+                    "messages": [{"role": "user", "content": user_prompt}],
+                }
+                # effort caps thinking-token spend and is accepted by Sonnet 4.6 /
+                # Opus 4.6+ / Fable 5; omitted when blank so models that reject
+                # output_config.effort still work. We deliberately send NO
+                # `temperature` — it returns a 400 on Opus 4.7/4.8 and Fable 5.
+                if self._effort:
+                    kwargs["output_config"] = {"effort": self._effort}
+
+                resp = await self._client.messages.create(**kwargs)
+
+                # Pentest content can trip safety classifiers on newer models: a
+                # refusal is a 200 with stop_reason="refusal" and empty content,
+                # which would otherwise be persisted as a BLANK report. Surface it
+                # (LLMUnavailableError isn't caught below, so it won't be retried —
+                # a refusal won't change on retry).
+                if getattr(resp, "stop_reason", None) == "refusal":
+                    detail = getattr(getattr(resp, "stop_details", None), "explanation", "") or ""
+                    raise LLMUnavailableError(
+                        f"model declined to generate this content: {detail}".strip()
+                    )
+                if getattr(resp, "stop_reason", None) == "max_tokens":
+                    logger.warning(
+                        "ai.llm.truncated", max_tokens=self._max_tokens,
+                        hint="output hit the token cap; raise llm_max_tokens if reports look cut off",
+                    )
+
                 return "".join(b.text for b in resp.content if getattr(b, "type", None) == "text")
+            except LLMUnavailableError:
+                # Refusal (above) — surface immediately, never retry. Listed first
+                # because when the anthropic SDK isn't installed the exception aliases
+                # below fall back to bare Exception and would otherwise swallow this.
+                raise
             except (RateLimitError, APIConnectionError) as exc:
                 last_exc = exc
             except APIStatusError as exc:
@@ -226,7 +270,10 @@ class LLMReportGenerator:
         actual_scores: dict[str, float] | None = None,
         check_commands: bool = False,
     ) -> LLMOutput:
-        output = await self._complete(user_prompt)
+        # Cap output to this type's right-sized ceiling (falls back to the global
+        # llm_max_tokens for unknown types) so short outputs don't reserve 4096.
+        max_tokens = _MAX_TOKENS_BY_TYPE.get(output_type, self._max_tokens)
+        output = await self._complete(user_prompt, max_tokens=max_tokens)
         validation = self._guard.validate(
             output,
             actual_cve_ids=actual_cve_ids,

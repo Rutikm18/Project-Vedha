@@ -79,7 +79,7 @@ import urllib.error
 
 from .scanner_base import (
     BaseScanner, ScanResult, ScopeGuard, ResultWriter, expand_targets,
-    parse_ports, setup_logging, base_argparser, main_entrypoint, LOG,
+    parse_ports, bracket_host, setup_logging, base_argparser, main_entrypoint, LOG,
 )
 
 # Ports commonly used by AI runtimes and MCP servers.
@@ -106,6 +106,16 @@ _KNOWN_FALSE_POSITIVE_SIGNATURES = [
 
 # Substrings that, inside a JSON-typed error body, genuinely indicate the
 # response is *about* authentication/credentials (not just any 401 text).
+class _NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, *args, **kwargs):
+        return None
+
+_AI_CTX = ssl.create_default_context()
+_AI_CTX.check_hostname = False
+_AI_CTX.verify_mode = ssl.CERT_NONE
+_OPENER = urllib.request.build_opener(
+    _NoRedirect, urllib.request.HTTPSHandler(context=_AI_CTX))
+
 _AUTH_BODY_HINTS = [
     "unauthorized", "unauthenticated", "not authenticated", "invalid_api_key",
     "invalid api key", "missing api key", "no api key", "x-api-key",
@@ -115,15 +125,12 @@ _AUTH_BODY_HINTS = [
 
 
 def _request(url: str, method: str, timeout: float) -> dict | None:
-    ctx = ssl.create_default_context()
-    ctx.check_hostname = False
-    ctx.verify_mode = ssl.CERT_NONE
     req = urllib.request.Request(
         url, headers={"User-Agent": "va-scanner/1.0",
                       "Accept": "application/json, text/event-stream"},
         method=method)
     try:
-        with urllib.request.urlopen(req, timeout=timeout, context=ctx) as resp:
+        with _OPENER.open(req, timeout=timeout) as resp:
             body = resp.read(4096)
             return {"status": resp.status,
                     "headers": {k.lower(): v for k, v in resp.headers.items()},
@@ -228,7 +235,7 @@ class MCPAIScanner(BaseScanner):
 
     async def _probe_port(self, target: str, port: int) -> list[ScanResult]:
         scheme = "https" if port in _TLS_PORTS else "http"
-        base = f"{scheme}://{target}:{port}"
+        base = f"{scheme}://{bracket_host(target)}:{port}"
         loop = asyncio.get_running_loop()
         found: list[ScanResult] = []
 

@@ -4,11 +4,11 @@ terraform {
     aws = { source = "hashicorp/aws"; version = "~> 5.0" }
   }
   backend "s3" {
-    bucket         = "adversa-terraform-state"
+    bucket         = "vedha-terraform-state"
     key            = "prod/terraform.tfstate"
     region         = "us-east-1"
     encrypt        = true
-    dynamodb_table = "adversa-tf-lock"
+    dynamodb_table = "vedha-tf-lock"
   }
 }
 
@@ -16,7 +16,7 @@ provider "aws" {
   region = var.aws_region
   default_tags {
     tags = {
-      Project     = "adversa"
+      Project     = "vedha"
       Environment = var.environment
       ManagedBy   = "terraform"
     }
@@ -85,7 +85,7 @@ module "eks" {
 }
 
 # ── RDS PostgreSQL (Multi-AZ) ──────────────────────────────────────────────────
-resource "aws_db_subnet_group" "adversa" {
+resource "aws_db_subnet_group" "vedha" {
   name       = "${var.cluster_name}-db-subnet-group"
   subnet_ids = module.vpc.private_subnet_ids
 }
@@ -102,7 +102,7 @@ resource "aws_security_group" "rds" {
   }
 }
 
-resource "aws_db_instance" "adversa" {
+resource "aws_db_instance" "vedha" {
   identifier             = "${var.cluster_name}-postgres"
   engine                 = "postgres"
   engine_version         = "16"
@@ -115,17 +115,17 @@ resource "aws_db_instance" "adversa" {
   db_name                = var.db_name
   username               = var.db_username
   password               = var.db_password
-  db_subnet_group_name   = aws_db_subnet_group.adversa.name
+  db_subnet_group_name   = aws_db_subnet_group.vedha.name
   vpc_security_group_ids = [aws_security_group.rds.id]
   backup_retention_period = 7
   deletion_protection     = true
   skip_final_snapshot     = false
   final_snapshot_identifier = "${var.cluster_name}-postgres-final"
 
-  parameter_group_name = aws_db_parameter_group.adversa.name
+  parameter_group_name = aws_db_parameter_group.vedha.name
 }
 
-resource "aws_db_parameter_group" "adversa" {
+resource "aws_db_parameter_group" "vedha" {
   name   = "${var.cluster_name}-pg16"
   family = "postgres16"
 
@@ -140,7 +140,7 @@ resource "aws_db_parameter_group" "adversa" {
 }
 
 # ── ElastiCache Redis ──────────────────────────────────────────────────────────
-resource "aws_elasticache_subnet_group" "adversa" {
+resource "aws_elasticache_subnet_group" "vedha" {
   name       = "${var.cluster_name}-redis-subnet"
   subnet_ids = module.vpc.private_subnet_ids
 }
@@ -157,14 +157,14 @@ resource "aws_security_group" "redis" {
   }
 }
 
-resource "aws_elasticache_replication_group" "adversa" {
+resource "aws_elasticache_replication_group" "vedha" {
   replication_group_id       = "${var.cluster_name}-redis"
-  description                = "ADVERSA Redis cache"
+  description                = "VEDHA Redis cache"
   engine_version             = "7.2"
   node_type                  = "cache.t3.medium"
   num_cache_clusters         = 3
   parameter_group_name       = "default.redis7"
-  subnet_group_name          = aws_elasticache_subnet_group.adversa.name
+  subnet_group_name          = aws_elasticache_subnet_group.vedha.name
   security_group_ids         = [aws_security_group.redis.id]
   at_rest_encryption_enabled = true
   transit_encryption_enabled = true
@@ -172,7 +172,7 @@ resource "aws_elasticache_replication_group" "adversa" {
 }
 
 # ── MSK Kafka ──────────────────────────────────────────────────────────────────
-resource "aws_msk_cluster" "adversa" {
+resource "aws_msk_cluster" "vedha" {
   cluster_name           = "${var.cluster_name}-kafka"
   kafka_version          = "3.6.0"
   number_of_broker_nodes = var.kafka_broker_count
@@ -193,12 +193,12 @@ resource "aws_msk_cluster" "adversa" {
   }
 
   configuration_info {
-    arn      = aws_msk_configuration.adversa.arn
-    revision = aws_msk_configuration.adversa.latest_revision
+    arn      = aws_msk_configuration.vedha.arn
+    revision = aws_msk_configuration.vedha.latest_revision
   }
 }
 
-resource "aws_msk_configuration" "adversa" {
+resource "aws_msk_configuration" "vedha" {
   name              = "${var.cluster_name}-kafka-config"
   kafka_versions    = ["3.6.0"]
   server_properties = <<-PROPS
@@ -240,7 +240,7 @@ resource "aws_s3_bucket_public_access_block" "artifacts" {
 # ── IAM — IRSA for API Service Account ────────────────────────────────────────
 data "aws_caller_identity" "current" {}
 
-resource "aws_iam_role" "adversa_api" {
+resource "aws_iam_role" "vedha_api" {
   name = "${var.cluster_name}-api-irsa"
 
   assume_role_policy = jsonencode({
@@ -251,16 +251,16 @@ resource "aws_iam_role" "adversa_api" {
       Action    = "sts:AssumeRoleWithWebIdentity"
       Condition = {
         StringEquals = {
-          "${module.eks.oidc_provider}:sub" = "system:serviceaccount:adversa:adversa-api"
+          "${module.eks.oidc_provider}:sub" = "system:serviceaccount:vedha:vedha-api"
         }
       }
     }]
   })
 }
 
-resource "aws_iam_role_policy" "adversa_api_s3" {
+resource "aws_iam_role_policy" "vedha_api_s3" {
   name = "s3-artifacts"
-  role = aws_iam_role.adversa_api.id
+  role = aws_iam_role.vedha_api.id
   policy = jsonencode({
     Version = "2012-10-17"
     Statement = [{
@@ -275,13 +275,13 @@ resource "aws_iam_role_policy" "adversa_api_s3" {
 }
 
 # ── Secrets Manager ────────────────────────────────────────────────────────────
-resource "aws_secretsmanager_secret" "adversa_platform" {
-  name                    = "adversa/platform/secrets"
+resource "aws_secretsmanager_secret" "vedha_platform" {
+  name                    = "vedha/platform/secrets"
   recovery_window_in_days = 7
 }
 
-resource "aws_secretsmanager_secret_version" "adversa_platform" {
-  secret_id = aws_secretsmanager_secret.adversa_platform.id
+resource "aws_secretsmanager_secret_version" "vedha_platform" {
+  secret_id = aws_secretsmanager_secret.vedha_platform.id
   secret_string = jsonencode({
     anthropic_api_key = "PLACEHOLDER — set via CI/CD"
     db_password       = var.db_password

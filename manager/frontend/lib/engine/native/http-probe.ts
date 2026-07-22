@@ -163,7 +163,7 @@ function probeOne(host: string, port: number, scheme: 'http' | 'https'): Promise
         method: 'GET',
         timeout: 5000,
         rejectUnauthorized: false,
-        headers: { 'User-Agent': 'adversa-scanner/1.0', 'Accept': '*/*' },
+        headers: { 'User-Agent': 'vedha-scanner/1.0', 'Accept': '*/*' },
       };
       req = (scheme === 'https' ? httpsRequest : httpRequest)(requestOpts as Parameters<typeof httpsRequest>[0], (res) => {
         let body = '';

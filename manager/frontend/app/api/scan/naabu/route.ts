@@ -52,8 +52,8 @@ export async function POST(req: NextRequest) {
 
   const safeRate = Math.min(Math.max(rate, 100), 5000);
 
-  const targetsFile = path.join(os.tmpdir(), `adversa-naabu-targets-${Date.now()}.txt`);
-  const outputFile  = path.join(os.tmpdir(), `adversa-naabu-out-${Date.now()}.json`);
+  const targetsFile = path.join(os.tmpdir(), `vedha-naabu-targets-${Date.now()}.txt`);
+  const outputFile  = path.join(os.tmpdir(), `vedha-naabu-out-${Date.now()}.json`);
 
   fs.writeFileSync(targetsFile, targets.join("\n"));
 

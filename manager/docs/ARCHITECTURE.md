@@ -1,8 +1,8 @@
-# ADVERSA — Architecture
+# VEDHA — Architecture
 
-> **This copy.** `intrynx/` (this directory — sibling to `scanner_module/` in
+> **This copy.** `vedha/` (this directory — sibling to `scanner_module/` in
 > the `Agentic VA Scanner` workspace) is a clean, deduplicated copy of the
-> separate `Security-projects/Intrynx copy/` project's `backend/`, `probe/`,
+> separate `Security-projects/Vedha copy/` project's `backend/`, `probe/`,
 > and `frontend/` (build artifacts and dependency dirs excluded — reinstall
 > fresh, see the workspace root `README.md`). Three things were *not* carried
 > over, all consistent with `INTEGRATION.md`'s own already-documented
@@ -26,7 +26,7 @@
 > pattern"), calling FastAPI's `GET /agents` instead. This was already a
 > listed pending migration; it isn't a new regression from this consolidation.
 
-ADVERSA is an automated **Network VAPT** (Vulnerability Assessment & Penetration
+VEDHA is an automated **Network VAPT** (Vulnerability Assessment & Penetration
 Testing) platform. It is split into two cooperating planes:
 
 | Plane | What it is | Where it runs |
@@ -65,9 +65,9 @@ Everything on the platform side is one `docker-compose.yml` (see `RUNBOOK.md`):
 | `postgres` | postgres:16 | System of record | internal only |
 | `redis` | redis:7 | Job queue + liveness | internal only |
 | `neo4j` | neo4j:5 (profile `graph`) | Attack-path graph store (optional) | 7474/7687 |
-| `migrate` | adversa-backend (one-shot) | `alembic upgrade head` + seed admin, then exits | — |
-| `api` | adversa-backend | FastAPI app + static dashboard | **18080** |
-| `probe` | adversa-probe (profile `probe`) | Local test probe (real ones deploy remotely) | none (outbound only) |
+| `migrate` | vedha-backend (one-shot) | `alembic upgrade head` + seed admin, then exits | — |
+| `api` | vedha-backend | FastAPI app + static dashboard | **18080** |
+| `probe` | vedha-probe (profile `probe`) | Local test probe (real ones deploy remotely) | none (outbound only) |
 
 `migrate` runs once and `api` only starts after it succeeds, so migrations never
 race across workers. The base image is **lean**; heavy integrations (AI/AD/Neo4j
@@ -253,8 +253,8 @@ or the dashboard.
 | **List / monitor** | `GET /agents` (tenant-scoped: name, status, capabilities, `last_heartbeat`, `online` flag) — surfaced in the dashboard "Probes" panel. A probe is "online" if it heartbeat within 90s. |
 | **Assign work** | `POST /agents/jobs` (operator) enqueues a `discovery`/`lateral`/`cloud_scan` job with `params`; any matching online probe claims it on its next poll. |
 | **Scope / segments** | A probe advertises `network_segments` (CIDRs it can reach) at registration. |
-| **Identity persistence** | State file (`/var/lib/adversa-probe/state.json`); the Docker/native installers mount a volume so restarts don't re-register. |
-| **Stop / retire** | `docker rm -f adversa-probe` or `systemctl disable --now adversa-probe`. Stale agents go `offline` (no heartbeat). |
+| **Identity persistence** | State file (`/var/lib/vedha-probe/state.json`); the Docker/native installers mount a volume so restarts don't re-register. |
+| **Stop / retire** | `docker rm -f vedha-probe` or `systemctl disable --now vedha-probe`. Stale agents go `offline` (no heartbeat). |
 | **Scale** | Run one probe per segment; each registers independently. |
 
 ### 4.5 Security posture
@@ -443,7 +443,7 @@ the manager, which never needs to reach into the client network.
 
 ## 10. Frontend integration (single project)
 
-The `adversa/` Next.js app (now `frontend/` in this monorepo) is the dashboard.
+The `vedha/` Next.js app (now `frontend/` in this monorepo) is the dashboard.
 It is integrated with the FastAPI backend using a **BFF (backend-for-frontend)**
 pattern so there is one source of truth and no CORS:
 

@@ -28,7 +28,7 @@ function showSpinner(msg: string): () => void {
 
 export function buildToolsCommand(): Command {
   const cmd = new Command('tools');
-  cmd.description('Manage bundled scanner binaries (~/.adversa/tools/)');
+  cmd.description('Manage bundled scanner binaries (~/.vedha/tools/)');
 
   // ── status ─────────────────────────────────────────────────────
   cmd
@@ -42,7 +42,7 @@ export function buildToolsCommand(): Command {
         return;
       }
       ln();
-      ln(`  ${C.bold}ADVERSA bundled scanner tools${C.reset}`);
+      ln(`  ${C.bold}VEDHA bundled scanner tools${C.reset}`);
       ln(`  ${C.gray}${'─'.repeat(72)}${C.reset}`);
       ln(`  ${'TOOL'.padEnd(12)} ${'STATUS'.padEnd(14)} ${'INSTALLED'.padEnd(11)} ${'PINNED'.padEnd(11)} DESCRIPTION`);
       ln(`  ${C.gray}${'─'.repeat(72)}${C.reset}`);
@@ -62,7 +62,7 @@ export function buildToolsCommand(): Command {
       const missing = total - ok - stale;
       ln(`  ${ok} up to date  ·  ${stale} stale  ·  ${missing} missing`);
       if (missing + stale > 0) {
-        ln(`  ${C.cyan}Run \`adversa tools install\` to install / update${C.reset}`);
+        ln(`  ${C.cyan}Run \`vedha tools install\` to install / update${C.reset}`);
       }
       ln();
     });
@@ -73,7 +73,7 @@ export function buildToolsCommand(): Command {
     .description('Download missing tools (or just one named tool)')
     .action(async (target?: string) => {
       ln();
-      ln(`  ${C.bold}Installing scanner tools into ~/.adversa/tools/${C.reset}`);
+      ln(`  ${C.bold}Installing scanner tools into ~/.vedha/tools/${C.reset}`);
       ln(`  ${C.dim}Source: official upstream GitHub releases${C.reset}`);
       ln();
 
@@ -165,13 +165,13 @@ export function buildToolsCommand(): Command {
   // ── remove
   cmd
     .command('remove <tool>')
-    .description('Remove one tool from ~/.adversa/tools/')
+    .description('Remove one tool from ~/.vedha/tools/')
     .action((target: string) => {
       const ok = removeTool(target);
       if (ok) {
         ln(`  ${C.green}✓${C.reset} Removed ${target}`);
       } else {
-        ln(`  ${C.red}✗${C.reset} ${target} was not installed under ADVERSA management`);
+        ln(`  ${C.red}✗${C.reset} ${target} was not installed under VEDHA management`);
         process.exit(1);
       }
     });

@@ -2,7 +2,7 @@ import fs   from 'fs';
 import path from 'path';
 import os   from 'os';
 
-const SESSION_DIR  = path.join(os.homedir(), '.adversa');
+const SESSION_DIR  = path.join(os.homedir(), '.vedha');
 const SESSION_FILE = path.join(SESSION_DIR, 'session.json');
 
 export interface Session {
@@ -33,14 +33,14 @@ export function clearSession(): void {
 export function requireAuth(): Session {
   const s = loadSession();
   if (!s) {
-    process.stderr.write('\x1b[1;31m[ERR]\x1b[0m Not authenticated. Run: adversa login\n');
+    process.stderr.write('\x1b[1;31m[ERR]\x1b[0m Not authenticated. Run: vedha login\n');
     process.exit(1);
   }
   return s;
 }
 
 export function serverUrl(): string {
-  return process.env.ADVERSA_SERVER ?? 'http://localhost:3000';
+  return process.env.VEDHA_SERVER ?? 'http://localhost:3000';
 }
 
 export async function apiFetch(

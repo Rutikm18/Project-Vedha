@@ -22,20 +22,20 @@ export async function POST(req: NextRequest) {
 
   if (!apiKey) {
     // Dev mode — print OTP to server console
-    console.log(`\n[ADVERSA DEV] OTP for ${email}: ${otp}\n`);
+    console.log(`\n[VEDHA DEV] OTP for ${email}: ${otp}\n`);
     return NextResponse.json({ ok: true, dev: true, otp });
   }
 
-  const from = process.env.RESEND_FROM ?? 'Adversa <noreply@adversa.security>';
+  const from = process.env.RESEND_FROM ?? 'Vedha <noreply@vedha.security>';
   const resend = new Resend(apiKey);
 
   const { error } = await resend.emails.send({
     from,
     to:      email,
-    subject: 'Your ADVERSA login code',
+    subject: 'Your VEDHA login code',
     html: `
       <div style="font-family:monospace;background:#050A0E;color:#C8E8F0;padding:32px;border-radius:8px">
-        <h2 style="color:#00D4FF;margin:0 0 16px">ADVERSA</h2>
+        <h2 style="color:#00D4FF;margin:0 0 16px">VEDHA</h2>
         <p style="margin:0 0 8px">Your one-time login code:</p>
         <p style="font-size:36px;font-weight:bold;letter-spacing:8px;color:#00FF88;margin:16px 0">${otp}</p>
         <p style="color:#3D7A94;font-size:12px;margin:16px 0 0">Expires in 10 minutes. Do not share this code.</p>

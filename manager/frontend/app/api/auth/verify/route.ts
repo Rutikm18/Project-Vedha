@@ -16,9 +16,9 @@ export async function POST(req: NextRequest) {
 
   if (!result.ok) {
     const messages: Record<string, string> = {
-      expired:           'Code expired. Run adversa login to get a new one.',
+      expired:           'Code expired. Run vedha login to get a new one.',
       invalid:           'Incorrect code.',
-      too_many_attempts: 'Too many attempts. Run adversa login to get a new code.',
+      too_many_attempts: 'Too many attempts. Run vedha login to get a new code.',
     };
     return NextResponse.json({ error: messages[(result as { reason: string }).reason] ?? 'Invalid code' }, { status: 401 });
   }

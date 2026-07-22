@@ -1,45 +1,99 @@
 # Dockerfile.sealed — ships ONLY the Nuitka-compiled native binary, no source.
 # Multi-stage: build compiles to machine code; the runtime image carries just
-# the executable. Combined with agent/license.py this is the "sealed probe".
+# the executable. Combined with agent/license.py + agent/hw_bind.py this is
+# the "sealed probe" — no Python, no bytecode, hardware-bound.
 #
-#   docker build -f Dockerfile.sealed -t intrynx-probe:sealed \
-#     --build-arg PROBE_LICENSE_PUBKEY=<vendor pubkey hex> .
+# Build:
+#   docker build -f Dockerfile.sealed -t vedha-probe:sealed \
+#     --build-arg PROBE_LICENSE_PUBKEY=<vendor pubkey hex> \
+#     --build-arg HW_BIND_FINGERPRINT=<target machine fingerprint> \
+#     --build-arg MTLS_CERT="$(cat path/to/mtls_cert.pem)" \
+#     --build-arg MTLS_KEY="$(cat path/to/mtls_key.pem)" \
+#     --build-arg MTLS_CA_CERT="$(cat path/to/ca_cert.pem)" .
 
 # ── Stage 1: compile ──────────────────────────────────────────────────────────
-# Pin to bookworm so the binary's glibc matches the bookworm runtime below
-# (a 'slim' that floats to a newer Debian compiles against a newer glibc than
-# debian:12-slim has → "GLIBC_2.xx not found" at runtime).
+# Pin to bookworm so the binary's glibc matches the bookworm runtime below.
 FROM python:3.12-slim-bookworm AS build
 WORKDIR /src
+
 # build-essential (NOT bare gcc) — slim images lack libc headers (stdlib.h),
 # which Nuitka's C backend needs. patchelf is required for --standalone.
 RUN apt-get update && apt-get install -y --no-install-recommends \
-      build-essential patchelf && rm -rf /var/lib/apt/lists/*
-# nuitka[onefile] pulls zstandard for compressed single-file output.
-RUN pip install --no-cache-dir "nuitka[onefile]" httpx cryptography
+      build-essential patchelf ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
+# Install Python deps: Nuitka + all the probe's runtime deps.
+# websockets is new for Phase 2 (WebSocket push protocol).
+RUN pip install --no-cache-dir "nuitka[onefile]" httpx cryptography paramiko \
+      pywinrm impacket websockets
+
 COPY scanner/  ./scanner/
 COPY workflow/ ./workflow/
 COPY agent/    ./agent/
+
+# ── Build args (embedded at compile time) ───────────────────────────────────
 ARG PROBE_LICENSE_PUBKEY=""
+ARG HW_BIND_FINGERPRINT=""
+ARG MTLS_CERT=""
+ARG MTLS_KEY=""
+ARG MTLS_CA_CERT=""
+
 ENV PROBE_LICENSE_PUBKEY=${PROBE_LICENSE_PUBKEY}
+ENV HW_BIND_FINGERPRINT=${HW_BIND_FINGERPRINT}
+
+# Write mTLS certs (if provided) into the build context so Nuitka can embed them.
+RUN if [ -n "${MTLS_CERT}" ]; then \
+      echo "${MTLS_CERT}" > /src/agent/mtls_cert.pem; \
+      echo "${MTLS_KEY}"  > /src/agent/mtls_key.pem; \
+      echo "${MTLS_CA_CERT}" > /src/agent/ca_cert.pem; \
+    fi
+
+# Build env flags for Nuitka embedding
+ARG ENV_FLAGS=""
+RUN if [ -n "${PROBE_LICENSE_PUBKEY}" ]; then \
+      ENV_FLAGS="${ENV_FLAGS} --include-env=PROBE_LICENSE_PUBKEY=${PROBE_LICENSE_PUBKEY}"; \
+    fi; \
+    if [ -n "${HW_BIND_FINGERPRINT}" ]; then \
+      ENV_FLAGS="${ENV_FLAGS} --include-env=HW_BIND_FINGERPRINT=${HW_BIND_FINGERPRINT}"; \
+    fi
+
+# Compile: all Python → C → machine code → single executable
+# --include-package=websockets is new (Phase 2: WebSocket push)
 RUN python3 -m nuitka --onefile --standalone --output-dir=/out \
-      --output-filename=intrynx-probe --follow-imports \
+      --output-filename=vedha-probe --follow-imports \
       --include-package=scanner --include-package=workflow --include-package=agent \
       --include-package=cryptography --include-package=httpx \
-      --remove-output --assume-yes-for-downloads agent/agent.py
+      --include-package=websockets \
+      --remove-output --assume-yes-for-downloads \
+      ${ENV_FLAGS} \
+      agent/agent.py
 
 # ── Stage 2: minimal runtime (binary only — no Python, no source) ─────────────
 FROM debian:12-slim
 WORKDIR /app
-RUN mkdir -p /var/lib/adversa-probe
-# Force UTF-8 stdio — the probe's human-facing messages use characters like
-# the em-dash; a minimal container defaults to ASCII stdout and would crash
-# on print(). PYTHONIOENCODING covers it without needing a full locale.
-ENV STATE_FILE=/var/lib/adversa-probe/state.json \
+RUN mkdir -p /var/lib/vedha-probe && \
+    # Update root CA certs so the binary can validate TLS (wss://, https://)
+    apt-get update && apt-get install -y --no-install-recommends ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
+
+# Force UTF-8 — the probe uses Unicode characters in status messages.
+ENV STATE_FILE=/var/lib/vedha-probe/state.json \
+    RESULT_SPOOL_DIR=/var/lib/vedha-probe/spool \
     PYTHONIOENCODING=utf-8 \
     LANG=C.UTF-8
-# Bake the vendor public key so the binary can verify licenses at runtime.
+
+# Bake the vendor public key (same as build stage, needed at runtime).
 ARG PROBE_LICENSE_PUBKEY=""
 ENV PROBE_LICENSE_PUBKEY=${PROBE_LICENSE_PUBKEY}
-COPY --from=build /out/intrynx-probe /app/intrynx-probe
-ENTRYPOINT ["/app/intrynx-probe"]
+
+# The HW_BIND_FINGERPRINT is baked into the binary at compile time by Nuitka,
+# so the runtime image doesn't need it.  But the binary will read it from its
+# own embedded env and compare against get_hw_id() at startup.
+ARG HW_BIND_FINGERPRINT=""
+ENV HW_BIND_FINGERPRINT=${HW_BIND_FINGERPRINT}
+
+COPY --from=build /out/vedha-probe /app/vedha-probe
+
+# The binary starts itself — no python, no pip, no code.
+ENTRYPOINT ["/app/vedha-probe"]
+CMD ["run"]

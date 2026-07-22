@@ -2,7 +2,7 @@
  * Tool registry for the autonomous agent.
  *
  * Each tool is exposed to Claude via the tool-use API. Claude proposes calls
- * with arguments matching the JSON Schema; ADVERSA executes them and feeds
+ * with arguments matching the JSON Schema; VEDHA executes them and feeds
  * the result back into the conversation.
  *
  * This is a simplified, in-process equivalent of MCP. We could wrap these
@@ -58,7 +58,7 @@ async function runOnePhase(
 
   // Pre-seed current host state when not running discovery
   if (state.hosts.length > 0 && !tools.includes('host-discovery') && !tools.includes('naabu')) {
-    process.env.ADVERSA_REUSED_HOSTS = JSON.stringify(state.hosts);
+    process.env.VEDHA_REUSED_HOSTS = JSON.stringify(state.hosts);
   }
 
   const phaseCb: ScanCallbacks = {
@@ -74,7 +74,7 @@ async function runOnePhase(
   try {
     await runScan(opts, phaseCb);
   } finally {
-    delete process.env.ADVERSA_REUSED_HOSTS;
+    delete process.env.VEDHA_REUSED_HOSTS;
   }
   return { hosts: newHosts, findings: newFindings };
 }

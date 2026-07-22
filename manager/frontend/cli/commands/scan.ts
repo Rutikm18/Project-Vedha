@@ -127,7 +127,7 @@ export default async function scanCommand(targets: string[], options: Record<str
 
       if (save) {
         out.info(`Findings saved to data/findings.json`);
-        out.info(`Run \`adversa findings\` to view · \`adversa ask "<question>"\` to analyze`);
+        out.info(`Run \`vedha findings\` to view · \`vedha ask "<question>"\` to analyze`);
       }
     },
   };

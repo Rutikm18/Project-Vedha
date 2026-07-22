@@ -27,10 +27,10 @@ export async function POST(req: NextRequest) {
   }
 
   const scanId     = `eyewitness-${Date.now()}`;
-  const urlFile    = path.join(os.tmpdir(), `adversa-ew-urls-${Date.now()}.txt`);
+  const urlFile    = path.join(os.tmpdir(), `vedha-ew-urls-${Date.now()}.txt`);
   const outputDir  = process.env.EYEWITNESS_OUTPUT_DIR
     ? path.join(process.env.EYEWITNESS_OUTPUT_DIR, scanId)
-    : path.join(os.tmpdir(), `adversa-ew-${scanId}`);
+    : path.join(os.tmpdir(), `vedha-ew-${scanId}`);
 
   fs.writeFileSync(urlFile, urls.join("\n"));
 

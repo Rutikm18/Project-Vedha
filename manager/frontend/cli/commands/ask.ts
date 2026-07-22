@@ -13,7 +13,7 @@ async function runInteractive(
   history:   ConvMessage[],
 ): Promise<void> {
   const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
-  process.stdout.write('\x1b[1;36mADVERSA AI\x1b[0m  \x1b[2mType a question. Ctrl+C to exit.\x1b[0m\n\n');
+  process.stdout.write('\x1b[1;36mVEDHA AI\x1b[0m  \x1b[2mType a question. Ctrl+C to exit.\x1b[0m\n\n');
 
   const ask = (): void => {
     rl.question('\x1b[36m>\x1b[0m ', async (input) => {

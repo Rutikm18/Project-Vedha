@@ -1,4 +1,4 @@
-# ADVERSA — Network VAPT Platform
+# VEDHA — Network VAPT Platform
 
 > AI-powered network penetration testing operations platform.  
 > Scan → Discover → Analyze → Report → Remediate — all in one place.
@@ -7,9 +7,9 @@
 
 ## What It Is
 
-ADVERSA is a full-lifecycle VAPT operations platform built for security engineers running network penetration tests. It combines real scanning tools (nmap, nuclei, naabu, testssl), an AI reasoning engine (Claude), a distributed agent network, and compliance-mapped reporting — all accessible through a web dashboard and a CLI.
+VEDHA is a full-lifecycle VAPT operations platform built for security engineers running network penetration tests. It combines real scanning tools (nmap, nuclei, naabu, testssl), an AI reasoning engine (Claude), a distributed agent network, and compliance-mapped reporting — all accessible through a web dashboard and a CLI.
 
-**The core idea:** instead of running tools in separate terminals, copy-pasting output into Excel, and writing reports manually — ADVERSA runs the entire pentest pipeline, correlates findings across tools, maps every finding to MITRE ATT&CK and compliance frameworks, and drafts the executive report automatically.
+**The core idea:** instead of running tools in separate terminals, copy-pasting output into Excel, and writing reports manually — VEDHA runs the entire pentest pipeline, correlates findings across tools, maps every finding to MITRE ATT&CK and compliance frameworks, and drafts the executive report automatically.
 
 > For authorized security testing, internal use, and controlled lab environments only.
 
@@ -17,13 +17,13 @@ ADVERSA is a full-lifecycle VAPT operations platform built for security engineer
 
 ## Architecture
 
-ADVERSA has three ways to run a scan. All three share the same `lib/engine/` core — the output path is what changes.
+VEDHA has three ways to run a scan. All three share the same `lib/engine/` core — the output path is what changes.
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │                                                                             │
 │  ① CLI (local terminal)                                                     │
-│     adversa scan 10.0.0.1 --profile deep --save                             │
+│     vedha scan 10.0.0.1 --profile deep --save                             │
 │     cli/commands/scan.ts                                                    │
 │            │                                                                │
 │            │ ScanCallbacks → cli/ui/output.ts (ANSI terminal)               │
@@ -115,7 +115,7 @@ The Python agent runs the tools directly and POSTs findings to `/api/findings/in
 ## CLI Architecture
 
 ```
-bin/adversa
+bin/vedha
     └─ cli/index.ts  (Commander entry point)
            ├─ scan       →  cli/commands/scan.ts
            │                  ├─ resolveTargets()     validate + dedup + file read
@@ -183,7 +183,7 @@ The SSE stream keeps the connection open with a 15-second heartbeat comment. Whe
 The Python agent runs on a remote box (or container) inside the target network segment. It polls the manager for jobs, executes scans locally, and ships findings back.
 
 ```
-agent/main.py  →  AdversaAgent.start()
+agent/main.py  →  VedhaAgent.start()
       │
       ├─ agent/poll_loop.py
       │      ├─ register()   POST /api/agents/register
@@ -201,7 +201,7 @@ agent/main.py  →  AdversaAgent.start()
       │
       ├─ agent/scan_executor.py
       │      └─ full pipeline: scope check → naabu → nmap → nuclei+testssl
-      │         writes results to /tmp/adversa/<scanId>.jsonl
+      │         writes results to /tmp/vedha/<scanId>.jsonl
       │
       ├─ agent/result_buffer.py
       │      └─ buffers findings to disk first (survives disconnects)
@@ -371,8 +371,8 @@ make dev-up
 ```bash
 pip install -r agent/requirements.txt
 
-ADVERSA_MANAGER_URL=http://your-adversa-host:3000 \
-ADVERSA_AGENT_TOKEN=adversa-agent-secret-change-me \
+VEDHA_MANAGER_URL=http://your-vedha-host:3000 \
+VEDHA_AGENT_TOKEN=vedha-agent-secret-change-me \
 python -m agent.main
 ```
 
@@ -401,7 +401,7 @@ npm run cli -- findings list --json | jq '.[] | .title'
 **Output (example):**
 ```
    ▄▄▄  ██▄  ▄  ██▄ ▄  ██▄ ██▄  ▄▄   ▄▄
-  Network VAPT Platform  v0.2.0  |  Intrynx
+  Network VAPT Platform  v0.2.0  |  Vedha
   ────────────────────────────────────────────────────────────────
   Target    10.0.0.1
   Profile   standard   Stealth  5/9
@@ -440,7 +440,7 @@ npm run cli -- findings list --json | jq '.[] | .title'
 ## Project Structure
 
 ```
-adversa/
+vedha/
 │
 ├── app/                           Next.js App Router (pages + API)
 │   ├── page.tsx                   Dashboard
@@ -499,8 +499,8 @@ adversa/
 ├── cli/                           CLI tool
 │   ├── index.ts                   Commander entry point
 │   ├── commands/
-│   │   ├── scan.ts                adversa scan [targets] [flags]
-│   │   └── findings.ts            adversa findings [list|show|stats]
+│   │   ├── scan.ts                vedha scan [targets] [flags]
+│   │   └── findings.ts            vedha findings [list|show|stats]
 │   └── ui/
 │       └── output.ts              ANSI renderer — banner, stages, tables
 │
@@ -532,7 +532,7 @@ adversa/
 │       └── exploit-builder.ts     Exploit builder system prompt (safety-constrained)
 │
 ├── agent/                         Python field agent
-│   ├── main.py                    Entry point — AdversaAgent.start()
+│   ├── main.py                    Entry point — VedhaAgent.start()
 │   ├── poll_loop.py               Register + long-poll job queue
 │   ├── scan_executor.py           Full pipeline executor
 │   ├── scope_verifier.py          JWT decode + CIDR containment check
@@ -555,7 +555,7 @@ adversa/
 │   └── useToast.ts                Toast hook
 │
 ├── bin/
-│   └── adversa                    CLI shim (dist/cli → tsx fallback)
+│   └── vedha                    CLI shim (dist/cli → tsx fallback)
 │
 ├── data/                          Persistent JSON stores (gitignored in prod)
 │   ├── findings.json              All VAPT findings
@@ -693,8 +693,8 @@ make prune           # remove all unused Docker resources
 ANTHROPIC_API_KEY=sk-ant-...          # required for AI Brain, AI Report, AI triage
 
 # Agent authentication
-AGENT_SECRET=adversa-agent-secret-change-me   # Bearer token agents send on register
-SCOPE_SECRET=adversa-scope-secret-change-me   # JWT signing key for scan scope tokens
+AGENT_SECRET=vedha-agent-secret-change-me   # Bearer token agents send on register
+SCOPE_SECRET=vedha-scope-secret-change-me   # JWT signing key for scan scope tokens
 
 # OpenVAS
 OPENVAS_HOST=openvas

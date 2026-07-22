@@ -28,5 +28,10 @@ class ScanJob(Base, TimestampMixin):
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     result: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    # Lease for a claimed (running) job: set at claim time, renewed on each probe
+    # heartbeat. The reaper requeues running jobs whose lease has expired (dead probe).
+    lease_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True, index=True
+    )
 
     engagement: Mapped["Engagement"] = relationship(back_populates="scan_jobs", lazy="noload")

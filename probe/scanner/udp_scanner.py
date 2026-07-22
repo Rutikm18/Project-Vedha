@@ -22,7 +22,7 @@ import struct
 
 from .scanner_base import (
     BaseScanner, ScanResult, ScopeGuard, ResultWriter, expand_targets,
-    setup_logging, base_argparser, main_entrypoint,
+    parse_ports, resolve, setup_logging, base_argparser, main_entrypoint, LOG,
 )
 
 
@@ -112,15 +112,17 @@ class UDPScanner(BaseScanner):
         )
 
     def _send_recv(self, target: str, port: int, payload: bytes) -> bytes | None:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            family, sockaddr = resolve(target, port, proto="udp")
+        except OSError:
+            return None
+        sock = socket.socket(family, socket.SOCK_DGRAM)
         sock.settimeout(self.timeout)
         try:
-            sock.sendto(payload, (target, port))
+            sock.sendto(payload, sockaddr)
             data, _ = sock.recvfrom(4096)
             return data
-        except socket.timeout:
-            return None
-        except OSError:
+        except (socket.timeout, OSError):
             return None
         finally:
             sock.close()
@@ -135,14 +137,29 @@ class UDPScanner(BaseScanner):
 
 def main() -> None:
     parser = base_argparser("UDP service scanner (DNS/NTP/SNMP/NetBIOS)")
+    parser.add_argument("-p", "--ports", default=None,
+                        help="UDP ports to probe — subset of known probes "
+                             "(53,123,161,137). Default: all known.")
     args = parser.parse_args()
     setup_logging(args.verbose)
 
     async def _run():
+        if args.ports:
+            requested = set(parse_ports(args.ports))
+            ports = [p for p in sorted(requested) if p in UDP_PROBES]
+            unknown = sorted(requested - set(UDP_PROBES))
+            if unknown:
+                LOG.warning("no UDP probe defined for %s — skipping (supported: %s)",
+                            unknown, sorted(UDP_PROBES))
+            if not ports:
+                LOG.error("none of the requested UDP ports have a probe")
+                return
+        else:
+            ports = list(UDP_PROBES.keys())
         scope = ScopeGuard.from_file(args.scope)
         targets = expand_targets(args.targets)
         scanner = UDPScanner(scope, rate=args.rate, concurrency=args.concurrency,
-                             timeout=args.timeout)
+                             timeout=args.timeout, ports=ports)
         writer = ResultWriter(args.output, also_stdout=True)
         try:
             await scanner.run(targets, writer)

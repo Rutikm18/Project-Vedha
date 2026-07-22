@@ -1,7 +1,7 @@
 import crypto from 'crypto';
 import jwt    from 'jsonwebtoken';
 
-const JWT_SECRET  = process.env.AUTH_SECRET ?? 'adversa-dev-secret-change-me';
+const JWT_SECRET  = process.env.AUTH_SECRET ?? 'vedha-dev-secret-change-me';
 const JWT_EXPIRES = '7d';
 const OTP_TTL_MS  = 10 * 60 * 1000; // 10 minutes
 

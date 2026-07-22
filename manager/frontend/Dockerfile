@@ -1,5 +1,5 @@
 # ─────────────────────────────────────────────────────────────────────────────
-# ADVERSA Platform — Dockerfile
+# VEDHA Platform — Dockerfile
 # Multi-stage build:  deps → builder → runner
 # ─────────────────────────────────────────────────────────────────────────────
 
@@ -80,8 +80,8 @@ COPY lib    ./lib
 COPY bin    ./bin
 COPY tsconfig.cli.json ./
 
-# Link 'adversa' so it's on PATH for the nextjs user too
-RUN chmod +x /app/bin/adversa && ln -sf /app/bin/adversa /usr/local/bin/adversa
+# Link 'vedha' so it's on PATH for the nextjs user too
+RUN chmod +x /app/bin/vedha && ln -sf /app/bin/vedha /usr/local/bin/vedha
 
 USER nextjs
 

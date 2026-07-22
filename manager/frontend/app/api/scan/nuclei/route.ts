@@ -38,8 +38,8 @@ export async function POST(req: NextRequest) {
   }
 
   const scanId       = `nuclei-${Date.now()}`;
-  const targetsFile  = path.join(os.tmpdir(), `adversa-nuclei-targets-${Date.now()}.txt`);
-  const outputFile   = path.join(os.tmpdir(), `adversa-nuclei-out-${Date.now()}.jsonl`);
+  const targetsFile  = path.join(os.tmpdir(), `vedha-nuclei-targets-${Date.now()}.txt`);
+  const outputFile   = path.join(os.tmpdir(), `vedha-nuclei-out-${Date.now()}.jsonl`);
 
   fs.writeFileSync(targetsFile, targets.join("\n"));
 

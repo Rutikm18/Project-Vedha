@@ -16,7 +16,8 @@ you can run each in isolation and measure its accuracy and false-positive rate.
 > **How the probe actually works** — the gated funnel (scope → profile →
 > discovery → ports → banners → behaviour-routed deep scans → cache), with a
 > runnable command for every stage: **[HOW_IT_WORKS.md](HOW_IT_WORKS.md)**.
-> For the fast path, see **[`./dev.sh`](dev.sh)** below.
+> For production CLI/PAT operation, see **[CLI.md](CLI.md)**. For the fast path,
+> see **[`./dev.sh`](dev.sh)** below.
 
 ---
 

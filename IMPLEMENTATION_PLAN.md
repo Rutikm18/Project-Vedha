@@ -12,7 +12,7 @@ existing code wherever noted — most of B already exists.
 ## PART A — New theme: "crazy, modern, very simple but good"
 
 ### The design decision (color theory)
-The current theme is blue-cyan "Adversa Ops". The new look uses the **60-30-10 rule**:
+The current theme is blue-cyan "Vedha Ops". The new look uses the **60-30-10 rule**:
 60% warm near-black, 30% elevated zinc surfaces, **10% ONE electric-violet accent**.
 That single saturated hue against restrained neutrals is what reads "modern + premium +
 striking" (the Linear/Vercel/Raycast formula) while staying *simple*. Bold via

@@ -1,6 +1,6 @@
 /**
  * Contract adapters between the FastAPI backend (snake_case, its enums) and the
- * Adversa UI shapes (camelCase, its enums). All translation lives here so the BFF
+ * Vedha UI shapes (camelCase, its enums). All translation lives here so the BFF
  * route handlers stay thin and the UI components don't change.
  */
 
@@ -43,6 +43,7 @@ export function toUiEngagement(api: any): any {
     scopeCidrs: api.scope_cidrs ?? [],
     excludedCidrs: api.excluded_cidrs ?? [],
     assessor: roe.assessor ?? "—",
+    description: roe.description ?? "",
     assetCount: api.asset_count ?? 0,
     findingCount: total,
     findingsBySeverity: {
@@ -146,12 +147,17 @@ export function toUiFinding(api: any): any {
 }
 
 // ── Agent / probe ────────────────────────────────────────────────────────────
+// Backend /agents rows are snake_case with a lowercase status enum
+// (online|offline|busy) plus a derived `online` bool. The UI expects camelCase
+// and an uppercase status. A probe that is reachable AND running a job reads as
+// BUSY; reachable+idle as ONLINE; unreachable as OFFLINE.
 export function toUiAgent(api: any): any {
+  const busy = String(api.status ?? "").toLowerCase() === "busy" || api.current_job_id != null;
   return {
     id: api.id,
     name: api.name,
     location: api.location ?? null,
-    status: api.online ? "ONLINE" : "OFFLINE",
+    status: api.online ? (busy ? "BUSY" : "ONLINE") : "OFFLINE",
     online: !!api.online,
     capabilities: api.capabilities ?? [],
     networkSegments: api.network_segments ?? [],
@@ -174,13 +180,26 @@ export function toApiFindingPatch(ui: any): any {
   return out;
 }
 
-// UI engagement-detail patch → FastAPI EngagementUpdate body
+// UI engagement-detail patch → FastAPI EngagementUpdate body.
+// Column fields go top-level; the UI-only fields (client/assessor/description/tags)
+// live in rules_of_engagement, sent as a PARTIAL the backend shallow-merges — so
+// editing one of them never drops the others (or the stored credentials).
 export function toApiEngagementPatch(ui: any): any {
   const out: any = {};
   if (ui.name != null) out.name = ui.name;
   if (ui.status != null) out.status = engStatusToApi(ui.status);
   if (ui.scopeCidrs != null) out.scope_cidrs = normalizeList(ui.scopeCidrs);
   if (ui.excludedCidrs != null) out.excluded_cidrs = normalizeList(ui.excludedCidrs);
+  if (ui.startDate !== undefined) out.start_time = ui.startDate || null;
+  if (ui.endDate !== undefined) out.end_time = ui.endDate || null;
+
+  const roe: Record<string, unknown> = {};
+  if (ui.client != null) roe.client = ui.client;
+  if (ui.assessor != null) roe.assessor = ui.assessor;
+  if (ui.description != null) roe.description = ui.description;
+  if (ui.tags != null) roe.tags = Array.isArray(ui.tags) ? ui.tags : normalizeList(ui.tags);
+  if (Object.keys(roe).length) out.rules_of_engagement = roe;
+
   return out;
 }
 

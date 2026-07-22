@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useCallback } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -8,100 +8,131 @@ import {
   Terminal, Briefcase, Settings, X,
 } from "lucide-react";
 
-const NAV_SECTIONS = [
+interface NavItem {
+  icon: React.ComponentType<{ size?: number; color?: string }>;
+  label: string;
+  href: string;
+}
+
+const NAV_SECTIONS: { label: string; items: NavItem[] }[] = [
   {
     label: "OPERATIONS",
     items: [
-      { icon: Shield,        label: "Dashboard",    href: "/"            },
-      { icon: Briefcase,     label: "Engagements",  href: "/engagements" },
-      { icon: Terminal,      label: "Scanner",      href: "/scan"        },
+      { icon: Shield,      label: "Dashboard",    href: "/"            },
+      { icon: Briefcase,   label: "Engagements",  href: "/engagements" },
+      { icon: Terminal,    label: "Scanner",      href: "/scan"        },
     ],
   },
   {
     label: "ANALYSIS",
     items: [
-      { icon: Brain,         label: "AI Brain",     href: "/aibrain"  },
-      { icon: AlertTriangle, label: "Findings",     href: "/findings" },
+      { icon: Brain,         label: "AI Brain",   href: "/aibrain"  },
+      { icon: AlertTriangle, label: "Findings",   href: "/findings" },
     ],
   },
   {
     label: "MANAGEMENT",
     items: [
-      { icon: FileText,      label: "Reports",      href: "/reports"  },
-      { icon: Settings,      label: "Settings",     href: "/settings" },
+      { icon: FileText,    label: "Reports",      href: "/reports"  },
+      { icon: Settings,    label: "Settings",     href: "/settings" },
     ],
   },
 ];
 
-interface SidebarProps { open: boolean; onClose: () => void; }
+interface SidebarProps {
+  open: boolean;
+  onClose: () => void;
+}
 
 export function Sidebar({ open, onClose }: SidebarProps) {
   const pathname = usePathname();
   const [hoveredHref, setHoveredHref] = useState<string | null>(null);
 
+  const handleHover = useCallback((href: string | null) => {
+    setHoveredHref(href);
+  }, []);
+
   return (
     <aside
       className={[
-        "fixed md:static",
+        "fixed md:static z-50",
         "transition-transform duration-200 ease-in-out",
         open ? "translate-x-0" : "-translate-x-full md:translate-x-0",
-        "z-50",
       ].join(" ")}
       style={{
-        width: 220,
-        background: "var(--bg-sidebar)",
-        borderRight: "0.5px solid var(--border-subtle)",
-        display: "flex", flexDirection: "column",
-        height: "100vh", flexShrink: 0, overflowY: "auto",
-        transition: "background 0.2s ease",
+        width: 216,
+        background: "var(--bg-panel)",
+        borderRight: "0.5px solid var(--border-default)",
+        boxShadow: "1px 0 0 rgba(15, 23, 42, 0.02)",
+        display: "flex",
+        flexDirection: "column",
+        height: "100vh",
+        flexShrink: 0,
+        overflowY: "auto",
       }}
     >
       {/* ── Logo ─── */}
       <div style={{
-        padding: "20px 16px 16px",
+        padding: "20px 16px 14px",
         borderBottom: "0.5px solid var(--border-subtle)",
-        display: "flex", alignItems: "center", justifyContent: "space-between",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "space-between",
         flexShrink: 0,
       }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-          {/* Animated logo mark */}
           <div style={{
-            width: 34, height: 34, borderRadius: 9,
+            width: 32, height: 32, borderRadius: 8,
             background: "var(--accent-ghost)",
             border: "0.5px solid var(--border-accent)",
-            display: "flex", alignItems: "center", justifyContent: "center",
-            flexShrink: 0, position: "relative",
-            transition: "box-shadow 0.25s ease, transform 0.2s var(--ease-spring)",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            flexShrink: 0,
+            position: "relative",
+            transition: "box-shadow 0.2s ease, transform 0.15s ease",
           }}
             onMouseEnter={(e) => {
-              e.currentTarget.style.boxShadow = "0 0 14px var(--accent-glow)";
-              e.currentTarget.style.transform = "scale(1.06)";
+              e.currentTarget.style.boxShadow = "0 0 12px var(--accent-glow)";
+              e.currentTarget.style.transform = "scale(1.05)";
             }}
             onMouseLeave={(e) => {
               e.currentTarget.style.boxShadow = "none";
               e.currentTarget.style.transform = "scale(1)";
             }}
           >
-            <Shield size={16} color="var(--accent)" />
+            <Shield size={15} color="var(--accent)" strokeWidth={2} />
           </div>
           <div>
             <div style={{
-              fontFamily: "'Sora', sans-serif", fontSize: 14, fontWeight: 700,
-              color: "var(--text-primary)", letterSpacing: 2, lineHeight: 1,
+              fontFamily: "var(--font-display)",
+              fontSize: 13,
+              fontWeight: 700,
+              color: "var(--text-primary)",
+              letterSpacing: 2,
+              lineHeight: 1,
             }}>
-              ADVERSA
+              VEDHA
             </div>
             <div style={{
-              display: "flex", alignItems: "center", gap: 5, marginTop: 4,
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+              marginTop: 3,
             }}>
               <span style={{
-                width: 5, height: 5, borderRadius: "50%",
-                background: "var(--accent)", display: "inline-block",
+                width: 4,
+                height: 4,
+                borderRadius: "50%",
+                background: "var(--accent)",
+                display: "inline-block",
                 animation: "pulse 2s ease-in-out infinite",
               }} />
               <span style={{
-                fontFamily: "'Inter', sans-serif", fontSize: 10,
-                color: "var(--text-muted)", fontWeight: 500,
+                fontSize: 9,
+                color: "var(--text-muted)",
+                fontWeight: 500,
+                letterSpacing: 0.3,
               }}>
                 v1.0 Enterprise
               </span>
@@ -109,35 +140,47 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           </div>
         </div>
 
-        <button className="md:hidden" onClick={onClose} style={{
-          background: "none", border: "none", cursor: "pointer",
-          padding: "4px", borderRadius: 6, color: "var(--text-muted)",
-          transition: "color 0.15s ease, background 0.15s ease",
-        }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = "var(--bg-surface)"; e.currentTarget.style.color = "var(--text-primary)"; }}
-          onMouseLeave={(e) => { e.currentTarget.style.background = "none"; e.currentTarget.style.color = "var(--text-muted)"; }}
+        {/* Close button — mobile only */}
+        <button
+          className="md:hidden"
+          onClick={onClose}
+          aria-label="Close sidebar"
+          style={{
+            background: "none",
+            border: "none",
+            cursor: "pointer",
+            padding: 4,
+            borderRadius: 6,
+            color: "var(--text-muted)",
+            transition: "color 0.15s, background 0.15s",
+          }}
+          onMouseEnter={(e) => {
+            e.currentTarget.style.background = "var(--bg-surface)";
+            e.currentTarget.style.color = "var(--text-primary)";
+          }}
+          onMouseLeave={(e) => {
+            e.currentTarget.style.background = "none";
+            e.currentTarget.style.color = "var(--text-muted)";
+          }}
         >
-          <X size={15} />
+          <X size={14} />
         </button>
       </div>
 
       {/* ── Navigation ─── */}
-      <nav style={{ paddingTop: 12, flex: 1 }}>
+      <nav style={{ paddingTop: 10, flex: 1 }}>
         {NAV_SECTIONS.map((section, si) => (
-          <div key={section.label} style={{ marginBottom: 8 }}>
+          <div key={section.label} style={{ marginBottom: 6 }}>
             {/* Section label */}
             <div style={{
-              display: "flex", alignItems: "center", gap: 8,
-              padding: "6px 16px 5px",
+              padding: "5px 16px 4px",
+              fontSize: 9,
+              fontWeight: 700,
+              color: "var(--text-faint)",
+              letterSpacing: 1.4,
+              textTransform: "uppercase" as const,
             }}>
-              <div style={{ flex: 1, height: "0.5px", background: "var(--border-subtle)" }} />
-              <span style={{
-                fontFamily: "'Inter', sans-serif", fontSize: 9, fontWeight: 700,
-                color: "var(--text-faint)", letterSpacing: 1.4, textTransform: "uppercase",
-              }}>
-                {section.label}
-              </span>
-              <div style={{ flex: 1, height: "0.5px", background: "var(--border-subtle)" }} />
+              {section.label}
             </div>
 
             {section.items.map((item, ii) => {
@@ -152,26 +195,29 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                   onClick={onClose}
                   className="stagger-item"
                   style={{
-                    animationDelay: `${(si * 4 + ii) * 30}ms`,
-                    display: "flex", alignItems: "center", gap: 9,
+                    animationDelay: `${(si * 4 + ii) * 25}ms`,
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 10,
                     padding: "7px 10px 7px 14px",
                     margin: "1px 8px",
-                    borderRadius: 7, textDecoration: "none",
+                    borderRadius: 7,
+                    textDecoration: "none",
                     background: isActive
                       ? "var(--accent-ghost)"
                       : isHovered ? "var(--bg-surface)" : "transparent",
                     borderLeft: isActive ? "2px solid var(--accent)" : "2px solid transparent",
-                    transition: "background 0.12s ease, border-color 0.12s ease, transform 0.12s var(--ease-spring)",
-                    transform: isHovered && !isActive ? "translateX(2px)" : "translateX(0)",
+                    transition: "background 0.12s ease, border-color 0.12s ease, transform 0.12s var(--ease-spring), padding-left 0.12s ease",
+                    transform: isHovered && !isActive ? "translateX(3px)" : "translateX(0)",
                   }}
-                  onMouseEnter={() => setHoveredHref(item.href)}
-                  onMouseLeave={() => setHoveredHref(null)}
+                  onMouseEnter={() => handleHover(item.href)}
+                  onMouseLeave={() => handleHover(null)}
                 >
-                  {/* Icon with micro-animation */}
                   <div style={{
-                    transition: "transform 0.18s var(--ease-spring)",
-                    transform: isHovered ? "scale(1.15) rotate(-4deg)" : "scale(1) rotate(0deg)",
+                    transition: "transform 0.15s var(--ease-spring)",
+                    transform: isHovered ? "scale(1.15)" : "scale(1)",
                     flexShrink: 0,
+                    display: "flex",
                   }}>
                     <Icon
                       size={14}
@@ -180,11 +226,12 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                   </div>
 
                   <span style={{
-                    fontFamily: "'Inter', sans-serif", fontSize: 13,
-                    fontWeight: isActive ? 600 : 400,
+                    fontSize: 13,
+                    fontWeight: isActive ? 600 : 450,
                     color: isActive ? "var(--text-primary)" : isHovered ? "var(--text-primary)" : "var(--text-secondary)",
-                    transition: "color 0.12s ease, font-weight 0.12s ease",
+                    transition: "color 0.12s ease",
                     flex: 1,
+                    letterSpacing: isActive ? "0.01em" : "0em",
                   }}>
                     {item.label}
                   </span>
@@ -192,9 +239,12 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                   {/* Active dot */}
                   {isActive && (
                     <span style={{
-                      width: 4, height: 4, borderRadius: "50%",
-                      background: "var(--accent)", flexShrink: 0,
-                      boxShadow: "0 0 6px var(--accent-glow)",
+                      width: 4,
+                      height: 4,
+                      borderRadius: "50%",
+                      background: "var(--accent)",
+                      flexShrink: 0,
+                      boxShadow: "0 0 5px var(--accent-glow)",
                     }} />
                   )}
                 </Link>
@@ -206,28 +256,30 @@ export function Sidebar({ open, onClose }: SidebarProps) {
 
       {/* ── Footer ─── */}
       <div style={{
-        padding: "14px 16px",
+        padding: "12px 16px",
         borderTop: "0.5px solid var(--border-subtle)",
-        background: "var(--bg-sidebar)", flexShrink: 0,
+        flexShrink: 0,
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 4 }}>
-          {/* Status dot with ping ring */}
-          <div className="status-dot">
+        <div style={{ display: "flex", alignItems: "center", gap: 7, marginBottom: 3 }}>
+          <div className="status-dot" style={{ width: 8, height: 8 }}>
             <span className="status-dot-ring" style={{ background: "var(--accent-pulse)" }} />
-            <span className="status-dot-core" style={{ background: "var(--accent)" }} />
+            <span className="status-dot-core" style={{ background: "var(--accent)", width: 6, height: 6 }} />
           </div>
           <span style={{
-            fontFamily: "'Inter', sans-serif", fontSize: 11, fontWeight: 600,
+            fontSize: 11,
+            fontWeight: 600,
             color: "var(--accent)",
           }}>
             System Nominal
           </span>
         </div>
         <div style={{
-          fontFamily: "'JetBrains Mono', monospace", fontSize: 10,
+          fontFamily: "var(--font-mono)",
+          fontSize: 9,
           color: "var(--text-muted)",
+          paddingLeft: 15,
         }}>
-          ADVERSA v1.0.0 · Enterprise
+          VEDHA v1.0.0 · Enterprise
         </div>
       </div>
     </aside>

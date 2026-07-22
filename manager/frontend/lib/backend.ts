@@ -1,5 +1,5 @@
 /**
- * Server-side client for the ADVERSA Python backend (FastAPI).
+ * Server-side client for the VEDHA Python backend (FastAPI).
  *
  * This is the integration seam: the Next.js `app/api/*` route handlers act as a
  * BFF (backend-for-frontend) and call FastAPI through this module, forwarding the
@@ -8,7 +8,7 @@
  *
  * Configure with BACKEND_INTERNAL_URL (e.g. http://api:8000 inside compose).
  */
-const BASE = (process.env.BACKEND_INTERNAL_URL ?? "http://localhost:18080").replace(/\/$/, "");
+const BASE = (process.env.BACKEND_INTERNAL_URL ?? "http://localhost:8000").replace(/\/$/, "");
 
 export class BackendError extends Error {
   status: number;

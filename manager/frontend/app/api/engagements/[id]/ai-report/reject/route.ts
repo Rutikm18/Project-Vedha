@@ -4,7 +4,7 @@ import { aiReportStore } from "../../../../../../lib/ai-engine";
 // POST /engagements/{id}/ai-report/reject  body: { outputId, reviewedBy, feedback }
 export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
-  const { outputId, reviewedBy = "manager@adversa.io", feedback } = body;
+  const { outputId, reviewedBy = "manager@vedha.io", feedback } = body;
   if (!outputId || !feedback?.trim()) {
     return NextResponse.json({ error: "outputId and feedback are required" }, { status: 400 });
   }

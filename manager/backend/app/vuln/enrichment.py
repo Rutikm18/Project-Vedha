@@ -171,7 +171,7 @@ class VulnEnrichmentService:
             resp = await self._http.get(
                 "https://services.nvd.nist.gov/rest/json/cves/2.0",
                 params={"cveId": cve_id},
-                headers={"User-Agent": "ADVERSA-VAPT/1.0"},
+                headers={"User-Agent": "VEDHA-VAPT/1.0"},
             )
             resp.raise_for_status()
             data = resp.json()

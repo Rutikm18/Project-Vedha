@@ -9,7 +9,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import timedelta
 
-VALID_SERVICES = {"tls", "web", "smb", "db", "mcp_ai", "udp"}
+VALID_SERVICES = {"tls", "web", "smb", "db", "mcp_ai", "udp", "snmp"}
 
 
 @dataclass

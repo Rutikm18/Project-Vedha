@@ -31,6 +31,90 @@ router = APIRouter(prefix="/engagements", tags=["engagements"])
 logger = structlog.get_logger()
 
 
+def _overview_cache_key(tenant_id) -> str:
+    # Must match the key read by GET /engagements/overview.
+    return f"cache:eng_overview:{tenant_id}"
+
+
+async def _compute_overview(db, tenant_id) -> list:
+    """Shared aggregation — used by both the cached read path (ReadDB) and the
+    write-through refresh after a mutation (primary DB, same txn as the write).
+
+    A session always sees its own uncommitted writes, so computing on the primary
+    after a mutation eliminates the replica-lag race entirely.  The old approach
+    (cache DELETE + force next request to re-query ReadDB) was actively harmful:
+    the replica might not have caught up yet, and the stale result would then be
+    re-cached for a fresh 15s TTL.
+    """
+    engs = (await db.execute(
+        select(Engagement).where(Engagement.tenant_id == tenant_id)
+        .order_by(Engagement.created_at.desc())
+    )).scalars().all()
+    if not engs:
+        return []
+
+    asset_rows = (await db.execute(
+        select(Asset.engagement_id, func.count(Asset.id))
+        .where(Asset.engagement_id.in_([e.id for e in engs]))
+        .group_by(Asset.engagement_id)
+    )).all()
+    asset_by_eng = {eid: n for eid, n in asset_rows}
+
+    frows = (await db.execute(
+        select(Finding.engagement_id, Finding.severity, Finding.status, func.count(Finding.id))
+        .where(Finding.engagement_id.in_([e.id for e in engs]))
+        .group_by(Finding.engagement_id, Finding.severity, Finding.status)
+    )).all()
+
+    agg: dict = {}
+    for eid, sev, st, cnt in frows:
+        a = agg.setdefault(eid, {"sev": {s.value: 0 for s in FindingSeverity},
+                                 "total": 0, "open": 0, "remediated": 0})
+        a["sev"][sev.value] += cnt
+        a["total"] += cnt
+        if st in (FindingStatus.open, FindingStatus.confirmed):
+            a["open"] += cnt
+        elif st == FindingStatus.remediated:
+            a["remediated"] += cnt
+
+    out = []
+    for e in engs:
+        a = agg.get(e.id)
+        sev = a["sev"] if a else {s.value: 0 for s in FindingSeverity}
+        detail = EngagementDetail.model_validate(e)
+        detail.asset_count = asset_by_eng.get(e.id, 0)
+        detail.finding_summary = FindingSummary(
+            total=a["total"] if a else 0,
+            critical=sev["critical"], high=sev["high"], medium=sev["medium"],
+            low=sev["low"], info=sev["info"],
+            open=a["open"] if a else 0, remediated=a["remediated"] if a else 0,
+        )
+        out.append(detail)
+    return out
+
+
+async def _refresh_overview_cache(db, tenant_id) -> None:
+    """Write-through cache refresh on the WRITE session, right after flush.
+
+    Replaces _bust_overview_cache.  Computing here, on the primary, inside the
+    same transaction as the write, sidesteps replica lag entirely.  A session
+    always sees its own writes — committed or not.
+
+    Best-effort: a cache write failure must never fail the mutation.
+    """
+    try:
+        rows = await _compute_overview(db, tenant_id)
+        from app.dependencies import get_redis
+        redis = await get_redis()
+        await redis.set(
+            _overview_cache_key(tenant_id),
+            json.dumps([r.model_dump(mode="json") for r in rows]),
+            ex=15,
+        )
+    except Exception:  # noqa: BLE001 — must never fail the mutation
+        logger.warning("overview_cache_refresh_failed", tenant_id=str(tenant_id), exc_info=True)
+
+
 # ── POST /engagements ─────────────────────────────────────────────────────────
 
 @router.post("/{engagement_id}/re-detect", status_code=status.HTTP_202_ACCEPTED,
@@ -240,6 +324,7 @@ async def import_facts(
     # facts → findings off the request path (its own DB session), mirroring the
     # live probe path in routers/agents.submit_job_result.
     promoted = await _promote_from_facts(db, engagement_id, facts)
+    await _refresh_overview_cache(db, current_user.tenant_id)  # asset/finding counts changed
 
     from app.detection.engine_bridge import run_detection_job
     background_tasks.add_task(
@@ -274,6 +359,7 @@ async def create_engagement(
     db.add(eng)
     await db.flush()
     await db.refresh(eng)
+    await _refresh_overview_cache(db, current_user.tenant_id)
     logger.info("engagement.created", id=str(eng.id), tenant=str(current_user.tenant_id))
     return eng
 
@@ -322,7 +408,7 @@ async def engagements_overview(db: ReadDB, current_user: AuthUser):
     # removes the per-poll DB aggregate load. Per-tenant key.
     from app.dependencies import get_redis
     redis = await get_redis()
-    cache_key = f"cache:eng_overview:{tid}"
+    cache_key = _overview_cache_key(tid)
     try:
         hit = await redis.get(cache_key)
         if hit is not None:
@@ -330,58 +416,15 @@ async def engagements_overview(db: ReadDB, current_user: AuthUser):
     except Exception:  # noqa: BLE001 — cache must never break the endpoint
         pass
 
-    engs = (await db.execute(
-        select(Engagement).where(Engagement.tenant_id == tid)
-        .order_by(Engagement.created_at.desc())
-    )).scalars().all()
-    if not engs:
+    rows = await _compute_overview(db, tid)
+    if not rows:
         return []
 
-    # asset counts grouped by engagement (1 query)
-    asset_rows = (await db.execute(
-        select(Asset.engagement_id, func.count(Asset.id))
-        .where(Asset.engagement_id.in_([e.id for e in engs]))
-        .group_by(Asset.engagement_id)
-    )).all()
-    asset_by_eng = {eid: n for eid, n in asset_rows}
-
-    # finding counts grouped by (engagement, severity, status) (1 query)
-    frows = (await db.execute(
-        select(Finding.engagement_id, Finding.severity, Finding.status, func.count(Finding.id))
-        .where(Finding.engagement_id.in_([e.id for e in engs]))
-        .group_by(Finding.engagement_id, Finding.severity, Finding.status)
-    )).all()
-
-    agg: dict = {}
-    for eid, sev, st, cnt in frows:
-        a = agg.setdefault(eid, {"sev": {s.value: 0 for s in FindingSeverity},
-                                 "total": 0, "open": 0, "remediated": 0})
-        a["sev"][sev.value] += cnt
-        a["total"] += cnt
-        if st in (FindingStatus.open, FindingStatus.confirmed):
-            a["open"] += cnt
-        elif st == FindingStatus.remediated:
-            a["remediated"] += cnt
-
-    out = []
-    for e in engs:
-        a = agg.get(e.id)
-        sev = a["sev"] if a else {s.value: 0 for s in FindingSeverity}
-        detail = EngagementDetail.model_validate(e)
-        detail.asset_count = asset_by_eng.get(e.id, 0)
-        detail.finding_summary = FindingSummary(
-            total=a["total"] if a else 0,
-            critical=sev["critical"], high=sev["high"], medium=sev["medium"],
-            low=sev["low"], info=sev["info"],
-            open=a["open"] if a else 0, remediated=a["remediated"] if a else 0,
-        )
-        out.append(detail)
-
     try:  # cache the JSON-serialized models (best-effort)
-        await redis.set(cache_key, json.dumps([o.model_dump(mode="json") for o in out]), ex=15)
+        await redis.set(cache_key, json.dumps([o.model_dump(mode="json") for o in rows]), ex=15)
     except Exception:  # noqa: BLE001
         pass
-    return out
+    return rows
 
 
 @router.get("/{engagement_id}", response_model=EngagementDetail, summary="Engagement detail")
@@ -441,6 +484,10 @@ class EngagementUpdate(BaseModel):
     status: EngagementStatus | None = None
     scope_cidrs: list[str] | None = None
     excluded_cidrs: list[str] | None = None
+    start_time: datetime | None = None
+    end_time: datetime | None = None
+    # Partial patch: the provided keys are merged into the existing ROE (see below),
+    # so editing e.g. `client` never drops stored `credentials`.
     rules_of_engagement: dict | None = None
 
 
@@ -452,11 +499,22 @@ async def update_engagement(
     current_user: Annotated[AuthUser, require_role(["admin", "manager", "tester"])],
 ):
     eng = await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
-    for field, value in body.model_dump(exclude_unset=True).items():
+
+    updates = body.model_dump(exclude_unset=True)
+    roe_patch = updates.pop("rules_of_engagement", None)
+    for field, value in updates.items():
         setattr(eng, field, value)
+
+    # ROE is a JSONB bag of UI-parked fields (client / assessor / description / tags /
+    # credentials). A naive assignment would replace the whole bag and lose keys the
+    # caller didn't send (notably credentials). Shallow-merge the patch instead.
+    if roe_patch is not None:
+        eng.rules_of_engagement = {**(eng.rules_of_engagement or {}), **roe_patch}
+
     await db.flush()
     await db.refresh(eng)
-    logger.info("engagement.patched", id=str(engagement_id))
+    await _refresh_overview_cache(db, current_user.tenant_id)
+    logger.info("engagement.patched", id=str(engagement_id), fields=sorted(updates) + (["roe"] if roe_patch else []))
     return eng
 
 
@@ -505,6 +563,8 @@ async def bulk_import_assets(
             parse_errors.append(str(exc))
 
     await db.flush()
+    if created:
+        await _refresh_overview_cache(db, current_user.tenant_id)  # asset_count changed
     logger.info("assets.bulk_import", engagement=str(engagement_id), created=created, failed=len(parse_errors))
     return BulkAssetImportResult(created=created, failed=len(parse_errors), errors=parse_errors)
 

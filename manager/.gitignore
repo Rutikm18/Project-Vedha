@@ -31,7 +31,7 @@ frontend/out/
 frontend/dist/
 frontend/build/
 frontend/tsconfig.tsbuildinfo
-frontend/.adversa-server.log
+frontend/.vedha-server.log
 node_modules/
 
 # ── Probe ─────────────────────────────────────────────────────────────────────
@@ -41,7 +41,7 @@ probe/state/
 *.log
 
 # ── Stray build artifacts ─────────────────────────────────────────────────────
-/adversa/
+/vedha/
 .backup/
 graphify-out/
 

@@ -24,7 +24,7 @@ import struct
 
 from .scanner_base import (
     BaseScanner, ScanResult, ScopeGuard, ResultWriter, expand_targets,
-    setup_logging, base_argparser, main_entrypoint,
+    resolve, setup_logging, base_argparser, main_entrypoint,
 )
 
 
@@ -89,13 +89,16 @@ class SMBScanner(BaseScanner):
         self.port = port
 
     def _negotiate(self, target: str, payload: bytes) -> bytes | None:
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        try:
+            family, sockaddr = resolve(target, self.port, proto="tcp")
+        except OSError:
+            return None
+        sock = socket.socket(family, socket.SOCK_STREAM)
         sock.settimeout(self.timeout)
         try:
-            sock.connect((target, self.port))
+            sock.connect(sockaddr)
             sock.sendall(_netbios_session(payload))
-            resp = sock.recv(1024)
-            return resp
+            return sock.recv(1024)
         except OSError:
             return None
         finally:

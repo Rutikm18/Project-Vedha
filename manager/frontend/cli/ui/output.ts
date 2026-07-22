@@ -55,7 +55,7 @@ export function banner(version = "0.2.0") {
   ln(`${c.bBlue}   ▄▄▄  ██▄  ▄  ██▄ ▄  ██▄ ██▄  ▄▄   ▄▄${c.reset}`);
   ln(`${c.bBlue}  ▀▀▀█  █ █  █  █   ██ █ █  █ █ █   ▀▀▀█${c.reset}`);
   ln(`${c.bBlue}  ▀▀▀▀  ▀▀▀  ▀  ▀▀▀ ▀  ▀▀▀  ▀▀▀  ▀▀  ▀▀▀▀${c.reset}`);
-  ln(`${c.gray}  Network VAPT Platform  ${c.white}v${version}${c.gray}  |  Intrynx${c.reset}`);
+  ln(`${c.gray}  Network VAPT Platform  ${c.white}v${version}${c.gray}  |  Vedha${c.reset}`);
   ln();
 }
 

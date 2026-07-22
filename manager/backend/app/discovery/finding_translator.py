@@ -109,6 +109,7 @@ async def create_findings_from_probe_result(
     if not raw_findings:
         return 0
 
+    now = datetime.now(timezone.utc)
     created = 0
     for f in raw_findings:
         if not isinstance(f, dict):
@@ -121,8 +122,11 @@ async def create_findings_from_probe_result(
             dup = await _find_open_duplicate(db, engagement_id, asset_id, title)
             if dup is not None:
                 # Still relevant and still present — touch evidence (bumps
-                # updated_at) rather than creating a literal duplicate row.
+                # updated_at) and advance last_seen rather than creating a
+                # literal duplicate row. (No detection_run: this is the probe's
+                # own self-assessed path, not the detection engine.)
                 dup.evidence = {**f, "scan_type": scan_type, "engine": result.get("engine")}
+                dup.last_seen = now
                 continue
 
             db.add(Finding(
@@ -133,6 +137,8 @@ async def create_findings_from_probe_result(
                 severity=_map_severity(f.get("severity")),
                 status=FindingStatus.open,
                 evidence={**f, "scan_type": scan_type, "engine": result.get("engine")},
+                first_seen=now,
+                last_seen=now,
             ))
             created += 1
         except Exception as exc:  # noqa: BLE001 — one bad finding must not sink the batch

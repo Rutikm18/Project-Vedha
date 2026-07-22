@@ -15,11 +15,11 @@ python3 tools/issue_license.py keygen
 #   → prints VENDOR_PUBLIC_KEY_HEX  +  writes tools/vendor_private.key (gitignored)
 
 # 2. Build the SEALED probe image (native binary, no source) with your public key baked in.
-docker build -f Dockerfile.sealed -t registry.example.com/intrynx-probe:1.0 \
+docker build -f Dockerfile.sealed -t registry.example.com/vedha-probe:1.0 \
   --build-arg PROBE_LICENSE_PUBKEY=<hex from step 1> .
 
 # 3. Push to your registry (clients pull from here).
-docker push registry.example.com/intrynx-probe:1.0
+docker push registry.example.com/vedha-probe:1.0
 ```
 
 You now have: a sealed image clients can run but not read, and a private key only you hold.
@@ -30,7 +30,7 @@ You now have: a sealed image clients can run but not read, and a private key onl
 
 ```bash
 # 1. Get this machine's Host ID (no install needed):
-docker run --rm registry.example.com/intrynx-probe:1.0 hostid
+docker run --rm registry.example.com/vedha-probe:1.0 hostid
 #   → e.g.  6106788dc177      (client sends YOU this id)
 ```
 
@@ -43,7 +43,7 @@ python3 tools/issue_license.py issue --hostid 6106788dc177 --customer "Acme" --d
 ```bash
 # 3. Client installs — one command (the installer pulls the image, configures, runs):
 curl -fsSL https://YOUR_HOST/install.sh | \
-  PROBE_IMAGE=registry.example.com/intrynx-probe:1.0 \
+  PROBE_IMAGE=registry.example.com/vedha-probe:1.0 \
   PLATFORM_URL=https://manager.example.com \
   OPERATOR_EMAIL=ops@acme.com OPERATOR_PASSWORD=*** \
   PROBE_LICENSE=<token from step 2> \
@@ -60,8 +60,8 @@ scans (scope enforced) → ships raw facts back. It dials **out only**, no inbou
 
 ```bash
 # Operate:
-docker logs -f intrynx-probe          # watch it
-docker rm -f intrynx-probe            # stop/remove
+docker logs -f vedha-probe          # watch it
+docker rm -f vedha-probe            # stop/remove
 ```
 
 ---

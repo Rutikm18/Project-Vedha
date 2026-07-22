@@ -1,4 +1,4 @@
-# Intrynx — Change Log
+# Vedha — Change Log
 
 ---
 
@@ -78,7 +78,7 @@ each a tool + parser, auto-detected and advertised on register; dispatched by
 
 ---
 
-## ADVERSA Platform — Backend Change Log
+## VEDHA Platform — Backend Change Log
 
 ---
 

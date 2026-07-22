@@ -6,16 +6,43 @@ from fastapi import APIRouter, Query, status
 from sqlalchemy import select
 
 from app.auth.rbac import require_role
-from app.dependencies import DB, AuthUser
+from app.dependencies import DB, ReadDB, AuthUser
 from app.models.engagement import Engagement
 from app.models.finding import Finding
+from app.models.enums import FindingStatus
 from app.schemas.common import PaginatedResponse, paginate
-from app.schemas.finding import FindingFilter, FindingOut, FindingPatch
+from app.schemas.finding import FindingFilter, FindingOut, FindingPatch, SlaSummary
+from app.services import sla as sla_service
 from app.utils.db import get_or_404
 from app.utils.pagination import paginate_query
 
 router = APIRouter(prefix="/findings", tags=["findings"])
 logger = structlog.get_logger()
+
+
+@router.get("/sla-summary", response_model=SlaSummary, summary="SLA breach/at-risk summary for the tenant")
+async def sla_summary(
+    db: ReadDB,
+    current_user: AuthUser,
+    engagement_id: uuid.UUID | None = Query(default=None),
+):
+    """
+    Compute SLA state across the tenant's tracked findings (open/confirmed).
+    Optionally scope to a single engagement. Read-only aggregate → routed to the
+    read replica when one is configured. Deadlines/states come from the SLA
+    policy engine (app.services.sla) so every surface agrees.
+    """
+    q = (
+        select(Finding)
+        .join(Engagement, Finding.engagement_id == Engagement.id)
+        .where(Engagement.tenant_id == current_user.tenant_id)
+        .where(Finding.status.in_([FindingStatus.open, FindingStatus.confirmed]))
+    )
+    if engagement_id:
+        q = q.where(Finding.engagement_id == engagement_id)
+
+    findings = (await db.execute(q)).scalars().all()
+    return sla_service.summarize(list(findings))
 
 
 @router.get("", response_model=PaginatedResponse[FindingOut], summary="List findings with filters")

@@ -83,6 +83,17 @@ class VulnDB:
     def __init__(self, records: dict[str, list[dict]], meta: SnapshotMeta):
         self._records = records
         self.meta = meta
+        self._cve_index: dict[str, str] = {}
+        self._build_cve_index()
+
+    def _build_cve_index(self) -> None:
+        for records in self._records.values():
+            for rec in records:
+                cve_ids = rec.get("upstream") or [rec["id"]]
+                for sev in rec.get("severity", []):
+                    if sev.get("type") == "CVSS_V3" and sev.get("score"):
+                        for cve_id in cve_ids:
+                            self._cve_index[cve_id] = sev["score"]
 
     def lookup(self, product: str) -> list[dict]:
         """Raw OSV vulnerability records for this product, or [] if the
@@ -97,19 +108,9 @@ class VulnDB:
 
     def get_cvss_vector(self, cve_id: str) -> str | None:
         """The CVSS v3 vector string OSV embedded for this CVE, if any.
-        Searches ALL products, not just one — a CVE id is globally unique,
-        so product-scoping here would only be a (premature) optimization,
-        not a correctness requirement, and the caller (enrichment.py) may
-        not always know which lookup_key produced a given Finding.
+        Uses a pre-built reverse index (CVE -> vector) for O(1) lookup.
         """
-        for records in self._records.values():
-            for rec in records:
-                if cve_id not in (rec.get("upstream") or [rec["id"]]):
-                    continue
-                for sev in rec.get("severity", []):
-                    if sev.get("type") == "CVSS_V3":
-                        return sev["score"]
-        return None
+        return self._cve_index.get(cve_id)
 
     def known_products(self) -> list[str]:
         return sorted(self._records.keys())

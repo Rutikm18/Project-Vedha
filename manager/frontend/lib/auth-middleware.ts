@@ -21,7 +21,7 @@ export function withAuth<P = Record<string, string>>(
 
     if (!token) {
       return NextResponse.json(
-        { error: 'Not authenticated. Run: adversa login' },
+        { error: 'Not authenticated. Run: vedha login' },
         { status: 401 },
       );
     }
@@ -29,7 +29,7 @@ export function withAuth<P = Record<string, string>>(
     const payload = verifyToken(token);
     if (!payload) {
       return NextResponse.json(
-        { error: 'Session expired. Run: adversa login' },
+        { error: 'Session expired. Run: vedha login' },
         { status: 401 },
       );
     }

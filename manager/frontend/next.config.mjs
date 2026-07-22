@@ -2,6 +2,7 @@ import { fileURLToPath } from "url";
 import path from "path";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const frontendRoot = path.resolve(__dirname);
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
@@ -10,7 +11,7 @@ const nextConfig = {
     unoptimized: true,
   },
   turbopack: {
-    root: __dirname,
+    root: frontendRoot,
   },
 };
 

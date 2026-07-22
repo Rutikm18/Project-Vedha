@@ -47,6 +47,9 @@ def get_current_user(request: Request) -> CurrentUser:
         user_id=uuid.UUID(request.state.user_id),
         tenant_id=uuid.UUID(request.state.tenant_id),
         role=request.state.role,
+        auth_type=getattr(request.state, "auth_type", "jwt"),
+        pat_id=uuid.UUID(request.state.pat_id) if getattr(request.state, "pat_id", None) else None,
+        scopes=tuple(getattr(request.state, "scopes", ()) or ()),
     )
 
 

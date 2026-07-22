@@ -1,4 +1,4 @@
-# Intrynx — Automated Network VAPT Platform
+# Vedha — Automated Network VAPT Platform
 
 One project, two deployables:
 
@@ -24,7 +24,7 @@ installed on a different machine than the manager.
 
 ## Repository structure
 ```
-intrynx/
+vedha/
 ├── README.md                  ← you are here
 ├── Makefile                   ← one-command operations
 ├── docker-compose.yml         ← the manager stack (+ optional local probe / dashboard)
