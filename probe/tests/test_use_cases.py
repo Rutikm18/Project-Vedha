@@ -9,7 +9,7 @@ from agent.use_cases import USE_CASES, resolve
 
 FORBIDDEN = {
     "uc_windows_estate": ["shares exposed"],
-    "uc_iot_device_survey": ["modbus", "banner"],
+    "uc_iot_device_survey": ["modbus"],
 }
 
 
@@ -31,3 +31,9 @@ def test_udp_claims_amplification():
 
 def test_web_claims_methods():
     assert "method" in USE_CASES["uc_web_app_triage"]["description"].lower()
+
+
+def test_iot_survey_collects_banners():
+    scan_type, profile = resolve("uc_iot_device_survey", None, {})
+    assert scan_type == "service_fingerprint"   # reaches the banner stage
+    assert profile == "iot"

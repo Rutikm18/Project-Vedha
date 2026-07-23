@@ -73,9 +73,9 @@ USE_CASES: dict[str, dict] = {
         "description": (
             "Inventory IoT and embedded devices on the IoT port set: "
             "MQTT (1883/8883), RTSP (554), CoAP (5683), Telnet (23), printer/DVR ports. "
-            "Host and port discovery."
+            "Discovery + service banner."
         ),
-        "scan_type": "discovery",
+        "scan_type": "service_fingerprint",
         "profile": "iot",
         "expected_runtime_hint": "3–10 min per /24",
     },
