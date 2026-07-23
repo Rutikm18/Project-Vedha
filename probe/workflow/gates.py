@@ -14,18 +14,20 @@ from __future__ import annotations
 
 from datetime import timedelta
 
+from scanner.db_scanner import DEFAULT_DB_PORTS
+
 from .asset import Asset
 
 # --- verbatim from pipeline.py ------------------------------------------
-IT_PORTS = [21, 22, 23, 25, 53, 80, 110, 135, 139, 143, 389, 443, 445, 465, 587,
-           636, 993, 995, 1433, 1521, 3306, 3389, 5432, 5900, 5985, 5986, 6379,
-           8000, 8080, 8443, 9200, 11211, 27017]
+IT_PORTS = [21, 22, 23, 25, 53, 80, 110, 111, 135, 139, 143, 389, 443, 445, 465, 587,
+           623, 636, 993, 995, 1433, 1521, 2049, 2375, 3306, 3389, 5060, 5432, 5900,
+           5985, 5986, 6379, 6443, 8000, 8080, 8443, 9200, 10250, 11211, 27017]
 IOT_PORTS = [22, 23, 80, 443, 554, 1883, 8883, 5683, 8080, 8443, 8888, 9000, 9100,
             49152, 62078, 5000, 8081, 37777]
 TLS_PORTS = {443, 8443, 993, 995, 465, 636, 989, 990, 5986}
 WEB_PORTS = {80, 443, 8080, 8443, 8000, 8888, 9000, 9200, 8081, 5000}
 SMB_PORTS = {139, 445}
-DB_PORTS = {3306, 5432, 1433, 6379, 27017, 1521}     # DEFAULT_DB_PORTS.keys() in db_scanner.py
+DB_PORTS = set(DEFAULT_DB_PORTS)
 AI_PORTS = {11434, 8000, 8080, 5000, 3000, 1234, 8001, 7860, 11435}  # DEFAULT_AI_PORTS in mcp_ai_scanner.py
 UDP_PORTS = {53, 123, 161, 137}                       # UDP_PROBES.keys() in udp_scanner.py
 SNMP_PORTS = {161}
@@ -73,7 +75,8 @@ def gate_5_branch_eligible(branch: str, asset: Asset, profile: str,
       - Must be in this profile's allowed deep-scan set (ot allows none;
         iot allows tls/web only; it allows tls/web/smb/db).
       - If the caller passed an explicit --services filter, branch must be in it.
-      - SNMP is a UDP read probe, so it does not depend on TCP open-port state.
+      - SNMP is a UDP read probe. Explicit SNMP jobs target the authorized scope
+        directly; unfiltered assessments still require prior liveness.
       - Otherwise, either router.py already determined this branch applies from
         OBSERVED banner/handshake content (dynamically_routed=True — the
         HTTPS-on-9443 case, passed in by the caller, this function doesn't
@@ -86,7 +89,9 @@ def gate_5_branch_eligible(branch: str, asset: Asset, profile: str,
     if service_filter is not None and branch not in service_filter:
         return False
     if branch == "snmp":
-        return asset.last_seen_alive is not None
+        # An explicit SNMP job probes its authorized targets directly so it
+        # does not need unrelated TCP liveness traffic first.
+        return asset.last_seen_alive is not None or service_filter is not None
     if dynamically_routed:
         return True
     open_ports = asset.open_ports_for_deep_scan()
