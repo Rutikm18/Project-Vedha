@@ -28,7 +28,7 @@ USE_CASES: dict[str, dict] = {
     "uc_external_web_triage": {
         "display_name": "External Web Triage",
         "description": "Web + TLS surface only. Fast check for exposed web services and cert facts.",
-        "scan_type": "tls_scan",
+        "scan_type": "web_tls_scan",
         "profile": "it",
         "expected_runtime_hint": "5–15 min",
     },
@@ -41,7 +41,7 @@ USE_CASES: dict[str, dict] = {
     },
     "uc_windows_estate": {
         "display_name": "Windows Estate",
-        "description": "SMB dialect detection. Is SMBv1 enabled? Are shares exposed?",
+        "description": "SMB dialect detection (SMBv1/SMB2 negotiate). Is SMBv1 enabled?",
         "scan_type": "smb_enum",
         "profile": "it",
         "expected_runtime_hint": "5–15 min",
@@ -71,9 +71,9 @@ USE_CASES: dict[str, dict] = {
     "uc_iot_device_survey": {
         "display_name": "IoT / Embedded Device Survey",
         "description": (
-            "Inventory IoT and embedded devices using the IoT port list: "
-            "MQTT (1883/8883), RTSP (554), CoAP (5683), Telnet (23), Modbus-like ports. "
-            "No deep service branches — discovery + banner only."
+            "Inventory IoT and embedded devices on the IoT port set: "
+            "MQTT (1883/8883), RTSP (554), CoAP (5683), Telnet (23), printer/DVR ports. "
+            "Host and port discovery."
         ),
         "scan_type": "discovery",
         "profile": "iot",
@@ -82,8 +82,8 @@ USE_CASES: dict[str, dict] = {
     "uc_web_app_triage": {
         "display_name": "Web Application Triage",
         "description": (
-            "Deep web-layer analysis: HTTP methods, response headers, server tech stack, "
-            "common misconfigurations on all web ports (80, 443, 8080, 8443, 8000…). "
+            "Web-layer fingerprint: response headers, server tech stack, and "
+            "security-header posture on all web ports (80, 443, 8080, 8443, 8000…). "
             "Use before a dedicated web application pentest."
         ),
         "scan_type": "web_scan",
@@ -93,10 +93,9 @@ USE_CASES: dict[str, dict] = {
     "uc_udp_service_exposure": {
         "display_name": "UDP Service Exposure",
         "description": (
-            "Probe UDP attack surface: DNS amplification risk (53/UDP), "
-            "SNMP community strings (161/UDP), NTP monlist (123/UDP), "
-            "NetBIOS Name Service (137/UDP). Common DDoS amplification and "
-            "lateral-movement vectors missed by TCP-only scans."
+            "Probe UDP services: DNS (53/UDP), SNMP public community (161/UDP), "
+            "NTP (123/UDP), NetBIOS Name Service (137/UDP). Confirms which UDP "
+            "services answer — surface missed by TCP-only scans."
         ),
         "scan_type": "udp_scan",
         "profile": "it",
