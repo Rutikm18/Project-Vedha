@@ -25,7 +25,15 @@ a 400-class error that still starts "HTTP/1.x".
 """
 from __future__ import annotations
 
+import re as _re
+
 from .asset import Asset
+
+_DB_SIGNATURES = (
+    _re.compile(r"[0-9]+\.[0-9]+\.[0-9]+-(log|mariadb|ubuntu)", _re.I),  # MySQL/MariaDB greeting
+    _re.compile(r"NOAUTH|redis_version", _re.I),                          # Redis
+    _re.compile(r"ismaster|mongodb", _re.I),                             # MongoDB
+)
 
 # Mirrors service_banner.py's own _CLIENT_FIRST set — ports where silence is
 # EXPECTED regardless of protocol (an HTTP probe was already sent there), so
@@ -51,7 +59,16 @@ def looks_like_tls(port: int, banner_fact: dict | None) -> bool:
     return banner_fact.get("banner") is None
 
 
-def route_branches(asset: Asset, candidate_branches: tuple[str, ...] = ("tls", "web")
+def looks_like_db(banner_fact: dict | None) -> bool:
+    """True when a service banner carries a database greeting signature, so a DB
+    on a non-standard port still routes to db_scan. Never matches HTTP."""
+    if not banner_fact or looks_like_http(banner_fact):
+        return False
+    hay = f"{banner_fact.get('banner') or ''} {banner_fact.get('first_line') or ''}"
+    return any(rx.search(hay) for rx in _DB_SIGNATURES)
+
+
+def route_branches(asset: Asset, candidate_branches: tuple[str, ...] = ("tls", "web", "db")
                    ) -> dict[int, set[str]]:
     """For every open port with a banner fact, returns {port: {branches}}
     that observed content (not the static port table) justifies routing to.
@@ -69,6 +86,8 @@ def route_branches(asset: Asset, candidate_branches: tuple[str, ...] = ("tls", "
             branches.add("web")
         if "tls" in candidate_branches and looks_like_tls(port, fact):
             branches.add("tls")
+        if "db" in candidate_branches and looks_like_db(fact):
+            branches.add("db")
         if branches:
             routed[port] = branches
     return routed
