@@ -69,11 +69,43 @@ def _netbios_probe() -> bytes:
     return tid + flags + counts + question
 
 
+def _ntp_monlist_probe() -> bytes:
+    # NTP mode 7 (private), impl NTPDC(3), request MON_GETLIST_1 (42=0x2a). Read-only:
+    # asks the server for its own monitor list. A reply = classic amplification vector.
+    return b"\x17\x00\x03\x2a" + b"\x00" * 4
+
+
+def _memcached_stats_probe() -> bytes:
+    # Memcached UDP frame header (reqid, seq, total=1, reserved) + "stats\r\n".
+    return b"\x00\x00\x00\x00\x00\x01\x00\x00" + b"stats\r\n"
+
+
+def interpret_ntp_monlist(reply: bytes) -> bool:
+    # mode-7 response: response bit (0x80) set AND mode field (low 3 bits) == 7.
+    return bool(reply) and bool(reply[0] & 0x80) and (reply[0] & 0x07) == 7
+
+
+def interpret_dns_recursion(reply: bytes) -> dict:
+    if len(reply) < 12:
+        return {"responded": False, "recursion_available": False, "open_recursion": False}
+    flags = struct.unpack(">H", reply[2:4])[0]
+    rcode = flags & 0x000F
+    ra = bool(flags & 0x0080)
+    ancount = struct.unpack(">H", reply[6:8])[0]
+    return {"responded": True, "recursion_available": ra,
+            "open_recursion": ra and rcode == 0 and ancount > 0}
+
+
+def interpret_memcached_stats(reply: bytes) -> bool:
+    return b"STAT " in (reply or b"")
+
+
 UDP_PROBES: dict[int, tuple[str, bytes]] = {
     53: ("dns", _dns_probe()),
     123: ("ntp", _ntp_probe()),
     161: ("snmp", _snmp_probe()),
     137: ("netbios-ns", _netbios_probe()),
+    11211: ("memcached", _memcached_stats_probe()),
 }
 
 
@@ -103,11 +135,22 @@ class UDPScanner(BaseScanner):
                               status="filtered",
                               data={"service_guess": svc, "responded": False},
                               evidence="no reply (open|filtered)")
+        result_data = {"service": svc, "responded": True,
+                       "reply_bytes": len(data),
+                       "reply_hex_head": data[:48].hex()}
+        if svc == "ntp":
+            # Second, read-only datagram: request the monlist (amplification test).
+            await self.limiter.wait()
+            mon = await loop.run_in_executor(
+                None, self._send_recv, target, port, _ntp_monlist_probe())
+            result_data["monlist_enabled"] = interpret_ntp_monlist(mon or b"")
+        elif svc == "dns":
+            result_data.update(interpret_dns_recursion(data))
+        elif svc == "memcached":
+            result_data["exposed_unauthenticated"] = interpret_memcached_stats(data)
         return ScanResult(
             self.name, target, port=port, proto="udp", status="open",
-            data={"service": svc, "responded": True,
-                  "reply_bytes": len(data),
-                  "reply_hex_head": data[:48].hex()},
+            data=result_data,
             evidence=f"{svc} replied with {len(data)} bytes",
         )
 

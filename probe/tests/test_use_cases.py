@@ -9,7 +9,6 @@ from agent.use_cases import USE_CASES, resolve
 
 FORBIDDEN = {
     "uc_windows_estate": ["shares exposed"],
-    "uc_udp_service_exposure": ["monlist", "amplification"],
     "uc_web_app_triage": ["http methods"],
     "uc_iot_device_survey": ["modbus", "banner"],
 }
@@ -24,3 +23,8 @@ def test_descriptions_do_not_overclaim():
 
 def test_windows_estate_claims_signing():
     assert "signing" in USE_CASES["uc_windows_estate"]["description"].lower()
+
+
+def test_udp_claims_amplification():
+    d = USE_CASES["uc_udp_service_exposure"]["description"].lower()
+    assert "amplification" in d or "monlist" in d

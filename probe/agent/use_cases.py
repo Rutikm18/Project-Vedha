@@ -93,9 +93,9 @@ USE_CASES: dict[str, dict] = {
     "uc_udp_service_exposure": {
         "display_name": "UDP Service Exposure",
         "description": (
-            "Probe UDP services: DNS (53/UDP), SNMP public community (161/UDP), "
-            "NTP (123/UDP), NetBIOS Name Service (137/UDP). Confirms which UDP "
-            "services answer — surface missed by TCP-only scans."
+            "UDP attack surface + amplification checks: NTP monlist (123), "
+            "DNS open recursion (53), Memcached (11211), SNMP public (161), "
+            "NetBIOS-NS (137)."
         ),
         "scan_type": "udp_scan",
         "profile": "it",
