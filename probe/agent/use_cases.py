@@ -82,9 +82,9 @@ USE_CASES: dict[str, dict] = {
     "uc_web_app_triage": {
         "display_name": "Web Application Triage",
         "description": (
-            "Web-layer fingerprint: response headers, server tech stack, and "
-            "security-header posture on all web ports (80, 443, 8080, 8443, 8000…). "
-            "Use before a dedicated web application pentest."
+            "Web-layer fingerprint: HTTP methods (OPTIONS), response headers, "
+            "server tech stack, and security-header posture on all web ports "
+            "(80, 443, 8080, 8443, 8000…). Use before a dedicated web app pentest."
         ),
         "scan_type": "web_scan",
         "profile": "it",

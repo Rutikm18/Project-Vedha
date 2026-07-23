@@ -38,6 +38,19 @@ _SECURITY_HEADERS = [
     "x-frame-options", "x-content-type-options", "referrer-policy",
 ]
 
+_DANGEROUS_METHODS = {"PUT", "DELETE", "TRACE", "CONNECT", "PATCH"}
+
+
+def parse_allow_header(allow: str | None) -> dict:
+    """Read the Allow header from an OPTIONS response. Read-only."""
+    if not allow:
+        return {"allowed_methods": [], "dangerous_methods": []}
+    methods = [m.strip().upper() for m in allow.split(",") if m.strip()]
+    return {
+        "allowed_methods": methods,
+        "dangerous_methods": [m for m in methods if m in _DANGEROUS_METHODS],
+    }
+
 class _NoRedirect(urllib.request.HTTPRedirectHandler):
     def redirect_request(self, req, fp, code, msg, headers, newurl):
         return None     # surface the 3xx instead of following it
@@ -94,6 +107,15 @@ def _fetch(url: str, timeout: float) -> dict | None:
 
     missing_sec = [h for h in _SECURITY_HEADERS if h not in headers]
 
+    allow = None
+    try:
+        opt = urllib.request.Request(
+            url, headers={"User-Agent": "va-scanner/1.0"}, method="OPTIONS")
+        with _OPENER.open(opt, timeout=timeout) as r:
+            allow = r.headers.get("Allow")
+    except Exception:
+        allow = None
+
     return {
         "status": status,
         "final_url": final_url,
@@ -106,6 +128,7 @@ def _fetch(url: str, timeout: float) -> dict | None:
         "security_headers_present": [h for h in _SECURITY_HEADERS if h in headers],
         "security_headers_missing": missing_sec,
         "all_headers": headers,
+        **parse_allow_header(allow),
     }
 
 
