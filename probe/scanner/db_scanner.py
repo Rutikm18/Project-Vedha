@@ -98,6 +98,19 @@ async def _probe_mssql(reader, writer, timeout) -> dict | None:
     return None
 
 
+def interpret_redis_info(text: str) -> dict:
+    """Classify a Redis INFO reply. `unauthenticated_read` is True only when we
+    actually read server data with no credentials (the honest exposure signal)."""
+    auth_required = "NOAUTH" in text
+    m = re.search(r"redis_version:([0-9.]+)", text)
+    return {
+        "engine": "redis",
+        "auth_required": auth_required,
+        "unauthenticated_read": (not auth_required) and ("redis_version" in text),
+        "server_version": m.group(1) if m else None,
+    }
+
+
 async def _probe_redis(reader, writer, timeout) -> dict | None:
     # Redis: send INFO server (RESP). Unauthenticated servers reply with a bulk
     # string of server info incl. version; auth-required servers reply -NOAUTH.
@@ -111,10 +124,7 @@ async def _probe_redis(reader, writer, timeout) -> dict | None:
         return None
     text = data.decode("latin-1", "replace")
     if "NOAUTH" in text or "redis_version" in text or text.startswith("$"):
-        m = re.search(r"redis_version:([0-9.]+)", text)
-        return {"engine": "redis",
-                "auth_required": "NOAUTH" in text,
-                "server_version": m.group(1) if m else None}
+        return interpret_redis_info(text)
     return None
 
 
