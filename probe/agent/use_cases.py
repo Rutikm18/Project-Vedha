@@ -41,7 +41,7 @@ USE_CASES: dict[str, dict] = {
     },
     "uc_windows_estate": {
         "display_name": "Windows Estate",
-        "description": "SMB dialect detection (SMBv1/SMB2 negotiate). Is SMBv1 enabled?",
+        "description": "SMB dialect + signing detection. Is SMBv1 enabled? Is SMB signing required?",
         "scan_type": "smb_enum",
         "profile": "it",
         "expected_runtime_hint": "5–15 min",

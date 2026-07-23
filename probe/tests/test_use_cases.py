@@ -20,3 +20,7 @@ def test_descriptions_do_not_overclaim():
         desc = USE_CASES[uc_id]["description"].lower()
         for phrase in banned:
             assert phrase not in desc, f"{uc_id} still claims '{phrase}'"
+
+
+def test_windows_estate_claims_signing():
+    assert "signing" in USE_CASES["uc_windows_estate"]["description"].lower()

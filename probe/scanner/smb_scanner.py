@@ -33,6 +33,26 @@ def _netbios_session(payload: bytes) -> bytes:
     return struct.pack(">I", len(payload)) + payload
 
 
+def parse_smb2_security_mode(response: bytes | None) -> dict:
+    """Read signing posture from an SMB2 NEGOTIATE response.
+
+    The response carries a 4-byte Direct-TCP/NBT transport header, so the SMB2
+    header starts at offset 4 and the NEGOTIATE body at offset 68. Within the
+    body: StructureSize[0:2], SecurityMode[2:4], DialectRevision[4:6]. Read-only.
+    """
+    if not response or len(response) < 72 or response[4:8] != b"\xfeSMB":
+        return {"signing_parsed": False}
+    security_mode = struct.unpack_from("<H", response, 70)[0]
+    dialect = (struct.unpack_from("<H", response, 72)[0]
+               if len(response) >= 74 else None)
+    return {
+        "signing_parsed": True,
+        "signing_enabled": bool(security_mode & 0x0001),
+        "signing_required": bool(security_mode & 0x0002),
+        "negotiated_dialect": f"0x{dialect:04x}" if dialect is not None else None,
+    }
+
+
 def _smb1_negotiate() -> bytes:
     # SMBv1 header: 0xFF 'SMB' + command 0x72 (NEGOTIATE) + zeroed fields.
     header = b"\xffSMB" + b"\x72" + b"\x00" * 4 + b"\x18\x53\xc8" + \
@@ -122,14 +142,17 @@ class SMBScanner(BaseScanner):
                                status="filtered",
                                evidence="no SMB response on 445")]
 
+        data = {
+            "smbv1_enabled": smb1_enabled,
+            "smb2_supported": smb2_supported,
+        }
+        data.update(parse_smb2_security_mode(smb2))
         return [ScanResult(
             self.name, target, port=self.port, proto="tcp", status="open",
-            data={
-                "smbv1_enabled": smb1_enabled,
-                "smb2_supported": smb2_supported,
-            },
+            data=data,
             evidence=(f"SMBv1={'on' if smb1_enabled else 'off'}, "
-                      f"SMB2={'on' if smb2_supported else 'off'}"),
+                      f"SMB2={'on' if smb2_supported else 'off'}, "
+                      f"signing_required={data.get('signing_required')}"),
         )]
 
 
