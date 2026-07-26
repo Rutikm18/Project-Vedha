@@ -3,31 +3,42 @@ package agent
 
 import (
 	"bytes"
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/gorilla/websocket"
 )
 
 type Transport struct {
-	baseURL   string
-	client    *http.Client
-	AgentID   string
+	baseURL    string
+	client     *http.Client
+	verifyTLS  bool
+	AgentID    string
 	AgentToken string
 }
 
 func NewTransport(platformURL string, verifyTLS bool) *Transport {
 	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: !verifyTLS},
+		TLSClientConfig: managerTLSConfig(verifyTLS),
 	}
 	return &Transport{
-		baseURL: platformURL,
-		client:  &http.Client{Transport: tr, Timeout: 30 * time.Second},
+		baseURL:   platformURL,
+		client:    &http.Client{Transport: tr, Timeout: 30 * time.Second},
+		verifyTLS: verifyTLS,
+	}
+}
+
+func managerTLSConfig(verifyTLS bool) *tls.Config {
+	return &tls.Config{
+		MinVersion:         tls.VersionTLS12,
+		InsecureSkipVerify: !verifyTLS, // Explicit opt-out via VERIFY_TLS=false.
 	}
 }
 
@@ -57,18 +68,40 @@ func (t *Transport) Register(operatorToken, name, location string, caps, segment
 	if err := t.post("/agents/register", body, &resp, operatorToken); err != nil {
 		return err
 	}
-	t.AgentID = resp.AgentID
-	t.AgentToken = resp.Token
+	t.AgentID = strings.TrimSpace(resp.AgentID)
+	t.AgentToken = strings.TrimSpace(resp.Token)
+	if t.AgentID == "" || t.AgentToken == "" {
+		t.AgentID = ""
+		t.AgentToken = ""
+		return fmt.Errorf("register response omitted agent_id or token")
+	}
 	return nil
 }
 
-// Heartbeat sends status to the manager.
-func (t *Transport) Heartbeat(status, currentJobID string) error {
-	body := map[string]interface{}{"status": status}
+// Heartbeat sends status to the manager and renews the active job lease.
+func (t *Transport) Heartbeat(ctx context.Context, status, currentJobID string) error {
+	body := map[string]interface{}{
+		"agent_id": t.AgentID,
+		"status":   status,
+	}
 	if currentJobID != "" {
 		body["current_job_id"] = currentJobID
+	} else {
+		body["current_job_id"] = nil
 	}
-	return t.patch(fmt.Sprintf("/agents/%s/heartbeat", t.AgentID), body, t.AgentToken)
+	return t.postContext(ctx, "/agents/heartbeat", body, nil, t.AgentToken)
+}
+
+// RefreshRegistration replaces stale capability and routing metadata.
+func (t *Transport) RefreshRegistration(caps, segments []string) error {
+	body := map[string]interface{}{
+		"capabilities":     caps,
+		"network_segments": segments,
+	}
+	return t.post(
+		fmt.Sprintf("/agents/%s/refresh", t.AgentID),
+		body, nil, t.AgentToken,
+	)
 }
 
 // PollJobs fetches pending jobs for this agent.
@@ -87,6 +120,9 @@ func (t *Transport) SubmitResult(jobID string, payload interface{}) error {
 
 // ConnectWS opens a WebSocket to the manager's push endpoint.
 func (t *Transport) ConnectWS() (*websocket.Conn, error) {
+	if t.AgentToken == "" {
+		return nil, fmt.Errorf("cannot connect WebSocket without an agent token")
+	}
 	u, err := url.Parse(t.baseURL)
 	if err != nil {
 		return nil, err
@@ -97,14 +133,16 @@ func (t *Transport) ConnectWS() (*websocket.Conn, error) {
 	default:
 		u.Scheme = "ws"
 	}
-	u.Path = fmt.Sprintf("/ws/agents/%s", t.AgentID)
+	u.Path = "/agents/ws"
+	query := u.Query()
+	query.Set("token", t.AgentToken)
+	u.RawQuery = query.Encode()
 
 	dialer := websocket.Dialer{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		TLSClientConfig:  managerTLSConfig(t.verifyTLS),
 		HandshakeTimeout: 10 * time.Second,
 	}
-	headers := http.Header{"Authorization": {"Bearer " + t.AgentToken}}
-	conn, _, err := dialer.Dial(u.String(), headers)
+	conn, _, err := dialer.Dial(u.String(), nil)
 	return conn, err
 }
 
@@ -131,11 +169,21 @@ func (t *Transport) get(path string, out interface{}, token string) error {
 }
 
 func (t *Transport) post(path string, body interface{}, out interface{}, token string) error {
+	return t.postContext(context.Background(), path, body, out, token)
+}
+
+func (t *Transport) postContext(
+	ctx context.Context,
+	path string,
+	body interface{},
+	out interface{},
+	token string,
+) error {
 	b, err := json.Marshal(body)
 	if err != nil {
 		return err
 	}
-	req, err := http.NewRequest("POST", t.baseURL+path, bytes.NewReader(b))
+	req, err := http.NewRequestWithContext(ctx, "POST", t.baseURL+path, bytes.NewReader(b))
 	if err != nil {
 		return err
 	}
@@ -155,23 +203,5 @@ func (t *Transport) post(path string, body interface{}, out interface{}, token s
 	if out != nil {
 		return json.Unmarshal(rb, out)
 	}
-	return nil
-}
-
-func (t *Transport) patch(path string, body interface{}, token string) error {
-	b, _ := json.Marshal(body)
-	req, err := http.NewRequest("PATCH", t.baseURL+path, bytes.NewReader(b))
-	if err != nil {
-		return err
-	}
-	req.Header.Set("Content-Type", "application/json")
-	if token != "" {
-		req.Header.Set("Authorization", "Bearer "+token)
-	}
-	resp, err := t.client.Do(req)
-	if err != nil {
-		return err
-	}
-	resp.Body.Close()
 	return nil
 }

@@ -30,7 +30,7 @@ class PortScanner(BaseScanner):
     def __init__(self, *args, ports: list[int] | None = None,
                  report_closed: bool = False, **kwargs):
         super().__init__(*args, **kwargs)
-        self.ports = ports or TOP_TCP_PORTS
+        self.ports = list(TOP_TCP_PORTS if ports is None else ports)
         self.report_closed = report_closed   # off by default: only emit OPEN
 
     async def _scan_port(self, target: str, port: int) -> ScanResult | None:

@@ -86,6 +86,11 @@ class Asset:
         on result.scanner — the exact names scanner_base.BaseScanner
         subclasses set as their `name` class attribute / pass to ScanResult.
         """
+        # A failed collection attempt is workflow telemetry, not target state.
+        # In particular, credential errors must not mark an asset collected and
+        # failed port probes must not replace previously observed port facts.
+        if result.status == "error" or result.error:
+            return
         handler = _MERGE_DISPATCH.get(result.scanner)
         if handler:
             handler(self, result)

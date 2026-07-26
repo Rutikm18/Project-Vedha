@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import os
 
 import pytest
 
@@ -32,6 +33,22 @@ class TestResultSpool:
         assert not (spool.spool_dir / "job-atomic.json.tmp").exists()
         assert spool.load("job-atomic") == payload
         assert spool.spool_count == 1
+
+    def test_rejects_job_id_path_traversal(self, tmp_path):
+        spool = ResultSpool(spool_dir=tmp_path / "spool")
+
+        with pytest.raises(ValueError, match="invalid job ID"):
+            spool.save("../../outside", {"secret": True})
+
+        assert not (tmp_path / "outside.json").exists()
+
+    @pytest.mark.skipif(os.name != "posix", reason="POSIX permission bits")
+    def test_spool_directory_and_result_are_private(self, tmp_path):
+        spool = ResultSpool(spool_dir=tmp_path / "spool")
+        result_path = spool.save("job-private", {"result": {}})
+
+        assert spool.spool_dir.stat().st_mode & 0o777 == 0o700
+        assert result_path.stat().st_mode & 0o777 == 0o600
 
     def test_load_missing(self, tmp_path):
         spool = ResultSpool(spool_dir=tmp_path / "spool")

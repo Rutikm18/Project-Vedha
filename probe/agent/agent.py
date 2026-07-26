@@ -24,6 +24,7 @@ Security properties (outbound-only, no inbound ports):
 from __future__ import annotations
 
 import asyncio
+import concurrent.futures
 import json
 import logging
 import os
@@ -220,7 +221,13 @@ def main() -> None:
             # Mark busy before running
             transport.heartbeat("busy", job.get("job_id"))
             try:
-                result = runner.run_job(job, agent_id)
+                result = _run_polled_job_with_heartbeats(
+                    transport,
+                    runner,
+                    job,
+                    agent_id,
+                    heartbeat_interval=HEARTBEAT_INTERVAL,
+                )
                 if result.error:
                     say(f"Job {result.job_id}: {result.error}", 1)
                 else:
@@ -244,6 +251,34 @@ def main() -> None:
 
         # P2: jitter to avoid thundering herd across a probe fleet
         time.sleep(POLL_INTERVAL + random.uniform(0, POLL_INTERVAL * 0.5))
+
+
+def _run_polled_job_with_heartbeats(
+    transport: "Transport",
+    runner,
+    job: dict,
+    agent_id: str,
+    *,
+    heartbeat_interval: float,
+):
+    """Run an HTTP-claimed job while renewing its manager lease."""
+    job_id = job.get("job_id")
+    interval = max(0.05, float(heartbeat_interval))
+    with concurrent.futures.ThreadPoolExecutor(
+        max_workers=1,
+        thread_name_prefix="probe-job",
+    ) as executor:
+        future = executor.submit(runner.run_job, job, agent_id)
+        while True:
+            try:
+                return future.result(timeout=interval)
+            except concurrent.futures.TimeoutError:
+                if not transport.heartbeat("busy", job_id):
+                    say(
+                        f"Lease heartbeat failed for running job {job_id}; "
+                        "the probe will keep retrying while preserving its result.",
+                        1,
+                    )
 
 
 # ── P2: WebSocket push loop ────────────────────────────────────────────────
@@ -280,6 +315,8 @@ async def _run_ws_push_loop(
                 "type": "hello",
                 "agent_id": agent_id,
                 "token": transport.agent_token,
+                "protocol_version": 2,
+                "features": ["atomic_job_claim_v1"],
             }))
 
             # Wait for hello_ok (with timeout)
@@ -301,17 +338,27 @@ async def _run_ws_push_loop(
                 await ws.close()
                 return False
 
+            features = set(hello_msg.get("features") or [])
+            if "atomic_job_claim_v1" not in features:
+                say(
+                    "Manager does not support confirmed WebSocket claims "
+                    "— falling back to atomic HTTP polling."
+                )
+                await ws.close()
+                return False
+
             say("WebSocket connected. Push mode active — waiting for jobs.")
             backoff = WS_RECONNECT_BACKOFF_MIN  # reset on successful connect
 
-            # ── Flush previously spooled results over WS ──────────────────
-            await _ws_flush_spool(ws, spool, agent_id)
+            # Results use one durable path in every mode: local spool followed
+            # by authenticated HTTP submission. WS is control-plane only.
+            await _flush_spool_over_http(transport, spool)
 
             # ── Start heartbeat + HTTP poll fallback tasks ────────────────
             # WebSocket pushes are process-local on the manager. With multiple
             # API workers a launch request can land on a different worker than
             # the probe's WS connection, so keep polling as a safety net.
-            job_state = {"current_job_id": None}
+            job_state = {"current_job_id": None, "pending_job": None}
             job_lock = asyncio.Lock()
             hb_task = asyncio.create_task(
                 _ws_heartbeat_sender(ws, agent_id, heartbeat_interval, job_state),
@@ -333,11 +380,19 @@ async def _run_ws_push_loop(
                 msg_type = msg.get("type", "")
 
                 if msg_type == "job_push":
-                    job = msg.get("job", {})
+                    await _ws_stage_job_offer(
+                        ws, msg.get("job", {}), job_state,
+                    )
+
+                elif msg_type == "job_claim":
+                    pending_job = _ws_take_confirmed_job(msg, job_state)
+                    if pending_job is None:
+                        continue
+
                     async with job_lock:
-                        await _ws_run_job(ws, runner, agent_id, job, job_state,
-                                          ack_push=True)
-                        await _ws_flush_spool(ws, spool, agent_id)
+                        await _ws_run_job(ws, runner, agent_id, pending_job, job_state,
+                                          pushed=True)
+                        await _flush_spool_over_http(transport, spool)
 
                 elif msg_type == "error":
                     say(f"Manager: {msg.get('message', 'unknown error')}")
@@ -375,6 +430,42 @@ async def _run_ws_push_loop(
     return True  # unreachable
 
 
+async def _ws_stage_job_offer(ws, job: dict, job_state: dict) -> bool:
+    """Acknowledge an offer without executing it before claim confirmation."""
+    job_id = job.get("job_id")
+    can_accept = bool(
+        job_id
+        and job_state.get("current_job_id") is None
+        and job_state.get("pending_job") is None
+    )
+    if can_accept:
+        job_state["pending_job"] = job
+    await ws.send(json.dumps({
+        "type": "job_ack",
+        "job_id": job_id or "",
+        "accepted": can_accept,
+    }))
+    return can_accept
+
+
+def _ws_take_confirmed_job(message: dict, job_state: dict) -> dict | None:
+    """Release a staged job only after the manager confirms its claim."""
+    job_id = message.get("job_id", "")
+    pending_job = job_state.get("pending_job")
+    if not pending_job or pending_job.get("job_id") != job_id:
+        return None
+
+    job_state["pending_job"] = None
+    if not message.get("claimed", False):
+        say(
+            f"Push offer {job_id} was not claimed "
+            f"({message.get('reason', 'unknown')}).",
+            1,
+        )
+        return None
+    return pending_job
+
+
 async def _ws_run_job(
     ws,
     runner,
@@ -382,16 +473,11 @@ async def _ws_run_job(
     job: dict,
     job_state: dict,
     *,
-    ack_push: bool,
+    pushed: bool,
 ):
     """Run one job while keeping WS status/result frames best-effort."""
     job_id = job.get("job_id", "?")
-    if ack_push:
-        await ws.send(json.dumps({
-            "type": "job_ack",
-            "job_id": job_id,
-            "accepted": True,
-        }))
+    if pushed:
         say(f"▶ Push: job {job_id} ({job.get('job_type', '?')})")
     else:
         say(f"▶ Poll fallback: job {job_id} ({job.get('job_type', '?')})")
@@ -408,13 +494,6 @@ async def _ws_run_job(
         # asyncio.run(), which can't run inside an existing event loop.
         result = await asyncio.to_thread(runner.run_job, job, agent_id)
 
-        await ws.send(json.dumps({
-            "type": "result",
-            "job_id": job_id,
-            "success": result.success,
-            "result": result.result,
-            "error": result.error,
-        }))
         if result.error:
             say(f"  ✗ {result.error}", 1)
         else:
@@ -446,7 +525,10 @@ async def _ws_http_poll_fallback(
     """
     while True:
         await asyncio.sleep(max(1, interval))
-        if job_state.get("current_job_id"):
+        if (
+            job_state.get("current_job_id")
+            or job_state.get("pending_job") is not None
+        ):
             continue
         try:
             jobs = await asyncio.to_thread(transport.poll_jobs, 1)
@@ -462,8 +544,8 @@ async def _ws_http_poll_fallback(
         async with job_lock:
             for job in jobs:
                 await _ws_run_job(ws, runner, agent_id, job, job_state,
-                                  ack_push=False)
-                await _ws_flush_spool(ws, spool, agent_id)
+                                  pushed=False)
+                await _flush_spool_over_http(transport, spool)
 
 
 async def _ws_heartbeat_sender(
@@ -486,30 +568,17 @@ async def _ws_heartbeat_sender(
         pass  # ws closed, task will be cancelled
 
 
-async def _ws_flush_spool(ws, spool, agent_id: str) -> None:
-    """Re-submit previously spooled results over WebSocket."""
+async def _flush_spool_over_http(transport: "Transport", spool) -> None:
+    """Retry durable result files using the acknowledged HTTP result path."""
     if spool.spool_count == 0:
         return
 
-    count = 0
-    for p in sorted(spool.spool_dir.glob("*.json")):
-        job_id = p.stem
-        try:
-            payload = json.loads(p.read_text())
-            await ws.send(json.dumps({
-                "type": "result",
-                "job_id": job_id,
-                "success": payload.get("success", False),
-                "result": payload.get("result", {}),
-                "error": payload.get("error"),
-            }))
-            p.unlink(missing_ok=True)
-            count += 1
-        except Exception:
-            pass
-
+    count = await asyncio.to_thread(
+        spool.flush_spool,
+        transport.submit_result,
+    )
     if count:
-        say(f"  Flushed {count} spooled result(s) over WebSocket.", 1)
+        say(f"  Flushed {count} spooled result(s) over HTTP.", 1)
 
 
 def _startup_gauntlet() -> dict | None:
@@ -623,7 +692,7 @@ def _load_or_create_identity(transport) -> tuple[bytes, bytes, str]:
     # Try to load from the state file
     if transport._state_file and transport._state_file.exists():
         try:
-            state = json.loads(transport._state_file.read_text())
+            state = transport.load_state()
             if state.get("identity_sk"):
                 from agent.scope_crypt import pubkey_to_bytes, bytes_to_pubkey_b64
                 identity_sk = pubkey_to_bytes(state["identity_sk"])
@@ -645,18 +714,11 @@ def _load_or_create_identity(transport) -> tuple[bytes, bytes, str]:
     # Persist alongside transport state
     if transport._state_file:
         try:
-            transport._state_file.parent.mkdir(parents=True, exist_ok=True)
-            existing = {}
-            if transport._state_file.exists():
-                try:
-                    existing = json.loads(transport._state_file.read_text())
-                except Exception:
-                    pass
-            from agent.scope_crypt import pubkey_to_bytes
             import base64
-            existing["identity_sk"] = base64.b64encode(identity_sk).decode()
-            existing["identity_pk"] = public_key_b64
-            transport._state_file.write_text(json.dumps(existing))
+            transport.update_state({
+                "identity_sk": base64.b64encode(identity_sk).decode(),
+                "identity_pk": public_key_b64,
+            })
             say(f"Generated new X25519 identity (pk: {public_key_b64[:12]}…)", 1)
         except OSError as exc:
             say(f"warning: could not persist identity ({exc})", 1)
@@ -671,8 +733,9 @@ def _obtain_identity(
 ) -> tuple[str, str, bool, bytes, bytes, str]:
     """Return (agent_id, token, fresh, identity_sk, identity_pk, public_key_b64).
 
-    Tries cached identity first, then falls back to login + register.
-    Retries indefinitely until the manager is reachable.
+    A cached identity refreshes its routing metadata before use, then falls back
+    to login + registration if its agent token is rejected. Network failures
+    retry indefinitely so startup never proceeds with known-stale capabilities.
     """
     from agent.engine import CAPABILITIES
 
@@ -680,10 +743,34 @@ def _obtain_identity(
     # (needed even when already authenticated so the caller has the keys)
     identity_sk, identity_pk, public_key_b64 = _load_or_create_identity(transport)
 
-    # Check if we already have identity from env or state
+    # Refresh cached routing metadata with the agent's own token. This keeps
+    # newly added scan capabilities routable without retaining bootstrap admin
+    # credentials on the probe.
     if transport.is_authenticated():
-        return transport.agent_id, transport.agent_token, False, \
-               identity_sk, identity_pk, public_key_b64
+        while True:
+            try:
+                refreshed = transport.refresh_registration(
+                    capabilities=CAPABILITIES,
+                    network_segments=segments,
+                    public_key=public_key_b64,
+                )
+            except TransportError:
+                say("Cached agent token was rejected — re-registering.")
+                transport.clear_state()
+                break
+
+            if refreshed is True:
+                return transport.agent_id, transport.agent_token, False, \
+                       identity_sk, identity_pk, public_key_b64
+            if refreshed is None:
+                # Rolling-upgrade compatibility: older managers do not enforce
+                # capability-aware scheduling and do not expose this endpoint.
+                say("Manager does not support agent metadata refresh; using cached identity.", 1)
+                return transport.agent_id, transport.agent_token, False, \
+                       identity_sk, identity_pk, public_key_b64
+
+            say("Can't refresh cached capabilities yet — retrying.")
+            time.sleep(10)
 
     while True:
         try:

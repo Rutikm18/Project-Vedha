@@ -1,15 +1,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getTask } from "../../../../../lib/openvas-client";
-import { createFinding } from "../../../../../lib/findings-store";
+import { withVerifiedLocalScanner } from "../../../../../lib/with-backend";
 
-export async function GET(
+export const GET = withVerifiedLocalScanner<{ taskId: string }>((
   _req: NextRequest,
-  { params }: { params: Promise<{ taskId: string }> },
-) {
-  const { taskId } = await params;
+  { user },
+  params,
+) => {
+  const taskId = params?.taskId;
+  if (!taskId) {
+    return NextResponse.json({ error: "Task id is required." }, { status: 400 });
+  }
   const task = getTask(taskId);
 
-  if (!task) {
+  if (!task || task.ownerTenantId !== user.tenant_id) {
     return NextResponse.json({ error: "Task not found." }, { status: 404 });
   }
 
@@ -27,4 +31,4 @@ export async function GET(
       low:      task.findings.filter((f) => f.severity === "LOW").length,
     },
   });
-}
+});

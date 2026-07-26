@@ -10,13 +10,17 @@ import (
 )
 
 type ScopeGuard struct {
-	nets     []*net.IPNet
-	hosts    map[string]bool
-	excludes []*net.IPNet
+	nets         []*net.IPNet
+	hosts        map[string]bool
+	excludes     []*net.IPNet
+	excludeHosts map[string]bool
 }
 
 func NewScopeGuard(entries []string, excludes []string) (*ScopeGuard, error) {
-	sg := &ScopeGuard{hosts: make(map[string]bool)}
+	sg := &ScopeGuard{
+		hosts:        make(map[string]bool),
+		excludeHosts: make(map[string]bool),
+	}
 	for _, e := range entries {
 		e = strings.TrimSpace(e)
 		if e == "" || strings.HasPrefix(e, "#") {
@@ -35,6 +39,9 @@ func NewScopeGuard(entries []string, excludes []string) (*ScopeGuard, error) {
 		if _, cidr, err := net.ParseCIDR(e); err == nil {
 			sg.nets = append(sg.nets, cidr)
 		} else {
+			if strings.Contains(e, "/") {
+				return nil, fmt.Errorf("invalid scope CIDR %q", e)
+			}
 			sg.hosts[strings.ToLower(e)] = true
 		}
 	}
@@ -54,6 +61,10 @@ func NewScopeGuard(entries []string, excludes []string) (*ScopeGuard, error) {
 		}
 		if _, cidr, err := net.ParseCIDR(ex); err == nil {
 			sg.excludes = append(sg.excludes, cidr)
+		} else if strings.Contains(ex, "/") {
+			return nil, fmt.Errorf("invalid exclusion CIDR %q", ex)
+		} else {
+			sg.excludeHosts[strings.ToLower(ex)] = true
 		}
 	}
 	if len(sg.nets) == 0 && len(sg.hosts) == 0 {
@@ -82,15 +93,14 @@ func ScopeFromFile(path string) (*ScopeGuard, error) {
 func (sg *ScopeGuard) InScope(target string) bool {
 	t := strings.ToLower(strings.TrimSpace(target))
 	ip := net.ParseIP(t)
-	// Exclusions win
-	if ip != nil {
-		for _, ex := range sg.excludes {
-			if ex.Contains(ip) {
-				return false
-			}
-		}
+	if sg.isExcluded(t, ip) {
+		return false
 	}
-	if sg.hosts[t] {
+	return sg.isAllowed(t, ip)
+}
+
+func (sg *ScopeGuard) isAllowed(target string, ip net.IP) bool {
+	if sg.hosts[target] {
 		return true
 	}
 	if ip == nil {
@@ -104,50 +114,122 @@ func (sg *ScopeGuard) InScope(target string) bool {
 	return false
 }
 
-// ExpandCIDRs returns every IP address that falls within the scope's networks.
-// For large CIDRs (>65536 hosts) it returns just the network addresses — the
-// caller should use a range sweep instead of enumerating all IPs.
-func (sg *ScopeGuard) ExpandCIDRs() []string {
-	var out []string
-	seen := map[string]bool{}
-
-	for h := range sg.hosts {
-		if !seen[h] {
-			out = append(out, h)
-			seen[h] = true
+func (sg *ScopeGuard) isExcluded(target string, ip net.IP) bool {
+	if sg.excludeHosts[target] {
+		return true
+	}
+	if ip == nil {
+		return false
+	}
+	for _, ex := range sg.excludes {
+		if ex.Contains(ip) {
+			return true
 		}
 	}
+	return false
+}
 
-	for _, cidr := range sg.nets {
-		ones, bits := cidr.Mask.Size()
-		size := 1 << uint(bits-ones)
-		if size > 65536 {
-			// Too large to enumerate — return the network address and let the
-			// port scanner use a connect-sweep approach with goroutines.
-			out = append(out, cidr.String())
+// ExpandRequested expands only the requested target specifications. The scope
+// networks remain an authorization boundary and are never added as targets.
+func (sg *ScopeGuard) ExpandRequested(entries []string, maxTargets int) ([]string, error) {
+	if maxTargets <= 0 {
+		maxTargets = 65536
+	}
+	out := make([]string, 0)
+	seen := make(map[string]bool)
+
+	appendTarget := func(target string) error {
+		if seen[target] {
+			return nil
+		}
+		if len(out) >= maxTargets {
+			return fmt.Errorf("requested targets exceed safety limit of %d hosts", maxTargets)
+		}
+		seen[target] = true
+		out = append(out, target)
+		return nil
+	}
+
+	for _, raw := range entries {
+		target := strings.TrimSpace(raw)
+		if target == "" {
 			continue
 		}
-		ip := cidr.IP.To4()
-		if ip == nil {
-			ip = cidr.IP.To16()
-		}
-		// Clone so we can increment
-		cur := make(net.IP, len(ip))
-		copy(cur, ip)
-		for cidr.Contains(cur) {
-			s := cur.String()
-			if !seen[s] {
-				out = append(out, s)
-				seen[s] = true
+
+		if strings.Contains(target, "/") {
+			_, requestedNet, err := net.ParseCIDR(target)
+			if err != nil {
+				return nil, fmt.Errorf("invalid requested CIDR %q", target)
 			}
-			// Increment
-			for j := len(cur) - 1; j >= 0; j-- {
-				cur[j]++
-				if cur[j] != 0 {
-					break
+			if !sg.networkAllowed(requestedNet) {
+				return nil, fmt.Errorf("requested CIDR %q is outside authorized scope", target)
+			}
+
+			ones, bits := requestedNet.Mask.Size()
+			if ones < 0 || bits-ones > 16 {
+				return nil, fmt.Errorf(
+					"requested CIDR %q exceeds safety limit of %d hosts",
+					target, maxTargets,
+				)
+			}
+			cur := append(net.IP(nil), requestedNet.IP...)
+			for requestedNet.Contains(cur) {
+				value := cur.String()
+				if sg.InScope(value) {
+					if err := appendTarget(value); err != nil {
+						return nil, err
+					}
 				}
+				incrementIP(cur)
 			}
+			continue
+		}
+
+		normalized := strings.ToLower(target)
+		ip := net.ParseIP(normalized)
+		if !sg.isAllowed(normalized, ip) {
+			return nil, fmt.Errorf("requested target %q is outside authorized scope", target)
+		}
+		if sg.isExcluded(normalized, ip) {
+			continue
+		}
+		if ip != nil {
+			normalized = ip.String()
+		}
+		if err := appendTarget(normalized); err != nil {
+			return nil, err
 		}
 	}
-	return out
+
+	if len(out) == 0 {
+		return nil, fmt.Errorf("all requested targets are excluded or empty")
+	}
+	return out, nil
+}
+
+func (sg *ScopeGuard) networkAllowed(requested *net.IPNet) bool {
+	last := lastIP(requested)
+	for _, allowed := range sg.nets {
+		if allowed.Contains(requested.IP) && allowed.Contains(last) {
+			return true
+		}
+	}
+	return false
+}
+
+func lastIP(network *net.IPNet) net.IP {
+	last := append(net.IP(nil), network.IP...)
+	for i := range last {
+		last[i] |= ^network.Mask[i]
+	}
+	return last
+}
+
+func incrementIP(ip net.IP) {
+	for i := len(ip) - 1; i >= 0; i-- {
+		ip[i]++
+		if ip[i] != 0 {
+			return
+		}
+	}
 }

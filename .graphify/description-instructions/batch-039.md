@@ -1,4 +1,4 @@
-# Node Description Batch 40 of 76
+# Node Description Batch 40 of 104
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,51 +12,58 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
+For an entity node (any other kind — e.g. a person, place, event, object),
+describe what the entity is and its role, grounded in its type, its
+relations (neighbors) and the provided citations/evidence — e.g.
+"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
+Ground entity descriptions in the citations/evidence when present; do not
+speculate beyond the context, so a node with no supporting context may be
+left out of the reply.
 Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "models_exploit_result": "exploit_result.py" | kind=code-symbol | source=manager/backend/app/models/exploit_result.py:L1 | neighbors=[298a9d4 trim frontend to 7 core pages; …, ExploitResult]
-- "models_finding": "finding.py" | kind=code-symbol | source=manager/backend/app/models/finding.py:L1 | neighbors=[298a9d4 trim frontend to 7 core pages; …, Finding]
-- "models_llm_output": "llm_output.py" | kind=code-symbol | source=manager/backend/app/models/llm_output.py:L1 | neighbors=[298a9d4 trim frontend to 7 core pages; …, LLMOutput]
-- "models_scan_job": "scan_job.py" | kind=code-symbol | source=manager/backend/app/models/scan_job.py:L1 | neighbors=[298a9d4 trim frontend to 7 core pages; …, ScanJob]
-- "models_scan_result": "scan_result.py" | kind=code-symbol | source=manager/backend/app/models/scan_result.py:L1 | neighbors=[298a9d4 trim frontend to 7 core pages; …, ScanResult]
-- "models_service": "service.py" | kind=code-symbol | source=manager/backend/app/models/service.py:L1 | neighbors=[298a9d4 trim frontend to 7 core pages; …, Service]
-- "models_tenant": "tenant.py" | kind=code-symbol | source=manager/backend/app/models/tenant.py:L1 | neighbors=[298a9d4 trim frontend to 7 core pages; …, Tenant]
-- "models_user": "user.py" | kind=code-symbol | source=manager/backend/app/models/user.py:L1 | neighbors=[298a9d4 trim frontend to 7 core pages; …, User]
-- "naabu_route_post": "POST()" | kind=code-symbol | source=manager/frontend/app/api/scan/naabu/route.ts:L38 | neighbors=[route.ts, validateTargets()]
-- "naabu_route_validatetargets": "validateTargets()" | kind=code-symbol | source=manager/frontend/app/api/scan/naabu/route.ts:L9 | neighbors=[route.ts, POST()]
-- "native_dir_bust_loadwordlist": "loadWordlist()" | kind=code-symbol | source=manager/frontend/lib/engine/native/dir-bust.ts:L97 | neighbors=[dir-bust.ts, nativeDirBust()]
-- "native_dir_bust_probe": "probe()" | kind=code-symbol | source=manager/frontend/lib/engine/native/dir-bust.ts:L71 | neighbors=[dir-bust.ts, nativeDirBust()]
-- "native_dns_recon_attemptzonetransfer": "attemptZoneTransfer()" | kind=code-symbol | source=manager/frontend/lib/engine/native/dns-recon.ts:L96 | neighbors=[dns-recon.ts, nativeDnsRecon()]
-- "native_dns_recon_nativeptrsweep": "nativePtrSweep()" | kind=code-symbol | source=manager/frontend/lib/engine/native/dns-recon.ts:L147 | neighbors=[tool-runners.ts, dns-recon.ts]
-- "native_dns_recon_safe": "safe()" | kind=code-symbol | source=manager/frontend/lib/engine/native/dns-recon.ts:L49 | neighbors=[dns-recon.ts, nativeDnsRecon()]
-- "native_http_probe_nativehttpprobe": "nativeHttpProbe()" | kind=code-symbol | source=manager/frontend/lib/engine/native/http-probe.ts:L248 | neighbors=[tool-runners.ts, http-probe.ts]
-- "native_port_scan_groupresults": "groupResults()" | kind=code-symbol | source=manager/frontend/lib/engine/native/port-scan.ts:L261 | neighbors=[tool-runners.ts, port-scan.ts]
-- "native_port_scan_resolveports": "resolvePorts()" | kind=code-symbol | source=manager/frontend/lib/engine/native/port-scan.ts:L131 | neighbors=[port-scan.ts, nativePortScan()]
-- "native_tls_info_nativetlsinfo": "nativeTlsInfo()" | kind=code-symbol | source=manager/frontend/lib/engine/native/tls-info.ts:L38 | neighbors=[tool-runners.ts, tls-info.ts]
-- "netexec_route_parsenxcoutput": "parseNxcOutput()" | kind=code-symbol | source=manager/frontend/app/api/scan/netexec/route.ts:L22 | neighbors=[route.ts, POST()]
-- "netexec_route_runnxc": "runNxc()" | kind=code-symbol | source=manager/frontend/app/api/scan/netexec/route.ts:L33 | neighbors=[route.ts, POST()]
-- "nmap_route_parsenmapxml": "parseNmapXml()" | kind=code-symbol | source=manager/frontend/app/api/scan/nmap/route.ts:L89 | neighbors=[route.ts, route.ts]
-- "nmap_route_post": "POST()" | kind=code-symbol | source=manager/frontend/app/api/scan/nmap/route.ts:L215 | neighbors=[route.ts, validateTarget()]
-- "nmap_route_validatetarget": "validateTarget()" | kind=code-symbol | source=manager/frontend/app/api/scan/nmap/route.ts:L62 | neighbors=[route.ts, POST()]
-- "pipeline_route_post": "POST()" | kind=code-symbol | source=manager/frontend/app/api/scan/pipeline/route.ts:L549 | neighbors=[route.ts, runPipelineBackground()]
-- "pipeline_route_runeyewitnessstage": "runEyewitnessStage()" | kind=code-symbol | source=manager/frontend/app/api/scan/pipeline/route.ts:L426 | neighbors=[route.ts, runPipelineBackground()]
-- "pipeline_route_runnucleistage": "runNucleiStage()" | kind=code-symbol | source=manager/frontend/app/api/scan/pipeline/route.ts:L247 | neighbors=[route.ts, runPipelineBackground()]
-- "pipeline_route_runtestsslstage": "runTestsslStage()" | kind=code-symbol | source=manager/frontend/app/api/scan/pipeline/route.ts:L349 | neighbors=[route.ts, runPipelineBackground()]
-- "probe_pipeline_collector_write": ".write()" | kind=code-symbol | source=probe/pipeline.py:L126 | neighbors=[_Collector, _run_active()]
-- "probe_run_scan_main": "main()" | kind=code-symbol | source=probe/run_scan.py:L135 | neighbors=[run_scan.py, _orchestrate()]
-- "probe_run_scan_orchestrate": "_orchestrate()" | kind=code-symbol | source=probe/run_scan.py:L62 | neighbors=[run_scan.py, main()]
-- "prompts_report": "report.ts" | kind=code-symbol | source=manager/frontend/lib/prompts/report.ts:L1 | neighbors=[298a9d4 trim frontend to 7 core pages; …, ai-engine.ts]
-- "prompts_triage": "triage.ts" | kind=code-symbol | source=manager/frontend/lib/prompts/triage.ts:L1 | neighbors=[298a9d4 trim frontend to 7 core pages; …, ai-engine.ts]
-- "routers_ad_set_job_status": "_set_job_status()" | kind=code-symbol | source=manager/backend/app/routers/ad.py:L201 | neighbors=[ad.py, _run_ad_assessment_and_save()]
-- "routers_agents_get_job_status": "get_job_status()" | kind=code-symbol | source=manager/backend/app/routers/agents.py:L458 | neighbors=[agents.py, Lets the frontend poll a specific job's…]
-- "routers_agents_heartbeat": "heartbeat()" | kind=code-symbol | source=manager/backend/app/routers/agents.py:L356 | neighbors=[agents.py, _agent_ownership_check()]
-- "routers_agents_list_use_cases": "list_use_cases()" | kind=code-symbol | source=manager/backend/app/routers/agents.py:L264 | neighbors=[agents.py, Returns the finite library of scan use-…]
-- "routers_agents_register_agent": "register_agent()" | kind=code-symbol | source=manager/backend/app/routers/agents.py:L277 | neighbors=[agents.py, AgentRegisterResponse]
-- "routers_agents_resolve_scan_type": "_resolve_scan_type()" | kind=code-symbol | source=manager/backend/app/routers/agents.py:L57 | neighbors=[agents.py, enqueue_agent_job()]
-- "routers_agents_submit_job_result": "submit_job_result()" | kind=code-symbol | source=manager/backend/app/routers/agents.py:L619 | neighbors=[agents.py, _agent_ownership_check()]
+- "tests_test_probe_core_testassetmergecredentialed_test_ssh_inventory": ".test_ssh_inventory()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L543 | neighbors=[TestAssetMergeCredentialed, _asset(), _scan_result()]
+- "tests_test_probe_core_testassetmergecredentialed_test_windows_inventory": ".test_windows_inventory()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L550 | neighbors=[TestAssetMergeCredentialed, _asset(), _scan_result()]
+- "tests_test_probe_core_testassetmergehostdiscovery": "TestAssetMergeHostDiscovery" | kind=code-symbol | source=probe/tests/test_probe_core.py:L476 | neighbors=[test_probe_core.py, .test_alive_sets_timestamp(), .test_responding_ports()]
+- "tests_test_probe_core_testassetmergehostdiscovery_test_alive_sets_timestamp": ".test_alive_sets_timestamp()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L477 | neighbors=[TestAssetMergeHostDiscovery, _asset(), _scan_result()]
+- "tests_test_probe_core_testassetmergehostdiscovery_test_responding_ports": ".test_responding_ports()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L484 | neighbors=[TestAssetMergeHostDiscovery, _asset(), _scan_result()]
+- "tests_test_probe_core_testassetmergepassivecollect_test_passive_facts_appended": ".test_passive_facts_appended()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L558 | neighbors=[TestAssetMergePassiveCollect, _asset(), _scan_result()]
+- "tests_test_probe_core_testassetmergeportscan": "TestAssetMergePortScan" | kind=code-symbol | source=probe/tests/test_probe_core.py:L495 | neighbors=[test_probe_core.py, .test_tcp_open(), .test_udp_uncertain()]
+- "tests_test_probe_core_testassetmergeportscan_test_tcp_open": ".test_tcp_open()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L496 | neighbors=[TestAssetMergePortScan, _asset(), _scan_result()]
+- "tests_test_probe_core_testassetmergeportscan_test_udp_uncertain": ".test_udp_uncertain()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L502 | neighbors=[TestAssetMergePortScan, _asset(), _scan_result()]
+- "tests_test_probe_core_testassetmergeservicebanner_test_banner_stored": ".test_banner_stored()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L509 | neighbors=[TestAssetMergeServiceBanner, _asset(), _scan_result()]
+- "tests_test_probe_core_testassetmergesmbscan_test_smb_state_host_level": ".test_smb_state_host_level()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L534 | neighbors=[TestAssetMergeSmbScan, _asset(), _scan_result()]
+- "tests_test_probe_core_testassetmergetlsscan_test_tls_facts_stored": ".test_tls_facts_stored()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L518 | neighbors=[TestAssetMergeTlsScan, _asset(), _scan_result()]
+- "tests_test_probe_core_testassetmergeunknownscanner_test_unknown_scanner_ignored": ".test_unknown_scanner_ignored()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L567 | neighbors=[TestAssetMergeUnknownScanner, _asset(), _scan_result()]
+- "tests_test_probe_core_testassetmergewebscan_test_web_facts_stored": ".test_web_facts_stored()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L526 | neighbors=[TestAssetMergeWebScan, _asset(), _scan_result()]
+- "tests_test_probe_core_testassetopenportsfordeepscan": "TestAssetOpenPortsForDeepScan" | kind=code-symbol | source=probe/tests/test_probe_core.py:L463 | neighbors=[test_probe_core.py, .test_empty(), .test_only_open()]
+- "tests_test_probe_core_testcapabilities": "TestCapabilities" | kind=code-symbol | source=probe/tests/test_probe_core.py:L779 | neighbors=[test_probe_core.py, .test_capabilities_sorted(), .test_known_scan_types()]
+- "tests_test_scope_crypt_testkeygeneration": "TestKeyGeneration" | kind=code-symbol | source=probe/tests/test_scope_crypt.py:L15 | neighbors=[test_scope_crypt.py, .test_generates_32_byte_keys(), .test_generates_different_keys_each_cal…]
+- "tests_test_service_identifier": "test_service_identifier.py" | kind=code-symbol | source=manager/backend/tests/test_service_identifier.py:L1 | neighbors=[298a9d4 trim frontend to 7 core pages; …, TestServiceIdentifier, Unit tests for ServiceIdentifier.]
+- "tests_test_task_runner_testrunnerscantypes": "TestRunnerScanTypes" | kind=code-symbol | source=probe/tests/test_task_runner.py:L257 | neighbors=[test_task_runner.py, .test_ot_passive_profile(), .test_web_triage_scan_type()]
+- "tests_test_task_runner_testrunnersubmission": "TestRunnerSubmission" | kind=code-symbol | source=probe/tests/test_task_runner.py:L199 | neighbors=[test_task_runner.py, .test_calls_submit_with_result(), .test_uses_spool_when_available()]
+- "tests_test_transport_testfetchscope": "TestFetchScope" | kind=code-symbol | source=probe/tests/test_transport.py:L162 | neighbors=[test_transport.py, .test_http_error_returns_none(), .test_returns_scope()]
+- "tests_test_xml_parser": "test_xml_parser.py" | kind=code-symbol | source=manager/backend/tests/test_xml_parser.py:L1 | neighbors=[298a9d4 trim frontend to 7 core pages; …, TestNmapXMLParser, Unit tests for NmapXMLParser.]
+- "tools_installer_liststatus": "listStatus()" | kind=code-symbol | source=manager/frontend/lib/tools/installer.ts:L264 | neighbors=[tools.ts, installer.ts, readInstalled()]
+- "tools_installer_writeinstalled": "writeInstalled()" | kind=code-symbol | source=manager/frontend/lib/tools/installer.ts:L42 | neighbors=[installer.ts, installTool(), removeTool()]
+- "tools_issue_license_issue": "issue()" | kind=code-symbol | source=probe/tools/issue_license.py:L48 | neighbors=[issue_license.py, _b64(), main()]
+- "tools_issue_license_main": "main()" | kind=code-symbol | source=probe/tools/issue_license.py:L61 | neighbors=[issue_license.py, issue(), keygen()]
+- "tools_manifest_tool_manifest": "TOOL_MANIFEST" | kind=code-symbol | source=manager/frontend/lib/tools/manifest.ts:L74 | neighbors=[tools.ts, installer.ts, manifest.ts]
+- "ui_output_findingdetail": "findingDetail()" | kind=code-symbol | source=manager/frontend/cli/ui/output.ts:L238 | neighbors=[output.ts, ln(), rule()]
+- "ui_output_findingline": "findingLine()" | kind=code-symbol | source=manager/frontend/cli/ui/output.ts:L184 | neighbors=[output.ts, ln(), sevBadge()]
+- "ui_output_scanheader": "scanHeader()" | kind=code-symbol | source=manager/frontend/cli/ui/output.ts:L63 | neighbors=[output.ts, ln(), rule()]
+- "ui_output_stageerror": "stageError()" | kind=code-symbol | source=manager/frontend/cli/ui/output.ts:L133 | neighbors=[output.ts, ln(), w()]
+- "ui_output_summary": "summary()" | kind=code-symbol | source=manager/frontend/cli/ui/output.ts:L194 | neighbors=[output.ts, ln(), rule()]
+- "ui_output_w": "w()" | kind=code-symbol | source=manager/frontend/cli/ui/output.ts:L29 | neighbors=[output.ts, stageError(), stageProgress()]
+- "utils_csv_parser_rationale_26": "Parse CSV text into a list of AssetIn models and error strings." | kind=entity | source=manager/backend/app/utils/csv_parser.py:L26 | neighbors=[AssetCriticality, AssetType, parse_csv_assets()]
+- "utils_db": "db.py" | kind=code-symbol | source=manager/backend/app/utils/db.py:L1 | neighbors=[298a9d4 trim frontend to 7 core pages; …, get_or_404(), Shared database helpers — single source…]
+- "utils_hash": "hash.py" | kind=code-symbol | source=manager/backend/app/utils/hash.py:L1 | neighbors=[298a9d4 trim frontend to 7 core pages; …, dedup_hash(), Shared hashing utilities — deduplicatio…]
+- "vuln_enrichment_vulnenrichmentservice_get_kev_catalog": "._get_kev_catalog()" | kind=code-symbol | source=manager/backend/app/vuln/enrichment.py:L249 | neighbors=[VulnEnrichmentService, .check_cisa_kev(), .get()]
+- "vuln_nessus_nessusscanner_export_nessus_file": ".export_nessus_file()" | kind=code-symbol | source=manager/backend/app/vuln/nessus.py:L257 | neighbors=[NessusScanner, ._get_client(), Request + poll + download .nessus XML f…]
+- "vuln_nessus_nessusscanner_launch_scan": ".launch_scan()" | kind=code-symbol | source=manager/backend/app/vuln/nessus.py:L140 | neighbors=[NessusScanner, ._get_client(), Returns scan_uuid (token for tracking).]
+- "vuln_nessus_nessusscanner_poll_status": ".poll_status()" | kind=code-symbol | source=manager/backend/app/vuln/nessus.py:L151 | neighbors=[NessusScanner, ._get_client(), Returns {status, progress_percent, host…]
 
 ## Instructions
 

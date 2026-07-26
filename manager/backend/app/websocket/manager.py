@@ -88,6 +88,7 @@ class AgentConnectionManager:
         self._agent_status: Dict[str, str] = {}        # agent_id → "online"|"busy"
         self._agent_job: Dict[str, str | None] = {}    # agent_id → current_job_id
         self._agent_tenant: Dict[str, str] = {}        # agent_id → tenant_id
+        self._agent_features: Dict[str, Set[str]] = {}  # agent_id → protocol features
         self._agent_last_hb: Dict[str, datetime] = {}   # agent_id → last heartbeat
         self._lock = asyncio.Lock()
 
@@ -116,18 +117,34 @@ class AgentConnectionManager:
             self._agent_status[agent_id] = "online"
             self._agent_job[agent_id] = None
             self._agent_tenant[agent_id] = tenant_id
+            self._agent_features[agent_id] = set()
             self._agent_last_hb[agent_id] = datetime.now(timezone.utc)
         logger.info("agent.ws.connected", agent_id=agent_id, tenant_id=tenant_id)
 
-    async def unregister(self, agent_id: str) -> None:
-        """Remove an agent's WebSocket registration."""
+    async def unregister(
+        self,
+        agent_id: str,
+        websocket: WebSocket | None = None,
+    ) -> bool:
+        """Remove the current registration, optionally only for one socket.
+
+        Returns True only when a live registration was removed. A displaced
+        handler must pass its socket so it cannot unregister a newer reconnect.
+        """
         async with self._lock:
+            current = self._agents.get(agent_id)
+            if current is None or (
+                websocket is not None and current is not websocket
+            ):
+                return False
             self._agents.pop(agent_id, None)
             self._agent_status.pop(agent_id, None)
             self._agent_job.pop(agent_id, None)
             self._agent_tenant.pop(agent_id, None)
+            self._agent_features.pop(agent_id, None)
             self._agent_last_hb.pop(agent_id, None)
         logger.info("agent.ws.disconnected", agent_id=agent_id)
+        return True
 
     # ── Heartbeat ─────────────────────────────────────────────────────────────
 
@@ -141,9 +158,26 @@ class AgentConnectionManager:
                 if current_job_id is not None:
                     self._agent_job[agent_id] = current_job_id
 
+    async def record_features(
+        self,
+        agent_id: str,
+        features: list[str] | set[str] | tuple[str, ...],
+    ) -> None:
+        """Record transport features explicitly advertised by a connected probe."""
+        async with self._lock:
+            if agent_id in self._agents:
+                self._agent_features[agent_id] = {
+                    str(feature) for feature in features if feature
+                }
+
     # ── Push job ──────────────────────────────────────────────────────────────
 
-    async def push_job(self, agent_id: str, job: dict) -> bool:
+    async def push_job(
+        self,
+        agent_id: str,
+        job: dict,
+        required_feature: str | None = None,
+    ) -> bool:
         """Push a job to a specific agent over WebSocket.
 
         Returns True if the job was sent successfully, False if the agent
@@ -152,33 +186,41 @@ class AgentConnectionManager:
         async with self._lock:
             ws = self._agents.get(agent_id)
             status = self._agent_status.get(agent_id, "offline")
-        if ws is None or status not in ("online",):
+            features = self._agent_features.get(agent_id, set())
+        if (
+            ws is None
+            or status not in ("online",)
+            or (required_feature is not None and required_feature not in features)
+        ):
             return False
         try:
             await ws.send_json({"type": "job_push", "job": job})
             return True
         except Exception:
-            await self.unregister(agent_id)
+            await self.unregister(agent_id, ws)
             return False
 
-    async def push_job_to_first_online(self, job: dict) -> str | None:
-        """Push a job to the first online connected agent.
+    async def push_job_to_first_online(
+        self,
+        job: dict,
+        tenant_id: str,
+        required_feature: str | None = None,
+    ) -> str | None:
+        """Push a job to the first online agent in the requested tenant.
 
         Returns the agent_id that received the job, or None if no agent
         was available.
         """
-        async with self._lock:
-            for agent_id, status in self._agent_status.items():
-                if status == "online":
-                    ws = self._agents.get(agent_id)
-                    if ws is None:
-                        continue
-                    try:
-                        await ws.send_json({"type": "job_push", "job": job})
-                        return agent_id
-                    except Exception:
-                        await self.unregister(agent_id)
-                        continue
+        for agent_id in self.online_agents_for_tenant(
+            tenant_id,
+            required_feature=required_feature,
+        ):
+            if await self.push_job(
+                agent_id,
+                job,
+                required_feature=required_feature,
+            ):
+                return agent_id
         return None
 
     # ── Queries ───────────────────────────────────────────────────────────────
@@ -200,6 +242,25 @@ class AgentConnectionManager:
     def online_agents(self) -> list[str]:
         """Return agent IDs whose status is 'online' (idle, ready for job)."""
         return [aid for aid, st in self._agent_status.items() if st == "online"]
+
+    def online_agents_for_tenant(
+        self,
+        tenant_id: str,
+        required_feature: str | None = None,
+    ) -> list[str]:
+        """Return idle connected agents belonging to exactly one tenant."""
+        tenant = str(tenant_id)
+        return [
+            agent_id
+            for agent_id, status in self._agent_status.items()
+            if status == "online"
+            and self._agent_tenant.get(agent_id) == tenant
+            and agent_id in self._agents
+            and (
+                required_feature is None
+                or required_feature in self._agent_features.get(agent_id, set())
+            )
+        ]
 
     @property
     def connected_count(self) -> int:

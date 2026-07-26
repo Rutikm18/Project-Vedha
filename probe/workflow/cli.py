@@ -118,6 +118,7 @@ async def _main(args: argparse.Namespace) -> None:
         targets, scope, profile=args.profile, rate=args.rate, concurrency=args.concurrency,
         timeout=args.timeout, disc_timeout=args.disc_timeout, cache=cache,
         service_filter=mode.service_filter, stop_after_banner=mode.stop_after_banner,
+        stage_ceiling=mode.stage_ceiling,
         force_recheck_after=mode.force_recheck_after, ssh_creds=ssh_creds, win_creds=win_creds)
     elapsed = time.monotonic() - t0
 

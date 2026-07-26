@@ -3,7 +3,9 @@ Vuln scan API — Nessus + Nuclei launch, status polling, and enrichment.
 """
 from __future__ import annotations
 
+import asyncio
 import uuid
+from datetime import datetime, timezone
 from typing import Annotated
 
 import structlog
@@ -22,7 +24,7 @@ from app.models.scan_job import ScanJob
 from app.utils.db import get_or_404
 from app.vuln.enrichment import VulnEnrichmentService
 from app.vuln.nessus import NessusScanner
-from app.vuln.nuclei import NucleiScanner
+from app.vuln.nuclei import NucleiRunReport, NucleiScanError, NucleiScanner
 from app.vuln.tasks import run_post_scan_enrichment
 
 router = APIRouter(prefix="/engagements/{engagement_id}/scans", tags=["vuln-scans"])
@@ -130,6 +132,11 @@ async def launch_nuclei_scan(
     )
     assets = list(assets_result.scalars().all())
     targets = [a.ip_address for a in assets if a.ip_address]
+    if not targets:
+        raise HTTPException(
+            400,
+            "No concrete asset targets found - import or discover assets before running Nuclei",
+        )
 
     # Auto-select templates if none provided
     templates = body.templates or ["cves", "misconfigs"]
@@ -269,55 +276,286 @@ async def _run_nuclei_and_save(
     rate_limit: int,
     timeout_sec: int,
 ) -> None:
-    """Background task: run nuclei, persist findings, trigger enrichment."""
-    from app.models.enums import FindingSeverity
-    from decimal import Decimal
-    import uuid as _uuid
+    """Run Nuclei and always leave its job in a truthful terminal state."""
+    from app.database import AsyncSessionLocal
 
+    engagement_uuid = uuid.UUID(engagement_id)
+    job_uuid = uuid.UUID(job_id)
     logger.info("nuclei.background.start", engagement=engagement_id, targets=len(targets))
 
-    scanner = NucleiScanner()
-    raw_findings = await scanner.run_scan(targets, templates, rate_limit, timeout_sec)
-
-    async with AsyncSessionLocal() as db:
-        from app.database import AsyncSessionLocal
-        from app.models.scan_job import ScanJob
-        from app.models.enums import ScanJobStatus
-        from datetime import datetime, timezone
-
-        created = 0
-        for item in raw_findings:
-            try:
-                sev_str = (item.get("severity") or FindingSeverity.info)
-                sev = sev_str if isinstance(sev_str, FindingSeverity) else FindingSeverity(str(sev_str).lower())
-                finding = Finding(
-                    engagement_id=_uuid.UUID(engagement_id),
-                    severity=sev,
-                    status=FindingStatus.open,
-                    title=item.get("title", "Unknown"),
-                    description=item.get("description"),
-                    cve_ids=item.get("cve_ids") or None,
-                    cvss_score=item.get("cvss_score"),
-                    mitre_techniques=item.get("mitre_techniques"),
-                    exploitable=item.get("exploitable", False),
-                    evidence=item.get("evidence"),
-                )
-                db.add(finding)
-                created += 1
-            except Exception as exc:
-                logger.warning("nuclei.finding.save_failed", error=str(exc))
-
-        # Update job
-        job_result = await db.execute(
-            select(ScanJob).where(ScanJob.id == _uuid.UUID(job_id))
+    try:
+        async with AsyncSessionLocal() as db:
+            if not await _set_nuclei_job_state(db, job_uuid, ScanJobStatus.running):
+                logger.warning("nuclei.background.job_missing", job_id=job_id)
+                return
+            await db.commit()
+    except Exception as exc:
+        logger.error(
+            "nuclei.background.start_failed",
+            job_id=job_id,
+            error=str(exc),
+            exc_info=exc,
         )
-        job = job_result.scalar_one_or_none()
-        if job:
-            job.status = ScanJobStatus.completed
-            job.completed_at = datetime.now(timezone.utc)
-            job.result = {**(job.result or {}), "findings_created": created}
+        return
 
-        await db.commit()
-        logger.info("nuclei.background.done", created=created)
+    scanner = NucleiScanner()
+    scan_error: NucleiScanError | None = None
+    try:
+        raw_findings = await scanner.run_scan(
+            targets,
+            templates,
+            rate_limit,
+            timeout_sec,
+        )
+    except asyncio.CancelledError:
+        await _finish_cancelled_nuclei_job(AsyncSessionLocal, job_uuid)
+        raise
+    except NucleiScanError as exc:
+        scan_error = exc
+        raw_findings = exc.partial_findings
+    except Exception as exc:
+        logger.error(
+            "nuclei.background.unexpected_scanner_failure",
+            job_id=job_id,
+            error=str(exc),
+            exc_info=exc,
+        )
+        scan_error = NucleiScanError("scanner_exception", str(exc))
+        raw_findings = []
 
-    await run_post_scan_enrichment(engagement_id, job_id)
+    created = 0
+    rejected = 0
+    report = scanner.last_run_report
+    try:
+        async with AsyncSessionLocal() as db:
+            for item in raw_findings:
+                try:
+                    async with db.begin_nested():
+                        db.add(_nuclei_finding(engagement_uuid, item))
+                        await db.flush()
+                    created += 1
+                except Exception as exc:
+                    rejected += 1
+                    logger.warning(
+                        "nuclei.finding.save_failed",
+                        job_id=job_id,
+                        error=str(exc),
+                    )
+
+            status_value, result_patch = _nuclei_terminal_result(
+                report=report,
+                scan_error=scan_error,
+                received=len(raw_findings),
+                created=created,
+                rejected=rejected,
+            )
+            if not await _set_nuclei_job_state(
+                db,
+                job_uuid,
+                status_value,
+                result_patch=result_patch,
+            ):
+                logger.warning("nuclei.background.job_missing", job_id=job_id)
+                await db.rollback()
+                return
+            await db.commit()
+    except Exception as exc:
+        logger.error(
+            "nuclei.background.persist_failed",
+            job_id=job_id,
+            error=str(exc),
+            exc_info=exc,
+        )
+        await _finish_failed_nuclei_job(
+            AsyncSessionLocal,
+            job_uuid,
+            code="persistence_failed",
+            message="Nuclei finished, but its results could not be persisted",
+        )
+        return
+
+    logger.info(
+        "nuclei.background.done",
+        job_id=job_id,
+        outcome=result_patch["outcome"],
+        created=created,
+        rejected=rejected,
+    )
+    if created:
+        try:
+            await run_post_scan_enrichment(engagement_id, job_id)
+        except Exception as exc:
+            logger.warning(
+                "nuclei.background.enrichment_failed",
+                job_id=job_id,
+                error=str(exc),
+            )
+
+
+_NUCLEI_REMEDIATION = {
+    "not_installed": "Install Nuclei on the manager and ensure the binary is on PATH.",
+    "spawn_failed": "Verify the Nuclei binary is executable by the manager service account.",
+    "timeout": "Reduce the target set or rate, or increase the scan wall-clock timeout.",
+    "nonzero_exit": "Review the Nuclei stderr tail and validate templates and CLI compatibility.",
+    "templates_missing": "Install or update nuclei-templates and verify the configured template tags.",
+    "parse_error": "Upgrade Nuclei and verify that JSONL output is not being mixed with other output.",
+    "scanner_exception": "Review manager logs and retry after correcting the scanner runtime error.",
+    "persistence_failed": "Check database health and constraints before retrying the scan.",
+    "cancelled": "The manager stopped the background task; retry after the service is stable.",
+}
+
+
+def _nuclei_finding(engagement_id: uuid.UUID, item: dict) -> Finding:
+    from app.models.enums import FindingSeverity
+
+    severity_value = item.get("severity") or FindingSeverity.info
+    severity = (
+        severity_value
+        if isinstance(severity_value, FindingSeverity)
+        else FindingSeverity(str(severity_value).lower())
+    )
+    return Finding(
+        engagement_id=engagement_id,
+        severity=severity,
+        status=FindingStatus.open,
+        title=item.get("title", "Unknown"),
+        description=item.get("description"),
+        cve_ids=item.get("cve_ids") or None,
+        cvss_score=item.get("cvss_score"),
+        mitre_techniques=item.get("mitre_techniques"),
+        exploitable=item.get("exploitable", False),
+        evidence=item.get("evidence"),
+    )
+
+
+def _nuclei_terminal_result(
+    *,
+    report: NucleiRunReport | None,
+    scan_error: NucleiScanError | None,
+    received: int,
+    created: int,
+    rejected: int,
+) -> tuple[ScanJobStatus, dict]:
+    error_code = scan_error.reason if scan_error else (report.reason if report else None)
+    persistence_failure = received > 0 and created == 0 and rejected > 0
+    fatal = (
+        (scan_error is not None and received == 0)
+        or (report is not None and report.status == "failed" and received == 0)
+        or persistence_failure
+    )
+    degraded = (
+        not fatal
+        and (
+            rejected > 0
+            or (report is not None and report.status == "partial")
+            or (scan_error is not None and received > 0)
+        )
+    )
+    outcome = "failed" if fatal else ("partial" if degraded else "success")
+    status_value = ScanJobStatus.failed if fatal else ScanJobStatus.completed
+
+    if persistence_failure:
+        error_code = "persistence_failed"
+    if error_code is None and fatal:
+        error_code = "scanner_exception"
+
+    scanner_run = {
+        "component": "nuclei",
+        "status": "failed" if fatal else ("degraded" if degraded else "completed"),
+        "finding_count": received,
+        "error_code": error_code,
+        "returncode": report.returncode if report else getattr(scan_error, "returncode", None),
+        "malformed_lines": report.malformed_lines if report else 0,
+    }
+    result: dict = {
+        "outcome": outcome,
+        "degraded": degraded,
+        "findings_received": received,
+        "findings_created": created,
+        "findings_rejected": rejected,
+        "scanner_run": scanner_run,
+    }
+    if error_code:
+        detail = str(scan_error) if scan_error else (report.stderr if report else "")
+        result["issues"] = [
+            {
+                "component": "nuclei",
+                "code": error_code,
+                "message": detail[:1000] or f"Nuclei reported {error_code}",
+                "remediation": _NUCLEI_REMEDIATION.get(
+                    error_code,
+                    "Review the manager scanner logs before retrying.",
+                ),
+            }
+        ]
+    return status_value, result
+
+
+async def _set_nuclei_job_state(
+    db: AsyncSession,
+    job_id: uuid.UUID,
+    status_value: ScanJobStatus,
+    *,
+    result_patch: dict | None = None,
+) -> bool:
+    job = (
+        await db.execute(select(ScanJob).where(ScanJob.id == job_id))
+    ).scalar_one_or_none()
+    if job is None:
+        return False
+    job.status = status_value
+    now = datetime.now(timezone.utc)
+    if status_value == ScanJobStatus.running and job.started_at is None:
+        job.started_at = now
+    if status_value in (ScanJobStatus.completed, ScanJobStatus.failed):
+        job.completed_at = now
+    if result_patch:
+        job.result = {**(job.result or {}), **result_patch}
+    return True
+
+
+async def _finish_cancelled_nuclei_job(session_factory, job_id: uuid.UUID) -> None:
+    await _finish_failed_nuclei_job(
+        session_factory,
+        job_id,
+        code="cancelled",
+        message="Nuclei background task was cancelled",
+    )
+
+
+async def _finish_failed_nuclei_job(
+    session_factory,
+    job_id: uuid.UUID,
+    *,
+    code: str,
+    message: str,
+) -> None:
+    try:
+        async with session_factory() as db:
+            await _set_nuclei_job_state(
+                db,
+                job_id,
+                ScanJobStatus.failed,
+                result_patch={
+                    "outcome": "failed",
+                    "degraded": False,
+                    "issues": [
+                        {
+                            "component": "nuclei",
+                            "code": code,
+                            "message": message,
+                            "remediation": _NUCLEI_REMEDIATION.get(
+                                code,
+                                "Review the manager scanner logs before retrying.",
+                            ),
+                        }
+                    ],
+                },
+            )
+            await db.commit()
+    except Exception as exc:
+        logger.error(
+            "nuclei.background.terminal_update_failed",
+            job_id=str(job_id),
+            error=str(exc),
+        )

@@ -29,6 +29,10 @@ PROBE_PORTS = [80, 443, 445, 22, 3389, 53, 135, 139]
 class HostDiscoveryScanner(BaseScanner):
     name = "host_discovery"
 
+    def __init__(self, *args, ports: list[int] | None = None, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.ports = list(PROBE_PORTS if ports is None else ports)
+
     async def _probe(self, target: str, port: int) -> str | None:
         """Return 'open', 'refused', or None (no response)."""
         await self.limiter.wait()
@@ -52,9 +56,9 @@ class HostDiscoveryScanner(BaseScanner):
         # Probe ports concurrently; first proof of life is enough but we collect
         # all responders for richer evidence.
         results = await asyncio.gather(
-            *(self._probe(target, p) for p in PROBE_PORTS)
+            *(self._probe(target, p) for p in self.ports)
         )
-        for port, state in zip(PROBE_PORTS, results):
+        for port, state in zip(self.ports, results):
             if state in ("open", "refused"):
                 evidence_ports.append((port, state))
 

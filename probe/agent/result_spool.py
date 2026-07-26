@@ -14,11 +14,13 @@ from __future__ import annotations
 import json
 import logging
 import os
+import re
 import time
 from pathlib import Path
 from typing import Any, Callable
 
 LOG = logging.getLogger("spool")
+_SAFE_JOB_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 
 
 class ResultSpool:
@@ -36,6 +38,24 @@ class ResultSpool:
 
     # ── Save ──────────────────────────────────────────────────────────────────
 
+    def _path(self, job_id: str) -> Path:
+        if (
+            not isinstance(job_id, str)
+            or not _SAFE_JOB_ID.fullmatch(job_id)
+            or ".." in job_id
+        ):
+            raise ValueError(f"invalid job ID for result spool: {job_id!r}")
+        return self.spool_dir / f"{job_id}.json"
+
+    def _sync_directory(self) -> None:
+        if os.name != "posix" or not self.spool_dir.exists():
+            return
+        directory_fd = os.open(self.spool_dir, os.O_RDONLY)
+        try:
+            os.fsync(directory_fd)
+        finally:
+            os.close(directory_fd)
+
     def save(self, job_id: str, payload: dict[str, Any]) -> Path:
         """Atomically write a result payload to the spool directory.
 
@@ -47,24 +67,29 @@ class ResultSpool:
         globs). A plain ``write_text`` could leave a truncated, unparseable file
         as the ONLY copy of the result — silent data loss on the next flush.
         """
-        self.spool_dir.mkdir(parents=True, exist_ok=True)
-        p = self.spool_dir / f"{job_id}.json"
-        tmp = self.spool_dir / f"{job_id}.json.tmp"
-        with open(tmp, "w", encoding="utf-8") as fh:
+        p = self._path(job_id)
+        self.spool_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+        if os.name == "posix":
+            os.chmod(self.spool_dir, 0o700)
+        tmp = p.with_suffix(".json.tmp")
+        flags = os.O_WRONLY | os.O_CREAT | os.O_TRUNC
+        fd = os.open(tmp, flags, 0o600)
+        with os.fdopen(fd, "w", encoding="utf-8") as fh:
             fh.write(json.dumps(payload))
             fh.flush()
             os.fsync(fh.fileno())
         os.replace(tmp, p)  # atomic on POSIX and Windows
+        self._sync_directory()
         LOG.debug("spooled result for job %s -> %s", job_id, p)
         return p
 
     def exists(self, job_id: str) -> bool:
         """Check if a spooled result exists for this job."""
-        return (self.spool_dir / f"{job_id}.json").exists()
+        return self._path(job_id).exists()
 
     def load(self, job_id: str) -> dict[str, Any] | None:
         """Load a previously spooled result, returning None if missing/corrupt."""
-        p = self.spool_dir / f"{job_id}.json"
+        p = self._path(job_id)
         if not p.exists():
             return None
         try:
@@ -75,7 +100,8 @@ class ResultSpool:
 
     def remove(self, job_id: str) -> None:
         """Remove the spool file for a successfully uploaded result."""
-        (self.spool_dir / f"{job_id}.json").unlink(missing_ok=True)
+        self._path(job_id).unlink(missing_ok=True)
+        self._sync_directory()
 
     # ── Upload with retry ─────────────────────────────────────────────────────
 
@@ -103,7 +129,7 @@ class ResultSpool:
         for attempt in range(1, self.max_retries + 1):
             try:
                 if upload_fn(job_id, payload):
-                    spool_file.unlink(missing_ok=True)
+                    self.remove(job_id)
                     LOG.info("result for job %s uploaded (attempt %d)", job_id, attempt)
                     return True
                 LOG.warning(
@@ -139,12 +165,13 @@ class ResultSpool:
         for p in sorted(self.spool_dir.glob("*.json")):
             job_id = p.stem
             try:
+                self._path(job_id)
                 payload = json.loads(p.read_text())
                 if upload_fn(job_id, payload):
-                    p.unlink(missing_ok=True)
+                    self.remove(job_id)
                     flushed += 1
                     LOG.info("flushed spooled result for job %s", job_id)
-            except (OSError, json.JSONDecodeError, Exception):
+            except Exception:
                 LOG.warning("failed to flush spool file %s — will retry later", p)
         return flushed
 

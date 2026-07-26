@@ -87,9 +87,36 @@ class TaskRunner:
         Returns:
             A JobResult describing the outcome.
         """
+        if not isinstance(job, dict):
+            error = "job payload must be an object"
+            return JobResult(
+                success=False,
+                job_id="?",
+                engagement_id="",
+                scan_type="unknown",
+                profile="it",
+                error=error,
+            )
+
         job_id = job.get("job_id", "?")
         engagement_id = job.get("engagement_id", "")
-        params = dict(job.get("params") or {})
+        raw_params = job.get("params") or {}
+        if not isinstance(raw_params, dict):
+            error = "job params must be an object"
+            self._submit_or_spool(job_id, {
+                "success": False,
+                "result": {},
+                "error": error,
+            })
+            return JobResult(
+                success=False,
+                job_id=job_id,
+                engagement_id=engagement_id,
+                scan_type="unknown",
+                profile="it",
+                error=error,
+            )
+        params = dict(raw_params)
         use_case_id = params.get("use_case_id") or job.get("use_case_id")
         job_type = job.get("job_type", "discovery")
 
@@ -103,6 +130,8 @@ class TaskRunner:
                 from agent.scope_crypt import decrypt_scope_b64
                 scope_json = decrypt_scope_b64(encrypted_scope_b64, self._identity_sk)
                 decrypted_scope = json.loads(scope_json)
+                if not isinstance(decrypted_scope, dict):
+                    raise ValueError("decrypted scope must be an object")
                 LOG.info("scope.decrypted job=%s eng=%s cidrs=%d",
                          job_id,
                          decrypted_scope.get("engagement_id", ""),
@@ -116,7 +145,7 @@ class TaskRunner:
                         existing = [existing]
                     deduped = list(dict.fromkeys([*existing, *decrypted_scope["excluded_cidrs"]]))
                     params["excluded_cidrs"] = deduped
-            except (ValueError, json.JSONDecodeError, Exception) as exc:
+            except Exception as exc:
                 LOG.warning("scope.decrypt_failed job=%s error=%s", job_id, exc)
                 # Don't fail the job — fall back to unencrypted scope in params
                 # and HTTP scope fetch validation (belt-and-suspenders)
@@ -136,9 +165,29 @@ class TaskRunner:
             )
 
         # ── Step 2: Extract targets ──────────────────────────────────────────
-        targets_raw: list[str] = params.get("targets") or params.get("scope_cidrs") or []
+        targets_raw = (
+            params.get("targets")
+            or params.get("target")
+            or params.get("scope_cidrs")
+            or []
+        )
         if isinstance(targets_raw, str):
             targets_raw = [targets_raw]
+        if (
+            not isinstance(targets_raw, (list, tuple))
+            or any(not isinstance(target, str) for target in targets_raw)
+        ):
+            error = "targets must be a string or list of strings"
+            LOG.error("Job %s: %s", job_id, error)
+            self._submit_or_spool(job_id, {
+                "success": False, "result": {}, "error": error,
+            })
+            return JobResult(
+                success=False, job_id=job_id, engagement_id=engagement_id,
+                scan_type=scan_type, profile=profile, error=error,
+                use_case_id=use_case_id,
+            )
+        targets_raw = [target.strip() for target in targets_raw if target.strip()]
 
         if not targets_raw:
             error = "No targets or scope_cidrs provided in job params"
@@ -151,6 +200,7 @@ class TaskRunner:
                 scan_type=scan_type, profile=profile, error=error,
                 use_case_id=use_case_id,
             )
+        params["targets"] = targets_raw
 
         # ── Step 3: Re-validate scope (defense in depth) ────────────────────
         from agent.scope_validator import (
@@ -167,11 +217,20 @@ class TaskRunner:
                 engagement_id, self._http_get,
             )
 
-        # Merge engagement-level exclusions with per-job exclusions
+        # `_excluded_cidrs` is the manager-carried authoritative fallback used
+        # when refreshing /scope fails. Preserve it alongside operator-supplied
+        # per-job exclusions.
+        manager_excludes = params.get("_excluded_cidrs") or []
+        if isinstance(manager_excludes, str):
+            manager_excludes = [manager_excludes]
         job_excludes = params.get("excluded_cidrs") or []
         if isinstance(job_excludes, str):
             job_excludes = [job_excludes]
-        all_excludes = merge_exclusions(engagement_excludes, job_excludes)
+        all_excludes = merge_exclusions(
+            engagement_excludes,
+            [*manager_excludes, *job_excludes],
+        )
+        params.pop("_excluded_cidrs", None)
         params["excluded_cidrs"] = all_excludes
 
         embedded_scope = params.get("scope_cidrs") or []
@@ -246,13 +305,29 @@ class TaskRunner:
 
         # ── Step 5: Execute the scan ────────────────────────────────────────
         params["profile"] = profile
-        result = self._run_scan(
-            scan_type, params,
-            use_case_id=use_case_id,
-            engagement_uuid=engagement_id,
-            validated_scope=effective_scope or None,
-            validated_excludes=all_excludes,
-        )
+        try:
+            result = self._run_scan(
+                scan_type, params,
+                use_case_id=use_case_id,
+                engagement_uuid=engagement_id,
+                validated_scope=effective_scope or None,
+                validated_excludes=all_excludes,
+            )
+            if not isinstance(result, dict):
+                raise TypeError("scan engine returned a non-object result")
+        except Exception as exc:
+            error = f"scan engine failed: {type(exc).__name__}: {exc}"
+            LOG.exception("Job %s: %s", job_id, error)
+            result = {
+                "result_schema_version": "1.1",
+                "ok": False,
+                "outcome": "failed",
+                "error_code": "scan_engine_exception",
+                "error": error,
+                "errors": [error],
+                "facts": [],
+                "run_stats": {},
+            }
 
         # ── Step 6: Submit result ───────────────────────────────────────────
         stats = result.get("run_stats") or {}

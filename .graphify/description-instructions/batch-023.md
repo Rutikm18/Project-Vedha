@@ -1,4 +1,4 @@
-# Node Description Batch 24 of 76
+# Node Description Batch 24 of 104
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,51 +19,53 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-Write every description in English (en). Do not switch languages.
+LANGUAGE: each entry has a `lang=` marker giving the language of its source.
+Write that entry's description in EXACTLY that language. Do not translate to
+a single common language — match each node's source language individually.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "ad_ldap_enum_domain_to_base_dn": "_domain_to_base_dn()" | kind=code-symbol | source=manager/backend/app/ad/ldap_enum.py:L105 | neighbors=[ldap_enum.py, .connect(), corp.local -> DC=corp,DC=local]
-- "ad_ldap_enum_ldapenumerator_check_anonymous_bind": ".check_anonymous_bind()" | kind=code-symbol | source=manager/backend/app/ad/ldap_enum.py:L286 | neighbors=[LDAPEnumerator, .unbind(), True if the DC accepts an anonymous bin…]
-- "ad_ldap_enum_ldapenumerator_connect": ".connect()" | kind=code-symbol | source=manager/backend/app/ad/ldap_enum.py:L128 | neighbors=[LDAPEnumerator, _domain_to_base_dn(), Bind to the domain controller. Returns …]
-- "ad_ldap_enum_ldapenumerator_parse_security_descriptor": "._parse_security_descriptor()" | kind=code-symbol | source=manager/backend/app/ad/ldap_enum.py:L344 | neighbors=[LDAPEnumerator, .get_aces(), ACE]
-- "ad_ldap_enum_ldapenumerator_require_conn": "._require_conn()" | kind=code-symbol | source=manager/backend/app/ad/ldap_enum.py:L189 | neighbors=[LDAPEnumerator, .get_aces(), ._search()]
-- "ad_ldap_enum_rationale_1": "LDAPEnumerator — read-only Active Directory enumeration over LDAP/LDAPS.  Uses l" | kind=entity | source=manager/backend/app/ad/ldap_enum.py:L1 | neighbors=[ADConnectionError, DependencyMissingError, ldap_enum.py]
-- "ad_ldap_enum_rationale_106": "corp.local -> DC=corp,DC=local" | kind=entity | source=manager/backend/app/ad/ldap_enum.py:L106 | neighbors=[ADConnectionError, DependencyMissingError, _domain_to_base_dn()]
-- "ad_ldap_enum_rationale_119": "Read-only AD enumeration. One instance == one bound connection." | kind=entity | source=manager/backend/app/ad/ldap_enum.py:L119 | neighbors=[ADConnectionError, DependencyMissingError, LDAPEnumerator]
-- "ad_ldap_enum_rationale_138": "Bind to the domain controller. Returns self for chaining.          Raises Depend" | kind=entity | source=manager/backend/app/ad/ldap_enum.py:L138 | neighbors=[ADConnectionError, DependencyMissingError, .connect()]
-- "ad_ldap_enum_rationale_215": "All user accounts (excludes computer accounts)." | kind=entity | source=manager/backend/app/ad/ldap_enum.py:L215 | neighbors=[ADConnectionError, DependencyMissingError, .get_users()]
-- "ad_ldap_enum_rationale_287": "True if the DC accepts an anonymous bind that can read directory data         (a" | kind=entity | source=manager/backend/app/ad/ldap_enum.py:L287 | neighbors=[ADConnectionError, DependencyMissingError, .check_anonymous_bind()]
-- "ad_ldap_enum_rationale_312": "Parse the nTSecurityDescriptor of an object into a list of ACEs for ACL" | kind=entity | source=manager/backend/app/ad/ldap_enum.py:L312 | neighbors=[ADConnectionError, DependencyMissingError, .get_aces()]
-- "ad_ldap_enum_rationale_86": "A simplified access-control entry parsed from nTSecurityDescriptor." | kind=entity | source=manager/backend/app/ad/ldap_enum.py:L86 | neighbors=[ADConnectionError, DependencyMissingError, ACE]
-- "ad_ntlm_relay": "ntlm_relay.py" | kind=code-symbol | source=manager/backend/app/ad/ntlm_relay.py:L1 | neighbors=[NTLMRelayChecker, NTLMRelayChecker — detect missing SMB/L…, 298a9d4 trim frontend to 7 core pages; …]
-- "ad_ntlm_relay_ntlmrelaychecker_check_smb_signing": ".check_smb_signing()" | kind=code-symbol | source=manager/backend/app/ad/ntlm_relay.py:L38 | neighbors=[NTLMRelayChecker, ._probe_smb_host(), For each IP, returns {signing_enabled, …]
-- "ad_orchestrator": "orchestrator.py" | kind=code-symbol | source=manager/backend/app/ad/orchestrator.py:L1 | neighbors=[ADAssessmentRunner, ADAssessmentRunner — runs the full Acti…, 298a9d4 trim frontend to 7 core pages; …]
-- "ad_orchestrator_adassessmentrunner_run": ".run()" | kind=code-symbol | source=manager/backend/app/ad/orchestrator.py:L50 | neighbors=[ADAssessmentRunner, ._anonymous_bind_finding(), Returns {findings: [...], stats: {...},…]
-- "agent_agent_execute_ad_enum": "execute_ad_enum()" | kind=code-symbol | source=manager/frontend/infrastructure/agent/agent.py:L303 | neighbors=[agent.py, parse_spn_output(), Impacket-based AD enumeration: Kerberoa…]
-- "agent_agent_execute_eyewitness": "execute_eyewitness()" | kind=code-symbol | source=manager/frontend/infrastructure/agent/agent.py:L527 | neighbors=[agent.py, extract_web_urls_from_nmap(), EyeWitness screenshot evidence collecti…]
-- "agent_agent_execute_smb_validation": "execute_smb_validation()" | kind=code-symbol | source=manager/frontend/infrastructure/agent/agent.py:L373 | neighbors=[agent.py, count_by_severity(), NetExec SMB validation: signing, null s…]
-- "agent_agent_execute_tls_scan": "execute_tls_scan()" | kind=code-symbol | source=manager/frontend/infrastructure/agent/agent.py:L453 | neighbors=[agent.py, count_by_severity(), testssl.sh TLS/SSL analysis.]
-- "agent_agent_execute_vuln_scan": "execute_vuln_scan()" | kind=code-symbol | source=manager/frontend/infrastructure/agent/agent.py:L238 | neighbors=[agent.py, count_by_severity(), Nuclei vulnerability scan — production-…]
-- "agent_agent_extract_web_urls_from_nmap": "extract_web_urls_from_nmap()" | kind=code-symbol | source=manager/frontend/infrastructure/agent/agent.py:L499 | neighbors=[agent.py, execute_eyewitness(), Extract HTTP/HTTPS URLs from nmap XML o…]
-- "agent_agent_load_env": "_load_env()" | kind=code-symbol | source=probe/agent/agent.py:L42 | neighbors=[agent.py, main(), Load key=value lines from probe.env for…]
-- "agent_agent_runautonomousengagement": "runAutonomousEngagement()" | kind=code-symbol | source=manager/frontend/lib/agent/agent.ts:L95 | neighbors=[agent.py, isBlocked(), requiresApproval()]
-- "agent_agent_scanningagent_heartbeat_loop": "._heartbeat_loop()" | kind=code-symbol | source=manager/frontend/infrastructure/agent/agent.py:L658 | neighbors=[ScanningAgent, ._api_call(), .run()]
-- "agent_agent_scanningagent_init": ".__init__()" | kind=code-symbol | source=manager/frontend/infrastructure/agent/agent.py:L640 | neighbors=[ScanningAgent, build_ssl_context(), VaultCredentialFetcher]
-- "agent_agent_vaultcredentialfetcher_get_credentials": ".get_credentials()" | kind=code-symbol | source=manager/frontend/infrastructure/agent/agent.py:L81 | neighbors=[Read a KV-v2 secret from Vault., ._execute_job(), VaultCredentialFetcher]
-- "agent_engine_clamp": "_clamp()" | kind=code-symbol | source=probe/agent/engine.py:L76 | neighbors=[engine.py, Coerce val to float and clamp to [lo, h…, _tuning_from_params()]
-- "agent_engine_count_open_port_facts": "_count_open_port_facts()" | kind=code-symbol | source=probe/agent/engine.py:L144 | neighbors=[engine.py, Count concrete open services, not gener…, run_scan()]
-- "agent_engine_error_result": "_error_result()" | kind=code-symbol | source=probe/agent/engine.py:L28 | neighbors=[engine.py, Single factory for error result dicts —…, run_scan()]
-- "agent_license_gauntlet": "gauntlet()" | kind=code-symbol | source=probe/agent/license.py:L104 | neighbors=[license.py, check_license(), Combined startup gauntlet: HW bind → li…]
-- "ai_hallucination": "hallucination.py" | kind=code-symbol | source=manager/backend/app/ai/hallucination.py:L1 | neighbors=[HallucinationGuard, HallucinationGuard — post-generation va…, 298a9d4 trim frontend to 7 core pages; …]
-- "ai_hallucination_hallucinationguard_validate_cve_claims": ".validate_cve_claims()" | kind=code-symbol | source=manager/backend/app/ai/hallucination.py:L45 | neighbors=[HallucinationGuard, .validate(), Flag any CVE ID mentioned in ``text`` t…]
-- "ai_hallucination_hallucinationguard_validate_cvss_scores": ".validate_cvss_scores()" | kind=code-symbol | source=manager/backend/app/ai/hallucination.py:L60 | neighbors=[HallucinationGuard, .validate(), Flag CVSS scores in the text that don't…]
-- "ai_hallucination_hallucinationguard_validate_remediation_commands": ".validate_remediation_commands()" | kind=code-symbol | source=manager/backend/app/ai/hallucination.py:L89 | neighbors=[HallucinationGuard, .validate(), Flag destructive-looking commands that …]
-- "ai_llm_report_enum": "_enum()" | kind=code-symbol | source=manager/backend/app/ai/llm_report.py:L310 | neighbors=[llm_report.py, .generate_remediation_steps(), .generate_technical_finding()]
-- "ai_llm_report_finding_scores": "_finding_scores()" | kind=code-symbol | source=manager/backend/app/ai/llm_report.py:L321 | neighbors=[llm_report.py, .generate_remediation_steps(), .generate_technical_finding()]
-- "ai_llm_report_llmreportgenerator_complete": "._complete()" | kind=code-symbol | source=manager/backend/app/ai/llm_report.py:L110 | neighbors=[LLMReportGenerator, LLMUnavailableError, ._generate_and_store()]
-- "ai_llm_report_llmreportgenerator_generate_executive_summary": ".generate_executive_summary()" | kind=code-symbol | source=manager/backend/app/ai/llm_report.py:L171 | neighbors=[LLMReportGenerator, _collect_cves_scores(), ._generate_and_store()]
+- "agent_cli_configstore_set_profile": ".set_profile()" | kind=code-symbol | source=probe/agent/cli.py:L86 | neighbors=[cmd_auth_login(), ConfigStore, .load(), .save()] | lang=en
+- "agent_cli_poll_job": "_poll_job()" | kind=code-symbol | source=probe/agent/cli.py:L476 | neighbors=[cli.py, cmd_scan_run(), CliError, .request()] | lang=en
+- "agent_cli_split_values": "split_values()" | kind=code-symbol | source=probe/agent/cli.py:L151 | neighbors=[cli.py, cmd_daemon_run(), cmd_engagements_create(), cmd_scan_run()] | lang=en
+- "agent_engine_tuning_from_params": "_tuning_from_params()" | kind=code-symbol | source=probe/agent/engine.py:L86 | neighbors=[engine.py, Translate operator-supplied job params …, run_scan(), _clamp()] | lang=en
+- "agent_hw_bind_check_hw_bind": "check_hw_bind()" | kind=code-symbol | source=probe/agent/hw_bind.py:L34 | neighbors=[hw_bind.py, get_hw_id(), HWBindError, Verify the binary is running on the mac…] | lang=en
+- "agent_hw_bind_hwbinderror": "HWBindError" | kind=code-symbol | source=probe/agent/hw_bind.py:L19 | neighbors=[hw_bind.py, check_hw_bind(), RuntimeError, Raised when the binary is running on an…] | lang=en
+- "agent_license_host_fingerprint": "host_fingerprint()" | kind=code-symbol | source=probe/agent/license.py:L38 | neighbors=[license.py, Stable per-machine ID, derived from hw_…, short_id(), verify_license()] | lang=en
+- "agent_license_short_id": "short_id()" | kind=code-symbol | source=probe/agent/license.py:L44 | neighbors=[license.py, check_license(), host_fingerprint(), verify_license()] | lang=en
+- "agent_task_runner_taskrunner_run_job": ".run_job()" | kind=code-symbol | source=probe/agent/task_runner.py:L79 | neighbors=[Execute a complete scan job lifecycle. …, TaskRunner, JobResult, ._submit_or_spool()] | lang=en
+- "agent_transport_post": ".post()" | kind=code-symbol | source=probe-go/agent/transport.go:L133 | neighbors=[transport.py, .Login(), .Register(), .SubmitResult()] | lang=en
+- "agent_transport_transport_register": ".register()" | kind=code-symbol | source=probe/agent/transport.py:L132 | neighbors=[Register the probe with the manager.   …, Transport, .save_state(), TransportError] | lang=en
+- "ai_agent_agentdecisionengine_overview": "._overview()" | kind=code-symbol | source=manager/backend/app/ai/agent.py:L264 | neighbors=[AgentDecisionEngine, ._exec_read_tool(), ._count(), _val()] | lang=en
+- "ai_agent_agentdecisionengine_persist": "._persist()" | kind=code-symbol | source=manager/backend/app/ai/agent.py:L336 | neighbors=[AgentDecisionEngine, _maybe_decimal(), _maybe_uuid(), .run()] | lang=en
+- "ai_llm_report_llmreportgenerator_generate_remediation_steps": ".generate_remediation_steps()" | kind=code-symbol | source=manager/backend/app/ai/llm_report.py:L222 | neighbors=[LLMReportGenerator, _enum(), _finding_scores(), ._generate_and_store()] | lang=en
+- "ai_llm_report_llmreportgenerator_generate_technical_finding": ".generate_technical_finding()" | kind=code-symbol | source=manager/backend/app/ai/llm_report.py:L197 | neighbors=[LLMReportGenerator, _enum(), _finding_scores(), ._generate_and_store()] | lang=en
+- "ai_llm_report_rationale_1": "LLMReportGenerator — Claude-backed narrative generation for VAPT reports.  Uses" | kind=entity | source=manager/backend/app/ai/llm_report.py:L1 | neighbors=[HallucinationGuard, llm_report.py, ReviewStatus, LLMOutput] | lang=en
+- "ai_llm_report_rationale_47": "Raised when the Anthropic SDK or API key is not configured." | kind=entity | source=manager/backend/app/ai/llm_report.py:L47 | neighbors=[HallucinationGuard, LLMUnavailableError, ReviewStatus, LLMOutput] | lang=en
+- "app_main_gziprequestmiddleware": "GzipRequestMiddleware" | kind=code-symbol | source=manager/backend/app/main.py:L92 | neighbors=[main.py, .__call__(), .__init__(), TenantIsolationMiddleware] | lang=en
+- "assetid_route": "route.ts" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/blast-radius/[assetId]/route.ts:L1 | neighbors=[GET(), graph-store.ts, graphStore, 298a9d4 trim frontend to 7 core pages; …] | lang=en
+- "attack_graph_route": "route.ts" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/attack-graph/route.ts:L1 | neighbors=[GET(), graph-store.ts, graphStore, 298a9d4 trim frontend to 7 core pages; …] | lang=en
+- "attack_paths_route": "route.ts" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/attack-paths/route.ts:L1 | neighbors=[GET(), graph-store.ts, graphStore, 298a9d4 trim frontend to 7 core pages; …] | lang=en
+- "auth_middleware": "middleware.py" | kind=code-symbol | source=manager/backend/app/auth/middleware.py:L1 | neighbors=[database.py, TenantIsolationMiddleware, 2885afa Add comprehensive probe testing…, 298a9d4 trim frontend to 7 core pages; …] | lang=en
+- "chokepoints_route": "route.ts" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/chokepoints/route.ts:L1 | neighbors=[GET(), graph-store.ts, graphStore, 298a9d4 trim frontend to 7 core pages; …] | lang=en
+- "commands_interactive_banner": "banner()" | kind=code-symbol | source=manager/frontend/cli/commands/interactive.ts:L104 | neighbors=[interactive.ts, ln(), runInteractive(), wizardScan()] | lang=en
+- "commands_interactive_choosenextphase": "chooseNextPhase()" | kind=code-symbol | source=manager/frontend/cli/commands/interactive.ts:L927 | neighbors=[interactive.ts, choose(), ln(), runIterativeEngagement()] | lang=en
+- "commands_interactive_pickmodulesbycategory": "pickModulesByCategory()" | kind=code-symbol | source=manager/frontend/cli/commands/interactive.ts:L300 | neighbors=[interactive.ts, confirm(), ln(), wizardScan()] | lang=en
+- "commands_interactive_runrulebasedvalidation": "runRuleBasedValidation()" | kind=code-symbol | source=manager/frontend/cli/commands/interactive.ts:L1358 | neighbors=[interactive.ts, confirm(), ln(), runValidationFlow()] | lang=en
+- "commands_interactive_wizardstatus": "wizardStatus()" | kind=code-symbol | source=manager/frontend/cli/commands/interactive.ts:L1941 | neighbors=[interactive.ts, mainMenu(), divider(), ln()] | lang=en
+- "commit:repo:github.com/Rutikm18/Agentic-VA-Automation@0510df3efb9374892a4822e5be4b3cdb4d0cdd4f": "0510df3 going to build prompt and connection, architecture almost done" | kind=Commit | source=git | neighbors=[agents/greeting-introduction, main, 298a9d4 trim frontend to 7 core pages; …, a388bb3 script updated, architecture de…] | lang=en
+- "commit:repo:github.com/Rutikm18/Agentic-VA-Automation@a388bb3e7f6e1db096cdb6b54966cdce98a43eed": "a388bb3 script updated, architecture design and integration with adversa repo" | kind=Commit | source=git | neighbors=[agents/greeting-introduction, main, 0510df3 going to build prompt and conne…, bd7383f scanner fine ..now integrations] | lang=en
+- "commit:repo:github.com/Rutikm18/Agentic-VA-Automation@bd7383fc2cc71d9cb245832d165562e1d2db0a25": "bd7383f scanner fine ..now integrations" | kind=Commit | source=git | neighbors=[agents/greeting-introduction, main, a388bb3 script updated, architecture de…, f5ce592 first commit] | lang=en
+- "commit:repo:github.com/Rutikm18/Agentic-VA-Automation@f5ce59287539c2bdfa5634ab9086c7c75c11bebb": "f5ce592 first commit" | kind=Commit | source=git | neighbors=[8d65c92 first commit, agents/greeting-introduction, main, bd7383f scanner fine ..now integrations] | lang=fr
+- "components_sidebar_sidebar": "Sidebar()" | kind=code-symbol | source=manager/frontend/components/Sidebar.tsx:L47 | neighbors=[page.tsx, PageShell.tsx, Sidebar.tsx, page.tsx] | lang=en
+- "dashboard_protocolrow_protocolrow": "ProtocolRow()" | kind=code-symbol | source=manager/frontend/components/dashboard/ProtocolRow.tsx:L10 | neighbors=[Exposure.tsx, ProtocolRow.tsx, riskColor(), page.tsx] | lang=en
+- "dashboard_slasummarycell": "SlaSummaryCell.tsx" | kind=code-symbol | source=manager/frontend/components/dashboard/SlaSummaryCell.tsx:L1 | neighbors=[298a9d4 trim frontend to 7 core pages; …, SlaSummaryCell(), SlaSummaryMetric, page.tsx] | lang=en
+- "detection_correlator_aware": "_aware()" | kind=code-symbol | source=manager/backend/app/detection/correlator.py:L209 | neighbors=[correlator.py, ._in_window(), ._min_latency(), Normalise naive datetimes to UTC so com…] | lang=en
+- "detection_edr_edrqueryengine_request": "._request()" | kind=code-symbol | source=manager/backend/app/detection/edr.py:L78 | neighbors=[.query_detections(), EDRQueryEngine, .query_detections(), .query_detections()] | lang=en
+- "detection_edr_parse_dt": "_parse_dt()" | kind=code-symbol | source=manager/backend/app/detection/edr.py:L47 | neighbors=[edr.py, .parse_response(), .parse_response(), .parse_response()] | lang=en
+- "detection_engine_ai_normalizer_validate_cpe_exists": "validate_cpe_exists()" | kind=code-symbol | source=manager/detection_engine/ai_normalizer.py:L169 | neighbors=[ai_normalizer.py, propose_candidates(), True iff the real NVD CPE dictionary ha…, .get()] | lang=en
+- "detection_engine_bridge_detect_findings_from_facts": "detect_findings_from_facts()" | kind=code-symbol | source=manager/backend/app/detection/engine_bridge.py:L82 | neighbors=[engine_bridge.py, create_findings_from_facts(), _ensure_importable(), facts (ScanResult dicts) -> detection_e…] | lang=en
 
 ## Instructions
 

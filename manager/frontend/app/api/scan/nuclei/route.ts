@@ -3,12 +3,13 @@ import { spawn } from "child_process";
 import os from "os";
 import path from "path";
 import fs from "fs";
-import { parseNucleiLine, nucleiMatchToFinding, countBySeverity, type NucleiRawLine } from "../../../../lib/nuclei-parser";
+import { parseNucleiLine, nucleiMatchToFinding, countBySeverity } from "../../../../lib/nuclei-parser";
 import { createFinding } from "../../../../lib/findings-store";
+import { withVerifiedLocalScanner } from "../../../../lib/with-backend";
 
 const SAFE_TARGET = /^[a-zA-Z0-9.\-_/:,]+$/;
 
-export async function POST(req: NextRequest) {
+export const POST = withVerifiedLocalScanner(async (req: NextRequest) => {
   const body = await req.json() as {
     targets: string[];
     templates?: string[];
@@ -105,4 +106,4 @@ export async function POST(req: NextRequest) {
     findingsCreated,
     stats: countBySeverity(matches),
   });
-}
+});

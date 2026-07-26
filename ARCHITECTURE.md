@@ -32,7 +32,7 @@ Agentic VA Scanner/
 
 | | **Probe** | **Manager** |
 |---|---|---|
-| **Is** | `scanner_module/` (scan engine + transport agent) | `vedha/backend` + `detection_engine/` + `vedha/frontend` |
+| **Is** | `probe/` (collector workflow + transport agent) | `manager/backend` + `manager/detection_engine` + `manager/frontend` |
 | **Runs** | inside each client's network (one per client) | central / cloud, multi-tenant |
 | **Does** | collection only — scans, produces **raw facts**, ships them up | analysis — facts → findings → attack mapping → reporting → dashboard |
 | **Holds** | no vulnerability DB, no client data at rest beyond its identity | the pinned vuln DB, all findings, all tenant data |
@@ -43,61 +43,69 @@ without re-scanning, and never copied into a client's network.
 
 ```
 ┌─ PROBE  (client network) ─────────────────┐        ┌─ MANAGER  (cloud) ─────────────────────┐
-│  scanner_module/                           │        │  vedha/backend  (FastAPI + Postgres) │
+│  probe/                                    │        │  manager/backend (FastAPI + Postgres)│
 │    scanner/    13 scanners (ScanResult)    │  jobs  │    ingest facts → Asset                │
 │    workflow/   per-target sequencing+cache │◀───────│    detection_engine/  facts → findings │
 │    agent/      register·poll·scan·submit   │  facts │    ad/ graph/ exploit/  attack mapping │
 │                                            │───────▶│    ai/   AI reporting                  │
-│  enforces ScopeGuard before any packet     │        │  vedha/frontend  (Next.js dashboard) │
+│  enforces ScopeGuard before any packet     │        │  manager/frontend (Next.js dashboard)│
 └────────────────────────────────────────────┘        └────────────────────────────────────────┘
 ```
 
 ---
 
-## 2. The probe (`scanner_module/`)
+## 2. The probe (`probe/`)
 
-### 2.1 Why it changes
-`scanner_module` today is **CLI-only** — it scans but cannot talk to the manager. The
-working transport already exists in `vedha/probe/agent.py` (register → heartbeat → poll →
-submit, host-bound encrypted identity, anti-copy license, resilient retry, `./probe` CLI).
-We **port that transport in** and swap its duplicate engine (`vedha/probe/scanners/`) for
-the real `scanner_module` engine. `vedha/probe/` is then removed.
+### 2.1 Runtime boundary
 
-### 2.2 Target layout
+The production image is built from `probe/`. Its Python agent registers capabilities,
+claims tenant-scoped jobs, enforces authoritative scope, runs the gated workflow, and
+durably submits raw facts. `probe-go/` is a separately tested alternative implementation;
+it is not built by the production Compose probe service.
+
+### 2.2 Layout
 ```
-scanner_module/                 ← THE PROBE (one deployable artifact)
-├── scanner/                    ← engine: 13 scanners (UNCHANGED — never modified)
+probe/                          ← THE PRODUCTION PROBE
+├── scanner/                    ← native collectors + standalone validators
 │   ├── scanner_base.py         ←   ScanResult schema, BaseScanner, ScopeGuard
 │   └── *_scanner.py / *_collector.py
-├── workflow/                   ← per-target sequencing + caching (existing)
-│   ├── workflow_engine.py · asset.py · cache.py · gates.py
+├── workflow/                   ← bounded, fail-isolated per-target sequencing
+│   ├── workflow_engine.py · execution.py · asset.py · cache.py · gates.py
 │   ├── router.py · modes.py · report.py · cli.py
-├── agent/                      ← NEW: transport (ported from vedha/probe)
+├── agent/                      ← manager transport and durable result delivery
 │   ├── agent.py                ←   register→heartbeat→poll→scan→submit loop
-│   ├── transport.py            ←   httpx client, retry, auth
-│   ├── identity.py             ←   host-bound encrypted state cache  (ported)
-│   ├── license.py              ←   host-locked anti-copy gate        (ported, optional)
-│   └── submit.py               ←   serialize ScanResult facts → result payload
-├── run_scan.py                 ← existing standalone CLI (kept for local testing)
-├── pipeline.py                 ← existing fixed pipeline (kept as fallback)
-├── Dockerfile                  ← NEW: probe image
-├── install.sh                  ← NEW: Docker- or systemd-based deploy
-├── probe.env.example           ← NEW: config template
+│   ├── transport.py            ←   authenticated HTTP/WebSocket client
+│   ├── task_runner.py          ←   scope validation and job lifecycle
+│   └── result_spool.py         ←   atomic private spool + acknowledged removal
+├── run_scan.py                 ← standalone local CLI
+├── Dockerfile · install.sh · probe.env.example
 └── requirements.txt
 ```
-> `scanner/` is treated as **frozen** — the consolidation wires *around* it, never edits the
-> scanners themselves (matches the standing "don't modify the scanner scripts" rule).
 
 ### 2.3 Job → scan dispatch
-The agent maps a manager `job_type`/`scan_type` to the workflow engine (preferred) or a
-single scanner, passing the job's scope/params straight through. The workflow engine already
-owns sequencing, caching, and dynamic routing, so the agent stays a thin driver.
+The agent maps the finite use-case catalog to the workflow engine. The workflow owns
+bounded host fan-out, per-target failure isolation, dynamic branch routing, and structured
+component telemetry. Invalid profile, target, expansion, or authoritative-scope input fails
+before the workflow can emit packets.
+
+### 2.4 Engine transparency
+
+`engine: "scanner_module"` remains the stable wire identifier for compatibility. It does
+not hide component identity:
+
+- `engine_manifest.orchestrator` identifies the Vedha workflow build.
+- `engine_manifest.components` lists every native collector and its role.
+- `scanner_runs` records targets, facts, errors, and
+  `completed|cached|skipped|degraded|failed` for each planned component.
+- `issues` carries stable error codes, retryability, and remediation.
+- Nmap and Masscan appear under `external_engines` as `standalone_validation`;
+  availability never implies execution.
 
 ---
 
 ## 3. Scope provisioning (manager → probe)
 
-Already half-built on both ends; we make it the canonical path.
+This is the canonical manager-to-probe authorization path.
 
 ```
 Engagement.scope_cidrs            (manager, per-tenant authorization boundary)
@@ -108,7 +116,7 @@ ScanJob.params = {                (enqueued via POST /agents/jobs)
    targets:      ["10.0.0.0/24"],     ← what to actually scan (⊆ scope)
    excluded_cidrs: [...],
    profile:      "it" | "iot" | "ot", ← tunes ports/rate (workflow profiles)
-   mode:         "triage" | "assessment" | "service-specific" | "re-scan"
+   scan_type:    one advertised finite capability
 }
         │  probe polls GET /agents/{id}/jobs
         ▼
@@ -134,8 +142,21 @@ endpoint `POST /agents/{id}/jobs/{job_id}/result`:
   "success": true,
   "result": {
     "ok": true,
+    "outcome": "partial",
     "engine": "scanner_module",
+    "engine_manifest": {
+      "orchestrator": {"id": "scanner_module", "label": "Vedha Probe Collector", "version": "2.0.0"},
+      "components": [...],
+      "external_engines": [...]
+    },
     "scan_type": "assessment",
+    "scanner_runs": [
+      {"id":"host_discovery","status":"completed","fact_count":1,"error_count":0},
+      {"id":"tls_scan","status":"degraded","fact_count":1,"error_count":1}
+    ],
+    "issues": [
+      {"code":"scanner_timeout","scanner":"tls_scan","target":"10.0.0.6","retryable":true}
+    ],
     "facts": [                       // ← array of ScanResult dicts (the scanners' native output)
       {"scanner":"tls_scan","target":"10.0.0.5","port":443,"proto":"tcp",
        "status":"open","data":{"accepted_versions":["TLSv1.2"],"certificate":{...}},
@@ -153,7 +174,7 @@ Rule: **the probe never emits a CVE or a vuln verdict.** Those come only from th
 
 ## 5. The manager
 
-### 5.1 Detection wiring (`detection_engine/` → `vedha/backend`)
+### 5.1 Detection wiring (`manager/detection_engine/` → `manager/backend`)
 On job-result ingest the backend runs the deterministic pipeline already built:
 
 ```
@@ -213,29 +234,32 @@ by the canonical detection layer instead of the ad-hoc `backend/app/vuln` path.
 
 | Layer | How it's validated |
 |---|---|
-| Scanners | existing per-scanner accuracy tests (scanner_module) |
-| Workflow engine | validated end-to-end against this host (caching, dynamic routing, modes) |
-| detection_engine | precision/recall harness + dpkg cross-validation + epoch/backport traps (done) |
-| **Wire contract** | NEW: schema test asserting probe facts payload ⟷ what backend ingest expects |
-| **End-to-end** | NEW: probe scans a known fixture → facts → manager detection → asserted findings → dashboard renders them |
-| Scope safety | NEW: out-of-scope target is refused at both manager and probe |
+| Scanners | parser, protocol, timeout, malformed-output, and accuracy tests |
+| Workflow engine | bounded fan-out, partial preservation, routing, cache, and mode tests |
+| `detection_engine` | precision/recall harness + dpkg cross-validation + epoch/backport traps |
+| Wire contract | use-case parity and probe facts payload/manager ingest tests |
+| Dispatch | tenant, capability, network-segment, and atomic-claim tests |
+| Scope safety | out-of-scope and excluded targets are refused at manager and probe |
+| Result durability | atomic spool, acknowledged deletion, reconnect, and path-safety tests |
 
 ---
 
-## 9. Consolidation steps (ordered, each reversible)
+## 9. Deployment invariants
 
-1. **Port transport** `vedha/probe/{agent,security,toolchain,license}` → `scanner_module/agent/`, swapping the engine to scanner_module. *(no deletion yet)*
-2. **Scope** wiring + dual ScopeGuard enforcement + contract test.
-3. **Probe image** Dockerfile/install.sh/probe.env; bring up a probe from scanner_module.
-4. **Detection** wire detection_engine into backend job-result ingest; persist full findings.
-5. **End-to-end** validation (fixture → facts → findings → dashboard).
-6. **Remove** `vedha/probe/` and the duplicate `Vedha copy/` only after 1–5 pass.
+1. Production Compose builds only `probe/` for field collection.
+2. A probe receives jobs only for its tenant, advertised capability, and reachable segment.
+3. WebSocket offers execute only after the manager atomically confirms the claim.
+4. Result evidence is spooled before delivery and removed only after manager acceptance.
+5. External tools must pass their own launch, dependency, output, and parser checks; zero
+   findings after an engine error is never a successful scan.
+6. Cross-run change reporting is a manager diff of full assessments until persistent
+   probe cache ownership is explicitly implemented.
 
 ---
 
 ## 10. Open decisions captured
 
-- ✅ scanner_module **is** the probe; the other probe is removed (after its transport is absorbed).
+- ✅ `probe/` is the production probe; `probe-go/` remains an alternative implementation.
 - ✅ Probe ships **raw facts**; manager runs detection.
 - ✅ Pinned vuln DB lives on the **manager** only.
 - ⬜ Keep `license.py` host-lock for probes? (port as-is; can disable via env — default keep)

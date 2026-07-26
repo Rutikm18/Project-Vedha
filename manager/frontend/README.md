@@ -697,6 +697,9 @@ AGENT_SECRET=vedha-agent-secret-change-me   # Bearer token agents send on regist
 SCOPE_SECRET=vedha-scope-secret-change-me   # JWT signing key for scan scope tokens
 
 # OpenVAS
+# Optional legacy manager-local scanner APIs are off by default. Prefer Vedha
+# probe dispatch; enable only on an isolated validation worker.
+ENABLE_LEGACY_LOCAL_SCANNERS=false
 OPENVAS_HOST=openvas
 OPENVAS_PORT=9390
 OPENVAS_USER=admin

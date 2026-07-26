@@ -1,14 +1,16 @@
 import { NextRequest } from "next/server";
 import { subscribeScan } from "../../../../../lib/scan-events";
+import { withVerifiedLocalScanner } from "../../../../../lib/with-backend";
 
 const HEARTBEAT_MS = 15_000;
 
 // GET /api/scan/stream/[scanId] — SSE stream for live scan events
-export async function GET(
+export const GET = withVerifiedLocalScanner<{ scanId: string }>(async (
   _request: NextRequest,
-  { params }: { params: Promise<{ scanId: string }> },
-) {
-  const { scanId } = await params;
+  _ctx,
+  params,
+) => {
+  const { scanId } = params!;
   const enc        = new TextEncoder();
 
   let heartbeatTimer: ReturnType<typeof setInterval> | undefined;
@@ -51,4 +53,4 @@ export async function GET(
       "X-Accel-Buffering": "no",
     },
   });
-}
+});

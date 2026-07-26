@@ -5,10 +5,11 @@ import path from "path";
 import fs from "fs";
 import { parseTestsslOutput, type TestsslOutput } from "../../../../lib/testssl-parser";
 import { createFinding } from "../../../../lib/findings-store";
+import { withVerifiedLocalScanner } from "../../../../lib/with-backend";
 
 const SAFE_HOST = /^[a-zA-Z0-9.\-_:]+$/;
 
-export async function POST(req: NextRequest) {
+export const POST = withVerifiedLocalScanner(async (req: NextRequest) => {
   const body = await req.json() as {
     targets: string[];
     checks?: string[];
@@ -88,4 +89,4 @@ export async function POST(req: NextRequest) {
       info:     allFindings.filter((f) => f.severity === "INFO").length,
     },
   });
-}
+});

@@ -78,6 +78,8 @@ cp probe.env.example probe.env     # set PLATFORM_URL + operator creds
 ./install.sh                       # Docker  (or ./install.sh --native for host Python)
 ```
 See `probe/README.md`. Scope arrives per-job from the manager, not baked into the probe.
+For component error codes and third-party engine recovery, see
+[`TROUBLESHOOTING.md`](TROUBLESHOOTING.md).
 
 ## Running components standalone (dev)
 

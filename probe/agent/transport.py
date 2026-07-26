@@ -20,9 +20,10 @@ import logging
 import os
 import random
 import socket
+import tempfile
 import time
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any, Callable, Iterable
 
 import httpx
 
@@ -31,6 +32,48 @@ LOG = logging.getLogger("transport")
 
 class TransportError(Exception):
     """Raised when a transport operation fails permanently (not retryable)."""
+
+
+def _sync_directory(directory: Path) -> None:
+    if os.name != "posix" or not directory.exists():
+        return
+    directory_fd = os.open(directory, os.O_RDONLY)
+    try:
+        os.fsync(directory_fd)
+    finally:
+        os.close(directory_fd)
+
+
+def _atomic_write_private_state(path: Path, state: dict[str, Any]) -> None:
+    """Durably replace one private JSON state file without exposing secrets."""
+    payload = json.dumps(state)
+    path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    if os.name == "posix":
+        os.chmod(path.parent, 0o700)
+
+    fd, tmp_name = tempfile.mkstemp(
+        prefix=f".{path.name}.",
+        suffix=".tmp",
+        dir=path.parent,
+    )
+    tmp_path = Path(tmp_name)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as handle:
+            if os.name == "posix":
+                os.fchmod(handle.fileno(), 0o600)
+            handle.write(payload)
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.replace(tmp_path, path)
+        if os.name == "posix":
+            os.chmod(path, 0o600)
+        _sync_directory(path.parent)
+    except BaseException:
+        try:
+            tmp_path.unlink(missing_ok=True)
+        except OSError:
+            pass
+        raise
 
 
 class Transport:
@@ -59,6 +102,18 @@ class Transport:
         self._agent_id = agent_id
         self._agent_token = agent_token
         self._state_file = Path(state_file) if state_file else None
+        if (
+            self._state_file
+            and not (self._agent_id and self._agent_token)
+            and self._state_file.exists()
+        ):
+            try:
+                cached = self.load_state()
+                if cached.get("agent_id") and cached.get("token"):
+                    self._agent_id = str(cached["agent_id"])
+                    self._agent_token = str(cached["token"])
+            except (OSError, ValueError, TypeError):
+                pass
         # Payloads at/above this size are gzip-compressed before upload (a /24
         # sweep is MBs of JSON). 0 disables compression.
         self._compress_over = compress_over
@@ -113,19 +168,47 @@ class Transport:
 
     # ── State persistence (thin helper, not a full state manager) ─────────────
 
+    def load_state(self) -> dict[str, Any]:
+        if not self._state_file or not self._state_file.exists():
+            return {}
+        if os.name == "posix":
+            os.chmod(self._state_file.parent, 0o700)
+            os.chmod(self._state_file, 0o600)
+        loaded = json.loads(self._state_file.read_text())
+        return loaded if isinstance(loaded, dict) else {}
+
+    def update_state(
+        self,
+        updates: dict[str, Any] | None = None,
+        *,
+        remove: Iterable[str] = (),
+    ) -> None:
+        """Merge and atomically persist private state while preserving fields."""
+        if not self._state_file:
+            return
+        try:
+            state = self.load_state()
+        except (OSError, ValueError, TypeError):
+            state = {}
+        state.update(updates or {})
+        for key in remove:
+            state.pop(key, None)
+        if state:
+            _atomic_write_private_state(self._state_file, state)
+            return
+        self._state_file.unlink(missing_ok=True)
+        _sync_directory(self._state_file.parent)
+
     def save_state(self) -> None:
-        if self._state_file:
-            self._state_file.parent.mkdir(parents=True, exist_ok=True)
-            self._state_file.write_text(json.dumps({
-                "agent_id": self._agent_id,
-                "token": self._agent_token,
-            }))
+        self.update_state({
+            "agent_id": self._agent_id,
+            "token": self._agent_token,
+        })
 
     def clear_state(self) -> None:
         self._agent_id = ""
         self._agent_token = ""
-        if self._state_file and self._state_file.exists():
-            self._state_file.unlink()
+        self.update_state(remove=("agent_id", "token"))
 
     # ── Registration ──────────────────────────────────────────────────────────
 
@@ -183,6 +266,44 @@ class Transport:
         self._agent_token = data["token"]
         self.save_state()
         return data
+
+    def refresh_registration(
+        self,
+        *,
+        capabilities: list[str],
+        network_segments: list[str],
+        public_key: str | None = None,
+    ) -> bool | None:
+        """Refresh routing metadata using the cached agent identity.
+
+        Returns True when refreshed, False for a transient manager/network
+        failure, and None when connected to an older manager without this API.
+        """
+        body: dict[str, Any] = {
+            "capabilities": capabilities,
+            "network_segments": network_segments,
+        }
+        if public_key:
+            body["public_key"] = public_key
+
+        try:
+            r = self._client.post(
+                f"/agents/{self._agent_id}/refresh",
+                headers=self.auth_header,
+                json=body,
+            )
+            if r.status_code == 404:
+                return None
+            if r.status_code in (401, 403, 410):
+                raise TransportError(
+                    "Cached agent identity was rejected during registration refresh."
+                )
+            r.raise_for_status()
+            return True
+        except TransportError:
+            raise
+        except httpx.HTTPError:
+            return False
 
     # ── Heartbeat ─────────────────────────────────────────────────────────────
 

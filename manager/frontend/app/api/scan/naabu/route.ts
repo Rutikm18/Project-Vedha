@@ -3,6 +3,7 @@ import { spawn } from "child_process";
 import os from "os";
 import path from "path";
 import fs from "fs";
+import { withVerifiedLocalScanner } from "../../../../lib/with-backend";
 
 const SAFE_TARGET = /^[a-zA-Z0-9.\-_/: ,]+$/;
 
@@ -35,7 +36,7 @@ function parseNaabuOutput(outputFile: string): { ip: string; openPorts: number[]
   }));
 }
 
-export async function POST(req: NextRequest) {
+export const POST = withVerifiedLocalScanner(async (req: NextRequest) => {
   const body = await req.json() as {
     targets: string[];
     ports?: string;
@@ -121,4 +122,4 @@ export async function POST(req: NextRequest) {
       }));
     });
   });
-}
+});

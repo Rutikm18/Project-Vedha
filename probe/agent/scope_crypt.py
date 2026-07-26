@@ -43,9 +43,9 @@ _HKDF_INFO = b"vedha-probe:scope-crypt:v1"
 def generate_identity() -> tuple[bytes, bytes]:
     """Generate a fresh X25519 keypair.
 
-    Returns (private_key_bytes, public_key_bytes) — store private_key_bytes
-    in a secure location (encrypted STATE_FILE on the probe). Public key is
-    sent to the manager at registration time.
+    Returns (private_key_bytes, public_key_bytes). The probe stores the private
+    key in its atomic, permission-restricted state file; the public key is sent
+    to the manager at registration time.
     """
     sk = X25519PrivateKey.generate()
     pk = sk.public_key()

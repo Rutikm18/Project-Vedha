@@ -21,8 +21,10 @@ import asyncio
 import json
 import re
 import shutil
+from contextlib import suppress
+from dataclasses import dataclass
 from decimal import Decimal
-from typing import Any
+from typing import Any, Literal
 
 import structlog
 
@@ -62,12 +64,55 @@ _SERVICE_TEMPLATE_MAP: dict[str, list[str]] = {
 }
 
 _CVE_RE = re.compile(r"CVE-\d{4}-\d+", re.I)
+_STDERR_LIMIT = 16_384
+_STDOUT_LINE_LIMIT = 8 * 1024 * 1024
+_TEMPLATE_FAILURE_MARKERS = (
+    "no templates provided for scan",
+    "no templates found",
+    "no templates available",
+    "nuclei-templates are not installed",
+    "could not find template",
+)
+
+
+@dataclass(frozen=True)
+class NucleiRunReport:
+    """Machine-readable state for the most recent scanner invocation."""
+
+    status: Literal["success", "partial", "failed"]
+    findings_count: int
+    reason: str | None = None
+    returncode: int | None = None
+    stderr: str = ""
+    malformed_lines: int = 0
+
+
+class NucleiScanError(RuntimeError):
+    """Fatal Nuclei failure, optionally carrying findings emitted before failure."""
+
+    def __init__(
+        self,
+        reason: str,
+        detail: str,
+        *,
+        partial_findings: list[dict[str, Any]] | None = None,
+        returncode: int | None = None,
+        stderr: str = "",
+    ) -> None:
+        super().__init__(f"Nuclei scan failed ({reason}): {detail}")
+        self.reason = reason
+        self.partial_findings = list(partial_findings or [])
+        self.returncode = returncode
+        self.stderr = stderr
 
 
 class NucleiScanner:
     """Run Nuclei against targets and parse JSONL output into Finding dicts."""
 
     NUCLEI_BIN = "nuclei"
+
+    def __init__(self) -> None:
+        self.last_run_report: NucleiRunReport | None = None
 
     # ── run_scan ──────────────────────────────────────────────────────────────
 
@@ -76,15 +121,35 @@ class NucleiScanner:
         targets: list[str],
         templates: list[str],
         rate_limit: int = 150,
-        timeout_sec: int = 300,
+        timeout_sec: int | float = 300,
+        request_timeout_sec: int = 10,
     ) -> list[dict[str, Any]]:
         """
-        Runs nuclei as an async subprocess.
-        Returns a list of parsed finding dicts.
+        Run Nuclei and stream JSONL findings from stdout.
+
+        ``request_timeout_sec`` controls each Nuclei network request. The
+        existing ``timeout_sec`` argument is the independent wall-clock
+        deadline for the whole process.
         """
-        if not shutil.which(self.NUCLEI_BIN):
-            logger.warning("nuclei.not_found", hint="Install nuclei: https://github.com/projectdiscovery/nuclei")
+        if not targets:
+            self.last_run_report = NucleiRunReport("success", findings_count=0)
             return []
+        if timeout_sec <= 0:
+            raise ValueError("timeout_sec must be greater than zero")
+        if request_timeout_sec <= 0:
+            raise ValueError("request_timeout_sec must be greater than zero")
+
+        if not shutil.which(self.NUCLEI_BIN):
+            detail = "nuclei binary is not installed or is not on PATH"
+            self.last_run_report = NucleiRunReport(
+                "failed", findings_count=0, reason="not_installed"
+            )
+            logger.error(
+                "nuclei.scan.failed",
+                reason="not_installed",
+                hint="Install nuclei: https://github.com/projectdiscovery/nuclei",
+            )
+            raise NucleiScanError("not_installed", detail)
 
         target_args = []
         for t in targets:
@@ -92,38 +157,224 @@ class NucleiScanner:
 
         tag_args = []
         if templates:
-            tag_args = ["-tags", ",".join(set(templates))]
+            tag_args = ["-tags", ",".join(sorted(set(templates)))]
 
         cmd = [
             self.NUCLEI_BIN,
             *target_args,
             *tag_args,
             "-rate-limit", str(rate_limit),
-            "-json-export", "/dev/stdout",
+            "-jsonl",
             "-silent",
             "-no-color",
-            "-timeout", str(timeout_sec),
+            "-timeout", str(request_timeout_sec),
         ]
-        logger.info("nuclei.scan.start", targets=len(targets), tags=templates)
-
-        proc = await asyncio.create_subprocess_exec(
-            *cmd,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE,
+        logger.info(
+            "nuclei.scan.start",
+            targets=len(targets),
+            tags=templates,
+            request_timeout_sec=request_timeout_sec,
+            job_timeout_sec=timeout_sec,
         )
 
         try:
-            stdout, stderr = await asyncio.wait_for(
-                proc.communicate(), timeout=float(timeout_sec + 30)
+            proc = await asyncio.create_subprocess_exec(
+                *cmd,
+                stdout=asyncio.subprocess.PIPE,
+                stderr=asyncio.subprocess.PIPE,
+                limit=_STDOUT_LINE_LIMIT,
             )
-        except asyncio.TimeoutError:
-            proc.kill()
-            logger.error("nuclei.scan.timeout")
-            return []
+        except OSError as exc:
+            detail = str(exc)
+            self.last_run_report = NucleiRunReport(
+                "failed", findings_count=0, reason="spawn_failed", stderr=detail
+            )
+            logger.error("nuclei.scan.failed", reason="spawn_failed", error=detail)
+            raise NucleiScanError("spawn_failed", detail, stderr=detail) from exc
 
-        output = stdout.decode("utf-8", errors="replace")
-        findings = self.parse_output(output)
-        logger.info("nuclei.scan.done", findings=len(findings))
+        if proc.stdout is None or proc.stderr is None:
+            await self._stop_process(proc)
+            detail = "subprocess pipes were not created"
+            self.last_run_report = NucleiRunReport(
+                "failed", findings_count=0, reason="spawn_failed"
+            )
+            raise NucleiScanError("spawn_failed", detail)
+
+        findings: list[dict[str, Any]] = []
+        stdout_task = asyncio.create_task(
+            self._consume_stdout(proc.stdout, findings),
+            name="nuclei-stdout",
+        )
+        stderr_task = asyncio.create_task(
+            self._read_stderr(proc.stderr),
+            name="nuclei-stderr",
+        )
+        timed_out = False
+
+        try:
+            await asyncio.wait_for(proc.wait(), timeout=float(timeout_sec))
+        except asyncio.TimeoutError:
+            timed_out = True
+            await self._stop_process(proc)
+        except asyncio.CancelledError:
+            await self._stop_process(proc)
+            await asyncio.gather(stdout_task, stderr_task, return_exceptions=True)
+            self.last_run_report = NucleiRunReport(
+                "failed",
+                findings_count=len(findings),
+                reason="cancelled",
+                returncode=proc.returncode,
+            )
+            raise
+
+        malformed_lines = await stdout_task
+        stderr = await stderr_task
+        returncode = proc.returncode
+
+        if timed_out:
+            return self._partial_or_raise(
+                findings,
+                reason="timeout",
+                detail=f"job exceeded the {timeout_sec:g}s deadline",
+                returncode=returncode,
+                stderr=stderr,
+                malformed_lines=malformed_lines,
+            )
+
+        if returncode != 0:
+            return self._partial_or_raise(
+                findings,
+                reason="nonzero_exit",
+                detail=f"nuclei exited with code {returncode}",
+                returncode=returncode,
+                stderr=stderr,
+                malformed_lines=malformed_lines,
+            )
+
+        stderr_lower = stderr.lower()
+        if any(marker in stderr_lower for marker in _TEMPLATE_FAILURE_MARKERS):
+            return self._partial_or_raise(
+                findings,
+                reason="templates_missing",
+                detail="nuclei could not load a usable template set",
+                returncode=returncode,
+                stderr=stderr,
+                malformed_lines=malformed_lines,
+            )
+
+        if malformed_lines:
+            return self._partial_or_raise(
+                findings,
+                reason="parse_error",
+                detail=f"could not parse {malformed_lines} JSONL line(s)",
+                returncode=returncode,
+                stderr=stderr,
+                malformed_lines=malformed_lines,
+            )
+
+        self.last_run_report = NucleiRunReport(
+            "success",
+            findings_count=len(findings),
+            returncode=returncode,
+            stderr=stderr,
+        )
+        logger.info(
+            "nuclei.scan.done",
+            findings=len(findings),
+            returncode=returncode,
+        )
+        return findings
+
+    async def _consume_stdout(
+        self,
+        stream: asyncio.StreamReader,
+        findings: list[dict[str, Any]],
+    ) -> int:
+        malformed_lines = 0
+        while True:
+            raw_line = await stream.readline()
+            if not raw_line:
+                break
+            line = raw_line.decode("utf-8", errors="replace").strip()
+            if not line:
+                continue
+            try:
+                raw = json.loads(line)
+                if not isinstance(raw, dict):
+                    raise TypeError("JSONL entry is not an object")
+                findings.append(self._map_finding(raw))
+            except (json.JSONDecodeError, KeyError, TypeError, AttributeError):
+                malformed_lines += 1
+                logger.warning(
+                    "nuclei.output.malformed",
+                    line=line[:300],
+                )
+        return malformed_lines
+
+    async def _read_stderr(self, stream: asyncio.StreamReader) -> str:
+        tail = bytearray()
+        while True:
+            chunk = await stream.read(4096)
+            if not chunk:
+                break
+            tail.extend(chunk)
+            if len(tail) > _STDERR_LIMIT:
+                del tail[:-_STDERR_LIMIT]
+        return tail.decode("utf-8", errors="replace").strip()
+
+    async def _stop_process(self, proc: asyncio.subprocess.Process) -> None:
+        if proc.returncode is not None:
+            return
+        with suppress(ProcessLookupError):
+            proc.terminate()
+        try:
+            await asyncio.wait_for(proc.wait(), timeout=5)
+        except asyncio.TimeoutError:
+            with suppress(ProcessLookupError):
+                proc.kill()
+            with suppress(asyncio.TimeoutError):
+                await asyncio.wait_for(proc.wait(), timeout=5)
+
+    def _partial_or_raise(
+        self,
+        findings: list[dict[str, Any]],
+        *,
+        reason: str,
+        detail: str,
+        returncode: int | None,
+        stderr: str,
+        malformed_lines: int,
+    ) -> list[dict[str, Any]]:
+        status: Literal["partial", "failed"] = "partial" if findings else "failed"
+        self.last_run_report = NucleiRunReport(
+            status,
+            findings_count=len(findings),
+            reason=reason,
+            returncode=returncode,
+            stderr=stderr,
+            malformed_lines=malformed_lines,
+        )
+        logger.error(
+            "nuclei.scan.partial" if findings else "nuclei.scan.failed",
+            reason=reason,
+            error=detail,
+            returncode=returncode,
+            findings=len(findings),
+            stderr=stderr[:500],
+        )
+
+        if not findings:
+            raise NucleiScanError(
+                reason,
+                detail,
+                returncode=returncode,
+                stderr=stderr,
+            )
+
+        for finding in findings:
+            evidence = finding.setdefault("evidence", {})
+            evidence["scan_status"] = "partial"
+            evidence["scan_error"] = reason
         return findings
 
     # ── parse_output ──────────────────────────────────────────────────────────

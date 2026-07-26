@@ -35,6 +35,7 @@ import os
 import shutil
 import subprocess
 import tempfile
+from dataclasses import dataclass
 
 from .scanner_base import (
     BaseScanner, ScanResult, ScopeGuard, ResultWriter, expand_targets,
@@ -46,12 +47,22 @@ from .scanner_base import (
 # --------------------------------------------------------------------------- #
 # masscan path (preferred for scale).
 # --------------------------------------------------------------------------- #
+@dataclass(frozen=True)
+class MasscanRun:
+    records: list[dict]
+    outcome: str
+    error_code: str | None = None
+    error: str | None = None
+    returncode: int | None = None
+    parse_error_count: int = 0
+
+
 def _have_masscan() -> bool:
     return shutil.which("masscan") is not None
 
 
 def _run_masscan(target_specs: list[str], ports: str, rate: int,
-                 timeout: int, extra: list[str]) -> list[dict]:
+                 timeout: int, extra: list[str]) -> MasscanRun:
     """
     Run masscan over the given target specs and return its parsed JSON records.
     masscan accepts CIDRs/ranges directly, so we pass scope-validated specs
@@ -62,45 +73,99 @@ def _run_masscan(target_specs: list[str], ports: str, rate: int,
     cmd = ["masscan", *target_specs, "-p", ports,
            "--rate", str(rate), "-oJ", out_path, *extra]
     LOG.info("running: %s", " ".join(cmd))
+    error_code = None
+    error = None
+    returncode = None
     try:
         proc = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+        returncode = proc.returncode
         if proc.returncode != 0:
-            LOG.warning("masscan rc=%d: %s", proc.returncode, proc.stderr[:300])
-    except subprocess.TimeoutExpired:
-        LOG.error("masscan timed out after %ds", timeout)
+            error_code = "nonzero_exit"
+            error = f"masscan rc={proc.returncode}: {(proc.stderr or '')[-1000:]}"
+    except subprocess.TimeoutExpired as exc:
+        error_code = "timeout"
+        error = (
+            f"masscan exceeded the {timeout}s job timeout; reduce scope/rate "
+            "or raise the bounded timeout"
+        )
+        if isinstance(exc.stderr, str) and exc.stderr:
+            error += f": {exc.stderr[-500:]}"
     except FileNotFoundError:
-        LOG.error("masscan not found")
-        return []
+        error_code = "dependency_missing"
+        error = "masscan was not found on PATH"
+    except PermissionError as exc:
+        error_code = "permission_denied"
+        error = f"masscan could not start with the current privileges: {exc}"
+    except OSError as exc:
+        error_code = "launch_failed"
+        error = f"masscan could not start: {exc}"
 
     records: list[dict] = []
+    parse_error_count = 0
+    output_text = ""
     try:
         with open(out_path, "r", encoding="utf-8") as fh:
-            records = _parse_masscan_json(fh.read())
-    except (FileNotFoundError, json.JSONDecodeError) as exc:
-        LOG.error("could not parse masscan output: %s", exc)
+            output_text = fh.read()
+        records, parse_error_count = _parse_masscan_json_detailed(output_text)
+    except OSError as exc:
+        if error is None:
+            error_code = "output_read_failed"
+            error = f"masscan output artifact could not be read: {exc}"
     finally:
         try:
             os.remove(out_path)
         except OSError:
             pass
-    return records
+
+    if parse_error_count:
+        parse_message = (
+            f"masscan output contained {parse_error_count} malformed record(s)"
+        )
+        if error:
+            error = f"{error}; {parse_message}"
+        else:
+            error_code = "parse_error"
+            error = parse_message
+    if error:
+        LOG.warning("%s", error)
+        return MasscanRun(
+            records=records,
+            outcome="degraded" if records else "failed",
+            error_code=error_code,
+            error=error,
+            returncode=returncode,
+            parse_error_count=parse_error_count,
+        )
+    return MasscanRun(
+        records=records,
+        outcome="completed",
+        returncode=returncode,
+        parse_error_count=parse_error_count,
+    )
 
 
 def _parse_masscan_json(text: str) -> list[dict]:
     """Parse masscan -oJ output robustly: handles trailing comma, 'finished'
     sentinel line, and a missing closing bracket."""
+    records, _ = _parse_masscan_json_detailed(text)
+    return records
+
+
+def _parse_masscan_json_detailed(text: str) -> tuple[list[dict], int]:
     text = text.strip()
     if not text:
-        return []
+        return [], 0
     try:
         obj = json.loads(text)
         if isinstance(obj, list):
-            return obj
+            records = [item for item in obj if isinstance(item, dict)]
+            return records, len(obj) - len(records)
         if isinstance(obj, dict):
-            return [obj]
+            return [obj], 0
     except json.JSONDecodeError:
         pass
     records: list[dict] = []
+    parse_errors = 0
     for line in text.splitlines():
         line = line.strip().rstrip(",")
         if not line or line in ("[", "]"):
@@ -109,9 +174,11 @@ def _parse_masscan_json(text: str) -> list[dict]:
             o = json.loads(line)
             if isinstance(o, dict):
                 records.append(o)
+            else:
+                parse_errors += 1
         except json.JSONDecodeError:
-            continue
-    return records
+            parse_errors += 1
+    return records, parse_errors
 
 
 def _masscan_records_to_results(records: list[dict],
@@ -185,6 +252,10 @@ async def run_mass_scan(target_specs: list[str], scope: ScopeGuard, *,
     if not allowed_specs:
         LOG.error("no in-scope target specs")
         return
+    if not 1 <= rate <= 100_000:
+        raise ValueError("masscan rate must be between 1 and 100000 packets/second")
+    if timeout <= 0:
+        raise ValueError("masscan timeout must be greater than zero")
 
     if _have_masscan() and not force_fallback:
         LOG.info("using masscan (fast path)")
@@ -195,10 +266,31 @@ async def run_mass_scan(target_specs: list[str], scope: ScopeGuard, *,
             LOG.info("masscan: excluding %d out-of-scope network(s) at the "
                      "packet level", len(excl))
         loop = asyncio.get_running_loop()
-        records = await loop.run_in_executor(
+        run = await loop.run_in_executor(
             None, _run_masscan, allowed_specs, ports, rate, timeout, extra)
-        for r in _masscan_records_to_results(records, scope):
+        for r in _masscan_records_to_results(run.records, scope):
             writer.write(r)
+        if run.outcome != "completed":
+            writer.write(ScanResult(
+                scanner="mass_scan",
+                target="<masscan-run>",
+                status="error",
+                data={
+                    "error_code": run.error_code,
+                    "retryable": run.error_code in {
+                        "timeout", "resource_exhausted", "output_read_failed",
+                    },
+                    "remediation": (
+                        "Verify CAP_NET_RAW/root access and adapter selection, "
+                        "then retry at a lower rate or narrower scope."
+                    ),
+                    "outcome": run.outcome,
+                    "returncode": run.returncode,
+                    "parse_error_count": run.parse_error_count,
+                    "partial_result_count": len(run.records),
+                },
+                error=run.error,
+            ))
     else:
         if force_fallback:
             LOG.info("masscan fallback forced")
@@ -223,6 +315,13 @@ def _spec_in_scope(spec: str, scope: ScopeGuard) -> bool:
     Single IPs / hostnames use the normal check.
     """
     spec = spec.strip()
+    if "-" in spec and "/" not in spec:
+        try:
+            targets = expand_targets([spec])
+        except ValueError:
+            return False
+        if targets != [spec]:
+            return all(scope.in_scope(target) for target in targets)
     try:
         net = ipaddress.ip_network(spec, strict=False)
     except ValueError:

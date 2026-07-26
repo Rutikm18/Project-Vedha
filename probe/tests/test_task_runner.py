@@ -99,6 +99,89 @@ class TestRunnerHeadless:
         result = runner.run_job(job, "agent-1")
         assert result.scan_type == "tls_scan"
 
+    def test_rejects_non_object_params(self, runner):
+        result = runner.run_job(
+            {
+                "job_id": "job-invalid-params",
+                "params": ["not", "an", "object"],
+            },
+            "agent-1",
+        )
+
+        assert result.success is False
+        assert result.error == "job params must be an object"
+
+    def test_rejects_non_string_target(self, runner):
+        result = runner.run_job(
+            {
+                "job_id": "job-invalid-target",
+                "params": {"targets": ["10.0.0.1", 7]},
+            },
+            "agent-1",
+        )
+
+        assert result.success is False
+        assert result.error == "targets must be a string or list of strings"
+
+    @pytest.mark.parametrize(
+        ("params", "expected"),
+        [
+            (
+                {
+                    "targets": ["10.0.0.1"],
+                    "target": "10.0.0.2",
+                    "scope_cidrs": ["10.0.0.0/24"],
+                },
+                ["10.0.0.1"],
+            ),
+            (
+                {
+                    "target": "10.0.0.2",
+                    "scope_cidrs": ["10.0.0.0/24"],
+                },
+                ["10.0.0.2"],
+            ),
+            (
+                {"scope_cidrs": ["10.0.0.0/24"]},
+                ["10.0.0.0/24"],
+            ),
+        ],
+    )
+    def test_target_precedence(self, runner, params, expected):
+        result = runner.run_job(
+            {
+                "job_id": "job-target-precedence",
+                "params": params,
+            },
+            "agent-1",
+        )
+
+        assert result.success is True
+        assert result.result["params"]["targets"] == expected
+
+    def test_scan_engine_exception_becomes_submittable_failure(self):
+        submitted = []
+
+        def explode(*args, **kwargs):
+            raise RuntimeError("collector initialization failed")
+
+        runner = TaskRunner(
+            http_get=lambda path: None,
+            submit_result=lambda job_id, payload: submitted.append(payload) or True,
+            run_scan_fn=explode,
+        )
+        result = runner.run_job(
+            {
+                "job_id": "job-engine-error",
+                "params": {"targets": ["10.0.0.1"]},
+            },
+            "agent-1",
+        )
+
+        assert result.success is False
+        assert result.result["error_code"] == "scan_engine_exception"
+        assert submitted[0]["result"]["outcome"] == "failed"
+
 
 class TestRunnerScopeValidation:
     def test_rejects_out_of_scope_target(self, runner):
@@ -160,6 +243,29 @@ class TestRunnerScopeValidation:
         result = runner.run_job(job, "agent-1")
         # Should proceed using params-based scope. No scope rejection.
         assert "outside" not in (result.error or "")
+
+    def test_scope_fallback_preserves_manager_and_job_exclusions(self, runner):
+        runner._http_get = lambda path: None
+        job = {
+            "job_id": "job-013a",
+            "engagement_id": "eng-001",
+            "job_type": "discovery",
+            "params": {
+                "targets": ["10.0.0.5", "10.0.0.10", "10.0.0.20"],
+                "scope_cidrs": ["10.0.0.0/24"],
+                "_excluded_cidrs": ["10.0.0.5/32"],
+                "excluded_cidrs": ["10.0.0.20/32"],
+            },
+        }
+
+        result = runner.run_job(job, "agent-1")
+
+        assert result.success is True
+        assert result.result["params"]["targets"] == ["10.0.0.10"]
+        assert result.result["params"]["excluded_cidrs"] == [
+            "10.0.0.5/32",
+            "10.0.0.20/32",
+        ]
 
     def test_manager_job_without_scope_fails_closed(self, runner):
         runner._http_get = lambda path: None
@@ -274,4 +380,4 @@ class TestRunnerScanTypes:
             "params": {"use_case_id": "uc_external_web_triage", "targets": ["10.0.0.1"]},
         }
         result = runner.run_job(job, "agent-1")
-        assert result.scan_type == "tls_scan"
+        assert result.scan_type == "web_tls_scan"

@@ -18,6 +18,8 @@ you can run each in isolation and measure its accuracy and false-positive rate.
 > runnable command for every stage: **[HOW_IT_WORKS.md](HOW_IT_WORKS.md)**.
 > For production CLI/PAT operation, see **[CLI.md](CLI.md)**. For the fast path,
 > see **[`./dev.sh`](dev.sh)** below.
+> For engine status semantics and recovery steps, see
+> **[Scanner Troubleshooting](../TROUBLESHOOTING.md)**.
 
 ---
 

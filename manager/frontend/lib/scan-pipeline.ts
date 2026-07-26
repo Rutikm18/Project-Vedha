@@ -15,12 +15,6 @@ export interface StageState {
 export interface PipelineContext {
   targets: string[];
   profile: ScanProfile;
-  credentials: {
-    domain?: string;
-    username?: string;
-    password?: string;
-    dcIp?: string;
-  };
   naabuPorts?: Record<string, number[]>;
   nmapHosts?: unknown[];
   nucleiMatches?: NucleiMatch[];
@@ -32,6 +26,8 @@ export interface PipelineContext {
 
 export interface PipelineState {
   scanId: string;
+  ownerTenantId: string;
+  ownerUserId: string;
   status: "idle" | "running" | "complete" | "error";
   profile: ScanProfile;
   targets: string[];
@@ -90,7 +86,7 @@ export function createInitialPipelineState(
   scanId: string,
   targets: string[],
   profile: ScanProfile,
-  credentials: PipelineContext["credentials"],
+  owner: { tenantId: string; userId: string },
   tools: ScanTool[],
 ): PipelineState {
   const emptyStage: StageState = { status: "waiting", progress: 0, message: "Waiting" };
@@ -102,6 +98,8 @@ export function createInitialPipelineState(
 
   return {
     scanId,
+    ownerTenantId: owner.tenantId,
+    ownerUserId: owner.userId,
     status: "idle",
     profile,
     targets,
@@ -110,7 +108,7 @@ export function createInitialPipelineState(
     startedAt: new Date().toISOString(),
     totalFindings: 0,
     findingIds: [],
-    context: { targets, profile, credentials },
+    context: { targets, profile },
   };
 }
 

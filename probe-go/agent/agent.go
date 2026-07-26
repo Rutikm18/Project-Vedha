@@ -1,9 +1,9 @@
 // agent/agent.go — main agent loop: register → WS push → HTTP poll fallback.
 //
 // On every wakeup (either push or poll tick) the agent:
-//   1. Picks up a pending job
-//   2. Runs the pipeline (Gate 0–6)
-//   3. Submits the result; spools to disk on failure
+//  1. Picks up a pending job
+//  2. Runs the pipeline (Gate 0–6)
+//  3. Submits the result; spools to disk on failure
 package agent
 
 import (
@@ -14,6 +14,8 @@ import (
 	"math"
 	"math/rand"
 	"os"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/gorilla/websocket"
@@ -25,8 +27,8 @@ const Version = "1.0.0"
 
 var Capabilities = []string{
 	"assessment", "db_fingerprint", "discovery", "host_discovery",
-	"mcp_discovery", "passive_discovery", "port_scan", "service_fingerprint",
-	"smb_enum", "tls_scan", "udp_scan", "vuln_scan", "web_scan",
+	"port_scan", "service_fingerprint", "tls_scan", "udp_scan",
+	"web_scan", "web_tls_scan",
 }
 
 type Agent struct {
@@ -60,12 +62,13 @@ func (a *Agent) Run(ctx context.Context) error {
 	if err := a.obtainIdentity(ctx); err != nil {
 		return err
 	}
+	if err := a.transport.RefreshRegistration(Capabilities, a.cfg.NetworkSegments); err != nil {
+		return fmt.Errorf("refresh probe capabilities: %w", err)
+	}
 	say("Registered as '%s' (id=%s)", a.cfg.ProbeName, a.transport.AgentID)
 
 	// ── Step 2: flush any spooled results from previous run ──────────────────
-	if n := a.spool.Flush(func(jid string, p map[string]interface{}) error {
-		return a.transport.SubmitResult(jid, p)
-	}); n > 0 {
+	if n := a.flushSpool(); n > 0 {
 		say("Flushed %d spooled result(s)", n)
 	}
 
@@ -107,96 +110,279 @@ func (a *Agent) runWSLoop(ctx context.Context) error {
 
 var errWSFallback = fmt.Errorf("ws-fallback")
 
+const (
+	wsProtocolVersion    = 2
+	wsAtomicClaimFeature = "atomic_job_claim_v1"
+)
+
+type wsJSONWriter struct {
+	conn    *websocket.Conn
+	mu      sync.Mutex
+	timeout time.Duration
+}
+
+type wsHelloMessage struct {
+	Type            string   `json:"type"`
+	ProtocolVersion int      `json:"protocol_version"`
+	Features        []string `json:"features"`
+}
+
+type wsJobState struct {
+	sync.RWMutex
+	currentJobID string
+	pendingJobID string
+}
+
+func (w *wsJSONWriter) Write(payload interface{}) error {
+	data, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("marshal WebSocket message: %w", err)
+	}
+
+	w.mu.Lock()
+	defer w.mu.Unlock()
+	if err := w.conn.SetWriteDeadline(time.Now().Add(w.timeout)); err != nil {
+		return err
+	}
+	return w.conn.WriteMessage(websocket.TextMessage, data)
+}
+
 func (a *Agent) wsSession(ctx context.Context) error {
 	conn, err := a.transport.ConnectWS()
 	if err != nil {
 		return errWSFallback // WS not available
 	}
-	defer conn.Close()
+
+	sessionCtx, cancel := context.WithCancel(ctx)
+	var heartbeatDone <-chan struct{}
+	defer func() {
+		cancel()
+		_ = conn.Close()
+		if heartbeatDone != nil {
+			select {
+			case <-heartbeatDone:
+			case <-time.After(2 * time.Second):
+				log.Printf("[agent] WebSocket heartbeat did not stop before shutdown deadline")
+			}
+		}
+	}()
+	go func() {
+		<-sessionCtx.Done()
+		_ = conn.Close()
+	}()
+
+	writer := &wsJSONWriter{conn: conn, timeout: 10 * time.Second}
 
 	// Auth handshake
-	hello, _ := json.Marshal(map[string]string{
-		"type":     "hello",
-		"agent_id": a.transport.AgentID,
-		"token":    a.transport.AgentToken,
-	})
-	conn.WriteMessage(websocket.TextMessage, hello)
+	if err := writer.Write(map[string]interface{}{
+		"type":             "hello",
+		"agent_id":         a.transport.AgentID,
+		"token":            a.transport.AgentToken,
+		"protocol_version": wsProtocolVersion,
+		"features":         []string{wsAtomicClaimFeature},
+	}); err != nil {
+		return errWSFallback
+	}
 
-	conn.SetReadDeadline(time.Now().Add(10 * time.Second))
+	if err := conn.SetReadDeadline(time.Now().Add(10 * time.Second)); err != nil {
+		return errWSFallback
+	}
 	_, raw, err := conn.ReadMessage()
 	if err != nil {
 		return errWSFallback
 	}
-	var msg map[string]interface{}
-	json.Unmarshal(raw, &msg)
-	if msg["type"] != "hello_ok" {
+	var hello wsHelloMessage
+	if err := json.Unmarshal(raw, &hello); err != nil {
 		return errWSFallback
 	}
-	conn.SetReadDeadline(time.Time{})
+	if hello.Type != "hello_ok" ||
+		hello.ProtocolVersion < wsProtocolVersion ||
+		!containsString(hello.Features, wsAtomicClaimFeature) {
+		log.Printf("[agent] manager lacks required WebSocket feature %q; using HTTP polling",
+			wsAtomicClaimFeature)
+		return errWSFallback
+	}
+	if err := conn.SetReadDeadline(time.Time{}); err != nil {
+		return err
+	}
+	if n := a.flushSpool(); n > 0 {
+		say("Flushed %d spooled result(s) after WebSocket reconnect", n)
+	}
 	say("WebSocket push mode active")
 
 	// Heartbeat sender
 	hbDone := make(chan struct{})
+	heartbeatDone = hbDone
+	heartbeatInterval := a.cfg.HeartbeatInterval
+	if heartbeatInterval <= 0 {
+		heartbeatInterval = 30 * time.Second
+	}
+	jobState := &wsJobState{}
 	go func() {
 		defer close(hbDone)
+		ticker := time.NewTicker(heartbeatInterval)
+		defer ticker.Stop()
 		for {
 			select {
-			case <-time.After(a.cfg.HeartbeatInterval):
-				hb, _ := json.Marshal(map[string]string{"type": "heartbeat", "status": "online"})
-				if conn.WriteMessage(websocket.TextMessage, hb) != nil {
+			case <-ticker.C:
+				jobState.RLock()
+				currentJobID := jobState.currentJobID
+				pendingJobID := jobState.pendingJobID
+				jobState.RUnlock()
+				status := "online"
+				if currentJobID != "" || pendingJobID != "" {
+					status = "busy"
+				}
+				if writer.Write(map[string]interface{}{
+					"type": "heartbeat", "status": status, "current_job_id": currentJobID,
+				}) != nil {
+					cancel()
 					return
 				}
-			case <-ctx.Done():
+			case <-sessionCtx.Done():
 				return
 			}
 		}
 	}()
-	defer func() { <-hbDone }()
 
+	pendingResults := make(map[string]struct{})
+	var pendingJob map[string]interface{}
 	for {
 		_, raw, err := conn.ReadMessage()
 		if err != nil {
 			return err
 		}
 		var m map[string]interface{}
-		json.Unmarshal(raw, &m)
+		if err := json.Unmarshal(raw, &m); err != nil {
+			log.Printf("[agent] ignoring malformed WebSocket message: %v", err)
+			continue
+		}
 
 		switch m["type"] {
 		case "job_push":
-			job := m["job"]
-			jraw, _ := json.Marshal(job)
-			var jmap map[string]interface{}
-			json.Unmarshal(jraw, &jmap)
-
+			jmap, ok := m["job"].(map[string]interface{})
+			if !ok {
+				log.Printf("[agent] ignoring malformed job_push payload")
+				continue
+			}
 			jobID, _ := jmap["job_id"].(string)
-			ack, _ := json.Marshal(map[string]interface{}{"type": "job_ack", "job_id": jobID, "accepted": true})
-			conn.WriteMessage(websocket.TextMessage, ack)
+			if _, err := a.spool.path(jobID); err != nil {
+				log.Printf("[agent] rejecting job_push: %v", err)
+				if writeErr := writer.Write(map[string]interface{}{
+					"type": "job_ack", "job_id": jobID, "accepted": false,
+				}); writeErr != nil {
+					return writeErr
+				}
+				continue
+			}
 
-			busy, _ := json.Marshal(map[string]interface{}{"type": "heartbeat", "status": "busy", "current_job_id": jobID})
-			conn.WriteMessage(websocket.TextMessage, busy)
+			jobState.Lock()
+			canAccept := jobState.currentJobID == "" && jobState.pendingJobID == ""
+			if canAccept {
+				jobState.pendingJobID = jobID
+				pendingJob = jmap
+			}
+			jobState.Unlock()
+			if err := writer.Write(map[string]interface{}{
+				"type": "job_ack", "job_id": jobID, "accepted": canAccept,
+			}); err != nil {
+				return err
+			}
+			if !canAccept {
+				log.Printf("[agent] declined job offer %s while another job is pending or running",
+					jobID)
+			}
 
-			result := a.runJob(ctx, jmap)
+		case "job_claim":
+			jobID, _ := m["job_id"].(string)
+			jobState.Lock()
+			matchesPending := pendingJob != nil &&
+				jobState.pendingJobID == jobID &&
+				str(pendingJob, "job_id") == jobID
+			var claimedJob map[string]interface{}
+			if matchesPending {
+				claimedJob = pendingJob
+				pendingJob = nil
+				jobState.pendingJobID = ""
+			}
+			jobState.Unlock()
 
-			res, _ := json.Marshal(map[string]interface{}{
+			if !matchesPending {
+				log.Printf("[agent] ignoring job_claim for unstaged job %q", jobID)
+				continue
+			}
+			claimed, _ := m["claimed"].(bool)
+			if !claimed {
+				log.Printf("[agent] manager rejected job claim %s: %v", jobID, m["reason"])
+				if err := writer.Write(map[string]interface{}{
+					"type": "heartbeat", "status": "online", "current_job_id": nil,
+				}); err != nil {
+					return err
+				}
+				continue
+			}
+
+			jobState.Lock()
+			jobState.currentJobID = jobID
+			jobState.Unlock()
+			if err := writer.Write(map[string]interface{}{
+				"type": "heartbeat", "status": "busy", "current_job_id": jobID,
+			}); err != nil {
+				return err
+			}
+
+			result := a.runJob(sessionCtx, claimedJob)
+			payload := resultPayload(result)
+			if err := a.spool.Save(jobID, payload); err != nil {
+				// Disk durability failed. A synchronous HTTP acknowledgment is
+				// the only safe fallback before releasing the in-memory result.
+				if submitErr := a.transport.SubmitResult(jobID, payload); submitErr != nil {
+					return fmt.Errorf("preserve result %s: spool: %v; HTTP fallback: %w",
+						jobID, err, submitErr)
+				}
+				if cleanupErr := a.spool.Delete(jobID); cleanupErr != nil {
+					log.Printf("[agent] HTTP fallback accepted %s; spool cleanup: %v",
+						jobID, cleanupErr)
+				}
+				say("  Spool unavailable for %s; manager accepted HTTP fallback", jobID)
+			} else if err := writer.Write(map[string]interface{}{
 				"type":    "result",
 				"job_id":  jobID,
-				"success": result["ok"],
-				"result":  result,
-			})
-			conn.WriteMessage(websocket.TextMessage, res)
+				"success": payload["success"],
+				"result":  payload["result"],
+				"error":   payload["error"],
+			}); err != nil {
+				return err
+			} else {
+				pendingResults[jobID] = struct{}{}
+			}
 
-			online, _ := json.Marshal(map[string]string{"type": "heartbeat", "status": "online"})
-			conn.WriteMessage(websocket.TextMessage, online)
+			jobState.Lock()
+			jobState.currentJobID = ""
+			jobState.Unlock()
+			if err := writer.Write(map[string]interface{}{
+				"type": "heartbeat", "status": "online", "current_job_id": nil,
+			}); err != nil {
+				return err
+			}
 
 		case "displaced", "error":
 			say("WS: %v", m["message"])
 			return fmt.Errorf("ws displaced")
 
 		case "result_ack":
-			// manager acknowledged our result
+			jobID, _ := m["job_id"].(string)
+			if _, pending := pendingResults[jobID]; pending {
+				if err := a.spool.Delete(jobID); err != nil {
+					log.Printf("[agent] result %s acknowledged but spool cleanup failed: %v",
+						jobID, err)
+				} else {
+					delete(pendingResults, jobID)
+				}
+			}
 		}
 
-		if ctx.Err() != nil {
+		if sessionCtx.Err() != nil {
 			return nil
 		}
 	}
@@ -216,8 +402,11 @@ func (a *Agent) runPollLoop(ctx context.Context) error {
 		}
 
 		if time.Since(lastHB) >= a.cfg.HeartbeatInterval {
-			a.transport.Heartbeat("online", "")
-			lastHB = time.Now()
+			if err := a.heartbeatWithRetry(ctx, "online", "", 2); err != nil {
+				log.Printf("[agent] online heartbeat failed: %v", err)
+			} else {
+				lastHB = time.Now()
+			}
 		}
 
 		jobs, err := a.transport.PollJobs(a.cfg.JobLimit)
@@ -226,10 +415,22 @@ func (a *Agent) runPollLoop(ctx context.Context) error {
 		} else {
 			for _, job := range jobs {
 				jobID, _ := job["job_id"].(string)
-				a.transport.Heartbeat("busy", jobID)
-				result := a.runJob(ctx, job)
+				if err := a.heartbeatWithRetry(ctx, "busy", jobID, 3); err != nil {
+					message := fmt.Sprintf(
+						"lease heartbeat failed; refusing to execute claimed job: %v", err,
+					)
+					log.Printf("[agent] job %s: %s", jobID, message)
+					a.submitWithSpool(jobID, a.rejectJob(job, message))
+					if onlineErr := a.heartbeatWithRetry(ctx, "online", "", 2); onlineErr != nil {
+						log.Printf("[agent] rejection heartbeat failed: %v", onlineErr)
+					}
+					continue
+				}
+				result := a.runPolledJob(ctx, jobID, job)
 				a.submitWithSpool(jobID, result)
-				a.transport.Heartbeat("online", "")
+				if err := a.heartbeatWithRetry(ctx, "online", "", 2); err != nil {
+					log.Printf("[agent] post-job heartbeat failed: %v", err)
+				}
 			}
 		}
 
@@ -243,38 +444,229 @@ func (a *Agent) runPollLoop(ctx context.Context) error {
 	}
 }
 
+func (a *Agent) runPolledJob(
+	ctx context.Context,
+	jobID string,
+	raw map[string]interface{},
+) map[string]interface{} {
+	jobCtx, cancel := context.WithCancel(ctx)
+	heartbeatDone := make(chan struct{})
+	leaseFailure := make(chan error, 1)
+	interval := a.cfg.HeartbeatInterval
+	if interval <= 0 {
+		interval = 30 * time.Second
+	}
+	go func() {
+		defer close(heartbeatDone)
+		ticker := time.NewTicker(interval)
+		defer ticker.Stop()
+		consecutiveFailures := 0
+		for {
+			select {
+			case <-ticker.C:
+				if err := a.heartbeatWithRetry(jobCtx, "busy", jobID, 2); err != nil {
+					if jobCtx.Err() != nil {
+						return
+					}
+					consecutiveFailures++
+					log.Printf("[agent] lease heartbeat failed for job %s: %v", jobID, err)
+					if consecutiveFailures >= 3 {
+						leaseFailure <- fmt.Errorf(
+							"lease heartbeat failed %d consecutive times: %w",
+							consecutiveFailures, err,
+						)
+						cancel()
+						return
+					}
+				} else {
+					consecutiveFailures = 0
+				}
+			case <-jobCtx.Done():
+				return
+			}
+		}
+	}()
+
+	result := a.runJob(jobCtx, raw)
+	cancel()
+	select {
+	case <-heartbeatDone:
+	case <-time.After(2 * time.Second):
+		log.Printf("[agent] lease heartbeat worker did not stop before deadline")
+	}
+	select {
+	case err := <-leaseFailure:
+		message := fmt.Sprintf("scan cancelled because manager lease could not be renewed: %v", err)
+		result["ok"] = false
+		result["error"] = message
+		switch existing := result["errors"].(type) {
+		case []interface{}:
+			result["errors"] = append(existing, message)
+		case []string:
+			result["errors"] = append(existing, message)
+		default:
+			result["errors"] = []string{message}
+		}
+	default:
+	}
+	return result
+}
+
+func (a *Agent) heartbeatWithRetry(
+	ctx context.Context,
+	status string,
+	jobID string,
+	attempts int,
+) error {
+	if attempts < 1 {
+		attempts = 1
+	}
+	var lastErr error
+	for attempt := 0; attempt < attempts; attempt++ {
+		requestCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+		lastErr = a.transport.Heartbeat(requestCtx, status, jobID)
+		cancel()
+		if lastErr == nil {
+			return nil
+		}
+		log.Printf(
+			"[agent] heartbeat status=%s job=%s attempt=%d/%d failed: %v",
+			status, jobID, attempt+1, attempts, lastErr,
+		)
+		if attempt+1 == attempts {
+			break
+		}
+		delay := time.Duration(1<<attempt) * 250 * time.Millisecond
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		case <-time.After(delay):
+		}
+	}
+	return lastErr
+}
+
 // ── job execution ─────────────────────────────────────────────────────────────
 
 func (a *Agent) runJob(ctx context.Context, raw map[string]interface{}) map[string]interface{} {
-	job := mapToJob(raw)
+	job, err := mapToJob(raw)
+	if err != nil {
+		log.Printf("[agent] rejected job %s before execution: %v", job.JobID, err)
+		return resultToMap(pipeline.Reject(job, a.probeID, err.Error()))
+	}
 	log.Printf("[agent] running job %s type=%s profile=%s", job.JobID, job.ScanType, job.Profile)
 
 	result := pipeline.Run(ctx, job, a.probeID)
 	say("  ✓ job %s done — %d hosts, %d ports, %d facts",
 		job.JobID, result.HostCount, result.OpenPorts, result.FactCount)
 
-	b, _ := json.Marshal(result)
+	return resultToMap(result)
+}
+
+func (a *Agent) rejectJob(raw map[string]interface{}, message string) map[string]interface{} {
+	job, _ := mapToJob(raw)
+	if job.JobID == "" {
+		job.JobID = str(raw, "job_id")
+	}
+	return resultToMap(pipeline.Reject(job, a.probeID, message))
+}
+
+func resultToMap(result pipeline.Result) map[string]interface{} {
+	b, err := json.Marshal(result)
+	if err != nil {
+		return map[string]interface{}{
+			"ok": false, "error": fmt.Sprintf("encode pipeline result: %v", err),
+		}
+	}
 	var m map[string]interface{}
-	json.Unmarshal(b, &m)
+	if err := json.Unmarshal(b, &m); err != nil {
+		return map[string]interface{}{
+			"ok": false, "error": fmt.Sprintf("decode pipeline result: %v", err),
+		}
+	}
 	return m
 }
 
 func (a *Agent) submitWithSpool(jobID string, payload map[string]interface{}) {
-	err := a.transport.SubmitResult(jobID, payload)
-	if err != nil {
-		say("  Submit failed (%v) — spooling result for retry", err)
-		a.spool.Save(jobID, payload)
+	envelope := resultPayload(payload)
+	if err := a.spool.Save(jobID, envelope); err != nil {
+		say("  Could not preserve result before submit: %v", err)
+		if submitErr := a.transport.SubmitResult(jobID, envelope); submitErr != nil {
+			say("  Submit also failed (%v); result could not be persisted", submitErr)
+		} else if cleanupErr := a.spool.Delete(jobID); cleanupErr != nil {
+			say("  Manager accepted result; spool cleanup failed: %v", cleanupErr)
+		}
+		return
 	}
+
+	if err := a.transport.SubmitResult(jobID, envelope); err != nil {
+		say("  Submit failed (%v); preserved result remains spooled for retry", err)
+		return
+	}
+	if err := a.spool.Delete(jobID); err != nil {
+		say("  Manager accepted result but spool cleanup failed: %v", err)
+	}
+}
+
+func (a *Agent) flushSpool() int {
+	return a.spool.Flush(func(jobID string, payload map[string]interface{}) error {
+		return a.transport.SubmitResult(jobID, normalizeResultPayload(payload))
+	})
+}
+
+func resultPayload(result map[string]interface{}) map[string]interface{} {
+	success, _ := result["ok"].(bool)
+	payload := map[string]interface{}{
+		"success": success,
+		"result":  result,
+		"error":   nil,
+	}
+	if errText, ok := result["error"].(string); ok && errText != "" {
+		payload["error"] = errText
+	}
+	return payload
+}
+
+func normalizeResultPayload(payload map[string]interface{}) map[string]interface{} {
+	if _, hasSuccess := payload["success"]; hasSuccess {
+		if _, hasResult := payload["result"]; hasResult {
+			return payload
+		}
+	}
+	return resultPayload(payload)
 }
 
 // ── identity / registration ───────────────────────────────────────────────────
 
 func (a *Agent) obtainIdentity(ctx context.Context) error {
-	// Use pre-configured token if present
-	if a.cfg.AgentID != "" && a.cfg.AgentToken != "" {
-		a.transport.AgentID = a.cfg.AgentID
-		a.transport.AgentToken = a.cfg.AgentToken
+	// Explicit configuration always wins over persisted state. Refuse partial
+	// credentials rather than combining values from different trust sources.
+	configuredID := strings.TrimSpace(a.cfg.AgentID)
+	configuredToken := strings.TrimSpace(a.cfg.AgentToken)
+	if configuredID != "" || configuredToken != "" {
+		if configuredID == "" || configuredToken == "" {
+			return fmt.Errorf("AGENT_ID and AGENT_TOKEN must be set together")
+		}
+		a.transport.AgentID = configuredID
+		a.transport.AgentToken = configuredToken
 		return nil
+	}
+
+	if a.cfg.StateFile != "" {
+		state, err := loadIdentityState(
+			a.cfg.StateFile,
+			a.cfg.PlatformURL,
+			a.cfg.ProbeName,
+		)
+		if err == nil {
+			a.transport.AgentID = state.AgentID
+			a.transport.AgentToken = state.Token
+			return nil
+		}
+		if !os.IsNotExist(err) {
+			log.Printf("[agent] ignoring unusable identity state %q: %v",
+				a.cfg.StateFile, err)
+		}
 	}
 
 	for {
@@ -310,58 +702,206 @@ func (a *Agent) obtainIdentity(ctx context.Context) error {
 			}
 			continue
 		}
+		if a.cfg.StateFile != "" {
+			if err := saveIdentityState(
+				a.cfg.StateFile,
+				a.transport.AgentID,
+				a.transport.AgentToken,
+				a.cfg.PlatformURL,
+				a.cfg.ProbeName,
+			); err != nil {
+				return fmt.Errorf("persist registered agent identity: %w", err)
+			}
+		}
 		return nil
 	}
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────────
 
-func mapToJob(m map[string]interface{}) pipeline.Job {
-	j := pipeline.Job{
-		JobID:    str(m, "job_id"),
-		ScanType: firstStr(str(m, "job_type"), str(m, "scan_type"), "assessment"),
-	}
-	if p, ok := m["params"].(map[string]interface{}); ok {
-		j.Profile = firstStr(str(p, "profile"), "it")
-		j.EngagementID = str(p, "engagement_id")
-		j.UseCaseID = str(p, "use_case_id")
-		j.Rate, _ = p["rate"].(float64)
-		j.Concurrency = int(floatOr(p["concurrency"], 100))
-		j.Timeout = floatOr(p["timeout"], 3)
-		j.DiscTimeout = floatOr(p["disc_timeout"], 1.5)
+type useCasePlan struct {
+	scanType string
+	profile  string
+}
 
-		if sc, ok := p["scope_cidrs"].([]interface{}); ok {
-			for _, v := range sc {
-				if s, ok := v.(string); ok {
-					j.ScopeCIDRs = append(j.ScopeCIDRs, s)
-				}
-			}
+var useCasePlans = map[string]useCasePlan{
+	"uc_discovery_only":       {scanType: "discovery", profile: "it"},
+	"uc_full_assessment":      {scanType: "assessment", profile: "it"},
+	"uc_external_web_triage":  {scanType: "web_tls_scan", profile: "it"},
+	"uc_db_exposure":          {scanType: "db_fingerprint", profile: "it"},
+	"uc_windows_estate":       {scanType: "smb_enum", profile: "it"},
+	"uc_ot_passive":           {scanType: "passive_discovery", profile: "ot"},
+	"uc_ai_endpoint_sweep":    {scanType: "mcp_discovery", profile: "it"},
+	"uc_rescan_delta":         {scanType: "assessment", profile: "it"},
+	"uc_iot_device_survey":    {scanType: "discovery", profile: "iot"},
+	"uc_web_app_triage":       {scanType: "web_scan", profile: "it"},
+	"uc_udp_service_exposure": {scanType: "udp_scan", profile: "it"},
+	"uc_snmp_exposure":        {scanType: "snmp_scan", profile: "it"},
+}
+
+func mapToJob(m map[string]interface{}) (pipeline.Job, error) {
+	params := map[string]interface{}{}
+	if rawParams, exists := m["params"]; exists {
+		var ok bool
+		params, ok = rawParams.(map[string]interface{})
+		if !ok {
+			return pipeline.Job{JobID: str(m, "job_id")}, fmt.Errorf("job params must be an object")
 		}
-		if ex, ok := p["excluded_cidrs"].([]interface{}); ok {
-			for _, v := range ex {
-				if s, ok := v.(string); ok {
-					j.ExcludeCIDRs = append(j.ExcludeCIDRs, s)
-				}
-			}
+	}
+
+	jobType := strings.ToLower(strings.TrimSpace(firstStr(str(m, "job_type"), "discovery")))
+	useCaseID := strings.TrimSpace(firstStr(str(params, "use_case_id"), str(m, "use_case_id")))
+	j := pipeline.Job{
+		JobID:        strings.TrimSpace(str(m, "job_id")),
+		EngagementID: strings.TrimSpace(firstStr(str(m, "engagement_id"), str(params, "engagement_id"))),
+		UseCaseID:    useCaseID,
+		Concurrency:  int(floatOr(params["concurrency"], 100)),
+		Timeout:      floatOr(params["timeout"], 3),
+		DiscTimeout:  floatOr(params["disc_timeout"], 1.5),
+	}
+	j.Rate, _ = params["rate"].(float64)
+
+	if useCaseID != "" {
+		plan, ok := useCasePlans[useCaseID]
+		if !ok {
+			return j, fmt.Errorf("unknown use_case_id %q", useCaseID)
 		}
-		// targets can be in params or top-level
-		for _, key := range []string{"targets", "target", "scope_cidrs"} {
-			switch v := p[key].(type) {
-			case string:
-				j.Targets = append(j.Targets, v)
-			case []interface{}:
-				for _, vv := range v {
-					if s, ok := vv.(string); ok {
-						j.Targets = append(j.Targets, s)
-					}
-				}
-			}
-		}
+		j.ScanType = plan.scanType
+		j.Profile = plan.profile
+	} else {
+		j.ScanType = strings.ToLower(strings.TrimSpace(firstStr(
+			str(params, "scan_type"),
+			str(m, "scan_type"),
+			defaultScanType(jobType),
+		)))
+		j.Profile = strings.ToLower(strings.TrimSpace(firstStr(str(params, "profile"), "it")))
+	}
+
+	if encrypted := strings.TrimSpace(firstStr(
+		str(m, "encrypted_scope"), str(params, "encrypted_scope"),
+	)); encrypted != "" {
+		return j, fmt.Errorf(
+			"encrypted scope is unsupported by the Go probe; refusing to execute",
+		)
+	}
+
+	authoritativeScope, err := stringList(params["_scope_cidrs"], "_scope_cidrs")
+	if err != nil {
+		return j, err
+	}
+	embeddedScope, err := stringList(params["scope_cidrs"], "scope_cidrs")
+	if err != nil {
+		return j, err
+	}
+	if j.EngagementID != "" && len(authoritativeScope) == 0 {
+		return j, fmt.Errorf(
+			"manager-issued job lacks authoritative _scope_cidrs; refusing target-only payload",
+		)
+	}
+	j.ScopeCIDRs = authoritativeScope
+	if len(j.ScopeCIDRs) == 0 {
+		j.ScopeCIDRs = embeddedScope
+	}
+
+	j.Targets, err = firstTargetList(params, m)
+	if err != nil {
+		return j, err
 	}
 	if len(j.Targets) == 0 {
-		j.Targets = j.ScopeCIDRs
+		j.Targets = append([]string(nil), j.ScopeCIDRs...)
 	}
-	return j
+	if len(j.Targets) == 0 {
+		return j, fmt.Errorf("job has no requested targets")
+	}
+
+	authoritativeExcludes, err := stringList(params["_excluded_cidrs"], "_excluded_cidrs")
+	if err != nil {
+		return j, err
+	}
+	jobExcludes, err := stringList(params["excluded_cidrs"], "excluded_cidrs")
+	if err != nil {
+		return j, err
+	}
+	j.ExcludeCIDRs = dedupStrings(append(authoritativeExcludes, jobExcludes...))
+
+	if err := pipeline.ValidatePlan(j.ScanType, j.Profile); err != nil {
+		return j, err
+	}
+	return j, nil
+}
+
+func defaultScanType(jobType string) string {
+	switch jobType {
+	case "discovery":
+		return "discovery"
+	case "lateral":
+		return "smb_enum"
+	case "cloud_scan":
+		return "vuln_scan"
+	default:
+		return jobType
+	}
+}
+
+func firstTargetList(params, topLevel map[string]interface{}) ([]string, error) {
+	for _, source := range []map[string]interface{}{params, topLevel} {
+		for _, key := range []string{"targets", "target"} {
+			if value, exists := source[key]; exists {
+				targets, err := stringList(value, key)
+				if err != nil {
+					return nil, err
+				}
+				if len(targets) > 0 {
+					return targets, nil
+				}
+			}
+		}
+	}
+	return nil, nil
+}
+
+func stringList(value interface{}, field string) ([]string, error) {
+	if value == nil {
+		return nil, nil
+	}
+	var raw []string
+	switch typed := value.(type) {
+	case string:
+		raw = []string{typed}
+	case []string:
+		raw = typed
+	case []interface{}:
+		raw = make([]string, 0, len(typed))
+		for _, item := range typed {
+			text, ok := item.(string)
+			if !ok {
+				return nil, fmt.Errorf("%s must contain only strings", field)
+			}
+			raw = append(raw, text)
+		}
+	default:
+		return nil, fmt.Errorf("%s must be a string or list of strings", field)
+	}
+
+	cleaned := make([]string, 0, len(raw))
+	for _, item := range raw {
+		if item = strings.TrimSpace(item); item != "" {
+			cleaned = append(cleaned, item)
+		}
+	}
+	return dedupStrings(cleaned), nil
+}
+
+func dedupStrings(values []string) []string {
+	seen := make(map[string]bool, len(values))
+	out := make([]string, 0, len(values))
+	for _, value := range values {
+		if !seen[value] {
+			seen[value] = true
+			out = append(out, value)
+		}
+	}
+	return out
 }
 
 func str(m map[string]interface{}, k string) string {
@@ -376,6 +916,15 @@ func firstStr(vals ...string) string {
 		}
 	}
 	return ""
+}
+
+func containsString(values []string, want string) bool {
+	for _, value := range values {
+		if value == want {
+			return true
+		}
+	}
+	return false
 }
 
 func floatOr(v interface{}, def float64) float64 {

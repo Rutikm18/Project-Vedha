@@ -2,6 +2,8 @@
 from __future__ import annotations
 
 import json
+import os
+import stat
 from pathlib import Path
 from unittest.mock import MagicMock, patch
 
@@ -52,6 +54,77 @@ class TestIdentity:
         assert t.agent_token == ""
         assert state_file.exists() is False
 
+    def test_loads_cached_agent_identity_from_state(self, tmp_path):
+        state_file = tmp_path / "state.json"
+        state_file.write_text(json.dumps({
+            "agent_id": "cached-agent",
+            "token": "cached-token",
+            "identity_sk": "private-key-material",
+        }))
+
+        t = Transport("http://localhost:8000", state_file=state_file)
+
+        assert t.agent_id == "cached-agent"
+        assert t.agent_token == "cached-token"
+
+    def test_agent_state_updates_preserve_scope_identity(self, tmp_path):
+        state_file = tmp_path / "state.json"
+        state_file.write_text(json.dumps({
+            "identity_sk": "private-key-material",
+            "identity_pk": "public-key-material",
+        }))
+        t = Transport("http://localhost:8000", state_file=state_file)
+        t.agent_id = "agent-1"
+        t.agent_token = "token-1"
+
+        t.save_state()
+        saved = json.loads(state_file.read_text())
+        assert saved["identity_sk"] == "private-key-material"
+        assert saved["agent_id"] == "agent-1"
+
+        t.clear_state()
+        cleared = json.loads(state_file.read_text())
+        assert "agent_id" not in cleared
+        assert "token" not in cleared
+        assert cleared["identity_sk"] == "private-key-material"
+        if os.name == "posix":
+            assert stat.S_IMODE(state_file.stat().st_mode) == 0o600
+
+    @pytest.mark.skipif(os.name != "posix", reason="POSIX permission modes")
+    def test_private_state_uses_restrictive_modes_and_fsync(self, tmp_path):
+        state_file = tmp_path / "private" / "state.json"
+        t = Transport("http://localhost:8000", state_file=state_file)
+        t.agent_id = "agent-1"
+        t.agent_token = "token-1"
+
+        with patch("agent.transport.os.fsync", wraps=os.fsync) as fsync:
+            t.save_state()
+
+        assert stat.S_IMODE(state_file.parent.stat().st_mode) == 0o700
+        assert stat.S_IMODE(state_file.stat().st_mode) == 0o600
+        assert fsync.call_count >= 2
+
+    def test_failed_atomic_replace_preserves_previous_state(self, tmp_path):
+        state_file = tmp_path / "private" / "state.json"
+        t = Transport("http://localhost:8000", state_file=state_file)
+        t.update_state({
+            "agent_id": "agent-1",
+            "token": "token-1",
+            "identity_sk": "private-key-material",
+        })
+        previous = state_file.read_text()
+
+        t.agent_token = "rotated-token"
+        with patch(
+            "agent.transport.os.replace",
+            side_effect=OSError("simulated replace failure"),
+        ):
+            with pytest.raises(OSError, match="replace failure"):
+                t.save_state()
+
+        assert state_file.read_text() == previous
+        assert list(state_file.parent.glob(f".{state_file.name}.*.tmp")) == []
+
 
 class TestRegister:
     def test_successful_registration(self, transport):
@@ -93,6 +166,51 @@ class TestRegister:
         transport.register("probe-01", public_key="base64pubkey==", operator_token="tok")
         call_json = transport._client.post.call_args[1]["json"]
         assert call_json["public_key"] == "base64pubkey=="
+
+
+class TestRefreshRegistration:
+
+    def test_cached_agent_refreshes_capabilities(self, transport):
+        transport.agent_id = "abc"
+        transport.agent_token = "tok"
+        transport._client.post.return_value = MagicMock(status_code=200)
+
+        refreshed = transport.refresh_registration(
+            capabilities=["discovery", "web_tls_scan"],
+            network_segments=["10.0.0.0/24"],
+            public_key="base64pubkey==",
+        )
+
+        assert refreshed is True
+        call = transport._client.post.call_args
+        assert call.args[0] == "/agents/abc/refresh"
+        assert call.kwargs["headers"] == {"Authorization": "Bearer tok"}
+        assert call.kwargs["json"]["capabilities"] == [
+            "discovery",
+            "web_tls_scan",
+        ]
+
+    def test_old_manager_returns_compatibility_signal(self, transport):
+        transport.agent_id = "abc"
+        transport.agent_token = "tok"
+        transport._client.post.return_value = MagicMock(status_code=404)
+
+        assert transport.refresh_registration(
+            capabilities=["discovery"],
+            network_segments=[],
+        ) is None
+
+    @pytest.mark.parametrize("status_code", [401, 403, 410])
+    def test_rejected_cached_identity_raises(self, transport, status_code):
+        transport.agent_id = "abc"
+        transport.agent_token = "expired"
+        transport._client.post.return_value = MagicMock(status_code=status_code)
+
+        with pytest.raises(TransportError, match="rejected"):
+            transport.refresh_registration(
+                capabilities=["discovery"],
+                network_segments=[],
+            )
 
 
 class TestHeartbeat:

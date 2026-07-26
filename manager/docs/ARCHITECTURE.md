@@ -32,7 +32,7 @@ Testing) platform. It is split into two cooperating planes:
 | Plane | What it is | Where it runs |
 |---|---|---|
 | **Platform (manager)** | A FastAPI control plane + Postgres/Redis (+ optional Neo4j) and a built-in operator console. It stores state, orchestrates work, runs all analysis engines, and serves the dashboard. | Central server / your hosting machine (Docker Compose). |
-| **Probe(s)** | Lightweight remote scanners that sit **inside** the target networks. They dial out to the platform, pull scan jobs, run them (today: `nmap` discovery), and ship results back. | One per network segment, behind NAT/firewall. |
+| **Probe(s)** | Lightweight remote collectors inside target networks. They dial out, claim scoped jobs, run the native gated workflow, and ship raw facts plus per-component status. | One or more per declared network segment, behind NAT/firewall. |
 
 ```
         OPERATORS (browser / API)                         TARGET NETWORKS
@@ -160,56 +160,38 @@ So: define scope/RoE once on the engagement → it constrains discovery, exploit
 ## 4. Probe architecture
 
 ### 4.1 What a probe is
-A small, self-contained agent (`probe/agent.py`, ~250 LOC + `nmap`) packaged as a
-Docker image or a systemd service. It is **stateless to the network** (nothing
-listens inbound) and **identity-stable** (its `agent_id`/token are cached in a
-state file/volume so restarts reuse the same identity).
+A self-contained, dial-out-only agent from the repository's canonical `probe/`
+deployable. It is packaged as a Docker image or systemd service, keeps a stable
+encrypted identity, refreshes its advertised capabilities at startup, validates
+authoritative engagement scope, and durably spools unacknowledged results.
 
 ### 4.2 Capabilities — what scanning the probe does
-The probe is a **registry of scanners** (`probe/scanners/`), each a tool + parser.
-It auto-detects which it can run from the installed tools and advertises them on
-register; the operator selects one per job via `params.scan_type`.
+The probe advertises a finite use-case/scan-type catalog. Every accepted job
+runs through `probe/workflow/`; callers cannot inject arbitrary tool arguments.
+The workflow performs discovery, TCP ports, banners, and only the deep branches
+justified by observed ports/services and the selected profile.
 
-**White-labeling**: the real tool behind each scanner is an internal detail —
-`ENGINE_LABELS` in `probe/scanners/base.py` maps it to a branded `ix-*` codename,
-and `sanitize()` redacts raw tool names from any error/log text leaving the
-probe. Operators and stored results only ever see the engine codename, never
-`nmap`/`masscan`/etc.
+| Native component | Role |
+|---|---|
+| Host Discovery / TCP Port Scan | Establish liveness and open TCP services. |
+| Service Banner | Collect service/version evidence from confirmed open ports. |
+| TLS Inspector / Web Fingerprint | Collect TLS certificate/protocol and passive HTTP facts. |
+| SMB / SNMP / Database | Perform minimal, read-only protocol negotiation. |
+| UDP Service Probe | Probe selected DNS/NTP/SNMP/NetBIOS services. |
+| AI / MCP Discovery | Read discovery endpoints without invoking exposed tools. |
+| Passive Discovery | OT profile only; observes announcements without active packets. |
+| SSH / Windows Inventory | Optional authorized credentialed inventory. |
 
-| `scan_type` | Engine | What it gathers |
-|---|---|---|
-| `host_discovery` | `ix-netscan` (nmap `-sn`) | fast liveness sweep — live hosts, MAC + NIC vendor |
-| `discovery` | `ix-netscan` (nmap `-sV`) | live hosts, open ports, service + version |
-| `port_scan` | `ix-netscan` (nmap, fast) | open TCP ports (no version) — quick sweep |
-| `mass_scan` | `ix-fastsweep` (masscan) | internet-speed port sweep of large ranges |
-| `service_fingerprint` | `ix-netscan` (nmap `--version-all`) | installed-server inventory — product, version, CPE, category |
-| `udp_scan` | `ix-netscan` (nmap `-sU`) | UDP services — SNMP/DNS/NTP/NetBIOS/SIP/IKE |
-| `vuln_scan` | `ix-vulnscan` (nuclei) | CVEs, misconfigs, exposures, default logins (severity-tagged) |
-| `tls_scan`  | `ix-tlsscan` (sslscan) | weak/deprecated protocols, weak ciphers, certificate issues |
-| `web_scan`  | `ix-webscan` (httpx) | HTTP status, title, web server, detected technologies |
-| `smb_enum`  | `ix-smbscan` (netexec) | SMB signing, SMBv1, null sessions, (with creds) shares |
-| `mcp_discovery` | `ix-aiscan` (builtin) | MCP servers — JSON-RPC handshake + exposed tool/resource enumeration |
-| `ai_service_discovery` | `ix-aiscan` (builtin) | AI/LLM/ML servers — Ollama, vLLM, Jupyter, Ray, Triton, ComfyUI, … |
-| `passive_discovery` | `ix-passivescan` (builtin) | **OT/ICS-safe** — listens only (mDNS/SSDP/LLMNR/BACnet/EtherNet-IP), transmits nothing |
-| `db_fingerprint` | `ix-dbscan` (builtin) | databases — MySQL/Postgres/MSSQL/Redis/MongoDB/Oracle via real protocol handshakes |
-| `ssh_inventory` | `ix-sshaudit` (builtin, optional `paramiko`) | credentialed Linux inventory — OS, packages, listeners, processes |
-| `windows_inventory` | `ix-winaudit` (builtin, optional `pywinrm`/`impacket`) | credentialed Windows inventory — OS build, hotfixes, software, services (WinRM, SMB fallback) |
+The stable wire identifier remains `engine: scanner_module`, but engine identity
+is not hidden. Every result includes a versioned `engine_manifest`, per-component
+`scanner_runs`, and structured `issues`. Nmap and Masscan are identified by name
+as optional `standalone_validation` engines; `available` never means they ran.
+Manager-side Nuclei, OpenVAS, NetExec, and WhatWeb adapters are separate analysis
+or operator workflows and are not silently attributed to the field probe.
 
-The last 4 were added to close gaps the original 12 left: no OT-safe discovery
-(every other scan_type is active), no credentialed collection at all, and no
-database protocol fingerprinting. `ssh_inventory`/`windows_inventory` only
-advertise when their optional Python dependency is importable — same
-"missing engine → not advertised" rule as a missing `nmap` binary, via a new
-`available_check` override on `Scanner` (`base.py`) for capabilities gated on
-a Python import rather than a binary on PATH.
-
-Coarse `job_type` (the bucket the manager hands to probes) maps to a default
-`scan_type`: `discovery`→`discovery`, `lateral`→`smb_enum`, `cloud_scan`→`vuln_scan`.
-An explicit `params.scan_type` overrides the default and can select any
-registered scan_type regardless of `job_type` — see §4.6 for how the OT
-profile constrains this. Every scanner returns a normalized
-`{scan_type, engine, ok, error, hosts|findings|…}` result; a missing
-engine/dependency is reported cleanly and never crashes the probe.
+Capability and network-segment checks happen before both HTTP polling and
+WebSocket claims. A missing capability, failed dependency, timeout, nonzero
+exit, or parse error is explicit and cannot be converted into a clean zero.
 
 **Discovery output** (submitted as the job result):
 ```json
@@ -219,8 +201,9 @@ engine/dependency is reported cleanly and never crashes the probe.
       "ports": [ { "port": 22, "protocol": "tcp", "service": "ssh",
                    "product": "OpenSSH", "version": "6.6.1p1" } ] } ] }
 ```
-Job **parameters** the operator/dashboard can set: `targets` (list/CIDR/host),
-`ports` (e.g. `1-1024`), `args` (nmap flags, default `-sV -T4 -Pn`), `timeout`.
+Job parameters are typed and bounded: a target subset, exclusions, profile,
+intensity, operation timeouts, passive listen duration, and optional
+engagement-scoped credentials. Arbitrary subprocess arguments are not accepted.
 
 > Probes only run **network-side** jobs. Server-side analysis (vuln enrichment,
 > AD, detection correlation, AI) never leaves the platform — the queue refuses to

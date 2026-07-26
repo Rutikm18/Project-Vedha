@@ -15,42 +15,88 @@ import socket
 from dataclasses import asdict
 from datetime import datetime, timedelta, timezone
 
-from scanner.scanner_base import ScopeGuard
+from scanner.scanner_base import ScopeGuard, expand_targets
 
 from workflow.cache import WorkflowCache
-from workflow.modes import assessment, service_specific, triage
+from workflow.execution import (
+    ExecutionTrace,
+    engine_manifest,
+    planned_components,
+)
+from workflow.modes import (
+    assessment,
+    discovery as discovery_mode,
+    host_discovery as host_discovery_mode,
+    port_scan as port_scan_mode,
+    service_fingerprint as service_fingerprint_mode,
+    service_specific,
+    triage,
+)
 from workflow.workflow_engine import run_engagement
 
 RESULT_SCHEMA_VERSION = "1.1"
 PROBE_ID = os.environ.get("PROBE_NAME") or socket.gethostname()
+ENGINE_ID = "scanner_module"
+ENGINE_VERSION = os.environ.get("PROBE_BUILD_VERSION", "2.0.0")
+ENGINE_BUILD_SHA = os.environ.get("PROBE_BUILD_SHA")
+VALID_PROFILES = {"it", "iot", "ot"}
 
 
-def _error_result(scan_type: str, error: str, **overrides) -> dict:
+def _runtime_manifest() -> dict:
+    return engine_manifest(
+        build_version=ENGINE_VERSION,
+        build_sha=ENGINE_BUILD_SHA,
+    )
+
+
+def _error_result(
+    scan_type: str,
+    error: str,
+    *,
+    error_code: str = "job_invalid",
+    remediation: str | None = None,
+    **overrides,
+) -> dict:
     """Single factory for error result dicts — no copy-paste."""
-    return {
+    issue = {
+        "code": error_code,
+        "scanner": ENGINE_ID,
+        "message": error,
+        "retryable": False,
+    }
+    if remediation:
+        issue["remediation"] = remediation
+    result = {
         "result_schema_version": RESULT_SCHEMA_VERSION,
         "probe_id": PROBE_ID,
         "scan_type": scan_type,
         "started_at": datetime.now(timezone.utc).isoformat(),
         "finished_at": datetime.now(timezone.utc).isoformat(),
         "ok": False,
+        "outcome": "failed",
+        "engine": ENGINE_ID,
+        "engine_manifest": _runtime_manifest(),
         "error": error,
+        "error_code": error_code,
         "facts": [],
         "run_stats": {},
         "errors": [error],
-        **overrides,
+        "issues": [issue],
     }
+    result.update(overrides)
+    return result
 
 # scan_type -> (default_profile, mode-factory, service_filter)
 _SCAN_MAP = {
-    "discovery":            ("it",  triage,      None),
-    "host_discovery":       ("it",  triage,      None),
-    "port_scan":            ("it",  triage,      None),
-    "service_fingerprint":  ("it",  triage,      None),
+    "discovery":            ("it",  discovery_mode,            None),
+    "host_discovery":       ("it",  host_discovery_mode,       None),
+    "port_scan":            ("it",  port_scan_mode,            None),
+    "service_fingerprint":  ("it",  service_fingerprint_mode,  None),
     "assessment":           ("it",  assessment,  None),
     "vuln_scan":            ("it",  assessment,  None),
     "tls_scan":             ("it",  None,        {"tls"}),
     "web_scan":             ("it",  None,        {"web"}),
+    "web_tls_scan":         ("it",  None,        {"tls", "web"}),
     "db_fingerprint":       ("it",  None,        {"db"}),
     "smb_enum":             ("it",  None,        {"smb"}),
     "snmp_scan":            ("it",  None,        {"snmp"}),
@@ -68,9 +114,29 @@ def resolve_scan_type(job_type: str | None, params: dict) -> str:
     return params.get("scan_type") or job_type or "discovery"
 
 
+def _string_list(value, field: str) -> list[str]:
+    if value is None:
+        return []
+    values = [value] if isinstance(value, str) else value
+    if not isinstance(values, (list, tuple)):
+        raise ValueError(f"{field} must be a string or list of strings")
+    normalized = []
+    for item in values:
+        if not isinstance(item, str):
+            raise ValueError(f"{field} must contain only strings")
+        item = item.strip()
+        if item:
+            normalized.append(item)
+    return list(dict.fromkeys(normalized))
+
+
 def _targets(params: dict) -> list[str]:
-    t = params.get("targets") or params.get("target") or params.get("scope_cidrs") or []
-    return [t] if isinstance(t, str) else list(t)
+    value = params.get("targets")
+    if value is None:
+        value = params.get("target")
+    if value is None:
+        value = params.get("scope_cidrs")
+    return _string_list(value, "targets")
 
 
 def _clamp(val, lo, hi, default):
@@ -149,6 +215,54 @@ def _count_open_port_facts(facts: list[dict]) -> int:
     )
 
 
+def _facts_from_cache(cache: WorkflowCache) -> list[dict]:
+    return [asdict(entry.result) for entry in cache._store.values()]
+
+
+def _hosts_from_facts(facts: list[dict]) -> list[dict]:
+    """Build promotion-ready hosts without duplicating scanner facts per port."""
+    host_map: dict[str, dict] = {}
+    port_map: dict[str, dict[tuple[int, str], dict]] = {}
+    for fact in facts:
+        if fact.get("status") == "error" or fact.get("error"):
+            continue
+        target = fact.get("target")
+        if not target:
+            continue
+        data = fact.get("data") or {}
+        host = host_map.setdefault(
+            target,
+            {
+                "ip": target,
+                "hostname": data.get("hostname") or None,
+                "ports": [],
+            },
+        )
+        if not host["hostname"] and data.get("hostname"):
+            host["hostname"] = data["hostname"]
+        port = fact.get("port")
+        if port is None or fact.get("status") not in {"open", "observed"}:
+            continue
+        proto = fact.get("proto") or "tcp"
+        service = data.get("service") or data.get("first_line")
+        key = (int(port), proto)
+        existing = port_map.setdefault(target, {}).get(key)
+        candidate = {
+            "port": int(port),
+            "protocol": proto,
+            "service": service,
+        }
+        if existing is None or (not existing.get("service") and service):
+            port_map[target][key] = candidate
+
+    for target, host in host_map.items():
+        host["ports"] = sorted(
+            port_map.get(target, {}).values(),
+            key=lambda item: (item["port"], item["protocol"]),
+        )
+    return list(host_map.values())
+
+
 def run_scan(scan_type: str, params: dict,
              use_case_id: str | None = None,
              engagement_uuid: str | None = None,
@@ -172,33 +286,156 @@ def run_scan(scan_type: str, params: dict,
     started_at = datetime.now(timezone.utc).isoformat()
     errors: list[str] = []
 
+    if not isinstance(params, dict):
+        return _error_result(
+            str(scan_type),
+            "job params must be an object",
+            error_code="invalid_job_params",
+            engagement_uuid=engagement_uuid,
+            use_case_id=use_case_id,
+        )
+    if not isinstance(scan_type, str):
+        return _error_result(
+            str(scan_type),
+            "scan_type must be a string",
+            error_code="invalid_scan_type",
+            engagement_uuid=engagement_uuid,
+            use_case_id=use_case_id,
+        )
+
     cfg = _SCAN_MAP.get(scan_type)
     if cfg is None:
-        return _error_result(scan_type, f"unsupported scan_type '{scan_type}'",
-                            engagement_uuid=engagement_uuid,
-                            use_case_id=use_case_id,
-                            supported=CAPABILITIES)
+        return _error_result(
+            scan_type,
+            f"unsupported scan_type '{scan_type}'",
+            error_code="unsupported_scan_type",
+            remediation="Select a scan type advertised by the assigned probe.",
+            engagement_uuid=engagement_uuid,
+            use_case_id=use_case_id,
+            supported=CAPABILITIES,
+        )
 
     default_profile, mode_factory, svc_filter = cfg
     profile = params.get("profile", default_profile)
+    if not isinstance(profile, str) or profile not in VALID_PROFILES:
+        return _error_result(
+            scan_type,
+            f"unsupported profile {profile!r}",
+            error_code="unsupported_profile",
+            remediation=f"Use one of: {', '.join(sorted(VALID_PROFILES))}.",
+            engagement_uuid=engagement_uuid,
+            use_case_id=use_case_id,
+            profile=profile,
+        )
 
-    targets = _targets(params)
+    try:
+        targets = _targets(params)
+    except ValueError as exc:
+        return _error_result(
+            scan_type,
+            str(exc),
+            error_code="invalid_targets",
+            remediation="Provide IP addresses, CIDRs, hostnames, or IP ranges as strings.",
+            engagement_uuid=engagement_uuid,
+            use_case_id=use_case_id,
+            profile=profile,
+        )
     if not targets:
-        return _error_result(scan_type, "no targets/scope provided",
-                            engagement_uuid=engagement_uuid,
-                            use_case_id=use_case_id, profile=profile)
+        return _error_result(
+            scan_type,
+            "no targets/scope provided",
+            error_code="targets_missing",
+            remediation="Add at least one target inside the engagement scope.",
+            engagement_uuid=engagement_uuid,
+            use_case_id=use_case_id,
+            profile=profile,
+        )
+
+    # Expand CIDR/range specs into concrete hosts before scanning. Host discovery
+    # connects to each target directly and cannot resolve a CIDR string like
+    # "172.18.0.7/32" or "10.0.0.0/24" — every CLI path expands via
+    # expand_targets(), but this agent/engine path (manager-issued jobs) did not,
+    # so a CIDR-form engagement scope discovered ZERO hosts. ScopeGuard (built
+    # from the raw scope_src below) still enforces the authoritative boundary.
+    requested_targets = list(targets)
+    try:
+        expanded = expand_targets(targets)
+        if expanded:
+            targets = expanded
+    except ValueError as exc:
+        return _error_result(
+            scan_type,
+            str(exc),
+            error_code="target_expansion_limit",
+            remediation=(
+                "Split the authorized scope into smaller jobs. For a genuine large "
+                "scope, use the separately governed Masscan validation path."
+            ),
+            engagement_uuid=engagement_uuid,
+            use_case_id=use_case_id,
+            profile=profile,
+            requested_targets=requested_targets,
+        )
 
     # ScopeGuard: prefer the independently-validated scope (re-validated by agent
     # before this function is called); fall back to manager-provided scope_cidrs;
     # last resort: treat the targets themselves as the allowlist.
-    scope_src = validated_scope or params.get("scope_cidrs") or targets
+    raw_scope = (
+        validated_scope
+        if validated_scope is not None
+        else params.get("scope_cidrs")
+    )
+    if raw_scope is None:
+        raw_scope = targets
+    try:
+        scope_src = _string_list(raw_scope, "scope_cidrs")
+        manager_excludes = _string_list(
+            params.get("excluded_cidrs"),
+            "excluded_cidrs",
+        )
+        authoritative_excludes = _string_list(
+            validated_excludes,
+            "validated_excludes",
+        )
+    except ValueError as exc:
+        return _error_result(
+            scan_type,
+            str(exc),
+            error_code="invalid_scope",
+            remediation="Use only string IP, CIDR, hostname, or range entries.",
+            engagement_uuid=engagement_uuid,
+            use_case_id=use_case_id,
+            profile=profile,
+        )
+    if not scope_src:
+        return _error_result(
+            scan_type,
+            "authoritative engagement scope is empty",
+            error_code="scope_empty",
+            remediation="Authorize scope on the engagement before assigning a probe.",
+            engagement_uuid=engagement_uuid,
+            use_case_id=use_case_id,
+            profile=profile,
+        )
     # Exclusions: authoritative engagement excludes (from agent) merged with any
     # per-job excluded_cidrs the operator set in the UI. ScopeGuard subtracts them.
     # Deduped, order-preserving — the agent may pass the same list via both routes.
     exclude_src = list(dict.fromkeys(
-        e for e in (*(validated_excludes or []), *(params.get("excluded_cidrs") or [])) if e
+        [*authoritative_excludes, *manager_excludes]
     ))
-    scope = ScopeGuard.from_list([s for s in scope_src if s], excludes=exclude_src)
+    scope = ScopeGuard.from_list(scope_src, excludes=exclude_src)
+    targets = list(scope.filter(targets))
+    if not targets:
+        return _error_result(
+            scan_type,
+            "no requested targets remain inside the authorized scope",
+            error_code="no_authorized_targets",
+            remediation="Correct the job targets or the engagement allow/exclude rules.",
+            engagement_uuid=engagement_uuid,
+            use_case_id=use_case_id,
+            profile=profile,
+            requested_targets=requested_targets,
+        )
 
     mode = mode_factory() if mode_factory else service_specific(svc_filter or set())
     cache = WorkflowCache()
@@ -207,39 +444,67 @@ def run_scan(scan_type: str, params: dict,
     # re-scan delta, credentials) into engine kwargs. This is what makes the
     # Scanner page's controls drive the actual scan instead of being ignored.
     tuning = _tuning_from_params(params)
+    trace = ExecutionTrace(planned_components(
+        profile,
+        service_filter=mode.service_filter,
+        stop_after_banner=mode.stop_after_banner,
+        ssh_enabled=bool(tuning.get("ssh_creds")),
+        windows_enabled=bool(tuning.get("win_creds")),
+        stage_ceiling=mode.stage_ceiling,
+    ))
 
     try:
         asyncio.run(run_engagement(
             targets, scope, profile=profile,
             service_filter=mode.service_filter,
-            stop_after_banner=mode.stop_after_banner, cache=cache,
+            stop_after_banner=mode.stop_after_banner,
+            stage_ceiling=mode.stage_ceiling,
+            cache=cache,
+            trace=trace,
             **tuning))
     except Exception as exc:
         error_msg = f"{type(exc).__name__}: {exc}"
         errors.append(error_msg)
-        return _error_result(scan_type, error_msg,
-                            engagement_uuid=engagement_uuid,
-                            use_case_id=use_case_id, profile=profile,
-                            errors=errors)
+        facts = _facts_from_cache(cache)
+        return _error_result(
+            scan_type,
+            error_msg,
+            error_code="workflow_internal_error",
+            remediation="Inspect probe logs and component run states before retrying.",
+            engagement_uuid=engagement_uuid,
+            use_case_id=use_case_id,
+            profile=profile,
+            facts=facts,
+            hosts=_hosts_from_facts(facts),
+            scanner_runs=trace.as_list(),
+            errors=errors,
+        )
 
-    facts = [asdict(e.result) for e in cache._store.values()]
-    unique_hosts = {f["target"] for f in facts}
+    facts = _facts_from_cache(cache)
+    issues = trace.issues
+    errors.extend(issue["message"] for issue in issues)
+    successful_facts = [
+        fact
+        for fact in facts
+        if fact.get("status") != "error" and not fact.get("error")
+    ]
+    unique_hosts = {
+        fact["target"]
+        for fact in facts
+        if fact.get("target")
+        and fact.get("status") != "error"
+        and not fact.get("error")
+    }
     open_ports = _count_open_port_facts(facts)
-
-    # Build `hosts` list from facts for manager-side asset promotion.
-    # The manager's _promote_assets expects: [{"ip":..., "hostname":..., "ports":[{"port":..., "protocol":..., "service":...}]}]
-    _host_map: dict[str, dict] = {}
-    for f in facts:
-        t = f["target"]
-        if t not in _host_map:
-            _host_map[t] = {"ip": t, "hostname": f.get("data", {}).get("hostname") or None, "ports": []}
-        if f.get("port") is not None:
-            _host_map[t]["ports"].append({
-                "port": f["port"],
-                "protocol": f.get("proto", "tcp"),
-                "service": f.get("data", {}).get("service") or f.get("data", {}).get("first_line"),
-            })
-    hosts_list = list(_host_map.values())
+    hosts_list = _hosts_from_facts(facts)
+    outcome = (
+        "failed"
+        if trace.failed
+        else "partial"
+        if trace.degraded
+        else "completed"
+    )
+    result_error = errors[0] if trace.failed and errors else None
 
     return {
         "result_schema_version": RESULT_SCHEMA_VERSION,
@@ -250,14 +515,22 @@ def run_scan(scan_type: str, params: dict,
         "profile": profile,
         "started_at": started_at,
         "finished_at": datetime.now(timezone.utc).isoformat(),
-        "ok": True,
-        "engine": "scanner_module",
+        "ok": not trace.failed,
+        "outcome": outcome,
+        "degraded": trace.degraded,
+        "error": result_error,
+        "engine": ENGINE_ID,
+        "engine_manifest": _runtime_manifest(),
+        "scanner_runs": trace.as_list(),
+        "issues": issues,
         "facts": facts,
         "hosts": hosts_list,
         "run_stats": {
             "host_count": len(unique_hosts),
             "open_ports": open_ports,
-            "fact_count": len(facts),
+            "fact_count": len(successful_facts),
+            "error_count": len(issues),
+            "result_count": len(facts),
             "scanners_run": sorted({f.get("scanner", "") for f in facts if f.get("scanner")}),
             # Provenance: the effective tuning that produced these facts. Credential
             # VALUES are never echoed — only whether an authenticated branch ran.
@@ -274,9 +547,10 @@ def run_scan(scan_type: str, params: dict,
             },
             # Scope provenance: exactly what the probe was authorized to touch.
             "scope_enforced": {
-                "allow": [s for s in scope_src if s],
-                "exclude": [e for e in exclude_src if e],
-                "targets_requested": targets,
+                "allow": scope_src,
+                "exclude": exclude_src,
+                "targets_requested": requested_targets,
+                "targets_authorized": targets,
             },
         },
         "errors": errors,

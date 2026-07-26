@@ -3,6 +3,8 @@ import { spawn } from "child_process";
 import os from "os";
 import path from "path";
 import fs from "fs";
+import { withVerifiedLocalScanner } from "../../../../lib/with-backend";
+import { validateScannerTargets } from "../../../../lib/scanner-request-validation";
 
 /* ─── Types ─── */
 export interface NseScript {
@@ -57,12 +59,6 @@ export interface ScanResult {
 }
 
 /* ─── Validation ─── */
-const SAFE_TARGET = /^[a-zA-Z0-9.\-_/: ,]+$/;
-
-function validateTarget(target: string): boolean {
-  return SAFE_TARGET.test(target) && target.length < 200;
-}
-
 const SCAN_PROFILES: Record<string, (ports?: string) => string[]> = {
   quick:    () => ["-sV", "-F", "--version-intensity", "3"],
   service:  () => ["-sV", "-sC", "-p", "21,22,23,25,53,80,110,139,143,443,445,1433,1521,3306,3389,5432,5900,6379,8080,8443,27017"],
@@ -70,7 +66,7 @@ const SCAN_PROFILES: Record<string, (ports?: string) => string[]> = {
   os:       () => ["-sV", "-O", "--osscan-guess"],
   vuln:     () => ["-sV", "--script", "vuln", "-F"],
   stealth:  () => ["-sS", "-T2", "-F"],
-  targeted: (ports) => ["-sV", "-sC", "-A", "--version-intensity", "7", "-p", ports ?? "top-1000"],
+  targeted: (ports) => ["-sV", "-sC", "-A", "--version-intensity", "7", "-p", ports ?? "1-1000"],
 };
 
 /* NSE vuln script → finding metadata */
@@ -84,6 +80,18 @@ const NSE_VULN_MAP: Record<string, { category: string; severity: string }> = {
   "ftp-anon":               { category: "Authentication",  severity: "MEDIUM" },
   "smtp-open-relay":        { category: "Misconfiguration", severity: "MEDIUM" },
 };
+const SAFE_NSE_SCRIPTS = new Set(Object.keys(NSE_VULN_MAP));
+
+function isValidPortSpec(value: unknown): value is string {
+  if (typeof value !== "string" || value.length === 0 || value.length > 512) return false;
+  return value.split(",").every((part) => {
+    const match = part.match(/^(\d{1,5})(?:-(\d{1,5}))?$/);
+    if (!match) return false;
+    const start = Number(match[1]);
+    const end = Number(match[2] ?? match[1]);
+    return start >= 1 && end <= 65_535 && start <= end;
+  });
+}
 
 /* ─── Parse nmap XML ─── */
 export function parseNmapXml(xml: string): ScanHost[] {
@@ -163,7 +171,7 @@ export function parseNmapXml(xml: string): ScanHost[] {
 }
 
 /* ─── Auto-create findings from vuln scan ─── */
-async function createVulnFindings(hosts: ScanHost[], origin: string): Promise<string[]> {
+async function createVulnFindings(hosts: ScanHost[]): Promise<string[]> {
   const createdIds: string[] = [];
   const baseUrl = process.env.NEXTAUTH_URL ?? `http://localhost:${process.env.PORT ?? 3000}`;
 
@@ -212,7 +220,7 @@ async function createVulnFindings(hosts: ScanHost[], origin: string): Promise<st
 }
 
 /* ─── Route Handler ─── */
-export async function POST(req: NextRequest) {
+export const POST = withVerifiedLocalScanner(async (req: NextRequest) => {
   const body = await req.json() as {
     target: string;
     scanType?: string;
@@ -223,11 +231,34 @@ export async function POST(req: NextRequest) {
 
   const { target, scanType = "quick", ports, scripts, createFindings = false } = body;
 
-  if (!target || !validateTarget(target)) {
+  const requestedTargets = typeof target === "string"
+    ? target.split(",").map((value) => value.trim())
+    : [];
+  const validatedTargets = validateScannerTargets(requestedTargets);
+  if (validatedTargets.ok === false) {
     return NextResponse.json({ error: "Invalid target. Use IP, hostname, or CIDR notation." }, { status: 400 });
   }
+  if (!Object.hasOwn(SCAN_PROFILES, scanType)) {
+    return NextResponse.json({ error: "Unknown Nmap scan profile." }, { status: 400 });
+  }
+  if (ports !== undefined && !isValidPortSpec(ports)) {
+    return NextResponse.json({ error: "Invalid Nmap port specification." }, { status: 400 });
+  }
+  if (
+    scripts !== undefined
+    && (
+      !Array.isArray(scripts)
+      || scripts.length > SAFE_NSE_SCRIPTS.size
+      || scripts.some((script) => typeof script !== "string" || !SAFE_NSE_SCRIPTS.has(script))
+    )
+  ) {
+    return NextResponse.json({ error: "Unsupported NSE script requested." }, { status: 400 });
+  }
+  if (typeof createFindings !== "boolean") {
+    return NextResponse.json({ error: "createFindings must be a boolean." }, { status: 400 });
+  }
 
-  const profileFn = SCAN_PROFILES[scanType] ?? SCAN_PROFILES.quick;
+  const profileFn = SCAN_PROFILES[scanType];
   let profileArgs = profileFn(ports);
 
   /* Inject extra NSE scripts if requested */
@@ -236,7 +267,7 @@ export async function POST(req: NextRequest) {
   }
 
   const xmlFile = path.join(os.tmpdir(), `vedha-scan-${Date.now()}.xml`);
-  const args = [...profileArgs, "-oX", xmlFile, ...target.split(",").map((t) => t.trim())];
+  const args = [...profileArgs, "-oX", xmlFile, ...validatedTargets.value];
   const command = `nmap ${args.join(" ")}`;
 
   return new Promise<NextResponse>((resolve) => {
@@ -276,7 +307,7 @@ export async function POST(req: NextRequest) {
 
       let findingsCreated: string[] = [];
       if (createFindings && (scanType === "vuln" || scanType === "targeted")) {
-        findingsCreated = await createVulnFindings(hosts, target);
+        findingsCreated = await createVulnFindings(hosts);
       }
 
       const result: ScanResult & { findingsCreated?: string[] } = {
@@ -290,4 +321,4 @@ export async function POST(req: NextRequest) {
       resolve(NextResponse.json(result));
     });
   });
-}
+});

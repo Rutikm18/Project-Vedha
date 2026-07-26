@@ -66,6 +66,7 @@ class TestEnqueueAgentJob:
         db.add = MagicMock()
         db.flush = AsyncMock()
         db.refresh = AsyncMock()
+        db.commit = AsyncMock()
         body = ag.EnqueueJobRequest(
             engagement_id=uuid.uuid4(), job_type=ScanJobType.discovery,
             params={"targets": ["10.0.1.0/24"], "ports": "1-1024"},
@@ -75,7 +76,75 @@ class TestEnqueueAgentJob:
         assert out["status"] == "pending"
         db.add.assert_called_once()
         created = db.add.call_args[0][0]
-        assert created.result == {"targets": ["10.0.1.0/24"], "ports": "1-1024"}
+        assert created.result == {
+            "targets": ["10.0.1.0/24"],
+            "ports": "1-1024",
+            "scan_type": "discovery",
+        }
+        db.commit.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_materializes_direct_job_capability_for_probe(self):
+        engagement = SimpleNamespace(
+            id=uuid.uuid4(),
+            rules_of_engagement=None,
+            scope_cidrs=None,
+        )
+        db = MagicMock()
+        db.execute = AsyncMock(return_value=MagicMock(
+            scalar_one_or_none=lambda: engagement,
+        ))
+        db.add = MagicMock()
+        db.flush = AsyncMock()
+        db.refresh = AsyncMock()
+        db.commit = AsyncMock()
+
+        await ag.enqueue_agent_job(
+            ag.EnqueueJobRequest(
+                engagement_id=engagement.id,
+                job_type=ScanJobType.lateral,
+            ),
+            db,
+            _user(),
+        )
+
+        created = db.add.call_args.args[0]
+        assert created.result["scan_type"] == "smb_enum"
+
+    @pytest.mark.asyncio
+    async def test_scope_fields_cannot_override_engagement_scope(self):
+        engagement = SimpleNamespace(
+            id=uuid.uuid4(),
+            rules_of_engagement=None,
+            scope_cidrs=["10.0.0.0/24"],
+            excluded_cidrs=["10.0.0.250/32"],
+        )
+        db = MagicMock()
+        db.execute = AsyncMock(return_value=MagicMock(
+            scalar_one_or_none=lambda: engagement,
+        ))
+        db.add = MagicMock()
+        db.flush = AsyncMock()
+        db.refresh = AsyncMock()
+        db.commit = AsyncMock()
+
+        await ag.enqueue_agent_job(
+            ag.EnqueueJobRequest(
+                engagement_id=engagement.id,
+                params={
+                    "scope_cidrs": ["192.0.2.0/24"],
+                    "_scope_cidrs": ["192.0.2.0/24"],
+                    "_excluded_cidrs": [],
+                },
+            ),
+            db,
+            _user(),
+        )
+
+        created = db.add.call_args.args[0]
+        assert created.result["scope_cidrs"] == ["10.0.0.0/24"]
+        assert created.result["_scope_cidrs"] == ["10.0.0.0/24"]
+        assert created.result["_excluded_cidrs"] == ["10.0.0.250/32"]
 
 
 # ── OT profile hard gate ────────────────────────────────────────────────────────
@@ -116,6 +185,7 @@ class TestOTProfileGate:
         db = MagicMock()
         db.execute = AsyncMock(return_value=MagicMock(scalar_one_or_none=lambda: eng))
         db.add = MagicMock(); db.flush = AsyncMock(); db.refresh = AsyncMock()
+        db.commit = AsyncMock()
         body = ag.EnqueueJobRequest(engagement_id=uuid.uuid4(), job_type=ScanJobType.discovery,
                                     params={"scan_type": "passive_discovery"})
         out = await ag.enqueue_agent_job(body, db, _user())
@@ -129,9 +199,68 @@ class TestOTProfileGate:
             db = MagicMock()
             db.execute = AsyncMock(return_value=MagicMock(scalar_one_or_none=lambda: eng))
             db.add = MagicMock(); db.flush = AsyncMock(); db.refresh = AsyncMock()
+            db.commit = AsyncMock()
             body = ag.EnqueueJobRequest(engagement_id=uuid.uuid4(), job_type=ScanJobType.discovery)
             out = await ag.enqueue_agent_job(body, db, _user())
             assert out["status"] == "pending"
+
+
+class TestAgentRegistrationRefresh:
+
+    @pytest.mark.asyncio
+    async def test_agent_can_refresh_only_its_own_routing_metadata(self):
+        agent_id = uuid.uuid4()
+        agent = SimpleNamespace(
+            id=agent_id,
+            capabilities=["discovery"],
+            network_segments=[],
+            public_key=None,
+            status=ag.AgentStatus.offline,
+            last_heartbeat=None,
+        )
+        request = SimpleNamespace(state=SimpleNamespace(user_id=str(agent_id)))
+        db = MagicMock()
+        db.execute = AsyncMock(return_value=MagicMock(
+            scalar_one_or_none=lambda: agent,
+        ))
+        db.flush = AsyncMock()
+
+        out = await ag.refresh_agent_registration(
+            agent_id,
+            ag.AgentRefreshRequest(
+                capabilities=["discovery", "web_tls_scan"],
+                network_segments=["10.0.0.0/24"],
+                public_key="new-public-key",
+            ),
+            db,
+            request,
+        )
+
+        assert out == {"ok": True}
+        assert agent.capabilities == ["discovery", "web_tls_scan"]
+        assert agent.network_segments == ["10.0.0.0/24"]
+        assert agent.public_key == "new-public-key"
+        assert agent.status == ag.AgentStatus.online
+        db.flush.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_agent_cannot_refresh_another_identity(self):
+        agent_id = uuid.uuid4()
+        request = SimpleNamespace(
+            state=SimpleNamespace(user_id=str(uuid.uuid4())),
+        )
+        db = MagicMock()
+
+        with pytest.raises(HTTPException) as exc:
+            await ag.refresh_agent_registration(
+                agent_id,
+                ag.AgentRefreshRequest(capabilities=["discovery"]),
+                db,
+                request,
+            )
+
+        assert exc.value.status_code == 403
+        db.execute.assert_not_called()
 
 
 # ── get_agent_jobs returns params ──────────────────────────────────────────────
@@ -140,7 +269,17 @@ class TestGetAgentJobs:
 
     @pytest.mark.asyncio
     async def test_jobs_include_params(self):
-        agent = SimpleNamespace(id=uuid.uuid4())
+        tenant_id = uuid.uuid4()
+        agent = SimpleNamespace(
+            id=uuid.uuid4(),
+            tenant_id=tenant_id,
+            capabilities=["discovery"],
+            network_segments=["10.0.0.0/16"],
+        )
+        engagement = SimpleNamespace(
+            tenant_id=tenant_id,
+            scope_cidrs=["10.0.0.0/24"],
+        )
         job = SimpleNamespace(
             id=uuid.uuid4(), engagement_id=uuid.uuid4(),
             job_type=SimpleNamespace(value="discovery"),
@@ -151,16 +290,80 @@ class TestGetAgentJobs:
         db = MagicMock()
         db.execute = AsyncMock(side_effect=[
             MagicMock(scalar_one_or_none=lambda: agent),
-            MagicMock(scalars=lambda: MagicMock(all=lambda: [job])),
+            MagicMock(all=lambda: [(job, engagement)]),
+            SimpleNamespace(rowcount=1),
         ])
-        db.flush = AsyncMock()
 
         out = await ag.get_agent_jobs(agent.id, db, limit=1)
         assert len(out) == 1
         assert out[0]["params"] == {"targets": ["10.0.0.0/24"]}
         assert out[0]["job_type"] == "discovery"
-        # the job was claimed for this agent
-        assert job.agent_id == str(agent.id)
+        assert out[0]["status"] == "running"
+
+        candidate_query = db.execute.await_args_list[1].args[0]
+        claim_query = db.execute.await_args_list[2].args[0]
+        assert "engagements.tenant_id" in str(candidate_query)
+        assert "engagements.tenant_id" in str(claim_query)
+
+    @pytest.mark.asyncio
+    async def test_skips_job_when_capability_is_missing(self):
+        tenant_id = uuid.uuid4()
+        agent = SimpleNamespace(
+            id=uuid.uuid4(),
+            tenant_id=tenant_id,
+            capabilities=["tls_scan"],
+            network_segments=[],
+        )
+        engagement = SimpleNamespace(
+            tenant_id=tenant_id,
+            scope_cidrs=["10.0.0.0/24"],
+        )
+        job = SimpleNamespace(
+            id=uuid.uuid4(),
+            engagement_id=uuid.uuid4(),
+            job_type=ScanJobType.discovery,
+            status=SimpleNamespace(value="pending"),
+            result={},
+            agent_id=None,
+        )
+        db = MagicMock()
+        db.execute = AsyncMock(side_effect=[
+            MagicMock(scalar_one_or_none=lambda: agent),
+            MagicMock(all=lambda: [(job, engagement)]),
+        ])
+
+        assert await ag.get_agent_jobs(agent.id, db, limit=1) == []
+        assert db.execute.await_count == 2
+
+    @pytest.mark.asyncio
+    async def test_skips_job_outside_declared_network_segments(self):
+        tenant_id = uuid.uuid4()
+        agent = SimpleNamespace(
+            id=uuid.uuid4(),
+            tenant_id=tenant_id,
+            capabilities=["discovery"],
+            network_segments=["10.20.0.0/16"],
+        )
+        engagement = SimpleNamespace(
+            tenant_id=tenant_id,
+            scope_cidrs=["10.30.0.0/24"],
+        )
+        job = SimpleNamespace(
+            id=uuid.uuid4(),
+            engagement_id=uuid.uuid4(),
+            job_type=ScanJobType.discovery,
+            status=SimpleNamespace(value="pending"),
+            result={},
+            agent_id=None,
+        )
+        db = MagicMock()
+        db.execute = AsyncMock(side_effect=[
+            MagicMock(scalar_one_or_none=lambda: agent),
+            MagicMock(all=lambda: [(job, engagement)]),
+        ])
+
+        assert await ag.get_agent_jobs(agent.id, db, limit=1) == []
+        assert db.execute.await_count == 2
 
     @pytest.mark.asyncio
     async def test_404_when_agent_unknown(self):
@@ -169,6 +372,85 @@ class TestGetAgentJobs:
         with pytest.raises(HTTPException) as ei:
             await ag.get_agent_jobs(uuid.uuid4(), db, limit=1)
         assert ei.value.status_code == 404
+
+
+class TestAgentJobCompatibility:
+
+    def test_use_case_resolves_to_required_capability(self):
+        assert ag._required_scan_type(
+            ScanJobType.discovery,
+            {"use_case_id": "uc_windows_estate"},
+        ) == "smb_enum"
+
+    def test_declared_segment_must_cover_entire_scope(self):
+        assert ag._scope_is_reachable(
+            ["10.0.0.0/16"],
+            ["10.0.1.0/24", "10.0.2.5/32"],
+        )
+        assert not ag._scope_is_reachable(
+            ["10.0.1.0/24"],
+            ["10.0.0.0/16"],
+        )
+
+    def test_declared_segment_rejects_missing_or_invalid_scope(self):
+        assert not ag._scope_is_reachable(["10.0.0.0/8"], [])
+        assert not ag._scope_is_reachable(
+            ["not-a-network"],
+            ["10.0.0.0/24"],
+        )
+
+    def test_empty_segments_keep_legacy_tenant_local_behavior(self):
+        assert ag._scope_is_reachable([], ["203.0.113.0/24"])
+
+    def test_empty_capabilities_receive_no_jobs(self):
+        agent = SimpleNamespace(capabilities=[], network_segments=[])
+        assert not ag._agent_can_execute_job(
+            agent,
+            ScanJobType.discovery,
+            {},
+            ["10.0.0.0/24"],
+        )
+
+    def test_requested_subset_routes_to_a_subset_probe(self):
+        agent = SimpleNamespace(
+            capabilities=["discovery"],
+            network_segments=["10.0.8.0/24"],
+        )
+        assert ag._agent_can_execute_job(
+            agent,
+            ScanJobType.discovery,
+            {"targets": ["10.0.8.0/24"]},
+            ["10.0.0.0/16"],
+        )
+        assert not ag._agent_can_execute_job(
+            agent,
+            ScanJobType.discovery,
+            {},
+            ["10.0.0.0/16"],
+        )
+
+    def test_explicit_out_of_scope_target_is_never_dispatched(self):
+        agent = SimpleNamespace(
+            capabilities=["discovery"],
+            network_segments=[],
+        )
+        assert not ag._agent_can_execute_job(
+            agent,
+            ScanJobType.discovery,
+            {"target": "192.0.2.10"},
+            ["10.0.0.0/8"],
+        )
+
+    def test_requested_ip_range_uses_only_its_covered_networks(self):
+        assert ag._job_reachability_scope(
+            {"targets": ["10.0.8.10-10.0.8.20"]},
+            ["10.0.0.0/16"],
+        ) == [
+            "10.0.8.10/31",
+            "10.0.8.12/30",
+            "10.0.8.16/30",
+            "10.0.8.20/32",
+        ]
 
 
 # ── list_agents (dashboard) ─────────────────────────────────────────────────────

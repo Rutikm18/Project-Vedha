@@ -50,11 +50,16 @@ async def process_job_result(
     # A probe retries when it doesn't see an ACK (the ACK can be lost even after
     # we committed). Without this guard a retry appends a duplicate scan_results
     # row and re-enqueues the detection pipeline → duplicate findings. If this
-    # job already reached the success-terminal state, treat the resubmission as a
-    # no-op and return the same shape (HTTP 200) so the probe clears its spool.
-    if row.status == ScanJobStatus.completed:
-        logger.info("job.result_duplicate_ignored", job_id=str(job_id),
-                    agent_id=str(agent_id))
+    # job already reached a terminal state, treat the resubmission as a no-op
+    # and return HTTP 200 so the probe clears its spool. Failed submissions are
+    # retried after a lost ACK just like successful ones.
+    if row.status in (ScanJobStatus.completed, ScanJobStatus.failed):
+        logger.info(
+            "job.result_duplicate_ignored",
+            job_id=str(job_id),
+            agent_id=str(agent_id),
+            terminal_status=row.status.value,
+        )
         return {"ok": True, "duplicate": True,
                 "assets_promoted": 0, "findings_created": 0}
 

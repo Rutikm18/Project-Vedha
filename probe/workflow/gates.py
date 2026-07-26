@@ -29,7 +29,7 @@ WEB_PORTS = {80, 443, 8080, 8443, 8000, 8888, 9000, 9200, 8081, 5000}
 SMB_PORTS = {139, 445}
 DB_PORTS = set(DEFAULT_DB_PORTS)
 AI_PORTS = {11434, 8000, 8080, 5000, 3000, 1234, 8001, 7860, 11435}  # DEFAULT_AI_PORTS in mcp_ai_scanner.py
-UDP_PORTS = {53, 123, 161, 137}                       # UDP_PROBES.keys() in udp_scanner.py
+UDP_PORTS = {53, 123, 161, 137, 11211}                # UDP_PROBES.keys() in udp_scanner.py
 SNMP_PORTS = {161}
 
 PROFILE_PORTS = {"it": IT_PORTS, "iot": IOT_PORTS, "ot": []}

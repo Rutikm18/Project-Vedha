@@ -4,10 +4,11 @@ import os from "os";
 import path from "path";
 import fs from "fs";
 import { createFinding } from "../../../../lib/findings-store";
+import { withVerifiedLocalScanner } from "../../../../lib/with-backend";
 
 const SAFE_URL = /^[a-zA-Z0-9.\-_/:]+$/;
 
-export async function POST(req: NextRequest) {
+export const POST = withVerifiedLocalScanner(async (req: NextRequest) => {
   const body = await req.json() as {
     urls: string[];
     threads?: number;
@@ -124,4 +125,4 @@ export async function POST(req: NextRequest) {
     findingsCreated,
     totalScreenshots: screenshots.length,
   });
-}
+});

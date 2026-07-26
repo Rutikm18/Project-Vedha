@@ -1,4 +1,4 @@
-# Taste (Continuously Learned by [CommandCode][cmd])
+ % ex# Taste (Continuously Learned by [CommandCode][cmd])
 
 [cmd]: https://commandcode.ai/
 

@@ -334,6 +334,10 @@ class TestGate5:
         a = _asset(last_seen_alive=datetime.now(timezone.utc))
         assert gate_5_branch_eligible("snmp", a, "it", None) is True
 
+    def test_explicit_snmp_does_not_require_tcp_liveness(self):
+        a = _asset(last_seen_alive=None)
+        assert gate_5_branch_eligible("snmp", a, "it", {"snmp"}) is True
+
     def test_snmp_not_allowed_on_iot_profile(self):
         a = _asset(last_seen_alive=datetime.now(timezone.utc))
         assert gate_5_branch_eligible("snmp", a, "iot", None) is False
@@ -784,6 +788,7 @@ class TestCapabilities:
         assert "discovery" in CAPABILITIES
         assert "assessment" in CAPABILITIES
         assert "tls_scan" in CAPABILITIES
+        assert "web_tls_scan" in CAPABILITIES
         assert "mcp_discovery" in CAPABILITIES
         assert "snmp_scan" in CAPABILITIES
         assert "passive_discovery" in CAPABILITIES

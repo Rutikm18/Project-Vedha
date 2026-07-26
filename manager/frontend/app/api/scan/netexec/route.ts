@@ -3,84 +3,192 @@ import { spawn } from "child_process";
 import os from "os";
 import path from "path";
 import fs from "fs";
+import { randomUUID } from "crypto";
 import { createFinding } from "../../../../lib/findings-store";
+import { parseNetExecLog, type NetExecHost } from "../../../../lib/netexec-parser";
+import { withVerifiedLocalScanner } from "../../../../lib/with-backend";
+import { isScopeAllowed } from "../../../../lib/permissions-store";
+import { validateNetExecScanRequest } from "../../../../lib/scanner-request-validation";
 
-const SAFE_TARGET = /^[a-zA-Z0-9.\-_/:,]+$/;
+const MAX_PROCESS_OUTPUT = 65_536;
 
-interface NxcHost {
-  host: string;
-  hostname?: string;
-  domain?: string;
-  os?: string;
-  smbv1: boolean;
-  signing: boolean;
-  shares?: { name: string; access: "READ" | "WRITE" | "NO ACCESS" }[];
-  passwordPolicy?: { minLength: number; lockoutThreshold: number; complexityEnabled: boolean };
-  nullSession: boolean;
+interface NetExecProcessResult {
+  code: number | null;
+  signal: NodeJS.Signals | null;
+  stdout: string;
+  stderr: string;
+  timedOut: boolean;
+  spawnError?: string;
 }
 
-function parseNxcOutput(filePath: string): NxcHost[] {
-  if (!fs.existsSync(filePath)) return [];
+interface NetExecRunResult {
+  hosts: NetExecHost[];
+  warnings: string[];
+}
+
+function appendTail(current: string, chunk: Buffer | string): string {
+  return `${current}${chunk.toString()}`.slice(-MAX_PROCESS_OUTPUT);
+}
+
+async function runNxc(
+  args: string[],
+  outputFile: string,
+  options: { successfulAuthIsNullSession?: boolean } = {},
+): Promise<NetExecRunResult> {
   try {
-    const content = fs.readFileSync(filePath, "utf-8").trim();
-    if (!content) return [];
-    // nxc outputs one JSON object per line or a JSON array
-    if (content.startsWith("[")) return JSON.parse(content) as NxcHost[];
-    return content.split("\n").filter(Boolean).map((l) => JSON.parse(l) as NxcHost);
-  } catch { return []; }
+    const result = await new Promise<NetExecProcessResult>((resolve) => {
+      let settled = false;
+      let stdout = "";
+      let stderr = "";
+      let timedOut = false;
+      let forceKillTimer: NodeJS.Timeout | undefined;
+
+      const proc = spawn(
+        "nxc",
+        [...args, "--no-progress", "--log", outputFile],
+        { stdio: ["ignore", "pipe", "pipe"] },
+      );
+
+      const timeout = setTimeout(() => {
+        timedOut = true;
+        proc.kill("SIGTERM");
+        forceKillTimer = setTimeout(() => proc.kill("SIGKILL"), 5_000);
+      }, 120_000);
+
+      const finish = (
+        code: number | null,
+        signal: NodeJS.Signals | null,
+        spawnError?: string,
+      ): void => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timeout);
+        if (forceKillTimer) clearTimeout(forceKillTimer);
+        resolve({ code, signal, stdout, stderr, timedOut, spawnError });
+      };
+
+      proc.stdout?.on("data", (chunk: Buffer | string) => {
+        stdout = appendTail(stdout, chunk);
+      });
+      proc.stderr?.on("data", (chunk: Buffer | string) => {
+        stderr = appendTail(stderr, chunk);
+      });
+      proc.on("error", (err) => finish(null, null, err.message));
+      proc.on("close", (code, signal) => finish(code, signal));
+    });
+
+    if (result.spawnError) {
+      throw new Error(`NetExec failed to start: ${result.spawnError}`);
+    }
+    if (result.timedOut) {
+      throw new Error("NetExec exceeded the 120s scan deadline.");
+    }
+    if (result.code !== 0 || result.signal) {
+      const detail = result.stderr.trim() || result.stdout.trim() || "no diagnostic output";
+      throw new Error(
+        `NetExec exited abnormally (code=${result.code}, signal=${result.signal}): ${detail}`,
+      );
+    }
+
+    const logOutput = fs.existsSync(outputFile)
+      ? fs.readFileSync(outputFile, "utf-8")
+      : "";
+    const output = [logOutput, result.stdout]
+      .filter((part) => part.trim())
+      .join("\n");
+    if (!output.trim()) {
+      throw new Error("NetExec completed without producing log output.");
+    }
+
+    const parsed = parseNetExecLog(output, options);
+    if (parsed.status === "schema_mismatch") {
+      throw new Error(
+        `NetExec output schema was not recognized (${parsed.candidateDiscoveryLines} candidate discovery line(s), ${parsed.recognizedDiscoveryLines} parsed).`,
+      );
+    }
+    const warnings = parsed.status === "degraded"
+      ? [
+          `NetExec output was only partially recognized (${parsed.unrecognizedDiscoveryLines} of ${parsed.candidateDiscoveryLines} candidate discovery line(s) unparsed).`,
+        ]
+      : [];
+    return { hosts: parsed.hosts, warnings };
+  } finally {
+    try {
+      fs.unlinkSync(outputFile);
+    } catch {
+      // NetExec may fail before creating its log.
+    }
+  }
 }
 
-async function runNxc(args: string[], outputFile: string): Promise<void> {
-  return new Promise((resolve) => {
-    const proc = spawn("nxc", args, { timeout: 120_000 });
-    proc.on("error", () => resolve());
-    proc.on("close", () => resolve());
-  });
-}
-
-export async function POST(req: NextRequest) {
-  const body = await req.json() as {
-    targets: string[];
-    domain?: string;
-    username?: string;
-    password?: string;
-    checks?: string[];
-    createFindings?: boolean;
-  };
-
+export const POST = withVerifiedLocalScanner(async (req: NextRequest, { user }) => {
+  const body = await req.json().catch(() => null);
+  const validated = validateNetExecScanRequest(body);
+  if (validated.ok === false) {
+    return NextResponse.json({ error: validated.error }, { status: 400 });
+  }
   const {
     targets,
-    domain = "",
-    username = "",
-    password = "",
-    checks = ["smb", "null-session", "shares"],
-    createFindings = false,
-  } = body;
+    domain,
+    username,
+    password,
+    checks,
+    createFindings,
+  } = validated.value;
 
-  if (!targets || targets.length === 0 || !targets.every((t) => SAFE_TARGET.test(t) && t.length < 200)) {
-    return NextResponse.json({ error: "Invalid targets." }, { status: 400 });
+  if (!user.email) {
+    return NextResponse.json(
+      { error: "Local scanner routes require a user-backed access token." },
+      { status: 403 },
+    );
+  }
+  const denied = targets.filter((target) => !isScopeAllowed(user.email!, target));
+  if (denied.length > 0) {
+    return NextResponse.json(
+      { error: `Targets out of your permitted scope: ${denied.join(", ")}` },
+      { status: 403 },
+    );
   }
 
   const scanId    = `netexec-${Date.now()}`;
   const startTime = new Date().toISOString();
   const t0        = Date.now();
-  const allHosts: NxcHost[] = [];
+  const allHosts: NetExecHost[] = [];
   const allFindings = [];
   const findingsCreated: string[] = [];
+  const warnings: string[] = [];
+
+  const failureResponse = (err: unknown) => NextResponse.json({
+    scanId,
+    status: "failed",
+    error: err instanceof Error ? err.message : String(err),
+    partial: allHosts.length > 0 || allFindings.length > 0 || warnings.length > 0,
+    hosts: allHosts,
+    findings: allFindings,
+    warnings,
+    startTime,
+    endTime: new Date().toISOString(),
+    elapsed: `${((Date.now() - t0) / 1000).toFixed(1)}s`,
+  }, { status: 502 });
 
   for (const cidr of targets) {
-    const baseFile = path.join(os.tmpdir(), `vedha-nxc-base-${Date.now()}.json`);
-    const nullFile = path.join(os.tmpdir(), `vedha-nxc-null-${Date.now()}.json`);
-    const authFile = path.join(os.tmpdir(), `vedha-nxc-auth-${Date.now()}.json`);
+    const suffix   = `${scanId}-${randomUUID()}`;
+    const baseFile = path.join(os.tmpdir(), `vedha-nxc-base-${suffix}.log`);
+    const nullFile = path.join(os.tmpdir(), `vedha-nxc-null-${suffix}.log`);
+    const authFile = path.join(os.tmpdir(), `vedha-nxc-auth-${suffix}.log`);
 
     if (checks.includes("smb")) {
-      await runNxc(["smb", cidr, "--json", "-o", baseFile], baseFile);
-      const baseHosts = parseNxcOutput(baseFile);
-      fs.unlink(baseFile, () => {});
+      let baseResult: NetExecRunResult;
+      try {
+        baseResult = await runNxc(["smb", cidr], baseFile);
+      } catch (err) {
+        return failureResponse(err);
+      }
+      warnings.push(...baseResult.warnings);
 
-      for (const host of baseHosts) {
+      for (const host of baseResult.hosts) {
         allHosts.push(host);
-        if (host.smbv1) {
+        if (host.smbv1 === true) {
           allFindings.push({
             title: `SMBv1 Enabled — ${host.host}`,
             severity: "CRITICAL" as const,
@@ -102,7 +210,7 @@ export async function POST(req: NextRequest) {
             source: "netexec" as const,
           });
         }
-        if (!host.signing) {
+        if (host.signing === false) {
           allFindings.push({
             title: `SMB Signing Disabled — ${host.host}`,
             severity: "HIGH" as const,
@@ -128,12 +236,20 @@ export async function POST(req: NextRequest) {
     }
 
     if (checks.includes("null-session")) {
-      await runNxc(["smb", cidr, "-u", "", "-p", "", "--shares", "--json", "-o", nullFile], nullFile);
-      const nullHosts = parseNxcOutput(nullFile);
-      fs.unlink(nullFile, () => {});
+      let nullResult: NetExecRunResult;
+      try {
+        nullResult = await runNxc(
+          ["smb", cidr, "-u", "", "-p", "", "--shares"],
+          nullFile,
+          { successfulAuthIsNullSession: true },
+        );
+      } catch (err) {
+        return failureResponse(err);
+      }
+      warnings.push(...nullResult.warnings);
 
-      for (const host of nullHosts) {
-        if (host.nullSession) {
+      for (const host of nullResult.hosts) {
+        if (host.nullSession === true) {
           const existing = allHosts.find((h) => h.host === host.host);
           if (existing) existing.nullSession = true;
           allFindings.push({
@@ -161,8 +277,33 @@ export async function POST(req: NextRequest) {
     }
 
     if (checks.includes("shares") && username && password) {
-      await runNxc(["smb", cidr, "-u", username, "-p", password, "-d", domain, "--shares", "--pass-pol", "--json", "-o", authFile], authFile);
-      fs.unlink(authFile, () => {});
+      const passwordFile = path.join(os.tmpdir(), `vedha-nxc-password-${suffix}`);
+      try {
+        fs.writeFileSync(passwordFile, `${password}\n`, { mode: 0o600, flag: "wx" });
+        const authResult = await runNxc(
+          [
+            "smb",
+            cidr,
+            "-u",
+            username,
+            "-p",
+            passwordFile,
+            ...(domain ? ["-d", domain] : []),
+            "--shares",
+            "--pass-pol",
+          ],
+          authFile,
+        );
+        warnings.push(...authResult.warnings);
+      } catch (err) {
+        return failureResponse(err);
+      } finally {
+        try {
+          fs.unlinkSync(passwordFile);
+        } catch {
+          // The credential file may fail to be created.
+        }
+      }
     }
   }
 
@@ -177,11 +318,13 @@ export async function POST(req: NextRequest) {
 
   return NextResponse.json({
     scanId,
+    status: warnings.length > 0 ? "degraded" : "completed",
     startTime,
     endTime: new Date().toISOString(),
     elapsed: `${((Date.now() - t0) / 1000).toFixed(1)}s`,
     hosts: allHosts,
     findings: allFindings,
     findingsCreated,
+    warnings: [...new Set(warnings)],
   });
-}
+});

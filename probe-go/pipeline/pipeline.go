@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"log"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 
@@ -23,40 +24,56 @@ import (
 
 // Job describes one scan request from the manager.
 type Job struct {
-	JobID         string
-	ScanType      string // assessment | tls_scan | web_scan | db_fingerprint | udp_scan | ...
-	Profile       string // it | ot | iot
-	Targets       []string
-	ScopeCIDRs    []string
-	ExcludeCIDRs  []string
-	Rate          float64
-	Concurrency   int
-	Timeout       float64 // seconds
-	DiscTimeout   float64 // seconds — host-discovery timeout
-	EngagementID  string
-	UseCaseID     string
+	JobID        string
+	ScanType     string // assessment | tls_scan | web_scan | db_fingerprint | udp_scan | ...
+	Profile      string // it | ot | iot
+	Targets      []string
+	ScopeCIDRs   []string
+	ExcludeCIDRs []string
+	Rate         float64
+	Concurrency  int
+	Timeout      float64 // seconds
+	DiscTimeout  float64 // seconds — host-discovery timeout
+	EngagementID string
+	UseCaseID    string
 }
 
 // Fact is a single scanner observation — maps 1:1 to Python's ScanResult.
 type Fact map[string]interface{}
 
+const maxRequestedTargets = 65536
+
+var supportedScanTypes = map[string]bool{
+	"assessment":          true,
+	"discovery":           true,
+	"host_discovery":      true,
+	"port_scan":           true,
+	"service_fingerprint": true,
+	"tls_scan":            true,
+	"web_scan":            true,
+	"web_tls_scan":        true,
+	"db_fingerprint":      true,
+	"udp_scan":            true,
+	"passive_discovery":   true,
+}
+
 // Result is the full bundle returned to the manager after a run.
 type Result struct {
-	SchemaVersion string                 `json:"result_schema_version"`
-	ProbeID       string                 `json:"probe_id"`
-	EngagementID  string                 `json:"engagement_uuid"`
-	UseCaseID     string                 `json:"use_case_id"`
-	ScanType      string                 `json:"scan_type"`
-	Profile       string                 `json:"profile"`
-	StartedAt     string                 `json:"started_at"`
-	FinishedAt    string                 `json:"finished_at"`
-	OK            bool                   `json:"ok"`
-	Engine        string                 `json:"engine"`
-	Facts         []Fact                 `json:"facts"`
-	Findings      []scanner.Finding      `json:"findings"`
+	SchemaVersion string                   `json:"result_schema_version"`
+	ProbeID       string                   `json:"probe_id"`
+	EngagementID  string                   `json:"engagement_uuid"`
+	UseCaseID     string                   `json:"use_case_id"`
+	ScanType      string                   `json:"scan_type"`
+	Profile       string                   `json:"profile"`
+	StartedAt     string                   `json:"started_at"`
+	FinishedAt    string                   `json:"finished_at"`
+	OK            bool                     `json:"ok"`
+	Engine        string                   `json:"engine"`
+	Facts         []Fact                   `json:"facts"`
+	Findings      []scanner.Finding        `json:"findings"`
 	Hosts         []map[string]interface{} `json:"hosts"`
-	RunStats      map[string]interface{} `json:"run_stats"`
-	Errors        []string               `json:"errors"`
+	RunStats      map[string]interface{}   `json:"run_stats"`
+	Errors        []string                 `json:"errors"`
 	// Flat legacy fields for manager backwards compat
 	HostCount    int `json:"host_count"`
 	OpenPorts    int `json:"open_ports"`
@@ -70,6 +87,12 @@ func Run(ctx context.Context, job Job, probeID string) Result {
 	var errs []string
 	var facts []Fact
 
+	job.ScanType = strings.ToLower(strings.TrimSpace(job.ScanType))
+	job.Profile = strings.ToLower(strings.TrimSpace(job.Profile))
+	if err := ValidatePlan(job.ScanType, job.Profile); err != nil {
+		return assembleError(job, probeID, start, err.Error())
+	}
+
 	timeout := time.Duration(clamp(job.Timeout, 0.5, 30, 3)) * time.Second
 	discTimeout := time.Duration(clamp(job.DiscTimeout, 0.5, 15, 1.5)) * time.Second
 	concurrency := clampInt(job.Concurrency, 1, 500, 100)
@@ -82,37 +105,17 @@ func Run(ctx context.Context, job Job, probeID string) Result {
 		job.JobID, job.ScanType, job.Profile, job.Targets)
 
 	// ── Gate 0: passive profile (OT) ─────────────────────────────────────────
-	if job.Profile == "ot" {
-		// OT is passive-only — no active probes.
-		log.Printf("[pipeline] gate0: OT profile → passive only (no active probes)")
-		return assemble(job, probeID, start, facts, errs, concurrency)
+	if job.ScanType == "passive_discovery" {
+		return assembleError(
+			job, probeID, start,
+			"passive collection is unavailable in the Go probe; no active probes executed",
+		)
 	}
 
-	// Build scope guard
-	scopeEntries := job.ScopeCIDRs
-	if len(scopeEntries) == 0 {
-		scopeEntries = job.Targets
-	}
-	sg, err := scanner.NewScopeGuard(scopeEntries, job.ExcludeCIDRs)
+	// ── Gate 1: expand only the requested target specifications ───────────────
+	allHosts, err := resolveRequestedHosts(job)
 	if err != nil {
-		errs = append(errs, fmt.Sprintf("scope error: %v", err))
-		return assembleError(job, probeID, start, err.Error())
-	}
-
-	// ── Gate 1: expand scope to IP list ──────────────────────────────────────
-	var allHosts []string
-	for _, t := range job.Targets {
-		if sg.InScope(t) {
-			allHosts = append(allHosts, t)
-		}
-	}
-	// Also expand any CIDRs that were passed as scope
-	for _, h := range sg.ExpandCIDRs() {
-		allHosts = dedup(append(allHosts, h))
-	}
-	if len(allHosts) == 0 {
-		errs = append(errs, "no in-scope targets after scope expansion")
-		return assembleError(job, probeID, start, "no targets in scope")
+		return assembleError(job, probeID, start, fmt.Sprintf("scope error: %v", err))
 	}
 	log.Printf("[pipeline] gate1: %d hosts to probe", len(allHosts))
 
@@ -132,6 +135,9 @@ func Run(ctx context.Context, job Job, probeID string) Result {
 	log.Printf("[pipeline] gate2: %d/%d hosts alive", len(aliveHosts), len(allHosts))
 
 	if len(aliveHosts) == 0 {
+		return assemble(job, probeID, start, facts, errs, concurrency)
+	}
+	if job.ScanType == "host_discovery" {
 		return assemble(job, probeID, start, facts, errs, concurrency)
 	}
 
@@ -156,6 +162,9 @@ func Run(ctx context.Context, job Job, probeID string) Result {
 		}
 		log.Printf("[pipeline] gate3:   %s → %d open ports", host, len(hostPorts[host]))
 	}
+	if job.ScanType == "discovery" || job.ScanType == "port_scan" {
+		return assemble(job, probeID, start, facts, errs, concurrency)
+	}
 
 	// ── Gate 4: deep service fingerprint (probe/match engine) ─────────────────
 	// Replaces naive banner-grab with nmap-style probe/response fingerprinting
@@ -179,6 +188,9 @@ func Run(ctx context.Context, job Job, probeID string) Result {
 			}
 			facts = append(facts, toFact(r))
 		}
+	}
+	if job.ScanType == "service_fingerprint" {
+		return assemble(job, probeID, start, facts, errs, concurrency)
 	}
 
 	// ── Gate 5: deep probes (parallel branches) ───────────────────────────────
@@ -334,15 +346,53 @@ func serviceFilterFor(scanType string) map[string]bool {
 	filters := map[string]map[string]bool{
 		"tls_scan":       {"tls": true},
 		"web_scan":       {"web": true},
+		"web_tls_scan":   {"web": true, "tls": true},
 		"db_fingerprint": {"db": true},
-		"smb_enum":       {"smb": true},
 		"udp_scan":       {"udp": true},
-		"mcp_discovery":  {"mcp_ai": true},
 	}
 	if f, ok := filters[scanType]; ok {
 		return f
 	}
 	return nil // nil = run all branches
+}
+
+// ValidatePlan rejects unknown plans and structurally prevents active OT scans.
+func ValidatePlan(scanType, profile string) error {
+	scanType = strings.ToLower(strings.TrimSpace(scanType))
+	profile = strings.ToLower(strings.TrimSpace(profile))
+	if !supportedScanTypes[scanType] {
+		return fmt.Errorf("unsupported scan_type %q", scanType)
+	}
+	switch profile {
+	case "it", "iot", "ot":
+	default:
+		return fmt.Errorf("unsupported profile %q", profile)
+	}
+	if profile == "ot" && scanType != "passive_discovery" {
+		return fmt.Errorf(
+			"OT profile is passive-only; active scan_type %q is blocked",
+			scanType,
+		)
+	}
+	if scanType == "passive_discovery" && profile != "ot" {
+		return fmt.Errorf("passive_discovery requires the OT profile")
+	}
+	return nil
+}
+
+func resolveRequestedHosts(job Job) ([]string, error) {
+	if len(job.Targets) == 0 {
+		return nil, fmt.Errorf("no requested targets")
+	}
+	scopeEntries := job.ScopeCIDRs
+	if len(scopeEntries) == 0 {
+		scopeEntries = job.Targets
+	}
+	guard, err := scanner.NewScopeGuard(scopeEntries, job.ExcludeCIDRs)
+	if err != nil {
+		return nil, err
+	}
+	return guard.ExpandRequested(job.Targets, maxRequestedTargets)
 }
 
 func looksLikeTLS(port int, all map[int]bool) bool {
@@ -431,6 +481,11 @@ func assembleError(job Job, probeID string, start time.Time, errMsg string) Resu
 	return r
 }
 
+// Reject builds a result for a job that failed validation before execution.
+func Reject(job Job, probeID, errMsg string) Result {
+	return assembleError(job, probeID, time.Now(), errMsg)
+}
+
 func buildHostsMap(facts []Fact) []map[string]interface{} {
 	// host → "proto/port" → merged port entry (deduped; richest service wins).
 	type portKey struct {
@@ -506,18 +561,6 @@ func countOpenPorts(facts []Fact) int {
 		seen[key] = true
 	}
 	return len(seen)
-}
-
-func dedup(s []string) []string {
-	seen := make(map[string]bool, len(s))
-	var out []string
-	for _, v := range s {
-		if !seen[v] {
-			seen[v] = true
-			out = append(out, v)
-		}
-	}
-	return out
 }
 
 func clamp(v, lo, hi, def float64) float64 {

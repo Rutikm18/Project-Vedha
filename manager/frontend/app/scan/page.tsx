@@ -57,6 +57,34 @@ interface JobStatus {
   result: Record<string, unknown> | null;
 }
 
+interface ScannerRun {
+  id: string;
+  label?: string;
+  role?: string;
+  status: "completed" | "cached" | "skipped" | "degraded" | "failed";
+  attempted_targets?: number;
+  fact_count?: number;
+  error_count?: number;
+  reused_fact_count?: number;
+  skip_reason?: string;
+}
+
+interface EngineManifest {
+  orchestrator?: {
+    id?: string;
+    label?: string;
+    version?: string;
+    build_sha?: string;
+  };
+  external_engines?: Array<{
+    id: string;
+    label?: string;
+    available?: boolean;
+    execution?: string;
+    role?: string;
+  }>;
+}
+
 /* ══════════════════════════════════════════════════════
    METADATA
 ══════════════════════════════════════════════════════ */
@@ -211,9 +239,12 @@ function FleetStrip({ probes, loading }: { probes: Probe[]; loading: boolean }) 
             {probes.map((p) => {
               const dot = !p.online ? "var(--text-faint)" : p.current_job_id ? "var(--sev-medium-color)" : "var(--nominal-color)";
               return (
-                <span key={p.id} title={p.location ?? undefined} style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 9px", borderRadius: 7, background: "var(--bg-surface)", border: "0.5px solid var(--border-subtle)", fontSize: 11 }}>
+                <span key={p.id} title={[p.location, p.capabilities.length ? `Capabilities: ${p.capabilities.join(", ")}` : null].filter(Boolean).join(" · ") || undefined} style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 9px", borderRadius: 7, background: "var(--bg-surface)", border: "0.5px solid var(--border-subtle)", fontSize: 11 }}>
                   <span style={{ width: 6, height: 6, borderRadius: "50%", background: dot }} />
                   <span style={{ color: "var(--text-secondary)", fontWeight: 500 }}>{p.name}</span>
+                  <span style={{ display: "inline-flex", alignItems: "center", gap: 3, color: "var(--text-faint)", fontFamily: "var(--font-mono)", fontSize: 9.5 }}>
+                    <Layers size={9} />{p.capabilities.length}
+                  </span>
                 </span>
               );
             })}
@@ -308,6 +339,22 @@ const PHASES = ["Queued", "Dispatched", "Scanning", "Aggregating", "Complete"];
 
 function JobPanel({ job, ucName }: { job: JobStatus; ucName?: string }) {
   const r = job.result ?? {};
+  const scannerRuns = Array.isArray(r.scanner_runs)
+    ? (r.scanner_runs as ScannerRun[]).filter((run) => run && typeof run.id === "string")
+    : [];
+  const manifest = (
+    r.engine_manifest && typeof r.engine_manifest === "object"
+      ? r.engine_manifest
+      : {}
+  ) as EngineManifest;
+  const orchestrator = manifest.orchestrator;
+  const externalEngines = Array.isArray(manifest.external_engines)
+    ? manifest.external_engines
+    : [];
+  const issues = Array.isArray(r.issues)
+    ? (r.issues as Array<{ message?: string; remediation?: string }>).filter(Boolean)
+    : [];
+  const degraded = r.degraded === true || r.outcome === "partial";
   const elapsed = job.started_at && job.completed_at
     ? Math.round((new Date(job.completed_at).getTime() - new Date(job.started_at).getTime()) / 1000)
     : null;
@@ -315,7 +362,9 @@ function JobPanel({ job, ucName }: { job: JobStatus; ucName?: string }) {
   const ST: Record<string, { icon: React.ReactNode; color: string; label: string }> = {
     pending:   { icon: <Clock size={13} />, color: "var(--text-muted)",        label: "Queued"    },
     running:   { icon: <Loader size={13} className="scn-spin" />, color: "var(--accent)", label: "Running" },
-    completed: { icon: <CheckCircle2 size={13} />, color: "var(--nominal-color)", label: "Completed" },
+    completed: degraded
+      ? { icon: <ShieldAlert size={13} />, color: "var(--sev-medium-color)", label: "Completed with errors" }
+      : { icon: <CheckCircle2 size={13} />, color: "var(--nominal-color)", label: "Completed" },
     failed:    { icon: <XCircle size={13} />, color: "var(--sev-critical-color)", label: "Failed"    },
   };
   const s = ST[job.status] ?? ST.pending;
@@ -354,8 +403,8 @@ function JobPanel({ job, ucName }: { job: JobStatus; ucName?: string }) {
         </div>
       )}
 
-      {job.status === "completed" && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)" }}>
+      {(job.status === "completed" || (job.status === "failed" && scannerRuns.length > 0)) && (
+        <div className="scn-result-stats" style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)" }}>
           {([
             ["Hosts",      (r.host_count    ?? (r.run_stats as Record<string, unknown>)?.host_count    ?? "—")],
             ["Open Ports", (r.open_ports    ?? (r.run_stats as Record<string, unknown>)?.open_ports    ?? "—")],
@@ -367,6 +416,78 @@ function JobPanel({ job, ucName }: { job: JobStatus; ucName?: string }) {
               <div style={{ fontSize: 9.5, color: "var(--text-muted)", marginTop: 5, textTransform: "uppercase", letterSpacing: 0.8 }}>{label}</div>
             </div>
           ))}
+        </div>
+      )}
+
+      {(job.status === "completed" || job.status === "failed") && scannerRuns.length > 0 && (
+        <div style={{ borderTop: "0.5px solid var(--border-subtle)" }}>
+          <div style={{ padding: "11px 16px", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <Cpu size={13} color="var(--accent)" />
+            <span style={{ fontSize: 11.5, fontWeight: 650, color: "var(--text-primary)" }}>
+              {orchestrator?.label ?? String(r.engine ?? "Probe collector")}
+            </span>
+            {orchestrator?.version && (
+              <span style={{ fontSize: 9.5, fontFamily: "var(--font-mono)", color: "var(--text-faint)" }}>
+                v{orchestrator.version}
+              </span>
+            )}
+            <span style={{ marginLeft: "auto", fontSize: 9.5, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>
+              {scannerRuns.length} components
+            </span>
+          </div>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(190px, 1fr))", borderTop: "0.5px solid var(--border-subtle)" }}>
+            {scannerRuns.map((run) => {
+              const runColor = run.status === "failed"
+                ? "var(--sev-critical-color)"
+                : run.status === "degraded"
+                  ? "var(--sev-medium-color)"
+                  : run.status === "completed" || run.status === "cached"
+                    ? "var(--nominal-color)"
+                    : "var(--text-faint)";
+              return (
+                <div key={run.id} title={run.role ?? run.skip_reason} style={{ minWidth: 0, padding: "9px 12px", borderRight: "0.5px solid var(--border-subtle)", borderBottom: "0.5px solid var(--border-subtle)" }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 6, minWidth: 0 }}>
+                    <span style={{ width: 6, height: 6, borderRadius: "50%", flexShrink: 0, background: runColor }} />
+                    <span style={{ fontSize: 10.5, fontWeight: 600, color: "var(--text-secondary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                      {run.label ?? run.id}
+                    </span>
+                    <span style={{ marginLeft: "auto", color: runColor, fontFamily: "var(--font-mono)", fontSize: 8.5, textTransform: "uppercase" }}>
+                      {run.status}
+                    </span>
+                  </div>
+                  <div style={{ marginTop: 4, fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--text-faint)" }}>
+                    {run.fact_count ?? 0} facts
+                    {run.reused_fact_count ? ` · ${run.reused_fact_count} cached` : ""}
+                    {run.error_count ? ` · ${run.error_count} errors` : ""}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+
+          {externalEngines.length > 0 && (
+            <div style={{ padding: "9px 16px", display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap", color: "var(--text-faint)", fontSize: 9.5 }}>
+              <span style={{ fontWeight: 650, textTransform: "uppercase" }}>Standalone validation</span>
+              {externalEngines.map((external) => (
+                <span key={external.id} title={`${external.role ?? ""} Not executed by this job.`} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}>
+                  <span style={{ width: 5, height: 5, borderRadius: "50%", background: external.available ? "var(--nominal-color)" : "var(--text-faint)" }} />
+                  {external.label ?? external.id} {external.available ? "available" : "not installed"}
+                </span>
+              ))}
+            </div>
+          )}
+
+          {issues.length > 0 && (
+            <div style={{ padding: "9px 16px", background: "var(--sev-medium-bg)", color: "var(--sev-medium-color)", fontSize: 10.5, lineHeight: 1.5 }}>
+              {issues.slice(0, 3).map((issue, index) => (
+                <div key={`${issue.message}-${index}`}>
+                  {issue.message ?? "Collector error"}
+                  {issue.remediation ? ` · ${issue.remediation}` : ""}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -419,7 +540,6 @@ function DispatchReceipt({ payload }: { payload: Record<string, unknown> }) {
           {line("intensity", params.intensity)}
           {line("rate / conc / timeout", params.rate !== undefined ? `${params.rate} pps · ${params.concurrency} · ${params.timeout}s` : undefined)}
           {line("passive_listen_seconds", params.passive_listen_seconds)}
-          {line("recheck_hours", params.recheck_hours)}
           {line("ssh_creds", params.ssh_creds)}
           {line("win_creds", params.win_creds)}
           <div style={{ marginTop: 11, display: "flex", gap: 7, alignItems: "flex-start" }}>
@@ -450,19 +570,12 @@ export default function ScanPage() {
   const [selectedEng, setSelectedEng] = useState("");
   const [targets,     setTargets]     = useState("");
   const [excluded,    setExcluded]    = useState("");
-  // The engagement's own defined scope/exclusions, joined for the textareas. We
-  // pre-fill from these so the operator never re-types what the engagement already
-  // declares; if they leave it untouched we send empty targets and let the backend
-  // apply the engagement's authoritative scope.
-  const [inheritedScope,    setInheritedScope]    = useState("");
-  const [inheritedExcluded, setInheritedExcluded] = useState("");
   const [catFilter,   setCatFilter]   = useState<Cat>("All");
   const [dispatched,  setDispatched]  = useState<Record<string, unknown> | null>(null);
 
   // ── Scan tuning ──
   const [intensity,    setIntensity]    = useState<Intensity>("normal");
   const [passiveSecs,  setPassiveSecs]  = useState(60);
-  const [recheckHours, setRecheckHours] = useState(24);
   const [showCreds,    setShowCreds]    = useState(false);
   const [sshUser, setSshUser] = useState(""); const [sshPass, setSshPass] = useState("");
   const [winUser, setWinUser] = useState(""); const [winPass, setWinPass] = useState("");
@@ -487,7 +600,11 @@ export default function ScanPage() {
         setProbes(pr);
         const engs = Array.isArray(engRaw) ? engRaw : (engRaw as { engagements?: Engagement[] }).engagements ?? [];
         setEngagements(engs);
-        if (engs.length === 1) setSelectedEng(engs[0].id);
+        if (engs.length === 1) {
+          setSelectedEng(engs[0].id);
+          setTargets((engs[0].scopeCidrs ?? []).join("\n"));
+          setExcluded((engs[0].excludedCidrs ?? []).join("\n"));
+        }
       } catch (e) {
         toastErr("Load failed", (e as Error).message);
       } finally {
@@ -513,29 +630,13 @@ export default function ScanPage() {
 
   useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current); }, []);
 
-  // Resolve an engagement's declared scope + exclusions into textarea strings.
-  const engScope = useCallback((engId: string) => {
-    const eng = engagements.find((e) => e.id === engId);
-    return {
-      scope:    (eng?.scopeCidrs ?? []).join("\n"),
-      excluded: (eng?.excludedCidrs ?? []).join("\n"),
-    };
-  }, [engagements]);
-
-  // When the selected engagement changes, inherit its scope/exclusions into the
-  // fields (only re-runs on engagement change, so manual edits are preserved).
-  useEffect(() => {
-    const { scope, excluded } = engScope(selectedEng);
-    setInheritedScope(scope);
-    setInheritedExcluded(excluded);
-    if (selectedEng) { setTargets(scope); setExcluded(excluded); }
-  }, [selectedEng, engScope]);
-
   const ucObj      = useCases.find((u) => u.use_case_id === selectedUc);
+  const selectedEngagement = engagements.find((engagement) => engagement.id === selectedEng);
+  const inheritedScope = (selectedEngagement?.scopeCidrs ?? []).join("\n");
+  const inheritedExcluded = (selectedEngagement?.excludedCidrs ?? []).join("\n");
   const idleProbes = probes.filter((p) => p.online && !p.current_job_id);
 
   const isOt         = ucObj?.profile === "ot";
-  const isRescan     = selectedUc === "uc_rescan_delta";
   const isAssessment = ucObj?.scan_type === "assessment";
   const credsActive  = showCreds && (sshUser.trim() !== "" || winUser.trim() !== "");
   const parseList    = (s: string) => s.split(/[\s,\n]+/).map((t) => t.trim()).filter(Boolean);
@@ -545,6 +646,13 @@ export default function ScanPage() {
   // operator hasn't overridden it) — drives the "inherited" UI + launch payload.
   const scopeIsInherited   = inheritedScope.trim()    !== "" && targets.trim()  === inheritedScope.trim();
   const excludeIsInherited = inheritedExcluded.trim() !== "" && excluded.trim() === inheritedExcluded.trim();
+
+  function selectEngagement(engagementId: string) {
+    const engagement = engagements.find((item) => item.id === engagementId);
+    setSelectedEng(engagementId);
+    setTargets((engagement?.scopeCidrs ?? []).join("\n"));
+    setExcluded((engagement?.excludedCidrs ?? []).join("\n"));
+  }
 
   function buildLaunchBody() {
     const targetList  = parseList(targets);
@@ -558,7 +666,6 @@ export default function ScanPage() {
       excluded_cidrs: (excludeList.length && !excludeIsInherited) ? excludeList : undefined,
     };
     if (isOt) b.passive_listen_seconds = passiveSecs; else b.intensity = intensity;
-    if (isRescan) b.recheck_hours = recheckHours;
     if (isAssessment && showCreds) {
       if (sshUser.trim()) b.ssh_creds = { user: sshUser.trim(), password: sshPass || undefined };
       if (winUser.trim()) b.win_creds = { user: winUser.trim(), password: winPass || undefined, domain: winDomain.trim() || undefined };
@@ -593,12 +700,12 @@ export default function ScanPage() {
     setSelectedUc("");
     const nextEng = engagements.length === 1 ? engagements[0].id : "";
     setSelectedEng(nextEng);
-    // Re-inherit the engagement's scope rather than blanking it (the effect won't
-    // refire when nextEng equals the current selection, e.g. the single-engagement case).
-    const { scope, excluded: excl } = nextEng ? engScope(nextEng) : { scope: "", excluded: "" };
-    setTargets(scope); setExcluded(excl);
+    // Re-inherit the sole engagement's scope rather than blanking it.
+    const nextEngagement = engagements.find((engagement) => engagement.id === nextEng);
+    setTargets((nextEngagement?.scopeCidrs ?? []).join("\n"));
+    setExcluded((nextEngagement?.excludedCidrs ?? []).join("\n"));
     setJob(null); setDispatched(null);
-    setIntensity("normal"); setPassiveSecs(60); setRecheckHours(24);
+    setIntensity("normal"); setPassiveSecs(60);
     setShowCreds(false); setSshUser(""); setSshPass(""); setWinUser(""); setWinPass(""); setWinDomain("");
   }
 
@@ -618,7 +725,7 @@ export default function ScanPage() {
 
         <FleetStrip probes={probes} loading={loadingData} />
 
-        <div style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 20, alignItems: "start" }}>
+        <div className="scn-main-grid" style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 20, alignItems: "start" }}>
 
           {/* ── STEP 1 · Choose a scan ── */}
           <section>
@@ -654,7 +761,7 @@ export default function ScanPage() {
           </section>
 
           {/* ── STEP 2 · Configure & launch ── */}
-          <div style={{ position: "sticky", top: 16 }}>
+          <div className="scn-launch-panel" style={{ position: "sticky", top: 16 }}>
             <SectionLabel num="02">Configure &amp; launch</SectionLabel>
 
             <HudFrame active={!!ucObj} radius={14}>
@@ -687,7 +794,7 @@ export default function ScanPage() {
                   <div>
                     <FieldLabel>Engagement</FieldLabel>
                     <div style={{ position: "relative" }}>
-                      <select className="scn-input scn-select" value={selectedEng} onChange={(e) => setSelectedEng(e.target.value)}>
+                      <select className="scn-input scn-select" value={selectedEng} onChange={(e) => selectEngagement(e.target.value)}>
                         <option value="">— select engagement —</option>
                         {engagements.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
                       </select>
@@ -768,25 +875,6 @@ export default function ScanPage() {
                     </div>
                   )}
 
-                  {/* Rescan delta */}
-                  {isRescan && (
-                    <div>
-                      <FieldLabel icon={<RefreshCw size={11} />}>Re-scan Delta Window</FieldLabel>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <input type="number" min={0} max={8760} value={recheckHours} className="scn-input"
-                          onChange={(e) => setRecheckHours(Math.max(0, Math.min(8760, Number(e.target.value) || 0)))}
-                          style={{ width: 84, fontFamily: "var(--font-mono)", fontSize: 12 }} />
-                        <span style={{ fontSize: 11, color: "var(--text-muted)" }}>hrs</span>
-                        <div style={{ display: "flex", gap: 5, marginLeft: "auto" }}>
-                          {[[1, "1h"], [24, "1d"], [168, "1w"]].map(([h, lbl]) => (
-                            <button key={String(h)} className="scn-chip" data-on={recheckHours === h} onClick={() => setRecheckHours(h as number)}>{lbl}</button>
-                          ))}
-                        </div>
-                      </div>
-                      <p style={{ margin: "8px 0 0", fontSize: 10.5, color: "var(--text-muted)", lineHeight: 1.5 }}>Facts older than this are re-probed; fresher facts are reused. Lower = more thorough.</p>
-                    </div>
-                  )}
-
                   {/* Credentialed scan */}
                   {isAssessment && (
                     <div style={{ borderRadius: 10, border: `0.5px solid ${credsActive ? "var(--border-accent)" : "var(--border-subtle)"}`, overflow: "hidden", background: "var(--bg-card)" }}>
@@ -832,7 +920,6 @@ export default function ScanPage() {
                       ["Mode", isOt ? `Passive · ${passiveSecs}s` : `${intensityObj.label} · ${intensityObj.pps}`],
                       ["Scope", scopeIsInherited ? `Engagement scope · ${targetCount}` : targetCount ? `${targetCount} explicit target${targetCount > 1 ? "s" : ""}` : "Full engagement scope"],
                       ...(excludeCount ? [["Exclude", `${excludeCount} carve-out${excludeCount > 1 ? "s" : ""}`]] as [string, string][] : []),
-                      ...(isRescan ? [["Delta", `re-probe > ${recheckHours}h old`]] as [string, string][] : []),
                       ["Auth", credsActive ? [sshUser.trim() && "SSH", winUser.trim() && "Windows"].filter(Boolean).join(" + ") : "Unauthenticated"],
                     ] as [string, string][]).map(([k, v]) => (
                       <div key={k} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 11 }}>
@@ -963,6 +1050,17 @@ const STYLES = `
 .scn-phase[data-state="done"] .scn-phase-label { color:var(--text-muted); }
 .scn-phase-link { flex:1; height:2px; background:var(--border-subtle); margin:0 -2px 18px; min-width:14px; transition: background 400ms var(--ease-out); }
 .scn-phase-link[data-on="true"] { background:var(--nominal-color); }
+
+@media (max-width: 900px) {
+  .scn-main-grid { grid-template-columns: minmax(0, 1fr) !important; }
+  .scn-launch-panel { position: static !important; }
+}
+
+@media (max-width: 560px) {
+  .scn-result-stats { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+  .scn-ticker { padding-inline: 8px; }
+  .scn-phase { width: 66px; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   .scn-card, .scn-dial-sweep, .scn-ping, .scn-phase[data-state="active"] .scn-phase-dot { animation: none !important; }

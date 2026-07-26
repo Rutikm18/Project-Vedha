@@ -8,8 +8,10 @@ import { Socket as NetSocket }             from 'net';
 import type { DiscoveredHost, ScanCallbacks, LiveFinding } from './types';
 import { parseNmapXml }                        from '../nmap-parser';
 import { parseNucleiLine, nucleiSeverityToSeverity } from '../nuclei-parser';
-import { parseTestsslJson }                    from '../testssl-parser';
+import { parseTestsslJsonChecked }             from '../testssl-parser';
 import { parseNaabuLine, groupNaabuResults }   from '../naabu-parser';
+import { parseWhatWebOutput }                  from '../whatweb-parser';
+import { HttpxJsonlDecoder, type HttpxJsonRecord } from '../httpx-parser';
 import { generateFindingId }                   from '../finding-id';
 import { diagnoseSpawnError, Errors }          from '../errors';
 import { nativePortScan, groupResults }        from './native/port-scan';
@@ -23,6 +25,7 @@ import { managedPath, isManaged }              from '../tools/installer';
 // ── Stealth mappings (index = stealth level 0–9) ─────────────────
 const NAABU_RATE    = [0, 50, 100, 300, 500, 1000, 2000, 3000, 5000];
 const NMAP_TIMING   = [0, 1,  1,   2,   2,   3,    3,    4,    4,   5];
+const NUCLEI_TEMPLATE_FAILURE = /no templates (?:provided|found|available)|nuclei-templates are not installed|could not find template/i;
 
 // ── Platform helpers ─────────────────────────────────────────────
 function isWindows(): boolean {
@@ -86,7 +89,6 @@ function spawnOpts(extraEnv?: Record<string, string>): SpawnOptions {
   if (isWindows()) {
     // Prevent console window flash on Windows
     (base as SpawnOptions & { windowsHide: boolean }).windowsHide = true;
-    base.shell = true;
   }
   return base;
 }
@@ -419,6 +421,7 @@ export async function runNuclei(
 
   const findings: LiveFinding[] = [];
   const now = new Date().toISOString();
+  let malformedLines = 0;
 
   // Resolve a writable templates dir, in this order:
   //   1. NUCLEI_TEMPLATE_DIR env var (operator override)
@@ -451,7 +454,7 @@ export async function runNuclei(
   }
 
   const args = [
-    '-json', '-silent', '-no-color',
+    '-jsonl', '-silent', '-no-color',
     ...(templateDir ? ['-t', templateDir] : []),
     ...urls.flatMap((u) => ['-u', u]),
   ];
@@ -467,7 +470,10 @@ export async function runNuclei(
     args,
     (line) => {
       const match = parseNucleiLine(line);
-      if (!match) return;
+      if (!match) {
+        malformedLines += 1;
+        return;
+      }
       const sev = nucleiSeverityToSeverity(match.severity);
       const finding: LiveFinding = {
         id:        generateFindingId(sev),
@@ -487,8 +493,13 @@ export async function runNuclei(
     spawnOpts(env),
   );
 
-  if (code !== 0 && findings.length === 0) {
+  if (code !== 0) {
     cb.onError('nuclei', diagnoseSpawnError('nuclei', code, stderr).render({ useColor: false, withMark: false }));
+  } else if (NUCLEI_TEMPLATE_FAILURE.test(stderr)) {
+    cb.onError('nuclei', `Nuclei could not load a usable template set: ${stderr.trim().slice(0, 500)}`);
+  }
+  if (malformedLines > 0) {
+    cb.onError('nuclei', `Nuclei emitted ${malformedLines} malformed JSONL line(s); ${findings.length} valid finding(s) were retained.`);
   }
   return findings;
 }
@@ -514,17 +525,36 @@ export async function runTestssl(
       spawnOpts(),
     );
 
-    if (code !== 0 && !existsSync(outFile)) {
+    if (code !== 0) {
       cb.onError('testssl', diagnoseSpawnError('testssl', code, stderr).render({ useColor: false, withMark: false }));
+    }
+
+    if (!existsSync(outFile)) {
+      if (code === 0) {
+        cb.onError('testssl', `testssl completed for ${host.ip}:${port} without creating its JSON report.`);
+      }
       continue;
     }
 
-    if (existsSync(outFile)) {
-      try {
-        const content  = readFileSync(outFile, 'utf-8');
-        const findings = parseTestsslJson(content, host.ip, port);
-        for (const f of findings) { all.push(f); cb.onFinding(f); }
-      } catch { /* ignore parse errors */ }
+    try {
+      const content = readFileSync(outFile, 'utf-8');
+      const parsed = parseTestsslJsonChecked(content, host.ip, port);
+      if (parsed.invalidEntries > 0) {
+        cb.onError(
+          'testssl',
+          `testssl returned ${parsed.invalidEntries} invalid JSON entr${parsed.invalidEntries === 1 ? 'y' : 'ies'} for ${host.ip}:${port}; valid findings were retained.`,
+        );
+      }
+      for (const finding of parsed.findings) {
+        all.push(finding);
+        cb.onFinding(finding);
+      }
+    } catch (error) {
+      cb.onError(
+        'testssl',
+        `Unable to read or parse the testssl report for ${host.ip}:${port}: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    } finally {
       try { unlinkSync(outFile); } catch { /* ignore */ }
     }
   }
@@ -658,11 +688,6 @@ export async function runSubfinder(
 }
 
 // ── runHttpx (HTTP service probe) ────────────────────────────────
-interface HttpxLine {
-  url?: string; host?: string; port?: number; status_code?: number;
-  title?: string; tech?: string[]; webserver?: string; scheme?: string;
-}
-
 export async function runHttpx(
   hosts: DiscoveredHost[],
   cb: ScanCallbacks,
@@ -703,53 +728,71 @@ export async function runHttpx(
     return { urls, findings };
   }
 
-  const args = ['-json', '-silent', '-no-color', '-threads', '50', '-l', '/dev/stdin'];
+  // HTTPX reads targets from stdin when neither -l nor positional targets are
+  // supplied. Avoid /dev/stdin, which does not exist on Windows.
+  const args = ['-json', '-silent', '-no-color', '-threads', '50'];
   const proc = spawn(bin('httpx'), args, { ...spawnOpts(), stdio: ['pipe', 'pipe', 'pipe'] });
 
   return new Promise((resolve) => {
-    let buf = ''; let stderr = '';
-    proc.stdout?.on('data', (chunk: Buffer | string) => {
-      buf += chunk.toString();
-      const lines = buf.split('\n');
-      buf = lines.pop() ?? '';
-      for (const line of lines) {
-        if (!line.trim()) continue;
-        try {
-          const j = JSON.parse(line) as HttpxLine;
-          if (j.url) urls.push(j.url);
-          // Emit one INFO finding per live web service
-          if (j.url) {
-            const f: LiveFinding = {
-              id:        generateFindingId('INFO'),
-              title:     `HTTP service: ${j.title || j.url}`,
-              severity:  'INFO',
-              host:      j.host || j.url,
-              port:      j.port,
-              service:   j.webserver || 'http',
-              source:    'httpx',
-              evidence:  [{ label: 'httpx', content: JSON.stringify(j), timestamp: now }],
-              status:    'OPEN',
-              timestamp: now,
-            };
-            findings.push(f);
-            cb.onFinding(f);
-          }
-        } catch { /* malformed line — skip */ }
+    const decoder = new HttpxJsonlDecoder();
+    let stderr = '';
+    let stdinError = '';
+    let settled = false;
+
+    const emitRecords = (records: HttpxJsonRecord[]) => {
+      for (const record of records) {
+        urls.push(record.url);
+        const finding: LiveFinding = {
+          id:        generateFindingId('INFO'),
+          title:     `HTTP service: ${record.title || record.url}`,
+          severity:  'INFO',
+          host:      record.host || record.url,
+          port:      record.port,
+          service:   record.webserver || 'http',
+          source:    'httpx',
+          evidence:  [{ label: 'httpx', content: JSON.stringify(record), timestamp: now }],
+          status:    'OPEN',
+          timestamp: now,
+        };
+        findings.push(finding);
+        cb.onFinding(finding);
       }
+    };
+
+    const finish = (code: number, spawnError?: string) => {
+      if (settled) return;
+      settled = true;
+      emitRecords(decoder.finish());
+
+      if (spawnError) {
+        cb.onError('httpx', diagnoseSpawnError('httpx', -1, spawnError).render({ useColor: false, withMark: false }));
+      } else if (code !== 0) {
+        cb.onError('httpx', diagnoseSpawnError('httpx', code, stderr).render({ useColor: false, withMark: false }));
+      }
+      if (stdinError) {
+        cb.onError('httpx', `HTTPX input stream failed: ${stdinError}`);
+      }
+      if (decoder.malformedLines > 0) {
+        cb.onError(
+          'httpx',
+          `HTTPX emitted ${decoder.malformedLines} malformed JSONL line(s) (${decoder.invalidJsonLines} invalid JSON, ${decoder.invalidRecordLines} invalid schema); ${findings.length} valid result(s) were retained.`,
+        );
+      }
+      resolve({ urls, findings });
+    };
+
+    proc.stdout?.on('data', (chunk: Buffer | string) => {
+      emitRecords(decoder.push(chunk.toString()));
     });
     proc.stderr?.on('data', (c: Buffer | string) => { stderr += c.toString(); });
+    proc.stdin?.on('error', (error) => { stdinError = error.message; });
     proc.on('error', (err) => {
-      cb.onError('httpx', diagnoseSpawnError('httpx', -1, err.message).render({ useColor: false, withMark: false }));
-      resolve({ urls, findings });
+      finish(-1, err.message);
     });
     proc.on('close', (code) => {
-      if (code !== 0 && urls.length === 0) {
-        cb.onError('httpx', diagnoseSpawnError('httpx', code ?? 1, stderr).render({ useColor: false, withMark: false }));
-      }
-      resolve({ urls, findings });
+      finish(code ?? 0);
     });
-    proc.stdin?.write(inputs.join('\n'));
-    proc.stdin?.end();
+    proc.stdin?.end(`${inputs.join('\n')}\n`);
   });
 }
 
@@ -792,21 +835,30 @@ export async function runWhatweb(
     return findings;
   }
 
-  const args = ['--no-errors', '--log-json=/dev/stdout', '-q', ...urls];
+  const args = ['--no-errors', '--log-json=-', '-q', ...urls];
   const { stdout, code, stderr } = await collectProcess(binName('whatweb'), args, spawnOpts());
-  if (code !== 0 && !stdout) {
+  if (code !== 0) {
     cb.onError('whatweb', diagnoseSpawnError('whatweb', code, stderr).render({ useColor: false, withMark: false }));
+  }
+
+  let parsed;
+  try {
+    parsed = parseWhatWebOutput(stdout);
+  } catch (err) {
+    cb.onError('whatweb', err instanceof Error ? err.message : String(err));
     return findings;
   }
 
-  for (const line of stdout.split(/\r?\n/)) {
-    if (!line.trim()) continue;
+  if (parsed.invalidEntries > 0) {
+    cb.onError('whatweb', `WhatWeb returned ${parsed.invalidEntries} invalid result entr${parsed.invalidEntries === 1 ? 'y' : 'ies'}; valid results were retained.`);
+  }
+
+  for (const result of parsed.results) {
     try {
-      const j = JSON.parse(line) as { target?: string; plugins?: Record<string, unknown> };
-      if (!j.target || !j.plugins) continue;
-      const tech = Object.keys(j.plugins).join(', ');
-      const host = new URL(j.target).hostname;
-      const port = parseInt(new URL(j.target).port, 10) || (new URL(j.target).protocol === 'https:' ? 443 : 80);
+      const tech = Object.keys(result.plugins).join(', ');
+      const target = new URL(result.target);
+      const host = target.hostname;
+      const port = parseInt(target.port, 10) || (target.protocol === 'https:' ? 443 : 80);
       const f: LiveFinding = {
         id:        generateFindingId('INFO'),
         title:     `Tech stack: ${tech.slice(0, 60)}`,
@@ -814,13 +866,15 @@ export async function runWhatweb(
         host,
         port,
         source:    'whatweb',
-        evidence:  [{ label: 'whatweb', content: line, timestamp: now }],
+        evidence:  [{ label: 'whatweb', content: JSON.stringify(result), timestamp: now }],
         status:    'OPEN',
         timestamp: now,
       };
       findings.push(f);
       cb.onFinding(f);
-    } catch { /* malformed line */ }
+    } catch (err) {
+      cb.onError('whatweb', `WhatWeb returned an invalid target URL: ${err instanceof Error ? err.message : String(err)}`);
+    }
   }
   return findings;
 }

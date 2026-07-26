@@ -3,8 +3,9 @@ import assert from 'node:assert/strict';
 
 import { parseNmapXml }                           from '../lib/nmap-parser';
 import { parseNucleiLine, nucleiSeverityToSeverity } from '../lib/nuclei-parser';
-import { parseTestsslJson }                        from '../lib/testssl-parser';
+import { parseTestsslJson, parseTestsslJsonChecked } from '../lib/testssl-parser';
 import { parseNaabuLine, groupNaabuResults }       from '../lib/naabu-parser';
+import { HttpxJsonlDecoder, parseHttpxJsonLine }    from '../lib/httpx-parser';
 import { resetCounters }                           from '../lib/finding-id';
 
 // ── nmap sample XML ──────────────────────────────────────────────
@@ -194,6 +195,72 @@ describe('testssl-parser', () => {
 
   test('returns [] for empty string', () => {
     assert.deepEqual(parseTestsslJson('', '10.0.0.1', 443), []);
+  });
+
+  test('checked parser rejects malformed and unsupported reports', () => {
+    assert.throws(
+      () => parseTestsslJsonChecked('{bad json}', '10.0.0.1', 443),
+      /invalid JSON/,
+    );
+    assert.throws(
+      () => parseTestsslJsonChecked('{"unexpected":[]}', '10.0.0.1', 443),
+      /unsupported schema/,
+    );
+  });
+
+  test('checked parser retains valid findings and counts bad entries', () => {
+    const content = JSON.stringify([
+      { id: 'SSLv3', severity: 'CRITICAL', finding: 'offered' },
+      { id: 'missing-fields' },
+    ]);
+    const result = parseTestsslJsonChecked(content, '10.0.0.1', 443);
+
+    assert.equal(result.findings.length, 1);
+    assert.equal(result.invalidEntries, 1);
+    assert.equal(result.totalEntries, 2);
+  });
+});
+
+// ════════════════════════════════════════════════════════════════
+
+describe('httpx-parser', () => {
+  test('parses a valid HTTPX JSONL record', () => {
+    const result = parseHttpxJsonLine(JSON.stringify({
+      url: 'https://10.0.0.1',
+      host: '10.0.0.1',
+      port: '443',
+      status_code: 200,
+      tech: ['nginx'],
+    }));
+
+    assert.equal(result.ok, true);
+    if (result.ok) {
+      assert.equal(result.record.url, 'https://10.0.0.1');
+      assert.equal(result.record.port, 443);
+    }
+  });
+
+  test('distinguishes invalid JSON from schema drift', () => {
+    assert.deepEqual(parseHttpxJsonLine('{bad'), { ok: false, reason: 'invalid_json' });
+    assert.deepEqual(
+      parseHttpxJsonLine(JSON.stringify({ host: '10.0.0.1', status_code: 200 })),
+      { ok: false, reason: 'invalid_record' },
+    );
+  });
+
+  test('decoder retains valid records and flushes a final unterminated line', () => {
+    const decoder = new HttpxJsonlDecoder();
+    const first = decoder.push(
+      `${JSON.stringify({ url: 'http://10.0.0.1', port: 80 })}\n{bad json}\n`
+      + JSON.stringify({ url: 'https://10.0.0.2', port: 443 }),
+    );
+    const final = decoder.finish();
+
+    assert.equal(first.length, 1);
+    assert.equal(final.length, 1);
+    assert.equal(final[0].url, 'https://10.0.0.2');
+    assert.equal(decoder.invalidJsonLines, 1);
+    assert.equal(decoder.malformedLines, 1);
   });
 });
 

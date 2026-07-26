@@ -12,7 +12,7 @@ import {
   type PipelineState,
   type StageState,
 } from "../../../../lib/scan-pipeline";
-import { parseNucleiLine, nucleiMatchToFinding, countBySeverity, type NucleiRawLine } from "../../../../lib/nuclei-parser";
+import { parseNucleiLine, nucleiMatchToFinding, countBySeverity } from "../../../../lib/nuclei-parser";
 import { parseTestsslOutput, type TestsslOutput } from "../../../../lib/testssl-parser";
 import { parseNmapXml } from "../../scan/nmap/route";
 import { createFinding } from "../../../../lib/findings-store";
@@ -20,6 +20,8 @@ import { spawn } from "child_process";
 import { writeFileSync, readFileSync, existsSync, unlinkSync } from "fs";
 import { join } from "path";
 import { tmpdir } from "os";
+import { randomUUID } from "crypto";
+import { withVerifiedLocalScanner } from "../../../../lib/with-backend";
 
 const SAFE_TARGET = /^[a-zA-Z0-9.\-_/:,]+$/;
 
@@ -546,7 +548,7 @@ async function runPipelineBackground(
 }
 
 /* ── POST /api/scan/pipeline ─────────────────────────────────────── */
-export async function POST(req: NextRequest) {
+export const POST = withVerifiedLocalScanner(async (req: NextRequest, { user }) => {
   const body = await req.json() as {
     targets:      string[];
     profile?:     ScanProfile;
@@ -560,10 +562,16 @@ export async function POST(req: NextRequest) {
     targets,
     profile       = "standard",
     tools         = PROFILE_TOOLS[profile],
-    credentials   = {},
     createFindings = false,
     stealthLevel   = 5,
   } = body;
+
+  if (body.credentials && Object.keys(body.credentials).length > 0) {
+    return new Response(
+      `data: ${JSON.stringify({ type: "error", error: "Pipeline credentials are not accepted; use a credential-enabled probe job." })}\n\n`,
+      { status: 400, headers: { "Content-Type": "text/event-stream" } },
+    );
+  }
 
   if (!targets?.length || !targets.every((t) => SAFE_TARGET.test(t) && t.length < 200)) {
     return new Response(
@@ -572,8 +580,14 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const scanId = `pipeline-${Date.now()}`;
-  const state  = createInitialPipelineState(scanId, targets, profile, credentials, tools);
+  const scanId = `pipeline-${randomUUID()}`;
+  const state  = createInitialPipelineState(
+    scanId,
+    targets,
+    profile,
+    { tenantId: user.tenant_id, userId: user.user_id },
+    tools,
+  );
   setPipeline(scanId, state);
 
   // Fire and forget — runs concurrently with the SSE polling loop
@@ -626,4 +640,4 @@ export async function POST(req: NextRequest) {
       "Connection":    "keep-alive",
     },
   });
-}
+});

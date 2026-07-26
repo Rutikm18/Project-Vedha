@@ -1,6 +1,7 @@
 """
 Agent registration, heartbeat, job polling, and result submission.
 """
+import ipaddress
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
@@ -37,10 +38,9 @@ AGENT_EXECUTABLE_TYPES = (
     ScanJobType.cloud_scan,
 )
 
-# Mirrors probe/scanners/__init__.py's DEFAULT_SCAN_FOR_JOBTYPE. Duplicated
-# deliberately — the manager and probe are separate deployable processes (no
-# shared Python import), so this lets the manager enforce policy against the
-# SAME scan_type the probe will actually resolve and run, not guess at it.
+# Default capability for the API's coarse job types. The resolved value is
+# materialized into params at enqueue time so the independently deployed probe
+# runs the same scan type the manager checked.
 _DEFAULT_SCAN_FOR_JOBTYPE = {"discovery": "discovery", "lateral": "smb_enum", "cloud_scan": "vuln_scan"}
 
 # Profiles that restrict which scan_type a job may resolve to, stored in an
@@ -56,6 +56,139 @@ _OT_ALLOWED_SCAN_TYPES = {"passive_discovery"}
 
 def _resolve_scan_type(job_type: str, params: dict) -> str:
     return params.get("scan_type") or _DEFAULT_SCAN_FOR_JOBTYPE.get(job_type, "discovery")
+
+
+def _required_scan_type(job_type: ScanJobType | str, params: dict | None) -> str:
+    """Resolve the capability a probe must advertise for a job."""
+    job_type_value = job_type.value if hasattr(job_type, "value") else str(job_type)
+    job_params = params or {}
+    use_case_id = job_params.get("use_case_id")
+    if use_case_id in _USE_CASES:
+        return _USE_CASES[use_case_id]["scan_type"]
+    return _resolve_scan_type(job_type_value, job_params)
+
+
+def _scope_is_reachable(
+    network_segments: list[str] | None,
+    scope_cidrs: list[str] | None,
+) -> bool:
+    """Return whether a probe's declared networks fully cover a job's scope.
+
+    Empty ``network_segments`` is retained as the legacy declaration that a
+    probe is unrestricted inside its own tenant. Once segments are declared,
+    every scope network must be contained by one of them; overlap alone is not
+    sufficient because it could dispatch a broader scan than the probe can
+    safely reach.
+    """
+    if not network_segments:
+        return True
+    if not scope_cidrs:
+        return False
+
+    try:
+        segments = [
+            ipaddress.ip_network(str(value).strip(), strict=False)
+            for value in network_segments
+        ]
+        scope = [
+            ipaddress.ip_network(str(value).strip(), strict=False)
+            for value in scope_cidrs
+        ]
+    except (ValueError, TypeError):
+        return False
+
+    return all(
+        any(
+            target.version == segment.version and target.subnet_of(segment)
+            for segment in segments
+        )
+        for target in scope
+    )
+
+
+def _job_reachability_scope(
+    params: dict | None,
+    authoritative_scope: list[str] | None,
+) -> list[str] | None:
+    """Return the narrow IP scope needed to route this job.
+
+    The engagement scope remains the execution allowlist. This helper only
+    avoids requiring one probe to reach unrelated subnets when the operator
+    requested a concrete IP/CIDR/range subset. Hostnames cannot be mapped to a
+    registered network segment safely, so they retain full-scope routing.
+    ``None`` means an explicit IP target was outside the authoritative scope.
+    """
+    job_params = params or {}
+    requested = job_params.get("targets")
+    if requested is None:
+        requested = job_params.get("target")
+    if requested is None:
+        return list(authoritative_scope or [])
+
+    values = [requested] if isinstance(requested, str) else requested
+    if not isinstance(values, (list, tuple)) or not values:
+        return list(authoritative_scope or [])
+
+    try:
+        allowed = [
+            ipaddress.ip_network(str(value).strip(), strict=False)
+            for value in (authoritative_scope or [])
+        ]
+    except (ValueError, TypeError):
+        return None
+
+    requested_networks: list[ipaddress.IPv4Network | ipaddress.IPv6Network] = []
+    try:
+        for raw_value in values:
+            if not isinstance(raw_value, str) or not raw_value.strip():
+                return list(authoritative_scope or [])
+            value = raw_value.strip()
+            if "-" in value:
+                start_raw, end_raw = (
+                    part.strip() for part in value.split("-", 1)
+                )
+                start = ipaddress.ip_address(start_raw)
+                end = ipaddress.ip_address(end_raw)
+                if start.version != end.version or int(start) > int(end):
+                    return None
+                requested_networks.extend(
+                    ipaddress.summarize_address_range(start, end)
+                )
+            else:
+                requested_networks.append(
+                    ipaddress.ip_network(value, strict=False)
+                )
+    except (ValueError, TypeError):
+        # A hostname may resolve differently from the manager. Route it only to
+        # a probe that declared coverage for the complete engagement scope.
+        return list(authoritative_scope or [])
+
+    if allowed and not all(
+        any(
+            target.version == scope.version and target.subnet_of(scope)
+            for scope in allowed
+        )
+        for target in requested_networks
+    ):
+        return None
+    return [str(network) for network in requested_networks]
+
+
+def _agent_can_execute_job(
+    agent: Agent,
+    job_type: ScanJobType | str,
+    params: dict | None,
+    scope_cidrs: list[str] | None,
+) -> bool:
+    """Apply capability and network reachability policy to one dispatch."""
+    required_capability = _required_scan_type(job_type, params)
+    capabilities = {str(value).strip() for value in (agent.capabilities or [])}
+    if required_capability not in capabilities:
+        return False
+    dispatch_scope = _job_reachability_scope(params, scope_cidrs)
+    if dispatch_scope is None:
+        return False
+    return _scope_is_reachable(agent.network_segments, dispatch_scope)
 
 
 # ── Schemas ───────────────────────────────────────────────────────────────────
@@ -77,6 +210,12 @@ class HeartbeatRequest(BaseModel):
     agent_id: str
     current_job_id: str | None = None
     status: str = "online"
+
+
+class AgentRefreshRequest(BaseModel):
+    capabilities: list[str] = []
+    network_segments: list[str] = []
+    public_key: str | None = None
 
 
 class JobResultRequest(BaseModel):
@@ -116,7 +255,7 @@ _USE_CASES = {
     "uc_external_web_triage": {
         "display_name": "External Web Triage",
         "description": "Web + TLS surface only. Fast check for exposed web services and cert facts.",
-        "scan_type": "tls_scan",
+        "scan_type": "web_tls_scan",
         "profile": "it",
         "expected_runtime_hint": "5–15 min",
     },
@@ -389,6 +528,39 @@ async def heartbeat(body: HeartbeatRequest, db: DB, request: Request):
     return {"ok": True}
 
 
+@router.post(
+    "/{agent_id}/refresh",
+    summary="Agent refreshes its own capability and routing metadata",
+)
+async def refresh_agent_registration(
+    agent_id: uuid.UUID,
+    body: AgentRefreshRequest,
+    db: DB,
+    request: Request,
+):
+    _agent_ownership_check(request, str(agent_id))
+    agent = (await db.execute(
+        select(Agent).where(Agent.id == agent_id)
+    )).scalar_one_or_none()
+    if agent is None:
+        raise HTTPException(410, "Agent registration no longer exists")
+
+    agent.capabilities = body.capabilities
+    agent.network_segments = body.network_segments
+    if body.public_key:
+        agent.public_key = body.public_key
+    agent.status = AgentStatus.online
+    agent.last_heartbeat = datetime.now(timezone.utc)
+    await db.flush()
+    logger.info(
+        "agent.registration.refreshed",
+        agent_id=str(agent_id),
+        capability_count=len(body.capabilities),
+        segment_count=len(body.network_segments),
+    )
+    return {"ok": True}
+
+
 @router.get("/{agent_id}/jobs", summary="Agent polls for pending ScanJobs")
 async def get_agent_jobs(
     agent_id: uuid.UUID,
@@ -406,34 +578,60 @@ async def get_agent_jobs(
     if not agent:
         raise HTTPException(404, "Agent not found")
 
-    # Atomic claim: FOR UPDATE SKIP LOCKED locks each pending row as we read it
-    # and skips rows another concurrent poller (or the WS job_ack path) already
-    # holds — so the same job can never be dispatched to two agents. Without this
-    # the read→assign gap is a TOCTOU race that double-runs scans at scale.
-    jobs_result = await db.execute(
-        select(ScanJob)
+    # Tenant filtering happens in SQL so a probe can never observe another
+    # tenant's job. Capability and reachability depend on JSON/ARRAY metadata and
+    # are evaluated below before an atomic conditional UPDATE claims each row.
+    candidate_result = await db.execute(
+        select(ScanJob, Engagement)
+        .join(Engagement, ScanJob.engagement_id == Engagement.id)
         .where(
+            Engagement.tenant_id == agent.tenant_id,
             ScanJob.status == ScanJobStatus.pending,
-            ScanJob.agent_id == None,
+            ScanJob.agent_id.is_(None),
             ScanJob.job_type.in_(AGENT_EXECUTABLE_TYPES),
         )
         .order_by(ScanJob.created_at)
-        .limit(limit)
-        .with_for_update(skip_locked=True)
     )
-    jobs = jobs_result.scalars().all()
+    candidates = candidate_result.all()
 
-    # Assign jobs to this agent, with a lease the probe renews via heartbeat. If the
-    # probe dies mid-scan the lease expires and the reaper requeues the job.
+    # Conditional UPDATE is the claim primitive shared conceptually with the WS
+    # path. Under concurrent pollers only one transaction can change a row that
+    # is still pending and unassigned; losing pollers get rowcount == 0.
+    claim_limit = max(0, min(int(limit), 100))
     now = datetime.now(timezone.utc)
     lease_until = now + timedelta(seconds=get_settings().job_lease_seconds)
-    for job in jobs:
-        job.agent_id = str(agent_id)
-        job.status = ScanJobStatus.running
-        job.started_at = now
-        job.lease_expires_at = lease_until
+    jobs: list[ScanJob] = []
+    for job, engagement in candidates:
+        if len(jobs) >= claim_limit:
+            break
+        params = job.result or {}
+        if not _agent_can_execute_job(
+            agent, job.job_type, params, engagement.scope_cidrs or [],
+        ):
+            continue
 
-    await db.flush()
+        claimed = (await db.execute(
+            update(ScanJob)
+            .where(
+                ScanJob.id == job.id,
+                ScanJob.status == ScanJobStatus.pending,
+                ScanJob.agent_id.is_(None),
+                ScanJob.engagement_id.in_(
+                    select(Engagement.id).where(
+                        Engagement.tenant_id == agent.tenant_id,
+                    )
+                ),
+            )
+            .values(
+                agent_id=str(agent_id),
+                status=ScanJobStatus.running,
+                started_at=now,
+                lease_expires_at=lease_until,
+            )
+            .execution_options(synchronize_session=False)
+        )).rowcount
+        if claimed:
+            jobs.append(job)
 
     # Build response — Phase 4: encrypt scope for this specific agent
     response_jobs = []
@@ -444,7 +642,7 @@ async def get_agent_jobs(
             "job_id": str(j.id),
             "engagement_id": str(j.engagement_id),
             "job_type": j.job_type.value,
-            "status": j.status.value,
+            "status": ScanJobStatus.running.value,
             "params": params,
         }
         if encrypted_scope:
@@ -555,15 +753,21 @@ async def enqueue_agent_job(
     job_params = {**body.params}
     if body.use_case_id:
         job_params["use_case_id"] = body.use_case_id
+    # Materialize the manager's resolved capability into the wire payload. This
+    # keeps direct lateral/cloud jobs aligned with the probe's params-first
+    # resolver instead of making the scheduler and runner infer different types.
+    job_params.setdefault("scan_type", resolved_scan_type)
+    # Scope comes only from the tenant-owned engagement. Never honor caller
+    # overrides for these fields: they also feed per-agent scope encryption.
+    job_params.pop("scope_cidrs", None)
+    job_params.pop("_scope_cidrs", None)
     if eng.scope_cidrs:
-        job_params.setdefault("scope_cidrs", eng.scope_cidrs)
-    # Phase 4: store engagement scope + exclusions so they can be encrypted
-    # at dispatch time (when a specific agent picks up the job).
-    if eng.scope_cidrs:
-        job_params.setdefault("_scope_cidrs", eng.scope_cidrs)
+        job_params["scope_cidrs"] = list(eng.scope_cidrs)
+        job_params["_scope_cidrs"] = list(eng.scope_cidrs)
     excluded_cidrs = getattr(eng, "excluded_cidrs", None) or []
+    job_params.pop("_excluded_cidrs", None)
     if excluded_cidrs:
-        job_params.setdefault("_excluded_cidrs", excluded_cidrs)
+        job_params["_excluded_cidrs"] = list(excluded_cidrs)
 
     job = ScanJob(
         engagement_id=body.engagement_id,
@@ -578,9 +782,8 @@ async def enqueue_agent_job(
                 use_case_id=body.use_case_id)
 
     # ── P2: Push job to connected agents via WebSocket ───────────────────────
-    # Fire-and-forget: the HTTP response returns immediately while the
-    # push is attempted in the background. If no agent is connected, the job
-    # stays as "pending" and will be picked up via HTTP polling.
+    # If no compatible agent is connected, the committed job stays pending and
+    # will be picked up through the same eligibility checks in HTTP polling.
     from app.websocket.manager import agent_ws_manager
     job_payload = {
         "job_id": str(job.id),
@@ -588,11 +791,50 @@ async def enqueue_agent_job(
         "job_type": job.job_type.value,
         "params": job_params,
     }
-    # Phase 4: try to push to the first online agent.
+    # Phase 4: try to push to the first compatible online agent in this tenant.
+    # Legacy probes that do not advertise the claim-confirmation feature stay on
+    # HTTP polling, where reservation already happens before the job is returned.
     # Build a fresh payload PER agent — encrypted_scope is per-agent (different
     # public key for each), so mutating a shared dict would leak one agent's
     # encrypted scope to the next agent in the loop.
-    for agent_id in agent_ws_manager.online_agents:
+    online_agent_ids = agent_ws_manager.online_agents_for_tenant(
+        str(current_user.tenant_id),
+        required_feature="atomic_job_claim_v1",
+    )
+    online_agents: dict[str, Agent] = {}
+    if online_agent_ids:
+        valid_agent_ids = []
+        for connected_agent_id in online_agent_ids:
+            try:
+                valid_agent_ids.append(uuid.UUID(connected_agent_id))
+            except (ValueError, TypeError, AttributeError):
+                logger.warning(
+                    "agent.ws.invalid_connected_agent_id",
+                    agent_id=connected_agent_id,
+                )
+        if valid_agent_ids:
+            rows = (await db.execute(
+                select(Agent).where(
+                    Agent.id.in_(valid_agent_ids),
+                    Agent.tenant_id == current_user.tenant_id,
+                )
+            )).scalars().all()
+            online_agents = {str(candidate.id): candidate for candidate in rows}
+
+    eligible_online_agent_ids = []
+    for agent_id in online_agent_ids:
+        candidate = online_agents.get(agent_id)
+        if candidate is not None and _agent_can_execute_job(
+            candidate, job.job_type, job_params, eng.scope_cidrs or [],
+        ):
+            eligible_online_agent_ids.append(agent_id)
+
+    # The WS acknowledgement is processed in another database session. Complete
+    # all fallible selection work, then commit before offering the job so that
+    # session can see and atomically claim it.
+    await db.commit()
+
+    for agent_id in eligible_online_agent_ids:
         per_agent_payload = {**job_payload}  # shallow copy — params are read-only
         encrypted = None
         try:
@@ -601,7 +843,11 @@ async def enqueue_agent_job(
             pass
         if encrypted:
             per_agent_payload["encrypted_scope"] = encrypted
-        pushed = await agent_ws_manager.push_job(agent_id, per_agent_payload)
+        pushed = await agent_ws_manager.push_job(
+            agent_id,
+            per_agent_payload,
+            required_feature="atomic_job_claim_v1",
+        )
         if pushed:
             logger.info("agent.job.pushed_via_ws",
                         job_id=str(job.id), agent_id=agent_id)

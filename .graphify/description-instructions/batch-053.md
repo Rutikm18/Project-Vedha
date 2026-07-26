@@ -1,4 +1,4 @@
-# Node Description Batch 54 of 76
+# Node Description Batch 54 of 104
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,60 +12,51 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
-For an entity node (any other kind — e.g. a person, place, event, object),
-describe what the entity is and its role, grounded in its type, its
-relations (neighbors) and the provided citations/evidence — e.g.
-"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
-Ground entity descriptions in the citations/evidence when present; do not
-speculate beyond the context, so a node with no supporting context may be
-left out of the reply.
-LANGUAGE: each entry has a `lang=` marker giving the language of its source.
-Write that entry's description in EXACTLY that language. Do not translate to
-a single common language — match each node's source language individually.
+Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "detection_init": "__init__.py" | kind=code-symbol | source=manager/backend/app/detection/__init__.py:L1 | neighbors=[298a9d4 trim frontend to 7 core pages; …] | lang=en
-- "detection_logger_attacklogger_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/detection/logger.py:L24 | neighbors=[AttackLogger] | lang=en
-- "detection_siem_build_siem_engine": "build_siem_engine()" | kind=code-symbol | source=manager/backend/app/detection/siem.py:L249 | neighbors=[siem.py] | lang=en
-- "detection_siem_rationale_1": "SIEM query engines — abstract interface + Splunk / Microsoft Sentinel / Elastic" | kind=entity | source=manager/backend/app/detection/siem.py:L1 | neighbors=[siem.py] | lang=en
-- "detection_siem_rationale_135": "Microsoft Sentinel via the Azure Monitor Logs query REST API with KQL.     confi" | kind=entity | source=manager/backend/app/detection/siem.py:L135 | neighbors=[SentinelSIEM] | lang=en
-- "detection_siem_rationale_185": "Elasticsearch via the _search API (KQL/EQL-style bool query).     config: {base_" | kind=entity | source=manager/backend/app/detection/siem.py:L185 | neighbors=[ElasticSIEM] | lang=en
-- "detection_siem_rationale_51": "Abstract SIEM connector." | kind=entity | source=manager/backend/app/detection/siem.py:L51 | neighbors=[SIEMQueryEngine] | lang=en
-- "detection_siem_rationale_82": "Splunk via the REST search endpoint (``/services/search/jobs/export``) with an" | kind=entity | source=manager/backend/app/detection/siem.py:L82 | neighbors=[SplunkSIEM] | lang=en
-- "detection_siem_siemqueryengine_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/detection/siem.py:L55 | neighbors=[SIEMQueryEngine] | lang=en
-- "detection_siem_siemqueryengine_query_alerts": ".query_alerts()" | kind=code-symbol | source=manager/backend/app/detection/siem.py:L60 | neighbors=[SIEMQueryEngine] | lang=en
-- "detection_sigma_rationale_1": "SigmaRuleGenerator — produces a Sigma detection rule (YAML) for a MITRE techniqu" | kind=entity | source=manager/backend/app/detection/sigma.py:L1 | neighbors=[sigma.py] | lang=pt
-- "detection_sigma_rationale_114": "Return a Sigma rule (YAML string) for the technique, customised with the" | kind=entity | source=manager/backend/app/detection/sigma.py:L114 | neighbors=[.generate_sigma_for_technique()] | lang=en
-- "discovery_init": "__init__.py" | kind=code-symbol | source=manager/backend/app/discovery/__init__.py:L1 | neighbors=[298a9d4 trim frontend to 7 core pages; …] | lang=en
-- "discovery_rate_limiter_ratelimiter_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/discovery/rate_limiter.py:L30 | neighbors=[RateLimiter] | lang=en
-- "discovery_rate_limiter_rationale_1": "RateLimiter — enforces PPS limits per CIDR and business-hour windows from the en" | kind=entity | source=manager/backend/app/discovery/rate_limiter.py:L1 | neighbors=[rate_limiter.py] | lang=en
-- "discovery_rate_limiter_rationale_44": "True if current time is inside the allowed scan window." | kind=entity | source=manager/backend/app/discovery/rate_limiter.py:L44 | neighbors=[.is_within_window()] | lang=en
-- "discovery_rate_limiter_rationale_61": "Blocks until a token is available for the given target IP.         Raises Runtim" | kind=entity | source=manager/backend/app/discovery/rate_limiter.py:L61 | neighbors=[.acquire()] | lang=en
-- "discovery_service_id_rationale_1": "ServiceIdentifier — banner + port → structured service fingerprint. Handles: HTT" | kind=entity | source=manager/backend/app/discovery/service_id.py:L1 | neighbors=[service_id.py] | lang=en
-- "discovery_worker_discoveryjobpayload_post_init": ".__post_init__()" | kind=code-symbol | source=manager/backend/app/discovery/worker.py:L52 | neighbors=[DiscoveryJobPayload] | lang=en
-- "discovery_worker_discoveryworker_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/discovery/worker.py:L63 | neighbors=[DiscoveryWorker] | lang=en
-- "discovery_xml_parser_parsedhost_open_ports": ".open_ports()" | kind=code-symbol | source=manager/backend/app/discovery/xml_parser.py:L37 | neighbors=[ParsedHost] | lang=en
-- "discovery_xml_parser_rationale_1": "Nmap XML output parser. Converts -oX output into structured ParsedHost / ParsedP" | kind=entity | source=manager/backend/app/discovery/xml_parser.py:L1 | neighbors=[xml_parser.py] | lang=en
-- "discovery_xml_parser_rationale_42": "Parse nmap -oX XML into a list of ParsedHost objects." | kind=entity | source=manager/backend/app/discovery/xml_parser.py:L42 | neighbors=[NmapXMLParser] | lang=en
-- "draft_route_get": "GET()" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/ai-report/draft/route.ts:L5 | neighbors=[route.ts] | lang=en
-- "e2e_interop_verify_rationale_1": "Verify the Python probe can open what the TypeScript manager sealed (T14 interop" | kind=entity | source=manager/frontend/tests/e2e/interop_verify.py:L1 | neighbors=[interop_verify.py] | lang=en
-- "e2e_mock_manager_managerstate_ingest": ".ingest()" | kind=code-symbol | source=manager/frontend/tests/e2e/mock_manager.py:L110 | neighbors=[ManagerState] | lang=en
-- "e2e_mock_manager_managerstate_init": ".__init__()" | kind=code-symbol | source=manager/frontend/tests/e2e/mock_manager.py:L45 | neighbors=[ManagerState] | lang=en
-- "e2e_mock_manager_managerstate_queue_scan": ".queue_scan()" | kind=code-symbol | source=manager/frontend/tests/e2e/mock_manager.py:L71 | neighbors=[ManagerState] | lang=en
-- "e2e_mock_manager_quietserver_handle_error": ".handle_error()" | kind=code-symbol | source=manager/frontend/tests/e2e/mock_manager.py:L224 | neighbors=[_QuietServer] | lang=en
-- "e2e_mock_manager_rationale_1": "Reference mock manager for end-to-end probe testing.  Implements the PROBE_PROTO" | kind=entity | source=manager/frontend/tests/e2e/mock_manager.py:L1 | neighbors=[mock_manager.py] | lang=en
-- "e2e_mock_manager_rationale_235": "Start the HTTPS server in a thread. Returns (httpd, base_url, pin_b64)." | kind=entity | source=manager/frontend/tests/e2e/mock_manager.py:L235 | neighbors=[start()] | lang=en
-- "e2e_run_rationale_1": "End-to-end probe test: real probe process ↔ reference mock manager over HTTPS." | kind=entity | source=manager/frontend/tests/e2e/run.py:L1 | neighbors=[run.py] | lang=en
-- "e2e_run_rationale_30": "Deterministic stand-ins emitting realistic output for 127.0.0.1." | kind=entity | source=manager/frontend/tests/e2e/run.py:L30 | neighbors=[make_fake_tools()] | lang=en
-- "engagements_page_empty_form": "EMPTY_FORM" | kind=code-symbol | source=manager/frontend/app/engagements/page.tsx:L40 | neighbors=[page.tsx] | lang=en
-- "engagements_page_engagement": "Engagement" | kind=code-symbol | source=manager/frontend/app/engagements/page.tsx:L17 | neighbors=[page.tsx] | lang=en
-- "engagements_page_engagementspage": "EngagementsPage()" | kind=code-symbol | source=manager/frontend/app/engagements/page.tsx:L80 | neighbors=[page.tsx] | lang=en
-- "engagements_page_engagementsresponse": "EngagementsResponse" | kind=code-symbol | source=manager/frontend/app/engagements/page.tsx:L25 | neighbors=[page.tsx] | lang=en
-- "engagements_page_engagementstatus": "EngagementStatus" | kind=code-symbol | source=manager/frontend/app/engagements/page.tsx:L15 | neighbors=[page.tsx] | lang=en
-- "engagements_page_formstate": "FormState" | kind=code-symbol | source=manager/frontend/app/engagements/page.tsx:L33 | neighbors=[page.tsx] | lang=en
-- "engagements_page_rowskeleton": "RowSkeleton()" | kind=code-symbol | source=manager/frontend/app/engagements/page.tsx:L64 | neighbors=[page.tsx] | lang=en
+- "scanner_smb_scanner_smb2_negotiate": "_smb2_negotiate()" | kind=code-symbol | source=probe/scanner/smb_scanner.py:L56 | neighbors=[smb_scanner.py, .scan_target()]
+- "scanner_smb_scanner_smbscanner_negotiate": "._negotiate()" | kind=code-symbol | source=probe/scanner/smb_scanner.py:L91 | neighbors=[SMBScanner, _netbios_session()]
+- "scanner_snmp_scanner_build_get": "_build_get()" | kind=code-symbol | source=probe/scanner/snmp_scanner.py:L30 | neighbors=[snmp_scanner.py, ._query()]
+- "scanner_snmp_scanner_extract_sysdescr": "_extract_sysdescr()" | kind=code-symbol | source=probe/scanner/snmp_scanner.py:L44 | neighbors=[snmp_scanner.py, .scan_target()]
+- "scanner_snmp_scanner_snmpscanner_query": "._query()" | kind=code-symbol | source=probe/scanner/snmp_scanner.py:L84 | neighbors=[SNMPScanner, _build_get()]
+- "scanner_snmp_scanner_snmpscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/scanner/snmp_scanner.py:L100 | neighbors=[SNMPScanner, _extract_sysdescr()]
+- "scanner_ssh_collector_sshcollector_collect": "._collect()" | kind=code-symbol | source=probe/scanner/ssh_collector.py:L95 | neighbors=[SSHCollector, .run()]
+- "scanner_ssh_collector_sshcollector_run": ".run()" | kind=code-symbol | source=probe/scanner/ssh_collector.py:L117 | neighbors=[SSHCollector, ._collect()]
+- "scanner_tls_enumerateweakciphers": "enumerateWeakCiphers()" | kind=code-symbol | source=probe-go/scanner/tls.go:L108 | neighbors=[tls.go, ProbeTLS()]
+- "scanner_tls_parsecert": "parseCert()" | kind=code-symbol | source=probe-go/scanner/tls.go:L137 | neighbors=[tls.go, ProbeTLS()]
+- "scanner_tls_scanner_parse_cert_der": "_parse_cert_der()" | kind=code-symbol | source=probe/scanner/tls_scanner.py:L95 | neighbors=[tls_scanner.py, _scan_tls_sync()]
+- "scanner_tls_scanner_tlsscanner_scan_port": "._scan_port()" | kind=code-symbol | source=probe/scanner/tls_scanner.py:L162 | neighbors=[TLSScanner, .scan_target()]
+- "scanner_tls_scanner_tlsscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/scanner/tls_scanner.py:L180 | neighbors=[TLSScanner, ._scan_port()]
+- "scanner_udp_buildsnmpgetrequest": "buildSNMPGetRequest()" | kind=code-symbol | source=probe-go/scanner/udp.go:L218 | neighbors=[udp.go, testSNMPCommunity()]
+- "scanner_udp_dnsversionquery": "dnsVersionQuery()" | kind=code-symbol | source=probe-go/scanner/udp.go:L100 | neighbors=[udp.go, probeUDPPort()]
+- "scanner_udp_extractsnmpcommunity": "extractSNMPCommunity()" | kind=code-symbol | source=probe-go/scanner/udp.go:L163 | neighbors=[udp.go, probeUDPPort()]
+- "scanner_udp_netbiosnamequery": "netbiosNameQuery()" | kind=code-symbol | source=probe-go/scanner/udp.go:L143 | neighbors=[udp.go, probeUDPPort()]
+- "scanner_udp_ntprequest": "ntpRequest()" | kind=code-symbol | source=probe-go/scanner/udp.go:L118 | neighbors=[udp.go, probeUDPPort()]
+- "scanner_udp_probeallsnmpcommunities": "ProbeAllSNMPCommunities()" | kind=code-symbol | source=probe-go/scanner/udp.go:L189 | neighbors=[udp.go, testSNMPCommunity()]
+- "scanner_udp_probeudp": "ProbeUDP()" | kind=code-symbol | source=probe-go/scanner/udp.go:L23 | neighbors=[udp.go, probeUDPPort()]
+- "scanner_udp_scanner_udpscanner_probe": "._probe()" | kind=code-symbol | source=probe/scanner/udp_scanner.py:L87 | neighbors=[UDPScanner, .scan_target()]
+- "scanner_udp_scanner_udpscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/scanner/udp_scanner.py:L130 | neighbors=[UDPScanner, ._probe()]
+- "scanner_udp_snmppublicgetrequest": "snmpPublicGetRequest()" | kind=code-symbol | source=probe-go/scanner/udp.go:L125 | neighbors=[udp.go, probeUDPPort()]
+- "scanner_vulncheck_checkdb": "checkDB()" | kind=code-symbol | source=probe-go/scanner/vulncheck.go:L278 | neighbors=[vulncheck.go, Correlate()]
+- "scanner_vulncheck_checkudp": "checkUDP()" | kind=code-symbol | source=probe-go/scanner/vulncheck.go:L292 | neighbors=[vulncheck.go, Correlate()]
+- "scanner_vulncheck_intfromfact": "intFromFact()" | kind=code-symbol | source=probe-go/scanner/vulncheck.go:L352 | neighbors=[vulncheck.go, Correlate()]
+- "scanner_vulncheck_safecorrelate": "SafeCorrelate()" | kind=code-symbol | source=probe-go/scanner/vulncheck.go:L126 | neighbors=[vulncheck.go, Correlate()]
+- "scanner_vulncheck_severityrank": "severityRank()" | kind=code-symbol | source=probe-go/scanner/vulncheck.go:L45 | neighbors=[vulncheck.go, dedupAndRank()]
+- "scanner_vulncheck_splitversion": "splitVersion()" | kind=code-symbol | source=probe-go/scanner/vulncheck.go:L391 | neighbors=[vulncheck.go, versionLessThan()]
+- "scanner_web_detecttech": "detectTech()" | kind=code-symbol | source=probe-go/scanner/web.go:L127 | neighbors=[web.go, ProbeHTTP()]
+- "scanner_web_probehttp": "ProbeHTTP()" | kind=code-symbol | source=probe-go/scanner/web.go:L33 | neighbors=[web.go, detectTech()]
+- "scanner_web_scanner_noredirect": "_NoRedirect" | kind=code-symbol | source=probe/scanner/web_scanner.py:L41 | neighbors=[web_scanner.py, .redirect_request()]
+- "scanner_web_scanner_webscanner_scan_port": "._scan_port()" | kind=code-symbol | source=probe/scanner/web_scanner.py:L119 | neighbors=[WebScanner, .scan_target()]
+- "scanner_web_scanner_webscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/scanner/web_scanner.py:L136 | neighbors=[WebScanner, ._scan_port()]
+- "scanner_windows_collector_smb_registry_collect": "_smb_registry_collect()" | kind=code-symbol | source=probe/scanner/windows_collector.py:L158 | neighbors=[windows_collector.py, Connect to RemoteRegistry over SMB and …]
+- "scanner_windows_collector_windowscollector_full_user": "._full_user()" | kind=code-symbol | source=probe/scanner/windows_collector.py:L294 | neighbors=[WindowsCollector, ._collect_host()]
+- "scanner_windows_collector_windowscollector_run": ".run()" | kind=code-symbol | source=probe/scanner/windows_collector.py:L326 | neighbors=[WindowsCollector, ._collect_host()]
+- "scanner_windows_collector_windowscollector_smb_result": "._smb_result()" | kind=code-symbol | source=probe/scanner/windows_collector.py:L318 | neighbors=[WindowsCollector, ._collect_host()]
+- "scanner_windows_collector_windowscollector_transport_order": "._transport_order()" | kind=code-symbol | source=probe/scanner/windows_collector.py:L299 | neighbors=[WindowsCollector, ._collect_host()]
+- "scanner_windows_collector_windowscollector_winrm_result": "._winrm_result()" | kind=code-symbol | source=probe/scanner/windows_collector.py:L306 | neighbors=[WindowsCollector, ._collect_host()]
 
 ## Instructions
 

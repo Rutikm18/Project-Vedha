@@ -79,7 +79,9 @@ func loadFile(path string) {
 		}
 		k = strings.TrimSpace(k)
 		v = strings.Trim(strings.TrimSpace(v), `"'`)
-		os.Setenv(k, v) // Setenv (not LookupEnv + Setenv) always wins; we want file < env priority
+		if _, exists := os.LookupEnv(k); !exists {
+			_ = os.Setenv(k, v)
+		}
 	}
 }
 

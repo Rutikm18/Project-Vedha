@@ -10,6 +10,10 @@ import { PageShell } from "../../components/PageShell";
 import { useToast } from "../../hooks/useToast";
 import { fetchJson, isUnauthorized } from "../../lib/fetcher";
 import { DataState, SkeletonRows, EmptyState } from "../../components/states/DataState";
+import {
+  SEV_COLOR, STATUS_COLOR, STATUS_LABEL, MATURITY_COLOR, COVERAGE_COLOR,
+  PRIORITY_COLOR, KILL_CHAIN_PHASE_COLOR, riskScoreColor, epssColor, SEV_PALETTE,
+} from "../../lib/severity";
 
 /* ─── Types ─── */
 type Severity = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | "INFO";
@@ -60,32 +64,7 @@ interface Finding {
 }
 
 /* ─── Color Maps ─── */
-const SEV_COLOR: Record<Severity, string> = {
-  CRITICAL: "#FF1744", HIGH: "#FF6D00", MEDIUM: "#FFD600", LOW: "#00E676", INFO: "#0284C7",
-};
-const STATUS_COLOR: Record<FindingStatus, string> = {
-  OPEN: "#FF1744", IN_REVIEW: "#FF9900", IN_REMEDIATION: "#2563EB",
-  VERIFIED: "#059669", CLOSED: "#64748B", ACCEPTED: "#9C27B0", FALSE_POSITIVE: "#64748B",
-};
-const STATUS_LABEL: Record<FindingStatus, string> = {
-  OPEN: "OPEN", IN_REVIEW: "IN REVIEW", IN_REMEDIATION: "REMEDIATING",
-  VERIFIED: "VERIFIED", CLOSED: "CLOSED", ACCEPTED: "ACCEPTED", FALSE_POSITIVE: "FALSE POS.",
-};
-const MATURITY_COLOR: Record<ExploitMaturity, string> = {
-  WEAPONIZED: "#FF1744", POC: "#FF6D00", THEORETICAL: "#64748B",
-};
-const COVERAGE_COLOR: Record<DetectionCoverage, string> = {
-  COVERED: "#059669", PARTIAL: "#FFD600", BLIND: "#FF1744",
-};
-const PRIORITY_COLOR: Record<string, string> = {
-  P0: "#FF1744", P1: "#FF6D00", P2: "#FFD600", P3: "#64748B",
-};
-const KILL_CHAIN_PHASE_COLOR: Record<string, string> = {
-  "Reconnaissance": "#64748B", "Initial Access": "#FF6D00", "Execution": "#FF1744",
-  "Persistence": "#9C27B0", "Privilege Escalation": "#FF1744", "Defense Evasion": "#FFD600",
-  "Credential Access": "#FF6D00", "Discovery": "#2563EB", "Lateral Movement": "#FF6D00",
-  "Collection": "#2563EB", "Exfiltration": "#FF1744", "Impact": "#FF1744",
-};
+// Semantic colors now come from the shared, WCAG-AA source of truth (lib/severity).
 
 /* ─── SLA helpers ─── */
 const SLA_HOURS: Partial<Record<Severity, number>> = { CRITICAL: 24, HIGH: 72, MEDIUM: 168, LOW: 720 };
@@ -97,19 +76,14 @@ function getSlaColor(discoveredAt: string, severity: Severity) {
   const now = Date.now();
   const leftMs = due - now;
   const pct = Math.max(0, Math.min(100, (leftMs / (slaH * 3_600_000)) * 100));
-  if (now > due) return { color: "#FF1744", label: "BREACHED", pct: 0 };
+  if (now > due) return { color: SEV_PALETTE.RED, label: "BREACHED", pct: 0 };
   const h = Math.round(leftMs / 3_600_000);
   const label = h < 24 ? `${h}h` : `${Math.round(h / 24)}d`;
-  const color = pct < 10 ? "#FF1744" : pct < 25 ? "#FF6D00" : pct < 50 ? "#FFD600" : "#00E676";
+  const color = pct < 10 ? SEV_PALETTE.RED : pct < 25 ? SEV_PALETTE.ORANGE : pct < 50 ? SEV_PALETTE.AMBER : SEV_PALETTE.GREEN;
   return { color, label, pct };
 }
 
-function riskScoreColor(score: number): string {
-  if (score >= 800) return "#FF1744";
-  if (score >= 600) return "#FF6D00";
-  if (score >= 400) return "#FFD600";
-  return "#00E676";
-}
+// riskScoreColor imported from lib/severity (shared, AA-compliant palette).
 
 
 /* ─── Copy Button ─── */
@@ -151,7 +125,7 @@ function KevBadge() {
   return (
     <span style={{
       fontFamily: "'JetBrains Mono', monospace", fontSize: 9, padding: "2px 6px", borderRadius: 4,
-      background: "rgba(255,23,68,0.15)", color: "#FF1744", border: "1px solid rgba(255,23,68,0.35)",
+      background: `${SEV_PALETTE.RED}15`, color: SEV_PALETTE.RED, border: `1px solid ${SEV_PALETTE.RED}55`,
       fontWeight: 700, letterSpacing: 0.5,
     }}>
       ⚠ KEV
@@ -189,7 +163,7 @@ function DetectionPill({ cov }: { cov: DetectionCoverage }) {
 /* ─── EPSS Bar ─── */
 function EpssBar({ score, percentile }: { score: number; percentile: number }) {
   const pct = Math.round(score * 100);
-  const color = score > 0.7 ? "#FF1744" : score > 0.4 ? "#FF6D00" : score > 0.1 ? "#FFD600" : "#64748B";
+  const color = epssColor(score);
   return (
     <div>
       <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
@@ -210,12 +184,12 @@ function EpssBar({ score, percentile }: { score: number; percentile: number }) {
 /* ─── Risk Score Breakdown ─── */
 function RiskBreakdownBar({ breakdown, total }: { breakdown: RiskBreakdown; total: number }) {
   const segments = [
-    { key: "cvss",    label: "CVSS",    color: "#FF6D00", value: breakdown.cvss },
-    { key: "epss",    label: "EPSS",    color: "#2563EB", value: breakdown.epss },
-    { key: "kev",     label: "KEV",     color: "#FF1744", value: breakdown.kev },
-    { key: "exploit", label: "EXPLOIT", color: "#9C27B0", value: breakdown.exploit },
-    { key: "asset",   label: "ASSET",   color: "#FFD600", value: breakdown.asset },
-    { key: "lateral", label: "LATERAL", color: "#00E676", value: breakdown.lateral },
+    { key: "cvss",    label: "CVSS",    color: SEV_PALETTE.ORANGE, value: breakdown.cvss },
+    { key: "epss",    label: "EPSS",    color: SEV_PALETTE.BLUE,   value: breakdown.epss },
+    { key: "kev",     label: "KEV",     color: SEV_PALETTE.RED,    value: breakdown.kev },
+    { key: "exploit", label: "EXPLOIT", color: SEV_PALETTE.VIOLET, value: breakdown.exploit },
+    { key: "asset",   label: "ASSET",   color: SEV_PALETTE.AMBER,  value: breakdown.asset },
+    { key: "lateral", label: "LATERAL", color: SEV_PALETTE.GREEN,  value: breakdown.lateral },
   ];
   return (
     <div>
@@ -368,10 +342,10 @@ function FindingDetail({ f, allFindings, onStatusChange }: {
   const sla = getSlaColor(f.discoveredAt, f.severity);
 
   const WORKFLOW: { status: FindingStatus; label: string; color: string }[] = [
-    { status: "IN_REVIEW",      label: "In Review",    color: "#FF9900" },
+    { status: "IN_REVIEW",      label: "In Review",    color: SEV_PALETTE.ORANGE },
     { status: "IN_REMEDIATION", label: "Remediation",  color: "var(--adv-accent)" },
-    { status: "VERIFIED",       label: "Verified",     color: "#059669" },
-    { status: "ACCEPTED",       label: "Accept Risk",  color: "#9C27B0" },
+    { status: "VERIFIED",       label: "Verified",     color: SEV_PALETTE.GREEN },
+    { status: "ACCEPTED",       label: "Accept Risk",  color: SEV_PALETTE.VIOLET },
     { status: "FALSE_POSITIVE", label: "False Pos.",   color: "var(--adv-text-muted)" },
   ];
 
@@ -554,7 +528,7 @@ function FindingDetail({ f, allFindings, onStatusChange }: {
               </div>
 
               {/* CISA KEV */}
-              <div style={{ background: "var(--adv-panel)", border: `1px solid ${f.kevListed ? "rgba(255,23,68,0.2)" : "var(--adv-border)"}`, borderRadius: 6, padding: "12px 14px" }}>
+              <div style={{ background: "var(--adv-panel)", border: `1px solid ${f.kevListed ? `${SEV_PALETTE.RED}33` : "var(--adv-border)"}`, borderRadius: 6, padding: "12px 14px" }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
                   <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: "var(--adv-text-muted)" }}>CISA KEV STATUS</div>
                   {f.kevListed ? <KevBadge /> : (
@@ -562,7 +536,7 @@ function FindingDetail({ f, allFindings, onStatusChange }: {
                   )}
                 </div>
                 {f.kevListed && f.kevDateAdded && (
-                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: "#FF1744" }}>Added {f.kevDateAdded}</div>
+                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: SEV_PALETTE.RED }}>Added {f.kevDateAdded}</div>
                 )}
                 <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 11, color: "var(--adv-text-muted)", marginTop: 6, lineHeight: 1.4 }}>
                   {f.kevListed
@@ -576,9 +550,9 @@ function FindingDetail({ f, allFindings, onStatusChange }: {
                 <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: "var(--adv-text-muted)", marginBottom: 6 }}>FALSE POSITIVE PROBABILITY</div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                   <div style={{ height: 4, flex: 1, background: "rgba(100,116,139,0.2)", borderRadius: 2, overflow: "hidden", marginRight: 10 }}>
-                    <div style={{ height: "100%", width: `${f.fpProbability * 100}%`, background: f.fpProbability < 0.1 ? "#059669" : f.fpProbability < 0.3 ? "#FFD600" : "#FF1744", borderRadius: 2 }} />
+                    <div style={{ height: "100%", width: `${f.fpProbability * 100}%`, background: f.fpProbability < 0.1 ? SEV_PALETTE.GREEN : f.fpProbability < 0.3 ? SEV_PALETTE.AMBER : SEV_PALETTE.RED, borderRadius: 2 }} />
                   </div>
-                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: f.fpProbability < 0.1 ? "#059669" : "#FFD600", fontWeight: 700, flexShrink: 0 }}>
+                  <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: f.fpProbability < 0.1 ? SEV_PALETTE.GREEN : SEV_PALETTE.AMBER, fontWeight: 700, flexShrink: 0 }}>
                     {Math.round(f.fpProbability * 100)}%
                   </span>
                 </div>
@@ -599,12 +573,12 @@ function FindingDetail({ f, allFindings, onStatusChange }: {
                     <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: MATURITY_COLOR[f.exploitMaturity] }}>{f.exploitMaturity}</span>
                   </div>
                   {f.pocAvailable && (
-                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: "#FF6D00", background: "rgba(255,109,0,0.1)", border: "1px solid rgba(255,109,0,0.2)", borderRadius: 3, padding: "1px 5px" }}>
+                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: SEV_PALETTE.ORANGE, background: `${SEV_PALETTE.ORANGE}14`, border: `1px solid ${SEV_PALETTE.ORANGE}33`, borderRadius: 3, padding: "1px 5px" }}>
                       PoC PUBLIC
                     </span>
                   )}
                   {f.activelyExploited && (
-                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: "#FF1744", background: "rgba(255,23,68,0.12)", border: "1px solid rgba(255,23,68,0.25)", borderRadius: 3, padding: "1px 5px" }}>
+                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: SEV_PALETTE.RED, background: `${SEV_PALETTE.RED}14`, border: `1px solid ${SEV_PALETTE.RED}40`, borderRadius: 3, padding: "1px 5px" }}>
                       ACTIVE EXPLOITATION
                     </span>
                   )}
@@ -682,7 +656,7 @@ function FindingDetail({ f, allFindings, onStatusChange }: {
               <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: "var(--adv-text-muted)" }}>
                 {f.remediation.filter((s) => typeof s !== "string" && s.completed).length} / {f.remediation.length} steps completed
               </span>
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: "#FFD600" }}>
+              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: SEV_PALETTE.AMBER }}>
                 ~{f.remediation.reduce((a, s) => a + (typeof s !== "string" ? s.estimatedHours : 1), 0)}h estimated
               </span>
             </div>
@@ -706,6 +680,110 @@ function FindingDetail({ f, allFindings, onStatusChange }: {
           </div>
         )}
       </div>
+    </div>
+  );
+}
+
+/* ─── Fix-First Priority Queue (decision-first hero) ─── */
+function isUrgent(f: Finding): boolean {
+  if (f.status !== "OPEN" && f.status !== "IN_REVIEW") return false;
+  const breached = getSlaColor(f.discoveredAt, f.severity).label === "BREACHED";
+  return f.activelyExploited || f.kevListed || breached || f.aiTriage.priority === "P0";
+}
+
+function urgencyReasons(f: Finding): string[] {
+  const r: string[] = [];
+  if (f.activelyExploited) r.push("Actively exploited");
+  if (f.kevListed) r.push("CISA KEV");
+  const sla = getSlaColor(f.discoveredAt, f.severity);
+  if (sla.label === "BREACHED") r.push("SLA breached");
+  else if (sla.pct < 25) r.push(`SLA ${sla.label}`);
+  if (f.aiTriage.priority === "P0") r.push("P0");
+  return r;
+}
+
+function FixFirstStrip({ findings, onSelect }: { findings: Finding[]; onSelect: (id: string) => void }) {
+  const open = findings.filter((f) => f.status === "OPEN" || f.status === "IN_REVIEW");
+  const urgent = open.filter(isUrgent).sort((a, b) => {
+    if (a.activelyExploited !== b.activelyExploited) return a.activelyExploited ? -1 : 1;
+    return b.riskScore - a.riskScore;
+  });
+  const openRisk = open.reduce((s, f) => s + f.riskScore, 0);
+  const slaBreached = open.filter((f) => getSlaColor(f.discoveredAt, f.severity).label === "BREACHED").length;
+  const activeCount = open.filter((f) => f.activelyExploited).length;
+  const sev = (["CRITICAL", "HIGH", "MEDIUM", "LOW"] as Severity[]).map((s) => ({ s, n: open.filter((f) => f.severity === s).length }));
+  const totalOpen = Math.max(1, open.length);
+  const accent = urgent.length === 0 ? SEV_PALETTE.GREEN : (activeCount > 0 || slaBreached > 0) ? SEV_PALETTE.RED : SEV_PALETTE.ORANGE;
+
+  return (
+    <div className="animate-fade-up" style={{
+      background: "var(--adv-panel)", border: "1px solid var(--adv-border)", borderTop: `2px solid ${accent}`,
+      borderRadius: 10, padding: "16px 18px", marginBottom: 16, boxShadow: "var(--adv-shadow-sm)",
+    }}>
+      {/* Header: the answer + posture */}
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 16, marginBottom: urgent.length ? 14 : 0 }}>
+        <div>
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: 1.4, color: "var(--adv-text-muted)", textTransform: "uppercase" }}>Priority Queue</span>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 9, marginTop: 4 }}>
+            <span style={{ fontFamily: "var(--font-display)", fontSize: 30, fontWeight: 800, color: accent, lineHeight: 1 }}>{urgent.length}</span>
+            <span style={{ fontFamily: "var(--font-body)", fontSize: 14, color: "var(--adv-text)", fontWeight: 600 }}>
+              {urgent.length === 0 ? "all clear — nothing needs immediate action" : `${urgent.length === 1 ? "finding needs" : "findings need"} action now`}
+            </span>
+          </div>
+        </div>
+        <div style={{ display: "flex", gap: 18, alignItems: "flex-start", flexWrap: "wrap" }}>
+          {[
+            { label: "ACTIVELY EXPLOITED", value: activeCount, color: activeCount ? SEV_PALETTE.RED : "var(--adv-text-muted)" },
+            { label: "SLA BREACHED", value: slaBreached, color: slaBreached ? SEV_PALETTE.RED : "var(--adv-text-muted)" },
+            { label: "OPEN RISK", value: openRisk.toLocaleString(), color: "var(--adv-text)" },
+          ].map((m) => (
+            <div key={m.label} style={{ textAlign: "right" }}>
+              <div style={{ fontFamily: "var(--font-mono)", fontSize: 20, fontWeight: 700, color: m.color, lineHeight: 1 }}>{m.value}</div>
+              <div style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--adv-text-muted)", marginTop: 3, letterSpacing: 0.4 }}>{m.label}</div>
+            </div>
+          ))}
+          <div style={{ width: 128 }}>
+            <div style={{ height: 8, display: "flex", borderRadius: 4, overflow: "hidden", background: "var(--adv-bg)" }}>
+              {sev.map(({ s, n }) => n > 0 ? (
+                <div key={s} style={{ width: `${(n / totalOpen) * 100}%`, background: SEV_COLOR[s] }} title={`${s}: ${n}`} />
+              ) : null)}
+            </div>
+            <div style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--adv-text-muted)", marginTop: 4, textAlign: "right" }}>{open.length} open by severity</div>
+          </div>
+        </div>
+      </div>
+
+      {/* Top urgent findings — one-glance justification + direct triage */}
+      {urgent.length > 0 && (
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(258px, 1fr))", gap: 10 }}>
+          {urgent.slice(0, 3).map((f) => (
+            <button key={f.id} onClick={() => onSelect(f.id)} className="card-hover" style={{
+              textAlign: "left", cursor: "pointer", background: "var(--adv-bg)", border: "1px solid var(--adv-border)",
+              borderLeft: `3px solid ${SEV_COLOR[f.severity]}`, borderRadius: 8, padding: "10px 12px",
+              display: "flex", flexDirection: "column", gap: 7,
+            }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                <span style={{ fontFamily: "var(--font-body)", fontSize: 13, fontWeight: 600, color: "var(--adv-text)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.title}</span>
+                <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, fontWeight: 700, color: riskScoreColor(f.riskScore), flexShrink: 0 }}>{f.riskScore}</span>
+              </div>
+              <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
+                {urgencyReasons(f).map((r) => (
+                  <span key={r} style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: SEV_PALETTE.RED, background: `${SEV_PALETTE.RED}12`, border: `1px solid ${SEV_PALETTE.RED}30`, borderRadius: 3, padding: "1px 6px" }}>{r}</span>
+                ))}
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+                <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--adv-text-muted)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.affectedHost}</span>
+                <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--adv-accent)", fontWeight: 600, flexShrink: 0 }}>Triage →</span>
+              </div>
+            </button>
+          ))}
+          {urgent.length > 3 && (
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--adv-text-muted)", border: "1px dashed var(--adv-border)", borderRadius: 8, padding: 10 }}>
+              +{urgent.length - 3} more urgent
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -750,7 +828,11 @@ export default function FindingsPage() {
       (f.tags ?? []).some((t) => t.toLowerCase().includes(search.toLowerCase()))
     );
     list.sort((a, b) => {
-      if (sortBy === "risk")  return b.riskScore - a.riskScore;
+      if (sortBy === "risk") {
+        // Fix-first: actively-exploited findings surface above everything else.
+        if (a.activelyExploited !== b.activelyExploited) return a.activelyExploited ? -1 : 1;
+        return b.riskScore - a.riskScore;
+      }
       if (sortBy === "cvss")  return Number(b.cvss) - Number(a.cvss);
       if (sortBy === "epss")  return b.epssScore - a.epssScore;
       if (sortBy === "date")  return new Date(b.discoveredAt).getTime() - new Date(a.discoveredAt).getTime();
@@ -764,7 +846,6 @@ export default function FindingsPage() {
     high:       findings.filter((f) => f.severity === "HIGH" && f.status === "OPEN").length,
     kev:        findings.filter((f) => f.kevListed).length,
     blind:      findings.filter((f) => f.detectionCoverage === "BLIND").length,
-    weaponized: findings.filter((f) => f.exploitMaturity === "WEAPONIZED").length,
     open:       findings.filter((f) => f.status === "OPEN" || f.status === "IN_REVIEW").length,
     avgRisk:    findings.length ? Math.round(findings.reduce((s, f) => s + f.riskScore, 0) / findings.length) : 0,
   }), [findings]);
@@ -781,31 +862,18 @@ export default function FindingsPage() {
       title="FINDINGS"
       subtitle="VAPT · THREAT INTEL · TRIAGE · REMEDIATION"
       statusItems={[
-        { label: "CRITICAL OPEN", value: String(stats.critical),   color: "#FF1744" },
-        { label: "KEV LISTED",    value: String(stats.kev),        color: "#FF6D00" },
-        { label: "BLIND DETECT",  value: String(stats.blind),      color: "#FFD600" },
+        { label: "CRITICAL OPEN", value: String(stats.critical),   color: SEV_PALETTE.RED },
+        { label: "KEV LISTED",    value: String(stats.kev),        color: SEV_PALETTE.ORANGE },
+        { label: "BLIND DETECT",  value: String(stats.blind),      color: SEV_PALETTE.AMBER },
         { label: "AVG RISK",      value: String(stats.avgRisk),    color: riskScoreColor(stats.avgRisk) },
       ]}
     >
+      <FixFirstStrip findings={findings} onSelect={(id) => setSelectedId(id)} />
+
       <div style={{ display: "grid", gridTemplateColumns: selectedId ? "380px 1fr" : "1fr", gap: 16 }}>
 
         {/* ── Left: List ── */}
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-
-          {/* KPI stats */}
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8 }}>
-            {[
-              { label: "CRITICAL",   value: findings.filter((f) => f.severity === "CRITICAL").length,  color: "#FF1744" },
-              { label: "WEAPONIZED", value: stats.weaponized,  color: "#9C27B0" },
-              { label: "KEV",        value: stats.kev,         color: "#FF6D00" },
-              { label: "BLIND",      value: stats.blind,       color: "#FFD600" },
-            ].map((m) => (
-              <div key={m.label} className="animate-fade-up" style={{ background: "var(--adv-bg)", border: "1px solid var(--adv-border)", borderRadius: 6, padding: "10px 12px", textAlign: "center" }}>
-                <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 22, fontWeight: 700, color: m.color }}>{m.value}</div>
-                <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: "var(--adv-text-muted)", marginTop: 2 }}>{m.label}</div>
-              </div>
-            ))}
-          </div>
 
           {/* Filters */}
           <div style={{ background: "var(--adv-bg)", border: "1px solid var(--adv-border)", borderRadius: 6, padding: "10px 12px" }}>
@@ -840,15 +908,15 @@ export default function FindingsPage() {
               </select>
               <button onClick={() => setFilterKev((p) => !p)} style={{
                 padding: "3px 8px", borderRadius: 3, cursor: "pointer", fontFamily: "'JetBrains Mono', monospace", fontSize: 9,
-                border: `1px solid ${filterKev ? "rgba(255,23,68,0.4)" : "var(--adv-border)"}`,
-                background: filterKev ? "rgba(255,23,68,0.1)" : "transparent",
-                color: filterKev ? "#FF1744" : "var(--adv-text-muted)",
+                border: `1px solid ${filterKev ? `${SEV_PALETTE.RED}66` : "var(--adv-border)"}`,
+                background: filterKev ? `${SEV_PALETTE.RED}14` : "transparent",
+                color: filterKev ? SEV_PALETTE.RED : "var(--adv-text-muted)",
               }}>⚠ KEV</button>
               <button onClick={() => setFilterBlind((p) => !p)} style={{
                 padding: "3px 8px", borderRadius: 3, cursor: "pointer", fontFamily: "'JetBrains Mono', monospace", fontSize: 9,
-                border: `1px solid ${filterBlind ? "rgba(255,23,68,0.4)" : "var(--adv-border)"}`,
-                background: filterBlind ? "rgba(255,23,68,0.1)" : "transparent",
-                color: filterBlind ? "#FF1744" : "var(--adv-text-muted)",
+                border: `1px solid ${filterBlind ? `${SEV_PALETTE.RED}66` : "var(--adv-border)"}`,
+                background: filterBlind ? `${SEV_PALETTE.RED}14` : "transparent",
+                color: filterBlind ? SEV_PALETTE.RED : "var(--adv-text-muted)",
               }}>○ BLIND</button>
               <button onClick={() => setSortBy(sortBy === "risk" ? "cvss" : sortBy === "cvss" ? "epss" : sortBy === "epss" ? "date" : "risk")}
                 style={{ display: "flex", alignItems: "center", gap: 4, padding: "3px 8px", background: "transparent", border: "1px solid var(--adv-border)", borderRadius: 4, color: "var(--adv-text-muted)", cursor: "pointer", fontFamily: "'JetBrains Mono', monospace", fontSize: 9 }}>
@@ -918,10 +986,10 @@ export default function FindingsPage() {
                   <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 4 }}>
                     <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: "var(--adv-text-muted)" }}>EPSS</span>
                     <div style={{ flex: 1, height: 3, background: "rgba(100,116,139,0.15)", borderRadius: 2, overflow: "hidden" }}>
-                      <div style={{ height: "100%", width: `${f.epssScore * 100}%`, background: f.epssScore > 0.7 ? "#FF1744" : f.epssScore > 0.4 ? "#FF6D00" : "#FFD600", borderRadius: 2 }} />
+                      <div style={{ height: "100%", width: `${f.epssScore * 100}%`, background: epssColor(f.epssScore), borderRadius: 2 }} />
                     </div>
                     <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: "var(--adv-text-muted)" }}>{(f.epssScore * 100).toFixed(0)}%</span>
-                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: "#FF6D00" }}>CVSS {f.cvss}</span>
+                    <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: SEV_PALETTE.ORANGE }}>CVSS {f.cvss}</span>
                     <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: sla.color }}>{sla.label}</span>
                   </div>
 

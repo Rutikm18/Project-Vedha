@@ -1,5 +1,5 @@
 // scanner/web.go — Gate 5 branch: HTTP(S) fingerprint.
-// Fetches / and collects status, title, server, security headers, redirect chain.
+// Fetches / and collects status, title, server, security headers, and redirect target.
 package scanner
 
 import (
@@ -44,10 +44,9 @@ func ProbeHTTP(ctx context.Context, host string, port int, useTLS bool, timeout 
 	client := &http.Client{
 		Timeout: timeout,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			if len(via) >= 5 {
-				return http.ErrUseLastResponse
-			}
-			return nil
+			// Redirect targets are not part of the authorized request. Record the
+			// Location header from the original response without following it.
+			return http.ErrUseLastResponse
 		},
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
