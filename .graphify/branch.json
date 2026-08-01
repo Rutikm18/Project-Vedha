@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "branchName": "feat/probe-usecase-alignment",
+  "branchName": "main",
   "worktreePath": "/Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha",
-  "upstream": null,
-  "mergeBase": null,
-  "firstSeenHead": "80b6dbcc5515152a76b93176716127f4f997f356",
-  "lastSeenHead": "c5e2d0ed7a2fe2e171616a98cebb2295cf557314",
-  "lastAnalyzedHead": "c5e2d0ed7a2fe2e171616a98cebb2295cf557314",
+  "upstream": "origin/main",
+  "mergeBase": "41b692a77a1dd6d2e5666f2fa2f8aa4b1e084e64",
+  "firstSeenHead": "41b692a77a1dd6d2e5666f2fa2f8aa4b1e084e64",
+  "lastSeenHead": "f3c359163f16baf103a46a5170e40a9e95edda9d",
+  "lastAnalyzedHead": "f3c359163f16baf103a46a5170e40a9e95edda9d",
   "stale": false,
   "staleReason": null,
   "staleSince": null,
   "lifecycleEvent": null,
-  "createdAt": "2026-08-01T08:30:53.599Z",
-  "updatedAt": "2026-08-01T12:46:42.269Z"
+  "createdAt": "2026-08-01T22:28:47.864Z",
+  "updatedAt": "2026-08-01T23:28:45.833Z"
 }

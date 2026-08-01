@@ -26,7 +26,16 @@ function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Seconds remaining on a rate-limit lockout; > 0 disables the form.
+  const [cooldown, setCooldown] = useState(0);
   const emailRef = useRef<HTMLInputElement>(null);
+
+  // Tick the rate-limit cooldown down to zero.
+  useEffect(() => {
+    if (cooldown <= 0) return;
+    const timer = setInterval(() => setCooldown((s) => Math.max(0, s - 1)), 1000);
+    return () => clearInterval(timer);
+  }, [cooldown]);
 
   useEffect(() => {
     let active = true;
@@ -42,6 +51,7 @@ function LoginForm() {
 
   const submit = useCallback(async (event: React.FormEvent) => {
     event.preventDefault();
+    if (cooldown > 0) return;
     if (!email.trim() || !password) {
       setError("Enter your work email and password to continue.");
       return;
@@ -55,11 +65,28 @@ function LoginForm() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
       });
-      const data = await response.json() as { ok?: boolean; error?: string };
+      const data = await response.json() as {
+        ok?: boolean; error?: string; code?: string; retryAfter?: number;
+      };
       if (!response.ok || !data.ok) {
-        setError(response.status === 401
-          ? "Those credentials were not recognized. Check them and try again."
-          : data.error || "Sign-in is temporarily unavailable.");
+        switch (data.code) {
+          case "invalid_credentials":
+            setError("Those credentials were not recognized. Check them and try again.");
+            break;
+          case "rate_limited": {
+            // Prefer the structured retryAfter; fall back to the Retry-After header.
+            const wait = data.retryAfter
+              ?? (Number(response.headers.get("Retry-After")) || 60);
+            setCooldown(wait);
+            setError(`Too many sign-in attempts. Try again in ${wait} seconds.`);
+            break;
+          }
+          case "backend_unavailable":
+            setError("Sign-in is temporarily unavailable. Please try again shortly.");
+            break;
+          default:
+            setError(data.error || "Sign-in is temporarily unavailable.");
+        }
         return;
       }
       router.replace(nextPath);
@@ -69,7 +96,7 @@ function LoginForm() {
     } finally {
       setLoading(false);
     }
-  }, [email, password, nextPath, router]);
+  }, [email, password, nextPath, router, cooldown]);
 
   return (
     <main className="login-page">
@@ -177,9 +204,11 @@ function LoginForm() {
               </div>
             </label>
 
-            <button className="login-submit" type="submit" disabled={loading}>
+            <button className="login-submit" type="submit" disabled={loading || cooldown > 0}>
               {loading ? (
                 <><Loader2 size={17} className="animate-spin" /> Verifying securely…</>
+              ) : cooldown > 0 ? (
+                <>Try again in {cooldown}s</>
               ) : (
                 <>Continue to Vedha <ArrowRight size={17} /></>
               )}

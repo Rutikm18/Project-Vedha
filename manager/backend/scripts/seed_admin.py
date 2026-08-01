@@ -5,11 +5,16 @@ Creates a tenant + admin user so you can log in (there is no public signup
 endpoint). Safe to run repeatedly — it no-ops if the user already exists.
 
 Driven by environment variables (set in compose / .env):
-  SEED_ADMIN_EMAIL     — if empty, seeding is skipped entirely
-  SEED_ADMIN_PASSWORD  — default "ChangeMe123!"
-  SEED_TENANT_NAME     — default "Default Tenant"
+  SEED_ADMIN_EMAIL        — if empty, seeding is skipped entirely
+  SEED_ADMIN_PASSWORD     — default "ChangeMe123!"
+  SEED_TENANT_NAME        — default "Default Tenant"
+  SEED_ADMIN_FORCE_RESET  — "true" to reset an existing admin's password to
+                            SEED_ADMIN_PASSWORD (rotation / recovery). Default
+                            off so ordinary re-runs stay a safe no-op.
 
 Run:  python scripts/seed_admin.py
+Reset an existing admin's password:
+      SEED_ADMIN_FORCE_RESET=true python scripts/seed_admin.py
 """
 from __future__ import annotations
 
@@ -40,11 +45,18 @@ async def seed() -> None:
 
     password = os.getenv("SEED_ADMIN_PASSWORD", "ChangeMe123!")
     tenant_name = os.getenv("SEED_TENANT_NAME", "Default Tenant")
+    force_reset = os.getenv("SEED_ADMIN_FORCE_RESET", "").strip().lower() in {"1", "true", "yes", "on"}
 
     async with AsyncSessionLocal() as db:
         existing = (await db.execute(select(User).where(User.email == email))).scalar_one_or_none()
         if existing:
-            print(f"[seed] user {email} already exists (id={existing.id}) — nothing to do.")
+            if force_reset:
+                existing.hashed_password = _pwd.hash(password)
+                await db.commit()
+                print(f"[seed] user {email} already exists (id={existing.id}) — password reset (SEED_ADMIN_FORCE_RESET).")
+            else:
+                print(f"[seed] user {email} already exists (id={existing.id}) — nothing to do. "
+                      "Set SEED_ADMIN_FORCE_RESET=true to reset its password.")
             return
 
         tenant = (await db.execute(select(Tenant).where(Tenant.name == tenant_name))).scalar_one_or_none()

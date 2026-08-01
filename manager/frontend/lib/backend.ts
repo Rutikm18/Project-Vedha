@@ -12,9 +12,13 @@ const BASE = (process.env.BACKEND_INTERNAL_URL ?? "http://localhost:18080").repl
 
 export class BackendError extends Error {
   status: number;
-  constructor(status: number, message: string) {
+  /** Seconds to wait before retrying, parsed from the backend's Retry-After
+   *  header (set on 429/503). Undefined when the backend didn't send one. */
+  retryAfter?: number;
+  constructor(status: number, message: string, retryAfter?: number) {
     super(message);
     this.status = status;
+    this.retryAfter = retryAfter;
   }
 }
 
@@ -47,7 +51,15 @@ export async function backend<T = unknown>(path: string, opts: BackendOpts = {})
   const data = text ? safeJson(text) : null;
   if (!res.ok) {
     const detail = (data && (data.detail ?? data.error)) || res.statusText;
-    throw new BackendError(res.status, typeof detail === "string" ? detail : JSON.stringify(detail));
+    const retryHeader = res.headers.get("retry-after");
+    const retryAfter = retryHeader && /^\d+$/.test(retryHeader.trim())
+      ? Number(retryHeader.trim())
+      : undefined;
+    throw new BackendError(
+      res.status,
+      typeof detail === "string" ? detail : JSON.stringify(detail),
+      retryAfter,
+    );
   }
   return data as T;
 }

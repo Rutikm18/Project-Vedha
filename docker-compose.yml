@@ -111,6 +111,8 @@ services:
       SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@vedha.io}
       SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-ChangeMe123!}
       SEED_TENANT_NAME: ${SEED_TENANT_NAME:-Default Tenant}
+      # Set true in .env to rotate/recover the admin password on next `migrate` run.
+      SEED_ADMIN_FORCE_RESET: ${SEED_ADMIN_FORCE_RESET:-false}
     command: ["sh", "-c", "alembic upgrade head && python scripts/seed_admin.py"]
     depends_on:
       postgres:

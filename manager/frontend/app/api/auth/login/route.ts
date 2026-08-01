@@ -50,8 +50,24 @@ export async function POST(req: Request) {
     setSessionCookies(res, d.access_token, d.refresh_token);
     return res;
   } catch (e) {
-    const status = e instanceof BackendError ? e.status : 500;
-    return NextResponse.json({ error: (e as Error).message || "login failed" }, { status });
+    if (e instanceof BackendError) {
+      // Map backend failures to a stable code the UI can branch on without
+      // string-matching messages.
+      const code = e.status === 401 ? "invalid_credentials"
+        : e.status === 429 ? "rate_limited"
+        : e.status >= 500 ? "backend_unavailable"
+        : "login_failed";
+      const payload: { error: string; code: string; retryAfter?: number } = { error: e.message, code };
+      if (e.retryAfter !== undefined) payload.retryAfter = e.retryAfter;
+      const res = NextResponse.json(payload, { status: e.status });
+      // Re-emit Retry-After so standards-aware clients (and the browser) can honor it.
+      if (e.retryAfter !== undefined) res.headers.set("Retry-After", String(e.retryAfter));
+      return res;
+    }
+    return NextResponse.json(
+      { error: "login failed", code: "backend_unavailable" },
+      { status: 502 },
+    );
   }
 }
 
