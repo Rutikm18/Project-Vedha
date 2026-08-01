@@ -22,7 +22,6 @@ from app.models.enums import FindingStatus, ScanJobStatus, ScanJobType
 from app.models.finding import Finding
 from app.models.scan_job import ScanJob
 from app.utils.db import get_or_404
-from app.vuln.enrichment import VulnEnrichmentService
 from app.vuln.nessus import NessusScanner
 from app.vuln.nuclei import NucleiRunReport, NucleiScanError, NucleiScanner
 from app.vuln.tasks import run_post_scan_enrichment

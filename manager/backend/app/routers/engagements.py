@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from typing import Annotated
 
 import structlog
-from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, BackgroundTasks, File, HTTPException, Query, UploadFile, status
 from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy import func, select
 
@@ -19,7 +19,7 @@ from app.models.scan_job import ScanJob
 from app.models.scan_result import ScanResult
 from app.models.service import Service
 from app.schemas.common import PaginatedResponse, paginate
-from app.schemas.asset import AssetIn, AssetOut, BulkAssetImportResult
+from app.schemas.asset import AssetIn, BulkAssetImportResult
 from app.schemas.engagement import (
     EngagementCreate, EngagementDetail, EngagementOut, FindingSummary,
     validate_engagement_dates, validate_scope_entries,

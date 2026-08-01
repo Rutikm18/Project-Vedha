@@ -23,7 +23,6 @@ from app.ad.findings import (
     PRIVILEGED_GROUPS,
     UAC_DONT_REQ_PREAUTH,
     UAC_SERVER_TRUST_ACCOUNT,
-    UAC_TRUSTED_FOR_DELEGATION,
     ADConnectionError,
     DependencyMissingError,
 )

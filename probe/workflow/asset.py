@@ -17,7 +17,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
-from typing import Any
 
 # scanner_module's package is "scanner" relative to scanner_module/; this
 # workflow package lives at scanner_module/workflow/, so the import is a

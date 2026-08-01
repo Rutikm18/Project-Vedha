@@ -15,7 +15,6 @@ snapshot refresh), and detection can be re-run against a newer DB and diffed.
 from __future__ import annotations
 
 import uuid
-from typing import Annotated
 
 import structlog
 from fastapi import APIRouter, Query

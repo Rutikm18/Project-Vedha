@@ -13,7 +13,6 @@ import argparse
 import asyncio
 import json
 import os
-import sys
 import time
 from datetime import timedelta
 from pathlib import Path

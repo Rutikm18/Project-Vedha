@@ -34,6 +34,28 @@ from agent.engine import (
     _count_open_port_facts, _hosts_from_facts, CAPABILITIES,
 )
 from agent.use_cases import resolve, USE_CASES
+from agent.agent import _is_local_manager_url
+
+
+@pytest.mark.parametrize("url", [
+    "http://localhost:18080",
+    "http://127.0.0.1:18080",
+    "http://[::1]:18080",
+    "http://api:8000",
+    "http://host.docker.internal:18080",
+])
+def test_explicit_local_manager_urls(url):
+    assert _is_local_manager_url(url) is True
+
+
+@pytest.mark.parametrize("url", [
+    "http://api.example.com",
+    "http://127.0.0.1.example.com",
+    "https://manager.example.com",
+    "not-a-url",
+])
+def test_nonlocal_manager_urls(url):
+    assert _is_local_manager_url(url) is False
 
 
 def _scan_result(scanner="port_scan", target="10.0.0.1", port=22,

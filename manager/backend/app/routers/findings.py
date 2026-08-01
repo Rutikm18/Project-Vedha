@@ -15,7 +15,6 @@ from app.models.enums import DetectionStatus, FindingSeverity, FindingStatus
 from app.schemas.common import PaginatedResponse, paginate
 from app.schemas.finding import FindingOut, FindingPatch, FindingSummary, SlaSummary
 from app.services import sla as sla_service
-from app.utils.db import get_or_404
 from app.utils.pagination import paginate_query
 
 router = APIRouter(prefix="/findings", tags=["findings"])

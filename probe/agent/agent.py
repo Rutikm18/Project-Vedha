@@ -34,6 +34,7 @@ import socket
 import sys
 import time
 from pathlib import Path
+from urllib.parse import urlparse
 
 from agent.transport import Transport, TransportError
 
@@ -48,6 +49,14 @@ def _bounded_env_int(name: str, default: int, minimum: int, maximum: int) -> int
     except (TypeError, ValueError):
         return default
     return max(minimum, min(maximum, value))
+
+
+def _is_local_manager_url(value: str) -> bool:
+    """Recognize only explicit single-host development/Compose manager names."""
+    platform_host = (urlparse(value).hostname or "").lower()
+    return platform_host in {
+        "localhost", "127.0.0.1", "::1", "api", "host.docker.internal",
+    }
 
 
 def _load_env(path: Path) -> None:
@@ -125,7 +134,7 @@ def main() -> None:
         raise SystemExit(1)
 
     # ── Transport security posture (warn loudly, never silently downgrade) ────
-    _is_local = ("localhost" in PLATFORM_URL) or ("127.0.0.1" in PLATFORM_URL)
+    _is_local = _is_local_manager_url(PLATFORM_URL)
     if PLATFORM_URL.startswith("http://") and not _is_local:
         say("WARNING: PLATFORM_URL is plain http:// to a non-local manager — scan "
             "results and the agent token travel UNENCRYPTED. Use https://.")
@@ -456,8 +465,6 @@ async def _run_ws_push_loop(
         await asyncio.sleep(backoff)
         backoff = min(backoff * 2, WS_RECONNECT_BACKOFF_MAX)
 
-    return True  # unreachable
-
 
 async def _ws_stage_job_offer(ws, job: dict, job_state: dict) -> bool:
     """Acknowledge an offer without executing it before claim confirmation."""
@@ -637,7 +644,6 @@ def _startup_gauntlet() -> dict | None:
     try:
         lic = check_license()
     except LicenseError as exc:
-        from agent.hw_bind import get_hw_id
         say("╔══════════════════════════════════════════════════════════════╗")
         say("║  LICENSE CHECK FAILED                                       ║")
         say("╠══════════════════════════════════════════════════════════════╣")

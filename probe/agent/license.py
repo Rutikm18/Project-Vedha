@@ -16,11 +16,8 @@ tools/issue_license.py (vendor-side; needs the private key).
 from __future__ import annotations
 
 import base64
-import hashlib
 import json
 import os
-import platform
-import uuid
 from datetime import date
 
 # Replace with your real vendor public key (hex) — printed by

@@ -18,12 +18,9 @@ import gzip
 import json
 import logging
 import os
-import random
-import socket
 import tempfile
-import time
 from pathlib import Path
-from typing import Any, Callable, Iterable
+from typing import Any, Iterable
 
 import httpx
 

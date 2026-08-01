@@ -7,23 +7,20 @@ from datetime import datetime, timedelta, timezone
 from typing import Annotated
 
 import structlog
-from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, status
+from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select, update
-from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.jwt import create_access_token
 from app.auth.rbac import require_role
 from app.config import get_settings
 from app.dependencies import DB, AuthUser
-from app.discovery.finding_translator import create_findings_from_probe_result
 from app.models.agent import Agent, AgentStatus
-from app.models.asset import Asset
+from app.models.asset import Asset as Asset  # re-exported for tests (ag.Asset)
 from app.models.engagement import Engagement
-from app.models.enums import AssetType, ScanJobStatus, ScanJobType
+from app.models.enums import ScanJobStatus, ScanJobType
 from app.models.scan_job import ScanJob
-from app.models.scan_result import ScanResult
-from app.models.service import Service
+from app.models.service import Service as Service  # re-exported for tests (ag.Service)
 from app.services.job_result_service import _promote_assets as _promote_assets
 
 router = APIRouter(prefix="/agents", tags=["agents"])

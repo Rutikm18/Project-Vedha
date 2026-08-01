@@ -1,11 +1,10 @@
 import uuid
 from datetime import datetime
-from decimal import Decimal
 from ipaddress import ip_network
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from app.models.enums import EngagementStatus, FindingSeverity
+from app.models.enums import EngagementStatus
 
 
 # ── Request schemas ────────────────────────────────────────────────────────────

@@ -1,4 +1,6 @@
-# Dockerfile.sealed — ships ONLY the Nuitka-compiled native binary, no source.
+# Dockerfile.sealed — non-shipping research artifact for Nuitka packaging.
+# Production uses ./Dockerfile; do not treat this as a deployment alternative
+# until it passes the same release pipeline and runtime-parity tests.
 # Multi-stage: build compiles to machine code; the runtime image carries just
 # the executable. Combined with agent/license.py + agent/hw_bind.py this is
 # the "sealed probe" — no Python, no bytecode, hardware-bound.
@@ -24,8 +26,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Install Python deps: Nuitka + all the probe's runtime deps.
 # websockets is new for Phase 2 (WebSocket push protocol).
-RUN pip install --no-cache-dir "nuitka[onefile]" httpx cryptography paramiko \
-      pywinrm impacket websockets
+RUN pip install --no-cache-dir "nuitka[onefile]" httpx cryptography websockets
 
 COPY scanner/  ./scanner/
 COPY workflow/ ./workflow/
@@ -71,10 +72,14 @@ RUN python3 -m nuitka --onefile --standalone --output-dir=/out \
 # ── Stage 2: minimal runtime (binary only — no Python, no source) ─────────────
 FROM debian:12-slim
 WORKDIR /app
-RUN mkdir -p /var/lib/vedha-probe && \
+RUN groupadd --gid 10001 vedha && \
+    useradd --no-log-init --uid 10001 --gid 10001 \
+      --home-dir /nonexistent --shell /usr/sbin/nologin vedha && \
+    mkdir -p /var/lib/vedha-probe && \
     # Update root CA certs so the binary can validate TLS (wss://, https://)
     apt-get update && apt-get install -y --no-install-recommends ca-certificates && \
-    rm -rf /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/* && \
+    chown 10001:10001 /var/lib/vedha-probe
 
 # Force UTF-8 — the probe uses Unicode characters in status messages.
 ENV STATE_FILE=/var/lib/vedha-probe/state.json \
@@ -92,8 +97,9 @@ ENV PROBE_LICENSE_PUBKEY=${PROBE_LICENSE_PUBKEY}
 ARG HW_BIND_FINGERPRINT=""
 ENV HW_BIND_FINGERPRINT=${HW_BIND_FINGERPRINT}
 
-COPY --from=build /out/vedha-probe /app/vedha-probe
+COPY --from=build --chown=10001:10001 /out/vedha-probe /app/vedha-probe
 
 # The binary starts itself — no python, no pip, no code.
+USER 10001:10001
 ENTRYPOINT ["/app/vedha-probe"]
 CMD ["run"]

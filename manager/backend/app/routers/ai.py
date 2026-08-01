@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, HTTPException
 
 from app.dependencies import AuthUser
 from app.schemas.ai import AiGenerateRequest, AiGenerateResponse, AiStatusResponse

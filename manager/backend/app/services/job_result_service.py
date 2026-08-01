@@ -13,9 +13,7 @@ import structlog
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.agent import Agent
 from app.models.asset import Asset
-from app.models.engagement import Engagement
 from app.models.enums import AssetType, ScanJobStatus
 from app.models.scan_job import ScanJob
 from app.models.scan_result import ScanResult

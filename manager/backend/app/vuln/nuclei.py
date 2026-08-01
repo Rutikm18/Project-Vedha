@@ -29,7 +29,6 @@ from typing import Any, Literal
 import structlog
 
 from app.models.enums import FindingSeverity, FindingStatus
-from app.discovery.service_id import ServiceFingerprint
 
 logger = structlog.get_logger()
 

@@ -16,7 +16,6 @@ from __future__ import annotations
 
 import uuid
 from decimal import Decimal
-from typing import Annotated
 
 import structlog
 from fastapi import APIRouter, HTTPException, Query

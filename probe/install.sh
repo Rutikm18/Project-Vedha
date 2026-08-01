@@ -5,7 +5,9 @@
 #     curl -fsSL https://YOUR_HOST/install.sh | \
 #       PLATFORM_URL=https://manager.example.com \
 #       OPERATOR_TOKEN=vpat_xxx \
-#       PROBE_NETWORK_SEGMENTS=10.20.0.0/16 sh
+#       PROBE_NETWORK_SEGMENTS=10.20.0.0/16 \
+#       PROBE_LICENSE=signed_token \
+#       PROBE_LICENSE_PUBKEY=64_hex_chars sh
 #
 #   Lab/offline image install:
 #     curl -fsSL http://MAC_IP:8000/install.sh | \
@@ -38,10 +40,17 @@ say() { printf '%s\n' "$*"; }
 have() { command -v "$1" >/dev/null 2>&1; }
 
 if [ "${PROBE_INSTALL_DRY_RUN:-false}" = "true" ]; then
-  say "Dry run OK."
+  [ -n "${PLATFORM_URL:-}" ] && [ -n "${PROBE_NETWORK_SEGMENTS:-}" ] || {
+    say "Dry run requires PLATFORM_URL and PROBE_NETWORK_SEGMENTS."
+    exit 1
+  }
+  say "Dry-run preview (no Docker, CIDR, PAT, or connectivity checks were run)."
   say "Image: $IMAGE"
   say "Container: $NAME"
-  say "Manager: ${PLATFORM_URL:-<not set>}"
+  say "Manager: $PLATFORM_URL"
+  say "Local scope: $PROBE_NETWORK_SEGMENTS"
+  say "Target ceiling: $PROBE_MAX_TARGETS"
+  say "Job deadline: ${PROBE_MAX_JOB_SECONDS}s"
   exit 0
 fi
 
@@ -96,6 +105,13 @@ if [ -z "${PROBE_MAC_ADDRESS:-}" ]; then
     --entrypoint python "$IMAGE" -c \
     'import hashlib,sys; d=hashlib.sha256(sys.argv[1].encode()).digest(); print("02:42:%02x:%02x:%02x:%02x" % tuple(d[:4]))' \
     "$NAME")"
+fi
+if [ -z "${PROBE_HW_ID:-}" ]; then
+  PROBE_HW_ID="$(docker run --rm --read-only --cap-drop ALL \
+    --security-opt no-new-privileges:true --pids-limit 64 --user 10001:10001 \
+    --hostname "$NAME" --mac-address "$PROBE_MAC_ADDRESS" \
+    --entrypoint python "$IMAGE" -c \
+    'from agent.hw_bind import get_hw_id; print(get_hw_id())')"
 fi
 
 # Images before the non-root hardening ran as root and may have left the named
@@ -195,7 +211,7 @@ validated_config="$(docker run --rm \
 import ipaddress, re, sys
 from urllib.parse import urlparse
 
-segments, max_targets, max_seconds, registration_timeout, name, url, licensing, pubkey = sys.argv[1:]
+segments, max_targets, max_seconds, registration_timeout, mac, hwid, name, url, licensing, pubkey = sys.argv[1:]
 parts = segments.split(",")
 if not segments.strip() or any(not part.strip() for part in parts):
     raise SystemExit("invalid empty CIDR entry")
@@ -213,6 +229,12 @@ if not 1 <= seconds <= 86400:
     raise SystemExit("PROBE_MAX_JOB_SECONDS must be 1..86400")
 if not 1 <= timeout <= 600:
     raise SystemExit("PROBE_REGISTRATION_TIMEOUT must be 1..600")
+if not re.fullmatch(r"(?:[0-9a-fA-F]{2}:){5}[0-9a-fA-F]{2}", mac):
+    raise SystemExit("PROBE_MAC_ADDRESS must be a colon-separated MAC address")
+if int(mac[:2], 16) & 1:
+    raise SystemExit("PROBE_MAC_ADDRESS must be unicast")
+if not re.fullmatch(r"[0-9a-f]{32}", hwid):
+    raise SystemExit("PROBE_HW_ID must be a 32-character lowercase hex fingerprint")
 if not 1 <= len(name) <= 255 or "\n" in name or "\r" in name:
     raise SystemExit("PROBE_NAME must be a single line of 1..255 characters")
 parsed = urlparse(url)
@@ -228,8 +250,8 @@ print(targets)
 print(seconds)
 print(timeout)
 ' "$PROBE_NETWORK_SEGMENTS" "$PROBE_MAX_TARGETS" "$PROBE_MAX_JOB_SECONDS" \
-  "$PROBE_REGISTRATION_TIMEOUT" "$PROBE_NAME" "$PLATFORM_URL" \
-  "$LICENSE_ENFORCED" "${PROBE_LICENSE_PUBKEY:-}" \
+  "$PROBE_REGISTRATION_TIMEOUT" "$PROBE_MAC_ADDRESS" "$PROBE_HW_ID" \
+  "$PROBE_NAME" "$PLATFORM_URL" "$LICENSE_ENFORCED" "${PROBE_LICENSE_PUBKEY:-}" \
   2>&1)" || {
     say "Invalid probe configuration: $validated_config"
     exit 1
@@ -303,7 +325,7 @@ fi
 for config_value in \
   "$PLATFORM_URL" "$VERIFY_TLS" "$PROBE_NAME" "${PROBE_LOCATION:-}" \
   "$PROBE_NETWORK_SEGMENTS" "$PROBE_MAX_TARGETS" "$PROBE_MAX_JOB_SECONDS" \
-  "$PROBE_REGISTRATION_TIMEOUT" \
+  "$PROBE_REGISTRATION_TIMEOUT" "$PROBE_HW_ID" \
   "$OPERATOR_TOKEN" "${PROBE_LICENSE_PUBKEY:-}"
 do
   if printf '%s' "$config_value" | LC_ALL=C grep -q '[[:cntrl:]]'; then
@@ -327,6 +349,7 @@ write_env_file() {
     printf 'PROBE_NETWORK_SEGMENTS=%s\n' "$PROBE_NETWORK_SEGMENTS"
     printf 'PROBE_MAX_TARGETS=%s\n' "$PROBE_MAX_TARGETS"
     printf 'PROBE_MAX_JOB_SECONDS=%s\n' "$PROBE_MAX_JOB_SECONDS"
+    printf 'HW_BIND_FINGERPRINT=%s\n' "$PROBE_HW_ID"
     printf 'LICENSE_ENFORCED=%s\n' "$LICENSE_ENFORCED"
     if [ "$LICENSE_ENFORCED" = "true" ]; then
       printf 'PROBE_LICENSE_FILE=/var/lib/vedha-probe/license.token\n'
