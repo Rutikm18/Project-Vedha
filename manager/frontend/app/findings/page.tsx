@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback, useDeferredValue, useSyncExternalStore } from "react";
+import React, { useState, useEffect, useCallback, useDeferredValue, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
@@ -779,6 +779,34 @@ function urgencyReasons(f: Finding): string[] {
   return r;
 }
 
+/* Animated number that counts up to `target` (respects reduced-motion). */
+function useCountUp(target: number, ms = 750) {
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    const reduce = typeof window !== "undefined"
+      && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    if (reduce || target <= 0) { setN(target); return; }
+    let raf = 0;
+    const start = performance.now();
+    const tick = (t: number) => {
+      const p = Math.min(1, (t - start) / ms);
+      const eased = 1 - Math.pow(1 - p, 3); // easeOutCubic
+      setN(Math.round(target * eased));
+      if (p < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [target, ms]);
+  return n;
+}
+
+/* Track cursor position for the `.spotlight` radial highlight. */
+function spotlight(e: React.MouseEvent<HTMLElement>) {
+  const r = e.currentTarget.getBoundingClientRect();
+  e.currentTarget.style.setProperty("--mx", `${e.clientX - r.left}px`);
+  e.currentTarget.style.setProperty("--my", `${e.clientY - r.top}px`);
+}
+
 function FixFirstStrip({ findings, onSelect, exploitedActive, slaActive, onToggleExploited, onToggleSla }: {
   findings: Finding[]; onSelect: (id: string) => void;
   exploitedActive: boolean; slaActive: boolean; onToggleExploited: () => void; onToggleSla: () => void;
@@ -795,8 +823,14 @@ function FixFirstStrip({ findings, onSelect, exploitedActive, slaActive, onToggl
   const totalOpen = Math.max(1, open.length);
   const accent = urgent.length === 0 ? SEV_PALETTE.GREEN : (activeCount > 0 || slaBreached > 0) ? SEV_PALETTE.RED : SEV_PALETTE.ORANGE;
 
+  const urgentN = useCountUp(urgent.length);
+  const activeN = useCountUp(activeCount);
+  const slaN = useCountUp(slaBreached);
+  const openRiskN = useCountUp(openRisk);
+
   return (
-    <div className="animate-fade-up" style={{
+    <div className="animate-fade-up gradient-frame spotlight" onMouseMove={spotlight} style={{
+      position: "relative",
       background: "var(--bg-panel)", border: "1px solid var(--border-subtle)", borderTop: `2px solid ${accent}`,
       borderRadius: 10, padding: "16px 18px", marginBottom: 16, boxShadow: "var(--shadow-sm)",
     }}>
@@ -805,7 +839,7 @@ function FixFirstStrip({ findings, onSelect, exploitedActive, slaActive, onToggl
         <div>
           <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: 1.4, color: "var(--text-secondary)", textTransform: "uppercase" }}>Current page triage</span>
           <div style={{ display: "flex", alignItems: "baseline", gap: 9, marginTop: 4 }}>
-            <span style={{ fontFamily: "var(--font-display)", fontSize: 30, fontWeight: 800, color: accent, lineHeight: 1 }}>{urgent.length}</span>
+            <span className={urgent.length ? "stat-glow" : undefined} style={{ fontFamily: "var(--font-display)", fontSize: 30, fontWeight: 800, color: accent, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{urgentN}</span>
             <span style={{ fontFamily: "var(--font-body)", fontSize: 14, color: "var(--text-primary)", fontWeight: 600 }}>
               {urgent.length === 0 ? "all clear — nothing needs immediate action" : `${urgent.length === 1 ? "finding needs" : "findings need"} action now`}
             </span>
@@ -813,14 +847,17 @@ function FixFirstStrip({ findings, onSelect, exploitedActive, slaActive, onToggl
         </div>
         <div style={{ display: "flex", gap: 12, alignItems: "flex-start", flexWrap: "wrap" }}>
           {[
-            { label: "ACTIVELY EXPLOITED", value: activeCount, color: activeCount ? SEV_PALETTE.RED : "var(--text-secondary)", active: exploitedActive, onClick: onToggleExploited },
-            { label: "SLA BREACHED", value: slaBreached, color: slaBreached ? SEV_PALETTE.RED : "var(--text-secondary)", active: slaActive, onClick: onToggleSla },
-            { label: "OPEN RISK", value: openRisk.toLocaleString(), color: "var(--text-primary)", active: false, onClick: undefined as (() => void) | undefined },
+            { label: "ACTIVELY EXPLOITED", value: activeN.toLocaleString(), live: activeCount > 0, color: activeCount ? SEV_PALETTE.RED : "var(--text-secondary)", active: exploitedActive, onClick: onToggleExploited },
+            { label: "SLA BREACHED", value: slaN.toLocaleString(), live: false, color: slaBreached ? SEV_PALETTE.RED : "var(--text-secondary)", active: slaActive, onClick: onToggleSla },
+            { label: "OPEN RISK", value: openRiskN.toLocaleString(), live: false, color: "var(--text-primary)", active: false, onClick: undefined as (() => void) | undefined },
           ].map((m) => {
             const inner = (
               <>
-                <div style={{ fontFamily: "var(--font-mono)", fontSize: 20, fontWeight: 700, color: m.color, lineHeight: 1 }}>{m.value}</div>
-                <div style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--text-secondary)", marginTop: 3, letterSpacing: 0.4 }}>{m.label}</div>
+                <div style={{ fontFamily: "var(--font-mono)", fontSize: 20, fontWeight: 700, color: m.color, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{m.value}</div>
+                <div style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--text-secondary)", marginTop: 3, letterSpacing: 0.4, display: "flex", alignItems: "center", gap: 5, justifyContent: "flex-end" }}>
+                  {m.live && <span className="live-dot" style={{ color: SEV_PALETTE.RED }} aria-hidden />}
+                  {m.label}
+                </div>
               </>
             );
             return m.onClick ? (
@@ -834,7 +871,7 @@ function FixFirstStrip({ findings, onSelect, exploitedActive, slaActive, onToggl
             );
           })}
           <div style={{ width: 128 }}>
-            <div style={{ height: 8, display: "flex", borderRadius: 4, overflow: "hidden", background: "var(--bg-app)" }}>
+            <div className="sev-bar" style={{ height: 8, display: "flex", borderRadius: 4, overflow: "hidden", background: "var(--bg-app)" }}>
               {sev.map(({ s, n }) => n > 0 ? (
                 <div key={s} style={{ width: `${(n / totalOpen) * 100}%`, background: SEV_COLOR[s] }} title={`${s}: ${n}`} />
               ) : null)}
@@ -848,7 +885,7 @@ function FixFirstStrip({ findings, onSelect, exploitedActive, slaActive, onToggl
       {urgent.length > 0 && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(258px, 1fr))", gap: 10 }}>
           {urgent.slice(0, 3).map((f) => (
-            <button key={f.id} onClick={() => onSelect(f.id)} className="card-hover" style={{
+            <button key={f.id} onClick={() => onSelect(f.id)} onMouseMove={spotlight} className="card-hover spotlight lift" style={{
               textAlign: "left", cursor: "pointer", background: "var(--bg-app)", border: "1px solid var(--border-subtle)",
               borderLeft: `3px solid ${SEV_COLOR[f.severity]}`, borderRadius: 8, padding: "10px 12px",
               display: "flex", flexDirection: "column", gap: 7,

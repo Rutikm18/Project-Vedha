@@ -368,6 +368,118 @@ code, pre, .terminal, kbd, [class*="mono"], .font-mono {
   transform: translateY(-1px);
 }
 
+/* ════════════════════════════════════════════════════════════════════════
+   World-class craft layer — spotlight cards, gradient frame, AI orb.
+   All motion is covered by the global prefers-reduced-motion block above.
+   Colors use theme tokens so this works in both light and dark.
+   ════════════════════════════════════════════════════════════════════════ */
+
+/* Cursor-follow spotlight. Set --mx/--my from JS on mousemove. */
+.spotlight { position: relative; }
+.spotlight::before {
+  content: ""; position: absolute; inset: 0; border-radius: inherit;
+  pointer-events: none; z-index: 0; opacity: 0;
+  transition: opacity var(--dur-base) ease;
+  background: radial-gradient(220px circle at var(--mx, 50%) var(--my, 50%),
+    color-mix(in srgb, var(--accent) 16%, transparent), transparent 60%);
+}
+.spotlight:hover::before, .spotlight:focus-visible::before { opacity: 1; }
+.spotlight > * { position: relative; z-index: 1; }
+
+/* Magnetic lift — a stronger, springier card-hover for hero cards. */
+.lift {
+  transition: transform var(--dur-base) var(--ease-spring),
+              box-shadow var(--dur-base) ease, border-color var(--dur-fast) ease;
+  will-change: transform;
+}
+.lift:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 14px 32px -12px color-mix(in srgb, var(--accent) 45%, transparent),
+              0 4px 10px rgba(0,0,0,0.06);
+}
+
+/* Animated gradient border for hero panels (masked ring, no layout cost). */
+.gradient-frame::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit;
+  padding: 1px; pointer-events: none; z-index: 2;
+  background: linear-gradient(120deg,
+    color-mix(in srgb, var(--accent) 55%, transparent) 0%,
+    transparent 38%, transparent 62%,
+    color-mix(in srgb, var(--accent) 30%, transparent) 100%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+          mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+}
+
+/* Glow for the hero number when there is something urgent. */
+.stat-glow { text-shadow: 0 0 22px color-mix(in srgb, currentColor 55%, transparent); }
+
+/* Severity distribution bar — grows in on mount (reuses progressFill). */
+.sev-bar { transform-origin: left; animation: progressFill var(--dur-slow) var(--ease-out) both; }
+
+/* Live pulse dot (reuses the ping keyframe). */
+.live-dot { position: relative; display: inline-block; width: 7px; height: 7px;
+  border-radius: 999px; background: currentColor; }
+.live-dot::after { content: ""; position: absolute; inset: 0; border-radius: inherit;
+  background: currentColor; animation: ping 1.6s ease-out infinite; }
+
+/* ─── AI assistant orb (Ask Vedha) ─── */
+@keyframes orb-spin    { to { transform: rotate(360deg); } }
+@keyframes orb-breathe {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--accent) 42%, transparent); }
+  50%      { box-shadow: 0 0 0 10px color-mix(in srgb, var(--accent) 0%, transparent); }
+}
+.assistant-orb {
+  position: fixed; right: 22px; bottom: 22px; z-index: 50;
+  height: 54px; width: 54px; border: none; border-radius: 999px; padding: 0;
+  display: grid; place-items: center; cursor: pointer; color: #fff;
+  isolation: isolate;
+  background:
+    radial-gradient(circle at 32% 28%, color-mix(in srgb, var(--accent) 60%, white), transparent 55%),
+    var(--accent);
+  box-shadow: 0 10px 30px -8px color-mix(in srgb, var(--accent) 60%, transparent),
+              0 2px 6px rgba(0,0,0,0.28);
+  transition: transform var(--dur-base) var(--ease-spring), filter var(--dur-base) ease;
+}
+/* Rotating conic halo behind the orb. */
+.assistant-orb::before {
+  content: ""; position: absolute; inset: -3px; border-radius: inherit; z-index: -2;
+  background: conic-gradient(from 0deg,
+    var(--accent), #22d3ee, #a78bfa, var(--accent));
+  filter: blur(7px); opacity: 0.65;
+  animation: orb-spin 5s linear infinite;
+}
+/* Breathing ring. */
+.assistant-orb::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; z-index: -1;
+  animation: orb-breathe 3s ease-in-out infinite;
+}
+.assistant-orb:hover { transform: translateY(-2px) scale(1.06); }
+.assistant-orb:hover::before { animation-duration: 2.4s; opacity: 0.9; }
+.assistant-orb:active { transform: translateY(0) scale(0.97); }
+.assistant-orb:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
+.assistant-orb svg { filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3)); }
+
+.assistant-orb__hint {
+  position: absolute; right: 66px; top: 50%;
+  transform: translateY(-50%) translateX(8px);
+  white-space: nowrap; pointer-events: none; opacity: 0;
+  background: var(--bg-panel); color: var(--text-primary);
+  border: 1px solid var(--border-subtle); border-radius: 8px;
+  padding: 6px 10px; font-family: var(--font-mono); font-size: 11px; font-weight: 500;
+  box-shadow: var(--shadow-sm);
+  transition: opacity var(--dur-fast) ease, transform var(--dur-fast) var(--ease-out);
+}
+.assistant-orb__hint kbd {
+  font-family: var(--font-mono); font-size: 10px; padding: 1px 4px; margin-left: 4px;
+  border: 1px solid var(--border-subtle); border-radius: 4px;
+  background: var(--bg-app); color: var(--text-secondary);
+}
+.assistant-orb:hover .assistant-orb__hint,
+.assistant-orb:focus-visible .assistant-orb__hint {
+  opacity: 1; transform: translateY(-50%) translateX(0);
+}
+
 /* ─── Stat card — compact metric ─── */
 .stat-card {
   background: var(--bg-panel);

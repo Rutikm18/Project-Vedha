@@ -11,20 +11,12 @@ export function AssistantFab() {
       aria-label="Open Ask Vedha assistant (Cmd/Ctrl-K)"
       title="Ask Vedha · ⌘K"
       onClick={openBlank}
-      className="btn btn-primary"
-      style={{
-        position: "fixed",
-        right: 20,
-        bottom: 20,
-        zIndex: 50,
-        height: 48,
-        width: 48,
-        borderRadius: 999,
-        padding: 0,
-        boxShadow: "var(--shadow-accent)",
-      }}
+      className="assistant-orb"
     >
-      <Sparkles size={20} />
+      <Sparkles size={21} aria-hidden />
+      <span className="assistant-orb__hint" aria-hidden>
+        Ask Vedha<kbd>⌘K</kbd>
+      </span>
     </button>
   );
 }
