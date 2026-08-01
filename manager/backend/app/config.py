@@ -36,9 +36,25 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 15
     refresh_token_expire_days: int = 7
 
-    # AI engine (Anthropic) — optional; report generation degrades to 503 without a key
+    # Manager-owned AI runtime. The dashboard never receives provider credentials
+    # and never calls a model directly. Ollama is the free/local default;
+    # OpenRouter and Anthropic are optional server-side providers.
+    llm_provider: str = "ollama"
+    llm_request_timeout_seconds: float = 180.0
+    ollama_base_url: str = "http://host.docker.internal:11434"
+    ollama_model: str = "llama3.2:3b"
+    openrouter_api_key: str = ""
+    openrouter_model: str = "openrouter/free"
+    openrouter_base_url: str = "https://openrouter.ai/api/v1"
+    openrouter_site_url: str = "https://vedha.local"
+    openrouter_app_name: str = "Vedha"
     anthropic_api_key: str = ""
     llm_model: str = "claude-sonnet-4-6"
+    # OpenAI — server-side cloud provider. Uses the same /chat/completions shape
+    # as OpenRouter. Only openai_model is enabled by the deployment.
+    openai_api_key: str = ""
+    openai_model: str = "gpt-4o-mini"
+    openai_base_url: str = "https://api.openai.com/v1"
     llm_max_tokens: int = 4096
     # Reasoning depth = token spend. Report writing is straightforward generation, so
     # "low" minimizes thinking-token cost on thinking-capable models (Sonnet 4.6,

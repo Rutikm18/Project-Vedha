@@ -1,4 +1,4 @@
-# Node Description Batch 53 of 104
+# Node Description Batch 53 of 119
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,56 +12,63 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
+For an entity node (any other kind — e.g. a person, place, event, object),
+describe what the entity is and its role, grounded in its type, its
+relations (neighbors) and the provided citations/evidence — e.g.
+"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
+Ground entity descriptions in the citations/evidence when present; do not
+speculate beyond the context, so a node with no supporting context may be
+left out of the reply.
 Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "scanner_fingerprint_firstline": "firstLine()" | kind=code-symbol | source=probe-go/scanner/fingerprint.go:L245 | neighbors=[fingerprint.go, Fingerprint()]
-- "scanner_fingerprint_matchsignature": "matchSignature()" | kind=code-symbol | source=probe-go/scanner/fingerprint.go:L222 | neighbors=[fingerprint.go, Fingerprint()]
-- "scanner_fingerprint_sanitize": "sanitize()" | kind=code-symbol | source=probe-go/scanner/fingerprint.go:L256 | neighbors=[fingerprint.go, Fingerprint()]
-- "scanner_fingerprint_sendprobe": "sendProbe()" | kind=code-symbol | source=probe-go/scanner/fingerprint.go:L202 | neighbors=[fingerprint.go, Fingerprint()]
-- "scanner_host_discovery_hostdiscoveryscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/scanner/host_discovery.py:L50 | neighbors=[HostDiscoveryScanner, ._probe()]
-- "scanner_init": "__init__.py" | kind=code-symbol | source=probe/scanner/__init__.py:L1 | neighbors=[298a9d4 trim frontend to 7 core pages; …, VA scanner module — pure collection/sca…]
-- "scanner_mass_scan_connectsweep_probe": "._probe()" | kind=code-symbol | source=probe/scanner/mass_scan.py:L146 | neighbors=[_ConnectSweep, .scan_target()]
-- "scanner_mass_scan_connectsweep_scan_target": ".scan_target()" | kind=code-symbol | source=probe/scanner/mass_scan.py:L162 | neighbors=[_ConnectSweep, ._probe()]
-- "scanner_mass_scan_have_masscan": "_have_masscan()" | kind=code-symbol | source=probe/scanner/mass_scan.py:L49 | neighbors=[mass_scan.py, run_mass_scan()]
-- "scanner_mass_scan_masscan_records_to_results": "_masscan_records_to_results()" | kind=code-symbol | source=probe/scanner/mass_scan.py:L117 | neighbors=[mass_scan.py, run_mass_scan()]
-- "scanner_mcp_ai_scanner_mcpaiscanner_fetch": "._fetch()" | kind=code-symbol | source=probe/scanner/mcp_ai_scanner.py:L205 | neighbors=[MCPAIScanner, ._probe_port()]
-- "scanner_mcp_ai_scanner_mcpaiscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/scanner/mcp_ai_scanner.py:L315 | neighbors=[MCPAIScanner, ._probe_port()]
-- "scanner_mcp_ai_scanner_model_count": "_model_count()" | kind=code-symbol | source=probe/scanner/mcp_ai_scanner.py:L182 | neighbors=[mcp_ai_scanner.py, ._result()]
-- "scanner_mcp_ai_scanner_noredirect": "_NoRedirect" | kind=code-symbol | source=probe/scanner/mcp_ai_scanner.py:L109 | neighbors=[mcp_ai_scanner.py, .redirect_request()]
-- "scanner_nmap_joinints": "joinInts()" | kind=code-symbol | source=probe-go/scanner/nmap.go:L125 | neighbors=[nmap.go, RunNmapVersion()]
-- "scanner_nmap_nmapavailable": "NmapAvailable()" | kind=code-symbol | source=probe-go/scanner/nmap.go:L16 | neighbors=[nmap.go, RunNmapVersion()]
-- "scanner_nmap_parsenmapxml": "parseNmapXML()" | kind=code-symbol | source=probe-go/scanner/nmap.go:L94 | neighbors=[nmap.go, RunNmapVersion()]
-- "scanner_passive_collector_is_readable": "_is_readable()" | kind=code-symbol | source=probe/scanner/passive_collector.py:L224 | neighbors=[passive_collector.py, ._select()]
-- "scanner_port_scanner_portscanner_scan_port": "._scan_port()" | kind=code-symbol | source=probe/scanner/port_scanner.py:L36 | neighbors=[PortScanner, .scan_target()]
-- "scanner_port_scanner_portscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/scanner/port_scanner.py:L65 | neighbors=[PortScanner, ._scan_port()]
-- "scanner_safe_backoff": "backoff()" | kind=code-symbol | source=probe-go/scanner/safe.go:L93 | neighbors=[safe.go, Retry()]
-- "scanner_safe_dialcontext": "DialContext()" | kind=code-symbol | source=probe-go/scanner/safe.go:L198 | neighbors=[safe.go, Retry()]
-- "scanner_safe_istransient": "IsTransient()" | kind=code-symbol | source=probe-go/scanner/safe.go:L104 | neighbors=[safe.go, Retry()]
-- "scanner_scanner_base_basescanner_init": ".__init__()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L378 | neighbors=[BaseScanner, RateLimiter]
-- "scanner_scanner_base_basescanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L386 | neighbors=[BaseScanner, ._guarded()]
-- "scanner_scanner_base_bracket_host": "bracket_host()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L280 | neighbors=[scanner_base.py, Wrap an IPv6 literal in [] for a URL au…]
-- "scanner_scanner_base_parse_ports": "parse_ports()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L292 | neighbors=[scanner_base.py, Parse '22,80,443,8000-8100' into a sort…]
-- "scanner_scanner_base_ratelimiter_wait": ".wait()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L190 | neighbors=[.run(), RateLimiter]
-- "scanner_scanner_base_resolve": "resolve()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L265 | neighbors=[scanner_base.py, Resolve `target` to a concrete (family,…]
-- "scanner_scanner_base_resultwriter_close": ".close()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L350 | neighbors=[ResultWriter, run_cli()]
-- "scanner_scanner_base_scanresult_to_json": ".to_json()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L57 | neighbors=[.write(), ScanResult]
-- "scanner_scanner_base_scopeguard_excludes": ".excludes()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L174 | neighbors=[Read-only view of excluded networks (to…, ScopeGuard]
-- "scanner_scanner_base_scopeguard_filter": ".filter()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L161 | neighbors=[ScopeGuard, .in_scope()]
-- "scanner_scanner_base_scopeguard_networks": ".networks()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L169 | neighbors=[Read-only view of allowed networks (for…, ScopeGuard]
-- "scanner_scope_newscopeguard": "NewScopeGuard()" | kind=code-symbol | source=probe-go/scanner/scope.go:L18 | neighbors=[scope.go, ScopeFromFile()]
-- "scanner_scope_scopefromfile": "ScopeFromFile()" | kind=code-symbol | source=probe-go/scanner/scope.go:L65 | neighbors=[scope.go, NewScopeGuard()]
-- "scanner_service_banner_servicebannerscanner_grab": "._grab()" | kind=code-symbol | source=probe/scanner/service_banner.py:L42 | neighbors=[ServiceBannerScanner, .scan_target()]
-- "scanner_service_banner_servicebannerscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/scanner/service_banner.py:L97 | neighbors=[ServiceBannerScanner, ._grab()]
-- "scanner_smb_scanner_netbios_session": "_netbios_session()" | kind=code-symbol | source=probe/scanner/smb_scanner.py:L31 | neighbors=[smb_scanner.py, ._negotiate()]
-- "scanner_smb_scanner_smb1_negotiate": "_smb1_negotiate()" | kind=code-symbol | source=probe/scanner/smb_scanner.py:L36 | neighbors=[smb_scanner.py, .scan_target()]
+- "detection_engine_enrichment_db_load_kev": "load_kev()" | kind=code-symbol | source=manager/detection_engine/enrichment_db.py:L33 | neighbors=[enrichment_db.py, KevDB]
+- "detection_engine_ingest_classify_confidence": "_classify_confidence()" | kind=code-symbol | source=manager/detection_engine/ingest.py:L54 | neighbors=[ingest.py, ingest_file()]
+- "detection_engine_ingest_is_ip": "_is_ip()" | kind=code-symbol | source=manager/detection_engine/ingest.py:L74 | neighbors=[ingest.py, .get_or_create_asset()]
+- "detection_engine_init": "__init__.py" | kind=code-symbol | source=manager/detection_engine/__init__.py:L1 | neighbors=[10dfc80 Add comprehensive probe testing…, 2885afa Add comprehensive probe testing…]
+- "detection_engine_models_asset_add_fact": ".add_fact()" | kind=code-symbol | source=manager/detection_engine/models.py:L90 | neighbors=[Asset, .as_of()]
+- "detection_engine_models_fact_ref": ".ref()" | kind=code-symbol | source=manager/detection_engine/models.py:L60 | neighbors=[Fact, A stable, human-readable pointer back t…]
+- "detection_engine_models_make_finding_id": "make_finding_id()" | kind=code-symbol | source=manager/detection_engine/models.py:L125 | neighbors=[models.py, Deterministic finding ID: the SAME (ass…]
+- "detection_engine_update_snapshot_all_known_cve_ids": "_all_known_cve_ids()" | kind=code-symbol | source=manager/detection_engine/update_snapshot.py:L174 | neighbors=[update_snapshot.py, main()]
+- "detection_engine_verifier_deception_score": "deception_score()" | kind=code-symbol | source=manager/detection_engine/verifier.py:L75 | neighbors=[verifier.py, A starter honeypot/deception heuristic …]
+- "detection_engine_version_compare_split_segments": "_split_segments()" | kind=code-symbol | source=manager/detection_engine/version_compare.py:L78 | neighbors=[version_compare.py, _compare_part()]
+- "detection_engine_vuln_db_default_products": "_default_products()" | kind=code-symbol | source=manager/detection_engine/vuln_db.py:L43 | neighbors=[vuln_db.py, Derives the synced product list from cp…]
+- "detection_engine_vuln_db_vulndb_build_cve_index": "._build_cve_index()" | kind=code-symbol | source=manager/detection_engine/vuln_db.py:L89 | neighbors=[VulnDB, .__init__()]
+- "detection_engine_vuln_db_vulndb_get_cvss_vector": ".get_cvss_vector()" | kind=code-symbol | source=manager/detection_engine/vuln_db.py:L109 | neighbors=[The CVSS v3 vector string OSV embedded …, VulnDB]
+- "detection_engine_vuln_db_vulndb_init": ".__init__()" | kind=code-symbol | source=manager/detection_engine/vuln_db.py:L83 | neighbors=[VulnDB, ._build_cve_index()]
+- "detection_engine_vuln_db_vulndb_lookup": ".lookup()" | kind=code-symbol | source=manager/detection_engine/vuln_db.py:L98 | neighbors=[Raw OSV vulnerability records for this …, VulnDB]
+- "detection_init": "__init__.py" | kind=code-symbol | source=manager/backend/app/detection/__init__.py:L1 | neighbors=[d1b4dd3 trim frontend to 7 core pages; …, 298a9d4 trim frontend to 7 core pages; …]
+- "detection_logger_as_uuid": "_as_uuid()" | kind=code-symbol | source=manager/backend/app/detection/logger.py:L69 | neighbors=[logger.py, .log_action()]
+- "detection_logger_rationale_1": "AttackLogger — records every attack action to the ``attack_timeline`` table.  Al" | kind=entity | source=manager/backend/app/detection/logger.py:L1 | neighbors=[logger.py, AttackTimeline]
+- "detection_logger_rationale_40": "Persist a single attack action. Returns the AttackTimeline row.          ``times" | kind=entity | source=manager/backend/app/detection/logger.py:L40 | neighbors=[.log_action(), AttackTimeline]
+- "detection_siem_elasticsiem_build_query": ".build_query()" | kind=code-symbol | source=manager/backend/app/detection/siem.py:L191 | neighbors=[ElasticSIEM, .query_alerts()]
+- "detection_siem_sentinelsiem_build_kql": ".build_kql()" | kind=code-symbol | source=manager/backend/app/detection/siem.py:L141 | neighbors=[SentinelSIEM, .query_alerts()]
+- "detection_siem_splunksiem_build_spl": ".build_spl()" | kind=code-symbol | source=manager/backend/app/detection/siem.py:L88 | neighbors=[SplunkSIEM, .query_alerts()]
+- "detection_sigma_sigmarulegenerator_customise_detection": "._customise_detection()" | kind=code-symbol | source=manager/backend/app/detection/sigma.py:L153 | neighbors=[SigmaRuleGenerator, .generate_sigma_for_technique()]
+- "detection_sigma_sigmarulegenerator_lookup_template": "._lookup_template()" | kind=code-symbol | source=manager/backend/app/detection/sigma.py:L144 | neighbors=[SigmaRuleGenerator, .generate_sigma_for_technique()]
+- "detection_sigma_stable_rule_id": "_stable_rule_id()" | kind=code-symbol | source=manager/backend/app/detection/sigma.py:L166 | neighbors=[sigma.py, .generate_sigma_for_technique()]
+- "discovery_finding_translator_map_severity": "_map_severity()" | kind=code-symbol | source=manager/backend/app/discovery/finding_translator.py:L46 | neighbors=[finding_translator.py, create_findings_from_probe_result()]
+- "discovery_init": "__init__.py" | kind=code-symbol | source=manager/backend/app/discovery/__init__.py:L1 | neighbors=[d1b4dd3 trim frontend to 7 core pages; …, 298a9d4 trim frontend to 7 core pages; …]
+- "discovery_rate_limiter_ratelimiter_consume_token": "._consume_token()" | kind=code-symbol | source=manager/backend/app/discovery/rate_limiter.py:L85 | neighbors=[RateLimiter, .acquire()]
+- "discovery_rate_limiter_ratelimiter_resolve_cidr": "._resolve_cidr()" | kind=code-symbol | source=manager/backend/app/discovery/rate_limiter.py:L75 | neighbors=[RateLimiter, .acquire()]
+- "discovery_service_id_serviceidentifier_identify": ".identify()" | kind=code-symbol | source=manager/backend/app/discovery/service_id.py:L74 | neighbors=[ServiceIdentifier, ServiceFingerprint]
+- "discovery_worker_discoveryworker_grab_one": "._grab_one()" | kind=code-symbol | source=manager/backend/app/discovery/worker.py:L161 | neighbors=[DiscoveryWorker, ._banner_grab_all()]
+- "discovery_worker_discoveryworker_run_nmap": "._run_nmap()" | kind=code-symbol | source=manager/backend/app/discovery/worker.py:L119 | neighbors=[DiscoveryWorker, .run()]
+- "discovery_worker_discoveryworker_save_assets": "._save_assets()" | kind=code-symbol | source=manager/backend/app/discovery/worker.py:L194 | neighbors=[DiscoveryWorker, .run()]
+- "discovery_worker_discoveryworker_set_status": "._set_status()" | kind=code-symbol | source=manager/backend/app/discovery/worker.py:L270 | neighbors=[DiscoveryWorker, .run()]
+- "discovery_xml_parser_nmapxmlparser_parse": ".parse()" | kind=code-symbol | source=manager/backend/app/discovery/xml_parser.py:L44 | neighbors=[NmapXMLParser, ._parse_host()]
+- "engagements_page_hasvaliddaterange": "hasValidDateRange()" | kind=code-symbol | source=manager/frontend/app/engagements/page.tsx:L51 | neighbors=[page.tsx, EngagementsPage()]
+- "engagements_page_splitentries": "splitEntries()" | kind=code-symbol | source=manager/frontend/app/engagements/page.tsx:L48 | neighbors=[page.tsx, EngagementsPage()]
+- "engine_scan_modules_modules": "MODULES" | kind=code-symbol | source=manager/frontend/lib/engine/scan-modules.ts:L48 | neighbors=[scan-modules.ts, interactive.ts]
+- "engine_scan_modules_modulesbycategory": "modulesByCategory()" | kind=code-symbol | source=manager/frontend/lib/engine/scan-modules.ts:L333 | neighbors=[interactive.ts, scan-modules.ts]
+- "engine_scan_modules_modulesforports": "modulesForPorts()" | kind=code-symbol | source=manager/frontend/lib/engine/scan-modules.ts:L378 | neighbors=[scan-modules.ts, scanner.ts]
 
 ## Instructions
 
 Write a single JSON object mapping each node id to a one-sentence description
-to: /Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Agentic VA Scanner/.graphify/description-instructions/batch-052.json
+to: /Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha/.graphify/description-instructions/batch-052.json
 
 Keep each description factual and concise (one sentence). No markdown, no prose
 outside the JSON object. It is acceptable to omit a node if context is

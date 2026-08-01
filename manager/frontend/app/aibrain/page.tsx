@@ -1,916 +1,337 @@
 "use client";
 
-import React, { useState, useEffect, useRef, useCallback } from "react";
-import { Menu, Send } from "lucide-react";
-import { Sidebar } from "../../components/Sidebar";
+import React, { useEffect, useRef, useState } from "react";
+import { useQuery } from "@tanstack/react-query";
+import {
+  Brain, CheckCircle2, ChevronRight, Cloud, Database, Eraser,
+  LockKeyhole, Send, Server, ShieldCheck, Sparkles, TriangleAlert,
+} from "lucide-react";
+import { PageShell } from "../../components/PageShell";
+import { fetchJson } from "../../lib/fetcher";
+import { FactCard } from "../../components/assistant/FactCard";
+import { AssistantText } from "../../components/assistant/AssistantText";
+import type { FactCardVM } from "../../lib/assistant";
 
-/* ─── Types ─── */
 interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
-  timestamp: string;
+  provider?: string;
+  model?: string;
+  factCard?: FactCardVM;
 }
 
-interface Agent {
-  name: string;
-  status: "ACTIVE" | "THINKING" | "IDLE";
-  activity: string;
+interface AiStatus {
+  provider: "ollama" | "openrouter" | "anthropic";
+  model: string;
+  configured: boolean;
+  privacy: "local" | "cloud";
+  reason?: string;
+  providers: Array<{
+    id: "ollama" | "openrouter" | "anthropic";
+    label: string;
+    configured: boolean;
+    privacy: "local" | "cloud";
+    default_model: string;
+    models: string[];
+    reason?: string;
+  }>;
 }
 
-interface Finding {
+interface Engagement {
   id: string;
-  severity: "CRITICAL" | "HIGH" | "MEDIUM";
-  title: string;
-  confidence: number;
-  path: string;
+  name: string;
+  client?: string;
+  status?: string;
 }
 
-/* ─── Data ─── */
-const quickPrompts = [
-  "Analyze attack paths to Domain Admin in BFSI network",
-  "Kerberoasting chain from standard user to DA",
-  "Lateral movement past Palo Alto NGFW",
-  "Model ransomware blast radius from SMB foothold",
-  "Credential relay attack vectors in flat enterprise network",
+const STARTER_PROMPTS = [
+  {
+    title: "Analyze any CVE",
+    prompt: "Explain CVE-2021-44228, including what it is, potential organizational impact, severity and score, remediation, and what must be validated.",
+  },
+  {
+    title: "Executive risk brief",
+    prompt: "Summarize the highest-priority recorded risks for a client executive. Separate confirmed evidence from unknowns.",
+  },
+  {
+    title: "Remediation sequence",
+    prompt: "Create a remediation sequence for the selected engagement, prioritizing exploitability, business impact, and SLA urgency.",
+  },
+  {
+    title: "Detection gaps",
+    prompt: "Identify the most important detection coverage gaps in the selected engagement and suggest defensive validation steps.",
+  },
 ];
 
-const initialMessage: Message = {
-  id: "init",
+const WELCOME: Message = {
+  id: "welcome",
   role: "assistant",
-  content: `[VEDHA ONLINE]
-AI Offensive Brain initialized. Multi-agent framework active.
-
-[READY]
-Provide a target scope, attack scenario, or threat model query.`,
-  timestamp: new Date().toISOString(),
+  content: "Ask about any published CVE or select an engagement for organization-specific analysis. Public CVE metadata is never presented as proof that your organization is affected.",
 };
 
-const defaultAgents: Agent[] = [
-  { name: "Recon Agent", status: "IDLE", activity: "Standby" },
-  { name: "Exploit Agent", status: "IDLE", activity: "Standby" },
-  { name: "Lateral Agent", status: "IDLE", activity: "Standby" },
-  { name: "AD Trust Analyzer", status: "IDLE", activity: "Standby" },
-  { name: "Stealth Agent", status: "IDLE", activity: "Standby" },
-];
-
-const findings: Finding[] = [
-  { id: "F001", severity: "CRITICAL", title: "Unconstrained Delegation — DC01", confidence: 97, path: "WS-042→SVC-SQL→DC01" },
-  { id: "F002", severity: "CRITICAL", title: "Kerberoastable Service Account", confidence: 94, path: "Any user→svc_backup→DA" },
-  { id: "F003", severity: "HIGH", title: "SMB Relay via LLMNR Poisoning", confidence: 88, path: "Internal→NTLM capture" },
-  { id: "F004", severity: "HIGH", title: "Lateral Movement via WMI", confidence: 82, path: "WS-042→10.10.10.0/24" },
-  { id: "F005", severity: "MEDIUM", title: "Segmentation Bypass VLAN30→10", confidence: 71, path: "ACL misconfiguration" },
-];
-
-const graphStats = [
-  { label: "Attack paths found", value: 14, color: "#FF4444" },
-  { label: "Validated exploitable", value: 6, color: "#FF4444" },
-  { label: "AD paths to DA", value: 3, color: "#FF9900" },
-  { label: "Lateral move vectors", value: 9, color: "#FF9900" },
-  { label: "Segmentation gaps", value: 2, color: "var(--adv-accent)" },
-  { label: "Evidence confidence avg", value: "87%", color: "#059669" },
-];
-
-const criticalChain = [
-  { step: "WS-042", action: "LLMNR Poison", accent: "#2563EB" },
-  { step: "svc_backup", action: "Kerberoast", accent: "#FF9900" },
-  { step: "DC01", action: "Silver Ticket", accent: "#FF4444" },
-  { step: "DOMAIN ADMIN", action: "Impersonation", accent: "#FF4444", warning: "⚠" },
-];
-
-/* ─── Helpers ─── */
-function formatTime(iso: string) {
-  const d = new Date(iso);
-  return d.toTimeString().slice(0, 8);
+function providerLabel(provider?: string) {
+  if (provider === "openrouter") return "OpenRouter";
+  if (provider === "anthropic") return "Anthropic";
+  return "Ollama";
 }
 
-function severityColor(s: Finding["severity"]) {
-  switch (s) {
-    case "CRITICAL":
-      return "#FF4444";
-    case "HIGH":
-      return "#FF9900";
-    case "MEDIUM":
-      return "#FFD500";
-    default:
-      return "#64748B";
-  }
-}
-
-function barColor(v: number) {
-  if (v >= 90) return "#059669";
-  if (v >= 70) return "#2563EB";
-  if (v >= 50) return "#FF9900";
-  return "#FF4444";
-}
-
-/* ─── Subcomponents ─── */
-
-function StatusDot({ status }: { status: Agent["status"] }) {
-  const color = status === "ACTIVE" ? "#059669" : status === "THINKING" ? "#FF9900" : "#64748B";
-  return (
-    <span
-      className={status === "ACTIVE" || status === "THINKING" ? "animate-pulse-dot" : ""}
-      style={{
-        display: "inline-block",
-        width: 7,
-        height: 7,
-        borderRadius: "50%",
-        background: color,
-        flexShrink: 0,
-      }}
-    />
-  );
-}
-
-function AnimatedMessage({ content, isUser }: { content: string; isUser: boolean }) {
-  const [displayed, setDisplayed] = useState(isUser ? content : "");
-  const indexRef = useRef(0);
-
-  useEffect(() => {
-    if (isUser) { return; }
-    indexRef.current = 0;
-    setDisplayed("");
-    const interval = setInterval(() => {
-      indexRef.current++;
-      setDisplayed(content.slice(0, indexRef.current));
-      if (indexRef.current >= content.length) {
-        clearInterval(interval);
-      }
-    }, 8);
-    return () => clearInterval(interval);
-  }, [content, isUser]);
-
-  const lines = displayed.split("\n");
-
-  return (
-    <div>
-      {lines.map((line, i) => {
-        const isSectionHeader = /^\[.*?\]$/.test(line);
-        return (
-          <div key={i} style={{ marginBottom: 2 }}>
-            {isSectionHeader ? (
-              <span
-                style={{
-                  fontFamily: "'JetBrains Mono', monospace",
-                  fontSize: 12,
-                  color: "var(--adv-accent)",
-                  letterSpacing: 1,
-                }}
-              >
-                {line}
-              </span>
-            ) : (
-              <span
-                style={{
-                  fontFamily: "'JetBrains Mono', monospace",
-                  fontSize: 12,
-                  color: "var(--adv-text)",
-                  whiteSpace: "pre-wrap",
-                }}
-              >
-                {isUser && i === 0 ? "❱ " : ""}
-                {line}
-              </span>
-            )}
-          </div>
-        );
-      })}
-    </div>
-  );
-}
-
-/* ─── Main Page ─── */
 export default function AIBrainPage() {
-  const [messages, setMessages] = useState<Message[]>([initialMessage]);
-  const [inputValue, setInputValue] = useState("");
-  const [isLoading, setIsLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState(0);
-  const [agents, setAgents] = useState<Agent[]>(defaultAgents.map((a) => ({ ...a })));
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const [exchangeCount, setExchangeCount] = useState(0);
+  const [messages, setMessages] = useState<Message[]>([WELCOME]);
+  const [input, setInput] = useState("");
+  const [engagementId, setEngagementId] = useState("");
+  const [provider, setProvider] = useState<AiStatus["provider"] | null>(null);
+  const [model, setModel] = useState("");
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const endRef = useRef<HTMLDivElement>(null);
 
-  const tabs = ["Agents", "Findings", "Graph"];
+  const statusQuery = useQuery({
+    queryKey: ["ai-status"],
+    queryFn: () => fetchJson<AiStatus>("/api/ai/status"),
+    refetchInterval: 30_000,
+  });
+  const engagementsQuery = useQuery({
+    queryKey: ["engagements"],
+    queryFn: () => fetchJson<{ engagements?: Engagement[] }>("/api/engagements"),
+  });
+  const status = statusQuery.data;
+  const engagements = engagementsQuery.data?.engagements ?? [];
+  const selectedProvider = status?.providers.find((item) => item.id === (provider ?? status.provider));
+  const selectedModel = model || selectedProvider?.default_model || status?.model || "";
 
-  /* Auto-scroll to latest */
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+    endRef.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+  }, [messages, sending]);
 
-  /* Auto-resize textarea */
   useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = "auto";
-      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
-    }
-  }, [inputValue]);
+    if (!textareaRef.current) return;
+    textareaRef.current.style.height = "auto";
+    textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 150)}px`;
+  }, [input]);
 
-  /* Simulate agent activity based on query */
-  const activateAgents = useCallback((query: string, isProcessing: boolean) => {
-    const lower = query.toLowerCase();
-    const newAgents = defaultAgents.map((a) => ({ ...a }));
-
-    if (isProcessing) {
-      newAgents.forEach((a) => { a.status = "THINKING"; });
-      if (/exploit|vuln|cve|exploitation|payload/.test(lower)) {
-        newAgents[1] = { ...newAgents[1], status: "ACTIVE", activity: "Analyzing CVE database..." };
-      }
-      if (/lateral|pivot|move|wmi|psxec|remote/.test(lower)) {
-        newAgents[2] = { ...newAgents[2], status: "ACTIVE", activity: "Modeling lateral spread..." };
-      }
-      if (/ad|domain|kerberos|ldap|trust|delegation/.test(lower)) {
-        newAgents[3] = { ...newAgents[3], status: "ACTIVE", activity: "Analyzing domain hierarchy..." };
-      }
-      if (/recon|scan|enumerate|discover/.test(lower)) {
-        newAgents[0] = { ...newAgents[0], status: "ACTIVE", activity: "Enumerating targets..." };
-      }
-      if (/stealth|evade|bypass|edr/.test(lower)) {
-        newAgents[4] = { ...newAgents[4], status: "ACTIVE", activity: "Evaluating detection posture..." };
-      }
-    } else {
-      newAgents.forEach((a) => {
-        a.status = "IDLE";
-        a.activity = "Standby";
-      });
-    }
-    setAgents(newAgents);
-  }, []);
-
-  /* API Call */
-  const sendMessage = useCallback(async () => {
-    if (!inputValue.trim() || isLoading) { return; }
-
-    const userMsg: Message = {
-      id: `msg-${Date.now()}`,
-      role: "user",
-      content: inputValue.trim(),
-      timestamp: new Date().toISOString(),
-    };
-
-    setMessages((prev) => [...prev, userMsg]);
-    setInputValue("");
-    setIsLoading(true);
-    activateAgents(userMsg.content, true);
-
+  async function send(prompt?: string) {
+    const content = (prompt ?? input).trim();
+    if (!content || sending) return;
+    const user: Message = { id: crypto.randomUUID(), role: "user", content };
+    const conversation = [...messages.filter((message) => message.id !== "welcome"), user];
+    setMessages((current) => [...current, user]);
+    setInput("");
+    setSending(true);
+    setError(null);
     try {
-      // The /api/brain route is server-authoritative: it owns the system prompt
-      // and model (a security tool must not let the client inject either — that
-      // would be a prompt-injection / jailbreak vector). So we send only the
-      // conversation; model/system/max_tokens set here were dead params.
-      const res = await fetch("/api/brain", {
+      const response = await fetchJson<{ content?: string; error?: string; provider?: string; model?: string; factCard?: FactCardVM }>("/api/brain", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          messages: [
-            ...messages.map((m) => ({ role: m.role, content: m.content })),
-            { role: "user", content: userMsg.content },
-          ],
+          messages: conversation.map(({ role, content: messageContent }) => ({ role, content: messageContent })),
+          engagementId: engagementId || undefined,
+          provider: selectedProvider?.id,
+          model: selectedModel || undefined,
         }),
       });
-
-      let aiContent: string;
-      if (res.ok) {
-        // Route returns { content: string } (already extracted server-side),
-        // not a raw Anthropic content-block array.
-        const data = await res.json() as { content?: string };
-        aiContent = data.content ?? "[No response returned by the AI Brain.]";
-      } else {
-        aiContent = `[ERROR]
-Unable to connect to AI Offensive Brain. Check API configuration.
-
-[STATUS]
-API response: ${res.statusText} (${res.status})`;
-      }
-
-      const assistantMsg: Message = {
-        id: `msg-${Date.now() + 1}`,
+      setMessages((current) => [...current, {
+        id: crypto.randomUUID(),
         role: "assistant",
-        content: aiContent,
-        timestamp: new Date().toISOString(),
-      };
-
-      setMessages((prev) => [...prev, assistantMsg]);
-      setExchangeCount((prev) => prev + 1);
-    } catch (err) {
-      const errorMsg: Message = {
-        id: `msg-${Date.now() + 1}`,
-        role: "assistant",
-        content: `[ERROR]
-Failed to reach AI Offensive Brain.
-
-[DETAIL]
-${err instanceof Error ? err.message : "Unknown network error"}
-
-[RECOMMENDATION]
-Verify network connectivity and API key configuration.`,
-        timestamp: new Date().toISOString(),
-      };
-      setMessages((prev) => [...prev, errorMsg]);
+        content: response.content || "The configured model returned no content.",
+        provider: response.provider,
+        model: response.model,
+        factCard: response.factCard,
+      }]);
+    } catch (requestError) {
+      setError(requestError instanceof Error ? requestError.message : "The AI runtime could not complete this request.");
     } finally {
-      setIsLoading(false);
-      activateAgents("", false);
+      setSending(false);
+      textareaRef.current?.focus();
     }
-  }, [inputValue, isLoading, messages, activateAgents]);
+  }
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === "Enter" && !e.shiftKey) {
-      e.preventDefault();
-      sendMessage();
-    }
-  };
-
-  const handleQuickPrompt = (prompt: string) => {
-    setInputValue(prompt);
-    setTimeout(() => {
-      if (textareaRef.current) {
-        textareaRef.current.style.height = "auto";
-        textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 120)}px`;
-      }
-    }, 0);
-  };
+  const selectedEngagement = engagements.find((engagement) => engagement.id === engagementId);
+  const ready = selectedProvider?.configured ?? false;
+  const selectedPrivacy = selectedProvider?.privacy ?? status?.privacy;
 
   return (
-    <div
-      style={{
-        display: "flex",
-        height: "100vh",
-        background: "var(--adv-bg)",
-        fontFamily: "'Inter', sans-serif",
-        overflow: "hidden",
-      }}
+    <PageShell
+      title="AI Brain"
+      subtitle="Evidence-grounded security advisor"
+      statusItems={[
+        {
+          label: "RUNTIME",
+          value: status ? providerLabel(selectedProvider?.id ?? status.provider).toUpperCase() : "CHECKING",
+          color: ready ? "var(--nominal-color)" : "var(--sev-high-color)",
+        },
+        {
+          label: "PRIVACY",
+          value: selectedPrivacy === "local" ? "LOCAL" : "CLOUD",
+          color: selectedPrivacy === "local" ? "var(--nominal-color)" : "var(--accent)",
+        },
+      ]}
     >
-      {sidebarOpen && (
-        <div
-          className="md:hidden"
-          onClick={() => setSidebarOpen(false)}
-          style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,0.75)", zIndex: 40 }}
-        />
-      )}
-
-      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
-
-      {/* Main */}
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-        {/* Top Nav */}
-        <header
-          style={{
-            height: 52,
-            borderBottom: "1px solid var(--adv-border)",
-            display: "flex",
-            alignItems: "center",
-            justifyContent: "space-between",
-            padding: "0 20px",
-            flexShrink: 0,
-            background: "var(--adv-bg)",
-          }}
-        >
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+      <div className="brain-layout">
+        <section className="brain-main">
+          <header className="brain-context-bar">
+            <div>
+              <span className="brain-context-icon"><Database size={15} /></span>
+              <label htmlFor="brain-engagement">
+                <span>Ground with engagement evidence</span>
+                <select id="brain-engagement" value={engagementId} onChange={(event) => setEngagementId(event.target.value)}>
+                  <option value="">No engagement selected</option>
+                  {engagements.map((engagement) => (
+                    <option value={engagement.id} key={engagement.id}>{engagement.name} · {engagement.client || "No client"}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
             <button
-              className="md:hidden"
-              onClick={() => setSidebarOpen(true)}
-              style={{ background: "none", border: "none", cursor: "pointer", padding: 0 }}
+              type="button"
+              className="brain-clear"
+              onClick={() => { setMessages([WELCOME]); setError(null); }}
+              title="Clear this conversation"
             >
-              <Menu size={20} color="#2563EB" />
+              <Eraser size={14} /> Clear
             </button>
-            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 18, color: "var(--adv-accent)", letterSpacing: 3 }}>
-              VEDHA
-            </span>
-            <span style={{ color: "var(--adv-border)" }}>|</span>
-            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: "var(--adv-text-muted)" }}>
-              AI OFFENSIVE BRAIN v0.9.1
-            </span>
-            <span
-              className="animate-pulse-dot"
-              style={{
-                display: "inline-block",
-                width: 8,
-                height: 8,
-                borderRadius: "50%",
-                background: "#059669",
-              }}
-            />
-            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: "#059669" }}>ONLINE</span>
-          </div>
-        </header>
+          </header>
 
-        <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-          {/* Center Panel */}
-          <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden" }}>
-            {/* Quick Prompts */}
-            <div
-              style={{
-                padding: "10px 20px",
-                borderBottom: "1px solid var(--adv-border)",
-                display: "flex",
-                gap: 8,
-                overflowX: "auto",
-                flexShrink: 0,
-              }}
-            >
-              {quickPrompts.map((p, i) => (
-                <button
-                  key={i}
-                  onClick={() => handleQuickPrompt(p)}
-                  style={{
-                    fontFamily: "'JetBrains Mono', monospace",
-                    fontSize: 10,
-                    color: "var(--adv-text-muted)",
-                    border: "1px solid var(--adv-border)",
-                    borderRadius: 6,
-                    padding: "6px 12px",
-                    background: "transparent",
-                    cursor: "pointer",
-                    whiteSpace: "nowrap",
-                    transition: "color 0.15s ease, border-color 0.15s ease",
-                  }}
-                  onMouseEnter={(e) => {
-                    (e.currentTarget as HTMLElement).style.color = "#2563EB";
-                    (e.currentTarget as HTMLElement).style.borderColor = "#2563EB";
-                  }}
-                  onMouseLeave={(e) => {
-                    (e.currentTarget as HTMLElement).style.color = "#64748B";
-                    (e.currentTarget as HTMLElement).style.borderColor = "#E2E8F0";
-                  }}
-                >
-                  {p}
-                </button>
-              ))}
-            </div>
-
-            {/* Messages Area */}
-            <div
-              style={{
-                flex: 1,
-                overflowY: "auto",
-                padding: "16px 20px",
-                display: "flex",
-                flexDirection: "column",
-                gap: 16,
-              }}
-            >
-              {messages.map((msg) => (
-                <div
-                  key={msg.id}
-                  style={{
-                    display: "flex",
-                    justifyContent: msg.role === "user" ? "flex-end" : "flex-start",
-                  }}
-                >
-                  <div style={{ maxWidth: "80%" }}>
-                    <div
-                      style={{
-                        background:
-                          msg.role === "user"
-                            ? "rgba(37,99,235,0.04)"
-                            : "#FFFFFF",
-                        border:
-                          msg.role === "user"
-                            ? "1px solid #1E4560"
-                            : "1px solid #E2E8F0",
-                        borderRadius:
-                          msg.role === "user" ? "8px 2px 8px 8px" : "2px 8px 8px 8px",
-                        padding: "12px 16px",
-                        position: "relative",
-                      }}
-                    >
-                      {msg.role === "assistant" && (
-                        <div
-                          style={{
-                            position: "absolute",
-                            top: -10,
-                            left: 12,
-                            fontFamily: "'JetBrains Mono', monospace",
-                            fontSize: 10,
-                            color: "var(--adv-accent)",
-                            border: "1px solid var(--adv-border)",
-                            borderRadius: 4,
-                            padding: "1px 6px",
-                            background: "var(--adv-panel)",
-                          }}
-                        >
-                          AI
-                        </div>
-                      )}
-                      <AnimatedMessage content={msg.content} isUser={msg.role === "user"} />
-                    </div>
-                    <div
-                      style={{
-                        fontFamily: "'JetBrains Mono', monospace",
-                        fontSize: 10,
-                        color: "var(--adv-text-muted)",
-                        marginTop: 4,
-                        textAlign: msg.role === "user" ? "right" : "left",
-                      }}
-                    >
-                      {formatTime(msg.timestamp)}
-                    </div>
-                  </div>
+          <div className="brain-conversation" aria-live="polite">
+            {messages.length === 1 && (
+              <div className="brain-starters">
+                <div><Sparkles size={16} /><span>Start with a decision-focused question</span></div>
+                <div className="brain-starter-grid">
+                  {STARTER_PROMPTS.map((starter) => (
+                    <button key={starter.title} onClick={() => void send(starter.prompt)} disabled={sending || !ready}>
+                      <strong>{starter.title}</strong>
+                      <span>{starter.prompt}</span>
+                      <ChevronRight size={14} />
+                    </button>
+                  ))}
                 </div>
-              ))}
-
-              {isLoading && (
-                <div style={{ display: "flex", justifyContent: "flex-start" }}>
-                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <div style={{ display: "flex", gap: 4 }}>
-                      {[0, 1, 2].map((i) => (
-                        <span
-                          key={i}
-                          className="animate-pulse-dot"
-                          style={{
-                            width: 6,
-                            height: 6,
-                            borderRadius: "50%",
-                            background: "#2563EB",
-                            animationDelay: `${i * 200}ms`,
-                          }}
-                        />
-                      ))}
-                    </div>
-                    <span
-                      style={{
-                        fontFamily: "'JetBrains Mono', monospace",
-                        fontSize: 11,
-                        color: "var(--adv-accent)",
-                      }}
-                    >
-                      Offensive brain reasoning...
-                    </span>
-                  </div>
-                </div>
-              )}
-              <div ref={messagesEndRef} />
-            </div>
-
-            {/* Input Area */}
-            <div
-              style={{
-                borderTop: "1px solid var(--adv-border)",
-                padding: "12px 20px",
-                flexShrink: 0,
-                background: "var(--adv-bg)",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  alignItems: "flex-end",
-                  gap: 8,
-                  background: "var(--adv-panel)",
-                  border: "1px solid var(--adv-border)",
-                  borderRadius: 6,
-                  padding: "8px 12px",
-                }}
-              >
-                <span style={{ fontFamily: "monospace", fontSize: 14, color: "var(--adv-accent)", paddingBottom: 4 }}>❱</span>
-                <textarea
-                  ref={textareaRef}
-                  value={inputValue}
-                  onChange={(e) => setInputValue(e.target.value)}
-                  onKeyDown={handleKeyDown}
-                  placeholder="Query the AI Offensive Brain..."
-                  rows={1}
-                  style={{
-                    flex: 1,
-                    background: "transparent",
-                    border: "none",
-                    outline: "none",
-                    color: "var(--adv-text)",
-                    fontFamily: "'JetBrains Mono', monospace",
-                    fontSize: 12,
-                    resize: "none",
-                    minHeight: 20,
-                    maxHeight: 100,
-                    overflow: "auto",
-                    lineHeight: 1.5,
-                  }}
-                />
-                <button
-                  onClick={sendMessage}
-                  disabled={isLoading || !inputValue.trim()}
-                  style={{
-                    padding: "6px 14px",
-                    borderRadius: 4,
-                    border: "none",
-                    background: inputValue.trim() ? "#2563EB" : "rgba(37,99,235,0.15)",
-                    color: inputValue.trim() ? "#F8FAFC" : "#64748B",
-                    fontFamily: "'JetBrains Mono', monospace",
-                    fontSize: 11,
-                    cursor: inputValue.trim() ? "pointer" : "not-allowed",
-                    transition: "background 0.15s ease, color 0.15s ease",
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 4,
-                  }}
-                >
-                  <Send size={12} />
-                  SEND
-                </button>
               </div>
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  marginTop: 6,
-                  fontFamily: "'JetBrains Mono', monospace",
-                  fontSize: 10,
-                  color: "var(--adv-text-muted)",
-                }}
-              >
-                <span>ENTER to send · SHIFT+ENTER for newline</span>
-                <span>
-                  {exchangeCount} exchange{exchangeCount !== 1 ? "s" : ""}
+            )}
+
+            {messages.map((message) => (
+              <article className="brain-message" data-role={message.role} key={message.id}>
+                <span className="brain-avatar">
+                  {message.role === "assistant" ? <Brain size={16} /> : <ShieldCheck size={16} />}
                 </span>
+                <div>
+                  <header>
+                    <strong>{message.role === "assistant" ? "Vedha AI" : "You"}</strong>
+                    {message.model && <span>{providerLabel(message.provider)} · {message.model}</span>}
+                  </header>
+                  {message.factCard && <FactCard vm={message.factCard} />}
+                  {message.role === "assistant"
+                    ? <AssistantText content={message.content} />
+                    : <p>{message.content}</p>}
+                </div>
+              </article>
+            ))}
+
+            {sending && (
+              <article className="brain-message" data-role="assistant">
+                <span className="brain-avatar"><Brain size={16} /></span>
+                <div><header><strong>Vedha AI</strong></header><div className="brain-thinking"><span /><span /><span /> Analyzing recorded evidence…</div></div>
+              </article>
+            )}
+            {error && (
+              <div className="brain-error" role="alert">
+                <TriangleAlert size={16} />
+                <div><strong>AI request could not be completed</strong><span>{error}</span></div>
               </div>
-            </div>
+            )}
+            <div ref={endRef} />
           </div>
 
-          {/* Right Panel */}
-          <aside
-            className="hidden lg:block"
-            style={{
-              width: 300,
-              borderLeft: "1px solid var(--adv-border)",
-              background: "var(--adv-panel)",
-              display: "flex",
-              flexDirection: "column",
-              overflow: "hidden",
-              flexShrink: 0,
-            }}
-          >
-            {/* Tabs */}
-            <div
-              style={{
-                display: "flex",
-                borderBottom: "1px solid var(--adv-border)",
+          <footer className="brain-composer">
+            <textarea
+              ref={textareaRef}
+              value={input}
+              onChange={(event) => setInput(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === "Enter" && !event.shiftKey) {
+                  event.preventDefault();
+                  void send();
+                }
               }}
-            >
-              {tabs.map((t, i) => (
-                <button
-                  key={t}
-                  onClick={() => setActiveTab(i)}
-                  style={{
-                    flex: 1,
-                    padding: "10px 0",
-                    background: activeTab === i ? "rgba(37,99,235,0.04)" : "transparent",
-                    border: "none",
-                    borderBottom: activeTab === i ? "2px solid #2563EB" : "2px solid transparent",
-                    color: activeTab === i ? "#0F172A" : "#64748B",
-                    fontFamily: "'JetBrains Mono', monospace",
-                    fontSize: 11,
-                    letterSpacing: 1,
-                    cursor: "pointer",
-                    textTransform: "uppercase",
-                    transition: "color 0.15s ease",
+              placeholder={ready ? "Paste CVE-YYYY-NNNN or ask about risk, impact, evidence, and remediation…" : "Configure the AI runtime in Settings to begin"}
+              aria-label="Message AI Brain"
+              disabled={!ready || sending}
+              rows={1}
+            />
+            <button type="button" onClick={() => void send()} disabled={!ready || sending || !input.trim()} aria-label="Send message">
+              <Send size={17} />
+            </button>
+            <div className="brain-composer-meta">
+              <span><LockKeyhole size={11} /> Server-owned prompt · keys never reach the browser</span>
+              <span>Enter to send · Shift+Enter for new line</span>
+            </div>
+          </footer>
+        </section>
+
+        <aside className="brain-rail">
+          <section className="brain-runtime-card" data-ready={ready}>
+            <header>
+              <span>{selectedPrivacy === "local" ? <Server size={17} /> : <Cloud size={17} />}</span>
+              <div><strong>Manager AI runtime</strong><small>{ready ? (selectedProvider?.id === "ollama" ? "Free · open model · local" : "Manager-configured cloud") : "Needs configuration"}</small></div>
+              <span className="brain-runtime-dot" />
+            </header>
+            <div className="brain-runtime-selectors">
+              <label htmlFor="brain-provider">
+                <span>Provider</span>
+                <select
+                  id="brain-provider"
+                  value={provider ?? status?.provider ?? ""}
+                  onChange={(event) => {
+                    const next = event.target.value as AiStatus["provider"];
+                    const option = status?.providers.find((item) => item.id === next);
+                    setProvider(next);
+                    setModel(option?.default_model ?? "");
                   }}
+                  disabled={!status}
                 >
-                  {t}
-                </button>
-              ))}
-            </div>
-
-            {/* Tab Content */}
-            <div style={{ flex: 1, overflowY: "auto", padding: "8px 0" }}>
-              {activeTab === 0 && (
-                <div>
-                  {agents.map((agent, i) => (
-                    <div
-                      key={agent.name}
-                      style={{
-                        display: "flex",
-                        alignItems: "center",
-                        gap: 10,
-                        padding: "10px 16px",
-                        borderBottom: i < agents.length - 1 ? "1px solid rgba(37,99,235,0.06)" : "none",
-                      }}
-                    >
-                      <StatusDot status={agent.status} />
-                      <div style={{ minWidth: 0, flex: 1 }}>
-                        <div
-                          style={{
-                            fontFamily: "'JetBrains Mono', monospace",
-                            fontSize: 12,
-                            color: "var(--adv-text)",
-                          }}
-                        >
-                          {agent.name}
-                        </div>
-                        <div
-                          style={{
-                            fontFamily: "'JetBrains Mono', monospace",
-                            fontSize: 10,
-                            color: "var(--adv-text-muted)",
-                            marginTop: 2,
-                            whiteSpace: "nowrap",
-                            overflow: "hidden",
-                            textOverflow: "ellipsis",
-                          }}
-                        >
-                          {agent.activity}
-                        </div>
-                      </div>
-                    </div>
+                  {(status?.providers ?? []).map((item) => (
+                    <option value={item.id} key={item.id} disabled={!item.configured}>
+                      {item.label}{item.configured ? "" : " · not configured"}
+                    </option>
                   ))}
-                </div>
-              )}
-
-              {activeTab === 1 && (
-                <div style={{ padding: "8px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
-                  {findings.map((f) => (
-                    <div
-                      key={f.id}
-                      style={{
-                        background: "var(--adv-bg)",
-                        border: "1px solid var(--adv-border)",
-                        borderRadius: 4,
-                        padding: "10px 12px",
-                      }}
-                    >
-                      <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 6 }}>
-                        <span
-                          style={{
-                            fontFamily: "'JetBrains Mono', monospace",
-                            fontSize: 10,
-                            color: "var(--adv-text-muted)",
-                          }}
-                        >
-                          {f.id}
-                        </span>
-                        <span
-                          style={{
-                            fontFamily: "'JetBrains Mono', monospace",
-                            fontSize: 9,
-                            padding: "1px 6px",
-                            borderRadius: 3,
-                            background: `${severityColor(f.severity)}15`,
-                            color: severityColor(f.severity),
-                          }}
-                        >
-                          {f.severity}
-                        </span>
-                      </div>
-                      <div
-                        style={{
-                          fontFamily: "'Inter', sans-serif",
-                          fontSize: 13,
-                          fontWeight: 500,
-                          color: "var(--adv-text)",
-                          lineHeight: 1.4,
-                          marginBottom: 6,
-                        }}
-                      >
-                        {f.title}
-                      </div>
-                      <div
-                        style={{
-                          fontFamily: "'JetBrains Mono', monospace",
-                          fontSize: 10,
-                          color: "var(--adv-text-muted)",
-                          marginBottom: 6,
-                        }}
-                      >
-                        {f.path}
-                      </div>
-                      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <div
-                          style={{
-                            flex: 1,
-                            height: 3,
-                            background: "rgba(37,99,235,0.06)",
-                            borderRadius: 1,
-                            overflow: "hidden",
-                          }}
-                        >
-                          <div
-                            style={{
-                              height: "100%",
-                              width: `${f.confidence}%`,
-                              background: barColor(f.confidence),
-                              borderRadius: 1,
-                            }}
-                          />
-                        </div>
-                        <span
-                          style={{
-                            fontFamily: "'JetBrains Mono', monospace",
-                            fontSize: 10,
-                            color: barColor(f.confidence),
-                            width: 30,
-                            textAlign: "right",
-                          }}
-                        >
-                          {f.confidence}%
-                        </span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              {activeTab === 2 && (
-                <div style={{ padding: "12px 16px" }}>
-                  <div style={{ marginBottom: 16 }}>
-                    {graphStats.map((s) => (
-                      <div
-                        key={s.label}
-                        style={{
-                          display: "flex",
-                          justifyContent: "space-between",
-                          alignItems: "center",
-                          padding: "6px 0",
-                          borderBottom: "1px solid rgba(37,99,235,0.06)",
-                        }}
-                      >
-                        <span
-                          style={{
-                            fontFamily: "'JetBrains Mono', monospace",
-                            fontSize: 11,
-                            color: "var(--adv-text-muted)",
-                          }}
-                        >
-                          {s.label}
-                        </span>
-                        <span
-                          style={{
-                            fontFamily: "'JetBrains Mono', monospace",
-                            fontSize: 11,
-                            color: s.color,
-                            fontWeight: 600,
-                          }}
-                        >
-                          {s.value}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div
-                    style={{
-                      fontFamily: "'JetBrains Mono', monospace",
-                      fontSize: 12,
-                      color: "var(--adv-text)",
-                      letterSpacing: 1,
-                      marginBottom: 10,
-                      paddingTop: 8,
-                      borderTop: "1px solid var(--adv-border)",
-                    }}
-                  >
-                    CRITICAL PATH CHAIN
-                  </div>
-
-                  <div style={{ position: "relative", paddingLeft: 8 }}>
-                    <div
-                      style={{
-                        position: "absolute",
-                        left: 0,
-                        top: 0,
-                        bottom: 0,
-                        width: 2,
-                        background: "#E2E8F0",
-                      }}
-                    />
-                    {criticalChain.map((c, i) => (
-                      <div
-                        key={i}
-                        style={{
-                          padding: "8px 0 8px 12px",
-                          borderLeft: `2px solid ${c.accent}`,
-                          marginBottom: i < criticalChain.length - 1 ? 4 : 0,
-                        }}
-                      >
-                        <div
-                          style={{
-                            fontFamily: "'JetBrains Mono', monospace",
-                            fontSize: 11,
-                            color: "var(--adv-text)",
-                            display: "flex",
-                            alignItems: "center",
-                            gap: 6,
-                          }}
-                        >
-                          {c.step}
-                          {c.warning && <span style={{ color: "#FF4444", fontSize: 12 }}>{c.warning}</span>}
-                        </div>
-                        <div
-                          style={{
-                            fontFamily: "'JetBrains Mono', monospace",
-                            fontSize: 10,
-                            color: "var(--adv-text-muted)",
-                            marginTop: 2,
-                          }}
-                        >
-                          {c.action}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
+                </select>
+              </label>
+              <label htmlFor="brain-model">
+                <span>Model</span>
+                <select
+                  id="brain-model"
+                  value={selectedModel}
+                  onChange={(event) => setModel(event.target.value)}
+                  disabled={!selectedProvider?.configured}
+                >
+                  {(selectedProvider?.models ?? []).map((item) => <option value={item} key={item}>{item}</option>)}
+                </select>
+              </label>
             </div>
-          </aside>
-        </div>
+            <dl>
+              <div><dt>Execution</dt><dd>Manager only</dd></div>
+              <div><dt>Data path</dt><dd>{selectedPrivacy === "local" ? "Local · no API fee" : "Cloud provider"}</dd></div>
+              <div><dt>Grounding</dt><dd>{selectedEngagement ? selectedEngagement.name : "General only"}</dd></div>
+            </dl>
+            {!ready && <p>{selectedProvider?.reason || status?.reason || "AI runtime status is unavailable."}</p>}
+          </section>
+
+          <section className="brain-guardrails">
+            <header><ShieldCheck size={15} /><span>Reasoning guardrails</span></header>
+            {[
+              "Uses recorded facts when engagement context is selected",
+              "Separates confirmed evidence from hypotheses",
+              "Keeps recommendations defensive and non-destructive",
+              "Never receives provider credentials from the browser",
+              "Public CVE data is not treated as proof of client exposure",
+            ].map((item) => <div key={item}><CheckCircle2 size={13} /><span>{item}</span></div>)}
+          </section>
+
+          <section className="brain-context-note">
+            <Database size={15} />
+            <div><strong>Context boundary</strong><p>Only the first 20 recorded findings are summarized for each request. Verify high-impact decisions in the finding detail view.</p></div>
+          </section>
+        </aside>
       </div>
-    </div>
+    </PageShell>
   );
 }

@@ -399,15 +399,15 @@ class TestWebSocket:
         t = Transport("http://localhost:8000", agent_token="tok123")
         url = t.ws_url
         assert url.startswith("ws://")
-        assert "/agents/ws?token=" in url
-        assert "tok123" in url
+        assert url.endswith("/agents/ws")
+        assert "tok123" not in url
 
     def test_ws_url_https(self):
         t = Transport("https://manager.example.com", agent_token="tok456")
         url = t.ws_url
         assert url.startswith("wss://")
         assert "manager.example.com" in url
-        assert "tok456" in url
+        assert "tok456" not in url
 
     def test_ws_requires_token(self, transport):
         transport._agent_token = ""

@@ -2,8 +2,9 @@
 
 import React, { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
+import Link from "next/link";
 import {
-  Network, Activity, Shield, Cpu, Clock, type LucideIcon,
+  Network, Activity, Shield, Cpu, Clock, ArrowUpRight, ScanLine, FileCheck2,
 } from "lucide-react";
 import { PageShell } from "../components/PageShell";
 import { DashboardCharts } from "../components/DashboardCharts";
@@ -49,11 +50,23 @@ function SectionHeader({ icon, title, action, delay = 0 }: { icon: React.ReactNo
   );
 }
 
-/* Honest placeholder for analytics whose backend endpoint hasn't shipped yet.
-   Keeps the widget's frame + heading so the layout is stable, but shows a clear
-   "coming soon" message instead of mock numbers. */
-function WidgetPlaceholder({ icon, title, hint }: { icon: LucideIcon; title: string; hint: string }) {
-  return <div style={{ padding: 24 }}><EmptyState icon={icon} title={title} hint={hint} /></div>;
+function DecisionCenter() {
+  const actions = [
+    { icon: Shield, title: "Prioritize exposure", detail: "Review actively exploited, KEV, and SLA-breached findings.", href: "/findings", color: "var(--sev-critical-color)" },
+    { icon: ScanLine, title: "Validate attack surface", detail: "Launch an authorized scan against an engagement scope.", href: "/scan", color: "var(--accent)" },
+    { icon: FileCheck2, title: "Prepare client update", detail: "Review the beta report workspace and evidence summary.", href: "/reports", color: "var(--nominal-color)" },
+  ];
+  return (
+    <div className="dashboard-decision-list">
+      {actions.map(({ icon: Icon, title, detail, href, color }) => (
+        <Link href={href} key={title}>
+          <span style={{ color }}><Icon size={15} /></span>
+          <div><strong>{title}</strong><small>{detail}</small></div>
+          <ArrowUpRight size={14} />
+        </Link>
+      ))}
+    </div>
+  );
 }
 
 /* ─── Animated card wrapper with mouse glow ─── */
@@ -181,8 +194,8 @@ export default function Dashboard() {
 
   return (
     <PageShell
-      title="Dashboard"
-      subtitle="Security Overview"
+      title="Security posture"
+      subtitle="Executive exposure, remediation urgency, and assessment health"
       statusItems={statusItems}
     >
       <div className="dashboard-stack">
@@ -196,15 +209,11 @@ export default function Dashboard() {
         {/* ── Attack Paths + Agent Monitor ── */}
         <div className="dashboard-main-grid">
 
-          {/* Attack Paths */}
+          {/* Decision center */}
           <div>
-            <SectionHeader delay={200} icon={<Network size={15} />} title="Attack Paths" />
+            <SectionHeader delay={200} icon={<Network size={15} />} title="Decision Center" />
             <GlowCard delay={240}>
-              <WidgetPlaceholder
-                icon={Network}
-                title="Attack-path analysis coming soon"
-                hint="Global attack-path aggregation isn't wired yet. Open an engagement's Attack Paths tab for per-engagement graphs."
-              />
+              <DecisionCenter />
             </GlowCard>
           </div>
 

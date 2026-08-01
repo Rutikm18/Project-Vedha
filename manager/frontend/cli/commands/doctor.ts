@@ -30,7 +30,6 @@ const C = {
   gray:    '\x1b[90m',
 };
 
-const w  = (s: string) => process.stdout.write(s);
 const ln = (s = '')   => process.stdout.write(s + '\n');
 
 function symbol(status: CheckResult['status']): string {

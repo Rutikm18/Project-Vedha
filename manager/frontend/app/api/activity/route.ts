@@ -14,7 +14,14 @@ interface ApiActivity {
 export const GET = withBackend(async (req, { token }) => {
   const url = new URL(req.url);
   const limit = url.searchParams.get("limit") ?? "20";
-  const items = await backend<ApiActivity[]>("/activity", { token, query: { limit } });
+  const engagementId =
+    url.searchParams.get("engagement_id")
+    ?? url.searchParams.get("engagementId")
+    ?? undefined;
+  const items = await backend<ApiActivity[]>("/activity", {
+    token,
+    query: { limit, engagement_id: engagementId },
+  });
   return NextResponse.json(
     (items ?? []).map((it) => ({
       id: it.id,

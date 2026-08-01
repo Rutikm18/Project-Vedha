@@ -68,6 +68,24 @@ class TestRunnerHeadless:
         assert result.success is False
         assert "No targets" in (result.error or "")
 
+    def test_explicit_empty_targets_never_expand_to_engagement_scope(self, runner):
+        runner._http_get = lambda path: {
+            "scope_cidrs": ["10.0.0.0/24"],
+            "excluded_cidrs": [],
+        }
+        result = runner.run_job({
+            "job_id": "job-empty-explicit",
+            "engagement_id": "eng-001",
+            "job_type": "discovery",
+            "params": {
+                "targets": [],
+                "scope_cidrs": ["10.0.0.0/24"],
+            },
+        }, "agent-1")
+
+        assert result.success is False
+        assert "No targets" in (result.error or "")
+
     def test_resolves_use_case_correctly(self, runner):
         job = {
             "job_id": "job-003",
@@ -215,6 +233,72 @@ class TestRunnerScopeValidation:
         # Should proceed (no scope rejection). Result may fail for other reasons
         # (e.g. no actual network targets), but should NOT be a scope error.
         assert "outside" not in (result.error or "")
+
+    def test_explicit_empty_local_ceiling_fails_closed(self):
+        local_runner = TaskRunner(
+            http_get=lambda path: {
+                "scope_cidrs": ["10.0.0.0/24"],
+                "excluded_cidrs": [],
+            },
+            submit_result=lambda jid, payload: True,
+            run_scan_fn=_fake_run_scan,
+            local_allowed_networks=[],
+        )
+        result = local_runner.run_job({
+            "job_id": "job-local-empty",
+            "engagement_id": "eng-001",
+            "job_type": "discovery",
+            "params": {"targets": ["10.0.0.1"]},
+        }, "agent-1")
+
+        assert result.success is False
+        assert "local network ceiling" in (result.error or "")
+
+    def test_local_ceiling_filters_manager_authorized_targets(self):
+        local_runner = TaskRunner(
+            http_get=lambda path: {
+                "scope_cidrs": ["10.0.0.0/16"],
+                "excluded_cidrs": [],
+            },
+            submit_result=lambda jid, payload: True,
+            run_scan_fn=_fake_run_scan,
+            local_allowed_networks=["10.0.8.0/24"],
+        )
+        result = local_runner.run_job({
+            "job_id": "job-local-filter",
+            "engagement_id": "eng-001",
+            "job_type": "discovery",
+            "params": {"targets": ["10.0.8.10", "10.0.9.10"]},
+        }, "agent-1")
+
+        assert result.success is True
+        assert result.result["params"]["targets"] == ["10.0.8.10"]
+
+    def test_local_ceiling_is_forwarded_to_engine(self):
+        captured = {}
+
+        def capture(scan_type, params, **kwargs):
+            captured.update(kwargs)
+            return _fake_run_scan(scan_type, params, **kwargs)
+
+        local_runner = TaskRunner(
+            http_get=lambda path: {
+                "scope_cidrs": ["10.0.0.0/24"],
+                "excluded_cidrs": [],
+            },
+            submit_result=lambda jid, payload: True,
+            run_scan_fn=capture,
+            local_allowed_networks=["10.0.0.0/24"],
+        )
+        result = local_runner.run_job({
+            "job_id": "job-local-forward",
+            "engagement_id": "eng-001",
+            "job_type": "discovery",
+            "params": {"targets": ["10.0.0.10"]},
+        }, "agent-1")
+
+        assert result.success is True
+        assert captured["local_allowed_scope"] == ["10.0.0.0/24"]
 
     def test_rejects_excluded_target(self, runner):
         runner._http_get = lambda path: {

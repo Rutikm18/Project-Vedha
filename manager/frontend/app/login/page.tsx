@@ -1,366 +1,199 @@
 "use client";
 
-import React, { Suspense, useState, useEffect, useRef, useCallback } from "react";
+import React, { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
-import { Shield, Eye, EyeOff, Loader, AlertTriangle, Lock } from "lucide-react";
-import { storeToken } from "../../lib/fetcher";
+import {
+  ArrowRight, Check, Eye, EyeOff, Fingerprint, Loader2,
+  LockKeyhole, Shield, ShieldCheck,
+} from "lucide-react";
 
 export default function LoginPage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={<div className="login-page" />}>
       <LoginForm />
     </Suspense>
   );
 }
 
 function LoginForm() {
-  const router       = useRouter();
+  const router = useRouter();
   const searchParams = useSearchParams();
-  const next         = searchParams.get("next") || "/";
+  const requestedPath = searchParams.get("next") || "/";
+  const nextPath = requestedPath.startsWith("/") && !requestedPath.startsWith("//") ? requestedPath : "/";
 
-  const [email,    setEmail]    = useState("");
+  const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [showPwd,  setShowPwd]  = useState(false);
-  const [loading,  setLoading]  = useState(false);
-  const [error,    setError]    = useState<string | null>(null);
-  const [focused,  setFocused]  = useState<"email" | "password" | null>(null);
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const emailRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    const token = localStorage.getItem("vedha_token");
-    if (token) router.replace(next);
-    // Delay focus slightly to let mount animation settle
-    const t = setTimeout(() => emailRef.current?.focus(), 400);
-    return () => clearTimeout(t);
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+    let active = true;
+    fetch("/api/auth/me", { credentials: "same-origin" })
+      .then((response) => {
+        if (!active) return;
+        if (response.ok) router.replace(nextPath);
+        else emailRef.current?.focus();
+      })
+      .catch(() => { if (active) emailRef.current?.focus(); });
+    return () => { active = false; };
+  }, [nextPath, router]);
 
-  const handleSubmit = useCallback(async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email || !password) { setError("Email and password are required"); return; }
+  const submit = useCallback(async (event: React.FormEvent) => {
+    event.preventDefault();
+    if (!email.trim() || !password) {
+      setError("Enter your work email and password to continue.");
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/auth/login", {
+      const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
       });
-      const data = await res.json() as { token?: string; refreshToken?: string; error?: string };
-      if (!res.ok || !data.token) {
-        setError(data.error || "Invalid email or password");
+      const data = await response.json() as { ok?: boolean; error?: string };
+      if (!response.ok || !data.ok) {
+        setError(response.status === 401
+          ? "Those credentials were not recognized. Check them and try again."
+          : data.error || "Sign-in is temporarily unavailable.");
         return;
       }
-      storeToken(data.token, data.refreshToken);
-      router.replace(next);
+      router.replace(nextPath);
+      router.refresh();
     } catch {
-      setError("Cannot reach the server — check your connection");
+      setError("Vedha could not reach the authentication service. Check your connection and retry.");
     } finally {
       setLoading(false);
     }
-  }, [email, password, next, router]);
-
-  const inputBase: React.CSSProperties = {
-    width: "100%",
-    padding: "10px 12px",
-    borderRadius: 8,
-    background: "var(--bg-surface)",
-    border: "0.5px solid var(--border-subtle)",
-    color: "var(--text-primary)",
-    fontSize: 13,
-    outline: "none",
-    boxSizing: "border-box",
-    fontFamily: "var(--font-body)",
-    transition: "border-color 0.15s ease, box-shadow 0.15s ease, background 0.15s ease",
-  };
-
-  const inputFocus: React.CSSProperties = {
-    borderColor: "var(--accent)",
-    boxShadow: "0 0 0 3px var(--accent-ghost)",
-    background: "var(--bg-card)",
-  };
+  }, [email, password, nextPath, router]);
 
   return (
-    <div style={{
-      minHeight: "100vh",
-      display: "flex",
-      alignItems: "center",
-      justifyContent: "center",
-      position: "relative",
-      overflow: "hidden",
-    }}>
-      {/* Ambient glow — large, soft, centered behind the card */}
-      <div aria-hidden style={{
-        position: "absolute",
-        top: "50%",
-        left: "50%",
-        transform: "translate(-50%, -50%)",
-        width: "70vmax",
-        height: "70vmax",
-        borderRadius: "50%",
-        background: "radial-gradient(circle, var(--accent-glow) 0%, transparent 60%)",
-        opacity: 0.6,
-        pointerEvents: "none",
-      }} />
+    <main className="login-page">
+      <section className="login-story" aria-label="Vedha security platform">
+        <div className="login-story-orb login-story-orb-a" aria-hidden />
+        <div className="login-story-orb login-story-orb-b" aria-hidden />
 
-      {/* Subtle grid overlay */}
-      <div aria-hidden style={{
-        position: "absolute",
-        inset: 0,
-        backgroundImage: `
-          linear-gradient(rgba(124,108,255,0.02) 1px, transparent 1px),
-          linear-gradient(90deg, rgba(124,108,255,0.02) 1px, transparent 1px)
-        `,
-        backgroundSize: "40px 40px",
-        pointerEvents: "none",
-      }} />
+        <div className="login-brand">
+          <span className="login-brand-mark"><Shield size={20} strokeWidth={2.2} /></span>
+          <span>VEDHA</span>
+          <span className="login-version">ENTERPRISE</span>
+        </div>
 
-      <div style={{
-        width: "100%",
-        maxWidth: 380,
-        padding: "0 16px",
-        position: "relative",
-        zIndex: 1,
-        animation: "fadeIn 0.5s ease, slideUp 0.5s var(--ease-out)",
-      }}>
-        {/* Card */}
-        <div style={{
-          background: "var(--bg-panel)",
-          border: "0.5px solid var(--border-subtle)",
-          borderRadius: 16,
-          padding: "40px 32px 32px",
-          boxShadow: "0 24px 80px rgba(0,0,0,0.35)",
-          position: "relative",
-          overflow: "hidden",
-        }}>
-          {/* Top accent line */}
-          <div style={{
-            position: "absolute",
-            top: 0,
-            left: 0,
-            right: 0,
-            height: 1,
-            background: "linear-gradient(90deg, transparent 0%, var(--border-accent) 50%, transparent 100%)",
-            opacity: 0.6,
-          }} />
+        <div className="login-story-copy">
+          <div className="login-eyebrow">
+            <span className="login-live-dot" />
+            Security exposure management
+          </div>
+          <h1>Turn technical evidence into confident decisions.</h1>
+          <p>
+            One trusted workspace for assessment scope, findings, attack paths,
+            remediation ownership, and client-ready reporting.
+          </p>
 
-          {/* Logo */}
-          <div style={{
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            marginBottom: 32,
-          }}>
-            <div style={{
-              width: 44,
-              height: 44,
-              borderRadius: 12,
-              background: "var(--accent-ghost)",
-              border: "0.5px solid var(--border-accent)",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              marginBottom: 12,
-              boxShadow: "0 0 20px var(--accent-glow)",
-              animation: "accentGlow 3s ease-in-out infinite",
-            }}>
-              <Shield size={20} color="var(--accent)" strokeWidth={2} />
-            </div>
-            <div style={{
-              fontFamily: "var(--font-display)",
-              fontSize: 20,
-              fontWeight: 700,
-              color: "var(--text-primary)",
-              letterSpacing: 2,
-            }}>
-              VEDHA
-            </div>
-            <div style={{
-              fontSize: 11,
-              color: "var(--text-muted)",
-              marginTop: 4,
-              letterSpacing: 0.5,
-            }}>
-              Security Operations Platform
-            </div>
+          <div className="login-trust-list">
+            {[
+              ["Tenant-isolated data", "Authorization is enforced at the resource boundary."],
+              ["Evidence-grounded AI", "Recommendations remain traceable to recorded findings."],
+              ["Auditable operations", "Assessment activity stays attributable and reviewable."],
+            ].map(([title, detail]) => (
+              <div className="login-trust-item" key={title}>
+                <span><Check size={13} /></span>
+                <div><strong>{title}</strong><small>{detail}</small></div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="login-posture-card" aria-label="Platform trust posture">
+          <div>
+            <ShieldCheck size={18} />
+            <span><strong>Protected workspace</strong><small>Encrypted transport · role-based access</small></span>
+          </div>
+          <span className="badge badge-success">Ready</span>
+        </div>
+      </section>
+
+      <section className="login-access">
+        <div className="login-form-wrap">
+          <div className="login-mobile-brand">
+            <span className="login-brand-mark"><Shield size={18} /></span>
+            <span>VEDHA</span>
           </div>
 
-          <form onSubmit={handleSubmit}>
-            {/* Error state */}
-            {error && (
-              <div
-                role="alert"
-                className="animate-slide-in"
-                style={{
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 8,
-                  padding: "10px 14px",
-                  borderRadius: 8,
-                  marginBottom: 20,
-                  background: "var(--sev-critical-bg)",
-                  border: "0.5px solid var(--sev-critical-color)",
-                  fontSize: 12,
-                  color: "var(--sev-critical-color)",
-                  lineHeight: 1.4,
-                }}
-              >
-                <AlertTriangle size={13} style={{ flexShrink: 0 }} />
-                {error}
-              </div>
-            )}
+          <div className="login-form-heading">
+            <span className="login-form-icon"><Fingerprint size={22} /></span>
+            <h2>Welcome back</h2>
+            <p>Sign in to your organization&apos;s security workspace.</p>
+          </div>
 
-            {/* Email */}
-            <div style={{ marginBottom: 16 }}>
-              <label style={{
-                display: "block",
-                fontSize: 10,
-                fontWeight: 600,
-                color: focused === "email" ? "var(--accent)" : "var(--text-secondary)",
-                letterSpacing: 0.8,
-                marginBottom: 6,
-                transition: "color 0.15s ease",
-              }}>
-                Email
-              </label>
+          {error && (
+            <div className="login-error" role="alert" aria-live="polite">
+              <LockKeyhole size={16} />
+              <span>{error}</span>
+            </div>
+          )}
+
+          <form onSubmit={submit} className="login-form">
+            <label htmlFor="login-email">
+              <span>Work email</span>
               <input
+                id="login-email"
                 ref={emailRef}
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="admin@vedha.io"
-                autoComplete="email"
+                onChange={(event) => setEmail(event.target.value)}
+                placeholder="name@company.com"
+                autoComplete="username"
+                inputMode="email"
+                disabled={loading}
                 required
-                style={{
-                  ...inputBase,
-                  ...(focused === "email" ? inputFocus : {}),
-                }}
-                onFocus={() => setFocused("email")}
-                onBlur={() => setFocused(null)}
               />
-            </div>
+            </label>
 
-            {/* Password */}
-            <div style={{ marginBottom: 24 }}>
-              <label style={{
-                display: "block",
-                fontSize: 10,
-                fontWeight: 600,
-                color: focused === "password" ? "var(--accent)" : "var(--text-secondary)",
-                letterSpacing: 0.8,
-                marginBottom: 6,
-                transition: "color 0.15s ease",
-              }}>
-                Password
-              </label>
-              <div style={{ position: "relative" }}>
+            <label htmlFor="login-password">
+              <span>Password</span>
+              <div className="login-password-field">
                 <input
-                  type={showPwd ? "text" : "password"}
+                  id="login-password"
+                  type={showPassword ? "text" : "password"}
                   value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="••••••••••"
+                  onChange={(event) => setPassword(event.target.value)}
+                  placeholder="Enter your password"
                   autoComplete="current-password"
+                  disabled={loading}
                   required
-                  style={{
-                    ...inputBase,
-                    paddingRight: 38,
-                    ...(focused === "password" ? inputFocus : {}),
-                  }}
-                  onFocus={() => setFocused("password")}
-                  onBlur={() => setFocused(null)}
                 />
                 <button
                   type="button"
-                  onClick={() => setShowPwd(!showPwd)}
-                  tabIndex={-1}
-                  aria-label={showPwd ? "Hide password" : "Show password"}
-                  style={{
-                    position: "absolute",
-                    right: 10,
-                    top: "50%",
-                    transform: "translateY(-50%)",
-                    background: "none",
-                    border: "none",
-                    cursor: "pointer",
-                    color: "var(--text-muted)",
-                    padding: 4,
-                    display: "flex",
-                    transition: "color 0.15s ease",
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.color = "var(--accent)"; }}
-                  onMouseLeave={(e) => { e.currentTarget.style.color = "var(--text-muted)"; }}
+                  onClick={() => setShowPassword((value) => !value)}
+                  aria-label={showPassword ? "Hide password" : "Show password"}
                 >
-                  {showPwd ? <EyeOff size={13} /> : <Eye size={13} />}
+                  {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
                 </button>
               </div>
-            </div>
+            </label>
 
-            {/* Submit */}
-            <button
-              type="submit"
-              disabled={loading}
-              style={{
-                width: "100%",
-                padding: "11px 0",
-                borderRadius: 9,
-                background: loading ? "var(--bg-card)" : "var(--accent)",
-                border: "none",
-                color: loading ? "var(--text-muted)" : "#fff",
-                fontWeight: 700,
-                fontSize: 13,
-                cursor: loading ? "not-allowed" : "pointer",
-                display: "flex",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 8,
-                transition: "background 0.15s ease, transform 0.15s var(--ease-spring), box-shadow 0.15s ease",
-                boxShadow: loading ? "none" : "0 4px 16px var(--accent-glow)",
-                fontFamily: "var(--font-body)",
-              }}
-              onMouseEnter={(e) => {
-                if (!loading) {
-                  e.currentTarget.style.transform = "translateY(-1px)";
-                  e.currentTarget.style.boxShadow = "0 6px 24px var(--accent-glow)";
-                }
-              }}
-              onMouseLeave={(e) => {
-                if (!loading) {
-                  e.currentTarget.style.transform = "translateY(0)";
-                  e.currentTarget.style.boxShadow = "0 4px 16px var(--accent-glow)";
-                }
-              }}
-            >
+            <button className="login-submit" type="submit" disabled={loading}>
               {loading ? (
-                <><Loader size={13} className="animate-spin" /> Signing in...</>
+                <><Loader2 size={17} className="animate-spin" /> Verifying securely…</>
               ) : (
-                <><Lock size={13} /> Sign in</>
+                <>Continue to Vedha <ArrowRight size={17} /></>
               )}
             </button>
           </form>
 
-          <div style={{
-            textAlign: "center",
-            marginTop: 20,
-            fontSize: 10,
-            color: "var(--text-faint)",
-            fontFamily: "var(--font-mono)",
-            letterSpacing: 0.3,
-          }}>
-            VEDHA Enterprise · v1.0
+          <div className="login-assurance">
+            <LockKeyhole size={13} />
+            <span>Your credentials are sent only to your configured Vedha Manager.</span>
           </div>
-        </div>
 
-        {/* Credentials hint */}
-        <div style={{
-          textAlign: "center",
-          marginTop: 14,
-          fontSize: 10,
-          color: "var(--text-muted)",
-          fontFamily: "var(--font-mono)",
-          opacity: 0.6,
-        }}>
-          Default: admin@vedha.io / ChangeMe123!
+          <footer className="login-footer">Vedha Security Platform · Authorized users only</footer>
         </div>
-      </div>
-    </div>
+      </section>
+    </main>
   );
 }

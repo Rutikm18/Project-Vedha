@@ -12,6 +12,7 @@ interface NavItem {
   icon: React.ComponentType<{ size?: number; color?: string }>;
   label: string;
   href: string;
+  badge?: string;
 }
 
 const NAV_SECTIONS: { label: string; items: NavItem[] }[] = [
@@ -33,7 +34,7 @@ const NAV_SECTIONS: { label: string; items: NavItem[] }[] = [
   {
     label: "MANAGEMENT",
     items: [
-      { icon: FileText,    label: "Reports",      href: "/reports"  },
+      { icon: FileText,    label: "Reports",      href: "/reports", badge: "BETA" },
       { icon: Settings,    label: "Settings",     href: "/settings" },
     ],
   },
@@ -235,6 +236,21 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                   }}>
                     {item.label}
                   </span>
+
+                  {item.badge && (
+                    <span style={{
+                      padding: "2px 5px",
+                      borderRadius: 4,
+                      color: "var(--accent)",
+                      background: "var(--accent-ghost)",
+                      border: "0.5px solid var(--border-accent)",
+                      fontSize: 7,
+                      fontWeight: 800,
+                      letterSpacing: 0.5,
+                    }}>
+                      {item.badge}
+                    </span>
+                  )}
 
                   {/* Active dot */}
                   {isActive && (

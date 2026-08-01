@@ -15,12 +15,13 @@ resolver", "SMBv1 is enabled") — it never emits a CVE (`finding_count: 0` by d
   PROBE (facts)  ─────►  MANAGER detection engine (facts → CVEs)  ─────►  findings + risk
        │                                                                      ▲
        └── config findings (open resolver, SMBv1…) come straight from facts ──┘
-       └── AUTHENTICATED inventory (SSH/WinRM) = the accurate version of everything
+       └── evidence confidence = banners + protocol checks + Manager correlation
 ```
 
-**A complete VA = probe facts + manager CVE correlation + (ideally) authenticated
-inventory.** Running the probe alone gives you an exposure map and config findings, not
-a full CVE assessment. Section 5 walks the full pipeline.
+**A complete current VA = probe facts + Manager CVE correlation.** Running the probe
+alone gives you an exposure map and configuration findings, not a full CVE assessment.
+Credentialed collection is outside the production path until an ephemeral secret broker
+exists. Section 5 walks the supported pipeline.
 
 ### ⚠️ Authorization
 `scope` is the authorization boundary. Put **only ranges you own or are explicitly
@@ -138,27 +139,31 @@ in `../PROBE_RUNBOOK.md`; the essentials:
 # ── Vendor (one-time, on a trusted machine) ──
 cd probe
 python3 tools/issue_license.py keygen                       # signing keypair (keep private key secret)
-docker build -f Dockerfile.sealed -t registry.example.com/vedha-probe:1.0 \
-  --build-arg PROBE_LICENSE_PUBKEY=<hex> .
-docker push registry.example.com/vedha-probe:1.0
+docker build -f Dockerfile -t registry.example.com/vedha/probe:1.0 .
+docker push registry.example.com/vedha/probe:1.0
 
 # ── Client host gets its Host ID → vendor issues a license bound to it ──
-docker run --rm registry.example.com/vedha-probe:1.0 hostid
+PROBE_IMAGE=registry.example.com/vedha/probe:1.0 sh install.sh hostid
 python3 tools/issue_license.py issue --hostid <id> --customer "Acme" --days 365
 
-# ── Client installs (Docker; use install.sh --native for systemd hosts) ──
+# ── Client installs the hardened Docker artifact ──
 curl -fsSL https://YOUR_HOST/install.sh -o install.sh && less install.sh   # inspect first
-PROBE_IMAGE=registry.example.com/vedha-probe:1.0 \
+PROBE_IMAGE=registry.example.com/vedha/probe:1.0 \
 PLATFORM_URL=https://manager.example.com \
-OPERATOR_EMAIL=ops@acme.com OPERATOR_PASSWORD=*** \
-PROBE_LICENSE=<token> sh install.sh
+OPERATOR_TOKEN=vpat_xxx \
+PROBE_NETWORK_SEGMENTS=10.20.0.0/16 \
+PROBE_LICENSE=<token> PROBE_LICENSE_PUBKEY=<64-hex-public-key> \
+sh install.sh
 docker logs -f vedha-probe                                  # watch it register + poll
 ```
+
+The installer validates the local CIDR ceiling and budgets, verifies the
+Manager-side online record, then recreates the container without the bootstrap PAT.
 
 **Try the whole stack locally first** (manager + probe on one machine):
 ```bash
 cd "$(git rev-parse --show-toplevel)"
-make up        # postgres + redis + migrate + API + dashboard
+make full      # postgres + redis + API + one probe + one dashboard
 #   then follow Probe_testing.md §3–§10
 ```
 
@@ -184,18 +189,18 @@ python3 pipeline.py -t 10.0.0.0/24 -s scope.txt --profile it --scanners host_dis
 → services, banners, TLS/web/SMB/DB/SNMP/UDP facts. **Config findings already appear here**
 (e.g. `open_recursion=True` = open DNS resolver, `smbv1_enabled=True`, `unauthenticated_read=True`).
 
-### Stage 3 — Authenticated inventory (accurate versions) — *biggest quality jump*
-For real patch-level CVEs, give credentials so the probe reads installed packages/KBs:
-- **Windows** hosts (135/445 open): `windows_collector` over WinRM.
-- **Linux** hosts (22 open): `ssh_collector`.
-This is the only reliable source of version data for CVE matching. Runs via the agent/manager
-job params (`ssh_creds` / `win_creds`) or the collectors directly.
+### Stage 3 — Evidence confidence
+Use banners, protocol handshakes, service-specific checks, and repeated scans to
+raise confidence. Production Manager jobs reject `ssh_creds`, `win_creds`,
+passwords, tokens, and private keys; never put target credentials in job params.
+Authenticated package/KB inventory is a future capability behind an ephemeral
+secret broker, not a supported production option today.
 
 ### Stage 4 — Detection (facts → CVE findings)
 Push the facts through the manager's detection engine:
 ```bash
 cd "$(git rev-parse --show-toplevel)"
-make up                                    # bring up the manager
+make full                                  # bring up Manager, one probe, and dashboard
 # then (PROBE_RUNBOOK.md §C): login → create engagement (scope) → enqueue job → probe scans
 # → detection_engine correlates facts → CVEs (CVSS / KEV / EPSS) → findings
 curl -s "https://manager/findings?engagement_id=$EID" -H "Authorization: Bearer $TOKEN"
@@ -206,9 +211,9 @@ Findings ranked by CVSS + KEV (known-exploited) + EPSS (exploit likelihood), plu
 findings from Stage 2. That ranked list **is** the vulnerability assessment output.
 
 ```
-Stage 1 discovery ─► Stage 2 facts ─► Stage 3 auth inventory ─► Stage 4 CVE detection ─► Stage 5 prioritized findings
-   (what's here)       (+ config          (accurate               (facts → CVEs)            (the VA report)
-                        findings)          versions)
+Stage 1 discovery ─► Stage 2 facts ─► Stage 3 confidence ─► Stage 4 CVE detection ─► Stage 5 prioritized findings
+   (what's here)       (+ config         (evidence quality)       (facts → CVEs)            (the VA report)
+                        findings)
 ```
 
 ---
@@ -234,7 +239,7 @@ Stage 1 discovery ─► Stage 2 facts ─► Stage 3 auth inventory ─► Stag
 python3 pipeline.py -t <cidr> -s scope.txt --profile it -o facts.jsonl
 
 # full pipeline to a VA report
-#   pipeline.py/showcase (facts) → auth inventory → make up + engagement/job (CVEs) → findings
+#   pipeline.py/showcase (facts) → Manager engagement/job (CVEs) → findings
 ```
 
 > A probe-side **Triage stage** (in design) will summarize the Stage-2 config findings +

@@ -1,4 +1,4 @@
-# Node Description Batch 87 of 104
+# Node Description Batch 87 of 119
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,63 +12,56 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
-For an entity node (any other kind — e.g. a person, place, event, object),
-describe what the entity is and its role, grounded in its type, its
-relations (neighbors) and the provided citations/evidence — e.g.
-"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
-Ground entity descriptions in the citations/evidence when present; do not
-speculate beyond the context, so a node with no supporting context may be
-left out of the reply.
 Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "scanner_web_scanner_fetch": "_fetch()" | kind=code-symbol | source=probe/scanner/web_scanner.py:L64 | neighbors=[web_scanner.py]
-- "scanner_web_scanner_main": "main()" | kind=code-symbol | source=probe/scanner/web_scanner.py:L142 | neighbors=[web_scanner.py]
-- "scanner_web_scanner_noredirect_redirect_request": ".redirect_request()" | kind=code-symbol | source=probe/scanner/web_scanner.py:L42 | neighbors=[_NoRedirect]
-- "scanner_web_scanner_rationale_1": "web_scanner.py — passive HTTP(S) service fingerprinting.  METHOD (collection onl" | kind=entity | source=probe/scanner/web_scanner.py:L1 | neighbors=[web_scanner.py]
-- "scanner_web_scanner_webscanner_init": ".__init__()" | kind=code-symbol | source=probe/scanner/web_scanner.py:L115 | neighbors=[WebScanner]
-- "scanner_windows_collector_main": "main()" | kind=code-symbol | source=probe/scanner/windows_collector.py:L335 | neighbors=[windows_collector.py]
-- "scanner_windows_collector_rationale_1": "windows_collector.py — credentialed (authenticated) inventory for Windows hosts." | kind=entity | source=probe/scanner/windows_collector.py:L1 | neighbors=[windows_collector.py]
-- "scanner_windows_collector_rationale_160": "Connect to RemoteRegistry over SMB and enumerate installed-software keys plus" | kind=entity | source=probe/scanner/windows_collector.py:L160 | neighbors=[_smb_registry_collect()]
-- "scanner_windows_collector_windowscollector_init": ".__init__()" | kind=code-symbol | source=probe/scanner/windows_collector.py:L239 | neighbors=[WindowsCollector]
-- "scanner_windows_collector_winrm_collect": "_winrm_collect()" | kind=code-symbol | source=probe/scanner/windows_collector.py:L114 | neighbors=[windows_collector.py]
-- "schemas_asset_assetin_validate_ip": ".validate_ip()" | kind=code-symbol | source=manager/backend/app/schemas/asset.py:L23 | neighbors=[AssetIn]
-- "schemas_auth_rationale_18": "Parsed from JWT claims — attached to request.state and injected as dependency." | kind=entity | source=manager/backend/app/schemas/auth.py:L18 | neighbors=[CurrentUser]
-- "schemas_auth_rationale_21": "Parsed from JWT claims — attached to request.state and injected as dependency." | kind=entity | source=manager/backend/app/schemas/auth.py:L21 | neighbors=[CurrentUser]
-- "schemas_init": "__init__.py" | kind=code-symbol | source=manager/backend/app/schemas/__init__.py:L1 | neighbors=[298a9d4 trim frontend to 7 core pages; …]
-- "scripts_seed_admin_seed": "seed()" | kind=code-symbol | source=manager/backend/scripts/seed_admin.py:L35 | neighbors=[seed_admin.py]
-- "services_analytics_rationale_1": "Exposure analytics — protocol risk + zone health.  Derives two dashboard aggrega" | kind=entity | source=manager/backend/app/services/analytics.py:L1 | neighbors=[analytics.py]
-- "services_init": "__init__.py" | kind=code-symbol | source=manager/backend/app/services/__init__.py:L1 | neighbors=[2885afa Add comprehensive probe testing…]
-- "services_scope_crypto_rationale_1": "scope_crypto.py — manager-side: encrypt scope payloads to a probe's X25519 publi" | kind=entity | source=manager/backend/app/services/scope_crypto.py:L1 | neighbors=[scope_crypto.py]
-- "services_scope_crypto_rationale_35": "Encrypt scope JSON to a specific probe's X25519 public key.      Args:         s" | kind=entity | source=manager/backend/app/services/scope_crypto.py:L35 | neighbors=[encrypt_scope()]
-- "services_scope_crypto_rationale_78": "Convenience: dict → JSON → encrypt → base64 string." | kind=entity | source=manager/backend/app/services/scope_crypto.py:L78 | neighbors=[encrypt_scope_b64()]
-- "services_scope_crypto_rationale_86": "Decode a base64-encoded X25519 public key to raw bytes.      Returns empty bytes" | kind=entity | source=manager/backend/app/services/scope_crypto.py:L86 | neighbors=[public_key_from_b64()]
-- "services_sla_slaresult_is_tracked": ".is_tracked()" | kind=code-symbol | source=manager/backend/app/services/sla.py:L56 | neighbors=[SlaResult]
-- "settings_page_default_rules": "DEFAULT_RULES" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L44 | neighbors=[page.tsx]
-- "settings_page_email_fields": "EMAIL_FIELDS" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L15 | neighbors=[page.tsx]
-- "settings_page_envsetting": "EnvSetting" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L12 | neighbors=[page.tsx]
-- "settings_page_integrationfields": "IntegrationFields()" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L72 | neighbors=[page.tsx]
-- "settings_page_jira_fields": "JIRA_FIELDS" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L28 | neighbors=[page.tsx]
-- "settings_page_sectionheader": "SectionHeader()" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L54 | neighbors=[page.tsx]
-- "settings_page_settingspage": "SettingsPage()" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L161 | neighbors=[page.tsx]
-- "settings_page_sla_policy": "SLA_POLICY" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L36 | neighbors=[page.tsx]
-- "settings_page_slack_fields": "SLACK_FIELDS" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L24 | neighbors=[page.tsx]
-- "settings_page_testbutton": "TestButton()" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L111 | neighbors=[page.tsx]
-- "settings_page_toggle": "Toggle()" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L141 | neighbors=[page.tsx]
-- "siem_config_route_get": "GET()" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/detection-validation/siem-config/route.ts:L5 | neighbors=[route.ts]
-- "siem_config_route_post": "POST()" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/detection-validation/siem-config/route.ts:L14 | neighbors=[route.ts]
-- "sla_summary_route_apislaitem": "ApiSlaItem" | kind=code-symbol | source=manager/frontend/app/api/findings/sla-summary/route.ts:L17 | neighbors=[route.ts]
-- "sla_summary_route_apislasummary": "ApiSlaSummary" | kind=code-symbol | source=manager/frontend/app/api/findings/sla-summary/route.ts:L22 | neighbors=[route.ts]
-- "sla_summary_route_get": "GET" | kind=code-symbol | source=manager/frontend/app/api/findings/sla-summary/route.ts:L27 | neighbors=[route.ts]
-- "sla_summary_route_sev_to_ui": "SEV_TO_UI" | kind=code-symbol | source=manager/frontend/app/api/findings/sla-summary/route.ts:L13 | neighbors=[route.ts]
-- "start_route_post": "POST" | kind=code-symbol | source=manager/frontend/app/api/scans/start/route.ts:L9 | neighbors=[route.ts]
+- "lib_engagements_store_engagementstatus": "EngagementStatus" | kind=code-symbol | source=manager/frontend/lib/engagements-store.ts:L1 | neighbors=[engagements-store.ts]
+- "lib_engagements_store_findings_timeline": "FINDINGS_TIMELINE" | kind=code-symbol | source=manager/frontend/lib/engagements-store.ts:L109 | neighbors=[engagements-store.ts]
+- "lib_engagements_store_genid": "genId()" | kind=code-symbol | source=manager/frontend/lib/engagements-store.ts:L32 | neighbors=[engagements-store.ts]
+- "lib_engagements_store_now": "now" | kind=code-symbol | source=manager/frontend/lib/engagements-store.ts:L108 | neighbors=[engagements-store.ts]
+- "lib_engagements_store_store": "STORE" | kind=code-symbol | source=manager/frontend/lib/engagements-store.ts:L34 | neighbors=[engagements-store.ts]
+- "lib_errors_adversaerror_constructor": ".constructor()" | kind=code-symbol | source=manager/frontend/lib/errors.ts:L65 | neighbors=[AdversaError]
+- "lib_errors_adversaerror_render": ".render()" | kind=code-symbol | source=manager/frontend/lib/errors.ts:L94 | neighbors=[AdversaError]
+- "lib_errors_adversaerror_tojson": ".toJSON()" | kind=code-symbol | source=manager/frontend/lib/errors.ts:L76 | neighbors=[AdversaError]
+- "lib_errors_adversaerroropts": "AdversaErrorOpts" | kind=code-symbol | source=manager/frontend/lib/errors.ts:L48 | neighbors=[errors.ts]
+- "lib_errors_errorcode": "ErrorCode" | kind=code-symbol | source=manager/frontend/lib/errors.ts:L14 | neighbors=[errors.ts]
+- "lib_errors_vedhaerror_constructor": ".constructor()" | kind=code-symbol | source=manager/frontend/lib/errors.ts:L65 | neighbors=[VedhaError]
+- "lib_errors_vedhaerror_render": ".render()" | kind=code-symbol | source=manager/frontend/lib/errors.ts:L94 | neighbors=[VedhaError]
+- "lib_errors_vedhaerror_tojson": ".toJSON()" | kind=code-symbol | source=manager/frontend/lib/errors.ts:L76 | neighbors=[VedhaError]
+- "lib_errors_vedhaerroropts": "VedhaErrorOpts" | kind=code-symbol | source=manager/frontend/lib/errors.ts:L48 | neighbors=[errors.ts]
+- "lib_exploit_store_approvals": "approvals" | kind=code-symbol | source=manager/frontend/lib/exploit-store.ts:L78 | neighbors=[exploit-store.ts]
+- "lib_exploit_store_approvalstatus": "ApprovalStatus" | kind=code-symbol | source=manager/frontend/lib/exploit-store.ts:L3 | neighbors=[exploit-store.ts]
+- "lib_exploit_store_auditentry": "AuditEntry" | kind=code-symbol | source=manager/frontend/lib/exploit-store.ts:L54 | neighbors=[exploit-store.ts]
+- "lib_exploit_store_auditlog": "auditLog" | kind=code-symbol | source=manager/frontend/lib/exploit-store.ts:L79 | neighbors=[exploit-store.ts]
+- "lib_exploit_store_exploitapprovalrequest": "ExploitApprovalRequest" | kind=code-symbol | source=manager/frontend/lib/exploit-store.ts:L36 | neighbors=[exploit-store.ts]
+- "lib_exploit_store_exploitevidence": "ExploitEvidence" | kind=code-symbol | source=manager/frontend/lib/exploit-store.ts:L5 | neighbors=[exploit-store.ts]
+- "lib_exploit_store_exploitjob": "ExploitJob" | kind=code-symbol | source=manager/frontend/lib/exploit-store.ts:L20 | neighbors=[exploit-store.ts]
+- "lib_exploit_store_exploitresult": "ExploitResult" | kind=code-symbol | source=manager/frontend/lib/exploit-store.ts:L13 | neighbors=[exploit-store.ts]
+- "lib_exploit_store_exploitstore": "exploitStore" | kind=code-symbol | source=manager/frontend/lib/exploit-store.ts:L81 | neighbors=[exploit-store.ts]
+- "lib_exploit_store_genid": "genId()" | kind=code-symbol | source=manager/frontend/lib/exploit-store.ts:L68 | neighbors=[exploit-store.ts]
+- "lib_exploit_store_jobs": "jobs" | kind=code-symbol | source=manager/frontend/lib/exploit-store.ts:L77 | neighbors=[exploit-store.ts]
+- "lib_exploit_store_jobstatus": "JobStatus" | kind=code-symbol | source=manager/frontend/lib/exploit-store.ts:L2 | neighbors=[exploit-store.ts]
+- "lib_exploit_store_nowiso": "nowIso()" | kind=code-symbol | source=manager/frontend/lib/exploit-store.ts:L72 | neighbors=[exploit-store.ts]
+- "lib_exploit_store_payloadtype": "PayloadType" | kind=code-symbol | source=manager/frontend/lib/exploit-store.ts:L1 | neighbors=[exploit-store.ts]
+- "lib_fetcher_apierror_constructor": ".constructor()" | kind=code-symbol | source=manager/frontend/lib/fetcher.ts:L10 | neighbors=[ApiError]
+- "lib_finding_id_counters": "counters" | kind=code-symbol | source=manager/frontend/lib/finding-id.ts:L11 | neighbors=[finding-id.ts]
+- "lib_finding_id_sev_prefix": "SEV_PREFIX" | kind=code-symbol | source=manager/frontend/lib/finding-id.ts:L3 | neighbors=[finding-id.ts]
+- "lib_findings_store_default_data_path": "DEFAULT_DATA_PATH" | kind=code-symbol | source=manager/frontend/lib/findings-store.ts:L9 | neighbors=[findings-store.ts]
+- "lib_findings_store_isduplicate": "isDuplicate()" | kind=code-symbol | source=manager/frontend/lib/findings-store.ts:L43 | neighbors=[findings-store.ts]
+- "lib_findings_store_sla_hours": "SLA_HOURS" | kind=code-symbol | source=manager/frontend/lib/findings-store.ts:L15 | neighbors=[findings-store.ts]
+- "lib_graph_store_adj": "ADJ" | kind=code-symbol | source=manager/frontend/lib/graph-store.ts:L238 | neighbors=[graph-store.ts]
+- "lib_graph_store_adjacency": "adjacency()" | kind=code-symbol | source=manager/frontend/lib/graph-store.ts:L182 | neighbors=[graph-store.ts]
+- "lib_graph_store_attack_paths": "ATTACK_PATHS" | kind=code-symbol | source=manager/frontend/lib/graph-store.ts:L301 | neighbors=[graph-store.ts]
+- "lib_graph_store_attackpath": "AttackPath" | kind=code-symbol | source=manager/frontend/lib/graph-store.ts:L39 | neighbors=[graph-store.ts]
+- "lib_graph_store_bfspath": "bfsPath()" | kind=code-symbol | source=manager/frontend/lib/graph-store.ts:L194 | neighbors=[graph-store.ts]
+- "lib_graph_store_bfsreach": "bfsReach()" | kind=code-symbol | source=manager/frontend/lib/graph-store.ts:L194 | neighbors=[graph-store.ts]
 
 ## Instructions
 
 Write a single JSON object mapping each node id to a one-sentence description
-to: /Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Agentic VA Scanner/.graphify/description-instructions/batch-086.json
+to: /Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha/.graphify/description-instructions/batch-086.json
 
 Keep each description factual and concise (one sentence). No markdown, no prose
 outside the JSON object. It is acceptable to omit a node if context is

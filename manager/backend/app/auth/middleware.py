@@ -13,8 +13,7 @@ from app.models.personal_access_token import PersonalAccessToken
 logger = structlog.get_logger()
 
 _PUBLIC_PATHS = {"/", "/health", "/metrics", "/auth/login", "/auth/refresh", "/docs", "/openapi.json", "/redoc"}
-# Static prefixes served without auth (the dashboard page handles its own login).
-_PUBLIC_PREFIXES = ("/docs", "/redoc", "/dashboard")
+_PUBLIC_PREFIXES = ("/docs", "/redoc")
 
 
 class TenantIsolationMiddleware(BaseHTTPMiddleware):

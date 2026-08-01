@@ -20,8 +20,11 @@ import { fetchJson } from "../../lib/fetcher";
 import { SkeletonRows, ErrorState } from "../states/DataState";
 
 type Sev = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | "INFO";
-interface Finding { id: string; severity: Sev; status?: string }
 interface Engagement { id: string; status?: string }
+interface FindingSummary {
+  openTotal: number; criticalOpen: number; highOpen: number;
+  mediumOpen: number; lowOpen: number; infoOpen: number;
+}
 
 const SEV: Record<Sev, { color: string; bg: string; label: string }> = {
   CRITICAL: { color: "var(--sev-critical-color)", bg: "var(--sev-critical-bg)", label: "Critical" },
@@ -30,10 +33,6 @@ const SEV: Record<Sev, { color: string; bg: string; label: string }> = {
   LOW:      { color: "var(--sev-low-color, var(--accent))", bg: "var(--bg-hover)", label: "Low" },
   INFO:     { color: "var(--text-muted)",         bg: "var(--bg-hover)",         label: "Info" },
 };
-
-function isOpen(s?: string) {
-  return !s || ["OPEN", "CONFIRMED"].includes(s.toUpperCase());
-}
 
 /** Engagements use different statuses than findings. "PLANNING" (draft) and
  *  "ACTIVE" are both considered open/in-progress. */
@@ -81,7 +80,7 @@ function Kpi({ icon, label, value, color, sub }: {
 }
 
 export function LiveOverview() {
-  const findings = useQuery({ queryKey: ["findings"], queryFn: () => fetchJson<Finding[]>("/api/findings") });
+  const findings = useQuery({ queryKey: ["findings-summary"], queryFn: () => fetchJson<FindingSummary>("/api/findings/summary") });
   const engagements = useQuery({
     queryKey: ["engagements"],
     queryFn: () => fetchJson<{ engagements: Engagement[] }>("/api/engagements"),
@@ -90,12 +89,17 @@ export function LiveOverview() {
   if (findings.isLoading || engagements.isLoading) return <SkeletonRows rows={1} height={92} />;
   if (findings.error) return <ErrorState title="Couldn't load live findings." onRetry={() => findings.refetch()} />;
 
-  const f = findings.data ?? [];
-  const open = f.filter((x) => isOpen(x.status));
-  const by = (s: Sev) => open.filter((x) => x.severity === s).length;
+  const summary = findings.data;
+  const by = (s: Sev) => ({
+    CRITICAL: summary?.criticalOpen ?? 0,
+    HIGH: summary?.highOpen ?? 0,
+    MEDIUM: summary?.mediumOpen ?? 0,
+    LOW: summary?.lowOpen ?? 0,
+    INFO: summary?.infoOpen ?? 0,
+  })[s];
   const engs = engagements.data?.engagements ?? [];
   const activeEngs = engs.filter((e) => isActiveEngagement(e.status)).length;
-  const total = open.length;
+  const total = summary?.openTotal ?? 0;
 
   // severity distribution bar segments (only non-zero, so it reads cleanly)
   const segs = (["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"] as Sev[])

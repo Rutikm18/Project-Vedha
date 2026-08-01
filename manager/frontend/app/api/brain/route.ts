@@ -1,101 +1,136 @@
-import { NextRequest, NextResponse } from "next/server";
-import Anthropic                     from "@anthropic-ai/sdk";
-import { getAllFindings }             from "../../../lib/findings-store";
+import { NextResponse } from "next/server";
+import { backend, bearerFrom, BackendError } from "../../../lib/backend";
+import { detectFindingId, type FactCardVM } from "../../../lib/assistant";
+import { resolveSecurityReference, SecurityContextError } from "../../../lib/security-context";
 
-const BRAIN_SYSTEM_BASE = `You are a senior penetration tester and red team operator.
-You are working inside Vedha, an AI-powered VAPT platform.
-You provide tactical advice on exploitation paths, credential attacks, lateral movement, and remediation prioritization.
-Never provide advice outside of authorized, in-scope testing.
-Be concise and specific — operators need actionable guidance, not general descriptions.`;
+interface AiMessage {
+  role: "user" | "assistant";
+  content: string;
+}
 
-// POST /api/brain — AI Brain chat with optional engagement context
-export async function POST(req: NextRequest) {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    return NextResponse.json(
-      { error: "ANTHROPIC_API_KEY not configured" },
-      { status: 503 },
-    );
-  }
+interface ManagerAiResponse {
+  content: string;
+  provider: string;
+  model: string;
+  privacy: "local" | "cloud";
+}
+
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const MAX_CONVERSATION_CHARS = 24_000;
+
+function validMessages(value: unknown): value is AiMessage[] {
+  return Array.isArray(value)
+    && value.length > 0
+    && value.length <= 24
+    && value.reduce((total, message) => {
+      if (!message || typeof message !== "object") return MAX_CONVERSATION_CHARS + 1;
+      const content = (message as Record<string, unknown>).content;
+      return total + (typeof content === "string" ? content.length : MAX_CONVERSATION_CHARS + 1);
+    }, 0) <= MAX_CONVERSATION_CHARS
+    && value.every((message) => {
+      if (!message || typeof message !== "object") return false;
+      const candidate = message as Record<string, unknown>;
+      return (candidate.role === "user" || candidate.role === "assistant")
+        && typeof candidate.content === "string"
+        && candidate.content.length > 0
+        && candidate.content.length <= 6_000;
+    });
+}
+
+function evidenceText(value: unknown, maxLength: number): string {
+  return String(value ?? "")
+    .replace(/[\u0000-\u001f\u007f]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .slice(0, maxLength);
+}
+
+export async function POST(req: Request) {
+  const token = bearerFrom(req);
+  if (!token) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
   const body = await req.json().catch(() => null) as {
-    messages?: { role: string; content: string }[];
+    messages?: unknown;
     engagementId?: string;
-    stream?: boolean;
+    provider?: "ollama" | "openrouter" | "anthropic";
+    model?: string;
   } | null;
-
-  if (!body || !Array.isArray(body.messages) || body.messages.length === 0) {
-    return NextResponse.json({ error: "messages[] is required" }, { status: 400 });
+  if (!body || !validMessages(body.messages)) {
+    return NextResponse.json({
+      error: "messages[] must contain 1-24 messages, at most 6,000 characters each and 24,000 characters total",
+    }, { status: 400 });
+  }
+  if (body.engagementId && !UUID.test(body.engagementId)) {
+    return NextResponse.json({ error: "engagementId must be a valid UUID" }, { status: 400 });
   }
 
-  // Build system context, optionally enriched with engagement findings
-  let systemContext = BRAIN_SYSTEM_BASE;
-  if (body.engagementId) {
-    const findings = getAllFindings()
-      .filter((f) => f.engagementId === body.engagementId)
-      .sort((a, b) => b.timestamp.localeCompare(a.timestamp))
-      .slice(0, 20);
-
-    if (findings.length > 0) {
-      const counts = findings.reduce<Record<string, number>>((acc, f) => {
-        acc[f.severity] = (acc[f.severity] ?? 0) + 1;
-        return acc;
-      }, {});
-      const summary = Object.entries(counts).map(([s, n]) => `${s}: ${n}`).join(", ");
-      systemContext += `\n\nCurrent engagement has ${findings.length} findings — ${summary}.\nTop findings:\n` +
-        findings.slice(0, 5).map((f) => `- [${f.severity}] ${f.host}: ${f.title}`).join("\n");
-    }
-  }
-
-  const client = new Anthropic({ apiKey });
-
-  // Streaming response
-  if (body.stream) {
-    const encoder = new TextEncoder();
-    const stream  = new ReadableStream({
-      async start(controller) {
-        try {
-          const msgStream = client.messages.stream({
-            model:      "claude-sonnet-4-6",
-            max_tokens: 2048,
-            system:     systemContext,
-            messages:   body.messages as Anthropic.MessageParam[],
-          });
-
-          for await (const chunk of msgStream) {
-            if (chunk.type === "content_block_delta" && chunk.delta.type === "text_delta") {
-              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ content: chunk.delta.text })}\n\n`));
-            }
-          }
-          controller.enqueue(encoder.encode("data: [DONE]\n\n"));
-        } catch (err) {
-          controller.enqueue(encoder.encode(`data: ${JSON.stringify({ error: String(err) })}\n\n`));
-        } finally {
-          controller.close();
-        }
-      },
-    });
-
-    return new Response(stream, {
-      headers: {
-        "Content-Type":  "text/event-stream",
-        "Cache-Control": "no-cache",
-      },
-    });
-  }
-
-  // Non-streaming response
   try {
-    const msg = await client.messages.create({
-      model:      "claude-sonnet-4-6",
-      max_tokens: 2048,
-      system:     systemContext,
-      messages:   body.messages as Anthropic.MessageParam[],
+    let factCard: FactCardVM | undefined;
+    const context: Record<string, unknown> = {};
+    const latestUser = [...body.messages].reverse().find((message) => message.role === "user");
+    const reference = latestUser ? detectFindingId(latestUser.content) : null;
+    if (reference) {
+      factCard = (await resolveSecurityReference({ reference, token })).factCard;
+      context.securityBrief = factCard;
+    }
+    if (body.engagementId) {
+      const data = await backend<{ items?: Array<Record<string, unknown>> } | Array<Record<string, unknown>>>(
+        "/findings",
+        {
+          token,
+          query: { engagement_id: body.engagementId, page: 1, page_size: 20 },
+        },
+      );
+      const findings = Array.isArray(data) ? data : data.items ?? [];
+      if (findings.length > 0) {
+        const counts = findings.reduce<Record<string, number>>((acc, finding) => {
+          const severity = evidenceText(finding.severity, 20) || "UNKNOWN";
+          acc[severity] = (acc[severity] ?? 0) + 1;
+          return acc;
+        }, {});
+        const evidence = findings.slice(0, 8).map((finding) => ({
+          severity: evidenceText(finding.severity, 20) || "UNKNOWN",
+          affectedHost: evidenceText(finding.affected_host, 180) || "unknown asset",
+          title: evidenceText(finding.title, 240) || "Untitled",
+        }));
+        context.recordedEngagementEvidence = {
+          findingCounts: counts,
+          prioritizedFindings: evidence,
+          evidenceWindow: "First 20 findings returned by Manager",
+        };
+      } else {
+        context.recordedEngagementEvidence = {
+          findingCounts: {},
+          prioritizedFindings: [],
+          limitation: "No recorded findings were returned for the selected engagement.",
+        };
+      }
+    }
+
+    const result = await backend<ManagerAiResponse>("/ai/generate", {
+      method: "POST",
+      token,
+      body: {
+        task: "advisor",
+        messages: body.messages,
+        context,
+        provider: body.provider,
+        model: body.model,
+        max_tokens: 900,
+      },
     });
-    const content = (msg.content[0] as { text: string }).text;
-    return NextResponse.json({ content });
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    return NextResponse.json({ error: msg }, { status: 500 });
+    return NextResponse.json({
+      content: result.content,
+      factCard,
+      provider: result.provider,
+      model: result.model,
+    });
+  } catch (error) {
+    const status = error instanceof BackendError || error instanceof SecurityContextError
+      ? error.status
+      : 502;
+    const message = error instanceof Error ? error.message : "AI request failed";
+    console.error("[brain] generation failed:", message);
+    return NextResponse.json({ error: message }, { status });
   }
 }

@@ -28,7 +28,7 @@ class FindingPatch(BaseModel):
     remediation: str | None = None
     cvss_score: Decimal | None = Field(default=None, ge=0, le=10)
     epss_score: Decimal | None = Field(default=None, ge=0, le=1)
-    risk_score: Decimal | None = Field(default=None, ge=0, le=100)
+    risk_score: Decimal | None = Field(default=None, ge=0, le=1000)
 
 
 class SlaItem(BaseModel):
@@ -49,6 +49,19 @@ class SlaSummary(BaseModel):
     total_tracked: int
     # The most urgent tracked findings (breached first, then soonest deadline).
     items: list[SlaItem]
+
+
+class FindingSummary(BaseModel):
+    total: int
+    open_total: int
+    critical_open: int
+    high_open: int
+    medium_open: int
+    low_open: int
+    info_open: int
+    validated: int
+    blind: int
+    average_risk: int
 
 
 class FindingOut(BaseModel):

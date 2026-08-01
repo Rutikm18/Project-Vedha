@@ -8,7 +8,7 @@
  *
  * Configure with BACKEND_INTERNAL_URL (e.g. http://api:8000 inside compose).
  */
-const BASE = (process.env.BACKEND_INTERNAL_URL ?? "http://localhost:8000").replace(/\/$/, "");
+const BASE = (process.env.BACKEND_INTERNAL_URL ?? "http://localhost:18080").replace(/\/$/, "");
 
 export class BackendError extends Error {
   status: number;
@@ -60,8 +60,30 @@ function safeJson(t: string): any {
   }
 }
 
-/** Extract the Bearer token from an incoming request's Authorization header. */
+/** Read one cookie without depending on framework-specific request types. */
+export function cookieFrom(req: Request, name: string): string | null {
+  const cookie = req.headers.get("cookie");
+  if (!cookie) return null;
+  const prefix = `${name}=`;
+  const value = cookie
+    .split(";")
+    .map((part) => part.trim())
+    .find((part) => part.startsWith(prefix))
+    ?.slice(prefix.length);
+  if (!value) return null;
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Extract the operator token. Authorization remains supported for CLI/API
+ * clients; browser sessions use an HttpOnly cookie so JavaScript cannot read it.
+ */
 export function bearerFrom(req: Request): string | null {
   const h = req.headers.get("authorization") ?? "";
-  return h.startsWith("Bearer ") ? h.slice(7) : null;
+  if (h.startsWith("Bearer ")) return h.slice(7);
+  return cookieFrom(req, "vedha_token");
 }

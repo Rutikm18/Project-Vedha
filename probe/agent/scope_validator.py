@@ -9,7 +9,7 @@ packet leaves the host.
 
 Responsibilities:
   1. Fetch the engagement's authoritative scope+exclusions from the manager.
-  2. Check that provided targets fall within the scope CIDRs.
+  2. Check that provided targets fall fully within the scope CIDRs.
   3. Drop any targets that fall inside excluded CIDRs (carve-outs).
 
 Each function is pure logic except fetch_engagement_scope() which requires
@@ -22,6 +22,33 @@ import logging
 from typing import Any, Callable
 
 LOG = logging.getLogger("scope_validator")
+
+
+def _networks_for_target(value: str) -> list[ipaddress._BaseNetwork] | None:
+    """Parse one IP, CIDR, or inclusive IP range into covering networks.
+
+    ``None`` means the value is not an IP-based target (for example, a
+    hostname). Manager engagements are IP/CIDR-only, so callers can reject
+    that case instead of relying on DNS that may resolve differently at the
+    Manager and Probe.
+    """
+    value = value.strip()
+    if not value:
+        return None
+    if "-" in value and "/" not in value:
+        try:
+            start_raw, end_raw = (part.strip() for part in value.split("-", 1))
+            start = ipaddress.ip_address(start_raw)
+            end = ipaddress.ip_address(end_raw)
+        except ValueError:
+            return None
+        if start.version != end.version or int(start) > int(end):
+            return None
+        return list(ipaddress.summarize_address_range(start, end))
+    try:
+        return [ipaddress.ip_network(value, strict=False)]
+    except ValueError:
+        return None
 
 
 def fetch_engagement_scope(
@@ -57,26 +84,35 @@ def validate_targets_in_scope(
 ) -> tuple[list[str], list[str]]:
     """Check targets against the authoritative scope CIDRs.
 
-    Returns (allowed, rejected). Hostname targets that cannot be resolved to
-    an IP are passed through (the engine's ScopeGuard handles them at the
-    packet level).
+    Returns (allowed, rejected). IP ranges and CIDRs must be fully contained,
+    not merely overlap. A hostname is allowed only when the authoritative
+    scope explicitly contains that exact hostname; it is never DNS-resolved
+    here because doing so would create a Manager/Probe TOCTOU boundary.
     """
-    networks = []
+    networks: list[ipaddress._BaseNetwork] = []
+    hostnames: set[str] = set()
     for cidr in scope_cidrs:
         try:
             networks.append(ipaddress.ip_network(cidr, strict=False))
         except ValueError:
-            LOG.warning("invalid scope CIDR in validation: %r", cidr)
+            value = str(cidr).strip().lower()
+            if value:
+                hostnames.add(value)
+                LOG.warning("non-IP scope entry in validation: %r", cidr)
 
     allowed, rejected = [], []
     for t in targets:
-        host = t.split(":")[0] if ":" in t else t
-        try:
-            addr = ipaddress.ip_address(host)
-            in_scope = any(addr in net for net in networks)
-        except ValueError:
-            # hostname or CIDR — pass through, ScopeGuard handles at packet level
-            in_scope = True
+        target_networks = _networks_for_target(t)
+        if target_networks is None:
+            in_scope = t.strip().lower() in hostnames
+        else:
+            in_scope = all(
+                any(
+                    target.version == scope.version and target.subnet_of(scope)
+                    for scope in networks
+                )
+                for target in target_networks
+            )
         (allowed if in_scope else rejected).append(t)
     return allowed, rejected
 
@@ -87,15 +123,14 @@ def targets_in_excludes(
 ) -> tuple[list[str], list[str]]:
     """Remove targets that fall inside any excluded CIDR.
 
-    Returns (kept, dropped). A literal IP target that lands in an exclusion
-    is dropped here before any packet — the engine's ScopeGuard enforces the
-    same rule again at the packet level. Hostnames that can't be resolved are
-    kept (ScopeGuard handles them).
+    Returns (kept, dropped). A target is dropped here only when its complete
+    IP/CIDR/range is covered by an exclusion. Partially-overlapping ranges are
+    kept so the engine can subtract excluded addresses individually.
     """
     if not excluded_cidrs:
         return targets, []
 
-    nets = []
+    nets: list[ipaddress._BaseNetwork] = []
     for cidr in excluded_cidrs:
         try:
             nets.append(ipaddress.ip_network(cidr, strict=False))
@@ -104,12 +139,14 @@ def targets_in_excludes(
 
     kept, dropped = [], []
     for t in targets:
-        host = t.split(":")[0] if ":" in t else t
-        try:
-            addr = ipaddress.ip_address(host)
-            excluded = any(addr in net for net in nets)
-        except ValueError:
-            excluded = False  # CIDR/hostname targets handled by ScopeGuard
+        target_networks = _networks_for_target(t)
+        excluded = bool(target_networks) and all(
+            any(
+                target.version == net.version and target.subnet_of(net)
+                for net in nets
+            )
+            for target in target_networks
+        )
         (dropped if excluded else kept).append(t)
     return kept, dropped
 

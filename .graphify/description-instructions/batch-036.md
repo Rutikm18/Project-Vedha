@@ -1,4 +1,4 @@
-# Node Description Batch 37 of 104
+# Node Description Batch 37 of 119
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -24,51 +24,51 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "models_outbox": "outbox.py" | kind=code-symbol | source=manager/backend/app/models/outbox.py:L1 | neighbors=[2885afa Add comprehensive probe testing…, OutboxEvent, outbox.py — transactional outbox for du…]
-- "models_outbox_rationale_1": "outbox.py — transactional outbox for durable, exactly-once background work.  THE" | kind=entity | source=manager/backend/app/models/outbox.py:L1 | neighbors=[Base, TimestampMixin, outbox.py]
-- "models_scan_job": "scan_job.py" | kind=code-symbol | source=manager/backend/app/models/scan_job.py:L1 | neighbors=[2885afa Add comprehensive probe testing…, 298a9d4 trim frontend to 7 core pages; …, ScanJob]
-- "models_scan_result_rationale_11": "Append-only raw probe facts (P3-#10).      Decoupled from scan_jobs so:       (a" | kind=entity | source=manager/backend/app/models/scan_result.py:L11 | neighbors=[Base, TimestampMixin, ScanResult]
-- "native_port_scan_nativeportscan": "nativePortScan()" | kind=code-symbol | source=manager/frontend/lib/engine/native/port-scan.ts:L221 | neighbors=[tool-runners.ts, port-scan.ts, resolvePorts()]
-- "netexec_route_post": "POST()" | kind=code-symbol | source=manager/frontend/app/api/scan/netexec/route.ts:L41 | neighbors=[route.ts, parseNxcOutput(), runNxc()]
-- "pipeline_pipeline_assembleerror": "assembleError()" | kind=code-symbol | source=probe-go/pipeline/pipeline.go:L428 | neighbors=[pipeline.go, assemble(), Run()]
-- "pipeline_route_runnaabustage": "runNaabuStage()" | kind=code-symbol | source=manager/frontend/app/api/scan/pipeline/route.ts:L40 | neighbors=[route.ts, stealthToScanParams(), runPipelineBackground()]
-- "pipeline_route_runnmapstage": "runNmapStage()" | kind=code-symbol | source=manager/frontend/app/api/scan/pipeline/route.ts:L122 | neighbors=[route.ts, stealthToScanParams(), runPipelineBackground()]
-- "pipeline_route_stealthtoscanparams": "stealthToScanParams()" | kind=code-symbol | source=manager/frontend/app/api/scan/pipeline/route.ts:L31 | neighbors=[route.ts, runNaabuStage(), runNmapStage()]
-- "probe_go_main_run": "run()" | kind=code-symbol | source=probe-go/main.go:L220 | neighbors=[main.go, localScan(), main()]
-- "probe_go_main_selftest": "selfTest()" | kind=code-symbol | source=probe-go/main.go:L240 | neighbors=[main.go, main(), isDirWritable()]
-- "probe_pipeline_clean": "_clean()" | kind=code-symbol | source=probe/pipeline.py:L251 | neighbors=[pipeline.py, Make a raw banner safe and readable for…, _rollup()]
-- "probe_pipeline_rollup": "_rollup()" | kind=code-symbol | source=probe/pipeline.py:L275 | neighbors=[pipeline.py, _clean(), _run_active()]
-- "probe_pipeline_shared": "_shared()" | kind=code-symbol | source=probe/pipeline.py:L132 | neighbors=[pipeline.py, Make a per-host scanner instance share …, _run_active()]
-- "routers_ad_run_ad_assessment_and_save": "_run_ad_assessment_and_save()" | kind=code-symbol | source=manager/backend/app/routers/ad.py:L129 | neighbors=[ad.py, Background task: run the AD assessment …, _set_job_status()]
-- "routers_agents_enqueue_agent_job": "enqueue_agent_job()" | kind=code-symbol | source=manager/backend/app/routers/agents.py:L504 | neighbors=[agents.py, _encrypt_scope_for_agent(), _resolve_scan_type()]
-- "routers_agents_get_agent_jobs": "get_agent_jobs()" | kind=code-symbol | source=manager/backend/app/routers/agents.py:L393 | neighbors=[agents.py, _agent_ownership_check(), _encrypt_scope_for_agent()]
-- "routers_ai_report_build_engagement_summary": "_build_engagement_summary()" | kind=code-symbol | source=manager/backend/app/routers/ai_report.py:L211 | neighbors=[ai_report.py, _run_generation(), _run_regeneration()]
-- "routers_ai_report_pending_outputs": "_pending_outputs()" | kind=code-symbol | source=manager/backend/app/routers/ai_report.py:L188 | neighbors=[ai_report.py, approve_report(), reject_report()]
-- "routers_ai_report_run_regeneration": "_run_regeneration()" | kind=code-symbol | source=manager/backend/app/routers/ai_report.py:L320 | neighbors=[ai_report.py, Background task: regenerate rejected se…, _build_engagement_summary()]
-- "routers_attack_paths_blast_radius": "blast_radius()" | kind=code-symbol | source=manager/backend/app/routers/attack_paths.py:L137 | neighbors=[attack_paths.py, _asset_labels(), _build_analyzer()]
-- "routers_attack_paths_get_attack_path": "get_attack_path()" | kind=code-symbol | source=manager/backend/app/routers/attack_paths.py:L75 | neighbors=[attack_paths.py, _asset_labels(), _explain_hop()]
-- "routers_attack_paths_list_attack_paths": "list_attack_paths()" | kind=code-symbol | source=manager/backend/app/routers/attack_paths.py:L43 | neighbors=[attack_paths.py, _path_summary(), _recompute_and_store()]
-- "routers_detection_run_correlation": "_run_correlation()" | kind=code-symbol | source=manager/backend/app/routers/detection.py:L233 | neighbors=[detection.py, Background task: pull SIEM/EDR telemetr…, _set_job()]
-- "routers_detection_runs_run_dict": "_run_dict()" | kind=code-symbol | source=manager/backend/app/routers/detection_runs.py:L37 | neighbors=[detection_runs.py, latest_run_delta(), list_detection_runs()]
-- "routers_engagements_overview_cache_key": "_overview_cache_key()" | kind=code-symbol | source=manager/backend/app/routers/engagements.py:L34 | neighbors=[engagements.py, engagements_overview(), _refresh_overview_cache()]
-- "routers_engagements_parse_probe_file": "_parse_probe_file()" | kind=code-symbol | source=manager/backend/app/routers/engagements.py:L178 | neighbors=[engagements.py, import_facts(), Parse a probe export into (facts, scan_…]
-- "routers_engagements_promote_from_facts": "_promote_from_facts()" | kind=code-symbol | source=manager/backend/app/routers/engagements.py:L225 | neighbors=[engagements.py, import_facts(), Upsert assets (and their services) from…]
-- "routers_engagements_read_capped": "_read_capped()" | kind=code-symbol | source=manager/backend/app/routers/engagements.py:L160 | neighbors=[engagements.py, import_facts(), Read an UploadFile in chunks, aborting …]
-- "routers_exploits_approval_out": "_approval_out()" | kind=code-symbol | source=manager/backend/app/routers/exploits.py:L434 | neighbors=[exploits.py, ApprovalOut, list_approvals()]
-- "routers_exploits_get_approval_or_404": "_get_approval_or_404()" | kind=code-symbol | source=manager/backend/app/routers/exploits.py:L409 | neighbors=[exploits.py, approve_exploit(), reject_exploit()]
-- "routers_exploits_get_exploit_result": "get_exploit_result()" | kind=code-symbol | source=manager/backend/app/routers/exploits.py:L206 | neighbors=[exploits.py, _get_result_or_404(), _result_out()]
-- "runtimeerror": "RuntimeError" | kind=code-symbol | neighbors=[HWBindError, AgentUnavailableError, LLMUnavailableError]
-- "scanner_db_probemongo": "probeMongo()" | kind=code-symbol | source=probe-go/scanner/db.go:L199 | neighbors=[db.go, ProbeDB(), dial()]
-- "scanner_db_probemssql": "probeMSSQL()" | kind=code-symbol | source=probe-go/scanner/db.go:L136 | neighbors=[db.go, ProbeDB(), dial()]
-- "scanner_db_probemysql": "probeMysql()" | kind=code-symbol | source=probe-go/scanner/db.go:L73 | neighbors=[db.go, ProbeDB(), dial()]
-- "scanner_db_probepostgres": "probePostgres()" | kind=code-symbol | source=probe-go/scanner/db.go:L107 | neighbors=[db.go, ProbeDB(), dial()]
-- "scanner_db_proberedis": "probeRedis()" | kind=code-symbol | source=probe-go/scanner/db.go:L176 | neighbors=[db.go, ProbeDB(), dial()]
-- "scanner_db_scanner_dbscanner_scan_port": "._scan_port()" | kind=code-symbol | source=probe/scanner/db_scanner.py:L256 | neighbors=[DBScanner, ._probe_one(), .scan_target()]
+- "auth_jwt_now": "_now()" | kind=code-symbol | source=manager/backend/app/auth/jwt.py:L16 | neighbors=[jwt.py, create_access_token(), create_refresh_token()]
+- "cli_auth_clearsession": "clearSession()" | kind=code-symbol | source=manager/frontend/cli/auth.ts:L29 | neighbors=[auth.ts, interactive.ts, logout.ts]
+- "cli_auth_savesession": "saveSession()" | kind=code-symbol | source=manager/frontend/cli/auth.ts:L24 | neighbors=[auth.ts, interactive.ts, login.ts]
+- "cli_llm_streamask": "streamAsk()" | kind=code-symbol | source=manager/frontend/cli/llm.ts:L340 | neighbors=[llm.ts, client(), ask.ts]
+- "commands_doctor_render": "render()" | kind=code-symbol | source=manager/frontend/cli/commands/doctor.ts:L41 | neighbors=[doctor.ts, ln(), symbol()]
+- "commands_interactive_fetchengagements": "fetchEngagements()" | kind=code-symbol | source=manager/frontend/cli/commands/interactive.ts:L1746 | neighbors=[interactive.ts, pickEngagementId(), wizardEngagement()]
+- "commands_interactive_inferhostsfromfindings": "inferHostsFromFindings()" | kind=code-symbol | source=manager/frontend/cli/commands/interactive.ts:L1418 | neighbors=[interactive.ts, pickTargets(), wizardScan()]
+- "commands_interactive_mergehosts": "mergeHosts()" | kind=code-symbol | source=manager/frontend/cli/commands/interactive.ts:L1165 | neighbors=[interactive.ts, runPhasePortScan(), runPhaseServiceDetect()]
+- "commands_interactive_printhostdiscoverydiagnostic": "printHostDiscoveryDiagnostic()" | kind=code-symbol | source=manager/frontend/cli/commands/interactive.ts:L917 | neighbors=[interactive.ts, ln(), runIterativeEngagement()]
+- "commands_interactive_printhostsummary": "printHostSummary()" | kind=code-symbol | source=manager/frontend/cli/commands/interactive.ts:L905 | neighbors=[interactive.ts, ln(), runIterativeEngagement()]
+- "commands_interactive_printstatesummary": "printStateSummary()" | kind=code-symbol | source=manager/frontend/cli/commands/interactive.ts:L895 | neighbors=[interactive.ts, ln(), runIterativeEngagement()]
+- "commands_interactive_runphaseenumeration": "runPhaseEnumeration()" | kind=code-symbol | source=manager/frontend/cli/commands/interactive.ts:L1044 | neighbors=[interactive.ts, runIterativeEngagement(), runPhaseWithTools()]
+- "commands_interactive_runphasehostdiscovery": "runPhaseHostDiscovery()" | kind=code-symbol | source=manager/frontend/cli/commands/interactive.ts:L1023 | neighbors=[interactive.ts, runIterativeEngagement(), runPhaseWithTools()]
+- "commit:repo:github.com/Rutikm18/Agentic-VA-Automation@8d65c9264d0935e030c458e4b761dd1587b0a2d1": "8d65c92 first commit" | kind=Commit | source=git | neighbors=[agents/greeting-introduction, main, f5ce592 first commit]
+- "dashboard_exposure_protocolriskcard": "ProtocolRiskCard()" | kind=code-symbol | source=manager/frontend/components/dashboard/Exposure.tsx:L32 | neighbors=[page.tsx, Exposure.tsx, useExposure()]
+- "dashboard_exposure_useexposure": "useExposure()" | kind=code-symbol | source=manager/frontend/components/dashboard/Exposure.tsx:L24 | neighbors=[Exposure.tsx, ProtocolRiskCard(), ZoneHealthCard()]
+- "dashboard_exposure_zonehealthcard": "ZoneHealthCard()" | kind=code-symbol | source=manager/frontend/components/dashboard/Exposure.tsx:L49 | neighbors=[page.tsx, Exposure.tsx, useExposure()]
+- "dashboard_slarow_slarow": "SlaRow()" | kind=code-symbol | source=manager/frontend/components/dashboard/SlaRow.tsx:L31 | neighbors=[SlaRow.tsx, getSla(), page.tsx]
+- "dashboard_slastatus_slarowview": "SlaRowView()" | kind=code-symbol | source=manager/frontend/components/dashboard/SlaStatus.tsx:L77 | neighbors=[SlaStatus.tsx, pct(), timeLabel()]
+- "dashboard_zonerow_zonerow": "ZoneRow()" | kind=code-symbol | source=manager/frontend/components/dashboard/ZoneRow.tsx:L6 | neighbors=[Exposure.tsx, ZoneRow.tsx, page.tsx]
+- "data_mock_dashboard_severity": "Severity" | kind=code-symbol | source=manager/frontend/data/mock-dashboard.ts:L9 | neighbors=[SlaRow.tsx, mock-dashboard.ts, page.tsx]
+- "detection_correlator_detectioncorrelator_host_for": "._host_for()" | kind=code-symbol | source=manager/backend/app/detection/correlator.py:L142 | neighbors=[DetectionCorrelator, .correlate(), _host_matches()]
+- "detection_correlator_detectioncorrelator_in_window": "._in_window()" | kind=code-symbol | source=manager/backend/app/detection/correlator.py:L135 | neighbors=[DetectionCorrelator, .correlate(), _aware()]
+- "detection_correlator_detectioncorrelator_min_latency": "._min_latency()" | kind=code-symbol | source=manager/backend/app/detection/correlator.py:L147 | neighbors=[DetectionCorrelator, .correlate(), _aware()]
+- "detection_edr_crowdstrikefalcon_parse_response": ".parse_response()" | kind=code-symbol | source=manager/backend/app/detection/edr.py:L118 | neighbors=[CrowdStrikeFalcon, EDRDetection, _parse_dt()]
+- "detection_edr_microsoftdefender_parse_response": ".parse_response()" | kind=code-symbol | source=manager/backend/app/detection/edr.py:L158 | neighbors=[MicrosoftDefender, EDRDetection, _parse_dt()]
+- "detection_edr_sentinelone_parse_response": ".parse_response()" | kind=code-symbol | source=manager/backend/app/detection/edr.py:L209 | neighbors=[SentinelOne, EDRDetection, _parse_dt()]
+- "detection_engine_ai_normalizer_ainormalizercache_key": "._key()" | kind=code-symbol | source=manager/detection_engine/ai_normalizer.py:L149 | neighbors=[AINormalizerCache, .get(), .put()]
+- "detection_engine_ai_normalizer_ainormalizercache_put": ".put()" | kind=code-symbol | source=manager/detection_engine/ai_normalizer.py:L155 | neighbors=[AINormalizerCache, ._key(), propose_candidates()]
+- "detection_engine_ai_normalizer_extract_raw_text": "extract_raw_text()" | kind=code-symbol | source=manager/detection_engine/ai_normalizer.py:L206 | neighbors=[ai_normalizer.py, .get(), The raw observable text worth sending t…]
+- "detection_engine_ai_normalizer_rationale_1": "ai_normalizer.py — Phase 2: AI normalization assist, gated by deterministic look" | kind=entity | source=manager/detection_engine/ai_normalizer.py:L1 | neighbors=[ai_normalizer.py, CPECandidate, Fact]
+- "detection_engine_ai_normalizer_rationale_124": "Test double — a fixed lookup table, no network. Used to validate the     surroun" | kind=entity | source=manager/detection_engine/ai_normalizer.py:L124 | neighbors=[FakeAIClient, CPECandidate, Fact]
+- "detection_engine_ai_normalizer_rationale_170": "True iff the real NVD CPE dictionary has at least one entry for this     vendor:" | kind=entity | source=manager/detection_engine/ai_normalizer.py:L170 | neighbors=[validate_cpe_exists(), CPECandidate, Fact]
+- "detection_engine_ai_normalizer_rationale_207": "The raw observable text worth sending to the AI normalizer for this     Fact's s" | kind=entity | source=manager/detection_engine/ai_normalizer.py:L207 | neighbors=[extract_raw_text(), CPECandidate, Fact]
+- "detection_engine_ai_normalizer_rationale_233": "The Phase 2 entry point. raw_text is whatever observed string the     rule-based" | kind=entity | source=manager/detection_engine/ai_normalizer.py:L233 | neighbors=[propose_candidates(), CPECandidate, Fact]
+- "detection_engine_ai_normalizer_rationale_90": "Returns a list of {\"vendor\", \"product\", \"version\"} dicts —         exactly the v" | kind=entity | source=manager/detection_engine/ai_normalizer.py:L90 | neighbors=[.propose_cpe(), CPECandidate, Fact]
+- "detection_engine_ai_normalizer_rationale_97": "Real implementation, gated behind the anthropic SDK + an API key.     Forces the" | kind=entity | source=manager/detection_engine/ai_normalizer.py:L97 | neighbors=[AnthropicAIClient, CPECandidate, Fact]
+- "detection_engine_bridge_ensure_importable": "_ensure_importable()" | kind=code-symbol | source=manager/backend/app/detection/engine_bridge.py:L65 | neighbors=[engine_bridge.py, detect_findings_from_facts(), _vuln_db_meta()]
+- "detection_engine_bridge_run_detection_job": "run_detection_job()" | kind=code-symbol | source=manager/backend/app/detection/engine_bridge.py:L208 | neighbors=[engine_bridge.py, Background entry point (P1: keep detect…, create_findings_from_facts()]
+- "detection_engine_consistency_wilson_ci": "wilson_ci()" | kind=code-symbol | source=manager/detection_engine/consistency.py:L32 | neighbors=[consistency.py, .ci(), Wilson score interval for a binomial pr…]
 
 ## Instructions
 
 Write a single JSON object mapping each node id to a one-sentence description
-to: /Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Agentic VA Scanner/.graphify/description-instructions/batch-036.json
+to: /Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha/.graphify/description-instructions/batch-036.json
 
 Keep each description factual and concise (one sentence). No markdown, no prose
 outside the JSON object. It is acceptable to omit a node if context is

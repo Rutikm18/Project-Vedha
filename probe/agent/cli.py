@@ -18,8 +18,10 @@ import os
 import stat
 import sys
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 import httpx
 
@@ -529,6 +531,383 @@ def cmd_scan_status(args: argparse.Namespace) -> int:
     return 0
 
 
+def _write_private_json(path: Path, data: Any) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        os.chmod(path.parent, 0o700)
+    except OSError:
+        pass
+    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp.write_text(json.dumps(data, indent=2, sort_keys=True, default=str) + "\n")
+    os.chmod(tmp, 0o600)
+    tmp.replace(path)
+    os.chmod(path, 0o600)
+
+
+def _fetch_all_findings(client: ManagerClient, engagement_id: str) -> list[dict[str, Any]]:
+    items: list[dict[str, Any]] = []
+    page = 1
+    while True:
+        data = client.request(
+            "GET",
+            "/findings",
+            params={
+                "engagement_id": engagement_id,
+                "page": page,
+                "page_size": 100,
+            },
+        )
+        batch = data.get("items", []) if isinstance(data, dict) else []
+        items.extend(batch)
+        total = int(data.get("total", len(items))) if isinstance(data, dict) else len(items)
+        if not batch or len(items) >= total:
+            return items
+        page += 1
+
+
+def _manager_is_local(url: str) -> bool:
+    hostname = (urlparse(url).hostname or "").lower()
+    return hostname in {"localhost", "127.0.0.1", "::1"}
+
+
+def cmd_validate(args: argparse.Namespace) -> int:
+    """Run a bounded capability suite and optionally score known ground truth."""
+    from agent.validation import (
+        resolve_use_cases,
+        score_inventory,
+        target_address_count,
+        validate_ground_truth,
+        validate_targets,
+    )
+
+    profile = resolve_profile(args)
+    if profile["manager_url"].startswith("http://") and not _manager_is_local(
+        profile["manager_url"]
+    ):
+        raise CliError("Probe validation requires HTTPS for a non-local manager")
+    if not profile["verify_tls"] and not _manager_is_local(profile["manager_url"]):
+        raise CliError("TLS verification cannot be disabled for remote validation")
+    if not 1 <= args.repeat <= 10:
+        raise CliError("--repeat must be between 1 and 10")
+    if args.poll_interval <= 0:
+        raise CliError("--poll-interval must be greater than 0")
+    if args.wait_timeout <= 0:
+        raise CliError("--wait-timeout must be greater than 0")
+    if args.settle_seconds < 0:
+        raise CliError("--settle-seconds must be 0 or greater")
+    if args.strict_ground_truth and not args.ground_truth:
+        raise CliError("--strict-ground-truth requires --ground-truth")
+    if args.ports:
+        from scanner.scanner_base import parse_ports
+        try:
+            parse_ports(args.ports)
+        except ValueError as exc:
+            raise CliError(f"invalid --ports value: {exc}") from exc
+
+    targets = split_values(args.target)
+    scope_values = split_values(args.scope)
+    excluded_values = split_values(args.exclude)
+    if args.engagement_id and (scope_values or excluded_values):
+        raise CliError("--scope/--exclude cannot be combined with --engagement-id")
+    try:
+        address_count = target_address_count(targets)
+    except ValueError as exc:
+        raise CliError(str(exc)) from exc
+    if address_count > 4096:
+        raise CliError(
+            f"targets represent {address_count} addresses; the Probe hard limit is 4096"
+        )
+    if address_count > 256 and not args.allow_large_targets:
+        raise CliError(
+            f"targets represent {address_count} addresses; capability validation "
+            "defaults to at most 256. Narrow the target or use --allow-large-targets"
+        )
+    try:
+        selected_use_cases = resolve_use_cases(args.suite, args.use_case)
+    except ValueError as exc:
+        raise CliError(str(exc)) from exc
+
+    client = ManagerClient(
+        profile["manager_url"],
+        profile["token"],
+        verify_tls=profile["verify_tls"],
+        ca_bundle=profile["ca_bundle"],
+        timeout=args.timeout,
+    )
+    me = client.request("GET", "/auth/me")
+    scopes = set(me.get("scopes") or [])
+    required_scopes = {"probe:read", "probe:write", "engagement:read"}
+    if not args.engagement_id:
+        required_scopes.add("engagement:write")
+        if me.get("role") not in {"admin", "manager"}:
+            raise CliError(
+                "creating a validation engagement requires an admin or manager PAT"
+            )
+    missing_scopes = sorted(required_scopes - scopes)
+    if missing_scopes:
+        raise CliError(
+            "PAT is missing required scopes: " + ", ".join(missing_scopes)
+        )
+
+    available_rows = client.request("GET", "/agents/use-cases")
+    available = {
+        row.get("use_case_id"): row
+        for row in available_rows
+        if isinstance(row, dict) and row.get("use_case_id")
+    }
+    unknown = [value for value in selected_use_cases if value not in available]
+    if unknown:
+        raise CliError(
+            "manager does not support selected use-cases: " + ", ".join(unknown)
+        )
+
+    agents = client.request("GET", "/agents")
+    online_agents = [
+        agent for agent in agents
+        if isinstance(agent, dict) and agent.get("online")
+    ]
+    if not online_agents:
+        raise CliError("no online Probe is available for validation")
+
+    engagement = None
+    if args.engagement_id:
+        engagement = client.request("GET", f"/engagements/{args.engagement_id}")
+        scope_data = client.request(
+            "GET", f"/engagements/{args.engagement_id}/scope"
+        )
+        engagement_id = args.engagement_id
+        scan_profile = (
+            (engagement.get("rules_of_engagement") or {}).get("scan_profile")
+            or args.scan_profile
+        )
+    else:
+        if not scope_values:
+            raise CliError("--scope is required when --engagement-id is not supplied")
+        scope_data = {
+            "scope_cidrs": scope_values,
+            "excluded_cidrs": excluded_values,
+        }
+        engagement_id = None
+        scan_profile = args.scan_profile
+
+    if scan_profile == "ot" and selected_use_cases != ["uc_ot_passive"]:
+        raise CliError(
+            "OT engagements are passive-only; use --suite ot-passive by itself"
+        )
+    if scan_profile != "ot" and "uc_ot_passive" in selected_use_cases:
+        raise CliError("uc_ot_passive requires an engagement with scan profile 'ot'")
+    try:
+        validate_targets(
+            targets,
+            scope_data.get("scope_cidrs") or [],
+            scope_data.get("excluded_cidrs") or [],
+        )
+    except ValueError as exc:
+        raise CliError(str(exc)) from exc
+
+    reachable_agents = []
+    for agent in online_agents:
+        segments = agent.get("network_segments") or []
+        if not segments:
+            reachable_agents.append(agent)
+            continue
+        try:
+            validate_targets(targets, segments, [])
+        except ValueError:
+            continue
+        reachable_agents.append(agent)
+    if not reachable_agents:
+        raise CliError(
+            "no online Probe declares network segments that cover every target"
+        )
+    if len(reachable_agents) > 1 and not args.allow_multiple_agents:
+        names = ", ".join(
+            str(agent.get("name") or agent.get("id"))
+            for agent in reachable_agents
+        )
+        raise CliError(
+            "multiple Probes can reach the targets and jobs cannot currently be "
+            f"pinned to one Probe ({names}); stop the others or use "
+            "--allow-multiple-agents"
+        )
+    for use_case_id in selected_use_cases:
+        scan_type = available[use_case_id].get("scan_type")
+        if not any(
+            scan_type in set(agent.get("capabilities") or [])
+            for agent in reachable_agents
+        ):
+            raise CliError(
+                f"no reachable online Probe advertises capability {scan_type!r} "
+                f"required by {use_case_id}"
+            )
+
+    ground_truth = None
+    if args.ground_truth:
+        try:
+            ground_truth = validate_ground_truth(
+                json.loads(Path(args.ground_truth).read_text())
+            )
+            validate_targets(
+                [host["ip"] for host in ground_truth["hosts"]],
+                scope_data.get("scope_cidrs") or [],
+                scope_data.get("excluded_cidrs") or [],
+            )
+            validate_targets(
+                [host["ip"] for host in ground_truth["hosts"]],
+                targets,
+                [],
+            )
+        except (OSError, json.JSONDecodeError, ValueError) as exc:
+            raise CliError(f"invalid ground truth: {exc}") from exc
+
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    output_dir = Path(args.output_dir or f"validation-results/{timestamp}")
+    plan = {
+        "manager_url": profile["manager_url"],
+        "engagement_id": engagement_id,
+        "engagement_name": args.engagement_name,
+        "scan_profile": scan_profile,
+        "scope_cidrs": scope_data.get("scope_cidrs") or [],
+        "excluded_cidrs": scope_data.get("excluded_cidrs") or [],
+        "targets": targets,
+        "use_cases": selected_use_cases,
+        "repeat": args.repeat,
+        "ports": args.ports,
+        "online_probes": [
+            {
+                "id": agent.get("id"),
+                "name": agent.get("name"),
+                "capabilities": agent.get("capabilities") or [],
+            }
+            for agent in reachable_agents
+        ],
+        "ground_truth": str(Path(args.ground_truth)) if args.ground_truth else None,
+        "output_dir": str(output_dir),
+    }
+    if args.dry_run:
+        output({"dry_run": True, "plan": plan}, as_json=args.json)
+        return 0
+    if output_dir.exists():
+        raise CliError(
+            f"output directory already exists: {output_dir}; choose a new --output-dir"
+        )
+    if not args.confirm_authorized:
+        raise CliError(
+            "refusing to send scan traffic without --confirm-authorized; "
+            "use --dry-run to review the plan first"
+        )
+
+    if engagement_id is None:
+        created = client.request(
+            "POST",
+            "/engagements",
+            json_body={
+                "name": args.engagement_name,
+                "scope_cidrs": scope_data["scope_cidrs"],
+                "excluded_cidrs": scope_data["excluded_cidrs"],
+                "rules_of_engagement": {
+                    "scan_profile": scan_profile,
+                    "cli_created": True,
+                    "probe_validation": True,
+                },
+            },
+        )
+        engagement_id = str(created["id"])
+        plan["engagement_id"] = engagement_id
+
+    output_dir.mkdir(parents=True, exist_ok=False)
+    os.chmod(output_dir, 0o700)
+    _write_private_json(output_dir / "plan.json", plan)
+
+    jobs: list[dict[str, Any]] = []
+    failed_jobs = 0
+    for run_number in range(1, args.repeat + 1):
+        for use_case_id in selected_use_cases:
+            params: dict[str, Any] = {"targets": targets}
+            if args.ports:
+                params["ports"] = args.ports
+            created = client.request(
+                "POST",
+                "/agents/jobs",
+                json_body={
+                    "engagement_id": engagement_id,
+                    "job_type": "discovery",
+                    "use_case_id": use_case_id,
+                    "params": params,
+                },
+            )
+            job = _poll_job(
+                client,
+                str(created["job_id"]),
+                args.poll_interval,
+                args.wait_timeout,
+            )
+            record = {
+                "run": run_number,
+                "use_case_id": use_case_id,
+                **job,
+            }
+            jobs.append(record)
+            _write_private_json(
+                output_dir / f"{run_number:02d}-{use_case_id}.json",
+                record,
+            )
+            if job.get("status") != "completed":
+                failed_jobs += 1
+
+    if args.settle_seconds:
+        time.sleep(args.settle_seconds)
+    assets = client.request("GET", f"/engagements/{engagement_id}/assets")
+    findings = _fetch_all_findings(client, engagement_id)
+    _write_private_json(output_dir / "assets.json", assets)
+    _write_private_json(output_dir / "findings.json", findings)
+
+    fact_counts: dict[str, list[int | None]] = {}
+    for job in jobs:
+        result = job.get("result") or {}
+        fact_counts.setdefault(job["use_case_id"], []).append(result.get("fact_count"))
+    repeatability = {
+        use_case_id: {
+            "fact_counts": counts,
+            "stable_fact_count": len(set(counts)) == 1,
+        }
+        for use_case_id, counts in fact_counts.items()
+    }
+
+    accuracy = (
+        score_inventory(ground_truth, assets, findings)
+        if ground_truth is not None else {
+            "scored": False,
+            "reason": "no --ground-truth file was supplied",
+        }
+    )
+    summary = {
+        "ok": failed_jobs == 0,
+        "engagement_id": engagement_id,
+        "output_dir": str(output_dir),
+        "jobs_total": len(jobs),
+        "jobs_failed": failed_jobs,
+        "repeatability": repeatability,
+        "accuracy": accuracy,
+        "asset_count": len(assets),
+        "finding_count": len(findings),
+    }
+
+    if args.strict_ground_truth and ground_truth is not None:
+        inaccurate = [
+            name for name, metric in accuracy.items()
+            if isinstance(metric, dict)
+            and metric.get("scored")
+            and (metric.get("false_positive") or metric.get("false_negative"))
+        ]
+        if inaccurate:
+            summary["ok"] = False
+            summary["accuracy_failures"] = inaccurate
+    _write_private_json(output_dir / "summary.json", summary)
+    output(summary, as_json=args.json)
+    return 0 if summary["ok"] else 1
+
+
 def cmd_daemon_run(args: argparse.Namespace) -> int:
     profile = resolve_profile(args)
     os.environ["PLATFORM_URL"] = profile["manager_url"]
@@ -645,6 +1024,96 @@ def build_parser() -> argparse.ArgumentParser:
     scan_status.add_argument("job_id")
     add_json_flag(scan_status)
     scan_status.set_defaults(func=cmd_scan_status)
+
+    validate = sub.add_parser(
+        "validate",
+        help="Run a controlled Probe capability and accuracy validation",
+    )
+    validate.add_argument("--engagement-id", help="Use an existing engagement")
+    validate.add_argument(
+        "--engagement-name",
+        default="Probe Capability Validation",
+        help="Name used when creating a validation engagement",
+    )
+    validate.add_argument(
+        "--scope",
+        action="append",
+        help="Authorized CIDR/IP for a new engagement. Repeat or comma-separate.",
+    )
+    validate.add_argument(
+        "--exclude",
+        action="append",
+        help="Excluded CIDR/IP for a new engagement. Repeat or comma-separate.",
+    )
+    validate.add_argument(
+        "--target",
+        action="append",
+        required=True,
+        help="Target IP/CIDR. Repeat or comma-separate.",
+    )
+    validate.add_argument(
+        "--scan-profile",
+        choices=["it", "iot", "ot"],
+        default="it",
+    )
+    validate.add_argument(
+        "--suite",
+        action="append",
+        choices=[
+            "baseline", "web", "infrastructure", "inventory",
+            "exposure", "full", "ot-passive",
+        ],
+        help="Capability suite. Repeat to combine. Default: baseline.",
+    )
+    validate.add_argument(
+        "--use-case",
+        action="append",
+        help="Additional manager-supported use-case ID. Repeat as needed.",
+    )
+    validate.add_argument("--ports", help="Optional port expression, for example 22,80,443")
+    validate.add_argument(
+        "--repeat",
+        type=int,
+        default=3,
+        help="Runs per use-case for repeatability (1-10; default 3)",
+    )
+    validate.add_argument("--ground-truth", help="Ground-truth JSON file")
+    validate.add_argument(
+        "--strict-ground-truth",
+        action="store_true",
+        help="Fail if any scored expected/observed item differs",
+    )
+    validate.add_argument("--output-dir", help="New private results directory")
+    validate.add_argument("--poll-interval", type=float, default=5.0)
+    validate.add_argument("--wait-timeout", type=float, default=3600.0)
+    validate.add_argument(
+        "--settle-seconds",
+        type=float,
+        default=5.0,
+        help="Wait for asset/finding processing after jobs finish",
+    )
+    validate.add_argument(
+        "--allow-multiple-agents",
+        action="store_true",
+        help="Accept that jobs may be handled by different online Probes",
+    )
+    validate.add_argument(
+        "--allow-large-targets",
+        action="store_true",
+        help="Allow validation targets larger than 256 addresses (hard limit 4096)",
+    )
+    validate.add_argument(
+        "--confirm-authorized",
+        action="store_true",
+        help="Confirm written authorization to send the planned scan traffic",
+    )
+    validate.add_argument(
+        "--dry-run",
+        action="store_true",
+        help="Validate and print the plan without creating or scanning",
+    )
+    add_json_flag(validate)
+    validate.set_defaults(func=cmd_validate)
 
     daemon = sub.add_parser("daemon", help="Run the long-lived probe process")
     daemon_sub = daemon.add_subparsers(dest="daemon_command", required=True)

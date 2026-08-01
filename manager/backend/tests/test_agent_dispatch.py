@@ -13,6 +13,25 @@ from app.routers import agent_ws
 from app.websocket.manager import AgentConnectionManager
 
 
+class TestAgentWebSocketAuthentication:
+
+    def test_accepts_bearer_header(self):
+        websocket = SimpleNamespace(
+            headers={"authorization": "Bearer agent-token"},
+            query_params={},
+        )
+
+        assert agent_ws._agent_token_from_websocket(websocket) == "agent-token"
+
+    def test_rejects_query_string_credentials(self):
+        websocket = SimpleNamespace(
+            headers={},
+            query_params={"token": "must-not-be-read"},
+        )
+
+        assert agent_ws._agent_token_from_websocket(websocket) == ""
+
+
 class TestUseCaseCatalogParity:
 
     def test_manager_and_probe_route_use_cases_identically(self):
@@ -35,10 +54,37 @@ class TestUseCaseCatalogParity:
         assert set(_USE_CASES) == set(module.USE_CASES)
         for use_case_id, manager_entry in _USE_CASES.items():
             probe_entry = module.USE_CASES[use_case_id]
-            assert manager_entry["scan_type"] == probe_entry["scan_type"]
-            assert manager_entry["profile"] == probe_entry["profile"]
+            assert manager_entry == probe_entry
 
         assert _USE_CASES["uc_external_web_triage"]["scan_type"] == "web_tls_scan"
+
+
+class TestJobSecretBoundary:
+
+    @pytest.mark.parametrize(
+        "params",
+        [
+            {"ssh_creds": {"user": "audit", "password": "secret"}},
+            {"win_creds": {"user": "audit", "password": "secret"}},
+            {"nested": {"api-key": "secret"}},
+            {"items": [{"token": "secret"}]},
+            {"private_key": "pem"},
+        ],
+    )
+    def test_detects_persisted_secret_material(self, params):
+        from app.routers.agents import _job_params_contain_secret
+
+        assert _job_params_contain_secret(params) is True
+
+    def test_allows_non_secret_scan_tuning(self):
+        from app.routers.agents import _job_params_contain_secret
+
+        assert _job_params_contain_secret({
+            "targets": ["10.0.0.0/24"],
+            "rate": 200,
+            "timeout": 3.0,
+            "excluded_cidrs": ["10.0.0.5/32"],
+        }) is False
 
 
 class TestTenantWebSocketSelection:

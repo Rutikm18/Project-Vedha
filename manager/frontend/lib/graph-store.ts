@@ -190,22 +190,6 @@ function adjacency(edges: GEdge[]): Map<string, string[]> {
   return adj;
 }
 
-// BFS shortest path
-function bfsPath(adj: Map<string, string[]>, start: string, end: string): string[] | null {
-  const visited = new Set<string>();
-  const queue: { node: string; path: string[] }[] = [{ node: start, path: [start] }];
-  while (queue.length) {
-    const { node, path } = queue.shift()!;
-    if (node === end) return path;
-    if (visited.has(node)) continue;
-    visited.add(node);
-    for (const next of adj.get(node) ?? []) {
-      if (!visited.has(next)) queue.push({ node: next, path: [...path, next] });
-    }
-  }
-  return null;
-}
-
 // BFS reachability (blast radius)
 function bfsReach(adj: Map<string, string[]>, start: string): Map<string, number> {
   const dist = new Map<string, number>();
@@ -252,10 +236,6 @@ function edgesForPath(nodeIds: string[], edges: GEdge[]) {
 
 const { nodes: NODES, edges: EDGES } = buildDemoGraph();
 const ADJ = adjacency(EDGES);
-
-// Pre-compute attack paths
-const INTERNET_EXPOSED_IDS = NODES.filter((n) => n.internetExposed && n.type === "Asset").map((n) => n.id);
-const TARGET_IDS = ["da-target", "dc01"];
 
 function buildAttackPaths(): AttackPath[] {
   const paths: AttackPath[] = [];
@@ -361,8 +341,25 @@ export const graphStore = {
     cypherExamples: string[];
   } {
     return {
-      nodes: NODES.map(({ properties: _p, ...n }) => n),
-      edges: EDGES.map(({ id: _id, ...e }) => e),
+      nodes: NODES.map((n) => ({
+        id: n.id,
+        label: n.label,
+        type: n.type,
+        criticality: n.criticality,
+        compromised: n.compromised,
+        internetExposed: n.internetExposed,
+        zone: n.zone,
+        x: n.x,
+        y: n.y,
+      })),
+      edges: EDGES.map((e) => ({
+        source: e.source,
+        target: e.target,
+        relation: e.relation,
+        technique: e.technique,
+        weight: e.weight,
+        exploited: e.exploited,
+      })),
       paths: ATTACK_PATHS.map(({ id, hops, riskScore, highlighted }) => ({ id, hops, riskScore, highlighted })),
       // Cypher indexing strategy for large graphs (>10k nodes)
       indexingStrategy: [

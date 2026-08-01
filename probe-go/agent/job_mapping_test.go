@@ -41,7 +41,7 @@ func TestMapToJobResolvesCanonicalUseCases(t *testing.T) {
 		{"uc_ot_passive", "passive_discovery", "ot", true},
 		{"uc_ai_endpoint_sweep", "mcp_discovery", "it", false},
 		{"uc_rescan_delta", "assessment", "it", true},
-		{"uc_iot_device_survey", "discovery", "iot", true},
+		{"uc_iot_device_survey", "service_fingerprint", "iot", true},
 		{"uc_web_app_triage", "web_scan", "it", true},
 		{"uc_udp_service_exposure", "udp_scan", "it", true},
 		{"uc_snmp_exposure", "snmp_scan", "it", false},

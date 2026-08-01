@@ -1,378 +1,328 @@
 "use client";
 
 import React, { useState } from "react";
+import Link from "next/link";
+import { useQuery } from "@tanstack/react-query";
 import {
-  Mail, MessageCircle, ExternalLink, Save, CheckCircle,
-  Bell, Shield, User, Globe, Eye, EyeOff, RefreshCw,
+  Bell, Bot, CheckCircle2, Cloud, Database, ExternalLink, FileKey2,
+  Globe2, KeyRound, LockKeyhole, Mail, MessageCircle, Server, Settings2,
+  ShieldCheck, SlidersHorizontal, TriangleAlert, Users,
 } from "lucide-react";
 import { PageShell } from "../../components/PageShell";
-import { useToast } from "../../hooks/useToast";
+import { fetchJson } from "../../lib/fetcher";
 
-/* ─── Types ─── */
-interface EnvSetting { key: string; label: string; type?: "password" | "number"; placeholder: string; description: string; }
+interface AiStatus {
+  provider: "ollama" | "openrouter" | "anthropic";
+  model: string;
+  configured: boolean;
+  privacy: "local" | "cloud";
+  reason?: string;
+}
 
-/* ─── Sections ─── */
-const EMAIL_FIELDS: EnvSetting[] = [
-  { key: "SMTP_HOST",  label: "SMTP Host",    placeholder: "smtp.gmail.com",      description: "Outbound mail server hostname" },
-  { key: "SMTP_PORT",  label: "SMTP Port",    type: "number", placeholder: "587", description: "587 for STARTTLS, 465 for SSL" },
-  { key: "SMTP_USER",  label: "SMTP User",    placeholder: "alerts@corp.com",     description: "Auth username for the SMTP server" },
-  { key: "SMTP_PASS",  label: "SMTP Password",type: "password", placeholder: "••••••••", description: "Auth password — stored in .env.local only" },
-  { key: "SMTP_FROM",  label: "From Address", placeholder: "vedha@corp.com",    description: "The From: header on outbound emails" },
-  { key: "SMTP_TO",    label: "Alert Recipients", placeholder: "sec-team@corp.com", description: "Comma-separated list of notification recipients" },
-];
+interface DeploymentStatus {
+  checkedAt: string;
+  environment: "production" | "development";
+  apiReachable: boolean;
+  cookieSecure: boolean;
+  integrations: Record<"email" | "slack" | "jira", { configured: boolean; missing: string[] }>;
+}
 
-const SLACK_FIELDS: EnvSetting[] = [
-  { key: "SLACK_WEBHOOK_URL", label: "Webhook URL", type: "password", placeholder: "https://hooks.slack.com/services/...", description: "Incoming webhook URL from Slack app settings" },
-];
+interface ConfigField {
+  key: string;
+  label: string;
+  purpose: string;
+  example: string;
+  required?: boolean;
+  secret?: boolean;
+}
 
-const JIRA_FIELDS: EnvSetting[] = [
-  { key: "JIRA_URL",         label: "Jira Base URL",    placeholder: "https://org.atlassian.net",  description: "Your Jira Cloud or Server base URL" },
-  { key: "JIRA_EMAIL",       label: "Jira Email",       placeholder: "admin@corp.com",             description: "Jira user email for API auth" },
-  { key: "JIRA_API_TOKEN",   label: "API Token",        type: "password", placeholder: "••••••••", description: "Generate at id.atlassian.com/manage-profile/security" },
-  { key: "JIRA_PROJECT_KEY", label: "Project Key",      placeholder: "SEC",                        description: "Jira project key where issues will be created" },
-];
-
-/* ─── SLA Policy ─── */
-const SLA_POLICY = [
-  { severity: "CRITICAL", hours: 24,  escalate: "12h",  color: "#FF1744" },
-  { severity: "HIGH",     hours: 72,  escalate: "24h",  color: "#FF6D00" },
-  { severity: "MEDIUM",   hours: 168, escalate: "48h",  color: "#FFD600" },
-  { severity: "LOW",      hours: 720, escalate: "7d",   color: "#00E676" },
-];
-
-/* ─── Notification Rules ─── */
-const DEFAULT_RULES = {
-  onNewCritical:  true,
-  onNewHigh:      true,
-  onNewMedium:    false,
-  onSlaBreach:    true,
-  onCaseClose:    true,
-  onStatusChange: false,
+const INTEGRATIONS: Record<string, { title: string; note: string; fields: ConfigField[] }> = {
+  email: {
+    title: "Email delivery",
+    note: "Used for finding, SLA, and report workflow notifications. STARTTLS on port 587 is the recommended baseline.",
+    fields: [
+      { key: "SMTP_HOST", label: "Server hostname", purpose: "Resolvable outbound SMTP host.", example: "smtp.company.com", required: true },
+      { key: "SMTP_PORT", label: "Transport port", purpose: "587 for STARTTLS; 465 only for implicit TLS.", example: "587", required: true },
+      { key: "SMTP_USER", label: "Service identity", purpose: "Dedicated least-privilege mail account.", example: "vedha-alerts@company.com", required: true },
+      { key: "SMTP_PASS", label: "Service password", purpose: "Store only in the deployment secret manager.", example: "Secret value", required: true, secret: true },
+      { key: "SMTP_FROM", label: "Sender address", purpose: "Visible From address; align it with SPF/DKIM policy.", example: "vedha@company.com", required: true },
+      { key: "SMTP_TO", label: "Default recipients", purpose: "Comma-separated security distribution list.", example: "security@company.com" },
+    ],
+  },
+  slack: {
+    title: "Slack notifications",
+    note: "Use a dedicated incoming webhook restricted to one incident or security channel. Rotate it if disclosed.",
+    fields: [
+      { key: "SLACK_WEBHOOK_URL", label: "Incoming webhook", purpose: "Secret delivery endpoint for configured notification events.", example: "Secret value", required: true, secret: true },
+    ],
+  },
+  jira: {
+    title: "Jira issue workflow",
+    note: "Use a dedicated service account with permission to create and update issues only in the security project.",
+    fields: [
+      { key: "JIRA_URL", label: "Base URL", purpose: "Jira Cloud or Server origin; HTTPS required in production.", example: "https://company.atlassian.net", required: true },
+      { key: "JIRA_EMAIL", label: "Service account", purpose: "Identity associated with the Jira API token.", example: "vedha-bot@company.com", required: true },
+      { key: "JIRA_API_TOKEN", label: "API token", purpose: "Secret token; never place it in a browser field or source control.", example: "Secret value", required: true, secret: true },
+      { key: "JIRA_PROJECT_KEY", label: "Project key", purpose: "Destination project for generated remediation tickets.", example: "SEC", required: true },
+    ],
+  },
 };
 
-/* ─── Section Header ─── */
-function SectionHeader({ icon, label, badge }: { icon: React.ElementType; label: string; badge?: string }) {
-  const Icon = icon;
+const SLA_POLICY = [
+  { severity: "CRITICAL", window: "24 hours", escalation: "12 hours remaining", color: "var(--sev-critical-color)", intent: "Immediate owner assignment and executive visibility" },
+  { severity: "HIGH", window: "72 hours", escalation: "24 hours remaining", color: "var(--sev-high-color)", intent: "Prioritized remediation in the active sprint" },
+  { severity: "MEDIUM", window: "7 days", escalation: "48 hours remaining", color: "var(--sev-medium-color)", intent: "Planned remediation with risk acceptance if deferred" },
+  { severity: "LOW", window: "30 days", escalation: "7 days remaining", color: "var(--sev-low-color)", intent: "Routine hardening and hygiene backlog" },
+];
+
+function SectionTitle({ icon: Icon, title, detail, badge }: {
+  icon: React.ElementType; title: string; detail: string; badge?: string;
+}) {
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 16 }}>
-      <div className="settings-section-icon">
-        <Icon size={16} color="var(--accent)" />
-      </div>
-      <span style={{ fontFamily: "var(--font-body)", fontSize: 13, fontWeight: 700, color: "var(--text-primary)" }}>{label}</span>
-      {badge && (
-        <span className="badge badge-info">
-          {badge}
-        </span>
-      )}
+    <header className="settings-content-heading">
+      <span><Icon size={18} /></span>
+      <div><h2>{title}</h2><p>{detail}</p></div>
+      {badge && <span className="badge badge-info">{badge}</span>}
+    </header>
+  );
+}
+
+function ReadOnlyNotice() {
+  return (
+    <div className="settings-security-notice">
+      <LockKeyhole size={15} />
+      <div><strong>Server-managed configuration</strong><span>Values are read from deployment environment or secret storage. Vedha never sends secret values to this page.</span></div>
     </div>
   );
 }
 
-/* ─── Integration Field Group ─── */
-function IntegrationFields({ fields }: { fields: EnvSetting[] }) {
-  const [visible, setVisible] = useState<Record<string, boolean>>({});
-  const [vals, setVals] = useState<Record<string, string>>({});
+function AiRuntimeSection() {
+  const query = useQuery({
+    queryKey: ["ai-status"],
+    queryFn: () => fetchJson<AiStatus>("/api/ai/status"),
+    refetchInterval: 30_000,
+  });
+  const runtime = query.data;
 
   return (
-    <div className="settings-field-grid">
-      {fields.map((f) => (
-        <div key={f.key}>
-          <label className="settings-field-label">{f.label}</label>
-          <div style={{ position: "relative" }}>
-            <input
-              className="input-base"
-              type={f.type === "password" && !visible[f.key] ? "password" : "text"}
-              placeholder={f.placeholder}
-              value={vals[f.key] ?? ""}
-              onChange={(e) => setVals((p) => ({ ...p, [f.key]: e.target.value }))}
-              style={{
-                fontFamily: "var(--font-mono)",
-                fontSize: 11,
-                paddingRight: f.type === "password" ? 36 : 12,
-              }}
-            />
-            {f.type === "password" && (
-              <button
-                onClick={() => setVisible((p) => ({ ...p, [f.key]: !p[f.key] }))}
-                style={{ position: "absolute", right: 10, top: "50%", transform: "translateY(-50%)", background: "none", border: "none", cursor: "pointer", color: "var(--text-muted)" }}
-              >
-                {visible[f.key] ? <EyeOff size={13} /> : <Eye size={13} />}
-              </button>
-            )}
-          </div>
-          <div className="settings-field-help">{f.description}</div>
+    <div className="settings-panel animate-slide-in">
+      <SectionTitle icon={Bot} title="AI runtime" detail="Manager owns model execution, prompt policy, and provider credentials." badge="Manager only" />
+      <ReadOnlyNotice />
+
+      <div className="settings-runtime-hero" data-ready={runtime?.configured ?? false}>
+        <span>{runtime?.privacy === "cloud" ? <Cloud size={21} /> : <Server size={21} />}</span>
+        <div>
+          <small>Effective runtime</small>
+          <strong>{runtime ? `${runtime.provider.toUpperCase()} · ${runtime.model}` : "Checking configuration…"}</strong>
+          <p>{runtime?.privacy === "local" ? "Prompts stay on the configured Ollama host." : "Prompts are sent to the configured cloud model provider."}</p>
         </div>
-      ))}
+        <span className={`badge ${runtime?.configured ? "badge-success" : "badge-high"}`}>{runtime?.configured ? "Available" : "Action needed"}</span>
+      </div>
+
+      {runtime?.reason && <div className="settings-warning"><TriangleAlert size={14} /> {runtime.reason}</div>}
+
+      <div className="settings-provider-grid">
+        <article data-active={runtime?.provider === "ollama"}>
+          <header><Server size={17} /><div><strong>Ollama</strong><small>Default · local · no API fee</small></div></header>
+          <p>Best for private deployments and predictable cost. Run Ollama where the Manager API can reach it.</p>
+          <dl>
+            <div><dt>Provider</dt><dd>LLM_PROVIDER=ollama</dd></div>
+            <div><dt>Endpoint</dt><dd>OLLAMA_BASE_URL</dd></div>
+            <div><dt>Model</dt><dd>OLLAMA_MODEL</dd></div>
+          </dl>
+        </article>
+        <article data-active={runtime?.provider === "openrouter"}>
+          <header><Cloud size={17} /><div><strong>OpenRouter</strong><small>Cloud · free router available</small></div></header>
+          <p>Use <code>openrouter/free</code> for zero-cost experimentation, subject to provider rate limits and data-handling terms.</p>
+          <dl>
+            <div><dt>Provider</dt><dd>LLM_PROVIDER=openrouter</dd></div>
+            <div><dt>Secret</dt><dd>OPENROUTER_API_KEY</dd></div>
+            <div><dt>Free model</dt><dd>OPENROUTER_MODEL=openrouter/free</dd></div>
+          </dl>
+        </article>
+        <article data-active={runtime?.provider === "anthropic"}>
+          <header><Bot size={17} /><div><strong>Anthropic</strong><small>Backward compatible</small></div></header>
+          <p>Retained for existing deployments. Provider credentials remain server-only.</p>
+          <dl>
+            <div><dt>Provider</dt><dd>LLM_PROVIDER=anthropic</dd></div>
+            <div><dt>Secret</dt><dd>ANTHROPIC_API_KEY</dd></div>
+            <div><dt>Model</dt><dd>LLM_MODEL</dd></div>
+          </dl>
+        </article>
+      </div>
+
+      <div className="settings-decision-note">
+        <ShieldCheck size={16} />
+        <div><strong>Recommended production default</strong><p>Use Ollama when engagement evidence cannot leave your network. Use OpenRouter only after reviewing the selected model&apos;s data retention, region, and contractual controls.</p></div>
+      </div>
     </div>
   );
 }
 
-/* ─── Test Button ─── */
-function TestButton({ label, color, onTest }: { label: string; color: string; onTest: () => void }) {
-  const [state, setState] = useState<"idle" | "testing" | "ok" | "fail">("idle");
-
-  const run = async () => {
-    setState("testing");
-    await new Promise((r) => setTimeout(r, 1200));
-    setState("ok");
-    setTimeout(() => setState("idle"), 3000);
-    onTest();
-  };
-
+function AccessSection({ status }: { status?: DeploymentStatus }) {
+  const rows = [
+    { icon: Users, title: "Role-based access", status: "Manager enforced", detail: "Admin, manager, tester, and analyst permissions are checked by the FastAPI resource routes." },
+    { icon: KeyRound, title: "Interactive sessions", status: "JWT access + refresh", detail: "Browser requests use the Manager-issued access token; refresh material should be rotated and short-lived." },
+    { icon: FileKey2, title: "Personal access tokens", status: "Available through API", detail: "Use PATs for probes and automation. Grant only required scopes, set expiry, and revoke unused tokens." },
+    { icon: Database, title: "Tenant isolation", status: "Resource scoped", detail: "Findings are authorized through their parent engagement and tenant boundary." },
+  ];
   return (
-    <button
-      onClick={run}
-      disabled={state === "testing"}
-      style={{
-        display: "flex", alignItems: "center", gap: 6,
-        padding: "7px 14px", borderRadius: 4, cursor: state === "testing" ? "wait" : "pointer",
-        border: `1px solid ${color}50`, background: `${color}10`, color,
-        fontFamily: "'JetBrains Mono', monospace", fontSize: 10,
-        opacity: state === "testing" ? 0.7 : 1,
-      }}
-    >
-      {state === "testing" ? <RefreshCw size={12} className="animate-spin" /> : state === "ok" ? <CheckCircle size={12} /> : null}
-      {state === "testing" ? "Testing..." : state === "ok" ? "Connected!" : label}
-    </button>
-  );
-}
-
-/* ─── Toggle ─── */
-function Toggle({ on, onChange }: { on: boolean; onChange: (v: boolean) => void }) {
-  return (
-    <div
-      onClick={() => onChange(!on)}
-      style={{
-        width: 36, height: 20, borderRadius: 10, cursor: "pointer",
-        background: on ? "var(--accent)" : "var(--bg-active)",
-        position: "relative", transition: "background 0.2s ease", flexShrink: 0,
-      }}
-    >
-      <div style={{
-        width: 14, height: 14, borderRadius: "50%", background: "#fff",
-        position: "absolute", top: 3, left: on ? 19 : 3,
-        transition: "left 0.2s ease", boxShadow: "0 1px 3px rgba(0,0,0,0.4)",
-      }} />
+    <div className="settings-panel animate-slide-in">
+      <SectionTitle icon={ShieldCheck} title="Access and security" detail="Authentication boundaries, automation credentials, and tenant isolation." />
+      <div className="settings-readiness-grid">
+        <article data-ready={status?.apiReachable ?? false}><Server size={16} /><div><small>Manager API</small><strong>{status?.apiReachable ? "Reachable" : "Unavailable"}</strong></div></article>
+        <article data-ready={status?.cookieSecure ?? false}><LockKeyhole size={16} /><div><small>Secure session cookie</small><strong>{status?.cookieSecure ? "Enforced" : "Disabled"}</strong></div></article>
+        <article data-ready={status?.environment === "production"}><Cloud size={16} /><div><small>Runtime mode</small><strong>{status?.environment ?? "Checking…"}</strong></div></article>
+      </div>
+      {status && !status.cookieSecure && (
+        <div className="settings-warning"><TriangleAlert size={14} /> AUTH_COOKIE_SECURE is disabled. This is acceptable only for local HTTP development; enable it for every HTTPS deployment.</div>
+      )}
+      <div className="settings-access-list">
+        {rows.map(({ icon: Icon, title, status, detail }) => (
+          <article key={title}><span><Icon size={16} /></span><div><header><strong>{title}</strong><span>{status}</span></header><p>{detail}</p></div></article>
+        ))}
+      </div>
+      <div className="settings-decision-note">
+        <KeyRound size={16} />
+        <div><strong>Credential hygiene</strong><p>Never reuse administrator passwords for probes. Create a scoped PAT per probe, record its owner and expiry, and rotate it when a probe is rebuilt or transferred.</p></div>
+      </div>
     </div>
   );
 }
 
-/* ─── Main Page ─── */
+function IntegrationSection({ kind, status }: { kind: keyof typeof INTEGRATIONS; status?: DeploymentStatus }) {
+  const integration = INTEGRATIONS[kind];
+  const Icon = kind === "email" ? Mail : kind === "slack" ? MessageCircle : ExternalLink;
+  const readiness = status?.integrations[kind];
+  return (
+    <div className="settings-panel animate-slide-in">
+      <SectionTitle
+        icon={Icon}
+        title={integration.title}
+        detail={integration.note}
+        badge={readiness?.configured ? "Configured" : "Needs setup"}
+      />
+      <ReadOnlyNotice />
+      <div className="settings-integration-status" data-ready={readiness?.configured ?? false}>
+        {readiness?.configured ? <CheckCircle2 size={16} /> : <TriangleAlert size={16} />}
+        <div>
+          <strong>{readiness?.configured ? "Required environment fields are present" : "Configuration is incomplete"}</strong>
+          <span>{readiness
+            ? readiness.configured
+              ? "Secret values remain server-side and are not exposed here."
+              : `Missing: ${readiness.missing.join(", ")}`
+            : "Checking server configuration…"}</span>
+        </div>
+      </div>
+      <div className="settings-field-table">
+        <div className="settings-field-table-head"><span>Field</span><span>Operational meaning</span><span>Expected value</span></div>
+        {integration.fields.map((field) => (
+          <div className="settings-field-row" key={field.key}>
+            <div><strong>{field.label}</strong><code>{field.key}</code></div>
+            <p>{field.purpose}</p>
+            <div><span>{field.secret ? <><LockKeyhole size={11} /> Secret</> : field.example}</span>{field.required && <small>Required</small>}</div>
+          </div>
+        ))}
+      </div>
+      <div className="settings-warning"><TriangleAlert size={14} /> Presence is verified, but delivery testing remains unavailable until a Manager-side integration API and audited test event are implemented.</div>
+    </div>
+  );
+}
+
+function SlaSection() {
+  return (
+    <div className="settings-panel animate-slide-in">
+      <SectionTitle icon={SlidersHorizontal} title="SLA and risk policy" detail="Current remediation windows and the operational intent behind each threshold." badge="Policy" />
+      <div className="settings-sla-list">
+        {SLA_POLICY.map((row) => (
+          <article key={row.severity} style={{ "--severity": row.color } as React.CSSProperties}>
+            <span /><div><strong>{row.severity}</strong><p>{row.intent}</p></div>
+            <dl><div><dt>Remediation window</dt><dd>{row.window}</dd></div><div><dt>Escalate at</dt><dd>{row.escalation}</dd></div></dl>
+          </article>
+        ))}
+      </div>
+      <div className="settings-decision-note"><ShieldCheck size={16} /><div><strong>Policy ownership</strong><p>Changes should be versioned, approved by the risk owner, and applied through backend policy configuration so dashboard, finding detail, and notifications remain consistent.</p></div></div>
+    </div>
+  );
+}
+
+function NotificationsSection() {
+  const rules = [
+    ["Critical finding opened", "Immediate", "Email + Slack", true],
+    ["High finding opened", "Near real-time", "Slack", true],
+    ["SLA enters at-risk state", "At threshold", "Email + Slack", true],
+    ["Finding status changed", "Digest", "Email", false],
+    ["Report approved", "Immediate", "Email", true],
+  ] as const;
+  return (
+    <div className="settings-panel animate-slide-in">
+      <SectionTitle icon={Bell} title="Notification policy" detail="Effective default routing. Persistence and audited editing are not yet available." badge="Read only" />
+      <div className="settings-notification-list">
+        {rules.map(([event, cadence, channel, enabled]) => (
+          <article key={event}>
+            <span className="settings-rule-icon" data-enabled={enabled}>{enabled ? <CheckCircle2 size={15} /> : <Bell size={15} />}</span>
+            <div><strong>{event}</strong><small>{cadence} · {channel}</small></div>
+            <span className={`badge ${enabled ? "badge-success" : "badge-info"}`}>{enabled ? "Enabled" : "Disabled"}</span>
+          </article>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 export default function SettingsPage() {
-  const { success } = useToast();
-  const [rules, setRules] = useState(DEFAULT_RULES);
-  const [engagementName, setEngagementName] = useState("CORP.LOCAL Internal VAPT");
-  const [clientName, setClientName] = useState("ACME Corp");
-  const [assessorName, setAssessorName] = useState("Rutik Mangale");
-  const [activeSection, setActiveSection] = useState<string>("engagement");
-
+  const [section, setSection] = useState("ai");
+  const statusQuery = useQuery({
+    queryKey: ["settings-status"],
+    queryFn: () => fetchJson<DeploymentStatus>("/api/settings/status"),
+    refetchInterval: 30_000,
+  });
+  const deployment = statusQuery.data;
   const sections = [
-    { key: "engagement", label: "Engagement",    icon: Globe },
-    { key: "email",      label: "Email / SMTP",  icon: Mail },
-    { key: "slack",      label: "Slack",          icon: MessageCircle },
-    { key: "jira",       label: "Jira",           icon: ExternalLink },
-    { key: "sla",        label: "SLA Policy",     icon: Shield },
-    { key: "notify",     label: "Notifications",  icon: Bell },
+    { key: "workspace", label: "Workspace", icon: Globe2 },
+    { key: "ai", label: "AI runtime", icon: Bot },
+    { key: "access", label: "Access & security", icon: ShieldCheck },
+    { key: "email", label: "Email", icon: Mail },
+    { key: "slack", label: "Slack", icon: MessageCircle },
+    { key: "jira", label: "Jira", icon: ExternalLink },
+    { key: "sla", label: "SLA policy", icon: SlidersHorizontal },
+    { key: "notifications", label: "Notifications", icon: Bell },
   ];
 
-  const save = () => success("Settings saved", "Configuration will take effect on next restart.");
-
   return (
-    <PageShell
-      title="Settings"
-      subtitle="Operations profile · Integrations · Alerts"
-      headerActions={
-        <button
-          className="btn btn-primary"
-          onClick={save}
-          style={{
-            height: 32,
-            fontSize: 11,
-          }}
-        >
-          <Save size={13} /> Save all
-        </button>
-      }
-    >
+    <PageShell title="Settings" subtitle="Deployment configuration, integrations, and policy guardrails">
       <div className="settings-layout">
-        {/* Left nav */}
+        <aside className="settings-nav">
+          <div className="settings-nav-heading"><Settings2 size={14} /> Configuration</div>
+          {sections.map(({ key, label, icon: Icon }) => (
+            <button key={key} className="settings-nav-button" data-active={section === key} onClick={() => setSection(key)}>
+              <Icon size={14} /><span>{label}</span>
+            </button>
+          ))}
+        </aside>
+
         <div>
-          <div className="settings-nav">
-            {sections.map((s) => {
-              const Icon = s.icon;
-              const active = activeSection === s.key;
-              return (
-                <button
-                  key={s.key}
-                  className="settings-nav-button"
-                  data-active={active}
-                  onClick={() => setActiveSection(s.key)}
-                >
-                  <Icon size={14} color={active ? "var(--accent)" : "currentColor"} />
-                  <span style={{ fontSize: 12, fontWeight: active ? 700 : 600 }}>
-                    {s.label}
-                  </span>
-                </button>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Right content */}
-        <div style={{ flex: 1, minWidth: 0 }}>
-
-          {/* ── Engagement ── */}
-          {activeSection === "engagement" && (
+          {section === "workspace" && (
             <div className="settings-panel animate-slide-in">
-              <SectionHeader icon={Globe} label="ENGAGEMENT METADATA" />
-              <div className="settings-field-grid">
-                {[
-                  { label: "Engagement Name", val: engagementName, set: setEngagementName, ph: "Q2 2026 Internal VAPT" },
-                  { label: "Client Name",      val: clientName,     set: setClientName,     ph: "ACME Corp" },
-                  { label: "Lead Assessor",    val: assessorName,   set: setAssessorName,   ph: "Security Engineer" },
-                ].map((f) => (
-                  <div key={f.label}>
-                    <label className="settings-field-label">{f.label}</label>
-                    <input
-                      className="input-base"
-                      value={f.val}
-                      onChange={(e) => f.set(e.target.value)}
-                      placeholder={f.ph}
-                    />
-                  </div>
-                ))}
+              <SectionTitle icon={Globe2} title="Workspace configuration" detail="Engagement-specific client, scope, and assessment settings." />
+              <div className="settings-workspace-card">
+                <span><Globe2 size={20} /></span>
+                <div><strong>Configuration belongs with each engagement</strong><p>Client identity, authorized targets, exclusions, assessment dates, owner, and tags are validated by the Manager API and edited inside the engagement workspace.</p></div>
+                <Link href="/engagements" className="btn btn-primary">Open engagements</Link>
               </div>
-              <div style={{ marginTop: 20 }}>
-                <label className="settings-field-label">SCOPE NETWORKS</label>
-                <textarea
-                  className="textarea-base"
-                  rows={3}
-                  placeholder="10.10.0.0/24, 10.10.10.0/24, 172.16.1.0/24"
-                />
+              <div className="settings-decision-note"><Database size={16} /><div><strong>Why this is separated</strong><p>Deployment settings control infrastructure; engagement settings control authorized testing scope. Keeping them separate reduces accidental cross-engagement changes.</p></div></div>
+              <div className="settings-readiness-grid">
+                <article data-ready={deployment?.apiReachable ?? false}><Server size={16} /><div><small>Manager API</small><strong>{deployment?.apiReachable ? "Reachable" : "Unavailable"}</strong></div></article>
+                <article data-ready={deployment?.cookieSecure ?? false}><LockKeyhole size={16} /><div><small>Secure cookie</small><strong>{deployment?.cookieSecure ? "Enforced" : "Local only"}</strong></div></article>
+                <article data-ready={Boolean(deployment)}><CheckCircle2 size={16} /><div><small>Last verified</small><strong>{deployment ? new Date(deployment.checkedAt).toLocaleTimeString() : "Checking…"}</strong></div></article>
               </div>
             </div>
           )}
-
-          {/* ── Email ── */}
-          {activeSection === "email" && (
-            <div className="settings-panel animate-slide-in">
-              <SectionHeader icon={Mail} label="EMAIL / SMTP CONFIGURATION" badge="SMTP" />
-              <div className="settings-note">
-                <p style={{ margin: 0 }}>
-                  Runtime values are sourced from <code style={{ color: "var(--accent)" }}>.env.local</code>; save updates before restart.
-                </p>
-              </div>
-              <IntegrationFields fields={EMAIL_FIELDS} />
-              <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
-                <TestButton label="Test Connection" color="#2563EB" onTest={() => success("SMTP Test", "Connection successful (preview mode).")} />
-                <TestButton label="Send Test Email" color="#059669" onTest={() => success("Test Email Sent", "Check your inbox for the test alert.")} />
-              </div>
-            </div>
-          )}
-
-          {/* ── Slack ── */}
-          {activeSection === "slack" && (
-            <div className="settings-panel animate-slide-in">
-              <SectionHeader icon={MessageCircle} label="SLACK INTEGRATION" badge="WEBHOOK" />
-              <div className="settings-note">
-                Store <code style={{ color: "var(--accent)" }}>SLACK_WEBHOOK_URL</code> in <code style={{ color: "var(--accent)" }}>.env.local</code>.
-              </div>
-              <IntegrationFields fields={SLACK_FIELDS} />
-              <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
-                <TestButton label="Send Test Message" color="#4F46E5" onTest={() => success("Slack Test", "Rich block message sent to channel (preview mode).")} />
-              </div>
-            </div>
-          )}
-
-          {/* ── Jira ── */}
-          {activeSection === "jira" && (
-            <div className="settings-panel animate-slide-in">
-              <SectionHeader icon={ExternalLink} label="JIRA INTEGRATION" badge="REST API v3" />
-              <div className="settings-note">
-                Escalated cases create issues in the configured Jira project.
-              </div>
-              <IntegrationFields fields={JIRA_FIELDS} />
-              <div style={{ display: "flex", gap: 10, marginTop: 20 }}>
-                <TestButton label="Test Jira Connection" color="#2196F3" onTest={() => success("Jira Test", "API authentication successful (preview mode).")} />
-              </div>
-            </div>
-          )}
-
-          {/* ── SLA Policy ── */}
-          {activeSection === "sla" && (
-            <div className="settings-panel animate-slide-in">
-              <SectionHeader icon={Shield} label="SLA POLICY CONFIGURATION" />
-              <div style={{ marginBottom: 16, fontFamily: "var(--font-body)", fontSize: 13, color: "var(--text-secondary)" }}>
-                SLA windows define the maximum time allowed to remediate findings by severity. Escalation triggers notification when the threshold is crossed.
-              </div>
-              <table style={{ width: "100%", borderCollapse: "collapse" }}>
-                <thead>
-                  <tr>
-                    {["SEVERITY", "SLA WINDOW", "ESCALATION TRIGGER", "COLOR"].map((h) => (
-                      <th key={h} style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-secondary)", padding: "8px 12px", textAlign: "left", borderBottom: "0.5px solid var(--border-subtle)" }}>
-                        {h}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {SLA_POLICY.map((row, i) => (
-                    <tr key={row.severity} style={{ borderBottom: i < SLA_POLICY.length - 1 ? "0.5px solid var(--border-subtle)" : "none" }}>
-                      <td style={{ padding: "12px 12px" }}>
-                        <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: row.color, background: `${row.color}15`, border: `1px solid ${row.color}30`, borderRadius: 4, padding: "2px 8px" }}>
-                          {row.severity}
-                        </span>
-                      </td>
-                      <td style={{ padding: "12px 12px", fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--text-primary)" }}>
-                        {row.hours}h
-                      </td>
-                      <td style={{ padding: "12px 12px", fontFamily: "var(--font-mono)", fontSize: 12, color: "var(--text-secondary)" }}>
-                        {row.escalate} remaining
-                      </td>
-                      <td style={{ padding: "12px 12px" }}>
-                        <div style={{ width: 20, height: 20, borderRadius: 4, background: row.color }} />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-              <div className="settings-note" style={{ marginTop: 16, marginBottom: 0 }}>
-                SLA windows are controlled by policy configuration.
-              </div>
-            </div>
-          )}
-
-          {/* ── Notifications ── */}
-          {activeSection === "notify" && (
-            <div className="settings-panel animate-slide-in">
-              <SectionHeader icon={Bell} label="NOTIFICATION RULES" />
-              <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-                {(Object.entries({
-                  onNewCritical:  { label: "New CRITICAL finding",   desc: "Trigger email + Slack when a CRITICAL finding is opened" },
-                  onNewHigh:      { label: "New HIGH finding",        desc: "Trigger Slack when a HIGH finding is opened" },
-                  onNewMedium:    { label: "New MEDIUM finding",      desc: "Silent by default — enable for high-noise environments" },
-                  onSlaBreach:    { label: "SLA breach",              desc: "Alert when any case crosses its SLA deadline" },
-                  onCaseClose:    { label: "Case closed",             desc: "Notify when a case is moved to CLOSED/VERIFIED" },
-                  onStatusChange: { label: "Any status change",       desc: "Verbose mode — notify on every case transition" },
-                }) as [keyof typeof rules, { label: string; desc: string }][]).map(([ruleKey, ruleMeta], i) => (
-                  <div
-                    key={ruleKey}
-                    style={{
-                      display: "flex", justifyContent: "space-between", alignItems: "center",
-                      padding: "14px 0",
-                      borderBottom: i < 5 ? "0.5px solid var(--border-subtle)" : "none",
-                    }}
-                  >
-                    <div>
-                      <div style={{ fontFamily: "var(--font-body)", fontSize: 14, fontWeight: 600, color: "var(--text-primary)" }}>{ruleMeta.label}</div>
-                      <div style={{ fontFamily: "var(--font-body)", fontSize: 12, color: "var(--text-muted)", marginTop: 2 }}>{ruleMeta.desc}</div>
-                    </div>
-                    <Toggle on={rules[ruleKey]} onChange={(v) => setRules((p) => ({ ...p, [ruleKey]: v }))} />
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
+          {section === "ai" && <AiRuntimeSection />}
+          {section === "access" && <AccessSection status={deployment} />}
+          {(section === "email" || section === "slack" || section === "jira") && <IntegrationSection kind={section} status={deployment} />}
+          {section === "sla" && <SlaSection />}
+          {section === "notifications" && <NotificationsSection />}
         </div>
       </div>
     </PageShell>

@@ -1,11 +1,11 @@
 {
   "schemaVersion": 1,
-  "worktreePath": "/Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Agentic VA Scanner",
-  "gitDir": "/Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Agentic VA Scanner/.git",
-  "commonGitDir": "/Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Agentic VA Scanner/.git",
+  "worktreePath": "/Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha",
+  "gitDir": "/Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha/.git",
+  "commonGitDir": "/Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha/.git",
   "firstSeenHead": "0557559df67e8c0dcff8a3478ef636be891e24c5",
-  "lastSeenHead": "2885afab48ed2cf48cc14de457e9730f9d14b08b",
-  "lastAnalyzedHead": "2885afab48ed2cf48cc14de457e9730f9d14b08b",
+  "lastSeenHead": "80b6dbcc5515152a76b93176716127f4f997f356",
+  "lastAnalyzedHead": "80b6dbcc5515152a76b93176716127f4f997f356",
   "createdAt": "2026-07-15T19:45:36.273Z",
-  "updatedAt": "2026-07-22T16:50:56.611Z"
+  "updatedAt": "2026-08-01T08:30:53.599Z"
 }

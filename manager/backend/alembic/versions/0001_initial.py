@@ -105,7 +105,7 @@ def upgrade() -> None:
         sa.Column("cvss_score",       sa.Numeric(4, 1), nullable=True),
         sa.Column("cvss_vector",      sa.String(200), nullable=True),
         sa.Column("epss_score",       sa.Numeric(5, 4), nullable=True),
-        sa.Column("risk_score",       sa.Numeric(5, 2), nullable=True),
+        sa.Column("risk_score",       sa.Numeric(6, 2), nullable=True),
         sa.Column("severity",         postgresql.ENUM("critical","high","medium","low","info", name="findingseverity", create_type=False), nullable=False),
         sa.Column("status",           postgresql.ENUM("open","confirmed","remediated","accepted","fp", name="findingstatus", create_type=False), nullable=False, server_default="open"),
         sa.Column("exploitable",      sa.Boolean, nullable=False, server_default="false"),

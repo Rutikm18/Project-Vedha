@@ -2,6 +2,8 @@
 #
 #   cp .env.docker.example .env
 #   docker compose up -d --build         # postgres + redis + migrate + api
+#   docker compose --profile ui --profile local-ai up -d --build
+#                                           # full product + free local model
 #   docker compose --profile graph up -d # also start Neo4j (attack-path graph)
 #   docker compose --profile probe up -d # also start a local probe (for testing)
 #
@@ -33,8 +35,21 @@ x-backend-env: &backend-env
   NEO4J_URI: bolt://neo4j:7687
   NEO4J_USER: ${NEO4J_USER:-neo4j}
   NEO4J_PASSWORD: ${NEO4J_PASSWORD:-vedha-neo4j}
+  # AI execution is Manager-only. Provider keys are never injected into the UI.
+  LLM_PROVIDER: ${LLM_PROVIDER:-ollama}
+  LLM_REQUEST_TIMEOUT_SECONDS: ${LLM_REQUEST_TIMEOUT_SECONDS:-180}
+  OLLAMA_BASE_URL: ${OLLAMA_BASE_URL:-http://host.docker.internal:11434}
+  OLLAMA_MODEL: ${OLLAMA_MODEL:-llama3.2:3b}
+  OPENROUTER_API_KEY: ${OPENROUTER_API_KEY:-}
+  OPENROUTER_MODEL: ${OPENROUTER_MODEL:-openrouter/free}
+  OPENROUTER_BASE_URL: ${OPENROUTER_BASE_URL:-https://openrouter.ai/api/v1}
+  OPENROUTER_SITE_URL: ${OPENROUTER_SITE_URL:-https://vedha.local}
+  OPENROUTER_APP_NAME: ${OPENROUTER_APP_NAME:-Vedha}
   ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
   LLM_MODEL: ${LLM_MODEL:-claude-sonnet-4-6}
+  OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+  OPENAI_MODEL: ${OPENAI_MODEL:-gpt-4o-mini}
+  OPENAI_BASE_URL: ${OPENAI_BASE_URL:-https://api.openai.com/v1}
   CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:3000,http://localhost:3001}
   # detection_engine (sibling project) is mounted into the api container and
   # imported from here — it runs on raw probe facts to produce CVE findings.
@@ -111,6 +126,8 @@ services:
     # — no runtime mount. The manager owns the vuln DB; the probe never sees it.
     ports:
       - "${API_PORT:-18080}:8000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       migrate:
         condition: service_completed_successfully
@@ -122,6 +139,35 @@ services:
       timeout: 5s
       retries: 5
     restart: unless-stopped
+
+  # Optional deployment-managed free/open-source runtime. The one-shot init
+  # service pulls the selected model into a persistent volume during deployment.
+  # Set OLLAMA_BASE_URL=http://ollama:11434 when enabling this profile.
+  ollama:
+    image: ollama/ollama:latest
+    profiles: ["local-ai"]
+    volumes:
+      - ollama_models:/root/.ollama
+    # Internal-only: Manager reaches Ollama over the Compose network.
+    healthcheck:
+      test: ["CMD", "ollama", "list"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+    restart: unless-stopped
+
+  ollama-model-init:
+    image: ollama/ollama:latest
+    profiles: ["local-ai"]
+    environment:
+      OLLAMA_HOST: http://ollama:11434
+    volumes:
+      - ollama_models:/root/.ollama
+    command: ["pull", "${OLLAMA_MODEL:-llama3.2:3b}"]
+    depends_on:
+      ollama:
+        condition: service_healthy
+    restart: "no"
 
   # Durable background worker — drains the transactional outbox (outbox_events)
   # and runs the detection pipeline off the request path. Shares the backend
@@ -154,19 +200,31 @@ services:
       OPERATOR_EMAIL: ${SEED_ADMIN_EMAIL:-admin@vedha.io}
       OPERATOR_PASSWORD: ${SEED_ADMIN_PASSWORD:-ChangeMe123!}
       PROBE_NAME: ${PROBE_NAME:-local-probe}
-      # capabilities auto-detected from the tools installed in the probe image
+      # Required execution ceiling and manager routing declaration. Empty is
+      # intentionally fail-closed: the probe exits until configured.
       PROBE_NETWORK_SEGMENTS: ${PROBE_NETWORK_SEGMENTS:-}
+      PROBE_MAX_TARGETS: ${PROBE_MAX_TARGETS:-4096}
+      PROBE_MAX_JOB_SECONDS: ${PROBE_MAX_JOB_SECONDS:-7200}
       LICENSE_ENFORCED: "false"   # container host-ID changes each restart; skip host-lock check
     volumes:
       - probestate:/var/lib/vedha-probe   # persist identity so restarts reuse the same agent
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 256
+    init: true
     depends_on:
       api:
         condition: service_healthy
     restart: unless-stopped
 
   # Centralized dashboard (Next.js). Talks to the API server-side via a BFF
-  # (BACKEND_INTERNAL_URL) — no CORS, single FastAPI JWT. Behind the `ui` profile
-  # because the Next build is heavy: `make full` brings it up with everything.
+  # (BACKEND_INTERNAL_URL) — no CORS, single FastAPI JWT. It never scans the
+  # network itself; every scan is dispatched through Manager to the Probe.
   frontend:
     build:
       context: ./manager/frontend
@@ -175,8 +233,11 @@ services:
     environment:
       BACKEND_INTERNAL_URL: http://api:8000
       AUTH_SECRET: ${JWT_SECRET:-change-me-at-least-32-chars-long!!}
+      AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-false}
       NEXT_TELEMETRY_DISABLED: "1"
       NODE_ENV: production
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     ports:
       - "${FRONTEND_PORT:-3000}:3000"
     depends_on:
@@ -188,3 +249,4 @@ volumes:
   pgdata:
   neo4jdata:
   probestate:
+  ollama_models:

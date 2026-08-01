@@ -62,7 +62,7 @@ export function toApiEngagementCreate(ui: any): any {
   const scope = normalizeList(ui.scopeCidrs);
   return {
     name: ui.name,
-    scope_cidrs: scope.length ? scope : ["0.0.0.0/32"],
+    scope_cidrs: scope,
     excluded_cidrs: normalizeList(ui.excludedCidrs),
     start_time: ui.startDate || null,
     end_time: ui.endDate || null,
@@ -86,8 +86,24 @@ const SEV_TO_UI: Record<string, string> = {
 const DETECTION_TO_UI: Record<string, string> = {
   detected: "COVERED", prevented: "COVERED", missed: "BLIND", unknown: "PARTIAL",
 };
+const FIND_STATUS_TO_UI: Record<string, string> = {
+  open: "OPEN",
+  confirmed: "CONFIRMED",
+  remediated: "REMEDIATED",
+  accepted: "ACCEPTED",
+  fp: "FALSE_POSITIVE",
+};
 function severityToPriority(sev: string): string {
   return sev === "CRITICAL" ? "P0" : sev === "HIGH" ? "P1" : sev === "MEDIUM" ? "P2" : "P3";
+}
+
+function evidenceToUi(value: unknown): Array<{ label: string; content: string }> {
+  if (Array.isArray(value)) return value;
+  if (!value || typeof value !== "object") return [];
+  return Object.entries(value as Record<string, unknown>).map(([label, content]) => ({
+    label,
+    content: typeof content === "string" ? content : JSON.stringify(content),
+  }));
 }
 
 // FastAPI Finding → the UI's rich Finding shape. Real backend fields are mapped;
@@ -97,7 +113,9 @@ export function toUiFinding(api: any): any {
   const severity = SEV_TO_UI[api.severity] ?? "INFO";
   const cvss = api.cvss_score != null ? Number(api.cvss_score) : 0;
   const epss = api.epss_score != null ? Number(api.epss_score) : 0;
-  const risk = api.risk_score != null ? Number(api.risk_score) : cvss * 10;
+  // The backend composite risk contract is 0–1000. If enrichment has not run,
+  // normalize CVSS (0–10) onto that same display scale.
+  const risk = api.risk_score != null ? Number(api.risk_score) : cvss * 100;
   return {
     id: api.id,
     title: api.title ?? "Untitled finding",
@@ -105,14 +123,15 @@ export function toUiFinding(api: any): any {
     cvss: api.cvss_score != null ? String(api.cvss_score) : "—",
     cvssVector: api.cvss_vector ?? "",
     category: api.category ?? api.finding_type ?? "General",
-    status: (api.status ?? "open").toUpperCase(),
+    status: FIND_STATUS_TO_UI[String(api.status ?? "open").toLowerCase()] ?? "OPEN",
     affectedHost: api.affected_host ?? api.asset_ip ?? api.asset_id ?? "—",
     discoveredAt: api.created_at ?? api.discovered_at ?? new Date().toISOString(),
     description: api.description ?? "",
     technicalDetails: api.technical_details ?? "",
     attackPath: api.attack_path ?? "",
-    evidence: Array.isArray(api.evidence) ? api.evidence : [],
+    evidence: evidenceToUi(api.evidence),
     impact: api.impact ?? "",
+    businessImpact: api.business_impact ?? "",
     remediation: api.remediation ? [api.remediation] : [],
     compliance: Array.isArray(api.compliance) ? api.compliance : [],
     mitre: (api.mitre_techniques ?? []).map((m: any) =>
@@ -125,14 +144,18 @@ export function toUiFinding(api: any): any {
     },
     epssScore: epss,
     epssPercentile: api.epss_percentile ?? 0,
+    epssRecorded: api.epss_score != null,
     kevListed: api.kev_listed ?? false,
+    kevStatusRecorded: api.kev_listed != null,
     kevDateAdded: api.kev_date_added ?? undefined,
     exploitMaturity: api.exploit_maturity ?? "THEORETICAL",
+    exploitMaturityRecorded: api.exploit_maturity != null,
     pocAvailable: api.poc_available ?? false,
-    activelyExploited: api.actively_exploited ?? api.kev_listed ?? false,
+    activelyExploited: api.actively_exploited ?? api.exploit_validated ?? api.kev_listed ?? false,
     detectionCoverage: DETECTION_TO_UI[api.detection_status] ?? "PARTIAL",
     detectionNote: api.detection_note ?? undefined,
     fpProbability: api.fp_probability ?? 0,
+    fpProbabilityRecorded: api.fp_probability != null,
     relatedFindings: api.related_findings ?? [],
     killChain: Array.isArray(api.kill_chain) ? api.kill_chain : [],
     assignee: api.assignee ?? undefined,

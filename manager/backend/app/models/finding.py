@@ -28,7 +28,9 @@ class Finding(Base, TimestampMixin):
     cvss_score: Mapped[Decimal | None] = mapped_column(Numeric(4, 1), nullable=True)
     cvss_vector: Mapped[str | None] = mapped_column(String(200), nullable=True)
     epss_score: Mapped[Decimal | None] = mapped_column(Numeric(5, 4), nullable=True)
-    risk_score: Mapped[Decimal | None] = mapped_column(Numeric(5, 2), nullable=True)
+    # Composite risk is scored on 0–1000. Numeric(6, 2) is required to persist
+    # the valid maximum 1000.00; Numeric(5, 2) overflowed at 999.99.
+    risk_score: Mapped[Decimal | None] = mapped_column(Numeric(6, 2), nullable=True)
     severity: Mapped[FindingSeverity] = mapped_column(
         Enum(FindingSeverity, name="findingseverity"), nullable=False, index=True
     )

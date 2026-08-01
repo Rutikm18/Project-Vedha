@@ -1,14 +1,14 @@
 """
 agent_ws.py — WebSocket endpoint for probe push connectivity.
 
-Probes connect via wss://manager/agents/ws?token=<JWT>, and the manager
+Probes connect via wss://manager/agents/ws with an Authorization header, and the manager
 pushes scan jobs directly over this persistent connection instead of the
 probe polling HTTP every 10s. The probe also sends heartbeats and submits
 results over the same WebSocket.
 
 Architecture:
   - /agents/ws  — WebSocket endpoint (mounted under /agents prefix)
-  - Auth via JWT in query param (validated on connect, role must be "agent")
+  - Auth via Bearer JWT header (validated on connect, role must be "agent")
   - Heartbeats, result submission, and job acks use JSON frames
   - Manager pushes jobs as {type: "job_push", job: {...}} frames
   - Result processing is identical to the HTTP path (shared helper)
@@ -23,7 +23,7 @@ import uuid
 from datetime import datetime, timedelta, timezone
 
 import structlog
-from fastapi import APIRouter, Query, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, WebSocket, WebSocketDisconnect
 from sqlalchemy import select, update
 
 from app.auth.jwt import decode_token
@@ -36,6 +36,12 @@ from app.websocket.manager import agent_ws_manager
 
 logger = structlog.get_logger()
 router = APIRouter(prefix="/agents", tags=["agent-websocket"])
+
+
+def _agent_token_from_websocket(websocket: WebSocket) -> str:
+    """Read an agent bearer token exclusively from the non-logged auth header."""
+    authorization = websocket.headers.get("authorization", "")
+    return authorization[7:].strip() if authorization.lower().startswith("bearer ") else ""
 
 
 async def _claim_pushed_job(
@@ -121,11 +127,14 @@ async def _claim_pushed_job(
 # ── WebSocket endpoint ────────────────────────────────────────────────────────
 
 @router.websocket("/ws")
-async def agent_websocket_endpoint(websocket: WebSocket, token: str = Query(...)):
+async def agent_websocket_endpoint(websocket: WebSocket):
     """Persistent WebSocket for probe → manager push communication.
 
-    Query params:
-        token: JWT access token (role must be "agent").
+    Authentication:
+        Authorization: Bearer <agent JWT>
+
+    Query-string credentials are intentionally rejected so access logs and
+    proxy traces cannot capture an agent token.
 
     Protocol (JSON frames):
 
@@ -144,6 +153,11 @@ async def agent_websocket_endpoint(websocket: WebSocket, token: str = Query(...)
         {"type":"result_ack","job_id":"..."}
     """
     # ── Validate token ────────────────────────────────────────────────────
+    token = _agent_token_from_websocket(websocket)
+    if not token:
+        await websocket.close(code=4001, reason="Missing agent token")
+        return
+
     try:
         payload = decode_token(token)
     except Exception as exc:

@@ -1,7 +1,7 @@
 import { Command }              from 'commander';
 import {
   installAll, installTool, removeTool, listStatus,
-  managedPath, isManaged, getInstalledRecord,
+  managedPath, isManaged,
 }                                  from '../../lib/tools/installer';
 import { TOOL_MANIFEST }           from '../../lib/tools/manifest';
 
@@ -100,10 +100,9 @@ export function buildToolsCommand(): Command {
       }
 
       // Install all
-      let currentTool = '';
       const stop = showSpinner('Preparing');
       const result = await installAll({
-        onTool:     (t) => { currentTool = t.id; stop(); ln(`  ${C.cyan}▶${C.reset} ${t.id} ${C.dim}${t.version}${C.reset}`); },
+        onTool:     (t) => { stop(); ln(`  ${C.cyan}▶${C.reset} ${t.id} ${C.dim}${t.version}${C.reset}`); },
         onPhase:    (phase) => {
           if (phase === 'download') process.stdout.write(`    ${C.dim}downloading…${C.reset} `);
           if (phase === 'verify')   process.stdout.write(`${C.dim}verifying… ${C.reset}`);

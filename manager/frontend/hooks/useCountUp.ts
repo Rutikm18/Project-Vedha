@@ -5,7 +5,7 @@ export function useCountUp(target: number, duration = 1000, delay = 0): number {
   const rafRef = useRef<number>(0);
 
   useEffect(() => {
-    if (target === 0) { setCount(0); return; }
+    if (target === 0) return;
     let startTime: number | null = null;
 
     const step = (timestamp: number) => {
@@ -23,5 +23,5 @@ export function useCountUp(target: number, duration = 1000, delay = 0): number {
     return () => cancelAnimationFrame(rafRef.current);
   }, [target, duration, delay]);
 
-  return count;
+  return target === 0 ? 0 : count;
 }

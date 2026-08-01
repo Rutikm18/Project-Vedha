@@ -235,6 +235,77 @@ def test_workflow_stops_at_port_stage_before_banner(monkeypatch) -> None:
     assert calls == ["host_discovery", "port_scan"]
 
 
+def test_workflow_advances_only_live_host_and_routes_observed_http(
+    monkeypatch,
+) -> None:
+    calls: dict[str, list[str]] = {
+        "host_discovery": [],
+        "port_scan": [],
+        "service_banner": [],
+        "web_scan": [],
+    }
+
+    def fake_scanner(component_id, result_factory):
+        class Scanner:
+            name = component_id
+
+            def __init__(self, *args, **kwargs):
+                pass
+
+            async def scan_target(self, host):
+                calls[component_id].append(host)
+                return [result_factory(host)]
+
+        return Scanner
+
+    monkeypatch.setattr(
+        "workflow.workflow_engine.HostDiscoveryScanner",
+        fake_scanner(
+            "host_discovery",
+            lambda host: ScanResult(
+                scanner="host_discovery",
+                target=host,
+                status="open" if host.endswith(".1") else "filtered",
+                data={"alive": host.endswith(".1")},
+            ),
+        ),
+    )
+    for class_name, component_id, data in (
+        ("PortScanner", "port_scan", {}),
+        ("ServiceBannerScanner", "service_banner", {"first_line": "HTTP/1.1 200 OK"}),
+        ("WebScanner", "web_scan", {"status": 200, "service": "http"}),
+    ):
+        monkeypatch.setattr(
+            f"workflow.workflow_engine.{class_name}",
+            fake_scanner(
+                component_id,
+                lambda host, scanner=component_id, result_data=data: ScanResult(
+                    scanner=scanner,
+                    target=host,
+                    port=8080,
+                    proto="tcp",
+                    status="open",
+                    data=result_data,
+                ),
+            ),
+        )
+
+    scope = ScopeGuard.from_list(["10.0.0.0/24"])
+    assets = asyncio.run(run_engagement(
+        ["10.0.0.1", "10.0.0.2"],
+        scope,
+        service_filter={"web"},
+    ))
+
+    assert set(calls["host_discovery"]) == {"10.0.0.1", "10.0.0.2"}
+    assert calls["port_scan"] == ["10.0.0.1"]
+    assert calls["service_banner"] == ["10.0.0.1"]
+    assert calls["web_scan"] == ["10.0.0.1"]
+    assert assets["10.0.0.1"].web_facts[8080]["status"] == 200
+    assert assets["10.0.0.2"].last_seen_alive is None
+    assert assets["10.0.0.2"].open_ports == {}
+
+
 def test_udp_only_workflow_never_falls_back_to_tcp_or_banner(monkeypatch) -> None:
     calls: list[str] = []
 
@@ -370,6 +441,79 @@ def test_engine_rejects_oversized_cidr_instead_of_false_success() -> None:
     assert result["ok"] is False
     assert result["error_code"] == "target_expansion_limit"
     assert result["facts"] == []
+
+
+def test_engine_applies_configured_target_ceiling(monkeypatch) -> None:
+    monkeypatch.setattr(engine, "MAX_TARGETS", 2)
+
+    result = engine.run_scan("discovery", {"targets": ["10.0.0.0/29"]})
+
+    assert result["ok"] is False
+    assert result["error_code"] == "target_expansion_limit"
+
+
+def test_engine_enforces_local_scope_after_engagement_scope() -> None:
+    result = engine.run_scan(
+        "discovery",
+        {"target": "10.0.9.10"},
+        validated_scope=["10.0.0.0/16"],
+        local_allowed_scope=["10.0.8.0/24"],
+    )
+
+    assert result["ok"] is False
+    assert result["error_code"] == "outside_local_scope"
+
+
+def test_engine_deadline_fails_when_no_evidence_exists(monkeypatch) -> None:
+    async def slow_run(*args, **kwargs):
+        await asyncio.sleep(0.05)
+
+    monkeypatch.setattr(engine, "run_engagement", slow_run)
+    monkeypatch.setattr(engine, "MAX_JOB_SECONDS", 0.01)
+
+    result = engine.run_scan(
+        "discovery",
+        {"target": "10.0.0.1"},
+        validated_scope=["10.0.0.0/24"],
+    )
+
+    assert result["ok"] is False
+    assert result["outcome"] == "failed"
+    assert result["error_code"] == "job_deadline_exceeded"
+    assert result["run_stats"]["applied_tuning"]["max_runtime_seconds"] == 0.01
+
+
+def test_engine_deadline_preserves_verified_partial_evidence(monkeypatch) -> None:
+    async def partial_run(targets, scope, *, cache, trace, **kwargs):
+        fact = ScanResult(
+            scanner="host_discovery",
+            target=targets[0],
+            status="observed",
+            data={"method": "tcp_connect"},
+        )
+        cache.put(fact)
+        trace.record("host_discovery", target_count=1, results=[fact])
+        await asyncio.sleep(0.05)
+
+    monkeypatch.setattr(engine, "run_engagement", partial_run)
+    monkeypatch.setattr(engine, "MAX_JOB_SECONDS", 0.01)
+
+    result = engine.run_scan(
+        "assessment",
+        {"target": "10.0.0.1"},
+        validated_scope=["10.0.0.0/24"],
+    )
+
+    assert result["ok"] is True
+    assert result["outcome"] == "partial"
+    assert result["degraded"] is True
+    assert result["error_code"] == "job_deadline_exceeded"
+    assert result["run_stats"]["fact_count"] == 1
+    assert result["hosts"] == [{
+        "ip": "10.0.0.1",
+        "hostname": None,
+        "ports": [],
+    }]
 
 
 def test_empty_authoritative_scope_never_falls_back_to_job_targets() -> None:

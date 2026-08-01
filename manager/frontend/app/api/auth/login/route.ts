@@ -4,7 +4,31 @@
  * sends on every subsequent /api/* call (which the BFF forwards to FastAPI).
  */
 import { NextResponse } from "next/server";
-import { backend, BackendError } from "../../../../lib/backend";
+import { backend, BackendError, cookieFrom } from "../../../../lib/backend";
+
+const secureCookie = process.env.AUTH_COOKIE_SECURE === "true"
+  || (process.env.AUTH_COOKIE_SECURE !== "false" && process.env.NODE_ENV === "production");
+
+function setSessionCookies(
+  response: NextResponse,
+  accessToken: string,
+  refreshToken: string,
+) {
+  response.cookies.set("vedha_token", accessToken, {
+    httpOnly: true,
+    secure: secureCookie,
+    sameSite: "strict",
+    path: "/",
+    maxAge: 15 * 60,
+  });
+  response.cookies.set("vedha_refresh_token", refreshToken, {
+    httpOnly: true,
+    secure: secureCookie,
+    sameSite: "strict",
+    path: "/api/auth/login",
+    maxAge: 7 * 24 * 60 * 60,
+  });
+}
 
 export async function POST(req: Request) {
   let body: { email?: string; password?: string };
@@ -22,14 +46,8 @@ export async function POST(req: Request) {
       method: "POST",
       body: { email, password },
     });
-    const res = NextResponse.json({ token: d.access_token, refreshToken: d.refresh_token, email });
-    // Set cookie so Edge middleware can gate routes without JS
-    res.cookies.set("vedha_token", d.access_token, {
-      httpOnly: false,   // must be readable by JS so fetchJson can also use it
-      sameSite: "lax",
-      path: "/",
-      maxAge: 7 * 24 * 3600,
-    });
+    const res = NextResponse.json({ ok: true, email });
+    setSessionCookies(res, d.access_token, d.refresh_token);
     return res;
   } catch (e) {
     const status = e instanceof BackendError ? e.status : 500;
@@ -39,14 +57,17 @@ export async function POST(req: Request) {
 
 /** Token refresh — proxies to FastAPI /auth/refresh. */
 export async function PUT(req: Request) {
-  const { refreshToken } = await req.json().catch(() => ({}));
+  const body = await req.json().catch(() => ({})) as { refreshToken?: string };
+  const refreshToken = cookieFrom(req, "vedha_refresh_token") ?? body.refreshToken;
   if (!refreshToken) return NextResponse.json({ error: "refreshToken required" }, { status: 400 });
   try {
     const d = await backend<{ access_token: string; refresh_token: string }>(
       "/auth/refresh",
       { method: "POST", query: { refresh_token: refreshToken } },
     );
-    return NextResponse.json({ token: d.access_token, refreshToken: d.refresh_token });
+    const response = NextResponse.json({ ok: true });
+    setSessionCookies(response, d.access_token, d.refresh_token);
+    return response;
   } catch (e) {
     const status = e instanceof BackendError ? e.status : 401;
     return NextResponse.json({ error: (e as Error).message }, { status });

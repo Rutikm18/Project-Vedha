@@ -1,4 +1,4 @@
-# Node Description Batch 88 of 104
+# Node Description Batch 88 of 119
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -17,51 +17,51 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "states_datastate_btn": "btn" | kind=code-symbol | source=manager/frontend/components/states/DataState.tsx:L121 | neighbors=[DataState.tsx]
-- "states_datastate_center": "center" | kind=code-symbol | source=manager/frontend/components/states/DataState.tsx:L117 | neighbors=[DataState.tsx]
-- "states_datastate_datastateprops": "DataStateProps" | kind=code-symbol | source=manager/frontend/components/states/DataState.tsx:L94 | neighbors=[DataState.tsx]
-- "states_datastate_offlinebanner": "OfflineBanner()" | kind=code-symbol | source=manager/frontend/components/states/DataState.tsx:L81 | neighbors=[DataState.tsx]
-- "states_datastate_unauthorized": "Unauthorized()" | kind=code-symbol | source=manager/frontend/components/states/DataState.tsx:L68 | neighbors=[DataState.tsx]
-- "status_route_get": "GET()" | kind=code-symbol | source=manager/frontend/app/api/scans/[scanId]/status/route.ts:L8 | neighbors=[route.ts]
-- "taskid_route_get": "GET()" | kind=code-symbol | source=manager/frontend/app/api/scan/openvas/[taskId]/route.ts:L5 | neighbors=[route.ts]
-- "tests_conftest": "conftest.py" | kind=code-symbol | source=probe/tests/conftest.py:L1 | neighbors=[2885afa Add comprehensive probe testing…]
-- "tests_findings_store_test_makefinding": "makeFinding()" | kind=code-symbol | source=manager/frontend/tests/findings-store.test.ts:L25 | neighbors=[findings-store.test.ts]
-- "tests_findings_store_test_tmp_dir": "TMP_DIR" | kind=code-symbol | source=manager/frontend/tests/findings-store.test.ts:L8 | neighbors=[findings-store.test.ts]
-- "tests_findings_store_test_tmp_file": "TMP_FILE" | kind=code-symbol | source=manager/frontend/tests/findings-store.test.ts:L9 | neighbors=[findings-store.test.ts]
-- "tests_init": "__init__.py" | kind=code-symbol | source=manager/backend/tests/__init__.py:L1 | neighbors=[298a9d4 trim frontend to 7 core pages; …]
-- "tests_parsers_test_naabu_line": "NAABU_LINE" | kind=code-symbol | source=manager/frontend/tests/parsers.test.ts:L80 | neighbors=[parsers.test.ts]
-- "tests_parsers_test_nuclei_valid": "NUCLEI_VALID" | kind=code-symbol | source=manager/frontend/tests/parsers.test.ts:L55 | neighbors=[parsers.test.ts]
-- "tests_parsers_test_testssl_valid": "TESTSSL_VALID" | kind=code-symbol | source=manager/frontend/tests/parsers.test.ts:L72 | neighbors=[parsers.test.ts]
-- "tests_test_ad_assessment_fakeattr_init": ".__init__()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L32 | neighbors=[_FakeAttr]
-- "tests_test_ad_assessment_fakeentry_init": ".__init__()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L37 | neighbors=[_FakeEntry]
-- "tests_test_ad_assessment_testadcschecker_setup_method": ".setup_method()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L280 | neighbors=[TestADCSChecker]
-- "tests_test_ad_assessment_testadcschecker_test_esc1_negative_when_manager_approval": ".test_esc1_negative_when_manager_approval()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L292 | neighbors=[TestADCSChecker]
-- "tests_test_ad_assessment_testadcschecker_test_esc1_negative_without_low_priv_enrollment": ".test_esc1_negative_without_low_priv_enrollment()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L299 | neighbors=[TestADCSChecker]
-- "tests_test_ad_assessment_testadcschecker_test_esc1_positive": ".test_esc1_positive()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L283 | neighbors=[TestADCSChecker]
-- "tests_test_ad_assessment_testadcschecker_test_esc4_negative_when_deny_ace": ".test_esc4_negative_when_deny_ace()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L313 | neighbors=[TestADCSChecker]
-- "tests_test_ad_assessment_testadcschecker_test_esc4_positive": ".test_esc4_positive()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L306 | neighbors=[TestADCSChecker]
-- "tests_test_ad_assessment_testadcschecker_test_esc8_negative_no_web_enrollment": ".test_esc8_negative_no_web_enrollment()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L332 | neighbors=[TestADCSChecker]
-- "tests_test_ad_assessment_testadcschecker_test_esc8_negative_with_epa_and_https": ".test_esc8_negative_with_epa_and_https()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L326 | neighbors=[TestADCSChecker]
-- "tests_test_ad_assessment_testadcschecker_test_esc8_positive": ".test_esc8_positive()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L320 | neighbors=[TestADCSChecker]
-- "tests_test_ad_assessment_testadcschecker_test_generate_findings_produces_esc1_and_esc8": ".test_generate_findings_produces_esc1_and_esc8()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L335 | neighbors=[TestADCSChecker]
-- "tests_test_ad_assessment_testasreproastchecker_setup_method": ".setup_method()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L217 | neighbors=[TestASREPRoastChecker]
-- "tests_test_ad_assessment_testasreproastchecker_test_finding_shape": ".test_finding_shape()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L229 | neighbors=[TestASREPRoastChecker]
-- "tests_test_ad_assessment_testasreproastchecker_test_get_no_preauth_accounts": ".test_get_no_preauth_accounts()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L220 | neighbors=[TestASREPRoastChecker]
-- "tests_test_ad_assessment_testasreproastchecker_test_no_finding_when_empty": ".test_no_finding_when_empty()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L235 | neighbors=[TestASREPRoastChecker]
-- "tests_test_ad_assessment_testasreproastchecker_test_request_asrep_without_impacket": ".test_request_asrep_without_impacket()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L238 | neighbors=[TestASREPRoastChecker]
-- "tests_test_ad_assessment_testbloodhoundcollector_setup_method": ".setup_method()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L358 | neighbors=[TestBloodHoundCollector]
-- "tests_test_ad_assessment_testbloodhoundcollector_test_da_path_finding_critical_when_short": ".test_da_path_finding_critical_when_short()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L361 | neighbors=[TestBloodHoundCollector]
-- "tests_test_ad_assessment_testbloodhoundcollector_test_da_path_finding_high_when_long": ".test_da_path_finding_high_when_long()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L368 | neighbors=[TestBloodHoundCollector]
-- "tests_test_ad_assessment_testbloodhoundcollector_test_import_without_neo4j": ".test_import_without_neo4j()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L379 | neighbors=[TestBloodHoundCollector]
-- "tests_test_ad_assessment_testbloodhoundcollector_test_no_finding_without_paths": ".test_no_finding_without_paths()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L373 | neighbors=[TestBloodHoundCollector]
-- "tests_test_ad_assessment_testbloodhoundcollector_test_query_da_paths_without_driver": ".test_query_da_paths_without_driver()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L376 | neighbors=[TestBloodHoundCollector]
-- "tests_test_ad_assessment_testbuildadfinding_test_attack_narrative_carried_in_evidence": ".test_attack_narrative_carried_in_evidence()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L84 | neighbors=[TestBuildADFinding]
-- "tests_test_ad_assessment_testbuildadfinding_test_invalid_severity_falls_back_to_info": ".test_invalid_severity_falls_back_to_info()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L76 | neighbors=[TestBuildADFinding]
+- "lib_graph_store_blastradiusresult": "BlastRadiusResult" | kind=code-symbol | source=manager/frontend/lib/graph-store.ts:L64 | neighbors=[graph-store.ts]
+- "lib_graph_store_buildchokepoints": "buildChokepoints()" | kind=code-symbol | source=manager/frontend/lib/graph-store.ts:L304 | neighbors=[graph-store.ts]
+- "lib_graph_store_builddemograph": "buildDemoGraph()" | kind=code-symbol | source=manager/frontend/lib/graph-store.ts:L73 | neighbors=[graph-store.ts]
+- "lib_graph_store_chokepoint": "Chokepoint" | kind=code-symbol | source=manager/frontend/lib/graph-store.ts:L53 | neighbors=[graph-store.ts]
+- "lib_graph_store_chokepoints": "CHOKEPOINTS" | kind=code-symbol | source=manager/frontend/lib/graph-store.ts:L327 | neighbors=[graph-store.ts]
+- "lib_graph_store_gedge": "GEdge" | kind=code-symbol | source=manager/frontend/lib/graph-store.ts:L27 | neighbors=[graph-store.ts]
+- "lib_graph_store_gnode": "GNode" | kind=code-symbol | source=manager/frontend/lib/graph-store.ts:L11 | neighbors=[graph-store.ts]
+- "lib_graph_store_internet_exposed_ids": "INTERNET_EXPOSED_IDS" | kind=code-symbol | source=manager/frontend/lib/graph-store.ts:L257 | neighbors=[graph-store.ts]
+- "lib_graph_store_nodes_nodes_edges_edges": "{ nodes: NODES, edges: EDGES }" | kind=code-symbol | source=manager/frontend/lib/graph-store.ts:L237 | neighbors=[graph-store.ts]
+- "lib_graph_store_nodetype": "NodeType" | kind=code-symbol | source=manager/frontend/lib/graph-store.ts:L4 | neighbors=[graph-store.ts]
+- "lib_graph_store_pathstatus": "PathStatus" | kind=code-symbol | source=manager/frontend/lib/graph-store.ts:L9 | neighbors=[graph-store.ts]
+- "lib_graph_store_relationtype": "RelationType" | kind=code-symbol | source=manager/frontend/lib/graph-store.ts:L5 | neighbors=[graph-store.ts]
+- "lib_graph_store_severity": "Severity" | kind=code-symbol | source=manager/frontend/lib/graph-store.ts:L8 | neighbors=[graph-store.ts]
+- "lib_graph_store_target_ids": "TARGET_IDS" | kind=code-symbol | source=manager/frontend/lib/graph-store.ts:L258 | neighbors=[graph-store.ts]
+- "lib_httpx_parser_httpxjsonldecoder_malformedlines": ".malformedLines()" | kind=code-symbol | source=manager/frontend/lib/httpx-parser.ts:L112 | neighbors=[HttpxJsonlDecoder]
+- "lib_httpx_parser_httpxlineparseresult": "HttpxLineParseResult" | kind=code-symbol | source=manager/frontend/lib/httpx-parser.ts:L12 | neighbors=[httpx-parser.ts]
+- "lib_job_store_job": "Job" | kind=code-symbol | source=manager/frontend/lib/job-store.ts:L8 | neighbors=[job-store.ts]
+- "lib_job_store_jobs_file": "JOBS_FILE" | kind=code-symbol | source=manager/frontend/lib/job-store.ts:L4 | neighbors=[job-store.ts]
+- "lib_job_store_jobstatus": "JobStatus" | kind=code-symbol | source=manager/frontend/lib/job-store.ts:L6 | neighbors=[job-store.ts]
+- "lib_naabu_parser_naaburaw": "NaabuRaw" | kind=code-symbol | source=manager/frontend/lib/naabu-parser.ts:L9 | neighbors=[naabu-parser.ts]
+- "lib_naabu_parser_naaburesult": "NaabuResult" | kind=code-symbol | source=manager/frontend/lib/naabu-parser.ts:L3 | neighbors=[naabu-parser.ts]
+- "lib_netexec_parser_netexechost": "NetExecHost" | kind=code-symbol | source=manager/frontend/lib/netexec-parser.ts:L3 | neighbors=[netexec-parser.ts]
+- "lib_netexec_parser_netexecparseresult": "NetExecParseResult" | kind=code-symbol | source=manager/frontend/lib/netexec-parser.ts:L13 | neighbors=[netexec-parser.ts]
+- "lib_nmap_parser_nmaphost": "NmapHost" | kind=code-symbol | source=manager/frontend/lib/nmap-parser.ts:L18 | neighbors=[nmap-parser.ts]
+- "lib_nmap_parser_nmapscriptresult": "NmapScriptResult" | kind=code-symbol | source=manager/frontend/lib/nmap-parser.ts:L13 | neighbors=[nmap-parser.ts]
+- "lib_nmap_parser_nmapservice": "NmapService" | kind=code-symbol | source=manager/frontend/lib/nmap-parser.ts:L3 | neighbors=[nmap-parser.ts]
+- "lib_nmap_parser_parser": "parser" | kind=code-symbol | source=manager/frontend/lib/nmap-parser.ts:L27 | neighbors=[nmap-parser.ts]
+- "lib_nuclei_parser_countbyseverity": "countBySeverity()" | kind=code-symbol | source=manager/frontend/lib/nuclei-parser.ts:L98 | neighbors=[nuclei-parser.ts]
+- "lib_nuclei_parser_nucleiraw": "NucleiRaw" | kind=code-symbol | source=manager/frontend/lib/nuclei-parser.ts:L17 | neighbors=[nuclei-parser.ts]
+- "lib_nuclei_parser_nucleirawline": "NucleiRawLine" | kind=code-symbol | source=manager/frontend/lib/nuclei-parser.ts:L82 | neighbors=[nuclei-parser.ts]
+- "lib_openvas_client_cvsstoseverity": "cvssToSeverity()" | kind=code-symbol | source=manager/frontend/lib/openvas-client.ts:L39 | neighbors=[openvas-client.ts]
+- "lib_openvas_client_gettask": "getTask()" | kind=code-symbol | source=manager/frontend/lib/openvas-client.ts:L31 | neighbors=[openvas-client.ts]
+- "lib_openvas_client_isopenvasfinding": "isOpenVASFinding()" | kind=code-symbol | source=manager/frontend/lib/openvas-client.ts:L54 | neighbors=[openvas-client.ts]
+- "lib_openvas_client_openvashelperoutput": "OpenVASHelperOutput" | kind=code-symbol | source=manager/frontend/lib/openvas-client.ts:L47 | neighbors=[openvas-client.ts]
+- "lib_openvas_client_openvastaskstate": "OpenVASTaskState" | kind=code-symbol | source=manager/frontend/lib/openvas-client.ts:L19 | neighbors=[openvas-client.ts]
+- "lib_openvas_client_taskstore": "taskStore" | kind=code-symbol | source=manager/frontend/lib/openvas-client.ts:L29 | neighbors=[openvas-client.ts]
+- "lib_permissions_store_data_path": "DATA_PATH" | kind=code-symbol | source=manager/frontend/lib/permissions-store.ts:L4 | neighbors=[permissions-store.ts]
+- "lib_permissions_store_permissionsfile": "PermissionsFile" | kind=code-symbol | source=manager/frontend/lib/permissions-store.ts:L16 | neighbors=[permissions-store.ts]
+- "lib_permissions_store_userrole": "UserRole" | kind=code-symbol | source=manager/frontend/lib/permissions-store.ts:L6 | neighbors=[permissions-store.ts]
+- "lib_scan_events_broadcasttoscan": "broadcastToScan()" | kind=code-symbol | source=manager/frontend/lib/scan-events.ts:L20 | neighbors=[scan-events.ts]
 
 ## Instructions
 
 Write a single JSON object mapping each node id to a one-sentence description
-to: /Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Agentic VA Scanner/.graphify/description-instructions/batch-087.json
+to: /Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha/.graphify/description-instructions/batch-087.json
 
 Keep each description factual and concise (one sentence). No markdown, no prose
 outside the JSON object. It is acceptable to omit a node if context is

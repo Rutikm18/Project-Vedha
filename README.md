@@ -42,6 +42,36 @@ make full                       # postgres + redis + api + probe + dashboard
 
 Defaults: `admin@vedha.io` / `ChangeMe123!` (change them in `.env`).
 
+There is exactly one dashboard: the Next.js application on port `3000` by
+default. Port `18080` is the Manager API used by that dashboard and by probes;
+it is required unless the API is published behind another URL, but it does not
+serve a dashboard. The product does not use port `18018`.
+
+There is also exactly one supported field probe: [`probe/`](probe/). The
+`probe-go/` directory is a non-shipping parity workspace, not a deployment
+choice.
+
+### Manager AI (local by default)
+
+AI inference, security prompts, model selection, and provider credentials run
+only in the Manager API. The dashboard is an authenticated presentation layer
+and is never given Ollama endpoints or cloud-provider keys.
+
+For a deployment-managed free local model, set the internal URL and enable the
+profile. The one-shot initializer pulls `OLLAMA_MODEL` and keeps it in the
+`ollama_models` volume:
+
+```bash
+OLLAMA_BASE_URL=http://ollama:11434 \
+docker compose --profile ui --profile local-ai up -d --build
+```
+
+Or run `make up-ai` for Manager plus the local runtime. AI Brain lists only
+models that Manager has enabled: locally installed Ollama models, the configured
+OpenRouter model (with `openrouter/free` available), or the configured Anthropic
+model. Cloud keys belong in the Manager deployment secret store, never in the
+frontend environment.
+
 ### Make targets
 
 ```
@@ -49,6 +79,7 @@ make run      # api + local probe (no dashboard) — fast
 make full     # everything incl. the Next.js dashboard
 make api-only # platform only (no probe, no dashboard)
 make ui       # just the dashboard (api must be up)
+make up-ai    # manager + deployment-managed Ollama; pulls OLLAMA_MODEL
 make down     # stop (keeps the database)   |   make clean  # stop + wipe DB
 make ps       # status   |   make logs  # tail api   |   make test  # backend tests
 ```
@@ -68,16 +99,26 @@ make ps       # status   |   make logs  # tail api   |   make test  # backend te
 Scope is enforced at **both** ends (manager won't dispatch out-of-scope; probe
 refuses to scan it). `ot` profile is structurally passive-only.
 
+Production jobs are currently unauthenticated collection only. The Manager
+rejects passwords, tokens, private keys, and credential objects in job
+parameters so target credentials are never stored in `scan_jobs`. Add
+credentialed collection only with an ephemeral secret broker.
+
 ## Deploying a probe to a real client network
 
 The probe is a standalone, dial-out-only artifact (no inbound ports, no vuln DB):
 
 ```bash
 cd probe
-cp probe.env.example probe.env     # set PLATFORM_URL + operator creds
-./install.sh                       # Docker  (or ./install.sh --native for host Python)
+PROBE_IMAGE=registry.example.com/vedha/probe:1.0 \
+PLATFORM_URL=https://manager.example.com \
+OPERATOR_TOKEN="$VEDHA_PAT" \
+PROBE_NETWORK_SEGMENTS=10.20.0.0/16 \
+sh install.sh                       # hardened Docker deployment (outbound-only)
 ```
-See `probe/README.md`. Scope arrives per-job from the manager, not baked into the probe.
+The Manager supplies each job scope; `PROBE_NETWORK_SEGMENTS` is a separate,
+mandatory probe-local ceiling that the job must also fit. The installer removes
+the bootstrap PAT from container metadata after agent registration.
 For component error codes and third-party engine recovery, see
 [`TROUBLESHOOTING.md`](TROUBLESHOOTING.md).
 

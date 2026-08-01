@@ -1,4 +1,4 @@
-# Node Description Batch 49 of 104
+# Node Description Batch 49 of 119
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,56 +12,63 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
+For an entity node (any other kind — e.g. a person, place, event, object),
+describe what the entity is and its role, grounded in its type, its
+relations (neighbors) and the provided citations/evidence — e.g.
+"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
+Ground entity descriptions in the citations/evidence when present; do not
+speculate beyond the context, so a node with no supporting context may be
+left out of the reply.
 Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "lib_adapters_touiagent": "toUiAgent()" | kind=code-symbol | source=manager/frontend/lib/adapters.ts:L154 | neighbors=[adapters.ts, route.ts]
-- "lib_agents_store_genfieldagentid": "genFieldAgentId()" | kind=code-symbol | source=manager/frontend/lib/agents-store.ts:L355 | neighbors=[agents-store.ts, registerAgent()]
-- "lib_agents_store_getallagents": "getAllAgents()" | kind=code-symbol | source=manager/frontend/lib/agents-store.ts:L394 | neighbors=[agents-store.ts, readFieldAgents()]
-- "lib_ai_engine_chat": "chat()" | kind=code-symbol | source=manager/frontend/lib/ai-engine.ts:L488 | neighbors=[ai-engine.ts, getClient()]
-- "lib_ai_engine_hallucinationguard": "hallucinationGuard" | kind=code-symbol | source=manager/frontend/lib/ai-engine.ts:L290 | neighbors=[route.ts, ai-engine.ts]
-- "lib_ai_engine_llmreportgenerator": "llmReportGenerator" | kind=code-symbol | source=manager/frontend/lib/ai-engine.ts:L206 | neighbors=[route.ts, ai-engine.ts]
-- "lib_ai_engine_reportsection": "ReportSection" | kind=code-symbol | source=manager/frontend/lib/ai-engine.ts:L9 | neighbors=[route.ts, ai-engine.ts]
-- "lib_ai_engine_vulnprioritizer": "vulnPrioritizer" | kind=code-symbol | source=manager/frontend/lib/ai-engine.ts:L97 | neighbors=[ai-engine.ts, route.ts]
-- "lib_auth_middleware_authcontext": "AuthContext" | kind=code-symbol | source=manager/frontend/lib/auth-middleware.ts:L5 | neighbors=[auth-middleware.ts, route.ts]
-- "lib_auth_store_generateotp": "generateOtp()" | kind=code-symbol | source=manager/frontend/lib/auth-store.ts:L24 | neighbors=[auth-store.ts, route.ts]
-- "lib_auth_store_verifyotp": "verifyOtp()" | kind=code-symbol | source=manager/frontend/lib/auth-store.ts:L38 | neighbors=[auth-store.ts, route.ts]
-- "lib_backend_safejson": "safeJson()" | kind=code-symbol | source=manager/frontend/lib/backend.ts:L55 | neighbors=[backend.ts, backend()]
-- "lib_cases_store_getcasebyid": "getCaseById()" | kind=code-symbol | source=manager/frontend/lib/cases-store.ts:L231 | neighbors=[cases-store.ts, readCases()]
-- "lib_clients_store_client": "Client" | kind=code-symbol | source=manager/frontend/lib/clients-store.ts:L27 | neighbors=[clients-store.ts, tenant-server.ts]
-- "lib_clients_store_getclient": "getClient()" | kind=code-symbol | source=manager/frontend/lib/clients-store.ts:L78 | neighbors=[clients-store.ts, read()]
-- "lib_clients_store_listclients": "listClients()" | kind=code-symbol | source=manager/frontend/lib/clients-store.ts:L74 | neighbors=[clients-store.ts, read()]
-- "lib_detection_store_siemconfig": "SIEMConfig" | kind=code-symbol | source=manager/frontend/lib/detection-store.ts:L399 | neighbors=[detection-store.ts, route.ts]
-- "lib_engagements_store_engagementsstore": "engagementsStore" | kind=code-symbol | source=manager/frontend/lib/engagements-store.ts:L122 | neighbors=[route.ts, engagements-store.ts]
-- "lib_errors_errors": "Errors" | kind=code-symbol | source=manager/frontend/lib/errors.ts:L124 | neighbors=[tool-runners.ts, errors.ts]
-- "lib_findings_store_findingseverity": "FindingSeverity" | kind=code-symbol | source=manager/frontend/lib/findings-store.ts:L7 | neighbors=[findings-store.ts, openvas-client.ts]
-- "lib_findings_store_setdatapath": "setDataPath()" | kind=code-symbol | source=manager/frontend/lib/findings-store.ts:L13 | neighbors=[findings-store.ts, findings-store.test.ts]
-- "lib_findings_store_sladeadline": "slaDeadline()" | kind=code-symbol | source=manager/frontend/lib/findings-store.ts:L27 | neighbors=[findings-store.ts, saveFindings()]
-- "lib_graph_store_edgesforpath": "edgesForPath()" | kind=code-symbol | source=manager/frontend/lib/graph-store.ts:L241 | neighbors=[graph-store.ts, buildAttackPaths()]
-- "lib_graph_store_scorepath": "scorePath()" | kind=code-symbol | source=manager/frontend/lib/graph-store.ts:L225 | neighbors=[graph-store.ts, buildAttackPaths()]
-- "lib_job_store_genjobid": "genJobId()" | kind=code-symbol | source=manager/frontend/lib/job-store.ts:L37 | neighbors=[job-store.ts, createJob()]
-- "lib_job_store_getnextjobforagent": "getNextJobForAgent()" | kind=code-symbol | source=manager/frontend/lib/job-store.ts:L62 | neighbors=[job-store.ts, readJobs()]
-- "lib_nuclei_parser_nucleimatch": "NucleiMatch" | kind=code-symbol | source=manager/frontend/lib/nuclei-parser.ts:L3 | neighbors=[nuclei-parser.ts, scan-pipeline.ts]
-- "lib_openvas_client_gettask": "getTask()" | kind=code-symbol | source=manager/frontend/lib/openvas-client.ts:L28 | neighbors=[openvas-client.ts, route.ts]
-- "lib_openvas_client_openvasfinding": "OpenVASFinding" | kind=code-symbol | source=manager/frontend/lib/openvas-client.ts:L3 | neighbors=[openvas-client.ts, scan-pipeline.ts]
-- "lib_permissions_store_getallusers": "getAllUsers()" | kind=code-symbol | source=manager/frontend/lib/permissions-store.ts:L40 | neighbors=[permissions-store.ts, read()]
-- "lib_permissions_store_iptoint": "ipToInt()" | kind=code-symbol | source=manager/frontend/lib/permissions-store.ts:L120 | neighbors=[permissions-store.ts, targetMatchesScope()]
-- "lib_permissions_store_permitteduser": "PermittedUser" | kind=code-symbol | source=manager/frontend/lib/permissions-store.ts:L8 | neighbors=[admin.ts, permissions-store.ts]
-- "lib_permissions_store_targetmatchesscope": "targetMatchesScope()" | kind=code-symbol | source=manager/frontend/lib/permissions-store.ts:L124 | neighbors=[permissions-store.ts, ipToInt()]
-- "lib_scan_events_broadcasttoscan": "broadcastToScan()" | kind=code-symbol | source=manager/frontend/lib/scan-events.ts:L20 | neighbors=[route.ts, scan-events.ts]
-- "lib_scan_events_subscribescan": "subscribeScan()" | kind=code-symbol | source=manager/frontend/lib/scan-events.ts:L7 | neighbors=[scan-events.ts, route.ts]
-- "lib_scan_pipeline_computeoverallprogress": "computeOverallProgress()" | kind=code-symbol | source=manager/frontend/lib/scan-pipeline.ts:L117 | neighbors=[scan-pipeline.ts, route.ts]
-- "lib_scan_pipeline_createinitialpipelinestate": "createInitialPipelineState()" | kind=code-symbol | source=manager/frontend/lib/scan-pipeline.ts:L89 | neighbors=[scan-pipeline.ts, route.ts]
-- "lib_scan_pipeline_drainscanevents": "drainScanEvents()" | kind=code-symbol | source=manager/frontend/lib/scan-pipeline.ts:L83 | neighbors=[scan-pipeline.ts, route.ts]
-- "lib_scan_pipeline_pipelinestate": "PipelineState" | kind=code-symbol | source=manager/frontend/lib/scan-pipeline.ts:L33 | neighbors=[scan-pipeline.ts, route.ts]
-- "lib_scan_pipeline_profile_tools": "PROFILE_TOOLS" | kind=code-symbol | source=manager/frontend/lib/scan-pipeline.ts:L58 | neighbors=[scan-pipeline.ts, route.ts]
+- "agent_engine_facts_from_cache": "_facts_from_cache()" | kind=code-symbol | source=probe/agent/engine.py:L252 | neighbors=[engine.py, run_scan()]
+- "agent_job_mapping_test_testmaptojobfailsclosedonunverifiablescope": "TestMapToJobFailsClosedOnUnverifiableScope()" | kind=code-symbol | source=probe-go/agent/job_mapping_test.go:L115 | neighbors=[job_mapping_test.go, managerJob()]
+- "agent_job_mapping_test_testmaptojobmergesauthoritativeexclusions": "TestMapToJobMergesAuthoritativeExclusions()" | kind=code-symbol | source=probe-go/agent/job_mapping_test.go:L97 | neighbors=[job_mapping_test.go, managerJob()]
+- "agent_job_mapping_test_testmaptojobresolvescanonicalusecases": "TestMapToJobResolvesCanonicalUseCases()" | kind=code-symbol | source=probe-go/agent/job_mapping_test.go:L29 | neighbors=[job_mapping_test.go, managerJob()]
+- "agent_job_mapping_test_testmaptojobusesparamsscantypeandpreservesnarrowtargets": "TestMapToJobUsesParamsScanTypeAndPreservesNarrowTargets()" | kind=code-symbol | source=probe-go/agent/job_mapping_test.go:L75 | neighbors=[job_mapping_test.go, managerJob()]
+- "agent_license_b64d": "_b64d()" | kind=code-symbol | source=probe/agent/license.py:L48 | neighbors=[license.py, verify_license()]
+- "agent_scope_crypt_bytes_to_pubkey_b64": "bytes_to_pubkey_b64()" | kind=code-symbol | source=probe/agent/scope_crypt.py:L165 | neighbors=[scope_crypt.py, Encode raw X25519 public key bytes to a…]
+- "agent_scope_crypt_generate_identity": "generate_identity()" | kind=code-symbol | source=probe/agent/scope_crypt.py:L43 | neighbors=[scope_crypt.py, Generate a fresh X25519 keypair.      R…]
+- "agent_scope_crypt_pubkey_to_bytes": "pubkey_to_bytes()" | kind=code-symbol | source=probe/agent/scope_crypt.py:L160 | neighbors=[scope_crypt.py, Decode a base64-encoded X25519 public k…]
+- "agent_scope_validator_rationale_58": "Fetch the engagement's authoritative scope from the manager.      Args:" | kind=entity | source=probe/agent/scope_validator.py:L58 | neighbors=[fetch_engagement_scope(), validate_targets_in_scope()]
+- "agent_spool_test_entrynames": "entryNames()" | kind=code-symbol | source=probe-go/agent/spool_test.go:L88 | neighbors=[spool_test.go, TestSpoolSaveIsAtomicAndRejectsTraversa…]
+- "agent_spool_test_testspoolsaveisatomicandrejectstraversal": "TestSpoolSaveIsAtomicAndRejectsTraversal()" | kind=code-symbol | source=probe-go/agent/spool_test.go:L10 | neighbors=[spool_test.go, entryNames()]
+- "agent_state_loadidentitystate": "loadIdentityState()" | kind=code-symbol | source=probe-go/agent/state.go:L18 | neighbors=[state.go, secureStatePath()]
+- "agent_state_syncstatedirectory": "syncStateDirectory()" | kind=code-symbol | source=probe-go/agent/state.go:L160 | neighbors=[state.go, saveIdentityState()]
+- "agent_state_test_testconfiguredidentityrejectspartialcredentials": "TestConfiguredIdentityRejectsPartialCredentials()" | kind=code-symbol | source=probe-go/agent/state_test.go:L179 | neighbors=[state_test.go, identityTestConfig()]
+- "agent_state_test_testconfiguredidentitytakesprecedenceoverstate": "TestConfiguredIdentityTakesPrecedenceOverState()" | kind=code-symbol | source=probe-go/agent/state_test.go:L157 | neighbors=[state_test.go, identityTestConfig()]
+- "agent_state_test_writejson": "writeJSON()" | kind=code-symbol | source=probe-go/agent/state_test.go:L58 | neighbors=[state_test.go, newIdentityServer()]
+- "agent_tools_agentstate": "AgentState" | kind=code-symbol | source=manager/frontend/lib/agent/tools.ts:L15 | neighbors=[agent.py, tools.ts]
+- "agent_tools_persistagentfindings": "persistAgentFindings()" | kind=code-symbol | source=manager/frontend/lib/agent/tools.ts:L313 | neighbors=[agent.py, tools.ts]
+- "agent_tools_risk": "Risk" | kind=code-symbol | source=manager/frontend/lib/agent/tools.ts:L24 | neighbors=[agent.py, tools.ts]
+- "agent_tools_tool_registry": "TOOL_REGISTRY" | kind=code-symbol | source=manager/frontend/lib/agent/tools.ts:L98 | neighbors=[agent.py, tools.ts]
+- "agent_tools_tooldef": "ToolDef" | kind=code-symbol | source=manager/frontend/lib/agent/tools.ts:L26 | neighbors=[agent.py, tools.ts]
+- "agent_transport_connectws": ".ConnectWS()" | kind=code-symbol | source=probe-go/agent/transport.go:L122 | neighbors=[transport.py, managerTLSConfig()]
+- "agent_transport_get": ".get()" | kind=code-symbol | source=probe-go/agent/transport.go:L151 | neighbors=[transport.py, .PollJobs()]
+- "agent_transport_login": ".Login()" | kind=code-symbol | source=probe-go/agent/transport.go:L46 | neighbors=[transport.py, .post()]
+- "agent_transport_newtransport": "NewTransport()" | kind=code-symbol | source=probe-go/agent/transport.go:L27 | neighbors=[transport.py, managerTLSConfig()]
+- "agent_transport_patch": ".patch()" | kind=code-symbol | source=probe-go/agent/transport.go:L161 | neighbors=[transport.py, .Heartbeat()]
+- "agent_transport_polljobs": ".PollJobs()" | kind=code-symbol | source=probe-go/agent/transport.go:L108 | neighbors=[transport.py, .get()]
+- "agent_transport_rationale_354": "Fetch the engagement's authoritative scope.          Returns the response dict i" | kind=entity | source=probe/agent/transport.py:L354 | neighbors=[.fetch_scope(), .is_ws_connected()]
+- "agent_transport_refreshregistration": ".RefreshRegistration()" | kind=code-symbol | source=probe-go/agent/transport.go:L96 | neighbors=[transport.py, .post()]
+- "agent_transport_register": ".Register()" | kind=code-symbol | source=probe-go/agent/transport.go:L57 | neighbors=[transport.py, .post()]
+- "agent_transport_submitresult": ".SubmitResult()" | kind=code-symbol | source=probe-go/agent/transport.go:L116 | neighbors=[transport.py, .post()]
+- "agent_transport_transport_clear_state": ".clear_state()" | kind=code-symbol | source=probe/agent/transport.py:L208 | neighbors=[Transport, .update_state()]
+- "agent_transport_transport_close": ".close()" | kind=code-symbol | source=probe/agent/transport.py:L488 | neighbors=[_sync_directory(), Transport]
+- "agent_transport_transport_init": ".__init__()" | kind=code-symbol | source=probe/agent/transport.py:L87 | neighbors=[Transport, .load_state()]
+- "agent_wsjsonwriter": "wsJSONWriter" | kind=code-symbol | source=probe-go/agent/agent.go:L118 | neighbors=[agent.py, .Write()]
+- "agent_wsjsonwriter_write": ".Write()" | kind=code-symbol | source=probe-go/agent/agent.go:L136 | neighbors=[.wsSession(), wsJSONWriter]
+- "ai_agent_agentdecisionengine_count": "._count()" | kind=code-symbol | source=manager/backend/app/ai/agent.py:L329 | neighbors=[AgentDecisionEngine, ._overview()]
+- "ai_agent_agentdecisionengine_create": "._create()" | kind=code-symbol | source=manager/backend/app/ai/agent.py:L235 | neighbors=[AgentDecisionEngine, .run()]
+- "ai_agent_agentdecisionengine_list_assets": "._list_assets()" | kind=code-symbol | source=manager/backend/app/ai/agent.py:L296 | neighbors=[AgentDecisionEngine, ._exec_read_tool()]
 
 ## Instructions
 
 Write a single JSON object mapping each node id to a one-sentence description
-to: /Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Agentic VA Scanner/.graphify/description-instructions/batch-048.json
+to: /Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha/.graphify/description-instructions/batch-048.json
 
 Keep each description factual and concise (one sentence). No markdown, no prose
 outside the JSON object. It is acceptable to omit a node if context is

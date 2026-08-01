@@ -13,12 +13,11 @@ import { parseNaabuLine, groupNaabuResults }   from '../naabu-parser';
 import { parseWhatWebOutput }                  from '../whatweb-parser';
 import { HttpxJsonlDecoder, type HttpxJsonRecord } from '../httpx-parser';
 import { generateFindingId }                   from '../finding-id';
-import { diagnoseSpawnError, Errors }          from '../errors';
+import { diagnoseSpawnError }                  from '../errors';
 import { nativePortScan, groupResults }        from './native/port-scan';
 import { nativeHttpProbe }                     from './native/http-probe';
 import { nativeDirBust }                       from './native/dir-bust';
-import { nativeTlsInfo }                       from './native/tls-info';
-import { nativeDnsRecon, nativePtrSweep }      from './native/dns-recon';
+import { nativeDnsRecon }                      from './native/dns-recon';
 import { execSync }                            from 'child_process';
 import { managedPath, isManaged }              from '../tools/installer';
 
@@ -290,7 +289,6 @@ export async function runNmap(
 // ── Global safety net — unhandled rejections elsewhere shouldn't kill the wizard
 if (typeof process !== 'undefined' && process.listenerCount && process.listenerCount('unhandledRejection') === 0) {
   process.on('unhandledRejection', (reason) => {
-    // eslint-disable-next-line no-console
     console.error('[vedha] unhandledRejection caught:', reason instanceof Error ? reason.message : reason);
   });
 }
@@ -1051,7 +1049,6 @@ async function runNmapNse(
   const matching = hosts.filter((h) => spec.ports.some((p) => h.ports.includes(p)));
   if (matching.length === 0) return out;
 
-  const portStr = spec.ports.join(',');
   for (const host of matching) {
     const hostPorts = host.ports.filter((p) => spec.ports.includes(p));
     if (hostPorts.length === 0) continue;

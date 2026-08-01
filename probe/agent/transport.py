@@ -437,15 +437,14 @@ class Transport:
 
     @property
     def ws_url(self) -> str:
-        """Return the WebSocket connection URL with auth token.
+        """Return the WebSocket endpoint without embedding credentials.
 
-        The token is passed as a query parameter so the manager can validate
-        it before upgrading the connection. Replace http:// with ws://,
-        https:// with wss://.
+        Authentication is sent in the Authorization header. Keeping credentials
+        out of the URL prevents access logs and proxy traces from capturing them.
         """
         ws_scheme = "wss" if self._base_url.startswith("https") else "ws"
         host = self._base_url.split("://", 1)[1] if "://" in self._base_url else self._base_url
-        return f"{ws_scheme}://{host}/agents/ws?token={self._agent_token}"
+        return f"{ws_scheme}://{host}/agents/ws"
 
     async def connect_ws(self):
         """Establish an authenticated WebSocket connection to the manager.
@@ -460,12 +459,18 @@ class Transport:
         if not self._agent_token:
             raise TransportError("Cannot connect WebSocket: no agent token")
 
+        header_arg = (
+            {"extra_headers": self.auth_header}
+            if int(websockets.__version__.split(".", 1)[0]) < 14
+            else {"additional_headers": self.auth_header}
+        )
         ws = await websockets.connect(
             self.ws_url,
             open_timeout=15.0,
             close_timeout=5.0,
             ping_interval=30,      # built-in keep-alive
             ping_timeout=10,
+            **header_arg,
         )
         self._ws = ws
         return ws

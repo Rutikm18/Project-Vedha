@@ -1,0 +1,7 @@
+# Minimal dependencies for the production Vedha Probe agent.
+# Network scanners are stdlib-based. Credential collectors are intentionally
+# excluded because Manager jobs reject credential material until an ephemeral
+# secret broker exists.
+httpx>=0.27
+websockets>=12.0
+cryptography>=42.0

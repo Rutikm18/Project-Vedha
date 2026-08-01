@@ -3,6 +3,7 @@ import "./globals.css";
 import { ToastProvider } from "../components/ToastProvider";
 import { ThemeProvider } from "../components/ThemeProvider";
 import { QueryProvider } from "../components/QueryProvider";
+import { AssistantProvider } from "../components/assistant/AssistantProvider";
 
 export const metadata: Metadata = {
   title: "Vedha — Ops Platform",
@@ -34,7 +35,9 @@ setTimeout(function(){document.documentElement.classList.add('theme-transition')
       <body className="antialiased">
         <QueryProvider>
           <ThemeProvider>
-            <ToastProvider>{children}</ToastProvider>
+            <ToastProvider>
+              <AssistantProvider>{children}</AssistantProvider>
+            </ToastProvider>
           </ThemeProvider>
         </QueryProvider>
       </body>

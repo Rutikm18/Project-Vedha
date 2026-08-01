@@ -11,10 +11,9 @@ node_modules
 *.swp
 *.swo
 
-# ── Env files (secrets — never copy into image) ───────────────────────────────
+# ── Env files (secrets and examples never belong in an image layer) ──────────
 .env
 .env.*
-!.env.example
 
 # ── OS noise ──────────────────────────────────────────────────────────────────
 .DS_Store
@@ -30,3 +29,13 @@ ARCHITECTURE.md
 *.test.*
 *.spec.*
 coverage
+dist
+
+# ── Non-dashboard research/packaging sources ─────────────────────────────────
+cli
+bin
+infrastructure
+packaging
+install.sh
+run
+run.sh

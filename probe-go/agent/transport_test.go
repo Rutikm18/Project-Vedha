@@ -16,15 +16,21 @@ import (
 
 func TestConnectWSHonorsTLSVerificationAndManagerEndpoint(t *testing.T) {
 	observed := make(chan struct {
-		path  string
-		token string
+		path          string
+		rawQuery      string
+		authorization string
 	}, 1)
 	upgrader := websocket.Upgrader{}
 	server := httptest.NewUnstartedServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		observed <- struct {
-			path  string
-			token string
-		}{path: r.URL.Path, token: r.URL.Query().Get("token")}
+			path          string
+			rawQuery      string
+			authorization string
+		}{
+			path:          r.URL.Path,
+			rawQuery:      r.URL.RawQuery,
+			authorization: r.Header.Get("Authorization"),
+		}
 		conn, err := upgrader.Upgrade(w, r, nil)
 		if err == nil {
 			_ = conn.Close()
@@ -54,8 +60,11 @@ func TestConnectWSHonorsTLSVerificationAndManagerEndpoint(t *testing.T) {
 		if got.path != "/agents/ws" {
 			t.Fatalf("WebSocket path = %q, want /agents/ws", got.path)
 		}
-		if got.token != "test-token" {
-			t.Fatalf("WebSocket token = %q, want test-token", got.token)
+		if got.rawQuery != "" {
+			t.Fatalf("WebSocket query leaked credentials: %q", got.rawQuery)
+		}
+		if got.authorization != "Bearer test-token" {
+			t.Fatalf("WebSocket Authorization = %q, want Bearer test-token", got.authorization)
 		}
 	case <-time.After(time.Second):
 		t.Fatal("WebSocket server did not observe the connection")

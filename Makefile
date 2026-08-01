@@ -2,11 +2,14 @@
 .DEFAULT_GOAL := help
 COMPOSE := docker compose
 
-.PHONY: help run full ui up up-graph up-ai down logs ps migrate seed shell test probe-build probe-run clean
+.PHONY: help doctor run full ui up up-graph up-ai api-only down logs ps migrate seed shell venv test probe-build probe-run probe-pat clean
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \
 	  awk 'BEGIN{FS=":.*?## "}{printf "  \033[36m%-14s\033[0m %s\n", $$1, $$2}'
+
+doctor: ## Preflight: Docker, ports, .env, and insecure production defaults
+	@sh scripts/doctor.sh
 
 # NOTE: migrate, api, and worker all share `image: vedha-backend:local`. Building
 # with `up --build` makes buildx bake export that one tag from three targets in
@@ -46,8 +49,7 @@ up: ## Build + start EVERYTHING incl. the dashboard (postgres, redis, migrate, a
 	 fport=$$(grep -E '^FRONTEND_PORT=' .env | cut -d= -f2); fport=$${fport:-3000}; \
 	 echo ""; \
 	 echo "  Dashboard  → http://localhost:$$fport         (login with SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD)"; \
-	 echo "  Simple UI  → http://localhost:$$aport/dashboard"; \
-	 echo "  API docs   → http://localhost:$$aport/docs"; \
+	 echo "  Manager API → http://localhost:$$aport        (docs: /docs)"; \
 	 echo "  Probe      → cd probe && ./probe run"
 
 api-only: ## Build + start the platform only (postgres, redis, migrate, api) — no dashboard
@@ -60,16 +62,16 @@ up-graph: ## Start the platform + Neo4j (attack-path graph)
 	$(COMPOSE) build api
 	NEO4J_ENABLED=true $(COMPOSE) --profile graph up -d
 
-up-ai: ## Build with AI/AD extras + start the platform
+up-ai: ## Start Manager with deployment-managed Ollama and pull OLLAMA_MODEL
 	@test -f .env || cp .env.docker.example .env
 	INSTALL_EXTRAS=1 $(COMPOSE) build api
-	INSTALL_EXTRAS=1 $(COMPOSE) up -d
+	OLLAMA_BASE_URL=http://ollama:11434 INSTALL_EXTRAS=1 $(COMPOSE) --profile local-ai up -d
 
 down: ## Stop all services (keeps volumes)
-	$(COMPOSE) --profile graph --profile probe --profile ui down
+	$(COMPOSE) --profile graph --profile probe --profile ui --profile local-ai down
 
-clean: ## Stop and DELETE volumes (wipes the database)
-	$(COMPOSE) --profile graph --profile probe --profile ui down -v
+clean: ## Stop and DELETE volumes (wipes database and local AI models)
+	$(COMPOSE) --profile graph --profile probe --profile ui --profile local-ai down -v
 
 logs: ## Tail API logs
 	$(COMPOSE) logs -f api
@@ -86,7 +88,12 @@ seed: ## Re-run the admin seeder
 shell: ## Open a shell in the API container
 	$(COMPOSE) exec api sh
 
-test: ## Run the backend test suite locally (needs manager/backend/.venv)
+venv: ## Create manager/backend/.venv and install deps (needed by `make test`)
+	cd manager/backend && python3 -m venv .venv && ./.venv/bin/pip install -q -U pip && ./.venv/bin/pip install -q -r requirements.txt
+	@echo "venv ready → run: make test"
+
+test: ## Run the backend test suite locally (auto-creates .venv if missing)
+	@test -x manager/backend/.venv/bin/python || $(MAKE) venv
 	cd manager/backend && ./.venv/bin/python -m pytest -q
 
 probe-build: ## Build the probe image
@@ -94,3 +101,6 @@ probe-build: ## Build the probe image
 
 probe-run: ## Start a local probe (joins the stack, self-registers)
 	$(COMPOSE) --profile probe up -d probe
+
+probe-pat: ## Mint a probe-scoped PAT (vpat_...) to deploy a real probe. ARGS="--days 90"
+	@sh scripts/issue_pat.sh $(ARGS)

@@ -733,7 +733,7 @@ var useCasePlans = map[string]useCasePlan{
 	"uc_ot_passive":           {scanType: "passive_discovery", profile: "ot"},
 	"uc_ai_endpoint_sweep":    {scanType: "mcp_discovery", profile: "it"},
 	"uc_rescan_delta":         {scanType: "assessment", profile: "it"},
-	"uc_iot_device_survey":    {scanType: "discovery", profile: "iot"},
+	"uc_iot_device_survey":    {scanType: "service_fingerprint", profile: "iot"},
 	"uc_web_app_triage":       {scanType: "web_scan", profile: "it"},
 	"uc_udp_service_exposure": {scanType: "udp_scan", profile: "it"},
 	"uc_snmp_exposure":        {scanType: "snmp_scan", profile: "it"},

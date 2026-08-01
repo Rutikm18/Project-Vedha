@@ -2,13 +2,10 @@ import gzip
 import logging
 from contextlib import asynccontextmanager
 
-import os
-
 import structlog
 from fastapi import FastAPI, Request, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse, RedirectResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import JSONResponse
 
 from app.auth.middleware import TenantIsolationMiddleware
 from app.auth.router import router as auth_router
@@ -20,6 +17,7 @@ from app.routers.ad import router as ad_router
 from app.routers.agents import router as agents_router
 from app.routers.agent_ws import router as agent_ws_router  # WebSocket probe push
 from app.routers.ai_report import router as ai_report_router
+from app.routers.ai import router as ai_router
 from app.routers.attack_paths import router as attack_paths_router
 from app.routers.detection import router as detection_router
 from app.routers.detection_runs import router as detection_runs_router
@@ -179,6 +177,7 @@ app.include_router(detection_router)
 app.include_router(detection_runs_router)
 app.include_router(agent_advisor_router)
 app.include_router(ai_report_router)
+app.include_router(ai_router)
 app.include_router(activity_router)
 app.include_router(analytics_router)
 
@@ -194,13 +193,12 @@ except Exception as _exc:  # noqa: BLE001 — metrics must never block startup
     structlog.get_logger().warning("metrics.init_failed", error=str(_exc))
 
 
-# ── Operator dashboard (static, served same-origin so no CORS / token wiring) ──
-
-_STATIC_DIR = os.path.join(os.path.dirname(__file__), "static")
-if os.path.isdir(_STATIC_DIR):
-    app.mount("/dashboard", StaticFiles(directory=_STATIC_DIR, html=True), name="dashboard")
-
-
 @app.get("/", include_in_schema=False)
-async def _root_redirect():
-    return RedirectResponse(url="/dashboard/")
+async def _service_root():
+    """Identify the Manager API without exposing a second dashboard."""
+    return {
+        "service": "Vedha Manager API",
+        "status": "ok",
+        "dashboard": "Use the Vedha Next.js dashboard.",
+        "docs": "/docs",
+    }

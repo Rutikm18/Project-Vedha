@@ -5,7 +5,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import Link from "next/link";
 import {
   Plus, Briefcase, ChevronRight, X, Check,
-  RefreshCw, AlertTriangle, Users, Calendar,
+  RefreshCw, AlertTriangle,
 } from "lucide-react";
 import { PageShell } from "../../components/PageShell";
 import { useToast } from "../../hooks/useToast";
@@ -35,14 +35,21 @@ interface FormState {
   startDate: string; endDate: string; assessor: string; tags: string;
   scopeCidrs: string; excludedCidrs: string;
   credType: "ssh" | "winrm" | "domain" | "api"; credLabel: string; credUser: string;
+  credVaultRef: string;
 }
 
 const EMPTY_FORM: FormState = {
   name: "", client: "", description: "",
   startDate: "", endDate: "", assessor: "analyst@vedha.io", tags: "",
   scopeCidrs: "", excludedCidrs: "",
-  credType: "domain", credLabel: "", credUser: "",
+  credType: "domain", credLabel: "", credUser: "", credVaultRef: "",
 };
+
+const splitEntries = (value: string) =>
+  value.split(/[\s,]+/).map((entry) => entry.trim()).filter(Boolean);
+
+const hasValidDateRange = (startDate: string, endDate: string) =>
+  Boolean(startDate && endDate && endDate >= startDate);
 
 /* ─── Helpers ─── */
 function statusColor(s: EngagementStatus) {
@@ -118,8 +125,14 @@ export default function EngagementsPage() {
   }
 
   function canProceed() {
-    if (step === 0) return form.name.trim() && form.client.trim() && form.startDate && form.endDate;
-    if (step === 1) return form.scopeCidrs.trim().length > 0;
+    if (step === 0) {
+      return Boolean(form.name.trim() && form.client.trim() && hasValidDateRange(form.startDate, form.endDate));
+    }
+    if (step === 1) return splitEntries(form.scopeCidrs).length > 0;
+    if (step === 2) {
+      const credentialStarted = Boolean(form.credLabel.trim() || form.credUser.trim() || form.credVaultRef.trim());
+      return !credentialStarted || Boolean(form.credLabel.trim() && form.credVaultRef.trim());
+    }
     return true;
   }
 
@@ -130,12 +143,17 @@ export default function EngagementsPage() {
       description: form.description.trim(),
       startDate: form.startDate,
       endDate: form.endDate,
-      assessor: form.assessor,
+      assessor: form.assessor.trim(),
       tags: form.tags.split(",").map((s) => s.trim()).filter(Boolean),
-      scopeCidrs: form.scopeCidrs.split(",").map((s) => s.trim()).filter(Boolean),
-      excludedCidrs: form.excludedCidrs.split(",").map((s) => s.trim()).filter(Boolean),
+      scopeCidrs: splitEntries(form.scopeCidrs),
+      excludedCidrs: splitEntries(form.excludedCidrs),
       credentials: form.credLabel.trim()
-        ? [{ type: form.credType, label: form.credLabel, username: form.credUser, vaultRef: `vault/${Date.now()}` }]
+        ? [{
+            type: form.credType,
+            label: form.credLabel.trim(),
+            username: form.credUser.trim() || undefined,
+            vaultRef: form.credVaultRef.trim(),
+          }]
         : [],
     });
   }
@@ -258,12 +276,12 @@ export default function EngagementsPage() {
 
       {/* ── Multi-step Create Modal ── */}
       {showModal && (
-        <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center" }}>
-          <div className="animate-scale-in" style={{ background: "var(--adv-panel)", border: "1px solid var(--adv-border)", borderRadius: 10, width: 520, maxHeight: "90vh", overflow: "hidden", display: "flex", flexDirection: "column" }}>
+        <div role="presentation" style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center" }}>
+          <div role="dialog" aria-modal="true" aria-labelledby="new-engagement-title" className="animate-scale-in" style={{ background: "var(--adv-panel)", border: "1px solid var(--adv-border)", borderRadius: 10, width: 520, maxWidth: "calc(100vw - 24px)", maxHeight: "90vh", overflow: "hidden", display: "flex", flexDirection: "column" }}>
             {/* Modal header */}
             <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--adv-border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, color: "var(--adv-text)", letterSpacing: 1 }}>NEW ENGAGEMENT</span>
-              <button onClick={() => { setShowModal(false); setStep(0); setForm(EMPTY_FORM); }}
+              <span id="new-engagement-title" style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, color: "var(--adv-text)", letterSpacing: 1 }}>NEW ENGAGEMENT</span>
+              <button aria-label="Close new engagement dialog" onClick={() => { setShowModal(false); setStep(0); setForm(EMPTY_FORM); }}
                 style={{ background: "none", border: "none", cursor: "pointer", color: "var(--adv-text-muted)" }}>
                 <X size={16} />
               </button>
@@ -300,38 +318,43 @@ export default function EngagementsPage() {
                     { label: "TAGS (comma-separated)", key: "tags" as const, placeholder: "external, web, pci" },
                   ].map(({ label, key, placeholder }) => (
                     <div key={key}>
-                      <label style={labelStyle}>{label}</label>
-                      <input value={form[key]} onChange={(e) => patchForm({ [key]: e.target.value })}
+                      <label htmlFor={`eng-create-${key}`} style={labelStyle}>{label}</label>
+                      <input id={`eng-create-${key}`} value={form[key]} onChange={(e) => patchForm({ [key]: e.target.value })}
                         placeholder={placeholder} style={inputStyle} />
                     </div>
                   ))}
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
                     <div>
-                      <label style={labelStyle}>START DATE *</label>
-                      <input type="date" value={form.startDate} onChange={(e) => patchForm({ startDate: e.target.value })} style={inputStyle} />
+                      <label htmlFor="eng-create-start" style={labelStyle}>START DATE *</label>
+                      <input id="eng-create-start" type="date" value={form.startDate} onChange={(e) => patchForm({ startDate: e.target.value })} style={inputStyle} />
                     </div>
                     <div>
-                      <label style={labelStyle}>END DATE *</label>
-                      <input type="date" value={form.endDate} onChange={(e) => patchForm({ endDate: e.target.value })} style={inputStyle} />
+                      <label htmlFor="eng-create-end" style={labelStyle}>END DATE *</label>
+                      <input id="eng-create-end" type="date" min={form.startDate || undefined} value={form.endDate} onChange={(e) => patchForm({ endDate: e.target.value })} style={inputStyle} />
                     </div>
                   </div>
+                  {form.startDate && form.endDate && !hasValidDateRange(form.startDate, form.endDate) && (
+                    <div role="alert" style={{ fontSize: 11, color: "var(--sev-high-color, #FF6D00)" }}>
+                      End date must be on or after the start date.
+                    </div>
+                  )}
                 </div>
               )}
 
               {step === 1 && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                   <div>
-                    <label style={labelStyle}>SCOPE CIDRs * (comma-separated)</label>
-                    <textarea value={form.scopeCidrs} onChange={(e) => patchForm({ scopeCidrs: e.target.value })}
-                      placeholder="10.0.0.0/8, 192.168.1.0/24" rows={3}
+                    <label htmlFor="eng-create-scope" style={labelStyle}>SCOPE IPs / CIDRs * (comma or one per line)</label>
+                    <textarea id="eng-create-scope" value={form.scopeCidrs} onChange={(e) => patchForm({ scopeCidrs: e.target.value })}
+                      placeholder={"10.0.0.0/8\n192.168.1.0/24"} rows={3}
                       style={{ ...inputStyle, resize: "vertical", lineHeight: 1.5 }} />
                     <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 11, color: "var(--adv-text-muted)", marginTop: 4 }}>
-                      {form.scopeCidrs.split(",").filter((s) => s.trim()).length} CIDR{form.scopeCidrs.split(",").filter((s) => s.trim()).length !== 1 ? "s" : ""} entered
+                      {splitEntries(form.scopeCidrs).length} entr{splitEntries(form.scopeCidrs).length === 1 ? "y" : "ies"}
                     </div>
                   </div>
                   <div>
-                    <label style={labelStyle}>EXCLUDED IPs / CIDRs (comma-separated)</label>
-                    <textarea value={form.excludedCidrs} onChange={(e) => patchForm({ excludedCidrs: e.target.value })}
+                    <label htmlFor="eng-create-excluded" style={labelStyle}>EXCLUDED IPs / CIDRs (comma or one per line)</label>
+                    <textarea id="eng-create-excluded" value={form.excludedCidrs} onChange={(e) => patchForm({ excludedCidrs: e.target.value })}
                       placeholder="10.0.0.1, 192.168.1.1" rows={2}
                       style={{ ...inputStyle, resize: "vertical", lineHeight: 1.5 }} />
                   </div>
@@ -344,13 +367,13 @@ export default function EngagementsPage() {
               {step === 2 && (
                 <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                   <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 13, color: "var(--adv-text-muted)" }}>
-                    Optional: add a credential set. Credentials are stored in HashiCorp Vault — only a vault reference is saved here.
+                    Optional: attach an existing secret from your approved vault. Vedha stores only the reference, never the secret value.
                   </div>
                   <div>
-                    <label style={labelStyle}>CREDENTIAL TYPE</label>
-                    <div style={{ display: "flex", gap: 6 }}>
+                    <div style={labelStyle}>CREDENTIAL TYPE</div>
+                    <div role="group" aria-label="Credential type" style={{ display: "flex", gap: 6 }}>
                       {(["domain", "ssh", "winrm", "api"] as const).map((t) => (
-                        <button key={t} onClick={() => patchForm({ credType: t })}
+                        <button key={t} aria-pressed={form.credType === t} onClick={() => patchForm({ credType: t })}
                           style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, padding: "5px 12px", borderRadius: 4, cursor: "pointer",
                             border: `1px solid ${form.credType === t ? "var(--adv-accent)" : "var(--adv-border)"}`,
                             background: form.credType === t ? "rgba(37,99,235,0.1)" : "transparent",
@@ -361,18 +384,28 @@ export default function EngagementsPage() {
                     </div>
                   </div>
                   <div>
-                    <label style={labelStyle}>LABEL</label>
-                    <input value={form.credLabel} onChange={(e) => patchForm({ credLabel: e.target.value })}
+                    <label htmlFor="eng-create-cred-label" style={labelStyle}>LABEL</label>
+                    <input id="eng-create-cred-label" value={form.credLabel} onChange={(e) => patchForm({ credLabel: e.target.value })}
                       placeholder="e.g. corp.local standard user" style={inputStyle} />
                   </div>
                   <div>
-                    <label style={labelStyle}>USERNAME</label>
-                    <input value={form.credUser} onChange={(e) => patchForm({ credUser: e.target.value })}
+                    <label htmlFor="eng-create-cred-user" style={labelStyle}>USERNAME</label>
+                    <input id="eng-create-cred-user" value={form.credUser} onChange={(e) => patchForm({ credUser: e.target.value })}
                       placeholder="e.g. pentest@corp.local" style={inputStyle} />
                   </div>
-                  <div style={{ background: "rgba(37,99,235,0.04)", border: "1px solid rgba(37,99,235,0.12)", borderRadius: 5, padding: "8px 12px", fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: "var(--adv-text-muted)" }}>
-                    Actual credentials are stored in Vault at vault/eng-{"{id}"}/cred. Never saved in plaintext.
+                  <div>
+                    <label htmlFor="eng-create-vault-ref" style={labelStyle}>VAULT REFERENCE *</label>
+                    <input id="eng-create-vault-ref" value={form.credVaultRef} onChange={(e) => patchForm({ credVaultRef: e.target.value })}
+                      placeholder="e.g. vedha/engagements/acme-q2/domain-user" style={inputStyle} />
                   </div>
+                  <div style={{ background: "rgba(37,99,235,0.04)", border: "1px solid rgba(37,99,235,0.12)", borderRadius: 5, padding: "8px 12px", fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: "var(--adv-text-muted)" }}>
+                    Create the secret in Vault first. This form does not create, verify, or copy secret material.
+                  </div>
+                  {!canProceed() && (
+                    <div role="alert" style={{ fontSize: 11, color: "var(--sev-high-color, #FF6D00)" }}>
+                      A credential label and vault reference are both required when attaching credentials.
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -385,9 +418,9 @@ export default function EngagementsPage() {
                     { label: "DATES",      value: `${form.startDate} → ${form.endDate}` },
                     { label: "ASSESSOR",   value: form.assessor },
                     { label: "TAGS",       value: form.tags || "—" },
-                    { label: "SCOPE",      value: `${form.scopeCidrs.split(",").filter((s) => s.trim()).length} CIDR(s): ${form.scopeCidrs}` },
+                    { label: "SCOPE",      value: `${splitEntries(form.scopeCidrs).length} target(s): ${splitEntries(form.scopeCidrs).join(", ")}` },
                     { label: "EXCLUDED",   value: form.excludedCidrs || "—" },
-                    { label: "CREDENTIAL", value: form.credLabel || "None added" },
+                    { label: "CREDENTIAL", value: form.credLabel ? `${form.credLabel} → ${form.credVaultRef}` : "None added" },
                   ].map(({ label, value }) => (
                     <div key={label} style={{ display: "flex", padding: "6px 0", borderBottom: "1px solid var(--adv-border)" }}>
                       <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: "var(--adv-text-muted)", width: 110, flexShrink: 0 }}>{label}</span>

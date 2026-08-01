@@ -42,6 +42,21 @@ ENGINE_BUILD_SHA = os.environ.get("PROBE_BUILD_SHA")
 VALID_PROFILES = {"it", "iot", "ot"}
 
 
+def _env_number(name: str, default: float, minimum: float, maximum: float) -> float:
+    """Read a bounded numeric safety setting without trusting the environment."""
+    try:
+        return max(minimum, min(maximum, float(os.environ.get(name, default))))
+    except (TypeError, ValueError):
+        return default
+
+
+# Hard appliance ceilings. A job may ask for less, never more. The target cap
+# is intentionally much smaller than scanner_base's generic 200k guard because
+# this path expands every host and runs a multi-stage assessment workflow.
+MAX_TARGETS = int(_env_number("PROBE_MAX_TARGETS", 4096, 1, 200_000))
+MAX_JOB_SECONDS = _env_number("PROBE_MAX_JOB_SECONDS", 7200, 1, 86_400)
+
+
 def _runtime_manifest() -> dict:
     return engine_manifest(
         build_version=ENGINE_VERSION,
@@ -149,6 +164,16 @@ def _clamp(val, lo, hi, default):
         return default
 
 
+def _job_runtime_seconds(params: dict) -> float:
+    """Return the effective whole-job deadline; callers can only reduce it."""
+    return _clamp(
+        params.get("max_runtime_seconds"),
+        min(1.0, MAX_JOB_SECONDS),
+        MAX_JOB_SECONDS,
+        MAX_JOB_SECONDS,
+    )
+
+
 def _tuning_from_params(params: dict) -> dict:
     """Translate operator-supplied job params into run_engagement() kwargs.
 
@@ -208,11 +233,20 @@ def _tuning_from_params(params: dict) -> dict:
 
 
 def _count_open_port_facts(facts: list[dict]) -> int:
-    """Count concrete open services, not generic host-liveness observations."""
-    return sum(
-        1 for f in facts
-        if f.get("status") == "open" and f.get("port") is not None
-    )
+    """Count unique open network endpoints, not every confirming scanner fact."""
+    return len({
+        (
+            f.get("target"),
+            (f.get("proto") or "tcp").lower(),
+            int(f["port"]),
+        )
+        for f in facts
+        if (
+            f.get("target")
+            and f.get("status") == "open"
+            and f.get("port") is not None
+        )
+    })
 
 
 def _facts_from_cache(cache: WorkflowCache) -> list[dict]:
@@ -224,7 +258,11 @@ def _hosts_from_facts(facts: list[dict]) -> list[dict]:
     host_map: dict[str, dict] = {}
     port_map: dict[str, dict[tuple[int, str], dict]] = {}
     for fact in facts:
-        if fact.get("status") == "error" or fact.get("error"):
+        # Only affirmative network evidence may create an inventory asset.
+        # Negative/ambiguous observations such as host-discovery "filtered",
+        # closed TCP ports, and unanswered UDP probes are useful run telemetry,
+        # but they do not prove that a host exists.
+        if fact.get("status") not in {"open", "observed"} or fact.get("error"):
             continue
         target = fact.get("target")
         if not target:
@@ -263,11 +301,74 @@ def _hosts_from_facts(facts: list[dict]) -> list[dict]:
     return list(host_map.values())
 
 
+def _applied_tuning(tuning: dict, job_runtime_seconds: float) -> dict:
+    """Serialize effective limits without ever echoing credential values."""
+    return {
+        "rate": tuning.get("rate"),
+        "concurrency": tuning.get("concurrency"),
+        "timeout": tuning.get("timeout"),
+        "disc_timeout": tuning.get("disc_timeout"),
+        "passive_listen_seconds": tuning.get("passive_listen_seconds"),
+        "recheck_hours": (
+            tuning["force_recheck_after"].total_seconds() / 3600
+            if tuning.get("force_recheck_after")
+            else None
+        ),
+        "max_targets": MAX_TARGETS,
+        "max_runtime_seconds": job_runtime_seconds,
+        "ssh_auth": bool(tuning.get("ssh_creds")),
+        "win_auth": bool(tuning.get("win_creds")),
+    }
+
+
+def _build_run_stats(
+    facts: list[dict],
+    issues: list[dict],
+    tuning: dict,
+    job_runtime_seconds: float,
+    *,
+    scope_src: list[str],
+    exclude_src: list[str],
+    local_scope_src: list[str] | None,
+    requested_targets: list[str],
+    authorized_targets: list[str],
+) -> tuple[dict, list[dict]]:
+    """Build one consistent result summary for complete and interrupted runs."""
+    successful_facts = [
+        fact
+        for fact in facts
+        if fact.get("status") != "error" and not fact.get("error")
+    ]
+    hosts = _hosts_from_facts(facts)
+    stats = {
+        "host_count": len(hosts),
+        "open_ports": _count_open_port_facts(facts),
+        "fact_count": len(successful_facts),
+        "error_count": len(issues),
+        "result_count": len(facts),
+        "scanners_run": sorted({
+            fact.get("scanner", "")
+            for fact in facts
+            if fact.get("scanner")
+        }),
+        "applied_tuning": _applied_tuning(tuning, job_runtime_seconds),
+        "scope_enforced": {
+            "allow": scope_src,
+            "exclude": exclude_src,
+            "local_allow": local_scope_src,
+            "targets_requested": requested_targets,
+            "targets_authorized": authorized_targets,
+        },
+    }
+    return stats, hosts
+
+
 def run_scan(scan_type: str, params: dict,
              use_case_id: str | None = None,
              engagement_uuid: str | None = None,
              validated_scope: list[str] | None = None,
-             validated_excludes: list[str] | None = None) -> dict:
+             validated_excludes: list[str] | None = None,
+             local_allowed_scope: list[str] | None = None) -> dict:
     """Execute a scan and return the enriched result bundle.
 
     Args:
@@ -282,6 +383,8 @@ def run_scan(scan_type: str, params: dict,
         validated_excludes: excluded CIDRs the agent fetched from the engagement's
             authoritative /scope (merged with any per-job excluded_cidrs). These are
             carved OUT of the allowlist by ScopeGuard — packets never reach them.
+        local_allowed_scope: optional deployment-local CIDR ceiling. When supplied,
+            targets must pass this guard in addition to the engagement allowlist.
     """
     started_at = datetime.now(timezone.utc).isoformat()
     errors: list[str] = []
@@ -359,7 +462,7 @@ def run_scan(scan_type: str, params: dict,
     # from the raw scope_src below) still enforces the authoritative boundary.
     requested_targets = list(targets)
     try:
-        expanded = expand_targets(targets)
+        expanded = expand_targets(targets, max_hosts=MAX_TARGETS)
         if expanded:
             targets = expanded
     except ValueError as exc:
@@ -437,6 +540,44 @@ def run_scan(scan_type: str, params: dict,
             requested_targets=requested_targets,
         )
 
+    local_scope_src: list[str] | None = None
+    if local_allowed_scope is not None:
+        try:
+            local_scope_src = _string_list(local_allowed_scope, "local_allowed_scope")
+        except ValueError as exc:
+            return _error_result(
+                scan_type,
+                str(exc),
+                error_code="invalid_local_scope",
+                remediation="Set PROBE_NETWORK_SEGMENTS to valid IP/CIDR strings.",
+                engagement_uuid=engagement_uuid,
+                use_case_id=use_case_id,
+                profile=profile,
+            )
+        if not local_scope_src:
+            return _error_result(
+                scan_type,
+                "probe local network ceiling is empty",
+                error_code="local_scope_empty",
+                remediation="Set PROBE_NETWORK_SEGMENTS before assigning scan jobs.",
+                engagement_uuid=engagement_uuid,
+                use_case_id=use_case_id,
+                profile=profile,
+            )
+        local_scope = ScopeGuard.from_list(local_scope_src)
+        targets = list(local_scope.filter(targets))
+        if not targets:
+            return _error_result(
+                scan_type,
+                "no requested targets remain inside the probe's local network ceiling",
+                error_code="outside_local_scope",
+                remediation="Assign a probe whose PROBE_NETWORK_SEGMENTS covers the target.",
+                engagement_uuid=engagement_uuid,
+                use_case_id=use_case_id,
+                profile=profile,
+                requested_targets=requested_targets,
+            )
+
     mode = mode_factory() if mode_factory else service_specific(svc_filter or set())
     cache = WorkflowCache()
 
@@ -444,6 +585,7 @@ def run_scan(scan_type: str, params: dict,
     # re-scan delta, credentials) into engine kwargs. This is what makes the
     # Scanner page's controls drive the actual scan instead of being ignored.
     tuning = _tuning_from_params(params)
+    job_runtime_seconds = _job_runtime_seconds(params)
     trace = ExecutionTrace(planned_components(
         profile,
         service_filter=mode.service_filter,
@@ -454,18 +596,95 @@ def run_scan(scan_type: str, params: dict,
     ))
 
     try:
-        asyncio.run(run_engagement(
-            targets, scope, profile=profile,
-            service_filter=mode.service_filter,
-            stop_after_banner=mode.stop_after_banner,
-            stage_ceiling=mode.stage_ceiling,
-            cache=cache,
-            trace=trace,
-            **tuning))
+        asyncio.run(asyncio.wait_for(
+            run_engagement(
+                targets, scope, profile=profile,
+                service_filter=mode.service_filter,
+                stop_after_banner=mode.stop_after_banner,
+                stage_ceiling=mode.stage_ceiling,
+                cache=cache,
+                trace=trace,
+                **tuning,
+            ),
+            timeout=job_runtime_seconds,
+        ))
+    except asyncio.TimeoutError:
+        error_msg = (
+            f"job exceeded the {job_runtime_seconds:g}-second runtime ceiling"
+        )
+        trace.finalize("Not run because the job runtime ceiling was reached.")
+        facts = _facts_from_cache(cache)
+        deadline_issue = {
+            "code": "job_deadline_exceeded",
+            "scanner": ENGINE_ID,
+            "message": error_msg,
+            "retryable": True,
+            "remediation": (
+                "Narrow the target set or lower scan intensity; raise "
+                "PROBE_MAX_JOB_SECONDS only after capacity review."
+            ),
+        }
+        issues = [*trace.issues, deadline_issue]
+        run_stats, hosts = _build_run_stats(
+            facts,
+            issues,
+            tuning,
+            job_runtime_seconds,
+            scope_src=scope_src,
+            exclude_src=exclude_src,
+            local_scope_src=local_scope_src,
+            requested_targets=requested_targets,
+            authorized_targets=targets,
+        )
+        has_evidence = bool(run_stats["fact_count"])
+        return _error_result(
+            scan_type,
+            error_msg,
+            error_code="job_deadline_exceeded",
+            remediation=deadline_issue["remediation"],
+            engagement_uuid=engagement_uuid,
+            use_case_id=use_case_id,
+            profile=profile,
+            started_at=started_at,
+            ok=has_evidence,
+            outcome="partial" if has_evidence else "failed",
+            degraded=True,
+            facts=facts,
+            hosts=hosts,
+            scanner_runs=trace.as_list(),
+            issues=issues,
+            run_stats=run_stats,
+            errors=[error_msg],
+            host_count=run_stats["host_count"],
+            service_count=run_stats["open_ports"],
+            open_ports=run_stats["open_ports"],
+            finding_count=0,
+        )
     except Exception as exc:
         error_msg = f"{type(exc).__name__}: {exc}"
         errors.append(error_msg)
+        trace.finalize("Not run because the workflow terminated unexpectedly.")
         facts = _facts_from_cache(cache)
+        workflow_issue = {
+            "code": "workflow_internal_error",
+            "scanner": ENGINE_ID,
+            "message": error_msg,
+            "retryable": False,
+            "remediation": "Inspect probe logs and component run states before retrying.",
+        }
+        issues = [*trace.issues, workflow_issue]
+        run_stats, hosts = _build_run_stats(
+            facts,
+            issues,
+            tuning,
+            job_runtime_seconds,
+            scope_src=scope_src,
+            exclude_src=exclude_src,
+            local_scope_src=local_scope_src,
+            requested_targets=requested_targets,
+            authorized_targets=targets,
+        )
+        has_evidence = bool(run_stats["fact_count"])
         return _error_result(
             scan_type,
             error_msg,
@@ -474,29 +693,38 @@ def run_scan(scan_type: str, params: dict,
             engagement_uuid=engagement_uuid,
             use_case_id=use_case_id,
             profile=profile,
+            started_at=started_at,
+            ok=has_evidence,
+            outcome="partial" if has_evidence else "failed",
+            degraded=True,
             facts=facts,
-            hosts=_hosts_from_facts(facts),
+            hosts=hosts,
             scanner_runs=trace.as_list(),
+            issues=issues,
+            run_stats=run_stats,
             errors=errors,
+            host_count=run_stats["host_count"],
+            service_count=run_stats["open_ports"],
+            open_ports=run_stats["open_ports"],
+            finding_count=0,
         )
 
     facts = _facts_from_cache(cache)
     issues = trace.issues
     errors.extend(issue["message"] for issue in issues)
-    successful_facts = [
-        fact
-        for fact in facts
-        if fact.get("status") != "error" and not fact.get("error")
-    ]
-    unique_hosts = {
-        fact["target"]
-        for fact in facts
-        if fact.get("target")
-        and fact.get("status") != "error"
-        and not fact.get("error")
-    }
-    open_ports = _count_open_port_facts(facts)
-    hosts_list = _hosts_from_facts(facts)
+    run_stats, hosts_list = _build_run_stats(
+        facts,
+        issues,
+        tuning,
+        job_runtime_seconds,
+        scope_src=scope_src,
+        exclude_src=exclude_src,
+        local_scope_src=local_scope_src,
+        requested_targets=requested_targets,
+        authorized_targets=targets,
+    )
+    open_ports = run_stats["open_ports"]
+    host_count = run_stats["host_count"]
     outcome = (
         "failed"
         if trace.failed
@@ -525,37 +753,10 @@ def run_scan(scan_type: str, params: dict,
         "issues": issues,
         "facts": facts,
         "hosts": hosts_list,
-        "run_stats": {
-            "host_count": len(unique_hosts),
-            "open_ports": open_ports,
-            "fact_count": len(successful_facts),
-            "error_count": len(issues),
-            "result_count": len(facts),
-            "scanners_run": sorted({f.get("scanner", "") for f in facts if f.get("scanner")}),
-            # Provenance: the effective tuning that produced these facts. Credential
-            # VALUES are never echoed — only whether an authenticated branch ran.
-            "applied_tuning": {
-                "rate": tuning.get("rate"),
-                "concurrency": tuning.get("concurrency"),
-                "timeout": tuning.get("timeout"),
-                "disc_timeout": tuning.get("disc_timeout"),
-                "passive_listen_seconds": tuning.get("passive_listen_seconds"),
-                "recheck_hours": (tuning["force_recheck_after"].total_seconds() / 3600
-                                  if tuning.get("force_recheck_after") else None),
-                "ssh_auth": bool(tuning.get("ssh_creds")),
-                "win_auth": bool(tuning.get("win_creds")),
-            },
-            # Scope provenance: exactly what the probe was authorized to touch.
-            "scope_enforced": {
-                "allow": scope_src,
-                "exclude": exclude_src,
-                "targets_requested": requested_targets,
-                "targets_authorized": targets,
-            },
-        },
+        "run_stats": run_stats,
         "errors": errors,
         # legacy flat fields kept for backwards compat with manager ingest
-        "host_count": len(unique_hosts),
+        "host_count": host_count,
         "service_count": open_ports,
         "open_ports": open_ports,
         "finding_count": 0,   # probe never produces findings — manager does

@@ -1,251 +1,331 @@
 "use client";
 
-import React, { useState, useRef } from "react";
-import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
-import { use } from "react";
+import React, { use, useMemo, useRef, useState } from "react";
 import Link from "next/link";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
-  ArrowLeft, RefreshCw, AlertTriangle, Upload, Loader2,
-  Network, Shield, Eye, FileText, BarChart2, Users, Pencil, X, Check,
+  Activity, AlertTriangle, ArrowLeft, CalendarDays, Check, ChevronLeft, ChevronRight,
+  CircleDot, Clock3, FileText, Loader2, Network, Pencil, Play, Target,
+  Shield, Tags, Upload, UserRound, Users, X,
 } from "lucide-react";
 import { PageShell } from "../../../components/PageShell";
-import { fetchJson, isUnauthorized, getStoredToken } from "../../../lib/fetcher";
-import { DataState, SkeletonRows, EmptyState } from "../../../components/states/DataState";
+import { DataState, EmptyState, SkeletonRows } from "../../../components/states/DataState";
+import { fetchJson, isUnauthorized } from "../../../lib/fetcher";
 import { useToast } from "../../../hooks/useToast";
 
-type TabKey = "overview" | "findings" | "assets" | "attack-paths" | "detection" | "reports";
+type TabKey = "overview" | "findings" | "assets" | "activity";
+type Severity = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
 
 interface Engagement {
-  id: string; name: string; client: string; status: string;
-  startDate: string; endDate: string; scopeCidrs: string[];
-  excludedCidrs: string[]; assessor: string; assetCount: number;
+  id: string;
+  name: string;
+  client: string;
+  status: string;
+  startDate: string;
+  endDate: string;
+  scopeCidrs: string[];
+  excludedCidrs: string[];
+  assessor: string;
+  assetCount: number;
   findingCount: number;
-  findingsBySeverity: { CRITICAL: number; HIGH: number; MEDIUM: number; LOW: number };
-  progress: number; description?: string; tags: string[];
+  findingsBySeverity: Record<Severity, number>;
+  progress: number;
+  description?: string;
+  tags: string[];
 }
 
-function sevColor(s: string) {
-  if (s === "CRITICAL") return "#FF1744";
-  if (s === "HIGH")     return "#FF6D00";
-  if (s === "MEDIUM")   return "#FFD600";
-  return "#00E676";
+interface ActivityItem {
+  id: string;
+  timestamp: string;
+  actor: string;
+  action: string;
+  detail: string;
 }
 
-function statusColor(s: string) {
-  if (s === "ACTIVE")    return "#00E676";
-  if (s === "PLANNING")  return "#FFD600";
-  if (s === "COMPLETED") return "#00D4FF";
-  if (s === "PAUSED")    return "#FF6D00";
-  return "#64748B";
+interface AssetRow {
+  id: string;
+  ip_address: string | null;
+  hostname: string | null;
+  os: string | null;
+  asset_type: string;
+  criticality: string;
+  services: Array<{
+    port: number;
+    protocol: string;
+    service: string | null;
+    product: string | null;
+    version: string | null;
+  }>;
 }
 
-/* ─── Skeleton ─── */
-function CardSkeleton() {
+interface FindingRow {
+  id: string;
+  title: string;
+  severity: Severity | "INFO";
+  affectedHost: string;
+  status: string;
+  riskScore: number;
+}
+interface FindingPage {
+  items: FindingRow[];
+  total: number;
+  page: number;
+  pageSize: number;
+  pages: number;
+}
+
+const SEVERITY_COLOR: Record<Severity, string> = {
+  CRITICAL: "var(--sev-critical-color)",
+  HIGH: "var(--sev-high-color)",
+  MEDIUM: "var(--sev-medium-color)",
+  LOW: "var(--sev-low-color)",
+};
+
+const STATUS_COLOR: Record<string, string> = {
+  ACTIVE: "var(--nominal-color)",
+  PLANNING: "var(--sev-medium-color)",
+  COMPLETED: "var(--accent)",
+  PAUSED: "var(--sev-high-color)",
+};
+
+function displayDate(value: string) {
+  if (!value) return "Not set";
+  const date = new Date(value);
+  return Number.isNaN(date.getTime()) ? value : date.toLocaleDateString(undefined, {
+    day: "2-digit", month: "short", year: "numeric",
+  });
+}
+
+function OverviewTab({ engagement }: { engagement: Engagement }) {
+  const [renderedAt] = useState(() => Date.now());
+  const daysLeft = Math.max(0, Math.ceil((new Date(engagement.endDate).getTime() - renderedAt) / 86_400_000));
+  const metrics = [
+    { label: "Findings", value: engagement.findingCount, detail: "recorded issues", color: "var(--sev-critical-color)", icon: AlertTriangle },
+    { label: "Assets", value: engagement.assetCount, detail: "in attack surface", color: "var(--accent)", icon: Network },
+    { label: "Progress", value: `${engagement.progress}%`, detail: "assessment complete", color: "var(--nominal-color)", icon: CircleDot },
+    { label: "Time remaining", value: `${daysLeft}d`, detail: `ends ${displayDate(engagement.endDate)}`, color: "var(--sev-medium-color)", icon: Clock3 },
+  ];
+
+  const details = [
+    { label: "Client", value: engagement.client || "Not assigned", icon: Users },
+    { label: "Lead assessor", value: engagement.assessor || "Not assigned", icon: UserRound },
+    { label: "Start date", value: displayDate(engagement.startDate), icon: CalendarDays },
+    { label: "End date", value: displayDate(engagement.endDate), icon: CalendarDays },
+  ];
+
   return (
-    <div style={{ background: "var(--adv-panel)", border: "1px solid var(--adv-border)", borderRadius: 6, padding: 16 }}>
-      <div className="shimmer" style={{ width: 80, height: 10, borderRadius: 3, marginBottom: 10 }} />
-      <div className="shimmer" style={{ width: 120, height: 28, borderRadius: 3 }} />
-    </div>
-  );
-}
-
-/* ─── Overview tab ─── */
-function OverviewTab({ eng, activity }: { eng: Engagement; activity: { id: string; timestamp: string; actor: string; action: string; detail: string }[] }) {
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      {/* Metric cards */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
-        {[
-          { label: "FINDINGS", value: eng.findingCount,  color: eng.findingCount > 0 ? "#FF1744" : "var(--adv-accent)" },
-          { label: "ASSETS",   value: eng.assetCount,    color: "var(--adv-accent)" },
-          { label: "PROGRESS", value: `${eng.progress}%`,color: eng.progress === 100 ? "#00E676" : "var(--adv-accent)" },
-          { label: "DAYS LEFT",value: Math.max(0, Math.ceil((new Date(eng.endDate).getTime() - Date.now()) / 86400000)), color: "#FFD600" },
-        ].map((m) => (
-          <div key={m.label} style={{ background: "var(--adv-panel)", border: "1px solid var(--adv-border)", borderRadius: 6, padding: "14px 16px" }}>
-            <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: "var(--adv-text-muted)", marginBottom: 6 }}>{m.label}</div>
-            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 26, fontWeight: 700, color: m.color }}>{m.value}</div>
-          </div>
+    <div className="engagement-stack">
+      <section className="engagement-metric-grid" aria-label="Engagement summary">
+        {metrics.map(({ label, value, detail, color, icon: Icon }) => (
+          <article className="engagement-metric-card" key={label} style={{ "--metric-color": color } as React.CSSProperties}>
+            <div className="engagement-metric-label"><Icon size={15} /> {label}</div>
+            <strong>{value}</strong>
+            <span>{detail}</span>
+          </article>
         ))}
-      </div>
+      </section>
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14 }}>
-        {/* Engagement info */}
-        <div style={{ background: "var(--adv-bg)", border: "1px solid var(--adv-border)", borderRadius: 6, overflow: "hidden" }}>
-          <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--adv-border)", fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: "var(--adv-text)" }}>
-            ENGAGEMENT DETAILS
-          </div>
-          <div style={{ padding: 14 }}>
-            {[
-              { label: "Client",    value: eng.client },
-              { label: "Assessor",  value: eng.assessor },
-              { label: "Status",    value: eng.status },
-              { label: "Start",     value: eng.startDate },
-              { label: "End",       value: eng.endDate },
-              { label: "Scope",     value: eng.scopeCidrs.join(", ") || "—" },
-              { label: "Excluded",  value: eng.excludedCidrs.join(", ") || "—" },
-              { label: "Tags",      value: eng.tags?.length ? eng.tags.join(", ") : "—" },
-              { label: "Description", value: eng.description || "—" },
-            ].map((r) => (
-              <div key={r.label} style={{ display: "flex", padding: "6px 0", borderBottom: "1px solid var(--adv-border)" }}>
-                <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: "var(--adv-text-muted)", width: 80, flexShrink: 0 }}>{r.label}</span>
-                <span style={{ fontFamily: "'Inter', sans-serif", fontSize: 13, color: "var(--adv-text)" }}>{r.value}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Activity feed */}
-        <div style={{ background: "var(--adv-bg)", border: "1px solid var(--adv-border)", borderRadius: 6, overflow: "hidden" }}>
-          <div style={{ padding: "10px 14px", borderBottom: "1px solid var(--adv-border)", fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: "var(--adv-text)" }}>
-            ACTIVITY FEED
-          </div>
-          <div style={{ overflowY: "auto", maxHeight: 280 }}>
-            {activity.length === 0 ? (
-              <div style={{ padding: "40px 0", textAlign: "center", fontFamily: "'JetBrains Mono', monospace", fontSize: 12, color: "var(--adv-text-muted)" }}>No activity yet</div>
-            ) : activity.map((a) => (
-              <div key={a.id} style={{ padding: "10px 14px", borderBottom: "1px solid var(--adv-border)", display: "flex", gap: 10 }}>
-                <div style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--adv-accent)", marginTop: 5, flexShrink: 0 }} />
-                <div>
-                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: "var(--adv-accent)", marginBottom: 2 }}>{a.action}</div>
-                  <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 12, color: "var(--adv-text)" }}>{a.detail}</div>
-                  <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: "var(--adv-text-muted)", marginTop: 2 }}>
-                    {a.actor} · {new Date(a.timestamp).toLocaleString()}
-                  </div>
+      <section className="engagement-overview-grid">
+        <article className="engagement-panel">
+          <header><div><Shield size={16} /><span>Engagement brief</span></div><span className="badge badge-info">Authorized scope</span></header>
+          <div className="engagement-panel-body">
+            <p className="engagement-description">
+              {engagement.description || "No assessment brief has been added yet. Add context so operators and client reviewers share the same objective."}
+            </p>
+            <div className="engagement-detail-grid">
+              {details.map(({ label, value, icon: Icon }) => (
+                <div className="engagement-detail" key={label}>
+                  <Icon size={14} />
+                  <div><span>{label}</span><strong>{value}</strong></div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
+            {engagement.tags?.length > 0 && (
+              <div className="engagement-tags"><Tags size={13} />{engagement.tags.map((tag) => <span key={tag}>{tag}</span>)}</div>
+            )}
           </div>
-        </div>
-      </div>
+        </article>
 
-      {/* Findings severity breakdown */}
-      <div style={{ background: "var(--adv-bg)", border: "1px solid var(--adv-border)", borderRadius: 6, padding: "14px 16px" }}>
-        <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, color: "var(--adv-text)", marginBottom: 12 }}>FINDINGS BY SEVERITY</div>
-        <div style={{ display: "flex", gap: 16, flexWrap: "wrap" }}>
-          {(["CRITICAL","HIGH","MEDIUM","LOW"] as const).map((s) => (
-            <div key={s} style={{ display: "flex", alignItems: "center", gap: 8 }}>
-              <div style={{ width: 10, height: 10, borderRadius: 2, background: sevColor(s) }} />
-              <span style={{ fontFamily: "'Inter', sans-serif", fontSize: 20, fontWeight: 700, color: sevColor(s) }}>{eng.findingsBySeverity[s]}</span>
-              <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, color: "var(--adv-text-muted)" }}>{s}</span>
+        <article className="engagement-panel">
+          <header><div><Target size={16} /><span>Scope boundaries</span></div><span>{engagement.scopeCidrs.length} targets</span></header>
+          <div className="engagement-panel-body engagement-scope">
+            <div>
+              <span className="engagement-field-label">Included networks and hosts</span>
+              <div className="engagement-chip-list">
+                {engagement.scopeCidrs.length
+                  ? engagement.scopeCidrs.map((cidr) => <code className="engagement-chip included" key={cidr}>{cidr}</code>)
+                  : <span className="engagement-empty-inline">No scope recorded</span>}
+              </div>
+            </div>
+            <div>
+              <span className="engagement-field-label">Explicit exclusions</span>
+              <div className="engagement-chip-list">
+                {engagement.excludedCidrs.length
+                  ? engagement.excludedCidrs.map((cidr) => <code className="engagement-chip excluded" key={cidr}>{cidr}</code>)
+                  : <span className="engagement-empty-inline">No exclusions recorded</span>}
+              </div>
+            </div>
+            <div className="engagement-scope-note">
+              <Shield size={14} />
+              Scans must remain inside included scope and must never target an excluded address.
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <article className="engagement-panel">
+        <header><div><AlertTriangle size={16} /><span>Finding distribution</span></div><Link href={`/findings?engagement=${engagement.id}`}>Open findings <ChevronRight size={13} /></Link></header>
+        <div className="engagement-severity-grid">
+          {(Object.keys(SEVERITY_COLOR) as Severity[]).map((severity) => (
+            <div key={severity}>
+              <span style={{ background: SEVERITY_COLOR[severity] }} />
+              <strong style={{ color: SEVERITY_COLOR[severity] }}>{engagement.findingsBySeverity[severity] ?? 0}</strong>
+              <small>{severity.toLowerCase()}</small>
             </div>
           ))}
         </div>
-      </div>
+      </article>
     </div>
   );
 }
 
-/* ─── Placeholder tab ─── */
-function LinkedTab({ label, href, icon: Icon }: { label: string; href: string; icon: React.ComponentType<{ size: number; color: string }> }) {
+function FindingsTab({ engagementId }: { engagementId: string }) {
+  const [page, setPage] = useState(1);
+  const query = useQuery({
+    queryKey: ["engagement-findings", engagementId, page],
+    queryFn: () => fetchJson<FindingPage>(
+      `/api/findings?paginated=true&engagement_id=${encodeURIComponent(engagementId)}&page=${page}&page_size=20&sort=risk`,
+    ),
+  });
+  const rows = query.data?.items ?? [];
+  const total = query.data?.total ?? 0;
+  const pages = query.data?.pages ?? 1;
+  const currentPage = query.data?.page ?? page;
+
   return (
-    <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "80px 0", gap: 14 }}>
-      <Icon size={40} color="var(--adv-border)" />
-      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, color: "var(--adv-text-muted)" }}>{label.toUpperCase()}</div>
-      <Link href={href}
-        style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: "var(--adv-accent)", textDecoration: "none", border: "1px solid rgba(37,99,235,0.3)", borderRadius: 4, padding: "6px 16px" }}>
-        OPEN {label.toUpperCase()} →
-      </Link>
-    </div>
+    <DataState
+      loading={query.isLoading}
+      error={query.error}
+      isEmpty={rows.length === 0}
+      onRetry={() => query.refetch()}
+      skeleton={<SkeletonRows rows={5} height={58} />}
+      empty={<EmptyState icon={AlertTriangle} title="No findings in this engagement" hint="Import evidence or run an authorized scan to populate findings." />}
+    >
+      <div className="engagement-list-panel">
+        <div className="engagement-list-heading"><span>Highest risk first</span><span>{total} findings · 20 per page</span></div>
+        {rows.map((finding) => (
+          <Link href={`/findings?engagement=${engagementId}&finding=${finding.id}`} className="engagement-finding-row" key={finding.id}>
+            <span className={`badge badge-${finding.severity.toLowerCase()}`}>{finding.severity}</span>
+            <div><strong>{finding.title}</strong><small>{finding.affectedHost} · {finding.status.replaceAll("_", " ")}</small></div>
+            <span className="engagement-risk-score">{finding.riskScore}</span>
+            <ChevronRight size={14} />
+          </Link>
+        ))}
+        {total > 0 && (
+          <nav className="findings-pagination" aria-label="Engagement findings pagination">
+            <div>
+              Showing <strong>{(currentPage - 1) * 20 + 1}</strong>–
+              <strong>{Math.min(currentPage * 20, total)}</strong> of <strong>{total}</strong>
+            </div>
+            <span>20 per page</span>
+            <div className="findings-pagination-controls">
+              <button type="button" onClick={() => setPage((value) => Math.max(1, value - 1))} disabled={currentPage === 1} aria-label="Previous findings page"><ChevronLeft size={14} /></button>
+              <span>Page {currentPage} of {pages}</span>
+              <button type="button" onClick={() => setPage((value) => Math.min(pages, value + 1))} disabled={currentPage === pages} aria-label="Next findings page"><ChevronRight size={14} /></button>
+            </div>
+          </nav>
+        )}
+      </div>
+    </DataState>
   );
-}
-
-/* ─── Attack Surface (real data: probe-discovered hosts + services) ─── */
-interface AssetRow {
-  id: string; ip_address: string | null; hostname: string | null; os: string | null;
-  asset_type: string; criticality: string;
-  services: { port: number; protocol: string; service: string | null; product: string | null; version: string | null }[];
 }
 
 function AssetsTab({ engagementId }: { engagementId: string }) {
-  const { data, isLoading, error, refetch } = useQuery({
+  const query = useQuery({
     queryKey: ["assets", engagementId],
     queryFn: () => fetchJson<AssetRow[]>(`/api/engagements/${engagementId}/assets`),
     refetchInterval: 20_000,
-    retry: (count, err) => !isUnauthorized(err) && count < 2,
+    retry: (count, error) => !isUnauthorized(error) && count < 2,
   });
-  const assets = data ?? [];
-  const mono = "'JetBrains Mono', monospace";
+  const assets = query.data ?? [];
+
   return (
     <DataState
-      loading={isLoading}
-      error={error}
+      loading={query.isLoading}
+      error={query.error}
       isEmpty={assets.length === 0}
-      onRetry={() => refetch()}
-      skeleton={<SkeletonRows rows={4} height={64} />}
-      empty={
-        <EmptyState
-          icon={Shield}
-          title="No hosts discovered yet"
-          hint="Run a host/service discovery scan on this operation — discovered hosts and their open services appear here."
-        />
-      }
+      onRetry={() => query.refetch()}
+      skeleton={<SkeletonRows rows={5} height={72} />}
+      empty={<EmptyState icon={Network} title="No hosts discovered yet" hint="Run discovery from this engagement to build the attack surface." />}
     >
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        <div style={{ fontFamily: mono, fontSize: 10, color: "var(--adv-text-muted)", marginBottom: 2 }}>
-          {assets.length} host{assets.length === 1 ? "" : "s"} · {assets.reduce((n, a) => n + a.services.length, 0)} services
-        </div>
-        {assets.map((a) => (
-          <div key={a.id} style={{ background: "var(--adv-panel)", border: "1px solid var(--adv-border)", borderRadius: 8, padding: "12px 14px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: a.services.length ? 8 : 0 }}>
-              <Network size={14} color="var(--adv-accent)" />
-              <span style={{ fontFamily: mono, fontSize: 13, fontWeight: 600, color: "var(--adv-text)" }}>{a.ip_address}</span>
-              {a.hostname && <span style={{ fontFamily: mono, fontSize: 11, color: "var(--adv-text-muted)" }}>{a.hostname}</span>}
-              {a.os && <span style={{ fontFamily: mono, fontSize: 10, color: "var(--adv-text-muted)", marginLeft: "auto" }}>{a.os}</span>}
-              <span style={{ fontFamily: mono, fontSize: 10, color: "var(--adv-text-muted)", marginLeft: a.os ? 8 : "auto" }}>{a.services.length} svc</span>
+      <div className="engagement-asset-grid">
+        {assets.map((asset) => (
+          <article className="engagement-asset-card" key={asset.id}>
+            <header>
+              <span><Network size={15} /> <code>{asset.ip_address || "Address unavailable"}</code></span>
+              <span className="badge badge-info">{asset.criticality}</span>
+            </header>
+            <div className="engagement-asset-meta">{asset.hostname || "Unknown host"} · {asset.os || "OS not identified"}</div>
+            <div className="engagement-service-list">
+              {asset.services.length ? asset.services.map((service, index) => (
+                <div key={`${service.port}-${index}`}>
+                  <code>{service.port}/{service.protocol}</code>
+                  <span>{service.service || "unknown service"}</span>
+                  <small>{[service.product, service.version].filter(Boolean).join(" ") || "No banner"}</small>
+                </div>
+              )) : <span className="engagement-empty-inline">No open services recorded</span>}
             </div>
-            {a.services.length > 0 && (
-              <div style={{ display: "grid", gap: 3 }}>
-                {a.services.map((s, i) => (
-                  <div key={i} style={{ display: "flex", gap: 12, fontFamily: mono, fontSize: 11 }}>
-                    <span style={{ color: "var(--adv-accent)", minWidth: 72 }}>{s.port}/{s.protocol}</span>
-                    <span style={{ color: "var(--adv-text)", minWidth: 90 }}>{s.service || "—"}</span>
-                    <span style={{ color: "var(--adv-text-muted)" }}>{[s.product, s.version].filter(Boolean).join(" ")}</span>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          </article>
         ))}
       </div>
     </DataState>
   );
 }
 
-/* ─── Import scan file (probe .json bundle / .jsonl) → detection + graph ─── */
+function ActivityTab({ activity }: { activity: ActivityItem[] }) {
+  if (!activity.length) return <EmptyState icon={Activity} title="No engagement activity yet" hint="Scan, import, and review events will appear here." />;
+  return (
+    <div className="engagement-timeline">
+      {activity.map((item) => (
+        <div key={item.id}>
+          <span className="engagement-timeline-dot" />
+          <article>
+            <header><strong>{item.action}</strong><time>{new Date(item.timestamp).toLocaleString()}</time></header>
+            <p>{item.detail}</p><small>Actor: {item.actor}</small>
+          </article>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function ImportScanButton({ engagementId }: { engagementId: string }) {
-  const fileRef = useRef<HTMLInputElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const toast = useToast();
-  const qc = useQueryClient();
+  const queryClient = useQueryClient();
 
-  async function onPick(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    e.target.value = ""; // allow re-selecting the same file later
+  async function pickFile(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
     if (!file) return;
     setBusy(true);
     try {
-      const fd = new FormData();
-      fd.append("file", file);
-      // Multipart upload — can't use fetchJson (it forces application/json and
-      // would break the boundary), so attach the Bearer token by hand. Without it
-      // the withBackend route 401s and the import silently fails.
-      const token = getStoredToken();
-      const res = await fetch(`/api/engagements/${engagementId}/import-facts`, {
+      const form = new FormData();
+      form.append("file", file);
+      const response = await fetch(`/api/engagements/${engagementId}/import-facts`, {
         method: "POST",
-        body: fd,
-        headers: token ? { Authorization: `Bearer ${token}` } : undefined,
+        body: form,
+        credentials: "same-origin",
       });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok) throw new Error(data?.error || data?.detail || `Import failed (${res.status}).`);
-      toast.success(
-        `Imported ${data.fact_count} facts`,
-        `${data.assets_promoted ?? 0} assets · detection running — findings & graph update shortly.`,
-      );
-      // Detection runs in the background; refresh the views that reflect it.
-      qc.invalidateQueries({ queryKey: ["assets", engagementId] });
-      qc.invalidateQueries({ queryKey: ["engagement", engagementId] });
-    } catch (err) {
-      toast.error("Import failed", err instanceof Error ? err.message : "Unknown error");
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(data.error || data.detail || `Import failed (${response.status})`);
+      toast.success("Evidence imported", `${data.fact_count ?? 0} facts accepted; detection processing has started.`);
+      void queryClient.invalidateQueries({ queryKey: ["engagement", engagementId] });
+      void queryClient.invalidateQueries({ queryKey: ["assets", engagementId] });
+      void queryClient.invalidateQueries({ queryKey: ["engagement-findings", engagementId] });
+    } catch (error) {
+      toast.error("Import failed", error instanceof Error ? error.message : "Unknown error");
     } finally {
       setBusy(false);
     }
@@ -253,212 +333,136 @@ function ImportScanButton({ engagementId }: { engagementId: string }) {
 
   return (
     <>
-      <input
-        ref={fileRef}
-        type="file"
-        accept=".json,.jsonl,application/json"
-        onChange={onPick}
-        style={{ display: "none" }}
-      />
-      <button
-        className="btn-secondary"
-        disabled={busy}
-        onClick={() => fileRef.current?.click()}
-        title="Import a probe scan file (.json bundle or .jsonl) → detection + attack graph"
-      >
-        {busy ? <Loader2 size={13} className="animate-spin" /> : <Upload size={13} />}
-        {busy ? "Importing…" : "Import scan"}
+      <input ref={inputRef} type="file" accept=".json,.jsonl,application/json" onChange={pickFile} hidden />
+      <button className="btn btn-secondary engagement-action" disabled={busy} onClick={() => inputRef.current?.click()}>
+        {busy ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+        {busy ? "Importing…" : "Import evidence"}
       </button>
     </>
   );
 }
 
-/* ─── Edit Engagement modal — makes every field editable (PATCH via BFF) ─── */
 const EDIT_STATUSES = ["PLANNING", "ACTIVE", "PAUSED", "COMPLETED"] as const;
 
-function EditEngagementModal({ eng, id, onClose }: { eng: Engagement; id: string; onClose: () => void }) {
-  const qc = useQueryClient();
+function EditEngagementModal({ engagement, onClose }: { engagement: Engagement; onClose: () => void }) {
+  const queryClient = useQueryClient();
   const toast = useToast();
-  const dash = (v?: string) => (!v || v === "—" ? "" : v);
-  const [f, setF] = useState({
-    name: eng.name ?? "",
-    client: dash(eng.client),
-    assessor: dash(eng.assessor),
-    description: eng.description ?? "",
-    status: eng.status ?? "PLANNING",
-    startDate: (eng.startDate ?? "").slice(0, 10),
-    endDate: (eng.endDate ?? "").slice(0, 10),
-    scopeCidrs: (eng.scopeCidrs ?? []).join(", "),
-    excludedCidrs: (eng.excludedCidrs ?? []).join(", "),
-    tags: (eng.tags ?? []).join(", "),
+  const [form, setForm] = useState({
+    name: engagement.name || "",
+    client: engagement.client === "—" ? "" : engagement.client || "",
+    assessor: engagement.assessor === "—" ? "" : engagement.assessor || "",
+    description: engagement.description || "",
+    status: engagement.status || "PLANNING",
+    startDate: (engagement.startDate || "").slice(0, 10),
+    endDate: (engagement.endDate || "").slice(0, 10),
+    scopeCidrs: engagement.scopeCidrs.join(", "),
+    excludedCidrs: engagement.excludedCidrs.join(", "),
+    tags: engagement.tags.join(", "),
   });
-  const patch = (p: Partial<typeof f>) => setF((o) => ({ ...o, ...p }));
+  const update = (change: Partial<typeof form>) => setForm((current) => ({ ...current, ...change }));
+  const scope = form.scopeCidrs.split(/[\s,]+/).filter(Boolean);
+  const datesValid = !form.startDate || !form.endDate || form.endDate >= form.startDate;
+  const valid = Boolean(form.name.trim() && scope.length && datesValid);
 
-  const save = useMutation({
-    // fetchJson injects the Authorization header (raw fetch would 401 at the BFF).
-    mutationFn: () => fetchJson(`/api/engagements/${id}`, {
+  const mutation = useMutation({
+    mutationFn: () => fetchJson(`/api/engagements/${engagement.id}`, {
       method: "PUT",
-      body: JSON.stringify(f),
+      body: JSON.stringify(form),
     }),
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ["engagement", id] });
-      qc.invalidateQueries({ queryKey: ["engagements"] });
-      toast.success("Saved", "Engagement updated.");
+      void queryClient.invalidateQueries({ queryKey: ["engagement", engagement.id] });
+      void queryClient.invalidateQueries({ queryKey: ["engagements"] });
+      toast.success("Engagement updated", "Scope and assessment details were saved.");
       onClose();
     },
-    onError: (e) => toast.error("Update failed", e instanceof Error ? e.message : "Could not save."),
+    onError: (error) => toast.error("Update failed", error instanceof Error ? error.message : "Could not save changes."),
   });
 
-  const mono = "'JetBrains Mono', monospace";
-  const input: React.CSSProperties = {
-    width: "100%", boxSizing: "border-box", background: "var(--adv-bg)",
-    border: "1px solid var(--adv-border)", borderRadius: 5, padding: "8px 10px",
-    color: "var(--adv-text)", fontFamily: mono, fontSize: 12, outline: "none",
-  };
-  const label: React.CSSProperties = { fontFamily: mono, fontSize: 9, color: "var(--adv-text-muted)", marginBottom: 5, display: "block" };
-  const canSave = f.name.trim().length > 0 && f.scopeCidrs.split(/[\n,]/).some((s) => s.trim());
-
   return (
-    <div style={{ position: "fixed", inset: 0, background: "rgba(0,0,0,0.7)", zIndex: 100, display: "flex", alignItems: "center", justifyContent: "center" }}>
-      <div className="animate-scale-in" style={{ background: "var(--adv-panel)", border: "1px solid var(--adv-border)", borderRadius: 10, width: 540, maxHeight: "90vh", overflow: "hidden", display: "flex", flexDirection: "column" }}>
-        <div style={{ padding: "16px 20px", borderBottom: "1px solid var(--adv-border)", display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <span style={{ fontFamily: mono, fontSize: 13, color: "var(--adv-text)", letterSpacing: 1 }}>EDIT ENGAGEMENT</span>
-          <button onClick={onClose} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--adv-text-muted)" }}><X size={16} /></button>
+    <div className="engagement-modal-backdrop" role="presentation" onMouseDown={(event) => event.target === event.currentTarget && onClose()}>
+      <div className="engagement-modal" role="dialog" aria-modal="true" aria-labelledby="edit-engagement-title">
+        <header>
+          <div><span className="engagement-modal-icon"><Pencil size={16} /></span><div><h2 id="edit-engagement-title">Edit engagement</h2><p>Keep client context and scope boundaries accurate.</p></div></div>
+          <button aria-label="Close edit dialog" onClick={onClose}><X size={18} /></button>
+        </header>
+        <div className="engagement-form">
+          <label className="engagement-form-wide"><span>Engagement name *</span><input value={form.name} onChange={(event) => update({ name: event.target.value })} /></label>
+          <label><span>Client</span><input value={form.client} onChange={(event) => update({ client: event.target.value })} placeholder="Organization name" /></label>
+          <label><span>Lead assessor</span><input value={form.assessor} onChange={(event) => update({ assessor: event.target.value })} placeholder="Assessment owner" /></label>
+          <label><span>Status</span><select value={form.status} onChange={(event) => update({ status: event.target.value })}>{EDIT_STATUSES.map((status) => <option key={status}>{status}</option>)}</select></label>
+          <label><span>Tags</span><input value={form.tags} onChange={(event) => update({ tags: event.target.value })} placeholder="external, web, pci" /></label>
+          <label><span>Start date</span><input type="date" value={form.startDate} onChange={(event) => update({ startDate: event.target.value })} /></label>
+          <label><span>End date</span><input type="date" min={form.startDate || undefined} value={form.endDate} onChange={(event) => update({ endDate: event.target.value })} /></label>
+          <label className="engagement-form-wide"><span>Assessment brief</span><textarea rows={3} value={form.description} onChange={(event) => update({ description: event.target.value })} placeholder="Objective, constraints, and expected outcome" /></label>
+          <label className="engagement-form-wide"><span>Included IPs / CIDRs *</span><textarea rows={3} value={form.scopeCidrs} onChange={(event) => update({ scopeCidrs: event.target.value })} /><small>Comma, space, or newline separated. At least one valid scope entry is required.</small></label>
+          <label className="engagement-form-wide"><span>Excluded IPs / CIDRs</span><textarea rows={2} value={form.excludedCidrs} onChange={(event) => update({ excludedCidrs: event.target.value })} /><small>Explicit exclusions always take precedence over included networks.</small></label>
+          {!datesValid && <div className="engagement-form-error">End date must be on or after the start date.</div>}
         </div>
-
-        <div style={{ padding: "18px 22px", overflowY: "auto", display: "flex", flexDirection: "column", gap: 12 }}>
-          <div><label style={label}>ENGAGEMENT NAME *</label>
-            <input value={f.name} onChange={(e) => patch({ name: e.target.value })} style={input} /></div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12 }}>
-            <div><label style={label}>CLIENT</label><input value={f.client} onChange={(e) => patch({ client: e.target.value })} style={input} /></div>
-            <div><label style={label}>ASSESSOR</label><input value={f.assessor} onChange={(e) => patch({ assessor: e.target.value })} style={input} /></div>
-          </div>
-          <div><label style={label}>DESCRIPTION</label>
-            <textarea value={f.description} onChange={(e) => patch({ description: e.target.value })} rows={2} style={{ ...input, resize: "vertical", lineHeight: 1.5 }} /></div>
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 12 }}>
-            <div><label style={label}>STATUS</label>
-              <select value={f.status} onChange={(e) => patch({ status: e.target.value })} style={{ ...input, cursor: "pointer" }}>
-                {EDIT_STATUSES.map((s) => <option key={s} value={s}>{s}</option>)}
-              </select></div>
-            <div><label style={label}>START</label><input type="date" value={f.startDate} onChange={(e) => patch({ startDate: e.target.value })} style={input} /></div>
-            <div><label style={label}>END</label><input type="date" value={f.endDate} onChange={(e) => patch({ endDate: e.target.value })} style={input} /></div>
-          </div>
-          <div><label style={label}>SCOPE CIDRs * (comma-separated)</label>
-            <textarea value={f.scopeCidrs} onChange={(e) => patch({ scopeCidrs: e.target.value })} rows={2} style={{ ...input, resize: "vertical", lineHeight: 1.5 }} /></div>
-          <div><label style={label}>EXCLUDED IPs / CIDRs</label>
-            <textarea value={f.excludedCidrs} onChange={(e) => patch({ excludedCidrs: e.target.value })} rows={2} style={{ ...input, resize: "vertical", lineHeight: 1.5 }} /></div>
-          <div><label style={label}>TAGS (comma-separated)</label>
-            <input value={f.tags} onChange={(e) => patch({ tags: e.target.value })} placeholder="external, web, pci" style={input} /></div>
-        </div>
-
-        <div style={{ padding: "14px 20px", borderTop: "1px solid var(--adv-border)", display: "flex", justifyContent: "flex-end", gap: 8 }}>
-          <button onClick={onClose} style={{ fontFamily: mono, fontSize: 10, color: "var(--adv-text-muted)", background: "none", border: "1px solid var(--adv-border)", borderRadius: 4, padding: "6px 16px", cursor: "pointer" }}>CANCEL</button>
-          <button onClick={() => save.mutate()} disabled={!canSave || save.isPending}
-            style={{ display: "flex", alignItems: "center", gap: 6, fontFamily: mono, fontSize: 10, color: canSave ? "#00E676" : "#64748B", background: canSave ? "rgba(0,230,118,0.08)" : "transparent", border: `1px solid ${canSave ? "rgba(0,230,118,0.3)" : "var(--adv-border)"}`, borderRadius: 4, padding: "6px 20px", cursor: canSave ? "pointer" : "not-allowed" }}>
-            {save.isPending ? <RefreshCw size={11} style={{ animation: "spin 1s linear infinite" }} /> : <Check size={11} />} SAVE CHANGES
+        <footer>
+          <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
+          <button className="btn btn-primary" disabled={!valid || mutation.isPending} onClick={() => mutation.mutate()}>
+            {mutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} Save changes
           </button>
-        </div>
+        </footer>
       </div>
     </div>
   );
 }
 
-/* ─── Main Page ─── */
 export default function EngagementDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
-  const [showEdit, setShowEdit] = useState(false);
-
-  const { data, isLoading, isError } = useQuery({
+  const [editing, setEditing] = useState(false);
+  const query = useQuery({
     queryKey: ["engagement", id],
-    // fetchJson injects the Bearer token; a raw fetch 401s against the
-    // withBackend route and the detail page renders empty.
-    queryFn: () => fetchJson<any>(`/api/engagements/${id}`),
+    queryFn: () => fetchJson<{ engagement: Engagement; activity?: ActivityItem[] }>(`/api/engagements/${id}`),
   });
-
-  const eng: Engagement | null = data?.engagement ?? null;
-  const activity = data?.activity ?? [];
-
-  const tabs: { key: TabKey; label: string; icon: React.ComponentType<{ size: number; color: string }> }[] = [
-    { key: "overview",      label: "Overview",      icon: BarChart2 },
-    { key: "findings",      label: "Findings",      icon: AlertTriangle },
-    { key: "assets",        label: "Assets",        icon: Users },
-    { key: "attack-paths",  label: "Attack Paths",  icon: Network },
-    { key: "detection",     label: "Detection",     icon: Eye },
-    { key: "reports",       label: "Reports",       icon: FileText },
-  ];
+  const engagement = query.data?.engagement;
+  const activity = query.data?.activity ?? [];
+  const tabs = useMemo(() => [
+    { key: "overview" as const, label: "Overview", icon: Shield },
+    { key: "findings" as const, label: "Findings", icon: AlertTriangle, count: engagement?.findingCount },
+    { key: "assets" as const, label: "Attack surface", icon: Network, count: engagement?.assetCount },
+    { key: "activity" as const, label: "Activity", icon: Activity, count: activity.length },
+  ], [activity.length, engagement?.assetCount, engagement?.findingCount]);
 
   return (
     <PageShell
-      title={isLoading ? "LOADING…" : eng?.name ?? "ENGAGEMENT"}
-      subtitle={eng ? `${eng.client} · ${eng.assessor}` : ""}
+      title={query.isLoading ? "Loading engagement…" : engagement?.name || "Engagement"}
+      subtitle={engagement ? `${engagement.client || "Unassigned client"} · ${engagement.assessor || "No assessor"}` : undefined}
       headerActions={
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-          {eng && (
-            <button className="btn-secondary" onClick={() => setShowEdit(true)} title="Edit engagement fields">
-              <Pencil size={13} /> Edit
-            </button>
-          )}
+        <div className="engagement-actions">
+          {engagement && <button className="btn btn-secondary engagement-action" onClick={() => setEditing(true)}><Pencil size={14} /> Edit details</button>}
           <ImportScanButton engagementId={id} />
+          <Link className="btn btn-primary engagement-action" href={`/scan?engagementId=${encodeURIComponent(id)}`}><Play size={14} /> Start scan</Link>
         </div>
       }
-      statusItems={eng ? [
-        { label: "STATUS",   value: eng.status,           color: statusColor(eng.status) },
-        { label: "FINDINGS", value: String(eng.findingCount), color: eng.findingCount > 0 ? "#FF1744" : "var(--adv-text-muted)" },
-        { label: "ASSETS",   value: String(eng.assetCount),  color: "var(--adv-accent)" },
+      statusItems={engagement ? [
+        { label: "STATUS", value: engagement.status, color: STATUS_COLOR[engagement.status] || "var(--text-secondary)" },
       ] : []}
     >
-      {/* Back + tabs */}
-      <div style={{ display: "flex", alignItems: "center", gap: 0, borderBottom: "1px solid var(--adv-border)", marginBottom: 0, flexShrink: 0 }}>
-        <Link href="/engagements" style={{ display: "flex", alignItems: "center", gap: 5, padding: "8px 14px", fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: "var(--adv-text-muted)", textDecoration: "none", borderRight: "1px solid var(--adv-border)" }}>
-          <ArrowLeft size={11} /> BACK
-        </Link>
-        {tabs.map(({ key, label, icon: Icon }) => (
-          <button key={key} onClick={() => setActiveTab(key)}
-            style={{
-              padding: "8px 14px", border: "none", background: "none", cursor: "pointer",
-              borderBottom: `2px solid ${activeTab === key ? "var(--adv-accent)" : "transparent"}`,
-              display: "flex", alignItems: "center", gap: 5, marginBottom: -1,
-              fontFamily: "'JetBrains Mono', monospace", fontSize: 10,
-              color: activeTab === key ? "var(--adv-accent)" : "var(--adv-text-muted)",
-              whiteSpace: "nowrap",
-            }}>
-            <Icon size={11} color={activeTab === key ? "var(--adv-accent)" : "var(--adv-text-muted)"} />
-            {label.toUpperCase()}
-          </button>
-        ))}
+      <div className="engagement-toolbar">
+        <Link href="/engagements" className="engagement-back"><ArrowLeft size={14} /> All engagements</Link>
+        <nav aria-label="Engagement sections">
+          {tabs.map(({ key, label, icon: Icon, count }) => (
+            <button key={key} data-active={activeTab === key} onClick={() => setActiveTab(key)}>
+              <Icon size={14} /> {label}{typeof count === "number" && <span>{count}</span>}
+            </button>
+          ))}
+        </nav>
+        <Link href="/reports" className="engagement-report-link"><FileText size={14} /> Reports <span className="badge badge-info">Beta</span></Link>
       </div>
 
-      <div style={{ flex: 1, overflowY: "auto", paddingTop: 14 }}>
-        {isLoading && (
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
-            {[1,2,3,4].map((i) => <CardSkeleton key={i} />)}
-          </div>
-        )}
-
-        {isError && (
-          <div style={{ display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", padding: "80px 0", gap: 10 }}>
-            <AlertTriangle size={36} color="#FF1744" />
-            <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 13, color: "#FF1744" }}>Failed to load engagement</span>
-            <Link href="/engagements" style={{ color: "var(--adv-accent)", fontFamily: "'JetBrains Mono', monospace", fontSize: 11 }}>← Back to list</Link>
-          </div>
-        )}
-
-        {!isLoading && !isError && eng && (
-          <>
-            {activeTab === "overview"     && <OverviewTab eng={eng} activity={activity} />}
-            {activeTab === "findings"     && <LinkedTab label="Findings"     href="/findings"      icon={AlertTriangle} />}
-            {activeTab === "assets"       && <AssetsTab engagementId={id} />}
-            {activeTab === "attack-paths" && <LinkedTab label="Attack Paths" href="/attack-graph"  icon={Network} />}
-            {activeTab === "detection"    && <LinkedTab label="Detection"    href="/detection"     icon={Eye} />}
-            {activeTab === "reports"      && <LinkedTab label="Reports"      href="/reports"       icon={FileText} />}
-          </>
-        )}
+      <div className="engagement-content">
+        {query.isLoading && <SkeletonRows rows={5} height={76} />}
+        {query.error && <EmptyState icon={AlertTriangle} title="Could not load this engagement" hint="Check the Manager API connection and your access, then retry." />}
+        {engagement && activeTab === "overview" && <OverviewTab engagement={engagement} />}
+        {engagement && activeTab === "findings" && <FindingsTab engagementId={id} />}
+        {engagement && activeTab === "assets" && <AssetsTab engagementId={id} />}
+        {engagement && activeTab === "activity" && <ActivityTab activity={activity} />}
       </div>
 
-      {showEdit && eng && (
-        <EditEngagementModal eng={eng} id={id} onClose={() => setShowEdit(false)} />
-      )}
+      {editing && engagement && <EditEngagementModal engagement={engagement} onClose={() => setEditing(false)} />}
     </PageShell>
   );
 }

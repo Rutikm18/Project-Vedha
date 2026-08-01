@@ -8,7 +8,7 @@ from typing import Annotated
 
 import structlog
 from fastapi import APIRouter, BackgroundTasks, HTTPException, Request, status
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -53,6 +53,37 @@ _DEFAULT_SCAN_FOR_JOBTYPE = {"discovery": "discovery", "lateral": "smb_enum", "c
 # pipeline.py's own structural (non-flag) OT block.
 _OT_ALLOWED_SCAN_TYPES = {"passive_discovery"}
 
+# Job parameters are persisted in ``scan_jobs.result`` while pending. Until a
+# dedicated ephemeral secret broker exists, accepting credential material here
+# would write it to Postgres in plaintext. Reject it at the Manager boundary
+# instead of relying on response redaction.
+_JOB_SECRET_KEYS = {
+    "api_key",
+    "credential",
+    "credentials",
+    "password",
+    "passwd",
+    "private_key",
+    "secret",
+    "ssh_creds",
+    "token",
+    "win_creds",
+}
+
+
+def _job_params_contain_secret(value) -> bool:
+    if isinstance(value, dict):
+        for key, nested in value.items():
+            normalized = str(key).strip().lower().replace("-", "_")
+            if normalized in _JOB_SECRET_KEYS:
+                return True
+            if _job_params_contain_secret(nested):
+                return True
+        return False
+    if isinstance(value, (list, tuple)):
+        return any(_job_params_contain_secret(item) for item in value)
+    return False
+
 
 def _resolve_scan_type(job_type: str, params: dict) -> str:
     return params.get("scan_type") or _DEFAULT_SCAN_FOR_JOBTYPE.get(job_type, "discovery")
@@ -74,14 +105,12 @@ def _scope_is_reachable(
 ) -> bool:
     """Return whether a probe's declared networks fully cover a job's scope.
 
-    Empty ``network_segments`` is retained as the legacy declaration that a
-    probe is unrestricted inside its own tenant. Once segments are declared,
-    every scope network must be contained by one of them; overlap alone is not
-    sufficient because it could dispatch a broader scan than the probe can
-    safely reach.
+    A probe must explicitly declare its reachable CIDRs. Every requested scope
+    network must be contained by one of them; overlap alone is not sufficient
+    because it could dispatch a broader scan than the probe can safely reach.
     """
     if not network_segments:
-        return True
+        return False
     if not scope_cidrs:
         return False
 
@@ -114,9 +143,9 @@ def _job_reachability_scope(
 
     The engagement scope remains the execution allowlist. This helper only
     avoids requiring one probe to reach unrelated subnets when the operator
-    requested a concrete IP/CIDR/range subset. Hostnames cannot be mapped to a
-    registered network segment safely, so they retain full-scope routing.
-    ``None`` means an explicit IP target was outside the authoritative scope.
+    requested a concrete IP/CIDR/range subset. Hostnames are rejected because
+    engagements are IP/CIDR-only and Manager/Probe DNS could disagree.
+    ``None`` means a requested target was invalid or outside authorization.
     """
     job_params = params or {}
     requested = job_params.get("targets")
@@ -127,7 +156,7 @@ def _job_reachability_scope(
 
     values = [requested] if isinstance(requested, str) else requested
     if not isinstance(values, (list, tuple)) or not values:
-        return list(authoritative_scope or [])
+        return None
 
     try:
         allowed = [
@@ -159,9 +188,7 @@ def _job_reachability_scope(
                     ipaddress.ip_network(value, strict=False)
                 )
     except (ValueError, TypeError):
-        # A hostname may resolve differently from the manager. Route it only to
-        # a probe that declared coverage for the complete engagement scope.
-        return list(authoritative_scope or [])
+        return None
 
     if allowed and not all(
         any(
@@ -194,11 +221,24 @@ def _agent_can_execute_job(
 # ── Schemas ───────────────────────────────────────────────────────────────────
 
 class AgentRegisterRequest(BaseModel):
-    name: str
+    name: str = Field(..., min_length=1, max_length=255)
     location: str | None = None
-    capabilities: list[str] = []
-    network_segments: list[str] = []
+    capabilities: list[str] = Field(default_factory=list)
+    network_segments: list[str] = Field(default_factory=list)
     public_key: str | None = None   # X25519 public key (base64) for scope encryption
+
+    @field_validator("network_segments")
+    @classmethod
+    def validate_network_segments(cls, values: list[str]) -> list[str]:
+        normalized: list[str] = []
+        for value in values:
+            try:
+                network = str(ipaddress.ip_network(value.strip(), strict=False))
+            except (ValueError, TypeError, AttributeError) as exc:
+                raise ValueError(f"invalid probe network CIDR: {value!r}") from exc
+            if network not in normalized:
+                normalized.append(network)
+        return normalized
 
 
 class AgentRegisterResponse(BaseModel):
@@ -213,21 +253,25 @@ class HeartbeatRequest(BaseModel):
 
 
 class AgentRefreshRequest(BaseModel):
-    capabilities: list[str] = []
-    network_segments: list[str] = []
+    capabilities: list[str] = Field(default_factory=list)
+    network_segments: list[str] = Field(default_factory=list)
     public_key: str | None = None
+
+    _validate_network_segments = field_validator("network_segments")(
+        AgentRegisterRequest.validate_network_segments.__func__
+    )
 
 
 class JobResultRequest(BaseModel):
     success: bool
-    result: dict = {}
+    result: dict = Field(default_factory=dict)
     error: str | None = None
 
 
 class EnqueueJobRequest(BaseModel):
     engagement_id: uuid.UUID
     job_type: ScanJobType = ScanJobType.discovery
-    params: dict = {}
+    params: dict = Field(default_factory=dict)
     use_case_id: str | None = None   # maps to probe's use-case library (techprompt §A3)
 
 
@@ -240,7 +284,7 @@ class EnqueueJobRequest(BaseModel):
 _USE_CASES = {
     "uc_discovery_only": {
         "display_name": "Network Discovery",
-        "description": "Fast host-discovery + port scan. Use for 'what's alive here?' triage.",
+        "description": "Fast host-discovery + port scan only. Use for 'what's alive here?' triage.",
         "scan_type": "discovery",
         "profile": "it",
         "expected_runtime_hint": "2–5 min per /24",
@@ -261,14 +305,14 @@ _USE_CASES = {
     },
     "uc_db_exposure": {
         "display_name": "Database Exposure Check",
-        "description": "Protocol-handshake fingerprint of database ports.",
+        "description": "Protocol-handshake fingerprint of database ports. Are any DBs exposed or unauthenticated?",
         "scan_type": "db_fingerprint",
         "profile": "it",
         "expected_runtime_hint": "3–10 min",
     },
     "uc_windows_estate": {
         "display_name": "Windows Estate",
-        "description": "SMB dialect detection. Is SMBv1 enabled? Are shares exposed?",
+        "description": "SMB dialect + signing detection. Is SMBv1 enabled? Is SMB signing required?",
         "scan_type": "smb_enum",
         "profile": "it",
         "expected_runtime_hint": "5–15 min",
@@ -278,7 +322,7 @@ _USE_CASES = {
         "description": "PASSIVE ONLY — zero active packets. Safe for OT/ICS/SCADA segments.",
         "scan_type": "passive_discovery",
         "profile": "ot",
-        "expected_runtime_hint": "listen-only",
+        "expected_runtime_hint": "listen-only, duration set by operator",
     },
     "uc_ai_endpoint_sweep": {
         "display_name": "AI / MCP Endpoint Sweep",
@@ -289,7 +333,7 @@ _USE_CASES = {
     },
     "uc_rescan_delta": {
         "display_name": "Re-scan (delta from prior engagement)",
-        "description": "Full re-assessment. Manager diffs against prior run to surface what changed.",
+        "description": "Full re-assessment identical to uc_full_assessment. Manager diffs against prior run.",
         "scan_type": "assessment",
         "profile": "it",
         "expected_runtime_hint": "15–60 min per /24",
@@ -298,20 +342,20 @@ _USE_CASES = {
     "uc_iot_device_survey": {
         "display_name": "IoT / Embedded Device Survey",
         "description": (
-            "Inventory IoT and embedded devices using the IoT port list: "
-            "MQTT (1883/8883), RTSP (554), CoAP (5683), Telnet (23). "
-            "No deep service branches — discovery + banner only."
+            "Inventory IoT and embedded devices on the IoT port set: "
+            "MQTT (1883/8883), RTSP (554), CoAP (5683), Telnet (23), printer/DVR ports. "
+            "Discovery + service banner."
         ),
-        "scan_type": "discovery",
+        "scan_type": "service_fingerprint",
         "profile": "iot",
         "expected_runtime_hint": "3–10 min per /24",
     },
     "uc_web_app_triage": {
         "display_name": "Web Application Triage",
         "description": (
-            "Deep web-layer analysis: HTTP methods, response headers, server tech stack, "
-            "common misconfigurations on all web ports (80, 443, 8080, 8443, 8000…). "
-            "Use before a dedicated web application pentest."
+            "Web-layer fingerprint: HTTP methods (OPTIONS), response headers, "
+            "server tech stack, and security-header posture on all web ports "
+            "(80, 443, 8080, 8443, 8000…). Use before a dedicated web app pentest."
         ),
         "scan_type": "web_scan",
         "profile": "it",
@@ -320,10 +364,9 @@ _USE_CASES = {
     "uc_udp_service_exposure": {
         "display_name": "UDP Service Exposure",
         "description": (
-            "Probe UDP attack surface: DNS amplification risk (53/UDP), "
-            "SNMP community strings (161/UDP), NTP monlist (123/UDP), "
-            "NetBIOS Name Service (137/UDP). Common DDoS amplification and "
-            "lateral-movement vectors missed by TCP-only scans."
+            "UDP attack surface + amplification checks: NTP monlist (123), "
+            "DNS open recursion (53), Memcached (11211), SNMP public (161), "
+            "NetBIOS-NS (137)."
         ),
         "scan_type": "udp_scan",
         "profile": "it",
@@ -476,12 +519,21 @@ async def list_agents(db: DB, current_user: AuthUser):
     now = datetime.now(timezone.utc)
     out = []
     for a in rows:
-        online = bool(a.last_heartbeat and (now - a.last_heartbeat).total_seconds() < 90)
+        persisted_status = a.status.value if hasattr(a.status, "value") else str(a.status)
+        heartbeat_fresh = bool(
+            a.last_heartbeat and (now - a.last_heartbeat).total_seconds() < 90
+        )
+        # WebSocket disconnects explicitly persist "offline". A final recent
+        # heartbeat must not keep a disconnected probe looking online.
+        online = heartbeat_fresh and persisted_status in {
+            AgentStatus.online.value,
+            AgentStatus.busy.value,
+        }
         out.append({
             "id": str(a.id),
             "name": a.name,
             "location": a.location,
-            "status": a.status.value if hasattr(a.status, "value") else str(a.status),
+            "status": persisted_status,
             "capabilities": a.capabilities,
             "network_segments": a.network_segments,
             "last_heartbeat": a.last_heartbeat.isoformat() if a.last_heartbeat else None,
@@ -670,10 +722,9 @@ async def get_job_status(job_id: uuid.UUID, db: DB, current_user: AuthUser):
         )).scalar_one_or_none()
         agent_name = a.name if a else None
 
-    # Echo the job's lean result to the frontend, but NEVER the raw facts blob
-    # (too large) and NEVER credential material. While a job is still pending the
-    # `result` field holds the dispatch params — which may contain ssh_creds/
-    # win_creds — so we strip those before they can travel back to the browser.
+    # Echo the job's lean result to the frontend, but never the raw facts blob.
+    # Secret-bearing params are rejected at enqueue; legacy rows are still
+    # defensively redacted here.
     _REDACT = {"facts", "ssh_creds", "win_creds"}
     lean_result = None
     if row.result:
@@ -710,6 +761,13 @@ async def enqueue_agent_job(
             f"job_type '{body.job_type.value}' is not agent-executable; "
             f"allowed: {[t.value for t in AGENT_EXECUTABLE_TYPES]}",
         )
+    if _job_params_contain_secret(body.params):
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "Credential or secret material is not accepted in scan job params. "
+            "Vedha does not persist target credentials; use unauthenticated "
+            "collection until an ephemeral credential broker is configured.",
+        )
     eng = (await db.execute(
         select(Engagement).where(
             Engagement.id == body.engagement_id,
@@ -718,6 +776,17 @@ async def enqueue_agent_job(
     )).scalar_one_or_none()
     if not eng:
         raise HTTPException(404, "Engagement not found")
+
+    requested_scope = _job_reachability_scope(
+        body.params,
+        getattr(eng, "scope_cidrs", None) or [],
+    )
+    if requested_scope is None:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "targets must be non-empty IP/CIDR/range values fully contained "
+            "inside the engagement scope",
+        )
 
     # Validate use_case_id against the known library if provided
     if body.use_case_id and body.use_case_id not in _USE_CASES:

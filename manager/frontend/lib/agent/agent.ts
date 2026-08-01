@@ -11,7 +11,7 @@
  */
 import Anthropic from '@anthropic-ai/sdk';
 import { TOOL_REGISTRY, type AgentState, type ToolDef, type Risk, persistAgentFindings } from './tools';
-import type { ScanCallbacks, DiscoveredHost } from '../engine/types';
+import type { ScanCallbacks } from '../engine/types';
 
 const MODEL = 'claude-sonnet-4-6';
 

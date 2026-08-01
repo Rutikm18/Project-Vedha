@@ -6,7 +6,7 @@ from typing import Annotated
 
 import structlog
 from fastapi import APIRouter, BackgroundTasks, Depends, File, HTTPException, Query, UploadFile, status
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy import func, select
 
 from app.auth.rbac import require_role
@@ -21,7 +21,8 @@ from app.models.service import Service
 from app.schemas.common import PaginatedResponse, paginate
 from app.schemas.asset import AssetIn, AssetOut, BulkAssetImportResult
 from app.schemas.engagement import (
-    EngagementCreate, EngagementDetail, EngagementOut, FindingSummary
+    EngagementCreate, EngagementDetail, EngagementOut, FindingSummary,
+    validate_engagement_dates, validate_scope_entries,
 )
 from app.utils.csv_parser import parse_csv_assets
 from app.utils.db import get_or_404
@@ -480,7 +481,7 @@ async def get_engagement(
 # ── PATCH /engagements/{id} — update fields ───────────────────────────────────
 
 class EngagementUpdate(BaseModel):
-    name: str | None = None
+    name: str | None = Field(default=None, min_length=1, max_length=255)
     status: EngagementStatus | None = None
     scope_cidrs: list[str] | None = None
     excluded_cidrs: list[str] | None = None
@@ -489,6 +490,28 @@ class EngagementUpdate(BaseModel):
     # Partial patch: the provided keys are merged into the existing ROE (see below),
     # so editing e.g. `client` never drops stored `credentials`.
     rules_of_engagement: dict | None = None
+
+    @field_validator("name")
+    @classmethod
+    def normalize_name(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        value = value.strip()
+        if not value:
+            raise ValueError("name cannot be blank")
+        return value
+
+    @field_validator("scope_cidrs", "excluded_cidrs")
+    @classmethod
+    def validate_scopes(cls, values: list[str] | None) -> list[str] | None:
+        if values is None:
+            return None
+        return validate_scope_entries(values)
+
+    @model_validator(mode="after")
+    def validate_dates(self):
+        validate_engagement_dates(self.start_time, self.end_time)
+        return self
 
 
 @router.patch("/{engagement_id}", response_model=EngagementOut, summary="Update engagement fields")

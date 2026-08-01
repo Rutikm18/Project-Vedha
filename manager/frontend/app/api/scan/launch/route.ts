@@ -2,9 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import { backend } from "../../../../lib/backend";
 import { withBackend } from "../../../../lib/with-backend";
 
-interface SshCreds { user?: string; password?: string; key_path?: string; port?: number }
-interface WinCreds { user?: string; password?: string; domain?: string }
-
 interface LaunchBody {
   engagement_id: string;
   use_case_id: string;
@@ -14,8 +11,6 @@ interface LaunchBody {
   intensity?: "stealth" | "normal" | "aggressive";
   passive_listen_seconds?: number;   // OT passive capture window
   recheck_hours?: number;            // re-scan delta window
-  ssh_creds?: SshCreds;              // Gate-6 authenticated collection
-  win_creds?: WinCreds;
   params?: Record<string, unknown>;
 }
 
@@ -54,6 +49,7 @@ export const POST = withBackend(async (req: NextRequest, { token }) => {
     uc_iot_device_survey:    "discovery",
     uc_web_app_triage:       "discovery",
     uc_udp_service_exposure: "discovery",
+    uc_snmp_exposure:        "discovery",
   };
 
   const job_type = JOB_TYPE_MAP[body.use_case_id] ?? "discovery";
@@ -90,26 +86,6 @@ export const POST = withBackend(async (req: NextRequest, { token }) => {
     params.recheck_hours = body.recheck_hours;
   }
 
-  // ── Gate-6 credentials — forwarded only when a username was supplied ──────
-  // NOTE: these travel inside the job's params (stored in scan_jobs.result until
-  // the probe overwrites it with scan output). The manager strips them from any
-  // status it echoes back to the browser (see agents.py get_job_status).
-  if (body.ssh_creds?.user) {
-    params.ssh_creds = {
-      user: body.ssh_creds.user,
-      password: body.ssh_creds.password || undefined,
-      key_path: body.ssh_creds.key_path || undefined,
-      port: body.ssh_creds.port || undefined,
-    };
-  }
-  if (body.win_creds?.user) {
-    params.win_creds = {
-      user: body.win_creds.user,
-      password: body.win_creds.password || undefined,
-      domain: body.win_creds.domain || undefined,
-    };
-  }
-
   const result = await backend<{ job_id: string; status: string; use_case_id: string }>("/agents/jobs", {
     token,
     method: "POST",
@@ -121,20 +97,12 @@ export const POST = withBackend(async (req: NextRequest, { token }) => {
     },
   });
 
-  // Echo back the EXACT request the probe will execute, so the dashboard can
-  // print a dispatch receipt. Credential values are masked — only their presence
-  // is shown — so secrets never round-trip back to the browser.
-  const maskCreds = (c?: Record<string, unknown>) =>
-    c ? { ...c, password: c.password ? "••••••" : undefined } : undefined;
+  // Echo back the exact non-secret request the probe will execute.
   const dispatched: Record<string, unknown> = {
     engagement_id: body.engagement_id,
     job_type,
     use_case_id: body.use_case_id,
-    params: {
-      ...params,
-      ssh_creds: maskCreds(params.ssh_creds as Record<string, unknown> | undefined),
-      win_creds: maskCreds(params.win_creds as Record<string, unknown> | undefined),
-    },
+    params,
   };
 
   return NextResponse.json({ ...result, dispatched }, { status: 201 });

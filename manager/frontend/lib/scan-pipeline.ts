@@ -1,5 +1,4 @@
 import type { NucleiMatch } from "./nuclei-parser";
-import type { OpenVASFinding } from "./openvas-client";
 
 export type ScanTool = "naabu" | "nmap" | "nuclei" | "openvas" | "netexec" | "impacket" | "testssl" | "eyewitness";
 export type ScanProfile = "fast" | "standard" | "deep";

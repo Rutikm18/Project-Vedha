@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import asyncio
 import concurrent.futures
+import ipaddress
 import json
 import logging
 import os
@@ -38,6 +39,15 @@ from agent.transport import Transport, TransportError
 
 VERSION = "2.0.0"
 LOG = logging.getLogger("agent")
+
+
+def _bounded_env_int(name: str, default: int, minimum: int, maximum: int) -> int:
+    """Return an integer environment setting constrained to a safe range."""
+    try:
+        value = int(os.environ.get(name, str(default)))
+    except (TypeError, ValueError):
+        return default
+    return max(minimum, min(maximum, value))
 
 
 def _load_env(path: Path) -> None:
@@ -65,6 +75,14 @@ def main() -> None:
     PROBE_LOCATION = os.environ.get("PROBE_LOCATION", "")
     NETWORK_SEGMENTS = [s.strip() for s in
                         os.environ.get("PROBE_NETWORK_SEGMENTS", "").split(",") if s.strip()]
+    try:
+        NETWORK_SEGMENTS = [
+            str(ipaddress.ip_network(segment, strict=False))
+            for segment in NETWORK_SEGMENTS
+        ]
+    except ValueError as exc:
+        say(f"Setup needed: PROBE_NETWORK_SEGMENTS contains an invalid CIDR: {exc}")
+        raise SystemExit(1) from exc
     OPERATOR_EMAIL = os.environ.get("OPERATOR_EMAIL", "")
     OPERATOR_PASSWORD = os.environ.get("OPERATOR_PASSWORD", "")
     OPERATOR_TOKEN = (
@@ -74,9 +92,11 @@ def main() -> None:
     )
     AGENT_ID_ENV = os.environ.get("AGENT_ID", "")
     AGENT_TOKEN_ENV = os.environ.get("AGENT_TOKEN", "")
-    HEARTBEAT_INTERVAL = int(os.environ.get("HEARTBEAT_INTERVAL", "30"))
-    POLL_INTERVAL = int(os.environ.get("POLL_INTERVAL", "10"))
-    JOB_LIMIT = int(os.environ.get("JOB_LIMIT", "1"))
+    HEARTBEAT_INTERVAL = _bounded_env_int("HEARTBEAT_INTERVAL", 30, 5, 300)
+    POLL_INTERVAL = _bounded_env_int("POLL_INTERVAL", 10, 1, 300)
+    # This agent executes jobs sequentially. Claiming multiple jobs up front
+    # would let later leases expire while the first assessment is still running.
+    JOB_LIMIT = 1
     VERIFY_TLS = os.environ.get("VERIFY_TLS", "true").lower() not in ("false", "0", "no")
     STATE_FILE = Path(os.environ.get("STATE_FILE", "/var/lib/vedha-probe/state.json"))
     SPOOL_DIR = Path(os.environ.get("RESULT_SPOOL_DIR", "/var/lib/vedha-probe/spool"))
@@ -86,7 +106,9 @@ def main() -> None:
     CLIENT_CERT = os.environ.get("PROBE_CLIENT_CERT") or None
     CLIENT_KEY = os.environ.get("PROBE_CLIENT_KEY") or None
     # gzip result payloads at/above this many bytes (default 1 MiB; 0 disables).
-    COMPRESS_OVER = int(os.environ.get("RESULT_COMPRESS_OVER", str(1 << 20)))
+    COMPRESS_OVER = _bounded_env_int(
+        "RESULT_COMPRESS_OVER", 1 << 20, 0, 64 << 20,
+    )
 
     # ── Banner ────────────────────────────────────────────────────────────────
     say("Vedha Probe (scanner_module)")
@@ -94,6 +116,12 @@ def main() -> None:
 
     if not PLATFORM_URL:
         say("Setup needed: PLATFORM_URL is not set.")
+        raise SystemExit(1)
+    if not NETWORK_SEGMENTS:
+        say(
+            "Setup needed: PROBE_NETWORK_SEGMENTS is empty. Set the explicit "
+            "authorized/reachable CIDR ceiling before starting this probe."
+        )
         raise SystemExit(1)
 
     # ── Transport security posture (warn loudly, never silently downgrade) ────
@@ -154,6 +182,7 @@ def main() -> None:
         submit_result=lambda jid, p: transport.submit_result(jid, p),
         spool_submit=spool.submit_with_retry,
         identity_sk=identity_sk,   # Phase 4: X25519 private key for scope decryption
+        local_allowed_networks=NETWORK_SEGMENTS,
     )
 
     # ── Step 5: Try WebSocket push mode first ────────────────────────────────
@@ -814,8 +843,8 @@ if __name__ == "__main__":
         if arg in ("version", "-v", "--version"):
             say(f"Vedha Probe {VERSION}")
         elif arg == "hostid":
-            from agent.license import short_id
-            say(short_id())
+            from agent.license import host_fingerprint
+            say(host_fingerprint())
         elif arg == "self-test":
             say("Running self-test...")
             try:

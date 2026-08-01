@@ -399,8 +399,8 @@ class TestAgentJobCompatibility:
             ["10.0.0.0/24"],
         )
 
-    def test_empty_segments_keep_legacy_tenant_local_behavior(self):
-        assert ag._scope_is_reachable([], ["203.0.113.0/24"])
+    def test_empty_segments_are_fail_closed(self):
+        assert not ag._scope_is_reachable([], ["203.0.113.0/24"])
 
     def test_empty_capabilities_receive_no_jobs(self):
         agent = SimpleNamespace(capabilities=[], network_segments=[])
@@ -452,6 +452,26 @@ class TestAgentJobCompatibility:
             "10.0.8.20/32",
         ]
 
+    def test_hostname_and_explicit_empty_targets_are_not_routable(self):
+        assert ag._job_reachability_scope(
+            {"targets": ["host.example.com"]},
+            ["10.0.0.0/8"],
+        ) is None
+        assert ag._job_reachability_scope(
+            {"targets": []},
+            ["10.0.0.0/8"],
+        ) is None
+
+    def test_agent_network_segments_are_normalized_and_validated(self):
+        request = ag.AgentRegisterRequest(
+            name="probe-1",
+            network_segments=["10.0.0.1/24", "10.0.0.0/24"],
+        )
+        assert request.network_segments == ["10.0.0.0/24"]
+
+        with pytest.raises(ValueError, match="invalid probe network CIDR"):
+            ag.AgentRefreshRequest(network_segments=["not-a-network"])
+
 
 # ── list_agents (dashboard) ─────────────────────────────────────────────────────
 
@@ -478,6 +498,27 @@ class TestListAgents:
         assert out[0]["online"] is True
         assert out[1]["online"] is False
         assert out[0]["capabilities"] == ["discovery"]
+
+    @pytest.mark.asyncio
+    async def test_fresh_disconnected_agent_is_not_reported_online(self):
+        from datetime import datetime, timezone
+        disconnected = SimpleNamespace(
+            id=uuid.uuid4(), name="just-disconnected", location=None,
+            status=SimpleNamespace(value="offline"), capabilities=[],
+            network_segments=[], last_heartbeat=datetime.now(timezone.utc),
+            current_job_id=None,
+        )
+        db = MagicMock()
+        db.execute = AsyncMock(
+            return_value=MagicMock(
+                scalars=lambda: MagicMock(all=lambda: [disconnected])
+            )
+        )
+
+        out = await ag.list_agents(db, _user())
+
+        assert out[0]["status"] == "offline"
+        assert out[0]["online"] is False
 
 
 # ── register_agent: idempotency + long-lived token (regression for the 115-dup bug) ──

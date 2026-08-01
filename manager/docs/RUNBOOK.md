@@ -5,12 +5,12 @@ Two machine roles. Run the right commands on the right box.
 | Machine | Role | What runs there |
 |---|---|---|
 | **Hosting machine** | The platform server | Docker stack: `api` + `postgres` + `redis` (+ optional `neo4j`). You also run operator API calls from here (or anywhere that can reach it). |
-| **Probe machine(s)** | Remote scanners inside target networks | One small `probe` container/service with `nmap`. It only dials **out** to the platform — nothing listens inbound. One per network segment you want to assess. |
+| **Probe machine(s)** | Remote scanners inside target networks | One small non-root `probe` container using native collectors. It only dials **out** to the platform — nothing listens inbound. One per routable network boundary. |
 
 ```
    HOSTING MACHINE                                   PROBE MACHINE (per segment)
  ┌───────────────────────┐    outbound HTTPS only   ┌────────────────────────┐
- │ api :18080             │◀─────────────────────────│ probe (nmap + agent.py)│
+ │ api :18080             │◀─────────────────────────│ probe (agent + engine) │
  │ postgres / redis      │   register/heartbeat/    │ gathers host+port+svc  │
  │ (+ neo4j optional)    │   poll-jobs/submit       │ ships results back     │
  └───────────────────────┘                          └────────────────────────┘
@@ -127,12 +127,13 @@ docker compose logs -f probe
 
 # PART B — PROBE MACHINE
 
-A box **inside the network you want to scan**. It gathers host/port/service info with `nmap` and ships it to the platform. Repeat per segment.
+A box **inside the network you want to scan**. It gathers host/port/service facts with the bounded native workflow and ships them to the platform. Repeat per routing boundary.
 
 ## B0. Prerequisites
 - The probe machine must reach the platform over **outbound HTTPS** (e.g. `https://vedha.example.com`). It does **not** need any inbound ports open.
-- Docker **or** Linux+systemd (the installer supports both). `nmap` is bundled (Docker) or installed for you (native).
-- Operator credentials (or a pre-provisioned agent token) so the probe can register.
+- Docker Engine/Containerd-compatible runtime. The production installer deploys the hardened Docker artifact.
+- A least-privilege probe PAT so the probe can register without retaining an
+  operator password. Mint one with `make probe-pat` on the Manager host.
 
 ## B1. Get the probe files onto the machine
 Copy the `probe/` directory to the probe machine (scp/git/usb):
@@ -150,34 +151,37 @@ $EDITOR probe.env
 Minimum to set:
 ```ini
 PLATFORM_URL=https://vedha.example.com      # the hosting machine's URL (required)
-OPERATOR_EMAIL=admin@vedha.io               # probe logs in once and self-registers
-OPERATOR_PASSWORD=ChangeMe123!
 PROBE_NAME=dmz-probe-01
 PROBE_NETWORK_SEGMENTS=10.0.1.0/24,10.0.2.0/24
 # VERIFY_TLS=false                            # ONLY for a self-signed lab platform
 ```
-(Alternative to operator creds: register once via the API and pin `AGENT_ID`/`AGENT_TOKEN`.)
+Never place the PAT or target-system credentials in this file or in scan-job parameters.
 
 ## B3. Install & run — pick ONE
 ```bash
-./install.sh             # Docker: builds image (python+nmap), runs container, --restart unless-stopped
-# or
-./install.sh --native    # Linux+systemd: venv + nmap + a service with CAP_NET_RAW (for SYN scans)
+set -a; . ./probe.env; set +a
+sh install.sh            # prompts for PAT/license; non-root/read-only runtime
 ```
+
+The installer validates the PAT and Manager-side heartbeat, then recreates the
+container without bootstrap credentials in its persistent metadata.
+
+The installer safely migrates older root-owned state volumes to probe UID/GID
+`10001` without deleting identity or spooled results. If upgrading a local
+Compose deployment directly, run the equivalent one-time ownership migration
+before recreating the probe container.
 
 ## B4. Verify the probe is gathering info
 ```bash
 # Docker:
 docker logs -f vedha-probe
-# native (systemd):
-journalctl -u vedha-probe -f
 ```
 Healthy log sequence:
 ```
 registered with platform   agent_id=...
 probe online               caps=discovery
 executing job              type=discovery
-running nmap               targets=10.0.1.0/24
+executing assessment       targets=10.0.1.0/24
 job done                   success=True
 ```
 
@@ -185,25 +189,25 @@ job done                   success=True
 1. **register** (once) → `POST /agents/register` → gets its agent token (cached so restarts reuse it).
 2. **heartbeat** every 30s → `POST /agents/heartbeat`.
 3. **poll** → `GET /agents/{id}/jobs` (only `discovery`/`lateral`/`cloud_scan` are handed to probes).
-4. **execute** → runs `nmap` against the job's `params.targets`, parses open ports + service/version.
+4. **execute** → runs the bounded dynamic workflow: discovery → live-host port scan → service routing.
 5. **submit** → `POST /agents/{id}/jobs/{job_id}/result`. The operator reads it via `GET /engagements/{eng}/scans/{job}/status`.
 
 ## B6. Probe config reference (`probe.env`)
 | Var | Meaning |
 |---|---|
 | `PLATFORM_URL` | platform base URL (required) |
-| `OPERATOR_EMAIL`/`OPERATOR_PASSWORD` | login → self-register (one auth option) |
-| `AGENT_ID`/`AGENT_TOKEN` | pre-provisioned identity (other auth option) |
+| `OPERATOR_TOKEN` | scoped PAT used only for initial registration |
+| `AGENT_ID`/`AGENT_TOKEN` | persisted agent identity managed by the installer |
 | `PROBE_NAME` / `PROBE_LOCATION` | display identity |
-| `PROBE_NETWORK_SEGMENTS` | CIDRs this probe can reach (advertised on register) |
-| `NMAP_DEFAULT_ARGS` | default nmap flags (default `-sV -T4 -Pn`) |
-| `PROBE_DEFAULT_TARGETS` | fallback targets if a job carries none |
+| `PROBE_NETWORK_SEGMENTS` | Required CIDR ceiling; advertised to Manager and enforced locally (empty denies jobs) |
+| `PROBE_MAX_TARGETS` | Maximum expanded targets per workflow (default `4096`) |
+| `PROBE_MAX_JOB_SECONDS` | Whole-job runtime ceiling (default `7200`) |
 | `HEARTBEAT_INTERVAL`/`POLL_INTERVAL`/`JOB_LIMIT` | timing/throughput |
 | `VERIFY_TLS` | `false` only for self-signed lab platforms |
 
 ## B7. Job parameters (set by the operator in `POST /agents/jobs`)
 ```json
-{ "targets": ["10.0.1.0/24"], "ports": "1-1024", "args": "-sV -T4 -Pn", "timeout": 1800 }
+{ "scan_type": "assessment", "targets": ["10.0.1.0/24"], "max_runtime_seconds": 1800 }
 ```
 
 ## B8. Stop / remove the probe

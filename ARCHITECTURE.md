@@ -60,8 +60,9 @@ without re-scanning, and never copied into a client's network.
 
 The production image is built from `probe/`. Its Python agent registers capabilities,
 claims tenant-scoped jobs, enforces authoritative scope, runs the gated workflow, and
-durably submits raw facts. `probe-go/` is a separately tested alternative implementation;
-it is not built by the production Compose probe service.
+durably submits raw facts. It is the **only supported product probe**. `probe-go/` is a
+non-shipping parity workspace; it must not be deployed until it passes the capability
+and security gates documented in its README.
 
 ### 2.2 Layout
 ```
@@ -216,17 +217,21 @@ by the canonical detection layer instead of the ad-hoc `backend/app/vuln` path.
 
 | Image | Contents | Where |
 |---|---|---|
-| `vedha-probe` | scanner_module + agent; **no vuln DB** | client network (Docker or systemd via `install.sh`) |
+| `vedha-probe` | scanner_module + agent; **no vuln DB** | client network (hardened Docker image) |
 | `vedha-backend` | FastAPI + detection_engine + **pinned vuln DB snapshot** | cloud |
 | `vedha-frontend` | Next.js dashboard (BFF → backend) | cloud |
 | `postgres`, `redis` | state / queue | cloud |
 
 **Probe deployment** (best approach for client-network placement):
-- **Docker** (default): `install.sh` → `docker run --env-file probe.env vedha-probe`. One
-  container, dials *out* only (no inbound ports), persists encrypted identity in a volume.
-- **systemd** (`install.sh --native`): for hosts without Docker.
-- Config via `probe.env`: `PLATFORM_URL`, operator creds (or pre-provisioned `AGENT_ID/TOKEN`),
-  `PROBE_NETWORK_SEGMENTS`, license. Scope itself arrives per-job, not baked into the image.
+- **Docker** (default): `install.sh` → one non-root, read-only container that dials *out* only
+  (no inbound ports). Identity state is atomic and mode `0600` in a private volume; volume/disk
+  encryption is a deployment requirement because application-layer state encryption is not yet implemented.
+- **Host-Python development** is available through the probe CLI, but the production installer
+  currently supports the hardened Docker artifact only.
+- Bootstrap config: `PLATFORM_URL`, a scoped PAT, mandatory
+  `PROBE_NETWORK_SEGMENTS`, execution ceilings, and optional license material.
+  Job scope arrives from the Manager and must also fit the probe-local ceiling;
+  the bootstrap PAT is removed from steady-state container metadata.
 
 ---
 
@@ -246,7 +251,8 @@ by the canonical detection layer instead of the ad-hoc `backend/app/vuln` path.
 
 ## 9. Deployment invariants
 
-1. Production Compose builds only `probe/` for field collection.
+1. Production Compose builds only `probe/` for field collection; no Manager or
+   dashboard process has scanner binaries or network-scanning capabilities.
 2. A probe receives jobs only for its tenant, advertised capability, and reachable segment.
 3. WebSocket offers execute only after the manager atomically confirms the claim.
 4. Result evidence is spooled before delivery and removed only after manager acceptance.
@@ -254,13 +260,20 @@ by the canonical detection layer instead of the ad-hoc `backend/app/vuln` path.
    findings after an engine error is never a successful scan.
 6. Cross-run change reporting is a manager diff of full assessments until persistent
    probe cache ownership is explicitly implemented.
+7. Scan job parameters never contain passwords, tokens, private keys, or other
+   credential material. Authenticated collection remains disabled until an
+   ephemeral credential broker can deliver secrets without persisting them in
+   `scan_jobs`.
 
 ---
 
 ## 10. Open decisions captured
 
-- ✅ `probe/` is the production probe; `probe-go/` remains an alternative implementation.
+- ✅ `probe/` is the only production probe; `probe-go/` is non-shipping research until parity.
 - ✅ Probe ships **raw facts**; manager runs detection.
 - ✅ Pinned vuln DB lives on the **manager** only.
+- ✅ Reject credential-bearing job params instead of storing target secrets in Postgres.
+- ⬜ Integrate an OS keyring/KMS-backed envelope key for probe identity-token encryption at rest.
+  Until then, require encrypted host storage and restrict access to the private probe state volume.
 - ⬜ Keep `license.py` host-lock for probes? (port as-is; can disable via env — default keep)
 - ⬜ Add the append-only `scan_results` table now, or defer until re-detection is needed?

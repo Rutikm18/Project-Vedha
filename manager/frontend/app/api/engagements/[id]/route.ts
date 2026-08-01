@@ -9,6 +9,14 @@ import { NextResponse } from "next/server";
 import { backend, bearerFrom, BackendError } from "../../../../lib/backend";
 import { toUiEngagement, toApiEngagementPatch } from "../../../../lib/adapters";
 
+interface ApiActivity {
+  id: string;
+  timestamp: string;
+  kind: string;
+  action: string;
+  detail: string;
+}
+
 function fail(e: unknown) {
   const status = e instanceof BackendError ? e.status : 500;
   return NextResponse.json({ error: (e as Error)?.message ?? "backend error" }, { status });
@@ -19,8 +27,23 @@ export async function GET(req: Request, { params }: { params: Promise<{ id: stri
   if (!token) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   const { id } = await params;
   try {
-    const detail = await backend<any>(`/engagements/${id}`, { token });
-    return NextResponse.json({ engagement: toUiEngagement(detail), activity: [] });
+    const [detail, activity] = await Promise.all([
+      backend<any>(`/engagements/${id}`, { token }),
+      backend<ApiActivity[]>("/activity", {
+        token,
+        query: { engagement_id: id, limit: 50 },
+      }),
+    ]);
+    return NextResponse.json({
+      engagement: toUiEngagement(detail),
+      activity: (activity ?? []).map((item) => ({
+        id: item.id,
+        timestamp: item.timestamp,
+        actor: item.kind,
+        action: item.action,
+        detail: item.detail,
+      })),
+    });
   } catch (e) {
     return fail(e);
   }

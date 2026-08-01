@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "branchName": "main",
-  "worktreePath": "/Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Agentic VA Scanner",
-  "upstream": "origin/main",
-  "mergeBase": "0510df3efb9374892a4822e5be4b3cdb4d0cdd4f",
-  "firstSeenHead": "0557559df67e8c0dcff8a3478ef636be891e24c5",
-  "lastSeenHead": "2885afab48ed2cf48cc14de457e9730f9d14b08b",
-  "lastAnalyzedHead": "2885afab48ed2cf48cc14de457e9730f9d14b08b",
+  "branchName": "feat/probe-usecase-alignment",
+  "worktreePath": "/Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha",
+  "upstream": null,
+  "mergeBase": null,
+  "firstSeenHead": "80b6dbcc5515152a76b93176716127f4f997f356",
+  "lastSeenHead": "80b6dbcc5515152a76b93176716127f4f997f356",
+  "lastAnalyzedHead": "80b6dbcc5515152a76b93176716127f4f997f356",
   "stale": false,
   "staleReason": null,
   "staleSince": null,
   "lifecycleEvent": null,
-  "createdAt": "2026-07-15T19:45:36.273Z",
-  "updatedAt": "2026-07-22T16:50:56.611Z"
+  "createdAt": "2026-08-01T08:30:53.599Z",
+  "updatedAt": "2026-08-01T08:30:53.599Z"
 }

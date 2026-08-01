@@ -2,17 +2,12 @@
   "name": "vedha",
   "version": "0.5.0",
   "private": true,
-  "bin": {
-    "vedha": "./bin/vedha"
-  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "cli": "npx tsx cli/index.ts",
-    "build:cli": "tsc -p tsconfig.cli.json",
-    "vedha": "npx tsx cli/index.ts"
+    "test": "tsx --test tests/*.test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.99.0",
@@ -33,7 +28,6 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "commander": "^14.0.3",
     "eslint": "^9",
     "eslint-config-next": "latest",
     "tailwindcss": "^4",

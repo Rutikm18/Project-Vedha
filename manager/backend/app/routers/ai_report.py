@@ -65,7 +65,7 @@ async def generate_report(
     background_tasks: BackgroundTasks,
     current_user: Annotated[AuthUser, require_role(["admin", "manager", "analyst", "tester"])],
 ):
-    await get_or_404(db, Engagement, db, engagement_id, current_user.tenant_id)
+    await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
 
     job = ScanJob(
         engagement_id=engagement_id,
@@ -92,7 +92,7 @@ async def report_status(
     db: DB,
     current_user: AuthUser,
 ):
-    await get_or_404(db, Engagement, db, engagement_id, current_user.tenant_id)
+    await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
     job = (await db.execute(
         select(ScanJob).where(
             ScanJob.id == job_id,
@@ -119,7 +119,7 @@ async def get_draft(
     current_user: AuthUser,
     review_status: ReviewStatus | None = Query(default=None, alias="status"),
 ):
-    await get_or_404(db, Engagement, db, engagement_id, current_user.tenant_id)
+    await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
     q = select(LLMOutput).where(LLMOutput.engagement_id == engagement_id)
     q = q.where(LLMOutput.review_status == (review_status or ReviewStatus.pending))
     q = q.order_by(LLMOutput.output_type, LLMOutput.generated_at.desc())
@@ -136,7 +136,7 @@ async def approve_report(
     db: DB,
     current_user: Annotated[AuthUser, require_role(["admin", "manager"])],
 ):
-    await get_or_404(db, Engagement, db, engagement_id, current_user.tenant_id)
+    await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
     rows = await _pending_outputs(db, engagement_id, body.output_ids)
     if not rows:
         raise HTTPException(404, "No pending sections to approve")
@@ -159,7 +159,7 @@ async def reject_report(
     background_tasks: BackgroundTasks,
     current_user: Annotated[AuthUser, require_role(["admin", "manager"])],
 ):
-    await get_or_404(db, Engagement, db, engagement_id, current_user.tenant_id)
+    await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
     rows = await _pending_outputs(db, engagement_id, body.output_ids)
     if not rows:
         raise HTTPException(404, "No pending sections to reject")

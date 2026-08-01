@@ -39,6 +39,9 @@ probe-go/probe
 probe-go/bin/
 
 # Probe runtime artifacts
+scripts/state/
+*.probe.env
+validation-results/
 probe/live.jsonl
 probe/ports.jsonl
 probe/scan_*/
@@ -54,3 +57,4 @@ temp/
 
 
 thresis_future_optimizations.md
+.gstack/

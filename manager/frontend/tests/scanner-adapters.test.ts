@@ -1,6 +1,5 @@
 import { describe, test } from "node:test";
 import assert from "node:assert/strict";
-import { NextRequest } from "next/server";
 
 import { parseNetExecLog } from "../lib/netexec-parser";
 import { parseOpenVASHelperOutput } from "../lib/openvas-client";
@@ -9,9 +8,6 @@ import {
   validateNetExecScanRequest,
   validateOpenVASScanRequest,
 } from "../lib/scanner-request-validation";
-import { POST as openVASPost } from "../app/api/scan/openvas/route";
-import { GET as openVASGet } from "../app/api/scan/openvas/[taskId]/route";
-import { POST as netExecPost } from "../app/api/scan/netexec/route";
 
 
 describe("NetExec log parser", () => {
@@ -185,99 +181,6 @@ describe("scanner request validation", () => {
     if (result.ok) {
       assert.deepEqual(result.value.checks, ["smb", "null-session"]);
     }
-  });
-});
-
-
-describe("scanner route authentication", () => {
-  const token = "manager-access-token";
-
-  function unauthenticatedPost(url: string): NextRequest {
-    return new NextRequest(url, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: "{}",
-    });
-  }
-
-  function authenticatedPost(url: string, body: unknown): NextRequest {
-    return new NextRequest(url, {
-      method: "POST",
-      headers: {
-        authorization: `Bearer ${token}`,
-        "content-type": "application/json",
-      },
-      body: JSON.stringify(body),
-    });
-  }
-
-  async function withManagerIdentity(run: () => Promise<Response>): Promise<Response> {
-    const previousFetch = globalThis.fetch;
-    const previousLocalScannerFlag = process.env.ENABLE_LEGACY_LOCAL_SCANNERS;
-    process.env.ENABLE_LEGACY_LOCAL_SCANNERS = "true";
-    globalThis.fetch = async (input) => {
-      assert.match(String(input), /\/auth\/me$/);
-      return new Response(JSON.stringify({
-        user_id: "user-1",
-        tenant_id: "tenant-1",
-        role: "manager",
-        email: "you@yourorg.com",
-        auth_type: "jwt",
-        pat_id: null,
-        scopes: [],
-      }), {
-        status: 200,
-        headers: { "content-type": "application/json" },
-      });
-    };
-    try {
-      return await run();
-    } finally {
-      globalThis.fetch = previousFetch;
-      if (previousLocalScannerFlag === undefined) {
-        delete process.env.ENABLE_LEGACY_LOCAL_SCANNERS;
-      } else {
-        process.env.ENABLE_LEGACY_LOCAL_SCANNERS = previousLocalScannerFlag;
-      }
-    }
-  }
-
-  test("OpenVAS launch rejects a request without bearer authentication", async () => {
-    const response = await openVASPost(
-      unauthenticatedPost("http://localhost/api/scan/openvas"),
-    );
-    assert.equal(response.status, 401);
-  });
-
-  test("OpenVAS polling rejects a request without bearer authentication", async () => {
-    const response = await openVASGet(
-      new NextRequest("http://localhost/api/scan/openvas/task-1"),
-      { params: Promise.resolve({ taskId: "task-1" }) },
-    );
-    assert.equal(response.status, 401);
-  });
-
-  test("NetExec launch rejects a request without bearer authentication", async () => {
-    const response = await netExecPost(
-      unauthenticatedPost("http://localhost/api/scan/netexec"),
-    );
-    assert.equal(response.status, 401);
-  });
-
-  test("OpenVAS route rejects a non-integer port before launching", async () => {
-    const response = await withManagerIdentity(() => openVASPost(authenticatedPost(
-      "http://localhost/api/scan/openvas",
-      { targets: ["10.0.0.1"], gvmPort: "9390" },
-    )));
-    assert.equal(response.status, 400);
-  });
-
-  test("NetExec route rejects an unsupported check before launching", async () => {
-    const response = await withManagerIdentity(() => netExecPost(authenticatedPost(
-      "http://localhost/api/scan/netexec",
-      { targets: ["10.0.0.1"], checks: ["unsupported"] },
-    )));
-    assert.equal(response.status, 400);
   });
 });
 

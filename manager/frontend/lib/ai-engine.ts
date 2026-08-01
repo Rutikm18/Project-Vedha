@@ -208,7 +208,6 @@ export const llmReportGenerator = {
     name: string; totalFindings: Record<string, number>; attackPathCount: number;
     detectionCoverage: number; topRisks: string[];
   }, apiKey?: string): Promise<string> {
-    const ctx = `${engagementSummary.name}: ${JSON.stringify(engagementSummary.totalFindings)} findings, ${engagementSummary.attackPathCount} attack paths, ${engagementSummary.detectionCoverage}% detection coverage`;
     if (!apiKey) return SIMULATED.executive_summary(engagementSummary.name);
 
     const prompt = `Generate a 400-600 word executive summary for a CISO/Board audience for the following VAPT engagement:

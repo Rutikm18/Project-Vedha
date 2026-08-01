@@ -1,4 +1,4 @@
-# Node Description Batch 46 of 104
+# Node Description Batch 46 of 119
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,56 +19,58 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-Write every description in English (en). Do not switch languages.
+LANGUAGE: each entry has a `lang=` marker giving the language of its source.
+Write that entry's description in EXACTLY that language. Do not translate to
+a single common language — match each node's source language individually.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "dashboard_slastatus_timelabel": "timeLabel()" | kind=code-symbol | source=manager/frontend/components/dashboard/SlaStatus.tsx:L46 | neighbors=[SlaStatus.tsx, SlaRowView()]
-- "dashboard_slasummarycell_slasummarycell": "SlaSummaryCell()" | kind=code-symbol | source=manager/frontend/components/dashboard/SlaSummaryCell.tsx:L11 | neighbors=[SlaSummaryCell.tsx, page.tsx]
-- "data_mock_dashboard_agentstatus": "AgentStatus" | kind=code-symbol | source=manager/frontend/data/mock-dashboard.ts:L11 | neighbors=[mock-dashboard.ts, page.tsx]
-- "data_mock_dashboard_attack_paths": "ATTACK_PATHS" | kind=code-symbol | source=manager/frontend/data/mock-dashboard.ts:L41 | neighbors=[mock-dashboard.ts, page.tsx]
-- "data_mock_dashboard_pathstatus": "PathStatus" | kind=code-symbol | source=manager/frontend/data/mock-dashboard.ts:L10 | neighbors=[mock-dashboard.ts, page.tsx]
-- "data_mock_dashboard_protocolrisk": "ProtocolRisk" | kind=code-symbol | source=manager/frontend/data/mock-dashboard.ts:L31 | neighbors=[ProtocolRow.tsx, mock-dashboard.ts]
-- "data_mock_dashboard_protocols": "PROTOCOLS" | kind=code-symbol | source=manager/frontend/data/mock-dashboard.ts:L57 | neighbors=[mock-dashboard.ts, page.tsx]
-- "data_mock_dashboard_sla_findings": "SLA_FINDINGS" | kind=code-symbol | source=manager/frontend/data/mock-dashboard.ts:L49 | neighbors=[mock-dashboard.ts, page.tsx]
-- "data_mock_dashboard_slafinding": "SlaFinding" | kind=code-symbol | source=manager/frontend/data/mock-dashboard.ts:L22 | neighbors=[SlaRow.tsx, mock-dashboard.ts]
-- "data_mock_dashboard_zonehealth": "ZoneHealth" | kind=code-symbol | source=manager/frontend/data/mock-dashboard.ts:L36 | neighbors=[ZoneRow.tsx, mock-dashboard.ts]
-- "data_mock_dashboard_zones": "ZONES" | kind=code-symbol | source=manager/frontend/data/mock-dashboard.ts:L64 | neighbors=[mock-dashboard.ts, page.tsx]
-- "detection_correlator_detectioncorrelator_generate_gap_report": ".generate_gap_report()" | kind=code-symbol | source=manager/backend/app/detection/correlator.py:L192 | neighbors=[DetectionCorrelator, DetectionGap]
-- "detection_correlator_host_matches": "_host_matches()" | kind=code-symbol | source=manager/backend/app/detection/correlator.py:L68 | neighbors=[correlator.py, ._host_for()]
-- "detection_edr_crowdstrikefalcon_query_detections": ".query_detections()" | kind=code-symbol | source=manager/backend/app/detection/edr.py:L98 | neighbors=[CrowdStrikeFalcon, ._request()]
-- "detection_edr_microsoftdefender_query_detections": ".query_detections()" | kind=code-symbol | source=manager/backend/app/detection/edr.py:L147 | neighbors=[MicrosoftDefender, ._request()]
-- "detection_edr_sentinelone_query_detections": ".query_detections()" | kind=code-symbol | source=manager/backend/app/detection/edr.py:L193 | neighbors=[SentinelOne, ._request()]
-- "detection_engine_ai_normalizer_aiclient_propose_cpe": ".propose_cpe()" | kind=code-symbol | source=manager/detection_engine/ai_normalizer.py:L89 | neighbors=[AIClient, Returns a list of {"vendor", "product",…]
-- "detection_engine_ai_normalizer_anthropicaiclient_propose_cpe": ".propose_cpe()" | kind=code-symbol | source=manager/detection_engine/ai_normalizer.py:L108 | neighbors=[AnthropicAIClient, .get()]
-- "detection_engine_ai_normalizer_fakeaiclient_propose_cpe": ".propose_cpe()" | kind=code-symbol | source=manager/detection_engine/ai_normalizer.py:L134 | neighbors=[FakeAIClient, .get()]
-- "detection_engine_consistency_findingconsistency_ci": ".ci()" | kind=code-symbol | source=manager/detection_engine/consistency.py:L63 | neighbors=[FindingConsistency, wilson_ci()]
-- "detection_engine_consistency_format_line": "format_line()" | kind=code-symbol | source=manager/detection_engine/consistency.py:L130 | neighbors=[consistency.py, The spec's reporting line, e.g.:     'H…]
-- "detection_engine_consistency_rationale_1": "consistency.py — Phase 5: N-run consistency & reporting.  \"A single scan is an a" | kind=entity | source=manager/detection_engine/consistency.py:L1 | neighbors=[consistency.py, Finding]
-- "detection_engine_consistency_rationale_102": "run_findings: one list of Findings per run (N runs). Aggregated by     the deter" | kind=entity | source=manager/detection_engine/consistency.py:L102 | neighbors=[aggregate(), Finding]
-- "detection_engine_consistency_rationale_131": "The spec's reporting line, e.g.:     'Host 10.0.0.5 — CVE-2021-41773 in 27/30 ru" | kind=entity | source=manager/detection_engine/consistency.py:L131 | neighbors=[format_line(), Finding]
-- "detection_engine_consistency_rationale_33": "Wilson score interval for a binomial proportion k/n, as percentages.     Chosen" | kind=entity | source=manager/detection_engine/consistency.py:L33 | neighbors=[wilson_ci(), Finding]
-- "detection_engine_correlate_correlate_smb_patch": "correlate_smb_patch()" | kind=code-symbol | source=manager/detection_engine/correlate.py:L134 | neighbors=[correlate.py, SMBv1 enabled + (credentialed hotfix li…]
-- "detection_engine_correlate_dedup_findings": "dedup_findings()" | kind=code-symbol | source=manager/detection_engine/correlate.py:L35 | neighbors=[correlate.py, Collapse by finding_id (deterministic: …]
-- "detection_engine_cpe_normalizer_all_osv_source_packages": "all_osv_source_packages()" | kind=code-symbol | source=manager/detection_engine/cpe_normalizer.py:L359 | neighbors=[cpe_normalizer.py, Every distinct OSV source-package name …]
-- "detection_engine_cpe_normalizer_clean_rpm_version": "clean_rpm_version()" | kind=code-symbol | source=manager/detection_engine/cpe_normalizer.py:L92 | neighbors=[cpe_normalizer.py, rpm queried as '%{VERSION}-%{RELEASE}' …]
-- "detection_engine_cpe_normalizer_normalize": "normalize()" | kind=code-symbol | source=manager/detection_engine/cpe_normalizer.py:L350 | neighbors=[cpe_normalizer.py, Dispatch a single Fact to the right par…]
-- "detection_engine_cpe_normalizer_osv_source_packages": "osv_source_packages()" | kind=code-symbol | source=manager/detection_engine/cpe_normalizer.py:L149 | neighbors=[cpe_normalizer.py, Every distinct OSV source-package name …]
-- "detection_engine_cvss_parse_vector": "parse_vector()" | kind=code-symbol | source=manager/detection_engine/cvss.py:L33 | neighbors=[cvss.py, base_score()]
-- "detection_engine_enrichment_db_epssdb_get": ".get()" | kind=code-symbol | source=manager/detection_engine/enrichment_db.py:L28 | neighbors=[EpssDB, {'epss': float, 'percentile': float} or…]
-- "detection_engine_enrichment_db_load_epss": "load_epss()" | kind=code-symbol | source=manager/detection_engine/enrichment_db.py:L39 | neighbors=[enrichment_db.py, EpssDB]
-- "detection_engine_enrichment_db_load_kev": "load_kev()" | kind=code-symbol | source=manager/detection_engine/enrichment_db.py:L33 | neighbors=[enrichment_db.py, KevDB]
-- "detection_engine_ingest_classify_confidence": "_classify_confidence()" | kind=code-symbol | source=manager/detection_engine/ingest.py:L54 | neighbors=[ingest.py, ingest_file()]
-- "detection_engine_ingest_is_ip": "_is_ip()" | kind=code-symbol | source=manager/detection_engine/ingest.py:L74 | neighbors=[ingest.py, .get_or_create_asset()]
-- "detection_engine_models_asset_add_fact": ".add_fact()" | kind=code-symbol | source=manager/detection_engine/models.py:L90 | neighbors=[Asset, .as_of()]
-- "detection_engine_models_fact_ref": ".ref()" | kind=code-symbol | source=manager/detection_engine/models.py:L60 | neighbors=[Fact, A stable, human-readable pointer back t…]
-- "detection_engine_models_make_finding_id": "make_finding_id()" | kind=code-symbol | source=manager/detection_engine/models.py:L125 | neighbors=[models.py, Deterministic finding ID: the SAME (ass…]
+- "tests_test_workflow_execution_explodingscanner": "_ExplodingScanner" | kind=code-symbol | source=probe/tests/test_workflow_execution.py:L29 | neighbors=[test_workflow_execution.py, .scan_target(), test_per_target_exception_preserves_oth…] | lang=en
+- "tools_installer_liststatus": "listStatus()" | kind=code-symbol | source=manager/frontend/lib/tools/installer.ts:L264 | neighbors=[tools.ts, installer.ts, readInstalled()] | lang=en
+- "tools_installer_writeinstalled": "writeInstalled()" | kind=code-symbol | source=manager/frontend/lib/tools/installer.ts:L42 | neighbors=[installer.ts, installTool(), removeTool()] | lang=en
+- "tools_issue_license_issue": "issue()" | kind=code-symbol | source=probe/tools/issue_license.py:L48 | neighbors=[issue_license.py, _b64(), main()] | lang=en
+- "tools_issue_license_main": "main()" | kind=code-symbol | source=probe/tools/issue_license.py:L61 | neighbors=[issue_license.py, issue(), keygen()] | lang=en
+- "tools_manifest_tool_manifest": "TOOL_MANIFEST" | kind=code-symbol | source=manager/frontend/lib/tools/manifest.ts:L74 | neighbors=[tools.ts, installer.ts, manifest.ts] | lang=en
+- "ui_output_findingdetail": "findingDetail()" | kind=code-symbol | source=manager/frontend/cli/ui/output.ts:L238 | neighbors=[output.ts, ln(), rule()] | lang=en
+- "ui_output_findingline": "findingLine()" | kind=code-symbol | source=manager/frontend/cli/ui/output.ts:L184 | neighbors=[output.ts, ln(), sevBadge()] | lang=en
+- "ui_output_scanheader": "scanHeader()" | kind=code-symbol | source=manager/frontend/cli/ui/output.ts:L63 | neighbors=[output.ts, ln(), rule()] | lang=en
+- "ui_output_stageerror": "stageError()" | kind=code-symbol | source=manager/frontend/cli/ui/output.ts:L133 | neighbors=[output.ts, ln(), w()] | lang=en
+- "ui_output_summary": "summary()" | kind=code-symbol | source=manager/frontend/cli/ui/output.ts:L194 | neighbors=[output.ts, ln(), rule()] | lang=en
+- "ui_output_w": "w()" | kind=code-symbol | source=manager/frontend/cli/ui/output.ts:L29 | neighbors=[output.ts, stageError(), stageProgress()] | lang=en
+- "utils_csv_parser": "csv_parser.py" | kind=code-symbol | source=manager/backend/app/utils/csv_parser.py:L1 | neighbors=[d1b4dd3 trim frontend to 7 core pages; …, parse_csv_assets(), 298a9d4 trim frontend to 7 core pages; …] | lang=en
+- "utils_csv_parser_rationale_26": "Parse CSV text into a list of AssetIn models and error strings." | kind=entity | source=manager/backend/app/utils/csv_parser.py:L26 | neighbors=[AssetCriticality, AssetType, parse_csv_assets()] | lang=en
+- "utils_pagination": "pagination.py" | kind=code-symbol | source=manager/backend/app/utils/pagination.py:L1 | neighbors=[d1b4dd3 trim frontend to 7 core pages; …, paginate_query(), 298a9d4 trim frontend to 7 core pages; …] | lang=en
+- "vuln_enrichment_vulnenrichmentservice_get_kev_catalog": "._get_kev_catalog()" | kind=code-symbol | source=manager/backend/app/vuln/enrichment.py:L249 | neighbors=[VulnEnrichmentService, .check_cisa_kev(), .get()] | lang=en
+- "vuln_nessus_nessusscanner_export_nessus_file": ".export_nessus_file()" | kind=code-symbol | source=manager/backend/app/vuln/nessus.py:L257 | neighbors=[NessusScanner, ._get_client(), Request + poll + download .nessus XML f…] | lang=en
+- "vuln_nessus_nessusscanner_launch_scan": ".launch_scan()" | kind=code-symbol | source=manager/backend/app/vuln/nessus.py:L140 | neighbors=[NessusScanner, ._get_client(), Returns scan_uuid (token for tracking).] | lang=en
+- "vuln_nessus_nessusscanner_poll_status": ".poll_status()" | kind=code-symbol | source=manager/backend/app/vuln/nessus.py:L151 | neighbors=[NessusScanner, ._get_client(), Returns {status, progress_percent, host…] | lang=en
+- "vuln_nessus_rationale_1": "NessusScanner — wraps the Tenable Nessus REST API v6.  Endpoints used:   POST /s" | kind=entity | source=manager/backend/app/vuln/nessus.py:L1 | neighbors=[FindingSeverity, FindingStatus, nessus.py] | lang=en
+- "vuln_nessus_rationale_102": "Returns nessus scan_id as string." | kind=entity | source=manager/backend/app/vuln/nessus.py:L102 | neighbors=[FindingSeverity, FindingStatus, .create_scan()] | lang=en
+- "vuln_nessus_rationale_141": "Returns scan_uuid (token for tracking)." | kind=entity | source=manager/backend/app/vuln/nessus.py:L141 | neighbors=[FindingSeverity, FindingStatus, .launch_scan()] | lang=en
+- "vuln_nessus_rationale_152": "Returns {status, progress_percent, host_count}." | kind=entity | source=manager/backend/app/vuln/nessus.py:L152 | neighbors=[FindingSeverity, FindingStatus, .poll_status()] | lang=en
+- "vuln_nessus_rationale_168": "Returns list of raw finding dicts from all hosts." | kind=entity | source=manager/backend/app/vuln/nessus.py:L168 | neighbors=[FindingSeverity, FindingStatus, .get_results()] | lang=en
+- "vuln_nessus_rationale_207": "Map a raw Nessus vulnerability dict → Finding-compatible dict.         Returns a" | kind=entity | source=manager/backend/app/vuln/nessus.py:L207 | neighbors=[FindingSeverity, FindingStatus, .map_finding()] | lang=pt
+- "vuln_nessus_rationale_258": "Request + poll + download .nessus XML for evidence storage." | kind=entity | source=manager/backend/app/vuln/nessus.py:L258 | neighbors=[FindingSeverity, FindingStatus, .export_nessus_file()] | lang=en
+- "vuln_nessus_rationale_39": "Async Nessus API client. One instance per engagement scan session." | kind=entity | source=manager/backend/app/vuln/nessus.py:L39 | neighbors=[FindingSeverity, FindingStatus, NessusScanner] | lang=it
+- "vuln_nessus_rationale_74": "Prefer API key auth (stateless, no session expiry).         Falls back to userna" | kind=entity | source=manager/backend/app/vuln/nessus.py:L74 | neighbors=[FindingSeverity, FindingStatus, .authenticate()] | lang=en
+- "vuln_nuclei_nucleiscanner_consume_stdout": "._consume_stdout()" | kind=code-symbol | source=manager/backend/app/vuln/nuclei.py:L288 | neighbors=[NucleiScanner, ._map_finding(), .run_scan()] | lang=en
+- "vuln_nuclei_nucleiscanner_map_finding": "._map_finding()" | kind=code-symbol | source=manager/backend/app/vuln/nuclei.py:L396 | neighbors=[NucleiScanner, ._consume_stdout(), .parse_output()] | lang=en
+- "vuln_nuclei_nucleiscanner_template_selector": ".template_selector()" | kind=code-symbol | source=manager/backend/app/vuln/nuclei.py:L445 | neighbors=[NucleiScanner, Given a list of service names on an ass…, Given a list of service names on an ass…] | lang=en
+- "vuln_tasks_run_post_scan_enrichment": "run_post_scan_enrichment()" | kind=code-symbol | source=manager/backend/app/vuln/tasks.py:L37 | neighbors=[tasks.py, Triggered by the vuln scan API after a …, _fire_critical_webhook()] | lang=en
+- "websocket_manager_agentconnectionmanager_agent_stale_after": ".agent_stale_after()" | kind=code-symbol | source=manager/backend/app/websocket/manager.py:L273 | neighbors=[AgentConnectionManager, Return agent_ids whose last heartbeat i…, Return agent_ids whose last heartbeat i…] | lang=en
+- "websocket_manager_agentconnectionmanager_connected_agents": ".connected_agents()" | kind=code-symbol | source=manager/backend/app/websocket/manager.py:L237 | neighbors=[AgentConnectionManager, Return a snapshot of all connected agen…, Return a snapshot of all connected agen…] | lang=en
+- "websocket_manager_agentconnectionmanager_get_agent_status": ".get_agent_status()" | kind=code-symbol | source=manager/backend/app/websocket/manager.py:L269 | neighbors=[AgentConnectionManager, Return 'online', 'busy', or 'offline'., Push a job to the first online agent in…] | lang=en
+- "websocket_manager_agentconnectionmanager_is_connected": ".is_connected()" | kind=code-symbol | source=manager/backend/app/websocket/manager.py:L228 | neighbors=[AgentConnectionManager, Check if a specific agent is connected., Check if a specific agent is connected.] | lang=en
+- "websocket_manager_agentconnectionmanager_is_online": ".is_online()" | kind=code-symbol | source=manager/backend/app/websocket/manager.py:L232 | neighbors=[AgentConnectionManager, Check if a specific agent is online (co…, Check if a specific agent is online (co…] | lang=en
+- "websocket_manager_agentconnectionmanager_online_agents": ".online_agents()" | kind=code-symbol | source=manager/backend/app/websocket/manager.py:L242 | neighbors=[AgentConnectionManager, Return agent IDs whose status is 'onlin…, Return agent IDs whose status is 'onlin…] | lang=en
+- "websocket_manager_agentconnectionmanager_online_agents_for_tenant": ".online_agents_for_tenant()" | kind=code-symbol | source=manager/backend/app/websocket/manager.py:L246 | neighbors=[AgentConnectionManager, .push_job_to_first_online(), Return idle connected agents belonging …] | lang=en
+- "websocket_manager_agentconnectionmanager_record_heartbeat": ".record_heartbeat()" | kind=code-symbol | source=manager/backend/app/websocket/manager.py:L151 | neighbors=[AgentConnectionManager, Record a heartbeat from an agent., Record a heartbeat from an agent.] | lang=en
 
 ## Instructions
 
 Write a single JSON object mapping each node id to a one-sentence description
-to: /Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Agentic VA Scanner/.graphify/description-instructions/batch-045.json
+to: /Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha/.graphify/description-instructions/batch-045.json
 
 Keep each description factual and concise (one sentence). No markdown, no prose
 outside the JSON object. It is acceptable to omit a node if context is

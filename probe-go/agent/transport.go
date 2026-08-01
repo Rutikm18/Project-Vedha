@@ -134,15 +134,15 @@ func (t *Transport) ConnectWS() (*websocket.Conn, error) {
 		u.Scheme = "ws"
 	}
 	u.Path = "/agents/ws"
-	query := u.Query()
-	query.Set("token", t.AgentToken)
-	u.RawQuery = query.Encode()
+	u.RawQuery = ""
 
 	dialer := websocket.Dialer{
 		TLSClientConfig:  managerTLSConfig(t.verifyTLS),
 		HandshakeTimeout: 10 * time.Second,
 	}
-	conn, _, err := dialer.Dial(u.String(), nil)
+	headers := http.Header{}
+	headers.Set("Authorization", "Bearer "+t.AgentToken)
+	conn, _, err := dialer.Dial(u.String(), headers)
 	return conn, err
 }
 

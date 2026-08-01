@@ -1,4 +1,4 @@
-# Node Description Batch 47 of 104
+# Node Description Batch 47 of 119
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -24,51 +24,51 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "detection_engine_update_snapshot_all_known_cve_ids": "_all_known_cve_ids()" | kind=code-symbol | source=manager/detection_engine/update_snapshot.py:L174 | neighbors=[update_snapshot.py, main()]
-- "detection_engine_verifier_deception_score": "deception_score()" | kind=code-symbol | source=manager/detection_engine/verifier.py:L75 | neighbors=[verifier.py, A starter honeypot/deception heuristic …]
-- "detection_engine_version_compare_split_segments": "_split_segments()" | kind=code-symbol | source=manager/detection_engine/version_compare.py:L78 | neighbors=[version_compare.py, _compare_part()]
-- "detection_engine_vuln_db_default_products": "_default_products()" | kind=code-symbol | source=manager/detection_engine/vuln_db.py:L43 | neighbors=[vuln_db.py, Derives the synced product list from cp…]
-- "detection_engine_vuln_db_vulndb_build_cve_index": "._build_cve_index()" | kind=code-symbol | source=manager/detection_engine/vuln_db.py:L89 | neighbors=[VulnDB, .__init__()]
-- "detection_engine_vuln_db_vulndb_get_cvss_vector": ".get_cvss_vector()" | kind=code-symbol | source=manager/detection_engine/vuln_db.py:L109 | neighbors=[The CVSS v3 vector string OSV embedded …, VulnDB]
-- "detection_engine_vuln_db_vulndb_init": ".__init__()" | kind=code-symbol | source=manager/detection_engine/vuln_db.py:L83 | neighbors=[VulnDB, ._build_cve_index()]
-- "detection_engine_vuln_db_vulndb_lookup": ".lookup()" | kind=code-symbol | source=manager/detection_engine/vuln_db.py:L98 | neighbors=[Raw OSV vulnerability records for this …, VulnDB]
-- "detection_logger_as_uuid": "_as_uuid()" | kind=code-symbol | source=manager/backend/app/detection/logger.py:L69 | neighbors=[logger.py, .log_action()]
-- "detection_logger_rationale_1": "AttackLogger — records every attack action to the ``attack_timeline`` table.  Al" | kind=entity | source=manager/backend/app/detection/logger.py:L1 | neighbors=[logger.py, AttackTimeline]
-- "detection_logger_rationale_40": "Persist a single attack action. Returns the AttackTimeline row.          ``times" | kind=entity | source=manager/backend/app/detection/logger.py:L40 | neighbors=[.log_action(), AttackTimeline]
-- "detection_siem_elasticsiem_build_query": ".build_query()" | kind=code-symbol | source=manager/backend/app/detection/siem.py:L191 | neighbors=[ElasticSIEM, .query_alerts()]
-- "detection_siem_sentinelsiem_build_kql": ".build_kql()" | kind=code-symbol | source=manager/backend/app/detection/siem.py:L141 | neighbors=[SentinelSIEM, .query_alerts()]
-- "detection_siem_splunksiem_build_spl": ".build_spl()" | kind=code-symbol | source=manager/backend/app/detection/siem.py:L88 | neighbors=[SplunkSIEM, .query_alerts()]
-- "detection_sigma_sigmarulegenerator_customise_detection": "._customise_detection()" | kind=code-symbol | source=manager/backend/app/detection/sigma.py:L153 | neighbors=[SigmaRuleGenerator, .generate_sigma_for_technique()]
-- "detection_sigma_sigmarulegenerator_lookup_template": "._lookup_template()" | kind=code-symbol | source=manager/backend/app/detection/sigma.py:L144 | neighbors=[SigmaRuleGenerator, .generate_sigma_for_technique()]
-- "detection_sigma_stable_rule_id": "_stable_rule_id()" | kind=code-symbol | source=manager/backend/app/detection/sigma.py:L166 | neighbors=[sigma.py, .generate_sigma_for_technique()]
-- "discovery_finding_translator_map_severity": "_map_severity()" | kind=code-symbol | source=manager/backend/app/discovery/finding_translator.py:L46 | neighbors=[finding_translator.py, create_findings_from_probe_result()]
-- "discovery_rate_limiter_ratelimiter_consume_token": "._consume_token()" | kind=code-symbol | source=manager/backend/app/discovery/rate_limiter.py:L85 | neighbors=[RateLimiter, .acquire()]
-- "discovery_rate_limiter_ratelimiter_resolve_cidr": "._resolve_cidr()" | kind=code-symbol | source=manager/backend/app/discovery/rate_limiter.py:L75 | neighbors=[RateLimiter, .acquire()]
-- "discovery_service_id_serviceidentifier_identify": ".identify()" | kind=code-symbol | source=manager/backend/app/discovery/service_id.py:L74 | neighbors=[ServiceIdentifier, ServiceFingerprint]
-- "discovery_worker_discoveryworker_grab_one": "._grab_one()" | kind=code-symbol | source=manager/backend/app/discovery/worker.py:L161 | neighbors=[DiscoveryWorker, ._banner_grab_all()]
-- "discovery_worker_discoveryworker_run_nmap": "._run_nmap()" | kind=code-symbol | source=manager/backend/app/discovery/worker.py:L119 | neighbors=[DiscoveryWorker, .run()]
-- "discovery_worker_discoveryworker_save_assets": "._save_assets()" | kind=code-symbol | source=manager/backend/app/discovery/worker.py:L194 | neighbors=[DiscoveryWorker, .run()]
-- "discovery_worker_discoveryworker_set_status": "._set_status()" | kind=code-symbol | source=manager/backend/app/discovery/worker.py:L270 | neighbors=[DiscoveryWorker, .run()]
-- "discovery_xml_parser_nmapxmlparser_parse": ".parse()" | kind=code-symbol | source=manager/backend/app/discovery/xml_parser.py:L44 | neighbors=[NmapXMLParser, ._parse_host()]
-- "e2e_interop_verify": "interop_verify.py" | kind=code-symbol | source=manager/frontend/tests/e2e/interop_verify.py:L1 | neighbors=[298a9d4 trim frontend to 7 core pages; …, Verify the Python probe can open what t…]
-- "e2e_mock_manager_make_handler": "_make_handler()" | kind=code-symbol | source=manager/frontend/tests/e2e/mock_manager.py:L118 | neighbors=[mock_manager.py, start()]
-- "e2e_mock_manager_managerstate_mgr_box_pub_b64": ".mgr_box_pub_b64()" | kind=code-symbol | source=manager/frontend/tests/e2e/mock_manager.py:L67 | neighbors=[ManagerState, b64e()]
-- "e2e_mock_manager_managerstate_mgr_sig_pub_b64": ".mgr_sig_pub_b64()" | kind=code-symbol | source=manager/frontend/tests/e2e/mock_manager.py:L63 | neighbors=[ManagerState, b64e()]
-- "e2e_mock_manager_managerstate_mint_scope_token": "._mint_scope_token()" | kind=code-symbol | source=manager/frontend/tests/e2e/mock_manager.py:L76 | neighbors=[ManagerState, .next_job_for()]
-- "e2e_mock_manager_self_signed": "_self_signed()" | kind=code-symbol | source=manager/frontend/tests/e2e/mock_manager.py:L195 | neighbors=[mock_manager.py, start()]
-- "e2e_run_probe_env": "probe_env()" | kind=code-symbol | source=manager/frontend/tests/e2e/run.py:L75 | neighbors=[run.py, main()]
-- "e2e_run_run_probe": "run_probe()" | kind=code-symbol | source=manager/frontend/tests/e2e/run.py:L95 | neighbors=[run.py, main()]
-- "e2e_run_scan_plan": "scan_plan()" | kind=code-symbol | source=manager/frontend/tests/e2e/run.py:L50 | neighbors=[run.py, main()]
-- "engine_scan_modules_modules": "MODULES" | kind=code-symbol | source=manager/frontend/lib/engine/scan-modules.ts:L48 | neighbors=[interactive.ts, scan-modules.ts]
-- "engine_scan_modules_modulesbycategory": "modulesByCategory()" | kind=code-symbol | source=manager/frontend/lib/engine/scan-modules.ts:L333 | neighbors=[interactive.ts, scan-modules.ts]
-- "engine_scan_modules_modulesforports": "modulesForPorts()" | kind=code-symbol | source=manager/frontend/lib/engine/scan-modules.ts:L378 | neighbors=[scan-modules.ts, scanner.ts]
-- "engine_scan_modules_profilemodules": "profileModules()" | kind=code-symbol | source=manager/frontend/lib/engine/scan-modules.ts:L349 | neighbors=[interactive.ts, scan-modules.ts]
-- "engine_scanner_byseveritycount": "bySeverityCount()" | kind=code-symbol | source=manager/frontend/lib/engine/scanner.ts:L11 | neighbors=[scanner.ts, runScan()]
+- "websocket_manager_agentconnectionmanager_register": ".register()" | kind=code-symbol | source=manager/backend/app/websocket/manager.py:L97 | neighbors=[AgentConnectionManager, Register an agent's WebSocket connectio…, Register an agent's WebSocket connectio…]
+- "websocket_manager_connectionmanager_connect": ".connect()" | kind=code-symbol | source=manager/backend/app/websocket/manager.py:L33 | neighbors=[ConnectionManager, .handle_client(), Accept connection and add to room.]
+- "workers_outbox_mark_retry_or_dead": "_mark_retry_or_dead()" | kind=code-symbol | source=manager/backend/app/workers/outbox.py:L151 | neighbors=[outbox.py, _process(), Reschedule with exponential backoff, or…]
+- "workers_outbox_rationale_1": "outbox.py (worker) — durable consumer for the transactional outbox.  Run as its" | kind=entity | source=manager/backend/app/workers/outbox.py:L1 | neighbors=[OutboxEvent, ScanResult, outbox.py]
+- "workers_outbox_rationale_110": "Atomically claim up to `batch_size` due events. FOR UPDATE SKIP LOCKED     means" | kind=entity | source=manager/backend/app/workers/outbox.py:L110 | neighbors=[OutboxEvent, ScanResult, _claim_batch()]
+- "workers_outbox_rationale_152": "Reschedule with exponential backoff, or dead-letter once attempts are     exhaus" | kind=entity | source=manager/backend/app/workers/outbox.py:L152 | neighbors=[OutboxEvent, ScanResult, _mark_retry_or_dead()]
+- "workers_outbox_rationale_186": "Main loop: claim → process → repeat. Sleeps only when the queue is idle,     so" | kind=entity | source=manager/backend/app/workers/outbox.py:L186 | neighbors=[OutboxEvent, ScanResult, run_worker()]
+- "workers_outbox_rationale_56": "Decorator: bind an async handler to a topic." | kind=entity | source=manager/backend/app/workers/outbox.py:L56 | neighbors=[OutboxEvent, ScanResult, register()]
+- "workers_outbox_rationale_67": "Add an outbox event to the caller's session. Does NOT commit — it commits     at" | kind=entity | source=manager/backend/app/workers/outbox.py:L67 | neighbors=[OutboxEvent, ScanResult, enqueue()]
+- "workers_outbox_rationale_83": "Run the deterministic detection pipeline on a submitted facts payload.     Re-re" | kind=entity | source=manager/backend/app/workers/outbox.py:L83 | neighbors=[OutboxEvent, ScanResult, _handle_facts_ready()]
+- "workers_reaper_rationale_1": "reaper.py — requeue jobs abandoned by a dead probe.  A job is claimed with a lea" | kind=entity | source=manager/backend/app/workers/reaper.py:L1 | neighbors=[ScanJobStatus, ScanJob, reaper.py]
+- "workers_reaper_rationale_32": "Requeue every running job whose lease has expired. Returns the job ids." | kind=entity | source=manager/backend/app/workers/reaper.py:L32 | neighbors=[ScanJobStatus, ScanJob, reap_once()]
+- "workers_reaper_rationale_55": "Poll loop: requeue expired jobs every reaper_interval_seconds until stopped." | kind=entity | source=manager/backend/app/workers/reaper.py:L55 | neighbors=[ScanJobStatus, ScanJob, run_reaper()]
+- "workers_reaper_reap_once": "reap_once()" | kind=code-symbol | source=manager/backend/app/workers/reaper.py:L31 | neighbors=[reaper.py, Requeue every running job whose lease h…, run_reaper()]
+- "workers_reaper_run_reaper": "run_reaper()" | kind=code-symbol | source=manager/backend/app/workers/reaper.py:L54 | neighbors=[reaper.py, Poll loop: requeue expired jobs every r…, reap_once()]
+- "workflow_asset_asset_merge_host_discovery": "._merge_host_discovery()" | kind=code-symbol | source=probe/workflow/asset.py:L100 | neighbors=[Asset, _parse_ts(), PortFact]
+- "workflow_asset_asset_merge_port_scan": "._merge_port_scan()" | kind=code-symbol | source=probe/workflow/asset.py:L110 | neighbors=[Asset, _parse_ts(), PortFact]
+- "workflow_asset_asset_merge_udp_scan": "._merge_udp_scan()" | kind=code-symbol | source=probe/workflow/asset.py:L148 | neighbors=[Asset, _parse_ts(), PortFact]
+- "workflow_asset_asset_needs_recheck_live": ".needs_recheck_live()" | kind=code-symbol | source=probe/workflow/asset.py:L71 | neighbors=[Asset, _utcnow(), Is liveness unknown, or stale past `thr…]
+- "workflow_cache_classify_certainty": "classify_certainty()" | kind=code-symbol | source=probe/workflow/cache.py:L46 | neighbors=[cache.py, .get(), .put()]
+- "workflow_cache_workflowcache_get": ".get()" | kind=code-symbol | source=probe/workflow/cache.py:L109 | neighbors=[classify_certainty(), WorkflowCache, .should_recheck()]
+- "workflow_cache_workflowcache_load": "._load()" | kind=code-symbol | source=probe/workflow/cache.py:L89 | neighbors=[WorkflowCache, .__init__(), .from_jsonl_dict()]
+- "workflow_cache_workflowcache_put": ".put()" | kind=code-symbol | source=probe/workflow/cache.py:L112 | neighbors=[WorkflowCache, CacheEntry, classify_certainty()]
+- "workflow_cache_workflowcache_should_recheck": ".should_recheck()" | kind=code-symbol | source=probe/workflow/cache.py:L120 | neighbors=[True if there's no cached entry, OR the…, WorkflowCache, .get()]
+- "workflow_execution_executiontrace_failed": ".failed()" | kind=code-symbol | source=probe/workflow/execution.py:L350 | neighbors=[ExecutionTrace, ._has_active_coverage(), True when execution produced errors and…]
+- "workflow_execution_executiontrace_has_active_coverage": "._has_active_coverage()" | kind=code-symbol | source=probe/workflow/execution.py:L360 | neighbors=[ExecutionTrace, .as_list(), .failed()]
+- "workflow_execution_executiontrace_record": ".record()" | kind=code-symbol | source=probe/workflow/execution.py:L259 | neighbors=[ExecutionTrace, ._ensure(), .reused()]
+- "workflow_execution_executiontrace_skip": ".skip()" | kind=code-symbol | source=probe/workflow/execution.py:L328 | neighbors=[ExecutionTrace, .finalize(), ._ensure()]
+- "workflow_execution_scanner_failure_result": "scanner_failure_result()" | kind=code-symbol | source=probe/workflow/execution.py:L209 | neighbors=[execution.py, Represent an unexpected component excep…, classify_scanner_error()]
+- "workflow_gates_gate_5_branch_eligible": "gate_5_branch_eligible()" | kind=code-symbol | source=probe/workflow/gates.py:L71 | neighbors=[gates.py, Does `branch` apply to this host?      …, Does `branch` apply to this host?      …]
+- "workflow_init": "__init__.py" | kind=code-symbol | source=probe/workflow/__init__.py:L1 | neighbors=[d1b4dd3 trim frontend to 7 core pages; …, workflow — conditional, caching, depend…, 298a9d4 trim frontend to 7 core pages; …]
+- "workflow_modes_discovery": "discovery()" | kind=code-symbol | source=probe/workflow/modes.py:L60 | neighbors=[modes.py, EngagementMode, Host discovery plus the profile's TCP p…]
+- "workflow_modes_host_discovery": "host_discovery()" | kind=code-symbol | source=probe/workflow/modes.py:L71 | neighbors=[modes.py, EngagementMode, Liveness checks only.]
+- "workflow_modes_port_scan": "port_scan()" | kind=code-symbol | source=probe/workflow/modes.py:L82 | neighbors=[modes.py, EngagementMode, Liveness checks plus the profile's TCP …]
+- "workflow_modes_service_fingerprint": "service_fingerprint()" | kind=code-symbol | source=probe/workflow/modes.py:L93 | neighbors=[modes.py, Liveness, TCP ports, and service banner…, EngagementMode]
+- "workflow_router_looks_like_http": "looks_like_http()" | kind=code-symbol | source=probe/workflow/router.py:L45 | neighbors=[router.py, looks_like_db(), route_branches()]
+- "workflow_workflow_engine_run_inventory": "_run_inventory()" | kind=code-symbol | source=probe/workflow/workflow_engine.py:L166 | neighbors=[workflow_engine.py, run_engagement(), _Sink]
+- "workflow_workflow_engine_run_passive": "_run_passive()" | kind=code-symbol | source=probe/workflow/workflow_engine.py:L149 | neighbors=[workflow_engine.py, run_engagement(), _Sink]
+- "ad_adcs_adcschecker_has_low_priv": "._has_low_priv()" | kind=code-symbol | source=manager/backend/app/ad/adcs.py:L127 | neighbors=[ADCSChecker, .check_esc1()]
+- "ad_asreproast_asreproastchecker_get_no_preauth_accounts": ".get_no_preauth_accounts()" | kind=code-symbol | source=manager/backend/app/ad/asreproast.py:L42 | neighbors=[ASREPRoastChecker, Usernames of enabled accounts with pre-…]
 
 ## Instructions
 
 Write a single JSON object mapping each node id to a one-sentence description
-to: /Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Agentic VA Scanner/.graphify/description-instructions/batch-046.json
+to: /Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha/.graphify/description-instructions/batch-046.json
 
 Keep each description factual and concise (one sentence). No markdown, no prose
 outside the JSON object. It is acceptable to omit a node if context is

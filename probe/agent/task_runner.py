@@ -53,6 +53,7 @@ class TaskRunner:
         spool_submit: Callable[[str, dict[str, Any], Callable], bool] | None = None,
         run_scan_fn: Callable[..., dict[str, Any]] | None = None,
         identity_sk: bytes | None = None,
+        local_allowed_networks: list[str] | None = None,
     ):
         """Args:
             http_get:       Callback for authenticated GET (from Transport).
@@ -64,12 +65,20 @@ class TaskRunner:
                             when not provided (production use).
             identity_sk:    X25519 private key bytes for scope decryption (Phase 4).
                             When None, encrypted scope is silently skipped.
+            local_allowed_networks: Probe-local IP/CIDR ceiling. ``None`` keeps
+                            standalone/library compatibility; an explicit empty
+                            list is fail-closed and refuses all network jobs.
         """
         self._http_get = http_get
         self._submit_result = submit_result
         self._spool_submit = spool_submit
         self._run_scan = run_scan_fn
         self._identity_sk = identity_sk
+        self._local_allowed_networks = (
+            None
+            if local_allowed_networks is None
+            else list(local_allowed_networks)
+        )
         if self._run_scan is None:
             from agent.engine import run_scan
             self._run_scan = run_scan
@@ -165,12 +174,12 @@ class TaskRunner:
             )
 
         # ── Step 2: Extract targets ──────────────────────────────────────────
-        targets_raw = (
-            params.get("targets")
-            or params.get("target")
-            or params.get("scope_cidrs")
-            or []
-        )
+        if "targets" in params:
+            targets_raw = params["targets"]
+        elif "target" in params:
+            targets_raw = params["target"]
+        else:
+            targets_raw = params.get("scope_cidrs") or []
         if isinstance(targets_raw, str):
             targets_raw = [targets_raw]
         if (
@@ -275,6 +284,37 @@ class TaskRunner:
                 )
             params["targets"] = allowed
 
+        # The engagement is the operator authorization boundary; the local
+        # ceiling is the appliance owner's deployment boundary. Both must allow
+        # every requested target. An explicit empty ceiling intentionally
+        # denies execution instead of treating an omitted config as unlimited.
+        if self._local_allowed_networks is not None:
+            locally_allowed, locally_rejected = validate_targets_in_scope(
+                params.get("targets") or [],
+                self._local_allowed_networks,
+            )
+            if locally_rejected:
+                LOG.warning(
+                    "local scope ceiling rejected %d target(s): %s",
+                    len(locally_rejected),
+                    locally_rejected[:5],
+                )
+            if not locally_allowed:
+                error = (
+                    "All targets outside the probe's local network ceiling; "
+                    "set PROBE_NETWORK_SEGMENTS to authorized reachable CIDRs"
+                )
+                LOG.error("Job %s: %s", job_id, error)
+                self._submit_or_spool(job_id, {
+                    "success": False, "result": {}, "error": error,
+                })
+                return JobResult(
+                    success=False, job_id=job_id, engagement_id=engagement_id,
+                    scan_type=scan_type, profile=profile, error=error,
+                    use_case_id=use_case_id,
+                )
+            params["targets"] = locally_allowed
+
         # Drop excluded targets
         if all_excludes and params.get("targets"):
             kept, dropped = targets_in_excludes(params["targets"], all_excludes)
@@ -312,6 +352,7 @@ class TaskRunner:
                 engagement_uuid=engagement_id,
                 validated_scope=effective_scope or None,
                 validated_excludes=all_excludes,
+                local_allowed_scope=self._local_allowed_networks,
             )
             if not isinstance(result, dict):
                 raise TypeError("scan engine returned a non-object result")

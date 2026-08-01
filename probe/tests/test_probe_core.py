@@ -31,7 +31,7 @@ from workflow.asset import Asset, PortFact
 from workflow.cache import WorkflowCache, CacheEntry, classify_certainty, FACT_CERTAINTY
 from agent.engine import (
     resolve_scan_type, _clamp, _targets, _tuning_from_params,
-    _count_open_port_facts, CAPABILITIES,
+    _count_open_port_facts, _hosts_from_facts, CAPABILITIES,
 )
 from agent.use_cases import resolve, USE_CASES
 
@@ -587,6 +587,94 @@ class TestEngineSummary:
             {"scanner": "port_scan", "target": "127.0.0.1", "port": 443, "status": "open"},
         ]
         assert _count_open_port_facts(facts) == 1
+
+    def test_open_port_count_deduplicates_confirming_scanners(self):
+        facts = [
+            {
+                "scanner": "port_scan",
+                "target": "127.0.0.1",
+                "port": 443,
+                "proto": "tcp",
+                "status": "open",
+            },
+            {
+                "scanner": "service_banner",
+                "target": "127.0.0.1",
+                "port": 443,
+                "proto": "tcp",
+                "status": "open",
+            },
+            {
+                "scanner": "tls_scan",
+                "target": "127.0.0.1",
+                "port": 443,
+                "proto": "tcp",
+                "status": "open",
+            },
+            {
+                "scanner": "udp_scan",
+                "target": "127.0.0.1",
+                "port": 443,
+                "proto": "udp",
+                "status": "open",
+            },
+        ]
+        assert _count_open_port_facts(facts) == 2
+
+    def test_negative_or_ambiguous_facts_do_not_create_hosts(self):
+        facts = [
+            {
+                "scanner": "host_discovery",
+                "target": "10.0.0.10",
+                "status": "filtered",
+                "data": {"alive": False},
+            },
+            {
+                "scanner": "port_scan",
+                "target": "10.0.0.11",
+                "port": 443,
+                "proto": "tcp",
+                "status": "closed",
+            },
+            {
+                "scanner": "udp_scan",
+                "target": "10.0.0.12",
+                "port": 53,
+                "proto": "udp",
+                "status": "filtered",
+                "data": {"responded": False},
+            },
+        ]
+        assert _hosts_from_facts(facts) == []
+
+    def test_affirmative_fact_creates_one_deduplicated_host(self):
+        facts = [
+            {
+                "scanner": "port_scan",
+                "target": "10.0.0.10",
+                "port": 443,
+                "proto": "tcp",
+                "status": "open",
+                "data": {},
+            },
+            {
+                "scanner": "tls_scan",
+                "target": "10.0.0.10",
+                "port": 443,
+                "proto": "tcp",
+                "status": "open",
+                "data": {"service": "https"},
+            },
+        ]
+        assert _hosts_from_facts(facts) == [{
+            "ip": "10.0.0.10",
+            "hostname": None,
+            "ports": [{
+                "port": 443,
+                "protocol": "tcp",
+                "service": "https",
+            }],
+        }]
 
 
 # ═══════════════════════════════════════════════════════════════════════════

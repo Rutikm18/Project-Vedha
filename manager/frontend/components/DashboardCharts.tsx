@@ -23,6 +23,8 @@ interface Finding {
   id: string; title: string; severity: keyof typeof SEV | "INFO";
   riskScore: number; affectedHost: string; status: string; kevListed?: boolean;
 }
+interface FindingPage { items: Finding[]; total: number; }
+interface FindingSummary { validated: number; }
 
 const SEV = {
   CRITICAL: { color: "var(--sev-critical-color)", bg: "var(--sev-critical-bg)", glow: "var(--sev-critical-glow)" },
@@ -230,10 +232,14 @@ export function DashboardCharts() {
   // Real findings drive the "Critical findings" table and the KEV count — same
   // queryKey as LiveOverview so React Query serves one shared, deduped request.
   const { data: findingsData } = useQuery({
-    queryKey: ["findings"],
-    queryFn: () => fetchJson<Finding[]>("/api/findings"),
+    queryKey: ["dashboard-top-findings"],
+    queryFn: () => fetchJson<FindingPage>("/api/findings?paginated=true&page=1&page_size=5&sort=risk"),
   });
-  const findings: Finding[] = findingsData ?? [];
+  const findings: Finding[] = findingsData?.items ?? [];
+  const { data: findingSummary } = useQuery({
+    queryKey: ["findings-summary"],
+    queryFn: () => fetchJson<FindingSummary>("/api/findings/summary"),
+  });
 
   // Real activity feed (merged scan + finding events) — replaces the engagements
   // payload's always-empty activity array.
@@ -252,7 +258,7 @@ export function DashboardCharts() {
   const topFindings = [...findings]
     .sort((a, b) => (b.riskScore ?? 0) - (a.riskScore ?? 0))
     .slice(0, 5);
-  const kevCount = findings.filter((f) => f.kevListed).length;
+  const validatedCount = findingSummary?.validated ?? 0;
 
   const sevTotals = engagements.reduce(
     (acc, e) => ({
@@ -286,7 +292,7 @@ export function DashboardCharts() {
         <KpiCard label="Total Findings"     value={isLoading ? 0 : totalFindings}    icon={<AlertTriangle size={14} />} accentColor="var(--sev-critical-color)" accentGlow="var(--sev-critical-glow)" delay={0}   loading={isLoading} />
         <KpiCard label="Active Engagements" value={isLoading ? 0 : activeEngagements} icon={<TrendingUp    size={14} />} accentColor="var(--accent)"             accentGlow="var(--accent-glow)"       delay={50}  loading={isLoading} />
         <KpiCard label="Assets Discovered"  value={isLoading ? 0 : totalAssets}       icon={<Users         size={14} />} accentColor="var(--sev-medium-color)"   accentGlow="var(--sev-medium-glow)"   delay={100} loading={isLoading} />
-        <KpiCard label="KEV Findings"       value={isLoading ? 0 : kevCount}          icon={<ShieldAlert   size={14} />} accentColor="var(--sev-high-color)"     accentGlow="var(--sev-high-glow)"     delay={150} loading={isLoading} />
+        <KpiCard label="Validated Findings" value={isLoading ? 0 : validatedCount}    icon={<ShieldAlert   size={14} />} accentColor="var(--sev-high-color)"     accentGlow="var(--sev-high-glow)"     delay={150} loading={isLoading} />
       </div>
 
       {/* ── Charts Row ── */}

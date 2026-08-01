@@ -42,23 +42,33 @@ async def recent_activity(
     db: ReadDB,
     current_user: AuthUser,
     limit: int = Query(default=20, ge=1, le=100),
+    engagement_id: uuid.UUID | None = Query(default=None),
 ):
     tenant_id = current_user.tenant_id
 
     # Pull a bounded slice of each source, then merge — so one very chatty source
     # can't starve the other out of the feed.
-    jobs = (await db.execute(
+    jobs_query = (
         select(ScanJob)
         .join(Engagement, ScanJob.engagement_id == Engagement.id)
         .where(Engagement.tenant_id == tenant_id)
-        .order_by(ScanJob.updated_at.desc())
-        .limit(limit)
-    )).scalars().all()
-
-    findings = (await db.execute(
+    )
+    findings_query = (
         select(Finding)
         .join(Engagement, Finding.engagement_id == Engagement.id)
         .where(Engagement.tenant_id == tenant_id)
+    )
+    if engagement_id:
+        jobs_query = jobs_query.where(ScanJob.engagement_id == engagement_id)
+        findings_query = findings_query.where(Finding.engagement_id == engagement_id)
+
+    jobs = (await db.execute(
+        jobs_query
+        .order_by(ScanJob.updated_at.desc())
+        .limit(limit)
+    )).scalars().all()
+    findings = (await db.execute(
+        findings_query
         .order_by(Finding.created_at.desc())
         .limit(limit)
     )).scalars().all()

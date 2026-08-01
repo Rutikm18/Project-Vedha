@@ -12,8 +12,7 @@
 
 export type Severity = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | "INFO";
 export type FindingStatus =
-  | "OPEN" | "IN_REVIEW" | "IN_REMEDIATION" | "VERIFIED"
-  | "CLOSED" | "ACCEPTED" | "FALSE_POSITIVE";
+  | "OPEN" | "CONFIRMED" | "REMEDIATED" | "ACCEPTED" | "FALSE_POSITIVE";
 export type ExploitMaturity = "WEAPONIZED" | "POC" | "THEORETICAL";
 export type DetectionCoverage = "COVERED" | "PARTIAL" | "BLIND";
 
@@ -32,13 +31,13 @@ export const SEV_COLOR: Record<Severity, string> = {
 };
 
 export const STATUS_COLOR: Record<FindingStatus, string> = {
-  OPEN: RED, IN_REVIEW: ORANGE, IN_REMEDIATION: BLUE,
-  VERIFIED: GREEN, CLOSED: SLATE, ACCEPTED: VIOLET, FALSE_POSITIVE: SLATE,
+  OPEN: RED, CONFIRMED: ORANGE, REMEDIATED: GREEN,
+  ACCEPTED: VIOLET, FALSE_POSITIVE: SLATE,
 };
 
 export const STATUS_LABEL: Record<FindingStatus, string> = {
-  OPEN: "OPEN", IN_REVIEW: "IN REVIEW", IN_REMEDIATION: "REMEDIATING",
-  VERIFIED: "VERIFIED", CLOSED: "CLOSED", ACCEPTED: "ACCEPTED", FALSE_POSITIVE: "FALSE POS.",
+  OPEN: "OPEN", CONFIRMED: "CONFIRMED", REMEDIATED: "REMEDIATED",
+  ACCEPTED: "ACCEPTED", FALSE_POSITIVE: "FALSE POS.",
 };
 
 export const MATURITY_COLOR: Record<ExploitMaturity, string> = {

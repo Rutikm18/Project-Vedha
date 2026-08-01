@@ -22,13 +22,20 @@ export function PageShell({
   const [utcTime, setUtcTime]         = useState("");
   const [sessionTime, setSessionTime] = useState(0);
   const [userEmail, setUserEmail]     = useState<string | null>(null);
-  const sessionStart = useRef(Date.now());
+  const sessionStart = useRef<number | null>(null);
 
   // Read current user
   useEffect(() => {
-    const token = typeof window !== "undefined" ? localStorage.getItem("vedha_token") : null;
-    if (!token) return;
-    fetch("/api/auth/me", { headers: { Authorization: `Bearer ${token}` } })
+    // One-time migration from builds that stored JWTs in browser storage.
+    // End that legacy session so the next login receives HttpOnly cookies.
+    if (localStorage.getItem("vedha_token") || localStorage.getItem("vedha_refresh_token")) {
+      void fetch("/api/auth/logout", {
+        method: "POST",
+        credentials: "same-origin",
+      }).finally(() => clearAuth(true));
+      return;
+    }
+    fetch("/api/auth/me", { credentials: "same-origin" })
       .then((r) => (r.ok ? r.json() : null))
       .then((d: { email?: string } | null) => { if (d?.email) setUserEmail(d.email); })
       .catch(() => {});
@@ -52,8 +59,9 @@ export function PageShell({
 
   // Session timer
   useEffect(() => {
+    sessionStart.current = Date.now();
     const id = setInterval(
-      () => setSessionTime(Math.floor((Date.now() - sessionStart.current) / 1000)),
+      () => setSessionTime(Math.floor((Date.now() - (sessionStart.current ?? Date.now())) / 1000)),
       1000,
     );
     return () => clearInterval(id);

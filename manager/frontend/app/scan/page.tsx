@@ -6,7 +6,7 @@ import {
   Activity, Eye, RefreshCw, ChevronDown,
   CheckCircle2, Clock, XCircle, Loader,
   Cpu, Network, RotateCcw, Target, Layers,
-  Lock, KeyRound, Timer, ShieldAlert, Crosshair, Send, Radar,
+  Timer, ShieldAlert, Crosshair, Send, Radar,
 } from "lucide-react";
 import { PageShell } from "../../components/PageShell";
 import { useToast } from "../../hooks/useToast";
@@ -99,6 +99,7 @@ const UC_META: Record<string, { cat: string; icon: React.ReactNode; risk: "passi
   uc_db_exposure:          { cat: "Targeted",    icon: <Database size={17} />,  risk: "medium"  },
   uc_windows_estate:       { cat: "Targeted",    icon: <Server size={17} />,    risk: "medium"  },
   uc_udp_service_exposure: { cat: "Targeted",    icon: <Activity size={17} />,  risk: "medium"  },
+  uc_snmp_exposure:        { cat: "Targeted",    icon: <Wifi size={17} />,      risk: "medium"  },
   uc_ot_passive:           { cat: "Specialized", icon: <Eye size={17} />,       risk: "passive" },
   uc_ai_endpoint_sweep:    { cat: "Specialized", icon: <Cpu size={17} />,       risk: "medium"  },
 };
@@ -131,22 +132,12 @@ const INTENSITY: { id: Intensity; label: string; pps: string; why: string; color
     why: "Fast and loud. Large scopes under time pressure — expect alerts and noticeable traffic." },
 ];
 
-/* ══════════════════════════════════════════════════════
-   AUTH HELPER
-══════════════════════════════════════════════════════ */
-
-function getToken(): string | null {
-  if (typeof window === "undefined") return null;
-  return localStorage.getItem("vedha_token") || sessionStorage.getItem("vedha_token");
-}
-
 async function apiFetch<T>(path: string, opts?: RequestInit): Promise<T> {
-  const token = getToken();
   const res = await fetch(path, {
     ...opts,
+    credentials: "same-origin",
     headers: {
       "Content-Type": "application/json",
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
       ...(opts?.headers ?? {}),
     },
   });
@@ -172,8 +163,8 @@ const SectionLabel = ({ children, num }: { children: React.ReactNode; num?: stri
   </div>
 );
 
-const FieldLabel = ({ icon, children, hint }: { icon?: React.ReactNode; children: React.ReactNode; hint?: string }) => (
-  <label style={{ fontSize: 10.5, fontWeight: 600, color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: 6, marginBottom: 7, letterSpacing: 0.5, textTransform: "uppercase" }}>
+const FieldLabel = ({ icon, children, hint, htmlFor }: { icon?: React.ReactNode; children: React.ReactNode; hint?: string; htmlFor?: string }) => (
+  <label htmlFor={htmlFor} style={{ fontSize: 10.5, fontWeight: 600, color: "var(--text-secondary)", display: "flex", alignItems: "center", gap: 6, marginBottom: 7, letterSpacing: 0.5, textTransform: "uppercase" }}>
     {icon}{children}
     {hint && <span style={{ fontWeight: 400, color: "var(--text-faint)", textTransform: "none", letterSpacing: 0, fontSize: 10 }}>{hint}</span>}
   </label>
@@ -318,9 +309,9 @@ function IntensityDial({ value, onChange }: { value: Intensity; onChange: (v: In
         </div>
       </div>
 
-      <div className="scn-dial-seg">
+      <div className="scn-dial-seg" role="group" aria-label="Scan intensity">
         {INTENSITY.map((opt) => (
-          <button key={opt.id} data-on={value === opt.id} onClick={() => onChange(opt.id)} style={{ ["--seg-c" as string]: opt.color }}>
+          <button key={opt.id} aria-pressed={value === opt.id} data-on={value === opt.id} onClick={() => onChange(opt.id)} style={{ ["--seg-c" as string]: opt.color }}>
             <span style={{ width: 6, height: 6, borderRadius: "50%", background: opt.color, flexShrink: 0 }} />
             {opt.label}
           </button>
@@ -540,12 +531,10 @@ function DispatchReceipt({ payload }: { payload: Record<string, unknown> }) {
           {line("intensity", params.intensity)}
           {line("rate / conc / timeout", params.rate !== undefined ? `${params.rate} pps · ${params.concurrency} · ${params.timeout}s` : undefined)}
           {line("passive_listen_seconds", params.passive_listen_seconds)}
-          {line("ssh_creds", params.ssh_creds)}
-          {line("win_creds", params.win_creds)}
           <div style={{ marginTop: 11, display: "flex", gap: 7, alignItems: "flex-start" }}>
             <ShieldAlert size={13} color="var(--accent)" style={{ flexShrink: 0, marginTop: 1 }} />
             <span style={{ fontSize: 10, color: "var(--text-muted)", lineHeight: 1.5 }}>
-              The probe re-validates this against the engagement&apos;s authoritative scope and exclusions before sending a single packet. Credential values are masked here and redacted from any status echoed back.
+              The probe re-validates this against the engagement&apos;s authoritative scope and exclusions before sending a single packet. Secret-bearing job parameters are rejected by the Manager.
             </span>
           </div>
         </div>
@@ -576,11 +565,6 @@ export default function ScanPage() {
   // ── Scan tuning ──
   const [intensity,    setIntensity]    = useState<Intensity>("normal");
   const [passiveSecs,  setPassiveSecs]  = useState(60);
-  const [showCreds,    setShowCreds]    = useState(false);
-  const [sshUser, setSshUser] = useState(""); const [sshPass, setSshPass] = useState("");
-  const [winUser, setWinUser] = useState(""); const [winPass, setWinPass] = useState("");
-  const [winDomain, setWinDomain] = useState("");
-
   const [launching, setLaunching] = useState(false);
   const [job,       setJob]       = useState<JobStatus | null>(null);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -634,11 +618,12 @@ export default function ScanPage() {
   const selectedEngagement = engagements.find((engagement) => engagement.id === selectedEng);
   const inheritedScope = (selectedEngagement?.scopeCidrs ?? []).join("\n");
   const inheritedExcluded = (selectedEngagement?.excludedCidrs ?? []).join("\n");
-  const idleProbes = probes.filter((p) => p.online && !p.current_job_id);
+  const compatibleProbes = ucObj
+    ? probes.filter((p) => p.online && p.capabilities.includes(ucObj.scan_type))
+    : [];
+  const compatibleIdleProbes = compatibleProbes.filter((p) => !p.current_job_id);
 
   const isOt         = ucObj?.profile === "ot";
-  const isAssessment = ucObj?.scan_type === "assessment";
-  const credsActive  = showCreds && (sshUser.trim() !== "" || winUser.trim() !== "");
   const parseList    = (s: string) => s.split(/[\s,\n]+/).map((t) => t.trim()).filter(Boolean);
   const targetCount  = parseList(targets).length;
   const excludeCount = parseList(excluded).length;
@@ -666,16 +651,16 @@ export default function ScanPage() {
       excluded_cidrs: (excludeList.length && !excludeIsInherited) ? excludeList : undefined,
     };
     if (isOt) b.passive_listen_seconds = passiveSecs; else b.intensity = intensity;
-    if (isAssessment && showCreds) {
-      if (sshUser.trim()) b.ssh_creds = { user: sshUser.trim(), password: sshPass || undefined };
-      if (winUser.trim()) b.win_creds = { user: winUser.trim(), password: winPass || undefined, domain: winDomain.trim() || undefined };
-    }
     return b;
   }
 
   async function launch() {
     if (!selectedUc)  { toastErr("Select a scan"); return; }
     if (!selectedEng) { toastErr("Select an engagement"); return; }
+    if (!compatibleProbes.length) {
+      toastErr("No compatible probe", `An online probe must advertise ${ucObj?.scan_type ?? "this capability"}.`);
+      return;
+    }
     setLaunching(true); setJob(null); setDispatched(null);
     try {
       const res = await apiFetch<{ job_id: string; status: string; dispatched?: Record<string, unknown> }>("/api/scan/launch", {
@@ -706,7 +691,6 @@ export default function ScanPage() {
     setExcluded((nextEngagement?.excludedCidrs ?? []).join("\n"));
     setJob(null); setDispatched(null);
     setIntensity("normal"); setPassiveSecs(60);
-    setShowCreds(false); setSshUser(""); setSshPass(""); setWinUser(""); setWinPass(""); setWinDomain("");
   }
 
   // category counts + filtered list
@@ -714,7 +698,7 @@ export default function ScanPage() {
   for (const uc of useCases) { const c = UC_META[uc.use_case_id]?.cat ?? "Other"; counts[c] = (counts[c] ?? 0) + 1; }
   const filtered = catFilter === "All" ? useCases : useCases.filter((u) => (UC_META[u.use_case_id]?.cat ?? "Other") === catFilter);
 
-  const canLaunch = !!selectedUc && !!selectedEng && !launching;
+  const canLaunch = !!selectedUc && !!selectedEng && compatibleProbes.length > 0 && !launching;
   const intensityObj = INTENSITY.find((i) => i.id === intensity)!;
 
   return (
@@ -792,9 +776,9 @@ export default function ScanPage() {
 
                   {/* Engagement */}
                   <div>
-                    <FieldLabel>Engagement</FieldLabel>
+                    <FieldLabel htmlFor="scan-engagement">Engagement</FieldLabel>
                     <div style={{ position: "relative" }}>
-                      <select className="scn-input scn-select" value={selectedEng} onChange={(e) => selectEngagement(e.target.value)}>
+                      <select id="scan-engagement" className="scn-input scn-select" value={selectedEng} onChange={(e) => selectEngagement(e.target.value)}>
                         <option value="">— select engagement —</option>
                         {engagements.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
                       </select>
@@ -805,7 +789,7 @@ export default function ScanPage() {
                   {/* Scope / Targets — pre-filled from the selected engagement */}
                   <div>
                     <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-                      <FieldLabel icon={<Crosshair size={11} />} hint={targetCount ? `${targetCount} target${targetCount > 1 ? "s" : ""}` : "engagement scope"}>Scope</FieldLabel>
+                      <FieldLabel htmlFor="scan-scope" icon={<Crosshair size={11} />} hint={targetCount ? `${targetCount} target${targetCount > 1 ? "s" : ""}` : "engagement scope"}>Scope</FieldLabel>
                       {scopeIsInherited
                         ? <span title="Auto-filled from the engagement's defined scope" style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 8.5, fontWeight: 700, color: "var(--accent)", background: "var(--accent-ghost)", border: "0.5px solid var(--border-accent)", borderRadius: 4, padding: "2px 6px", letterSpacing: 0.4, marginBottom: 7 }}><Layers size={9} /> FROM ENGAGEMENT</span>
                         : (inheritedScope && (
@@ -813,6 +797,7 @@ export default function ScanPage() {
                           ))}
                     </div>
                     <textarea
+                      id="scan-scope"
                       className="scn-input"
                       value={targets} onChange={(e) => setTargets(e.target.value)}
                       placeholder={selectedEng ? "This engagement declares no scope — add targets\n10.0.0.0/24   ·   172.16.0.5" : "Select an engagement to inherit its scope"}
@@ -830,8 +815,9 @@ export default function ScanPage() {
 
                   {/* Excluded scope */}
                   <div>
-                    <FieldLabel icon={<ShieldAlert size={11} />} hint={excludeCount ? `${excludeCount} carve-out${excludeCount > 1 ? "s" : ""}` : "optional"}>Excluded Scope</FieldLabel>
+                    <FieldLabel htmlFor="scan-excluded" icon={<ShieldAlert size={11} />} hint={excludeCount ? `${excludeCount} carve-out${excludeCount > 1 ? "s" : ""}` : "optional"}>Excluded Scope</FieldLabel>
                     <textarea
+                      id="scan-excluded"
                       className="scn-input"
                       value={excluded} onChange={(e) => setExcluded(e.target.value)}
                       placeholder={"Carve out hosts to never touch\n10.0.0.5   ·   10.0.0.240/28"}
@@ -856,9 +842,9 @@ export default function ScanPage() {
                   {/* OT passive window */}
                   {isOt && (
                     <div>
-                      <FieldLabel icon={<Timer size={11} />}>Passive Listen Window</FieldLabel>
+                      <FieldLabel htmlFor="scan-passive-seconds" icon={<Timer size={11} />}>Passive Listen Window</FieldLabel>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                        <input type="number" min={5} max={3600} value={passiveSecs} className="scn-input"
+                        <input id="scan-passive-seconds" type="number" min={5} max={3600} value={passiveSecs} className="scn-input"
                           onChange={(e) => setPassiveSecs(Math.max(5, Math.min(3600, Number(e.target.value) || 0)))}
                           style={{ width: 84, fontFamily: "var(--font-mono)", fontSize: 12 }} />
                         <span style={{ fontSize: 11, color: "var(--text-muted)" }}>sec</span>
@@ -875,52 +861,13 @@ export default function ScanPage() {
                     </div>
                   )}
 
-                  {/* Credentialed scan */}
-                  {isAssessment && (
-                    <div style={{ borderRadius: 10, border: `0.5px solid ${credsActive ? "var(--border-accent)" : "var(--border-subtle)"}`, overflow: "hidden", background: "var(--bg-card)" }}>
-                      <button onClick={() => setShowCreds((v) => !v)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 8, padding: "10px 12px", cursor: "pointer", background: credsActive ? "var(--accent-ghost)" : "transparent", border: "none" }}>
-                        <Lock size={13} color={credsActive ? "var(--accent)" : "var(--text-muted)"} />
-                        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)" }}>Authenticated scan</span>
-                        {credsActive
-                          ? <span style={{ fontSize: 8.5, fontWeight: 700, color: "var(--accent)", background: "var(--accent-ghost)", border: "0.5px solid var(--border-accent)", borderRadius: 4, padding: "2px 5px", letterSpacing: 0.5 }}>ACTIVE</span>
-                          : <span style={{ fontSize: 10, color: "var(--text-faint)" }}>optional</span>}
-                        <ChevronDown size={14} color="var(--text-muted)" style={{ marginLeft: "auto", transform: showCreds ? "rotate(180deg)" : "none", transition: "transform var(--dur-fast)" }} />
-                      </button>
-                      {showCreds && (
-                        <div style={{ padding: "0 12px 12px", display: "flex", flexDirection: "column", gap: 11 }}>
-                          <div style={{ display: "flex", gap: 7, fontSize: 10, color: "var(--text-muted)", lineHeight: 1.5, padding: "8px 10px", borderRadius: 8, background: "var(--sev-medium-bg)", border: "0.5px solid color-mix(in srgb, var(--sev-medium-color) 25%, transparent)" }}>
-                            <ShieldAlert size={16} color="var(--sev-medium-color)" style={{ flexShrink: 0, marginTop: 1 }} />
-                            <span>Unlocks Gate-6 collection for deeper facts. Credentials travel with the job and are redacted from any status echoed back. Use engagement-scoped accounts only.</span>
-                          </div>
-                          <div>
-                            <div className="scn-cred-h"><KeyRound size={11} /> SSH · Linux/Unix</div>
-                            <div style={{ display: "flex", gap: 6 }}>
-                              <input className="scn-input scn-mono" value={sshUser} onChange={(e) => setSshUser(e.target.value)} placeholder="username" autoComplete="off" />
-                              <input className="scn-input scn-mono" value={sshPass} onChange={(e) => setSshPass(e.target.value)} placeholder="password" type="password" autoComplete="new-password" />
-                            </div>
-                          </div>
-                          <div>
-                            <div className="scn-cred-h"><Server size={11} /> Windows · WinRM/SMB</div>
-                            <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                              <div style={{ display: "flex", gap: 6 }}>
-                                <input className="scn-input scn-mono" value={winUser} onChange={(e) => setWinUser(e.target.value)} placeholder="username" autoComplete="off" />
-                                <input className="scn-input scn-mono" value={winPass} onChange={(e) => setWinPass(e.target.value)} placeholder="password" type="password" autoComplete="new-password" />
-                              </div>
-                              <input className="scn-input scn-mono" value={winDomain} onChange={(e) => setWinDomain(e.target.value)} placeholder="domain (optional)" autoComplete="off" />
-                            </div>
-                          </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
-
                   {/* Pre-flight summary */}
                   <div style={{ borderRadius: 10, background: "var(--bg-card)", border: "0.5px solid var(--border-subtle)", padding: "11px 13px", display: "flex", flexDirection: "column", gap: 7 }}>
                     {([
                       ["Mode", isOt ? `Passive · ${passiveSecs}s` : `${intensityObj.label} · ${intensityObj.pps}`],
                       ["Scope", scopeIsInherited ? `Engagement scope · ${targetCount}` : targetCount ? `${targetCount} explicit target${targetCount > 1 ? "s" : ""}` : "Full engagement scope"],
                       ...(excludeCount ? [["Exclude", `${excludeCount} carve-out${excludeCount > 1 ? "s" : ""}`]] as [string, string][] : []),
-                      ["Auth", credsActive ? [sshUser.trim() && "SSH", winUser.trim() && "Windows"].filter(Boolean).join(" + ") : "Unauthenticated"],
+                      ["Auth", "Unauthenticated collection"],
                     ] as [string, string][]).map(([k, v]) => (
                       <div key={k} style={{ display: "flex", alignItems: "center", gap: 10, fontSize: 11 }}>
                         <span style={{ color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: 0.6, fontSize: 9.5, fontWeight: 600, width: 48, flexShrink: 0 }}>{k}</span>
@@ -930,12 +877,16 @@ export default function ScanPage() {
                   </div>
 
                   {/* Probe readiness */}
-                  {probes.length > 0 && (
-                    <div style={{ display: "flex", alignItems: "center", gap: 7, fontSize: 11, color: "var(--text-muted)" }}>
-                      <span style={{ width: 6, height: 6, borderRadius: "50%", background: idleProbes.length ? "var(--nominal-color)" : "var(--sev-medium-color)" }} />
-                      {idleProbes.length ? `${idleProbes.length} idle probe${idleProbes.length > 1 ? "s" : ""} ready` : "All probes busy — job will queue"}
-                    </div>
-                  )}
+                  <div role="status" style={{ display: "flex", alignItems: "flex-start", gap: 7, fontSize: 11, color: compatibleProbes.length ? "var(--text-muted)" : "var(--sev-high-color)", lineHeight: 1.45 }}>
+                    <span style={{ width: 6, height: 6, borderRadius: "50%", marginTop: 5, flexShrink: 0, background: compatibleIdleProbes.length ? "var(--nominal-color)" : compatibleProbes.length ? "var(--sev-medium-color)" : "var(--sev-high-color)" }} />
+                    {!probes.length
+                      ? "No probe registered — deploy the Vedha Probe before launching."
+                      : !compatibleProbes.length
+                        ? `No online probe advertises ${ucObj.scan_type}. This use case cannot run yet.`
+                        : compatibleIdleProbes.length
+                          ? `${compatibleIdleProbes.length} compatible idle probe${compatibleIdleProbes.length > 1 ? "s" : ""} ready`
+                          : `${compatibleProbes.length} compatible probe${compatibleProbes.length > 1 ? "s are" : " is"} busy — job will queue`}
+                  </div>
 
                   {/* Launch + reset */}
                   <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>

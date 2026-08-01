@@ -8,7 +8,7 @@ import { existsSync, readFileSync, writeFileSync } from 'fs';
 import path                              from 'path';
 import { runScan, generateFindingId }    from '../../lib/engine/scanner';
 import { getAllFindings, getFindingById, updateFinding, updateFindingStatus } from '../../lib/findings-store';
-import { MODULES, modulesByCategory, profileModules } from '../../lib/engine/scan-modules';
+import { modulesByCategory, profileModules } from '../../lib/engine/scan-modules';
 import type { ScanTool } from '../../lib/engine/types';
 import { execSync } from 'child_process';
 import type {
@@ -584,7 +584,7 @@ async function wizardScan(): Promise<void> {
     ln();
     ln(`  ${A.cyan}━━━━━ Discovery complete — moving to vulnerability assessment ━━━━━${A.reset}`);
     ln();
-    await runVulnAssessmentFlow(discovered, allFindings, source.startsWith('domain:'), useAi);
+    await runVulnAssessmentFlow(discovered);
   }
 }
 
@@ -786,7 +786,7 @@ async function runAutonomousMode(targets: string[], source: string): Promise<voi
   if (state.findings.length > 0) {
     ln();
     if (await confirm('Validate the agent\'s findings now?', true)) {
-      await runValidationFlow(state.findings, true);
+      await runValidationFlow(state.findings);
     }
   }
 }
@@ -859,7 +859,7 @@ async function runIterativeEngagement(
     if (next === 'service_detect') state.hosts    = await runPhaseServiceDetect(state.hosts);
     if (next === 'enumerate')      state.findings = state.findings.concat(await runPhaseEnumeration(state.hosts));
     if (next === 'vuln_assess')    state.findings = state.findings.concat(await runPhaseVulnAssess(state.hosts));
-    if (next === 'validate')       await runValidationFlow(state.findings.length > 0 ? state.findings : undefined, state.useAi);
+    if (next === 'validate')       await runValidationFlow(state.findings.length > 0 ? state.findings : undefined);
     if (next === 'exploit')        await runPhaseExploitation(state);
 
     printStateSummary(state);
@@ -1183,9 +1183,6 @@ function mergeHosts(prior: DiscoveredHost[], updated: DiscoveredHost[]): Discove
 // ── Vuln check picker — categorized like a real engagement ─────────
 async function runVulnAssessmentFlow(
   hosts: DiscoveredHost[],
-  priorFindings: LiveFinding[],
-  isDomainScope: boolean,
-  useAi: boolean,
 ): Promise<void> {
   ln(`  ${A.bold}Discovered:${A.reset} ${hosts.length} host(s), ${hosts.reduce((s, h) => s + h.ports.length, 0)} open port(s)`);
 
@@ -1271,11 +1268,11 @@ async function runVulnAssessmentFlow(
   ln();
   const wantValidate = await confirm('Validate the new findings now?', true);
   if (!wantValidate) return;
-  await runValidationFlow(newFindings, useAi);
+  await runValidationFlow(newFindings);
 }
 
 // ── Validation flow with AI + rule-based options ─────────────────
-async function runValidationFlow(scopeFindings?: LiveFinding[], useAi?: boolean): Promise<void> {
+async function runValidationFlow(scopeFindings?: LiveFinding[]): Promise<void> {
   const findings = scopeFindings ?? getAllFindings().filter((f) => f.status === 'OPEN');
   if (findings.length === 0) {
     ln(`  ${A.yellow}No findings to validate.${A.reset}`);

@@ -10,8 +10,7 @@
  */
 import type { DiscoveredHost, LiveFinding, ScanCallbacks, ScanOptions } from '../engine/types';
 import { runScan }                                      from '../engine/scanner';
-import { runHostDiscovery, runNaabu, runNmap }          from '../engine/tool-runners';
-import { saveFindings, updateFinding, getAllFindings }  from '../findings-store';
+import { saveFindings }                                 from '../findings-store';
 
 export interface AgentState {
   hosts:    DiscoveredHost[];

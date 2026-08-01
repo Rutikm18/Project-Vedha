@@ -1,12 +1,24 @@
 import { NextResponse } from "next/server";
-import { aiReportStore } from "../../../../../../lib/ai-engine";
+import { backend, bearerFrom, BackendError } from "../../../../../../lib/backend";
 
-// POST /engagements/{id}/ai-report/approve  body: { outputId, reviewedBy }
-export async function POST(request: Request) {
-  const body = await request.json().catch(() => ({}));
-  const { outputId, reviewedBy = "manager@vedha.io" } = body;
-  if (!outputId) return NextResponse.json({ error: "outputId required" }, { status: 400 });
-  const updated = aiReportStore.approve(outputId, reviewedBy);
-  if (!updated) return NextResponse.json({ error: "Output not found" }, { status: 404 });
-  return NextResponse.json({ output: updated });
+export async function POST(
+  request: Request,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  const token = bearerFrom(request);
+  if (!token) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  const { id } = await params;
+  const body = await request.json().catch(() => ({})) as { outputId?: string; output_ids?: string[] };
+  const outputIds = body.output_ids ?? (body.outputId ? [body.outputId] : undefined);
+  try {
+    const result = await backend(`/engagements/${id}/ai-report/approve`, {
+      method: "POST",
+      token,
+      body: { output_ids: outputIds },
+    });
+    return NextResponse.json(result);
+  } catch (error) {
+    const code = error instanceof BackendError ? error.status : 502;
+    return NextResponse.json({ error: error instanceof Error ? error.message : "Approval failed" }, { status: code });
+  }
 }
