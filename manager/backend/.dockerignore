@@ -12,3 +12,13 @@ tests/
 .coverage
 htmlcov/
 .DS_Store
+# Docs and editor artifacts — reduce image bloat + avoid leaking local state
+*.md
+!README.md
+.git/
+.gitignore
+alembic/versions/*.pyc
+# Never let a local secrets file sneak into the image
+secrets/
+*.pem
+*.key

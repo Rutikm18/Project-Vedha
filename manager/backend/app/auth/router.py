@@ -1,21 +1,36 @@
+import time
 import uuid
 from datetime import datetime, timezone
 from typing import Annotated
 
 import structlog
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from passlib.context import CryptContext
+from passlib.exc import PasslibError
 from sqlalchemy import select
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.auth.exceptions import (
+    AuthenticationError,
+    BcryptFailureError,
+    DatabaseFailureError,
+    DisabledTenantError,
+    DisabledUserError,
+    ExpiredPasswordError,
+    JWTFailureError,
+    PasswordMismatchError,
+    UserNotFoundError,
+)
 from app.auth.jwt import create_access_token, create_refresh_token, decode_token
 from app.auth.pat import build_personal_access_token
 from app.auth.rbac import require_role
 from app.database import get_db
 from app.dependencies import AuthUser
 from app.models.personal_access_token import PersonalAccessToken
+from app.models.tenant import Tenant
 from app.models.user import User
-from app.ratelimit import login_rate_limit
+from app.ratelimit import client_ip, login_rate_limit
 from app.schemas.auth import (
     LoginRequest,
     PersonalAccessTokenCreate,
@@ -27,6 +42,151 @@ from app.schemas.auth import (
 router = APIRouter(prefix="/auth", tags=["auth"])
 logger = structlog.get_logger()
 _pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+# Generic client message — never changes regardless of internal reason.
+_GENERIC_401 = "Invalid credentials"
+
+
+# ── Private authentication service ───────────────────────────────────────────
+
+async def _authenticate(email: str, password: str, db: AsyncSession) -> User:
+    """
+    Validates credentials and returns the User on success.
+    Raises a typed AuthenticationError subclass on any failure.
+    The caller maps ALL of them to 401 — reason never leaves the server.
+    """
+    # ── Fetch user ─────────────────────────────────────────────────────────
+    try:
+        user = (
+            await db.execute(select(User).where(User.email == email))
+        ).scalar_one_or_none()
+    except SQLAlchemyError as exc:
+        raise DatabaseFailureError(f"DB error during user lookup: {exc}") from exc
+
+    if user is None:
+        # Constant-time dummy verify to prevent timing-based user enumeration.
+        _pwd.dummy_verify()
+        raise UserNotFoundError(f"no user with email={email!r}")
+
+    # ── Account state ─────────────────────────────────────────────────────
+    if not user.is_active:
+        _pwd.dummy_verify()   # maintain constant-time behaviour
+        raise DisabledUserError(f"user {user.id} is_active=False")
+
+    # ── Tenant state ──────────────────────────────────────────────────────
+    try:
+        tenant = (
+            await db.execute(select(Tenant).where(Tenant.id == user.tenant_id))
+        ).scalar_one_or_none()
+    except SQLAlchemyError as exc:
+        raise DatabaseFailureError(f"DB error during tenant lookup: {exc}") from exc
+
+    if tenant and not tenant.is_active:
+        _pwd.dummy_verify()
+        raise DisabledTenantError(
+            f"tenant {user.tenant_id} is_active=False (user={user.id})"
+        )
+
+    # ── Password expiry ───────────────────────────────────────────────────
+    if user.password_expires_at is not None:
+        if user.password_expires_at < datetime.now(timezone.utc):
+            _pwd.dummy_verify()
+            raise ExpiredPasswordError(
+                f"password expired at {user.password_expires_at.isoformat()} for user {user.id}"
+            )
+
+    # ── bcrypt verify ─────────────────────────────────────────────────────
+    try:
+        match = _pwd.verify(password, user.hashed_password)
+    except PasslibError as exc:
+        raise BcryptFailureError(f"bcrypt raised for user {user.id}: {exc}") from exc
+
+    if not match:
+        raise PasswordMismatchError(f"password mismatch for user {user.id}")
+
+    return user
+
+
+# ── Login route ───────────────────────────────────────────────────────────────
+
+@router.post(
+    "/login",
+    response_model=TokenResponse,
+    summary="Obtain JWT access + refresh tokens",
+    dependencies=[Depends(login_rate_limit)],
+)
+async def login(body: LoginRequest, request: Request, db: AsyncSession = Depends(get_db)):
+    request_id = str(uuid.uuid4())
+    t0 = time.monotonic()
+
+    # Build a bound logger once — all log calls in this request carry these fields.
+    bound = logger.bind(
+        request_id=request_id,
+        email=body.email,
+        ip=client_ip(request),
+        user_agent=request.headers.get("user-agent", "")[:200],
+    )
+
+    try:
+        user = await _authenticate(body.email, body.password, db)
+    except AuthenticationError as exc:
+        latency = round((time.monotonic() - t0) * 1000, 1)
+        bound.warning(
+            "auth.login.failed",
+            reason_code=exc.reason_code,
+            latency_ms=latency,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=_GENERIC_401,
+        ) from None
+    except Exception as exc:
+        # Unexpected error (bug, infra) — log as error but still return 401
+        latency = round((time.monotonic() - t0) * 1000, 1)
+        bound.error(
+            "auth.login.unexpected_error",
+            error=str(exc),
+            exc_type=type(exc).__name__,
+            latency_ms=latency,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=_GENERIC_401,
+        ) from None
+
+    # ── Success path ──────────────────────────────────────────────────────
+    try:
+        access = create_access_token(
+            subject=str(user.id),
+            tenant_id=str(user.tenant_id),
+            role=user.role.value,
+        )
+        refresh, _ = create_refresh_token(
+            subject=str(user.id),
+            tenant_id=str(user.tenant_id),
+        )
+    except Exception as exc:
+        latency = round((time.monotonic() - t0) * 1000, 1)
+        bound.error(
+            "auth.login.failed",
+            reason_code=JWTFailureError.reason_code,
+            error=str(exc),
+            latency_ms=latency,
+        )
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail=_GENERIC_401,
+        ) from None
+
+    latency = round((time.monotonic() - t0) * 1000, 1)
+    bound.info(
+        "auth.login.success",
+        user_id=str(user.id),
+        tenant_id=str(user.tenant_id),
+        role=user.role.value,
+        latency_ms=latency,
+    )
+    return TokenResponse(access_token=access, refresh_token=refresh)
 
 
 @router.get("/me", summary="Current user from the access token (for the dashboard)")
@@ -41,29 +201,6 @@ async def me(current_user: AuthUser, db: AsyncSession = Depends(get_db)):
         "pat_id": str(current_user.pat_id) if current_user.pat_id else None,
         "scopes": list(current_user.scopes),
     }
-
-
-@router.post("/login", response_model=TokenResponse, summary="Obtain JWT access + refresh tokens",
-             dependencies=[Depends(login_rate_limit)])
-async def login(body: LoginRequest, db: AsyncSession = Depends(get_db)):
-    result = await db.execute(select(User).where(User.email == body.email))
-    user = result.scalar_one_or_none()
-
-    if not user or not _pwd.verify(body.password, user.hashed_password):
-        logger.warning("auth.login.failed", email=body.email)
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
-
-    access = create_access_token(
-        subject=str(user.id),
-        tenant_id=str(user.tenant_id),
-        role=user.role.value,
-    )
-    refresh, _ = create_refresh_token(
-        subject=str(user.id),
-        tenant_id=str(user.tenant_id),
-    )
-    logger.info("auth.login.success", user_id=str(user.id))
-    return TokenResponse(access_token=access, refresh_token=refresh)
 
 
 @router.post("/refresh", response_model=TokenResponse, summary="Rotate access token using refresh token")

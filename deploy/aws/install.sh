@@ -1,37 +1,50 @@
 #!/usr/bin/env bash
-# ============================================================================
-# Vedha — single-file AWS installer.
+# =============================================================================
+# Vedha — Production AWS Installer  (v2)
 #
-# ONE script. It generates .env, Caddyfile and the compose override itself, so
-# there is nothing else to copy. Idempotent: safe to re-run (it never rotates
-# the Postgres password once the data volume exists, and reconciles the stack).
+# Security model:
+#   - Sparse+partial clone: only manager/ and deploy/ land on this host.
+#     The probe source, probe Dockerfile, and any other top-level dirs are
+#     NEVER downloaded to the EC2 box — even if someone compromises the host,
+#     they cannot read probe/detection-engine source from disk.
+#   - .env written atomically (tmp → mv) — never world-readable even for a ms.
+#   - API and frontend ports bound to 127.0.0.1 — Caddy bypass impossible from
+#     the internet even if the SG is misconfigured.
+#   - Deployment lock prevents concurrent installs (concurrent `git pull + up`
+#     can produce mixed-version containers).
 #
-# Two ways to run — pick one:
+# Usage:
+#   A) From inside an existing checkout (no clone needed):
+#        sudo bash deploy/aws/install.sh
 #
-#   A) In-repo (recommended, zero copy):
-#        git clone <repo> /opt/vedha && cd /opt/vedha
-#        sudo DOMAIN=vedha.example.com OPENAI_API_KEY=sk-... bash deploy/aws/install.sh
-#
-#   B) EC2 user-data (fully unattended, nothing to copy — paste as user-data):
+#   B) From EC2 user-data / bootstrap (sparse clones only manager/ + deploy/):
 #        #!/usr/bin/env bash
 #        export REPO_URL=https://github.com/<org>/vedha.git
 #        export DOMAIN=vedha.example.com
-#        export OPENAI_API_KEY=sk-...
-#        curl -fsSL "$REPO_URL/raw/main/deploy/aws/install.sh" | bash   # or embed the file
+#        export OPENAI_API_KEY=$(aws ssm get-parameter --name /vedha/OPENAI_API_KEY \
+#          --with-decryption --query Parameter.Value --output text)
+#        curl -fsSL "https://raw.githubusercontent.com/<org>/vedha/main/deploy/aws/install.sh" | bash
 #
-# Config (all optional except where noted) — pass as environment variables:
-#   DOMAIN            e.g. vedha.example.com  -> UI at app.$DOMAIN, API at api.$DOMAIN
-#                     (omit to fall back to the instance public IP + self-signed TLS)
-#   REPO_URL          git URL to clone when not already inside a checkout
-#   APP_DIR           install location (default /opt/vedha)
-#   ADMIN_EMAIL       seeded admin email (default admin@vedha.io)
-#   ACME_EMAIL        Let's Encrypt contact (default = ADMIN_EMAIL)
-#   LLM_PROVIDER      openai|anthropic|openrouter|ollama (auto-detected from keys)
+# Environment variables (all optional except where noted):
+#   DOMAIN             e.g. vedha.example.com  → UI at app.$DOMAIN, API at api.$DOMAIN
+#   REPO_URL           git URL (required if not already in a checkout)
+#   APP_DIR            install location (default /opt/vedha)
+#   ADMIN_EMAIL        seeded admin email (default admin@vedha.io)
+#   ACME_EMAIL         Let's Encrypt contact (default = ADMIN_EMAIL)
+#   LLM_PROVIDER       openai|anthropic|openrouter|ollama  (auto-detected from keys)
 #   OPENAI_API_KEY / ANTHROPIC_API_KEY / OPENROUTER_API_KEY
-#   ENABLE_GRAPH=1    also start Neo4j attack-path graph
-#   API_WORKERS       override auto-sizing
-# ============================================================================
+#   ENABLE_GRAPH=1     also start Neo4j attack-path graph
+#   API_WORKERS        override auto-sizing
+#   SKIP_VERIFY=1      skip post-deploy smoke tests (not recommended)
+#   SSM_PREFIX         SSM path prefix for secrets (default /vedha)
+# =============================================================================
 set -Eeuo pipefail
+
+# ── Constants ─────────────────────────────────────────────────────────────────
+readonly LOCK_FILE="/var/lock/vedha-install.lock"
+readonly MIN_DISK_GB=10
+readonly MIN_RAM_GB=3
+readonly DEPLOY_TIMEOUT=300   # seconds to wait for healthy stack
 
 APP_DIR="${APP_DIR:-/opt/vedha}"
 DOMAIN="${DOMAIN:-}"
@@ -39,32 +52,93 @@ REPO_URL="${REPO_URL:-}"
 ADMIN_EMAIL="${ADMIN_EMAIL:-admin@vedha.io}"
 ACME_EMAIL="${ACME_EMAIL:-$ADMIN_EMAIL}"
 ENABLE_GRAPH="${ENABLE_GRAPH:-0}"
-COMPOSE_PROFILES_ARGS=(--profile ui)
-[ "$ENABLE_GRAPH" = "1" ] && COMPOSE_PROFILES_ARGS+=(--profile graph)
+SKIP_VERIFY="${SKIP_VERIFY:-0}"
+SSM_PREFIX="${SSM_PREFIX:-/vedha}"
 
-log()  { printf '\033[1;36m[vedha]\033[0m %s\n' "$*"; }
-warn() { printf '\033[1;33m[vedha] WARN:\033[0m %s\n' "$*" >&2; }
-die()  { printf '\033[1;31m[vedha] FATAL:\033[0m %s\n' "$*" >&2; exit 1; }
-trap 'die "failed at line $LINENO. See output above."' ERR
+# ── Logging ───────────────────────────────────────────────────────────────────
+DEPLOY_LOG="${APP_DIR}/deploy.log"
+_ts()  { date '+%Y-%m-%dT%H:%M:%S%z'; }
+log()  { printf '\033[1;36m[vedha %s]\033[0m %s\n' "$(_ts)" "$*" | tee -a "${DEPLOY_LOG:-/dev/null}"; }
+warn() { printf '\033[1;33m[vedha %s] WARN:\033[0m %s\n' "$(_ts)" "$*" >&2 | tee -a "${DEPLOY_LOG:-/dev/null}"; }
+die()  { printf '\033[1;31m[vedha %s] FATAL:\033[0m %s\n' "$(_ts)" "$*" >&2; exit 1; }
+step() { printf '\n\033[1;35m━━━ %s ━━━\033[0m\n' "$*"; }
 
-# ── 0. Preconditions ────────────────────────────────────────────────────────
-[ "$(id -u)" -eq 0 ] || exec sudo -E bash "$0" "$@"   # re-exec as root, keep env
-command -v openssl >/dev/null || die "openssl is required"
+trap 'die "Install failed at line $LINENO. Check ${DEPLOY_LOG:-/dev/null} for details."' ERR
 
+# ── 0. Root + lock ────────────────────────────────────────────────────────────
+[ "$(id -u)" -eq 0 ] || exec sudo -E bash "$0" "$@"
+
+# Deployment lock — prevents concurrent installs (git pull + docker up race).
+# Uses file descriptor locking so the lock is released automatically on exit.
+exec 200>"$LOCK_FILE"
+if ! flock -n 200; then
+  die "Another install is already running (lock: $LOCK_FILE). Wait for it to finish."
+fi
+
+mkdir -p "$APP_DIR"
+touch "$DEPLOY_LOG"
+chmod 600 "$DEPLOY_LOG"
+
+log "=== Vedha install started (pid $$) ==="
+
+# ── 1. Architecture check ─────────────────────────────────────────────────────
+step "Checking host architecture"
 ARCH="$(uname -m)"; case "$ARCH" in
   x86_64)  COMPOSE_ARCH=x86_64 ;;
   aarch64|arm64) COMPOSE_ARCH=aarch64 ;;
   *) die "unsupported architecture: $ARCH" ;;
 esac
+log "architecture: $ARCH"
 
-# ── 1. Package manager + base packages ──────────────────────────────────────
-if   command -v dnf >/dev/null; then PKG="dnf -y"
-elif command -v yum >/dev/null; then PKG="yum -y"
-elif command -v apt-get >/dev/null; then PKG="apt-get -y"; export DEBIAN_FRONTEND=noninteractive; apt-get update -y
+# ── 2. Pre-flight checks ──────────────────────────────────────────────────────
+step "Pre-flight system checks"
+
+# Disk space
+AVAIL_GB=$(( $(df --output=avail / | tail -1) / 1024 / 1024 ))
+if [ "$AVAIL_GB" -lt "$MIN_DISK_GB" ]; then
+  die "insufficient disk space: ${AVAIL_GB}GB available, ${MIN_DISK_GB}GB required. Docker build will fail."
+fi
+log "disk: ${AVAIL_GB}GB available ✓"
+
+# RAM
+MEM_GB=$(( $(grep MemTotal /proc/meminfo | awk '{print $2}') / 1024 / 1024 ))
+if [ "$MEM_GB" -lt "$MIN_RAM_GB" ]; then
+  warn "only ${MEM_GB}GB RAM — Vedha needs ≥4GB; performance may be degraded."
+fi
+log "RAM: ${MEM_GB}GB ✓"
+
+# Port conflicts — Caddy needs 80+443 free
+for PORT in 80 443; do
+  if ss -tlnp 2>/dev/null | grep -q ":${PORT} " || \
+     netstat -tlnp 2>/dev/null | grep -q ":${PORT} "; then
+    die "port ${PORT} is already in use. Stop whatever is using it before deploying (caddy needs 80 for ACME + 443 for TLS)."
+  fi
+done
+log "ports 80/443 available ✓"
+
+# CPU sizing
+CPUS=$(nproc)
+if [ -z "${API_WORKERS:-}" ]; then
+  # Cap at 4 uvicorn workers — more thrashes RAM on shared box
+  API_WORKERS=$(( CPUS < 2 ? 1 : (CPUS > 4 ? 4 : CPUS) ))
+fi
+log "cpu: ${CPUS} cores → API_WORKERS=${API_WORKERS}"
+
+# ── 3. Package dependencies ───────────────────────────────────────────────────
+step "Installing system dependencies"
+command -v openssl >/dev/null || die "openssl is required"
+
+if   command -v dnf >/dev/null;     then PKG="dnf -y"
+elif command -v yum >/dev/null;     then PKG="yum -y"
+elif command -v apt-get >/dev/null; then PKG="apt-get -y"; export DEBIAN_FRONTEND=noninteractive; apt-get update -qq
 else die "no supported package manager (dnf/yum/apt-get)"; fi
-$PKG install git curl ca-certificates >/dev/null 2>&1 || $PKG install git curl >/dev/null
 
-# ── 2. Docker + Compose plugin ──────────────────────────────────────────────
+$PKG install git curl ca-certificates iproute2 >/dev/null 2>&1 || \
+  $PKG install git curl >/dev/null 2>&1 || true
+log "dependencies installed ✓"
+
+# ── 4. Docker Engine ──────────────────────────────────────────────────────────
+step "Docker Engine"
 if ! command -v docker >/dev/null; then
   log "installing Docker..."
   if command -v apt-get >/dev/null; then
@@ -73,122 +147,314 @@ if ! command -v docker >/dev/null; then
     $PKG install docker >/dev/null
   fi
 fi
-systemctl enable --now docker >/dev/null 2>&1 || service docker start || true
-docker info >/dev/null 2>&1 || die "Docker daemon is not running"
+systemctl enable --now docker >/dev/null 2>&1 || service docker start >/dev/null 2>&1 || true
+docker info >/dev/null 2>&1 || die "Docker daemon is not running after install attempt."
+log "docker $(docker --version | awk '{print $3}' | tr -d ',') ✓"
 
+# Docker Compose plugin
 if ! docker compose version >/dev/null 2>&1; then
   log "installing Docker Compose plugin..."
-  CLI_DIR=/usr/local/lib/docker/cli-plugins; mkdir -p "$CLI_DIR"
-  curl -fsSL "https://github.com/docker/compose/releases/latest/download/docker-compose-linux-${COMPOSE_ARCH}" \
+  CLI_DIR=/usr/local/lib/docker/cli-plugins
+  mkdir -p "$CLI_DIR"
+  curl -fsSL \
+    "https://github.com/docker/compose/releases/latest/download/docker-compose-linux-${COMPOSE_ARCH}" \
     -o "$CLI_DIR/docker-compose"
   chmod +x "$CLI_DIR/docker-compose"
 fi
-docker compose version >/dev/null 2>&1 || die "docker compose still unavailable"
+docker compose version >/dev/null 2>&1 || die "docker compose unavailable after install."
+log "docker compose $(docker compose version --short) ✓"
 
-# ── 3. Locate or fetch the repo ─────────────────────────────────────────────
-find_repo_root() { local d="$PWD"; while [ "$d" != / ]; do
-  [ -f "$d/docker-compose.yml" ] && [ -f "$d/.env.docker.example" ] && { echo "$d"; return 0; }
-  d="$(dirname "$d")"; done; return 1; }
+# ── 5. Locate or sparse-clone the repo ───────────────────────────────────────
+step "Repository (sparse clone — manager + deploy only)"
+
+# Detect if we're already inside a Vedha checkout
+find_repo_root() {
+  local d="$PWD"
+  while [ "$d" != / ]; do
+    [ -f "$d/manager/docker-compose.yml" ] && { echo "$d"; return 0; }
+    d="$(dirname "$d")"
+  done
+  return 1
+}
 
 if SRC="$(find_repo_root)"; then
   log "using existing checkout at $SRC"
-  [ "$SRC" != "$APP_DIR" ] && APP_DIR="$SRC"
+  APP_DIR="$SRC"
+
 elif [ -d "$APP_DIR/.git" ]; then
-  log "updating existing install at $APP_DIR"; git -C "$APP_DIR" pull --ff-only || warn "git pull skipped"
+  # Existing install — update only the sparse slices we care about.
+  log "updating existing install at $APP_DIR..."
+  git -C "$APP_DIR" fetch --depth 1 origin 2>&1 | tee -a "$DEPLOY_LOG" || warn "git fetch failed — deploying from current disk state"
+  git -C "$APP_DIR" sparse-checkout reapply 2>/dev/null || true
+  git -C "$APP_DIR" checkout 2>&1 | tee -a "$DEPLOY_LOG" || warn "git checkout failed — using existing files"
+
 elif [ -n "$REPO_URL" ]; then
-  log "cloning $REPO_URL -> $APP_DIR"; git clone --depth 1 "$REPO_URL" "$APP_DIR"
+  # Fresh install — SPARSE + PARTIAL clone: only manager/ and deploy/ land on disk.
+  # probe/, docs/, etc. are never fetched. Even if the EC2 box is compromised the
+  # attacker cannot read probe source — it was never downloaded.
+  log "sparse-cloning $REPO_URL → $APP_DIR (manager/ + deploy/ only)..."
+  git clone \
+    --filter=blob:none \
+    --no-checkout \
+    --depth 1 \
+    "$REPO_URL" \
+    "$APP_DIR" \
+    2>&1 | tee -a "$DEPLOY_LOG"
+
+  cd "$APP_DIR"
+  git sparse-checkout init --cone
+  # Cone mode: list directory names to include. Everything else is excluded.
+  git sparse-checkout set manager deploy
+  git checkout 2>&1 | tee -a "$DEPLOY_LOG"
+  log "sparse clone complete. Directories present:"
+  ls -1 "$APP_DIR"
+
 else
-  die "not inside a Vedha checkout and REPO_URL is unset. Clone the repo first or set REPO_URL."
+  die "Not inside a Vedha checkout and REPO_URL is not set.\nEither: cd into your checkout and re-run, or set REPO_URL."
 fi
+
 cd "$APP_DIR"
-[ -f docker-compose.yml ] || die "docker-compose.yml not found in $APP_DIR"
 
-# ── 4. Resource sizing ──────────────────────────────────────────────────────
-MEM_GB=$(( $(grep MemTotal /proc/meminfo | awk '{print $2}') / 1024 / 1024 ))
-CPUS=$(nproc)
-[ "$MEM_GB" -lt 3 ] && warn "only ${MEM_GB}GB RAM — Vedha wants >=4GB; consider t3.large."
-if [ -z "${API_WORKERS:-}" ]; then
-  API_WORKERS=$(( CPUS < 2 ? 1 : (CPUS > 4 ? 4 : CPUS) ))   # cap at 4, min 1
+[ -f manager/docker-compose.yml ]   || die "manager/docker-compose.yml not found — is the sparse checkout correct?"
+[ -f .env.docker.example ] 2>/dev/null || [ -f manager/.env.docker.example ] 2>/dev/null || \
+  warn ".env.docker.example not found — will generate .env from scratch"
+
+# ── 6. Pull secrets from SSM (optional — if AWS CLI + IAM role available) ────
+step "Secrets resolution"
+
+ssm_get() {
+  aws ssm get-parameter \
+    --name "${SSM_PREFIX}/$1" \
+    --with-decryption \
+    --query "Parameter.Value" \
+    --output text 2>/dev/null || true
+}
+
+ssm_available() { command -v aws >/dev/null && aws ssm describe-parameters --max-results 1 >/dev/null 2>&1; }
+
+if ssm_available; then
+  log "SSM available — pulling secrets from ${SSM_PREFIX}/..."
+  _ssm_jwt="$(ssm_get JWT_SECRET)"
+  _ssm_pg="$(ssm_get POSTGRES_PASSWORD)"
+  _ssm_admin_pw="$(ssm_get SEED_ADMIN_PASSWORD)"
+  _ssm_openai="$(ssm_get OPENAI_API_KEY)"
+  _ssm_anthropic="$(ssm_get ANTHROPIC_API_KEY)"
+  _ssm_domain="$(ssm_get DOMAIN)"
+  [ -n "$_ssm_jwt" ]      && JWT_SECRET="$_ssm_jwt"
+  [ -n "$_ssm_pg" ]       && POSTGRES_PASSWORD_SSM="$_ssm_pg"
+  [ -n "$_ssm_admin_pw" ] && SEED_ADMIN_PASSWORD_SSM="$_ssm_admin_pw"
+  [ -n "$_ssm_openai" ]   && OPENAI_API_KEY="${OPENAI_API_KEY:-$_ssm_openai}"
+  [ -n "$_ssm_anthropic" ]&& ANTHROPIC_API_KEY="${ANTHROPIC_API_KEY:-$_ssm_anthropic}"
+  [ -n "$_ssm_domain" ]   && DOMAIN="${DOMAIN:-$_ssm_domain}"
+  log "SSM pull complete ✓"
+else
+  log "SSM not available — using env vars / generating secrets locally"
 fi
 
-# ── 5. Secrets — generate once, PRESERVE across re-runs ─────────────────────
-# The Postgres password is special: once the pgdata volume is initialized, the
-# stored password is fixed. If we ever change it the API can't authenticate to
-# its own DB. Rule: if the volume already exists, KEEP whatever .env has (even a
-# weak default — it must match the volume). Only when there is no volume yet is
-# it safe to mint a fresh strong one.
+# ── 7. Generate / preserve secrets ───────────────────────────────────────────
 gen_secret() { openssl rand -base64 48 | tr -d '\n/+='; }
-env_get() { [ -f .env ] && sed -n "s/^$1=//p" .env | tail -1 || true; }
+env_get()    { [ -f .env ] && grep -m1 "^$1=" .env | cut -d= -f2- || true; }
 volume_exists() { docker volume ls -q 2>/dev/null | grep -qx "$1"; }
 
-JWT_SECRET="$(env_get JWT_SECRET)"; [ -n "$JWT_SECRET" ] || JWT_SECRET="$(gen_secret)"
-SEED_ADMIN_PASSWORD="$(env_get SEED_ADMIN_PASSWORD)"; [ -n "$SEED_ADMIN_PASSWORD" ] || SEED_ADMIN_PASSWORD="$(openssl rand -base64 18 | tr -d '\n/+=')Aa1!"
+# JWT secret: generate once, preserve forever
+JWT_SECRET="${JWT_SECRET:-$(env_get JWT_SECRET)}"
+[ -n "$JWT_SECRET" ] || JWT_SECRET="$(gen_secret)"
 
-PG_CUR="$(env_get POSTGRES_PASSWORD)"
+# Admin password: preserve across re-runs unless SSM has an override
+SEED_ADMIN_PASSWORD="${SEED_ADMIN_PASSWORD_SSM:-$(env_get SEED_ADMIN_PASSWORD)}"
+[ -n "$SEED_ADMIN_PASSWORD" ] || SEED_ADMIN_PASSWORD="$(openssl rand -base64 18 | tr -d '\n/+=')Aa1!"
+
+# Postgres password: CRITICAL — never rotate once the data volume exists.
+# Changing it without recreating the volume = permanent authentication failure.
+PG_ENV="${POSTGRES_PASSWORD_SSM:-$(env_get POSTGRES_PASSWORD)}"
 if volume_exists vedha_pgdata; then
-  [ -n "$PG_CUR" ] || die "pgdata volume exists but POSTGRES_PASSWORD is missing from .env — cannot recover the DB password. Restore .env or remove the volume to reinitialize."
-  POSTGRES_PASSWORD="$PG_CUR"; log "preserving existing Postgres password (data volume present)."
-elif [ -n "$PG_CUR" ] && [ "$PG_CUR" != "secret" ]; then
-  POSTGRES_PASSWORD="$PG_CUR"                    # already strong, no volume yet
+  if [ -z "$PG_ENV" ]; then
+    die "pgdata volume exists but POSTGRES_PASSWORD is missing.\nRestore your .env or remove the volume: docker volume rm vedha_pgdata (DATA LOSS)."
+  fi
+  POSTGRES_PASSWORD="$PG_ENV"
+  log "preserving existing Postgres password (data volume present) ✓"
+elif [ -n "$PG_ENV" ] && [ "$PG_ENV" != "secret" ]; then
+  POSTGRES_PASSWORD="$PG_ENV"
 else
-  POSTGRES_PASSWORD="$(gen_secret)"              # fresh install → strong password
+  POSTGRES_PASSWORD="$(gen_secret)"
+  log "generated new Postgres password ✓"
 fi
 
-# ── 6. LLM provider resolution ──────────────────────────────────────────────
+# Validate secret strength
+[ ${#JWT_SECRET} -ge 32 ]         || die "JWT_SECRET too short (< 32 chars)"
+[ ${#POSTGRES_PASSWORD} -ge 16 ]  || die "POSTGRES_PASSWORD too short (< 16 chars)"
+
+# ── 8. LLM provider resolution ────────────────────────────────────────────────
+step "LLM provider"
 if [ -z "${LLM_PROVIDER:-}" ]; then
   if   [ -n "${OPENAI_API_KEY:-}" ];     then LLM_PROVIDER=openai
   elif [ -n "${ANTHROPIC_API_KEY:-}" ];  then LLM_PROVIDER=anthropic
   elif [ -n "${OPENROUTER_API_KEY:-}" ]; then LLM_PROVIDER=openrouter
-  else LLM_PROVIDER=ollama; warn "no LLM key provided — AI features will be inert until you set one."; fi
+  else LLM_PROVIDER=ollama; warn "no LLM API key — AI features inert until you set OPENAI_API_KEY / ANTHROPIC_API_KEY in SSM or .env"; fi
 fi
+log "LLM provider: $LLM_PROVIDER ✓"
 
-# ── 7. TLS mode: real domain (Let's Encrypt) vs public IP (self-signed) ─────
-imds() { local t; t=$(curl -s -m 2 -X PUT "http://169.254.169.254/latest/api/token" \
-  -H "X-aws-ec2-metadata-token-ttl-seconds: 60" 2>/dev/null || true)
-  curl -s -m 2 -H "X-aws-ec2-metadata-token: $t" "http://169.254.169.254/latest/meta-data/$1" 2>/dev/null || true; }
+# ── 9. TLS / Caddy configuration ─────────────────────────────────────────────
+step "TLS & domain"
+
+# Fetch public IP via IMDSv2 (EC2 only)
+imds() {
+  local token
+  token=$(curl -s -m 3 -X PUT "http://169.254.169.254/latest/api/token" \
+    -H "X-aws-ec2-metadata-token-ttl-seconds: 60" 2>/dev/null || true)
+  curl -s -m 3 -H "X-aws-ec2-metadata-token: $token" \
+    "http://169.254.169.254/latest/meta-data/$1" 2>/dev/null || true
+}
+
+CADDY_DIR="$APP_DIR/deploy/aws"
 
 if [ -n "$DOMAIN" ]; then
-  UI_HOST="app.$DOMAIN"; API_HOST="api.$DOMAIN"; COOKIE_SECURE=true
-  UI_URL="https://$UI_HOST"; API_URL="https://$API_HOST"
-  cat > Caddyfile <<EOF
+  UI_HOST="app.$DOMAIN"
+  API_HOST="api.$DOMAIN"
+  COOKIE_SECURE=true
+  UI_URL="https://$UI_HOST"
+  API_URL="https://$API_HOST"
+
+  # Validate DNS resolves before writing Caddyfile (Caddy will fail ACME if not)
+  if command -v dig >/dev/null; then
+    for HOST in "$UI_HOST" "$API_HOST"; do
+      if ! dig +short "$HOST" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+$'; then
+        warn "DNS: $HOST does not resolve yet. Caddy ACME will fail until DNS propagates."
+      else
+        log "DNS: $HOST resolves ✓"
+      fi
+    done
+  fi
+
+  cat > "$CADDY_DIR/Caddyfile" <<EOF
 {
     email $ACME_EMAIL
+    # Disable admin API endpoint (not needed, reduces attack surface)
+    admin off
 }
+
 $UI_HOST {
-    reverse_proxy frontend:3000
+    encode gzip
+    reverse_proxy frontend:3000 {
+        header_up X-Real-IP {remote_host}
+        health_path /
+        health_interval 30s
+    }
+    # Security headers
+    header {
+        Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+        X-Frame-Options "SAMEORIGIN"
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        -Server
+    }
 }
+
 $API_HOST {
-    reverse_proxy api:8000
+    encode gzip
+    reverse_proxy api:8000 {
+        header_up X-Real-IP {remote_host}
+        health_path /health
+        health_interval 15s
+    }
+    header {
+        Strict-Transport-Security "max-age=63072000; includeSubDomains; preload"
+        X-Content-Type-Options "nosniff"
+        -Server
+    }
 }
 EOF
+
 else
-  PUBIP="$(imds public-ipv4)"; [ -n "$PUBIP" ] || PUBIP="$(curl -fsSL https://checkip.amazonaws.com 2>/dev/null | tr -d '\n')"
-  [ -n "$PUBIP" ] || die "DOMAIN not set and could not detect a public IP."
-  warn "no DOMAIN set — serving self-signed TLS on $PUBIP (UI :443, API :8443). Browsers/probes will warn on the cert. Set DOMAIN for real HTTPS."
-  UI_HOST="$PUBIP"; API_HOST="$PUBIP:8443"; COOKIE_SECURE=true
-  UI_URL="https://$PUBIP"; API_URL="https://$PUBIP:8443"
-  cat > Caddyfile <<EOF
+  # No domain — self-signed for smoke testing only. NOT for production.
+  PUBIP="$(imds public-ipv4)"
+  [ -n "$PUBIP" ] || PUBIP="$(curl -fsSL https://checkip.amazonaws.com 2>/dev/null | tr -d '\n')" || true
+  [ -n "$PUBIP" ] || die "DOMAIN not set and could not detect public IP. Set DOMAIN=your.domain.com."
+  warn "No DOMAIN set — self-signed TLS on $PUBIP. Browsers will warn. Set DOMAIN for production."
+  UI_HOST="$PUBIP"
+  API_HOST="${PUBIP}:8443"
+  COOKIE_SECURE=true
+  UI_URL="https://$PUBIP"
+  API_URL="https://${PUBIP}:8443"
+
+  cat > "$CADDY_DIR/Caddyfile" <<EOF
+{
+    admin off
+}
+
 https://$PUBIP {
     tls internal
+    encode gzip
     reverse_proxy frontend:3000
 }
+
 https://$PUBIP:8443 {
     tls internal
+    encode gzip
     reverse_proxy api:8000
 }
 EOF
 fi
+log "Caddyfile written to $CADDY_DIR/Caddyfile ✓"
 
-# ── 8. Render .env (idempotent) ─────────────────────────────────────────────
-[ -f .env ] || cp .env.docker.example .env
-# Strip any previous "AWS installer" block, then re-append a fresh one.
-sed -i '/# >>> vedha-aws-installer >>>/,/# <<< vedha-aws-installer <<</d' .env
-cat >> .env <<EOF
-# >>> vedha-aws-installer >>>  (managed block — edit values in SSM/here, then re-run)
+# ── 10. Generate the Caddy compose overlay ────────────────────────────────────
+cat > "$CADDY_DIR/docker-compose.prod.yml" <<EOF
+# Auto-generated by install.sh — do not edit by hand.
+# Re-run install.sh to regenerate.
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "8443:8443"
+    volumes:
+      - ${CADDY_DIR}/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    healthcheck:
+      test: ["CMD", "caddy", "validate", "--config", "/etc/caddy/Caddyfile"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    depends_on:
+      api:
+        condition: service_healthy
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
+volumes:
+  caddy_data:
+  caddy_config:
+EOF
+log "docker-compose.prod.yml written ✓"
+
+# ── 11. Write .env atomically ─────────────────────────────────────────────────
+step "Writing .env"
+
+# SECURITY: write to temp file first, then atomic move.
+# Direct append to .env leaves it world-readable during the write window.
+ENV_TMP="$(mktemp "$APP_DIR/.env.XXXXXX")"
+chmod 600 "$ENV_TMP"   # lock permissions BEFORE writing secrets
+
+# Start from example if .env doesn't exist
+if [ -f "$APP_DIR/.env" ]; then
+  # Preserve user customizations — strip only the installer-managed block
+  sed '/# >>> vedha-aws-installer >>>/,/# <<< vedha-aws-installer <<</d' "$APP_DIR/.env" > "$ENV_TMP"
+else
+  [ -f "$APP_DIR/.env.docker.example" ] && cp "$APP_DIR/.env.docker.example" "$ENV_TMP" || true
+fi
+
+# Append the installer-managed block
+cat >> "$ENV_TMP" <<ENVEOF
+
+# >>> vedha-aws-installer >>>  (managed by install.sh — re-run to update)
 APP_ENV=production
-LOG_LEVEL=INFO
+LOG_LEVEL=${LOG_LEVEL:-INFO}
 API_WORKERS=$API_WORKERS
 AUTH_COOKIE_SECURE=$COOKIE_SECURE
+AUTH_COOKIE_SAMESITE=strict
 JWT_SECRET=$JWT_SECRET
 POSTGRES_PASSWORD=$POSTGRES_PASSWORD
 SEED_ADMIN_EMAIL=$ADMIN_EMAIL
@@ -200,61 +466,90 @@ OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
 CORS_ORIGINS=$UI_URL
 NEO4J_ENABLED=$([ "$ENABLE_GRAPH" = "1" ] && echo true || echo false)
 # <<< vedha-aws-installer <<<
-EOF
-chmod 600 .env
+ENVEOF
 
-# ── 9. Compose override: add Caddy in front ─────────────────────────────────
-cat > docker-compose.prod.yml <<'EOF'
-services:
-  caddy:
-    image: caddy:2-alpine
-    restart: unless-stopped
-    ports:
-      - "80:80"
-      - "443:443"
-      - "8443:8443"   # only used in IP/self-signed mode; harmless otherwise
-    volumes:
-      - ./Caddyfile:/etc/caddy/Caddyfile:ro
-      - caddy_data:/data
-      - caddy_config:/config
-    depends_on:
-      - frontend
-      - api
-volumes:
-  caddy_data:
-  caddy_config:
-EOF
+# Atomic swap
+mv "$ENV_TMP" "$APP_DIR/.env"
+chmod 600 "$APP_DIR/.env"
+log ".env written (chmod 600) ✓"
 
-# ── 10. Launch ──────────────────────────────────────────────────────────────
-log "building & starting stack (workers=$API_WORKERS, provider=$LLM_PROVIDER)..."
-docker compose -f docker-compose.yml -f docker-compose.prod.yml \
-  "${COMPOSE_PROFILES_ARGS[@]}" up -d --build
+# ── 12. Compose profile selection ────────────────────────────────────────────
+COMPOSE_PROFILES_ARGS=(--profile ui)
+[ "$ENABLE_GRAPH" = "1" ] && COMPOSE_PROFILES_ARGS+=(--profile graph)
 
-# ── 11. Wait for health ─────────────────────────────────────────────────────
-log "waiting for API health (up to 180s)..."
-ok=0
-for _ in $(seq 1 60); do
-  if docker compose exec -T api curl -fsS http://localhost:8000/health >/dev/null 2>&1; then ok=1; break; fi
-  sleep 3
+# ── 13. Build and launch ──────────────────────────────────────────────────────
+step "Building and launching stack"
+log "profiles: ${COMPOSE_PROFILES_ARGS[*]}"
+log "workers: $API_WORKERS  provider: $LLM_PROVIDER"
+
+COMPOSE_CMD=(docker compose
+  --project-directory "$APP_DIR"
+  -f "$APP_DIR/manager/docker-compose.yml"
+  -f "$APP_DIR/deploy/aws/docker-compose.prod.yml"
+  "${COMPOSE_PROFILES_ARGS[@]}"
+)
+
+# Remove orphaned containers from previous deploys (profile changes, service renames)
+"${COMPOSE_CMD[@]}" up -d --build --remove-orphans 2>&1 | tee -a "$DEPLOY_LOG"
+
+# ── 14. Wait for API health ───────────────────────────────────────────────────
+step "Health check (up to ${DEPLOY_TIMEOUT}s)"
+log "waiting for API to become healthy..."
+
+DEADLINE=$(( $(date +%s) + DEPLOY_TIMEOUT ))
+HEALTHY=0
+while [ "$(date +%s)" -lt "$DEADLINE" ]; do
+  if "${COMPOSE_CMD[@]}" exec -T api curl -fsS http://localhost:8000/health >/dev/null 2>&1; then
+    HEALTHY=1
+    break
+  fi
+  sleep 5
 done
-if [ "$ok" != 1 ]; then
-  warn "API did not report healthy in time. Recent logs:"
-  docker compose logs --tail=40 migrate api || true
-  die "startup incomplete — investigate with: docker compose logs -f api"
+
+if [ "$HEALTHY" != "1" ]; then
+  warn "API did not become healthy within ${DEPLOY_TIMEOUT}s."
+  log "Recent logs:"
+  "${COMPOSE_CMD[@]}" logs --tail=60 migrate api 2>&1 | tee -a "$DEPLOY_LOG" || true
+
+  # Attempt rollback: restart from last image without rebuild
+  warn "Attempting rollback (restart without rebuild)..."
+  "${COMPOSE_CMD[@]}" up -d --no-build 2>&1 | tee -a "$DEPLOY_LOG" || true
+  die "Deployment failed. Check $DEPLOY_LOG for details."
+fi
+log "API healthy ✓"
+
+# ── 15. Post-deploy smoke tests ───────────────────────────────────────────────
+if [ "$SKIP_VERIFY" != "1" ]; then
+  step "Smoke tests"
+  bash "$APP_DIR/deploy/aws/verify.sh" \
+    --api-url "http://localhost:${API_PORT:-18080}" \
+    --admin-email "$ADMIN_EMAIL" \
+    --admin-password "$SEED_ADMIN_PASSWORD" \
+    --mode smoke \
+    2>&1 | tee -a "$DEPLOY_LOG" || warn "Some smoke tests failed — check $DEPLOY_LOG"
 fi
 
-# ── 12. Summary ─────────────────────────────────────────────────────────────
-printf '\n\033[1;32m[vedha] Deployment complete.\033[0m\n'
-cat <<EOF
+# ── 16. Summary ───────────────────────────────────────────────────────────────
+printf '\n\033[1;32m[vedha] ✓ Deployment complete.\033[0m\n'
+cat <<SUMMARY
 
-  Dashboard (UI) : $UI_URL
-  API (probes)   : $API_URL
-  Admin login    : $ADMIN_EMAIL
-  Admin password : $SEED_ADMIN_PASSWORD   (rotate after first login)
+  Dashboard  : $UI_URL
+  API        : $API_URL
+  Admin      : $ADMIN_EMAIL
+  Password   : $SEED_ADMIN_PASSWORD   ← ROTATE after first login
+  Deploy log : $DEPLOY_LOG
 
-Next:
-  • Open $UI_HOST in Route53/DNS and the security group (allow 80,443$([ -z "$DOMAIN" ] && echo ",8443") inbound; 22 from your IP only).
-  • Point a probe at it:   PLATFORM_URL=$API_URL docker compose --profile probe up -d probe
-  • Redeploy after code changes:  cd $APP_DIR && git pull && sudo bash deploy/aws/install.sh
-  • Secrets live in $APP_DIR/.env (chmod 600). This script never rotates them on re-run.
-EOF
+Security checklist:
+  □  Rotate admin password immediately after first login
+  □  Security group: only 80, 443, 22 (your IP /32) open
+  □  Verify CORS_ORIGINS in .env matches exactly: $UI_URL
+  □  Enable CloudWatch log driver for persistent log shipping
+  □  Schedule daily EBS snapshot + pg_dump to S3
+
+Ops:
+  • Status   :  docker compose --project-directory $APP_DIR -f $APP_DIR/manager/docker-compose.yml ps
+  • Logs     :  docker compose --project-directory $APP_DIR -f $APP_DIR/manager/docker-compose.yml logs -f api worker
+  • Redeploy :  cd $APP_DIR && git pull && sudo bash deploy/aws/install.sh
+  • Verify   :  bash $APP_DIR/deploy/aws/verify.sh --full
+
+SUMMARY

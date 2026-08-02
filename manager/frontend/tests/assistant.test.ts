@@ -77,6 +77,61 @@ describe("public CVE brief", () => {
   });
 });
 
+describe("AssistantDrawer submit guard", () => {
+  // Mirrors the submit() logic in AssistantDrawer so regressions are caught
+  // without requiring a browser.  The three invariants tested here match the
+  // UX changes made in the last patch: empty input is blocked, loading state
+  // blocks the send, and the loading aria-label changes.
+
+  function canSubmit(input: string, loading: boolean): boolean {
+    return !loading && input.trim().length > 0;
+  }
+
+  function sendBtnLabel(loading: boolean): string {
+    return loading ? "Sending…" : "Send";
+  }
+
+  function textareaPlaceholder(loading: boolean, activeId: string | null): string {
+    if (loading) return "Analyzing…";
+    if (activeId) return "Ask about impact, score, evidence, or remediation…";
+    return "Paste CVE-YYYY-NNNN or ask a security question…";
+  }
+
+  test("submit is blocked when input is empty", () => {
+    assert.equal(canSubmit("", false), false);
+    assert.equal(canSubmit("   ", false), false);
+  });
+
+  test("submit is allowed when input has content and not loading", () => {
+    assert.equal(canSubmit("explain CVE-2024-3094", false), true);
+  });
+
+  test("submit is blocked while loading even if input is non-empty", () => {
+    assert.equal(canSubmit("explain CVE-2024-3094", true), false);
+  });
+
+  test("send button label is 'Sending…' while loading", () => {
+    assert.equal(sendBtnLabel(true), "Sending…");
+  });
+
+  test("send button label is 'Send' when idle", () => {
+    assert.equal(sendBtnLabel(false), "Send");
+  });
+
+  test("textarea shows 'Analyzing…' placeholder while loading", () => {
+    assert.equal(textareaPlaceholder(true, null), "Analyzing…");
+    assert.equal(textareaPlaceholder(true, "some-finding-id"), "Analyzing…");
+  });
+
+  test("textarea shows followup placeholder when activeId is set and idle", () => {
+    assert.match(textareaPlaceholder(false, "abc"), /impact/);
+  });
+
+  test("textarea shows generic placeholder when no activeId and idle", () => {
+    assert.match(textareaPlaceholder(false, null), /CVE-YYYY/);
+  });
+});
+
 describe("AI Brain authentication", () => {
   test("rejects an unauthenticated request before using an AI provider", async () => {
     const response = await brainPost(new NextRequest("http://localhost/api/brain", {

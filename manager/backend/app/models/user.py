@@ -1,6 +1,8 @@
 import uuid
 
-from sqlalchemy import Boolean, Enum, ForeignKey, String, UniqueConstraint
+from datetime import datetime
+
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -22,5 +24,12 @@ class User(Base, TimestampMixin):
     hashed_password: Mapped[str] = mapped_column(String(255), nullable=False)
     role: Mapped[UserRole] = mapped_column(Enum(UserRole, name="userrole"), nullable=False)
     mfa_enabled: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false")
+    # Added migration 0016: soft-disable without deleting the record.
+    # All existing rows get server_default=True — no data loss.
+    is_active: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="true")
+    # Optional password expiry. NULL = never expires. Set to enforce rotation policy.
+    password_expires_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     tenant: Mapped["Tenant"] = relationship(back_populates="users", lazy="noload")

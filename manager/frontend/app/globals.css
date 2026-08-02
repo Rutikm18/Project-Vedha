@@ -1310,7 +1310,11 @@ code, pre, .terminal, kbd, [class*="mono"], .font-mono {
   color: var(--text-primary); background: var(--bg-surface); font: 11px/1.5 var(--font-body);
 }
 .assistant-drawer-composer textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ghost); }
-.assistant-drawer-composer > button { align-self: start; width: 42px; height: 42px; padding: 0; }
+.assistant-drawer-composer textarea:disabled { opacity: 0.55; cursor: not-allowed; resize: none; }
+.assistant-drawer-composer > button { align-self: start; width: 42px; height: 42px; padding: 0; border-radius: 10px; transition: opacity 0.15s ease, box-shadow 0.15s ease, transform 0.15s ease; }
+.assistant-send-btn:not(:disabled) { box-shadow: 0 0 0 0 var(--accent-ghost); animation: send-btn-ready 0.2s ease forwards; }
+.assistant-send-btn:not(:disabled):hover { box-shadow: 0 0 0 4px var(--accent-ghost), var(--shadow-accent); }
+@keyframes send-btn-ready { from { opacity: 0.5; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
 .assistant-drawer-composer > small { position: absolute; left: 15px; right: 15px; bottom: 7px; display: flex; align-items: center; gap: 5px; color: var(--text-faint); font-size: 8px; }
 .assistant-brief { border: 1px solid var(--border-subtle); border-radius: 11px; overflow: hidden; background: var(--bg-panel); box-shadow: var(--shadow-sm); }
 .assistant-brief > header { padding: 15px; display: flex; justify-content: space-between; align-items: flex-start; gap: 13px; background: linear-gradient(135deg, var(--bg-panel), var(--bg-surface)); border-bottom: 1px solid var(--border-subtle); }

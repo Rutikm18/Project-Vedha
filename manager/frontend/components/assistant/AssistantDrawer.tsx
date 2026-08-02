@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useEffect, useCallback } from "react";
-import { Brain, Search, Send, ShieldCheck, Sparkles, X } from "lucide-react";
+import { Brain, Loader2, Search, Send, ShieldCheck, Sparkles, X } from "lucide-react";
 import { useAssistant } from "./AssistantProvider";
 import { FactCard } from "./FactCard";
 import { detectFindingId, type FactCardVM } from "../../lib/assistant";
@@ -168,13 +168,20 @@ export function AssistantDrawer() {
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); submit(); }
             }}
-            placeholder={activeId ? "Ask about impact, score, evidence, or remediation…" : "Paste CVE-YYYY-NNNN or ask a security question…"}
+            placeholder={loading ? "Analyzing…" : activeId ? "Ask about impact, score, evidence, or remediation…" : "Paste CVE-YYYY-NNNN or ask a security question…"}
             aria-label="Assistant input"
+            disabled={loading}
             rows={2}
             />
           </div>
-          <button className="btn btn-primary" onClick={submit} disabled={loading || !input.trim()} aria-label="Send">
-            <Send size={14} />
+          <button
+            className="btn btn-primary assistant-send-btn"
+            onClick={submit}
+            disabled={loading || !input.trim()}
+            aria-label={loading ? "Sending…" : "Send"}
+            title={!input.trim() ? "Type a message to send" : undefined}
+          >
+            {loading ? <Loader2 size={15} className="animate-spin" /> : <Send size={14} />}
           </button>
           <small><ShieldCheck size={11} /> Public CVE data does not prove client exposure · Shift+Enter for a new line</small>
         </footer>

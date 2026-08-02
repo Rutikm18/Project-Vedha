@@ -9,6 +9,7 @@ from fastapi.responses import JSONResponse
 
 from app.auth.middleware import TenantIsolationMiddleware
 from app.auth.router import router as auth_router
+from app.auth.startup import StartupAbortError, run_startup_diagnostics
 from app.config import get_settings
 from app.dependencies import close_redis
 from app.routers.activity import router as activity_router
@@ -60,6 +61,18 @@ logger = structlog.get_logger()
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     logger.info("vedha_api.startup", env=settings.app_env)
+
+    # Run startup diagnostics — fatal failures abort the process before
+    # accepting any traffic. Warnings are logged and tolerated.
+    # In development (APP_ENV != production) we log failures but never abort,
+    # so a local dev box with missing SSM secrets still starts.
+    fail_on_fatal = settings.is_production
+    try:
+        await run_startup_diagnostics(fail_on_fatal=fail_on_fatal)
+    except StartupAbortError as exc:
+        logger.critical("vedha_api.startup_aborted", reason=str(exc))
+        raise SystemExit(1) from exc
+
     yield
     logger.info("vedha_api.shutdown")
     await close_redis()

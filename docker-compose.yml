@@ -1,17 +1,17 @@
-# VEDHA platform — single-command install.
+# VEDHA — LOCAL DEV compose (all services including probe).
+#
+# ⚠️  PRODUCTION DEPLOYMENT: use manager/docker-compose.yml via deploy/aws/install.sh
+#     That file sparse-clones only manager/ + deploy/ so probe source never lands
+#     on the AWS host. This file is for LOCAL development only.
 #
 #   cp .env.docker.example .env
-#   docker compose up -d --build         # postgres + redis + migrate + api
-#   docker compose --profile ui --profile local-ai up -d --build
-#                                           # full product + free local model
-#   docker compose --profile graph up -d # also start Neo4j (attack-path graph)
-#   docker compose --profile probe up -d # also start a local probe (for testing)
+#   docker compose up -d --build                           # core (postgres+redis+migrate+api)
+#   docker compose --profile ui up -d --build              # + Next.js frontend
+#   docker compose --profile probe up -d --build           # + local probe (testing only)
+#   docker compose --profile graph up -d                   # + Neo4j attack-path graph
+#   docker compose --profile local-ai up -d               # + Ollama local LLM
 #
-# The `migrate` service runs alembic + seeds the admin user once, then exits;
-# the `api` service starts only after it succeeds.
-
 # Project name → container/network/volume prefix (vedha-api-1, vedha_pgdata, …).
-# Without this, Compose defaults to the directory name.
 name: vedha
 
 x-backend-image: &backend-image
@@ -92,9 +92,11 @@ services:
     profiles: ["graph"]
     environment:
       NEO4J_AUTH: ${NEO4J_USER:-neo4j}/${NEO4J_PASSWORD:-vedha-neo4j}
+    # LOCAL DEV only — bound to 127.0.0.1 to avoid exposing Neo4j on LAN.
+    # Production: ports are commented out in manager/docker-compose.yml.
     ports:
-      - "${NEO4J_HTTP_PORT:-7474}:7474"
-      - "${NEO4J_BOLT_PORT:-7687}:7687"
+      - "127.0.0.1:${NEO4J_HTTP_PORT:-7474}:7474"
+      - "127.0.0.1:${NEO4J_BOLT_PORT:-7687}:7687"
     volumes:
       - neo4jdata:/data
     healthcheck:
@@ -126,8 +128,10 @@ services:
     command: ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000", "--workers", "${API_WORKERS:-4}"]
     # detection_engine is now BAKED into the image (P1) at /opt/detection_engine
     # — no runtime mount. The manager owns the vuln DB; the probe never sees it.
+    # LOCAL DEV: bind to 127.0.0.1 so the raw API is not reachable from LAN.
+    # Production install.sh enforces this via manager/docker-compose.yml.
     ports:
-      - "${API_PORT:-18080}:8000"
+      - "127.0.0.1:${API_PORT:-18080}:8000"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
@@ -235,6 +239,7 @@ services:
     environment:
       BACKEND_INTERNAL_URL: http://api:8000
       AUTH_SECRET: ${JWT_SECRET:-change-me-at-least-32-chars-long!!}
+      # LOCAL DEV: false is OK over HTTP. Production install sets this to true.
       AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-false}
       NEXT_TELEMETRY_DISABLED: "1"
       NODE_ENV: production
