@@ -2,6 +2,7 @@
 Agent registration, heartbeat, job polling, and result submission.
 """
 import ipaddress
+import secrets
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Annotated
@@ -16,6 +17,7 @@ from app.auth.rbac import require_role
 from app.config import get_settings
 from app.dependencies import DB, AuthUser
 from app.models.agent import Agent, AgentStatus
+from app.models.tenant import Tenant
 from app.models.asset import Asset as Asset  # re-exported for tests (ag.Asset)
 from app.models.engagement import Engagement
 from app.models.enums import ScanJobStatus, ScanJobType
@@ -437,6 +439,20 @@ def _agent_ownership_check(request: Request, agent_id_str: str) -> None:
         )
 
 
+class AgentBootstrapRequest(BaseModel):
+    bootstrap_key: str
+    name: str = Field(..., min_length=1, max_length=255)
+    location: str | None = None
+    capabilities: list[str] = Field(default_factory=list)
+    network_segments: list[str] = Field(default_factory=list)
+    public_key: str | None = None
+
+    @field_validator("network_segments")
+    @classmethod
+    def validate_network_segments(cls, values: list[str]) -> list[str]:
+        return AgentRegisterRequest.validate_network_segments(values)
+
+
 # ── Routes ────────────────────────────────────────────────────────────────────
 
 @router.get("/use-cases", summary="List available pre-defined scan use-cases (probe action library)")
@@ -445,6 +461,93 @@ async def list_use_cases(current_user: AuthUser):
     The probe enforces this list at execution time — an unknown use_case_id is
     rejected by the probe before any packet leaves the host."""
     return [{"use_case_id": uid, **meta} for uid, meta in _USE_CASES.items()]
+
+
+@router.post(
+    "/bootstrap",
+    response_model=AgentRegisterResponse,
+    status_code=status.HTTP_201_CREATED,
+    summary="Probe self-registers using a shared bootstrap key (no user login required)",
+)
+async def bootstrap_agent(body: AgentBootstrapRequest, db: DB):
+    """Allows a probe to register without an admin-issued PAT.
+
+    The manager must have PROBE_BOOTSTRAP_KEY set in its environment. The probe
+    presents that key; on success it receives a long-lived agent JWT identical
+    to the one issued by /agents/register. Leave PROBE_BOOTSTRAP_KEY empty to
+    disable this endpoint (returns 403).
+    """
+    settings = get_settings()
+    bootstrap_key = settings.probe_bootstrap_key
+
+    if not bootstrap_key:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Probe bootstrap is disabled on this manager. Set PROBE_BOOTSTRAP_KEY.",
+        )
+
+    if not secrets.compare_digest(body.bootstrap_key, bootstrap_key):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Invalid bootstrap key.",
+        )
+
+    # Resolve the first active tenant (bootstrap probes join the default tenant)
+    tenant = (
+        await db.execute(
+            select(Tenant).where(Tenant.is_active == True).order_by(Tenant.created_at).limit(1)
+        )
+    ).scalar_one_or_none()
+
+    if tenant is None:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="No active tenant found. Seed the manager first.",
+        )
+
+    existing = (
+        await db.execute(
+            select(Agent)
+            .where(Agent.tenant_id == tenant.id, Agent.name == body.name)
+            .order_by(Agent.last_heartbeat.desc())
+            .limit(1)
+        )
+    ).scalar_one_or_none()
+
+    if existing is not None:
+        agent = existing
+        agent.location = body.location
+        agent.capabilities = body.capabilities
+        agent.network_segments = body.network_segments
+        agent.status = AgentStatus.online
+        agent.last_heartbeat = datetime.now(timezone.utc)
+        if body.public_key:
+            agent.public_key = body.public_key
+    else:
+        agent = Agent(
+            tenant_id=tenant.id,
+            name=body.name,
+            location=body.location,
+            capabilities=body.capabilities,
+            network_segments=body.network_segments,
+            public_key=body.public_key,
+            status=AgentStatus.online,
+            last_heartbeat=datetime.now(timezone.utc),
+        )
+        db.add(agent)
+
+    await db.flush()
+    await db.refresh(agent)
+
+    token = create_access_token(
+        subject=str(agent.id),
+        tenant_id=str(tenant.id),
+        role="agent",
+        expires_minutes=60 * 24 * 365,
+    )
+    logger.info("agent.bootstrapped", agent_id=str(agent.id), name=body.name,
+                tenant_id=str(tenant.id), reused=existing is not None)
+    return AgentRegisterResponse(agent_id=str(agent.id), token=token)
 
 
 @router.post(

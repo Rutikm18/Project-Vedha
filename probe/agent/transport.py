@@ -264,6 +264,47 @@ class Transport:
         self.save_state()
         return data
 
+    def bootstrap(
+        self,
+        name: str,
+        *,
+        bootstrap_key: str,
+        location: str | None = None,
+        capabilities: list[str] | None = None,
+        network_segments: list[str] | None = None,
+        public_key: str | None = None,
+    ) -> dict[str, Any]:
+        """Register using a manager-side shared bootstrap key (no user login needed).
+
+        Falls back automatically when PROBE_PAT / OPERATOR_TOKEN are not set.
+        The manager must have PROBE_BOOTSTRAP_KEY configured.
+        """
+        body: dict[str, Any] = {"name": name, "bootstrap_key": bootstrap_key}
+        if location:
+            body["location"] = location
+        if capabilities:
+            body["capabilities"] = capabilities
+        if network_segments:
+            body["network_segments"] = network_segments
+        if public_key:
+            body["public_key"] = public_key
+
+        r = self._client.post("/agents/bootstrap", json=body)
+
+        if r.status_code == 403:
+            raise TransportError(
+                "Bootstrap is disabled on this manager (PROBE_BOOTSTRAP_KEY not set). "
+                "Set PROBE_BOOTSTRAP_KEY on the manager, or provide a PROBE_PAT."
+            )
+        if r.status_code == 401:
+            raise TransportError("Bootstrap key rejected by manager. Check PROBE_BOOTSTRAP_KEY.")
+        r.raise_for_status()
+        data = r.json()
+        self._agent_id = data["agent_id"]
+        self._agent_token = data["token"]
+        self.save_state()
+        return data
+
     def refresh_registration(
         self,
         *,

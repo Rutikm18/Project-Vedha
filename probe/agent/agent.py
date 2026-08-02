@@ -807,11 +807,27 @@ def _obtain_identity(
             say("Can't refresh cached capabilities yet — retrying.")
             time.sleep(10)
 
+    BOOTSTRAP_KEY = os.environ.get("PROBE_BOOTSTRAP_KEY", "")
+
     while True:
         try:
             if not operator_token:
+                # Try bootstrap key first (no admin login required)
+                if BOOTSTRAP_KEY:
+                    say("No PAT configured — using PROBE_BOOTSTRAP_KEY to self-register.", 1)
+                    data = transport.bootstrap(
+                        probe_name,
+                        bootstrap_key=BOOTSTRAP_KEY,
+                        location=location or None,
+                        capabilities=CAPABILITIES,
+                        network_segments=segments,
+                        public_key=public_key_b64,
+                    )
+                    return data["agent_id"], data["token"], True, \
+                           identity_sk, identity_pk, public_key_b64
+
                 if not email or not password:
-                    say("Setup needed: set OPERATOR_TOKEN/PROBE_PAT, or OPERATOR_EMAIL and OPERATOR_PASSWORD.")
+                    say("Setup needed: set PROBE_BOOTSTRAP_KEY, PROBE_PAT, or OPERATOR_EMAIL + OPERATOR_PASSWORD.")
                     raise SystemExit(1)
 
                 # Login as operator for development compatibility. Production

@@ -75,6 +75,11 @@ class Settings(BaseSettings):
     sla_hours_low: int = 720      # 30 days
     sla_hours_info: int = 0       # no SLA
 
+    # Probe bootstrap key — allows probes to self-register without admin login.
+    # Set PROBE_BOOTSTRAP_KEY in the manager's .env to a random secret string.
+    # Leave empty to disable (probes must use admin-issued PATs).
+    probe_bootstrap_key: str = ""
+
     # App
     app_env: str = "development"
     debug: bool = False
