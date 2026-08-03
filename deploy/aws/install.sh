@@ -576,7 +576,7 @@ export VEDHA_BACKEND_IMAGE="vedha-backend:$RELEASE_ID"
 export VEDHA_FRONTEND_IMAGE="vedha-frontend:$RELEASE_ID"
 
 COMPOSE_CMD=(docker compose
-  --project-directory "$APP_DIR"
+  --env-file "$APP_DIR/.env"
   -f "$APP_DIR/manager/docker-compose.yml"
   -f "$APP_DIR/deploy/aws/docker-compose.prod.yml"
   "${COMPOSE_PROFILES_ARGS[@]}"

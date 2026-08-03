@@ -118,7 +118,7 @@ probe-pat: ## Mint a probe-scoped PAT (vpat_...) to deploy a real probe. ARGS="-
 	@sh scripts/issue_pat.sh $(ARGS)
 
 # ── AWS / EC2 testing targets ─────────────────────────────────────────────────
-AWS_COMPOSE := docker compose --project-directory . -f manager/docker-compose.yml
+AWS_COMPOSE := docker compose --env-file .env -f manager/docker-compose.yml
 
 gen-env: ## Auto-generate .env with real random secrets (safe to re-run — skips existing values)
 	@bash scripts/gen-env.sh

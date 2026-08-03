@@ -50,7 +50,7 @@ if [ -z "$ADMIN_PASSWORD" ] && [ -f "$APP_DIR/.env" ]; then
   ADMIN_PASSWORD=$(grep -m1 '^SEED_ADMIN_PASSWORD=' "$APP_DIR/.env" | cut -d= -f2- || true)
 fi
 
-COMPOSE_CMD=(docker compose --project-directory "$APP_DIR"
+COMPOSE_CMD=(docker compose --env-file "$APP_DIR/.env"
   -f "$APP_DIR/manager/docker-compose.yml"
   -f "$APP_DIR/deploy/aws/docker-compose.prod.yml")
 
