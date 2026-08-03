@@ -180,10 +180,8 @@ services:
       - "*"
       - --timeout-graceful-shutdown
       - "30"
-    # SECURITY: bind to 127.0.0.1 only — Caddy reaches this via compose network.
-    # Do NOT change to 0.0.0.0 — that exposes the raw API past the reverse proxy.
     ports:
-      - "127.0.0.1:${API_PORT:-18080}:8000"
+      - "${API_BIND:-0.0.0.0}:${API_PORT:-18080}:8000"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:
@@ -284,7 +282,7 @@ services:
       NODE_ENV: production
     # SECURITY: bind to 127.0.0.1 — Caddy reaches frontend over compose network.
     ports:
-      - "127.0.0.1:${FRONTEND_PORT:-3000}:3000"
+      - "${FRONTEND_BIND:-0.0.0.0}:${FRONTEND_PORT:-3000}:3000"
     extra_hosts:
       - "host.docker.internal:host-gateway"
     depends_on:

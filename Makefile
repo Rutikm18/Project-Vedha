@@ -7,7 +7,7 @@ COMPOSE := docker compose
 # it into the backend image via the VEDHA_VERSION build arg.
 export VEDHA_VERSION := $(shell cat VERSION 2>/dev/null || echo dev)
 
-.PHONY: help doctor run full ui up up-graph up-ai api-only down logs ps migrate seed shell venv test probe-build probe-run probe-pat clean version setup-hooks
+.PHONY: help doctor run full ui up up-graph up-ai api-only down logs ps migrate seed shell venv test probe-build probe-run probe-pat clean version setup-hooks aws-up aws-up-ui aws-down aws-logs aws-ps gen-env
 
 version: ## Print the current deployed version
 	@echo $(VEDHA_VERSION)
@@ -116,3 +116,38 @@ probe-run: ## Start a local probe (joins the stack, self-registers)
 
 probe-pat: ## Mint a probe-scoped PAT (vpat_...) to deploy a real probe. ARGS="--days 90"
 	@sh scripts/issue_pat.sh $(ARGS)
+
+# ── AWS / EC2 testing targets ─────────────────────────────────────────────────
+AWS_COMPOSE := docker compose -f manager/docker-compose.yml
+
+gen-env: ## Auto-generate .env with real random secrets (safe to re-run — skips existing values)
+	@bash scripts/gen-env.sh
+
+aws-up: gen-env ## AWS: auto-generate .env + build + start API stack (no TLS/Caddy)
+	$(AWS_COMPOSE) build api
+	$(AWS_COMPOSE) up -d
+	@aport=$$(grep -m1 '^API_PORT=' .env 2>/dev/null | cut -d= -f2); aport=$${aport:-18080}; \
+	 echo ""; \
+	 echo "  API     → http://<EC2-IP>:$$aport/health"; \
+	 echo "  Docs    → http://<EC2-IP>:$$aport/docs"; \
+	 echo "  Logs    → make aws-logs"; \
+	 echo "  Status  → make aws-ps"
+
+aws-up-ui: gen-env ## AWS: auto-generate .env + build + start API + frontend
+	$(AWS_COMPOSE) build api
+	$(AWS_COMPOSE) --profile ui build frontend
+	$(AWS_COMPOSE) --profile ui up -d
+	@aport=$$(grep -m1 '^API_PORT=' .env 2>/dev/null | cut -d= -f2); aport=$${aport:-18080}; \
+	 fport=$$(grep -m1 '^FRONTEND_PORT=' .env 2>/dev/null | cut -d= -f2); fport=$${fport:-3000}; \
+	 echo ""; \
+	 echo "  Dashboard → http://<EC2-IP>:$$fport"; \
+	 echo "  API       → http://<EC2-IP>:$$aport/health"
+
+aws-logs: ## Tail API + worker logs on AWS
+	$(AWS_COMPOSE) logs -f api worker
+
+aws-ps: ## Show AWS stack container status
+	$(AWS_COMPOSE) ps
+
+aws-down: ## Stop the AWS stack (keeps volumes / data)
+	$(AWS_COMPOSE) --profile ui down
