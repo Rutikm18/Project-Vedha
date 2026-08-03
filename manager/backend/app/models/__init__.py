@@ -6,6 +6,7 @@ from app.models.finding import Finding
 from app.models.attack_path import AttackPath
 from app.models.detection import DetectionResult
 from app.models.scan_job import ScanJob
+from app.models.scan_job_attempt import ScanJobAttempt
 from app.models.scan_result import ScanResult
 from app.models.service import Service
 from app.models.agent import Agent
@@ -19,12 +20,15 @@ from app.models.outbox import OutboxEvent
 from app.models.detection_run import DetectionRun
 from app.models.agent_recommendation import AgentRecommendation
 from app.models.personal_access_token import PersonalAccessToken
+from app.models.probe_site import ProbeSite
+from app.models.probe_enrollment import ProbeEnrollmentRequest, AgentCredential
 
 __all__ = [
     "Tenant", "User", "Engagement", "Asset",
-    "Finding", "AttackPath", "DetectionResult", "ScanJob", "ScanResult",
+    "Finding", "AttackPath", "DetectionResult", "ScanJob", "ScanJobAttempt", "ScanResult",
     "Service", "Agent",
     "ExploitResult", "ExploitApprovalRequest", "AuditLog",
     "AttackTimeline", "DetectionConfig", "LLMOutput", "OutboxEvent",
     "DetectionRun", "AgentRecommendation", "PersonalAccessToken",
+    "ProbeSite", "ProbeEnrollmentRequest", "AgentCredential",
 ]

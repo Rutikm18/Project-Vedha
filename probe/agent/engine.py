@@ -363,12 +363,33 @@ def _build_run_stats(
     return stats, hosts
 
 
+class LeaseLostError(RuntimeError):
+    """Raised when Manager fencing revokes the running attempt."""
+
+
+async def _run_with_cancellation(coro, cancellation_event):
+    task = asyncio.create_task(coro)
+    try:
+        while True:
+            done, _ = await asyncio.wait({task}, timeout=0.1)
+            if task in done:
+                return await task
+            if cancellation_event is not None and cancellation_event.is_set():
+                task.cancel()
+                await asyncio.gather(task, return_exceptions=True)
+                raise LeaseLostError("job attempt lease was lost during execution")
+    finally:
+        if not task.done():
+            task.cancel()
+
+
 def run_scan(scan_type: str, params: dict,
              use_case_id: str | None = None,
              engagement_uuid: str | None = None,
              validated_scope: list[str] | None = None,
              validated_excludes: list[str] | None = None,
-             local_allowed_scope: list[str] | None = None) -> dict:
+             local_allowed_scope: list[str] | None = None,
+             cancellation_event=None) -> dict:
     """Execute a scan and return the enriched result bundle.
 
     Args:
@@ -597,17 +618,34 @@ def run_scan(scan_type: str, params: dict,
 
     try:
         asyncio.run(asyncio.wait_for(
-            run_engagement(
-                targets, scope, profile=profile,
-                service_filter=mode.service_filter,
-                stop_after_banner=mode.stop_after_banner,
-                stage_ceiling=mode.stage_ceiling,
-                cache=cache,
-                trace=trace,
-                **tuning,
+            _run_with_cancellation(
+                run_engagement(
+                    targets, scope, profile=profile,
+                    service_filter=mode.service_filter,
+                    stop_after_banner=mode.stop_after_banner,
+                    stage_ceiling=mode.stage_ceiling,
+                    cache=cache,
+                    trace=trace,
+                    **tuning,
+                ),
+                cancellation_event,
             ),
             timeout=job_runtime_seconds,
         ))
+    except LeaseLostError as exc:
+        error_msg = str(exc)
+        trace.finalize("Stopped because the Manager rejected the attempt fence.")
+        return _error_result(
+            scan_type,
+            error_msg,
+            error_code="attempt_lease_lost",
+            remediation="Wait for the Manager to issue a new fenced attempt.",
+            engagement_uuid=engagement_uuid,
+            use_case_id=use_case_id,
+            profile=profile,
+            facts=_facts_from_cache(cache),
+            errors=[error_msg],
+        )
     except asyncio.TimeoutError:
         error_msg = (
             f"job exceeded the {job_runtime_seconds:g}-second runtime ceiling"

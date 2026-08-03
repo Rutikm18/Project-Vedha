@@ -4,13 +4,13 @@ Agent registration, heartbeat, job polling, and result submission.
 import ipaddress
 import secrets
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 from typing import Annotated
 
 import structlog
 from fastapi import APIRouter, HTTPException, Request, status
-from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import select, update
+from pydantic import BaseModel, Field, field_validator, model_validator
+from sqlalchemy import select
 
 from app.auth.jwt import create_access_token
 from app.auth.rbac import require_role
@@ -146,12 +146,18 @@ def _job_reachability_scope(
     engagements are IP/CIDR-only and Manager/Probe DNS could disagree.
     ``None`` means a requested target was invalid or outside authorization.
     """
+    if not authoritative_scope:
+        # An engagement with no approved scope authorizes no network activity.
+        # Never reinterpret empty/NULL as unrestricted or trust job-supplied
+        # targets to create their own authorization boundary.
+        return None
+
     job_params = params or {}
     requested = job_params.get("targets")
     if requested is None:
         requested = job_params.get("target")
     if requested is None:
-        return list(authoritative_scope or [])
+        return list(authoritative_scope)
 
     values = [requested] if isinstance(requested, str) else requested
     if not isinstance(values, (list, tuple)) or not values:
@@ -160,7 +166,7 @@ def _job_reachability_scope(
     try:
         allowed = [
             ipaddress.ip_network(str(value).strip(), strict=False)
-            for value in (authoritative_scope or [])
+            for value in authoritative_scope
         ]
     except (ValueError, TypeError):
         return None
@@ -169,7 +175,7 @@ def _job_reachability_scope(
     try:
         for raw_value in values:
             if not isinstance(raw_value, str) or not raw_value.strip():
-                return list(authoritative_scope or [])
+                return list(authoritative_scope)
             value = raw_value.strip()
             if "-" in value:
                 start_raw, end_raw = (
@@ -189,7 +195,7 @@ def _job_reachability_scope(
     except (ValueError, TypeError):
         return None
 
-    if allowed and not all(
+    if not all(
         any(
             target.version == scope.version and target.subnet_of(scope)
             for scope in allowed
@@ -248,7 +254,17 @@ class AgentRegisterResponse(BaseModel):
 class HeartbeatRequest(BaseModel):
     agent_id: str
     current_job_id: str | None = None
+    attempt_id: uuid.UUID | None = None
+    fence: int | None = Field(default=None, ge=1)
     status: str = "online"
+
+    @model_validator(mode="after")
+    def require_fence_for_running_job(self):
+        if self.current_job_id and (self.attempt_id is None or self.fence is None):
+            raise ValueError("current_job_id requires attempt_id and fence")
+        if not self.current_job_id and (self.attempt_id is not None or self.fence is not None):
+            raise ValueError("attempt_id and fence require current_job_id")
+        return self
 
 
 class AgentRefreshRequest(BaseModel):
@@ -262,6 +278,8 @@ class AgentRefreshRequest(BaseModel):
 
 
 class JobResultRequest(BaseModel):
+    attempt_id: uuid.UUID
+    fence: int = Field(ge=1)
     success: bool
     result: dict = Field(default_factory=dict)
     error: str | None = None
@@ -478,6 +496,14 @@ async def bootstrap_agent(body: AgentBootstrapRequest, db: DB):
     disable this endpoint (returns 403).
     """
     settings = get_settings()
+    if not settings.allow_unsafe_legacy_probe_bootstrap:
+        raise HTTPException(
+            status_code=status.HTTP_410_GONE,
+            detail=(
+                "Legacy shared-secret probe bootstrap is disabled. "
+                "Use device enrollment or an explicitly supported legacy registration path."
+            ),
+        )
     bootstrap_key = settings.probe_bootstrap_key
 
     if not bootstrap_key:
@@ -639,6 +665,14 @@ async def list_agents(db: DB, current_user: AuthUser):
             "last_heartbeat": a.last_heartbeat.isoformat() if a.last_heartbeat else None,
             "current_job_id": str(a.current_job_id) if a.current_job_id else None,
             "online": online,
+            "site_id": str(a.site_id) if getattr(a, "site_id", None) else None,
+            "lifecycle_status": getattr(a, "lifecycle_status", "active"),
+            "credential_generation": getattr(a, "credential_generation", 0),
+            "approved_capabilities": getattr(a, "approved_capabilities", []) or [],
+            "approved_networks": getattr(a, "approved_networks", []) or [],
+            "agent_version": getattr(a, "agent_version", None),
+            "installer_version": getattr(a, "installer_version", None),
+            "build_digest": getattr(a, "build_digest", None),
         })
     return out
 
@@ -660,24 +694,29 @@ async def heartbeat(body: HeartbeatRequest, db: DB, request: Request):
         agent.status = AgentStatus(body.status)
     except ValueError:
         agent.status = AgentStatus.online
+    # Heartbeats always carry current_job_id. Persisting None is important: if
+    # we only write truthy IDs, completed probes remain stuck as "busy" forever.
+    agent.current_job_id = (
+        uuid.UUID(body.current_job_id) if body.current_job_id else None
+    )
     if body.current_job_id:
-        job_uuid = uuid.UUID(body.current_job_id)
-        agent.current_job_id = job_uuid
-        # Renew the lease on the job this probe is actively running, so the reaper
-        # doesn't requeue live work. Scoped to (job, this agent, running) so a probe
-        # can't extend a job it doesn't own or one already finished.
-        await db.execute(
-            update(ScanJob)
-            .where(
-                ScanJob.id == job_uuid,
-                ScanJob.agent_id == body.agent_id,
-                ScanJob.status == ScanJobStatus.running,
-            )
-            .values(lease_expires_at=now + timedelta(seconds=get_settings().job_lease_seconds))
+        job_uuid = agent.current_job_id
+        from app.services.job_attempt_service import renew_job_attempt
+        renewed = await renew_job_attempt(
+            db,
+            job_id=job_uuid,
+            attempt_id=body.attempt_id,
+            fence=body.fence,
+            agent_id=agent_id,
         )
+        if not renewed:
+            raise HTTPException(
+                status.HTTP_409_CONFLICT,
+                "Job attempt lease is stale or no longer current",
+            )
 
     await db.flush()
-    return {"ok": True}
+    return {"ok": True, "lease_valid": True}
 
 
 @router.post(
@@ -697,6 +736,13 @@ async def refresh_agent_registration(
     if agent is None:
         raise HTTPException(410, "Agent registration no longer exists")
 
+    if getattr(agent, "signing_key_fingerprint", None):
+        if agent.lifecycle_status != "active":
+            raise HTTPException(403, "Enrolled probe is not active")
+        if not set(body.capabilities).issubset(set(agent.approved_capabilities or [])):
+            raise HTTPException(422, "Reported capabilities exceed Manager-approved capabilities")
+        if not _scope_is_reachable(agent.approved_networks or [], body.network_segments):
+            raise HTTPException(422, "Reported networks exceed Manager-approved Site policy")
     agent.capabilities = body.capabilities
     agent.network_segments = body.network_segments
     if body.public_key:
@@ -710,7 +756,22 @@ async def refresh_agent_registration(
         capability_count=len(body.capabilities),
         segment_count=len(body.network_segments),
     )
-    return {"ok": True}
+    response = {"ok": True}
+    if getattr(agent, "site_id", None):
+        from app.models.probe_site import ProbeSite
+        from app.routers.probe_enrollment import _policy
+
+        site = (await db.execute(
+            select(ProbeSite).where(
+                ProbeSite.id == agent.site_id,
+                ProbeSite.tenant_id == agent.tenant_id,
+                ProbeSite.status == "active",
+            )
+        )).scalar_one_or_none()
+        if site is None:
+            raise HTTPException(403, "Probe Site is disabled or unavailable")
+        response["policy"] = _policy(site)
+    return response
 
 
 @router.get("/{agent_id}/jobs", summary="Agent polls for pending ScanJobs")
@@ -746,13 +807,10 @@ async def get_agent_jobs(
     )
     candidates = candidate_result.all()
 
-    # Conditional UPDATE is the claim primitive shared conceptually with the WS
-    # path. Under concurrent pollers only one transaction can change a row that
-    # is still pending and unassigned; losing pollers get rowcount == 0.
+    # A shared atomic claim primitive creates a separate immutable attempt row
+    # and installs its monotonically increasing fence on the logical job.
     claim_limit = max(0, min(int(limit), 100))
-    now = datetime.now(timezone.utc)
-    lease_until = now + timedelta(seconds=get_settings().job_lease_seconds)
-    jobs: list[ScanJob] = []
+    jobs: list[tuple[ScanJob, object]] = []
     for job, engagement in candidates:
         if len(jobs) >= claim_limit:
             break
@@ -762,32 +820,19 @@ async def get_agent_jobs(
         ):
             continue
 
-        claimed = (await db.execute(
-            update(ScanJob)
-            .where(
-                ScanJob.id == job.id,
-                ScanJob.status == ScanJobStatus.pending,
-                ScanJob.agent_id.is_(None),
-                ScanJob.engagement_id.in_(
-                    select(Engagement.id).where(
-                        Engagement.tenant_id == agent.tenant_id,
-                    )
-                ),
-            )
-            .values(
-                agent_id=str(agent_id),
-                status=ScanJobStatus.running,
-                started_at=now,
-                lease_expires_at=lease_until,
-            )
-            .execution_options(synchronize_session=False)
-        )).rowcount
-        if claimed:
-            jobs.append(job)
+        from app.services.job_attempt_service import claim_job_attempt
+        claim = await claim_job_attempt(
+            db,
+            job_id=job.id,
+            agent_id=agent_id,
+            tenant_id=agent.tenant_id,
+        )
+        if claim:
+            jobs.append((job, claim))
 
     # Build response — Phase 4: encrypt scope for this specific agent
     response_jobs = []
-    for j in jobs:
+    for j, claim in jobs:
         params = j.result or {}
         encrypted_scope = await _encrypt_scope_for_agent(db, str(agent_id), params)
         job_dict = {
@@ -796,6 +841,10 @@ async def get_agent_jobs(
             "job_type": j.job_type.value,
             "status": ScanJobStatus.running.value,
             "params": params,
+            "attempt_id": str(claim.attempt_id),
+            "attempt_number": claim.attempt_number,
+            "fence": claim.fence,
+            "lease_expires_at": claim.lease_expires_at.isoformat(),
         }
         if encrypted_scope:
             job_dict["encrypted_scope"] = encrypted_scope
@@ -1044,7 +1093,11 @@ async def submit_job_result(
     from app.services.job_result_service import process_job_result
     summary = await process_job_result(
         db, agent_id, job_id, body.success, body.result, body.error,
+        body.attempt_id, body.fence,
     )
     if not summary.get("ok"):
-        raise HTTPException(404, summary.get("error", "Job not found"))
+        raise HTTPException(
+            summary.get("status_code", 404),
+            summary.get("error", "Job not found"),
+        )
     return summary

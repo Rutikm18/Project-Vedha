@@ -27,7 +27,9 @@ from app.routers.engagements import router as eng_router
 from app.routers.exploits import router as exploits_router
 from app.routers.findings import router as findings_router
 from app.routers.health import router as health_router
+from app.routers.probe_enrollment import router as probe_enrollment_router
 from app.routers.vuln_scans import router as vuln_router
+from app.version import get_version
 
 settings = get_settings()
 
@@ -73,6 +75,9 @@ async def lifespan(app: FastAPI):
         logger.critical("vedha_api.startup_aborted", reason=str(exc))
         raise SystemExit(1) from exc
 
+    from app.dependencies import get_redis
+    await get_redis()
+
     yield
     logger.info("vedha_api.shutdown")
     await close_redis()
@@ -87,12 +92,15 @@ app = FastAPI(
         "Handles multi-tenant engagements, asset management, finding triage, "
         "attack path analysis, and detection coverage."
     ),
-    version="1.0.0",
+    version=get_version(),
     docs_url="/docs",
     redoc_url="/redoc",
     openapi_url="/openapi.json",
     lifespan=lifespan,
 )
+
+_GZIP_MAX_COMPRESSED_BYTES = 32 * 1024 * 1024    # 32 MB compressed input ceiling
+_GZIP_MAX_DECOMPRESSED_BYTES = 128 * 1024 * 1024  # 128 MB decompressed ceiling
 
 # ── gzip request decoding ─────────────────────────────────────────────────────
 # Probes gzip large scan-result payloads (a /24 sweep is MBs of JSON). Starlette
@@ -112,11 +120,19 @@ class GzipRequestMiddleware:
             return await self.app(scope, receive, send)
 
         # Buffer the full (compressed) body.
+        total_compressed = 0
         chunks: list[bytes] = []
         while True:
             msg = await receive()
             if msg["type"] == "http.request":
-                chunks.append(msg.get("body", b""))
+                chunk = msg.get("body", b"")
+                total_compressed += len(chunk)
+                if total_compressed > _GZIP_MAX_COMPRESSED_BYTES:
+                    return await JSONResponse(
+                        {"detail": "compressed request body too large"},
+                        status_code=413,
+                    )(scope, receive, send)
+                chunks.append(chunk)
                 if not msg.get("more_body", False):
                     break
             elif msg["type"] == "http.disconnect":
@@ -127,6 +143,12 @@ class GzipRequestMiddleware:
             # Not valid gzip — reject cleanly rather than corrupting the route.
             return await JSONResponse(
                 {"detail": "malformed gzip request body"}, status_code=400,
+            )(scope, receive, send)
+
+        if len(body) > _GZIP_MAX_DECOMPRESSED_BYTES:
+            return await JSONResponse(
+                {"detail": "decompressed request body too large"},
+                status_code=413,
             )(scope, receive, send)
 
         # Rewrite headers: drop content-encoding, fix content-length.
@@ -181,6 +203,7 @@ app.include_router(auth_router)
 app.include_router(eng_router)
 app.include_router(findings_router)
 app.include_router(agents_router)
+app.include_router(probe_enrollment_router)
 app.include_router(agent_ws_router)
 app.include_router(vuln_router)
 app.include_router(exploits_router)

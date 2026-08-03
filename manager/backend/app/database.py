@@ -8,9 +8,11 @@ settings = get_settings()
 
 engine = create_async_engine(
     settings.database_url,
-    pool_size=10,
-    max_overflow=20,
+    pool_size=settings.db_pool_size,
+    max_overflow=settings.db_max_overflow,
     pool_pre_ping=True,
+    pool_recycle=settings.db_pool_recycle,
+    pool_timeout=settings.db_pool_timeout,
     echo=settings.debug,
 )
 
@@ -29,8 +31,13 @@ AsyncSessionLocal = async_sessionmaker(
 # DATABASE_READ_URL — no code change needed when the replica appears.
 read_engine = (
     create_async_engine(
-        settings.database_read_url, pool_size=10, max_overflow=20,
-        pool_pre_ping=True, echo=settings.debug,
+        settings.database_read_url,
+        pool_size=settings.db_pool_size,
+        max_overflow=settings.db_max_overflow,
+        pool_pre_ping=True,
+        pool_recycle=settings.db_pool_recycle,
+        pool_timeout=settings.db_pool_timeout,
+        echo=settings.debug,
     )
     if settings.database_read_url
     else engine

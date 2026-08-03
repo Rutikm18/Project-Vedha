@@ -359,12 +359,11 @@ api.vedha.example.com  →  <elastic-ip>
 
 ```bash
 # Full post-deploy verification
-bash /opt/vedha/deploy/aws/verify.sh --full
+bash /opt/vedha/deploy/aws/verify.sh --mode full
 
 # Quick smoke test
 bash /opt/vedha/deploy/aws/verify.sh --mode smoke \
-  --admin-email admin@vedha.io \
-  --admin-password <password>
+  --admin-email admin@vedha.io
 
 # Manual health check
 curl -sS https://api.vedha.example.com/health -w '\nHTTP=%{http_code}\n'
@@ -470,7 +469,7 @@ Run before every production deployment:
 □  pg_dump cron job to S3 configured
 
 After deploy:
-□  bash /opt/vedha/deploy/aws/verify.sh --full → all checks pass
+□  bash /opt/vedha/deploy/aws/verify.sh --mode full → all checks pass
 □  Admin password rotated (first login → change password)
 □  docker exec vedha-api-1 python scripts/startup_validator.py → no errors
 □  ls /opt/vedha/ confirms probe/ is NOT present

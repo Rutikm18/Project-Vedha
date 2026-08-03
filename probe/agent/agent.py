@@ -30,8 +30,10 @@ import json
 import logging
 import os
 import random
+import secrets
 import socket
 import sys
+import threading
 import time
 from pathlib import Path
 from urllib.parse import urlparse
@@ -75,6 +77,17 @@ def say(msg: str = "", indent: int = 0) -> None:
     print(("  " * indent) + msg, flush=True)
 
 
+def _poll_jobs_or_empty(transport: Transport, limit: int) -> list[dict]:
+    """Return no work for transient poll failures without hiding auth failures."""
+    try:
+        return transport.poll_jobs(limit=limit)
+    except TransportError:
+        raise
+    except Exception as exc:
+        say(f"Manager unreachable — retrying ({exc})")
+        return []
+
+
 def main() -> None:
     # ── Load environment ──────────────────────────────────────────────────────
     _load_env(Path(__file__).resolve().parent.parent / "probe.env")
@@ -109,6 +122,12 @@ def main() -> None:
     VERIFY_TLS = os.environ.get("VERIFY_TLS", "true").lower() not in ("false", "0", "no")
     STATE_FILE = Path(os.environ.get("STATE_FILE", "/var/lib/vedha-probe/state.json"))
     SPOOL_DIR = Path(os.environ.get("RESULT_SPOOL_DIR", "/var/lib/vedha-probe/spool"))
+    SPOOL_MAX_BYTES = _bounded_env_int(
+        "RESULT_SPOOL_MAX_BYTES", 512 << 20, 1 << 20, 16 << 30,
+    )
+    SPOOL_MAX_FILES = _bounded_env_int(
+        "RESULT_SPOOL_MAX_FILES", 1024, 1, 100_000,
+    )
     # Secure transport (optional): a private-PKI CA bundle to trust, and an mTLS
     # client cert/key so the manager can authenticate the probe at the TLS layer.
     CA_BUNDLE = os.environ.get("PROBE_CA_BUNDLE") or None
@@ -126,13 +145,6 @@ def main() -> None:
     if not PLATFORM_URL:
         say("Setup needed: PLATFORM_URL is not set.")
         raise SystemExit(1)
-    if not NETWORK_SEGMENTS:
-        say(
-            "Setup needed: PROBE_NETWORK_SEGMENTS is empty. Set the explicit "
-            "authorized/reachable CIDR ceiling before starting this probe."
-        )
-        raise SystemExit(1)
-
     # ── Transport security posture (warn loudly, never silently downgrade) ────
     _is_local = _is_local_manager_url(PLATFORM_URL)
     if PLATFORM_URL.startswith("http://") and not _is_local:
@@ -168,13 +180,51 @@ def main() -> None:
         compress_over=COMPRESS_OVER,
     )
 
+    # Device-enrolled probes receive their local execution ceiling from the
+    # Manager-owned Site policy. An explicit environment value remains a
+    # further local restriction for legacy/air-gapped deployments.
+    if not NETWORK_SEGMENTS:
+        try:
+            stored_policy = transport.load_state().get("site_policy") or {}
+            NETWORK_SEGMENTS = list(stored_policy.get("authorized_cidrs") or [])
+        except (OSError, ValueError, TypeError):
+            NETWORK_SEGMENTS = []
+
     from agent.result_spool import ResultSpool
-    spool = ResultSpool(spool_dir=SPOOL_DIR)
+    spool = ResultSpool(
+        spool_dir=SPOOL_DIR,
+        max_bytes=SPOOL_MAX_BYTES,
+        max_files=SPOOL_MAX_FILES,
+    )
 
     # ── Step 3: Register / resume identity ──────────────────────────────────
     agent_id, token, fresh, identity_sk, identity_pk, _public_key_b64 = _obtain_identity(
         transport, OPERATOR_EMAIL, OPERATOR_PASSWORD, OPERATOR_TOKEN,
         PROBE_NAME, PROBE_LOCATION, NETWORK_SEGMENTS,
+    )
+    if not NETWORK_SEGMENTS:
+        try:
+            stored_policy = transport.load_state().get("site_policy") or {}
+            NETWORK_SEGMENTS = list(stored_policy.get("authorized_cidrs") or [])
+        except (OSError, ValueError, TypeError):
+            NETWORK_SEGMENTS = []
+    if not NETWORK_SEGMENTS:
+        say("Setup needed: the approved Site policy contains no authorized CIDRs.")
+        raise SystemExit(1)
+    try:
+        site_policy = transport.load_state().get("site_policy") or {}
+    except (OSError, ValueError, TypeError):
+        site_policy = {}
+    SITE_EXCLUDED_SEGMENTS = list(site_policy.get("excluded_cidrs") or [])
+    # Manager Site budgets can only tighten the appliance defaults.
+    from agent import engine as scan_engine
+    scan_engine.MAX_TARGETS = min(
+        scan_engine.MAX_TARGETS,
+        int(site_policy.get("max_targets") or scan_engine.MAX_TARGETS),
+    )
+    scan_engine.MAX_JOB_SECONDS = min(
+        scan_engine.MAX_JOB_SECONDS,
+        float(site_policy.get("max_job_seconds") or scan_engine.MAX_JOB_SECONDS),
     )
     action = "Registered" if fresh else "Resumed"
     say(f"{action} as '{PROBE_NAME}'.")
@@ -192,6 +242,7 @@ def main() -> None:
         spool_submit=spool.submit_with_retry,
         identity_sk=identity_sk,   # Phase 4: X25519 private key for scope decryption
         local_allowed_networks=NETWORK_SEGMENTS,
+        local_excluded_networks=SITE_EXCLUDED_SEGMENTS,
     )
 
     # ── Step 5: Try WebSocket push mode first ────────────────────────────────
@@ -230,16 +281,27 @@ def main() -> None:
     # ── Step 6: Main loop (HTTP polling — fallback) ──────────────────────────
     say("Waiting for scan jobs (HTTP polling)...")
     last_hb = 0.0
+    last_spool_warning = 0.0
 
     while True:
         now = time.monotonic()
+        jobs: list[dict] = []
         try:
             if now - last_hb >= HEARTBEAT_INTERVAL:
                 if not transport.heartbeat("online", None if not hasattr(runner, '_current_job') else None):
                     say("Heartbeat rejected (stale token).")
                 last_hb = now
 
-            jobs = transport.poll_jobs(limit=JOB_LIMIT)
+            if spool.at_capacity:
+                if now - last_spool_warning >= 60:
+                    say(
+                        "Result spool high-water mark reached "
+                        f"({spool.spool_count} files, {spool.spool_bytes} bytes); "
+                        "pausing new jobs until uploads recover."
+                    )
+                    last_spool_warning = now
+            else:
+                jobs = _poll_jobs_or_empty(transport, JOB_LIMIT)
 
         except TransportError:
             say("Token rejected — re-registering...")
@@ -254,10 +316,16 @@ def main() -> None:
             continue
         except Exception as exc:
             say(f"Manager unreachable — retrying ({exc})")
+            continue
 
         for job in jobs:
             # Mark busy before running
-            transport.heartbeat("busy", job.get("job_id"))
+            transport.heartbeat(
+                "busy",
+                job.get("job_id"),
+                job.get("attempt_id"),
+                job.get("fence"),
+            )
             try:
                 result = _run_polled_job_with_heartbeats(
                     transport,
@@ -273,6 +341,9 @@ def main() -> None:
             except Exception as exc:
                 LOG.exception("Job %s crashed runner", job.get("job_id"))
                 transport.submit_result(job.get("job_id", "?"), {
+                    "job_id": job.get("job_id", "?"),
+                    "attempt_id": job.get("attempt_id"),
+                    "fence": job.get("fence"),
                     "success": False, "result": {},
                     "error": f"Runner crashed: {exc}",
                 })
@@ -301,22 +372,37 @@ def _run_polled_job_with_heartbeats(
 ):
     """Run an HTTP-claimed job while renewing its manager lease."""
     job_id = job.get("job_id")
+    attempt_id = job.get("attempt_id")
+    fence = job.get("fence")
+    cancellation_event = threading.Event()
+    consecutive_failures = 0
+    failure_limit = _bounded_env_int("LEASE_LOSS_GRACE_HEARTBEATS", 3, 1, 10)
     interval = max(0.05, float(heartbeat_interval))
     with concurrent.futures.ThreadPoolExecutor(
         max_workers=1,
         thread_name_prefix="probe-job",
     ) as executor:
-        future = executor.submit(runner.run_job, job, agent_id)
+        future = executor.submit(
+            runner.run_job,
+            job,
+            agent_id,
+            cancellation_event=cancellation_event,
+        )
         while True:
             try:
                 return future.result(timeout=interval)
             except concurrent.futures.TimeoutError:
-                if not transport.heartbeat("busy", job_id):
+                if not transport.heartbeat("busy", job_id, attempt_id, fence):
+                    consecutive_failures += 1
                     say(
                         f"Lease heartbeat failed for running job {job_id}; "
-                        "the probe will keep retrying while preserving its result.",
+                        f"failure {consecutive_failures}/{failure_limit}.",
                         1,
                     )
+                    if consecutive_failures >= failure_limit:
+                        cancellation_event.set()
+                else:
+                    consecutive_failures = 0
 
 
 # ── P2: WebSocket push loop ────────────────────────────────────────────────
@@ -429,7 +515,8 @@ async def _run_ws_push_loop(
 
                     async with job_lock:
                         await _ws_run_job(ws, runner, agent_id, pending_job, job_state,
-                                          pushed=True)
+                                          pushed=True, transport=transport,
+                                          heartbeat_interval=heartbeat_interval)
                         await _flush_spool_over_http(transport, spool)
 
                 elif msg_type == "error":
@@ -499,7 +586,13 @@ def _ws_take_confirmed_job(message: dict, job_state: dict) -> dict | None:
             1,
         )
         return None
-    return pending_job
+    return {
+        **pending_job,
+        "attempt_id": message.get("attempt_id"),
+        "attempt_number": message.get("attempt_number"),
+        "fence": message.get("fence"),
+        "lease_expires_at": message.get("lease_expires_at"),
+    }
 
 
 async def _ws_run_job(
@@ -510,6 +603,8 @@ async def _ws_run_job(
     job_state: dict,
     *,
     pushed: bool,
+    transport: "Transport" | None = None,
+    heartbeat_interval: float = 30,
 ):
     """Run one job while keeping WS status/result frames best-effort."""
     job_id = job.get("job_id", "?")
@@ -519,16 +614,30 @@ async def _ws_run_job(
         say(f"▶ Poll fallback: job {job_id} ({job.get('job_type', '?')})")
 
     job_state["current_job_id"] = job_id
+    job_state["attempt_id"] = job.get("attempt_id")
+    job_state["fence"] = job.get("fence")
     await ws.send(json.dumps({
         "type": "heartbeat",
         "status": "busy",
         "current_job_id": job_id,
+        "attempt_id": job.get("attempt_id"),
+        "fence": job.get("fence"),
     }))
 
     try:
         # Run job in a thread — engine.run_scan() internally calls
         # asyncio.run(), which can't run inside an existing event loop.
-        result = await asyncio.to_thread(runner.run_job, job, agent_id)
+        if transport is not None:
+            result = await asyncio.to_thread(
+                _run_polled_job_with_heartbeats,
+                transport,
+                runner,
+                job,
+                agent_id,
+                heartbeat_interval=heartbeat_interval,
+            )
+        else:
+            result = await asyncio.to_thread(runner.run_job, job, agent_id)
 
         if result.error:
             say(f"  ✗ {result.error}", 1)
@@ -537,10 +646,14 @@ async def _ws_run_job(
         return result
     finally:
         job_state["current_job_id"] = None
+        job_state["attempt_id"] = None
+        job_state["fence"] = None
         await ws.send(json.dumps({
             "type": "heartbeat",
             "status": "online",
             "current_job_id": None,
+            "attempt_id": None,
+            "fence": None,
         }))
 
 
@@ -580,7 +693,8 @@ async def _ws_http_poll_fallback(
         async with job_lock:
             for job in jobs:
                 await _ws_run_job(ws, runner, agent_id, job, job_state,
-                                  pushed=False)
+                                  pushed=False, transport=transport,
+                                  heartbeat_interval=max(5, interval))
                 await _flush_spool_over_http(transport, spool)
 
 
@@ -599,6 +713,8 @@ async def _ws_heartbeat_sender(
                 "type": "heartbeat",
                 "status": "busy" if current_job_id else "online",
                 "current_job_id": current_job_id,
+                "attempt_id": (job_state or {}).get("attempt_id"),
+                "fence": (job_state or {}).get("fence"),
             }))
     except Exception:
         pass  # ws closed, task will be cancelled
@@ -761,6 +877,107 @@ def _load_or_create_identity(transport) -> tuple[bytes, bytes, str]:
     return identity_sk, identity_pk, public_key_b64
 
 
+def _load_or_create_signing_identity(transport) -> tuple[bytes, str]:
+    """Load or atomically create the probe's Ed25519 enrollment identity."""
+    from agent.device_identity import (
+        decode_key,
+        encode_key,
+        generate_signing_identity,
+        signing_public_from_private,
+    )
+
+    try:
+        state = transport.load_state()
+        if state.get("signing_identity_sk"):
+            private = decode_key(state["signing_identity_sk"])
+            public = signing_public_from_private(private)
+            return private, encode_key(public)
+    except (OSError, ValueError, TypeError):
+        pass
+
+    private, public = generate_signing_identity()
+    transport.update_state({
+        "signing_identity_sk": encode_key(private),
+        "signing_identity_pk": encode_key(public),
+    })
+    return private, encode_key(public)
+
+
+def _enroll_device(
+    transport: Transport,
+    *,
+    signing_private_key: bytes,
+    signing_public_key: str,
+    encryption_public_key: str,
+    probe_name: str,
+) -> dict:
+    """Request UI approval, poll, prove key possession, and activate."""
+    from agent.device_identity import sign_b64
+    from agent.engine import CAPABILITIES
+
+    state = transport.load_state()
+    request_id = state.get("enrollment_request_id")
+    device_secret = state.get("enrollment_device_secret")
+    poll_interval = 5
+    if not request_id or not device_secret:
+        response = transport.create_enrollment_request({
+            "signing_public_key": signing_public_key,
+            "encryption_public_key": encryption_public_key,
+            "nonce": secrets.token_urlsafe(24),
+            "hostname_hint": probe_name,
+            "platform": sys.platform,
+            "architecture": os.uname().machine if hasattr(os, "uname") else "unknown",
+            "agent_version": VERSION,
+            "installer_version": os.environ.get("PROBE_INSTALLER_VERSION", VERSION),
+            "build_digest": os.environ.get("PROBE_BUILD_DIGEST", "development-build"),
+            "capabilities": CAPABILITIES,
+        })
+        request_id = response["request_id"]
+        device_secret = response["device_secret"]
+        poll_interval = int(response.get("poll_interval_seconds") or 5)
+        transport.update_state({
+            "enrollment_request_id": request_id,
+            "enrollment_device_secret": device_secret,
+        })
+        verification_path = response.get("verification_path", "/fleet/enroll")
+        say("Probe enrollment approval required.")
+        say(f"  Open: {transport._base_url}{verification_path}")
+        say(f"  Enter code: {response['user_code']}")
+
+    while True:
+        try:
+            response = transport.poll_enrollment(str(request_id), str(device_secret))
+            state_name = response.get("state")
+            if state_name in {"awaiting_approval", "requested"}:
+                time.sleep(max(5, int(response.get("poll_interval_seconds") or poll_interval)))
+                continue
+            if state_name == "approved":
+                challenge = response.get("activation_challenge")
+                if not challenge:
+                    raise RuntimeError("approved enrollment omitted activation challenge")
+                message = f"vedha-enrollment:{request_id}:{challenge}"
+                return transport.activate_enrollment(
+                    str(request_id),
+                    str(device_secret),
+                    sign_b64(signing_private_key, message),
+                )
+            if state_name == "active":
+                challenge = response.get("activation_challenge")
+                message = f"vedha-enrollment:{request_id}:{challenge}"
+                return transport.activate_enrollment(
+                    str(request_id), str(device_secret), sign_b64(signing_private_key, message)
+                )
+            if state_name in {"denied", "expired"}:
+                transport.update_state(remove=("enrollment_request_id", "enrollment_device_secret"))
+                raise TransportError(f"Enrollment {state_name}: {response.get('reason', '')}".strip())
+            raise RuntimeError(f"unexpected enrollment state: {state_name}")
+        except TransportError:
+            raise
+        except Exception as exc:
+            say(f"Enrollment manager unavailable — retrying ({exc})")
+            time.sleep(10)
+
+
 def _obtain_identity(
     transport: Transport,
     email: str, password: str, operator_token: str,
@@ -777,6 +994,10 @@ def _obtain_identity(
     # Phase 4: generate/load X25519 identity BEFORE registration
     # (needed even when already authenticated so the caller has the keys)
     identity_sk, identity_pk, public_key_b64 = _load_or_create_identity(transport)
+    signing_sk, signing_public_key = _load_or_create_signing_identity(transport)
+    # Keep the device key in process memory for proactive short-lived token
+    # renewal. The raw private key is never sent to the Manager.
+    transport._device_signing_private_key = signing_sk
 
     # Refresh cached routing metadata with the agent's own token. This keeps
     # newly added scan capabilities routable without retaining bootstrap admin
@@ -784,13 +1005,32 @@ def _obtain_identity(
     if transport.is_authenticated():
         while True:
             try:
+                state = transport.load_state()
+            except (OSError, ValueError, TypeError):
+                state = {}
+            policy = state.get("site_policy") if isinstance(state, dict) else None
+            policy = policy if isinstance(policy, dict) else {}
+            approved_capabilities = policy.get("approved_capabilities")
+            if not isinstance(approved_capabilities, list):
+                approved_capabilities = CAPABILITIES
+            effective_capabilities = [
+                capability for capability in CAPABILITIES
+                if capability in approved_capabilities
+            ]
+            try:
                 refreshed = transport.refresh_registration(
-                    capabilities=CAPABILITIES,
+                    capabilities=effective_capabilities,
                     network_segments=segments,
                     public_key=public_key_b64,
                 )
             except TransportError:
-                say("Cached agent token was rejected — re-registering.")
+                if transport.refresh_device_access(signing_sk):
+                    say("Refreshed short-lived device access token.", 1)
+                    continue
+                if state.get("device_refresh_secret"):
+                    say("Device credential was revoked, expired, or disabled; stopping for administrator review.")
+                    raise SystemExit(1)
+                say("Cached agent token was rejected — identity requires re-enrollment.")
                 transport.clear_state()
                 break
 
@@ -812,6 +1052,16 @@ def _obtain_identity(
     while True:
         try:
             if not operator_token:
+                if not BOOTSTRAP_KEY and not (email and password):
+                    data = _enroll_device(
+                        transport,
+                        signing_private_key=signing_sk,
+                        signing_public_key=signing_public_key,
+                        encryption_public_key=public_key_b64,
+                        probe_name=probe_name,
+                    )
+                    return data["agent_id"], data["access_token"], True, \
+                           identity_sk, identity_pk, public_key_b64
                 # Try bootstrap key first (no admin login required)
                 if BOOTSTRAP_KEY:
                     say("No PAT configured — using PROBE_BOOTSTRAP_KEY to self-register.", 1)

@@ -16,39 +16,72 @@ worst case is a duplicate log line, not a double requeue.
 from __future__ import annotations
 
 import asyncio
+from datetime import datetime, timezone
 
 import structlog
-from sqlalchemy import func, update
+from sqlalchemy import func, select
 
 from app.config import get_settings
 from app.database import AsyncSessionLocal
 from app.models.scan_job import ScanJob
+from app.models.scan_job_attempt import ScanJobAttempt
 from app.models.enums import ScanJobStatus
 
 logger = structlog.get_logger()
 
 
+def expire_attempt(attempt, job, now: datetime) -> bool:
+    """Expire one fenced attempt; return True when the job may be retried."""
+    attempt.status = "expired"
+    attempt.ended_at = now
+    attempt.error = "lease expired before completion"
+    job.agent_id = None
+    job.lease_expires_at = None
+    job.current_attempt_id = None
+    if job.attempt_count >= job.max_attempts:
+        job.status = ScanJobStatus.failed
+        job.completed_at = now
+        prior = job.result if isinstance(job.result, dict) else {}
+        job.result = {
+            **prior,
+            "error": "maximum execution attempts exhausted after lease expiry",
+        }
+        return False
+
+    job.status = ScanJobStatus.pending
+    job.started_at = None
+    return True
+
+
 async def reap_once() -> list[str]:
-    """Requeue every running job whose lease has expired. Returns the job ids."""
+    """Expire current attempts and requeue only jobs within their retry budget."""
     async with AsyncSessionLocal() as db:
-        res = await db.execute(
-            update(ScanJob)
+        rows = (await db.execute(
+            select(ScanJobAttempt, ScanJob)
+            .join(ScanJob, ScanJob.current_attempt_id == ScanJobAttempt.id)
             .where(
                 ScanJob.status == ScanJobStatus.running,
-                ScanJob.lease_expires_at.isnot(None),
-                ScanJob.lease_expires_at < func.now(),   # DB clock — no app/DB skew
+                ScanJobAttempt.status == "running",
+                ScanJobAttempt.lease_expires_at < func.now(),
             )
-            .values(
-                status=ScanJobStatus.pending,
-                agent_id=None,
-                started_at=None,
-                lease_expires_at=None,
-            )
-            .returning(ScanJob.id)
-        )
-        ids = [str(row[0]) for row in res.fetchall()]
+            .order_by(ScanJobAttempt.lease_expires_at)
+            .limit(100)
+            .with_for_update(of=ScanJobAttempt, skip_locked=True)
+        )).all()
+
+        now = datetime.now(timezone.utc)
+        requeued: list[str] = []
+        for attempt, job in rows:
+            if not expire_attempt(attempt, job, now):
+                logger.error(
+                    "reaper.attempts_exhausted",
+                    job_id=str(job.id),
+                    attempt_count=job.attempt_count,
+                )
+            else:
+                requeued.append(str(job.id))
         await db.commit()
-        return ids
+        return requeued
 
 
 async def run_reaper(stop: asyncio.Event | None = None) -> None:

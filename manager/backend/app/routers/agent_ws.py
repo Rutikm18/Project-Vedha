@@ -20,14 +20,13 @@ pickup when no agent is connected via WS.
 from __future__ import annotations
 
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 import structlog
 from fastapi import APIRouter, WebSocket, WebSocketDisconnect
-from sqlalchemy import select, update
+from sqlalchemy import select
 
 from app.auth.jwt import decode_token
-from app.config import get_settings
 from app.database import AsyncSessionLocal
 from app.models.agent import Agent, AgentStatus
 from app.models.engagement import Engagement
@@ -49,7 +48,7 @@ async def _claim_pushed_job(
     agent_id: str,
     tenant_id: str,
     job_id: uuid.UUID,
-) -> tuple[bool, str]:
+) -> tuple[bool, str, object | None]:
     """Validate eligibility and atomically claim a WebSocket job offer."""
     from app.routers.agents import (
         AGENT_EXECUTABLE_TYPES,
@@ -60,7 +59,7 @@ async def _claim_pushed_job(
         agent_uuid = uuid.UUID(str(agent_id))
         tenant_uuid = uuid.UUID(str(tenant_id))
     except (ValueError, TypeError, AttributeError):
-        return False, "not_eligible"
+        return False, "not_eligible", None
 
     agent = (await db.execute(
         select(Agent).where(
@@ -69,7 +68,7 @@ async def _claim_pushed_job(
         )
     )).scalar_one_or_none()
     if agent is None:
-        return False, "not_eligible"
+        return False, "not_eligible", None
 
     row = (await db.execute(
         select(ScanJob, Engagement)
@@ -80,7 +79,7 @@ async def _claim_pushed_job(
         )
     )).one_or_none()
     if row is None:
-        return False, "not_available"
+        return False, "not_available", None
 
     job, engagement = row
     if (
@@ -94,34 +93,19 @@ async def _claim_pushed_job(
             engagement.scope_cidrs or [],
         )
     ):
-        return False, "not_eligible"
+        return False, "not_eligible", None
 
-    now = datetime.now(timezone.utc)
-    claimed = (await db.execute(
-        update(ScanJob)
-        .where(
-            ScanJob.id == job_id,
-            ScanJob.status == ScanJobStatus.pending,
-            ScanJob.agent_id.is_(None),
-            ScanJob.engagement_id.in_(
-                select(Engagement.id).where(
-                    Engagement.tenant_id == tenant_uuid,
-                )
-            ),
-        )
-        .values(
-            agent_id=agent_id,
-            status=ScanJobStatus.running,
-            started_at=now,
-            lease_expires_at=now
-            + timedelta(seconds=get_settings().job_lease_seconds),
-        )
-        .execution_options(synchronize_session=False)
-    )).rowcount
+    from app.services.job_attempt_service import claim_job_attempt
+    claim = await claim_job_attempt(
+        db,
+        job_id=job_id,
+        agent_id=agent_uuid,
+        tenant_id=tenant_uuid,
+    )
     await db.commit()
-    if not claimed:
-        return False, "claim_lost"
-    return True, "claimed"
+    if not claim:
+        return False, "claim_lost", None
+    return True, "claimed", claim
 
 
 # ── WebSocket endpoint ────────────────────────────────────────────────────────
@@ -192,6 +176,15 @@ async def agent_websocket_endpoint(websocket: WebSocket):
             await websocket.close(code=4004, reason="Agent not found")
             return
 
+        if payload.get("typ") == "device_access" and (
+            payload.get("aud") != "vedha-probe-api"
+            or agent.lifecycle_status != "active"
+            or agent.credential_generation != payload.get("credential_generation")
+        ):
+            logger.warning("agent.ws.device_credential_rejected", agent_id=agent_id)
+            await websocket.close(code=4003, reason="Device credential revoked, disabled, or stale")
+            return
+
         # Accept the connection
         await websocket.accept()
         await agent_ws_manager.register(agent_id, tenant_id, websocket)
@@ -218,6 +211,8 @@ async def agent_websocket_endpoint(websocket: WebSocket):
             if msg_type == "heartbeat":
                 status = data.get("status", "online")
                 current_job = data.get("current_job_id")
+                attempt_id_raw = data.get("attempt_id")
+                fence = data.get("fence")
                 await agent_ws_manager.record_heartbeat(agent_id, status, current_job)
 
                 # Also update DB (throttled — every heartbeat, but cheap: 1 row UPDATE)
@@ -231,21 +226,38 @@ async def agent_websocket_endpoint(websocket: WebSocket):
                             ag.status = AgentStatus(status)
                         except ValueError:
                             ag.status = AgentStatus.online
+                        ag.current_job_id = (
+                            uuid.UUID(current_job) if current_job else None
+                        )
                         if current_job:
-                            job_uuid = uuid.UUID(current_job)
-                            ag.current_job_id = job_uuid
-                            # Renew the lease on this agent's running job so the reaper
-                            # doesn't requeue live work (scoped to job + owner + running).
-                            await db.execute(
-                                update(ScanJob)
-                                .where(
-                                    ScanJob.id == job_uuid,
-                                    ScanJob.agent_id == agent_id,
-                                    ScanJob.status == ScanJobStatus.running,
-                                )
-                                .values(lease_expires_at=datetime.now(timezone.utc)
-                                        + timedelta(seconds=get_settings().job_lease_seconds))
+                            job_uuid = ag.current_job_id
+                            try:
+                                attempt_uuid = uuid.UUID(str(attempt_id_raw))
+                                fence_value = int(fence)
+                            except (ValueError, TypeError, AttributeError):
+                                await websocket.send_json({
+                                    "type": "lease_rejected",
+                                    "job_id": current_job,
+                                    "reason": "attempt_id and fence are required",
+                                })
+                                continue
+                            from app.services.job_attempt_service import renew_job_attempt
+                            renewed = await renew_job_attempt(
+                                db,
+                                job_id=job_uuid,
+                                attempt_id=attempt_uuid,
+                                fence=fence_value,
+                                agent_id=agent_uuid,
                             )
+                            if not renewed:
+                                await websocket.send_json({
+                                    "type": "lease_rejected",
+                                    "job_id": current_job,
+                                    "attempt_id": str(attempt_uuid),
+                                    "fence": fence_value,
+                                    "reason": "stale_or_expired",
+                                })
+                                continue
                         await db.commit()
 
             elif msg_type == "result":
@@ -256,10 +268,14 @@ async def agent_websocket_endpoint(websocket: WebSocket):
 
                 try:
                     job_uuid = uuid.UUID(job_id_str)
-                except (ValueError, AttributeError):
+                    attempt_uuid = uuid.UUID(str(data.get("attempt_id")))
+                    fence_value = int(data.get("fence"))
+                    if fence_value < 1:
+                        raise ValueError("fence must be positive")
+                except (ValueError, TypeError, AttributeError):
                     await websocket.send_json({
                         "type": "error",
-                        "message": f"Invalid job_id: {job_id_str}",
+                        "message": "Invalid job_id, attempt_id, or fence",
                     })
                     continue
 
@@ -269,15 +285,25 @@ async def agent_websocket_endpoint(websocket: WebSocket):
                     summary = await process_job_result(
                         db, uuid.UUID(agent_id), job_uuid,
                         success, result_dict, error_str,
+                        attempt_uuid,
+                        fence_value,
                     )
                     await db.commit()
 
-                await websocket.send_json({
-                    "type": "result_ack",
-                    "job_id": job_id_str,
-                    "assets_promoted": summary.get("assets_promoted", 0),
-                    "findings_created": summary.get("findings_created", 0),
-                })
+                if summary.get("ok"):
+                    await websocket.send_json({
+                        "type": "result_ack",
+                        "job_id": job_id_str,
+                        "assets_promoted": summary.get("assets_promoted", 0),
+                        "findings_created": summary.get("findings_created", 0),
+                    })
+                else:
+                    await websocket.send_json({
+                        "type": "result_rejected",
+                        "job_id": job_id_str,
+                        "reason": summary.get("error", "result rejected"),
+                        "permanent": bool(summary.get("permanent_rejection")),
+                    })
 
                 # Mark agent back to online after result
                 await agent_ws_manager.record_heartbeat(agent_id, "online", None)
@@ -287,6 +313,7 @@ async def agent_websocket_endpoint(websocket: WebSocket):
                 accepted = data.get("accepted", False)
                 claimed = False
                 reason = "declined"
+                claim = None
 
                 try:
                     job_uuid = uuid.UUID(job_id_str)
@@ -296,7 +323,7 @@ async def agent_websocket_endpoint(websocket: WebSocket):
                     if accepted:
                         try:
                             async with AsyncSessionLocal() as db:
-                                claimed, reason = await _claim_pushed_job(
+                                claimed, reason, claim = await _claim_pushed_job(
                                     db, agent_id, tenant_id, job_uuid,
                                 )
                         except Exception as exc:
@@ -315,6 +342,12 @@ async def agent_websocket_endpoint(websocket: WebSocket):
                     "job_id": job_id_str,
                     "claimed": claimed,
                     "reason": reason,
+                    **({
+                        "attempt_id": str(claim.attempt_id),
+                        "attempt_number": claim.attempt_number,
+                        "fence": claim.fence,
+                        "lease_expires_at": claim.lease_expires_at.isoformat(),
+                    } if claim else {}),
                 })
 
                 if claimed:

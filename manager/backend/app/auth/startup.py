@@ -96,14 +96,22 @@ class StartupAbortError(RuntimeError):
 # ── Individual checks ─────────────────────────────────────────────────────────
 
 async def _check_database() -> CheckResult:
-    try:
-        async with AsyncSessionLocal() as db:
-            await asyncio.wait_for(db.execute(text("SELECT 1")), timeout=5)
-        return CheckResult("database", "ok", "reachable")
-    except asyncio.TimeoutError:
-        return CheckResult("database", "fatal", "connection timed out after 5s")
-    except Exception as exc:
-        return CheckResult("database", "fatal", f"connection failed: {exc}")
+    last_exc: Exception | None = None
+    msg = ""
+    for attempt in range(1, 4):
+        try:
+            async with AsyncSessionLocal() as db:
+                await asyncio.wait_for(db.execute(text("SELECT 1")), timeout=5)
+            return CheckResult("database", "ok", "reachable")
+        except asyncio.TimeoutError:
+            last_exc = None
+            msg = "connection timed out after 5s"
+        except Exception as exc:
+            last_exc = exc
+            msg = f"connection failed: {exc}"
+        if attempt < 3:
+            await asyncio.sleep(2)
+    return CheckResult("database", "fatal", f"unreachable after 3 attempts: {msg}")
 
 
 async def _check_redis() -> CheckResult:

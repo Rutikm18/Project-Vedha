@@ -28,12 +28,22 @@ while [[ $# -gt 0 ]]; do
   case "$1" in
     --api-url)       API_URL="$2";       shift 2 ;;
     --admin-email)   ADMIN_EMAIL="$2";   shift 2 ;;
-    --admin-password) ADMIN_PASSWORD="$2"; shift 2 ;;
+    --admin-password)
+      echo "--admin-password is unsafe because process arguments are observable; use --admin-password-file or APP_DIR/.env" >&2
+      exit 1 ;;
+    --admin-password-file)
+      ADMIN_PASSWORD="$(<"$2")"; shift 2 ;;
     --mode)          MODE="$2";          shift 2 ;;
+    --full)          MODE="full";        shift ;;
     --app-dir)       APP_DIR="$2";       shift 2 ;;
     *) echo "unknown arg: $1"; exit 1 ;;
   esac
 done
+
+case "$MODE" in
+  smoke|full) ;;
+  *) echo "invalid --mode: $MODE (expected smoke or full)" >&2; exit 1 ;;
+esac
 
 # If password not passed, read from .env
 if [ -z "$ADMIN_PASSWORD" ] && [ -f "$APP_DIR/.env" ]; then
@@ -251,11 +261,25 @@ fi
 section "Authentication"
 
 if [ -n "$ADMIN_PASSWORD" ]; then
+  if ! command -v jq >/dev/null 2>&1; then
+    fail "admin login: jq is required to encode credentials safely"
+    LOGIN_PAYLOAD=""
+  else
+    LOGIN_PAYLOAD=$(jq -n \
+      --arg email "$ADMIN_EMAIL" \
+      --arg password "$ADMIN_PASSWORD" \
+      '{email:$email,password:$password}')
+  fi
+  if [ -z "$LOGIN_PAYLOAD" ]; then
+    LOGIN_RESPONSE=$'\n000'
+  else
   LOGIN_RESPONSE=$(curl -s -w '\n%{http_code}' --max-time 10 \
     -X POST "${API_URL}/auth/login" \
     -H "Content-Type: application/json" \
-    -d "{\"email\":\"${ADMIN_EMAIL}\",\"password\":\"${ADMIN_PASSWORD}\"}" \
+    --data-binary @- \
+    <<<"$LOGIN_PAYLOAD" \
     2>/dev/null || echo -e "\n000")
+  fi
   LOGIN_STATUS=$(echo "$LOGIN_RESPONSE" | tail -1)
   LOGIN_BODY=$(echo "$LOGIN_RESPONSE" | head -1)
 

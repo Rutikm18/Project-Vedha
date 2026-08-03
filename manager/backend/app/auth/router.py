@@ -6,7 +6,6 @@ from typing import Annotated
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from passlib.context import CryptContext
-from passlib.exc import PasslibError
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -98,7 +97,10 @@ async def _authenticate(email: str, password: str, db: AsyncSession) -> User:
     # ── bcrypt verify ─────────────────────────────────────────────────────
     try:
         match = _pwd.verify(password, user.hashed_password)
-    except PasslibError as exc:
+    except (ValueError, TypeError, RuntimeError) as exc:
+        # passlib 1.7.4 has no single base error: verify() raises ValueError
+        # (malformed/unknown hash, oversized password), TypeError (bad password
+        # type), or RuntimeError (Internal/MissingBackendError). Catch all three.
         raise BcryptFailureError(f"bcrypt raised for user {user.id}: {exc}") from exc
 
     if not match:

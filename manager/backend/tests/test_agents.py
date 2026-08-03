@@ -62,7 +62,11 @@ class TestEnqueueAgentJob:
     async def test_success_creates_pending_job(self):
         db = MagicMock()
         db.execute = AsyncMock(return_value=MagicMock(
-            scalar_one_or_none=lambda: SimpleNamespace(id=uuid.uuid4(), rules_of_engagement=None, scope_cidrs=None)))
+            scalar_one_or_none=lambda: SimpleNamespace(
+                id=uuid.uuid4(),
+                rules_of_engagement=None,
+                scope_cidrs=["10.0.0.0/8"],
+            )))
         db.add = MagicMock()
         db.flush = AsyncMock()
         db.refresh = AsyncMock()
@@ -80,6 +84,8 @@ class TestEnqueueAgentJob:
             "targets": ["10.0.1.0/24"],
             "ports": "1-1024",
             "scan_type": "discovery",
+            "scope_cidrs": ["10.0.0.0/8"],
+            "_scope_cidrs": ["10.0.0.0/8"],
         }
         db.commit.assert_awaited_once()
 
@@ -88,7 +94,7 @@ class TestEnqueueAgentJob:
         engagement = SimpleNamespace(
             id=uuid.uuid4(),
             rules_of_engagement=None,
-            scope_cidrs=None,
+            scope_cidrs=["10.0.0.0/8"],
         )
         db = MagicMock()
         db.execute = AsyncMock(return_value=MagicMock(
@@ -157,7 +163,11 @@ class TestOTProfileGate:
 
     @pytest.mark.asyncio
     async def test_blocks_active_scan_type_on_ot_engagement(self):
-        eng = SimpleNamespace(id=uuid.uuid4(), rules_of_engagement={"scan_profile": "ot"})
+        eng = SimpleNamespace(
+            id=uuid.uuid4(),
+            rules_of_engagement={"scan_profile": "ot"},
+            scope_cidrs=["10.0.0.0/8"],
+        )
         db = MagicMock()
         db.execute = AsyncMock(return_value=MagicMock(scalar_one_or_none=lambda: eng))
         body = ag.EnqueueJobRequest(engagement_id=uuid.uuid4(), job_type=ScanJobType.discovery)
@@ -170,7 +180,11 @@ class TestOTProfileGate:
     async def test_blocks_explicit_active_scan_type_override_on_ot_engagement(self):
         # Even an explicit params.scan_type override can't escape the gate —
         # it must check the RESOLVED scan_type, not just the coarse job_type.
-        eng = SimpleNamespace(id=uuid.uuid4(), rules_of_engagement={"scan_profile": "ot"})
+        eng = SimpleNamespace(
+            id=uuid.uuid4(),
+            rules_of_engagement={"scan_profile": "ot"},
+            scope_cidrs=["10.0.0.0/8"],
+        )
         db = MagicMock()
         db.execute = AsyncMock(return_value=MagicMock(scalar_one_or_none=lambda: eng))
         body = ag.EnqueueJobRequest(engagement_id=uuid.uuid4(), job_type=ScanJobType.discovery,
@@ -181,7 +195,11 @@ class TestOTProfileGate:
 
     @pytest.mark.asyncio
     async def test_allows_passive_discovery_on_ot_engagement(self):
-        eng = SimpleNamespace(id=uuid.uuid4(), rules_of_engagement={"scan_profile": "ot"}, scope_cidrs=None)
+        eng = SimpleNamespace(
+            id=uuid.uuid4(),
+            rules_of_engagement={"scan_profile": "ot"},
+            scope_cidrs=["10.0.0.0/8"],
+        )
         db = MagicMock()
         db.execute = AsyncMock(return_value=MagicMock(scalar_one_or_none=lambda: eng))
         db.add = MagicMock(); db.flush = AsyncMock(); db.refresh = AsyncMock()
@@ -195,7 +213,11 @@ class TestOTProfileGate:
     async def test_it_and_iot_profiles_unaffected(self):
         for profile in ("it", "iot", None):
             roe = {"scan_profile": profile} if profile else None
-            eng = SimpleNamespace(id=uuid.uuid4(), rules_of_engagement=roe, scope_cidrs=None)
+            eng = SimpleNamespace(
+                id=uuid.uuid4(),
+                rules_of_engagement=roe,
+                scope_cidrs=["10.0.0.0/8"],
+            )
             db = MagicMock()
             db.execute = AsyncMock(return_value=MagicMock(scalar_one_or_none=lambda: eng))
             db.add = MagicMock(); db.flush = AsyncMock(); db.refresh = AsyncMock()
@@ -291,14 +313,20 @@ class TestGetAgentJobs:
         db.execute = AsyncMock(side_effect=[
             MagicMock(scalar_one_or_none=lambda: agent),
             MagicMock(all=lambda: [(job, engagement)]),
-            SimpleNamespace(rowcount=1),
+            MagicMock(first=lambda: (1, 1)),
         ])
+        db.flush = AsyncMock()
 
         out = await ag.get_agent_jobs(agent.id, db, limit=1)
         assert len(out) == 1
         assert out[0]["params"] == {"targets": ["10.0.0.0/24"]}
         assert out[0]["job_type"] == "discovery"
         assert out[0]["status"] == "running"
+        assert out[0]["attempt_number"] == 1
+        assert out[0]["fence"] == 1
+        assert uuid.UUID(out[0]["attempt_id"])
+        db.add.assert_called_once()
+        db.flush.assert_awaited_once()
 
         candidate_query = db.execute.await_args_list[1].args[0]
         claim_query = db.execute.await_args_list[2].args[0]
@@ -434,6 +462,26 @@ class TestAgentJobCompatibility:
             capabilities=["discovery"],
             network_segments=[],
         )
+
+    @pytest.mark.parametrize("authoritative_scope", [None, []])
+    def test_missing_authoritative_scope_never_uses_job_targets_as_authority(
+        self, authoritative_scope,
+    ):
+        agent = SimpleNamespace(
+            capabilities=["discovery"],
+            network_segments=["0.0.0.0/0"],
+        )
+
+        assert ag._job_reachability_scope(
+            {"targets": ["192.0.2.10"]},
+            authoritative_scope,
+        ) is None
+        assert not ag._agent_can_execute_job(
+            agent,
+            ScanJobType.discovery,
+            {"targets": ["192.0.2.10"]},
+            authoritative_scope,
+        )
         assert not ag._agent_can_execute_job(
             agent,
             ScanJobType.discovery,
@@ -519,6 +567,69 @@ class TestListAgents:
 
         assert out[0]["status"] == "offline"
         assert out[0]["online"] is False
+
+
+# ── heartbeat lifecycle ─────────────────────────────────────────────────────────
+
+class TestHeartbeat:
+
+    @pytest.mark.asyncio
+    async def test_online_heartbeat_clears_completed_job(self):
+        agent_id = uuid.uuid4()
+        agent = SimpleNamespace(
+            id=agent_id,
+            status=ag.AgentStatus.busy,
+            current_job_id=uuid.uuid4(),
+            last_heartbeat=None,
+        )
+        db = MagicMock()
+        db.execute = AsyncMock(
+            return_value=MagicMock(scalar_one_or_none=lambda: agent)
+        )
+        db.flush = AsyncMock()
+        request = SimpleNamespace(state=SimpleNamespace(user_id=str(agent_id)))
+
+        out = await ag.heartbeat(
+            ag.HeartbeatRequest(
+                agent_id=str(agent_id),
+                status="online",
+                current_job_id=None,
+            ),
+            db,
+            request,
+        )
+
+        assert out == {"ok": True, "lease_valid": True}
+        assert agent.status is ag.AgentStatus.online
+        assert agent.current_job_id is None
+        db.flush.assert_awaited_once()
+
+
+# ── legacy bootstrap containment ────────────────────────────────────────────────
+
+class TestLegacyBootstrap:
+
+    @pytest.mark.asyncio
+    async def test_shared_secret_bootstrap_is_disabled_by_default(self, monkeypatch):
+        monkeypatch.setattr(
+            ag,
+            "get_settings",
+            lambda: SimpleNamespace(
+                allow_unsafe_legacy_probe_bootstrap=False,
+                probe_bootstrap_key="configured-but-must-not-enable-route",
+            ),
+        )
+
+        with pytest.raises(HTTPException) as exc:
+            await ag.bootstrap_agent(
+                ag.AgentBootstrapRequest(
+                    bootstrap_key="configured-but-must-not-enable-route",
+                    name="probe-1",
+                ),
+                MagicMock(),
+            )
+
+        assert exc.value.status_code == 410
 
 
 # ── register_agent: idempotency + long-lived token (regression for the 115-dup bug) ──

@@ -16,6 +16,11 @@ RUN pip install --no-cache-dir -r requirements-core.txt \
     && if [ "$INSTALL_EXTRAS" = "1" ]; then pip install --no-cache-dir -r requirements-extras.txt; fi
 
 FROM deps AS runner
+# Deployed version, injected from the repo-root VERSION file via the
+# VEDHA_VERSION build arg (see docker-compose.yml / Makefile). Surfaced at
+# runtime by app.version.get_version() and GET /health.
+ARG VEDHA_VERSION=dev
+ENV VEDHA_VERSION=$VEDHA_VERSION
 COPY . .
 
 # P1: bake detection_engine (+ its pinned vuln/KEV/EPSS snapshots) INTO the

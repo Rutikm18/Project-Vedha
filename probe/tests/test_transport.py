@@ -168,6 +168,86 @@ class TestRegister:
         assert call_json["public_key"] == "base64pubkey=="
 
 
+class TestDeviceEnrollment:
+    def test_activation_persists_recoverable_device_credential(self, transport):
+        response = MagicMock(status_code=200)
+        response.json.return_value = {
+            "agent_id": "agent-device-1",
+            "access_token": "short-access-token",
+            "refresh_secret": "refresh-secret-value",
+            "credential_generation": 2,
+            "policy": {
+                "authorized_cidrs": ["10.0.0.0/24"],
+                "approved_capabilities": ["discovery"],
+            },
+            "access_expires_in_seconds": 600,
+        }
+        transport._client.post.return_value = response
+        transport.update_state({
+            "enrollment_request_id": "request-1",
+            "enrollment_device_secret": "device-secret-value",
+            "identity_sk": "keep-me",
+        })
+
+        with patch(
+            "agent.device_identity.verify_site_policy",
+            return_value="policy-public-key",
+        ):
+            result = transport.activate_enrollment(
+                "request-1", "device-secret-value", "signature-value"
+            )
+
+        saved = transport.load_state()
+        assert result["agent_id"] == "agent-device-1"
+        assert saved["device_refresh_secret"] == "refresh-secret-value"
+        assert saved["credential_generation"] == 2
+        assert saved["site_policy"]["authorized_cidrs"] == ["10.0.0.0/24"]
+        assert saved["policy_signing_public_key"] == "policy-public-key"
+        assert saved["identity_sk"] == "keep-me"
+        assert "enrollment_request_id" not in saved
+        assert "enrollment_device_secret" not in saved
+
+    def test_legacy_token_is_not_forced_through_device_refresh(self, transport):
+        transport.agent_id = "legacy-agent"
+        transport.agent_token = "legacy-token"
+        transport._device_signing_private_key = b"x" * 32
+        transport.update_state({"agent_id": "legacy-agent", "token": "legacy-token"})
+
+        with patch.object(transport, "refresh_device_access") as refresh:
+            assert transport.ensure_device_access() is True
+            refresh.assert_not_called()
+
+    def test_device_refresh_signs_unique_nonce_and_rotates_access_token(self, transport):
+        from agent.device_identity import generate_signing_identity
+
+        signing_private, _ = generate_signing_identity()
+        transport.agent_id = "11111111-1111-1111-1111-111111111111"
+        transport.agent_token = "expired-access"
+        transport.update_state({
+            "agent_id": transport.agent_id,
+            "token": transport.agent_token,
+            "device_refresh_secret": "refresh-secret-value",
+            "credential_generation": 3,
+            "access_expires_at": 0,
+        })
+        response = MagicMock(status_code=200)
+        response.json.return_value = {
+            "access_token": "rotated-access",
+            "access_expires_in_seconds": 600,
+        }
+        transport._client.post.return_value = response
+
+        assert transport.refresh_device_access(signing_private) is True
+
+        request = transport._client.post.call_args.kwargs["json"]
+        assert request["agent_id"] == transport.agent_id
+        assert request["generation"] == 3
+        assert request["nonce"]
+        assert request["signature"]
+        assert transport.agent_token == "rotated-access"
+        assert transport.load_state()["token"] == "rotated-access"
+
+
 class TestRefreshRegistration:
 
     def test_cached_agent_refreshes_capabilities(self, transport):
@@ -238,10 +318,12 @@ class TestHeartbeat:
         mock_resp = MagicMock(status_code=200)
         transport._client.post.return_value = mock_resp
 
-        transport.heartbeat("busy", "job-123")
+        transport.heartbeat("busy", "job-123", "attempt-123", 4)
         call_json = transport._client.post.call_args[1]["json"]
         assert call_json["status"] == "busy"
         assert call_json["current_job_id"] == "job-123"
+        assert call_json["attempt_id"] == "attempt-123"
+        assert call_json["fence"] == 4
 
 
 class TestPollJobs:
@@ -324,15 +406,27 @@ class TestSubmitResult:
         result = transport.submit_result("job-1", {"success": True})
         assert result is False
 
-    def test_client_errors_return_false_no_data_loss(self, transport):
+    def test_retryable_client_errors_return_false_no_data_loss(self, transport):
         # 4xx must NOT be treated as success — otherwise the caller deletes the
         # spooled result and scan data is lost (401=expired token, 413=too large,
         # 422=validation). Regression guard for the <500 == success bug.
         transport.agent_id = "abc"
         transport.agent_token = "tok"
-        for code in (400, 401, 403, 404, 409, 413, 422):
+        for code in (401, 403, 413):
             transport._client.post.return_value = MagicMock(status_code=code)
             assert transport.submit_result("job-1", {"success": True}) is False, code
+
+    def test_permanent_client_errors_are_marked_for_quarantine(self, transport):
+        from agent.result_spool import PERMANENT_REJECTION
+
+        transport.agent_id = "abc"
+        transport.agent_token = "tok"
+        for code in (400, 404, 409, 422):
+            transport._client.post.return_value = MagicMock(status_code=code)
+            assert (
+                transport.submit_result("job-1", {"success": True})
+                == PERMANENT_REJECTION
+            ), code
 
     def test_2xx_variants_return_true(self, transport):
         transport.agent_id = "abc"

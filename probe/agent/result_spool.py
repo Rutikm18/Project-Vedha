@@ -21,6 +21,7 @@ from typing import Any, Callable
 
 LOG = logging.getLogger("spool")
 _SAFE_JOB_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
+PERMANENT_REJECTION = "permanent_rejection"
 
 
 class ResultSpool:
@@ -31,10 +32,18 @@ class ResultSpool:
         spool_dir: str | Path,
         max_retries: int = 5,
         retry_delay_sec: float = 15.0,
+        max_bytes: int = 512 << 20,
+        max_files: int = 1024,
     ):
         self.spool_dir = Path(spool_dir)
         self.max_retries = max_retries
         self.retry_delay_sec = retry_delay_sec
+        if max_bytes <= 0:
+            raise ValueError("max_bytes must be positive")
+        if max_files <= 0:
+            raise ValueError("max_files must be positive")
+        self.max_bytes = max_bytes
+        self.max_files = max_files
 
     # ── Save ──────────────────────────────────────────────────────────────────
 
@@ -103,6 +112,18 @@ class ResultSpool:
         self._path(job_id).unlink(missing_ok=True)
         self._sync_directory()
 
+    def quarantine(self, job_id: str) -> Path:
+        """Move a terminally rejected result out of the retry queue."""
+        source = self._path(job_id)
+        rejected_dir = self.spool_dir / "rejected"
+        rejected_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
+        if os.name == "posix":
+            os.chmod(rejected_dir, 0o700)
+        destination = rejected_dir / source.name
+        os.replace(source, destination)
+        self._sync_directory()
+        return destination
+
     # ── Upload with retry ─────────────────────────────────────────────────────
 
     def submit_with_retry(
@@ -128,7 +149,15 @@ class ResultSpool:
 
         for attempt in range(1, self.max_retries + 1):
             try:
-                if upload_fn(job_id, payload):
+                outcome = upload_fn(job_id, payload)
+                if outcome == PERMANENT_REJECTION:
+                    destination = self.quarantine(job_id)
+                    LOG.error(
+                        "result for job %s permanently rejected; quarantined at %s",
+                        job_id, destination,
+                    )
+                    return False
+                if outcome is True:
                     self.remove(job_id)
                     LOG.info("result for job %s uploaded (attempt %d)", job_id, attempt)
                     return True
@@ -167,7 +196,14 @@ class ResultSpool:
             try:
                 self._path(job_id)
                 payload = json.loads(p.read_text())
-                if upload_fn(job_id, payload):
+                outcome = upload_fn(job_id, payload)
+                if outcome == PERMANENT_REJECTION:
+                    destination = self.quarantine(job_id)
+                    LOG.error(
+                        "spooled result for job %s permanently rejected; quarantined at %s",
+                        job_id, destination,
+                    )
+                elif outcome is True:
                     self.remove(job_id)
                     flushed += 1
                     LOG.info("flushed spooled result for job %s", job_id)
@@ -181,3 +217,26 @@ class ResultSpool:
         if not self.spool_dir.exists():
             return 0
         return len(list(self.spool_dir.glob("*.json")))
+
+    @property
+    def spool_bytes(self) -> int:
+        """Total bytes held by pending result files, ignoring vanished files."""
+        if not self.spool_dir.exists():
+            return 0
+        total = 0
+        for path in self.spool_dir.glob("*.json"):
+            try:
+                total += path.stat().st_size
+            except OSError:
+                continue
+        return total
+
+    @property
+    def at_capacity(self) -> bool:
+        """Whether new jobs must pause until pending results are uploaded.
+
+        These are high-water marks, not eviction limits. The probe is sequential,
+        so the result already in flight is preserved even if it crosses a mark;
+        no further job is claimed until the spool drains below both thresholds.
+        """
+        return self.spool_count >= self.max_files or self.spool_bytes >= self.max_bytes

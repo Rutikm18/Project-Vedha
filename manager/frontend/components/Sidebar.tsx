@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Shield, Brain, AlertTriangle, FileText,
-  Terminal, Briefcase, Settings, X,
+  Terminal, Briefcase, Settings, RadioTower, X,
 } from "lucide-react";
 
 interface NavItem {
@@ -22,6 +22,7 @@ const NAV_SECTIONS: { label: string; items: NavItem[] }[] = [
       { icon: Shield,      label: "Dashboard",    href: "/"            },
       { icon: Briefcase,   label: "Engagements",  href: "/engagements" },
       { icon: Terminal,    label: "Scanner",      href: "/scan"        },
+      { icon: RadioTower,  label: "Fleet",        href: "/fleet"       },
     ],
   },
   {

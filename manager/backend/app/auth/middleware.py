@@ -1,4 +1,6 @@
 from datetime import datetime, timezone
+import re
+import uuid
 
 import structlog
 from fastapi import Request, Response
@@ -9,11 +11,48 @@ from app.auth.jwt import decode_token
 from app.auth.pat import TOKEN_PREFIX, hash_pat_token, pat_scope_allows
 from app.database import AsyncSessionLocal
 from app.models.personal_access_token import PersonalAccessToken
+from app.models.agent import Agent
 
 logger = structlog.get_logger()
 
 _PUBLIC_PATHS = {"/", "/health", "/metrics", "/auth/login", "/auth/refresh", "/docs", "/openapi.json", "/redoc"}
 _PUBLIC_PREFIXES = ("/docs", "/redoc")
+
+_AGENT_REFRESH_PATH = re.compile(r"^/agents/[^/]+/refresh$")
+_AGENT_JOBS_PATH = re.compile(r"^/agents/[^/]+/jobs$")
+_AGENT_RESULT_PATH = re.compile(r"^/agents/[^/]+/jobs/[^/]+/result$")
+_AGENT_SCOPE_PATH = re.compile(r"^/engagements/[^/]+/scope$")
+_PUBLIC_ENROLLMENT_PATHS = (
+    re.compile(r"^/probe-enrollment/requests$"),
+    re.compile(r"^/probe-enrollment/requests/[0-9a-fA-F-]+/poll$"),
+    re.compile(r"^/probe-enrollment/requests/[0-9a-fA-F-]+/activate$"),
+    re.compile(r"^/probe-enrollment/token$"),
+)
+
+
+def _is_public_enrollment_request(path: str, method: str) -> bool:
+    return method.upper() == "POST" and any(pattern.fullmatch(path) for pattern in _PUBLIC_ENROLLMENT_PATHS)
+
+
+def agent_jwt_path_allows(path: str, method: str) -> bool:
+    """Least-privilege route allowlist for legacy probe access JWTs.
+
+    This is the immediate containment boundary while device-audience credentials
+    migrate to a dedicated API namespace. Resource ownership is still checked by
+    the route handlers.
+    """
+    method = method.upper()
+    if path == "/agents/heartbeat":
+        return method == "POST"
+    if _AGENT_REFRESH_PATH.fullmatch(path):
+        return method == "POST"
+    if _AGENT_JOBS_PATH.fullmatch(path):
+        return method == "GET"
+    if _AGENT_RESULT_PATH.fullmatch(path):
+        return method == "POST"
+    if _AGENT_SCOPE_PATH.fullmatch(path):
+        return method == "GET"
+    return False
 
 
 class TenantIsolationMiddleware(BaseHTTPMiddleware):
@@ -25,7 +64,11 @@ class TenantIsolationMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next) -> Response:
         path = request.url.path
-        if path in _PUBLIC_PATHS or path.startswith(_PUBLIC_PREFIXES):
+        if (
+            path in _PUBLIC_PATHS
+            or path.startswith(_PUBLIC_PREFIXES)
+            or _is_public_enrollment_request(path, request.method)
+        ):
             return await call_next(request)
 
         auth = request.headers.get("Authorization", "")
@@ -74,6 +117,50 @@ class TenantIsolationMiddleware(BaseHTTPMiddleware):
                 status_code=401,
                 media_type="application/json",
             )
+
+        if payload.get("role") == "agent" and not agent_jwt_path_allows(
+            path, request.method,
+        ):
+            logger.warning(
+                "auth.agent_route_rejected",
+                path=path,
+                method=request.method,
+                agent_id=payload.get("sub"),
+            )
+            return Response(
+                content='{"detail":"Agent credential is not permitted on this endpoint"}',
+                status_code=403,
+                media_type="application/json",
+            )
+
+        if payload.get("role") == "agent" and payload.get("typ") == "device_access":
+            if payload.get("aud") != "vedha-probe-api":
+                return Response(
+                    content='{"detail":"Wrong device token audience"}',
+                    status_code=401,
+                    media_type="application/json",
+                )
+            try:
+                async with AsyncSessionLocal() as db:
+                    agent = (await db.execute(
+                        select(Agent).where(
+                            Agent.id == uuid.UUID(str(payload.get("sub"))),
+                            Agent.tenant_id == uuid.UUID(str(payload.get("tenant_id"))),
+                        )
+                    )).scalar_one_or_none()
+            except Exception as exc:
+                logger.error("auth.device_lookup_failed", error=str(exc))
+                return Response(content='{"detail":"Device authentication unavailable"}', status_code=503, media_type="application/json")
+            if (
+                agent is None
+                or agent.lifecycle_status != "active"
+                or agent.credential_generation != payload.get("credential_generation")
+            ):
+                return Response(
+                    content='{"detail":"Device credential revoked, disabled, or stale"}',
+                    status_code=401,
+                    media_type="application/json",
+                )
 
         request.state.user_id = payload["sub"]
         request.state.tenant_id = payload["tenant_id"]

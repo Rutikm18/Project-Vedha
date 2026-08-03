@@ -21,6 +21,7 @@ from sqlalchemy import text
 from app.auth.startup import get_last_report, run_startup_diagnostics
 from app.database import AsyncSessionLocal
 from app.dependencies import get_redis
+from app.version import get_version
 
 router = APIRouter(tags=["system"])
 logger = structlog.get_logger()
@@ -57,6 +58,7 @@ async def health():
     ok = all(v == "ok" for v in checks.values())
     body = {
         "status": "healthy" if ok else "degraded",
+        "version": get_version(),
         "checks": checks,
         "latency_ms": round((time.monotonic() - t0) * 1000, 2),
     }

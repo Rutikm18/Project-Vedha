@@ -37,6 +37,11 @@
 #   API_WORKERS        override auto-sizing
 #   SKIP_VERIFY=1      skip post-deploy smoke tests (not recommended)
 #   SSM_PREFIX         SSM path prefix for secrets (default /vedha)
+#   SSM_REQUIRED=1     require core secrets to resolve from SSM
+#   RELEASE_REF        immutable Git tag/commit to deploy (required by default)
+#   RELEASE_SHA        optional expected full/prefix commit SHA
+#   REQUIRE_SIGNED_RELEASE=1  verify the tag/commit with the host Git trust store
+#   ALLOW_UNPINNED_RELEASE=1  lab-only escape hatch
 # =============================================================================
 set -Eeuo pipefail
 
@@ -54,6 +59,12 @@ ACME_EMAIL="${ACME_EMAIL:-$ADMIN_EMAIL}"
 ENABLE_GRAPH="${ENABLE_GRAPH:-0}"
 SKIP_VERIFY="${SKIP_VERIFY:-0}"
 SSM_PREFIX="${SSM_PREFIX:-/vedha}"
+SSM_REQUIRED="${SSM_REQUIRED:-0}"
+RELEASE_REF="${RELEASE_REF:-}"
+RELEASE_SHA="${RELEASE_SHA:-}"
+REQUIRE_SIGNED_RELEASE="${REQUIRE_SIGNED_RELEASE:-1}"
+ALLOW_UNPINNED_RELEASE="${ALLOW_UNPINNED_RELEASE:-0}"
+ALLOW_SKIP_VERIFY="${ALLOW_SKIP_VERIFY:-0}"
 
 # ── Logging ───────────────────────────────────────────────────────────────────
 DEPLOY_LOG="${APP_DIR}/deploy.log"
@@ -107,11 +118,24 @@ if [ "$MEM_GB" -lt "$MIN_RAM_GB" ]; then
 fi
 log "RAM: ${MEM_GB}GB ✓"
 
-# Port conflicts — Caddy needs 80+443 free
+# Port conflicts — Caddy needs 80+443 free. A rerun may find Vedha's own
+# Compose-managed Caddy listening; that is safe because Compose recreates it.
+port_owned_by_vedha_caddy() {
+  command -v docker >/dev/null 2>&1 || return 1
+  docker ps \
+    --filter "publish=$1" \
+    --filter "label=com.docker.compose.project=vedha" \
+    --filter "label=com.docker.compose.service=caddy" \
+    --format '{{.ID}}' 2>/dev/null | grep -q .
+}
 for PORT in 80 443; do
   if ss -tlnp 2>/dev/null | grep -q ":${PORT} " || \
      netstat -tlnp 2>/dev/null | grep -q ":${PORT} "; then
-    die "port ${PORT} is already in use. Stop whatever is using it before deploying (caddy needs 80 for ACME + 443 for TLS)."
+    if port_owned_by_vedha_caddy "$PORT"; then
+      log "port ${PORT} is owned by the existing Vedha Caddy container ✓"
+    else
+      die "port ${PORT} is already in use by a non-Vedha process/container. Stop it before deploying."
+    fi
   fi
 done
 log "ports 80/443 available ✓"
@@ -133,8 +157,9 @@ elif command -v yum >/dev/null;     then PKG="yum -y"
 elif command -v apt-get >/dev/null; then PKG="apt-get -y"; export DEBIAN_FRONTEND=noninteractive; apt-get update -qq
 else die "no supported package manager (dnf/yum/apt-get)"; fi
 
-$PKG install git curl ca-certificates iproute2 >/dev/null 2>&1 || \
+$PKG install git curl ca-certificates iproute2 jq >/dev/null 2>&1 || \
   $PKG install git curl >/dev/null 2>&1 || true
+command -v jq >/dev/null 2>&1 || die "jq is required for secret-safe deployment verification"
 log "dependencies installed ✓"
 
 # ── 4. Docker Engine ──────────────────────────────────────────────────────────
@@ -219,6 +244,40 @@ cd "$APP_DIR"
 [ -f .env.docker.example ] 2>/dev/null || [ -f manager/.env.docker.example ] 2>/dev/null || \
   warn ".env.docker.example not found — will generate .env from scratch"
 
+# Resolve one immutable source revision. Deploying a moving branch means two
+# hosts given the same command can build different artifacts.
+if [ -z "$RELEASE_REF" ] && [ "$ALLOW_UNPINNED_RELEASE" != "1" ]; then
+  die "RELEASE_REF is required (signed tag or commit SHA). Set ALLOW_UNPINNED_RELEASE=1 only for a disposable lab."
+fi
+if [ -n "$RELEASE_REF" ]; then
+  git -C "$APP_DIR" diff --quiet && git -C "$APP_DIR" diff --cached --quiet || \
+    die "tracked working-tree changes exist; refusing to overwrite them during a release checkout"
+  git -C "$APP_DIR" fetch --depth 1 origin "$RELEASE_REF" 2>&1 | tee -a "$DEPLOY_LOG"
+  RESOLVED_RELEASE="$(git -C "$APP_DIR" rev-parse 'FETCH_HEAD^{commit}')"
+  if [ -n "$RELEASE_SHA" ]; then
+    case "$RESOLVED_RELEASE" in
+      "$RELEASE_SHA"*) ;;
+      *) die "RELEASE_REF resolved to $RESOLVED_RELEASE, not expected RELEASE_SHA=$RELEASE_SHA" ;;
+    esac
+  fi
+  if [ "$REQUIRE_SIGNED_RELEASE" = "1" ]; then
+    if [ "$(git -C "$APP_DIR" cat-file -t "$RELEASE_REF" 2>/dev/null || true)" = "tag" ]; then
+      git -C "$APP_DIR" verify-tag "$RELEASE_REF" >/dev/null 2>&1 || \
+        die "release tag signature verification failed for $RELEASE_REF"
+    else
+      git -C "$APP_DIR" verify-commit "$RESOLVED_RELEASE" >/dev/null 2>&1 || \
+        die "release commit signature verification failed for $RESOLVED_RELEASE"
+    fi
+  fi
+  git -C "$APP_DIR" checkout --detach "$RESOLVED_RELEASE" 2>&1 | tee -a "$DEPLOY_LOG"
+  git -C "$APP_DIR" sparse-checkout reapply 2>/dev/null || true
+else
+  RESOLVED_RELEASE="$(git -C "$APP_DIR" rev-parse HEAD)"
+  warn "deploying unpinned revision $RESOLVED_RELEASE (lab override enabled)"
+fi
+RELEASE_ID="$(printf '%s' "$RESOLVED_RELEASE" | cut -c1-12)"
+log "release: $RESOLVED_RELEASE ✓"
+
 # ── 6. Pull secrets from SSM (optional — if AWS CLI + IAM role available) ────
 step "Secrets resolution"
 
@@ -230,17 +289,21 @@ ssm_get() {
     --output text 2>/dev/null || true
 }
 
-ssm_available() { command -v aws >/dev/null && aws ssm describe-parameters --max-results 1 >/dev/null 2>&1; }
+# Do not require ssm:DescribeParameters: a least-privilege instance role only
+# needs GetParameter on the configured path.
+ssm_available() { command -v aws >/dev/null; }
 
 if ssm_available; then
   log "SSM available — pulling secrets from ${SSM_PREFIX}/..."
   _ssm_jwt="$(ssm_get JWT_SECRET)"
+  _ssm_probe_policy="$(ssm_get PROBE_POLICY_SIGNING_KEY)"
   _ssm_pg="$(ssm_get POSTGRES_PASSWORD)"
   _ssm_admin_pw="$(ssm_get SEED_ADMIN_PASSWORD)"
   _ssm_openai="$(ssm_get OPENAI_API_KEY)"
   _ssm_anthropic="$(ssm_get ANTHROPIC_API_KEY)"
   _ssm_domain="$(ssm_get DOMAIN)"
   [ -n "$_ssm_jwt" ]      && JWT_SECRET="$_ssm_jwt"
+  [ -n "$_ssm_probe_policy" ] && PROBE_POLICY_SIGNING_KEY="$_ssm_probe_policy"
   [ -n "$_ssm_pg" ]       && POSTGRES_PASSWORD_SSM="$_ssm_pg"
   [ -n "$_ssm_admin_pw" ] && SEED_ADMIN_PASSWORD_SSM="$_ssm_admin_pw"
   [ -n "$_ssm_openai" ]   && OPENAI_API_KEY="${OPENAI_API_KEY:-$_ssm_openai}"
@@ -248,7 +311,15 @@ if ssm_available; then
   [ -n "$_ssm_domain" ]   && DOMAIN="${DOMAIN:-$_ssm_domain}"
   log "SSM pull complete ✓"
 else
+  [ "$SSM_REQUIRED" != "1" ] || die "SSM_REQUIRED=1 but the AWS CLI is unavailable"
   log "SSM not available — using env vars / generating secrets locally"
+fi
+
+if [ "$SSM_REQUIRED" = "1" ]; then
+  [ -n "${_ssm_jwt:-}" ] || die "required SSM parameter ${SSM_PREFIX}/JWT_SECRET is unavailable"
+  [ -n "${_ssm_probe_policy:-}" ] || die "required SSM parameter ${SSM_PREFIX}/PROBE_POLICY_SIGNING_KEY is unavailable"
+  [ -n "${_ssm_pg:-}" ] || die "required SSM parameter ${SSM_PREFIX}/POSTGRES_PASSWORD is unavailable"
+  [ -n "${_ssm_admin_pw:-}" ] || die "required SSM parameter ${SSM_PREFIX}/SEED_ADMIN_PASSWORD is unavailable"
 fi
 
 # ── 7. Generate / preserve secrets ───────────────────────────────────────────
@@ -259,6 +330,11 @@ volume_exists() { docker volume ls -q 2>/dev/null | grep -qx "$1"; }
 # JWT secret: generate once, preserve forever
 JWT_SECRET="${JWT_SECRET:-$(env_get JWT_SECRET)}"
 [ -n "$JWT_SECRET" ] || JWT_SECRET="$(gen_secret)"
+
+# Site-policy signing seed: preserve independently from JWT rotation.
+PROBE_POLICY_SIGNING_KEY="${PROBE_POLICY_SIGNING_KEY:-$(env_get PROBE_POLICY_SIGNING_KEY)}"
+[ -n "$PROBE_POLICY_SIGNING_KEY" ] || \
+  PROBE_POLICY_SIGNING_KEY="$(openssl rand -base64 32 | tr -d '\n')"
 
 # Admin password: preserve across re-runs unless SSM has an override
 SEED_ADMIN_PASSWORD="${SEED_ADMIN_PASSWORD_SSM:-$(env_get SEED_ADMIN_PASSWORD)}"
@@ -456,6 +532,7 @@ API_WORKERS=$API_WORKERS
 AUTH_COOKIE_SECURE=$COOKIE_SECURE
 AUTH_COOKIE_SAMESITE=strict
 JWT_SECRET=$JWT_SECRET
+PROBE_POLICY_SIGNING_KEY=$PROBE_POLICY_SIGNING_KEY
 POSTGRES_PASSWORD=$POSTGRES_PASSWORD
 SEED_ADMIN_EMAIL=$ADMIN_EMAIL
 SEED_ADMIN_PASSWORD=$SEED_ADMIN_PASSWORD
@@ -464,7 +541,11 @@ OPENAI_API_KEY=${OPENAI_API_KEY:-}
 ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-}
 OPENROUTER_API_KEY=${OPENROUTER_API_KEY:-}
 CORS_ORIGINS=$UI_URL
+MANAGER_PUBLIC_URL=$API_URL
 NEO4J_ENABLED=$([ "$ENABLE_GRAPH" = "1" ] && echo true || echo false)
+VEDHA_RELEASE_ID=$RELEASE_ID
+VEDHA_BACKEND_IMAGE=vedha-backend:$RELEASE_ID
+VEDHA_FRONTEND_IMAGE=vedha-frontend:$RELEASE_ID
 # <<< vedha-aws-installer <<<
 ENVEOF
 
@@ -482,12 +563,33 @@ step "Building and launching stack"
 log "profiles: ${COMPOSE_PROFILES_ARGS[*]}"
 log "workers: $API_WORKERS  provider: $LLM_PROVIDER"
 
+RELEASE_STATE="$APP_DIR/.release-current"
+PREVIOUS_BACKEND_IMAGE=""
+PREVIOUS_FRONTEND_IMAGE=""
+if [ -f "$RELEASE_STATE" ]; then
+  PREVIOUS_BACKEND_IMAGE="$(grep -m1 '^VEDHA_BACKEND_IMAGE=' "$RELEASE_STATE" | cut -d= -f2- || true)"
+  PREVIOUS_FRONTEND_IMAGE="$(grep -m1 '^VEDHA_FRONTEND_IMAGE=' "$RELEASE_STATE" | cut -d= -f2- || true)"
+fi
+export VEDHA_BACKEND_IMAGE="vedha-backend:$RELEASE_ID"
+export VEDHA_FRONTEND_IMAGE="vedha-frontend:$RELEASE_ID"
+
 COMPOSE_CMD=(docker compose
   --project-directory "$APP_DIR"
   -f "$APP_DIR/manager/docker-compose.yml"
   -f "$APP_DIR/deploy/aws/docker-compose.prod.yml"
   "${COMPOSE_PROFILES_ARGS[@]}"
 )
+
+rollback_previous_release() {
+  if [ -n "$PREVIOUS_BACKEND_IMAGE" ] && [ -n "$PREVIOUS_FRONTEND_IMAGE" ]; then
+    warn "Attempting application rollback to retained immutable images..."
+    export VEDHA_BACKEND_IMAGE="$PREVIOUS_BACKEND_IMAGE"
+    export VEDHA_FRONTEND_IMAGE="$PREVIOUS_FRONTEND_IMAGE"
+    "${COMPOSE_CMD[@]}" up -d --no-build 2>&1 | tee -a "$DEPLOY_LOG" || true
+  else
+    warn "No previous immutable release pointer exists; automatic rollback is unavailable."
+  fi
+}
 
 # Remove orphaned containers from previous deploys (profile changes, service renames)
 "${COMPOSE_CMD[@]}" up -d --build --remove-orphans 2>&1 | tee -a "$DEPLOY_LOG"
@@ -511,9 +613,7 @@ if [ "$HEALTHY" != "1" ]; then
   log "Recent logs:"
   "${COMPOSE_CMD[@]}" logs --tail=60 migrate api 2>&1 | tee -a "$DEPLOY_LOG" || true
 
-  # Attempt rollback: restart from last image without rebuild
-  warn "Attempting rollback (restart without rebuild)..."
-  "${COMPOSE_CMD[@]}" up -d --no-build 2>&1 | tee -a "$DEPLOY_LOG" || true
+  rollback_previous_release
   die "Deployment failed. Check $DEPLOY_LOG for details."
 fi
 log "API healthy ✓"
@@ -521,13 +621,29 @@ log "API healthy ✓"
 # ── 15. Post-deploy smoke tests ───────────────────────────────────────────────
 if [ "$SKIP_VERIFY" != "1" ]; then
   step "Smoke tests"
-  bash "$APP_DIR/deploy/aws/verify.sh" \
-    --api-url "http://localhost:${API_PORT:-18080}" \
+  if ! bash "$APP_DIR/deploy/aws/verify.sh" \
+    --api-url "$API_URL" \
     --admin-email "$ADMIN_EMAIL" \
-    --admin-password "$SEED_ADMIN_PASSWORD" \
     --mode smoke \
-    2>&1 | tee -a "$DEPLOY_LOG" || warn "Some smoke tests failed — check $DEPLOY_LOG"
+    2>&1 | tee -a "$DEPLOY_LOG"; then
+    rollback_previous_release
+    die "Post-deploy verification failed; release not promoted."
+  fi
+elif [ "$ALLOW_SKIP_VERIFY" != "1" ]; then
+  die "SKIP_VERIFY=1 requires explicit ALLOW_SKIP_VERIFY=1 (lab/emergency use only)"
 fi
+
+RELEASE_TMP="$(mktemp "$APP_DIR/.release-current.XXXXXX")"
+chmod 600 "$RELEASE_TMP"
+cat > "$RELEASE_TMP" <<RELEASEEOF
+VEDHA_RELEASE_ID=$RELEASE_ID
+VEDHA_RELEASE_SHA=$RESOLVED_RELEASE
+VEDHA_BACKEND_IMAGE=vedha-backend:$RELEASE_ID
+VEDHA_FRONTEND_IMAGE=vedha-frontend:$RELEASE_ID
+RELEASEEOF
+mv "$RELEASE_TMP" "$RELEASE_STATE"
+chmod 600 "$RELEASE_STATE"
+log "promoted immutable release $RELEASE_ID ✓"
 
 # ── 16. Summary ───────────────────────────────────────────────────────────────
 printf '\n\033[1;32m[vedha] ✓ Deployment complete.\033[0m\n'
@@ -536,7 +652,7 @@ cat <<SUMMARY
   Dashboard  : $UI_URL
   API        : $API_URL
   Admin      : $ADMIN_EMAIL
-  Password   : $SEED_ADMIN_PASSWORD   ← ROTATE after first login
+  Password   : retrieve from SSM or the root-only .env; rotate after first login
   Deploy log : $DEPLOY_LOG
 
 Security checklist:
@@ -549,7 +665,7 @@ Security checklist:
 Ops:
   • Status   :  docker compose --project-directory $APP_DIR -f $APP_DIR/manager/docker-compose.yml ps
   • Logs     :  docker compose --project-directory $APP_DIR -f $APP_DIR/manager/docker-compose.yml logs -f api worker
-  • Redeploy :  cd $APP_DIR && git pull && sudo bash deploy/aws/install.sh
-  • Verify   :  bash $APP_DIR/deploy/aws/verify.sh --full
+  • Redeploy :  sudo RELEASE_REF=<tag-or-sha> bash $APP_DIR/deploy/aws/install.sh
+  • Verify   :  bash $APP_DIR/deploy/aws/verify.sh --mode full
 
 SUMMARY

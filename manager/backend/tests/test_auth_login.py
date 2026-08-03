@@ -162,7 +162,10 @@ class TestAuthenticateExpiredPassword:
 class TestAuthenticateBcryptFailure:
     @pytest.mark.asyncio
     async def test_raises_bcrypt_failure_on_passlib_error(self):
-        from passlib.exc import PasslibError
+        # passlib 1.7.4 has no `PasslibError`; a backend failure during verify()
+        # surfaces as InternalBackendError (RuntimeError). _authenticate must wrap
+        # any such verify-time error as BcryptFailureError.
+        from passlib.exc import InternalBackendError
 
         user = _make_user()
         tenant = _make_tenant()
@@ -170,7 +173,7 @@ class TestAuthenticateBcryptFailure:
 
         with patch("app.auth.router._pwd") as mock_pwd:
             mock_pwd.dummy_verify = MagicMock()
-            mock_pwd.verify.side_effect = PasslibError("corrupt hash")
+            mock_pwd.verify.side_effect = InternalBackendError("bcrypt backend failed")
             with pytest.raises(BcryptFailureError):
                 await _authenticate("admin@vedha.io", "pass", db)
 
@@ -323,8 +326,15 @@ class TestStartupDiagnostics:
             from app.auth.startup import CheckResult
             return CheckResult("jwt_secret", "fatal", "weak")
 
+        # MagicMock(name=...) sets the mock's repr, NOT a `.name` attribute. The
+        # database result must set .name explicitly, because run_startup_diagnostics
+        # does `next(r for r in conn_checks if r.name == "database")`, which raises
+        # StopIteration (→ RuntimeError) when no result actually reports that name.
+        db_ok = MagicMock(severity="ok", ok=True, fatal=False)
+        db_ok.name = "database"
+
         with patch("app.auth.startup._check_jwt_secret", _fatal_jwt), \
-             patch("app.auth.startup._check_database", AsyncMock(return_value=MagicMock(name="database", severity="ok", ok=True, fatal=False))), \
+             patch("app.auth.startup._check_database", AsyncMock(return_value=db_ok)), \
              patch("app.auth.startup._check_redis", AsyncMock(return_value=MagicMock(name="redis", severity="ok", ok=True, fatal=False))), \
              patch("app.auth.startup._check_bcrypt", AsyncMock(return_value=MagicMock(severity="ok", ok=True, fatal=False))), \
              patch("app.auth.startup._check_cookie_config", AsyncMock(return_value=MagicMock(severity="ok", ok=True, fatal=False))), \

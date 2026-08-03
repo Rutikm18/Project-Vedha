@@ -52,6 +52,7 @@ class TaskRunner:
         run_scan_fn: Callable[..., dict[str, Any]] | None = None,
         identity_sk: bytes | None = None,
         local_allowed_networks: list[str] | None = None,
+        local_excluded_networks: list[str] | None = None,
     ):
         """Args:
             http_get:       Callback for authenticated GET (from Transport).
@@ -77,13 +78,19 @@ class TaskRunner:
             if local_allowed_networks is None
             else list(local_allowed_networks)
         )
+        self._local_excluded_networks = list(local_excluded_networks or [])
         if self._run_scan is None:
             from agent.engine import run_scan
             self._run_scan = run_scan
 
     # ── Main entry point ─────────────────────────────────────────────────────
 
-    def run_job(self, job: dict[str, Any], agent_id: str) -> JobResult:
+    def run_job(
+        self,
+        job: dict[str, Any],
+        agent_id: str,
+        cancellation_event=None,
+    ) -> JobResult:
         """Execute a complete scan job lifecycle.
 
         Args:
@@ -106,11 +113,19 @@ class TaskRunner:
             )
 
         job_id = job.get("job_id", "?")
+        attempt_id = job.get("attempt_id")
+        fence = job.get("fence")
+        submission_identity = {
+            "job_id": job_id,
+            "attempt_id": attempt_id,
+            "fence": fence,
+        }
         engagement_id = job.get("engagement_id", "")
         raw_params = job.get("params") or {}
         if not isinstance(raw_params, dict):
             error = "job params must be an object"
             self._submit_or_spool(job_id, {
+                **submission_identity,
                 "success": False,
                 "result": {},
                 "error": error,
@@ -163,6 +178,7 @@ class TaskRunner:
         except ValueError as exc:
             LOG.error("Job %s rejected: %s", job_id, exc)
             self._submit_or_spool(job_id, {
+                **submission_identity,
                 "success": False, "result": {}, "error": str(exc),
             })
             return JobResult(
@@ -187,6 +203,7 @@ class TaskRunner:
             error = "targets must be a string or list of strings"
             LOG.error("Job %s: %s", job_id, error)
             self._submit_or_spool(job_id, {
+                **submission_identity,
                 "success": False, "result": {}, "error": error,
             })
             return JobResult(
@@ -200,6 +217,7 @@ class TaskRunner:
             error = "No targets or scope_cidrs provided in job params"
             LOG.error("Job %s: %s", job_id, error)
             self._submit_or_spool(job_id, {
+                **submission_identity,
                 "success": False, "result": {}, "error": error,
             })
             return JobResult(
@@ -235,7 +253,7 @@ class TaskRunner:
             job_excludes = [job_excludes]
         all_excludes = merge_exclusions(
             engagement_excludes,
-            [*manager_excludes, *job_excludes],
+            [*manager_excludes, *job_excludes, *self._local_excluded_networks],
         )
         params.pop("_excluded_cidrs", None)
         params["excluded_cidrs"] = all_excludes
@@ -252,6 +270,7 @@ class TaskRunner:
             )
             LOG.error("Job %s: %s", job_id, error)
             self._submit_or_spool(job_id, {
+                **submission_identity,
                 "success": False, "result": {},
                 "error": error,
             })
@@ -272,6 +291,7 @@ class TaskRunner:
                 error = f"All targets outside engagement scope {effective_scope}"
                 LOG.error("Job %s: %s", job_id, error)
                 self._submit_or_spool(job_id, {
+                    **submission_identity,
                     "success": False, "result": {},
                     "error": error,
                 })
@@ -304,6 +324,7 @@ class TaskRunner:
                 )
                 LOG.error("Job %s: %s", job_id, error)
                 self._submit_or_spool(job_id, {
+                    **submission_identity,
                     "success": False, "result": {}, "error": error,
                 })
                 return JobResult(
@@ -323,6 +344,7 @@ class TaskRunner:
                 error = f"All targets fall inside excluded ranges {all_excludes}"
                 LOG.error("Job %s: %s", job_id, error)
                 self._submit_or_spool(job_id, {
+                    **submission_identity,
                     "success": False, "result": {},
                     "error": error,
                 })
@@ -351,6 +373,7 @@ class TaskRunner:
                 validated_scope=effective_scope or None,
                 validated_excludes=all_excludes,
                 local_allowed_scope=self._local_allowed_networks,
+                cancellation_event=cancellation_event,
             )
             if not isinstance(result, dict):
                 raise TypeError("scan engine returned a non-object result")
@@ -375,7 +398,23 @@ class TaskRunner:
                  stats.get("open_ports", 0))
 
         success = bool(result.get("ok"))
+        if cancellation_event is not None and cancellation_event.is_set():
+            error = "job attempt lease was lost; result was not submitted"
+            LOG.error("Job %s: %s", job_id, error)
+            return JobResult(
+                success=False,
+                job_id=job_id,
+                engagement_id=engagement_id,
+                scan_type=scan_type,
+                profile=profile,
+                result=result,
+                error=error,
+                use_case_id=use_case_id,
+            )
         payload = {
+            "job_id": job_id,
+            "attempt_id": attempt_id,
+            "fence": fence,
             "success": success,
             "result": result,
             "error": result.get("error"),
@@ -395,7 +434,9 @@ class TaskRunner:
 
     def _submit_or_spool(self, job_id: str, payload: dict[str, Any]) -> None:
         """Submit the result, with spool-and-retry if available."""
+        attempt_id = payload.get("attempt_id")
+        delivery_id = f"{job_id}--{attempt_id}" if attempt_id else job_id
         if self._spool_submit:
-            self._spool_submit(job_id, payload, self._submit_result)
+            self._spool_submit(delivery_id, payload, self._submit_result)
         else:
             self._submit_result(job_id, payload)

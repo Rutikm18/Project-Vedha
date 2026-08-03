@@ -29,6 +29,18 @@ class ScanResult(Base, TimestampMixin):
         nullable=False, index=True,
     )
     job_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
+    attempt_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True),
+        ForeignKey("scan_job_attempts.id", ondelete="RESTRICT"),
+        nullable=True,
+        unique=True,
+        index=True,
+    )
+    agent_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("agents.id", ondelete="RESTRICT"), nullable=True, index=True
+    )
+    content_checksum: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    validation_state: Mapped[str] = mapped_column(String(16), nullable=False, server_default="accepted")
     scan_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
     fact_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     facts: Mapped[list] = mapped_column(JSONB, nullable=False)

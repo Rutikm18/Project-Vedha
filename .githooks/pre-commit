@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+#
+# Auto-increment the patch of the repo-root VERSION file (1.0.X) on every commit
+# so every build/deploy is individually trackable in production.
+#
+# Single source of truth: <repo-root>/VERSION. The bumped file is staged into the
+# same commit, so what you push always carries its own version. Enable with:
+#   git config core.hooksPath .githooks   (or: make setup-hooks)
+#
+set -euo pipefail
+
+repo_root="$(git rev-parse --show-toplevel)"
+version_file="$repo_root/VERSION"
+
+# Seed on first use.
+if [[ ! -f "$version_file" ]]; then
+  printf '1.0.1\n' > "$version_file"
+  git add "$version_file"
+  exit 0
+fi
+
+current="$(tr -d '[:space:]' < "$version_file")"
+
+# Only bump a well-formed MAJOR.MINOR.PATCH; otherwise reset to a known baseline
+# rather than silently corrupting the version.
+if [[ ! "$current" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+  printf '1.0.1\n' > "$version_file"
+  git add "$version_file"
+  exit 0
+fi
+
+IFS='.' read -r major minor patch <<< "$current"
+next="${major}.${minor}.$((patch + 1))"
+printf '%s\n' "$next" > "$version_file"
+git add "$version_file"

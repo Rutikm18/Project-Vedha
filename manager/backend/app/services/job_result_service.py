@@ -6,6 +6,9 @@ process_job_result().  No more copy-paste.
 """
 from __future__ import annotations
 
+import ipaddress
+import hashlib
+import json
 import uuid
 from datetime import datetime, timezone
 
@@ -16,10 +19,109 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.asset import Asset
 from app.models.enums import AssetType, ScanJobStatus
 from app.models.scan_job import ScanJob
+from app.models.scan_job_attempt import ScanJobAttempt
 from app.models.scan_result import ScanResult
 from app.models.service import Service
 
 logger = structlog.get_logger()
+
+
+def result_checksum(success: bool, result: dict, error: str | None) -> str:
+    """Stable idempotency checksum for one attempt completion payload."""
+    canonical = json.dumps(
+        {"success": success, "result": result, "error": error},
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=False,
+        default=str,
+    ).encode("utf-8")
+    return hashlib.sha256(canonical).hexdigest()
+
+
+def _result_network_identities(result: dict) -> list[tuple[str, str]]:
+    """Return network identities that could create assets or findings.
+
+    Scanner-level control records use targets such as ``<nmap-run>`` to report
+    process failures. They describe the scanner itself, not a network target,
+    and therefore do not participate in scope authorization.
+    """
+    identities: list[tuple[str, str]] = []
+    collections = (
+        ("hosts", "ip"),
+        ("facts", "target"),
+        ("findings", "target"),
+    )
+    for collection_name, key in collections:
+        collection = result.get(collection_name)
+        if not isinstance(collection, list):
+            continue
+        for index, item in enumerate(collection):
+            if not isinstance(item, dict):
+                continue
+            raw = item.get(key)
+            if not isinstance(raw, str) or not raw.strip():
+                continue
+            value = raw.strip()
+            if value.startswith("<") and value.endswith(">"):
+                continue
+            identities.append((f"{collection_name}[{index}].{key}", value))
+    return identities
+
+
+def _identity_ip(value: str):
+    """Parse a probe identity as an IP, tolerating common host:port notation."""
+    candidate = value.strip()
+    if candidate.startswith("[") and "]:" in candidate:
+        candidate = candidate[1:candidate.index("]")]
+    elif candidate.count(":") == 1:
+        host, port = candidate.rsplit(":", 1)
+        if port.isdigit():
+            candidate = host
+    try:
+        return ipaddress.ip_address(candidate)
+    except ValueError:
+        return None
+
+
+def validate_result_scope(
+    result: dict,
+    scope_cidrs: list[str] | None,
+    excluded_cidrs: list[str] | None = None,
+) -> list[dict[str, str]]:
+    """Return result identities outside the job's authoritative IP scope.
+
+    Fail closed on a missing/malformed scope and on non-IP target identities.
+    Engagement authorization is IP/CIDR-only, so accepting a hostname here
+    would allow Manager DNS resolution to disagree with what the probe scanned.
+    """
+    identities = _result_network_identities(result)
+    if not identities:
+        return []
+
+    try:
+        allowed = [
+            ipaddress.ip_network(str(value).strip(), strict=False)
+            for value in (scope_cidrs or [])
+        ]
+        excluded = [
+            ipaddress.ip_network(str(value).strip(), strict=False)
+            for value in (excluded_cidrs or [])
+        ]
+    except (TypeError, ValueError):
+        allowed = []
+        excluded = []
+
+    rejected: list[dict[str, str]] = []
+    for path, value in identities:
+        address = _identity_ip(value)
+        authorized = bool(
+            address is not None
+            and any(address.version == net.version and address in net for net in allowed)
+            and not any(address.version == net.version and address in net for net in excluded)
+        )
+        if not authorized:
+            rejected.append({"path": path, "value": value})
+    return rejected
 
 
 async def process_job_result(
@@ -29,6 +131,8 @@ async def process_job_result(
     success: bool,
     result: dict | None,
     error: str | None,
+    attempt_id: uuid.UUID | None = None,
+    fence: int | None = None,
 ) -> dict:
     """Process a scan job result.  Called from both HTTP and WebSocket paths.
 
@@ -38,11 +142,49 @@ async def process_job_result(
         select(ScanJob).where(
             ScanJob.id == job_id,
             ScanJob.agent_id == str(agent_id),
-        )
+        ).with_for_update()
     )).scalar_one_or_none()
 
     if not row:
         return {"ok": False, "error": "Job not found or not assigned to this agent"}
+
+    result = result or {}
+    checksum = result_checksum(success, result, error)
+    if attempt_id is None or fence is None:
+        return {
+            "ok": False,
+            "error": "attempt_id and fence are required",
+            "status_code": 422,
+            "permanent_rejection": True,
+        }
+
+    # A stale attempt receives a terminal receipt so its durable spool can stop
+    # retrying, but it can never mutate the logical job or promote evidence.
+    if (
+        getattr(row, "current_attempt_id", None) != attempt_id
+        or getattr(row, "current_fence", None) != fence
+    ):
+        logger.warning(
+            "job.result_stale_fence",
+            job_id=str(job_id),
+            agent_id=str(agent_id),
+            attempt_id=str(attempt_id),
+            fence=fence,
+        )
+        return {"ok": True, "accepted": False, "stale": True,
+                "assets_promoted": 0, "findings_created": 0}
+
+    attempt = (await db.execute(
+        select(ScanJobAttempt).where(
+            ScanJobAttempt.id == attempt_id,
+            ScanJobAttempt.job_id == job_id,
+            ScanJobAttempt.agent_id == agent_id,
+            ScanJobAttempt.fence == fence,
+        ).with_for_update()
+    )).scalar_one_or_none()
+    if attempt is None:
+        return {"ok": True, "accepted": False, "stale": True,
+                "assets_promoted": 0, "findings_created": 0}
 
     # ── Idempotency: result submission is at-least-once ─────────────────────
     # A probe retries when it doesn't see an ACK (the ACK can be lost even after
@@ -51,21 +193,59 @@ async def process_job_result(
     # job already reached a terminal state, treat the resubmission as a no-op
     # and return HTTP 200 so the probe clears its spool. Failed submissions are
     # retried after a lost ACK just like successful ones.
-    if row.status in (ScanJobStatus.completed, ScanJobStatus.failed):
+    if attempt.status in ("succeeded", "failed"):
+        if attempt.result_checksum != checksum:
+            logger.warning(
+                "job.result_checksum_conflict",
+                job_id=str(job_id),
+                attempt_id=str(attempt_id),
+            )
+            return {
+                "ok": False,
+                "error": "Attempt already completed with a different result checksum",
+                "status_code": 409,
+                "permanent_rejection": True,
+            }
         logger.info(
             "job.result_duplicate_ignored",
             job_id=str(job_id),
             agent_id=str(agent_id),
-            terminal_status=row.status.value,
+            terminal_status=attempt.status,
         )
         return {"ok": True, "duplicate": True,
                 "assets_promoted": 0, "findings_created": 0}
 
+    job_params = row.result if isinstance(row.result, dict) else {}
+    rejected_identities = validate_result_scope(
+        result,
+        job_params.get("_scope_cidrs") or job_params.get("scope_cidrs"),
+        job_params.get("_excluded_cidrs") or job_params.get("excluded_cidrs"),
+    )
+    if rejected_identities:
+        logger.warning(
+            "job.result_scope_rejected",
+            agent_id=str(agent_id),
+            job_id=str(job_id),
+            rejected_count=len(rejected_identities),
+            rejected=rejected_identities[:10],
+        )
+        return {
+            "ok": False,
+            "error": "Result contains target identities outside the authorized job scope",
+            "status_code": 422,
+            "permanent_rejection": True,
+            "rejected_targets": rejected_identities[:10],
+        }
+
     # ── Update job status ──────────────────────────────────────────────────
     row.status = ScanJobStatus.completed if success else ScanJobStatus.failed
     row.completed_at = datetime.now(timezone.utc)
+    row.lease_expires_at = None
+    attempt.status = "succeeded" if success else "failed"
+    attempt.ended_at = row.completed_at
+    attempt.result_checksum = checksum
+    attempt.error = error
 
-    result = result or {}
     facts = result.get("facts") if isinstance(result, dict) else None
 
     # ── Persist raw facts to the append-only scan_results table ─────────────
@@ -74,6 +254,10 @@ async def process_job_result(
         scan_result_row = ScanResult(
             engagement_id=row.engagement_id,
             job_id=row.id,
+            attempt_id=attempt_id,
+            agent_id=agent_id,
+            content_checksum=checksum,
+            validation_state="accepted",
             scan_type=result.get("scan_type"),
             fact_count=len(facts),
             facts=facts,

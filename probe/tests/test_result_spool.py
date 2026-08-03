@@ -6,7 +6,7 @@ import os
 
 import pytest
 
-from agent.result_spool import ResultSpool
+from agent.result_spool import PERMANENT_REJECTION, ResultSpool
 
 
 @pytest.fixture
@@ -118,6 +118,20 @@ class TestResultSpool:
         assert result is False
         assert spool.exists("job-1") is True
 
+    def test_permanent_rejection_is_quarantined_without_retry(self, spool):
+        calls = []
+
+        def upload_fn(jid, payload):
+            calls.append(jid)
+            return PERMANENT_REJECTION
+
+        result = spool.submit_with_retry("job-1", {"data": 42}, upload_fn)
+
+        assert result is False
+        assert calls == ["job-1"]
+        assert spool.exists("job-1") is False
+        assert (spool.spool_dir / "rejected" / "job-1.json").exists()
+
     def test_flush_spool_empty(self, spool):
         flushed = spool.flush_spool(lambda jid, p: True)
         assert flushed == 0
@@ -149,6 +163,15 @@ class TestResultSpool:
         assert spool.exists("job-1") is False
         assert spool.exists("job-2") is True
 
+    def test_flush_quarantines_permanent_rejection(self, spool):
+        spool.save("job-1", {"result": 1})
+
+        flushed = spool.flush_spool(lambda jid, payload: PERMANENT_REJECTION)
+
+        assert flushed == 0
+        assert spool.spool_count == 0
+        assert (spool.spool_dir / "rejected" / "job-1.json").exists()
+
     def test_max_retries_uses_class_default(self, tmp_path):
         spool = ResultSpool(spool_dir=tmp_path / "spool")
         assert spool.max_retries == 5
@@ -156,3 +179,35 @@ class TestResultSpool:
     def test_custom_retry_config(self, tmp_path):
         spool = ResultSpool(spool_dir=tmp_path / "spool", max_retries=2, retry_delay_sec=0.1)
         assert spool.max_retries == 2
+
+    def test_file_high_water_mark_pauses_new_work(self, tmp_path):
+        spool = ResultSpool(
+            spool_dir=tmp_path / "spool",
+            max_files=2,
+            max_bytes=1 << 20,
+        )
+        spool.save("job-1", {"result": 1})
+        assert spool.at_capacity is False
+        spool.save("job-2", {"result": 2})
+        assert spool.at_capacity is True
+
+    def test_byte_high_water_mark_pauses_new_work_without_eviction(self, tmp_path):
+        spool = ResultSpool(
+            spool_dir=tmp_path / "spool",
+            max_files=100,
+            max_bytes=32,
+        )
+        path = spool.save("job-large", {"result": "x" * 64})
+
+        assert spool.spool_bytes == path.stat().st_size
+        assert spool.at_capacity is True
+        assert spool.load("job-large") == {"result": "x" * 64}
+
+    @pytest.mark.parametrize(
+        ("field", "value"),
+        [("max_files", 0), ("max_bytes", 0)],
+    )
+    def test_rejects_non_positive_capacity(self, tmp_path, field, value):
+        kwargs = {field: value}
+        with pytest.raises(ValueError, match=field):
+            ResultSpool(spool_dir=tmp_path / "spool", **kwargs)

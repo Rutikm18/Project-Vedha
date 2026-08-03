@@ -53,9 +53,23 @@ def test_positive_confirmation_releases_exactly_the_staged_job():
     assert state["pending_job"] == job
 
     assert _ws_take_confirmed_job(
-        {"type": "job_claim", "job_id": "job-1", "claimed": True},
+        {
+            "type": "job_claim",
+            "job_id": "job-1",
+            "claimed": True,
+            "attempt_id": "attempt-1",
+            "attempt_number": 1,
+            "fence": 1,
+            "lease_expires_at": "2026-08-03T00:00:00+00:00",
+        },
         state,
-    ) == job
+    ) == {
+        **job,
+        "attempt_id": "attempt-1",
+        "attempt_number": 1,
+        "fence": 1,
+        "lease_expires_at": "2026-08-03T00:00:00+00:00",
+    }
     assert state["pending_job"] is None
 
 

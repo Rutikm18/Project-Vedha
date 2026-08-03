@@ -18,7 +18,8 @@ def _now() -> datetime:
 
 
 def create_access_token(subject: str, tenant_id: str, role: str,
-                        expires_minutes: int | None = None) -> str:
+                        expires_minutes: int | None = None,
+                        extra_claims: dict[str, Any] | None = None) -> str:
     # Long-running clients (probes/agents) pass a large expires_minutes so their
     # token doesn't lapse every 15 minutes; interactive users use the default.
     minutes = settings.access_token_expire_minutes if expires_minutes is None else expires_minutes
@@ -32,7 +33,28 @@ def create_access_token(subject: str, tenant_id: str, role: str,
         "iat": _now(),
         "jti": str(uuid.uuid4()),
     }
+    payload.update(extra_claims or {})
     return jwt.encode(payload, _SECRET, algorithm=_ALGORITHM)
+
+
+def create_device_access_token(
+    subject: str,
+    tenant_id: str,
+    credential_generation: int,
+    *,
+    expires_minutes: int = 10,
+) -> str:
+    return create_access_token(
+        subject,
+        tenant_id,
+        "agent",
+        expires_minutes=expires_minutes,
+        extra_claims={
+            "typ": "device_access",
+            "aud": "vedha-probe-api",
+            "credential_generation": credential_generation,
+        },
+    )
 
 
 def create_refresh_token(subject: str, tenant_id: str) -> tuple[str, str]:
@@ -52,7 +74,14 @@ def create_refresh_token(subject: str, tenant_id: str) -> tuple[str, str]:
 
 def decode_token(token: str) -> dict[str, Any]:
     try:
-        return jwt.decode(token, _SECRET, algorithms=[_ALGORITHM])
+        # Audience is enforced by the caller for its credential class. Human
+        # legacy tokens do not yet carry aud, while device tokens do.
+        return jwt.decode(
+            token,
+            _SECRET,
+            algorithms=[_ALGORITHM],
+            options={"verify_aud": False},
+        )
     except jwt.ExpiredSignatureError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Token expired")
     except jwt.InvalidTokenError as e:

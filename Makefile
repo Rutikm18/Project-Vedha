@@ -2,7 +2,19 @@
 .DEFAULT_GOAL := help
 COMPOSE := docker compose
 
-.PHONY: help doctor run full ui up up-graph up-ai api-only down logs ps migrate seed shell venv test probe-build probe-run probe-pat clean
+# Deployed version, sourced from the repo-root VERSION file (auto-bumped by the
+# .githooks/pre-commit hook). Exported so every `docker compose build` below bakes
+# it into the backend image via the VEDHA_VERSION build arg.
+export VEDHA_VERSION := $(shell cat VERSION 2>/dev/null || echo dev)
+
+.PHONY: help doctor run full ui up up-graph up-ai api-only down logs ps migrate seed shell venv test probe-build probe-run probe-pat clean version setup-hooks
+
+version: ## Print the current deployed version
+	@echo $(VEDHA_VERSION)
+
+setup-hooks: ## Enable the auto version-bump git hook (run once per clone)
+	git config core.hooksPath .githooks
+	@echo "Version auto-bump enabled: every commit ticks VERSION (currently $(VEDHA_VERSION))."
 
 help: ## Show this help
 	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | \

@@ -157,6 +157,8 @@ class AgentConnectionManager:
                 self._agent_status[agent_id] = status
                 if current_job_id is not None:
                     self._agent_job[agent_id] = current_job_id
+                elif status == "online":
+                    self._agent_job[agent_id] = None
 
     async def record_features(
         self,

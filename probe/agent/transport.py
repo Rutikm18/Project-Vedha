@@ -19,6 +19,7 @@ import json
 import logging
 import os
 import tempfile
+import time
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -136,6 +137,7 @@ class Transport:
 
         # WebSocket state (populated by Phase 2)
         self._ws = None  # Websocket connection object (when Phase 2 is wired)
+        self._device_signing_private_key: bytes | None = None
 
     # ── Identity ──────────────────────────────────────────────────────────────
 
@@ -305,6 +307,108 @@ class Transport:
         self.save_state()
         return data
 
+    # ── Device-code enrollment ──────────────────────────────────────────────
+
+    def create_enrollment_request(self, payload: dict[str, Any]) -> dict[str, Any]:
+        response = self._client.post("/probe-enrollment/requests", json=payload)
+        response.raise_for_status()
+        return response.json()
+
+    def poll_enrollment(self, request_id: str, device_secret: str) -> dict[str, Any]:
+        response = self._client.post(
+            f"/probe-enrollment/requests/{request_id}/poll",
+            json={"device_secret": device_secret},
+        )
+        response.raise_for_status()
+        return response.json()
+
+    def activate_enrollment(
+        self,
+        request_id: str,
+        device_secret: str,
+        signature: str,
+    ) -> dict[str, Any]:
+        response = self._client.post(
+            f"/probe-enrollment/requests/{request_id}/activate",
+            json={"device_secret": device_secret, "signature": signature},
+        )
+        response.raise_for_status()
+        data = response.json()
+        from agent.device_identity import verify_site_policy
+        pinned_policy_key = self.load_state().get("policy_signing_public_key")
+        policy_public_key = verify_site_policy(data["policy"], pinned_policy_key)
+        self._agent_id = str(data["agent_id"])
+        self._agent_token = str(data["access_token"])
+        self.update_state({
+            "agent_id": self._agent_id,
+            "token": self._agent_token,
+            "device_refresh_secret": data["refresh_secret"],
+            "credential_generation": data["credential_generation"],
+            "site_policy": data["policy"],
+            "policy_signing_public_key": policy_public_key,
+            "access_expires_at": time.time() + int(data.get("access_expires_in_seconds") or 600),
+        }, remove=("enrollment_request_id", "enrollment_device_secret"))
+        return data
+
+    def refresh_device_access(self, signing_private_key: bytes) -> bool:
+        try:
+            state = self.load_state()
+            agent_id = str(state.get("agent_id") or self._agent_id)
+            refresh_secret = state.get("device_refresh_secret")
+            generation = int(state.get("credential_generation") or 0)
+            if not agent_id or not refresh_secret or generation < 1:
+                return False
+            import secrets
+            from agent.device_identity import sign_b64
+
+            nonce = secrets.token_urlsafe(24)
+            signature = sign_b64(
+                signing_private_key,
+                f"vedha-refresh:{agent_id}:{generation}:{nonce}",
+            )
+            response = self._client.post(
+                "/probe-enrollment/token",
+                json={
+                    "agent_id": agent_id,
+                    "generation": generation,
+                    "refresh_secret": refresh_secret,
+                    "nonce": nonce,
+                    "signature": signature,
+                },
+            )
+            if response.status_code in (401, 403, 409):
+                return False
+            response.raise_for_status()
+            self._agent_id = agent_id
+            self._agent_token = str(response.json()["access_token"])
+            self.update_state({
+                "agent_id": agent_id,
+                "token": self._agent_token,
+                "access_expires_at": time.time()
+                + int(response.json().get("access_expires_in_seconds") or 600),
+            })
+            return True
+        except (OSError, ValueError, TypeError, httpx.HTTPError):
+            return False
+
+    def ensure_device_access(self) -> bool:
+        """Refresh a device token before expiry; legacy identities are unchanged."""
+        if self._device_signing_private_key is None:
+            return True
+        try:
+            state = self.load_state()
+            # Legacy PAT/bootstrap registrations also create a signing key so
+            # they can migrate later. Without a refresh credential, their
+            # existing token must remain on the legacy path.
+            if not state.get("device_refresh_secret"):
+                return True
+            expires_at = float(state.get("access_expires_at") or 0)
+            if self._agent_token and expires_at > time.time() + 60:
+                return True
+        except (OSError, ValueError, TypeError):
+            pass
+        return self.refresh_device_access(self._device_signing_private_key)
+
     def refresh_registration(
         self,
         *,
@@ -337,6 +441,17 @@ class Transport:
                     "Cached agent identity was rejected during registration refresh."
                 )
             r.raise_for_status()
+            response_body = r.json()
+            if isinstance(response_body, dict) and isinstance(response_body.get("policy"), dict):
+                from agent.device_identity import verify_site_policy
+                state = self.load_state()
+                policy_public_key = verify_site_policy(
+                    response_body["policy"], state.get("policy_signing_public_key"),
+                )
+                self.update_state({
+                    "site_policy": response_body["policy"],
+                    "policy_signing_public_key": policy_public_key,
+                })
             return True
         except TransportError:
             raise
@@ -345,13 +460,21 @@ class Transport:
 
     # ── Heartbeat ─────────────────────────────────────────────────────────────
 
-    def heartbeat(self, status: str = "online", current_job_id: str | None = None) -> bool:
+    def heartbeat(
+        self,
+        status: str = "online",
+        current_job_id: str | None = None,
+        attempt_id: str | None = None,
+        fence: int | None = None,
+    ) -> bool:
         """Send a heartbeat to the manager.
 
         Returns True if the heartbeat was accepted (HTTP 2xx),
         False if rejected (401 — token expired).
         """
         try:
+            if not self.ensure_device_access():
+                return False
             r = self._client.post(
                 "/agents/heartbeat",
                 headers=self.auth_header,
@@ -359,9 +482,11 @@ class Transport:
                     "agent_id": self._agent_id,
                     "status": status,
                     "current_job_id": current_job_id,
+                    "attempt_id": attempt_id,
+                    "fence": fence,
                 },
             )
-            if r.status_code == 401:
+            if r.status_code in (401, 403, 409, 422):
                 return False
             r.raise_for_status()
             return True
@@ -376,6 +501,8 @@ class Transport:
         Returns a list of job dicts (may be empty). Each job has:
             job_id, engagement_id, job_type, status, params
         """
+        if not self.ensure_device_access():
+            raise TransportError("Device credential refresh rejected during job poll.")
         r = self._client.get(
             f"/agents/{self._agent_id}/jobs",
             headers=self.auth_header,
@@ -407,7 +534,7 @@ class Transport:
 
     # ── Result submission ──────────────────────────────────────────────────────
 
-    def submit_result(self, job_id: str, payload: dict[str, Any]) -> bool:
+    def submit_result(self, job_id: str, payload: dict[str, Any]) -> bool | str:
         """Submit a scan result to the manager.
 
         Returns True ONLY on a 2xx response (the manager durably accepted the
@@ -423,6 +550,8 @@ class Transport:
         transparently (GzipRequestMiddleware).
         """
         try:
+            if not self.ensure_device_access():
+                return False
             body = json.dumps(payload).encode("utf-8")
         except (TypeError, ValueError) as exc:
             LOG.error("submit_result: unserializable payload for job %s: %s", job_id, exc)
@@ -434,13 +563,23 @@ class Transport:
             headers["Content-Encoding"] = "gzip"
 
         try:
+            logical_job_id = str(payload.get("job_id") or job_id.split("--", 1)[0])
             r = self._client.post(
-                f"/agents/{self._agent_id}/jobs/{job_id}/result",
+                f"/agents/{self._agent_id}/jobs/{logical_job_id}/result",
                 headers=headers,
                 content=body,
             )
             if 200 <= r.status_code < 300:
                 return True
+            if r.status_code in (400, 404, 409, 422):
+                from agent.result_spool import PERMANENT_REJECTION
+                LOG.error(
+                    "submit_result permanently rejected (HTTP %d) for job %s — "
+                    "result will be quarantined",
+                    r.status_code,
+                    logical_job_id,
+                )
+                return PERMANENT_REJECTION
             if r.status_code in (401, 403):
                 LOG.warning(
                     "submit_result auth-rejected (HTTP %d) for job %s — result kept "
@@ -494,6 +633,8 @@ class Transport:
         """
         import websockets
 
+        if not self.ensure_device_access():
+            raise TransportError("Cannot connect WebSocket: device credential refresh failed")
         if not self._agent_token:
             raise TransportError("Cannot connect WebSocket: no agent token")
 

@@ -17,6 +17,14 @@ class Settings(BaseSettings):
     # Redis
     redis_url: str = "redis://localhost:6379/0"
 
+    # Database connection pool — these are per-process (each uvicorn worker has its
+    # own pool). Keep pool_size small on shared EC2 to avoid exhausting Postgres
+    # max_connections (default 100) with API_WORKERS=2 + background worker.
+    db_pool_size: int = 5
+    db_max_overflow: int = 5
+    db_pool_recycle: int = 280   # recycle before AWS TCP idle kills at 350s
+    db_pool_timeout: int = 10    # fail fast; don't hold up the request path
+
     # Job leasing: a claimed (running) job carries a lease renewed on every probe
     # heartbeat. If the probe dies mid-scan the lease expires and the reaper requeues
     # the job (pending) so it isn't stuck 'running' forever. Lease must comfortably
@@ -75,10 +83,16 @@ class Settings(BaseSettings):
     sla_hours_low: int = 720      # 30 days
     sla_hours_info: int = 0       # no SLA
 
-    # Probe bootstrap key — allows probes to self-register without admin login.
-    # Set PROBE_BOOTSTRAP_KEY in the manager's .env to a random secret string.
-    # Leave empty to disable (probes must use admin-issued PATs).
+    # Legacy shared-secret bootstrap is unsafe for multi-tenant production. It is
+    # disabled even when an old key remains in the environment unless a developer
+    # deliberately enables the compatibility flag. Device-key enrollment replaces
+    # this path.
+    allow_unsafe_legacy_probe_bootstrap: bool = False
     probe_bootstrap_key: str = ""
+    # Base64-encoded 32-byte Ed25519 private seed used only to sign immutable
+    # Site policy envelopes. Production must provide a key distinct from JWT.
+    # Development derives an ephemeral-compatible seed from JWT_SECRET.
+    probe_policy_signing_key: str = ""
 
     # App
     app_env: str = "development"

@@ -124,7 +124,7 @@ class TestFirstDeployment:
         mock_begin = MagicMock()
         mock_begin.__aenter__ = AsyncMock(return_value=None)
         mock_begin.__aexit__ = AsyncMock(return_value=None)
-        db.begin.return_value = mock_begin
+        db.begin = MagicMock(return_value=mock_begin)
 
         with patch("scripts.seed_admin.AsyncSessionLocal", return_value=mock_session), \
              patch("scripts.seed_admin._verify_hash", return_value=True):
@@ -171,7 +171,7 @@ class TestExistingAdminNoReset:
         mock_begin = MagicMock()
         mock_begin.__aenter__ = AsyncMock(return_value=None)
         mock_begin.__aexit__ = AsyncMock(return_value=None)
-        db.begin.return_value = mock_begin
+        db.begin = MagicMock(return_value=mock_begin)
 
         mock_session = MagicMock()
         mock_session.__aenter__ = AsyncMock(return_value=db)
@@ -222,7 +222,7 @@ class TestPasswordRotation:
         mock_begin = MagicMock()
         mock_begin.__aenter__ = AsyncMock(return_value=None)
         mock_begin.__aexit__ = AsyncMock(return_value=None)
-        db.begin.return_value = mock_begin
+        db.begin = MagicMock(return_value=mock_begin)
 
         mock_session = MagicMock()
         mock_session.__aenter__ = AsyncMock(return_value=db)
@@ -271,7 +271,7 @@ class TestPasswordRotation:
         mock_begin = MagicMock()
         mock_begin.__aenter__ = AsyncMock(return_value=None)
         mock_begin.__aexit__ = AsyncMock(return_value=None)
-        db.begin.return_value = mock_begin
+        db.begin = MagicMock(return_value=mock_begin)
 
         mock_session = MagicMock()
         mock_session.__aenter__ = AsyncMock(return_value=db)

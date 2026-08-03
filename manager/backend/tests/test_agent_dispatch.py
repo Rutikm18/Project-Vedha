@@ -90,6 +90,19 @@ class TestJobSecretBoundary:
 class TestTenantWebSocketSelection:
 
     @pytest.mark.asyncio
+    async def test_online_heartbeat_clears_finished_job(self):
+        manager = AgentConnectionManager()
+        tenant_id = str(uuid.uuid4())
+        agent_id = str(uuid.uuid4())
+
+        await manager.register(agent_id, tenant_id, AsyncMock())
+        await manager.record_heartbeat(agent_id, "busy", "job-1")
+        assert manager._agent_job[agent_id] == "job-1"
+
+        await manager.record_heartbeat(agent_id, "online", None)
+        assert manager._agent_job[agent_id] is None
+
+    @pytest.mark.asyncio
     async def test_displaced_socket_cannot_unregister_reconnect(self):
         manager = AgentConnectionManager()
         tenant_id = str(uuid.uuid4())
@@ -208,11 +221,12 @@ class TestAtomicWebSocketClaim:
         db.execute = AsyncMock(side_effect=[
             MagicMock(scalar_one_or_none=lambda: agent),
             MagicMock(one_or_none=lambda: (job, engagement)),
-            SimpleNamespace(rowcount=1),
+            MagicMock(first=lambda: (1, 1)),
         ])
         db.commit = AsyncMock()
+        db.flush = AsyncMock()
 
-        claimed, reason = await agent_ws._claim_pushed_job(
+        claimed, reason, claim = await agent_ws._claim_pushed_job(
             db,
             str(agent_id),
             str(tenant_id),
@@ -221,6 +235,8 @@ class TestAtomicWebSocketClaim:
 
         assert claimed is True
         assert reason == "claimed"
+        assert claim.attempt_number == 1
+        assert claim.fence == 1
         db.commit.assert_awaited_once()
         assert "agents.tenant_id" in str(db.execute.await_args_list[0].args[0])
         assert "engagements.tenant_id" in str(db.execute.await_args_list[1].args[0])
@@ -237,7 +253,7 @@ class TestAtomicWebSocketClaim:
         ])
         db.commit = AsyncMock()
 
-        claimed, reason = await agent_ws._claim_pushed_job(
+        claimed, reason, claim = await agent_ws._claim_pushed_job(
             db,
             str(agent_id),
             str(tenant_id),
@@ -246,6 +262,7 @@ class TestAtomicWebSocketClaim:
 
         assert claimed is False
         assert reason == "not_eligible"
+        assert claim is None
         assert db.execute.await_count == 2
         db.commit.assert_not_awaited()
 
@@ -256,11 +273,11 @@ class TestAtomicWebSocketClaim:
         db.execute = AsyncMock(side_effect=[
             MagicMock(scalar_one_or_none=lambda: agent),
             MagicMock(one_or_none=lambda: (job, engagement)),
-            SimpleNamespace(rowcount=0),
+            MagicMock(first=lambda: None),
         ])
         db.commit = AsyncMock()
 
-        claimed, reason = await agent_ws._claim_pushed_job(
+        claimed, reason, claim = await agent_ws._claim_pushed_job(
             db,
             str(agent_id),
             str(tenant_id),
@@ -269,4 +286,5 @@ class TestAtomicWebSocketClaim:
 
         assert claimed is False
         assert reason == "claim_lost"
+        assert claim is None
         db.commit.assert_awaited_once()
