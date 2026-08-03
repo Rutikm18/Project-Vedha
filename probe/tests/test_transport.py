@@ -207,6 +207,26 @@ class TestDeviceEnrollment:
         assert "enrollment_request_id" not in saved
         assert "enrollment_device_secret" not in saved
 
+    def test_create_enrollment_request_forwards_enroll_token(self, transport):
+        response = MagicMock(status_code=201)
+        response.json.return_value = {
+            "request_id": "req-1",
+            "device_secret": "dev-secret",
+            "state": "approved",
+            "activation_challenge": "chal",
+        }
+        transport._client.post.return_value = response
+
+        result = transport.create_enrollment_request({
+            "signing_public_key": "k",
+            "enroll_token": "vet_preauthorized",
+        })
+
+        call = transport._client.post.call_args
+        assert call[0][0] == "/probe-enrollment/requests"
+        assert call[1]["json"]["enroll_token"] == "vet_preauthorized"
+        assert result["state"] == "approved"
+
     def test_legacy_token_is_not_forced_through_device_refresh(self, transport):
         transport.agent_id = "legacy-agent"
         transport.agent_token = "legacy-token"

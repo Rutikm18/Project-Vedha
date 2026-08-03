@@ -1985,7 +1985,10 @@ code, pre, .terminal, kbd, [class*="mono"], .font-mono {
 }
 
 /* ─── Focus ─── */
-:focus-visible { outline: none; box-shadow: var(--focus-ring); border-radius: 4px; }
+/* Outline is a separate property that component box-shadows can't clobber, so
+   custom buttons/cards/dials that set their own box-shadow still show a clear
+   keyboard-focus ring. box-shadow ring kept for elements that don't override it. */
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; box-shadow: var(--focus-ring); border-radius: 4px; }
 
 /* ─── Ripple ─── */
 .ripple-container { position: relative; overflow: hidden; }

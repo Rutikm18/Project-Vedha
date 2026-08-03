@@ -169,6 +169,96 @@ make full      # postgres + redis + API + one probe + one dashboard
 
 ---
 
+## 4b. One-command auto-enroll (pre-authorized token)
+
+The default Method C flow makes the probe **self-enroll and then block** waiting
+for an operator to type a `user_code` at `/fleet/enroll`. A **pre-authorized,
+Site-bound enrollment token** (`vet_…`) removes that manual step: the probe
+auto-approves on first boot and comes online with no code to type. The token is
+**bound to a Site**, so the auto-enrolled probe still inherits that Site's
+authorized scope, capabilities, and budgets — auto, but never un-scoped.
+
+### The flow
+
+```
+OPERATOR (manager, once)          PROBE (one command)                MANAGER
+─────────────────────────         ───────────────────                ───────
+create Site (scope+caps+budgets)
+mint enroll token  ───────────►  vet_xxx (shown once)
+                                 install.sh --manager <url>
+                                   --enroll-token vet_xxx --insecure
+                                   ├ build device key
+                                   └ POST /probe-enrollment/requests ─► validate+consume token
+                                                                        create Agent bound to Site
+                                     ◄── state:"approved" + challenge   (NO user_code step)
+                                   sign(challenge) → activate ────────► device token + policy
+                                   register / heartbeat ──────────────► ONLINE
+assign engagement → create job  ────────────────────────────────────►  job queued
+                                 GET /agents/{id}/jobs (auto-poll) ───► scan → facts → findings
+```
+
+The only manual acts are the operator's two decisions (mint token, assign
+engagement + job). The probe side is fully automated.
+
+### Operator (manager side, once)
+
+Mint a Site-bound token — admin/manager PAT required (see `CLI.md` for PATs):
+
+```bash
+BASE="https://manager.example.com"           # or the testing box, http://…:18080
+curl -fsS -X POST "$BASE/probe-enrollment/enroll-tokens" \
+  -H "Authorization: Bearer $ACCESS_TOKEN" -H 'Content-Type: application/json' \
+  -d '{"name":"dmz-probe","site_id":"<site-uuid>","expires_in_minutes":60,"max_uses":1}'
+# → { "token": "vet_…", "token_prefix": "vet_…", "expires_at": … }   # shown once
+```
+
+Token properties: **single-use** by default, **≤24h TTL**, SHA-256 hashed at
+rest, revocable (`DELETE /probe-enrollment/enroll-tokens/{id}`), and every
+auto-enroll is audit-logged. A leaked one-liner is therefore low-value.
+
+### Step-by-step — probe only
+
+**1. Get the one token value** from the operator step above (`vet_…`).
+
+**2. Install — the single command** (nothing else runs on the probe host):
+```bash
+curl --proto '=https' --tlsv1.2 -fsS https://downloads.vedha.example/probe/install.sh \
+  | sudo sh -s -- --manager http://13.127.147.205:18080 --enroll-token vet_xxx --insecure
+```
+
+**3. Watch it auto-enroll and come online** (optional):
+```bash
+docker logs -f vedha-probe
+# → "Probe pre-authorized via enrollment token — auto-approving, no code needed."
+# → registers → heartbeats → ONLINE
+```
+
+That's it — no code to type, no approval prompt. Once the operator assigns an
+engagement + job, the probe auto-claims and scans; no further probe commands.
+
+**Preview first** (no Docker, no network):
+```bash
+PROBE_INSTALL_DRY_RUN=true sh install.sh \
+  --manager http://13.127.147.205:18080 --enroll-token vet_xxx --insecure
+# shows: auto-enroll via pre-authorized token · insecure http manager permitted
+```
+
+### Flags & safety notes
+
+| Flag | Meaning |
+|---|---|
+| `--enroll-token vet_…` | Pre-authorized, Site-bound token → auto-enroll, no `user_code` step. |
+| `--insecure` | Allow an `http://` manager (testing only). **Omit it and an http manager is refused** — the production https guard stays on. |
+
+- **Graceful fallback:** an expired / revoked / already-used token does **not**
+  fail the install — the probe drops back to the manual `user_code` →
+  `/fleet/enroll` approval path.
+- **No credential without a token:** run the one-liner **without**
+  `--enroll-token` and you get the original behaviour (self-enroll, then approve
+  in the Fleet UI).
+
+---
+
 ## 5. Step-by-step: getting an actual VA output
 
 The desired end state is **prioritized findings**, not raw facts. Do it in this order.

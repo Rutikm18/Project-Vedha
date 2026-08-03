@@ -282,6 +282,13 @@ services:
       AUTH_COOKIE_SAMESITE: ${AUTH_COOKIE_SAMESITE:-strict}
       NEXT_TELEMETRY_DISABLED: "1"
       NODE_ENV: production
+      # TESTING ONLY — login-page credential autofill. Guarded by DEV_LOGIN_HINT
+      # (default off) AND a hard APP_ENV=production block in /api/auth/dev-hint.
+      # install.sh (prod) never sets DEV_LOGIN_HINT and forces APP_ENV=production.
+      APP_ENV: ${APP_ENV:-development}
+      DEV_LOGIN_HINT: ${DEV_LOGIN_HINT:-0}
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL:-admin@vedha.io}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD:-}
     # SECURITY: bind to 127.0.0.1 — Caddy reaches frontend over compose network.
     ports:
       - "${FRONTEND_BIND:-0.0.0.0}:${FRONTEND_PORT:-3000}:3000"
@@ -296,6 +303,12 @@ services:
       timeout: 10s
       retries: 3
       start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: ${FRONTEND_MEM_LIMIT:-512M}
+        reservations:
+          memory: 128M
     restart: unless-stopped
     logging:
       driver: json-file

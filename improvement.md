@@ -48,6 +48,65 @@ Severity in this review means:
 - **P2 / scale:** resolve before multi-AZ, multi-replica, or large-fleet claims.
 - **P3 / quality:** improve maintainability, usability, and operating cost after correctness gates pass.
 
+## Implementation status checklist (verified 2026-08-03 against HEAD `f1da96f`)
+
+> This section was added after re-verifying the review against the **current** workspace. The review baseline was `65f22a7`; substantial remediation has landed since, so several blockers are now closed in code. Each item below was checked by reading the referenced source at HEAD, not the baseline. Line numbers have shifted from the original review.
+>
+> Legend: ✅ done/verified · 🟡 partial (containment or schema landed, hardening remains) · ❌ still open · ⬜ not independently re-verified this pass.
+
+### Gate 0 blockers
+
+| ID | Status | What I verified at HEAD | Remaining work |
+|---|---|---|---|
+| SEC-01 | 🟡 **Repo hygiene done — rotation/history purge still required** | **Done this pass:** untracked `probe/probe.env`, `probe/.lab-run/` (state + spool), `manager/frontend/data/probe-keys.json`, `manager/frontend/data/probe-state.json` via `git rm --cached` (working copies preserved); untracked all 52 tracked `.pyc`/`.DS_Store` noise files; hardened `.gitignore` to cover them; added Gitleaks + `detect-private-key` in `.pre-commit-config.yaml` and a `.github/workflows/secret-scan.yml` CI gate (full-history scan). | **Human-only, not done:** rotate/revoke the exposed `PROBE_PAT`, device JWT, and any signing keys; purge the values from Git **history** (`git-filter-repo`/BFG) since untracking does not remove them from past commits; coordinate fresh clones. These require credential access and a shared-history rewrite decision. |
+| SEC-02 | 🟡 **Largely done** | `create_device_access_token` issues `aud=vedha-probe-api`, `typ=device_access`, `credential_generation`, 10-min expiry (`auth/jwt.py:40-57`). Middleware enforces a least-privilege agent route allowlist (`agent_jwt_path_allows`) and DB-backed device checks: rejects non-`active` lifecycle, stale `credential_generation`, wrong `aud` (`auth/middleware.py:37-163`). | JWT still lacks `iss` and `kid` (`jwt.py` has no issuer/key-id); legacy `register`/`bootstrap` still mint **1-year** bearer JWTs (`routers/agents.py:568-572,628-632`). Route allowlist contains blast radius but the year-long bearer is not yet retired. |
+| ENR-01 | ✅ **Contained (disabled)** | `/agents/bootstrap` now hard-fails unless `allow_unsafe_legacy_probe_bootstrap` is set (`routers/agents.py:499-506`), uses `secrets.compare_digest`. Disabled by default per the review's directive. | Remove entirely after migration (still present in code; "resolve first active tenant" logic remains). |
+| PROBE-01 | ✅ **Fixed** | Poll loop initializes `jobs: list[dict] = []` every iteration (`probe/agent/agent.py:288`), `_poll_jobs_or_empty` returns `[]` on transient failure (`:80-88`), and the generic except path `continue`s (`:317-319`). | Add the first-outage/stale-list regression tests the review asks for. |
+| JOB-01 | ✅ **Fenced** | `scan_job_attempt` table/model exists (migration `0017_scan_job_attempts`), reaper expires fenced attempts and enforces `attempt_count >= max_attempts` with `current_attempt_id` (`workers/reaper.py:33-79`). | Verify probe-side stop-after-grace still needed (see Probe lifecycle #9); confirm monotonic fence on every attempt message. |
+| SCOPE-01 | ✅ **Fail-closed** | `_job_reachability_scope` returns `None` (deny) for empty/NULL authoritative scope and never treats empty as unrestricted (`routers/agents.py:149-153`); dispatch denies on `None` (`:220-223`). | Confirm the same fail-closed rule at result-ingestion revalidation. |
+| DEPLOY-01 | ✅ **Fixed** | `AUTH_COOKIE_SECURE` is now passed to backend env (`manager/docker-compose.yml:35,281`). | Add the production Compose boot test to keep it from regressing. |
+| DEPLOY-02 | ✅ **Idempotent** | Secrets are preserved across reruns (JWT/signing-seed/admin — `install.sh:325-339`); env is rendered via `mktemp` + unique installer block markers `# >>> vedha-aws-installer >>>` stripped/rewritten with `sed` (`:513-520`), removing the duplicate-append bug. Install lock + port/arch/disk preflight with `die` (`:86-137`). | Test fresh→rerun with and without SSM as an automated gate. |
+| DEPLOY-03 | ✅ **Rollback exists** | Retained immutable release pointer + `rollback_previous_release()` invoked on failed deploy (`install.sh:585-638`). | Confirm expand/contract migration reversibility; retain N prior digests. |
+| DEPLOY-04 | ✅ **Gating fatal** | `verify.sh` accepts both `--full` and `--mode full` and validates mode (`verify.sh:36-45`); docs use `--mode full` (`aws-deployment.md:362`). Installer now **fails** on verify error via `die`, and `SKIP_VERIFY` requires explicit `ALLOW_SKIP_VERIFY` (`install.sh:624-635`). | Ensure verify exercises public TLS + one no-op end-to-end job. |
+
+**Gate 0 summary: 8 of 9 blockers closed or contained in code; SEC-01 (tracked secrets) is the one hard blocker still open, and SEC-02 has a residual 1-year legacy bearer to retire.**
+
+### Gate 1 — enrollment foundation (substantially landed)
+
+- ✅ New models/migrations present: `probe_site`, `probe_enrollment`, `scan_job_attempt`, `scan_result`, `outbox`, `audit_log` (migration `0018_probe_enrollment`).
+- ✅ Agent lifecycle fields added: `site_id`, `lifecycle_status`, `signing_key_fingerprint`, `credential_generation` (`models/agent.py:40-46`).
+- ✅ Public enrollment namespace with rate-limited paths and **real Ed25519 proof-of-possession**: `_verify_signature` verifies device signatures, secrets stored only as SHA-256/keyed hashes, nonce/challenge flow (`routers/probe_enrollment.py`).
+- ✅ Device credentials are DB-checked on every request and short-lived (10 min).
+- 🟡 Read-only Fleet UI / approval workflow — **not re-verified this pass** (backend contract exists; frontend Fleet pages unconfirmed).
+
+### Detailed findings — spot-verified
+
+- ✅ Async #14 (unbounded gzip): request body decode now capped at 128 MB decompressed and rejects malformed gzip (`main.py:103-145`).
+- ✅ Scope/jobs #8 (attempt model): `scan_job_attempt` with fence + `max_attempts` implemented.
+- ✅ Scope/jobs #1 (manager-generated job IDs): confirmed still server-generated.
+- ✅ Probe lifecycle #10 (spool growth): probe now gates new jobs on `spool.at_capacity` with high-water warning (`probe/agent/agent.py:295-302`).
+- ✅ Async #12 (outbox stale-lock): **fixed this pass.** Added `is_stale_processing()` + `_reclaim_stale()` to `workers/outbox.py`, swept every `RECLAIM_INTERVAL_SEC` inside `run_worker`: events a crashed worker left in `PROCESSING` past a 5-min lease are requeued (or dead-lettered once `attempts >= max_attempts`), so no acknowledged-durable event is silently stranded. Uses the existing `locked_at` column (no migration). Covered by `tests/test_outbox_reclaim.py` (12 tests: staleness predicate, cutoff, both SQL sweeps compiled against the Postgres dialect, and async orchestration with a mocked session — all passing; full manager suite **404 passed / 3 skipped**, no regression). Handlers remain required to be idempotent (the normal retry path already re-runs them).
+- 🟡 Scope/jobs #6 (result column conflation): separate `scan_result` table added, but `scan_jobs.result` JSONB column still exists (`models/scan_job.py:30`) — lineage split incomplete.
+- ✅ Manager identity #2 (agent lifecycle control): lifecycle/generation/fingerprint/site fields added.
+- ✅ Audit events: `audit_log` model is written from `probe_enrollment`, `exploits`, `activity` routers (partial coverage; not yet every event class the review lists).
+- ❌ Manager #10 (frontend sources of truth): file-backed stores still present (`lib/agents-store.ts`, `lib/job-store.ts`, `data/*.json`) and some are the SEC-01 tracked secrets.
+
+### Not re-verified this pass (still assume open per original review)
+
+⬜ Most of the Detailed-findings items under *Manager identity/tenancy* (RLS, login ambiguity, PAT scopes), the full *AWS & release operations* list (IaC, multi-AZ, health split, proxy trust, cost controls), the release pipeline at repo root, HTTP/WSS trust parity, and the entire *edge-case contract* test matrix were **not** individually re-checked at HEAD. Treat them as open unless separately verified. Gates 2–5 (artifact/lifecycle, job/result reliability at scale, AWS production platform, fleet scale) remain future work.
+
+### Net assessment
+
+The **NO-GO** verdict still stands, but the reason has narrowed further after this pass. The dangerous auth-boundary and lifecycle-correctness blockers (SEC-02, PROBE-01, JOB-01, SCOPE-01, and all four DEPLOY items) are substantially fixed in code, and this pass closed the SEC-01 repo-hygiene work and the outbox stale-lock stranding (async #12).
+
+**What remains before the pilot tier is releasable:**
+
+1. **SEC-01 operational tail (human-only):** rotate the exposed `PROBE_PAT`/device JWT/signing keys and purge them from Git *history*. Untracking (done) stops future leakage; it does not scrub past commits.
+2. **Retire the legacy 1-year probe bearer JWT** (`routers/agents.py:568,628`). Deliberately **not changed here** — shortening or removing it is an outward-facing change that can lock out field probes still on the legacy path, so it needs a migration window / feature-flag decision, not a unilateral edit.
+3. **Remove the frontend file stores from production builds** (`lib/agents-store.ts`, `lib/job-store.ts`, `data/*.json`). Larger refactor: some `data/*.json` (e.g. `findings.json`) is demo seed data the app reads, so it needs isolation behind a demo flag rather than deletion.
+
+Gates 2–5 (artifact/lifecycle, job/result reliability at scale, IaC-managed multi-AZ AWS, fleet scale) remain future work.
+
 ## Foundations worth preserving
 
 The redesign should build on the parts that already have the right shape:

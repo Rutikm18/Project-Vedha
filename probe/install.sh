@@ -19,13 +19,17 @@ LICENSE_ENFORCED="${LICENSE_ENFORCED:-false}"
 PROBE_MAX_TARGETS="${PROBE_MAX_TARGETS:-4096}"
 PROBE_MAX_JOB_SECONDS="${PROBE_MAX_JOB_SECONDS:-7200}"
 PROBE_REGISTRATION_TIMEOUT="${PROBE_REGISTRATION_TIMEOUT:-60}"
+PROBE_ENROLL_TOKEN="${PROBE_ENROLL_TOKEN:-}"
+PROBE_ALLOW_INSECURE="${PROBE_ALLOW_INSECURE:-false}"
 
 say() { printf '%s\n' "$*"; }
 have() { command -v "$1" >/dev/null 2>&1; }
 
 usage() {
-  say "Usage: $0 --manager https://manager.example.com"
-  say "Only the Manager endpoint is deployment-specific; approval and Site policy come from Fleet UI."
+  say "Usage: $0 --manager https://manager.example.com [--enroll-token vet_...] [--insecure]"
+  say "  --enroll-token  Pre-authorized, Site-bound token → probe auto-enrolls (no user_code step)."
+  say "  --insecure      Allow an http:// manager (testing only; production requires https)."
+  say "Only the Manager endpoint is deployment-specific; Site policy comes from the token or Fleet UI."
 }
 
 while [ "$#" -gt 0 ]; do
@@ -34,6 +38,15 @@ while [ "$#" -gt 0 ]; do
       [ "$#" -ge 2 ] || { say "ERROR: --manager requires a value."; usage; exit 2; }
       PLATFORM_URL=$2
       shift 2
+      ;;
+    --enroll-token)
+      [ "$#" -ge 2 ] || { say "ERROR: --enroll-token requires a value."; usage; exit 2; }
+      PROBE_ENROLL_TOKEN=$2
+      shift 2
+      ;;
+    --insecure)
+      PROBE_ALLOW_INSECURE=true
+      shift
       ;;
     --help|-h)
       usage
@@ -60,8 +73,13 @@ if [ "${PROBE_INSTALL_DRY_RUN:-false}" = "true" ]; then
   say "Image: $IMAGE"
   say "Container: $NAME"
   say "Manager: $PLATFORM_URL"
-  say "Identity: device-generated key; Fleet UI approval required"
+  if [ -n "$PROBE_ENROLL_TOKEN" ]; then
+    say "Identity: device-generated key; auto-enroll via pre-authorized token (${PROBE_ENROLL_TOKEN%%_*}_…)"
+  else
+    say "Identity: device-generated key; Fleet UI approval required"
+  fi
   say "Scope and safety budgets: Manager-owned Site policy"
+  [ "$PROBE_ALLOW_INSECURE" = "true" ] && say "TLS: insecure http manager permitted (testing mode)"
   exit 0
 fi
 
@@ -189,7 +207,7 @@ validated_config="$(docker run --rm \
 import ipaddress, re, sys
 from urllib.parse import urlparse
 
-segments, max_targets, max_seconds, registration_timeout, mac, hwid, name, url, licensing, pubkey = sys.argv[1:]
+segments, max_targets, max_seconds, registration_timeout, mac, hwid, name, url, licensing, pubkey, allow_insecure = sys.argv[1:]
 networks = []
 if segments.strip():
     parts = segments.split(",")
@@ -220,8 +238,8 @@ parsed = urlparse(url)
 if parsed.scheme not in {"http", "https"} or not parsed.hostname:
     raise SystemExit("PLATFORM_URL must be an http(s) URL with a host")
 local_hosts = {"localhost", "127.0.0.1", "::1", "host.docker.internal", "api"}
-if parsed.scheme != "https" and parsed.hostname not in local_hosts:
-    raise SystemExit("production manager URLs must use https")
+if parsed.scheme != "https" and parsed.hostname not in local_hosts and allow_insecure != "true":
+    raise SystemExit("production manager URLs must use https (pass --insecure for a testing http manager)")
 if licensing == "true" and not re.fullmatch(r"[0-9a-fA-F]{64}", pubkey):
     raise SystemExit("PROBE_LICENSE_PUBKEY must be a 64-character hex Ed25519 public key")
 print(",".join(networks))
@@ -231,6 +249,7 @@ print(timeout)
 ' "$PROBE_NETWORK_SEGMENTS" "$PROBE_MAX_TARGETS" "$PROBE_MAX_JOB_SECONDS" \
   "$PROBE_REGISTRATION_TIMEOUT" "$PROBE_MAC_ADDRESS" "$PROBE_HW_ID" \
   "$PROBE_NAME" "$PLATFORM_URL" "$LICENSE_ENFORCED" "${PROBE_LICENSE_PUBKEY:-}" \
+  "$PROBE_ALLOW_INSECURE" \
   2>&1)" || {
     say "Invalid probe configuration: $validated_config"
     exit 1
@@ -285,7 +304,8 @@ fi
 for config_value in \
   "$PLATFORM_URL" "$VERIFY_TLS" "$PROBE_NAME" "${PROBE_LOCATION:-}" \
   "$PROBE_NETWORK_SEGMENTS" "$PROBE_MAX_TARGETS" "$PROBE_MAX_JOB_SECONDS" \
-  "$PROBE_REGISTRATION_TIMEOUT" "$PROBE_HW_ID" "${PROBE_LICENSE_PUBKEY:-}"
+  "$PROBE_REGISTRATION_TIMEOUT" "$PROBE_HW_ID" "${PROBE_LICENSE_PUBKEY:-}" \
+  "${PROBE_ENROLL_TOKEN:-}"
 do
   if printf '%s' "$config_value" | LC_ALL=C grep -q '[[:cntrl:]]'; then
     say "Probe configuration values must be single-line text."
@@ -311,6 +331,11 @@ write_env_file() {
     printf 'PROBE_MAX_TARGETS=%s\n' "$PROBE_MAX_TARGETS"
     printf 'PROBE_MAX_JOB_SECONDS=%s\n' "$PROBE_MAX_JOB_SECONDS"
     printf 'HW_BIND_FINGERPRINT=%s\n' "$PROBE_HW_ID"
+    if [ -n "$PROBE_ENROLL_TOKEN" ]; then
+      # Pre-authorized, Site-bound enrollment token. Consumed once on first boot
+      # to auto-approve; the durable identity is the device key + refresh secret.
+      printf 'PROBE_ENROLL_TOKEN=%s\n' "$PROBE_ENROLL_TOKEN"
+    fi
     printf 'LICENSE_ENFORCED=%s\n' "$LICENSE_ENFORCED"
     if [ "$LICENSE_ENFORCED" = "true" ]; then
       printf 'PROBE_LICENSE_FILE=/var/lib/vedha-probe/license.token\n'

@@ -97,11 +97,14 @@ fi
 # ── Consistent config pair (prevents the FATAL production+insecure-cookie combo)
 # Respect a deliberate, valid production setup; otherwise force the testing pair.
 if [ "$(get APP_ENV)" = "production" ] && [ "$(get AUTH_COOKIE_SECURE)" = "true" ]; then
-  echo "[gen-env] keeping production config (AUTH_COOKIE_SECURE=true)"
+  set_kv DEV_LOGIN_HINT 0
+  echo "[gen-env] keeping production config (AUTH_COOKIE_SECURE=true); login autofill OFF"
 else
   set_kv APP_ENV development
   set_kv AUTH_COOKIE_SECURE false
-  echo "[gen-env] APP_ENV=development, AUTH_COOKIE_SECURE=false (testing path)"
+  # Testing convenience: autofill the login form with the seeded admin creds.
+  set_kv DEV_LOGIN_HINT 1
+  echo "[gen-env] APP_ENV=development, AUTH_COOKIE_SECURE=false, login autofill ON (testing path)"
 fi
 
 # ── Public IP detection via IMDSv2 (falls back to IMDSv1-style, then external) ─

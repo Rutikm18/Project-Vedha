@@ -920,7 +920,7 @@ def _enroll_device(
     device_secret = state.get("enrollment_device_secret")
     poll_interval = 5
     if not request_id or not device_secret:
-        response = transport.create_enrollment_request({
+        enroll_payload = {
             "signing_public_key": signing_public_key,
             "encryption_public_key": encryption_public_key,
             "nonce": secrets.token_urlsafe(24),
@@ -931,7 +931,15 @@ def _enroll_device(
             "installer_version": os.environ.get("PROBE_INSTALLER_VERSION", VERSION),
             "build_digest": os.environ.get("PROBE_BUILD_DIGEST", "development-build"),
             "capabilities": CAPABILITIES,
-        })
+        }
+        enroll_token = os.environ.get("PROBE_ENROLL_TOKEN")
+        if enroll_token:
+            # Pre-authorized, Site-bound token: the manager auto-approves and
+            # returns state="approved" with an activation challenge — no operator
+            # user_code step. A bad/expired/used token degrades to the manual
+            # path (manager returns "awaiting_approval" with a user_code).
+            enroll_payload["enroll_token"] = enroll_token
+        response = transport.create_enrollment_request(enroll_payload)
         request_id = response["request_id"]
         device_secret = response["device_secret"]
         poll_interval = int(response.get("poll_interval_seconds") or 5)
@@ -939,10 +947,13 @@ def _enroll_device(
             "enrollment_request_id": request_id,
             "enrollment_device_secret": device_secret,
         })
-        verification_path = response.get("verification_path", "/fleet/enroll")
-        say("Probe enrollment approval required.")
-        say(f"  Open: {transport._base_url}{verification_path}")
-        say(f"  Enter code: {response['user_code']}")
+        if response.get("state") == "approved":
+            say("Probe pre-authorized via enrollment token — auto-approving, no code needed.")
+        else:
+            verification_path = response.get("verification_path", "/fleet/enroll")
+            say("Probe enrollment approval required.")
+            say(f"  Open: {transport._base_url}{verification_path}")
+            say(f"  Enter code: {response['user_code']}")
 
     while True:
         try:

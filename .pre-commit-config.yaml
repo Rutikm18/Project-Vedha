@@ -1,0 +1,20 @@
+# Pre-commit hooks for Vedha.
+# Install once:  pipx install pre-commit && pre-commit install
+# Run manually:  pre-commit run --all-files
+#
+# The gitleaks hook is the SEC-01 containment control: it blocks commits that
+# introduce verified secrets (PATs, JWTs, private keys) into tracked files.
+repos:
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.18.4
+    hooks:
+      - id: gitleaks
+
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.6.0
+    hooks:
+      - id: check-added-large-files
+        args: ["--maxkb=1024"]
+      - id: detect-private-key
+      - id: end-of-file-fixer
+      - id: trailing-whitespace

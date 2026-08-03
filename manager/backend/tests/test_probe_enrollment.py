@@ -65,3 +65,74 @@ def test_site_policy_rejects_exclusion_outside_authorized_scope() -> None:
             excluded_cidrs=["10.1.0.0/24"],
             approved_capabilities=["discovery"],
         )
+
+
+# ── Pre-authorized, Site-bound enrollment tokens ────────────────────────────
+
+from datetime import datetime, timedelta, timezone
+from types import SimpleNamespace
+
+from app.routers.probe_enrollment import (
+    ENROLL_TOKEN_PREFIX,
+    EnrollmentCreate,
+    EnrollTokenCreate,
+    _secret_hash,
+    enroll_token_is_usable,
+    generate_enroll_token,
+)
+
+
+def _token(**overrides):
+    now = datetime.now(timezone.utc)
+    base = dict(revoked_at=None, expires_at=now + timedelta(minutes=30), uses=0, max_uses=1)
+    base.update(overrides)
+    return SimpleNamespace(**base)
+
+
+def test_generate_enroll_token_is_prefixed_hashed_and_shown_once() -> None:
+    raw, token_hash, prefix = generate_enroll_token()
+
+    assert raw.startswith(ENROLL_TOKEN_PREFIX)
+    assert token_hash == _secret_hash(raw)          # only the hash is stored
+    assert prefix == raw[:12] and raw != token_hash  # prefix is display-only
+    # distinct each call
+    assert generate_enroll_token()[0] != raw
+
+
+def test_enroll_token_usable_only_while_live_unrevoked_and_under_max_uses() -> None:
+    now = datetime.now(timezone.utc)
+    assert enroll_token_is_usable(_token(), now) is True
+    assert enroll_token_is_usable(None, now) is False
+    assert enroll_token_is_usable(_token(revoked_at=now), now) is False
+    assert enroll_token_is_usable(_token(expires_at=now - timedelta(seconds=1)), now) is False
+    assert enroll_token_is_usable(_token(uses=1, max_uses=1), now) is False
+    # a multi-use token remains usable until exhausted
+    assert enroll_token_is_usable(_token(uses=1, max_uses=3), now) is True
+
+
+def test_enroll_token_create_defaults_and_bounds() -> None:
+    import uuid
+
+    body = EnrollTokenCreate(name="dmz-probe", site_id=uuid.uuid4())
+    assert body.max_uses == 1 and body.expires_in_minutes == 60  # single-use, short TTL
+
+    with pytest.raises(ValueError):
+        EnrollTokenCreate(name="x", site_id=uuid.uuid4(), expires_in_minutes=5000)  # > 24h
+    with pytest.raises(ValueError):
+        EnrollTokenCreate(name="x", site_id=uuid.uuid4(), max_uses=0)
+
+
+def test_enrollment_create_accepts_optional_enroll_token() -> None:
+    valid_key = base64.b64encode(b"x" * 32).decode()
+    fields = dict(
+        signing_public_key=valid_key,
+        encryption_public_key=valid_key,
+        nonce="a" * 16,
+        platform="linux",
+        architecture="x86_64",
+        agent_version="1.0",
+        installer_version="1.0",
+        build_digest="d" * 8,
+    )
+    assert EnrollmentCreate(**fields).enroll_token is None          # manual path unchanged
+    assert EnrollmentCreate(**fields, enroll_token="vet_abc123xy").enroll_token == "vet_abc123xy"

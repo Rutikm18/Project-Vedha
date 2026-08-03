@@ -24,7 +24,7 @@ from app.config import get_settings
 from app.dependencies import AuthUser, DB, RedisConn
 from app.models.agent import Agent, AgentStatus
 from app.models.audit_log import AuditLog
-from app.models.probe_enrollment import AgentCredential, ProbeEnrollmentRequest
+from app.models.probe_enrollment import AgentCredential, ProbeEnrollmentRequest, ProbeEnrollmentToken
 from app.models.probe_site import ProbeSite
 from app.schemas.engagement import validate_scope_entries
 
@@ -52,6 +52,26 @@ def _derive_refresh_secret(request_id: uuid.UUID, device_secret: str) -> str:
         hashlib.sha256,
     ).digest()
     return base64.urlsafe_b64encode(digest).decode().rstrip("=")
+
+
+# ── Pre-authorized, Site-bound enrollment tokens ────────────────────────────
+ENROLL_TOKEN_PREFIX = "vet_"
+
+
+def generate_enroll_token() -> tuple[str, str, str]:
+    """Return (raw_token, token_hash, token_prefix). Raw is shown once."""
+    raw = ENROLL_TOKEN_PREFIX + secrets.token_urlsafe(32)
+    return raw, _secret_hash(raw), raw[:12]
+
+
+def enroll_token_is_usable(token, now: datetime) -> bool:
+    """A token can auto-approve only while live, unrevoked, and under max_uses."""
+    return (
+        token is not None
+        and token.revoked_at is None
+        and token.expires_at > now
+        and token.uses < token.max_uses
+    )
 
 
 def _decode_public_key(value: str, label: str) -> bytes:
@@ -100,12 +120,20 @@ class EnrollmentCreate(BaseModel):
     installer_version: str = Field(min_length=1, max_length=64)
     build_digest: str = Field(min_length=8, max_length=128)
     capabilities: list[str] = Field(default_factory=list, max_length=100)
+    enroll_token: str | None = Field(default=None, min_length=8, max_length=128)
 
     @field_validator("signing_public_key", "encryption_public_key")
     @classmethod
     def validate_key(cls, value: str, info):
         _decode_public_key(value, info.field_name)
         return value
+
+
+class EnrollTokenCreate(BaseModel):
+    name: str = Field(min_length=1, max_length=120)
+    site_id: uuid.UUID
+    expires_in_minutes: int = Field(default=60, ge=5, le=1440)
+    max_uses: int = Field(default=1, ge=1, le=1000)
 
 
 class EnrollmentSecret(BaseModel):
@@ -203,6 +231,80 @@ def _policy(site: ProbeSite) -> dict:
     return policy
 
 
+async def _provision_agent_for_site(
+    db,
+    *,
+    row: ProbeEnrollmentRequest,
+    site: ProbeSite,
+    tenant_id: uuid.UUID,
+    probe_name: str,
+    location: str | None,
+    approved_by: str,
+    now: datetime,
+    auto: bool,
+) -> Agent:
+    """Bind a request to a Site policy and create the provisioning Agent.
+
+    Shared by the manual user_code approval and the pre-authorized token
+    auto-approval so both paths enforce the identical capability-subset check,
+    name-uniqueness rule, state transition, and audit trail.
+    """
+    duplicate_name = (await db.execute(
+        select(Agent).where(Agent.tenant_id == tenant_id, Agent.name == probe_name.strip())
+    )).scalar_one_or_none()
+    if duplicate_name is not None:
+        raise HTTPException(409, "A probe with this name already exists in the tenant")
+
+    approved_capabilities = list(site.approved_capabilities or [])
+    approved_networks = list(site.authorized_cidrs or [])
+    if not set(approved_capabilities).issubset(set(row.reported_capabilities)):
+        raise HTTPException(422, "Site capabilities must be a subset of device-reported capabilities")
+
+    agent = Agent(
+        tenant_id=tenant_id,
+        site_id=site.id,
+        name=probe_name.strip(),
+        location=location or site.location,
+        capabilities=approved_capabilities,
+        approved_capabilities=approved_capabilities,
+        network_segments=approved_networks,
+        approved_networks=approved_networks,
+        public_key=row.encryption_public_key,
+        signing_public_key=row.signing_public_key,
+        signing_key_fingerprint=row.signing_key_fingerprint,
+        lifecycle_status="provisioning",
+        status=AgentStatus.offline,
+        agent_version=row.agent_version,
+        installer_version=row.installer_version,
+        build_digest=row.build_digest,
+    )
+    db.add(agent)
+    await db.flush()
+    row.state = "approved"
+    row.tenant_id = tenant_id
+    row.site_id = site.id
+    row.agent_id = agent.id
+    row.assigned_name = agent.name
+    row.approved_by = approved_by
+    row.approved_at = now
+    row.activation_challenge = secrets.token_urlsafe(32)
+    row.version += 1
+    db.add(AuditLog(
+        actor_id=approved_by,
+        action="probe.enrollment.approved",
+        resource_type="agent",
+        resource_id=agent.id,
+        detail={
+            "site_id": str(site.id),
+            "request_id": str(row.id),
+            "fingerprint": row.signing_key_fingerprint,
+            "auto": auto,
+        },
+        timestamp=now,
+    ))
+    return agent
+
+
 @router.post("/requests", status_code=status.HTTP_201_CREATED)
 async def create_enrollment_request(
     body: EnrollmentCreate,
@@ -243,14 +345,57 @@ async def create_enrollment_request(
     )
     db.add(row)
     await db.flush()
-    return {
+
+    # Pre-authorized, Site-bound token → auto-approve (no operator user_code
+    # step). An invalid/expired/revoked/exhausted token degrades gracefully to
+    # the manual approval path rather than failing the install.
+    auto_approved = False
+    if body.enroll_token:
+        token = (await db.execute(
+            select(ProbeEnrollmentToken)
+            .where(ProbeEnrollmentToken.token_hash == _secret_hash(body.enroll_token))
+            .with_for_update()
+        )).scalar_one_or_none()
+        if enroll_token_is_usable(token, now):
+            site = (await db.execute(
+                select(ProbeSite).where(
+                    ProbeSite.id == token.site_id,
+                    ProbeSite.tenant_id == token.tenant_id,
+                    ProbeSite.status == "active",
+                )
+            )).scalar_one_or_none()
+            if site is not None:
+                base_name = (row.hostname_hint or "probe").strip() or "probe"
+                probe_name = f"{base_name}-{fingerprint[:8]}"
+                await _provision_agent_for_site(
+                    db,
+                    row=row,
+                    site=site,
+                    tenant_id=token.tenant_id,
+                    probe_name=probe_name,
+                    location=None,
+                    approved_by=f"enroll-token:{token.id}",
+                    now=now,
+                    auto=True,
+                )
+                token.uses += 1
+                token.last_used_at = now
+                auto_approved = True
+
+    response: dict = {
         "request_id": str(row.id),
         "device_secret": device_secret,
-        "user_code": user_code,
-        "verification_path": "/fleet/enroll",
         "poll_interval_seconds": 5,
         "expires_at": row.expires_at.isoformat(),
+        "state": row.state,
     }
+    if auto_approved:
+        response["activation_challenge"] = row.activation_challenge
+        response["agent_id"] = str(row.agent_id)
+    else:
+        response["user_code"] = user_code
+        response["verification_path"] = "/fleet/enroll"
+    return response
 
 
 async def _authenticated_request(db, request_id: uuid.UUID, device_secret: str, *, lock: bool = False):
@@ -326,14 +471,6 @@ async def approve_enrollment(
         raise HTTPException(410, "Enrollment code expired")
     if row.state != "awaiting_approval":
         raise HTTPException(409, f"Enrollment request is already {row.state}")
-    duplicate_name = (await db.execute(
-        select(Agent).where(
-            Agent.tenant_id == current_user.tenant_id,
-            Agent.name == body.probe_name.strip(),
-        )
-    )).scalar_one_or_none()
-    if duplicate_name is not None:
-        raise HTTPException(409, "A probe with this name already exists in the tenant")
 
     if body.site_id:
         site = (await db.execute(
@@ -345,8 +482,6 @@ async def approve_enrollment(
         )).scalar_one_or_none()
         if site is None:
             raise HTTPException(404, "Site not found")
-        approved_capabilities = list(site.approved_capabilities or [])
-        approved_networks = list(site.authorized_cidrs or [])
     else:
         existing_site = (await db.execute(
             select(ProbeSite).where(
@@ -370,49 +505,18 @@ async def approve_enrollment(
         )
         db.add(site)
         await db.flush()
-        approved_capabilities = list(body.approved_capabilities)
-        approved_networks = list(body.authorized_cidrs)
 
-    if not set(approved_capabilities).issubset(set(row.reported_capabilities)):
-        raise HTTPException(422, "Site capabilities must be a subset of device-reported capabilities")
-
-    agent = Agent(
+    agent = await _provision_agent_for_site(
+        db,
+        row=row,
+        site=site,
         tenant_id=current_user.tenant_id,
-        site_id=site.id,
-        name=body.probe_name.strip(),
-        location=body.location or site.location,
-        capabilities=approved_capabilities,
-        approved_capabilities=approved_capabilities,
-        network_segments=approved_networks,
-        approved_networks=approved_networks,
-        public_key=row.encryption_public_key,
-        signing_public_key=row.signing_public_key,
-        signing_key_fingerprint=row.signing_key_fingerprint,
-        lifecycle_status="provisioning",
-        status=AgentStatus.offline,
-        agent_version=row.agent_version,
-        installer_version=row.installer_version,
-        build_digest=row.build_digest,
+        probe_name=body.probe_name,
+        location=body.location,
+        approved_by=str(current_user.user_id),
+        now=now,
+        auto=False,
     )
-    db.add(agent)
-    await db.flush()
-    row.state = "approved"
-    row.tenant_id = current_user.tenant_id
-    row.site_id = site.id
-    row.agent_id = agent.id
-    row.assigned_name = agent.name
-    row.approved_by = str(current_user.user_id)
-    row.approved_at = now
-    row.activation_challenge = secrets.token_urlsafe(32)
-    row.version += 1
-    db.add(AuditLog(
-        actor_id=str(current_user.user_id),
-        action="probe.enrollment.approved",
-        resource_type="agent",
-        resource_id=agent.id,
-        detail={"site_id": str(site.id), "request_id": str(row.id), "fingerprint": row.signing_key_fingerprint},
-        timestamp=now,
-    ))
     return {"request_id": str(row.id), "agent_id": str(agent.id), "site_id": str(site.id), "state": row.state}
 
 
@@ -498,3 +602,104 @@ async def refresh_device_token(body: TokenRefresh, request: Request, db: DB, red
         "access_token": create_device_access_token(str(agent.id), str(agent.tenant_id), body.generation),
         "access_expires_in_seconds": 600,
     }
+
+
+# ── Pre-authorized enrollment token management (operator, admin/manager) ─────
+
+@router.post("/enroll-tokens", status_code=status.HTTP_201_CREATED)
+async def create_enroll_token(
+    body: EnrollTokenCreate,
+    db: DB,
+    current_user: Annotated[AuthUser, require_role(["admin", "manager"])],
+):
+    site = (await db.execute(
+        select(ProbeSite).where(
+            ProbeSite.id == body.site_id,
+            ProbeSite.tenant_id == current_user.tenant_id,
+            ProbeSite.status == "active",
+        )
+    )).scalar_one_or_none()
+    if site is None:
+        raise HTTPException(404, "Site not found")
+
+    now = datetime.now(timezone.utc)
+    raw, token_hash, token_prefix = generate_enroll_token()
+    token = ProbeEnrollmentToken(
+        tenant_id=current_user.tenant_id,
+        site_id=site.id,
+        name=body.name.strip(),
+        token_hash=token_hash,
+        token_prefix=token_prefix,
+        max_uses=body.max_uses,
+        expires_at=now + timedelta(minutes=body.expires_in_minutes),
+        created_by=str(current_user.user_id),
+    )
+    db.add(token)
+    await db.flush()
+    db.add(AuditLog(
+        actor_id=str(current_user.user_id),
+        action="probe.enrollment_token.created",
+        resource_type="probe_enrollment_token",
+        resource_id=token.id,
+        detail={"site_id": str(site.id), "max_uses": token.max_uses},
+        timestamp=now,
+    ))
+    return {
+        "id": str(token.id),
+        "token": raw,  # shown once
+        "token_prefix": token_prefix,
+        "site_id": str(site.id),
+        "max_uses": token.max_uses,
+        "expires_at": token.expires_at.isoformat(),
+    }
+
+
+@router.get("/enroll-tokens")
+async def list_enroll_tokens(
+    db: DB,
+    current_user: Annotated[AuthUser, require_role(["admin", "manager"])],
+):
+    rows = (await db.execute(
+        select(ProbeEnrollmentToken)
+        .where(ProbeEnrollmentToken.tenant_id == current_user.tenant_id)
+        .order_by(ProbeEnrollmentToken.created_at.desc())
+    )).scalars().all()
+    now = datetime.now(timezone.utc)
+    return [{
+        "id": str(row.id),
+        "name": row.name,
+        "token_prefix": row.token_prefix,
+        "site_id": str(row.site_id),
+        "max_uses": row.max_uses,
+        "uses": row.uses,
+        "expires_at": row.expires_at.isoformat(),
+        "revoked_at": row.revoked_at.isoformat() if row.revoked_at else None,
+        "usable": enroll_token_is_usable(row, now),
+    } for row in rows]
+
+
+@router.delete("/enroll-tokens/{token_id}", status_code=status.HTTP_204_NO_CONTENT)
+async def revoke_enroll_token(
+    token_id: uuid.UUID,
+    db: DB,
+    current_user: Annotated[AuthUser, require_role(["admin", "manager"])],
+):
+    row = (await db.execute(
+        select(ProbeEnrollmentToken).where(
+            ProbeEnrollmentToken.id == token_id,
+            ProbeEnrollmentToken.tenant_id == current_user.tenant_id,
+        ).with_for_update()
+    )).scalar_one_or_none()
+    if row is None:
+        raise HTTPException(404, "Enrollment token not found")
+    if row.revoked_at is None:
+        row.revoked_at = datetime.now(timezone.utc)
+        db.add(AuditLog(
+            actor_id=str(current_user.user_id),
+            action="probe.enrollment_token.revoked",
+            resource_type="probe_enrollment_token",
+            resource_id=row.id,
+            detail={"site_id": str(row.site_id)},
+            timestamp=row.revoked_at,
+        ))
+    return None

@@ -26,6 +26,9 @@ function LoginForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // TESTING ONLY: seeded credentials for autofill (null in production — the
+  // /api/auth/dev-hint endpoint 404s unless DEV_LOGIN_HINT=1 and APP_ENV!=production).
+  const [devHint, setDevHint] = useState<{ email: string; password: string } | null>(null);
   // Seconds remaining on a rate-limit lockout; > 0 disables the form.
   const [cooldown, setCooldown] = useState(0);
   const emailRef = useRef<HTMLInputElement>(null);
@@ -48,6 +51,22 @@ function LoginForm() {
       .catch(() => { if (active) emailRef.current?.focus(); });
     return () => { active = false; };
   }, [nextPath, router]);
+
+  // TESTING ONLY: prefill the seeded admin credentials. Returns 404 (→ no hint)
+  // in production, so this is a no-op there.
+  useEffect(() => {
+    let active = true;
+    fetch("/api/auth/dev-hint", { credentials: "same-origin" })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((data: { email?: string; password?: string } | null) => {
+        if (!active || !data?.email || !data?.password) return;
+        setDevHint({ email: data.email, password: data.password });
+        setEmail((current) => current || data.email!);
+        setPassword((current) => current || data.password!);
+      })
+      .catch(() => { /* no hint available — normal in production */ });
+    return () => { active = false; };
+  }, []);
 
   const submit = useCallback(async (event: React.FormEvent) => {
     event.preventDefault();
@@ -156,6 +175,36 @@ function LoginForm() {
             <h2>Welcome back</h2>
             <p>Sign in to your organization&apos;s security workspace.</p>
           </div>
+
+          {devHint && (
+            <div
+              role="note"
+              style={{
+                display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap",
+                padding: "9px 12px", marginBottom: 14, borderRadius: 8,
+                background: "var(--accent-ghost)", border: "0.5px solid var(--border-accent)",
+                fontSize: 12, color: "var(--text-secondary)",
+              }}
+            >
+              <span style={{ fontWeight: 700, color: "var(--accent)", letterSpacing: 0.3 }}>
+                TESTING
+              </span>
+              <span>Credentials autofilled —</span>
+              <code style={{ fontFamily: "var(--font-mono)", color: "var(--text-primary)" }}>
+                {devHint.email}
+              </code>
+              <button
+                type="button"
+                onClick={() => { setEmail(devHint.email); setPassword(devHint.password); }}
+                style={{
+                  marginLeft: "auto", background: "none", border: "none", cursor: "pointer",
+                  color: "var(--accent)", fontSize: 12, fontWeight: 600, padding: "2px 4px",
+                }}
+              >
+                Refill
+              </button>
+            </div>
+          )}
 
           {error && (
             <div className="login-error" role="alert" aria-live="polite">

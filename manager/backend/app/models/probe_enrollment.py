@@ -67,3 +67,32 @@ class AgentCredential(Base, TimestampMixin):
     revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     last_nonce: Mapped[str | None] = mapped_column(String(128), nullable=True)
+
+
+class ProbeEnrollmentToken(Base, TimestampMixin):
+    """Pre-authorized, Site-bound enrollment token.
+
+    Lets a probe auto-enroll (no operator user_code step) while still inheriting
+    a bounded Site policy. Mirrors the PersonalAccessToken security shape: only
+    the SHA-256 hash is stored, the raw ``vet_...`` token is shown once.
+    """
+
+    __tablename__ = "probe_enrollment_tokens"
+    __table_args__ = (UniqueConstraint("token_hash", name="uq_probe_enroll_token_hash"),)
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, server_default="gen_random_uuid()")
+    tenant_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("tenants.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    site_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("probe_sites.id", ondelete="RESTRICT"), nullable=False, index=True
+    )
+    name: Mapped[str] = mapped_column(String(120), nullable=False)
+    token_hash: Mapped[str] = mapped_column(String(64), nullable=False)
+    token_prefix: Mapped[str] = mapped_column(String(24), nullable=False, index=True)
+    max_uses: Mapped[int] = mapped_column(Integer, nullable=False, server_default="1")
+    uses: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False, index=True)
+    last_used_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    revoked_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_by: Mapped[str | None] = mapped_column(String(255), nullable=True)

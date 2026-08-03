@@ -228,11 +228,15 @@ function FleetStrip({ probes, loading }: { probes: Probe[]; loading: boolean }) 
 
           <div style={{ display: "flex", gap: 6, marginLeft: "auto", flexWrap: "wrap" }}>
             {probes.map((p) => {
+              // Status is conveyed by BOTH color and a text word (never color alone)
+              // so colorblind users and screen readers get the same signal.
+              const statusLabel = !p.online ? "offline" : p.current_job_id ? "scanning" : "online";
               const dot = !p.online ? "var(--text-faint)" : p.current_job_id ? "var(--sev-medium-color)" : "var(--nominal-color)";
               return (
-                <span key={p.id} title={[p.location, p.capabilities.length ? `Capabilities: ${p.capabilities.join(", ")}` : null].filter(Boolean).join(" · ") || undefined} style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 9px", borderRadius: 7, background: "var(--bg-surface)", border: "0.5px solid var(--border-subtle)", fontSize: 11 }}>
-                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: dot }} />
+                <span key={p.id} aria-label={`Probe ${p.name}: ${statusLabel}, ${p.capabilities.length} capabilities`} title={[p.location, p.capabilities.length ? `Capabilities: ${p.capabilities.join(", ")}` : null].filter(Boolean).join(" · ") || undefined} style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 9px", borderRadius: 7, background: "var(--bg-surface)", border: "0.5px solid var(--border-subtle)", fontSize: 11 }}>
+                  <span style={{ width: 6, height: 6, borderRadius: "50%", background: dot, flexShrink: 0 }} />
                   <span style={{ color: "var(--text-secondary)", fontWeight: 500 }}>{p.name}</span>
+                  <span style={{ color: dot, fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4 }}>{statusLabel}</span>
                   <span style={{ display: "inline-flex", alignItems: "center", gap: 3, color: "var(--text-faint)", fontFamily: "var(--font-mono)", fontSize: 9.5 }}>
                     <Layers size={9} />{p.capabilities.length}
                   </span>

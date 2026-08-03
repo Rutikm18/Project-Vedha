@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import asyncio
 import signal
+import time
 import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
@@ -34,6 +35,26 @@ POLL_INTERVAL_SEC = 2.0        # how often to look for work when the queue is em
 BATCH_SIZE = 16                # events claimed per poll
 BACKOFF_BASE_SEC = 15          # retry delay = BACKOFF_BASE * 2**(attempts-1), capped
 BACKOFF_CAP_SEC = 15 * 60
+PROCESSING_LEASE_SEC = 5 * 60  # a claimed event must finish within this or be reclaimed
+RECLAIM_INTERVAL_SEC = 30      # how often to sweep for stranded PROCESSING rows
+
+
+def is_stale_processing(
+    status: str,
+    locked_at: datetime | None,
+    now: datetime,
+    lease_sec: float = PROCESSING_LEASE_SEC,
+) -> bool:
+    """Return whether a claimed event was stranded by a dead worker.
+
+    `_claim_batch` only selects PENDING rows, so an event whose worker crashed
+    between claim and completion sits in PROCESSING forever unless it is
+    reclaimed. A crashed worker leaves `locked_at` in the past; once the lease
+    elapses the event is fair game to requeue.
+    """
+    if status != OUTBOX_PROCESSING or locked_at is None:
+        return False
+    return (now - locked_at).total_seconds() >= lease_sec
 
 
 # ── Event payload passed to handlers (plain data, detached from the session) ──
@@ -139,6 +160,66 @@ async def _claim_batch(batch_size: int) -> list[Event]:
         return claimed
 
 
+def _stale_cutoff(now: datetime, lease_sec: float = PROCESSING_LEASE_SEC) -> datetime:
+    """The `locked_at` boundary before which a PROCESSING row is considered dead."""
+    return now - timedelta(seconds=lease_sec)
+
+
+def _dead_letter_stale_stmt(cutoff: datetime):
+    """Stranded events that already exhausted their retry budget → dead-letter.
+    Bounded by `attempts >= max_attempts` so a poison event cannot loop forever."""
+    return (
+        update(OutboxEvent)
+        .where(
+            OutboxEvent.status == OUTBOX_PROCESSING,
+            OutboxEvent.locked_at < cutoff,
+            OutboxEvent.attempts >= OutboxEvent.max_attempts,
+        )
+        .values(
+            status=OUTBOX_FAILED,
+            last_error="dead-lettered after stale processing lock; attempts exhausted",
+        )
+    )
+
+
+def _requeue_stale_stmt(cutoff: datetime):
+    """Stranded events with retry budget left → make due now so a live worker
+    re-claims them. `attempts` was already incremented at claim time."""
+    return (
+        update(OutboxEvent)
+        .where(
+            OutboxEvent.status == OUTBOX_PROCESSING,
+            OutboxEvent.locked_at < cutoff,
+            OutboxEvent.attempts < OutboxEvent.max_attempts,
+        )
+        .values(
+            status=OUTBOX_PENDING,
+            available_at=func.now(),
+            last_error="requeued after stale processing lock",
+        )
+    )
+
+
+async def _reclaim_stale() -> int:
+    """Requeue events a dead worker left in PROCESSING past the lease.
+
+    `_claim_batch` only selects PENDING rows, so without this sweep an event
+    whose worker crashed mid-handler stays PROCESSING forever. Handlers must be
+    idempotent (the normal retry path already re-runs them), so a duplicate run
+    of reclaimed work is safe.
+    """
+    cutoff = _stale_cutoff(datetime.now(timezone.utc))
+    async with AsyncSessionLocal() as db:
+        dead = await db.execute(_dead_letter_stale_stmt(cutoff))
+        requeued = await db.execute(_requeue_stale_stmt(cutoff))
+        await db.commit()
+    n = (dead.rowcount or 0) + (requeued.rowcount or 0)
+    if n:
+        logger.warning("outbox.reclaimed_stale", count=n,
+                       dead_lettered=dead.rowcount or 0, requeued=requeued.rowcount or 0)
+    return n
+
+
 async def _mark_done(event_id: str) -> None:
     async with AsyncSessionLocal() as db:
         await db.execute(
@@ -187,7 +268,17 @@ async def run_worker(stop: asyncio.Event | None = None) -> None:
     so latency stays low under load and cost stays near-zero when empty."""
     stop = stop or asyncio.Event()
     logger.info("outbox.worker.start", topics=sorted(_HANDLERS.keys()))
+    last_reclaim = 0.0
     while not stop.is_set():
+        # Periodically requeue events stranded in PROCESSING by a crashed worker,
+        # so no acknowledged-durable event is silently lost.
+        if time.monotonic() - last_reclaim >= RECLAIM_INTERVAL_SEC:
+            try:
+                await _reclaim_stale()
+            except Exception as exc:  # noqa: BLE001 — reclaim must never kill the loop
+                logger.error("outbox.reclaim_failed", error=str(exc))
+            last_reclaim = time.monotonic()
+
         try:
             events = await _claim_batch(BATCH_SIZE)
         except Exception as exc:  # noqa: BLE001 — a transient DB blip must not kill the loop

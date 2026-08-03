@@ -3,14 +3,14 @@
   "branchName": "main",
   "worktreePath": "/Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha",
   "upstream": "origin/main",
-  "mergeBase": "41b692a77a1dd6d2e5666f2fa2f8aa4b1e084e64",
+  "mergeBase": "f1da96f64e70aef9d0275a6cdcdbf89b7334e948",
   "firstSeenHead": "41b692a77a1dd6d2e5666f2fa2f8aa4b1e084e64",
-  "lastSeenHead": "f3c359163f16baf103a46a5170e40a9e95edda9d",
-  "lastAnalyzedHead": "f3c359163f16baf103a46a5170e40a9e95edda9d",
+  "lastSeenHead": "ca41cbf25bddbb70f2808dcfbb236405c24bfc69",
+  "lastAnalyzedHead": "ca41cbf25bddbb70f2808dcfbb236405c24bfc69",
   "stale": false,
   "staleReason": null,
   "staleSince": null,
   "lifecycleEvent": null,
   "createdAt": "2026-08-01T22:28:47.864Z",
-  "updatedAt": "2026-08-01T23:28:45.833Z"
+  "updatedAt": "2026-08-03T20:22:19.226Z"
 }
