@@ -15,13 +15,16 @@ interface ManagerAiResponse {
   content: string;
   provider: string;
   model: string;
+  fallback?: boolean;
 }
 
 export async function POST(req: Request) {
   const token = bearerFrom(req);
   if (!token) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
 
-  const body = (await req.json().catch(() => null)) as { findingId?: string; mode?: string } | null;
+  const body = (await req.json().catch(() => null)) as {
+    findingId?: string; mode?: string; provider?: string; model?: string;
+  } | null;
   if (!body?.findingId) {
     return NextResponse.json({ error: "findingId is required" }, { status: 400 });
   }
@@ -47,6 +50,10 @@ export async function POST(req: Request) {
         }],
         context: { securityBrief: factCard },
         max_tokens: 1600,
+        // Operator-selected model (optional). Manager cascades to a free model
+        // when the chosen/paid provider is out of credit.
+        ...(body.provider ? { provider: body.provider } : {}),
+        ...(body.model ? { model: body.model } : {}),
       },
     });
     const advisor = parseAdvisor(result.content);
@@ -58,6 +65,7 @@ export async function POST(req: Request) {
       reference: factCard.cveIds[0] ?? factCard.id,
       provider: result.provider,
       model: result.model,
+      served: { provider: result.provider, model: result.model, fallback: Boolean(result.fallback) },
     });
   } catch (e) {
     // Narration is best-effort — degrade to the grounded fact card. Log the

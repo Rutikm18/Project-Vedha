@@ -19,7 +19,7 @@ async def ai_status(current_user: AuthUser):
 async def ai_generate(request: AiGenerateRequest, current_user: AuthUser):
     del current_user
     try:
-        content, runtime = await ManagerLlmService().generate(request)
+        content, runtime, fallback = await ManagerLlmService().generate_with_fallback(request)
     except AiRuntimeError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
     return AiGenerateResponse(
@@ -27,4 +27,5 @@ async def ai_generate(request: AiGenerateRequest, current_user: AuthUser):
         provider=runtime.provider,
         model=runtime.model,
         privacy=runtime.privacy,
+        fallback=fallback,
     )

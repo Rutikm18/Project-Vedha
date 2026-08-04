@@ -58,3 +58,6 @@ class AiGenerateResponse(BaseModel):
     provider: Literal["ollama", "openrouter", "anthropic", "openai"]
     model: str
     privacy: Literal["local", "cloud"]
+    # True when the requested/default provider failed (e.g. out of credit) and a
+    # free fallback model served the response instead.
+    fallback: bool = False

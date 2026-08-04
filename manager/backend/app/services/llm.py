@@ -206,12 +206,7 @@ class ManagerLlmService:
             providers=providers,
         )
 
-    async def generate(self, request: AiGenerateRequest) -> tuple[str, Runtime]:
-        provider = request.provider or self._default_runtime().provider
-        runtime = self._runtime(provider, request.model)
-        if runtime.provider == "ollama":
-            await self._ensure_installed_ollama_model(runtime.model)
-
+    def _build_system(self, request: AiGenerateRequest) -> str:
         system = f"{_BASE_RULES}\n\n{_TASK_RULES[request.task]}"
         if request.context:
             system += (
@@ -219,17 +214,29 @@ class ManagerLlmService:
                 + json.dumps(request.context, default=str, separators=(",", ":"))
                 + "\n</security_context>"
             )
-        messages = [{"role": item.role, "content": item.content} for item in request.messages]
+        return system
 
+    async def _dispatch(
+        self,
+        runtime: Runtime,
+        system: str,
+        messages: list[dict[str, str]],
+        max_tokens: int,
+        json_mode: bool = False,
+    ) -> str:
+        """Call one provider and normalize failures to AiRuntimeError.
+        Preserves the 429/504/502 status mapping used by the single-shot path.
+        json_mode forces structured JSON output (advisor_flow) so reasoning-prone
+        free models can't wrap the payload in chain-of-thought prose."""
         try:
             if runtime.provider == "ollama":
-                content = await self._ollama(runtime, system, messages, request.max_tokens)
+                content = await self._ollama(runtime, system, messages, max_tokens, json_mode)
             elif runtime.provider == "openrouter":
-                content = await self._openrouter(runtime, system, messages, request.max_tokens)
+                content = await self._openrouter(runtime, system, messages, max_tokens, json_mode)
             elif runtime.provider == "openai":
-                content = await self._openai(runtime, system, messages, request.max_tokens)
+                content = await self._openai(runtime, system, messages, max_tokens, json_mode)
             else:
-                content = await self._anthropic(runtime, system, messages, request.max_tokens)
+                content = await self._anthropic(runtime, system, messages, max_tokens)
         except AiRuntimeError:
             raise
         except httpx.TimeoutException as exc:
@@ -243,8 +250,92 @@ class ManagerLlmService:
         text = content.strip()
         if not text:
             raise AiRuntimeError(f"{runtime.provider} returned no content", 502)
+        return text
+
+    async def generate(self, request: AiGenerateRequest) -> tuple[str, Runtime]:
+        provider = request.provider or self._default_runtime().provider
+        runtime = self._runtime(provider, request.model)
+        if runtime.provider == "ollama":
+            await self._ensure_installed_ollama_model(runtime.model)
+        messages = [{"role": item.role, "content": item.content} for item in request.messages]
+        text = await self._dispatch(
+            runtime, self._build_system(request), messages, request.max_tokens,
+            json_mode=request.task == "advisor_flow",
+        )
         logger.info("ai.generate.complete", provider=runtime.provider, model=runtime.model, task=request.task)
         return text, runtime
+
+    def _fallback_candidates(self, request: AiGenerateRequest) -> list[Runtime]:
+        """Ordered runtimes to try: requested/default first, then FREE fallbacks
+        only (OpenRouter free tier, then local Ollama). Never a second paid
+        provider — a credit-exhausted paid key must not silently bill another."""
+        candidates: list[Runtime] = []
+        try:
+            primary_provider = request.provider or self._default_runtime().provider
+            candidates.append(self._runtime(primary_provider, request.model))
+        except AiRuntimeError:
+            # Requested/default provider is not configured — skip straight to free.
+            pass
+        have = {(c.provider, c.model) for c in candidates}
+        # Free fallback 1: OpenRouter free tier (needs a free key). Uses the
+        # configured OPENROUTER_MODEL — set it to a live ':free' model id, because
+        # the literal 'openrouter/free' is not a real model and would 400.
+        if self.settings.openrouter_api_key and not any(c.provider == "openrouter" for c in candidates):
+            rt = Runtime("openrouter", self.settings.openrouter_model, "cloud")
+            if (rt.provider, rt.model) not in have:
+                candidates.append(rt)
+                have.add((rt.provider, rt.model))
+        # Free fallback 2: local Ollama (offline, no key).
+        if not any(c.provider == "ollama" for c in candidates):
+            rt = Runtime("ollama", self.settings.ollama_model, "local")
+            if (rt.provider, rt.model) not in have:
+                candidates.append(rt)
+        return candidates
+
+    async def generate_with_fallback(
+        self, request: AiGenerateRequest,
+    ) -> tuple[str, Runtime, bool]:
+        """Try each candidate until one succeeds. On ANY provider failure (credit
+        exhausted, rate limited, unreachable) cascade to the next free model.
+        Returns (text, served_runtime, fallback_used). Raises the last error only
+        when every candidate failed — callers then degrade to the grounded card."""
+        candidates = self._fallback_candidates(request)
+        if not candidates:
+            raise AiRuntimeError("no AI provider is configured", 503)
+        system = self._build_system(request)
+        messages = [{"role": item.role, "content": item.content} for item in request.messages]
+        last: AiRuntimeError | None = None
+        for index, runtime in enumerate(candidates):
+            try:
+                if runtime.provider == "ollama":
+                    await self._ensure_installed_ollama_model(runtime.model)
+                text = await self._dispatch(
+                    runtime, system, messages, request.max_tokens,
+                    json_mode=request.task == "advisor_flow",
+                )
+                fallback_used = index > 0
+                if fallback_used:
+                    logger.warning(
+                        "ai.generate.fallback",
+                        served_by=runtime.provider, model=runtime.model,
+                        task=request.task, attempts=index + 1,
+                    )
+                else:
+                    logger.info(
+                        "ai.generate.complete",
+                        provider=runtime.provider, model=runtime.model, task=request.task,
+                    )
+                return text, runtime, fallback_used
+            except AiRuntimeError as exc:
+                last = exc
+                logger.warning(
+                    "ai.generate.candidate_failed",
+                    provider=runtime.provider, model=runtime.model,
+                    status=exc.status_code, error=str(exc),
+                )
+                continue
+        assert last is not None
+        raise last
 
     def _client(self, *, timeout: float | None = None) -> httpx.AsyncClient:
         return httpx.AsyncClient(
@@ -272,23 +363,35 @@ class ManagerLlmService:
 
     async def _ollama(
         self, runtime: Runtime, system: str, messages: list[dict[str, str]], max_tokens: int,
+        json_mode: bool = False,
     ) -> str:
+        body: dict = {
+            "model": runtime.model,
+            "stream": False,
+            "messages": [{"role": "system", "content": system}, *messages],
+            "options": {"temperature": 0.15, "num_predict": max_tokens},
+        }
+        if json_mode:
+            body["format"] = "json"
         async with self._client() as client:
             response = await client.post(
-                f"{self.settings.ollama_base_url.rstrip('/')}/api/chat",
-                json={
-                    "model": runtime.model,
-                    "stream": False,
-                    "messages": [{"role": "system", "content": system}, *messages],
-                    "options": {"temperature": 0.15, "num_predict": max_tokens},
-                },
+                f"{self.settings.ollama_base_url.rstrip('/')}/api/chat", json=body,
             )
             response.raise_for_status()
             return str(response.json()["message"]["content"])
 
     async def _openrouter(
         self, runtime: Runtime, system: str, messages: list[dict[str, str]], max_tokens: int,
+        json_mode: bool = False,
     ) -> str:
+        body: dict = {
+            "model": runtime.model,
+            "messages": [{"role": "system", "content": system}, *messages],
+            "max_tokens": max_tokens,
+            "temperature": 0.15,
+        }
+        if json_mode:
+            body["response_format"] = {"type": "json_object"}
         async with self._client() as client:
             response = await client.post(
                 f"{self.settings.openrouter_base_url.rstrip('/')}/chat/completions",
@@ -297,29 +400,28 @@ class ManagerLlmService:
                     "HTTP-Referer": self.settings.openrouter_site_url,
                     "X-Title": self.settings.openrouter_app_name,
                 },
-                json={
-                    "model": runtime.model,
-                    "messages": [{"role": "system", "content": system}, *messages],
-                    "max_tokens": max_tokens,
-                    "temperature": 0.15,
-                },
+                json=body,
             )
             response.raise_for_status()
             return str(response.json()["choices"][0]["message"]["content"])
 
     async def _openai(
         self, runtime: Runtime, system: str, messages: list[dict[str, str]], max_tokens: int,
+        json_mode: bool = False,
     ) -> str:
+        body: dict = {
+            "model": runtime.model,
+            "messages": [{"role": "system", "content": system}, *messages],
+            "max_tokens": max_tokens,
+            "temperature": 0.15,
+        }
+        if json_mode:
+            body["response_format"] = {"type": "json_object"}
         async with self._client() as client:
             response = await client.post(
                 f"{self.settings.openai_base_url.rstrip('/')}/chat/completions",
                 headers={"Authorization": f"Bearer {self.settings.openai_api_key}"},
-                json={
-                    "model": runtime.model,
-                    "messages": [{"role": "system", "content": system}, *messages],
-                    "max_tokens": max_tokens,
-                    "temperature": 0.15,
-                },
+                json=body,
             )
             response.raise_for_status()
             return str(response.json()["choices"][0]["message"]["content"])

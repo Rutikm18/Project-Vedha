@@ -1,14 +1,22 @@
 "use client";
 import React, { useState, useEffect, useCallback } from "react";
-import { Brain, Loader2, Search, Send, ShieldCheck, Sparkles, X } from "lucide-react";
+import { Brain, Loader2, Search, Send, ShieldCheck, Sparkles, X, Zap } from "lucide-react";
 import { useAssistant } from "./AssistantProvider";
 import { FactCard } from "./FactCard";
 import { AdvisorFlow } from "./AdvisorFlow";
+import { ModelSwitcher, type ModelSelection } from "./ModelSwitcher";
 import { detectFindingId, type FactCardVM, type AdvisorVM } from "../../lib/assistant";
 import { fetchJson, errorMessage } from "../../lib/fetcher";
 import { AssistantText } from "./AssistantText";
 
 type Msg = { role: "user" | "assistant"; content: string };
+type Served = { provider: string; model: string; fallback: boolean };
+type ExplainResponse = {
+  factCard: FactCardVM;
+  advisor?: AdvisorVM | null;
+  narration: string | null;
+  served?: Served | null;
+};
 
 export function AssistantDrawer() {
   const { open, findingId, close } = useAssistant();
@@ -20,6 +28,8 @@ export function AssistantDrawer() {
   const [thread, setThread] = useState<Msg[]>([]);
   const [loading, setLoading] = useState(Boolean(findingId));
   const [error, setError] = useState<string | null>(null);
+  const [selectedModel, setSelectedModel] = useState<ModelSelection | null>(null);
+  const [served, setServed] = useState<Served | null>(null);
 
   const explainId = useCallback(async (id: string) => {
     setLoading(true);
@@ -29,34 +39,51 @@ export function AssistantDrawer() {
     setCard(null);
     setAdvisor(null);
     setNarration(null);
+    setServed(null);
     try {
-      const d = await fetchJson<{ factCard: FactCardVM; advisor?: AdvisorVM | null; narration: string | null }>(
+      const d = await fetchJson<ExplainResponse>(
         "/api/assistant/explain",
-        { method: "POST", body: JSON.stringify({ findingId: id }) },
+        {
+          method: "POST",
+          body: JSON.stringify({
+            findingId: id,
+            provider: selectedModel?.provider,
+            model: selectedModel?.model,
+          }),
+        },
       );
       setCard(d.factCard);
       setAdvisor(d.advisor ?? null);
       setNarration(d.narration);
+      setServed(d.served ?? null);
     } catch (e) {
       setError(errorMessage(e));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [selectedModel]);
 
   useEffect(() => {
     if (!open || !findingId) return;
     let cancelled = false;
 
-    fetchJson<{ factCard: FactCardVM; advisor?: AdvisorVM | null; narration: string | null }>(
+    fetchJson<ExplainResponse>(
       "/api/assistant/explain",
-      { method: "POST", body: JSON.stringify({ findingId }) },
+      {
+        method: "POST",
+        body: JSON.stringify({
+          findingId,
+          provider: selectedModel?.provider,
+          model: selectedModel?.model,
+        }),
+      },
     )
       .then((data) => {
         if (cancelled) return;
         setCard(data.factCard);
         setAdvisor(data.advisor ?? null);
         setNarration(data.narration);
+        setServed(data.served ?? null);
       })
       .catch((cause) => {
         if (!cancelled) setError(errorMessage(cause));
@@ -68,6 +95,9 @@ export function AssistantDrawer() {
     return () => {
       cancelled = true;
     };
+    // Re-fetch only when the drawer opens for a finding; the model is read as a
+    // live snapshot (changing it re-queries via the input, not this effect).
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, findingId]);
 
   const sendFollowup = useCallback(
@@ -131,7 +161,10 @@ export function AssistantDrawer() {
       <aside role="dialog" aria-modal="true" aria-label="Ask Vedha assistant" className="assistant-drawer">
         <header className="assistant-drawer-header">
           <span className="assistant-drawer-logo"><Brain size={17} /></span>
-          <div><strong>Vedha Security Advisor</strong><small>Local-first · evidence-grounded</small></div>
+          <div>
+            <strong>Vedha Security Advisor</strong>
+            <ModelSwitcher value={selectedModel} onChange={setSelectedModel} />
+          </div>
           <button aria-label="Close assistant" onClick={close} className="btn btn-ghost" style={{ height: 30, width: 30, padding: 0 }}>
             <X size={16} />
           </button>
@@ -154,6 +187,12 @@ export function AssistantDrawer() {
           )}
           {error && <div className="brain-error"><ShieldCheck size={15} /><div><strong>Request could not be completed</strong><span>{error}</span></div></div>}
           {card && <FactCard vm={card} compact />}
+          {served?.fallback && (
+            <div className="assistant-fallback-chip" role="status">
+              <Zap size={12} />
+              <span>Answered by <code>{served.model}</code> — free fallback, the selected provider was out of credit.</span>
+            </div>
+          )}
           {card && advisor && <AdvisorFlow vm={advisor} />}
           {card && !advisor && narration && <div className="assistant-narration"><AssistantText content={narration} /></div>}
           {card && !advisor && !narration && <div className="assistant-model-note">The grounded brief above remains available even when the advisor model is offline.</div>}

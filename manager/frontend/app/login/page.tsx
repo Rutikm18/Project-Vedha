@@ -68,10 +68,11 @@ function LoginForm() {
     return () => { active = false; };
   }, []);
 
-  const submit = useCallback(async (event: React.FormEvent) => {
-    event.preventDefault();
+  // Core login call, parameterized so callers can pass credentials explicitly
+  // (the testing one-click sign-in can't rely on React's async state updates).
+  const performLogin = useCallback(async (emailValue: string, passwordValue: string) => {
     if (cooldown > 0) return;
-    if (!email.trim() || !password) {
+    if (!emailValue.trim() || !passwordValue) {
       setError("Enter your work email and password to continue.");
       return;
     }
@@ -82,7 +83,7 @@ function LoginForm() {
       const response = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
+        body: JSON.stringify({ email: emailValue.trim().toLowerCase(), password: passwordValue }),
       });
       const data = await response.json() as {
         ok?: boolean; error?: string; code?: string; retryAfter?: number;
@@ -115,7 +116,21 @@ function LoginForm() {
     } finally {
       setLoading(false);
     }
-  }, [email, password, nextPath, router, cooldown]);
+  }, [cooldown, nextPath, router]);
+
+  const submit = useCallback((event: React.FormEvent) => {
+    event.preventDefault();
+    return performLogin(email, password);
+  }, [performLogin, email, password]);
+
+  // TESTING ONLY: fill the form with the seeded admin credentials and sign in
+  // in one click. Only rendered when the dev-hint endpoint returned a hint.
+  const fillAndSignIn = useCallback(() => {
+    if (!devHint) return;
+    setEmail(devHint.email);
+    setPassword(devHint.password);
+    return performLogin(devHint.email, devHint.password);
+  }, [devHint, performLogin]);
 
   return (
     <main className="login-page">
@@ -181,7 +196,7 @@ function LoginForm() {
               role="note"
               style={{
                 display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap",
-                padding: "9px 12px", marginBottom: 14, borderRadius: 8,
+                padding: "10px 12px", marginBottom: 14, borderRadius: 8,
                 background: "var(--accent-ghost)", border: "0.5px solid var(--border-accent)",
                 fontSize: 12, color: "var(--text-secondary)",
               }}
@@ -189,20 +204,40 @@ function LoginForm() {
               <span style={{ fontWeight: 700, color: "var(--accent)", letterSpacing: 0.3 }}>
                 TESTING
               </span>
-              <span>Credentials autofilled —</span>
+              <span style={{ flexBasis: "100%", height: 0 }} aria-hidden />
+              <span>Suggested first-user credentials:</span>
               <code style={{ fontFamily: "var(--font-mono)", color: "var(--text-primary)" }}>
                 {devHint.email}
               </code>
-              <button
-                type="button"
-                onClick={() => { setEmail(devHint.email); setPassword(devHint.password); }}
-                style={{
-                  marginLeft: "auto", background: "none", border: "none", cursor: "pointer",
-                  color: "var(--accent)", fontSize: 12, fontWeight: 600, padding: "2px 4px",
-                }}
-              >
-                Refill
-              </button>
+              <span style={{ opacity: 0.5 }}>/</span>
+              <code style={{ fontFamily: "var(--font-mono)", color: "var(--text-primary)" }}>
+                {devHint.password}
+              </code>
+              <div style={{ display: "flex", gap: 6, marginLeft: "auto" }}>
+                <button
+                  type="button"
+                  onClick={() => { setEmail(devHint.email); setPassword(devHint.password); }}
+                  style={{
+                    background: "none", border: "none", cursor: "pointer",
+                    color: "var(--text-secondary)", fontSize: 12, fontWeight: 600, padding: "2px 4px",
+                  }}
+                >
+                  Refill
+                </button>
+                <button
+                  type="button"
+                  onClick={fillAndSignIn}
+                  disabled={loading || cooldown > 0}
+                  style={{
+                    background: "var(--accent)", border: "none",
+                    cursor: loading || cooldown > 0 ? "not-allowed" : "pointer",
+                    color: "var(--accent-contrast, #fff)", fontSize: 12, fontWeight: 600,
+                    padding: "3px 10px", borderRadius: 6, opacity: loading || cooldown > 0 ? 0.6 : 1,
+                  }}
+                >
+                  Fill &amp; sign in
+                </button>
+              </div>
             </div>
           )}
 
