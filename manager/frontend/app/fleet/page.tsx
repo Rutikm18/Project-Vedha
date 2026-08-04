@@ -83,7 +83,13 @@ export default function FleetPage() {
   const request = data.requests.find((row) => row.request_id === selected) ?? null;
   const capabilities = useMemo(() => request?.capabilities ?? [], [request]);
   const managerUrl = data.manager_url || "https://manager.example.com";
+  // Two ways to run the same installer: pipe-to-shell for a fresh host, and a
+  // run-only command for operators who already downloaded install.sh (inspect-first).
   const installCommand = `curl --proto '=https' --tlsv1.2 -fsS https://downloads.vedha.example/probe/install.sh | sudo sh -s -- --manager ${managerUrl}`;
+  const runCommand = `sudo sh install.sh --manager ${managerUrl}`;
+
+  const copyCommand = (cmd: string) =>
+    void navigator.clipboard.writeText(cmd).then(() => toast.success("Command copied"));
 
   async function approve(event: React.FormEvent) {
     event.preventDefault();
@@ -130,15 +136,33 @@ export default function FleetPage() {
               <div className="flt-head-sub">The command contains no PAT, admin secret, Site scope, or job ID.</div>
             </div>
           </div>
-          <div className="flt-install">
-            <code className="flt-code">{installCommand}</code>
-            <button
-              className="flt-icon-btn"
-              aria-label="Copy install command"
-              onClick={() => void navigator.clipboard.writeText(installCommand).then(() => toast.success("Install command copied"))}
-            >
-              <Clipboard size={15} />
-            </button>
+          <div className="flt-cmds">
+            <div className="flt-cmd">
+              <span className="flt-cmd-label">New host — download &amp; run in one command</span>
+              <div className="flt-install">
+                <code className="flt-code">{installCommand}</code>
+                <button
+                  className="flt-icon-btn"
+                  aria-label="Copy install command for a new host"
+                  onClick={() => copyCommand(installCommand)}
+                >
+                  <Clipboard size={15} />
+                </button>
+              </div>
+            </div>
+            <div className="flt-cmd">
+              <span className="flt-cmd-label">Already downloaded install.sh — run it</span>
+              <div className="flt-install">
+                <code className="flt-code">{runCommand}</code>
+                <button
+                  className="flt-icon-btn"
+                  aria-label="Copy run command for an already-downloaded installer"
+                  onClick={() => copyCommand(runCommand)}
+                >
+                  <Clipboard size={15} />
+                </button>
+              </div>
+            </div>
           </div>
           {!data.manager_url && (
             <p className="flt-warn">Set MANAGER_PUBLIC_URL on the frontend before copying this command in production.</p>
@@ -266,6 +290,9 @@ const STYLES = `
 .flt-head-title { color: var(--text-primary); font-size: 13px; font-weight: 600; }
 .flt-head-sub { color: var(--text-muted); font-size: 11px; margin-top: 2px; line-height: 1.4; }
 
+.flt-cmds { display: grid; gap: 12px; }
+.flt-cmd { display: grid; gap: 6px; }
+.flt-cmd-label { color: var(--text-secondary); font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
 .flt-install { display: flex; gap: 8px; align-items: stretch; }
 .flt-code { flex: 1; min-width: 0; padding: 11px; border-radius: 8px; background: var(--bg-surface); border: 0.5px solid var(--border-subtle); color: var(--accent); font: 11px var(--font-mono); overflow-x: auto; white-space: nowrap; }
 .flt-warn { margin: 8px 0 0; color: var(--sev-medium-color); font-size: 10.5px; line-height: 1.4; }
