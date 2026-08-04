@@ -9,6 +9,7 @@
 import { NextResponse } from "next/server";
 import { backend, bearerFrom, BackendError } from "../../../../lib/backend";
 import { resolveSecurityReference, SecurityContextError } from "../../../../lib/security-context";
+import { parseAdvisor } from "../../../../lib/assistant";
 
 interface ManagerAiResponse {
   content: string;
@@ -35,25 +36,24 @@ export async function POST(req: Request) {
   const { factCard } = resolved;
 
   try {
-    const technical = body.mode === "technical";
     const result = await backend<ManagerAiResponse>("/ai/generate", {
       method: "POST",
       token,
       body: {
-        task: "security_brief",
+        task: "advisor_flow",
         messages: [{
           role: "user",
-          content: technical
-            ? "Explain the verified technical context and safe remediation sequence. Do not provide exploit instructions."
-            : "Explain this to a client stakeholder using the required structure.",
+          content: "Produce the advisor_flow JSON for this finding.",
         }],
-        context: { securityBrief: factCard, audience: technical ? "security engineer" : "client stakeholder" },
-        max_tokens: technical ? 900 : 650,
+        context: { securityBrief: factCard },
+        max_tokens: 1600,
       },
     });
+    const advisor = parseAdvisor(result.content);
     return NextResponse.json({
       factCard,
-      narration: result.content,
+      advisor,
+      narration: null,
       findingId: factCard.source === "finding" ? factCard.id : null,
       reference: factCard.cveIds[0] ?? factCard.id,
       provider: result.provider,
@@ -63,9 +63,10 @@ export async function POST(req: Request) {
     // Narration is best-effort — degrade to the grounded fact card. Log the
     // reason so a silent "narration unavailable" is diagnosable (e.g. no API
     // credits, bad key, model id, network).
-    console.error("[assistant/explain] LLM narration failed:", e instanceof Error ? e.message : e);
+    console.error("[assistant/explain] LLM advisor flow failed:", e instanceof Error ? e.message : e);
     return NextResponse.json({
       factCard,
+      advisor: null,
       narration: null,
       findingId: factCard.source === "finding" ? factCard.id : null,
       reference: factCard.cveIds[0] ?? factCard.id,

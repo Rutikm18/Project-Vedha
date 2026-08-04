@@ -815,6 +815,12 @@ async def get_agent_jobs(
         if len(jobs) >= claim_limit:
             break
         params = job.result or {}
+        # Honor an operator-pinned probe: a job targeted at a specific agent is
+        # only claimable by that agent. Untargeted jobs (no preferred_agent_id)
+        # remain claimable by any compatible probe.
+        preferred = params.get("preferred_agent_id")
+        if preferred and str(preferred) != str(agent_id):
+            continue
         if not _agent_can_execute_job(
             agent, job.job_type, params, engagement.scope_cidrs or [],
         ):

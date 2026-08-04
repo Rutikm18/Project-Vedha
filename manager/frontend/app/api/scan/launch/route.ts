@@ -11,6 +11,7 @@ interface LaunchBody {
   intensity?: "stealth" | "normal" | "aggressive";
   passive_listen_seconds?: number;   // OT passive capture window
   recheck_hours?: number;            // re-scan delta window
+  preferred_agent_id?: string;       // operator-pinned probe (blank = any compatible)
   params?: Record<string, unknown>;
 }
 
@@ -84,6 +85,11 @@ export const POST = withBackend(async (req: NextRequest, { token }) => {
   // ── Re-scan delta window ──────────────────────────────────────────────────
   if (typeof body.recheck_hours === "number" && body.recheck_hours >= 0) {
     params.recheck_hours = body.recheck_hours;
+  }
+
+  // Operator-pinned probe (optional). Empty/undefined = any compatible probe claims it.
+  if (body.preferred_agent_id) {
+    params.preferred_agent_id = body.preferred_agent_id;
   }
 
   const result = await backend<{ job_id: string; status: string; use_case_id: string }>("/agents/jobs", {

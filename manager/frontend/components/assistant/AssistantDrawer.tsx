@@ -3,7 +3,8 @@ import React, { useState, useEffect, useCallback } from "react";
 import { Brain, Loader2, Search, Send, ShieldCheck, Sparkles, X } from "lucide-react";
 import { useAssistant } from "./AssistantProvider";
 import { FactCard } from "./FactCard";
-import { detectFindingId, type FactCardVM } from "../../lib/assistant";
+import { AdvisorFlow } from "./AdvisorFlow";
+import { detectFindingId, type FactCardVM, type AdvisorVM } from "../../lib/assistant";
 import { fetchJson, errorMessage } from "../../lib/fetcher";
 import { AssistantText } from "./AssistantText";
 
@@ -14,6 +15,7 @@ export function AssistantDrawer() {
   const [input, setInput] = useState("");
   const [activeId, setActiveId] = useState<string | null>(findingId);
   const [card, setCard] = useState<FactCardVM | null>(null);
+  const [advisor, setAdvisor] = useState<AdvisorVM | null>(null);
   const [narration, setNarration] = useState<string | null>(null);
   const [thread, setThread] = useState<Msg[]>([]);
   const [loading, setLoading] = useState(Boolean(findingId));
@@ -25,13 +27,15 @@ export function AssistantDrawer() {
     setActiveId(id);
     setThread([]);
     setCard(null);
+    setAdvisor(null);
     setNarration(null);
     try {
-      const d = await fetchJson<{ factCard: FactCardVM; narration: string | null }>(
+      const d = await fetchJson<{ factCard: FactCardVM; advisor?: AdvisorVM | null; narration: string | null }>(
         "/api/assistant/explain",
         { method: "POST", body: JSON.stringify({ findingId: id }) },
       );
       setCard(d.factCard);
+      setAdvisor(d.advisor ?? null);
       setNarration(d.narration);
     } catch (e) {
       setError(errorMessage(e));
@@ -44,13 +48,14 @@ export function AssistantDrawer() {
     if (!open || !findingId) return;
     let cancelled = false;
 
-    fetchJson<{ factCard: FactCardVM; narration: string | null }>(
+    fetchJson<{ factCard: FactCardVM; advisor?: AdvisorVM | null; narration: string | null }>(
       "/api/assistant/explain",
       { method: "POST", body: JSON.stringify({ findingId }) },
     )
       .then((data) => {
         if (cancelled) return;
         setCard(data.factCard);
+        setAdvisor(data.advisor ?? null);
         setNarration(data.narration);
       })
       .catch((cause) => {
@@ -148,9 +153,10 @@ export function AssistantDrawer() {
             </div>
           )}
           {error && <div className="brain-error"><ShieldCheck size={15} /><div><strong>Request could not be completed</strong><span>{error}</span></div></div>}
-          {card && <FactCard vm={card} />}
-          {card && narration && <div className="assistant-narration"><AssistantText content={narration} /></div>}
-          {card && !narration && <div className="assistant-model-note">The structured brief above remains available even when the local model is offline.</div>}
+          {card && <FactCard vm={card} compact />}
+          {card && advisor && <AdvisorFlow vm={advisor} />}
+          {card && !advisor && narration && <div className="assistant-narration"><AssistantText content={narration} /></div>}
+          {card && !advisor && !narration && <div className="assistant-model-note">The grounded brief above remains available even when the advisor model is offline.</div>}
           {thread.map((m, i) => (
             <div key={i} className="assistant-thread-message" data-role={m.role}>
               {m.role === "assistant" ? <AssistantText content={m.content} /> : m.content}
@@ -181,7 +187,7 @@ export function AssistantDrawer() {
             aria-label={loading ? "Sending…" : "Send"}
             title={!input.trim() ? "Type a message to send" : undefined}
           >
-            {loading ? <Loader2 size={15} className="animate-spin" /> : <Send size={14} />}
+            {loading ? <Loader2 size={15} className="animate-spin" /> : <Send size={17} />}
           </button>
           <small><ShieldCheck size={11} /> Public CVE data does not prove client exposure · Shift+Enter for a new line</small>
         </footer>

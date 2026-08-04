@@ -16,6 +16,49 @@ export type FactCardVM = {
   evidenceStatus: string;
 };
 
+export type AdvisorVM = {
+  whatIs: string;
+  impact: string[];
+  verify: { command: string | null; statement: string; caveat: string | null };
+  patch: { available: "yes" | "no" | "unknown"; summary: string };
+  patchSteps: Array<{ command: string | null; description: string; grounded: boolean }>;
+  improvements: string[];
+};
+
+/** Parse the advisor_flow JSON emitted by the LLM. Tolerates code fences and
+ *  stray prose around the object. Returns null when the payload is unusable so
+ *  the caller can degrade to the grounded fact card. */
+export function parseAdvisor(content: string): AdvisorVM | null {
+  if (!content) return null;
+  let text = content.trim();
+  const fence = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
+  if (fence) text = fence[1].trim();
+  const start = text.indexOf("{");
+  const end = text.lastIndexOf("}");
+  if (start === -1 || end === -1 || end <= start) return null;
+  try {
+    const o = JSON.parse(text.slice(start, end + 1));
+    if (typeof o?.whatIs !== "string" || !Array.isArray(o?.impact)) return null;
+    return {
+      whatIs: String(o.whatIs),
+      impact: (o.impact as unknown[]).map(String),
+      verify: {
+        command: o.verify?.command ?? null,
+        statement: String(o.verify?.statement ?? ""),
+        caveat: o.verify?.caveat ?? null,
+      },
+      patch: {
+        available: ["yes", "no", "unknown"].includes(o.patch?.available) ? o.patch.available : "unknown",
+        summary: String(o.patch?.summary ?? ""),
+      },
+      patchSteps: Array.isArray(o.patchSteps) ? o.patchSteps.map((s: any) => ({
+        command: s?.command ?? null, description: String(s?.description ?? ""), grounded: Boolean(s?.grounded),
+      })) : [],
+      improvements: Array.isArray(o.improvements) ? o.improvements.map(String) : [],
+    };
+  } catch { return null; }
+}
+
 const UUID_RE = /[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i;
 const CVE_RE = /CVE-\d{4}-\d{4,7}/i;
 

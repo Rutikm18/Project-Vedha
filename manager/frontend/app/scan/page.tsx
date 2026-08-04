@@ -561,6 +561,7 @@ export default function ScanPage() {
 
   const [selectedUc,  setSelectedUc]  = useState("");
   const [selectedEng, setSelectedEng] = useState("");
+  const [selectedProbe, setSelectedProbe] = useState("");
   const [targets,     setTargets]     = useState("");
   const [excluded,    setExcluded]    = useState("");
   const [catFilter,   setCatFilter]   = useState<Cat>("All");
@@ -627,6 +628,13 @@ export default function ScanPage() {
     : [];
   const compatibleIdleProbes = compatibleProbes.filter((p) => !p.current_job_id);
 
+  // Derive the effective probe: honor an explicit operator choice when it's still
+  // compatible, otherwise default to an active probe (idle preferred). Derived at
+  // render time — no effect needed, so it can never lag the compatible set.
+  const effectiveProbe = (selectedProbe && compatibleProbes.some((p) => p.id === selectedProbe))
+    ? selectedProbe
+    : (compatibleIdleProbes[0]?.id ?? compatibleProbes[0]?.id ?? "");
+
   const isOt         = ucObj?.profile === "ot";
   const parseList    = (s: string) => s.split(/[\s,\n]+/).map((t) => t.trim()).filter(Boolean);
   const targetCount  = parseList(targets).length;
@@ -653,6 +661,7 @@ export default function ScanPage() {
       // engagement's authoritative scope/exclusions (no duplication).
       targets: (targetList.length && !scopeIsInherited) ? targetList : undefined,
       excluded_cidrs: (excludeList.length && !excludeIsInherited) ? excludeList : undefined,
+      preferred_agent_id: effectiveProbe || undefined,
     };
     if (isOt) b.passive_listen_seconds = passiveSecs; else b.intensity = intensity;
     return b;
@@ -788,6 +797,31 @@ export default function ScanPage() {
                       </select>
                       <ChevronDown size={13} color="var(--text-muted)" style={{ position: "absolute", right: 11, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
                     </div>
+                  </div>
+
+                  {/* Probe selection — defaults to an active probe */}
+                  <div>
+                    <FieldLabel htmlFor="scan-probe" icon={<Cpu size={11} />} hint={compatibleProbes.length ? `${compatibleProbes.length} compatible` : "none online"}>Probe</FieldLabel>
+                    <div style={{ position: "relative" }}>
+                      <select
+                        id="scan-probe"
+                        className="scn-input scn-select"
+                        value={effectiveProbe}
+                        onChange={(e) => setSelectedProbe(e.target.value)}
+                        disabled={!compatibleProbes.length}
+                      >
+                        {!compatibleProbes.length && <option value="">No compatible probe online</option>}
+                        {compatibleProbes.map((p) => (
+                          <option key={p.id} value={p.id}>
+                            {p.name}{p.current_job_id ? " · busy" : " · idle"}
+                          </option>
+                        ))}
+                      </select>
+                      <ChevronDown size={13} color="var(--text-muted)" style={{ position: "absolute", right: 11, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
+                    </div>
+                    <p style={{ margin: "6px 0 0", fontSize: 10, color: "var(--text-faint)", lineHeight: 1.5 }}>
+                      The job is pinned to this probe. Leave the default to use an idle, capable probe.
+                    </p>
                   </div>
 
                   {/* Scope / Targets — pre-filled from the selected engagement */}

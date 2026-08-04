@@ -58,6 +58,16 @@ When the question concerns one CVE or finding, use these exact headings:
 ## Remediation plan
 ## Evidence and uncertainty
 Otherwise, answer as a concise decision brief and state evidence limitations.""",
+    "advisor_flow": """Produce a decision-grade vulnerability brief as a SINGLE JSON object and nothing else (no markdown, no code fences, no commentary). Schema:
+{"whatIs": string, "impact": string[], "verify": {"command": string|null, "statement": string, "caveat": string|null}, "patch": {"available": "yes"|"no"|"unknown", "summary": string}, "patchSteps": [{"command": string|null, "description": string, "grounded": boolean}], "improvements": string[]}
+Rules:
+- whatIs: one plain-English paragraph. Wrap the single most important phrase in **double asterisks**.
+- impact: 3-5 short bullets. Bold the worst-case outcome with **double asterisks**. Use only impacts supported by the supplied context; do not invent affected assets.
+- verify: give one concrete check. Prefer a single shell command; if not expressible as a command, set command=null and give a one-line statement. Set caveat whenever the command is not proven for this exact environment (e.g. "Confirm the running version against the vendor advisory").
+- patch.available: "yes" ONLY if the context supplies a fixed version or vendor solution; "no" if the vendor states none; otherwise "unknown". Never invent a fixed version.
+- patchSteps: ordered, minimal, non-destructive. grounded=true ONLY when the step comes from supplied vendor solution text or the recorded finding remediation; otherwise grounded=false (a general best-practice suggestion). Prefer real commands but keep them safe and generic when unsure.
+- improvements: defense-in-depth beyond patching (segmentation, monitoring, config hardening, detection).
+- Never provide exploit instructions. Never invent CVEs, versions, scores, or exploit status. Output must be valid minified JSON.""",
 }
 
 
