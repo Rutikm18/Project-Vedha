@@ -87,3 +87,101 @@ def compute_scores(open_findings: list[FindingView]) -> Scores:
         posture_score=posture_score,
         grade=grade_for(posture_score),
     )
+
+
+# Task 2: Run-comparison + response builder
+
+# Severity display order for the comparison matrix.
+_SEVERITY_ORDER = ("critical", "high", "medium", "low", "info")
+
+
+def _to_utc(dt: datetime | None) -> datetime | None:
+    if dt is None:
+        return None
+    return dt.replace(tzinfo=timezone.utc) if dt.tzinfo is None else dt.astimezone(timezone.utc)
+
+
+def _present_in_run(f: FindingView, run_at: datetime | None) -> bool:
+    """True when the finding was live as of run_at (first_seen ≤ run_at ≤ last_seen)."""
+    if run_at is None:
+        return False
+    fs = _to_utc(f.first_seen)
+    if fs is None:
+        return False
+    ls = _to_utc(f.last_seen) or fs
+    return fs <= run_at and ls >= run_at
+
+
+def _severity(f: FindingView) -> str:
+    return f.severity if f.severity in _SEVERITY_ORDER else "info"
+
+
+def compare(views: list[FindingView], prev_at: datetime | None, latest_at: datetime) -> dict:
+    """Bucket findings across the previous→latest run transition."""
+    latest_open = [f for f in views if _present_in_run(f, latest_at)]
+    prev_open = [f for f in views if _present_in_run(f, prev_at)]
+
+    latest_ids = {f.id for f in latest_open}
+    prev_ids = {f.id for f in prev_open}
+
+    resolved = [f for f in prev_open if f.id not in latest_ids]
+    new = [f for f in latest_open if f.id not in prev_ids]
+    persisting = [f for f in latest_open if f.id in prev_ids]
+
+    # Per-severity matrix.
+    matrix = []
+    for sev in _SEVERITY_ORDER:
+        p = sum(1 for f in prev_open if _severity(f) == sev)
+        nw = sum(1 for f in new if _severity(f) == sev)
+        rs = sum(1 for f in resolved if _severity(f) == sev)
+        no = sum(1 for f in latest_open if _severity(f) == sev)
+        matrix.append({
+            "severity": sev, "prev_open": p, "new": nw,
+            "resolved": rs, "now_open": no, "net": no - p,
+        })
+
+    risk_burned_down = round(
+        sum(float(f.risk_score) for f in resolved if f.risk_score is not None), 2
+    )
+
+    return {
+        "latest_open": latest_open,
+        "prev_open": prev_open,
+        "matrix": matrix,
+        "risk_burned_down": risk_burned_down,
+        "resolved_count": len(resolved),
+        "new_count": len(new),
+        "persisting_count": len(persisting),
+    }
+
+
+def build_posture(
+    views: list[FindingView],
+    prev_run: dict | None,
+    latest_run: dict | None,
+) -> dict:
+    """Full dashboard/report payload. Degrades gracefully with 0 or 1 run."""
+    if latest_run is None:
+        return {"has_runs": False}
+
+    prev_at = _to_utc(prev_run["started_at"]) if prev_run else None
+    latest_at = _to_utc(latest_run["started_at"])
+
+    cmp = compare(views, prev_at, latest_at)
+    scores = compute_scores(cmp["latest_open"])
+    scores_prev = compute_scores(cmp["prev_open"]) if prev_run else compute_scores([])
+
+    return {
+        "has_runs": True,
+        "latest_run": {"id": latest_run["id"], "started_at": latest_at.isoformat()},
+        "previous_run": (
+            {"id": prev_run["id"], "started_at": prev_at.isoformat()} if prev_run else None
+        ),
+        "scores": scores.__dict__,
+        "scores_prev": scores_prev.__dict__ if prev_run else None,
+        "matrix": cmp["matrix"],
+        "risk_burned_down": cmp["risk_burned_down"],
+        "resolved_count": cmp["resolved_count"],
+        "new_count": cmp["new_count"],
+        "persisting_count": cmp["persisting_count"],
+    }

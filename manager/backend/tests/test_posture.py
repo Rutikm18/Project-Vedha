@@ -59,3 +59,47 @@ def test_compute_scores_uses_risk_epss_exploit_and_asset_criticality():
     # blend = 0.6*84 + 0.4*100 = 90.4 → posture = round(100-90.4)=10 → grade F
     assert s.posture_score == 10
     assert s.grade == "F"
+
+
+# Task 2: Run-comparison + response builder
+from app.services.posture import build_posture
+
+_T0 = datetime(2026, 1, 1, tzinfo=timezone.utc)   # previous run
+_T1 = datetime(2026, 2, 1, tzinfo=timezone.utc)   # latest run
+
+
+def test_build_posture_no_runs():
+    assert build_posture([], None, None) == {"has_runs": False}
+
+
+def test_build_posture_single_run_has_no_prev():
+    # one finding seen only at latest run
+    fv = _fv(id="a", severity="high", risk_score=500, first_seen=_T1, last_seen=_T1)
+    out = build_posture([fv], None, {"id": "L", "started_at": _T1})
+    assert out["has_runs"] is True
+    assert out["previous_run"] is None
+    assert out["new_count"] == 1
+    assert out["resolved_count"] == 0
+    # matrix: high row shows new=1, prev_open=0
+    high = next(r for r in out["matrix"] if r["severity"] == "high")
+    assert high["new"] == 1 and high["prev_open"] == 0 and high["now_open"] == 1
+
+
+def test_build_posture_buckets_resolved_new_persisting():
+    resolved = _fv(id="r", severity="critical", risk_score=900,
+                   first_seen=_T0, last_seen=_T0)                 # in P, gone from L
+    persisting = _fv(id="p", severity="high", risk_score=400,
+                     first_seen=_T0, last_seen=_T1)               # in both
+    new = _fv(id="n", severity="medium", risk_score=300,
+              first_seen=_T1, last_seen=_T1)                      # only in L
+    out = build_posture(
+        [resolved, persisting, new],
+        {"id": "P", "started_at": _T0},
+        {"id": "L", "started_at": _T1},
+    )
+    assert out["resolved_count"] == 1
+    assert out["new_count"] == 1
+    assert out["persisting_count"] == 1
+    assert out["risk_burned_down"] == 900.0
+    crit = next(r for r in out["matrix"] if r["severity"] == "critical")
+    assert crit["resolved"] == 1 and crit["now_open"] == 0 and crit["net"] == -1
