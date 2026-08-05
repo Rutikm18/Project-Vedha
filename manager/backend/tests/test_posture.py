@@ -100,3 +100,25 @@ def test_build_posture_buckets_resolved_new_persisting():
     assert out["risk_burned_down"] == 900.0
     crit = next(r for r in out["matrix"] if r["severity"] == "critical")
     assert crit["resolved"] == 1 and crit["now_open"] == 0 and crit["net"] == -1
+
+
+from app.routers.analytics import _finding_views
+
+
+class _Row:
+    def __init__(self, **kw):
+        self.__dict__.update(kw)
+
+
+def test_finding_views_maps_columns_and_asset_criticality():
+    rows = [
+        _Row(id="1", severity=type("S", (), {"value": "high"})(),
+             risk_score=400, epss_score=0.2, exploitable=True,
+             exploit_validated=False, asset_criticality="critical",
+             first_seen=_T0, last_seen=_T1),
+    ]
+    views = _finding_views(rows)
+    assert views[0].id == "1"
+    assert views[0].severity == "high"
+    assert views[0].asset_criticality == "critical"
+    assert views[0].exploitable is True
