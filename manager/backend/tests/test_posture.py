@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from app.services.posture import (
-    FindingView, Scores, aggregate, compute_scores, grade_for,
+    FindingView, Scores, aggregate, build_posture, compute_scores, grade_for,
 )
 
 
@@ -60,9 +60,6 @@ def test_compute_scores_uses_risk_epss_exploit_and_asset_criticality():
     assert s.posture_score == 10
     assert s.grade == "F"
 
-
-# Task 2: Run-comparison + response builder
-from app.services.posture import build_posture
 
 _T0 = datetime(2026, 1, 1, tzinfo=timezone.utc)   # previous run
 _T1 = datetime(2026, 2, 1, tzinfo=timezone.utc)   # latest run

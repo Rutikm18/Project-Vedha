@@ -103,6 +103,7 @@ def _to_utc(dt: datetime | None) -> datetime | None:
 
 def _present_in_run(f: FindingView, run_at: datetime | None) -> bool:
     """True when the finding was live as of run_at (first_seen ≤ run_at ≤ last_seen)."""
+    run_at = _to_utc(run_at)
     if run_at is None:
         return False
     fs = _to_utc(f.first_seen)
@@ -169,7 +170,7 @@ def build_posture(
 
     cmp = compare(views, prev_at, latest_at)
     scores = compute_scores(cmp["latest_open"])
-    scores_prev = compute_scores(cmp["prev_open"]) if prev_run else compute_scores([])
+    scores_prev = compute_scores(cmp["prev_open"]) if prev_run else None
 
     return {
         "has_runs": True,
@@ -178,7 +179,7 @@ def build_posture(
             {"id": prev_run["id"], "started_at": prev_at.isoformat()} if prev_run else None
         ),
         "scores": scores.__dict__,
-        "scores_prev": scores_prev.__dict__ if prev_run else None,
+        "scores_prev": scores_prev.__dict__ if scores_prev is not None else None,
         "matrix": cmp["matrix"],
         "risk_burned_down": cmp["risk_burned_down"],
         "resolved_count": cmp["resolved_count"],
