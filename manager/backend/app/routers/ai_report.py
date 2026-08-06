@@ -339,8 +339,8 @@ async def _run_generation(engagement_id: str, job_id: str, opts: dict) -> None:
                     review_status=ReviewStatus.approved,
                     generated_at=datetime.now(timezone.utc),
                 ))
-                sections += 1
                 await db.flush()
+                sections += 1
         except Exception as exc:  # never let posture break the whole report
             logger.warning("ai.report.posture_section_failed", engagement=engagement_id, error=str(exc))
 

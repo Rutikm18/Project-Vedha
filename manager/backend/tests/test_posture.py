@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
+from app.routers.ai_report import build_posture_report_section
 from app.routers.analytics import _finding_views
 from app.services.posture import (
     FindingView, Scores, aggregate, build_posture, compute_scores, grade_for,
@@ -141,9 +142,6 @@ def test_sev_str_passes_through_plain_string():
     from app.routers.analytics import _sev_str
     assert _sev_str("high") == "high"
     assert _sev_str(type("S", (), {"value": "critical"})()) == "critical"
-
-
-from app.routers.ai_report import build_posture_report_section
 
 
 def test_posture_report_section_renders_scores_and_matrix():
