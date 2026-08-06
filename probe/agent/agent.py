@@ -148,8 +148,7 @@ def main() -> None:
     # ── Transport security posture (warn loudly, never silently downgrade) ────
     _is_local = _is_local_manager_url(PLATFORM_URL)
     if PLATFORM_URL.startswith("http://") and not _is_local:
-        say("WARNING: PLATFORM_URL is plain http:// to a non-local manager — scan "
-            "results and the agent token travel UNENCRYPTED. Use https://.")
+        say("Note: manager is http:// (unencrypted) — OK for testing, use https:// in production.")
     if PLATFORM_URL.startswith("https://") and not VERIFY_TLS:
         say("WARNING: VERIFY_TLS is off — the manager certificate is NOT verified "
             "(MITM-exposed). Trusted links only; set PROBE_CA_BUNDLE for private PKI.")

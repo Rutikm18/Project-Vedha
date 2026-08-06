@@ -238,8 +238,9 @@ parsed = urlparse(url)
 if parsed.scheme not in {"http", "https"} or not parsed.hostname:
     raise SystemExit("PLATFORM_URL must be an http(s) URL with a host")
 local_hosts = {"localhost", "127.0.0.1", "::1", "host.docker.internal", "api"}
-if parsed.scheme != "https" and parsed.hostname not in local_hosts and allow_insecure != "true":
-    raise SystemExit("production manager URLs must use https (pass --insecure for a testing http manager)")
+# http to a non-local manager is allowed (unencrypted). The warning is emitted on
+# the shell side because this block stdout+stderr are captured with 2>&1 as the
+# parsed config, so nothing extra may be printed here.
 if licensing == "true" and not re.fullmatch(r"[0-9a-fA-F]{64}", pubkey):
     raise SystemExit("PROBE_LICENSE_PUBKEY must be a 64-character hex Ed25519 public key")
 print(",".join(networks))
@@ -258,6 +259,13 @@ PROBE_NETWORK_SEGMENTS="$(printf '%s\n' "$validated_config" | sed -n '1p')"
 PROBE_MAX_TARGETS="$(printf '%s\n' "$validated_config" | sed -n '2p')"
 PROBE_MAX_JOB_SECONDS="$(printf '%s\n' "$validated_config" | sed -n '3p')"
 PROBE_REGISTRATION_TIMEOUT="$(printf '%s\n' "$validated_config" | sed -n '4p')"
+
+# http to a non-local manager is permitted but unencrypted — warn, don't block.
+case "$PLATFORM_URL" in
+  https://*) ;;
+  http://localhost*|http://127.0.0.1*|"http://[::1]"*|http://host.docker.internal*|http://api*|http://api:*) ;;
+  http://*) say "WARNING: manager URL uses http, so probe-to-manager traffic is unencrypted. Fine for testing; use https in production." ;;
+esac
 
 store_license() {
   [ "$LICENSE_ENFORCED" = "true" ] || return 0
@@ -291,10 +299,10 @@ if [ "${SKIP_PREFLIGHT:-false}" != "true" ] && have curl; then
   say "Checking manager at $PLATFORM_URL ..."
   if ! curl -fsS --connect-timeout 5 --max-time 15 $ctls \
     "$PLATFORM_URL/health" >/dev/null 2>&1; then
-    say "ERROR: manager not reachable at $PLATFORM_URL/health."
-    say "  - Is PLATFORM_URL correct and the manager up (https needs a TLS front)?"
-    say "  - Bypass with SKIP_PREFLIGHT=true if you know the probe will retry."
-    exit 1
+    say "WARNING: manager not reachable at $PLATFORM_URL/health right now."
+    say "  - Check PLATFORM_URL, that the manager is up, and the security group/firewall allows this host on that port."
+    say "  - Installing anyway; the probe will keep retrying the connection in the background."
+    say "  - Set SKIP_PREFLIGHT=true to silence this check entirely."
   fi
 fi
 

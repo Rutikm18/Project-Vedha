@@ -366,9 +366,11 @@ if [ -z "${LLM_PROVIDER:-}" ]; then
   if   [ -n "${OPENAI_API_KEY:-}" ];     then LLM_PROVIDER=openai
   elif [ -n "${ANTHROPIC_API_KEY:-}" ];  then LLM_PROVIDER=anthropic
   elif [ -n "${OPENROUTER_API_KEY:-}" ]; then LLM_PROVIDER=openrouter
-  else LLM_PROVIDER=ollama; warn "no LLM API key — AI features inert until you set OPENAI_API_KEY / ANTHROPIC_API_KEY in SSM or .env"; fi
+  # Cloud-only: never fall back to local Ollama on AWS. Leave the provider empty
+  # so the Manager auto-detects / fails closed; AI stays inert until a key is set.
+  else LLM_PROVIDER=""; warn "no cloud LLM API key — AI features inert until you set OPENAI_API_KEY / ANTHROPIC_API_KEY / OPENROUTER_API_KEY in SSM or .env"; fi
 fi
-log "LLM provider: $LLM_PROVIDER ✓"
+log "LLM provider: ${LLM_PROVIDER:-<none — cloud key required>} ✓"
 
 # ── 9. TLS / Caddy configuration ─────────────────────────────────────────────
 step "TLS & domain"

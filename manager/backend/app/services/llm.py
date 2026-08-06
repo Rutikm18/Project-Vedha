@@ -81,10 +81,28 @@ class ManagerLlmService:
         self.settings = settings or get_settings()
         self._transport = transport
 
+    def _auto_cloud_provider(self) -> str | None:
+        """First configured cloud provider, or None. Cloud-only: never Ollama."""
+        if self.settings.openai_api_key:
+            return "openai"
+        if self.settings.anthropic_api_key:
+            return "anthropic"
+        if self.settings.openrouter_api_key:
+            return "openrouter"
+        return None
+
     def _default_runtime(self) -> Runtime:
         provider = self.settings.llm_provider.strip().lower()
+        # Empty/"auto"/unknown → resolve a configured cloud provider. Ollama is
+        # only ever used when an operator sets it explicitly (local dev).
         if provider not in {"ollama", "openrouter", "anthropic", "openai"}:
-            provider = "ollama"
+            provider = self._auto_cloud_provider()
+            if provider is None:
+                raise AiRuntimeError(
+                    "No cloud AI provider is configured. Set OPENAI_API_KEY, "
+                    "ANTHROPIC_API_KEY, or OPENROUTER_API_KEY on the Manager.",
+                    503,
+                )
         if provider == "openrouter":
             return Runtime("openrouter", self.settings.openrouter_model, "cloud")
         if provider == "anthropic":
@@ -195,14 +213,28 @@ class ManagerLlmService:
             ),
         ]
 
-        default = self._default_runtime()
-        selected = next(item for item in providers if item.id == default.provider)
+        try:
+            default = self._default_runtime()
+            selected = next((p for p in providers if p.id == default.provider), None)
+        except AiRuntimeError:
+            default, selected = None, None
+        if default is not None and selected is not None:
+            return AiStatusResponse(
+                provider=selected.id,
+                model=default.model,
+                configured=selected.configured,
+                privacy=selected.privacy,
+                reason=selected.reason,
+                providers=providers,
+            )
+        # No usable default (no cloud key configured). Report unconfigured rather
+        # than 500 so the UI can prompt the operator to add a cloud key.
         return AiStatusResponse(
-            provider=selected.id,
-            model=default.model,
-            configured=selected.configured,
-            privacy=selected.privacy,
-            reason=selected.reason,
+            provider=None,
+            model="",
+            configured=False,
+            privacy="cloud",
+            reason="No cloud AI provider is configured. Set OPENAI_API_KEY, ANTHROPIC_API_KEY, or OPENROUTER_API_KEY.",
             providers=providers,
         )
 
@@ -266,9 +298,10 @@ class ManagerLlmService:
         return text, runtime
 
     def _fallback_candidates(self, request: AiGenerateRequest) -> list[Runtime]:
-        """Ordered runtimes to try: requested/default first, then FREE fallbacks
-        only (OpenRouter free tier, then local Ollama). Never a second paid
-        provider — a credit-exhausted paid key must not silently bill another."""
+        """Ordered runtimes to try: requested/default first, then the OpenRouter
+        free tier (still cloud). Never a second paid provider — a credit-exhausted
+        paid key must not silently bill another. Cloud-only: no local Ollama
+        fallback; if nothing is configured the caller gets a clean 503."""
         candidates: list[Runtime] = []
         try:
             primary_provider = request.provider or self._default_runtime().provider
@@ -277,17 +310,11 @@ class ManagerLlmService:
             # Requested/default provider is not configured — skip straight to free.
             pass
         have = {(c.provider, c.model) for c in candidates}
-        # Free fallback 1: OpenRouter free tier (needs a free key). Uses the
+        # Free cloud fallback: OpenRouter free tier (needs a free key). Uses the
         # configured OPENROUTER_MODEL — set it to a live ':free' model id, because
         # the literal 'openrouter/free' is not a real model and would 400.
         if self.settings.openrouter_api_key and not any(c.provider == "openrouter" for c in candidates):
             rt = Runtime("openrouter", self.settings.openrouter_model, "cloud")
-            if (rt.provider, rt.model) not in have:
-                candidates.append(rt)
-                have.add((rt.provider, rt.model))
-        # Free fallback 2: local Ollama (offline, no key).
-        if not any(c.provider == "ollama" for c in candidates):
-            rt = Runtime("ollama", self.settings.ollama_model, "local")
             if (rt.provider, rt.model) not in have:
                 candidates.append(rt)
         return candidates

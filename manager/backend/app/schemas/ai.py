@@ -45,7 +45,9 @@ class AiProviderStatus(BaseModel):
 
 
 class AiStatusResponse(BaseModel):
-    provider: Literal["ollama", "openrouter", "anthropic", "openai"]
+    # None = no default provider is usable (no cloud key configured). The UI then
+    # prompts for a key instead of preselecting a provider.
+    provider: Literal["ollama", "openrouter", "anthropic", "openai"] | None
     model: str
     configured: bool
     privacy: Literal["local", "cloud"]

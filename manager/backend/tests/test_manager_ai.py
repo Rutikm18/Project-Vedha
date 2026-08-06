@@ -225,3 +225,63 @@ def test_ai_request_rejects_unsafe_model_and_oversized_context():
             messages=[{"role": "user", "content": "Hello"}],
             context={"evidence": "x" * 33_000},
         )
+
+
+# ── Cloud-only provider selection (auto-detect from key; no local fallback) ─────
+
+def _cloud(**keys) -> Settings:
+    """Settings with provider unset and all cloud keys pinned, so .env cannot
+    leak a real key into these deterministic cloud-only tests."""
+    base = dict(llm_provider="", openai_api_key="", anthropic_api_key="", openrouter_api_key="")
+    base.update(keys)
+    return Settings(**base)
+
+
+def test_default_auto_detects_the_configured_cloud_provider():
+    # Only Anthropic configured → it becomes the default. Never Ollama.
+    rt = ManagerLlmService(_cloud(anthropic_api_key="ak"))._default_runtime()
+    assert rt.provider == "anthropic"
+    assert rt.privacy == "cloud"
+
+
+def test_default_auto_detect_prefers_openai_then_anthropic_then_openrouter():
+    svc = ManagerLlmService(_cloud(openai_api_key="o", anthropic_api_key="a", openrouter_api_key="r"))
+    assert svc._default_runtime().provider == "openai"
+    svc2 = ManagerLlmService(_cloud(anthropic_api_key="a", openrouter_api_key="r"))
+    assert svc2._default_runtime().provider == "anthropic"
+
+
+def test_default_runtime_fails_closed_without_any_cloud_key():
+    svc = ManagerLlmService(_cloud())  # no keys at all
+    with pytest.raises(AiRuntimeError, match="No cloud AI provider") as exc:
+        svc._default_runtime()
+    assert exc.value.status_code == 503
+
+
+@pytest.mark.asyncio
+async def test_generate_fails_closed_when_no_cloud_provider_configured():
+    svc = ManagerLlmService(_cloud())
+    with pytest.raises(AiRuntimeError, match="provider is configured") as exc:
+        await svc.generate_with_fallback(
+            AiGenerateRequest(task="advisor", messages=[{"role": "user", "content": "Hi"}])
+        )
+    assert exc.value.status_code == 503
+
+
+def test_fallback_never_includes_local_ollama():
+    # Cloud primary configured; the fallback chain must stay cloud-only.
+    svc = ManagerLlmService(_cloud(openai_api_key="o", openrouter_api_key="r"))
+    candidates = svc._fallback_candidates(
+        AiGenerateRequest(task="advisor", messages=[{"role": "user", "content": "Hi"}])
+    )
+    assert candidates, "expected the cloud primary as a candidate"
+    assert all(c.provider != "ollama" for c in candidates)
+    assert all(c.privacy == "cloud" for c in candidates)
+
+
+@pytest.mark.asyncio
+async def test_status_fails_safe_without_cloud_key():
+    st = await ManagerLlmService(_cloud()).status()
+    assert st.configured is False
+    assert st.provider is None
+    assert "No cloud AI provider" in (st.reason or "")

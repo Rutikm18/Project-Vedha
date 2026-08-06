@@ -45,9 +45,11 @@ class Settings(BaseSettings):
     refresh_token_expire_days: int = 7
 
     # Manager-owned AI runtime. The dashboard never receives provider credentials
-    # and never calls a model directly. Ollama is the free/local default;
-    # OpenRouter and Anthropic are optional server-side providers.
-    llm_provider: str = "ollama"
+    # and never calls a model directly. Cloud-only by default: an empty provider
+    # auto-detects a configured cloud key (openai → anthropic → openrouter) and
+    # fails closed if none is set. "ollama" is an explicit local-dev opt-in and is
+    # never selected automatically or used as an implicit fallback.
+    llm_provider: str = ""
     llm_request_timeout_seconds: float = 180.0
     ollama_base_url: str = "http://host.docker.internal:11434"
     ollama_model: str = "llama3.2:3b"

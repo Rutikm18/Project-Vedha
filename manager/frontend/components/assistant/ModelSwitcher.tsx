@@ -14,7 +14,7 @@ interface ProviderStatus {
   reason?: string | null;
 }
 interface AiStatus {
-  provider: string;
+  provider: string | null;   // null = no cloud provider configured
   model: string;
   providers: ProviderStatus[];
 }
@@ -52,7 +52,9 @@ export function ModelSwitcher({
         const configured = data.providers.filter((p) => p.configured);
         const valid = stored && configured.some((p) => p.id === stored.provider);
         if (valid && stored) onChange(stored);
-        else onChange({ provider: data.provider, model: data.model });
+        // Only preselect a default when the server actually has a usable provider
+        // (null = no cloud key configured — leave the selection empty).
+        else if (data.provider && data.model) onChange({ provider: data.provider, model: data.model });
       })
       .catch(() => { /* status endpoint down — drawer still works on server default */ });
     return () => { active = false; };
@@ -69,7 +71,9 @@ export function ModelSwitcher({
 
   if (!status) return null;
 
-  const current = value ? `${value.provider}::${value.model}` : `${status.provider}::${status.model}`;
+  const current = value
+    ? `${value.provider}::${value.model}`
+    : status.provider ? `${status.provider}::${status.model}` : "";
 
   return (
     <label className="model-switcher" title="AI model — falls back to a free model when the paid provider is out of credit">
