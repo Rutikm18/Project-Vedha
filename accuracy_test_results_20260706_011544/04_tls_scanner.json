@@ -1,0 +1,11 @@
+2026-07-06 01:15:51,144 INFO scanner: scope loaded: 2 network(s), 0 hostname(s)
+2026-07-06 01:15:51,144 INFO scanner: [tls_scan] scanning 1 in-scope target(s)
+/Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Agentic VA Scanner/probe/scanner/tls_scanner.py:71: DeprecationWarning: ssl.TLSVersion.TLSv1_1 is deprecated
+  ctx.minimum_version = version
+/Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Agentic VA Scanner/probe/scanner/tls_scanner.py:72: DeprecationWarning: ssl.TLSVersion.TLSv1_1 is deprecated
+  ctx.maximum_version = version
+/Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Agentic VA Scanner/probe/scanner/tls_scanner.py:71: DeprecationWarning: ssl.TLSVersion.TLSv1 is deprecated
+  ctx.minimum_version = version
+/Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Agentic VA Scanner/probe/scanner/tls_scanner.py:72: DeprecationWarning: ssl.TLSVersion.TLSv1 is deprecated
+  ctx.maximum_version = version
+{"scanner": "tls_scan", "target": "127.0.0.1", "timestamp": "2026-07-05T19:45:51.245989+00:00", "port": 8443, "proto": "tcp", "status": "open", "data": {"accepted_versions": ["TLSv1_3", "TLSv1_2"], "cipher_by_version": {"TLSv1.3": "TLS_AES_256_GCM_SHA384", "TLSv1.2": "ECDHE-RSA-AES256-GCM-SHA384"}, "certificate": {"subject": "CN=localhost", "issuer": "CN=localhost", "not_before": "2026-07-05T19:45:45+00:00", "not_after": "2026-07-06T19:45:45+00:00", "san": [], "expired": false, "self_signed": true, "sha256_fingerprint": "67abf8fa576e683af173a0fc312ad9e866cb81680b3d557c7050c5606865b26b", "serial_hex": "ce23834f17c6f1f2"}}, "evidence": "accepts: TLSv1_3, TLSv1_2", "error": null}

@@ -1,0 +1,1 @@
+{"scanner": "db_scan", "target": "127.0.0.1", "timestamp": "2026-07-06T09:10:57.207084+00:00", "port": 3306, "proto": "tcp", "status": "open", "data": {"engine": "mysql/mariadb", "protocol_version": 10, "server_version": "9.6.0"}, "evidence": "mysql/mariadb 9.6.0", "error": null}

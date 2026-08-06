@@ -1,0 +1,14 @@
+2026-07-06 01:16:15,963 INFO scanner: scope loaded: 2 network(s), 0 hostname(s)
+2026-07-06 01:16:15,968 INFO scanner: masscan fallback forced
+2026-07-06 01:16:15,968 INFO scanner: [mass_scan] scanning 1 in-scope target(s)
+{"scanner": "mass_scan", "target": "127.0.0.1", "timestamp": "2026-07-05T19:46:16.597204+00:00", "port": 3000, "proto": "tcp", "status": "open", "data": {}, "evidence": "connect open (fallback)", "error": null}
+{"scanner": "mass_scan", "target": "127.0.0.1", "timestamp": "2026-07-05T19:46:16.696979+00:00", "port": 3306, "proto": "tcp", "status": "open", "data": {}, "evidence": "connect open (fallback)", "error": null}
+{"scanner": "mass_scan", "target": "127.0.0.1", "timestamp": "2026-07-05T19:46:16.718932+00:00", "port": 3389, "proto": "tcp", "status": "open", "data": {}, "evidence": "connect open (fallback)", "error": null}
+{"scanner": "mass_scan", "target": "127.0.0.1", "timestamp": "2026-07-05T19:46:17.090200+00:00", "port": 5000, "proto": "tcp", "status": "open", "data": {}, "evidence": "connect open (fallback)", "error": null}
+{"scanner": "mass_scan", "target": "127.0.0.1", "timestamp": "2026-07-05T19:46:17.206052+00:00", "port": 5672, "proto": "tcp", "status": "open", "data": {}, "evidence": "connect open (fallback)", "error": null}
+{"scanner": "mass_scan", "target": "127.0.0.1", "timestamp": "2026-07-05T19:46:17.434790+00:00", "port": 6443, "proto": "tcp", "status": "open", "data": {}, "evidence": "connect open (fallback)", "error": null}
+{"scanner": "mass_scan", "target": "127.0.0.1", "timestamp": "2026-07-05T19:46:17.527519+00:00", "port": 7000, "proto": "tcp", "status": "open", "data": {}, "evidence": "connect open (fallback)", "error": null}
+{"scanner": "mass_scan", "target": "127.0.0.1", "timestamp": "2026-07-05T19:46:17.684079+00:00", "port": 8080, "proto": "tcp", "status": "open", "data": {}, "evidence": "connect open (fallback)", "error": null}
+{"scanner": "mass_scan", "target": "127.0.0.1", "timestamp": "2026-07-05T19:46:17.685384+00:00", "port": 8090, "proto": "tcp", "status": "open", "data": {}, "evidence": "connect open (fallback)", "error": null}
+{"scanner": "mass_scan", "target": "127.0.0.1", "timestamp": "2026-07-05T19:46:17.731462+00:00", "port": 8443, "proto": "tcp", "status": "open", "data": {}, "evidence": "connect open (fallback)", "error": null}
+2026-07-06 01:16:17,941 INFO scanner: mass_scan done — 10 open port(s)

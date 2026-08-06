@@ -1,0 +1,3 @@
+2026-07-06 01:15:52,088 INFO scanner: scope loaded: 2 network(s), 0 hostname(s)
+2026-07-06 01:15:52,089 INFO scanner: [db_scan] scanning 1 in-scope target(s)
+{"scanner": "db_scan", "target": "127.0.0.1", "timestamp": "2026-07-05T19:45:52.164751+00:00", "port": 3306, "proto": "tcp", "status": "open", "data": {"engine": "mysql/mariadb", "protocol_version": 10, "server_version": "9.6.0"}, "evidence": "mysql/mariadb 9.6.0", "error": null}

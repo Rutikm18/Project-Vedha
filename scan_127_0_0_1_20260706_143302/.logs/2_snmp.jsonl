@@ -1,0 +1,1 @@
+{"scanner": "snmp_scan", "target": "127.0.0.1", "timestamp": "2026-07-06T09:03:52.938660+00:00", "port": 161, "proto": "udp", "status": "filtered", "data": {"responded": false}, "evidence": "no SNMP reply to common communities (open|filtered)", "error": null}

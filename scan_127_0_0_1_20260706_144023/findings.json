@@ -1,0 +1,131 @@
+{
+  "engine": "adversa-probe",
+  "hosts": {
+    "127.0.0.1": {
+      "tcp/3000": {
+        "port": 3000,
+        "proto": "tcp",
+        "state": "open",
+        "service": "ppp",
+        "product": null,
+        "version": null,
+        "banner": null,
+        "tls": null,
+        "http": {
+          "status": 307,
+          "title": null,
+          "server": null,
+          "redirect_location": "/login?next=%2F",
+          "missing_sec": [
+            "content-security-policy",
+            "strict-transport-security",
+            "x-frame-options",
+            "x-content-type-options",
+            "referrer-policy"
+          ],
+          "tech": []
+        },
+        "db": null,
+        "smb": null,
+        "ai": null
+      },
+      "tcp/3306": {
+        "port": 3306,
+        "proto": "tcp",
+        "state": "open",
+        "service": "mysql",
+        "product": null,
+        "version": null,
+        "banner": "I\u0000\u0000\u0000",
+        "tls": null,
+        "http": null,
+        "db": {
+          "engine": "mysql/mariadb",
+          "version": "9.6.0"
+        },
+        "smb": null,
+        "ai": null
+      },
+      "tcp/5000": {
+        "port": 5000,
+        "proto": "tcp",
+        "state": "open",
+        "service": "rtsp",
+        "product": null,
+        "version": null,
+        "banner": null,
+        "tls": null,
+        "http": {
+          "status": 403,
+          "title": null,
+          "server": "AirTunes/940.23.1",
+          "redirect_location": null,
+          "missing_sec": [
+            "content-security-policy",
+            "strict-transport-security",
+            "x-frame-options",
+            "x-content-type-options",
+            "referrer-policy"
+          ],
+          "tech": []
+        },
+        "db": null,
+        "smb": null,
+        "ai": null
+      },
+      "tcp/7000": {
+        "port": 7000,
+        "proto": "tcp",
+        "state": "open",
+        "service": "rtsp",
+        "product": null,
+        "version": null,
+        "banner": null,
+        "tls": null,
+        "http": {
+          "status": 403,
+          "title": null,
+          "server": "AirTunes/940.23.1",
+          "redirect_location": null,
+          "missing_sec": [
+            "content-security-policy",
+            "strict-transport-security",
+            "x-frame-options",
+            "x-content-type-options",
+            "referrer-policy"
+          ],
+          "tech": []
+        },
+        "db": null,
+        "smb": null,
+        "ai": null
+      }
+    }
+  },
+  "findings": [
+    {
+      "host": "127.0.0.1",
+      "where": "tcp/3306",
+      "tag": "DB-EXPOSED",
+      "detail": "mysql/mariadb 9.6.0 reachable"
+    },
+    {
+      "host": "127.0.0.1",
+      "where": "tcp/3000",
+      "tag": "MISSING-HEADERS",
+      "detail": "5 security headers absent (content-security-policy, strict-transport-security, x-frame-options, ...)"
+    },
+    {
+      "host": "127.0.0.1",
+      "where": "tcp/5000",
+      "tag": "MISSING-HEADERS",
+      "detail": "5 security headers absent (content-security-policy, strict-transport-security, x-frame-options, ...)"
+    },
+    {
+      "host": "127.0.0.1",
+      "where": "tcp/7000",
+      "tag": "MISSING-HEADERS",
+      "detail": "5 security headers absent (content-security-policy, strict-transport-security, x-frame-options, ...)"
+    }
+  ]
+}

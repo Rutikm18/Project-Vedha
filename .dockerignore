@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.venv/
+tests/
+test_*.sh
+*.jsonl
+*.log
+probe.env
+scope.txt

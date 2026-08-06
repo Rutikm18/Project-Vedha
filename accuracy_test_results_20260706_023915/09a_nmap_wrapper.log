@@ -1,0 +1,3 @@
+2026-07-06 02:39:44,048 INFO scanner: scope loaded: 2 network(s), 0 hostname(s)
+2026-07-06 02:39:44,049 INFO scanner: running: nmap -oX - -n -sT -F 127.0.0.1
+2026-07-06 02:39:44,140 INFO scanner: nmap_fast done — 6 result(s)

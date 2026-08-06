@@ -1,0 +1,3 @@
+2026-07-06 01:15:55,927 INFO scanner: scope loaded: 2 network(s), 0 hostname(s)
+2026-07-06 01:15:55,927 INFO scanner: [smb_scan] scanning 1 in-scope target(s)
+{"scanner": "smb_scan", "target": "127.0.0.1", "timestamp": "2026-07-05T19:45:55.931578+00:00", "port": 445, "proto": "tcp", "status": "filtered", "data": {}, "evidence": "no SMB response on 445", "error": null}

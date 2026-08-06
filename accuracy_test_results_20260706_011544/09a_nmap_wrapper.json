@@ -1,0 +1,9 @@
+2026-07-06 01:16:15,536 INFO scanner: scope loaded: 2 network(s), 0 hostname(s)
+2026-07-06 01:16:15,537 INFO scanner: running: nmap -oX - -n -sT -F 127.0.0.1
+{"scanner": "nmap_fast", "target": "127.0.0.1", "timestamp": "2026-07-05T19:46:15.815908+00:00", "port": 3000, "proto": "tcp", "status": "open", "data": {"service": "ppp", "product": null, "version": null, "extrainfo": null, "cpe": []}, "evidence": "ppp", "error": null}
+{"scanner": "nmap_fast", "target": "127.0.0.1", "timestamp": "2026-07-05T19:46:15.816786+00:00", "port": 3306, "proto": "tcp", "status": "open", "data": {"service": "mysql", "product": null, "version": null, "extrainfo": null, "cpe": []}, "evidence": "mysql", "error": null}
+{"scanner": "nmap_fast", "target": "127.0.0.1", "timestamp": "2026-07-05T19:46:15.816811+00:00", "port": 3389, "proto": "tcp", "status": "open", "data": {"service": "ms-wbt-server", "product": null, "version": null, "extrainfo": null, "cpe": []}, "evidence": "ms-wbt-server", "error": null}
+{"scanner": "nmap_fast", "target": "127.0.0.1", "timestamp": "2026-07-05T19:46:15.816822+00:00", "port": 5000, "proto": "tcp", "status": "open", "data": {"service": "upnp", "product": null, "version": null, "extrainfo": null, "cpe": []}, "evidence": "upnp", "error": null}
+{"scanner": "nmap_fast", "target": "127.0.0.1", "timestamp": "2026-07-05T19:46:15.816830+00:00", "port": 8080, "proto": "tcp", "status": "open", "data": {"service": "http-proxy", "product": null, "version": null, "extrainfo": null, "cpe": []}, "evidence": "http-proxy", "error": null}
+{"scanner": "nmap_fast", "target": "127.0.0.1", "timestamp": "2026-07-05T19:46:15.816836+00:00", "port": 8443, "proto": "tcp", "status": "open", "data": {"service": "https-alt", "product": null, "version": null, "extrainfo": null, "cpe": []}, "evidence": "https-alt", "error": null}
+2026-07-06 01:16:15,817 INFO scanner: nmap_fast done — 6 result(s)

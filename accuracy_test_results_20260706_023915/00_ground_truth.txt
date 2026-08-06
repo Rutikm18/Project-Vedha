@@ -1,0 +1,28 @@
+== lsof listeners on 127.0.0.1 ==
+COMMAND NAME
+Code\x20H 127.0.0.1:20375
+Code\x20H 127.0.0.1:52945
+Code\x20H 127.0.0.1:18620
+Code\x20H 127.0.0.1:57110
+com.docke 127.0.0.1:6443
+Python 127.0.0.1:8080
+Python 127.0.0.1:3389
+Code\x20H 127.0.0.1:46417
+Code\x20H 127.0.0.1:58809
+Code\x20H 127.0.0.1:53782
+Code\x20H 127.0.0.1:58965
+Code\x20H 127.0.0.1:19266
+Code\x20H 127.0.0.1:56306
+
+== 8080 title ==
+<title>GROUND-TRUTH-PAGE</title>
+
+== 8443 TLS protocol ==
+    Protocol  : TLSv1.3
+
+== 3389 banner ==
+GROUND-TRUTH-BANNER-1.0
+
+
+== mysql version (if installed) ==
+mysql  Ver 9.6.0 for macos26.3 on arm64 (Homebrew)
