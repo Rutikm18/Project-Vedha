@@ -103,10 +103,15 @@ def _finding_views(rows) -> list[posture_service.FindingView]:
     ]
 
 
-async def _two_latest_completed_runs(db, engagement_id):
+async def _two_latest_completed_runs(db, engagement_id, tenant_id):
     rows = (await db.execute(
         select(DetectionRun.id, DetectionRun.started_at)
-        .where(DetectionRun.engagement_id == engagement_id, DetectionRun.status == RUN_COMPLETED)
+        .join(Engagement, DetectionRun.engagement_id == Engagement.id)
+        .where(
+            DetectionRun.engagement_id == engagement_id,
+            Engagement.tenant_id == tenant_id,
+            DetectionRun.status == RUN_COMPLETED,
+        )
         .order_by(DetectionRun.started_at.desc())
         .limit(2)
     )).all()
@@ -138,7 +143,7 @@ async def posture(
     else:
         await get_or_404(db, Engagement, engagement_id, tenant_id)
 
-    prev_run, latest_run = await _two_latest_completed_runs(db, engagement_id)
+    prev_run, latest_run = await _two_latest_completed_runs(db, engagement_id, tenant_id)
 
     finding_rows = (await db.execute(
         select(

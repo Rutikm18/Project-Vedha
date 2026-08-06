@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
+from app.routers.analytics import _finding_views
 from app.services.posture import (
     FindingView, Scores, aggregate, build_posture, compute_scores, grade_for,
 )
@@ -102,9 +103,6 @@ def test_build_posture_buckets_resolved_new_persisting():
     assert crit["resolved"] == 1 and crit["now_open"] == 0 and crit["net"] == -1
 
 
-from app.routers.analytics import _finding_views
-
-
 class _Row:
     def __init__(self, **kw):
         self.__dict__.update(kw)
@@ -122,3 +120,24 @@ def test_finding_views_maps_columns_and_asset_criticality():
     assert views[0].severity == "high"
     assert views[0].asset_criticality == "critical"
     assert views[0].exploitable is True
+
+
+def test_finding_views_handles_null_asset_and_scores():
+    # OUTER-join case: no asset, and null risk/epss scores.
+    rows = [
+        _Row(id="2", severity=type("S", (), {"value": "low"})(),
+             risk_score=None, epss_score=None, exploitable=False,
+             exploit_validated=False, asset_criticality=None,
+             first_seen=None, last_seen=None),
+    ]
+    v = _finding_views(rows)[0]
+    assert v.asset_criticality is None
+    assert v.risk_score is None
+    assert v.epss_score is None
+    assert v.severity == "low"
+
+
+def test_sev_str_passes_through_plain_string():
+    from app.routers.analytics import _sev_str
+    assert _sev_str("high") == "high"
+    assert _sev_str(type("S", (), {"value": "critical"})()) == "critical"
