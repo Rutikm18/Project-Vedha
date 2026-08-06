@@ -141,3 +141,28 @@ def test_sev_str_passes_through_plain_string():
     from app.routers.analytics import _sev_str
     assert _sev_str("high") == "high"
     assert _sev_str(type("S", (), {"value": "critical"})()) == "critical"
+
+
+from app.routers.ai_report import build_posture_report_section
+
+
+def test_posture_report_section_renders_scores_and_matrix():
+    posture = {
+        "has_runs": True,
+        "scores": {"risk_index": 40.0, "exploitable_score": 20.0, "posture_score": 68, "grade": "C"},
+        "scores_prev": {"risk_index": 55.0, "exploitable_score": 30.0, "posture_score": 55, "grade": "C"},
+        "matrix": [{"severity": "critical", "prev_open": 2, "new": 0, "resolved": 1, "now_open": 1, "net": -1}],
+        "risk_burned_down": 900.0, "resolved_count": 1, "new_count": 0, "persisting_count": 1,
+        "previous_run": {"id": "P", "started_at": "2026-01-01T00:00:00+00:00"},
+        "latest_run": {"id": "L", "started_at": "2026-02-01T00:00:00+00:00"},
+    }
+    section = build_posture_report_section(posture)
+    assert section["title"] == "Posture & Remediation Progress"
+    assert section["kind"] == "posture"
+    assert "Posture Score: 68 (C)" in section["content"]
+    assert "critical" in section["content"]
+    assert "900" in section["content"]
+
+
+def test_posture_report_section_omitted_without_runs():
+    assert build_posture_report_section({"has_runs": False}) is None

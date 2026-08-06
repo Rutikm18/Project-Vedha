@@ -12,6 +12,7 @@ through /draft for human review before it is considered part of the final report
 """
 from __future__ import annotations
 
+import hashlib
 import uuid
 from datetime import datetime, timezone
 from typing import Annotated
@@ -33,6 +34,8 @@ from app.models.enums import ReviewStatus, ScanJobStatus, ScanJobType
 from app.models.finding import Finding
 from app.models.llm_output import LLMOutput
 from app.models.scan_job import ScanJob
+from app.routers.analytics import _finding_views, _two_latest_completed_runs
+from app.services import posture as posture_service
 
 router = APIRouter(prefix="/engagements/{engagement_id}/ai-report", tags=["ai-report"])
 logger = structlog.get_logger()
@@ -185,6 +188,33 @@ async def reject_report(
 
 
 
+def build_posture_report_section(posture: dict) -> dict | None:
+    """Deterministic report section from the same posture payload the dashboard uses."""
+    if not posture.get("has_runs"):
+        return None
+    s = posture["scores"]
+    lines = [
+        f"**Posture Score: {s['posture_score']} ({s['grade']})** — "
+        f"Risk Index {s['risk_index']}, Exploitable Score {s['exploitable_score']}.",
+        "",
+        "| Severity | Prev open | New | Patched | Now open | Net |",
+        "|---|---|---|---|---|---|",
+    ]
+    for r in posture.get("matrix", []):
+        if not (r["prev_open"] or r["new"] or r["resolved"] or r["now_open"]):
+            continue
+        lines.append(
+            f"| {r['severity']} | {r['prev_open']} | {r['new']} | "
+            f"{r['resolved']} | {r['now_open']} | {r['net']:+d} |"
+        )
+    burned = posture.get("risk_burned_down") or 0
+    if burned:
+        lines += ["", f"Risk burned down this cycle: **{round(burned)}** across "
+                      f"{posture.get('resolved_count', 0)} patched finding(s)."]
+    return {"title": "Posture & Remediation Progress", "kind": "posture",
+            "content": "\n".join(lines)}
+
+
 async def _pending_outputs(db: AsyncSession, engagement_id: uuid.UUID, ids: list[uuid.UUID] | None):
     q = select(LLMOutput).where(
         LLMOutput.engagement_id == engagement_id,
@@ -284,6 +314,36 @@ async def _run_generation(engagement_id: str, job_id: str, opts: dict) -> None:
 
         summary = await _build_engagement_summary(db, eng_uuid, eng)
         sections = 0
+
+        try:
+            prev_run, latest_run = await _two_latest_completed_runs(db, eng_uuid, eng.tenant_id)
+            posture_rows = (await db.execute(
+                select(
+                    Finding.id, Finding.severity, Finding.risk_score, Finding.epss_score,
+                    Finding.exploitable, Finding.exploit_validated,
+                    Finding.first_seen, Finding.last_seen,
+                    Asset.criticality.label("asset_criticality"),
+                ).outerjoin(Asset, Finding.asset_id == Asset.id)
+                 .where(Finding.engagement_id == eng_uuid)
+            )).all()
+            posture_payload = posture_service.build_posture(_finding_views(posture_rows), prev_run, latest_run)
+            posture_section = build_posture_report_section(posture_payload)
+            if posture_section is not None:
+                content = posture_section["content"]
+                db.add(LLMOutput(
+                    engagement_id=eng_uuid,
+                    output_type="posture_progress",
+                    prompt_hash=hashlib.sha256(content.encode()).hexdigest(),
+                    model="deterministic",
+                    output=content,
+                    review_status=ReviewStatus.approved,
+                    generated_at=datetime.now(timezone.utc),
+                ))
+                sections += 1
+                await db.flush()
+        except Exception as exc:  # never let posture break the whole report
+            logger.warning("ai.report.posture_section_failed", engagement=engagement_id, error=str(exc))
+
         try:
             await gen.generate_executive_summary(summary)
             sections += 1
