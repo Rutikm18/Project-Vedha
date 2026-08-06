@@ -40,6 +40,8 @@ def test_grade_bands():
     assert grade_for(80) == "B"
     assert grade_for(60) == "C"
     assert grade_for(40) == "D"
+    assert grade_for(35) == "D"
+    assert grade_for(34) == "F"
     assert grade_for(10) == "F"
 
 

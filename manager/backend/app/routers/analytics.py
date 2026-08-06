@@ -153,7 +153,8 @@ async def posture(
             Asset.criticality.label("asset_criticality"),
         )
         .outerjoin(Asset, Finding.asset_id == Asset.id)
-        .where(Finding.engagement_id == engagement_id)
+        .where(Finding.engagement_id == engagement_id,
+               Finding.status.in_([FindingStatus.open, FindingStatus.confirmed]))
     )).all()
 
     views = _finding_views(finding_rows)

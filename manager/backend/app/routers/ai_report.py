@@ -30,7 +30,7 @@ from app.models.attack_path import AttackPath
 from app.models.detection import DetectionResult
 from app.models.engagement import Engagement
 from app.utils.db import get_or_404
-from app.models.enums import ReviewStatus, ScanJobStatus, ScanJobType
+from app.models.enums import FindingStatus, ReviewStatus, ScanJobStatus, ScanJobType
 from app.models.finding import Finding
 from app.models.llm_output import LLMOutput
 from app.models.scan_job import ScanJob
@@ -324,7 +324,8 @@ async def _run_generation(engagement_id: str, job_id: str, opts: dict) -> None:
                     Finding.first_seen, Finding.last_seen,
                     Asset.criticality.label("asset_criticality"),
                 ).outerjoin(Asset, Finding.asset_id == Asset.id)
-                 .where(Finding.engagement_id == eng_uuid)
+                 .where(Finding.engagement_id == eng_uuid,
+                        Finding.status.in_([FindingStatus.open, FindingStatus.confirmed]))
             )).all()
             posture_payload = posture_service.build_posture(_finding_views(posture_rows), prev_run, latest_run)
             posture_section = build_posture_report_section(posture_payload)
