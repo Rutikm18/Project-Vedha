@@ -1,0 +1,275 @@
+/* ==========================================================================
+   Probe Console — dashboard structural layer  (THEME-MATCHED, DASHBOARD-SCOPED)
+   Import once, after globals.css:
+       import "../styles/console-tokens.css";
+
+   IMPORTANT — how this differs from the original design spec:
+   The spec shipped a dark-only palette that overrode the app's colour tokens.
+   This app is light-default with a working light/dark toggle, and we only want
+   the redesign on the dashboard. So this file deliberately:
+     - does NOT redefine any colour/surface token (--bg-*, --sev-*, --accent,
+       --text-*, --border-*). Those stay owned by globals.css and keep adapting
+       to the active theme, so the dashboard is light in light mode and dark in
+       dark mode like every other page.
+     - only ADDS the new geometry / edge / alias tokens the primitives need,
+       scoped under `.console-scope` so nothing leaks to other pages.
+     - keeps the utility classes global (verified collision-free) — they're
+       inert until used, and only the dashboard uses them.
+   ========================================================================== */
+
+/* --- new tokens the primitives need, aliased onto existing theme tokens --- */
+.console-scope {
+  /* surfaces the spec names that we map onto existing theme-aware tokens */
+  --bg-base:   var(--bg-root);
+  --bg-canvas: var(--bg-app);
+
+  /* accent helpers (existing app names: --accent-ghost / --border-accent) */
+  --accent-bg:   var(--accent-ghost);
+  --accent-edge: var(--border-accent);
+
+  /* "edge" = a translucent border tint. Derived from the theme-aware colour,
+     so these track light/dark automatically. */
+  --nominal-edge:      color-mix(in srgb, var(--nominal-color) 34%, transparent);
+  --sev-critical-edge: color-mix(in srgb, var(--sev-critical-color) 40%, transparent);
+  --sev-high-edge:     color-mix(in srgb, var(--sev-high-color) 36%, transparent);
+  --sev-medium-edge:   color-mix(in srgb, var(--sev-medium-color) 32%, transparent);
+  --sev-low-edge:      color-mix(in srgb, var(--sev-low-color) 30%, transparent);
+  --sev-info-edge:     color-mix(in srgb, var(--sev-info-color) 30%, transparent);
+
+  /* type — reuse the app's families (Inter + its SF Mono stack).
+     JetBrains Mono is intentionally NOT referenced: it isn't loaded. */
+  --font-ui: var(--font-body);
+
+  /* geometry — alias to the app's radius scale for visual consistency
+     with the rest of the product's cards. */
+  --r-sm: var(--radius-sm);
+  --r-md: var(--radius-md);
+  --r-lg: var(--radius-xl);
+  --rail-w: 2px;
+
+  /* motion — the spec used --dur-med; the app calls that step --dur-base */
+  --dur-med: var(--dur-base);
+}
+
+/* ==========================================================================
+   Panel — the one card shell everything lives in
+   ========================================================================== */
+.panel {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  background: var(--bg-panel);
+  border: 0.5px solid var(--border-subtle);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-sm);
+  overflow: hidden;
+}
+
+/* State rail: a 2px bar down the left edge, tinted by the worst state inside.
+   Set --rail on the element to switch it on. */
+.panel[style*="--rail"]::before,
+.console-row[style*="--rail"]::before {
+  content: "";
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--rail-w);
+  background: var(--rail);
+}
+
+.panel-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 18px;
+  background: var(--bg-surface);
+  border-bottom: 0.5px solid var(--border-subtle);
+}
+
+.panel-title {
+  font-family: var(--font-ui);
+  font-size: 12.5px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.panel-note {
+  font-family: var(--font-ui);
+  font-size: 11px;
+  color: var(--text-muted);
+}
+
+.panel-body { flex: 1; min-height: 0; }
+
+/* ==========================================================================
+   Eyebrow / labels / numerals
+   ========================================================================== */
+.eyebrow {
+  font-family: var(--font-ui);
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.09em;
+  text-transform: uppercase;
+  color: var(--text-muted);
+}
+
+/* Every number in the console is tabular so digits never reflow on a tick. */
+.num {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "zero" 1;
+}
+.num-mono {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1, "zero" 1;
+}
+
+/* ==========================================================================
+   Rows — hover in CSS so keyboard focus gets parity
+   ========================================================================== */
+.console-row {
+  position: relative;
+  border-bottom: 0.5px solid var(--border-subtle);
+  transition: background var(--dur-fast) var(--ease-out);
+}
+.console-row:last-child { border-bottom: none; }
+.console-row:hover { background: var(--bg-surface); }
+
+.console-row[tabindex]:focus-visible,
+.console-row button:focus-visible,
+.focusable:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+  border-radius: var(--r-sm);
+}
+
+/* ==========================================================================
+   Meter — shared bar, with quarter ticks for scale
+   ========================================================================== */
+.meter {
+  position: relative;
+  width: 100%;
+  border-radius: 999px;
+  background: rgba(128, 128, 128, 0.18);
+  overflow: hidden;
+}
+.meter-fill {
+  height: 100%;
+  border-radius: 999px;
+  transition: width var(--dur-slow) var(--ease-out);
+}
+.meter-ticks {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: linear-gradient(
+    to right,
+    transparent 0 calc(25% - 0.5px), rgba(0, 0, 0, 0.35) calc(25% - 0.5px) 25%,
+    transparent 25% calc(50% - 0.5px), rgba(0, 0, 0, 0.35) calc(50% - 0.5px) 50%,
+    transparent 50% calc(75% - 0.5px), rgba(0, 0, 0, 0.35) calc(75% - 0.5px) 75%,
+    transparent 75%
+  );
+}
+
+/* ==========================================================================
+   Chips
+   ========================================================================== */
+.chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 7px;
+  border-radius: var(--r-sm);
+  border: 0.5px solid transparent;
+  font-family: var(--font-ui);
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  line-height: 1.5;
+  white-space: nowrap;
+}
+
+/* Severity chip: colour + sigil + word. Three encodings, one meaning. */
+.sev-chip {
+  color: var(--sev-color);
+  background: var(--sev-bg);
+  border-color: var(--sev-edge);
+  text-transform: uppercase;
+}
+.sev-sigil {
+  font-size: 8px;
+  line-height: 1;
+  transform: translateY(-0.5px);
+}
+
+/* Interactive legend chip (doubles as a severity filter) */
+.legend-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-height: 32px;
+  padding: 5px 10px;
+  border-radius: var(--r-sm);
+  border: 0.5px solid var(--border-subtle);
+  background: transparent;
+  color: var(--text-secondary);
+  font-family: var(--font-ui);
+  font-size: 11.5px;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out),
+              border-color var(--dur-fast) var(--ease-out);
+}
+.legend-chip:hover { background: var(--bg-hover); border-color: var(--border-strong); }
+.legend-chip[aria-pressed="true"] { background: var(--bg-active); border-color: var(--sev-edge, var(--border-strong)); }
+.legend-chip[data-static="true"] { cursor: default; }
+.legend-chip[data-static="true"]:hover { background: transparent; border-color: var(--border-subtle); }
+
+/* ==========================================================================
+   Live pulse — used only where something is actually breached/overdue
+   ========================================================================== */
+@keyframes console-pulse {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: 0.35; }
+}
+.pulse-dot {
+  width: 6px; height: 6px; border-radius: 999px;
+  background: var(--sev-critical-color);
+  box-shadow: 0 0 0 3px var(--sev-critical-bg);
+  animation: console-pulse 1.8s var(--ease-out) infinite;
+  flex-shrink: 0;
+}
+.sla-pulse { animation: console-pulse 1.6s var(--ease-out) infinite; }
+
+/* ==========================================================================
+   Skeleton
+   ========================================================================== */
+@keyframes console-shimmer { to { background-position: 200% 0; } }
+.skeleton {
+  border-radius: var(--r-sm);
+  background: linear-gradient(90deg, var(--bg-surface) 25%, var(--bg-hover) 37%, var(--bg-surface) 63%);
+  background-size: 200% 100%;
+  animation: console-shimmer 1.4s linear infinite;
+}
+
+/* ==========================================================================
+   Screen-reader-only text
+   ========================================================================== */
+.sr-only {
+  position: absolute; width: 1px; height: 1px;
+  padding: 0; margin: -1px; overflow: hidden;
+  clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+
+/* ==========================================================================
+   Reduced motion — no essential state is animation-only, so this is safe
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  .panel *, .console-row * {
+    animation-duration: 0.001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.001ms !important;
+  }
+  .pulse-dot, .sla-pulse { opacity: 1; }
+}

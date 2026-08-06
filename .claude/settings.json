@@ -19,9 +19,6 @@
     "code-review@claude-plugins-official": true
   },
   "permissions": {
-    "ask": [
-      "allow -all"
-      "defaultMode": "bypassPermissions"
-    ]
+    "defaultMode": "bypassPermissions"
   }
 }

@@ -76,3 +76,55 @@ export function epssColor(score: number): string {
 }
 
 export const SEV_PALETTE = { RED, ORANGE, AMBER, GREEN, SKY, SLATE, VIOLET, BLUE };
+
+/* ═══════════════════════════════════════════════════════════════════════════
+ *  Console severity model (added for the dashboard redesign)
+ *
+ *  The exports above are hex values tuned for the light theme and used across
+ *  the findings/reports pages — left untouched. The model below is what the
+ *  redesigned dashboard components consume: it reads through the app's
+ *  theme-aware CSS custom properties (var(--sev-*-color)), so it renders
+ *  correctly in BOTH light and dark, and it pairs every colour with a label
+ *  and a colour-blind-safe sigil (colour never carries meaning alone).
+ * ═══════════════════════════════════════════════════════════════════════════ */
+
+import type { CSSProperties } from "react";
+
+export interface SeverityMeta {
+  /** 0 = worst. Sort ascending. */
+  rank: number;
+  /** Sentence-case label for prose and legends. */
+  label: string;
+  /** Colour-blind-safe shape cue rendered next to the label. */
+  sigil: string;
+  color: string;
+  bg: string;
+  edge: string;
+}
+
+export const SEVERITY: Record<Severity, SeverityMeta> = {
+  CRITICAL: { rank: 0, label: "Critical", sigil: "◆", color: "var(--sev-critical-color)", bg: "var(--sev-critical-bg)", edge: "var(--sev-critical-edge)" },
+  HIGH:     { rank: 1, label: "High",     sigil: "▲", color: "var(--sev-high-color)",     bg: "var(--sev-high-bg)",     edge: "var(--sev-high-edge)" },
+  MEDIUM:   { rank: 2, label: "Medium",   sigil: "■", color: "var(--sev-medium-color)",   bg: "var(--sev-medium-bg)",   edge: "var(--sev-medium-edge)" },
+  LOW:      { rank: 3, label: "Low",      sigil: "●", color: "var(--sev-low-color)",      bg: "var(--sev-low-bg)",      edge: "var(--sev-low-edge)" },
+  INFO:     { rank: 4, label: "Info",     sigil: "▬", color: "var(--sev-info-color)",     bg: "var(--sev-info-bg)",     edge: "var(--sev-info-edge)" },
+};
+
+/** Worst → least severe. Use this instead of hand-written arrays. */
+export const SEVERITY_ORDER: Severity[] = ["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"];
+
+/** Backends have shipped `critical`, `Critical` and `CRITICAL`. Normalise here. */
+export function toSeverity(raw: string | null | undefined): Severity {
+  const k = (raw ?? "").toUpperCase().trim();
+  return (SEVERITY_ORDER as string[]).includes(k) ? (k as Severity) : "INFO";
+}
+
+export function sev(raw: string | null | undefined): SeverityMeta {
+  return SEVERITY[toSeverity(raw)];
+}
+
+/** CSS custom properties consumed by `.sev-chip` and `.legend-chip`. */
+export function sevVars(s: Severity): CSSProperties {
+  const m = SEVERITY[s];
+  return { "--sev-color": m.color, "--sev-bg": m.bg, "--sev-edge": m.edge } as CSSProperties;
+}

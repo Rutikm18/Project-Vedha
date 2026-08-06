@@ -1,7 +1,7 @@
 /**
  * Exposure analytics — BFF proxy to FastAPI GET /analytics/exposure.
  * Returns protocol-risk + zone-health arrays already in the UI's shape
- * ({name,value} / {name,score}), so ProtocolRow / ZoneRow render directly.
+ * ({name,value} / {name,score}), consumed by ExposureCards (MeterRow).
  */
 import { NextResponse } from "next/server";
 import { backend } from "../../../../lib/backend";

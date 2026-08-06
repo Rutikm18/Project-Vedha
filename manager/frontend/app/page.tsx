@@ -1,180 +1,33 @@
 "use client";
 
-import React, { useState, useMemo } from "react";
+import React from "react";
 import { useQuery } from "@tanstack/react-query";
-import Link from "next/link";
-import {
-  Network, Activity, Shield, Cpu, Clock, ArrowUpRight, ScanLine, FileCheck2,
-} from "lucide-react";
 import { PageShell } from "../components/PageShell";
+import { DashboardGrid } from "../components/dashboard/DashboardGrid";
 import { DashboardCharts } from "../components/DashboardCharts";
-import { LiveOverview } from "../components/dashboard/LiveOverview";
-import { SlaStatus } from "../components/dashboard/SlaStatus";
-import { ProtocolRiskCard, ZoneHealthCard } from "../components/dashboard/Exposure";
-import { PostureScorecard } from "../components/dashboard/PostureScorecard";
-import { PatchComparisonMatrix } from "../components/dashboard/PatchComparisonMatrix";
-import { DataState, SkeletonRows, EmptyState } from "../components/states/DataState";
 import { fetchJson } from "../lib/fetcher";
-import { useMouseGradient } from "../hooks/useMouseGradient";
 
-/* Attack-path, SLA, protocol-risk and zone-health analytics are being migrated
-   off the old static mock data onto real backend endpoints. Until each endpoint
-   ships, its widget renders an honest "coming soon" state — a security console
-   must never present fabricated numbers as live state. */
-type AgentStatus = "ACTIVE" | "THINKING" | "IDLE";
+/* The dashboard body is the redesigned console (DashboardGrid): live ledger,
+   posture dial, SLA clock, patch matrix, exposure meters, and the live agent
+   monitor. DashboardCharts (KPI/trend/donut + critical-findings table +
+   activity feed) is retained below it so no operational data is lost.
 
-/* ─── Agent type ─── */
-interface Agent { name: string; status: AgentStatus; activity: string; }
-
-const AGENT_STATUS: Record<AgentStatus, { color: string; glow: string; pulse: boolean }> = {
-  ACTIVE:   { color: "var(--accent)",           glow: "var(--accent-glow)",         pulse: true  },
-  THINKING: { color: "var(--sev-high-color)",   glow: "var(--sev-high-glow)",       pulse: true  },
-  IDLE:     { color: "var(--text-muted)",       glow: "transparent",                pulse: false },
-};
-
-/* ─── Sub-components ─── */
-function SectionHeader({ icon, title, action, delay = 0 }: { icon: React.ReactNode; title: string; action?: React.ReactNode; delay?: number }) {
-  return (
-    <div className="stagger-item" style={{ animationDelay: `${delay}ms`, display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <div style={{ color: "var(--accent)", display: "flex", transition: "transform 0.2s var(--ease-spring)" }}
-          onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.transform = "scale(1.2) rotate(-5deg)"; }}
-          onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.transform = "scale(1) rotate(0deg)"; }}
-        >
-          {icon}
-        </div>
-        <span style={{ fontFamily: "'Inter', sans-serif", fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
-          {title}
-        </span>
-      </div>
-      {action}
-    </div>
-  );
-}
-
-function DecisionCenter() {
-  const actions = [
-    { icon: Shield, title: "Prioritize exposure", detail: "Review actively exploited, KEV, and SLA-breached findings.", href: "/findings", color: "var(--sev-critical-color)" },
-    { icon: ScanLine, title: "Validate attack surface", detail: "Launch an authorized scan against an engagement scope.", href: "/scan", color: "var(--accent)" },
-    { icon: FileCheck2, title: "Prepare client update", detail: "Review the beta report workspace and evidence summary.", href: "/reports", color: "var(--nominal-color)" },
-  ];
-  return (
-    <div className="dashboard-decision-list">
-      {actions.map(({ icon: Icon, title, detail, href, color }) => (
-        <Link href={href} key={title}>
-          <span style={{ color }}><Icon size={15} /></span>
-          <div><strong>{title}</strong><small>{detail}</small></div>
-          <ArrowUpRight size={14} />
-        </Link>
-      ))}
-    </div>
-  );
-}
-
-/* ─── Animated card wrapper with mouse glow ─── */
-function GlowCard({ children, delay = 0, style }: { children: React.ReactNode; delay?: number; style?: React.CSSProperties }) {
-  const { ref, onMouseMove, onMouseLeave } = useMouseGradient<HTMLDivElement>();
-  const [hovered, setHovered] = useState(false);
-
-  return (
-    <div
-      ref={ref}
-      onMouseMove={onMouseMove}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => { onMouseLeave(); setHovered(false); }}
-      className="stagger-item dashboard-card"
-      style={{
-        animationDelay: `${delay}ms`,
-        background: "var(--bg-panel)",
-        border: `0.5px solid ${hovered ? "var(--border-strong)" : "var(--border-subtle)"}`,
-        borderRadius: 8,
-        overflow: "hidden",
-        position: "relative",
-        transition: "border-color 0.18s ease, transform 0.18s var(--ease-out), box-shadow 0.2s ease",
-        transform: hovered ? "translateY(-2px)" : "translateY(0)",
-        boxShadow: hovered ? "var(--shadow-md)" : "var(--shadow-sm)",
-        ...style,
-      }}
-    >
-      {/* Mouse-follow glow overlay */}
-      <div style={{
-        position: "absolute", inset: 0, borderRadius: "inherit",
-        pointerEvents: "none", zIndex: 0,
-        opacity: hovered ? 0.35 : 0,
-        transition: "opacity 0.2s ease",
-        background: "radial-gradient(circle at var(--glow-x, 50%) var(--glow-y, 50%), var(--accent-glow) 0%, transparent 65%)",
-      } as React.CSSProperties} />
-      <div style={{ position: "relative", zIndex: 1, height: "100%" }}>
-        {children}
-      </div>
-    </div>
-  );
-}
-
-/* ─── Dashboard ─── */
-/* One agent/probe row — extracted so its hover state is a proper top-level hook
-   (calling useState inside .map breaks when the live agent count changes). */
-function AgentRow({ agent, index, isLast }: { agent: Agent; index: number; isLast: boolean }) {
-  const as_ = AGENT_STATUS[agent.status];
-  const [rowHovered, setRowHovered] = useState(false);
-  return (
-    <div className="stagger-item"
-      style={{
-        animationDelay: `${300 + index * 40}ms`,
-        display: "flex", alignItems: "center", gap: 12,
-        padding: "13px 20px",
-        borderBottom: isLast ? "none" : "0.5px solid var(--border-subtle)",
-        transition: "background 0.12s ease",
-        background: rowHovered ? "var(--bg-surface)" : "transparent",
-        cursor: "default",
-      }}
-      onMouseEnter={() => setRowHovered(true)}
-      onMouseLeave={() => setRowHovered(false)}
-    >
-      <div className="status-dot">
-        {as_.pulse && (
-          <span className="status-dot-ring" style={{ background: as_.glow, opacity: rowHovered ? 1 : 0.6, transition: "opacity 0.2s ease" }} />
-        )}
-        <span className={`status-dot-core ${as_.pulse ? "animate-pulse-dot" : ""}`} style={{ background: as_.color, width: 7, height: 7 }} />
-      </div>
-      <div style={{ minWidth: 0, flex: 1 }}>
-        <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 13, fontWeight: 500, color: "var(--text-primary)", marginBottom: 2 }}>{agent.name}</div>
-        <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 11, color: "var(--text-muted)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{agent.activity}</div>
-      </div>
-      <span style={{
-        fontFamily: "'Inter', sans-serif", fontSize: 10, fontWeight: 700, color: as_.color,
-        background: as_.pulse ? `color-mix(in srgb, ${as_.color} 12%, transparent)` : "var(--bg-hover)",
-        borderRadius: 5, padding: "2px 7px", flexShrink: 0,
-        transition: "transform 0.18s var(--ease-spring)", transform: rowHovered ? "scale(1.06)" : "scale(1)",
-      }}>{agent.status}</span>
-    </div>
-  );
-}
-
+   Note: DashboardCharts' KPI cards overlap the new ledger's open-findings and
+   engagement counts — a deliberate, flagged redundancy to trim in a follow-up
+   rather than delete real data here. */
 export default function Dashboard() {
-  // Live probe/agent data (replaces the previous simulated count + mock list).
+  // Live probe count for the header status chip. Shares the ["agents"] key with
+  // the Agent Monitor panel, so React Query serves both from one request.
   const agentsQuery = useQuery({
     queryKey: ["agents"],
-    // The BFF returns a bare array of UI-shaped agents (see /api/agents/register).
     queryFn: () => fetchJson<any[]>("/api/agents/register"),
     refetchInterval: 15_000,
   });
-  const agents: Agent[] = useMemo(
-    () => (agentsQuery.data ?? []).map((a: any) => ({
-      name: a.name ?? "probe",
-      status: a.status === "BUSY" ? "THINKING" : a.status === "ONLINE" ? "ACTIVE" : "IDLE",
-      activity: a.currentJobId
-        ? `Running job ${String(a.currentJobId).slice(0, 8)}`
-        : a.status === "ONLINE" ? "Online — ready"
-        : a.status === "BUSY" ? "Working…"
-        : "Offline",
-    })),
-    [agentsQuery.data],
-  );
-  const agentsOnline = agents.filter((a) => a.status !== "IDLE").length;
+  const agents = agentsQuery.data ?? [];
+  const agentsOnline = agents.filter((a: any) => a?.status === "ONLINE" || a?.status === "BUSY").length;
 
-  // SLA breach count for the header chip — shares the ["sla-summary"] query key
-  // with <SlaStatus/>, so React Query serves both from one deduped request.
+  // SLA breach count for the header chip — shares the ["sla-summary"] key with
+  // <SlaStatus/>, so both come from one deduped request.
   const slaQuery = useQuery({
     queryKey: ["sla-summary"],
     queryFn: () => fetchJson<{ summary?: { breached: number; totalTracked: number } }>("/api/findings/sla-summary"),
@@ -200,85 +53,9 @@ export default function Dashboard() {
       subtitle="Executive exposure, remediation urgency, and assessment health"
       statusItems={statusItems}
     >
-      <div className="dashboard-stack">
-
-        {/* LIVE situational awareness — real data from the API (not mock) */}
-        <LiveOverview />
-
-        {/* KPIs + Charts */}
+      <div className="console-scope" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+        <DashboardGrid />
         <DashboardCharts />
-
-        {/* ── Security Posture + Patch Matrix ── */}
-        <div className="stagger-item">
-          <SectionHeader delay={160} icon={<Shield size={16} />} title="Security posture" />
-          <div style={{ background: "var(--bg-card)", borderRadius: 12, padding: 12, marginBottom: 12 }}>
-            <PostureScorecard />
-          </div>
-          <SectionHeader delay={180} icon={<ScanLine size={16} />} title="Patched since last scan" />
-          <div style={{ background: "var(--bg-card)", borderRadius: 12, padding: 4 }}>
-            <PatchComparisonMatrix />
-          </div>
-        </div>
-
-        {/* ── Attack Paths + Agent Monitor ── */}
-        <div className="dashboard-main-grid">
-
-          {/* Decision center */}
-          <div>
-            <SectionHeader delay={200} icon={<Network size={15} />} title="Decision Center" />
-            <GlowCard delay={240}>
-              <DecisionCenter />
-            </GlowCard>
-          </div>
-
-          {/* Agent Monitor */}
-          <div>
-            <SectionHeader delay={220} icon={<Cpu size={15} />} title="Agent Monitor" />
-            <GlowCard delay={260} style={{ height: "auto" }}>
-              <DataState
-                loading={agentsQuery.isLoading}
-                error={agentsQuery.error}
-                isEmpty={agents.length === 0}
-                onRetry={() => agentsQuery.refetch()}
-                skeleton={<div style={{ padding: 16 }}><SkeletonRows rows={4} height={44} /></div>}
-                empty={<div style={{ padding: 24 }}><EmptyState icon={Cpu} title="No probes connected" hint="Deploy a probe to see live agent activity here." /></div>}
-              >
-                {agents.map((agent, i) => (
-                  <AgentRow key={`${agent.name}-${i}`} agent={agent} index={i} isLast={i === agents.length - 1} />
-                ))}
-              </DataState>
-            </GlowCard>
-          </div>
-        </div>
-
-        {/* ── SLA + Protocol + Zone ── */}
-        <div className="dashboard-triple-grid">
-
-          {/* SLA Tracker */}
-          <div>
-            <SectionHeader delay={360} icon={<Clock size={15} />} title="SLA Status" />
-            <GlowCard delay={400}>
-              <SlaStatus />
-            </GlowCard>
-          </div>
-
-          {/* Protocol Risk */}
-          <div>
-            <SectionHeader delay={380} icon={<Activity size={15} />} title="Protocol Risk" />
-            <GlowCard delay={420}>
-              <ProtocolRiskCard />
-            </GlowCard>
-          </div>
-
-          {/* Zone Health */}
-          <div>
-            <SectionHeader delay={400} icon={<Shield size={15} />} title="Zone Health" />
-            <GlowCard delay={440}>
-              <ZoneHealthCard />
-            </GlowCard>
-          </div>
-        </div>
-
       </div>
     </PageShell>
   );

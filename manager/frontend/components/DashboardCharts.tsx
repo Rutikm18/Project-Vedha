@@ -48,9 +48,9 @@ function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: 
       boxShadow: "var(--shadow-lg)",
       backdropFilter: "blur(8px)",
     }}>
-      <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: "var(--text-muted)", marginBottom: 7 }}>{label}</div>
+      <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-muted)", marginBottom: 7 }}>{label}</div>
       {payload.map((p) => (
-        <div key={p.name} style={{ display: "flex", justifyContent: "space-between", gap: 16, fontFamily: "'JetBrains Mono', monospace", fontSize: 11, marginBottom: 3 }}>
+        <div key={p.name} style={{ display: "flex", justifyContent: "space-between", gap: 16, fontFamily: "var(--font-mono)", fontSize: 11, marginBottom: 3 }}>
           <span style={{ color: p.color }}>{p.name}</span>
           <span style={{ color: "var(--text-primary)", fontWeight: 700 }}>{p.value}</span>
         </div>
@@ -126,7 +126,7 @@ function KpiCard({
         ) : (
           <>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
-              <span style={{ fontFamily: "'Inter', sans-serif", fontSize: 11, fontWeight: 500, color: "var(--text-secondary)" }}>
+              <span style={{ fontFamily: "var(--font-body)", fontSize: 11, fontWeight: 500, color: "var(--text-secondary)" }}>
                 {label}
               </span>
               <div style={{
@@ -148,7 +148,7 @@ function KpiCard({
             </div>
             <div style={{ display: "flex", alignItems: "flex-end", gap: 10 }}>
               <span className="animate-count-up" style={{
-                fontFamily: "'Inter', sans-serif", fontSize: 30, fontWeight: 700,
+                fontFamily: "var(--font-body)", fontSize: 30, fontWeight: 700,
                 color: "var(--text-primary)", lineHeight: 1,
                 letterSpacing: 0,
                 animationDelay: `${delay + 100}ms`,
@@ -158,7 +158,7 @@ function KpiCard({
               {trend !== undefined && (
                 <div style={{
                   display: "flex", alignItems: "center", gap: 2, marginBottom: 5,
-                  fontFamily: "'Inter', sans-serif", fontSize: 12, fontWeight: 600,
+                  fontFamily: "var(--font-body)", fontSize: 12, fontWeight: 600,
                   color: trend > 0 ? "var(--sev-critical-color)" : trend < 0 ? "var(--accent)" : "var(--text-muted)",
                   background: trend > 0 ? "var(--sev-critical-bg)" : trend < 0 ? "var(--accent-ghost)" : "var(--bg-surface)",
                   borderRadius: 6, padding: "2px 6px",
@@ -180,7 +180,7 @@ function SevBadge({ sev }: { sev: keyof typeof SEV }) {
   const s = SEV[sev];
   return (
     <span style={{
-      fontFamily: "'Inter', sans-serif", fontSize: 10, fontWeight: 700, letterSpacing: 0.5,
+      fontFamily: "var(--font-body)", fontSize: 10, fontWeight: 700, letterSpacing: 0.5,
       color: s.color, background: s.bg, borderRadius: 5, padding: "2px 8px",
       textTransform: "uppercase" as const,
       transition: "transform 0.15s var(--ease-spring)",
@@ -199,7 +199,7 @@ function ScoreBar({ score }: { score: number }) {
       <div className="progress-track" style={{ width: 64, height: 4 }}>
         <div className="progress-fill" style={{ width: `${pct}%`, background: color }} />
       </div>
-      <span style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 11, fontWeight: 700, color, minWidth: 36 }}>
+      <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 700, color, minWidth: 36 }}>
         {score}
       </span>
     </div>
@@ -310,17 +310,17 @@ export function DashboardCharts() {
           onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--border-subtle)")}
         >
           <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 16 }}>
-            <span style={{ fontFamily: "'Inter', sans-serif", fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
+            <span style={{ fontFamily: "var(--font-body)", fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
               Findings trend
             </span>
-            <span style={{ fontFamily: "'Inter', sans-serif", fontSize: 11, color: "var(--text-muted)", background: "var(--bg-surface)", borderRadius: 6, padding: "3px 9px" }}>
+            <span style={{ fontFamily: "var(--font-body)", fontSize: 11, color: "var(--text-muted)", background: "var(--bg-surface)", borderRadius: 6, padding: "3px 9px" }}>
               Last 30 days
             </span>
           </div>
           {isLoading ? (
             <Bone w="100%" h={160} />
           ) : slimTimeline.length === 0 ? (
-            <div style={{ height: 160, display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", fontFamily: "'Inter', sans-serif", fontSize: 13, color: "var(--text-muted)" }}>
+            <div style={{ height: 160, display: "flex", alignItems: "center", justifyContent: "center", textAlign: "center", fontFamily: "var(--font-body)", fontSize: 13, color: "var(--text-muted)" }}>
               Trend history not available yet — needs periodic finding snapshots.
             </div>
           ) : (
@@ -334,8 +334,8 @@ export function DashboardCharts() {
                     </linearGradient>
                   ))}
                 </defs>
-                <XAxis dataKey="displayDate" tick={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, fill: "var(--text-muted)" }} axisLine={false} tickLine={false} />
-                <YAxis tick={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 9, fill: "var(--text-muted)" }} axisLine={false} tickLine={false} allowDecimals={false} />
+                <XAxis dataKey="displayDate" tick={{ fontFamily: "var(--font-mono)", fontSize: 9, fill: "var(--text-muted)" }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontFamily: "var(--font-mono)", fontSize: 9, fill: "var(--text-muted)" }} axisLine={false} tickLine={false} allowDecimals={false} />
                 <Tooltip content={<ChartTooltip />} />
                 {(["CRITICAL", "HIGH", "MEDIUM"] as const).map((s) => (
                   <Area key={s} type="monotone" dataKey={s} stroke={SEV[s].color} fill={`url(#grad-${s})`} strokeWidth={2} dot={false} animationDuration={800} />
@@ -357,7 +357,7 @@ export function DashboardCharts() {
           onMouseEnter={(e) => (e.currentTarget.style.borderColor = "var(--border-strong)")}
           onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--border-subtle)")}
         >
-          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: 13, fontWeight: 600, color: "var(--text-primary)", marginBottom: 8 }}>
+          <span style={{ fontFamily: "var(--font-body)", fontSize: 13, fontWeight: 600, color: "var(--text-primary)", marginBottom: 8 }}>
             By severity
           </span>
           {isLoading ? (
@@ -365,7 +365,7 @@ export function DashboardCharts() {
               <Bone w={96} h={96} radius={48} />
             </div>
           ) : pieData.length === 0 ? (
-            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "'Inter', sans-serif", fontSize: 13, color: "var(--text-muted)" }}>
+            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-body)", fontSize: 13, color: "var(--text-muted)" }}>
               No data
             </div>
           ) : (
@@ -377,7 +377,7 @@ export function DashboardCharts() {
                     {pieData.map((e, i) => <Cell key={i} fill={e.color} />)}
                   </Pie>
                   <Tooltip formatter={(v: number, name: string) => [v, name]}
-                    contentStyle={{ background: "var(--bg-panel)", border: "0.5px solid var(--border-default)", fontFamily: "'JetBrains Mono', monospace", fontSize: 10, borderRadius: 8, boxShadow: "var(--shadow-lg)" }} />
+                    contentStyle={{ background: "var(--bg-panel)", border: "0.5px solid var(--border-default)", fontFamily: "var(--font-mono)", fontSize: 10, borderRadius: 8, boxShadow: "var(--shadow-lg)" }} />
                 </PieChart>
               </ResponsiveContainer>
               <div style={{ display: "flex", flexDirection: "column", gap: 7, marginTop: 4 }}>
@@ -387,8 +387,8 @@ export function DashboardCharts() {
                     onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
                   >
                     <div style={{ width: 8, height: 8, borderRadius: 2, background: d.color, flexShrink: 0 }} />
-                    <span style={{ fontFamily: "'Inter', sans-serif", fontSize: 11, color: "var(--text-secondary)", flex: 1 }}>{d.name}</span>
-                    <span style={{ fontFamily: "'Inter', sans-serif", fontSize: 13, fontWeight: 700, color: d.color }}>{d.value}</span>
+                    <span style={{ fontFamily: "var(--font-body)", fontSize: 11, color: "var(--text-secondary)", flex: 1 }}>{d.name}</span>
+                    <span style={{ fontFamily: "var(--font-body)", fontSize: 13, fontWeight: 700, color: d.color }}>{d.value}</span>
                   </div>
                 ))}
               </div>
@@ -412,12 +412,12 @@ export function DashboardCharts() {
           onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--border-subtle)")}
         >
           <div className="dashboard-card-header">
-            <span style={{ fontFamily: "'Inter', sans-serif", fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
+            <span style={{ fontFamily: "var(--font-body)", fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
               Critical findings
             </span>
             <Link href="/findings" style={{
               display: "flex", alignItems: "center", gap: 4,
-              fontFamily: "'Inter', sans-serif", fontSize: 12, fontWeight: 500,
+              fontFamily: "var(--font-body)", fontSize: 12, fontWeight: 500,
               color: "var(--accent)", textDecoration: "none",
               transition: "opacity 0.15s ease",
             }}
@@ -434,7 +434,7 @@ export function DashboardCharts() {
                 {["Title", "Host", "Risk Score", "Status"].map((h) => (
                   <th key={h} style={{
                     padding: "8px 20px", textAlign: "left",
-                    fontFamily: "'Inter', sans-serif", fontSize: 11, fontWeight: 600,
+                    fontFamily: "var(--font-body)", fontSize: 11, fontWeight: 600,
                     color: "var(--text-muted)", letterSpacing: 0.3,
                     borderBottom: "0.5px solid var(--border-subtle)",
                   }}>
@@ -452,7 +452,7 @@ export function DashboardCharts() {
                 ))
               ) : topFindings.length === 0 ? (
                 <tr>
-                  <td colSpan={4} style={{ padding: "36px 20px", textAlign: "center", fontFamily: "'Inter', sans-serif", fontSize: 13, color: "var(--text-muted)" }}>
+                  <td colSpan={4} style={{ padding: "36px 20px", textAlign: "center", fontFamily: "var(--font-body)", fontSize: 13, color: "var(--text-muted)" }}>
                     No findings yet — run a scan to populate this table.
                   </td>
                 </tr>
@@ -469,14 +469,14 @@ export function DashboardCharts() {
                       <td style={{ padding: "11px 20px", maxWidth: 280 }}>
                         <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
                           <SevBadge sev={sev} />
-                          <span style={{ fontFamily: "'Inter', sans-serif", fontSize: 13, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                          <span style={{ fontFamily: "var(--font-body)", fontSize: 13, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                             {f.title}
                           </span>
                         </div>
                       </td>
                       <td style={{ padding: "11px 20px" }}>
                         <span style={{
-                          fontFamily: "'JetBrains Mono', monospace", fontSize: 11,
+                          fontFamily: "var(--font-mono)", fontSize: 11,
                           color: "var(--accent)", background: "var(--accent-ghost)",
                           borderRadius: 5, padding: "2px 7px",
                         }}>
@@ -488,7 +488,7 @@ export function DashboardCharts() {
                       </td>
                       <td style={{ padding: "11px 20px" }}>
                         <span style={{
-                          fontFamily: "'Inter', sans-serif", fontSize: 11, fontWeight: 600,
+                          fontFamily: "var(--font-body)", fontSize: 11, fontWeight: 600,
                           color: ss.color, background: ss.bg, borderRadius: 5, padding: "3px 8px",
                         }}>
                           {f.status.replace(/_/g, " ")}
@@ -514,10 +514,10 @@ export function DashboardCharts() {
           onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--border-subtle)")}
         >
           <div className="dashboard-card-header" style={{ flexShrink: 0 }}>
-            <span style={{ fontFamily: "'Inter', sans-serif", fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
+            <span style={{ fontFamily: "var(--font-body)", fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
               Recent activity
             </span>
-            <Link href="/engagements" style={{ display: "flex", alignItems: "center", gap: 4, fontFamily: "'Inter', sans-serif", fontSize: 12, fontWeight: 500, color: "var(--accent)", textDecoration: "none" }}>
+            <Link href="/engagements" style={{ display: "flex", alignItems: "center", gap: 4, fontFamily: "var(--font-body)", fontSize: 12, fontWeight: 500, color: "var(--accent)", textDecoration: "none" }}>
               All <ArrowUpRight size={12} />
             </Link>
           </div>
@@ -529,7 +529,7 @@ export function DashboardCharts() {
                 </div>
               ))
             ) : activity.length === 0 ? (
-              <div style={{ padding: "36px 16px", textAlign: "center", fontFamily: "'Inter', sans-serif", fontSize: 13, color: "var(--text-muted)" }}>
+              <div style={{ padding: "36px 16px", textAlign: "center", fontFamily: "var(--font-body)", fontSize: 13, color: "var(--text-muted)" }}>
                 No recent activity
               </div>
             ) : (
@@ -547,9 +547,9 @@ export function DashboardCharts() {
                 >
                   <div style={{ width: 6, height: 6, borderRadius: "50%", background: "var(--accent)", marginTop: 4, flexShrink: 0 }} />
                   <div style={{ minWidth: 0 }}>
-                    <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 11, fontWeight: 600, color: "var(--accent)", marginBottom: 2 }}>{a.action}</div>
-                    <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 12, color: "var(--text-primary)", lineHeight: 1.4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.detail}</div>
-                    <div style={{ fontFamily: "'JetBrains Mono', monospace", fontSize: 10, color: "var(--text-muted)", marginTop: 2 }}>
+                    <div style={{ fontFamily: "var(--font-body)", fontSize: 11, fontWeight: 600, color: "var(--accent)", marginBottom: 2 }}>{a.action}</div>
+                    <div style={{ fontFamily: "var(--font-body)", fontSize: 12, color: "var(--text-primary)", lineHeight: 1.4, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{a.detail}</div>
+                    <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-muted)", marginTop: 2 }}>
                       {new Date(a.timestamp).toLocaleString()}
                     </div>
                   </div>

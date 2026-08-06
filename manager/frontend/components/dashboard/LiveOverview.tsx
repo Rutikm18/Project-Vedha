@@ -1,146 +1,232 @@
+// manager/frontend/components/dashboard/LiveOverview.tsx
 "use client";
 
 /**
- * LiveOverview — real-time situational-awareness strip for the ops console.
+ * LiveOverview — the console's headline instrument.
  *
- * Replaces mock KPI numbers with LIVE data from the BFF (/api/findings,
- * /api/engagements). For a security operations console, truthful real-time
- * state is the single most important UX property — a dashboard that looks
- * great but shows fake numbers is worse than a plain one showing real ones.
+ * Design decision worth stating: this replaces four floating KPI cards with a
+ * single "threat ledger". Four equal-weight cards ask the analyst to read four
+ * numbers and rank them; the ledger ranks for them — one count, one plain-
+ * language verdict, one proportional bar, one legend that doubles as a filter.
+ * That is the whole job of the top of a SOC dashboard: what is on fire, right
+ * now, and how much of it.
  *
- * UX rules applied (ui-ux-pro-max): semantic severity color + LABEL (never
- * color alone), tabular figures so numbers don't jitter, skeleton on load,
- * explicit empty/error states, 44px+ targets, visible focus, reduced-motion
- * safe (no essential info conveyed by animation).
+ * Data: /api/findings/summary and /api/engagements (server is authoritative).
+ *
+ * Accessibility contract:
+ *  - Severity is colour + word + sigil, never colour alone.
+ *  - The ledger bar has a text equivalent (the legend below it), so the bar is
+ *    aria-hidden rather than fighting a screen reader with a fake image label.
+ *  - Legend chips are real buttons at 32px+ with visible focus when a filter
+ *    handler is supplied; otherwise they are inert text and say so.
+ *  - Reduced motion: the only animation is the critical pulse dot, and the
+ *    count next to it carries the same information.
  */
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
-import { ShieldAlert, Activity, Crosshair, Layers } from "lucide-react";
+import { ShieldCheck, Radar } from "lucide-react";
 import { fetchJson } from "../../lib/fetcher";
 import { SkeletonRows, ErrorState } from "../states/DataState";
+import { SEVERITY, SEVERITY_ORDER, Severity } from "../../lib/severity";
+import { Readout } from "../console/Primitives";
 
-type Sev = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | "INFO";
 interface Engagement { id: string; status?: string }
+
 interface FindingSummary {
   openTotal: number; criticalOpen: number; highOpen: number;
   mediumOpen: number; lowOpen: number; infoOpen: number;
 }
 
-const SEV: Record<Sev, { color: string; bg: string; label: string }> = {
-  CRITICAL: { color: "var(--sev-critical-color)", bg: "var(--sev-critical-bg)", label: "Critical" },
-  HIGH:     { color: "var(--sev-high-color)",     bg: "var(--sev-high-bg)",     label: "High" },
-  MEDIUM:   { color: "var(--sev-medium-color)",   bg: "var(--sev-medium-bg)",   label: "Medium" },
-  LOW:      { color: "var(--sev-low-color, var(--accent))", bg: "var(--bg-hover)", label: "Low" },
-  INFO:     { color: "var(--text-muted)",         bg: "var(--bg-hover)",         label: "Info" },
-};
-
-/** Engagements use different statuses than findings. "PLANNING" (draft) and
- *  "ACTIVE" are both considered open/in-progress. */
+/** Engagements use a different status vocabulary than findings: a draft
+ *  ("PLANNING") and a running ("ACTIVE") engagement both count as in-progress. */
 function isActiveEngagement(s?: string) {
   return !s || ["PLANNING", "ACTIVE"].includes(s.toUpperCase());
 }
 
-function Kpi({ icon, label, value, color, sub }: {
-  icon: React.ReactNode; label: string; value: number | string; color: string; sub?: string;
-}) {
-  return (
-    <div
-      tabIndex={0}
-      className="dashboard-kpi-surface"
-      style={{
-        "--kpi-accent": color,
-        flex: "1 1 0", minWidth: 168,
-        padding: "18px 20px 16px", display: "flex", flexDirection: "column", gap: 12,
-        transition: "transform var(--dur-fast) var(--ease-out), border-color var(--dur-fast), box-shadow var(--dur-fast)",
-        outlineColor: "var(--accent)", cursor: "default",
-      } as React.CSSProperties}
-      onMouseEnter={(e) => { e.currentTarget.style.borderColor = color; e.currentTarget.style.transform = "translateY(-3px)"; e.currentTarget.style.boxShadow = "var(--shadow-md)"; }}
-      onMouseLeave={(e) => { e.currentTarget.style.borderColor = "var(--border-subtle)"; e.currentTarget.style.transform = "translateY(0)"; e.currentTarget.style.boxShadow = "var(--shadow-sm)"; }}
-    >
-      <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-        <span style={{
-          color,
-          width: 28,
-          height: 28,
-          borderRadius: 7,
-          background: "var(--bg-surface)",
-          border: "0.5px solid var(--border-subtle)",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-        }} aria-hidden>{icon}</span>
-        <span style={{ fontSize: 10.5, fontWeight: 600, letterSpacing: 0.8, textTransform: "uppercase",
-          color: "var(--text-muted)", fontFamily: "'Inter', sans-serif" }}>{label}</span>
-      </div>
-      <div style={{ fontSize: 40, fontWeight: 650, lineHeight: 0.96, color: "var(--text-primary)",
-        fontFamily: "var(--font-display)", fontVariantNumeric: "tabular-nums", letterSpacing: 0 }}>{value}</div>
-      {sub && <div style={{ fontSize: 12, color: "var(--text-muted)", letterSpacing: 0.1 }}>{sub}</div>}
-    </div>
-  );
+/** Plain-language verdict. Written for the person on shift, not the schema. */
+function verdict(counts: Record<Severity, number>, total: number): { text: string; tone: string } {
+  if (total === 0) return { text: "Nothing open. The last scan came back clean.", tone: "var(--nominal-color)" };
+  if (counts.CRITICAL > 0) {
+    return {
+      text: `${counts.CRITICAL} critical ${counts.CRITICAL === 1 ? "finding needs" : "findings need"} action now.`,
+      tone: "var(--sev-critical-color)",
+    };
+  }
+  if (counts.HIGH > 0) {
+    return { text: `No criticals open. ${counts.HIGH} high to work through next.`, tone: "var(--sev-high-color)" };
+  }
+  return { text: "No critical or high findings open.", tone: "var(--nominal-color)" };
 }
 
-export function LiveOverview() {
-  const findings = useQuery({ queryKey: ["findings-summary"], queryFn: () => fetchJson<FindingSummary>("/api/findings/summary") });
+export function LiveOverview({ onSelectSeverity }: { onSelectSeverity?: (s: Severity) => void }) {
+  const findings = useQuery({
+    queryKey: ["findings-summary"],
+    queryFn: () => fetchJson<FindingSummary>("/api/findings/summary"),
+    refetchInterval: 60_000,
+  });
   const engagements = useQuery({
     queryKey: ["engagements"],
     queryFn: () => fetchJson<{ engagements: Engagement[] }>("/api/engagements"),
+    refetchInterval: 60_000,
   });
 
-  if (findings.isLoading || engagements.isLoading) return <SkeletonRows rows={1} height={92} />;
-  if (findings.error) return <ErrorState title="Couldn't load live findings." onRetry={() => findings.refetch()} />;
+  if (findings.isLoading) {
+    return <div className="panel" style={{ padding: 18 }}><SkeletonRows rows={3} height={44} /></div>;
+  }
+  if (findings.error) {
+    return <ErrorState title="Findings didn't load. The manager API returned an error." onRetry={() => findings.refetch()} />;
+  }
 
-  const summary = findings.data;
-  const by = (s: Sev) => ({
-    CRITICAL: summary?.criticalOpen ?? 0,
-    HIGH: summary?.highOpen ?? 0,
-    MEDIUM: summary?.mediumOpen ?? 0,
-    LOW: summary?.lowOpen ?? 0,
-    INFO: summary?.infoOpen ?? 0,
-  })[s];
+  const s = findings.data;
+  const counts: Record<Severity, number> = {
+    CRITICAL: s?.criticalOpen ?? 0,
+    HIGH: s?.highOpen ?? 0,
+    MEDIUM: s?.mediumOpen ?? 0,
+    LOW: s?.lowOpen ?? 0,
+    INFO: s?.infoOpen ?? 0,
+  };
+  const total = s?.openTotal ?? 0;
+  const v = verdict(counts, total);
+
+  // Engagements failing shouldn't blank the findings headline — degrade that
+  // one readout instead of the whole strip.
   const engs = engagements.data?.engagements ?? [];
+  const engFailed = Boolean(engagements.error);
   const activeEngs = engs.filter((e) => isActiveEngagement(e.status)).length;
-  const total = summary?.openTotal ?? 0;
 
-  // severity distribution bar segments (only non-zero, so it reads cleanly)
-  const segs = (["CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"] as Sev[])
-    .map((s) => ({ s, n: by(s) })).filter((x) => x.n > 0);
+  const segments = SEVERITY_ORDER.map((k) => ({ k, n: counts[k] })).filter((x) => x.n > 0);
+  const worst = segments[0]?.k;
+  const rail = worst ? SEVERITY[worst].color : "var(--nominal-color)";
 
   return (
-    <section aria-label="Live operations overview"
-      style={{ position: "relative", display: "flex", flexDirection: "column", gap: 14 }}>
-      <div style={{ position: "relative", zIndex: 1, display: "flex", gap: 14, flexWrap: "wrap" }}>
-        <Kpi icon={<Layers size={16} />} label="Active Engagements" value={activeEngs} color="var(--accent)"
-             sub={`${engs.length} total`} />
-        <Kpi icon={<ShieldAlert size={16} />} label="Open Findings" value={total} color="var(--text-primary)"
-             sub="across all engagements" />
-        <Kpi icon={<Crosshair size={16} />} label="Critical" value={by("CRITICAL")} color={SEV.CRITICAL.color}
-             sub="needs immediate action" />
-        <Kpi icon={<Activity size={16} />} label="High" value={by("HIGH")} color={SEV.HIGH.color}
-             sub="prioritize next" />
-      </div>
-
-      {/* severity distribution — color + count label, never color alone */}
-      {total > 0 ? (
-        <div style={{ position: "relative", zIndex: 1 }}>
-          <div role="img" aria-label={`Severity distribution: ${segs.map((x) => `${by(x.s)} ${SEV[x.s].label}`).join(", ")}`}
-            style={{ display: "flex", height: 8, borderRadius: 999, overflow: "hidden", background: "var(--bg-hover)" }}>
-            {segs.map(({ s, n }) => (
-              <div key={s} style={{ flex: n, background: SEV[s].color }} title={`${n} ${SEV[s].label}`} />
-            ))}
-          </div>
-          <div style={{ display: "flex", gap: 16, marginTop: 8, flexWrap: "wrap" }}>
-            {segs.map(({ s, n }) => (
-              <span key={s} style={{ display: "inline-flex", alignItems: "center", gap: 6,
-                fontSize: 12, color: "var(--text-secondary)", fontFamily: "'Inter', sans-serif" }}>
-                <span style={{ width: 8, height: 8, borderRadius: 2, background: SEV[s].color }} aria-hidden />
-                {SEV[s].label} <strong style={{ color: "var(--text-primary)", fontVariantNumeric: "tabular-nums" }}>{n}</strong>
-              </span>
-            ))}
+    <section
+      className="panel"
+      style={{ "--rail": rail } as React.CSSProperties}
+      aria-label="Live operations overview"
+    >
+      <div style={{ display: "flex", flexWrap: "wrap", alignItems: "stretch" }}>
+        {/* ---- headline: count + verdict ---------------------------------- */}
+        <div style={{ flex: "3 1 320px", minWidth: 0, padding: "20px 24px 18px" }}>
+          <span className="eyebrow">Open findings</span>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 14, marginTop: 8, flexWrap: "wrap" }}>
+            <span
+              className="num"
+              style={{
+                fontFamily: "var(--font-display)", fontSize: 56, fontWeight: 600,
+                lineHeight: 0.88, letterSpacing: "-0.035em", color: "var(--text-primary)",
+              }}
+            >
+              {total}
+            </span>
+            <span
+              style={{
+                display: "inline-flex", alignItems: "center", gap: 8,
+                fontFamily: "var(--font-ui)", fontSize: 13, color: v.tone, fontWeight: 500,
+              }}
+            >
+              {counts.CRITICAL > 0 && <span className="pulse-dot" aria-hidden />}
+              {v.text}
+            </span>
           </div>
         </div>
+
+        {/* ---- engagement context ----------------------------------------- */}
+        <div style={{ borderLeft: "0.5px solid var(--border-subtle)", display: "flex" }}>
+          <Readout
+            label="Engagements running"
+            value={engFailed ? "—" : activeEngs}
+            size={28}
+            color={engFailed ? "var(--text-faint)" : "var(--text-primary)"}
+            sub={
+              engFailed ? (
+                <button
+                  type="button"
+                  className="focusable"
+                  onClick={() => engagements.refetch()}
+                  style={{ background: "none", border: "none", padding: 0, color: "var(--accent)", cursor: "pointer", font: "inherit" }}
+                >
+                  Couldn&apos;t load — retry
+                </button>
+              ) : (
+                `${engs.length} total`
+              )
+            }
+          />
+        </div>
+      </div>
+
+      {/* ---- the ledger ---------------------------------------------------- */}
+      {total > 0 ? (
+        <div style={{ padding: "0 24px 20px" }}>
+          <div
+            aria-hidden
+            style={{ display: "flex", gap: 2, height: 10, borderRadius: 999, overflow: "hidden", background: "rgba(128,128,128,0.16)" }}
+          >
+            {segments.map(({ k, n }) => (
+              // minWidth stops a count of 1 next to a count of 400 collapsing
+              // to a sub-pixel sliver that reads as "zero".
+              <div
+                key={k}
+                style={{ flex: `${n} 1 0`, minWidth: 6, background: SEVERITY[k].color, borderRadius: 999 }}
+                title={`${n} ${SEVERITY[k].label}`}
+              />
+            ))}
+          </div>
+
+          <ul
+            style={{ display: "flex", gap: 8, marginTop: 12, flexWrap: "wrap", listStyle: "none", padding: 0, margin: "12px 0 0" }}
+          >
+            {SEVERITY_ORDER.map((k) => {
+              const n = counts[k];
+              const m = SEVERITY[k];
+              const interactive = Boolean(onSelectSeverity) && n > 0;
+              const inner = (
+                <>
+                  <span aria-hidden style={{ color: m.color, fontSize: 9 }}>{m.sigil}</span>
+                  <span style={{ color: n > 0 ? "var(--text-secondary)" : "var(--text-faint)" }}>{m.label}</span>
+                  <strong
+                    className="num-mono"
+                    style={{ fontSize: 12, fontWeight: 700, color: n > 0 ? "var(--text-primary)" : "var(--text-faint)" }}
+                  >
+                    {n}
+                  </strong>
+                </>
+              );
+              return (
+                <li key={k}>
+                  {interactive ? (
+                    <button
+                      type="button"
+                      className="legend-chip"
+                      style={{ "--sev-edge": m.edge } as React.CSSProperties}
+                      onClick={() => onSelectSeverity?.(k)}
+                    >
+                      {inner}
+                      <span className="sr-only">— filter findings to {m.label}</span>
+                    </button>
+                  ) : (
+                    <span className="legend-chip" data-static="true">{inner}</span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </div>
       ) : (
-        <div style={{ fontSize: 13, color: "var(--text-muted)", padding: "8px 2px" }}>
-          No open findings yet — run a scan from an engagement to populate this view.
+        <div
+          style={{
+            display: "flex", alignItems: "center", gap: 10, margin: "0 24px 20px",
+            padding: "12px 14px", borderRadius: "var(--r-md)",
+            background: "var(--nominal-bg)", border: "0.5px solid var(--nominal-edge)",
+          }}
+        >
+          <ShieldCheck size={15} style={{ color: "var(--nominal-color)", flexShrink: 0 }} aria-hidden />
+          <span style={{ fontFamily: "var(--font-ui)", fontSize: 12.5, color: "var(--text-secondary)" }}>
+            No open findings.{" "}
+            <span style={{ display: "inline-flex", alignItems: "center", gap: 5, color: "var(--text-muted)" }}>
+              <Radar size={12} aria-hidden /> Start a scan from an engagement to populate this view.
+            </span>
+          </span>
         </div>
       )}
     </section>

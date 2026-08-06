@@ -37,6 +37,14 @@
   --radius-lg:  8px;
   --radius-xl:  10px;
 
+  /* ─── Spacing scale (4px base) — use instead of magic numbers ─── */
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-5:  20px;
+  --space-6:  24px;
+
   --font-display: 'Inter', system-ui, sans-serif;
   --font-body:    'Inter', system-ui, sans-serif;
   --font-mono:    'SF Mono', 'Cascadia Code', 'Consolas', monospace;

@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import "../styles/console-tokens.css";
 import { ToastProvider } from "../components/ToastProvider";
 import { ThemeProvider } from "../components/ThemeProvider";
 import { QueryProvider } from "../components/QueryProvider";
