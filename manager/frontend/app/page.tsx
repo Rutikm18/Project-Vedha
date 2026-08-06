@@ -209,20 +209,15 @@ export default function Dashboard() {
         <DashboardCharts />
 
         {/* ── Security Posture + Patch Matrix ── */}
-        <div className="dashboard-main-grid">
-
-          {/* Posture scorecard */}
-          <div className="stagger-item">
-            <SectionHeader delay={160} icon={<Shield size={16} />} title="Security posture" />
-            <div style={{ background: "var(--bg-card)", borderRadius: 12, padding: 12, marginBottom: 12 }}>
-              <PostureScorecard />
-            </div>
-            <SectionHeader delay={180} icon={<ScanLine size={16} />} title="Patched since last scan" />
-            <div style={{ background: "var(--bg-card)", borderRadius: 12, padding: 4 }}>
-              <PatchComparisonMatrix />
-            </div>
+        <div className="stagger-item">
+          <SectionHeader delay={160} icon={<Shield size={16} />} title="Security posture" />
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, padding: 12, marginBottom: 12 }}>
+            <PostureScorecard />
           </div>
-
+          <SectionHeader delay={180} icon={<ScanLine size={16} />} title="Patched since last scan" />
+          <div style={{ background: "var(--bg-card)", borderRadius: 12, padding: 4 }}>
+            <PatchComparisonMatrix />
+          </div>
         </div>
 
         {/* ── Attack Paths + Agent Monitor ── */}
