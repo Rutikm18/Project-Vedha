@@ -85,5 +85,10 @@ class FindingOut(BaseModel):
     detection_status: DetectionStatus
     evidence: dict | None
     remediation: str | None
+    # P2 passive verification verdict (normalized, dashboard-facing).
+    verification_state: str | None = None
+    verification_confidence: int | None = None
+    verification_rationale: str | None = None
+    needs_review: bool = False
     created_at: datetime
     updated_at: datetime
