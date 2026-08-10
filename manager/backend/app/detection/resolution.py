@@ -12,6 +12,10 @@ about it; a degraded/failed/skipped scanner is not proof.
 """
 from __future__ import annotations
 
+from dataclasses import dataclass
+
+from app.models.enums import FindingSeverity
+
 
 def host_of(target: str) -> str:
     """IP/host part of a probe target: '10.0.0.5:443' -> '10.0.0.5'.
@@ -41,3 +45,36 @@ def build_coverage(scanner_runs: list[dict] | None, facts: list[dict] | None) ->
         "scanners_completed": sorted(c for c in completed if c),
         "scanners_degraded": sorted(d for d in degraded if d),
     }
+
+
+def resolution_threshold(severity: FindingSeverity) -> int:
+    """Consecutive coverage-proven clean runs required before auto-close.
+    critical/high demand a SECOND confirmation — a premature 'you're safe' on a
+    critical is the costliest false signal in the product."""
+    return 2 if severity in (FindingSeverity.critical, FindingSeverity.high) else 1
+
+
+@dataclass(frozen=True)
+class ResolutionOutcome:
+    action: str        # "skip" | "pending" | "resolve"
+    miss_count: int    # the new resolution_miss_count to persist
+    reason: str
+
+
+def decide_resolution(*, covered: bool, db_changed: bool,
+                      miss_count: int, severity: FindingSeverity) -> ResolutionOutcome:
+    """Pure heart of auto-resolution. Given whether the finding's asset was
+    re-observed this run (covered), whether the vuln-DB basis changed, and the
+    current miss streak, decide what to do. Never resolves without coverage."""
+    if not covered:
+        return ResolutionOutcome("skip", miss_count, "asset not re-observed (out of coverage)")
+    if db_changed:
+        return ResolutionOutcome("skip", miss_count,
+                                 "absent under a changed vuln-DB basis; not a confirmed fix")
+    new_count = miss_count + 1
+    threshold = resolution_threshold(severity)
+    if new_count >= threshold:
+        return ResolutionOutcome("resolve", new_count,
+                                 f"coverage-proven clean for {new_count} run(s) >= threshold {threshold}")
+    return ResolutionOutcome("pending", new_count,
+                             f"coverage-proven clean {new_count}/{threshold} runs")
