@@ -34,6 +34,7 @@ from app.models.detection_run import (
     DetectionRun, RUN_COMPLETED, RUN_FAILED, TRIGGER_FACTS_READY,
 )
 from app.discovery.finding_translator import _resolve_asset, _find_open_duplicate
+from app.detection.resolution import build_coverage, evaluate_resolutions
 
 logger = structlog.get_logger()
 
@@ -151,6 +152,7 @@ async def create_findings_from_facts(
                     dup.evidence = d
                     dup.last_seen = now
                     dup.detection_run_id = run.id
+                    dup.resolution_miss_count = 0   # re-observed → out of the resolution window
                     reaffirmed += 1
                     continue
 
@@ -171,6 +173,7 @@ async def create_findings_from_facts(
                     first_seen=now,
                     last_seen=now,
                     detection_run_id=run.id,
+                    detected_db_version=db_version,
                 ))
                 created += 1
             except Exception as exc:  # noqa: BLE001 — one bad finding must not sink the batch
@@ -178,7 +181,18 @@ async def create_findings_from_facts(
 
         await db.flush()
 
-        # Snapshot the live risk set after this run (the "current" findings).
+        # Coverage ledger + coverage-gated auto-resolution (Phase 0/1). Best-effort:
+        # never let resolution failure sink an otherwise-good detection run.
+        resolved = 0
+        try:
+            coverage = build_coverage(result.get("scanner_runs"), facts)
+            resolved = await evaluate_resolutions(db, engagement_id, run, coverage, now)
+            run.stats = {"coverage": coverage, "auto_resolved": resolved}
+        except Exception as exc:  # noqa: BLE001 — resolution must not fail the run
+            logger.warning("detection_run.resolution_failed", error=str(exc))
+            run.stats = {"coverage": {}, "auto_resolved": 0}
+
+        # Snapshot the live risk set AFTER resolution (auto-resolved findings drop out).
         current = (await db.execute(
             select(func.count()).select_from(Finding).where(
                 Finding.engagement_id == engagement_id,
@@ -194,7 +208,8 @@ async def create_findings_from_facts(
         await db.flush()
         logger.info("detection_run.completed", run_id=str(run.id),
                     engagement_id=str(engagement_id), new=created,
-                    reaffirmed=reaffirmed, current=run.findings_current)
+                    reaffirmed=reaffirmed, resolved=resolved,
+                    current=run.findings_current)
     except Exception as exc:  # noqa: BLE001 — record the failure on the run, don't lose it
         run.status = RUN_FAILED
         run.finished_at = datetime.now(timezone.utc)
