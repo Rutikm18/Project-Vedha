@@ -76,6 +76,17 @@ class Finding(Base, TimestampMixin):
     reopened_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     detected_db_version: Mapped[str | None] = mapped_column(String(128), nullable=True)
 
+    # ── Verification (P2 passive; P3 adds active) ──────────────────────────────
+    # verification_state: normalized dashboard verdict — confirmed | corroborated
+    #   | inferred | contradicted. Distinct from `status` (lifecycle) and from the
+    #   internal 0-100 confidence: it's the human-facing "how sure are we this is
+    #   real". needs_review flags a high-stakes uncertain finding for an analyst.
+    verification_state: Mapped[str | None] = mapped_column(String(16), nullable=True, index=True)
+    verification_confidence: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    verification_rationale: Mapped[str | None] = mapped_column(Text(), nullable=True)
+    needs_review: Mapped[bool] = mapped_column(Boolean, nullable=False, server_default="false", index=True)
+    verification_method: Mapped[str | None] = mapped_column(String(16), nullable=True)
+
     engagement: Mapped["Engagement"] = relationship(back_populates="findings", lazy="noload")
     asset: Mapped["Asset | None"] = relationship(back_populates="findings", lazy="noload")
     detection_results: Mapped[list["DetectionResult"]] = relationship(
