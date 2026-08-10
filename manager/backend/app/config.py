@@ -38,6 +38,9 @@ class Settings(BaseSettings):
     neo4j_password: str = "neo4j"
     neo4j_enabled: bool = False
 
+    # P2 — passive verification (deterministic verdict always; LLM/LangGraph optional)
+    verification_enabled: bool = False
+
     # JWT
     jwt_secret: str = "change-me-at-least-32-chars-long!!"
     jwt_algorithm: str = "HS256"

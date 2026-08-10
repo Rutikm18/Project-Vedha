@@ -35,6 +35,8 @@ from app.models.detection_run import (
 )
 from app.discovery.finding_translator import _resolve_asset, _find_open_duplicate
 from app.detection.resolution import build_coverage, evaluate_resolutions
+from app.ai.verification_graph import run_verification
+from app.config import get_settings
 
 logger = structlog.get_logger()
 
@@ -134,6 +136,21 @@ async def _find_remediated_match(db, engagement_id, asset_id, title):
     return (await db.execute(q.limit(1))).scalar_one_or_none()
 
 
+async def _stamp_verification(findings, llm=None) -> None:
+    """Best-effort: compute + stamp each finding's verification verdict. A failure
+    on one finding must not sink the batch or the detection run."""
+    for f in findings:
+        try:
+            verdict = await run_verification(f.evidence or {}, llm=llm)
+            f.verification_state = verdict.state
+            f.verification_confidence = verdict.confidence
+            f.verification_rationale = verdict.rationale
+            f.needs_review = verdict.needs_review
+            f.verification_method = verdict.method
+        except Exception as exc:  # noqa: BLE001 — verification must never break the run
+            logger.warning("verification.stamp_failed", error=str(exc))
+
+
 async def create_findings_from_facts(
     db: AsyncSession, engagement_id: uuid.UUID, result: dict,
     *, scan_result_id: uuid.UUID | None = None, trigger: str = TRIGGER_FACTS_READY,
@@ -166,6 +183,7 @@ async def create_findings_from_facts(
     created = 0
     reaffirmed = 0
     try:
+        touched: list = []
         for d in detect_findings_from_facts(facts):
             try:
                 cve = d.get("cve_id") or "finding"
@@ -181,6 +199,7 @@ async def create_findings_from_facts(
                     dup.last_seen = now
                     dup.detection_run_id = run.id
                     dup.resolution_miss_count = 0   # re-observed → out of the resolution window
+                    touched.append(dup)
                     reaffirmed += 1
                     continue
 
@@ -190,11 +209,12 @@ async def create_findings_from_facts(
                     # and flag the regression (its history is preserved).
                     _apply_regression_reopen(regressed, run.id, now)
                     regressed.evidence = {**(regressed.evidence or {}), **d, "regression": True}
+                    touched.append(regressed)
                     reaffirmed += 1
                     continue
 
                 state = d.get("state")
-                db.add(Finding(
+                new_finding = Finding(
                     engagement_id=engagement_id,
                     asset_id=asset_id,
                     cve_ids=[cve] if d.get("cve_id") else None,
@@ -211,7 +231,9 @@ async def create_findings_from_facts(
                     last_seen=now,
                     detection_run_id=run.id,
                     detected_db_version=db_version,
-                ))
+                )
+                db.add(new_finding)
+                touched.append(new_finding)
                 created += 1
             except Exception as exc:  # noqa: BLE001 — one bad finding must not sink the batch
                 logger.warning("detection_finding.create_failed", error=str(exc))
@@ -228,6 +250,15 @@ async def create_findings_from_facts(
         except Exception as exc:  # noqa: BLE001 — resolution must not fail the run
             logger.warning("detection_run.resolution_failed", error=str(exc))
             run.stats = {"coverage": {}, "auto_resolved": 0}
+
+        # Passive verification (P2): stamp a normalized verdict on findings touched
+        # this run. Flagged + best-effort; never breaks the run.
+        if get_settings().verification_enabled:
+            try:
+                await _stamp_verification(touched)
+                await db.flush()
+            except Exception as exc:  # noqa: BLE001 — verification must not fail the run
+                logger.warning("detection_run.verification_failed", error=str(exc))
 
         # Snapshot the live risk set AFTER resolution (auto-resolved findings drop out).
         current = (await db.execute(
