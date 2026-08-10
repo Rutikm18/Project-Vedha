@@ -12,9 +12,16 @@ about it; a degraded/failed/skipped scanner is not proof.
 """
 from __future__ import annotations
 
+import uuid
 from dataclasses import dataclass
+from datetime import datetime
 
-from app.models.enums import FindingSeverity
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.models.asset import Asset
+from app.models.enums import FindingSeverity, FindingStatus
+from app.models.finding import Finding
 
 
 def host_of(target: str) -> str:
@@ -78,3 +85,44 @@ def decide_resolution(*, covered: bool, db_changed: bool,
                                  f"coverage-proven clean for {new_count} run(s) >= threshold {threshold}")
     return ResolutionOutcome("pending", new_count,
                              f"coverage-proven clean {new_count}/{threshold} runs")
+
+
+async def evaluate_resolutions(
+    db: AsyncSession, engagement_id: uuid.UUID, run, coverage: dict, now: datetime,
+) -> int:
+    """Apply decide_resolution to every engine-managed open/confirmed finding
+    NOT touched by `run` (i.e. detection_run_id != run.id). Returns the number
+    auto-resolved. Findings with no detection_run_id (probe self-assessed path,
+    legacy) are intentionally NOT governed here."""
+    covered = set(coverage.get("assets") or [])
+    rows = (await db.execute(
+        select(Finding, Asset.ip_address)
+        .join(Asset, Finding.asset_id == Asset.id)
+        .where(
+            Finding.engagement_id == engagement_id,
+            Finding.status.in_((FindingStatus.open, FindingStatus.confirmed)),
+            Finding.detection_run_id.isnot(None),
+            Finding.detection_run_id != run.id,
+        )
+    )).all()
+
+    resolved = 0
+    for finding, ip in rows:
+        db_changed = (
+            run.vuln_db_version is not None
+            and finding.detected_db_version is not None
+            and finding.detected_db_version != run.vuln_db_version
+        )
+        outcome = decide_resolution(
+            covered=ip in covered, db_changed=db_changed,
+            miss_count=finding.resolution_miss_count, severity=finding.severity,
+        )
+        finding.resolution_miss_count = outcome.miss_count
+        if outcome.action == "resolve":
+            finding.status = FindingStatus.remediated
+            finding.resolved_at = now
+            finding.resolution_method = "auto"
+            finding.resolution_run_id = run.id
+            resolved += 1
+    await db.flush()
+    return resolved
