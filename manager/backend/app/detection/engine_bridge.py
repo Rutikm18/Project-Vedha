@@ -106,6 +106,34 @@ def detect_findings_from_facts(facts: list[dict]) -> list[dict]:
                 pass
 
 
+def _apply_regression_reopen(finding, run_id, now) -> None:
+    """A previously-remediated finding whose issue reappeared this run: reopen
+    the SAME row and flag it as a regression (history preserved)."""
+    finding.status = FindingStatus.open
+    finding.reopened_count = (finding.reopened_count or 0) + 1
+    finding.resolution_miss_count = 0
+    finding.resolved_at = None
+    finding.resolution_method = None
+    finding.resolution_run_id = None
+    finding.last_seen = now
+    finding.detection_run_id = run_id
+    ev = dict(finding.evidence or {})
+    ev["regression"] = True
+    finding.evidence = ev
+
+
+async def _find_remediated_match(db, engagement_id, asset_id, title):
+    """A remediated finding with the same (engagement, asset, title) — the
+    regression candidate. Mirrors _find_open_duplicate but for the closed set."""
+    q = select(Finding).where(
+        Finding.engagement_id == engagement_id,
+        Finding.title == title,
+        Finding.status == FindingStatus.remediated,
+    )
+    q = q.where(Finding.asset_id == asset_id) if asset_id else q.where(Finding.asset_id.is_(None))
+    return (await db.execute(q.limit(1))).scalar_one_or_none()
+
+
 async def create_findings_from_facts(
     db: AsyncSession, engagement_id: uuid.UUID, result: dict,
     *, scan_result_id: uuid.UUID | None = None, trigger: str = TRIGGER_FACTS_READY,
@@ -153,6 +181,15 @@ async def create_findings_from_facts(
                     dup.last_seen = now
                     dup.detection_run_id = run.id
                     dup.resolution_miss_count = 0   # re-observed → out of the resolution window
+                    reaffirmed += 1
+                    continue
+
+                regressed = await _find_remediated_match(db, engagement_id, asset_id, title)
+                if regressed is not None:
+                    # An auto/manually-resolved issue is back → reopen the SAME row
+                    # and flag the regression (its history is preserved).
+                    _apply_regression_reopen(regressed, run.id, now)
+                    regressed.evidence = {**(regressed.evidence or {}), **d, "regression": True}
                     reaffirmed += 1
                     continue
 
