@@ -65,3 +65,44 @@ def compute_verdict(evidence: dict) -> VerificationVerdict:
 
     return VerificationVerdict(state=vstate, confidence=conf,
                                needs_review=needs_review, rationale=reason)
+
+
+import structlog  # noqa: E402  (grouped with the LLM entrypoint below)
+
+logger = structlog.get_logger()
+
+
+def _qualifies_for_llm(verdict: VerificationVerdict, evidence: dict) -> bool:
+    """Only spend an LLM call where a rationale / FP-triage is worth it:
+    uncertain AND high-stakes. Everything else keeps the cheap verdict."""
+    priority = (evidence.get("priority") or "").lower()
+    return verdict.needs_review or priority in ("critical", "high")
+
+
+async def verify_finding(evidence: dict, llm=None) -> VerificationVerdict:
+    """Deterministic verdict, optionally enriched by an LLM rationale. The LLM
+    (duck-typed: must expose `async verify_rationale(evidence) -> dict`) can only
+    add a rationale, flag needs_review, and — when confidence is already low —
+    mark the verdict contradicted. It can NEVER raise confidence or override a
+    confirmed verdict. Any LLM failure yields the pure deterministic verdict."""
+    verdict = compute_verdict(evidence)
+    if llm is None or verdict.state == "confirmed" or not _qualifies_for_llm(verdict, evidence):
+        return verdict
+    try:
+        out = await llm.verify_rationale(evidence)
+    except Exception as exc:  # noqa: BLE001 — LLM must never break verification
+        logger.warning("verification.llm_failed", error=str(exc))
+        return verdict
+    if not isinstance(out, dict):
+        return verdict
+    rationale = str(out.get("rationale") or "").strip()
+    fp = bool(out.get("suspected_false_positive"))
+    new_reason = rationale or verdict.rationale
+    needs_review = verdict.needs_review or fp
+    # LLM may only DOWNGRADE: an FP flag on an already-weak finding → contradicted.
+    new_state = verdict.state
+    if fp and verdict.confidence < _CORROBORATED_FLOOR:
+        new_state = "contradicted"
+    return VerificationVerdict(state=new_state, confidence=verdict.confidence,
+                               needs_review=needs_review, rationale=new_reason,
+                               method="passive")
