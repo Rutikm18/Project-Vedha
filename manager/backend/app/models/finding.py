@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Numeric, String, Text
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, Numeric, String, Text
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -58,6 +58,23 @@ class Finding(Base, TimestampMixin):
         UUID(as_uuid=True), ForeignKey("detection_runs.id", ondelete="SET NULL"),
         nullable=True, index=True,
     )
+
+    # ── Resolution lifecycle (coverage-gated auto-resolution) ──────────────────
+    # resolution_miss_count: consecutive coverage-proven runs this finding was
+    #   ABSENT (reset to 0 the moment it is re-observed). > 0 while status=open
+    #   means "pending remediation" — inside the confirmation window.
+    # detected_db_version: the vuln-DB snapshot hash that produced this finding.
+    #   Used to tell "gone because patched" from "gone because the DB changed"
+    #   (never auto-resolve on the latter).
+    # resolution_run_id: the run that auto-closed it; resolution_method: auto|manual.
+    resolution_miss_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    resolution_method: Mapped[str | None] = mapped_column(String(16), nullable=True)
+    resolution_run_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("detection_runs.id", ondelete="SET NULL"), nullable=True
+    )
+    reopened_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    detected_db_version: Mapped[str | None] = mapped_column(String(128), nullable=True)
 
     engagement: Mapped["Engagement"] = relationship(back_populates="findings", lazy="noload")
     asset: Mapped["Asset | None"] = relationship(back_populates="findings", lazy="noload")
