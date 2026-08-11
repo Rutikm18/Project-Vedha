@@ -126,3 +126,17 @@ async def evaluate_resolutions(
             resolved += 1
     await db.flush()
     return resolved
+
+
+def apply_manual_reopen(finding, *, by: str, now) -> None:
+    """Operator reopens an auto/'manually'-resolved finding. Mirrors the engine's
+    regression reopen but records the human who did it. History preserved."""
+    finding.status = FindingStatus.open
+    finding.reopened_count = (finding.reopened_count or 0) + 1
+    finding.resolution_miss_count = 0
+    finding.resolved_at = None
+    finding.resolution_method = None
+    finding.resolution_run_id = None
+    ev = dict(finding.evidence or {})
+    ev["reopened_by"] = by
+    finding.evidence = ev
