@@ -90,5 +90,7 @@ class FindingOut(BaseModel):
     verification_confidence: int | None = None
     verification_rationale: str | None = None
     needs_review: bool = False
+    # P4 unified priority (computed; see services/risk_rank.py).
+    risk_rank: int | None = None
     created_at: datetime
     updated_at: datetime
