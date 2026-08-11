@@ -28,3 +28,29 @@ def should_escalate(evidence: dict, *, roe_allows: bool, profile: str | None) ->
         return False  # already authoritative — nothing to validate
     high_stakes = (evidence.get("priority") or "").lower() in _HIGH_STAKES or bool(evidence.get("kev"))
     return high_stakes
+
+
+@dataclass
+class ValidationOutcome:
+    outcome: str                     # confirmed | contradicted | inconclusive
+    verification_state: str | None   # new verification_state, or None to leave unchanged
+    exploit_validated: bool
+
+
+def interpret_validation(result: dict) -> ValidationOutcome:
+    """Map a probe safe-check result to a verdict transition. Anything that isn't
+    an explicit confirm/contradict is inconclusive — which NEVER downgrades a
+    finding to resolved and NEVER lowers below its current state."""
+    outcome = (result or {}).get("outcome")
+    if outcome not in ("confirmed", "contradicted", "inconclusive"):
+        if result.get("confirmed") is True:
+            outcome = "confirmed"
+        elif result.get("contradicted") is True:
+            outcome = "contradicted"
+        else:
+            outcome = "inconclusive"
+    if outcome == "confirmed":
+        return ValidationOutcome("confirmed", "confirmed", True)
+    if outcome == "contradicted":
+        return ValidationOutcome("contradicted", "contradicted", False)
+    return ValidationOutcome("inconclusive", None, False)
