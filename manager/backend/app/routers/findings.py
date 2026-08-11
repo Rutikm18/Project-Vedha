@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.rbac import require_role
 from app.dependencies import DB, ReadDB, AuthUser
+from app.detection.resolution import apply_manual_reopen
 from app.models.engagement import Engagement
 from app.models.finding import Finding
 from app.models.enums import DetectionStatus, FindingSeverity, FindingStatus
@@ -228,6 +229,29 @@ async def patch_finding(
     await db.flush()
     await db.refresh(finding)
     logger.info("finding.patched", id=str(finding_id), changes=list(patch.keys()))
+    return finding
+
+
+@router.post("/{finding_id}/reopen", response_model=FindingOut,
+             summary="Reopen an auto/manually-resolved finding")
+async def reopen_finding(
+    finding_id: uuid.UUID,
+    db: DB,
+    current_user: Annotated[AuthUser, require_role(["admin", "manager", "tester"])],
+):
+    """Operator reverses a resolution (auto or manual). Only a `remediated`
+    finding can be reopened; history (reopened_count) is preserved and the
+    reopening user is recorded in evidence."""
+    finding = await _tenant_finding(db, finding_id, current_user.tenant_id)
+    if finding.status != FindingStatus.remediated:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Only a remediated finding can be reopened",
+        )
+    apply_manual_reopen(finding, by=str(current_user.user_id), now=datetime.now(timezone.utc))
+    await db.flush()
+    await db.refresh(finding)
+    logger.info("finding.reopened", id=str(finding_id), by=str(current_user.user_id))
     return finding
 
 
