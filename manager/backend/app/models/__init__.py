@@ -22,6 +22,7 @@ from app.models.agent_recommendation import AgentRecommendation
 from app.models.personal_access_token import PersonalAccessToken
 from app.models.probe_site import ProbeSite
 from app.models.probe_enrollment import ProbeEnrollmentRequest, AgentCredential, ProbeEnrollmentToken
+from app.models.validation_request import ValidationRequest
 
 __all__ = [
     "Tenant", "User", "Engagement", "Asset",
@@ -31,4 +32,5 @@ __all__ = [
     "AttackTimeline", "DetectionConfig", "LLMOutput", "OutboxEvent",
     "DetectionRun", "AgentRecommendation", "PersonalAccessToken",
     "ProbeSite", "ProbeEnrollmentRequest", "AgentCredential", "ProbeEnrollmentToken",
+    "ValidationRequest",
 ]
