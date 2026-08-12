@@ -77,6 +77,8 @@ async def list_findings(
     search: str | None = Query(default=None, min_length=1, max_length=200),
     detection_status: DetectionStatus | None = Query(default=None),
     exploit_validated: bool | None = Query(default=None),
+    verification_state: str | None = Query(default=None),
+    needs_review: bool | None = Query(default=None),
     sla_breached: bool = Query(default=False),
     sort: Literal["risk", "cvss", "epss", "date"] = Query(default="risk"),
     page: int = Query(default=1, ge=1),
@@ -110,6 +112,10 @@ async def list_findings(
         q = q.where(Finding.detection_status == detection_status)
     if exploit_validated is not None:
         q = q.where(Finding.exploit_validated == exploit_validated)
+    if verification_state:
+        q = q.where(Finding.verification_state == verification_state)
+    if needs_review is not None:
+        q = q.where(Finding.needs_review == needs_review)
     if sla_breached:
         now = datetime.now(timezone.utc)
         q = q.where(

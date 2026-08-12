@@ -2,9 +2,10 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.models.enums import DetectionStatus, FindingSeverity, FindingStatus
+from app.services.risk_rank import compute_risk_rank
 
 
 class FindingFilter(BaseModel):
@@ -90,7 +91,34 @@ class FindingOut(BaseModel):
     verification_confidence: int | None = None
     verification_rationale: str | None = None
     needs_review: bool = False
+    # P1 resolution lifecycle (auto-resolution / manual reopen surfacing).
+    resolution_method: str | None = None
+    reopened_count: int = 0
+    resolved_at: datetime | None = None
     # P4 unified priority (computed; see services/risk_rank.py).
     risk_rank: int | None = None
     created_at: datetime
     updated_at: datetime
+
+    @model_validator(mode="after")
+    def _populate_risk_rank(self) -> "FindingOut":
+        """Compute the explainable 0-1000 unified rank at serialization time so
+        every findings response carries it (list + detail), without an N+1 asset
+        fetch. Asset-context factors (criticality/exposure) are left neutral here;
+        the router may pre-set ``risk_rank`` with asset context to override."""
+        if self.risk_rank is None:
+            ev = self.evidence if isinstance(self.evidence, dict) else {}
+            sev = getattr(self.severity, "value", self.severity)
+            self.risk_rank = compute_risk_rank(
+                severity=str(sev),
+                cvss_score=float(self.cvss_score) if self.cvss_score is not None else None,
+                epss_score=float(self.epss_score) if self.epss_score is not None else None,
+                kev=bool(ev.get("kev")),
+                exploit_validated=bool(self.exploit_validated),
+                verification_state=self.verification_state,
+                confidence=self.verification_confidence,
+                asset_criticality=None,
+                internet_facing=None,
+                auth_enforced=None,
+            )
+        return self

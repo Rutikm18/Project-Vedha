@@ -166,6 +166,20 @@ export function toUiFinding(api: any): any {
       recommendation: "",
       confidence: 0,
     },
+    // ── P2/P4 verification + lifecycle surfacing ──
+    verificationState: api.verification_state ?? null,
+    verificationConfidence: api.verification_confidence ?? null,
+    needsReview: api.needs_review ?? false,
+    riskRank: api.risk_rank ?? null,
+    resolutionMethod: api.resolution_method ?? null,
+    reopenedCount: api.reopened_count ?? 0,
+    resolvedAt: api.resolved_at ?? null,
+    lastSeen: api.updated_at ?? null,
+    // `evidence.regression` is set by the engine when a resolved finding reappears.
+    regression:
+      api.evidence && typeof api.evidence === "object" && !Array.isArray(api.evidence)
+        ? Boolean((api.evidence as Record<string, unknown>).regression)
+        : false,
   };
 }
 

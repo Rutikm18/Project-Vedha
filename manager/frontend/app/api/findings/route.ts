@@ -17,6 +17,7 @@ const STATUS_TO_API: Record<string, string> = {
   FALSE_POSITIVE: "fp",
 };
 const VALID_SORTS = new Set(["risk", "cvss", "epss", "date"]);
+const VALID_VERIFICATION = new Set(["confirmed", "corroborated", "inferred", "contradicted"]);
 
 function positiveInt(value: string | null, fallback: number, max: number): number {
   const parsed = Number(value);
@@ -59,6 +60,11 @@ export const GET = withBackend(async (req, { token }) => {
         search,
         detection_status: url.searchParams.get("blind") === "true" ? "missed" : undefined,
         exploit_validated: url.searchParams.get("validated") === "true" ? true : undefined,
+        needs_review: url.searchParams.get("needs_review") === "true" ? true : undefined,
+        verification_state: (() => {
+          const v = url.searchParams.get("verification_state");
+          return v && VALID_VERIFICATION.has(v) ? v : undefined;
+        })(),
         sla_breached: url.searchParams.get("sla_breached") === "true" ? true : undefined,
         sort,
         page,

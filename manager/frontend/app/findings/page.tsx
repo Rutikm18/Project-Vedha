@@ -82,6 +82,16 @@ interface Finding {
   tags?: string[];
   cves?: string[];
   aiTriage: { priority: "P0" | "P1" | "P2" | "P3"; reasoning: string; recommendation: string; confidence: number };
+  // ── P2/P4 verification + lifecycle ──
+  verificationState?: string | null;
+  verificationConfidence?: number | null;
+  needsReview?: boolean;
+  riskRank?: number | null;
+  resolutionMethod?: string | null;
+  reopenedCount?: number;
+  resolvedAt?: string | null;
+  lastSeen?: string | null;
+  regression?: boolean;
 }
 
 interface FindingPage {
@@ -170,6 +180,60 @@ function KevBadge() {
     }}>
       ⚠ KEV
     </span>
+  );
+}
+
+/* ─── Verification Badge (P2 passive-verification verdict) ─── */
+const VERIFICATION_META: Record<string, { label: string; color: string; strike?: boolean }> = {
+  confirmed:    { label: "CONFIRMED",    color: SEV_PALETTE.GREEN },
+  corroborated: { label: "CORROBORATED", color: SEV_PALETTE.BLUE },
+  inferred:     { label: "INFERRED",     color: "#64748B" },
+  contradicted: { label: "CONTRADICTED", color: "#64748B", strike: true },
+};
+function VerificationBadge({ state }: { state?: string | null }) {
+  if (!state) return null;
+  const m = VERIFICATION_META[state.toLowerCase()];
+  if (!m) return null;
+  return (
+    <span title={`Verification verdict: ${m.label}`} style={{
+      fontFamily: "var(--font-mono)", fontSize: 9, padding: "2px 6px", borderRadius: 4,
+      background: `${m.color}12`, color: m.color, border: `1px solid ${m.color}30`,
+      textDecoration: m.strike ? "line-through" : "none", fontWeight: 700, letterSpacing: 0.3,
+    }}>{m.label}</span>
+  );
+}
+
+/* ─── Needs-review chip ─── */
+function NeedsReviewChip({ show }: { show?: boolean }) {
+  if (!show) return null;
+  return (
+    <span title="High-stakes + uncertain — flagged for an analyst" style={{
+      fontFamily: "var(--font-mono)", fontSize: 9, padding: "2px 6px", borderRadius: 4,
+      background: `${SEV_PALETTE.AMBER}14`, color: SEV_PALETTE.AMBER,
+      border: `1px solid ${SEV_PALETTE.AMBER}40`, fontWeight: 700,
+    }}>NEEDS REVIEW</span>
+  );
+}
+
+/* ─── Lifecycle badges: regression + auto-resolved ─── */
+function RegressionBadge({ show }: { show?: boolean }) {
+  if (!show) return null;
+  return (
+    <span title="Reappeared after being resolved (regression)" style={{
+      fontFamily: "var(--font-mono)", fontSize: 9, padding: "2px 6px", borderRadius: 4,
+      background: `${SEV_PALETTE.RED}12`, color: SEV_PALETTE.RED,
+      border: `1px solid ${SEV_PALETTE.RED}40`, fontWeight: 700,
+    }}>↺ REGRESSION</span>
+  );
+}
+function AutoResolvedBadge({ method, reopenedCount }: { method?: string | null; reopenedCount?: number }) {
+  if (method !== "auto") return null;
+  return (
+    <span title="Closed by coverage-gated auto-resolution" style={{
+      fontFamily: "var(--font-mono)", fontSize: 9, padding: "2px 6px", borderRadius: 4,
+      background: `${SEV_PALETTE.GREEN}12`, color: SEV_PALETTE.GREEN,
+      border: `1px solid ${SEV_PALETTE.GREEN}30`,
+    }}>AUTO-RESOLVED{reopenedCount ? ` · ${reopenedCount}× reopened` : ""}</span>
   );
 }
 
@@ -359,11 +423,13 @@ function RemediationChecklist({ steps }: { steps: (string | RemStep)[] }) {
 }
 
 /* ─── Finding Detail ─── */
-function FindingDetail({ f, allFindings, onStatusChange, statusUpdating }: {
+function FindingDetail({ f, allFindings, onStatusChange, statusUpdating, onReopen, reopening }: {
   f: Finding;
   allFindings: Finding[];
   onStatusChange: (id: string, s: FindingStatus) => void;
   statusUpdating: boolean;
+  onReopen: (id: string) => void;
+  reopening: boolean;
 }) {
   const [tab, setTab] = useState<"overview" | "intel" | "evidence" | "remediation" | "compliance">("overview");
   const { explain } = useAssistant();
@@ -396,6 +462,10 @@ function FindingDetail({ f, allFindings, onStatusChange, statusUpdating }: {
           <StatusBadge s={f.status} />
           <RiskBadge score={f.riskScore} />
           {f.kevStatusRecorded && f.kevListed && <KevBadge />}
+          <VerificationBadge state={f.verificationState} />
+          <NeedsReviewChip show={f.needsReview} />
+          <RegressionBadge show={f.regression} />
+          <AutoResolvedBadge method={f.resolutionMethod} reopenedCount={f.reopenedCount} />
           <span style={{
             fontFamily: "var(--font-mono)", fontSize: 9,
             color: pc, background: `${pc}15`, border: `1px solid ${pc}30`,
@@ -420,11 +490,40 @@ function FindingDetail({ f, allFindings, onStatusChange, statusUpdating }: {
           >
             <Brain size={13} /> Explain &amp; remediate
           </button>
+          {f.status === "REMEDIATED" && (
+            <button
+              className="btn btn-secondary"
+              onClick={() => onReopen(f.id)}
+              disabled={reopening}
+              aria-busy={reopening}
+              aria-label="Reopen this resolved finding"
+              title="Reopen — reverses an auto/manual resolution and preserves history"
+              style={{ height: 26, padding: "0 10px", fontSize: 11 }}
+            >
+              ↺ Reopen
+            </button>
+          )}
         </div>
         <h2 style={{ fontFamily: "'Inter', sans-serif", fontSize: 17, fontWeight: 700, color: "var(--text-primary)", margin: 0, lineHeight: 1.3 }}>{f.title}</h2>
         <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-secondary)", marginTop: 5 }}>
           {f.id} · {f.category} · {f.affectedHost}
           {f.assignee && <span style={{ color: "var(--accent)", marginLeft: 8 }}>@{f.assignee}</span>}
+        </div>
+
+        {/* ── Lifecycle timeline (first seen → last seen → resolution/regression) ── */}
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center", marginTop: 8, fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--text-secondary)" }}>
+          <span style={{ letterSpacing: 0.6 }}>LIFECYCLE</span>
+          <span>◦ first seen {new Date(f.discoveredAt).toLocaleDateString()}</span>
+          {f.lastSeen && <span>→ last seen {new Date(f.lastSeen).toLocaleDateString()}</span>}
+          {f.resolvedAt && (
+            <span style={{ color: SEV_PALETTE.GREEN }}>
+              → resolved {new Date(f.resolvedAt).toLocaleDateString()}{f.resolutionMethod ? ` (${f.resolutionMethod})` : ""}
+            </span>
+          )}
+          {f.regression && <span style={{ color: SEV_PALETTE.RED }}>→ regressed</span>}
+          {typeof f.reopenedCount === "number" && f.reopenedCount > 0 && (
+            <span style={{ color: SEV_PALETTE.AMBER }}>→ reopened {f.reopenedCount}×</span>
+          )}
         </div>
         {cveIds.length > 0 && (
           <div className="finding-cve-list">{cveIds.map((cve) => <code key={cve}>{cve}</code>)}</div>
@@ -938,6 +1037,8 @@ export default function FindingsPage() {
   const [filterBlind, setFilterBlind] = useState(false);
   const [filterExploited, setFilterExploited] = useState(false);
   const [filterSlaBreached, setFilterSlaBreached] = useState(false);
+  const [filterNeedsReview, setFilterNeedsReview] = useState(false);
+  const [filterVerification, setFilterVerification] = useState<string>("ALL");
   const [page, setPage] = useState(1);
   const [engagementOverride, setEngagementId] = useState<string | null | undefined>();
   // URL state is an external store. Local overrides let the operator clear a
@@ -958,12 +1059,15 @@ export default function FindingsPage() {
   if (filterBlind) queryString.set("blind", "true");
   if (filterExploited) queryString.set("validated", "true");
   if (filterSlaBreached) queryString.set("sla_breached", "true");
+  if (filterNeedsReview) queryString.set("needs_review", "true");
+  if (filterVerification !== "ALL") queryString.set("verification_state", filterVerification);
   if (engagementId) queryString.set("engagement_id", engagementId);
 
   const { data, isLoading, error, refetch } = useQuery({
     queryKey: [
       "findings-page", page, deferredSearch, filterSev, filterStatus,
       filterBlind, filterExploited, filterSlaBreached, sortBy, engagementId,
+      filterNeedsReview, filterVerification,
     ],
     queryFn: () => fetchJson<FindingPage>(`/api/findings?${queryString}`),
     refetchInterval: 30_000,
@@ -1025,6 +1129,22 @@ export default function FindingsPage() {
     statusMutation.mutate({ id, status: newStatus });
   }, [statusMutation]);
 
+  const reopenMutation = useMutation({
+    mutationFn: (id: string) =>
+      fetchJson<Finding>(`/api/findings/${id}/reopen`, { method: "POST" }),
+    onError: (mutationError) => showError("Reopen failed", errorMessage(mutationError)),
+    onSuccess: (updated) => success("Finding reopened", `${updated.id} → OPEN`),
+    onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["findings-page"] });
+      void queryClient.invalidateQueries({ queryKey: ["finding-detail"] });
+      void queryClient.invalidateQueries({ queryKey: ["findings-summary"] });
+    },
+  });
+
+  const handleReopen = useCallback((id: string) => {
+    reopenMutation.mutate(id);
+  }, [reopenMutation]);
+
   const selected = inCurrentPage ?? detailQuery.data ?? null;
   const hasActiveFilters = Boolean(
     search.trim()
@@ -1032,7 +1152,9 @@ export default function FindingsPage() {
     || filterStatus !== "ALL"
     || filterBlind
     || filterExploited
-    || filterSlaBreached,
+    || filterSlaBreached
+    || filterNeedsReview
+    || filterVerification !== "ALL",
   );
 
   return (
@@ -1115,6 +1237,19 @@ export default function FindingsPage() {
                 background: filterBlind ? `${SEV_PALETTE.RED}14` : "transparent",
                 color: filterBlind ? SEV_PALETTE.RED : "var(--text-secondary)",
               }}>○ BLIND</button>
+              <button aria-pressed={filterNeedsReview} onClick={() => { setFilterNeedsReview((p) => !p); setPage(1); setSelectedId(null); }} style={{
+                padding: "3px 8px", borderRadius: 3, cursor: "pointer", fontFamily: "var(--font-mono)", fontSize: 9,
+                border: `1px solid ${filterNeedsReview ? `${SEV_PALETTE.AMBER}66` : "var(--border-subtle)"}`,
+                background: filterNeedsReview ? `${SEV_PALETTE.AMBER}14` : "transparent",
+                color: filterNeedsReview ? SEV_PALETTE.AMBER : "var(--text-secondary)",
+              }}>⚑ NEEDS REVIEW</button>
+              <select value={filterVerification} onChange={(e) => { setFilterVerification(e.target.value); setPage(1); setSelectedId(null); }}
+                aria-label="Filter findings by verification verdict"
+                style={{ background: "var(--bg-panel)", border: "1px solid var(--border-subtle)", borderRadius: 4, color: "var(--text-secondary)", fontFamily: "var(--font-mono)", fontSize: 10, padding: "3px 6px", outline: "none" }}>
+                {["ALL", "confirmed", "corroborated", "inferred", "contradicted"].map((s) => (
+                  <option key={s} value={s}>{s === "ALL" ? "VERIFY: ALL" : s.toUpperCase()}</option>
+                ))}
+              </select>
               <button onClick={() => { setSortBy(sortBy === "risk" ? "cvss" : sortBy === "cvss" ? "epss" : sortBy === "epss" ? "date" : "risk"); setPage(1); setSelectedId(null); }}
                 aria-label={`Sort findings by ${sortBy}; activate to change sort`}
                 style={{ display: "flex", alignItems: "center", gap: 4, padding: "3px 8px", background: "transparent", border: "1px solid var(--border-subtle)", borderRadius: 4, color: "var(--text-secondary)", cursor: "pointer", fontFamily: "var(--font-mono)", fontSize: 9 }}>
@@ -1172,6 +1307,10 @@ export default function FindingsPage() {
                       <StatusBadge s={f.status} />
                       {f.kevStatusRecorded && f.kevListed && <KevBadge />}
                       <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: pc, background: `${pc}12`, border: `1px solid ${pc}25`, borderRadius: 3, padding: "1px 4px" }}>{f.aiTriage.priority}</span>
+                      <VerificationBadge state={f.verificationState} />
+                      <NeedsReviewChip show={f.needsReview} />
+                      <RegressionBadge show={f.regression} />
+                      <AutoResolvedBadge method={f.resolutionMethod} reopenedCount={f.reopenedCount} />
                     </div>
                     <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2, flexShrink: 0 }}>
                       <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 700, color: riskScoreColor(f.riskScore) }}>{f.riskScore}</span>
@@ -1252,6 +1391,8 @@ export default function FindingsPage() {
               allFindings={findings}
               onStatusChange={handleStatusChange}
               statusUpdating={statusMutation.isPending}
+              onReopen={handleReopen}
+              reopening={reopenMutation.isPending}
             />
           </div>
         )}

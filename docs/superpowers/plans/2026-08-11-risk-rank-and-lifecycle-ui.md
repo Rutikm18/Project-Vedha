@@ -342,10 +342,17 @@ Executing Tasks 1–3 inline (pure logic + schema — verifiable here). Tasks 4�
 - **Task 3 — expose `risk_rank` on findings API** ✅ committed (`85e4537`).
 - **Task 4 — reopen endpoint** ✅ committed (`3c277ba`) as `POST /findings/{finding_id}/reopen`
   (`app/routers/findings.py`; 409 unless `remediated`; audits `reopened_by`).
-- **Task 5 — dashboard surfacing** ⬜ **DEFERRED**: `app/findings/page.tsx` is a 1262-line bespoke
-  component with its own frontend `Finding` type + design tokens; `manager/frontend/AGENTS.md`
-  mandates reading the custom-Next guide before editing, and the change (verification badges,
-  lifecycle timeline, reopen button, `risk_rank` sort, `needs_review`/`verification_state` filters,
-  regression/auto-resolved badges) spans backend→BFF→type→UI and needs browser verification
-  (`/qa` or `/browse` per repo CLAUDE.md). All backend fields it needs already exist. Best executed
-  interactively with the dev server + browser, not blind.
+- **Task 5 — dashboard surfacing** ✅ **implemented** (2026-08-12). Backend gaps it depended on were
+  also closed: `FindingOut` now **computes `risk_rank`** (model validator) and exposes
+  `resolution_method`/`reopened_count`/`resolved_at`; the findings list gained
+  `verification_state` + `needs_review` filters (`app/schemas/finding.py`, `app/routers/findings.py`;
+  +4 tests, backend suite 493). Frontend (`lib/adapters.ts`, `app/api/findings/route.ts`, new
+  `app/api/findings/[id]/reopen/route.ts`, `app/findings/page.tsx`): verification badge
+  (confirmed/corroborated/inferred/contradicted, contradicted struck-through), needs-review chip,
+  regression + auto-resolved badges on list rows **and** detail header; a compact lifecycle timeline
+  (first-seen → last-seen → resolved/regressed/reopened); a Reopen button on remediated findings
+  wired to `POST /findings/{id}/reopen`; and `needs_review` + `verification_state` filter controls.
+  Verified: `tsc --noEmit` clean, `next build` success, 82 frontend tests pass.
+  **Not covered:** true server-side *sort by `risk_rank`* still uses the existing risk-first
+  (`risk_score`) SQL order as a proxy — a materialized `risk_rank` column is the follow-up; and live
+  visual/browser QA (`/browse`) was not run in this environment.
