@@ -1106,4 +1106,16 @@ async def submit_job_result(
             summary.get("status_code", 404),
             summary.get("error", "Job not found"),
         )
+
+    # P3: if this job was an approved safe active-validation, turn its result into
+    # a finding verdict. Best-effort and gated — a normal scan result never even
+    # triggers a lookup (see looks_like_validation_result), and any failure here
+    # must not fail the probe's spool-clearing submit.
+    if summary.get("accepted") is not False:
+        try:
+            from app.services.validation_ingest import ingest_validation_result
+            await ingest_validation_result(db, job_id, body.result)
+        except Exception as exc:  # noqa: BLE001 — best-effort, never break submit
+            logger.warning("validation.ingest.failed", job_id=str(job_id), error=str(exc))
+
     return summary

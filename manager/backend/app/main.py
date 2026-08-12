@@ -28,6 +28,7 @@ from app.routers.exploits import router as exploits_router
 from app.routers.findings import router as findings_router
 from app.routers.health import router as health_router
 from app.routers.probe_enrollment import router as probe_enrollment_router
+from app.routers.validation import router as validation_router
 from app.routers.vuln_scans import router as vuln_router
 from app.version import get_version
 
@@ -207,6 +208,7 @@ app.include_router(probe_enrollment_router)
 app.include_router(agent_ws_router)
 app.include_router(vuln_router)
 app.include_router(exploits_router)
+app.include_router(validation_router)
 app.include_router(ad_router)
 app.include_router(attack_paths_router)
 app.include_router(detection_router)
