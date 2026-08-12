@@ -334,3 +334,18 @@ git commit -m "feat(risk-rank): expose risk_rank on findings API"
 ## Execution Handoff
 
 Executing Tasks 1–3 inline (pure logic + schema — verifiable here). Tasks 4–5 are spec-complete and flagged for the router stack / frontend environment.
+
+## Execution status (updated 2026-08-12)
+
+- **Task 1 — pure risk-rank** ✅ committed (`0d6be85`).
+- **Task 2 — pure manual-reopen helper** ✅ committed (`3c7740e`).
+- **Task 3 — expose `risk_rank` on findings API** ✅ committed (`85e4537`).
+- **Task 4 — reopen endpoint** ✅ committed (`3c277ba`) as `POST /findings/{finding_id}/reopen`
+  (`app/routers/findings.py`; 409 unless `remediated`; audits `reopened_by`).
+- **Task 5 — dashboard surfacing** ⬜ **DEFERRED**: `app/findings/page.tsx` is a 1262-line bespoke
+  component with its own frontend `Finding` type + design tokens; `manager/frontend/AGENTS.md`
+  mandates reading the custom-Next guide before editing, and the change (verification badges,
+  lifecycle timeline, reopen button, `risk_rank` sort, `needs_review`/`verification_state` filters,
+  regression/auto-resolved badges) spans backend→BFF→type→UI and needs browser verification
+  (`/qa` or `/browse` per repo CLAUDE.md). All backend fields it needs already exist. Best executed
+  interactively with the dev server + browser, not blind.

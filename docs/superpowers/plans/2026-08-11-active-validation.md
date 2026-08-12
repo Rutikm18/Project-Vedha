@@ -475,3 +475,21 @@ git commit -m "feat(active-validation): ValidationRequest model + migration"
 ## Execution Handoff
 
 Executing Tasks 1–3 inline (pure logic + model — verifiable here). Tasks 4–7 are spec-complete and flagged for your probe/langgraph environment.
+
+## Execution status (updated 2026-08-12)
+
+- **Task 1 — pure escalation** ✅ committed (`02b6341`).
+- **Task 2 — pure interpretation** ✅ committed (`7bd104a`).
+- **Task 3 — ValidationRequest model + migration** ✅ committed (`58c2d10`, alembic head `0022`).
+- **Task 4 — approve → enqueue endpoint** ✅ **implemented** (`50d6554`): `app/routers/validation.py`
+  (create/list/approve/reject), registered in `app/main.py`. Enqueues a single-target
+  `vuln_scan` with `result.mode="validate"`, `allowlist="safe"`, `/32` scope; RoE + safe
+  check-kind enforced. 5 mocked-session tests.
+- **Task 7 — result ingestion → verdict** ✅ **implemented** (`50d6554`): `app/services/validation_ingest.py`,
+  gated + best-effort, wired into `submit_job_result`. Confirmation is the only path to raise
+  certainty; contradiction flags FP; inconclusive unchanged; never resurrects a human-closed
+  finding. 8 tests (pure transition + mocked ingestion). **Full backend suite: 489 passed.**
+- **Task 5 — probe-side safe validator** ⬜ **DEFERRED**: needs a live probe runtime + target host to
+  verify; the probe tree also has unrelated uncommitted WIP. Spec stands; do it against a lab target.
+- **Task 6 — LangGraph `active_validation` node** ⬜ **BLOCKED**: `langgraph` is not installed in the
+  backend venv (kept optional/fail-closed, as in P2). Add `langgraph` + a checkpointer to build/verify.
