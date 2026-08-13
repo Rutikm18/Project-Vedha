@@ -468,6 +468,80 @@ _RULES: list[Callable[[list[dict]], Iterable[Finding]]] = [
 ]
 
 
+# ── correlation layer ───────────────────────────────────────────────────────
+# Composite findings derived from the BASE findings on the same host. Correlation
+# is what separates a good scanner from a great one: an attacker chains weaknesses,
+# so the scanner should surface the *path*, not just the parts. Pure over base
+# findings; every composite cites the findings it was built from.
+def _by_target(findings: list[Finding]) -> dict:
+    out: dict = {}
+    for f in findings:
+        out.setdefault(f.target, []).append(f)
+    return out
+
+
+def _corr_ntlm_relay(facts: list[dict], base: list[Finding]) -> Iterable[Finding]:
+    """SMB signing not required => a viable NTLM relay target. If SMBv1 is also on,
+    the host is both coercible and relayable — a concrete takeover path."""
+    for target, fs in _by_target(base).items():
+        by_id = {f.rule_id: f for f in fs}
+        if "SMB-SIGNING-NOT-REQUIRED" not in by_id:
+            continue
+        smbv1 = "SMB-V1-ENABLED" in by_id
+        used = sorted(set(by_id) & {"SMB-SIGNING-NOT-REQUIRED", "SMB-V1-ENABLED"})
+        port = by_id["SMB-SIGNING-NOT-REQUIRED"].port or 445
+        reason = ("SMB signing is not required AND SMBv1 is enabled — the host is both "
+                  "coercible and relayable: an attacker can coerce authentication and relay "
+                  "it to take over the host."
+                  if smbv1 else
+                  "SMB signing is not required — the host is a viable NTLM relay target.")
+        yield Finding(
+            "CORR-NTLM-RELAY-PATH", "NTLM relay attack path (SMB signing not required)",
+            SEV_HIGH if smbv1 else SEV_MEDIUM, CONF_HIGH, CAT_MISCONFIG, target, port, "tcp",
+            f"{reason} [correlated: {', '.join(used)}]",
+            "Require SMB signing on all hosts (especially DCs); disable SMBv1; enforce LDAP/EPA signing.",
+            {"correlated_findings": used, "smbv1": smbv1}, "correlation")
+
+
+def _corr_legacy_windows(facts: list[dict], base: list[Finding]) -> Iterable[Finding]:
+    """SMBv1 (wormable) + exposed RDP (brute-force/BlueKeep) on one host — the
+    classic ransomware entry combination."""
+    for target, fs in _by_target(base).items():
+        ids = {f.rule_id for f in fs}
+        if "SMB-V1-ENABLED" in ids and "SVC-RDP-EXPOSED" in ids:
+            yield Finding(
+                "CORR-LEGACY-WINDOWS-SURFACE",
+                "Legacy Windows attack surface (SMBv1 + exposed RDP)",
+                SEV_HIGH, CONF_MEDIUM, CAT_EXPOSURE, target, None, None,
+                "SMBv1 is enabled (wormable, EternalBlue class) AND RDP is exposed "
+                "(brute-force / BlueKeep) on the same host — a classic ransomware entry path. "
+                "[correlated: SMB-V1-ENABLED, SVC-RDP-EXPOSED]",
+                "Disable SMBv1; restrict RDP to VPN/jump hosts with NLA + MFA.",
+                {"correlated_findings": ["SMB-V1-ENABLED", "SVC-RDP-EXPOSED"]}, "correlation")
+
+
+def _corr_cleartext_cluster(facts: list[dict], base: list[Finding]) -> Iterable[Finding]:
+    """Two or more cleartext services on one host — any sniffing position harvests
+    credentials across all of them."""
+    for target, fs in _by_target(base).items():
+        ct_ids = sorted({f.rule_id for f in fs if f.category == CAT_CLEARTEXT})
+        if len(ct_ids) >= 2:
+            yield Finding(
+                "CORR-CLEARTEXT-CLUSTER",
+                "Multiple cleartext services (credential-capture risk)",
+                SEV_MEDIUM, CONF_HIGH, CAT_CLEARTEXT, target, None, None,
+                f"Multiple cleartext protocols exposed on one host ({', '.join(ct_ids)}) — "
+                "a single sniffing position captures credentials across services. "
+                f"[correlated: {', '.join(ct_ids)}]",
+                "Replace cleartext services with encrypted equivalents (SSH / FTPS / HTTPS).",
+                {"correlated_findings": ct_ids}, "correlation")
+
+
+_CORRELATION_RULES: list[Callable[[list[dict], list[Finding]], Iterable[Finding]]] = [
+    _corr_ntlm_relay, _corr_legacy_windows, _corr_cleartext_cluster,
+]
+
+
 # ── public API ──────────────────────────────────────────────────────────────
 def run_findings(facts: Iterable[Any]) -> list[Finding]:
     """Derive findings from collected facts. Pure; deterministic; safe.
@@ -478,6 +552,13 @@ def run_findings(facts: Iterable[Any]) -> list[Finding]:
     seen: dict[tuple, Finding] = {}
     for rule in _RULES:
         for finding in rule(norm):
+            key = (finding.rule_id, finding.target, finding.port)
+            if key not in seen:
+                seen[key] = finding
+    # Correlation pass: composite findings derived from the base findings.
+    base = list(seen.values())
+    for corr in _CORRELATION_RULES:
+        for finding in corr(norm, base):
             key = (finding.rule_id, finding.target, finding.port)
             if key not in seen:
                 seen[key] = finding

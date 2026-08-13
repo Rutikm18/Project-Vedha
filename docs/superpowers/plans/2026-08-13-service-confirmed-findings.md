@@ -31,8 +31,8 @@
 
 | # | Epic | Reach | Impact | Confidence | Effort | Why now |
 |---|------|-------|--------|-----------|--------|---------|
-| **1** | **Service-confirmed findings** *(this plan)* | every scan | high | high | S | Fixes a self-identified accuracy weakness (port==service); offline-testable |
-| 2 | Correlation findings (SMBv1+no-signing+exposed → relay path) | Windows nets | high | med | S | High-signal, pure over existing findings |
+| **1** | **Service-confirmed findings** *(this plan)* ✅ done | every scan | high | high | S | Fixes a self-identified accuracy weakness (port==service); offline-testable |
+| **2** | **Correlation findings** (NTLM-relay path, legacy-Windows surface, cleartext cluster) ✅ done | Windows nets | high | med | S | High-signal attack-path findings, pure over existing findings (`_CORRELATION_RULES`) |
 | 3 | Anonymous-access proofs (FTP anon / SMB null / Redis unauth) | many | high | med | M | Upgrades exposure med→high *confidence* with a real proof (needs small collector reads) |
 | 4 | Scan completeness invariant (Phase 3) | every scan | med | high | S | Trust: prove no silent port drops |
 | 5 | JA4S + JA4 similarity (arXiv 2410.03817) | TLS hosts | med | med | M | Extends JA4X; infra correlation |
