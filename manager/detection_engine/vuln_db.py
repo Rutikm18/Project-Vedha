@@ -32,10 +32,13 @@ from __future__ import annotations
 
 import hashlib
 import json
+import threading
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+from version_compare import verify_pure_python_matches_dpkg
 
 DEFAULT_SNAPSHOT_PATH = Path(__file__).parent / "snapshots" / "osv_debian_snapshot.json"
 
@@ -116,13 +119,43 @@ class VulnDB:
         return sorted(self._records.keys())
 
 
-def load_snapshot(path: str | Path = DEFAULT_SNAPSHOT_PATH) -> VulnDB:
-    path = Path(path)
-    if not path.exists():
-        raise FileNotFoundError(
-            f"no vulnerability snapshot at {path} — run "
-            f"`python3 vuln_db.py sync` first (out-of-band, not part of "
-            f"detection itself)")
+# The 7.6MB snapshot is expensive to parse + content-hash (~75ms). It is
+# immutable between out-of-band syncs, yet load_snapshot() is called on every
+# detection run (and twice per run via engine_bridge). Memoize it by
+# (path, mtime, size): a cache hit skips the parse + hash entirely, and an
+# out-of-band re-sync (which changes mtime/size) invalidates it automatically —
+# pinning semantics preserved. Guarded by a lock so a concurrent first-load is
+# at worst a benign double-parse, never a corrupt cache.
+_snapshot_cache: dict[tuple[str, int, int], "VulnDB"] = {}
+_snapshot_cache_lock = threading.Lock()
+
+
+def _clear_caches() -> None:
+    """Test hook: drop the memoized snapshot cache so the next load re-reads."""
+    with _snapshot_cache_lock:
+        _snapshot_cache.clear()
+
+
+def _boundary_versions(records: dict[str, list[dict]]) -> set[str]:
+    """Every version string that appears as a range boundary in the snapshot —
+    the exact values matcher.py dpkg-compares against. Used to scope the
+    load-time pure-Python/dpkg agreement guard to the data actually in play.
+    """
+    out: set[str] = set()
+    for recs in records.values():
+        for rec in recs:
+            for aff in rec.get("affected", []):
+                for rng in aff.get("ranges", []):
+                    for ev in rng.get("events", []):
+                        for v in ev.values():
+                            if v:
+                                out.add(v)
+    return out
+
+
+def _read_snapshot(path: Path) -> VulnDB:
+    """The actual parse + integrity-verify + build. Kept separate from
+    load_snapshot() so the memoization wrapper stays a thin, obvious guard."""
     with path.open("r", encoding="utf-8") as fh:
         snap = json.load(fh)
     recomputed = _content_hash(snap["records"])
@@ -132,8 +165,35 @@ def load_snapshot(path: str | Path = DEFAULT_SNAPSHOT_PATH) -> VulnDB:
             f"(expected {snap['content_hash'][:12]}, got {recomputed[:12]}) "
             f"— file was modified after being written; re-sync rather than "
             f"trust a snapshot that doesn't match its own pin")
+    # Correctness anchor for the pure-Python comparator the matcher now uses in
+    # its hot loop: confirm it agrees with the real dpkg binary on THIS
+    # snapshot's boundary versions. One-time per content-hash, no-op without
+    # dpkg — see version_compare.verify_pure_python_matches_dpkg.
+    verify_pure_python_matches_dpkg(_boundary_versions(snap["records"]), snap["content_hash"])
     meta = SnapshotMeta(
         fetched_at=snap["fetched_at"], ecosystem=snap["ecosystem"],
         products=snap["products"], content_hash=snap["content_hash"],
         path=str(path))
     return VulnDB(snap["records"], meta)
+
+
+def load_snapshot(path: str | Path = DEFAULT_SNAPSHOT_PATH) -> VulnDB:
+    path = Path(path)
+    if not path.exists():
+        raise FileNotFoundError(
+            f"no vulnerability snapshot at {path} — run "
+            f"`python3 vuln_db.py sync` first (out-of-band, not part of "
+            f"detection itself)")
+    st = path.stat()
+    key = (str(path.resolve()), st.st_mtime_ns, st.st_size)
+    with _snapshot_cache_lock:
+        cached = _snapshot_cache.get(key)
+    if cached is not None:
+        return cached
+    db = _read_snapshot(path)  # expensive; done outside the lock
+    with _snapshot_cache_lock:
+        existing = _snapshot_cache.get(key)  # another thread may have won the race
+        if existing is not None:
+            return existing
+        _snapshot_cache[key] = db
+        return db

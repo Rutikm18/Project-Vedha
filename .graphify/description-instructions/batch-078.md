@@ -1,4 +1,4 @@
-# Node Description Batch 79 of 134
+# Node Description Batch 79 of 144
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,53 +19,51 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-LANGUAGE: each entry has a `lang=` marker giving the language of its source.
-Write that entry's description in EXACTLY that language. Do not translate to
-a single common language — match each node's source language individually.
+Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "agent_result_spool_rationale_153": "Number of pending (unsubmitted) results in the spool." | kind=entity | source=probe/agent/result_spool.py:L153 | neighbors=[.spool_count()] | lang=en
-- "agent_result_spool_rationale_156": "Re-attempt upload of all previously spooled results.          Called once at pro" | kind=entity | source=probe/agent/result_spool.py:L156 | neighbors=[.flush_spool()] | lang=en
-- "agent_result_spool_rationale_180": "Number of pending (unsubmitted) results in the spool." | kind=entity | source=probe/agent/result_spool.py:L180 | neighbors=[.spool_count()] | lang=en
-- "agent_result_spool_rationale_185": "Re-attempt upload of all previously spooled results.          Called once at pro" | kind=entity | source=probe/agent/result_spool.py:L185 | neighbors=[.flush_spool()] | lang=en
-- "agent_result_spool_rationale_216": "Number of pending (unsubmitted) results in the spool." | kind=entity | source=probe/agent/result_spool.py:L216 | neighbors=[.spool_count()] | lang=en
-- "agent_result_spool_rationale_223": "Total bytes held by pending result files, ignoring vanished files." | kind=entity | source=probe/agent/result_spool.py:L223 | neighbors=[.spool_bytes()] | lang=en
-- "agent_result_spool_rationale_236": "Whether new jobs must pause until pending results are uploaded.          These a" | kind=entity | source=probe/agent/result_spool.py:L236 | neighbors=[.at_capacity()] | lang=en
-- "agent_result_spool_rationale_25": "Persists scan results locally and retries failed uploads." | kind=entity | source=probe/agent/result_spool.py:L25 | neighbors=[ResultSpool] | lang=en
-- "agent_result_spool_rationale_27": "Persists scan results locally and retries failed uploads." | kind=entity | source=probe/agent/result_spool.py:L27 | neighbors=[ResultSpool] | lang=en
-- "agent_result_spool_rationale_28": "Persists scan results locally and retries failed uploads." | kind=entity | source=probe/agent/result_spool.py:L28 | neighbors=[ResultSpool] | lang=en
-- "agent_result_spool_rationale_40": "Atomically write a result payload to the spool directory.          Returns the s" | kind=entity | source=probe/agent/result_spool.py:L40 | neighbors=[.save()] | lang=en
-- "agent_result_spool_rationale_60": "Atomically write a result payload to the spool directory.          Returns the s" | kind=entity | source=probe/agent/result_spool.py:L60 | neighbors=[.save()] | lang=en
-- "agent_result_spool_rationale_62": "Check if a spooled result exists for this job." | kind=entity | source=probe/agent/result_spool.py:L62 | neighbors=[.exists()] | lang=en
-- "agent_result_spool_rationale_66": "Load a previously spooled result, returning None if missing/corrupt." | kind=entity | source=probe/agent/result_spool.py:L66 | neighbors=[.load()] | lang=pt
-- "agent_result_spool_rationale_69": "Atomically write a result payload to the spool directory.          Returns the s" | kind=entity | source=probe/agent/result_spool.py:L69 | neighbors=[.save()] | lang=en
-- "agent_result_spool_rationale_77": "Remove the spool file for a successfully uploaded result." | kind=entity | source=probe/agent/result_spool.py:L77 | neighbors=[.remove()] | lang=en
-- "agent_result_spool_rationale_87": "Check if a spooled result exists for this job." | kind=entity | source=probe/agent/result_spool.py:L87 | neighbors=[.exists()] | lang=en
-- "agent_result_spool_rationale_88": "Attempt to upload a result with retries and local spool as fallback.          Ar" | kind=entity | source=probe/agent/result_spool.py:L88 | neighbors=[.submit_with_retry()] | lang=en
-- "agent_result_spool_rationale_91": "Load a previously spooled result, returning None if missing/corrupt." | kind=entity | source=probe/agent/result_spool.py:L91 | neighbors=[.load()] | lang=pt
-- "agent_result_spool_rationale_96": "Check if a spooled result exists for this job." | kind=entity | source=probe/agent/result_spool.py:L96 | neighbors=[.exists()] | lang=en
-- "agent_result_spool_resultspool_init": ".__init__()" | kind=code-symbol | source=probe/agent/result_spool.py:L30 | neighbors=[ResultSpool] | lang=en
-- "agent_scope_crypt_rationale_1": "scope_crypt.py — asymmetric scope encryption via X25519 + HKDF + AES-256-GCM.  T" | kind=entity | source=probe/agent/scope_crypt.py:L1 | neighbors=[scope_crypt.py] | lang=en
-- "agent_scope_crypt_rationale_151": "encrypt_scope() returning a base64 string suitable for JSON transport." | kind=entity | source=probe/agent/scope_crypt.py:L151 | neighbors=[encrypt_scope_b64()] | lang=en
-- "agent_scope_crypt_rationale_156": "decrypt_scope() accepting a base64 string from JSON transport." | kind=entity | source=probe/agent/scope_crypt.py:L156 | neighbors=[decrypt_scope_b64()] | lang=en
-- "agent_scope_crypt_rationale_161": "Decode a base64-encoded X25519 public key to raw bytes." | kind=entity | source=probe/agent/scope_crypt.py:L161 | neighbors=[pubkey_to_bytes()] | lang=en
-- "agent_scope_crypt_rationale_166": "Encode raw X25519 public key bytes to a base64 string." | kind=entity | source=probe/agent/scope_crypt.py:L166 | neighbors=[bytes_to_pubkey_b64()] | lang=en
-- "agent_scope_crypt_rationale_44": "Generate a fresh X25519 keypair.      Returns (private_key_bytes, public_key_byt" | kind=entity | source=probe/agent/scope_crypt.py:L44 | neighbors=[generate_identity()] | lang=pt
-- "agent_scope_crypt_rationale_56": "Encrypt scope JSON to a specific probe's public key.      Args:         scope_js" | kind=entity | source=probe/agent/scope_crypt.py:L56 | neighbors=[encrypt_scope()] | lang=en
-- "agent_scope_crypt_rationale_98": "Decrypt a scope blob using the probe's private key.      Args:         blob: Wir" | kind=entity | source=probe/agent/scope_crypt.py:L98 | neighbors=[decrypt_scope()] | lang=en
-- "agent_scope_validator_rationale_1": "scope_validator.py — defense-in-depth scope re-validation for the probe.  The pr" | kind=entity | source=probe/agent/scope_validator.py:L1 | neighbors=[scope_validator.py] | lang=en
-- "agent_scope_validator_rationale_121": "Merge engagement-level exclusions with per-job exclusions.      Returns a dedupl" | kind=entity | source=probe/agent/scope_validator.py:L121 | neighbors=[merge_exclusions()] | lang=en
-- "agent_scope_validator_rationale_124": "Remove targets that fall inside any excluded CIDR.      Returns (kept, dropped)." | kind=entity | source=probe/agent/scope_validator.py:L124 | neighbors=[targets_in_excludes()] | lang=en
-- "agent_scope_validator_rationale_158": "Merge engagement-level exclusions with per-job exclusions.      Returns a dedupl" | kind=entity | source=probe/agent/scope_validator.py:L158 | neighbors=[merge_exclusions()] | lang=en
-- "agent_scope_validator_rationale_28": "Parse one IP, CIDR, or inclusive IP range into covering networks.      ``None``" | kind=entity | source=probe/agent/scope_validator.py:L28 | neighbors=[_networks_for_target()] | lang=en
-- "agent_scope_validator_rationale_31": "Fetch the engagement's authoritative scope from the manager.      Args:" | kind=entity | source=probe/agent/scope_validator.py:L31 | neighbors=[fetch_engagement_scope()] | lang=en
-- "agent_scope_validator_rationale_85": "Check targets against the authoritative scope CIDRs.      Returns (allowed, reje" | kind=entity | source=probe/agent/scope_validator.py:L85 | neighbors=[validate_targets_in_scope()] | lang=en
-- "agent_scope_validator_rationale_88": "Remove targets that fall inside any excluded CIDR.      Returns (kept, dropped)." | kind=entity | source=probe/agent/scope_validator.py:L88 | neighbors=[targets_in_excludes()] | lang=en
-- "agent_task_runner_rationale_1": "task_runner.py — orchestrates the full lifecycle of a single scan job.  Given a" | kind=entity | source=probe/agent/task_runner.py:L1 | neighbors=[task_runner.py] | lang=en
-- "agent_task_runner_rationale_28": "Structured result from running one scan job." | kind=entity | source=probe/agent/task_runner.py:L28 | neighbors=[JobResult] | lang=en
-- "agent_task_runner_rationale_283": "Submit the result, with spool-and-retry if available." | kind=entity | source=probe/agent/task_runner.py:L283 | neighbors=[._submit_or_spool()] | lang=en
+- "vuln_enrichment_rationale_307": "Returns composite risk score on 0-1000 scale.          Formula:           (cvss*" | kind=entity | source=manager/backend/app/vuln/enrichment.py:L307 | neighbors=[.compute_composite_risk(), AssetCriticality]
+- "vuln_enrichment_rationale_342": "Fetch NVD, EPSS, KEV and MITRE concurrently." | kind=entity | source=manager/backend/app/vuln/enrichment.py:L342 | neighbors=[._fetch_all(), AssetCriticality]
+- "vuln_enrichment_rationale_352": "SHA-256 of (asset_id, cve_id, plugin_id) for deduplication." | kind=entity | source=manager/backend/app/vuln/enrichment.py:L352 | neighbors=[.dedup_hash(), AssetCriticality]
+- "vuln_enrichment_rationale_92": "Enriches Finding objects with NVD, EPSS, CISA KEV, and MITRE data." | kind=entity | source=manager/backend/app/vuln/enrichment.py:L92 | neighbors=[VulnEnrichmentService, AssetCriticality]
+- "vuln_enrichment_vulnenrichmentservice_dedup_hash": ".dedup_hash()" | kind=code-symbol | source=manager/backend/app/vuln/enrichment.py:L351 | neighbors=[SHA-256 of (asset_id, cve_id, plugin_id…, VulnEnrichmentService]
+- "vuln_enrichment_vulnenrichmentservice_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/vuln/enrichment.py:L94 | neighbors=[VulnEnrichmentService, TTLCache]
+- "vuln_init": "__init__.py" | kind=code-symbol | source=manager/backend/app/vuln/__init__.py:L1 | neighbors=[d1b4dd3 trim frontend to 7 core pages; …, 298a9d4 trim frontend to 7 core pages; …]
+- "vuln_nessus_nessusscanner_auth_headers": "._auth_headers()" | kind=code-symbol | source=manager/backend/app/vuln/nessus.py:L59 | neighbors=[NessusScanner, ._get_client()]
+- "vuln_nessus_nessusscanner_get_plugin_detail": "._get_plugin_detail()" | kind=code-symbol | source=manager/backend/app/vuln/nessus.py:L193 | neighbors=[NessusScanner, .get_results()]
+- "vuln_nessus_nessusscanner_get_template_uuid": "._get_template_uuid()" | kind=code-symbol | source=manager/backend/app/vuln/nessus.py:L124 | neighbors=[NessusScanner, .create_scan()]
+- "vuln_nuclei_nucleiscanner_read_stderr": "._read_stderr()" | kind=code-symbol | source=manager/backend/app/vuln/nuclei.py:L313 | neighbors=[NucleiScanner, .run_scan()]
+- "vuln_nuclei_nucleiscanner_stop_process": "._stop_process()" | kind=code-symbol | source=manager/backend/app/vuln/nuclei.py:L324 | neighbors=[NucleiScanner, .run_scan()]
+- "vuln_tasks_fire_critical_webhook": "_fire_critical_webhook()" | kind=code-symbol | source=manager/backend/app/vuln/tasks.py:L135 | neighbors=[tasks.py, run_post_scan_enrichment()]
+- "websocket_manager_connectionmanager_get_room_clients": ".get_room_clients()" | kind=code-symbol | source=manager/backend/app/websocket/manager.py:L73 | neighbors=[ConnectionManager, Get number of connected clients in a ro…]
+- "websocket_manager_graphwebsocketmanager_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/websocket/manager.py:L295 | neighbors=[GraphWebSocketManager, ConnectionManager]
+- "websocket_manager_rationale_209": "Push a job to the first online agent in the requested tenant.          Returns t" | kind=entity | source=manager/backend/app/websocket/manager.py:L209 | neighbors=[.push_job_to_first_online(), .get_agent_status()]
+- "workers_init": "__init__.py" | kind=code-symbol | source=manager/backend/app/workers/__init__.py:L1 | neighbors=[10dfc80 Add comprehensive probe testing…, 2885afa Add comprehensive probe testing…]
+- "workers_outbox_main": "main()" | kind=code-symbol | source=manager/backend/app/workers/outbox.py:L302 | neighbors=[outbox.py, Event]
+- "workers_outbox_mark_done": "_mark_done()" | kind=code-symbol | source=manager/backend/app/workers/outbox.py:L223 | neighbors=[outbox.py, _process()]
+- "workflow_asset_utcnow": "_utcnow()" | kind=code-symbol | source=probe/workflow/asset.py:L27 | neighbors=[asset.py, .needs_recheck_live()]
+- "workflow_cache_cacheentry_from_jsonl_dict": ".from_jsonl_dict()" | kind=code-symbol | source=probe/workflow/cache.py:L71 | neighbors=[CacheEntry, ._load()]
+- "workflow_cache_cacheentry_to_jsonl_dict": ".to_jsonl_dict()" | kind=code-symbol | source=probe/workflow/cache.py:L65 | neighbors=[CacheEntry, .save()]
+- "workflow_cache_workflowcache_init": ".__init__()" | kind=code-symbol | source=probe/workflow/cache.py:L83 | neighbors=[WorkflowCache, ._load()]
+- "workflow_cache_workflowcache_save": ".save()" | kind=code-symbol | source=probe/workflow/cache.py:L101 | neighbors=[WorkflowCache, .to_jsonl_dict()]
+- "workflow_cli_build_creds": "_build_creds()" | kind=code-symbol | source=probe/workflow/cli.py:L83 | neighbors=[cli.py, _main()]
+- "workflow_cli_build_mode": "_build_mode()" | kind=code-symbol | source=probe/workflow/cli.py:L71 | neighbors=[cli.py, _main()]
+- "workflow_cli_build_parser": "build_parser()" | kind=code-symbol | source=probe/workflow/cli.py:L43 | neighbors=[cli.py, _main()]
+- "workflow_execution_engine_manifest": "engine_manifest()" | kind=code-symbol | source=probe/workflow/execution.py:L58 | neighbors=[execution.py, Return the runtime engine inventory wit…]
+- "workflow_execution_errordetail": "ErrorDetail" | kind=code-symbol | source=probe/workflow/execution.py:L147 | neighbors=[execution.py, classify_scanner_error()]
+- "workflow_execution_executiontrace_as_list": ".as_list()" | kind=code-symbol | source=probe/workflow/execution.py:L364 | neighbors=[ExecutionTrace, ._has_active_coverage()]
+- "workflow_execution_executiontrace_finalize": ".finalize()" | kind=code-symbol | source=probe/workflow/execution.py:L333 | neighbors=[ExecutionTrace, .skip()]
+- "workflow_execution_executiontrace_init": ".__init__()" | kind=code-symbol | source=probe/workflow/execution.py:L234 | neighbors=[ExecutionTrace, ._ensure()]
+- "workflow_execution_executiontrace_reused": ".reused()" | kind=code-symbol | source=probe/workflow/execution.py:L319 | neighbors=[ExecutionTrace, .record()]
+- "workflow_execution_planned_components": "planned_components()" | kind=code-symbol | source=probe/workflow/execution.py:L96 | neighbors=[execution.py, Resolve the exact collector plan for on…]
+- "workflow_gates_gate_2_host_discovery": "gate_2_host_discovery()" | kind=code-symbol | source=probe/workflow/gates.py:L54 | neighbors=[gates.py, gate_0_is_passive_profile()]
+- "workflow_gates_gate_3_port_scan": "gate_3_port_scan()" | kind=code-symbol | source=probe/workflow/gates.py:L61 | neighbors=[gates.py, gate_0_is_passive_profile()]
+- "workflow_modes_includes_stage": "includes_stage()" | kind=code-symbol | source=probe/workflow/modes.py:L45 | neighbors=[modes.py, Return whether a bounded plan includes …]
+- "workflow_modes_resolve_stage_ceiling": "resolve_stage_ceiling()" | kind=code-symbol | source=probe/workflow/modes.py:L25 | neighbors=[modes.py, Resolve the explicit ceiling while pres…]
+- "workflow_modes_service_specific": "service_specific()" | kind=code-symbol | source=probe/workflow/modes.py:L118 | neighbors=[modes.py, EngagementMode]
+- "workflow_report_diff_assets": "diff_assets()" | kind=code-symbol | source=probe/workflow/report.py:L42 | neighbors=[report.py, re-scan mode's delta report: what chang…]
 
 ## Instructions
 

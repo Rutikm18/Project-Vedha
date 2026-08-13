@@ -1,4 +1,4 @@
-# Node Description Batch 96 of 134
+# Node Description Batch 96 of 144
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,51 +12,58 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
+For an entity node (any other kind — e.g. a person, place, event, object),
+describe what the entity is and its role, grounded in its type, its
+relations (neighbors) and the provided citations/evidence — e.g.
+"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
+Ground entity descriptions in the citations/evidence when present; do not
+speculate beyond the context, so a node with no supporting context may be
+left out of the reply.
 Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "lib_cases_store_caseseverity": "CaseSeverity" | kind=code-symbol | source=manager/frontend/lib/cases-store.ts:L4 | neighbors=[cases-store.ts]
-- "lib_cases_store_casestatus": "CaseStatus" | kind=code-symbol | source=manager/frontend/lib/cases-store.ts:L5 | neighbors=[cases-store.ts]
-- "lib_cases_store_data_file": "DATA_FILE" | kind=code-symbol | source=manager/frontend/lib/cases-store.ts:L51 | neighbors=[cases-store.ts]
-- "lib_cases_store_getslainfo": "getSlaInfo()" | kind=code-symbol | source=manager/frontend/lib/cases-store.ts:L320 | neighbors=[cases-store.ts]
-- "lib_cases_store_seed_cases": "SEED_CASES" | kind=code-symbol | source=manager/frontend/lib/cases-store.ts:L61 | neighbors=[cases-store.ts]
-- "lib_cases_store_sla_hours": "SLA_HOURS" | kind=code-symbol | source=manager/frontend/lib/cases-store.ts:L53 | neighbors=[cases-store.ts]
-- "lib_clients_store_clientjiraconfig": "ClientJiraConfig" | kind=code-symbol | source=manager/frontend/lib/clients-store.ts:L8 | neighbors=[clients-store.ts]
-- "lib_clients_store_clientnotifyconfig": "ClientNotifyConfig" | kind=code-symbol | source=manager/frontend/lib/clients-store.ts:L15 | neighbors=[clients-store.ts]
-- "lib_clients_store_clientsettings": "ClientSettings" | kind=code-symbol | source=manager/frontend/lib/clients-store.ts:L21 | neighbors=[clients-store.ts]
-- "lib_clients_store_clientsfile": "ClientsFile" | kind=code-symbol | source=manager/frontend/lib/clients-store.ts:L36 | neighbors=[clients-store.ts]
-- "lib_clients_store_clientstatus": "ClientStatus" | kind=code-symbol | source=manager/frontend/lib/clients-store.ts:L6 | neighbors=[clients-store.ts]
-- "lib_clients_store_data_path": "DATA_PATH" | kind=code-symbol | source=manager/frontend/lib/clients-store.ts:L4 | neighbors=[clients-store.ts]
-- "lib_clients_store_seed": "SEED" | kind=code-symbol | source=manager/frontend/lib/clients-store.ts:L41 | neighbors=[clients-store.ts]
-- "lib_detection_store_attack_timeline": "ATTACK_TIMELINE" | kind=code-symbol | source=manager/frontend/lib/detection-store.ts:L22 | neighbors=[detection-store.ts]
-- "lib_detection_store_attackaction": "AttackAction" | kind=code-symbol | source=manager/frontend/lib/detection-store.ts:L8 | neighbors=[detection-store.ts]
-- "lib_detection_store_computecoverage": "computeCoverage()" | kind=code-symbol | source=manager/frontend/lib/detection-store.ts:L131 | neighbors=[detection-store.ts]
-- "lib_detection_store_correlate": "correlate()" | kind=code-symbol | source=manager/frontend/lib/detection-store.ts:L97 | neighbors=[detection-store.ts]
-- "lib_detection_store_correlationruns": "correlationRuns" | kind=code-symbol | source=manager/frontend/lib/detection-store.ts:L413 | neighbors=[detection-store.ts]
-- "lib_detection_store_coveragestats": "CoverageStats" | kind=code-symbol | source=manager/frontend/lib/detection-store.ts:L78 | neighbors=[detection-store.ts]
-- "lib_detection_store_detectionoutcome": "DetectionOutcome" | kind=code-symbol | source=manager/frontend/lib/detection-store.ts:L4 | neighbors=[detection-store.ts]
-- "lib_detection_store_detectionresult": "DetectionResult" | kind=code-symbol | source=manager/frontend/lib/detection-store.ts:L65 | neighbors=[detection-store.ts]
-- "lib_detection_store_edr_detections": "EDR_DETECTIONS" | kind=code-symbol | source=manager/frontend/lib/detection-store.ts:L56 | neighbors=[detection-store.ts]
-- "lib_detection_store_edrdetection": "EDRDetection" | kind=code-symbol | source=manager/frontend/lib/detection-store.ts:L41 | neighbors=[detection-store.ts]
-- "lib_detection_store_generatesigma": "generateSigma()" | kind=code-symbol | source=manager/frontend/lib/detection-store.ts:L359 | neighbors=[detection-store.ts]
-- "lib_detection_store_isinwindow": "isInWindow()" | kind=code-symbol | source=manager/frontend/lib/detection-store.ts:L88 | neighbors=[detection-store.ts]
-- "lib_detection_store_issamehost": "isSameHost()" | kind=code-symbol | source=manager/frontend/lib/detection-store.ts:L92 | neighbors=[detection-store.ts]
-- "lib_detection_store_siem_alerts": "SIEM_ALERTS" | kind=code-symbol | source=manager/frontend/lib/detection-store.ts:L48 | neighbors=[detection-store.ts]
-- "lib_detection_store_siemalert": "SIEMAlert" | kind=code-symbol | source=manager/frontend/lib/detection-store.ts:L35 | neighbors=[detection-store.ts]
-- "lib_detection_store_siemconfigs": "siemConfigs" | kind=code-symbol | source=manager/frontend/lib/detection-store.ts:L410 | neighbors=[detection-store.ts]
-- "lib_detection_store_sigma_templates": "SIGMA_TEMPLATES" | kind=code-symbol | source=manager/frontend/lib/detection-store.ts:L153 | neighbors=[detection-store.ts]
-- "lib_detection_store_sigmarule": "SigmaRule" | kind=code-symbol | source=manager/frontend/lib/detection-store.ts:L145 | neighbors=[detection-store.ts]
-- "lib_engagements_store_activity": "ACTIVITY" | kind=code-symbol | source=manager/frontend/lib/engagements-store.ts:L98 | neighbors=[engagements-store.ts]
-- "lib_engagements_store_credential": "Credential" | kind=code-symbol | source=manager/frontend/lib/engagements-store.ts:L3 | neighbors=[engagements-store.ts]
-- "lib_engagements_store_engagement": "Engagement" | kind=code-symbol | source=manager/frontend/lib/engagements-store.ts:L10 | neighbors=[engagements-store.ts]
-- "lib_engagements_store_engagementsstore": "engagementsStore" | kind=code-symbol | source=manager/frontend/lib/engagements-store.ts:L122 | neighbors=[engagements-store.ts]
-- "lib_engagements_store_engagementstatus": "EngagementStatus" | kind=code-symbol | source=manager/frontend/lib/engagements-store.ts:L1 | neighbors=[engagements-store.ts]
-- "lib_engagements_store_findings_timeline": "FINDINGS_TIMELINE" | kind=code-symbol | source=manager/frontend/lib/engagements-store.ts:L109 | neighbors=[engagements-store.ts]
-- "lib_engagements_store_genid": "genId()" | kind=code-symbol | source=manager/frontend/lib/engagements-store.ts:L32 | neighbors=[engagements-store.ts]
-- "lib_engagements_store_now": "now" | kind=code-symbol | source=manager/frontend/lib/engagements-store.ts:L108 | neighbors=[engagements-store.ts]
-- "lib_engagements_store_store": "STORE" | kind=code-symbol | source=manager/frontend/lib/engagements-store.ts:L34 | neighbors=[engagements-store.ts]
+- "discovery_service_id_rationale_1": "ServiceIdentifier — banner + port → structured service fingerprint. Handles: HTT" | kind=entity | source=manager/backend/app/discovery/service_id.py:L1 | neighbors=[service_id.py]
+- "discovery_worker_discoveryjobpayload_post_init": ".__post_init__()" | kind=code-symbol | source=manager/backend/app/discovery/worker.py:L50 | neighbors=[DiscoveryJobPayload]
+- "discovery_worker_discoveryworker_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/discovery/worker.py:L61 | neighbors=[DiscoveryWorker]
+- "discovery_xml_parser_parsedhost_open_ports": ".open_ports()" | kind=code-symbol | source=manager/backend/app/discovery/xml_parser.py:L36 | neighbors=[ParsedHost]
+- "discovery_xml_parser_rationale_1": "Nmap XML output parser. Converts -oX output into structured ParsedHost / ParsedP" | kind=entity | source=manager/backend/app/discovery/xml_parser.py:L1 | neighbors=[xml_parser.py]
+- "discovery_xml_parser_rationale_41": "Parse nmap -oX XML into a list of ParsedHost objects." | kind=entity | source=manager/backend/app/discovery/xml_parser.py:L41 | neighbors=[NmapXMLParser]
+- "discovery_xml_parser_rationale_42": "Parse nmap -oX XML into a list of ParsedHost objects." | kind=entity | source=manager/backend/app/discovery/xml_parser.py:L42 | neighbors=[NmapXMLParser]
+- "draft_route_get": "GET()" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/ai-report/draft/route.ts:L4 | neighbors=[route.ts]
+- "engagements_page_empty_form": "EMPTY_FORM" | kind=code-symbol | source=manager/frontend/app/engagements/page.tsx:L41 | neighbors=[page.tsx]
+- "engagements_page_engagement": "Engagement" | kind=code-symbol | source=manager/frontend/app/engagements/page.tsx:L17 | neighbors=[page.tsx]
+- "engagements_page_engagementsresponse": "EngagementsResponse" | kind=code-symbol | source=manager/frontend/app/engagements/page.tsx:L25 | neighbors=[page.tsx]
+- "engagements_page_engagementstatus": "EngagementStatus" | kind=code-symbol | source=manager/frontend/app/engagements/page.tsx:L15 | neighbors=[page.tsx]
+- "engagements_page_formstate": "FormState" | kind=code-symbol | source=manager/frontend/app/engagements/page.tsx:L33 | neighbors=[page.tsx]
+- "engagements_page_rowskeleton": "RowSkeleton()" | kind=code-symbol | source=manager/frontend/app/engagements/page.tsx:L71 | neighbors=[page.tsx]
+- "engagements_page_sevcolor": "sevColor()" | kind=code-symbol | source=manager/frontend/app/engagements/page.tsx:L63 | neighbors=[page.tsx]
+- "engagements_page_statuscolor": "statusColor()" | kind=code-symbol | source=manager/frontend/app/engagements/page.tsx:L55 | neighbors=[page.tsx]
+- "engagements_page_steps": "STEPS" | kind=code-symbol | source=manager/frontend/app/engagements/page.tsx:L84 | neighbors=[page.tsx]
+- "engagements_route_get": "GET" | kind=code-symbol | source=manager/frontend/app/api/engagements/route.ts:L13 | neighbors=[route.ts]
+- "engagements_route_post": "POST" | kind=code-symbol | source=manager/frontend/app/api/engagements/route.ts:L30 | neighbors=[route.ts]
+- "engine_scan_modules_defaultmodules": "defaultModules()" | kind=code-symbol | source=manager/frontend/lib/engine/scan-modules.ts:L345 | neighbors=[scan-modules.ts]
+- "engine_scan_modules_depthdefaults": "depthDefaults()" | kind=code-symbol | source=manager/frontend/lib/engine/scan-modules.ts:L385 | neighbors=[scan-modules.ts]
+- "engine_scan_modules_modulebyid": "moduleById()" | kind=code-symbol | source=manager/frontend/lib/engine/scan-modules.ts:L329 | neighbors=[scan-modules.ts]
+- "engine_scan_modules_modulecategory": "ModuleCategory" | kind=code-symbol | source=manager/frontend/lib/engine/scan-modules.ts:L19 | neighbors=[scan-modules.ts]
+- "engine_scan_modules_moduleinput": "ModuleInput" | kind=code-symbol | source=manager/frontend/lib/engine/scan-modules.ts:L27 | neighbors=[scan-modules.ts]
+- "engine_scan_modules_moduleoutput": "ModuleOutput" | kind=code-symbol | source=manager/frontend/lib/engine/scan-modules.ts:L28 | neighbors=[scan-modules.ts]
+- "engine_scan_modules_scanmodule": "ScanModule" | kind=code-symbol | source=manager/frontend/lib/engine/scan-modules.ts:L30 | neighbors=[scan-modules.ts]
+- "engine_tool_runners_httpxline": "HttpxLine" | kind=code-symbol | source=manager/frontend/lib/engine/tool-runners.ts:L661 | neighbors=[tool-runners.ts]
+- "engine_tool_runners_naabu_rate": "NAABU_RATE" | kind=code-symbol | source=manager/frontend/lib/engine/tool-runners.ts:L25 | neighbors=[tool-runners.ts]
+- "engine_tool_runners_nmap_timing": "NMAP_TIMING" | kind=code-symbol | source=manager/frontend/lib/engine/tool-runners.ts:L26 | neighbors=[tool-runners.ts]
+- "engine_tool_runners_nserunspec": "NseRunSpec" | kind=code-symbol | source=manager/frontend/lib/engine/tool-runners.ts:L1035 | neighbors=[tool-runners.ts]
+- "engine_tool_runners_nsesection": "nseSection()" | kind=code-symbol | source=manager/frontend/lib/engine/tool-runners.ts:L1070 | neighbors=[tool-runners.ts]
+- "engine_tool_runners_processresult": "ProcessResult" | kind=code-symbol | source=manager/frontend/lib/engine/tool-runners.ts:L97 | neighbors=[tool-runners.ts]
+- "engine_tool_runners_rundnsrecon": "runDnsRecon()" | kind=code-symbol | source=manager/frontend/lib/engine/tool-runners.ts:L590 | neighbors=[tool-runners.ts]
+- "engine_types_agentjob": "AgentJob" | kind=code-symbol | source=manager/frontend/lib/engine/types.ts:L132 | neighbors=[types.ts]
+- "engine_types_agentjobresult": "AgentJobResult" | kind=code-symbol | source=manager/frontend/lib/engine/types.ts:L145 | neighbors=[types.ts]
+- "engine_types_discoverydepth": "DiscoveryDepth" | kind=code-symbol | source=manager/frontend/lib/engine/types.ts:L34 | neighbors=[types.ts]
+- "engine_types_scanprofile": "ScanProfile" | kind=code-symbol | source=manager/frontend/lib/engine/types.ts:L3 | neighbors=[types.ts]
+- "enrollment_route_get": "GET" | kind=code-symbol | source=manager/frontend/app/api/fleet/enrollment/route.ts:L5 | neighbors=[route.ts]
+- "enrollment_route_post": "POST" | kind=code-symbol | source=manager/frontend/app/api/fleet/enrollment/route.ts:L13 | neighbors=[route.ts]
+- "explain_route_managerairesponse": "ManagerAiResponse" | kind=code-symbol | source=manager/frontend/app/api/assistant/explain/route.ts:L14 | neighbors=[route.ts]
 
 ## Instructions
 

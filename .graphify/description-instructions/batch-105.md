@@ -1,4 +1,4 @@
-# Node Description Batch 106 of 134
+# Node Description Batch 106 of 144
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,53 +19,51 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-LANGUAGE: each entry has a `lang=` marker giving the language of its source.
-Write that entry's description in EXACTLY that language. Do not translate to
-a single common language — match each node's source language individually.
+Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "scanner_scanner_base_rationale_69": "Loads an allowlist of CIDRs / IPs / hostnames and decides whether a target     i" | kind=entity | source=probe/scanner/scanner_base.py:L69 | neighbors=[ScopeGuard] | lang=en
-- "scanner_scanner_base_resultwriter_init": ".__init__()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L331 | neighbors=[ResultWriter] | lang=en
-- "scanner_scanner_base_scopeguard_from_list": ".from_list()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L116 | neighbors=[ScopeGuard] | lang=en
-- "scanner_scanner_base_scopeguard_init": ".__init__()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L80 | neighbors=[ScopeGuard] | lang=en
-- "scanner_scanner_base_setup_logging": "setup_logging()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L454 | neighbors=[scanner_base.py] | lang=en
-- "scanner_service_banner_main": "main()" | kind=code-symbol | source=probe/scanner/service_banner.py:L103 | neighbors=[service_banner.py] | lang=en
-- "scanner_service_banner_rationale_1": "service_banner.py — grab service banners and light version strings.  METHOD (col" | kind=entity | source=probe/scanner/service_banner.py:L1 | neighbors=[service_banner.py] | lang=en
-- "scanner_service_banner_servicebannerscanner_init": ".__init__()" | kind=code-symbol | source=probe/scanner/service_banner.py:L37 | neighbors=[ServiceBannerScanner] | lang=en
-- "scanner_smb_scanner_main": "main()" | kind=code-symbol | source=probe/scanner/smb_scanner.py:L159 | neighbors=[smb_scanner.py] | lang=en
-- "scanner_smb_scanner_rationale_1": "smb_scanner.py — detect which SMB dialects a host supports.  METHOD (collection" | kind=entity | source=probe/scanner/smb_scanner.py:L1 | neighbors=[smb_scanner.py] | lang=en
-- "scanner_smb_scanner_rationale_37": "Read signing posture from an SMB2 NEGOTIATE response.      The response carries" | kind=entity | source=probe/scanner/smb_scanner.py:L37 | neighbors=[parse_smb2_security_mode()] | lang=en
-- "scanner_smb_scanner_smbscanner_init": ".__init__()" | kind=code-symbol | source=probe/scanner/smb_scanner.py:L107 | neighbors=[SMBScanner] | lang=en
-- "scanner_snmp_scanner_main": "main()" | kind=code-symbol | source=probe/scanner/snmp_scanner.py:L124 | neighbors=[snmp_scanner.py] | lang=en
-- "scanner_snmp_scanner_rationale_1": "snmp_scanner.py — detect SNMP and read sysDescr via common community strings.  M" | kind=entity | source=probe/scanner/snmp_scanner.py:L1 | neighbors=[snmp_scanner.py] | lang=en
-- "scanner_snmp_scanner_snmpscanner_init": ".__init__()" | kind=code-symbol | source=probe/scanner/snmp_scanner.py:L78 | neighbors=[SNMPScanner] | lang=en
-- "scanner_ssh_collector_collect_over_ssh": "_collect_over_ssh()" | kind=code-symbol | source=probe/scanner/ssh_collector.py:L52 | neighbors=[ssh_collector.py] | lang=en
-- "scanner_ssh_collector_main": "main()" | kind=code-symbol | source=probe/scanner/ssh_collector.py:L125 | neighbors=[ssh_collector.py] | lang=en
-- "scanner_ssh_collector_rationale_1": "ssh_collector.py — credentialed (authenticated) inventory collection for Linux." | kind=entity | source=probe/scanner/ssh_collector.py:L1 | neighbors=[ssh_collector.py] | lang=en
-- "scanner_ssh_collector_sshcollector_init": ".__init__()" | kind=code-symbol | source=probe/scanner/ssh_collector.py:L83 | neighbors=[SSHCollector] | lang=en
-- "scanner_tls_scanner_main": "main()" | kind=code-symbol | source=probe/scanner/tls_scanner.py:L186 | neighbors=[tls_scanner.py] | lang=en
-- "scanner_tls_scanner_rationale_1": "tls_scanner.py — collect TLS/SSL configuration facts.  METHOD (collection only):" | kind=entity | source=probe/scanner/tls_scanner.py:L1 | neighbors=[tls_scanner.py] | lang=en
-- "scanner_tls_scanner_rationale_57": "Never send an IP literal as SNI — non-conformant; some servers reject it." | kind=entity | source=probe/scanner/tls_scanner.py:L57 | neighbors=[_sni()] | lang=en
-- "scanner_tls_scanner_rationale_66": "Attempt a handshake forcing one protocol version. Returns cipher dict or None." | kind=entity | source=probe/scanner/tls_scanner.py:L66 | neighbors=[_try_version()] | lang=pt
-- "scanner_tls_scanner_tlsscanner_init": ".__init__()" | kind=code-symbol | source=probe/scanner/tls_scanner.py:L158 | neighbors=[TLSScanner] | lang=en
-- "scanner_udp_scanner_dns_probe": "_dns_probe()" | kind=code-symbol | source=probe/scanner/udp_scanner.py:L29 | neighbors=[udp_scanner.py] | lang=en
-- "scanner_udp_scanner_main": "main()" | kind=code-symbol | source=probe/scanner/udp_scanner.py:L181 | neighbors=[udp_scanner.py] | lang=en
-- "scanner_udp_scanner_memcached_stats_probe": "_memcached_stats_probe()" | kind=code-symbol | source=probe/scanner/udp_scanner.py:L78 | neighbors=[udp_scanner.py] | lang=en
-- "scanner_udp_scanner_netbios_probe": "_netbios_probe()" | kind=code-symbol | source=probe/scanner/udp_scanner.py:L62 | neighbors=[udp_scanner.py] | lang=en
-- "scanner_udp_scanner_ntp_probe": "_ntp_probe()" | kind=code-symbol | source=probe/scanner/udp_scanner.py:L40 | neighbors=[udp_scanner.py] | lang=en
-- "scanner_udp_scanner_rationale_1": "udp_scanner.py — detect common UDP services via protocol-specific probes.  METHO" | kind=entity | source=probe/scanner/udp_scanner.py:L1 | neighbors=[udp_scanner.py] | lang=en
-- "scanner_udp_scanner_snmp_probe": "_snmp_probe()" | kind=code-symbol | source=probe/scanner/udp_scanner.py:L45 | neighbors=[udp_scanner.py] | lang=en
-- "scanner_udp_scanner_udpscanner_init": ".__init__()" | kind=code-symbol | source=probe/scanner/udp_scanner.py:L115 | neighbors=[UDPScanner] | lang=en
-- "scanner_udp_scanner_udpscanner_send_recv": "._send_recv()" | kind=code-symbol | source=probe/scanner/udp_scanner.py:L157 | neighbors=[UDPScanner] | lang=en
-- "scanner_web_scanner_main": "main()" | kind=code-symbol | source=probe/scanner/web_scanner.py:L165 | neighbors=[web_scanner.py] | lang=en
-- "scanner_web_scanner_noredirect_redirect_request": ".redirect_request()" | kind=code-symbol | source=probe/scanner/web_scanner.py:L55 | neighbors=[_NoRedirect] | lang=en
-- "scanner_web_scanner_rationale_1": "web_scanner.py — passive HTTP(S) service fingerprinting.  METHOD (collection onl" | kind=entity | source=probe/scanner/web_scanner.py:L1 | neighbors=[web_scanner.py] | lang=en
-- "scanner_web_scanner_rationale_45": "Read the Allow header from an OPTIONS response. Read-only." | kind=entity | source=probe/scanner/web_scanner.py:L45 | neighbors=[parse_allow_header()] | lang=en
-- "scanner_web_scanner_webscanner_init": ".__init__()" | kind=code-symbol | source=probe/scanner/web_scanner.py:L138 | neighbors=[WebScanner] | lang=en
-- "scanner_windows_collector_main": "main()" | kind=code-symbol | source=probe/scanner/windows_collector.py:L335 | neighbors=[windows_collector.py] | lang=en
-- "scanner_windows_collector_rationale_1": "windows_collector.py — credentialed (authenticated) inventory for Windows hosts." | kind=entity | source=probe/scanner/windows_collector.py:L1 | neighbors=[windows_collector.py] | lang=en
+- "native_dir_bust_dirbustresult": "DirBustResult" | kind=code-symbol | source=manager/frontend/lib/engine/native/dir-bust.ts:L57 | neighbors=[dir-bust.ts]
+- "native_dir_bust_nativediropts": "NativeDirOpts" | kind=code-symbol | source=manager/frontend/lib/engine/native/dir-bust.ts:L90 | neighbors=[dir-bust.ts]
+- "native_dir_bust_proberesp": "ProbeResp" | kind=code-symbol | source=manager/frontend/lib/engine/native/dir-bust.ts:L66 | neighbors=[dir-bust.ts]
+- "native_dns_recon_common_subdomains": "COMMON_SUBDOMAINS" | kind=code-symbol | source=manager/frontend/lib/engine/native/dns-recon.ts:L33 | neighbors=[dns-recon.ts]
+- "native_dns_recon_dnsreconresult": "DnsReconResult" | kind=code-symbol | source=manager/frontend/lib/engine/native/dns-recon.ts:L15 | neighbors=[dns-recon.ts]
+- "native_dns_recon_ptrsweepresult": "PtrSweepResult" | kind=code-symbol | source=manager/frontend/lib/engine/native/dns-recon.ts:L28 | neighbors=[dns-recon.ts]
+- "native_http_probe_extracttitle": "extractTitle()" | kind=code-symbol | source=manager/frontend/lib/engine/native/http-probe.ts:L103 | neighbors=[http-probe.ts]
+- "native_http_probe_fingerprint": "fingerprint()" | kind=code-symbol | source=manager/frontend/lib/engine/native/http-probe.ts:L108 | neighbors=[http-probe.ts]
+- "native_http_probe_httpproberesult": "HttpProbeResult" | kind=code-symbol | source=manager/frontend/lib/engine/native/http-probe.ts:L79 | neighbors=[http-probe.ts]
+- "native_http_probe_nativehttpopts": "NativeHttpOpts" | kind=code-symbol | source=manager/frontend/lib/engine/native/http-probe.ts:L239 | neighbors=[http-probe.ts]
+- "native_http_probe_probeone": "probeOne()" | kind=code-symbol | source=manager/frontend/lib/engine/native/http-probe.ts:L143 | neighbors=[http-probe.ts]
+- "native_http_probe_tech_rules": "TECH_RULES" | kind=code-symbol | source=manager/frontend/lib/engine/native/http-probe.ts:L38 | neighbors=[http-probe.ts]
+- "native_http_probe_techrule": "TechRule" | kind=code-symbol | source=manager/frontend/lib/engine/native/http-probe.ts:L30 | neighbors=[http-probe.ts]
+- "native_http_probe_web_port_proto": "WEB_PORT_PROTO" | kind=code-symbol | source=manager/frontend/lib/engine/native/http-probe.ts:L21 | neighbors=[http-probe.ts]
+- "native_port_scan_checkopts": "CheckOpts" | kind=code-symbol | source=manager/frontend/lib/engine/native/port-scan.ts:L159 | neighbors=[port-scan.ts]
+- "native_port_scan_checkport": "checkPort()" | kind=code-symbol | source=manager/frontend/lib/engine/native/port-scan.ts:L165 | neighbors=[port-scan.ts]
+- "native_port_scan_expandtarget": "expandTarget()" | kind=code-symbol | source=manager/frontend/lib/engine/native/port-scan.ts:L140 | neighbors=[port-scan.ts]
+- "native_port_scan_nativeportresult": "NativePortResult" | kind=code-symbol | source=manager/frontend/lib/engine/native/port-scan.ts:L122 | neighbors=[port-scan.ts]
+- "native_port_scan_nativescanopts": "NativeScanOpts" | kind=code-symbol | source=manager/frontend/lib/engine/native/port-scan.ts:L209 | neighbors=[port-scan.ts]
+- "native_port_scan_port_names": "PORT_NAMES" | kind=code-symbol | source=manager/frontend/lib/engine/native/port-scan.ts:L111 | neighbors=[port-scan.ts]
+- "native_port_scan_portrange": "PortRange" | kind=code-symbol | source=manager/frontend/lib/engine/native/port-scan.ts:L129 | neighbors=[port-scan.ts]
+- "native_port_scan_top_1000_tcp": "TOP_1000_TCP" | kind=code-symbol | source=manager/frontend/lib/engine/native/port-scan.ts:L23 | neighbors=[port-scan.ts]
+- "native_tls_info_tlsinforesult": "TlsInfoResult" | kind=code-symbol | source=manager/frontend/lib/engine/native/tls-info.ts:L14 | neighbors=[tls-info.ts]
+- "native_tls_info_weak_protocols": "WEAK_PROTOCOLS" | kind=code-symbol | source=manager/frontend/lib/engine/native/tls-info.ts:L36 | neighbors=[tls-info.ts]
+- "native_tls_info_weak_signatures": "WEAK_SIGNATURES" | kind=code-symbol | source=manager/frontend/lib/engine/native/tls-info.ts:L35 | neighbors=[tls-info.ts]
+- "ordereddict": "OrderedDict" | kind=code-symbol | neighbors=[TTLCache]
+- "oserror": "OSError" | kind=code-symbol | neighbors=[NmapExecutionError]
+- "pathid_route_get": "GET()" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/attack-paths/[pathId]/route.ts:L5 | neighbors=[route.ts]
+- "probe_pipeline_collector_init": ".__init__()" | kind=code-symbol | source=probe/pipeline.py:L122 | neighbors=[_Collector]
+- "probe_pipeline_ip_key": "_ip_key()" | kind=code-symbol | source=probe/pipeline.py:L243 | neighbors=[pipeline.py]
+- "probe_pipeline_main": "main()" | kind=code-symbol | source=probe/pipeline.py:L356 | neighbors=[pipeline.py]
+- "probe_pipeline_rationale_133": "Make a per-host scanner instance share ONE rate limiter + semaphore with all" | kind=entity | source=probe/pipeline.py:L133 | neighbors=[_shared()]
+- "probe_pipeline_rationale_252": "Make a raw banner safe and readable for the summary line.      Many services ans" | kind=entity | source=probe/pipeline.py:L252 | neighbors=[_clean()]
+- "probe_pipeline_render_summary": "_render_summary()" | kind=code-symbol | source=probe/pipeline.py:L316 | neighbors=[pipeline.py]
+- "probe_pipeline_run_passive": "_run_passive()" | kind=code-symbol | source=probe/pipeline.py:L227 | neighbors=[pipeline.py]
+- "probe_run_scan_rationale_42": "# NOTE: credentialed collectors (ssh_collector, windows_collector) are run" | kind=entity | source=probe/run_scan.py:L42 | neighbors=[run_scan.py]
+- "probe_selftest_live_c": "_c()" | kind=code-symbol | source=probe/selftest_live.py:L28 | neighbors=[selftest_live.py]
+- "probe_selftest_live_handler_do_get": ".do_GET()" | kind=code-symbol | source=probe/selftest_live.py:L53 | neighbors=[_Handler]
+- "probe_selftest_live_handler_do_options": ".do_OPTIONS()" | kind=code-symbol | source=probe/selftest_live.py:L62 | neighbors=[_Handler]
+- "probe_selftest_live_handler_log_message": ".log_message()" | kind=code-symbol | source=probe/selftest_live.py:L50 | neighbors=[_Handler]
 
 ## Instructions
 

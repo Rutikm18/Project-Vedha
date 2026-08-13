@@ -1,4 +1,4 @@
-# Node Description Batch 121 of 134
+# Node Description Batch 121 of 144
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,51 +12,58 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
+For an entity node (any other kind — e.g. a person, place, event, object),
+describe what the entity is and its role, grounded in its type, its
+relations (neighbors) and the provided citations/evidence — e.g.
+"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
+Ground entity descriptions in the citations/evidence when present; do not
+speculate beyond the context, so a node with no supporting context may be
+left out of the reply.
 Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_probe_core_testparseports_test_single_port": ".test_single_port()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L190 | neighbors=[TestParsePorts]
-- "tests_test_probe_core_testparseports_test_sorted": ".test_sorted()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L205 | neighbors=[TestParsePorts]
-- "tests_test_probe_core_testratelimiter_test_min_interval": ".test_min_interval()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L248 | neighbors=[TestRateLimiter]
-- "tests_test_probe_core_testratelimiter_test_wait_returns_immediately_at_zero_rate": ".test_wait_returns_immediately_at_zero_rate()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L256 | neighbors=[TestRateLimiter]
-- "tests_test_probe_core_testratelimiter_test_zero_rate": ".test_zero_rate()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L252 | neighbors=[TestRateLimiter]
-- "tests_test_probe_core_testresolvescantype_test_default": ".test_default()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L823 | neighbors=[TestResolveScanType]
-- "tests_test_probe_core_testresolvescantype_test_from_job_type": ".test_from_job_type()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L820 | neighbors=[TestResolveScanType]
-- "tests_test_probe_core_testresolvescantype_test_from_params": ".test_from_params()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L817 | neighbors=[TestResolveScanType]
-- "tests_test_probe_core_testresolvescantype_test_params_override_job_type": ".test_params_override_job_type()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L826 | neighbors=[TestResolveScanType]
-- "tests_test_probe_core_testscanresult_test_default_status_observed": ".test_default_status_observed()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L238 | neighbors=[TestScanResult]
-- "tests_test_probe_core_testscanresult_test_default_timestamp_present": ".test_default_timestamp_present()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L234 | neighbors=[TestScanResult]
-- "tests_test_probe_core_testscopeguard_test_assert_in_scope_passes": ".test_assert_in_scope_passes()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L114 | neighbors=[TestScopeGuard]
-- "tests_test_probe_core_testscopeguard_test_assert_in_scope_raises": ".test_assert_in_scope_raises()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L109 | neighbors=[TestScopeGuard]
-- "tests_test_probe_core_testscopeguard_test_excludes_larger_subnet": ".test_excludes_larger_subnet()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L104 | neighbors=[TestScopeGuard]
-- "tests_test_probe_core_testscopeguard_test_excludes_override_allowlist": ".test_excludes_override_allowlist()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L99 | neighbors=[TestScopeGuard]
-- "tests_test_probe_core_testscopeguard_test_filter_yields_only_in_scope": ".test_filter_yields_only_in_scope()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L118 | neighbors=[TestScopeGuard]
-- "tests_test_probe_core_testscopeguard_test_from_file": ".test_from_file()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L123 | neighbors=[TestScopeGuard]
-- "tests_test_probe_core_testscopeguard_test_from_file_empty_raises": ".test_from_file_empty_raises()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L130 | neighbors=[TestScopeGuard]
-- "tests_test_probe_core_testscopeguard_test_from_file_missing_raises": ".test_from_file_missing_raises()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L136 | neighbors=[TestScopeGuard]
-- "tests_test_probe_core_testscopeguard_test_from_list_hostname": ".test_from_list_hostname()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L90 | neighbors=[TestScopeGuard]
-- "tests_test_probe_core_testscopeguard_test_from_list_ip_in_cidr": ".test_from_list_ip_in_cidr()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L80 | neighbors=[TestScopeGuard]
-- "tests_test_probe_core_testscopeguard_test_from_list_single_ip": ".test_from_list_single_ip()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L85 | neighbors=[TestScopeGuard]
-- "tests_test_probe_core_testscopeguard_test_hostname_case_insensitive": ".test_hostname_case_insensitive()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L95 | neighbors=[TestScopeGuard]
-- "tests_test_probe_core_testtargets_test_empty": ".test_empty()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L857 | neighbors=[TestTargets]
-- "tests_test_probe_core_testtargets_test_list": ".test_list()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L848 | neighbors=[TestTargets]
-- "tests_test_probe_core_testtargets_test_scope_cidrs": ".test_scope_cidrs()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L854 | neighbors=[TestTargets]
-- "tests_test_probe_core_testtargets_test_single_string": ".test_single_string()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L851 | neighbors=[TestTargets]
-- "tests_test_probe_core_testtuningfromparams_test_clamped_rate": ".test_clamped_rate()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L868 | neighbors=[TestTuningFromParams]
-- "tests_test_probe_core_testtuningfromparams_test_defaults": ".test_defaults()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L862 | neighbors=[TestTuningFromParams]
-- "tests_test_probe_core_testtuningfromparams_test_no_ssh_creds_without_user": ".test_no_ssh_creds_without_user()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L876 | neighbors=[TestTuningFromParams]
-- "tests_test_probe_core_testtuningfromparams_test_passive_listen_seconds": ".test_passive_listen_seconds()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L888 | neighbors=[TestTuningFromParams]
-- "tests_test_probe_core_testtuningfromparams_test_recheck_hours": ".test_recheck_hours()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L884 | neighbors=[TestTuningFromParams]
-- "tests_test_probe_core_testtuningfromparams_test_ssh_creds": ".test_ssh_creds()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L872 | neighbors=[TestTuningFromParams]
-- "tests_test_probe_core_testtuningfromparams_test_win_creds": ".test_win_creds()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L880 | neighbors=[TestTuningFromParams]
-- "tests_test_probe_core_testusecasesresolve_test_default_discovery": ".test_default_discovery()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L940 | neighbors=[TestUseCasesResolve]
-- "tests_test_probe_core_testusecasesresolve_test_fallback_to_job_type": ".test_fallback_to_job_type()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L936 | neighbors=[TestUseCasesResolve]
-- "tests_test_probe_core_testusecasesresolve_test_fallback_to_scan_type": ".test_fallback_to_scan_type()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L931 | neighbors=[TestUseCasesResolve]
-- "tests_test_probe_core_testusecasesresolve_test_full_assessment": ".test_full_assessment()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L917 | neighbors=[TestUseCasesResolve]
-- "tests_test_probe_core_testusecasesresolve_test_ot_passive": ".test_ot_passive()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L922 | neighbors=[TestUseCasesResolve]
-- "tests_test_probe_core_testusecasesresolve_test_unknown_use_case_raises": ".test_unknown_use_case_raises()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L927 | neighbors=[TestUseCasesResolve]
+- "tests_test_auth_login_teststartupdiagnostics_test_bcrypt_round_trip_passes": ".test_bcrypt_round_trip_passes()" | kind=code-symbol | source=manager/backend/tests/test_auth_login.py:L277 | neighbors=[TestStartupDiagnostics]
+- "tests_test_auth_login_teststartupdiagnostics_test_cookie_config_fatal_in_production": ".test_cookie_config_fatal_in_production()" | kind=code-symbol | source=manager/backend/tests/test_auth_login.py:L283 | neighbors=[TestStartupDiagnostics]
+- "tests_test_auth_login_teststartupdiagnostics_test_cookie_config_ok_in_development": ".test_cookie_config_ok_in_development()" | kind=code-symbol | source=manager/backend/tests/test_auth_login.py:L293 | neighbors=[TestStartupDiagnostics]
+- "tests_test_auth_login_teststartupdiagnostics_test_database_check_returns_fatal_on_connection_error": ".test_database_check_returns_fatal_on_connection_error()" | kind=code-symbol | source=manager/backend/tests/test_auth_login.py:L303 | neighbors=[TestStartupDiagnostics]
+- "tests_test_auth_login_teststartupdiagnostics_test_jwt_secret_known_weak_is_fatal": ".test_jwt_secret_known_weak_is_fatal()" | kind=code-symbol | source=manager/backend/tests/test_auth_login.py:L261 | neighbors=[TestStartupDiagnostics]
+- "tests_test_auth_login_teststartupdiagnostics_test_jwt_secret_strong_is_ok": ".test_jwt_secret_strong_is_ok()" | kind=code-symbol | source=manager/backend/tests/test_auth_login.py:L269 | neighbors=[TestStartupDiagnostics]
+- "tests_test_auth_login_teststartupdiagnostics_test_jwt_secret_too_short_is_fatal": ".test_jwt_secret_too_short_is_fatal()" | kind=code-symbol | source=manager/backend/tests/test_auth_login.py:L253 | neighbors=[TestStartupDiagnostics]
+- "tests_test_auth_login_teststartupdiagnostics_test_redis_check_returns_fatal_on_connection_error": ".test_redis_check_returns_fatal_on_connection_error()" | kind=code-symbol | source=manager/backend/tests/test_auth_login.py:L313 | neighbors=[TestStartupDiagnostics]
+- "tests_test_auth_login_teststartupdiagnostics_test_run_all_aborts_on_fatal": ".test_run_all_aborts_on_fatal()" | kind=code-symbol | source=manager/backend/tests/test_auth_login.py:L322 | neighbors=[TestStartupDiagnostics]
+- "tests_test_cli_fakeclient_init": ".__init__()" | kind=code-symbol | source=probe/tests/test_cli.py:L153 | neighbors=[FakeClient]
+- "tests_test_cli_fakeclient_request": ".request()" | kind=code-symbol | source=probe/tests/test_cli.py:L157 | neighbors=[FakeClient]
+- "tests_test_cli_test_cmd_daemon_run_overrides_stale_env_and_sets_probe_identity": "test_cmd_daemon_run_overrides_stale_env_and_sets_probe_identity()" | kind=code-symbol | source=probe/tests/test_cli.py:L318 | neighbors=[test_cli.py]
+- "tests_test_cli_test_cmd_doctor_fails_when_no_agent_unless_allowed": "test_cmd_doctor_fails_when_no_agent_unless_allowed()" | kind=code-symbol | source=probe/tests/test_cli.py:L248 | neighbors=[test_cli.py]
+- "tests_test_cli_test_config_store_rejects_malformed_json": "test_config_store_rejects_malformed_json()" | kind=code-symbol | source=probe/tests/test_cli.py:L31 | neighbors=[test_cli.py]
+- "tests_test_cli_test_config_store_rejects_non_object_profiles": "test_config_store_rejects_non_object_profiles()" | kind=code-symbol | source=probe/tests/test_cli.py:L38 | neighbors=[test_cli.py]
+- "tests_test_cli_test_config_store_writes_private_file": "test_config_store_writes_private_file()" | kind=code-symbol | source=probe/tests/test_cli.py:L13 | neighbors=[test_cli.py]
+- "tests_test_cli_test_normalize_manager_url_trims_and_validates": "test_normalize_manager_url_trims_and_validates()" | kind=code-symbol | source=probe/tests/test_cli.py:L72 | neighbors=[test_cli.py]
+- "tests_test_cli_test_parse_param_pairs_rejects_missing_equals": "test_parse_param_pairs_rejects_missing_equals()" | kind=code-symbol | source=probe/tests/test_cli.py:L59 | neighbors=[test_cli.py]
+- "tests_test_cli_test_parse_param_pairs_supports_json_values": "test_parse_param_pairs_supports_json_values()" | kind=code-symbol | source=probe/tests/test_cli.py:L45 | neighbors=[test_cli.py]
+- "tests_test_cli_test_parser_accepts_json_after_concrete_commands": "test_parser_accepts_json_after_concrete_commands()" | kind=code-symbol | source=probe/tests/test_cli.py:L80 | neighbors=[test_cli.py]
+- "tests_test_cli_test_resolve_profile_env_overrides_config": "test_resolve_profile_env_overrides_config()" | kind=code-symbol | source=probe/tests/test_cli.py:L106 | neighbors=[test_cli.py]
+- "tests_test_cli_test_resolve_profile_reports_missing_manager_or_token": "test_resolve_profile_reports_missing_manager_or_token()" | kind=code-symbol | source=probe/tests/test_cli.py:L134 | neighbors=[test_cli.py]
+- "tests_test_cli_test_split_values_accepts_repeated_and_csv_values": "test_split_values_accepts_repeated_and_csv_values()" | kind=code-symbol | source=probe/tests/test_cli.py:L64 | neighbors=[test_cli.py]
+- "tests_test_db_scanner_fakereader_init": ".__init__()" | kind=code-symbol | source=probe/tests/test_db_scanner.py:L18 | neighbors=[FakeReader]
+- "tests_test_db_scanner_fakereader_read": ".read()" | kind=code-symbol | source=probe/tests/test_db_scanner.py:L21 | neighbors=[FakeReader]
+- "tests_test_db_scanner_fakewriter_drain": ".drain()" | kind=code-symbol | source=probe/tests/test_db_scanner.py:L29 | neighbors=[FakeWriter]
+- "tests_test_db_scanner_fakewriter_write": ".write()" | kind=code-symbol | source=probe/tests/test_db_scanner.py:L26 | neighbors=[FakeWriter]
+- "tests_test_db_scanner_rationale_1": "Regression tests for db_scanner fingerprint matchers.  Focus: MySQL X Protocol (" | kind=entity | source=probe/tests/test_db_scanner.py:L1 | neighbors=[test_db_scanner.py]
+- "tests_test_db_unauth_test_redis_authenticated": "test_redis_authenticated()" | kind=code-symbol | source=probe/tests/test_db_unauth.py:L11 | neighbors=[test_db_unauth.py]
+- "tests_test_db_unauth_test_redis_unauthenticated": "test_redis_unauthenticated()" | kind=code-symbol | source=probe/tests/test_db_unauth.py:L4 | neighbors=[test_db_unauth.py]
+- "tests_test_detection_core_testallosvsourcepackages_test_returns_list": ".test_returns_list()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L994 | neighbors=[TestAllOsvSourcePackages]
+- "tests_test_detection_core_testallosvsourcepackages_test_sorted": ".test_sorted()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L999 | neighbors=[TestAllOsvSourcePackages]
+- "tests_test_detection_core_testasset_test_add_alias": ".test_add_alias()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L157 | neighbors=[TestAsset]
+- "tests_test_detection_core_testclassifyconfidence_test_authoritative_scanners": ".test_authoritative_scanners()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L203 | neighbors=[TestClassifyConfidence]
+- "tests_test_detection_core_testclassifyconfidence_test_inferred_scanners": ".test_inferred_scanners()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L207 | neighbors=[TestClassifyConfidence]
+- "tests_test_detection_core_testcleandebianversion_test_no_revision": ".test_no_revision()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L982 | neighbors=[TestCleanDebianVersion]
+- "tests_test_detection_core_testcleandebianversion_test_strips_epoch": ".test_strips_epoch()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L977 | neighbors=[TestCleanDebianVersion]
+- "tests_test_detection_core_testcleandebianversion_test_strips_revision": ".test_strips_revision()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L972 | neighbors=[TestCleanDebianVersion]
+- "tests_test_detection_core_testcleanrpmversion_test_strips_release": ".test_strips_release()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L989 | neighbors=[TestCleanRpmVersion]
+- "tests_test_detection_core_testcorrelatesmbpatch_test_no_smb_facts_returns_none": ".test_no_smb_facts_returns_none()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L561 | neighbors=[TestCorrelateSmbPatch]
 
 ## Instructions
 

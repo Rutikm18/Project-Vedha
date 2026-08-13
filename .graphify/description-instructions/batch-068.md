@@ -1,4 +1,4 @@
-# Node Description Batch 69 of 134
+# Node Description Batch 69 of 144
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,51 +12,58 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
+For an entity node (any other kind — e.g. a person, place, event, object),
+describe what the entity is and its role, grounded in its type, its
+relations (neighbors) and the provided citations/evidence — e.g.
+"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
+Ground entity descriptions in the citations/evidence when present; do not
+speculate beyond the context, so a node with no supporting context may be
+left out of the reply.
 Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_detection_core_testnormalizedb_test_unknown_engine": ".test_unknown_engine()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L949 | neighbors=[TestNormalizeDb, _fact()]
-- "tests_test_detection_core_testnormalizeweb_test_server_header": ".test_server_header()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L926 | neighbors=[TestNormalizeWeb, _fact()]
-- "tests_test_detection_core_testsuppressnegated_test_keeps_authoritative_finding": ".test_keeps_authoritative_finding()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L527 | neighbors=[TestSuppressNegated, _finding()]
-- "tests_test_detection_core_testsuppressnegated_test_keeps_inferred_when_no_authoritative": ".test_keeps_inferred_when_no_authoritative()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L534 | neighbors=[TestSuppressNegated, _finding()]
-- "tests_test_detection_core_testverify_test_ai_cap_at_60": ".test_ai_cap_at_60()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L656 | neighbors=[TestVerify, _finding()]
-- "tests_test_detection_core_testverify_test_ai_no_cap_if_already_below": ".test_ai_no_cap_if_already_below()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L661 | neighbors=[TestVerify, _finding()]
-- "tests_test_detection_core_testverify_test_auth_enforced_penalty": ".test_auth_enforced_penalty()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L673 | neighbors=[TestVerify, _finding()]
-- "tests_test_detection_core_testverify_test_authoritative_tier_base_95": ".test_authoritative_tier_base_95()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L638 | neighbors=[TestVerify, _finding()]
-- "tests_test_detection_core_testverify_test_backport_penalty": ".test_backport_penalty()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L649 | neighbors=[TestVerify, _finding()]
-- "tests_test_detection_core_testverify_test_checks_dict_populated": ".test_checks_dict_populated()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L703 | neighbors=[TestVerify, _finding()]
-- "tests_test_detection_core_testverify_test_confidence_clamped_at_zero": ".test_confidence_clamped_at_zero()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L712 | neighbors=[TestVerify, _finding()]
-- "tests_test_detection_core_testverify_test_confirmed_never_downgraded": ".test_confirmed_never_downgraded()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L697 | neighbors=[TestVerify, _finding()]
-- "tests_test_detection_core_testverify_test_deception_high_penalty": ".test_deception_high_penalty()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L679 | neighbors=[TestVerify, _finding()]
-- "tests_test_detection_core_testverify_test_deception_moderate_penalty": ".test_deception_moderate_penalty()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L684 | neighbors=[TestVerify, _finding()]
-- "tests_test_detection_core_testverify_test_filtered_port_penalty": ".test_filtered_port_penalty()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L668 | neighbors=[TestVerify, _finding()]
-- "tests_test_detection_core_testverify_test_protocol_tier_base_85": ".test_protocol_tier_base_85()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L643 | neighbors=[TestVerify, _finding()]
-- "tests_test_detection_core_testverify_test_state_downgrade_below_40": ".test_state_downgrade_below_40()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L689 | neighbors=[TestVerify, _finding()]
-- "tests_test_detection_core_testvulndb_test_covers": ".test_covers()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L877 | neighbors=[TestVulnDB, _mock_vuln_db()]
-- "tests_test_detection_core_testvulndb_test_cvss_vector_index": ".test_cvss_vector_index()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L882 | neighbors=[TestVulnDB, _mock_vuln_db()]
-- "tests_test_detection_core_testvulndb_test_cvss_vector_missing": ".test_cvss_vector_missing()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L890 | neighbors=[TestVulnDB, _mock_vuln_db()]
-- "tests_test_detection_core_testvulndb_test_known_products_sorted": ".test_known_products_sorted()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L894 | neighbors=[TestVulnDB, _mock_vuln_db()]
-- "tests_test_detection_core_testvulndb_test_lookup_existing": ".test_lookup_existing()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L868 | neighbors=[TestVulnDB, _mock_vuln_db()]
-- "tests_test_detection_core_testvulndb_test_lookup_missing_returns_empty": ".test_lookup_missing_returns_empty()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L873 | neighbors=[TestVulnDB, _mock_vuln_db()]
-- "tests_test_detection_validation_testdetectioncorrelator_test_compute_coverage": ".test_compute_coverage()" | kind=code-symbol | source=manager/backend/tests/test_detection_validation.py:L105 | neighbors=[TestDetectionCorrelator, _action()]
-- "tests_test_detection_validation_testdetectioncorrelator_test_detected_by_siem": ".test_detected_by_siem()" | kind=code-symbol | source=manager/backend/tests/test_detection_validation.py:L54 | neighbors=[TestDetectionCorrelator, _action()]
-- "tests_test_detection_validation_testdetectioncorrelator_test_detected_when_edr_not_blocking": ".test_detected_when_edr_not_blocking()" | kind=code-symbol | source=manager/backend/tests/test_detection_validation.py:L69 | neighbors=[TestDetectionCorrelator, _action()]
-- "tests_test_detection_validation_testdetectioncorrelator_test_gap_report_ignores_detected": ".test_gap_report_ignores_detected()" | kind=code-symbol | source=manager/backend/tests/test_detection_validation.py:L135 | neighbors=[TestDetectionCorrelator, _action()]
-- "tests_test_detection_validation_testdetectioncorrelator_test_generate_gap_report": ".test_generate_gap_report()" | kind=code-symbol | source=manager/backend/tests/test_detection_validation.py:L126 | neighbors=[TestDetectionCorrelator, _action()]
-- "tests_test_detection_validation_testdetectioncorrelator_test_host_match_by_ip": ".test_host_match_by_ip()" | kind=code-symbol | source=manager/backend/tests/test_detection_validation.py:L92 | neighbors=[TestDetectionCorrelator, _action()]
-- "tests_test_detection_validation_testdetectioncorrelator_test_missed_when_nothing": ".test_missed_when_nothing()" | kind=code-symbol | source=manager/backend/tests/test_detection_validation.py:L75 | neighbors=[TestDetectionCorrelator, _action()]
-- "tests_test_detection_validation_testdetectioncorrelator_test_out_of_window_is_missed": ".test_out_of_window_is_missed()" | kind=code-symbol | source=manager/backend/tests/test_detection_validation.py:L80 | neighbors=[TestDetectionCorrelator, _action()]
-- "tests_test_detection_validation_testdetectioncorrelator_test_prevented_by_edr": ".test_prevented_by_edr()" | kind=code-symbol | source=manager/backend/tests/test_detection_validation.py:L62 | neighbors=[TestDetectionCorrelator, _action()]
-- "tests_test_detection_validation_testdetectioncorrelator_test_wrong_host_is_missed": ".test_wrong_host_is_missed()" | kind=code-symbol | source=manager/backend/tests/test_detection_validation.py:L86 | neighbors=[TestDetectionCorrelator, _action()]
-- "tests_test_exploit_engine_engagement": "_engagement()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L49 | neighbors=[test_exploit_engine.py, .test_validate_scope_out_of_range()]
-- "tests_test_exploit_engine_pytest_addoption": "pytest_addoption()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L464 | neighbors=[test_exploit_engine.py, Register --msf-host CLI option for inte…]
-- "tests_test_exploit_engine_testexploitorchestrator_test_generate_dns_callback_token_format": ".test_generate_dns_callback_token_format()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L290 | neighbors=[TestExploitOrchestrator, ._make_orchestrator()]
-- "tests_test_exploit_engine_testexploitorchestrator_test_generate_dns_callback_token_unique": ".test_generate_dns_callback_token_unique()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L298 | neighbors=[TestExploitOrchestrator, ._make_orchestrator()]
-- "tests_test_exploit_engine_testexploitorchestrator_test_validate_safety_meterpreter_raises": ".test_validate_safety_meterpreter_raises()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L275 | neighbors=[TestExploitOrchestrator, ._make_orchestrator()]
-- "tests_test_exploit_engine_testmetasploitrpcclient_test_get_job_status_running": ".test_get_job_status_running()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L218 | neighbors=[TestMetasploitRPCClient, ._make_client()]
-- "tests_test_exploit_engine_testmetasploitrpcclient_test_kill_job": ".test_kill_job()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L227 | neighbors=[TestMetasploitRPCClient, ._make_client()]
+- "scanner_snmp_scanner_oid_in_subtree": "_oid_in_subtree()" | kind=code-symbol | source=probe/scanner/snmp_scanner.py:L240 | neighbors=[snmp_scanner.py, ._walk_subtree()]
+- "scanner_snmp_scanner_snmpscanner_query": "._query()" | kind=code-symbol | source=probe/scanner/snmp_scanner.py:L84 | neighbors=[SNMPScanner, _build_get()]
+- "scanner_snmp_scanner_snmpscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/scanner/snmp_scanner.py:L329 | neighbors=[SNMPScanner, _extract_sysdescr()]
+- "scanner_ssh_collector_sshcollector_collect": "._collect()" | kind=code-symbol | source=probe/scanner/ssh_collector.py:L95 | neighbors=[SSHCollector, .run()]
+- "scanner_ssh_collector_sshcollector_run": ".run()" | kind=code-symbol | source=probe/scanner/ssh_collector.py:L117 | neighbors=[SSHCollector, ._collect()]
+- "scanner_tls_scanner_parse_cert_der": "_parse_cert_der()" | kind=code-symbol | source=probe/scanner/tls_scanner.py:L184 | neighbors=[tls_scanner.py, _scan_tls_sync()]
+- "scanner_tls_scanner_tlsscanner_scan_port": "._scan_port()" | kind=code-symbol | source=probe/scanner/tls_scanner.py:L257 | neighbors=[TLSScanner, .scan_target()]
+- "scanner_tls_scanner_tlsscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/scanner/tls_scanner.py:L276 | neighbors=[TLSScanner, ._scan_port()]
+- "scanner_udp_scanner_ike_probe": "_ike_probe()" | kind=code-symbol | source=probe/scanner/udp_scanner.py:L77 | neighbors=[udp_scanner.py, Minimal IKEv2 IKE_SA_INIT probe.  Sends…]
+- "scanner_udp_scanner_interpret_dns_recursion": "interpret_dns_recursion()" | kind=code-symbol | source=probe/scanner/udp_scanner.py:L172 | neighbors=[udp_scanner.py, ._probe()]
+- "scanner_udp_scanner_interpret_memcached_stats": "interpret_memcached_stats()" | kind=code-symbol | source=probe/scanner/udp_scanner.py:L183 | neighbors=[udp_scanner.py, ._probe()]
+- "scanner_udp_scanner_interpret_ntp_monlist": "interpret_ntp_monlist()" | kind=code-symbol | source=probe/scanner/udp_scanner.py:L168 | neighbors=[udp_scanner.py, ._probe()]
+- "scanner_udp_scanner_ipmi_probe": "_ipmi_probe()" | kind=code-symbol | source=probe/scanner/udp_scanner.py:L138 | neighbors=[udp_scanner.py, RMCP Ping (ASF Presence Ping) to detect…]
+- "scanner_udp_scanner_mdns_probe": "_mdns_probe()" | kind=code-symbol | source=probe/scanner/udp_scanner.py:L157 | neighbors=[udp_scanner.py, mDNS PTR query for _services._dns-sd._u…]
+- "scanner_udp_scanner_ntp_monlist_probe": "_ntp_monlist_probe()" | kind=code-symbol | source=probe/scanner/udp_scanner.py:L50 | neighbors=[udp_scanner.py, ._probe()]
+- "scanner_udp_scanner_ssdp_probe": "_ssdp_probe()" | kind=code-symbol | source=probe/scanner/udp_scanner.py:L145 | neighbors=[udp_scanner.py, UPnP/SSDP M-SEARCH — unicast to target:…]
+- "scanner_udp_scanner_tftp_probe": "_tftp_probe()" | kind=code-symbol | source=probe/scanner/udp_scanner.py:L132 | neighbors=[udp_scanner.py, TFTP RRQ for a non-existent file.  Erro…]
+- "scanner_udp_scanner_udpscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/scanner/udp_scanner.py:L370 | neighbors=[UDPScanner, ._probe()]
+- "scanner_web_scanner_fetch": "_fetch()" | kind=code-symbol | source=probe/scanner/web_scanner.py:L77 | neighbors=[web_scanner.py, parse_allow_header()]
+- "scanner_web_scanner_noredirect": "_NoRedirect" | kind=code-symbol | source=probe/scanner/web_scanner.py:L54 | neighbors=[web_scanner.py, .redirect_request()]
+- "scanner_web_scanner_webscanner_scan_port": "._scan_port()" | kind=code-symbol | source=probe/scanner/web_scanner.py:L142 | neighbors=[WebScanner, .scan_target()]
+- "scanner_web_scanner_webscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/scanner/web_scanner.py:L159 | neighbors=[WebScanner, ._scan_port()]
+- "scanner_windows_collector_smb_registry_collect": "_smb_registry_collect()" | kind=code-symbol | source=probe/scanner/windows_collector.py:L158 | neighbors=[windows_collector.py, Connect to RemoteRegistry over SMB and …]
+- "scanner_windows_collector_windowscollector_full_user": "._full_user()" | kind=code-symbol | source=probe/scanner/windows_collector.py:L294 | neighbors=[WindowsCollector, ._collect_host()]
+- "scanner_windows_collector_windowscollector_run": ".run()" | kind=code-symbol | source=probe/scanner/windows_collector.py:L326 | neighbors=[WindowsCollector, ._collect_host()]
+- "scanner_windows_collector_windowscollector_smb_result": "._smb_result()" | kind=code-symbol | source=probe/scanner/windows_collector.py:L318 | neighbors=[WindowsCollector, ._collect_host()]
+- "scanner_windows_collector_windowscollector_transport_order": "._transport_order()" | kind=code-symbol | source=probe/scanner/windows_collector.py:L299 | neighbors=[WindowsCollector, ._collect_host()]
+- "scanner_windows_collector_windowscollector_winrm_result": "._winrm_result()" | kind=code-symbol | source=probe/scanner/windows_collector.py:L306 | neighbors=[WindowsCollector, ._collect_host()]
+- "schemas_ai_aigenerateresponse": "AiGenerateResponse" | kind=code-symbol | source=manager/backend/app/schemas/ai.py:L58 | neighbors=[ai.py, BaseModel]
+- "schemas_ai_aimessage": "AiMessage" | kind=code-symbol | source=manager/backend/app/schemas/ai.py:L13 | neighbors=[ai.py, BaseModel]
+- "schemas_auth_loginrequest": "LoginRequest" | kind=code-symbol | source=manager/backend/app/schemas/auth.py:L9 | neighbors=[auth.py, BaseModel]
+- "schemas_auth_personalaccesstokencreate": "PersonalAccessTokenCreate" | kind=code-symbol | source=manager/backend/app/schemas/auth.py:L32 | neighbors=[auth.py, BaseModel]
+- "schemas_auth_personalaccesstokencreated": "PersonalAccessTokenCreated" | kind=code-symbol | source=manager/backend/app/schemas/auth.py:L38 | neighbors=[auth.py, BaseModel]
+- "schemas_auth_personalaccesstokenout": "PersonalAccessTokenOut" | kind=code-symbol | source=manager/backend/app/schemas/auth.py:L49 | neighbors=[auth.py, BaseModel]
+- "schemas_auth_tokenresponse": "TokenResponse" | kind=code-symbol | source=manager/backend/app/schemas/auth.py:L14 | neighbors=[auth.py, BaseModel]
+- "schemas_common_errordetail": "ErrorDetail" | kind=code-symbol | source=manager/backend/app/schemas/common.py:L18 | neighbors=[common.py, BaseModel]
+- "schemas_common_paginate": "paginate()" | kind=code-symbol | source=manager/backend/app/schemas/common.py:L22 | neighbors=[common.py, PaginatedResponse]
+- "schemas_engagement_engagementcreate_validate_dates": ".validate_dates()" | kind=code-symbol | source=manager/backend/app/schemas/engagement.py:L66 | neighbors=[EngagementCreate, validate_engagement_dates()]
+- "schemas_engagement_engagementcreate_validate_scopes": ".validate_scopes()" | kind=code-symbol | source=manager/backend/app/schemas/engagement.py:L62 | neighbors=[EngagementCreate, validate_scope_entries()]
+- "schemas_engagement_rationale_13": "Validate and de-duplicate exact IP/CIDR authorization boundaries." | kind=entity | source=manager/backend/app/schemas/engagement.py:L13 | neighbors=[validate_scope_entries(), EngagementStatus]
 
 ## Instructions
 

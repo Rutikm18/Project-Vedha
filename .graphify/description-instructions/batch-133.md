@@ -1,4 +1,4 @@
-# Node Description Batch 134 of 134
+# Node Description Batch 134 of 144
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -26,46 +26,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "workflow_report_rationale_43": "re-scan mode's delta report: what changed between two engagements." | kind=entity | source=probe/workflow/report.py:L43 | neighbors=[diff_assets()] | lang=en
-- "workflow_router_rationale_1": "router.py — dynamic Gate-5 branch routing from OBSERVED service_banner content," | kind=entity | source=probe/workflow/router.py:L1 | neighbors=[router.py] | lang=en
-- "workflow_router_rationale_43": "True when this port's banner result is exactly the silent-on-garbage     signatu" | kind=entity | source=probe/workflow/router.py:L43 | neighbors=[looks_like_tls()] | lang=en
-- "workflow_router_rationale_51": "True when this port's banner result is exactly the silent-on-garbage     signatu" | kind=entity | source=probe/workflow/router.py:L51 | neighbors=[looks_like_tls()] | lang=en
-- "workflow_router_rationale_56": "For every open port with a banner fact, returns {port: {branches}}     that obse" | kind=entity | source=probe/workflow/router.py:L56 | neighbors=[route_branches()] | lang=en
-- "workflow_router_rationale_63": "True when a service banner carries a database greeting signature, so a DB     on" | kind=entity | source=probe/workflow/router.py:L63 | neighbors=[looks_like_db()] | lang=pt
-- "workflow_router_rationale_73": "For every open port with a banner fact, returns {port: {branches}}     that obse" | kind=entity | source=probe/workflow/router.py:L73 | neighbors=[route_branches()] | lang=en
-- "workflow_workflow_engine_rationale_1": "workflow_engine.py — the async DAG executor. Loops through gates, checks precond" | kind=entity | source=probe/workflow/workflow_engine.py:L1 | neighbors=[workflow_engine.py] | lang=en
-- "workflow_workflow_engine_rationale_104": "In-memory ResultWriter stand-in — PassiveCollector/SSHCollector/     WindowsColl" | kind=entity | source=probe/workflow/workflow_engine.py:L104 | neighbors=[_Sink] | lang=en
-- "workflow_workflow_engine_rationale_110": "Return TCP ports worth scanning for this profile and requested branch set." | kind=entity | source=probe/workflow/workflow_engine.py:L110 | neighbors=[_port_candidates()] | lang=en
-- "workflow_workflow_engine_rationale_134": "In-memory ResultWriter stand-in — PassiveCollector/SSHCollector/     WindowsColl" | kind=entity | source=probe/workflow/workflow_engine.py:L134 | neighbors=[_Sink] | lang=en
-- "workflow_workflow_engine_rationale_136": "Runs gates 0/2-6 (in order) across `targets`, mutating and returning     the Ass" | kind=entity | source=probe/workflow/workflow_engine.py:L136 | neighbors=[run_engagement()] | lang=en
-- "workflow_workflow_engine_rationale_236": "Runs gates 0/2-6 (in order) across `targets`, mutating and returning     the Ass" | kind=entity | source=probe/workflow/workflow_engine.py:L236 | neighbors=[run_engagement()] | lang=en
-- "workflow_workflow_engine_rationale_51": "Runs scanner.scan_target(host) across hosts concurrently; the     scanner's own" | kind=entity | source=probe/workflow/workflow_engine.py:L51 | neighbors=[_gather_per_host()] | lang=en
-- "workflow_workflow_engine_rationale_59": "Run one component without allowing a target-specific bug to abort peers." | kind=entity | source=probe/workflow/workflow_engine.py:L59 | neighbors=[_scan_one()] | lang=en
-- "workflow_workflow_engine_rationale_64": "Splits candidate_ports into (ports that actually need a fresh probe,     ScanRes" | kind=entity | source=probe/workflow/workflow_engine.py:L64 | neighbors=[_split_cached()] | lang=en
-- "workflow_workflow_engine_rationale_77": "Run per-host probes with bounded fan-out and failure isolation." | kind=entity | source=probe/workflow/workflow_engine.py:L77 | neighbors=[_gather_per_host()] | lang=en
-- "workflow_workflow_engine_rationale_80": "Return TCP ports worth scanning for this profile and requested branch set." | kind=entity | source=probe/workflow/workflow_engine.py:L80 | neighbors=[_port_candidates()] | lang=en
-- "workflow_workflow_engine_rationale_94": "Splits candidate_ports into (ports that actually need a fresh probe,     ScanRes" | kind=entity | source=probe/workflow/workflow_engine.py:L94 | neighbors=[_split_cached()] | lang=en
-- "workflow_workflow_engine_sink_close": ".close()" | kind=code-symbol | source=probe/workflow/workflow_engine.py:L145 | neighbors=[_Sink] | lang=en
-- "workflow_workflow_engine_sink_init": ".__init__()" | kind=code-symbol | source=probe/workflow/workflow_engine.py:L141 | neighbors=[_Sink] | lang=en
-- "workflow_workflow_engine_sink_write": ".write()" | kind=code-symbol | source=probe/workflow/workflow_engine.py:L143 | neighbors=[_Sink] | lang=en
-- "agent_agent_rationale_138": "Fast port discovery with naabu. Feeds port list to Nmap." | kind=entity | source=manager/frontend/infrastructure/agent/agent.py:L138 | lang=en
-- "agent_agent_rationale_202": "Nmap service enumeration. Accepts port list from Naabu." | kind=entity | source=manager/frontend/infrastructure/agent/agent.py:L202 | lang=en
-- "agent_agent_rationale_239": "Nuclei vulnerability scan — production-ready." | kind=entity | source=manager/frontend/infrastructure/agent/agent.py:L239 | lang=en
-- "agent_agent_rationale_304": "Impacket-based AD enumeration: Kerberoast, AS-REP roast, LDAP anonymous bind." | kind=entity | source=manager/frontend/infrastructure/agent/agent.py:L304 | lang=en
-- "agent_agent_rationale_374": "NetExec SMB validation: signing, null sessions, SMBv1." | kind=entity | source=manager/frontend/infrastructure/agent/agent.py:L374 | lang=en
-- "agent_agent_rationale_454": "testssl.sh TLS/SSL analysis." | kind=entity | source=manager/frontend/infrastructure/agent/agent.py:L454 | lang=en
-- "agent_agent_rationale_500": "Extract HTTP/HTTPS URLs from nmap XML output." | kind=entity | source=manager/frontend/infrastructure/agent/agent.py:L500 | lang=en
-- "agent_agent_rationale_528": "EyeWitness screenshot evidence collection." | kind=entity | source=manager/frontend/infrastructure/agent/agent.py:L528 | lang=en
-- "agent_agent_rationale_597": "Safe lateral movement checks — no actual exploitation." | kind=entity | source=manager/frontend/infrastructure/agent/agent.py:L597 | lang=en
-- "agent_agent_rationale_606": "Cloud infrastructure scan (AWS/Azure/GCP)." | kind=entity | source=manager/frontend/infrastructure/agent/agent.py:L606 | lang=en
-- "agent_agent_rationale_76": "Fetches credentials from HashiCorp Vault at runtime. Never caches to disk." | kind=entity | source=manager/frontend/infrastructure/agent/agent.py:L76 | lang=en
-- "agent_agent_rationale_82": "Read a KV-v2 secret from Vault." | kind=entity | source=manager/frontend/infrastructure/agent/agent.py:L82 | lang=en
-- "e2e_interop_verify_rationale_1": "Verify the Python probe can open what the TypeScript manager sealed (T14 interop" | kind=entity | source=manager/frontend/tests/e2e/interop_verify.py:L1 | lang=en
-- "e2e_mock_manager_rationale_1": "Reference mock manager for end-to-end probe testing.  Implements the PROBE_PROTO" | kind=entity | source=manager/frontend/tests/e2e/mock_manager.py:L1 | lang=en
-- "e2e_mock_manager_rationale_235": "Start the HTTPS server in a thread. Returns (httpd, base_url, pin_b64)." | kind=entity | source=manager/frontend/tests/e2e/mock_manager.py:L235 | lang=en
-- "e2e_run_rationale_1": "End-to-end probe test: real probe process ↔ reference mock manager over HTTPS." | kind=entity | source=manager/frontend/tests/e2e/run.py:L1 | lang=en
-- "e2e_run_rationale_30": "Deterministic stand-ins emitting realistic output for 127.0.0.1." | kind=entity | source=manager/frontend/tests/e2e/run.py:L30 | lang=en
-- "threadinghttpserver": "ThreadingHTTPServer" | kind=code-symbol | lang=en
+- "tests_test_task_runner_testrunnerscopevalidation_test_manager_job_without_scope_fails_closed": ".test_manager_job_without_scope_fails_closed()" | kind=code-symbol | source=probe/tests/test_task_runner.py:L354 | neighbors=[TestRunnerScopeValidation] | lang=en
+- "tests_test_task_runner_testrunnerscopevalidation_test_merge_engagement_and_job_excludes": ".test_merge_engagement_and_job_excludes()" | kind=code-symbol | source=probe/tests/test_task_runner.py:L366 | neighbors=[TestRunnerScopeValidation] | lang=en
+- "tests_test_task_runner_testrunnerscopevalidation_test_rejects_excluded_target": ".test_rejects_excluded_target()" | kind=code-symbol | source=probe/tests/test_task_runner.py:L303 | neighbors=[TestRunnerScopeValidation] | lang=en
+- "tests_test_task_runner_testrunnerscopevalidation_test_scope_fallback_preserves_manager_and_job_exclusions": ".test_scope_fallback_preserves_manager_and_job_exclusions()" | kind=code-symbol | source=probe/tests/test_task_runner.py:L331 | neighbors=[TestRunnerScopeValidation] | lang=en
+- "tests_test_transport_rationale_1": "Tests for agent/transport.py" | kind=entity | source=probe/tests/test_transport.py:L1 | neighbors=[test_transport.py] | lang=en
+- "tests_test_transport_rationale_16": "Create a Transport with a real state file path but no actual HTTP calls." | kind=entity | source=probe/tests/test_transport.py:L16 | neighbors=[transport()] | lang=pt
+- "tests_test_transport_rationale_18": "Create a Transport with a real state file path but no actual HTTP calls." | kind=entity | source=probe/tests/test_transport.py:L18 | neighbors=[transport()] | lang=pt
+- "tests_test_transport_testdeviceenrollment_test_activation_persists_recoverable_device_credential": ".test_activation_persists_recoverable_device_credential()" | kind=code-symbol | source=probe/tests/test_transport.py:L172 | neighbors=[TestDeviceEnrollment] | lang=en
+- "tests_test_transport_testdeviceenrollment_test_create_enrollment_request_forwards_enroll_token": ".test_create_enrollment_request_forwards_enroll_token()" | kind=code-symbol | source=probe/tests/test_transport.py:L210 | neighbors=[TestDeviceEnrollment] | lang=en
+- "tests_test_transport_testdeviceenrollment_test_device_refresh_signs_unique_nonce_and_rotates_access_token": ".test_device_refresh_signs_unique_nonce_and_rotates_access_token()" | kind=code-symbol | source=probe/tests/test_transport.py:L240 | neighbors=[TestDeviceEnrollment] | lang=en
+- "tests_test_transport_testdeviceenrollment_test_legacy_token_is_not_forced_through_device_refresh": ".test_legacy_token_is_not_forced_through_device_refresh()" | kind=code-symbol | source=probe/tests/test_transport.py:L230 | neighbors=[TestDeviceEnrollment] | lang=en
+- "tests_test_transport_testfetchscope_test_http_error_returns_none": ".test_http_error_returns_none()" | kind=code-symbol | source=probe/tests/test_transport.py:L393 | neighbors=[TestFetchScope] | lang=en
+- "tests_test_transport_testfetchscope_test_returns_scope": ".test_returns_scope()" | kind=code-symbol | source=probe/tests/test_transport.py:L383 | neighbors=[TestFetchScope] | lang=en
+- "tests_test_transport_testheartbeat_test_heartbeat_401_returns_false": ".test_heartbeat_401_returns_false()" | kind=code-symbol | source=probe/tests/test_transport.py:L326 | neighbors=[TestHeartbeat] | lang=en
+- "tests_test_transport_testheartbeat_test_heartbeat_sends_current_job": ".test_heartbeat_sends_current_job()" | kind=code-symbol | source=probe/tests/test_transport.py:L335 | neighbors=[TestHeartbeat] | lang=en
+- "tests_test_transport_testheartbeat_test_successful_heartbeat": ".test_successful_heartbeat()" | kind=code-symbol | source=probe/tests/test_transport.py:L317 | neighbors=[TestHeartbeat] | lang=en
+- "tests_test_transport_testhttpget_test_exception_returns_none": ".test_exception_returns_none()" | kind=code-symbol | source=probe/tests/test_transport.py:L498 | neighbors=[TestHttpGet] | lang=en
+- "tests_test_transport_testhttpget_test_non_200_returns_none": ".test_non_200_returns_none()" | kind=code-symbol | source=probe/tests/test_transport.py:L489 | neighbors=[TestHttpGet] | lang=en
+- "tests_test_transport_testhttpget_test_successful_get": ".test_successful_get()" | kind=code-symbol | source=probe/tests/test_transport.py:L479 | neighbors=[TestHttpGet] | lang=en
+- "tests_test_transport_testidentity_test_agent_state_updates_preserve_scope_identity": ".test_agent_state_updates_preserve_scope_identity()" | kind=code-symbol | source=probe/tests/test_transport.py:L70 | neighbors=[TestIdentity] | lang=en
+- "tests_test_transport_testidentity_test_auth_header": ".test_auth_header()" | kind=code-symbol | source=probe/tests/test_transport.py:L38 | neighbors=[TestIdentity] | lang=en
+- "tests_test_transport_testidentity_test_failed_atomic_replace_preserves_previous_state": ".test_failed_atomic_replace_preserves_previous_state()" | kind=code-symbol | source=probe/tests/test_transport.py:L107 | neighbors=[TestIdentity] | lang=en
+- "tests_test_transport_testidentity_test_is_authenticated_false_initially": ".test_is_authenticated_false_initially()" | kind=code-symbol | source=probe/tests/test_transport.py:L30 | neighbors=[TestIdentity] | lang=en
+- "tests_test_transport_testidentity_test_is_authenticated_true_with_creds": ".test_is_authenticated_true_with_creds()" | kind=code-symbol | source=probe/tests/test_transport.py:L34 | neighbors=[TestIdentity] | lang=en
+- "tests_test_transport_testidentity_test_loads_cached_agent_identity_from_state": ".test_loads_cached_agent_identity_from_state()" | kind=code-symbol | source=probe/tests/test_transport.py:L57 | neighbors=[TestIdentity] | lang=en
+- "tests_test_transport_testidentity_test_private_state_uses_restrictive_modes_and_fsync": ".test_private_state_uses_restrictive_modes_and_fsync()" | kind=code-symbol | source=probe/tests/test_transport.py:L94 | neighbors=[TestIdentity] | lang=en
+- "tests_test_transport_testidentity_test_save_and_clear_state": ".test_save_and_clear_state()" | kind=code-symbol | source=probe/tests/test_transport.py:L42 | neighbors=[TestIdentity] | lang=en
+- "tests_test_transport_testpolljobs_test_poll_401_raises": ".test_poll_401_raises()" | kind=code-symbol | source=probe/tests/test_transport.py:L361 | neighbors=[TestPollJobs] | lang=en
+- "tests_test_transport_testpolljobs_test_poll_uses_limit_param": ".test_poll_uses_limit_param()" | kind=code-symbol | source=probe/tests/test_transport.py:L370 | neighbors=[TestPollJobs] | lang=en
+- "tests_test_transport_testpolljobs_test_returns_jobs": ".test_returns_jobs()" | kind=code-symbol | source=probe/tests/test_transport.py:L350 | neighbors=[TestPollJobs] | lang=en
+- "tests_test_transport_testrefreshregistration_test_cached_agent_refreshes_capabilities": ".test_cached_agent_refreshes_capabilities()" | kind=code-symbol | source=probe/tests/test_transport.py:L273 | neighbors=[TestRefreshRegistration] | lang=en
+- "tests_test_transport_testrefreshregistration_test_old_manager_returns_compatibility_signal": ".test_old_manager_returns_compatibility_signal()" | kind=code-symbol | source=probe/tests/test_transport.py:L293 | neighbors=[TestRefreshRegistration] | lang=en
+- "tests_test_transport_testrefreshregistration_test_rejected_cached_identity_raises": ".test_rejected_cached_identity_raises()" | kind=code-symbol | source=probe/tests/test_transport.py:L304 | neighbors=[TestRefreshRegistration] | lang=en
+- "tests_test_transport_testregister_test_registration_401_raises": ".test_registration_401_raises()" | kind=code-symbol | source=probe/tests/test_transport.py:L154 | neighbors=[TestRegister] | lang=en
+- "tests_test_transport_testregister_test_registration_sends_public_key": ".test_registration_sends_public_key()" | kind=code-symbol | source=probe/tests/test_transport.py:L161 | neighbors=[TestRegister] | lang=en
+- "tests_test_transport_testregister_test_successful_registration": ".test_successful_registration()" | kind=code-symbol | source=probe/tests/test_transport.py:L130 | neighbors=[TestRegister] | lang=en
+- "tests_test_transport_testsubmitresult_test_2xx_variants_return_true": ".test_2xx_variants_return_true()" | kind=code-symbol | source=probe/tests/test_transport.py:L451 | neighbors=[TestSubmitResult] | lang=en
+- "tests_test_transport_testsubmitresult_test_client_errors_return_false_no_data_loss": ".test_client_errors_return_false_no_data_loss()" | kind=code-symbol | source=probe/tests/test_transport.py:L327 | neighbors=[TestSubmitResult] | lang=en
+- "tests_test_transport_testsubmitresult_test_large_payload_is_gzipped": ".test_large_payload_is_gzipped()" | kind=code-symbol | source=probe/tests/test_transport.py:L458 | neighbors=[TestSubmitResult] | lang=en
+- "tests_test_transport_testsubmitresult_test_network_error_returns_false": ".test_network_error_returns_false()" | kind=code-symbol | source=probe/tests/test_transport.py:L421 | neighbors=[TestSubmitResult] | lang=en
 
 ## Instructions
 

@@ -1,4 +1,4 @@
-# Node Description Batch 68 of 134
+# Node Description Batch 68 of 144
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,51 +12,58 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
-Write every description in English (en). Do not switch languages.
+For an entity node (any other kind — e.g. a person, place, event, object),
+describe what the entity is and its role, grounded in its type, its
+relations (neighbors) and the provided citations/evidence — e.g.
+"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
+Ground entity descriptions in the citations/evidence when present; do not
+speculate beyond the context, so a node with no supporting context may be
+left out of the reply.
+Write every description in Portuguese (pt). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_detection_core_testclassifytier_test_multi_signal_tier2": ".test_multi_signal_tier2()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L605 | neighbors=[TestClassifyTier, _finding()]
-- "tests_test_detection_core_testclassifytier_test_protocol_scanner_tier3": ".test_protocol_scanner_tier3()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L600 | neighbors=[TestClassifyTier, _finding()]
-- "tests_test_detection_core_testclassifytier_test_single_banner_tier1": ".test_single_banner_tier1()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L610 | neighbors=[TestClassifyTier, _finding()]
-- "tests_test_detection_core_testcomputepriority_test_cvss_critical": ".test_cvss_critical()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L756 | neighbors=[TestComputePriority, _finding()]
-- "tests_test_detection_core_testcomputepriority_test_cvss_high": ".test_cvss_high()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L762 | neighbors=[TestComputePriority, _finding()]
-- "tests_test_detection_core_testcomputepriority_test_cvss_low": ".test_cvss_low()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L774 | neighbors=[TestComputePriority, _finding()]
-- "tests_test_detection_core_testcomputepriority_test_cvss_medium": ".test_cvss_medium()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L768 | neighbors=[TestComputePriority, _finding()]
-- "tests_test_detection_core_testcomputepriority_test_elevated_epss_high": ".test_elevated_epss_high()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L749 | neighbors=[TestComputePriority, _finding()]
-- "tests_test_detection_core_testcomputepriority_test_high_epss_critical": ".test_high_epss_critical()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L742 | neighbors=[TestComputePriority, _finding()]
-- "tests_test_detection_core_testcomputepriority_test_kev_alone_critical": ".test_kev_alone_critical()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L736 | neighbors=[TestComputePriority, _finding()]
-- "tests_test_detection_core_testcomputepriority_test_kev_unauth_reachable_critical": ".test_kev_unauth_reachable_critical()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L727 | neighbors=[TestComputePriority, _finding()]
-- "tests_test_detection_core_testcomputepriority_test_unknown_tier": ".test_unknown_tier()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L780 | neighbors=[TestComputePriority, _finding()]
-- "tests_test_detection_core_testcorrelatesmbpatch_test_smbv1_with_missing_hotfixes_returns_finding": ".test_smbv1_with_missing_hotfixes_returns_finding()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L570 | neighbors=[TestCorrelateSmbPatch, _fact()]
-- "tests_test_detection_core_testcorrelatesmbpatch_test_smbv1_with_patched_host_returns_none": ".test_smbv1_with_patched_host_returns_none()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L582 | neighbors=[TestCorrelateSmbPatch, _fact()]
-- "tests_test_detection_core_testcorrelatesmbpatch_test_smbv1_without_hotfix_data_returns_none": ".test_smbv1_without_hotfix_data_returns_none()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L565 | neighbors=[TestCorrelateSmbPatch, _fact()]
-- "tests_test_detection_core_testcpecandidatecpe23_test_cpe23_format": ".test_cpe23_format()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L908 | neighbors=[TestCPECandidateCpe23, _candidate()]
-- "tests_test_detection_core_testdedupfindings_test_authoritative_upgrades_state": ".test_authoritative_upgrades_state()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L493 | neighbors=[TestDedupFindings, _finding()]
-- "tests_test_detection_core_testdedupfindings_test_different_ids_preserved": ".test_different_ids_preserved()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L503 | neighbors=[TestDedupFindings, _finding()]
-- "tests_test_detection_core_testdedupfindings_test_evidence_refs_dedup_preserving_order": ".test_evidence_refs_dedup_preserving_order()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L508 | neighbors=[TestDedupFindings, _finding()]
-- "tests_test_detection_core_testdedupfindings_test_merges_same_id": ".test_merges_same_id()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L484 | neighbors=[TestDedupFindings, _finding()]
-- "tests_test_detection_core_testepssdb_test_case_insensitive": ".test_case_insensitive()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L858 | neighbors=[TestEpssDb, _mock_epss_db()]
-- "tests_test_detection_core_testepssdb_test_get_existing": ".test_get_existing()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L850 | neighbors=[TestEpssDb, _mock_epss_db()]
-- "tests_test_detection_core_testepssdb_test_get_missing": ".test_get_missing()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L854 | neighbors=[TestEpssDb, _mock_epss_db()]
-- "tests_test_detection_core_testfactref_test_ref_format": ".test_ref_format()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L175 | neighbors=[TestFactRef, _fact()]
-- "tests_test_detection_core_testfindingconsistency_test_classification_intermittent": ".test_classification_intermittent()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L1046 | neighbors=[TestFindingConsistency, _finding()]
-- "tests_test_detection_core_testfindingconsistency_test_classification_mostly_stable": ".test_classification_mostly_stable()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L1040 | neighbors=[TestFindingConsistency, _finding()]
-- "tests_test_detection_core_testfindingconsistency_test_classification_stable": ".test_classification_stable()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L1034 | neighbors=[TestFindingConsistency, _finding()]
-- "tests_test_detection_core_testfindingconsistency_test_rate": ".test_rate()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L1028 | neighbors=[TestFindingConsistency, _finding()]
-- "tests_test_detection_core_testfindingpostinit_test_accepts_nonempty_evidence_refs": ".test_accepts_nonempty_evidence_refs()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L123 | neighbors=[TestFindingPostInit, _finding()]
-- "tests_test_detection_core_testfindingtodict_test_enums_serialized_to_values": ".test_enums_serialized_to_values()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L167 | neighbors=[TestFindingToDict, _finding()]
-- "tests_test_detection_core_testkevdb_test_case_insensitive": ".test_case_insensitive()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L844 | neighbors=[TestKevDb, _mock_kev_db()]
-- "tests_test_detection_core_testkevdb_test_is_kev": ".test_is_kev()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L839 | neighbors=[TestKevDb, _mock_kev_db()]
-- "tests_test_detection_core_testnormalize_test_dispatches_banner": ".test_dispatches_banner()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L961 | neighbors=[TestNormalize, _fact()]
-- "tests_test_detection_core_testnormalize_test_unknown_scanner_returns_empty": ".test_unknown_scanner_returns_empty()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L966 | neighbors=[TestNormalize, _fact()]
-- "tests_test_detection_core_testnormalizebanner_test_empty_banner": ".test_empty_banner()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L919 | neighbors=[TestNormalizeBanner, _fact()]
-- "tests_test_detection_core_testnormalizebanner_test_ssh_banner": ".test_ssh_banner()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L914 | neighbors=[TestNormalizeBanner, _fact()]
-- "tests_test_detection_core_testnormalizedb_test_mysql_mariadb_engine_with_mariadb_suffix": ".test_mysql_mariadb_engine_with_mariadb_suffix()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L938 | neighbors=[TestNormalizeDb, _fact()]
-- "tests_test_detection_core_testnormalizedb_test_mysql_mariadb_engine_without_mariadb_suffix_returns_empty": ".test_mysql_mariadb_engine_without_mariadb_suffix_returns_empty()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L933 | neighbors=[TestNormalizeDb, _fact()]
-- "tests_test_detection_core_testnormalizedb_test_no_version_confidence_low": ".test_no_version_confidence_low()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L953 | neighbors=[TestNormalizeDb, _fact()]
-- "tests_test_detection_core_testnormalizedb_test_postgresql": ".test_postgresql()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L944 | neighbors=[TestNormalizeDb, _fact()]
+- "scanner_db_scanner_probe_redis": "_probe_redis()" | kind=code-symbol | source=probe/scanner/db_scanner.py:L114 | neighbors=[db_scanner.py, interpret_redis_info()]
+- "scanner_host_discovery_now": "_now()" | kind=code-symbol | source=probe/scanner/host_discovery.py:L290 | neighbors=[host_discovery.py, fuse_liveness()]
+- "scanner_host_discovery_state_for_confidence": "_state_for_confidence()" | kind=code-symbol | source=probe/scanner/host_discovery.py:L294 | neighbors=[host_discovery.py, fuse_liveness()]
+- "scanner_host_discovery_vendor_for_mac": "vendor_for_mac()" | kind=code-symbol | source=probe/scanner/host_discovery.py:L136 | neighbors=[host_discovery.py, .scan_target()]
+- "scanner_mass_scan_connectsweep_probe": "._probe()" | kind=code-symbol | source=probe/scanner/mass_scan.py:L213 | neighbors=[_ConnectSweep, .scan_target()]
+- "scanner_mass_scan_connectsweep_scan_target": ".scan_target()" | kind=code-symbol | source=probe/scanner/mass_scan.py:L229 | neighbors=[_ConnectSweep, ._probe()]
+- "scanner_mass_scan_have_masscan": "_have_masscan()" | kind=code-symbol | source=probe/scanner/mass_scan.py:L60 | neighbors=[mass_scan.py, run_mass_scan()]
+- "scanner_mass_scan_masscan_records_to_results": "_masscan_records_to_results()" | kind=code-symbol | source=probe/scanner/mass_scan.py:L184 | neighbors=[mass_scan.py, run_mass_scan()]
+- "scanner_mass_scan_masscanrun": "MasscanRun" | kind=code-symbol | source=probe/scanner/mass_scan.py:L51 | neighbors=[mass_scan.py, _run_masscan()]
+- "scanner_mcp_ai_scanner_mcpaiscanner_fetch": "._fetch()" | kind=code-symbol | source=probe/scanner/mcp_ai_scanner.py:L205 | neighbors=[MCPAIScanner, ._probe_port()]
+- "scanner_mcp_ai_scanner_mcpaiscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/scanner/mcp_ai_scanner.py:L315 | neighbors=[MCPAIScanner, ._probe_port()]
+- "scanner_mcp_ai_scanner_model_count": "_model_count()" | kind=code-symbol | source=probe/scanner/mcp_ai_scanner.py:L182 | neighbors=[mcp_ai_scanner.py, ._result()]
+- "scanner_mcp_ai_scanner_noredirect": "_NoRedirect" | kind=code-symbol | source=probe/scanner/mcp_ai_scanner.py:L109 | neighbors=[mcp_ai_scanner.py, .redirect_request()]
+- "scanner_nmap_wrapper_parse_nmap_xml": "_parse_nmap_xml()" | kind=code-symbol | source=probe/scanner/nmap_wrapper.py:L154 | neighbors=[nmap_wrapper.py, NmapExecutionError]
+- "scanner_nmap_wrapper_run_nmap": "_run_nmap()" | kind=code-symbol | source=probe/scanner/nmap_wrapper.py:L115 | neighbors=[nmap_wrapper.py, NmapExecutionError]
+- "scanner_nmap_wrapper_validated_extra_args": "_validated_extra_args()" | kind=code-symbol | source=probe/scanner/nmap_wrapper.py:L69 | neighbors=[nmap_wrapper.py, Allow tuning only; target, script, and …]
+- "scanner_passive_collector_coverage": "_coverage()" | kind=code-symbol | source=probe/scanner/passive_collector.py:L158 | neighbors=[passive_collector.py, .run()]
+- "scanner_passive_collector_is_readable": "_is_readable()" | kind=code-symbol | source=probe/scanner/passive_collector.py:L351 | neighbors=[passive_collector.py, ._select()]
+- "scanner_passive_collector_listener_error_code": "_listener_error_code()" | kind=code-symbol | source=probe/scanner/passive_collector.py:L150 | neighbors=[passive_collector.py, .run()]
+- "scanner_port_scanner_portscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/scanner/port_scanner.py:L257 | neighbors=[PortScanner, ._scan_port()]
+- "scanner_scanner_base_adaptiveratecontroller_acquire": ".acquire()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L266 | neighbors=[AdaptiveRateController, .wait()]
+- "scanner_scanner_base_adaptiveratecontroller_on_loss": "._on_loss()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L262 | neighbors=[AdaptiveRateController, .report_loss()]
+- "scanner_scanner_base_adaptiveratecontroller_on_success": "._on_success()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L255 | neighbors=[AdaptiveRateController, .report_success()]
+- "scanner_scanner_base_adaptiveratecontroller_report_loss": ".report_loss()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L278 | neighbors=[AdaptiveRateController, ._on_loss()]
+- "scanner_scanner_base_adaptiveratecontroller_report_success": ".report_success()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L272 | neighbors=[AdaptiveRateController, ._on_success()]
+- "scanner_scanner_base_basescanner_init": ".__init__()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L554 | neighbors=[BaseScanner, RateLimiter]
+- "scanner_scanner_base_basescanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L562 | neighbors=[BaseScanner, ._guarded()]
+- "scanner_scanner_base_inet_checksum": "inet_checksum()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L202 | neighbors=[scanner_base.py, Standard 16-bit one's-complement Intern…]
+- "scanner_scanner_base_rationale_205": "A self-tuning concurrency window, modelled on TCP congestion control (AIMD)," | kind=entity | source=probe/scanner/scanner_base.py:L205 | neighbors=[AdaptiveRateController, expand_targets()]
+- "scanner_scanner_base_rationale_359": "One-shot datagram protocol backing `async_udp_probe`. Resolves its future     wi" | kind=entity | source=probe/scanner/scanner_base.py:L359 | neighbors=[_UDPProbeProtocol, BaseScanner]
+- "scanner_scanner_base_rationale_535": "Subclasses implement `scan_target(self, target)` (async), returning a list     o" | kind=entity | source=probe/scanner/scanner_base.py:L535 | neighbors=[BaseScanner, main_entrypoint()]
+- "scanner_scanner_base_scanresult_to_json": ".to_json()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L58 | neighbors=[.write(), ScanResult]
+- "scanner_scanner_base_scopeguard_filter": ".filter()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L162 | neighbors=[ScopeGuard, .in_scope()]
+- "scanner_service_banner_dec": "_dec()" | kind=code-symbol | source=probe/scanner/service_banner.py:L75 | neighbors=[service_banner.py, match_service()]
+- "scanner_service_banner_servicebannerscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/scanner/service_banner.py:L199 | neighbors=[ServiceBannerScanner, ._grab()]
+- "scanner_smb_scanner_netbios_session": "_netbios_session()" | kind=code-symbol | source=probe/scanner/smb_scanner.py:L31 | neighbors=[smb_scanner.py, ._negotiate()]
+- "scanner_smb_scanner_smb1_negotiate": "_smb1_negotiate()" | kind=code-symbol | source=probe/scanner/smb_scanner.py:L56 | neighbors=[smb_scanner.py, .scan_target()]
+- "scanner_smb_scanner_smb2_negotiate": "_smb2_negotiate()" | kind=code-symbol | source=probe/scanner/smb_scanner.py:L76 | neighbors=[smb_scanner.py, .scan_target()]
+- "scanner_smb_scanner_smbscanner_negotiate": "._negotiate()" | kind=code-symbol | source=probe/scanner/smb_scanner.py:L111 | neighbors=[SMBScanner, _netbios_session()]
+- "scanner_snmp_scanner_extract_sysdescr": "_extract_sysdescr()" | kind=code-symbol | source=probe/scanner/snmp_scanner.py:L44 | neighbors=[snmp_scanner.py, .scan_target()]
 
 ## Instructions
 

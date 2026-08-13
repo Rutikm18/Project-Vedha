@@ -1,4 +1,4 @@
-# Node Description Batch 88 of 134
+# Node Description Batch 88 of 144
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,51 +19,53 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-Write every description in English (en). Do not switch languages.
+LANGUAGE: each entry has a `lang=` marker giving the language of its source.
+Write that entry's description in EXACTLY that language. Do not translate to
+a single common language — match each node's source language individually.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "dashboard_slastatus_sev_style": "SEV_STYLE" | kind=code-symbol | source=manager/frontend/components/dashboard/SlaStatus.tsx:L37 | neighbors=[SlaStatus.tsx]
-- "dashboard_slastatus_slaitem": "SlaItem" | kind=code-symbol | source=manager/frontend/components/dashboard/SlaStatus.tsx:L32 | neighbors=[SlaStatus.tsx]
-- "dashboard_slastatus_slastate": "SlaState" | kind=code-symbol | source=manager/frontend/components/dashboard/SlaStatus.tsx:L30 | neighbors=[SlaStatus.tsx]
-- "dashboard_slastatus_slasummary": "SlaSummary" | kind=code-symbol | source=manager/frontend/components/dashboard/SlaStatus.tsx:L37 | neighbors=[SlaStatus.tsx]
-- "dashboard_slastatus_state": "STATE" | kind=code-symbol | source=manager/frontend/components/dashboard/SlaStatus.tsx:L42 | neighbors=[SlaStatus.tsx]
-- "dashboard_slastatus_state_color": "STATE_COLOR" | kind=code-symbol | source=manager/frontend/components/dashboard/SlaStatus.tsx:L30 | neighbors=[SlaStatus.tsx]
-- "dashboard_slastatus_statecell": "StateCell()" | kind=code-symbol | source=manager/frontend/components/dashboard/SlaStatus.tsx:L76 | neighbors=[SlaStatus.tsx]
-- "dashboard_slastatus_summarycell": "SummaryCell()" | kind=code-symbol | source=manager/frontend/components/dashboard/SlaStatus.tsx:L61 | neighbors=[SlaStatus.tsx]
-- "declarativebase": "DeclarativeBase" | kind=code-symbol | neighbors=[Base]
-- "detection_correlator_detectioncorrelator_compute_coverage": ".compute_coverage()" | kind=code-symbol | source=manager/backend/app/detection/correlator.py:L159 | neighbors=[DetectionCorrelator]
-- "detection_correlator_detectioncorrelator_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/detection/correlator.py:L76 | neighbors=[DetectionCorrelator]
-- "detection_edr_build_edr_engine": "build_edr_engine()" | kind=code-symbol | source=manager/backend/app/detection/edr.py:L235 | neighbors=[edr.py]
-- "detection_edr_edrdetection_is_prevented": ".is_prevented()" | kind=code-symbol | source=manager/backend/app/detection/edr.py:L43 | neighbors=[EDRDetection]
-- "detection_edr_edrqueryengine_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/detection/edr.py:L65 | neighbors=[EDRQueryEngine]
-- "detection_edr_edrqueryengine_query_detections": ".query_detections()" | kind=code-symbol | source=manager/backend/app/detection/edr.py:L70 | neighbors=[EDRQueryEngine]
-- "detection_edr_rationale_1": "EDR query engines — abstract interface + CrowdStrike Falcon / Microsoft Defender" | kind=entity | source=manager/backend/app/detection/edr.py:L1 | neighbors=[edr.py]
-- "detection_edr_rationale_141": "Microsoft Defender via the Graph Security API ``/security/alerts_v2``.     confi" | kind=entity | source=manager/backend/app/detection/edr.py:L141 | neighbors=[MicrosoftDefender]
-- "detection_edr_rationale_187": "SentinelOne via the REST ``/web/api/v2.1/threats`` endpoint.     config: {base_u" | kind=entity | source=manager/backend/app/detection/edr.py:L187 | neighbors=[SentinelOne]
-- "detection_edr_rationale_92": "Falcon: query detection IDs then fetch their summaries.     config: {base_url, t" | kind=entity | source=manager/backend/app/detection/edr.py:L92 | neighbors=[CrowdStrikeFalcon]
-- "detection_engine_ai_normalizer_ainormalizercache_post_init": ".__post_init__()" | kind=code-symbol | source=manager/detection_engine/ai_normalizer.py:L142 | neighbors=[AINormalizerCache]
-- "detection_engine_ai_normalizer_anthropicaiclient_init": ".__init__()" | kind=code-symbol | source=manager/detection_engine/ai_normalizer.py:L103 | neighbors=[AnthropicAIClient]
-- "detection_engine_ai_normalizer_fakeaiclient_init": ".__init__()" | kind=code-symbol | source=manager/detection_engine/ai_normalizer.py:L131 | neighbors=[FakeAIClient]
-- "detection_engine_consistency_consistencyreport_intermittent": ".intermittent()" | kind=code-symbol | source=manager/detection_engine/consistency.py:L96 | neighbors=[ConsistencyReport]
-- "detection_engine_consistency_consistencyreport_stable": ".stable()" | kind=code-symbol | source=manager/detection_engine/consistency.py:L92 | neighbors=[ConsistencyReport]
-- "detection_engine_consistency_findingconsistency_classification": ".classification()" | kind=code-symbol | source=manager/detection_engine/consistency.py:L67 | neighbors=[FindingConsistency]
-- "detection_engine_consistency_findingconsistency_rate": ".rate()" | kind=code-symbol | source=manager/detection_engine/consistency.py:L59 | neighbors=[FindingConsistency]
-- "detection_engine_cpe_normalizer_cpecandidate_cpe23": ".cpe23()" | kind=code-symbol | source=manager/detection_engine/cpe_normalizer.py:L72 | neighbors=[CPECandidate]
-- "detection_engine_cvss_rationale_1": "cvss.py — CVSS v3.1 base score from a vector string. Pure arithmetic, no network" | kind=entity | source=manager/detection_engine/cvss.py:L1 | neighbors=[cvss.py]
-- "detection_engine_cvss_rationale_23": "CVSS spec's exact rounding rule (avoids float-precision drift from a     naive r" | kind=entity | source=manager/detection_engine/cvss.py:L23 | neighbors=[_roundup()]
-- "detection_engine_cvss_rationale_44": "Returns the CVSS v3.1 base score (0.0-10.0), or None if the vector     is missin" | kind=entity | source=manager/detection_engine/cvss.py:L44 | neighbors=[base_score()]
-- "detection_engine_enrichment_db_epssdb_init": ".__init__()" | kind=code-symbol | source=manager/detection_engine/enrichment_db.py:L24 | neighbors=[EpssDB]
-- "detection_engine_enrichment_db_kevdb_init": ".__init__()" | kind=code-symbol | source=manager/detection_engine/enrichment_db.py:L15 | neighbors=[KevDB]
-- "detection_engine_enrichment_db_kevdb_is_kev": ".is_kev()" | kind=code-symbol | source=manager/detection_engine/enrichment_db.py:L19 | neighbors=[KevDB]
-- "detection_engine_enrichment_db_rationale_1": "enrichment_db.py — load the pinned KEV/EPSS snapshots. Same discipline as vuln_d" | kind=entity | source=manager/detection_engine/enrichment_db.py:L1 | neighbors=[enrichment_db.py]
-- "detection_engine_enrichment_db_rationale_29": "{'epss': float, 'percentile': float} or None if not covered." | kind=entity | source=manager/detection_engine/enrichment_db.py:L29 | neighbors=[.get()]
-- "detection_engine_ingest_ingestresult_init": ".__init__()" | kind=code-symbol | source=manager/detection_engine/ingest.py:L43 | neighbors=[IngestResult]
-- "detection_engine_models_asset_add_alias": ".add_alias()" | kind=code-symbol | source=manager/detection_engine/models.py:L97 | neighbors=[Asset]
-- "detection_engine_models_asset_facts_by_scanner": ".facts_by_scanner()" | kind=code-symbol | source=manager/detection_engine/models.py:L101 | neighbors=[Asset]
-- "detection_engine_models_asset_open_ports": ".open_ports()" | kind=code-symbol | source=manager/detection_engine/models.py:L104 | neighbors=[Asset]
-- "detection_engine_models_finding_post_init": ".__post_init__()" | kind=code-symbol | source=manager/detection_engine/models.py:L179 | neighbors=[Finding]
+- "app_main_rationale_234": "Identify the Manager API without exposing a second dashboard." | kind=entity | source=manager/backend/app/main.py:L234 | neighbors=[_service_root()] | lang=en
+- "app_main_root_redirect": "_root_redirect()" | kind=code-symbol | source=manager/backend/app/main.py:L205 | neighbors=[main.py] | lang=en
+- "app_main_unhandled_exception_handler": "unhandled_exception_handler()" | kind=code-symbol | source=manager/backend/app/main.py:L191 | neighbors=[main.py] | lang=en
+- "app_page_agent": "Agent" | kind=code-symbol | source=manager/frontend/app/page.tsx:L27 | neighbors=[page.tsx] | lang=en
+- "app_page_agent_status": "AGENT_STATUS" | kind=code-symbol | source=manager/frontend/app/page.tsx:L29 | neighbors=[page.tsx] | lang=en
+- "app_page_agentrow": "AgentRow()" | kind=code-symbol | source=manager/frontend/app/page.tsx:L117 | neighbors=[page.tsx] | lang=en
+- "app_page_agentstatus": "AgentStatus" | kind=code-symbol | source=manager/frontend/app/page.tsx:L24 | neighbors=[page.tsx] | lang=en
+- "app_page_confidencebar": "ConfidenceBar()" | kind=code-symbol | source=manager/frontend/app/page.tsx:L64 | neighbors=[page.tsx] | lang=en
+- "app_page_dashboard": "Dashboard()" | kind=code-symbol | source=manager/frontend/app/page.tsx:L18 | neighbors=[page.tsx] | lang=en
+- "app_page_decisioncenter": "DecisionCenter()" | kind=code-symbol | source=manager/frontend/app/page.tsx:L55 | neighbors=[page.tsx] | lang=en
+- "app_page_glowcard": "GlowCard()" | kind=code-symbol | source=manager/frontend/app/page.tsx:L75 | neighbors=[page.tsx] | lang=en
+- "app_page_path_status": "PATH_STATUS" | kind=code-symbol | source=manager/frontend/app/page.tsx:L26 | neighbors=[page.tsx] | lang=en
+- "app_page_sectionheader": "SectionHeader()" | kind=code-symbol | source=manager/frontend/app/page.tsx:L36 | neighbors=[page.tsx] | lang=en
+- "app_page_sev_label": "SEV_LABEL" | kind=code-symbol | source=manager/frontend/app/page.tsx:L32 | neighbors=[page.tsx] | lang=en
+- "app_page_widgetplaceholder": "WidgetPlaceholder()" | kind=code-symbol | source=manager/frontend/app/page.tsx:L55 | neighbors=[page.tsx] | lang=en
+- "app_ratelimit_check": "_check()" | kind=code-symbol | source=manager/backend/app/ratelimit.py:L26 | neighbors=[ratelimit.py] | lang=en
+- "app_ratelimit_rationale_1": "ratelimit.py — P2: Redis-backed rate limiting (no new dependency; reuses the exi" | kind=entity | source=manager/backend/app/ratelimit.py:L1 | neighbors=[ratelimit.py] | lang=en
+- "app_ratelimit_rationale_17": "Best-effort client IP. Honors X-Forwarded-For (first hop) when behind a     prox" | kind=entity | source=manager/backend/app/ratelimit.py:L17 | neighbors=[client_ip()] | lang=pt
+- "app_ratelimit_rationale_44": "FastAPI dependency factory. Keys the window by (scope, client-IP)." | kind=entity | source=manager/backend/app/ratelimit.py:L44 | neighbors=[rate_limit()] | lang=en
+- "app_version_get_version": "get_version()" | kind=code-symbol | source=manager/backend/app/version.py:L17 | neighbors=[version.py] | lang=en
+- "app_version_rationale_1": "Single source of truth for the deployed application version.  The value is injec" | kind=entity | source=manager/backend/app/version.py:L1 | neighbors=[version.py] | lang=en
+- "approve_route_post": "POST()" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/ai-report/approve/route.ts:L4 | neighbors=[route.ts] | lang=en
+- "assetid_route_get": "GET()" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/blast-radius/[assetId]/route.ts:L5 | neighbors=[route.ts] | lang=en
+- "assets_route_get": "GET()" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/assets/route.ts:L8 | neighbors=[route.ts] | lang=en
+- "assistant_advisorflow_commandrow": "CommandRow()" | kind=code-symbol | source=manager/frontend/components/assistant/AdvisorFlow.tsx:L46 | neighbors=[AdvisorFlow.tsx] | lang=en
+- "assistant_advisorflow_copybutton": "CopyButton()" | kind=code-symbol | source=manager/frontend/components/assistant/AdvisorFlow.tsx:L27 | neighbors=[AdvisorFlow.tsx] | lang=en
+- "assistant_advisorflow_patch_pill": "PATCH_PILL" | kind=code-symbol | source=manager/frontend/components/assistant/AdvisorFlow.tsx:L67 | neighbors=[AdvisorFlow.tsx] | lang=en
+- "assistant_advisorflow_richtext": "RichText()" | kind=code-symbol | source=manager/frontend/components/assistant/AdvisorFlow.tsx:L10 | neighbors=[AdvisorFlow.tsx] | lang=en
+- "assistant_advisorflow_section": "Section()" | kind=code-symbol | source=manager/frontend/components/assistant/AdvisorFlow.tsx:L55 | neighbors=[AdvisorFlow.tsx] | lang=en
+- "assistant_assistantdrawer_explainresponse": "ExplainResponse" | kind=code-symbol | source=manager/frontend/components/assistant/AssistantDrawer.tsx:L14 | neighbors=[AssistantDrawer.tsx] | lang=en
+- "assistant_assistantdrawer_msg": "Msg" | kind=code-symbol | source=manager/frontend/components/assistant/AssistantDrawer.tsx:L12 | neighbors=[AssistantDrawer.tsx] | lang=en
+- "assistant_assistantdrawer_served": "Served" | kind=code-symbol | source=manager/frontend/components/assistant/AssistantDrawer.tsx:L13 | neighbors=[AssistantDrawer.tsx] | lang=en
+- "assistant_assistantprovider_assistantctx": "AssistantCtx" | kind=code-symbol | source=manager/frontend/components/assistant/AssistantProvider.tsx:L14 | neighbors=[AssistantProvider.tsx] | lang=en
+- "assistant_assistantprovider_ctx": "Ctx" | kind=code-symbol | source=manager/frontend/components/assistant/AssistantProvider.tsx:L6 | neighbors=[AssistantProvider.tsx] | lang=en
+- "assistant_assistanttext_plain": "plain()" | kind=code-symbol | source=manager/frontend/components/assistant/AssistantText.tsx:L5 | neighbors=[AssistantText.tsx] | lang=en
+- "assistant_factcard_pip": "Pip()" | kind=code-symbol | source=manager/frontend/components/assistant/FactCard.tsx:L10 | neighbors=[FactCard.tsx] | lang=en
+- "assistant_modelswitcher_aistatus": "AiStatus" | kind=code-symbol | source=manager/frontend/components/assistant/ModelSwitcher.tsx:L16 | neighbors=[ModelSwitcher.tsx] | lang=en
+- "assistant_modelswitcher_providerstatus": "ProviderStatus" | kind=code-symbol | source=manager/frontend/components/assistant/ModelSwitcher.tsx:L7 | neighbors=[ModelSwitcher.tsx] | lang=en
+- "assistant_modelswitcher_readstored": "readStored()" | kind=code-symbol | source=manager/frontend/components/assistant/ModelSwitcher.tsx:L24 | neighbors=[ModelSwitcher.tsx] | lang=en
+- "attack_graph_route_get": "GET()" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/attack-graph/route.ts:L5 | neighbors=[route.ts] | lang=en
 
 ## Instructions
 

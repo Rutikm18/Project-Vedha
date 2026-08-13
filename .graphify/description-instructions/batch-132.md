@@ -1,4 +1,4 @@
-# Node Description Batch 133 of 134
+# Node Description Batch 133 of 144
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -26,46 +26,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "workflow_cache_rationale_1": "cache.py — (host, port, scanner) -> CacheEntry, so deterministic facts are colle" | kind=entity | source=probe/workflow/cache.py:L1 | neighbors=[cache.py] | lang=en
-- "workflow_cache_rationale_122": "True if there's no cached entry, OR the entry is uncertain         (always worth" | kind=entity | source=probe/workflow/cache.py:L122 | neighbors=[.should_recheck()] | lang=en
-- "workflow_cache_rationale_79": "In-memory (host, port, scanner) -> CacheEntry, optionally JSONL-backed     for c" | kind=entity | source=probe/workflow/cache.py:L79 | neighbors=[WorkflowCache] | lang=en
-- "workflow_cache_workflowcache_all_entries_for_host": ".all_entries_for_host()" | kind=code-symbol | source=probe/workflow/cache.py:L139 | neighbors=[WorkflowCache] | lang=en
-- "workflow_cli_rationale_1": "cli.py — entrypoint for the conditional workflow engine. Flag conventions follow" | kind=entity | source=probe/workflow/cli.py:L1 | neighbors=[cli.py] | lang=en
-- "workflow_cli_rationale_29": "7d' / '12h' / '30m' -> timedelta. Simple single-unit parser —     engagements ar" | kind=entity | source=probe/workflow/cli.py:L29 | neighbors=[_parse_duration()] | lang=en
-- "workflow_cli_rationale_30": "7d' / '12h' / '30m' -> timedelta. Simple single-unit parser —     engagements ar" | kind=entity | source=probe/workflow/cli.py:L30 | neighbors=[_parse_duration()] | lang=en
-- "workflow_execution_executiontrace_degraded": ".degraded()" | kind=code-symbol | source=probe/workflow/execution.py:L346 | neighbors=[ExecutionTrace] | lang=en
-- "workflow_execution_executiontrace_issues": ".issues()" | kind=code-symbol | source=probe/workflow/execution.py:L338 | neighbors=[ExecutionTrace] | lang=en
-- "workflow_execution_rationale_1": "Execution telemetry and failure normalization for the probe workflow." | kind=entity | source=probe/workflow/execution.py:L1 | neighbors=[execution.py] | lang=en
-- "workflow_execution_rationale_105": "Resolve the exact collector plan for one workflow invocation." | kind=entity | source=probe/workflow/execution.py:L105 | neighbors=[planned_components()] | lang=en
-- "workflow_execution_rationale_154": "Map low-level failures into stable, operator-actionable categories." | kind=entity | source=probe/workflow/execution.py:L154 | neighbors=[classify_scanner_error()] | lang=en
-- "workflow_execution_rationale_210": "Represent an unexpected component exception without aborting other hosts." | kind=entity | source=probe/workflow/execution.py:L210 | neighbors=[scanner_failure_result()] | lang=en
-- "workflow_execution_rationale_232": "Mutable per-run component accounting, serialized only after completion." | kind=entity | source=probe/workflow/execution.py:L232 | neighbors=[ExecutionTrace] | lang=en
-- "workflow_execution_rationale_351": "True when execution produced errors and no usable or cached facts." | kind=entity | source=probe/workflow/execution.py:L351 | neighbors=[.failed()] | lang=en
-- "workflow_execution_rationale_59": "Return the runtime engine inventory without claiming optional tools ran." | kind=entity | source=probe/workflow/execution.py:L59 | neighbors=[engine_manifest()] | lang=en
-- "workflow_gates_gate_4_service_banner": "gate_4_service_banner()" | kind=code-symbol | source=probe/workflow/gates.py:L67 | neighbors=[gates.py] | lang=en
-- "workflow_gates_gate_6_credentialed_collection": "gate_6_credentialed_collection()" | kind=code-symbol | source=probe/workflow/gates.py:L101 | neighbors=[gates.py] | lang=en
-- "workflow_gates_rationale_1": "gates.py — precondition functions deciding whether each stage of the workflow ru" | kind=entity | source=probe/workflow/gates.py:L1 | neighbors=[gates.py] | lang=en
-- "workflow_gates_rationale_46": "True means OT/ICS passive-only mode — a hard stop, never reached by     any acti" | kind=entity | source=probe/workflow/gates.py:L46 | neighbors=[gate_0_is_passive_profile()] | lang=en
-- "workflow_gates_rationale_48": "True means OT/ICS passive-only mode — a hard stop, never reached by     any acti" | kind=entity | source=probe/workflow/gates.py:L48 | neighbors=[gate_0_is_passive_profile()] | lang=en
-- "workflow_gates_rationale_72": "Does `branch` apply to this host?       - Must be in this profile's allowed deep" | kind=entity | source=probe/workflow/gates.py:L72 | neighbors=[gate_5_branch_eligible()] | lang=en
-- "workflow_gates_rationale_74": "Does `branch` apply to this host?       - Must be in this profile's allowed deep" | kind=entity | source=probe/workflow/gates.py:L74 | neighbors=[gate_5_branch_eligible()] | lang=en
-- "workflow_init_rationale_1": "workflow — conditional, caching, dependency-aware orchestrator that replaces pip" | kind=entity | source=probe/workflow/__init__.py:L1 | neighbors=[__init__.py] | lang=en
-- "workflow_modes_rationale_1": "modes.py — engagement mode configurations. Each mode is a thin config that tunes" | kind=entity | source=probe/workflow/modes.py:L1 | neighbors=[modes.py] | lang=en
-- "workflow_modes_rationale_105": "Discovery + ports + banner only — no deep dives, no credentials." | kind=entity | source=probe/workflow/modes.py:L105 | neighbors=[triage()] | lang=en
-- "workflow_modes_rationale_112": "Full funnel, every branch the profile allows." | kind=entity | source=probe/workflow/modes.py:L112 | neighbors=[assessment()] | lang=en
-- "workflow_modes_rationale_127": "Loads a prior engagement's cache; only facts older than     recheck_older_than g" | kind=entity | source=probe/workflow/modes.py:L127 | neighbors=[re_scan()] | lang=pt
-- "workflow_modes_rationale_25": "Discovery + ports + banner only — no deep dives, no credentials." | kind=entity | source=probe/workflow/modes.py:L25 | neighbors=[triage()] | lang=en
-- "workflow_modes_rationale_30": "Resolve the explicit ceiling while preserving the legacy triage knob." | kind=entity | source=probe/workflow/modes.py:L30 | neighbors=[resolve_stage_ceiling()] | lang=en
-- "workflow_modes_rationale_31": "Full funnel, every branch the profile allows." | kind=entity | source=probe/workflow/modes.py:L31 | neighbors=[assessment()] | lang=en
-- "workflow_modes_rationale_44": "Loads a prior engagement's cache; only facts older than     recheck_older_than g" | kind=entity | source=probe/workflow/modes.py:L44 | neighbors=[re_scan()] | lang=pt
-- "workflow_modes_rationale_46": "Return whether a bounded plan includes `stage`." | kind=entity | source=probe/workflow/modes.py:L46 | neighbors=[includes_stage()] | lang=pt
-- "workflow_modes_rationale_61": "Host discovery plus the profile's TCP port catalog." | kind=entity | source=probe/workflow/modes.py:L61 | neighbors=[discovery()] | lang=en
-- "workflow_modes_rationale_72": "Liveness checks only." | kind=entity | source=probe/workflow/modes.py:L72 | neighbors=[host_discovery()] | lang=en
-- "workflow_modes_rationale_83": "Liveness checks plus the profile's TCP port catalog." | kind=entity | source=probe/workflow/modes.py:L83 | neighbors=[port_scan()] | lang=en
-- "workflow_modes_rationale_94": "Liveness, TCP ports, and service banners without deep branches." | kind=entity | source=probe/workflow/modes.py:L94 | neighbors=[service_fingerprint()] | lang=en
-- "workflow_report_asset_to_dict": "asset_to_dict()" | kind=code-symbol | source=probe/workflow/report.py:L11 | neighbors=[report.py] | lang=en
-- "workflow_report_engagement_summary": "engagement_summary()" | kind=code-symbol | source=probe/workflow/report.py:L30 | neighbors=[report.py] | lang=en
-- "workflow_report_rationale_1": "report.py — JSON-safe Asset serialization, engagement summary, and the re-scan d" | kind=entity | source=probe/workflow/report.py:L1 | neighbors=[report.py] | lang=en
+- "tests_test_seed_admin_testhashhelpers_test_different_calls_produce_different_hashes": ".test_different_calls_produce_different_hashes()" | kind=code-symbol | source=manager/backend/tests/test_seed_admin.py:L87 | neighbors=[TestHashHelpers] | lang=en
+- "tests_test_seed_admin_testhashhelpers_test_hash_and_verify_round_trip": ".test_hash_and_verify_round_trip()" | kind=code-symbol | source=manager/backend/tests/test_seed_admin.py:L78 | neighbors=[TestHashHelpers] | lang=en
+- "tests_test_seed_admin_testhashhelpers_test_wrong_password_fails_verify": ".test_wrong_password_fails_verify()" | kind=code-symbol | source=manager/backend/tests/test_seed_admin.py:L83 | neighbors=[TestHashHelpers] | lang=en
+- "tests_test_seed_admin_testpasswordrotation_test_rotation_raises_on_hash_verify_failure": ".test_rotation_raises_on_hash_verify_failure()" | kind=code-symbol | source=manager/backend/tests/test_seed_admin.py:L240 | neighbors=[TestPasswordRotation] | lang=en
+- "tests_test_seed_admin_testpasswordrotation_test_rotation_updates_hash_and_verifies": ".test_rotation_updates_hash_and_verifies()" | kind=code-symbol | source=manager/backend/tests/test_seed_admin.py:L191 | neighbors=[TestPasswordRotation] | lang=en
+- "tests_test_seed_admin_testvalidateenv_test_all_known_weak_passwords_blocked_in_production": ".test_all_known_weak_passwords_blocked_in_production()" | kind=code-symbol | source=manager/backend/tests/test_seed_admin.py:L66 | neighbors=[TestValidateEnv] | lang=en
+- "tests_test_seed_admin_testvalidateenv_test_allows_weak_password_in_development": ".test_allows_weak_password_in_development()" | kind=code-symbol | source=manager/backend/tests/test_seed_admin.py:L51 | neighbors=[TestValidateEnv] | lang=en
+- "tests_test_seed_admin_testvalidateenv_test_raises_on_weak_password_in_production": ".test_raises_on_weak_password_in_production()" | kind=code-symbol | source=manager/backend/tests/test_seed_admin.py:L44 | neighbors=[TestValidateEnv] | lang=en
+- "tests_test_seed_admin_testvalidateenv_test_raises_when_email_missing": ".test_raises_when_email_missing()" | kind=code-symbol | source=manager/backend/tests/test_seed_admin.py:L39 | neighbors=[TestValidateEnv] | lang=en
+- "tests_test_seed_admin_testvalidateenv_test_returns_force_reset_true": ".test_returns_force_reset_true()" | kind=code-symbol | source=manager/backend/tests/test_seed_admin.py:L58 | neighbors=[TestValidateEnv] | lang=en
+- "tests_test_service_identifier_testserviceidentifier_setup_method": ".setup_method()" | kind=code-symbol | source=manager/backend/tests/test_service_identifier.py:L7 | neighbors=[TestServiceIdentifier] | lang=en
+- "tests_test_smb_scanner_test_garbage_response": "test_garbage_response()" | kind=code-symbol | source=probe/tests/test_smb_scanner.py:L28 | neighbors=[test_smb_scanner.py] | lang=en
+- "tests_test_task_runner_rationale_1": "Tests for agent/task_runner.py" | kind=entity | source=probe/tests/test_task_runner.py:L1 | neighbors=[test_task_runner.py] | lang=en
+- "tests_test_task_runner_rationale_105": "When scope is fetched and targets are outside it." | kind=entity | source=probe/tests/test_task_runner.py:L105 | neighbors=[.test_rejects_out_of_scope_target()] | lang=en
+- "tests_test_task_runner_rationale_13": "Return a minimal successful result without doing any real I/O." | kind=entity | source=probe/tests/test_task_runner.py:L13 | neighbors=[_fake_run_scan()] | lang=pt
+- "tests_test_task_runner_rationale_152": "When scope fetch fails, manager-embedded scope is still enforced." | kind=entity | source=probe/tests/test_task_runner.py:L152 | neighbors=[.test_scope_fallback_when_fetch_fails()] | lang=en
+- "tests_test_task_runner_rationale_201": "Verify the submit callback is called with the correct payload." | kind=entity | source=probe/tests/test_task_runner.py:L201 | neighbors=[.test_calls_submit_with_result()] | lang=en
+- "tests_test_task_runner_rationale_206": "When scope is fetched and targets are outside it." | kind=entity | source=probe/tests/test_task_runner.py:L206 | neighbors=[.test_rejects_out_of_scope_target()] | lang=en
+- "tests_test_task_runner_rationale_226": "When spool_submit is provided, it's used instead of direct submit." | kind=entity | source=probe/tests/test_task_runner.py:L226 | neighbors=[.test_uses_spool_when_available()] | lang=en
+- "tests_test_task_runner_rationale_319": "When scope fetch fails, manager-embedded scope is still enforced." | kind=entity | source=probe/tests/test_task_runner.py:L319 | neighbors=[.test_scope_fallback_when_fetch_fails()] | lang=en
+- "tests_test_task_runner_rationale_38": "TaskRunner with no-op dependencies (no real scanning)." | kind=entity | source=probe/tests/test_task_runner.py:L38 | neighbors=[runner()] | lang=en
+- "tests_test_task_runner_rationale_391": "Verify the submit callback is called with the correct payload." | kind=entity | source=probe/tests/test_task_runner.py:L391 | neighbors=[.test_calls_submit_with_result()] | lang=en
+- "tests_test_task_runner_rationale_416": "When spool_submit is provided, it's used instead of direct submit." | kind=entity | source=probe/tests/test_task_runner.py:L416 | neighbors=[.test_uses_spool_when_available()] | lang=en
+- "tests_test_task_runner_rationale_47": "Tests that use the real engine but with no-op callbacks." | kind=entity | source=probe/tests/test_task_runner.py:L47 | neighbors=[TestRunnerHeadless] | lang=en
+- "tests_test_task_runner_testrunnerheadless_test_explicit_empty_targets_never_expand_to_engagement_scope": ".test_explicit_empty_targets_never_expand_to_engagement_scope()" | kind=code-symbol | source=probe/tests/test_task_runner.py:L71 | neighbors=[TestRunnerHeadless] | lang=en
+- "tests_test_task_runner_testrunnerheadless_test_rejects_empty_targets": ".test_rejects_empty_targets()" | kind=code-symbol | source=probe/tests/test_task_runner.py:L60 | neighbors=[TestRunnerHeadless] | lang=en
+- "tests_test_task_runner_testrunnerheadless_test_rejects_non_object_params": ".test_rejects_non_object_params()" | kind=code-symbol | source=probe/tests/test_task_runner.py:L120 | neighbors=[TestRunnerHeadless] | lang=en
+- "tests_test_task_runner_testrunnerheadless_test_rejects_non_string_target": ".test_rejects_non_string_target()" | kind=code-symbol | source=probe/tests/test_task_runner.py:L132 | neighbors=[TestRunnerHeadless] | lang=en
+- "tests_test_task_runner_testrunnerheadless_test_rejects_unknown_use_case": ".test_rejects_unknown_use_case()" | kind=code-symbol | source=probe/tests/test_task_runner.py:L49 | neighbors=[TestRunnerHeadless] | lang=en
+- "tests_test_task_runner_testrunnerheadless_test_resolves_full_assessment": ".test_resolves_full_assessment()" | kind=code-symbol | source=probe/tests/test_task_runner.py:L100 | neighbors=[TestRunnerHeadless] | lang=en
+- "tests_test_task_runner_testrunnerheadless_test_resolves_use_case_correctly": ".test_resolves_use_case_correctly()" | kind=code-symbol | source=probe/tests/test_task_runner.py:L89 | neighbors=[TestRunnerHeadless] | lang=en
+- "tests_test_task_runner_testrunnerheadless_test_scan_engine_exception_becomes_submittable_failure": ".test_scan_engine_exception_becomes_submittable_failure()" | kind=code-symbol | source=probe/tests/test_task_runner.py:L180 | neighbors=[TestRunnerHeadless] | lang=en
+- "tests_test_task_runner_testrunnerheadless_test_target_precedence": ".test_target_precedence()" | kind=code-symbol | source=probe/tests/test_task_runner.py:L168 | neighbors=[TestRunnerHeadless] | lang=en
+- "tests_test_task_runner_testrunnerheadless_test_uses_job_type_when_no_use_case": ".test_uses_job_type_when_no_use_case()" | kind=code-symbol | source=probe/tests/test_task_runner.py:L110 | neighbors=[TestRunnerHeadless] | lang=en
+- "tests_test_task_runner_testrunnerscantypes_test_ot_passive_profile": ".test_ot_passive_profile()" | kind=code-symbol | source=probe/tests/test_task_runner.py:L448 | neighbors=[TestRunnerScanTypes] | lang=en
+- "tests_test_task_runner_testrunnerscantypes_test_web_triage_scan_type": ".test_web_triage_scan_type()" | kind=code-symbol | source=probe/tests/test_task_runner.py:L459 | neighbors=[TestRunnerScanTypes] | lang=en
+- "tests_test_task_runner_testrunnerscopevalidation_test_allows_in_scope_target": ".test_allows_in_scope_target()" | kind=code-symbol | source=probe/tests/test_task_runner.py:L221 | neighbors=[TestRunnerScopeValidation] | lang=en
+- "tests_test_task_runner_testrunnerscopevalidation_test_explicit_empty_local_ceiling_fails_closed": ".test_explicit_empty_local_ceiling_fails_closed()" | kind=code-symbol | source=probe/tests/test_task_runner.py:L237 | neighbors=[TestRunnerScopeValidation] | lang=en
+- "tests_test_task_runner_testrunnerscopevalidation_test_local_ceiling_filters_manager_authorized_targets": ".test_local_ceiling_filters_manager_authorized_targets()" | kind=code-symbol | source=probe/tests/test_task_runner.py:L257 | neighbors=[TestRunnerScopeValidation] | lang=en
+- "tests_test_task_runner_testrunnerscopevalidation_test_local_ceiling_is_forwarded_to_engine": ".test_local_ceiling_is_forwarded_to_engine()" | kind=code-symbol | source=probe/tests/test_task_runner.py:L277 | neighbors=[TestRunnerScopeValidation] | lang=en
 
 ## Instructions
 

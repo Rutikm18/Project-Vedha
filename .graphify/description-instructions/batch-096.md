@@ -1,4 +1,4 @@
-# Node Description Batch 97 of 134
+# Node Description Batch 97 of 144
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,51 +12,60 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
-Write every description in English (en). Do not switch languages.
+For an entity node (any other kind — e.g. a person, place, event, object),
+describe what the entity is and its role, grounded in its type, its
+relations (neighbors) and the provided citations/evidence — e.g.
+"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
+Ground entity descriptions in the citations/evidence when present; do not
+speculate beyond the context, so a node with no supporting context may be
+left out of the reply.
+LANGUAGE: each entry has a `lang=` marker giving the language of its source.
+Write that entry's description in EXACTLY that language. Do not translate to
+a single common language — match each node's source language individually.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "lib_errors_adversaerror_constructor": ".constructor()" | kind=code-symbol | source=manager/frontend/lib/errors.ts:L65 | neighbors=[AdversaError]
-- "lib_errors_adversaerror_render": ".render()" | kind=code-symbol | source=manager/frontend/lib/errors.ts:L94 | neighbors=[AdversaError]
-- "lib_errors_adversaerror_tojson": ".toJSON()" | kind=code-symbol | source=manager/frontend/lib/errors.ts:L76 | neighbors=[AdversaError]
-- "lib_errors_adversaerroropts": "AdversaErrorOpts" | kind=code-symbol | source=manager/frontend/lib/errors.ts:L48 | neighbors=[errors.ts]
-- "lib_errors_errorcode": "ErrorCode" | kind=code-symbol | source=manager/frontend/lib/errors.ts:L14 | neighbors=[errors.ts]
-- "lib_errors_vedhaerror_constructor": ".constructor()" | kind=code-symbol | source=manager/frontend/lib/errors.ts:L65 | neighbors=[VedhaError]
-- "lib_errors_vedhaerror_render": ".render()" | kind=code-symbol | source=manager/frontend/lib/errors.ts:L94 | neighbors=[VedhaError]
-- "lib_errors_vedhaerror_tojson": ".toJSON()" | kind=code-symbol | source=manager/frontend/lib/errors.ts:L76 | neighbors=[VedhaError]
-- "lib_errors_vedhaerroropts": "VedhaErrorOpts" | kind=code-symbol | source=manager/frontend/lib/errors.ts:L48 | neighbors=[errors.ts]
-- "lib_exploit_store_approvals": "approvals" | kind=code-symbol | source=manager/frontend/lib/exploit-store.ts:L78 | neighbors=[exploit-store.ts]
-- "lib_exploit_store_approvalstatus": "ApprovalStatus" | kind=code-symbol | source=manager/frontend/lib/exploit-store.ts:L3 | neighbors=[exploit-store.ts]
-- "lib_exploit_store_auditentry": "AuditEntry" | kind=code-symbol | source=manager/frontend/lib/exploit-store.ts:L54 | neighbors=[exploit-store.ts]
-- "lib_exploit_store_auditlog": "auditLog" | kind=code-symbol | source=manager/frontend/lib/exploit-store.ts:L79 | neighbors=[exploit-store.ts]
-- "lib_exploit_store_exploitapprovalrequest": "ExploitApprovalRequest" | kind=code-symbol | source=manager/frontend/lib/exploit-store.ts:L36 | neighbors=[exploit-store.ts]
-- "lib_exploit_store_exploitevidence": "ExploitEvidence" | kind=code-symbol | source=manager/frontend/lib/exploit-store.ts:L5 | neighbors=[exploit-store.ts]
-- "lib_exploit_store_exploitjob": "ExploitJob" | kind=code-symbol | source=manager/frontend/lib/exploit-store.ts:L20 | neighbors=[exploit-store.ts]
-- "lib_exploit_store_exploitresult": "ExploitResult" | kind=code-symbol | source=manager/frontend/lib/exploit-store.ts:L13 | neighbors=[exploit-store.ts]
-- "lib_exploit_store_exploitstore": "exploitStore" | kind=code-symbol | source=manager/frontend/lib/exploit-store.ts:L81 | neighbors=[exploit-store.ts]
-- "lib_exploit_store_genid": "genId()" | kind=code-symbol | source=manager/frontend/lib/exploit-store.ts:L68 | neighbors=[exploit-store.ts]
-- "lib_exploit_store_jobs": "jobs" | kind=code-symbol | source=manager/frontend/lib/exploit-store.ts:L77 | neighbors=[exploit-store.ts]
-- "lib_exploit_store_jobstatus": "JobStatus" | kind=code-symbol | source=manager/frontend/lib/exploit-store.ts:L2 | neighbors=[exploit-store.ts]
-- "lib_exploit_store_nowiso": "nowIso()" | kind=code-symbol | source=manager/frontend/lib/exploit-store.ts:L72 | neighbors=[exploit-store.ts]
-- "lib_exploit_store_payloadtype": "PayloadType" | kind=code-symbol | source=manager/frontend/lib/exploit-store.ts:L1 | neighbors=[exploit-store.ts]
-- "lib_fetcher_apierror_constructor": ".constructor()" | kind=code-symbol | source=manager/frontend/lib/fetcher.ts:L10 | neighbors=[ApiError]
-- "lib_finding_id_counters": "counters" | kind=code-symbol | source=manager/frontend/lib/finding-id.ts:L11 | neighbors=[finding-id.ts]
-- "lib_finding_id_sev_prefix": "SEV_PREFIX" | kind=code-symbol | source=manager/frontend/lib/finding-id.ts:L3 | neighbors=[finding-id.ts]
-- "lib_findings_store_default_data_path": "DEFAULT_DATA_PATH" | kind=code-symbol | source=manager/frontend/lib/findings-store.ts:L9 | neighbors=[findings-store.ts]
-- "lib_findings_store_isduplicate": "isDuplicate()" | kind=code-symbol | source=manager/frontend/lib/findings-store.ts:L43 | neighbors=[findings-store.ts]
-- "lib_findings_store_sla_hours": "SLA_HOURS" | kind=code-symbol | source=manager/frontend/lib/findings-store.ts:L15 | neighbors=[findings-store.ts]
-- "lib_graph_store_adj": "ADJ" | kind=code-symbol | source=manager/frontend/lib/graph-store.ts:L238 | neighbors=[graph-store.ts]
-- "lib_graph_store_adjacency": "adjacency()" | kind=code-symbol | source=manager/frontend/lib/graph-store.ts:L182 | neighbors=[graph-store.ts]
-- "lib_graph_store_attack_paths": "ATTACK_PATHS" | kind=code-symbol | source=manager/frontend/lib/graph-store.ts:L301 | neighbors=[graph-store.ts]
-- "lib_graph_store_attackpath": "AttackPath" | kind=code-symbol | source=manager/frontend/lib/graph-store.ts:L39 | neighbors=[graph-store.ts]
-- "lib_graph_store_bfspath": "bfsPath()" | kind=code-symbol | source=manager/frontend/lib/graph-store.ts:L194 | neighbors=[graph-store.ts]
-- "lib_graph_store_bfsreach": "bfsReach()" | kind=code-symbol | source=manager/frontend/lib/graph-store.ts:L194 | neighbors=[graph-store.ts]
-- "lib_graph_store_blastradiusresult": "BlastRadiusResult" | kind=code-symbol | source=manager/frontend/lib/graph-store.ts:L64 | neighbors=[graph-store.ts]
-- "lib_graph_store_buildchokepoints": "buildChokepoints()" | kind=code-symbol | source=manager/frontend/lib/graph-store.ts:L304 | neighbors=[graph-store.ts]
-- "lib_graph_store_builddemograph": "buildDemoGraph()" | kind=code-symbol | source=manager/frontend/lib/graph-store.ts:L73 | neighbors=[graph-store.ts]
-- "lib_graph_store_chokepoint": "Chokepoint" | kind=code-symbol | source=manager/frontend/lib/graph-store.ts:L53 | neighbors=[graph-store.ts]
-- "lib_graph_store_chokepoints": "CHOKEPOINTS" | kind=code-symbol | source=manager/frontend/lib/graph-store.ts:L327 | neighbors=[graph-store.ts]
+- "explain_route_post": "POST()" | kind=code-symbol | source=manager/frontend/app/api/assistant/explain/route.ts:L21 | neighbors=[route.ts] | lang=en
+- "exploit_msf_client_metasploitrpcclient_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/exploit/msf_client.py:L30 | neighbors=[MetasploitRPCClient] | lang=en
+- "exploit_msf_client_rationale_1": "MetasploitRPCClient — async client for msfrpcd.  Protocol: MessagePack RPC over" | kind=entity | source=manager/backend/app/exploit/msf_client.py:L1 | neighbors=[msf_client.py] | lang=en
+- "exploit_msf_client_rationale_103": "Returns {status, output, uuid}." | kind=entity | source=manager/backend/app/exploit/msf_client.py:L103 | neighbors=[.get_job_status()] | lang=en
+- "exploit_msf_client_rationale_119": "Returns True if job was successfully killed." | kind=entity | source=manager/backend/app/exploit/msf_client.py:L119 | neighbors=[.kill_job()] | lang=en
+- "exploit_msf_client_rationale_138": "Poll until job completes or max_wait exceeded." | kind=entity | source=manager/backend/app/exploit/msf_client.py:L138 | neighbors=[.wait_for_job()] | lang=en
+- "exploit_msf_client_rationale_152": "Authenticated RPC call — prepends token." | kind=entity | source=manager/backend/app/exploit/msf_client.py:L152 | neighbors=[._call()] | lang=en
+- "exploit_msf_client_rationale_28": "Async Metasploit RPC client using msgpack-over-HTTPS." | kind=entity | source=manager/backend/app/exploit/msf_client.py:L28 | neighbors=[MetasploitRPCClient] | lang=en
+- "exploit_msf_client_rationale_39": "Authenticate with msfrpcd and store the session token." | kind=entity | source=manager/backend/app/exploit/msf_client.py:L39 | neighbors=[.connect()] | lang=en
+- "exploit_msf_client_rationale_66": "module_type: exploit | auxiliary | payload | post | encoder         Returns list" | kind=entity | source=manager/backend/app/exploit/msf_client.py:L66 | neighbors=[.list_modules()] | lang=en
+- "exploit_msf_client_rationale_89": "Execute a Metasploit module.         Returns job_id as string." | kind=entity | source=manager/backend/app/exploit/msf_client.py:L89 | neighbors=[.run_module()] | lang=pt
+- "exploit_nuclei_exploit_rationale_120": "Run Nuclei CVE PoC template against target.         Returns {vulnerable, evidenc" | kind=entity | source=manager/backend/app/exploit/nuclei_exploit.py:L120 | neighbors=[.run_cve_poc()] | lang=en
+- "exploit_nuclei_exploit_rationale_160": "Parse nuclei JSONL output for a single CVE PoC result." | kind=entity | source=manager/backend/app/exploit/nuclei_exploit.py:L160 | neighbors=[._parse_poc_output()] | lang=en
+- "exploit_nuclei_exploit_rationale_48": "Run Nuclei CVE PoC templates against a single target.     Every template is safe" | kind=entity | source=manager/backend/app/exploit/nuclei_exploit.py:L48 | neighbors=[NucleiExploitRunner] | lang=en
+- "exploit_nuclei_exploit_rationale_60": "Parse template YAML and validate it contains no write/delete/DoS actions." | kind=entity | source=manager/backend/app/exploit/nuclei_exploit.py:L60 | neighbors=[.safe_template_check()] | lang=en
+- "exploit_orchestrator_exploitorchestrator_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/exploit/orchestrator.py:L53 | neighbors=[ExploitOrchestrator] | lang=en
+- "exploit_safety_approvalrequirederror_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/exploit/safety.py:L30 | neighbors=[ApprovalRequiredError] | lang=en
+- "exploit_safety_rationale_1": "Safety constants, exceptions, and validators for the exploitation engine.  All s" | kind=entity | source=manager/backend/app/exploit/safety.py:L1 | neighbors=[safety.py] | lang=en
+- "exploit_safety_rationale_17": "Raised when a requested payload or module is not on the allowlist." | kind=entity | source=manager/backend/app/exploit/safety.py:L17 | neighbors=[SafetyViolationError] | lang=en
+- "exploit_safety_rationale_175": "Raises SafetyViolationError if payload is not on allowlist     or violates per-p" | kind=entity | source=manager/backend/app/exploit/safety.py:L175 | neighbors=[validate_payload()] | lang=en
+- "exploit_safety_rationale_203": "Raises SafetyViolationError if module is on the block list." | kind=entity | source=manager/backend/app/exploit/safety.py:L203 | neighbors=[validate_module()] | lang=en
+- "exploit_safety_rationale_21": "Raised when a target IP is outside the engagement scope CIDRs." | kind=entity | source=manager/backend/app/exploit/safety.py:L21 | neighbors=[OutOfScopeError] | lang=en
+- "exploit_safety_rationale_217": "Raises OutOfScopeError if target_ip is not in scope or is excluded." | kind=entity | source=manager/backend/app/exploit/safety.py:L217 | neighbors=[validate_scope()] | lang=en
+- "exploit_safety_rationale_240": "True if this target requires human manager approval before exploit runs." | kind=entity | source=manager/backend/app/exploit/safety.py:L240 | neighbors=[requires_approval()] | lang=en
+- "exploit_safety_rationale_25": "Raised when a job would exceed the maximum hosts per run." | kind=entity | source=manager/backend/app/exploit/safety.py:L25 | neighbors=[BlastRadiusExceededError] | lang=en
+- "exploit_safety_rationale_29": "Raised when a high-risk target requires manager approval before running." | kind=entity | source=manager/backend/app/exploit/safety.py:L29 | neighbors=[ApprovalRequiredError] | lang=pt
+- "exposure_route_exposure": "Exposure" | kind=code-symbol | source=manager/frontend/app/api/analytics/exposure/route.ts:L10 | neighbors=[route.ts] | lang=en
+- "exposure_route_get": "GET" | kind=code-symbol | source=manager/frontend/app/api/analytics/exposure/route.ts:L15 | neighbors=[route.ts] | lang=en
+- "findings_page_complianceref": "ComplianceRef" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L45 | neighbors=[page.tsx] | lang=en
+- "findings_page_copybtn": "CopyBtn()" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L127 | neighbors=[page.tsx] | lang=en
+- "findings_page_coverage_color": "COVERAGE_COLOR" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L77 | neighbors=[page.tsx] | lang=en
+- "findings_page_detectioncoverage": "DetectionCoverage" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L24 | neighbors=[page.tsx] | lang=en
+- "findings_page_detectionpill": "DetectionPill()" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L190 | neighbors=[page.tsx] | lang=en
+- "findings_page_epssbar": "EpssBar()" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L204 | neighbors=[page.tsx] | lang=en
+- "findings_page_exploitmaturity": "ExploitMaturity" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L23 | neighbors=[page.tsx] | lang=en
+- "findings_page_finding": "Finding" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L53 | neighbors=[page.tsx] | lang=en
+- "findings_page_findingpage": "FindingPage" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L87 | neighbors=[page.tsx] | lang=en
+- "findings_page_findingstatus": "FindingStatus" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L22 | neighbors=[page.tsx] | lang=en
+- "findings_page_findingsummary": "FindingSummary" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L95 | neighbors=[page.tsx] | lang=en
+- "findings_page_getlocationsearch": "getLocationSearch()" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L32 | neighbors=[page.tsx] | lang=en
 
 ## Instructions
 

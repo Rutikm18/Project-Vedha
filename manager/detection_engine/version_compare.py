@@ -18,10 +18,16 @@ available — not validated by hand-reasoning about the algorithm alone.
 """
 from __future__ import annotations
 
+import json
+import logging
 import re
 import shutil
 import subprocess
-from functools import lru_cache
+from functools import cmp_to_key, lru_cache
+from pathlib import Path
+from typing import Iterable
+
+_log = logging.getLogger(__name__)
 
 _HAVE_DPKG = shutil.which("dpkg") is not None
 
@@ -164,13 +170,19 @@ def _dpkg_compare_pure_python(a: str, b: str) -> int:
 
 
 def dpkg_compare(a: str, b: str) -> int:
-    """-1 if a<b, 0 if a==b, 1 if a>b, per Debian version ordering. Prefers
-    the real dpkg binary; falls back to the pure-Python reimplementation."""
+    """-1 if a<b, 0 if a==b, 1 if a>b, per Debian version ordering.
+
+    Uses the pure-Python comparator directly. It is cross-validated against the
+    real `dpkg` binary in tests/test_version_compare.py AND, at snapshot load
+    time, against every boundary version in the snapshot actually being matched
+    (see verify_pure_python_matches_dpkg, wired from vuln_db.load_snapshot).
+    The binary is deliberately NOT called here: `dpkg --compare-versions` forks
+    a subprocess per comparison (~2,753x slower than pure-Python, measured) and
+    this function runs in the matcher's innermost loop. _dpkg_compare_via_binary
+    stays available as the ground-truth oracle for that guard and the tests.
+    """
     if a == b:
         return 0
-    via_binary = _dpkg_compare_via_binary(a, b)
-    if via_binary is not None:
-        return via_binary
     return _dpkg_compare_pure_python(a, b)
 
 
@@ -186,3 +198,84 @@ def semver_compare(a: str, b: str) -> int:
     if a == b:
         return 0
     return _compare_part(a, b)
+
+
+# ---------------------------------------------------------------------------
+# Load-time correctness guard (P1).
+#
+# dpkg_compare() runs pure-Python in the matcher hot loop (no per-comparison
+# subprocess). This guard is the correctness anchor: at snapshot load time it
+# confirms the pure-Python comparator agrees with the REAL dpkg binary on the
+# ordering of that snapshot's boundary versions — the exact data being matched.
+# It runs at most once per snapshot content-hash (in-memory + a best-effort
+# on-disk marker), and is a no-op where dpkg isn't installed. On divergence it
+# logs loudly but does NOT raise: pure-Python is still the best available
+# answer, and breaking detection would be worse than a warning to investigate.
+# ---------------------------------------------------------------------------
+_VALIDATION_MARKER_PATH = Path(__file__).parent / "snapshots" / ".dpkg_validation.json"
+_validated_in_memory: dict[str, list[tuple[str, str]]] = {}
+
+
+def _clear_validation_cache() -> None:
+    """Test hook: drop the in-memory record of which snapshots were validated."""
+    _validated_in_memory.clear()
+
+
+def _load_validation_markers() -> dict:
+    try:
+        with _VALIDATION_MARKER_PATH.open() as fh:
+            return json.load(fh)
+    except (FileNotFoundError, ValueError, OSError):
+        return {}
+
+
+def _save_validation_marker(cache_key: str, ok: bool) -> None:
+    try:
+        data = _load_validation_markers()
+        data[cache_key] = {"ok": ok}
+        _VALIDATION_MARKER_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with _VALIDATION_MARKER_PATH.open("w") as fh:
+            json.dump(data, fh, indent=2)
+    except OSError:
+        pass  # best-effort; the in-memory cache still prevents re-runs this process
+
+
+def verify_pure_python_matches_dpkg(versions: Iterable[str], cache_key: str) -> list[tuple[str, str]]:
+    """Confirm pure-Python agrees with the real dpkg binary on the ordering of
+    `versions`. Returns the list of diverging adjacent (a, b) pairs — empty
+    means full agreement (or dpkg is absent). Runs at most once per cache_key.
+
+    Method: sort the unique versions with the pure-Python comparator, then ask
+    the dpkg binary to confirm each ADJACENT pair. If dpkg agrees every adjacent
+    pair is non-decreasing, it agrees with the whole pure-Python order by
+    transitivity — so adjacent-pair agreement is sufficient to certify the
+    ordering, at O(n) binary calls instead of O(n^2).
+    """
+    if not _HAVE_DPKG:
+        return []
+    if cache_key in _validated_in_memory:
+        return _validated_in_memory[cache_key]
+    if _load_validation_markers().get(cache_key, {}).get("ok") is True:
+        _validated_in_memory[cache_key] = []
+        return []
+
+    ordered = sorted({v for v in versions if v}, key=cmp_to_key(_dpkg_compare_pure_python))
+    divergences: list[tuple[str, str]] = []
+    for x, y in zip(ordered, ordered[1:]):
+        real = _dpkg_compare_via_binary(x, y)
+        if real is None:
+            continue
+        pure = _dpkg_compare_pure_python(x, y)
+        pure_sign = (pure > 0) - (pure < 0)
+        if pure_sign != real:
+            divergences.append((x, y))
+
+    if divergences:
+        _log.warning(
+            "version_compare: pure-Python/dpkg divergence on snapshot %s — "
+            "%d boundary pair(s), sample=%r. Matching still uses pure-Python; "
+            "investigate these versions.", cache_key, len(divergences), divergences[:5])
+
+    _validated_in_memory[cache_key] = divergences
+    _save_validation_marker(cache_key, not divergences)
+    return divergences

@@ -26,6 +26,7 @@ import ipaddress
 import json
 import logging
 import socket
+import struct
 import sys
 import time
 from dataclasses import dataclass, field, asdict
@@ -198,6 +199,89 @@ class RateLimiter:
             self._next = now + self.min_interval
 
 
+def inet_checksum(data: bytes) -> int:
+    """
+    Standard 16-bit one's-complement Internet checksum (RFC 1071), used for IP,
+    ICMP and TCP headers. Verifying a buffer that already contains its correct
+    checksum yields 0. Shared by the SYN and ICMP packet crafters.
+    """
+    if len(data) % 2:
+        data += b"\x00"
+    total = sum(struct.unpack("!%dH" % (len(data) // 2), data))
+    total = (total >> 16) + (total & 0xFFFF)
+    total += total >> 16
+    return ~total & 0xFFFF
+
+
+# --------------------------------------------------------------------------- #
+# AdaptiveRateController — AIMD in-flight window (congestion control).
+# --------------------------------------------------------------------------- #
+class AdaptiveRateController:
+    """
+    A self-tuning concurrency window, modelled on TCP congestion control (AIMD),
+    for scanning under loss and RFC-1812 ICMP rate limits (see playbook 11).
+
+    Unlike the fixed `RateLimiter` (a constant token bucket), this GROWS the
+    number of in-flight probes while replies keep arriving and MULTIPLICATIVELY
+    SHRINKS it the moment probes start being lost — the classic signal that the
+    network or the target's ICMP-error rate limit is saturated. It therefore
+    goes as fast as the path allows without hammering fragile hosts.
+
+    Phases (like TCP):
+      * slow start (cwnd < ssthresh): +1 per success  -> ~doubles per RTT.
+      * congestion avoidance (cwnd >= ssthresh): +1/cwnd per success -> +1/RTT.
+      * on loss: ssthresh = cwnd/2, cwnd = cwnd/2 (bounded by min_window).
+
+    Gate probes with `await acquire()`, then call `report_success()` or
+    `report_loss()` exactly once per acquire.
+    """
+
+    def __init__(self, *, init_window: int = 10, min_window: int = 1,
+                 max_window: int = 300, ssthresh: float | None = None):
+        self.min_window = max(1, min_window)
+        self.max_window = max(self.min_window, max_window)
+        self.cwnd: float = float(min(max(init_window, self.min_window),
+                                     self.max_window))
+        self.ssthresh: float = float(ssthresh) if ssthresh is not None \
+            else float(self.max_window)
+        self._in_flight = 0
+        self._cond = asyncio.Condition()
+
+    @property
+    def window(self) -> int:
+        """Current integer window (>= min_window)."""
+        return max(self.min_window, int(self.cwnd))
+
+    def _on_success(self) -> None:
+        if self.cwnd < self.ssthresh:
+            self.cwnd += 1                       # slow start
+        else:
+            self.cwnd += 1.0 / self.cwnd          # congestion avoidance
+        self.cwnd = min(self.cwnd, float(self.max_window))
+
+    def _on_loss(self) -> None:
+        self.ssthresh = max(float(self.min_window), self.cwnd / 2.0)
+        self.cwnd = max(float(self.min_window), self.cwnd / 2.0)
+
+    async def acquire(self) -> None:
+        async with self._cond:
+            while self._in_flight >= self.window:
+                await self._cond.wait()
+            self._in_flight += 1
+
+    async def report_success(self) -> None:
+        async with self._cond:
+            self._in_flight = max(0, self._in_flight - 1)
+            self._on_success()
+            self._cond.notify_all()
+
+    async def report_loss(self) -> None:
+        async with self._cond:
+            self._in_flight = max(0, self._in_flight - 1)
+            self._on_loss()
+            self._cond.notify_all()
+
+
 # --------------------------------------------------------------------------- #
 # Target expansion — CIDR / range / single host -> list of host strings.
 # --------------------------------------------------------------------------- #
@@ -275,6 +359,98 @@ def resolve(target: str, port: int, *, proto: str = "tcp"):
         raise OSError(f"cannot resolve {target!r}")
     family, _stype, _proto, _canon, sockaddr = infos[0]
     return family, sockaddr
+
+
+# --------------------------------------------------------------------------- #
+# True-async UDP probe — event-loop native, no thread pool.
+# --------------------------------------------------------------------------- #
+# Sentinel: an ICMP port-unreachable came back, so the port is *definitively*
+# closed — distinct from `None` (no reply = the ambiguous open|filtered state
+# that plagues UDP scanning, see playbook 11).
+_UDP_CLOSED = object()
+
+
+class _UDPProbeProtocol(asyncio.DatagramProtocol):
+    """
+    One-shot datagram protocol backing `async_udp_probe`. Resolves its future
+    with the first datagram received, or with `_UDP_CLOSED` when the OS reports
+    an ICMP port-unreachable (surfaced as ConnectionRefusedError in
+    `error_received`). Everything runs on the event loop — there is no blocking
+    `recvfrom` and no executor thread, so thousands of probes are genuinely
+    concurrent rather than bounded by the default thread pool.
+    """
+
+    def __init__(self, future: "asyncio.Future"):
+        self._future = future
+
+    def datagram_received(self, data: bytes, addr) -> None:
+        if not self._future.done():
+            self._future.set_result(data)
+
+    def error_received(self, exc: Exception) -> None:
+        if self._future.done():
+            return
+        # ICMP port-unreachable => closed. Any other transport error => treat as
+        # no usable reply (ambiguous), matching a timeout.
+        if isinstance(exc, ConnectionRefusedError):
+            self._future.set_result(_UDP_CLOSED)
+        else:
+            self._future.set_result(None)
+
+    def connection_lost(self, exc) -> None:
+        if not self._future.done():
+            self._future.set_result(None)
+
+
+async def async_udp_probe(target: str, port: int, payload: bytes,
+                          timeout: float):
+    """
+    Send one UDP datagram and await the first reply — fully on the event loop.
+
+    Returns a tri-state (see playbook 11's open|filtered problem):
+        bytes         the reply (service is OPEN and speaking)
+        _UDP_CLOSED   ICMP port-unreachable (port is CLOSED)
+        None          no reply within `timeout` (OPEN|FILTERED, ambiguous)
+
+    Resolution (IPv4/IPv6/hostname) is delegated to asyncio's
+    create_datagram_endpoint; an unresolvable/again-unavailable target yields
+    None rather than raising, so one bad target never aborts a sweep.
+    """
+    loop = asyncio.get_running_loop()
+    fut: "asyncio.Future" = loop.create_future()
+    try:
+        transport, _ = await loop.create_datagram_endpoint(
+            lambda: _UDPProbeProtocol(fut), remote_addr=(target, port))
+    except (OSError, socket.gaierror):
+        return None
+    try:
+        transport.sendto(payload)
+        try:
+            return await asyncio.wait_for(fut, timeout=timeout)
+        except asyncio.TimeoutError:
+            return None
+    finally:
+        transport.close()
+
+
+async def async_udp_probe_retry(target: str, port: int, payload: bytes,
+                                timeout: float, *, max_retries: int = 2):
+    """
+    `async_udp_probe` with bounded per-port retransmit.
+
+    Returns on the FIRST definitive answer — bytes (open) or `_UDP_CLOSED`
+    (closed) — and only retries on silence (`None`). This directly attacks UDP's
+    open|filtered ambiguity: a genuine reply lost to UDP's unreliability, or an
+    ICMP-unreachable dropped by RFC-1812 rate limiting, gets another chance
+    instead of being mislabelled. After `max_retries` extra attempts still-silent
+    ports return `None` (open|filtered, reported honestly).
+    """
+    result = None
+    for _ in range(max(0, max_retries) + 1):
+        result = await async_udp_probe(target, port, payload, timeout)
+        if result is not None:
+            return result
+    return result
 
 
 def bracket_host(target: str) -> str:

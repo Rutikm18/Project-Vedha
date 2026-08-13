@@ -1,4 +1,4 @@
-# Node Description Batch 109 of 134
+# Node Description Batch 109 of 144
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,51 +12,58 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
+For an entity node (any other kind — e.g. a person, place, event, object),
+describe what the entity is and its role, grounded in its type, its
+relations (neighbors) and the provided citations/evidence — e.g.
+"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
+Ground entity descriptions in the citations/evidence when present; do not
+speculate beyond the context, so a node with no supporting context may be
+left out of the reply.
 Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "sla_summary_route_sev_to_ui": "SEV_TO_UI" | kind=code-symbol | source=manager/frontend/app/api/findings/sla-summary/route.ts:L13 | neighbors=[route.ts]
-- "states_datastate_btn": "btn" | kind=code-symbol | source=manager/frontend/components/states/DataState.tsx:L121 | neighbors=[DataState.tsx]
-- "states_datastate_center": "center" | kind=code-symbol | source=manager/frontend/components/states/DataState.tsx:L117 | neighbors=[DataState.tsx]
-- "states_datastate_datastateprops": "DataStateProps" | kind=code-symbol | source=manager/frontend/components/states/DataState.tsx:L94 | neighbors=[DataState.tsx]
-- "states_datastate_offlinebanner": "OfflineBanner()" | kind=code-symbol | source=manager/frontend/components/states/DataState.tsx:L81 | neighbors=[DataState.tsx]
-- "states_datastate_unauthorized": "Unauthorized()" | kind=code-symbol | source=manager/frontend/components/states/DataState.tsx:L68 | neighbors=[DataState.tsx]
-- "status_route_required": "required" | kind=code-symbol | source=manager/frontend/app/api/settings/status/route.ts:L4 | neighbors=[route.ts]
-- "summary_route_apisummary": "ApiSummary" | kind=code-symbol | source=manager/frontend/app/api/findings/summary/route.ts:L5 | neighbors=[route.ts]
-- "summary_route_get": "GET" | kind=code-symbol | source=manager/frontend/app/api/findings/summary/route.ts:L18 | neighbors=[route.ts]
-- "tests_assistant_test_cansubmit": "canSubmit()" | kind=code-symbol | source=manager/frontend/tests/assistant.test.ts:L86 | neighbors=[assistant.test.ts]
-- "tests_assistant_test_sendbtnlabel": "sendBtnLabel()" | kind=code-symbol | source=manager/frontend/tests/assistant.test.ts:L90 | neighbors=[assistant.test.ts]
-- "tests_assistant_test_textareaplaceholder": "textareaPlaceholder()" | kind=code-symbol | source=manager/frontend/tests/assistant.test.ts:L94 | neighbors=[assistant.test.ts]
-- "tests_findings_store_test_makefinding": "makeFinding()" | kind=code-symbol | source=manager/frontend/tests/findings-store.test.ts:L25 | neighbors=[findings-store.test.ts]
-- "tests_findings_store_test_tmp_dir": "TMP_DIR" | kind=code-symbol | source=manager/frontend/tests/findings-store.test.ts:L8 | neighbors=[findings-store.test.ts]
-- "tests_findings_store_test_tmp_file": "TMP_FILE" | kind=code-symbol | source=manager/frontend/tests/findings-store.test.ts:L9 | neighbors=[findings-store.test.ts]
-- "tests_parsers_test_naabu_line": "NAABU_LINE" | kind=code-symbol | source=manager/frontend/tests/parsers.test.ts:L81 | neighbors=[parsers.test.ts]
-- "tests_parsers_test_nuclei_valid": "NUCLEI_VALID" | kind=code-symbol | source=manager/frontend/tests/parsers.test.ts:L56 | neighbors=[parsers.test.ts]
-- "tests_parsers_test_testssl_valid": "TESTSSL_VALID" | kind=code-symbol | source=manager/frontend/tests/parsers.test.ts:L73 | neighbors=[parsers.test.ts]
-- "tests_test_ad_assessment_fakeattr_init": ".__init__()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L32 | neighbors=[_FakeAttr]
-- "tests_test_ad_assessment_fakeentry_init": ".__init__()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L37 | neighbors=[_FakeEntry]
-- "tests_test_ad_assessment_testadcschecker_setup_method": ".setup_method()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L280 | neighbors=[TestADCSChecker]
-- "tests_test_ad_assessment_testadcschecker_test_esc1_negative_when_manager_approval": ".test_esc1_negative_when_manager_approval()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L292 | neighbors=[TestADCSChecker]
-- "tests_test_ad_assessment_testadcschecker_test_esc1_negative_without_low_priv_enrollment": ".test_esc1_negative_without_low_priv_enrollment()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L299 | neighbors=[TestADCSChecker]
-- "tests_test_ad_assessment_testadcschecker_test_esc1_positive": ".test_esc1_positive()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L283 | neighbors=[TestADCSChecker]
-- "tests_test_ad_assessment_testadcschecker_test_esc4_negative_when_deny_ace": ".test_esc4_negative_when_deny_ace()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L313 | neighbors=[TestADCSChecker]
-- "tests_test_ad_assessment_testadcschecker_test_esc4_positive": ".test_esc4_positive()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L306 | neighbors=[TestADCSChecker]
-- "tests_test_ad_assessment_testadcschecker_test_esc8_negative_no_web_enrollment": ".test_esc8_negative_no_web_enrollment()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L332 | neighbors=[TestADCSChecker]
-- "tests_test_ad_assessment_testadcschecker_test_esc8_negative_with_epa_and_https": ".test_esc8_negative_with_epa_and_https()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L326 | neighbors=[TestADCSChecker]
-- "tests_test_ad_assessment_testadcschecker_test_esc8_positive": ".test_esc8_positive()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L320 | neighbors=[TestADCSChecker]
-- "tests_test_ad_assessment_testadcschecker_test_generate_findings_produces_esc1_and_esc8": ".test_generate_findings_produces_esc1_and_esc8()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L335 | neighbors=[TestADCSChecker]
-- "tests_test_ad_assessment_testasreproastchecker_setup_method": ".setup_method()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L217 | neighbors=[TestASREPRoastChecker]
-- "tests_test_ad_assessment_testasreproastchecker_test_finding_shape": ".test_finding_shape()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L229 | neighbors=[TestASREPRoastChecker]
-- "tests_test_ad_assessment_testasreproastchecker_test_get_no_preauth_accounts": ".test_get_no_preauth_accounts()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L220 | neighbors=[TestASREPRoastChecker]
-- "tests_test_ad_assessment_testasreproastchecker_test_no_finding_when_empty": ".test_no_finding_when_empty()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L235 | neighbors=[TestASREPRoastChecker]
-- "tests_test_ad_assessment_testasreproastchecker_test_request_asrep_without_impacket": ".test_request_asrep_without_impacket()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L238 | neighbors=[TestASREPRoastChecker]
-- "tests_test_ad_assessment_testbloodhoundcollector_setup_method": ".setup_method()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L358 | neighbors=[TestBloodHoundCollector]
-- "tests_test_ad_assessment_testbloodhoundcollector_test_da_path_finding_critical_when_short": ".test_da_path_finding_critical_when_short()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L361 | neighbors=[TestBloodHoundCollector]
-- "tests_test_ad_assessment_testbloodhoundcollector_test_da_path_finding_high_when_long": ".test_da_path_finding_high_when_long()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L368 | neighbors=[TestBloodHoundCollector]
-- "tests_test_ad_assessment_testbloodhoundcollector_test_import_without_neo4j": ".test_import_without_neo4j()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L379 | neighbors=[TestBloodHoundCollector]
-- "tests_test_ad_assessment_testbloodhoundcollector_test_no_finding_without_paths": ".test_no_finding_without_paths()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L373 | neighbors=[TestBloodHoundCollector]
+- "routers_health_rationale_82": "Validates the authentication subsystem without touching login state.     Returns" | kind=entity | source=manager/backend/app/routers/health.py:L82 | neighbors=[health_auth()]
+- "routers_probe_enrollment_list_enrollment_requests": "list_enrollment_requests()" | kind=code-symbol | source=manager/backend/app/routers/probe_enrollment.py:L428 | neighbors=[probe_enrollment.py]
+- "routers_probe_enrollment_rationale_1": "Device-code enrollment for probes; no human credential is installed on a probe." | kind=entity | source=manager/backend/app/routers/probe_enrollment.py:L1 | neighbors=[probe_enrollment.py]
+- "routers_probe_enrollment_rationale_246": "Bind a request to a Site policy and create the provisioning Agent.      Shared b" | kind=entity | source=manager/backend/app/routers/probe_enrollment.py:L246 | neighbors=[_provision_agent_for_site()]
+- "routers_probe_enrollment_rationale_62": "Return (raw_token, token_hash, token_prefix). Raw is shown once." | kind=entity | source=manager/backend/app/routers/probe_enrollment.py:L62 | neighbors=[generate_enroll_token()]
+- "routers_probe_enrollment_rationale_68": "A token can auto-approve only while live, unrevoked, and under max_uses." | kind=entity | source=manager/backend/app/routers/probe_enrollment.py:L68 | neighbors=[enroll_token_is_usable()]
+- "routers_probe_enrollment_revoke_enroll_token": "revoke_enroll_token()" | kind=code-symbol | source=manager/backend/app/routers/probe_enrollment.py:L682 | neighbors=[probe_enrollment.py]
+- "routers_probe_enrollment_sitepolicyinput_require_site_reference": ".require_site_reference()" | kind=code-symbol | source=manager/backend/app/routers/probe_enrollment.py:L167 | neighbors=[SitePolicyInput]
+- "routers_probe_enrollment_sitepolicyinput_validate_networks": ".validate_networks()" | kind=code-symbol | source=manager/backend/app/routers/probe_enrollment.py:L163 | neighbors=[SitePolicyInput]
+- "routers_vuln_scans_import_findings": "import_findings()" | kind=code-symbol | source=manager/backend/app/routers/vuln_scans.py:L215 | neighbors=[vuln_scans.py]
+- "routers_vuln_scans_launch_nessus_scan": "launch_nessus_scan()" | kind=code-symbol | source=manager/backend/app/routers/vuln_scans.py:L66 | neighbors=[vuln_scans.py]
+- "routers_vuln_scans_launch_nuclei_scan": "launch_nuclei_scan()" | kind=code-symbol | source=manager/backend/app/routers/vuln_scans.py:L119 | neighbors=[vuln_scans.py]
+- "routers_vuln_scans_scan_status": "scan_status()" | kind=code-symbol | source=manager/backend/app/routers/vuln_scans.py:L165 | neighbors=[vuln_scans.py]
+- "routers_vuln_scans_trigger_enrichment": "trigger_enrichment()" | kind=code-symbol | source=manager/backend/app/routers/vuln_scans.py:L194 | neighbors=[vuln_scans.py]
+- "run_route_post": "POST()" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/detection-validation/run/route.ts:L5 | neighbors=[route.ts]
+- "scan_page_cat": "Cat" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L121 | neighbors=[page.tsx]
+- "scan_page_cats": "CATS" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L120 | neighbors=[page.tsx]
+- "scan_page_dispatchreceipt": "DispatchReceipt()" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L509 | neighbors=[page.tsx]
+- "scan_page_engagement": "Engagement" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L39 | neighbors=[page.tsx]
+- "scan_page_enginemanifest": "EngineManifest" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L72 | neighbors=[page.tsx]
+- "scan_page_fieldlabel": "FieldLabel()" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L166 | neighbors=[page.tsx]
+- "scan_page_fleetstrip": "FleetStrip()" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L190 | neighbors=[page.tsx]
+- "scan_page_hudframe": "HudFrame()" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L175 | neighbors=[page.tsx]
+- "scan_page_intensity": "Intensity" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L125 | neighbors=[page.tsx]
+- "scan_page_intensitydial": "IntensityDial()" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L287 | neighbors=[page.tsx]
+- "scan_page_jobpanel": "JobPanel()" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L335 | neighbors=[page.tsx]
+- "scan_page_jobstatus": "JobStatus" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L47 | neighbors=[page.tsx]
+- "scan_page_phases": "PHASES" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L333 | neighbors=[page.tsx]
+- "scan_page_probe": "Probe" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L27 | neighbors=[page.tsx]
+- "scan_page_profile_badge": "PROFILE_BADGE" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L114 | neighbors=[page.tsx]
+- "scan_page_risk": "RISK" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L107 | neighbors=[page.tsx]
+- "scan_page_scannerrun": "ScannerRun" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L60 | neighbors=[page.tsx]
+- "scan_page_scanpage": "ScanPage()" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L554 | neighbors=[page.tsx]
+- "scan_page_sectionlabel": "SectionLabel()" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L155 | neighbors=[page.tsx]
+- "scan_page_uc_meta": "UC_META" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L92 | neighbors=[page.tsx]
+- "scan_page_usecase": "UseCase" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L18 | neighbors=[page.tsx]
+- "scan_page_usecasecard": "UseCaseCard()" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L257 | neighbors=[page.tsx]
+- "scanner_db_scanner_dbscanner_init": ".__init__()" | kind=code-symbol | source=probe/scanner/db_scanner.py:L240 | neighbors=[DBScanner]
+- "scanner_db_scanner_main": "main()" | kind=code-symbol | source=probe/scanner/db_scanner.py:L287 | neighbors=[db_scanner.py]
+- "scanner_db_scanner_probe_mongodb": "_probe_mongodb()" | kind=code-symbol | source=probe/scanner/db_scanner.py:L131 | neighbors=[db_scanner.py]
 
 ## Instructions
 

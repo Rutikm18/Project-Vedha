@@ -1,4 +1,4 @@
-# Node Description Batch 81 of 134
+# Node Description Batch 81 of 144
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -9,9 +9,6 @@ your JSON answer to the answer file.
 You are documenting nodes in a knowledge graph.
 For each entry below, write ONE concise factual plain-language sentence
 describing what it is or does. Use only the provided context.
-For a code symbol (kind=code-symbol — a function, class, or constant),
-describe what the function/symbol does based on its name, source location
-and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
 For an entity node (any other kind — e.g. a person, place, event, object),
 describe what the entity is and its role, grounded in its type, its
 relations (neighbors) and the provided citations/evidence — e.g.
@@ -26,46 +23,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "agent_transport_rationale_33": "Raised when a transport operation fails permanently (not retryable)." | kind=entity | source=probe/agent/transport.py:L33 | neighbors=[TransportError] | lang=pt
-- "agent_transport_rationale_330": "Establish an authenticated WebSocket connection to the manager.          Returns" | kind=entity | source=probe/agent/transport.py:L330 | neighbors=[.connect_ws()] | lang=en
-- "agent_transport_rationale_333": "Poll for pending jobs (HTTP fallback for WebSocket).          Returns a list of" | kind=entity | source=probe/agent/transport.py:L333 | neighbors=[.poll_jobs()] | lang=en
-- "agent_transport_rationale_336": "Poll for pending jobs (HTTP fallback for WebSocket).          Returns a list of" | kind=entity | source=probe/agent/transport.py:L336 | neighbors=[.poll_jobs()] | lang=en
-- "agent_transport_rationale_34": "Raised when a transport operation fails permanently (not retryable)." | kind=entity | source=probe/agent/transport.py:L34 | neighbors=[TransportError] | lang=pt
-- "agent_transport_rationale_351": "Fetch the engagement's authoritative scope.          Returns the response dict i" | kind=entity | source=probe/agent/transport.py:L351 | neighbors=[.fetch_scope()] | lang=en
-- "agent_transport_rationale_37": "HTTP (+ future WebSocket) transport to the manager.      Thread-safe for sequent" | kind=entity | source=probe/agent/transport.py:L37 | neighbors=[Transport] | lang=en
-- "agent_transport_rationale_370": "Submit a scan result to the manager.          Returns True ONLY on a 2xx respons" | kind=entity | source=probe/agent/transport.py:L370 | neighbors=[.submit_result()] | lang=en
-- "agent_transport_rationale_373": "Submit a scan result to the manager.          Returns True ONLY on a 2xx respons" | kind=entity | source=probe/agent/transport.py:L373 | neighbors=[.submit_result()] | lang=en
-- "agent_transport_rationale_395": "Refresh a device token before expiry; legacy identities are unchanged." | kind=entity | source=probe/agent/transport.py:L395 | neighbors=[.ensure_device_access()] | lang=en
-- "agent_transport_rationale_419": "Refresh routing metadata using the cached agent identity.          Returns True" | kind=entity | source=probe/agent/transport.py:L419 | neighbors=[.refresh_registration()] | lang=en
-- "agent_transport_rationale_421": "Generic authenticated GET, returns parsed JSON or None on failure.          Used" | kind=entity | source=probe/agent/transport.py:L421 | neighbors=[.http_get()] | lang=en
-- "agent_transport_rationale_424": "Generic authenticated GET, returns parsed JSON or None on failure.          Used" | kind=entity | source=probe/agent/transport.py:L424 | neighbors=[.http_get()] | lang=en
-- "agent_transport_rationale_437": "Return the WebSocket endpoint without embedding credentials.          Authentica" | kind=entity | source=probe/agent/transport.py:L437 | neighbors=[.ws_url()] | lang=en
-- "agent_transport_rationale_440": "Return the WebSocket endpoint without embedding credentials.          Authentica" | kind=entity | source=probe/agent/transport.py:L440 | neighbors=[.ws_url()] | lang=en
-- "agent_transport_rationale_447": "Establish an authenticated WebSocket connection to the manager.          Returns" | kind=entity | source=probe/agent/transport.py:L447 | neighbors=[.connect_ws()] | lang=en
-- "agent_transport_rationale_45": "Durably replace one private JSON state file without exposing secrets." | kind=entity | source=probe/agent/transport.py:L45 | neighbors=[_atomic_write_private_state()] | lang=en
-- "agent_transport_rationale_450": "Establish an authenticated WebSocket connection to the manager.          Returns" | kind=entity | source=probe/agent/transport.py:L450 | neighbors=[.connect_ws()] | lang=en
-- "agent_transport_rationale_46": "Durably replace one private JSON state file without exposing secrets." | kind=entity | source=probe/agent/transport.py:L46 | neighbors=[_atomic_write_private_state()] | lang=en
-- "agent_transport_rationale_470": "Send a heartbeat to the manager.          Returns True if the heartbeat was acce" | kind=entity | source=probe/agent/transport.py:L470 | neighbors=[.heartbeat()] | lang=en
-- "agent_transport_rationale_477": "True if the WebSocket connection is active." | kind=entity | source=probe/agent/transport.py:L477 | neighbors=[.is_ws_connected()] | lang=en
-- "agent_transport_rationale_48": "Durably replace one private JSON state file without exposing secrets." | kind=entity | source=probe/agent/transport.py:L48 | neighbors=[_atomic_write_private_state()] | lang=en
-- "agent_transport_rationale_480": "True if the WebSocket connection is active." | kind=entity | source=probe/agent/transport.py:L480 | neighbors=[.is_ws_connected()] | lang=en
-- "agent_transport_rationale_499": "Poll for pending jobs (HTTP fallback for WebSocket).          Returns a list of" | kind=entity | source=probe/agent/transport.py:L499 | neighbors=[.poll_jobs()] | lang=en
-- "agent_transport_rationale_519": "Fetch the engagement's authoritative scope.          Returns the response dict i" | kind=entity | source=probe/agent/transport.py:L519 | neighbors=[.fetch_scope()] | lang=en
-- "agent_transport_rationale_538": "Submit a scan result to the manager.          Returns True ONLY on a 2xx respons" | kind=entity | source=probe/agent/transport.py:L538 | neighbors=[.submit_result()] | lang=en
-- "agent_transport_rationale_601": "Generic authenticated GET, returns parsed JSON or None on failure.          Used" | kind=entity | source=probe/agent/transport.py:L601 | neighbors=[.http_get()] | lang=en
-- "agent_transport_rationale_617": "Return the WebSocket endpoint without embedding credentials.          Authentica" | kind=entity | source=probe/agent/transport.py:L617 | neighbors=[.ws_url()] | lang=en
-- "agent_transport_rationale_627": "Establish an authenticated WebSocket connection to the manager.          Returns" | kind=entity | source=probe/agent/transport.py:L627 | neighbors=[.connect_ws()] | lang=en
-- "agent_transport_rationale_659": "True if the WebSocket connection is active." | kind=entity | source=probe/agent/transport.py:L659 | neighbors=[.is_ws_connected()] | lang=en
-- "agent_transport_rationale_77": "HTTP (+ future WebSocket) transport to the manager.      Thread-safe for sequent" | kind=entity | source=probe/agent/transport.py:L77 | neighbors=[Transport] | lang=en
-- "agent_transport_rationale_78": "HTTP (+ future WebSocket) transport to the manager.      Thread-safe for sequent" | kind=entity | source=probe/agent/transport.py:L78 | neighbors=[Transport] | lang=en
-- "agent_transport_rationale_80": "HTTP (+ future WebSocket) transport to the manager.      Thread-safe for sequent" | kind=entity | source=probe/agent/transport.py:L80 | neighbors=[Transport] | lang=en
-- "agent_transport_transport_agent_id": ".agent_id()" | kind=code-symbol | source=probe/agent/transport.py:L145 | neighbors=[Transport] | lang=en
-- "agent_transport_transport_agent_token": ".agent_token()" | kind=code-symbol | source=probe/agent/transport.py:L153 | neighbors=[Transport] | lang=en
-- "agent_transport_transport_auth_header": ".auth_header()" | kind=code-symbol | source=probe/agent/transport.py:L161 | neighbors=[Transport] | lang=en
-- "agent_transport_transport_create_enrollment_request": ".create_enrollment_request()" | kind=code-symbol | source=probe/agent/transport.py:L312 | neighbors=[Transport] | lang=en
-- "agent_transport_transport_poll_enrollment": ".poll_enrollment()" | kind=code-symbol | source=probe/agent/transport.py:L317 | neighbors=[Transport] | lang=en
-- "agent_use_cases_rationale_1": "use_cases.py — the finite, pre-defined library of scan scenarios the manager can" | kind=entity | source=probe/agent/use_cases.py:L1 | neighbors=[use_cases.py] | lang=en
-- "agent_use_cases_rationale_119": "Return (scan_type, profile) for a job.      Resolution order:     1. use_case_id" | kind=entity | source=probe/agent/use_cases.py:L119 | neighbors=[resolve()] | lang=en
+- "agent_agent_rationale_514": "Run one job while keeping WS status/result frames best-effort." | kind=entity | source=probe/agent/agent.py:L514 | neighbors=[_ws_run_job()] | lang=en
+- "agent_agent_rationale_516": "Run all startup security checks before any network I/O.      Order matters: HW b" | kind=entity | source=probe/agent/agent.py:L516 | neighbors=[_startup_gauntlet()] | lang=pt
+- "agent_agent_rationale_54": "Load key=value lines from probe.env for dev convenience." | kind=entity | source=probe/agent/agent.py:L54 | neighbors=[_load_env()] | lang=en
+- "agent_agent_rationale_55": "Recognize only explicit single-host development/Compose manager names." | kind=entity | source=probe/agent/agent.py:L55 | neighbors=[_is_local_manager_url()] | lang=en
+- "agent_agent_rationale_550": "Poll pending jobs even while WS is connected.      This makes result delivery re" | kind=entity | source=probe/agent/agent.py:L550 | neighbors=[_ws_http_poll_fallback()] | lang=en
+- "agent_agent_rationale_556": "Acknowledge an offer without executing it before claim confirmation." | kind=entity | source=probe/agent/agent.py:L556 | neighbors=[_ws_stage_job_offer()] | lang=en
+- "agent_agent_rationale_559": "Detect common debugging/tracing tools.  Informational only — does     NOT block" | kind=entity | source=probe/agent/agent.py:L559 | neighbors=[_check_anti_debug()] | lang=en
+- "agent_agent_rationale_564": "Detect common debugging/tracing tools.  Informational only — does     NOT block" | kind=entity | source=probe/agent/agent.py:L564 | neighbors=[_check_anti_debug()] | lang=en
+- "agent_agent_rationale_57": "Recognize only explicit single-host development/Compose manager names." | kind=entity | source=probe/agent/agent.py:L57 | neighbors=[_is_local_manager_url()] | lang=en
+- "agent_agent_rationale_574": "Release a staged job only after the manager confirms its claim." | kind=entity | source=probe/agent/agent.py:L574 | neighbors=[_ws_take_confirmed_job()] | lang=en
+- "agent_agent_rationale_575": "Release a staged job only after the manager confirms its claim." | kind=entity | source=probe/agent/agent.py:L575 | neighbors=[_ws_take_confirmed_job()] | lang=en
+- "agent_agent_rationale_586": "Send periodic heartbeats over WebSocket." | kind=entity | source=probe/agent/agent.py:L586 | neighbors=[_ws_heartbeat_sender()] | lang=en
+- "agent_agent_rationale_593": "Send periodic heartbeats over WebSocket." | kind=entity | source=probe/agent/agent.py:L593 | neighbors=[_ws_heartbeat_sender()] | lang=en
+- "agent_agent_rationale_601": "Retry durable result files using the acknowledged HTTP result path." | kind=entity | source=probe/agent/agent.py:L601 | neighbors=[_flush_spool_over_http()] | lang=en
+- "agent_agent_rationale_607": "Load the probe's X25519 identity from persistent state, or create one.      Retu" | kind=entity | source=probe/agent/agent.py:L607 | neighbors=[_load_or_create_identity()] | lang=en
+- "agent_agent_rationale_609": "Run one job while keeping WS status/result frames best-effort." | kind=entity | source=probe/agent/agent.py:L609 | neighbors=[_ws_run_job()] | lang=en
+- "agent_agent_rationale_612": "Load the probe's X25519 identity from persistent state, or create one.      Retu" | kind=entity | source=probe/agent/agent.py:L612 | neighbors=[_load_or_create_identity()] | lang=en
+- "agent_agent_rationale_614": "Run all startup security checks before any network I/O.      Order matters: HW b" | kind=entity | source=probe/agent/agent.py:L614 | neighbors=[_startup_gauntlet()] | lang=pt
+- "agent_agent_rationale_621": "Run all startup security checks before any network I/O.      Order matters: HW b" | kind=entity | source=probe/agent/agent.py:L621 | neighbors=[_startup_gauntlet()] | lang=pt
+- "agent_agent_rationale_63": "Load key=value lines from probe.env for dev convenience." | kind=entity | source=probe/agent/agent.py:L63 | neighbors=[_load_env()] | lang=en
+- "agent_agent_rationale_65": "Load key=value lines from probe.env for dev convenience." | kind=entity | source=probe/agent/agent.py:L65 | neighbors=[_load_env()] | lang=en
+- "agent_agent_rationale_662": "Detect common debugging/tracing tools.  Informational only — does     NOT block" | kind=entity | source=probe/agent/agent.py:L662 | neighbors=[_check_anti_debug()] | lang=en
+- "agent_agent_rationale_667": "Return (agent_id, token, fresh, identity_sk, identity_pk, public_key_b64)." | kind=entity | source=probe/agent/agent.py:L667 | neighbors=[_obtain_identity()] | lang=en
+- "agent_agent_rationale_668": "Detect common debugging/tracing tools.  Informational only — does     NOT block" | kind=entity | source=probe/agent/agent.py:L668 | neighbors=[_check_anti_debug()] | lang=en
+- "agent_agent_rationale_669": "Poll pending jobs even while WS is connected.      This makes result delivery re" | kind=entity | source=probe/agent/agent.py:L669 | neighbors=[_ws_http_poll_fallback()] | lang=en
+- "agent_agent_rationale_670": "Poll pending jobs even while WS is connected.      This makes result delivery re" | kind=entity | source=probe/agent/agent.py:L670 | neighbors=[_ws_http_poll_fallback()] | lang=en
+- "agent_agent_rationale_672": "Return (agent_id, token, fresh, identity_sk, identity_pk, public_key_b64)." | kind=entity | source=probe/agent/agent.py:L672 | neighbors=[_obtain_identity()] | lang=en
+- "agent_agent_rationale_706": "Send periodic heartbeats over WebSocket." | kind=entity | source=probe/agent/agent.py:L706 | neighbors=[_ws_heartbeat_sender()] | lang=en
+- "agent_agent_rationale_707": "Send periodic heartbeats over WebSocket." | kind=entity | source=probe/agent/agent.py:L707 | neighbors=[_ws_heartbeat_sender()] | lang=en
+- "agent_agent_rationale_710": "Load the probe's X25519 identity from persistent state, or create one.      Retu" | kind=entity | source=probe/agent/agent.py:L710 | neighbors=[_load_or_create_identity()] | lang=en
+- "agent_agent_rationale_716": "Load the probe's X25519 identity from persistent state, or create one.      Retu" | kind=entity | source=probe/agent/agent.py:L716 | neighbors=[_load_or_create_identity()] | lang=en
+- "agent_agent_rationale_723": "Retry durable result files using the acknowledged HTTP result path." | kind=entity | source=probe/agent/agent.py:L723 | neighbors=[_flush_spool_over_http()] | lang=en
+- "agent_agent_rationale_724": "Retry durable result files using the acknowledged HTTP result path." | kind=entity | source=probe/agent/agent.py:L724 | neighbors=[_flush_spool_over_http()] | lang=en
+- "agent_agent_rationale_736": "Run all startup security checks before any network I/O.      Order matters: HW b" | kind=entity | source=probe/agent/agent.py:L736 | neighbors=[_startup_gauntlet()] | lang=pt
+- "agent_agent_rationale_737": "Run all startup security checks before any network I/O.      Order matters: HW b" | kind=entity | source=probe/agent/agent.py:L737 | neighbors=[_startup_gauntlet()] | lang=pt
+- "agent_agent_rationale_763": "Return (agent_id, token, fresh, identity_sk, identity_pk, public_key_b64)." | kind=entity | source=probe/agent/agent.py:L763 | neighbors=[_obtain_identity()] | lang=en
+- "agent_agent_rationale_769": "Return (agent_id, token, fresh, identity_sk, identity_pk, public_key_b64)." | kind=entity | source=probe/agent/agent.py:L769 | neighbors=[_obtain_identity()] | lang=en
+- "agent_agent_rationale_783": "Detect common debugging/tracing tools.  Informational only — does     NOT block" | kind=entity | source=probe/agent/agent.py:L783 | neighbors=[_check_anti_debug()] | lang=en
+- "agent_agent_rationale_784": "Detect common debugging/tracing tools.  Informational only — does     NOT block" | kind=entity | source=probe/agent/agent.py:L784 | neighbors=[_check_anti_debug()] | lang=en
+- "agent_agent_rationale_81": "Return no work for transient poll failures without hiding auth failures." | kind=entity | source=probe/agent/agent.py:L81 | neighbors=[_poll_jobs_or_empty()] | lang=en
 
 ## Instructions
 

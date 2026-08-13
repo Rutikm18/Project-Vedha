@@ -1,4 +1,4 @@
-# Node Description Batch 80 of 134
+# Node Description Batch 80 of 144
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -26,46 +26,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "agent_task_runner_rationale_30": "Structured result from running one scan job." | kind=entity | source=probe/agent/task_runner.py:L30 | neighbors=[JobResult] | lang=en
-- "agent_task_runner_rationale_397": "Submit the result, with spool-and-retry if available." | kind=entity | source=probe/agent/task_runner.py:L397 | neighbors=[._submit_or_spool()] | lang=en
-- "agent_task_runner_rationale_399": "Submit the result, with spool-and-retry if available." | kind=entity | source=probe/agent/task_runner.py:L399 | neighbors=[._submit_or_spool()] | lang=en
-- "agent_task_runner_rationale_40": "Orchestrates one scan job's lifecycle.      The runner holds injected dependenci" | kind=entity | source=probe/agent/task_runner.py:L40 | neighbors=[TaskRunner] | lang=en
-- "agent_task_runner_rationale_42": "Orchestrates one scan job's lifecycle.      The runner holds injected dependenci" | kind=entity | source=probe/agent/task_runner.py:L42 | neighbors=[TaskRunner] | lang=en
-- "agent_task_runner_rationale_436": "Submit the result, with spool-and-retry if available." | kind=entity | source=probe/agent/task_runner.py:L436 | neighbors=[._submit_or_spool()] | lang=en
-- "agent_task_runner_rationale_56": "Args:             http_get:       Callback for authenticated GET (from Transport" | kind=entity | source=probe/agent/task_runner.py:L56 | neighbors=[.__init__()] | lang=en
-- "agent_task_runner_rationale_57": "Args:             http_get:       Callback for authenticated GET (from Transport" | kind=entity | source=probe/agent/task_runner.py:L57 | neighbors=[.__init__()] | lang=en
-- "agent_task_runner_rationale_58": "Args:             http_get:       Callback for authenticated GET (from Transport" | kind=entity | source=probe/agent/task_runner.py:L58 | neighbors=[.__init__()] | lang=en
-- "agent_task_runner_rationale_80": "Execute a complete scan job lifecycle.          Args:             job: Job dict" | kind=entity | source=probe/agent/task_runner.py:L80 | neighbors=[.run_job()] | lang=pt
-- "agent_task_runner_rationale_87": "Execute a complete scan job lifecycle.          Args:             job: Job dict" | kind=entity | source=probe/agent/task_runner.py:L87 | neighbors=[.run_job()] | lang=pt
-- "agent_task_runner_rationale_89": "Execute a complete scan job lifecycle.          Args:             job: Job dict" | kind=entity | source=probe/agent/task_runner.py:L89 | neighbors=[.run_job()] | lang=pt
-- "agent_task_runner_rationale_94": "Execute a complete scan job lifecycle.          Args:             job: Job dict" | kind=entity | source=probe/agent/task_runner.py:L94 | neighbors=[.run_job()] | lang=pt
-- "agent_tools_mergehosts": "mergeHosts()" | kind=code-symbol | source=manager/frontend/lib/agent/tools.ts:L81 | neighbors=[tools.ts] | lang=en
-- "agent_tools_runonephase": "runOnePhase()" | kind=code-symbol | source=manager/frontend/lib/agent/tools.ts:L40 | neighbors=[tools.ts] | lang=en
-- "agent_transport_rationale_1": "transport.py — all manager communication (HTTP + WebSocket) in one place.  Encap" | kind=entity | source=probe/agent/transport.py:L1 | neighbors=[transport.py] | lang=en
-- "agent_transport_rationale_111": "True if we have both an agent_id and a token for API calls." | kind=entity | source=probe/agent/transport.py:L111 | neighbors=[.is_authenticated()] | lang=en
-- "agent_transport_rationale_142": "Register the probe with the manager.          Args:             name: Probe name" | kind=entity | source=probe/agent/transport.py:L142 | neighbors=[.register()] | lang=en
-- "agent_transport_rationale_163": "True if we have both an agent_id and a token for API calls." | kind=entity | source=probe/agent/transport.py:L163 | neighbors=[.is_authenticated()] | lang=en
-- "agent_transport_rationale_165": "True if we have both an agent_id and a token for API calls." | kind=entity | source=probe/agent/transport.py:L165 | neighbors=[.is_authenticated()] | lang=en
-- "agent_transport_rationale_166": "True if we have both an agent_id and a token for API calls." | kind=entity | source=probe/agent/transport.py:L166 | neighbors=[.is_authenticated()] | lang=en
-- "agent_transport_rationale_183": "Merge and atomically persist private state while preserving fields." | kind=entity | source=probe/agent/transport.py:L183 | neighbors=[.update_state()] | lang=en
-- "agent_transport_rationale_185": "Merge and atomically persist private state while preserving fields." | kind=entity | source=probe/agent/transport.py:L185 | neighbors=[.update_state()] | lang=en
-- "agent_transport_rationale_186": "Merge and atomically persist private state while preserving fields." | kind=entity | source=probe/agent/transport.py:L186 | neighbors=[.update_state()] | lang=en
-- "agent_transport_rationale_190": "Send a heartbeat to the manager.          Returns True if the heartbeat was acce" | kind=entity | source=probe/agent/transport.py:L190 | neighbors=[.heartbeat()] | lang=en
-- "agent_transport_rationale_215": "Poll for pending jobs (HTTP fallback for WebSocket).          Returns a list of" | kind=entity | source=probe/agent/transport.py:L215 | neighbors=[.poll_jobs()] | lang=en
-- "agent_transport_rationale_222": "Register the probe with the manager.          Args:             name: Probe name" | kind=entity | source=probe/agent/transport.py:L222 | neighbors=[.register()] | lang=en
-- "agent_transport_rationale_224": "Register the probe with the manager.          Args:             name: Probe name" | kind=entity | source=probe/agent/transport.py:L224 | neighbors=[.register()] | lang=en
-- "agent_transport_rationale_225": "Register the probe with the manager.          Args:             name: Probe name" | kind=entity | source=probe/agent/transport.py:L225 | neighbors=[.register()] | lang=en
-- "agent_transport_rationale_233": "Fetch the engagement's authoritative scope.          Returns the response dict i" | kind=entity | source=probe/agent/transport.py:L233 | neighbors=[.fetch_scope()] | lang=en
-- "agent_transport_rationale_252": "Submit a scan result to the manager.          Returns True ONLY on a 2xx respons" | kind=entity | source=probe/agent/transport.py:L252 | neighbors=[.submit_result()] | lang=en
-- "agent_transport_rationale_274": "Refresh routing metadata using the cached agent identity.          Returns True" | kind=entity | source=probe/agent/transport.py:L274 | neighbors=[.refresh_registration()] | lang=en
-- "agent_transport_rationale_277": "Refresh routing metadata using the cached agent identity.          Returns True" | kind=entity | source=probe/agent/transport.py:L277 | neighbors=[.refresh_registration()] | lang=en
-- "agent_transport_rationale_279": "Register using a manager-side shared bootstrap key (no user login needed)." | kind=entity | source=probe/agent/transport.py:L279 | neighbors=[.bootstrap()] | lang=pt
-- "agent_transport_rationale_303": "Generic authenticated GET, returns parsed JSON or None on failure.          Used" | kind=entity | source=probe/agent/transport.py:L303 | neighbors=[.http_get()] | lang=en
-- "agent_transport_rationale_308": "Send a heartbeat to the manager.          Returns True if the heartbeat was acce" | kind=entity | source=probe/agent/transport.py:L308 | neighbors=[.heartbeat()] | lang=en
-- "agent_transport_rationale_31": "Raised when a transport operation fails permanently (not retryable)." | kind=entity | source=probe/agent/transport.py:L31 | neighbors=[TransportError] | lang=pt
-- "agent_transport_rationale_311": "Send a heartbeat to the manager.          Returns True if the heartbeat was acce" | kind=entity | source=probe/agent/transport.py:L311 | neighbors=[.heartbeat()] | lang=en
-- "agent_transport_rationale_319": "Return the WebSocket connection URL with auth token.          The token is passe" | kind=entity | source=probe/agent/transport.py:L319 | neighbors=[.ws_url()] | lang=en
-- "agent_transport_rationale_32": "Raised when a transport operation fails permanently (not retryable)." | kind=entity | source=probe/agent/transport.py:L32 | neighbors=[TransportError] | lang=pt
+- "workflow_workflow_engine_finalize_trace": "_finalize_trace()" | kind=code-symbol | source=probe/workflow/workflow_engine.py:L219 | neighbors=[workflow_engine.py, run_engagement()] | lang=en
+- "workflow_workflow_engine_record": "_record()" | kind=code-symbol | source=probe/workflow/workflow_engine.py:L193 | neighbors=[workflow_engine.py, run_engagement()] | lang=en
+- "workflow_workflow_engine_record_reused": "_record_reused()" | kind=code-symbol | source=probe/workflow/workflow_engine.py:L210 | neighbors=[workflow_engine.py, run_engagement()] | lang=en
+- "workflow_workflow_engine_store_results": "_store_results()" | kind=code-symbol | source=probe/workflow/workflow_engine.py:L178 | neighbors=[workflow_engine.py, run_engagement()] | lang=en
+- "activity_route_apiactivity": "ApiActivity" | kind=code-symbol | source=manager/frontend/app/api/activity/route.ts:L9 | neighbors=[route.ts] | lang=en
+- "activity_route_get": "GET" | kind=code-symbol | source=manager/frontend/app/api/activity/route.ts:L14 | neighbors=[route.ts] | lang=en
+- "ad_asreproast_asreproastchecker_generate_finding": ".generate_finding()" | kind=code-symbol | source=manager/backend/app/ad/asreproast.py:L106 | neighbors=[ASREPRoastChecker] | lang=en
+- "ad_bloodhound_bloodhoundcollector_close": ".close()" | kind=code-symbol | source=manager/backend/app/ad/bloodhound.py:L267 | neighbors=[BloodHoundCollector] | lang=en
+- "ad_bloodhound_bloodhoundcollector_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/ad/bloodhound.py:L46 | neighbors=[BloodHoundCollector] | lang=en
+- "ad_ldap_enum_ldapenumerator_connection": ".connection()" | kind=code-symbol | source=manager/backend/app/ad/ldap_enum.py:L185 | neighbors=[LDAPEnumerator] | lang=en
+- "ad_ldap_enum_ldapenumerator_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/ad/ldap_enum.py:L120 | neighbors=[LDAPEnumerator] | lang=en
+- "ad_orchestrator_adassessmentrunner_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/ad/orchestrator.py:L42 | neighbors=[ADAssessmentRunner] | lang=en
+- "agent_agent_agentdeps": "AgentDeps" | kind=code-symbol | source=manager/frontend/lib/agent/agent.ts:L39 | neighbors=[agent.py] | lang=en
+- "agent_agent_agentopts": "AgentOpts" | kind=code-symbol | source=manager/frontend/lib/agent/agent.ts:L26 | neighbors=[agent.py] | lang=en
+- "agent_agent_rationale_258": "Persistent WebSocket push loop.      Returns False if WebSocket is unavailable (" | kind=entity | source=probe/agent/agent.py:L258 | neighbors=[_run_ws_push_loop()] | lang=en
+- "agent_agent_rationale_263": "Persistent WebSocket push loop.      Returns False if WebSocket is unavailable (" | kind=entity | source=probe/agent/agent.py:L263 | neighbors=[_run_ws_push_loop()] | lang=en
+- "agent_agent_rationale_293": "Run an HTTP-claimed job while renewing its manager lease." | kind=entity | source=probe/agent/agent.py:L293 | neighbors=[_run_polled_job_with_heartbeats()] | lang=en
+- "agent_agent_rationale_302": "Run an HTTP-claimed job while renewing its manager lease." | kind=entity | source=probe/agent/agent.py:L302 | neighbors=[_run_polled_job_with_heartbeats()] | lang=en
+- "agent_agent_rationale_327": "Persistent WebSocket push loop.      Returns False if WebSocket is unavailable (" | kind=entity | source=probe/agent/agent.py:L327 | neighbors=[_run_ws_push_loop()] | lang=en
+- "agent_agent_rationale_336": "Persistent WebSocket push loop.      Returns False if WebSocket is unavailable (" | kind=entity | source=probe/agent/agent.py:L336 | neighbors=[_run_ws_push_loop()] | lang=en
+- "agent_agent_rationale_372": "Run an HTTP-claimed job while renewing its manager lease." | kind=entity | source=probe/agent/agent.py:L372 | neighbors=[_run_polled_job_with_heartbeats()] | lang=en
+- "agent_agent_rationale_373": "Run an HTTP-claimed job while renewing its manager lease." | kind=entity | source=probe/agent/agent.py:L373 | neighbors=[_run_polled_job_with_heartbeats()] | lang=en
+- "agent_agent_rationale_382": "Run one job while keeping WS status/result frames best-effort." | kind=entity | source=probe/agent/agent.py:L382 | neighbors=[_ws_run_job()] | lang=en
+- "agent_agent_rationale_387": "Run one job while keeping WS status/result frames best-effort." | kind=entity | source=probe/agent/agent.py:L387 | neighbors=[_ws_run_job()] | lang=en
+- "agent_agent_rationale_421": "Persistent WebSocket push loop.      Returns False if WebSocket is unavailable (" | kind=entity | source=probe/agent/agent.py:L421 | neighbors=[_run_ws_push_loop()] | lang=en
+- "agent_agent_rationale_422": "Persistent WebSocket push loop.      Returns False if WebSocket is unavailable (" | kind=entity | source=probe/agent/agent.py:L422 | neighbors=[_run_ws_push_loop()] | lang=en
+- "agent_agent_rationale_43": "Load key=value lines from probe.env for dev convenience." | kind=entity | source=probe/agent/agent.py:L43 | neighbors=[_load_env()] | lang=en
+- "agent_agent_rationale_437": "Poll pending jobs even while WS is connected.      This makes result delivery re" | kind=entity | source=probe/agent/agent.py:L437 | neighbors=[_ws_http_poll_fallback()] | lang=en
+- "agent_agent_rationale_442": "Poll pending jobs even while WS is connected.      This makes result delivery re" | kind=entity | source=probe/agent/agent.py:L442 | neighbors=[_ws_http_poll_fallback()] | lang=en
+- "agent_agent_rationale_45": "Return an integer environment setting constrained to a safe range." | kind=entity | source=probe/agent/agent.py:L45 | neighbors=[_bounded_env_int()] | lang=en
+- "agent_agent_rationale_46": "Return an integer environment setting constrained to a safe range." | kind=entity | source=probe/agent/agent.py:L46 | neighbors=[_bounded_env_int()] | lang=en
+- "agent_agent_rationale_463": "Acknowledge an offer without executing it before claim confirmation." | kind=entity | source=probe/agent/agent.py:L463 | neighbors=[_ws_stage_job_offer()] | lang=en
+- "agent_agent_rationale_475": "Send periodic heartbeats over WebSocket." | kind=entity | source=probe/agent/agent.py:L475 | neighbors=[_ws_heartbeat_sender()] | lang=en
+- "agent_agent_rationale_48": "Return an integer environment setting constrained to a safe range." | kind=entity | source=probe/agent/agent.py:L48 | neighbors=[_bounded_env_int()] | lang=en
+- "agent_agent_rationale_481": "Release a staged job only after the manager confirms its claim." | kind=entity | source=probe/agent/agent.py:L481 | neighbors=[_ws_take_confirmed_job()] | lang=en
+- "agent_agent_rationale_485": "Re-submit previously spooled results over WebSocket." | kind=entity | source=probe/agent/agent.py:L485 | neighbors=[_ws_flush_spool()] | lang=en
+- "agent_agent_rationale_488": "Release a staged job only after the manager confirms its claim." | kind=entity | source=probe/agent/agent.py:L488 | neighbors=[_ws_take_confirmed_job()] | lang=en
+- "agent_agent_rationale_490": "Re-submit previously spooled results over WebSocket." | kind=entity | source=probe/agent/agent.py:L490 | neighbors=[_ws_flush_spool()] | lang=en
+- "agent_agent_rationale_507": "Run one job while keeping WS status/result frames best-effort." | kind=entity | source=probe/agent/agent.py:L507 | neighbors=[_ws_run_job()] | lang=en
+- "agent_agent_rationale_511": "Run all startup security checks before any network I/O.      Order matters: HW b" | kind=entity | source=probe/agent/agent.py:L511 | neighbors=[_startup_gauntlet()] | lang=pt
 
 ## Instructions
 

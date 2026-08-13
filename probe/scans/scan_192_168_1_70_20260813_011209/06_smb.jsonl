@@ -1,0 +1,1 @@
+{"scanner": "smb_scan", "target": "192.168.1.70", "timestamp": "2026-08-13T01:55:34.515729+00:00", "port": 445, "proto": "tcp", "status": "filtered", "data": {}, "evidence": "no SMB response on 445", "error": null}

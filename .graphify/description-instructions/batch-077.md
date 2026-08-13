@@ -1,4 +1,4 @@
-# Node Description Batch 78 of 134
+# Node Description Batch 78 of 144
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,53 +19,51 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-LANGUAGE: each entry has a `lang=` marker giving the language of its source.
-Write that entry's description in EXACTLY that language. Do not translate to
-a single common language — match each node's source language individually.
+Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "agent_engine_rationale_157": "Execute a scan and return the enriched result bundle.      Args:         scan_ty" | kind=entity | source=probe/agent/engine.py:L157 | neighbors=[run_scan()] | lang=en
-- "agent_engine_rationale_158": "Coerce val to float and clamp to [lo, hi]; fall back to default on junk.     Def" | kind=entity | source=probe/agent/engine.py:L158 | neighbors=[_clamp()] | lang=en
-- "agent_engine_rationale_168": "Return the effective whole-job deadline; callers can only reduce it." | kind=entity | source=probe/agent/engine.py:L168 | neighbors=[_job_runtime_seconds()] | lang=en
-- "agent_engine_rationale_178": "Translate operator-supplied job params into run_engagement() kwargs.      This i" | kind=entity | source=probe/agent/engine.py:L178 | neighbors=[_tuning_from_params()] | lang=en
-- "agent_engine_rationale_236": "Count unique open network endpoints, not every confirming scanner fact." | kind=entity | source=probe/agent/engine.py:L236 | neighbors=[_count_open_port_facts()] | lang=en
-- "agent_engine_rationale_257": "Build promotion-ready hosts without duplicating scanner facts per port." | kind=entity | source=probe/agent/engine.py:L257 | neighbors=[_hosts_from_facts()] | lang=it
-- "agent_engine_rationale_29": "Single factory for error result dicts — no copy-paste." | kind=entity | source=probe/agent/engine.py:L29 | neighbors=[_error_result()] | lang=en
-- "agent_engine_rationale_305": "Serialize effective limits without ever echoing credential values." | kind=entity | source=probe/agent/engine.py:L305 | neighbors=[_applied_tuning()] | lang=en
-- "agent_engine_rationale_336": "Build one consistent result summary for complete and interrupted runs." | kind=entity | source=probe/agent/engine.py:L336 | neighbors=[_build_run_stats()] | lang=en
-- "agent_engine_rationale_367": "Raised when Manager fencing revokes the running attempt." | kind=entity | source=probe/agent/engine.py:L367 | neighbors=[LeaseLostError] | lang=en
-- "agent_engine_rationale_372": "Execute a scan and return the enriched result bundle.      Args:         scan_ty" | kind=entity | source=probe/agent/engine.py:L372 | neighbors=[run_scan()] | lang=en
-- "agent_engine_rationale_393": "Execute a scan and return the enriched result bundle.      Args:         scan_ty" | kind=entity | source=probe/agent/engine.py:L393 | neighbors=[run_scan()] | lang=en
-- "agent_engine_rationale_46": "Read a bounded numeric safety setting without trusting the environment." | kind=entity | source=probe/agent/engine.py:L46 | neighbors=[_env_number()] | lang=en
-- "agent_engine_rationale_75": "Single factory for error result dicts — no copy-paste." | kind=entity | source=probe/agent/engine.py:L75 | neighbors=[_error_result()] | lang=en
-- "agent_engine_rationale_77": "Coerce val to float and clamp to [lo, hi]; fall back to default on junk.     Def" | kind=entity | source=probe/agent/engine.py:L77 | neighbors=[_clamp()] | lang=en
-- "agent_engine_rationale_87": "Translate operator-supplied job params into run_engagement() kwargs.      This i" | kind=entity | source=probe/agent/engine.py:L87 | neighbors=[_tuning_from_params()] | lang=en
-- "agent_engine_resolve_scan_type": "resolve_scan_type()" | kind=code-symbol | source=probe/agent/engine.py:L128 | neighbors=[engine.py] | lang=en
-- "agent_hw_bind_rationale_1": "hw_bind.py — hardware fingerprinting for binary host-locking.  The compiled bina" | kind=entity | source=probe/agent/hw_bind.py:L1 | neighbors=[hw_bind.py] | lang=en
-- "agent_hw_bind_rationale_20": "Raised when the binary is running on an unauthorized machine." | kind=entity | source=probe/agent/hw_bind.py:L20 | neighbors=[HWBindError] | lang=en
-- "agent_hw_bind_rationale_24": "Deterministic per-machine fingerprint built from stable hardware IDs.      Combi" | kind=entity | source=probe/agent/hw_bind.py:L24 | neighbors=[get_hw_id()] | lang=en
-- "agent_hw_bind_rationale_35": "Verify the binary is running on the machine it was compiled for.      Reads HW_B" | kind=entity | source=probe/agent/hw_bind.py:L35 | neighbors=[check_hw_bind()] | lang=en
-- "agent_init_rationale_1": "agent — the probe transport layer (sealed, push-driven, hardware-bound).  Archit" | kind=entity | source=probe/agent/__init__.py:L1 | neighbors=[__init__.py] | lang=en
-- "agent_license_licenseerror_init": ".__init__()" | kind=code-symbol | source=probe/agent/license.py:L30 | neighbors=[LicenseError] | lang=en
-- "agent_license_rationale_1": "license.py — host-locked, vendor-signed anti-copy gate for the probe.  DESIGN (p" | kind=entity | source=probe/agent/license.py:L1 | neighbors=[license.py] | lang=en
-- "agent_license_rationale_102": "Combined startup gauntlet: HW bind → license check. Fails fast.      This is the" | kind=entity | source=probe/agent/license.py:L102 | neighbors=[gauntlet()] | lang=en
-- "agent_license_rationale_105": "Combined startup gauntlet: HW bind → license check. Fails fast.      This is the" | kind=entity | source=probe/agent/license.py:L105 | neighbors=[gauntlet()] | lang=en
-- "agent_license_rationale_36": "Stable per-machine ID, derived from hw_bind's hardware fingerprint." | kind=entity | source=probe/agent/license.py:L36 | neighbors=[host_fingerprint()] | lang=en
-- "agent_license_rationale_39": "Stable per-machine ID, derived from hw_bind's hardware fingerprint." | kind=entity | source=probe/agent/license.py:L39 | neighbors=[host_fingerprint()] | lang=en
-- "agent_license_rationale_51": "Returns the license payload dict if valid; raises LicenseError otherwise.     To" | kind=entity | source=probe/agent/license.py:L51 | neighbors=[verify_license()] | lang=en
-- "agent_license_rationale_54": "Returns the license payload dict if valid; raises LicenseError otherwise.     To" | kind=entity | source=probe/agent/license.py:L54 | neighbors=[verify_license()] | lang=en
-- "agent_license_rationale_85": "The gate the agent calls at startup. Honors LICENSE_ENFORCED and     reads the t" | kind=entity | source=probe/agent/license.py:L85 | neighbors=[check_license()] | lang=en
-- "agent_license_rationale_88": "The gate the agent calls at startup. Honors LICENSE_ENFORCED and     reads the t" | kind=entity | source=probe/agent/license.py:L88 | neighbors=[check_license()] | lang=en
-- "agent_result_spool_rationale_1": "result_spool.py — local result persistence with upload retry.  When the probe co" | kind=entity | source=probe/agent/result_spool.py:L1 | neighbors=[result_spool.py] | lang=en
-- "agent_result_spool_rationale_100": "Load a previously spooled result, returning None if missing/corrupt." | kind=entity | source=probe/agent/result_spool.py:L100 | neighbors=[.load()] | lang=pt
-- "agent_result_spool_rationale_102": "Remove the spool file for a successfully uploaded result." | kind=entity | source=probe/agent/result_spool.py:L102 | neighbors=[.remove()] | lang=en
-- "agent_result_spool_rationale_111": "Remove the spool file for a successfully uploaded result." | kind=entity | source=probe/agent/result_spool.py:L111 | neighbors=[.remove()] | lang=en
-- "agent_result_spool_rationale_114": "Attempt to upload a result with retries and local spool as fallback.          Ar" | kind=entity | source=probe/agent/result_spool.py:L114 | neighbors=[.submit_with_retry()] | lang=en
-- "agent_result_spool_rationale_116": "Move a terminally rejected result out of the retry queue." | kind=entity | source=probe/agent/result_spool.py:L116 | neighbors=[.quarantine()] | lang=en
-- "agent_result_spool_rationale_130": "Re-attempt upload of all previously spooled results.          Called once at pro" | kind=entity | source=probe/agent/result_spool.py:L130 | neighbors=[.flush_spool()] | lang=en
-- "agent_result_spool_rationale_135": "Attempt to upload a result with retries and local spool as fallback.          Ar" | kind=entity | source=probe/agent/result_spool.py:L135 | neighbors=[.submit_with_retry()] | lang=en
+- "tests_test_vuln_enrichment_test_fetch_epss_success": "test_fetch_epss_success()" | kind=code-symbol | source=manager/backend/tests/test_vuln_enrichment.py:L106 | neighbors=[test_vuln_enrichment.py, _make_http_mock()]
+- "tests_test_vuln_enrichment_test_fetch_mitre_from_nvd_references": "test_fetch_mitre_from_nvd_references()" | kind=code-symbol | source=manager/backend/tests/test_vuln_enrichment.py:L155 | neighbors=[test_vuln_enrichment.py, _make_http_mock()]
+- "tests_test_vuln_enrichment_test_fetch_nvd_caches_result": "test_fetch_nvd_caches_result()" | kind=code-symbol | source=manager/backend/tests/test_vuln_enrichment.py:L94 | neighbors=[test_vuln_enrichment.py, _make_http_mock()]
+- "tests_test_vuln_enrichment_test_fetch_nvd_success": "test_fetch_nvd_success()" | kind=code-symbol | source=manager/backend/tests/test_vuln_enrichment.py:L72 | neighbors=[test_vuln_enrichment.py, _make_http_mock()]
+- "tests_test_workflow_execution_test_host_fanout_is_bounded": "test_host_fanout_is_bounded()" | kind=code-symbol | source=probe/tests/test_workflow_execution.py:L76 | neighbors=[test_workflow_execution.py, _ConcurrencyScanner]
+- "tests_test_workflow_execution_test_per_target_exception_preserves_other_results": "test_per_target_exception_preserves_other_results()" | kind=code-symbol | source=probe/tests/test_workflow_execution.py:L61 | neighbors=[test_workflow_execution.py, _ExplodingScanner]
+- "tests_test_xml_parser_rationale_1": "Unit tests for NmapXMLParser." | kind=entity | source=manager/backend/tests/test_xml_parser.py:L1 | neighbors=[test_xml_parser.py, NmapXMLParser]
+- "tools_installer_downloadfile": "downloadFile()" | kind=code-symbol | source=manager/frontend/lib/tools/installer.ts:L68 | neighbors=[installer.ts, installTool()]
+- "tools_installer_extract": "extract()" | kind=code-symbol | source=manager/frontend/lib/tools/installer.ts:L104 | neighbors=[installer.ts, installTool()]
+- "tools_installer_picksource": "pickSource()" | kind=code-symbol | source=manager/frontend/lib/tools/installer.ts:L141 | neighbors=[installer.ts, installTool()]
+- "tools_installer_sha256file": "sha256File()" | kind=code-symbol | source=manager/frontend/lib/tools/installer.ts:L97 | neighbors=[installer.ts, installTool()]
+- "tools_issue_license_b64": "_b64()" | kind=code-symbol | source=probe/tools/issue_license.py:L31 | neighbors=[issue_license.py, issue()]
+- "tools_issue_license_keygen": "keygen()" | kind=code-symbol | source=probe/tools/issue_license.py:L35 | neighbors=[issue_license.py, main()]
+- "tools_manifest_adversa_manifest_file": "ADVERSA_MANIFEST_FILE" | kind=code-symbol | source=manager/frontend/lib/tools/manifest.ts:L22 | neighbors=[installer.ts, manifest.ts]
+- "tools_manifest_adversa_tools_dir": "ADVERSA_TOOLS_DIR" | kind=code-symbol | source=manager/frontend/lib/tools/manifest.ts:L21 | neighbors=[installer.ts, manifest.ts]
+- "tools_manifest_currentplatform": "currentPlatform()" | kind=code-symbol | source=manager/frontend/lib/tools/manifest.ts:L54 | neighbors=[installer.ts, manifest.ts]
+- "tools_manifest_toolsource": "ToolSource" | kind=code-symbol | source=manager/frontend/lib/tools/manifest.ts:L29 | neighbors=[installer.ts, manifest.ts]
+- "tools_manifest_toolspec": "ToolSpec" | kind=code-symbol | source=manager/frontend/lib/tools/manifest.ts:L40 | neighbors=[installer.ts, manifest.ts]
+- "tools_manifest_vedha_manifest_file": "VEDHA_MANIFEST_FILE" | kind=code-symbol | source=manager/frontend/lib/tools/manifest.ts:L22 | neighbors=[installer.ts, manifest.ts]
+- "tools_manifest_vedha_tools_dir": "VEDHA_TOOLS_DIR" | kind=code-symbol | source=manager/frontend/lib/tools/manifest.ts:L21 | neighbors=[installer.ts, manifest.ts]
+- "ui_output_banner": "banner()" | kind=code-symbol | source=manager/frontend/cli/ui/output.ts:L53 | neighbors=[output.ts, ln()]
+- "ui_output_findingstable": "findingsTable()" | kind=code-symbol | source=manager/frontend/cli/ui/output.ts:L210 | neighbors=[output.ts, ln()]
+- "ui_output_hostline": "hostLine()" | kind=code-symbol | source=manager/frontend/cli/ui/output.ts:L149 | neighbors=[output.ts, ln()]
+- "ui_output_info": "info()" | kind=code-symbol | source=manager/frontend/cli/ui/output.ts:L273 | neighbors=[output.ts, ln()]
+- "ui_output_sevbadge": "sevBadge()" | kind=code-symbol | source=manager/frontend/cli/ui/output.ts:L43 | neighbors=[output.ts, findingLine()]
+- "ui_output_stagecomplete": "stageComplete()" | kind=code-symbol | source=manager/frontend/cli/ui/output.ts:L126 | neighbors=[output.ts, ln()]
+- "ui_output_stageprogress": "stageProgress()" | kind=code-symbol | source=manager/frontend/cli/ui/output.ts:L122 | neighbors=[output.ts, w()]
+- "ui_output_stagestart": "stageStart()" | kind=code-symbol | source=manager/frontend/cli/ui/output.ts:L116 | neighbors=[output.ts, ln()]
+- "utils_csv_parser_parse_csv_assets": "parse_csv_assets()" | kind=code-symbol | source=manager/backend/app/utils/csv_parser.py:L25 | neighbors=[csv_parser.py, Parse CSV text into a list of AssetIn m…]
+- "utils_db_get_or_404": "get_or_404()" | kind=code-symbol | source=manager/backend/app/utils/db.py:L17 | neighbors=[db.py, Fetch a row by primary key, optionally …]
+- "utils_hash_dedup_hash": "dedup_hash()" | kind=code-symbol | source=manager/backend/app/utils/hash.py:L10 | neighbors=[hash.py, SHA-256 of (asset_id, cve_id, plugin_id…]
+- "utils_init": "__init__.py" | kind=code-symbol | source=manager/backend/app/utils/__init__.py:L1 | neighbors=[d1b4dd3 trim frontend to 7 core pages; …, 298a9d4 trim frontend to 7 core pages; …]
+- "utils_pagination_paginate_query": "paginate_query()" | kind=code-symbol | source=manager/backend/app/utils/pagination.py:L6 | neighbors=[pagination.py, Returns (items, total). Applies OFFSET/…]
+- "vuln_enrichment_rationale_1": "VulnEnrichmentService  External data sources:   NVD 2.0     https://services.nvd" | kind=entity | source=manager/backend/app/vuln/enrichment.py:L1 | neighbors=[enrichment.py, AssetCriticality]
+- "vuln_enrichment_rationale_110": "Add NVD CVSS, EPSS, KEV flag, MITRE techniques, and composite risk.         Muta" | kind=entity | source=manager/backend/app/vuln/enrichment.py:L110 | neighbors=[.enrich(), AssetCriticality]
+- "vuln_enrichment_rationale_164": "Returns {cvss_v3, cvss_vector, description, references, published_date}." | kind=entity | source=manager/backend/app/vuln/enrichment.py:L164 | neighbors=[.fetch_nvd(), AssetCriticality]
+- "vuln_enrichment_rationale_216": "Returns {epss_score: float, percentile: float} or {}." | kind=entity | source=manager/backend/app/vuln/enrichment.py:L216 | neighbors=[.fetch_epss(), AssetCriticality]
+- "vuln_enrichment_rationale_245": "True if CVE is in the CISA Known Exploited Vulnerabilities catalog." | kind=entity | source=manager/backend/app/vuln/enrichment.py:L245 | neighbors=[.check_cisa_kev(), AssetCriticality]
+- "vuln_enrichment_rationale_271": "Returns MITRE ATT&CK technique IDs linked to this CVE.         Uses hardcoded hi" | kind=entity | source=manager/backend/app/vuln/enrichment.py:L271 | neighbors=[.fetch_mitre_techniques(), AssetCriticality]
+- "vuln_enrichment_rationale_28": "LRU + TTL eviction. Expired keys are purged on access; when ``maxsize``     is e" | kind=entity | source=manager/backend/app/vuln/enrichment.py:L28 | neighbors=[TTLCache, AssetCriticality]
 
 ## Instructions
 

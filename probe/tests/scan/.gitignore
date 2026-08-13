@@ -1,0 +1,3 @@
+# Persisted discovery results (live host IPs + MACs) — runtime data, may be
+# sensitive (MAC addresses of real devices). Do not commit.
+.live/

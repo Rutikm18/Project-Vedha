@@ -1,4 +1,4 @@
-# Node Description Batch 112 of 134
+# Node Description Batch 112 of 144
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,51 +19,53 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-Write every description in English (en). Do not switch languages.
+LANGUAGE: each entry has a `lang=` marker giving the language of its source.
+Write that entry's description in EXACTLY that language. Do not translate to
+a single common language — match each node's source language individually.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_attack_paths_testgraphbuilder_test_exploit_edges_only_for_exploitable": ".test_exploit_edges_only_for_exploitable()" | kind=code-symbol | source=manager/backend/tests/test_attack_paths.py:L70 | neighbors=[TestGraphBuilder]
-- "tests_test_attack_paths_testgraphbuilder_test_has_service_and_has_finding_edges": ".test_has_service_and_has_finding_edges()" | kind=code-symbol | source=manager/backend/tests/test_attack_paths.py:L65 | neighbors=[TestGraphBuilder]
-- "tests_test_attack_paths_testgraphbuilder_test_is_internet_exposed": ".test_is_internet_exposed()" | kind=code-symbol | source=manager/backend/tests/test_attack_paths.py:L87 | neighbors=[TestGraphBuilder]
-- "tests_test_attack_paths_testgraphbuilder_test_nodes_and_edges_created": ".test_nodes_and_edges_created()" | kind=code-symbol | source=manager/backend/tests/test_attack_paths.py:L54 | neighbors=[TestGraphBuilder]
-- "tests_test_attack_paths_testgraphvisualizer_test_d3_highlights_top_path": ".test_d3_highlights_top_path()" | kind=code-symbol | source=manager/backend/tests/test_attack_paths.py:L202 | neighbors=[TestGraphVisualizer]
-- "tests_test_attack_paths_testgraphvisualizer_test_d3_marks_compromised": ".test_d3_marks_compromised()" | kind=code-symbol | source=manager/backend/tests/test_attack_paths.py:L197 | neighbors=[TestGraphVisualizer]
-- "tests_test_attack_paths_testgraphvisualizer_test_d3_shape": ".test_d3_shape()" | kind=code-symbol | source=manager/backend/tests/test_attack_paths.py:L187 | neighbors=[TestGraphVisualizer]
-- "tests_test_attack_paths_testgraphvisualizer_test_layout_is_deterministic": ".test_layout_is_deterministic()" | kind=code-symbol | source=manager/backend/tests/test_attack_paths.py:L210 | neighbors=[TestGraphVisualizer]
-- "tests_test_attack_paths_testneo4jclient_test_run_without_connection_returns_empty": ".test_run_without_connection_returns_empty()" | kind=code-symbol | source=manager/backend/tests/test_attack_paths.py:L222 | neighbors=[TestNeo4jClient]
-- "tests_test_attack_paths_testneo4jclient_test_run_write_noop_without_connection": ".test_run_write_noop_without_connection()" | kind=code-symbol | source=manager/backend/tests/test_attack_paths.py:L226 | neighbors=[TestNeo4jClient]
-- "tests_test_attack_paths_testneo4jclient_test_sync_to_neo4j_noop_without_client": ".test_sync_to_neo4j_noop_without_client()" | kind=code-symbol | source=manager/backend/tests/test_attack_paths.py:L230 | neighbors=[TestNeo4jClient]
-- "tests_test_attack_paths_testpathanalyzer_test_blast_radius_unknown_asset": ".test_blast_radius_unknown_asset()" | kind=code-symbol | source=manager/backend/tests/test_attack_paths.py:L170 | neighbors=[TestPathAnalyzer]
-- "tests_test_attack_paths_testpathanalyzer_test_chokepoints_empty_without_paths": ".test_chokepoints_empty_without_paths()" | kind=code-symbol | source=manager/backend/tests/test_attack_paths.py:L159 | neighbors=[TestPathAnalyzer]
-- "tests_test_attack_paths_testpathanalyzer_test_cypher_constants_present": ".test_cypher_constants_present()" | kind=code-symbol | source=manager/backend/tests/test_attack_paths.py:L175 | neighbors=[TestPathAnalyzer]
-- "tests_test_attack_paths_testpathanalyzer_test_find_blast_radius": ".test_find_blast_radius()" | kind=code-symbol | source=manager/backend/tests/test_attack_paths.py:L163 | neighbors=[TestPathAnalyzer]
-- "tests_test_attack_paths_testpathanalyzer_test_find_paths_to_target": ".test_find_paths_to_target()" | kind=code-symbol | source=manager/backend/tests/test_attack_paths.py:L114 | neighbors=[TestPathAnalyzer]
-- "tests_test_attack_paths_testpathanalyzer_test_identify_chokepoints": ".test_identify_chokepoints()" | kind=code-symbol | source=manager/backend/tests/test_attack_paths.py:L150 | neighbors=[TestPathAnalyzer]
-- "tests_test_attack_paths_testpathanalyzer_test_no_paths_for_unknown_target": ".test_no_paths_for_unknown_target()" | kind=code-symbol | source=manager/backend/tests/test_attack_paths.py:L129 | neighbors=[TestPathAnalyzer]
-- "tests_test_attack_paths_testpathanalyzer_test_paths_sorted_by_risk_desc": ".test_paths_sorted_by_risk_desc()" | kind=code-symbol | source=manager/backend/tests/test_attack_paths.py:L123 | neighbors=[TestPathAnalyzer]
-- "tests_test_attack_paths_testpathanalyzer_test_score_path_clamped_0_100": ".test_score_path_clamped_0_100()" | kind=code-symbol | source=manager/backend/tests/test_attack_paths.py:L145 | neighbors=[TestPathAnalyzer]
-- "tests_test_attack_paths_testpathanalyzer_test_score_path_credential_reuse_bonus": ".test_score_path_credential_reuse_bonus()" | kind=code-symbol | source=manager/backend/tests/test_attack_paths.py:L139 | neighbors=[TestPathAnalyzer]
-- "tests_test_attack_paths_testpathanalyzer_test_score_path_rewards_cvss_penalises_hops": ".test_score_path_rewards_cvss_penalises_hops()" | kind=code-symbol | source=manager/backend/tests/test_attack_paths.py:L133 | neighbors=[TestPathAnalyzer]
-- "tests_test_auth_login_rationale_1": "Tests for authentication login flow.  Covers:   - login success   - user_not_fou" | kind=entity | source=manager/backend/tests/test_auth_login.py:L1 | neighbors=[test_auth_login.py]
-- "tests_test_auth_login_rationale_224": "Ensure every exception class has the expected reason_code attribute.     These c" | kind=entity | source=manager/backend/tests/test_auth_login.py:L224 | neighbors=[TestReasonCodes]
-- "tests_test_auth_login_rationale_70": "AsyncSession mock that returns user on first execute, tenant on second." | kind=entity | source=manager/backend/tests/test_auth_login.py:L70 | neighbors=[_make_db()]
-- "tests_test_auth_login_testauthenticatedatabasefailure_test_raises_database_failure_on_sqlalchemy_error": ".test_raises_database_failure_on_sqlalchemy_error()" | kind=code-symbol | source=manager/backend/tests/test_auth_login.py:L183 | neighbors=[TestAuthenticateDatabaseFailure]
-- "tests_test_auth_login_testreasoncodes_test_bcrypt_failure_code": ".test_bcrypt_failure_code()" | kind=code-symbol | source=manager/backend/tests/test_auth_login.py:L242 | neighbors=[TestReasonCodes]
-- "tests_test_auth_login_testreasoncodes_test_database_failure_code": ".test_database_failure_code()" | kind=code-symbol | source=manager/backend/tests/test_auth_login.py:L245 | neighbors=[TestReasonCodes]
-- "tests_test_auth_login_testreasoncodes_test_disabled_tenant_code": ".test_disabled_tenant_code()" | kind=code-symbol | source=manager/backend/tests/test_auth_login.py:L236 | neighbors=[TestReasonCodes]
-- "tests_test_auth_login_testreasoncodes_test_disabled_user_code": ".test_disabled_user_code()" | kind=code-symbol | source=manager/backend/tests/test_auth_login.py:L233 | neighbors=[TestReasonCodes]
-- "tests_test_auth_login_testreasoncodes_test_expired_password_code": ".test_expired_password_code()" | kind=code-symbol | source=manager/backend/tests/test_auth_login.py:L239 | neighbors=[TestReasonCodes]
-- "tests_test_auth_login_testreasoncodes_test_password_mismatch_code": ".test_password_mismatch_code()" | kind=code-symbol | source=manager/backend/tests/test_auth_login.py:L230 | neighbors=[TestReasonCodes]
-- "tests_test_auth_login_testreasoncodes_test_user_not_found_code": ".test_user_not_found_code()" | kind=code-symbol | source=manager/backend/tests/test_auth_login.py:L227 | neighbors=[TestReasonCodes]
-- "tests_test_auth_login_teststartupdiagnostics_test_bcrypt_round_trip_passes": ".test_bcrypt_round_trip_passes()" | kind=code-symbol | source=manager/backend/tests/test_auth_login.py:L277 | neighbors=[TestStartupDiagnostics]
-- "tests_test_auth_login_teststartupdiagnostics_test_cookie_config_fatal_in_production": ".test_cookie_config_fatal_in_production()" | kind=code-symbol | source=manager/backend/tests/test_auth_login.py:L283 | neighbors=[TestStartupDiagnostics]
-- "tests_test_auth_login_teststartupdiagnostics_test_cookie_config_ok_in_development": ".test_cookie_config_ok_in_development()" | kind=code-symbol | source=manager/backend/tests/test_auth_login.py:L293 | neighbors=[TestStartupDiagnostics]
-- "tests_test_auth_login_teststartupdiagnostics_test_database_check_returns_fatal_on_connection_error": ".test_database_check_returns_fatal_on_connection_error()" | kind=code-symbol | source=manager/backend/tests/test_auth_login.py:L303 | neighbors=[TestStartupDiagnostics]
-- "tests_test_auth_login_teststartupdiagnostics_test_jwt_secret_known_weak_is_fatal": ".test_jwt_secret_known_weak_is_fatal()" | kind=code-symbol | source=manager/backend/tests/test_auth_login.py:L261 | neighbors=[TestStartupDiagnostics]
-- "tests_test_auth_login_teststartupdiagnostics_test_jwt_secret_strong_is_ok": ".test_jwt_secret_strong_is_ok()" | kind=code-symbol | source=manager/backend/tests/test_auth_login.py:L269 | neighbors=[TestStartupDiagnostics]
-- "tests_test_auth_login_teststartupdiagnostics_test_jwt_secret_too_short_is_fatal": ".test_jwt_secret_too_short_is_fatal()" | kind=code-symbol | source=manager/backend/tests/test_auth_login.py:L253 | neighbors=[TestStartupDiagnostics]
+- "scanner_scanner_base_base_argparser": "base_argparser()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L613 | neighbors=[scanner_base.py] | lang=en
+- "scanner_scanner_base_ratelimiter_init": ".__init__()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L186 | neighbors=[RateLimiter] | lang=en
+- "scanner_scanner_base_rationale_1": "scanner_base.py — shared foundation for every scanner module.  SCOPE OF THIS MOD" | kind=entity | source=probe/scanner/scanner_base.py:L1 | neighbors=[scanner_base.py] | lang=en
+- "scanner_scanner_base_rationale_170": "Read-only view of allowed networks (for CIDR-level engines)." | kind=entity | source=probe/scanner/scanner_base.py:L170 | neighbors=[.networks()] | lang=en
+- "scanner_scanner_base_rationale_171": "Read-only view of allowed networks (for CIDR-level engines)." | kind=entity | source=probe/scanner/scanner_base.py:L171 | neighbors=[.networks()] | lang=en
+- "scanner_scanner_base_rationale_175": "Read-only view of excluded networks (to build masscan --exclude)." | kind=entity | source=probe/scanner/scanner_base.py:L175 | neighbors=[.excludes()] | lang=en
+- "scanner_scanner_base_rationale_176": "Read-only view of excluded networks (to build masscan --exclude)." | kind=entity | source=probe/scanner/scanner_base.py:L176 | neighbors=[.excludes()] | lang=en
+- "scanner_scanner_base_rationale_183": "Simple async rate limiter: at most `rate` operations per second." | kind=entity | source=probe/scanner/scanner_base.py:L183 | neighbors=[RateLimiter] | lang=it
+- "scanner_scanner_base_rationale_184": "Simple async rate limiter: at most `rate` operations per second." | kind=entity | source=probe/scanner/scanner_base.py:L184 | neighbors=[RateLimiter] | lang=it
+- "scanner_scanner_base_rationale_203": "Standard 16-bit one's-complement Internet checksum (RFC 1071), used for IP," | kind=entity | source=probe/scanner/scanner_base.py:L203 | neighbors=[inet_checksum()] | lang=en
+- "scanner_scanner_base_rationale_220": "A self-tuning concurrency window, modelled on TCP congestion control (AIMD)," | kind=entity | source=probe/scanner/scanner_base.py:L220 | neighbors=[AdaptiveRateController] | lang=pt
+- "scanner_scanner_base_rationale_237": "Current integer window (>= min_window)." | kind=entity | source=probe/scanner/scanner_base.py:L237 | neighbors=[.window()] | lang=en
+- "scanner_scanner_base_rationale_252": "Current integer window (>= min_window)." | kind=entity | source=probe/scanner/scanner_base.py:L252 | neighbors=[.window()] | lang=en
+- "scanner_scanner_base_rationale_266": "Resolve `target` to a concrete (family, sockaddr) covering IPv4, IPv6, and     h" | kind=entity | source=probe/scanner/scanner_base.py:L266 | neighbors=[resolve()] | lang=en
+- "scanner_scanner_base_rationale_274": "Accepts CIDRs ('10.0.0.0/24'), single IPs, hostnames, and simple ranges     ('10" | kind=entity | source=probe/scanner/scanner_base.py:L274 | neighbors=[expand_targets()] | lang=en
+- "scanner_scanner_base_rationale_281": "Wrap an IPv6 literal in [] for a URL authority; leave v4/hostnames as-is.     'h" | kind=entity | source=probe/scanner/scanner_base.py:L281 | neighbors=[bracket_host()] | lang=en
+- "scanner_scanner_base_rationale_289": "Accepts CIDRs ('10.0.0.0/24'), single IPs, hostnames, and simple ranges     ('10" | kind=entity | source=probe/scanner/scanner_base.py:L289 | neighbors=[expand_targets()] | lang=en
+- "scanner_scanner_base_rationale_290": "One-shot datagram protocol backing `async_udp_probe`. Resolves its future     wi" | kind=entity | source=probe/scanner/scanner_base.py:L290 | neighbors=[_UDPProbeProtocol] | lang=en
+- "scanner_scanner_base_rationale_293": "Parse '22,80,443,8000-8100' into a sorted unique port list (1-65535)." | kind=entity | source=probe/scanner/scanner_base.py:L293 | neighbors=[parse_ports()] | lang=pt
+- "scanner_scanner_base_rationale_323": "Send one UDP datagram and await the first reply — fully on the event loop." | kind=entity | source=probe/scanner/scanner_base.py:L323 | neighbors=[async_udp_probe()] | lang=en
+- "scanner_scanner_base_rationale_329": "Writes ScanResult objects as JSONL to a file and/or stdout." | kind=entity | source=probe/scanner/scanner_base.py:L329 | neighbors=[ResultWriter] | lang=en
+- "scanner_scanner_base_rationale_335": "Resolve `target` to a concrete (family, sockaddr) covering IPv4, IPv6, and     h" | kind=entity | source=probe/scanner/scanner_base.py:L335 | neighbors=[resolve()] | lang=en
+- "scanner_scanner_base_rationale_350": "Resolve `target` to a concrete (family, sockaddr) covering IPv4, IPv6, and     h" | kind=entity | source=probe/scanner/scanner_base.py:L350 | neighbors=[resolve()] | lang=en
+- "scanner_scanner_base_rationale_353": "Wrap an IPv6 literal in [] for a URL authority; leave v4/hostnames as-is.     'h" | kind=entity | source=probe/scanner/scanner_base.py:L353 | neighbors=[bracket_host()] | lang=en
+- "scanner_scanner_base_rationale_365": "Parse '22,80,443,8000-8100' into a sorted unique port list (1-65535)." | kind=entity | source=probe/scanner/scanner_base.py:L365 | neighbors=[parse_ports()] | lang=pt
+- "scanner_scanner_base_rationale_374": "One-shot datagram protocol backing `async_udp_probe`. Resolves its future     wi" | kind=entity | source=probe/scanner/scanner_base.py:L374 | neighbors=[_UDPProbeProtocol] | lang=en
+- "scanner_scanner_base_rationale_392": "Send one UDP datagram and await the first reply — fully on the event loop." | kind=entity | source=probe/scanner/scanner_base.py:L392 | neighbors=[async_udp_probe()] | lang=en
+- "scanner_scanner_base_rationale_401": "Writes ScanResult objects as JSONL to a file and/or stdout." | kind=entity | source=probe/scanner/scanner_base.py:L401 | neighbors=[ResultWriter] | lang=en
+- "scanner_scanner_base_rationale_407": "Send one UDP datagram and await the first reply — fully on the event loop." | kind=entity | source=probe/scanner/scanner_base.py:L407 | neighbors=[async_udp_probe()] | lang=en
+- "scanner_scanner_base_rationale_423": "`async_udp_probe` with bounded per-port retransmit.      Returns on the FIRST de" | kind=entity | source=probe/scanner/scanner_base.py:L423 | neighbors=[async_udp_probe_retry()] | lang=en
+- "scanner_scanner_base_rationale_431": "Subclasses implement `scan_target(self, target)` (async), returning a list     o" | kind=entity | source=probe/scanner/scanner_base.py:L431 | neighbors=[BaseScanner] | lang=pt
+- "scanner_scanner_base_rationale_438": "`async_udp_probe` with bounded per-port retransmit.      Returns on the FIRST de" | kind=entity | source=probe/scanner/scanner_base.py:L438 | neighbors=[async_udp_probe_retry()] | lang=en
+- "scanner_scanner_base_rationale_44": "One observation about one target. Pure fact, no interpretation." | kind=entity | source=probe/scanner/scanner_base.py:L44 | neighbors=[ScanResult] | lang=en
+- "scanner_scanner_base_rationale_442": "Wrap an IPv6 literal in [] for a URL authority; leave v4/hostnames as-is.     'h" | kind=entity | source=probe/scanner/scanner_base.py:L442 | neighbors=[bracket_host()] | lang=en
+- "scanner_scanner_base_rationale_45": "One observation about one target. Pure fact, no interpretation." | kind=entity | source=probe/scanner/scanner_base.py:L45 | neighbors=[ScanResult] | lang=en
+- "scanner_scanner_base_rationale_454": "Parse '22,80,443,8000-8100' into a sorted unique port list (1-65535)." | kind=entity | source=probe/scanner/scanner_base.py:L454 | neighbors=[parse_ports()] | lang=pt
+- "scanner_scanner_base_rationale_457": "Wrap an IPv6 literal in [] for a URL authority; leave v4/hostnames as-is.     'h" | kind=entity | source=probe/scanner/scanner_base.py:L457 | neighbors=[bracket_host()] | lang=en
+- "scanner_scanner_base_rationale_463": "Run a scanner CLI's body with consistent, operator-friendly error handling." | kind=entity | source=probe/scanner/scanner_base.py:L463 | neighbors=[main_entrypoint()] | lang=en
+- "scanner_scanner_base_rationale_469": "Parse '22,80,443,8000-8100' into a sorted unique port list (1-65535)." | kind=entity | source=probe/scanner/scanner_base.py:L469 | neighbors=[parse_ports()] | lang=pt
+- "scanner_scanner_base_rationale_490": "Writes ScanResult objects as JSONL to a file and/or stdout." | kind=entity | source=probe/scanner/scanner_base.py:L490 | neighbors=[ResultWriter] | lang=en
 
 ## Instructions
 

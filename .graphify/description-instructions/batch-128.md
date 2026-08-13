@@ -1,4 +1,4 @@
-# Node Description Batch 129 of 134
+# Node Description Batch 129 of 144
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,58 +12,51 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
-For an entity node (any other kind — e.g. a person, place, event, object),
-describe what the entity is and its role, grounded in its type, its
-relations (neighbors) and the provided citations/evidence — e.g.
-"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
-Ground entity descriptions in the citations/evidence when present; do not
-speculate beyond the context, so a node with no supporting context may be
-left out of the reply.
 Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "versions_0001_initial_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0001_initial.py:L174 | neighbors=[0001_initial.py]
-- "versions_0001_initial_rationale_1": "Initial schema — all tables  Revision ID: 0001 Revises: Create Date: 2026-05-19" | kind=entity | source=manager/backend/alembic/versions/0001_initial.py:L1 | neighbors=[0001_initial.py]
-- "versions_0001_initial_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0001_initial.py:L19 | neighbors=[0001_initial.py]
-- "versions_0002_services_agents_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0002_services_agents.py:L59 | neighbors=[0002_services_agents.py]
-- "versions_0002_services_agents_rationale_1": "Add services and agents tables  Revision ID: 0002 Revises: 0001 Create Date: 202" | kind=entity | source=manager/backend/alembic/versions/0002_services_agents.py:L1 | neighbors=[0002_services_agents.py]
-- "versions_0002_services_agents_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0002_services_agents.py:L19 | neighbors=[0002_services_agents.py]
-- "versions_0003_vuln_scan_fields_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0003_vuln_scan_fields.py:L43 | neighbors=[0003_vuln_scan_fields.py]
-- "versions_0003_vuln_scan_fields_rationale_1": "Add enrichment fields index + webhook column to engagements  Revision ID: 0003 R" | kind=entity | source=manager/backend/alembic/versions/0003_vuln_scan_fields.py:L1 | neighbors=[0003_vuln_scan_fields.py]
-- "versions_0003_vuln_scan_fields_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0003_vuln_scan_fields.py:L18 | neighbors=[0003_vuln_scan_fields.py]
-- "versions_0004_exploit_tables_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0004_exploit_tables.py:L93 | neighbors=[0004_exploit_tables.py]
-- "versions_0004_exploit_tables_rationale_1": "Exploit results, approvals, and audit log tables  Revision ID: 0004 Revises: 000" | kind=entity | source=manager/backend/alembic/versions/0004_exploit_tables.py:L1 | neighbors=[0004_exploit_tables.py]
-- "versions_0004_exploit_tables_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0004_exploit_tables.py:L19 | neighbors=[0004_exploit_tables.py]
-- "versions_0005_detection_validation_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0005_detection_validation.py:L80 | neighbors=[0005_detection_validation.py]
-- "versions_0005_detection_validation_rationale_1": "Detection validation: attack_timeline, detection_configs, extend detection_resul" | kind=entity | source=manager/backend/alembic/versions/0005_detection_validation.py:L1 | neighbors=[0005_detection_validation.py]
-- "versions_0005_detection_validation_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0005_detection_validation.py:L19 | neighbors=[0005_detection_validation.py]
-- "versions_0006_llm_outputs_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0006_llm_outputs.py:L48 | neighbors=[0006_llm_outputs.py]
-- "versions_0006_llm_outputs_rationale_1": "AI engine: llm_outputs table + reviewstatus enum  Revision ID: 0006 Revises: 000" | kind=entity | source=manager/backend/alembic/versions/0006_llm_outputs.py:L1 | neighbors=[0006_llm_outputs.py]
-- "versions_0006_llm_outputs_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0006_llm_outputs.py:L19 | neighbors=[0006_llm_outputs.py]
-- "versions_0007_scale_indexes_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0007_scale_indexes.py:L35 | neighbors=[0007_scale_indexes.py]
-- "versions_0007_scale_indexes_rationale_1": "P3: composite indexes for the hot aggregate + poll query paths.  The dashboard's" | kind=entity | source=manager/backend/alembic/versions/0007_scale_indexes.py:L1 | neighbors=[0007_scale_indexes.py]
-- "versions_0007_scale_indexes_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0007_scale_indexes.py:L22 | neighbors=[0007_scale_indexes.py]
-- "versions_0008_scan_results_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0008_scan_results.py:L39 | neighbors=[0008_scan_results.py]
-- "versions_0008_scan_results_rationale_1": "P3-#10: append-only scan_results table (raw facts).  Decouples the (large) raw f" | kind=entity | source=manager/backend/alembic/versions/0008_scan_results.py:L1 | neighbors=[0008_scan_results.py]
-- "versions_0008_scan_results_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0008_scan_results.py:L21 | neighbors=[0008_scan_results.py]
-- "versions_0009_outbox_events_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0009_outbox_events.py:L45 | neighbors=[0009_outbox_events.py]
-- "versions_0009_outbox_events_rationale_1": "Transactional outbox for durable background work (detection, etc.).  Producers i" | kind=entity | source=manager/backend/alembic/versions/0009_outbox_events.py:L1 | neighbors=[0009_outbox_events.py]
-- "versions_0009_outbox_events_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0009_outbox_events.py:L23 | neighbors=[0009_outbox_events.py]
-- "versions_0010_detection_runs_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0010_detection_runs.py:L63 | neighbors=[0010_detection_runs.py]
-- "versions_0010_detection_runs_rationale_1": "Temporal detection: detection_runs table + finding provenance columns.  Records" | kind=entity | source=manager/backend/alembic/versions/0010_detection_runs.py:L1 | neighbors=[0010_detection_runs.py]
-- "versions_0010_detection_runs_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0010_detection_runs.py:L23 | neighbors=[0010_detection_runs.py]
-- "versions_0011_job_lease_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0011_job_lease.py:L33 | neighbors=[0011_job_lease.py]
-- "versions_0011_job_lease_rationale_1": "Job leasing: scan_jobs.lease_expires_at for the dead-probe reaper.  A claimed (r" | kind=entity | source=manager/backend/alembic/versions/0011_job_lease.py:L1 | neighbors=[0011_job_lease.py]
-- "versions_0011_job_lease_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0011_job_lease.py:L21 | neighbors=[0011_job_lease.py]
-- "versions_0012_agent_recommendations_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0012_agent_recommendations.py:L48 | neighbors=[0012_agent_recommendations.py]
-- "versions_0012_agent_recommendations_rationale_1": "Agentic AI advisor: agent_recommendations (recommend-only, human-approved).  Sto" | kind=entity | source=manager/backend/alembic/versions/0012_agent_recommendations.py:L1 | neighbors=[0012_agent_recommendations.py]
-- "versions_0012_agent_recommendations_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0012_agent_recommendations.py:L22 | neighbors=[0012_agent_recommendations.py]
-- "versions_0013_agent_public_key_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0013_agent_public_key.py:L26 | neighbors=[0013_agent_public_key.py]
-- "versions_0013_agent_public_key_rationale_1": "Add agents.public_key (Phase-4 X25519 identity for scope encryption).  The probe" | kind=entity | source=manager/backend/alembic/versions/0013_agent_public_key.py:L1 | neighbors=[0013_agent_public_key.py]
-- "versions_0013_agent_public_key_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0013_agent_public_key.py:L22 | neighbors=[0013_agent_public_key.py]
-- "versions_0015_finding_risk_score_scale_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0015_finding_risk_score_scale.py:L27 | neighbors=[0015_finding_risk_score_scale.py]
+- "tests_test_probe_core_testlookslikehttp_test_empty": ".test_empty()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L400 | neighbors=[TestLooksLikeHttp]
+- "tests_test_probe_core_testlookslikehttp_test_http_1_1": ".test_http_1_1()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L391 | neighbors=[TestLooksLikeHttp]
+- "tests_test_probe_core_testlookslikehttp_test_http_2": ".test_http_2()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L394 | neighbors=[TestLooksLikeHttp]
+- "tests_test_probe_core_testlookslikehttp_test_not_http": ".test_not_http()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L397 | neighbors=[TestLooksLikeHttp]
+- "tests_test_probe_core_testlooksliketls_test_banner_present": ".test_banner_present()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L415 | neighbors=[TestLooksLikeTls]
+- "tests_test_probe_core_testlooksliketls_test_client_first_port_not_tls": ".test_client_first_port_not_tls()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L409 | neighbors=[TestLooksLikeTls]
+- "tests_test_probe_core_testlooksliketls_test_no_banner_attempt": ".test_no_banner_attempt()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L412 | neighbors=[TestLooksLikeTls]
+- "tests_test_probe_core_testlooksliketls_test_silent_non_client_first_port": ".test_silent_non_client_first_port()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L406 | neighbors=[TestLooksLikeTls]
+- "tests_test_probe_core_testparseports_test_bad_token_raises": ".test_bad_token_raises()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L214 | neighbors=[TestParsePorts]
+- "tests_test_probe_core_testparseports_test_comma_separated": ".test_comma_separated()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L193 | neighbors=[TestParsePorts]
+- "tests_test_probe_core_testparseports_test_duplicates_removed": ".test_duplicates_removed()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L202 | neighbors=[TestParsePorts]
+- "tests_test_probe_core_testparseports_test_mixed": ".test_mixed()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L199 | neighbors=[TestParsePorts]
+- "tests_test_probe_core_testparseports_test_out_of_range_raises": ".test_out_of_range_raises()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L208 | neighbors=[TestParsePorts]
+- "tests_test_probe_core_testparseports_test_range": ".test_range()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L196 | neighbors=[TestParsePorts]
+- "tests_test_probe_core_testparseports_test_reversed_range_raises": ".test_reversed_range_raises()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L218 | neighbors=[TestParsePorts]
+- "tests_test_probe_core_testparseports_test_single_port": ".test_single_port()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L190 | neighbors=[TestParsePorts]
+- "tests_test_probe_core_testparseports_test_sorted": ".test_sorted()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L205 | neighbors=[TestParsePorts]
+- "tests_test_probe_core_testratelimiter_test_min_interval": ".test_min_interval()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L248 | neighbors=[TestRateLimiter]
+- "tests_test_probe_core_testratelimiter_test_wait_returns_immediately_at_zero_rate": ".test_wait_returns_immediately_at_zero_rate()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L256 | neighbors=[TestRateLimiter]
+- "tests_test_probe_core_testratelimiter_test_zero_rate": ".test_zero_rate()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L252 | neighbors=[TestRateLimiter]
+- "tests_test_probe_core_testresolvescantype_test_default": ".test_default()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L823 | neighbors=[TestResolveScanType]
+- "tests_test_probe_core_testresolvescantype_test_from_job_type": ".test_from_job_type()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L820 | neighbors=[TestResolveScanType]
+- "tests_test_probe_core_testresolvescantype_test_from_params": ".test_from_params()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L817 | neighbors=[TestResolveScanType]
+- "tests_test_probe_core_testresolvescantype_test_params_override_job_type": ".test_params_override_job_type()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L826 | neighbors=[TestResolveScanType]
+- "tests_test_probe_core_testscanresult_test_default_status_observed": ".test_default_status_observed()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L238 | neighbors=[TestScanResult]
+- "tests_test_probe_core_testscanresult_test_default_timestamp_present": ".test_default_timestamp_present()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L234 | neighbors=[TestScanResult]
+- "tests_test_probe_core_testscopeguard_test_assert_in_scope_passes": ".test_assert_in_scope_passes()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L114 | neighbors=[TestScopeGuard]
+- "tests_test_probe_core_testscopeguard_test_assert_in_scope_raises": ".test_assert_in_scope_raises()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L109 | neighbors=[TestScopeGuard]
+- "tests_test_probe_core_testscopeguard_test_excludes_larger_subnet": ".test_excludes_larger_subnet()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L104 | neighbors=[TestScopeGuard]
+- "tests_test_probe_core_testscopeguard_test_excludes_override_allowlist": ".test_excludes_override_allowlist()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L99 | neighbors=[TestScopeGuard]
+- "tests_test_probe_core_testscopeguard_test_filter_yields_only_in_scope": ".test_filter_yields_only_in_scope()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L118 | neighbors=[TestScopeGuard]
+- "tests_test_probe_core_testscopeguard_test_from_file": ".test_from_file()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L123 | neighbors=[TestScopeGuard]
+- "tests_test_probe_core_testscopeguard_test_from_file_empty_raises": ".test_from_file_empty_raises()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L130 | neighbors=[TestScopeGuard]
+- "tests_test_probe_core_testscopeguard_test_from_file_missing_raises": ".test_from_file_missing_raises()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L136 | neighbors=[TestScopeGuard]
+- "tests_test_probe_core_testscopeguard_test_from_list_hostname": ".test_from_list_hostname()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L90 | neighbors=[TestScopeGuard]
+- "tests_test_probe_core_testscopeguard_test_from_list_ip_in_cidr": ".test_from_list_ip_in_cidr()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L80 | neighbors=[TestScopeGuard]
+- "tests_test_probe_core_testscopeguard_test_from_list_single_ip": ".test_from_list_single_ip()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L85 | neighbors=[TestScopeGuard]
+- "tests_test_probe_core_testscopeguard_test_hostname_case_insensitive": ".test_hostname_case_insensitive()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L95 | neighbors=[TestScopeGuard]
+- "tests_test_probe_core_testtargets_test_empty": ".test_empty()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L857 | neighbors=[TestTargets]
+- "tests_test_probe_core_testtargets_test_list": ".test_list()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L848 | neighbors=[TestTargets]
 
 ## Instructions
 

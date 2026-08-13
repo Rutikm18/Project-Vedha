@@ -53,6 +53,95 @@ _PROTOCOLS = [
 DEFAULT_TLS_PORTS = [443, 8443, 993, 995, 465, 636, 989, 990, 5986]
 
 
+# --------------------------------------------------------------------------- #
+# Cipher classification + posture grading (Tier 2.4) — pure, no network.
+# --------------------------------------------------------------------------- #
+def classify_cipher(name: str) -> dict:
+    """
+    Flag the security-relevant properties of an OpenSSL cipher-suite name:
+    forward secrecy, AEAD vs CBC, and known weaknesses (RC4/NULL/DES/3DES/
+    EXPORT/MD5/anonymous). Pure string analysis so it is trivially testable and
+    independent of what the local OpenSSL happens to support.
+    """
+    up = name.upper()
+    reasons: list[str] = []
+    if "NULL" in up:
+        reasons.append("NULL (no encryption)")
+    if "RC4" in up:
+        reasons.append("RC4 (broken stream cipher)")
+    if "EXP" in up or "EXPORT" in up:
+        reasons.append("EXPORT-grade (crippled key size)")
+    if "MD5" in up:
+        reasons.append("MD5 MAC")
+    if "ADH" in up or "AECDH" in up or "ANON" in up:
+        reasons.append("anonymous key exchange (no authentication)")
+    # 3DES first (SWEET32); plain single-DES is even weaker.
+    if "3DES" in up or "DES-CBC3" in up or "DES_CBC3" in up:
+        reasons.append("3DES (SWEET32)")
+    elif "DES" in up:
+        reasons.append("DES (broken)")
+
+    pfs = any(k in up for k in ("ECDHE", "DHE", "EECDH", "EDH")) and "ADH" not in up
+    aead = any(k in up for k in ("GCM", "CHACHA20", "CCM"))
+    cbc = "CBC" in up or (not aead and "RC4" not in up and "NULL" not in up)
+    return {
+        "name": name,
+        "weak": bool(reasons),
+        "weak_reasons": reasons,
+        "forward_secrecy": pfs,
+        "aead": aead,
+        "cbc": cbc and not aead,
+    }
+
+
+_LOW_PROTOCOLS = {"SSLv2", "SSLv3", "TLSv1", "TLSv1_0", "TLSv1.0"}
+_TLS11 = {"TLSv1_1", "TLSv1.1"}
+_TLS12 = {"TLSv1_2", "TLSv1.2"}
+_TLS13 = {"TLSv1_3", "TLSv1.3"}
+
+
+def grade_tls_posture(accepted_versions, cipher_details: list[dict]) -> dict:
+    """
+    Grade overall TLS posture A/B/C/F from accepted protocol versions and the
+    classified ciphers. Deterministic heuristic:
+        F  deprecated protocol (SSLv3/TLS1.0) OR any weak cipher
+        C  TLS 1.1 enabled, OR no forward secrecy offered
+        B  TLS 1.2 fine but TLS 1.3 not offered
+        A  TLS 1.3 present, PFS, no weak ciphers, no deprecated protocols
+    """
+    av = set(accepted_versions or [])
+    findings: list[str] = []
+
+    has_low = bool(av & _LOW_PROTOCOLS)
+    has_11 = bool(av & _TLS11)
+    has_12 = bool(av & _TLS12)
+    has_13 = bool(av & _TLS13)
+
+    weak = [c for c in cipher_details if c.get("weak")]
+    any_pfs = any(c.get("forward_secrecy") for c in cipher_details) if cipher_details else None
+
+    if has_low:
+        findings.append("deprecated protocol enabled (SSLv3/TLS1.0)")
+    if has_11:
+        findings.append("TLS 1.1 enabled (deprecated)")
+    for c in weak:
+        findings.append(f"weak cipher {c['name']}: {', '.join(c['weak_reasons'])}")
+    if any_pfs is False:
+        findings.append("no forward secrecy offered")
+    if not has_13 and has_12:
+        findings.append("TLS 1.3 not offered")
+
+    if has_low or weak:
+        grade = "F"
+    elif has_11 or any_pfs is False:
+        grade = "C"
+    elif not has_13:
+        grade = "B"
+    else:
+        grade = "A"
+    return {"grade": grade, "findings": findings}
+
+
 def _sni(host: str) -> str | None:
     """Never send an IP literal as SNI — non-conformant; some servers reject it."""
     try:
@@ -144,10 +233,16 @@ def _scan_tls_sync(host: str, port: int, timeout: float) -> dict | None:
     if not accepted:
         return None  # not a TLS service / unreachable
 
+    cipher_details = [classify_cipher(name)
+                      for name in dict.fromkeys(v for v in cipher_by_ver.values() if v)]
+    posture = grade_tls_posture(accepted, cipher_details)
+
     der = _get_cert_der(host, port, timeout)
     return {
         "accepted_versions": accepted,
         "cipher_by_version": cipher_by_ver,
+        "cipher_analysis": cipher_details,
+        "posture": posture,
         "certificate": _parse_cert_der(der),
     }
 
@@ -174,7 +269,8 @@ class TLSScanner(BaseScanner):
         return ScanResult(
             self.name, target, port=port, proto="tcp", status="open",
             data=info,
-            evidence="accepts: " + ", ".join(info["accepted_versions"]),
+            evidence=(f"grade {info['posture']['grade']}; accepts: "
+                      + ", ".join(info["accepted_versions"])),
         )
 
     async def scan_target(self, target: str) -> list[ScanResult]:

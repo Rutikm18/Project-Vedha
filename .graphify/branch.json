@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "branchName": "main",
+  "branchName": "feat/coverage-gated-auto-resolution",
   "worktreePath": "/Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha",
-  "upstream": "origin/main",
-  "mergeBase": "75650c143e0e92e93ca7fed76c46893953456bf8",
-  "firstSeenHead": "41b692a77a1dd6d2e5666f2fa2f8aa4b1e084e64",
-  "lastSeenHead": "75650c143e0e92e93ca7fed76c46893953456bf8",
-  "lastAnalyzedHead": "75650c143e0e92e93ca7fed76c46893953456bf8",
+  "upstream": null,
+  "mergeBase": null,
+  "firstSeenHead": "c02c4652680a709056c4a8e342699c00e80454dc",
+  "lastSeenHead": "3c277ba6178b4f0198b100b89c77054277f136d7",
+  "lastAnalyzedHead": "3c277ba6178b4f0198b100b89c77054277f136d7",
   "stale": false,
   "staleReason": null,
   "staleSince": null,
   "lifecycleEvent": null,
-  "createdAt": "2026-08-01T22:28:47.864Z",
-  "updatedAt": "2026-08-06T17:43:08.332Z"
+  "createdAt": "2026-08-10T21:49:02.645Z",
+  "updatedAt": "2026-08-11T22:55:24.601Z"
 }

@@ -1,0 +1,101 @@
+{
+  "target": "192.168.1.74",
+  "profile": "full",
+  "started": "20260813_114726",
+  "host_alive_hint": true,
+  "open_tcp_ports": [
+    135,
+    445,
+    2179,
+    3389,
+    7680
+  ],
+  "device_classification": {
+    "device_type": "workstation",
+    "confidence": 0.5,
+    "role_detail": null,
+    "signals": {
+      "scores": {
+        "workstation": 3,
+        "server": 3
+      },
+      "os_guess": "Windows",
+      "open_tcp": [
+        135,
+        445,
+        2179,
+        3389,
+        7680
+      ],
+      "open_udp": [],
+      "support_count": 3
+    },
+    "evidence": [
+      "os_windows",
+      "rdp_3389",
+      "smb_445"
+    ]
+  },
+  "findings_summary": {
+    "total": 2,
+    "by_severity": {
+      "critical": 0,
+      "high": 0,
+      "medium": 1,
+      "low": 1,
+      "info": 0
+    },
+    "by_category": {
+      "exposure": 1,
+      "misconfiguration": 1
+    },
+    "actionable": 1
+  },
+  "top_findings": [
+    {
+      "type": "finding",
+      "rule_id": "SVC-RDP-EXPOSED",
+      "title": "RDP exposed to the scan vantage",
+      "severity": "medium",
+      "confidence": "medium",
+      "category": "exposure",
+      "target": "192.168.1.74",
+      "port": 3389,
+      "proto": "tcp",
+      "evidence": "Remote Desktop is reachable \u2014 a common brute-force / exploit target (e.g. BlueKeep class).",
+      "recommendation": "Restrict RDP to VPN/jump hosts; enforce NLA + MFA.",
+      "data": {
+        "port": 3389
+      },
+      "source_scanner": "port_scan"
+    },
+    {
+      "type": "finding",
+      "rule_id": "TLS-CERT-SELF-SIGNED",
+      "title": "Self-signed TLS certificate",
+      "severity": "low",
+      "confidence": "high",
+      "category": "misconfiguration",
+      "target": "192.168.1.74",
+      "port": 3389,
+      "proto": "tcp",
+      "evidence": "Certificate is self-signed (subject == issuer) \u2014 no trusted chain.",
+      "recommendation": "Use a CA-issued certificate for anything outside a closed lab.",
+      "data": {
+        "self_signed": true
+      },
+      "source_scanner": "tls_scan"
+    }
+  ],
+  "outputs": [
+    "01_host_discovery.jsonl",
+    "02_port_scan.jsonl",
+    "03_udp.jsonl",
+    "04_os_fingerprint.jsonl",
+    "05_snmp.jsonl",
+    "06_smb.jsonl",
+    "07_service_banner.jsonl",
+    "08_tls.jsonl",
+    "findings.jsonl"
+  ]
+}

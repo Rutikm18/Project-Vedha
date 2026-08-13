@@ -1,4 +1,4 @@
-# Node Description Batch 83 of 134
+# Node Description Batch 83 of 144
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -26,46 +26,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "aibrain_page_statusdot": "StatusDot()" | kind=code-symbol | source=manager/frontend/app/aibrain/page.tsx:L109 | neighbors=[page.tsx] | lang=en
-- "aibrain_page_welcome": "WELCOME" | kind=code-symbol | source=manager/frontend/app/aibrain/page.tsx:L67 | neighbors=[page.tsx] | lang=en
-- "alembic_env_do_run_migrations": "do_run_migrations()" | kind=code-symbol | source=manager/backend/alembic/env.py:L37 | neighbors=[env.py] | lang=en
-- "alembic_env_run_migrations_offline": "run_migrations_offline()" | kind=code-symbol | source=manager/backend/alembic/env.py:L24 | neighbors=[env.py] | lang=en
-- "alembic_env_run_migrations_online": "run_migrations_online()" | kind=code-symbol | source=manager/backend/alembic/env.py:L47 | neighbors=[env.py] | lang=en
-- "app_config_settings_cors_origins": ".cors_origins()" | kind=code-symbol | source=manager/backend/app/config.py:L114 | neighbors=[Settings] | lang=en
-- "app_config_settings_is_production": ".is_production()" | kind=code-symbol | source=manager/backend/app/config.py:L118 | neighbors=[Settings] | lang=en
-- "app_database_get_db": "get_db()" | kind=code-symbol | source=manager/backend/app/database.py:L51 | neighbors=[database.py] | lang=en
-- "app_database_rationale_57": "Read-only session (no commit) routed to the replica when configured.     For SEL" | kind=entity | source=manager/backend/app/database.py:L57 | neighbors=[get_read_db()] | lang=en
-- "app_database_rationale_64": "Read-only session (no commit) routed to the replica when configured.     For SEL" | kind=entity | source=manager/backend/app/database.py:L64 | neighbors=[get_read_db()] | lang=en
-- "app_dependencies_get_redis": "get_redis()" | kind=code-symbol | source=manager/backend/app/dependencies.py:L19 | neighbors=[dependencies.py] | lang=en
-- "app_layout_metadata": "metadata" | kind=code-symbol | source=manager/frontend/app/layout.tsx:L9 | neighbors=[layout.tsx] | lang=en
-- "app_layout_rootlayout": "RootLayout()" | kind=code-symbol | source=manager/frontend/app/layout.tsx:L14 | neighbors=[layout.tsx] | lang=en
-- "app_main_gziprequestmiddleware_call": ".__call__()" | kind=code-symbol | source=manager/backend/app/main.py:L115 | neighbors=[GzipRequestMiddleware] | lang=en
-- "app_main_gziprequestmiddleware_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/main.py:L112 | neighbors=[GzipRequestMiddleware] | lang=en
-- "app_main_lifespan": "lifespan()" | kind=code-symbol | source=manager/backend/app/main.py:L64 | neighbors=[main.py] | lang=en
-- "app_main_rationale_234": "Identify the Manager API without exposing a second dashboard." | kind=entity | source=manager/backend/app/main.py:L234 | neighbors=[_service_root()] | lang=en
-- "app_main_root_redirect": "_root_redirect()" | kind=code-symbol | source=manager/backend/app/main.py:L205 | neighbors=[main.py] | lang=en
-- "app_main_unhandled_exception_handler": "unhandled_exception_handler()" | kind=code-symbol | source=manager/backend/app/main.py:L191 | neighbors=[main.py] | lang=en
-- "app_page_agent": "Agent" | kind=code-symbol | source=manager/frontend/app/page.tsx:L27 | neighbors=[page.tsx] | lang=en
-- "app_page_agent_status": "AGENT_STATUS" | kind=code-symbol | source=manager/frontend/app/page.tsx:L29 | neighbors=[page.tsx] | lang=en
-- "app_page_agentrow": "AgentRow()" | kind=code-symbol | source=manager/frontend/app/page.tsx:L117 | neighbors=[page.tsx] | lang=en
-- "app_page_agentstatus": "AgentStatus" | kind=code-symbol | source=manager/frontend/app/page.tsx:L24 | neighbors=[page.tsx] | lang=en
-- "app_page_confidencebar": "ConfidenceBar()" | kind=code-symbol | source=manager/frontend/app/page.tsx:L64 | neighbors=[page.tsx] | lang=en
-- "app_page_dashboard": "Dashboard()" | kind=code-symbol | source=manager/frontend/app/page.tsx:L18 | neighbors=[page.tsx] | lang=en
-- "app_page_decisioncenter": "DecisionCenter()" | kind=code-symbol | source=manager/frontend/app/page.tsx:L55 | neighbors=[page.tsx] | lang=en
-- "app_page_glowcard": "GlowCard()" | kind=code-symbol | source=manager/frontend/app/page.tsx:L75 | neighbors=[page.tsx] | lang=en
-- "app_page_path_status": "PATH_STATUS" | kind=code-symbol | source=manager/frontend/app/page.tsx:L26 | neighbors=[page.tsx] | lang=en
-- "app_page_sectionheader": "SectionHeader()" | kind=code-symbol | source=manager/frontend/app/page.tsx:L36 | neighbors=[page.tsx] | lang=en
-- "app_page_sev_label": "SEV_LABEL" | kind=code-symbol | source=manager/frontend/app/page.tsx:L32 | neighbors=[page.tsx] | lang=en
-- "app_page_widgetplaceholder": "WidgetPlaceholder()" | kind=code-symbol | source=manager/frontend/app/page.tsx:L55 | neighbors=[page.tsx] | lang=en
-- "app_ratelimit_check": "_check()" | kind=code-symbol | source=manager/backend/app/ratelimit.py:L26 | neighbors=[ratelimit.py] | lang=en
-- "app_ratelimit_rationale_1": "ratelimit.py — P2: Redis-backed rate limiting (no new dependency; reuses the exi" | kind=entity | source=manager/backend/app/ratelimit.py:L1 | neighbors=[ratelimit.py] | lang=en
-- "app_ratelimit_rationale_17": "Best-effort client IP. Honors X-Forwarded-For (first hop) when behind a     prox" | kind=entity | source=manager/backend/app/ratelimit.py:L17 | neighbors=[client_ip()] | lang=pt
-- "app_ratelimit_rationale_44": "FastAPI dependency factory. Keys the window by (scope, client-IP)." | kind=entity | source=manager/backend/app/ratelimit.py:L44 | neighbors=[rate_limit()] | lang=en
-- "app_version_get_version": "get_version()" | kind=code-symbol | source=manager/backend/app/version.py:L17 | neighbors=[version.py] | lang=en
-- "app_version_rationale_1": "Single source of truth for the deployed application version.  The value is injec" | kind=entity | source=manager/backend/app/version.py:L1 | neighbors=[version.py] | lang=en
-- "approve_route_post": "POST()" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/ai-report/approve/route.ts:L4 | neighbors=[route.ts] | lang=en
-- "assetid_route_get": "GET()" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/blast-radius/[assetId]/route.ts:L5 | neighbors=[route.ts] | lang=en
-- "assets_route_get": "GET()" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/assets/route.ts:L8 | neighbors=[route.ts] | lang=en
+- "agent_hw_bind_rationale_24": "Deterministic per-machine fingerprint built from stable hardware IDs.      Combi" | kind=entity | source=probe/agent/hw_bind.py:L24 | neighbors=[get_hw_id()] | lang=en
+- "agent_hw_bind_rationale_35": "Verify the binary is running on the machine it was compiled for.      Reads HW_B" | kind=entity | source=probe/agent/hw_bind.py:L35 | neighbors=[check_hw_bind()] | lang=en
+- "agent_init_rationale_1": "agent — the probe transport layer (sealed, push-driven, hardware-bound).  Archit" | kind=entity | source=probe/agent/__init__.py:L1 | neighbors=[__init__.py] | lang=en
+- "agent_license_licenseerror_init": ".__init__()" | kind=code-symbol | source=probe/agent/license.py:L30 | neighbors=[LicenseError] | lang=en
+- "agent_license_rationale_1": "license.py — host-locked, vendor-signed anti-copy gate for the probe.  DESIGN (p" | kind=entity | source=probe/agent/license.py:L1 | neighbors=[license.py] | lang=en
+- "agent_license_rationale_102": "Combined startup gauntlet: HW bind → license check. Fails fast.      This is the" | kind=entity | source=probe/agent/license.py:L102 | neighbors=[gauntlet()] | lang=en
+- "agent_license_rationale_105": "Combined startup gauntlet: HW bind → license check. Fails fast.      This is the" | kind=entity | source=probe/agent/license.py:L105 | neighbors=[gauntlet()] | lang=en
+- "agent_license_rationale_36": "Stable per-machine ID, derived from hw_bind's hardware fingerprint." | kind=entity | source=probe/agent/license.py:L36 | neighbors=[host_fingerprint()] | lang=en
+- "agent_license_rationale_39": "Stable per-machine ID, derived from hw_bind's hardware fingerprint." | kind=entity | source=probe/agent/license.py:L39 | neighbors=[host_fingerprint()] | lang=en
+- "agent_license_rationale_51": "Returns the license payload dict if valid; raises LicenseError otherwise.     To" | kind=entity | source=probe/agent/license.py:L51 | neighbors=[verify_license()] | lang=en
+- "agent_license_rationale_54": "Returns the license payload dict if valid; raises LicenseError otherwise.     To" | kind=entity | source=probe/agent/license.py:L54 | neighbors=[verify_license()] | lang=en
+- "agent_license_rationale_85": "The gate the agent calls at startup. Honors LICENSE_ENFORCED and     reads the t" | kind=entity | source=probe/agent/license.py:L85 | neighbors=[check_license()] | lang=en
+- "agent_license_rationale_88": "The gate the agent calls at startup. Honors LICENSE_ENFORCED and     reads the t" | kind=entity | source=probe/agent/license.py:L88 | neighbors=[check_license()] | lang=en
+- "agent_result_spool_rationale_1": "result_spool.py — local result persistence with upload retry.  When the probe co" | kind=entity | source=probe/agent/result_spool.py:L1 | neighbors=[result_spool.py] | lang=en
+- "agent_result_spool_rationale_100": "Load a previously spooled result, returning None if missing/corrupt." | kind=entity | source=probe/agent/result_spool.py:L100 | neighbors=[.load()] | lang=pt
+- "agent_result_spool_rationale_102": "Remove the spool file for a successfully uploaded result." | kind=entity | source=probe/agent/result_spool.py:L102 | neighbors=[.remove()] | lang=en
+- "agent_result_spool_rationale_111": "Remove the spool file for a successfully uploaded result." | kind=entity | source=probe/agent/result_spool.py:L111 | neighbors=[.remove()] | lang=en
+- "agent_result_spool_rationale_114": "Attempt to upload a result with retries and local spool as fallback.          Ar" | kind=entity | source=probe/agent/result_spool.py:L114 | neighbors=[.submit_with_retry()] | lang=en
+- "agent_result_spool_rationale_116": "Move a terminally rejected result out of the retry queue." | kind=entity | source=probe/agent/result_spool.py:L116 | neighbors=[.quarantine()] | lang=en
+- "agent_result_spool_rationale_130": "Re-attempt upload of all previously spooled results.          Called once at pro" | kind=entity | source=probe/agent/result_spool.py:L130 | neighbors=[.flush_spool()] | lang=en
+- "agent_result_spool_rationale_135": "Attempt to upload a result with retries and local spool as fallback.          Ar" | kind=entity | source=probe/agent/result_spool.py:L135 | neighbors=[.submit_with_retry()] | lang=en
+- "agent_result_spool_rationale_153": "Number of pending (unsubmitted) results in the spool." | kind=entity | source=probe/agent/result_spool.py:L153 | neighbors=[.spool_count()] | lang=en
+- "agent_result_spool_rationale_156": "Re-attempt upload of all previously spooled results.          Called once at pro" | kind=entity | source=probe/agent/result_spool.py:L156 | neighbors=[.flush_spool()] | lang=en
+- "agent_result_spool_rationale_180": "Number of pending (unsubmitted) results in the spool." | kind=entity | source=probe/agent/result_spool.py:L180 | neighbors=[.spool_count()] | lang=en
+- "agent_result_spool_rationale_185": "Re-attempt upload of all previously spooled results.          Called once at pro" | kind=entity | source=probe/agent/result_spool.py:L185 | neighbors=[.flush_spool()] | lang=en
+- "agent_result_spool_rationale_216": "Number of pending (unsubmitted) results in the spool." | kind=entity | source=probe/agent/result_spool.py:L216 | neighbors=[.spool_count()] | lang=en
+- "agent_result_spool_rationale_223": "Total bytes held by pending result files, ignoring vanished files." | kind=entity | source=probe/agent/result_spool.py:L223 | neighbors=[.spool_bytes()] | lang=en
+- "agent_result_spool_rationale_236": "Whether new jobs must pause until pending results are uploaded.          These a" | kind=entity | source=probe/agent/result_spool.py:L236 | neighbors=[.at_capacity()] | lang=en
+- "agent_result_spool_rationale_25": "Persists scan results locally and retries failed uploads." | kind=entity | source=probe/agent/result_spool.py:L25 | neighbors=[ResultSpool] | lang=en
+- "agent_result_spool_rationale_27": "Persists scan results locally and retries failed uploads." | kind=entity | source=probe/agent/result_spool.py:L27 | neighbors=[ResultSpool] | lang=en
+- "agent_result_spool_rationale_28": "Persists scan results locally and retries failed uploads." | kind=entity | source=probe/agent/result_spool.py:L28 | neighbors=[ResultSpool] | lang=en
+- "agent_result_spool_rationale_40": "Atomically write a result payload to the spool directory.          Returns the s" | kind=entity | source=probe/agent/result_spool.py:L40 | neighbors=[.save()] | lang=en
+- "agent_result_spool_rationale_60": "Atomically write a result payload to the spool directory.          Returns the s" | kind=entity | source=probe/agent/result_spool.py:L60 | neighbors=[.save()] | lang=en
+- "agent_result_spool_rationale_62": "Check if a spooled result exists for this job." | kind=entity | source=probe/agent/result_spool.py:L62 | neighbors=[.exists()] | lang=en
+- "agent_result_spool_rationale_66": "Load a previously spooled result, returning None if missing/corrupt." | kind=entity | source=probe/agent/result_spool.py:L66 | neighbors=[.load()] | lang=pt
+- "agent_result_spool_rationale_69": "Atomically write a result payload to the spool directory.          Returns the s" | kind=entity | source=probe/agent/result_spool.py:L69 | neighbors=[.save()] | lang=en
+- "agent_result_spool_rationale_77": "Remove the spool file for a successfully uploaded result." | kind=entity | source=probe/agent/result_spool.py:L77 | neighbors=[.remove()] | lang=en
+- "agent_result_spool_rationale_87": "Check if a spooled result exists for this job." | kind=entity | source=probe/agent/result_spool.py:L87 | neighbors=[.exists()] | lang=en
+- "agent_result_spool_rationale_88": "Attempt to upload a result with retries and local spool as fallback.          Ar" | kind=entity | source=probe/agent/result_spool.py:L88 | neighbors=[.submit_with_retry()] | lang=en
+- "agent_result_spool_rationale_91": "Load a previously spooled result, returning None if missing/corrupt." | kind=entity | source=probe/agent/result_spool.py:L91 | neighbors=[.load()] | lang=pt
 
 ## Instructions
 

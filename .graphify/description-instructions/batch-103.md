@@ -1,4 +1,4 @@
-# Node Description Batch 104 of 134
+# Node Description Batch 104 of 144
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,58 +12,51 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
-For an entity node (any other kind — e.g. a person, place, event, object),
-describe what the entity is and its role, grounded in its type, its
-relations (neighbors) and the provided citations/evidence — e.g.
-"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
-Ground entity descriptions in the citations/evidence when present; do not
-speculate beyond the context, so a node with no supporting context may be
-left out of the reply.
 Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "scan_page_usecase": "UseCase" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L18 | neighbors=[page.tsx]
-- "scan_page_usecasecard": "UseCaseCard()" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L257 | neighbors=[page.tsx]
-- "scanner_db_scanner_dbscanner_init": ".__init__()" | kind=code-symbol | source=probe/scanner/db_scanner.py:L240 | neighbors=[DBScanner]
-- "scanner_db_scanner_main": "main()" | kind=code-symbol | source=probe/scanner/db_scanner.py:L287 | neighbors=[db_scanner.py]
-- "scanner_db_scanner_probe_mongodb": "_probe_mongodb()" | kind=code-symbol | source=probe/scanner/db_scanner.py:L131 | neighbors=[db_scanner.py]
-- "scanner_db_scanner_probe_mssql": "_probe_mssql()" | kind=code-symbol | source=probe/scanner/db_scanner.py:L82 | neighbors=[db_scanner.py]
-- "scanner_db_scanner_probe_mysql": "_probe_mysql()" | kind=code-symbol | source=probe/scanner/db_scanner.py:L47 | neighbors=[db_scanner.py]
-- "scanner_db_scanner_probe_mysqlx": "_probe_mysqlx()" | kind=code-symbol | source=probe/scanner/db_scanner.py:L166 | neighbors=[db_scanner.py]
-- "scanner_db_scanner_probe_oracle": "_probe_oracle()" | kind=code-symbol | source=probe/scanner/db_scanner.py:L195 | neighbors=[db_scanner.py]
-- "scanner_db_scanner_probe_postgres": "_probe_postgres()" | kind=code-symbol | source=probe/scanner/db_scanner.py:L67 | neighbors=[db_scanner.py]
-- "scanner_db_scanner_rationale_1": "db_scanner.py — fingerprint database services.  WHY: databases are everywhere on" | kind=entity | source=probe/scanner/db_scanner.py:L1 | neighbors=[db_scanner.py]
-- "scanner_db_scanner_rationale_102": "Classify a Redis INFO reply. `unauthenticated_read` is True only when we     act" | kind=entity | source=probe/scanner/db_scanner.py:L102 | neighbors=[interpret_redis_info()]
-- "scanner_host_discovery_hostdiscoveryscanner_init": ".__init__()" | kind=code-symbol | source=probe/scanner/host_discovery.py:L32 | neighbors=[HostDiscoveryScanner]
-- "scanner_host_discovery_main": "main()" | kind=code-symbol | source=probe/scanner/host_discovery.py:L84 | neighbors=[host_discovery.py]
-- "scanner_host_discovery_rationale_1": "host_discovery.py — determine which hosts are alive.  METHOD (collection only):" | kind=entity | source=probe/scanner/host_discovery.py:L1 | neighbors=[host_discovery.py]
-- "scanner_host_discovery_rationale_33": "Return 'open', 'refused', or None (no response)." | kind=entity | source=probe/scanner/host_discovery.py:L33 | neighbors=[._probe()]
-- "scanner_host_discovery_rationale_37": "Return 'open', 'refused', or None (no response)." | kind=entity | source=probe/scanner/host_discovery.py:L37 | neighbors=[._probe()]
-- "scanner_init_rationale_1": "VA scanner module — pure collection/scanning layer.  Each submodule is an indepe" | kind=entity | source=probe/scanner/__init__.py:L1 | neighbors=[__init__.py]
-- "scanner_mass_scan_connectsweep_init": ".__init__()" | kind=code-symbol | source=probe/scanner/mass_scan.py:L209 | neighbors=[_ConnectSweep]
-- "scanner_mass_scan_main": "main()" | kind=code-symbol | source=probe/scanner/mass_scan.py:L341 | neighbors=[mass_scan.py]
-- "scanner_mass_scan_rationale_1": "mass_scan.py — fast large-scale TCP port discovery.  WHY THIS EXISTS (modern con" | kind=entity | source=probe/scanner/mass_scan.py:L1 | neighbors=[mass_scan.py]
-- "scanner_mass_scan_rationale_148": "Parse masscan -oJ output robustly: handles trailing comma, 'finished'     sentin" | kind=entity | source=probe/scanner/mass_scan.py:L148 | neighbors=[_parse_masscan_json()]
-- "scanner_mass_scan_rationale_176": "target_specs: raw CIDRs/ranges/hosts (NOT pre-expanded) — masscan wants them." | kind=entity | source=probe/scanner/mass_scan.py:L176 | neighbors=[run_mass_scan()]
-- "scanner_mass_scan_rationale_216": "Excluded networks -> masscan --exclude specs, so they get ZERO packets." | kind=entity | source=probe/scanner/mass_scan.py:L216 | neighbors=[_masscan_excludes()]
-- "scanner_mass_scan_rationale_221": "A CIDR spec is in scope only if it is fully contained in an allowed network." | kind=entity | source=probe/scanner/mass_scan.py:L221 | neighbors=[_spec_in_scope()]
-- "scanner_mass_scan_rationale_243": "target_specs: raw CIDRs/ranges/hosts (NOT pre-expanded) — masscan wants them." | kind=entity | source=probe/scanner/mass_scan.py:L243 | neighbors=[run_mass_scan()]
-- "scanner_mass_scan_rationale_308": "Excluded networks -> masscan --exclude specs, so they get ZERO packets." | kind=entity | source=probe/scanner/mass_scan.py:L308 | neighbors=[_masscan_excludes()]
-- "scanner_mass_scan_rationale_313": "A CIDR spec is in scope only if it is fully contained in an allowed network." | kind=entity | source=probe/scanner/mass_scan.py:L313 | neighbors=[_spec_in_scope()]
-- "scanner_mass_scan_rationale_55": "Run masscan over the given target specs and return its parsed JSON records." | kind=entity | source=probe/scanner/mass_scan.py:L55 | neighbors=[_run_masscan()]
-- "scanner_mass_scan_rationale_66": "Run masscan over the given target specs and return its parsed JSON records." | kind=entity | source=probe/scanner/mass_scan.py:L66 | neighbors=[_run_masscan()]
-- "scanner_mass_scan_rationale_90": "Parse masscan -oJ output robustly: handles trailing comma, 'finished'     sentin" | kind=entity | source=probe/scanner/mass_scan.py:L90 | neighbors=[_parse_masscan_json()]
-- "scanner_mcp_ai_scanner_main": "main()" | kind=code-symbol | source=probe/scanner/mcp_ai_scanner.py:L322 | neighbors=[mcp_ai_scanner.py]
-- "scanner_mcp_ai_scanner_mcpaiscanner_init": ".__init__()" | kind=code-symbol | source=probe/scanner/mcp_ai_scanner.py:L201 | neighbors=[MCPAIScanner]
-- "scanner_mcp_ai_scanner_noredirect_redirect_request": ".redirect_request()" | kind=code-symbol | source=probe/scanner/mcp_ai_scanner.py:L110 | neighbors=[_NoRedirect]
-- "scanner_mcp_ai_scanner_rationale_1": "mcp_ai_scanner.py — discover exposed AI inference servers and MCP endpoints.  WH" | kind=entity | source=probe/scanner/mcp_ai_scanner.py:L1 | neighbors=[mcp_ai_scanner.py]
-- "scanner_mcp_ai_scanner_rationale_152": "Server/body fingerprint match against known non-AI squatters, or None." | kind=entity | source=probe/scanner/mcp_ai_scanner.py:L152 | neighbors=[_known_false_positive()]
-- "scanner_mcp_ai_scanner_rationale_161": "The strongest possible evidence for a real MCP server: a WWW-Authenticate     he" | kind=entity | source=probe/scanner/mcp_ai_scanner.py:L161 | neighbors=[_mcp_oauth_signal()]
-- "scanner_mcp_ai_scanner_rationale_174": "JSON-typed body that actually talks about auth, not just any error text." | kind=entity | source=probe/scanner/mcp_ai_scanner.py:L174 | neighbors=[_auth_shaped_json_body()]
-- "scanner_mcp_ai_scanner_request": "_request()" | kind=code-symbol | source=probe/scanner/mcp_ai_scanner.py:L127 | neighbors=[mcp_ai_scanner.py]
-- "scanner_nmap_wrapper_have_nmap": "_have_nmap()" | kind=code-symbol | source=probe/scanner/nmap_wrapper.py:L111 | neighbors=[nmap_wrapper.py]
+- "lib_graph_store_relationtype": "RelationType" | kind=code-symbol | source=manager/frontend/lib/graph-store.ts:L5 | neighbors=[graph-store.ts]
+- "lib_graph_store_severity": "Severity" | kind=code-symbol | source=manager/frontend/lib/graph-store.ts:L8 | neighbors=[graph-store.ts]
+- "lib_graph_store_target_ids": "TARGET_IDS" | kind=code-symbol | source=manager/frontend/lib/graph-store.ts:L258 | neighbors=[graph-store.ts]
+- "lib_httpx_parser_httpxjsonldecoder_malformedlines": ".malformedLines()" | kind=code-symbol | source=manager/frontend/lib/httpx-parser.ts:L112 | neighbors=[HttpxJsonlDecoder]
+- "lib_httpx_parser_httpxlineparseresult": "HttpxLineParseResult" | kind=code-symbol | source=manager/frontend/lib/httpx-parser.ts:L12 | neighbors=[httpx-parser.ts]
+- "lib_job_store_job": "Job" | kind=code-symbol | source=manager/frontend/lib/job-store.ts:L8 | neighbors=[job-store.ts]
+- "lib_job_store_jobs_file": "JOBS_FILE" | kind=code-symbol | source=manager/frontend/lib/job-store.ts:L4 | neighbors=[job-store.ts]
+- "lib_job_store_jobstatus": "JobStatus" | kind=code-symbol | source=manager/frontend/lib/job-store.ts:L6 | neighbors=[job-store.ts]
+- "lib_naabu_parser_naaburaw": "NaabuRaw" | kind=code-symbol | source=manager/frontend/lib/naabu-parser.ts:L9 | neighbors=[naabu-parser.ts]
+- "lib_naabu_parser_naaburesult": "NaabuResult" | kind=code-symbol | source=manager/frontend/lib/naabu-parser.ts:L3 | neighbors=[naabu-parser.ts]
+- "lib_netexec_parser_netexechost": "NetExecHost" | kind=code-symbol | source=manager/frontend/lib/netexec-parser.ts:L3 | neighbors=[netexec-parser.ts]
+- "lib_netexec_parser_netexecparseresult": "NetExecParseResult" | kind=code-symbol | source=manager/frontend/lib/netexec-parser.ts:L13 | neighbors=[netexec-parser.ts]
+- "lib_nmap_parser_nmaphost": "NmapHost" | kind=code-symbol | source=manager/frontend/lib/nmap-parser.ts:L18 | neighbors=[nmap-parser.ts]
+- "lib_nmap_parser_nmapscriptresult": "NmapScriptResult" | kind=code-symbol | source=manager/frontend/lib/nmap-parser.ts:L13 | neighbors=[nmap-parser.ts]
+- "lib_nmap_parser_nmapservice": "NmapService" | kind=code-symbol | source=manager/frontend/lib/nmap-parser.ts:L3 | neighbors=[nmap-parser.ts]
+- "lib_nmap_parser_parser": "parser" | kind=code-symbol | source=manager/frontend/lib/nmap-parser.ts:L27 | neighbors=[nmap-parser.ts]
+- "lib_nuclei_parser_countbyseverity": "countBySeverity()" | kind=code-symbol | source=manager/frontend/lib/nuclei-parser.ts:L98 | neighbors=[nuclei-parser.ts]
+- "lib_nuclei_parser_nucleiraw": "NucleiRaw" | kind=code-symbol | source=manager/frontend/lib/nuclei-parser.ts:L17 | neighbors=[nuclei-parser.ts]
+- "lib_nuclei_parser_nucleirawline": "NucleiRawLine" | kind=code-symbol | source=manager/frontend/lib/nuclei-parser.ts:L82 | neighbors=[nuclei-parser.ts]
+- "lib_openvas_client_cvsstoseverity": "cvssToSeverity()" | kind=code-symbol | source=manager/frontend/lib/openvas-client.ts:L39 | neighbors=[openvas-client.ts]
+- "lib_openvas_client_gettask": "getTask()" | kind=code-symbol | source=manager/frontend/lib/openvas-client.ts:L31 | neighbors=[openvas-client.ts]
+- "lib_openvas_client_isopenvasfinding": "isOpenVASFinding()" | kind=code-symbol | source=manager/frontend/lib/openvas-client.ts:L54 | neighbors=[openvas-client.ts]
+- "lib_openvas_client_openvashelperoutput": "OpenVASHelperOutput" | kind=code-symbol | source=manager/frontend/lib/openvas-client.ts:L47 | neighbors=[openvas-client.ts]
+- "lib_openvas_client_openvastaskstate": "OpenVASTaskState" | kind=code-symbol | source=manager/frontend/lib/openvas-client.ts:L19 | neighbors=[openvas-client.ts]
+- "lib_openvas_client_taskstore": "taskStore" | kind=code-symbol | source=manager/frontend/lib/openvas-client.ts:L29 | neighbors=[openvas-client.ts]
+- "lib_permissions_store_data_path": "DATA_PATH" | kind=code-symbol | source=manager/frontend/lib/permissions-store.ts:L4 | neighbors=[permissions-store.ts]
+- "lib_permissions_store_permissionsfile": "PermissionsFile" | kind=code-symbol | source=manager/frontend/lib/permissions-store.ts:L16 | neighbors=[permissions-store.ts]
+- "lib_permissions_store_userrole": "UserRole" | kind=code-symbol | source=manager/frontend/lib/permissions-store.ts:L6 | neighbors=[permissions-store.ts]
+- "lib_scan_events_broadcasttoscan": "broadcastToScan()" | kind=code-symbol | source=manager/frontend/lib/scan-events.ts:L20 | neighbors=[scan-events.ts]
+- "lib_scan_events_callback": "Callback" | kind=code-symbol | source=manager/frontend/lib/scan-events.ts:L3 | neighbors=[scan-events.ts]
+- "lib_scan_events_scanlisteners": "scanListeners" | kind=code-symbol | source=manager/frontend/lib/scan-events.ts:L5 | neighbors=[scan-events.ts]
+- "lib_scan_events_subscribescan": "subscribeScan()" | kind=code-symbol | source=manager/frontend/lib/scan-events.ts:L7 | neighbors=[scan-events.ts]
+- "lib_scan_pipeline_computeoverallprogress": "computeOverallProgress()" | kind=code-symbol | source=manager/frontend/lib/scan-pipeline.ts:L114 | neighbors=[scan-pipeline.ts]
+- "lib_scan_pipeline_createinitialpipelinestate": "createInitialPipelineState()" | kind=code-symbol | source=manager/frontend/lib/scan-pipeline.ts:L84 | neighbors=[scan-pipeline.ts]
+- "lib_scan_pipeline_drainscanevents": "drainScanEvents()" | kind=code-symbol | source=manager/frontend/lib/scan-pipeline.ts:L78 | neighbors=[scan-pipeline.ts]
+- "lib_scan_pipeline_eventqueues": "eventQueues" | kind=code-symbol | source=manager/frontend/lib/scan-pipeline.ts:L60 | neighbors=[scan-pipeline.ts]
+- "lib_scan_pipeline_getpipeline": "getPipeline()" | kind=code-symbol | source=manager/frontend/lib/scan-pipeline.ts:L62 | neighbors=[scan-pipeline.ts]
+- "lib_scan_pipeline_pipelinecontext": "PipelineContext" | kind=code-symbol | source=manager/frontend/lib/scan-pipeline.ts:L14 | neighbors=[scan-pipeline.ts]
+- "lib_scan_pipeline_pipelinestate": "PipelineState" | kind=code-symbol | source=manager/frontend/lib/scan-pipeline.ts:L26 | neighbors=[scan-pipeline.ts]
+- "lib_scan_pipeline_pipelinestore": "pipelineStore" | kind=code-symbol | source=manager/frontend/lib/scan-pipeline.ts:L59 | neighbors=[scan-pipeline.ts]
 
 ## Instructions
 

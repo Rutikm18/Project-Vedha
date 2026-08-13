@@ -1,4 +1,4 @@
-# Node Description Batch 99 of 134
+# Node Description Batch 99 of 144
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,51 +12,58 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
+For an entity node (any other kind — e.g. a person, place, event, object),
+describe what the entity is and its role, grounded in its type, its
+relations (neighbors) and the provided citations/evidence — e.g.
+"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
+Ground entity descriptions in the citations/evidence when present; do not
+speculate beyond the context, so a node with no supporting context may be
+left out of the reply.
 Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "lib_scan_pipeline_drainscanevents": "drainScanEvents()" | kind=code-symbol | source=manager/frontend/lib/scan-pipeline.ts:L78 | neighbors=[scan-pipeline.ts]
-- "lib_scan_pipeline_eventqueues": "eventQueues" | kind=code-symbol | source=manager/frontend/lib/scan-pipeline.ts:L60 | neighbors=[scan-pipeline.ts]
-- "lib_scan_pipeline_getpipeline": "getPipeline()" | kind=code-symbol | source=manager/frontend/lib/scan-pipeline.ts:L62 | neighbors=[scan-pipeline.ts]
-- "lib_scan_pipeline_pipelinecontext": "PipelineContext" | kind=code-symbol | source=manager/frontend/lib/scan-pipeline.ts:L14 | neighbors=[scan-pipeline.ts]
-- "lib_scan_pipeline_pipelinestate": "PipelineState" | kind=code-symbol | source=manager/frontend/lib/scan-pipeline.ts:L26 | neighbors=[scan-pipeline.ts]
-- "lib_scan_pipeline_pipelinestore": "pipelineStore" | kind=code-symbol | source=manager/frontend/lib/scan-pipeline.ts:L59 | neighbors=[scan-pipeline.ts]
-- "lib_scan_pipeline_profile_tools": "PROFILE_TOOLS" | kind=code-symbol | source=manager/frontend/lib/scan-pipeline.ts:L53 | neighbors=[scan-pipeline.ts]
-- "lib_scan_pipeline_pushscanevent": "pushScanEvent()" | kind=code-symbol | source=manager/frontend/lib/scan-pipeline.ts:L71 | neighbors=[scan-pipeline.ts]
-- "lib_scan_pipeline_scanprofile": "ScanProfile" | kind=code-symbol | source=manager/frontend/lib/scan-pipeline.ts:L4 | neighbors=[scan-pipeline.ts]
-- "lib_scan_pipeline_scantool": "ScanTool" | kind=code-symbol | source=manager/frontend/lib/scan-pipeline.ts:L3 | neighbors=[scan-pipeline.ts]
-- "lib_scan_pipeline_setpipeline": "setPipeline()" | kind=code-symbol | source=manager/frontend/lib/scan-pipeline.ts:L66 | neighbors=[scan-pipeline.ts]
-- "lib_scan_pipeline_stage_weights": "STAGE_WEIGHTS" | kind=code-symbol | source=manager/frontend/lib/scan-pipeline.ts:L42 | neighbors=[scan-pipeline.ts]
-- "lib_scan_pipeline_stagestate": "StageState" | kind=code-symbol | source=manager/frontend/lib/scan-pipeline.ts:L6 | neighbors=[scan-pipeline.ts]
-- "lib_scanner_request_validation_netexec_checks": "NETEXEC_CHECKS" | kind=code-symbol | source=manager/frontend/lib/scanner-request-validation.ts:L10 | neighbors=[scanner-request-validation.ts]
-- "lib_scanner_request_validation_netexecscanrequest": "NetExecScanRequest" | kind=code-symbol | source=manager/frontend/lib/scanner-request-validation.ts:L25 | neighbors=[scanner-request-validation.ts]
-- "lib_scanner_request_validation_openvas_configs": "OPENVAS_CONFIGS" | kind=code-symbol | source=manager/frontend/lib/scanner-request-validation.ts:L4 | neighbors=[scanner-request-validation.ts]
-- "lib_scanner_request_validation_openvasscanrequest": "OpenVASScanRequest" | kind=code-symbol | source=manager/frontend/lib/scanner-request-validation.ts:L16 | neighbors=[scanner-request-validation.ts]
-- "lib_scanner_request_validation_validationresult": "ValidationResult" | kind=code-symbol | source=manager/frontend/lib/scanner-request-validation.ts:L12 | neighbors=[scanner-request-validation.ts]
-- "lib_security_context_securitycontexterror_constructor": ".constructor()" | kind=code-symbol | source=manager/frontend/lib/security-context.ts:L11 | neighbors=[SecurityContextError]
-- "lib_severity_detectioncoverage": "DetectionCoverage" | kind=code-symbol | source=manager/frontend/lib/severity.ts:L17 | neighbors=[severity.ts]
-- "lib_severity_exploitmaturity": "ExploitMaturity" | kind=code-symbol | source=manager/frontend/lib/severity.ts:L16 | neighbors=[severity.ts]
-- "lib_severity_findingstatus": "FindingStatus" | kind=code-symbol | source=manager/frontend/lib/severity.ts:L14 | neighbors=[severity.ts]
-- "lib_severity_severitymeta": "SeverityMeta" | kind=code-symbol | source=manager/frontend/lib/severity.ts:L93 | neighbors=[severity.ts]
-- "lib_severity_sevvars": "sevVars()" | kind=code-symbol | source=manager/frontend/lib/severity.ts:L127 | neighbors=[severity.ts]
-- "lib_target_parser_common_ranges": "COMMON_RANGES" | kind=code-symbol | source=manager/frontend/lib/target-parser.ts:L132 | neighbors=[target-parser.ts]
-- "lib_target_parser_isprivaterange": "isPrivateRange()" | kind=code-symbol | source=manager/frontend/lib/target-parser.ts:L35 | neighbors=[target-parser.ts]
-- "lib_target_parser_parseresult": "ParseResult" | kind=code-symbol | source=manager/frontend/lib/target-parser.ts:L59 | neighbors=[target-parser.ts]
-- "lib_target_parser_rfc1918": "RFC1918" | kind=code-symbol | source=manager/frontend/lib/target-parser.ts:L6 | neighbors=[target-parser.ts]
-- "lib_target_parser_toapitargets": "toApiTargets()" | kind=code-symbol | source=manager/frontend/lib/target-parser.ts:L127 | neighbors=[target-parser.ts]
-- "lib_tenant_reserved": "RESERVED" | kind=code-symbol | source=manager/frontend/lib/tenant.ts:L15 | neighbors=[tenant.ts]
-- "lib_testssl_parser_skip_severity": "SKIP_SEVERITY" | kind=code-symbol | source=manager/frontend/lib/testssl-parser.ts:L12 | neighbors=[testssl-parser.ts]
-- "lib_testssl_parser_testsslissue": "TestsslIssue" | kind=code-symbol | source=manager/frontend/lib/testssl-parser.ts:L4 | neighbors=[testssl-parser.ts]
-- "lib_testssl_parser_testssloutput": "TestsslOutput" | kind=code-symbol | source=manager/frontend/lib/testssl-parser.ts:L26 | neighbors=[testssl-parser.ts]
-- "lib_testssl_parser_testsslparseresult": "TestsslParseResult" | kind=code-symbol | source=manager/frontend/lib/testssl-parser.ts:L28 | neighbors=[testssl-parser.ts]
-- "lib_whatweb_parser_whatwebparseresult": "WhatWebParseResult" | kind=code-symbol | source=manager/frontend/lib/whatweb-parser.ts:L6 | neighbors=[whatweb-parser.ts]
-- "lib_whatweb_parser_whatwebresult": "WhatWebResult" | kind=code-symbol | source=manager/frontend/lib/whatweb-parser.ts:L1 | neighbors=[whatweb-parser.ts]
-- "lib_with_backend_backendctx": "BackendCtx" | kind=code-symbol | source=manager/frontend/lib/with-backend.ts:L12 | neighbors=[with-backend.ts]
-- "lib_with_backend_handler": "Handler" | kind=code-symbol | source=manager/frontend/lib/with-backend.ts:L16 | neighbors=[with-backend.ts]
-- "login_page_loginform": "LoginForm()" | kind=code-symbol | source=manager/frontend/app/login/page.tsx:L18 | neighbors=[page.tsx]
-- "login_page_loginpage": "LoginPage()" | kind=code-symbol | source=manager/frontend/app/login/page.tsx:L10 | neighbors=[page.tsx]
+- "frontend_proxy_public_prefixes": "PUBLIC_PREFIXES" | kind=code-symbol | source=manager/frontend/proxy.ts:L8 | neighbors=[proxy.ts]
+- "gaps_route_get": "GET()" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/detection-validation/gaps/route.ts:L5 | neighbors=[route.ts]
+- "generate_route_demo_asset": "DEMO_ASSET" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/ai-report/generate/route.ts:L28 | neighbors=[route.ts]
+- "generate_route_demo_engagement": "DEMO_ENGAGEMENT" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/ai-report/generate/route.ts:L7 | neighbors=[route.ts]
+- "generate_route_demo_finding": "DEMO_FINDING" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/ai-report/generate/route.ts:L19 | neighbors=[route.ts]
+- "generate_route_post": "POST()" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/ai-report/generate/route.ts:L5 | neighbors=[route.ts]
+- "graph_analyzer_pathanalyzer_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/graph/analyzer.py:L61 | neighbors=[PathAnalyzer]
+- "graph_analyzer_rationale_1": "PathAnalyzer — attack-path discovery, scoring, chokepoint and blast-radius analy" | kind=entity | source=manager/backend/app/graph/analyzer.py:L1 | neighbors=[analyzer.py]
+- "graph_analyzer_rationale_147": "Return scored attack paths from every source asset to the target.         Each p" | kind=entity | source=manager/backend/app/graph/analyzer.py:L147 | neighbors=[.find_paths_to_target()]
+- "graph_analyzer_rationale_200": "Risk score 0–100 from: sum of exploit CVSS along the path, a penalty for" | kind=entity | source=manager/backend/app/graph/analyzer.py:L200 | neighbors=[.score_path()]
+- "graph_analyzer_rationale_221": "Assets that appear in more than ``threshold`` (default 50%) of all paths —" | kind=entity | source=manager/backend/app/graph/analyzer.py:L221 | neighbors=[.identify_chokepoints()]
+- "graph_analyzer_rationale_251": "Assets reachable (and thus at risk) if ``compromised_asset_id`` is owned." | kind=entity | source=manager/backend/app/graph/analyzer.py:L251 | neighbors=[.find_blast_radius()]
+- "graph_analyzer_rationale_68": "Best (easiest) exploitable finding on an asset: {cvss, weight, finding}." | kind=entity | source=manager/backend/app/graph/analyzer.py:L68 | neighbors=[._exploit_info()]
+- "graph_analyzer_rationale_88": "Build (and cache) the Asset→Asset movement projection. Edge weight is the" | kind=entity | source=manager/backend/app/graph/analyzer.py:L88 | neighbors=[.movement_graph()]
+- "graph_builder_graphbuilder_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/graph/builder.py:L91 | neighbors=[GraphBuilder]
+- "graph_demo_rationale_1": "Demo dataset generator for the attack-path engine.  Produces a small but realist" | kind=entity | source=manager/backend/app/graph/demo.py:L1 | neighbors=[demo.py]
+- "graph_demo_rationale_58": "Returns {engagement_id, assets, services, findings, credentials,     network_top" | kind=entity | source=manager/backend/app/graph/demo.py:L58 | neighbors=[generate_demo_dataset()]
+- "graph_neo4j_client_neo4jclient_available": ".available()" | kind=code-symbol | source=manager/backend/app/graph/neo4j_client.py:L58 | neighbors=[Neo4jClient]
+- "graph_neo4j_client_neo4jclient_close": ".close()" | kind=code-symbol | source=manager/backend/app/graph/neo4j_client.py:L102 | neighbors=[Neo4jClient]
+- "graph_neo4j_client_neo4jclient_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/graph/neo4j_client.py:L51 | neighbors=[Neo4jClient]
+- "graph_neo4j_client_rationale_1": "Neo4jClient — thin, optional wrapper around the neo4j Python driver.  Neo4j is *" | kind=entity | source=manager/backend/app/graph/neo4j_client.py:L1 | neighbors=[neo4j_client.py]
+- "graph_neo4j_client_rationale_49": "Connection holder + query helper. No-ops cleanly when the driver is absent." | kind=entity | source=manager/backend/app/graph/neo4j_client.py:L49 | neighbors=[Neo4jClient]
+- "graph_neo4j_client_rationale_62": "Open the driver and verify connectivity. Returns False on any failure." | kind=entity | source=manager/backend/app/graph/neo4j_client.py:L62 | neighbors=[.connect()]
+- "graph_neo4j_client_rationale_77": "Apply constraints + indexes (idempotent)." | kind=entity | source=manager/backend/app/graph/neo4j_client.py:L77 | neighbors=[.ensure_schema()]
+- "graph_neo4j_client_rationale_88": "Run a Cypher statement and return records as dicts. [] if not connected." | kind=entity | source=manager/backend/app/graph/neo4j_client.py:L88 | neighbors=[.run()]
+- "graph_neo4j_client_rationale_96": "Run a parametrised write with UNWIND batching for bulk node/edge loads." | kind=entity | source=manager/backend/app/graph/neo4j_client.py:L96 | neighbors=[.run_write()]
+- "graph_visualizer_graphvisualizer_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/graph/visualizer.py:L44 | neighbors=[GraphVisualizer]
+- "graph_visualizer_rationale_1": "GraphVisualizer — serialise the attack graph into D3-compatible JSON for the fro" | kind=entity | source=manager/backend/app/graph/visualizer.py:L1 | neighbors=[visualizer.py]
+- "graph_visualizer_rationale_19": "Numpy-free seed layout: place nodes on concentric rings by type so the     front" | kind=entity | source=manager/backend/app/graph/visualizer.py:L19 | neighbors=[_deterministic_layout()]
+- "graph_visualizer_rationale_53": "Build the D3 payload. ``compromised`` is a set of asset entity_ids to flag" | kind=entity | source=manager/backend/app/graph/visualizer.py:L53 | neighbors=[.to_d3()]
+- "id_page_activityitem": "ActivityItem" | kind=code-symbol | source=manager/frontend/app/engagements/[id]/page.tsx:L37 | neighbors=[page.tsx]
+- "id_page_activitytab": "ActivityTab()" | kind=code-symbol | source=manager/frontend/app/engagements/[id]/page.tsx:L285 | neighbors=[page.tsx]
+- "id_page_assetrow": "AssetRow" | kind=code-symbol | source=manager/frontend/app/engagements/[id]/page.tsx:L45 | neighbors=[page.tsx]
+- "id_page_assetstab": "AssetsTab()" | kind=code-symbol | source=manager/frontend/app/engagements/[id]/page.tsx:L243 | neighbors=[page.tsx]
+- "id_page_cardskeleton": "CardSkeleton()" | kind=code-symbol | source=manager/frontend/app/engagements/[id]/page.tsx:L43 | neighbors=[page.tsx]
+- "id_page_edit_statuses": "EDIT_STATUSES" | kind=code-symbol | source=manager/frontend/app/engagements/[id]/page.tsx:L345 | neighbors=[page.tsx]
+- "id_page_editengagementmodal": "EditEngagementModal()" | kind=code-symbol | source=manager/frontend/app/engagements/[id]/page.tsx:L347 | neighbors=[page.tsx]
+- "id_page_engagement": "Engagement" | kind=code-symbol | source=manager/frontend/app/engagements/[id]/page.tsx:L19 | neighbors=[page.tsx]
+- "id_page_findingpage": "FindingPage" | kind=code-symbol | source=manager/frontend/app/engagements/[id]/page.tsx:L69 | neighbors=[page.tsx]
+- "id_page_findingrow": "FindingRow" | kind=code-symbol | source=manager/frontend/app/engagements/[id]/page.tsx:L61 | neighbors=[page.tsx]
 
 ## Instructions
 
