@@ -315,21 +315,35 @@ _USE_CASE_ID_TO_CODE: dict[str, int] = {v: k for k, v in _USE_CASE_CODES.items()
 _INTENSITY_NAME_TO_CODE: dict[str, int] = {v: k for k, v in _INTENSITY_CODES.items()}
 
 
+# The Scanner UI historically uses nmap-style names; map them onto the probe's
+# scan-hardness scale so both vocabularies work on the wire.
+_INTENSITY_ALIASES = {"stealth": "light", "normal": "standard", "aggressive": "deep"}
+
+
 def _normalize_intensity_name(value) -> str | None:
-    """Accept an intensity as a number (1/2/3) or a name; return the name (or
-    None). Raises ValueError on an unknown value."""
+    """Accept an intensity as a number (1/2/3), a name (light/standard/deep), or a
+    UI alias (stealth/normal/aggressive). Empty/None → None (use the use-case
+    default). Raises ValueError only on a genuinely unknown value."""
     if value is None:
         return None
     if isinstance(value, bool):
         raise ValueError("intensity must be a code (1/2/3) or a name")
+    # Empty string (unset form field) → fall back to the use-case default.
+    if isinstance(value, str) and not value.strip():
+        return None
     if isinstance(value, int) or (isinstance(value, str) and value.strip().isdigit()):
         name = _INTENSITY_CODES.get(int(value))
         if name is None:
             raise ValueError(f"intensity code must be one of {sorted(_INTENSITY_CODES)}")
         return name
-    if value not in _VALID_INTENSITIES:
-        raise ValueError(f"intensity must be one of {sorted(_VALID_INTENSITIES)}")
-    return value
+    name = str(value).strip().lower()
+    name = _INTENSITY_ALIASES.get(name, name)
+    if name not in _VALID_INTENSITIES:
+        raise ValueError(
+            f"intensity must be one of {sorted(_VALID_INTENSITIES)} "
+            f"or {sorted(_INTENSITY_ALIASES)}"
+        )
+    return name
 
 
 class EnqueueJobRequest(BaseModel):

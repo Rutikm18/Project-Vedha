@@ -77,15 +77,95 @@ def say(msg: str = "", indent: int = 0) -> None:
     print(("  " * indent) + msg, flush=True)
 
 
-def _poll_jobs_or_empty(transport: Transport, limit: int) -> list[dict]:
-    """Return no work for transient poll failures without hiding auth failures."""
+# ── DEBUG (temporary) — set PROBE_DEBUG=1 to trace the connection handshake ────
+# Prints the URL, HTTP status, and short response body of every Manager call plus
+# the enrollment/refresh state transitions, so a stuck "can't connect" is
+# diagnosable without a packet capture. Safe to leave in (no-op unless enabled).
+_DEBUG = os.environ.get("PROBE_DEBUG", "").lower() in ("1", "true", "yes", "on")
+
+
+def _dbg(msg: str) -> None:
+    if _DEBUG:
+        print(f"[debug] {msg}", flush=True)
+
+
+# ── Connection preflight + auto-troubleshoot ─────────────────────────────────
+# The probe should never spin forever on a bad connection: it diagnoses WHY the
+# Manager is unreachable, gives a specific fix, retries a bounded number of times,
+# and then either proceeds (reachable) or exits with a clear, actionable error.
+def _classify_connection_error(exc: Exception, url: str) -> tuple[str, str]:
+    """Map a low-level connection exception to (reason, how-to-fix)."""
+    host = url.split("://", 1)[-1].split("/", 1)[0] if "://" in url else url
+    s = str(exc).lower()
+    tname = type(exc).__name__.lower()
+    if "timed out" in s or "timeout" in tname:
+        return ("connection timed out",
+                f"A firewall/security-group is likely DROPPING traffic to {host}. "
+                f"Open the Manager's port to this host, or check PLATFORM_URL.")
+    if "refused" in s:
+        return ("connection refused",
+                f"Nothing is listening at {host}. Is the Manager UP? "
+                f"Verify on the Manager host: curl {url}/health")
+    if "getaddrinfo" in s or "name or service not known" in s or "nodename nor servname" in s:
+        return ("cannot resolve host",
+                f"DNS can't resolve '{host}'. Check PLATFORM_URL and this host's resolver.")
+    if "ssl" in s or "certificate" in s or "tls" in s:
+        return ("TLS handshake failed",
+                "The Manager cert isn't trusted. For a private CA set "
+                "PROBE_CA_BUNDLE=/path/ca.pem; for testing use an http:// URL.")
+    if "connection" in s or "connecterror" in tname:
+        return ("cannot connect",
+                f"Could not reach {host}. Check PLATFORM_URL, network, and firewall.")
+    return ("connection error", f"{type(exc).__name__}: {str(exc)[:140]}")
+
+
+def _manager_reachable(transport) -> tuple[bool, str]:
+    """GET /health. Returns (ok, human-detail) — distinguishes down vs 5xx vs net."""
     try:
-        return transport.poll_jobs(limit=limit)
-    except TransportError:
-        raise
-    except Exception as exc:
-        say(f"Manager unreachable — retrying ({exc})")
-        return []
+        r = transport._client.get("/health", timeout=8.0)
+        if r.status_code == 200:
+            return True, "healthy"
+        if 500 <= r.status_code < 600:
+            return False, (f"Manager returned HTTP {r.status_code} at /health — "
+                           f"server-side error; check the Manager (api) logs.")
+        return False, f"Manager returned HTTP {r.status_code} at /health (unexpected)."
+    except Exception as exc:  # noqa: BLE001 — classify every transport failure
+        reason, fix = _classify_connection_error(exc, getattr(transport, "_base_url", "?"))
+        return False, f"{reason} — {fix}"
+
+
+def _wait_for_manager(transport, *, attempts: int = 6, base_delay: float = 5.0) -> None:
+    """Bounded reachability preflight. Proceeds the moment the Manager answers
+    /health; after `attempts` failures prints a boxed diagnosis and EXITS(2) —
+    never an infinite silent retry."""
+    url = getattr(transport, "_base_url", "?")
+    last = ""
+    for i in range(1, attempts + 1):
+        ok, detail = _manager_reachable(transport)
+        if ok:
+            say(f"✓ Manager reachable at {url}")
+            return
+        last = detail
+        say(f"✗ Manager not reachable [{i}/{attempts}]: {detail}")
+        _dbg(f"preflight /health failed: {detail}")
+        if i < attempts:
+            time.sleep(min(30.0, base_delay * i))
+    say("")
+    say("═" * 60)
+    say("  CANNOT CONNECT TO THE MANAGER — stopping")
+    say("═" * 60)
+    say(f"  URL   : {url}")
+    say(f"  Why   : {last}")
+    say("  Then re-run install.sh. (set PROBE_DEBUG=1 for verbose tracing)")
+    say("═" * 60)
+    raise SystemExit(2)
+
+
+def _poll_jobs_or_empty(transport: Transport, limit: int) -> list[dict]:
+    """Poll for work. Auth failures (TransportError) and transient network
+    failures both propagate to the caller's unified retry/backoff handler so
+    outages are diagnosed and rate-limited rather than silently swallowed."""
+    return transport.poll_jobs(limit=limit)
 
 
 def main() -> None:
@@ -196,6 +276,11 @@ def main() -> None:
         max_files=SPOOL_MAX_FILES,
     )
 
+    # ── Preflight: is the Manager actually reachable? ────────────────────────
+    # Bounded, self-diagnosing check BEFORE the identity dance so a down/blocked
+    # Manager surfaces one clear error instead of an opaque retry loop later.
+    _wait_for_manager(transport)
+
     # ── Step 3: Register / resume identity ──────────────────────────────────
     agent_id, token, fresh, identity_sk, identity_pk, _public_key_b64 = _obtain_identity(
         transport, OPERATOR_EMAIL, OPERATOR_PASSWORD, OPERATOR_TOKEN,
@@ -281,6 +366,11 @@ def main() -> None:
     say("Waiting for scan jobs (HTTP polling)...")
     last_hb = 0.0
     last_spool_warning = 0.0
+    # Runtime resilience: an already-onboarded probe rides out Manager restarts
+    # (results are spooled), but never silently hot-loops — failures back off and
+    # escalate to a diagnosed warning so the operator can act.
+    poll_fail_streak = 0
+    POLL_FAIL_BACKOFF_MAX = 60.0
 
     while True:
         now = time.monotonic()
@@ -302,6 +392,8 @@ def main() -> None:
             else:
                 jobs = _poll_jobs_or_empty(transport, JOB_LIMIT)
 
+            poll_fail_streak = 0  # a clean pass clears the outage counter
+
         except TransportError:
             say("Token rejected — re-registering...")
             transport.clear_state()
@@ -311,10 +403,20 @@ def main() -> None:
             )
             # Update runner's identity (may have changed if state was wiped)
             runner._identity_sk = identity_sk
+            poll_fail_streak = 0
             say(f"Re-registered as '{PROBE_NAME}'. Resuming...")
             continue
         except Exception as exc:
-            say(f"Manager unreachable — retrying ({exc})")
+            # Transient Manager outage: back off (never hot-loop), and after a
+            # sustained streak print a diagnosed reason so it's not silent.
+            poll_fail_streak += 1
+            reason, fix = _classify_connection_error(exc, transport._base_url)
+            if poll_fail_streak in (1, 5) or poll_fail_streak % 20 == 0:
+                say(f"Manager unreachable ({reason}) — retrying "
+                    f"[streak {poll_fail_streak}]. {fix}")
+                _dbg(f"poll-loop failure: {exc!r}")
+            backoff = min(POLL_FAIL_BACKOFF_MAX, POLL_INTERVAL * poll_fail_streak)
+            time.sleep(backoff + random.uniform(0, POLL_INTERVAL * 0.5))
             continue
 
         for job in jobs:
@@ -946,6 +1048,8 @@ def _enroll_device(
             "enrollment_request_id": request_id,
             "enrollment_device_secret": device_secret,
         })
+        _dbg(f"enrollment request created → state={response.get('state')} "
+             f"request_id={request_id} auto={response.get('state') == 'approved'}")
         if response.get("state") == "approved":
             say("Probe pre-authorized via enrollment token — auto-approving, no code needed.")
         else:
@@ -964,11 +1068,39 @@ def _enroll_device(
             say("═" * 58)
             say("Waiting for dashboard approval… (the probe starts automatically once approved)")
 
+    # Bounds so enrollment never hangs silently:
+    #  • net_fail_streak — consecutive transport/network errors → give up with a
+    #    diagnosed reason (the Manager is down/blocked, not slow to approve).
+    #  • approval_deadline — an unapproved probe surfaces a clear message instead
+    #    of waiting forever (auto-enroll approves instantly, so this only bites a
+    #    manual pairing that nobody actioned).
+    net_fail_streak = 0
+    NET_FAIL_LIMIT = _bounded_env_int("PROBE_ENROLL_NET_FAIL_LIMIT", 12, 3, 100)
+    approval_wait_secs = _bounded_env_int("PROBE_ENROLL_WAIT_SECS", 1800, 60, 86400)
+    approval_deadline = time.monotonic() + approval_wait_secs
+    last_wait_note = time.monotonic()
     while True:
         try:
             response = transport.poll_enrollment(str(request_id), str(device_secret))
+            net_fail_streak = 0
             state_name = response.get("state")
+            _dbg(f"enrollment poll → state={state_name}")
             if state_name in {"awaiting_approval", "requested"}:
+                if time.monotonic() >= approval_deadline:
+                    say("")
+                    say("═" * 58)
+                    say("  ENROLLMENT NOT APPROVED — stopping")
+                    say("═" * 58)
+                    say(f"  No approval within {approval_wait_secs // 60} min. "
+                        "Approve the probe in the dashboard (Fleet → Enroll),")
+                    say("  or set PROBE_AUTO_ENROLL=true on the Manager, then re-run.")
+                    say("═" * 58)
+                    raise SystemExit(3)
+                now = time.monotonic()
+                if now - last_wait_note >= 60:
+                    remaining = int(approval_deadline - now)
+                    say(f"Still waiting for dashboard approval… ({remaining // 60} min left)")
+                    last_wait_note = now
                 time.sleep(max(5, int(response.get("poll_interval_seconds") or poll_interval)))
                 continue
             if state_name == "approved":
@@ -993,9 +1125,24 @@ def _enroll_device(
             raise RuntimeError(f"unexpected enrollment state: {state_name}")
         except TransportError:
             raise
+        except SystemExit:
+            raise
         except Exception as exc:
-            say(f"Enrollment manager unavailable — retrying ({exc})")
-            time.sleep(10)
+            net_fail_streak += 1
+            reason, fix = _classify_connection_error(exc, transport._base_url)
+            if net_fail_streak >= NET_FAIL_LIMIT:
+                say("")
+                say("═" * 58)
+                say("  ENROLLMENT FAILED — Manager unreachable")
+                say("═" * 58)
+                say(f"  Why : {reason}")
+                say(f"  Fix : {fix}")
+                say("═" * 58)
+                raise SystemExit(2) from exc
+            say(f"Enrollment manager unavailable ({reason}) — retrying "
+                f"[{net_fail_streak}/{NET_FAIL_LIMIT}].")
+            _dbg(f"enrollment poll failure: {exc!r}")
+            time.sleep(min(30, 5 * net_fail_streak))
 
 
 def _obtain_identity(
@@ -1007,7 +1154,9 @@ def _obtain_identity(
 
     A cached identity refreshes its routing metadata before use, then falls back
     to login + registration if its agent token is rejected. Network failures
-    retry indefinitely so startup never proceeds with known-stale capabilities.
+    retry with backoff up to a bounded limit, then exit with a diagnosed error
+    (see PROBE_REGISTER_NET_FAIL_LIMIT / PROBE_ENROLL_NET_FAIL_LIMIT) so a probe
+    never spins silently against a down or blocked Manager.
     """
     from agent.engine import CAPABILITIES
 
@@ -1023,6 +1172,7 @@ def _obtain_identity(
     # newly added scan capabilities routable without retaining bootstrap admin
     # credentials on the probe.
     if transport.is_authenticated():
+        _refresh_tries = 0
         while True:
             try:
                 state = transport.load_state()
@@ -1043,7 +1193,9 @@ def _obtain_identity(
                     network_segments=segments,
                     public_key=public_key_b64,
                 )
-            except TransportError:
+                _dbg(f"refresh_registration → {refreshed!r} (agent_id={transport.agent_id})")
+            except TransportError as exc:
+                _dbg(f"refresh_registration raised: {exc}")
                 if transport.refresh_device_access(signing_sk):
                     say("Refreshed short-lived device access token.", 1)
                     continue
@@ -1064,11 +1216,22 @@ def _obtain_identity(
                 return transport.agent_id, transport.agent_token, False, \
                        identity_sk, identity_pk, public_key_b64
 
-            say("Can't refresh cached capabilities yet — retrying.")
+            # Self-heal: a cached identity the Manager can no longer refresh
+            # (agent deleted, DB re-created, policy changed) would otherwise loop
+            # forever. After a few tries, drop it and fall through to
+            # (re-)registration / device enrollment instead of spinning.
+            _refresh_tries += 1
+            if _refresh_tries >= 3:
+                say("Cached identity can't be refreshed — clearing and re-enrolling.")
+                transport.clear_state()
+                break
+            say(f"Can't refresh cached capabilities yet — retrying ({_refresh_tries}/3).")
             time.sleep(10)
 
     BOOTSTRAP_KEY = os.environ.get("PROBE_BOOTSTRAP_KEY", "")
 
+    reg_fail_streak = 0
+    REG_FAIL_LIMIT = _bounded_env_int("PROBE_REGISTER_NET_FAIL_LIMIT", 12, 3, 100)
     while True:
         try:
             if not operator_token:
@@ -1141,9 +1304,24 @@ def _obtain_identity(
                        identity_sk, identity_pk, public_key_b64
             say("Manager rejected sign-in — check credentials.")
             raise SystemExit(1)
+        except SystemExit:
+            raise
         except Exception as exc:
-            say(f"Can't reach manager yet — retrying ({exc})")
-            time.sleep(10)
+            reg_fail_streak += 1
+            reason, fix = _classify_connection_error(exc, transport._base_url)
+            if reg_fail_streak >= REG_FAIL_LIMIT:
+                say("")
+                say("═" * 58)
+                say("  REGISTRATION FAILED — Manager unreachable")
+                say("═" * 58)
+                say(f"  Why : {reason}")
+                say(f"  Fix : {fix}")
+                say("═" * 58)
+                raise SystemExit(2) from exc
+            say(f"Can't reach manager yet ({reason}) — retrying "
+                f"[{reg_fail_streak}/{REG_FAIL_LIMIT}].")
+            _dbg(f"registration failure: {exc!r}")
+            time.sleep(min(30, 5 * reg_fail_streak))
 
 
 if __name__ == "__main__":

@@ -12,12 +12,17 @@ from agent.transport import TransportError
 from agent.engine import LeaseLostError, _run_with_cancellation
 
 
-def test_transient_poll_failure_returns_no_jobs() -> None:
+def test_transient_poll_failure_propagates_to_loop_handler() -> None:
+    # A transient network failure is no longer swallowed here: it propagates to
+    # the main loop's unified handler, which classifies it, backs off, and (after
+    # a sustained streak) surfaces a diagnosed "Manager unreachable" message —
+    # instead of silently returning [] and hot-looping.
     class Transport:
         def poll_jobs(self, *, limit: int):
             raise ConnectionError("manager unavailable")
 
-    assert _poll_jobs_or_empty(Transport(), 1) == []
+    with pytest.raises(ConnectionError, match="manager unavailable"):
+        _poll_jobs_or_empty(Transport(), 1)
 
 
 def test_poll_auth_failure_is_not_hidden() -> None:
