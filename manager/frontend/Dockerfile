@@ -23,6 +23,12 @@ COPY . .
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV NODE_ENV=production
 
+# Deployed version, passed from the repo-root VERSION file via docker-compose
+# (mirrors how the backend image receives VEDHA_VERSION). Exposed to the client
+# bundle as NEXT_PUBLIC_APP_VERSION so the sidebar footer stays in sync.
+ARG VEDHA_VERSION=dev
+ENV NEXT_PUBLIC_APP_VERSION=$VEDHA_VERSION
+
 RUN npm run build
 
 # ── Stage 3: minimal production runner ───────────────────────────────────────

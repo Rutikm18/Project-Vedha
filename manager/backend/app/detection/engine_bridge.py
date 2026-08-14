@@ -29,11 +29,13 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.enums import DetectionStatus, FindingSeverity, FindingStatus
+from app.models.asset import Asset
 from app.models.finding import Finding
 from app.models.detection_run import (
     DetectionRun, RUN_COMPLETED, RUN_FAILED, TRIGGER_FACTS_READY,
 )
 from app.discovery.finding_translator import _resolve_asset, _find_open_duplicate
+from app.detection.attack_paths import attack_path_findings
 from app.detection.resolution import build_coverage, evaluate_resolutions
 from app.ai.verification_graph import run_verification
 from app.config import get_settings
@@ -151,6 +153,69 @@ async def _stamp_verification(findings, llm=None) -> None:
             logger.warning("verification.stamp_failed", error=str(exc))
 
 
+async def _engagement_device_roles(db: AsyncSession, engagement_id: uuid.UUID) -> dict[str, dict]:
+    """ip → {device_role, role_detail} from already-promoted assets, so a prior
+    device_inventory scan amplifies today's correlation (Track B2)."""
+    rows = (await db.execute(
+        select(Asset.ip_address, Asset.device_role, Asset.role_detail).where(
+            Asset.engagement_id == engagement_id,
+            Asset.device_role.isnot(None),
+        )
+    )).all()
+    return {
+        ip: {"device_role": role, "role_detail": detail}
+        for ip, role, detail in rows if ip
+    }
+
+
+async def _persist_attack_paths(
+    db: AsyncSession, engagement_id: uuid.UUID, run, facts: list[dict], now,
+) -> int:
+    """Correlate composite attack paths from the run's facts and persist them as
+    Finding rows (deduped by title, reaffirmed across runs). Returns NEW count."""
+    device_roles = await _engagement_device_roles(db, engagement_id)
+    created = 0
+    for d in attack_path_findings(facts, device_roles):
+        try:
+            asset = await _resolve_asset(db, engagement_id, d.get("target"))
+            asset_id = asset.id if asset else None
+            title = d["title"][:500]
+            evidence = {
+                "rule_id": d["rule_id"], "correlation": True,
+                "remediation": d.get("remediation"),
+                "mitre_techniques": d.get("mitre_techniques"),
+                **(d.get("evidence") or {}),
+            }
+            dup = await _find_open_duplicate(db, engagement_id, asset_id, title)
+            if dup is not None:
+                dup.severity = d["severity"]     # re-amplify if the role changed
+                dup.evidence = evidence
+                dup.last_seen = now
+                dup.detection_run_id = run.id
+                dup.resolution_miss_count = 0
+                continue
+            db.add(Finding(
+                engagement_id=engagement_id,
+                asset_id=asset_id,
+                title=title,
+                description=d.get("description"),
+                severity=d["severity"],
+                status=FindingStatus.open,
+                detection_status=DetectionStatus.detected,
+                mitre_techniques=d.get("mitre_techniques"),
+                remediation=d.get("remediation"),
+                evidence=evidence,
+                first_seen=now,
+                last_seen=now,
+                detection_run_id=run.id,
+            ))
+            created += 1
+        except Exception as exc:  # noqa: BLE001 — one composite must not sink the batch
+            logger.warning("attack_path.create_failed", rule_id=d.get("rule_id"), error=str(exc))
+    await db.flush()
+    return created
+
+
 async def create_findings_from_facts(
     db: AsyncSession, engagement_id: uuid.UUID, result: dict,
     *, scan_result_id: uuid.UUID | None = None, trigger: str = TRIGGER_FACTS_READY,
@@ -239,6 +304,17 @@ async def create_findings_from_facts(
                 logger.warning("detection_finding.create_failed", error=str(exc))
 
         await db.flush()
+
+        # ── Composite attack-path correlation (Track B) ──────────────────────
+        # The CVE loop above scores single facts; this pass chains weaknesses on
+        # one host into the attack PATH an operator must fix first (NTLM relay,
+        # legacy-Windows surface, cleartext cluster, exposed-DB+unauth, default
+        # SNMP on infra), amplified by the host's device role. Best-effort.
+        try:
+            corr_new = await _persist_attack_paths(db, engagement_id, run, facts, now)
+            created += corr_new
+        except Exception as exc:  # noqa: BLE001 — correlation must not sink the run
+            logger.warning("detection_run.correlation_failed", error=str(exc))
 
         # Coverage ledger + coverage-gated auto-resolution (Phase 0/1). Best-effort:
         # never let resolution failure sink an otherwise-good detection run.

@@ -92,6 +92,13 @@ def test_cached_identity_retries_transient_refresh_failure(sleep, load_identity)
 def test_rejected_cached_token_falls_back_to_idempotent_registration(load_identity):
     transport = _cached_transport()
     transport.refresh_registration.side_effect = TransportError("expired")
+    # Model the current _obtain_identity contract: when the agent token is
+    # rejected, the probe first tries to renew its short-lived device access
+    # token. Only when THAT also fails and there is no device_refresh_secret to
+    # protect does it clear state and re-enroll. A bare MagicMock returns truthy
+    # for both, which would loop on the device-refresh branch forever.
+    transport.refresh_device_access.return_value = False
+    transport.load_state.return_value = {}
     transport.register.return_value = {
         "agent_id": "refreshed-agent",
         "token": "refreshed-token",

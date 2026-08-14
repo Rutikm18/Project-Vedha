@@ -1,5 +1,0 @@
-{"scanner": "service_banner", "target": "192.168.1.74", "timestamp": "2026-08-13T06:39:46.487476+00:00", "port": 135, "proto": "tcp", "status": "open", "data": {"banner": null}, "evidence": "open, no banner returned", "error": null}
-{"scanner": "service_banner", "target": "192.168.1.74", "timestamp": "2026-08-13T06:39:44.503955+00:00", "port": 445, "proto": "tcp", "status": "open", "data": {"banner": null}, "evidence": "open, no banner returned", "error": null}
-{"scanner": "service_banner", "target": "192.168.1.74", "timestamp": "2026-08-13T06:39:44.508343+00:00", "port": 2179, "proto": "tcp", "status": "open", "data": {"banner": null}, "evidence": "open, no banner returned", "error": null}
-{"scanner": "service_banner", "target": "192.168.1.74", "timestamp": "2026-08-13T06:39:44.583973+00:00", "port": 3389, "proto": "tcp", "status": "open", "data": {"banner": null}, "evidence": "open, no banner returned", "error": null}
-{"scanner": "service_banner", "target": "192.168.1.74", "timestamp": "2026-08-13T06:39:44.509801+00:00", "port": 7680, "proto": "tcp", "status": "open", "data": {"banner": null}, "evidence": "open, no banner returned", "error": null}

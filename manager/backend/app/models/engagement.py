@@ -29,6 +29,13 @@ class Engagement(Base, TimestampMixin):
     start_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     end_time: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     rules_of_engagement: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+    # One agent serves this engagement (pre-decided; a shared agent may serve many).
+    # Nullable until an operator assigns it; SET NULL so retiring an agent does not
+    # cascade-delete the engagement.
+    assigned_agent_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("agents.id", ondelete="SET NULL"),
+        nullable=True, index=True,
+    )
 
     tenant: Mapped["Tenant"] = relationship(back_populates="engagements", lazy="noload")
     assets: Mapped[list["Asset"]] = relationship(back_populates="engagement", lazy="noload")

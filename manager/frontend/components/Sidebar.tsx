@@ -8,6 +8,9 @@ import {
   Terminal, Briefcase, Settings, RadioTower, X,
 } from "lucide-react";
 
+// Resolved at build time from the repo-root VERSION file (see next.config.mjs).
+const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION ?? "dev";
+
 interface NavItem {
   icon: React.ComponentType<{ size?: number; color?: string }>;
   label: string;
@@ -136,7 +139,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                 fontWeight: 500,
                 letterSpacing: 0.3,
               }}>
-                v1.0 Enterprise
+                v{APP_VERSION} Enterprise
               </span>
             </div>
           </div>
@@ -296,7 +299,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           color: "var(--text-muted)",
           paddingLeft: 15,
         }}>
-          VEDHA v1.0.0 · Enterprise
+          VEDHA v{APP_VERSION} · Enterprise
         </div>
       </div>
     </aside>

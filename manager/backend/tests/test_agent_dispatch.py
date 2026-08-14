@@ -49,7 +49,7 @@ class TestUseCaseCatalogParity:
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
 
-        from app.routers.agents import _USE_CASES
+        from app.routers.agents import _USE_CASES, _USE_CASE_CODES, _INTENSITY_CODES
 
         assert set(_USE_CASES) == set(module.USE_CASES)
         for use_case_id, manager_entry in _USE_CASES.items():
@@ -57,6 +57,11 @@ class TestUseCaseCatalogParity:
             assert manager_entry == probe_entry
 
         assert _USE_CASES["uc_external_web_triage"]["scan_type"] == "web_tls_scan"
+
+        # The numeric protocol must be byte-identical on both sides — the Manager
+        # sends a code, the probe maps it; a drift here silently runs the wrong scan.
+        assert _USE_CASE_CODES == module.USE_CASE_CODES
+        assert _INTENSITY_CODES == module.INTENSITY_CODES
 
 
 class TestJobSecretBoundary:

@@ -27,6 +27,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.asset import Asset
 from app.models.enums import AssetType, FindingSeverity, FindingStatus
 from app.models.finding import Finding
+from app.models.service import Service
 
 logger = structlog.get_logger()
 
@@ -70,6 +71,51 @@ async def _resolve_asset(db: AsyncSession, engagement_id: uuid.UUID, target: str
     db.add(asset)
     await db.flush()
     return asset
+
+
+def _finding_port(f: dict) -> int | None:
+    """Best-effort port for a probe finding: explicit `port`, else the ':NNN'
+    suffix of `target` (host:port). None when neither is present/parseable."""
+    raw = f.get("port")
+    if raw is not None:
+        try:
+            return int(raw)
+        except (TypeError, ValueError):
+            return None
+    target = f.get("target") or ""
+    if target.count(":") == 1:
+        _host, _sep, port_s = target.partition(":")
+        try:
+            return int(port_s)
+        except ValueError:
+            return None
+    return None
+
+
+async def _escalate_by_exposure(
+    db: AsyncSession, asset_id: uuid.UUID | None, f: dict, severity: FindingSeverity,
+) -> tuple[FindingSeverity, str | None]:
+    """Bump severity one rung when the finding's service is internet-reachable
+    (Service.exposure == 'external', stamped by a prior exposure_matrix scan).
+
+    Returns (severity, exposure) so the caller can record WHY it escalated.
+    Best-effort: any lookup problem leaves the severity unchanged.
+    """
+    if asset_id is None:
+        return severity, None
+    port = _finding_port(f)
+    if port is None:
+        return severity, None
+    try:
+        svc = (await db.execute(
+            select(Service).where(Service.asset_id == asset_id, Service.port == port)
+        )).scalars().first()
+    except Exception:  # noqa: BLE001 — escalation is advisory, never fatal
+        return severity, None
+    if svc is None or not svc.exposure:
+        return severity, None
+    from app.discovery.exposure import escalate_for_exposure
+    return escalate_for_exposure(severity, svc.exposure), svc.exposure
 
 
 async def _find_open_duplicate(
@@ -129,14 +175,20 @@ async def create_findings_from_probe_result(
                 dup.last_seen = now
                 continue
 
+            severity = _map_severity(f.get("severity"))
+            severity, exposure = await _escalate_by_exposure(db, asset_id, f, severity)
+            evidence = {**f, "scan_type": scan_type, "engine": result.get("engine")}
+            if exposure == "external":
+                evidence["exposure_escalated"] = True
+                evidence["exposure"] = exposure
             db.add(Finding(
                 engagement_id=engagement_id,
                 asset_id=asset_id,
                 title=title,
                 description=f.get("detail"),
-                severity=_map_severity(f.get("severity")),
+                severity=severity,
                 status=FindingStatus.open,
-                evidence={**f, "scan_type": scan_type, "engine": result.get("engine")},
+                evidence=evidence,
                 first_seen=now,
                 last_seen=now,
             ))
@@ -147,3 +199,48 @@ async def create_findings_from_probe_result(
     if created or raw_findings:
         await db.flush()
     return created
+
+
+_SCAN_HEALTH_TITLE = "Scan coverage degraded — results may under-report exposure"
+
+
+async def create_scan_health_finding(
+    db: AsyncSession, engagement_id: uuid.UUID, result: dict,
+) -> int:
+    """Raise ONE engagement-level finding when the probe's own metrics say the
+    scan was degraded/incomplete (a false-NEGATIVE risk: real services may have
+    gone unseen). Returns 1 if a new finding was created, else 0.
+
+    Deduped by title so a chronically firewalled segment refreshes one finding
+    instead of piling up. Best-effort — never sinks the result submission.
+    """
+    from app.discovery.scan_health import scan_health_summary
+
+    summary = scan_health_summary(result)
+    if not summary["should_warn"]:
+        return 0
+    now = datetime.now(timezone.utc)
+    try:
+        dup = await _find_open_duplicate(db, engagement_id, None, _SCAN_HEALTH_TITLE)
+        evidence = {"scan_health": summary, "scan_type": result.get("scan_type"),
+                    "engine": result.get("engine")}
+        if dup is not None:
+            dup.evidence = evidence
+            dup.last_seen = now
+            return 0
+        db.add(Finding(
+            engagement_id=engagement_id,
+            asset_id=None,
+            title=_SCAN_HEALTH_TITLE,
+            description=summary["reason"],
+            severity=FindingSeverity.low,
+            status=FindingStatus.open,
+            evidence=evidence,
+            first_seen=now,
+            last_seen=now,
+        ))
+        await db.flush()
+        return 1
+    except Exception as exc:  # noqa: BLE001 — coverage warning must not sink the batch
+        logger.warning("scan_health.finding_failed", error=str(exc))
+        return 0

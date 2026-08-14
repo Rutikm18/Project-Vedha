@@ -12,6 +12,13 @@ settings = get_settings()
 _ALGORITHM = settings.jwt_algorithm
 _SECRET = settings.jwt_secret
 
+# Audience separation (defense in depth): operator-dashboard tokens vs customer-
+# portal tokens. A portal token carries PORTAL_AUDIENCE so it can be rejected on
+# operator APIs even if a role check is ever missed. Device tokens have their own
+# audience (see create_device_access_token).
+MANAGER_AUDIENCE = "vedha-manager"
+PORTAL_AUDIENCE = "vedha-portal"
+
 
 def _now() -> datetime:
     return datetime.now(timezone.utc)

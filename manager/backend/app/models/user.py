@@ -32,4 +32,12 @@ class User(Base, TimestampMixin):
         DateTime(timezone=True), nullable=True
     )
 
+    # Set ONLY for role == client — binds this login to exactly one engagement
+    # (the customer-portal scoping boundary). SET NULL so deleting an engagement
+    # disables the login rather than deleting the user record.
+    client_engagement_id: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("engagements.id", ondelete="SET NULL"),
+        nullable=True, index=True,
+    )
+
     tenant: Mapped["Tenant"] = relationship(back_populates="users", lazy="noload")

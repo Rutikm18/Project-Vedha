@@ -1,0 +1,65 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Vedha Probe — CLIENT-SIDE deployment (runs inside the customer's network).
+#
+# This stack runs ONLY the probe. The Manager is a SEPARATE deployment hosted in
+# the cloud (see manager/docker-compose.yml). The probe DIALS OUT to the Manager
+# over a single HTTPS endpoint (REST + WebSocket on the same port) — it never
+# accepts an inbound connection, so no holes are opened in the customer firewall.
+#
+#   probe (here, on-prem)  ──HTTPS/WSS 443──▶  Manager (cloud, Caddy → api)
+#
+# Quick start:
+#   1) cp probe.env.example probe.env      # set PLATFORM_URL, PROBE_PAT, segments
+#   2) docker compose up -d                # or: docker compose up -d --build
+#   3) docker compose logs -f probe        # watch it register + claim jobs
+# ─────────────────────────────────────────────────────────────────────────────
+services:
+  probe:
+    # Pull a published image in production; build locally for dev/air-gapped.
+    image: ${VEDHA_PROBE_IMAGE:-vedha-probe:local}
+    build:
+      context: .
+    container_name: vedha-probe
+    # All connection + authorization config lives in probe.env (copy from
+    # probe.env.example). The two REQUIRED values are PLATFORM_URL (the cloud
+    # Manager's https:// URL) and PROBE_NETWORK_SEGMENTS (the CIDRs this probe is
+    # allowed to scan — empty is fail-closed and refuses every job).
+    env_file:
+      - probe.env
+    volumes:
+      # Identity + spool default to /var/lib/vedha-probe (STATE_FILE /
+      # RESULT_SPOOL_DIR), so this named volume makes a restart re-use the same
+      # agent registration instead of enrolling a new probe each time.
+      - probestate:/var/lib/vedha-probe
+      # Trust a private/self-signed Manager CA by uncommenting and pointing
+      # PROBE_CA_BUNDLE=/etc/vedha/ca.pem in probe.env:
+      # - ./ca.pem:/etc/vedha/ca.pem:ro
+
+    # ── Hardening (matches the in-stack probe) ───────────────────────────────
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+    cap_drop:
+      - ALL
+    security_opt:
+      - no-new-privileges:true
+    pids_limit: 256
+    init: true
+    restart: unless-stopped
+
+    # ── Reaching the customer network to SCAN it ─────────────────────────────
+    # Default (bridge): the probe reaches target segments via the host's routing
+    # (L3 TCP/UDP connect scans work). This is the most locked-down option.
+    #
+    # For L2-adjacent discovery (ARP), raw SYN scans, or scanning the host's own
+    # segment directly, run the probe on the host network with raw-socket
+    # capability instead — uncomment BOTH lines and remove `cap_drop: [ALL]`:
+    #   network_mode: host
+    #   cap_add: [NET_RAW, NET_ADMIN]
+    # (Off privileged Linux the SYN scanner transparently falls back to connect,
+    #  so bridge mode still produces correct results — just via connect scans.)
+
+volumes:
+  # Private state: X25519 identity, agent token, result spool. Keep it — deleting
+  # it forces a fresh enrollment (a new probe row on the Manager).
+  probestate:

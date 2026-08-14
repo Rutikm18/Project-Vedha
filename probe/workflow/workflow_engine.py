@@ -24,6 +24,7 @@ from datetime import timedelta
 from scanner.scanner_base import ScanResult, ScopeGuard
 from scanner.host_discovery import HostDiscoveryScanner
 from scanner.port_scanner import PortScanner
+from scanner.syn_scanner import SynScanner
 from scanner.service_banner import ServiceBannerScanner
 from scanner.tls_scanner import TLSScanner
 from scanner.web_scanner import WebScanner
@@ -106,17 +107,27 @@ def _split_cached(cache: WorkflowCache, host: str, candidate_ports: list[int],
     return to_scan, reused
 
 
-def _port_candidates(profile: str, service_filter: set[str] | None) -> list[int]:
+def _port_candidates(profile: str, service_filter: set[str] | None,
+                     *, port_override: list[int] | None = None) -> list[int]:
     """Return TCP ports worth scanning for this profile and requested branch set.
 
     Unfiltered assessments use the profile catalog plus every allowed branch
     catalog. A service-specific run uses only its requested TCP branch
     catalogs. UDP-only SNMP/UDP jobs therefore do not accidentally fall back
     to a broad TCP scan.
+
+    `port_override` (from the intensity knob / a full-port audit) REPLACES the
+    profile's own catalog as the base TCP set for unfiltered scans — it never
+    touches the branch port tables, so a service-specific job's coverage stays
+    defined by its branch(es), only its rate/timeout change with intensity.
     """
     allowed = PROFILE_DEEP_BRANCHES.get(profile, set())
     requested = allowed if service_filter is None else (service_filter & allowed)
-    ports = set(PROFILE_PORTS.get(profile, [])) if service_filter is None else set()
+    if service_filter is None:
+        base = port_override if port_override is not None else PROFILE_PORTS.get(profile, [])
+        ports = set(base)
+    else:
+        ports = set()
     if "tls" in requested:
         ports.update(TLS_PORTS)
     if "web" in requested:
@@ -223,7 +234,9 @@ def _finalize_trace(trace: ExecutionTrace | None) -> None:
 
 async def run_engagement(targets: list[str], scope: ScopeGuard, *, profile: str = "it",
                          rate: float = 200.0, concurrency: int = 100, timeout: float = 3.0,
-                         disc_timeout: float = 1.5,
+                         disc_timeout: float = 1.5, retries: int = 1,
+                         port_override: list[int] | None = None,
+                         scan_method: str = "connect",
                          cache: WorkflowCache | None = None,
                          assets: dict[str, Asset] | None = None,
                          service_filter: set[str] | None = None,
@@ -266,7 +279,7 @@ async def run_engagement(targets: list[str], scope: ScopeGuard, *, profile: str 
         _finalize_trace(trace)
         return assets
 
-    ports = _port_candidates(profile, service_filter)
+    ports = _port_candidates(profile, service_filter, port_override=port_override)
     allowed_branches = PROFILE_DEEP_BRANCHES.get(profile, set())
     direct_datagram = (
         service_filter is not None
@@ -312,7 +325,17 @@ async def run_engagement(targets: list[str], scope: ScopeGuard, *, profile: str 
     # --- Gate 3: port scan ------------------------------------------------
     port_targets = [t for t in live_hosts if gate_3_port_scan(assets[t], profile)]
     if port_targets and ports:
-        scanner = PortScanner(scope, ports=ports, rate=rate, concurrency=concurrency, timeout=timeout)
+        # Wide sweeps (full-port audit / deep intensity) go through the stateless
+        # SYN scanner — far cheaper than 65k connect() calls per host. It
+        # transparently falls back to a connect scan off privileged Linux, so the
+        # port state + completeness metrics are identical everywhere; only the
+        # method (syn vs connect_fallback) differs. Narrow scans stay on connect.
+        if scan_method == "syn":
+            scanner = SynScanner(scope, ports=ports, rate=rate,
+                                 concurrency=concurrency, timeout=timeout)
+        else:
+            scanner = PortScanner(scope, ports=ports, rate=rate, concurrency=concurrency,
+                                  timeout=timeout, retries=retries)
         results = await _gather_per_host(
             scanner,
             port_targets,

@@ -22,6 +22,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
+import errno as _errno
 import ipaddress
 import json
 import logging
@@ -40,9 +41,98 @@ LOG = logging.getLogger("scanner")
 # --------------------------------------------------------------------------- #
 # Result schema — identical across every scanner.
 # --------------------------------------------------------------------------- #
+# ── canonical scan-state model (Phase 1) ────────────────────────────────────
+# ONE normalized state vocabulary shared by TCP, UDP and the deeper scanners.
+# `status` is the classification; `reason` is WHY — they are always separate.
+# Values are kept wire-compatible with the existing JSONL output on purpose
+# (renaming them would break saved scans and downstream parsers).
+OPEN = "open"
+CLOSED = "closed"
+FILTERED = "filtered"
+OPEN_FILTERED = "open|filtered"   # no app response AND no ICMP — undecidable
+UNREACHABLE = "unreachable"
+ERROR = "error"
+SCAN_SUMMARY = "scan_summary"
+
+CANONICAL_STATES = frozenset({OPEN, CLOSED, FILTERED, OPEN_FILTERED, UNREACHABLE, ERROR})
+
+# State-semantic fields that belong at the top level, never hidden in `data`.
+_PROMOTED_FIELDS = ("reason", "method", "confidence", "family", "src_ip",
+                    "interface", "vantage", "attempts", "rtt_ms", "errno")
+
+
+# ── shared OS-error → state classifier (Phase 2) ────────────────────────────
+# The kernel does the packet-level TCP work and hands back an errno; we translate
+# that to (state, reason) so a scanner-side / OS failure is NEVER mislabeled as a
+# target "filtered". ONE map, shared by TCP, UDP and the deeper scanners so every
+# module classifies identically. Reason strings are kept stable (consumers and
+# the health metrics key off them).
+_ERRNO_MAP: dict[int, tuple[str, str]] = {
+    _errno.ECONNREFUSED:  (CLOSED,      "connection_refused"),   # RST
+    _errno.ECONNRESET:    (CLOSED,      "connection_reset"),
+    _errno.ETIMEDOUT:     (FILTERED,    "no_response"),          # kernel timeout
+    _errno.ECONNABORTED:  (FILTERED,    "connection_aborted"),
+    _errno.EHOSTUNREACH:  (UNREACHABLE, "host_unreachable"),     # ICMP host unreach
+    _errno.ENETUNREACH:   (UNREACHABLE, "network_unreachable"),  # ICMP net unreach
+    _errno.EHOSTDOWN:     (UNREACHABLE, "host_down"),
+    _errno.EACCES:        (ERROR,       "permission_denied"),
+    _errno.EPERM:         (ERROR,       "permission_denied"),
+    _errno.EMFILE:        (ERROR,       "local_resource_error"), # out of fds
+    _errno.ENFILE:        (ERROR,       "local_resource_error"),
+    _errno.ENOBUFS:       (ERROR,       "local_resource_error"),
+    _errno.ENOMEM:        (ERROR,       "local_resource_error"),
+    _errno.EADDRNOTAVAIL: (ERROR,       "address_unavailable"),
+    _errno.EADDRINUSE:    (ERROR,       "address_in_use"),
+    _errno.ENETDOWN:      (ERROR,       "interface_down"),
+    _errno.ENETRESET:     (ERROR,       "interface_error"),
+}
+
+# Confidence per state — silence/ICMP inferences are weaker evidence than a
+# completed handshake or an explicit RST.
+STATE_CONFIDENCE: dict[str, str] = {
+    OPEN: "high", CLOSED: "high", FILTERED: "medium",
+    UNREACHABLE: "medium", ERROR: "low",
+}
+
+
+def classify_os_error(exc: OSError) -> tuple[str, str]:
+    """Map a connect()/socket-time OSError to (state, reason).
+
+    DNS failures (``socket.gaierror``, whose ``.errno`` uses the unrelated EAI_*
+    namespace) are caught first. An UNKNOWN errno stays visible as
+    ``('error', 'socket_error_<errno>')`` — never mislabeled 'filtered', because a
+    local/OS failure is not evidence of a target firewall.
+    """
+    if isinstance(exc, socket.gaierror):
+        return ERROR, "dns_error"
+    mapped = _ERRNO_MAP.get(exc.errno)
+    if mapped is not None:
+        return mapped
+    return ERROR, (f"socket_error_{exc.errno}" if exc.errno else "os_error")
+
+
+def describe_os_error(exc: OSError) -> dict[str, Any]:
+    """Full, debuggable classification for attaching to a ScanResult: state,
+    reason, errno, exception type and a human message — so a scanner-side failure
+    is fully visible and never hidden inside a bare 'filtered'."""
+    state, reason = classify_os_error(exc)
+    return {
+        "status": state,
+        "reason": reason,
+        "errno": getattr(exc, "errno", None),
+        "exc_type": type(exc).__name__,
+        "error": str(exc) or type(exc).__name__,
+    }
+
+
 @dataclass
 class ScanResult:
-    """One observation about one target. Pure fact, no interpretation."""
+    """One observation about one target. Pure fact, no interpretation.
+
+    Network-state semantics are FIRST-CLASS fields (Phase 1): a reader never has
+    to dig into `data` to learn the state, reason, family, vantage, timing or the
+    scanner-side errno. `data` remains for scanner-specific parsed detail only.
+    """
     scanner: str                      # which module produced this
     target: str                       # ip or host the observation is about
     timestamp: str = field(
@@ -50,10 +140,31 @@ class ScanResult:
     )
     port: int | None = None           # if the observation is port-scoped
     proto: str | None = None          # tcp / udp
-    status: str = "observed"          # observed | open | closed | filtered | error
-    data: dict[str, Any] = field(default_factory=dict)   # parsed fields
+    status: str = "observed"          # a CANONICAL_STATES value (+ observed/scan_summary)
+    data: dict[str, Any] = field(default_factory=dict)   # scanner-specific parsed fields
     evidence: str | None = None       # raw bytes/banner that justify the result
     error: str | None = None
+    # ── first-class network-state semantics (appended to preserve positional
+    #    construction compatibility of the fields above) ──
+    reason: str | None = None         # why this state: connect_success, tcp_rst, no_response, ...
+    method: str | None = None         # how it was probed: connect, syn, udp_probe, ...
+    confidence: float | None = None   # 0..1 certainty in the classification
+    family: str | None = None         # ipv4 | ipv6
+    src_ip: str | None = None         # local address that completed the probe
+    interface: str | None = None      # scanning interface
+    vantage: str | None = None        # scanner position identity
+    attempts: int | None = None       # how many probes were sent
+    rtt_ms: float | None = None       # round-trip time of the deciding probe
+    errno: int | None = None          # OS errno for a scanner-side / OS result
+
+    def __post_init__(self) -> None:
+        # Bridge for existing scanners that still record these inside `data`:
+        # promote them to first-class fields (non-destructive — `data` is left
+        # intact) so every result exposes state semantics uniformly.
+        if isinstance(self.data, dict):
+            for k in _PROMOTED_FIELDS:
+                if getattr(self, k) is None and self.data.get(k) is not None:
+                    setattr(self, k, self.data[k])
 
     def to_json(self) -> str:
         return json.dumps(asdict(self), default=str, ensure_ascii=False)

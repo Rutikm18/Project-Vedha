@@ -21,11 +21,18 @@ from app.auth.exceptions import (
     PasswordMismatchError,
     UserNotFoundError,
 )
-from app.auth.jwt import create_access_token, create_refresh_token, decode_token
+from app.auth.jwt import (
+    create_access_token,
+    create_refresh_token,
+    decode_token,
+    MANAGER_AUDIENCE,
+    PORTAL_AUDIENCE,
+)
 from app.auth.pat import build_personal_access_token
 from app.auth.rbac import require_role
 from app.database import get_db
 from app.dependencies import AuthUser
+from app.models.enums import UserRole
 from app.models.personal_access_token import PersonalAccessToken
 from app.models.tenant import Tenant
 from app.models.user import User
@@ -156,12 +163,27 @@ async def login(body: LoginRequest, request: Request, db: AsyncSession = Depends
             detail=_GENERIC_401,
         ) from None
 
+    # Portal scoping + audience separation. Computed BEFORE the token try below so
+    # a misconfigured client login surfaces as 403 rather than being masked as 401.
+    is_client = user.role == UserRole.client
+    extra_claims: dict = {"aud": PORTAL_AUDIENCE if is_client else MANAGER_AUDIENCE}
+    if is_client:
+        # A client login MUST be bound to exactly one engagement — that binding is
+        # the portal's entire scoping boundary. Refuse to mint an unscoped token.
+        if user.client_engagement_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Client login is not bound to an engagement",
+            )
+        extra_claims["client_engagement_id"] = str(user.client_engagement_id)
+
     # ── Success path ──────────────────────────────────────────────────────
     try:
         access = create_access_token(
             subject=str(user.id),
             tenant_id=str(user.tenant_id),
             role=user.role.value,
+            extra_claims=extra_claims,
         )
         refresh, _ = create_refresh_token(
             subject=str(user.id),

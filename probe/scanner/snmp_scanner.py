@@ -347,10 +347,14 @@ class SNMPScanner(BaseScanner):
                     status="open",
                     data={"snmpv3_present": True, "v1v2c_community": None},
                     evidence="SNMPv3 agent detected (v1/v2c communities did not match)")]
+            # No SNMP reply is NOT proof of a firewall: the agent may simply
+            # reject our communities/versions while the UDP port is open. Absent
+            # an ICMP unreachable, the only honest state is the open|filtered pair
+            # (matches the udp_scanner semantics — do not overclaim "filtered").
             return [ScanResult(
                 self.name, target, port=self.port, proto="udp",
-                status="filtered",
-                data={"responded": False},
+                status="open|filtered",
+                data={"responded": False, "reason": "no_snmp_response"},
                 evidence="no SNMP reply to common communities (open|filtered)")]
 
         community, sysdescr = found

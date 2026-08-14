@@ -45,6 +45,11 @@ _PATTERNS: list[tuple[re.Pattern, str, str | None]] = [
     (re.compile(rb"SSH-\d+\.\d+-OpenSSH[_-](?P<version>[\w.]+)"), "ssh", "OpenSSH"),
     (re.compile(rb"SSH-\d+\.\d+-dropbear[_-](?P<version>[\w.]+)"), "ssh", "dropbear"),
     (re.compile(rb"SSH-\d+\.\d+-(?P<product>[\w.+\-]+)"), "ssh", None),
+    # Datastores exposed over HTTP — must win over the generic Server: match
+    # below (CouchDB sets `Server: CouchDB/x`, which would otherwise read as http).
+    (re.compile(rb'"tagline"\s*:\s*"You Know, for Search"'), "elasticsearch", "Elasticsearch"),
+    (re.compile(rb'"cluster_name"\s*:\s*"'), "elasticsearch", "Elasticsearch"),
+    (re.compile(rb'"couchdb"\s*:\s*"Welcome"'), "couchdb", "CouchDB"),
     # HTTP Server header
     (re.compile(rb"[Ss]erver:\s*nginx(?:/(?P<version>[\d.]+))?"), "http", "nginx"),
     (re.compile(rb"[Ss]erver:\s*Apache(?:/(?P<version>[\d.]+))?"), "http", "Apache"),
@@ -66,6 +71,8 @@ _PATTERNS: list[tuple[re.Pattern, str, str | None]] = [
     (re.compile(rb"mysql_native_password"), "mysql", "MySQL"),
     (re.compile(rb"redis_version:(?P<version>[\d.]+)"), "redis", "Redis"),
     (re.compile(rb"-NOAUTH|-ERR .*auth", re.I), "redis", "Redis"),
+    (re.compile(rb"^VERSION (?P<version>[\d.]+)\r?$", re.M), "memcached", "memcached"),
+    (re.compile(rb"STAT pid \d+"), "memcached", "memcached"),
     # Mail retrieval
     (re.compile(rb"^\+OK.*POP3", re.I), "pop3", None),
     (re.compile(rb"^\* OK.*IMAP", re.I), "imap", None),
@@ -100,6 +107,13 @@ PROBE_LADDER: list[tuple[str, bytes | None]] = [
     ("null", None),
     ("http", _HTTP_PROBE),
     ("generic", _GENERIC_PROBE),
+    # Safe, read-only datastore probes — protocol commands, NOT authentication and
+    # NOT writes. Only reached for ports the cheaper rungs couldn't identify, so
+    # they surface Redis/Memcached (which don't greet) and make the
+    # unauthenticated-access proof fire in the field. Redis INFO -> `redis_version`
+    # (unauth) or `-NOAUTH` (protected); Memcached version -> `VERSION x.y.z`.
+    ("redis", b"INFO\r\n"),
+    ("memcached", b"version\r\n"),
 ]
 
 

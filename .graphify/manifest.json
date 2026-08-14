@@ -96,23 +96,23 @@
     "hash": "d41d8cd98f00b204e9800998ecf8427e"
   },
   "manager/backend/app/auth/jwt.py": {
-    "mtime": 1785706380689.1562,
-    "hash": "c6e7500ec72b86d20e2a9bc468c6df6c"
+    "mtime": 1786639885936.6685,
+    "hash": "037b1b189c412d626ac71b982086daba"
   },
   "manager/backend/app/auth/middleware.py": {
-    "mtime": 1785706390110.259,
-    "hash": "ab571e51afcbd66e188b6d99f979c249"
+    "mtime": 1786639861366.7466,
+    "hash": "3437f8d947eecaa6505f32a1e26a8688"
   },
   "manager/backend/app/auth/rbac.py": {
     "mtime": 1779189460000,
     "hash": "3c044d5624b5e457d3cd6a153fb3f50a"
   },
   "manager/backend/app/auth/router.py": {
-    "mtime": 1785701038095.2075,
-    "hash": "d583ba912046a4f4d8e44c1ede76323f"
+    "mtime": 1786639912706.5977,
+    "hash": "a029bc776f7ce932eefbaa33e906d1bb"
   },
   "manager/backend/app/config.py": {
-    "mtime": 1786398478618.8433,
+    "mtime": 1786624017107.8994,
     "hash": "b3c061547b9550af8c6daea43c827009"
   },
   "manager/backend/app/database.py": {
@@ -120,8 +120,8 @@
     "hash": "81b13d60d379f6041b95c44925754b30"
   },
   "manager/backend/app/dependencies.py": {
-    "mtime": 1784273592052.844,
-    "hash": "967c322d71ca606e3fe97edd667d6a28"
+    "mtime": 1786639848886.7441,
+    "hash": "d4fd37e22b2b2486983a22010fb988f7"
   },
   "manager/backend/app/detection/__init__.py": {
     "mtime": 1781157163000,
@@ -136,8 +136,8 @@
     "hash": "47f5213e84ba259f2e31506bdfe1f1a1"
   },
   "manager/backend/app/detection/engine_bridge.py": {
-    "mtime": 1786398545311.3271,
-    "hash": "9fd82f7fe3c13c76e2bf05f6d1c3a2bd"
+    "mtime": 1786697740310.095,
+    "hash": "d9c87d18d76287a08760109da75503a2"
   },
   "manager/backend/app/detection/logger.py": {
     "mtime": 1781157176000,
@@ -156,8 +156,8 @@
     "hash": "d41d8cd98f00b204e9800998ecf8427e"
   },
   "manager/backend/app/discovery/finding_translator.py": {
-    "mtime": 1783020681578.8345,
-    "hash": "99fde7cb5626703b405920756365a23f"
+    "mtime": 1786695980911.502,
+    "hash": "4a170276ba7430948cea07a76c13b529"
   },
   "manager/backend/app/discovery/rate_limiter.py": {
     "mtime": 1779189838000,
@@ -220,20 +220,20 @@
     "hash": "a6558b68dd6cd5176bd1a633eceea5ba"
   },
   "manager/backend/app/main.py": {
-    "mtime": 1785749122660.853,
-    "hash": "99107a4a822d41b1ec26cc78c7c705c6"
+    "mtime": 1786642520375.685,
+    "hash": "03be2762af735d88f80d3fe001668c60"
   },
   "manager/backend/app/models/__init__.py": {
-    "mtime": 1786428583379.5474,
-    "hash": "040ea7230a7878c5ee1d1c8694cb449e"
+    "mtime": 1786639804626.3052,
+    "hash": "5fa848f8438f0cc232ee5caf22def8f9"
   },
   "manager/backend/app/models/agent.py": {
     "mtime": 1785706278270.8992,
     "hash": "3135a2829e812047299a742ac8c2ec97"
   },
   "manager/backend/app/models/asset.py": {
-    "mtime": 1785579410216.2847,
-    "hash": "912e557e9ad2e7e80ad0a179eb8f62ff"
+    "mtime": 1786695615009.5312,
+    "hash": "06be38d325ac42714dc81ca0cafae039"
   },
   "manager/backend/app/models/attack_path.py": {
     "mtime": 1779189434000,
@@ -260,12 +260,12 @@
     "hash": "1daec467d1f1bc68317d68c107e490aa"
   },
   "manager/backend/app/models/engagement.py": {
-    "mtime": 1779189415000,
-    "hash": "d6800c305d4a8a2ef8355b1f1b0ec840"
+    "mtime": 1786639845080.6426,
+    "hash": "5237fb7fd4051cb35dfeafbf0b56f05e"
   },
   "manager/backend/app/models/enums.py": {
-    "mtime": 1781164154000,
-    "hash": "456fdfa111a85741b55874bf5069108f"
+    "mtime": 1786695600337.589,
+    "hash": "29f035634f1be57ce49f651bc50633a8"
   },
   "manager/backend/app/models/exploit_approval.py": {
     "mtime": 1779191107000,
@@ -276,7 +276,7 @@
     "hash": "70a13cc73e3d1a6e8ec0df6e98c88eec"
   },
   "manager/backend/app/models/finding.py": {
-    "mtime": 1786398320908.907,
+    "mtime": 1786624017112.1877,
     "hash": "ebb5387673bb0c156bce2c793fac3983"
   },
   "manager/backend/app/models/llm_output.py": {
@@ -292,16 +292,16 @@
     "hash": "276f0a5974b0c5b125ba312ef63de1ac"
   },
   "manager/backend/app/models/service.py": {
-    "mtime": 1779189768000,
-    "hash": "6c57c2b84bf0554123629f0ea7ddaf7b"
+    "mtime": 1786695909857.1167,
+    "hash": "4af06f5bb294697731e41b3e052d74e3"
   },
   "manager/backend/app/models/tenant.py": {
     "mtime": 1785662112966.604,
     "hash": "80ab402e8aeb47c958a741c1d46d6294"
   },
   "manager/backend/app/models/user.py": {
-    "mtime": 1785662101129.6292,
-    "hash": "dbd4239b8ddb27c38e65cbbea24644f9"
+    "mtime": 1786639841262.9634,
+    "hash": "7d14eaddfeea4785d5f9cdf3ec6b92b8"
   },
   "manager/backend/app/ratelimit.py": {
     "mtime": 1782846350551.4094,
@@ -316,8 +316,8 @@
     "hash": "71afdc71390b2b7651413e8255ddf1d9"
   },
   "manager/backend/app/routers/agents.py": {
-    "mtime": 1785830669201.5923,
-    "hash": "ad941956a7bd39a257eb1eebfbc9e269"
+    "mtime": 1786714713159.759,
+    "hash": "24773eaeeb8fdb617237c7c9bab71ae6"
   },
   "manager/backend/app/routers/ai_report.py": {
     "mtime": 1785996933819.2993,
@@ -340,8 +340,8 @@
     "hash": "1c4f76de2272a60357e78adb0aa653ef"
   },
   "manager/backend/app/routers/findings.py": {
-    "mtime": 1786445531082.4514,
-    "hash": "2a83e586d47bdf760bf89760ebd7cd44"
+    "mtime": 1786624017114.1204,
+    "hash": "a55d5e152162b896343ff01f00d6eadc"
   },
   "manager/backend/app/routers/health.py": {
     "mtime": 1785690734904.3687,
@@ -360,8 +360,8 @@
     "hash": "7db3dea0efd40461518af7f73b6d455a"
   },
   "manager/backend/app/schemas/auth.py": {
-    "mtime": 1784273586081.1514,
-    "hash": "acf09ddf2bce5cfa7551e884190f7dbd"
+    "mtime": 1786639801764.243,
+    "hash": "bd0bbd175343ca93f8cccef35d461e7c"
   },
   "manager/backend/app/schemas/common.py": {
     "mtime": 1779189493000,
@@ -372,8 +372,8 @@
     "hash": "93dcee100a4f1e813c0a07c59a1b921c"
   },
   "manager/backend/app/schemas/finding.py": {
-    "mtime": 1786428786923.2556,
-    "hash": "da77084a4367848320511da52df2017d"
+    "mtime": 1786624017114.8484,
+    "hash": "57f4c9d0f52442017bc9ee22bb714f19"
   },
   "manager/backend/app/utils/__init__.py": {
     "mtime": 1779189525000,
@@ -496,7 +496,7 @@
     "hash": "b55020ffe2e8f2e0025c3701a77b1422"
   },
   "manager/detection_engine/enrichment_db.py": {
-    "mtime": 1786355600152.26,
+    "mtime": 1786624017127.3323,
     "hash": "804bf2361ebd05b98111e2858bf5abe2"
   },
   "manager/detection_engine/ingest.py": {
@@ -528,11 +528,11 @@
     "hash": "6f86437cb814fe14792a0020b8db2b0e"
   },
   "manager/detection_engine/version_compare.py": {
-    "mtime": 1786355436548.4373,
+    "mtime": 1786624017130.5532,
     "hash": "c168559404c1958d88a5831824da539e"
   },
   "manager/detection_engine/vuln_db.py": {
-    "mtime": 1786355581571.1614,
+    "mtime": 1786624017131.053,
     "hash": "535af8fd8167b10b004da3a9799141b6"
   },
   "manager/frontend/app/aibrain/page.tsx": {
@@ -640,8 +640,8 @@
     "hash": "c3b13a8f4ab49441fc6295b7226f36e4"
   },
   "manager/frontend/app/api/findings/route.ts": {
-    "mtime": 1785330914138.5593,
-    "hash": "5afa8d913468583d505262f3bbc68339"
+    "mtime": 1786624017133.0403,
+    "hash": "11a8ec04776fa4c828cc25295dc35613"
   },
   "manager/frontend/app/api/scan/jobs/[id]/route.ts": {
     "mtime": 1782672726995.5408,
@@ -668,8 +668,8 @@
     "hash": "4e643769ceab5ff2db049fcb283b8269"
   },
   "manager/frontend/app/findings/page.tsx": {
-    "mtime": 1785622258371.096,
-    "hash": "a931b750d1ad4cb516cd777b3657287f"
+    "mtime": 1786624017134.2266,
+    "hash": "20de6636a157463c2e46490f09918bce"
   },
   "manager/frontend/app/layout.tsx": {
     "mtime": 1786014918771.1511,
@@ -772,8 +772,8 @@
     "hash": "34c7e682cf49a233f09f71c7acb11b8b"
   },
   "manager/frontend/components/Sidebar.tsx": {
-    "mtime": 1785707528861.5564,
-    "hash": "176e2e7b116ffd6c4e43a12910c75c38"
+    "mtime": 1786626268386.5916,
+    "hash": "73813c704fd8ac9a1eadef05cfe2638f"
   },
   "manager/frontend/components/ThemeProvider.tsx": {
     "mtime": 1785103958367.2297,
@@ -808,8 +808,8 @@
     "hash": "36ed0407b915b25cc676b124ab996d60"
   },
   "manager/frontend/lib/adapters.ts": {
-    "mtime": 1785446100344.5842,
-    "hash": "dd752a8d3849b0f4ca2db8dc33dfdfc9"
+    "mtime": 1786624017134.829,
+    "hash": "f5c0b9ef5b0eb47beb333b763f7783ff"
   },
   "manager/frontend/lib/agent/agent.ts": {
     "mtime": 1785103960522.3518,
@@ -988,8 +988,8 @@
     "hash": "2ae1060a0771f9ac7c179648b3845456"
   },
   "manager/frontend/next.config.mjs": {
-    "mtime": 1785328810982.6343,
-    "hash": "8892b74f74593af7ac5e8c7a500f17eb"
+    "mtime": 1786626257072.1033,
+    "hash": "9e6b9834cb3fd4a353fd63bedb29b91d"
   },
   "manager/frontend/postcss.config.mjs": {
     "mtime": 1778224430000,
@@ -1012,16 +1012,16 @@
     "hash": "000f63b78da376ccc26c2cc772f4e1e7"
   },
   "probe/agent/engine.py": {
-    "mtime": 1785704814388.1755,
-    "hash": "8cd537ce961025b1b8de182c0a0ab8b0"
+    "mtime": 1786709234378.8696,
+    "hash": "e89deee35f137bdd834ab2d8559c5084"
   },
   "probe/agent/license.py": {
     "mtime": 1785579410254.7263,
     "hash": "93b4e68dd59da2e41fd59924589fd2d2"
   },
   "probe/agent/use_cases.py": {
-    "mtime": 1784846359098.2717,
-    "hash": "fd442f82a1d74e8ee9843c88661d6808"
+    "mtime": 1786714525398.968,
+    "hash": "4d96688c00603f7e03cb1a868807306f"
   },
   "probe/pipeline.py": {
     "mtime": 1782071100372.029,
@@ -1032,71 +1032,71 @@
     "hash": "298c90c2a45dc8ab6d0c039ca467025c"
   },
   "probe/scanner/__init__.py": {
-    "mtime": 1786466826445.4617,
+    "mtime": 1786683706080.679,
     "hash": "e7e902e942de79485019916fd38958a1"
   },
   "probe/scanner/db_scanner.py": {
-    "mtime": 1784845987777.1348,
+    "mtime": 1786683706085.096,
     "hash": "f1ef7f437b84983b77bb6b118e5a5fc3"
   },
   "probe/scanner/host_discovery.py": {
-    "mtime": 1786488230735.2063,
+    "mtime": 1786683706094.3237,
     "hash": "7bfe90257323f58d714eb81175d83c77"
   },
   "probe/scanner/mass_scan.py": {
-    "mtime": 1784811211615.3047,
+    "mtime": 1786683706097.4287,
     "hash": "55819bd88f79e8396c0941f981fe17b0"
   },
   "probe/scanner/mcp_ai_scanner.py": {
-    "mtime": 1782985216289.1108,
+    "mtime": 1786683706098.2502,
     "hash": "45ee44f157ee3ec4eb3b4fc2cd34431c"
   },
   "probe/scanner/nmap_wrapper.py": {
-    "mtime": 1784811107135.6167,
+    "mtime": 1786683706100.846,
     "hash": "67a59035dc24dfe23e37657117c35982"
   },
   "probe/scanner/passive_collector.py": {
-    "mtime": 1784826022925.5466,
+    "mtime": 1786683706102.9165,
     "hash": "8c24b8652f4326bfcd1dcc2acdd8c7af"
   },
   "probe/scanner/port_scanner.py": {
-    "mtime": 1786487357200.5796,
-    "hash": "567e4f3302e35445feb49cce45c76f05"
+    "mtime": 1786683706103.9011,
+    "hash": "af18dfdfebcd6327ddfd2455c40354de"
   },
   "probe/scanner/scanner_base.py": {
-    "mtime": 1786445459605.9321,
-    "hash": "dfc01bdc4fd735f46966a77873714635"
+    "mtime": 1786683706106.7737,
+    "hash": "12133c581bf0c427f4851adb5bcea7ca"
   },
   "probe/scanner/service_banner.py": {
-    "mtime": 1786466754025.0715,
-    "hash": "06148fca4fdaa9489f447d0963fbb025"
+    "mtime": 1786683706108.192,
+    "hash": "1b3adf7271d9f93d5433d2aa57ee50fd"
   },
   "probe/scanner/smb_scanner.py": {
-    "mtime": 1784845785796.5496,
-    "hash": "5f7c86bf04ba57496e63cbbcbfbc6fa9"
+    "mtime": 1786683706108.8252,
+    "hash": "8b5b814ee3170d6a8203e8cf56f131bd"
   },
   "probe/scanner/snmp_scanner.py": {
-    "mtime": 1786393633928.5474,
-    "hash": "baf4eb0d9faa282cc966107163eab5c2"
+    "mtime": 1786683706109.6687,
+    "hash": "643d60e6fdd0d6962f9cabb0f7eb7823"
   },
   "probe/scanner/ssh_collector.py": {
-    "mtime": 1782044790940.4766,
+    "mtime": 1786683706110.416,
     "hash": "878b6afd06ea1c8c756931e9509da2a0"
   },
   "probe/scanner/tls_scanner.py": {
-    "mtime": 1786461250154.1975,
-    "hash": "2015aca84a5353c7ff74e1381d76fd3d"
+    "mtime": 1786683706112.2432,
+    "hash": "b3dcc137a910c4dc9bd611b3f312c405"
   },
   "probe/scanner/udp_scanner.py": {
-    "mtime": 1786445017361.48,
-    "hash": "62cce41f37b3b044a36b6384f571e210"
+    "mtime": 1786683706113.067,
+    "hash": "7a31eb8b812432dc356833617498c48c"
   },
   "probe/scanner/web_scanner.py": {
-    "mtime": 1784846312556.7761,
+    "mtime": 1786683706116.64,
     "hash": "cf20c2ff1abba987572fadc1f17cb9a4"
   },
   "probe/scanner/windows_collector.py": {
-    "mtime": 1782044809197.9663,
+    "mtime": 1786683706117.8552,
     "hash": "8c0c8ca7df9658633ccda15e6087fe49"
   },
   "probe/tools/issue_license.py": {
@@ -1136,8 +1136,8 @@
     "hash": "c074686568966eacf9a4d82a64bb6971"
   },
   "probe/workflow/workflow_engine.py": {
-    "mtime": 1784846587723.4553,
-    "hash": "c330dd1e34259a3b5be71f69cd208ce8"
+    "mtime": 1786708971571.214,
+    "hash": "89fd1f74552782e12d633b68cd8b6db7"
   },
   ".commandcode/taste/taste.md": {
     "mtime": 1784982584358.174,
@@ -1172,8 +1172,8 @@
     "hash": "2145fe57432d3d083a4913fd90ee5d46"
   },
   "docker-compose.yml": {
-    "mtime": 1785707850652.3125,
-    "hash": "349bab94e87f70000026cec4f16ef868"
+    "mtime": 1786626235335.274,
+    "hash": "6112c06400a990e6ddcaef64412738b0"
   },
   "manager/README.md": {
     "mtime": 1784667058580.407,
@@ -1184,7 +1184,7 @@
     "hash": "ad68c2e2d4ab1994d345a59155df310a"
   },
   "manager/backend/requirements-extras.txt": {
-    "mtime": 1786398423128.5237,
+    "mtime": 1786624017116.4229,
     "hash": "819f8698f26e421f3672f5aa7730728c"
   },
   "manager/backend/requirements.txt": {
@@ -1336,8 +1336,8 @@
     "hash": "42277e13d44b6727b1f02014915ed664"
   },
   "manager/backend/app/services/job_result_service.py": {
-    "mtime": 1785704445984.669,
-    "hash": "9c92920408bcab42785685539ea8e89a"
+    "mtime": 1786709516174.0168,
+    "hash": "aa2dcd51252508003734f363352e338e"
   },
   "manager/backend/app/services/scope_crypto.py": {
     "mtime": 1784667059108.6992,
@@ -1428,8 +1428,8 @@
     "hash": "14cdb238b6700da01073811435b24a94"
   },
   "probe/agent/task_runner.py": {
-    "mtime": 1785707732329.2876,
-    "hash": "aea72f99e604e57c5c137a024abf0f93"
+    "mtime": 1786683906580.7021,
+    "hash": "da2d70f153287be38f0fb7a5d5a20079"
   },
   "probe/agent/transport.py": {
     "mtime": 1785707805089.1733,
@@ -1460,8 +1460,8 @@
     "hash": "917ededa8806c955ddf7ca78c737a450"
   },
   "probe/tests/test_probe_core.py": {
-    "mtime": 1785578247537.1096,
-    "hash": "42d0a9f3dc6864a1dc3b867369b3fb45"
+    "mtime": 1786683946623.6348,
+    "hash": "96db3b1f301e2b6417d61f249b501283"
   },
   "probe/tests/test_result_spool.py": {
     "mtime": 1785704637611.7476,
@@ -1484,316 +1484,316 @@
     "hash": "1c393eb2873bb61f569b88f2ad924157"
   },
   ".graphify/GRAPH_REPORT.md": {
-    "mtime": 1786487411868.7253,
-    "hash": "571aaf7bf35b8f3f5aa6d8f9d989a897"
+    "mtime": 1786709738541.2764,
+    "hash": "83b189aea1fac6c94d863b2c641405a4"
   },
   ".graphify/description-instructions/batch-000.md": {
-    "mtime": 1786487411645.3645,
-    "hash": "d586d51fab7b4c435d7e0992e2a38cb2"
+    "mtime": 1786709738313.1895,
+    "hash": "45bb1ddc842b6b7db3e26b56dbc6a8c7"
   },
   ".graphify/description-instructions/batch-001.md": {
-    "mtime": 1786487411645.8408,
-    "hash": "4ecf32975040b6777e5a36d842526353"
+    "mtime": 1786709738313.534,
+    "hash": "571735ae4a783eb1108f54a2a6c87d75"
   },
   ".graphify/description-instructions/batch-002.md": {
-    "mtime": 1786487411647.3096,
-    "hash": "f7a1699d024d309d43666121e582ca63"
+    "mtime": 1786709738314.005,
+    "hash": "cdb43de48abc6e2b2d1c66323f3bf6c3"
   },
   ".graphify/description-instructions/batch-003.md": {
-    "mtime": 1786487411647.5928,
-    "hash": "71d24628c382878b5f81d52f029d7d0d"
+    "mtime": 1786709738314.385,
+    "hash": "10cad5f372879532caa18764697d3e44"
   },
   ".graphify/description-instructions/batch-004.md": {
-    "mtime": 1786487411648.1128,
-    "hash": "c12985250fbc6a03ec07e263a87ab1d1"
+    "mtime": 1786709738314.6543,
+    "hash": "9bbb14f137afbf5620cd392bc99749c8"
   },
   ".graphify/description-instructions/batch-005.md": {
-    "mtime": 1786487411648.7764,
-    "hash": "595e7c571455b47f851e1303c8822a94"
+    "mtime": 1786709738314.882,
+    "hash": "ea8a4c206356b9d717ddf7eba5316064"
   },
   ".graphify/description-instructions/batch-006.md": {
-    "mtime": 1786487411649.126,
-    "hash": "36b253c9b9a87fdbd92baa013560bead"
+    "mtime": 1786709738315.1025,
+    "hash": "c2baac29015d9456f478a75e535b25b0"
   },
   ".graphify/description-instructions/batch-007.md": {
-    "mtime": 1786487411649.9563,
-    "hash": "4c1e3bcdaf88a2c8b17fb61fa581335f"
+    "mtime": 1786709738315.466,
+    "hash": "9d657ce5b633ec03529c4409e485c3dc"
   },
   ".graphify/description-instructions/batch-008.md": {
-    "mtime": 1786487411650.5803,
-    "hash": "5be525daaca4102b2c819834dd584cc4"
+    "mtime": 1786709738315.7168,
+    "hash": "8d0e8f5f1317d67c134e345359da9d0f"
   },
   ".graphify/description-instructions/batch-009.md": {
-    "mtime": 1786487411651.2627,
-    "hash": "82f224d1a493d8033de95d6ade61a7cd"
+    "mtime": 1786709738315.9446,
+    "hash": "441be74138bb25b4b46be805dd52e9f5"
   },
   ".graphify/description-instructions/batch-010.md": {
-    "mtime": 1786487411651.7974,
-    "hash": "c7f06acf3bc910ae1344104955bbe87f"
+    "mtime": 1786709738316.1982,
+    "hash": "44ca3f2168e06d0df083247198911817"
   },
   ".graphify/description-instructions/batch-011.md": {
-    "mtime": 1786487411652.2773,
-    "hash": "be2e11b4db0da0a2b2cff6dbedd59689"
+    "mtime": 1786709738316.4194,
+    "hash": "c2d0d09817d0f4fa1afdac643e8437e1"
   },
   ".graphify/description-instructions/batch-012.md": {
-    "mtime": 1786487411652.661,
-    "hash": "5879bb00f3e8663d80846984fb588ba4"
+    "mtime": 1786709738316.7546,
+    "hash": "fb38e70e0820883c4291439e347a4624"
   },
   ".graphify/description-instructions/batch-013.md": {
-    "mtime": 1786487411653.013,
-    "hash": "9934b5925e40e8a73fcb9757178273d6"
+    "mtime": 1786709738317.1057,
+    "hash": "099d9ef204743d1f070f833593af77cf"
   },
   ".graphify/description-instructions/batch-014.md": {
-    "mtime": 1786487411653.352,
-    "hash": "4c59f5fb092d6d7e0a2980c20e98f932"
+    "mtime": 1786709738317.4236,
+    "hash": "6ae083ba575c6354291982574df1eaa4"
   },
   ".graphify/description-instructions/batch-015.md": {
-    "mtime": 1786487411653.6267,
-    "hash": "9c129eff295878ac6e8f0ffd1b9947db"
+    "mtime": 1786709738317.6125,
+    "hash": "66e6a966e8ea59c015aeba55f9b4ac25"
   },
   ".graphify/description-instructions/batch-016.md": {
-    "mtime": 1786487411654.363,
-    "hash": "65ac35c6699484a71bcfc2e013dac513"
+    "mtime": 1786709738317.813,
+    "hash": "766e1aef981ef1539ee53ded1e8690ac"
   },
   ".graphify/description-instructions/batch-017.md": {
-    "mtime": 1786487411654.7664,
-    "hash": "538f00c8918ab7a14369efd6a1732208"
+    "mtime": 1786709738318.2122,
+    "hash": "d7caefd3f96f55dbc7ee631c94bd11f5"
   },
   ".graphify/description-instructions/batch-018.md": {
-    "mtime": 1786487411655.3298,
-    "hash": "25f810afb377e304533d6316d08d7677"
+    "mtime": 1786709738318.5015,
+    "hash": "5cee3f1f13a4cc3231fe04b38da0740f"
   },
   ".graphify/description-instructions/batch-019.md": {
-    "mtime": 1786487411656.8057,
-    "hash": "f3a8e4f554890f954aec398ef060590a"
+    "mtime": 1786709738318.6992,
+    "hash": "a5707a69f7d481ae3b3af0e33c3e664a"
   },
   ".graphify/description-instructions/batch-020.md": {
-    "mtime": 1786487411657.4949,
-    "hash": "f59afd856d9c3aa21577dbcc3b8a6fdf"
+    "mtime": 1786709738318.891,
+    "hash": "1838487ab9d33be3b2e5f00854870865"
   },
   ".graphify/description-instructions/batch-021.md": {
-    "mtime": 1786487411657.8784,
-    "hash": "c4b3a6ba3b3859993b6af05850b63ed7"
+    "mtime": 1786709738319.0737,
+    "hash": "c9af9a90c275a00fb8956183ee33d908"
   },
   ".graphify/description-instructions/batch-022.md": {
-    "mtime": 1786487411658.1865,
-    "hash": "cde219cf3251b8206b43fbd35d9381ad"
+    "mtime": 1786709738319.2515,
+    "hash": "d98c7452aa3d3e6a53087bead3cc0457"
   },
   ".graphify/description-instructions/batch-023.md": {
-    "mtime": 1786487411658.4539,
-    "hash": "8308cbf06e919a2f8d460dfcf379da3b"
+    "mtime": 1786709738319.4316,
+    "hash": "420b60d5d28e282092c3675b38b07b53"
   },
   ".graphify/description-instructions/batch-024.md": {
-    "mtime": 1786487411658.718,
-    "hash": "084421769c27cac4b3bf23edd166e2c4"
+    "mtime": 1786709738319.6067,
+    "hash": "42bf3967c9b07d7da84f7cd9d037f952"
   },
   ".graphify/description-instructions/batch-025.md": {
-    "mtime": 1786487411658.961,
-    "hash": "a2efc1507dd10ace22668b507dc1028c"
+    "mtime": 1786709738319.7937,
+    "hash": "93c67e139fe134eddecc848e0547fa8e"
   },
   ".graphify/description-instructions/batch-026.md": {
-    "mtime": 1786487411659.1917,
-    "hash": "c0ddd39a1d58fbd127b48769ef762ec0"
+    "mtime": 1786709738320.125,
+    "hash": "a629a09a49490e76f969c812adcd6b45"
   },
   ".graphify/description-instructions/batch-027.md": {
-    "mtime": 1786487411659.439,
-    "hash": "0df4bae42834c2ac30ade38f8cc5947d"
+    "mtime": 1786709738320.3096,
+    "hash": "841fb83d6f4c51a2c9c32b43fe68b5df"
   },
   ".graphify/description-instructions/batch-028.md": {
-    "mtime": 1786487411659.685,
-    "hash": "6223fd3a7f2ae53773f39f682dc37536"
+    "mtime": 1786709738320.4875,
+    "hash": "acf4dea4c90b09a4f0ba48a9cc21b76a"
   },
   ".graphify/description-instructions/batch-029.md": {
-    "mtime": 1786487411660.6965,
-    "hash": "45f8d82e78f38ea558ebc4e8b96e43a0"
+    "mtime": 1786709738320.6646,
+    "hash": "be4af6f0a7870d8af3ee2540b02e687a"
   },
   ".graphify/description-instructions/batch-030.md": {
-    "mtime": 1786487411660.9426,
-    "hash": "00609dea4c0cdae9808329232d57bc09"
+    "mtime": 1786709738320.957,
+    "hash": "8e4b15a6627c057b4f5867724886887d"
   },
   ".graphify/description-instructions/batch-031.md": {
-    "mtime": 1786487411661.1719,
-    "hash": "4c7a7af657663488b02e4d629d8e0926"
+    "mtime": 1786709738321.138,
+    "hash": "4aa2ff95abd587cd4cab7037632de1d8"
   },
   ".graphify/description-instructions/batch-032.md": {
-    "mtime": 1786487411661.5693,
-    "hash": "e64335192c4ac82dea4aa8642a6b8bde"
+    "mtime": 1786709738321.332,
+    "hash": "800b792f4bb11674dd24a66a5e1444a6"
   },
   ".graphify/description-instructions/batch-033.md": {
-    "mtime": 1786487411661.8284,
-    "hash": "24b5985272e397e61853fe9ecfc5fd30"
+    "mtime": 1786709738321.6157,
+    "hash": "3e3d512c629f719ea0aef667a67a7971"
   },
   ".graphify/description-instructions/batch-034.md": {
-    "mtime": 1786487411662.0117,
-    "hash": "6e50554773a08f3de8e68502bbc4059c"
+    "mtime": 1786709738321.7866,
+    "hash": "9476ed5dd25d78f6eeeddd8225512e6f"
   },
   ".graphify/description-instructions/batch-035.md": {
-    "mtime": 1786487411662.1833,
-    "hash": "a547331c0220aabc704c42fce34dd6bc"
+    "mtime": 1786709738322.057,
+    "hash": "f91bbd4536085e7da89670ad9305db1d"
   },
   ".graphify/description-instructions/batch-036.md": {
-    "mtime": 1786487411662.4092,
-    "hash": "4e72bf18e62f463fac5017f435a45201"
+    "mtime": 1786709738322.317,
+    "hash": "6e034f7e620b12b1af337391dc0a2b1a"
   },
   ".graphify/description-instructions/batch-037.md": {
-    "mtime": 1786487411662.8813,
-    "hash": "313ca093b15c80914084118bb984027f"
+    "mtime": 1786709738322.5737,
+    "hash": "3c99283390fda6e6025e8ebb03b3ff0f"
   },
   ".graphify/description-instructions/batch-038.md": {
-    "mtime": 1786487411663.1782,
-    "hash": "c5064dc6dac17d1f8a07b1f3255245f1"
+    "mtime": 1786709738322.8567,
+    "hash": "89d0c1f7a5b1f512c3a98ca32ff5b1ba"
   },
   ".graphify/description-instructions/batch-039.md": {
-    "mtime": 1786487411663.3562,
-    "hash": "3fb7d02530d8684c51ac4246b7c3b3e8"
+    "mtime": 1786709738323.0354,
+    "hash": "c52f5bacbcaa2206345b27002e20a44b"
   },
   ".graphify/description-instructions/batch-040.md": {
-    "mtime": 1786487411663.5752,
-    "hash": "92659e22d8f156857334db2fdbaaac8e"
+    "mtime": 1786709738323.196,
+    "hash": "072c058c8343ebc4eaaaeb3cf2d616ad"
   },
   ".graphify/description-instructions/batch-041.md": {
-    "mtime": 1786487411663.935,
-    "hash": "8e83ac077f8dc9e925c5d1762ff8cbad"
+    "mtime": 1786709738323.4497,
+    "hash": "fa39bebf7fca35d11d931e7ede3d18b0"
   },
   ".graphify/description-instructions/batch-042.md": {
-    "mtime": 1786487411664.161,
-    "hash": "02da8745caddbd2693b52d828f81f5e9"
+    "mtime": 1786709738323.7,
+    "hash": "8ff41b192b5671e90879a94930f39885"
   },
   ".graphify/description-instructions/batch-043.md": {
-    "mtime": 1786487411664.455,
-    "hash": "ddd5ca73cec2f224b633076704c3cfa1"
+    "mtime": 1786709738323.856,
+    "hash": "262e1516d2904a5b411cbd2af08e4c9c"
   },
   ".graphify/description-instructions/batch-044.md": {
-    "mtime": 1786487411664.6018,
-    "hash": "5e4d7545e18fd60b6934614b9d30990d"
+    "mtime": 1786709738324.103,
+    "hash": "de9ca80cf3aec1dbcded52cbe0e3cbcb"
   },
   ".graphify/description-instructions/batch-045.md": {
-    "mtime": 1786487411665.02,
-    "hash": "28a73dda914fe512035a66ca40074428"
+    "mtime": 1786709738324.343,
+    "hash": "cfc9e97aaf8ad67fd5d1d5df8140346d"
   },
   ".graphify/description-instructions/batch-046.md": {
-    "mtime": 1786487411665.5828,
-    "hash": "b0708c72e7ea6179813203fc2486c016"
+    "mtime": 1786709738324.58,
+    "hash": "55c3a805c09a2018ab29f59a3d134168"
   },
   ".graphify/description-instructions/batch-047.md": {
-    "mtime": 1786487411665.889,
-    "hash": "781b5a6f6453b01b9643ddeefb960538"
+    "mtime": 1786709738324.8245,
+    "hash": "7d4ddf04982b621b28de087e835301fe"
   },
   ".graphify/description-instructions/batch-048.md": {
-    "mtime": 1786487411666.1006,
-    "hash": "ad32200c6b5eba82c50dc3c2985d693d"
+    "mtime": 1786709738325.0742,
+    "hash": "95d1f61f709e9b3bdf8bae18eaf1cc91"
   },
   ".graphify/description-instructions/batch-049.md": {
-    "mtime": 1786487411666.4973,
-    "hash": "11f66190c4e54c48eeef6263bb2ee27a"
+    "mtime": 1786709738325.2458,
+    "hash": "369f1de68c43578fa845283bfa27729f"
   },
   ".graphify/description-instructions/batch-050.md": {
-    "mtime": 1786487411666.7417,
-    "hash": "c7b82cdf607393652303aa3d188f34a0"
+    "mtime": 1786709738325.4153,
+    "hash": "43b467ee162205ec525edfb01c587720"
   },
   ".graphify/description-instructions/batch-051.md": {
-    "mtime": 1786487411666.8953,
-    "hash": "f5dd7e9dfee8a8401816737d9d69b4cc"
+    "mtime": 1786709738325.6497,
+    "hash": "3dcd8d98a3db8ddc81ebcef92bf8a600"
   },
   ".graphify/description-instructions/batch-052.md": {
-    "mtime": 1786487411667.0613,
-    "hash": "9f17347ef5ac81ca9497fa3a2e12892e"
+    "mtime": 1786709738326.2566,
+    "hash": "f0ff6490cc0d352019b9c5cab2ed1db2"
   },
   ".graphify/description-instructions/batch-053.md": {
-    "mtime": 1786487411667.2153,
-    "hash": "14bbdcea48d8ef299a24f7ecfd9c16d9"
+    "mtime": 1786709738326.5256,
+    "hash": "74c8e1eb46dd9c1824ef3756f5f001e0"
   },
   ".graphify/description-instructions/batch-054.md": {
-    "mtime": 1786487411667.4995,
-    "hash": "04ae0132205ebd26bc4061df034ac8b6"
+    "mtime": 1786709738326.7842,
+    "hash": "584a095a9cc7349d0e4812b3d43457ac"
   },
   ".graphify/description-instructions/batch-055.md": {
-    "mtime": 1786487411667.6685,
-    "hash": "3d5a858628798135a5a15f1661ca1670"
+    "mtime": 1786709738327.031,
+    "hash": "a1d10206af466080470427459af7b7a3"
   },
   ".graphify/description-instructions/batch-056.md": {
-    "mtime": 1786487411667.8223,
-    "hash": "3b55e9deca915591fcac040fbbecb646"
+    "mtime": 1786709738327.2666,
+    "hash": "3f7cc71ae81d97d04face5badc715639"
   },
   ".graphify/description-instructions/batch-057.md": {
-    "mtime": 1786487411667.9756,
-    "hash": "a0edbba08cbcef8ca8a0f4d3eb96a9e9"
+    "mtime": 1786709738327.5015,
+    "hash": "a773c5b0831240fb4d148a547d2a7668"
   },
   ".graphify/description-instructions/batch-058.md": {
-    "mtime": 1786487411668.1294,
-    "hash": "9dee55cc114066ff94645d9eac83e626"
+    "mtime": 1786709738327.8723,
+    "hash": "b8812c350be109e3cfae8319d8f06718"
   },
   ".graphify/description-instructions/batch-059.md": {
-    "mtime": 1786487411668.363,
-    "hash": "29fcf832e7aac1252a5d3da46abce5e9"
+    "mtime": 1786709738328.2466,
+    "hash": "393cfef0a6c4ea13953bf9009eacf550"
   },
   ".graphify/description-instructions/batch-060.md": {
-    "mtime": 1786487411668.5261,
-    "hash": "cc1194b5fa60a8d7f3a466eec99c41d7"
+    "mtime": 1786709738328.4976,
+    "hash": "17a845971af08b9b1347f7d454ac1359"
   },
   ".graphify/description-instructions/batch-061.md": {
-    "mtime": 1786487411668.6921,
-    "hash": "53cb8160e52877f1d127841580e3d483"
+    "mtime": 1786709738328.7366,
+    "hash": "b6312fc3b459186593350d9cb43629e3"
   },
   ".graphify/description-instructions/batch-062.md": {
-    "mtime": 1786487411668.8474,
-    "hash": "4a4def958c9cafcafbd75eb6e3f56916"
+    "mtime": 1786709738328.9783,
+    "hash": "58ec6cb48fea58a1f85dfa1f2f83a6ab"
   },
   ".graphify/description-instructions/batch-063.md": {
-    "mtime": 1786487411669.163,
-    "hash": "c4b5d9ae94f44e7209403cb94bcb89a4"
+    "mtime": 1786709738329.2117,
+    "hash": "533959de9638f614e82e62e3128701ab"
   },
   ".graphify/description-instructions/batch-064.md": {
-    "mtime": 1786487411669.421,
-    "hash": "e81cd2958f4823114afab6876aaaf7f8"
+    "mtime": 1786709738329.4602,
+    "hash": "25bb233f72df64c927162804e27b1cd6"
   },
   ".graphify/description-instructions/batch-065.md": {
-    "mtime": 1786487411669.5698,
-    "hash": "5dd575a71973d2ecb3dce960b5834d8d"
+    "mtime": 1786709738329.701,
+    "hash": "98d5bc7bf1e225c812a8d9a0e5dbad5c"
   },
   ".graphify/description-instructions/batch-066.md": {
-    "mtime": 1786487411669.8687,
-    "hash": "46c4cd53c4dc55d2c4bba4e3a8f854f0"
+    "mtime": 1786709738330.087,
+    "hash": "945cbbf2c165192d6e476c1d186c06d8"
   },
   ".graphify/description-instructions/batch-067.md": {
-    "mtime": 1786487411670.134,
-    "hash": "44d0c7baa0d8ae8a2c995128d44b70d1"
+    "mtime": 1786709738330.4727,
+    "hash": "f4de4772a32e14b2ae027324ebdf78f0"
   },
   ".graphify/description-instructions/batch-068.md": {
-    "mtime": 1786487411670.2812,
-    "hash": "701bd4bf649d2f1b4e0821f4cbd3525a"
+    "mtime": 1786709738330.7153,
+    "hash": "4648346f1086d8bdd550b1bfd6def617"
   },
   ".graphify/description-instructions/batch-069.md": {
-    "mtime": 1786487411670.4412,
-    "hash": "639da6317965d269a7902e00df7b7326"
+    "mtime": 1786709738330.9702,
+    "hash": "dbe0ab061fe24fd655f2a933581484cb"
   },
   ".graphify/description-instructions/batch-070.md": {
-    "mtime": 1786487411670.5847,
-    "hash": "dedac8215987e9d2f4e46bc6acaa7647"
+    "mtime": 1786709738331.3079,
+    "hash": "d53a03c68613168774012b37f50c8297"
   },
   ".graphify/description-instructions/batch-071.md": {
-    "mtime": 1786487411670.8523,
-    "hash": "5ddde6b2d42e7e363c71527b0d289fa4"
+    "mtime": 1786709738331.5562,
+    "hash": "f38db9a4ec1a3378a92e1257fcdecca0"
   },
   ".graphify/description-instructions/batch-072.md": {
-    "mtime": 1786487411671.1177,
-    "hash": "203c45140295080952ace68fa87d4e96"
+    "mtime": 1786709738331.7893,
+    "hash": "b1f21291de4d038edcb3b9daf224bca4"
   },
   ".graphify/description-instructions/batch-073.md": {
-    "mtime": 1786487411671.266,
-    "hash": "409ff22541b8520b5f1833814db6d0ab"
+    "mtime": 1786709738332.0283,
+    "hash": "2ed774f76acbafb5727394dc9adfd17f"
   },
   ".graphify/description-instructions/batch-074.md": {
-    "mtime": 1786487411671.411,
-    "hash": "7acab8c3dba5f29aa28b5661f42d1832"
+    "mtime": 1786709738332.256,
+    "hash": "2fc694874b0f9961dcb33e653ba97a2c"
   },
   ".graphify/description-instructions/batch-075.md": {
-    "mtime": 1786487411671.5764,
-    "hash": "2f45b17107fadf3ee8971bf128d866b9"
+    "mtime": 1786709738332.4895,
+    "hash": "e2738885d687f10cb017838e428c7b82"
   },
   ".graphify/label-instructions/communities.md": {
-    "mtime": 1786487400940.6824,
-    "hash": "56c7c9caab813337af1483a7e449da77"
+    "mtime": 1786709721149.741,
+    "hash": "cdcac8b900ae592ebb2bb82d5bfd990d"
   },
   "AGENTS.md": {
     "mtime": 1784148672792.561,
@@ -1828,8 +1828,8 @@
     "hash": "d99ad927b85db6647c97ecd7a2df6741"
   },
   "manager/backend/tests/test_agent_dispatch.py": {
-    "mtime": 1785704210895.2378,
-    "hash": "af9a08ea6f246e4a270e4b61fb2cbf08"
+    "mtime": 1786714792124.0708,
+    "hash": "ad1d028131dfbce79f682d30fa4fc3a9"
   },
   "manager/backend/tests/test_job_result_service.py": {
     "mtime": 1785704469765.3828,
@@ -1872,12 +1872,12 @@
     "hash": "07b72edb391a4cff727b68de208a8a4b"
   },
   "probe/showcase_run.py": {
-    "mtime": 1784871125923.463,
-    "hash": "376be21a9d121008808f307923bc4480"
+    "mtime": 1786683916915.6943,
+    "hash": "73598221b553764aec16e9c1224c854e"
   },
   "probe/tests/test_agent_identity.py": {
-    "mtime": 1784825657798.4563,
-    "hash": "1c143eb3d84e990f4177861d799ca153"
+    "mtime": 1786687027909.0837,
+    "hash": "d639e7a65efd782f4bdfcc0be5012a45"
   },
   "probe/tests/test_db_unauth.py": {
     "mtime": 1784845977689.5051,
@@ -1904,16 +1904,16 @@
     "hash": "8ea73c9f0553179b5125a22e9b294f8c"
   },
   "probe/tests/test_smb_scanner.py": {
-    "mtime": 1784845771489.9988,
-    "hash": "8e3825bd5b1fc8d59a7ce24d115a4e1f"
+    "mtime": 1786624017349.058,
+    "hash": "06f39f0d08e88416bed2cfc16cf1d4cb"
   },
   "probe/tests/test_udp_amplifiers.py": {
     "mtime": 1784846210822.4866,
     "hash": "7704521fefcc6f0f1e9bceda2f8ce785"
   },
   "probe/tests/test_use_cases.py": {
-    "mtime": 1784846366297.4697,
-    "hash": "cae8dfa558c3e9589bfad64c07566c8c"
+    "mtime": 1786714783747.7844,
+    "hash": "bb72800b87b22b20cedaa85340a9c031"
   },
   "probe/tests/test_web_methods.py": {
     "mtime": 1784846298317.1487,
@@ -1932,116 +1932,116 @@
     "hash": "2e2b560aa1af2d06a4c8e30b4419a736"
   },
   ".graphify/description-instructions/batch-076.md": {
-    "mtime": 1786487411672.975,
-    "hash": "1955029cbd7e2e1afa0b4bd7fd0a19bf"
+    "mtime": 1786709738332.7246,
+    "hash": "7350c57bfc0a5d42263ec261423a8b86"
   },
   ".graphify/description-instructions/batch-077.md": {
-    "mtime": 1786487411673.4055,
-    "hash": "22239bb204cdc98b373f1dcfd126dddd"
+    "mtime": 1786709738333.0798,
+    "hash": "2b202028722b96c3a7e4f730fd2232fe"
   },
   ".graphify/description-instructions/batch-078.md": {
-    "mtime": 1786487411673.5942,
-    "hash": "a3523c8c4c2d74cf05f66296308ae9f6"
+    "mtime": 1786709738333.3066,
+    "hash": "058e193dc83f79bc8b5f5dbd4d1739da"
   },
   ".graphify/description-instructions/batch-079.md": {
-    "mtime": 1786487411673.8577,
-    "hash": "cbf4a1127fc27159b54292c3088127be"
+    "mtime": 1786709738333.5176,
+    "hash": "a4a09de6c3a8e58fde7824b3f804826e"
   },
   ".graphify/description-instructions/batch-080.md": {
-    "mtime": 1786487411674.0483,
-    "hash": "0359543877e318bebbe48c533589f146"
+    "mtime": 1786709738333.8853,
+    "hash": "71d291295957e8ceadb017eba3a2a6b8"
   },
   ".graphify/description-instructions/batch-081.md": {
-    "mtime": 1786487411674.4207,
-    "hash": "e07f7e0f2f3769aaa8e8c10c080bba46"
+    "mtime": 1786709738334.2336,
+    "hash": "013e824fcc4cbbf53c8812e90bda515f"
   },
   ".graphify/description-instructions/batch-082.md": {
-    "mtime": 1786487411674.771,
-    "hash": "90f2a5be3b03c692421097fc34eefbfd"
+    "mtime": 1786709738334.477,
+    "hash": "1feb195e85f88966396c6221db5ff010"
   },
   ".graphify/description-instructions/batch-083.md": {
-    "mtime": 1786487411677.0068,
-    "hash": "5f9852c7a738e8ec8b0ef1d7c312a8e5"
+    "mtime": 1786709738334.7124,
+    "hash": "7429b9629ae5093b78ae339a18501661"
   },
   ".graphify/description-instructions/batch-084.md": {
-    "mtime": 1786487411677.2183,
-    "hash": "7e03b52e61a4ae680eae43614a1550e9"
+    "mtime": 1786709738334.9338,
+    "hash": "6606e158c4a232f95f36262115d18475"
   },
   ".graphify/description-instructions/batch-085.md": {
-    "mtime": 1786487411677.5469,
-    "hash": "cbe14d4e4401e117814e24a62c392b04"
+    "mtime": 1786709738335.1672,
+    "hash": "985aeaf8faf98789aa91f31352778746"
   },
   ".graphify/description-instructions/batch-086.md": {
-    "mtime": 1786487411678.0117,
-    "hash": "e306922e96a633369bada41d5c5c0a7e"
+    "mtime": 1786709738335.3855,
+    "hash": "3e3362691c45038198918857254891e8"
   },
   ".graphify/description-instructions/batch-087.md": {
-    "mtime": 1786487411678.2637,
-    "hash": "bcf918d5a882e9f2d39a79423b21a542"
+    "mtime": 1786709738335.6294,
+    "hash": "b2faeb029a27ffbfcb3dc71c7b46ff4a"
   },
   ".graphify/description-instructions/batch-088.md": {
-    "mtime": 1786487411678.6064,
-    "hash": "98e49cde6ea20a0993cf478077c5bb4b"
+    "mtime": 1786709738335.8735,
+    "hash": "d9a62954404ba92f009f06c0205125e9"
   },
   ".graphify/description-instructions/batch-089.md": {
-    "mtime": 1786487411678.9292,
-    "hash": "db5d3e66e3bf0fee169de33eae993975"
+    "mtime": 1786709738336.1033,
+    "hash": "21a50ca68ea31e39feb4a05827135646"
   },
   ".graphify/description-instructions/batch-090.md": {
-    "mtime": 1786487411679.1472,
-    "hash": "1889b8faa470a888537dde49b7e71892"
+    "mtime": 1786709738336.4617,
+    "hash": "c1f86212b3452c6edf1764047b7b6d7f"
   },
   ".graphify/description-instructions/batch-091.md": {
-    "mtime": 1786487411679.3667,
-    "hash": "c902e0d0f5b9f88c59afb27fbee27fb4"
+    "mtime": 1786709738336.7114,
+    "hash": "6164b54d0cee314baabeaef7cf664528"
   },
   ".graphify/description-instructions/batch-092.md": {
-    "mtime": 1786487411679.585,
-    "hash": "fd27a79a28e3421736235a4f87ef6964"
+    "mtime": 1786709738336.9465,
+    "hash": "e4a9943ae24c1afe4c79db8827fb42b9"
   },
   ".graphify/description-instructions/batch-093.md": {
-    "mtime": 1786487411680.0886,
-    "hash": "01d35ca178454a76a36b1b8b32149724"
+    "mtime": 1786709738337.172,
+    "hash": "a6a0b8e8804de318535ecb7925ff86ce"
   },
   ".graphify/description-instructions/batch-094.md": {
-    "mtime": 1786487411680.4302,
-    "hash": "bbe600ab2dbe3bfff533c9b95ef36860"
+    "mtime": 1786709738337.411,
+    "hash": "75f90f9bf16cb806ea5cc128c3901b46"
   },
   ".graphify/description-instructions/batch-095.md": {
-    "mtime": 1786487411680.6287,
-    "hash": "525e6cb5c178796e789b39776972ef6d"
+    "mtime": 1786709738337.6404,
+    "hash": "228001188d642d34ffa4406d7e2c1f9a"
   },
   ".graphify/description-instructions/batch-096.md": {
-    "mtime": 1786487411680.8577,
-    "hash": "96da5ad63e7763f06e4875dc8b29b1df"
+    "mtime": 1786709738338.0618,
+    "hash": "a70d5c96d8c9e29d56ba21e389401ef1"
   },
   ".graphify/description-instructions/batch-097.md": {
-    "mtime": 1786487411681.0461,
-    "hash": "37c8a32f49981a64d642ce1cfa7c6bde"
+    "mtime": 1786709738338.297,
+    "hash": "f895534db85d51a6a9a18154995683dd"
   },
   ".graphify/description-instructions/batch-098.md": {
-    "mtime": 1786487411681.2751,
-    "hash": "5cedae39499d3623bdc635e1cf781b08"
+    "mtime": 1786709738338.5295,
+    "hash": "e96a5f63b0b77cb70a7c5a8d4b8a6cfb"
   },
   ".graphify/description-instructions/batch-099.md": {
-    "mtime": 1786487411681.4734,
-    "hash": "d7ef08ee9b1fcc390ced2acf91379c78"
+    "mtime": 1786709738338.7622,
+    "hash": "9642fb6485b18382980e55837ce37ef4"
   },
   ".graphify/description-instructions/batch-100.md": {
-    "mtime": 1786487411681.7102,
-    "hash": "88bb9f8f4cc4b9c3006d15c81d3a477c"
+    "mtime": 1786709738339.002,
+    "hash": "84bc942c7bdb600f854694a7d28af581"
   },
   ".graphify/description-instructions/batch-101.md": {
-    "mtime": 1786487411681.9272,
-    "hash": "a1d14625365967aa12443ef47508cc3f"
+    "mtime": 1786709738339.2402,
+    "hash": "f308ffa4194528389928e9eeee540a5c"
   },
   ".graphify/description-instructions/batch-102.md": {
-    "mtime": 1786487411682.1353,
-    "hash": "9ddbfaa0a4c70cad08dff6657bfe9f03"
+    "mtime": 1786709738339.4785,
+    "hash": "3329a9a503ded6503e151e7cd07ac886"
   },
   ".graphify/description-instructions/batch-103.md": {
-    "mtime": 1786487411682.3533,
-    "hash": "eef40288c316ce5f0cad9172586115a7"
+    "mtime": 1786709738339.7158,
+    "hash": "2d2437e13e214a9eee9a39b1aa5693d3"
   },
   "TESTING_PLAN.md": {
     "mtime": 1784808789638.5012,
@@ -2168,64 +2168,64 @@
     "hash": "29a15baf74dfbb9dec46e729cb892e68"
   },
   ".graphify/description-instructions/batch-104.md": {
-    "mtime": 1786487411682.5828,
-    "hash": "5932d32b2e1bdb2d349540f3404ca196"
+    "mtime": 1786709738339.9521,
+    "hash": "58755bcee54e49d218596a8199f1cab8"
   },
   ".graphify/description-instructions/batch-105.md": {
-    "mtime": 1786487411682.9055,
-    "hash": "38c02dfbb4bd9d78ee8aea5da6c4773f"
+    "mtime": 1786709738340.2056,
+    "hash": "e5815d28b883285450502965cfa093b5"
   },
   ".graphify/description-instructions/batch-106.md": {
-    "mtime": 1786487411683.1248,
-    "hash": "512485b8a43bccc4f085fc802497f96f"
+    "mtime": 1786709738340.5854,
+    "hash": "efdb5d7ad316cdf63ef028b72e6432bd"
   },
   ".graphify/description-instructions/batch-107.md": {
-    "mtime": 1786487411683.3293,
-    "hash": "fa97a74109c92f5cca962b76079c336a"
+    "mtime": 1786709738340.8186,
+    "hash": "c69915aa6d668e41260436408acc19c3"
   },
   ".graphify/description-instructions/batch-108.md": {
-    "mtime": 1786487411683.5293,
-    "hash": "663f05fcbf557baaffced543d53e4355"
+    "mtime": 1786709738341.0464,
+    "hash": "a8b9acc33a825c83ee70eb50eb4c04a5"
   },
   ".graphify/description-instructions/batch-109.md": {
-    "mtime": 1786487411683.7656,
-    "hash": "acfa1450c6c68ef7db528472a09870af"
+    "mtime": 1786709738341.2864,
+    "hash": "a13593aedd58531974c7b199a9ed0f32"
   },
   ".graphify/description-instructions/batch-110.md": {
-    "mtime": 1786487411683.979,
-    "hash": "771d6ad8c2fb8d5f5a4e7ad3e17ceec3"
+    "mtime": 1786709738341.5295,
+    "hash": "34a6c654a9d07b8854d97c3459b03d4f"
   },
   ".graphify/description-instructions/batch-111.md": {
-    "mtime": 1786487411684.3618,
-    "hash": "f7c1bcea5d00c9aaf2e81f51a28d1ec5"
+    "mtime": 1786709738341.8667,
+    "hash": "5da39aa1c1cb448396733b952ddcf8c5"
   },
   ".graphify/description-instructions/batch-112.md": {
-    "mtime": 1786487411684.8171,
-    "hash": "e0ebbcd3869d1e56a77cb43fcf3ff631"
+    "mtime": 1786709738342.2036,
+    "hash": "7574a7a053ac1bb7fc06de4ec6bcc0ce"
   },
   ".graphify/description-instructions/batch-113.md": {
-    "mtime": 1786487411685.102,
-    "hash": "21452e6e40f3868fff8d287143de91f9"
+    "mtime": 1786709738342.4392,
+    "hash": "6452fdf7906f9f99ca1ef86ec6110e95"
   },
   ".graphify/description-instructions/batch-114.md": {
-    "mtime": 1786487411685.356,
-    "hash": "bb2caf25652d84492237a3893cfccd30"
+    "mtime": 1786709738342.693,
+    "hash": "e26f977ca96c3035c7b87f43e1370eee"
   },
   ".graphify/description-instructions/batch-115.md": {
-    "mtime": 1786487411685.5542,
-    "hash": "5909ccf4a75145f9c34e95eac8ebcae3"
+    "mtime": 1786709738343.0022,
+    "hash": "aab99849f01c7c76f610a53d97c647cc"
   },
   ".graphify/description-instructions/batch-116.md": {
-    "mtime": 1786487411685.785,
-    "hash": "a2e810541d9e684c9e100ff597946954"
+    "mtime": 1786709738343.2437,
+    "hash": "c15d3a1c3c604c25e9498d19c45ceba3"
   },
   ".graphify/description-instructions/batch-117.md": {
-    "mtime": 1786487411686.2537,
-    "hash": "1ce567554d1e00539ae392ea382f2407"
+    "mtime": 1786709738343.4666,
+    "hash": "b099d5f800469614ede56212eaddfe4a"
   },
   ".graphify/description-instructions/batch-118.md": {
-    "mtime": 1786487411686.567,
-    "hash": "a11d619ab75872dbbf1e0ac51cad0094"
+    "mtime": 1786709738343.7087,
+    "hash": "77b18ca688eb35ca2cd84bd7958774e4"
   },
   "LEARNING_PLAN.md": {
     "mtime": 1785100549312.1023,
@@ -2424,52 +2424,52 @@
     "hash": "380cc4a20cd550abff2bfea779aae0dd"
   },
   ".graphify/description-instructions/batch-119.md": {
-    "mtime": 1786487411686.9253,
-    "hash": "c8e9fb1276e5968ad5a24128c8f8e6bd"
+    "mtime": 1786709738344.118,
+    "hash": "a3ea9f736af0787a9b099f3dbb5b9f54"
   },
   ".graphify/description-instructions/batch-120.md": {
-    "mtime": 1786487411687.1536,
-    "hash": "1137eba7680af35f64f18a11a09081bd"
+    "mtime": 1786709738346.3696,
+    "hash": "8204f675d684d02f5e6da729dfc24798"
   },
   ".graphify/description-instructions/batch-121.md": {
-    "mtime": 1786487411687.6294,
-    "hash": "f11e318026ee36dcd0a2bb3bcd26bf0d"
+    "mtime": 1786709738346.6372,
+    "hash": "f9d367a11788109f5849668b828d331e"
   },
   ".graphify/description-instructions/batch-122.md": {
-    "mtime": 1786487411687.8584,
-    "hash": "a48585fab974c6a92d244dcba73b3005"
+    "mtime": 1786709738346.866,
+    "hash": "cb434d46e648d9ecb284ee6df3ea1995"
   },
   ".graphify/description-instructions/batch-123.md": {
-    "mtime": 1786487411688.1897,
-    "hash": "c6c4e73d33a24482e65bdf49b7beb214"
+    "mtime": 1786709738347.0784,
+    "hash": "47e28e081d93472e88e252c0c2a499b9"
   },
   ".graphify/description-instructions/batch-124.md": {
-    "mtime": 1786487411688.4924,
-    "hash": "f8c6cb6a6251a943ed72f6262e47fcca"
+    "mtime": 1786709738347.2834,
+    "hash": "6b264fc4295b57ce97e352fa6ac5d18d"
   },
   ".graphify/description-instructions/batch-125.md": {
-    "mtime": 1786487411688.7644,
-    "hash": "03d7756da3099deeea23b453080b959a"
+    "mtime": 1786709738347.4973,
+    "hash": "44d3ed2c29d5df94b4baf8bb9d297b44"
   },
   ".graphify/description-instructions/batch-126.md": {
-    "mtime": 1786487411688.9805,
-    "hash": "208564d458e016af32bf10dc3bb3bfa4"
+    "mtime": 1786709738347.7112,
+    "hash": "6b703b92f90fb87a057178770102cece"
   },
   ".graphify/description-instructions/batch-127.md": {
-    "mtime": 1786487411689.322,
-    "hash": "f3192a3b357b48094da62c7e3672fdd2"
+    "mtime": 1786709738347.9626,
+    "hash": "8d6b2e627b969ff9f1ca21ba5f94b2b4"
   },
   ".graphify/description-instructions/batch-128.md": {
-    "mtime": 1786487411689.5417,
-    "hash": "99f59bff2f6218fdcde476afde678ba9"
+    "mtime": 1786709738348.5337,
+    "hash": "e99841e3bb32294427dfc76d0f023598"
   },
   ".graphify/description-instructions/batch-129.md": {
-    "mtime": 1786487411689.7625,
-    "hash": "a4d93dfed03cc39712b6bf12f2f3ddec"
+    "mtime": 1786709738348.7812,
+    "hash": "43982fbf6949a9caa45ba65ffca61b51"
   },
   ".graphify/description-instructions/batch-130.md": {
-    "mtime": 1786487411689.9856,
-    "hash": "589fb00fa272e603bd90d9b1bcda0116"
+    "mtime": 1786709738349.0437,
+    "hash": "b13c780412269e57ca5d09b70905b6ac"
   },
   "docs/superpowers/plans/2026-08-05-posture-patch-comparison-scorecard.md": {
     "mtime": 1785913020385.063,
@@ -2492,143 +2492,591 @@
     "hash": "589bef4687ed1958a239910acf589514"
   },
   ".graphify/description-instructions/batch-131.md": {
-    "mtime": 1786487411690.2063,
-    "hash": "1a4e7be0d92fd91f6dfe4813d18db5b4"
+    "mtime": 1786709738349.3967,
+    "hash": "1bcc6d70045b71d1510e7ed08b8bb40e"
   },
   ".graphify/description-instructions/batch-132.md": {
-    "mtime": 1786487411690.5503,
-    "hash": "8e7f2050cd0769f4940cd54fb5f954d9"
+    "mtime": 1786709738349.8508,
+    "hash": "ce06503f25dec1a945c35923f7c84f63"
   },
   ".graphify/description-instructions/batch-133.md": {
-    "mtime": 1786487411690.8953,
-    "hash": "1bb874c8a4234cc7a4238203664927df"
+    "mtime": 1786709738350.101,
+    "hash": "769915cb0245cf9afb5356fa03ad122b"
   },
   ".graphify/description-instructions/batch-134.md": {
-    "mtime": 1786487411691.3447,
-    "hash": "1dc1eaa15055ec023042eab14dcf99aa"
+    "mtime": 1786709738350.3535,
+    "hash": "5738286d3abc5cbe192e2f2ab4008e05"
   },
   "manager/backend/alembic/versions/0020_finding_resolution_lifecycle.py": {
-    "mtime": 1786397241400.2927,
+    "mtime": 1786624017106.2893,
     "hash": "8ab2a5fd686833ff42a48c17346add87"
   },
   "manager/backend/alembic/versions/0021_finding_verification.py": {
-    "mtime": 1786398328919.3425,
+    "mtime": 1786624017106.738,
     "hash": "40d269ea529ae5720e600e027086c6ae"
   },
   "manager/backend/app/ai/verification_graph.py": {
-    "mtime": 1786398410274.6243,
+    "mtime": 1786624017107.384,
     "hash": "9ad5980b0214107725e3b28aadfd3e3d"
   },
   "manager/backend/app/detection/resolution.py": {
-    "mtime": 1786428765156.0867,
+    "mtime": 1786624017109.8293,
     "hash": "2f2678b03f01fc835ad14ed1ab7f1732"
   },
   "manager/backend/app/detection/verification.py": {
-    "mtime": 1786398386546.267,
+    "mtime": 1786624017110.3125,
     "hash": "ed51f0e07fcf51910a6abc8658f6472e"
   },
   "manager/backend/tests/test_engine_bridge_regression.py": {
-    "mtime": 1786397525876.338,
+    "mtime": 1786624017118.7356,
     "hash": "8847d2dc27d6842b9ea7258fd569357d"
   },
   "manager/backend/tests/test_engine_bridge_resolution.py": {
-    "mtime": 1786397430107.5833,
+    "mtime": 1786624017119.0793,
     "hash": "dae79616da95ee5b5f7cd0897f182c2b"
   },
   "manager/backend/tests/test_finding_resolution_schema.py": {
-    "mtime": 1786397209152.5942,
+    "mtime": 1786624017120.5527,
     "hash": "6ec4c26c813b5a3bdd4a503a59408a72"
   },
   "manager/backend/tests/test_finding_verification_schema.py": {
-    "mtime": 1786398308097.973,
+    "mtime": 1786624017121.5874,
     "hash": "265c1c431041ea8c534e2be36de8ae2e"
   },
   "manager/backend/tests/test_resolution_apply.py": {
-    "mtime": 1786397358412.509,
+    "mtime": 1786624017122.3354,
     "hash": "1b42364a78d14b4fe366595d2763c83f"
   },
   "manager/backend/tests/test_resolution_coverage.py": {
-    "mtime": 1786397281501.9114,
+    "mtime": 1786624017123.0278,
     "hash": "7239f91cdc61248c9f6e036b54d05684"
   },
   "manager/backend/tests/test_resolution_decision.py": {
-    "mtime": 1786397318103.1663,
+    "mtime": 1786624017123.6072,
     "hash": "5f29b2a129cf9498f3be788eb7e400b0"
   },
   "manager/backend/tests/test_verification_core.py": {
-    "mtime": 1786398347409.7783,
+    "mtime": 1786624017125.6096,
     "hash": "c1dc69f0d8102aea176bddca745869c0"
   },
   "manager/backend/tests/test_verification_graph.py": {
-    "mtime": 1786398401681.4583,
+    "mtime": 1786624017125.9827,
     "hash": "a90dde905b22fca50614f99b12f223e7"
   },
   "manager/backend/tests/test_verification_llm.py": {
-    "mtime": 1786398375923.886,
+    "mtime": 1786624017126.624,
     "hash": "2da1ee05f952722ed2bcf6d10d27dd16"
   },
   "manager/backend/alembic/versions/0022_validation_requests.py": {
-    "mtime": 1786428596577.87,
+    "mtime": 1786624017107.0476,
     "hash": "2a44d17ed36329168f42071ccb0c6a1f"
   },
   "manager/backend/app/detection/active_validation.py": {
-    "mtime": 1786428533795.9321,
+    "mtime": 1786624017108.485,
     "hash": "94df05b86c79e2596c644be5e833a8e9"
   },
   "manager/backend/app/models/validation_request.py": {
-    "mtime": 1786428575065.6787,
+    "mtime": 1786624017112.633,
     "hash": "f0a547798175bdf38a25100c10378ed5"
   },
   "manager/backend/app/services/risk_rank.py": {
-    "mtime": 1786428743418.5444,
+    "mtime": 1786624017115.524,
     "hash": "cf2cb6a646d8884f6333bf7375c474c1"
   },
   "manager/backend/tests/test_active_validation_escalation.py": {
-    "mtime": 1786428501875.254,
+    "mtime": 1786624017117.7896,
     "hash": "69ac474508da6d39bdda75cf1127d5b0"
   },
   "manager/backend/tests/test_active_validation_interpret.py": {
-    "mtime": 1786428526031.3782,
+    "mtime": 1786624017118.1301,
     "hash": "2c1bb776af341f268ce5f5eb060f0116"
   },
   "manager/backend/tests/test_engine_bridge_verification.py": {
-    "mtime": 1786398484877.436,
+    "mtime": 1786624017119.5012,
     "hash": "72068cacc60e1b4477860d3c7f8c925e"
   },
   "manager/backend/tests/test_finding_risk_rank_api.py": {
-    "mtime": 1786428781929.098,
+    "mtime": 1786624017120.858,
     "hash": "64c922f7b105137a4456932db8269642"
   },
   "manager/backend/tests/test_finding_verification_api.py": {
-    "mtime": 1786398574925.8884,
+    "mtime": 1786624017121.2742,
     "hash": "4b3106e018189b919a9f416c5ebf7344"
   },
   "manager/backend/tests/test_manual_reopen.py": {
-    "mtime": 1786428757616.9517,
+    "mtime": 1786624017121.9104,
     "hash": "20587c54e29b20eb127ddfc170824981"
   },
   "manager/backend/tests/test_risk_rank.py": {
-    "mtime": 1786428733619.563,
+    "mtime": 1786624017123.9143,
     "hash": "24a70950b58edd654d042957315dacd8"
   },
   "manager/backend/tests/test_validation_request_schema.py": {
-    "mtime": 1786428563231.8433,
+    "mtime": 1786624017125.2078,
     "hash": "983e24c6eda04eaa9e3080ff39ea8a0f"
   },
   "docs/superpowers/plans/2026-08-11-active-validation.md": {
-    "mtime": 1786428493061.692,
-    "hash": "5a1a181f02001a7e976877bc02ba0fbb"
+    "mtime": 1786624017098.7698,
+    "hash": "8f881a41515cc82661bdc688297bb44e"
   },
   "docs/superpowers/plans/2026-08-11-passive-verification-layer.md": {
-    "mtime": 1786398297412.0378,
+    "mtime": 1786624017100.0535,
     "hash": "6304e842126722cb6e0f270ee3c52ee8"
   },
   "docs/superpowers/plans/2026-08-11-risk-rank-and-lifecycle-ui.md": {
-    "mtime": 1786428724045.3376,
-    "hash": "464a692390f2b17e5b28baf935ac8420"
+    "mtime": 1786624017100.8523,
+    "hash": "746546e42b3a88119ab9c1f3983ebabd"
   },
   "manager/backend/tests/test_finding_reopen_endpoint.py": {
-    "mtime": 1786445513623.5823,
+    "mtime": 1786624017120.2405,
     "hash": "c877c10786233c438a30f45bddde797c"
+  },
+  "manager/backend/app/routers/validation.py": {
+    "mtime": 1786624017114.4812,
+    "hash": "c5ed23a3819982a247b219c774a8e5be"
+  },
+  "manager/backend/app/services/validation_ingest.py": {
+    "mtime": 1786624017115.8655,
+    "hash": "f655d2f1cb79149096d4fe7eea18781c"
+  },
+  "manager/backend/tests/test_finding_out_computed.py": {
+    "mtime": 1786624017119.8452,
+    "hash": "8fc5595bf911db2abc5aebb91f2370d8"
+  },
+  "manager/backend/tests/test_validation_endpoints.py": {
+    "mtime": 1786624017124.366,
+    "hash": "bae1b1f279025313824fb010719ce78f"
+  },
+  "manager/backend/tests/test_validation_ingest.py": {
+    "mtime": 1786624017124.8933,
+    "hash": "fd980085300deb0f033debfbf0be8a54"
+  },
+  "manager/detection_engine/tests/test_ai_normalizer.py": {
+    "mtime": 1786624017128.2954,
+    "hash": "bc1f5ea7001b3dc981c9ebe245829f6e"
+  },
+  "manager/detection_engine/tests/test_loaders.py": {
+    "mtime": 1786624017128.8784,
+    "hash": "85bf0425eded173b3d9ffdd89224d393"
+  },
+  "manager/detection_engine/tests/test_perf_optimization.py": {
+    "mtime": 1786624017129.48,
+    "hash": "c2f32e43c5c6e84c4f6f646c40b771d3"
+  },
+  "manager/detection_engine/tests/test_pipeline.py": {
+    "mtime": 1786624017129.9824,
+    "hash": "23f5599ffe7688ca9ab79986f0392f8a"
+  },
+  "manager/frontend/app/api/findings/[id]/reopen/route.ts": {
+    "mtime": 1786624017131.8904,
+    "hash": "3ea1df55d77be4c1d9fe8991d9152b91"
+  },
+  "portscan.py": {
+    "mtime": 1786624017135.932,
+    "hash": "05e689e060b5022b9c3a144a59c2490e"
+  },
+  "probe/main_scripts/__init__.py": {
+    "mtime": 1786624017143.2932,
+    "hash": "e7e902e942de79485019916fd38958a1"
+  },
+  "probe/main_scripts/db_scanner.py": {
+    "mtime": 1786624017143.6057,
+    "hash": "f1ef7f437b84983b77bb6b118e5a5fc3"
+  },
+  "probe/main_scripts/delta_scanner.py": {
+    "mtime": 1786624017144.101,
+    "hash": "221e7d2cb0b77e8c9ff31839ac2998b3"
+  },
+  "probe/main_scripts/device_classifier.py": {
+    "mtime": 1786657794800.0408,
+    "hash": "692f9c557e9d4b7b58d405dcfabce7ec"
+  },
+  "probe/main_scripts/findings.py": {
+    "mtime": 1786657575234.2192,
+    "hash": "6e6888fc2a823b4e377aa9e5c1cb2055"
+  },
+  "probe/main_scripts/host_discovery.py": {
+    "mtime": 1786624017145.7874,
+    "hash": "7bfe90257323f58d714eb81175d83c77"
+  },
+  "probe/main_scripts/iot_scanner.py": {
+    "mtime": 1786624017146.2087,
+    "hash": "fad930f1545ca01cccca67ace0921e10"
+  },
+  "probe/main_scripts/ja4x.py": {
+    "mtime": 1786624017146.9065,
+    "hash": "34a7e2783110ba7949cd71e0f2ce7135"
+  },
+  "probe/main_scripts/mass_scan.py": {
+    "mtime": 1786624017147.2212,
+    "hash": "55819bd88f79e8396c0941f981fe17b0"
+  },
+  "probe/main_scripts/mcp_ai_scanner.py": {
+    "mtime": 1786624017147.5205,
+    "hash": "45ee44f157ee3ec4eb3b4fc2cd34431c"
+  },
+  "probe/main_scripts/mobile_scanner.py": {
+    "mtime": 1786624017148.0642,
+    "hash": "578c8e8c49264c09ddadef8bb5abdebd"
+  },
+  "probe/main_scripts/nmap_wrapper.py": {
+    "mtime": 1786624017148.284,
+    "hash": "67a59035dc24dfe23e37657117c35982"
+  },
+  "probe/main_scripts/os_fingerprint.py": {
+    "mtime": 1786624017149.1787,
+    "hash": "b710f02ea6282c090561e09fc09af5e8"
+  },
+  "probe/main_scripts/passive_collector.py": {
+    "mtime": 1786624017149.5244,
+    "hash": "8c24b8652f4326bfcd1dcc2acdd8c7af"
+  },
+  "probe/main_scripts/port_scanner.py": {
+    "mtime": 1786625023196.7148,
+    "hash": "af18dfdfebcd6327ddfd2455c40354de"
+  },
+  "probe/main_scripts/run_all.py": {
+    "mtime": 1786624017151.448,
+    "hash": "7b56cb09f3bc159a12d4dcf984d2ed96"
+  },
+  "probe/main_scripts/scan_funnel.py": {
+    "mtime": 1786624017151.8577,
+    "hash": "f850e36a9562a96f9edf5e6e856e2b0f"
+  },
+  "probe/main_scripts/scanner_base.py": {
+    "mtime": 1786624017152.4753,
+    "hash": "12133c581bf0c427f4851adb5bcea7ca"
+  },
+  "probe/main_scripts/service_banner.py": {
+    "mtime": 1786626491597.0354,
+    "hash": "1b3adf7271d9f93d5433d2aa57ee50fd"
+  },
+  "probe/main_scripts/smb_scanner.py": {
+    "mtime": 1786624017154.4556,
+    "hash": "8b5b814ee3170d6a8203e8cf56f131bd"
+  },
+  "probe/main_scripts/snmp_scanner.py": {
+    "mtime": 1786624017155.024,
+    "hash": "643d60e6fdd0d6962f9cabb0f7eb7823"
+  },
+  "probe/main_scripts/ssh_collector.py": {
+    "mtime": 1786624017155.5105,
+    "hash": "878b6afd06ea1c8c756931e9509da2a0"
+  },
+  "probe/main_scripts/syn_scanner.py": {
+    "mtime": 1786624017156.005,
+    "hash": "a50b16676d3adfbb92827c1af32f6e49"
+  },
+  "probe/main_scripts/tls_fingerprint.py": {
+    "mtime": 1786638099917.4072,
+    "hash": "86467cfef3c2294409910bcfadd23b44"
+  },
+  "probe/main_scripts/tls_scanner.py": {
+    "mtime": 1786624017157.01,
+    "hash": "b3dcc137a910c4dc9bd611b3f312c405"
+  },
+  "probe/main_scripts/udp_scanner.py": {
+    "mtime": 1786624017157.4424,
+    "hash": "7a31eb8b812432dc356833617498c48c"
+  },
+  "probe/main_scripts/vantage_matrix.py": {
+    "mtime": 1786624017158.1328,
+    "hash": "06cf852fce1ab2e1d103a9f9a6695c70"
+  },
+  "probe/main_scripts/web_scanner.py": {
+    "mtime": 1786624017158.2776,
+    "hash": "cf20c2ff1abba987572fadc1f17cb9a4"
+  },
+  "probe/main_scripts/windows_collector.py": {
+    "mtime": 1786624017158.4333,
+    "hash": "8c0c8ca7df9658633ccda15e6087fe49"
+  },
+  "probe/scanner/delta_scanner.py": {
+    "mtime": 1786683706085.848,
+    "hash": "221e7d2cb0b77e8c9ff31839ac2998b3"
+  },
+  "probe/scanner/iot_scanner.py": {
+    "mtime": 1786683706095.0105,
+    "hash": "fad930f1545ca01cccca67ace0921e10"
+  },
+  "probe/scanner/mobile_scanner.py": {
+    "mtime": 1786683706099.2039,
+    "hash": "578c8e8c49264c09ddadef8bb5abdebd"
+  },
+  "probe/scanner/os_fingerprint.py": {
+    "mtime": 1786683706101.6917,
+    "hash": "b710f02ea6282c090561e09fc09af5e8"
+  },
+  "probe/scanner/scan_funnel.py": {
+    "mtime": 1786683706106.002,
+    "hash": "f850e36a9562a96f9edf5e6e856e2b0f"
+  },
+  "probe/scanner/syn_scanner.py": {
+    "mtime": 1786683706111.0608,
+    "hash": "a50b16676d3adfbb92827c1af32f6e49"
+  },
+  "probe/scanner/tls_fingerprint.py": {
+    "mtime": 1786683706111.5615,
+    "hash": "86467cfef3c2294409910bcfadd23b44"
+  },
+  "probe/tests/test_adaptive_rate.py": {
+    "mtime": 1786624017340.174,
+    "hash": "6b6e5618f58fc9ca3b55e7af15f20dfd"
+  },
+  "probe/tests/test_async_udp.py": {
+    "mtime": 1786683764431.485,
+    "hash": "9335e84fcae2f52b8e89039adc19291e"
+  },
+  "probe/tests/test_host_discovery_mobile.py": {
+    "mtime": 1786624017341.0564,
+    "hash": "11a279775261e39d41aad56defb05245"
+  },
+  "probe/tests/test_main_scripts_correlation.py": {
+    "mtime": 1786624017342.2124,
+    "hash": "1d608257a58175b2431852fff83baf4a"
+  },
+  "probe/tests/test_main_scripts_coverage.py": {
+    "mtime": 1786624017342.669,
+    "hash": "d98c573190c0ac60779aa339c29a16d2"
+  },
+  "probe/tests/test_main_scripts_device.py": {
+    "mtime": 1786657857624.4353,
+    "hash": "a543cc67987cfd3819cdae2cd5317a88"
+  },
+  "probe/tests/test_main_scripts_errno.py": {
+    "mtime": 1786624017343.9558,
+    "hash": "1755d3d53e8635773429c7aa11218ba5"
+  },
+  "probe/tests/test_main_scripts_findings.py": {
+    "mtime": 1786624017344.5679,
+    "hash": "869213d2ad465e652868a8aa873baea0"
+  },
+  "probe/tests/test_main_scripts_hardening.py": {
+    "mtime": 1786624017345.0413,
+    "hash": "640192b9005e5572616e781070be2aab"
+  },
+  "probe/tests/test_main_scripts_ja4x.py": {
+    "mtime": 1786624017345.4983,
+    "hash": "9b9819ba360010221d8f1925c8966dc4"
+  },
+  "probe/tests/test_main_scripts_statemodel.py": {
+    "mtime": 1786624017345.9395,
+    "hash": "0443468ebf84873e36a492724aae9bc1"
+  },
+  "probe/tests/test_main_scripts_vantage.py": {
+    "mtime": 1786624017346.2837,
+    "hash": "cdb94185ed661930ff437ff81b2b4411"
+  },
+  "probe/tests/test_new_scanners.py": {
+    "mtime": 1786624017347.1667,
+    "hash": "f8dfdd234acdf8deb82c20808c02f697"
+  },
+  "probe/tests/test_os_fingerprint.py": {
+    "mtime": 1786624017348.0044,
+    "hash": "c5a213d8e4d21b6e7eac13c4d9958f7b"
+  },
+  "probe/tests/test_scan_funnel.py": {
+    "mtime": 1786624017348.3003,
+    "hash": "e9f36c413039bb6062c60334a0cd433f"
+  },
+  "probe/tests/test_service_match.py": {
+    "mtime": 1786624017348.6143,
+    "hash": "90eff9b5d1276c179b462bb415d63e15"
+  },
+  "probe/tests/test_syn_scanner.py": {
+    "mtime": 1786624017349.429,
+    "hash": "26f3d76271b36a9240dbbcdf8721fb66"
+  },
+  "probe/tests/test_tls_fingerprint.py": {
+    "mtime": 1786624017349.724,
+    "hash": "7113602b4a6abff5040f2e64a4563373"
+  },
+  "probe/tests/test_tls_integration.py": {
+    "mtime": 1786624017350.5156,
+    "hash": "6c5ca966a3f0b4346123dbb62f769ba4"
+  },
+  "probe/tests/test_tls_posture.py": {
+    "mtime": 1786624017350.8462,
+    "hash": "39bc4538557eee290592230074a97076"
+  },
+  ".graphify/description-instructions/batch-135.md": {
+    "mtime": 1786709738350.609,
+    "hash": "c2204a10c1643a761620b646b79fb850"
+  },
+  ".graphify/description-instructions/batch-136.md": {
+    "mtime": 1786709738350.9758,
+    "hash": "032dc842f0f9104f28f6ca7e0f7f9187"
+  },
+  ".graphify/description-instructions/batch-137.md": {
+    "mtime": 1786709738351.2205,
+    "hash": "a4b2cf6da3f276adca4c7e81dabad013"
+  },
+  ".graphify/description-instructions/batch-138.md": {
+    "mtime": 1786709738351.4653,
+    "hash": "e0877e0e204f28796f919baa7d01a441"
+  },
+  ".graphify/description-instructions/batch-139.md": {
+    "mtime": 1786709738351.805,
+    "hash": "04f707ee79a76e9ab42dba114f57c7a4"
+  },
+  ".graphify/description-instructions/batch-140.md": {
+    "mtime": 1786709738352.0474,
+    "hash": "970f6df8b3415ff97d7204cbfb94bb3b"
+  },
+  ".graphify/description-instructions/batch-141.md": {
+    "mtime": 1786709738352.291,
+    "hash": "cc291e6f4c7b67e3ea8c0d5cf61fbb7c"
+  },
+  ".graphify/description-instructions/batch-142.md": {
+    "mtime": 1786709738352.5388,
+    "hash": "4c4bc5c7bb1f498b83dc644f5c40dce9"
+  },
+  ".graphify/description-instructions/batch-143.md": {
+    "mtime": 1786709738352.7969,
+    "hash": "d5f20111c486251ed60b8734f9d2f736"
+  },
+  "LEARNINGS.md": {
+    "mtime": 1786624017087.03,
+    "hash": "f9490e38341b42c3058f5c8ab2e9dee7"
+  },
+  "docs/pm/00-executive-summary.md": {
+    "mtime": 1786624017091.909,
+    "hash": "fc622eaead7d886cc4ad09c2249deaae"
+  },
+  "docs/pm/01-market-and-competitive-landscape.md": {
+    "mtime": 1786624017092.855,
+    "hash": "a1bd7e11cc1cbd515512d52ba0fb2f47"
+  },
+  "docs/pm/02-customer-personas-and-pain-points.md": {
+    "mtime": 1786624017094.2683,
+    "hash": "731d6ea14912550dbbc3af9374d300e3"
+  },
+  "docs/pm/03-usps-and-value-proposition.md": {
+    "mtime": 1786624017095.1548,
+    "hash": "cc508b13eeabf7cc19a11431c4e2aa71"
+  },
+  "docs/pm/04-product-improvement-roadmap.md": {
+    "mtime": 1786624017095.8074,
+    "hash": "730d7ee47ce9e00886fde5b90b09dc65"
+  },
+  "docs/pm/05-go-to-market.md": {
+    "mtime": 1786624017096.2437,
+    "hash": "9a430440a0c94c681af06cd6bb77e37d"
+  },
+  "docs/pm/README.md": {
+    "mtime": 1786624017097.1914,
+    "hash": "4536cbec3346d1e56e2d454477ca58c6"
+  },
+  "docs/superpowers/plans/2026-08-11-coverage-gated-auto-resolution.md": {
+    "mtime": 1786624017099.3374,
+    "hash": "83abf5e2ed0eea20c295818da20108ec"
+  },
+  "docs/superpowers/plans/2026-08-13-service-confirmed-findings.md": {
+    "mtime": 1786656837998.998,
+    "hash": "e2fdd54a357ab450473949a6aacee4a9"
+  },
+  "docs/superpowers/specs/2026-08-10-detection-engine-perf-optimization-design.md": {
+    "mtime": 1786624017103.4143,
+    "hash": "23d241ba90c10552e656256b36f7c5a7"
+  },
+  "docs/superpowers/specs/2026-08-10-native-host-discovery-engine-design.md": {
+    "mtime": 1786624017104.1072,
+    "hash": "4cad7d2ca136ffd9c46d9b343512ee4e"
+  },
+  "docs/superpowers/specs/2026-08-12-host-discovery-first-principles.md": {
+    "mtime": 1786624017104.5356,
+    "hash": "a5ff91dbd35b201c8f6e7b0112ea00fe"
+  },
+  "docs/superpowers/specs/2026-08-13-ja4x-tls-fingerprinting-research.md": {
+    "mtime": 1786624017105.1777,
+    "hash": "d23c5cb15b2a61c35247215513cf3970"
+  },
+  "docs/superpowers/specs/2026-08-13-probe-findings-engine-design.md": {
+    "mtime": 1786624017105.5518,
+    "hash": "3c35e72eb3fe9a51e63bd7669d8d0371"
+  },
+  "plan_after_probe.md": {
+    "mtime": 1786624017135.2402,
+    "hash": "a8782318025d26102e0d911baa5e9e93"
+  },
+  "probe/Capabilties/PROBE_ENHANCEMENT_PLAN.md": {
+    "mtime": 1786624017136.5974,
+    "hash": "cb4a617466dd17d624a35eb3fe228cd2"
+  },
+  "probe/Capabilties/assessment_playbooks/01_network_discovery.md": {
+    "mtime": 1786624017137.382,
+    "hash": "6c1a7774ac5e0fa038c96add904b9954"
+  },
+  "probe/Capabilties/assessment_playbooks/02_full_assessment.md": {
+    "mtime": 1786624017138.0808,
+    "hash": "4c6836850265b455a269e0adc477125d"
+  },
+  "probe/Capabilties/assessment_playbooks/03_external_web_triage.md": {
+    "mtime": 1786624017138.3792,
+    "hash": "476d8642a6e79fe0bf1c374d04431cc7"
+  },
+  "probe/Capabilties/assessment_playbooks/04_database_exposure.md": {
+    "mtime": 1786624017138.626,
+    "hash": "66b7e59f18f40523580c7f38ee88d000"
+  },
+  "probe/Capabilties/assessment_playbooks/05_windows_estate.md": {
+    "mtime": 1786624017138.869,
+    "hash": "e31844064577a08a24df00917f9864f4"
+  },
+  "probe/Capabilties/assessment_playbooks/06_ot_ics_passive.md": {
+    "mtime": 1786624017139.5205,
+    "hash": "000cef879576d07a3ed8d47028987f0f"
+  },
+  "probe/Capabilties/assessment_playbooks/07_ai_mcp_endpoint_sweep.md": {
+    "mtime": 1786624017139.824,
+    "hash": "61030ed4452b021cc44beff155a1f2e2"
+  },
+  "probe/Capabilties/assessment_playbooks/08_rescan_delta.md": {
+    "mtime": 1786624017140.1204,
+    "hash": "af3be3122d41ce06eda4a7f22c91915a"
+  },
+  "probe/Capabilties/assessment_playbooks/09_iot_embedded_survey.md": {
+    "mtime": 1786624017140.438,
+    "hash": "b01a75f56274b272893dfa4febf45e91"
+  },
+  "probe/Capabilties/assessment_playbooks/10_web_app_triage.md": {
+    "mtime": 1786624017141.3403,
+    "hash": "39aee585f63ca30b4401b1177c0ab645"
+  },
+  "probe/Capabilties/assessment_playbooks/11_udp_service_exposure.md": {
+    "mtime": 1786624017141.5842,
+    "hash": "7daa46837686a5d7025a1d908d2f2b22"
+  },
+  "probe/Capabilties/assessment_playbooks/12_snmp_exposure.md": {
+    "mtime": 1786624017141.9683,
+    "hash": "7dae4df8d456821525c5a9088026c889"
+  },
+  "probe/Capabilties/assessment_playbooks/13_mobile_device.md": {
+    "mtime": 1786624017142.2224,
+    "hash": "41add4dcb46fd2b6d80946b5a0b0133b"
+  },
+  "probe/Capabilties/assessment_playbooks/README.md": {
+    "mtime": 1786624017142.4902,
+    "hash": "ddad9ab60c8327cd63de38a454238d55"
+  },
+  "probe/main_scripts/README.md": {
+    "mtime": 1786624017142.9583,
+    "hash": "4c460425b1e62e5317278e9b40febe20"
+  },
+  "probe/main_scripts/plan.md": {
+    "mtime": 1786624017150.1758,
+    "hash": "72389bd5a92b100e51d19525ed1b3294"
+  },
+  "probe/tests/scan/CAPABILITY_MATRIX.md": {
+    "mtime": 1786624017326.2249,
+    "hash": "4ba473e41499006d532c7571e959ab65"
+  },
+  "probe/tests/scan/TEST_REGISTER.md": {
+    "mtime": 1786624017326.6885,
+    "hash": "063f6459634292b58f11291a5d9fa270"
+  },
+  "probe/tests/scan/usecases/README.md": {
+    "mtime": 1786624017332.8264,
+    "hash": "567cb7dda19031125294ee4aa44a6ff7"
   }
 }

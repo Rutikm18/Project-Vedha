@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, String
+from sqlalchemy import DateTime, Enum, Float, ForeignKey, String
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
@@ -26,6 +26,13 @@ class Asset(Base, TimestampMixin):
     asset_type: Mapped[AssetType] = mapped_column(
         Enum(AssetType, name="assettype"), nullable=False, server_default="server"
     )
+    # Evidence-based device role from the probe's device_classifier (populated by
+    # the device_inventory use-case). asset_type is the coarse enum; device_role
+    # keeps the classifier's own label + high-specificity detail + honest
+    # confidence so the UI can show "domain_controller (0.9)" not just "server".
+    device_role: Mapped[str | None] = mapped_column(String(40), nullable=True)
+    role_detail: Mapped[str | None] = mapped_column(String(60), nullable=True)
+    role_confidence: Mapped[float | None] = mapped_column(Float, nullable=True)
     criticality: Mapped[AssetCriticality] = mapped_column(
         Enum(AssetCriticality, name="assetcriticality"), nullable=False, server_default="medium"
     )

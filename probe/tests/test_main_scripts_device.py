@@ -81,7 +81,11 @@ class TestClassifyFromResults:
                        data={"service": "smb"}),
         ]
         r = classify_from_results(results)
-        assert r["device_type"] in (dc.WORKSTATION, dc.SERVER)
+        # 445 + 3389 each vote workstation+server equally -> a genuine tie, now
+        # reported explicitly as ambiguous instead of an arbitrary pick (Phase 23).
+        assert r["device_type"] == "ambiguous"
+        assert set(r["signals"]["tie"]) == {dc.WORKSTATION, dc.SERVER}
+        assert r["confidence"] <= 0.5
         assert r["signals"]["os_guess"] == "Windows"
         assert r["signals"]["open_tcp"] == [445, 3389]      # closed 25 excluded
         assert r["signals"]["open_udp"] == [161]            # confirmed only; 500 silence dropped

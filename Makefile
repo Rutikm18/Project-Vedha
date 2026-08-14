@@ -7,7 +7,7 @@ COMPOSE := docker compose
 # it into the backend image via the VEDHA_VERSION build arg.
 export VEDHA_VERSION := $(shell cat VERSION 2>/dev/null || echo dev)
 
-.PHONY: help doctor run full ui up up-graph up-ai api-only down logs ps migrate seed shell venv test probe-build probe-run probe-pat clean version setup-hooks aws-up aws-up-ui aws-down aws-logs aws-ps gen-env
+.PHONY: help doctor run full ui up up-graph up-ai api-only down logs ps migrate seed shell venv test probe-build probe-run probe-pat seal seal-parity clean version setup-hooks aws-up aws-up-ui aws-down aws-logs aws-ps gen-env
 
 version: ## Print the current deployed version
 	@echo $(VEDHA_VERSION)
@@ -116,6 +116,12 @@ probe-run: ## Start a local probe (joins the stack, self-registers)
 
 probe-pat: ## Mint a probe-scoped PAT (vpat_...) to deploy a real probe. ARGS="--days 90"
 	@sh scripts/issue_pat.sh $(ARGS)
+
+seal: ## Build the SEALED native-binary probe (no source/bytecode). ARGS="--hostid <id>"
+	@cd probe && ./seal-probe.sh $(ARGS)
+
+seal-parity: ## Local sealed-vs-plaintext manifest parity check (needs Docker; ~build time)
+	@bash scripts/seal_parity.sh
 
 # ── AWS / EC2 testing targets ─────────────────────────────────────────────────
 AWS_COMPOSE := docker compose --env-file .env -f manager/docker-compose.yml

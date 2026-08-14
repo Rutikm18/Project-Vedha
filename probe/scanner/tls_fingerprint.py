@@ -35,6 +35,7 @@ from .scanner_base import (
     BaseScanner, ScanResult, ScopeGuard, ResultWriter, expand_targets,
     parse_ports, resolve, setup_logging, base_argparser, main_entrypoint, LOG,
 )
+from .ja4s import compute_ja4s   # JA4S server-hello fingerprint (advanced capability)
 
 # A stable, ordered cipher list (2-byte suite codes). Position in this list gives
 # each cipher a compact code in the fingerprint. (Common TLS 1.2/1.3 suites.)
@@ -299,9 +300,16 @@ class TLSFingerprintScanner(BaseScanner):
         if digest == "0" * 62:
             return None                              # no TLS here / all silent
         responded = sum(1 for r in results if r)
+        # JA4S — one standard handshake for the modern server fingerprint.
+        # Best-effort: a failure here never drops the JARM result.
+        try:
+            ja4s = await loop.run_in_executor(
+                None, compute_ja4s, target, ip, port, self.timeout)
+        except Exception:
+            ja4s = None
         return ScanResult(
             self.name, target, port=port, proto="tcp", status="open",
-            data={"tls_fingerprint": digest, "probes_answered": responded},
+            data={"tls_fingerprint": digest, "probes_answered": responded, "ja4s": ja4s},
             evidence=f"tls fingerprint {digest} ({responded}/10 probes answered)")
 
     async def scan_target(self, target: str) -> list[ScanResult]:

@@ -264,7 +264,15 @@ async def process_job_result(
         )
         db.add(scan_result_row)
         lean = {k: v for k, v in result.items() if k != "facts"}
-        row.result = {**lean, "fact_count": len(facts), "error": error}
+        # Distil the probe's per-host completeness/health into one verdict the UI
+        # can show as a coverage banner without re-scanning the raw metrics.
+        from app.discovery.scan_health import scan_health_summary
+        row.result = {
+            **lean,
+            "fact_count": len(facts),
+            "error": error,
+            "scan_health": scan_health_summary(result),
+        }
     else:
         row.result = {**result, "error": error}
 
@@ -290,6 +298,31 @@ async def process_job_result(
                 )
         except Exception as exc:  # noqa: BLE001
             logger.warning("job.findings_failed", job_id=str(job_id), error=str(exc))
+
+        # ── Multi-probe vantage fusion (exposure_matrix) ──────────────────
+        # A3 stamped this probe's single-vantage verdict; now that a new probe's
+        # observations have landed, re-fuse ALL probes so a port any external
+        # vantage saw open is corrected to `external`. Best-effort.
+        if result.get("scan_type") == "exposure_matrix":
+            try:
+                from app.detection.exposure_fusion_service import recompute_fused_exposure
+                async with db.begin_nested():
+                    await recompute_fused_exposure(db, row.engagement_id)
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("job.exposure_fusion_failed", job_id=str(job_id), error=str(exc))
+
+        # ── Scan coverage/health (false-negative guard) ───────────────────
+        # The probe's per-host completeness/health metrics say whether this scan
+        # can be trusted. Surface a degraded/incomplete scan so a firewall-
+        # truncated run is not mistaken for a genuinely clean host.
+        try:
+            from app.discovery.finding_translator import create_scan_health_finding
+            async with db.begin_nested():
+                findings_created += await create_scan_health_finding(
+                    db, row.engagement_id, result,
+                )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("job.scan_health_failed", job_id=str(job_id), error=str(exc))
 
         # ── Durable detection via transactional outbox ─────────────────────
         # Enqueue in THIS transaction so the event commits atomically with the
@@ -319,6 +352,25 @@ async def process_job_result(
 
 # ── Private helpers ─────────────────────────────────────────────────────────
 
+def _apply_device_profile(asset, prof: dict | None) -> None:
+    """Stamp the probe's evidence-based device role onto an Asset (create/update).
+
+    None-safe and non-destructive: a missing profile is a no-op, and an
+    unmappable role (unknown/ambiguous → asset_type None) leaves the coarse
+    asset_type untouched while still recording the fine-grained role + confidence.
+    """
+    if not prof:
+        return
+    if prof.get("asset_type"):
+        asset.asset_type = prof["asset_type"]
+    if prof.get("device_role"):
+        asset.device_role = prof["device_role"]
+    if prof.get("role_detail"):
+        asset.role_detail = prof["role_detail"]
+    if prof.get("role_confidence") is not None:
+        asset.role_confidence = prof["role_confidence"]
+
+
 async def _promote_assets(
     db: AsyncSession,
     engagement_id: uuid.UUID,
@@ -332,6 +384,14 @@ async def _promote_assets(
     """
     hosts = (result or {}).get("hosts") or []
     promoted = 0
+    # Evidence-based device roles from the probe's device_inventory use-case,
+    # keyed by ip. Empty for every other scan_type — a no-op then.
+    from app.discovery.device_profile import device_profiles
+    profiles = device_profiles(result)
+    # Path-dependent reachability from the exposure_matrix use-case, keyed by
+    # (ip, proto, port). Empty for every other scan_type — a no-op then.
+    from app.discovery.exposure import service_exposure
+    exposure_map = service_exposure(result)
     # One probe result can contain multiple facts for the same host/port
     # (for example an HTTP redirect fact plus a web fingerprint fact). Keep an
     # in-batch cache so repeated ports update one Service object instead of
@@ -350,19 +410,24 @@ async def _promote_assets(
             )
         )).scalar_one_or_none()
 
+        prof = profiles.get(ip)
         if asset:
             asset.hostname = h.get("hostname") or asset.hostname
             asset.os = h.get("os") or asset.os
             asset.last_seen = datetime.now(timezone.utc)
+            _apply_device_profile(asset, prof)
         else:
             asset = Asset(
                 engagement_id=engagement_id,
                 ip_address=ip,
                 hostname=h.get("hostname"),
                 os=h.get("os"),
-                asset_type=AssetType.server,
+                # Use the classified role when the probe evidenced one, else the
+                # historical default. Never downgrade a known role to a guess.
+                asset_type=(prof["asset_type"] if prof and prof["asset_type"] else AssetType.server),
                 last_seen=datetime.now(timezone.utc),
             )
+            _apply_device_profile(asset, prof)
             db.add(asset)
             await db.flush()
             promoted += 1
@@ -406,6 +471,7 @@ async def _promote_assets(
             svc.version = p.get("version") or svc.version
             svc.cpe = cpe_str or svc.cpe
             svc.banner = p.get("banner") or svc.banner
+            svc.exposure = exposure_map.get((ip, proto, port_no)) or svc.exposure
             extra = p.get("extra_info") or p.get("data")
             if isinstance(extra, dict):
                 svc.extra_info = {**(svc.extra_info or {}), **extra}

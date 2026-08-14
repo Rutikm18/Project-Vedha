@@ -1,0 +1,43 @@
+name: probe-seal-parity
+
+# Prove the SEALED native-binary probe behaves identically to the plaintext
+# source. Nuitka compilation can silently drop a module/registration; this gate
+# builds the sealed image and compares its deterministic `manifest` against the
+# plaintext build's. A drift — or a sealed binary that can't emit clean JSON —
+# fails the job.
+#
+# Heavy (a Nuitka + LTO compile), so it runs only when the probe changes, on PRs,
+# or on demand — not on every push.
+on:
+  push:
+    branches: [main]
+    paths: ['probe/**', 'scripts/seal_parity.sh', '.github/workflows/probe-seal-parity.yml']
+  pull_request:
+    paths: ['probe/**', 'scripts/seal_parity.sh', '.github/workflows/probe-seal-parity.yml']
+  workflow_dispatch: {}
+
+# One build per ref; a newer push cancels an in-flight (expensive) compile.
+concurrency:
+  group: seal-parity-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  seal-parity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45      # Nuitka --onefile --lto can take 15–25 min on 2 cores
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install probe runtime deps (for the plaintext manifest)
+        working-directory: probe
+        run: |
+          python -m venv .venv
+          ./.venv/bin/pip install --upgrade pip
+          ./.venv/bin/pip install -r requirements-runtime.txt
+
+      - name: Sealed-vs-plaintext manifest parity
+        run: bash scripts/seal_parity.sh

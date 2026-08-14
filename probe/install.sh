@@ -11,6 +11,87 @@
 #     sudo sh install.sh --manager https://manager.example.com
 set -eu
 
+# ─────────────────────────────────────────────────────────────────────────────
+# ONE installer, two modes:
+#
+#   LOCAL  (default for a bare argument) — run the probe on THIS machine with
+#          Python. For dev / testing. Uses the PAT saved in probe.env.
+#              ./install.sh <manager-ip-or-url> [--enroll]
+#
+#   DOCKER (production) — hardened container, zero-touch device enrollment.
+#              sudo sh install.sh --docker --manager https://manager.example.com [--enroll-token vet_…]
+#
+# A bare ip/url ⇒ LOCAL; the --manager flag (or --docker) ⇒ DOCKER.
+# ─────────────────────────────────────────────────────────────────────────────
+_MODE=""
+for _a in "$@"; do
+  case "$_a" in --docker) _MODE=docker ;; --local) _MODE=local ;; esac
+done
+if [ -z "$_MODE" ]; then
+  case "${1:-}" in ""|--*) _MODE=docker ;; *) _MODE=local ;; esac
+fi
+
+if [ "$_MODE" = "local" ]; then
+  # ==== LOCAL MODE (Python-direct; folds the former run-probe.sh) ====
+  cd "$(dirname "$0")"
+  _MANAGER=""; _ENROLL=false; _TOKEN=""
+  for _a in "$@"; do
+    case "$_a" in
+      --enroll) _ENROLL=true ;;
+      --*) : ;;
+      *)
+        if [ -z "$_MANAGER" ]; then _MANAGER="$_a"
+        elif [ -z "$_TOKEN" ]; then _TOKEN="$_a"
+        fi
+        ;;
+    esac
+  done
+  if [ -z "$_MANAGER" ]; then
+    printf 'usage: %s <manager-ip-or-url> [--enroll | <enroll-token>]   (LOCAL)\n' "$0"
+    printf '   or: %s --docker --manager <url> [...]    (DOCKER)\n' "$0"
+    exit 2
+  fi
+  # Saved config (PAT, name, tuning) — the CLI arg overrides the manager URL.
+  if [ -f probe.env ]; then set -a; . ./probe.env; set +a; fi
+  case "$_MANAGER" in
+    http://*|https://*) PLATFORM_URL="$_MANAGER" ;;
+    *)                  PLATFORM_URL="http://${_MANAGER}:18080" ;;
+  esac
+  export PLATFORM_URL
+  # Zero-touch: drop any saved credential so the probe prints a pairing code.
+  if [ "$_ENROLL" = "true" ]; then
+    unset PROBE_PAT OPERATOR_TOKEN OPERATOR_EMAIL OPERATOR_PASSWORD PROBE_ENROLL_TOKEN 2>/dev/null || true
+    printf '• zero-touch enrollment: approve the printed pairing code in the dashboard\n'
+  elif [ -n "$_TOKEN" ]; then
+    # Pre-authorized, site-bound enrollment token (auto-approve).
+    export PROBE_ENROLL_TOKEN="$_TOKEN"
+  fi
+  # Local scan CEILING (safety net; the Manager still governs per-job scope).
+  if [ -z "${PROBE_NETWORK_SEGMENTS:-}" ]; then
+    _IP="$(ipconfig getifaddr en0 2>/dev/null || { hostname -I 2>/dev/null | awk '{print $1}'; } || true)"
+    if [ -n "${_IP:-}" ]; then
+      PROBE_NETWORK_SEGMENTS="${_IP%.*}.0/24"; export PROBE_NETWORK_SEGMENTS
+      printf '• auto scan-ceiling: %s (override with PROBE_NETWORK_SEGMENTS)\n' "$PROBE_NETWORK_SEGMENTS"
+    fi
+  fi
+  export PROBE_NAME="${PROBE_NAME:-$(hostname)-probe}"
+  export STATE_FILE="${STATE_FILE:-$HOME/vedha-probe/state.json}"
+  export RESULT_SPOOL_DIR="${RESULT_SPOOL_DIR:-$HOME/vedha-probe/spool}"
+  mkdir -p "$(dirname "$STATE_FILE")" "$RESULT_SPOOL_DIR"
+  # Ensure a runnable interpreter: project venv, else create it.
+  _PY=".venv/bin/python"
+  if [ ! -x "$_PY" ]; then
+    printf '• first run: creating .venv + installing runtime deps…\n'
+    python3 -m venv .venv
+    ./.venv/bin/pip install -q --upgrade pip
+    ./.venv/bin/pip install -q -r requirements-runtime.txt
+  fi
+  printf '▶ probe → %s   name=%s  scope-ceiling=%s\n' \
+    "$PLATFORM_URL" "$PROBE_NAME" "${PROBE_NETWORK_SEGMENTS:-<unset>}"
+  exec "$_PY" -m agent.agent
+fi
+
+# ==== DOCKER MODE (production; hardened container) — original installer below ====
 IMAGE="${PROBE_IMAGE:-vedha-probe:local}"       # local tag or registry path
 NAME="${PROBE_CONTAINER:-vedha-probe}"
 STATE_VOL="${PROBE_STATE_VOLUME:-vedha-probe-state}"
@@ -46,6 +127,9 @@ while [ "$#" -gt 0 ]; do
       ;;
     --insecure)
       PROBE_ALLOW_INSECURE=true
+      shift
+      ;;
+    --docker|--local)
       shift
       ;;
     --help|-h)

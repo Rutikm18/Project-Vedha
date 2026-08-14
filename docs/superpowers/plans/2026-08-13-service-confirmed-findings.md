@@ -33,10 +33,10 @@
 |---|------|-------|--------|-----------|--------|---------|
 | **1** | **Service-confirmed findings** *(this plan)* ✅ done | every scan | high | high | S | Fixes a self-identified accuracy weakness (port==service); offline-testable |
 | **2** | **Correlation findings** (NTLM-relay path, legacy-Windows surface, cleartext cluster) ✅ done | Windows nets | high | med | S | High-signal attack-path findings, pure over existing findings (`_CORRELATION_RULES`) |
-| 3 | Anonymous-access proofs (FTP anon / SMB null / Redis unauth) | many | high | med | M | Upgrades exposure med→high *confidence* with a real proof (needs small collector reads) |
-| 4 | Scan completeness invariant (Phase 3) | every scan | med | high | S | Trust: prove no silent port drops |
-| 5 | JA4S + JA4 similarity (arXiv 2410.03817) | TLS hosts | med | med | M | Extends JA4X; infra correlation |
-| 6 | Accuracy harness vs nmap (Phase 26) | — | high | med | L | Turns anti-FP claim into a published number |
+| **3** | **Unauthenticated datastore access proofs** (Redis/ES/Mongo/Memcached/CouchDB) ✅ done | many | high | high | S | Turns "port open" (info) into a **proven foothold** — Redis unauth = CRITICAL (RCE). Safe/no-creds (interprets the collected banner). `SMB null / FTP anon` remain ⏸ deferred (genuine auth attempts, need sign-off) |
+| **4** | **Scan completeness invariant (Phase 3)** ✅ done | every scan | med | high | S | Trust: SET-based completeness (`missing_ports`/`duplicate_ports`) — a skip+dup pair can no longer fake `complete:true` |
+| **5** | **JA4S server-hello fingerprint** ✅ done | TLS hosts | med | med | M | Modern server-side TLS fingerprint (FoxIO), reuses the JARM raw parser; wired into `tls_fingerprint` (best-effort) + threat-intel finding. JA4-similarity clustering remains a manager-side follow-up |
+| **6** | **Accuracy harness** ✅ done | — | high | high | M | `accuracy.py`: findings precision/recall/F1 + OPEN precision/recall + state accuracy vs a labeled corpus. Turns the anti-FP claim into a measured number; CI-runnable over fixtures |
 
 Epics 2–6 are sequenced after this; each is an independent, testable increment.
 

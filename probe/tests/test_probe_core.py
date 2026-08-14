@@ -910,17 +910,17 @@ class TestCapabilities:
 
 class TestUseCasesResolve:
     def test_valid_use_case(self):
-        st, profile = resolve("uc_discovery_only", None, {})
+        st, profile, _intensity = resolve("uc_discovery_only", None, {})
         assert st == "discovery"
         assert profile == "it"
 
     def test_full_assessment(self):
-        st, profile = resolve("uc_full_assessment", None, {})
+        st, profile, _intensity = resolve("uc_full_assessment", None, {})
         assert st == "assessment"
         assert profile == "it"
 
     def test_ot_passive(self):
-        st, profile = resolve("uc_ot_passive", None, {})
+        st, profile, _intensity = resolve("uc_ot_passive", None, {})
         assert st == "passive_discovery"
         assert profile == "ot"
 
@@ -929,17 +929,19 @@ class TestUseCasesResolve:
             resolve("uc_nonexistent", None, {})
 
     def test_fallback_to_scan_type(self):
-        st, profile = resolve(None, None, {"scan_type": "tls_scan", "profile": "iot"})
+        st, profile, _intensity = resolve(
+            None, None, {"scan_type": "tls_scan", "profile": "iot"}
+        )
         assert st == "tls_scan"
         assert profile == "iot"
 
     def test_fallback_to_job_type(self):
-        st, profile = resolve(None, "assessment", {})
+        st, profile, _intensity = resolve(None, "assessment", {})
         assert st == "assessment"
 
     def test_default_discovery(self):
-        st, profile = resolve(None, None, {})
+        st, profile, _intensity = resolve(None, None, {})
         assert st == "discovery"
 
     def test_use_cases_count(self):
-        assert len(USE_CASES) == 12
+        assert len(USE_CASES) == 15

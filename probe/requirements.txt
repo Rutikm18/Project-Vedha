@@ -6,8 +6,8 @@
 # CORE IS PURE STANDARD LIBRARY. The entire scan pipeline and every
 # unauthenticated network scanner run with NO third-party packages:
 #
-#   pipeline.py            staged it/iot/ot orchestrator
-#   run_scan.py            per-scanner orchestrator
+#   workflow/workflow_engine.py    staged it/iot/ot orchestrator
+#   agent/engine.py                per-scan-type dispatch
 #   scanner/passive_collector.py   listen-only OT discovery
 #   scanner/host_discovery, port_scanner, service_banner, tls_scanner,
 #   scanner/udp_scanner, smb_scanner, snmp_scanner, web_scanner,

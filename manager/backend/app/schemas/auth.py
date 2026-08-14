@@ -24,6 +24,9 @@ class CurrentUser(BaseModel):
     user_id: uuid.UUID
     tenant_id: uuid.UUID
     role: str
+    # Set only for role == "client": the one engagement this login may access.
+    # The scoping boundary for the customer portal — enforced server-side.
+    client_engagement_id: uuid.UUID | None = None
     auth_type: str = "jwt"
     pat_id: uuid.UUID | None = None
     scopes: tuple[str, ...] = ()

@@ -26,6 +26,10 @@ class Service(Base, TimestampMixin):
     version: Mapped[str | None] = mapped_column(String(100), nullable=True)
     cpe: Mapped[str | None] = mapped_column(String(255), nullable=True)
     banner: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # Path-dependent reachability verdict from the probe's exposure_matrix
+    # use-case: external | internal_only | ambiguous | not_exposed. Drives
+    # severity escalation — an externally reachable service is higher risk.
+    exposure: Mapped[str | None] = mapped_column(String(20), nullable=True)
     extra_info: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
 
     asset: Mapped["Asset"] = relationship(lazy="noload")

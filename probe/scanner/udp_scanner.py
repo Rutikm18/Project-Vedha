@@ -330,10 +330,15 @@ class UDPScanner(BaseScanner):
                               evidence="ICMP port-unreachable (closed)")
 
         if data is None:
+            # Silence is genuinely ambiguous on UDP: no reply can mean the port
+            # is open and the service ignored our probe, OR a firewall silently
+            # dropped it. We MUST NOT collapse that to a definitive "filtered"
+            # (the prior bug) — the honest state is the open|filtered pair.
             return ScanResult(self.name, target, port=port, proto="udp",
-                              status="filtered",
-                              data={"service_guess": svc, "responded": False},
-                              evidence="no reply (open|filtered)")
+                              status="open|filtered",
+                              data={"service_guess": svc, "responded": False,
+                                    "reason": "no_response"},
+                              evidence="no UDP or ICMP response (open|filtered)")
 
         result_data: dict = {"service": svc, "responded": True,
                              "reply_bytes": len(data),

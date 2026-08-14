@@ -27,6 +27,7 @@ from .scanner_base import (
     BaseScanner, ScanResult, ScopeGuard, ResultWriter, expand_targets,
     parse_ports, setup_logging, base_argparser, main_entrypoint,
 )
+from .ja4x import ja4x_from_cert   # JA4X X.509 fingerprint (advanced capability)
 
 # Suppress the stdlib DeprecationWarning for TLS 1.0/1.1 version names once at
 # import. We probe those versions deliberately to learn whether servers still
@@ -215,6 +216,10 @@ def _parse_cert_der(der: bytes | None) -> dict:
         "expired": not_after < datetime.now(timezone.utc),
         "self_signed": cert.subject == cert.issuer,
         "sha256_fingerprint": fp,
+        # JA4X — structural certificate fingerprint (FoxIO JA4+ suite); computed
+        # from the cert already parsed, no extra probing. Identifies the tooling/CA
+        # that minted the cert and correlates infrastructure.
+        "ja4x": ja4x_from_cert(cert),
         "serial_hex": format(cert.serial_number, "x"),
     }
 

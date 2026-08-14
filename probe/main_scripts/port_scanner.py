@@ -68,7 +68,8 @@ import asyncio
 import ipaddress
 import socket
 import time
-from dataclasses import dataclass
+from collections import Counter
+from dataclasses import dataclass, field
 
 from .scanner_base import (
     BaseScanner, ScanResult, ScopeGuard, ResultWriter, expand_targets,
@@ -169,12 +170,19 @@ class ScanMetrics:
     retries: int = 0
     local_resource_errors: int = 0
     duration_s: float = 0.0
+    # Set-based completeness (Epic 4): the ports we were asked to scan, and a
+    # per-port hit counter. Count-based completeness can be fooled by a skip+dup
+    # pair (attempted still == requested); the SET cannot.
+    requested_ports: set = field(default_factory=set)
+    port_hits: Counter = field(default_factory=Counter)
 
     _STATES = ("open", "closed", "filtered", "unreachable", "error")
 
     def record(self, result: "ScanResult") -> None:
         """Tally exactly one terminal per-port observation."""
         self.ports_attempted += 1
+        if result.port is not None:
+            self.port_hits[result.port] += 1
         if result.status in self._STATES:
             setattr(self, result.status, getattr(self, result.status) + 1)
         data = result.data or {}
@@ -189,8 +197,26 @@ class ScanMetrics:
         return self.open + self.closed + self.filtered + self.unreachable + self.error
 
     @property
+    def missing_ports(self) -> list:
+        """Requested ports that were never recorded — the silent-skip proof."""
+        if not self.requested_ports:
+            return []
+        return sorted(self.requested_ports - set(self.port_hits))
+
+    @property
+    def duplicate_ports(self) -> list:
+        """Ports recorded more than once (a port must get exactly one verdict)."""
+        return sorted(p for p, c in self.port_hits.items() if c > 1)
+
+    @property
     def complete(self) -> bool:
-        # The invariant a full scan must hold: requested == attempted == classified.
+        # SET-based when the requested port set is known: every requested port was
+        # classified exactly once (no missing, no duplicates) AND all states sum to
+        # the request. This can't be fooled by a skip+dup pair the way counts can.
+        if self.requested_ports:
+            return (not self.missing_ports and not self.duplicate_ports
+                    and self.classified == self.ports_requested)
+        # Fallback for directly-constructed metrics without a requested set.
         return (self.ports_attempted == self.ports_requested
                 and self.classified == self.ports_requested)
 
@@ -211,6 +237,10 @@ class ScanMetrics:
             "unreachable": self.unreachable, "error": self.error,
             "retries": self.retries,
             "local_resource_errors": self.local_resource_errors,
+            "missing": len(self.missing_ports),
+            "missing_ports": self.missing_ports[:64],   # capped sample for evidence
+            "duplicates": len(self.duplicate_ports),
+            "duplicate_ports": self.duplicate_ports[:64],
             "duration_s": self.duration_s,
             "complete": self.complete,
             "health": "degraded" if self.degraded else "ok",
@@ -345,7 +375,8 @@ class PortScanner(BaseScanner):
         """
         t0 = time.monotonic()
         metrics = ScanMetrics(target=target, vantage=self.vantage,
-                              ports_requested=len(self.ports))
+                              ports_requested=len(self.ports),
+                              requested_ports=set(self.ports))
         queue: asyncio.Queue[int] = asyncio.Queue()
         for p in self.ports:
             queue.put_nowait(p)

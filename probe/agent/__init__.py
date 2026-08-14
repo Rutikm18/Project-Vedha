@@ -13,6 +13,6 @@ Architecture (Phase 1–2):
     engine.py         — scan execution dispatch (→ scanner/ + workflow/)
     use_cases.py      — finite, pre-defined library of scan scenarios
 
-The probe is compiled to a single native binary via Nuitka (build_probe.sh).
+The probe is compiled to a single native binary via Nuitka (seal-probe.sh).
 No Python, no readable bytecode ships to the client.
 """

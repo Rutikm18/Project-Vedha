@@ -285,11 +285,76 @@ class JobResultRequest(BaseModel):
     error: str | None = None
 
 
+# The probe's scan-hardness knob (probe/workflow/intensity.py). Duplicated here
+# for the same reason as _USE_CASES: manager and probe are separate processes.
+_VALID_INTENSITIES = {"light", "standard", "deep"}
+
+# ── Numeric protocol (mirrors probe/agent/use_cases.py) ───────────────────────
+# The operator picks a NUMBER; the wire carries the number; the probe maps it to
+# the scan pipeline. Codes are banded and MUST stay byte-identical to the probe's
+# USE_CASE_CODES — a parity test enforces it. Only ever append, never renumber.
+_USE_CASE_CODES: dict[int, str] = {
+    1:  "uc_discovery_only",
+    2:  "uc_device_inventory",
+    10: "uc_full_assessment",
+    11: "uc_rescan_delta",
+    20: "uc_external_web_triage",
+    21: "uc_web_app_triage",
+    30: "uc_windows_estate",
+    40: "uc_db_exposure",
+    50: "uc_snmp_exposure",
+    51: "uc_udp_service_exposure",
+    60: "uc_iot_device_survey",
+    61: "uc_ai_endpoint_sweep",
+    70: "uc_ot_passive",
+    80: "uc_full_port_audit",
+    81: "uc_exposure_matrix",
+}
+_INTENSITY_CODES: dict[int, str] = {1: "light", 2: "standard", 3: "deep"}
+_USE_CASE_ID_TO_CODE: dict[str, int] = {v: k for k, v in _USE_CASE_CODES.items()}
+_INTENSITY_NAME_TO_CODE: dict[str, int] = {v: k for k, v in _INTENSITY_CODES.items()}
+
+
+def _normalize_intensity_name(value) -> str | None:
+    """Accept an intensity as a number (1/2/3) or a name; return the name (or
+    None). Raises ValueError on an unknown value."""
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        raise ValueError("intensity must be a code (1/2/3) or a name")
+    if isinstance(value, int) or (isinstance(value, str) and value.strip().isdigit()):
+        name = _INTENSITY_CODES.get(int(value))
+        if name is None:
+            raise ValueError(f"intensity code must be one of {sorted(_INTENSITY_CODES)}")
+        return name
+    if value not in _VALID_INTENSITIES:
+        raise ValueError(f"intensity must be one of {sorted(_VALID_INTENSITIES)}")
+    return value
+
+
 class EnqueueJobRequest(BaseModel):
     engagement_id: uuid.UUID
     job_type: ScanJobType = ScanJobType.discovery
     params: dict = Field(default_factory=dict)
     use_case_id: str | None = None   # maps to probe's use-case library (techprompt §A3)
+    # Numeric use-case code (1–99) — the compact alternative to use_case_id.
+    uc: int | None = None
+    # Optional scan-hardness override: a code (1/2/3) or a name (light/standard/deep).
+    # When omitted the probe applies the use-case's own default intensity.
+    intensity: int | str | None = None
+
+    @field_validator("uc")
+    @classmethod
+    def _validate_uc(cls, v: int | None) -> int | None:
+        if v is not None and v not in _USE_CASE_CODES:
+            raise ValueError(f"unknown use-case code {v}; see GET /agents/use-cases")
+        return v
+
+    @field_validator("intensity")
+    @classmethod
+    def _validate_intensity(cls, v):
+        _normalize_intensity_name(v)   # raises on an invalid code/name
+        return v
 
 
 # ── Use-case library (mirrored from probe/agent/use_cases.py) ─────────────────
@@ -400,6 +465,46 @@ _USE_CASES = {
         "profile": "it",
         "expected_runtime_hint": "2–8 min",
     },
+    # ── Capabilities unlocked by the main_scripts scanners (mirrored from probe) ──
+    "uc_device_inventory": {
+        "display_name": "Device Inventory",
+        "description": (
+            "Fingerprint every live host and infer its ROLE — workstation, "
+            "server, network device, printer, hypervisor, or IoT — by fusing OS "
+            "family, open ports, and service banners. Discovery → ports → banner "
+            "→ evidence-based device classification (never a hostname guess)."
+        ),
+        "scan_type": "device_inventory",
+        "profile": "it",
+        "intensity": "standard",
+        "expected_runtime_hint": "5–15 min per /24",
+    },
+    "uc_full_port_audit": {
+        "display_name": "Full-Port Audit",
+        "description": (
+            "Exhaustive TCP audit across the entire 1–65535 space with a bounded "
+            "worker pool, then a per-host completeness + self-health record so a "
+            "clean empty result is distinguishable from a degraded one. Finds "
+            "services hiding on non-standard high ports."
+        ),
+        "scan_type": "full_port_audit",
+        "profile": "it",
+        "intensity": "deep",
+        "expected_runtime_hint": "20–90 min per host",
+    },
+    "uc_exposure_matrix": {
+        "display_name": "Multi-Vantage Exposure",
+        "description": (
+            "Vantage-labeled port scan for reachability reconciliation: records "
+            "which ports are OPEN from THIS probe's vantage without collapsing "
+            "path-dependent state. The manager fuses ≥2 probes to separate "
+            "internet-exposed ports from internal-only ones."
+        ),
+        "scan_type": "exposure_matrix",
+        "profile": "it",
+        "intensity": "standard",
+        "expected_runtime_hint": "5–15 min per /24",
+    },
 }
 
 
@@ -476,9 +581,19 @@ class AgentBootstrapRequest(BaseModel):
 @router.get("/use-cases", summary="List available pre-defined scan use-cases (probe action library)")
 async def list_use_cases(current_user: AuthUser):
     """Returns the finite library of scan use-cases operators can dispatch to probes.
-    The probe enforces this list at execution time — an unknown use_case_id is
-    rejected by the probe before any packet leaves the host."""
-    return [{"use_case_id": uid, **meta} for uid, meta in _USE_CASES.items()]
+    Each entry now carries its numeric `code` (the compact dispatch protocol) and
+    default `intensity`. The probe enforces this list at execution time — an
+    unknown use-case is rejected before any packet leaves the host."""
+    return [
+        {"use_case_id": uid, "code": _USE_CASE_ID_TO_CODE.get(uid), **meta}
+        for uid, meta in _USE_CASES.items()
+    ]
+
+
+@router.get("/intensities", summary="List scan intensity codes (light/standard/deep)")
+async def list_intensities(current_user: AuthUser):
+    """The numeric scan-hardness scale: 1 light, 2 standard, 3 deep."""
+    return [{"code": c, "name": n} for c, n in sorted(_INTENSITY_CODES.items())]
 
 
 @router.post(
@@ -943,20 +1058,25 @@ async def enqueue_agent_job(
             "inside the engagement scope",
         )
 
-    # Validate use_case_id against the known library if provided
-    if body.use_case_id and body.use_case_id not in _USE_CASES:
+    # Resolve the use-case from EITHER the numeric code (uc) or the string id.
+    # The number is the operator's compact interface; the string is authoritative
+    # against the library. uc is already schema-validated to a known code.
+    resolved_use_case_id = body.use_case_id or (
+        _USE_CASE_CODES.get(body.uc) if body.uc is not None else None
+    )
+    if resolved_use_case_id and resolved_use_case_id not in _USE_CASES:
         raise HTTPException(
             400,
-            f"Unknown use_case_id '{body.use_case_id}'. "
+            f"Unknown use_case_id '{resolved_use_case_id}'. "
             f"Call GET /agents/use-cases to see the available use-cases.",
         )
 
     scan_profile = (eng.rules_of_engagement or {}).get("scan_profile", "it")
 
-    # When a use_case_id is given, resolve the scan_type from the library so
+    # When a use-case is given, resolve the scan_type from the library so
     # OT-profile enforcement can check it.
-    if body.use_case_id:
-        resolved_scan_type = _USE_CASES[body.use_case_id]["scan_type"]
+    if resolved_use_case_id:
+        resolved_scan_type = _USE_CASES[resolved_use_case_id]["scan_type"]
     else:
         resolved_scan_type = _resolve_scan_type(body.job_type.value, body.params)
 
@@ -974,9 +1094,28 @@ async def enqueue_agent_job(
     # Also embed the engagement's scope so the probe has it without a second round-trip
     # (the probe still independently fetches /scope for re-validation — this is
     # belt-AND-suspenders: params scope is the fast path, /scope fetch is the guard).
+    # Scan intensity: the first-class field wins, else an intensity embedded in
+    # params (as a code or a name). Validate here so a typo is rejected at enqueue,
+    # not silently at the probe. When neither is set the probe applies the
+    # use-case's own default.
+    try:
+        intensity_name = _normalize_intensity_name(
+            body.intensity if body.intensity is not None else body.params.get("intensity")
+        )
+    except ValueError as exc:
+        raise HTTPException(400, str(exc))
+
     job_params = {**body.params}
-    if body.use_case_id:
-        job_params["use_case_id"] = body.use_case_id
+    # Wire the compact numeric protocol to the probe: uc + intensity as NUMBERS.
+    # use_case_id (string) rides along for provenance/allowlisting — the probe
+    # resolves either and gets the same pipeline.
+    uc_code = body.uc if body.uc is not None else _USE_CASE_ID_TO_CODE.get(resolved_use_case_id)
+    if uc_code is not None:
+        job_params["uc"] = uc_code
+    if intensity_name:
+        job_params["intensity"] = _INTENSITY_NAME_TO_CODE[intensity_name]
+    if resolved_use_case_id:
+        job_params["use_case_id"] = resolved_use_case_id
     # Materialize the manager's resolved capability into the wire payload. This
     # keeps direct lateral/cloud jobs aligned with the probe's params-first
     # resolver instead of making the scheduler and runner infer different types.
@@ -1003,7 +1142,7 @@ async def enqueue_agent_job(
     await db.flush()
     await db.refresh(job)
     logger.info("agent.job.enqueued", job_id=str(job.id), job_type=body.job_type.value,
-                use_case_id=body.use_case_id)
+                use_case_id=resolved_use_case_id, uc=uc_code)
 
     # ── P2: Push job to connected agents via WebSocket ───────────────────────
     # If no compatible agent is connected, the committed job stays pending and
@@ -1080,7 +1219,9 @@ async def enqueue_agent_job(
     return {
         "job_id": str(job.id),
         "job_type": body.job_type.value,
-        "use_case_id": body.use_case_id,
+        "use_case_id": resolved_use_case_id,
+        "uc": uc_code,
+        "intensity": intensity_name,
         "status": job.status.value,
     }
 

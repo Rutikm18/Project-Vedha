@@ -1,8 +1,26 @@
 import { fileURLToPath } from "url";
 import path from "path";
+import fs from "fs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const frontendRoot = path.resolve(__dirname);
+
+// Single source of truth for the displayed app version.
+// 1. Docker/CI build passes it via NEXT_PUBLIC_APP_VERSION (from repo-root VERSION).
+// 2. Local `next dev` falls back to reading repo-root VERSION directly.
+// 3. Otherwise "dev".
+function resolveAppVersion() {
+  if (process.env.NEXT_PUBLIC_APP_VERSION) return process.env.NEXT_PUBLIC_APP_VERSION;
+  try {
+    const v = fs.readFileSync(path.resolve(frontendRoot, "../../VERSION"), "utf8").trim();
+    if (v) return v;
+  } catch {
+    /* VERSION not in build context (e.g. Docker) — rely on the env var above */
+  }
+  return "dev";
+}
+const APP_VERSION = resolveAppVersion();
+
 const securityHeaders = [
   {
     key: "Content-Security-Policy",
@@ -17,6 +35,9 @@ const securityHeaders = [
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "standalone",
+  env: {
+    NEXT_PUBLIC_APP_VERSION: APP_VERSION,
+  },
   images: {
     unoptimized: true,
   },

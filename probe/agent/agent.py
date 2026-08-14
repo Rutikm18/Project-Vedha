@@ -950,9 +950,19 @@ def _enroll_device(
             say("Probe pre-authorized via enrollment token — auto-approving, no code needed.")
         else:
             verification_path = response.get("verification_path", "/fleet/enroll")
-            say("Probe enrollment approval required.")
-            say(f"  Open: {transport._base_url}{verification_path}")
-            say(f"  Enter code: {response['user_code']}")
+            url = f"{transport._base_url}{verification_path}"
+            code = response["user_code"]
+            # Prominent, un-missable pairing block — this is the whole zero-touch
+            # onboarding: the operator matches this code in the dashboard, approves,
+            # and the probe below activates automatically.
+            say("")
+            say("═" * 58)
+            say("  PROBE PAIRING REQUIRED — approve to start scanning")
+            say("═" * 58)
+            say(f"   1) Open this URL : {url}")
+            say(f"   2) Enter code    : {code}")
+            say("═" * 58)
+            say("Waiting for dashboard approval… (the probe starts automatically once approved)")
 
     while True:
         try:
@@ -1136,6 +1146,22 @@ if __name__ == "__main__":
                 say("  Self-test FAILED — see above for details.")
                 sys.exit(1)
             say("Self-test passed.")
+        elif arg == "manifest":
+            # Deterministic capability surface — printed as raw JSON (no logging
+            # prefix) so CI can diff the SEALED binary against the plaintext build.
+            # If Nuitka drops a module or a registration, importing these fails or
+            # the output diverges, and the seal-parity job goes red. No network,
+            # no license, no host state — pure introspection.
+            import json
+            from agent.engine import CAPABILITIES
+            from agent.use_cases import USE_CASES, USE_CASE_CODES, INTENSITY_CODES
+            print(json.dumps({
+                "version": VERSION,
+                "capabilities": sorted(CAPABILITIES),
+                "use_cases": sorted(USE_CASES),
+                "use_case_codes": {str(k): v for k, v in sorted(USE_CASE_CODES.items())},
+                "intensity_codes": {str(k): v for k, v in sorted(INTENSITY_CODES.items())},
+            }, indent=2, sort_keys=True))
         else:
             main()
     except KeyboardInterrupt:

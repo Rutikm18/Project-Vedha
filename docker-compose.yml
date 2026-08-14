@@ -237,6 +237,8 @@ services:
   frontend:
     build:
       context: ./manager/frontend
+      args:
+        VEDHA_VERSION: ${VEDHA_VERSION:-dev}
     image: vedha-frontend:local
     profiles: ["ui"]
     environment:

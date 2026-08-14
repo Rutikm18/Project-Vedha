@@ -23,6 +23,8 @@ from app.routers.attack_paths import router as attack_paths_router
 from app.routers.detection import router as detection_router
 from app.routers.detection_runs import router as detection_runs_router
 from app.routers.agent_advisor import router as agent_advisor_router
+from app.routers.customer_access import router as customer_access_router
+from app.routers.portal import router as portal_router
 from app.routers.engagements import router as eng_router
 from app.routers.exploits import router as exploits_router
 from app.routers.findings import router as findings_router
@@ -202,6 +204,8 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 app.include_router(health_router)
 app.include_router(auth_router)
 app.include_router(eng_router)
+app.include_router(customer_access_router)
+app.include_router(portal_router)
 app.include_router(findings_router)
 app.include_router(agents_router)
 app.include_router(probe_enrollment_router)

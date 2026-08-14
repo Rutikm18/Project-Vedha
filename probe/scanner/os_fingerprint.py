@@ -127,12 +127,18 @@ def os_family_from_ttl(observed_ttl: int | None) -> str:
 def fingerprint_os(*, ttl: int | None = None, tcp_window: int | None = None,
                    mss: int | None = None) -> dict:
     """
-    Combine available stack signals into a best-guess OS family with a confidence
-    (share of evidence pointing at the winner). More agreeing signals -> higher
-    confidence. Returns {os_guess, confidence, signals}.
+    Combine available stack signals into a best-guess OS family with a calibrated
+    confidence. Confidence is the share of evidence pointing at the winner, but
+    CAPPED by how many *independent* signals corroborate it: a lone TTL is only a
+    hint (<=0.5) and can never reach absolute certainty, since a single stack
+    value is trivially spoofed and NAT/proxies rewrite it. Two agreeing signals
+    -> strong; three+ -> high, but never 1.0. Returns {os_guess, confidence,
+    signals} where signals (incl. support_count) exposes what backed the guess.
     """
     signals: dict = {}
     scores = {"Linux/Unix/macOS": 0, "Windows": 0, "Network/Embedded": 0}
+    # Count of independent signal families backing each family (drives the cap).
+    support = {"Linux/Unix/macOS": 0, "Windows": 0, "Network/Embedded": 0}
 
     if ttl is not None:
         init = infer_initial_ttl(ttl)
@@ -141,18 +147,23 @@ def fingerprint_os(*, ttl: int | None = None, tcp_window: int | None = None,
         signals["hop_estimate"] = hop_estimate(ttl)
         if init == 64:
             scores["Linux/Unix/macOS"] += 2
+            support["Linux/Unix/macOS"] += 1
         elif init == 128:
             scores["Windows"] += 2
+            support["Windows"] += 1
         elif init == 255:
             scores["Network/Embedded"] += 2
+            support["Network/Embedded"] += 1
 
     if tcp_window is not None:
         signals["tcp_window"] = tcp_window
         # Windows-specific first (65535/64240 overlap both, so don't double-count).
         if tcp_window in _WINDOWS_WINDOWS and tcp_window not in _LINUX_WINDOWS:
             scores["Windows"] += 1
+            support["Windows"] += 1
         elif tcp_window in _LINUX_WINDOWS:
             scores["Linux/Unix/macOS"] += 1
+            support["Linux/Unix/macOS"] += 1
 
     if mss is not None:
         signals["mss"] = mss
@@ -161,8 +172,13 @@ def fingerprint_os(*, ttl: int | None = None, tcp_window: int | None = None,
     if total == 0:
         return {"os_guess": "unknown", "confidence": 0.0, "signals": signals}
     best = max(scores, key=scores.get)
+    # A single stack signal is a hint, not proof. Cap confidence by corroboration
+    # so TTL-alone maxes at medium and nothing ever claims absolute certainty.
+    n_support = support[best]
+    ceiling = {0: 0.0, 1: 0.5, 2: 0.8}.get(n_support, 0.95)
+    signals["support_count"] = n_support
     return {"os_guess": best,
-            "confidence": round(scores[best] / total, 2),
+            "confidence": round(min(scores[best] / total, ceiling), 2),
             "signals": signals}
 
 

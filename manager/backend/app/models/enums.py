@@ -7,6 +7,9 @@ class UserRole(str, enum.Enum):
     tester = "tester"
     analyst = "analyst"
     auditor = "auditor"
+    # Customer-portal login: scoped to exactly one engagement, read-only + may
+    # REQUEST (never run) scans. Never granted operator capabilities.
+    client = "client"
 
 
 class EngagementStatus(str, enum.Enum):
@@ -23,6 +26,8 @@ class AssetType(str, enum.Enum):
     cloud = "cloud"
     container = "container"
     iot = "iot"
+    printer = "printer"        # from probe device_classifier (device_inventory)
+    hypervisor = "hypervisor"  # from probe device_classifier (device_inventory)
 
 
 class AssetCriticality(str, enum.Enum):

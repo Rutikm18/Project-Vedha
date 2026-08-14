@@ -165,6 +165,9 @@ class TenantIsolationMiddleware(BaseHTTPMiddleware):
         request.state.user_id = payload["sub"]
         request.state.tenant_id = payload["tenant_id"]
         request.state.role = payload["role"]
+        # Portal scoping claim (present only on client logins) — propagated so
+        # get_current_user can populate CurrentUser.client_engagement_id.
+        request.state.client_engagement_id = payload.get("client_engagement_id")
         request.state.auth_type = "jwt"
         request.state.scopes = ()
 

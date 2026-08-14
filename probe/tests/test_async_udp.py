@@ -180,7 +180,11 @@ def test_udp_scanner_probe_open_status_via_event_loop():
     assert r.data["responded"] is True
 
 
-def test_udp_scanner_probe_filtered_on_timeout():
+def test_udp_scanner_probe_open_filtered_on_timeout():
+    # Canonical (main_scripts) semantics: UDP silence is the ambiguous
+    # open|filtered pair, never a definitive "filtered" — collapsing it was the
+    # prior accuracy bug (see test_main_scripts_hardening). scanner/ is synced
+    # from main_scripts, so it now reports the honest state.
     import scanner.udp_scanner as us
 
     async def _run():
@@ -199,4 +203,4 @@ def test_udp_scanner_probe_filtered_on_timeout():
 
     r = asyncio.run(_run())
     assert r is not None
-    assert r.status == "filtered"
+    assert r.status == "open|filtered"

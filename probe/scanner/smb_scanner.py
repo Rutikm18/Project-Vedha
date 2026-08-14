@@ -36,35 +36,37 @@ def _netbios_session(payload: bytes) -> bytes:
 def parse_smb2_security_mode(response: bytes | None) -> dict:
     """Read signing posture from a SUCCESSFUL SMB2 NEGOTIATE response.
 
-    Wire layout (with the 4-byte Direct-TCP/NBT transport header):
+    Wire layout (including the 4-byte Direct-TCP/NBT transport header):
         abs 4    ProtocolId          b"\\xfeSMB"
-        abs 12   Status (u32)        must be 0 for a successful response
-        abs 16   Command (u16)       must be 0 (NEGOTIATE)
-        abs 68   body StructureSize  must be 65 for a NEGOTIATE response
+        abs 12   Status (u32)        0 on a successful response
+        abs 16   Command (u16)       0 = NEGOTIATE
+        abs 68   body StructureSize  65 on a successful NEGOTIATE
         abs 70   SecurityMode (u16)
         abs 72   DialectRevision (u16)
 
-    An SMB2 ERROR response (e.g. STATUS_INVALID_PARAMETER, which Windows returns
-    when SMB 3.1.1 is offered without a preauth-integrity negotiate context)
-    reuses the same header but its body StructureSize is 9 and it carries NO
-    SecurityMode/DialectRevision. Reading offsets 70/72 out of that error body
-    produced the confirmed bug — signing=false and negotiated_dialect 0x0000. We
-    therefore validate that the response is a genuine, successful NEGOTIATE
-    before trusting those fields. Read-only.
+    An SMB2 *error* response (e.g. STATUS_INVALID_PARAMETER, which Windows returns
+    when 3.1.1 is offered without a preauth-integrity context) reuses the header
+    but its body StructureSize is 9 and it carries NO SecurityMode/DialectRevision.
+    Reading offsets 70/72 out of that error body produced the confirmed bug
+    (signing=false, negotiated_dialect 0x0000). We therefore validate that the
+    response is a genuine, successful NEGOTIATE before trusting those fields, and
+    we NEVER fabricate signing/dialect from anything else. Read-only.
     """
     if not response or len(response) < 74 or response[4:8] != b"\xfeSMB":
-        return {"signing_parsed": False, "reason": "no_smb2_header"}
+        return {"signing_parsed": False, "reason": "no_smb2_header",
+                "negotiated_dialect": None}
     status = struct.unpack_from("<I", response, 12)[0]        # SMB2 header Status
     command = struct.unpack_from("<H", response, 16)[0]       # SMB2 header Command
     body_structure_size = struct.unpack_from("<H", response, 68)[0]
     if command != 0x0000 or status != 0x00000000 or body_structure_size != 65:
-        # Not a successful NEGOTIATE response — do NOT invent signing/dialect.
+        # Not a successful NEGOTIATE — do NOT invent signing/dialect from it.
         return {
             "signing_parsed": False,
             "reason": "not_a_successful_negotiate",
             "smb2_status": f"0x{status:08x}",
             "smb2_command": command,
             "body_structure_size": body_structure_size,
+            "negotiated_dialect": None,
         }
     security_mode = struct.unpack_from("<H", response, 70)[0]
     dialect = struct.unpack_from("<H", response, 72)[0]
@@ -72,10 +74,11 @@ def parse_smb2_security_mode(response: bytes | None) -> dict:
     signing_required = bool(security_mode & 0x0002)    # SMB2_NEGOTIATE_SIGNING_REQUIRED
     return {
         "signing_parsed": True,
-        # signing_supported/required are the protocol-precise names (Step 13).
+        # Protocol-precise names (Step 13): what the negotiation actually exposed,
+        # distinct from the host's configured EnableSecuritySignature setting.
         "signing_supported": signing_supported,
         "signing_required": signing_required,
-        # deprecated ambiguous alias, kept for backward compatibility.
+        # Deprecated ambiguous alias, retained for backward compatibility.
         "signing_enabled": signing_supported,
         "negotiated_dialect": f"0x{dialect:04x}",
         "security_mode_raw": f"0x{security_mode:04x}",
@@ -118,13 +121,12 @@ def _smb2_negotiate() -> bytes:
               b"\x00" * 8 +                              # session id
               b"\x00" * 16)                              # signature
     # NEGOTIATE request body advertising SMB2/3 dialects UP TO 3.0.2.
-    # SMB 3.1.1 (0x0311) is deliberately NOT offered here: per MS-SMB2, a client
-    # that lists 3.1.1 MUST also send an SMB2_PREAUTH_INTEGRITY_CAPABILITIES
-    # negotiate context, otherwise Windows replies STATUS_INVALID_PARAMETER (an
-    # error response, not a negotiate) — which is exactly what corrupted the
-    # signing/dialect parse. Offering up to 3.0.2 elicits a valid NEGOTIATE
-    # response with an accurate SecurityMode from every modern Windows host.
-    # (Detecting a host's 3.1.1 support needs the context — see limitations.)
+    # SMB 3.1.1 (0x0311) is deliberately NOT offered: per MS-SMB2, a client that
+    # lists 3.1.1 MUST also send an SMB2_PREAUTH_INTEGRITY_CAPABILITIES negotiate
+    # context, else Windows replies STATUS_INVALID_PARAMETER (an error response,
+    # not a negotiate) — which corrupted the signing/dialect parse. Offering up to
+    # 3.0.2 elicits a valid NEGOTIATE with an accurate SecurityMode from every
+    # modern Windows host. (Detecting 3.1.1 support needs the context — see limits.)
     dialects = [0x0202, 0x0210, 0x0300, 0x0302]
     body = (struct.pack("<H", 36) +                      # structure size
             struct.pack("<H", len(dialects)) +           # dialect count
