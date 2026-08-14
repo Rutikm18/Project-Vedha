@@ -1,13 +1,21 @@
 # VEDHA — convenience wrapper around docker compose.
 .DEFAULT_GOAL := help
+
+# Two compose entrypoints, two intents:
+#   COMPOSE (root docker-compose.yml)        — LOCAL dev all-in-one. Includes a
+#       probe under `--profile probe` for convenient end-to-end testing on a laptop.
+#   MANAGER_COMPOSE (manager/docker-compose.yml) — the DEPLOY stack (server / AWS).
+#       PROBE-FREE by design: probes run on client machines via probe/install.sh,
+#       never on the manager server. `make full` and the aws-* targets use this.
 COMPOSE := docker compose
+MANAGER_COMPOSE := docker compose --env-file .env -f manager/docker-compose.yml
 
 # Deployed version, sourced from the repo-root VERSION file (auto-bumped by the
 # .githooks/pre-commit hook). Exported so every `docker compose build` below bakes
 # it into the backend image via the VEDHA_VERSION build arg.
 export VEDHA_VERSION := $(shell cat VERSION 2>/dev/null || echo dev)
 
-.PHONY: help doctor run full ui up up-graph up-ai api-only down logs ps migrate seed shell venv test probe-build probe-run probe-pat seal seal-parity clean version setup-hooks aws-up aws-up-ui aws-down aws-logs aws-ps gen-env
+.PHONY: help doctor run dev full ui up up-graph up-ai api-only down logs ps migrate seed shell venv test probe-build probe-run probe-pat seal seal-parity clean version setup-hooks aws-up aws-up-ui aws-down aws-logs aws-ps gen-env
 
 version: ## Print the current deployed version
 	@echo $(VEDHA_VERSION)
@@ -38,14 +46,27 @@ run: ## Build + start platform + local probe (API + probe, no frontend) — fast
 	@port=$$(grep -E '^API_PORT=' .env | cut -d= -f2); port=$${port:-18080}; \
 	  echo "API → http://localhost:$$port  (docs: /docs)  |  probe: docker compose logs -f probe"
 
-full: ## Build + start THE WHOLE PROJECT (API + probe + Next.js dashboard). First build is slow.
+full: gen-env ## Deploy the COMPLETE manager stack (db, redis, api, worker, dashboard, edge). Probe-free + AWS-aware. ← use this on the server
+	$(MANAGER_COMPOSE) build api
+	$(MANAGER_COMPOSE) --profile ui build frontend
+	$(MANAGER_COMPOSE) --profile edge --profile ui up -d --remove-orphans
+	@eport=$$(grep -m1 '^EDGE_HTTP_PORT=' .env 2>/dev/null | cut -d= -f2); eport=$${eport:-80}; \
+	 fport=$$(grep -m1 '^FRONTEND_PORT=' .env 2>/dev/null | cut -d= -f2); fport=$${fport:-3000}; \
+	 host=$$(grep -m1 '^MANAGER_PUBLIC_URL=' .env 2>/dev/null | cut -d= -f2); host=$${host:-http://localhost}; \
+	 echo ""; \
+	 echo "  Manager stack up (probe-free)."; \
+	 echo "  Dashboard  → http://<HOST>:$$fport      (login with SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD)"; \
+	 echo "  API / probe→ $$host/health          ← probes: ./install.sh <HOST>"; \
+	 echo "  On AWS: open inbound TCP $$eport (edge) and $$fport (dashboard) in the EC2 security group."
+
+dev: ## LOCAL all-in-one for laptop e2e testing: API + Next.js dashboard + a probe (root compose)
 	@test -f .env || cp .env.docker.example .env
 	$(COMPOSE) build api
 	$(COMPOSE) --profile ui build frontend
 	$(COMPOSE) --profile probe build probe
 	$(COMPOSE) --profile probe --profile ui up -d
 	@fport=$$(grep -E '^FRONTEND_PORT=' .env | cut -d= -f2); fport=$${fport:-3000}; \
-	  echo "Dashboard → http://localhost:$$fport   (login with SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD)"
+	  echo "Dashboard → http://localhost:$$fport   (login with SEED_ADMIN_EMAIL / SEED_ADMIN_PASSWORD)  |  probe: docker compose logs -f probe"
 
 ui: ## Build + start just the Next.js dashboard (API must be up)
 	@test -f .env || cp .env.docker.example .env
@@ -79,11 +100,11 @@ up-ai: ## Start Manager with deployment-managed Ollama and pull OLLAMA_MODEL
 	INSTALL_EXTRAS=1 $(COMPOSE) build api
 	OLLAMA_BASE_URL=http://ollama:11434 INSTALL_EXTRAS=1 $(COMPOSE) --profile local-ai up -d
 
-down: ## Stop all services (keeps volumes)
-	$(COMPOSE) --profile graph --profile probe --profile ui --profile local-ai down
+down: ## Stop ALL services incl. a stray probe/edge (keeps volumes)
+	$(COMPOSE) --profile graph --profile probe --profile ui --profile local-ai down --remove-orphans
 
 clean: ## Stop and DELETE volumes (wipes database and local AI models)
-	$(COMPOSE) --profile graph --profile probe --profile ui --profile local-ai down -v
+	$(COMPOSE) --profile graph --profile probe --profile ui --profile local-ai down -v --remove-orphans
 
 logs: ## Tail API logs
 	$(COMPOSE) logs -f api
@@ -123,31 +144,27 @@ seal: ## Build the SEALED native-binary probe (no source/bytecode). ARGS="--host
 seal-parity: ## Local sealed-vs-plaintext manifest parity check (needs Docker; ~build time)
 	@bash scripts/seal_parity.sh
 
-# ── AWS / EC2 testing targets ─────────────────────────────────────────────────
-AWS_COMPOSE := docker compose --env-file .env -f manager/docker-compose.yml
+# ── AWS / EC2 deploy targets ──────────────────────────────────────────────────
+# All use the PROBE-FREE manager stack. `make full` is the full-stack deploy;
+# aws-up is the lighter API/probe-plane-only variant (no dashboard).
+AWS_COMPOSE := $(MANAGER_COMPOSE)
 
 gen-env: ## Auto-generate .env with real random secrets (safe to re-run — skips existing values)
 	@bash scripts/gen-env.sh
 
-aws-up: gen-env ## AWS: auto-generate .env + build + start API stack (no TLS/Caddy)
+aws-up: gen-env ## AWS: build + start the API/probe plane behind the port-80 edge ingress (no dashboard)
 	$(AWS_COMPOSE) build api
-	$(AWS_COMPOSE) up -d
-	@aport=$$(grep -m1 '^API_PORT=' .env 2>/dev/null | cut -d= -f2); aport=$${aport:-18080}; \
+	$(AWS_COMPOSE) --profile edge up -d --remove-orphans
+	@eport=$$(grep -m1 '^EDGE_HTTP_PORT=' .env 2>/dev/null | cut -d= -f2); eport=$${eport:-80}; \
+	 aport=$$(grep -m1 '^API_PORT=' .env 2>/dev/null | cut -d= -f2); aport=$${aport:-18080}; \
 	 echo ""; \
-	 echo "  API     → http://<EC2-IP>:$$aport/health"; \
-	 echo "  Docs    → http://<EC2-IP>:$$aport/docs"; \
-	 echo "  Logs    → make aws-logs"; \
-	 echo "  Status  → make aws-ps"
+	 echo "  API (edge)  → http://<EC2-IP>$$( [ "$$eport" = 80 ] && echo '' || echo ":$$eport" )/health   ← probes dial this"; \
+	 echo "  API (direct)→ http://<EC2-IP>:$$aport/health  (needs SG rule for $$aport)"; \
+	 echo "  Docs        → http://<EC2-IP>/docs"; \
+	 echo "  Logs        → make aws-logs   |   Status → make aws-ps"; \
+	 echo "  NOTE: open inbound TCP $$eport in the EC2 security group for external access."
 
-aws-up-ui: gen-env ## AWS: auto-generate .env + build + start API + frontend
-	$(AWS_COMPOSE) build api
-	$(AWS_COMPOSE) --profile ui build frontend
-	$(AWS_COMPOSE) --profile ui up -d
-	@aport=$$(grep -m1 '^API_PORT=' .env 2>/dev/null | cut -d= -f2); aport=$${aport:-18080}; \
-	 fport=$$(grep -m1 '^FRONTEND_PORT=' .env 2>/dev/null | cut -d= -f2); fport=$${fport:-3000}; \
-	 echo ""; \
-	 echo "  Dashboard → http://<EC2-IP>:$$fport"; \
-	 echo "  API       → http://<EC2-IP>:$$aport/health"
+aws-up-ui: full ## AWS: alias for `make full` (complete manager stack incl. dashboard)
 
 aws-logs: ## Tail API + worker logs on AWS
 	$(AWS_COMPOSE) logs -f api worker
@@ -155,5 +172,5 @@ aws-logs: ## Tail API + worker logs on AWS
 aws-ps: ## Show AWS stack container status
 	$(AWS_COMPOSE) ps
 
-aws-down: ## Stop the AWS stack (keeps volumes / data)
-	$(AWS_COMPOSE) --profile ui down
+aws-down: ## Stop the AWS stack incl. edge + any stray probe (keeps volumes / data)
+	$(AWS_COMPOSE) --profile edge --profile ui down --remove-orphans

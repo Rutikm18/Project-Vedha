@@ -320,6 +320,40 @@ services:
       driver: json-file
       options: {max-size: "20m", max-file: "3"}
 
+  # ── Edge ingress (single external port for the API / probe plane) ─────────────
+  # WHY: the no-TLS testing path (make aws-up) publishes the API on a non-standard
+  # host port (18080). EC2 security groups almost never open that, so /health works
+  # ON the box (localhost) but FAILS from outside — while port 80 has no listener.
+  # This puts the API behind the universally-open port 80, so probes dial ONE stable
+  # endpoint (http://<host>/) and /health is reachable externally with a single SG
+  # rule. Opt-in via the `edge` profile. The production path (deploy/aws/install.sh)
+  # brings its own TLS Caddy overlay and never activates this — no conflict.
+  edge:
+    image: caddy:2-alpine
+    profiles: ["edge"]
+    command: ["caddy", "reverse-proxy", "--from", ":80", "--to", "api:8000"]
+    ports:
+      - "${EDGE_HTTP_PORT:-80}:80"
+    depends_on:
+      api:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:80/health >/dev/null 2>&1 || exit 1"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    deploy:
+      resources:
+        limits:
+          memory: ${EDGE_MEM_LIMIT:-128M}
+        reservations:
+          memory: 32M
+    restart: unless-stopped
+    logging:
+      driver: json-file
+      options: {max-size: "10m", max-file: "3"}
+
 volumes:
   pgdata:
   redisdata:

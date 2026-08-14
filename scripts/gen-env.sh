@@ -147,9 +147,15 @@ PUBIP="$(detect_public_ip)"
 if [ -n "$PUBIP" ]; then
   APORT="$(get API_PORT)";      APORT="${APORT:-18080}"
   FPORT="$(get FRONTEND_PORT)"; FPORT="${FPORT:-3000}"
-  set_kv MANAGER_PUBLIC_URL "http://${PUBIP}:${APORT}"
-  set_kv CORS_ORIGINS "http://${PUBIP}:${FPORT},http://localhost:${FPORT}"
-  echo "[gen-env] public IP ${PUBIP} → MANAGER_PUBLIC_URL + CORS_ORIGINS set"
+  EPORT="$(get EDGE_HTTP_PORT)"; EPORT="${EPORT:-80}"
+  # The edge ingress (Caddy on port 80) is the canonical external endpoint for the
+  # API / probe plane — probes dial it and /health is reachable through the one
+  # SG rule most hosts already have open. Advertise that as MANAGER_PUBLIC_URL.
+  if [ "$EPORT" = "80" ]; then EDGE_URL="http://${PUBIP}"; else EDGE_URL="http://${PUBIP}:${EPORT}"; fi
+  set_kv MANAGER_PUBLIC_URL "$EDGE_URL"
+  # Allow the dashboard origins (frontend port) AND the edge origin for browser calls.
+  set_kv CORS_ORIGINS "http://${PUBIP}:${FPORT},${EDGE_URL},http://localhost:${FPORT}"
+  echo "[gen-env] public IP ${PUBIP} → MANAGER_PUBLIC_URL=${EDGE_URL} (edge :${EPORT}) + CORS_ORIGINS set"
 else
   echo "[gen-env] public IP not detected — leaving MANAGER_PUBLIC_URL/CORS_ORIGINS as-is"
 fi
