@@ -1122,6 +1122,23 @@ def _obtain_identity(
                    identity_sk, identity_pk, public_key_b64
 
         except TransportError:
+            # A stale/invalid PAT — or a Manager that was re-created — must not
+            # dead-end the probe. When the only credential was a token (no
+            # operator login, no bootstrap key), fall back to DEVICE ENROLLMENT:
+            # the probe's own keypair is its id, and the Manager issues a token
+            # (auto-approved when PROBE_AUTO_ENROLL is on, else a pairing code).
+            # This is what makes a bare `install.sh <manager-ip>` self-heal.
+            if operator_token and not (email and password) and not BOOTSTRAP_KEY:
+                say("Saved credential rejected — falling back to device enrollment…")
+                data = _enroll_device(
+                    transport,
+                    signing_private_key=signing_sk,
+                    signing_public_key=signing_public_key,
+                    encryption_public_key=public_key_b64,
+                    probe_name=probe_name,
+                )
+                return data["agent_id"], data["access_token"], True, \
+                       identity_sk, identity_pk, public_key_b64
             say("Manager rejected sign-in — check credentials.")
             raise SystemExit(1)
         except Exception as exc:

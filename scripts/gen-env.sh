@@ -26,6 +26,15 @@ command -v openssl >/dev/null 2>&1 || { echo "[gen-env] FATAL: openssl is requir
 gen()    { openssl rand -base64 48 | tr -d '\n/+='; }   # ~64 url-safe chars
 gen32()  { openssl rand -base64 32 | tr -d '\n/+='; }
 gen_pw() { printf '%s%s' "$(openssl rand -base64 18 | tr -d '\n/+=')" "Aa1!"; }
+# The Site-policy signing key MUST stay VALID standard base64 of exactly 32 bytes
+# (app _policy() does base64.b64decode(validate=True) → Ed25519 seed). Stripping
+# /+=/padding like gen32 does would corrupt it → 503 on every enrollment activate.
+gen_b64_32() { openssl rand -base64 32 | tr -d '\n'; }
+# True iff $1 is valid base64 decoding to exactly 32 bytes.
+valid_b64_32() {
+  n=$(printf '%s' "$1" | openssl base64 -d -A 2>/dev/null | wc -c | tr -d ' ')
+  [ "$n" = "32" ]
+}
 
 # ── Bootstrap .env from the example on first run ──────────────────────────────
 env_existed=1
@@ -76,7 +85,12 @@ set_secret() {
 set_secret JWT_SECRET               "$(gen)"
 set_secret POSTGRES_PASSWORD        "$(gen)"
 set_secret SEED_ADMIN_PASSWORD      "$(gen_pw)"
-set_secret PROBE_POLICY_SIGNING_KEY "$(gen32)"
+# Regenerate the policy key if absent OR if a legacy/invalid value is present
+# (older gen-env stripped /+= → not valid base64 → 503 on enrollment activate).
+if ! valid_b64_32 "$(get PROBE_POLICY_SIGNING_KEY)"; then
+  set_kv PROBE_POLICY_SIGNING_KEY "$(gen_b64_32)"
+  echo "[gen-env] PROBE_POLICY_SIGNING_KEY (re)generated as valid base64-32"
+fi
 # Insurance: the graph-profile neo4j service uses ${NEO4J_PASSWORD:?...}, which
 # Compose interpolates even when the profile is inactive. Guarantee a value so a
 # blanked var can't break `make aws-up`.
@@ -105,6 +119,14 @@ else
   # Testing convenience: autofill the login form with the seeded admin creds.
   set_kv DEV_LOGIN_HINT 1
   echo "[gen-env] APP_ENV=development, AUTH_COOKIE_SECURE=false, login autofill ON (testing path)"
+fi
+
+# Trust-on-first-use probe enrollment: in the single-owner testing deploy, a probe
+# that runs `install.sh <manager-ip>` auto-connects (device key → Manager-issued
+# token) with no PAT and no approval. Off in production unless deliberately set.
+if [ "$(get APP_ENV)" != "production" ]; then
+  [ -n "$(get PROBE_AUTO_ENROLL)" ] || set_kv PROBE_AUTO_ENROLL true
+  echo "[gen-env] PROBE_AUTO_ENROLL=$(get PROBE_AUTO_ENROLL) (probes auto-connect with just the manager IP)"
 fi
 
 # ── Public IP detection via IMDSv2 (falls back to IMDSv1-style, then external) ─

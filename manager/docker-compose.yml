@@ -31,6 +31,10 @@ x-backend-env: &backend-env
   REDIS_URL: redis://redis:6379/0
   JWT_SECRET: ${JWT_SECRET:?JWT_SECRET must be set — run deploy/aws/install.sh or openssl rand -base64 48}
   PROBE_POLICY_SIGNING_KEY: ${PROBE_POLICY_SIGNING_KEY:-}
+  # Trust-on-first-use probe enrollment (single-owner fleets). gen-env sets this
+  # true on the testing path so `install.sh <manager-ip>` auto-connects.
+  PROBE_AUTO_ENROLL: ${PROBE_AUTO_ENROLL:-false}
+  PROBE_AUTO_ENROLL_CIDRS: ${PROBE_AUTO_ENROLL_CIDRS:-10.0.0.0/8,172.16.0.0/12,192.168.0.0/16}
   APP_ENV: ${APP_ENV:-development}
   AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-false}
   LOG_LEVEL: ${LOG_LEVEL:-INFO}

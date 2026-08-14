@@ -51,17 +51,20 @@ if [ "$_MODE" = "local" ]; then
     printf '   or: %s --docker --manager <url> [...]    (DOCKER)\n' "$0"
     exit 2
   fi
-  # Saved config (PAT, name, tuning) — the CLI arg overrides the manager URL.
-  if [ -f probe.env ]; then set -a; . ./probe.env; set +a; fi
+  # Saved config (PLATFORM_URL default, name, tuning, and any saved credential).
+  # In --enroll we deliberately SKIP probe.env so nothing saved is loaded → the
+  # probe does a fresh device enrollment (its keypair is its id; the Manager
+  # issues the token). The CLI arg overrides the manager URL either way.
+  if [ "$_ENROLL" != "true" ] && [ -f probe.env ]; then
+    set -a; . ./probe.env; set +a
+  fi
   case "$_MANAGER" in
     http://*|https://*) PLATFORM_URL="$_MANAGER" ;;
     *)                  PLATFORM_URL="http://${_MANAGER}:18080" ;;
   esac
   export PLATFORM_URL
-  # Zero-touch: drop any saved credential so the probe prints a pairing code.
   if [ "$_ENROLL" = "true" ]; then
-    unset PROBE_PAT OPERATOR_TOKEN OPERATOR_EMAIL OPERATOR_PASSWORD PROBE_ENROLL_TOKEN 2>/dev/null || true
-    printf '• zero-touch enrollment: approve the printed pairing code in the dashboard\n'
+    printf '• zero-touch enrollment: the probe will connect via device enrollment\n'
   elif [ -n "$_TOKEN" ]; then
     # Pre-authorized, site-bound enrollment token (auto-approve).
     export PROBE_ENROLL_TOKEN="$_TOKEN"

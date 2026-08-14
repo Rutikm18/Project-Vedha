@@ -42,7 +42,19 @@ That URL is what every probe uses as `PLATFORM_URL`.
 The probe is a thin executor: give it the **Manager address** and nothing else.
 Auth (token), per-job **scope**, and **use-cases** are all governed by the Manager.
 
-**Recommended — zero-touch pairing (no token to copy):**
+**Simplest — fully automatic (single-owner fleets):** if the Manager runs with
+`PROBE_AUTO_ENROLL=true` (the AWS testing deploy sets this by default via
+`gen-env`), a probe **auto-connects with nothing but the Manager IP** — no token,
+no PAT, no approval:
+```bash
+./install.sh 13.127.147.205
+```
+The probe generates its own keypair (that's its id), the Manager **auto-approves**
+it and issues an agent token, and it starts polling. Every auto-enrollment is
+written to the Manager audit log. (Turn it off — `PROBE_AUTO_ENROLL=false` — for
+untrusted networks; then use one of the flows below.)
+
+**Zero-touch pairing (approval-gated — no token to copy):**
 ```bash
 ./install.sh <manager-ip> --enroll     # e.g. ./install.sh 13.127.147.205 --enroll
 ```

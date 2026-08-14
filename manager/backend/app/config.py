@@ -99,6 +99,17 @@ class Settings(BaseSettings):
     # Development derives an ephemeral-compatible seed from JWT_SECRET.
     probe_policy_signing_key: str = ""
 
+    # Trust-on-first-use probe enrollment. When TRUE, a probe that POSTs a device
+    # enrollment request is auto-approved and issued an agent token with NO
+    # operator action and NO pre-shared token — the probe's own keypair is its id.
+    # Intended for single-owner / trusted-network fleets ("all ours"). OFF by
+    # default: leaving it off means every probe needs a pre-authorized token or a
+    # dashboard approval. Every auto-enrollment is written to the audit log.
+    probe_auto_enroll: bool = False
+    # Coarse authorized scope stamped on the auto-enroll Site policy (the probe
+    # still enforces its own local ceiling, and jobs carry per-engagement scope).
+    probe_auto_enroll_cidrs: str = "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+
     # App
     app_env: str = "development"
     debug: bool = False

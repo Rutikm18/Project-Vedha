@@ -26,6 +26,7 @@ from app.models.agent import Agent, AgentStatus
 from app.models.audit_log import AuditLog
 from app.models.probe_enrollment import AgentCredential, ProbeEnrollmentRequest, ProbeEnrollmentToken
 from app.models.probe_site import ProbeSite
+from app.models.tenant import Tenant
 from app.schemas.engagement import validate_scope_entries
 
 router = APIRouter(prefix="/probe-enrollment", tags=["probe-enrollment"])
@@ -305,6 +306,57 @@ async def _provision_agent_for_site(
     return agent
 
 
+# ── Trust-on-first-use auto-enrollment (single-owner fleets) ─────────────────
+_AUTO_ENROLL_SITE_NAME = "auto-enroll"
+
+
+def auto_enroll_cidrs() -> list[str]:
+    """Parse settings.probe_auto_enroll_cidrs → a non-empty CIDR list (RFC1918
+    default). Pure; unit-testable."""
+    raw = get_settings().probe_auto_enroll_cidrs or ""
+    cidrs = [c.strip() for c in raw.split(",") if c.strip()]
+    return cidrs or ["10.0.0.0/8", "172.16.0.0/12", "192.168.0.0/16"]
+
+
+async def _get_or_create_auto_enroll_site(db, reported_capabilities: list[str], now):
+    """The singleton per-tenant Site that trust-on-first-use enrollment binds to.
+
+    Bound to the first (single-owner) tenant. Its approved_capabilities are set to
+    the enrolling probe's OWN reported set, so the provision subset-check always
+    passes and each probe is granted exactly what it advertises. Returns None if
+    no tenant exists yet (fresh DB before the admin seed runs) — the caller then
+    falls back to the normal manual-approval path.
+    """
+    tenant = (await db.execute(
+        select(Tenant).where(Tenant.is_active.is_(True)).order_by(Tenant.created_at).limit(1)
+    )).scalar_one_or_none()
+    if tenant is None:
+        return None
+    caps = list(dict.fromkeys(reported_capabilities))
+    site = (await db.execute(
+        select(ProbeSite).where(
+            ProbeSite.tenant_id == tenant.id,
+            ProbeSite.name == _AUTO_ENROLL_SITE_NAME,
+            ProbeSite.status == "active",
+        )
+    )).scalar_one_or_none()
+    if site is None:
+        site = ProbeSite(
+            tenant_id=tenant.id,
+            name=_AUTO_ENROLL_SITE_NAME,
+            status="active",
+            authorized_cidrs=auto_enroll_cidrs(),
+            approved_capabilities=caps,
+        )
+        db.add(site)
+        await db.flush()
+    else:
+        # grant exactly this probe's reported capabilities (keeps subset-check valid
+        # across mixed builds); agents snapshot caps at provision time.
+        site.approved_capabilities = caps
+    return site
+
+
 @router.post("/requests", status_code=status.HTTP_201_CREATED)
 async def create_enrollment_request(
     body: EnrollmentCreate,
@@ -381,6 +433,30 @@ async def create_enrollment_request(
                 token.uses += 1
                 token.last_used_at = now
                 auto_approved = True
+
+    # Trust-on-first-use: no token, but the operator has opted the whole Manager
+    # into auto-enroll (settings.probe_auto_enroll, single-owner fleets). The
+    # probe's device key is its id; we issue a token with no operator action.
+    # Audited via _provision_agent_for_site (action=probe.enrollment.approved,
+    # approved_by="auto-enroll"). Falls through to manual approval if disabled or
+    # no tenant exists yet.
+    if not auto_approved and get_settings().probe_auto_enroll:
+        site = await _get_or_create_auto_enroll_site(db, row.reported_capabilities, now)
+        if site is not None:
+            base_name = (row.hostname_hint or "probe").strip() or "probe"
+            probe_name = f"{base_name}-{fingerprint[:8]}"
+            await _provision_agent_for_site(
+                db,
+                row=row,
+                site=site,
+                tenant_id=site.tenant_id,
+                probe_name=probe_name,
+                location=None,
+                approved_by="auto-enroll",
+                now=now,
+                auto=True,
+            )
+            auto_approved = True
 
     response: dict = {
         "request_id": str(row.id),
