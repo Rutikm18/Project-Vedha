@@ -1,6 +1,0 @@
-2026-07-06 01:15:49,615 INFO scanner: scope loaded: 2 network(s), 0 hostname(s)
-2026-07-06 01:15:49,616 INFO scanner: [port_scan] scanning 1 in-scope target(s)
-{"scanner": "port_scan", "target": "127.0.0.1", "timestamp": "2026-07-05T19:45:49.738129+00:00", "port": 3306, "proto": "tcp", "status": "open", "data": {}, "evidence": "tcp connect succeeded", "error": null}
-{"scanner": "port_scan", "target": "127.0.0.1", "timestamp": "2026-07-05T19:45:49.743523+00:00", "port": 3389, "proto": "tcp", "status": "open", "data": {}, "evidence": "tcp connect succeeded", "error": null}
-{"scanner": "port_scan", "target": "127.0.0.1", "timestamp": "2026-07-05T19:45:49.782406+00:00", "port": 8080, "proto": "tcp", "status": "open", "data": {}, "evidence": "tcp connect succeeded", "error": null}
-{"scanner": "port_scan", "target": "127.0.0.1", "timestamp": "2026-07-05T19:45:49.787945+00:00", "port": 8443, "proto": "tcp", "status": "open", "data": {}, "evidence": "tcp connect succeeded", "error": null}

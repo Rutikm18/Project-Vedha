@@ -1,0 +1,202 @@
+"""
+test_syn_scanner.py — stateless SYN scan (Tier 1.1).
+
+The raw-socket send/receive path only works on privileged Linux, so it cannot
+run in CI/dev here. These tests therefore cover, deterministically:
+  * IP/TCP packet crafting + checksums (round-trip through the parser)
+  * the stateless SYN cookie (keyed ISN) and its reply verification
+  * TCP flag classification (open/closed/filtered)
+  * capability detection + the connect-scan fallback decision (injected)
+  * the SynScanner fallback path end-to-end against a real loopback listener
+"""
+
+from __future__ import annotations
+
+import asyncio
+import socket
+import struct
+
+import pytest
+
+from scanner.scanner_base import ScopeGuard
+from scanner import syn_scanner as ss
+
+
+KEY = b"0123456789abcdef"
+
+
+# ── checksums ─────────────────────────────────────────────────────────────────
+
+class TestChecksum:
+    def test_checksum_of_valid_ip_header_is_zero(self):
+        # A header that already contains its own correct checksum must checksum
+        # back to 0 (the standard one's-complement verification property).
+        hdr = ss.build_ip_header("10.0.0.1", "10.0.0.5", payload_len=20, ident=0x1234)
+        assert ss._checksum(hdr) == 0
+
+    def test_checksum_handles_odd_length(self):
+        # Must pad odd-length buffers without raising.
+        assert isinstance(ss._checksum(b"\x01\x02\x03"), int)
+
+    def test_tcp_checksum_verifies_to_zero(self):
+        tcp = ss.build_tcp_syn("10.0.0.1", "10.0.0.5", 50000, 443, seq=0xdeadbeef)
+        pseudo = (socket.inet_aton("10.0.0.1") + socket.inet_aton("10.0.0.5") +
+                  struct.pack("!BBH", 0, socket.IPPROTO_TCP, len(tcp)))
+        assert ss._checksum(pseudo + tcp) == 0
+
+
+# ── stateless SYN cookie ──────────────────────────────────────────────────────
+
+class TestSynCookie:
+    def test_cookie_is_deterministic(self):
+        a = ss.syn_cookie("10.0.0.5", 443, 50000, KEY)
+        b = ss.syn_cookie("10.0.0.5", 443, 50000, KEY)
+        assert a == b
+
+    def test_cookie_is_32_bit(self):
+        c = ss.syn_cookie("10.0.0.5", 443, 50000, KEY)
+        assert 0 <= c <= 0xFFFFFFFF
+
+    def test_cookie_varies_with_port(self):
+        assert ss.syn_cookie("10.0.0.5", 443, 50000, KEY) != \
+               ss.syn_cookie("10.0.0.5", 80, 50000, KEY)
+
+    def test_cookie_varies_with_key(self):
+        assert ss.syn_cookie("10.0.0.5", 443, 50000, KEY) != \
+               ss.syn_cookie("10.0.0.5", 443, 50000, b"different-key----")
+
+
+# ── packet round-trip ─────────────────────────────────────────────────────────
+
+class TestPacketRoundTrip:
+    def test_syn_packet_parses_back_to_fields(self):
+        seq = ss.syn_cookie("10.0.0.5", 443, 50000, KEY)
+        pkt = ss.build_syn_packet("10.0.0.1", "10.0.0.5", 50000, 443, seq)
+        p = ss.parse_packet(pkt)
+        assert p["ip_src"] == "10.0.0.1"
+        assert p["ip_dst"] == "10.0.0.5"
+        assert p["src_port"] == 50000
+        assert p["dst_port"] == 443
+        assert p["seq"] == seq
+
+    def test_syn_flag_is_set(self):
+        pkt = ss.build_syn_packet("10.0.0.1", "10.0.0.5", 50000, 443, seq=1)
+        p = ss.parse_packet(pkt)
+        assert p["flags"] & 0x02        # SYN
+
+    def test_ip_checksum_valid_in_full_packet(self):
+        pkt = ss.build_syn_packet("10.0.0.1", "10.0.0.5", 50000, 443, seq=1)
+        assert ss._checksum(pkt[:20]) == 0
+
+    def test_parse_rejects_short_packet(self):
+        assert ss.parse_packet(b"\x45" + b"\x00" * 10) is None
+
+
+# ── flag classification ───────────────────────────────────────────────────────
+
+class TestClassify:
+    def test_syn_ack_is_open(self):
+        assert ss.classify(0x12) == "open"       # SYN(0x02) | ACK(0x10)
+
+    def test_rst_is_closed(self):
+        assert ss.classify(0x04) == "closed"     # RST
+        assert ss.classify(0x14) == "closed"     # RST | ACK
+
+    def test_other_flags_are_none(self):
+        assert ss.classify(0x10) is None         # bare ACK
+        assert ss.classify(0x00) is None
+
+
+# ── reply cookie verification ─────────────────────────────────────────────────
+
+class TestVerifyReplyCookie:
+    def _make_synack_reply(self, dst_ip, dst_port, src_port, seq):
+        # The target replies: its src = the scanned (ip, port); ack = our seq + 1.
+        ack = (seq + 1) & 0xFFFFFFFF
+        tcp = struct.pack("!HHIIBBHHH",
+                          dst_port, src_port, 0xAABBCCDD, ack,
+                          (5 << 4), 0x12, 1024, 0, 0)
+        ip = ss.build_ip_header(dst_ip, "10.0.0.1", payload_len=len(tcp))
+        return ss.parse_packet(ip + tcp)
+
+    def test_valid_cookie_verifies(self):
+        seq = ss.syn_cookie("10.0.0.5", 443, 50000, KEY)
+        reply = self._make_synack_reply("10.0.0.5", 443, 50000, seq)
+        assert ss.verify_reply_cookie(reply, our_src_port=50000, key=KEY) is True
+
+    def test_wrong_ack_fails(self):
+        seq = ss.syn_cookie("10.0.0.5", 443, 50000, KEY)
+        reply = self._make_synack_reply("10.0.0.5", 443, 50000, seq + 99)
+        assert ss.verify_reply_cookie(reply, our_src_port=50000, key=KEY) is False
+
+    def test_reply_from_other_host_fails(self):
+        seq = ss.syn_cookie("10.0.0.5", 443, 50000, KEY)
+        # Same ack, but the responder IP differs -> cookie recomputation misses.
+        reply = self._make_synack_reply("10.0.0.9", 443, 50000, seq)
+        assert ss.verify_reply_cookie(reply, our_src_port=50000, key=KEY) is False
+
+
+# ── capability detection + fallback decision ──────────────────────────────────
+
+class TestCapabilityDetection:
+    def test_non_linux_is_unsupported(self):
+        assert ss.syn_scan_supported(platform="darwin") is False
+        assert ss.syn_scan_supported(platform="win32") is False
+
+    def test_linux_without_privilege_is_unsupported(self):
+        def _raise():
+            raise PermissionError("need CAP_NET_RAW")
+        assert ss.syn_scan_supported(platform="linux", socket_factory=_raise) is False
+
+    def test_linux_with_raw_socket_is_supported(self):
+        class _FakeSock:
+            def close(self): pass
+        assert ss.syn_scan_supported(
+            platform="linux", socket_factory=lambda: _FakeSock()) is True
+
+
+# ── SynScanner fallback path (real loopback) ──────────────────────────────────
+
+class TestSynScannerFallback:
+    def test_forced_fallback_builds_connect_scanner(self):
+        scope = ScopeGuard.from_list(["127.0.0.0/8"])
+        scanner = ss.SynScanner(scope, ports=[80], force_fallback=True)
+        assert scanner._supported is False
+        assert scanner._fallback is not None
+
+    def test_fallback_detects_open_port_on_loopback(self):
+        async def _run():
+            server = await asyncio.start_server(
+                lambda r, w: w.close(), "127.0.0.1", 0)
+            port = server.sockets[0].getsockname()[1]
+            scope = ScopeGuard.from_list(["127.0.0.0/8"])
+            scanner = ss.SynScanner(scope, ports=[port], timeout=2.0,
+                                    force_fallback=True)
+            try:
+                return await scanner.scan_target("127.0.0.1")
+            finally:
+                server.close()
+                await server.wait_closed()
+
+        results = asyncio.run(_run())
+        opens = [r for r in results if r.status == "open"]
+        assert len(opens) == 1
+        assert opens[0].port is not None
+        assert opens[0].data.get("method") == "connect_fallback"
+
+    def test_fallback_labels_scanner_name(self):
+        async def _run():
+            server = await asyncio.start_server(
+                lambda r, w: w.close(), "127.0.0.1", 0)
+            port = server.sockets[0].getsockname()[1]
+            scope = ScopeGuard.from_list(["127.0.0.0/8"])
+            scanner = ss.SynScanner(scope, ports=[port], timeout=2.0,
+                                    force_fallback=True)
+            try:
+                return await scanner.scan_target("127.0.0.1")
+            finally:
+                server.close()
+                await server.wait_closed()
+
+        results = asyncio.run(_run())
+        assert all(r.scanner == "syn_scan" for r in results)

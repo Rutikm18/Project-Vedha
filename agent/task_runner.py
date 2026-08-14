@@ -172,9 +172,15 @@ class TaskRunner:
                 # Don't fail the job — fall back to unencrypted scope in params
                 # and HTTP scope fetch validation (belt-and-suspenders)
 
-        # ── Step 1: Resolve use-case → scan_type + profile ──────────────────
+        # ── Step 1: Resolve use-case → scan_type + profile + intensity ──────
         try:
-            scan_type, profile = resolve_use_case(use_case_id, job_type, params)
+            scan_type, profile, intensity = resolve_use_case(
+                use_case_id, job_type, params
+            )
+            # Thread the resolved intensity into params so run_scan() applies the
+            # preset (port breadth + rate/concurrency/timeout/retries). An
+            # explicit operator value already took precedence inside resolve().
+            params["intensity"] = intensity
         except ValueError as exc:
             LOG.error("Job %s rejected: %s", job_id, exc)
             self._submit_or_spool(job_id, {
@@ -359,6 +365,7 @@ class TaskRunner:
         uc_label = f"use-case={use_case_id}" if use_case_id else f"scan_type={scan_type}"
         LOG.info("▶ Executing %s", uc_label)
         LOG.info("    profile        : %s", profile)
+        LOG.info("    intensity      : %s", intensity)
         LOG.info("    targets        : %s", params.get("targets") or "?")
         if all_excludes:
             LOG.info("    excluded       : %s", all_excludes)

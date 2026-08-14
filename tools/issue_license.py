@@ -45,6 +45,20 @@ def keygen() -> None:
     print(f"\nEmbed this in agent/license.py VENDOR_PUBLIC_KEY_HEX:\n  {pub.hex()}")
 
 
+def pubkey() -> None:
+    """Print the vendor PUBLIC key (hex) derived from the private key.
+
+    build/seal-probe.sh uses this to bake PROBE_LICENSE_PUBKEY into the sealed
+    binary without copy-pasting. The private key never leaves this machine; only
+    the public half is embedded in the probe (verify-only, can never forge)."""
+    if not KEY_FILE.exists():
+        print("no vendor key — run 'keygen' first", file=sys.stderr); sys.exit(1)
+    priv = Ed25519PrivateKey.from_private_bytes(KEY_FILE.read_bytes())
+    pub = priv.public_key().public_bytes(
+        serialization.Encoding.Raw, serialization.PublicFormat.Raw)
+    print(pub.hex())
+
+
 def issue(hostid: str, customer: str, days: int) -> None:
     if not KEY_FILE.exists():
         print("no vendor key — run 'keygen' first", file=sys.stderr); sys.exit(1)
@@ -62,6 +76,7 @@ def main() -> None:
     p = argparse.ArgumentParser(description=__doc__)
     sub = p.add_subparsers(dest="cmd", required=True)
     sub.add_parser("keygen")
+    sub.add_parser("pubkey")
     iss = sub.add_parser("issue")
     iss.add_argument("--hostid", required=True)
     iss.add_argument("--customer", required=True)
@@ -69,6 +84,8 @@ def main() -> None:
     a = p.parse_args()
     if a.cmd == "keygen":
         keygen()
+    elif a.cmd == "pubkey":
+        pubkey()
     else:
         issue(a.hostid, a.customer, a.days)
 

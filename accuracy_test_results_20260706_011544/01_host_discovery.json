@@ -1,4 +1,0 @@
-2026-07-06 01:15:49,395 INFO scanner: scope loaded: 2 network(s), 0 hostname(s)
-2026-07-06 01:15:49,396 INFO scanner: [host_discovery] scanning 1 in-scope target(s)
-{"scanner": "host_discovery", "target": "127.0.0.1", "timestamp": "2026-07-05T19:45:49.435351+00:00", "port": null, "proto": null, "status": "open", "data": {"alive": true, "responding_ports": [{"port": 80, "state": "refused"}, {"port": 443, "state": "refused"}, {"port": 445, "state": "refused"}, {"port": 22, "state": "refused"}, {"port": 3389, "state": "open"}, {"port": 53, "state": "refused"}, {"port": 135, "state": "refused"}, {"port": 139, "state": "refused"}]}, "evidence": "responded on: 80/refused, 443/refused, 445/refused, 22/refused, 3389/open, 53/refused, 135/refused, 139/refused", "error": null}
-2026-07-06 01:15:49,436 INFO scanner: [host_discovery] done — 1 result(s)

@@ -12,8 +12,8 @@
 #   # Per-probe: create a client cert signed by the CA
 #   ./gen_mtls_certs.sh client --ca-dir ./ca --agent-id probe-01 --out-dir ./certs/probe-01
 #
-#   # Then build the probe with these certs:
-#   MTLS_DIR=./certs/probe-01 ./build_probe.sh
+#   # Then build the sealed probe with these certs:
+#   MTLS_DIR=./certs/probe-01 ./seal-probe.sh
 #
 # Output (per probe):
 #   mtls_cert.pem   — client certificate (X.509, signed by CA)
@@ -114,8 +114,8 @@ generate_client() {
     say "  Private key:  ${OUT_DIR}/mtls_key.pem   (embedded in binary)"
     say "  CA cert:      ${OUT_DIR}/ca_cert.pem"
     say ""
-    say "Build probe with:"
-    say "  MTLS_DIR=${OUT_DIR} ./build_probe.sh"
+    say "Build sealed probe with:"
+    say "  MTLS_DIR=${OUT_DIR} ./seal-probe.sh"
 }
 
 # ── Verify certificates ──────────────────────────────────────────────────────

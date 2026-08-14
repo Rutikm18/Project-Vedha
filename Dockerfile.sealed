@@ -58,10 +58,20 @@ RUN if [ -n "${PROBE_LICENSE_PUBKEY}" ]; then \
       ENV_FLAGS="${ENV_FLAGS} --include-env=HW_BIND_FINGERPRINT=${HW_BIND_FINGERPRINT}"; \
     fi
 
-# Compile: all Python → C → machine code → single executable
-# --include-package=websockets is new (Phase 2: WebSocket push)
+# Compile: all Python → C → machine code → single executable.
+# Hardening for IP protection (verified: nothing in the probe reads __doc__ at
+# runtime, so stripping docstrings is safe):
+#   --lto=yes            link-time optimization — smaller + harder to analyze
+#   no_docstrings        strips your algorithm explanations out of the binary
+#   no_asserts           strips assert statements (they leak intent/invariants)
+# HONEST NOTE: the FREE Nuitka still leaves string/number CONSTANTS (port lists,
+# rule text) recoverable from the binary. To also encrypt constants + add
+# anti-debugging, use Nuitka Commercial's protection plugin. Even so, this build
+# already removes ALL source, bytecode, and docstrings — a large step up from
+# shipping .py/.pyc (which decompile trivially).
 RUN python3 -m nuitka --onefile --standalone --output-dir=/out \
       --output-filename=vedha-probe --follow-imports \
+      --lto=yes --python-flag=no_docstrings --python-flag=no_asserts \
       --include-package=scanner --include-package=workflow --include-package=agent \
       --include-package=cryptography --include-package=httpx \
       --include-package=websockets \

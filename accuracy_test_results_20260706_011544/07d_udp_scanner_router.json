@@ -1,6 +1,0 @@
-2026-07-06 01:16:11,469 INFO scanner: scope loaded: 2 network(s), 0 hostname(s)
-2026-07-06 01:16:11,469 INFO scanner: [udp_scan] scanning 1 in-scope target(s)
-{"scanner": "udp_scan", "target": "192.168.80.1", "timestamp": "2026-07-05T19:46:11.488705+00:00", "port": 53, "proto": "udp", "status": "open", "data": {"service": "dns", "responded": true, "reply_bytes": 65, "reply_hex_head": "13378180000100020000000003777777076578616d706c6503636f6d0000010001c00c00010001000000490004ac4293"}, "evidence": "dns replied with 65 bytes", "error": null}
-{"scanner": "udp_scan", "target": "192.168.80.1", "timestamp": "2026-07-05T19:46:14.486470+00:00", "port": 123, "proto": "udp", "status": "filtered", "data": {"service_guess": "ntp", "responded": false}, "evidence": "no reply (open|filtered)", "error": null}
-{"scanner": "udp_scan", "target": "192.168.80.1", "timestamp": "2026-07-05T19:46:14.486658+00:00", "port": 161, "proto": "udp", "status": "filtered", "data": {"service_guess": "snmp", "responded": false}, "evidence": "no reply (open|filtered)", "error": null}
-{"scanner": "udp_scan", "target": "192.168.80.1", "timestamp": "2026-07-05T19:46:14.487988+00:00", "port": 137, "proto": "udp", "status": "filtered", "data": {"service_guess": "netbios-ns", "responded": false}, "evidence": "no reply (open|filtered)", "error": null}

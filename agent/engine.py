@@ -33,6 +33,11 @@ from workflow.modes import (
     triage,
 )
 from workflow.workflow_engine import run_engagement
+from workflow.intensity import (
+    DEFAULT_INTENSITY,
+    intensity_port_override,
+    resolve_intensity,
+)
 
 RESULT_SCHEMA_VERSION = "1.1"
 PROBE_ID = os.environ.get("PROBE_NAME") or socket.gethostname()
@@ -120,7 +125,35 @@ _SCAN_MAP = {
     "mcp_discovery":        ("it",  None,        {"mcp_ai"}),
     "ai_service_discovery": ("it",  None,        {"mcp_ai"}),
     "passive_discovery":    ("ot",  triage,      None),
+    # ── Capabilities unlocked by the main_scripts scanners ─────────────────────
+    # device_inventory reaches the banner stage (OS hints + service products feed
+    # the device-role classifier post-stage). full_port_audit / exposure_matrix
+    # stop at the port stage — breadth and vantage labeling, not deep branches.
+    "device_inventory":     ("it",  service_fingerprint_mode,  None),
+    "full_port_audit":      ("it",  port_scan_mode,            None),
+    "exposure_matrix":      ("it",  port_scan_mode,            None),
 }
+
+# scan_type → a pinned port-coverage profile that overrides the intensity's own
+# choice (see workflow/intensity.py). A full-port audit is the whole TCP space no
+# matter how light/deep the operator set the intensity.
+_FORCE_PORT_PROFILE = {"full_port_audit": "full"}
+
+# Above this many TCP ports, a connect scan (one socket per port) is wasteful —
+# switch the port stage to the stateless SYN scanner (connect fallback off root).
+_SYN_PORT_THRESHOLD = 1024
+
+
+def _scan_method_for(port_override: list[int] | None) -> str:
+    """'syn' for wide sweeps (deep intensity / full-port audit), else 'connect'."""
+    return "syn" if (port_override and len(port_override) > _SYN_PORT_THRESHOLD) else "connect"
+
+
+# scan_type → its natural default intensity, applied when neither an explicit
+# params["intensity"] nor the originating use-case supplied one (e.g. a direct
+# scan_type dispatch). A full-port audit runs the deep envelope (retries +
+# completeness) even when reached without a use-case.
+_DEFAULT_INTENSITY_BY_SCAN_TYPE = {"full_port_audit": "deep"}
 
 CAPABILITIES = sorted(_SCAN_MAP)
 
@@ -174,7 +207,7 @@ def _job_runtime_seconds(params: dict) -> float:
     )
 
 
-def _tuning_from_params(params: dict) -> dict:
+def _tuning_from_params(params: dict, preset: dict | None = None) -> dict:
     """Translate operator-supplied job params into run_engagement() kwargs.
 
     This is the seam that makes the Scanner page's controls actually reach the
@@ -182,18 +215,26 @@ def _tuning_from_params(params: dict) -> dict:
     the last line of defense before packets leave the host, so it does not
     trust the caller's numbers blindly.
 
+    `preset` is the resolved intensity preset (workflow/intensity.py). It supplies
+    the DEFAULT for each envelope value; an explicit operator param still wins and
+    is still clamped. `standard` intensity's preset equals the historical
+    hardcoded defaults, so an intensity-less job is unchanged.
+
     Recognised params (all optional):
-      rate, concurrency, timeout, disc_timeout  — scan intensity (nmap-style)
+      rate, concurrency, timeout, disc_timeout, retries  — scan intensity
       passive_listen_seconds                    — OT passive capture duration
       recheck_hours                             — re-scan delta window
       ssh_creds {user,password,key_path,port}   — Gate-6 SSH collection
       win_creds {user,password,domain}          — Gate-6 Windows collection
     """
+    if preset is None:
+        preset = resolve_intensity(DEFAULT_INTENSITY)
     tuning: dict = {
-        "rate":         _clamp(params.get("rate"),         1,   2000, 200.0),
-        "concurrency":  int(_clamp(params.get("concurrency"), 1, 500, 100)),
-        "timeout":      _clamp(params.get("timeout"),      0.5, 30.0, 3.0),
-        "disc_timeout": _clamp(params.get("disc_timeout"), 0.5, 15.0, 1.5),
+        "rate":         _clamp(params.get("rate"),         1,   2000, preset["rate"]),
+        "concurrency":  int(_clamp(params.get("concurrency"), 1, 500, preset["concurrency"])),
+        "timeout":      _clamp(params.get("timeout"),      0.5, 30.0, preset["timeout"]),
+        "disc_timeout": _clamp(params.get("disc_timeout"), 0.5, 15.0, preset["disc_timeout"]),
+        "retries":      int(_clamp(params.get("retries"),  0,   5,    preset["retries"])),
     }
 
     # OT passive listen window — the OT use-case promises "duration set by operator".
@@ -301,13 +342,19 @@ def _hosts_from_facts(facts: list[dict]) -> list[dict]:
     return list(host_map.values())
 
 
-def _applied_tuning(tuning: dict, job_runtime_seconds: float) -> dict:
+def _applied_tuning(tuning: dict, job_runtime_seconds: float,
+                    *, intensity: str = DEFAULT_INTENSITY,
+                    port_override: list[int] | None = None) -> dict:
     """Serialize effective limits without ever echoing credential values."""
     return {
+        "intensity": intensity,
         "rate": tuning.get("rate"),
         "concurrency": tuning.get("concurrency"),
         "timeout": tuning.get("timeout"),
         "disc_timeout": tuning.get("disc_timeout"),
+        "retries": tuning.get("retries"),
+        "tcp_ports_scanned": (len(port_override) if port_override is not None else None),
+        "scan_method": _scan_method_for(port_override),
         "passive_listen_seconds": tuning.get("passive_listen_seconds"),
         "recheck_hours": (
             tuning["force_recheck_after"].total_seconds() / 3600
@@ -332,6 +379,8 @@ def _build_run_stats(
     local_scope_src: list[str] | None,
     requested_targets: list[str],
     authorized_targets: list[str],
+    intensity: str = DEFAULT_INTENSITY,
+    port_override: list[int] | None = None,
 ) -> tuple[dict, list[dict]]:
     """Build one consistent result summary for complete and interrupted runs."""
     successful_facts = [
@@ -351,7 +400,10 @@ def _build_run_stats(
             for fact in facts
             if fact.get("scanner")
         }),
-        "applied_tuning": _applied_tuning(tuning, job_runtime_seconds),
+        "applied_tuning": _applied_tuning(
+            tuning, job_runtime_seconds,
+            intensity=intensity, port_override=port_override,
+        ),
         "scope_enforced": {
             "allow": scope_src,
             "exclude": exclude_src,
@@ -361,6 +413,73 @@ def _build_run_stats(
         },
     }
     return stats, hosts
+
+
+# ── main_scripts-enabled derived facts (probe-only inference post-stage) ─────
+# These use-cases add an INFERENCE pass OVER the raw collection facts — no extra
+# packets leave the host:
+#   device_inventory → a device ROLE per host   (scanner.device_classifier)
+#   exposure_matrix  → a per-host reachability matrix from this probe's vantage
+#                      (scanner.vantage_matrix), which the manager later fuses
+#                      with other probes to separate external from internal-only.
+# The derived observations ride the same result payload as every other fact.
+def _results_by_target(cache: WorkflowCache) -> dict[str, list]:
+    grouped: dict[str, list] = {}
+    for entry in cache._store.values():
+        result = entry.result
+        target = getattr(result, "target", None)
+        if target:
+            grouped.setdefault(target, []).append(result)
+    return grouped
+
+
+def _derive_post_stage(scan_type: str, cache: WorkflowCache) -> tuple[list, dict]:
+    """Return (extra ScanResults to append as facts, a top-level rollup dict).
+
+    Pure logic over already-collected ScanResults — unit-testable, no I/O. Empty
+    for every scan_type that has no inference post-stage, so the common path pays
+    nothing.
+    """
+    from scanner.scanner_base import ScanResult
+
+    if scan_type == "device_inventory":
+        from scanner.device_classifier import classify_from_results
+        extra: list = []
+        rollup: list = []
+        for target, results in _results_by_target(cache).items():
+            clf = classify_from_results(results)
+            if clf["device_type"] == "unknown":
+                continue  # no evidence — never manufacture a role
+            extra.append(ScanResult(
+                scanner="device_classify", target=target, status="observed",
+                data=clf,
+                evidence=(f"device_type={clf['device_type']} "
+                          f"confidence={clf['confidence']}")))
+            rollup.append({"ip": target, **clf})
+        return extra, {"devices": rollup}
+
+    if scan_type == "exposure_matrix":
+        from scanner.vantage_matrix import reconcile_vantages
+        extra = []
+        rollup = []
+        for target, results in _results_by_target(cache).items():
+            by_vantage: dict[str, list] = {}
+            for result in results:
+                if getattr(result, "port", None) is None:
+                    continue  # host-discovery / scan_summary carry no port
+                by_vantage.setdefault(result.vantage or "unknown", []).append(result)
+            if not by_vantage:
+                continue
+            matrix = reconcile_vantages(by_vantage)
+            extra.append(ScanResult(
+                scanner="exposure_matrix", target=target, status="observed",
+                data=matrix,
+                evidence=(f"external={matrix['externally_exposed']} "
+                          f"internal_only={matrix['internal_only']}")))
+            rollup.append({"ip": target, **matrix})
+        return extra, {"exposure": rollup}
+
+    return [], {}
 
 
 class LeaseLostError(RuntimeError):
@@ -447,6 +566,32 @@ def run_scan(scan_type: str, params: dict,
             f"unsupported profile {profile!r}",
             error_code="unsupported_profile",
             remediation=f"Use one of: {', '.join(sorted(VALID_PROFILES))}.",
+            engagement_uuid=engagement_uuid,
+            use_case_id=use_case_id,
+            profile=profile,
+        )
+
+    # Intensity (workflow/intensity.py): the third knob. Resolved BEFORE any
+    # scanning so a typo'd intensity is rejected loudly, not silently downgraded.
+    intensity = (
+        params.get("intensity")
+        or _DEFAULT_INTENSITY_BY_SCAN_TYPE.get(scan_type)
+        or DEFAULT_INTENSITY
+    )
+    try:
+        preset = resolve_intensity(intensity)
+        # A scan_type may pin its own port coverage regardless of intensity
+        # (full_port_audit is always the whole TCP space); otherwise the
+        # intensity preset decides, and `standard` defers to the profile catalog.
+        port_override = intensity_port_override(
+            intensity, force_profile=_FORCE_PORT_PROFILE.get(scan_type),
+        )
+    except ValueError as exc:
+        return _error_result(
+            scan_type,
+            str(exc),
+            error_code="unsupported_intensity",
+            remediation="Use one of: light, standard, deep.",
             engagement_uuid=engagement_uuid,
             use_case_id=use_case_id,
             profile=profile,
@@ -605,8 +750,12 @@ def run_scan(scan_type: str, params: dict,
     # Translate the operator's job params (scan intensity, OT listen window,
     # re-scan delta, credentials) into engine kwargs. This is what makes the
     # Scanner page's controls drive the actual scan instead of being ignored.
-    tuning = _tuning_from_params(params)
+    tuning = _tuning_from_params(params, preset)
     job_runtime_seconds = _job_runtime_seconds(params)
+    # Wide TCP sweeps (deep intensity / full-port audit) use the stateless SYN
+    # scanner instead of tens of thousands of connect() calls per host. It falls
+    # back to a connect scan off privileged Linux, so behavior is identical here.
+    scan_method = _scan_method_for(port_override)
     trace = ExecutionTrace(planned_components(
         profile,
         service_filter=mode.service_filter,
@@ -624,6 +773,8 @@ def run_scan(scan_type: str, params: dict,
                     service_filter=mode.service_filter,
                     stop_after_banner=mode.stop_after_banner,
                     stage_ceiling=mode.stage_ceiling,
+                    port_override=port_override,
+                    scan_method=scan_method,
                     cache=cache,
                     trace=trace,
                     **tuning,
@@ -673,6 +824,8 @@ def run_scan(scan_type: str, params: dict,
             local_scope_src=local_scope_src,
             requested_targets=requested_targets,
             authorized_targets=targets,
+            intensity=intensity,
+            port_override=port_override,
         )
         has_evidence = bool(run_stats["fact_count"])
         return _error_result(
@@ -721,6 +874,8 @@ def run_scan(scan_type: str, params: dict,
             local_scope_src=local_scope_src,
             requested_targets=requested_targets,
             authorized_targets=targets,
+            intensity=intensity,
+            port_override=port_override,
         )
         has_evidence = bool(run_stats["fact_count"])
         return _error_result(
@@ -748,6 +903,16 @@ def run_scan(scan_type: str, params: dict,
         )
 
     facts = _facts_from_cache(cache)
+    # Inference post-stage for the main_scripts-enabled use-cases. Runs over the
+    # collected ScanResults (no new packets) and appends its derived observations
+    # as ordinary facts so they flow through run_stats and the result payload.
+    derived_results, derived_rollup = _derive_post_stage(scan_type, cache)
+    facts.extend(asdict(r) for r in derived_results)
+    # Per-host completeness/health summaries (PortScanner's scan_summary facts) —
+    # surfaced at top level so the manager need not filter facts to find them.
+    scan_metrics = [
+        f.get("data", {}) for f in facts if f.get("status") == "scan_summary"
+    ]
     issues = trace.issues
     errors.extend(issue["message"] for issue in issues)
     run_stats, hosts_list = _build_run_stats(
@@ -760,6 +925,8 @@ def run_scan(scan_type: str, params: dict,
         local_scope_src=local_scope_src,
         requested_targets=requested_targets,
         authorized_targets=targets,
+        intensity=intensity,
+        port_override=port_override,
     )
     open_ports = run_stats["open_ports"]
     host_count = run_stats["host_count"]
@@ -798,4 +965,8 @@ def run_scan(scan_type: str, params: dict,
         "service_count": open_ports,
         "open_ports": open_ports,
         "finding_count": 0,   # probe never produces findings — manager does
+        # Richer facts surfaced at top level (probe-only this pass; the manager
+        # stores them as-is — teaching detection/UI to use them is the follow-up):
+        "scan_metrics": scan_metrics,   # per-host completeness + self-health
+        **derived_rollup,               # {"devices": [...]} or {"exposure": [...]}
     }

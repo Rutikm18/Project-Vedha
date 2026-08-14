@@ -1,6 +1,0 @@
-2026-07-06 01:15:52,548 INFO scanner: scope loaded: 2 network(s), 0 hostname(s)
-2026-07-06 01:15:52,548 INFO scanner: [udp_scan] scanning 1 in-scope target(s)
-{"scanner": "udp_scan", "target": "127.0.0.1", "timestamp": "2026-07-05T19:45:55.561326+00:00", "port": 53, "proto": "udp", "status": "filtered", "data": {"service_guess": "dns", "responded": false}, "evidence": "no reply (open|filtered)", "error": null}
-{"scanner": "udp_scan", "target": "127.0.0.1", "timestamp": "2026-07-05T19:45:55.559881+00:00", "port": 123, "proto": "udp", "status": "filtered", "data": {"service_guess": "ntp", "responded": false}, "evidence": "no reply (open|filtered)", "error": null}
-{"scanner": "udp_scan", "target": "127.0.0.1", "timestamp": "2026-07-05T19:45:55.563119+00:00", "port": 161, "proto": "udp", "status": "filtered", "data": {"service_guess": "snmp", "responded": false}, "evidence": "no reply (open|filtered)", "error": null}
-{"scanner": "udp_scan", "target": "127.0.0.1", "timestamp": "2026-07-05T19:45:55.570778+00:00", "port": 137, "proto": "udp", "status": "filtered", "data": {"service_guess": "netbios-ns", "responded": false}, "evidence": "no reply (open|filtered)", "error": null}
