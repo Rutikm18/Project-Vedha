@@ -70,6 +70,7 @@ async def portal_engagement(user: ClientUser, db: DB):
     return ClientEngagementOut(
         id=eng.id, name=eng.name, status=_enum_val(eng.status),
         scope_cidr_count=len(eng.scope_cidrs or []),
+        scope_cidrs=list(eng.scope_cidrs or []),
         has_assigned_agent=eng.assigned_agent_id is not None,
     )
 

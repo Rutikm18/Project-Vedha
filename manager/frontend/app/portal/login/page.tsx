@@ -42,48 +42,61 @@ export default function PortalLoginPage() {
     }
   }
 
+  const inputStyle: React.CSSProperties = {
+    width: "100%", borderRadius: 8, padding: "9px 11px", fontSize: 13,
+    background: "var(--bg-app)", color: "var(--text-primary)",
+    border: "0.5px solid var(--border-default)", outline: "none",
+  };
+
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4">
-      <div className="w-full max-w-sm rounded-xl border border-slate-200 bg-white p-8 shadow-sm">
-        <div className="mb-6 flex flex-col items-center gap-2">
-          <div className="flex h-11 w-11 items-center justify-center rounded-lg bg-indigo-600">
-            <Shield className="h-6 w-6 text-white" />
+    <div className="console-scope" style={{
+      minHeight: "100vh", display: "flex", alignItems: "center",
+      justifyContent: "center", padding: 16, background: "var(--bg-app)",
+      fontFamily: "var(--font-body)",
+    }}>
+      <div className="panel" style={{ width: "100%", maxWidth: 380, padding: 32 }}>
+        <div style={{ display: "flex", flexDirection: "column", alignItems: "center",
+          gap: 8, marginBottom: 24 }}>
+          <div style={{ width: 44, height: 44, borderRadius: 10,
+            background: "var(--accent-ghost)", border: "0.5px solid var(--border-accent)",
+            display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <Shield style={{ width: 24, height: 24, color: "var(--accent)" }} />
           </div>
-          <h1 className="text-lg font-semibold text-slate-900">Vedha Customer Portal</h1>
-          <p className="text-sm text-slate-500">Sign in to view your engagement</p>
+          <h1 style={{ fontFamily: "var(--font-display)", fontSize: 18, fontWeight: 600,
+            color: "var(--text-primary)", margin: 0, letterSpacing: 1 }}>
+            Vedha User Portal
+          </h1>
+          <p style={{ fontSize: 13, color: "var(--text-muted)", margin: 0 }}>
+            Sign in to view your engagement
+          </p>
         </div>
-        <form onSubmit={submit} className="space-y-4">
+        <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Email</label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-              placeholder="you@company.com"
-            />
+            <label className="eyebrow" style={{ display: "block", marginBottom: 6 }}>Email</label>
+            <input type="email" required value={email}
+              onChange={(e) => setEmail(e.target.value)} style={inputStyle}
+              placeholder="you@company.com" />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-slate-700">Password</label>
-            <input
-              type="password"
-              required
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
-              className="w-full rounded-md border border-slate-300 px-3 py-2 text-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500"
-              placeholder="••••••••"
-            />
+            <label className="eyebrow" style={{ display: "block", marginBottom: 6 }}>Password</label>
+            <input type="password" required value={password}
+              onChange={(e) => setPassword(e.target.value)} style={inputStyle}
+              placeholder="••••••••" />
           </div>
           {error && (
-            <div className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">{error}</div>
+            <div style={{ borderRadius: 8, padding: "9px 11px", fontSize: 13,
+              color: "var(--sev-critical-color)",
+              background: "color-mix(in srgb, var(--sev-critical-color) 10%, transparent)" }}>
+              {error}
+            </div>
           )}
-          <button
-            type="submit"
-            disabled={loading}
-            className="flex w-full items-center justify-center gap-2 rounded-md bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
-          >
-            {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+          <button type="submit" disabled={loading}
+            style={{ display: "flex", width: "100%", alignItems: "center",
+              justifyContent: "center", gap: 8, borderRadius: 8, padding: "10px 16px",
+              fontSize: 13, fontWeight: 600, color: "#fff", background: "var(--accent)",
+              border: "none", cursor: loading ? "default" : "pointer",
+              opacity: loading ? 0.6 : 1 }}>
+            {loading && <Loader2 style={{ width: 16, height: 16 }} className="animate-spin" />}
             Sign in
           </button>
         </form>

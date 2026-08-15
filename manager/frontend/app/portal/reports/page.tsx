@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Loader2, FileText, Download } from "lucide-react";
+import { PortalShell } from "../../../components/portal/PortalShell";
 import { portalApi, type PortalReport } from "../../../lib/portal-client";
 
 interface ReportContent extends PortalReport {
@@ -23,38 +24,52 @@ export default function PortalReports() {
     }
   }
 
-  if (q.isLoading) return <div className="flex items-center gap-2 text-slate-500"><Loader2 className="h-4 w-4 animate-spin" /> Loading reports…</div>;
-  if (q.isError) return <div className="rounded-md bg-red-50 px-4 py-3 text-sm text-red-700">{(q.error as Error).message}</div>;
-
   const reports = q.data ?? [];
 
   return (
-    <div className="space-y-4">
-      <h1 className="text-xl font-semibold text-slate-900">Reports</h1>
-
-      {reports.length === 0 ? (
-        <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-slate-300 bg-white py-16 text-center">
-          <FileText className="h-8 w-8 text-slate-300" />
-          <p className="mt-3 text-sm font-medium text-slate-700">No reports available</p>
-          <p className="text-sm text-slate-400">Approved reports for your engagement will appear here.</p>
+    <PortalShell title="Reports" subtitle="Approved assessment reports">
+      {q.isLoading ? (
+        <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--text-muted)" }}>
+          <Loader2 className="animate-spin" style={{ width: 16, height: 16 }} /> Loading reports…
+        </div>
+      ) : q.isError ? (
+        <div className="panel" style={{ padding: 16, color: "var(--sev-critical-color)" }}>
+          {(q.error as Error).message}
+        </div>
+      ) : reports.length === 0 ? (
+        <div className="panel" style={{ padding: 48, display: "flex", flexDirection: "column",
+          alignItems: "center", textAlign: "center" }}>
+          <FileText style={{ width: 32, height: 32, color: "var(--text-faint)" }} />
+          <p style={{ marginTop: 12, fontSize: 13, fontWeight: 500, color: "var(--text-secondary)" }}>
+            No reports available
+          </p>
+          <p style={{ fontSize: 13, color: "var(--text-muted)" }}>
+            Approved reports for your engagement will appear here.
+          </p>
         </div>
       ) : (
-        <div className="divide-y divide-slate-100 overflow-hidden rounded-lg border border-slate-200 bg-white">
+        <div className="panel">
           {reports.map((r) => (
-            <div key={r.id} className="flex items-center justify-between px-4 py-3">
-              <div className="flex items-center gap-3">
-                <FileText className="h-5 w-5 text-indigo-500" />
+            <div key={r.id} className="console-row" style={{ display: "flex",
+              alignItems: "center", justifyContent: "space-between", padding: "12px 16px" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                <FileText style={{ width: 20, height: 20, color: "var(--accent)" }} />
                 <div>
-                  <div className="text-sm font-medium capitalize text-slate-900">{r.output_type.replace(/_/g, " ")}</div>
-                  <div className="text-xs text-slate-400">{new Date(r.generated_at).toLocaleString()} · {r.model}</div>
+                  <div style={{ fontSize: 13, fontWeight: 500, textTransform: "capitalize",
+                    color: "var(--text-primary)" }}>
+                    {r.output_type.replace(/_/g, " ")}
+                  </div>
+                  <div style={{ fontSize: 11, color: "var(--text-faint)" }}>
+                    {new Date(r.generated_at).toLocaleString()} · {r.model}
+                  </div>
                 </div>
               </div>
-              <button
-                onClick={() => view(r.id)}
-                disabled={loadingId === r.id}
-                className="inline-flex items-center gap-1.5 rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-60"
-              >
-                {loadingId === r.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+              <button onClick={() => view(r.id)} disabled={loadingId === r.id}
+                style={{ display: "inline-flex", alignItems: "center", gap: 6, borderRadius: 7,
+                  border: "0.5px solid var(--border-default)", padding: "6px 12px", fontSize: 13,
+                  color: "var(--text-secondary)", background: "transparent", cursor: "pointer" }}>
+                {loadingId === r.id ? <Loader2 className="animate-spin" style={{ width: 16, height: 16 }} />
+                  : <Download style={{ width: 16, height: 16 }} />}
                 View
               </button>
             </div>
@@ -63,16 +78,27 @@ export default function PortalReports() {
       )}
 
       {open && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onClick={() => setOpen(null)}>
-          <div className="flex max-h-[80vh] w-full max-w-3xl flex-col rounded-lg bg-white shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center justify-between border-b border-slate-200 px-4 py-3">
-              <div className="text-sm font-semibold capitalize text-slate-900">{open.output_type.replace(/_/g, " ")}</div>
-              <button onClick={() => setOpen(null)} className="text-slate-400 hover:text-slate-600">✕</button>
+        <div onClick={() => setOpen(null)} style={{ position: "fixed", inset: 0, zIndex: 50,
+          display: "flex", alignItems: "center", justifyContent: "center",
+          background: "var(--modal-backdrop)", padding: 16 }}>
+          <div onClick={(e) => e.stopPropagation()} className="panel"
+            style={{ display: "flex", maxHeight: "80vh", width: "100%", maxWidth: 768,
+              flexDirection: "column" }}>
+            <div className="panel-head" style={{ justifyContent: "space-between" }}>
+              <div className="panel-title" style={{ textTransform: "capitalize" }}>
+                {open.output_type.replace(/_/g, " ")}
+              </div>
+              <button onClick={() => setOpen(null)}
+                style={{ color: "var(--text-muted)", background: "none", border: "none",
+                  cursor: "pointer", fontSize: 14 }}>✕</button>
             </div>
-            <pre className="overflow-auto whitespace-pre-wrap px-4 py-4 text-sm text-slate-700">{open.content}</pre>
+            <pre style={{ overflow: "auto", whiteSpace: "pre-wrap", padding: "16px 18px",
+              fontSize: 13, color: "var(--text-secondary)", fontFamily: "var(--font-mono)" }}>
+              {open.content}
+            </pre>
           </div>
         </div>
       )}
-    </div>
+    </PortalShell>
   );
 }

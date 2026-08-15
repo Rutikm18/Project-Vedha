@@ -42,6 +42,9 @@ class ClientEngagementOut(BaseModel):
     name: str
     status: str
     scope_cidr_count: int
+    # The customer's own authorized scope, so the scan-request form can show what
+    # they may target. Excluded ranges are enforced server-side (not exposed here).
+    scope_cidrs: list[str] = []
     has_assigned_agent: bool
 
 

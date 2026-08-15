@@ -3,6 +3,7 @@
  * bounces to the portal login. Every response is already engagement-scoped by
  * FastAPI — this layer just fetches and unwraps errors.
  */
+import type { CSSProperties } from "react";
 export async function portalApi<T>(
   path: string,
   opts: { method?: string; body?: unknown } = {},
@@ -43,6 +44,7 @@ export interface PortalEngagement {
   name: string;
   status: string;
   scope_cidr_count: number;
+  scope_cidrs: string[];
   has_assigned_agent: boolean;
 }
 export interface PortalPosture {
@@ -77,19 +79,53 @@ export interface PortalScan {
   status: string;
   at: string | null;
 }
+export interface PortalScanRequest {
+  id: string;
+  scan_type: string;
+  status: string;
+  targets: string[] | null;
+  intensity: string | null;
+  note: string | null;
+  requested_at: string | null;
+}
+export interface PortalSummary {
+  posture: PortalPosture;
+  open_findings: number;
+  closed_findings: number;
+  severity_counts: Record<string, number>;
+  pending_requests: number;
+  running_jobs: number;
+}
+export interface PortalTrendPoint { period: string; opened: number; closed: number }
+export interface PortalTrends {
+  by_severity: Record<string, number>;
+  timeline: PortalTrendPoint[];
+}
 
-export const SEVERITY_STYLE: Record<string, string> = {
-  critical: "bg-red-100 text-red-700 ring-red-600/20",
-  high: "bg-orange-100 text-orange-700 ring-orange-600/20",
-  medium: "bg-amber-100 text-amber-700 ring-amber-600/20",
-  low: "bg-sky-100 text-sky-700 ring-sky-600/20",
-  info: "bg-slate-100 text-slate-600 ring-slate-500/20",
+// Severity → the app's theme-aware colour token (tracks light/dark like the
+// operator console, instead of the old hardcoded Tailwind palette).
+export const SEVERITY_VAR: Record<string, string> = {
+  critical: "var(--sev-critical-color)",
+  high: "var(--sev-high-color)",
+  medium: "var(--sev-medium-color)",
+  low: "var(--sev-low-color)",
+  info: "var(--sev-info-color)",
 };
 
-export const GRADE_STYLE: Record<string, string> = {
-  A: "text-emerald-600",
-  B: "text-lime-600",
-  C: "text-amber-600",
-  D: "text-orange-600",
-  F: "text-red-600",
+/** Inline style for a severity chip using theme tokens (with a tinted fill). */
+export function severityChip(severity: string): CSSProperties {
+  const c = SEVERITY_VAR[severity] ?? SEVERITY_VAR.info;
+  return {
+    color: c,
+    background: `color-mix(in srgb, ${c} 12%, transparent)`,
+    border: `0.5px solid color-mix(in srgb, ${c} 34%, transparent)`,
+  };
+}
+
+export const GRADE_VAR: Record<string, string> = {
+  A: "var(--sev-info-color)",
+  B: "var(--nominal-color)",
+  C: "var(--sev-medium-color)",
+  D: "var(--sev-high-color)",
+  F: "var(--sev-critical-color)",
 };
