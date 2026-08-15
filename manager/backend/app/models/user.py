@@ -12,7 +12,10 @@ from app.models.enums import UserRole
 
 class User(Base, TimestampMixin):
     __tablename__ = "users"
-    __table_args__ = (UniqueConstraint("tenant_id", "email", name="uq_user_tenant_email"),)
+    __table_args__ = (
+        UniqueConstraint("tenant_id", "email", name="uq_user_tenant_email"),
+        UniqueConstraint("tenant_id", "portal_slug", name="uq_user_tenant_portal_slug"),
+    )
 
     id: Mapped[uuid.UUID] = mapped_column(
         UUID(as_uuid=True), primary_key=True, server_default="gen_random_uuid()"
@@ -39,5 +42,10 @@ class User(Base, TimestampMixin):
         UUID(as_uuid=True), ForeignKey("engagements.id", ondelete="SET NULL"),
         nullable=True, index=True,
     )
+
+    # Set ONLY for role == client. A URL-safe per-customer handle ("user as
+    # domain"): brands the shared portal today, becomes <slug>.portal.<domain>
+    # once a wildcard domain is configured. Unique per tenant (see __table_args__).
+    portal_slug: Mapped[str | None] = mapped_column(String(63), nullable=True)
 
     tenant: Mapped["Tenant"] = relationship(back_populates="users", lazy="noload")

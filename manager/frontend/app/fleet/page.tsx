@@ -243,27 +243,28 @@ export default function FleetPage() {
             ) : (
               <form onSubmit={approve} className="flt-form">
                 <label className="flt-field">
-                  <span className="flt-label">Verification code</span>
+                  <span className="flt-label">Verification code <span className="flt-req-star" aria-hidden="true">*</span></span>
                   <input className="flt-input flt-mono" required minLength={8} placeholder="ABCD-EFGH" value={form.user_code} onChange={(e) => setForm({ ...form, user_code: e.target.value })} />
                 </label>
                 <label className="flt-field">
-                  <span className="flt-label">Probe name</span>
+                  <span className="flt-label">Probe name <span className="flt-req-star" aria-hidden="true">*</span></span>
                   <input className="flt-input" required value={form.probe_name} onChange={(e) => setForm({ ...form, probe_name: e.target.value })} />
                 </label>
                 <label className="flt-field">
-                  <span className="flt-label">Site name</span>
+                  <span className="flt-label">Site name <span className="flt-req-star" aria-hidden="true">*</span></span>
                   <input className="flt-input" required placeholder="Mumbai office" value={form.site_name} onChange={(e) => setForm({ ...form, site_name: e.target.value })} />
                 </label>
                 <label className="flt-field">
-                  <span className="flt-label">Location</span>
+                  <span className="flt-label">Location <span className="flt-optional">(optional)</span></span>
                   <input className="flt-input" placeholder="IN-MH" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} />
                 </label>
                 <label className="flt-field flt-full">
-                  <span className="flt-label">Authorized CIDRs</span>
+                  <span className="flt-label">Authorized CIDRs <span className="flt-req-star" aria-hidden="true">*</span></span>
                   <input className="flt-input flt-mono" required placeholder="10.20.0.0/16, 2001:db8:1::/64" value={form.authorized_cidrs} onChange={(e) => setForm({ ...form, authorized_cidrs: e.target.value })} />
+                  <span className="flt-hint">The scope ceiling — the probe can never scan outside these ranges. At least one is required.</span>
                 </label>
                 <label className="flt-field flt-full">
-                  <span className="flt-label">Excluded CIDRs</span>
+                  <span className="flt-label">Excluded CIDRs <span className="flt-optional">(optional)</span></span>
                   <input className="flt-input flt-mono" placeholder="10.20.10.0/24" value={form.excluded_cidrs} onChange={(e) => setForm({ ...form, excluded_cidrs: e.target.value })} />
                 </label>
                 <div className="flt-caps">Capabilities approved: <strong>{capabilities.join(", ") || "none"}</strong></div>
@@ -325,6 +326,9 @@ const STYLES = `
 .flt-field { display: flex; flex-direction: column; gap: 6px; }
 .flt-full { grid-column: 1 / -1; }
 .flt-label { color: var(--text-secondary); font-size: 10.5px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+.flt-req-star { color: var(--sev-high-color, #e5484d); font-weight: 700; }
+.flt-optional { color: var(--text-faint); font-weight: 500; text-transform: none; letter-spacing: 0; }
+.flt-hint { color: var(--text-muted); font-size: 10px; margin-top: 4px; line-height: 1.4; text-transform: none; letter-spacing: 0; }
 .flt-input { width: 100%; min-height: 44px; padding: 10px 12px; border-radius: 8px; border: 0.5px solid var(--border-default); background: var(--bg-surface); color: var(--text-primary); font-size: 12.5px; outline: none; box-sizing: border-box; transition: border-color var(--dur-fast) ease, box-shadow var(--dur-fast) ease; }
 .flt-input::placeholder { color: var(--text-faint); }
 .flt-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ghost); }

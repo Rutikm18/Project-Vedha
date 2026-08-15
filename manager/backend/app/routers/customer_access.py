@@ -13,6 +13,7 @@ runs a scan directly — this request→approval split is the control.
 """
 from __future__ import annotations
 
+import re
 import secrets
 import uuid
 from datetime import datetime, timezone
@@ -36,6 +37,9 @@ from app.services.audit import record_audit
 from app.utils.db import get_or_404
 
 router = APIRouter(prefix="/engagements", tags=["customer-access"])
+# Tenant-wide customer directory for the operator "Customers" dashboard section
+# (the per-engagement routes above manage ONE login; this lists them all).
+customers_router = APIRouter(prefix="/customers", tags=["customer-access"])
 logger = structlog.get_logger()
 
 _pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -60,6 +64,7 @@ class ClientUserOut(BaseModel):
     email: str
     is_active: bool
     engagement_id: uuid.UUID
+    portal_slug: str | None = None    # the customer's stable handle / future subdomain
     temp_password: str | None = None  # returned ONCE on create/reset
 
 
@@ -90,6 +95,27 @@ class RejectBody(BaseModel):
 def generate_password(n: int = 16) -> str:
     """A URL-safe temporary password the operator hands to the customer once."""
     return secrets.token_urlsafe(n)
+
+
+def _slugify(raw: str) -> str:
+    """A lowercase, hyphenated, DNS-label-safe base for a customer portal handle
+    (so it can later become <slug>.portal.<domain> with no rewriting)."""
+    s = re.sub(r"[^a-z0-9]+", "-", (raw or "").lower()).strip("-")
+    return (s or "customer")[:40]
+
+
+async def _unique_portal_slug(db, tenant_id: uuid.UUID, base: str) -> str:
+    """Per-tenant-unique portal slug: <base>, else <base>-2, <base>-3, … Two
+    customers can never collide on a handle (and therefore a future subdomain)."""
+    root = _slugify(base)
+    candidate, n = root, 1
+    while (await db.execute(
+        select(User.id).where(User.tenant_id == tenant_id,
+                              User.portal_slug == candidate)
+    )).first() is not None:
+        n += 1
+        candidate = f"{root}-{n}"[:63]
+    return candidate
 
 
 def build_scan_job(scan_request: ScanRequest, engagement: Engagement) -> ScanJob:
@@ -142,12 +168,15 @@ async def provision_client_user(
                             "A customer login already exists for this engagement "
                             "(use PATCH to reset the password)")
     temp = body.password or generate_password()
+    slug = await _unique_portal_slug(
+        db, eng.tenant_id, getattr(eng, "name", None) or body.email.split("@")[0])
     user = User(
         tenant_id=eng.tenant_id,
         email=body.email,
         hashed_password=_pwd.hash(temp),
         role=UserRole.client,
         client_engagement_id=engagement_id,
+        portal_slug=slug,
         is_active=True,
     )
     db.add(user)
@@ -155,12 +184,12 @@ async def provision_client_user(
     await db.refresh(user)
     record_audit(db, actor_id=current_user.user_id, action="client_user.provisioned",
                  engagement_id=engagement_id, resource_type="user", resource_id=user.id,
-                 detail={"email": body.email})
+                 detail={"email": body.email, "portal_slug": slug})
     await db.flush()
     logger.info("client_user.provisioned", engagement_id=str(engagement_id),
-                user_id=str(user.id), by=str(current_user.user_id))
+                user_id=str(user.id), portal_slug=slug, by=str(current_user.user_id))
     return ClientUserOut(id=user.id, email=user.email, is_active=user.is_active,
-                         engagement_id=engagement_id, temp_password=temp)
+                         engagement_id=engagement_id, portal_slug=slug, temp_password=temp)
 
 
 @router.get("/{engagement_id}/client-user", response_model=ClientUserOut,
@@ -175,7 +204,7 @@ async def get_client_user(
     if user is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "No customer login provisioned")
     return ClientUserOut(id=user.id, email=user.email, is_active=user.is_active,
-                         engagement_id=engagement_id)
+                         engagement_id=engagement_id, portal_slug=user.portal_slug)
 
 
 @router.patch("/{engagement_id}/client-user", response_model=ClientUserOut,
@@ -201,7 +230,8 @@ async def patch_client_user(
                  detail={"reset_password": body.reset_password, "is_active": body.is_active})
     await db.flush()
     return ClientUserOut(id=user.id, email=user.email, is_active=user.is_active,
-                         engagement_id=engagement_id, temp_password=temp)
+                         engagement_id=engagement_id, portal_slug=user.portal_slug,
+                         temp_password=temp)
 
 
 @router.patch("/{engagement_id}/assign-agent",
@@ -314,3 +344,40 @@ async def reject_scan_request(
                  detail={"reason": body.reason})
     await db.flush()
     return {"rejected": True, "request_id": str(request_id)}
+
+
+# ── Tenant-wide customer directory (operator "Customers" dashboard) ─────────────
+
+class CustomerListItem(BaseModel):
+    id: uuid.UUID
+    email: str
+    is_active: bool
+    engagement_id: uuid.UUID | None
+    engagement_name: str | None
+    portal_slug: str | None
+    created_at: datetime | None
+
+
+@customers_router.get("", response_model=list[CustomerListItem],
+                      summary="List every customer login for the tenant")
+async def list_customers(
+    db: DB,
+    current_user: Annotated[AuthUser, _OPERATOR],
+):
+    """Every provisioned customer login (role=client) in the tenant, with its
+    bound engagement and portal handle — powers the operator Customers section."""
+    rows = (await db.execute(
+        select(User, Engagement.name)
+        .join(Engagement, User.client_engagement_id == Engagement.id, isouter=True)
+        .where(User.tenant_id == current_user.tenant_id,
+               User.role == UserRole.client)
+        .order_by(User.created_at.desc())
+    )).all()
+    return [
+        CustomerListItem(
+            id=u.id, email=u.email, is_active=u.is_active,
+            engagement_id=u.client_engagement_id, engagement_name=eng_name,
+            portal_slug=u.portal_slug, created_at=u.created_at,
+        )
+        for u, eng_name in rows
+    ]

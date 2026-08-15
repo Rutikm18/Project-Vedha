@@ -31,6 +31,7 @@ def _mock_db(scalar_returns: list):
     for v in scalar_returns:
         r = MagicMock()
         r.scalar_one_or_none = MagicMock(return_value=v)
+        r.first = MagicMock(return_value=v)   # also drives .first()-based queries
         results.append(r)
     db.execute = AsyncMock(side_effect=results)
     db.add = MagicMock()
@@ -90,7 +91,8 @@ class TestProvisionClientUser:
         op = _operator()
         eng_id = uuid.uuid4()
         eng = SimpleNamespace(id=eng_id, tenant_id=op.tenant_id)
-        db = _mock_db([eng, None])  # get_or_404 engagement, then no existing client
+        # get_or_404 engagement, no existing client, then no portal-slug collision
+        db = _mock_db([eng, None, None])
         body = ca.ClientUserCreate(email="customer@acme.com")
 
         out = asyncio.run(ca.provision_client_user(eng_id, body, db, op))
@@ -102,6 +104,9 @@ class TestProvisionClientUser:
         assert user.tenant_id == op.tenant_id
         assert user.hashed_password and user.hashed_password != "customer@acme.com"
         assert out.temp_password  # returned exactly once
+        # a portal handle ("user as domain") is auto-generated + returned
+        assert user.portal_slug == "customer"     # eng has no name -> email local-part
+        assert out.portal_slug == user.portal_slug
         # provisioning is audited
         assert _added(db, __import__("app.models.audit_log", fromlist=["AuditLog"]).AuditLog)
 
