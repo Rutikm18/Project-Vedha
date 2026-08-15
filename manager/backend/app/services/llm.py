@@ -468,6 +468,9 @@ class ManagerLlmService:
                     "system": system,
                     "messages": messages,
                     "max_tokens": max_tokens,
+                    # Low temperature for deterministic, factual briefs — matches
+                    # the OpenAI/OpenRouter/Ollama paths. Sonnet 4.6 accepts it.
+                    "temperature": 0.15,
                 },
             )
             response.raise_for_status()

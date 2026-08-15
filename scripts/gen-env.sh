@@ -91,6 +91,19 @@ if ! valid_b64_32 "$(get PROBE_POLICY_SIGNING_KEY)"; then
   set_kv PROBE_POLICY_SIGNING_KEY "$(gen_b64_32)"
   echo "[gen-env] PROBE_POLICY_SIGNING_KEY (re)generated as valid base64-32"
 fi
+
+# ── AI pipeline: default to Claude Sonnet ─────────────────────────────────────
+# The manager's LLM pipeline (security briefs / advisor / AI reports) runs on
+# Anthropic Claude Sonnet by default. LLM_PROVIDER/LLM_MODEL are set ONLY WHEN
+# ABSENT, so an operator who chose Ollama (local dev) or OpenAI keeps their pick.
+# Pinning the provider matters: auto-detect prefers OpenAI over Anthropic, so
+# without this a deployment with both keys would not use Sonnet.
+# The API key is a real secret YOU provide — gen-env never generates or guesses it.
+[ -z "$(get LLM_PROVIDER)" ] && { set_kv LLM_PROVIDER anthropic; echo "[gen-env] LLM_PROVIDER=anthropic (Claude Sonnet pipeline)"; }
+[ -z "$(get LLM_MODEL)" ]    && set_kv LLM_MODEL claude-sonnet-4-6
+if [ -z "$(get ANTHROPIC_API_KEY)" ]; then
+  echo "[gen-env] NOTE: add ANTHROPIC_API_KEY=<your key> to .env to enable the Claude Sonnet AI pipeline (the AI panel reports 'not configured' until you do)."
+fi
 # Insurance: the graph-profile neo4j service uses ${NEO4J_PASSWORD:?...}, which
 # Compose interpolates even when the profile is inactive. Guarantee a value so a
 # blanked var can't break `make aws-up`.
