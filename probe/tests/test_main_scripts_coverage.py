@@ -84,7 +84,7 @@ class TestWorkerPoolAndMetrics:
         sc = _mk_scanner(ports)
         seen: Counter = Counter()
 
-        async def fake_attempt(target, port):
+        async def fake_attempt(target, port, est=None):
             seen[port] += 1
             return _closed(sc, target, port)
 
@@ -105,7 +105,7 @@ class TestWorkerPoolAndMetrics:
         sc = _mk_scanner(ports, concurrency=200)
         seen: Counter = Counter()
 
-        async def fake_attempt(target, port):
+        async def fake_attempt(target, port, est=None):
             seen[port] += 1
             return _closed(sc, target, port)
 
@@ -121,7 +121,7 @@ class TestWorkerPoolAndMetrics:
         sc.sem = asyncio.Semaphore(10_000)
         inflight = peak = 0
 
-        async def fake_attempt(target, port):
+        async def fake_attempt(target, port, est=None):
             nonlocal inflight, peak
             inflight += 1
             peak = max(peak, inflight)
@@ -138,7 +138,7 @@ class TestWorkerPoolAndMetrics:
         sc = _mk_scanner(ports, concurrency=5)
         states = {1: "open", 2: "closed", 3: "filtered", 4: "unreachable", 5: "error"}
 
-        async def fake_attempt(target, port):
+        async def fake_attempt(target, port, est=None):
             return ScanResult(sc.name, target, port=port, proto="tcp",
                               status=states[port], data={"reason": "x"})
 
@@ -151,7 +151,7 @@ class TestWorkerPoolAndMetrics:
         ports = [1, 2]
         sc = _mk_scanner(ports, concurrency=2)
 
-        async def fake_attempt(target, port):
+        async def fake_attempt(target, port, est=None):
             if port == 1:
                 return ScanResult(sc.name, target, port=port, proto="tcp",
                                   status="error", data={"reason": "local_resource_error"})
@@ -169,7 +169,7 @@ class TestWorkerPoolAndMetrics:
                          report_closed=False)
         states = {1: "open", 2: "closed", 3: "filtered"}
 
-        async def fake_attempt(target, port):
+        async def fake_attempt(target, port, est=None):
             return ScanResult(sc.name, target, port=port, proto="tcp",
                               status=states[port], data={"reason": "x"})
 
@@ -179,3 +179,46 @@ class TestWorkerPoolAndMetrics:
         assert len(emitted_ports) == 1 and emitted_ports[0].status == "open"
         d = _summary(results)
         assert d["closed"] == 1 and d["filtered"] == 1 and d["classified"] == 3
+
+
+# ── Default coverage + per-host adaptive timeout (roadmap items 1 & 3) ─────────
+
+class TestDefaultsAndAdaptiveTimeout:
+    def test_default_ports_are_nmap_top100_not_the_35_port_set(self):
+        # Roadmap item 3: a no-arg scan uses nmap top-100, not the old 35 ports,
+        # so common services aren't silently missed.
+        from main_scripts.port_scanner import _NMAP_TOP_100
+        sc = PortScanner(_scope())          # ports=None -> default
+        assert sc.ports == list(_NMAP_TOP_100)
+        assert len(sc.ports) == 100
+
+    def test_adaptive_estimator_is_shared_and_adapts_down_from_fast_rtts(self):
+        # Roadmap item 1: one estimator per host, warmed by observed RTTs, so
+        # later probes use a tighter timeout than the fixed base.
+        sc = _mk_scanner([1, 2, 3, 4, 5], concurrency=1)   # serial => deterministic
+        assert sc.timeout == 3.0
+        seen: list[float] = []
+
+        async def fake_attempt(target, port, est=None):
+            assert est is not None                          # adaptive wiring is ON
+            seen.append(est.timeout())
+            est.observe(0.01)                               # a fast 10 ms RTT
+            return _closed(sc, target, port)
+
+        sc._attempt = fake_attempt
+        asyncio.run(sc.scan_target("127.0.0.1"))
+        assert seen[0] == 3.0                               # first probe: the base
+        assert seen[-1] < 1.0                               # warmed up -> tighter
+        assert seen[-1] < seen[0]
+
+    def test_fixed_timeout_flag_disables_the_estimator(self):
+        sc = _mk_scanner([1, 2], concurrency=1, adaptive_timeout=False)
+        got: list = []
+
+        async def fake_attempt(target, port, est=None):
+            got.append(est)
+            return _closed(sc, target, port)
+
+        sc._attempt = fake_attempt
+        asyncio.run(sc.scan_target("127.0.0.1"))
+        assert got == [None, None]                          # no estimator threaded

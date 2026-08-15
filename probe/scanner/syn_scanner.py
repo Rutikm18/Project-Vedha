@@ -42,10 +42,10 @@ import time
 
 from .scanner_base import (
     BaseScanner, ScanResult, ScopeGuard, ResultWriter, expand_targets,
-    parse_ports, resolve, TOP_TCP_PORTS, setup_logging, base_argparser,
+    parse_ports, resolve, setup_logging, base_argparser,
     main_entrypoint, LOG, inet_checksum as _checksum,
 )
-from .port_scanner import PortScanner
+from .port_scanner import PortScanner, _NMAP_TOP_100
 
 # TCP flag bits
 TCP_FIN = 0x01
@@ -193,10 +193,19 @@ class SynScanner(BaseScanner):
 
     def __init__(self, *args, ports: list[int] | None = None,
                  key: bytes | None = None, report_closed: bool = False,
-                 force_fallback: bool = False, **kwargs):
+                 force_fallback: bool = False, retries: int = 2, **kwargs):
         super().__init__(*args, **kwargs)
-        self.ports = list(TOP_TCP_PORTS if ports is None else ports)
+        # Default to nmap top-100 (not the 35-port TOP_TCP_PORTS): a no-arg scan
+        # shouldn't silently miss common services.
+        self.ports = list(_NMAP_TOP_100 if ports is None else ports)
         self.report_closed = report_closed
+        # A raw SYN gets ZERO kernel retransmit (unlike connect(), where the OS
+        # stack resends the SYN several times). So a lone dropped SYN/SYN-ACK is
+        # a false `filtered` unless WE resend. Retransmit silent ports only, for
+        # `retries` extra rounds; a definitive SYN-ACK/RST ends a port early.
+        # Default 2 (higher than the connect scan's 1, which rides on kernel
+        # retransmits) to match connect-scan reliability.
+        self.retries = max(0, retries)
         self._key = key or os.urandom(16)
         self._rate = kwargs.get("rate", 200.0)
         self._supported = (not force_fallback) and syn_scan_supported()
@@ -251,37 +260,53 @@ class SynScanner(BaseScanner):
                                   socket.IPPROTO_TCP)
         recv_sock.setblocking(False)
 
+        states: dict[int, str] = {}
+        attempts_by_port: dict[int, int] = {}
         try:
-            # Blast one SYN per port (stateless — ISN carries the cookie).
-            for port in self.ports:
-                seq = syn_cookie(dst_ip, port, src_port, self._key)
-                pkt = build_syn_packet(src_ip, dst_ip, src_port, port, seq)
-                try:
-                    send_sock.sendto(pkt, (dst_ip, 0))
-                except OSError as exc:
-                    LOG.debug("send SYN %s:%d failed: %s", dst_ip, port, exc)
-
-            # Collect replies within a bounded window.
-            states: dict[int, str] = {}
-            deadline = time.monotonic() + max(self.timeout, 1.0)
-            while time.monotonic() < deadline and len(states) < len(self.ports):
-                try:
-                    raw = recv_sock.recv(65535)
-                except BlockingIOError:
-                    time.sleep(0.005)
-                    continue
-                except OSError:
+            # Retransmit loop: each round SYNs only the still-silent ports, then
+            # collects replies. A definitive SYN-ACK/RST resolves a port and drops
+            # it from `pending`; only silence carries to the next round. This is
+            # the direct fix for the SYN path's false negatives — a lost SYN or
+            # SYN-ACK gets another chance instead of being reported `filtered`.
+            pending = list(self.ports)
+            rounds = self.retries + 1
+            for _round in range(rounds):
+                if not pending:
                     break
-                parsed = parse_packet(raw)
-                if not parsed or parsed["ip_src"] != dst_ip:
-                    continue
-                if parsed["dst_port"] != src_port:
-                    continue
-                if not verify_reply_cookie(parsed, src_port, self._key):
-                    continue
-                verdict = classify(parsed["flags"])
-                if verdict:
-                    states.setdefault(parsed["src_port"], verdict)
+                # Send a SYN per pending port (stateless — ISN carries the cookie).
+                for port in pending:
+                    attempts_by_port[port] = attempts_by_port.get(port, 0) + 1
+                    seq = syn_cookie(dst_ip, port, src_port, self._key)
+                    pkt = build_syn_packet(src_ip, dst_ip, src_port, port, seq)
+                    try:
+                        send_sock.sendto(pkt, (dst_ip, 0))
+                    except OSError as exc:
+                        LOG.debug("send SYN %s:%d failed: %s", dst_ip, port, exc)
+
+                # Collect replies for this round within a bounded window.
+                pending_set = set(pending)
+                deadline = time.monotonic() + max(self.timeout, 1.0)
+                while time.monotonic() < deadline and pending_set:
+                    try:
+                        raw = recv_sock.recv(65535)
+                    except BlockingIOError:
+                        time.sleep(0.005)
+                        continue
+                    except OSError:
+                        break
+                    parsed = parse_packet(raw)
+                    if not parsed or parsed["ip_src"] != dst_ip:
+                        continue
+                    if parsed["dst_port"] != src_port:
+                        continue
+                    if not verify_reply_cookie(parsed, src_port, self._key):
+                        continue
+                    verdict = classify(parsed["flags"])
+                    if verdict:
+                        states.setdefault(parsed["src_port"], verdict)
+                        pending_set.discard(parsed["src_port"])
+                # Only ports still unresolved go to the next round.
+                pending = [p for p in pending if p not in states]
         finally:
             send_sock.close()
             recv_sock.close()
@@ -289,29 +314,41 @@ class SynScanner(BaseScanner):
         results: list[ScanResult] = []
         for port in self.ports:
             state = states.get(port)
+            attempts = attempts_by_port.get(port, 1)
             if state == "open":
+                data = {"method": "syn"}
+                if attempts > 1:
+                    data["attempts"] = attempts
                 results.append(ScanResult(
                     self.name, target, port=port, proto="tcp", status="open",
-                    data={"method": "syn"}, evidence="syn/ack received"))
+                    data=data, evidence="syn/ack received"))
             elif state == "closed" and self.report_closed:
+                data = {"method": "syn"}
+                if attempts > 1:
+                    data["attempts"] = attempts
                 results.append(ScanResult(
                     self.name, target, port=port, proto="tcp", status="closed",
-                    data={"method": "syn"}, evidence="rst received"))
+                    data=data, evidence="rst received"))
             elif state is None and self.report_closed:
                 results.append(ScanResult(
                     self.name, target, port=port, proto="tcp", status="filtered",
-                    data={"method": "syn"}, evidence="no reply (open|filtered)"))
+                    data={"method": "syn", "attempts": attempts},
+                    evidence=f"no reply after {attempts} SYN(s) (open|filtered)"))
         return results
 
 
 def main() -> None:
     parser = base_argparser("Stateless TCP SYN scanner (connect-scan fallback)")
     parser.add_argument("-p", "--ports", default=None,
-                        help="ports e.g. '22,80,443,8000-8100' (default: top ports)")
+                        help="ports e.g. '22,80,443,8000-8100' (default: nmap top-100)")
     parser.add_argument("--report-closed", action="store_true",
                         help="also emit closed/filtered results (noisier)")
     parser.add_argument("--force-fallback", action="store_true",
                         help="skip the raw SYN path and use the connect scan")
+    parser.add_argument("--retries", type=int, default=2,
+                        help="extra SYN retransmit rounds on silence only "
+                             "(default 2; 0 = single SYN). SYN-ACK/RST ends a "
+                             "port early and is never retried.")
     args = parser.parse_args()
     setup_logging(args.verbose)
 
@@ -322,7 +359,8 @@ def main() -> None:
         scanner = SynScanner(scope, rate=args.rate, concurrency=args.concurrency,
                              timeout=args.timeout, ports=ports,
                              report_closed=args.report_closed,
-                             force_fallback=args.force_fallback)
+                             force_fallback=args.force_fallback,
+                             retries=args.retries)
         if scanner._supported:
             LOG.info("[syn_scan] raw SYN path active")
         else:

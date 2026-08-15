@@ -200,3 +200,102 @@ class TestSynScannerFallback:
 
         results = asyncio.run(_run())
         assert all(r.scanner == "syn_scan" for r in results)
+
+
+# ── SYN retransmit on silence (roadmap item 2) ────────────────────────────────
+
+class TestSynRetransmit:
+    """The raw SYN path resends ONLY still-silent ports — the direct fix for the
+    false negatives a single dropped SYN/SYN-ACK used to manufacture. Raw sockets
+    can't run here, so we inject fakes and drive `_syn_scan_blocking` directly."""
+
+    def _patch(self, monkeypatch, recv_impl, sent_ports):
+        # Fixed source port so we can craft cookie-valid replies; deterministic
+        # resolve/source-IP; fake raw sockets in place of privileged ones.
+        monkeypatch.setattr(ss.random, "randint", lambda a, b: 50000)
+        monkeypatch.setattr(ss, "resolve",
+                            lambda t, p, proto="tcp": (socket.AF_INET, (t, 0)))
+        monkeypatch.setattr(ss, "_local_source_ip", lambda dst: "10.0.0.1")
+
+        class _Send:
+            def setsockopt(self, *a): pass
+            def sendto(self, pkt, addr):
+                sent_ports.append(ss.parse_packet(pkt)["dst_port"])
+            def close(self): pass
+
+        class _Recv:
+            def setblocking(self, *a): pass
+            def recv(self, n): return recv_impl()
+            def close(self): pass
+
+        def _factory(family, stype, proto):
+            return _Recv() if proto == socket.IPPROTO_TCP else _Send()
+        monkeypatch.setattr(ss.socket, "socket", _factory)
+
+    def test_silent_ports_are_retried_retries_plus_one_times(self, monkeypatch):
+        sent: list[int] = []
+
+        def _silent():
+            raise OSError("no data")           # ends each round's recv loop fast
+
+        scope = ScopeGuard.from_list(["10.0.0.0/8"])
+        sc = ss.SynScanner(scope, ports=[443, 8080], key=KEY, retries=2,
+                           timeout=0.01)
+        self._patch(monkeypatch, _silent, sent)
+        sc._syn_scan_blocking("10.0.0.5")
+        # 1 initial SYN + 2 retransmits = 3 per silent port.
+        assert sent.count(443) == 3
+        assert sent.count(8080) == 3
+
+    def test_answered_ports_are_not_retransmitted(self, monkeypatch):
+        sent: list[int] = []
+
+        def _synack(dst_ip, port, src_port, seq):
+            ack = (seq + 1) & 0xFFFFFFFF
+            tcp = struct.pack("!HHIIBBHHH", port, src_port, 0xABCD, ack,
+                              (5 << 4), 0x12, 1024, 0, 0)
+            ip = ss.build_ip_header(dst_ip, "10.0.0.1", payload_len=len(tcp))
+            return ip + tcp
+
+        replies = []
+        for port in (443, 8080):
+            seq = ss.syn_cookie("10.0.0.5", port, 50000, KEY)
+            replies.append(_synack("10.0.0.5", port, 50000, seq))
+
+        def _recv():
+            if replies:
+                return replies.pop(0)
+            raise OSError("drained")
+
+        scope = ScopeGuard.from_list(["10.0.0.0/8"])
+        sc = ss.SynScanner(scope, ports=[443, 8080], key=KEY, retries=2,
+                           timeout=0.01)
+        self._patch(monkeypatch, _recv, sent)
+        results = sc._syn_scan_blocking("10.0.0.5")
+        # Answered on round 1 -> exactly one SYN each, no retransmit.
+        assert sent.count(443) == 1
+        assert sent.count(8080) == 1
+        assert {r.port for r in results if r.status == "open"} == {443, 8080}
+
+    def test_retries_zero_sends_one_syn_per_port(self, monkeypatch):
+        sent: list[int] = []
+        scope = ScopeGuard.from_list(["10.0.0.0/8"])
+        sc = ss.SynScanner(scope, ports=[22, 80], key=KEY, retries=0,
+                           timeout=0.01)
+        self._patch(monkeypatch, lambda: (_ for _ in ()).throw(OSError()), sent)
+        sc._syn_scan_blocking("10.0.0.5")
+        assert sent.count(22) == 1 and sent.count(80) == 1
+
+
+class TestSynDefaults:
+    def test_default_ports_are_nmap_top100(self):
+        from scanner.port_scanner import _NMAP_TOP_100
+        scope = ScopeGuard.from_list(["10.0.0.0/8"])
+        sc = ss.SynScanner(scope, force_fallback=True)
+        assert sc.ports == list(_NMAP_TOP_100)
+        assert len(sc.ports) == 100
+
+    def test_default_retries_is_two(self):
+        scope = ScopeGuard.from_list(["10.0.0.0/8"])
+        sc = ss.SynScanner(scope, ports=[80], force_fallback=True)
+        assert sc.retries == 2
