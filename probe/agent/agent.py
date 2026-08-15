@@ -89,6 +89,40 @@ def _dbg(msg: str) -> None:
         print(f"[debug] {msg}", flush=True)
 
 
+def _job_intent(job: dict) -> str:
+    """Human label for what a job will actually run — the use-case (real intent),
+    not the coarse `job_type` enum (which the manager hardcodes to 'discovery').
+    A numeric `uc` code is shown too. This is what makes probe output transparent:
+    the operator sees exactly which use-case/scanner was dispatched."""
+    uc = job.get("use_case_id") or (job.get("params") or {}).get("use_case_id")
+    code = (job.get("params") or {}).get("uc")
+    if uc:
+        return f"{uc}" + (f" (uc={code})" if code is not None else "")
+    if code is not None:
+        return f"uc={code}"
+    return f"job_type={job.get('job_type', '?')}"
+
+
+def _result_summary(result) -> str:
+    """One-line, transparent summary of what a scan actually found so the operator
+    can tell at a glance whether the result matches expectations (0 hosts usually
+    means a scope/target problem, not a scanner bug)."""
+    data = getattr(result, "result", None) or {}
+    stats = data.get("run_stats") or {}
+    facts = data.get("facts")
+    parts = [result.scan_type]
+    if stats.get("host_count") is not None:
+        parts.append(f"{stats.get('host_count', 0)} hosts")
+    if stats.get("open_ports") is not None:
+        parts.append(f"{stats.get('open_ports', 0)} open ports")
+    if isinstance(facts, list):
+        parts.append(f"{len(facts)} facts")
+    outcome = data.get("outcome")
+    if outcome and outcome not in ("ok", "completed"):
+        parts.append(f"outcome={outcome}")
+    return " — ".join([parts[0], ", ".join(parts[1:])]) if len(parts) > 1 else parts[0]
+
+
 # ── Connection preflight + auto-troubleshoot ─────────────────────────────────
 # The probe should never spin forever on a bad connection: it diagnoses WHY the
 # Manager is unreachable, gives a specific fix, retries a bounded number of times,
@@ -438,7 +472,7 @@ def main() -> None:
                 if result.error:
                     say(f"Job {result.job_id}: {result.error}", 1)
                 else:
-                    say(f"Job {result.job_id} done — {result.scan_type}", 1)
+                    say(f"Job {result.job_id} done — {_result_summary(result)}", 1)
             except Exception as exc:
                 LOG.exception("Job %s crashed runner", job.get("job_id"))
                 transport.submit_result(job.get("job_id", "?"), {
@@ -710,9 +744,9 @@ async def _ws_run_job(
     """Run one job while keeping WS status/result frames best-effort."""
     job_id = job.get("job_id", "?")
     if pushed:
-        say(f"▶ Push: job {job_id} ({job.get('job_type', '?')})")
+        say(f"▶ Push: job {job_id} — {_job_intent(job)}")
     else:
-        say(f"▶ Poll fallback: job {job_id} ({job.get('job_type', '?')})")
+        say(f"▶ Poll fallback: job {job_id} — {_job_intent(job)}")
 
     job_state["current_job_id"] = job_id
     job_state["attempt_id"] = job.get("attempt_id")
@@ -743,7 +777,7 @@ async def _ws_run_job(
         if result.error:
             say(f"  ✗ {result.error}", 1)
         else:
-            say(f"  ✓ {result.scan_type}", 1)
+            say(f"  ✓ {_result_summary(result)}", 1)
         return result
     finally:
         job_state["current_job_id"] = None
