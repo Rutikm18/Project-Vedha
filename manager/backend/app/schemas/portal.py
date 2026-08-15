@@ -53,6 +53,27 @@ class ClientPostureOut(BaseModel):
     open_findings: int
 
 
+class ClientSummaryOut(BaseModel):
+    """One call powering the dashboard header: posture + KPI counts + queue state."""
+    posture: ClientPostureOut
+    open_findings: int
+    closed_findings: int
+    severity_counts: dict[str, int]     # open findings by severity
+    pending_requests: int
+    running_jobs: int
+
+
+class ClientTrendPoint(BaseModel):
+    period: str                          # "YYYY-MM"
+    opened: int
+    closed: int
+
+
+class ClientTrendsOut(BaseModel):
+    by_severity: dict[str, int]          # open findings by severity (donut)
+    timeline: list[ClientTrendPoint]     # opened vs closed per month (line)
+
+
 class ClientReportOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
     id: uuid.UUID
@@ -74,9 +95,16 @@ class ClientScanOut(BaseModel):
 
 
 class ScanRequestCreate(BaseModel):
-    # Constrained on purpose: a customer may only ask for safe, read-only scan
-    # kinds. Anything intrusive stays operator-initiated.
-    scan_type: Literal["discovery", "vuln_scan"] = "vuln_scan"
+    """A customer's rich scan request. The customer may ask for any active scan
+    type, at a chosen intensity, over specific in-scope targets — an operator
+    still approves every request before anything runs (the safety gate)."""
+    # Validated against ScanJobType in the route so the vocabulary can't drift
+    # from the enum; kept as a plain str here to avoid a second source of truth.
+    scan_type: str = "vuln_scan"
+    # Specific hosts / sub-ranges to scan. Each MUST be inside the engagement
+    # scope (re-validated server-side). None/empty → the whole engagement scope.
+    targets: list[str] | None = None
+    intensity: Literal["light", "standard", "deep"] | None = None
     note: str | None = None
 
 
@@ -84,5 +112,7 @@ class ClientScanRequestOut(BaseModel):
     id: uuid.UUID
     scan_type: str
     status: str
+    targets: list[str] | None = None
+    intensity: str | None = None
     note: str | None = None
     requested_at: datetime | None = None

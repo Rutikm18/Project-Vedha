@@ -177,23 +177,131 @@ def _added(db, cls):
     return None
 
 
+def _finding(severity="high", status=FindingStatus.open, resolved_at=None,
+             first_seen=None):
+    return SimpleNamespace(
+        id=uuid.uuid4(), severity=severity, status=status,
+        risk_score=None, epss_score=None, exploitable=False, exploit_validated=False,
+        first_seen=first_seen, last_seen=first_seen, resolved_at=resolved_at,
+    )
+
+
+class TestSummary:
+    def test_aggregates_posture_counts_and_queue(self):
+        # findings list, then two count scalars (pending, running)
+        findings = [_finding("critical"), _finding("high"),
+                    _finding("low", status=FindingStatus.remediated,
+                             resolved_at=datetime.now(timezone.utc))]
+        db = MagicMock()
+        f_res = MagicMock()
+        f_res.scalars = MagicMock(return_value=MagicMock(all=MagicMock(return_value=findings)))
+        pending_res = MagicMock(); pending_res.scalar_one = MagicMock(return_value=2)
+        running_res = MagicMock(); running_res.scalar_one = MagicMock(return_value=1)
+        db.execute = AsyncMock(side_effect=[f_res, pending_res, running_res])
+
+        out = asyncio.run(portal.portal_summary(_client(), db))
+        assert out.open_findings == 2 and out.closed_findings == 1
+        assert out.severity_counts["critical"] == 1 and out.severity_counts["low"] == 0
+        assert out.pending_requests == 2 and out.running_jobs == 1
+
+
+class TestTrends:
+    def test_returns_severity_and_timeline(self):
+        findings = [_finding("high", first_seen=datetime.now(timezone.utc))]
+        out = asyncio.run(portal.portal_trends(_client(), _db_list(findings)))
+        assert out.by_severity["high"] == 1
+        assert len(out.timeline) == 6            # last 6 months, zero-filled
+
+
+def _db_for_create(engagement, pending_count: int = 0):
+    """Mock the create_scan_request db flow: execute#1 → engagement lookup
+    (.scalar_one_or_none), execute#2 → pending count (.scalar_one). Plus
+    add/flush/refresh for the insert path."""
+    db = MagicMock()
+    eng_result = MagicMock()
+    eng_result.scalar_one_or_none = MagicMock(return_value=engagement)
+    count_result = MagicMock()
+    count_result.scalar_one = MagicMock(return_value=pending_count)
+    db.execute = AsyncMock(side_effect=[eng_result, count_result])
+    db.add = MagicMock()
+    db.flush = AsyncMock()
+
+    async def _refresh(o):
+        if getattr(o, "id", None) is None:
+            o.id = uuid.uuid4()
+
+    db.refresh = _refresh
+    return db
+
+
+def _engagement(eng_id: uuid.UUID, scope=("10.0.0.0/24",), excluded=()):
+    return SimpleNamespace(id=eng_id, scope_cidrs=list(scope),
+                           excluded_cidrs=list(excluded))
+
+
 class TestCreateScanRequest:
-    def test_creates_pending_request_and_audits(self):
-        db = _db_first(None)  # no existing pending
+    def test_creates_pending_request_with_targets_and_intensity(self):
+        user = _client()
+        eng = _engagement(user.client_engagement_id, scope=["10.0.0.0/24"])
+        db = _db_for_create(eng, pending_count=0)
         out = asyncio.run(portal.create_scan_request(
-            ScanRequestCreate(scan_type="vuln_scan", note="please rescan"), _client(), db))
+            ScanRequestCreate(scan_type="vuln_scan", targets=["10.0.0.5"],
+                              intensity="deep", note="please rescan"), user, db))
         assert out.status == "pending"
         sr = _added(db, ScanRequest)
-        assert sr is not None and sr.scan_type == "vuln_scan" and sr.status == "pending"
+        assert sr is not None and sr.scan_type == "vuln_scan"
+        # target normalized to a /32 and persisted; intensity carried through
+        assert sr.targets == ["10.0.0.5/32"]
+        assert sr.intensity == "deep"
         assert _added(db, AuditLog) is not None          # client action audited
 
-    def test_duplicate_pending_is_conflict(self):
-        db = _db_first(SimpleNamespace(id=uuid.uuid4()))  # a pending already exists
+    def test_whole_scope_when_no_targets(self):
+        user = _client()
+        eng = _engagement(user.client_engagement_id)
+        db = _db_for_create(eng, pending_count=0)
+        out = asyncio.run(portal.create_scan_request(
+            ScanRequestCreate(scan_type="discovery"), user, db))
+        assert out.status == "pending"
+        assert _added(db, ScanRequest).targets is None    # None = whole scope
+
+    def test_unknown_scan_type_is_422(self):
+        user = _client()
         with pytest.raises(HTTPException) as e:
-            asyncio.run(portal.create_scan_request(ScanRequestCreate(), _client(), db))
+            asyncio.run(portal.create_scan_request(
+                ScanRequestCreate(scan_type="rm_rf_slash"), user,
+                _db_for_create(_engagement(user.client_engagement_id))))
+        assert e.value.status_code == 422
+
+    def test_out_of_scope_target_is_422(self):
+        user = _client()
+        eng = _engagement(user.client_engagement_id, scope=["10.0.0.0/24"])
+        with pytest.raises(HTTPException) as e:
+            asyncio.run(portal.create_scan_request(
+                ScanRequestCreate(scan_type="vuln_scan", targets=["192.0.2.9"]),
+                user, _db_for_create(eng)))
+        assert e.value.status_code == 422
+
+    def test_excluded_target_is_422(self):
+        user = _client()
+        eng = _engagement(user.client_engagement_id,
+                          scope=["10.0.0.0/24"], excluded=["10.0.0.0/28"])
+        with pytest.raises(HTTPException) as e:
+            asyncio.run(portal.create_scan_request(
+                ScanRequestCreate(scan_type="vuln_scan", targets=["10.0.0.5"]),
+                user, _db_for_create(eng)))
+        assert e.value.status_code == 422
+
+    def test_queue_cap_is_conflict(self):
+        user = _client()
+        eng = _engagement(user.client_engagement_id)
+        db = _db_for_create(eng, pending_count=5)         # already at the cap
+        with pytest.raises(HTTPException) as e:
+            asyncio.run(portal.create_scan_request(
+                ScanRequestCreate(scan_type="vuln_scan"), user, db))
         assert e.value.status_code == 409
 
     def test_operator_cannot_create(self):
         with pytest.raises(HTTPException) as e:
-            asyncio.run(portal.create_scan_request(ScanRequestCreate(), _operator(), _db_first(None)))
+            asyncio.run(portal.create_scan_request(
+                ScanRequestCreate(), _operator(), MagicMock()))
         assert e.value.status_code == 403

@@ -121,25 +121,34 @@ async def _unique_portal_slug(db, tenant_id: uuid.UUID, base: str) -> str:
 
 def build_scan_job(scan_request: ScanRequest, engagement: Engagement) -> ScanJob:
     """Pure: turn an approved request into a pending ScanJob on the engagement's
-    assigned agent. Raises ValueError if no agent is assigned (caller → 409)."""
+    assigned agent. Raises ValueError if no agent is assigned (caller → 409).
+
+    The customer's chosen targets + intensity ride into ``result`` so the existing
+    dispatch-time scope gate (agents.py) and the probe consume them. Targets were
+    already validated ⊆ scope at request time; the dispatch gate re-validates."""
     if engagement.assigned_agent_id is None:
         raise ValueError("engagement has no assigned agent")
     try:
         job_type = ScanJobType(scan_request.scan_type)
     except ValueError:
         job_type = ScanJobType.vuln_scan
+    result: dict = {
+        "mode": "scan",
+        "scan_request_id": str(scan_request.id),
+        "requested_by": (str(scan_request.requested_by)
+                         if scan_request.requested_by else None),
+        "scope_cidrs": list(engagement.scope_cidrs or []),
+    }
+    if getattr(scan_request, "targets", None):
+        result["targets"] = list(scan_request.targets)
+    if getattr(scan_request, "intensity", None):
+        result["intensity"] = scan_request.intensity
     return ScanJob(
         engagement_id=engagement.id,
         job_type=job_type,
         status=ScanJobStatus.pending,
         agent_id=str(engagement.assigned_agent_id),
-        result={
-            "mode": "scan",
-            "scan_request_id": str(scan_request.id),
-            "requested_by": (str(scan_request.requested_by)
-                             if scan_request.requested_by else None),
-            "scope_cidrs": list(engagement.scope_cidrs or []),
-        },
+        result=result,
     )
 
 

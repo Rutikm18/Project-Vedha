@@ -15,12 +15,14 @@ import uuid
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, status
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.auth.portal_scope import ClientUser, assert_client, client_scoped
 from app.dependencies import DB
 from app.models.engagement import Engagement
-from app.models.enums import FindingSeverity, FindingStatus, ReviewStatus
+from app.models.enums import (
+    FindingSeverity, FindingStatus, ReviewStatus, ScanJobStatus, ScanJobType,
+)
 from app.models.finding import Finding
 from app.models.llm_output import LLMOutput
 from app.models.scan_job import ScanJob
@@ -33,14 +35,23 @@ from app.schemas.portal import (
     ClientReportOut,
     ClientScanOut,
     ClientScanRequestOut,
+    ClientSummaryOut,
+    ClientTrendsOut,
     ScanRequestCreate,
 )
+from app.services import portal_metrics
 from app.services import posture as posture_service
 from app.services.audit import record_audit
+from app.services.scope_targets import validate_targets_in_scope
 
 router = APIRouter(prefix="/portal", tags=["portal"])
 
 _OPEN_STATES = (FindingStatus.open, FindingStatus.confirmed)
+# How many requests a customer may have awaiting operator review at once. Requests
+# queue (they don't block at one), but a cap keeps a customer from flooding the
+# operator inbox.
+_MAX_PENDING_REQUESTS = 5
+_VALID_SCAN_TYPES = {t.value for t in ScanJobType}
 
 
 def _enum_val(v) -> str:
@@ -100,20 +111,74 @@ async def portal_posture(user: ClientUser, db: DB):
         client_scoped(select(Finding), user, Finding.engagement_id)
         .where(Finding.status.in_(_OPEN_STATES))
     )).scalars().all()
-    views = [
-        posture_service.FindingView(
-            id=str(f.id), severity=_enum_val(f.severity),
-            risk_score=float(f.risk_score) if f.risk_score is not None else None,
-            epss_score=float(f.epss_score) if f.epss_score is not None else None,
-            exploitable=bool(f.exploitable), exploit_validated=bool(f.exploit_validated),
-            asset_criticality=None, first_seen=f.first_seen, last_seen=f.last_seen,
-        )
-        for f in rows
-    ]
+    views = [_posture_view(f) for f in rows]
     s = posture_service.compute_scores(views)
     return ClientPostureOut(
         risk_index=s.risk_index, exploitable_score=s.exploitable_score,
         posture_score=s.posture_score, grade=s.grade, open_findings=len(views),
+    )
+
+
+def _metric_finding(f: Finding) -> portal_metrics.MetricFinding:
+    return portal_metrics.MetricFinding(
+        severity=_enum_val(f.severity), status=_enum_val(f.status),
+        first_seen=f.first_seen, resolved_at=f.resolved_at,
+    )
+
+
+def _posture_view(f: Finding) -> posture_service.FindingView:
+    return posture_service.FindingView(
+        id=str(f.id), severity=_enum_val(f.severity),
+        risk_score=float(f.risk_score) if f.risk_score is not None else None,
+        epss_score=float(f.epss_score) if f.epss_score is not None else None,
+        exploitable=bool(f.exploitable), exploit_validated=bool(f.exploit_validated),
+        asset_criticality=None, first_seen=f.first_seen, last_seen=f.last_seen,
+    )
+
+
+@router.get("/summary", response_model=ClientSummaryOut,
+            summary="Dashboard summary: posture + KPI counts + queue state")
+async def portal_summary(user: ClientUser, db: DB):
+    findings = (await db.execute(
+        client_scoped(select(Finding), user, Finding.engagement_id)
+    )).scalars().all()
+    open_views = [_posture_view(f) for f in findings
+                  if f.status in _OPEN_STATES]
+    s = posture_service.compute_scores(open_views)
+    metrics = [_metric_finding(f) for f in findings]
+    open_count, closed_count = portal_metrics.open_closed_counts(metrics)
+
+    pending = (await db.execute(
+        client_scoped(select(func.count()).select_from(ScanRequest),
+                      user, ScanRequest.engagement_id)
+        .where(ScanRequest.status == SR_PENDING)
+    )).scalar_one()
+    running = (await db.execute(
+        client_scoped(select(func.count()).select_from(ScanJob),
+                      user, ScanJob.engagement_id)
+        .where(ScanJob.status.in_((ScanJobStatus.pending, ScanJobStatus.running)))
+    )).scalar_one()
+
+    return ClientSummaryOut(
+        posture=ClientPostureOut(
+            risk_index=s.risk_index, exploitable_score=s.exploitable_score,
+            posture_score=s.posture_score, grade=s.grade, open_findings=len(open_views)),
+        open_findings=open_count, closed_findings=closed_count,
+        severity_counts=portal_metrics.severity_breakdown(metrics, open_only=True),
+        pending_requests=int(pending), running_jobs=int(running),
+    )
+
+
+@router.get("/trends", response_model=ClientTrendsOut,
+            summary="Severity breakdown + opened/closed timeline")
+async def portal_trends(user: ClientUser, db: DB):
+    findings = (await db.execute(
+        client_scoped(select(Finding), user, Finding.engagement_id)
+    )).scalars().all()
+    metrics = [_metric_finding(f) for f in findings]
+    return ClientTrendsOut(
+        by_severity=portal_metrics.severity_breakdown(metrics, open_only=True),
+        timeline=portal_metrics.status_timeline(metrics),
     )
 
 
@@ -160,10 +225,15 @@ async def portal_scans(user: ClientUser, db: DB):
                       status=_enum_val(j.status), at=j.created_at)
         for j in jobs
     ]
+    # A request that was approved becomes a ScanJob (linked via scan_job_id); it is
+    # already represented by that job row above, so listing it again would show the
+    # same logical scan twice. Only surface requests that have NOT been dispatched
+    # (pending / rejected) — the ones the customer still needs visibility into.
     out += [
         ClientScanOut(id=r.id, kind="request", scan_type=r.scan_type,
                       status=r.status, at=r.requested_at)
         for r in reqs
+        if r.scan_job_id is None
     ]
     return out
 
@@ -173,26 +243,61 @@ async def portal_scans(user: ClientUser, db: DB):
              summary="Request a scan — an operator approves before it runs")
 async def create_scan_request(body: ScanRequestCreate, user: ClientUser, db: DB):
     eng_id = assert_client(user)
-    # Dedupe / cooldown: at most one PENDING request per engagement, so a customer
-    # cannot flood the operator inbox. A prior approved/rejected request never blocks.
-    pending = (await db.execute(
-        client_scoped(select(ScanRequest), user, ScanRequest.engagement_id)
-        .where(ScanRequest.status == SR_PENDING).limit(1)
-    )).scalars().first()
-    if pending is not None:
-        raise HTTPException(status.HTTP_409_CONFLICT,
-                            "A scan request is already pending for this engagement")
+
+    # Validate the requested scan type against the enum so the customer-facing
+    # vocabulary can never drift from what the platform (and probe) accept.
+    if body.scan_type not in _VALID_SCAN_TYPES:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
+                            f"Unknown scan_type '{body.scan_type}'")
+
+    eng = (await db.execute(
+        select(Engagement).where(Engagement.id == eng_id)
+    )).scalar_one_or_none()
+    if eng is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Engagement not found")
+
+    # Re-validate every requested target against the engagement scope server-side.
+    # This is the request-time gate; the dispatch-time gate (agents.py) re-checks
+    # the same way via the same shared helper, so the two can never disagree.
+    normalized_targets: list[str] | None = None
+    if body.targets:
+        normalized_targets = validate_targets_in_scope(
+            body.targets, eng.scope_cidrs, eng.excluded_cidrs)
+        if normalized_targets is None:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                "One or more targets are outside the engagement scope "
+                "(or overlap an excluded range). Only in-scope IP/CIDR/range "
+                "values are allowed.")
+
+    # Requests queue for operator review; a small cap keeps the inbox sane.
+    pending_count = (await db.execute(
+        client_scoped(select(func.count()).select_from(ScanRequest),
+                      user, ScanRequest.engagement_id)
+        .where(ScanRequest.status == SR_PENDING)
+    )).scalar_one()
+    if pending_count >= _MAX_PENDING_REQUESTS:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"You already have {pending_count} scan requests awaiting review "
+            f"(max {_MAX_PENDING_REQUESTS}). Please wait for your security team.")
+
     sr = ScanRequest(
         tenant_id=user.tenant_id, engagement_id=eng_id, requested_by=user.user_id,
         scan_type=body.scan_type, status=SR_PENDING, note=body.note,
+        targets=normalized_targets, intensity=body.intensity,
     )
     db.add(sr)
     await db.flush()
     await db.refresh(sr)
-    # Client actions are audited (customer-facing surface).
+    # Client actions are audited (customer-facing surface). Record targets +
+    # intensity so an out-of-scope ATTEMPT is forensically visible even though it
+    # was rejected before reaching here.
     record_audit(db, actor_id=user.user_id, action="scan_request.created",
                  engagement_id=eng_id, resource_type="scan_request", resource_id=sr.id,
-                 detail={"scan_type": body.scan_type})
+                 detail={"scan_type": body.scan_type, "targets": normalized_targets,
+                         "intensity": body.intensity})
     await db.flush()
     return ClientScanRequestOut(id=sr.id, scan_type=sr.scan_type, status=sr.status,
+                                targets=sr.targets, intensity=sr.intensity,
                                 note=sr.note, requested_at=sr.requested_at)

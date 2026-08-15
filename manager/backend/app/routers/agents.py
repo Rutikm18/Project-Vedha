@@ -24,6 +24,7 @@ from app.models.enums import ScanJobStatus, ScanJobType
 from app.models.scan_job import ScanJob
 from app.models.service import Service as Service  # re-exported for tests (ag.Service)
 from app.services.job_result_service import _promote_assets as _promote_assets
+from app.services.scope_targets import validate_targets_in_scope
 
 router = APIRouter(prefix="/agents", tags=["agents"])
 logger = structlog.get_logger()
@@ -145,65 +146,15 @@ def _job_reachability_scope(
     requested a concrete IP/CIDR/range subset. Hostnames are rejected because
     engagements are IP/CIDR-only and Manager/Probe DNS could disagree.
     ``None`` means a requested target was invalid or outside authorization.
-    """
-    if not authoritative_scope:
-        # An engagement with no approved scope authorizes no network activity.
-        # Never reinterpret empty/NULL as unrestricted or trust job-supplied
-        # targets to create their own authorization boundary.
-        return None
 
+    Delegates to the shared :func:`validate_targets_in_scope` so the dispatch
+    gate and the customer-portal request gate share one implementation.
+    """
     job_params = params or {}
     requested = job_params.get("targets")
     if requested is None:
         requested = job_params.get("target")
-    if requested is None:
-        return list(authoritative_scope)
-
-    values = [requested] if isinstance(requested, str) else requested
-    if not isinstance(values, (list, tuple)) or not values:
-        return None
-
-    try:
-        allowed = [
-            ipaddress.ip_network(str(value).strip(), strict=False)
-            for value in authoritative_scope
-        ]
-    except (ValueError, TypeError):
-        return None
-
-    requested_networks: list[ipaddress.IPv4Network | ipaddress.IPv6Network] = []
-    try:
-        for raw_value in values:
-            if not isinstance(raw_value, str) or not raw_value.strip():
-                return list(authoritative_scope)
-            value = raw_value.strip()
-            if "-" in value:
-                start_raw, end_raw = (
-                    part.strip() for part in value.split("-", 1)
-                )
-                start = ipaddress.ip_address(start_raw)
-                end = ipaddress.ip_address(end_raw)
-                if start.version != end.version or int(start) > int(end):
-                    return None
-                requested_networks.extend(
-                    ipaddress.summarize_address_range(start, end)
-                )
-            else:
-                requested_networks.append(
-                    ipaddress.ip_network(value, strict=False)
-                )
-    except (ValueError, TypeError):
-        return None
-
-    if not all(
-        any(
-            target.version == scope.version and target.subnet_of(scope)
-            for scope in allowed
-        )
-        for target in requested_networks
-    ):
-        return None
-    return [str(network) for network in requested_networks]
+    return validate_targets_in_scope(requested, authoritative_scope)
 
 
 def _agent_can_execute_job(

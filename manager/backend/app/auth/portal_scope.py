@@ -8,6 +8,8 @@ that enforcement so it can never be forgotten on a new route:
   * assert_client(user)            — role gate + must be bound to an engagement
   * resolve_scope(user, wanted)    — the bound engagement id, rejecting any
                                      caller-supplied engagement_id that isn't theirs
+                                     (the IDOR-defense primitive for any future
+                                     route that accepts ?engagement_id)
   * client_scoped(stmt, user, col) — apply the engagement filter to a SELECT
 
 The pure functions are unit-tested directly; the FastAPI dependencies wrap them.

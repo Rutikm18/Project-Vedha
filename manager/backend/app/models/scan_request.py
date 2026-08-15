@@ -13,7 +13,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import DateTime, ForeignKey, String, Text, func
-from sqlalchemy.dialects.postgresql import UUID
+from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
 from app.models.base import Base, TimestampMixin
@@ -41,6 +41,11 @@ class ScanRequest(Base, TimestampMixin):
     requested_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     # A ScanJobType value (e.g. "discovery", "vuln_scan"); plain string like status.
     scan_type: Mapped[str] = mapped_column(String(32), nullable=False, server_default="vuln_scan")
+    # Specific in-scope targets the customer asked to scan (IP/CIDR/range strings),
+    # each proven subset of the engagement scope at request time. NULL = whole scope.
+    targets: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)
+    # Scan hardness: "light" | "standard" | "deep". NULL = use the use-case default.
+    intensity: Mapped[str | None] = mapped_column(String(16), nullable=True)
     status: Mapped[str] = mapped_column(
         String(16), nullable=False, server_default=SR_PENDING, index=True
     )
