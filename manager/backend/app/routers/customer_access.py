@@ -24,6 +24,7 @@ from fastapi import APIRouter, HTTPException, status
 from passlib.context import CryptContext
 from pydantic import BaseModel, EmailStr
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 
 from app.auth.rbac import require_role
 from app.dependencies import DB, AuthUser
@@ -167,6 +168,15 @@ async def provision_client_user(
         raise HTTPException(status.HTTP_409_CONFLICT,
                             "A customer login already exists for this engagement "
                             "(use PATCH to reset the password)")
+    # The users table is UNIQUE(tenant_id, email). An email already used ANYWHERE
+    # in the tenant — the operator's own login, or a client login already made for
+    # another engagement ("one more") — would violate that constraint at flush and
+    # surface as an opaque 500. Pre-check for a clear, actionable 409 instead.
+    if (await db.execute(
+        select(User).where(User.tenant_id == eng.tenant_id, User.email == body.email)
+    )).scalar_one_or_none() is not None:
+        raise HTTPException(status.HTTP_409_CONFLICT,
+                            "A user with this email already exists in this tenant")
     temp = body.password or generate_password()
     slug = await _unique_portal_slug(
         db, eng.tenant_id, getattr(eng, "name", None) or body.email.split("@")[0])
@@ -180,8 +190,16 @@ async def provision_client_user(
         is_active=True,
     )
     db.add(user)
-    await db.flush()
-    await db.refresh(user)
+    try:
+        await db.flush()
+        await db.refresh(user)
+    except IntegrityError:
+        # Defense-in-depth for the TOCTOU race between the pre-check above and this
+        # insert: another request may have claimed the email/slug first. Roll back
+        # and report the same clean 409 rather than leaking a 500.
+        await db.rollback()
+        raise HTTPException(status.HTTP_409_CONFLICT,
+                            "A user with this email already exists in this tenant")
     record_audit(db, actor_id=current_user.user_id, action="client_user.provisioned",
                  engagement_id=engagement_id, resource_type="user", resource_id=user.id,
                  detail={"email": body.email, "portal_slug": slug})

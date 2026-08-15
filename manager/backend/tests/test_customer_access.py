@@ -91,8 +91,9 @@ class TestProvisionClientUser:
         op = _operator()
         eng_id = uuid.uuid4()
         eng = SimpleNamespace(id=eng_id, tenant_id=op.tenant_id)
-        # get_or_404 engagement, no existing client, then no portal-slug collision
-        db = _mock_db([eng, None, None])
+        # get_or_404 engagement, no existing client, no tenant-email collision,
+        # then no portal-slug collision
+        db = _mock_db([eng, None, None, None])
         body = ca.ClientUserCreate(email="customer@acme.com")
 
         out = asyncio.run(ca.provision_client_user(eng_id, body, db, op))
@@ -118,6 +119,21 @@ class TestProvisionClientUser:
         db = _mock_db([eng, existing])
         with pytest.raises(HTTPException) as e:
             asyncio.run(ca.provision_client_user(eng_id, ca.ClientUserCreate(email="x@y.com"), db, op))
+        assert e.value.status_code == 409
+
+    def test_duplicate_email_in_tenant_is_conflict(self):
+        """An email already used elsewhere in the tenant (the operator's own login,
+        or a client login already made for another engagement — "one more") must be
+        a clean 409, not the DB-constraint 500 that uq_user_tenant_email would raise."""
+        op = _operator()
+        eng_id = uuid.uuid4()
+        eng = SimpleNamespace(id=eng_id, tenant_id=op.tenant_id)
+        existing_email_user = SimpleNamespace(id=uuid.uuid4(), email="dupe@acme.com")
+        # get_or_404 -> eng; no per-engagement client; THEN the tenant-email pre-check hits a dup
+        db = _mock_db([eng, None, existing_email_user])
+        with pytest.raises(HTTPException) as e:
+            asyncio.run(ca.provision_client_user(
+                eng_id, ca.ClientUserCreate(email="dupe@acme.com"), db, op))
         assert e.value.status_code == 409
 
 

@@ -7,15 +7,28 @@ export async function portalApi<T>(
   path: string,
   opts: { method?: string; body?: unknown } = {},
 ): Promise<T> {
-  const res = await fetch(`/api/portal${path}`, {
-    method: opts.method ?? "GET",
-    headers: { "Content-Type": "application/json" },
-    body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
-    cache: "no-store",
-  });
+  const send = () =>
+    fetch(`/api/portal${path}`, {
+      method: opts.method ?? "GET",
+      headers: { "Content-Type": "application/json" },
+      body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+      cache: "no-store",
+    });
+
+  let res = await send();
+
+  // Access token likely just expired (15 min). Rotate once with the path-scoped
+  // refresh cookie and replay the request before giving up — so a customer isn't
+  // kicked to login mid-task. Matches the operator fetcher's refresh-on-401.
   if (res.status === 401) {
-    if (typeof window !== "undefined") window.location.href = "/portal/login";
-    throw new Error("Not authenticated");
+    const rr = await fetch("/api/portal/login", { method: "PUT" }).catch(() => null);
+    if (rr && rr.ok) {
+      res = await send();
+    }
+    if (res.status === 401) {
+      if (typeof window !== "undefined") window.location.href = "/portal/login";
+      throw new Error("Not authenticated");
+    }
   }
   const data = await res.json().catch(() => null);
   if (!res.ok) {
