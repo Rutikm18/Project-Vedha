@@ -172,8 +172,8 @@ export default function EngagementsPage() {
 
   return (
     <PageShell
-      title="ENGAGEMENTS"
-      subtitle="MANAGE · SCOPE · TRACK · REPORT"
+      title="Engagements"
+      subtitle="Scope, track, and report on client assessments"
       statusItems={[
         { label: "ACTIVE",    value: String(engagements.filter((e) => e.status === "ACTIVE").length),    color: "#00E676" },
         { label: "PLANNING",  value: String(engagements.filter((e) => e.status === "PLANNING").length),  color: "#FFD600" },

@@ -884,8 +884,14 @@ function useCountUp(target: number, ms = 750) {
   useEffect(() => {
     const reduce = typeof window !== "undefined"
       && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    if (reduce || target <= 0) { setN(target); return; }
     let raf = 0;
+    // Jump straight to the target (no animation), but defer through rAF so we
+    // never setState synchronously in the effect body (avoids cascading renders
+    // and keeps the initial server/client render at 0 for hydration safety).
+    if (reduce || target <= 0) {
+      raf = requestAnimationFrame(() => setN(target));
+      return () => cancelAnimationFrame(raf);
+    }
     const start = performance.now();
     const tick = (t: number) => {
       const p = Math.min(1, (t - start) / ms);
@@ -1159,8 +1165,8 @@ export default function FindingsPage() {
 
   return (
     <PageShell
-      title="FINDINGS"
-      subtitle="VAPT · THREAT INTEL · TRIAGE · REMEDIATION"
+      title="Findings"
+      subtitle="Triage, verify, and remediate discovered vulnerabilities"
       statusItems={[
         { label: "CRITICAL OPEN", value: String(stats.criticalOpen), color: SEV_PALETTE.RED },
         { label: "VALIDATED",     value: String(stats.validated),    color: SEV_PALETTE.ORANGE },

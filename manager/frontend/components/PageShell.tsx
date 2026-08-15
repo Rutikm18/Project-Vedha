@@ -57,13 +57,19 @@ export function PageShell({
     return () => clearInterval(id);
   }, []);
 
-  // Session timer
+  // Session timer — anchored to the first load in this browser tab so it shows
+  // the real session duration. PageShell remounts on every route change, so a
+  // per-mount start would reset the clock to 00:00 on each navigation.
   useEffect(() => {
-    sessionStart.current = Date.now();
-    const id = setInterval(
-      () => setSessionTime(Math.floor((Date.now() - (sessionStart.current ?? Date.now())) / 1000)),
-      1000,
-    );
+    let start = Number(sessionStorage.getItem("vedha-session-start"));
+    if (!start) {
+      start = Date.now();
+      sessionStorage.setItem("vedha-session-start", String(start));
+    }
+    sessionStart.current = start;
+    const tick = () => setSessionTime(Math.floor((Date.now() - start) / 1000));
+    tick();
+    const id = setInterval(tick, 1000);
     return () => clearInterval(id);
   }, []);
 
@@ -173,16 +179,20 @@ export function PageShell({
               )}
             </div>
 
-            {/* Live indicator */}
-            <span style={{
-              width: 5,
-              height: 5,
-              borderRadius: "50%",
-              background: "var(--accent)",
-              flexShrink: 0,
-              animation: "pulse 2s ease-in-out infinite",
-              boxShadow: "0 0 6px var(--accent-glow)",
-            }} />
+            {/* Live indicator — signals the console is connected and auto-refreshing */}
+            <span
+              title="Live — console connected, data auto-refreshing"
+              aria-label="Live"
+              style={{
+                width: 5,
+                height: 5,
+                borderRadius: "50%",
+                background: "var(--accent)",
+                flexShrink: 0,
+                animation: "pulse 2s ease-in-out infinite",
+                boxShadow: "0 0 6px var(--accent-glow)",
+              }}
+            />
           </div>
 
           {/* Right */}
@@ -230,15 +240,29 @@ export function PageShell({
 
             <div style={{ width: 0.5, height: 14, background: "var(--border-subtle)", flexShrink: 0 }} />
 
-            {/* Session time */}
-            <span style={{
-              fontFamily: "var(--font-mono)",
-              fontSize: 10,
-              color: "var(--text-muted)",
-              letterSpacing: 0.2,
-            }}>
-              {fmtSession(sessionTime)}
-            </span>
+            {/* Session time — elapsed since this browser tab's session began */}
+            <div
+              title="Session duration — elapsed since you opened this console"
+              style={{ display: "flex", alignItems: "center", gap: 5 }}
+            >
+              <span style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: 9,
+                color: "var(--text-faint)",
+                letterSpacing: 0.6,
+                fontWeight: 600,
+              }}>
+                SESSION
+              </span>
+              <span style={{
+                fontFamily: "var(--font-mono)",
+                fontSize: 10,
+                color: "var(--text-muted)",
+                letterSpacing: 0.2,
+              }}>
+                {fmtSession(sessionTime)}
+              </span>
+            </div>
 
             <div style={{ width: 0.5, height: 14, background: "var(--border-subtle)", flexShrink: 0 }} />
 

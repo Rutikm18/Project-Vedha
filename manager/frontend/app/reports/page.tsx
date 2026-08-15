@@ -336,8 +336,8 @@ export default function ReportsPage() {
 
   return (
     <PageShell
-      title="REPORTS"
-      subtitle="ENGAGEMENT-GROUNDED · BETA"
+      title="Reports"
+      subtitle="Engagement-grounded deliverables · Beta"
       headerActions={<button className="btn btn-secondary no-print" onClick={() => window.print()} disabled={!engagement}><Printer size={14} /> Print / PDF</button>}
     >
       <div className="reports-beta-banner"><AlertTriangle size={15} /><div><strong>Beta reporting workspace</strong><span>All metrics below come from the selected engagement. Review evidence, wording, and scope before client delivery.</span></div></div>

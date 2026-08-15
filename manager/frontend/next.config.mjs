@@ -35,6 +35,11 @@ const securityHeaders = [
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   output: "standalone",
+  // Don't leak the framework in response headers ("X-Powered-By: Next.js").
+  poweredByHeader: false,
+  // Never ship readable browser source maps to the client, so "View source"
+  // exposes only minified bundles, not original component code.
+  productionBrowserSourceMaps: false,
   env: {
     NEXT_PUBLIC_APP_VERSION: APP_VERSION,
   },
