@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  CheckCircle2, Clipboard, Clock3, Fingerprint, Laptop, Loader2,
-  Network, RadioTower, RefreshCw, ShieldCheck,
+  Activity, CheckCircle2, Clipboard, Clock3, Cpu, Fingerprint, Laptop, Loader2,
+  MapPin, Network, RadioTower, RefreshCw, Server, ShieldCheck,
 } from "lucide-react";
 import { PageShell } from "../../components/PageShell";
 import { useToast } from "../../hooks/useToast";
@@ -38,6 +38,37 @@ function stateBadge(state: string): { color: string; label: string } {
   return { color: "var(--sev-medium-color)", label: state || "pending" };
 }
 
+// A registered, activated probe (backend GET /agents) — the live fleet view.
+interface Probe {
+  id: string;
+  name: string | null;
+  location: string | null;
+  status: string;              // online | busy | offline (persisted)
+  online: boolean;             // heartbeat-fresh AND status online/busy
+  capabilities: string[] | null;
+  current_job_id: string | null;
+  last_heartbeat: string | null;
+  agent_version: string | null;
+}
+
+// Live status is fused from `online` (heartbeat freshness) + `status` (what the
+// probe reported). Never color-only — the word + aria-label always accompany it.
+function agentStatus(a: Probe): { color: string; label: string } {
+  if (a.online && a.status === "busy") return { color: "var(--sev-medium-color)", label: "scanning" };
+  if (a.online) return { color: "var(--nominal-color)", label: "online" };
+  return { color: "var(--text-faint)", label: "offline" };
+}
+
+// Compact "time since" for the last heartbeat — how we surface probe health.
+function ago(iso: string | null): string {
+  if (!iso) return "never";
+  const s = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
+  if (s < 60) return `${s}s ago`;
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`;
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`;
+  return `${Math.floor(s / 86400)}d ago`;
+}
+
 async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
   const response = await fetch(path, {
     ...init,
@@ -52,6 +83,7 @@ async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
 export default function FleetPage() {
   const toast = useToast();
   const [data, setData] = useState<FleetResponse>({ requests: [], manager_url: "" });
+  const [agents, setAgents] = useState<Probe[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [selected, setSelected] = useState<string | null>(null);
@@ -62,8 +94,14 @@ export default function FleetPage() {
 
   const load = useCallback(async () => {
     try {
-      const next = await fetchJson<FleetResponse>("/api/fleet/enrollment");
+      // Enrollment (onboarding queue) + live probes, in parallel. A probe-list
+      // failure must not blank the enrollment view, so it degrades to [].
+      const [next, probes] = await Promise.all([
+        fetchJson<FleetResponse>("/api/fleet/enrollment"),
+        fetchJson<Probe[]>("/api/scan/probes").catch(() => [] as Probe[]),
+      ]);
       setData(next);
+      setAgents(probes ?? []);
       setSelected((current) => current && next.requests.some((row) => row.request_id === current)
         ? current : next.requests[0]?.request_id ?? null);
     } catch (error) {
@@ -82,6 +120,7 @@ export default function FleetPage() {
 
   const request = data.requests.find((row) => row.request_id === selected) ?? null;
   const capabilities = useMemo(() => request?.capabilities ?? [], [request]);
+  const onlineCount = useMemo(() => agents.filter((a) => a.online).length, [agents]);
   const managerUrl = data.manager_url || "https://manager.example.com";
   // Two ways to run the same installer: pipe-to-shell for a fresh host, and a
   // run-only command for operators who already downloaded install.sh (inspect-first).
@@ -166,6 +205,59 @@ export default function FleetPage() {
           </div>
           {!data.manager_url && (
             <p className="flt-warn">Set MANAGER_PUBLIC_URL on the frontend before copying this command in production.</p>
+          )}
+        </section>
+
+        {/* ── Connected probes (live status) ── */}
+        <section className="flt-card flt-card-flush">
+          <header className="flt-list-head">
+            <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+              <Server size={15} color="var(--accent)" />
+              <strong className="flt-head-title">Connected probes</strong>
+              <span className="flt-count">{agents.length}</span>
+              {onlineCount > 0 && <span className="flt-online-pill">{onlineCount} online</span>}
+            </div>
+            <button className="flt-icon-btn" onClick={() => void load()} aria-label="Refresh connected probes">
+              <RefreshCw size={14} />
+            </button>
+          </header>
+
+          {loading && agents.length === 0 ? (
+            <div className="flt-empty"><Loader2 size={15} className="animate-spin" /> Loading probes…</div>
+          ) : agents.length === 0 ? (
+            <div className="flt-empty-block">
+              <Server size={22} color="var(--text-faint)" />
+              <div className="flt-empty-title">No probes connected yet</div>
+              <div className="flt-empty-hint">Approve a pending request below. Once a probe activates and sends its first heartbeat, it appears here with live status.</div>
+            </div>
+          ) : (
+            <div className="flt-agents">
+              {agents.map((a) => {
+                const badge = agentStatus(a);
+                return (
+                  <div key={a.id} className="flt-agent">
+                    <div className="flt-agent-main">
+                      <strong className="flt-agent-name">{a.name || "unnamed probe"}</strong>
+                      <span className="flt-state" style={{ color: badge.color }} aria-label={`Probe status: ${badge.label}`}>
+                        <span className="flt-dot" style={{ background: badge.color }} />
+                        {badge.label}
+                      </span>
+                    </div>
+                    <div className="flt-agent-meta">
+                      <span><Activity size={11} /> heartbeat {ago(a.last_heartbeat)}</span>
+                      <span><Cpu size={11} /> {a.capabilities?.length ?? 0} capabilities</span>
+                      {a.location && <span><MapPin size={11} /> {a.location}</span>}
+                      {a.agent_version && <span className="flt-mono">v{a.agent_version}</span>}
+                      {a.status === "busy" && a.current_job_id ? (
+                        <span className="flt-agent-job"><Loader2 size={11} className="animate-spin" /> job {a.current_job_id.slice(0, 8)}…</span>
+                      ) : a.online ? (
+                        <span className="flt-agent-idle">idle</span>
+                      ) : null}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
           )}
         </section>
 
@@ -321,6 +413,17 @@ const STYLES = `
 .flt-req-meta { margin-top: 8px; display: grid; gap: 5px; color: var(--text-muted); font-size: 11px; }
 .flt-req-meta span { display: inline-flex; align-items: center; gap: 5px; }
 .flt-mono { font-family: var(--font-mono); }
+
+.flt-online-pill { font: 700 9px var(--font-mono); color: var(--nominal-color); background: var(--bg-surface); border: 0.5px solid var(--border-subtle); border-radius: 5px; padding: 1px 6px; text-transform: uppercase; letter-spacing: 0.4px; }
+.flt-agents { display: grid; }
+.flt-agent { padding: 12px 14px; border-bottom: 0.5px solid var(--border-subtle); }
+.flt-agent:last-child { border-bottom: 0; }
+.flt-agent-main { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.flt-agent-name { color: var(--text-primary); font-size: 13px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.flt-agent-meta { margin-top: 7px; display: flex; flex-wrap: wrap; gap: 6px 14px; color: var(--text-muted); font-size: 11px; }
+.flt-agent-meta span { display: inline-flex; align-items: center; gap: 5px; }
+.flt-agent-job { color: var(--sev-medium-color); font-weight: 600; }
+.flt-agent-idle { color: var(--text-faint); }
 
 .flt-form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .flt-field { display: flex; flex-direction: column; gap: 6px; }
