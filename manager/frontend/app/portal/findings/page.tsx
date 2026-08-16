@@ -1,80 +1,155 @@
 "use client";
 
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, Bug } from "lucide-react";
+import { Bug, ArrowUp, ArrowDown } from "lucide-react";
 import { PortalShell } from "../../../components/portal/PortalShell";
-import { portalApi, severityChip, type PortalFinding } from "../../../lib/portal-client";
+import { portalApi, severityChip, SEVERITY_VAR, type PortalFinding } from "../../../lib/portal-client";
+import { DataState, SkeletonRows, EmptyState } from "../../../components/states/DataState";
 
+const SEVS = ["critical", "high", "medium", "low", "info"] as const;
 const SEV_ORDER: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
+
+type SortKey = "severity" | "cvss" | "risk" | "status";
+type SortDir = "asc" | "desc";
+
+/* Sortable column header — module-scoped so it isn't re-created each render. */
+function SortHead({ k, label, align, sortKey, sortDir, onSort }: {
+  k: SortKey; label: string; align?: "right";
+  sortKey: SortKey; sortDir: SortDir; onSort: (k: SortKey) => void;
+}) {
+  const isActive = sortKey === k;
+  const aria: "ascending" | "descending" | "none" =
+    isActive ? (sortDir === "asc" ? "ascending" : "descending") : "none";
+  return (
+    <th aria-sort={aria} style={{ padding: 0 }}>
+      <button onClick={() => onSort(k)} className="focusable" aria-label={`Sort by ${label}`}
+        style={{ display: "inline-flex", alignItems: "center", gap: 4, width: "100%",
+          padding: "10px 16px", background: "none", border: "none", cursor: "pointer",
+          justifyContent: align === "right" ? "flex-end" : "flex-start" }}>
+        <span className="eyebrow">{label}</span>
+        {isActive && (sortDir === "asc"
+          ? <ArrowUp style={{ width: 11, height: 11, color: "var(--accent)" }} />
+          : <ArrowDown style={{ width: 11, height: 11, color: "var(--accent)" }} />)}
+      </button>
+    </th>
+  );
+}
 
 export default function PortalFindings() {
   const q = useQuery({ queryKey: ["portal", "findings"], queryFn: () => portalApi<PortalFinding[]>("/findings") });
+  const [sortKey, setSortKey] = useState<SortKey>("severity");
+  const [sortDir, setSortDir] = useState<SortDir>("asc");
+  const [active, setActive] = useState<Set<string>>(new Set());
 
-  const findings = [...(q.data ?? [])].sort(
-    (a, b) => (SEV_ORDER[a.severity] ?? 9) - (SEV_ORDER[b.severity] ?? 9),
-  );
+  const all = q.data ?? [];
+  const visible = all
+    .filter((f) => active.size === 0 || active.has(f.severity))
+    .sort((a, b) => {
+      let c = 0;
+      if (sortKey === "severity") c = (SEV_ORDER[a.severity] ?? 9) - (SEV_ORDER[b.severity] ?? 9);
+      else if (sortKey === "cvss") c = (a.cvss_score ?? -1) - (b.cvss_score ?? -1);
+      else if (sortKey === "risk") c = (a.risk_score ?? -1) - (b.risk_score ?? -1);
+      else c = (a.status ?? "").localeCompare(b.status ?? "");
+      return sortDir === "asc" ? c : -c;
+    });
+
+  function toggleSort(k: SortKey) {
+    if (sortKey === k) setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    else { setSortKey(k); setSortDir(k === "severity" ? "asc" : "desc"); }
+  }
+  function toggleSev(s: string) {
+    setActive((prev) => { const n = new Set(prev); if (n.has(s)) n.delete(s); else n.add(s); return n; });
+  }
 
   return (
     <PortalShell title="Findings" subtitle="Vulnerabilities in your engagement">
-      {q.isLoading ? (
-        <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--text-muted)" }}>
-          <Loader2 className="animate-spin" style={{ width: 16, height: 16 }} /> Loading findings…
-        </div>
-      ) : q.isError ? (
-        <div className="panel" style={{ padding: 16, color: "var(--sev-critical-color)" }}>
-          {(q.error as Error).message}
-        </div>
-      ) : findings.length === 0 ? (
-        <div className="panel" style={{ padding: 48, display: "flex", flexDirection: "column",
-          alignItems: "center", textAlign: "center" }}>
-          <Bug style={{ width: 32, height: 32, color: "var(--text-faint)" }} />
-          <p style={{ marginTop: 12, fontSize: 13, fontWeight: 500, color: "var(--text-secondary)" }}>
-            No findings yet
-          </p>
-          <p style={{ fontSize: 13, color: "var(--text-muted)" }}>
-            Findings from your engagement will appear here after a scan.
-          </p>
-        </div>
-      ) : (
+      <DataState
+        loading={q.isLoading}
+        error={q.error}
+        isEmpty={all.length === 0}
+        onRetry={() => q.refetch()}
+        onLogin={() => { window.location.href = "/portal/login"; }}
+        skeleton={<div className="panel" style={{ padding: 16 }}><SkeletonRows rows={6} /></div>}
+        empty={<div className="panel"><EmptyState icon={Bug} title="No findings yet"
+          hint="Findings from your engagement will appear here after a scan." /></div>}
+      >
         <div className="panel">
-          <table style={{ width: "100%", fontSize: 13, borderCollapse: "collapse" }}>
-            <thead>
-              <tr style={{ background: "var(--bg-surface)" }}>
-                {["Severity", "Finding", "CVSS", "Risk", "Status"].map((h) => (
-                  <th key={h} className="eyebrow" style={{ textAlign: "left", padding: "10px 16px" }}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {findings.map((f) => (
-                <tr key={f.id} className="console-row" style={{ verticalAlign: "top" }}>
-                  <td style={{ padding: "12px 16px" }}>
-                    <span className="chip" style={{ ...severityChip(f.severity), textTransform: "capitalize" }}>
-                      {f.severity}
-                    </span>
-                  </td>
-                  <td style={{ padding: "12px 16px" }}>
-                    <div style={{ fontWeight: 500, color: "var(--text-primary)" }}>{f.title}</div>
-                    {f.cve_ids && f.cve_ids.length > 0 && (
-                      <div style={{ marginTop: 2, fontSize: 11, color: "var(--text-faint)" }}>
-                        {f.cve_ids.join(", ")}
-                      </div>
-                    )}
-                    {f.remediation && (
-                      <div style={{ marginTop: 4, fontSize: 11, color: "var(--text-muted)" }}>
-                        <span style={{ fontWeight: 600 }}>Fix:</span> {f.remediation}
-                      </div>
-                    )}
-                  </td>
-                  <td className="num" style={{ padding: "12px 16px", color: "var(--text-secondary)" }}>{f.cvss_score ?? "—"}</td>
-                  <td className="num" style={{ padding: "12px 16px", color: "var(--text-secondary)" }}>{f.risk_score ?? "—"}</td>
-                  <td style={{ padding: "12px 16px", color: "var(--text-muted)", textTransform: "capitalize" }}>{f.status}</td>
+          {/* Severity filter — legend chips double as toggles */}
+          <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6,
+            padding: "10px 16px", borderBottom: "0.5px solid var(--border-subtle)" }}>
+            <span className="eyebrow" style={{ marginRight: 2 }}>Filter</span>
+            {SEVS.map((sev) => {
+              const on = active.has(sev);
+              const count = all.filter((f) => f.severity === sev).length;
+              return (
+                <button key={sev} className="legend-chip" aria-pressed={on}
+                  onClick={() => toggleSev(sev)}
+                  style={{ "--sev-edge": SEVERITY_VAR[sev], textTransform: "capitalize",
+                    opacity: count === 0 ? 0.45 : 1 } as React.CSSProperties}>
+                  <span style={{ width: 8, height: 8, borderRadius: 2, background: SEVERITY_VAR[sev] }} />
+                  {sev} <span className="num" style={{ color: "var(--text-muted)" }}>{count}</span>
+                </button>
+              );
+            })}
+            {active.size > 0 && (
+              <button onClick={() => setActive(new Set())} className="focusable"
+                style={{ marginLeft: "auto", background: "none", border: "none", cursor: "pointer",
+                  fontSize: 11, color: "var(--accent)", padding: "4px 6px", borderRadius: 6 }}>
+                Clear
+              </button>
+            )}
+          </div>
+
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", minWidth: 620, fontSize: 13, borderCollapse: "collapse" }}>
+              <thead>
+                <tr style={{ background: "var(--bg-surface)" }}>
+                  <SortHead k="severity" label="Severity" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                  <th className="eyebrow" style={{ textAlign: "left", padding: "10px 16px" }}>Finding</th>
+                  <SortHead k="cvss" label="CVSS" align="right" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                  <SortHead k="risk" label="Risk" align="right" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                  <SortHead k="status" label="Status" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {visible.length === 0 ? (
+                  <tr>
+                    <td colSpan={5} style={{ padding: "32px 16px", textAlign: "center",
+                      color: "var(--text-muted)", fontSize: 13 }}>
+                      No findings match this filter.
+                    </td>
+                  </tr>
+                ) : visible.map((f) => (
+                  <tr key={f.id} className="console-row" style={{ verticalAlign: "top" }}>
+                    <td style={{ padding: "12px 16px" }}>
+                      <span className="chip" style={{ ...severityChip(f.severity), textTransform: "capitalize" }}>
+                        {f.severity}
+                      </span>
+                    </td>
+                    <td style={{ padding: "12px 16px" }}>
+                      <div style={{ fontWeight: 500, color: "var(--text-primary)" }}>{f.title}</div>
+                      {f.cve_ids && f.cve_ids.length > 0 && (
+                        <div style={{ marginTop: 2, fontSize: 11, color: "var(--text-muted)" }}>
+                          {f.cve_ids.join(", ")}
+                        </div>
+                      )}
+                      {f.remediation && (
+                        <div style={{ marginTop: 4, fontSize: 11, color: "var(--text-muted)" }}>
+                          <span style={{ fontWeight: 600 }}>Fix:</span> {f.remediation}
+                        </div>
+                      )}
+                    </td>
+                    <td className="num" style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-secondary)" }}>{f.cvss_score ?? "—"}</td>
+                    <td className="num" style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-secondary)" }}>{f.risk_score ?? "—"}</td>
+                    <td style={{ padding: "12px 16px", color: "var(--text-muted)", textTransform: "capitalize" }}>{f.status}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
-      )}
+      </DataState>
     </PortalShell>
   );
 }

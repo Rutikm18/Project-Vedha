@@ -18,7 +18,9 @@ import React from "react";
 import { AlertTriangle, Inbox, Lock, RefreshCw, WifiOff, type LucideIcon } from "lucide-react";
 import { errorMessage, isUnauthorized } from "../../lib/fetcher";
 
-const MONO = "'JetBrains Mono', monospace";
+// JetBrains Mono is intentionally not loaded (see console-tokens.css); use the
+// app's mono stack so these states match the rest of the product.
+const MONO = "var(--font-mono)";
 
 /* ── Loading: skeleton rows (reserves layout to avoid CLS) ── */
 export function SkeletonRows({ rows = 3, height = 46 }: { rows?: number; height?: number }) {

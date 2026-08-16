@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { Shield, Loader2 } from "lucide-react";
+import { Shield, Loader2, Eye, EyeOff } from "lucide-react";
 
 export default function PortalLoginPage() {
   const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPw, setShowPw] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
@@ -42,12 +43,6 @@ export default function PortalLoginPage() {
     }
   }
 
-  const inputStyle: React.CSSProperties = {
-    width: "100%", borderRadius: 8, padding: "9px 11px", fontSize: 13,
-    background: "var(--bg-app)", color: "var(--text-primary)",
-    border: "0.5px solid var(--border-default)", outline: "none",
-  };
-
   return (
     <div className="console-scope" style={{
       minHeight: "100vh", display: "flex", alignItems: "center",
@@ -72,30 +67,37 @@ export default function PortalLoginPage() {
         </div>
         <form onSubmit={submit} style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           <div>
-            <label className="eyebrow" style={{ display: "block", marginBottom: 6 }}>Email</label>
-            <input type="email" required value={email}
-              onChange={(e) => setEmail(e.target.value)} style={inputStyle}
+            <label htmlFor="portal-email" className="eyebrow" style={{ display: "block", marginBottom: 6 }}>Email</label>
+            <input id="portal-email" type="email" required autoComplete="email"
+              value={email} onChange={(e) => setEmail(e.target.value)} className="input-base"
               placeholder="you@company.com" />
           </div>
           <div>
-            <label className="eyebrow" style={{ display: "block", marginBottom: 6 }}>Password</label>
-            <input type="password" required value={password}
-              onChange={(e) => setPassword(e.target.value)} style={inputStyle}
-              placeholder="••••••••" />
+            <label htmlFor="portal-password" className="eyebrow" style={{ display: "block", marginBottom: 6 }}>Password</label>
+            <div style={{ position: "relative" }}>
+              <input id="portal-password" type={showPw ? "text" : "password"} required
+                autoComplete="current-password" value={password}
+                onChange={(e) => setPassword(e.target.value)} className="input-base"
+                style={{ paddingRight: 40 }} placeholder="••••••••" />
+              <button type="button" onClick={() => setShowPw((v) => !v)}
+                aria-label={showPw ? "Hide password" : "Show password"}
+                style={{ position: "absolute", right: 4, top: "50%", transform: "translateY(-50%)",
+                  display: "flex", alignItems: "center", justifyContent: "center",
+                  width: 28, height: 28, border: "none", background: "none",
+                  cursor: "pointer", color: "var(--text-muted)" }}>
+                {showPw ? <EyeOff style={{ width: 15, height: 15 }} /> : <Eye style={{ width: 15, height: 15 }} />}
+              </button>
+            </div>
           </div>
           {error && (
-            <div style={{ borderRadius: 8, padding: "9px 11px", fontSize: 13,
+            <div role="alert" style={{ borderRadius: 8, padding: "9px 11px", fontSize: 13,
               color: "var(--sev-critical-color)",
               background: "color-mix(in srgb, var(--sev-critical-color) 10%, transparent)" }}>
               {error}
             </div>
           )}
-          <button type="submit" disabled={loading}
-            style={{ display: "flex", width: "100%", alignItems: "center",
-              justifyContent: "center", gap: 8, borderRadius: 8, padding: "10px 16px",
-              fontSize: 13, fontWeight: 600, color: "#fff", background: "var(--accent)",
-              border: "none", cursor: loading ? "default" : "pointer",
-              opacity: loading ? 0.6 : 1 }}>
+          <button type="submit" disabled={loading} className="btn btn-primary"
+            style={{ width: "100%", height: 40 }}>
             {loading && <Loader2 style={{ width: 16, height: 16 }} className="animate-spin" />}
             Sign in
           </button>

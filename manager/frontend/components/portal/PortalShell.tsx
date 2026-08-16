@@ -7,11 +7,11 @@
  * Scans, Reports) and portal auth. Everything is theme-token driven, so light/dark
  * follows the app toggle just like the main dashboard.
  */
-import React, { useCallback, useEffect, useRef, useState } from "react";
+import React, { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
-  Shield, LayoutDashboard, Bug, Radar, FileText, LogOut, Menu, Sun, Moon, User,
+  Shield, LayoutDashboard, Bug, Radar, FileText, LogOut, Menu, Sun, Moon, User, Settings,
 } from "lucide-react";
 import { useTheme } from "../ThemeProvider";
 
@@ -22,6 +22,7 @@ const NAV = [
   { icon: Bug,             label: "Findings",  href: "/portal/findings" },
   { icon: Radar,           label: "Scans",     href: "/portal/scans" },
   { icon: FileText,        label: "Reports",   href: "/portal/reports" },
+  { icon: Settings,        label: "Settings",  href: "/portal/settings" },
 ];
 
 interface PortalShellProps {
@@ -29,12 +30,13 @@ interface PortalShellProps {
   subtitle?: string;
   headerActions?: React.ReactNode;
   statusItems?: Array<{ label: string; value: string; color?: string }>;
+  /** When true the header status dot pulses (something is actively running). */
+  live?: boolean;
   children: React.ReactNode;
 }
 
 function PortalSidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
   const pathname = usePathname();
-  const [hovered, setHovered] = useState<string | null>(null);
 
   return (
     <aside
@@ -85,33 +87,16 @@ function PortalSidebar({ open, onClose }: { open: boolean; onClose: () => void }
         {NAV.map((item) => {
           const Icon = item.icon;
           const isActive = pathname === item.href;
-          const isHovered = hovered === item.href;
           return (
             <Link
               key={item.href}
               href={item.href}
               onClick={onClose}
-              style={{
-                display: "flex", alignItems: "center", gap: 10,
-                padding: "7px 10px 7px 14px", margin: "1px 8px", borderRadius: 7,
-                textDecoration: "none",
-                background: isActive ? "var(--accent-ghost)"
-                  : isHovered ? "var(--bg-surface)" : "transparent",
-                borderLeft: isActive ? "2px solid var(--accent)" : "2px solid transparent",
-                transition: "background 0.12s ease, transform 0.12s var(--ease-spring)",
-                transform: isHovered && !isActive ? "translateX(3px)" : "translateX(0)",
-              }}
-              onMouseEnter={() => setHovered(item.href)}
-              onMouseLeave={() => setHovered(null)}
+              aria-current={isActive ? "page" : undefined}
+              className="portal-nav-link"
             >
-              <Icon size={14} color={isActive ? "var(--accent)"
-                : isHovered ? "var(--text-primary)" : "var(--text-secondary)"} />
-              <span style={{
-                fontSize: 13, fontWeight: isActive ? 600 : 450, flex: 1,
-                color: isActive || isHovered ? "var(--text-primary)" : "var(--text-secondary)",
-              }}>
-                {item.label}
-              </span>
+              <Icon className="portal-nav-icon" size={14} />
+              <span className="portal-nav-label">{item.label}</span>
               {isActive && (
                 <span style={{ width: 4, height: 4, borderRadius: "50%",
                   background: "var(--accent)", boxShadow: "0 0 5px var(--accent-glow)" }} />
@@ -131,40 +116,11 @@ function PortalSidebar({ open, onClose }: { open: boolean; onClose: () => void }
 }
 
 export function PortalShell({
-  title, subtitle, headerActions, statusItems, children,
+  title, subtitle, headerActions, statusItems, live, children,
 }: PortalShellProps) {
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const [utcTime, setUtcTime] = useState("");
-  const [sessionTime, setSessionTime] = useState(0);
-  const sessionStart = useRef<number | null>(null);
-
-  useEffect(() => {
-    const tick = () =>
-      setUtcTime(new Date().toISOString().replace("T", " ").slice(0, 19) + " UTC");
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, []);
-
-  useEffect(() => {
-    let start = Number(sessionStorage.getItem("vedha-portal-session-start"));
-    if (!start) {
-      start = Date.now();
-      sessionStorage.setItem("vedha-portal-session-start", String(start));
-    }
-    sessionStart.current = start;
-    const tick = () => setSessionTime(Math.floor((Date.now() - start) / 1000));
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, []);
-
-  const fmtSession = useCallback((s: number) => {
-    const m = Math.floor(s / 60);
-    return `${String(m).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
-  }, []);
 
   const logout = useCallback(async () => {
     await fetch("/api/portal/logout", { method: "POST" }).catch(() => {});
@@ -210,9 +166,11 @@ export function PortalShell({
                 </span>
               </>
             )}
-            <span aria-label="Live" style={{ width: 5, height: 5, borderRadius: "50%",
-              background: "var(--accent)", animation: "pulse 2s ease-in-out infinite",
-              boxShadow: "0 0 6px var(--accent-glow)" }} />
+            <span aria-label={live ? "Scan running" : "Idle"} title={live ? "Scan running" : "Idle"}
+              style={{ width: 5, height: 5, borderRadius: "50%",
+                background: live ? "var(--accent)" : "var(--text-faint)",
+                animation: live ? "pulse 2s ease-in-out infinite" : "none",
+                boxShadow: live ? "0 0 6px var(--accent-glow)" : "none" }} />
           </div>
 
           <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
@@ -243,14 +201,12 @@ export function PortalShell({
                 color: "var(--text-faint)", letterSpacing: 0.6, fontWeight: 600 }}>
                 SESSION
               </span>
-              <span style={{ fontFamily: "var(--font-mono)", fontSize: 10,
-                color: "var(--text-muted)" }}>
-                {fmtSession(sessionTime)}
-              </span>
+              <SessionTimer />
             </div>
 
             <div style={{ width: 0.5, height: 14, background: "var(--border-subtle)" }} />
             <button onClick={toggleTheme}
+              aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
               title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
               style={{ display: "flex", alignItems: "center", justifyContent: "center",
                 width: 28, height: 28, borderRadius: 7,
@@ -264,7 +220,7 @@ export function PortalShell({
               <User size={10} color="var(--text-muted)" />
               <span style={{ fontSize: 10, color: "var(--text-secondary)" }}>Customer</span>
             </div>
-            <button onClick={logout} title="Sign out"
+            <button onClick={logout} aria-label="Sign out" title="Sign out"
               style={{ display: "flex", alignItems: "center", justifyContent: "center",
                 width: 26, height: 26, borderRadius: 7,
                 border: "0.5px solid var(--border-subtle)", background: "transparent",
@@ -284,10 +240,44 @@ export function PortalShell({
           alignItems: "center", justifyContent: "flex-end", padding: "0 18px" }}>
           <div style={{ fontFamily: "var(--font-mono)", fontSize: 9,
             color: "var(--text-muted)" }}>
-            {utcTime} · VEDHA Secure Portal
+            <FooterClock /> · VEDHA Secure Portal
           </div>
         </footer>
       </div>
     </div>
   );
+}
+
+/* Leaf clocks own their own 1s interval, so a tick re-renders only the clock —
+   not the whole shell and its children — every second. */
+function SessionTimer() {
+  const [s, setS] = useState(0);
+  useEffect(() => {
+    let start = Number(sessionStorage.getItem("vedha-portal-session-start"));
+    if (!start) {
+      start = Date.now();
+      sessionStorage.setItem("vedha-portal-session-start", String(start));
+    }
+    const tick = () => setS(Math.floor((Date.now() - start) / 1000));
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, []);
+  const label = `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
+  return (
+    <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-muted)" }}>
+      {label}
+    </span>
+  );
+}
+
+function FooterClock() {
+  const [utc, setUtc] = useState("");
+  useEffect(() => {
+    const tick = () => setUtc(new Date().toISOString().replace("T", " ").slice(0, 19) + " UTC");
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, []);
+  return <>{utc}</>;
 }

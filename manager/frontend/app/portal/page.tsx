@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useQuery } from "@tanstack/react-query";
-import { Loader2, Radar, ShieldCheck } from "lucide-react";
+import { Radar, ShieldCheck } from "lucide-react";
 import { PortalShell } from "../../components/portal/PortalShell";
+import { DataState } from "../../components/states/DataState";
 import {
   portalApi, severityChip, SEVERITY_VAR, GRADE_VAR,
   type PortalEngagement, type PortalSummary, type PortalTrends, type PortalFinding,
@@ -16,7 +17,7 @@ function Kpi({ label, value, hint, color }: { label: string; value: React.ReactN
   return (
     <div className="panel" style={{ padding: 16 }}>
       <div className="eyebrow">{label}</div>
-      <div className="num" style={{ marginTop: 4, fontSize: 26, fontWeight: 600,
+      <div className="num animate-count-up" style={{ marginTop: 4, fontSize: 26, fontWeight: 600,
         color: color ?? "var(--text-primary)" }}>{value}</div>
       {hint && <div style={{ marginTop: 2, fontSize: 11, color: "var(--text-faint)" }}>{hint}</div>}
     </div>
@@ -39,9 +40,8 @@ export default function PortalOverview() {
   const findings = useQuery({ queryKey: ["portal", "findings"], queryFn: () => portalApi<PortalFinding[]>("/findings") });
 
   const requestAction = (
-    <Link href="/portal/scans" style={{ display: "inline-flex", alignItems: "center", gap: 6,
-      borderRadius: 7, background: "var(--accent)", color: "#fff", padding: "6px 12px",
-      fontSize: 12, fontWeight: 600, textDecoration: "none" }}>
+    <Link href="/portal/scans" className="btn btn-primary"
+      style={{ height: 30, padding: "0 12px", fontSize: 12, textDecoration: "none" }}>
       <Radar style={{ width: 14, height: 14 }} /> Request scan
     </Link>
   );
@@ -66,19 +66,18 @@ export default function PortalOverview() {
       subtitle="Your security posture at a glance"
       statusItems={statusItems}
       headerActions={requestAction}
+      live={(s?.running_jobs ?? 0) > 0}
     >
-      {summary.isLoading ? (
-        <div style={{ display: "flex", alignItems: "center", gap: 8, color: "var(--text-muted)" }}>
-          <Loader2 className="animate-spin" style={{ width: 16, height: 16 }} /> Loading your dashboard…
-        </div>
-      ) : summary.isError ? (
-        <div className="panel" style={{ padding: 16, color: "var(--sev-critical-color)" }}>
-          {(summary.error as Error).message}
-        </div>
-      ) : (
+      <DataState
+        loading={summary.isLoading}
+        error={summary.error}
+        onRetry={() => { summary.refetch(); trends.refetch(); findings.refetch(); eng.refetch(); }}
+        onLogin={() => { window.location.href = "/portal/login"; }}
+        skeleton={<DashboardSkeleton />}
+      >
         <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
           {/* KPI row */}
-          <div style={{ display: "grid", gap: 12,
+          <div className="stagger-item" style={{ display: "grid", gap: 12,
             gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))" }}>
             <Kpi label="Posture grade" value={s?.posture.grade ?? "—"}
               color={GRADE_VAR[s?.posture.grade ?? ""] ?? "var(--text-primary)"}
@@ -89,7 +88,7 @@ export default function PortalOverview() {
             <Kpi label="Closed" value={s?.closed_findings ?? 0} color="var(--nominal-color)" />
           </div>
 
-          <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
+          <div className="stagger-item" style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
             {/* Severity breakdown */}
             <Panel title="Open findings by severity">
               {t && SEVS.every((k) => (t.by_severity[k] ?? 0) === 0) ? (
@@ -143,7 +142,7 @@ export default function PortalOverview() {
             </Panel>
           </div>
 
-          <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
+          <div className="stagger-item" style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
             {/* Queue */}
             <Panel title="Scan queue">
               <div style={{ display: "flex", gap: 24 }}>
@@ -182,8 +181,28 @@ export default function PortalOverview() {
             </Panel>
           </div>
         </div>
-      )}
+      </DataState>
     </PortalShell>
+  );
+}
+
+function DashboardSkeleton() {
+  const block = (h: number) => (
+    <div className="shimmer" style={{ height: h, borderRadius: "var(--radius-lg)" }} />
+  );
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}
+      role="status" aria-busy="true" aria-label="Loading your dashboard">
+      <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(150px, 1fr))" }}>
+        {Array.from({ length: 5 }).map((_, i) => <div key={i}>{block(78)}</div>)}
+      </div>
+      <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
+        {block(190)}{block(190)}
+      </div>
+      <div style={{ display: "grid", gap: 16, gridTemplateColumns: "repeat(auto-fit, minmax(320px, 1fr))" }}>
+        {block(120)}{block(120)}
+      </div>
+    </div>
   );
 }
 
