@@ -25,6 +25,7 @@ from app.models.enums import (
 )
 from app.models.finding import Finding
 from app.models.llm_output import LLMOutput
+from app.models.remediation_plan import RemediationPlan
 from app.models.scan_job import ScanJob
 from app.models.scan_request import ScanRequest, SR_PENDING
 from app.schemas.portal import (
@@ -42,6 +43,7 @@ from app.schemas.portal import (
 from app.services import portal_metrics
 from app.services import posture as posture_service
 from app.services.audit import record_audit
+from app.services.remediation_kb import _os_key, recipe_for_finding
 from app.services.scope_targets import validate_targets_in_scope
 
 router = APIRouter(prefix="/portal", tags=["portal"])
@@ -103,6 +105,39 @@ async def portal_finding(finding_id: uuid.UUID, user: ClientUser, db: DB):
     if r is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Finding not found")
     return ClientFindingOut.model_validate(r)
+
+
+@router.get("/findings/{finding_id}/remediation",
+            summary="Structured remediation plan (KB always; AI only once reviewed)")
+async def portal_finding_remediation(
+    finding_id: uuid.UUID, user: ClientUser, db: DB,
+    os: str = Query(default="generic"),
+):
+    """Customer-facing structured remediation, replacing the plain `remediation`
+    string. The deterministic KB recipe is served ALWAYS; a stored AI plan reaches
+    the customer only once an operator has reviewed it — the same approval gate the
+    reports route uses, so an unreviewed AI plan never leaks."""
+    finding = (await db.execute(
+        client_scoped(select(Finding).where(Finding.id == finding_id),
+                      user, Finding.engagement_id)
+    )).scalar_one_or_none()
+    if finding is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Finding not found")
+
+    os_key = _os_key(os)
+    row = (await db.execute(
+        select(RemediationPlan).where(
+            RemediationPlan.finding_id == finding_id,
+            RemediationPlan.os == os_key,
+        )
+    )).scalar_one_or_none()
+    if row is not None and row.reviewed:
+        plan = row.plan
+        source = plan.get("source", row.source)
+    else:
+        plan = recipe_for_finding(finding, os_key)
+        source = plan["source"]
+    return {"finding_id": str(finding_id), "os": os_key, "source": source, "plan": plan}
 
 
 @router.get("/posture", response_model=ClientPostureOut,

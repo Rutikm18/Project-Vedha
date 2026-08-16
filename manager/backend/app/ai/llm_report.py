@@ -19,6 +19,7 @@ from __future__ import annotations
 
 import asyncio
 import hashlib
+import json
 import random
 from datetime import datetime, timezone
 from typing import Any
@@ -240,6 +241,28 @@ class LLMReportGenerator:
             check_commands=True,
         )
 
+    async def generate_remediation_plan(self, finding: Any, os: str) -> dict:
+        """Generate a STRUCTURED, OS-specific remediation plan (dict, not prose).
+
+        Reuses _complete (transport/retry/refusal handling) and the command-safety
+        guard. Returns the normalized plan schema the API/UI render, with
+        source="ai". Raises ValueError if the model output can't be parsed into a
+        usable plan — the caller then falls back to the deterministic KB, so the
+        endpoint never returns nothing.
+        """
+        os_label = {
+            "linux": "Linux", "windows": "Windows", "macos": "macOS",
+            "generic": "a network appliance or generic host (give vendor-neutral guidance, not shell commands)",
+        }.get(os, "a generic host")
+        prompt = _remediation_plan_prompt(finding, os, os_label)
+        text = await self._complete(prompt, max_tokens=2000)
+        raw = _parse_json_response(text)
+        plan = _normalize_ai_plan(raw, os, self._guard)
+        if not plan["steps"]:
+            raise ValueError("AI returned no usable remediation steps")
+        plan["model"] = self._model
+        return plan
+
     async def generate_detection_rule_explanation(
         self, sigma_rule: str, technique: str, engagement_id: Any
     ) -> LLMOutput:
@@ -309,6 +332,130 @@ class LLMReportGenerator:
 
 def _enum(v: Any) -> str:
     return str(getattr(v, "value", v)) if v is not None else "N/A"
+
+
+# ── remediation-plan helpers (pure, unit-tested) ─────────────────────────────────
+
+_REMEDIATION_SCHEMA = (
+    '{\n'
+    '  "summary": "one sentence",\n'
+    '  "effort": "low|medium|high",\n'
+    '  "remediation_risk": "low|medium|high",\n'
+    '  "steps": [\n'
+    '    {"title": "...", "description": "...", "command": "exact command or null",\n'
+    '     "verification": "how to confirm this step", "risk": "low|medium|high"}\n'
+    '  ],\n'
+    '  "verification": ["final check 1"],\n'
+    '  "long_term_recommendations": ["strategic rec 1"],\n'
+    '  "compensating_controls": "interim mitigation if the fix cannot be applied now"\n'
+    '}'
+)
+
+
+def _remediation_plan_prompt(finding: Any, os: str, os_label: str) -> str:
+    """Build the structured-remediation prompt. Exploitation signals (EPSS,
+    exploitable/validated, CVSS) are included so the model calibrates urgency."""
+    exploitable = bool(getattr(finding, "exploitable", False))
+    validated = bool(getattr(finding, "exploit_validated", False))
+    return (
+        f"Produce an OS-specific remediation plan for {os_label}. Respond with "
+        "VALID JSON ONLY, exactly this schema (no prose, no markdown fences):\n"
+        f"{_REMEDIATION_SCHEMA}\n\n"
+        "Rules: commands must be NON-DESTRUCTIVE and native to the target OS. If a "
+        "step needs no command, set \"command\" to null. Use only the data given.\n\n"
+        f"Target OS: {os_label}\n"
+        f"Title: {getattr(finding, 'title', 'N/A')}\n"
+        f"Severity: {_enum(getattr(finding, 'severity', None))}\n"
+        f"CVSS: {getattr(finding, 'cvss_score', 'N/A')}\n"
+        f"EPSS: {getattr(finding, 'epss_score', 'N/A')}\n"
+        f"Exploitable: {exploitable}  Exploit validated: {validated}\n"
+        f"CVE IDs: {getattr(finding, 'cve_ids', None) or 'none'}\n"
+        f"Description: {getattr(finding, 'description', '') or 'N/A'}\n"
+        f"Existing remediation notes: {getattr(finding, 'remediation', '') or 'none'}\n"
+    )
+
+
+def _parse_json_response(text: str) -> dict:
+    """Fault-tolerant JSON extraction from an LLM reply. Handles markdown fences
+    and a preamble sentence before the object. Returns {} if nothing parses."""
+    text = (text or "").strip()
+    if text.startswith("```"):
+        # ```json\n...\n``` or ```\n...\n```
+        parts = text.split("```")
+        if len(parts) >= 2:
+            text = parts[1]
+            if text.startswith("json"):
+                text = text[4:]
+            text = text.strip()
+    try:
+        obj = json.loads(text)
+        return obj if isinstance(obj, dict) else {}
+    except json.JSONDecodeError:
+        pass
+    start, end = text.find("{"), text.rfind("}") + 1
+    if 0 <= start < end:
+        try:
+            obj = json.loads(text[start:end])
+            return obj if isinstance(obj, dict) else {}
+        except json.JSONDecodeError:
+            pass
+    return {}
+
+
+def _safe_commands(raw_step: dict, guard: HallucinationGuard) -> tuple[list[str], bool]:
+    """Extract a step's command(s) and drop any the guard flags as destructive.
+    Returns (safe_commands, had_unsafe)."""
+    cmd = raw_step.get("command")
+    candidates: list[str] = []
+    if isinstance(cmd, str) and cmd.strip() and cmd.strip().lower() != "null":
+        candidates = [line for line in cmd.splitlines() if line.strip()]
+    elif isinstance(raw_step.get("commands"), list):
+        candidates = [str(c) for c in raw_step["commands"] if str(c).strip()]
+    safe, had_unsafe = [], False
+    for c in candidates:
+        if guard.validate_remediation_commands(c)["valid"]:
+            safe.append(c)
+        else:
+            had_unsafe = True
+    return safe, had_unsafe
+
+
+def _normalize_ai_plan(raw: dict, os: str, guard: HallucinationGuard) -> dict:
+    """Coerce a parsed AI response into the same schema the KB emits, running every
+    command through the safety guard (unsafe commands are dropped and the step
+    flagged). Missing/oddly-typed fields degrade gracefully."""
+    steps_out = []
+    for i, s in enumerate(raw.get("steps") or [], start=1):
+        if not isinstance(s, dict):
+            continue
+        cmds, had_unsafe = _safe_commands(s, guard)
+        step = {
+            "step": i,
+            "title": str(s.get("title", "") or f"Step {i}"),
+            "description": str(s.get("description", "") or ""),
+            "commands_for_os": cmds,
+            "verification": str(s.get("verification", "") or ""),
+            "risk": str(s.get("risk", "low") or "low"),
+        }
+        if had_unsafe:
+            step["unsafe_commands_removed"] = True
+        steps_out.append(step)
+
+    def _strlist(v):
+        return [str(x) for x in v if str(x).strip()] if isinstance(v, list) else []
+
+    return {
+        "category": "ai",
+        "os": os,
+        "source": "ai",
+        "summary": str(raw.get("summary", "") or ""),
+        "effort": str(raw.get("effort", "medium") or "medium"),
+        "remediation_risk": str(raw.get("remediation_risk", "medium") or "medium"),
+        "steps": steps_out,
+        "verification": _strlist(raw.get("verification")),
+        "long_term_recommendations": _strlist(raw.get("long_term_recommendations")),
+        "compensating_controls": str(raw.get("compensating_controls", "") or ""),
+    }
 
 
 def _uuid(value: Any):

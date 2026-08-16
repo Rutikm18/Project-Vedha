@@ -24,6 +24,7 @@ from app.models.probe_site import ProbeSite
 from app.models.probe_enrollment import ProbeEnrollmentRequest, AgentCredential, ProbeEnrollmentToken
 from app.models.validation_request import ValidationRequest
 from app.models.scan_request import ScanRequest
+from app.models.remediation_plan import RemediationPlan
 
 __all__ = [
     "Tenant", "User", "Engagement", "Asset",
@@ -33,5 +34,5 @@ __all__ = [
     "AttackTimeline", "DetectionConfig", "LLMOutput", "OutboxEvent",
     "DetectionRun", "AgentRecommendation", "PersonalAccessToken",
     "ProbeSite", "ProbeEnrollmentRequest", "AgentCredential", "ProbeEnrollmentToken",
-    "ValidationRequest", "ScanRequest",
+    "ValidationRequest", "ScanRequest", "RemediationPlan",
 ]
