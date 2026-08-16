@@ -26,7 +26,7 @@ from sqlalchemy import func, select, update
 from app.database import AsyncSessionLocal
 from app.models.outbox import (
     OutboxEvent, OUTBOX_PENDING, OUTBOX_PROCESSING, OUTBOX_DONE, OUTBOX_FAILED,
-    TOPIC_FACTS_READY,
+    TOPIC_FACTS_READY, TOPIC_NOTIFY,
 )
 
 logger = structlog.get_logger()
@@ -123,6 +123,24 @@ async def _handle_facts_ready(event: Event) -> None:
         await db.commit()
     logger.info("outbox.facts_ready.done",
                 engagement_id=event.engagement_id, findings=n)
+
+
+@register(TOPIC_NOTIFY)
+async def _handle_notify(event: Event) -> None:
+    """Fan a notification out to the tenant's enabled email/Slack/Jira integrations."""
+    import uuid
+    from app.services.notifications import notify_tenant
+
+    p = event.payload or {}
+    tenant_id = p.get("tenant_id")
+    if not tenant_id:
+        logger.warning("outbox.notify.no_tenant", event_id=event.id)
+        return
+    async with AsyncSessionLocal() as db:
+        n = await notify_tenant(db, uuid.UUID(tenant_id),
+                                p.get("subject", "Vedha notification"), p.get("body", ""))
+        await db.commit()
+    logger.info("outbox.notify.done", tenant_id=tenant_id, sent=n)
 
 
 # ── Worker internals ───────────────────────────────────────────────────────────

@@ -41,6 +41,7 @@ OUTBOX_FAILED = "failed"          # dead-letter: exhausted max_attempts
 
 # Topics (event names). Handlers are registered per-topic in app.workers.outbox.
 TOPIC_FACTS_READY = "facts.ready"
+TOPIC_NOTIFY = "notify"          # deliver to a tenant's email/Slack/Jira integrations
 
 
 class OutboxEvent(Base, TimestampMixin):

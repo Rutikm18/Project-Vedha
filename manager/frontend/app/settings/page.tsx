@@ -238,6 +238,16 @@ function IntegrationSection({ kind }: { kind: keyof typeof INTEGRATIONS }) {
     }
   }
 
+  async function sendTest() {
+    setMsg(null);
+    try {
+      await fetchJson("/api/integrations/test", { method: "POST" });
+      setMsg("Test notification queued — check your enabled channels.");
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "Could not queue test");
+    }
+  }
+
   const inputStyle: React.CSSProperties = {
     width: "100%", padding: "8px 10px", borderRadius: 7,
     border: "0.5px solid var(--border-subtle)", background: "var(--bg-surface)",
@@ -281,11 +291,18 @@ function IntegrationSection({ kind }: { kind: keyof typeof INTEGRATIONS }) {
               color: "var(--accent)", cursor: saving ? "default" : "pointer", fontWeight: 600, fontSize: 12 }}>
             {saving ? "Saving…" : `Save ${integration.title}`}
           </button>
+          <button onClick={() => void sendTest()} disabled={!saved?.enabled}
+            title={saved?.enabled ? "Queue a test notification to all enabled integrations" : "Save and enable an integration first"}
+            style={{ padding: "8px 14px", borderRadius: 8, border: "0.5px solid var(--border-subtle)",
+              background: "transparent", color: "var(--text-secondary)",
+              cursor: saved?.enabled ? "pointer" : "default", fontWeight: 600, fontSize: 12 }}>
+            Send test
+          </button>
           {msg && <span style={{ fontSize: 11.5, color: "var(--text-muted)" }}>{msg}</span>}
         </div>
       </div>
       <div className="settings-warning" style={{ marginTop: 14 }}>
-        <TriangleAlert size={14} /> Config is stored (secret encrypted at rest). Actual delivery runs once the outbox notification worker is wired to these rows.
+        <TriangleAlert size={14} /> Secrets are encrypted at rest. Delivery runs through the outbox worker — use “Send test” to confirm your channels.
       </div>
     </div>
   );

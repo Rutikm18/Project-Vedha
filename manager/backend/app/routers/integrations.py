@@ -20,6 +20,7 @@ from app.dependencies import DB, AuthUser
 from app.models.integration import Integration
 from app.services.audit import record_audit
 from app.services.credential_crypto import decrypt_credential, encrypt_credential
+from app.services.notifications import enqueue_notification
 
 router = APIRouter(prefix="/integrations", tags=["integrations"])
 _OPERATOR = require_role(["admin", "manager"])
@@ -98,6 +99,19 @@ async def delete_integration(kind: str, db: DB,
                      engagement_id=None, resource_type="integration", resource_id=row.id,
                      detail={"kind": kind})
         await db.flush()
+
+
+@router.post("/test", status_code=status.HTTP_202_ACCEPTED,
+             summary="Queue a test notification to all enabled integrations")
+async def test_integrations(db: DB, current_user: Annotated[AuthUser, _OPERATOR]):
+    """Enqueue a durable test notification; the outbox worker fans it out to every
+    enabled integration so an operator can confirm delivery end-to-end."""
+    enqueue_notification(
+        db, current_user.tenant_id, "Vedha test notification",
+        "This is a test from your Vedha manager. If you received this, delivery is working.",
+    )
+    await db.flush()
+    return {"queued": True}
 
 
 def integration_secret(row: Integration) -> str | None:
