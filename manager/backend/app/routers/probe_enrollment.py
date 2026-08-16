@@ -527,6 +527,86 @@ async def list_enrollment_requests(
     } for row in rows]
 
 
+class SimpleApproveInput(BaseModel):
+    """One-click "Approve Site": every field is an OPTIONAL override — left blank,
+    the name auto-assigns (vedha_probe_NN), capabilities default to exactly what the
+    probe reported, and scope defaults to the auto-enroll CIDRs. No user_code — the
+    operator approves a pending request straight from the fleet list."""
+    probe_name: str | None = Field(default=None, max_length=255)
+    authorized_cidrs: list[str] | None = None
+    excluded_cidrs: list[str] = Field(default_factory=list)
+    approved_capabilities: list[str] | None = None
+
+    @field_validator("authorized_cidrs", "excluded_cidrs")
+    @classmethod
+    def _validate_networks(cls, values: list[str] | None) -> list[str] | None:
+        return validate_scope_entries(values) if values else values
+
+
+async def _next_probe_name(db, tenant_id: uuid.UUID) -> str:
+    """Auto-assign the next sequential probe name (vedha_probe_01, _02, …) so the
+    operator never has to invent one. Scoped per tenant; gaps are not reused."""
+    names = (await db.execute(
+        select(Agent.name).where(Agent.tenant_id == tenant_id)
+    )).scalars().all()
+    highest = 0
+    for name in names:
+        if name and name.startswith("vedha_probe_"):
+            suffix = name[len("vedha_probe_"):]
+            if suffix.isdigit():
+                highest = max(highest, int(suffix))
+    return f"vedha_probe_{highest + 1:02d}"
+
+
+@router.post("/requests/{request_id}/approve",
+             summary="One-click approve a pending probe (auto-fills name/caps/scope)")
+async def approve_request_simple(
+    request_id: uuid.UUID,
+    db: DB,
+    current_user: Annotated[AuthUser, require_role(["admin", "manager"])],
+    body: SimpleApproveInput | None = None,
+):
+    body = body or SimpleApproveInput()
+    now = datetime.now(timezone.utc)
+    row = (await db.execute(
+        select(ProbeEnrollmentRequest)
+        .where(ProbeEnrollmentRequest.id == request_id)
+        .with_for_update()
+    )).scalar_one_or_none()
+    if row is None:
+        raise HTTPException(404, "Enrollment request not found")
+    if row.expires_at <= now:
+        row.state = "expired"
+        raise HTTPException(410, "Enrollment request expired")
+    if row.state != "awaiting_approval":
+        raise HTTPException(409, f"Enrollment request is already {row.state}")
+
+    # Auto-fill everything the operator would otherwise type; blanks fall back to
+    # the device's own reported data so the subset-check in _provision always passes.
+    caps = body.approved_capabilities or list(dict.fromkeys(row.reported_capabilities or []))
+    cidrs = body.authorized_cidrs or auto_enroll_cidrs()
+    name = (body.probe_name or "").strip() or await _next_probe_name(db, current_user.tenant_id)
+
+    site = ProbeSite(
+        tenant_id=current_user.tenant_id,
+        name=f"{name}-site",
+        status="active",
+        authorized_cidrs=cidrs,
+        excluded_cidrs=body.excluded_cidrs,
+        approved_capabilities=caps,
+    )
+    db.add(site)
+    await db.flush()
+
+    agent = await _provision_agent_for_site(
+        db, row=row, site=site, tenant_id=current_user.tenant_id,
+        probe_name=name, location=None, approved_by=str(current_user.user_id),
+        now=now, auto=False,
+    )
+    return {"request_id": str(row.id), "agent_id": str(agent.id),
+            "site_id": str(site.id), "state": row.state, "probe_name": name}
+
+
 @router.post("/approve")
 async def approve_enrollment(
     body: SitePolicyInput,
