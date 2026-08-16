@@ -36,6 +36,16 @@ interface ConfigField {
   secret?: boolean;
 }
 
+interface SlaPolicyResp {
+  critical_hours: number;
+  high_hours: number;
+  medium_hours: number;
+  low_hours: number;
+  info_hours: number;
+  is_custom: boolean;
+}
+type SlaForm = Omit<SlaPolicyResp, "is_custom">;
+
 const INTEGRATIONS: Record<string, { title: string; note: string; fields: ConfigField[] }> = {
   email: {
     title: "Email delivery",
@@ -67,13 +77,6 @@ const INTEGRATIONS: Record<string, { title: string; note: string; fields: Config
     ],
   },
 };
-
-const SLA_POLICY = [
-  { severity: "CRITICAL", window: "24 hours", escalation: "12 hours remaining", color: "var(--sev-critical-color)", intent: "Immediate owner assignment and executive visibility" },
-  { severity: "HIGH", window: "72 hours", escalation: "24 hours remaining", color: "var(--sev-high-color)", intent: "Prioritized remediation in the active sprint" },
-  { severity: "MEDIUM", window: "7 days", escalation: "48 hours remaining", color: "var(--sev-medium-color)", intent: "Planned remediation with risk acceptance if deferred" },
-  { severity: "LOW", window: "30 days", escalation: "7 days remaining", color: "var(--sev-low-color)", intent: "Routine hardening and hygiene backlog" },
-];
 
 function SectionTitle({ icon: Icon, title, detail, badge }: {
   icon: React.ElementType; title: string; detail: string; badge?: string;
@@ -229,19 +232,73 @@ function IntegrationSection({ kind, status }: { kind: keyof typeof INTEGRATIONS;
   );
 }
 
+const SLA_ROWS: Array<{ key: keyof SlaForm; severity: string; color: string; intent: string }> = [
+  { key: "critical_hours", severity: "CRITICAL", color: "var(--sev-critical-color)", intent: "Immediate owner assignment and executive visibility" },
+  { key: "high_hours", severity: "HIGH", color: "var(--sev-high-color)", intent: "Prioritized remediation in the active sprint" },
+  { key: "medium_hours", severity: "MEDIUM", color: "var(--sev-medium-color)", intent: "Planned remediation with risk acceptance if deferred" },
+  { key: "low_hours", severity: "LOW", color: "var(--sev-low-color)", intent: "Routine hardening and hygiene backlog" },
+  { key: "info_hours", severity: "INFO", color: "var(--text-faint)", intent: "Informational — 0 hours means untracked (no SLA)" },
+];
+
 function SlaSection() {
+  const { data, refetch } = useQuery({
+    queryKey: ["sla-policy"],
+    queryFn: () => fetchJson<SlaPolicyResp>("/api/sla-policy"),
+  });
+  const [form, setForm] = useState<SlaForm | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  React.useEffect(() => {
+    if (data) setForm({
+      critical_hours: data.critical_hours, high_hours: data.high_hours,
+      medium_hours: data.medium_hours, low_hours: data.low_hours, info_hours: data.info_hours,
+    });
+  }, [data]);
+
+  async function save() {
+    if (!form) return;
+    setSaving(true); setMsg(null);
+    try {
+      await fetchJson("/api/sla-policy", { method: "PUT", body: JSON.stringify(form) });
+      await refetch();
+      setMsg("SLA policy saved — applies across every SLA surface.");
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setSaving(false);
+    }
+  }
+
   return (
     <div className="settings-panel animate-slide-in">
-      <SectionTitle icon={SlidersHorizontal} title="SLA and risk policy" detail="Current remediation windows and the operational intent behind each threshold." badge="Policy" />
+      <SectionTitle icon={SlidersHorizontal} title="SLA and risk policy"
+        detail="Per-severity remediation windows in hours (0 = untracked). Applies to the dashboard, finding detail, and the customer portal."
+        badge={data?.is_custom ? "Custom" : "Defaults"} />
       <div className="settings-sla-list">
-        {SLA_POLICY.map((row) => (
-          <article key={row.severity} style={{ "--severity": row.color } as React.CSSProperties}>
+        {SLA_ROWS.map((row) => (
+          <article key={row.key} style={{ "--severity": row.color } as React.CSSProperties}>
             <span /><div><strong>{row.severity}</strong><p>{row.intent}</p></div>
-            <dl><div><dt>Remediation window</dt><dd>{row.window}</dd></div><div><dt>Escalate at</dt><dd>{row.escalation}</dd></div></dl>
+            <label style={{ display: "flex", alignItems: "center", gap: 8, justifySelf: "end" }}>
+              <input type="number" min={0} max={8760} disabled={!form}
+                value={form ? form[row.key] : ""}
+                onChange={(e) => setForm((f) => (f ? { ...f, [row.key]: Math.max(0, Number(e.target.value) || 0) } : f))}
+                style={{ width: 84, padding: "6px 8px", borderRadius: 7, textAlign: "right",
+                  border: "0.5px solid var(--border-subtle)", background: "var(--bg-surface)",
+                  color: "var(--text-primary)", font: "12px var(--font-mono)" }} />
+              <span style={{ color: "var(--text-muted)", fontSize: 11 }}>hours</span>
+            </label>
           </article>
         ))}
       </div>
-      <div className="settings-decision-note"><ShieldCheck size={16} /><div><strong>Policy ownership</strong><p>Changes should be versioned, approved by the risk owner, and applied through backend policy configuration so dashboard, finding detail, and notifications remain consistent.</p></div></div>
+      <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 12 }}>
+        <button onClick={() => void save()} disabled={saving || !form}
+          style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 14px",
+            borderRadius: 8, border: "0.5px solid var(--border-accent)", background: "var(--accent-ghost)",
+            color: "var(--accent)", cursor: saving || !form ? "default" : "pointer", fontWeight: 600, fontSize: 12 }}>
+          {saving ? "Saving…" : "Save SLA policy"}
+        </button>
+        {msg && <span style={{ fontSize: 11.5, color: "var(--text-muted)" }}>{msg}</span>}
+      </div>
     </div>
   );
 }
