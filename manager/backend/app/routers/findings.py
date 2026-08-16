@@ -16,6 +16,7 @@ from app.models.enums import DetectionStatus, FindingSeverity, FindingStatus
 from app.schemas.common import PaginatedResponse, paginate
 from app.schemas.finding import FindingOut, FindingPatch, FindingSummary, SlaSummary
 from app.services import sla as sla_service
+from app.routers.sla_policy import resolve_windows
 from app.utils.pagination import paginate_query
 
 router = APIRouter(prefix="/findings", tags=["findings"])
@@ -62,7 +63,8 @@ async def sla_summary(
         q = q.where(Finding.engagement_id == engagement_id)
 
     findings = (await db.execute(q)).scalars().all()
-    return sla_service.summarize(list(findings))
+    windows = await resolve_windows(db, current_user.tenant_id)   # tenant custom policy or env
+    return sla_service.summarize(list(findings), windows=windows)
 
 
 @router.get("", response_model=PaginatedResponse[FindingOut], summary="List findings with filters")

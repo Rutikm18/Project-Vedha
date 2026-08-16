@@ -34,6 +34,7 @@ from app.routers.findings import router as findings_router
 from app.routers.health import router as health_router
 from app.routers.probe_enrollment import router as probe_enrollment_router
 from app.routers.remediation import router as remediation_router
+from app.routers.sla_policy import router as sla_policy_router
 from app.routers.validation import router as validation_router
 from app.routers.vuln_scans import router as vuln_router
 from app.version import get_version
@@ -213,6 +214,7 @@ app.include_router(customers_router)
 app.include_router(portal_router)
 app.include_router(findings_router)
 app.include_router(remediation_router)
+app.include_router(sla_policy_router)
 app.include_router(agents_router)
 app.include_router(probe_enrollment_router)
 app.include_router(agent_ws_router)

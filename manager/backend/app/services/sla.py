@@ -57,13 +57,18 @@ class SlaResult:
         return self.state != "untracked"
 
 
-def compute(finding: Finding, now: datetime | None = None) -> SlaResult:
-    """Compute the SLA state for one finding. Never raises on missing data."""
+def compute(finding: Finding, now: datetime | None = None,
+            windows: dict[str, int] | None = None) -> SlaResult:
+    """Compute the SLA state for one finding. Never raises on missing data.
+
+    `windows` is a per-severity {critical,high,medium,low,info}→hours map; when
+    None it falls back to the env defaults, so a tenant's custom SLA policy (from
+    the sla_policies table) simply flows in through this one argument."""
     now = now or datetime.now(timezone.utc)
     severity = finding.severity.value if hasattr(finding.severity, "value") else str(finding.severity)
     status = finding.status if isinstance(finding.status, FindingStatus) else None
 
-    window_hours = _windows().get(severity, 0)
+    window_hours = (windows if windows is not None else _windows()).get(severity, 0)
     started = finding.first_seen or finding.created_at
 
     # Untracked: closed finding, no SLA window for this severity, or no start time.
@@ -97,15 +102,25 @@ def compute(finding: Finding, now: datetime | None = None) -> SlaResult:
     )
 
 
-def summarize(findings: list[Finding], now: datetime | None = None, item_limit: int = 25) -> dict:
+_SEVERITIES = ("critical", "high", "medium", "low", "info")
+
+
+def default_windows() -> dict[str, int]:
+    """The env-configured SLA windows — the fallback when a tenant has no policy."""
+    return _windows()
+
+
+def summarize(findings: list[Finding], now: datetime | None = None, item_limit: int = 25,
+              windows: dict[str, int] | None = None) -> dict:
     """
     Aggregate SLA states across a set of findings.
 
     Returns counts per state plus the most urgent `item_limit` tracked findings
     (breached first, then by soonest deadline) for the dashboard's SLA rows.
+    `windows` overrides the env defaults with a tenant's custom policy.
     """
     now = now or datetime.now(timezone.utc)
-    results = [compute(f, now) for f in findings]
+    results = [compute(f, now, windows) for f in findings]
     tracked = [r for r in results if r.is_tracked]
 
     counts = {"breached": 0, "at_risk": 0, "due_soon": 0, "on_track": 0}
