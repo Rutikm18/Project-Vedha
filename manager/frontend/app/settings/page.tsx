@@ -46,6 +46,13 @@ interface SlaPolicyResp {
 }
 type SlaForm = Omit<SlaPolicyResp, "is_custom">;
 
+interface IntegrationRow {
+  kind: string;
+  config: Record<string, string>;
+  has_secret: boolean;
+  enabled: boolean;
+}
+
 const INTEGRATIONS: Record<string, { title: string; note: string; fields: ConfigField[] }> = {
   email: {
     title: "Email delivery",
@@ -193,41 +200,93 @@ function AccessSection({ status }: { status?: DeploymentStatus }) {
   );
 }
 
-function IntegrationSection({ kind, status }: { kind: keyof typeof INTEGRATIONS; status?: DeploymentStatus }) {
+function IntegrationSection({ kind }: { kind: keyof typeof INTEGRATIONS }) {
   const integration = INTEGRATIONS[kind];
   const Icon = kind === "email" ? Mail : kind === "slack" ? MessageCircle : ExternalLink;
-  const readiness = status?.integrations[kind];
+  const { data, refetch } = useQuery({
+    queryKey: ["integrations"],
+    queryFn: () => fetchJson<IntegrationRow[]>("/api/integrations"),
+  });
+  const saved = data?.find((i) => i.kind === kind);
+
+  const [config, setConfig] = useState<Record<string, string>>({});
+  const [secret, setSecret] = useState("");
+  const [enabled, setEnabled] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [msg, setMsg] = useState<string | null>(null);
+  React.useEffect(() => {
+    if (saved) { setConfig(saved.config ?? {}); setEnabled(saved.enabled); }
+  }, [saved]);
+
+  const secretField = integration.fields.find((f) => f.secret);
+  const configFields = integration.fields.filter((f) => !f.secret);
+
+  async function save() {
+    setSaving(true); setMsg(null);
+    try {
+      await fetchJson(`/api/integrations/${kind}`, {
+        method: "PUT",
+        body: JSON.stringify({ config, secret: secret || null, enabled }),
+      });
+      setSecret("");
+      await refetch();
+      setMsg("Saved — secret is encrypted server-side.");
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : "Save failed");
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  const inputStyle: React.CSSProperties = {
+    width: "100%", padding: "8px 10px", borderRadius: 7,
+    border: "0.5px solid var(--border-subtle)", background: "var(--bg-surface)",
+    color: "var(--text-primary)", fontSize: 12.5,
+  };
+
   return (
     <div className="settings-panel animate-slide-in">
-      <SectionTitle
-        icon={Icon}
-        title={integration.title}
-        detail={integration.note}
-        badge={readiness?.configured ? "Configured" : "Needs setup"}
-      />
-      <ReadOnlyNotice />
-      <div className="settings-integration-status" data-ready={readiness?.configured ?? false}>
-        {readiness?.configured ? <CheckCircle2 size={16} /> : <TriangleAlert size={16} />}
-        <div>
-          <strong>{readiness?.configured ? "Required environment fields are present" : "Configuration is incomplete"}</strong>
-          <span>{readiness
-            ? readiness.configured
-              ? "Secret values remain server-side and are not exposed here."
-              : `Missing: ${readiness.missing.join(", ")}`
-            : "Checking server configuration…"}</span>
+      <SectionTitle icon={Icon} title={integration.title} detail={integration.note}
+        badge={saved ? (saved.enabled ? "Enabled" : "Disabled") : "Not configured"} />
+      <div style={{ display: "grid", gap: 12, maxWidth: 560 }}>
+        {configFields.map((field) => (
+          <label key={field.key} style={{ display: "grid", gap: 4 }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>
+              {field.label}{field.required && <span style={{ color: "var(--sev-high-color)" }}> *</span>}
+            </span>
+            <input style={inputStyle} placeholder={field.example}
+              value={config[field.key] ?? ""}
+              onChange={(e) => setConfig((c) => ({ ...c, [field.key]: e.target.value }))} />
+            <span style={{ fontSize: 10.5, color: "var(--text-muted)" }}>{field.purpose}</span>
+          </label>
+        ))}
+        {secretField && (
+          <label style={{ display: "grid", gap: 4 }}>
+            <span style={{ fontSize: 12, fontWeight: 600, color: "var(--text-secondary)" }}>
+              <LockKeyhole size={11} /> {secretField.label}
+              {saved?.has_secret && <em style={{ color: "var(--text-muted)", fontWeight: 400 }}> — stored; leave blank to keep</em>}
+            </span>
+            <input type="password" style={inputStyle}
+              placeholder={saved?.has_secret ? "••••••••" : secretField.example}
+              value={secret} onChange={(e) => setSecret(e.target.value)} />
+          </label>
+        )}
+        <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, color: "var(--text-secondary)" }}>
+          <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} /> Enabled
+        </label>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <button onClick={() => void save()} disabled={saving}
+            style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 14px",
+              borderRadius: 8, border: "0.5px solid var(--border-accent)", background: "var(--accent-ghost)",
+              color: "var(--accent)", cursor: saving ? "default" : "pointer", fontWeight: 600, fontSize: 12 }}>
+            {saving ? "Saving…" : `Save ${integration.title}`}
+          </button>
+          {msg && <span style={{ fontSize: 11.5, color: "var(--text-muted)" }}>{msg}</span>}
         </div>
       </div>
-      <div className="settings-field-table">
-        <div className="settings-field-table-head"><span>Field</span><span>Operational meaning</span><span>Expected value</span></div>
-        {integration.fields.map((field) => (
-          <div className="settings-field-row" key={field.key}>
-            <div><strong>{field.label}</strong><code>{field.key}</code></div>
-            <p>{field.purpose}</p>
-            <div><span>{field.secret ? <><LockKeyhole size={11} /> Secret</> : field.example}</span>{field.required && <small>Required</small>}</div>
-          </div>
-        ))}
+      <div className="settings-warning" style={{ marginTop: 14 }}>
+        <TriangleAlert size={14} /> Config is stored (secret encrypted at rest). Actual delivery runs once the outbox notification worker is wired to these rows.
       </div>
-      <div className="settings-warning"><TriangleAlert size={14} /> Presence is verified, but delivery testing remains unavailable until a Manager-side integration API and audited test event are implemented.</div>
     </div>
   );
 }
@@ -377,7 +436,7 @@ export default function SettingsPage() {
           )}
           {section === "ai" && <AiRuntimeSection />}
           {section === "access" && <AccessSection status={deployment} />}
-          {(section === "email" || section === "slack" || section === "jira") && <IntegrationSection kind={section} status={deployment} />}
+          {(section === "email" || section === "slack" || section === "jira") && <IntegrationSection kind={section} />}
           {section === "sla" && <SlaSection />}
           {section === "notifications" && <NotificationsSection />}
         </div>
