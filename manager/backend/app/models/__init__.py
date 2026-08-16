@@ -26,6 +26,7 @@ from app.models.validation_request import ValidationRequest
 from app.models.scan_request import ScanRequest
 from app.models.remediation_plan import RemediationPlan
 from app.models.sla_policy import SlaPolicy
+from app.models.integration import Integration
 
 __all__ = [
     "Tenant", "User", "Engagement", "Asset",
@@ -35,5 +36,5 @@ __all__ = [
     "AttackTimeline", "DetectionConfig", "LLMOutput", "OutboxEvent",
     "DetectionRun", "AgentRecommendation", "PersonalAccessToken",
     "ProbeSite", "ProbeEnrollmentRequest", "AgentCredential", "ProbeEnrollmentToken",
-    "ValidationRequest", "ScanRequest", "RemediationPlan", "SlaPolicy",
+    "ValidationRequest", "ScanRequest", "RemediationPlan", "SlaPolicy", "Integration",
 ]
