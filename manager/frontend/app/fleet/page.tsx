@@ -135,21 +135,11 @@ export default function FleetPage() {
     if (!request) return;
     setSubmitting(true);
     try {
-      await fetchJson("/api/fleet/enrollment", {
+      // One-click approve: name is optional (blank → auto vedha_probe_NN); the
+      // backend auto-fills capabilities + scope from what the probe reported.
+      await fetchJson(`/api/fleet/enrollment/${request.request_id}/approve`, {
         method: "POST",
-        body: JSON.stringify({
-          user_code: form.user_code.trim().toUpperCase(),
-          probe_name: form.probe_name.trim() || request.hostname_hint || `probe-${request.request_id.slice(0, 8)}`,
-          site_name: form.site_name.trim(),
-          location: form.location.trim() || null,
-          authorized_cidrs: form.authorized_cidrs.split(",").map((v) => v.trim()).filter(Boolean),
-          excluded_cidrs: form.excluded_cidrs.split(",").map((v) => v.trim()).filter(Boolean),
-          approved_capabilities: capabilities,
-          max_targets: 4096,
-          max_job_seconds: 7200,
-          max_rate_pps: 1000,
-          update_channel: "stable",
-        }),
+        body: JSON.stringify({ probe_name: form.probe_name.trim() || null }),
       });
       toast.success("Probe approved; waiting for key-bound activation");
       setForm({ user_code: "", probe_name: "", site_name: "", location: "", authorized_cidrs: "", excluded_cidrs: "" });
@@ -293,7 +283,7 @@ export default function FleetPage() {
                   key={row.request_id}
                   className="flt-req"
                   data-sel={isSel}
-                  onClick={() => { setSelected(row.request_id); setForm((v) => ({ ...v, probe_name: row.hostname_hint ?? v.probe_name })); }}
+                  onClick={() => { setSelected(row.request_id); setForm((v) => ({ ...v, probe_name: "" })); }}
                 >
                   <div className="flt-req-top">
                     <strong className="flt-req-name">{row.hostname_hint || "Unnamed device"}</strong>
@@ -322,7 +312,7 @@ export default function FleetPage() {
               <span className="flt-head-icon"><Network size={16} /></span>
               <div>
                 <strong className="flt-head-title">Approve Site policy</strong>
-                <div className="flt-head-sub">Verify the code and fingerprint out of band before authorizing reachability.</div>
+                <div className="flt-head-sub">One click to authorize — name auto-assigns and scope/capabilities fill in from the device. Tune later in Site settings.</div>
               </div>
             </div>
 
@@ -334,34 +324,14 @@ export default function FleetPage() {
               </div>
             ) : (
               <form onSubmit={approve} className="flt-form">
-                <label className="flt-field">
-                  <span className="flt-label">Verification code <span className="flt-req-star" aria-hidden="true">*</span></span>
-                  <input className="flt-input flt-mono" required minLength={8} placeholder="ABCD-EFGH" value={form.user_code} onChange={(e) => setForm({ ...form, user_code: e.target.value })} />
-                </label>
-                <label className="flt-field">
-                  <span className="flt-label">Probe name <span className="flt-req-star" aria-hidden="true">*</span></span>
-                  <input className="flt-input" required value={form.probe_name} onChange={(e) => setForm({ ...form, probe_name: e.target.value })} />
-                </label>
-                <label className="flt-field">
-                  <span className="flt-label">Site name <span className="flt-req-star" aria-hidden="true">*</span></span>
-                  <input className="flt-input" required placeholder="Mumbai office" value={form.site_name} onChange={(e) => setForm({ ...form, site_name: e.target.value })} />
-                </label>
-                <label className="flt-field">
-                  <span className="flt-label">Location <span className="flt-optional">(optional)</span></span>
-                  <input className="flt-input" placeholder="IN-MH" value={form.location} onChange={(e) => setForm({ ...form, location: e.target.value })} />
-                </label>
                 <label className="flt-field flt-full">
-                  <span className="flt-label">Authorized CIDRs <span className="flt-req-star" aria-hidden="true">*</span></span>
-                  <input className="flt-input flt-mono" required placeholder="10.20.0.0/16, 2001:db8:1::/64" value={form.authorized_cidrs} onChange={(e) => setForm({ ...form, authorized_cidrs: e.target.value })} />
-                  <span className="flt-hint">The scope ceiling — the probe can never scan outside these ranges. At least one is required.</span>
+                  <span className="flt-label">Probe name <span className="flt-optional">(optional)</span></span>
+                  <input className="flt-input" placeholder="auto: vedha_probe_01" value={form.probe_name} onChange={(e) => setForm({ ...form, probe_name: e.target.value })} />
+                  <span className="flt-hint">Leave blank to auto-assign the next name. Capabilities and scope are taken from what the probe reported — adjust later in Site settings if needed.</span>
                 </label>
-                <label className="flt-field flt-full">
-                  <span className="flt-label">Excluded CIDRs <span className="flt-optional">(optional)</span></span>
-                  <input className="flt-input flt-mono" placeholder="10.20.10.0/24" value={form.excluded_cidrs} onChange={(e) => setForm({ ...form, excluded_cidrs: e.target.value })} />
-                </label>
-                <div className="flt-caps">Capabilities approved: <strong>{capabilities.join(", ") || "none"}</strong></div>
+                <div className="flt-caps">Capabilities (auto): <strong>{capabilities.join(", ") || "none"}</strong></div>
                 <button disabled={submitting} className="flt-submit" type="submit">
-                  {submitting ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle2 size={15} />} Approve and activate
+                  {submitting ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle2 size={15} />} Approve Site
                 </button>
               </form>
             )}
