@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import { Menu, Sun, Moon, LogOut, User } from "lucide-react";
 import { Sidebar } from "./Sidebar";
 import { useTheme } from "./ThemeProvider";
@@ -20,9 +20,7 @@ export function PageShell({
 }: PageShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [utcTime, setUtcTime]         = useState("");
-  const [sessionTime, setSessionTime] = useState(0);
   const [userEmail, setUserEmail]     = useState<string | null>(null);
-  const sessionStart = useRef<number | null>(null);
 
   // Read current user
   useEffect(() => {
@@ -55,28 +53,6 @@ export function PageShell({
     tick();
     const id = setInterval(tick, 1000);
     return () => clearInterval(id);
-  }, []);
-
-  // Session timer — anchored to the first load in this browser tab so it shows
-  // the real session duration. PageShell remounts on every route change, so a
-  // per-mount start would reset the clock to 00:00 on each navigation.
-  useEffect(() => {
-    let start = Number(sessionStorage.getItem("vedha-session-start"));
-    if (!start) {
-      start = Date.now();
-      sessionStorage.setItem("vedha-session-start", String(start));
-    }
-    sessionStart.current = start;
-    const tick = () => setSessionTime(Math.floor((Date.now() - start) / 1000));
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, []);
-
-  const fmtSession = useCallback((s: number) => {
-    const m = Math.floor(s / 60);
-    const sec = s % 60;
-    return `${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
   }, []);
 
   return (
@@ -237,32 +213,6 @@ export function PageShell({
                 </div>
               </React.Fragment>
             ))}
-
-            <div style={{ width: 0.5, height: 14, background: "var(--border-subtle)", flexShrink: 0 }} />
-
-            {/* Session time — elapsed since this browser tab's session began */}
-            <div
-              title="Session duration — elapsed since you opened this console"
-              style={{ display: "flex", alignItems: "center", gap: 5 }}
-            >
-              <span style={{
-                fontFamily: "var(--font-mono)",
-                fontSize: 9,
-                color: "var(--text-faint)",
-                letterSpacing: 0.6,
-                fontWeight: 600,
-              }}>
-                SESSION
-              </span>
-              <span style={{
-                fontFamily: "var(--font-mono)",
-                fontSize: 10,
-                color: "var(--text-muted)",
-                letterSpacing: 0.2,
-              }}>
-                {fmtSession(sessionTime)}
-              </span>
-            </div>
 
             <div style={{ width: 0.5, height: 14, background: "var(--border-subtle)", flexShrink: 0 }} />
 

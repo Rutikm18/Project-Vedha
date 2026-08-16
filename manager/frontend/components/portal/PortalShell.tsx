@@ -196,15 +196,6 @@ export function PortalShell({
             ))}
 
             <div style={{ width: 0.5, height: 14, background: "var(--border-subtle)" }} />
-            <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-              <span style={{ fontFamily: "var(--font-mono)", fontSize: 9,
-                color: "var(--text-faint)", letterSpacing: 0.6, fontWeight: 600 }}>
-                SESSION
-              </span>
-              <SessionTimer />
-            </div>
-
-            <div style={{ width: 0.5, height: 14, background: "var(--border-subtle)" }} />
             <button onClick={toggleTheme}
               aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
               title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
@@ -250,27 +241,6 @@ export function PortalShell({
 
 /* Leaf clocks own their own 1s interval, so a tick re-renders only the clock —
    not the whole shell and its children — every second. */
-function SessionTimer() {
-  const [s, setS] = useState(0);
-  useEffect(() => {
-    let start = Number(sessionStorage.getItem("vedha-portal-session-start"));
-    if (!start) {
-      start = Date.now();
-      sessionStorage.setItem("vedha-portal-session-start", String(start));
-    }
-    const tick = () => setS(Math.floor((Date.now() - start) / 1000));
-    tick();
-    const id = setInterval(tick, 1000);
-    return () => clearInterval(id);
-  }, []);
-  const label = `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
-  return (
-    <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-muted)" }}>
-      {label}
-    </span>
-  );
-}
-
 function FooterClock() {
   const [utc, setUtc] = useState("");
   useEffect(() => {
