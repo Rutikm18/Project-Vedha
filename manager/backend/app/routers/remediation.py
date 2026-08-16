@@ -18,7 +18,8 @@ from typing import Annotated
 
 import structlog
 from fastapi import APIRouter, HTTPException, Query, status
-from sqlalchemy import select
+from sqlalchemy import func, select
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.llm_report import LLMReportGenerator, LLMUnavailableError
@@ -27,7 +28,7 @@ from app.dependencies import DB, AuthUser
 from app.models.engagement import Engagement
 from app.models.finding import Finding
 from app.models.remediation_plan import RemediationPlan
-from app.services.remediation_kb import _os_key, recipe_for_finding
+from app.services.remediation_kb import os_key, recipe_for_finding
 
 router = APIRouter(prefix="/findings", tags=["remediation"])
 logger = structlog.get_logger()
@@ -49,20 +50,61 @@ async def _tenant_finding(db: AsyncSession, finding_id: uuid.UUID,
 
 
 async def _cached_plan(db: AsyncSession, finding_id: uuid.UUID,
-                       os_key: str) -> RemediationPlan | None:
+                       os: str) -> RemediationPlan | None:
     return (await db.execute(
         select(RemediationPlan).where(
             RemediationPlan.finding_id == finding_id,
-            RemediationPlan.os == os_key,
+            RemediationPlan.os == os,
         )
     )).scalar_one_or_none()
 
 
-def _serialize(finding_id: uuid.UUID, os_key: str, plan: dict, *,
+def _build_upsert_stmt(*, tenant_id: uuid.UUID, engagement_id: uuid.UUID,
+                       finding_id: uuid.UUID, os: str, plan: dict, publish: bool):
+    """Build the atomic INSERT … ON CONFLICT DO UPDATE for a cached plan.
+
+    Pure (no IO) so the SQL semantics can be unit-tested. A single statement
+    avoids the read-then-write race two concurrent generates would hit against
+    UNIQUE(finding_id, os) (double insert → IntegrityError). On conflict the row
+    is replaced with the freshly-generated plan: `generated_at` is refreshed, and
+    `reviewed` follows the caller's `publish` intent ONLY — it must NOT inherit a
+    prior approval, or regenerated (new, unreviewed) content would leak to the
+    customer portal through the stale review gate."""
+    source = plan.get("source", "deterministic_kb")
+    stmt = pg_insert(RemediationPlan).values(
+        tenant_id=tenant_id, engagement_id=engagement_id, finding_id=finding_id,
+        os=os, plan=plan, source=source, model=plan.get("model"), reviewed=publish,
+    )
+    return stmt.on_conflict_do_update(
+        constraint="uq_remediation_finding_os",
+        set_={
+            "plan": stmt.excluded.plan,
+            "source": stmt.excluded.source,
+            "model": stmt.excluded.model,
+            "reviewed": stmt.excluded.reviewed,   # = publish; regeneration re-gates review
+            "generated_at": func.now(),
+            "updated_at": func.now(),
+        },
+    ).returning(RemediationPlan.reviewed, RemediationPlan.generated_at,
+                RemediationPlan.model)
+
+
+async def _upsert_plan(db: AsyncSession, *, tenant_id: uuid.UUID,
+                       engagement_id: uuid.UUID, finding_id: uuid.UUID,
+                       os: str, plan: dict, publish: bool):
+    """Execute the atomic upsert and return the RETURNING row for serialization."""
+    stmt = _build_upsert_stmt(
+        tenant_id=tenant_id, engagement_id=engagement_id, finding_id=finding_id,
+        os=os, plan=plan, publish=publish,
+    )
+    return (await db.execute(stmt)).one()
+
+
+def _serialize(finding_id: uuid.UUID, os: str, plan: dict, *,
                row: RemediationPlan | None = None) -> dict:
     return {
         "finding_id": str(finding_id),
-        "os": os_key,
+        "os": os,
         "source": plan.get("source", "deterministic_kb"),
         "reviewed": bool(row.reviewed) if row is not None else False,
         "cached": row is not None,
@@ -81,11 +123,11 @@ async def get_remediation(
     os: str = Query(default="generic"),
 ):
     finding = await _tenant_finding(db, finding_id, current_user.tenant_id)
-    os_key = _os_key(os)
-    row = await _cached_plan(db, finding_id, os_key)
+    key = os_key(os)
+    row = await _cached_plan(db, finding_id, key)
     if row is not None:
-        return _serialize(finding_id, os_key, row.plan, row=row)
-    return _serialize(finding_id, os_key, recipe_for_finding(finding, os_key))
+        return _serialize(finding_id, key, row.plan, row=row)
+    return _serialize(finding_id, key, recipe_for_finding(finding, key))
 
 
 @router.post("/{finding_id}/remediation/generate",
@@ -100,15 +142,15 @@ async def generate_remediation(
                           description="mark reviewed so the customer portal may show it"),
 ):
     finding = await _tenant_finding(db, finding_id, current_user.tenant_id)
-    os_key = _os_key(os)
+    key = os_key(os)
 
     if not force:
-        row = await _cached_plan(db, finding_id, os_key)
+        row = await _cached_plan(db, finding_id, key)
         if row is not None:
             if publish and not row.reviewed:
                 row.reviewed = True
                 await db.flush()
-            return _serialize(finding_id, os_key, row.plan, row=row)
+            return _serialize(finding_id, key, row.plan, row=row)
 
     # Try the AI; on any unavailability fall back to the KB so we always cache a
     # usable plan. The KB result is deterministic and safe.
@@ -116,28 +158,17 @@ async def generate_remediation(
     gen = LLMReportGenerator(db)
     if gen.available:
         try:
-            plan = await gen.generate_remediation_plan(finding, os_key)
+            plan = await gen.generate_remediation_plan(finding, key)
         except (LLMUnavailableError, ValueError) as exc:
             logger.warning("remediation.ai_unavailable", finding=str(finding_id), error=str(exc))
     if plan is None:
-        plan = recipe_for_finding(finding, os_key)
+        plan = recipe_for_finding(finding, key)
 
-    row = await _cached_plan(db, finding_id, os_key)
-    if row is None:
-        row = RemediationPlan(
-            tenant_id=current_user.tenant_id, engagement_id=finding.engagement_id,
-            finding_id=finding.id, os=os_key, plan=plan,
-            source=plan.get("source", "deterministic_kb"), model=plan.get("model"),
-            reviewed=publish,
-        )
-        db.add(row)
-    else:
-        row.plan = plan
-        row.source = plan.get("source", "deterministic_kb")
-        row.model = plan.get("model")
-        row.reviewed = publish or row.reviewed
-    await db.flush()
-    await db.refresh(row)
-    logger.info("remediation.generated", finding=str(finding_id), os=os_key,
-                source=row.source, reviewed=row.reviewed)
-    return _serialize(finding_id, os_key, plan, row=row)
+    # Atomic insert-or-update — no read-then-write race under concurrent generates.
+    row = await _upsert_plan(
+        db, tenant_id=current_user.tenant_id, engagement_id=finding.engagement_id,
+        finding_id=finding.id, os=key, plan=plan, publish=publish,
+    )
+    logger.info("remediation.generated", finding=str(finding_id), os=key,
+                source=plan.get("source"), reviewed=row.reviewed)
+    return _serialize(finding_id, key, plan, row=row)

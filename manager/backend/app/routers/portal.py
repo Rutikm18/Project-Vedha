@@ -43,7 +43,7 @@ from app.schemas.portal import (
 from app.services import portal_metrics
 from app.services import posture as posture_service
 from app.services.audit import record_audit
-from app.services.remediation_kb import _os_key, recipe_for_finding
+from app.services.remediation_kb import os_key, recipe_for_finding
 from app.services.scope_targets import validate_targets_in_scope
 
 router = APIRouter(prefix="/portal", tags=["portal"])
@@ -124,20 +124,22 @@ async def portal_finding_remediation(
     if finding is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Finding not found")
 
-    os_key = _os_key(os)
+    key = os_key(os)
     row = (await db.execute(
         select(RemediationPlan).where(
             RemediationPlan.finding_id == finding_id,
-            RemediationPlan.os == os_key,
+            RemediationPlan.os == key,
         )
     )).scalar_one_or_none()
     if row is not None and row.reviewed:
-        plan = row.plan
+        # Strip operator-only metadata (e.g. the AI model name) from the
+        # customer payload — the reviewed plan content is what's approved for them.
+        plan = {k: v for k, v in row.plan.items() if k != "model"}
         source = plan.get("source", row.source)
     else:
-        plan = recipe_for_finding(finding, os_key)
+        plan = recipe_for_finding(finding, key)
         source = plan["source"]
-    return {"finding_id": str(finding_id), "os": os_key, "source": source, "plan": plan}
+    return {"finding_id": str(finding_id), "os": key, "source": source, "plan": plan}
 
 
 @router.get("/posture", response_model=ClientPostureOut,

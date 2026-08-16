@@ -50,14 +50,16 @@ class TestPortalRemediation:
         assert res["os"] == "linux"
         assert res["plan"]["steps"]
 
-    def test_serves_reviewed_ai_plan(self):
-        ai_plan = {"source": "ai", "summary": "patch it", "steps": [{"step": 1}]}
+    def test_serves_reviewed_ai_plan_stripping_operator_metadata(self):
+        ai_plan = {"source": "ai", "summary": "patch it", "model": "claude-x",
+                   "steps": [{"step": 1}]}
         row = SimpleNamespace(reviewed=True, source="ai", plan=ai_plan)
         db = _db_scalar(_finding(), row)
         res = asyncio.run(portal.portal_finding_remediation(
             uuid.uuid4(), _client(), db, os="linux"))
         assert res["source"] == "ai"
-        assert res["plan"] is ai_plan
+        assert res["plan"]["summary"] == "patch it"
+        assert "model" not in res["plan"]      # operator-only metadata not leaked to customer
 
     def test_unreviewed_ai_plan_does_not_leak(self):
         # An AI plan that an operator has NOT reviewed must never reach the customer;

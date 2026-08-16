@@ -23,7 +23,11 @@ from typing import Any
 _OS_KEYS = ("linux", "windows", "macos", "generic")
 
 
-def _os_key(os: str | None) -> str:
+def os_key(os: str | None) -> str:
+    """Normalize an arbitrary OS/target string to a supported KB key.
+
+    Public because both remediation routers (operator + portal) depend on it —
+    a shared, single source of truth for OS normalization."""
     o = (os or "").strip().lower()
     if o in ("linux", "unix"):
         return "linux"
@@ -32,6 +36,10 @@ def _os_key(os: str | None) -> str:
     if o in ("macos", "osx", "darwin", "mac"):
         return "macos"
     return "generic"          # network / appliance / unknown → guidance
+
+
+# Backward-compatible alias for the previously-private name.
+_os_key = os_key
 
 
 def _text(finding: Any) -> str:
@@ -344,7 +352,7 @@ def recipe_for_finding(finding: Any, os: str | None = None) -> dict:
     """
     category = classify_finding(finding)
     recipe = RECIPES.get(category, RECIPES["generic"])
-    key = _os_key(os)
+    key = os_key(os)
     steps = []
     for i, step in enumerate(recipe["steps"], start=1):
         cmds = step.get("commands") or {}

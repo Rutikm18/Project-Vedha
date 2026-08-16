@@ -43,29 +43,37 @@ def _db_scalar(*vals):
     return db
 
 
+def _scalar_result(val):
+    r = MagicMock()
+    r.scalar_one_or_none = MagicMock(return_value=val)
+    return r
+
+
+def _one_result(row):
+    """A result whose .one() yields the RETURNING row (upsert path)."""
+    r = MagicMock()
+    r.one = MagicMock(return_value=row)
+    return r
+
+
+def _returning_row(reviewed, model=None):
+    return SimpleNamespace(reviewed=reviewed, model=model,
+                           generated_at=datetime.now(timezone.utc))
+
+
 class _FakeDB:
-    """execute() pops queued scalar results; add/flush/refresh are recorded."""
-    def __init__(self, scalars):
-        self._scalars = list(scalars)
-        self.added: list = []
+    """execute() returns the next queued result object; flush is counted."""
+    def __init__(self, results):
+        self._results = list(results)
+        self.executed = 0
         self.flushed = 0
 
     async def execute(self, *a, **k):
-        r = MagicMock()
-        val = self._scalars.pop(0) if self._scalars else None
-        r.scalar_one_or_none = MagicMock(return_value=val)
-        return r
-
-    def add(self, obj):
-        self.added.append(obj)
+        self.executed += 1
+        return self._results.pop(0) if self._results else _scalar_result(None)
 
     async def flush(self):
         self.flushed += 1
-
-    async def refresh(self, obj):
-        # A real flush populates the server_default; emulate it so _serialize works.
-        if getattr(obj, "generated_at", None) is None:
-            obj.generated_at = datetime.now(timezone.utc)
 
 
 class _GenUnavailable:
@@ -130,41 +138,67 @@ class TestGetRemediation:
 class TestGenerateRemediation:
     def test_ai_unavailable_falls_back_to_kb_and_publish_sets_reviewed(self, monkeypatch):
         monkeypatch.setattr(remediation, "LLMReportGenerator", _GenUnavailable)
-        db = _FakeDB([_finding(), None])           # finding, then upsert cache miss
+        # finding lookup, then the atomic upsert RETURNING row (reviewed=True).
+        db = _FakeDB([_scalar_result(_finding()), _one_result(_returning_row(True))])
         res = asyncio.run(remediation.generate_remediation(
             uuid.uuid4(), db, _operator(), os="linux", force=True, publish=True))
         assert res["source"] == "deterministic_kb"
         assert res["reviewed"] is True
-        assert db.added and db.added[0].reviewed is True
-        assert db.added[0].source == "deterministic_kb"
+        assert db.executed == 2                     # tenant finding + single upsert
 
     def test_ai_available_caches_ai_plan(self, monkeypatch):
         monkeypatch.setattr(remediation, "LLMReportGenerator", _GenAI)
-        db = _FakeDB([_finding(), None])
+        db = _FakeDB([_scalar_result(_finding()),
+                      _one_result(_returning_row(False, model="claude-test"))])
         res = asyncio.run(remediation.generate_remediation(
             uuid.uuid4(), db, _operator(), os="linux", force=True, publish=False))
         assert res["source"] == "ai"
         assert res["model"] == "claude-test"
         assert res["reviewed"] is False
-        assert db.added[0].source == "ai"
 
     def test_cached_hit_without_force_returns_cached_and_publish_flips_reviewed(self, monkeypatch):
         monkeypatch.setattr(remediation, "LLMReportGenerator", _GenUnavailable)
         row = SimpleNamespace(reviewed=False, source="ai", model="claude-x",
                               plan={"source": "ai", "steps": [{"step": 1}]},
                               generated_at=datetime.now(timezone.utc))
-        db = _FakeDB([_finding(), row])            # finding, cache hit
+        db = _FakeDB([_scalar_result(_finding()), _scalar_result(row)])  # finding, cache hit
         res = asyncio.run(remediation.generate_remediation(
             uuid.uuid4(), db, _operator(), os="linux", force=False, publish=True))
         assert res["source"] == "ai"
         assert row.reviewed is True                 # publish flipped it
         assert db.flushed >= 1
-        assert not db.added                         # cached hit — nothing new inserted
+        assert db.executed == 2                     # no third query — early return
 
     def test_cross_tenant_is_404(self, monkeypatch):
         monkeypatch.setattr(remediation, "LLMReportGenerator", _GenUnavailable)
-        db = _FakeDB([None])
+        db = _FakeDB([_scalar_result(None)])
         with pytest.raises(HTTPException) as e:
             asyncio.run(remediation.generate_remediation(
                 uuid.uuid4(), db, _operator(), os="linux"))
         assert e.value.status_code == 404
+
+
+class TestUpsertStatement:
+    """Verify the ON CONFLICT logic at the SQL level (no DB needed)."""
+
+    def _sql(self, publish):
+        from sqlalchemy.dialects.postgresql import dialect
+        stmt = remediation._build_upsert_stmt(
+            tenant_id=uuid.uuid4(), engagement_id=uuid.uuid4(), finding_id=uuid.uuid4(),
+            os="linux", plan={"source": "ai", "model": "x", "steps": []}, publish=publish)
+        return str(stmt.compile(dialect=dialect())).lower()
+
+    def test_targets_the_unique_constraint(self):
+        assert "on conflict on constraint uq_remediation_finding_os" in self._sql(True)
+
+    def test_regeneration_resets_review_gate_not_inherits_prior_approval(self):
+        # New content must RE-PASS review: `reviewed` = the caller's publish intent
+        # (excluded), and must NOT OR-in the stale prior value — otherwise a
+        # force-regenerate of an approved plan would leak unreviewed AI content.
+        sql = self._sql(False)
+        set_clause = sql.split("returning")[0]
+        assert "reviewed = excluded.reviewed" in set_clause
+        assert "remediation_plans.reviewed" not in set_clause   # no OR with prior value
+
+    def test_refreshes_generated_at_on_conflict(self):
+        assert "generated_at = now()" in self._sql(True)
