@@ -34,6 +34,11 @@ class User(Base, TimestampMixin):
     password_expires_at: Mapped[datetime | None] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # role == client only: the temp password ENCRYPTED at rest (Fernet, keyed off
+    # jwt_secret via credential_crypto) so an operator can re-reveal it. NULL for
+    # logins provisioned before this existed → operator resets to populate. Auth
+    # still uses hashed_password (bcrypt); this is a separate recoverable copy.
+    portal_password_enc: Mapped[str | None] = mapped_column(String(512), nullable=True)
 
     # Set ONLY for role == client — binds this login to exactly one engagement
     # (the customer-portal scoping boundary). SET NULL so deleting an engagement

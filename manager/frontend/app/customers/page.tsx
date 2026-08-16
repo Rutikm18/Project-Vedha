@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  UserPlus, KeyRound, Power, Loader2, RefreshCw, Users, Clipboard, Globe,
+  UserPlus, KeyRound, Power, Loader2, RefreshCw, Users, Clipboard, Globe, Eye, EyeOff,
 } from "lucide-react";
 import { PageShell } from "../../components/PageShell";
 import { useToast } from "../../hooks/useToast";
@@ -43,6 +43,26 @@ export default function CustomersPage() {
   const [email, setEmail] = useState("");
   // Shown ONCE after provision / reset — a temp password is never retrievable later.
   const [issued, setIssued] = useState<{ email: string; slug: string | null; password: string } | null>(null);
+  // item 1: per-row password reveal. Backend stores the temp password encrypted at
+  // rest and audits every reveal; null means the login predates encrypted storage.
+  const [revealed, setRevealed] = useState<Record<string, string | null>>({});
+  const [revealing, setRevealing] = useState<string | null>(null);
+
+  const reveal = useCallback(async (c: Customer) => {
+    if (c.id in revealed) {                        // second click hides it again
+      setRevealed((r) => { const next = { ...r }; delete next[c.id]; return next; });
+      return;
+    }
+    setRevealing(c.id);
+    try {
+      const r = await fetchJson<{ password: string | null }>(`/api/customers/${c.id}/reveal`);
+      setRevealed((prev) => ({ ...prev, [c.id]: r.password }));
+    } catch (e) {
+      toast.error((e as Error).message);
+    } finally {
+      setRevealing(null);
+    }
+  }, [revealed, toast]);
 
   const load = useCallback(async () => {
     try {
@@ -234,6 +254,21 @@ export default function CustomersPage() {
                     </span>
                   </span>
                   <span className="cus-actions">
+                    <button className="cus-mini" onClick={() => void reveal(c)} disabled={revealing === c.id}
+                      title={c.id in revealed ? "Hide password" : "Show password"}>
+                      {revealing === c.id ? <Loader2 size={13} className="animate-spin" />
+                        : (c.id in revealed ? <EyeOff size={13} /> : <Eye size={13} />)}
+                      {c.id in revealed ? "Hide" : "Show"}
+                    </button>
+                    {c.id in revealed && (
+                      <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                        <code className="cus-mono cus-pw">{revealed[c.id] ?? "(reset to reveal)"}</code>
+                        {revealed[c.id] && (
+                          <button className="cus-icon-btn" aria-label="Copy password"
+                            onClick={() => copy(revealed[c.id]!)}><Clipboard size={12} /></button>
+                        )}
+                      </span>
+                    )}
                     <button className="cus-mini" onClick={() => void resetPassword(c)} disabled={!c.engagement_id} title="Reset password">
                       <KeyRound size={13} /> Reset
                     </button>

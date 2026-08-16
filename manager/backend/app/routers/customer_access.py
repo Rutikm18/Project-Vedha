@@ -35,6 +35,7 @@ from app.models.scan_job import ScanJob
 from app.models.scan_request import ScanRequest, SR_APPROVED, SR_PENDING, SR_REJECTED
 from app.models.user import User
 from app.services.audit import record_audit
+from app.services.credential_crypto import decrypt_credential, encrypt_credential
 from app.utils.db import get_or_404
 
 router = APIRouter(prefix="/engagements", tags=["customer-access"])
@@ -193,6 +194,7 @@ async def provision_client_user(
         tenant_id=eng.tenant_id,
         email=body.email,
         hashed_password=_pwd.hash(temp),
+        portal_password_enc=encrypt_credential(temp),  # recoverable copy for reveal
         role=UserRole.client,
         client_engagement_id=engagement_id,
         portal_slug=slug,
@@ -250,6 +252,7 @@ async def patch_client_user(
     if body.reset_password:
         temp = generate_password()
         user.hashed_password = _pwd.hash(temp)
+        user.portal_password_enc = encrypt_credential(temp)  # keep recoverable copy in sync
     if body.is_active is not None:
         user.is_active = body.is_active
     record_audit(db, actor_id=current_user.user_id, action="client_user.updated",
@@ -408,3 +411,36 @@ async def list_customers(
         )
         for u, eng_name in rows
     ]
+
+
+class RevealOut(BaseModel):
+    id: uuid.UUID
+    email: str
+    password: str | None      # None → login predates encrypted storage; Reset to populate
+
+
+@customers_router.get("/{user_id}/reveal", response_model=RevealOut,
+                      summary="Reveal a customer login's password (operator-only, audited)")
+async def reveal_customer_password(
+    user_id: uuid.UUID,
+    db: DB,
+    current_user: Annotated[AuthUser, _OPERATOR],
+):
+    """Decrypt and return a customer login's stored password. Tenant-scoped and
+    written to the append-only audit log on every access — revealing a credential
+    is itself an audited operator action."""
+    user = (await db.execute(
+        select(User).where(
+            User.id == user_id,
+            User.tenant_id == current_user.tenant_id,
+            User.role == UserRole.client,
+        )
+    )).scalar_one_or_none()
+    if user is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Customer login not found")
+    password = decrypt_credential(user.portal_password_enc)
+    record_audit(db, actor_id=current_user.user_id, action="client_user.password_revealed",
+                 engagement_id=user.client_engagement_id, resource_type="user", resource_id=user.id,
+                 detail={"email": user.email})
+    await db.flush()
+    return RevealOut(id=user.id, email=user.email, password=password)
