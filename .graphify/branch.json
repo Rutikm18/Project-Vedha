@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "branchName": "integration/all-branches",
+  "branchName": "feat/syn-scanner-osfp-adaptive",
   "worktreePath": "/Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha",
-  "upstream": "origin/integration/all-branches",
-  "mergeBase": "6c1f014f6e8fbacb7080f4aeed9329f17df208fe",
-  "firstSeenHead": "6c1f014f6e8fbacb7080f4aeed9329f17df208fe",
-  "lastSeenHead": "6c1f014f6e8fbacb7080f4aeed9329f17df208fe",
-  "lastAnalyzedHead": "6c1f014f6e8fbacb7080f4aeed9329f17df208fe",
+  "upstream": null,
+  "mergeBase": null,
+  "firstSeenHead": "54503ae3d26d1926e1232f1dc9803e8cfd20faec",
+  "lastSeenHead": "54503ae3d26d1926e1232f1dc9803e8cfd20faec",
+  "lastAnalyzedHead": "54503ae3d26d1926e1232f1dc9803e8cfd20faec",
   "stale": false,
   "staleReason": null,
   "staleSince": null,
   "lifecycleEvent": null,
-  "createdAt": "2026-08-13T13:05:34.076Z",
-  "updatedAt": "2026-08-14T13:42:40.630Z"
+  "createdAt": "2026-08-15T21:56:25.003Z",
+  "updatedAt": "2026-08-16T00:03:02.282Z"
 }
