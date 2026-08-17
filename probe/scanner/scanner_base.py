@@ -494,19 +494,28 @@ def expand_targets(specs: Iterable[str], *, max_hosts: int = 200_000) -> list[st
     return out
 
 
-def resolve(target: str, port: int, *, proto: str = "tcp"):
+def resolve(target: str, port: int, *, proto: str = "tcp", family=None):
     """
     Resolve `target` to a concrete (family, sockaddr) covering IPv4, IPv6, and
     hostnames. Raw-socket scanners MUST use this instead of hardcoding AF_INET
     or they silently miss every IPv6 target. getaddrinfo orders results per RFC
-    6724; we take the first usable result. Raises OSError if unresolvable.
+    6724; we take the first usable result.
+
+    Pass `family` (e.g. socket.AF_INET) to REQUIRE that address family: an
+    IPv4-only raw scanner then still finds the v4 address of a dual-stack host
+    whose AAAA sorts first, instead of failing on the v6 result. Falls back to the
+    first result when the requested family is absent. Raises OSError if unresolvable.
     """
     socktype = socket.SOCK_DGRAM if proto == "udp" else socket.SOCK_STREAM
     infos = socket.getaddrinfo(target, port, socket.AF_UNSPEC, socktype)
     if not infos:
         raise OSError(f"cannot resolve {target!r}")
-    family, _stype, _proto, _canon, sockaddr = infos[0]
-    return family, sockaddr
+    if family is not None:
+        for fam, _st, _pr, _cn, sockaddr in infos:
+            if fam == family:
+                return fam, sockaddr
+    fam0, _stype, _proto, _canon, sockaddr = infos[0]
+    return fam0, sockaddr
 
 
 # --------------------------------------------------------------------------- #

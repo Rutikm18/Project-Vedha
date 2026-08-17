@@ -266,9 +266,9 @@ class OSFingerprintScanner(BaseScanner):
             return "unavailable"
         sock, _is_raw = opened
         try:
-            family, sockaddr = resolve(target, 0, proto="udp")
+            family, sockaddr = resolve(target, 0, proto="udp", family=socket.AF_INET)
             if family != socket.AF_INET:
-                return "unavailable"          # IPv4-only ICMP here
+                return "unavailable"          # no IPv4 for this host — ICMP here is v4-only
             target_ip = sockaddr[0]
             ident = os.getpid() & 0xFFFF
             sock.sendto(build_icmp_echo(ident, 1, probe_payload()), (target_ip, 0))
