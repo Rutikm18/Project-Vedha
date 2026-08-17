@@ -252,7 +252,7 @@ class SynScanner(BaseScanner):
                  key: bytes | None = None, report_closed: bool = False,
                  force_fallback: bool = False, retries: int = 2,
                  adaptive_timeout: bool = True, source_port: int | None = None,
-                 **kwargs):
+                 randomize: bool = False, scan_delay: float = 0.0, **kwargs):
         super().__init__(*args, **kwargs)
         # Default to nmap top-100 (not the 35-port TOP_TCP_PORTS): a no-arg scan
         # shouldn't silently miss common services.
@@ -278,7 +278,8 @@ class SynScanner(BaseScanner):
             self._fallback = PortScanner(
                 self.scope, rate=self._rate, concurrency=self._concurrency,
                 timeout=self.timeout, ports=self.ports,
-                report_closed=self.report_closed, source_port=source_port)
+                report_closed=self.report_closed, source_port=source_port,
+                randomize=randomize, scan_delay=scan_delay)
 
     async def scan_target(self, target: str) -> list[ScanResult]:
         if self._supported:
@@ -489,7 +490,8 @@ def main() -> None:
                              force_fallback=args.force_fallback,
                              retries=args.retries,
                              adaptive_timeout=not args.fixed_timeout,
-                             source_port=args.source_port)
+                             source_port=args.source_port,
+                             randomize=args.randomize, scan_delay=args.scan_delay)
         if scanner._supported:
             LOG.info("[syn_scan] raw SYN path active")
         else:

@@ -54,6 +54,29 @@ class TestChooseSourcePort:
         assert sb.choose_source_port(65535) == 65535
 
 
+class TestJitteredDelay:
+    """Evasion: blur a fixed scan cadence with a bounded random per-probe delay."""
+
+    def test_zero_or_negative_base_is_zero(self):
+        assert sb.jittered_delay(0) == 0.0
+        assert sb.jittered_delay(-1) == 0.0
+
+    def test_stays_within_jitter_band(self):
+        for _ in range(50):
+            assert 0.7 <= sb.jittered_delay(1.0, jitter=0.3) <= 1.3
+
+    def test_never_negative_even_at_full_jitter(self):
+        for _ in range(50):
+            assert sb.jittered_delay(0.1, jitter=1.0) >= 0.0
+
+
+class TestEvasionFlags:
+    def test_randomize_and_scan_delay_flags_present(self):
+        p = sb.base_argparser("x")
+        opts = {o for a in p._actions for o in a.option_strings}
+        assert "--randomize" in opts and "--scan-delay" in opts
+
+
 class TestModuleConstantsUnbranded:
     """Import-time probe constants built from user_agent() must be signature-free."""
 

@@ -66,6 +66,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import ipaddress
+import random
 import socket
 import time
 from collections import Counter
@@ -74,7 +75,7 @@ from dataclasses import dataclass, field
 from .scanner_base import (
     BaseScanner, ScanResult, ScopeGuard, ResultWriter, expand_targets,
     parse_ports, setup_logging, base_argparser,
-    main_entrypoint, classify_os_error, STATE_CONFIDENCE,
+    main_entrypoint, classify_os_error, STATE_CONFIDENCE, jittered_delay,
 )
 from .adaptive_timeout import AdaptiveTimeout
 
@@ -255,11 +256,15 @@ class PortScanner(BaseScanner):
                  report_closed: bool = False, vantage: str | None = None,
                  retries: int = 1, emit_summary: bool = True,
                  adaptive_timeout: bool = True, source_port: int | None = None,
-                 **kwargs):
+                 randomize: bool = False, scan_delay: float = 0.0, **kwargs):
         super().__init__(*args, **kwargs)
         # Fixed TCP source port (e.g. 53/88) to bypass naive stateless ACLs; None =
         # OS-chosen ephemeral. Bound per-connect below (best-effort under concurrency).
         self.source_port = source_port
+        # Evasion: randomize probe order + add a jittered per-probe delay so the scan
+        # isn't a fixed-cadence, sequential-port pattern an IDS can flag.
+        self.randomize = randomize
+        self.scan_delay = max(0.0, scan_delay)
         # Emit a terminal scan_summary result carrying the completeness/health
         # metrics. On by default — it is how a caller detects a partial scan.
         self.emit_summary = emit_summary
@@ -416,7 +421,9 @@ class PortScanner(BaseScanner):
                 maximum=max(self.timeout, 8.0),
             )
         queue: asyncio.Queue[int] = asyncio.Queue()
-        for p in self.ports:
+        # Evasion: shuffle the probe order so it isn't a sequential-port sweep.
+        _order = random.sample(self.ports, len(self.ports)) if self.randomize else self.ports
+        for p in _order:
             queue.put_nowait(p)
         emitted: list[ScanResult] = []
 
@@ -433,6 +440,8 @@ class PortScanner(BaseScanner):
                         emitted.append(result)       # output filtering only
                 finally:
                     queue.task_done()
+                    if self.scan_delay:              # jittered per-probe pause (evasion)
+                        await asyncio.sleep(jittered_delay(self.scan_delay))
 
         n_workers = max(1, min(self._concurrency, len(self.ports)))
         workers = [asyncio.create_task(_worker()) for _ in range(n_workers)]
@@ -498,7 +507,8 @@ def main() -> None:
                               report_closed=args.report_closed,
                               vantage=args.vantage, retries=args.retries,
                               adaptive_timeout=not args.fixed_timeout,
-                              source_port=args.source_port)
+                              source_port=args.source_port,
+                              randomize=args.randomize, scan_delay=args.scan_delay)
         writer = ResultWriter(args.output, also_stdout=True)
         try:
             await scanner.run(targets, writer)

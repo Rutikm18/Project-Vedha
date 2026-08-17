@@ -75,6 +75,16 @@ def choose_source_port(configured: int | None, *, lo: int = 40000, hi: int = 600
     return random.randint(lo, hi)
 
 
+def jittered_delay(base: float, jitter: float = 0.3) -> float:
+    """A per-probe delay of `base` seconds ± up to `jitter` fraction of random
+    variation, so a scan's inter-probe cadence isn't a fixed, fingerprintable
+    interval. Never negative; returns 0.0 for base <= 0."""
+    if base <= 0:
+        return 0.0
+    spread = base * max(0.0, min(1.0, jitter))
+    return max(0.0, base + random.uniform(-spread, spread))
+
+
 # --------------------------------------------------------------------------- #
 # Result schema — identical across every scanner.
 # --------------------------------------------------------------------------- #
@@ -783,6 +793,10 @@ def base_argparser(description: str) -> argparse.ArgumentParser:
     p.add_argument("-g", "--source-port", type=int, default=None,
                    help="fixed TCP source port for probes (e.g. 53 or 88) to bypass "
                         "naive stateless ACLs; default is a random ephemeral port")
+    p.add_argument("-R", "--randomize", action="store_true",
+                   help="randomize scan order (breaks the sequential-port pattern IDS flags on)")
+    p.add_argument("--scan-delay", type=float, default=0.0,
+                   help="jittered per-probe delay (seconds) to blur a fixed scan cadence")
     p.add_argument("-v", "--verbose", action="store_true")
     return p
 
