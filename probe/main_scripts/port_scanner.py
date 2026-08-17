@@ -254,8 +254,12 @@ class PortScanner(BaseScanner):
     def __init__(self, *args, ports: list[int] | None = None,
                  report_closed: bool = False, vantage: str | None = None,
                  retries: int = 1, emit_summary: bool = True,
-                 adaptive_timeout: bool = True, **kwargs):
+                 adaptive_timeout: bool = True, source_port: int | None = None,
+                 **kwargs):
         super().__init__(*args, **kwargs)
+        # Fixed TCP source port (e.g. 53/88) to bypass naive stateless ACLs; None =
+        # OS-chosen ephemeral. Bound per-connect below (best-effort under concurrency).
+        self.source_port = source_port
         # Emit a terminal scan_summary result carrying the completeness/health
         # metrics. On by default — it is how a caller detects a partial scan.
         self.emit_summary = emit_summary
@@ -319,7 +323,8 @@ class PortScanner(BaseScanner):
         to = est.timeout() if est is not None else self.timeout
         t0 = time.monotonic()
         try:
-            fut = asyncio.open_connection(target, port)
+            local_addr = ("", self.source_port) if self.source_port else None
+            fut = asyncio.open_connection(target, port, local_addr=local_addr)
             reader, writer = await asyncio.wait_for(fut, timeout=to)
             rtt_ms = round((time.monotonic() - t0) * 1000, 2)
             if est is not None:
@@ -492,7 +497,8 @@ def main() -> None:
                               timeout=args.timeout, ports=ports,
                               report_closed=args.report_closed,
                               vantage=args.vantage, retries=args.retries,
-                              adaptive_timeout=not args.fixed_timeout)
+                              adaptive_timeout=not args.fixed_timeout,
+                              source_port=args.source_port)
         writer = ResultWriter(args.output, also_stdout=True)
         try:
             await scanner.run(targets, writer)

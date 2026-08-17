@@ -50,6 +50,7 @@ from .scanner_base import (
     ScanResult,
     ScopeGuard,
     base_argparser,
+    choose_source_port,
     expand_targets,
     main_entrypoint,
     parse_ports,
@@ -250,7 +251,8 @@ class SynScanner(BaseScanner):
     def __init__(self, *args, ports: list[int] | None = None,
                  key: bytes | None = None, report_closed: bool = False,
                  force_fallback: bool = False, retries: int = 2,
-                 adaptive_timeout: bool = True, **kwargs):
+                 adaptive_timeout: bool = True, source_port: int | None = None,
+                 **kwargs):
         super().__init__(*args, **kwargs)
         # Default to nmap top-100 (not the 35-port TOP_TCP_PORTS): a no-arg scan
         # shouldn't silently miss common services.
@@ -267,6 +269,7 @@ class SynScanner(BaseScanner):
         # Default 2 (higher than the connect scan's 1, which rides on kernel
         # retransmits) to match connect-scan reliability.
         self.retries = max(0, retries)
+        self.source_port = source_port          # fixed TCP src port, or None = random
         self._key = key or os.urandom(16)
         self._rate = kwargs.get("rate", 200.0)
         self._supported = (not force_fallback) and syn_scan_supported()
@@ -275,7 +278,7 @@ class SynScanner(BaseScanner):
             self._fallback = PortScanner(
                 self.scope, rate=self._rate, concurrency=self._concurrency,
                 timeout=self.timeout, ports=self.ports,
-                report_closed=self.report_closed)
+                report_closed=self.report_closed, source_port=source_port)
 
     async def scan_target(self, target: str) -> list[ScanResult]:
         if self._supported:
@@ -312,7 +315,7 @@ class SynScanner(BaseScanner):
             raise OSError("syn scan is IPv4-only")
         dst_ip = sockaddr[0]
         src_ip = _local_source_ip(dst_ip)
-        src_port = random.randint(40000, 60000)
+        src_port = choose_source_port(self.source_port)
 
         send_sock = socket.socket(socket.AF_INET, socket.SOCK_RAW,
                                   socket.IPPROTO_RAW)
@@ -485,7 +488,8 @@ def main() -> None:
                              report_closed=args.report_closed,
                              force_fallback=args.force_fallback,
                              retries=args.retries,
-                             adaptive_timeout=not args.fixed_timeout)
+                             adaptive_timeout=not args.fixed_timeout,
+                             source_port=args.source_port)
         if scanner._supported:
             LOG.info("[syn_scan] raw SYN path active")
         else:

@@ -35,6 +35,25 @@ class TestProbePayload:
         assert sb.probe_payload() == b"xyz"
 
 
+class TestChooseSourcePort:
+    """Evasion: a fixed source port (e.g. 53/88) slips past naive stateless ACLs."""
+
+    def test_uses_configured_valid_port(self):
+        assert sb.choose_source_port(53) == 53
+        assert sb.choose_source_port(88) == 88
+
+    def test_none_gives_random_ephemeral(self):
+        assert 40000 <= sb.choose_source_port(None) <= 60000
+
+    def test_out_of_range_falls_back_to_random(self):
+        assert 40000 <= sb.choose_source_port(0) <= 60000
+        assert 40000 <= sb.choose_source_port(99999) <= 60000
+
+    def test_boundary_ports_are_valid(self):
+        assert sb.choose_source_port(1) == 1
+        assert sb.choose_source_port(65535) == 65535
+
+
 class TestModuleConstantsUnbranded:
     """Import-time probe constants built from user_agent() must be signature-free."""
 

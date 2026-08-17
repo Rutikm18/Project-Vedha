@@ -27,6 +27,7 @@ import ipaddress
 import json
 import logging
 import os
+import random
 import socket
 import struct
 import sys
@@ -62,6 +63,16 @@ def probe_payload() -> bytes:
     ping traffic by default. Override with the VEDHA_SCAN_PAYLOAD env var."""
     override = os.environ.get("VEDHA_SCAN_PAYLOAD")
     return override.encode() if override is not None else _DEFAULT_PROBE_PAYLOAD
+
+
+def choose_source_port(configured: int | None, *, lo: int = 40000, hi: int = 60000) -> int:
+    """The TCP source port for probes. A FIXED port (e.g. 53/88) lets a scan slip
+    past naive stateless ACLs that trust well-known source ports; None (default)
+    picks a random ephemeral port so probes aren't trivially correlated. An
+    out-of-range value falls back to random rather than crafting an invalid port."""
+    if configured is not None and 1 <= configured <= 65535:
+        return configured
+    return random.randint(lo, hi)
 
 
 # --------------------------------------------------------------------------- #
@@ -760,6 +771,9 @@ def base_argparser(description: str) -> argparse.ArgumentParser:
                    help="max concurrent operations (default 100)")
     p.add_argument("--timeout", type=float, default=3.0,
                    help="per-operation timeout seconds (default 3.0)")
+    p.add_argument("-g", "--source-port", type=int, default=None,
+                   help="fixed TCP source port for probes (e.g. 53 or 88) to bypass "
+                        "naive stateless ACLs; default is a random ephemeral port")
     p.add_argument("-v", "--verbose", action="store_true")
     return p
 
