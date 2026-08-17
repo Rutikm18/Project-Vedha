@@ -52,7 +52,7 @@ from dataclasses import dataclass, field
 
 from .scanner_base import (
     BaseScanner, ScanResult, TOP_TCP_PORTS, base_argparser, run_cli,
-    setup_logging, main_entrypoint, bracket_host, LOG,
+    setup_logging, main_entrypoint, bracket_host, LOG, user_agent,
 )
 
 # --------------------------------------------------------------------------- #
@@ -474,7 +474,7 @@ class ServiceEnumScanner(BaseScanner):
                 host = bracket_host(target)
                 writer.write(
                     f"GET / HTTP/1.0\r\nHost: {host}\r\n"
-                    f"User-Agent: service_enum\r\n\r\n".encode())
+                    f"User-Agent: {user_agent()}\r\n\r\n".encode())
                 await writer.drain()
                 raw = await asyncio.wait_for(reader.read(4096), timeout=self.timeout)
                 text = raw.decode("latin-1", "replace")
