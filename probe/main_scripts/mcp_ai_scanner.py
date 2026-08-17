@@ -80,6 +80,7 @@ import urllib.error
 from .scanner_base import (
     BaseScanner, ScanResult, ScopeGuard, ResultWriter, expand_targets,
     parse_ports, bracket_host, setup_logging, base_argparser, main_entrypoint, LOG,
+    user_agent,
 )
 
 # Ports commonly used by AI runtimes and MCP servers.
@@ -126,7 +127,7 @@ _AUTH_BODY_HINTS = [
 
 def _request(url: str, method: str, timeout: float) -> dict | None:
     req = urllib.request.Request(
-        url, headers={"User-Agent": "va-scanner/1.0",
+        url, headers={"User-Agent": user_agent(),
                       "Accept": "application/json, text/event-stream"},
         method=method)
     try:

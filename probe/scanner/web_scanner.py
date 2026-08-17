@@ -26,6 +26,7 @@ import urllib.error
 from .scanner_base import (
     BaseScanner, ScanResult, ScopeGuard, ResultWriter, expand_targets,
     parse_ports, bracket_host, setup_logging, base_argparser, main_entrypoint,
+    user_agent,
 )
 
 DEFAULT_WEB_PORTS = [80, 443, 8080, 8443, 8000, 8888, 9000, 9200]
@@ -76,7 +77,7 @@ _TECH_HINTS = {
 
 def _fetch(url: str, timeout: float) -> dict | None:
     req = urllib.request.Request(
-        url, headers={"User-Agent": "va-scanner/1.0"}, method="GET")
+        url, headers={"User-Agent": user_agent()}, method="GET")
     try:
         with _OPENER.open(req, timeout=timeout) as resp:
             body = resp.read(8192)
@@ -110,7 +111,7 @@ def _fetch(url: str, timeout: float) -> dict | None:
     allow = None
     try:
         opt = urllib.request.Request(
-            url, headers={"User-Agent": "va-scanner/1.0"}, method="OPTIONS")
+            url, headers={"User-Agent": user_agent()}, method="OPTIONS")
         with _OPENER.open(opt, timeout=timeout) as r:
             allow = r.headers.get("Allow")
     except Exception:

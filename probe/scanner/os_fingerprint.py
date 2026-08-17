@@ -30,10 +30,12 @@ import os
 import socket
 import struct
 import sys
+import time
 
 from .scanner_base import (
     BaseScanner, ScanResult, ScopeGuard, ResultWriter, expand_targets,
     resolve, inet_checksum, setup_logging, base_argparser, main_entrypoint, LOG,
+    probe_payload,
 )
 
 # ICMP message types
@@ -94,6 +96,19 @@ def parse_icmp_reply(raw: bytes) -> dict | None:
         return None
     type_, code, _chk, ident, seq = struct.unpack("!BBHHH", icmp[:8])
     return {"type": type_, "code": code, "id": ident, "seq": seq, "ttl": ttl}
+
+
+def accept_echo_reply(src_ip: str | None, parsed: dict | None, target_ip: str) -> bool:
+    """True only for an ICMP ECHO reply that actually came FROM the probed host.
+
+    A raw ICMP socket receives every ICMP packet on the box, so a reply meant for
+    another target (or another probe) can arrive on our socket; accepting it would
+    attribute the wrong host's TTL — a wrong-host OS fingerprint. Requiring the
+    source address to equal the target closes that. (Datagram-ICMP also delivers
+    the peer address, so the same check works there.)"""
+    if not parsed or parsed.get("type") != ICMP_ECHO_REPLY:
+        return False
+    return src_ip is None or src_ip == target_ip
 
 
 # ── TTL inference + OS mapping ────────────────────────────────────────────────
@@ -167,6 +182,21 @@ def fingerprint_os(*, ttl: int | None = None, tcp_window: int | None = None,
 
     if mss is not None:
         signals["mss"] = mss
+        # MSS = MTU - IPv4(20) - TCP(20) headers. Recover the path MTU and classify
+        # the link. A sub-1500 MTU means the path is encapsulated — VPN/PPPoE/overlay
+        # — which is real reachability intel (feeds vantage/segmentation), not an OS
+        # signal, so it deliberately does NOT touch the OS scores. (MSS 1460 is the
+        # Ethernet default on every OS, so it isn't OS-distinctive anyway.)
+        mtu = mss + 40
+        signals["mtu"] = mtu
+        if mtu > 1500:
+            signals["link_hint"] = "jumbo"
+        elif mtu == 1500:
+            signals["link_hint"] = "ethernet"
+        elif mtu >= 1400:
+            signals["link_hint"] = "tunnel_or_vpn"
+        else:
+            signals["link_hint"] = "constrained"
 
     total = sum(scores.values())
     if total == 0:
@@ -235,18 +265,26 @@ class OSFingerprintScanner(BaseScanner):
         if opened is None:
             return "unavailable"
         sock, _is_raw = opened
-        sock.settimeout(self.timeout)
         try:
             family, sockaddr = resolve(target, 0, proto="udp")
             if family != socket.AF_INET:
                 return "unavailable"          # IPv4-only ICMP here
+            target_ip = sockaddr[0]
             ident = os.getpid() & 0xFFFF
-            sock.sendto(build_icmp_echo(ident, 1, b"vedha-probe"), (sockaddr[0], 0))
-            raw, _ = sock.recvfrom(2048)
-            parsed = parse_icmp_reply(raw)
-            if not parsed or parsed["type"] not in (ICMP_ECHO_REPLY,):
-                return "down"
-            return parsed["ttl"]
+            sock.sendto(build_icmp_echo(ident, 1, probe_payload()), (target_ip, 0))
+            # Read until THIS host's echo reply arrives or the timeout elapses,
+            # skipping stray ICMP from other hosts (a raw socket receives all ICMP
+            # on the box) so a neighbour's TTL is never mislabelled as the target's.
+            deadline = time.monotonic() + self.timeout
+            while True:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    return "down"
+                sock.settimeout(remaining)
+                raw, addr = sock.recvfrom(2048)
+                parsed = parse_icmp_reply(raw)
+                if accept_echo_reply(addr[0] if addr else None, parsed, target_ip):
+                    return parsed["ttl"]
         except (socket.timeout, OSError):
             return "down"
         finally:

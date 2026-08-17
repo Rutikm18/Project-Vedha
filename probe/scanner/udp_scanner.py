@@ -131,8 +131,9 @@ def _sip_probe(target: str) -> bytes:
 
 def _tftp_probe() -> bytes:
     """TFTP RRQ for a non-existent file.  Error reply confirms TFTP service."""
-    # Opcode 1 = RRQ, filename, NUL, mode, NUL
-    return b"\x00\x01" + b"vedha-probe.txt\x00" + b"octet\x00"
+    # Opcode 1 = RRQ, filename, NUL, mode, NUL. Filename is a neutral non-existent
+    # name (no tool signature) — any TFTP server errors on it, proving the service.
+    return b"\x00\x01" + b"test.txt\x00" + b"octet\x00"
 
 
 def _ipmi_probe() -> bytes:

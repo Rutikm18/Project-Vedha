@@ -89,6 +89,29 @@ class TestIcmpParse:
         assert parsed["ttl"] is None
 
 
+# ── reply-source validation (wrong-host misattribution guard) ─────────────────
+
+class TestAcceptEchoReply:
+    def _reply(self, type_=0):
+        return {"type": type_, "code": 0, "id": 1, "seq": 1, "ttl": 60}
+
+    def test_accepts_echo_reply_from_target(self):
+        assert ofp.accept_echo_reply("10.0.0.5", self._reply(0), "10.0.0.5") is True
+
+    def test_rejects_reply_from_a_different_host(self):
+        # a neighbour's reply arriving on a shared/raw ICMP socket must be dropped
+        assert ofp.accept_echo_reply("10.0.0.9", self._reply(0), "10.0.0.5") is False
+
+    def test_rejects_non_echo_type(self):
+        assert ofp.accept_echo_reply("10.0.0.5", self._reply(3), "10.0.0.5") is False
+
+    def test_rejects_none_parsed(self):
+        assert ofp.accept_echo_reply("10.0.0.5", None, "10.0.0.5") is False
+
+    def test_accepts_when_source_unknown(self):
+        assert ofp.accept_echo_reply(None, self._reply(0), "10.0.0.5") is True
+
+
 # ── TTL inference ─────────────────────────────────────────────────────────────
 
 class TestTtlInference:
@@ -150,6 +173,21 @@ class TestFingerprintOs:
         r = ofp.fingerprint_os(ttl=64, tcp_window=8192, mss=1460)
         assert r["signals"]["tcp_window"] == 8192
         assert r["signals"]["mss"] == 1460
+
+    def test_mss_yields_ethernet_mtu(self):
+        s = ofp.fingerprint_os(ttl=64, mss=1460)["signals"]
+        assert s["mtu"] == 1500 and s["link_hint"] == "ethernet"
+
+    def test_mss_flags_tunnel_or_vpn(self):
+        s = ofp.fingerprint_os(ttl=64, mss=1380)["signals"]
+        assert s["mtu"] == 1420 and s["link_hint"] == "tunnel_or_vpn"
+
+    def test_mss_flags_jumbo_even_without_os_signal(self):
+        assert ofp.fingerprint_os(mss=8960)["signals"]["link_hint"] == "jumbo"
+
+    def test_mss_is_path_intel_not_an_os_signal(self):
+        # a reduced MSS must not change the OS guess — it still tracks TTL
+        assert ofp.fingerprint_os(ttl=120, mss=1380)["os_guess"] == "Windows"
 
 
 # ── capability detection ──────────────────────────────────────────────────────

@@ -26,6 +26,7 @@ import errno as _errno
 import ipaddress
 import json
 import logging
+import os
 import socket
 import struct
 import sys
@@ -36,6 +37,31 @@ from pathlib import Path
 from typing import Any, Iterable, Iterator
 
 LOG = logging.getLogger("scanner")
+
+
+# ── wire identity (anti-attribution) ──────────────────────────────────────────
+# What the scanner puts in packets a defender can SEE. Defaults are deliberately
+# generic so the tool never signs its own traffic with a brand string a blue team
+# can grep, alert on, or attribute to the engagement. Override per-engagement via
+# env when you WANT to be identifiable (authorized/cooperative assessments).
+_DEFAULT_USER_AGENT = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                       "AppleWebKit/537.36 (KHTML, like Gecko) "
+                       "Chrome/125.0.0.0 Safari/537.36")
+# Windows ping's default 32-byte payload — blends in as ordinary ICMP echo traffic.
+_DEFAULT_PROBE_PAYLOAD = b"abcdefghijklmnopqrstuvwabcdefghi"
+
+
+def user_agent() -> str:
+    """HTTP/RTSP User-Agent to send — a generic browser UA by default so it does
+    not attribute the scan. Override with the VEDHA_SCAN_UA env var."""
+    return os.environ.get("VEDHA_SCAN_UA") or _DEFAULT_USER_AGENT
+
+
+def probe_payload() -> bytes:
+    """Benign, non-attributing payload for ICMP/UDP probes — looks like ordinary
+    ping traffic by default. Override with the VEDHA_SCAN_PAYLOAD env var."""
+    override = os.environ.get("VEDHA_SCAN_PAYLOAD")
+    return override.encode() if override is not None else _DEFAULT_PROBE_PAYLOAD
 
 
 # --------------------------------------------------------------------------- #
