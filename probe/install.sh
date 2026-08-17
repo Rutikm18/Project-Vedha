@@ -23,6 +23,9 @@ set -eu
 #
 # A bare ip/url ⇒ LOCAL; the --manager flag (or --docker) ⇒ DOCKER.
 # ─────────────────────────────────────────────────────────────────────────────
+say() { printf '%s\n' "$*"; }
+have() { command -v "$1" >/dev/null 2>&1; }
+
 _MODE=""
 for _a in "$@"; do
   case "$_a" in --docker) _MODE=docker ;; --local) _MODE=local ;; esac
@@ -81,13 +84,37 @@ if [ "$_MODE" = "local" ]; then
   export STATE_FILE="${STATE_FILE:-$HOME/vedha-probe/state.json}"
   export RESULT_SPOOL_DIR="${RESULT_SPOOL_DIR:-$HOME/vedha-probe/spool}"
   mkdir -p "$(dirname "$STATE_FILE")" "$RESULT_SPOOL_DIR"
-  # Ensure a runnable interpreter: project venv, else create it.
+  # Preflight: LOCAL mode runs the probe directly with Python 3.8+.
+  have python3 || {
+    printf 'ERROR: python3 not found. LOCAL mode needs Python 3.8+ (plus the\n'
+    printf '       python3-venv package on Debian/Ubuntu). Or use DOCKER mode:\n'
+    printf '         sudo sh install.sh --docker --manager <url>\n'
+    exit 1
+  }
+  python3 -c 'import sys; raise SystemExit(0 if sys.version_info[:2] >= (3, 8) else 1)' || {
+    printf 'ERROR: Python 3.8+ required (found %s). Install a newer python3.\n' \
+      "$(python3 -c 'import sys;print("%d.%d"%sys.version_info[:2])' 2>/dev/null || echo unknown)"
+    exit 1
+  }
+  # Runnable interpreter: (re)create the venv and (re)install deps when the venv is
+  # absent/partial OR requirements-runtime.txt changed. The stamp avoids reinstalling
+  # on every launch while still healing a half-built venv or a newly-added dependency.
   _PY=".venv/bin/python"
-  if [ ! -x "$_PY" ]; then
-    printf '• first run: creating .venv + installing runtime deps…\n'
-    python3 -m venv .venv
+  _STAMP=".venv/.reqs-stamp"
+  _REQS="$(cksum requirements-runtime.txt 2>/dev/null || echo none)"
+  if [ ! -x "$_PY" ] || [ "$(cat "$_STAMP" 2>/dev/null || true)" != "$_REQS" ]; then
+    printf '• setting up .venv + runtime deps…\n'
+    [ -x "$_PY" ] || python3 -m venv .venv || {
+      printf 'ERROR: virtualenv creation failed. On Debian/Ubuntu install the venv\n'
+      printf '       module first: sudo apt-get install -y python3-venv\n'
+      exit 1
+    }
     ./.venv/bin/pip install -q --upgrade pip
-    ./.venv/bin/pip install -q -r requirements-runtime.txt
+    ./.venv/bin/pip install -q -r requirements-runtime.txt || {
+      printf 'ERROR: failed to install runtime deps from requirements-runtime.txt.\n'
+      exit 1
+    }
+    printf '%s' "$_REQS" > "$_STAMP"
   fi
   printf '▶ probe → %s   name=%s  scope-ceiling=%s\n' \
     "$PLATFORM_URL" "$PROBE_NAME" "${PROBE_NETWORK_SEGMENTS:-<unset>}"
@@ -105,9 +132,6 @@ PROBE_MAX_JOB_SECONDS="${PROBE_MAX_JOB_SECONDS:-7200}"
 PROBE_REGISTRATION_TIMEOUT="${PROBE_REGISTRATION_TIMEOUT:-60}"
 PROBE_ENROLL_TOKEN="${PROBE_ENROLL_TOKEN:-}"
 PROBE_ALLOW_INSECURE="${PROBE_ALLOW_INSECURE:-false}"
-
-say() { printf '%s\n' "$*"; }
-have() { command -v "$1" >/dev/null 2>&1; }
 
 usage() {
   say "Usage: $0 --manager https://manager.example.com [--enroll-token vet_...] [--insecure]"
@@ -172,11 +196,19 @@ fi
 
 # --- preflight ----------------------------------------------------------------
 have docker || { say "Docker is required. Install Docker Desktop/Engine first: https://docs.docker.com/engine/install/"; exit 1; }
+docker info >/dev/null 2>&1 || { say "Docker is installed but its daemon isn't reachable. Start Docker (open Docker Desktop, or 'sudo systemctl start docker') and retry."; exit 1; }
 
 LOCK_DIR="${TMPDIR:-/tmp}/vedha-probe-install.lock"
 if ! mkdir "$LOCK_DIR" 2>/dev/null; then
-  say "ERROR: another Vedha probe install is running (lock: $LOCK_DIR)."
-  exit 75
+  # Reclaim a lock left by a crashed run (SIGKILL bypasses the cleanup trap).
+  if find "$LOCK_DIR" -maxdepth 0 -mmin +10 2>/dev/null | grep -q .; then
+    say "Reclaiming a stale install lock (>10 min old)."
+    rmdir "$LOCK_DIR" 2>/dev/null || true
+    mkdir "$LOCK_DIR" 2>/dev/null || { say "ERROR: could not acquire install lock."; exit 75; }
+  else
+    say "ERROR: another Vedha probe install is running (lock: $LOCK_DIR)."
+    exit 75
+  fi
 fi
 STAGE_DIR="$(mktemp -d "${TMPDIR:-/tmp}/vedha-probe-install.XXXXXX")"
 cleanup_install() {
