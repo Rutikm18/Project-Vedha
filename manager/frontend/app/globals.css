@@ -1146,7 +1146,7 @@ code, pre, .terminal, kbd, [class*="mono"], .font-mono {
 .engagement-metric-label svg { color: var(--metric-color); }
 .engagement-metric-card strong {
   display: block; margin-top: 9px; color: var(--text-primary);
-  font: 720 29px/1 var(--font-display); letter-spacing: -.03em;
+  font: 720 29px/1 var(--font-display); letter-spacing: -.03em; overflow-wrap: anywhere;
 }
 .engagement-metric-card > span { display: block; margin-top: 6px; color: var(--text-muted); font-size: 10px; }
 .engagement-overview-grid { display: grid; grid-template-columns: 1.15fr .85fr; gap: 16px; }
@@ -1173,12 +1173,12 @@ code, pre, .terminal, kbd, [class*="mono"], .font-mono {
 .engagement-description { margin: 0 0 17px; color: var(--text-secondary); font-size: 12px; line-height: 1.65; }
 .engagement-detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
 .engagement-detail {
-  display: flex; align-items: flex-start; gap: 9px; padding: 10px;
+  display: flex; align-items: flex-start; gap: 9px; padding: 10px; min-width: 0;
   border-radius: 8px; background: var(--bg-surface); border: 1px solid var(--border-subtle);
 }
 .engagement-detail > svg { margin-top: 2px; color: var(--accent); }
 .engagement-detail span { display: block; color: var(--text-muted); font-size: 9px; text-transform: uppercase; letter-spacing: .05em; }
-.engagement-detail strong { display: block; margin-top: 2px; color: var(--text-primary); font-size: 11px; }
+.engagement-detail strong { display: block; margin-top: 2px; color: var(--text-primary); font-size: 11px; overflow-wrap: anywhere; }
 .engagement-tags { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 14px; color: var(--text-muted); }
 .engagement-tags span {
   padding: 3px 7px; border-radius: 5px; color: var(--accent);
@@ -1193,7 +1193,7 @@ code, pre, .terminal, kbd, [class*="mono"], .font-mono {
 }
 .engagement-chip.included { color: var(--accent); border-color: var(--border-accent); }
 .engagement-chip.excluded { color: var(--sev-high-color); background: var(--sev-high-bg); border-color: color-mix(in srgb, var(--sev-high-color) 20%, transparent); }
-.engagement-empty-inline { color: var(--text-faint); font-size: 10px; font-style: italic; }
+.engagement-empty-inline { color: var(--text-muted); font-size: 10px; font-style: italic; }
 .engagement-scope-note {
   display: flex; align-items: flex-start; gap: 8px; padding: 10px;
   border-radius: 7px; color: var(--text-secondary);
@@ -1224,8 +1224,8 @@ code, pre, .terminal, kbd, [class*="mono"], .font-mono {
 }
 .engagement-finding-row:last-child { border-bottom: 0; }
 .engagement-finding-row:hover { background: var(--bg-surface); }
-.engagement-finding-row > div strong { display: block; color: var(--text-primary); font-size: 12px; }
-.engagement-finding-row > div small { display: block; margin-top: 3px; color: var(--text-muted); font-size: 10px; }
+.engagement-finding-row > div strong { display: block; color: var(--text-primary); font-size: 12px; overflow-wrap: anywhere; }
+.engagement-finding-row > div small { display: block; margin-top: 3px; color: var(--text-muted); font-size: 10px; overflow-wrap: anywhere; }
 .engagement-finding-row > svg { color: var(--text-faint); }
 .engagement-risk-score { min-width: 38px; color: var(--text-primary); font: 700 13px var(--font-mono); text-align: right; }
 .engagement-asset-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(330px, 1fr)); gap: 12px; }
@@ -1239,7 +1239,7 @@ code, pre, .terminal, kbd, [class*="mono"], .font-mono {
   padding: 6px 8px; border-radius: 5px; background: var(--bg-surface); font-size: 10px;
 }
 .engagement-service-list code { color: var(--accent); }
-.engagement-service-list span { color: var(--text-primary); }
+.engagement-service-list span { color: var(--text-primary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .engagement-service-list small { color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .engagement-timeline > div { position: relative; padding: 14px 18px 14px 40px; border-bottom: 1px solid var(--border-subtle); }
 .engagement-timeline > div:last-child { border-bottom: 0; }
@@ -1251,7 +1251,7 @@ code, pre, .terminal, kbd, [class*="mono"], .font-mono {
 .engagement-timeline article strong { color: var(--text-primary); font-size: 11px; }
 .engagement-timeline article time { color: var(--text-muted); font: 9px var(--font-mono); }
 .engagement-timeline article p { margin: 5px 0; color: var(--text-secondary); font-size: 11px; }
-.engagement-timeline article small { color: var(--text-faint); font-size: 9px; }
+.engagement-timeline article small { color: var(--text-muted); font-size: 9px; }
 
 .engagement-modal-backdrop {
   position: fixed; inset: 0; z-index: 100;
