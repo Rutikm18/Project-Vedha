@@ -36,6 +36,8 @@ FACT_CERTAINTY = {
     "snmp_scan": "deterministic",
     "db_scan": "deterministic",
     "mcp_ai_scan": "deterministic",
+    "os_fingerprint": "deterministic",  # OS is host-stable within an engagement
+    "service_enum": "deterministic",    # role/service synthesis, host-stable
     "udp_scan": "uncertain",
     "passive_collect": "uncertain",
     "ssh_inventory": "deterministic",   # credentialed, authoritative, host-stable

@@ -7,19 +7,11 @@ import {
   ChevronDown, Clock, XCircle,
 } from "lucide-react";
 import { PortalShell } from "../../../components/portal/PortalShell";
-import { portalApi, type PortalScan, type PortalEngagement } from "../../../lib/portal-client";
+import { portalApi, type PortalScan, type PortalEngagement, type PortalUseCase } from "../../../lib/portal-client";
 import { DataState, SkeletonRows, EmptyState } from "../../../components/states/DataState";
 
-// All active scan types the customer may request (an operator approves each one).
-const SCAN_TYPES: Array<{ value: string; label: string }> = [
-  { value: "discovery", label: "Discovery (host/service map)" },
-  { value: "vuln_scan", label: "Vulnerability scan" },
-  { value: "exploit", label: "Exploit validation" },
-  { value: "ad_enum", label: "Active Directory enumeration" },
-  { value: "lateral", label: "Lateral movement" },
-  { value: "cloud_scan", label: "Cloud scan" },
-  { value: "detection", label: "Detection validation" },
-];
+// Scan use-cases are fetched from the operator capability catalog (GET
+// /portal/use-cases) so the portal only ever offers what the probe can run.
 
 // UI intensity → wire intensity (probe scan-hardness knob).
 const INTENSITIES: Array<{ value: string; label: string; hint: string }> = [
@@ -212,13 +204,21 @@ export default function PortalScans() {
       return d && d.some((s) => jobMeta(s.status, s.kind).active) ? 8000 : false;
     },
   });
+  const useCases = useQuery({
+    queryKey: ["portal", "use-cases"],
+    queryFn: () => portalApi<PortalUseCase[]>("/use-cases"),
+    staleTime: 5 * 60_000,
+  });
 
-  const [scanType, setScanType] = useState("vuln_scan");
+  const [useCaseId, setUseCaseId] = useState("");
   const [intensity, setIntensity] = useState("standard");
   const [note, setNote] = useState("");
   const [targets, setTargets] = useState<string[]>([]);
   const [targetInput, setTargetInput] = useState("");
   const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
+  // Default to the first catalog use-case until the customer picks one.
+  const ucId = useCaseId || useCases.data?.[0]?.use_case_id || "";
+  const selectedUc = useCases.data?.find((u) => u.use_case_id === ucId);
 
   function addTarget() {
     const raw = targetInput.trim();
@@ -236,7 +236,7 @@ export default function PortalScans() {
   const request = useMutation({
     mutationFn: () => portalApi("/scan-requests", {
       method: "POST",
-      body: { scan_type: scanType, intensity, targets, note: note || null },
+      body: { use_case_id: ucId, intensity, targets, note: note || null },
     }),
     onSuccess: () => {
       setMsg({ type: "ok", text: "Scan requested — pending review by your security team." });
@@ -247,7 +247,7 @@ export default function PortalScans() {
     onError: (e: Error) => setMsg({ type: "err", text: e.message }),
   });
 
-  const canSubmit = targets.length > 0 && invalidTargets.length === 0 && !request.isPending;
+  const canSubmit = !!ucId && targets.length > 0 && invalidTargets.length === 0 && !request.isPending;
 
   const all = scans.data ?? [];
   const active = all.filter((s) => jobMeta(s.status, s.kind).active);
@@ -274,9 +274,11 @@ export default function PortalScans() {
 
             <div style={{ display: "grid", gap: 12, gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))" }}>
               <div>
-                <label htmlFor="scan-type" className="eyebrow" style={{ display: "block", marginBottom: 6 }}>Scan type</label>
-                <select id="scan-type" value={scanType} onChange={(e) => setScanType(e.target.value)} className="input-base">
-                  {SCAN_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                <label htmlFor="scan-type" className="eyebrow" style={{ display: "block", marginBottom: 6 }}>Use case</label>
+                <select id="scan-type" value={ucId} onChange={(e) => setUseCaseId(e.target.value)}
+                  className="input-base" disabled={useCases.isLoading || !useCases.data?.length}>
+                  {useCases.isLoading && <option value="">Loading…</option>}
+                  {useCases.data?.map((u) => <option key={u.use_case_id} value={u.use_case_id}>{u.display_name}</option>)}
                 </select>
               </div>
               <div>
@@ -286,6 +288,15 @@ export default function PortalScans() {
                 </select>
               </div>
             </div>
+
+            {selectedUc?.description && (
+              <div style={{ marginTop: -4, fontSize: 11, color: "var(--text-muted)", lineHeight: 1.5 }}>
+                {selectedUc.description}
+                {selectedUc.expected_runtime_hint && (
+                  <span style={{ color: "var(--text-faint)" }}> · ~{selectedUc.expected_runtime_hint}</span>
+                )}
+              </div>
+            )}
 
             {/* Targets */}
             <div>

@@ -36,6 +36,8 @@ from scanner.udp_scanner import UDPScanner
 from scanner.passive_collector import PassiveCollector
 from scanner.ssh_collector import SSHCollector
 from scanner.windows_collector import WindowsCollector
+from scanner.os_fingerprint import OSFingerprintScanner
+from scanner.service_enum import ServiceEnumScanner
 
 from .asset import Asset
 from .cache import WorkflowCache
@@ -372,9 +374,40 @@ async def run_engagement(targets: list[str], scope: ScopeGuard, *, profile: str 
             _record(trace, "service_banner", target_count=1, results=results)
             _store_results(results, assets=assets, cache=cache, profile=profile)
 
+    # --- Gate 4b: OS fingerprint (host-level; TCP/TTL + banner signals) ---
+    for host in live_hosts:
+        asset = assets[host]
+        if not asset.open_ports_for_deep_scan():
+            continue
+        if cache.should_recheck(host, None, "os_fingerprint", force_recheck_after=force_recheck_after):
+            osfp = OSFingerprintScanner(scope, rate=rate, concurrency=concurrency, timeout=timeout)
+            results = await _scan_one(osfp, host)
+            _record(trace, "os_fingerprint", target_count=1, results=results)
+            _store_results(results, assets=assets, cache=cache, profile=profile)
+        else:
+            reused = [cache.get(host, None, "os_fingerprint").result]
+            asset.merge_result(reused[0])
+            _record_reused(trace, "os_fingerprint", reused)
+
     if not includes_stage(stage_ceiling, STAGE_DEEP_SCAN):
         _finalize_trace(trace)
         return assets
+
+    # --- Gate 5a: deep service / role / OS enumeration (host-level) -------
+    for host in live_hosts:
+        asset = assets[host]
+        se_ports = sorted(asset.open_ports_for_deep_scan())
+        if not se_ports:
+            continue
+        if cache.should_recheck(host, None, "service_enum", force_recheck_after=force_recheck_after):
+            se = ServiceEnumScanner(scope, ports=se_ports, rate=rate, concurrency=concurrency, timeout=timeout)
+            results = await _scan_one(se, host)
+            _record(trace, "service_enum", target_count=1, results=results)
+            _store_results(results, assets=assets, cache=cache, profile=profile)
+        else:
+            reused = [cache.get(host, None, "service_enum").result]
+            asset.merge_result(reused[0])
+            _record_reused(trace, "service_enum", reused)
 
     # --- Gate 5: dynamic routing + deep-scan branches ---------------------
     branch_hosts = targets if direct_datagram else live_hosts

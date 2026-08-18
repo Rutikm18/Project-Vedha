@@ -144,6 +144,9 @@ def build_scan_job(scan_request: ScanRequest, engagement: Engagement) -> ScanJob
         result["targets"] = list(scan_request.targets)
     if getattr(scan_request, "intensity", None):
         result["intensity"] = scan_request.intensity
+    if getattr(scan_request, "use_case_id", None):
+        # The exact capability use-case the customer chose — the probe runs this.
+        result["use_case_id"] = scan_request.use_case_id
     return ScanJob(
         engagement_id=engagement.id,
         job_type=job_type,

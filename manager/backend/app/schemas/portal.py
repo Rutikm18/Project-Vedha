@@ -104,6 +104,9 @@ class ScanRequestCreate(BaseModel):
     # Validated against ScanJobType in the route so the vocabulary can't drift
     # from the enum; kept as a plain str here to avoid a second source of truth.
     scan_type: str = "vuln_scan"
+    # Preferred: a capability use-case id from the portal catalog (GET
+    # /portal/use-cases). When set, it drives scan_type + the probe's use case.
+    use_case_id: str | None = None
     # Specific hosts / sub-ranges to scan. Each MUST be inside the engagement
     # scope (re-validated server-side). None/empty → the whole engagement scope.
     targets: list[str] | None = None
@@ -114,6 +117,7 @@ class ScanRequestCreate(BaseModel):
 class ClientScanRequestOut(BaseModel):
     id: uuid.UUID
     scan_type: str
+    use_case_id: str | None = None
     status: str
     targets: list[str] | None = None
     intensity: str | None = None

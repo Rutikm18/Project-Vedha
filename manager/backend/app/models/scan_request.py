@@ -41,6 +41,10 @@ class ScanRequest(Base, TimestampMixin):
     requested_by: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
     # A ScanJobType value (e.g. "discovery", "vuln_scan"); plain string like status.
     scan_type: Mapped[str] = mapped_column(String(32), nullable=False, server_default="vuln_scan")
+    # The capability use-case the customer picked (operator _USE_CASES catalog id,
+    # e.g. "uc_device_inventory"). NULL for legacy scan_type-only requests. Threaded
+    # into the approved ScanJob so the probe runs exactly this use case.
+    use_case_id: Mapped[str | None] = mapped_column(String(40), nullable=True)
     # Specific in-scope targets the customer asked to scan (IP/CIDR/range strings),
     # each proven subset of the engagement scope at request time. NULL = whole scope.
     targets: Mapped[list[str] | None] = mapped_column(JSONB, nullable=True)

@@ -88,6 +88,14 @@ export interface PortalScanRequest {
   note: string | null;
   requested_at: string | null;
 }
+export interface PortalUseCase {
+  use_case_id: string;
+  display_name: string;
+  description: string;
+  profile: string | null;
+  intensity?: string | null;
+  expected_runtime_hint?: string | null;
+}
 export interface PortalSummary {
   posture: PortalPosture;
   open_findings: number;

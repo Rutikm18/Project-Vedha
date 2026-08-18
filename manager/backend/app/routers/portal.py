@@ -55,6 +55,24 @@ _OPEN_STATES = (FindingStatus.open, FindingStatus.confirmed)
 _MAX_PENDING_REQUESTS = 5
 _VALID_SCAN_TYPES = {t.value for t in ScanJobType}
 
+# The capability use-cases a customer may request — a curated subset of the
+# operator use-case catalog (agents._USE_CASES), so the portal never offers a
+# use case the probe cannot perform. Imported lazily to avoid an import cycle.
+_PORTAL_USE_CASE_IDS = (
+    "uc_discovery_only", "uc_device_inventory", "uc_full_assessment",
+    "uc_external_web_triage", "uc_web_app_triage", "uc_db_exposure",
+    "uc_windows_estate", "uc_snmp_exposure", "uc_udp_service_exposure",
+    "uc_iot_device_survey", "uc_ai_endpoint_sweep", "uc_full_port_audit",
+    "uc_ot_passive",
+)
+
+
+def _portal_use_cases() -> dict:
+    """The operator use-case catalog (single source of truth), curated to what a
+    customer may request. Lazy import breaks the router import cycle."""
+    from app.routers.agents import _USE_CASES
+    return {uid: _USE_CASES[uid] for uid in _PORTAL_USE_CASE_IDS if uid in _USE_CASES}
+
 
 def _enum_val(v) -> str:
     return v.value if hasattr(v, "value") else str(v)
@@ -276,17 +294,44 @@ async def portal_scans(user: ClientUser, db: DB):
     return out
 
 
+@router.get("/use-cases",
+            summary="Capability use-cases the customer may request (mirrors the operator catalog)")
+async def portal_use_cases(user: ClientUser):
+    assert_client(user)
+    return [
+        {"use_case_id": uid,
+         "display_name": uc.get("display_name", uid),
+         "description": uc.get("description", ""),
+         "profile": uc.get("profile"),
+         "intensity": uc.get("intensity"),
+         "expected_runtime_hint": uc.get("expected_runtime_hint")}
+        for uid, uc in _portal_use_cases().items()
+    ]
+
+
 @router.post("/scan-requests", response_model=ClientScanRequestOut,
              status_code=status.HTTP_201_CREATED,
              summary="Request a scan — an operator approves before it runs")
 async def create_scan_request(body: ScanRequestCreate, user: ClientUser, db: DB):
     eng_id = assert_client(user)
 
-    # Validate the requested scan type against the enum so the customer-facing
-    # vocabulary can never drift from what the platform (and probe) accept.
-    if body.scan_type not in _VALID_SCAN_TYPES:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
-                            f"Unknown scan_type '{body.scan_type}'")
+    # Resolve against the capability catalog. Preferred: the customer picks a
+    # use_case_id (GET /use-cases) → derive its scan_type and store the id so the
+    # approved job runs exactly that use case. Legacy: a bare scan_type validated
+    # against the ScanJobType enum. Either way the vocabulary can't drift.
+    if body.use_case_id:
+        uc = _portal_use_cases().get(body.use_case_id)
+        if uc is None:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
+                                f"Unknown use_case_id '{body.use_case_id}'")
+        scan_type = uc["scan_type"]
+        use_case_id = body.use_case_id
+    else:
+        if body.scan_type not in _VALID_SCAN_TYPES:
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
+                                f"Unknown scan_type '{body.scan_type}'")
+        scan_type = body.scan_type
+        use_case_id = None
 
     eng = (await db.execute(
         select(Engagement).where(Engagement.id == eng_id)
@@ -322,7 +367,7 @@ async def create_scan_request(body: ScanRequestCreate, user: ClientUser, db: DB)
 
     sr = ScanRequest(
         tenant_id=user.tenant_id, engagement_id=eng_id, requested_by=user.user_id,
-        scan_type=body.scan_type, status=SR_PENDING, note=body.note,
+        scan_type=scan_type, use_case_id=use_case_id, status=SR_PENDING, note=body.note,
         targets=normalized_targets, intensity=body.intensity,
     )
     db.add(sr)
@@ -333,9 +378,9 @@ async def create_scan_request(body: ScanRequestCreate, user: ClientUser, db: DB)
     # was rejected before reaching here.
     record_audit(db, actor_id=user.user_id, action="scan_request.created",
                  engagement_id=eng_id, resource_type="scan_request", resource_id=sr.id,
-                 detail={"scan_type": body.scan_type, "targets": normalized_targets,
-                         "intensity": body.intensity})
+                 detail={"scan_type": scan_type, "use_case_id": use_case_id,
+                         "targets": normalized_targets, "intensity": body.intensity})
     await db.flush()
-    return ClientScanRequestOut(id=sr.id, scan_type=sr.scan_type, status=sr.status,
-                                targets=sr.targets, intensity=sr.intensity,
+    return ClientScanRequestOut(id=sr.id, scan_type=sr.scan_type, use_case_id=sr.use_case_id,
+                                status=sr.status, targets=sr.targets, intensity=sr.intensity,
                                 note=sr.note, requested_at=sr.requested_at)
