@@ -10,12 +10,13 @@ The raw/ICMP socket I/O can't run portably in CI, so these cover the pure logic:
 
 from __future__ import annotations
 
+import asyncio
 import struct
 
 import pytest
 
 from scanner import os_fingerprint as ofp
-from scanner.scanner_base import inet_checksum
+from scanner.scanner_base import inet_checksum, ScopeGuard
 
 
 # ── shared checksum ───────────────────────────────────────────────────────────
@@ -87,6 +88,80 @@ class TestIcmpParse:
         assert parsed is not None
         assert parsed["type"] == 0
         assert parsed["ttl"] is None
+
+
+# ── ICMP timestamp probe (type 13/14): echo-filter bypass + clock harvest ─────
+
+class TestIcmpTimestamps:
+    def _ts_reply(self, transmit, *, ttl=57, with_ip=True):
+        body = struct.pack("!BBHHHIII", 14, 0, 0, 0x1234, 1, 0, 0, transmit)
+        chk = inet_checksum(body)
+        icmp = struct.pack("!BBHHHIII", 14, 0, chk, 0x1234, 1, 0, 0, transmit)
+        if not with_ip:
+            return icmp
+        from scanner.syn_scanner import build_ip_header
+        ip = build_ip_header("10.0.0.5", "10.0.0.1", payload_len=len(icmp),
+                             ttl=ttl, proto=1)
+        return ip + icmp
+
+    def test_parse_extracts_ttl_and_transmit(self):
+        parsed = ofp.parse_icmp_timestamps(self._ts_reply(3_723_004, ttl=57))
+        assert parsed["type"] == 14
+        assert parsed["ttl"] == 57
+        assert parsed["transmit"] == 3_723_004
+
+    def test_parse_datagram_delivery_has_no_ttl(self):
+        parsed = ofp.parse_icmp_timestamps(self._ts_reply(1234, with_ip=False))
+        assert parsed is not None and parsed["ttl"] is None
+        assert parsed["transmit"] == 1234
+
+    def test_parse_rejects_short_body(self):
+        # An 8-byte echo body is too short to be a 20-byte timestamp message.
+        assert ofp.parse_icmp_timestamps(struct.pack("!BBHHH", 14, 0, 0, 1, 1)) is None
+
+
+class TestRemoteClock:
+    def test_standard_value_decodes_to_wall_clock(self):
+        # 01:02:03.004 since UTC midnight.
+        ms = ((1 * 3600 + 2 * 60 + 3) * 1000) + 4
+        clock = ofp.remote_clock(ms)
+        assert clock["standard"] is True
+        assert clock["utc_time"] == "01:02:03.004"
+        assert clock["ms_since_utc_midnight"] == ms
+
+    def test_high_bit_marks_nonstandard_clock(self):
+        clock = ofp.remote_clock(0x80000000 | 5)
+        assert clock["standard"] is False
+        assert "utc_time" not in clock
+
+
+class TestTimestampFallback:
+    def _scanner(self):
+        return ofp.OSFingerprintScanner(
+            ScopeGuard.from_list(["10.0.0.0/8"]),
+            rate=1e9, concurrency=4, timeout=0.1)
+
+    def test_timestamp_reply_when_echo_is_filtered(self):
+        sc = self._scanner()
+        sc._icmp_echo_ttl = lambda target: "down"          # echo filtered
+        sc._icmp_timestamp = lambda target: {"ttl": 57, "transmit": 3_723_004}
+        res = asyncio.run(sc.scan_target("10.0.0.9"))
+        assert len(res) == 1
+        r = res[0]
+        assert r.status == "open" and r.data["alive"] is True
+        assert r.data["via"] == "icmp_timestamp"
+        assert r.data["icmp_echo_reply"] is False
+        assert r.data["icmp_timestamp_reply"] is True
+        assert r.data["remote_clock"]["utc_time"] == "01:02:03.004"
+        assert r.data["os_guess"] == "Linux/Unix/macOS"    # ttl 57 -> initial 64
+
+    def test_both_filtered_reports_no_reply(self):
+        sc = self._scanner()
+        sc._icmp_echo_ttl = lambda target: "down"
+        sc._icmp_timestamp = lambda target: "down"
+        res = asyncio.run(sc.scan_target("10.0.0.9"))
+        assert res[0].status == "filtered"
+        assert res[0].data["icmp_timestamp_reply"] is False
 
 
 # ── reply-source validation (wrong-host misattribution guard) ─────────────────
