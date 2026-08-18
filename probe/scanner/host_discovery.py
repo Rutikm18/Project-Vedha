@@ -239,14 +239,17 @@ def read_neighbor(ip: str) -> Neighbor | None:
     just yields None (graceful downgrade to TCP-only).
     """
     is_v6 = ":" in ip
-    bsd = f"ndp -n {ip}" if is_v6 else f"arp -n {ip}"
-    for cmd in (f"ip neigh show {ip}", bsd):
-        exe = cmd.split()[0]
+    # CWE-78/88: keep argv as a list so the target is a single discrete argument —
+    # a metacharacter- or space-laden value can never split into extra args or reach
+    # a shell, and the neighbour tool treats it strictly as an address, not a flag.
+    bsd = ["ndp", "-n", ip] if is_v6 else ["arp", "-n", ip]
+    for cmd in (["ip", "neigh", "show", ip], bsd):
+        exe = cmd[0]
         if not shutil.which(exe):
             continue
         try:
             out = subprocess.run(
-                cmd.split(), capture_output=True, text=True, timeout=3,
+                cmd, capture_output=True, text=True, timeout=3,
             ).stdout
         except (OSError, subprocess.SubprocessError):
             continue
