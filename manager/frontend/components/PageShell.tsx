@@ -128,20 +128,20 @@ export function PageShell({
               <Menu size={17} />
             </button>
 
-            <div style={{ display: "flex", alignItems: "center", gap: 5, minWidth: 0 }}>
+            <div style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
               <span style={{
                 fontFamily: "var(--font-display)",
                 fontSize: 14,
-                fontWeight: 600,
+                fontWeight: 650,
                 color: "var(--text-primary)",
                 flexShrink: 0,
-                letterSpacing: 0,
+                letterSpacing: "-0.01em",
               }}>
                 {title}
               </span>
               {subtitle && (
                 <>
-                  <span style={{ color: "var(--text-faint)", flexShrink: 0, fontSize: 14, fontWeight: 300 }}>/</span>
+                  <span style={{ color: "var(--border-strong)", flexShrink: 0, fontSize: 13, fontWeight: 400 }}>/</span>
                   <span style={{
                     fontSize: 13,
                     color: "var(--text-secondary)",
@@ -180,41 +180,52 @@ export function PageShell({
             )}
 
             {/* Status items */}
-            {statusItems?.map((item, i) => (
+            {statusItems?.map((item, i) => {
+              const tone = item.color ?? "var(--text-primary)";
+              return (
               <React.Fragment key={i}>
-                <div style={{ width: 0.5, height: 14, background: "var(--border-subtle)", flexShrink: 0 }} />
+                <div style={{ width: 0.5, height: 16, background: "var(--border-subtle)", flexShrink: 0 }} />
                 <div style={{
                   display: "flex",
                   alignItems: "center",
-                  gap: 5,
-                  minHeight: 24,
-                  padding: "2px 7px",
-                  background: "var(--bg-surface)",
-                  border: "0.5px solid var(--border-subtle)",
-                  borderRadius: 7,
+                  gap: 6,
+                  height: 28,
+                  padding: "0 10px",
+                  background: `color-mix(in srgb, ${tone} 8%, transparent)`,
+                  border: `0.5px solid color-mix(in srgb, ${tone} 28%, transparent)`,
+                  borderRadius: 8,
                 }}>
                   <span style={{
-                    fontFamily: "var(--font-mono)",
+                    width: 6,
+                    height: 6,
+                    borderRadius: "50%",
+                    background: tone,
+                    flexShrink: 0,
+                    boxShadow: `0 0 5px color-mix(in srgb, ${tone} 55%, transparent)`,
+                  }} />
+                  <span style={{
                     fontSize: 9,
                     color: "var(--text-muted)",
-                    letterSpacing: 0.6,
-                    fontWeight: 600,
+                    letterSpacing: "0.09em",
+                    fontWeight: 700,
+                    textTransform: "uppercase" as const,
                   }}>
                     {item.label}
                   </span>
                   <span style={{
-                    fontFamily: "var(--font-mono)",
-                    fontSize: 10,
-                    fontWeight: 600,
-                    color: item.color ?? "var(--text-primary)",
+                    fontSize: 11.5,
+                    fontWeight: 650,
+                    color: tone,
+                    letterSpacing: "0.02em",
                   }}>
                     {item.value}
                   </span>
                 </div>
               </React.Fragment>
-            ))}
+              );
+            })}
 
-            <div style={{ width: 0.5, height: 14, background: "var(--border-subtle)", flexShrink: 0 }} />
+            <div style={{ width: 0.5, height: 16, background: "var(--border-subtle)", flexShrink: 0 }} />
 
             {/* Theme toggle — rotates icon on hover */}
             <button
@@ -224,9 +235,9 @@ export function PageShell({
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                width: 28,
-                height: 28,
-                borderRadius: 7,
+                width: 30,
+                height: 30,
+                borderRadius: 8,
                 flexShrink: 0,
                 border: "0.5px solid var(--border-subtle)",
                 background: "transparent",
@@ -251,18 +262,18 @@ export function PageShell({
                 display: "flex",
                 transition: "transform 0.3s var(--ease-spring)",
               }}>
-                {theme === "dark" ? <Sun size={12} /> : <Moon size={12} />}
+                {theme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
               </span>
             </button>
 
             {/* User badge + logout */}
             {userEmail && (
               <>
-                <div style={{ width: 0.5, height: 14, background: "var(--border-subtle)", flexShrink: 0 }} />
-                <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-                  <User size={10} color="var(--text-muted)" />
+                <div style={{ width: 0.5, height: 16, background: "var(--border-subtle)", flexShrink: 0 }} />
+                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                  <User size={14} color="var(--text-muted)" />
                   <span style={{
-                    fontSize: 10,
+                    fontSize: 11,
                     color: "var(--text-secondary)",
                     maxWidth: 140,
                     overflow: "hidden",
@@ -279,9 +290,9 @@ export function PageShell({
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    width: 26,
-                    height: 26,
-                    borderRadius: 7,
+                    width: 30,
+                    height: 30,
+                    borderRadius: 8,
                     border: "0.5px solid var(--border-subtle)",
                     background: "transparent",
                     cursor: "pointer",
@@ -298,7 +309,7 @@ export function PageShell({
                     e.currentTarget.style.color = "var(--text-muted)";
                   }}
                 >
-                  <LogOut size={11} />
+                  <LogOut size={14} />
                 </button>
               </>
             )}
