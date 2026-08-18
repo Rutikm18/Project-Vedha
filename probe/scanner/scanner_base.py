@@ -85,6 +85,30 @@ def jittered_delay(base: float, jitter: float = 0.3) -> float:
     return max(0.0, base + random.uniform(-spread, spread))
 
 
+def assess_tarpit(open_count: int, attempted_count: int, *,
+                  abs_floor: int = 50, ratio: float = 0.5) -> dict:
+    """Heuristic: is this host a tarpit / honeypot / ACK-everything middlebox?
+
+    Such hosts answer on an implausible fraction of ports, so every "open" they
+    report is a phantom service that would flood a report with false positives.
+    We flag only when BOTH conditions hold: an absolute floor of open ports AND a
+    high open-to-scanned ratio. The floor stops a tiny scan (2-of-2 open) from
+    tripping; the ratio stops a genuinely busy host (a few dozen real services out
+    of tens of thousands of ports) from tripping. Returns
+    {likely_tarpit, open_ratio, open_count, attempted, reason}."""
+    attempted = max(0, attempted_count)
+    opens = max(0, open_count)
+    open_ratio = round(opens / attempted, 4) if attempted else 0.0
+    likely = opens >= abs_floor and open_ratio >= ratio
+    if likely:
+        reason = (f"{opens}/{attempted} ports answered open ({open_ratio:.0%}) — "
+                  f"implausible for a real host; likely tarpit/honeypot/middlebox")
+    else:
+        reason = "open-port distribution is consistent with a real host"
+    return {"likely_tarpit": likely, "open_ratio": open_ratio,
+            "open_count": opens, "attempted": attempted, "reason": reason}
+
+
 # --------------------------------------------------------------------------- #
 # Result schema — identical across every scanner.
 # --------------------------------------------------------------------------- #

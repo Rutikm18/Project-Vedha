@@ -76,6 +76,7 @@ from .scanner_base import (
     BaseScanner, ScanResult, ScopeGuard, ResultWriter, expand_targets,
     parse_ports, setup_logging, base_argparser,
     main_entrypoint, classify_os_error, STATE_CONFIDENCE, jittered_delay,
+    assess_tarpit,
 )
 from .adaptive_timeout import AdaptiveTimeout
 
@@ -246,6 +247,9 @@ class ScanMetrics:
             "duration_s": self.duration_s,
             "complete": self.complete,
             "health": "degraded" if self.degraded else "ok",
+            # Flag hosts that answer on an implausible share of ports: their "open"
+            # results are phantom (tarpit/honeypot/middlebox), not real services.
+            "tarpit": assess_tarpit(self.open, self.ports_attempted),
         }
 
 
@@ -453,12 +457,15 @@ class PortScanner(BaseScanner):
             raise
         metrics.duration_s = round(time.monotonic() - t0, 3)
         if self.emit_summary:
+            summ = metrics.summary()
+            ev = (f"{metrics.ports_attempted}/{metrics.ports_requested} "
+                  f"ports scanned, {metrics.open} open, "
+                  f"health={'degraded' if metrics.degraded else 'ok'}")
+            if summ["tarpit"]["likely_tarpit"]:
+                ev += " — LIKELY TARPIT/HONEYPOT (open ports unreliable)"
             emitted.append(ScanResult(
                 self.name, target, proto="tcp", status="scan_summary",
-                data=metrics.summary(),
-                evidence=(f"{metrics.ports_attempted}/{metrics.ports_requested} "
-                          f"ports scanned, {metrics.open} open, "
-                          f"health={'degraded' if metrics.degraded else 'ok'}")))
+                data=summ, evidence=ev))
         return emitted
 
 
