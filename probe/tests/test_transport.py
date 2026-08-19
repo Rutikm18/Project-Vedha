@@ -10,7 +10,7 @@ from unittest.mock import MagicMock, patch
 import httpx
 import pytest
 
-from agent.transport import Transport, TransportError
+from agent.transport import DeviceAlreadyEnrolledError, Transport, TransportError
 
 
 @pytest.fixture
@@ -226,6 +226,29 @@ class TestDeviceEnrollment:
         assert call[0][0] == "/probe-enrollment/requests"
         assert call[1]["json"]["enroll_token"] == "vet_preauthorized"
         assert result["state"] == "approved"
+
+    def test_create_enrollment_request_409_raises_already_enrolled(self, transport):
+        response = MagicMock(status_code=409)
+        response.json.return_value = {"detail": "This device key is already enrolled"}
+        transport._client.post.return_value = response
+
+        with pytest.raises(DeviceAlreadyEnrolledError) as excinfo:
+            transport.create_enrollment_request({"signing_public_key": "k"})
+
+        # Carries the manager's detail so the caller can show an accurate cause,
+        # and is a TransportError subtype (permanent, not a retryable outage).
+        assert "already enrolled" in str(excinfo.value)
+        assert isinstance(excinfo.value, TransportError)
+        response.raise_for_status.assert_not_called()
+
+    def test_create_enrollment_request_409_without_detail_has_default_message(self, transport):
+        response = MagicMock(status_code=409)
+        response.json.side_effect = ValueError("no body")
+        transport._client.post.return_value = response
+
+        with pytest.raises(DeviceAlreadyEnrolledError) as excinfo:
+            transport.create_enrollment_request({"signing_public_key": "k"})
+        assert "already enrolled" in str(excinfo.value)
 
     def test_legacy_token_is_not_forced_through_device_refresh(self, transport):
         transport.agent_id = "legacy-agent"

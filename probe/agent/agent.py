@@ -38,7 +38,7 @@ import time
 from pathlib import Path
 from urllib.parse import urlparse
 
-from agent.transport import Transport, TransportError
+from agent.transport import DeviceAlreadyEnrolledError, Transport, TransportError
 
 VERSION = "2.0.0"
 LOG = logging.getLogger("agent")
@@ -1074,7 +1074,33 @@ def _enroll_device(
             # user_code step. A bad/expired/used token degrades to the manual
             # path (manager returns "awaiting_approval" with a user_code).
             enroll_payload["enroll_token"] = enroll_token
-        response = transport.create_enrollment_request(enroll_payload)
+        try:
+            response = transport.create_enrollment_request(enroll_payload)
+        except DeviceAlreadyEnrolledError as exc:
+            # This device's signing key is already an agent on the manager, so a
+            # fresh enrollment can never be created. The only autonomous recovery
+            # is to re-mint a short-lived access token from the stored device
+            # refresh secret. If that secret is gone (never activated, or state
+            # was wiped), no amount of retrying helps — the operator must remove
+            # the stale probe in Fleet, or the local identity must be cleared.
+            if transport.refresh_device_access(signing_private_key):
+                say("Device already enrolled — refreshed its access token instead of re-pairing.")
+                return {
+                    "agent_id": transport.agent_id,
+                    "access_token": transport.agent_token,
+                }
+            say("")
+            say("═" * 58)
+            say("  ALREADY ENROLLED — cannot re-pair this device")
+            say("═" * 58)
+            say(f"  Why : {exc}")
+            say("  This probe's device key is already registered on the Manager,")
+            say("  but this install has no working token to reuse.")
+            say("  Fix : remove the old probe in the dashboard (Fleet → your probe →")
+            say("        Remove), then re-run the installer; or clear this probe's")
+            say("        saved identity to enroll as a brand-new device.")
+            say("═" * 58)
+            raise SystemExit(4) from exc
         request_id = response["request_id"]
         device_secret = response["device_secret"]
         poll_interval = int(response.get("poll_interval_seconds") or 5)
