@@ -86,8 +86,7 @@ async def health_auth():
     import os
     import uuid
 
-    from passlib.context import CryptContext
-
+    from app.auth.password import hash_password, verify_password
     from app.config import get_settings
     from app.models.user import User
     from sqlalchemy import select
@@ -104,11 +103,10 @@ async def health_auth():
     else:
         checks["jwt_secret"] = "ok"
 
-    # bcrypt round-trip
+    # bcrypt round-trip (offloaded to a thread — never blocks the event loop)
     try:
-        pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
         probe = f"health-probe-{uuid.uuid4()}"
-        assert pwd.verify(probe, pwd.hash(probe))
+        assert await verify_password(probe, await hash_password(probe))
         checks["bcrypt"] = "ok"
     except Exception as exc:
         checks["bcrypt"] = f"error: {type(exc).__name__}"

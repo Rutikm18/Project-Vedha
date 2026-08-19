@@ -1,3 +1,4 @@
+import asyncio
 import time
 import uuid
 from datetime import datetime, timezone
@@ -5,7 +6,6 @@ from typing import Annotated
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request, status
-from passlib.context import CryptContext
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -28,6 +28,7 @@ from app.auth.jwt import (
     MANAGER_AUDIENCE,
     PORTAL_AUDIENCE,
 )
+from app.auth.password import pwd_context as _pwd
 from app.auth.pat import build_personal_access_token
 from app.auth.rbac import require_role
 from app.database import get_db
@@ -47,7 +48,6 @@ from app.schemas.auth import (
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 logger = structlog.get_logger()
-_pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 # Generic client message — never changes regardless of internal reason.
 _GENERIC_401 = "Invalid credentials"
@@ -71,12 +71,12 @@ async def _authenticate(email: str, password: str, db: AsyncSession) -> User:
 
     if user is None:
         # Constant-time dummy verify to prevent timing-based user enumeration.
-        _pwd.dummy_verify()
+        await asyncio.to_thread(_pwd.dummy_verify)
         raise UserNotFoundError(f"no user with email={email!r}")
 
     # ── Account state ─────────────────────────────────────────────────────
     if not user.is_active:
-        _pwd.dummy_verify()   # maintain constant-time behaviour
+        await asyncio.to_thread(_pwd.dummy_verify)   # maintain constant-time behaviour
         raise DisabledUserError(f"user {user.id} is_active=False")
 
     # ── Tenant state ──────────────────────────────────────────────────────
@@ -88,7 +88,7 @@ async def _authenticate(email: str, password: str, db: AsyncSession) -> User:
         raise DatabaseFailureError(f"DB error during tenant lookup: {exc}") from exc
 
     if tenant and not tenant.is_active:
-        _pwd.dummy_verify()
+        await asyncio.to_thread(_pwd.dummy_verify)
         raise DisabledTenantError(
             f"tenant {user.tenant_id} is_active=False (user={user.id})"
         )
@@ -96,14 +96,14 @@ async def _authenticate(email: str, password: str, db: AsyncSession) -> User:
     # ── Password expiry ───────────────────────────────────────────────────
     if user.password_expires_at is not None:
         if user.password_expires_at < datetime.now(timezone.utc):
-            _pwd.dummy_verify()
+            await asyncio.to_thread(_pwd.dummy_verify)
             raise ExpiredPasswordError(
                 f"password expired at {user.password_expires_at.isoformat()} for user {user.id}"
             )
 
     # ── bcrypt verify ─────────────────────────────────────────────────────
     try:
-        match = _pwd.verify(password, user.hashed_password)
+        match = await asyncio.to_thread(_pwd.verify, password, user.hashed_password)
     except (ValueError, TypeError, RuntimeError) as exc:
         # passlib 1.7.4 has no single base error: verify() raises ValueError
         # (malformed/unknown hash, oversized password), TypeError (bad password

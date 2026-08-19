@@ -297,11 +297,22 @@ class AgentDecisionEngine:
         assets = (await self._db.execute(
             select(Asset).where(Asset.engagement_id == eid).limit(max(1, min(limit, 200)))
         )).scalars().all()
+        # Fetch every asset's services in ONE batched query keyed by asset_id, then
+        # group in Python (still capping at 30 per asset). This replaces the previous
+        # per-asset query — an N+1 that issued 1 + len(assets) round-trips.
+        svcs_by_asset: dict[uuid.UUID, list] = {}
+        asset_ids = [a.id for a in assets]
+        if asset_ids:
+            svc_rows = (await self._db.execute(
+                select(Service).where(Service.asset_id.in_(asset_ids))
+            )).scalars().all()
+            for s in svc_rows:
+                bucket = svcs_by_asset.setdefault(s.asset_id, [])
+                if len(bucket) < 30:
+                    bucket.append(s)
         out = []
         for a in assets:
-            svcs = (await self._db.execute(
-                select(Service).where(Service.asset_id == a.id).limit(30)
-            )).scalars().all()
+            svcs = svcs_by_asset.get(a.id, [])
             out.append({
                 "id": str(a.id),
                 "ip": getattr(a, "ip_address", None),

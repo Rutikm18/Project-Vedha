@@ -1,4 +1,4 @@
-# Node Description Batch 203 of 209
+# Node Description Batch 203 of 227
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,51 +19,53 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-Write every description in English (en). Do not switch languages.
+LANGUAGE: each entry has a `lang=` marker giving the language of its source.
+Write that entry's description in EXACTLY that language. Do not translate to
+a single common language — match each node's source language individually.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "versions_0013_agent_public_key_rationale_1": "Add agents.public_key (Phase-4 X25519 identity for scope encryption).  The probe" | kind=entity | source=manager/backend/alembic/versions/0013_agent_public_key.py:L1 | neighbors=[0013_agent_public_key.py]
-- "versions_0013_agent_public_key_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0013_agent_public_key.py:L22 | neighbors=[0013_agent_public_key.py]
-- "versions_0015_finding_risk_score_scale_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0015_finding_risk_score_scale.py:L27 | neighbors=[0015_finding_risk_score_scale.py]
-- "versions_0015_finding_risk_score_scale_rationale_1": "Allow the documented 0-1000 finding risk score range.  Revision ID: 0015 Revises" | kind=entity | source=manager/backend/alembic/versions/0015_finding_risk_score_scale.py:L1 | neighbors=[0015_finding_risk_score_scale.py]
-- "versions_0015_finding_risk_score_scale_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0015_finding_risk_score_scale.py:L17 | neighbors=[0015_finding_risk_score_scale.py]
-- "versions_0016_user_tenant_is_active_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0016_user_tenant_is_active.py:L53 | neighbors=[0016_user_tenant_is_active.py]
-- "versions_0016_user_tenant_is_active_rationale_1": "Add is_active to users and tenants; add password_expires_at to users.  All exist" | kind=entity | source=manager/backend/alembic/versions/0016_user_tenant_is_active.py:L1 | neighbors=[0016_user_tenant_is_active.py]
-- "versions_0016_user_tenant_is_active_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0016_user_tenant_is_active.py:L21 | neighbors=[0016_user_tenant_is_active.py]
-- "versions_0017_scan_job_attempts_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0017_scan_job_attempts.py:L105 | neighbors=[0017_scan_job_attempts.py]
-- "versions_0017_scan_job_attempts_rationale_1": "Add fenced execution attempts for agent-dispatched scan jobs.  Revision ID: 0017" | kind=entity | source=manager/backend/alembic/versions/0017_scan_job_attempts.py:L1 | neighbors=[0017_scan_job_attempts.py]
-- "versions_0017_scan_job_attempts_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0017_scan_job_attempts.py:L18 | neighbors=[0017_scan_job_attempts.py]
-- "versions_0018_probe_enrollment_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0018_probe_enrollment.py:L129 | neighbors=[0018_probe_enrollment.py]
-- "versions_0018_probe_enrollment_rationale_1": "Add Manager-approved device-key probe enrollment and Site policy.  Revision ID:" | kind=entity | source=manager/backend/alembic/versions/0018_probe_enrollment.py:L1 | neighbors=[0018_probe_enrollment.py]
-- "versions_0018_probe_enrollment_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0018_probe_enrollment.py:L18 | neighbors=[0018_probe_enrollment.py]
-- "versions_0020_finding_resolution_lifecycle_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0020_finding_resolution_lifecycle.py:L31 | neighbors=[0020_finding_resolution_lifecycle.py]
-- "versions_0020_finding_resolution_lifecycle_rationale_1": "Finding resolution lifecycle: coverage-gated auto-resolution columns.  Revision" | kind=entity | source=manager/backend/alembic/versions/0020_finding_resolution_lifecycle.py:L1 | neighbors=[0020_finding_resolution_lifecycle.py]
-- "versions_0020_finding_resolution_lifecycle_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0020_finding_resolution_lifecycle.py:L18 | neighbors=[0020_finding_resolution_lifecycle.py]
-- "versions_0021_finding_verification_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0021_finding_verification.py:L27 | neighbors=[0021_finding_verification.py]
-- "versions_0021_finding_verification_rationale_1": "Finding verification verdict columns (P2 passive verification).  Revision ID: 00" | kind=entity | source=manager/backend/alembic/versions/0021_finding_verification.py:L1 | neighbors=[0021_finding_verification.py]
-- "versions_0021_finding_verification_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0021_finding_verification.py:L17 | neighbors=[0021_finding_verification.py]
-- "versions_0022_validation_requests_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0022_validation_requests.py:L43 | neighbors=[0022_validation_requests.py]
-- "versions_0022_validation_requests_rationale_1": "Approval-gated safe active-validation requests (P3).  Revision ID: 0022 Revises:" | kind=entity | source=manager/backend/alembic/versions/0022_validation_requests.py:L1 | neighbors=[0022_validation_requests.py]
-- "versions_0022_validation_requests_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0022_validation_requests.py:L18 | neighbors=[0022_validation_requests.py]
-- "versions_0023_customer_portal_foundation_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0023_customer_portal_foundation.py:L64 | neighbors=[0023_customer_portal_foundation.py]
-- "versions_0023_customer_portal_foundation_rationale_1": "Customer portal foundation (Part 2, Phase 0): client role, engagement↔agent assi" | kind=entity | source=manager/backend/alembic/versions/0023_customer_portal_foundation.py:L1 | neighbors=[0023_customer_portal_foundation.py]
-- "versions_0023_customer_portal_foundation_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0023_customer_portal_foundation.py:L19 | neighbors=[0023_customer_portal_foundation.py]
-- "versions_0024_device_role_inventory_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0024_device_role_inventory.py:L33 | neighbors=[0024_device_role_inventory.py]
-- "versions_0024_device_role_inventory_rationale_1": "Device-role inventory: persist the probe device_classifier's role on assets.  Ad" | kind=entity | source=manager/backend/alembic/versions/0024_device_role_inventory.py:L1 | neighbors=[0024_device_role_inventory.py]
-- "versions_0024_device_role_inventory_rationale_37": "# NOTE: Postgres cannot DROP a single enum value; the added 'printer' /" | kind=entity | source=manager/backend/alembic/versions/0024_device_role_inventory.py:L37 | neighbors=[0024_device_role_inventory.py]
-- "versions_0024_device_role_inventory_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0024_device_role_inventory.py:L22 | neighbors=[0024_device_role_inventory.py]
-- "versions_0025_service_exposure_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0025_service_exposure.py:L25 | neighbors=[0025_service_exposure.py]
-- "versions_0025_service_exposure_rationale_1": "Service exposure: persist the exposure_matrix reachability verdict.  Adds servic" | kind=entity | source=manager/backend/alembic/versions/0025_service_exposure.py:L1 | neighbors=[0025_service_exposure.py]
-- "versions_0025_service_exposure_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0025_service_exposure.py:L21 | neighbors=[0025_service_exposure.py]
-- "versions_0026_client_portal_slug_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0026_client_portal_slug.py:L29 | neighbors=[0026_client_portal_slug.py]
-- "versions_0026_client_portal_slug_rationale_1": "Client portal slug — the customer's stable 'user as domain' handle.  Adds users." | kind=entity | source=manager/backend/alembic/versions/0026_client_portal_slug.py:L1 | neighbors=[0026_client_portal_slug.py]
-- "versions_0026_client_portal_slug_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0026_client_portal_slug.py:L22 | neighbors=[0026_client_portal_slug.py]
-- "versions_0027_scan_request_targets_intensity_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0027_scan_request_targets_intensity.py:L39 | neighbors=[0027_scan_request_targets_intensity.py]
-- "versions_0027_scan_request_targets_intensity_rationale_1": "Scan-request targets + intensity — the rich customer scan request.  Adds two nul" | kind=entity | source=manager/backend/alembic/versions/0027_scan_request_targets_intensity.py:L1 | neighbors=[0027_scan_request_targets_intensity.py]
-- "versions_0027_scan_request_targets_intensity_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0027_scan_request_targets_intensity.py:L28 | neighbors=[0027_scan_request_targets_intensity.py]
-- "vuln_enrichment_ttlcache_contains": ".__contains__()" | kind=code-symbol | source=manager/backend/app/vuln/enrichment.py:L36 | neighbors=[TTLCache]
+- "tests_test_os_fingerprint_testicmpbuilders_test_timestamp_request_type": ".test_timestamp_request_type()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L49 | neighbors=[TestIcmpBuilders] | lang=en
+- "tests_test_os_fingerprint_testicmpcapability_test_available_when_socket_ok": ".test_available_when_socket_ok()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L276 | neighbors=[TestIcmpCapability] | lang=en
+- "tests_test_os_fingerprint_testicmpcapability_test_unavailable_when_socket_raises": ".test_unavailable_when_socket_raises()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L271 | neighbors=[TestIcmpCapability] | lang=en
+- "tests_test_os_fingerprint_testicmpparse_test_parse_raw_icmp_without_ip_header": ".test_parse_raw_icmp_without_ip_header()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L82 | neighbors=[TestIcmpParse] | lang=en
+- "tests_test_os_fingerprint_testicmpparse_test_parse_rejects_short": ".test_parse_rejects_short()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L79 | neighbors=[TestIcmpParse] | lang=en
+- "tests_test_os_fingerprint_testicmptimestamps_test_parse_rejects_short_body": ".test_parse_rejects_short_body()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L118 | neighbors=[TestIcmpTimestamps] | lang=en
+- "tests_test_os_fingerprint_testinetchecksum_test_checksum_handles_odd_length": ".test_checksum_handles_odd_length()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L31 | neighbors=[TestInetChecksum] | lang=en
+- "tests_test_os_fingerprint_testinetchecksum_test_checksum_verifies_to_zero": ".test_checksum_verifies_to_zero()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L25 | neighbors=[TestInetChecksum] | lang=en
+- "tests_test_os_fingerprint_testremoteclock_test_high_bit_marks_nonstandard_clock": ".test_high_bit_marks_nonstandard_clock()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L132 | neighbors=[TestRemoteClock] | lang=en
+- "tests_test_os_fingerprint_testremoteclock_test_standard_value_decodes_to_wall_clock": ".test_standard_value_decodes_to_wall_clock()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L124 | neighbors=[TestRemoteClock] | lang=en
+- "tests_test_os_fingerprint_testttlinference_test_hop_estimate": ".test_hop_estimate()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L205 | neighbors=[TestTtlInference] | lang=en
+- "tests_test_os_fingerprint_testttlinference_test_os_family_linux": ".test_os_family_linux()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L209 | neighbors=[TestTtlInference] | lang=en
+- "tests_test_os_fingerprint_testttlinference_test_os_family_network": ".test_os_family_network()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L215 | neighbors=[TestTtlInference] | lang=en
+- "tests_test_os_fingerprint_testttlinference_test_os_family_unknown_on_none": ".test_os_family_unknown_on_none()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L218 | neighbors=[TestTtlInference] | lang=en
+- "tests_test_os_fingerprint_testttlinference_test_os_family_windows": ".test_os_family_windows()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L212 | neighbors=[TestTtlInference] | lang=en
+- "tests_test_os_fingerprint_testttlinference_test_round_up_to_128": ".test_round_up_to_128()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L197 | neighbors=[TestTtlInference] | lang=en
+- "tests_test_os_fingerprint_testttlinference_test_round_up_to_255": ".test_round_up_to_255()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L201 | neighbors=[TestTtlInference] | lang=en
+- "tests_test_os_fingerprint_testttlinference_test_round_up_to_64": ".test_round_up_to_64()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L193 | neighbors=[TestTtlInference] | lang=en
+- "tests_test_passive_collector_socket_fileno": ".fileno()" | kind=code-symbol | source=probe/tests/test_passive_collector.py:L28 | neighbors=[_Socket] | lang=en
+- "tests_test_passive_collector_socket_init": ".__init__()" | kind=code-symbol | source=probe/tests/test_passive_collector.py:L24 | neighbors=[_Socket] | lang=en
+- "tests_test_passive_collector_test_zero_listeners_returns_structured_failure": "test_zero_listeners_returns_structured_failure()" | kind=code-symbol | source=probe/tests/test_passive_collector.py:L135 | neighbors=[test_passive_collector.py] | lang=en
+- "tests_test_passive_collector_writer_init": ".__init__()" | kind=code-symbol | source=probe/tests/test_passive_collector.py:L16 | neighbors=[_Writer] | lang=en
+- "tests_test_passive_collector_writer_write": ".write()" | kind=code-symbol | source=probe/tests/test_passive_collector.py:L19 | neighbors=[_Writer] | lang=en
+- "tests_test_pat_auth_test_new_pat_token_shape_and_hash_stability": "test_new_pat_token_shape_and_hash_stability()" | kind=code-symbol | source=manager/backend/tests/test_pat_auth.py:L44 | neighbors=[test_pat_auth.py] | lang=en
+- "tests_test_pat_auth_test_pat_builder_rejects_unknown_scope": "test_pat_builder_rejects_unknown_scope()" | kind=code-symbol | source=manager/backend/tests/test_pat_auth.py:L88 | neighbors=[test_pat_auth.py] | lang=en
+- "tests_test_pat_auth_test_pat_builder_returns_token_once_and_stores_hash_only": "test_pat_builder_returns_token_once_and_stores_hash_only()" | kind=code-symbol | source=manager/backend/tests/test_pat_auth.py:L52 | neighbors=[test_pat_auth.py] | lang=en
+- "tests_test_pat_auth_test_pat_builder_supports_non_expiring_tokens_only_when_requested": "test_pat_builder_supports_non_expiring_tokens_only_when_requested()" | kind=code-symbol | source=manager/backend/tests/test_pat_auth.py:L74 | neighbors=[test_pat_auth.py] | lang=en
+- "tests_test_pat_auth_test_pat_scope_allows_probe_cli_paths": "test_pat_scope_allows_probe_cli_paths()" | kind=code-symbol | source=manager/backend/tests/test_pat_auth.py:L16 | neighbors=[test_pat_auth.py] | lang=en
+- "tests_test_pat_auth_test_pat_scope_matrix_for_api_scopes": "test_pat_scope_matrix_for_api_scopes()" | kind=code-symbol | source=manager/backend/tests/test_pat_auth.py:L27 | neighbors=[test_pat_auth.py] | lang=en
+- "tests_test_pat_auth_test_validate_pat_scopes_dedupes_and_rejects_unknown": "test_validate_pat_scopes_dedupes_and_rejects_unknown()" | kind=code-symbol | source=manager/backend/tests/test_pat_auth.py:L35 | neighbors=[test_pat_auth.py] | lang=en
+- "tests_test_perf_optimization_rationale_1": "Tests for the P1+P2 performance optimization of the detection engine.  P1 — vers" | kind=entity | source=manager/detection_engine/tests/test_perf_optimization.py:L1 | neighbors=[test_perf_optimization.py] | lang=en
+- "tests_test_perf_optimization_rationale_27": "dpkg_compare must use the pure-Python comparator in the hot path.     Shelling o" | kind=entity | source=manager/detection_engine/tests/test_perf_optimization.py:L27 | neighbors=[test_dpkg_compare_does_not_call_the_bin…] | lang=en
+- "tests_test_perf_optimization_rationale_50": "Isolate the guard's in-memory + on-disk validation cache per test." | kind=entity | source=manager/detection_engine/tests/test_perf_optimization.py:L50 | neighbors=[clean_guard_cache()] | lang=en
+- "tests_test_perf_optimization_rationale_58": "No dpkg binary → nothing to cross-check against; return [] and never     attempt" | kind=entity | source=manager/detection_engine/tests/test_perf_optimization.py:L58 | neighbors=[test_guard_is_noop_without_dpkg()] | lang=en
+- "tests_test_perf_optimization_rationale_76": "When the binary disagrees with pure-Python on an adjacent pair, that pair     is" | kind=entity | source=manager/detection_engine/tests/test_perf_optimization.py:L76 | neighbors=[test_guard_reports_divergence_and_warns…] | lang=en
+- "tests_test_perf_optimization_test_guard_passes_when_pure_python_agrees_with_dpkg": "test_guard_passes_when_pure_python_agrees_with_dpkg()" | kind=code-symbol | source=manager/detection_engine/tests/test_perf_optimization.py:L67 | neighbors=[test_perf_optimization.py] | lang=en
+- "tests_test_perf_optimization_test_guard_validates_once_per_cache_key": "test_guard_validates_once_per_cache_key()" | kind=code-symbol | source=manager/detection_engine/tests/test_perf_optimization.py:L86 | neighbors=[test_perf_optimization.py] | lang=en
+- "tests_test_perf_optimization_test_load_kev_and_epss_memoized": "test_load_kev_and_epss_memoized()" | kind=code-symbol | source=manager/detection_engine/tests/test_perf_optimization.py:L142 | neighbors=[test_perf_optimization.py] | lang=en
+- "tests_test_pipeline_rationale_1": "Tests for pipeline.py — the orchestrator with 0% prior coverage.  Covers the cri" | kind=entity | source=manager/detection_engine/tests/test_pipeline.py:L1 | neighbors=[test_pipeline.py] | lang=en
+- "tests_test_pipeline_rationale_114": "A completely empty file must not produce any findings." | kind=entity | source=manager/detection_engine/tests/test_pipeline.py:L114 | neighbors=[.test_empty_jsonl_returns_no_findings()] | lang=pt
 
 ## Instructions
 

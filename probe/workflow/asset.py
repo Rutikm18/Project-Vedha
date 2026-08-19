@@ -62,8 +62,6 @@ class Asset:
     ai_facts: dict[int, dict] = field(default_factory=dict)
     passive_facts: list[dict] = field(default_factory=list)
     credential_inventory: dict | None = None
-    os_fact: dict | None = None            # os_fingerprint host-level OS synthesis
-    enrichment: dict | None = None         # service_enum deep service/role/OS synthesis
 
     profile: str = "it"
     cred_collected: bool = False
@@ -168,14 +166,6 @@ class Asset:
         self.credential_inventory = {**r.data, "_collected_at": r.timestamp, "_via": "windows"}
         self.cred_collected = True
 
-    def _merge_os_fingerprint(self, r: ScanResult) -> None:
-        # host-level OS guess (TCP/TTL + banner signals), stored like smb_state
-        self.os_fact = {**r.data, "_collected_at": r.timestamp}
-
-    def _merge_service_enum(self, r: ScanResult) -> None:
-        # host-level deep service / role / OS synthesis
-        self.enrichment = {**r.data, "_collected_at": r.timestamp}
-
 
 # Maps ScanResult.scanner -> Asset method. Built once, module load time —
 # every entry's right-hand side must be a real `name` a BaseScanner
@@ -194,6 +184,4 @@ _MERGE_DISPATCH = {
     "passive_collect": Asset._merge_passive_collect,
     "ssh_inventory": Asset._merge_ssh_inventory,
     "windows_inventory": Asset._merge_windows_inventory,
-    "os_fingerprint": Asset._merge_os_fingerprint,
-    "service_enum": Asset._merge_service_enum,
 }

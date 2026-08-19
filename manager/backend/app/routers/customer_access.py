@@ -21,11 +21,11 @@ from typing import Annotated
 
 import structlog
 from fastapi import APIRouter, HTTPException, status
-from passlib.context import CryptContext
 from pydantic import BaseModel, EmailStr
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 
+from app.auth.password import hash_password
 from app.auth.rbac import require_role
 from app.dependencies import DB, AuthUser
 from app.models.agent import Agent
@@ -43,8 +43,6 @@ router = APIRouter(prefix="/engagements", tags=["customer-access"])
 # (the per-engagement routes above manage ONE login; this lists them all).
 customers_router = APIRouter(prefix="/customers", tags=["customer-access"])
 logger = structlog.get_logger()
-
-_pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 _OPERATOR = require_role(["admin", "manager"])
 
@@ -196,7 +194,7 @@ async def provision_client_user(
     user = User(
         tenant_id=eng.tenant_id,
         email=body.email,
-        hashed_password=_pwd.hash(temp),
+        hashed_password=await hash_password(temp),
         portal_password_enc=encrypt_credential(temp),  # recoverable copy for reveal
         role=UserRole.client,
         client_engagement_id=engagement_id,
@@ -254,7 +252,7 @@ async def patch_client_user(
     temp = None
     if body.reset_password:
         temp = generate_password()
-        user.hashed_password = _pwd.hash(temp)
+        user.hashed_password = await hash_password(temp)
         user.portal_password_enc = encrypt_credential(temp)  # keep recoverable copy in sync
     if body.is_active is not None:
         user.is_active = body.is_active

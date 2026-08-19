@@ -23,17 +23,15 @@ from datetime import datetime, timezone
 from typing import Literal
 
 import structlog
-from passlib.context import CryptContext
 from sqlalchemy import select, text
 
 from app.auth.exceptions import DatabaseUnavailableError
+from app.auth.password import pwd_context as _pwd
 from app.config import get_settings
 from app.database import AsyncSessionLocal
 
 logger = structlog.get_logger()
 settings = get_settings()
-
-_pwd = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 Severity = Literal["fatal", "warning", "ok"]
 
