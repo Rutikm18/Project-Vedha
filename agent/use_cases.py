@@ -17,128 +17,173 @@ This keeps the field-deployed component's action space finite and auditable.
 from __future__ import annotations
 
 USE_CASES: dict[str, dict] = {
+    # Ordered by the numeric USE_CASE_CODES taxonomy (discovery → assessment →
+    # web → windows → db → network-services → iot/ai → ot → deep) so the catalog
+    # reads — and the UI renders — in the natural security-workflow sequence.
+    # Customer-facing copy: names lead with the asset/outcome; descriptions follow
+    # a "what we do → why it matters" shape.
+
+    # ── Discovery / inventory (codes 1–9) ──────────────────────────────────────
     "uc_discovery_only": {
         "display_name": "Network Discovery",
-        "description": "Fast host-discovery + port scan only. Use for 'what's alive here?' triage.",
+        "description": (
+            "Maps every live device and the open ports each exposes — a fast, "
+            "no-impact inventory of what is actually on this network."
+        ),
         "scan_type": "discovery",
         "profile": "it",
         "expected_runtime_hint": "2–5 min per /24",
     },
-    "uc_full_assessment": {
-        "display_name": "Full Assessment",
-        "description": "Complete assessment: discovery → ports → banners → all service branches.",
-        "scan_type": "assessment",
-        "profile": "it",
-        "expected_runtime_hint": "15–60 min per /24",
-    },
-    "uc_external_web_triage": {
-        "display_name": "External Web Triage",
-        "description": "Web + TLS surface only. Fast check for exposed web services and cert facts.",
-        "scan_type": "web_tls_scan",
-        "profile": "it",
-        "expected_runtime_hint": "5–15 min",
-    },
-    "uc_db_exposure": {
-        "display_name": "Database Exposure Check",
-        "description": "Protocol-handshake fingerprint of database ports. Are any DBs exposed or unauthenticated?",
-        "scan_type": "db_fingerprint",
-        "profile": "it",
-        "expected_runtime_hint": "3–10 min",
-    },
-    "uc_windows_estate": {
-        "display_name": "Windows Estate",
-        "description": "SMB dialect + signing detection. Is SMBv1 enabled? Is SMB signing required?",
-        "scan_type": "smb_enum",
-        "profile": "it",
-        "expected_runtime_hint": "5–15 min",
-    },
-    "uc_ot_passive": {
-        "display_name": "OT / ICS Passive Discovery",
-        "description": "PASSIVE ONLY — zero active packets. Safe for OT/ICS/SCADA segments.",
-        "scan_type": "passive_discovery",
-        "profile": "ot",
-        "expected_runtime_hint": "listen-only, duration set by operator",
-    },
-    "uc_ai_endpoint_sweep": {
-        "display_name": "AI / MCP Endpoint Sweep",
-        "description": "Discover exposed AI inference endpoints and MCP servers.",
-        "scan_type": "mcp_discovery",
-        "profile": "it",
-        "expected_runtime_hint": "3–8 min",
-    },
-    "uc_rescan_delta": {
-        "display_name": "Re-scan (delta from prior engagement)",
-        "description": "Full re-assessment identical to uc_full_assessment. Manager diffs against prior run.",
-        "scan_type": "assessment",
-        "profile": "it",
-        "expected_runtime_hint": "15–60 min per /24",
-    },
-    # ── Real-world customer use-cases ──────────────────────────────────────────
-    "uc_iot_device_survey": {
-        "display_name": "IoT / Embedded Device Survey",
-        "description": (
-            "Inventory IoT and embedded devices on the IoT port set: "
-            "MQTT (1883/8883), RTSP (554), CoAP (5683), Telnet (23), printer/DVR ports. "
-            "Discovery + service banner."
-        ),
-        "scan_type": "service_fingerprint",
-        "profile": "iot",
-        "expected_runtime_hint": "3–10 min per /24",
-    },
-    "uc_web_app_triage": {
-        "display_name": "Web Application Triage",
-        "description": (
-            "Web-layer fingerprint: HTTP methods (OPTIONS), response headers, "
-            "server tech stack, and security-header posture on all web ports "
-            "(80, 443, 8080, 8443, 8000…). Use before a dedicated web app pentest."
-        ),
-        "scan_type": "web_scan",
-        "profile": "it",
-        "expected_runtime_hint": "5–15 min",
-    },
-    "uc_udp_service_exposure": {
-        "display_name": "UDP Service Exposure",
-        "description": (
-            "UDP attack surface + amplification checks: NTP monlist (123), "
-            "DNS open recursion (53), Memcached (11211), SNMP public (161), "
-            "NetBIOS-NS (137)."
-        ),
-        "scan_type": "udp_scan",
-        "profile": "it",
-        "expected_runtime_hint": "2–8 min",
-    },
-    "uc_snmp_exposure": {
-        "display_name": "SNMP Exposure Check",
-        "description": (
-            "Read-only SNMP sysDescr checks using common community strings. "
-            "Use to find default or weak read communities on routers, printers, "
-            "switches, and monitoring appliances."
-        ),
-        "scan_type": "snmp_scan",
-        "profile": "it",
-        "expected_runtime_hint": "2–8 min",
-    },
-    # ── Capabilities unlocked by the main_scripts scanners ─────────────────────
     "uc_device_inventory": {
-        "display_name": "Device Inventory",
+        "display_name": "Device Inventory & Classification",
         "description": (
-            "Fingerprint every live host and infer its ROLE — workstation, "
-            "server, network device, printer, hypervisor, or IoT — by fusing OS "
-            "family, open ports, and service banners. Discovery → ports → banner "
-            "→ evidence-based device classification (never a hostname guess)."
+            "Identifies each live device and infers its role — workstation, "
+            "server, network device, printer, hypervisor, or IoT — from OS family, "
+            "open ports, and service banners (evidence-based, never a hostname guess)."
         ),
         "scan_type": "device_inventory",
         "profile": "it",
         "intensity": "standard",
         "expected_runtime_hint": "5–15 min per /24",
     },
-    "uc_full_port_audit": {
-        "display_name": "Full-Port Audit",
+    # ── Full assessment (codes 10–19) ──────────────────────────────────────────
+    "uc_full_assessment": {
+        "display_name": "Full Security Assessment",
         "description": (
-            "Exhaustive TCP audit across the entire 1–65535 space with a bounded "
-            "worker pool, then a per-host completeness + self-health record so a "
-            "clean empty result is distinguishable from a degraded one. Finds "
-            "services hiding on non-standard high ports."
+            "The complete sweep: discovers hosts, maps every service, fingerprints "
+            "the OS, and inspects TLS, web, SMB, database, and SNMP exposure — your "
+            "baseline security posture in one run."
+        ),
+        "scan_type": "assessment",
+        "profile": "it",
+        "expected_runtime_hint": "15–60 min per /24",
+    },
+    "uc_rescan_delta": {
+        "display_name": "Re-scan & Change Detection",
+        "status": "coming_soon",
+        "description": (
+            "Re-runs a full assessment and highlights what changed since the last "
+            "run — new hosts, newly opened ports, and configuration drift."
+        ),
+        "scan_type": "assessment",
+        "profile": "it",
+        "expected_runtime_hint": "15–60 min per /24",
+    },
+    # ── Web / TLS (codes 20–29) ────────────────────────────────────────────────
+    "uc_external_web_triage": {
+        "display_name": "Web & TLS/SSL Security Check",
+        "status": "coming_soon",
+        "description": (
+            "Scans web servers for exposed HTTP/HTTPS services and grades TLS/SSL "
+            "configuration — protocol versions, cipher strength, and certificate health."
+        ),
+        "scan_type": "web_tls_scan",
+        "profile": "it",
+        "expected_runtime_hint": "5–15 min",
+    },
+    "uc_web_app_triage": {
+        "display_name": "Web Application Security Check",
+        "status": "coming_soon",
+        "description": (
+            "Fingerprints web applications — supported HTTP methods, response and "
+            "security headers, and server technology — a pre-flight before a full "
+            "web-app penetration test."
+        ),
+        "scan_type": "web_scan",
+        "profile": "it",
+        "expected_runtime_hint": "5–15 min",
+    },
+    # ── Windows / SMB (codes 30–39) ────────────────────────────────────────────
+    "uc_windows_estate": {
+        "display_name": "Windows & File-Sharing (SMB) Security",
+        "description": (
+            "Confirms Windows file-sharing is hardened — that the legacy SMBv1 "
+            "protocol is disabled and that SMB signing is required to block relay "
+            "and tampering attacks."
+        ),
+        "scan_type": "smb_enum",
+        "profile": "it",
+        "expected_runtime_hint": "5–15 min",
+    },
+    # ── Database (codes 40–49) ─────────────────────────────────────────────────
+    "uc_db_exposure": {
+        "display_name": "Database Exposure Check",
+        "status": "coming_soon",
+        "description": (
+            "Checks whether databases (MySQL, PostgreSQL, SQL Server, Redis, "
+            "MongoDB) are reachable on the network and whether they accept "
+            "unauthenticated connections."
+        ),
+        "scan_type": "db_fingerprint",
+        "profile": "it",
+        "expected_runtime_hint": "3–10 min",
+    },
+    # ── Network services (codes 50–59) ─────────────────────────────────────────
+    "uc_snmp_exposure": {
+        "display_name": "SNMP Weak-Credential Check",
+        "description": (
+            "Tests routers, switches, printers, and appliances for SNMP services "
+            "that accept default or weak community strings — a common way attackers "
+            "read and alter device configuration."
+        ),
+        "scan_type": "snmp_scan",
+        "profile": "it",
+        "expected_runtime_hint": "2–8 min",
+    },
+    "uc_udp_service_exposure": {
+        "display_name": "UDP & Amplification Exposure",
+        "description": (
+            "Probes UDP services (DNS, NTP, SNMP, memcached, NetBIOS) for open "
+            "resolvers and amplification weaknesses that attackers abuse to launch "
+            "reflected DDoS attacks."
+        ),
+        "scan_type": "udp_scan",
+        "profile": "it",
+        "expected_runtime_hint": "2–8 min",
+    },
+    # ── IoT / AI (codes 60–69) ─────────────────────────────────────────────────
+    "uc_iot_device_survey": {
+        "display_name": "IoT & Embedded Device Discovery",
+        "description": (
+            "Finds IoT and embedded devices — IP cameras (RTSP), MQTT brokers, "
+            "printers, DVRs, and Telnet-exposed gear — and captures their service "
+            "banners for inventory."
+        ),
+        "scan_type": "service_fingerprint",
+        "profile": "iot",
+        "expected_runtime_hint": "3–10 min per /24",
+    },
+    "uc_ai_endpoint_sweep": {
+        "display_name": "AI & MCP Endpoint Discovery",
+        "status": "coming_soon",
+        "description": (
+            "Discovers exposed AI inference endpoints and Model Context Protocol "
+            "(MCP) servers — a fast-growing, often-unmonitored attack surface."
+        ),
+        "scan_type": "mcp_discovery",
+        "profile": "it",
+        "expected_runtime_hint": "3–8 min",
+    },
+    # ── OT / ICS (codes 70–79) ─────────────────────────────────────────────────
+    "uc_ot_passive": {
+        "display_name": "OT / ICS Passive Discovery",
+        "status": "coming_soon",
+        "description": (
+            "Listen-only discovery for operational-technology (OT/ICS/SCADA) "
+            "networks — inventories devices with zero active packets, so fragile "
+            "industrial equipment is never probed."
+        ),
+        "scan_type": "passive_discovery",
+        "profile": "ot",
+        "expected_runtime_hint": "listen-only, duration set by operator",
+    },
+    # ── Deep / specialized (codes 80–99) ───────────────────────────────────────
+    "uc_full_port_audit": {
+        "display_name": "Full-Port Audit (all 65,535)",
+        "description": (
+            "Scans every TCP port on a host to surface services hiding on "
+            "non-standard ports, with a completeness + self-health check so a clean "
+            "result is genuinely clean, not just an incomplete scan."
         ),
         "scan_type": "full_port_audit",
         "profile": "it",
@@ -146,12 +191,11 @@ USE_CASES: dict[str, dict] = {
         "expected_runtime_hint": "20–90 min per host",
     },
     "uc_exposure_matrix": {
-        "display_name": "Multi-Vantage Exposure",
+        "display_name": "Internet-Exposure Mapping",
         "description": (
-            "Vantage-labeled port scan for reachability reconciliation: records "
-            "which ports are OPEN from THIS probe's vantage without collapsing "
-            "path-dependent state. The manager fuses ≥2 probes to separate "
-            "internet-exposed ports from internal-only ones."
+            "Records which ports are reachable from each probe's vantage point; "
+            "with two or more probes, the platform separates truly internet-exposed "
+            "services from internal-only ones."
         ),
         "scan_type": "exposure_matrix",
         "profile": "it",
