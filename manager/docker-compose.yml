@@ -277,6 +277,10 @@ services:
   frontend:
     build:
       context: ./frontend
+      args:
+        # Bake the real version into the client bundle (sidebar footer). Without
+        # this the Dockerfile ARG defaults to "dev" and the UI shows "vdev".
+        VEDHA_VERSION: ${VEDHA_VERSION:-dev}
     image: ${VEDHA_FRONTEND_IMAGE:-vedha-frontend:local}
     pull_policy: never
     profiles: ["ui"]

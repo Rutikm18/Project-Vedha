@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   Play, Shield, Globe, Database, Server, Wifi,
   Activity, Eye, RefreshCw, ChevronDown,
-  CheckCircle2, Clock, XCircle, Loader,
+  CheckCircle2, Clock, Lock, XCircle, Loader,
   Cpu, Network, RotateCcw, Target, Layers,
   Timer, ShieldAlert, Crosshair, Send, Radar,
 } from "lucide-react";
@@ -22,6 +22,7 @@ interface UseCase {
   scan_type: string;
   profile: "it" | "iot" | "ot";
   expected_runtime_hint: string;
+  status?: "available" | "coming_soon";
 }
 
 interface Probe {
@@ -258,16 +259,37 @@ function UseCaseCard({ uc, selected, index, onClick }: { uc: UseCase; selected: 
   const meta = UC_META[uc.use_case_id] ?? { cat: "Other", icon: <Target size={17} />, risk: "medium" as const };
   const risk = RISK[meta.risk];
   const prof = PROFILE_BADGE[uc.profile];
+  const comingSoon = uc.status === "coming_soon";
+  const descRef = useRef<HTMLParagraphElement>(null);
+  const [truncated, setTruncated] = useState(false);
+  useEffect(() => {
+    const el = descRef.current;
+    if (el) setTruncated(el.scrollHeight > el.clientHeight + 1);
+  }, [uc.description]);
+  // "Coming soon" is a pending state → amber, not the primary accent.
+  const soon = "var(--sev-medium-color)";
   return (
-    <button className="scn-card" data-sel={selected} onClick={onClick} style={{ animationDelay: `${index * 45}ms` }}>
+    <button
+      className="scn-card"
+      data-sel={selected}
+      data-soon={comingSoon}
+      aria-disabled={comingSoon}
+      tabIndex={comingSoon ? -1 : undefined}
+      title={comingSoon ? "In development — hover to preview; available soon" : undefined}
+      onClick={comingSoon ? undefined : onClick}
+      style={{ animationDelay: `${index * 45}ms`, ...(comingSoon ? { opacity: 0.9 } : {}) }}
+    >
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 9 }}>
-        <span className="scn-card-icon" data-sel={selected}>{meta.icon}</span>
+        <span className="scn-card-icon" data-sel={selected} style={comingSoon ? { opacity: 0.85 } : undefined}>{meta.icon}</span>
         <span style={{ fontWeight: 650, fontSize: 13, color: "var(--text-primary)", lineHeight: 1.25, flex: 1 }}>{uc.display_name}</span>
-        {selected && <CheckCircle2 size={16} color="var(--accent)" style={{ flexShrink: 0 }} />}
+        {comingSoon
+          ? <span style={{ flexShrink: 0, display: "inline-flex", alignItems: "center", gap: 3, fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4, color: soon, background: `color-mix(in srgb, ${soon} 14%, transparent)`, border: `0.5px solid color-mix(in srgb, ${soon} 40%, transparent)`, borderRadius: 20, padding: "2px 7px 2px 6px" }}><Lock size={9} color={soon} /> Coming soon</span>
+          : selected && <CheckCircle2 size={16} color="var(--accent)" style={{ flexShrink: 0 }} />}
       </div>
-      <p style={{ margin: "0 0 11px", fontSize: 11.5, color: "var(--text-muted)", lineHeight: 1.5, display: "-webkit-box", WebkitLineClamp: 2, WebkitBoxOrient: "vertical", overflow: "hidden", minHeight: 34 }}>
-        {uc.description}
-      </p>
+      <div style={{ marginBottom: 11 }}>
+        <p ref={descRef} className="scn-desc">{uc.description}</p>
+        {truncated && <span className="scn-more" aria-hidden="true">{comingSoon ? "preview →" : "more…"}</span>}
+      </div>
       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
         <span style={{ fontSize: 9.5, fontWeight: 700, color: prof.color, background: `color-mix(in srgb, ${prof.color} 12%, transparent)`, border: `0.5px solid color-mix(in srgb, ${prof.color} 35%, transparent)`, borderRadius: 5, padding: "2px 6px", letterSpacing: 0.3 }}>{prof.label}</span>
         <span style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 10, color: risk.color }}>
@@ -331,6 +353,13 @@ function IntensityDial({ value, onChange }: { value: Intensity; onChange: (v: In
 ══════════════════════════════════════════════════════ */
 
 const PHASES = ["Queued", "Dispatched", "Scanning", "Aggregating", "Complete"];
+
+const REC_ST: Record<string, { color: string; label: string }> = {
+  pending:   { color: "var(--text-muted)",         label: "Queued"    },
+  running:   { color: "var(--accent)",             label: "Running"   },
+  completed: { color: "var(--nominal-color)",      label: "Completed" },
+  failed:    { color: "var(--sev-critical-color)", label: "Failed"    },
+};
 
 function JobPanel({ job, ucName }: { job: JobStatus; ucName?: string }) {
   const r = job.result ?? {};
@@ -572,6 +601,7 @@ export default function ScanPage() {
   const [passiveSecs,  setPassiveSecs]  = useState(60);
   const [launching, setLaunching] = useState(false);
   const [job,       setJob]       = useState<JobStatus | null>(null);
+  const [recentJobs, setRecentJobs] = useState<JobStatus[]>([]);
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -608,7 +638,12 @@ export default function ScanPage() {
     pollRef.current = setInterval(async () => {
       try {
         const j = await apiFetch<JobStatus>(`/api/scan/jobs/${jobId}`);
-        setJob(j);
+        // Don't clobber the panel if the operator switched to viewing another job.
+        setJob((cur) => (cur && cur.job_id !== j.job_id ? cur : j));
+        // Keep the recent-scans list live as the job progresses.
+        setRecentJobs((prev) => prev.some((rj) => rj.job_id === j.job_id)
+          ? prev.map((rj) => (rj.job_id === j.job_id ? { ...rj, ...j } : rj))
+          : [j, ...prev]);
         if (j.status === "completed" || j.status === "failed") {
           clearInterval(pollRef.current!); pollRef.current = null;
           if (j.status === "completed") toastOk("Scan complete"); else toastErr("Scan failed");
@@ -617,7 +652,44 @@ export default function ScanPage() {
     }, 4000);
   }, [toastOk, toastErr]);
 
+  // Rehydrate this engagement's jobs from the DB so a launched job survives a
+  // page refresh or navigation (root-cause fix: the queue lived only in memory).
+  const loadJobs = useCallback(async (engagementId: string) => {
+    if (!engagementId) { setRecentJobs([]); return; }
+    try {
+      const rows = await apiFetch<Array<{
+        id: string; status: JobStatus["status"]; agent_id: string | null;
+        agent_name: string | null; use_case_id: string | null;
+        result: Record<string, unknown> | null;
+        created_at: string | null; started_at: string | null; completed_at: string | null;
+      }>>(`/api/scan/jobs?engagement_id=${encodeURIComponent(engagementId)}`);
+      const jobs: JobStatus[] = rows.map((r) => ({
+        job_id: r.id, engagement_id: engagementId, status: r.status,
+        created_at: r.created_at, started_at: r.started_at, completed_at: r.completed_at,
+        agent_id: r.agent_id, agent_name: r.agent_name ?? null,
+        use_case_id: r.use_case_id ?? null, result: r.result,
+      }));
+      setRecentJobs(jobs);
+      // Restore an in-flight job and resume polling — this is exactly what a
+      // refresh used to drop.
+      const active = jobs.find((j) => j.status === "pending" || j.status === "running");
+      setJob((cur) => cur ?? active ?? null);
+      if (active && !pollRef.current) startPolling(active.job_id);
+    } catch { /* history is non-critical; leave the launcher usable */ }
+  }, [startPolling]);
+
   useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current); }, []);
+
+  // Load (and restore) jobs whenever the selected engagement changes — covers
+  // the single-engagement auto-select on mount and manual selection alike.
+  // Wrapped in an async IIFE (same pattern as the initial load effect) so no
+  // setState runs synchronously in the effect body.
+  useEffect(() => {
+    (async () => {
+      if (selectedEng) await loadJobs(selectedEng);
+      else setRecentJobs([]);
+    })();
+  }, [selectedEng, loadJobs]);
 
   const ucObj      = useCases.find((u) => u.use_case_id === selectedUc);
   const selectedEngagement = engagements.find((engagement) => engagement.id === selectedEng);
@@ -680,11 +752,14 @@ export default function ScanPage() {
         method: "POST", body: JSON.stringify(buildLaunchBody()),
       });
       if (res.dispatched) setDispatched(res.dispatched);
-      setJob({
+      const launched: JobStatus = {
         job_id: res.job_id, engagement_id: selectedEng, status: "pending",
         created_at: new Date().toISOString(), started_at: null, completed_at: null,
         agent_id: null, agent_name: null, use_case_id: selectedUc, result: null,
-      });
+      };
+      setJob(launched);
+      // Reflect it in the DB-backed history immediately (the poll keeps it fresh).
+      setRecentJobs((prev) => [launched, ...prev.filter((rj) => rj.job_id !== launched.job_id)]);
       startPolling(res.job_id);
       toastOk("Job queued", "Probe picks up on next poll (~10s)");
     } catch (e) {
@@ -709,10 +784,26 @@ export default function ScanPage() {
   // category counts + filtered list
   const counts: Record<string, number> = { All: useCases.length };
   for (const uc of useCases) { const c = UC_META[uc.use_case_id]?.cat ?? "Other"; counts[c] = (counts[c] ?? 0) + 1; }
-  const filtered = catFilter === "All" ? useCases : useCases.filter((u) => (UC_META[u.use_case_id]?.cat ?? "Other") === catFilter);
+  const inCat = catFilter === "All" ? useCases : useCases.filter((u) => (UC_META[u.use_case_id]?.cat ?? "Other") === catFilter);
+  // Active (tested) capabilities lead; "coming soon" sink to the end (stable sort
+  // preserves catalog order within each group).
+  const filtered = [...inCat].sort(
+    (a, b) => Number(a.status === "coming_soon") - Number(b.status === "coming_soon"),
+  );
 
   const canLaunch = !!selectedUc && !!selectedEng && compatibleProbes.length > 0 && !launching;
   const intensityObj = INTENSITY.find((i) => i.id === intensity)!;
+
+  const ucNameFor = (id: string | null) =>
+    useCases.find((u) => u.use_case_id === id)?.display_name ?? id ?? "Scan";
+
+  // Bring a job (from the recent list) back into the active panel; resume polling
+  // if it's still in flight, otherwise stop any poll and just show its result.
+  function viewJob(rj: JobStatus) {
+    setJob(rj);
+    if (rj.status === "pending" || rj.status === "running") startPolling(rj.job_id);
+    else if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
+  }
 
   return (
     <PageShell title="Scanner" subtitle="Compose and dispatch a scan to a field-deployed probe">
@@ -946,7 +1037,37 @@ export default function ScanPage() {
             <SectionLabel>Active Job</SectionLabel>
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               {dispatched && <DispatchReceipt payload={dispatched} />}
-              <JobPanel job={job} ucName={ucObj?.display_name} />
+              <JobPanel job={job} ucName={ucNameFor(job.use_case_id) || ucObj?.display_name} />
+            </div>
+          </section>
+        )}
+
+        {/* ── Recent scans (loaded from the DB — survives refresh / navigation) ── */}
+        {recentJobs.length > 0 && (
+          <section>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+              <SectionLabel>Recent Scans</SectionLabel>
+              <button onClick={() => selectedEng && loadJobs(selectedEng)} className="scn-reset" title="Refresh from server">
+                <RefreshCw size={11} /> Refresh
+              </button>
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+              {recentJobs.map((rj) => {
+                const st = REC_ST[rj.status] ?? REC_ST.pending;
+                const isCur = job?.job_id === rj.job_id;
+                return (
+                  <button key={rj.job_id} onClick={() => viewJob(rj)} className="scn-recent" data-on={isCur}>
+                    <span style={{ width: 7, height: 7, borderRadius: "50%", background: st.color, flexShrink: 0 }} />
+                    <span style={{ fontWeight: 600, fontSize: 12.5, color: "var(--text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 240 }}>{ucNameFor(rj.use_case_id)}</span>
+                    <span style={{ fontSize: 9.5, fontWeight: 700, color: st.color, textTransform: "uppercase", letterSpacing: 0.4 }}>{st.label}</span>
+                    {rj.agent_name && <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{rj.agent_name}</span>}
+                    <span style={{ marginLeft: "auto", fontSize: 10.5, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>
+                      {rj.created_at ? new Date(rj.created_at).toLocaleString() : ""}
+                    </span>
+                    <span style={{ fontSize: 9.5, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>{rj.job_id.slice(0, 8)}</span>
+                  </button>
+                );
+              })}
             </div>
           </section>
         )}
@@ -978,6 +1099,19 @@ const STYLES = `
 .scn-card-icon { width:32px; height:32px; border-radius:9px; flex-shrink:0; display:flex; align-items:center; justify-content:center; background:var(--bg-surface); border:0.5px solid var(--border-subtle); color:var(--text-secondary); transition: all var(--dur-fast); }
 .scn-card-icon[data-sel="true"] { background:var(--accent-ghost); border-color:var(--border-accent); color:var(--accent); }
 .scn-card:hover .scn-card-icon { color: var(--text-primary); }
+
+/* Description: clamped to 2 lines by default; the full text reveals on hover so a
+   card stays compact but nothing is hidden. */
+.scn-desc { margin:0 0 11px; font-size:11.5px; color:var(--text-muted); line-height:1.5; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; max-height:34px; transition: max-height 240ms var(--ease-out), filter 240ms var(--ease-out), opacity 240ms var(--ease-out); }
+.scn-card:hover .scn-desc, .scn-card:focus-visible .scn-desc { -webkit-line-clamp:99; max-height:260px; }
+
+/* "Coming soon" = a locked preview: dashed frame + blurred copy (you can see the
+   capability exists, not yet its detail), and no interactive lift. Hovering
+   un-blurs so the customer can still read what it will do. */
+.scn-card[data-soon="true"] { border-style:dashed; cursor:not-allowed; }
+.scn-card[data-soon="true"]:hover { transform:none; box-shadow:none; background:var(--bg-card); border-color:var(--border-subtle); }
+.scn-card[data-soon="true"] .scn-desc { filter:blur(2.5px); opacity:0.5; }
+.scn-card[data-soon="true"]:hover .scn-desc { filter:blur(0); opacity:0.92; -webkit-line-clamp:99; max-height:260px; }
 
 /* Category pills */
 .scn-pill { display:inline-flex; align-items:center; padding:5px 11px; border-radius:8px; font-size:11.5px; font-weight:600; cursor:pointer; background:var(--bg-surface); border:0.5px solid var(--border-subtle); color:var(--text-muted); transition: all var(--dur-fast); }
@@ -1018,6 +1152,11 @@ const STYLES = `
 
 .scn-reset { background:none; border:none; cursor:pointer; font-size:11px; color:var(--text-faint); display:flex; align-items:center; justify-content:center; gap:5px; padding:2px; transition:color var(--dur-fast); }
 .scn-reset:hover { color:var(--text-secondary); }
+
+/* Recent-scans history rows (DB-backed) */
+.scn-recent { display:flex; align-items:center; gap:10px; width:100%; text-align:left; padding:10px 13px; border-radius:10px; background:var(--bg-card); border:0.5px solid var(--border-subtle); cursor:pointer; transition: border-color var(--dur-fast), background var(--dur-fast); }
+.scn-recent:hover { border-color:var(--border-strong); background:var(--bg-surface); }
+.scn-recent[data-on="true"] { border-color:var(--accent); background:var(--accent-ghost); }
 
 /* HUD corner brackets — the page's recurring "locked on" signature */
 .scn-hud { position:absolute; width:16px; height:16px; pointer-events:none; opacity:0; transition: opacity 320ms var(--ease-out); z-index:2; }

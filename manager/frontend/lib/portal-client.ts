@@ -91,6 +91,7 @@ export interface PortalScanRequest {
 export interface PortalUseCase {
   use_case_id: string;
   display_name: string;
+  status?: "available" | "coming_soon";
   description: string;
   profile: string | null;
   intensity?: string | null;

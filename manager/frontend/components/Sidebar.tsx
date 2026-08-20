@@ -295,12 +295,30 @@ export function Sidebar({ open, onClose }: SidebarProps) {
           </span>
         </div>
         <div style={{
-          fontFamily: "var(--font-mono)",
-          fontSize: 9,
-          color: "var(--text-muted)",
+          display: "flex",
+          alignItems: "baseline",
+          gap: 6,
           paddingLeft: 15,
+          marginTop: 2,
         }}>
-          VEDHA v{APP_VERSION} · Enterprise
+          <span style={{
+            fontFamily: "var(--font-mono)",
+            fontSize: 12,
+            fontWeight: 700,
+            color: "var(--text-secondary)",
+            letterSpacing: 0.2,
+          }}>
+            v{APP_VERSION}
+          </span>
+          <span style={{
+            fontSize: 9,
+            fontWeight: 600,
+            color: "var(--text-faint)",
+            letterSpacing: 0.5,
+            textTransform: "uppercase" as const,
+          }}>
+            Enterprise
+          </span>
         </div>
       </div>
     </aside>

@@ -301,6 +301,7 @@ async def portal_use_cases(user: ClientUser):
     return [
         {"use_case_id": uid,
          "display_name": uc.get("display_name", uid),
+         "status": uc.get("status", "available"),
          "description": uc.get("description", ""),
          "profile": uc.get("profile"),
          "intensity": uc.get("intensity"),
@@ -324,6 +325,11 @@ async def create_scan_request(body: ScanRequestCreate, user: ClientUser, db: DB)
         if uc is None:
             raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
                                 f"Unknown use_case_id '{body.use_case_id}'")
+        # Backend gate: a "coming soon" capability is disabled in the UI, but the
+        # API must refuse it too so it can't be dispatched by a crafted request.
+        if uc.get("status") == "coming_soon":
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
+                                f"Use case '{body.use_case_id}' is coming soon and not yet available")
         scan_type = uc["scan_type"]
         use_case_id = body.use_case_id
     else:

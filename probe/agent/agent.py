@@ -1417,6 +1417,12 @@ if __name__ == "__main__":
                 "use_case_codes": {str(k): v for k, v in sorted(USE_CASE_CODES.items())},
                 "intensity_codes": {str(k): v for k, v in sorted(INTENSITY_CODES.items())},
             }, indent=2, sort_keys=True))
+        elif arg == "local-run":
+            # On-box diagnostic: run the REAL scan engine locally, no manager.
+            # Lazily imported so the daemon path and the `manifest` contract (which
+            # the seal-parity job diffs byte-for-byte) are completely unaffected.
+            from agent.local_run import run as _local_run
+            raise SystemExit(_local_run(sys.argv[2:]))
         else:
             main()
     except KeyboardInterrupt:

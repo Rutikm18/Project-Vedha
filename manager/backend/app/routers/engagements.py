@@ -11,6 +11,7 @@ from sqlalchemy import func, select
 
 from app.auth.rbac import require_role
 from app.dependencies import DB, ReadDB, AuthUser
+from app.models.agent import Agent
 from app.models.asset import Asset
 from app.models.engagement import Engagement
 from app.models.enums import AssetType, EngagementStatus, FindingSeverity, FindingStatus
@@ -605,13 +606,29 @@ async def list_engagement_jobs(
         select(ScanJob).where(ScanJob.engagement_id == engagement_id)
         .order_by(ScanJob.created_at.desc())
     )).scalars().all()
+
+    # Batch-resolve probe names so restored jobs render with their probe label
+    # (one query for the whole set — no N+1 per job).
+    agent_ids = {uuid.UUID(str(j.agent_id)) for j in rows if j.agent_id}
+    names: dict[str, str] = {}
+    if agent_ids:
+        agents = (await db.execute(
+            select(Agent).where(Agent.id.in_(agent_ids))
+        )).scalars().all()
+        names = {str(a.id): a.name for a in agents}
+
+    # Never leak the raw facts blob or credential params to the client — mirror
+    # the redaction the single-job status endpoint applies.
+    _REDACT = {"facts", "ssh_creds", "win_creds"}
     return [
         {
             "id": str(j.id),
             "job_type": j.job_type.value if hasattr(j.job_type, "value") else str(j.job_type),
             "status": j.status.value if hasattr(j.status, "value") else str(j.status),
-            "agent_id": j.agent_id,
-            "result": j.result,
+            "agent_id": str(j.agent_id) if j.agent_id else None,
+            "agent_name": names.get(str(j.agent_id)) if j.agent_id else None,
+            "use_case_id": (j.result or {}).get("use_case_id"),
+            "result": {k: v for k, v in j.result.items() if k not in _REDACT} if j.result else None,
             "created_at": j.created_at.isoformat() if j.created_at else None,
             "started_at": j.started_at.isoformat() if j.started_at else None,
             "completed_at": j.completed_at.isoformat() if j.completed_at else None,

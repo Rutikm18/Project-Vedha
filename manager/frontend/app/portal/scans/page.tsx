@@ -216,8 +216,11 @@ export default function PortalScans() {
   const [targets, setTargets] = useState<string[]>([]);
   const [targetInput, setTargetInput] = useState("");
   const [msg, setMsg] = useState<{ type: "ok" | "err"; text: string } | null>(null);
-  // Default to the first catalog use-case until the customer picks one.
-  const ucId = useCaseId || useCases.data?.[0]?.use_case_id || "";
+  // Default to the first *available* catalog use-case until the customer picks one
+  // (never auto-select a coming-soon entry, which the <select> disables anyway).
+  const ucId = useCaseId
+    || useCases.data?.find((u) => u.status !== "coming_soon")?.use_case_id
+    || "";
   const selectedUc = useCases.data?.find((u) => u.use_case_id === ucId);
 
   function addTarget() {
@@ -278,7 +281,25 @@ export default function PortalScans() {
                 <select id="scan-type" value={ucId} onChange={(e) => setUseCaseId(e.target.value)}
                   className="input-base" disabled={useCases.isLoading || !useCases.data?.length}>
                   {useCases.isLoading && <option value="">Loading…</option>}
-                  {useCases.data?.map((u) => <option key={u.use_case_id} value={u.use_case_id}>{u.display_name}</option>)}
+                  {(() => {
+                    const avail = useCases.data?.filter((u) => u.status !== "coming_soon") ?? [];
+                    const soon = useCases.data?.filter((u) => u.status === "coming_soon") ?? [];
+                    return (
+                      <>
+                        {/* Active capabilities first, then a disabled "Coming soon" group. */}
+                        {avail.map((u) => (
+                          <option key={u.use_case_id} value={u.use_case_id}>{u.display_name}</option>
+                        ))}
+                        {soon.length > 0 && (
+                          <optgroup label="⏳ Coming soon">
+                            {soon.map((u) => (
+                              <option key={u.use_case_id} value={u.use_case_id} disabled>{u.display_name}</option>
+                            ))}
+                          </optgroup>
+                        )}
+                      </>
+                    );
+                  })()}
                 </select>
               </div>
               <div>
