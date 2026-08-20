@@ -153,6 +153,14 @@ def _run_nmap(targets: list[str], extra: list[str], timeout: int) -> str:
 
 def _parse_nmap_xml(xml_text: str, profile: str) -> list[ScanResult]:
     results: list[ScanResult] = []
+    # CWE-611/776 defense-in-depth: genuine nmap output carries a <!DOCTYPE nmaprun>
+    # but never an <!ENTITY> definition, and it XML-escapes every target-derived
+    # string it emits. Refusing entity declarations kills XML-bomb / entity-injection
+    # with zero false positives (ElementTree already ignores external DTDs).
+    if "<!entity" in xml_text.lower():
+        raise NmapExecutionError(
+            "unsafe_xml", "nmap output carried an XML entity declaration",
+        )
     try:
         root = ET.fromstring(xml_text)
     except ET.ParseError as exc:

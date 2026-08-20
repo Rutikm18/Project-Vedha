@@ -30,6 +30,7 @@ import xml.etree.ElementTree as ET
 from .scanner_base import (
     BaseScanner, ScanResult, ScopeGuard, ResultWriter, expand_targets,
     resolve, setup_logging, base_argparser, main_entrypoint, LOG,
+    user_agent,
 )
 
 # ── SSDP / UPnP ──────────────────────────────────────────────────────────────
@@ -57,7 +58,7 @@ def _parse_ssdp_headers(data: bytes) -> dict[str, str]:
 def _fetch_upnp_root_desc(location: str, timeout: float) -> dict:
     """HTTP GET the UPnP rootDesc.xml and extract device info."""
     try:
-        req = urllib.request.Request(location, headers={"User-Agent": "Vedha/1.0"})
+        req = urllib.request.Request(location, headers={"User-Agent": user_agent()})
         with urllib.request.urlopen(req, timeout=timeout) as resp:
             xml_body = resp.read(65536)
     except (urllib.error.URLError, OSError, Exception):
@@ -207,7 +208,8 @@ def _probe_mdns_sync(target: str, port: int, timeout: float) -> dict | None:
 
 # ── RTSP ──────────────────────────────────────────────────────────────────────
 
-_RTSP_OPTIONS = b"OPTIONS * RTSP/1.0\r\nCSeq: 1\r\nUser-Agent: Vedha/1.0\r\n\r\n"
+_RTSP_OPTIONS = (b"OPTIONS * RTSP/1.0\r\nCSeq: 1\r\nUser-Agent: "
+                 + user_agent().encode() + b"\r\n\r\n")
 _RTSP_PORTS = [554, 8554]
 
 
@@ -255,7 +257,7 @@ _MQTT_PORTS = [1883, 8883]
 
 # MQTT CONNECT packet (v3.1.1, no auth, no will, keepalive=60, clean-session=1)
 def _mqtt_connect() -> bytes:
-    client_id = b"vedha-probe"
+    client_id = b"mqtt-client"          # neutral MQTT client id (no tool signature)
     payload = (struct.pack("!H", len(client_id)) + client_id)
     # Connect flags: clean-session=1 (0x02)
     var_header = (b"\x00\x04MQTT"  # protocol name
@@ -409,7 +411,7 @@ async def _probe_cwmp(target: str, port: int, timeout: float) -> dict | None:
         return None
     try:
         req = (f"GET / HTTP/1.1\r\nHost: {target}:{port}\r\n"
-               f"User-Agent: Vedha/1.0\r\nConnection: close\r\n\r\n")
+               f"User-Agent: {user_agent()}\r\nConnection: close\r\n\r\n")
         writer.write(req.encode())
         await writer.drain()
         data = await asyncio.wait_for(reader.read(2048), timeout=timeout)

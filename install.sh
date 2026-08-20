@@ -23,6 +23,9 @@ set -eu
 #
 # A bare ip/url ⇒ LOCAL; the --manager flag (or --docker) ⇒ DOCKER.
 # ─────────────────────────────────────────────────────────────────────────────
+say() { printf '%s\n' "$*"; }
+have() { command -v "$1" >/dev/null 2>&1; }
+
 _MODE=""
 for _a in "$@"; do
   case "$_a" in --docker) _MODE=docker ;; --local) _MODE=local ;; esac
@@ -71,23 +74,57 @@ if [ "$_MODE" = "local" ]; then
   fi
   # Local scan CEILING (safety net; the Manager still governs per-job scope).
   if [ -z "${PROBE_NETWORK_SEGMENTS:-}" ]; then
-    _IP="$(ipconfig getifaddr en0 2>/dev/null || { hostname -I 2>/dev/null | awk '{print $1}'; } || true)"
-    if [ -n "${_IP:-}" ]; then
-      PROBE_NETWORK_SEGMENTS="${_IP%.*}.0/24"; export PROBE_NETWORK_SEGMENTS
-      printf '• auto scan-ceiling: %s (override with PROBE_NETWORK_SEGMENTS)\n' "$PROBE_NETWORK_SEGMENTS"
+    # Primary source IPv4 via the DEFAULT ROUTE (works on any interface, not just
+    # en0): Linux `ip route get`, then BSD/macOS `route`→interface→ipconfig, then
+    # the old en0/hostname fallbacks. IPv6 is skipped since the /24 ceiling is IPv4.
+    _IP="$(ip -4 route get 1.1.1.1 2>/dev/null | sed -n 's/.*src \([0-9.]\{1,\}\).*/\1/p' | head -1 || true)"
+    if [ -z "${_IP:-}" ]; then
+      _if="$(route -n get default 2>/dev/null | awk '/interface:/{print $2; exit}')"
+      [ -n "${_if:-}" ] && _IP="$(ipconfig getifaddr "$_if" 2>/dev/null || true)"
     fi
+    [ -n "${_IP:-}" ] || _IP="$(ipconfig getifaddr en0 2>/dev/null || { hostname -I 2>/dev/null | awk '{print $1}'; } || true)"
+    case "${_IP:-}" in
+      *:*|"") : ;;                       # IPv6 or empty → no auto scan-ceiling
+      *.*.*.*)
+        PROBE_NETWORK_SEGMENTS="${_IP%.*}.0/24"; export PROBE_NETWORK_SEGMENTS
+        printf '• auto scan-ceiling: %s (override with PROBE_NETWORK_SEGMENTS)\n' "$PROBE_NETWORK_SEGMENTS" ;;
+    esac
   fi
   export PROBE_NAME="${PROBE_NAME:-$(hostname)-probe}"
   export STATE_FILE="${STATE_FILE:-$HOME/vedha-probe/state.json}"
   export RESULT_SPOOL_DIR="${RESULT_SPOOL_DIR:-$HOME/vedha-probe/spool}"
   mkdir -p "$(dirname "$STATE_FILE")" "$RESULT_SPOOL_DIR"
-  # Ensure a runnable interpreter: project venv, else create it.
+  # Preflight: LOCAL mode runs the probe directly with Python 3.8+.
+  have python3 || {
+    printf 'ERROR: python3 not found. LOCAL mode needs Python 3.8+ (plus the\n'
+    printf '       python3-venv package on Debian/Ubuntu). Or use DOCKER mode:\n'
+    printf '         sudo sh install.sh --docker --manager <url>\n'
+    exit 1
+  }
+  python3 -c 'import sys; raise SystemExit(0 if sys.version_info[:2] >= (3, 8) else 1)' || {
+    printf 'ERROR: Python 3.8+ required (found %s). Install a newer python3.\n' \
+      "$(python3 -c 'import sys;print("%d.%d"%sys.version_info[:2])' 2>/dev/null || echo unknown)"
+    exit 1
+  }
+  # Runnable interpreter: (re)create the venv and (re)install deps when the venv is
+  # absent/partial OR requirements-runtime.txt changed. The stamp avoids reinstalling
+  # on every launch while still healing a half-built venv or a newly-added dependency.
   _PY=".venv/bin/python"
-  if [ ! -x "$_PY" ]; then
-    printf '• first run: creating .venv + installing runtime deps…\n'
-    python3 -m venv .venv
+  _STAMP=".venv/.reqs-stamp"
+  _REQS="$(cksum requirements-runtime.txt 2>/dev/null || echo none)"
+  if [ ! -x "$_PY" ] || [ "$(cat "$_STAMP" 2>/dev/null || true)" != "$_REQS" ]; then
+    printf '• setting up .venv + runtime deps…\n'
+    [ -x "$_PY" ] || python3 -m venv .venv || {
+      printf 'ERROR: virtualenv creation failed. On Debian/Ubuntu install the venv\n'
+      printf '       module first: sudo apt-get install -y python3-venv\n'
+      exit 1
+    }
     ./.venv/bin/pip install -q --upgrade pip
-    ./.venv/bin/pip install -q -r requirements-runtime.txt
+    ./.venv/bin/pip install -q -r requirements-runtime.txt || {
+      printf 'ERROR: failed to install runtime deps from requirements-runtime.txt.\n'
+      exit 1
+    }
+    printf '%s' "$_REQS" > "$_STAMP"
   fi
   printf '▶ probe → %s   name=%s  scope-ceiling=%s\n' \
     "$PLATFORM_URL" "$PROBE_NAME" "${PROBE_NETWORK_SEGMENTS:-<unset>}"
@@ -106,13 +143,11 @@ PROBE_REGISTRATION_TIMEOUT="${PROBE_REGISTRATION_TIMEOUT:-60}"
 PROBE_ENROLL_TOKEN="${PROBE_ENROLL_TOKEN:-}"
 PROBE_ALLOW_INSECURE="${PROBE_ALLOW_INSECURE:-false}"
 
-say() { printf '%s\n' "$*"; }
-have() { command -v "$1" >/dev/null 2>&1; }
-
 usage() {
   say "Usage: $0 --manager https://manager.example.com [--enroll-token vet_...] [--insecure]"
   say "  --enroll-token  Pre-authorized, Site-bound token → probe auto-enrolls (no user_code step)."
   say "  --insecure      Allow an http:// manager (testing only; production requires https)."
+  say "  --uninstall     Remove the probe container (PROBE_PURGE=true also deletes its identity/license volume)."
   say "Only the Manager endpoint is deployment-specific; Site policy comes from the token or Fleet UI."
 }
 
@@ -134,6 +169,16 @@ while [ "$#" -gt 0 ]; do
       ;;
     --docker|--local)
       shift
+      ;;
+    --uninstall)
+      have docker || { say "Docker not found."; exit 1; }
+      docker rm -f "$NAME" >/dev/null 2>&1 && say "Removed probe container '$NAME'." \
+        || say "No probe container '$NAME' to remove."
+      if [ "${PROBE_PURGE:-false}" = "true" ]; then
+        docker volume rm "$STATE_VOL" >/dev/null 2>&1 \
+          && say "Purged state volume '$STATE_VOL' — identity & license removed." || true
+      fi
+      exit 0
       ;;
     --help|-h)
       usage
@@ -172,11 +217,19 @@ fi
 
 # --- preflight ----------------------------------------------------------------
 have docker || { say "Docker is required. Install Docker Desktop/Engine first: https://docs.docker.com/engine/install/"; exit 1; }
+docker info >/dev/null 2>&1 || { say "Docker is installed but its daemon isn't reachable. Start Docker (open Docker Desktop, or 'sudo systemctl start docker') and retry."; exit 1; }
 
 LOCK_DIR="${TMPDIR:-/tmp}/vedha-probe-install.lock"
 if ! mkdir "$LOCK_DIR" 2>/dev/null; then
-  say "ERROR: another Vedha probe install is running (lock: $LOCK_DIR)."
-  exit 75
+  # Reclaim a lock left by a crashed run (SIGKILL bypasses the cleanup trap).
+  if find "$LOCK_DIR" -maxdepth 0 -mmin +10 2>/dev/null | grep -q .; then
+    say "Reclaiming a stale install lock (>10 min old)."
+    rmdir "$LOCK_DIR" 2>/dev/null || true
+    mkdir "$LOCK_DIR" 2>/dev/null || { say "ERROR: could not acquire install lock."; exit 75; }
+  else
+    say "ERROR: another Vedha probe install is running (lock: $LOCK_DIR)."
+    exit 75
+  fi
 fi
 STAGE_DIR="$(mktemp -d "${TMPDIR:-/tmp}/vedha-probe-install.XXXXXX")"
 cleanup_install() {
@@ -197,6 +250,15 @@ load_image_from_url() {
     say "curl or wget is required to download PROBE_IMAGE_TAR_URL."
     exit 1
   fi
+  # Supply-chain: verify the tar before loading it, when a hash is pinned.
+  if [ -n "${PROBE_IMAGE_SHA256:-}" ]; then
+    say "Verifying image tar checksum ..."
+    got="$( { sha256sum "$tmp" 2>/dev/null || shasum -a 256 "$tmp" 2>/dev/null; } | awk '{print $1}')"
+    if [ "$got" != "$PROBE_IMAGE_SHA256" ]; then
+      say "ERROR: image tar checksum mismatch (expected $PROBE_IMAGE_SHA256, got ${got:-none}). Refusing to load."
+      exit 1
+    fi
+  fi
   say "Loading Docker image ..."
   docker load -i "$tmp" >/dev/null
 }
@@ -211,7 +273,13 @@ if ! docker image inspect "$IMAGE" >/dev/null 2>&1; then
   else
     say "Pulling $IMAGE ..."
     docker pull "$IMAGE" || {
-      say "Could not pull $IMAGE. Set PROBE_IMAGE_TAR_URL for a local tar download, or check registry login."
+      say "Could not pull $IMAGE."
+      case "$IMAGE" in
+        *:local) say "  '$IMAGE' is a LOCAL tag — it can't come from a registry. Build it"
+                 say "  (make probe-build) or host a tar and set PROBE_IMAGE_TAR_URL." ;;
+        *)       say "  Set PROBE_IMAGE_TAR_URL for a local tar, set PROBE_IMAGE to a"
+                 say "  registry tag, or check your registry login." ;;
+      esac
       exit 1
     }
   fi
@@ -222,6 +290,15 @@ docker image inspect "$IMAGE" >/dev/null 2>&1 || {
   say "If you loaded a tar, set PROBE_IMAGE to the tag inside the tar, for example vedha-probe:local."
   exit 1
 }
+
+# Warn on CPU-arch mismatch (e.g. amd64 image on an arm64 host → slow qemu or fail).
+_img_arch="$(docker image inspect --format '{{.Architecture}}' "$IMAGE" 2>/dev/null || true)"
+_host_arch="$(uname -m 2>/dev/null || echo unknown)"
+case "$_host_arch" in aarch64|arm64) _host_arch=arm64 ;; x86_64|amd64) _host_arch=amd64 ;; esac
+if [ -n "$_img_arch" ] && [ "$_img_arch" != "$_host_arch" ]; then
+  say "WARNING: image arch '$_img_arch' != host arch '$_host_arch' — it may run under"
+  say "  emulation (slow) or fail to start. Prefer an image built for $_host_arch."
+fi
 
 # Keep the host-bound license identity stable when the bootstrap container is
 # recreated without its PAT. A locally administered MAC derived from the
@@ -238,7 +315,14 @@ if [ -z "${PROBE_HW_ID:-}" ]; then
     --security-opt no-new-privileges:true --pids-limit 64 --user 10001:10001 \
     --hostname "$NAME" --mac-address "$PROBE_MAC_ADDRESS" \
     --entrypoint python "$IMAGE" -c \
-    'from agent.hw_bind import get_hw_id; print(get_hw_id())')"
+    'from agent.hw_bind import get_hw_id; print(get_hw_id())' 2>/dev/null || true)"
+  if [ -z "$PROBE_HW_ID" ]; then
+    say "ERROR: could not derive the probe hardware id."
+    say "  If your Docker is rootless or Docker Desktop, it may reject --mac-address,"
+    say "  which the host-license binding requires. Use a rootful Docker Engine, or set"
+    say "  PROBE_MAC_ADDRESS + PROBE_HW_ID explicitly for a MAC-independent enrollment."
+    exit 1
+  fi
 fi
 
 # Images before the non-root hardening ran as root and may have left the named
@@ -471,9 +555,16 @@ else
   say "Probe container started. It is creating a device identity and enrollment request."
 fi
 
-sleep 2
+# Poll briefly for a running container so a slow first boot isn't a false "exited";
+# stop early if it has already exited.
+_i=0
+while [ "$_i" -lt 15 ]; do
+  [ "$(docker inspect -f '{{.State.Running}}' "$NAME" 2>/dev/null || true)" = "true" ] && break
+  [ "$(docker inspect -f '{{.State.Status}}' "$NAME" 2>/dev/null || true)" = "exited" ] && break
+  _i=$((_i + 1)); sleep 1
+done
 if [ "$(docker inspect -f '{{.State.Running}}' "$NAME" 2>/dev/null || true)" != "true" ]; then
-  say "ERROR: probe exited during startup."
+  say "ERROR: probe is not running after startup."
   docker logs --tail 50 "$NAME" 2>&1 || true
   exit 1
 fi

@@ -26,6 +26,8 @@ import errno as _errno
 import ipaddress
 import json
 import logging
+import os
+import random
 import socket
 import struct
 import sys
@@ -36,6 +38,75 @@ from pathlib import Path
 from typing import Any, Iterable, Iterator
 
 LOG = logging.getLogger("scanner")
+
+
+# ── wire identity (anti-attribution) ──────────────────────────────────────────
+# What the scanner puts in packets a defender can SEE. Defaults are deliberately
+# generic so the tool never signs its own traffic with a brand string a blue team
+# can grep, alert on, or attribute to the engagement. Override per-engagement via
+# env when you WANT to be identifiable (authorized/cooperative assessments).
+_DEFAULT_USER_AGENT = ("Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+                       "AppleWebKit/537.36 (KHTML, like Gecko) "
+                       "Chrome/125.0.0.0 Safari/537.36")
+# Windows ping's default 32-byte payload — blends in as ordinary ICMP echo traffic.
+_DEFAULT_PROBE_PAYLOAD = b"abcdefghijklmnopqrstuvwabcdefghi"
+
+
+def user_agent() -> str:
+    """HTTP/RTSP User-Agent to send — a generic browser UA by default so it does
+    not attribute the scan. Override with the VEDHA_SCAN_UA env var."""
+    return os.environ.get("VEDHA_SCAN_UA") or _DEFAULT_USER_AGENT
+
+
+def probe_payload() -> bytes:
+    """Benign, non-attributing payload for ICMP/UDP probes — looks like ordinary
+    ping traffic by default. Override with the VEDHA_SCAN_PAYLOAD env var."""
+    override = os.environ.get("VEDHA_SCAN_PAYLOAD")
+    return override.encode() if override is not None else _DEFAULT_PROBE_PAYLOAD
+
+
+def choose_source_port(configured: int | None, *, lo: int = 40000, hi: int = 60000) -> int:
+    """The TCP source port for probes. A FIXED port (e.g. 53/88) lets a scan slip
+    past naive stateless ACLs that trust well-known source ports; None (default)
+    picks a random ephemeral port so probes aren't trivially correlated. An
+    out-of-range value falls back to random rather than crafting an invalid port."""
+    if configured is not None and 1 <= configured <= 65535:
+        return configured
+    return random.randint(lo, hi)
+
+
+def jittered_delay(base: float, jitter: float = 0.3) -> float:
+    """A per-probe delay of `base` seconds ± up to `jitter` fraction of random
+    variation, so a scan's inter-probe cadence isn't a fixed, fingerprintable
+    interval. Never negative; returns 0.0 for base <= 0."""
+    if base <= 0:
+        return 0.0
+    spread = base * max(0.0, min(1.0, jitter))
+    return max(0.0, base + random.uniform(-spread, spread))
+
+
+def assess_tarpit(open_count: int, attempted_count: int, *,
+                  abs_floor: int = 50, ratio: float = 0.5) -> dict:
+    """Heuristic: is this host a tarpit / honeypot / ACK-everything middlebox?
+
+    Such hosts answer on an implausible fraction of ports, so every "open" they
+    report is a phantom service that would flood a report with false positives.
+    We flag only when BOTH conditions hold: an absolute floor of open ports AND a
+    high open-to-scanned ratio. The floor stops a tiny scan (2-of-2 open) from
+    tripping; the ratio stops a genuinely busy host (a few dozen real services out
+    of tens of thousands of ports) from tripping. Returns
+    {likely_tarpit, open_ratio, open_count, attempted, reason}."""
+    attempted = max(0, attempted_count)
+    opens = max(0, open_count)
+    open_ratio = round(opens / attempted, 4) if attempted else 0.0
+    likely = opens >= abs_floor and open_ratio >= ratio
+    if likely:
+        reason = (f"{opens}/{attempted} ports answered open ({open_ratio:.0%}) — "
+                  f"implausible for a real host; likely tarpit/honeypot/middlebox")
+    else:
+        reason = "open-port distribution is consistent with a real host"
+    return {"likely_tarpit": likely, "open_ratio": open_ratio,
+            "open_count": opens, "attempted": attempted, "reason": reason}
 
 
 # --------------------------------------------------------------------------- #
@@ -457,19 +528,28 @@ def expand_targets(specs: Iterable[str], *, max_hosts: int = 200_000) -> list[st
     return out
 
 
-def resolve(target: str, port: int, *, proto: str = "tcp"):
+def resolve(target: str, port: int, *, proto: str = "tcp", family=None):
     """
     Resolve `target` to a concrete (family, sockaddr) covering IPv4, IPv6, and
     hostnames. Raw-socket scanners MUST use this instead of hardcoding AF_INET
     or they silently miss every IPv6 target. getaddrinfo orders results per RFC
-    6724; we take the first usable result. Raises OSError if unresolvable.
+    6724; we take the first usable result.
+
+    Pass `family` (e.g. socket.AF_INET) to REQUIRE that address family: an
+    IPv4-only raw scanner then still finds the v4 address of a dual-stack host
+    whose AAAA sorts first, instead of failing on the v6 result. Falls back to the
+    first result when the requested family is absent. Raises OSError if unresolvable.
     """
     socktype = socket.SOCK_DGRAM if proto == "udp" else socket.SOCK_STREAM
     infos = socket.getaddrinfo(target, port, socket.AF_UNSPEC, socktype)
     if not infos:
         raise OSError(f"cannot resolve {target!r}")
-    family, _stype, _proto, _canon, sockaddr = infos[0]
-    return family, sockaddr
+    if family is not None:
+        for fam, _st, _pr, _cn, sockaddr in infos:
+            if fam == family:
+                return fam, sockaddr
+    fam0, _stype, _proto, _canon, sockaddr = infos[0]
+    return fam0, sockaddr
 
 
 # --------------------------------------------------------------------------- #
@@ -734,6 +814,13 @@ def base_argparser(description: str) -> argparse.ArgumentParser:
                    help="max concurrent operations (default 100)")
     p.add_argument("--timeout", type=float, default=3.0,
                    help="per-operation timeout seconds (default 3.0)")
+    p.add_argument("-g", "--source-port", type=int, default=None,
+                   help="fixed TCP source port for probes (e.g. 53 or 88) to bypass "
+                        "naive stateless ACLs; default is a random ephemeral port")
+    p.add_argument("-R", "--randomize", action="store_true",
+                   help="randomize scan order (breaks the sequential-port pattern IDS flags on)")
+    p.add_argument("--scan-delay", type=float, default=0.0,
+                   help="jittered per-probe delay (seconds) to blur a fixed scan cadence")
     p.add_argument("-v", "--verbose", action="store_true")
     return p
 

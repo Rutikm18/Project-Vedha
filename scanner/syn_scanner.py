@@ -40,12 +40,31 @@ import struct
 import sys
 import time
 
+from .adaptive_timeout import AdaptiveTimeout
+from .os_fingerprint import fingerprint_os
+from .port_scanner import _NMAP_TOP_100, PortScanner
 from .scanner_base import (
-    BaseScanner, ScanResult, ScopeGuard, ResultWriter, expand_targets,
-    parse_ports, resolve, TOP_TCP_PORTS, setup_logging, base_argparser,
-    main_entrypoint, LOG, inet_checksum as _checksum,
+    LOG,
+    BaseScanner,
+    ResultWriter,
+    ScanResult,
+    ScopeGuard,
+    base_argparser,
+    choose_source_port,
+    expand_targets,
+    main_entrypoint,
+    parse_ports,
+    resolve,
+    setup_logging,
 )
-from .port_scanner import PortScanner
+from .scanner_base import (
+    inet_checksum as _checksum,
+)
+
+# TCP option kinds we harvest from a SYN/ACK.
+_TCP_OPT_EOL = 0
+_TCP_OPT_NOP = 1
+_TCP_OPT_MSS = 2
 
 # TCP flag bits
 TCP_FIN = 0x01
@@ -103,20 +122,58 @@ def build_syn_packet(src_ip: str, dst_ip: str, src_port: int, dst_port: int,
     return ip + tcp
 
 
+def _parse_mss(opts: bytes) -> int | None:
+    """Walk a TCP options field for the MSS value (kind 2, len 4).
+
+    Bounds-checked and tolerant: EOL ends the walk, NOP is skipped, and any other
+    option is stepped over by its own length byte. Returns None if MSS is absent
+    or the field is malformed — never raises on attacker-controlled bytes.
+    """
+    i, n = 0, len(opts)
+    while i < n:
+        kind = opts[i]
+        if kind == _TCP_OPT_EOL:
+            break
+        if kind == _TCP_OPT_NOP:
+            i += 1
+            continue
+        if i + 1 >= n:
+            break
+        length = opts[i + 1]
+        if length < 2 or i + length > n:
+            break
+        if kind == _TCP_OPT_MSS and length == 4:
+            return int.from_bytes(opts[i + 2:i + 4], "big")
+        i += length
+    return None
+
+
 def parse_packet(raw: bytes) -> dict | None:
-    """Parse a raw IPv4+TCP packet (as received on a raw IPPROTO_TCP socket)."""
+    """Parse a raw IPv4+TCP packet (as received on a raw IPPROTO_TCP socket).
+
+    Also surfaces the sender's stack signals — IP TTL, TCP window, and the MSS
+    option when present — which are free OS-fingerprint hints on a SYN/ACK.
+    """
     if len(raw) < 20:
         return None
     ihl = (raw[0] & 0x0F) * 4
     if ihl < 20 or len(raw) < ihl + 20:
         return None
+    ttl = raw[8]
     ip_src = socket.inet_ntoa(raw[12:16])
     ip_dst = socket.inet_ntoa(raw[16:20])
     tcp = raw[ihl:ihl + 20]
-    (src_port, dst_port, seq, ack, _off, flags, _win, _chk,
+    (src_port, dst_port, seq, ack, off, flags, win, _chk,
      _urg) = struct.unpack("!HHIIBBHHH", tcp)
+    # TCP options (present when the data offset exceeds the 20-byte base header)
+    # can carry MSS — a stable OS/path signal. Parse them defensively.
+    mss = None
+    data_off = (off >> 4) * 4
+    if data_off > 20 and len(raw) >= ihl + data_off:
+        mss = _parse_mss(raw[ihl + 20:ihl + data_off])
     return {"ip_src": ip_src, "ip_dst": ip_dst, "src_port": src_port,
-            "dst_port": dst_port, "seq": seq, "ack": ack, "flags": flags}
+            "dst_port": dst_port, "seq": seq, "ack": ack, "flags": flags,
+            "window": win, "ttl": ttl, "mss": mss}
 
 
 def classify(flags: int) -> str | None:
@@ -193,10 +250,26 @@ class SynScanner(BaseScanner):
 
     def __init__(self, *args, ports: list[int] | None = None,
                  key: bytes | None = None, report_closed: bool = False,
-                 force_fallback: bool = False, **kwargs):
+                 force_fallback: bool = False, retries: int = 2,
+                 adaptive_timeout: bool = True, source_port: int | None = None,
+                 randomize: bool = False, scan_delay: float = 0.0, **kwargs):
         super().__init__(*args, **kwargs)
-        self.ports = list(TOP_TCP_PORTS if ports is None else ports)
+        # Default to nmap top-100 (not the 35-port TOP_TCP_PORTS): a no-arg scan
+        # shouldn't silently miss common services.
+        self.ports = list(_NMAP_TOP_100 if ports is None else ports)
         self.report_closed = report_closed
+        # Per-host RTT-adaptive recv window (Jacobson/Karels), matching the
+        # connect path. Without it the SYN path used a FIXED timeout and thus
+        # mislabeled slow-WAN OPEN ports as filtered (and wasted time on LAN).
+        self.adaptive_timeout = adaptive_timeout
+        # A raw SYN gets ZERO kernel retransmit (unlike connect(), where the OS
+        # stack resends the SYN several times). So a lone dropped SYN/SYN-ACK is
+        # a false `filtered` unless WE resend. Retransmit silent ports only, for
+        # `retries` extra rounds; a definitive SYN-ACK/RST ends a port early.
+        # Default 2 (higher than the connect scan's 1, which rides on kernel
+        # retransmits) to match connect-scan reliability.
+        self.retries = max(0, retries)
+        self.source_port = source_port          # fixed TCP src port, or None = random
         self._key = key or os.urandom(16)
         self._rate = kwargs.get("rate", 200.0)
         self._supported = (not force_fallback) and syn_scan_supported()
@@ -205,7 +278,8 @@ class SynScanner(BaseScanner):
             self._fallback = PortScanner(
                 self.scope, rate=self._rate, concurrency=self._concurrency,
                 timeout=self.timeout, ports=self.ports,
-                report_closed=self.report_closed)
+                report_closed=self.report_closed, source_port=source_port,
+                randomize=randomize, scan_delay=scan_delay)
 
     async def scan_target(self, target: str) -> list[ScanResult]:
         if self._supported:
@@ -242,7 +316,7 @@ class SynScanner(BaseScanner):
             raise OSError("syn scan is IPv4-only")
         dst_ip = sockaddr[0]
         src_ip = _local_source_ip(dst_ip)
-        src_port = random.randint(40000, 60000)
+        src_port = choose_source_port(self.source_port)
 
         send_sock = socket.socket(socket.AF_INET, socket.SOCK_RAW,
                                   socket.IPPROTO_RAW)
@@ -251,67 +325,158 @@ class SynScanner(BaseScanner):
                                   socket.IPPROTO_TCP)
         recv_sock.setblocking(False)
 
-        try:
-            # Blast one SYN per port (stateless — ISN carries the cookie).
-            for port in self.ports:
-                seq = syn_cookie(dst_ip, port, src_port, self._key)
-                pkt = build_syn_packet(src_ip, dst_ip, src_port, port, seq)
-                try:
-                    send_sock.sendto(pkt, (dst_ip, 0))
-                except OSError as exc:
-                    LOG.debug("send SYN %s:%d failed: %s", dst_ip, port, exc)
+        # One adaptive timer per host: it warms from each SYN-ACK/RST round-trip,
+        # so later rounds wait exactly as long as this path actually needs.
+        est = (AdaptiveTimeout(base=self.timeout,
+                               minimum=min(0.3, self.timeout),
+                               maximum=max(self.timeout, 8.0))
+               if self.adaptive_timeout else None)
 
-            # Collect replies within a bounded window.
-            states: dict[int, str] = {}
-            deadline = time.monotonic() + max(self.timeout, 1.0)
-            while time.monotonic() < deadline and len(states) < len(self.ports):
-                try:
-                    raw = recv_sock.recv(65535)
-                except BlockingIOError:
-                    time.sleep(0.005)
-                    continue
-                except OSError:
+        states: dict[int, str] = {}
+        attempts_by_port: dict[int, int] = {}
+        # Per-port harvested intel: rtt_ms + the SYN/ACK's stack signals.
+        meta: dict[int, dict] = {}
+        try:
+            # Retransmit loop: each round SYNs only the still-silent ports, then
+            # collects replies. A definitive SYN-ACK/RST resolves a port and drops
+            # it from `pending`; only silence carries to the next round. This is
+            # the direct fix for the SYN path's false negatives — a lost SYN or
+            # SYN-ACK gets another chance instead of being reported `filtered`.
+            #
+            # Ports are shuffled: a randomized order spreads the burst across the
+            # target's port range (fewer self-induced drops) and defeats trivial
+            # sequential-scan detection — masscan/nmap do the same.
+            pending = random.sample(self.ports, len(self.ports))
+            rounds = self.retries + 1
+            for _round in range(rounds):
+                if not pending:
                     break
-                parsed = parse_packet(raw)
-                if not parsed or parsed["ip_src"] != dst_ip:
-                    continue
-                if parsed["dst_port"] != src_port:
-                    continue
-                if not verify_reply_cookie(parsed, src_port, self._key):
-                    continue
-                verdict = classify(parsed["flags"])
-                if verdict:
-                    states.setdefault(parsed["src_port"], verdict)
+                # Send a SYN per pending port (stateless — ISN carries the cookie).
+                # Record the send instant so a reply yields a real round-trip time.
+                send_at: dict[int, float] = {}
+                for port in pending:
+                    attempts_by_port[port] = attempts_by_port.get(port, 0) + 1
+                    seq = syn_cookie(dst_ip, port, src_port, self._key)
+                    pkt = build_syn_packet(src_ip, dst_ip, src_port, port, seq)
+                    try:
+                        send_sock.sendto(pkt, (dst_ip, 0))
+                        send_at[port] = time.monotonic()
+                    except OSError as exc:
+                        LOG.debug("send SYN %s:%d failed: %s", dst_ip, port, exc)
+
+                # Collect replies for this round within the adaptive window.
+                pending_set = set(pending)
+                window = est.timeout() if est is not None else self.timeout
+                deadline = time.monotonic() + max(window, 1.0)
+                while time.monotonic() < deadline and pending_set:
+                    try:
+                        raw = recv_sock.recv(65535)
+                    except BlockingIOError:
+                        time.sleep(0.005)
+                        continue
+                    except OSError:
+                        break
+                    parsed = parse_packet(raw)
+                    if not parsed or parsed["ip_src"] != dst_ip:
+                        continue
+                    if parsed["dst_port"] != src_port:
+                        continue
+                    if not verify_reply_cookie(parsed, src_port, self._key):
+                        continue
+                    verdict = classify(parsed["flags"])
+                    if not verdict:
+                        continue
+                    rport = parsed["src_port"]
+                    states.setdefault(rport, verdict)
+                    pending_set.discard(rport)
+                    # Fold the real round-trip into the adaptive timer + record it.
+                    sent = send_at.get(rport)
+                    if sent is not None:
+                        rtt_ms = round((time.monotonic() - sent) * 1000, 2)
+                        if est is not None:
+                            est.observe(rtt_ms / 1000.0)
+                        meta.setdefault(rport, {})["rtt_ms"] = rtt_ms
+                    # Harvest the SYN/ACK's stack signals — free OS-fingerprint
+                    # data (window/TTL/MSS) that was previously parsed & discarded.
+                    if verdict == "open":
+                        m = meta.setdefault(rport, {})
+                        m["tcp_window"] = parsed.get("window")
+                        m["ip_ttl"] = parsed.get("ttl")
+                        if parsed.get("mss") is not None:
+                            m["mss"] = parsed["mss"]
+                # Only ports still unresolved go to the next round.
+                pending = [p for p in pending if p not in states]
         finally:
             send_sock.close()
             recv_sock.close()
 
+        return self._build_results(target, states, attempts_by_port, meta)
+
+    def _build_results(self, target: str, states: dict[int, str],
+                       attempts_by_port: dict[int, int],
+                       meta: dict[int, dict]) -> list[ScanResult]:
+        """Turn resolved port states + harvested intel into ScanResults. Pure —
+        no sockets — so the emit logic (incl. the OS-fingerprint enrichment) is
+        unit-testable without a raw socket."""
         results: list[ScanResult] = []
         for port in self.ports:
             state = states.get(port)
+            attempts = attempts_by_port.get(port, 1)
+            m = meta.get(port, {})
             if state == "open":
+                data: dict = {"method": "syn"}
+                if attempts > 1:
+                    data["attempts"] = attempts
+                if "rtt_ms" in m:
+                    data["rtt_ms"] = m["rtt_ms"]
+                # Attach the harvested stack signals and a best-guess OS family.
+                win, ttl, mss = m.get("tcp_window"), m.get("ip_ttl"), m.get("mss")
+                if win is not None:
+                    data["tcp_window"] = win
+                if ttl is not None:
+                    data["ip_ttl"] = ttl
+                if mss is not None:
+                    data["mss"] = mss
+                if win is not None or ttl is not None or mss is not None:
+                    fp = fingerprint_os(ttl=ttl, tcp_window=win, mss=mss)
+                    if fp["os_guess"] != "unknown":
+                        data["os_guess"] = fp["os_guess"]
+                        data["os_confidence"] = fp["confidence"]
                 results.append(ScanResult(
                     self.name, target, port=port, proto="tcp", status="open",
-                    data={"method": "syn"}, evidence="syn/ack received"))
+                    data=data, evidence="syn/ack received"))
             elif state == "closed" and self.report_closed:
+                data = {"method": "syn"}
+                if attempts > 1:
+                    data["attempts"] = attempts
+                if "rtt_ms" in m:
+                    data["rtt_ms"] = m["rtt_ms"]
                 results.append(ScanResult(
                     self.name, target, port=port, proto="tcp", status="closed",
-                    data={"method": "syn"}, evidence="rst received"))
+                    data=data, evidence="rst received"))
             elif state is None and self.report_closed:
                 results.append(ScanResult(
                     self.name, target, port=port, proto="tcp", status="filtered",
-                    data={"method": "syn"}, evidence="no reply (open|filtered)"))
+                    data={"method": "syn", "attempts": attempts},
+                    evidence=f"no reply after {attempts} SYN(s) (open|filtered)"))
         return results
 
 
 def main() -> None:
     parser = base_argparser("Stateless TCP SYN scanner (connect-scan fallback)")
     parser.add_argument("-p", "--ports", default=None,
-                        help="ports e.g. '22,80,443,8000-8100' (default: top ports)")
+                        help="ports e.g. '22,80,443,8000-8100' (default: nmap top-100)")
     parser.add_argument("--report-closed", action="store_true",
                         help="also emit closed/filtered results (noisier)")
     parser.add_argument("--force-fallback", action="store_true",
                         help="skip the raw SYN path and use the connect scan")
+    parser.add_argument("--retries", type=int, default=2,
+                        help="extra SYN retransmit rounds on silence only "
+                             "(default 2; 0 = single SYN). SYN-ACK/RST ends a "
+                             "port early and is never retried.")
+    parser.add_argument("--fixed-timeout", action="store_true",
+                        help="disable the per-host RTT-adaptive recv window; use "
+                             "the fixed --timeout instead")
     args = parser.parse_args()
     setup_logging(args.verbose)
 
@@ -322,7 +487,11 @@ def main() -> None:
         scanner = SynScanner(scope, rate=args.rate, concurrency=args.concurrency,
                              timeout=args.timeout, ports=ports,
                              report_closed=args.report_closed,
-                             force_fallback=args.force_fallback)
+                             force_fallback=args.force_fallback,
+                             retries=args.retries,
+                             adaptive_timeout=not args.fixed_timeout,
+                             source_port=args.source_port,
+                             randomize=args.randomize, scan_delay=args.scan_delay)
         if scanner._supported:
             LOG.info("[syn_scan] raw SYN path active")
         else:

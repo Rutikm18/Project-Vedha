@@ -32,6 +32,26 @@ class TransportError(Exception):
     """Raised when a transport operation fails permanently (not retryable)."""
 
 
+class DeviceAlreadyEnrolledError(TransportError):
+    """The probe's device signing key is already registered as an agent on the
+    manager (create_enrollment_request → HTTP 409).
+
+    Distinct from a transient/network failure: retrying the create call will
+    never succeed. The probe must instead refresh its device access token, or an
+    operator must remove the stale agent before a fresh enrollment can proceed.
+    Kept as its own type so the caller reports an accurate cause rather than the
+    generic 'manager unreachable' path."""
+
+
+def _enrollment_conflict_detail(response: "httpx.Response") -> str:
+    """Best-effort extraction of the manager's 409 ``detail`` message."""
+    try:
+        detail = response.json().get("detail")
+    except (ValueError, AttributeError, TypeError):
+        detail = None
+    return str(detail) if detail else "This device key is already enrolled"
+
+
 def _sync_directory(directory: Path) -> None:
     if os.name != "posix" or not directory.exists():
         return
@@ -311,6 +331,12 @@ class Transport:
 
     def create_enrollment_request(self, payload: dict[str, Any]) -> dict[str, Any]:
         response = self._client.post("/probe-enrollment/requests", json=payload)
+        # A 409 here means the manager already has an agent bound to this device
+        # signing key — a permanent condition, not a reachable-yet-flaky manager.
+        # Surface it as its own type so the caller can attempt a device-token
+        # refresh or give an actionable message instead of retrying blindly.
+        if response.status_code == 409:
+            raise DeviceAlreadyEnrolledError(_enrollment_conflict_detail(response))
         response.raise_for_status()
         return response.json()
 

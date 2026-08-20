@@ -21,11 +21,14 @@ import re
 from .scanner_base import (
     BaseScanner, ScanResult, ScopeGuard, ResultWriter, expand_targets,
     parse_ports, bracket_host, setup_logging, base_argparser, main_entrypoint,
+    user_agent,
 )
 
 # Probe sent to a port if the service does not greet us first.
 # Keep these minimal and non-intrusive — a bare request, nothing exploit-like.
-_HTTP_PROBE = b"GET / HTTP/1.0\r\nHost: %b\r\nUser-Agent: va-scanner\r\n\r\n"
+# UA comes from scanner_base (generic by default) so the probe carries no signature.
+_HTTP_PROBE = (b"GET / HTTP/1.0\r\nHost: %b\r\nUser-Agent: "
+               + user_agent().encode() + b"\r\n\r\n")
 _GENERIC_PROBE = b"\r\n"
 
 # Ports where the client must speak first.

@@ -30,10 +30,12 @@ import os
 import socket
 import struct
 import sys
+import time
 
 from .scanner_base import (
     BaseScanner, ScanResult, ScopeGuard, ResultWriter, expand_targets,
     resolve, inet_checksum, setup_logging, base_argparser, main_entrypoint, LOG,
+    probe_payload,
 )
 
 # ICMP message types
@@ -76,6 +78,19 @@ def build_icmp_addrmask(identifier: int, seq: int) -> bytes:
     return _icmp(ICMP_ADDRMASK_REQUEST, 0, rest)
 
 
+def _strip_ip_header(raw: bytes) -> tuple[int | None, bytes]:
+    """Return (ttl, icmp_bytes). Raw-socket delivery prepends the full IPv4 header
+    (so the TTL is available); datagram-ICMP delivers the ICMP message alone
+    (ttl None). A leading nibble of 4 with a sane IHL marks the IPv4 case; an ICMP
+    type byte (0/14/…) never has a high nibble of 4, so datagram frames fall through
+    untouched."""
+    if len(raw) >= 20 and (raw[0] >> 4) == 4:
+        ihl = (raw[0] & 0x0F) * 4
+        if ihl >= 20 and len(raw) >= ihl + 8:
+            return raw[8], raw[ihl:]
+    return None, raw
+
+
 def parse_icmp_reply(raw: bytes) -> dict | None:
     """
     Parse an ICMP reply. Handles both raw-socket delivery (full IPv4 header
@@ -83,17 +98,53 @@ def parse_icmp_reply(raw: bytes) -> dict | None:
     """
     if len(raw) < 8:
         return None
-    ttl = None
-    icmp = raw
-    if (raw[0] >> 4) == 4 and len(raw) >= 20:      # looks like an IPv4 header
-        ihl = (raw[0] & 0x0F) * 4
-        if ihl >= 20 and len(raw) >= ihl + 8:
-            ttl = raw[8]
-            icmp = raw[ihl:]
+    ttl, icmp = _strip_ip_header(raw)
     if len(icmp) < 8:
         return None
     type_, code, _chk, ident, seq = struct.unpack("!BBHHH", icmp[:8])
     return {"type": type_, "code": code, "id": ident, "seq": seq, "ttl": ttl}
+
+
+def parse_icmp_timestamps(raw: bytes) -> dict | None:
+    """Parse an ICMP timestamp reply (type 14): id/seq/ttl plus the three 32-bit
+    timestamps (originate/receive/transmit, ms since UTC midnight). Returns None
+    unless the ICMP body is a full 20-byte timestamp message."""
+    ttl, icmp = _strip_ip_header(raw)
+    if len(icmp) < 20:
+        return None
+    type_, code, _chk, ident, seq, orig, recv, xmit = struct.unpack(
+        "!BBHHHIII", icmp[:20])
+    return {"type": type_, "code": code, "id": ident, "seq": seq, "ttl": ttl,
+            "originate": orig, "receive": recv, "transmit": xmit}
+
+
+def remote_clock(transmit_ms: int) -> dict:
+    """Interpret a timestamp reply's transmit value. Per RFC 792 a *standard* value
+    is milliseconds since UTC midnight with the high-order bit clear; a set high bit
+    flags a non-standard clock we don't decode. The decoded wall-clock is real
+    intel — it can expose the target's timezone and clock skew."""
+    if transmit_ms & 0x80000000:
+        return {"standard": False, "transmit_raw": transmit_ms}
+    ms = transmit_ms % 86_400_000                 # clamp stray out-of-day values
+    h, rem = divmod(ms, 3_600_000)
+    m, rem = divmod(rem, 60_000)
+    s, msec = divmod(rem, 1000)
+    return {"standard": True,
+            "ms_since_utc_midnight": transmit_ms,
+            "utc_time": f"{h:02d}:{m:02d}:{s:02d}.{msec:03d}"}
+
+
+def accept_echo_reply(src_ip: str | None, parsed: dict | None, target_ip: str) -> bool:
+    """True only for an ICMP ECHO reply that actually came FROM the probed host.
+
+    A raw ICMP socket receives every ICMP packet on the box, so a reply meant for
+    another target (or another probe) can arrive on our socket; accepting it would
+    attribute the wrong host's TTL — a wrong-host OS fingerprint. Requiring the
+    source address to equal the target closes that. (Datagram-ICMP also delivers
+    the peer address, so the same check works there.)"""
+    if not parsed or parsed.get("type") != ICMP_ECHO_REPLY:
+        return False
+    return src_ip is None or src_ip == target_ip
 
 
 # ── TTL inference + OS mapping ────────────────────────────────────────────────
@@ -167,6 +218,21 @@ def fingerprint_os(*, ttl: int | None = None, tcp_window: int | None = None,
 
     if mss is not None:
         signals["mss"] = mss
+        # MSS = MTU - IPv4(20) - TCP(20) headers. Recover the path MTU and classify
+        # the link. A sub-1500 MTU means the path is encapsulated — VPN/PPPoE/overlay
+        # — which is real reachability intel (feeds vantage/segmentation), not an OS
+        # signal, so it deliberately does NOT touch the OS scores. (MSS 1460 is the
+        # Ethernet default on every OS, so it isn't OS-distinctive anyway.)
+        mtu = mss + 40
+        signals["mtu"] = mtu
+        if mtu > 1500:
+            signals["link_hint"] = "jumbo"
+        elif mtu == 1500:
+            signals["link_hint"] = "ethernet"
+        elif mtu >= 1400:
+            signals["link_hint"] = "tunnel_or_vpn"
+        else:
+            signals["link_hint"] = "constrained"
 
     total = sum(scores.values())
     if total == 0:
@@ -235,18 +301,58 @@ class OSFingerprintScanner(BaseScanner):
         if opened is None:
             return "unavailable"
         sock, _is_raw = opened
-        sock.settimeout(self.timeout)
         try:
-            family, sockaddr = resolve(target, 0, proto="udp")
+            family, sockaddr = resolve(target, 0, proto="udp", family=socket.AF_INET)
             if family != socket.AF_INET:
-                return "unavailable"          # IPv4-only ICMP here
+                return "unavailable"          # no IPv4 for this host — ICMP here is v4-only
+            target_ip = sockaddr[0]
             ident = os.getpid() & 0xFFFF
-            sock.sendto(build_icmp_echo(ident, 1, b"vedha-probe"), (sockaddr[0], 0))
-            raw, _ = sock.recvfrom(2048)
-            parsed = parse_icmp_reply(raw)
-            if not parsed or parsed["type"] not in (ICMP_ECHO_REPLY,):
-                return "down"
-            return parsed["ttl"]
+            sock.sendto(build_icmp_echo(ident, 1, probe_payload()), (target_ip, 0))
+            # Read until THIS host's echo reply arrives or the timeout elapses,
+            # skipping stray ICMP from other hosts (a raw socket receives all ICMP
+            # on the box) so a neighbour's TTL is never mislabelled as the target's.
+            deadline = time.monotonic() + self.timeout
+            while True:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    return "down"
+                sock.settimeout(remaining)
+                raw, addr = sock.recvfrom(2048)
+                parsed = parse_icmp_reply(raw)
+                if accept_echo_reply(addr[0] if addr else None, parsed, target_ip):
+                    return parsed["ttl"]
+        except (socket.timeout, OSError):
+            return "down"
+        finally:
+            sock.close()
+
+    def _icmp_timestamp(self, target: str) -> dict | str:
+        """Send an ICMP timestamp request (type 13); return {ttl, transmit} from a
+        matching type-14 reply, else "down"/"unavailable". This reaches hosts that
+        filter echo but not timestamp, and harvests the remote clock."""
+        opened = _open_icmp_socket()
+        if opened is None:
+            return "unavailable"
+        sock, _is_raw = opened
+        try:
+            family, sockaddr = resolve(target, 0, proto="udp", family=socket.AF_INET)
+            if family != socket.AF_INET:
+                return "unavailable"
+            target_ip = sockaddr[0]
+            ident = os.getpid() & 0xFFFF
+            sock.sendto(build_icmp_timestamp(ident, 1), (target_ip, 0))
+            deadline = time.monotonic() + self.timeout
+            while True:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    return "down"
+                sock.settimeout(remaining)
+                raw, addr = sock.recvfrom(2048)
+                if addr and addr[0] != target_ip:      # stray ICMP from another host
+                    continue
+                ts = parse_icmp_timestamps(raw)
+                if ts and ts["type"] == ICMP_TIMESTAMP_REPLY:
+                    return {"ttl": ts["ttl"], "transmit": ts["transmit"]}
         except (socket.timeout, OSError):
             return "down"
         finally:
@@ -270,9 +376,29 @@ class OSFingerprintScanner(BaseScanner):
                                data={"icmp": "unavailable"},
                                evidence="ICMP unavailable (need root or ping perms)")]
         if ttl == "down":
+            # Echo filtered? A timestamp probe (type 13) frequently still elicits a
+            # reply — proving liveness through the filter and leaking the remote
+            # clock. (Answering timestamp-but-not-echo is itself a stack signal.)
+            ts = await loop.run_in_executor(None, self._icmp_timestamp, target)
+            if isinstance(ts, dict):
+                t_ttl = ts.get("ttl")
+                fp = fingerprint_os(ttl=t_ttl if isinstance(t_ttl, int) else None,
+                                    tcp_window=hints.get("tcp_window"),
+                                    mss=hints.get("mss"))
+                clock = remote_clock(ts["transmit"])
+                data = {"alive": True, "icmp_reply": True, "icmp_echo_reply": False,
+                        "icmp_timestamp_reply": True, "via": "icmp_timestamp",
+                        "observed_ttl": t_ttl, "remote_clock": clock, **fp}
+                ev = (f"ICMP timestamp reply (echo filtered) ttl={t_ttl} "
+                      f"-> {fp['os_guess']}")
+                if clock.get("standard"):
+                    ev += f"; remote clock {clock['utc_time']} UTC"
+                return [ScanResult(self.name, target, status="open",
+                                   data=data, evidence=ev)]
             return [ScanResult(self.name, target, status="filtered",
-                               data={"alive": False, "icmp_reply": False},
-                               evidence="no ICMP echo reply")]
+                               data={"alive": False, "icmp_reply": False,
+                                     "icmp_timestamp_reply": False},
+                               evidence="no ICMP echo or timestamp reply")]
 
         # ttl is an int (or None if the IP header wasn't delivered).
         fp = fingerprint_os(ttl=ttl if isinstance(ttl, int) else None,

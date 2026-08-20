@@ -66,6 +66,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import ipaddress
+import random
 import socket
 import time
 from collections import Counter
@@ -73,9 +74,11 @@ from dataclasses import dataclass, field
 
 from .scanner_base import (
     BaseScanner, ScanResult, ScopeGuard, ResultWriter, expand_targets,
-    parse_ports, TOP_TCP_PORTS, setup_logging, base_argparser,
-    main_entrypoint, classify_os_error, STATE_CONFIDENCE,
+    parse_ports, setup_logging, base_argparser,
+    main_entrypoint, classify_os_error, STATE_CONFIDENCE, jittered_delay,
+    assess_tarpit,
 )
+from .adaptive_timeout import AdaptiveTimeout
 
 # The errno→(state,reason) classifier now lives in scanner_base (Phase 2 — one
 # shared model). Local alias kept so existing references are unchanged.
@@ -244,6 +247,9 @@ class ScanMetrics:
             "duration_s": self.duration_s,
             "complete": self.complete,
             "health": "degraded" if self.degraded else "ok",
+            # Flag hosts that answer on an implausible share of ports: their "open"
+            # results are phantom (tarpit/honeypot/middlebox), not real services.
+            "tarpit": assess_tarpit(self.open, self.ports_attempted),
         }
 
 
@@ -252,12 +258,30 @@ class PortScanner(BaseScanner):
 
     def __init__(self, *args, ports: list[int] | None = None,
                  report_closed: bool = False, vantage: str | None = None,
-                 retries: int = 1, emit_summary: bool = True, **kwargs):
+                 retries: int = 1, emit_summary: bool = True,
+                 adaptive_timeout: bool = True, source_port: int | None = None,
+                 randomize: bool = False, scan_delay: float = 0.0, **kwargs):
         super().__init__(*args, **kwargs)
+        # Fixed TCP source port (e.g. 53/88) to bypass naive stateless ACLs; None =
+        # OS-chosen ephemeral. Bound per-connect below (best-effort under concurrency).
+        self.source_port = source_port
+        # Evasion: randomize probe order + add a jittered per-probe delay so the scan
+        # isn't a fixed-cadence, sequential-port pattern an IDS can flag.
+        self.randomize = randomize
+        self.scan_delay = max(0.0, scan_delay)
         # Emit a terminal scan_summary result carrying the completeness/health
         # metrics. On by default — it is how a caller detects a partial scan.
         self.emit_summary = emit_summary
-        self.ports = list(TOP_TCP_PORTS if ports is None else ports)
+        # Default to nmap's top-100 (not the 35-port TOP_TCP_PORTS) so a no-arg
+        # scan doesn't silently miss common services — a recall win for
+        # standalone/default runs. Explicit -p/--profile still overrides.
+        self.ports = list(_NMAP_TOP_100 if ports is None else ports)
+        # Per-host RTT-adaptive probe timeout (Jacobson/Karels, like TCP's RTO).
+        # A fixed timeout is too short on a slow WAN host (its OPEN ports get
+        # mislabeled filtered) and needlessly long on a fast LAN. When on, the
+        # first probe uses `timeout` as the base, then each host's timeout tracks
+        # its own SRTT+4*RTTVAR. Off = the old fixed-timeout behaviour.
+        self.adaptive_timeout = adaptive_timeout
         # Extra connect attempts on silence only (no_response). 0 = single probe
         # (old behaviour). A definitive RST / refused is conclusive and never
         # retried; only ambiguous silence — which one dropped packet can fake —
@@ -297,14 +321,23 @@ class PortScanner(BaseScanner):
         return ScanResult(self.name, target, port=port, proto="tcp",
                           status=state, data=data, evidence=evidence, error=error)
 
-    async def _attempt(self, target: str, port: int) -> ScanResult:
+    async def _attempt(self, target: str, port: int,
+                       est: AdaptiveTimeout | None = None) -> ScanResult:
         """One connect() and its classification. Always returns a ScanResult
-        (open or otherwise); retry/emit decisions belong to `_scan_port`."""
+        (open or otherwise); retry/emit decisions belong to `_scan_port`.
+
+        `est`, when given, supplies the per-host adaptive timeout and is fed the
+        RTT of every DEFINITIVE answer (a completed handshake or an RST) — never
+        a timeout, whose duration is not a real round-trip."""
+        to = est.timeout() if est is not None else self.timeout
         t0 = time.monotonic()
         try:
-            fut = asyncio.open_connection(target, port)
-            reader, writer = await asyncio.wait_for(fut, timeout=self.timeout)
+            local_addr = ("", self.source_port) if self.source_port else None
+            fut = asyncio.open_connection(target, port, local_addr=local_addr)
+            reader, writer = await asyncio.wait_for(fut, timeout=to)
             rtt_ms = round((time.monotonic() - t0) * 1000, 2)
+            if est is not None:
+                est.observe(rtt_ms / 1000.0)   # real RTT: SYN→SYN/ACK
             src_ip = peer_ip = None
             try:
                 sockname = writer.get_extra_info("sockname")
@@ -329,34 +362,39 @@ class PortScanner(BaseScanner):
             # Our wait_for fired: no answer at all within the deadline. Silence
             # is ambiguous, so this is filtered/no_response, not a guaranteed
             # firewall — medium confidence (see _CONFIDENCE). Eligible for retry.
+            # NOT fed to `est`: a timeout's duration is the deadline, not an RTT.
             rtt_ms = round((time.monotonic() - t0) * 1000, 2)
             return self._build(
                 target, port, "filtered", "no_response",
-                f"no response within {self.timeout:g}s",
+                f"no response within {to:g}s",
                 rtt_ms=rtt_ms, family=_family_of(target))
         except OSError as exc:
             rtt_ms = round((time.monotonic() - t0) * 1000, 2)
             state, reason = classify_os_error(exc)
+            if est is not None and state == "closed":
+                est.observe(rtt_ms / 1000.0)   # an RST is a real round-trip too
             return self._build(
                 target, port, state, reason, None,
                 rtt_ms=rtt_ms, error=str(exc),
                 errno_val=getattr(exc, "errno", None),
                 family=_family_of(target))
 
-    async def _scan_port(self, target: str, port: int) -> ScanResult:
+    async def _scan_port(self, target: str, port: int,
+                         est: AdaptiveTimeout | None = None) -> ScanResult:
         await self.limiter.wait()
         async with self.sem:
-            result = await self._attempt(target, port)
+            result = await self._attempt(target, port, est)
             # Retransmit ONLY on silence — a lost packet can fake it. A
             # definitive RST/refused/unreachable is conclusive; don't waste
-            # probes re-confirming it.
+            # probes re-confirming it. The retry re-reads est.timeout(), so a
+            # slow host that warmed up the estimator gets a longer second chance.
             attempt = 1
             while (attempt <= self.retries
                    and result.status == "filtered"
                    and (result.data or {}).get("reason") == "no_response"):
                 attempt += 1
                 await self.limiter.wait()
-                result = await self._attempt(target, port)
+                result = await self._attempt(target, port, est)
             if attempt > 1:
                 result.data["attempts"] = attempt
         # Always return the terminal result; output filtering (open-only vs
@@ -377,8 +415,19 @@ class PortScanner(BaseScanner):
         metrics = ScanMetrics(target=target, vantage=self.vantage,
                               ports_requested=len(self.ports),
                               requested_ports=set(self.ports))
+        # One adaptive-timeout estimator PER host: exposure and path RTT are
+        # per-target, so ports of the same host share (and warm up) one timer.
+        est = None
+        if self.adaptive_timeout:
+            est = AdaptiveTimeout(
+                base=self.timeout,
+                minimum=min(0.3, self.timeout),
+                maximum=max(self.timeout, 8.0),
+            )
         queue: asyncio.Queue[int] = asyncio.Queue()
-        for p in self.ports:
+        # Evasion: shuffle the probe order so it isn't a sequential-port sweep.
+        _order = random.sample(self.ports, len(self.ports)) if self.randomize else self.ports
+        for p in _order:
             queue.put_nowait(p)
         emitted: list[ScanResult] = []
 
@@ -389,12 +438,14 @@ class PortScanner(BaseScanner):
                 except asyncio.QueueEmpty:
                     return
                 try:
-                    result = await self._scan_port(target, port)
+                    result = await self._scan_port(target, port, est)
                     metrics.record(result)           # count EVERY attempt
                     if result.status == "open" or self.report_closed:
                         emitted.append(result)       # output filtering only
                 finally:
                     queue.task_done()
+                    if self.scan_delay:              # jittered per-probe pause (evasion)
+                        await asyncio.sleep(jittered_delay(self.scan_delay))
 
         n_workers = max(1, min(self._concurrency, len(self.ports)))
         workers = [asyncio.create_task(_worker()) for _ in range(n_workers)]
@@ -406,19 +457,25 @@ class PortScanner(BaseScanner):
             raise
         metrics.duration_s = round(time.monotonic() - t0, 3)
         if self.emit_summary:
+            summ = metrics.summary()
+            ev = (f"{metrics.ports_attempted}/{metrics.ports_requested} "
+                  f"ports scanned, {metrics.open} open, "
+                  f"health={'degraded' if metrics.degraded else 'ok'}")
+            if summ["tarpit"]["likely_tarpit"]:
+                ev += " — LIKELY TARPIT/HONEYPOT (open ports unreliable)"
             emitted.append(ScanResult(
                 self.name, target, proto="tcp", status="scan_summary",
-                data=metrics.summary(),
-                evidence=(f"{metrics.ports_attempted}/{metrics.ports_requested} "
-                          f"ports scanned, {metrics.open} open, "
-                          f"health={'degraded' if metrics.degraded else 'ok'}")))
+                data=summ, evidence=ev))
         return emitted
 
 
 def main() -> None:
     parser = base_argparser("TCP connect port scanner (evidence-based states)")
     parser.add_argument("-p", "--ports", default=None,
-                        help="ports e.g. '22,80,443,8000-8100' (default: top ports)")
+                        help="ports e.g. '22,80,443,8000-8100' (default: nmap top-100)")
+    parser.add_argument("--fixed-timeout", action="store_true",
+                        help="disable per-host RTT-adaptive timeout; use the fixed "
+                             "--timeout for every probe (old behaviour)")
     parser.add_argument("-A", "--all-ports", action="store_true",
                         help="scan the full TCP range 1-65535 (first-class mode)")
     parser.add_argument("--report-closed", action="store_true",
@@ -455,7 +512,10 @@ def main() -> None:
         scanner = PortScanner(scope, rate=args.rate, concurrency=args.concurrency,
                               timeout=args.timeout, ports=ports,
                               report_closed=args.report_closed,
-                              vantage=args.vantage, retries=args.retries)
+                              vantage=args.vantage, retries=args.retries,
+                              adaptive_timeout=not args.fixed_timeout,
+                              source_port=args.source_port,
+                              randomize=args.randomize, scan_delay=args.scan_delay)
         writer = ResultWriter(args.output, also_stdout=True)
         try:
             await scanner.run(targets, writer)
