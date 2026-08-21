@@ -260,24 +260,34 @@ function UseCaseCard({ uc, selected, index, onClick }: { uc: UseCase; selected: 
   const risk = RISK[meta.risk];
   const prof = PROFILE_BADGE[uc.profile];
   const comingSoon = uc.status === "coming_soon";
-  const descRef = useRef<HTMLParagraphElement>(null);
-  const [truncated, setTruncated] = useState(false);
-  useEffect(() => {
-    const el = descRef.current;
-    if (el) setTruncated(el.scrollHeight > el.clientHeight + 1);
-  }, [uc.description]);
   // "Coming soon" is a pending state → amber, not the primary accent.
   const soon = "var(--sev-medium-color)";
+  const descRef = useRef<HTMLParagraphElement>(null);
+  const [expanded, setExpanded] = useState(false);
+  const [overflowing, setOverflowing] = useState(false);
+  useEffect(() => {
+    const el = descRef.current;
+    if (el) setOverflowing(el.scrollHeight > el.clientHeight + 1);
+  }, [uc.description]);
   return (
-    <button
+    <div
       className="scn-card"
+      role="button"
+      aria-pressed={selected}
+      aria-disabled={comingSoon}
+      tabIndex={comingSoon ? -1 : 0}
       data-sel={selected}
       data-soon={comingSoon}
-      aria-disabled={comingSoon}
-      tabIndex={comingSoon ? -1 : undefined}
-      title={comingSoon ? "In development — hover to preview; available soon" : undefined}
-      onClick={comingSoon ? undefined : onClick}
-      style={{ animationDelay: `${index * 45}ms`, ...(comingSoon ? { opacity: 0.9 } : {}) }}
+      title={comingSoon ? "In development — available soon" : undefined}
+      onClick={() => { if (!comingSoon) onClick(); }}
+      onKeyDown={(e) => {
+        // Only the card itself selects on Enter/Space — not the inner "more" button.
+        if (e.target === e.currentTarget && !comingSoon && (e.key === "Enter" || e.key === " ")) {
+          e.preventDefault();
+          onClick();
+        }
+      }}
+      style={{ animationDelay: `${index * 45}ms`, cursor: comingSoon ? "not-allowed" : "pointer", ...(comingSoon ? { opacity: 0.9 } : {}) }}
     >
       <div style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 9 }}>
         <span className="scn-card-icon" data-sel={selected} style={comingSoon ? { opacity: 0.85 } : undefined}>{meta.icon}</span>
@@ -287,8 +297,17 @@ function UseCaseCard({ uc, selected, index, onClick }: { uc: UseCase; selected: 
           : selected && <CheckCircle2 size={16} color="var(--accent)" style={{ flexShrink: 0 }} />}
       </div>
       <div style={{ marginBottom: 11 }}>
-        <p ref={descRef} className="scn-desc">{uc.description}</p>
-        {truncated && <span className="scn-more" aria-hidden="true">{comingSoon ? "preview →" : "more…"}</span>}
+        <p ref={descRef} className="scn-desc" data-expanded={expanded}>{uc.description}</p>
+        {overflowing && (
+          <button
+            type="button"
+            className="scn-more"
+            aria-expanded={expanded}
+            onClick={(e) => { e.stopPropagation(); setExpanded((v) => !v); }}
+          >
+            {expanded ? "less" : "more"}
+          </button>
+        )}
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
         <span style={{ fontSize: 9.5, fontWeight: 700, color: prof.color, background: `color-mix(in srgb, ${prof.color} 12%, transparent)`, border: `0.5px solid color-mix(in srgb, ${prof.color} 35%, transparent)`, borderRadius: 5, padding: "2px 6px", letterSpacing: 0.3 }}>{prof.label}</span>
@@ -297,7 +316,7 @@ function UseCaseCard({ uc, selected, index, onClick }: { uc: UseCase; selected: 
         </span>
         <span style={{ marginLeft: "auto", fontSize: 10, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>{uc.expected_runtime_hint}</span>
       </div>
-    </button>
+    </div>
   );
 }
 
@@ -1093,25 +1112,26 @@ const STYLES = `
 
 /* Use-case card */
 @keyframes scn-card-in { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
-.scn-card { text-align:left; cursor:pointer; padding:14px; border-radius:12px; background:var(--bg-card); border:0.5px solid var(--border-subtle); width:100%; display:flex; flex-direction:column; animation: scn-card-in 420ms var(--ease-out) both; transition: transform var(--dur-fast) var(--ease-out), border-color var(--dur-fast), background var(--dur-fast), box-shadow var(--dur-fast); }
-.scn-card:hover { transform: translateY(-2px); border-color: var(--border-strong); background: var(--bg-surface); box-shadow: var(--shadow-md); }
+.scn-card { text-align:left; cursor:pointer; padding:14px; border-radius:12px; background:var(--bg-card); border:0.5px solid var(--border-subtle); width:100%; display:flex; flex-direction:column; animation: scn-card-in 420ms var(--ease-out) both; transition: border-color var(--dur-fast); }
+/* Hover = a subtle border highlight ONLY (no lift, shadow, scale, or reveal).
+   Uses --border-strong, not --accent, so hover never looks like the selected state. */
+.scn-card:hover { border-color: var(--border-strong); }
 .scn-card[data-sel="true"] { border-color: var(--accent); background: var(--accent-ghost); box-shadow: 0 0 0 1px var(--accent), 0 0 28px var(--accent-glow); }
 .scn-card-icon { width:32px; height:32px; border-radius:9px; flex-shrink:0; display:flex; align-items:center; justify-content:center; background:var(--bg-surface); border:0.5px solid var(--border-subtle); color:var(--text-secondary); transition: all var(--dur-fast); }
 .scn-card-icon[data-sel="true"] { background:var(--accent-ghost); border-color:var(--border-accent); color:var(--accent); }
-.scn-card:hover .scn-card-icon { color: var(--text-primary); }
 
-/* Description: clamped to 2 lines by default; the full text reveals on hover so a
-   card stays compact but nothing is hidden. */
-.scn-desc { margin:0 0 11px; font-size:11.5px; color:var(--text-muted); line-height:1.5; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; max-height:34px; transition: max-height 240ms var(--ease-out), filter 240ms var(--ease-out), opacity 240ms var(--ease-out); }
-.scn-card:hover .scn-desc, .scn-card:focus-visible .scn-desc { -webkit-line-clamp:99; max-height:260px; }
+/* Description clamped to 2 lines; the "more" button below expands it on click
+   (no hover reveal, no enlarge). */
+.scn-desc { margin:0; font-size:11.5px; color:var(--text-muted); line-height:1.5; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.scn-desc[data-expanded="true"] { -webkit-line-clamp:unset; overflow:visible; }
+.scn-more { display:block; margin-top:5px; padding:0; background:none; border:none; font-family:inherit; font-size:10.5px; font-weight:650; letter-spacing:0.2px; color:var(--accent); cursor:pointer; }
+.scn-more:hover { text-decoration:underline; }
+.scn-card[data-soon="true"] .scn-more { color: var(--sev-medium-color); }
 
-/* "Coming soon" = a locked preview: dashed frame + blurred copy (you can see the
-   capability exists, not yet its detail), and no interactive lift. Hovering
-   un-blurs so the customer can still read what it will do. */
+/* "Coming soon" = a locked, pending capability: dashed frame + amber lock badge;
+   not clickable. Hover highlights the border amber only. */
 .scn-card[data-soon="true"] { border-style:dashed; cursor:not-allowed; }
-.scn-card[data-soon="true"]:hover { transform:none; box-shadow:none; background:var(--bg-card); border-color:var(--border-subtle); }
-.scn-card[data-soon="true"] .scn-desc { filter:blur(2.5px); opacity:0.5; }
-.scn-card[data-soon="true"]:hover .scn-desc { filter:blur(0); opacity:0.92; -webkit-line-clamp:99; max-height:260px; }
+.scn-card[data-soon="true"]:hover { border-color: color-mix(in srgb, var(--sev-medium-color) 55%, var(--border-subtle)); }
 
 /* Category pills */
 .scn-pill { display:inline-flex; align-items:center; padding:5px 11px; border-radius:8px; font-size:11.5px; font-weight:600; cursor:pointer; background:var(--bg-surface); border:0.5px solid var(--border-subtle); color:var(--text-muted); transition: all var(--dur-fast); }
