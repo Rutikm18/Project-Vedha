@@ -2,8 +2,8 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  Activity, CheckCircle2, Clipboard, Clock3, Cpu, Fingerprint, Laptop, Loader2,
-  MapPin, Network, RadioTower, RefreshCw, Server, ShieldCheck,
+  Activity, CheckCircle2, ChevronDown, Clipboard, Clock3, Cpu, Fingerprint, Laptop, Loader2,
+  MapPin, Network, RadioTower, RefreshCw, Server, ShieldCheck, XCircle,
 } from "lucide-react";
 import { PageShell } from "../../components/PageShell";
 import { useToast } from "../../hooks/useToast";
@@ -51,6 +51,29 @@ interface Probe {
   agent_version: string | null;
 }
 
+// One scan job dispatched to a probe (backend GET /agents/{id}/job-history).
+interface ProbeJob {
+  job_id: string;
+  job_type: string;
+  status: string;          // pending | running | completed | failed
+  use_case_id: string | null;
+  host_count: number | null;
+  created_at: string | null;
+  started_at: string | null;
+  completed_at: string | null;
+}
+
+// Job status → color + icon. Never color-only; the status word always shows.
+function jobBadge(status: string): { color: string; Icon: typeof CheckCircle2; spin?: boolean } {
+  switch ((status || "").toLowerCase()) {
+    case "running":   return { color: "var(--accent)", Icon: Loader2, spin: true };
+    case "completed": return { color: "var(--nominal-color)", Icon: CheckCircle2 };
+    case "failed":
+    case "error":     return { color: "var(--sev-high-color)", Icon: XCircle };
+    default:          return { color: "var(--sev-medium-color)", Icon: Clock3 };  // pending/queued
+  }
+}
+
 // Live status is fused from `online` (heartbeat freshness) + `status` (what the
 // probe reported). Never color-only — the word + aria-label always accompany it.
 function agentStatus(a: Probe): { color: string; label: string } {
@@ -91,6 +114,24 @@ export default function FleetPage() {
     user_code: "", probe_name: "", site_name: "", location: "",
     authorized_cidrs: "", excluded_cidrs: "",
   });
+  const [expanded, setExpanded] = useState<Set<string>>(new Set());
+  const [jobsByAgent, setJobsByAgent] = useState<Record<string, ProbeJob[]>>({});
+
+  const loadJobs = useCallback(async (agentId: string) => {
+    try {
+      const jobs = await fetchJson<ProbeJob[]>(`/api/fleet/agents/${agentId}/jobs`);
+      setJobsByAgent((m) => ({ ...m, [agentId]: jobs ?? [] }));
+    } catch { /* keep prior jobs on a transient failure */ }
+  }, []);
+
+  const toggleProbe = useCallback((agentId: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(agentId)) next.delete(agentId);
+      else { next.add(agentId); void loadJobs(agentId); }
+      return next;
+    });
+  }, [loadJobs]);
 
   const load = useCallback(async () => {
     try {
@@ -117,6 +158,13 @@ export default function FleetPage() {
     const timer = window.setInterval(() => void load(), 5000);
     return () => window.clearInterval(timer);
   }, [load]);
+
+  // Refresh the job list for any expanded probe every 5s (running → completed).
+  useEffect(() => {
+    if (expanded.size === 0) return;
+    const t = window.setInterval(() => { expanded.forEach((id) => void loadJobs(id)); }, 5000);
+    return () => window.clearInterval(t);
+  }, [expanded, loadJobs]);
 
   const request = data.requests.find((row) => row.request_id === selected) ?? null;
   const capabilities = useMemo(() => request?.capabilities ?? [], [request]);
@@ -226,13 +274,16 @@ export default function FleetPage() {
                 const badge = agentStatus(a);
                 return (
                   <div key={a.id} className="flt-agent">
-                    <div className="flt-agent-main">
-                      <strong className="flt-agent-name">{a.name || "unnamed probe"}</strong>
+                    <button className="flt-agent-main flt-agent-toggle" onClick={() => toggleProbe(a.id)} aria-expanded={expanded.has(a.id)}>
+                      <span className="flt-agent-head">
+                        <ChevronDown size={13} className="flt-chev" data-open={expanded.has(a.id)} />
+                        <strong className="flt-agent-name">{a.name || "unnamed probe"}</strong>
+                      </span>
                       <span className="flt-state" style={{ color: badge.color }} aria-label={`Probe status: ${badge.label}`}>
                         <span className="flt-dot" style={{ background: badge.color }} />
                         {badge.label}
                       </span>
-                    </div>
+                    </button>
                     <div className="flt-agent-meta">
                       <span><Activity size={11} /> heartbeat {ago(a.last_heartbeat)}</span>
                       <span><Cpu size={11} /> {a.capabilities?.length ?? 0} capabilities</span>
@@ -244,6 +295,30 @@ export default function FleetPage() {
                         <span className="flt-agent-idle">idle</span>
                       ) : null}
                     </div>
+                    {expanded.has(a.id) && (() => {
+                      const jobs = jobsByAgent[a.id];
+                      return (
+                        <div className="flt-jobs">
+                          {jobs === undefined ? (
+                            <div className="flt-jobs-empty">Loading jobs…</div>
+                          ) : jobs.length === 0 ? (
+                            <div className="flt-jobs-empty">No jobs dispatched to this probe yet.</div>
+                          ) : jobs.map((j) => {
+                            const jb = jobBadge(j.status);
+                            return (
+                              <div key={j.job_id} className="flt-job">
+                                <span className="flt-job-status" style={{ color: jb.color }}>
+                                  <jb.Icon size={11} className={jb.spin ? "animate-spin" : undefined} /> {j.status}
+                                </span>
+                                <span className="flt-job-name">{j.use_case_id ?? j.job_type}</span>
+                                {j.host_count != null && <span className="flt-job-hosts">{j.host_count} host{j.host_count === 1 ? "" : "s"}</span>}
+                                <span className="flt-job-time">{ago(j.completed_at ?? j.started_at ?? j.created_at)}</span>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })()}
                   </div>
                 );
               })}
@@ -394,6 +469,18 @@ const STYLES = `
 .flt-agent-meta span { display: inline-flex; align-items: center; gap: 5px; }
 .flt-agent-job { color: var(--sev-medium-color); font-weight: 600; }
 .flt-agent-idle { color: var(--text-faint); }
+.flt-agent-toggle { width: 100%; background: none; border: none; padding: 0; cursor: pointer; font: inherit; }
+.flt-agent-head { display: inline-flex; align-items: center; gap: 7px; min-width: 0; }
+.flt-chev { color: var(--text-faint); flex-shrink: 0; transition: transform 0.15s ease; }
+.flt-chev[data-open="true"] { transform: rotate(180deg); color: var(--text-muted); }
+.flt-agent-toggle:hover .flt-agent-name { color: var(--accent); }
+.flt-jobs { margin-top: 9px; display: grid; gap: 4px; padding-left: 20px; }
+.flt-jobs-empty { font-size: 11px; color: var(--text-faint); padding: 4px 0; }
+.flt-job { display: flex; align-items: center; gap: 10px; font-size: 11.5px; padding: 5px 8px; border-radius: 7px; background: var(--bg-surface); border: 0.5px solid var(--border-subtle); }
+.flt-job-status { display: inline-flex; align-items: center; gap: 4px; font-weight: 600; text-transform: capitalize; flex-shrink: 0; min-width: 92px; }
+.flt-job-name { color: var(--text-secondary); font-family: var(--font-mono); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.flt-job-hosts { color: var(--text-muted); flex-shrink: 0; }
+.flt-job-time { margin-left: auto; color: var(--text-faint); flex-shrink: 0; }
 
 .flt-form { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
 .flt-field { display: flex; flex-direction: column; gap: 6px; }

@@ -15,7 +15,7 @@ from sqlalchemy import select
 from app.auth.jwt import create_access_token
 from app.auth.rbac import require_role
 from app.config import get_settings
-from app.dependencies import DB, AuthUser
+from app.dependencies import DB, AuthUser, RedisConn
 from app.models.agent import Agent, AgentStatus
 from app.models.tenant import Tenant
 from app.models.asset import Asset as Asset  # re-exported for tests (ag.Asset)
@@ -1024,6 +1024,46 @@ async def get_job_status(job_id: uuid.UUID, db: DB, current_user: AuthUser):
     }
 
 
+@router.get("/{agent_id}/job-history",
+            summary="Scan jobs claimed by this probe (running + history) for the Fleet UI")
+async def get_agent_job_history(
+    agent_id: uuid.UUID,
+    db: DB,
+    current_user: AuthUser,
+    limit: int = 25,
+):
+    """Read-only per-probe job list — the probe's running job (its serial queue head)
+    plus recent completed/failed jobs, newest first. Distinct from GET /{agent_id}/jobs,
+    which atomically CLAIMS a pending job for the probe to execute."""
+    limit = max(1, min(int(limit), 100))
+    rows = (await db.execute(
+        select(ScanJob)
+        .join(Engagement, ScanJob.engagement_id == Engagement.id)
+        .where(
+            ScanJob.agent_id == str(agent_id),
+            Engagement.tenant_id == current_user.tenant_id,
+        )
+        .order_by(ScanJob.created_at.desc())
+        .limit(limit)
+    )).scalars().all()
+
+    def _summ(r: ScanJob) -> dict:
+        res = r.result if isinstance(r.result, dict) else {}
+        return {
+            "job_id": str(r.id),
+            "engagement_id": str(r.engagement_id),
+            "job_type": r.job_type.value,
+            "status": r.status.value,
+            "use_case_id": res.get("use_case_id"),
+            "host_count": res.get("host_count"),
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+            "started_at": r.started_at.isoformat() if r.started_at else None,
+            "completed_at": r.completed_at.isoformat() if r.completed_at else None,
+        }
+
+    return [_summ(r) for r in rows]
+
+
 @router.post(
     "/jobs",
     status_code=status.HTTP_201_CREATED,
@@ -1032,6 +1072,7 @@ async def get_job_status(job_id: uuid.UUID, db: DB, current_user: AuthUser):
 async def enqueue_agent_job(
     body: EnqueueJobRequest,
     db: DB,
+    redis: RedisConn,
     current_user: Annotated[AuthUser, require_role(["admin", "manager", "tester"])],
 ):
     if body.job_type not in AGENT_EXECUTABLE_TYPES:
@@ -1171,67 +1212,44 @@ async def enqueue_agent_job(
         "job_type": job.job_type.value,
         "params": job_params,
     }
-    # Phase 4: try to push to the first compatible online agent in this tenant.
-    # Legacy probes that do not advertise the claim-confirmation feature stay on
-    # HTTP polling, where reservation already happens before the job is returned.
-    # Build a fresh payload PER agent — encrypted_scope is per-agent (different
-    # public key for each), so mutating a shared dict would leak one agent's
-    # encrypted scope to the next agent in the loop.
-    online_agent_ids = agent_ws_manager.online_agents_for_tenant(
-        str(current_user.tenant_id),
-        required_feature="atomic_job_claim_v1",
-    )
-    online_agents: dict[str, Agent] = {}
-    if online_agent_ids:
-        valid_agent_ids = []
-        for connected_agent_id in online_agent_ids:
-            try:
-                valid_agent_ids.append(uuid.UUID(connected_agent_id))
-            except (ValueError, TypeError, AttributeError):
-                logger.warning(
-                    "agent.ws.invalid_connected_agent_id",
-                    agent_id=connected_agent_id,
-                )
-        if valid_agent_ids:
-            rows = (await db.execute(
-                select(Agent).where(
-                    Agent.id.in_(valid_agent_ids),
-                    Agent.tenant_id == current_user.tenant_id,
-                )
-            )).scalars().all()
-            online_agents = {str(candidate.id): candidate for candidate in rows}
+    # Select online agents from the DB — authoritative across ALL API workers,
+    # unlike the process-local WS registry. Each is then delivered via deliver_job:
+    # sent directly if its socket is on THIS worker, else published so the worker
+    # holding it forwards (Redis backplane). Legacy probes without the claim feature
+    # are filtered at send time and fall through to HTTP polling. A fresh payload
+    # PER agent — encrypted_scope is per-agent (a different public key each).
+    online_rows = (await db.execute(
+        select(Agent).where(
+            Agent.tenant_id == current_user.tenant_id,
+            Agent.status == AgentStatus.online,
+        )
+    )).scalars().all()
+    eligible_agents = [
+        candidate for candidate in online_rows
+        if _agent_can_execute_job(candidate, job.job_type, job_params, eng.scope_cidrs or [])
+    ]
 
-    eligible_online_agent_ids = []
-    for agent_id in online_agent_ids:
-        candidate = online_agents.get(agent_id)
-        if candidate is not None and _agent_can_execute_job(
-            candidate, job.job_type, job_params, eng.scope_cidrs or [],
-        ):
-            eligible_online_agent_ids.append(agent_id)
-
-    # The WS acknowledgement is processed in another database session. Complete
-    # all fallible selection work, then commit before offering the job so that
-    # session can see and atomically claim it.
+    # The claim runs in another DB session, so commit before offering the job.
     await db.commit()
 
-    for agent_id in eligible_online_agent_ids:
+    for candidate in eligible_agents:
+        agent_id = str(candidate.id)
         per_agent_payload = {**job_payload}  # shallow copy — params are read-only
-        encrypted = None
         try:
             encrypted = await _encrypt_scope_for_agent(db, agent_id, job_params)
+            if encrypted:
+                per_agent_payload["encrypted_scope"] = encrypted
         except Exception:
             pass
-        if encrypted:
-            per_agent_payload["encrypted_scope"] = encrypted
-        pushed = await agent_ws_manager.push_job(
+        delivered_locally = await agent_ws_manager.deliver_job(
+            redis,
             agent_id,
             per_agent_payload,
             required_feature="atomic_job_claim_v1",
         )
-        if pushed:
-            logger.info("agent.job.pushed_via_ws",
-                        job_id=str(job.id), agent_id=agent_id)
-            break
+        logger.info("agent.job.push_dispatched", job_id=str(job.id),
+                    agent_id=agent_id, local=delivered_locally)
+        break  # dispatch to the first eligible agent; HTTP poll covers any miss
 
     return {
         "job_id": str(job.id),

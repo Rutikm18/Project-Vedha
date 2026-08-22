@@ -23,6 +23,12 @@ def _user():
     return SimpleNamespace(tenant_id=uuid.uuid4(), user_id=uuid.uuid4(), role="admin")
 
 
+def _redis():
+    # enqueue_agent_job now depends on a Redis client (WS-push backplane). These
+    # unit tests never reach a live-agent push, so an AsyncMock is sufficient.
+    return AsyncMock()
+
+
 # ── AGENT_EXECUTABLE_TYPES guard ────────────────────────────────────────────────
 
 class TestAgentExecutableTypes:
@@ -46,7 +52,7 @@ class TestEnqueueAgentJob:
     async def test_rejects_server_side_type(self):
         body = ag.EnqueueJobRequest(engagement_id=uuid.uuid4(), job_type=ScanJobType.vuln_scan)
         with pytest.raises(HTTPException) as ei:
-            await ag.enqueue_agent_job(body, MagicMock(), _user())
+            await ag.enqueue_agent_job(body, MagicMock(), _redis(), _user())
         assert ei.value.status_code == 400
 
     @pytest.mark.asyncio
@@ -55,7 +61,7 @@ class TestEnqueueAgentJob:
         db.execute = AsyncMock(return_value=MagicMock(scalar_one_or_none=lambda: None))
         body = ag.EnqueueJobRequest(engagement_id=uuid.uuid4(), job_type=ScanJobType.discovery)
         with pytest.raises(HTTPException) as ei:
-            await ag.enqueue_agent_job(body, db, _user())
+            await ag.enqueue_agent_job(body, db, _redis(), _user())
         assert ei.value.status_code == 404
 
     @pytest.mark.asyncio
@@ -75,7 +81,7 @@ class TestEnqueueAgentJob:
             engagement_id=uuid.uuid4(), job_type=ScanJobType.discovery,
             params={"targets": ["10.0.1.0/24"], "ports": "1-1024"},
         )
-        out = await ag.enqueue_agent_job(body, db, _user())
+        out = await ag.enqueue_agent_job(body, db, _redis(), _user())
         assert out["job_type"] == "discovery"
         assert out["status"] == "pending"
         db.add.assert_called_once()
@@ -111,6 +117,7 @@ class TestEnqueueAgentJob:
                 job_type=ScanJobType.lateral,
             ),
             db,
+            _redis(),
             _user(),
         )
 
@@ -144,6 +151,7 @@ class TestEnqueueAgentJob:
                 },
             ),
             db,
+            _redis(),
             _user(),
         )
 
@@ -172,7 +180,7 @@ class TestOTProfileGate:
         db.execute = AsyncMock(return_value=MagicMock(scalar_one_or_none=lambda: eng))
         body = ag.EnqueueJobRequest(engagement_id=uuid.uuid4(), job_type=ScanJobType.discovery)
         with pytest.raises(HTTPException) as ei:
-            await ag.enqueue_agent_job(body, db, _user())
+            await ag.enqueue_agent_job(body, db, _redis(), _user())
         assert ei.value.status_code == 400
         assert "ot" in ei.value.detail.lower()
 
@@ -190,7 +198,7 @@ class TestOTProfileGate:
         body = ag.EnqueueJobRequest(engagement_id=uuid.uuid4(), job_type=ScanJobType.discovery,
                                     params={"scan_type": "tls_scan"})
         with pytest.raises(HTTPException) as ei:
-            await ag.enqueue_agent_job(body, db, _user())
+            await ag.enqueue_agent_job(body, db, _redis(), _user())
         assert ei.value.status_code == 400
 
     @pytest.mark.asyncio
@@ -206,7 +214,7 @@ class TestOTProfileGate:
         db.commit = AsyncMock()
         body = ag.EnqueueJobRequest(engagement_id=uuid.uuid4(), job_type=ScanJobType.discovery,
                                     params={"scan_type": "passive_discovery"})
-        out = await ag.enqueue_agent_job(body, db, _user())
+        out = await ag.enqueue_agent_job(body, db, _redis(), _user())
         assert out["status"] == "pending"
 
     @pytest.mark.asyncio
@@ -223,7 +231,7 @@ class TestOTProfileGate:
             db.add = MagicMock(); db.flush = AsyncMock(); db.refresh = AsyncMock()
             db.commit = AsyncMock()
             body = ag.EnqueueJobRequest(engagement_id=uuid.uuid4(), job_type=ScanJobType.discovery)
-            out = await ag.enqueue_agent_job(body, db, _user())
+            out = await ag.enqueue_agent_job(body, db, _redis(), _user())
             assert out["status"] == "pending"
 
 

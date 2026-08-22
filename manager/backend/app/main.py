@@ -1,3 +1,4 @@
+import asyncio
 import gzip
 import logging
 from contextlib import asynccontextmanager
@@ -85,10 +86,20 @@ async def lifespan(app: FastAPI):
         raise SystemExit(1) from exc
 
     from app.dependencies import get_redis
-    await get_redis()
+    redis = await get_redis()
+
+    # Cross-worker WS push backplane: forwards job-pushes to the worker holding
+    # each probe's socket, so real-time dispatch works with >1 uvicorn worker.
+    from app.websocket.manager import agent_ws_manager
+    backplane_task = asyncio.create_task(agent_ws_manager.run_backplane(redis))
 
     yield
     logger.info("vedha_api.shutdown")
+    backplane_task.cancel()
+    try:
+        await backplane_task
+    except BaseException:  # noqa: BLE001 — shutdown cleanup is best-effort
+        pass
     await close_redis()
 
 

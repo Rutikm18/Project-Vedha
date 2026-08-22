@@ -225,6 +225,67 @@ class AgentConnectionManager:
                 return agent_id
         return None
 
+    # ── Cross-worker backplane (Redis pub/sub) ─────────────────────────────────
+    # WS connections are process-local, but the API runs multiple uvicorn workers.
+    # A job enqueued on worker B must still reach a probe whose socket lives on
+    # worker A. deliver_job() sends locally when possible, else publishes to Redis
+    # so the worker HOLDING the socket forwards it. DB-backed HTTP polling remains
+    # the safety net, so a missed publish never loses a job.
+    _BACKPLANE_CHANNEL = "vedha:agent_ws:push"
+
+    async def deliver_job(
+        self,
+        redis,
+        agent_id: str,
+        job: dict,
+        required_feature: str | None = None,
+    ) -> bool:
+        """Deliver a job-push to an agent wherever its socket is connected.
+
+        Returns True if delivered on THIS worker; cross-worker delivery is
+        published best-effort (poll fallback guarantees eventual pickup)."""
+        if await self.push_job(agent_id, job, required_feature=required_feature):
+            return True
+        try:
+            await redis.publish(self._BACKPLANE_CHANNEL, json.dumps({
+                "agent_id": agent_id,
+                "job": job,
+                "required_feature": required_feature,
+            }))
+        except Exception as exc:  # noqa: BLE001 — poll fallback still delivers the job
+            logger.warning("agent.ws.backplane_publish_failed",
+                           agent_id=agent_id, error=str(exc))
+        return False
+
+    async def run_backplane(self, redis) -> None:
+        """Subscribe to the push backplane and forward any job whose target agent
+        is connected to THIS worker. Runs for the app's lifetime; self-healing."""
+        while True:
+            try:
+                pubsub = redis.pubsub()
+                await pubsub.subscribe(self._BACKPLANE_CHANNEL)
+                logger.info("agent.ws.backplane_subscribed", channel=self._BACKPLANE_CHANNEL)
+                async for message in pubsub.listen():
+                    if message.get("type") != "message":
+                        continue
+                    try:
+                        data = json.loads(message["data"])
+                    except (ValueError, TypeError):
+                        continue
+                    agent_id = data.get("agent_id")
+                    # Only the worker actually holding this agent's socket forwards it.
+                    if agent_id and self.is_connected(agent_id):
+                        await self.push_job(
+                            agent_id,
+                            data.get("job") or {},
+                            required_feature=data.get("required_feature"),
+                        )
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:  # noqa: BLE001 — the backplane must never die
+                logger.warning("agent.ws.backplane_error", error=str(exc))
+                await asyncio.sleep(2)
+
     # ── Queries ───────────────────────────────────────────────────────────────
 
     def is_connected(self, agent_id: str) -> bool:
