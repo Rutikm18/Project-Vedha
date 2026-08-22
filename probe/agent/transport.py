@@ -28,6 +28,24 @@ import httpx
 LOG = logging.getLogger("transport")
 
 
+def _strip_nul(obj: Any) -> Any:
+    """Recursively remove NUL (U+0000) characters from every string in a payload.
+
+    Scan banners (SSH/HTTP, e.g. dropbear's KEX bytes) can carry raw NUL bytes.
+    PostgreSQL ``jsonb`` cannot store ``\\u0000`` — the manager's result insert
+    then fails with HTTP 500 and the job hangs forever. NUL is never meaningful
+    in a text fact, so we drop it here, right before the payload is serialized,
+    so the wire form the manager checksums is the same clean form it persists.
+    """
+    if isinstance(obj, str):
+        return obj.replace("\x00", "") if "\x00" in obj else obj
+    if isinstance(obj, dict):
+        return {_strip_nul(k): _strip_nul(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [_strip_nul(v) for v in obj]
+    return obj
+
+
 class TransportError(Exception):
     """Raised when a transport operation fails permanently (not retryable)."""
 
@@ -578,7 +596,9 @@ class Transport:
         try:
             if not self.ensure_device_access():
                 return False
-            body = json.dumps(payload).encode("utf-8")
+            # jsonb-safe: drop NUL bytes that scan banners can carry, else the
+            # manager's result insert 500s and the job hangs (see _strip_nul).
+            body = json.dumps(_strip_nul(payload)).encode("utf-8")
         except (TypeError, ValueError) as exc:
             LOG.error("submit_result: unserializable payload for job %s: %s", job_id, exc)
             return False

@@ -26,6 +26,26 @@ from app.models.service import Service
 logger = structlog.get_logger()
 
 
+def sanitize_jsonb(obj):
+    """Recursively strip NUL (U+0000) from every string in a result payload.
+
+    Defense-in-depth at the persistence boundary: scan banners (SSH/HTTP) can
+    carry raw NUL bytes, and PostgreSQL ``jsonb`` cannot store ``\\u0000`` — the
+    insert then raises DataError and the whole result submission 500s, leaving
+    the job stuck in ``running`` forever. The probe scrubs on its side too, but
+    the manager must never trust any single probe/version to send clean data.
+    Deterministic, so an already-clean payload is a no-op and the idempotency
+    checksum stays stable across retries.
+    """
+    if isinstance(obj, str):
+        return obj.replace("\x00", "") if "\x00" in obj else obj
+    if isinstance(obj, dict):
+        return {sanitize_jsonb(k): sanitize_jsonb(v) for k, v in obj.items()}
+    if isinstance(obj, (list, tuple)):
+        return [sanitize_jsonb(v) for v in obj]
+    return obj
+
+
 def result_checksum(success: bool, result: dict, error: str | None) -> str:
     """Stable idempotency checksum for one attempt completion payload."""
     canonical = json.dumps(
@@ -149,6 +169,10 @@ async def process_job_result(
         return {"ok": False, "error": "Job not found or not assigned to this agent"}
 
     result = result or {}
+    # Defense-in-depth: strip jsonb-hostile NUL bytes before the checksum is
+    # computed and before anything is persisted, so a probe that sends a raw
+    # banner can never 500 the ingest and hang the job (see sanitize_jsonb).
+    result = sanitize_jsonb(result)
     checksum = result_checksum(success, result, error)
     if attempt_id is None or fence is None:
         return {
@@ -298,6 +322,19 @@ async def process_job_result(
                 )
         except Exception as exc:  # noqa: BLE001
             logger.warning("job.findings_failed", job_id=str(job_id), error=str(exc))
+
+        # ── Network-service weaknesses from banner facts ──────────────────
+        # Bridges the gap the package-CVE engine and the probe self-assessment
+        # both miss: outdated/weak network services (old SSH, SHA-1/DSA crypto,
+        # cleartext protocols) surfaced straight from the service_banner facts.
+        try:
+            from app.discovery.service_vuln import create_service_vuln_findings
+            async with db.begin_nested():
+                findings_created += await create_service_vuln_findings(
+                    db, row.engagement_id, result,
+                )
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("job.service_vuln_failed", job_id=str(job_id), error=str(exc))
 
         # ── Multi-probe vantage fusion (exposure_matrix) ──────────────────
         # A3 stamped this probe's single-vantage verdict; now that a new probe's
