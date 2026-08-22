@@ -751,13 +751,19 @@ async def _ws_run_job(
     job_state["current_job_id"] = job_id
     job_state["attempt_id"] = job.get("attempt_id")
     job_state["fence"] = job.get("fence")
-    await ws.send(json.dumps({
-        "type": "heartbeat",
-        "status": "busy",
-        "current_job_id": job_id,
-        "attempt_id": job.get("attempt_id"),
-        "fence": job.get("fence"),
-    }))
+    # Best-effort WS status frame (as this function's docstring promises). A flapping
+    # push channel must NEVER abort the job — it still runs and submits its result
+    # over HTTP via _run_polled_job_with_heartbeats below.
+    try:
+        await ws.send(json.dumps({
+            "type": "heartbeat",
+            "status": "busy",
+            "current_job_id": job_id,
+            "attempt_id": job.get("attempt_id"),
+            "fence": job.get("fence"),
+        }))
+    except Exception as exc:  # noqa: BLE001 — status is optional; the job continues over HTTP
+        _dbg(f"ws busy-heartbeat send dropped (job continues via HTTP): {exc!r}")
 
     try:
         # Run job in a thread — engine.run_scan() internally calls
@@ -783,13 +789,16 @@ async def _ws_run_job(
         job_state["current_job_id"] = None
         job_state["attempt_id"] = None
         job_state["fence"] = None
-        await ws.send(json.dumps({
-            "type": "heartbeat",
-            "status": "online",
-            "current_job_id": None,
-            "attempt_id": None,
-            "fence": None,
-        }))
+        try:
+            await ws.send(json.dumps({
+                "type": "heartbeat",
+                "status": "online",
+                "current_job_id": None,
+                "attempt_id": None,
+                "fence": None,
+            }))
+        except Exception as exc:  # noqa: BLE001 — best-effort WS status frame
+            _dbg(f"ws idle-heartbeat send dropped: {exc!r}")
 
 
 async def _ws_http_poll_fallback(
@@ -1084,22 +1093,31 @@ def _enroll_device(
             # was wiped), no amount of retrying helps — the operator must remove
             # the stale probe in Fleet, or the local identity must be cleared.
             if transport.refresh_device_access(signing_private_key):
-                say("Device already enrolled — refreshed its access token instead of re-pairing.")
+                say("Device already enrolled — reconnected by refreshing its access token.")
                 return {
                     "agent_id": transport.agent_id,
                     "access_token": transport.agent_token,
                 }
+            # The device key is registered on the Manager but this install has no
+            # reusable credential (never activated, cleared by the refresh self-heal,
+            # revoked, or the Manager DB was re-created). Rather than dead-ending in a
+            # restart loop on repeated 409s, WIPE the stale local identity so the next
+            # boot generates a FRESH key and enrolls clean — the container's restart
+            # policy makes this automatic and the probe self-heals to online. The old,
+            # orphaned agent can be pruned in Fleet.
             say("")
             say("═" * 58)
-            say("  ALREADY ENROLLED — cannot re-pair this device")
+            say("  Already enrolled, no reusable credential — self-healing")
             say("═" * 58)
             say(f"  Why : {exc}")
-            say("  This probe's device key is already registered on the Manager,")
-            say("  but this install has no working token to reuse.")
-            say("  Fix : remove the old probe in the dashboard (Fleet → your probe →")
-            say("        Remove), then re-run the installer; or clear this probe's")
-            say("        saved identity to enroll as a brand-new device.")
+            say("  Clearing this install's stale identity and re-enrolling as a")
+            say("  fresh device on restart. (Remove the old probe in Fleet later.)")
             say("═" * 58)
+            transport.update_state(remove=(
+                "signing_identity_sk", "signing_identity_pk",
+                "agent_id", "token", "device_refresh_secret", "credential_generation",
+                "enrollment_request_id", "enrollment_device_secret",
+            ))
             raise SystemExit(4) from exc
         request_id = response["request_id"]
         device_secret = response["device_secret"]
