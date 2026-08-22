@@ -54,6 +54,8 @@ probe/certs/
 probe/ca/
 probe/.srl
 probe/.lab-run/
+nohup.out
+**/nohup.out
 
 # Manager frontend runtime device state (keys + agent state are generated at runtime)
 manager/frontend/data/probe-keys.json
