@@ -165,6 +165,12 @@ _HEADER_PRODUCT_TO_CPE: dict[str, tuple[str, str, str]] = {
     "boa": ("boa", "boa", "boa"),  # not in OSV's Debian ecosystem (embedded
                                     # router software) — kept for CPE-display
                                     # completeness; will simply never match.
+    # Embedded/network daemons whose banners carry an UPSTREAM version. OSV's
+    # Debian ecosystem tracks these by distro package version, so they only
+    # match against the NVD/CPE companion snapshot (upstream ranges). lookup_key
+    # is the CPE product — the key the NVD snapshot is indexed by.
+    "dropbear": ("dropbear", "dropbear_ssh_project", "dropbear"),
+    "thttpd": ("thttpd", "acme", "thttpd"),
 }
 
 # Web tech_hints[] (scanner_module/scanner/web_scanner.py's _TECH_HINTS keys)
@@ -211,12 +217,29 @@ _HTTP_SERVER_RE = re.compile(r"^([A-Za-z][\w.-]*?)/([\d][\w.+-]*)")
 
 
 def normalize_banner(fact: Fact) -> list[CPECandidate]:
-    """service_banner.py's first_line/banner text -> CPE. SSH only for now —
-    generic banner text for other protocols is too unstructured to safely
-    parse without a much larger per-protocol grammar; extend deliberately,
-    not by loosening this regex.
+    """service_banner.py's parsed product/version (or raw banner) -> CPE.
+
+    Prefers the STRUCTURED product/version the probe already extracted
+    (service_banner.py fills fact.data['product']/['version'] for SSH etc.) —
+    that covers Dropbear, OpenSSH and any future daemon in _HEADER_PRODUCT_TO_CPE
+    without this module re-implementing a per-daemon banner grammar. Falls back
+    to parsing an OpenSSH banner string directly for older facts that lack the
+    structured fields.
     """
-    text = fact.data.get("first_line") or fact.data.get("banner") or ""
+    data = fact.data
+    product = (data.get("product") or "").lower()
+    version = data.get("version")
+    mapped = _HEADER_PRODUCT_TO_CPE.get(product) if product else None
+    if mapped and version:
+        osv_key, vendor, cpe_product = mapped
+        return [CPECandidate(
+            vendor=vendor, product=cpe_product, lookup_key=osv_key,
+            version_raw=version, version_normalized=version,
+            confidence="low", source_confidence=fact.source_confidence,
+            basis=f"service banner: {product} {version}", source_ref=fact.ref(),
+        )]
+
+    text = data.get("first_line") or data.get("banner") or ""
     m = _SSH_BANNER_RE.search(text)
     if not m:
         return []

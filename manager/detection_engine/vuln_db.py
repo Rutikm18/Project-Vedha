@@ -41,6 +41,10 @@ from typing import Any
 from version_compare import verify_pure_python_matches_dpkg
 
 DEFAULT_SNAPSHOT_PATH = Path(__file__).parent / "snapshots" / "osv_debian_snapshot.json"
+# Optional NVD/CPE companion beside the primary snapshot. Its records use
+# upstream-version ranges (versionEndExcluding), so they match network-banner
+# findings the Debian ecosystem cannot. Absent -> primary snapshot unchanged.
+COMPANION_SNAPSHOT_NAME = "nvd_cpe_snapshot.json"
 
 
 def _default_products() -> list[str]:
@@ -177,6 +181,30 @@ def _read_snapshot(path: Path) -> VulnDB:
     return VulnDB(snap["records"], meta)
 
 
+def _merge_companion(primary: VulnDB, companion_path: Path) -> VulnDB:
+    """Merge an NVD/CPE companion snapshot into the primary VulnDB.
+
+    Records are combined per lookup-key (both feeds may cover one product), and
+    meta records BOTH source hashes so Finding.db_snapshot_hash still uniquely
+    pins the run's basis. The companion self-verifies its own content-hash on
+    read (see _read_snapshot), so a merged DB is only ever built from two
+    individually-intact snapshots.
+    """
+    comp = _read_snapshot(companion_path)
+    merged: dict[str, list[dict]] = {k: list(v) for k, v in primary._records.items()}
+    for k, recs in comp._records.items():
+        merged.setdefault(k, []).extend(recs)
+    meta = SnapshotMeta(
+        fetched_at=primary.meta.fetched_at,
+        ecosystem=f"{primary.meta.ecosystem}+{comp.meta.ecosystem}",
+        products=sorted(set(primary.meta.products) | set(comp.meta.products)),
+        content_hash=hashlib.sha256(
+            (primary.meta.content_hash + comp.meta.content_hash).encode()).hexdigest(),
+        path=f"{primary.meta.path}+{companion_path.name}",
+    )
+    return VulnDB(merged, meta)
+
+
 def load_snapshot(path: str | Path = DEFAULT_SNAPSHOT_PATH) -> VulnDB:
     path = Path(path)
     if not path.exists():
@@ -185,12 +213,19 @@ def load_snapshot(path: str | Path = DEFAULT_SNAPSHOT_PATH) -> VulnDB:
             f"`python3 vuln_db.py sync` first (out-of-band, not part of "
             f"detection itself)")
     st = path.stat()
-    key = (str(path.resolve()), st.st_mtime_ns, st.st_size)
+    # Include the optional companion in the cache key so refreshing EITHER file
+    # invalidates the memoized merged DB — pinning semantics preserved.
+    companion = path.parent / COMPANION_SNAPSHOT_NAME
+    comp_st = companion.stat() if companion.exists() else None
+    key = (str(path.resolve()), st.st_mtime_ns, st.st_size,
+           comp_st.st_mtime_ns if comp_st else 0, comp_st.st_size if comp_st else 0)
     with _snapshot_cache_lock:
         cached = _snapshot_cache.get(key)
     if cached is not None:
         return cached
     db = _read_snapshot(path)  # expensive; done outside the lock
+    if comp_st is not None:
+        db = _merge_companion(db, companion)
     with _snapshot_cache_lock:
         existing = _snapshot_cache.get(key)  # another thread may have won the race
         if existing is not None:

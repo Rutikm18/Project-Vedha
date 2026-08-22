@@ -1,0 +1,136 @@
+{
+  "fetched_at": "2026-08-22T12:20:10Z",
+  "ecosystem": "NVD/CPE",
+  "products": [
+    "dropbear"
+  ],
+  "content_hash": "986dca596159d8d3d9e685f190c880f2de53c888f4a3d14cd8c7ccda2bc49ef0",
+  "records": {
+    "dropbear": [
+      {
+        "id": "CVE-2018-15599",
+        "summary": "Dropbear: remote username enumeration via svr-auth.c response timing.",
+        "affected": [
+          {
+            "package": {
+              "ecosystem": "NVD/CPE",
+              "name": "dropbear"
+            },
+            "ranges": [
+              {
+                "type": "SEMVER",
+                "events": [
+                  {
+                    "introduced": "0"
+                  },
+                  {
+                    "fixed": "2018.76"
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "severity": [
+          {
+            "type": "CVSS_V3",
+            "score": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:L/I:N/A:N"
+          }
+        ]
+      },
+      {
+        "id": "CVE-2017-9078",
+        "summary": "Dropbear server double-free in TCP listener cleanup (-a) may allow root RCE.",
+        "affected": [
+          {
+            "package": {
+              "ecosystem": "NVD/CPE",
+              "name": "dropbear"
+            },
+            "ranges": [
+              {
+                "type": "SEMVER",
+                "events": [
+                  {
+                    "introduced": "0"
+                  },
+                  {
+                    "fixed": "2017.75"
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "severity": [
+          {
+            "type": "CVSS_V3",
+            "score": "CVSS:3.0/AV:N/AC:H/PR:L/UI:N/S:U/C:H/I:H/A:H"
+          }
+        ]
+      },
+      {
+        "id": "CVE-2016-7406",
+        "summary": "Dropbear: format-string vulnerability enabling remote code execution.",
+        "affected": [
+          {
+            "package": {
+              "ecosystem": "NVD/CPE",
+              "name": "dropbear"
+            },
+            "ranges": [
+              {
+                "type": "SEMVER",
+                "events": [
+                  {
+                    "introduced": "0"
+                  },
+                  {
+                    "fixed": "2016.74"
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "severity": [
+          {
+            "type": "CVSS_V3",
+            "score": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"
+          }
+        ]
+      },
+      {
+        "id": "CVE-2016-7407",
+        "summary": "Dropbear dropbearconvert OpenSSH key import parsing flaw (RCE).",
+        "affected": [
+          {
+            "package": {
+              "ecosystem": "NVD/CPE",
+              "name": "dropbear"
+            },
+            "ranges": [
+              {
+                "type": "SEMVER",
+                "events": [
+                  {
+                    "introduced": "0"
+                  },
+                  {
+                    "fixed": "2016.74"
+                  }
+                ]
+              }
+            ]
+          }
+        ],
+        "severity": [
+          {
+            "type": "CVSS_V3",
+            "score": "CVSS:3.0/AV:N/AC:L/PR:N/UI:N/S:U/C:H/I:H/A:H"
+          }
+        ]
+      }
+    ]
+  }
+}
