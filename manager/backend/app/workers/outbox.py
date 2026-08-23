@@ -120,6 +120,15 @@ async def _handle_facts_ready(event: Event) -> None:
         n = await create_findings_from_facts(
             db, sr.engagement_id, {"facts": sr.facts}, scan_result_id=sr.id,
         )
+        # All finding-producing paths for this scan have now run (engine here,
+        # service_vuln/finding_translator at submit); stamp the unified
+        # risk_score so nothing lands unprioritized. Best-effort.
+        try:
+            from app.detection.prioritization import prioritize_engagement_findings
+            await prioritize_engagement_findings(db, sr.engagement_id)
+        except Exception as exc:  # noqa: BLE001 — scoring must not drop the facts
+            logger.warning("outbox.prioritize_failed",
+                           engagement_id=str(sr.engagement_id), error=str(exc))
         await db.commit()
     logger.info("outbox.facts_ready.done",
                 engagement_id=event.engagement_id, findings=n)

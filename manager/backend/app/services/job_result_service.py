@@ -336,6 +336,17 @@ async def process_job_result(
         except Exception as exc:  # noqa: BLE001
             logger.warning("job.service_vuln_failed", job_id=str(job_id), error=str(exc))
 
+        # ── Prioritize inline findings (fallback) ─────────────────────────
+        # The outbox facts_ready handler re-scores once the engine findings land
+        # too; this fallback ensures self-assessed / service_vuln findings still
+        # get a risk_score even if the worker is down. Idempotent, best-effort.
+        try:
+            from app.detection.prioritization import prioritize_engagement_findings
+            async with db.begin_nested():
+                await prioritize_engagement_findings(db, row.engagement_id)
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("job.prioritize_failed", job_id=str(job_id), error=str(exc))
+
         # ── Multi-probe vantage fusion (exposure_matrix) ──────────────────
         # A3 stamped this probe's single-vantage verdict; now that a new probe's
         # observations have landed, re-fuse ALL probes so a port any external
