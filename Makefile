@@ -118,6 +118,10 @@ migrate: ## Re-run database migrations
 seed: ## Re-run the admin seeder
 	$(COMPOSE) run --rm migrate python scripts/seed_admin.py
 
+sync-vuln-snapshots: ## Refresh pinned vuln intel (OSV + full EPSS + CISA KEV + NVD/CPE). Rebuild after.
+	cd manager/detection_engine && python3 update_snapshot.py all && python3 build_nvd_cpe_snapshot.py
+	@echo "Snapshots refreshed → commit them and rebuild the image (make api-only / make up)."
+
 shell: ## Open a shell in the API container
 	$(COMPOSE) exec api sh
 

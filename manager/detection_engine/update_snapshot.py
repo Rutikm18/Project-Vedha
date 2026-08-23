@@ -110,6 +110,9 @@ def sync_snapshot(products: list[str] = None, ecosystem: str = "Debian:12",
 
 KEV_URL = "https://www.cisa.gov/sites/default/files/feeds/known_exploited_vulnerabilities.json"
 EPSS_URL = "https://api.first.org/data/v1/epss"
+# Full daily catalog (every scored CVE) as a gzipped CSV — the whole EPSS
+# universe in one download, not a per-CVE query. Used by sync_epss_full().
+EPSS_FULL_URL = "https://epss.cyentia.com/epss_scores-current.csv.gz"
 DEFAULT_KEV_PATH = Path(__file__).parent / "snapshots" / "kev_snapshot.json"
 DEFAULT_EPSS_PATH = Path(__file__).parent / "snapshots" / "epss_snapshot.json"
 
@@ -171,6 +174,52 @@ def sync_epss_snapshot(cve_ids: list[str], out_path: str | Path = DEFAULT_EPSS_P
     return snapshot
 
 
+def sync_epss_full(out_path: str | Path = DEFAULT_EPSS_PATH, min_epss: float = 0.0) -> dict:
+    """The ENTIRE EPSS catalog (every scored CVE) from FIRST.org's daily
+    gzipped CSV, in one download.
+
+    Replaces sync_epss_snapshot()'s per-CVE API subset, which only covered the
+    CVEs already in the Debian vuln snapshot. Once detection started producing
+    findings for CVEs outside that set — every network-banner CVE (e.g.
+    CVE-2018-15599), every nuclei/service_vuln finding — those scored epss=0,
+    silently zeroing the 0.20 EPSS weight in the risk score. A missing CVE is
+    already treated as 0 by EpssDB.get, so `min_epss` drops the long ~0 tail to
+    keep the pinned snapshot compact without changing any score meaningfully.
+    """
+    import gzip
+    req = urllib.request.Request(EPSS_FULL_URL, headers={"User-Agent": "detection-engine-sync/1.0"})
+    with urllib.request.urlopen(req, timeout=60, context=_ssl_context()) as resp:
+        raw = resp.read()
+    text = gzip.decompress(raw).decode("utf-8", "replace")
+    scores: dict[str, dict] = {}
+    for line in text.splitlines():
+        if not line or line[0] == "#" or line.startswith("cve,"):
+            continue  # skip the #model_version header and the column header
+        parts = line.split(",")
+        if len(parts) < 3:
+            continue
+        try:
+            epss = float(parts[1])
+        except ValueError:
+            continue
+        if epss < min_epss:
+            continue
+        scores[parts[0].strip().upper()] = {"epss": epss, "percentile": float(parts[2])}
+    snapshot = {
+        "fetched_at": datetime.now(timezone.utc).isoformat(),
+        "cve_count": len(scores),
+        "content_hash": _content_hash(scores),
+        "scores": scores,
+    }
+    out_path = Path(out_path)
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    with out_path.open("w", encoding="utf-8") as fh:
+        json.dump(snapshot, fh, separators=(",", ":"))  # compact: this file is large
+    print(f"wrote {out_path} — {len(scores)} EPSS scores (min_epss={min_epss}), "
+          f"hash {snapshot['content_hash'][:12]}", file=sys.stderr)
+    return snapshot
+
+
 def _all_known_cve_ids(vuln_snapshot_path: str | Path = DEFAULT_SNAPSHOT_PATH) -> list[str]:
     with Path(vuln_snapshot_path).open() as fh:
         snap = json.load(fh)
@@ -190,6 +239,9 @@ def main() -> None:
     parser.add_argument("--products", default=None,
                         help="comma-separated; default is the curated starter list")
     parser.add_argument("--out", default=str(DEFAULT_SNAPSHOT_PATH))
+    parser.add_argument("--epss-min", type=float, default=0.01,
+                        help="drop EPSS scores below this (negligible <2 risk pts) to "
+                             "keep the snapshot compact; missing == 0 anyway (default 0.01)")
     args = parser.parse_args()
     products = args.products.split(",") if args.products else None
 
@@ -198,7 +250,8 @@ def main() -> None:
     if args.target in ("kev", "all"):
         sync_kev_snapshot()
     if args.target in ("epss", "all"):
-        sync_epss_snapshot(_all_known_cve_ids(args.out))
+        # Full catalog now, not the per-CVE subset — see sync_epss_full().
+        sync_epss_full(min_epss=args.epss_min)
 
 
 if __name__ == "__main__":
