@@ -15,6 +15,7 @@ _NOW = datetime(2026, 8, 11, tzinfo=timezone.utc)
 
 def _finding(**kw):
     base = dict(
+        id=uuid.uuid4(),
         severity=FindingSeverity.medium, status=FindingStatus.open,
         resolution_miss_count=0, detected_db_version="v1",
         resolved_at=None, resolution_method=None, resolution_run_id=None,

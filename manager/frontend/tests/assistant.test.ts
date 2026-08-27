@@ -40,6 +40,26 @@ describe("toFactCard", () => {
     const fc = toFactCard({ ...ui, remediation: [] });
     assert.match(fc.whatToDo, /No remediation has been recorded/);
   });
+  test("grounds the advisor with recorded lifecycle facts (never inferred)", () => {
+    const tenDaysAgo = new Date(Date.now() - 10 * 86_400_000).toISOString();
+    const fc = toFactCard({
+      ...ui, discoveredAt: tenDaysAgo, lastSeen: tenDaysAgo,
+      reopenedCount: 2, regression: true,
+      resolvedAt: null, resolutionMethod: null, verificationState: "confirmed",
+    });
+    assert.ok(fc.lifecycle);
+    assert.equal(fc.lifecycle!.ageDays, 10);
+    assert.equal(fc.lifecycle!.reopenedCount, 2);
+    assert.equal(fc.lifecycle!.regressed, true);
+    assert.equal(fc.lifecycle!.verificationState, "confirmed");
+  });
+  test("lifecycle degrades to null fields when timestamps are absent", () => {
+    const fc = toFactCard(ui);
+    assert.ok(fc.lifecycle);
+    assert.equal(fc.lifecycle!.ageDays, null);
+    assert.equal(fc.lifecycle!.reopenedCount, 0);
+    assert.equal(fc.lifecycle!.regressed, false);
+  });
 });
 
 describe("public CVE brief", () => {
@@ -63,6 +83,8 @@ describe("public CVE brief", () => {
     assert.match(card.whyItMatters, /has not confirmed/);
     assert.deepEqual(card.affectedAssets, []);
     assert.equal(card.remediationSteps[0], "Downgrade to a known-good release.");
+    // Public CVE metadata has no tenant lifecycle — the advisor must not receive one.
+    assert.equal(card.lifecycle, undefined);
   });
 
   test("provides safe validation steps when the public record has no solution", () => {

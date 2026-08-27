@@ -96,7 +96,7 @@ function AgentMonitor() {
       isEmpty={agents.length === 0}
       onRetry={() => agentsQuery.refetch()}
       skeleton={<div style={{ padding: 16 }}><SkeletonRows rows={3} height={44} /></div>}
-      empty={<div style={{ padding: 24 }}><EmptyState icon={Cpu} title="No probes connected" hint="Deploy a probe to see live agent activity here." /></div>}
+      empty={<div style={{ padding: 24 }}><EmptyState icon={Cpu} title="No vedha-agents connected" hint="Deploy a vedha-agent to see live agent activity here." /></div>}
     >
       {agents.map((a, i) => <AgentRow key={`${a.name}-${i}`} agent={a} />)}
     </DataState>
@@ -154,7 +154,7 @@ export function DashboardGrid() {
         </Panel>
 
         <div className="span-3">
-          <Panel title="Agent monitor" eyebrow="Live probe fleet" icon={<Cpu size={13} />}>
+          <Panel title="Agent monitor" eyebrow="Live vedha-agent fleet" icon={<Cpu size={13} />}>
             <AgentMonitor />
           </Panel>
         </div>

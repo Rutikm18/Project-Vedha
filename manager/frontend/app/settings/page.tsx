@@ -173,7 +173,7 @@ function AccessSection({ status }: { status?: DeploymentStatus }) {
   const rows = [
     { icon: Users, title: "Role-based access", status: "Manager enforced", detail: "Admin, manager, tester, and analyst permissions are checked by the FastAPI resource routes." },
     { icon: KeyRound, title: "Interactive sessions", status: "JWT access + refresh", detail: "Browser requests use the Manager-issued access token; refresh material should be rotated and short-lived." },
-    { icon: FileKey2, title: "Personal access tokens", status: "Available through API", detail: "Use PATs for probes and automation. Grant only required scopes, set expiry, and revoke unused tokens." },
+    { icon: FileKey2, title: "Personal access tokens", status: "Available through API", detail: "Use PATs for vedha-agents and automation. Grant only required scopes, set expiry, and revoke unused tokens." },
     { icon: Database, title: "Tenant isolation", status: "Resource scoped", detail: "Findings are authorized through their parent engagement and tenant boundary." },
   ];
   return (
@@ -194,7 +194,7 @@ function AccessSection({ status }: { status?: DeploymentStatus }) {
       </div>
       <div className="settings-decision-note">
         <KeyRound size={16} />
-        <div><strong>Credential hygiene</strong><p>Never reuse administrator passwords for probes. Create a scoped PAT per probe, record its owner and expiry, and rotate it when a probe is rebuilt or transferred.</p></div>
+        <div><strong>Credential hygiene</strong><p>Never reuse administrator passwords for vedha-agents. Create a scoped PAT per vedha-agent, record its owner and expiry, and rotate it when a vedha-agent is rebuilt or transferred.</p></div>
       </div>
     </div>
   );

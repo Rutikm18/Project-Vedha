@@ -4,12 +4,23 @@ import {
   AlertTriangle, Building2, CheckCircle2, ExternalLink, Gauge,
   ShieldCheck, Wrench,
 } from "lucide-react";
-import type { FactCardVM } from "../../lib/assistant";
+import type { FactCardVM, LifecycleFacts } from "../../lib/assistant";
 import { SEV_COLOR } from "../../lib/severity";
 
 function Pip({ label, on, color }: { label: string; on: boolean; color: string }) {
   if (!on) return null;
   return <span className="badge" style={{ color, background: `${color}15`, border: `1px solid ${color}30` }}>{label}</span>;
+}
+
+/** One-line, grounded lifecycle summary — only recorded facts, never inferred. */
+function lifecycleSummary(lc: LifecycleFacts): string {
+  const parts: string[] = [];
+  if (lc.ageDays != null) parts.push(`open ${lc.ageDays}d`);
+  if (lc.reopenedCount > 0) parts.push(`reopened ${lc.reopenedCount}×`);
+  if (lc.regressed) parts.push("regressed — prior fix did not hold");
+  if (lc.resolvedAt) parts.push(`resolved${lc.resolutionMethod ? ` (${lc.resolutionMethod})` : ""}`);
+  if (lc.verificationState) parts.push(`verification: ${lc.verificationState}`);
+  return parts.length ? parts.join(" · ") : "No lifecycle transitions recorded yet";
 }
 
 export function FactCard({ vm, compact = false }: { vm: FactCardVM; compact?: boolean }) {
@@ -70,6 +81,11 @@ export function FactCard({ vm, compact = false }: { vm: FactCardVM; compact?: bo
 
       <footer>
         <div><CheckCircle2 size={13} /><span>Status: {vm.status.replaceAll("_", " ")}</span></div>
+        {vm.source === "finding" && vm.lifecycle && (
+          <div className="assistant-brief-lifecycle" data-regressed={vm.lifecycle.regressed}>
+            <span>{lifecycleSummary(vm.lifecycle)}</span>
+          </div>
+        )}
         {vm.references.slice(0, compact ? 1 : 4).map((reference) => (
           <a href={reference.url} target="_blank" rel="noreferrer" key={reference.url}>
             {reference.label}<ExternalLink size={11} />

@@ -1431,6 +1431,8 @@ code, pre, .terminal, kbd, [class*="mono"], .font-mono {
 .assistant-brief > footer { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; padding: 9px 13px; border-top: 1px solid var(--border-subtle); background: var(--bg-surface); }
 .assistant-brief > footer > div { display: inline-flex; align-items: center; gap: 5px; margin-right: auto; color: var(--text-muted); font-size: 8px; }
 .assistant-brief > footer a { display: inline-flex; align-items: center; gap: 4px; color: var(--accent); font-size: 8px; text-decoration: none; }
+.assistant-brief > footer > div.assistant-brief-lifecycle { flex-basis: 100%; margin-right: 0; color: var(--text-muted); font: 500 8px var(--font-mono); letter-spacing: 0.3px; }
+.assistant-brief > footer > div.assistant-brief-lifecycle[data-regressed="true"] { color: var(--sev-high-color, #C2410C); }
 /* ─── Advisor Flow (structured 6-section brief) ─── */
 .advisor-flow { display: flex; flex-direction: column; border: 0.5px solid var(--border-subtle); border-radius: 11px; overflow: hidden; background: var(--bg-panel); box-shadow: var(--shadow-sm); }
 .advisor-section { display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 10px; padding: 13px 15px; border-top: 0.5px solid var(--border-subtle); }

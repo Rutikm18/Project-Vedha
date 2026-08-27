@@ -529,9 +529,9 @@ async def list_enrollment_requests(
 
 class SimpleApproveInput(BaseModel):
     """One-click "Approve Site": every field is an OPTIONAL override — left blank,
-    the name auto-assigns (vedha_probe_NN), capabilities default to exactly what the
-    probe reported, and scope defaults to the auto-enroll CIDRs. No user_code — the
-    operator approves a pending request straight from the fleet list."""
+    the name auto-assigns (vedha_agent_NN), capabilities default to exactly what the
+    vedha-agent reported, and scope defaults to the auto-enroll CIDRs. No user_code —
+    the operator approves a pending request straight from the fleet list."""
     probe_name: str | None = Field(default=None, max_length=255)
     authorized_cidrs: list[str] | None = None
     excluded_cidrs: list[str] = Field(default_factory=list)
@@ -544,18 +544,22 @@ class SimpleApproveInput(BaseModel):
 
 
 async def _next_probe_name(db, tenant_id: uuid.UUID) -> str:
-    """Auto-assign the next sequential probe name (vedha_probe_01, _02, …) so the
-    operator never has to invent one. Scoped per tenant; gaps are not reused."""
+    """Auto-assign the next sequential vedha-agent name (vedha_agent_01, _02, …) so
+    the operator never has to invent one. Scoped per tenant; gaps are not reused.
+    Legacy vedha_probe_NN names are still counted so numbering stays monotonic
+    across the probe→vedha-agent rename (no collisions on existing deployments)."""
     names = (await db.execute(
         select(Agent.name).where(Agent.tenant_id == tenant_id)
     )).scalars().all()
     highest = 0
     for name in names:
-        if name and name.startswith("vedha_probe_"):
-            suffix = name[len("vedha_probe_"):]
-            if suffix.isdigit():
-                highest = max(highest, int(suffix))
-    return f"vedha_probe_{highest + 1:02d}"
+        for prefix in ("vedha_agent_", "vedha_probe_"):
+            if name and name.startswith(prefix):
+                suffix = name[len(prefix):]
+                if suffix.isdigit():
+                    highest = max(highest, int(suffix))
+                break
+    return f"vedha_agent_{highest + 1:02d}"
 
 
 @router.post("/requests/{request_id}/approve",

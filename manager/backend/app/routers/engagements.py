@@ -608,8 +608,15 @@ async def list_engagement_jobs(
     )).scalars().all()
 
     # Batch-resolve probe names so restored jobs render with their probe label
-    # (one query for the whole set — no N+1 per job).
-    agent_ids = {uuid.UUID(str(j.agent_id)) for j in rows if j.agent_id}
+    # (one query for the whole set — no N+1 per job). Tolerate a non-UUID/legacy
+    # agent_id: skip it for name resolution rather than 500-ing the whole listing.
+    def _as_uuid(value) -> uuid.UUID | None:
+        try:
+            return uuid.UUID(str(value))
+        except (ValueError, TypeError, AttributeError):
+            return None
+
+    agent_ids = {u for j in rows if j.agent_id for u in (_as_uuid(j.agent_id),) if u}
     names: dict[str, str] = {}
     if agent_ids:
         agents = (await db.execute(

@@ -183,8 +183,8 @@ export default function FleetPage() {
     if (!request) return;
     setSubmitting(true);
     try {
-      // One-click approve: name is optional (blank → auto vedha_probe_NN); the
-      // backend auto-fills capabilities + scope from what the probe reported.
+      // One-click approve: name is optional (blank → auto vedha_agent_NN); the
+      // backend auto-fills capabilities + scope from what the vedha-agent reported.
       await fetchJson(`/api/fleet/enrollment/${request.request_id}/approve`, {
         method: "POST",
         body: JSON.stringify({ probe_name: form.probe_name.trim() || null }),
@@ -200,7 +200,7 @@ export default function FleetPage() {
   }
 
   return (
-    <PageShell title="Fleet" subtitle="Enroll and govern probe devices">
+    <PageShell title="Fleet" subtitle="Enroll and govern vedha-agent devices">
       <style>{STYLES}</style>
       <div className="flt-page">
 
@@ -209,7 +209,7 @@ export default function FleetPage() {
           <div className="flt-card-head">
             <span className="flt-head-icon"><ShieldCheck size={17} /></span>
             <div>
-              <strong className="flt-head-title">Add a probe</strong>
+              <strong className="flt-head-title">Add a vedha-agent</strong>
               <div className="flt-head-sub">The command contains no PAT, admin secret, Site scope, or job ID.</div>
             </div>
           </div>
@@ -251,22 +251,22 @@ export default function FleetPage() {
           <header className="flt-list-head">
             <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
               <Server size={15} color="var(--accent)" />
-              <strong className="flt-head-title">Connected probes</strong>
+              <strong className="flt-head-title">Connected vedha-agents</strong>
               <span className="flt-count">{agents.length}</span>
               {onlineCount > 0 && <span className="flt-online-pill">{onlineCount} online</span>}
             </div>
-            <button className="flt-icon-btn" onClick={() => void load()} aria-label="Refresh connected probes">
+            <button className="flt-icon-btn" onClick={() => void load()} aria-label="Refresh connected vedha-agents">
               <RefreshCw size={14} />
             </button>
           </header>
 
           {loading && agents.length === 0 ? (
-            <div className="flt-empty"><Loader2 size={15} className="animate-spin" /> Loading probes…</div>
+            <div className="flt-empty"><Loader2 size={15} className="animate-spin" /> Loading vedha-agents…</div>
           ) : agents.length === 0 ? (
             <div className="flt-empty-block">
               <Server size={22} color="var(--text-faint)" />
-              <div className="flt-empty-title">No probes connected yet</div>
-              <div className="flt-empty-hint">Approve a pending request below. Once a probe activates and sends its first heartbeat, it appears here with live status.</div>
+              <div className="flt-empty-title">No vedha-agents connected yet</div>
+              <div className="flt-empty-hint">Approve a pending request below. Once a vedha-agent activates and sends its first heartbeat, it appears here with live status.</div>
             </div>
           ) : (
             <div className="flt-agents">
@@ -277,9 +277,9 @@ export default function FleetPage() {
                     <button className="flt-agent-main flt-agent-toggle" onClick={() => toggleProbe(a.id)} aria-expanded={expanded.has(a.id)}>
                       <span className="flt-agent-head">
                         <ChevronDown size={13} className="flt-chev" data-open={expanded.has(a.id)} />
-                        <strong className="flt-agent-name">{a.name || "unnamed probe"}</strong>
+                        <strong className="flt-agent-name">{a.name || "unnamed vedha-agent"}</strong>
                       </span>
-                      <span className="flt-state" style={{ color: badge.color }} aria-label={`Probe status: ${badge.label}`}>
+                      <span className="flt-state" style={{ color: badge.color }} aria-label={`vedha-agent status: ${badge.label}`}>
                         <span className="flt-dot" style={{ background: badge.color }} />
                         {badge.label}
                       </span>
@@ -302,7 +302,7 @@ export default function FleetPage() {
                           {jobs === undefined ? (
                             <div className="flt-jobs-empty">Loading jobs…</div>
                           ) : jobs.length === 0 ? (
-                            <div className="flt-jobs-empty">No jobs dispatched to this probe yet.</div>
+                            <div className="flt-jobs-empty">No jobs dispatched to this vedha-agent yet.</div>
                           ) : jobs.map((j) => {
                             const jb = jobBadge(j.status);
                             return (
@@ -337,7 +337,7 @@ export default function FleetPage() {
                 <strong className="flt-head-title">Pending requests</strong>
                 <span className="flt-count">{data.requests.length}</span>
               </div>
-              <button className="flt-icon-btn" onClick={() => void load()} aria-label="Refresh pending probes">
+              <button className="flt-icon-btn" onClick={() => void load()} aria-label="Refresh pending vedha-agents">
                 <RefreshCw size={14} />
               </button>
             </header>
@@ -400,9 +400,9 @@ export default function FleetPage() {
             ) : (
               <form onSubmit={approve} className="flt-form">
                 <label className="flt-field flt-full">
-                  <span className="flt-label">Probe name <span className="flt-optional">(optional)</span></span>
-                  <input className="flt-input" placeholder="auto: vedha_probe_01" value={form.probe_name} onChange={(e) => setForm({ ...form, probe_name: e.target.value })} />
-                  <span className="flt-hint">Leave blank to auto-assign the next name. Capabilities and scope are taken from what the probe reported — adjust later in Site settings if needed.</span>
+                  <span className="flt-label">vedha-agent name <span className="flt-optional">(optional)</span></span>
+                  <input className="flt-input" placeholder="auto: vedha_agent_01" value={form.probe_name} onChange={(e) => setForm({ ...form, probe_name: e.target.value })} />
+                  <span className="flt-hint">Leave blank to auto-assign the next name. Capabilities and scope are taken from what the vedha-agent reported — adjust later in Site settings if needed.</span>
                 </label>
                 <div className="flt-caps">Capabilities (auto): <strong>{capabilities.join(", ") || "none"}</strong></div>
                 <button disabled={submitting} className="flt-submit" type="submit">

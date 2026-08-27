@@ -2,7 +2,7 @@
  * One-click probe approval — BFF proxy.
  *   POST → /probe-enrollment/requests/{id}/approve
  * Body: { probe_name?: string | null }. No verification code; the backend
- * auto-fills name (vedha_probe_NN), capabilities, and scope from the device.
+ * auto-fills name (vedha_agent_NN), capabilities, and scope from the device.
  */
 import { NextResponse } from "next/server";
 import { backend, bearerFrom, BackendError } from "../../../../../../lib/backend";

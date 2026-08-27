@@ -19,15 +19,20 @@ def _db_names(names):
 
 class TestNextProbeName:
     def test_first_is_01(self):
-        assert asyncio.run(pe._next_probe_name(_db_names([]), uuid.uuid4())) == "vedha_probe_01"
+        assert asyncio.run(pe._next_probe_name(_db_names([]), uuid.uuid4())) == "vedha_agent_01"
 
     def test_increments_past_highest_with_gaps(self):
-        names = ["vedha_probe_01", "vedha_probe_03", "some-other-probe"]
-        assert asyncio.run(pe._next_probe_name(_db_names(names), uuid.uuid4())) == "vedha_probe_04"
+        names = ["vedha_agent_01", "vedha_agent_03", "some-other-agent"]
+        assert asyncio.run(pe._next_probe_name(_db_names(names), uuid.uuid4())) == "vedha_agent_04"
+
+    def test_legacy_probe_names_still_advance_the_counter(self):
+        # Existing deployments named the old way must not collide after the rename.
+        names = ["vedha_probe_02", "vedha_agent_01"]
+        assert asyncio.run(pe._next_probe_name(_db_names(names), uuid.uuid4())) == "vedha_agent_03"
 
     def test_ignores_non_matching_and_non_numeric(self):
-        names = ["custom-probe", None, "vedha_probe_x"]
-        assert asyncio.run(pe._next_probe_name(_db_names(names), uuid.uuid4())) == "vedha_probe_01"
+        names = ["custom-agent", None, "vedha_agent_x"]
+        assert asyncio.run(pe._next_probe_name(_db_names(names), uuid.uuid4())) == "vedha_agent_01"
 
 
 class TestSimpleApproveInput:

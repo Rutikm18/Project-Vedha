@@ -1,6 +1,19 @@
 // Ask Vedha — pure logic shared by the assistant drawer and the explain BFF route.
 // Grounded by design: everything here maps REAL finding fields; nothing is invented.
 
+/** Recorded lifecycle facts (all real, never inferred) that let the advisor
+ *  reason about staleness and regression — mirrors the finding History timeline. */
+export type LifecycleFacts = {
+  firstSeen: string | null;
+  lastSeen: string | null;
+  ageDays: number | null;
+  reopenedCount: number;
+  regressed: boolean;
+  resolvedAt: string | null;
+  resolutionMethod: string | null;
+  verificationState: string | null;
+};
+
 export type FactCardVM = {
   id: string; title: string; severity: string;
   whatItIs: string; whyItMatters: string; whatToDo: string;
@@ -14,6 +27,8 @@ export type FactCardVM = {
   remediationSteps: string[];
   references: Array<{ label: string; url: string }>;
   evidenceStatus: string;
+  // Present for recorded findings; absent for public-CVE-only briefs (no tenant lifecycle).
+  lifecycle?: LifecycleFacts;
 };
 
 export type AdvisorVM = {
@@ -75,6 +90,29 @@ function isExploited(f: any): boolean {
   return Boolean(f.activelyExploited ?? f.exploitable);
 }
 
+/** Whole days since an ISO timestamp, floored at 0. null for missing/unparseable input. */
+function ageInDays(iso: unknown): number | null {
+  if (!iso) return null;
+  const ms = new Date(String(iso)).getTime();
+  if (Number.isNaN(ms)) return null;
+  return Math.max(0, Math.floor((Date.now() - ms) / 86_400_000));
+}
+
+/** Extract the finding's recorded lifecycle facts for the grounded brief. */
+function lifecycleOf(f: any): LifecycleFacts {
+  const firstSeen = f.discoveredAt ? String(f.discoveredAt) : null;
+  return {
+    firstSeen,
+    lastSeen: f.lastSeen ? String(f.lastSeen) : null,
+    ageDays: ageInDays(firstSeen),
+    reopenedCount: Number(f.reopenedCount ?? 0) || 0,
+    regressed: Boolean(f.regression),
+    resolvedAt: f.resolvedAt ? String(f.resolvedAt) : null,
+    resolutionMethod: f.resolutionMethod ? String(f.resolutionMethod) : null,
+    verificationState: f.verificationState ? String(f.verificationState) : null,
+  };
+}
+
 function plainWhyItMatters(f: any): string {
   const bits: string[] = [];
   if (isExploited(f)) bits.push("attackers are actively exploiting this in the wild");
@@ -123,6 +161,7 @@ export function toFactCard(f: any): FactCardVM {
     remediationSteps,
     references: cveIds.map((id) => ({ label: `${id} · CVE Program`, url: `https://www.cve.org/CVERecord?id=${id}` })),
     evidenceStatus: "Organization impact is based on a tenant-authorized Vedha finding.",
+    lifecycle: lifecycleOf(f),
   };
 }
 

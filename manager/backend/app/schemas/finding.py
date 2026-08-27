@@ -32,6 +32,26 @@ class FindingPatch(BaseModel):
     risk_score: Decimal | None = Field(default=None, ge=0, le=1000)
 
 
+class FindingEventOut(BaseModel):
+    """One entry in a finding's lifecycle timeline. `id` is null for synthesized
+    events (derived from the finding's columns rather than stored)."""
+    id: uuid.UUID | None = None
+    event_type: str
+    label: str
+    actor: str | None = None
+    actor_type: str = "system"
+    from_status: str | None = None
+    to_status: str | None = None
+    detail: dict | None = None
+    occurred_at: datetime
+    synthesized: bool = False
+
+
+class FindingTimeline(BaseModel):
+    finding_id: uuid.UUID
+    events: list[FindingEventOut]
+
+
 class SlaItem(BaseModel):
     finding_id: uuid.UUID
     title: str

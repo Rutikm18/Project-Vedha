@@ -227,6 +227,28 @@ def test_ai_request_rejects_unsafe_model_and_oversized_context():
         )
 
 
+def test_advisor_flow_prompt_grounds_lifecycle_facts():
+    """The advisor_flow rules instruct the model to use lifecycle facts, and the
+    real lifecycle values are serialized into the untrusted <security_context>."""
+    service = ManagerLlmService(Settings(llm_provider="openai", openai_api_key="sk-test"))
+    request = AiGenerateRequest(
+        task="advisor_flow",
+        messages=[{"role": "user", "content": "brief"}],
+        context={"securityBrief": {"lifecycle": {
+            "ageDays": 34, "regressed": True, "reopenedCount": 2,
+        }}},
+    )
+
+    system = service._build_system(request)
+
+    # The task rules must teach the model to reason over lifecycle/regression.
+    assert "lifecycle" in system.lower()
+    assert "regress" in system.lower()
+    # The real recorded facts flow through as grounded (untrusted) context.
+    assert '"ageDays":34' in system
+    assert '"regressed":true' in system
+
+
 # ── Cloud-only provider selection (auto-detect from key; no local fallback) ─────
 
 def _cloud(**keys) -> Settings:

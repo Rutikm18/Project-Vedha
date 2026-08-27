@@ -14,7 +14,10 @@ from app.models.engagement import Engagement
 from app.models.finding import Finding
 from app.models.enums import DetectionStatus, FindingSeverity, FindingStatus
 from app.schemas.common import PaginatedResponse, paginate
-from app.schemas.finding import FindingOut, FindingPatch, FindingSummary, SlaSummary
+from app.schemas.finding import (
+    FindingEventOut, FindingOut, FindingPatch, FindingSummary, FindingTimeline, SlaSummary,
+)
+from app.services import finding_events as events_service
 from app.services import sla as sla_service
 from app.routers.sla_policy import resolve_windows
 from app.utils.pagination import paginate_query
@@ -214,6 +217,24 @@ async def get_finding(
     return await _tenant_finding(db, finding_id, current_user.tenant_id)
 
 
+@router.get("/{finding_id}/events", response_model=FindingTimeline,
+            summary="Finding lifecycle timeline (audit trail)")
+async def finding_timeline(
+    finding_id: uuid.UUID,
+    db: DB,
+    current_user: AuthUser,
+):
+    """The finding's full lifecycle, oldest-first: stored audit events (who did
+    what, when) merged with the events its own timestamps imply (detected,
+    re-observed, resolved). Every entry carries a full timestamp."""
+    finding = await _tenant_finding(db, finding_id, current_user.tenant_id)
+    timeline = await events_service.build_timeline(db, finding)
+    return FindingTimeline(
+        finding_id=finding.id,
+        events=[FindingEventOut(**e) for e in timeline],
+    )
+
+
 @router.patch("/{finding_id}", response_model=FindingOut, summary="Update finding status, owner, or notes")
 async def patch_finding(
     finding_id: uuid.UUID,
@@ -224,15 +245,41 @@ async def patch_finding(
     finding = await _tenant_finding(db, finding_id, current_user.tenant_id)
 
     patch = body.model_dump(exclude_unset=True)
+    actor = str(current_user.user_id)
+    prev_status = finding.status
+    prev_cvss, prev_risk = finding.cvss_score, finding.risk_score
 
     if "notes" in patch:
         notes = patch.pop("notes")
         finding.remediation = (
             f"{finding.remediation}\n\n[Note] {notes}" if finding.remediation else f"[Note] {notes}"
         )
+        await events_service.record_event(
+            db, finding, "note", actor=actor, actor_type="user",
+            detail={"note": notes},
+        )
 
     for field, value in patch.items():
         setattr(finding, field, value)
+
+    # Emit one audit event per meaningful transition the patch caused.
+    if "status" in patch and patch["status"] != prev_status:
+        await events_service.record_event(
+            db, finding, events_service.event_type_for_status(finding.status),
+            actor=actor, actor_type="user",
+            from_status=prev_status, to_status=finding.status,
+        )
+    if ("cvss_score" in patch and patch["cvss_score"] != prev_cvss) or \
+            ("risk_score" in patch and patch["risk_score"] != prev_risk):
+        await events_service.record_event(
+            db, finding, "risk_changed", actor=actor, actor_type="user",
+            detail={
+                "cvss_from": float(prev_cvss) if prev_cvss is not None else None,
+                "cvss_to": float(finding.cvss_score) if finding.cvss_score is not None else None,
+                "risk_from": float(prev_risk) if prev_risk is not None else None,
+                "risk_to": float(finding.risk_score) if finding.risk_score is not None else None,
+            },
+        )
 
     await db.flush()
     await db.refresh(finding)
@@ -257,6 +304,11 @@ async def reopen_finding(
             detail="Only a remediated finding can be reopened",
         )
     apply_manual_reopen(finding, by=str(current_user.user_id), now=datetime.now(timezone.utc))
+    await events_service.record_event(
+        db, finding, "reopened", actor=str(current_user.user_id), actor_type="user",
+        from_status=FindingStatus.remediated, to_status=FindingStatus.open,
+        detail={"reopened_count": finding.reopened_count},
+    )
     await db.flush()
     await db.refresh(finding)
     logger.info("finding.reopened", id=str(finding_id), by=str(current_user.user_id))

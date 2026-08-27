@@ -22,6 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.models.asset import Asset
 from app.models.enums import FindingSeverity, FindingStatus
 from app.models.finding import Finding
+from app.services.finding_events import record_event
 
 
 def host_of(target: str) -> str:
@@ -123,6 +124,14 @@ async def evaluate_resolutions(
             finding.resolved_at = now
             finding.resolution_method = "auto"
             finding.resolution_run_id = run.id
+            await record_event(
+                db, finding, "resolved", actor="auto-resolution", actor_type="system",
+                from_status="open", to_status=FindingStatus.remediated,
+                detail={
+                    "method": "auto", "run_id": str(run.id),
+                    "miss_count": outcome.miss_count, "reason": outcome.reason,
+                },
+            )
             resolved += 1
     await db.flush()
     return resolved

@@ -41,12 +41,12 @@ function EngagementSection({ eng }: { eng?: PortalEngagement }) {
       <div className="settings-workspace-card">
         <span><Building2 size={20} /></span>
         <div><strong>{eng?.name ?? "Loading…"}</strong><p>{eng ? `${eng.scope_cidr_count} authorised range${eng.scope_cidr_count === 1 ? "" : "s"}` : "…"}</p></div>
-        <span className={`badge ${eng?.has_assigned_agent ? "badge-success" : "badge-high"}`}>{eng?.has_assigned_agent ? "Probe assigned" : "No probe"}</span>
+        <span className={`badge ${eng?.has_assigned_agent ? "badge-success" : "badge-high"}`}>{eng?.has_assigned_agent ? "vedha-agent assigned" : "No vedha-agent"}</span>
       </div>
       <div className="settings-readiness-grid">
         <article data-ready={Boolean(eng)}><Building2 size={16} /><div><small>Engagement</small><strong>{eng?.name ?? "…"}</strong></div></article>
         <article data-ready={eng?.status === "active"}><CheckCircle2 size={16} /><div><small>Status</small><strong style={{ textTransform: "capitalize" }}>{eng?.status ?? "…"}</strong></div></article>
-        <article data-ready={eng?.has_assigned_agent ?? false}><Server size={16} /><div><small>Probe</small><strong>{eng?.has_assigned_agent ? "Assigned" : "Pending"}</strong></div></article>
+        <article data-ready={eng?.has_assigned_agent ?? false}><Server size={16} /><div><small>vedha-agent</small><strong>{eng?.has_assigned_agent ? "Assigned" : "Pending"}</strong></div></article>
       </div>
       {eng && eng.scope_cidrs.length > 0 && (
         <div style={{ marginTop: 16 }}>

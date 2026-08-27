@@ -249,6 +249,7 @@ _USE_CASE_CODES: dict[int, str] = {
     2:  "uc_device_inventory",
     10: "uc_full_assessment",
     11: "uc_rescan_delta",
+    12: "uc_network_va",
     20: "uc_external_web_triage",
     21: "uc_web_app_triage",
     30: "uc_windows_estate",
@@ -380,6 +381,20 @@ _USE_CASES = {
         "scan_type": "assessment",
         "profile": "it",
         "expected_runtime_hint": "15–60 min per /24",
+    },
+    "uc_network_va": {
+        "display_name": "Network Vulnerability Assessment (Full Campaign)",
+        "description": (
+            "The end-to-end campaign, run as one sequential background job with "
+            "live per-stage progress: discovers every host, inventories and "
+            "classifies devices, deep-assesses each open service, checks "
+            "Windows/SMB, SNMP, and UDP amplification exposure, maps internet "
+            "exposure, and correlates observed versions to prioritized CVE "
+            "candidates — a complete network vulnerability assessment in one run."
+        ),
+        "scan_type": "network_va",
+        "profile": "it",
+        "expected_runtime_hint": "30–90 min per /24",
     },
     # ── Web / TLS (codes 20–29) ────────────────────────────────────────────────
     "uc_external_web_triage": {

@@ -60,6 +60,27 @@ class DetectionStatus(str, enum.Enum):
     unknown = "unknown"
 
 
+class FindingEventType(str, enum.Enum):
+    """A single entry in a finding's lifecycle audit trail. Stored as a plain
+    string (not a PG enum) so the log stays append-only and new event kinds never
+    need a schema migration. `detected`/`reaffirmed`/`resolved` are also derivable
+    from the finding's own timestamp columns (see services.finding_events), so a
+    complete timeline exists even for findings created before this log."""
+
+    detected = "detected"                    # genesis — first produced by detection
+    reaffirmed = "reaffirmed"                # re-observed in a later coverage-proven run
+    confirmed = "confirmed"                  # analyst promoted open -> confirmed
+    remediated = "remediated"                # marked fixed (manual)
+    resolved = "resolved"                    # auto-closed after coverage-proven clean runs
+    accepted = "accepted"                    # risk formally accepted
+    false_positive = "false_positive"        # dismissed as not real
+    reopened = "reopened"                    # a resolved finding came back / was reversed
+    status_changed = "status_changed"        # any other lifecycle transition
+    verification_changed = "verification_changed"  # verdict changed (confirmed/inferred/…)
+    risk_changed = "risk_changed"            # CVSS / risk score revised
+    note = "note"                            # free-text operator annotation
+
+
 class ScanJobType(str, enum.Enum):
     discovery = "discovery"
     vuln_scan = "vuln_scan"

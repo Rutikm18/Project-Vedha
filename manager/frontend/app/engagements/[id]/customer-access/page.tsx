@@ -70,7 +70,7 @@ export default function CustomerAccessPage() {
         <ArrowLeft className="h-4 w-4" /> Back to engagement
       </Link>
       <h1 className="text-xl font-semibold text-slate-900">Customer Access</h1>
-      <p className="mb-6 text-sm text-slate-500">Provision the customer portal login, assign the probe, and review scan requests.</p>
+      <p className="mb-6 text-sm text-slate-500">Provision the customer portal login, assign the vedha-agent, and review scan requests.</p>
 
       {note && <div className="mb-4 rounded-md bg-slate-100 px-4 py-2 text-sm text-slate-700">{note}</div>}
       {tempPw && (
@@ -106,7 +106,7 @@ export default function CustomerAccessPage() {
 
         {/* Assign agent */}
         <section className="rounded-lg border border-slate-200 bg-white p-4">
-          <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-800"><ServerCog className="h-4 w-4" /> Assigned probe</h2>
+          <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-slate-800"><ServerCog className="h-4 w-4" /> Assigned vedha-agent</h2>
           <input value={agentId} onChange={(e) => setAgentId(e.target.value)} placeholder="agent UUID"
             className="mb-2 w-full rounded-md border border-slate-300 px-3 py-2 text-sm" />
           <button onClick={() => assign.mutate()} disabled={assign.isPending || !agentId}

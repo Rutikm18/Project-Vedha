@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useEffect, useCallback, useRef } from "react";
+import Link from "next/link";
 import {
   Play, Shield, Globe, Database, Server, Wifi,
   Activity, Eye, RefreshCw, ChevronDown,
@@ -90,7 +91,10 @@ interface EngineManifest {
    METADATA
 ══════════════════════════════════════════════════════ */
 
+const NETWORK_VA_ID = "uc_network_va";
+
 const UC_META: Record<string, { cat: string; icon: React.ReactNode; risk: "passive" | "low" | "medium" | "high" }> = {
+  uc_network_va:           { cat: "Assessment",  icon: <Radar size={17} />,     risk: "high"    },
   uc_discovery_only:       { cat: "Discovery",   icon: <Network size={17} />,   risk: "low"     },
   uc_iot_device_survey:    { cat: "Discovery",   icon: <Wifi size={17} />,      risk: "low"     },
   uc_full_assessment:      { cat: "Assessment",  icon: <Shield size={17} />,    risk: "high"    },
@@ -207,7 +211,7 @@ function FleetStrip({ probes, loading }: { probes: Probe[]; loading: boolean }) 
           <span className="scn-ping" style={{ position: "absolute", inset: 0, borderRadius: "50%", background: online ? "var(--nominal-color)" : "var(--text-faint)" }} />
           <span style={{ position: "relative", width: 8, height: 8, borderRadius: "50%", background: online ? "var(--nominal-color)" : "var(--text-faint)" }} />
         </span>
-        <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", fontFamily: "var(--font-display)", letterSpacing: 0.3, textTransform: "uppercase" }}>Probe Fleet</span>
+        <span style={{ fontSize: 13, fontWeight: 700, color: "var(--text-primary)", fontFamily: "var(--font-display)", letterSpacing: 0.3, textTransform: "uppercase" }}>vedha-agent Fleet</span>
       </div>
 
       <div style={{ width: 1, height: 18, background: "var(--border-subtle)" }} />
@@ -215,7 +219,7 @@ function FleetStrip({ probes, loading }: { probes: Probe[]; loading: boolean }) 
       {loading ? (
         <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Loading…</span>
       ) : !probes.length ? (
-        <span style={{ fontSize: 12, color: "var(--text-muted)" }}>No probes registered — deploy an agent to begin</span>
+        <span style={{ fontSize: 12, color: "var(--text-muted)" }}>No vedha-agents registered — deploy one to begin</span>
       ) : (
         <>
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
@@ -234,7 +238,7 @@ function FleetStrip({ probes, loading }: { probes: Probe[]; loading: boolean }) 
               const statusLabel = !p.online ? "offline" : p.current_job_id ? "scanning" : "online";
               const dot = !p.online ? "var(--text-faint)" : p.current_job_id ? "var(--sev-medium-color)" : "var(--nominal-color)";
               return (
-                <span key={p.id} aria-label={`Probe ${p.name}: ${statusLabel}, ${p.capabilities.length} capabilities`} title={[p.location, p.capabilities.length ? `Capabilities: ${p.capabilities.join(", ")}` : null].filter(Boolean).join(" · ") || undefined} style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 9px", borderRadius: 7, background: "var(--bg-surface)", border: "0.5px solid var(--border-subtle)", fontSize: 11 }}>
+                <span key={p.id} aria-label={`vedha-agent ${p.name}: ${statusLabel}, ${p.capabilities.length} capabilities`} title={[p.location, p.capabilities.length ? `Capabilities: ${p.capabilities.join(", ")}` : null].filter(Boolean).join(" · ") || undefined} style={{ display: "flex", alignItems: "center", gap: 6, padding: "4px 9px", borderRadius: 7, background: "var(--bg-surface)", border: "0.5px solid var(--border-subtle)", fontSize: 11 }}>
                   <span style={{ width: 6, height: 6, borderRadius: "50%", background: dot, flexShrink: 0 }} />
                   <span style={{ color: "var(--text-secondary)", fontWeight: 500 }}>{p.name}</span>
                   <span style={{ color: dot, fontSize: 9, fontWeight: 700, textTransform: "uppercase", letterSpacing: 0.4 }}>{statusLabel}</span>
@@ -248,6 +252,68 @@ function FleetStrip({ probes, loading }: { probes: Probe[]; loading: boolean }) 
         </>
       )}
     </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════
+   NETWORK-VA HERO
+   The flagship full-campaign entry point. Surfaced on its own
+   above the use-case grid because it is the scanner page's
+   most-used capability — one click seeds the config panel; a
+   second link jumps to the live campaign monitor.
+══════════════════════════════════════════════════════ */
+
+const NVA_STAGES = ["Discovery", "Port map", "Assessment", "Exposure", "Inventory", "Detection"];
+
+function NetworkVaHero({ uc, selected, onConfigure }: {
+  uc: UseCase | undefined;
+  selected: boolean;
+  onConfigure: () => void;
+}) {
+  // Only render once the backend has served the flagship use-case.
+  if (!uc) return null;
+  return (
+    <HudFrame active={selected} radius={16}>
+      <div className="scn-nva" data-sel={selected}>
+        <div className="scn-nva-glow" aria-hidden />
+        <div className="scn-nva-body">
+          <div className="scn-nva-head">
+            <span className="scn-nva-icon"><Radar size={26} /></span>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <div className="scn-nva-eyebrow">
+                <span className="scn-nva-tag">Flagship campaign</span>
+                <span className="scn-nva-profile">{PROFILE_BADGE[uc.profile]?.label ?? uc.profile.toUpperCase()}</span>
+              </div>
+              <h2 className="scn-nva-title">{uc.display_name}</h2>
+              <p className="scn-nva-desc">{uc.description}</p>
+            </div>
+          </div>
+
+          <div className="scn-nva-stages" aria-label="Campaign stages, in order">
+            {NVA_STAGES.map((s, i) => (
+              <React.Fragment key={s}>
+                {i > 0 && <span className="scn-nva-arrow" aria-hidden>→</span>}
+                <span className="scn-nva-stage">{s}</span>
+              </React.Fragment>
+            ))}
+          </div>
+
+          <div className="scn-nva-actions">
+            <button className="scn-nva-cta" data-sel={selected} onClick={onConfigure}>
+              {selected
+                ? <><CheckCircle2 size={16} /> Selected — configure below</>
+                : <><Target size={16} /> Configure campaign</>}
+            </button>
+            <Link className="scn-nva-link" href="/campaign">
+              <Activity size={13} /> View live campaigns
+            </Link>
+            <span className="scn-nva-meta">
+              <Clock size={11} /> {uc.expected_runtime_hint}
+            </span>
+          </div>
+        </div>
+      </div>
+    </HudFrame>
   );
 }
 
@@ -467,7 +533,7 @@ function JobPanel({ job, ucName }: { job: JobStatus; ucName?: string }) {
           <div style={{ padding: "11px 16px", display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
             <Cpu size={13} color="var(--accent)" />
             <span style={{ fontSize: 11.5, fontWeight: 650, color: "var(--text-primary)" }}>
-              {orchestrator?.label ?? String(r.engine ?? "Probe collector")}
+              {orchestrator?.label ?? String(r.engine ?? "vedha-agent collector")}
             </span>
             {orchestrator?.version && (
               <span style={{ fontSize: 9.5, fontFamily: "var(--font-mono)", color: "var(--text-faint)" }}>
@@ -535,7 +601,7 @@ function JobPanel({ job, ucName }: { job: JobStatus; ucName?: string }) {
       )}
 
       <div style={{ padding: "10px 16px", display: "flex", flexWrap: "wrap", gap: 14, borderTop: "0.5px solid var(--border-subtle)" }}>
-        {job.agent_name && <span style={{ fontSize: 11, color: "var(--text-muted)" }}>Probe <strong style={{ color: "var(--text-secondary)", fontWeight: 600 }}>{job.agent_name}</strong></span>}
+        {job.agent_name && <span style={{ fontSize: 11, color: "var(--text-muted)" }}>vedha-agent <strong style={{ color: "var(--text-secondary)", fontWeight: 600 }}>{job.agent_name}</strong></span>}
         {job.created_at && <span style={{ fontSize: 11, color: "var(--text-muted)" }}>Queued <strong style={{ color: "var(--text-secondary)", fontWeight: 600 }}>{new Date(job.created_at).toLocaleTimeString()}</strong></span>}
         <span style={{ marginLeft: "auto", fontSize: 10, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>{job.job_id.slice(0, 8)}</span>
       </div>
@@ -569,7 +635,7 @@ function DispatchReceipt({ payload }: { payload: Record<string, unknown> }) {
     <div style={{ borderRadius: 12, border: "0.5px solid var(--border-accent)", background: "var(--bg-panel)", overflow: "hidden", boxShadow: "var(--shadow-md)" }}>
       <button onClick={() => setOpen((v) => !v)} style={{ width: "100%", display: "flex", alignItems: "center", gap: 9, padding: "12px 16px", cursor: "pointer", background: "var(--accent-ghost)", border: "none", borderBottom: open ? "0.5px solid var(--border-subtle)" : "none" }}>
         <Send size={13} color="var(--accent)" />
-        <span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>Dispatched to Probe</span>
+        <span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>Dispatched to vedha-agent</span>
         <span style={{ fontSize: 10, color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>POST /agents/jobs</span>
         <ChevronDown size={14} color="var(--text-muted)" style={{ marginLeft: "auto", transform: open ? "rotate(180deg)" : "none", transition: "transform var(--dur-fast)" }} />
       </button>
@@ -586,7 +652,7 @@ function DispatchReceipt({ payload }: { payload: Record<string, unknown> }) {
           <div style={{ marginTop: 11, display: "flex", gap: 7, alignItems: "flex-start" }}>
             <ShieldAlert size={13} color="var(--accent)" style={{ flexShrink: 0, marginTop: 1 }} />
             <span style={{ fontSize: 10, color: "var(--text-muted)", lineHeight: 1.5 }}>
-              The probe re-validates this against the engagement&apos;s authoritative scope and exclusions before sending a single packet. Secret-bearing job parameters are rejected by the Manager.
+              The vedha-agent re-validates this against the engagement&apos;s authoritative scope and exclusions before sending a single packet. Secret-bearing job parameters are rejected by the Manager.
             </span>
           </div>
         </div>
@@ -800,10 +866,12 @@ export default function ScanPage() {
     setIntensity("normal"); setPassiveSecs(60);
   }
 
-  // category counts + filtered list
-  const counts: Record<string, number> = { All: useCases.length };
-  for (const uc of useCases) { const c = UC_META[uc.use_case_id]?.cat ?? "Other"; counts[c] = (counts[c] ?? 0) + 1; }
-  const inCat = catFilter === "All" ? useCases : useCases.filter((u) => (UC_META[u.use_case_id]?.cat ?? "Other") === catFilter);
+  // category counts + filtered list. The flagship Network-VA campaign has its own
+  // hero above the grid, so it's excluded here to avoid a duplicate card.
+  const gridUseCases = useCases.filter((u) => u.use_case_id !== NETWORK_VA_ID);
+  const counts: Record<string, number> = { All: gridUseCases.length };
+  for (const uc of gridUseCases) { const c = UC_META[uc.use_case_id]?.cat ?? "Other"; counts[c] = (counts[c] ?? 0) + 1; }
+  const inCat = catFilter === "All" ? gridUseCases : gridUseCases.filter((u) => (UC_META[u.use_case_id]?.cat ?? "Other") === catFilter);
   // Active (tested) capabilities lead; "coming soon" sink to the end (stable sort
   // preserves catalog order within each group).
   const filtered = [...inCat].sort(
@@ -825,12 +893,18 @@ export default function ScanPage() {
   }
 
   return (
-    <PageShell title="Scanner" subtitle="Compose and dispatch a scan to a field-deployed probe">
+    <PageShell title="Scanner" subtitle="Compose and dispatch a scan to a field-deployed vedha-agent">
       <style>{STYLES}</style>
 
       <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 1140 }}>
 
         <FleetStrip probes={probes} loading={loadingData} />
+
+        <NetworkVaHero
+          uc={useCases.find((u) => u.use_case_id === NETWORK_VA_ID)}
+          selected={selectedUc === NETWORK_VA_ID}
+          onConfigure={() => setSelectedUc(NETWORK_VA_ID)}
+        />
 
         <div className="scn-main-grid" style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 20, alignItems: "start" }}>
 
@@ -911,7 +985,7 @@ export default function ScanPage() {
 
                   {/* Probe selection — defaults to an active probe */}
                   <div>
-                    <FieldLabel htmlFor="scan-probe" icon={<Cpu size={11} />} hint={compatibleProbes.length ? `${compatibleProbes.length} compatible` : "none online"}>Probe</FieldLabel>
+                    <FieldLabel htmlFor="scan-probe" icon={<Cpu size={11} />} hint={compatibleProbes.length ? `${compatibleProbes.length} compatible` : "none online"}>vedha-agent</FieldLabel>
                     <div style={{ position: "relative" }}>
                       <select
                         id="scan-probe"
@@ -920,7 +994,7 @@ export default function ScanPage() {
                         onChange={(e) => setSelectedProbe(e.target.value)}
                         disabled={!compatibleProbes.length}
                       >
-                        {!compatibleProbes.length && <option value="">No compatible probe online</option>}
+                        {!compatibleProbes.length && <option value="">No compatible vedha-agent online</option>}
                         {compatibleProbes.map((p) => (
                           <option key={p.id} value={p.id}>
                             {p.name}{p.current_job_id ? " · busy" : " · idle"}
@@ -930,7 +1004,7 @@ export default function ScanPage() {
                       <ChevronDown size={13} color="var(--text-muted)" style={{ position: "absolute", right: 11, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
                     </div>
                     <p style={{ margin: "6px 0 0", fontSize: 10, color: "var(--text-faint)", lineHeight: 1.5 }}>
-                      The job is pinned to this probe. Leave the default to use an idle, capable probe.
+                      The job is pinned to this vedha-agent. Leave the default to use an idle, capable vedha-agent.
                     </p>
                   </div>
 
@@ -974,7 +1048,7 @@ export default function ScanPage() {
                     />
                     {excludeCount > 0 && (
                       <p style={{ margin: "6px 0 0", fontSize: 10, color: "var(--text-faint)", lineHeight: 1.5 }}>
-                        Subtracted from scope — the probe never sends a packet to these, even if inside the allowed range.
+                        Subtracted from scope — the vedha-agent never sends a packet to these, even if inside the allowed range.
                       </p>
                     )}
                   </div>
@@ -1004,7 +1078,7 @@ export default function ScanPage() {
                       </div>
                       <div style={{ display: "flex", gap: 7, marginTop: 9, padding: "8px 10px", borderRadius: 8, background: "rgba(16,185,129,0.07)", border: "0.5px solid rgba(16,185,129,0.25)" }}>
                         <ShieldAlert size={15} color="#10b981" style={{ flexShrink: 0, marginTop: 1 }} />
-                        <span style={{ fontSize: 10.5, color: "#34d399", lineHeight: 1.5 }}><strong>OT Safe Mode</strong> — zero active packets. The probe only listens. Safe for SCADA / ICS / PLC.</span>
+                        <span style={{ fontSize: 10.5, color: "#34d399", lineHeight: 1.5 }}><strong>OT Safe Mode</strong> — zero active packets. The vedha-agent only listens. Safe for SCADA / ICS / PLC.</span>
                       </div>
                     </div>
                   )}
@@ -1109,6 +1183,31 @@ const STYLES = `
 @keyframes scn-shimmer { 100% { transform: translateX(100%); } }
 .scn-skeleton { border-radius: 12px; background: var(--bg-card); border: 0.5px solid var(--border-subtle); position: relative; overflow: hidden; }
 .scn-skeleton::after { content:""; position:absolute; inset:0; transform: translateX(-100%); background: linear-gradient(90deg, transparent, rgba(255,255,255,0.03), transparent); animation: scn-shimmer 1.4s infinite; }
+
+/* Network-VA hero — the flagship full-campaign banner above the grid */
+.scn-nva { position:relative; border-radius:16px; overflow:hidden; border:0.5px solid var(--border-subtle); background:linear-gradient(135deg, var(--accent-ghost), var(--bg-panel) 58%); box-shadow: var(--shadow-md); transition: border-color var(--dur-fast), box-shadow var(--dur-fast); }
+.scn-nva[data-sel="true"] { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent), 0 0 30px var(--accent-glow); }
+.scn-nva-glow { position:absolute; top:-42%; right:-8%; width:340px; height:340px; border-radius:50%; background:radial-gradient(circle, var(--accent-glow), transparent 70%); opacity:0.55; pointer-events:none; }
+.scn-nva-body { position:relative; padding:18px 20px; display:flex; flex-direction:column; gap:14px; }
+.scn-nva-head { display:flex; gap:14px; align-items:flex-start; }
+.scn-nva-icon { width:48px; height:48px; border-radius:13px; flex-shrink:0; display:flex; align-items:center; justify-content:center; color:var(--accent); background:var(--accent-ghost); border:0.5px solid var(--border-accent); box-shadow:inset 0 1px 0 rgba(255,255,255,0.06); }
+.scn-nva-eyebrow { display:flex; align-items:center; gap:8px; margin-bottom:5px; }
+.scn-nva-tag { font-size:9.5px; font-weight:700; letter-spacing:0.8px; text-transform:uppercase; color:var(--accent); background:var(--accent-ghost); border:0.5px solid var(--border-accent); border-radius:5px; padding:2px 7px; }
+.scn-nva-profile { font-size:9.5px; font-weight:700; letter-spacing:0.6px; color:var(--text-faint); font-family:var(--font-mono); }
+.scn-nva-title { margin:0; font-size:19px; font-weight:750; letter-spacing:-0.2px; color:var(--text-primary); font-family:var(--font-display); }
+.scn-nva-desc { margin:5px 0 0; font-size:12.5px; line-height:1.55; color:var(--text-muted); max-width:660px; }
+.scn-nva-stages { display:flex; align-items:center; flex-wrap:wrap; gap:6px; }
+.scn-nva-stage { font-size:10.5px; font-weight:600; color:var(--text-secondary); background:var(--bg-surface); border:0.5px solid var(--border-subtle); border-radius:6px; padding:4px 9px; }
+.scn-nva-arrow { color:var(--text-faint); font-size:12px; font-family:var(--font-mono); }
+.scn-nva-actions { display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
+.scn-nva-cta { display:inline-flex; align-items:center; gap:8px; padding:11px 20px; border-radius:11px; border:none; font-weight:700; font-size:13.5px; cursor:pointer; color:#fff; background:linear-gradient(180deg, var(--accent-hover), var(--accent)); box-shadow:0 4px 20px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.15); transition: transform var(--dur-fast), box-shadow var(--dur-fast), filter var(--dur-fast); }
+.scn-nva-cta:hover { transform:translateY(-1px); filter:brightness(1.05); box-shadow:0 6px 28px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.2); }
+.scn-nva-cta:active { transform:translateY(0); }
+.scn-nva-cta[data-sel="true"] { background:var(--accent-ghost); color:var(--accent); border:0.5px solid var(--border-accent); box-shadow:none; }
+.scn-nva-cta[data-sel="true"]:hover { transform:none; filter:none; box-shadow:none; }
+.scn-nva-link { display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600; color:var(--accent); text-decoration:none; transition: color var(--dur-fast); }
+.scn-nva-link:hover { text-decoration:underline; }
+.scn-nva-meta { display:inline-flex; align-items:center; gap:5px; margin-left:auto; font-size:11px; font-family:var(--font-mono); color:var(--text-faint); }
 
 /* Use-case card */
 @keyframes scn-card-in { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }

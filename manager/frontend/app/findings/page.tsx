@@ -24,6 +24,21 @@ type ExploitMaturity = "WEAPONIZED" | "POC" | "THEORETICAL";
 type DetectionCoverage = "COVERED" | "PARTIAL" | "BLIND";
 const FINDINGS_PER_PAGE = 20;
 
+/* Lifecycle audit-trail event (backend /api/findings/{id}/events, snake_case). */
+type TimelineEvent = {
+  id: string | null;
+  event_type: string;
+  label: string;
+  actor: string | null;
+  actor_type: string;
+  from_status: string | null;
+  to_status: string | null;
+  detail: Record<string, unknown> | null;
+  occurred_at: string;
+  synthesized: boolean;
+};
+type FindingTimeline = { finding_id: string; events: TimelineEvent[] };
+
 function subscribeToLocationChange(onChange: () => void) {
   window.addEventListener("popstate", onChange);
   return () => window.removeEventListener("popstate", onChange);
@@ -423,6 +438,179 @@ function RemediationChecklist({ steps }: { steps: (string | RemStep)[] }) {
 }
 
 /* ─── Finding Detail ─── */
+/* ─── Finding lifecycle event history (detailed vertical audit-trail timeline) ─── */
+const EVENT_COLOR: Record<string, string> = {
+  detected: SEV_PALETTE.BLUE,
+  reaffirmed: SEV_PALETTE.SLATE,
+  confirmed: SEV_PALETTE.ORANGE,
+  remediated: SEV_PALETTE.GREEN,
+  resolved: SEV_PALETTE.GREEN,
+  accepted: SEV_PALETTE.VIOLET,
+  false_positive: SEV_PALETTE.SLATE,
+  reopened: SEV_PALETTE.RED,
+  status_changed: SEV_PALETTE.SKY,
+  verification_changed: SEV_PALETTE.SKY,
+  risk_changed: SEV_PALETTE.AMBER,
+  note: SEV_PALETTE.SLATE,
+};
+
+/* Full timestamp to the second: "2026-08-27 14:03:11" (local tz). */
+function fmtEventTs(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  const p = (n: number) => String(n).padStart(2, "0");
+  return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}`;
+}
+
+/* Human relative age — "just now", "5m ago", "3d ago", "4mo ago". This is the
+   primary read a customer scans; the exact timestamp stays as secondary detail. */
+function fmtRelativeTs(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return "";
+  const secs = Math.floor((Date.now() - d.getTime()) / 1000);
+  if (secs < 45) return "just now";
+  const mins = Math.floor(secs / 60);
+  if (mins < 60) return `${mins}m ago`;
+  const hrs = Math.floor(mins / 60);
+  if (hrs < 24) return `${hrs}h ago`;
+  const days = Math.floor(hrs / 24);
+  if (days < 7) return `${days}d ago`;
+  const weeks = Math.floor(days / 7);
+  if (weeks < 5) return `${weeks}w ago`;
+  const months = Math.floor(days / 30);
+  if (months < 12) return `${months}mo ago`;
+  return `${Math.floor(days / 365)}y ago`;
+}
+
+/* Short calendar date for the summary strip: "27 Aug 2026". */
+function fmtEventDay(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return d.toLocaleDateString(undefined, { day: "2-digit", month: "short", year: "numeric" });
+}
+
+function HistoryTimeline({ findingId }: { findingId: string }) {
+  const { data, isLoading, error } = useQuery({
+    queryKey: ["finding-events", findingId],
+    queryFn: () => fetchJson<FindingTimeline>(`/api/findings/${findingId}/events`),
+    staleTime: 30_000,
+  });
+
+  if (isLoading) return <div className="finding-data-missing">Loading event history…</div>;
+  if (error) return <div className="finding-data-missing">Could not load the event history for this finding.</div>;
+  const events = data?.events ?? [];
+  if (!events.length) {
+    return <div className="finding-data-missing finding-data-missing-large">No lifecycle events are recorded for this finding yet.</div>;
+  }
+
+  // Events arrive oldest-first (chronological). The last one is the current state.
+  const first = events[0];
+  const latest = events[events.length - 1];
+  const latestColor = EVENT_COLOR[latest.event_type] ?? SEV_PALETTE.SLATE;
+
+  return (
+    <div>
+      {/* ── Summary strip — at-a-glance lifecycle, styled like the scanner stat strips ── */}
+      <div style={{
+        display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap",
+        padding: "10px 14px", marginBottom: 14, borderRadius: 10,
+        background: "var(--bg-panel)", border: "0.5px solid var(--border-subtle)",
+      }}>
+        <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--text-secondary)", letterSpacing: 0.8, fontWeight: 700 }}>
+          EVENT HISTORY
+        </span>
+        <div style={{ width: 1, height: 20, background: "var(--border-subtle)" }} />
+        <span style={{ display: "flex", alignItems: "baseline", gap: 6 }}>
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: 15, fontWeight: 700, color: "var(--text-primary)", lineHeight: 1 }}>{events.length}</span>
+          <span style={{ fontSize: 10, color: "var(--text-secondary)", textTransform: "uppercase", letterSpacing: 0.5 }}>event{events.length === 1 ? "" : "s"}</span>
+        </span>
+        <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-secondary)" }}>
+          {fmtEventDay(first.occurred_at)}{events.length > 1 ? ` → ${fmtEventDay(latest.occurred_at)}` : ""}
+        </span>
+        <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 7 }}>
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: 8.5, color: "var(--text-faint)", textTransform: "uppercase", letterSpacing: 0.6 }}>current</span>
+          <span style={{ width: 7, height: 7, borderRadius: "50%", background: latestColor, boxShadow: `0 0 5px ${latestColor}60` }} />
+          <span style={{
+            fontFamily: "var(--font-mono)", fontSize: 9.5, color: latestColor,
+            background: `${latestColor}12`, border: `1px solid ${latestColor}25`,
+            padding: "2px 7px", borderRadius: 3, fontWeight: 700, letterSpacing: 0.4,
+          }}>{latest.label}</span>
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--text-faint)" }}>{fmtRelativeTs(latest.occurred_at)}</span>
+        </div>
+      </div>
+
+      <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+        {events.map((ev, i) => {
+          const color = EVENT_COLOR[ev.event_type] ?? SEV_PALETTE.SLATE;
+          const last = i === events.length - 1;
+          const isCurrent = last && events.length > 1;
+          const detailEntries = ev.detail
+            ? Object.entries(ev.detail).filter(([k]) => k !== "approx")
+            : [];
+          return (
+            <div key={ev.id ?? `${ev.event_type}-${ev.occurred_at}-${i}`} style={{ display: "flex", gap: 0, alignItems: "stretch" }}>
+              {/* Timeline rail */}
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", width: 24, flexShrink: 0 }}>
+                <div style={{
+                  width: isCurrent ? 12 : 10, height: isCurrent ? 12 : 10, borderRadius: "50%", background: color,
+                  border: `2px solid ${color}${isCurrent ? "66" : "40"}`, flexShrink: 0, marginTop: 4, zIndex: 1,
+                  boxShadow: isCurrent ? `0 0 0 3px ${color}18, 0 0 8px ${color}80` : `0 0 6px ${color}60`,
+                }} />
+                {!last && <div style={{ width: 1, flex: 1, background: `${color}30`, minHeight: 18 }} />}
+              </div>
+              {/* Event content */}
+              <div style={{ flex: 1, paddingBottom: last ? 0 : 14, paddingLeft: 10 }}>
+                <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 3 }}>
+                  <span title={fmtEventTs(ev.occurred_at)} style={{ fontFamily: "'Inter', sans-serif", fontSize: 12, color: "var(--text-primary)", fontWeight: 600 }}>
+                    {fmtRelativeTs(ev.occurred_at)}
+                  </span>
+                  <span style={{
+                    fontFamily: "var(--font-mono)", fontSize: 9, color,
+                    background: `${color}12`, border: `1px solid ${color}25`,
+                    padding: "1px 6px", borderRadius: 3, fontWeight: 700, letterSpacing: 0.5,
+                  }}>{ev.label}</span>
+                  {isCurrent && (
+                    <span style={{
+                      fontFamily: "var(--font-mono)", fontSize: 8, color: "var(--accent)",
+                      background: "var(--accent-ghost)", border: "1px solid var(--border-accent)",
+                      padding: "1px 5px", borderRadius: 3, fontWeight: 700, letterSpacing: 0.5, textTransform: "uppercase",
+                    }}>current</span>
+                  )}
+                  {ev.synthesized && (
+                    <span title="Derived from the finding's own record, not a separately stored audit row" style={{ fontFamily: "var(--font-mono)", fontSize: 8, color: "var(--text-secondary)", opacity: 0.7 }}>
+                      derived
+                    </span>
+                  )}
+                </div>
+                <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", fontFamily: "'Inter', sans-serif", fontSize: 12, color: "var(--text-primary)", lineHeight: 1.4 }}>
+                  <span>
+                    {ev.actor ? <span style={{ color: "var(--accent)" }}>{ev.actor}</span> : <span style={{ color: "var(--text-secondary)" }}>system</span>}
+                    {ev.from_status && ev.to_status && (
+                      <span style={{ color: "var(--text-secondary)" }}> · {ev.from_status} → {ev.to_status}</span>
+                    )}
+                  </span>
+                  <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--text-faint)" }}>{fmtEventTs(ev.occurred_at)}</span>
+                </div>
+                {detailEntries.length > 0 && (
+                  <div style={{ marginTop: 5, display: "flex", gap: 5, flexWrap: "wrap" }}>
+                    {detailEntries.map(([k, v]) => (
+                      <span key={k} style={{
+                        fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--text-secondary)",
+                        background: "var(--bg-app)", border: "1px solid var(--border-subtle)",
+                        borderRadius: 3, padding: "1px 5px",
+                      }}>{k}: {typeof v === "object" && v !== null ? JSON.stringify(v) : String(v)}</span>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
 function FindingDetail({ f, allFindings, onStatusChange, statusUpdating, onReopen, reopening }: {
   f: Finding;
   allFindings: Finding[];
@@ -431,7 +619,7 @@ function FindingDetail({ f, allFindings, onStatusChange, statusUpdating, onReope
   onReopen: (id: string) => void;
   reopening: boolean;
 }) {
-  const [tab, setTab] = useState<"overview" | "intel" | "evidence" | "remediation" | "compliance">("overview");
+  const [tab, setTab] = useState<"overview" | "intel" | "evidence" | "remediation" | "compliance" | "history">("overview");
   const { explain } = useAssistant();
   const sla = getSlaColor(f.discoveredAt, f.severity);
 
@@ -594,7 +782,7 @@ function FindingDetail({ f, allFindings, onStatusChange, statusUpdating, onReope
 
       {/* ── Tabs ── */}
       <div style={{ display: "flex", borderBottom: "1px solid var(--border-subtle)", overflowX: "auto" }}>
-        {(["overview", "intel", "evidence", "remediation", "compliance"] as const).map((t) => (
+        {(["overview", "intel", "evidence", "remediation", "compliance", "history"] as const).map((t) => (
           <button key={t} onClick={() => setTab(t)} style={{
             padding: "8px 14px", background: tab === t ? "rgba(37,99,235,0.04)" : "transparent",
             border: "none", borderBottom: tab === t ? "2px solid var(--accent)" : "2px solid transparent",
@@ -602,7 +790,7 @@ function FindingDetail({ f, allFindings, onStatusChange, statusUpdating, onReope
             fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: 0.8,
             cursor: "pointer", textTransform: "uppercase", whiteSpace: "nowrap",
           }}>
-            {t === "remediation" ? `Remediation (${f.remediation.length})` : t === "intel" ? "Threat Intel" : t}
+            {t === "remediation" ? `Remediation (${f.remediation.length})` : t === "intel" ? "Threat Intel" : t === "history" ? "History" : t}
           </button>
         ))}
       </div>
@@ -855,6 +1043,9 @@ function FindingDetail({ f, allFindings, onStatusChange, statusUpdating, onReope
             ))}
           </div>
         )}
+
+        {/* History tab — detailed lifecycle audit trail */}
+        {tab === "history" && <HistoryTimeline findingId={f.id} />}
       </div>
     </div>
   );

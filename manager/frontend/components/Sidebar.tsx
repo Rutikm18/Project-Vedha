@@ -5,7 +5,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   Shield, Brain, AlertTriangle, FileText,
-  Terminal, Briefcase, Settings, RadioTower, Users, X,
+  Terminal, Briefcase, Settings, RadioTower, Users, X, Radar,
 } from "lucide-react";
 
 // Resolved at build time from the repo-root VERSION file (see next.config.mjs).
@@ -25,6 +25,7 @@ const NAV_SECTIONS: { label: string; items: NavItem[] }[] = [
       { icon: Shield,      label: "Dashboard",    href: "/"            },
       { icon: Briefcase,   label: "Engagements",  href: "/engagements" },
       { icon: Terminal,    label: "Scanner",      href: "/scan"        },
+      { icon: Radar,       label: "VA Campaigns", href: "/campaign"    },
       { icon: RadioTower,  label: "Fleet",        href: "/fleet"       },
     ],
   },
