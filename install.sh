@@ -91,8 +91,8 @@ if [ "$_MODE" = "local" ]; then
     esac
   fi
   export PROBE_NAME="${PROBE_NAME:-$(hostname)-probe}"
-  export STATE_FILE="${STATE_FILE:-$HOME/vedha-probe/state.json}"
-  export RESULT_SPOOL_DIR="${RESULT_SPOOL_DIR:-$HOME/vedha-probe/spool}"
+  export STATE_FILE="${STATE_FILE:-$HOME/vedha-agent/state.json}"
+  export RESULT_SPOOL_DIR="${RESULT_SPOOL_DIR:-$HOME/vedha-agent/spool}"
   mkdir -p "$(dirname "$STATE_FILE")" "$RESULT_SPOOL_DIR"
   # Preflight: LOCAL mode runs the probe directly with Python 3.8+.
   have python3 || {
@@ -132,9 +132,9 @@ if [ "$_MODE" = "local" ]; then
 fi
 
 # ==== DOCKER MODE (production; hardened container) — original installer below ====
-IMAGE="${PROBE_IMAGE:-vedha-probe:local}"       # local tag or registry path
-NAME="${PROBE_CONTAINER:-vedha-probe}"
-STATE_VOL="${PROBE_STATE_VOLUME:-vedha-probe-state}"
+IMAGE="${PROBE_IMAGE:-vedha-agent:local}"       # local tag or registry path
+NAME="${PROBE_CONTAINER:-vedha-agent}"
+STATE_VOL="${PROBE_STATE_VOLUME:-vedha-agent-state}"
 VERIFY_TLS="${VERIFY_TLS:-true}"
 LICENSE_ENFORCED="${LICENSE_ENFORCED:-false}"
 PROBE_MAX_TARGETS="${PROBE_MAX_TARGETS:-4096}"
@@ -219,7 +219,7 @@ fi
 have docker || { say "Docker is required. Install Docker Desktop/Engine first: https://docs.docker.com/engine/install/"; exit 1; }
 docker info >/dev/null 2>&1 || { say "Docker is installed but its daemon isn't reachable. Start Docker (open Docker Desktop, or 'sudo systemctl start docker') and retry."; exit 1; }
 
-LOCK_DIR="${TMPDIR:-/tmp}/vedha-probe-install.lock"
+LOCK_DIR="${TMPDIR:-/tmp}/vedha-agent-install.lock"
 if ! mkdir "$LOCK_DIR" 2>/dev/null; then
   # Reclaim a lock left by a crashed run (SIGKILL bypasses the cleanup trap).
   if find "$LOCK_DIR" -maxdepth 0 -mmin +10 2>/dev/null | grep -q .; then
@@ -231,7 +231,7 @@ if ! mkdir "$LOCK_DIR" 2>/dev/null; then
     exit 75
   fi
 fi
-STAGE_DIR="$(mktemp -d "${TMPDIR:-/tmp}/vedha-probe-install.XXXXXX")"
+STAGE_DIR="$(mktemp -d "${TMPDIR:-/tmp}/vedha-agent-install.XXXXXX")"
 cleanup_install() {
   rm -rf "$STAGE_DIR"
   rmdir "$LOCK_DIR" 2>/dev/null || true
@@ -287,7 +287,7 @@ fi
 
 docker image inspect "$IMAGE" >/dev/null 2>&1 || {
   say "Image '$IMAGE' is still not available after load/pull."
-  say "If you loaded a tar, set PROBE_IMAGE to the tag inside the tar, for example vedha-probe:local."
+  say "If you loaded a tar, set PROBE_IMAGE to the tag inside the tar, for example vedha-agent:local."
   exit 1
 }
 
@@ -492,7 +492,7 @@ do
   fi
 done
 
-ENV_FILE="$(mktemp "${TMPDIR:-/tmp}/vedha-probe-env.XXXXXX")"
+ENV_FILE="$(mktemp "${TMPDIR:-/tmp}/vedha-agent-env.XXXXXX")"
 chmod 600 "$ENV_FILE"
 cleanup_all() {
   rm -f "$ENV_FILE"
@@ -517,7 +517,7 @@ write_env_file() {
     fi
     printf 'LICENSE_ENFORCED=%s\n' "$LICENSE_ENFORCED"
     if [ "$LICENSE_ENFORCED" = "true" ]; then
-      printf 'PROBE_LICENSE_FILE=/var/lib/vedha-probe/license.token\n'
+      printf 'PROBE_LICENSE_FILE=/var/lib/vedha-agent/license.token\n'
       printf 'PROBE_LICENSE_PUBKEY=%s\n' "$PROBE_LICENSE_PUBKEY"
     fi
   } > "$ENV_FILE"
@@ -535,7 +535,7 @@ run_probe_container() {
     --pids-limit 256 \
     --init \
     --env-file "$ENV_FILE" \
-    -v "$STATE_VOL:/var/lib/vedha-probe" \
+    -v "$STATE_VOL:/var/lib/vedha-agent" \
     "$IMAGE" >/dev/null
 }
 

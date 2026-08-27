@@ -207,6 +207,20 @@ def _parse_cert_der(der: bytes | None) -> dict:
         fp = cert.fingerprint(hashes.SHA256()).hex()
     except Exception:
         fp = None
+    # Signature hash + public-key strength — the raw facts findings.py grades
+    # (SHA-1/MD5 signatures and sub-2048-bit RSA keys are deprecated/forgeable).
+    # Never a verdict here; just what the certificate declares.
+    try:
+        sig_alg = cert.signature_hash_algorithm.name if cert.signature_hash_algorithm else None
+    except Exception:
+        sig_alg = None
+    try:
+        pub = cert.public_key()
+        key_type = type(pub).__name__.replace("PublicKey", "")
+        key_bits = getattr(pub, "key_size", None) \
+            or getattr(getattr(pub, "curve", None), "key_size", None)
+    except Exception:
+        key_type, key_bits = None, None
     return {
         "subject": cert.subject.rfc4514_string(),
         "issuer": cert.issuer.rfc4514_string(),
@@ -216,6 +230,9 @@ def _parse_cert_der(der: bytes | None) -> dict:
         "expired": not_after < datetime.now(timezone.utc),
         "self_signed": cert.subject == cert.issuer,
         "sha256_fingerprint": fp,
+        "sig_algorithm": sig_alg,
+        "public_key_type": key_type,
+        "public_key_bits": key_bits,
         # JA4X — structural certificate fingerprint (FoxIO JA4+ suite); computed
         # from the cert already parsed, no extra probing. Identifies the tooling/CA
         # that minted the cert and correlates infrastructure.

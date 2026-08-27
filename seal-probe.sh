@@ -19,12 +19,12 @@
 #   HW_BIND_FINGERPRINT=<fp> ./seal-probe.sh
 #   MTLS_DIR=/path/to/certs ./seal-probe.sh # also embed mTLS client cert/key/ca
 #
-# Get a target's HOST_ID first:  docker run --rm vedha-probe:sealed hostid
+# Get a target's HOST_ID first:  docker run --rm vedha-agent:sealed hostid
 # ─────────────────────────────────────────────────────────────────────────────
 set -euo pipefail
 cd "$(dirname "$0")"                     # probe/
 
-IMAGE="${SEALED_IMAGE:-vedha-probe:sealed}"
+IMAGE="${SEALED_IMAGE:-vedha-agent:sealed}"
 PY="./.venv/bin/python"; [ -x "$PY" ] || PY="python3"
 
 command -v docker >/dev/null || { echo "docker is required (Nuitka build runs in a container)"; exit 1; }

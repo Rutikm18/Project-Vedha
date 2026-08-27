@@ -225,6 +225,30 @@ def _rule_tls(facts: list[dict]) -> Iterable[Finding]:
                    if cert.get("ja4x") else ""),
                 "Use a CA-issued certificate for anything outside a closed lab.",
                 {"self_signed": True, "ja4x": cert.get("ja4x")}, "tls_scan")
+        # Forgeable signature hash: SHA-1 is collision-broken (SHAttered) and MD5
+        # trivially so — a signature over such a hash gives no integrity guarantee.
+        sig = str(cert.get("sig_algorithm") or "").lower()
+        if sig in ("sha1", "md5", "md2", "md4"):
+            yield Finding(
+                "TLS-CERT-WEAK-SIGNATURE", f"Certificate signed with weak hash ({sig.upper()})",
+                SEV_MEDIUM, CONF_HIGH, CAT_WEAK_CRYPTO, target, port, "tcp",
+                f"The certificate's signature uses {sig.upper()} — a collision-broken "
+                "hash (SHA-1/MD5); the certificate can be forged and browsers/CAs reject it.",
+                "Re-issue the certificate with a SHA-256 (or stronger) signature.",
+                {"sig_algorithm": sig}, "tls_scan")
+        # Under-strength public key: RSA/DSA below 2048 bits is factorable at or near
+        # practical reach and no longer CA/B-compliant. (EC keys are excluded — 256-bit
+        # EC ≈ 3072-bit RSA, so the bit count isn't comparable.)
+        kbits = cert.get("public_key_bits")
+        ktype = str(cert.get("public_key_type") or "").upper()
+        if isinstance(kbits, int) and kbits < 2048 and ("RSA" in ktype or "DSA" in ktype):
+            yield Finding(
+                "TLS-CERT-WEAK-KEY", f"Under-strength {ktype or 'RSA'} public key ({kbits}-bit)",
+                SEV_MEDIUM, CONF_HIGH, CAT_WEAK_CRYPTO, target, port, "tcp",
+                f"The certificate carries a {kbits}-bit {ktype or 'RSA'} public key — "
+                "below the 2048-bit minimum; factorable/deprecated and CA/B-noncompliant.",
+                "Re-issue with a >=2048-bit RSA key (or a 256-bit+ ECDSA key).",
+                {"public_key_type": ktype, "public_key_bits": kbits}, "tls_scan")
 
 
 def _rule_smb(facts: list[dict]) -> Iterable[Finding]:
@@ -537,10 +561,440 @@ def _rule_rdp(facts: list[dict]) -> Iterable[Finding]:
                  "standard_rdp_security": d.get("standard_rdp_security", False)}, "rdp_scan")
 
 
+def _rule_ssh(facts: list[dict]) -> Iterable[Finding]:
+    for f in facts:
+        if _scanner(f) != "ssh_scan" or f.get("status") != "open":
+            continue
+        d = _data(f)
+        target, port = f.get("target"), f.get("port")
+
+        failures = [x for x in (d.get("failures") or []) if isinstance(x, dict)]
+        if failures:
+            names = ", ".join(sorted({x.get("algorithm") for x in failures}))
+            reasons = sorted({r for x in failures for r in (x.get("reasons") or [])})
+            yield Finding(
+                "SSH-WEAK-ALGO", f"Weak SSH algorithm(s) offered ({names})",
+                SEV_HIGH, CONF_HIGH, CAT_WEAK_CRYPTO, target, port, "tcp",
+                f"SSH server offers broken/deprecated algorithms: {names} "
+                f"({'; '.join(reasons) or 'weak'}).",
+                "Disable weak KEX/ciphers/MACs and legacy host keys; keep only "
+                "curve25519/ECDH-strong KEX, AES-GCM/ChaCha20 ciphers, ETM SHA-2 "
+                "MACs, and ed25519/rsa-sha2 host keys.",
+                {"weak_algorithms": names, "reasons": reasons}, "ssh_scan")
+
+        if d.get("terrapin_vulnerable"):
+            yield Finding(
+                "SSH-TERRAPIN", "SSH vulnerable to Terrapin (CVE-2023-48795)",
+                SEV_MEDIUM, CONF_MEDIUM, CAT_WEAK_CRYPTO, target, port, "tcp",
+                "SSH offers a Terrapin-affected mode (ChaCha20-Poly1305 or CBC+ETM) "
+                "without strict key exchange — a MitM can truncate handshake "
+                "messages and downgrade connection security.",
+                "Enable strict key exchange (upgrade OpenSSH >= 9.6 / current "
+                "server); prefer AES-GCM ciphers.",
+                {"terrapin": True}, "ssh_scan")
+
+
+_DEFAULT_SMB_SHARES = {"IPC$", "ADMIN$", "PRINT$", "NETLOGON", "SYSVOL"}
+
+
+def _rule_smb_enum(facts: list[dict]) -> Iterable[Finding]:
+    """Anonymous SMB (null-session) information disclosure. The null session is a
+    misconfiguration; a disclosed USER list is the higher-value finding because it
+    directly seeds password-spraying against other services."""
+    for f in facts:
+        if _scanner(f) != "smb_enum_scan" or f.get("status") != "open":
+            continue
+        d = _data(f)
+        if not d.get("null_session"):
+            continue
+        target, port = f.get("target"), f.get("port") or 445
+        shares = [s for s in (d.get("shares") or []) if isinstance(s, dict)]
+        nondefault = sorted({s.get("name") for s in shares
+                             if str(s.get("name") or "").upper().rstrip("$") + "$"
+                             not in _DEFAULT_SMB_SHARES
+                             and str(s.get("name") or "") not in _DEFAULT_SMB_SHARES})
+        kind = "guest" if d.get("guest_session") else "null"
+        yield Finding(
+            "SMB-NULL-SESSION",
+            f"SMB {kind} session permitted (anonymous enumeration)",
+            SEV_MEDIUM, CONF_HIGH, CAT_MISCONFIG, target, port, "tcp",
+            f"Server accepted an anonymous SMB {kind} session (empty credentials) and "
+            f"disclosed identity/shares to an unauthenticated peer"
+            + (f"; server_os='{d.get('server_os')}'" if d.get("server_os") else "")
+            + (f", domain='{d.get('server_domain')}'" if d.get("server_domain") else "")
+            + (f", non-default shares: {', '.join(nondefault)}" if nondefault else "")
+            + ".",
+            "Disable anonymous/null SMB sessions (RestrictAnonymous / "
+            "RestrictNullSessAccess); restrict share and pipe access to authenticated users.",
+            {"null_session": True, "guest_session": d.get("guest_session"),
+             "server_os": d.get("server_os"), "server_domain": d.get("server_domain"),
+             "share_count": d.get("share_count"), "nondefault_shares": nondefault},
+            "smb_enum_scan")
+
+        users = [u for u in (d.get("users") or []) if isinstance(u, dict)]
+        if users:
+            sample = ", ".join(sorted({str(u.get("name")) for u in users})[:10])
+            yield Finding(
+                "SMB-NULL-SESSION-USERS",
+                f"Domain/local users disclosed via SMB null session ({len(users)})",
+                SEV_HIGH, CONF_HIGH, CAT_INFO_DISCLOSURE, target, port, "tcp",
+                f"{len(users)} user account(s) were enumerated anonymously over SMB "
+                f"(SAMR / RID cycling): {sample}"
+                + (" ..." if len(users) > 10 else "")
+                + ". A valid username list directly enables targeted password spraying.",
+                "Disable anonymous SAMR/LSA enumeration (RestrictAnonymous=2, "
+                "RestrictAnonymousSAM=1); require authentication for account enumeration.",
+                {"user_count": len(users), "sample_users": sample,
+                 "method": d.get("user_enum_method")}, "smb_enum_scan")
+
+
+def _rule_ldap(facts: list[dict]) -> Iterable[Finding]:
+    """Anonymous LDAP exposure. An anonymous RootDSE bind is common (low), but an
+    anonymously READABLE directory tree is a real unauthorized-access disclosure."""
+    for f in facts:
+        if _scanner(f) != "ldap_scan" or f.get("status") != "open":
+            continue
+        d = _data(f)
+        if not d.get("anonymous_bind"):
+            continue
+        target, port = f.get("target"), f.get("port") or 389
+        contexts = [c for c in (d.get("naming_contexts") or []) if isinstance(c, str)]
+        yield Finding(
+            "LDAP-ANON-BIND", "LDAP anonymous bind permitted",
+            SEV_LOW, CONF_HIGH, CAT_INFO_DISCLOSURE, target, port, "tcp",
+            "LDAP accepted an anonymous bind (empty credentials) and disclosed the "
+            "RootDSE"
+            + (f"; naming contexts: {', '.join(contexts[:4])}" if contexts else "")
+            + (f", dnsHostName='{d.get('dns_host_name')}'" if d.get("dns_host_name") else "")
+            + ".",
+            "Require authentication for LDAP binds; disable anonymous bind where the "
+            "directory service supports it (dsHeuristics / equivalent).",
+            {"naming_contexts": contexts, "dns_host_name": d.get("dns_host_name"),
+             "ssl": d.get("ssl")}, "ldap_scan")
+
+        if d.get("anonymous_search_allowed"):
+            n = d.get("sample_entry_count") or 0
+            yield Finding(
+                "LDAP-ANON-SEARCH",
+                "LDAP directory readable without authentication",
+                SEV_HIGH, CONF_HIGH, CAT_INFO_DISCLOSURE, target, port, "tcp",
+                f"The directory tree returned {n}+ entries to an ANONYMOUS search "
+                "(bounded sample) — directory contents (accounts, groups, attributes) "
+                "are exposed to any unauthenticated client.",
+                "Restrict anonymous read access to the directory tree; scope anonymous "
+                "access to the RootDSE only, or require authentication entirely.",
+                {"sample_entry_count": n, "ssl": d.get("ssl")}, "ldap_scan")
+
+
+def _rule_dns(facts: list[dict]) -> Iterable[Finding]:
+    """DNS server hygiene: a full AXFR zone transfer is the high-value finding
+    (entire internal inventory disclosed); version.bind is info disclosure; an
+    AXFR-confirmed zone with no DNSKEY is an unsigned-zone note (low, no noise
+    since it only fires on a zone we PROVED is authoritative)."""
+    for f in facts:
+        if _scanner(f) != "dns_scan" or f.get("status") != "open":
+            continue
+        d = _data(f)
+        target, port = f.get("target"), f.get("port") or 53
+        axfr = d.get("axfr") if isinstance(d.get("axfr"), dict) else {}
+        transferred = sorted(z for z, r in axfr.items()
+                             if isinstance(r, dict) and r.get("transferred"))
+        if transferred:
+            total = sum(int(axfr[z].get("record_count") or 0) for z in transferred)
+            yield Finding(
+                "DNS-ZONE-TRANSFER",
+                f"DNS zone transfer (AXFR) allowed ({', '.join(transferred)})",
+                SEV_HIGH, CONF_HIGH, CAT_INFO_DISCLOSURE, target, port, "tcp",
+                f"The server allowed a full AXFR zone transfer of {', '.join(transferred)} "
+                f"(~{total} records) to an unauthorized client — exposing the complete "
+                "zone inventory (host names, addresses, internal services).",
+                "Restrict zone transfers to authorized secondary name servers only "
+                "(allow-transfer + TSIG); deny AXFR from arbitrary clients.",
+                {"zones": transferred, "record_count": total}, "dns_scan")
+
+        vb = d.get("version_bind")
+        if vb:
+            yield Finding(
+                "DNS-VERSION-DISCLOSURE", "DNS server version disclosed (version.bind)",
+                SEV_INFO, CONF_HIGH, CAT_INFO_DISCLOSURE, target, port, "udp",
+                f"The server answered a CHAOS version.bind query, disclosing its "
+                f"software/version: '{vb}'.",
+                "Suppress the version response (e.g. BIND options 'version \"\";') or "
+                "restrict CHAOS-class queries.",
+                {"version_bind": vb, "hostname_bind": d.get("hostname_bind")}, "dns_scan")
+
+        dnssec = d.get("dnssec") if isinstance(d.get("dnssec"), dict) else {}
+        unsigned = sorted(z for z in transferred if dnssec.get(z) is False)
+        if unsigned:
+            yield Finding(
+                "DNS-DNSSEC-ABSENT", f"Zone not DNSSEC-signed ({', '.join(unsigned)})",
+                SEV_LOW, CONF_MEDIUM, CAT_MISCONFIG, target, port, "udp",
+                f"Confirmed authoritative zone(s) {', '.join(unsigned)} publish no DNSKEY "
+                "(not DNSSEC-signed) — responses cannot be cryptographically validated, "
+                "leaving resolvers exposed to cache poisoning / spoofing.",
+                "Sign the zone with DNSSEC and publish a DS record at the parent.",
+                {"unsigned_zones": unsigned}, "dns_scan")
+
+
+def _rule_nfs(facts: list[dict]) -> Iterable[Finding]:
+    """NFS anonymous export exposure. A world-readable export is the high-value
+    finding (any reachable host can mount and read it); an answering portmapper is
+    a low recon-disclosure note."""
+    for f in facts:
+        if _scanner(f) != "nfs_scan" or f.get("status") != "open":
+            continue
+        d = _data(f)
+        target, port = f.get("target"), f.get("port") or 2049
+        wr = [p for p in (d.get("world_readable_exports") or []) if isinstance(p, str)]
+        if wr:
+            yield Finding(
+                "NFS-EXPORT-WORLD-READABLE",
+                f"NFS export(s) world-readable ({len(wr)})",
+                SEV_HIGH, CONF_HIGH, CAT_EXPOSURE, target, port, "tcp",
+                "NFS exports are shared with no client restriction / a wildcard group: "
+                + ", ".join(wr[:8]) + (" ..." if len(wr) > 8 else "")
+                + ". Any host able to reach the server can mount and read these paths.",
+                "Restrict every export to specific hosts/subnets (no '*'); enable "
+                "root_squash and require Kerberos (sec=krb5); remove exports that do "
+                "not need network sharing.",
+                {"world_readable_exports": wr, "mountd_port": d.get("mountd_port"),
+                 "export_count": d.get("export_count")}, "nfs_scan")
+
+        if d.get("portmap_open"):
+            progs = [p for p in (d.get("rpc_programs") or []) if isinstance(p, dict)]
+            yield Finding(
+                "RPC-PORTMAPPER-EXPOSED", "RPC portmapper (rpcbind) enumerable",
+                SEV_LOW, CONF_HIGH, CAT_INFO_DISCLOSURE, target, 111, "tcp",
+                f"The portmapper answered a DUMP, disclosing {len(progs)} registered RPC "
+                "service(s) (the rpcinfo view) — a map of NFS/NIS/lockd services and "
+                "their ports for an attacker.",
+                "Firewall port 111 and the dynamic RPC ports from untrusted networks; "
+                "disable rpcbind on NFSv4-only hosts.",
+                {"program_count": len(progs)}, "nfs_scan")
+
+
+def _rule_ftp(facts: list[dict]) -> Iterable[Finding]:
+    """Confirmed FTP anonymous access (upgrades the port-based cleartext hint).
+    Higher severity when a directory listing proved anonymous READ over cleartext;
+    write access is deliberately not tested (non-destructive scan)."""
+    for f in facts:
+        if _scanner(f) != "ftp_scan" or f.get("status") != "open":
+            continue
+        d = _data(f)
+        if not d.get("anonymous_login"):
+            continue
+        target, port = f.get("target"), f.get("port") or 21
+        read = bool(d.get("anon_read"))
+        sample = [s for s in (d.get("file_sample") or []) if isinstance(s, str)][:6]
+        yield Finding(
+            "FTP-ANON-ACCESS",
+            "FTP anonymous access permitted" + (" (directory readable)" if read else ""),
+            SEV_HIGH if read else SEV_MEDIUM, CONF_HIGH, CAT_EXPOSURE, target, port, "tcp",
+            "The FTP server accepted an anonymous login (USER anonymous)"
+            + (f" and served a directory listing over cleartext: {', '.join(sample)}"
+               if sample else "")
+            + ". Data and any credentials traverse the network in cleartext; write "
+            "access was NOT tested and should be verified manually.",
+            "Disable anonymous FTP unless it is an intentional public read-only mirror; "
+            "replace FTP with SFTP/FTPS; if kept, confine anonymous users to a read-only "
+            "chroot and confirm uploads are denied.",
+            {"anonymous_login": True, "anon_read": read, "software": d.get("software"),
+             "file_sample": sample}, "ftp_scan")
+
+
+def _rule_rsync(facts: list[dict]) -> Iterable[Finding]:
+    """rsync daemon exposure. Anonymously-selectable modules are the high finding
+    (their contents are pullable unauthenticated); a listable-but-auth'd module
+    set is a low disclosure of what the host shares."""
+    for f in facts:
+        if _scanner(f) != "rsync_scan" or f.get("status") != "open":
+            continue
+        d = _data(f)
+        target, port = f.get("target"), f.get("port") or 873
+        anon = [m for m in (d.get("anon_modules") or []) if isinstance(m, str)]
+        modules = [m for m in (d.get("modules") or []) if isinstance(m, dict)]
+        if anon:
+            yield Finding(
+                "RSYNC-ANON-MODULES",
+                f"rsync anonymous module(s) accessible ({len(anon)})",
+                SEV_HIGH, CONF_HIGH, CAT_EXPOSURE, target, port, "tcp",
+                "The rsync daemon exposes module(s) selectable without authentication: "
+                + ", ".join(anon[:8]) + (" ..." if len(anon) > 8 else "")
+                + ". Their contents can be listed and pulled by any host able to reach "
+                "the daemon, in cleartext.",
+                "Require authentication (auth users + a secrets file) on every module, "
+                "restrict 'hosts allow' to management hosts, or disable rsync daemon mode.",
+                {"anon_modules": anon}, "rsync_scan")
+        elif modules:
+            names = sorted({str(m.get("name")) for m in modules})
+            yield Finding(
+                "RSYNC-DAEMON-EXPOSED",
+                f"rsync daemon module list disclosed ({len(names)})",
+                SEV_LOW, CONF_HIGH, CAT_INFO_DISCLOSURE, target, port, "tcp",
+                "The rsync daemon enumerated its module list to an unauthenticated "
+                "client: " + ", ".join(names[:8]) + (" ..." if len(names) > 8 else "")
+                + ". The modules require auth, but their names/comments reveal what the "
+                "host shares.",
+                "Firewall port 873 to management hosts; set 'list = no' to hide module "
+                "names.",
+                {"modules": names}, "rsync_scan")
+
+
+def _rule_vnc(facts: list[dict]) -> Iterable[Finding]:
+    """VNC/RFB authentication exposure. 'None' security type = unauthenticated
+    remote desktop (critical); 'VNC Authentication' only = the weak DES scheme."""
+    for f in facts:
+        if _scanner(f) != "vnc_scan" or f.get("status") != "open":
+            continue
+        d = _data(f)
+        target, port = f.get("target"), f.get("port") or 5900
+        offered = [t.get("name") for t in (d.get("security_types") or []) if isinstance(t, dict)]
+        if d.get("no_auth"):
+            yield Finding(
+                "VNC-NO-AUTH", "VNC exposed with NO authentication",
+                SEV_CRITICAL, CONF_HIGH, CAT_MISCONFIG, target, port, "tcp",
+                "The VNC/RFB server offers the 'None' security type — the remote "
+                "desktop is reachable with no password at all. Anyone able to reach "
+                "this port gets full interactive control of the console.",
+                "Never allow the 'None' security type; require authentication and place "
+                "VNC behind a VPN/SSH tunnel with restricted source IPs.",
+                {"security_types": offered}, "vnc_scan")
+        elif d.get("weak_auth") and not d.get("has_strong_auth"):
+            yield Finding(
+                "VNC-WEAK-AUTH", "VNC using weak legacy authentication (DES)",
+                SEV_MEDIUM, CONF_HIGH, CAT_WEAK_CRYPTO, target, port, "tcp",
+                "The VNC/RFB server only offers 'VNC Authentication' — the legacy DES "
+                "challenge/response that silently truncates passwords to 8 characters "
+                "and is offline-brute-forceable.",
+                "Use a VNC variant with strong auth (VeNCrypt/TLS/RA2) or tunnel VNC "
+                "over SSH/VPN; enforce a strong password.",
+                {"security_types": offered}, "vnc_scan")
+
+
+def _rule_ipmi(facts: list[dict]) -> Iterable[Finding]:
+    """IPMI/BMC exposure. Cipher-zero is a critical auth bypass; a merely reachable
+    BMC is a lower exposure note (management planes should be isolated)."""
+    for f in facts:
+        if _scanner(f) != "ipmi_scan" or f.get("status") != "open":
+            continue
+        d = _data(f)
+        target, port = f.get("target"), f.get("port") or 623
+        if d.get("cipher_zero"):
+            yield Finding(
+                "IPMI-CIPHER-ZERO", "IPMI 2.0 cipher-zero authentication bypass",
+                SEV_CRITICAL, CONF_HIGH, CAT_DEFAULT_CRED, target, port, "udp",
+                "The BMC accepted an IPMI 2.0 session offering cipher suite 0 (no "
+                "authentication) — an attacker can open an administrative session with "
+                "NO credentials, then reset passwords and power-cycle or reimage the "
+                "host (CVE-2013-4786 class).",
+                "Disable cipher suite 0 (set the cipher-suite privilege for ID 0 to "
+                "'no access'); isolate all IPMI/BMC interfaces on a dedicated management "
+                "network; update BMC firmware.",
+                {"cipher_zero": True}, "ipmi_scan")
+        else:
+            yield Finding(
+                "IPMI-EXPOSED", "IPMI/BMC management interface reachable",
+                SEV_LOW, CONF_HIGH, CAT_EXPOSURE, target, port, "udp",
+                "An IPMI 2.0 BMC (lights-out management) answered from the scan vantage. "
+                "BMCs run independent firmware with full hardware control and are a "
+                "high-value target; they should not be reachable from general networks.",
+                "Confine IPMI/BMC interfaces to an isolated, tightly-firewalled "
+                "management network and keep BMC firmware patched.",
+                {"rmcp_status": d.get("rmcp_status")}, "ipmi_scan")
+
+
+def _rule_smtp(facts: list[dict]) -> Iterable[Finding]:
+    """SMTP hygiene: VRFY/EXPN user enumeration, and missing STARTTLS (cleartext)."""
+    for f in facts:
+        if _scanner(f) != "smtp_scan" or f.get("status") != "open":
+            continue
+        d = _data(f)
+        target, port = f.get("target"), f.get("port") or 25
+        vectors = []
+        if d.get("vrfy_enabled"):
+            vectors.append("VRFY")
+        if d.get("expn_enabled"):
+            vectors.append("EXPN")
+        if vectors:
+            yield Finding(
+                "SMTP-USER-ENUM", f"SMTP user enumeration possible ({'/'.join(vectors)})",
+                SEV_MEDIUM, CONF_HIGH, CAT_INFO_DISCLOSURE, target, port, "tcp",
+                f"The SMTP server answers {' and '.join(vectors)} in a way that reveals "
+                "whether a mailbox exists (VRFY returned different codes for postmaster "
+                "vs a random user). An attacker can enumerate valid usernames to seed "
+                "phishing and password attacks.",
+                "Disable VRFY and EXPN (e.g. Postfix 'disable_vrfy_command = yes') and "
+                "return a uniform response for all recipients.",
+                {"vectors": vectors, "vrfy_postmaster_code": d.get("vrfy_postmaster_code"),
+                 "vrfy_random_code": d.get("vrfy_random_code")}, "smtp_scan")
+        if d.get("starttls") is False:
+            yield Finding(
+                "SMTP-NO-STARTTLS", "SMTP without STARTTLS (cleartext mail)",
+                SEV_LOW, CONF_HIGH, CAT_CLEARTEXT, target, port, "tcp",
+                "The SMTP server does not advertise STARTTLS — mail, and any SMTP AUTH "
+                "credentials, traverse the network in cleartext and can be sniffed.",
+                "Enable STARTTLS (or implicit TLS on 465) and require TLS before AUTH.",
+                {"ehlo_capabilities": d.get("ehlo_capabilities")}, "smtp_scan")
+
+
+def _rule_msrpc(facts: list[dict]) -> Iterable[Finding]:
+    """Windows RPC endpoint-mapper disclosure — the internal RPC service map."""
+    for f in facts:
+        if _scanner(f) != "msrpc_scan" or f.get("status") != "open":
+            continue
+        d = _data(f)
+        n = int(d.get("endpoint_count") or 0)
+        if n <= 0:
+            continue
+        target, port = f.get("target"), f.get("port") or 135
+        ifaces = int(d.get("interface_count") or 0)
+        named = [x for x in (d.get("named_services") or []) if isinstance(x, str)][:8]
+        yield Finding(
+            "MSRPC-ENDPOINTS-EXPOSED",
+            f"Windows RPC endpoint mapper enumerable ({ifaces} interfaces)",
+            SEV_LOW, CONF_HIGH, CAT_INFO_DISCLOSURE, target, port, "tcp",
+            f"The endpoint mapper answered an ept_lookup, disclosing {n} RPC endpoint(s) "
+            f"across {ifaces} interface(s)"
+            + (f" (e.g. {', '.join(named)})" if named else "")
+            + " — the internal RPC service map (services and their dynamic ports) an "
+            "attacker uses to plan lateral movement.",
+            "Firewall port 135 and the dynamic RPC port range from untrusted networks; "
+            "restrict RPC to management VLANs.",
+            {"endpoint_count": n, "interface_count": ifaces, "named_services": named},
+            "msrpc_scan")
+
+
+def _rule_printer(facts: list[dict]) -> Iterable[Finding]:
+    """Exposed network printer — an information leak and an attack surface."""
+    for f in facts:
+        if _scanner(f) != "printer_scan" or f.get("status") != "open":
+            continue
+        d = _data(f)
+        if not d.get("printer"):
+            continue
+        target, port = f.get("target"), f.get("port")
+        proto = d.get("protocol") or "print"
+        model = d.get("model") or ""
+        yield Finding(
+            "PRINTER-EXPOSED",
+            "Network printer exposed" + (f" ({proto})") + (f" — {model}" if model else ""),
+            SEV_LOW, CONF_HIGH, CAT_EXPOSURE, target, port, "tcp",
+            f"A network printer print/management interface ({proto}) is reachable from "
+            "the scan vantage"
+            + (f"; the device identifies as '{model}'" if model else "")
+            + ". Exposed printers allow print-job interception, stored-document / "
+            "credential theft, and PJL/PostScript abuse.",
+            "Restrict printer ports (9100/631/515) to print servers and management "
+            "VLANs; disable unused print protocols; keep printer firmware updated.",
+            {"protocol": proto, "model": model}, "printer_scan")
+
+
 _RULES: list[Callable[[list[dict]], Iterable[Finding]]] = [
     _rule_tls, _rule_smb, _rule_snmp, _rule_udp_amplification, _rule_rdp,
     _rule_cleartext_and_exposure, _rule_web, _rule_tls_fingerprint, _rule_unauth_access,
-    _rule_tls_server_fingerprint,
+    _rule_tls_server_fingerprint, _rule_ssh, _rule_smb_enum, _rule_ldap, _rule_dns,
+    _rule_nfs, _rule_ftp, _rule_rsync, _rule_vnc, _rule_ipmi, _rule_smtp, _rule_msrpc,
+    _rule_printer,
 ]
 
 
@@ -613,8 +1067,81 @@ def _corr_cleartext_cluster(facts: list[dict], base: list[Finding]) -> Iterable[
                 {"correlated_findings": ct_ids}, "correlation")
 
 
+# Enterprise Tier-1 attack-path correlations built from the anonymous-access,
+# console-exposure and user-disclosure capabilities.
+_ANON_EXPOSURE_IDS = {
+    "NFS-EXPORT-WORLD-READABLE", "FTP-ANON-ACCESS", "RSYNC-ANON-MODULES",
+    "SMB-NULL-SESSION", "LDAP-ANON-SEARCH", "SVC-UNAUTH-DATASTORE-ACCESS",
+}
+_WEAK_AUTH_SURFACE_IDS = {"SVC-RDP-EXPOSED", "SVC-RDP-NO-NLA", "VNC-WEAK-AUTH", "VNC-NO-AUTH"}
+_MGMT_PLANE_IDS = {"IPMI-CIPHER-ZERO", "IPMI-EXPOSED", "VNC-NO-AUTH", "VNC-WEAK-AUTH", "SVC-RDP-EXPOSED"}
+
+
+def _corr_anon_data_exposure(facts: list[dict], base: list[Finding]) -> Iterable[Finding]:
+    """Two or more INDEPENDENT anonymous data-exposure channels on one host — the
+    host leaks data by several paths; closing one does not remediate the rest."""
+    for target, fs in _by_target(base).items():
+        hits = sorted({f.rule_id for f in fs if f.rule_id in _ANON_EXPOSURE_IDS})
+        if len(hits) >= 2:
+            yield Finding(
+                "CORR-ANON-DATA-EXPOSURE",
+                "Multiple anonymous data-exposure channels on one host",
+                SEV_HIGH, CONF_HIGH, CAT_EXPOSURE, target, None, None,
+                f"This host exposes data through {len(hits)} independent anonymous "
+                f"channels ({', '.join(hits)}) — an unauthenticated attacker can read "
+                "data by several paths, and remediating one leaves the others open. "
+                f"[correlated: {', '.join(hits)}]",
+                "Treat this host as leaking data: require authentication on every listed "
+                "service and re-scan to confirm.",
+                {"correlated_findings": hits}, "correlation")
+
+
+def _corr_user_enum_plus_weak_auth(facts: list[dict], base: list[Finding]) -> Iterable[Finding]:
+    """A disclosed user list (SMB null session) plus a weak/exposed login surface on
+    the same host — the two combine into a ready-made credential-attack path."""
+    for target, fs in _by_target(base).items():
+        ids = {f.rule_id for f in fs}
+        if "SMB-NULL-SESSION-USERS" not in ids:
+            continue
+        weak = sorted(ids & _WEAK_AUTH_SURFACE_IDS)
+        if weak:
+            used = ["SMB-NULL-SESSION-USERS"] + weak
+            yield Finding(
+                "CORR-USER-ENUM-PLUS-WEAK-AUTH",
+                "Enumerated users + a weak/exposed authentication surface",
+                SEV_HIGH, CONF_MEDIUM, CAT_MISCONFIG, target, None, None,
+                "The host discloses a valid user list (SMB null session) AND exposes a "
+                f"weak or unauthenticated login surface ({', '.join(weak)}) — together a "
+                "ready-made credential-attack path (known usernames against a "
+                f"brute-forceable service). [correlated: {', '.join(used)}]",
+                "Disable anonymous SAMR/LSA enumeration and remediate the login surface; "
+                "enforce MFA and account lockout.",
+                {"correlated_findings": used}, "correlation")
+
+
+def _corr_mgmt_plane_exposed(facts: list[dict], base: list[Finding]) -> Iterable[Finding]:
+    """Out-of-band / console management surfaces reachable on one host — these grant
+    hardware- or session-level control and belong on an isolated network."""
+    for target, fs in _by_target(base).items():
+        ids = {f.rule_id for f in fs}
+        hits = sorted(ids & _MGMT_PLANE_IDS)
+        critical = "IPMI-CIPHER-ZERO" in ids or "VNC-NO-AUTH" in ids
+        if "IPMI-CIPHER-ZERO" in ids or len(hits) >= 2:
+            yield Finding(
+                "CORR-MGMT-PLANE-EXPOSED", "Console/management plane exposed",
+                SEV_HIGH if critical else SEV_MEDIUM, CONF_MEDIUM, CAT_EXPOSURE,
+                target, None, None,
+                f"Out-of-band / console management surfaces are reachable on this host "
+                f"({', '.join(hits)}) — they grant hardware- or session-level control and "
+                f"belong on an isolated management network. [correlated: {', '.join(hits)}]",
+                "Move IPMI/BMC, VNC and RDP management onto an isolated, firewalled "
+                "management VLAN; require strong authentication and MFA.",
+                {"correlated_findings": hits}, "correlation")
+
+
 _CORRELATION_RULES: list[Callable[[list[dict], list[Finding]], Iterable[Finding]]] = [
     _corr_ntlm_relay, _corr_legacy_windows, _corr_cleartext_cluster,
+    _corr_anon_data_exposure, _corr_user_enum_plus_weak_auth, _corr_mgmt_plane_exposed,
 ]
 
 

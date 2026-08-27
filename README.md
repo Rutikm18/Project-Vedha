@@ -34,7 +34,7 @@ Compile the probe to a sealed native binary (no source, no bytecode), gated by a
 vendor-signed, host-locked license:
 
 ```bash
-./seal-probe.sh                 # → vedha-probe:sealed
+./seal-probe.sh                 # → vedha-agent:sealed
 ```
 
 See **[SEALING.md](SEALING.md)** for the flow, key management, and the honest

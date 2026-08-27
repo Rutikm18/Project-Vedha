@@ -1,0 +1,83 @@
+# Node Description Batch 62 of 92
+
+Graphify is running in assistant/skill mode (no API key). You are the host
+assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
+your JSON answer to the answer file.
+
+## Prompt
+
+You are documenting nodes in a knowledge graph.
+For each entry below, write ONE concise factual plain-language sentence
+describing what it is or does. Use only the provided context.
+For a code symbol (kind=code-symbol — a function, class, or constant),
+describe what the function/symbol does based on its name, source location
+and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
+For an entity node (any other kind — e.g. a person, place, event, object),
+describe what the entity is and its role, grounded in its type, its
+relations (neighbors) and the provided citations/evidence — e.g.
+"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
+Ground entity descriptions in the citations/evidence when present; do not
+speculate beyond the context, so a node with no supporting context may be
+left out of the reply.
+Write every description in English (en). Do not switch languages.
+No marketing language.
+Respond ONLY with a JSON object mapping each node id (as a string) to its
+one-sentence description — no prose, no markdown fences.
+
+- "scanner_iot_scanner_rationale_157": "Extract PTR target names from mDNS response (services discovered)." | kind=entity | source=scanner/iot_scanner.py:L157 | neighbors=[_parse_mdns_response()]
+- "scanner_iot_scanner_rationale_272": "MQTT variable-length encoding." | kind=entity | source=scanner/iot_scanner.py:L272 | neighbors=[_mqtt_remaining_len()]
+- "scanner_iot_scanner_rationale_284": "MQTT SUBSCRIBE to '#' (all topics), QoS 0." | kind=entity | source=scanner/iot_scanner.py:L284 | neighbors=[_mqtt_subscribe_all()]
+- "scanner_iot_scanner_rationale_349": "CoAP Confirmable GET for /.well-known/core — resource discovery." | kind=entity | source=scanner/iot_scanner.py:L349 | neighbors=[_coap_get_wellknown_core()]
+- "scanner_iot_scanner_rationale_362": "Extract CoAP response code and content." | kind=entity | source=scanner/iot_scanner.py:L362 | neighbors=[_parse_coap_response()]
+- "scanner_iot_scanner_rationale_406": "HTTP GET to CWMP port — detect ACS or CPE management interface." | kind=entity | source=scanner/iot_scanner.py:L406 | neighbors=[_probe_cwmp()]
+- "scanner_iot_scanner_rationale_446": "Surveys a target for IoT/embedded device exposure across 6 protocol families." | kind=entity | source=scanner/iot_scanner.py:L446 | neighbors=[IoTScanner]
+- "scanner_iot_scanner_rationale_59": "HTTP GET the UPnP rootDesc.xml and extract device info." | kind=entity | source=scanner/iot_scanner.py:L59 | neighbors=[_fetch_upnp_root_desc()]
+- "scanner_ja4s_match_suspicious": "match_suspicious()" | kind=code-symbol | source=scanner/ja4s.py:L131 | neighbors=[ja4s.py]
+- "scanner_ja4s_rationale_100": "JA4S from `parse_server_hello`'s output ({version, cipher, extensions})." | kind=entity | source=scanner/ja4s.py:L100 | neighbors=[ja4s_from_parsed()]
+- "scanner_ja4s_rationale_110": "JA4S from raw ServerHello record bytes (reuses the JARM parser)." | kind=entity | source=scanner/ja4s.py:L110 | neighbors=[ja4s_from_serverhello()]
+- "scanner_ja4s_rationale_117": "Do one standard TLS handshake and compute the server's JA4S. Reuses the     JARM" | kind=entity | source=scanner/ja4s.py:L117 | neighbors=[compute_ja4s()]
+- "scanner_ja4s_rationale_57": "Yield (type, value) for each extension in a ServerHello extensions blob." | kind=entity | source=scanner/ja4s.py:L57 | neighbors=[_walk_extensions()]
+- "scanner_ja4s_rationale_70": "The single ALPN protocol the server chose (b'' if none)." | kind=entity | source=scanner/ja4s.py:L70 | neighbors=[_selected_alpn()]
+- "scanner_ja4s_rationale_87": "Pure JA4S from already-extracted ServerHello fields." | kind=entity | source=scanner/ja4s.py:L87 | neighbors=[ja4s_from_fields()]
+- "scanner_ja4x_rationale_118": "Return a threat-intel label if this JA4X is a known-suspicious fingerprint," | kind=entity | source=scanner/ja4x.py:L118 | neighbors=[match_suspicious()]
+- "scanner_ja4x_rationale_40": "DER-encode an OID's content octets and hex-encode them.      '2.5.4.6' -> '55040" | kind=entity | source=scanner/ja4x.py:L40 | neighbors=[oid_to_hex()]
+- "scanner_ja4x_rationale_77": "Pure JA4X from the three ordered OID lists (dotted-decimal strings)." | kind=entity | source=scanner/ja4x.py:L77 | neighbors=[ja4x_from_oid_lists()]
+- "scanner_ja4x_rationale_83": "JA4X from a `cryptography` x509 Certificate object. None if unusable." | kind=entity | source=scanner/ja4x.py:L83 | neighbors=[ja4x_from_cert()]
+- "scanner_ja4x_rationale_94": "JA4X from raw DER bytes. `cryptography` is imported lazily so this module     st" | kind=entity | source=scanner/ja4x.py:L94 | neighbors=[ja4x_from_der()]
+- "scanner_mass_scan_connectsweep_init": ".__init__()" | kind=code-symbol | source=scanner/mass_scan.py:L209 | neighbors=[_ConnectSweep]
+- "scanner_mass_scan_main": "main()" | kind=code-symbol | source=scanner/mass_scan.py:L341 | neighbors=[mass_scan.py]
+- "scanner_mass_scan_rationale_1": "mass_scan.py — fast large-scale TCP port discovery.  WHY THIS EXISTS (modern con" | kind=entity | source=scanner/mass_scan.py:L1 | neighbors=[mass_scan.py]
+- "scanner_mass_scan_rationale_148": "Parse masscan -oJ output robustly: handles trailing comma, 'finished'     sentin" | kind=entity | source=scanner/mass_scan.py:L148 | neighbors=[_parse_masscan_json()]
+- "scanner_mass_scan_rationale_243": "target_specs: raw CIDRs/ranges/hosts (NOT pre-expanded) — masscan wants them." | kind=entity | source=scanner/mass_scan.py:L243 | neighbors=[run_mass_scan()]
+- "scanner_mass_scan_rationale_308": "Excluded networks -> masscan --exclude specs, so they get ZERO packets." | kind=entity | source=scanner/mass_scan.py:L308 | neighbors=[_masscan_excludes()]
+- "scanner_mass_scan_rationale_313": "A CIDR spec is in scope only if it is fully contained in an allowed network." | kind=entity | source=scanner/mass_scan.py:L313 | neighbors=[_spec_in_scope()]
+- "scanner_mass_scan_rationale_66": "Run masscan over the given target specs and return its parsed JSON records." | kind=entity | source=scanner/mass_scan.py:L66 | neighbors=[_run_masscan()]
+- "scanner_mcp_ai_scanner_main": "main()" | kind=code-symbol | source=scanner/mcp_ai_scanner.py:L323 | neighbors=[mcp_ai_scanner.py]
+- "scanner_mcp_ai_scanner_mcpaiscanner_init": ".__init__()" | kind=code-symbol | source=scanner/mcp_ai_scanner.py:L202 | neighbors=[MCPAIScanner]
+- "scanner_mcp_ai_scanner_noredirect_redirect_request": ".redirect_request()" | kind=code-symbol | source=scanner/mcp_ai_scanner.py:L111 | neighbors=[_NoRedirect]
+- "scanner_mcp_ai_scanner_rationale_1": "mcp_ai_scanner.py — discover exposed AI inference servers and MCP endpoints.  WH" | kind=entity | source=scanner/mcp_ai_scanner.py:L1 | neighbors=[mcp_ai_scanner.py]
+- "scanner_mcp_ai_scanner_rationale_153": "Server/body fingerprint match against known non-AI squatters, or None." | kind=entity | source=scanner/mcp_ai_scanner.py:L153 | neighbors=[_known_false_positive()]
+- "scanner_mcp_ai_scanner_rationale_162": "The strongest possible evidence for a real MCP server: a WWW-Authenticate     he" | kind=entity | source=scanner/mcp_ai_scanner.py:L162 | neighbors=[_mcp_oauth_signal()]
+- "scanner_mcp_ai_scanner_rationale_175": "JSON-typed body that actually talks about auth, not just any error text." | kind=entity | source=scanner/mcp_ai_scanner.py:L175 | neighbors=[_auth_shaped_json_body()]
+- "scanner_mcp_ai_scanner_request": "_request()" | kind=code-symbol | source=scanner/mcp_ai_scanner.py:L128 | neighbors=[mcp_ai_scanner.py]
+- "scanner_mobile_scanner_main": "main()" | kind=code-symbol | source=scanner/mobile_scanner.py:L340 | neighbors=[mobile_scanner.py]
+- "scanner_mobile_scanner_rationale_1": "mobile_scanner.py — mobile device exposure detection.  Covers playbook 13 (Mobil" | kind=entity | source=scanner/mobile_scanner.py:L1 | neighbors=[mobile_scanner.py]
+- "scanner_mobile_scanner_rationale_152": "Attempt TCP connect to lockdownd port 62078.     Port open = iOS device present" | kind=entity | source=scanner/mobile_scanner.py:L152 | neighbors=[_probe_lockdownd()]
+- "scanner_mobile_scanner_rationale_188": "Build a DNS PTR query in mDNS wire format with QU bit set." | kind=entity | source=scanner/mobile_scanner.py:L188 | neighbors=[_build_mdns_query()]
+
+## Instructions
+
+Write a single JSON object mapping each node id to a one-sentence description
+to: /Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha/probe/.graphify/description-instructions/batch-061.json
+
+Keep each description factual and concise (one sentence). No markdown, no prose
+outside the JSON object. It is acceptable to omit a node if context is
+insufficient — but include every node you can ground confidently.
+
+Example answer format:
+```json
+{
+  "node_id_1": "Resolves the configured ontology profile from graphify.yaml.",
+  "node_id_2": "Colonel James Barclay, an antagonist in The Crooked Man."
+}
+```

@@ -205,6 +205,24 @@ class ServiceBannerScanner(BaseScanner):
                 "byte_len": len(best_banner), "probe": used_probe}
         if matched:
             data.update(matched)                         # service/product/version
+            # DB-free CPE enrichment so the manager-side CVE correlator can match
+            # this against NVD — the probe still emits no CVE claim, only identity.
+            from .cpe import to_cpe
+            cpe = to_cpe(matched.get("service"), matched.get("product"),
+                         matched.get("version"))
+            if cpe:
+                data["cpe"] = cpe["cpe23"]
+                data["cpe_vendor"] = cpe["vendor"]
+                data["cpe_product"] = cpe["product"]
+                data["cpe_version"] = cpe["version"]
+            elif matched.get("product"):
+                # We named a product but produced no CPE — a coverage gap, not a
+                # clean host. Mark it so the map's blind spots are measurable
+                # (unmapped product, or a mapped product with no parseable
+                # version) instead of silently invisible.
+                data["cpe_unmapped"] = " ".join(
+                    x for x in (matched.get("product"),
+                                matched.get("version")) if x)
             prod = " ".join(x for x in (matched.get("product"),
                                         matched.get("version")) if x)
             evidence = f"{matched['service']}: {prod}".strip().rstrip(":")

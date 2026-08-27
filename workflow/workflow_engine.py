@@ -33,6 +33,18 @@ from scanner.snmp_scanner import SNMPScanner
 from scanner.db_scanner import DBScanner, DEFAULT_DB_PORTS
 from scanner.mcp_ai_scanner import MCPAIScanner
 from scanner.udp_scanner import UDPScanner
+from scanner.ssh_scanner import SSHScanner
+from scanner.smb_enum_scanner import SMBEnumScanner
+from scanner.ldap_scanner import LDAPScanner
+from scanner.dns_scanner import DNSScanner
+from scanner.nfs_scanner import NFSScanner
+from scanner.ftp_scanner import FTPScanner
+from scanner.rsync_scanner import RsyncScanner
+from scanner.vnc_scanner import VNCScanner
+from scanner.ipmi_scanner import IPMIScanner
+from scanner.smtp_scanner import SMTPScanner
+from scanner.msrpc_scanner import MSRPCScanner
+from scanner.printer_scanner import PrinterScanner
 from scanner.passive_collector import PassiveCollector
 from scanner.ssh_collector import SSHCollector
 from scanner.windows_collector import WindowsCollector
@@ -41,7 +53,7 @@ from .asset import Asset
 from .cache import WorkflowCache
 from .gates import (
     PROFILE_PORTS, PROFILE_DEEP_BRANCHES,
-    TLS_PORTS, WEB_PORTS, SMB_PORTS, DB_PORTS, AI_PORTS, UDP_PORTS, SNMP_PORTS,
+    TLS_PORTS, WEB_PORTS, SMB_PORTS, DB_PORTS, AI_PORTS, UDP_PORTS, SNMP_PORTS, SSH_PORTS, LDAP_PORTS, SMB_ENUM_PORTS, DNS_PORTS, NFS_PORTS, FTP_PORTS, RSYNC_PORTS, VNC_PORTS, IPMI_PORTS, SMTP_PORTS, MSRPC_PORTS, PRINTER_PORTS,
     gate_0_is_passive_profile, gate_2_host_discovery, gate_3_port_scan,
     gate_4_service_banner, gate_5_branch_eligible, gate_6_credentialed_collection,
 )
@@ -138,6 +150,28 @@ def _port_candidates(profile: str, service_filter: set[str] | None,
         ports.update(DB_PORTS)
     if "mcp_ai" in requested:
         ports.update(AI_PORTS)
+    if "ssh" in requested:
+        ports.update(SSH_PORTS)
+    if "ldap" in requested:
+        ports.update(LDAP_PORTS)
+    if "smb_enum" in requested:
+        ports.update(SMB_ENUM_PORTS)
+    if "dns" in requested:
+        ports.update(DNS_PORTS)
+    if "nfs" in requested:
+        ports.update(NFS_PORTS)
+    if "ftp" in requested:
+        ports.update(FTP_PORTS)
+    if "rsync" in requested:
+        ports.update(RSYNC_PORTS)
+    if "vnc" in requested:
+        ports.update(VNC_PORTS)
+    if "smtp" in requested:
+        ports.update(SMTP_PORTS)
+    if "msrpc" in requested:
+        ports.update(MSRPC_PORTS)
+    if "printer" in requested:
+        ports.update(PRINTER_PORTS)
     return sorted(ports)
 
 
@@ -457,6 +491,139 @@ async def run_engagement(targets: list[str], scope: ScopeGuard, *, profile: str 
                 _record(trace, "mcp_ai_scan", target_count=1, results=results)
                 _store_results(results, assets=assets, cache=cache, profile=profile)
 
+        ssh_dynamic = {p for p, b in routed.items() if "ssh" in b}
+        if gate_5_branch_eligible("ssh", asset, profile, service_filter, bool(ssh_dynamic)):
+            ports = sorted((asset.open_ports_for_deep_scan() & SSH_PORTS) | ssh_dynamic)
+            to_scan, reused = _split_cached(cache, host, ports, "ssh_scan", force_recheck_after)
+            for r in reused:
+                asset.merge_result(r)
+            _record_reused(trace, "ssh_scan", reused)
+            if to_scan:
+                ssh = SSHScanner(scope, ports=to_scan, rate=rate, concurrency=concurrency, timeout=timeout)
+                results = await _scan_one(ssh, host)
+                _record(trace, "ssh_scan", target_count=1, results=results)
+                _store_results(results, assets=assets, cache=cache, profile=profile)
+
+        if gate_5_branch_eligible("smb_enum", asset, profile, service_filter):
+            ports = sorted(asset.open_ports_for_deep_scan() & SMB_ENUM_PORTS)
+            to_scan, reused = _split_cached(cache, host, ports, "smb_enum_scan", force_recheck_after)
+            for r in reused:
+                asset.merge_result(r)
+            _record_reused(trace, "smb_enum_scan", reused)
+            if to_scan:
+                smbe = SMBEnumScanner(scope, ports=to_scan, rate=rate, concurrency=concurrency, timeout=timeout)
+                results = await _scan_one(smbe, host)
+                _record(trace, "smb_enum_scan", target_count=1, results=results)
+                _store_results(results, assets=assets, cache=cache, profile=profile)
+
+        if gate_5_branch_eligible("ldap", asset, profile, service_filter):
+            ports = sorted(asset.open_ports_for_deep_scan() & LDAP_PORTS)
+            to_scan, reused = _split_cached(cache, host, ports, "ldap_scan", force_recheck_after)
+            for r in reused:
+                asset.merge_result(r)
+            _record_reused(trace, "ldap_scan", reused)
+            if to_scan:
+                ldp = LDAPScanner(scope, ports=to_scan, rate=rate, concurrency=concurrency, timeout=timeout)
+                results = await _scan_one(ldp, host)
+                _record(trace, "ldap_scan", target_count=1, results=results)
+                _store_results(results, assets=assets, cache=cache, profile=profile)
+
+        if gate_5_branch_eligible("dns", asset, profile, service_filter):
+            ports = sorted(asset.open_ports_for_deep_scan() & DNS_PORTS)
+            to_scan, reused = _split_cached(cache, host, ports, "dns_scan", force_recheck_after)
+            for r in reused:
+                asset.merge_result(r)
+            _record_reused(trace, "dns_scan", reused)
+            if to_scan:
+                dns = DNSScanner(scope, ports=to_scan, rate=rate, concurrency=concurrency, timeout=timeout)
+                results = await _scan_one(dns, host)
+                _record(trace, "dns_scan", target_count=1, results=results)
+                _store_results(results, assets=assets, cache=cache, profile=profile)
+
+        if gate_5_branch_eligible("nfs", asset, profile, service_filter):
+            ports = sorted(asset.open_ports_for_deep_scan() & NFS_PORTS)
+            to_scan, reused = _split_cached(cache, host, ports, "nfs_scan", force_recheck_after)
+            for r in reused:
+                asset.merge_result(r)
+            _record_reused(trace, "nfs_scan", reused)
+            if to_scan:
+                nfs = NFSScanner(scope, ports=to_scan, rate=rate, concurrency=concurrency, timeout=timeout)
+                results = await _scan_one(nfs, host)
+                _record(trace, "nfs_scan", target_count=1, results=results)
+                _store_results(results, assets=assets, cache=cache, profile=profile)
+
+        if gate_5_branch_eligible("ftp", asset, profile, service_filter):
+            ports = sorted(asset.open_ports_for_deep_scan() & FTP_PORTS)
+            to_scan, reused = _split_cached(cache, host, ports, "ftp_scan", force_recheck_after)
+            for r in reused:
+                asset.merge_result(r)
+            _record_reused(trace, "ftp_scan", reused)
+            if to_scan:
+                ftp = FTPScanner(scope, ports=to_scan, rate=rate, concurrency=concurrency, timeout=timeout)
+                results = await _scan_one(ftp, host)
+                _record(trace, "ftp_scan", target_count=1, results=results)
+                _store_results(results, assets=assets, cache=cache, profile=profile)
+
+        if gate_5_branch_eligible("rsync", asset, profile, service_filter):
+            ports = sorted(asset.open_ports_for_deep_scan() & RSYNC_PORTS)
+            to_scan, reused = _split_cached(cache, host, ports, "rsync_scan", force_recheck_after)
+            for r in reused:
+                asset.merge_result(r)
+            _record_reused(trace, "rsync_scan", reused)
+            if to_scan:
+                rsync = RsyncScanner(scope, ports=to_scan, rate=rate, concurrency=concurrency, timeout=timeout)
+                results = await _scan_one(rsync, host)
+                _record(trace, "rsync_scan", target_count=1, results=results)
+                _store_results(results, assets=assets, cache=cache, profile=profile)
+
+        if gate_5_branch_eligible("vnc", asset, profile, service_filter):
+            ports = sorted(asset.open_ports_for_deep_scan() & VNC_PORTS)
+            to_scan, reused = _split_cached(cache, host, ports, "vnc_scan", force_recheck_after)
+            for r in reused:
+                asset.merge_result(r)
+            _record_reused(trace, "vnc_scan", reused)
+            if to_scan:
+                vnc = VNCScanner(scope, ports=to_scan, rate=rate, concurrency=concurrency, timeout=timeout)
+                results = await _scan_one(vnc, host)
+                _record(trace, "vnc_scan", target_count=1, results=results)
+                _store_results(results, assets=assets, cache=cache, profile=profile)
+
+        if gate_5_branch_eligible("smtp", asset, profile, service_filter):
+            ports = sorted(asset.open_ports_for_deep_scan() & SMTP_PORTS)
+            to_scan, reused = _split_cached(cache, host, ports, "smtp_scan", force_recheck_after)
+            for r in reused:
+                asset.merge_result(r)
+            _record_reused(trace, "smtp_scan", reused)
+            if to_scan:
+                smtp = SMTPScanner(scope, ports=to_scan, rate=rate, concurrency=concurrency, timeout=timeout)
+                results = await _scan_one(smtp, host)
+                _record(trace, "smtp_scan", target_count=1, results=results)
+                _store_results(results, assets=assets, cache=cache, profile=profile)
+
+        if gate_5_branch_eligible("msrpc", asset, profile, service_filter):
+            ports = sorted(asset.open_ports_for_deep_scan() & MSRPC_PORTS)
+            to_scan, reused = _split_cached(cache, host, ports, "msrpc_scan", force_recheck_after)
+            for r in reused:
+                asset.merge_result(r)
+            _record_reused(trace, "msrpc_scan", reused)
+            if to_scan:
+                msrpc = MSRPCScanner(scope, ports=to_scan, rate=rate, concurrency=concurrency, timeout=timeout)
+                results = await _scan_one(msrpc, host)
+                _record(trace, "msrpc_scan", target_count=1, results=results)
+                _store_results(results, assets=assets, cache=cache, profile=profile)
+
+        if gate_5_branch_eligible("printer", asset, profile, service_filter):
+            ports = sorted(asset.open_ports_for_deep_scan() & PRINTER_PORTS)
+            to_scan, reused = _split_cached(cache, host, ports, "printer_scan", force_recheck_after)
+            for r in reused:
+                asset.merge_result(r)
+            _record_reused(trace, "printer_scan", reused)
+            if to_scan:
+                printer = PrinterScanner(scope, ports=to_scan, rate=rate, concurrency=concurrency, timeout=timeout)
+                results = await _scan_one(printer, host)
+                _record(trace, "printer_scan", target_count=1, results=results)
+                _store_results(results, assets=assets, cache=cache, profile=profile)
+
         if gate_5_branch_eligible("snmp", asset, profile, service_filter):
             ports = sorted(SNMP_PORTS)
             to_scan, reused = _split_cached(cache, host, ports, "snmp_scan", force_recheck_after)
@@ -467,6 +634,18 @@ async def run_engagement(targets: list[str], scope: ScopeGuard, *, profile: str 
                 snmp = SNMPScanner(scope, rate=rate, concurrency=concurrency, timeout=timeout)
                 results = await _scan_one(snmp, host)
                 _record(trace, "snmp_scan", target_count=1, results=results)
+                _store_results(results, assets=assets, cache=cache, profile=profile)
+
+        if gate_5_branch_eligible("ipmi", asset, profile, service_filter):
+            ports = sorted(IPMI_PORTS)
+            to_scan, reused = _split_cached(cache, host, ports, "ipmi_scan", force_recheck_after)
+            for r in reused:
+                asset.merge_result(r)
+            _record_reused(trace, "ipmi_scan", reused)
+            if to_scan:
+                ipmi = IPMIScanner(scope, ports=to_scan, rate=rate, concurrency=concurrency, timeout=timeout)
+                results = await _scan_one(ipmi, host)
+                _record(trace, "ipmi_scan", target_count=1, results=results)
                 _store_results(results, assets=assets, cache=cache, profile=profile)
 
         if service_filter is None or "udp" in service_filter:

@@ -59,6 +59,46 @@ def test_tls_expired_and_self_signed_cert():
     assert {"TLS-CERT-EXPIRED", "TLS-CERT-SELF-SIGNED"} <= _ids(fs)
 
 
+def test_tls_weak_signature_hash_is_flagged():
+    fs = _run({"scanner": "tls_scan", "target": "t", "port": 443, "status": "open",
+               "data": {"accepted_versions": ["TLSv1.2"],
+                        "certificate": {"sig_algorithm": "sha1"}}})
+    hit = next(f for f in fs if f.rule_id == "TLS-CERT-WEAK-SIGNATURE")
+    assert hit.severity == F.SEV_MEDIUM and hit.category == F.CAT_WEAK_CRYPTO
+    assert "SHA1" in hit.evidence.upper()
+
+
+def test_tls_strong_signature_hash_is_not_flagged():
+    fs = _run({"scanner": "tls_scan", "target": "t", "port": 443, "status": "open",
+               "data": {"accepted_versions": ["TLSv1.2"],
+                        "certificate": {"sig_algorithm": "sha256"}}})
+    assert "TLS-CERT-WEAK-SIGNATURE" not in _ids(fs)
+
+
+def test_tls_under_strength_rsa_key_is_flagged():
+    fs = _run({"scanner": "tls_scan", "target": "t", "port": 443, "status": "open",
+               "data": {"accepted_versions": ["TLSv1.2"],
+                        "certificate": {"public_key_type": "RSA", "public_key_bits": 1024}}})
+    hit = next(f for f in fs if f.rule_id == "TLS-CERT-WEAK-KEY")
+    assert hit.severity == F.SEV_MEDIUM and hit.category == F.CAT_WEAK_CRYPTO
+    assert "1024" in hit.evidence
+
+
+def test_tls_strong_rsa_key_is_not_flagged():
+    fs = _run({"scanner": "tls_scan", "target": "t", "port": 443, "status": "open",
+               "data": {"accepted_versions": ["TLSv1.2"],
+                        "certificate": {"public_key_type": "RSA", "public_key_bits": 2048}}})
+    assert "TLS-CERT-WEAK-KEY" not in _ids(fs)
+
+
+def test_tls_small_ec_key_is_not_treated_as_weak():
+    # A 256-bit EC key is ~3072-bit-RSA strong; the bit count must NOT be compared.
+    fs = _run({"scanner": "tls_scan", "target": "t", "port": 443, "status": "open",
+               "data": {"accepted_versions": ["TLSv1.2"],
+                        "certificate": {"public_key_type": "EC", "public_key_bits": 256}}})
+    assert "TLS-CERT-WEAK-KEY" not in _ids(fs)
+
+
 # ── SMB ──────────────────────────────────────────────────────────────────────
 def test_smbv1_enabled_is_high():
     fs = _run({"scanner": "smb_scan", "target": "t", "port": 445, "status": "open",

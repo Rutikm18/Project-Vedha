@@ -1,0 +1,83 @@
+# Node Description Batch 87 of 92
+
+Graphify is running in assistant/skill mode (no API key). You are the host
+assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
+your JSON answer to the answer file.
+
+## Prompt
+
+You are documenting nodes in a knowledge graph.
+For each entry below, write ONE concise factual plain-language sentence
+describing what it is or does. Use only the provided context.
+For a code symbol (kind=code-symbol — a function, class, or constant),
+describe what the function/symbol does based on its name, source location
+and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
+For an entity node (any other kind — e.g. a person, place, event, object),
+describe what the entity is and its role, grounded in its type, its
+relations (neighbors) and the provided citations/evidence — e.g.
+"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
+Ground entity descriptions in the citations/evidence when present; do not
+speculate beyond the context, so a node with no supporting context may be
+left out of the reply.
+Write every description in Portuguese (pt). Do not switch languages.
+No marketing language.
+Respond ONLY with a JSON object mapping each node id (as a string) to its
+one-sentence description — no prose, no markdown fences.
+
+- "tests_test_transport_testregister_test_registration_401_raises": ".test_registration_401_raises()" | kind=code-symbol | source=tests/test_transport.py:L154 | neighbors=[TestRegister]
+- "tests_test_transport_testregister_test_registration_sends_public_key": ".test_registration_sends_public_key()" | kind=code-symbol | source=tests/test_transport.py:L161 | neighbors=[TestRegister]
+- "tests_test_transport_testregister_test_successful_registration": ".test_successful_registration()" | kind=code-symbol | source=tests/test_transport.py:L130 | neighbors=[TestRegister]
+- "tests_test_transport_testsubmitresult_test_2xx_variants_return_true": ".test_2xx_variants_return_true()" | kind=code-symbol | source=tests/test_transport.py:L474 | neighbors=[TestSubmitResult]
+- "tests_test_transport_testsubmitresult_test_large_payload_is_gzipped": ".test_large_payload_is_gzipped()" | kind=code-symbol | source=tests/test_transport.py:L481 | neighbors=[TestSubmitResult]
+- "tests_test_transport_testsubmitresult_test_network_error_returns_false": ".test_network_error_returns_false()" | kind=code-symbol | source=tests/test_transport.py:L444 | neighbors=[TestSubmitResult]
+- "tests_test_transport_testsubmitresult_test_permanent_client_errors_are_marked_for_quarantine": ".test_permanent_client_errors_are_marked_for_quarantine()" | kind=code-symbol | source=tests/test_transport.py:L462 | neighbors=[TestSubmitResult]
+- "tests_test_transport_testsubmitresult_test_retryable_client_errors_return_false_no_data_loss": ".test_retryable_client_errors_return_false_no_data_loss()" | kind=code-symbol | source=tests/test_transport.py:L452 | neighbors=[TestSubmitResult]
+- "tests_test_transport_testsubmitresult_test_server_error_returns_false": ".test_server_error_returns_false()" | kind=code-symbol | source=tests/test_transport.py:L435 | neighbors=[TestSubmitResult]
+- "tests_test_transport_testsubmitresult_test_small_payload_not_gzipped": ".test_small_payload_not_gzipped()" | kind=code-symbol | source=tests/test_transport.py:L492 | neighbors=[TestSubmitResult]
+- "tests_test_transport_testsubmitresult_test_successful_submit": ".test_successful_submit()" | kind=code-symbol | source=tests/test_transport.py:L426 | neighbors=[TestSubmitResult]
+- "tests_test_transport_testwebsocket_test_is_ws_connected_false_by_default": ".test_is_ws_connected_false_by_default()" | kind=code-symbol | source=tests/test_transport.py:L531 | neighbors=[TestWebSocket]
+- "tests_test_transport_testwebsocket_test_ws_requires_token": ".test_ws_requires_token()" | kind=code-symbol | source=tests/test_transport.py:L549 | neighbors=[TestWebSocket]
+- "tests_test_transport_testwebsocket_test_ws_url_http": ".test_ws_url_http()" | kind=code-symbol | source=tests/test_transport.py:L535 | neighbors=[TestWebSocket]
+- "tests_test_transport_testwebsocket_test_ws_url_https": ".test_ws_url_https()" | kind=code-symbol | source=tests/test_transport.py:L542 | neighbors=[TestWebSocket]
+- "tests_test_udp_amplifiers_test_dns_open_recursion": "test_dns_open_recursion()" | kind=code-symbol | source=tests/test_udp_amplifiers.py:L18 | neighbors=[test_udp_amplifiers.py]
+- "tests_test_udp_amplifiers_test_memcached_exposed": "test_memcached_exposed()" | kind=code-symbol | source=tests/test_udp_amplifiers.py:L26 | neighbors=[test_udp_amplifiers.py]
+- "tests_test_udp_amplifiers_test_ntp_monlist_absent": "test_ntp_monlist_absent()" | kind=code-symbol | source=tests/test_udp_amplifiers.py:L13 | neighbors=[test_udp_amplifiers.py]
+- "tests_test_udp_amplifiers_test_ntp_monlist_enabled": "test_ntp_monlist_enabled()" | kind=code-symbol | source=tests/test_udp_amplifiers.py:L8 | neighbors=[test_udp_amplifiers.py]
+- "tests_test_udp_amplifiers_test_probe_builders_are_bytes": "test_probe_builders_are_bytes()" | kind=code-symbol | source=tests/test_udp_amplifiers.py:L31 | neighbors=[test_udp_amplifiers.py]
+- "tests_test_use_cases_rationale_1": "Use-case library guards.  FORBIDDEN is a *living* set: a phrase stays here only" | kind=entity | source=tests/test_use_cases.py:L1 | neighbors=[test_use_cases.py]
+- "tests_test_use_cases_test_codes_are_unique_and_stable": "test_codes_are_unique_and_stable()" | kind=code-symbol | source=tests/test_use_cases.py:L82 | neighbors=[test_use_cases.py]
+- "tests_test_use_cases_test_descriptions_do_not_overclaim": "test_descriptions_do_not_overclaim()" | kind=code-symbol | source=tests/test_use_cases.py:L25 | neighbors=[test_use_cases.py]
+- "tests_test_use_cases_test_every_code_maps_to_a_real_use_case": "test_every_code_maps_to_a_real_use_case()" | kind=code-symbol | source=tests/test_use_cases.py:L77 | neighbors=[test_use_cases.py]
+- "tests_test_use_cases_test_full_port_audit_is_deep": "test_full_port_audit_is_deep()" | kind=code-symbol | source=tests/test_use_cases.py:L64 | neighbors=[test_use_cases.py]
+- "tests_test_use_cases_test_intensity_code_and_name_equivalent": "test_intensity_code_and_name_equivalent()" | kind=code-symbol | source=tests/test_use_cases.py:L100 | neighbors=[test_use_cases.py]
+- "tests_test_use_cases_test_iot_survey_collects_banners": "test_iot_survey_collects_banners()" | kind=code-symbol | source=tests/test_use_cases.py:L45 | neighbors=[test_use_cases.py]
+- "tests_test_use_cases_test_new_use_cases_resolve": "test_new_use_cases_resolve()" | kind=code-symbol | source=tests/test_use_cases.py:L52 | neighbors=[test_use_cases.py]
+- "tests_test_use_cases_test_params_intensity_overrides_use_case": "test_params_intensity_overrides_use_case()" | kind=code-symbol | source=tests/test_use_cases.py:L69 | neighbors=[test_use_cases.py]
+- "tests_test_use_cases_test_resolve_accepts_string_digits_too": "test_resolve_accepts_string_digits_too()" | kind=code-symbol | source=tests/test_use_cases.py:L95 | neighbors=[test_use_cases.py]
+- "tests_test_use_cases_test_resolve_by_numeric_code": "test_resolve_by_numeric_code()" | kind=code-symbol | source=tests/test_use_cases.py:L90 | neighbors=[test_use_cases.py]
+- "tests_test_use_cases_test_string_use_case_id_still_wins_over_code": "test_string_use_case_id_still_wins_over_code()" | kind=code-symbol | source=tests/test_use_cases.py:L113 | neighbors=[test_use_cases.py]
+- "tests_test_use_cases_test_udp_claims_amplification": "test_udp_claims_amplification()" | kind=code-symbol | source=tests/test_use_cases.py:L36 | neighbors=[test_use_cases.py]
+- "tests_test_use_cases_test_unknown_code_is_rejected": "test_unknown_code_is_rejected()" | kind=code-symbol | source=tests/test_use_cases.py:L106 | neighbors=[test_use_cases.py]
+- "tests_test_use_cases_test_web_claims_methods": "test_web_claims_methods()" | kind=code-symbol | source=tests/test_use_cases.py:L41 | neighbors=[test_use_cases.py]
+- "tests_test_use_cases_test_windows_estate_claims_signing": "test_windows_estate_claims_signing()" | kind=code-symbol | source=tests/test_use_cases.py:L32 | neighbors=[test_use_cases.py]
+- "tests_test_validation_fakeclient_init": ".__init__()" | kind=code-symbol | source=tests/test_validation.py:L111 | neighbors=[FakeClient]
+- "tests_test_validation_fakeclient_request": ".request()" | kind=code-symbol | source=tests/test_validation.py:L115 | neighbors=[FakeClient]
+- "tests_test_validation_test_parser_accepts_validate_command": "test_parser_accepts_validate_command()" | kind=code-symbol | source=tests/test_validation.py:L254 | neighbors=[test_validation.py]
+- "tests_test_validation_test_resolve_use_cases_deduplicates_combined_suites": "test_resolve_use_cases_deduplicates_combined_suites()" | kind=code-symbol | source=tests/test_validation.py:L19 | neighbors=[test_validation.py]
+
+## Instructions
+
+Write a single JSON object mapping each node id to a one-sentence description
+to: /Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha/probe/.graphify/description-instructions/batch-086.json
+
+Keep each description factual and concise (one sentence). No markdown, no prose
+outside the JSON object. It is acceptable to omit a node if context is
+insufficient — but include every node you can ground confidently.
+
+Example answer format:
+```json
+{
+  "node_id_1": "Resolves the configured ontology profile from graphify.yaml.",
+  "node_id_2": "Colonel James Barclay, an antagonist in The Crooked Man."
+}
+```

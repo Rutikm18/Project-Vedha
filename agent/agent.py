@@ -234,8 +234,8 @@ def main() -> None:
     # would let later leases expire while the first assessment is still running.
     JOB_LIMIT = 1
     VERIFY_TLS = os.environ.get("VERIFY_TLS", "true").lower() not in ("false", "0", "no")
-    STATE_FILE = Path(os.environ.get("STATE_FILE", "/var/lib/vedha-probe/state.json"))
-    SPOOL_DIR = Path(os.environ.get("RESULT_SPOOL_DIR", "/var/lib/vedha-probe/spool"))
+    STATE_FILE = Path(os.environ.get("STATE_FILE", "/var/lib/vedha-agent/state.json"))
+    SPOOL_DIR = Path(os.environ.get("RESULT_SPOOL_DIR", "/var/lib/vedha-agent/spool"))
     SPOOL_MAX_BYTES = _bounded_env_int(
         "RESULT_SPOOL_MAX_BYTES", 512 << 20, 1 << 20, 16 << 30,
     )
@@ -912,7 +912,7 @@ def _startup_gauntlet() -> dict | None:
         say(f"║  This machine's Host ID: {short_id():<39}║")
         say("╠══════════════════════════════════════════════════════════════╣")
         say("║  To get a license:                                          ║")
-        say("║    1. Run: ./vedha-probe hostid                           ║")
+        say("║    1. Run: ./vedha-agent hostid                           ║")
         say("║    2. Send the Host ID to your administrator                ║")
         say("║    3. Set PROBE_LICENSE=<token> in the environment          ║")
         say("╚══════════════════════════════════════════════════════════════╝")
