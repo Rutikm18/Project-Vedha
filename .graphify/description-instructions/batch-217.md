@@ -1,4 +1,4 @@
-# Node Description Batch 218 of 227
+# Node Description Batch 218 of 236
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,53 +19,51 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-LANGUAGE: each entry has a `lang=` marker giving the language of its source.
-Write that entry's description in EXACTLY that language. Do not translate to
-a single common language — match each node's source language individually.
+Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_version_compare_test_dpkg_compare_public_api": "test_dpkg_compare_public_api()" | kind=code-symbol | source=manager/detection_engine/tests/test_version_compare.py:L65 | neighbors=[test_version_compare.py] | lang=en
-- "tests_test_version_compare_test_pure_python_matches_known_pairs": "test_pure_python_matches_known_pairs()" | kind=code-symbol | source=manager/detection_engine/tests/test_version_compare.py:L45 | neighbors=[test_version_compare.py] | lang=en
-- "tests_test_version_compare_test_pure_python_matches_real_dpkg_binary": "test_pure_python_matches_real_dpkg_binary()" | kind=code-symbol | source=manager/detection_engine/tests/test_version_compare.py:L52 | neighbors=[test_version_compare.py] | lang=en
-- "tests_test_vuln_enrichment_test_dedup_hash_case_insensitive_cve": "test_dedup_hash_case_insensitive_cve()" | kind=code-symbol | source=manager/backend/tests/test_vuln_enrichment.py:L242 | neighbors=[test_vuln_enrichment.py] | lang=en
-- "tests_test_vuln_enrichment_test_dedup_hash_different_inputs": "test_dedup_hash_different_inputs()" | kind=code-symbol | source=manager/backend/tests/test_vuln_enrichment.py:L248 | neighbors=[test_vuln_enrichment.py] | lang=en
-- "tests_test_vuln_enrichment_test_dedup_hash_stable": "test_dedup_hash_stable()" | kind=code-symbol | source=manager/backend/tests/test_vuln_enrichment.py:L236 | neighbors=[test_vuln_enrichment.py] | lang=en
-- "tests_test_vuln_enrichment_test_fetch_epss_empty": "test_fetch_epss_empty()" | kind=code-symbol | source=manager/backend/tests/test_vuln_enrichment.py:L114 | neighbors=[test_vuln_enrichment.py] | lang=en
-- "tests_test_vuln_enrichment_test_fetch_mitre_known_cve": "test_fetch_mitre_known_cve()" | kind=code-symbol | source=manager/backend/tests/test_vuln_enrichment.py:L148 | neighbors=[test_vuln_enrichment.py] | lang=en
-- "tests_test_vuln_enrichment_test_fetch_nvd_not_found": "test_fetch_nvd_not_found()" | kind=code-symbol | source=manager/backend/tests/test_vuln_enrichment.py:L82 | neighbors=[test_vuln_enrichment.py] | lang=en
-- "tests_test_vuln_enrichment_test_kev_bonus_increases_score": "test_kev_bonus_increases_score()" | kind=code-symbol | source=manager/backend/tests/test_vuln_enrichment.py:L186 | neighbors=[test_vuln_enrichment.py] | lang=en
-- "tests_test_vuln_enrichment_test_max_risk_score": "test_max_risk_score()" | kind=code-symbol | source=manager/backend/tests/test_vuln_enrichment.py:L164 | neighbors=[test_vuln_enrichment.py] | lang=en
-- "tests_test_vuln_enrichment_test_risk_score_bounds": "test_risk_score_bounds()" | kind=code-symbol | source=manager/backend/tests/test_vuln_enrichment.py:L193 | neighbors=[test_vuln_enrichment.py] | lang=en
-- "tests_test_vuln_enrichment_test_zero_risk_score": "test_zero_risk_score()" | kind=code-symbol | source=manager/backend/tests/test_vuln_enrichment.py:L175 | neighbors=[test_vuln_enrichment.py] | lang=en
-- "tests_test_web_methods_test_dangerous_methods_flagged": "test_dangerous_methods_flagged()" | kind=code-symbol | source=probe/tests/test_web_methods.py:L4 | neighbors=[test_web_methods.py] | lang=en
-- "tests_test_web_methods_test_no_allow_header": "test_no_allow_header()" | kind=code-symbol | source=probe/tests/test_web_methods.py:L17 | neighbors=[test_web_methods.py] | lang=en
-- "tests_test_web_methods_test_safe_methods_only": "test_safe_methods_only()" | kind=code-symbol | source=probe/tests/test_web_methods.py:L12 | neighbors=[test_web_methods.py] | lang=en
-- "tests_test_wire_identity_rationale_1": "test_wire_identity.py — the scanner must NOT sign its own packets.  A brand stri" | kind=entity | source=probe/tests/test_wire_identity.py:L1 | neighbors=[test_wire_identity.py] | lang=en
-- "tests_test_wire_identity_rationale_39": "Evasion: a fixed source port (e.g. 53/88) slips past naive stateless ACLs." | kind=entity | source=probe/tests/test_wire_identity.py:L39 | neighbors=[TestChooseSourcePort] | lang=pt
-- "tests_test_wire_identity_rationale_58": "Evasion: blur a fixed scan cadence with a bounded random per-probe delay." | kind=entity | source=probe/tests/test_wire_identity.py:L58 | neighbors=[TestJitteredDelay] | lang=pt
-- "tests_test_wire_identity_rationale_81": "Import-time probe constants built from user_agent() must be signature-free." | kind=entity | source=probe/tests/test_wire_identity.py:L81 | neighbors=[TestModuleConstantsUnbranded] | lang=en
-- "tests_test_wire_identity_testchoosesourceport_test_boundary_ports_are_valid": ".test_boundary_ports_are_valid()" | kind=code-symbol | source=probe/tests/test_wire_identity.py:L52 | neighbors=[TestChooseSourcePort] | lang=en
-- "tests_test_wire_identity_testchoosesourceport_test_none_gives_random_ephemeral": ".test_none_gives_random_ephemeral()" | kind=code-symbol | source=probe/tests/test_wire_identity.py:L45 | neighbors=[TestChooseSourcePort] | lang=en
-- "tests_test_wire_identity_testchoosesourceport_test_out_of_range_falls_back_to_random": ".test_out_of_range_falls_back_to_random()" | kind=code-symbol | source=probe/tests/test_wire_identity.py:L48 | neighbors=[TestChooseSourcePort] | lang=en
-- "tests_test_wire_identity_testchoosesourceport_test_uses_configured_valid_port": ".test_uses_configured_valid_port()" | kind=code-symbol | source=probe/tests/test_wire_identity.py:L41 | neighbors=[TestChooseSourcePort] | lang=en
-- "tests_test_wire_identity_testevasionflags_test_randomize_and_scan_delay_flags_present": ".test_randomize_and_scan_delay_flags_present()" | kind=code-symbol | source=probe/tests/test_wire_identity.py:L74 | neighbors=[TestEvasionFlags] | lang=en
-- "tests_test_wire_identity_testjittereddelay_test_never_negative_even_at_full_jitter": ".test_never_negative_even_at_full_jitter()" | kind=code-symbol | source=probe/tests/test_wire_identity.py:L68 | neighbors=[TestJitteredDelay] | lang=en
-- "tests_test_wire_identity_testjittereddelay_test_stays_within_jitter_band": ".test_stays_within_jitter_band()" | kind=code-symbol | source=probe/tests/test_wire_identity.py:L64 | neighbors=[TestJitteredDelay] | lang=en
-- "tests_test_wire_identity_testjittereddelay_test_zero_or_negative_base_is_zero": ".test_zero_or_negative_base_is_zero()" | kind=code-symbol | source=probe/tests/test_wire_identity.py:L60 | neighbors=[TestJitteredDelay] | lang=en
-- "tests_test_wire_identity_testmoduleconstantsunbranded_test_iot_rtsp_options": ".test_iot_rtsp_options()" | kind=code-symbol | source=probe/tests/test_wire_identity.py:L87 | neighbors=[TestModuleConstantsUnbranded] | lang=en
-- "tests_test_wire_identity_testmoduleconstantsunbranded_test_service_banner_http_probe": ".test_service_banner_http_probe()" | kind=code-symbol | source=probe/tests/test_wire_identity.py:L83 | neighbors=[TestModuleConstantsUnbranded] | lang=en
-- "tests_test_wire_identity_testprobepayload_test_default_carries_no_brand": ".test_default_carries_no_brand()" | kind=code-symbol | source=probe/tests/test_wire_identity.py:L29 | neighbors=[TestProbePayload] | lang=en
-- "tests_test_wire_identity_testprobepayload_test_env_override": ".test_env_override()" | kind=code-symbol | source=probe/tests/test_wire_identity.py:L33 | neighbors=[TestProbePayload] | lang=en
-- "tests_test_wire_identity_testuseragent_test_default_is_generic_browser_no_brand": ".test_default_is_generic_browser_no_brand()" | kind=code-symbol | source=probe/tests/test_wire_identity.py:L18 | neighbors=[TestUserAgent] | lang=en
-- "tests_test_wire_identity_testuseragent_test_env_override": ".test_env_override()" | kind=code-symbol | source=probe/tests/test_wire_identity.py:L23 | neighbors=[TestUserAgent] | lang=en
-- "tests_test_workflow_execution_concurrencyscanner_init": ".__init__()" | kind=code-symbol | source=probe/tests/test_workflow_execution.py:L49 | neighbors=[_ConcurrencyScanner] | lang=en
-- "tests_test_workflow_execution_concurrencyscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/tests/test_workflow_execution.py:L53 | neighbors=[_ConcurrencyScanner] | lang=en
-- "tests_test_workflow_execution_explodingscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/tests/test_workflow_execution.py:L32 | neighbors=[_ExplodingScanner] | lang=en
-- "tests_test_workflow_execution_test_agent_scan_types_have_distinct_stage_ceilings": "test_agent_scan_types_have_distinct_stage_ceilings()" | kind=code-symbol | source=probe/tests/test_workflow_execution.py:L419 | neighbors=[test_workflow_execution.py] | lang=en
-- "tests_test_workflow_execution_test_database_gate_uses_scanner_port_catalog": "test_database_gate_uses_scanner_port_catalog()" | kind=code-symbol | source=probe/tests/test_workflow_execution.py:L132 | neighbors=[test_workflow_execution.py] | lang=en
-- "tests_test_workflow_execution_test_empty_authoritative_scope_never_falls_back_to_job_targets": "test_empty_authoritative_scope_never_falls_back_to_job_targets()" | kind=code-symbol | source=probe/tests/test_workflow_execution.py:L519 | neighbors=[test_workflow_execution.py] | lang=en
+- "tests_test_scope_targets_testtargetswithinscope_test_no_targets_returns_whole_scope": ".test_no_targets_returns_whole_scope()" | kind=code-symbol | source=manager/backend/tests/test_scope_targets.py:L38 | neighbors=[TestTargetsWithinScope]
+- "tests_test_scope_targets_testtargetswithinscope_test_range_expands_to_covered_networks": ".test_range_expands_to_covered_networks()" | kind=code-symbol | source=manager/backend/tests/test_scope_targets.py:L33 | neighbors=[TestTargetsWithinScope]
+- "tests_test_scope_targets_testtargetswithinscope_test_single_ip_in_scope": ".test_single_ip_in_scope()" | kind=code-symbol | source=manager/backend/tests/test_scope_targets.py:L24 | neighbors=[TestTargetsWithinScope]
+- "tests_test_scope_targets_testtargetswithinscope_test_string_target_is_accepted": ".test_string_target_is_accepted()" | kind=code-symbol | source=manager/backend/tests/test_scope_targets.py:L27 | neighbors=[TestTargetsWithinScope]
+- "tests_test_scope_validator_rationale_1": "Tests for agent/scope_validator.py" | kind=entity | source=probe/tests/test_scope_validator.py:L1 | neighbors=[test_scope_validator.py]
+- "tests_test_scope_validator_testfetchengagementscope_test_http_get_raises": ".test_http_get_raises()" | kind=code-symbol | source=probe/tests/test_scope_validator.py:L195 | neighbors=[TestFetchEngagementScope]
+- "tests_test_scope_validator_testfetchengagementscope_test_http_get_returns_incomplete": ".test_http_get_returns_incomplete()" | kind=code-symbol | source=probe/tests/test_scope_validator.py:L203 | neighbors=[TestFetchEngagementScope]
+- "tests_test_scope_validator_testfetchengagementscope_test_http_get_returns_none": ".test_http_get_returns_none()" | kind=code-symbol | source=probe/tests/test_scope_validator.py:L187 | neighbors=[TestFetchEngagementScope]
+- "tests_test_scope_validator_testfetchengagementscope_test_returns_excludes": ".test_returns_excludes()" | kind=code-symbol | source=probe/tests/test_scope_validator.py:L180 | neighbors=[TestFetchEngagementScope]
+- "tests_test_scope_validator_testfetchengagementscope_test_returns_scope_from_http_get": ".test_returns_scope_from_http_get()" | kind=code-symbol | source=probe/tests/test_scope_validator.py:L171 | neighbors=[TestFetchEngagementScope]
+- "tests_test_scope_validator_testmergeexclusions_test_both_empty": ".test_both_empty()" | kind=code-symbol | source=probe/tests/test_scope_validator.py:L161 | neighbors=[TestMergeExclusions]
+- "tests_test_scope_validator_testmergeexclusions_test_empty_engagement_excludes": ".test_empty_engagement_excludes()" | kind=code-symbol | source=probe/tests/test_scope_validator.py:L157 | neighbors=[TestMergeExclusions]
+- "tests_test_scope_validator_testmergeexclusions_test_empty_job_excludes": ".test_empty_job_excludes()" | kind=code-symbol | source=probe/tests/test_scope_validator.py:L149 | neighbors=[TestMergeExclusions]
+- "tests_test_scope_validator_testmergeexclusions_test_merges_no_duplicates": ".test_merges_no_duplicates()" | kind=code-symbol | source=probe/tests/test_scope_validator.py:L145 | neighbors=[TestMergeExclusions]
+- "tests_test_scope_validator_testmergeexclusions_test_none_job_excludes": ".test_none_job_excludes()" | kind=code-symbol | source=probe/tests/test_scope_validator.py:L153 | neighbors=[TestMergeExclusions]
+- "tests_test_scope_validator_testmergeexclusions_test_strips_whitespace": ".test_strips_whitespace()" | kind=code-symbol | source=probe/tests/test_scope_validator.py:L165 | neighbors=[TestMergeExclusions]
+- "tests_test_scope_validator_testtargetsinexcludes_test_all_excluded_returns_empty": ".test_all_excluded_returns_empty()" | kind=code-symbol | source=probe/tests/test_scope_validator.py:L136 | neighbors=[TestTargetsInExcludes]
+- "tests_test_scope_validator_testtargetsinexcludes_test_drops_excluded_ip": ".test_drops_excluded_ip()" | kind=code-symbol | source=probe/tests/test_scope_validator.py:L94 | neighbors=[TestTargetsInExcludes]
+- "tests_test_scope_validator_testtargetsinexcludes_test_drops_excluded_subnet": ".test_drops_excluded_subnet()" | kind=code-symbol | source=probe/tests/test_scope_validator.py:L101 | neighbors=[TestTargetsInExcludes]
+- "tests_test_scope_validator_testtargetsinexcludes_test_fully_excluded_cidr_is_dropped": ".test_fully_excluded_cidr_is_dropped()" | kind=code-symbol | source=probe/tests/test_scope_validator.py:L129 | neighbors=[TestTargetsInExcludes]
+- "tests_test_scope_validator_testtargetsinexcludes_test_hostname_passes_through": ".test_hostname_passes_through()" | kind=code-symbol | source=probe/tests/test_scope_validator.py:L115 | neighbors=[TestTargetsInExcludes]
+- "tests_test_scope_validator_testtargetsinexcludes_test_no_excludes_returns_all": ".test_no_excludes_returns_all()" | kind=code-symbol | source=probe/tests/test_scope_validator.py:L108 | neighbors=[TestTargetsInExcludes]
+- "tests_test_scope_validator_testtargetsinexcludes_test_port_suffix_is_not_treated_as_an_ip": ".test_port_suffix_is_not_treated_as_an_ip()" | kind=code-symbol | source=probe/tests/test_scope_validator.py:L122 | neighbors=[TestTargetsInExcludes]
+- "tests_test_scope_validator_testtargetsinexcludes_test_port_suffix_stripped": ".test_port_suffix_stripped()" | kind=code-symbol | source=probe/tests/test_scope_validator.py:L91 | neighbors=[TestTargetsInExcludes]
+- "tests_test_scope_validator_testvalidatetargetsinscope_test_cidr_must_be_fully_contained": ".test_cidr_must_be_fully_contained()" | kind=code-symbol | source=probe/tests/test_scope_validator.py:L62 | neighbors=[TestValidateTargetsInScope]
+- "tests_test_scope_validator_testvalidatetargetsinscope_test_empty_targets": ".test_empty_targets()" | kind=code-symbol | source=probe/tests/test_scope_validator.py:L44 | neighbors=[TestValidateTargetsInScope]
+- "tests_test_scope_validator_testvalidatetargetsinscope_test_explicit_hostname_scope_allows_exact_hostname_only": ".test_explicit_hostname_scope_allows_exact_hostname_only()" | kind=code-symbol | source=probe/tests/test_scope_validator.py:L36 | neighbors=[TestValidateTargetsInScope]
+- "tests_test_scope_validator_testvalidatetargetsinscope_test_hostname_passes_through": ".test_hostname_passes_through()" | kind=code-symbol | source=probe/tests/test_scope_validator.py:L29 | neighbors=[TestValidateTargetsInScope]
+- "tests_test_scope_validator_testvalidatetargetsinscope_test_hostname_rejected_when_scope_is_ip_only": ".test_hostname_rejected_when_scope_is_ip_only()" | kind=code-symbol | source=probe/tests/test_scope_validator.py:L29 | neighbors=[TestValidateTargetsInScope]
+- "tests_test_scope_validator_testvalidatetargetsinscope_test_invalid_cidr_ignored": ".test_invalid_cidr_ignored()" | kind=code-symbol | source=probe/tests/test_scope_validator.py:L49 | neighbors=[TestValidateTargetsInScope]
+- "tests_test_scope_validator_testvalidatetargetsinscope_test_ip_in_cidr_allowed": ".test_ip_in_cidr_allowed()" | kind=code-symbol | source=probe/tests/test_scope_validator.py:L15 | neighbors=[TestValidateTargetsInScope]
+- "tests_test_scope_validator_testvalidatetargetsinscope_test_ipv6_literal_is_validated_without_colon_truncation": ".test_ipv6_literal_is_validated_without_colon_truncation()" | kind=code-symbol | source=probe/tests/test_scope_validator.py:L77 | neighbors=[TestValidateTargetsInScope]
+- "tests_test_scope_validator_testvalidatetargetsinscope_test_multiple_cidrs": ".test_multiple_cidrs()" | kind=code-symbol | source=probe/tests/test_scope_validator.py:L84 | neighbors=[TestValidateTargetsInScope]
+- "tests_test_scope_validator_testvalidatetargetsinscope_test_outside_cidr_rejected": ".test_outside_cidr_rejected()" | kind=code-symbol | source=probe/tests/test_scope_validator.py:L22 | neighbors=[TestValidateTargetsInScope]
+- "tests_test_scope_validator_testvalidatetargetsinscope_test_port_suffix_is_not_a_valid_network_target": ".test_port_suffix_is_not_a_valid_network_target()" | kind=code-symbol | source=probe/tests/test_scope_validator.py:L55 | neighbors=[TestValidateTargetsInScope]
+- "tests_test_scope_validator_testvalidatetargetsinscope_test_port_suffix_stripped": ".test_port_suffix_stripped()" | kind=code-symbol | source=probe/tests/test_scope_validator.py:L46 | neighbors=[TestValidateTargetsInScope]
+- "tests_test_scope_validator_testvalidatetargetsinscope_test_range_must_be_fully_contained": ".test_range_must_be_fully_contained()" | kind=code-symbol | source=probe/tests/test_scope_validator.py:L69 | neighbors=[TestValidateTargetsInScope]
+- "tests_test_seed_admin_rationale_1": "Tests for seed_admin.py.  Covers:   - first deployment: creates tenant + admin," | kind=entity | source=manager/backend/tests/test_seed_admin.py:L1 | neighbors=[test_seed_admin.py]
+- "tests_test_seed_admin_testdatabaseunavailable_test_retries_then_raises_database_unavailable": ".test_retries_then_raises_database_unavailable()" | kind=code-symbol | source=manager/backend/tests/test_seed_admin.py:L290 | neighbors=[TestDatabaseUnavailable]
+- "tests_test_seed_admin_testdriftdetection_test_warns_on_multiple_admins": ".test_warns_on_multiple_admins()" | kind=code-symbol | source=manager/backend/tests/test_seed_admin.py:L310 | neighbors=[TestDriftDetection]
 
 ## Instructions
 

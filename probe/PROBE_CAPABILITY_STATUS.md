@@ -97,3 +97,145 @@ attack surface, exactly as intended — bind-to-`0.0.0.0` ≠ reachable.
    correctly omits it. If that firewall rule is ever relaxed, Intel AMT (a
    historically CVE-heavy out-of-band management surface) becomes reachable.
    Confirm AMT is provisioned-off on the host, not merely firewalled.
+   (As of 2026-08-25 the probe now actively tests 623 for IPMI cipher-zero — see
+   `ipmi_scanner` below.)
+
+---
+
+## Tier-1 Enterprise Network VA — new capabilities (added 2026-08-25)
+
+Breadth-first, unauthenticated / empty-credential, read-only checks. Each scanner
+follows the collect→findings split, is wired into all orchestrators across both
+trees, and is enforced by `tests/test_tier1_wiring_gate.py` (no branch can ship
+half-wired). Validation column: **UT** = unit tests (pure logic + monkeypatched
+probe + parity); **GT** = live-socket ground-truth performed; **lab** = needs a
+service lab for precision/recall (follow-up).
+
+| Capability | Scanner (port) | Findings | Validation |
+|---|---|---|---|
+| SSH algo/config audit | `ssh_scanner` (22) | SSH-WEAK-ALGO, SSH-TERRAPIN | UT + GT (real KEXINIT) |
+| SMB null-session enum | `smb_enum_scanner` (445) | SMB-NULL-SESSION(-USERS) | UT · lab (Samba/AD) |
+| LDAP anonymous bind | `ldap_scanner` (389/636) | LDAP-ANON-BIND/SEARCH | UT · lab (AD) |
+| DNS AXFR/DNSSEC/version | `dns_scanner` (53) | DNS-ZONE-TRANSFER, DNS-VERSION-DISCLOSURE, DNS-DNSSEC-ABSENT | UT · lab (zonetransfer.me) |
+| NFS export exposure | `nfs_scanner` (2049/111) | NFS-EXPORT-WORLD-READABLE, RPC-PORTMAPPER-EXPOSED | UT (crafted XDR) · lab |
+| FTP anonymous access | `ftp_scanner` (21) | FTP-ANON-ACCESS | UT + GT (control+PASV) |
+| rsync anon modules | `rsync_scanner` (873) | RSYNC-ANON-MODULES, RSYNC-DAEMON-EXPOSED | UT · lab |
+| VNC auth exposure | `vnc_scanner` (5900/5901) | VNC-NO-AUTH, VNC-WEAK-AUTH | UT + GT (RFB) |
+| IPMI cipher-zero | `ipmi_scanner` (623/udp) | IPMI-CIPHER-ZERO, IPMI-EXPOSED | UT (byte-exact RMCP+) · lab |
+| SMTP hygiene | `smtp_scanner` (25/587) | SMTP-USER-ENUM, SMTP-NO-STARTTLS | UT + GT (VRFY/EHLO) |
+| MSRPC endpoint map | `msrpc_scanner` (135) | MSRPC-ENDPOINTS-EXPOSED | UT · lab (Windows) |
+| Printer exposure | `printer_scanner` (9100/631) | PRINTER-EXPOSED | UT + GT (PJL) |
+
+**Enterprise attack-path correlations:** CORR-ANON-DATA-EXPOSURE (≥2 anonymous
+data channels), CORR-USER-ENUM-PLUS-WEAK-AUTH (SMB user list + weak/exposed login),
+CORR-MGMT-PLANE-EXPOSED (IPMI/VNC/RDP console surfaces).
+
+## CVE correlation (manager-side layer — the probe still emits NO CVE claim)
+
+A separate `cve/` package (parallel to `scanner/`, NOT a probe scanner, NOT
+two-tree mirrored) owns an offline vuln mirror and maps the CPE identity the probe
+attaches to service facts → prioritized CVE findings. Design: `Capabilties/
+CVE_CORRELATION_DESIGN.md`. Strategy: **full offline NVD mirror** (air-gap) + KEV +
+EPSS. Verified against live feeds: NVD 383,275 CVEs (~192 pages), CISA KEV 1,682,
+EPSS 365,017.
+
+| Module | Responsibility | Validation |
+|---|---|---|
+| `cve/version.py` | Loose version parse/compare for real banners (`8.2p1`, `1.1.1k`, epochs) | UT |
+| `scanner/cpe.py` (+`main_scripts/` mirror) | product → CPE 2.3 identity; enriches `service_banner` facts | UT + parity |
+| `cve/vulndb.py` | SQLite mirror; `cves_for_cpe` range-membership query (versionStart*/End*) | UT (in-mem DB) |
+| `cve/correlator.py` | facts → CVE findings; CVSS+KEV+EPSS+exposure risk score, confidence `medium` max, "verify patch level" | UT + live |
+| `cve/ingest.py` | Build/refresh mirror: NVD API 2.0 (paginated, **resumable**, rate-limited, certifi TLS), KEV, EPSS | UT (offline `_get`) + live smoke |
+| `cve/cli.py` | `ingest` + `correlate` verbs; clean-stdout JSON contract | UT |
+
+Wired into `run_all` (both trees) as an **optional** post-findings step gated on
+`--vuln-db <mirror.sqlite>`: correlates the collected facts and writes
+`cve_findings.jsonl` (separate from `findings.jsonl`), plus `cve_summary` in
+SUMMARY.json. Absent/missing DB → logged and skipped. Findings are banner-derived
+(confidence `medium` max, KEV-first risk ordering) — a manager verifies against the
+distro patch level before treating any CVE as confirmed. Tests:
+`tests/test_cve_correlation.py` (46).
+
+### Architecture-review remediation (2026-08-27)
+
+A senior-level failure analysis of the whole system produced five shipped fixes
+(full suite **1235 passed**; the only fail is the pre-existing, out-of-scope MQTT
+packet test):
+
+| # | Fix | Where |
+|---|-----|-------|
+| 1 | **Two-tree parity guard** — every mirrored `scanner/`↔`main_scripts/` `.py` must be byte-identical, catching *logic* drift the wiring gate can't | `tests/test_two_tree_parity.py` (51) |
+| 2 | **Exposure is operator-asserted** — `run_all --exposed`; the risk boost applies only when the operator declares the host internet-facing (was blanket-true, so it carried no signal on internal scans) | `run_all.py` (both trees) |
+| 3 | **CPE coverage visibility** — `_CPE_MAP` +4 datastores (elasticsearch/couchdb/memcached/redis); `service_banner` emits `cpe_unmapped` when a product is named but no CPE results, so map blind spots are measurable | `scanner/cpe.py`, `scanner/service_banner.py` (+mirrors) |
+| 4 | **Distro-backport confidence** — a backport marker in the raw banner (ubuntu/debian/+deb/+dfsg/`.elN`/raspbian) downgrades a finding to `low` with an explanatory note, because distros patch without bumping the upstream version | `cve/correlator.py` |
+| 5 | **Mirror-staleness signal** — `ingest` stamps `meta.last_ingest_utc`; `correlate` (CLI + `run_all`) surfaces mirror age and warns past 7 days | `cve/ingest.py`, `cve/correlator.py`, `cve/cli.py` |
+
+Confidence and risk are **orthogonal**: a `low`-confidence finding can still be
+`critical`-risk ("high-impact IF real — verify the patch level").
+
+**Deferred (need a decision, documented):** (a) the CVE layer's production home
+(manager repo vs. probe); (b) `run_all` → clearer name; (c) a per-host aggregate
+rate limiter.
+
+**Two open foundations (from the plan, not yet done):** (1) two-tree
+(`scanner/` vs `main_scripts/`) consolidation; (2) sealed-build (Nuitka) prototype
+with the new impacket submodules + ldap3/dnspython include-modules.
+
+## Network VA campaign — sequential background job (added 2026-08-27)
+
+`scanner/va_campaign.py` (+`main_scripts/` byte-identical mirror) is the
+end-to-end **campaign orchestrator**: it runs every already-shipped capability as
+one sequential job and streams live "what we're doing now" progress. It does not
+add scanners — it *composes* the ScanFunnel-built ones in a fixed, gated order so
+an operator can launch a whole-network VA with a single command and watch it.
+
+**Stages (`STAGE_CATALOG`, in order):** discovery → port_map → assessment →
+udp_snmp → full_port *(opt-in)* → exposure → inventory → **detect** → cve
+*(opt-in)*. Each carries operator-facing `name`/`detail` copy. Gating: a stage with
+an unmet `gate` (e.g. port_map when discovery found 0 live hosts) is **skipped**,
+not failed; opt-in stages disabled by options are excluded from the percent
+denominator. Stage errors are **isolated** — one scanner blowing up marks that
+stage `error` and the campaign continues.
+
+**Detection layer (the "condition" DB — added 2026-08-27):** the always-on `detect`
+stage (`run_detect` → `findings.py::run_findings(ctx.facts)`) is what turns raw
+collected facts into **ranked, actionable weakness findings** — weak/legacy TLS,
+SMBv1 / no-signing / null-session, weak-SSH / Terrapin, anonymous FTP/LDAP, no-auth
+VNC, IPMI cipher-0, RDP-without-NLA, missing web-security headers, exposed UDP
+amplifiers, plus cross-fact attack-path correlations. It is deterministic, offline,
+needs no DB, and gates on `bool(ctx.facts)`. Findings are emitted as first-class
+facts (`scanner="findings"`, `data=Finding.to_dict()`) and, in the CLI path, split
+into their own `findings.jsonl` artifact. This is a **weakness/condition** verdict,
+NOT a CVE claim — the opt-in `cve` stage (`--vuln-db`) remains the separate CVE-DB
+correlation layer, and the probe still never asserts a confirmed CVE.
+
+**Progress contract (`ProgressReporter.snapshot()`):** JSON with
+`campaign_id, targets, status, started_at, updated_at, percent, current_stage,
+eta_seconds, stages[]{id,name,detail,status,started_at,ended_at,count,note},
+totals{live_hosts,open_ports,facts}`. Written atomically to
+`campaign_progress.json` (tmp + `os.replace`) after every transition and pushed to
+an optional callback (wrapped so a bad sink never breaks a scan). This is the exact
+shape the manager frontend campaign-progress page consumes.
+
+**Two run paths:**
+- **Standalone CLI** — `python -m scanner.va_campaign <targets> [--full-ports]
+  [--no-udp] [--vuln-db mirror.sqlite] [--exposed] [--out-dir DIR]`. Full-port
+  audit and CVE correlation are opt-in here (default = fast, no CVE). `CliProgressView`
+  redraws in place on a TTY, one line per transition when piped. Emits a JSON
+  summary on stdout (clean-stdout contract), plus `results.jsonl` (every collected
+  fact) and `findings.jsonl` (just the detected weaknesses, ranked).
+- **Agent-dispatchable use-case** — `uc_network_va` (code `12`, `scan_type
+  network_va`, profile `it`), so the manager can enqueue the whole campaign as a
+  background job. **Collection-only on this path:** it runs discovery →
+  assessment + both post-stages (device classification + exposure mapping) but
+  emits **no CVE claim** — CVE correlation stays the manager-side layer (standing
+  constraint). CVE is a probe stage *only* in the standalone CLI via `--vuln-db`.
+
+Parity: `uc_network_va` is byte-identical in the probe (`agent/use_cases.py`) and
+manager (`agents.py`) catalogs, `USE_CASE_CODES[12]` matches, enforced by the
+manager's `test_agent_dispatch.py`. Tests: `tests/test_va_campaign.py` (16 — engine
+sequencing/gating/opt-in, error isolation, percent/ETA math, the JSON progress
+shape, atomic write, callback resilience, catalog↔default_stages alignment,
+CliProgressView, and the real `detect` stage turning an SMBv1 fact into an
+`SMB-V1-ENABLED` finding / skipping when nothing was collected) +
+`test_probe_core.py::test_network_va_resolves`. Full suite **1255 passed**.

@@ -1,4 +1,4 @@
-# Node Description Batch 85 of 227
+# Node Description Batch 85 of 236
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,58 +12,51 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
-For an entity node (any other kind — e.g. a person, place, event, object),
-describe what the entity is and its role, grounded in its type, its
-relations (neighbors) and the provided citations/evidence — e.g.
-"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
-Ground entity descriptions in the citations/evidence when present; do not
-speculate beyond the context, so a node with no supporting context may be
-left out of the reply.
 Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_tls_fingerprint_synthetic_server_hello": "_synthetic_server_hello()" | kind=code-symbol | source=probe/tests/test_tls_fingerprint.py:L45 | neighbors=[test_tls_fingerprint.py, .test_extracts_version_and_cipher(), .test_tls13_version_from_supported_vers…]
-- "tests_test_tls_integration_self_signed": "_self_signed()" | kind=code-symbol | source=probe/tests/test_tls_integration.py:L29 | neighbors=[test_tls_integration.py, test_tls_fingerprint_is_nonzero_and_sta…, test_tls_scanner_reports_posture_grade()]
-- "tests_test_tls_integration_test_tls_fingerprint_is_nonzero_and_stable": "test_tls_fingerprint_is_nonzero_and_stable()" | kind=code-symbol | source=probe/tests/test_tls_integration.py:L111 | neighbors=[test_tls_integration.py, _self_signed(), _TLSServer]
-- "tests_test_tls_integration_test_tls_scanner_reports_posture_grade": "test_tls_scanner_reports_posture_grade()" | kind=code-symbol | source=probe/tests/test_tls_integration.py:L87 | neighbors=[test_tls_integration.py, _self_signed(), _TLSServer]
-- "tests_test_transport_testfetchscope": "TestFetchScope" | kind=code-symbol | source=probe/tests/test_transport.py:L405 | neighbors=[test_transport.py, .test_http_error_returns_none(), .test_returns_scope()]
-- "tests_test_transport_transport": "transport()" | kind=code-symbol | source=probe/tests/test_transport.py:L17 | neighbors=[test_transport.py, Create a Transport with a real state fi…, Create a Transport with a real state fi…]
-- "tests_test_validation_endpoints_test_approve_conflict_when_not_pending": "test_approve_conflict_when_not_pending()" | kind=code-symbol | source=manager/backend/tests/test_validation_endpoints.py:L116 | neighbors=[test_validation_endpoints.py, _mock_db(), _user()]
-- "tests_test_validation_endpoints_test_approve_enqueues_safe_validate_job": "test_approve_enqueues_safe_validate_job()" | kind=code-symbol | source=manager/backend/tests/test_validation_endpoints.py:L89 | neighbors=[test_validation_endpoints.py, _mock_db(), _user()]
-- "tests_test_validation_endpoints_test_create_rejected_when_roe_forbids": "test_create_rejected_when_roe_forbids()" | kind=code-symbol | source=manager/backend/tests/test_validation_endpoints.py:L74 | neighbors=[test_validation_endpoints.py, _mock_db(), _user()]
-- "tests_test_validation_endpoints_test_create_request_is_pending_and_derives_tls_check": "test_create_request_is_pending_and_derives_tls_check()" | kind=code-symbol | source=manager/backend/tests/test_validation_endpoints.py:L55 | neighbors=[test_validation_endpoints.py, _mock_db(), _user()]
-- "tests_test_validation_endpoints_test_reject_marks_rejected": "test_reject_marks_rejected()" | kind=code-symbol | source=manager/backend/tests/test_validation_endpoints.py:L126 | neighbors=[test_validation_endpoints.py, _mock_db(), _user()]
-- "tests_test_validation_ingest_exec": "_exec()" | kind=code-symbol | source=manager/backend/tests/test_validation_ingest.py:L72 | neighbors=[test_validation_ingest.py, test_ingest_confirmed_updates_request_a…, test_ingest_unknown_job_is_noop()]
-- "tests_test_validation_ingest_test_ingest_confirmed_updates_request_and_finding": "test_ingest_confirmed_updates_request_and_finding()" | kind=code-symbol | source=manager/backend/tests/test_validation_ingest.py:L88 | neighbors=[test_validation_ingest.py, _exec(), _finding()]
-- "tests_test_verification_graph": "test_verification_graph.py" | kind=code-symbol | source=manager/backend/tests/test_verification_graph.py:L1 | neighbors=[c02c465 feat(verification): optional La…, test_graph_available_is_boolean(), test_run_verification_matches_core_with…]
-- "tests_test_wire_identity_testprobepayload": "TestProbePayload" | kind=code-symbol | source=probe/tests/test_wire_identity.py:L28 | neighbors=[test_wire_identity.py, .test_default_carries_no_brand(), .test_env_override()]
-- "tests_test_wire_identity_testuseragent": "TestUserAgent" | kind=code-symbol | source=probe/tests/test_wire_identity.py:L17 | neighbors=[test_wire_identity.py, .test_default_is_generic_browser_no_bra…, .test_env_override()]
-- "tests_test_workflow_execution_explodingscanner": "_ExplodingScanner" | kind=code-symbol | source=probe/tests/test_workflow_execution.py:L29 | neighbors=[test_workflow_execution.py, .scan_target(), test_per_target_exception_preserves_oth…]
-- "tools_installer_liststatus": "listStatus()" | kind=code-symbol | source=manager/frontend/lib/tools/installer.ts:L264 | neighbors=[tools.ts, installer.ts, readInstalled()]
-- "tools_installer_writeinstalled": "writeInstalled()" | kind=code-symbol | source=manager/frontend/lib/tools/installer.ts:L42 | neighbors=[installer.ts, installTool(), removeTool()]
-- "tools_issue_license_issue": "issue()" | kind=code-symbol | source=probe/tools/issue_license.py:L62 | neighbors=[issue_license.py, _b64(), main()]
-- "tools_issue_license_pubkey": "pubkey()" | kind=code-symbol | source=probe/tools/issue_license.py:L48 | neighbors=[issue_license.py, main(), Print the vendor PUBLIC key (hex) deriv…]
-- "tools_manifest_tool_manifest": "TOOL_MANIFEST" | kind=code-symbol | source=manager/frontend/lib/tools/manifest.ts:L74 | neighbors=[tools.ts, installer.ts, manifest.ts]
-- "ui_output_findingdetail": "findingDetail()" | kind=code-symbol | source=manager/frontend/cli/ui/output.ts:L238 | neighbors=[output.ts, ln(), rule()]
-- "ui_output_findingline": "findingLine()" | kind=code-symbol | source=manager/frontend/cli/ui/output.ts:L184 | neighbors=[output.ts, ln(), sevBadge()]
-- "ui_output_scanheader": "scanHeader()" | kind=code-symbol | source=manager/frontend/cli/ui/output.ts:L63 | neighbors=[output.ts, ln(), rule()]
-- "ui_output_stageerror": "stageError()" | kind=code-symbol | source=manager/frontend/cli/ui/output.ts:L133 | neighbors=[output.ts, ln(), w()]
-- "ui_output_summary": "summary()" | kind=code-symbol | source=manager/frontend/cli/ui/output.ts:L194 | neighbors=[output.ts, ln(), rule()]
-- "ui_output_w": "w()" | kind=code-symbol | source=manager/frontend/cli/ui/output.ts:L29 | neighbors=[output.ts, stageError(), stageProgress()]
-- "utils_csv_parser": "csv_parser.py" | kind=code-symbol | source=manager/backend/app/utils/csv_parser.py:L1 | neighbors=[d1b4dd3 trim frontend to 7 core pages; …, parse_csv_assets(), 298a9d4 trim frontend to 7 core pages; …]
-- "utils_csv_parser_rationale_26": "Parse CSV text into a list of AssetIn models and error strings." | kind=entity | source=manager/backend/app/utils/csv_parser.py:L26 | neighbors=[parse_csv_assets(), AssetCriticality, AssetType]
-- "utils_pagination": "pagination.py" | kind=code-symbol | source=manager/backend/app/utils/pagination.py:L1 | neighbors=[d1b4dd3 trim frontend to 7 core pages; …, paginate_query(), 298a9d4 trim frontend to 7 core pages; …]
-- "vuln_enrichment_vulnenrichmentservice_get_kev_catalog": "._get_kev_catalog()" | kind=code-symbol | source=manager/backend/app/vuln/enrichment.py:L249 | neighbors=[VulnEnrichmentService, .check_cisa_kev(), .get()]
-- "vuln_nessus_nessusscanner_authenticate": ".authenticate()" | kind=code-symbol | source=manager/backend/app/vuln/nessus.py:L72 | neighbors=[NessusScanner, Prefer API key auth (stateless, no sess…, Prefer API key auth (stateless, no sess…]
-- "vuln_nessus_nessusscanner_map_finding": ".map_finding()" | kind=code-symbol | source=manager/backend/app/vuln/nessus.py:L205 | neighbors=[NessusScanner, Map a raw Nessus vulnerability dict → F…, Map a raw Nessus vulnerability dict → F…]
-- "vuln_nessus_rationale_1": "NessusScanner — wraps the Tenable Nessus REST API v6.  Endpoints used:   POST /s" | kind=entity | source=manager/backend/app/vuln/nessus.py:L1 | neighbors=[nessus.py, FindingSeverity, FindingStatus]
-- "vuln_nessus_rationale_101": "Returns nessus scan_id as string." | kind=entity | source=manager/backend/app/vuln/nessus.py:L101 | neighbors=[.create_scan(), FindingSeverity, FindingStatus]
-- "vuln_nessus_rationale_102": "Returns nessus scan_id as string." | kind=entity | source=manager/backend/app/vuln/nessus.py:L102 | neighbors=[FindingSeverity, FindingStatus, .create_scan()]
-- "vuln_nessus_rationale_140": "Returns scan_uuid (token for tracking)." | kind=entity | source=manager/backend/app/vuln/nessus.py:L140 | neighbors=[.launch_scan(), FindingSeverity, FindingStatus]
-- "vuln_nessus_rationale_141": "Returns scan_uuid (token for tracking)." | kind=entity | source=manager/backend/app/vuln/nessus.py:L141 | neighbors=[FindingSeverity, FindingStatus, .launch_scan()]
-- "vuln_nessus_rationale_151": "Returns {status, progress_percent, host_count}." | kind=entity | source=manager/backend/app/vuln/nessus.py:L151 | neighbors=[.poll_status(), FindingSeverity, FindingStatus]
+- "tests_test_os_fingerprint_testicmptimestamps_ts_reply": "._ts_reply()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L96 | neighbors=[TestIcmpTimestamps, .test_parse_datagram_delivery_has_no_tt…, .test_parse_extracts_ttl_and_transmit()]
+- "tests_test_os_fingerprint_testinetchecksum": "TestInetChecksum" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L24 | neighbors=[test_os_fingerprint.py, .test_checksum_handles_odd_length(), .test_checksum_verifies_to_zero()]
+- "tests_test_os_fingerprint_testremoteclock": "TestRemoteClock" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L123 | neighbors=[test_os_fingerprint.py, .test_high_bit_marks_nonstandard_clock(), .test_standard_value_decodes_to_wall_cl…]
+- "tests_test_os_fingerprint_testtimestampfallback_scanner": "._scanner()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L139 | neighbors=[TestTimestampFallback, .test_both_filtered_reports_no_reply(), .test_timestamp_reply_when_echo_is_filt…]
+- "tests_test_outbox_reclaim_test_dead_letter_and_requeue_are_mutually_exclusive": "test_dead_letter_and_requeue_are_mutually_exclusive()" | kind=code-symbol | source=manager/backend/tests/test_outbox_reclaim.py:L92 | neighbors=[test_outbox_reclaim.py, _now(), _sql()]
+- "tests_test_outbox_reclaim_test_dead_letter_stmt_targets_exhausted_stranded_rows": "test_dead_letter_stmt_targets_exhausted_stranded_rows()" | kind=code-symbol | source=manager/backend/tests/test_outbox_reclaim.py:L68 | neighbors=[test_outbox_reclaim.py, _now(), _sql()]
+- "tests_test_outbox_reclaim_test_requeue_stmt_makes_retryable_stranded_rows_due_now": "test_requeue_stmt_makes_retryable_stranded_rows_due_now()" | kind=code-symbol | source=manager/backend/tests/test_outbox_reclaim.py:L81 | neighbors=[test_outbox_reclaim.py, _now(), _sql()]
+- "tests_test_passive_collector_test_ot_udp_backend_never_joins_or_transmits": "test_ot_udp_backend_never_joins_or_transmits()" | kind=code-symbol | source=probe/tests/test_passive_collector.py:L74 | neighbors=[test_passive_collector.py, .close(), _Writer]
+- "tests_test_passive_collector_test_subset_listener_failure_reports_degraded_coverage": "test_subset_listener_failure_reports_degraded_coverage()" | kind=code-symbol | source=probe/tests/test_passive_collector.py:L35 | neighbors=[test_passive_collector.py, _Socket, _Writer]
+- "tests_test_pipeline_testrunpipelinededup": "TestRunPipelineDedup" | kind=code-symbol | source=manager/detection_engine/tests/test_pipeline.py:L232 | neighbors=[test_pipeline.py, .test_findings_deduped_within_same_host…, .test_two_identical_hosts_each_get_thei…]
+- "tests_test_pipeline_testrunpipelineemptyinput": "TestRunPipelineEmptyInput" | kind=code-symbol | source=manager/detection_engine/tests/test_pipeline.py:L112 | neighbors=[test_pipeline.py, .test_empty_jsonl_returns_no_findings(), .test_no_paths_returns_empty()]
+- "tests_test_pipeline_testrunpipelineexposure": "TestRunPipelineExposure" | kind=code-symbol | source=manager/detection_engine/tests/test_pipeline.py:L203 | neighbors=[test_pipeline.py, .test_exposure_internet_facing_propagat…, .test_no_exposure_fields_are_none()]
+- "tests_test_port_catalog": "test_port_catalog.py" | kind=code-symbol | source=probe/tests/test_port_catalog.py:L1 | neighbors=[cdee859 feat(probe): add container/clou…, test_modern_infra_ports_present(), gates.py]
+- "tests_test_portal_read_finding": "_finding()" | kind=code-symbol | source=manager/backend/tests/test_portal_read.py:L180 | neighbors=[test_portal_read.py, .test_aggregates_posture_counts_and_que…, .test_returns_severity_and_timeline()]
+- "tests_test_portal_read_operator": "_operator()" | kind=code-symbol | source=manager/backend/tests/test_portal_read.py:L31 | neighbors=[test_portal_read.py, .test_operator_cannot_create(), .test_operator_is_forbidden()]
+- "tests_test_portal_read_testclientfindingwhitelist": "TestClientFindingWhitelist" | kind=code-symbol | source=manager/backend/tests/test_portal_read.py:L82 | neighbors=[test_portal_read.py, .test_schema_is_a_whitelist(), .test_serialization_drops_internal_fiel…]
+- "tests_test_portal_read_testcreatescanrequest_test_duplicate_pending_is_conflict": ".test_duplicate_pending_is_conflict()" | kind=code-symbol | source=manager/backend/tests/test_portal_read.py:L190 | neighbors=[TestCreateScanRequest, _client(), _db_first()]
+- "tests_test_portal_read_testcreatescanrequest_test_operator_cannot_create": ".test_operator_cannot_create()" | kind=code-symbol | source=manager/backend/tests/test_portal_read.py:L303 | neighbors=[TestCreateScanRequest, _operator(), _db_first()]
+- "tests_test_portal_read_testportalfindings_test_operator_is_forbidden": ".test_operator_is_forbidden()" | kind=code-symbol | source=manager/backend/tests/test_portal_read.py:L103 | neighbors=[TestPortalFindings, _db_list(), _operator()]
+- "tests_test_portal_read_testportalfindings_test_single_finding_404_when_out_of_scope": ".test_single_finding_404_when_out_of_scope()" | kind=code-symbol | source=manager/backend/tests/test_portal_read.py:L108 | neighbors=[TestPortalFindings, _client(), _db_scalar()]
+- "tests_test_portal_read_testportalpostureandengagement": "TestPortalPostureAndEngagement" | kind=code-symbol | source=manager/backend/tests/test_portal_read.py:L133 | neighbors=[test_portal_read.py, .test_engagement_summary(), .test_posture_scores_open_findings()]
+- "tests_test_portal_read_testportalpostureandengagement_test_engagement_summary": ".test_engagement_summary()" | kind=code-symbol | source=manager/backend/tests/test_portal_read.py:L143 | neighbors=[TestPortalPostureAndEngagement, _client(), _db_scalar()]
+- "tests_test_portal_read_testportalpostureandengagement_test_posture_scores_open_findings": ".test_posture_scores_open_findings()" | kind=code-symbol | source=manager/backend/tests/test_portal_read.py:L134 | neighbors=[TestPortalPostureAndEngagement, _client(), _db_list()]
+- "tests_test_portal_read_testportalreports_test_download_returns_content_for_approved": ".test_download_returns_content_for_approved()" | kind=code-symbol | source=manager/backend/tests/test_portal_read.py:L126 | neighbors=[TestPortalReports, _client(), _db_scalar()]
+- "tests_test_portal_read_testportalreports_test_lists_approved_reports": ".test_lists_approved_reports()" | kind=code-symbol | source=manager/backend/tests/test_portal_read.py:L120 | neighbors=[TestPortalReports, _client(), _db_list()]
+- "tests_test_portal_read_testportalreports_test_unapproved_or_missing_report_is_404": ".test_unapproved_or_missing_report_is_404()" | kind=code-symbol | source=manager/backend/tests/test_portal_read.py:L115 | neighbors=[TestPortalReports, _client(), _db_scalar()]
+- "tests_test_portal_read_testsummary_test_aggregates_posture_counts_and_queue": ".test_aggregates_posture_counts_and_queue()" | kind=code-symbol | source=manager/backend/tests/test_portal_read.py:L190 | neighbors=[TestSummary, _client(), _finding()]
+- "tests_test_portal_remediation_testportalremediation_test_missing_or_out_of_scope_finding_is_404": ".test_missing_or_out_of_scope_finding_is_404()" | kind=code-symbol | source=manager/backend/tests/test_portal_remediation.py:L75 | neighbors=[TestPortalRemediation, _client(), _db_scalar()]
+- "tests_test_portal_scope_operator": "_operator()" | kind=code-symbol | source=manager/backend/tests/test_portal_scope.py:L33 | neighbors=[test_portal_scope.py, .test_operator_is_forbidden(), .test_operator_cannot_scope()]
+- "tests_test_portal_scope_testclientscoped": "TestClientScoped" | kind=code-symbol | source=manager/backend/tests/test_portal_scope.py:L70 | neighbors=[test_portal_scope.py, .test_applies_engagement_filter_for_bou…, .test_operator_cannot_scope()]
+- "tests_test_probe_core_testassetmergecredentialed": "TestAssetMergeCredentialed" | kind=code-symbol | source=probe/tests/test_probe_core.py:L568 | neighbors=[test_probe_core.py, .test_ssh_inventory(), .test_windows_inventory()]
+- "tests_test_probe_core_testassetmergecredentialed_test_ssh_inventory": ".test_ssh_inventory()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L569 | neighbors=[TestAssetMergeCredentialed, _asset(), _scan_result()]
+- "tests_test_probe_core_testassetmergecredentialed_test_windows_inventory": ".test_windows_inventory()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L576 | neighbors=[TestAssetMergeCredentialed, _asset(), _scan_result()]
+- "tests_test_probe_core_testassetmergehostdiscovery": "TestAssetMergeHostDiscovery" | kind=code-symbol | source=probe/tests/test_probe_core.py:L502 | neighbors=[test_probe_core.py, .test_alive_sets_timestamp(), .test_responding_ports()]
+- "tests_test_probe_core_testassetmergehostdiscovery_test_alive_sets_timestamp": ".test_alive_sets_timestamp()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L503 | neighbors=[TestAssetMergeHostDiscovery, _asset(), _scan_result()]
+- "tests_test_probe_core_testassetmergehostdiscovery_test_responding_ports": ".test_responding_ports()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L510 | neighbors=[TestAssetMergeHostDiscovery, _asset(), _scan_result()]
+- "tests_test_probe_core_testassetmergepassivecollect_test_passive_facts_appended": ".test_passive_facts_appended()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L584 | neighbors=[TestAssetMergePassiveCollect, _asset(), _scan_result()]
+- "tests_test_probe_core_testassetmergeportscan": "TestAssetMergePortScan" | kind=code-symbol | source=probe/tests/test_probe_core.py:L521 | neighbors=[test_probe_core.py, .test_tcp_open(), .test_udp_uncertain()]
+- "tests_test_probe_core_testassetmergeportscan_test_tcp_open": ".test_tcp_open()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L522 | neighbors=[TestAssetMergePortScan, _asset(), _scan_result()]
+- "tests_test_probe_core_testassetmergeportscan_test_udp_uncertain": ".test_udp_uncertain()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L528 | neighbors=[TestAssetMergePortScan, _asset(), _scan_result()]
 
 ## Instructions
 

@@ -1,4 +1,4 @@
-# Node Description Batch 154 of 227
+# Node Description Batch 154 of 236
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,60 +12,51 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
-For an entity node (any other kind — e.g. a person, place, event, object),
-describe what the entity is and its role, grounded in its type, its
-relations (neighbors) and the provided citations/evidence — e.g.
-"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
-Ground entity descriptions in the citations/evidence when present; do not
-speculate beyond the context, so a node with no supporting context may be
-left out of the reply.
-LANGUAGE: each entry has a `lang=` marker giving the language of its source.
-Write that entry's description in EXACTLY that language. Do not translate to
-a single common language — match each node's source language individually.
+Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "main_scripts_mass_scan_rationale_66": "Run masscan over the given target specs and return its parsed JSON records." | kind=entity | source=probe/main_scripts/mass_scan.py:L66 | neighbors=[_run_masscan()] | lang=en
-- "main_scripts_mcp_ai_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/mcp_ai_scanner.py:L323 | neighbors=[mcp_ai_scanner.py] | lang=en
-- "main_scripts_mcp_ai_scanner_mcpaiscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/mcp_ai_scanner.py:L202 | neighbors=[MCPAIScanner] | lang=en
-- "main_scripts_mcp_ai_scanner_noredirect_redirect_request": ".redirect_request()" | kind=code-symbol | source=probe/main_scripts/mcp_ai_scanner.py:L111 | neighbors=[_NoRedirect] | lang=en
-- "main_scripts_mcp_ai_scanner_rationale_1": "mcp_ai_scanner.py — discover exposed AI inference servers and MCP endpoints.  WH" | kind=entity | source=probe/main_scripts/mcp_ai_scanner.py:L1 | neighbors=[mcp_ai_scanner.py] | lang=en
-- "main_scripts_mcp_ai_scanner_rationale_152": "Server/body fingerprint match against known non-AI squatters, or None." | kind=entity | source=probe/main_scripts/mcp_ai_scanner.py:L152 | neighbors=[_known_false_positive()] | lang=en
-- "main_scripts_mcp_ai_scanner_rationale_153": "Server/body fingerprint match against known non-AI squatters, or None." | kind=entity | source=probe/main_scripts/mcp_ai_scanner.py:L153 | neighbors=[_known_false_positive()] | lang=en
-- "main_scripts_mcp_ai_scanner_rationale_161": "The strongest possible evidence for a real MCP server: a WWW-Authenticate     he" | kind=entity | source=probe/main_scripts/mcp_ai_scanner.py:L161 | neighbors=[_mcp_oauth_signal()] | lang=en
-- "main_scripts_mcp_ai_scanner_rationale_162": "The strongest possible evidence for a real MCP server: a WWW-Authenticate     he" | kind=entity | source=probe/main_scripts/mcp_ai_scanner.py:L162 | neighbors=[_mcp_oauth_signal()] | lang=en
-- "main_scripts_mcp_ai_scanner_rationale_174": "JSON-typed body that actually talks about auth, not just any error text." | kind=entity | source=probe/main_scripts/mcp_ai_scanner.py:L174 | neighbors=[_auth_shaped_json_body()] | lang=en
-- "main_scripts_mcp_ai_scanner_rationale_175": "JSON-typed body that actually talks about auth, not just any error text." | kind=entity | source=probe/main_scripts/mcp_ai_scanner.py:L175 | neighbors=[_auth_shaped_json_body()] | lang=en
-- "main_scripts_mcp_ai_scanner_request": "_request()" | kind=code-symbol | source=probe/main_scripts/mcp_ai_scanner.py:L128 | neighbors=[mcp_ai_scanner.py] | lang=en
-- "main_scripts_mobile_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/mobile_scanner.py:L340 | neighbors=[mobile_scanner.py] | lang=en
-- "main_scripts_mobile_scanner_rationale_1": "mobile_scanner.py — mobile device exposure detection.  Covers playbook 13 (Mobil" | kind=entity | source=probe/main_scripts/mobile_scanner.py:L1 | neighbors=[mobile_scanner.py] | lang=en
-- "main_scripts_mobile_scanner_rationale_152": "Attempt TCP connect to lockdownd port 62078.     Port open = iOS device present" | kind=entity | source=probe/main_scripts/mobile_scanner.py:L152 | neighbors=[_probe_lockdownd()] | lang=en
-- "main_scripts_mobile_scanner_rationale_188": "Build a DNS PTR query in mDNS wire format with QU bit set." | kind=entity | source=probe/main_scripts/mobile_scanner.py:L188 | neighbors=[_build_mdns_query()] | lang=en
-- "main_scripts_mobile_scanner_rationale_199": "Extract PTR target names (service instance names) from mDNS reply." | kind=entity | source=probe/main_scripts/mobile_scanner.py:L199 | neighbors=[_parse_mdns_ptr_names()] | lang=en
-- "main_scripts_mobile_scanner_rationale_259": "Send one mDNS PTR query to target:5353 and return instance names." | kind=entity | source=probe/main_scripts/mobile_scanner.py:L259 | neighbors=[_probe_mdns_mobile_sync()] | lang=en
-- "main_scripts_mobile_scanner_rationale_279": "Detects mobile device exposure on the network:     ADB (Android) | lockdownd (iO" | kind=entity | source=probe/main_scripts/mobile_scanner.py:L279 | neighbors=[MobileScanner] | lang=en
-- "main_scripts_mobile_scanner_rationale_60": "Build an ADB A_CNXN (CONNECT) message — the standard handshake initiator." | kind=entity | source=probe/main_scripts/mobile_scanner.py:L60 | neighbors=[_build_adb_cnxn()] | lang=en
-- "main_scripts_mobile_scanner_rationale_71": "Parse a 24-byte ADB message header.  Returns parsed fields or None." | kind=entity | source=probe/main_scripts/mobile_scanner.py:L71 | neighbors=[_parse_adb_header()] | lang=pt
-- "main_scripts_mobile_scanner_rationale_96": "Send ADB CNXN and read the device's CNXN reply.     Returns a dict with connecti" | kind=entity | source=probe/main_scripts/mobile_scanner.py:L96 | neighbors=[_probe_adb()] | lang=en
-- "main_scripts_nmap_wrapper_have_nmap": "_have_nmap()" | kind=code-symbol | source=probe/main_scripts/nmap_wrapper.py:L111 | neighbors=[nmap_wrapper.py] | lang=en
-- "main_scripts_nmap_wrapper_main": "main()" | kind=code-symbol | source=probe/main_scripts/nmap_wrapper.py:L247 | neighbors=[nmap_wrapper.py] | lang=en
-- "main_scripts_nmap_wrapper_nmapexecutionerror_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/nmap_wrapper.py:L45 | neighbors=[NmapExecutionError] | lang=en
-- "main_scripts_nmap_wrapper_rationale_1": "nmap_wrapper.py — orchestrate nmap and normalize its XML into ScanResult.  WHY:" | kind=entity | source=probe/main_scripts/nmap_wrapper.py:L1 | neighbors=[nmap_wrapper.py] | lang=en
-- "main_scripts_nmap_wrapper_rationale_183": "# NOTE: `Element.find(...) or Element.find(...)` is a classic ElementTree" | kind=entity | source=probe/main_scripts/nmap_wrapper.py:L183 | neighbors=[nmap_wrapper.py] | lang=en
-- "main_scripts_nmap_wrapper_rationale_191": "# NOTE: `Element.find(...) or Element.find(...)` is a classic ElementTree" | kind=entity | source=probe/main_scripts/nmap_wrapper.py:L191 | neighbors=[nmap_wrapper.py] | lang=en
-- "main_scripts_nmap_wrapper_rationale_43": "Actionable subprocess failure; never reinterpret it as zero findings." | kind=entity | source=probe/main_scripts/nmap_wrapper.py:L43 | neighbors=[NmapExecutionError] | lang=en
-- "main_scripts_nmap_wrapper_rationale_70": "Allow tuning only; target, script, and output controls stay owned here." | kind=entity | source=probe/main_scripts/nmap_wrapper.py:L70 | neighbors=[_validated_extra_args()] | lang=en
-- "main_scripts_os_fingerprint_main": "main()" | kind=code-symbol | source=probe/main_scripts/os_fingerprint.py:L414 | neighbors=[os_fingerprint.py] | lang=en
-- "main_scripts_os_fingerprint_osfingerprintscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/os_fingerprint.py:L293 | neighbors=[OSFingerprintScanner] | lang=en
-- "main_scripts_os_fingerprint_rationale_1": "os_fingerprint.py — OS/stack fingerprinting via ICMP + TTL (Tier 2.1 + 2.2).  TW" | kind=entity | source=probe/main_scripts/os_fingerprint.py:L1 | neighbors=[os_fingerprint.py] | lang=pt
-- "main_scripts_os_fingerprint_rationale_102": "Round the observed TTL up to the nearest standard initial TTL." | kind=entity | source=probe/main_scripts/os_fingerprint.py:L102 | neighbors=[infer_initial_ttl()] | lang=en
-- "main_scripts_os_fingerprint_rationale_109": "Parse an ICMP timestamp reply (type 14): id/seq/ttl plus the three 32-bit     ti" | kind=entity | source=probe/main_scripts/os_fingerprint.py:L109 | neighbors=[parse_icmp_timestamps()] | lang=en
-- "main_scripts_os_fingerprint_rationale_122": "Interpret a timestamp reply's transmit value. Per RFC 792 a *standard* value" | kind=entity | source=probe/main_scripts/os_fingerprint.py:L122 | neighbors=[remote_clock()] | lang=pt
-- "main_scripts_os_fingerprint_rationale_129": "Combine available stack signals into a best-guess OS family with a calibrated" | kind=entity | source=probe/main_scripts/os_fingerprint.py:L129 | neighbors=[fingerprint_os()] | lang=pt
-- "main_scripts_os_fingerprint_rationale_138": "True only for an ICMP ECHO reply that actually came FROM the probed host.      A" | kind=entity | source=probe/main_scripts/os_fingerprint.py:L138 | neighbors=[accept_echo_reply()] | lang=en
-- "main_scripts_os_fingerprint_rationale_153": "Round the observed TTL up to the nearest standard initial TTL." | kind=entity | source=probe/main_scripts/os_fingerprint.py:L153 | neighbors=[infer_initial_ttl()] | lang=en
-- "main_scripts_os_fingerprint_rationale_180": "Combine available stack signals into a best-guess OS family with a calibrated" | kind=entity | source=probe/main_scripts/os_fingerprint.py:L180 | neighbors=[fingerprint_os()] | lang=pt
+- "lib_job_store_jobs_file": "JOBS_FILE" | kind=code-symbol | source=manager/frontend/lib/job-store.ts:L4 | neighbors=[job-store.ts]
+- "lib_job_store_jobstatus": "JobStatus" | kind=code-symbol | source=manager/frontend/lib/job-store.ts:L6 | neighbors=[job-store.ts]
+- "lib_naabu_parser_naaburaw": "NaabuRaw" | kind=code-symbol | source=manager/frontend/lib/naabu-parser.ts:L9 | neighbors=[naabu-parser.ts]
+- "lib_naabu_parser_naaburesult": "NaabuResult" | kind=code-symbol | source=manager/frontend/lib/naabu-parser.ts:L3 | neighbors=[naabu-parser.ts]
+- "lib_netexec_parser_netexechost": "NetExecHost" | kind=code-symbol | source=manager/frontend/lib/netexec-parser.ts:L3 | neighbors=[netexec-parser.ts]
+- "lib_netexec_parser_netexecparseresult": "NetExecParseResult" | kind=code-symbol | source=manager/frontend/lib/netexec-parser.ts:L13 | neighbors=[netexec-parser.ts]
+- "lib_nmap_parser_nmaphost": "NmapHost" | kind=code-symbol | source=manager/frontend/lib/nmap-parser.ts:L18 | neighbors=[nmap-parser.ts]
+- "lib_nmap_parser_nmapscriptresult": "NmapScriptResult" | kind=code-symbol | source=manager/frontend/lib/nmap-parser.ts:L13 | neighbors=[nmap-parser.ts]
+- "lib_nmap_parser_nmapservice": "NmapService" | kind=code-symbol | source=manager/frontend/lib/nmap-parser.ts:L3 | neighbors=[nmap-parser.ts]
+- "lib_nmap_parser_parser": "parser" | kind=code-symbol | source=manager/frontend/lib/nmap-parser.ts:L27 | neighbors=[nmap-parser.ts]
+- "lib_nuclei_parser_countbyseverity": "countBySeverity()" | kind=code-symbol | source=manager/frontend/lib/nuclei-parser.ts:L98 | neighbors=[nuclei-parser.ts]
+- "lib_nuclei_parser_nucleiraw": "NucleiRaw" | kind=code-symbol | source=manager/frontend/lib/nuclei-parser.ts:L17 | neighbors=[nuclei-parser.ts]
+- "lib_nuclei_parser_nucleirawline": "NucleiRawLine" | kind=code-symbol | source=manager/frontend/lib/nuclei-parser.ts:L82 | neighbors=[nuclei-parser.ts]
+- "lib_openvas_client_cvsstoseverity": "cvssToSeverity()" | kind=code-symbol | source=manager/frontend/lib/openvas-client.ts:L39 | neighbors=[openvas-client.ts]
+- "lib_openvas_client_gettask": "getTask()" | kind=code-symbol | source=manager/frontend/lib/openvas-client.ts:L31 | neighbors=[openvas-client.ts]
+- "lib_openvas_client_isopenvasfinding": "isOpenVASFinding()" | kind=code-symbol | source=manager/frontend/lib/openvas-client.ts:L54 | neighbors=[openvas-client.ts]
+- "lib_openvas_client_openvashelperoutput": "OpenVASHelperOutput" | kind=code-symbol | source=manager/frontend/lib/openvas-client.ts:L47 | neighbors=[openvas-client.ts]
+- "lib_openvas_client_openvastaskstate": "OpenVASTaskState" | kind=code-symbol | source=manager/frontend/lib/openvas-client.ts:L19 | neighbors=[openvas-client.ts]
+- "lib_openvas_client_taskstore": "taskStore" | kind=code-symbol | source=manager/frontend/lib/openvas-client.ts:L29 | neighbors=[openvas-client.ts]
+- "lib_permissions_store_data_path": "DATA_PATH" | kind=code-symbol | source=manager/frontend/lib/permissions-store.ts:L4 | neighbors=[permissions-store.ts]
+- "lib_permissions_store_permissionsfile": "PermissionsFile" | kind=code-symbol | source=manager/frontend/lib/permissions-store.ts:L16 | neighbors=[permissions-store.ts]
+- "lib_permissions_store_userrole": "UserRole" | kind=code-symbol | source=manager/frontend/lib/permissions-store.ts:L6 | neighbors=[permissions-store.ts]
+- "lib_portal_client_portalscanrequest": "PortalScanRequest" | kind=code-symbol | source=manager/frontend/lib/portal-client.ts:L82 | neighbors=[portal-client.ts]
+- "lib_portal_client_portaltrendpoint": "PortalTrendPoint" | kind=code-symbol | source=manager/frontend/lib/portal-client.ts:L108 | neighbors=[portal-client.ts]
+- "lib_scan_events_broadcasttoscan": "broadcastToScan()" | kind=code-symbol | source=manager/frontend/lib/scan-events.ts:L20 | neighbors=[scan-events.ts]
+- "lib_scan_events_callback": "Callback" | kind=code-symbol | source=manager/frontend/lib/scan-events.ts:L3 | neighbors=[scan-events.ts]
+- "lib_scan_events_scanlisteners": "scanListeners" | kind=code-symbol | source=manager/frontend/lib/scan-events.ts:L5 | neighbors=[scan-events.ts]
+- "lib_scan_events_subscribescan": "subscribeScan()" | kind=code-symbol | source=manager/frontend/lib/scan-events.ts:L7 | neighbors=[scan-events.ts]
+- "lib_scan_pipeline_computeoverallprogress": "computeOverallProgress()" | kind=code-symbol | source=manager/frontend/lib/scan-pipeline.ts:L114 | neighbors=[scan-pipeline.ts]
+- "lib_scan_pipeline_createinitialpipelinestate": "createInitialPipelineState()" | kind=code-symbol | source=manager/frontend/lib/scan-pipeline.ts:L84 | neighbors=[scan-pipeline.ts]
+- "lib_scan_pipeline_drainscanevents": "drainScanEvents()" | kind=code-symbol | source=manager/frontend/lib/scan-pipeline.ts:L78 | neighbors=[scan-pipeline.ts]
+- "lib_scan_pipeline_eventqueues": "eventQueues" | kind=code-symbol | source=manager/frontend/lib/scan-pipeline.ts:L60 | neighbors=[scan-pipeline.ts]
+- "lib_scan_pipeline_getpipeline": "getPipeline()" | kind=code-symbol | source=manager/frontend/lib/scan-pipeline.ts:L62 | neighbors=[scan-pipeline.ts]
+- "lib_scan_pipeline_pipelinecontext": "PipelineContext" | kind=code-symbol | source=manager/frontend/lib/scan-pipeline.ts:L14 | neighbors=[scan-pipeline.ts]
+- "lib_scan_pipeline_pipelinestate": "PipelineState" | kind=code-symbol | source=manager/frontend/lib/scan-pipeline.ts:L26 | neighbors=[scan-pipeline.ts]
+- "lib_scan_pipeline_pipelinestore": "pipelineStore" | kind=code-symbol | source=manager/frontend/lib/scan-pipeline.ts:L59 | neighbors=[scan-pipeline.ts]
+- "lib_scan_pipeline_profile_tools": "PROFILE_TOOLS" | kind=code-symbol | source=manager/frontend/lib/scan-pipeline.ts:L53 | neighbors=[scan-pipeline.ts]
+- "lib_scan_pipeline_pushscanevent": "pushScanEvent()" | kind=code-symbol | source=manager/frontend/lib/scan-pipeline.ts:L71 | neighbors=[scan-pipeline.ts]
+- "lib_scan_pipeline_scanprofile": "ScanProfile" | kind=code-symbol | source=manager/frontend/lib/scan-pipeline.ts:L4 | neighbors=[scan-pipeline.ts]
+- "lib_scan_pipeline_scantool": "ScanTool" | kind=code-symbol | source=manager/frontend/lib/scan-pipeline.ts:L3 | neighbors=[scan-pipeline.ts]
 
 ## Instructions
 

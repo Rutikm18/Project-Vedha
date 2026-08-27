@@ -1,4 +1,4 @@
-# Node Description Batch 205 of 227
+# Node Description Batch 205 of 236
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,51 +19,53 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-Write every description in English (en). Do not switch languages.
+LANGUAGE: each entry has a `lang=` marker giving the language of its source.
+Write that entry's description in EXACTLY that language. Do not translate to
+a single common language — match each node's source language individually.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_probe_auto_enroll_test_auto_enroll_cidrs_defaults_to_rfc1918": "test_auto_enroll_cidrs_defaults_to_rfc1918()" | kind=code-symbol | source=manager/backend/tests/test_probe_auto_enroll.py:L23 | neighbors=[test_probe_auto_enroll.py]
-- "tests_test_probe_auto_enroll_test_auto_enroll_cidrs_parses_and_trims_custom": "test_auto_enroll_cidrs_parses_and_trims_custom()" | kind=code-symbol | source=manager/backend/tests/test_probe_auto_enroll.py:L29 | neighbors=[test_probe_auto_enroll.py]
-- "tests_test_probe_auto_enroll_test_auto_enroll_is_off_by_default": "test_auto_enroll_is_off_by_default()" | kind=code-symbol | source=manager/backend/tests/test_probe_auto_enroll.py:L17 | neighbors=[test_probe_auto_enroll.py]
-- "tests_test_probe_auto_enroll_test_auto_enroll_site_name_is_stable": "test_auto_enroll_site_name_is_stable()" | kind=code-symbol | source=manager/backend/tests/test_probe_auto_enroll.py:L36 | neighbors=[test_probe_auto_enroll.py]
-- "tests_test_probe_core_rationale_1": "Probe test suite — unit tests for the probe's pure-logic modules. Covers: ScopeG" | kind=entity | source=probe/tests/test_probe_core.py:L1 | neighbors=[test_probe_core.py]
-- "tests_test_probe_core_test_explicit_local_manager_urls": "test_explicit_local_manager_urls()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L47 | neighbors=[test_probe_core.py]
-- "tests_test_probe_core_test_nonlocal_manager_urls": "test_nonlocal_manager_urls()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L57 | neighbors=[test_probe_core.py]
-- "tests_test_probe_core_testcapabilities_test_capabilities_sorted": ".test_capabilities_sorted()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L894 | neighbors=[TestCapabilities]
-- "tests_test_probe_core_testcapabilities_test_known_scan_types": ".test_known_scan_types()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L897 | neighbors=[TestCapabilities]
-- "tests_test_probe_core_testclamp_test_bad_value_uses_default": ".test_bad_value_uses_default()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L840 | neighbors=[TestClamp]
-- "tests_test_probe_core_testclamp_test_clamped_high": ".test_clamped_high()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L834 | neighbors=[TestClamp]
-- "tests_test_probe_core_testclamp_test_clamped_low": ".test_clamped_low()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L837 | neighbors=[TestClamp]
-- "tests_test_probe_core_testclamp_test_in_range": ".test_in_range()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L831 | neighbors=[TestClamp]
-- "tests_test_probe_core_testclamp_test_none_uses_default": ".test_none_uses_default()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L843 | neighbors=[TestClamp]
-- "tests_test_probe_core_testengagementmodes_test_assessment": ".test_assessment()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L451 | neighbors=[TestEngagementModes]
-- "tests_test_probe_core_testengagementmodes_test_re_scan": ".test_re_scan()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L464 | neighbors=[TestEngagementModes]
-- "tests_test_probe_core_testengagementmodes_test_service_specific_invalid_raises": ".test_service_specific_invalid_raises()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L460 | neighbors=[TestEngagementModes]
-- "tests_test_probe_core_testengagementmodes_test_service_specific_valid": ".test_service_specific_valid()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L456 | neighbors=[TestEngagementModes]
-- "tests_test_probe_core_testengagementmodes_test_triage": ".test_triage()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L445 | neighbors=[TestEngagementModes]
-- "tests_test_probe_core_testenginesummary_test_affirmative_fact_creates_one_deduplicated_host": ".test_affirmative_fact_creates_one_deduplicated_host()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L672 | neighbors=[TestEngineSummary]
-- "tests_test_probe_core_testenginesummary_test_negative_or_ambiguous_facts_do_not_create_hosts": ".test_negative_or_ambiguous_facts_do_not_create_hosts()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L646 | neighbors=[TestEngineSummary]
-- "tests_test_probe_core_testenginesummary_test_open_port_count_deduplicates_confirming_scanners": ".test_open_port_count_deduplicates_confirming_scanners()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L613 | neighbors=[TestEngineSummary]
-- "tests_test_probe_core_testenginesummary_test_open_port_count_excludes_host_liveness": ".test_open_port_count_excludes_host_liveness()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L605 | neighbors=[TestEngineSummary]
-- "tests_test_probe_core_testexpandtargets_test_cidr_24": ".test_cidr_24()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L149 | neighbors=[TestExpandTargets]
-- "tests_test_probe_core_testexpandtargets_test_dedup": ".test_dedup()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L166 | neighbors=[TestExpandTargets]
-- "tests_test_probe_core_testexpandtargets_test_empty_input": ".test_empty_input()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L178 | neighbors=[TestExpandTargets]
-- "tests_test_probe_core_testexpandtargets_test_hostname_passthrough": ".test_hostname_passthrough()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L155 | neighbors=[TestExpandTargets]
-- "tests_test_probe_core_testexpandtargets_test_range": ".test_range()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L158 | neighbors=[TestExpandTargets]
-- "tests_test_probe_core_testexpandtargets_test_range_reversed_raises": ".test_range_reversed_raises()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L162 | neighbors=[TestExpandTargets]
-- "tests_test_probe_core_testexpandtargets_test_safety_cap_cidr": ".test_safety_cap_cidr()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L170 | neighbors=[TestExpandTargets]
-- "tests_test_probe_core_testexpandtargets_test_safety_cap_range": ".test_safety_cap_range()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L174 | neighbors=[TestExpandTargets]
-- "tests_test_probe_core_testexpandtargets_test_single_ip": ".test_single_ip()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L146 | neighbors=[TestExpandTargets]
-- "tests_test_probe_core_testexpandtargets_test_whitespace_entries": ".test_whitespace_entries()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L181 | neighbors=[TestExpandTargets]
-- "tests_test_probe_core_testgate0_test_iot_not_passive": ".test_iot_not_passive()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L272 | neighbors=[TestGate0]
-- "tests_test_probe_core_testgate0_test_it_not_passive": ".test_it_not_passive()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L269 | neighbors=[TestGate0]
-- "tests_test_probe_core_testgate0_test_ot_is_passive": ".test_ot_is_passive()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L266 | neighbors=[TestGate0]
-- "tests_test_probe_core_testlookslikehttp_test_empty": ".test_empty()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L400 | neighbors=[TestLooksLikeHttp]
-- "tests_test_probe_core_testlookslikehttp_test_http_1_1": ".test_http_1_1()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L391 | neighbors=[TestLooksLikeHttp]
-- "tests_test_probe_core_testlookslikehttp_test_http_2": ".test_http_2()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L394 | neighbors=[TestLooksLikeHttp]
-- "tests_test_probe_core_testlookslikehttp_test_not_http": ".test_not_http()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L397 | neighbors=[TestLooksLikeHttp]
+- "tests_test_main_scripts_datastore_probe_test_ladder_includes_safe_datastore_probes": "test_ladder_includes_safe_datastore_probes()" | kind=code-symbol | source=probe/tests/test_main_scripts_datastore_probe.py:L40 | neighbors=[test_main_scripts_datastore_probe.py] | lang=en
+- "tests_test_main_scripts_datastore_probe_test_memcached_probe_response_yields_unauth_finding": "test_memcached_probe_response_yields_unauth_finding()" | kind=code-symbol | source=probe/tests/test_main_scripts_datastore_probe.py:L51 | neighbors=[test_main_scripts_datastore_probe.py] | lang=en
+- "tests_test_main_scripts_device_rationale_1": "test_main_scripts_device.py — device-role classification (P0 \"Device classificat" | kind=entity | source=probe/tests/test_main_scripts_device.py:L1 | neighbors=[test_main_scripts_device.py] | lang=en
+- "tests_test_main_scripts_device_testclassifydevice_test_domain_controller": ".test_domain_controller()" | kind=code-symbol | source=probe/tests/test_main_scripts_device.py:L25 | neighbors=[TestClassifyDevice] | lang=en
+- "tests_test_main_scripts_device_testclassifydevice_test_iot_camera": ".test_iot_camera()" | kind=code-symbol | source=probe/tests/test_main_scripts_device.py:L48 | neighbors=[TestClassifyDevice] | lang=en
+- "tests_test_main_scripts_device_testclassifydevice_test_network_device_router": ".test_network_device_router()" | kind=code-symbol | source=probe/tests/test_main_scripts_device.py:L37 | neighbors=[TestClassifyDevice] | lang=en
+- "tests_test_main_scripts_device_testclassifydevice_test_printer": ".test_printer()" | kind=code-symbol | source=probe/tests/test_main_scripts_device.py:L31 | neighbors=[TestClassifyDevice] | lang=en
+- "tests_test_main_scripts_device_testclassifydevice_test_service_product_reinforces_server": ".test_service_product_reinforces_server()" | kind=code-symbol | source=probe/tests/test_main_scripts_device.py:L64 | neighbors=[TestClassifyDevice] | lang=en
+- "tests_test_main_scripts_device_testclassifydevice_test_single_signal_confidence_capped": ".test_single_signal_confidence_capped()" | kind=code-symbol | source=probe/tests/test_main_scripts_device.py:L58 | neighbors=[TestClassifyDevice] | lang=en
+- "tests_test_main_scripts_device_testclassifydevice_test_unknown_when_no_evidence": ".test_unknown_when_no_evidence()" | kind=code-symbol | source=probe/tests/test_main_scripts_device.py:L53 | neighbors=[TestClassifyDevice] | lang=en
+- "tests_test_main_scripts_device_testclassifydevice_test_vmware_hypervisor": ".test_vmware_hypervisor()" | kind=code-symbol | source=probe/tests/test_main_scripts_device.py:L43 | neighbors=[TestClassifyDevice] | lang=en
+- "tests_test_main_scripts_device_testclassifydevice_test_windows_workstation": ".test_windows_workstation()" | kind=code-symbol | source=probe/tests/test_main_scripts_device.py:L18 | neighbors=[TestClassifyDevice] | lang=en
+- "tests_test_main_scripts_device_testclassifyfromresults_test_extracts_signals_from_scan_results": ".test_extracts_signals_from_scan_results()" | kind=code-symbol | source=probe/tests/test_main_scripts_device.py:L72 | neighbors=[TestClassifyFromResults] | lang=en
+- "tests_test_main_scripts_device_ties_rationale_1": "test_main_scripts_device_ties.py — Phase 23: device classification never resolve" | kind=entity | source=probe/tests/test_main_scripts_device_ties.py:L1 | neighbors=[test_main_scripts_device_ties.py] | lang=en
+- "tests_test_main_scripts_device_ties_test_clear_winner_is_not_ambiguous": "test_clear_winner_is_not_ambiguous()" | kind=code-symbol | source=probe/tests/test_main_scripts_device_ties.py:L18 | neighbors=[test_main_scripts_device_ties.py] | lang=en
+- "tests_test_main_scripts_device_ties_test_domain_controller_breaks_the_tie": "test_domain_controller_breaks_the_tie()" | kind=code-symbol | source=probe/tests/test_main_scripts_device_ties.py:L24 | neighbors=[test_main_scripts_device_ties.py] | lang=en
+- "tests_test_main_scripts_device_ties_test_empty_is_unknown_not_ambiguous": "test_empty_is_unknown_not_ambiguous()" | kind=code-symbol | source=probe/tests/test_main_scripts_device_ties.py:L30 | neighbors=[test_main_scripts_device_ties.py] | lang=en
+- "tests_test_main_scripts_device_ties_test_workstation_server_tie_is_ambiguous": "test_workstation_server_tie_is_ambiguous()" | kind=code-symbol | source=probe/tests/test_main_scripts_device_ties.py:L10 | neighbors=[test_main_scripts_device_ties.py] | lang=en
+- "tests_test_main_scripts_errno_rationale_1": "test_main_scripts_errno.py — Phase 2: shared TCP/UDP errno classification.  Veri" | kind=entity | source=probe/tests/test_main_scripts_errno.py:L1 | neighbors=[test_main_scripts_errno.py] | lang=en
+- "tests_test_main_scripts_errno_test_dns_failure_is_error_not_filtered": "test_dns_failure_is_error_not_filtered()" | kind=code-symbol | source=probe/tests/test_main_scripts_errno.py:L45 | neighbors=[test_main_scripts_errno.py] | lang=en
+- "tests_test_main_scripts_errno_test_errno_none_falls_back_to_os_error": "test_errno_none_falls_back_to_os_error()" | kind=code-symbol | source=probe/tests/test_main_scripts_errno.py:L41 | neighbors=[test_main_scripts_errno.py] | lang=en
+- "tests_test_main_scripts_errno_test_port_scanner_uses_the_same_shared_classifier": "test_port_scanner_uses_the_same_shared_classifier()" | kind=code-symbol | source=probe/tests/test_main_scripts_errno.py:L58 | neighbors=[test_main_scripts_errno.py] | lang=en
+- "tests_test_main_scripts_findings_rationale_1": "test_main_scripts_findings.py — the findings interpretation layer.  Pure-logic," | kind=entity | source=probe/tests/test_main_scripts_findings.py:L1 | neighbors=[test_main_scripts_findings.py] | lang=en
+- "tests_test_main_scripts_findings_test_build_service_index_extracts_confirmed_services": "test_build_service_index_extracts_confirmed_services()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L158 | neighbors=[test_main_scripts_findings.py] | lang=en
+- "tests_test_main_scripts_hardening_rationale_1": "test_main_scripts_hardening.py — verifies the Phase-1 correctness fixes applied" | kind=entity | source=probe/tests/test_main_scripts_hardening.py:L1 | neighbors=[test_main_scripts_hardening.py] | lang=en
+- "tests_test_main_scripts_hardening_rationale_101": "A 64-byte SMB2 header. Caller prepends a 4-byte NBT transport prefix, so     Pro" | kind=entity | source=probe/tests/test_main_scripts_hardening.py:L101 | neighbors=[_smb2_header()] | lang=pt
+- "tests_test_main_scripts_hardening_rationale_123": "STATUS_INVALID_PARAMETER error response: same header, body StructureSize 9," | kind=entity | source=probe/tests/test_main_scripts_hardening.py:L123 | neighbors=[make_smb2_error()] | lang=en
+- "tests_test_main_scripts_hardening_testosconfidence_test_linux_ttl_only_capped": ".test_linux_ttl_only_capped()" | kind=code-symbol | source=probe/tests/test_main_scripts_hardening.py:L92 | neighbors=[TestOsConfidence] | lang=en
+- "tests_test_main_scripts_hardening_testosconfidence_test_no_signal_is_unknown": ".test_no_signal_is_unknown()" | kind=code-symbol | source=probe/tests/test_main_scripts_hardening.py:L87 | neighbors=[TestOsConfidence] | lang=en
+- "tests_test_main_scripts_hardening_testosconfidence_test_ttl_only_is_not_absolute": ".test_ttl_only_is_not_absolute()" | kind=code-symbol | source=probe/tests/test_main_scripts_hardening.py:L74 | neighbors=[TestOsConfidence] | lang=en
+- "tests_test_main_scripts_hardening_testosconfidence_test_two_signals_beat_one": ".test_two_signals_beat_one()" | kind=code-symbol | source=probe/tests/test_main_scripts_hardening.py:L81 | neighbors=[TestOsConfidence] | lang=en
+- "tests_test_main_scripts_hardening_testsmbparsing_test_negotiate_request_excludes_smb311": ".test_negotiate_request_excludes_smb311()" | kind=code-symbol | source=probe/tests/test_main_scripts_hardening.py:L152 | neighbors=[TestSmbParsing] | lang=en
+- "tests_test_main_scripts_ja4s_rationale_1": "test_main_scripts_ja4s.py — JA4S TLS ServerHello fingerprint (advanced capabilit" | kind=entity | source=probe/tests/test_main_scripts_ja4s.py:L1 | neighbors=[test_main_scripts_ja4s.py] | lang=en
+- "tests_test_main_scripts_ja4s_test_empty_extensions_sentinel": "test_empty_extensions_sentinel()" | kind=code-symbol | source=probe/tests/test_main_scripts_ja4s.py:L48 | neighbors=[test_main_scripts_ja4s.py] | lang=en
+- "tests_test_main_scripts_ja4s_test_extension_hash_is_order_sensitive": "test_extension_hash_is_order_sensitive()" | kind=code-symbol | source=probe/tests/test_main_scripts_ja4s.py:L53 | neighbors=[test_main_scripts_ja4s.py] | lang=en
+- "tests_test_main_scripts_ja4s_test_ja4s_from_bad_serverhello_is_none": "test_ja4s_from_bad_serverhello_is_none()" | kind=code-symbol | source=probe/tests/test_main_scripts_ja4s.py:L73 | neighbors=[test_main_scripts_ja4s.py] | lang=en
+- "tests_test_main_scripts_ja4s_test_ja4s_from_fields_shape_and_parts": "test_ja4s_from_fields_shape_and_parts()" | kind=code-symbol | source=probe/tests/test_main_scripts_ja4s.py:L31 | neighbors=[test_main_scripts_ja4s.py] | lang=en
+- "tests_test_main_scripts_ja4s_test_suspicious_ja4s_finding_fires_only_on_match": "test_suspicious_ja4s_finding_fires_only_on_match()" | kind=code-symbol | source=probe/tests/test_main_scripts_ja4s.py:L78 | neighbors=[test_main_scripts_ja4s.py] | lang=en
+- "tests_test_main_scripts_ja4s_test_version_and_alpn_encodings": "test_version_and_alpn_encodings()" | kind=code-symbol | source=probe/tests/test_main_scripts_ja4s.py:L40 | neighbors=[test_main_scripts_ja4s.py] | lang=en
+- "tests_test_main_scripts_ja4x_rationale_1": "test_main_scripts_ja4x.py — JA4X X.509 certificate fingerprinting (advanced capa" | kind=entity | source=probe/tests/test_main_scripts_ja4x.py:L1 | neighbors=[test_main_scripts_ja4x.py] | lang=en
 
 ## Instructions
 

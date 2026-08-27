@@ -10,7 +10,7 @@ Vedha runs as **two independent deployments**:
 ```
    Customer network (on-prem)                         Your cloud
  ┌───────────────────────────┐                   ┌──────────────────────────┐
- │  vedha-probe (container)  │                   │  Caddy :80/:443 (TLS)    │
+ │  vedha-agent (container)  │                   │  Caddy :80/:443 (TLS)    │
  │   scans 10.0.0.0/24 …     │ ==HTTPS/WSS 443==▶ │    └─▶ api :8000          │
  │   NO inbound listener     │   (dial-out only) │    worker, postgres,      │
  └───────────────────────────┘                   │    redis, neo4j, frontend │

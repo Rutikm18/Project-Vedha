@@ -1,4 +1,4 @@
-# Node Description Batch 165 of 227
+# Node Description Batch 165 of 236
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -26,46 +26,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "routers_agents_rationale_515": "Verify that the JWT token bearer IS the agent they claim to be.      Every heart" | kind=entity | source=manager/backend/app/routers/agents.py:L515 | neighbors=[_agent_ownership_check()] | lang=en
-- "routers_agents_rationale_526": "Encrypt the engagement scope for a specific agent's public key.      Reads agent" | kind=entity | source=manager/backend/app/routers/agents.py:L526 | neighbors=[_encrypt_scope_for_agent()] | lang=en
-- "routers_agents_rationale_535": "Returns the finite library of scan use-cases operators can dispatch to probes." | kind=entity | source=manager/backend/app/routers/agents.py:L535 | neighbors=[list_use_cases()] | lang=en
-- "routers_agents_rationale_550": "Verify that the JWT token bearer IS the agent they claim to be.      Every heart" | kind=entity | source=manager/backend/app/routers/agents.py:L550 | neighbors=[_agent_ownership_check()] | lang=en
-- "routers_agents_rationale_560": "The numeric scan-hardness scale: 1 light, 2 standard, 3 deep." | kind=entity | source=manager/backend/app/routers/agents.py:L560 | neighbors=[list_intensities()] | lang=en
-- "routers_agents_rationale_564": "Verify that the JWT token bearer IS the agent they claim to be.      Every heart" | kind=entity | source=manager/backend/app/routers/agents.py:L564 | neighbors=[_agent_ownership_check()] | lang=en
-- "routers_agents_rationale_571": "Allows a probe to register without an admin-issued PAT.      The manager must ha" | kind=entity | source=manager/backend/app/routers/agents.py:L571 | neighbors=[bootstrap_agent()] | lang=en
-- "routers_agents_rationale_583": "Returns the finite library of scan use-cases operators can dispatch to probes." | kind=entity | source=manager/backend/app/routers/agents.py:L583 | neighbors=[list_use_cases()] | lang=en
-- "routers_agents_rationale_595": "The numeric scan-hardness scale: 1 light, 2 standard, 3 deep." | kind=entity | source=manager/backend/app/routers/agents.py:L595 | neighbors=[list_intensities()] | lang=en
-- "routers_agents_rationale_597": "Returns the finite library of scan use-cases operators can dispatch to probes." | kind=entity | source=manager/backend/app/routers/agents.py:L597 | neighbors=[list_use_cases()] | lang=en
-- "routers_agents_rationale_606": "Allows a probe to register without an admin-issued PAT.      The manager must ha" | kind=entity | source=manager/backend/app/routers/agents.py:L606 | neighbors=[bootstrap_agent()] | lang=en
-- "routers_agents_rationale_609": "The numeric scan-hardness scale: 1 light, 2 standard, 3 deep." | kind=entity | source=manager/backend/app/routers/agents.py:L609 | neighbors=[list_intensities()] | lang=en
-- "routers_agents_rationale_620": "Allows a probe to register without an admin-issued PAT.      The manager must ha" | kind=entity | source=manager/backend/app/routers/agents.py:L620 | neighbors=[bootstrap_agent()] | lang=en
-- "routers_agents_rationale_858": "Lets the frontend poll a specific job's status without knowing which agent has i" | kind=entity | source=manager/backend/app/routers/agents.py:L858 | neighbors=[get_job_status()] | lang=en
-- "routers_agents_rationale_864": "Lets the frontend poll a specific job's status without knowing which agent has i" | kind=entity | source=manager/backend/app/routers/agents.py:L864 | neighbors=[get_job_status()] | lang=en
-- "routers_agents_rationale_92": "Resolve the capability a probe must advertise for a job." | kind=entity | source=manager/backend/app/routers/agents.py:L92 | neighbors=[_required_scan_type()] | lang=en
-- "routers_agents_rationale_921": "Lets the frontend poll a specific job's status without knowing which agent has i" | kind=entity | source=manager/backend/app/routers/agents.py:L921 | neighbors=[get_job_status()] | lang=en
-- "routers_agents_rationale_944": "Lets the frontend poll a specific job's status without knowing which agent has i" | kind=entity | source=manager/backend/app/routers/agents.py:L944 | neighbors=[get_job_status()] | lang=en
-- "routers_agents_rationale_979": "Lets the frontend poll a specific job's status without knowing which agent has i" | kind=entity | source=manager/backend/app/routers/agents.py:L979 | neighbors=[get_job_status()] | lang=en
-- "routers_agents_rationale_993": "Lets the frontend poll a specific job's status without knowing which agent has i" | kind=entity | source=manager/backend/app/routers/agents.py:L993 | neighbors=[get_job_status()] | lang=en
-- "routers_ai_ai_generate": "ai_generate()" | kind=code-symbol | source=manager/backend/app/routers/ai.py:L19 | neighbors=[ai.py] | lang=en
-- "routers_ai_ai_status": "ai_status()" | kind=code-symbol | source=manager/backend/app/routers/ai.py:L13 | neighbors=[ai.py] | lang=en
-- "routers_ai_report_generate_report": "generate_report()" | kind=code-symbol | source=manager/backend/app/routers/ai_report.py:L64 | neighbors=[ai_report.py] | lang=en
-- "routers_ai_report_rationale_192": "Deterministic report section from the same posture payload the dashboard uses." | kind=entity | source=manager/backend/app/routers/ai_report.py:L192 | neighbors=[build_posture_report_section()] | lang=en
-- "routers_ai_report_rationale_293": "Background task: build the summary, generate every section, persist as pending." | kind=entity | source=manager/backend/app/routers/ai_report.py:L293 | neighbors=[_run_generation()] | lang=en
-- "routers_ai_report_rationale_382": "Background task: regenerate rejected sections after human feedback." | kind=entity | source=manager/backend/app/routers/ai_report.py:L382 | neighbors=[_run_regeneration()] | lang=en
-- "routers_ai_report_report_status": "report_status()" | kind=code-symbol | source=manager/backend/app/routers/ai_report.py:L92 | neighbors=[ai_report.py] | lang=en
-- "routers_analytics_exposure": "exposure()" | kind=code-symbol | source=manager/backend/app/routers/analytics.py:L46 | neighbors=[analytics.py] | lang=en
-- "routers_analytics_rationale_87": "Map joined (Finding, Asset.criticality) rows to duck-typed views." | kind=entity | source=manager/backend/app/routers/analytics.py:L87 | neighbors=[_finding_views()] | lang=en
-- "routers_customer_access_assign_agent": "assign_agent()" | kind=code-symbol | source=manager/backend/app/routers/customer_access.py:L270 | neighbors=[customer_access.py] | lang=en
-- "routers_customer_access_list_scan_requests": "list_scan_requests()" | kind=code-symbol | source=manager/backend/app/routers/customer_access.py:L308 | neighbors=[customer_access.py] | lang=en
-- "routers_customer_access_rationale_1": "customer_access.py — operator-facing management of the customer portal (Part 2," | kind=entity | source=manager/backend/app/routers/customer_access.py:L1 | neighbors=[customer_access.py] | lang=en
-- "routers_customer_access_rationale_101": "A lowercase, hyphenated, DNS-label-safe base for a customer portal handle     (s" | kind=entity | source=manager/backend/app/routers/customer_access.py:L101 | neighbors=[_slugify()] | lang=pt
-- "routers_customer_access_rationale_102": "A lowercase, hyphenated, DNS-label-safe base for a customer portal handle     (s" | kind=entity | source=manager/backend/app/routers/customer_access.py:L102 | neighbors=[_slugify()] | lang=pt
-- "routers_customer_access_rationale_103": "A lowercase, hyphenated, DNS-label-safe base for a customer portal handle     (s" | kind=entity | source=manager/backend/app/routers/customer_access.py:L103 | neighbors=[_slugify()] | lang=pt
-- "routers_customer_access_rationale_108": "Per-tenant-unique portal slug: <base>, else <base>-2, <base>-3, … Two     custom" | kind=entity | source=manager/backend/app/routers/customer_access.py:L108 | neighbors=[_unique_portal_slug()] | lang=en
-- "routers_customer_access_rationale_109": "Per-tenant-unique portal slug: <base>, else <base>-2, <base>-3, … Two     custom" | kind=entity | source=manager/backend/app/routers/customer_access.py:L109 | neighbors=[_unique_portal_slug()] | lang=en
-- "routers_customer_access_rationale_110": "Per-tenant-unique portal slug: <base>, else <base>-2, <base>-3, … Two     custom" | kind=entity | source=manager/backend/app/routers/customer_access.py:L110 | neighbors=[_unique_portal_slug()] | lang=en
-- "routers_customer_access_rationale_122": "Pure: turn an approved request into a pending ScanJob on the engagement's     as" | kind=entity | source=manager/backend/app/routers/customer_access.py:L122 | neighbors=[build_scan_job()] | lang=en
-- "routers_customer_access_rationale_123": "Pure: turn an approved request into a pending ScanJob on the engagement's     as" | kind=entity | source=manager/backend/app/routers/customer_access.py:L123 | neighbors=[build_scan_job()] | lang=en
+- "main_scripts_syn_scanner_rationale_197": "A genuine reply to our SYN acknowledges ISN+1. The reply's own source     (ip_sr" | kind=entity | source=probe/main_scripts/syn_scanner.py:L197 | neighbors=[verify_reply_cookie()] | lang=en
+- "main_scripts_syn_scanner_rationale_198": "A genuine reply to our SYN acknowledges ISN+1. The reply's own source     (ip_sr" | kind=entity | source=probe/main_scripts/syn_scanner.py:L198 | neighbors=[verify_reply_cookie()] | lang=en
+- "main_scripts_syn_scanner_rationale_210": "True only when a real SYN scan can work: Linux (BSD/macOS raw sockets can't" | kind=entity | source=probe/main_scripts/syn_scanner.py:L210 | neighbors=[syn_scan_supported()] | lang=pt
+- "main_scripts_syn_scanner_rationale_211": "True only when a real SYN scan can work: Linux (BSD/macOS raw sockets can't" | kind=entity | source=probe/main_scripts/syn_scanner.py:L211 | neighbors=[syn_scan_supported()] | lang=pt
+- "main_scripts_syn_scanner_rationale_231": "Outbound-interface IP for reaching dst_ip (no packets sent — UDP connect)." | kind=entity | source=probe/main_scripts/syn_scanner.py:L231 | neighbors=[_local_source_ip()] | lang=en
+- "main_scripts_syn_scanner_rationale_232": "Outbound-interface IP for reaching dst_ip (no packets sent — UDP connect)." | kind=entity | source=probe/main_scripts/syn_scanner.py:L232 | neighbors=[_local_source_ip()] | lang=en
+- "main_scripts_syn_scanner_rationale_245": "SYN scan on privileged Linux; transparent connect-scan fallback elsewhere." | kind=entity | source=probe/main_scripts/syn_scanner.py:L245 | neighbors=[SynScanner] | lang=en
+- "main_scripts_syn_scanner_rationale_246": "SYN scan on privileged Linux; transparent connect-scan fallback elsewhere." | kind=entity | source=probe/main_scripts/syn_scanner.py:L246 | neighbors=[SynScanner] | lang=en
+- "main_scripts_syn_scanner_rationale_414": "Turn resolved port states + harvested intel into ScanResults. Pure —         no" | kind=entity | source=probe/main_scripts/syn_scanner.py:L414 | neighbors=[._build_results()] | lang=en
+- "main_scripts_syn_scanner_rationale_418": "Turn resolved port states + harvested intel into ScanResults. Pure —         no" | kind=entity | source=probe/main_scripts/syn_scanner.py:L418 | neighbors=[._build_results()] | lang=en
+- "main_scripts_syn_scanner_rationale_63": "Build a 20-byte IPv4 header with a valid checksum.      NOTE (BSD caveat): on ma" | kind=entity | source=probe/main_scripts/syn_scanner.py:L63 | neighbors=[build_ip_header()] | lang=pt
+- "main_scripts_syn_scanner_rationale_81": "Build a 20-byte IPv4 header with a valid checksum.      NOTE (BSD caveat): on ma" | kind=entity | source=probe/main_scripts/syn_scanner.py:L81 | neighbors=[build_ip_header()] | lang=pt
+- "main_scripts_syn_scanner_rationale_82": "Build a 20-byte IPv4 header with a valid checksum.      NOTE (BSD caveat): on ma" | kind=entity | source=probe/main_scripts/syn_scanner.py:L82 | neighbors=[build_ip_header()] | lang=pt
+- "main_scripts_syn_scanner_rationale_86": "Build a 20-byte TCP SYN segment with a valid checksum (pseudo-header)." | kind=entity | source=probe/main_scripts/syn_scanner.py:L86 | neighbors=[build_tcp_syn()] | lang=pt
+- "main_scripts_tls_fingerprint_main": "main()" | kind=code-symbol | source=probe/main_scripts/tls_fingerprint.py:L320 | neighbors=[tls_fingerprint.py] | lang=en
+- "main_scripts_tls_fingerprint_rationale_1": "tls_fingerprint.py — active TLS server fingerprint (Tier 2.3, JARM methodology)." | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L1 | neighbors=[tls_fingerprint.py] | lang=en
+- "main_scripts_tls_fingerprint_rationale_136": "Parse the negotiated version + cipher + extensions from a ServerHello." | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L136 | neighbors=[parse_server_hello()] | lang=en
+- "main_scripts_tls_fingerprint_rationale_137": "Parse the negotiated version + cipher + extensions from a ServerHello." | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L137 | neighbors=[parse_server_hello()] | lang=en
+- "main_scripts_tls_fingerprint_rationale_177": "2-char code from the cipher's position in CIPHER_LIST ('00' if unknown)." | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L177 | neighbors=[cipher_code()] | lang=en
+- "main_scripts_tls_fingerprint_rationale_178": "2-char code from the cipher's position in CIPHER_LIST ('00' if unknown)." | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L178 | neighbors=[cipher_code()] | lang=en
+- "main_scripts_tls_fingerprint_rationale_184": "Concatenate the ServerHello extension TYPE codes (2 bytes each). We hash types," | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L184 | neighbors=[_server_ext_types()] | lang=en
+- "main_scripts_tls_fingerprint_rationale_185": "Concatenate the ServerHello extension TYPE codes (2 bytes each). We hash types," | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L185 | neighbors=[_server_ext_types()] | lang=en
+- "main_scripts_tls_fingerprint_rationale_200": "JARM-shaped 62-char fuzzy hash: 3 chars per probe (cipher[2] + version[1])," | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L200 | neighbors=[jarm_style_digest()] | lang=it
+- "main_scripts_tls_fingerprint_rationale_201": "JARM-shaped 62-char fuzzy hash: 3 chars per probe (cipher[2] + version[1])," | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L201 | neighbors=[jarm_style_digest()] | lang=it
+- "main_scripts_tls_fingerprint_rationale_241": "Read exactly the first TLS record (the ServerHello or an alert) and stop —     n" | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L241 | neighbors=[_recv_first_record()] | lang=en
+- "main_scripts_tls_fingerprint_rationale_242": "Read exactly the first TLS record (the ServerHello or an alert) and stop —     n" | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L242 | neighbors=[_recv_first_record()] | lang=en
+- "main_scripts_tls_fingerprint_rationale_261": "Send one crafted ClientHello, read + parse the ServerHello. Sync." | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L261 | neighbors=[_one_probe()] | lang=en
+- "main_scripts_tls_fingerprint_rationale_262": "Send one crafted ClientHello, read + parse the ServerHello. Sync." | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L262 | neighbors=[_one_probe()] | lang=en
+- "main_scripts_tls_fingerprint_rationale_274": "Run all probes and return (62-char digest, per-probe results)." | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L274 | neighbors=[fingerprint_host()] | lang=en
+- "main_scripts_tls_fingerprint_rationale_275": "Run all probes and return (62-char digest, per-probe results)." | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L275 | neighbors=[fingerprint_host()] | lang=en
+- "main_scripts_tls_fingerprint_rationale_90": "Build a complete TLS ClientHello record (record layer + handshake)." | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L90 | neighbors=[build_client_hello()] | lang=pt
+- "main_scripts_tls_fingerprint_rationale_91": "Build a complete TLS ClientHello record (record layer + handshake)." | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L91 | neighbors=[build_client_hello()] | lang=pt
+- "main_scripts_tls_fingerprint_tlsfingerprintscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/tls_fingerprint.py:L285 | neighbors=[TLSFingerprintScanner] | lang=en
+- "main_scripts_tls_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/tls_scanner.py:L287 | neighbors=[tls_scanner.py] | lang=en
+- "main_scripts_tls_scanner_rationale_1": "tls_scanner.py — collect TLS/SSL configuration facts.  METHOD (collection only):" | kind=entity | source=probe/main_scripts/tls_scanner.py:L1 | neighbors=[tls_scanner.py] | lang=en
+- "main_scripts_tls_scanner_rationale_105": "Grade overall TLS posture A/B/C/F from accepted protocol versions and the     cl" | kind=entity | source=probe/main_scripts/tls_scanner.py:L105 | neighbors=[grade_tls_posture()] | lang=en
+- "main_scripts_tls_scanner_rationale_147": "Never send an IP literal as SNI — non-conformant; some servers reject it." | kind=entity | source=probe/main_scripts/tls_scanner.py:L147 | neighbors=[_sni()] | lang=en
+- "main_scripts_tls_scanner_rationale_156": "Attempt a handshake forcing one protocol version. Returns cipher dict or None." | kind=entity | source=probe/main_scripts/tls_scanner.py:L156 | neighbors=[_try_version()] | lang=pt
+- "main_scripts_tls_scanner_rationale_61": "Flag the security-relevant properties of an OpenSSL cipher-suite name:     forwa" | kind=entity | source=probe/main_scripts/tls_scanner.py:L61 | neighbors=[classify_cipher()] | lang=en
+- "main_scripts_tls_scanner_tlsscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/tls_scanner.py:L258 | neighbors=[TLSScanner] | lang=en
 
 ## Instructions
 

@@ -68,7 +68,19 @@ def looks_like_db(banner_fact: dict | None) -> bool:
     return any(rx.search(hay) for rx in _DB_SIGNATURES)
 
 
-def route_branches(asset: Asset, candidate_branches: tuple[str, ...] = ("tls", "web", "db")
+def looks_like_ssh(banner_fact: dict | None) -> bool:
+    """True when a service banner is an SSH identification string, so an SSH
+    server on a non-standard port (e.g. 2222) still routes to ssh_scan. SSH has
+    an unambiguous POSITIVE signal — the protocol requires the server to send
+    'SSH-<proto>-<software>' as its first bytes (RFC 4253 §4.2) — so, unlike the
+    TLS heuristic, this is a direct content match, not an absence inference."""
+    if not banner_fact:
+        return False
+    hay = f"{banner_fact.get('banner') or ''} {banner_fact.get('first_line') or ''}"
+    return hay.lstrip().startswith("SSH-")
+
+
+def route_branches(asset: Asset, candidate_branches: tuple[str, ...] = ("tls", "web", "db", "ssh")
                    ) -> dict[int, set[str]]:
     """For every open port with a banner fact, returns {port: {branches}}
     that observed content (not the static port table) justifies routing to.
@@ -88,6 +100,8 @@ def route_branches(asset: Asset, candidate_branches: tuple[str, ...] = ("tls", "
             branches.add("tls")
         if "db" in candidate_branches and looks_like_db(fact):
             branches.add("db")
+        if "ssh" in candidate_branches and looks_like_ssh(fact):
+            branches.add("ssh")
         if branches:
             routed[port] = branches
     return routed

@@ -116,7 +116,7 @@ class ManagerClient:
             headers={
                 "Authorization": f"Bearer {token}",
                 "Accept": "application/json",
-                "User-Agent": "vedha-probe-cli/1",
+                "User-Agent": "vedha-agent-cli/1",
             },
             timeout=httpx.Timeout(connect=10.0, read=timeout, write=timeout, pool=30.0),
             verify=verify,

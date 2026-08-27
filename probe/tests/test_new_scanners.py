@@ -267,7 +267,10 @@ class TestIoTScanner:
         pkt = _mqtt_connect()
         assert pkt[0] == 0x10        # CONNECT packet type
         assert b"MQTT" in pkt        # protocol name
-        assert b"vedha-probe" in pkt  # client ID
+        # Client ID is deliberately neutral ("no tool signature" in iot_scanner) —
+        # a scanner should not fingerprint itself on the wire. Assert the neutral
+        # value, NOT a brand: broadcasting "vedha-agent" would defeat that intent.
+        assert b"mqtt-client" in pkt  # neutral client ID (no tool signature)
 
     def test_mqtt_connect_clean_session_flag(self):
         from scanner.iot_scanner import _mqtt_connect

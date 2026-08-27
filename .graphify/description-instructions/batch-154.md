@@ -1,4 +1,4 @@
-# Node Description Batch 155 of 227
+# Node Description Batch 155 of 236
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -26,46 +26,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "main_scripts_os_fingerprint_rationale_188": "True if we can open an ICMP socket (datagram-ICMP or raw)." | kind=entity | source=probe/main_scripts/os_fingerprint.py:L188 | neighbors=[icmp_supported()] | lang=en
-- "main_scripts_os_fingerprint_rationale_205": "Return (socket, is_raw). Prefer datagram-ICMP (unprivileged), then raw." | kind=entity | source=probe/main_scripts/os_fingerprint.py:L205 | neighbors=[_open_icmp_socket()] | lang=en
-- "main_scripts_os_fingerprint_rationale_221": "ICMP-echo liveness + TTL harvest -> OS-family guess. Optionally accepts TCP" | kind=entity | source=probe/main_scripts/os_fingerprint.py:L221 | neighbors=[OSFingerprintScanner] | lang=en
-- "main_scripts_os_fingerprint_rationale_233": "Send one ICMP echo; return observed TTL, None (no TTL), or \"down\"." | kind=entity | source=probe/main_scripts/os_fingerprint.py:L233 | neighbors=[._icmp_echo_ttl()] | lang=en
-- "main_scripts_os_fingerprint_rationale_254": "True if we can open an ICMP socket (datagram-ICMP or raw)." | kind=entity | source=probe/main_scripts/os_fingerprint.py:L254 | neighbors=[icmp_supported()] | lang=en
-- "main_scripts_os_fingerprint_rationale_271": "Return (socket, is_raw). Prefer datagram-ICMP (unprivileged), then raw." | kind=entity | source=probe/main_scripts/os_fingerprint.py:L271 | neighbors=[_open_icmp_socket()] | lang=en
-- "main_scripts_os_fingerprint_rationale_287": "ICMP-echo liveness + TTL harvest -> OS-family guess. Optionally accepts TCP" | kind=entity | source=probe/main_scripts/os_fingerprint.py:L287 | neighbors=[OSFingerprintScanner] | lang=en
-- "main_scripts_os_fingerprint_rationale_299": "Send one ICMP echo; return observed TTL, None (no TTL), or \"down\"." | kind=entity | source=probe/main_scripts/os_fingerprint.py:L299 | neighbors=[._icmp_echo_ttl()] | lang=en
-- "main_scripts_os_fingerprint_rationale_330": "Send an ICMP timestamp request (type 13); return {ttl, transmit} from a" | kind=entity | source=probe/main_scripts/os_fingerprint.py:L330 | neighbors=[._icmp_timestamp()] | lang=en
-- "main_scripts_os_fingerprint_rationale_58": "Build an ICMP message (header + rest) with a valid checksum." | kind=entity | source=probe/main_scripts/os_fingerprint.py:L58 | neighbors=[_icmp()] | lang=en
-- "main_scripts_os_fingerprint_rationale_60": "Build an ICMP message (header + rest) with a valid checksum." | kind=entity | source=probe/main_scripts/os_fingerprint.py:L60 | neighbors=[_icmp()] | lang=en
-- "main_scripts_os_fingerprint_rationale_80": "Parse an ICMP reply. Handles both raw-socket delivery (full IPv4 header     pres" | kind=entity | source=probe/main_scripts/os_fingerprint.py:L80 | neighbors=[parse_icmp_reply()] | lang=en
-- "main_scripts_os_fingerprint_rationale_82": "Return (ttl, icmp_bytes). Raw-socket delivery prepends the full IPv4 header" | kind=entity | source=probe/main_scripts/os_fingerprint.py:L82 | neighbors=[_strip_ip_header()] | lang=en
-- "main_scripts_os_fingerprint_rationale_95": "Parse an ICMP reply. Handles both raw-socket delivery (full IPv4 header     pres" | kind=entity | source=probe/main_scripts/os_fingerprint.py:L95 | neighbors=[parse_icmp_reply()] | lang=en
-- "main_scripts_passive_collector_main": "main()" | kind=code-symbol | source=probe/main_scripts/passive_collector.py:L357 | neighbors=[passive_collector.py] | lang=en
-- "main_scripts_passive_collector_passivecollector_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/passive_collector.py:L218 | neighbors=[PassiveCollector] | lang=en
-- "main_scripts_passive_collector_passivelistenererror_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/passive_collector.py:L109 | neighbors=[PassiveListenerError] | lang=en
-- "main_scripts_passive_collector_rationale_1": "passive_collector.py — LISTEN-ONLY host discovery for fragile networks (OT/ICS)." | kind=entity | source=probe/main_scripts/passive_collector.py:L1 | neighbors=[passive_collector.py] | lang=en
-- "main_scripts_passive_collector_rationale_107": "All passive sources failed before the listen window could start." | kind=entity | source=probe/main_scripts/passive_collector.py:L107 | neighbors=[PassiveListenerError] | lang=en
-- "main_scripts_passive_collector_rationale_120": "Open one recv-only UDP listener or raise the socket error.      Multicast groups" | kind=entity | source=probe/main_scripts/passive_collector.py:L120 | neighbors=[_open_listener()] | lang=en
-- "main_scripts_passive_collector_rationale_211": "Listen-only discovery. No active probing. Reports in-scope hosts that     announ" | kind=entity | source=probe/main_scripts/passive_collector.py:L211 | neighbors=[PassiveCollector] | lang=en
-- "main_scripts_passive_collector_rationale_332": "Await readability on any listener without blocking the event loop." | kind=entity | source=probe/main_scripts/passive_collector.py:L332 | neighbors=[._select()] | lang=en
-- "main_scripts_passive_collector_rationale_74": "Pull short printable ASCII runs from a payload, for human-readable evidence." | kind=entity | source=probe/main_scripts/passive_collector.py:L74 | neighbors=[_printable_strings()] | lang=en
-- "main_scripts_passive_collector_rationale_91": "Best-effort device label from an announcement payload (recv-only parsing)." | kind=entity | source=probe/main_scripts/passive_collector.py:L91 | neighbors=[_device_hint()] | lang=en
-- "main_scripts_port_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/port_scanner.py:L472 | neighbors=[port_scanner.py] | lang=en
-- "main_scripts_port_scanner_portscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/port_scanner.py:L259 | neighbors=[PortScanner] | lang=en
-- "main_scripts_port_scanner_rationale_1": "port_scanner.py — TCP connect scan with an evidence-based state engine.  METHOD" | kind=entity | source=probe/main_scripts/port_scanner.py:L1 | neighbors=[port_scanner.py] | lang=en
-- "main_scripts_port_scanner_rationale_128": "Resolve a named scan profile to a concrete, de-duplicated port list.      'full'" | kind=entity | source=probe/main_scripts/port_scanner.py:L128 | neighbors=[resolve_profile()] | lang=pt
-- "main_scripts_port_scanner_rationale_129": "Resolve a named scan profile to a concrete, de-duplicated port list.      'full'" | kind=entity | source=probe/main_scripts/port_scanner.py:L129 | neighbors=[resolve_profile()] | lang=pt
-- "main_scripts_port_scanner_rationale_131": "Resolve a named scan profile to a concrete, de-duplicated port list.      'full'" | kind=entity | source=probe/main_scripts/port_scanner.py:L131 | neighbors=[resolve_profile()] | lang=pt
-- "main_scripts_port_scanner_rationale_154": "Per-target scan accounting — the completeness + self-health record.      It lets" | kind=entity | source=probe/main_scripts/port_scanner.py:L154 | neighbors=[ScanMetrics] | lang=en
-- "main_scripts_port_scanner_rationale_155": "Per-target scan accounting — the completeness + self-health record.      It lets" | kind=entity | source=probe/main_scripts/port_scanner.py:L155 | neighbors=[ScanMetrics] | lang=en
-- "main_scripts_port_scanner_rationale_157": "Per-target scan accounting — the completeness + self-health record.      It lets" | kind=entity | source=probe/main_scripts/port_scanner.py:L157 | neighbors=[ScanMetrics] | lang=en
-- "main_scripts_port_scanner_rationale_182": "Tally exactly one terminal per-port observation." | kind=entity | source=probe/main_scripts/port_scanner.py:L182 | neighbors=[.record()] | lang=en
-- "main_scripts_port_scanner_rationale_183": "Tally exactly one terminal per-port observation." | kind=entity | source=probe/main_scripts/port_scanner.py:L183 | neighbors=[.record()] | lang=en
-- "main_scripts_port_scanner_rationale_185": "Tally exactly one terminal per-port observation." | kind=entity | source=probe/main_scripts/port_scanner.py:L185 | neighbors=[.record()] | lang=en
-- "main_scripts_port_scanner_rationale_201": "Requested ports that were never recorded — the silent-skip proof." | kind=entity | source=probe/main_scripts/port_scanner.py:L201 | neighbors=[.missing_ports()] | lang=en
-- "main_scripts_port_scanner_rationale_202": "Requested ports that were never recorded — the silent-skip proof." | kind=entity | source=probe/main_scripts/port_scanner.py:L202 | neighbors=[.missing_ports()] | lang=en
-- "main_scripts_port_scanner_rationale_204": "Requested ports that were never recorded — the silent-skip proof." | kind=entity | source=probe/main_scripts/port_scanner.py:L204 | neighbors=[.missing_ports()] | lang=en
-- "main_scripts_port_scanner_rationale_208": "Ports recorded more than once (a port must get exactly one verdict)." | kind=entity | source=probe/main_scripts/port_scanner.py:L208 | neighbors=[.duplicate_ports()] | lang=pt
+- "lib_scan_pipeline_setpipeline": "setPipeline()" | kind=code-symbol | source=manager/frontend/lib/scan-pipeline.ts:L66 | neighbors=[scan-pipeline.ts] | lang=en
+- "lib_scan_pipeline_stage_weights": "STAGE_WEIGHTS" | kind=code-symbol | source=manager/frontend/lib/scan-pipeline.ts:L42 | neighbors=[scan-pipeline.ts] | lang=en
+- "lib_scan_pipeline_stagestate": "StageState" | kind=code-symbol | source=manager/frontend/lib/scan-pipeline.ts:L6 | neighbors=[scan-pipeline.ts] | lang=en
+- "lib_scanner_request_validation_netexec_checks": "NETEXEC_CHECKS" | kind=code-symbol | source=manager/frontend/lib/scanner-request-validation.ts:L10 | neighbors=[scanner-request-validation.ts] | lang=en
+- "lib_scanner_request_validation_netexecscanrequest": "NetExecScanRequest" | kind=code-symbol | source=manager/frontend/lib/scanner-request-validation.ts:L25 | neighbors=[scanner-request-validation.ts] | lang=en
+- "lib_scanner_request_validation_openvas_configs": "OPENVAS_CONFIGS" | kind=code-symbol | source=manager/frontend/lib/scanner-request-validation.ts:L4 | neighbors=[scanner-request-validation.ts] | lang=en
+- "lib_scanner_request_validation_openvasscanrequest": "OpenVASScanRequest" | kind=code-symbol | source=manager/frontend/lib/scanner-request-validation.ts:L16 | neighbors=[scanner-request-validation.ts] | lang=en
+- "lib_scanner_request_validation_validationresult": "ValidationResult" | kind=code-symbol | source=manager/frontend/lib/scanner-request-validation.ts:L12 | neighbors=[scanner-request-validation.ts] | lang=en
+- "lib_security_context_securitycontexterror_constructor": ".constructor()" | kind=code-symbol | source=manager/frontend/lib/security-context.ts:L11 | neighbors=[SecurityContextError] | lang=en
+- "lib_severity_detectioncoverage": "DetectionCoverage" | kind=code-symbol | source=manager/frontend/lib/severity.ts:L17 | neighbors=[severity.ts] | lang=en
+- "lib_severity_exploitmaturity": "ExploitMaturity" | kind=code-symbol | source=manager/frontend/lib/severity.ts:L16 | neighbors=[severity.ts] | lang=en
+- "lib_severity_findingstatus": "FindingStatus" | kind=code-symbol | source=manager/frontend/lib/severity.ts:L14 | neighbors=[severity.ts] | lang=en
+- "lib_severity_severitymeta": "SeverityMeta" | kind=code-symbol | source=manager/frontend/lib/severity.ts:L93 | neighbors=[severity.ts] | lang=en
+- "lib_target_parser_common_ranges": "COMMON_RANGES" | kind=code-symbol | source=manager/frontend/lib/target-parser.ts:L132 | neighbors=[target-parser.ts] | lang=en
+- "lib_target_parser_isprivaterange": "isPrivateRange()" | kind=code-symbol | source=manager/frontend/lib/target-parser.ts:L35 | neighbors=[target-parser.ts] | lang=en
+- "lib_target_parser_parseresult": "ParseResult" | kind=code-symbol | source=manager/frontend/lib/target-parser.ts:L59 | neighbors=[target-parser.ts] | lang=en
+- "lib_target_parser_rfc1918": "RFC1918" | kind=code-symbol | source=manager/frontend/lib/target-parser.ts:L6 | neighbors=[target-parser.ts] | lang=en
+- "lib_target_parser_toapitargets": "toApiTargets()" | kind=code-symbol | source=manager/frontend/lib/target-parser.ts:L127 | neighbors=[target-parser.ts] | lang=en
+- "lib_tenant_reserved": "RESERVED" | kind=code-symbol | source=manager/frontend/lib/tenant.ts:L15 | neighbors=[tenant.ts] | lang=en
+- "lib_testssl_parser_skip_severity": "SKIP_SEVERITY" | kind=code-symbol | source=manager/frontend/lib/testssl-parser.ts:L12 | neighbors=[testssl-parser.ts] | lang=en
+- "lib_testssl_parser_testsslissue": "TestsslIssue" | kind=code-symbol | source=manager/frontend/lib/testssl-parser.ts:L4 | neighbors=[testssl-parser.ts] | lang=en
+- "lib_testssl_parser_testssloutput": "TestsslOutput" | kind=code-symbol | source=manager/frontend/lib/testssl-parser.ts:L26 | neighbors=[testssl-parser.ts] | lang=en
+- "lib_testssl_parser_testsslparseresult": "TestsslParseResult" | kind=code-symbol | source=manager/frontend/lib/testssl-parser.ts:L28 | neighbors=[testssl-parser.ts] | lang=en
+- "lib_whatweb_parser_whatwebparseresult": "WhatWebParseResult" | kind=code-symbol | source=manager/frontend/lib/whatweb-parser.ts:L6 | neighbors=[whatweb-parser.ts] | lang=en
+- "lib_whatweb_parser_whatwebresult": "WhatWebResult" | kind=code-symbol | source=manager/frontend/lib/whatweb-parser.ts:L1 | neighbors=[whatweb-parser.ts] | lang=en
+- "lib_with_backend_backendctx": "BackendCtx" | kind=code-symbol | source=manager/frontend/lib/with-backend.ts:L12 | neighbors=[with-backend.ts] | lang=en
+- "lib_with_backend_handler": "Handler" | kind=code-symbol | source=manager/frontend/lib/with-backend.ts:L16 | neighbors=[with-backend.ts] | lang=en
+- "login_page_loginform": "LoginForm()" | kind=code-symbol | source=manager/frontend/app/login/page.tsx:L18 | neighbors=[page.tsx] | lang=en
+- "login_page_loginpage": "LoginPage()" | kind=code-symbol | source=manager/frontend/app/login/page.tsx:L10 | neighbors=[page.tsx] | lang=en
+- "login_page_portalloginpage": "PortalLoginPage()" | kind=code-symbol | source=manager/frontend/app/portal/login/page.tsx:L7 | neighbors=[page.tsx] | lang=en
+- "logout_route_post": "POST()" | kind=code-symbol | source=manager/frontend/app/api/portal/logout/route.ts:L6 | neighbors=[route.ts] | lang=en
+- "main_scripts_accuracy_rationale_125": "Run the findings engine over a labeled corpus and score it.      corpus = {name," | kind=entity | source=probe/main_scripts/accuracy.py:L125 | neighbors=[evaluate_corpus()] | lang=en
+- "main_scripts_accuracy_rationale_49": "Precision / recall / F1 of produced findings vs a labeled expected set.      Key" | kind=entity | source=probe/main_scripts/accuracy.py:L49 | neighbors=[score_findings()] | lang=en
+- "main_scripts_accuracy_rationale_80": "(target, port) -> status, from port/syn/mass scan facts (last one wins)." | kind=entity | source=probe/main_scripts/accuracy.py:L80 | neighbors=[_observed_states()] | lang=en
+- "main_scripts_accuracy_rationale_95": "OPEN precision/recall + overall state accuracy vs a remote-validated     ground" | kind=entity | source=probe/main_scripts/accuracy.py:L95 | neighbors=[score_port_states()] | lang=pt
+- "main_scripts_adaptive_timeout_adaptivetimeout_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/adaptive_timeout.py:L21 | neighbors=[AdaptiveTimeout] | lang=en
+- "main_scripts_adaptive_timeout_rationale_32": "Fold one round-trip sample (seconds) into the estimate. Ignores         missing/" | kind=entity | source=probe/main_scripts/adaptive_timeout.py:L32 | neighbors=[.observe()] | lang=en
+- "main_scripts_adaptive_timeout_rationale_45": "Current timeout: base until we have a sample, then SRTT + 4*RTTVAR         clamp" | kind=entity | source=probe/main_scripts/adaptive_timeout.py:L45 | neighbors=[.timeout()] | lang=pt
+- "main_scripts_adaptive_timeout_rationale_55": "Convenience: build an estimator and fold in a sequence of RTT samples." | kind=entity | source=probe/main_scripts/adaptive_timeout.py:L55 | neighbors=[from_rtts()] | lang=en
+- "main_scripts_db_scanner_dbscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/db_scanner.py:L240 | neighbors=[DBScanner] | lang=en
 
 ## Instructions
 

@@ -1,4 +1,4 @@
-# Node Description Batch 161 of 227
+# Node Description Batch 161 of 236
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -26,46 +26,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "main_scripts_udp_scanner_rationale_114": "SIP OPTIONS request — safe fingerprint method." | kind=entity | source=probe/main_scripts/udp_scanner.py:L114 | neighbors=[_sip_probe()] | lang=en
-- "main_scripts_udp_scanner_rationale_133": "TFTP RRQ for a non-existent file.  Error reply confirms TFTP service." | kind=entity | source=probe/main_scripts/udp_scanner.py:L133 | neighbors=[_tftp_probe()] | lang=en
-- "main_scripts_udp_scanner_rationale_139": "RMCP Ping (ASF Presence Ping) to detect IPMI/BMC." | kind=entity | source=probe/main_scripts/udp_scanner.py:L139 | neighbors=[_ipmi_probe()] | lang=en
-- "main_scripts_udp_scanner_rationale_140": "RMCP Ping (ASF Presence Ping) to detect IPMI/BMC." | kind=entity | source=probe/main_scripts/udp_scanner.py:L140 | neighbors=[_ipmi_probe()] | lang=en
-- "main_scripts_udp_scanner_rationale_146": "UPnP/SSDP M-SEARCH — unicast to target:1900." | kind=entity | source=probe/main_scripts/udp_scanner.py:L146 | neighbors=[_ssdp_probe()] | lang=en
-- "main_scripts_udp_scanner_rationale_147": "UPnP/SSDP M-SEARCH — unicast to target:1900." | kind=entity | source=probe/main_scripts/udp_scanner.py:L147 | neighbors=[_ssdp_probe()] | lang=en
-- "main_scripts_udp_scanner_rationale_158": "mDNS PTR query for _services._dns-sd._udp.local (unicast to :5353)." | kind=entity | source=probe/main_scripts/udp_scanner.py:L158 | neighbors=[_mdns_probe()] | lang=en
-- "main_scripts_udp_scanner_rationale_159": "mDNS PTR query for _services._dns-sd._udp.local (unicast to :5353)." | kind=entity | source=probe/main_scripts/udp_scanner.py:L159 | neighbors=[_mdns_probe()] | lang=en
-- "main_scripts_udp_scanner_rationale_188": "Parse IKEv1 or IKEv2 response header." | kind=entity | source=probe/main_scripts/udp_scanner.py:L188 | neighbors=[interpret_ike()] | lang=en
-- "main_scripts_udp_scanner_rationale_189": "Parse IKEv1 or IKEv2 response header." | kind=entity | source=probe/main_scripts/udp_scanner.py:L189 | neighbors=[interpret_ike()] | lang=en
-- "main_scripts_udp_scanner_rationale_204": "Extract SIP version + server header from a SIP response." | kind=entity | source=probe/main_scripts/udp_scanner.py:L204 | neighbors=[interpret_sip()] | lang=en
-- "main_scripts_udp_scanner_rationale_205": "Extract SIP version + server header from a SIP response." | kind=entity | source=probe/main_scripts/udp_scanner.py:L205 | neighbors=[interpret_sip()] | lang=en
-- "main_scripts_udp_scanner_rationale_219": "Parse RMCP Pong; extract supported entities and IPMI capabilities." | kind=entity | source=probe/main_scripts/udp_scanner.py:L219 | neighbors=[interpret_ipmi()] | lang=en
-- "main_scripts_udp_scanner_rationale_220": "Parse RMCP Pong; extract supported entities and IPMI capabilities." | kind=entity | source=probe/main_scripts/udp_scanner.py:L220 | neighbors=[interpret_ipmi()] | lang=en
-- "main_scripts_udp_scanner_rationale_232": "Extract Location and Server from SSDP response." | kind=entity | source=probe/main_scripts/udp_scanner.py:L232 | neighbors=[interpret_ssdp()] | lang=en
-- "main_scripts_udp_scanner_rationale_233": "Extract Location and Server from SSDP response." | kind=entity | source=probe/main_scripts/udp_scanner.py:L233 | neighbors=[interpret_ssdp()] | lang=en
-- "main_scripts_udp_scanner_rationale_247": "Return byte count and check QR bit (1 = response)." | kind=entity | source=probe/main_scripts/udp_scanner.py:L247 | neighbors=[interpret_mdns()] | lang=en
-- "main_scripts_udp_scanner_rationale_248": "Return byte count and check QR bit (1 = response)." | kind=entity | source=probe/main_scripts/udp_scanner.py:L248 | neighbors=[interpret_mdns()] | lang=en
-- "main_scripts_udp_scanner_rationale_290": "Acquire the concurrency gate (adaptive window or fixed semaphore),         run t" | kind=entity | source=probe/main_scripts/udp_scanner.py:L290 | neighbors=[._gated_probe()] | lang=en
-- "main_scripts_udp_scanner_rationale_291": "Acquire the concurrency gate (adaptive window or fixed semaphore),         run t" | kind=entity | source=probe/main_scripts/udp_scanner.py:L291 | neighbors=[._gated_probe()] | lang=en
-- "main_scripts_udp_scanner_rationale_78": "Minimal IKEv2 IKE_SA_INIT probe.  Sends a real SA payload proposing     AES-256-" | kind=entity | source=probe/main_scripts/udp_scanner.py:L78 | neighbors=[_ike_probe()] | lang=fr
-- "main_scripts_udp_scanner_snmp_probe": "_snmp_probe()" | kind=code-symbol | source=probe/main_scripts/udp_scanner.py:L54 | neighbors=[udp_scanner.py] | lang=en
-- "main_scripts_udp_scanner_udpscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/udp_scanner.py:L280 | neighbors=[UDPScanner] | lang=en
-- "main_scripts_unauth_access_is_rce_capable": "is_rce_capable()" | kind=code-symbol | source=probe/main_scripts/unauth_access.py:L68 | neighbors=[unauth_access.py] | lang=en
-- "main_scripts_unauth_access_rationale_49": "Decide whether `banner` proves unauthenticated access for `service`.      True =" | kind=entity | source=probe/main_scripts/unauth_access.py:L49 | neighbors=[classify_unauth_access()] | lang=en
-- "main_scripts_vantage_matrix_rationale_1": "vantage_matrix.py — reconcile the SAME target scanned from MULTIPLE vantages.  E" | kind=entity | source=probe/main_scripts/vantage_matrix.py:L1 | neighbors=[vantage_matrix.py] | lang=en
-- "main_scripts_vantage_matrix_rationale_42": "(proto, port, status) from a ScanResult or a plain dict." | kind=entity | source=probe/main_scripts/vantage_matrix.py:L42 | neighbors=[_extract()] | lang=pt
-- "main_scripts_vantage_matrix_rationale_51": "Compare per-vantage observations of one target.      `observations` maps a vanta" | kind=entity | source=probe/main_scripts/vantage_matrix.py:L51 | neighbors=[reconcile_vantages()] | lang=en
-- "main_scripts_web_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/web_scanner.py:L166 | neighbors=[web_scanner.py] | lang=en
-- "main_scripts_web_scanner_noredirect_redirect_request": ".redirect_request()" | kind=code-symbol | source=probe/main_scripts/web_scanner.py:L56 | neighbors=[_NoRedirect] | lang=en
-- "main_scripts_web_scanner_rationale_1": "web_scanner.py — passive HTTP(S) service fingerprinting.  METHOD (collection onl" | kind=entity | source=probe/main_scripts/web_scanner.py:L1 | neighbors=[web_scanner.py] | lang=en
-- "main_scripts_web_scanner_rationale_45": "Read the Allow header from an OPTIONS response. Read-only." | kind=entity | source=probe/main_scripts/web_scanner.py:L45 | neighbors=[parse_allow_header()] | lang=en
-- "main_scripts_web_scanner_rationale_46": "Read the Allow header from an OPTIONS response. Read-only." | kind=entity | source=probe/main_scripts/web_scanner.py:L46 | neighbors=[parse_allow_header()] | lang=en
-- "main_scripts_web_scanner_webscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/web_scanner.py:L139 | neighbors=[WebScanner] | lang=en
-- "main_scripts_windows_collector_main": "main()" | kind=code-symbol | source=probe/main_scripts/windows_collector.py:L335 | neighbors=[windows_collector.py] | lang=en
-- "main_scripts_windows_collector_rationale_1": "windows_collector.py — credentialed (authenticated) inventory for Windows hosts." | kind=entity | source=probe/main_scripts/windows_collector.py:L1 | neighbors=[windows_collector.py] | lang=en
-- "main_scripts_windows_collector_rationale_160": "Connect to RemoteRegistry over SMB and enumerate installed-software keys plus" | kind=entity | source=probe/main_scripts/windows_collector.py:L160 | neighbors=[_smb_registry_collect()] | lang=en
-- "main_scripts_windows_collector_windowscollector_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/windows_collector.py:L239 | neighbors=[WindowsCollector] | lang=en
-- "main_scripts_windows_collector_winrm_collect": "_winrm_collect()" | kind=code-symbol | source=probe/main_scripts/windows_collector.py:L114 | neighbors=[windows_collector.py] | lang=en
-- "me_route_get": "GET" | kind=code-symbol | source=manager/frontend/app/api/auth/me/route.ts:L10 | neighbors=[route.ts] | lang=en
+- "main_scripts_port_scanner_rationale_211": "Ports recorded more than once (a port must get exactly one verdict)." | kind=entity | source=probe/main_scripts/port_scanner.py:L211 | neighbors=[.duplicate_ports()] | lang=pt
+- "main_scripts_port_scanner_rationale_301": "One connect() and its classification. Always returns a ScanResult         (open" | kind=entity | source=probe/main_scripts/port_scanner.py:L301 | neighbors=[._attempt()] | lang=en
+- "main_scripts_port_scanner_rationale_313": "One connect() and its classification. Always returns a ScanResult         (open" | kind=entity | source=probe/main_scripts/port_scanner.py:L313 | neighbors=[._attempt()] | lang=en
+- "main_scripts_port_scanner_rationale_326": "One connect() and its classification. Always returns a ScanResult         (open" | kind=entity | source=probe/main_scripts/port_scanner.py:L326 | neighbors=[._attempt()] | lang=en
+- "main_scripts_port_scanner_rationale_367": "Bounded worker-pool scan of every requested port.          A fixed pool of `conc" | kind=entity | source=probe/main_scripts/port_scanner.py:L367 | neighbors=[.scan_target()] | lang=en
+- "main_scripts_port_scanner_rationale_391": "Bounded worker-pool scan of every requested port.          A fixed pool of `conc" | kind=entity | source=probe/main_scripts/port_scanner.py:L391 | neighbors=[.scan_target()] | lang=en
+- "main_scripts_port_scanner_rationale_405": "Bounded worker-pool scan of every requested port.          A fixed pool of `conc" | kind=entity | source=probe/main_scripts/port_scanner.py:L405 | neighbors=[.scan_target()] | lang=en
+- "main_scripts_port_scanner_rationale_90": "Return 'ipv4'/'ipv6' for an IP literal, else None (unresolved hostname)." | kind=entity | source=probe/main_scripts/port_scanner.py:L90 | neighbors=[_family_of()] | lang=en
+- "main_scripts_port_scanner_rationale_91": "Return 'ipv4'/'ipv6' for an IP literal, else None (unresolved hostname)." | kind=entity | source=probe/main_scripts/port_scanner.py:L91 | neighbors=[_family_of()] | lang=en
+- "main_scripts_port_scanner_rationale_93": "Return 'ipv4'/'ipv6' for an IP literal, else None (unresolved hostname)." | kind=entity | source=probe/main_scripts/port_scanner.py:L93 | neighbors=[_family_of()] | lang=en
+- "main_scripts_port_scanner_scanmetrics_classified": ".classified()" | kind=code-symbol | source=probe/main_scripts/port_scanner.py:L199 | neighbors=[ScanMetrics] | lang=en
+- "main_scripts_port_scanner_scanmetrics_complete": ".complete()" | kind=code-symbol | source=probe/main_scripts/port_scanner.py:L215 | neighbors=[ScanMetrics] | lang=en
+- "main_scripts_port_scanner_scanmetrics_degraded": ".degraded()" | kind=code-symbol | source=probe/main_scripts/port_scanner.py:L227 | neighbors=[ScanMetrics] | lang=en
+- "main_scripts_rdp_scanner_rationale_44": "TPKT + X.224 Connection Request carrying an RDP Negotiation Request." | kind=entity | source=probe/main_scripts/rdp_scanner.py:L44 | neighbors=[build_connection_request()] | lang=en
+- "main_scripts_rdp_scanner_rationale_56": "Parse a Connection Confirm. Returns None if this isn't an X.224 CC (i.e.     the" | kind=entity | source=probe/main_scripts/rdp_scanner.py:L56 | neighbors=[parse_connection_confirm()] | lang=en
+- "main_scripts_rdp_scanner_rationale_84": "One synchronous RDP handshake. Best-effort; None on any failure." | kind=entity | source=probe/main_scripts/rdp_scanner.py:L84 | neighbors=[probe_rdp()] | lang=en
+- "main_scripts_rdp_scanner_rdpscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/rdp_scanner.py:L98 | neighbors=[RDPScanner] | lang=en
+- "main_scripts_run_all_rationale_46": "Run one scanner module as a subprocess, tee its JSONL to <name>.jsonl." | kind=entity | source=probe/main_scripts/run_all.py:L46 | neighbors=[_run_stage()] | lang=en
+- "main_scripts_run_all_rationale_56": "Run one scanner module as a subprocess, tee its JSONL to <name>.jsonl." | kind=entity | source=probe/main_scripts/run_all.py:L56 | neighbors=[_run_stage()] | lang=en
+- "main_scripts_scan_funnel_main": "main()" | kind=code-symbol | source=probe/main_scripts/scan_funnel.py:L327 | neighbors=[scan_funnel.py] | lang=en
+- "main_scripts_scan_funnel_rationale_1": "scan_funnel.py — per-host scan orchestrator (the assessment pipeline, Playbook 0" | kind=entity | source=probe/main_scripts/scan_funnel.py:L1 | neighbors=[scan_funnel.py] | lang=en
+- "main_scripts_scan_funnel_rationale_110": "Orchestrates discovery → port scan → routed deep scanners for each host.      Pa" | kind=entity | source=probe/main_scripts/scan_funnel.py:L110 | neighbors=[ScanFunnel] | lang=en
+- "main_scripts_scan_funnel_rationale_181": "Funnel many hosts with bounded concurrency, writing every result." | kind=entity | source=probe/main_scripts/scan_funnel.py:L181 | neighbors=[.run()] | lang=en
+- "main_scripts_scan_funnel_rationale_192": "Funnel many hosts with bounded concurrency, writing every result." | kind=entity | source=probe/main_scripts/scan_funnel.py:L192 | neighbors=[.run()] | lang=en
+- "main_scripts_scan_funnel_rationale_208": "Wire the funnel with the package's real scanners. Imported lazily so the     fun" | kind=entity | source=probe/main_scripts/scan_funnel.py:L208 | neighbors=[build_default_funnel()] | lang=en
+- "main_scripts_scan_funnel_rationale_219": "Wire the funnel with the package's real scanners. Imported lazily so the     fun" | kind=entity | source=probe/main_scripts/scan_funnel.py:L219 | neighbors=[build_default_funnel()] | lang=en
+- "main_scripts_scan_funnel_rationale_56": "Map a host's open ports onto the deep-scanner routes that handle them.     Retur" | kind=entity | source=probe/main_scripts/scan_funnel.py:L56 | neighbors=[route_ports()] | lang=en
+- "main_scripts_scan_funnel_rationale_67": "Map a host's open ports onto the deep-scanner routes that handle them.     Retur" | kind=entity | source=probe/main_scripts/scan_funnel.py:L67 | neighbors=[route_ports()] | lang=en
+- "main_scripts_scan_funnel_rationale_73": "The full outcome of funnelling one host." | kind=entity | source=probe/main_scripts/scan_funnel.py:L73 | neighbors=[FunnelResult] | lang=en
+- "main_scripts_scan_funnel_rationale_84": "The full outcome of funnelling one host." | kind=entity | source=probe/main_scripts/scan_funnel.py:L84 | neighbors=[FunnelResult] | lang=en
+- "main_scripts_scan_funnel_rationale_87": "The port set worth scanning = union of every route's ports (deduped)." | kind=entity | source=probe/main_scripts/scan_funnel.py:L87 | neighbors=[_candidate_ports()] | lang=en
+- "main_scripts_scan_funnel_rationale_98": "The port set worth scanning = union of every route's ports (deduped)." | kind=entity | source=probe/main_scripts/scan_funnel.py:L98 | neighbors=[_candidate_ports()] | lang=en
+- "main_scripts_scan_funnel_rationale_99": "Orchestrates discovery → port scan → routed deep scanners for each host.      Pa" | kind=entity | source=probe/main_scripts/scan_funnel.py:L99 | neighbors=[ScanFunnel] | lang=en
+- "main_scripts_scan_funnel_scanfunnel_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/scan_funnel.py:L125 | neighbors=[ScanFunnel] | lang=en
+- "main_scripts_scanner_base_adaptiveratecontroller_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/scanner_base.py:L421 | neighbors=[AdaptiveRateController] | lang=en
+- "main_scripts_scanner_base_base_argparser": "base_argparser()" | kind=code-symbol | source=probe/main_scripts/scanner_base.py:L804 | neighbors=[scanner_base.py] | lang=en
+- "main_scripts_scanner_base_ratelimiter_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/scanner_base.py:L368 | neighbors=[RateLimiter] | lang=en
+- "main_scripts_scanner_base_rationale_1": "scanner_base.py — shared foundation for every scanner module.  SCOPE OF THIS MOD" | kind=entity | source=probe/main_scripts/scanner_base.py:L1 | neighbors=[scanner_base.py] | lang=en
+- "main_scripts_scanner_base_rationale_115": "Full, debuggable classification for attaching to a ScanResult: state,     reason" | kind=entity | source=probe/main_scripts/scanner_base.py:L115 | neighbors=[describe_os_error()] | lang=en
+- "main_scripts_scanner_base_rationale_130": "One observation about one target. Pure fact, no interpretation.      Network-sta" | kind=entity | source=probe/main_scripts/scanner_base.py:L130 | neighbors=[ScanResult] | lang=en
 
 ## Instructions
 

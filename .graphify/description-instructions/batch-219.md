@@ -1,4 +1,4 @@
-# Node Description Batch 220 of 227
+# Node Description Batch 220 of 236
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,51 +19,53 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-Write every description in English (en). Do not switch languages.
+LANGUAGE: each entry has a `lang=` marker giving the language of its source.
+Write that entry's description in EXACTLY that language. Do not translate to
+a single common language — match each node's source language individually.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tools_manifest_platform": "Platform" | kind=code-symbol | source=manager/frontend/lib/tools/manifest.ts:L24 | neighbors=[manifest.ts]
-- "ui_output_a": "A" | kind=code-symbol | source=manager/frontend/cli/ui/output.ts:L5 | neighbors=[output.ts]
-- "ui_output_error": "error()" | kind=code-symbol | source=manager/frontend/cli/ui/output.ts:L269 | neighbors=[output.ts]
-- "ui_output_line": "LINE" | kind=code-symbol | source=manager/frontend/cli/ui/output.ts:L49 | neighbors=[output.ts]
-- "ui_output_sev_color": "SEV_COLOR" | kind=code-symbol | source=manager/frontend/cli/ui/output.ts:L33 | neighbors=[output.ts]
-- "ui_output_stage_col": "STAGE_COL" | kind=code-symbol | source=manager/frontend/cli/ui/output.ts:L103 | neighbors=[output.ts]
-- "ui_output_stage_label": "STAGE_LABEL" | kind=code-symbol | source=manager/frontend/cli/ui/output.ts:L78 | neighbors=[output.ts]
-- "use_cases_route_get": "GET" | kind=code-symbol | source=manager/frontend/app/api/scan/use-cases/route.ts:L6 | neighbors=[route.ts]
-- "utils_db_rationale_1": "Shared database helpers — single source of truth for patterns duplicated across" | kind=entity | source=manager/backend/app/utils/db.py:L1 | neighbors=[db.py]
-- "utils_db_rationale_24": "Fetch a row by primary key, optionally scoped to a tenant.     Raises 404 if mis" | kind=entity | source=manager/backend/app/utils/db.py:L24 | neighbors=[get_or_404()]
-- "utils_hash_rationale_1": "Shared hashing utilities — deduplication keys, fingerprinting." | kind=entity | source=manager/backend/app/utils/hash.py:L1 | neighbors=[hash.py]
-- "utils_hash_rationale_11": "SHA-256 of (asset_id, cve_id, plugin_id) for finding deduplication.      Used by" | kind=entity | source=manager/backend/app/utils/hash.py:L11 | neighbors=[dedup_hash()]
-- "utils_pagination_rationale_12": "Returns (items, total). Applies OFFSET/LIMIT to `query`." | kind=entity | source=manager/backend/app/utils/pagination.py:L12 | neighbors=[paginate_query()]
-- "verify_route_post": "POST()" | kind=code-symbol | source=manager/frontend/app/api/auth/verify/route.ts:L6 | neighbors=[route.ts]
-- "versions_0001_initial_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0001_initial.py:L174 | neighbors=[0001_initial.py]
-- "versions_0001_initial_rationale_1": "Initial schema — all tables  Revision ID: 0001 Revises: Create Date: 2026-05-19" | kind=entity | source=manager/backend/alembic/versions/0001_initial.py:L1 | neighbors=[0001_initial.py]
-- "versions_0001_initial_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0001_initial.py:L19 | neighbors=[0001_initial.py]
-- "versions_0002_services_agents_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0002_services_agents.py:L59 | neighbors=[0002_services_agents.py]
-- "versions_0002_services_agents_rationale_1": "Add services and agents tables  Revision ID: 0002 Revises: 0001 Create Date: 202" | kind=entity | source=manager/backend/alembic/versions/0002_services_agents.py:L1 | neighbors=[0002_services_agents.py]
-- "versions_0002_services_agents_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0002_services_agents.py:L19 | neighbors=[0002_services_agents.py]
-- "versions_0003_vuln_scan_fields_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0003_vuln_scan_fields.py:L43 | neighbors=[0003_vuln_scan_fields.py]
-- "versions_0003_vuln_scan_fields_rationale_1": "Add enrichment fields index + webhook column to engagements  Revision ID: 0003 R" | kind=entity | source=manager/backend/alembic/versions/0003_vuln_scan_fields.py:L1 | neighbors=[0003_vuln_scan_fields.py]
-- "versions_0003_vuln_scan_fields_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0003_vuln_scan_fields.py:L18 | neighbors=[0003_vuln_scan_fields.py]
-- "versions_0004_exploit_tables_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0004_exploit_tables.py:L93 | neighbors=[0004_exploit_tables.py]
-- "versions_0004_exploit_tables_rationale_1": "Exploit results, approvals, and audit log tables  Revision ID: 0004 Revises: 000" | kind=entity | source=manager/backend/alembic/versions/0004_exploit_tables.py:L1 | neighbors=[0004_exploit_tables.py]
-- "versions_0004_exploit_tables_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0004_exploit_tables.py:L19 | neighbors=[0004_exploit_tables.py]
-- "versions_0005_detection_validation_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0005_detection_validation.py:L80 | neighbors=[0005_detection_validation.py]
-- "versions_0005_detection_validation_rationale_1": "Detection validation: attack_timeline, detection_configs, extend detection_resul" | kind=entity | source=manager/backend/alembic/versions/0005_detection_validation.py:L1 | neighbors=[0005_detection_validation.py]
-- "versions_0005_detection_validation_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0005_detection_validation.py:L19 | neighbors=[0005_detection_validation.py]
-- "versions_0006_llm_outputs_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0006_llm_outputs.py:L48 | neighbors=[0006_llm_outputs.py]
-- "versions_0006_llm_outputs_rationale_1": "AI engine: llm_outputs table + reviewstatus enum  Revision ID: 0006 Revises: 000" | kind=entity | source=manager/backend/alembic/versions/0006_llm_outputs.py:L1 | neighbors=[0006_llm_outputs.py]
-- "versions_0006_llm_outputs_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0006_llm_outputs.py:L19 | neighbors=[0006_llm_outputs.py]
-- "versions_0007_scale_indexes_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0007_scale_indexes.py:L35 | neighbors=[0007_scale_indexes.py]
-- "versions_0007_scale_indexes_rationale_1": "P3: composite indexes for the hot aggregate + poll query paths.  The dashboard's" | kind=entity | source=manager/backend/alembic/versions/0007_scale_indexes.py:L1 | neighbors=[0007_scale_indexes.py]
-- "versions_0007_scale_indexes_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0007_scale_indexes.py:L22 | neighbors=[0007_scale_indexes.py]
-- "versions_0008_scan_results_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0008_scan_results.py:L39 | neighbors=[0008_scan_results.py]
-- "versions_0008_scan_results_rationale_1": "P3-#10: append-only scan_results table (raw facts).  Decouples the (large) raw f" | kind=entity | source=manager/backend/alembic/versions/0008_scan_results.py:L1 | neighbors=[0008_scan_results.py]
-- "versions_0008_scan_results_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0008_scan_results.py:L21 | neighbors=[0008_scan_results.py]
-- "versions_0009_outbox_events_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0009_outbox_events.py:L45 | neighbors=[0009_outbox_events.py]
-- "versions_0009_outbox_events_rationale_1": "Transactional outbox for durable background work (detection, etc.).  Producers i" | kind=entity | source=manager/backend/alembic/versions/0009_outbox_events.py:L1 | neighbors=[0009_outbox_events.py]
+- "tests_test_syn_scanner_rationale_205": "The raw SYN path resends ONLY still-silent ports — the direct fix for the     fa" | kind=entity | source=probe/tests/test_syn_scanner.py:L205 | neighbors=[TestSynRetransmit] | lang=en
+- "tests_test_syn_scanner_rationale_208": "The raw SYN path resends ONLY still-silent ports — the direct fix for the     fa" | kind=entity | source=probe/tests/test_syn_scanner.py:L208 | neighbors=[TestSynRetransmit] | lang=en
+- "tests_test_syn_scanner_rationale_327": "A SYN/ACK carrying an MSS option (data offset 6 = 24-byte TCP header)." | kind=entity | source=probe/tests/test_syn_scanner.py:L327 | neighbors=[_synack_with_options()] | lang=en
+- "tests_test_syn_scanner_testadaptivetimeouttoggle_test_adaptive_on_by_default": ".test_adaptive_on_by_default()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L382 | neighbors=[TestAdaptiveTimeoutToggle] | lang=en
+- "tests_test_syn_scanner_testadaptivetimeouttoggle_test_can_disable": ".test_can_disable()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L386 | neighbors=[TestAdaptiveTimeoutToggle] | lang=en
+- "tests_test_syn_scanner_testcapabilitydetection_test_linux_with_raw_socket_is_supported": ".test_linux_with_raw_socket_is_supported()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L148 | neighbors=[TestCapabilityDetection] | lang=en
+- "tests_test_syn_scanner_testcapabilitydetection_test_linux_without_privilege_is_unsupported": ".test_linux_without_privilege_is_unsupported()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L143 | neighbors=[TestCapabilityDetection] | lang=en
+- "tests_test_syn_scanner_testcapabilitydetection_test_non_linux_is_unsupported": ".test_non_linux_is_unsupported()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L139 | neighbors=[TestCapabilityDetection] | lang=en
+- "tests_test_syn_scanner_testchecksum_test_checksum_handles_odd_length": ".test_checksum_handles_odd_length()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L34 | neighbors=[TestChecksum] | lang=en
+- "tests_test_syn_scanner_testchecksum_test_checksum_of_valid_ip_header_is_zero": ".test_checksum_of_valid_ip_header_is_zero()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L28 | neighbors=[TestChecksum] | lang=en
+- "tests_test_syn_scanner_testchecksum_test_tcp_checksum_verifies_to_zero": ".test_tcp_checksum_verifies_to_zero()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L38 | neighbors=[TestChecksum] | lang=en
+- "tests_test_syn_scanner_testclassify_test_other_flags_are_none": ".test_other_flags_are_none()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L102 | neighbors=[TestClassify] | lang=en
+- "tests_test_syn_scanner_testclassify_test_rst_is_closed": ".test_rst_is_closed()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L98 | neighbors=[TestClassify] | lang=en
+- "tests_test_syn_scanner_testclassify_test_syn_ack_is_open": ".test_syn_ack_is_open()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L95 | neighbors=[TestClassify] | lang=en
+- "tests_test_syn_scanner_testoptionparsing_test_malformed_options_never_raise": ".test_malformed_options_never_raise()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L317 | neighbors=[TestOptionParsing] | lang=en
+- "tests_test_syn_scanner_testoptionparsing_test_mss_absent_returns_none": ".test_mss_absent_returns_none()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L314 | neighbors=[TestOptionParsing] | lang=en
+- "tests_test_syn_scanner_testoptionparsing_test_mss_after_nop_padding": ".test_mss_after_nop_padding()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L307 | neighbors=[TestOptionParsing] | lang=en
+- "tests_test_syn_scanner_testoptionparsing_test_mss_extracted": ".test_mss_extracted()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L304 | neighbors=[TestOptionParsing] | lang=en
+- "tests_test_syn_scanner_testoptionparsing_test_mss_skips_other_options": ".test_mss_skips_other_options()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L310 | neighbors=[TestOptionParsing] | lang=en
+- "tests_test_syn_scanner_testpacketroundtrip_test_ip_checksum_valid_in_full_packet": ".test_ip_checksum_valid_in_full_packet()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L84 | neighbors=[TestPacketRoundTrip] | lang=en
+- "tests_test_syn_scanner_testpacketroundtrip_test_parse_rejects_short_packet": ".test_parse_rejects_short_packet()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L88 | neighbors=[TestPacketRoundTrip] | lang=en
+- "tests_test_syn_scanner_testpacketroundtrip_test_syn_flag_is_set": ".test_syn_flag_is_set()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L79 | neighbors=[TestPacketRoundTrip] | lang=en
+- "tests_test_syn_scanner_testpacketroundtrip_test_syn_packet_parses_back_to_fields": ".test_syn_packet_parses_back_to_fields()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L69 | neighbors=[TestPacketRoundTrip] | lang=en
+- "tests_test_syn_scanner_testparsepacketsignals_test_no_options_gives_none_mss": ".test_no_options_gives_none_mss()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L341 | neighbors=[TestParsePacketSignals] | lang=en
+- "tests_test_syn_scanner_testsyncookie_test_cookie_is_32_bit": ".test_cookie_is_32_bit()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L53 | neighbors=[TestSynCookie] | lang=en
+- "tests_test_syn_scanner_testsyncookie_test_cookie_is_deterministic": ".test_cookie_is_deterministic()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L48 | neighbors=[TestSynCookie] | lang=en
+- "tests_test_syn_scanner_testsyncookie_test_cookie_varies_with_key": ".test_cookie_varies_with_key()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L61 | neighbors=[TestSynCookie] | lang=en
+- "tests_test_syn_scanner_testsyncookie_test_cookie_varies_with_port": ".test_cookie_varies_with_port()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L57 | neighbors=[TestSynCookie] | lang=en
+- "tests_test_syn_scanner_testsyndefaults_test_default_ports_are_nmap_top100": ".test_default_ports_are_nmap_top100()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L288 | neighbors=[TestSynDefaults] | lang=en
+- "tests_test_syn_scanner_testsyndefaults_test_default_retries_is_two": ".test_default_retries_is_two()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L295 | neighbors=[TestSynDefaults] | lang=en
+- "tests_test_syn_scanner_testsynscannerfallback_test_fallback_detects_open_port_on_loopback": ".test_fallback_detects_open_port_on_loopback()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L164 | neighbors=[TestSynScannerFallback] | lang=en
+- "tests_test_syn_scanner_testsynscannerfallback_test_fallback_labels_scanner_name": ".test_fallback_labels_scanner_name()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L184 | neighbors=[TestSynScannerFallback] | lang=en
+- "tests_test_syn_scanner_testsynscannerfallback_test_forced_fallback_builds_connect_scanner": ".test_forced_fallback_builds_connect_scanner()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L158 | neighbors=[TestSynScannerFallback] | lang=en
+- "tests_test_tarpit_rationale_1": "test_tarpit.py — tarpit / honeypot detection (task C5).  A tarpit (LaBrea), hone" | kind=entity | source=probe/tests/test_tarpit.py:L1 | neighbors=[test_tarpit.py] | lang=pt
+- "tests_test_tarpit_testassesstarpit_test_boundary_floor_and_ratio_trip_exactly": ".test_boundary_floor_and_ratio_trip_exactly()" | kind=code-symbol | source=probe/tests/test_tarpit.py:L33 | neighbors=[TestAssessTarpit] | lang=en
+- "tests_test_tarpit_testassesstarpit_test_busy_real_host_is_not_flagged": ".test_busy_real_host_is_not_flagged()" | kind=code-symbol | source=probe/tests/test_tarpit.py:L23 | neighbors=[TestAssessTarpit] | lang=en
+- "tests_test_tarpit_testassesstarpit_test_nearly_all_open_large_scan_is_flagged": ".test_nearly_all_open_large_scan_is_flagged()" | kind=code-symbol | source=probe/tests/test_tarpit.py:L18 | neighbors=[TestAssessTarpit] | lang=en
+- "tests_test_tarpit_testassesstarpit_test_tiny_all_open_scan_is_below_the_floor": ".test_tiny_all_open_scan_is_below_the_floor()" | kind=code-symbol | source=probe/tests/test_tarpit.py:L28 | neighbors=[TestAssessTarpit] | lang=en
+- "tests_test_tarpit_testassesstarpit_test_zero_attempted_is_safe": ".test_zero_attempted_is_safe()" | kind=code-symbol | source=probe/tests/test_tarpit.py:L37 | neighbors=[TestAssessTarpit] | lang=en
+- "tests_test_task_runner_rationale_1": "Tests for agent/task_runner.py" | kind=entity | source=probe/tests/test_task_runner.py:L1 | neighbors=[test_task_runner.py] | lang=en
 
 ## Instructions
 

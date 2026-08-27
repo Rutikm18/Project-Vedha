@@ -16,10 +16,10 @@
 services:
   probe:
     # Pull a published image in production; build locally for dev/air-gapped.
-    image: ${VEDHA_PROBE_IMAGE:-vedha-probe:local}
+    image: ${VEDHA_AGENT_IMAGE:-vedha-agent:local}
     build:
       context: .
-    container_name: vedha-probe
+    container_name: vedha-agent
     # All connection + authorization config lives in probe.env (copy from
     # probe.env.example). The two REQUIRED values are PLATFORM_URL (the cloud
     # Manager's https:// URL) and PROBE_NETWORK_SEGMENTS (the CIDRs this probe is
@@ -27,10 +27,10 @@ services:
     env_file:
       - probe.env
     volumes:
-      # Identity + spool default to /var/lib/vedha-probe (STATE_FILE /
+      # Identity + spool default to /var/lib/vedha-agent (STATE_FILE /
       # RESULT_SPOOL_DIR), so this named volume makes a restart re-use the same
       # agent registration instead of enrolling a new probe each time.
-      - probestate:/var/lib/vedha-probe
+      - probestate:/var/lib/vedha-agent
       # Trust a private/self-signed Manager CA by uncommenting and pointing
       # PROBE_CA_BUNDLE=/etc/vedha/ca.pem in probe.env:
       # - ./ca.pem:/etc/vedha/ca.pem:ro

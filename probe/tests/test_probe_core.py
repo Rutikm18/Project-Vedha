@@ -944,4 +944,11 @@ class TestUseCasesResolve:
         assert st == "discovery"
 
     def test_use_cases_count(self):
-        assert len(USE_CASES) == 15
+        assert len(USE_CASES) == 16
+
+    def test_network_va_resolves(self):
+        # The full-campaign use-case dispatches the collection-only network_va
+        # scan_type (CVE correlation stays a manager-side layer on this path).
+        st, profile, _intensity = resolve("uc_network_va", None, {})
+        assert st == "network_va"
+        assert profile == "it"

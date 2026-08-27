@@ -1,4 +1,4 @@
-# Node Description Batch 210 of 227
+# Node Description Batch 210 of 236
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,51 +19,53 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-Write every description in English (en). Do not switch languages.
+LANGUAGE: each entry has a `lang=` marker giving the language of its source.
+Write that entry's description in EXACTLY that language. Do not translate to
+a single common language — match each node's source language individually.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_scan_funnel_rationale_1": "test_scan_funnel.py — per-host scan funnel orchestrator (Tier 1.4).  The funnel" | kind=entity | source=probe/tests/test_scan_funnel.py:L1 | neighbors=[test_scan_funnel.py]
-- "tests_test_scan_funnel_rationale_65": "Build a funnel with fakes; return (funnel, discovery, port_scanner, created)." | kind=entity | source=probe/tests/test_scan_funnel.py:L65 | neighbors=[_make_funnel()]
-- "tests_test_scan_funnel_recordingdeep_init": ".__init__()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L48 | neighbors=[RecordingDeep]
-- "tests_test_scan_funnel_recordingdeep_scan_target": ".scan_target()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L53 | neighbors=[RecordingDeep]
-- "tests_test_scan_funnel_testbuilddefaultfunnel_test_candidate_ports_cover_all_routes": ".test_candidate_ports_cover_all_routes()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L210 | neighbors=[TestBuildDefaultFunnel]
-- "tests_test_scan_funnel_testrouteports_test_intersection_only": ".test_intersection_only()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L99 | neighbors=[TestRoutePorts]
-- "tests_test_scan_funnel_testrouteports_test_no_match_returns_empty": ".test_no_match_returns_empty()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L103 | neighbors=[TestRoutePorts]
-- "tests_test_scan_funnel_testrouteports_test_port_in_multiple_routes": ".test_port_in_multiple_routes()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L107 | neighbors=[TestRoutePorts]
-- "tests_test_scan_funnel_testrouteports_test_sorted_output": ".test_sorted_output()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L112 | neighbors=[TestRoutePorts]
-- "tests_test_scan_health_rationale_1": "test_scan_health.py — the probe scan-metrics → coverage/health verdict.  Guards" | kind=entity | source=manager/backend/tests/test_scan_health.py:L1 | neighbors=[test_scan_health.py]
-- "tests_test_scan_health_test_aggregates_across_hosts": "test_aggregates_across_hosts()" | kind=code-symbol | source=manager/backend/tests/test_scan_health.py:L48 | neighbors=[test_scan_health.py]
-- "tests_test_scan_health_test_no_metrics_means_nothing_to_attest": "test_no_metrics_means_nothing_to_attest()" | kind=code-symbol | source=manager/backend/tests/test_scan_health.py:L40 | neighbors=[test_scan_health.py]
-- "tests_test_scanner_parity_rationale_1": "test_scanner_parity.py — the no-drift guard.  Decision (probe_next plan, Phase 1" | kind=entity | source=probe/tests/test_scanner_parity.py:L1 | neighbors=[test_scanner_parity.py]
-- "tests_test_scanner_parity_rationale_30": "Every scanner module authored in main_scripts must exist in scanner/." | kind=entity | source=probe/tests/test_scanner_parity.py:L30 | neighbors=[test_scanner_is_superset_of_no_missing_…]
-- "tests_test_scanner_parity_rationale_39": "scanner/ must not carry modules that main_scripts/ does not — otherwise the" | kind=entity | source=probe/tests/test_scanner_parity.py:L39 | neighbors=[test_no_extra_scanner_files()]
-- "tests_test_scanner_parity_rationale_49": "Each scanner/<mod>.py is byte-identical to main_scripts/<mod>.py." | kind=entity | source=probe/tests/test_scanner_parity.py:L49 | neighbors=[test_scanner_module_matches_main_script…]
-- "tests_test_scope_crypt_rationale_1": "Tests for agent/scope_crypt.py" | kind=entity | source=probe/tests/test_scope_crypt.py:L1 | neighbors=[test_scope_crypt.py]
-- "tests_test_scope_crypt_rationale_79": "Each encryption uses a fresh ephemeral key, so blobs are different." | kind=entity | source=probe/tests/test_scope_crypt.py:L79 | neighbors=[.test_multiple_encrypts_different()]
-- "tests_test_scope_crypt_testencryptdecryptroundtrip_test_b64_roundtrip": ".test_b64_roundtrip()" | kind=code-symbol | source=probe/tests/test_scope_crypt.py:L70 | neighbors=[TestEncryptDecryptRoundtrip]
-- "tests_test_scope_crypt_testencryptdecryptroundtrip_test_different_plaintexts_are_distinct": ".test_different_plaintexts_are_distinct()" | kind=code-symbol | source=probe/tests/test_scope_crypt.py:L64 | neighbors=[TestEncryptDecryptRoundtrip]
-- "tests_test_scope_crypt_testencryptdecryptroundtrip_test_different_recipient_cannot_decrypt": ".test_different_recipient_cannot_decrypt()" | kind=code-symbol | source=probe/tests/test_scope_crypt.py:L43 | neighbors=[TestEncryptDecryptRoundtrip]
-- "tests_test_scope_crypt_testencryptdecryptroundtrip_test_roundtrip_empty_scope": ".test_roundtrip_empty_scope()" | kind=code-symbol | source=probe/tests/test_scope_crypt.py:L36 | neighbors=[TestEncryptDecryptRoundtrip]
-- "tests_test_scope_crypt_testencryptdecryptroundtrip_test_roundtrip_plaintext": ".test_roundtrip_plaintext()" | kind=code-symbol | source=probe/tests/test_scope_crypt.py:L29 | neighbors=[TestEncryptDecryptRoundtrip]
-- "tests_test_scope_crypt_testencryptdecryptroundtrip_test_tampered_blob": ".test_tampered_blob()" | kind=code-symbol | source=probe/tests/test_scope_crypt.py:L51 | neighbors=[TestEncryptDecryptRoundtrip]
-- "tests_test_scope_crypt_testencryptdecryptroundtrip_test_too_short_blob": ".test_too_short_blob()" | kind=code-symbol | source=probe/tests/test_scope_crypt.py:L59 | neighbors=[TestEncryptDecryptRoundtrip]
-- "tests_test_scope_crypt_testkeygeneration_test_generates_32_byte_keys": ".test_generates_32_byte_keys()" | kind=code-symbol | source=probe/tests/test_scope_crypt.py:L16 | neighbors=[TestKeyGeneration]
-- "tests_test_scope_crypt_testkeygeneration_test_generates_different_keys_each_call": ".test_generates_different_keys_each_call()" | kind=code-symbol | source=probe/tests/test_scope_crypt.py:L21 | neighbors=[TestKeyGeneration]
-- "tests_test_scope_targets_rationale_1": "test_scope_targets.py — the pure scope-authorization core shared by the dispatch" | kind=entity | source=manager/backend/tests/test_scope_targets.py:L1 | neighbors=[test_scope_targets.py]
-- "tests_test_scope_targets_rationale_99": "Whatever the validator accepts must be provably inside the scope." | kind=entity | source=manager/backend/tests/test_scope_targets.py:L99 | neighbors=[test_property_every_accepted_target_is_…]
-- "tests_test_scope_targets_testexclusions_test_target_clear_of_exclusions_is_allowed": ".test_target_clear_of_exclusions_is_allowed()" | kind=code-symbol | source=manager/backend/tests/test_scope_targets.py:L82 | neighbors=[TestExclusions]
-- "tests_test_scope_targets_testexclusions_test_target_inside_an_exclusion_is_rejected": ".test_target_inside_an_exclusion_is_rejected()" | kind=code-symbol | source=manager/backend/tests/test_scope_targets.py:L71 | neighbors=[TestExclusions]
-- "tests_test_scope_targets_testexclusions_test_target_overlapping_an_exclusion_is_rejected": ".test_target_overlapping_an_exclusion_is_rejected()" | kind=code-symbol | source=manager/backend/tests/test_scope_targets.py:L76 | neighbors=[TestExclusions]
-- "tests_test_scope_targets_testipversionsafety_test_v6_in_v6_scope": ".test_v6_in_v6_scope()" | kind=code-symbol | source=manager/backend/tests/test_scope_targets.py:L92 | neighbors=[TestIpVersionSafety]
-- "tests_test_scope_targets_testipversionsafety_test_v6_target_against_v4_scope_is_rejected": ".test_v6_target_against_v4_scope_is_rejected()" | kind=code-symbol | source=manager/backend/tests/test_scope_targets.py:L89 | neighbors=[TestIpVersionSafety]
-- "tests_test_scope_targets_testnoscopeauthorizesnothing_test_empty_scope_denies_all": ".test_empty_scope_denies_all()" | kind=code-symbol | source=manager/backend/tests/test_scope_targets.py:L17 | neighbors=[TestNoScopeAuthorizesNothing]
-- "tests_test_scope_targets_testoutofscopeisrejected_test_blank_token_is_rejected": ".test_blank_token_is_rejected()" | kind=code-symbol | source=manager/backend/tests/test_scope_targets.py:L63 | neighbors=[TestOutOfScopeIsRejected]
-- "tests_test_scope_targets_testoutofscopeisrejected_test_cidr_broader_than_scope": ".test_cidr_broader_than_scope()" | kind=code-symbol | source=manager/backend/tests/test_scope_targets.py:L48 | neighbors=[TestOutOfScopeIsRejected]
-- "tests_test_scope_targets_testoutofscopeisrejected_test_explicit_empty_list_is_rejected": ".test_explicit_empty_list_is_rejected()" | kind=code-symbol | source=manager/backend/tests/test_scope_targets.py:L57 | neighbors=[TestOutOfScopeIsRejected]
-- "tests_test_scope_targets_testoutofscopeisrejected_test_hostname_is_not_routable": ".test_hostname_is_not_routable()" | kind=code-symbol | source=manager/backend/tests/test_scope_targets.py:L60 | neighbors=[TestOutOfScopeIsRejected]
-- "tests_test_scope_targets_testoutofscopeisrejected_test_ip_outside_scope": ".test_ip_outside_scope()" | kind=code-symbol | source=manager/backend/tests/test_scope_targets.py:L45 | neighbors=[TestOutOfScopeIsRejected]
+- "tests_test_os_fingerprint_testicmpparse_test_parse_rejects_short": ".test_parse_rejects_short()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L79 | neighbors=[TestIcmpParse] | lang=en
+- "tests_test_os_fingerprint_testicmptimestamps_test_parse_rejects_short_body": ".test_parse_rejects_short_body()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L118 | neighbors=[TestIcmpTimestamps] | lang=en
+- "tests_test_os_fingerprint_testinetchecksum_test_checksum_handles_odd_length": ".test_checksum_handles_odd_length()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L31 | neighbors=[TestInetChecksum] | lang=en
+- "tests_test_os_fingerprint_testinetchecksum_test_checksum_verifies_to_zero": ".test_checksum_verifies_to_zero()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L25 | neighbors=[TestInetChecksum] | lang=en
+- "tests_test_os_fingerprint_testremoteclock_test_high_bit_marks_nonstandard_clock": ".test_high_bit_marks_nonstandard_clock()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L132 | neighbors=[TestRemoteClock] | lang=en
+- "tests_test_os_fingerprint_testremoteclock_test_standard_value_decodes_to_wall_clock": ".test_standard_value_decodes_to_wall_clock()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L124 | neighbors=[TestRemoteClock] | lang=en
+- "tests_test_os_fingerprint_testttlinference_test_hop_estimate": ".test_hop_estimate()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L205 | neighbors=[TestTtlInference] | lang=en
+- "tests_test_os_fingerprint_testttlinference_test_os_family_linux": ".test_os_family_linux()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L209 | neighbors=[TestTtlInference] | lang=en
+- "tests_test_os_fingerprint_testttlinference_test_os_family_network": ".test_os_family_network()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L215 | neighbors=[TestTtlInference] | lang=en
+- "tests_test_os_fingerprint_testttlinference_test_os_family_unknown_on_none": ".test_os_family_unknown_on_none()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L218 | neighbors=[TestTtlInference] | lang=en
+- "tests_test_os_fingerprint_testttlinference_test_os_family_windows": ".test_os_family_windows()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L212 | neighbors=[TestTtlInference] | lang=en
+- "tests_test_os_fingerprint_testttlinference_test_round_up_to_128": ".test_round_up_to_128()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L197 | neighbors=[TestTtlInference] | lang=en
+- "tests_test_os_fingerprint_testttlinference_test_round_up_to_255": ".test_round_up_to_255()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L201 | neighbors=[TestTtlInference] | lang=en
+- "tests_test_os_fingerprint_testttlinference_test_round_up_to_64": ".test_round_up_to_64()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L193 | neighbors=[TestTtlInference] | lang=en
+- "tests_test_passive_collector_socket_fileno": ".fileno()" | kind=code-symbol | source=probe/tests/test_passive_collector.py:L28 | neighbors=[_Socket] | lang=en
+- "tests_test_passive_collector_socket_init": ".__init__()" | kind=code-symbol | source=probe/tests/test_passive_collector.py:L24 | neighbors=[_Socket] | lang=en
+- "tests_test_passive_collector_test_zero_listeners_returns_structured_failure": "test_zero_listeners_returns_structured_failure()" | kind=code-symbol | source=probe/tests/test_passive_collector.py:L135 | neighbors=[test_passive_collector.py] | lang=en
+- "tests_test_passive_collector_writer_init": ".__init__()" | kind=code-symbol | source=probe/tests/test_passive_collector.py:L16 | neighbors=[_Writer] | lang=en
+- "tests_test_passive_collector_writer_write": ".write()" | kind=code-symbol | source=probe/tests/test_passive_collector.py:L19 | neighbors=[_Writer] | lang=en
+- "tests_test_pat_auth_test_new_pat_token_shape_and_hash_stability": "test_new_pat_token_shape_and_hash_stability()" | kind=code-symbol | source=manager/backend/tests/test_pat_auth.py:L44 | neighbors=[test_pat_auth.py] | lang=en
+- "tests_test_pat_auth_test_pat_builder_rejects_unknown_scope": "test_pat_builder_rejects_unknown_scope()" | kind=code-symbol | source=manager/backend/tests/test_pat_auth.py:L88 | neighbors=[test_pat_auth.py] | lang=en
+- "tests_test_pat_auth_test_pat_builder_returns_token_once_and_stores_hash_only": "test_pat_builder_returns_token_once_and_stores_hash_only()" | kind=code-symbol | source=manager/backend/tests/test_pat_auth.py:L52 | neighbors=[test_pat_auth.py] | lang=en
+- "tests_test_pat_auth_test_pat_builder_supports_non_expiring_tokens_only_when_requested": "test_pat_builder_supports_non_expiring_tokens_only_when_requested()" | kind=code-symbol | source=manager/backend/tests/test_pat_auth.py:L74 | neighbors=[test_pat_auth.py] | lang=en
+- "tests_test_pat_auth_test_pat_scope_allows_probe_cli_paths": "test_pat_scope_allows_probe_cli_paths()" | kind=code-symbol | source=manager/backend/tests/test_pat_auth.py:L16 | neighbors=[test_pat_auth.py] | lang=en
+- "tests_test_pat_auth_test_pat_scope_matrix_for_api_scopes": "test_pat_scope_matrix_for_api_scopes()" | kind=code-symbol | source=manager/backend/tests/test_pat_auth.py:L27 | neighbors=[test_pat_auth.py] | lang=en
+- "tests_test_pat_auth_test_validate_pat_scopes_dedupes_and_rejects_unknown": "test_validate_pat_scopes_dedupes_and_rejects_unknown()" | kind=code-symbol | source=manager/backend/tests/test_pat_auth.py:L35 | neighbors=[test_pat_auth.py] | lang=en
+- "tests_test_perf_optimization_rationale_1": "Tests for the P1+P2 performance optimization of the detection engine.  P1 — vers" | kind=entity | source=manager/detection_engine/tests/test_perf_optimization.py:L1 | neighbors=[test_perf_optimization.py] | lang=en
+- "tests_test_perf_optimization_rationale_27": "dpkg_compare must use the pure-Python comparator in the hot path.     Shelling o" | kind=entity | source=manager/detection_engine/tests/test_perf_optimization.py:L27 | neighbors=[test_dpkg_compare_does_not_call_the_bin…] | lang=en
+- "tests_test_perf_optimization_rationale_50": "Isolate the guard's in-memory + on-disk validation cache per test." | kind=entity | source=manager/detection_engine/tests/test_perf_optimization.py:L50 | neighbors=[clean_guard_cache()] | lang=en
+- "tests_test_perf_optimization_rationale_58": "No dpkg binary → nothing to cross-check against; return [] and never     attempt" | kind=entity | source=manager/detection_engine/tests/test_perf_optimization.py:L58 | neighbors=[test_guard_is_noop_without_dpkg()] | lang=en
+- "tests_test_perf_optimization_rationale_76": "When the binary disagrees with pure-Python on an adjacent pair, that pair     is" | kind=entity | source=manager/detection_engine/tests/test_perf_optimization.py:L76 | neighbors=[test_guard_reports_divergence_and_warns…] | lang=en
+- "tests_test_perf_optimization_test_guard_passes_when_pure_python_agrees_with_dpkg": "test_guard_passes_when_pure_python_agrees_with_dpkg()" | kind=code-symbol | source=manager/detection_engine/tests/test_perf_optimization.py:L67 | neighbors=[test_perf_optimization.py] | lang=en
+- "tests_test_perf_optimization_test_guard_validates_once_per_cache_key": "test_guard_validates_once_per_cache_key()" | kind=code-symbol | source=manager/detection_engine/tests/test_perf_optimization.py:L86 | neighbors=[test_perf_optimization.py] | lang=en
+- "tests_test_perf_optimization_test_load_kev_and_epss_memoized": "test_load_kev_and_epss_memoized()" | kind=code-symbol | source=manager/detection_engine/tests/test_perf_optimization.py:L142 | neighbors=[test_perf_optimization.py] | lang=en
+- "tests_test_pipeline_rationale_1": "Tests for pipeline.py — the orchestrator with 0% prior coverage.  Covers the cri" | kind=entity | source=manager/detection_engine/tests/test_pipeline.py:L1 | neighbors=[test_pipeline.py] | lang=en
+- "tests_test_pipeline_rationale_114": "A completely empty file must not produce any findings." | kind=entity | source=manager/detection_engine/tests/test_pipeline.py:L114 | neighbors=[.test_empty_jsonl_returns_no_findings()] | lang=pt
+- "tests_test_pipeline_rationale_124": "Passing an empty path list must return empty findings and no facts." | kind=entity | source=manager/detection_engine/tests/test_pipeline.py:L124 | neighbors=[.test_no_paths_returns_empty()] | lang=en
+- "tests_test_pipeline_rationale_140": "A credentialed package at a version inside a vulnerable range must         produ" | kind=entity | source=manager/detection_engine/tests/test_pipeline.py:L140 | neighbors=[.test_ssh_inventory_vulnerable_package_…] | lang=pt
+- "tests_test_pipeline_rationale_151": "Findings from an authoritative (credentialed) source must be         confirmed —" | kind=entity | source=manager/detection_engine/tests/test_pipeline.py:L151 | neighbors=[.test_ssh_inventory_finding_is_confirme…] | lang=en
+- "tests_test_pipeline_rationale_164": "A banner-derived (inferred) source match can only produce 'suspected'         —" | kind=entity | source=manager/detection_engine/tests/test_pipeline.py:L164 | neighbors=[.test_banner_finding_is_suspected_not_c…] | lang=pt
 
 ## Instructions
 

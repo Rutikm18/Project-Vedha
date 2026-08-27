@@ -1,4 +1,4 @@
-# Node Description Batch 160 of 227
+# Node Description Batch 160 of 236
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -26,46 +26,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "main_scripts_syn_scanner_rationale_245": "SYN scan on privileged Linux; transparent connect-scan fallback elsewhere." | kind=entity | source=probe/main_scripts/syn_scanner.py:L245 | neighbors=[SynScanner] | lang=en
-- "main_scripts_syn_scanner_rationale_246": "SYN scan on privileged Linux; transparent connect-scan fallback elsewhere." | kind=entity | source=probe/main_scripts/syn_scanner.py:L246 | neighbors=[SynScanner] | lang=en
-- "main_scripts_syn_scanner_rationale_414": "Turn resolved port states + harvested intel into ScanResults. Pure —         no" | kind=entity | source=probe/main_scripts/syn_scanner.py:L414 | neighbors=[._build_results()] | lang=en
-- "main_scripts_syn_scanner_rationale_418": "Turn resolved port states + harvested intel into ScanResults. Pure —         no" | kind=entity | source=probe/main_scripts/syn_scanner.py:L418 | neighbors=[._build_results()] | lang=en
-- "main_scripts_syn_scanner_rationale_63": "Build a 20-byte IPv4 header with a valid checksum.      NOTE (BSD caveat): on ma" | kind=entity | source=probe/main_scripts/syn_scanner.py:L63 | neighbors=[build_ip_header()] | lang=pt
-- "main_scripts_syn_scanner_rationale_81": "Build a 20-byte IPv4 header with a valid checksum.      NOTE (BSD caveat): on ma" | kind=entity | source=probe/main_scripts/syn_scanner.py:L81 | neighbors=[build_ip_header()] | lang=pt
-- "main_scripts_syn_scanner_rationale_82": "Build a 20-byte IPv4 header with a valid checksum.      NOTE (BSD caveat): on ma" | kind=entity | source=probe/main_scripts/syn_scanner.py:L82 | neighbors=[build_ip_header()] | lang=pt
-- "main_scripts_syn_scanner_rationale_86": "Build a 20-byte TCP SYN segment with a valid checksum (pseudo-header)." | kind=entity | source=probe/main_scripts/syn_scanner.py:L86 | neighbors=[build_tcp_syn()] | lang=pt
-- "main_scripts_tls_fingerprint_main": "main()" | kind=code-symbol | source=probe/main_scripts/tls_fingerprint.py:L320 | neighbors=[tls_fingerprint.py] | lang=en
-- "main_scripts_tls_fingerprint_rationale_1": "tls_fingerprint.py — active TLS server fingerprint (Tier 2.3, JARM methodology)." | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L1 | neighbors=[tls_fingerprint.py] | lang=en
-- "main_scripts_tls_fingerprint_rationale_136": "Parse the negotiated version + cipher + extensions from a ServerHello." | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L136 | neighbors=[parse_server_hello()] | lang=en
-- "main_scripts_tls_fingerprint_rationale_137": "Parse the negotiated version + cipher + extensions from a ServerHello." | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L137 | neighbors=[parse_server_hello()] | lang=en
-- "main_scripts_tls_fingerprint_rationale_177": "2-char code from the cipher's position in CIPHER_LIST ('00' if unknown)." | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L177 | neighbors=[cipher_code()] | lang=en
-- "main_scripts_tls_fingerprint_rationale_178": "2-char code from the cipher's position in CIPHER_LIST ('00' if unknown)." | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L178 | neighbors=[cipher_code()] | lang=en
-- "main_scripts_tls_fingerprint_rationale_184": "Concatenate the ServerHello extension TYPE codes (2 bytes each). We hash types," | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L184 | neighbors=[_server_ext_types()] | lang=en
-- "main_scripts_tls_fingerprint_rationale_185": "Concatenate the ServerHello extension TYPE codes (2 bytes each). We hash types," | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L185 | neighbors=[_server_ext_types()] | lang=en
-- "main_scripts_tls_fingerprint_rationale_200": "JARM-shaped 62-char fuzzy hash: 3 chars per probe (cipher[2] + version[1])," | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L200 | neighbors=[jarm_style_digest()] | lang=it
-- "main_scripts_tls_fingerprint_rationale_201": "JARM-shaped 62-char fuzzy hash: 3 chars per probe (cipher[2] + version[1])," | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L201 | neighbors=[jarm_style_digest()] | lang=it
-- "main_scripts_tls_fingerprint_rationale_241": "Read exactly the first TLS record (the ServerHello or an alert) and stop —     n" | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L241 | neighbors=[_recv_first_record()] | lang=en
-- "main_scripts_tls_fingerprint_rationale_242": "Read exactly the first TLS record (the ServerHello or an alert) and stop —     n" | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L242 | neighbors=[_recv_first_record()] | lang=en
-- "main_scripts_tls_fingerprint_rationale_261": "Send one crafted ClientHello, read + parse the ServerHello. Sync." | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L261 | neighbors=[_one_probe()] | lang=en
-- "main_scripts_tls_fingerprint_rationale_262": "Send one crafted ClientHello, read + parse the ServerHello. Sync." | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L262 | neighbors=[_one_probe()] | lang=en
-- "main_scripts_tls_fingerprint_rationale_274": "Run all probes and return (62-char digest, per-probe results)." | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L274 | neighbors=[fingerprint_host()] | lang=en
-- "main_scripts_tls_fingerprint_rationale_275": "Run all probes and return (62-char digest, per-probe results)." | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L275 | neighbors=[fingerprint_host()] | lang=en
-- "main_scripts_tls_fingerprint_rationale_90": "Build a complete TLS ClientHello record (record layer + handshake)." | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L90 | neighbors=[build_client_hello()] | lang=pt
-- "main_scripts_tls_fingerprint_rationale_91": "Build a complete TLS ClientHello record (record layer + handshake)." | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L91 | neighbors=[build_client_hello()] | lang=pt
-- "main_scripts_tls_fingerprint_tlsfingerprintscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/tls_fingerprint.py:L285 | neighbors=[TLSFingerprintScanner] | lang=en
-- "main_scripts_tls_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/tls_scanner.py:L287 | neighbors=[tls_scanner.py] | lang=en
-- "main_scripts_tls_scanner_rationale_1": "tls_scanner.py — collect TLS/SSL configuration facts.  METHOD (collection only):" | kind=entity | source=probe/main_scripts/tls_scanner.py:L1 | neighbors=[tls_scanner.py] | lang=en
-- "main_scripts_tls_scanner_rationale_105": "Grade overall TLS posture A/B/C/F from accepted protocol versions and the     cl" | kind=entity | source=probe/main_scripts/tls_scanner.py:L105 | neighbors=[grade_tls_posture()] | lang=en
-- "main_scripts_tls_scanner_rationale_147": "Never send an IP literal as SNI — non-conformant; some servers reject it." | kind=entity | source=probe/main_scripts/tls_scanner.py:L147 | neighbors=[_sni()] | lang=en
-- "main_scripts_tls_scanner_rationale_156": "Attempt a handshake forcing one protocol version. Returns cipher dict or None." | kind=entity | source=probe/main_scripts/tls_scanner.py:L156 | neighbors=[_try_version()] | lang=pt
-- "main_scripts_tls_scanner_rationale_61": "Flag the security-relevant properties of an OpenSSL cipher-suite name:     forwa" | kind=entity | source=probe/main_scripts/tls_scanner.py:L61 | neighbors=[classify_cipher()] | lang=en
-- "main_scripts_tls_scanner_tlsscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/tls_scanner.py:L258 | neighbors=[TLSScanner] | lang=en
-- "main_scripts_udp_scanner_dns_probe": "_dns_probe()" | kind=code-symbol | source=probe/main_scripts/udp_scanner.py:L39 | neighbors=[udp_scanner.py] | lang=en
-- "main_scripts_udp_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/udp_scanner.py:L382 | neighbors=[udp_scanner.py] | lang=en
-- "main_scripts_udp_scanner_memcached_stats_probe": "_memcached_stats_probe()" | kind=code-symbol | source=probe/main_scripts/udp_scanner.py:L73 | neighbors=[udp_scanner.py] | lang=en
-- "main_scripts_udp_scanner_netbios_probe": "_netbios_probe()" | kind=code-symbol | source=probe/main_scripts/udp_scanner.py:L65 | neighbors=[udp_scanner.py] | lang=en
-- "main_scripts_udp_scanner_ntp_probe": "_ntp_probe()" | kind=code-symbol | source=probe/main_scripts/udp_scanner.py:L46 | neighbors=[udp_scanner.py] | lang=en
-- "main_scripts_udp_scanner_rationale_1": "udp_scanner.py — detect common UDP services via protocol-specific probes.  METHO" | kind=entity | source=probe/main_scripts/udp_scanner.py:L1 | neighbors=[udp_scanner.py] | lang=en
+- "main_scripts_os_fingerprint_rationale_205": "Return (socket, is_raw). Prefer datagram-ICMP (unprivileged), then raw." | kind=entity | source=probe/main_scripts/os_fingerprint.py:L205 | neighbors=[_open_icmp_socket()] | lang=en
+- "main_scripts_os_fingerprint_rationale_221": "ICMP-echo liveness + TTL harvest -> OS-family guess. Optionally accepts TCP" | kind=entity | source=probe/main_scripts/os_fingerprint.py:L221 | neighbors=[OSFingerprintScanner] | lang=en
+- "main_scripts_os_fingerprint_rationale_233": "Send one ICMP echo; return observed TTL, None (no TTL), or \"down\"." | kind=entity | source=probe/main_scripts/os_fingerprint.py:L233 | neighbors=[._icmp_echo_ttl()] | lang=en
+- "main_scripts_os_fingerprint_rationale_254": "True if we can open an ICMP socket (datagram-ICMP or raw)." | kind=entity | source=probe/main_scripts/os_fingerprint.py:L254 | neighbors=[icmp_supported()] | lang=en
+- "main_scripts_os_fingerprint_rationale_271": "Return (socket, is_raw). Prefer datagram-ICMP (unprivileged), then raw." | kind=entity | source=probe/main_scripts/os_fingerprint.py:L271 | neighbors=[_open_icmp_socket()] | lang=en
+- "main_scripts_os_fingerprint_rationale_287": "ICMP-echo liveness + TTL harvest -> OS-family guess. Optionally accepts TCP" | kind=entity | source=probe/main_scripts/os_fingerprint.py:L287 | neighbors=[OSFingerprintScanner] | lang=en
+- "main_scripts_os_fingerprint_rationale_299": "Send one ICMP echo; return observed TTL, None (no TTL), or \"down\"." | kind=entity | source=probe/main_scripts/os_fingerprint.py:L299 | neighbors=[._icmp_echo_ttl()] | lang=en
+- "main_scripts_os_fingerprint_rationale_330": "Send an ICMP timestamp request (type 13); return {ttl, transmit} from a" | kind=entity | source=probe/main_scripts/os_fingerprint.py:L330 | neighbors=[._icmp_timestamp()] | lang=en
+- "main_scripts_os_fingerprint_rationale_58": "Build an ICMP message (header + rest) with a valid checksum." | kind=entity | source=probe/main_scripts/os_fingerprint.py:L58 | neighbors=[_icmp()] | lang=en
+- "main_scripts_os_fingerprint_rationale_60": "Build an ICMP message (header + rest) with a valid checksum." | kind=entity | source=probe/main_scripts/os_fingerprint.py:L60 | neighbors=[_icmp()] | lang=en
+- "main_scripts_os_fingerprint_rationale_80": "Parse an ICMP reply. Handles both raw-socket delivery (full IPv4 header     pres" | kind=entity | source=probe/main_scripts/os_fingerprint.py:L80 | neighbors=[parse_icmp_reply()] | lang=en
+- "main_scripts_os_fingerprint_rationale_82": "Return (ttl, icmp_bytes). Raw-socket delivery prepends the full IPv4 header" | kind=entity | source=probe/main_scripts/os_fingerprint.py:L82 | neighbors=[_strip_ip_header()] | lang=en
+- "main_scripts_os_fingerprint_rationale_95": "Parse an ICMP reply. Handles both raw-socket delivery (full IPv4 header     pres" | kind=entity | source=probe/main_scripts/os_fingerprint.py:L95 | neighbors=[parse_icmp_reply()] | lang=en
+- "main_scripts_passive_collector_main": "main()" | kind=code-symbol | source=probe/main_scripts/passive_collector.py:L357 | neighbors=[passive_collector.py] | lang=en
+- "main_scripts_passive_collector_passivecollector_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/passive_collector.py:L218 | neighbors=[PassiveCollector] | lang=en
+- "main_scripts_passive_collector_passivelistenererror_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/passive_collector.py:L109 | neighbors=[PassiveListenerError] | lang=en
+- "main_scripts_passive_collector_rationale_1": "passive_collector.py — LISTEN-ONLY host discovery for fragile networks (OT/ICS)." | kind=entity | source=probe/main_scripts/passive_collector.py:L1 | neighbors=[passive_collector.py] | lang=en
+- "main_scripts_passive_collector_rationale_107": "All passive sources failed before the listen window could start." | kind=entity | source=probe/main_scripts/passive_collector.py:L107 | neighbors=[PassiveListenerError] | lang=en
+- "main_scripts_passive_collector_rationale_120": "Open one recv-only UDP listener or raise the socket error.      Multicast groups" | kind=entity | source=probe/main_scripts/passive_collector.py:L120 | neighbors=[_open_listener()] | lang=en
+- "main_scripts_passive_collector_rationale_211": "Listen-only discovery. No active probing. Reports in-scope hosts that     announ" | kind=entity | source=probe/main_scripts/passive_collector.py:L211 | neighbors=[PassiveCollector] | lang=en
+- "main_scripts_passive_collector_rationale_332": "Await readability on any listener without blocking the event loop." | kind=entity | source=probe/main_scripts/passive_collector.py:L332 | neighbors=[._select()] | lang=en
+- "main_scripts_passive_collector_rationale_74": "Pull short printable ASCII runs from a payload, for human-readable evidence." | kind=entity | source=probe/main_scripts/passive_collector.py:L74 | neighbors=[_printable_strings()] | lang=en
+- "main_scripts_passive_collector_rationale_91": "Best-effort device label from an announcement payload (recv-only parsing)." | kind=entity | source=probe/main_scripts/passive_collector.py:L91 | neighbors=[_device_hint()] | lang=en
+- "main_scripts_port_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/port_scanner.py:L472 | neighbors=[port_scanner.py] | lang=en
+- "main_scripts_port_scanner_portscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/port_scanner.py:L259 | neighbors=[PortScanner] | lang=en
+- "main_scripts_port_scanner_rationale_1": "port_scanner.py — TCP connect scan with an evidence-based state engine.  METHOD" | kind=entity | source=probe/main_scripts/port_scanner.py:L1 | neighbors=[port_scanner.py] | lang=en
+- "main_scripts_port_scanner_rationale_128": "Resolve a named scan profile to a concrete, de-duplicated port list.      'full'" | kind=entity | source=probe/main_scripts/port_scanner.py:L128 | neighbors=[resolve_profile()] | lang=pt
+- "main_scripts_port_scanner_rationale_129": "Resolve a named scan profile to a concrete, de-duplicated port list.      'full'" | kind=entity | source=probe/main_scripts/port_scanner.py:L129 | neighbors=[resolve_profile()] | lang=pt
+- "main_scripts_port_scanner_rationale_131": "Resolve a named scan profile to a concrete, de-duplicated port list.      'full'" | kind=entity | source=probe/main_scripts/port_scanner.py:L131 | neighbors=[resolve_profile()] | lang=pt
+- "main_scripts_port_scanner_rationale_154": "Per-target scan accounting — the completeness + self-health record.      It lets" | kind=entity | source=probe/main_scripts/port_scanner.py:L154 | neighbors=[ScanMetrics] | lang=en
+- "main_scripts_port_scanner_rationale_155": "Per-target scan accounting — the completeness + self-health record.      It lets" | kind=entity | source=probe/main_scripts/port_scanner.py:L155 | neighbors=[ScanMetrics] | lang=en
+- "main_scripts_port_scanner_rationale_157": "Per-target scan accounting — the completeness + self-health record.      It lets" | kind=entity | source=probe/main_scripts/port_scanner.py:L157 | neighbors=[ScanMetrics] | lang=en
+- "main_scripts_port_scanner_rationale_182": "Tally exactly one terminal per-port observation." | kind=entity | source=probe/main_scripts/port_scanner.py:L182 | neighbors=[.record()] | lang=en
+- "main_scripts_port_scanner_rationale_183": "Tally exactly one terminal per-port observation." | kind=entity | source=probe/main_scripts/port_scanner.py:L183 | neighbors=[.record()] | lang=en
+- "main_scripts_port_scanner_rationale_185": "Tally exactly one terminal per-port observation." | kind=entity | source=probe/main_scripts/port_scanner.py:L185 | neighbors=[.record()] | lang=en
+- "main_scripts_port_scanner_rationale_201": "Requested ports that were never recorded — the silent-skip proof." | kind=entity | source=probe/main_scripts/port_scanner.py:L201 | neighbors=[.missing_ports()] | lang=en
+- "main_scripts_port_scanner_rationale_202": "Requested ports that were never recorded — the silent-skip proof." | kind=entity | source=probe/main_scripts/port_scanner.py:L202 | neighbors=[.missing_ports()] | lang=en
+- "main_scripts_port_scanner_rationale_204": "Requested ports that were never recorded — the silent-skip proof." | kind=entity | source=probe/main_scripts/port_scanner.py:L204 | neighbors=[.missing_ports()] | lang=en
+- "main_scripts_port_scanner_rationale_208": "Ports recorded more than once (a port must get exactly one verdict)." | kind=entity | source=probe/main_scripts/port_scanner.py:L208 | neighbors=[.duplicate_ports()] | lang=pt
+- "main_scripts_port_scanner_rationale_209": "Ports recorded more than once (a port must get exactly one verdict)." | kind=entity | source=probe/main_scripts/port_scanner.py:L209 | neighbors=[.duplicate_ports()] | lang=pt
 
 ## Instructions
 

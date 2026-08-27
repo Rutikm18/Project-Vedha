@@ -33,7 +33,9 @@ paramiko>=3.4.0
 # fallback. Either package alone enables that transport; install both for the
 # full fallback chain.
 pywinrm>=0.4.3       # WinRM (5985/5986) read-only PowerShell inventory
-impacket>=0.11.0     # SMB + RemoteRegistry fallback (registry reads over 445)
+impacket>=0.11.0     # SMB + RemoteRegistry fallback; SMB null-session enum (smb_enum_scanner)
+ldap3>=2.9           # LDAP anonymous-bind enum (ldap_scanner); pure-Python, sealed-build safe
+dnspython>=2.6       # DNS AXFR / DNSSEC / version.bind (dns_scanner); pure-Python, sealed-build safe
 
 # --- Optional, NOT auto-installed (commented on purpose) ---------------------
 # Richer SNMP than the built-in minimal v1 probe in snmp_scanner.py. The stdlib

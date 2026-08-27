@@ -60,6 +60,18 @@ class Asset:
     snmp_state: dict[int, dict] = field(default_factory=dict)
     db_facts: dict[int, dict] = field(default_factory=dict)
     ai_facts: dict[int, dict] = field(default_factory=dict)
+    ssh_facts: dict[int, dict] = field(default_factory=dict)
+    ldap_facts: dict[int, dict] = field(default_factory=dict)
+    dns_facts: dict[int, dict] = field(default_factory=dict)
+    ftp_facts: dict[int, dict] = field(default_factory=dict)
+    rsync_facts: dict[int, dict] = field(default_factory=dict)
+    vnc_facts: dict[int, dict] = field(default_factory=dict)
+    ipmi_facts: dict[int, dict] = field(default_factory=dict)
+    smtp_facts: dict[int, dict] = field(default_factory=dict)
+    msrpc_facts: dict[int, dict] = field(default_factory=dict)
+    printer_facts: dict[int, dict] = field(default_factory=dict)
+    smb_enum_state: dict | None = None
+    nfs_state: dict | None = None
     passive_facts: list[dict] = field(default_factory=list)
     credential_inventory: dict | None = None
 
@@ -144,6 +156,54 @@ class Asset:
         if r.port is not None:
             self.ai_facts[r.port] = {**r.data, "_collected_at": r.timestamp}
 
+    def _merge_ssh_scan(self, r: ScanResult) -> None:
+        if r.port is not None:
+            self.ssh_facts[r.port] = {**r.data, "_collected_at": r.timestamp}
+
+    def _merge_ldap_scan(self, r: ScanResult) -> None:
+        if r.port is not None:
+            self.ldap_facts[r.port] = {**r.data, "_collected_at": r.timestamp}
+
+    def _merge_dns_scan(self, r: ScanResult) -> None:
+        if r.port is not None:
+            self.dns_facts[r.port] = {**r.data, "_collected_at": r.timestamp}
+
+    def _merge_smb_enum_scan(self, r: ScanResult) -> None:
+        # host-level — null-session facts describe the host's SMB stack, not one port
+        self.smb_enum_state = {**r.data, "_collected_at": r.timestamp}
+
+    def _merge_nfs_scan(self, r: ScanResult) -> None:
+        # host-level — exports/RPC programs describe the host, not one port
+        self.nfs_state = {**r.data, "_collected_at": r.timestamp}
+
+    def _merge_ftp_scan(self, r: ScanResult) -> None:
+        if r.port is not None:
+            self.ftp_facts[r.port] = {**r.data, "_collected_at": r.timestamp}
+
+    def _merge_rsync_scan(self, r: ScanResult) -> None:
+        if r.port is not None:
+            self.rsync_facts[r.port] = {**r.data, "_collected_at": r.timestamp}
+
+    def _merge_vnc_scan(self, r: ScanResult) -> None:
+        if r.port is not None:
+            self.vnc_facts[r.port] = {**r.data, "_collected_at": r.timestamp}
+
+    def _merge_ipmi_scan(self, r: ScanResult) -> None:
+        if r.port is not None:
+            self.ipmi_facts[r.port] = {**r.data, "_collected_at": r.timestamp}
+
+    def _merge_smtp_scan(self, r: ScanResult) -> None:
+        if r.port is not None:
+            self.smtp_facts[r.port] = {**r.data, "_collected_at": r.timestamp}
+
+    def _merge_msrpc_scan(self, r: ScanResult) -> None:
+        if r.port is not None:
+            self.msrpc_facts[r.port] = {**r.data, "_collected_at": r.timestamp}
+
+    def _merge_printer_scan(self, r: ScanResult) -> None:
+        if r.port is not None:
+            self.printer_facts[r.port] = {**r.data, "_collected_at": r.timestamp}
+
     def _merge_udp_scan(self, r: ScanResult) -> None:
         if r.port is not None:
             self.open_ports[r.port] = PortFact(
@@ -180,6 +240,18 @@ _MERGE_DISPATCH = {
     "snmp_scan": Asset._merge_snmp_scan,
     "db_scan": Asset._merge_db_scan,
     "mcp_ai_scan": Asset._merge_mcp_ai_scan,
+    "ssh_scan": Asset._merge_ssh_scan,
+    "ldap_scan": Asset._merge_ldap_scan,
+    "dns_scan": Asset._merge_dns_scan,
+    "smb_enum_scan": Asset._merge_smb_enum_scan,
+    "nfs_scan": Asset._merge_nfs_scan,
+    "ftp_scan": Asset._merge_ftp_scan,
+    "rsync_scan": Asset._merge_rsync_scan,
+    "vnc_scan": Asset._merge_vnc_scan,
+    "ipmi_scan": Asset._merge_ipmi_scan,
+    "smtp_scan": Asset._merge_smtp_scan,
+    "msrpc_scan": Asset._merge_msrpc_scan,
+    "printer_scan": Asset._merge_printer_scan,
     "udp_scan": Asset._merge_udp_scan,
     "passive_collect": Asset._merge_passive_collect,
     "ssh_inventory": Asset._merge_ssh_inventory,

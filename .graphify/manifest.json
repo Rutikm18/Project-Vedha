@@ -108,7 +108,7 @@
     "hash": "3c044d5624b5e457d3cd6a153fb3f50a"
   },
   "manager/backend/app/auth/router.py": {
-    "mtime": 1787139774561.1118,
+    "mtime": 1787176428969.8477,
     "hash": "f47df3a085cc552c3ce0469da16b9c04"
   },
   "manager/backend/app/config.py": {
@@ -220,8 +220,8 @@
     "hash": "a6558b68dd6cd5176bd1a633eceea5ba"
   },
   "manager/backend/app/main.py": {
-    "mtime": 1786971445034.741,
-    "hash": "d5cc15817dfa479228d27eea18551516"
+    "mtime": 1787339530439.0454,
+    "hash": "418b0c74e527cabbca448d7999ec31c8"
   },
   "manager/backend/app/models/__init__.py": {
     "mtime": 1786971445035.4163,
@@ -316,8 +316,8 @@
     "hash": "71afdc71390b2b7651413e8255ddf1d9"
   },
   "manager/backend/app/routers/agents.py": {
-    "mtime": 1786826949606.3167,
-    "hash": "76bff1396c00a00bf5609bd5431b994f"
+    "mtime": 1787776213613.6047,
+    "hash": "cd2a48408b9f08a96f770f2062543fb6"
   },
   "manager/backend/app/routers/ai_report.py": {
     "mtime": 1785996933819.2993,
@@ -332,8 +332,8 @@
     "hash": "3b400fb70b29b1f2ea062564f0c05656"
   },
   "manager/backend/app/routers/engagements.py": {
-    "mtime": 1785579410226.225,
-    "hash": "68defa0c94161670bbd65bb2ec0aad24"
+    "mtime": 1787230328335.3315,
+    "hash": "95bf4f4cefdba4010f26f6ddbb2443ec"
   },
   "manager/backend/app/routers/exploits.py": {
     "mtime": 1785579410225.539,
@@ -344,7 +344,7 @@
     "hash": "6d0c0fd51bdea607fca7072b78bf5dc8"
   },
   "manager/backend/app/routers/health.py": {
-    "mtime": 1787139820005.3977,
+    "mtime": 1787176428971.661,
     "hash": "c16378e27376b177458d77a02a1a03a1"
   },
   "manager/backend/app/routers/vuln_scans.py": {
@@ -416,8 +416,8 @@
     "hash": "e2144fd40c20602915183faaaa0704c4"
   },
   "manager/backend/app/websocket/manager.py": {
-    "mtime": 1785703427721.3564,
-    "hash": "a65a01396d0e0cd6cb2357699a49e1e5"
+    "mtime": 1787339502516.5154,
+    "hash": "c485601e9e056d7250e8fe5fc099ed50"
   },
   "manager/backend/scripts/seed_admin.py": {
     "mtime": 1785662176008.5295,
@@ -432,8 +432,8 @@
     "hash": "d98ff08ace6b68f1e8d5969e04013d7e"
   },
   "manager/backend/tests/test_agents.py": {
-    "mtime": 1785704377006.374,
-    "hash": "d48a5a98c85c8d8b3ddfbb9d4eaee5d2"
+    "mtime": 1787341546582.7998,
+    "hash": "ee161b9917f120fc0d432c22f58e042f"
   },
   "manager/backend/tests/test_ai_engine.py": {
     "mtime": 1781164357000,
@@ -484,8 +484,8 @@
     "hash": "345875e095ba20335afdffae2aedbf77"
   },
   "manager/detection_engine/cpe_normalizer.py": {
-    "mtime": 1782295837314.5962,
-    "hash": "cc163ec71c5ad08c4ed1b5f2e9f77214"
+    "mtime": 1787401145697.318,
+    "hash": "52a857eb8ae32e6aa94d1f9a3b23f081"
   },
   "manager/detection_engine/cvss.py": {
     "mtime": 1782280209988.5605,
@@ -520,8 +520,8 @@
     "hash": "09c32562230565bd398d201ce376b139"
   },
   "manager/detection_engine/update_snapshot.py": {
-    "mtime": 1782282555528.0605,
-    "hash": "c4edcc76b453a860c197f91372b4e93e"
+    "mtime": 1787469229743.8174,
+    "hash": "c4fa06b19b08a60fc2efc4efddd1d6e2"
   },
   "manager/detection_engine/verifier.py": {
     "mtime": 1782363855704.9495,
@@ -532,8 +532,8 @@
     "hash": "c168559404c1958d88a5831824da539e"
   },
   "manager/detection_engine/vuln_db.py": {
-    "mtime": 1786738664984.2002,
-    "hash": "535af8fd8167b10b004da3a9799141b6"
+    "mtime": 1787401244749.9368,
+    "hash": "0a57b5742cdd74b990a1739d8634b0e0"
   },
   "manager/frontend/app/aibrain/page.tsx": {
     "mtime": 1785448117327.411,
@@ -684,8 +684,8 @@
     "hash": "b9df618ac9062d582f2f1b7ada778e8f"
   },
   "manager/frontend/app/scan/page.tsx": {
-    "mtime": 1785831016881.6838,
-    "hash": "857b2f5dac3c5d2b103b80ec559adc14"
+    "mtime": 1787315542062.5461,
+    "hash": "034befeb241b1135d13f77e57df850d3"
   },
   "manager/frontend/app/settings/page.tsx": {
     "mtime": 1786971445054.5168,
@@ -772,8 +772,8 @@
     "hash": "34c7e682cf49a233f09f71c7acb11b8b"
   },
   "manager/frontend/components/Sidebar.tsx": {
-    "mtime": 1786787276409.9502,
-    "hash": "429e619bc981ceb7091e26f55b7d0e15"
+    "mtime": 1787777245658.5125,
+    "hash": "ba41d28d9e0728a8a04479ef9c97b682"
   },
   "manager/frontend/components/ThemeProvider.tsx": {
     "mtime": 1785103958367.2297,
@@ -1008,103 +1008,103 @@
     "hash": "b98672aae8952be5275affe83eab8a93"
   },
   "probe/agent/agent.py": {
-    "mtime": 1787173897648.642,
-    "hash": "a1e2d770dfd6be2f1d532f5e940e4428"
+    "mtime": 1787775364816.5098,
+    "hash": "af311caaaa03fe834d21c736db6567c4"
   },
   "probe/agent/engine.py": {
-    "mtime": 1786738665007.8274,
-    "hash": "e89deee35f137bdd834ab2d8559c5084"
+    "mtime": 1787776167735.3071,
+    "hash": "ae88bd958d07a5d71bec270e77dc835e"
   },
   "probe/agent/license.py": {
     "mtime": 1785579410254.7263,
     "hash": "93b4e68dd59da2e41fd59924589fd2d2"
   },
   "probe/agent/use_cases.py": {
-    "mtime": 1786738665008.8494,
-    "hash": "4d96688c00603f7e03cb1a868807306f"
+    "mtime": 1787776021889.6604,
+    "hash": "8dd799078b30fd62e729b50ffa675554"
   },
   "probe/scanner/__init__.py": {
-    "mtime": 1786779367801.8113,
+    "mtime": 1787212325734.8193,
     "hash": "e7e902e942de79485019916fd38958a1"
   },
   "probe/scanner/db_scanner.py": {
-    "mtime": 1786779367803.9329,
+    "mtime": 1787212325736.0457,
     "hash": "f1ef7f437b84983b77bb6b118e5a5fc3"
   },
   "probe/scanner/host_discovery.py": {
-    "mtime": 1787088999520.812,
+    "mtime": 1787212325738.5945,
     "hash": "c8fe9ba03c1ac2f24de951577a51f499"
   },
   "probe/scanner/mass_scan.py": {
-    "mtime": 1786779367809.5618,
+    "mtime": 1787212325740.5308,
     "hash": "55819bd88f79e8396c0941f981fe17b0"
   },
   "probe/scanner/mcp_ai_scanner.py": {
-    "mtime": 1786971445065.5334,
+    "mtime": 1787212325741.2778,
     "hash": "e0c74493edf5fe717d83f29e9af9de6c"
   },
   "probe/scanner/nmap_wrapper.py": {
-    "mtime": 1787088999521.9592,
+    "mtime": 1787212325741.9297,
     "hash": "67d03faeda0160d08dd608186b3de231"
   },
   "probe/scanner/passive_collector.py": {
-    "mtime": 1786779367813.573,
+    "mtime": 1787212325742.9258,
     "hash": "8c24b8652f4326bfcd1dcc2acdd8c7af"
   },
   "probe/scanner/port_scanner.py": {
-    "mtime": 1787088999522.754,
+    "mtime": 1787212325743.3904,
     "hash": "31a1be146ac995872bc805d86f7d3a17"
   },
   "probe/scanner/scanner_base.py": {
-    "mtime": 1787088999523.2375,
+    "mtime": 1787212325744.9001,
     "hash": "6e50f876f16bb1b226c28e81f9398a1e"
   },
   "probe/scanner/service_banner.py": {
-    "mtime": 1786971445067.1006,
-    "hash": "63196162cc82640f75ff756d30c210f6"
+    "mtime": 1787773007792.2026,
+    "hash": "30f62d761752c2164bbdbb90f658ef49"
   },
   "probe/scanner/smb_scanner.py": {
-    "mtime": 1786779367816.5195,
+    "mtime": 1787212325746.3872,
     "hash": "8b5b814ee3170d6a8203e8cf56f131bd"
   },
   "probe/scanner/snmp_scanner.py": {
-    "mtime": 1786779367817.0513,
+    "mtime": 1787212325746.95,
     "hash": "643d60e6fdd0d6962f9cabb0f7eb7823"
   },
   "probe/scanner/ssh_collector.py": {
-    "mtime": 1786779367817.514,
+    "mtime": 1787212325747.2617,
     "hash": "878b6afd06ea1c8c756931e9509da2a0"
   },
   "probe/scanner/tls_scanner.py": {
-    "mtime": 1786779367819.079,
+    "mtime": 1787212325748.498,
     "hash": "b3dcc137a910c4dc9bd611b3f312c405"
   },
   "probe/scanner/udp_scanner.py": {
-    "mtime": 1786971445068.1792,
+    "mtime": 1787212325748.9453,
     "hash": "de64bae402fab5a15e3e720a4a8ea55c"
   },
   "probe/scanner/web_scanner.py": {
-    "mtime": 1786971445068.554,
+    "mtime": 1787212325750.2607,
     "hash": "193bb6c2ba188c0a4249afd2025f1208"
   },
   "probe/scanner/windows_collector.py": {
-    "mtime": 1786779367821.328,
+    "mtime": 1787212325750.5603,
     "hash": "8c0c8ca7df9658633ccda15e6087fe49"
   },
   "probe/tools/issue_license.py": {
-    "mtime": 1786738665064.6953,
-    "hash": "d3d2b76e57a3ba228db33c2ce59ec9c0"
+    "mtime": 1787775364805.4175,
+    "hash": "c2022a5f526bbd3ec690f4b014c742d6"
   },
   "probe/workflow/__init__.py": {
     "mtime": 1782301683213.063,
     "hash": "277d9c9f0d9257d1196ace0048ace9fc"
   },
   "probe/workflow/asset.py": {
-    "mtime": 1787121540040.9731,
-    "hash": "6705fabda474f34de984626a672bd375"
+    "mtime": 1787650566193.6003,
+    "hash": "d8296e1c27d99a43984fddd730da3671"
   },
   "probe/workflow/cache.py": {
-    "mtime": 1787121540041.8154,
+    "mtime": 1787176428976.5898,
     "hash": "ac9ceef141fc8a41cc87a16fcd737b41"
   },
   "probe/workflow/cli.py": {
@@ -1112,8 +1112,8 @@
     "hash": "67c8cb373f2f556567f1422060c3f4b9"
   },
   "probe/workflow/gates.py": {
-    "mtime": 1784871366302.2722,
-    "hash": "8acac293d615c160d435278ebef12179"
+    "mtime": 1787650549836.014,
+    "hash": "f4b6f8a9d49aac741753f2dceb77f343"
   },
   "probe/workflow/modes.py": {
     "mtime": 1784813553163.4846,
@@ -1124,12 +1124,12 @@
     "hash": "af423a7539bf6a5c5cec89a24b6bae66"
   },
   "probe/workflow/router.py": {
-    "mtime": 1784846574753.2688,
-    "hash": "c074686568966eacf9a4d82a64bb6971"
+    "mtime": 1787523924751.5286,
+    "hash": "fc3b1eedb9fbd1e68ed71bf37e1e237a"
   },
   "probe/workflow/workflow_engine.py": {
-    "mtime": 1787121540043.7607,
-    "hash": "89fd1f74552782e12d633b68cd8b6db7"
+    "mtime": 1787650595277.92,
+    "hash": "341d77a6b31e4050e7a613f53222f70f"
   },
   ".commandcode/taste/taste.md": {
     "mtime": 1784982584358.174,
@@ -1220,12 +1220,12 @@
     "hash": "fca425162122dfcb7b0a0dd0f596b2c4"
   },
   "probe/README.md": {
-    "mtime": 1786738665005.6797,
-    "hash": "1bd2eb8ab4c01735b29a24a2c73a38f3"
+    "mtime": 1787775364782.932,
+    "hash": "7a1533d5c3735580562fca7d77a6044f"
   },
   "probe/requirements.txt": {
-    "mtime": 1786738665028.4387,
-    "hash": "6850c32e06996c5a372b36331aa9d6ce"
+    "mtime": 1787568292866.9368,
+    "hash": "bbf8835f15b67215cff6a8757fb9a604"
   },
   "manager/frontend/public/file.svg": {
     "mtime": 1778224430000,
@@ -1268,7 +1268,7 @@
     "hash": "56c0e7c4d002065fc909f660a6e3db24"
   },
   "manager/backend/app/ai/agent.py": {
-    "mtime": 1787140066545.0361,
+    "mtime": 1787176428968.4883,
     "hash": "22500280a7a89d1faef9e35c6fd54151"
   },
   "manager/backend/app/auth/pat.py": {
@@ -1316,8 +1316,8 @@
     "hash": "42277e13d44b6727b1f02014915ed664"
   },
   "manager/backend/app/services/job_result_service.py": {
-    "mtime": 1786738664961.5972,
-    "hash": "aa2dcd51252508003734f363352e338e"
+    "mtime": 1787425630189.4292,
+    "hash": "a8061d6313557f6e0173be61879ae0f9"
   },
   "manager/backend/app/services/scope_crypto.py": {
     "mtime": 1784667059108.6992,
@@ -1332,8 +1332,8 @@
     "hash": "d41d8cd98f00b204e9800998ecf8427e"
   },
   "manager/backend/app/workers/outbox.py": {
-    "mtime": 1786971445042.6829,
-    "hash": "953a11b0123930d2f0288e62efd6ef0a"
+    "mtime": 1787425620716.9294,
+    "hash": "46094e84a96cf874148486e3fe806603"
   },
   "manager/backend/app/workers/reaper.py": {
     "mtime": 1785704597858.9658,
@@ -1388,8 +1388,8 @@
     "hash": "f96a5f3d65fbfe6063fd1b3ebeca95ae"
   },
   "probe/agent/cli.py": {
-    "mtime": 1785245160877.2903,
-    "hash": "6429a88664f2f719a21aaac3c992c349"
+    "mtime": 1787775364823.2744,
+    "hash": "dca42143b36b16cfd7218c9f579f3305"
   },
   "probe/agent/hw_bind.py": {
     "mtime": 1782905136728.9082,
@@ -1412,8 +1412,8 @@
     "hash": "da2d70f153287be38f0fb7a5d5a20079"
   },
   "probe/agent/transport.py": {
-    "mtime": 1787173883558.013,
-    "hash": "955ef13da6e6ac5807b3f3cbdb15c548"
+    "mtime": 1787391853070.3687,
+    "hash": "9bfc058a1001b00808a9ffa003cfbf54"
   },
   "probe/probe": {
     "mtime": 1784274321014.2012,
@@ -1440,8 +1440,8 @@
     "hash": "917ededa8806c955ddf7ca78c737a450"
   },
   "probe/tests/test_probe_core.py": {
-    "mtime": 1786738665057.9756,
-    "hash": "96db3b1f301e2b6417d61f249b501283"
+    "mtime": 1787776358643.7417,
+    "hash": "867ad4a7ec1800ac63e6f232d72c764c"
   },
   "probe/tests/test_result_spool.py": {
     "mtime": 1785704637611.7476,
@@ -1460,320 +1460,320 @@
     "hash": "cae67c85e1c7d541adb4ca3b728fa343"
   },
   "probe/tests/test_transport.py": {
-    "mtime": 1787173941399.1562,
+    "mtime": 1787176428974.9785,
     "hash": "ffe2f6444cb1f9189389c574ffea9ad8"
   },
   ".graphify/GRAPH_REPORT.md": {
-    "mtime": 1787092043327.5186,
-    "hash": "034e5cf7bedbd4a6bd4d2bd33e16cbf1"
+    "mtime": 1787776830610.4194,
+    "hash": "18e6f4467adfd9fdbf39bf9ae9373a9e"
   },
   ".graphify/description-instructions/batch-000.md": {
-    "mtime": 1787092043050.452,
-    "hash": "4bd6eccc897bdbfcaa3cdcaae6d47277"
+    "mtime": 1787776830243.9763,
+    "hash": "cd05f394b8152800789902443d843de2"
   },
   ".graphify/description-instructions/batch-001.md": {
-    "mtime": 1787092043050.8135,
-    "hash": "87ad6f8141c5caa37dc577849ff5d7a3"
+    "mtime": 1787776830244.4182,
+    "hash": "2af72635959ae3b0a0c94913cd6e6ffb"
   },
   ".graphify/description-instructions/batch-002.md": {
-    "mtime": 1787092043051.1125,
-    "hash": "ad996aeb9ee4faf65d37746dea59e9a4"
+    "mtime": 1787776830244.991,
+    "hash": "c5dcd3d6772dc04144b8fb170f1a14c8"
   },
   ".graphify/description-instructions/batch-003.md": {
-    "mtime": 1787092043051.3994,
-    "hash": "5afba2421e2cb5b3a12bff3434084eb4"
+    "mtime": 1787776830245.3955,
+    "hash": "5c87ce7edb6c2e096f4c4aa96828c334"
   },
   ".graphify/description-instructions/batch-004.md": {
-    "mtime": 1787092043051.716,
-    "hash": "662394edf68248823d3f11df1ae92a77"
+    "mtime": 1787776830245.733,
+    "hash": "ce5d81c451561a45ba53d736983048d6"
   },
   ".graphify/description-instructions/batch-005.md": {
-    "mtime": 1787092043052.1023,
-    "hash": "e2f5883b40f232964801fe745847d2d3"
+    "mtime": 1787776830246.0413,
+    "hash": "a43a9748e7506ce72b48dffb18fe4f58"
   },
   ".graphify/description-instructions/batch-006.md": {
-    "mtime": 1787092043052.4124,
-    "hash": "aa61ab75f11a468006042df8de6c956b"
+    "mtime": 1787776830246.339,
+    "hash": "76343f722af2d05e9059023111b08aaa"
   },
   ".graphify/description-instructions/batch-007.md": {
-    "mtime": 1787092043052.6836,
-    "hash": "ca96e65ddb8bfef2dfd241d49cbc7994"
+    "mtime": 1787776830246.6323,
+    "hash": "93debeceb37725fb4e071ed21204d249"
   },
   ".graphify/description-instructions/batch-008.md": {
-    "mtime": 1787092043052.9338,
-    "hash": "8920d259a9a008f736fd9516339daab7"
+    "mtime": 1787776830246.934,
+    "hash": "0aa6665355aaaea4c8d6e3b5cfa4e624"
   },
   ".graphify/description-instructions/batch-009.md": {
-    "mtime": 1787092043053.2334,
-    "hash": "34e4358817dfcfaede6d722c1c86b4ce"
+    "mtime": 1787776830247.4658,
+    "hash": "09ad9f29d6109eb40b4890dc5b3925ed"
   },
   ".graphify/description-instructions/batch-010.md": {
-    "mtime": 1787092043053.5117,
-    "hash": "829401bd4691a4aa6061d61baafcdbe8"
+    "mtime": 1787776830247.8042,
+    "hash": "eed84cab25424c23dd7682a987b61591"
   },
   ".graphify/description-instructions/batch-011.md": {
-    "mtime": 1787092043053.7764,
-    "hash": "09db43fd63a87c2fe533346909523246"
+    "mtime": 1787776830248.0974,
+    "hash": "9ba660abb762a9dd9a8cf414189a702c"
   },
   ".graphify/description-instructions/batch-012.md": {
-    "mtime": 1787092043054.1934,
-    "hash": "66a0e3c7657029df739def5c8e01d819"
+    "mtime": 1787776830248.6362,
+    "hash": "e61631b0ba3b6f7324db2c8261864730"
   },
   ".graphify/description-instructions/batch-013.md": {
-    "mtime": 1787092043054.4202,
-    "hash": "c85ad91bdbc0024502fbe982b8f35aa4"
+    "mtime": 1787776830248.9087,
+    "hash": "d48eaa9ad4290fceb56924295e1429f7"
   },
   ".graphify/description-instructions/batch-014.md": {
-    "mtime": 1787092043054.6665,
-    "hash": "ed9a8bc9f84c04c51fe8db5e1d3db357"
+    "mtime": 1787776830249.1543,
+    "hash": "d36a152274da5362e7b9a36f9df4aace"
   },
   ".graphify/description-instructions/batch-015.md": {
-    "mtime": 1787092043055.0195,
-    "hash": "ee63117d54a531bf1f877d9a3f6d3ce9"
+    "mtime": 1787776830249.3901,
+    "hash": "4c8ffe3c31672edafdb1297068463f2e"
   },
   ".graphify/description-instructions/batch-016.md": {
-    "mtime": 1787092043055.328,
-    "hash": "899fe5795becaa4f2b35f50e321ae160"
+    "mtime": 1787776830249.6282,
+    "hash": "ba6620fc81008aadfa306a12730cfe27"
   },
   ".graphify/description-instructions/batch-017.md": {
-    "mtime": 1787092043055.6597,
-    "hash": "182bd0bf43734ba13934d23b0f3b3086"
+    "mtime": 1787776830249.879,
+    "hash": "4551cf7b210d34409b3968a68d18f3bd"
   },
   ".graphify/description-instructions/batch-018.md": {
-    "mtime": 1787092043055.8909,
-    "hash": "74dd23283f27b9888d3a7bc2fa832a91"
+    "mtime": 1787776830250.1355,
+    "hash": "0c5d6f6d16a8553db0db049e5c7f7530"
   },
   ".graphify/description-instructions/batch-019.md": {
-    "mtime": 1787092043056.1318,
-    "hash": "21124ee92749298bd2943e521dae893a"
+    "mtime": 1787776830250.391,
+    "hash": "4e0d59775536c1fff63c55b6361a33f4"
   },
   ".graphify/description-instructions/batch-020.md": {
-    "mtime": 1787092043056.3545,
-    "hash": "29a6a39dde47ab40083f54439aa73cb5"
+    "mtime": 1787776830250.6492,
+    "hash": "65157a41bf6ff2e5f0444a0a7754d9ac"
   },
   ".graphify/description-instructions/batch-021.md": {
-    "mtime": 1787092043056.5593,
-    "hash": "26fa12e567d0a5efabb6c4976c302054"
+    "mtime": 1787776830251.0115,
+    "hash": "32667e816f7b210c549c989b423a1a2a"
   },
   ".graphify/description-instructions/batch-022.md": {
-    "mtime": 1787092043056.7922,
-    "hash": "eeefa7ff2670705e592dfebb2d2654ee"
+    "mtime": 1787776830251.2625,
+    "hash": "b0e0f3b66e5c52e85ceb3e0415606bb2"
   },
   ".graphify/description-instructions/batch-023.md": {
-    "mtime": 1787092043056.9912,
-    "hash": "d87b3aa1c38914c45f03ce3f32df850e"
+    "mtime": 1787776830251.502,
+    "hash": "c69c7baa7abe1add849cd8efba855cb8"
   },
   ".graphify/description-instructions/batch-024.md": {
-    "mtime": 1787092043057.2178,
-    "hash": "0cd77a2c87644644e803e5b041a630e1"
+    "mtime": 1787776830251.744,
+    "hash": "67d7999ea3416cd3cbee01bcba9edde7"
   },
   ".graphify/description-instructions/batch-025.md": {
-    "mtime": 1787092043057.4673,
-    "hash": "1e96b967ccf4f42c79efb3cd74655799"
+    "mtime": 1787776830251.9885,
+    "hash": "bff7f7ebbfe1ea4f75a960b94c2f5c2e"
   },
   ".graphify/description-instructions/batch-026.md": {
-    "mtime": 1787092043057.704,
-    "hash": "98a8bcc4abd5adc33963ec7e2ba3100d"
+    "mtime": 1787776830252.2368,
+    "hash": "ab0263996fd10a96158b314fae0a1b16"
   },
   ".graphify/description-instructions/batch-027.md": {
-    "mtime": 1787092043057.9434,
-    "hash": "595cad2ee23a36cccc49ca9dbd58336a"
+    "mtime": 1787776830252.468,
+    "hash": "9ea8169a59f22da4644b6b85ec1e7a0f"
   },
   ".graphify/description-instructions/batch-028.md": {
-    "mtime": 1787092043058.1694,
-    "hash": "d907d19c83df96c094d5f3e045e5c19b"
+    "mtime": 1787776830252.7056,
+    "hash": "26bdc6f8815bf385c1824c8973b7d402"
   },
   ".graphify/description-instructions/batch-029.md": {
-    "mtime": 1787092043058.3887,
-    "hash": "53c38bd4cdbf5322a431816aa0ee30ed"
+    "mtime": 1787776830252.9382,
+    "hash": "c17297737fac9f1de1e2e20ee5106df0"
   },
   ".graphify/description-instructions/batch-030.md": {
-    "mtime": 1787092043058.6028,
-    "hash": "39ecb63ae73b979b3e95a6558febc044"
+    "mtime": 1787776830253.192,
+    "hash": "055ed005a3e686d71924f4e604cd925b"
   },
   ".graphify/description-instructions/batch-031.md": {
-    "mtime": 1787092043058.812,
-    "hash": "ad9e28716ff976a36460f3bb75ea66de"
+    "mtime": 1787776830253.7485,
+    "hash": "477e55bc887caf3c39d7dac6046cad56"
   },
   ".graphify/description-instructions/batch-032.md": {
-    "mtime": 1787092043059.1404,
-    "hash": "6f4b1651adc87bdf36746e6c55419cea"
+    "mtime": 1787776830254.011,
+    "hash": "927d5235dda45bce41cd069cb5645918"
   },
   ".graphify/description-instructions/batch-033.md": {
-    "mtime": 1787092043059.3462,
-    "hash": "28f58f4d5a7bf5879bc42be667f7e705"
+    "mtime": 1787776830254.2576,
+    "hash": "2e4321cdedac8537c1af04c841ceea80"
   },
   ".graphify/description-instructions/batch-034.md": {
-    "mtime": 1787092043059.5583,
-    "hash": "d5bdf509a3531353b28312683384b9ed"
+    "mtime": 1787776830254.5088,
+    "hash": "8a9f64d9f9546744e53ead6d0bf6904d"
   },
   ".graphify/description-instructions/batch-035.md": {
-    "mtime": 1787092043059.7888,
-    "hash": "cebb7f3aaef638efe443dc494687ab89"
+    "mtime": 1787776830254.7822,
+    "hash": "b0c4aa4aa1464575eb9550c541ad018a"
   },
   ".graphify/description-instructions/batch-036.md": {
-    "mtime": 1787092043060.0166,
-    "hash": "8df3d039a5969ba2f847e6643e7a2c3b"
+    "mtime": 1787776830255.0537,
+    "hash": "9d8863c81c47127dd37ac0349e1d5f78"
   },
   ".graphify/description-instructions/batch-037.md": {
-    "mtime": 1787092043060.2295,
-    "hash": "a5791a2d3c6ce851e97ebe2852c70806"
+    "mtime": 1787776830255.4692,
+    "hash": "6ad3dfef3d8d921a1472e6ef5d483cd8"
   },
   ".graphify/description-instructions/batch-038.md": {
-    "mtime": 1787092043060.4219,
-    "hash": "ef4942e14ad5f612e3cd6fdb6a838ab3"
+    "mtime": 1787776830255.7153,
+    "hash": "e4b67c32c17c7fc16553959a84d98371"
   },
   ".graphify/description-instructions/batch-039.md": {
-    "mtime": 1787092043060.6165,
-    "hash": "b5abda5935a03d2c62085b35ac146315"
+    "mtime": 1787776830255.9578,
+    "hash": "36d3f9f12999cc757693b3b43fe4b00e"
   },
   ".graphify/description-instructions/batch-040.md": {
-    "mtime": 1787092043060.7954,
-    "hash": "b159c806fb74297be9a29a980f441959"
+    "mtime": 1787776830256.3088,
+    "hash": "77898c472020e4c0f73ead3debd06cef"
   },
   ".graphify/description-instructions/batch-041.md": {
-    "mtime": 1787092043060.9805,
-    "hash": "a3a0825a79289e9f2a8b212541591212"
+    "mtime": 1787776830256.747,
+    "hash": "6da0fc05825ce4c61ee2881571546a04"
   },
   ".graphify/description-instructions/batch-042.md": {
-    "mtime": 1787092043061.194,
-    "hash": "2794517e4227e6c15a9bf1edb9fed45d"
+    "mtime": 1787776830257.2983,
+    "hash": "d17bc47f4833fb8c4edd7132969d7878"
   },
   ".graphify/description-instructions/batch-043.md": {
-    "mtime": 1787092043061.383,
-    "hash": "2f0ced4a382f84d586bf6b7915f4b1d9"
+    "mtime": 1787776830257.5764,
+    "hash": "2e8ebafc5d84130a966e0e748f2acaf9"
   },
   ".graphify/description-instructions/batch-044.md": {
-    "mtime": 1787092043061.587,
-    "hash": "a0c16220ef24fc4326b5efc75149cbdf"
+    "mtime": 1787776830258.1013,
+    "hash": "97631aad477fb1eeefdb56d9bfb30a88"
   },
   ".graphify/description-instructions/batch-045.md": {
-    "mtime": 1787092043061.7961,
-    "hash": "55318a6285f96a3ba723dd3fcde0164e"
+    "mtime": 1787776830258.4407,
+    "hash": "08e1004a145e742b3905f15b36bc9465"
   },
   ".graphify/description-instructions/batch-046.md": {
-    "mtime": 1787092043062.0144,
-    "hash": "6c31df71dabdaeb8fd51c812f81fe76a"
+    "mtime": 1787776830258.7556,
+    "hash": "2cfc813073c61454c73c76f31426da5e"
   },
   ".graphify/description-instructions/batch-047.md": {
-    "mtime": 1787092043062.2292,
-    "hash": "8a73c014ea12c56b030182b20085f452"
+    "mtime": 1787776830259.063,
+    "hash": "e3c7391989c0ae97522f9f35b8752239"
   },
   ".graphify/description-instructions/batch-048.md": {
-    "mtime": 1787092043062.395,
-    "hash": "a7639a5ee7f25926c7b6225f749ff88a"
+    "mtime": 1787776830259.3455,
+    "hash": "dd8f9339a388650820dfcd59730f5e3f"
   },
   ".graphify/description-instructions/batch-049.md": {
-    "mtime": 1787092043062.8123,
-    "hash": "1daf3a3c53a6b9f8fecf724b1d1d34f7"
+    "mtime": 1787776830259.6223,
+    "hash": "0a9bf3a183281e816b3af5f1cd8c3bff"
   },
   ".graphify/description-instructions/batch-050.md": {
-    "mtime": 1787092043063.0393,
-    "hash": "198aba6b85162b6183fed7083a92247c"
+    "mtime": 1787776830259.8962,
+    "hash": "05a217abe1d8fb215a823df16febf2eb"
   },
   ".graphify/description-instructions/batch-051.md": {
-    "mtime": 1787092043063.2615,
-    "hash": "fd4f8ac357f65595fc0d8e4f5c71c293"
+    "mtime": 1787776830260.1875,
+    "hash": "57d1a0dc24603f66244207f1f8e59d15"
   },
   ".graphify/description-instructions/batch-052.md": {
-    "mtime": 1787092043063.419,
-    "hash": "835eb22a7da493e0f9b2219fafa41dea"
+    "mtime": 1787776830260.4792,
+    "hash": "e6eaf398fde89817fed7b7a248e626c6"
   },
   ".graphify/description-instructions/batch-053.md": {
-    "mtime": 1787092043063.602,
-    "hash": "d35ce441d307305d7eccb9c159e15469"
+    "mtime": 1787776830260.826,
+    "hash": "118af4ddde325cce044da12f15671aa6"
   },
   ".graphify/description-instructions/batch-054.md": {
-    "mtime": 1787092043063.8682,
-    "hash": "f3268b21690c78fb2e7eefcc30f1f331"
+    "mtime": 1787776830261.2454,
+    "hash": "f150d9837d502f668535e5b09c2e0998"
   },
   ".graphify/description-instructions/batch-055.md": {
-    "mtime": 1787092043064.0503,
-    "hash": "2b1a8ca129d17e6711a37cc395b01fc8"
+    "mtime": 1787776830261.5117,
+    "hash": "340cb9b92ff3b2ad3682252caf946710"
   },
   ".graphify/description-instructions/batch-056.md": {
-    "mtime": 1787092043064.3826,
-    "hash": "6f1f8991ef86e91825bacf17fba8a235"
+    "mtime": 1787776830261.9211,
+    "hash": "44fb5e2c2766336025988e36a6f30b72"
   },
   ".graphify/description-instructions/batch-057.md": {
-    "mtime": 1787092043064.5623,
-    "hash": "fb4ef9e935bfb57987a67d2f898597a3"
+    "mtime": 1787776830262.1675,
+    "hash": "e089b8d1e9459e485a1d5b103f569ece"
   },
   ".graphify/description-instructions/batch-058.md": {
-    "mtime": 1787092043064.8215,
-    "hash": "8e4606cbdf35232ec9712b0a5126fff0"
+    "mtime": 1787776830262.4226,
+    "hash": "7d65e67db29843b102cd3d93b08415d3"
   },
   ".graphify/description-instructions/batch-059.md": {
-    "mtime": 1787092043065.037,
-    "hash": "c0fec61e1bc9b80b23acc2f30a8fbf02"
+    "mtime": 1787776830262.6877,
+    "hash": "5c433a91feabb5d5f52b495742c049a6"
   },
   ".graphify/description-instructions/batch-060.md": {
-    "mtime": 1787092043065.2278,
-    "hash": "4d5c3a30fc3a142c92d94d282a92b1e8"
+    "mtime": 1787776830262.9497,
+    "hash": "bdda440d63c4a7faedfbaa9b076db84a"
   },
   ".graphify/description-instructions/batch-061.md": {
-    "mtime": 1787092043065.4321,
-    "hash": "8f56a810ded55be475098fd2eb92975c"
+    "mtime": 1787776830263.2134,
+    "hash": "cb5d357a3b4c82ce8595f307bd3a3bbd"
   },
   ".graphify/description-instructions/batch-062.md": {
-    "mtime": 1787092043065.6416,
-    "hash": "0034f817bfa2f1811245c5db4c8b55ed"
+    "mtime": 1787776830263.4836,
+    "hash": "bc4f3cbb275f40dc378a0980b188a5a4"
   },
   ".graphify/description-instructions/batch-063.md": {
-    "mtime": 1787092043065.818,
-    "hash": "0f61b4e122c82570dadb60b9532c5b79"
+    "mtime": 1787776830263.8586,
+    "hash": "d6782153a742f74d348bcc065380c646"
   },
   ".graphify/description-instructions/batch-064.md": {
-    "mtime": 1787092043065.9932,
-    "hash": "9186677c2ba7989c9fa04e2e1a29d250"
+    "mtime": 1787776830264.1165,
+    "hash": "ab99fac372f9466f8ccbcd2de8a0febb"
   },
   ".graphify/description-instructions/batch-065.md": {
-    "mtime": 1787092043066.165,
-    "hash": "36cce3874cb379be1e1de81b57f66072"
+    "mtime": 1787776830264.3835,
+    "hash": "89229adfd2cb1e0521661602b133d97a"
   },
   ".graphify/description-instructions/batch-066.md": {
-    "mtime": 1787092043066.3467,
-    "hash": "4cc5239a54488a2d52cee71b56a30c1c"
+    "mtime": 1787776830264.6367,
+    "hash": "6f530f690ffce0a0a22b04f5b7274d7e"
   },
   ".graphify/description-instructions/batch-067.md": {
-    "mtime": 1787092043066.535,
-    "hash": "85913be5b5f45224ed0b8da2ff7fe59e"
+    "mtime": 1787776830264.8826,
+    "hash": "d96ef4514184f419e874d7552d89de06"
   },
   ".graphify/description-instructions/batch-068.md": {
-    "mtime": 1787092043066.6865,
-    "hash": "528a18836d73d48357530cd38040d1c5"
+    "mtime": 1787776830265.1538,
+    "hash": "ad2bebc59a79b5a7f5e6bd28d2effad6"
   },
   ".graphify/description-instructions/batch-069.md": {
-    "mtime": 1787092043066.8782,
-    "hash": "bacdcccd01d01e0ac12dae1ae391b012"
+    "mtime": 1787776830265.4207,
+    "hash": "a847bd52690af6161723b4a5c8827927"
   },
   ".graphify/description-instructions/batch-070.md": {
-    "mtime": 1787092043067.0505,
-    "hash": "424723813dc067f6991e4fd4842aecbf"
+    "mtime": 1787776830265.6694,
+    "hash": "905dfca87717befc4a313d6255e68867"
   },
   ".graphify/description-instructions/batch-071.md": {
-    "mtime": 1787092043067.2427,
-    "hash": "728dfec3ebf2f8a01704b153c39166ae"
+    "mtime": 1787776830265.9158,
+    "hash": "d544472f8be5c8ff486e8307d2da56a2"
   },
   ".graphify/description-instructions/batch-072.md": {
-    "mtime": 1787092043067.4211,
-    "hash": "f56788916b21a1abc6a9b7f75dccffc1"
+    "mtime": 1787776830266.1553,
+    "hash": "c48071fc71544a083858a79e50790140"
   },
   ".graphify/description-instructions/batch-073.md": {
-    "mtime": 1787092043067.5798,
-    "hash": "412d2c65d73ae2b1486fe436ebda41f7"
+    "mtime": 1787776830266.5623,
+    "hash": "cd0098ee74806e22571d4611c20cf8ac"
   },
   ".graphify/description-instructions/batch-074.md": {
-    "mtime": 1787092043067.7568,
-    "hash": "9b0e709c36e4f17c1a70713606be0a69"
+    "mtime": 1787776830266.8103,
+    "hash": "54f8ef7611a829c78509a4a6a7e47b44"
   },
   ".graphify/description-instructions/batch-075.md": {
-    "mtime": 1787092043067.9336,
-    "hash": "12c4cc5a9e04df17b8e852bd6dcca8d0"
+    "mtime": 1787776830267.2214,
+    "hash": "ed6f99b6dace4246f647d0b59b424bbc"
   },
   ".graphify/label-instructions/communities.md": {
-    "mtime": 1787092014898.043,
-    "hash": "941e5b1a5a15be42ee87c099e912adf1"
+    "mtime": 1787776794582.3298,
+    "hash": "1180dc24e6ab7cae748aed205f922878"
   },
   "AGENTS.md": {
     "mtime": 1784148672792.561,
@@ -1900,116 +1900,116 @@
     "hash": "2e2b560aa1af2d06a4c8e30b4419a736"
   },
   ".graphify/description-instructions/batch-076.md": {
-    "mtime": 1787092043068.1025,
-    "hash": "d7e7527bb57bd672725dc4d26567d799"
+    "mtime": 1787776830267.598,
+    "hash": "2119272945f7044daca89d4c8cb9b828"
   },
   ".graphify/description-instructions/batch-077.md": {
-    "mtime": 1787092043068.276,
-    "hash": "acc76767f4c88b41e146072976615304"
+    "mtime": 1787776830267.8418,
+    "hash": "5e5c7141dca61738bec33054ddb9b4d3"
   },
   ".graphify/description-instructions/batch-078.md": {
-    "mtime": 1787092043068.466,
-    "hash": "a29fc82e6b3ccffdc561682457ec86f5"
+    "mtime": 1787776830268.0862,
+    "hash": "d7e59b3567a12c8514df5409435b25ea"
   },
   ".graphify/description-instructions/batch-079.md": {
-    "mtime": 1787092043068.6694,
-    "hash": "427175397bb558c1e3241739dbe71144"
+    "mtime": 1787776830268.346,
+    "hash": "4940939754000f67db21c3763cf6c8a6"
   },
   ".graphify/description-instructions/batch-080.md": {
-    "mtime": 1787092043068.826,
-    "hash": "b0dc83d0bebbdeb5685ae25d95830946"
+    "mtime": 1787776830268.7551,
+    "hash": "40a6f5bf72ae84d7b7891ffd3bd1ed9d"
   },
   ".graphify/description-instructions/batch-081.md": {
-    "mtime": 1787092043069.002,
-    "hash": "a9f28d7ea37ff94c75ebbd4b00fdcc61"
+    "mtime": 1787776830269.0132,
+    "hash": "32ab7fc82c2f6023d05a5532379bf196"
   },
   ".graphify/description-instructions/batch-082.md": {
-    "mtime": 1787092043069.1824,
-    "hash": "e6142077f8fc5d0745742759319ca746"
+    "mtime": 1787776830269.264,
+    "hash": "679f709c2a57d51f04cfff15ddf485f5"
   },
   ".graphify/description-instructions/batch-083.md": {
-    "mtime": 1787092043069.372,
-    "hash": "6fbfc58f62b34f50d313532bae53b7b4"
+    "mtime": 1787776830269.5115,
+    "hash": "e6abdc7e9aff48adeb14115fabcc53f2"
   },
   ".graphify/description-instructions/batch-084.md": {
-    "mtime": 1787092043069.5583,
-    "hash": "414b66b9334bf6daf92b39911b29ec8a"
+    "mtime": 1787776830269.7595,
+    "hash": "44f151ca0391961f2033e8fb023508bd"
   },
   ".graphify/description-instructions/batch-085.md": {
-    "mtime": 1787092043069.71,
-    "hash": "ab44c4dbf215399afc8eeff667d1050b"
+    "mtime": 1787776830270.0798,
+    "hash": "9db3108c0737e5339d047a2ab17d230f"
   },
   ".graphify/description-instructions/batch-086.md": {
-    "mtime": 1787092043069.887,
-    "hash": "4ddef9fe8ca37c51ba0de142c191d560"
+    "mtime": 1787776830270.336,
+    "hash": "c92960546381f594449192535c85bc33"
   },
   ".graphify/description-instructions/batch-087.md": {
-    "mtime": 1787092043070.0527,
-    "hash": "3c7f36ec1ef1e0d12834573f24865ac9"
+    "mtime": 1787776830270.5957,
+    "hash": "f338374e481a918bfab39e9566d98a57"
   },
   ".graphify/description-instructions/batch-088.md": {
-    "mtime": 1787092043070.219,
-    "hash": "a743b73f5afaf9e7ab432d0b61c0584b"
+    "mtime": 1787776830270.8474,
+    "hash": "9917bf618b42e4d744a441105f51553e"
   },
   ".graphify/description-instructions/batch-089.md": {
-    "mtime": 1787092043070.3708,
-    "hash": "37076b6e4912346736b94a7fbefe0767"
+    "mtime": 1787776830271.0967,
+    "hash": "016b13a67c812dd97e11cae0b288c04e"
   },
   ".graphify/description-instructions/batch-090.md": {
-    "mtime": 1787092043070.5352,
-    "hash": "0b9bec0042db68a55654a7b8894c75a1"
+    "mtime": 1787776830271.3445,
+    "hash": "62824f8d2442e1d614d3a6a543d4087f"
   },
   ".graphify/description-instructions/batch-091.md": {
-    "mtime": 1787092043070.7092,
-    "hash": "1dc375498b18a430a19a3c5eb68e4ebf"
+    "mtime": 1787776830271.6804,
+    "hash": "34d331771e2cacc2468bf33c231bcc31"
   },
   ".graphify/description-instructions/batch-092.md": {
-    "mtime": 1787092043070.8804,
-    "hash": "8b0059bd1c3a6be3947b2fc074ee94b5"
+    "mtime": 1787776830271.964,
+    "hash": "8cc3d56d67031ba8e73aef2ca3f1d45f"
   },
   ".graphify/description-instructions/batch-093.md": {
-    "mtime": 1787092043071.1196,
-    "hash": "3f3017c512502728abd5946054d70ec7"
+    "mtime": 1787776830272.524,
+    "hash": "e4eca75cf3129f2c12cfe289a88e813f"
   },
   ".graphify/description-instructions/batch-094.md": {
-    "mtime": 1787092043071.2778,
-    "hash": "c729060eac9f0a2b34fd9e7d5a0bf4cf"
+    "mtime": 1787776830272.767,
+    "hash": "5f14e3ec474451b94ec29ac764b17d27"
   },
   ".graphify/description-instructions/batch-095.md": {
-    "mtime": 1787092043071.4382,
-    "hash": "4a7f438a5ce693592062bfc3a76431ac"
+    "mtime": 1787776830273.2708,
+    "hash": "4e6dcdcc432aff57600647c766f61881"
   },
   ".graphify/description-instructions/batch-096.md": {
-    "mtime": 1787092043071.724,
-    "hash": "65a0a9dc1b9242d949f6bfa9861811c3"
+    "mtime": 1787776830273.5444,
+    "hash": "b39b1eb0668d49658dad49cb11cf6652"
   },
   ".graphify/description-instructions/batch-097.md": {
-    "mtime": 1787092043071.9067,
-    "hash": "54c1d1116f184251eb43d3dbc60fb59f"
+    "mtime": 1787776830273.7524,
+    "hash": "3fb3b92aeaf073988aacce1b8de6989a"
   },
   ".graphify/description-instructions/batch-098.md": {
-    "mtime": 1787092043072.0525,
-    "hash": "cd6840d9618515941def947c8dad9b8a"
+    "mtime": 1787776830274.4285,
+    "hash": "92b93d967e1affe373c0a3dd774c0040"
   },
   ".graphify/description-instructions/batch-099.md": {
-    "mtime": 1787092043072.228,
-    "hash": "3dc9d40afa25fa0827d3bf7a5ce7496e"
+    "mtime": 1787776830274.6838,
+    "hash": "183d4855033a82bed604536ce1b4f787"
   },
   ".graphify/description-instructions/batch-100.md": {
-    "mtime": 1787092043072.4102,
-    "hash": "eb18dd3a1ae92108464073a12e326ee3"
+    "mtime": 1787776830274.9385,
+    "hash": "46311b931836cca5f52d6bfcb60315a1"
   },
   ".graphify/description-instructions/batch-101.md": {
-    "mtime": 1787092043072.5977,
-    "hash": "7caa1995cb6d8433ea6e8b2908f7f35f"
+    "mtime": 1787776830275.1982,
+    "hash": "581d04b56ff6ce0c0bbd457348e702bf"
   },
   ".graphify/description-instructions/batch-102.md": {
-    "mtime": 1787092043073.0012,
-    "hash": "fd9cb6e0569adeb779305310c35c101c"
+    "mtime": 1787776830275.597,
+    "hash": "20897aac688ccbafa4f843a0fe9c8963"
   },
   ".graphify/description-instructions/batch-103.md": {
-    "mtime": 1787092043073.214,
-    "hash": "41b859f6a5c1784f1331f35954fbadb5"
+    "mtime": 1787776830275.843,
+    "hash": "4c1e5c8806b2735e1ca682f6563c61cb"
   },
   "TESTING_PLAN.md": {
     "mtime": 1784808789638.5012,
@@ -2132,64 +2132,64 @@
     "hash": "29a15baf74dfbb9dec46e729cb892e68"
   },
   ".graphify/description-instructions/batch-104.md": {
-    "mtime": 1787092043073.3926,
-    "hash": "344997f232ee26d59deca744bb5d5d5d"
+    "mtime": 1787776830276.097,
+    "hash": "676f38bb336734c18f6a83c89a2446f8"
   },
   ".graphify/description-instructions/batch-105.md": {
-    "mtime": 1787092043073.552,
-    "hash": "1e54cc0437fd89efbf38cdcd4681c270"
+    "mtime": 1787776830276.3418,
+    "hash": "5d8747f3d60fa57298de98d4940bc8b9"
   },
   ".graphify/description-instructions/batch-106.md": {
-    "mtime": 1787092043073.7048,
-    "hash": "2656de66ea5ad3fac3980e18c8cacb6d"
+    "mtime": 1787776830276.7488,
+    "hash": "b893fe10893ae518f0c96c22536caf7a"
   },
   ".graphify/description-instructions/batch-107.md": {
-    "mtime": 1787092043073.8538,
-    "hash": "a4b4dbaba53fa19fc3cf91510c1da687"
+    "mtime": 1787776830277.0044,
+    "hash": "b215ab1459fad4794e8947f811cdba28"
   },
   ".graphify/description-instructions/batch-108.md": {
-    "mtime": 1787092043074.009,
-    "hash": "edec87642d09e881b28a5441a77ef0c9"
+    "mtime": 1787776830277.3948,
+    "hash": "0762d3d4d9a3939ccc75b508e3593a32"
   },
   ".graphify/description-instructions/batch-109.md": {
-    "mtime": 1787092043074.171,
-    "hash": "54bb68ceb6f773a40a6a5e004f043930"
+    "mtime": 1787776830277.6409,
+    "hash": "d617cb83bf72e274e913ed4d35bca37d"
   },
   ".graphify/description-instructions/batch-110.md": {
-    "mtime": 1787092043074.3425,
-    "hash": "52c5c1d5621a4fa1e956112999be73ce"
+    "mtime": 1787776830277.8794,
+    "hash": "2ba7e74ed6228e5dd2b9ffa871f117c3"
   },
   ".graphify/description-instructions/batch-111.md": {
-    "mtime": 1787092043074.5085,
-    "hash": "aef0bed6dcf6c31f56d4437da36dce49"
+    "mtime": 1787776830278.1384,
+    "hash": "b3ccef9bf6c3590a32c93720a0ee6037"
   },
   ".graphify/description-instructions/batch-112.md": {
-    "mtime": 1787092043074.6624,
-    "hash": "d084be934ccdf246e72e4e2c6b9ef2da"
+    "mtime": 1787776830278.3975,
+    "hash": "2f8db3444a510c0dafbdc54869c60976"
   },
   ".graphify/description-instructions/batch-113.md": {
-    "mtime": 1787092043074.8179,
-    "hash": "9fff439b8accf19770e8e0183f53e42c"
+    "mtime": 1787776830278.6672,
+    "hash": "2e33b94bf51c0547753b2a3f69481830"
   },
   ".graphify/description-instructions/batch-114.md": {
-    "mtime": 1787092043074.9602,
-    "hash": "3245661110e8c9dcbe9942ed3e1742bd"
+    "mtime": 1787776830278.9253,
+    "hash": "12b3207576aaf65ea4d47f778b40b06a"
   },
   ".graphify/description-instructions/batch-115.md": {
-    "mtime": 1787092043075.1099,
-    "hash": "77a9166e6d0ccdc72fcbeaffd66a5149"
+    "mtime": 1787776830279.1953,
+    "hash": "48ac4255c2e476bfb8edf32d37aa78cf"
   },
   ".graphify/description-instructions/batch-116.md": {
-    "mtime": 1787092043075.2585,
-    "hash": "b6559892d8cf9688b39feeba70b2e692"
+    "mtime": 1787776830279.437,
+    "hash": "362ca5a36ceb58c3b5407aed415b5e40"
   },
   ".graphify/description-instructions/batch-117.md": {
-    "mtime": 1787092043075.4263,
-    "hash": "9bb136ccf7af4d4640d78cb54202971a"
+    "mtime": 1787776830279.928,
+    "hash": "db5f33b78cf18d3d16ebe735cc108b86"
   },
   ".graphify/description-instructions/batch-118.md": {
-    "mtime": 1787092043075.5708,
-    "hash": "26714cb60c849ff657bec18724a7b011"
+    "mtime": 1787776830280.1785,
+    "hash": "a39b9fdefea1f2c4caa7c9a288316bc0"
   },
   "LEARNING_PLAN.md": {
     "mtime": 1785100549312.1023,
@@ -2260,7 +2260,7 @@
     "hash": "1ce6d95a3ce236d3778e66a383b52414"
   },
   "manager/backend/app/auth/startup.py": {
-    "mtime": 1787139832550.685,
+    "mtime": 1787176428970.4092,
     "hash": "ccd02e14a21d9ee25e3db487ba27db77"
   },
   "manager/backend/app/models/probe_enrollment.py": {
@@ -2320,8 +2320,8 @@
     "hash": "e8d719197b7c22688077414d426045f2"
   },
   "manager/frontend/app/fleet/page.tsx": {
-    "mtime": 1786971445052.7764,
-    "hash": "c8a7442ef9c670f3318ee083f6da5993"
+    "mtime": 1787345932392.5015,
+    "hash": "cd4fedb8d9e13250351b6debfb2c033b"
   },
   "probe/agent/device_identity.py": {
     "mtime": 1785707804621.405,
@@ -2344,8 +2344,8 @@
     "hash": "f2008ac48a80c81e49134bf3fc943f03"
   },
   "manager/docker-compose.yml": {
-    "mtime": 1786749027125.452,
-    "hash": "c34289d737d1bc0f2034b96ad83d6b79"
+    "mtime": 1787261034173.1963,
+    "hash": "5bba93e09fd078739d3553e6ff3197af"
   },
   "manager/backend/app/services/posture.py": {
     "mtime": 1785957435372.9077,
@@ -2384,52 +2384,52 @@
     "hash": "380cc4a20cd550abff2bfea779aae0dd"
   },
   ".graphify/description-instructions/batch-119.md": {
-    "mtime": 1787092043075.7332,
-    "hash": "45e163a77ad70b461ba4208687d383c8"
+    "mtime": 1787776830280.4302,
+    "hash": "b534b35b0e39d92fe62205b0eacde53c"
   },
   ".graphify/description-instructions/batch-120.md": {
-    "mtime": 1787092043075.8884,
-    "hash": "df1dc66b9324d919c2e25da0c751a8e3"
+    "mtime": 1787776830280.679,
+    "hash": "bd4603431e0e7a9e2b60ef674d26eff8"
   },
   ".graphify/description-instructions/batch-121.md": {
-    "mtime": 1787092043076.0422,
-    "hash": "5ca25371f4f9c1c370677fd100838647"
+    "mtime": 1787776830281.0857,
+    "hash": "4e1271b6d9a474b59e5a9881430db07e"
   },
   ".graphify/description-instructions/batch-122.md": {
-    "mtime": 1787092043076.1902,
-    "hash": "b2ec029c6665bc78d04664978737f9c2"
+    "mtime": 1787776830281.3442,
+    "hash": "ab08d12d61c5e82e11110d82a4ba852d"
   },
   ".graphify/description-instructions/batch-123.md": {
-    "mtime": 1787092043076.339,
-    "hash": "4a6d90886d6bb337209aa4a92a42fb39"
+    "mtime": 1787776830281.6147,
+    "hash": "285dca0116eedd7c3d8e252f5870d2eb"
   },
   ".graphify/description-instructions/batch-124.md": {
-    "mtime": 1787092043076.49,
-    "hash": "5233dc00679b9c6dbce331b495d75c13"
+    "mtime": 1787776830281.8862,
+    "hash": "66da8d1fa5cf2d8e6430f57287ed7478"
   },
   ".graphify/description-instructions/batch-125.md": {
-    "mtime": 1787092043076.6453,
-    "hash": "248200fac27c3798c5006860fcf62f1a"
+    "mtime": 1787776830282.358,
+    "hash": "dfa6c1112bc14570edca4dee72311d5f"
   },
   ".graphify/description-instructions/batch-126.md": {
-    "mtime": 1787092043076.7966,
-    "hash": "48dcacbfc591190c2667cf2363083ab6"
+    "mtime": 1787776830282.6384,
+    "hash": "24cbf6c9c2878f6d42b885a439e52d01"
   },
   ".graphify/description-instructions/batch-127.md": {
-    "mtime": 1787092043076.953,
-    "hash": "0f8f3146408b5b50a15273f3148d8df7"
+    "mtime": 1787776830283.085,
+    "hash": "506473a42d6ba8ff5cead1db26f87e0b"
   },
   ".graphify/description-instructions/batch-128.md": {
-    "mtime": 1787092043077.1096,
-    "hash": "171d89490d848eb76a77f444f598181f"
+    "mtime": 1787776830283.4165,
+    "hash": "279b6f14ebcfa1244e0c6181512c587c"
   },
   ".graphify/description-instructions/batch-129.md": {
-    "mtime": 1787092043077.251,
-    "hash": "ae1c38aa48e373d32cc8f3016f3c68f9"
+    "mtime": 1787776830283.6917,
+    "hash": "f0857370385e73fe8c4652a9a79f1e9b"
   },
   ".graphify/description-instructions/batch-130.md": {
-    "mtime": 1787092043077.4006,
-    "hash": "fb4e7ac060f6b393eb8b6a365c45a9fd"
+    "mtime": 1787776830283.9932,
+    "hash": "a8b19c4a991dcb36febd630223197666"
   },
   "docs/superpowers/plans/2026-08-05-posture-patch-comparison-scorecard.md": {
     "mtime": 1785913020385.063,
@@ -2452,20 +2452,20 @@
     "hash": "589bef4687ed1958a239910acf589514"
   },
   ".graphify/description-instructions/batch-131.md": {
-    "mtime": 1787092043077.5547,
-    "hash": "b9e9755134988eea0362f3b3cd80b452"
+    "mtime": 1787776830284.4407,
+    "hash": "e7e9b1a0a11a23af0302f6e3c1385f4a"
   },
   ".graphify/description-instructions/batch-132.md": {
-    "mtime": 1787092043077.6936,
-    "hash": "f317da1bc1bcf1ec60662c666b8f09e2"
+    "mtime": 1787776830284.7468,
+    "hash": "2e26e5be4213261a14b6905975dc9efa"
   },
   ".graphify/description-instructions/batch-133.md": {
-    "mtime": 1787092043077.83,
-    "hash": "645f8f72083203c3eb2ac908f3cebcae"
+    "mtime": 1787776830285.1987,
+    "hash": "5ec33351f8847ecb5c87895d58035046"
   },
   ".graphify/description-instructions/batch-134.md": {
-    "mtime": 1787092043077.9683,
-    "hash": "c47c5442a8babaa7e71ce7ed610c8a08"
+    "mtime": 1787776830285.362,
+    "hash": "1715720b604d2901fd14da7e03e68e52"
   },
   "manager/backend/alembic/versions/0020_finding_resolution_lifecycle.py": {
     "mtime": 1786738664936.969,
@@ -2652,8 +2652,8 @@
     "hash": "692f9c557e9d4b7b58d405dcfabce7ec"
   },
   "probe/main_scripts/findings.py": {
-    "mtime": 1786738665012.6213,
-    "hash": "6e6888fc2a823b4e377aa9e5c1cb2055"
+    "mtime": 1787650731096.133,
+    "hash": "178402d67abda69a5ea592b2caa4d8e6"
   },
   "probe/main_scripts/host_discovery.py": {
     "mtime": 1787088999512.8044,
@@ -2696,20 +2696,20 @@
     "hash": "31a1be146ac995872bc805d86f7d3a17"
   },
   "probe/main_scripts/run_all.py": {
-    "mtime": 1786738665018.7002,
-    "hash": "7b56cb09f3bc159a12d4dcf984d2ed96"
+    "mtime": 1787773201454.0542,
+    "hash": "e109bb5cff1564eb5eb40469a696fe0f"
   },
   "probe/main_scripts/scan_funnel.py": {
-    "mtime": 1786738665019.0427,
-    "hash": "f850e36a9562a96f9edf5e6e856e2b0f"
+    "mtime": 1787650534996.7537,
+    "hash": "37a764ed7ae4cd22cabda028d837709f"
   },
   "probe/main_scripts/scanner_base.py": {
     "mtime": 1787088999516.3682,
     "hash": "6e50f876f16bb1b226c28e81f9398a1e"
   },
   "probe/main_scripts/service_banner.py": {
-    "mtime": 1786971445061.2922,
-    "hash": "63196162cc82640f75ff756d30c210f6"
+    "mtime": 1787773013694.2598,
+    "hash": "30f62d761752c2164bbdbb90f658ef49"
   },
   "probe/main_scripts/smb_scanner.py": {
     "mtime": 1786738665020.2144,
@@ -2752,31 +2752,31 @@
     "hash": "8c0c8ca7df9658633ccda15e6087fe49"
   },
   "probe/scanner/delta_scanner.py": {
-    "mtime": 1786779367804.816,
+    "mtime": 1787212325736.4534,
     "hash": "221e7d2cb0b77e8c9ff31839ac2998b3"
   },
   "probe/scanner/iot_scanner.py": {
-    "mtime": 1786971445065.161,
+    "mtime": 1787212325739.362,
     "hash": "71f19704020102df8e8884ee69a5e8fc"
   },
   "probe/scanner/mobile_scanner.py": {
-    "mtime": 1786779367810.8882,
+    "mtime": 1787212325741.559,
     "hash": "578c8e8c49264c09ddadef8bb5abdebd"
   },
   "probe/scanner/os_fingerprint.py": {
-    "mtime": 1787088999522.2407,
+    "mtime": 1787212325742.4426,
     "hash": "73ca819c4200ebbbd99c510ef8027b96"
   },
   "probe/scanner/scan_funnel.py": {
-    "mtime": 1786779367815.3425,
-    "hash": "f850e36a9562a96f9edf5e6e856e2b0f"
+    "mtime": 1787650525594.552,
+    "hash": "37a764ed7ae4cd22cabda028d837709f"
   },
   "probe/scanner/syn_scanner.py": {
-    "mtime": 1787088999524.116,
+    "mtime": 1787212325747.6794,
     "hash": "de909f3d45545edfaed59bbfdb56d2ad"
   },
   "probe/scanner/tls_fingerprint.py": {
-    "mtime": 1786779367818.6467,
+    "mtime": 1787212325748.0356,
     "hash": "86467cfef3c2294409910bcfadd23b44"
   },
   "probe/tests/test_adaptive_rate.py": {
@@ -2828,8 +2828,8 @@
     "hash": "cdb94185ed661930ff437ff81b2b4411"
   },
   "probe/tests/test_new_scanners.py": {
-    "mtime": 1786738665056.981,
-    "hash": "f8dfdd234acdf8deb82c20808c02f697"
+    "mtime": 1787775376828.5022,
+    "hash": "60d12579c5572662b983c5a734995ea2"
   },
   "probe/tests/test_os_fingerprint.py": {
     "mtime": 1787088999525.3713,
@@ -2860,40 +2860,40 @@
     "hash": "39bc4538557eee290592230074a97076"
   },
   ".graphify/description-instructions/batch-135.md": {
-    "mtime": 1787092043078.1228,
-    "hash": "778e01d7b463be3e88bf8490f2b0275b"
+    "mtime": 1787776830285.7634,
+    "hash": "f76e75979ac3820864f9f3a0a5d53761"
   },
   ".graphify/description-instructions/batch-136.md": {
-    "mtime": 1787092043078.2834,
-    "hash": "ca728e0d5e4985433201d397863cc801"
+    "mtime": 1787776830286.0818,
+    "hash": "03f6917ba112f31c3f1154a1aa8d5d7b"
   },
   ".graphify/description-instructions/batch-137.md": {
-    "mtime": 1787092043078.4595,
-    "hash": "850d90d3c9c0d5e4fc9ca2b7a2c8723b"
+    "mtime": 1787776830286.223,
+    "hash": "295a2a50aab884e6dceb247a8467a39f"
   },
   ".graphify/description-instructions/batch-138.md": {
-    "mtime": 1787092043078.6277,
-    "hash": "012a29ae0b24c9e1d24963861cdd05d7"
+    "mtime": 1787776830286.3867,
+    "hash": "75a764bd9f1788174f0a727f709afa47"
   },
   ".graphify/description-instructions/batch-139.md": {
-    "mtime": 1787092043078.7754,
-    "hash": "e8b6be0d9b16709581e13b85030fe9c7"
+    "mtime": 1787776830286.6912,
+    "hash": "9ff6271792b09ee577418e45e6ad84e4"
   },
   ".graphify/description-instructions/batch-140.md": {
-    "mtime": 1787092043078.9265,
-    "hash": "694bfb82ea648d05197dc58985983bee"
+    "mtime": 1787776830287.05,
+    "hash": "64a39200ce7dbec33be399edf5a0bde8"
   },
   ".graphify/description-instructions/batch-141.md": {
-    "mtime": 1787092043079.0583,
-    "hash": "9d5ef50d0ce05dc5aaec40e3626fb483"
+    "mtime": 1787776830287.3064,
+    "hash": "68ff98c79026266f8c1968d5856362b8"
   },
   ".graphify/description-instructions/batch-142.md": {
-    "mtime": 1787092043079.199,
-    "hash": "cd6e36f692c1f487aac48a64f37c82b6"
+    "mtime": 1787776830287.5637,
+    "hash": "6863788d68e21a308bc93cfe82d30e13"
   },
   ".graphify/description-instructions/batch-143.md": {
-    "mtime": 1787092043079.3398,
-    "hash": "9ac99d1a9169cf6140edcac3dec2f361"
+    "mtime": 1787776830287.8284,
+    "hash": "7d63d35dbc907450b14eec4ec3d3e210"
   },
   "LEARNINGS.md": {
     "mtime": 1786738664923.5825,
@@ -3088,12 +3088,12 @@
     "hash": "ff7a578e3b6683a8a649633875be4750"
   },
   "manager/backend/app/routers/customer_access.py": {
-    "mtime": 1787139803966.7478,
+    "mtime": 1787176428971.075,
     "hash": "6092897133d64ba4d95901a7ace847fb"
   },
   "manager/backend/app/routers/portal.py": {
-    "mtime": 1787075292717.912,
-    "hash": "5e067950b390833bf351baa56921b783"
+    "mtime": 1787258231417.2927,
+    "hash": "3693ea92bde46b42a39b4f0b602e961b"
   },
   "manager/backend/app/schemas/portal.py": {
     "mtime": 1787075178187.583,
@@ -3192,12 +3192,12 @@
     "hash": "091c78b4b4532d533ce0a8a9c1ddfe00"
   },
   "manager/frontend/app/portal/scans/page.tsx": {
-    "mtime": 1787075446608.1387,
-    "hash": "84c386edc65af2fc19e9ebd24566a2a1"
+    "mtime": 1787259023965.0154,
+    "hash": "5449e0cbdc704c418d3208405fa4e80c"
   },
   "manager/frontend/lib/portal-client.ts": {
-    "mtime": 1787075425003.061,
-    "hash": "b8e64f17ba0bc548fa083a36587bf01a"
+    "mtime": 1787251157207.8152,
+    "hash": "13e2cf36107943fd811db15461973244"
   },
   "probe/main_scripts/accuracy.py": {
     "mtime": 1786738665010.9348,
@@ -3220,43 +3220,43 @@
     "hash": "60a3176eb731bd25e15fe6844f9497c5"
   },
   "probe/scanner/accuracy.py": {
-    "mtime": 1786779367802.4524,
+    "mtime": 1787212325735.2434,
     "hash": "e049bb906e50fd3b303caf5880901914"
   },
   "probe/scanner/adaptive_timeout.py": {
-    "mtime": 1786779367802.8296,
+    "mtime": 1787212325735.6384,
     "hash": "204447c317989daa0459c6557b8c1893"
   },
   "probe/scanner/device_classifier.py": {
-    "mtime": 1786779367805.3892,
+    "mtime": 1787212325737.1084,
     "hash": "692f9c557e9d4b7b58d405dcfabce7ec"
   },
   "probe/scanner/findings.py": {
-    "mtime": 1786779367806.2375,
-    "hash": "6e6888fc2a823b4e377aa9e5c1cb2055"
+    "mtime": 1787650710326.167,
+    "hash": "178402d67abda69a5ea592b2caa4d8e6"
   },
   "probe/scanner/ja4s.py": {
-    "mtime": 1786779367807.7852,
+    "mtime": 1787212325739.8245,
     "hash": "04b04a8bdfc9d0689206c0eab387f9b7"
   },
   "probe/scanner/ja4x.py": {
-    "mtime": 1786779367808.2314,
+    "mtime": 1787212325740.2039,
     "hash": "34a7e2783110ba7949cd71e0f2ce7135"
   },
   "probe/scanner/rdp_scanner.py": {
-    "mtime": 1786779367814.4294,
+    "mtime": 1787212325743.67,
     "hash": "bffaecf0515ce77c33ade90d6c169df4"
   },
   "probe/scanner/run_all.py": {
-    "mtime": 1786779367814.8787,
-    "hash": "7b56cb09f3bc159a12d4dcf984d2ed96"
+    "mtime": 1787773194399.704,
+    "hash": "e109bb5cff1564eb5eb40469a696fe0f"
   },
   "probe/scanner/unauth_access.py": {
-    "mtime": 1786779367819.8354,
+    "mtime": 1787212325749.3022,
     "hash": "60a3176eb731bd25e15fe6844f9497c5"
   },
   "probe/scanner/vantage_matrix.py": {
-    "mtime": 1786779367820.1797,
+    "mtime": 1787212325749.7207,
     "hash": "06cf852fce1ab2e1d103a9f9a6695c70"
   },
   "probe/tests/test_e2e_engagement_to_findings.py": {
@@ -3316,188 +3316,188 @@
     "hash": "f2bfc9a12e696657441e321d19da42fe"
   },
   ".graphify/description-instructions/batch-144.md": {
-    "mtime": 1787092043079.4712,
-    "hash": "67730b4a0dbea3ea86fef831ce32b621"
+    "mtime": 1787776830288.0789,
+    "hash": "32f35e28268567d338ab7e03368cad6f"
   },
   ".graphify/description-instructions/batch-145.md": {
-    "mtime": 1787092043079.6206,
-    "hash": "4f4ed9d37af48dd99eb367fc78109492"
+    "mtime": 1787776830288.3298,
+    "hash": "8e45ac910e6d81da17f107569cbe82ef"
   },
   ".graphify/description-instructions/batch-146.md": {
-    "mtime": 1787092043079.7566,
-    "hash": "b50f876b8d75b27e76bfda00d91ba0f5"
+    "mtime": 1787776830288.7273,
+    "hash": "5612158444d12424a9ab6a3d800e4fa2"
   },
   ".graphify/description-instructions/batch-147.md": {
-    "mtime": 1787092043079.888,
-    "hash": "bd7391d6a5bd8dab1f04fbce8c69a5de"
+    "mtime": 1787776830288.8792,
+    "hash": "49e615f6e90c7b35cbb3ca7026136bfb"
   },
   ".graphify/description-instructions/batch-148.md": {
-    "mtime": 1787092043080.0154,
-    "hash": "e788a9906c1acf449f1b3b5fb50d5ae9"
+    "mtime": 1787776830289.0227,
+    "hash": "d6c69172df4bfa7d9940d9da2d521ca2"
   },
   ".graphify/description-instructions/batch-149.md": {
-    "mtime": 1787092043080.1514,
-    "hash": "ac6be791bdda723a15d826d4b090359c"
+    "mtime": 1787776830289.3618,
+    "hash": "5468870c4cf1a914af4b182313d39309"
   },
   ".graphify/description-instructions/batch-150.md": {
-    "mtime": 1787092043080.3137,
-    "hash": "cd4933ee0767bebf1ef3df46037abe81"
+    "mtime": 1787776830289.4958,
+    "hash": "12cb599d567a9ed71dd6d47cdf82ff5c"
   },
   ".graphify/description-instructions/batch-151.md": {
-    "mtime": 1787092043080.471,
-    "hash": "a934af78be1f0089f5ae70a2d5eb749d"
+    "mtime": 1787776830289.6335,
+    "hash": "2fddb0a299c1f1b0674bdef01805f2ce"
   },
   ".graphify/description-instructions/batch-152.md": {
-    "mtime": 1787092043080.6228,
-    "hash": "cc6584577c32b664283d0192042506a9"
+    "mtime": 1787776830289.7654,
+    "hash": "3bd103825063fb1f233595328cee3e0e"
   },
   ".graphify/description-instructions/batch-153.md": {
-    "mtime": 1787092043080.7776,
-    "hash": "bcfb31b66d9979f760ae2eed92e374d6"
+    "mtime": 1787776830291.2969,
+    "hash": "3da4e006372d2b7dfd62d57c193519b5"
   },
   ".graphify/description-instructions/batch-154.md": {
-    "mtime": 1787092043080.9421,
-    "hash": "7a7bcc18e30a58db36a414feaf462cf2"
+    "mtime": 1787776830291.711,
+    "hash": "1a7e46c2ce0c80987eb6ea86475aa273"
   },
   ".graphify/description-instructions/batch-155.md": {
-    "mtime": 1787092043081.1013,
-    "hash": "accf764982a96fd9c8a13f81893002ae"
+    "mtime": 1787776830292.0183,
+    "hash": "d6c5755cef71b45681dc45d3033d9c54"
   },
   ".graphify/description-instructions/batch-156.md": {
-    "mtime": 1787092043081.2498,
-    "hash": "1840e16efe5754df8edc136de3da35d0"
+    "mtime": 1787776830292.3015,
+    "hash": "d9650308c47187b73c422eb5c69c94fb"
   },
   ".graphify/description-instructions/batch-157.md": {
-    "mtime": 1787092043081.4033,
-    "hash": "c800de47eaa1e2f023cf19b95073924b"
+    "mtime": 1787776830292.571,
+    "hash": "fe682dc43b49473b43fa69e6b73dd0ce"
   },
   ".graphify/description-instructions/batch-158.md": {
-    "mtime": 1787092043081.565,
-    "hash": "55584cc5b6a6d40495503a24c7e62965"
+    "mtime": 1787776830292.8323,
+    "hash": "600377514407bd2b2fe1f73fbeb34e7d"
   },
   ".graphify/description-instructions/batch-159.md": {
-    "mtime": 1787092043081.7244,
-    "hash": "01ac21477fff166a7eb8b707429edcfa"
+    "mtime": 1787776830293.2427,
+    "hash": "f840ffd400b0306e371ce4ad1671d640"
   },
   ".graphify/description-instructions/batch-160.md": {
-    "mtime": 1787092043081.873,
-    "hash": "f76a417d1eaef0dfff005807953b28f2"
+    "mtime": 1787776830293.5437,
+    "hash": "f314454a726f3c5c032ecd453dc9731c"
   },
   ".graphify/description-instructions/batch-161.md": {
-    "mtime": 1787092043082.0044,
-    "hash": "f48b9be69b9320d9e8d2875681d76bb2"
+    "mtime": 1787776830294.0144,
+    "hash": "777d100e9dcebf99445ac916325ff551"
   },
   ".graphify/description-instructions/batch-162.md": {
-    "mtime": 1787092043082.1565,
-    "hash": "4717f4fe0feee7bc43623e7c6cc83ac7"
+    "mtime": 1787776830294.2886,
+    "hash": "05bc15c7c04717b57573f8b98e64871f"
   },
   ".graphify/description-instructions/batch-163.md": {
-    "mtime": 1787092043082.3193,
-    "hash": "1d42cc3717bd6e01e59448ce9bed89b1"
+    "mtime": 1787776830294.5476,
+    "hash": "83b7853e026400970a41b42b5fc3ea66"
   },
   ".graphify/description-instructions/batch-164.md": {
-    "mtime": 1787092043082.4775,
-    "hash": "d8f414aae967a7c8aea59d2eb5800d6e"
+    "mtime": 1787776830294.8179,
+    "hash": "5ec6af361342cfaf2915bda4a8d4767b"
   },
   ".graphify/description-instructions/batch-165.md": {
-    "mtime": 1787092043082.634,
-    "hash": "377b0a8d8af321a1bd1496f87dbb8960"
+    "mtime": 1787776830295.0876,
+    "hash": "6fc0063857ea37dcec9e9b5b96e5f74f"
   },
   ".graphify/description-instructions/batch-166.md": {
-    "mtime": 1787092043082.774,
-    "hash": "b34bdedddbf4bbbb66d799ce2d2507ff"
+    "mtime": 1787776830295.3467,
+    "hash": "e24328a4c57f49eb6d20938da95c2d36"
   },
   ".graphify/description-instructions/batch-167.md": {
-    "mtime": 1787092043082.932,
-    "hash": "62aaf062c0bab8d4c63512296ba94397"
+    "mtime": 1787776830295.588,
+    "hash": "831958587a65446ab5841cddf5bdc819"
   },
   ".graphify/description-instructions/batch-168.md": {
-    "mtime": 1787092043083.091,
-    "hash": "755bfbab019b7fc5fff4df1691b8fdba"
+    "mtime": 1787776830295.7397,
+    "hash": "ce39781d09229914c64cfe576988d0ae"
   },
   ".graphify/description-instructions/batch-169.md": {
-    "mtime": 1787092043083.2505,
-    "hash": "cb2de16cc53657d3611cf47677219f62"
+    "mtime": 1787776830296.0022,
+    "hash": "b15b346408cf62eb6fc7a4c8b62d4d6e"
   },
   ".graphify/description-instructions/batch-170.md": {
-    "mtime": 1787092043083.4128,
-    "hash": "5bb6fc5655a51406d77b2fa10c640844"
+    "mtime": 1787776830296.2595,
+    "hash": "87e946aea353ad3b00341b7b6b50b193"
   },
   ".graphify/description-instructions/batch-171.md": {
-    "mtime": 1787092043083.581,
-    "hash": "2cd44d439e43c19b35ff9a0881fe6e29"
+    "mtime": 1787776830296.5183,
+    "hash": "9d5896869b21a523d9a2bd7d51508b61"
   },
   ".graphify/description-instructions/batch-172.md": {
-    "mtime": 1787092043083.7427,
-    "hash": "bbebb1abca77d9dc3655c1d69eb62256"
+    "mtime": 1787776830296.885,
+    "hash": "242c5a59977c0a54f9ed9809634d5175"
   },
   ".graphify/description-instructions/batch-173.md": {
-    "mtime": 1787092043083.9001,
-    "hash": "6873441ce8c965b3fb5954740db1324e"
+    "mtime": 1787776830297.135,
+    "hash": "e90d412f78e6d1dbe10c474753cf90a3"
   },
   ".graphify/description-instructions/batch-174.md": {
-    "mtime": 1787092043084.0542,
-    "hash": "df0526ebf4b4e4f05e51837e8e0ce312"
+    "mtime": 1787776830297.3967,
+    "hash": "5cf3d9a6e35bf2df3ddca78e129b6484"
   },
   ".graphify/description-instructions/batch-175.md": {
-    "mtime": 1787092043084.2097,
-    "hash": "321486c3a428b71e0a41a3168556a502"
+    "mtime": 1787776830297.6528,
+    "hash": "819dd4597c94d6475f99b6dd2e6a9a07"
   },
   ".graphify/description-instructions/batch-176.md": {
-    "mtime": 1787092043084.3765,
-    "hash": "067123d833a8e4e268362398f2f7a4ed"
+    "mtime": 1787776830297.9148,
+    "hash": "2988f6da9d94b332693bb1124ef40ee9"
   },
   ".graphify/description-instructions/batch-177.md": {
-    "mtime": 1787092043084.531,
-    "hash": "58e56c7c00dbb325be86d631870460e0"
+    "mtime": 1787776830298.1753,
+    "hash": "71011b16261eced7fff5821ce1a84cca"
   },
   ".graphify/description-instructions/batch-178.md": {
-    "mtime": 1787092043084.6814,
-    "hash": "a73c6356aa5c8b9eeffea83c07193a16"
+    "mtime": 1787776830298.6484,
+    "hash": "94ed9e0faa0ecc6018f62d2e3ce7ed84"
   },
   ".graphify/description-instructions/batch-179.md": {
-    "mtime": 1787092043085.4414,
-    "hash": "7f1d896e63479f28118411e3e1856a76"
+    "mtime": 1787776830298.904,
+    "hash": "bc972555100a676938c1e133510c243a"
   },
   ".graphify/description-instructions/batch-180.md": {
-    "mtime": 1787092043085.618,
-    "hash": "1854f3ecda82215216aebed93b49b16d"
+    "mtime": 1787776830299.1611,
+    "hash": "d4282a7c220e701787662b2e6550ee68"
   },
   ".graphify/description-instructions/batch-181.md": {
-    "mtime": 1787092043085.7673,
-    "hash": "b85c1ba7f95371b3887410a8424286a5"
+    "mtime": 1787776830299.4854,
+    "hash": "8ef170186403369162d7e86a7d1d5db1"
   },
   ".graphify/description-instructions/batch-182.md": {
-    "mtime": 1787092043085.9038,
-    "hash": "1c9a7bd4243f31bb9ee11e4854afbbc0"
+    "mtime": 1787776830299.8513,
+    "hash": "ff3df0cfc991772165c16ec62a4c08e8"
   },
   ".graphify/description-instructions/batch-183.md": {
-    "mtime": 1787092043086.0579,
-    "hash": "55c615988ac1c5a15f934abdc01cddab"
+    "mtime": 1787776830300.1472,
+    "hash": "704d6287b2963056d2d9e9cf9be59186"
   },
   ".graphify/description-instructions/batch-184.md": {
-    "mtime": 1787092043086.2073,
-    "hash": "12fe173a9902ed5d67c1d8198b2487c5"
+    "mtime": 1787776830300.4072,
+    "hash": "2070e092c357f821a0e9d6f14e697d3a"
   },
   ".graphify/description-instructions/batch-185.md": {
-    "mtime": 1787092043086.3552,
-    "hash": "dc1c2ba204dde58fa7e78d1f52b5ae27"
+    "mtime": 1787776830300.661,
+    "hash": "0ffc4dd53c3233aab9dafad1b4ea0f2b"
   },
   "docs/superpowers/specs/2026-08-13-customer-portal-design.md": {
     "mtime": 1786738664935.82,
     "hash": "009fd1cb06c4c153b1bc26df54621e6d"
   },
   "probe/DEPLOYMENT.md": {
-    "mtime": 1786744274204.9758,
-    "hash": "87e6c00518dd7cb3432f540016475644"
+    "mtime": 1787775364798.6125,
+    "hash": "44cfa1d1e8c84dcb7f355a3707deb816"
   },
   "probe/SEALING.md": {
-    "mtime": 1786738665006.0713,
-    "hash": "b27e8043ff85df08279ea125be8e0147"
+    "mtime": 1787775364791.221,
+    "hash": "7c4586270daf0eec807f09e00e866516"
   },
   "probe/docker-compose.yml": {
-    "mtime": 1786738665009.581,
-    "hash": "9445d75fe0ff3d917f0c62b2e19d9580"
+    "mtime": 1787775364747.2102,
+    "hash": "e10c4e4777fde3ef2aae97c655e873ed"
   },
   "probe/main_scripts/RESEARCH_IMPROVEMENTS.md": {
     "mtime": 1786779690440.2651,
@@ -3664,7 +3664,7 @@
     "hash": "0d5ab5649038747e50e000af41764b3b"
   },
   "probe/scanner/service_enum.py": {
-    "mtime": 1787088999523.7866,
+    "mtime": 1787212325745.918,
     "hash": "0d5ab5649038747e50e000af41764b3b"
   },
   "probe/tests/test_nmap_xml_safety.py": {
@@ -3684,96 +3684,96 @@
     "hash": "e65a0dcab5e1a0cba8a5eb253669c69e"
   },
   ".graphify/description-instructions/batch-186.md": {
-    "mtime": 1787092043086.524,
-    "hash": "4a91eac3e8b5b7ff63cd0a5ff6d2dfff"
+    "mtime": 1787776830300.9182,
+    "hash": "30f42ca2aa18bb83e57c9087cdb2ca99"
   },
   ".graphify/description-instructions/batch-187.md": {
-    "mtime": 1787092043086.6733,
-    "hash": "c5d25edf99ff3c47e4e2161cbf148cdf"
+    "mtime": 1787776830301.182,
+    "hash": "3ba2289e3c58511125dca2eb624f78c0"
   },
   ".graphify/description-instructions/batch-188.md": {
-    "mtime": 1787092043086.817,
-    "hash": "827687427b315313812eded4321798a6"
+    "mtime": 1787776830301.4453,
+    "hash": "c14ec13b7bccec953bc29f8b0d0187d4"
   },
   ".graphify/description-instructions/batch-189.md": {
-    "mtime": 1787092043086.9604,
-    "hash": "f4b8d5ac70779cc95da7472d432bfb37"
+    "mtime": 1787776830301.6948,
+    "hash": "62d844b7db572df8219769335a8fe842"
   },
   ".graphify/description-instructions/batch-190.md": {
-    "mtime": 1787092043087.1052,
-    "hash": "14e2a2196d3b469ef6b2452374899ead"
+    "mtime": 1787776830301.847,
+    "hash": "20a735a05d2450ef470ab8a77ef8d1bc"
   },
   ".graphify/description-instructions/batch-191.md": {
-    "mtime": 1787092043087.2573,
-    "hash": "00c21dbc2ffed1e5b13c0c11940659f8"
+    "mtime": 1787776830302.6772,
+    "hash": "cd0e2d066a55ed7049235ef51cef60ff"
   },
   ".graphify/description-instructions/batch-192.md": {
-    "mtime": 1787092043087.3982,
-    "hash": "20293302bd9e0dabbfd540d32ded150f"
+    "mtime": 1787776830302.9956,
+    "hash": "f2cc15ca5a6f4335b92355ac4e24f0f9"
   },
   ".graphify/description-instructions/batch-193.md": {
-    "mtime": 1787092043087.5435,
-    "hash": "19e28695633d24671066e063cafeea30"
+    "mtime": 1787776830303.2893,
+    "hash": "d6b1a6fd4f4c955b90b031b6025bdb6e"
   },
   ".graphify/description-instructions/batch-194.md": {
-    "mtime": 1787092043087.7024,
-    "hash": "8435bcbe267d50988da1a865a71a18c7"
+    "mtime": 1787776830303.6826,
+    "hash": "38116269f47a63cceb180ffbae95ba75"
   },
   ".graphify/description-instructions/batch-195.md": {
-    "mtime": 1787092043087.8562,
-    "hash": "b06d4486c5e9f5e500b978a821a4ac38"
+    "mtime": 1787776830303.952,
+    "hash": "005150ca73fca545cf294d50a3151a94"
   },
   ".graphify/description-instructions/batch-196.md": {
-    "mtime": 1787092043088.14,
-    "hash": "465dddcacb280ba78491890a429ef0cf"
+    "mtime": 1787776830304.2188,
+    "hash": "1f6257f533f79f6367e0b05cfb2bc898"
   },
   ".graphify/description-instructions/batch-197.md": {
-    "mtime": 1787092043088.3516,
-    "hash": "e0b637b5cff4127a20d93061fd950ae5"
+    "mtime": 1787776830304.4695,
+    "hash": "eabb50f5ec5734257a437def0980cbd0"
   },
   ".graphify/description-instructions/batch-198.md": {
-    "mtime": 1787092043088.5208,
-    "hash": "e71b413e95d7d988775640de949d5ef0"
+    "mtime": 1787776830304.7273,
+    "hash": "58f86bb63fc107d86729aaa1d83b428c"
   },
   ".graphify/description-instructions/batch-199.md": {
-    "mtime": 1787092043088.675,
-    "hash": "1db8175a5a47b450f0c896f4a4869f82"
+    "mtime": 1787776830304.9846,
+    "hash": "9ef84b7460d9adc962585c896a580b05"
   },
   ".graphify/description-instructions/batch-200.md": {
-    "mtime": 1787092043088.832,
-    "hash": "dbbc21b8244acb05d842cfa91aa7b81e"
+    "mtime": 1787776830305.7375,
+    "hash": "63652a0ae30c3b2373035f145e090bba"
   },
   ".graphify/description-instructions/batch-201.md": {
-    "mtime": 1787092043088.9832,
-    "hash": "13498fbede3dcc7ac489b19601f1a788"
+    "mtime": 1787776830305.9932,
+    "hash": "a1881d4fef6a92b25b90d87ebb8ea667"
   },
   ".graphify/description-instructions/batch-202.md": {
-    "mtime": 1787092043089.1558,
-    "hash": "1a6596ff1d2fe522ce909ce71087c21c"
+    "mtime": 1787776830306.258,
+    "hash": "3a1eb9ecaa8cbae34aa30e0aee4121f7"
   },
   ".graphify/description-instructions/batch-203.md": {
-    "mtime": 1787092043089.3042,
-    "hash": "d2133f6aaf7a4455d1bbdfa7010bf771"
+    "mtime": 1787776830306.6047,
+    "hash": "00de07823d9364de377aa3c29ff8f056"
   },
   ".graphify/description-instructions/batch-204.md": {
-    "mtime": 1787092043089.7048,
-    "hash": "f6d7f864b2e043a5b3d69d9f3362408d"
+    "mtime": 1787776830306.979,
+    "hash": "9aff5ebd550d05dfc65aad684bbda4ed"
   },
   ".graphify/description-instructions/batch-205.md": {
-    "mtime": 1787092043089.867,
-    "hash": "3697343145da9506deae0f1a06e3835a"
+    "mtime": 1787776830307.2502,
+    "hash": "8c43261cce89a60663f975befbcc64dc"
   },
   ".graphify/description-instructions/batch-206.md": {
-    "mtime": 1787092043090.022,
-    "hash": "28e5c959c43c782d49103392f6d76d09"
+    "mtime": 1787776830307.5325,
+    "hash": "39b3ad0bf3ced0ff3f7761441e714713"
   },
   ".graphify/description-instructions/batch-207.md": {
-    "mtime": 1787092043090.1794,
-    "hash": "3c840e670c6073536cadc7c35ce82a2d"
+    "mtime": 1787776830307.7886,
+    "hash": "fba9e8c662830fc2646c41373a0c1bb0"
   },
   ".graphify/description-instructions/batch-208.md": {
-    "mtime": 1787092043090.3403,
-    "hash": "e6fc5ecb7c79d3cfe7b6c78bdbf2e281"
+    "mtime": 1787776830308.0383,
+    "hash": "444ccec57fb05365e3c2c96602ac56ab"
   },
   "docs/PENDING_WORK.md": {
     "mtime": 1787088999511.2288,
@@ -3852,8 +3852,8 @@
     "hash": "a0009fada2508d17c11a410bab1b8395"
   },
   "probe/tools/probe_local_run.py": {
-    "mtime": 1787055018579.104,
-    "hash": "0a765106774b969d4c88ddf97f0f276c"
+    "mtime": 1787260656961.0986,
+    "hash": "7474ac1699546f56f517e4bbd2be45a2"
   },
   "main_scripts_probe_actual_function_run.md": {
     "mtime": 1786987132398.742,
@@ -3862,5 +3862,125 @@
   "probe/PROBE_RUN_STEPS.md": {
     "mtime": 1787055049756.498,
     "hash": "025f8203ab60ec8b6342ef59fb3c78c5"
+  },
+  "manager/backend/app/detection/prioritization.py": {
+    "mtime": 1787425591483.0928,
+    "hash": "ad53b8ec414fb1f1bbf1b90978580c0e"
+  },
+  "manager/backend/app/discovery/service_vuln.py": {
+    "mtime": 1787401349732.2607,
+    "hash": "f0c78b3a38f9e023f3c4dadcdc6baad6"
+  },
+  "manager/backend/tests/test_agent_read_tools.py": {
+    "mtime": 1787176428972.1858,
+    "hash": "429b12087309c61e841bb3f681c0bb83"
+  },
+  "manager/detection_engine/build_nvd_cpe_snapshot.py": {
+    "mtime": 1787401204985.2007,
+    "hash": "89201cea295cfe893b35d261c0aa0d3a"
+  },
+  "manager/frontend/app/api/fleet/agents/[id]/jobs/route.ts": {
+    "mtime": 1787345765744.2964,
+    "hash": "c688d46610217becf15ad34c377c6274"
+  },
+  "manager/frontend/app/api/scan/jobs/route.ts": {
+    "mtime": 1787230334724.3682,
+    "hash": "3bcc0f26ec2b69f5172b742e3390db37"
+  },
+  "probe/agent/local_run.py": {
+    "mtime": 1787260642319.1018,
+    "hash": "677db9704de3ab72b64446cba57a2024"
+  },
+  "probe/tools/verify_windows_ground_truth.ps1": {
+    "mtime": 1787256564724.4097,
+    "hash": "92e923ac80b2f719bf62817282eb199f"
+  },
+  ".graphify/description-instructions/batch-209.md": {
+    "mtime": 1787776830308.3074,
+    "hash": "1d98fd75893358beda5904182008fbcc"
+  },
+  ".graphify/description-instructions/batch-210.md": {
+    "mtime": 1787776830308.5806,
+    "hash": "b60582d59c8decf2e7c4144303a56551"
+  },
+  ".graphify/description-instructions/batch-211.md": {
+    "mtime": 1787776830308.8252,
+    "hash": "ea316ae9117c444db70d817ca145b5ca"
+  },
+  ".graphify/description-instructions/batch-212.md": {
+    "mtime": 1787776830309.0657,
+    "hash": "91031cd364575ad3f568c3aa9debaad3"
+  },
+  ".graphify/description-instructions/batch-213.md": {
+    "mtime": 1787776830309.3862,
+    "hash": "6d867d625aecce9e0ee405d278c12112"
+  },
+  ".graphify/description-instructions/batch-214.md": {
+    "mtime": 1787776830309.6418,
+    "hash": "aef88b4159b6a6211b82d569f3b4bdef"
+  },
+  ".graphify/description-instructions/batch-215.md": {
+    "mtime": 1787776830309.8862,
+    "hash": "6a26b8bc8e083d375e48178c278a6d44"
+  },
+  ".graphify/description-instructions/batch-216.md": {
+    "mtime": 1787776830310.1394,
+    "hash": "2d13e13c5c8ac683ef7e7f66a295657f"
+  },
+  ".graphify/description-instructions/batch-217.md": {
+    "mtime": 1787776830310.394,
+    "hash": "a47db3c1081b01f6be4c7bf950670d4e"
+  },
+  ".graphify/description-instructions/batch-218.md": {
+    "mtime": 1787776830310.6484,
+    "hash": "0713d8a7a5af913234d926cd450ce2e6"
+  },
+  ".graphify/description-instructions/batch-219.md": {
+    "mtime": 1787776830310.9016,
+    "hash": "4942b85906afcccc9ac8b0da10ea40b0"
+  },
+  ".graphify/description-instructions/batch-220.md": {
+    "mtime": 1787776830311.1558,
+    "hash": "29eca502ad0df7b7ecf5d7156c700e82"
+  },
+  ".graphify/description-instructions/batch-221.md": {
+    "mtime": 1787776830311.4084,
+    "hash": "d35e69610cf26c4ba927d1229f23b6e4"
+  },
+  ".graphify/description-instructions/batch-222.md": {
+    "mtime": 1787776830311.657,
+    "hash": "23a1002a2e44f5e4c3ed29435dfb2162"
+  },
+  ".graphify/description-instructions/batch-223.md": {
+    "mtime": 1787776830311.912,
+    "hash": "4d1a96de322811677a696643be50ba27"
+  },
+  ".graphify/description-instructions/batch-224.md": {
+    "mtime": 1787776830312.174,
+    "hash": "7cbb34b20ef0782e3ad7ab8f9bed8ff7"
+  },
+  ".graphify/description-instructions/batch-225.md": {
+    "mtime": 1787776830312.4243,
+    "hash": "8dec79e0606e0b77bf9e5e79ca789de4"
+  },
+  ".graphify/description-instructions/batch-226.md": {
+    "mtime": 1787776830312.668,
+    "hash": "a4a10f65701bed5369bbefd7fdafb860"
+  },
+  "crazy_future_ai_native_plan.md": {
+    "mtime": 1787229652786.689,
+    "hash": "b514612e8d80bee15e7dc17ddf67ff5e"
+  },
+  "manager/detection_engine/SNAPSHOTS.md": {
+    "mtime": 1787471503795.9805,
+    "hash": "8ffc7483f54ef2d782c317d6b5a9f359"
+  },
+  "probe/PROBE_CAPABILITY_STATUS.md": {
+    "mtime": 1787776729302.246,
+    "hash": "aff38cf39b94371c28b6c6586c00787c"
+  },
+  "step_by_step_probe_run.md": {
+    "mtime": 1787390188901.1016,
+    "hash": "1075a86abe8ec9fbb6173b4679c302f8"
   }
 }

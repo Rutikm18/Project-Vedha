@@ -1,4 +1,4 @@
-# Node Description Batch 222 of 227
+# Node Description Batch 222 of 236
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -26,46 +26,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "versions_0024_device_role_inventory_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0024_device_role_inventory.py:L22 | neighbors=[0024_device_role_inventory.py] | lang=en
-- "versions_0025_service_exposure_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0025_service_exposure.py:L25 | neighbors=[0025_service_exposure.py] | lang=en
-- "versions_0025_service_exposure_rationale_1": "Service exposure: persist the exposure_matrix reachability verdict.  Adds servic" | kind=entity | source=manager/backend/alembic/versions/0025_service_exposure.py:L1 | neighbors=[0025_service_exposure.py] | lang=en
-- "versions_0025_service_exposure_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0025_service_exposure.py:L21 | neighbors=[0025_service_exposure.py] | lang=en
-- "versions_0026_client_portal_slug_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0026_client_portal_slug.py:L29 | neighbors=[0026_client_portal_slug.py] | lang=en
-- "versions_0026_client_portal_slug_rationale_1": "Client portal slug — the customer's stable 'user as domain' handle.  Adds users." | kind=entity | source=manager/backend/alembic/versions/0026_client_portal_slug.py:L1 | neighbors=[0026_client_portal_slug.py] | lang=en
-- "versions_0026_client_portal_slug_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0026_client_portal_slug.py:L22 | neighbors=[0026_client_portal_slug.py] | lang=en
-- "versions_0027_scan_request_targets_intensity_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0027_scan_request_targets_intensity.py:L39 | neighbors=[0027_scan_request_targets_intensity.py] | lang=en
-- "versions_0027_scan_request_targets_intensity_rationale_1": "Scan-request targets + intensity — the rich customer scan request.  Adds two nul" | kind=entity | source=manager/backend/alembic/versions/0027_scan_request_targets_intensity.py:L1 | neighbors=[0027_scan_request_targets_intensity.py] | lang=en
-- "versions_0027_scan_request_targets_intensity_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0027_scan_request_targets_intensity.py:L28 | neighbors=[0027_scan_request_targets_intensity.py] | lang=en
-- "versions_0028_remediation_plans_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0028_remediation_plans.py:L51 | neighbors=[0028_remediation_plans.py] | lang=en
-- "versions_0028_remediation_plans_rationale_1": "Remediation plans — cached, OS-specific, structured remediation for a finding." | kind=entity | source=manager/backend/alembic/versions/0028_remediation_plans.py:L1 | neighbors=[0028_remediation_plans.py] | lang=en
-- "versions_0028_remediation_plans_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0028_remediation_plans.py:L22 | neighbors=[0028_remediation_plans.py] | lang=en
-- "versions_0030_sla_policies_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0030_sla_policies.py:L42 | neighbors=[0030_sla_policies.py] | lang=en
-- "versions_0030_sla_policies_rationale_1": "SLA policies — per-tenant custom remediation windows (hours per severity).  One" | kind=entity | source=manager/backend/alembic/versions/0030_sla_policies.py:L1 | neighbors=[0030_sla_policies.py] | lang=it
-- "versions_0030_sla_policies_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0030_sla_policies.py:L21 | neighbors=[0030_sla_policies.py] | lang=en
-- "versions_0031_integrations_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0031_integrations.py:L42 | neighbors=[0031_integrations.py] | lang=en
-- "versions_0031_integrations_rationale_1": "Integrations — per-tenant notification config (email / Slack / Jira).  One row p" | kind=entity | source=manager/backend/alembic/versions/0031_integrations.py:L1 | neighbors=[0031_integrations.py] | lang=en
-- "versions_0031_integrations_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0031_integrations.py:L21 | neighbors=[0031_integrations.py] | lang=en
-- "versions_0032_scan_request_use_case_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0032_scan_request_use_case.py:L29 | neighbors=[0032_scan_request_use_case.py] | lang=en
-- "versions_0032_scan_request_use_case_rationale_1": "scan_requests.use_case_id — the capability use-case a customer requested.  The p" | kind=entity | source=manager/backend/alembic/versions/0032_scan_request_use_case.py:L1 | neighbors=[0032_scan_request_use_case.py] | lang=en
-- "versions_0032_scan_request_use_case_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0032_scan_request_use_case.py:L22 | neighbors=[0032_scan_request_use_case.py] | lang=en
-- "vuln_enrichment_ttlcache_contains": ".__contains__()" | kind=code-symbol | source=manager/backend/app/vuln/enrichment.py:L36 | neighbors=[TTLCache] | lang=en
-- "vuln_enrichment_ttlcache_getitem": ".__getitem__()" | kind=code-symbol | source=manager/backend/app/vuln/enrichment.py:L43 | neighbors=[TTLCache] | lang=en
-- "vuln_enrichment_ttlcache_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/vuln/enrichment.py:L31 | neighbors=[TTLCache] | lang=en
-- "vuln_enrichment_ttlcache_setitem": ".__setitem__()" | kind=code-symbol | source=manager/backend/app/vuln/enrichment.py:L51 | neighbors=[TTLCache] | lang=en
-- "vuln_nessus_nessusscanner_close": ".close()" | kind=code-symbol | source=manager/backend/app/vuln/nessus.py:L66 | neighbors=[NessusScanner] | lang=en
-- "vuln_nessus_nessusscanner_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/vuln/nessus.py:L40 | neighbors=[NessusScanner] | lang=en
-- "vuln_nuclei_nucleiscanerror_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/vuln/nuclei.py:L92 | neighbors=[NucleiScanError] | lang=en
-- "vuln_nuclei_nucleiscanner_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/vuln/nuclei.py:L113 | neighbors=[NucleiScanner] | lang=en
-- "vuln_prioritizer_route_demo_assets": "DEMO_ASSETS" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/vuln-prioritizer/route.ts:L16 | neighbors=[route.ts] | lang=en
-- "vuln_prioritizer_route_demo_findings": "DEMO_FINDINGS" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/vuln-prioritizer/route.ts:L5 | neighbors=[route.ts] | lang=en
-- "vuln_prioritizer_route_get": "GET()" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/vuln-prioritizer/route.ts:L27 | neighbors=[route.ts] | lang=en
-- "websocket_manager_agentconnectionmanager_connected_count": ".connected_count()" | kind=code-symbol | source=manager/backend/app/websocket/manager.py:L268 | neighbors=[AgentConnectionManager] | lang=en
-- "websocket_manager_agentconnectionmanager_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/websocket/manager.py:L86 | neighbors=[AgentConnectionManager] | lang=en
-- "websocket_manager_connectionmanager_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/websocket/manager.py:L28 | neighbors=[ConnectionManager] | lang=en
-- "websocket_manager_rationale_1": "WebSocket manager for real-time graph updates, agent push, and live collaboratio" | kind=entity | source=manager/backend/app/websocket/manager.py:L1 | neighbors=[manager.py] | lang=en
-- "websocket_manager_rationale_123": "Remove an agent's WebSocket registration." | kind=entity | source=manager/backend/app/websocket/manager.py:L123 | neighbors=[.unregister()] | lang=en
-- "websocket_manager_rationale_129": "Remove the current registration, optionally only for one socket.          Return" | kind=entity | source=manager/backend/app/websocket/manager.py:L129 | neighbors=[.unregister()] | lang=en
-- "websocket_manager_rationale_136": "Record a heartbeat from an agent." | kind=entity | source=manager/backend/app/websocket/manager.py:L136 | neighbors=[.record_heartbeat()] | lang=en
+- "tests_test_tls_fingerprint_testdigest_test_version_code": ".test_version_code()" | kind=code-symbol | source=probe/tests/test_tls_fingerprint.py:L84 | neighbors=[TestDigest] | lang=en
+- "tests_test_tls_fingerprint_testdigest_test_zero_hash_when_no_responses": ".test_zero_hash_when_no_responses()" | kind=code-symbol | source=probe/tests/test_tls_fingerprint.py:L95 | neighbors=[TestDigest] | lang=en
+- "tests_test_tls_fingerprint_testparseserverhello_test_returns_none_on_alert": ".test_returns_none_on_alert()" | kind=code-symbol | source=probe/tests/test_tls_fingerprint.py:L72 | neighbors=[TestParseServerHello] | lang=en
+- "tests_test_tls_fingerprint_testparseserverhello_test_returns_none_on_short": ".test_returns_none_on_short()" | kind=code-symbol | source=probe/tests/test_tls_fingerprint.py:L77 | neighbors=[TestParseServerHello] | lang=en
+- "tests_test_tls_integration_rationale_1": "test_tls_integration.py — Tier 2.4 live check: run the real TLSScanner against a" | kind=entity | source=probe/tests/test_tls_integration.py:L1 | neighbors=[test_tls_integration.py] | lang=en
+- "tests_test_tls_integration_tlsserver_enter": ".__enter__()" | kind=code-symbol | source=probe/tests/test_tls_integration.py:L77 | neighbors=[_TLSServer] | lang=en
+- "tests_test_tls_integration_tlsserver_exit": ".__exit__()" | kind=code-symbol | source=probe/tests/test_tls_integration.py:L81 | neighbors=[_TLSServer] | lang=en
+- "tests_test_tls_integration_tlsserver_init": ".__init__()" | kind=code-symbol | source=probe/tests/test_tls_integration.py:L51 | neighbors=[_TLSServer] | lang=en
+- "tests_test_tls_integration_tlsserver_serve": "._serve()" | kind=code-symbol | source=probe/tests/test_tls_integration.py:L63 | neighbors=[_TLSServer] | lang=en
+- "tests_test_tls_posture_rationale_1": "test_tls_posture.py — Tier 2.4: cipher-suite classification + TLS posture gradin" | kind=entity | source=probe/tests/test_tls_posture.py:L1 | neighbors=[test_tls_posture.py] | lang=en
+- "tests_test_tls_posture_testclassifycipher_test_3des_is_weak": ".test_3des_is_weak()" | kind=code-symbol | source=probe/tests/test_tls_posture.py:L43 | neighbors=[TestClassifyCipher] | lang=en
+- "tests_test_tls_posture_testclassifycipher_test_anonymous_is_weak": ".test_anonymous_is_weak()" | kind=code-symbol | source=probe/tests/test_tls_posture.py:L55 | neighbors=[TestClassifyCipher] | lang=en
+- "tests_test_tls_posture_testclassifycipher_test_chacha20_is_aead": ".test_chacha20_is_aead()" | kind=code-symbol | source=probe/tests/test_tls_posture.py:L60 | neighbors=[TestClassifyCipher] | lang=en
+- "tests_test_tls_posture_testclassifycipher_test_export_and_md5_are_weak": ".test_export_and_md5_are_weak()" | kind=code-symbol | source=probe/tests/test_tls_posture.py:L48 | neighbors=[TestClassifyCipher] | lang=en
+- "tests_test_tls_posture_testclassifycipher_test_modern_aead_pfs": ".test_modern_aead_pfs()" | kind=code-symbol | source=probe/tests/test_tls_posture.py:L19 | neighbors=[TestClassifyCipher] | lang=en
+- "tests_test_tls_posture_testclassifycipher_test_null_cipher_is_weak": ".test_null_cipher_is_weak()" | kind=code-symbol | source=probe/tests/test_tls_posture.py:L38 | neighbors=[TestClassifyCipher] | lang=en
+- "tests_test_tls_posture_testclassifycipher_test_rc4_is_weak": ".test_rc4_is_weak()" | kind=code-symbol | source=probe/tests/test_tls_posture.py:L33 | neighbors=[TestClassifyCipher] | lang=en
+- "tests_test_tls_posture_testclassifycipher_test_rsa_cbc_no_pfs": ".test_rsa_cbc_no_pfs()" | kind=code-symbol | source=probe/tests/test_tls_posture.py:L26 | neighbors=[TestClassifyCipher] | lang=en
+- "tests_test_tls_posture_testgradetlsposture_test_empty_cipher_details_still_grades_protocols": ".test_empty_cipher_details_still_grades_protocols()" | kind=code-symbol | source=probe/tests/test_tls_posture.py:L104 | neighbors=[TestGradeTlsPosture] | lang=en
+- "tests_test_tls_posture_testgradetlsposture_test_grade_c_no_forward_secrecy": ".test_grade_c_no_forward_secrecy()" | kind=code-symbol | source=probe/tests/test_tls_posture.py:L88 | neighbors=[TestGradeTlsPosture] | lang=en
+- "tests_test_tls_posture_testgradetlsposture_test_grade_f_weak_cipher": ".test_grade_f_weak_cipher()" | kind=code-symbol | source=probe/tests/test_tls_posture.py:L99 | neighbors=[TestGradeTlsPosture] | lang=en
+- "tests_test_transport_rationale_1": "Tests for agent/transport.py" | kind=entity | source=probe/tests/test_transport.py:L1 | neighbors=[test_transport.py] | lang=en
+- "tests_test_transport_rationale_16": "Create a Transport with a real state file path but no actual HTTP calls." | kind=entity | source=probe/tests/test_transport.py:L16 | neighbors=[transport()] | lang=pt
+- "tests_test_transport_rationale_18": "Create a Transport with a real state file path but no actual HTTP calls." | kind=entity | source=probe/tests/test_transport.py:L18 | neighbors=[transport()] | lang=pt
+- "tests_test_transport_testdeviceenrollment_test_activation_persists_recoverable_device_credential": ".test_activation_persists_recoverable_device_credential()" | kind=code-symbol | source=probe/tests/test_transport.py:L172 | neighbors=[TestDeviceEnrollment] | lang=en
+- "tests_test_transport_testdeviceenrollment_test_create_enrollment_request_409_raises_already_enrolled": ".test_create_enrollment_request_409_raises_already_enrolled()" | kind=code-symbol | source=probe/tests/test_transport.py:L230 | neighbors=[TestDeviceEnrollment] | lang=en
+- "tests_test_transport_testdeviceenrollment_test_create_enrollment_request_409_without_detail_has_default_message": ".test_create_enrollment_request_409_without_detail_has_default_message()" | kind=code-symbol | source=probe/tests/test_transport.py:L244 | neighbors=[TestDeviceEnrollment] | lang=en
+- "tests_test_transport_testdeviceenrollment_test_create_enrollment_request_forwards_enroll_token": ".test_create_enrollment_request_forwards_enroll_token()" | kind=code-symbol | source=probe/tests/test_transport.py:L210 | neighbors=[TestDeviceEnrollment] | lang=en
+- "tests_test_transport_testdeviceenrollment_test_device_refresh_signs_unique_nonce_and_rotates_access_token": ".test_device_refresh_signs_unique_nonce_and_rotates_access_token()" | kind=code-symbol | source=probe/tests/test_transport.py:L263 | neighbors=[TestDeviceEnrollment] | lang=en
+- "tests_test_transport_testdeviceenrollment_test_legacy_token_is_not_forced_through_device_refresh": ".test_legacy_token_is_not_forced_through_device_refresh()" | kind=code-symbol | source=probe/tests/test_transport.py:L253 | neighbors=[TestDeviceEnrollment] | lang=en
+- "tests_test_transport_testfetchscope_test_http_error_returns_none": ".test_http_error_returns_none()" | kind=code-symbol | source=probe/tests/test_transport.py:L416 | neighbors=[TestFetchScope] | lang=en
+- "tests_test_transport_testfetchscope_test_returns_scope": ".test_returns_scope()" | kind=code-symbol | source=probe/tests/test_transport.py:L406 | neighbors=[TestFetchScope] | lang=en
+- "tests_test_transport_testheartbeat_test_heartbeat_401_returns_false": ".test_heartbeat_401_returns_false()" | kind=code-symbol | source=probe/tests/test_transport.py:L349 | neighbors=[TestHeartbeat] | lang=en
+- "tests_test_transport_testheartbeat_test_heartbeat_sends_current_job": ".test_heartbeat_sends_current_job()" | kind=code-symbol | source=probe/tests/test_transport.py:L358 | neighbors=[TestHeartbeat] | lang=en
+- "tests_test_transport_testheartbeat_test_successful_heartbeat": ".test_successful_heartbeat()" | kind=code-symbol | source=probe/tests/test_transport.py:L340 | neighbors=[TestHeartbeat] | lang=en
+- "tests_test_transport_testhttpget_test_exception_returns_none": ".test_exception_returns_none()" | kind=code-symbol | source=probe/tests/test_transport.py:L521 | neighbors=[TestHttpGet] | lang=en
+- "tests_test_transport_testhttpget_test_non_200_returns_none": ".test_non_200_returns_none()" | kind=code-symbol | source=probe/tests/test_transport.py:L512 | neighbors=[TestHttpGet] | lang=en
+- "tests_test_transport_testhttpget_test_successful_get": ".test_successful_get()" | kind=code-symbol | source=probe/tests/test_transport.py:L502 | neighbors=[TestHttpGet] | lang=en
+- "tests_test_transport_testidentity_test_agent_state_updates_preserve_scope_identity": ".test_agent_state_updates_preserve_scope_identity()" | kind=code-symbol | source=probe/tests/test_transport.py:L70 | neighbors=[TestIdentity] | lang=en
+- "tests_test_transport_testidentity_test_auth_header": ".test_auth_header()" | kind=code-symbol | source=probe/tests/test_transport.py:L38 | neighbors=[TestIdentity] | lang=en
 
 ## Instructions
 

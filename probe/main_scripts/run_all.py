@@ -33,6 +33,16 @@ _PKG_ROOT = Path(__file__).resolve().parent.parent
 _TLS_CANDIDATES = {443, 8443, 993, 995, 465, 636, 989, 990, 5061, 3389}
 _HTTP_CANDIDATES = {80, 81, 443, 591, 8000, 8008, 8080, 8081, 8443, 8888, 9000}
 _DB_CANDIDATES = {1433, 1521, 3306, 5432, 5984, 6379, 9042, 11211, 27017}
+_SSH_CANDIDATES = {22, 2222}
+_LDAP_CANDIDATES = {389, 636, 3268, 3269}
+_DNS_CANDIDATES = {53}
+_NFS_CANDIDATES = {111, 2049}
+_FTP_CANDIDATES = {21}
+_RSYNC_CANDIDATES = {873}
+_VNC_CANDIDATES = {5900, 5901}
+_SMTP_CANDIDATES = {25, 587}
+_MSRPC_CANDIDATES = {135}
+_PRINTER_CANDIDATES = {9100, 631}
 
 
 def _log(outdir: Path, msg: str) -> None:
@@ -95,6 +105,13 @@ def main() -> None:
     ap.add_argument("--rate", default="300")
     ap.add_argument("--concurrency", default="200")
     ap.add_argument("--timeout", default="2.0")
+    ap.add_argument("--vuln-db", default=None,
+                    help="offline CVE mirror (SQLite) to correlate facts against; "
+                         "if given and present, writes cve_findings.jsonl")
+    ap.add_argument("--exposed", action="store_true",
+                    help="treat this target as internet-exposed (adds the exposure "
+                         "weight to CVE risk scores). Default: internal — no boost. "
+                         "An internal enterprise scan should NOT pass this.")
     args = ap.parse_args()
 
     stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
@@ -129,8 +146,12 @@ def main() -> None:
     _run_stage(outdir, "04_os_fingerprint", "os_fingerprint", common)
     _run_stage(outdir, "05_snmp", "snmp_scanner", ["-t", args.target, "-s", str(scope),
                                                    "--timeout", args.timeout])
+    _run_stage(outdir, "05b_ipmi", "ipmi_scanner", ["-t", args.target, "-s", str(scope),
+                                                    "--timeout", args.timeout])
     if 445 in open_tcp or 139 in open_tcp:
         _run_stage(outdir, "06_smb", "smb_scanner", common)
+        if 445 in open_tcp:
+            _run_stage(outdir, "06b_smb_enum", "smb_enum_scanner", common)
     else:
         _log(outdir, "[06_smb] skipped (445/139 not open)")
 
@@ -147,6 +168,32 @@ def main() -> None:
         db_ports = sorted(set(open_tcp) & _DB_CANDIDATES)
         if db_ports:
             _run_stage(outdir, "10_db", "db_scanner", common + ["-p", _ports_arg(db_ports)])
+        ssh_ports = sorted(set(open_tcp) & _SSH_CANDIDATES)
+        if ssh_ports:
+            _run_stage(outdir, "11_ssh", "ssh_scanner", common + ["-p", _ports_arg(ssh_ports)])
+        ldap_ports = sorted(set(open_tcp) & _LDAP_CANDIDATES)
+        if ldap_ports:
+            _run_stage(outdir, "12_ldap", "ldap_scanner", common + ["-p", _ports_arg(ldap_ports)])
+        if 53 in open_tcp:
+            _run_stage(outdir, "13_dns", "dns_scanner", common)
+        if 2049 in open_tcp or 111 in open_tcp:
+            _run_stage(outdir, "14_nfs", "nfs_scanner", common)
+        if 21 in open_tcp:
+            _run_stage(outdir, "15_ftp", "ftp_scanner", common + ["-p", "21"])
+        if 873 in open_tcp:
+            _run_stage(outdir, "16_rsync", "rsync_scanner", common + ["-p", "873"])
+        vnc_ports = sorted(set(open_tcp) & _VNC_CANDIDATES)
+        if vnc_ports:
+            _run_stage(outdir, "17_vnc", "vnc_scanner", common + ["-p", _ports_arg(vnc_ports)])
+        smtp_ports = sorted(set(open_tcp) & _SMTP_CANDIDATES)
+        if smtp_ports:
+            _run_stage(outdir, "18_smtp", "smtp_scanner", common + ["-p", _ports_arg(smtp_ports)])
+        if 135 in open_tcp:
+            _run_stage(outdir, "19_msrpc", "msrpc_scanner", common + ["-p", "135"])
+        printer_ports = sorted(set(open_tcp) & _PRINTER_CANDIDATES)
+        if printer_ports:
+            _run_stage(outdir, "20_printer", "printer_scanner",
+                       common + ["-p", _ports_arg(printer_ports)])
     else:
         _log(outdir, "no open TCP ports — skipping service/tls/web/db stages")
 
@@ -170,7 +217,7 @@ def main() -> None:
 
     all_facts: list[dict] = []
     for jf in sorted(outdir.glob("*.jsonl")):
-        if jf.name == "findings.jsonl":      # never re-ingest our own output
+        if jf.name in ("findings.jsonl", "cve_findings.jsonl"):  # never re-ingest our own output
             continue
         all_facts.extend(_read_jsonl(jf))
     findings = run_findings(all_facts)
@@ -185,6 +232,43 @@ def main() -> None:
         loc = f"{fnd.target}:{fnd.port}" if fnd.port else fnd.target
         _log(outdir, f"  [{fnd.severity.upper():8}] {loc:22} {fnd.title}")
 
+    # ── CVE correlation (optional, manager-side): if an offline vuln mirror is
+    #    supplied, map the CPE identities the probe emitted to prioritized CVEs.
+    #    This is a SEPARATE layer — the probe itself asserted no CVE; findings
+    #    here are banner-derived (confidence 'medium', "verify patch level"). ──
+    cve_summary = None
+    if args.vuln_db:
+        db_path = Path(args.vuln_db)
+        if not db_path.exists():
+            _log(outdir, f"[cve] --vuln-db {db_path} not found — skipping correlation")
+        else:
+            from cve.vulndb import VulnDB
+            from cve.correlator import (correlate, mirror_age_note,
+                                        summarize as summarize_cves)
+            db = VulnDB(str(db_path))
+            # Exposure is an operator assertion, not an assumption: only boost risk
+            # when --exposed is set. Blanket-marking every scanned host as exposed
+            # made the weight uniform (i.e. carry no signal) on internal scans.
+            exposed = {args.target} if args.exposed else set()
+            try:
+                # Surface mirror age up front — a stale mirror misses new CVEs.
+                _log(outdir, f"[cve] {mirror_age_note(db)}")
+                cve_findings = correlate(all_facts, db, exposed_targets=exposed)
+            finally:
+                db.close()
+            cve_path = outdir / "cve_findings.jsonl"
+            with cve_path.open("w") as fh:
+                for cf in cve_findings:
+                    fh.write(json.dumps(cf.to_dict(), default=str) + "\n")
+            cve_summary = summarize_cves(cve_findings)
+            _log(outdir, f"cve: {cve_summary['total']} candidate CVEs, "
+                         f"{cve_summary['kev']} KEV -> {cve_path.name}")
+            for cf in cve_findings[:10]:
+                loc = f"{cf.target}:{cf.port}" if cf.port else cf.target
+                kev = " KEV" if cf.kev else ""
+                _log(outdir, f"  [{cf.risk_band.upper():8}] {loc:22} "
+                             f"{cf.cve_id} (risk {cf.risk_score}{kev})")
+
     summary = {
         "target": args.target,
         "profile": args.profile,
@@ -194,6 +278,7 @@ def main() -> None:
         "device_classification": device,
         "findings_summary": findings_summary,
         "top_findings": [f.to_dict() for f in findings[:10]],
+        "cve_summary": cve_summary,
         "outputs": sorted(p.name for p in outdir.glob("*.jsonl")),
     }
     (outdir / "SUMMARY.json").write_text(json.dumps(summary, indent=2, default=str))

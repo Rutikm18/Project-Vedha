@@ -1,4 +1,4 @@
-# Node Description Batch 109 of 227
+# Node Description Batch 109 of 236
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,51 +12,58 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
+For an entity node (any other kind — e.g. a person, place, event, object),
+describe what the entity is and its role, grounded in its type, its
+relations (neighbors) and the provided citations/evidence — e.g.
+"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
+Ground entity descriptions in the citations/evidence when present; do not
+speculate beyond the context, so a node with no supporting context may be
+left out of the reply.
 Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_detection_core_testnormalizebanner_test_empty_banner": ".test_empty_banner()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L919 | neighbors=[TestNormalizeBanner, _fact()]
-- "tests_test_detection_core_testnormalizebanner_test_ssh_banner": ".test_ssh_banner()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L914 | neighbors=[TestNormalizeBanner, _fact()]
-- "tests_test_detection_core_testnormalizedb_test_mysql_mariadb_engine_with_mariadb_suffix": ".test_mysql_mariadb_engine_with_mariadb_suffix()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L938 | neighbors=[TestNormalizeDb, _fact()]
-- "tests_test_detection_core_testnormalizedb_test_mysql_mariadb_engine_without_mariadb_suffix_returns_empty": ".test_mysql_mariadb_engine_without_mariadb_suffix_returns_empty()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L933 | neighbors=[TestNormalizeDb, _fact()]
-- "tests_test_detection_core_testnormalizedb_test_no_version_confidence_low": ".test_no_version_confidence_low()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L953 | neighbors=[TestNormalizeDb, _fact()]
-- "tests_test_detection_core_testnormalizedb_test_postgresql": ".test_postgresql()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L944 | neighbors=[TestNormalizeDb, _fact()]
-- "tests_test_detection_core_testnormalizedb_test_unknown_engine": ".test_unknown_engine()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L949 | neighbors=[TestNormalizeDb, _fact()]
-- "tests_test_detection_core_testnormalizeweb_test_server_header": ".test_server_header()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L926 | neighbors=[TestNormalizeWeb, _fact()]
-- "tests_test_detection_core_testsuppressnegated_test_keeps_authoritative_finding": ".test_keeps_authoritative_finding()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L527 | neighbors=[TestSuppressNegated, _finding()]
-- "tests_test_detection_core_testsuppressnegated_test_keeps_inferred_when_no_authoritative": ".test_keeps_inferred_when_no_authoritative()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L534 | neighbors=[TestSuppressNegated, _finding()]
-- "tests_test_detection_core_testverify_test_ai_cap_at_60": ".test_ai_cap_at_60()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L656 | neighbors=[TestVerify, _finding()]
-- "tests_test_detection_core_testverify_test_ai_no_cap_if_already_below": ".test_ai_no_cap_if_already_below()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L661 | neighbors=[TestVerify, _finding()]
-- "tests_test_detection_core_testverify_test_auth_enforced_penalty": ".test_auth_enforced_penalty()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L673 | neighbors=[TestVerify, _finding()]
-- "tests_test_detection_core_testverify_test_authoritative_tier_base_95": ".test_authoritative_tier_base_95()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L638 | neighbors=[TestVerify, _finding()]
-- "tests_test_detection_core_testverify_test_backport_penalty": ".test_backport_penalty()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L649 | neighbors=[TestVerify, _finding()]
-- "tests_test_detection_core_testverify_test_checks_dict_populated": ".test_checks_dict_populated()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L703 | neighbors=[TestVerify, _finding()]
-- "tests_test_detection_core_testverify_test_confidence_clamped_at_zero": ".test_confidence_clamped_at_zero()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L712 | neighbors=[TestVerify, _finding()]
-- "tests_test_detection_core_testverify_test_confirmed_never_downgraded": ".test_confirmed_never_downgraded()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L697 | neighbors=[TestVerify, _finding()]
-- "tests_test_detection_core_testverify_test_deception_high_penalty": ".test_deception_high_penalty()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L679 | neighbors=[TestVerify, _finding()]
-- "tests_test_detection_core_testverify_test_deception_moderate_penalty": ".test_deception_moderate_penalty()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L684 | neighbors=[TestVerify, _finding()]
-- "tests_test_detection_core_testverify_test_filtered_port_penalty": ".test_filtered_port_penalty()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L668 | neighbors=[TestVerify, _finding()]
-- "tests_test_detection_core_testverify_test_protocol_tier_base_85": ".test_protocol_tier_base_85()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L643 | neighbors=[TestVerify, _finding()]
-- "tests_test_detection_core_testverify_test_state_downgrade_below_40": ".test_state_downgrade_below_40()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L689 | neighbors=[TestVerify, _finding()]
-- "tests_test_detection_core_testvulndb_test_covers": ".test_covers()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L877 | neighbors=[TestVulnDB, _mock_vuln_db()]
-- "tests_test_detection_core_testvulndb_test_cvss_vector_index": ".test_cvss_vector_index()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L882 | neighbors=[TestVulnDB, _mock_vuln_db()]
-- "tests_test_detection_core_testvulndb_test_cvss_vector_missing": ".test_cvss_vector_missing()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L890 | neighbors=[TestVulnDB, _mock_vuln_db()]
-- "tests_test_detection_core_testvulndb_test_known_products_sorted": ".test_known_products_sorted()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L894 | neighbors=[TestVulnDB, _mock_vuln_db()]
-- "tests_test_detection_core_testvulndb_test_lookup_existing": ".test_lookup_existing()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L868 | neighbors=[TestVulnDB, _mock_vuln_db()]
-- "tests_test_detection_core_testvulndb_test_lookup_missing_returns_empty": ".test_lookup_missing_returns_empty()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L873 | neighbors=[TestVulnDB, _mock_vuln_db()]
-- "tests_test_detection_validation_testdetectioncorrelator_test_compute_coverage": ".test_compute_coverage()" | kind=code-symbol | source=manager/backend/tests/test_detection_validation.py:L105 | neighbors=[TestDetectionCorrelator, _action()]
-- "tests_test_detection_validation_testdetectioncorrelator_test_detected_by_siem": ".test_detected_by_siem()" | kind=code-symbol | source=manager/backend/tests/test_detection_validation.py:L54 | neighbors=[TestDetectionCorrelator, _action()]
-- "tests_test_detection_validation_testdetectioncorrelator_test_detected_when_edr_not_blocking": ".test_detected_when_edr_not_blocking()" | kind=code-symbol | source=manager/backend/tests/test_detection_validation.py:L69 | neighbors=[TestDetectionCorrelator, _action()]
-- "tests_test_detection_validation_testdetectioncorrelator_test_gap_report_ignores_detected": ".test_gap_report_ignores_detected()" | kind=code-symbol | source=manager/backend/tests/test_detection_validation.py:L135 | neighbors=[TestDetectionCorrelator, _action()]
-- "tests_test_detection_validation_testdetectioncorrelator_test_generate_gap_report": ".test_generate_gap_report()" | kind=code-symbol | source=manager/backend/tests/test_detection_validation.py:L126 | neighbors=[TestDetectionCorrelator, _action()]
-- "tests_test_detection_validation_testdetectioncorrelator_test_host_match_by_ip": ".test_host_match_by_ip()" | kind=code-symbol | source=manager/backend/tests/test_detection_validation.py:L92 | neighbors=[TestDetectionCorrelator, _action()]
-- "tests_test_detection_validation_testdetectioncorrelator_test_missed_when_nothing": ".test_missed_when_nothing()" | kind=code-symbol | source=manager/backend/tests/test_detection_validation.py:L75 | neighbors=[TestDetectionCorrelator, _action()]
-- "tests_test_detection_validation_testdetectioncorrelator_test_out_of_window_is_missed": ".test_out_of_window_is_missed()" | kind=code-symbol | source=manager/backend/tests/test_detection_validation.py:L80 | neighbors=[TestDetectionCorrelator, _action()]
-- "tests_test_detection_validation_testdetectioncorrelator_test_prevented_by_edr": ".test_prevented_by_edr()" | kind=code-symbol | source=manager/backend/tests/test_detection_validation.py:L62 | neighbors=[TestDetectionCorrelator, _action()]
-- "tests_test_detection_validation_testdetectioncorrelator_test_wrong_host_is_missed": ".test_wrong_host_is_missed()" | kind=code-symbol | source=manager/backend/tests/test_detection_validation.py:L86 | neighbors=[TestDetectionCorrelator, _action()]
-- "tests_test_e2e_engagement_to_findings_plant": "_plant()" | kind=code-symbol | source=probe/tests/test_e2e_engagement_to_findings.py:L36 | neighbors=[test_e2e_engagement_to_findings.py, test_real_scan_of_open_datastore_yields…]
+- "tests_test_agents_rationale_260": "Discovery results → assets/services promotion (makes the Attack Surface populate" | kind=entity | source=manager/backend/tests/test_agents.py:L260 | neighbors=[ScanJobType, TestPromoteAssets]
+- "tests_test_agents_rationale_288": "A single web scan can emit multiple facts for the same host:port." | kind=entity | source=manager/backend/tests/test_agents.py:L288 | neighbors=[ScanJobType, .test_dedupes_duplicate_services_in_sam…]
+- "tests_test_agents_rationale_530": "Re-registering the same-named probe must reuse the row, not create a dup." | kind=entity | source=manager/backend/tests/test_agents.py:L530 | neighbors=[ScanJobType, .test_reuses_existing_probe_by_name()]
+- "tests_test_agents_rationale_565": "Agent token must outlive the 15-min access default so it doesn't churn." | kind=entity | source=manager/backend/tests/test_agents.py:L565 | neighbors=[ScanJobType, .test_agent_token_is_long_lived()]
+- "tests_test_agents_rationale_583": "Discovery results → assets/services promotion (makes the Attack Surface populate" | kind=entity | source=manager/backend/tests/test_agents.py:L583 | neighbors=[ScanJobType, TestPromoteAssets]
+- "tests_test_agents_rationale_611": "A single web scan can emit multiple facts for the same host:port." | kind=entity | source=manager/backend/tests/test_agents.py:L611 | neighbors=[ScanJobType, .test_dedupes_duplicate_services_in_sam…]
+- "tests_test_agents_testheartbeat": "TestHeartbeat" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L582 | neighbors=[test_agents.py, .test_online_heartbeat_clears_completed…]
+- "tests_test_agents_testlegacybootstrap": "TestLegacyBootstrap" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L618 | neighbors=[test_agents.py, .test_shared_secret_bootstrap_is_disabl…]
+- "tests_test_agents_testlistagents_test_fresh_disconnected_agent_is_not_reported_online": ".test_fresh_disconnected_agent_is_not_reported_online()" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L559 | neighbors=[TestListAgents, _user()]
+- "tests_test_agents_testlistagents_test_lists_with_online_flag": ".test_lists_with_online_flag()" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L537 | neighbors=[TestListAgents, _user()]
+- "tests_test_agents_testregisteragent_test_creates_when_none_exists": ".test_creates_when_none_exists()" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L671 | neighbors=[TestRegisterAgent, _user()]
+- "tests_test_ai_normalizer_testextractrawtext_test_db_scan_with_engine_and_version": ".test_db_scan_with_engine_and_version()" | kind=code-symbol | source=manager/detection_engine/tests/test_ai_normalizer.py:L85 | neighbors=[TestExtractRawText, _fact()]
+- "tests_test_ai_normalizer_testextractrawtext_test_db_scan_without_engine_returns_none": ".test_db_scan_without_engine_returns_none()" | kind=code-symbol | source=manager/detection_engine/tests/test_ai_normalizer.py:L91 | neighbors=[TestExtractRawText, _fact()]
+- "tests_test_ai_normalizer_testextractrawtext_test_port_scan_returns_none": ".test_port_scan_returns_none()" | kind=code-symbol | source=manager/detection_engine/tests/test_ai_normalizer.py:L100 | neighbors=[TestExtractRawText, _fact()]
+- "tests_test_ai_normalizer_testextractrawtext_test_service_banner_falls_back_to_banner": ".test_service_banner_falls_back_to_banner()" | kind=code-symbol | source=manager/detection_engine/tests/test_ai_normalizer.py:L52 | neighbors=[TestExtractRawText, _fact()]
+- "tests_test_ai_normalizer_testextractrawtext_test_service_banner_first_line_takes_priority_over_banner": ".test_service_banner_first_line_takes_priority_over_banner()" | kind=code-symbol | source=manager/detection_engine/tests/test_ai_normalizer.py:L56 | neighbors=[TestExtractRawText, _fact()]
+- "tests_test_ai_normalizer_testextractrawtext_test_service_banner_no_text_returns_none": ".test_service_banner_no_text_returns_none()" | kind=code-symbol | source=manager/detection_engine/tests/test_ai_normalizer.py:L61 | neighbors=[TestExtractRawText, _fact()]
+- "tests_test_ai_normalizer_testextractrawtext_test_service_banner_uses_first_line": ".test_service_banner_uses_first_line()" | kind=code-symbol | source=manager/detection_engine/tests/test_ai_normalizer.py:L48 | neighbors=[TestExtractRawText, _fact()]
+- "tests_test_ai_normalizer_testextractrawtext_test_web_scan_empty_data_returns_none": ".test_web_scan_empty_data_returns_none()" | kind=code-symbol | source=manager/detection_engine/tests/test_ai_normalizer.py:L81 | neighbors=[TestExtractRawText, _fact()]
+- "tests_test_ai_normalizer_testextractrawtext_test_web_scan_server_and_hints_combined": ".test_web_scan_server_and_hints_combined()" | kind=code-symbol | source=manager/detection_engine/tests/test_ai_normalizer.py:L75 | neighbors=[TestExtractRawText, _fact()]
+- "tests_test_ai_normalizer_testextractrawtext_test_web_scan_server_only": ".test_web_scan_server_only()" | kind=code-symbol | source=manager/detection_engine/tests/test_ai_normalizer.py:L65 | neighbors=[TestExtractRawText, _fact()]
+- "tests_test_ai_normalizer_testextractrawtext_test_web_scan_tech_hints_only": ".test_web_scan_tech_hints_only()" | kind=code-symbol | source=manager/detection_engine/tests/test_ai_normalizer.py:L69 | neighbors=[TestExtractRawText, _fact()]
+- "tests_test_async_udp_sinkprotocol": "_SinkProtocol" | kind=code-symbol | source=probe/tests/test_async_udp.py:L31 | neighbors=[test_async_udp.py, .datagram_received()]
+- "tests_test_attack_path_correlation_test_correlation_is_host_scoped": "test_correlation_is_host_scoped()" | kind=code-symbol | source=manager/backend/tests/test_attack_path_correlation.py:L131 | neighbors=[test_attack_path_correlation.py, _ids()]
+- "tests_test_attack_path_correlation_test_device_role_from_facts_also_amplifies": "test_device_role_from_facts_also_amplifies()" | kind=code-symbol | source=manager/backend/tests/test_attack_path_correlation.py:L62 | neighbors=[test_attack_path_correlation.py, _get()]
+- "tests_test_attack_path_correlation_test_exposed_db_with_unauth_is_critical": "test_exposed_db_with_unauth_is_critical()" | kind=code-symbol | source=manager/backend/tests/test_attack_path_correlation.py:L95 | neighbors=[test_attack_path_correlation.py, _get()]
+- "tests_test_attack_path_correlation_test_exposed_db_without_unauth_does_not_fire": "test_exposed_db_without_unauth_does_not_fire()" | kind=code-symbol | source=manager/backend/tests/test_attack_path_correlation.py:L106 | neighbors=[test_attack_path_correlation.py, _ids()]
+- "tests_test_attack_path_correlation_test_legacy_windows_smbv1_plus_rdp": "test_legacy_windows_smbv1_plus_rdp()" | kind=code-symbol | source=manager/backend/tests/test_attack_path_correlation.py:L74 | neighbors=[test_attack_path_correlation.py, _get()]
+- "tests_test_attack_path_correlation_test_no_relay_when_signing_required": "test_no_relay_when_signing_required()" | kind=code-symbol | source=manager/backend/tests/test_attack_path_correlation.py:L42 | neighbors=[test_attack_path_correlation.py, _ids()]
+- "tests_test_attack_path_correlation_test_ntlm_relay_high_when_smbv1_also_enabled": "test_ntlm_relay_high_when_smbv1_also_enabled()" | kind=code-symbol | source=manager/backend/tests/test_attack_path_correlation.py:L34 | neighbors=[test_attack_path_correlation.py, _get()]
+- "tests_test_attack_path_correlation_test_ntlm_relay_medium_when_only_signing_not_required": "test_ntlm_relay_medium_when_only_signing_not_required()" | kind=code-symbol | source=manager/backend/tests/test_attack_path_correlation.py:L24 | neighbors=[test_attack_path_correlation.py, _get()]
+- "tests_test_attack_path_correlation_test_ntlm_relay_on_domain_controller_is_critical": "test_ntlm_relay_on_domain_controller_is_critical()" | kind=code-symbol | source=manager/backend/tests/test_attack_path_correlation.py:L51 | neighbors=[test_attack_path_correlation.py, _get()]
+- "tests_test_attack_path_correlation_test_snmp_default_community_on_network_device_is_high": "test_snmp_default_community_on_network_device_is_high()" | kind=code-symbol | source=manager/backend/tests/test_attack_path_correlation.py:L113 | neighbors=[test_attack_path_correlation.py, _get()]
+- "tests_test_attack_path_correlation_test_snmp_default_community_without_network_role_is_medium": "test_snmp_default_community_without_network_role_is_medium()" | kind=code-symbol | source=manager/backend/tests/test_attack_path_correlation.py:L122 | neighbors=[test_attack_path_correlation.py, _get()]
+- "tests_test_auth_login_testauthenticatebcryptfailure": "TestAuthenticateBcryptFailure" | kind=code-symbol | source=manager/backend/tests/test_auth_login.py:L162 | neighbors=[test_auth_login.py, .test_raises_bcrypt_failure_on_passlib_…]
+- "tests_test_auth_login_testauthenticatedatabasefailure": "TestAuthenticateDatabaseFailure" | kind=code-symbol | source=manager/backend/tests/test_auth_login.py:L181 | neighbors=[test_auth_login.py, .test_raises_database_failure_on_sqlalc…]
+- "tests_test_auth_login_testauthenticatedisabledtenant": "TestAuthenticateDisabledTenant" | kind=code-symbol | source=manager/backend/tests/test_auth_login.py:L122 | neighbors=[test_auth_login.py, .test_raises_disabled_tenant()]
+- "tests_test_auth_login_testauthenticatedisableduser": "TestAuthenticateDisabledUser" | kind=code-symbol | source=manager/backend/tests/test_auth_login.py:L109 | neighbors=[test_auth_login.py, .test_raises_disabled_user()]
+- "tests_test_auth_login_testauthenticatepasswordmismatch": "TestAuthenticatePasswordMismatch" | kind=code-symbol | source=manager/backend/tests/test_auth_login.py:L95 | neighbors=[test_auth_login.py, .test_raises_password_mismatch()]
+- "tests_test_auth_login_testauthenticateusernotfound": "TestAuthenticateUserNotFound" | kind=code-symbol | source=manager/backend/tests/test_auth_login.py:L84 | neighbors=[test_auth_login.py, .test_raises_user_not_found()]
 
 ## Instructions
 

@@ -1,4 +1,4 @@
-# Node Description Batch 206 of 227
+# Node Description Batch 206 of 236
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,51 +12,58 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
+For an entity node (any other kind — e.g. a person, place, event, object),
+describe what the entity is and its role, grounded in its type, its
+relations (neighbors) and the provided citations/evidence — e.g.
+"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
+Ground entity descriptions in the citations/evidence when present; do not
+speculate beyond the context, so a node with no supporting context may be
+left out of the reply.
 Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_probe_core_testlooksliketls_test_banner_present": ".test_banner_present()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L415 | neighbors=[TestLooksLikeTls]
-- "tests_test_probe_core_testlooksliketls_test_client_first_port_not_tls": ".test_client_first_port_not_tls()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L409 | neighbors=[TestLooksLikeTls]
-- "tests_test_probe_core_testlooksliketls_test_no_banner_attempt": ".test_no_banner_attempt()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L412 | neighbors=[TestLooksLikeTls]
-- "tests_test_probe_core_testlooksliketls_test_silent_non_client_first_port": ".test_silent_non_client_first_port()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L406 | neighbors=[TestLooksLikeTls]
-- "tests_test_probe_core_testparseports_test_bad_token_raises": ".test_bad_token_raises()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L214 | neighbors=[TestParsePorts]
-- "tests_test_probe_core_testparseports_test_comma_separated": ".test_comma_separated()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L193 | neighbors=[TestParsePorts]
-- "tests_test_probe_core_testparseports_test_duplicates_removed": ".test_duplicates_removed()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L202 | neighbors=[TestParsePorts]
-- "tests_test_probe_core_testparseports_test_mixed": ".test_mixed()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L199 | neighbors=[TestParsePorts]
-- "tests_test_probe_core_testparseports_test_out_of_range_raises": ".test_out_of_range_raises()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L208 | neighbors=[TestParsePorts]
-- "tests_test_probe_core_testparseports_test_range": ".test_range()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L196 | neighbors=[TestParsePorts]
-- "tests_test_probe_core_testparseports_test_reversed_range_raises": ".test_reversed_range_raises()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L218 | neighbors=[TestParsePorts]
-- "tests_test_probe_core_testparseports_test_single_port": ".test_single_port()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L190 | neighbors=[TestParsePorts]
-- "tests_test_probe_core_testparseports_test_sorted": ".test_sorted()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L205 | neighbors=[TestParsePorts]
-- "tests_test_probe_core_testratelimiter_test_min_interval": ".test_min_interval()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L248 | neighbors=[TestRateLimiter]
-- "tests_test_probe_core_testratelimiter_test_wait_returns_immediately_at_zero_rate": ".test_wait_returns_immediately_at_zero_rate()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L256 | neighbors=[TestRateLimiter]
-- "tests_test_probe_core_testratelimiter_test_zero_rate": ".test_zero_rate()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L252 | neighbors=[TestRateLimiter]
-- "tests_test_probe_core_testresolvescantype_test_default": ".test_default()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L823 | neighbors=[TestResolveScanType]
-- "tests_test_probe_core_testresolvescantype_test_from_job_type": ".test_from_job_type()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L820 | neighbors=[TestResolveScanType]
-- "tests_test_probe_core_testresolvescantype_test_from_params": ".test_from_params()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L817 | neighbors=[TestResolveScanType]
-- "tests_test_probe_core_testresolvescantype_test_params_override_job_type": ".test_params_override_job_type()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L826 | neighbors=[TestResolveScanType]
-- "tests_test_probe_core_testscanresult_test_default_status_observed": ".test_default_status_observed()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L238 | neighbors=[TestScanResult]
-- "tests_test_probe_core_testscanresult_test_default_timestamp_present": ".test_default_timestamp_present()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L234 | neighbors=[TestScanResult]
-- "tests_test_probe_core_testscopeguard_test_assert_in_scope_passes": ".test_assert_in_scope_passes()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L114 | neighbors=[TestScopeGuard]
-- "tests_test_probe_core_testscopeguard_test_assert_in_scope_raises": ".test_assert_in_scope_raises()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L109 | neighbors=[TestScopeGuard]
-- "tests_test_probe_core_testscopeguard_test_excludes_larger_subnet": ".test_excludes_larger_subnet()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L104 | neighbors=[TestScopeGuard]
-- "tests_test_probe_core_testscopeguard_test_excludes_override_allowlist": ".test_excludes_override_allowlist()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L99 | neighbors=[TestScopeGuard]
-- "tests_test_probe_core_testscopeguard_test_filter_yields_only_in_scope": ".test_filter_yields_only_in_scope()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L118 | neighbors=[TestScopeGuard]
-- "tests_test_probe_core_testscopeguard_test_from_file": ".test_from_file()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L123 | neighbors=[TestScopeGuard]
-- "tests_test_probe_core_testscopeguard_test_from_file_empty_raises": ".test_from_file_empty_raises()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L130 | neighbors=[TestScopeGuard]
-- "tests_test_probe_core_testscopeguard_test_from_file_missing_raises": ".test_from_file_missing_raises()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L136 | neighbors=[TestScopeGuard]
-- "tests_test_probe_core_testscopeguard_test_from_list_hostname": ".test_from_list_hostname()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L90 | neighbors=[TestScopeGuard]
-- "tests_test_probe_core_testscopeguard_test_from_list_ip_in_cidr": ".test_from_list_ip_in_cidr()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L80 | neighbors=[TestScopeGuard]
-- "tests_test_probe_core_testscopeguard_test_from_list_single_ip": ".test_from_list_single_ip()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L85 | neighbors=[TestScopeGuard]
-- "tests_test_probe_core_testscopeguard_test_hostname_case_insensitive": ".test_hostname_case_insensitive()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L95 | neighbors=[TestScopeGuard]
-- "tests_test_probe_core_testtargets_test_empty": ".test_empty()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L857 | neighbors=[TestTargets]
-- "tests_test_probe_core_testtargets_test_list": ".test_list()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L848 | neighbors=[TestTargets]
-- "tests_test_probe_core_testtargets_test_scope_cidrs": ".test_scope_cidrs()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L854 | neighbors=[TestTargets]
-- "tests_test_probe_core_testtargets_test_single_string": ".test_single_string()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L851 | neighbors=[TestTargets]
-- "tests_test_probe_core_testtuningfromparams_test_clamped_rate": ".test_clamped_rate()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L868 | neighbors=[TestTuningFromParams]
-- "tests_test_probe_core_testtuningfromparams_test_defaults": ".test_defaults()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L862 | neighbors=[TestTuningFromParams]
+- "tests_test_main_scripts_ja4x_test_empty_list_hashes_to_sentinel": "test_empty_list_hashes_to_sentinel()" | kind=code-symbol | source=probe/tests/test_main_scripts_ja4x.py:L38 | neighbors=[test_main_scripts_ja4x.py]
+- "tests_test_main_scripts_ja4x_test_ja4x_format_is_three_12hex_fields": "test_ja4x_format_is_three_12hex_fields()" | kind=code-symbol | source=probe/tests/test_main_scripts_ja4x.py:L30 | neighbors=[test_main_scripts_ja4x.py]
+- "tests_test_main_scripts_ja4x_test_ja4x_from_cert_handles_garbage": "test_ja4x_from_cert_handles_garbage()" | kind=code-symbol | source=probe/tests/test_main_scripts_ja4x.py:L65 | neighbors=[test_main_scripts_ja4x.py]
+- "tests_test_main_scripts_ja4x_test_ja4x_is_deterministic_and_order_sensitive": "test_ja4x_is_deterministic_and_order_sensitive()" | kind=code-symbol | source=probe/tests/test_main_scripts_ja4x.py:L43 | neighbors=[test_main_scripts_ja4x.py]
+- "tests_test_main_scripts_ja4x_test_match_suspicious_registry": "test_match_suspicious_registry()" | kind=code-symbol | source=probe/tests/test_main_scripts_ja4x.py:L94 | neighbors=[test_main_scripts_ja4x.py]
+- "tests_test_main_scripts_ja4x_test_oid_to_hex_known_values": "test_oid_to_hex_known_values()" | kind=code-symbol | source=probe/tests/test_main_scripts_ja4x.py:L21 | neighbors=[test_main_scripts_ja4x.py]
+- "tests_test_main_scripts_ja4x_test_real_self_signed_cert_round_trip": "test_real_self_signed_cert_round_trip()" | kind=code-symbol | source=probe/tests/test_main_scripts_ja4x.py:L72 | neighbors=[test_main_scripts_ja4x.py]
+- "tests_test_main_scripts_ja4x_test_self_signed_finding_carries_ja4x_for_correlation": "test_self_signed_finding_carries_ja4x_for_correlation()" | kind=code-symbol | source=probe/tests/test_main_scripts_ja4x.py:L123 | neighbors=[test_main_scripts_ja4x.py]
+- "tests_test_main_scripts_ja4x_test_suspicious_fingerprint_finding_fires_only_on_match": "test_suspicious_fingerprint_finding_fires_only_on_match()" | kind=code-symbol | source=probe/tests/test_main_scripts_ja4x.py:L104 | neighbors=[test_main_scripts_ja4x.py]
+- "tests_test_main_scripts_rdp_rationale_1": "test_main_scripts_rdp.py — Phase 18: protocol-level RDP confirmation + NLA detec" | kind=entity | source=probe/tests/test_main_scripts_rdp.py:L1 | neighbors=[test_main_scripts_rdp.py]
+- "tests_test_main_scripts_rdp_rationale_16": "A TPKT + X.224 Connection Confirm, optionally carrying an rdpNeg PDU." | kind=entity | source=probe/tests/test_main_scripts_rdp.py:L16 | neighbors=[_cc()]
+- "tests_test_main_scripts_rdp_test_connection_request_is_valid_tpkt_and_requests_protocols": "test_connection_request_is_valid_tpkt_and_requests_protocols()" | kind=code-symbol | source=probe/tests/test_main_scripts_rdp.py:L23 | neighbors=[test_main_scripts_rdp.py]
+- "tests_test_main_scripts_rdp_test_non_rdp_data_is_none": "test_non_rdp_data_is_none()" | kind=code-symbol | source=probe/tests/test_main_scripts_rdp.py:L58 | neighbors=[test_main_scripts_rdp.py]
+- "tests_test_main_scripts_statemodel_rationale_1": "test_main_scripts_statemodel.py — Phase 1: the normalized ScanResult state model" | kind=entity | source=probe/tests/test_main_scripts_statemodel.py:L1 | neighbors=[test_main_scripts_statemodel.py]
+- "tests_test_main_scripts_statemodel_test_backward_compatible_old_style_construction_still_works": "test_backward_compatible_old_style_construction_still_works()" | kind=code-symbol | source=probe/tests/test_main_scripts_statemodel.py:L57 | neighbors=[test_main_scripts_statemodel.py]
+- "tests_test_main_scripts_statemodel_test_canonical_states_are_the_six_documented_states": "test_canonical_states_are_the_six_documented_states()" | kind=code-symbol | source=probe/tests/test_main_scripts_statemodel.py:L16 | neighbors=[test_main_scripts_statemodel.py]
+- "tests_test_main_scripts_statemodel_test_explicit_first_class_value_wins_over_data": "test_explicit_first_class_value_wins_over_data()" | kind=code-symbol | source=probe/tests/test_main_scripts_statemodel.py:L41 | neighbors=[test_main_scripts_statemodel.py]
+- "tests_test_main_scripts_statemodel_test_semantics_in_data_are_promoted_to_first_class_non_destructively": "test_semantics_in_data_are_promoted_to_first_class_non_destructively()" | kind=code-symbol | source=probe/tests/test_main_scripts_statemodel.py:L30 | neighbors=[test_main_scripts_statemodel.py]
+- "tests_test_main_scripts_statemodel_test_state_and_reason_are_separate_first_class_fields": "test_state_and_reason_are_separate_first_class_fields()" | kind=code-symbol | source=probe/tests/test_main_scripts_statemodel.py:L23 | neighbors=[test_main_scripts_statemodel.py]
+- "tests_test_main_scripts_statemodel_test_to_json_exposes_promoted_fields_and_round_trips": "test_to_json_exposes_promoted_fields_and_round_trips()" | kind=code-symbol | source=probe/tests/test_main_scripts_statemodel.py:L47 | neighbors=[test_main_scripts_statemodel.py]
+- "tests_test_main_scripts_unauth_rationale_1": "test_main_scripts_unauth.py — proven unauthenticated datastore access (offensive" | kind=entity | source=probe/tests/test_main_scripts_unauth.py:L1 | neighbors=[test_main_scripts_unauth.py]
+- "tests_test_main_scripts_unauth_test_couchdb_and_memcached_and_mongodb": "test_couchdb_and_memcached_and_mongodb()" | kind=code-symbol | source=probe/tests/test_main_scripts_unauth.py:L33 | neighbors=[test_main_scripts_unauth.py]
+- "tests_test_main_scripts_unauth_test_elasticsearch_unauth_vs_secured": "test_elasticsearch_unauth_vs_secured()" | kind=code-symbol | source=probe/tests/test_main_scripts_unauth.py:L26 | neighbors=[test_main_scripts_unauth.py]
+- "tests_test_main_scripts_unauth_test_non_datastore_service_is_unknown": "test_non_datastore_service_is_unknown()" | kind=code-symbol | source=probe/tests/test_main_scripts_unauth.py:L39 | neighbors=[test_main_scripts_unauth.py]
+- "tests_test_main_scripts_unauth_test_rce_capability_flag": "test_rce_capability_flag()" | kind=code-symbol | source=probe/tests/test_main_scripts_unauth.py:L45 | neighbors=[test_main_scripts_unauth.py]
+- "tests_test_main_scripts_unauth_test_redis_noauth_is_protected": "test_redis_noauth_is_protected()" | kind=code-symbol | source=probe/tests/test_main_scripts_unauth.py:L17 | neighbors=[test_main_scripts_unauth.py]
+- "tests_test_main_scripts_unauth_test_redis_silent_is_unknown": "test_redis_silent_is_unknown()" | kind=code-symbol | source=probe/tests/test_main_scripts_unauth.py:L21 | neighbors=[test_main_scripts_unauth.py]
+- "tests_test_main_scripts_unauth_test_redis_unauth_info_leak_is_true": "test_redis_unauth_info_leak_is_true()" | kind=code-symbol | source=probe/tests/test_main_scripts_unauth.py:L12 | neighbors=[test_main_scripts_unauth.py]
+- "tests_test_main_scripts_vantage_rationale_1": "test_main_scripts_vantage.py — multi-vantage reconciliation (P0+++ \"Multi-vantag" | kind=entity | source=probe/tests/test_main_scripts_vantage.py:L1 | neighbors=[test_main_scripts_vantage.py]
+- "tests_test_manager_ai_rationale_233": "Settings with provider unset and all cloud keys pinned, so .env cannot     leak" | kind=entity | source=manager/backend/tests/test_manager_ai.py:L233 | neighbors=[_cloud()]
+- "tests_test_manager_ai_test_ai_request_rejects_unsafe_model_and_oversized_context": "test_ai_request_rejects_unsafe_model_and_oversized_context()" | kind=code-symbol | source=manager/backend/tests/test_manager_ai.py:L214 | neighbors=[test_manager_ai.py]
+- "tests_test_manager_ai_test_manager_ollama_generation_owns_security_prompt_and_context": "test_manager_ollama_generation_owns_security_prompt_and_context()" | kind=code-symbol | source=manager/backend/tests/test_manager_ai.py:L13 | neighbors=[test_manager_ai.py]
+- "tests_test_manager_ai_test_manager_openai_generation_is_server_side": "test_manager_openai_generation_is_server_side()" | kind=code-symbol | source=manager/backend/tests/test_manager_ai.py:L82 | neighbors=[test_manager_ai.py]
+- "tests_test_manager_ai_test_manager_openai_rejects_unconfigured_and_unenabled_model": "test_manager_openai_rejects_unconfigured_and_unenabled_model()" | kind=code-symbol | source=manager/backend/tests/test_manager_ai.py:L114 | neighbors=[test_manager_ai.py]
+- "tests_test_manager_ai_test_manager_openrouter_free_selection_is_server_side": "test_manager_openrouter_free_selection_is_server_side()" | kind=code-symbol | source=manager/backend/tests/test_manager_ai.py:L51 | neighbors=[test_manager_ai.py]
+- "tests_test_manager_ai_test_manager_rejects_cloud_model_not_enabled_by_deployment": "test_manager_rejects_cloud_model_not_enabled_by_deployment()" | kind=code-symbol | source=manager/backend/tests/test_manager_ai.py:L150 | neighbors=[test_manager_ai.py]
+- "tests_test_manager_ai_test_manager_rejects_ollama_cloud_proxy_as_local": "test_manager_rejects_ollama_cloud_proxy_as_local()" | kind=code-symbol | source=manager/backend/tests/test_manager_ai.py:L199 | neighbors=[test_manager_ai.py]
+- "tests_test_manager_ai_test_manager_rejects_unconfigured_cloud_provider": "test_manager_rejects_unconfigured_cloud_provider()" | kind=code-symbol | source=manager/backend/tests/test_manager_ai.py:L135 | neighbors=[test_manager_ai.py]
+- "tests_test_manager_ai_test_manager_status_returns_only_server_configured_choices": "test_manager_status_returns_only_server_configured_choices()" | kind=code-symbol | source=manager/backend/tests/test_manager_ai.py:L168 | neighbors=[test_manager_ai.py]
+- "tests_test_manual_reopen_test_manual_reopen_restores_open_and_audits": "test_manual_reopen_restores_open_and_audits()" | kind=code-symbol | source=manager/backend/tests/test_manual_reopen.py:L9 | neighbors=[test_manual_reopen.py]
 
 ## Instructions
 

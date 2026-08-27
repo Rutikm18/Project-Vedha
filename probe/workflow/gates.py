@@ -31,17 +31,33 @@ DB_PORTS = set(DEFAULT_DB_PORTS)
 AI_PORTS = {11434, 8000, 8080, 5000, 3000, 1234, 8001, 7860, 11435}  # DEFAULT_AI_PORTS in mcp_ai_scanner.py
 UDP_PORTS = {53, 123, 161, 137, 11211}                # UDP_PROBES.keys() in udp_scanner.py
 SNMP_PORTS = {161}
+SSH_PORTS = {22, 2222}
+LDAP_PORTS = {389, 636, 3268, 3269}
+SMB_ENUM_PORTS = {445}
+DNS_PORTS = {53}
+NFS_PORTS = {111, 2049}
+FTP_PORTS = {21}
+RSYNC_PORTS = {873}
+VNC_PORTS = {5900, 5901}
+IPMI_PORTS = {623}
+SMTP_PORTS = {25, 587}
+MSRPC_PORTS = {135}
+PRINTER_PORTS = {9100, 631}
 
 PROFILE_PORTS = {"it": IT_PORTS, "iot": IOT_PORTS, "ot": []}
 PROFILE_DEEP_BRANCHES = {
-    "it": {"tls", "web", "smb", "db", "mcp_ai", "snmp"},
-    "iot": {"tls", "web"},
+    "it": {"tls", "web", "smb", "db", "mcp_ai", "snmp", "ssh", "smb_enum", "ldap", "dns", "nfs", "ftp", "rsync", "vnc", "ipmi", "smtp", "msrpc", "printer"},
+    "iot": {"tls", "web", "ssh", "ftp", "vnc", "printer"},
     "ot": set(),
 }
 LIVENESS_RECHECK_THRESHOLD = {"it": timedelta(hours=1), "iot": timedelta(minutes=5)}
 
 _BRANCH_PORT_TABLE = {"tls": TLS_PORTS, "web": WEB_PORTS, "smb": SMB_PORTS,
-                      "db": DB_PORTS, "mcp_ai": AI_PORTS, "snmp": SNMP_PORTS}
+                      "db": DB_PORTS, "mcp_ai": AI_PORTS, "snmp": SNMP_PORTS,
+                      "ssh": SSH_PORTS, "smb_enum": SMB_ENUM_PORTS, "ldap": LDAP_PORTS,
+                      "dns": DNS_PORTS, "nfs": NFS_PORTS, "ftp": FTP_PORTS,
+                      "rsync": RSYNC_PORTS, "vnc": VNC_PORTS, "ipmi": IPMI_PORTS,
+                      "smtp": SMTP_PORTS, "msrpc": MSRPC_PORTS, "printer": PRINTER_PORTS}
 
 
 def gate_0_is_passive_profile(profile: str) -> bool:
@@ -88,9 +104,9 @@ def gate_5_branch_eligible(branch: str, asset: Asset, profile: str,
         return False
     if service_filter is not None and branch not in service_filter:
         return False
-    if branch == "snmp":
-        # An explicit SNMP job probes its authorized targets directly so it
-        # does not need unrelated TCP liveness traffic first.
+    if branch in ("snmp", "ipmi"):
+        # SNMP/IPMI are UDP probes sent directly to the authorized target; they do
+        # not need an open TCP port first, only prior liveness (or an explicit job).
         return asset.last_seen_alive is not None or service_filter is not None
     if dynamically_routed:
         return True

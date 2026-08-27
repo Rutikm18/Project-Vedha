@@ -1,4 +1,4 @@
-# Node Description Batch 106 of 227
+# Node Description Batch 106 of 236
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,58 +12,51 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
-For an entity node (any other kind — e.g. a person, place, event, object),
-describe what the entity is and its role, grounded in its type, its
-relations (neighbors) and the provided citations/evidence — e.g.
-"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
-Ground entity descriptions in the citations/evidence when present; do not
-speculate beyond the context, so a node with no supporting context may be
-left out of the reply.
 Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_agent_identity_test_cached_identity_refreshes_current_capabilities": "test_cached_identity_refreshes_current_capabilities()" | kind=code-symbol | source=probe/tests/test_agent_identity.py:L42 | neighbors=[test_agent_identity.py, _cached_transport()]
-- "tests_test_agent_identity_test_cached_identity_retries_transient_refresh_failure": "test_cached_identity_retries_transient_refresh_failure()" | kind=code-symbol | source=probe/tests/test_agent_identity.py:L69 | neighbors=[test_agent_identity.py, _cached_transport()]
-- "tests_test_agent_identity_test_rejected_cached_token_falls_back_to_idempotent_registration": "test_rejected_cached_token_falls_back_to_idempotent_registration()" | kind=code-symbol | source=probe/tests/test_agent_identity.py:L92 | neighbors=[test_agent_identity.py, _cached_transport()]
-- "tests_test_agent_policy_testevaluateaction_test_decision_carries_action_and_tier": ".test_decision_carries_action_and_tier()" | kind=code-symbol | source=manager/backend/tests/test_agent_policy.py:L94 | neighbors=[TestEvaluateAction, _roe()]
-- "tests_test_agent_policy_testevaluateaction_test_denylisted_module_denied": ".test_denylisted_module_denied()" | kind=code-symbol | source=manager/backend/tests/test_agent_policy.py:L68 | neighbors=[TestEvaluateAction, _roe()]
-- "tests_test_agent_policy_testevaluateaction_test_excluded_target_denied": ".test_excluded_target_denied()" | kind=code-symbol | source=manager/backend/tests/test_agent_policy.py:L63 | neighbors=[TestEvaluateAction, _roe()]
-- "tests_test_agent_policy_testevaluateaction_test_exploit_attempt_cap_denied": ".test_exploit_attempt_cap_denied()" | kind=code-symbol | source=manager/backend/tests/test_agent_policy.py:L77 | neighbors=[TestEvaluateAction, _roe()]
-- "tests_test_agent_policy_testevaluateaction_test_halted_engagement_denies_everything": ".test_halted_engagement_denies_everything()" | kind=code-symbol | source=manager/backend/tests/test_agent_policy.py:L73 | neighbors=[TestEvaluateAction, _roe()]
-- "tests_test_agent_policy_testevaluateaction_test_host_cap_denied": ".test_host_cap_denied()" | kind=code-symbol | source=manager/backend/tests/test_agent_policy.py:L83 | neighbors=[TestEvaluateAction, _roe()]
-- "tests_test_agent_policy_testevaluateaction_test_intrusive_above_ceiling_needs_approval": ".test_intrusive_above_ceiling_needs_approval()" | kind=code-symbol | source=manager/backend/tests/test_agent_policy.py:L45 | neighbors=[TestEvaluateAction, _roe()]
-- "tests_test_agent_policy_testevaluateaction_test_intrusive_auto_when_ceiling_raised": ".test_intrusive_auto_when_ceiling_raised()" | kind=code-symbol | source=manager/backend/tests/test_agent_policy.py:L49 | neighbors=[TestEvaluateAction, _roe()]
-- "tests_test_agent_policy_testevaluateaction_test_irreversible_always_needs_approval_even_with_max_ceiling": ".test_irreversible_always_needs_approval_even_with_max_ceiling()" | kind=code-symbol | source=manager/backend/tests/test_agent_policy.py:L54 | neighbors=[TestEvaluateAction, _roe()]
-- "tests_test_agent_policy_testevaluateaction_test_no_targets_skips_scope_check": ".test_no_targets_skips_scope_check()" | kind=code-symbol | source=manager/backend/tests/test_agent_policy.py:L89 | neighbors=[TestEvaluateAction, _roe()]
-- "tests_test_agent_policy_testevaluateaction_test_passive_action_auto_authorized": ".test_passive_action_auto_authorized()" | kind=code-symbol | source=manager/backend/tests/test_agent_policy.py:L37 | neighbors=[TestEvaluateAction, _roe()]
-- "tests_test_agent_policy_testevaluateaction_test_reversible_within_default_ceiling_auto": ".test_reversible_within_default_ceiling_auto()" | kind=code-symbol | source=manager/backend/tests/test_agent_policy.py:L41 | neighbors=[TestEvaluateAction, _roe()]
-- "tests_test_agent_policy_testevaluateaction_test_target_out_of_scope_denied": ".test_target_out_of_scope_denied()" | kind=code-symbol | source=manager/backend/tests/test_agent_policy.py:L59 | neighbors=[TestEvaluateAction, _roe()]
-- "tests_test_agents_rationale_1": "Unit tests for the agent/probe protocol changes:   * agent polling is restricted" | kind=entity | source=manager/backend/tests/test_agents.py:L1 | neighbors=[test_agents.py, ScanJobType]
-- "tests_test_agents_rationale_207": "Re-registering the same-named probe must reuse the row, not create a dup." | kind=entity | source=manager/backend/tests/test_agents.py:L207 | neighbors=[ScanJobType, .test_reuses_existing_probe_by_name()]
-- "tests_test_agents_rationale_242": "Agent token must outlive the 15-min access default so it doesn't churn." | kind=entity | source=manager/backend/tests/test_agents.py:L242 | neighbors=[ScanJobType, .test_agent_token_is_long_lived()]
-- "tests_test_agents_rationale_260": "Discovery results → assets/services promotion (makes the Attack Surface populate" | kind=entity | source=manager/backend/tests/test_agents.py:L260 | neighbors=[ScanJobType, TestPromoteAssets]
-- "tests_test_agents_rationale_288": "A single web scan can emit multiple facts for the same host:port." | kind=entity | source=manager/backend/tests/test_agents.py:L288 | neighbors=[ScanJobType, .test_dedupes_duplicate_services_in_sam…]
-- "tests_test_agents_rationale_530": "Re-registering the same-named probe must reuse the row, not create a dup." | kind=entity | source=manager/backend/tests/test_agents.py:L530 | neighbors=[ScanJobType, .test_reuses_existing_probe_by_name()]
-- "tests_test_agents_rationale_565": "Agent token must outlive the 15-min access default so it doesn't churn." | kind=entity | source=manager/backend/tests/test_agents.py:L565 | neighbors=[ScanJobType, .test_agent_token_is_long_lived()]
-- "tests_test_agents_rationale_583": "Discovery results → assets/services promotion (makes the Attack Surface populate" | kind=entity | source=manager/backend/tests/test_agents.py:L583 | neighbors=[ScanJobType, TestPromoteAssets]
-- "tests_test_agents_rationale_611": "A single web scan can emit multiple facts for the same host:port." | kind=entity | source=manager/backend/tests/test_agents.py:L611 | neighbors=[ScanJobType, .test_dedupes_duplicate_services_in_sam…]
-- "tests_test_agents_testenqueueagentjob_test_404_when_engagement_missing": ".test_404_when_engagement_missing()" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L53 | neighbors=[TestEnqueueAgentJob, _user()]
-- "tests_test_agents_testenqueueagentjob_test_materializes_direct_job_capability_for_probe": ".test_materializes_direct_job_capability_for_probe()" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L93 | neighbors=[TestEnqueueAgentJob, _user()]
-- "tests_test_agents_testenqueueagentjob_test_rejects_server_side_type": ".test_rejects_server_side_type()" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L46 | neighbors=[TestEnqueueAgentJob, _user()]
-- "tests_test_agents_testenqueueagentjob_test_scope_fields_cannot_override_engagement_scope": ".test_scope_fields_cannot_override_engagement_scope()" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L121 | neighbors=[TestEnqueueAgentJob, _user()]
-- "tests_test_agents_testenqueueagentjob_test_success_creates_pending_job": ".test_success_creates_pending_job()" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L62 | neighbors=[TestEnqueueAgentJob, _user()]
-- "tests_test_agents_testheartbeat": "TestHeartbeat" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L574 | neighbors=[test_agents.py, .test_online_heartbeat_clears_completed…]
-- "tests_test_agents_testlegacybootstrap": "TestLegacyBootstrap" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L610 | neighbors=[test_agents.py, .test_shared_secret_bootstrap_is_disabl…]
-- "tests_test_agents_testlistagents_test_fresh_disconnected_agent_is_not_reported_online": ".test_fresh_disconnected_agent_is_not_reported_online()" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L551 | neighbors=[TestListAgents, _user()]
-- "tests_test_agents_testlistagents_test_lists_with_online_flag": ".test_lists_with_online_flag()" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L529 | neighbors=[TestListAgents, _user()]
-- "tests_test_agents_testotprofilegate_test_allows_passive_discovery_on_ot_engagement": ".test_allows_passive_discovery_on_ot_engagement()" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L197 | neighbors=[TestOTProfileGate, _user()]
-- "tests_test_agents_testotprofilegate_test_blocks_active_scan_type_on_ot_engagement": ".test_blocks_active_scan_type_on_ot_engagement()" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L165 | neighbors=[TestOTProfileGate, _user()]
-- "tests_test_agents_testotprofilegate_test_blocks_explicit_active_scan_type_override_on_ot_engagement": ".test_blocks_explicit_active_scan_type_override_on_ot_engagement()" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L180 | neighbors=[TestOTProfileGate, _user()]
-- "tests_test_agents_testotprofilegate_test_it_and_iot_profiles_unaffected": ".test_it_and_iot_profiles_unaffected()" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L213 | neighbors=[TestOTProfileGate, _user()]
-- "tests_test_agents_testregisteragent_test_creates_when_none_exists": ".test_creates_when_none_exists()" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L663 | neighbors=[TestRegisterAgent, _user()]
-- "tests_test_ai_normalizer_testextractrawtext_test_db_scan_with_engine_and_version": ".test_db_scan_with_engine_and_version()" | kind=code-symbol | source=manager/detection_engine/tests/test_ai_normalizer.py:L85 | neighbors=[TestExtractRawText, _fact()]
+- "scanner_snmp_scanner_extract_sysdescr": "_extract_sysdescr()" | kind=code-symbol | source=probe/scanner/snmp_scanner.py:L44 | neighbors=[snmp_scanner.py, .scan_target()]
+- "scanner_snmp_scanner_oid_in_subtree": "_oid_in_subtree()" | kind=code-symbol | source=probe/scanner/snmp_scanner.py:L240 | neighbors=[snmp_scanner.py, ._walk_subtree()]
+- "scanner_snmp_scanner_snmpscanner_query": "._query()" | kind=code-symbol | source=probe/scanner/snmp_scanner.py:L84 | neighbors=[SNMPScanner, _build_get()]
+- "scanner_snmp_scanner_snmpscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/scanner/snmp_scanner.py:L329 | neighbors=[SNMPScanner, _extract_sysdescr()]
+- "scanner_ssh_collector_sshcollector_collect": "._collect()" | kind=code-symbol | source=probe/scanner/ssh_collector.py:L95 | neighbors=[SSHCollector, .run()]
+- "scanner_ssh_collector_sshcollector_run": ".run()" | kind=code-symbol | source=probe/scanner/ssh_collector.py:L117 | neighbors=[SSHCollector, ._collect()]
+- "scanner_syn_scanner_synscanner_fallback_scan": "._fallback_scan()" | kind=code-symbol | source=probe/scanner/syn_scanner.py:L299 | neighbors=[SynScanner, .scan_target()]
+- "scanner_syn_scanner_synscanner_init": ".__init__()" | kind=code-symbol | source=probe/scanner/syn_scanner.py:L251 | neighbors=[SynScanner, syn_scan_supported()]
+- "scanner_syn_scanner_synscanner_syn_scan_target": "._syn_scan_target()" | kind=code-symbol | source=probe/scanner/syn_scanner.py:L307 | neighbors=[SynScanner, .scan_target()]
+- "scanner_tls_fingerprint_probe_specs": "_probe_specs()" | kind=code-symbol | source=probe/scanner/tls_fingerprint.py:L220 | neighbors=[tls_fingerprint.py, fingerprint_host()]
+- "scanner_tls_fingerprint_tlsfingerprintscanner_scan_port": "._scan_port()" | kind=code-symbol | source=probe/scanner/tls_fingerprint.py:L289 | neighbors=[TLSFingerprintScanner, .scan_target()]
+- "scanner_tls_fingerprint_tlsfingerprintscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/scanner/tls_fingerprint.py:L315 | neighbors=[TLSFingerprintScanner, ._scan_port()]
+- "scanner_tls_fingerprint_version_code": "version_code()" | kind=code-symbol | source=probe/scanner/tls_fingerprint.py:L173 | neighbors=[tls_fingerprint.py, jarm_style_digest()]
+- "scanner_tls_scanner_parse_cert_der": "_parse_cert_der()" | kind=code-symbol | source=probe/scanner/tls_scanner.py:L185 | neighbors=[tls_scanner.py, _scan_tls_sync()]
+- "scanner_tls_scanner_tlsscanner_scan_port": "._scan_port()" | kind=code-symbol | source=probe/scanner/tls_scanner.py:L262 | neighbors=[TLSScanner, .scan_target()]
+- "scanner_tls_scanner_tlsscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/scanner/tls_scanner.py:L281 | neighbors=[TLSScanner, ._scan_port()]
+- "scanner_udp_scanner_ike_probe": "_ike_probe()" | kind=code-symbol | source=probe/scanner/udp_scanner.py:L77 | neighbors=[udp_scanner.py, Minimal IKEv2 IKE_SA_INIT probe.  Sends…]
+- "scanner_udp_scanner_interpret_dns_recursion": "interpret_dns_recursion()" | kind=code-symbol | source=probe/scanner/udp_scanner.py:L173 | neighbors=[udp_scanner.py, ._probe()]
+- "scanner_udp_scanner_interpret_memcached_stats": "interpret_memcached_stats()" | kind=code-symbol | source=probe/scanner/udp_scanner.py:L184 | neighbors=[udp_scanner.py, ._probe()]
+- "scanner_udp_scanner_interpret_ntp_monlist": "interpret_ntp_monlist()" | kind=code-symbol | source=probe/scanner/udp_scanner.py:L169 | neighbors=[udp_scanner.py, ._probe()]
+- "scanner_udp_scanner_ntp_monlist_probe": "_ntp_monlist_probe()" | kind=code-symbol | source=probe/scanner/udp_scanner.py:L50 | neighbors=[udp_scanner.py, ._probe()]
+- "scanner_udp_scanner_tftp_probe": "_tftp_probe()" | kind=code-symbol | source=probe/scanner/udp_scanner.py:L132 | neighbors=[udp_scanner.py, TFTP RRQ for a non-existent file.  Erro…]
+- "scanner_udp_scanner_udpscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/scanner/udp_scanner.py:L376 | neighbors=[UDPScanner, ._probe()]
+- "scanner_unauth_access_as_text": "_as_text()" | kind=code-symbol | source=probe/scanner/unauth_access.py:L40 | neighbors=[unauth_access.py, classify_unauth_access()]
+- "scanner_vantage_matrix_is_external": "_is_external()" | kind=code-symbol | source=probe/scanner/vantage_matrix.py:L34 | neighbors=[vantage_matrix.py, reconcile_vantages()]
+- "scanner_web_scanner_fetch": "_fetch()" | kind=code-symbol | source=probe/scanner/web_scanner.py:L78 | neighbors=[web_scanner.py, parse_allow_header()]
+- "scanner_web_scanner_noredirect": "_NoRedirect" | kind=code-symbol | source=probe/scanner/web_scanner.py:L55 | neighbors=[web_scanner.py, .redirect_request()]
+- "scanner_web_scanner_webscanner_scan_port": "._scan_port()" | kind=code-symbol | source=probe/scanner/web_scanner.py:L143 | neighbors=[WebScanner, .scan_target()]
+- "scanner_web_scanner_webscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/scanner/web_scanner.py:L160 | neighbors=[WebScanner, ._scan_port()]
+- "scanner_windows_collector_smb_registry_collect": "_smb_registry_collect()" | kind=code-symbol | source=probe/scanner/windows_collector.py:L158 | neighbors=[windows_collector.py, Connect to RemoteRegistry over SMB and …]
+- "scanner_windows_collector_windowscollector_full_user": "._full_user()" | kind=code-symbol | source=probe/scanner/windows_collector.py:L294 | neighbors=[WindowsCollector, ._collect_host()]
+- "scanner_windows_collector_windowscollector_run": ".run()" | kind=code-symbol | source=probe/scanner/windows_collector.py:L326 | neighbors=[WindowsCollector, ._collect_host()]
+- "scanner_windows_collector_windowscollector_smb_result": "._smb_result()" | kind=code-symbol | source=probe/scanner/windows_collector.py:L318 | neighbors=[WindowsCollector, ._collect_host()]
+- "scanner_windows_collector_windowscollector_transport_order": "._transport_order()" | kind=code-symbol | source=probe/scanner/windows_collector.py:L299 | neighbors=[WindowsCollector, ._collect_host()]
+- "scanner_windows_collector_windowscollector_winrm_result": "._winrm_result()" | kind=code-symbol | source=probe/scanner/windows_collector.py:L306 | neighbors=[WindowsCollector, ._collect_host()]
+- "scans_page_prettytype": "prettyType()" | kind=code-symbol | source=manager/frontend/app/portal/scans/page.tsx:L86 | neighbors=[page.tsx, JobCard()]
+- "scans_page_reltime": "relTime()" | kind=code-symbol | source=manager/frontend/app/portal/scans/page.tsx:L74 | neighbors=[page.tsx, JobCard()]
+- "schemas_ai_aigenerateresponse": "AiGenerateResponse" | kind=code-symbol | source=manager/backend/app/schemas/ai.py:L58 | neighbors=[ai.py, BaseModel]
+- "schemas_ai_aimessage": "AiMessage" | kind=code-symbol | source=manager/backend/app/schemas/ai.py:L13 | neighbors=[ai.py, BaseModel]
+- "schemas_auth_loginrequest": "LoginRequest" | kind=code-symbol | source=manager/backend/app/schemas/auth.py:L9 | neighbors=[auth.py, BaseModel]
 
 ## Instructions
 

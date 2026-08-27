@@ -1,0 +1,85 @@
+# Node Description Batch 59 of 92
+
+Graphify is running in assistant/skill mode (no API key). You are the host
+assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
+your JSON answer to the answer file.
+
+## Prompt
+
+You are documenting nodes in a knowledge graph.
+For each entry below, write ONE concise factual plain-language sentence
+describing what it is or does. Use only the provided context.
+For a code symbol (kind=code-symbol — a function, class, or constant),
+describe what the function/symbol does based on its name, source location
+and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
+For an entity node (any other kind — e.g. a person, place, event, object),
+describe what the entity is and its role, grounded in its type, its
+relations (neighbors) and the provided citations/evidence — e.g.
+"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
+Ground entity descriptions in the citations/evidence when present; do not
+speculate beyond the context, so a node with no supporting context may be
+left out of the reply.
+LANGUAGE: each entry has a `lang=` marker giving the language of its source.
+Write that entry's description in EXACTLY that language. Do not translate to
+a single common language — match each node's source language individually.
+No marketing language.
+Respond ONLY with a JSON object mapping each node id (as a string) to its
+one-sentence description — no prose, no markdown fences.
+
+- "scanner_db_scanner_probe_mysql": "_probe_mysql()" | kind=code-symbol | source=scanner/db_scanner.py:L47 | neighbors=[db_scanner.py] | lang=en
+- "scanner_db_scanner_probe_mysqlx": "_probe_mysqlx()" | kind=code-symbol | source=scanner/db_scanner.py:L166 | neighbors=[db_scanner.py] | lang=en
+- "scanner_db_scanner_probe_oracle": "_probe_oracle()" | kind=code-symbol | source=scanner/db_scanner.py:L195 | neighbors=[db_scanner.py] | lang=en
+- "scanner_db_scanner_probe_postgres": "_probe_postgres()" | kind=code-symbol | source=scanner/db_scanner.py:L67 | neighbors=[db_scanner.py] | lang=en
+- "scanner_db_scanner_rationale_1": "db_scanner.py — fingerprint database services.  WHY: databases are everywhere on" | kind=entity | source=scanner/db_scanner.py:L1 | neighbors=[db_scanner.py] | lang=en
+- "scanner_db_scanner_rationale_102": "Classify a Redis INFO reply. `unauthenticated_read` is True only when we     act" | kind=entity | source=scanner/db_scanner.py:L102 | neighbors=[interpret_redis_info()] | lang=en
+- "scanner_delta_scanner_rationale_1": "delta_scanner.py — scan-state comparison and continuous attack-surface monitorin" | kind=entity | source=scanner/delta_scanner.py:L1 | neighbors=[delta_scanner.py] | lang=en
+- "scanner_delta_scanner_rationale_122": "Best-effort service name from data dict or scanner name." | kind=entity | source=scanner/delta_scanner.py:L122 | neighbors=[_extract_service()] | lang=en
+- "scanner_delta_scanner_rationale_139": "Best-effort version string." | kind=entity | source=scanner/delta_scanner.py:L139 | neighbors=[_extract_version()] | lang=en
+- "scanner_delta_scanner_rationale_158": "Load JSONL scan snapshots and compute security-relevant diffs." | kind=entity | source=scanner/delta_scanner.py:L158 | neighbors=[DeltaEngine] | lang=en
+- "scanner_delta_scanner_rationale_161": "Parse a JSONL file of ScanResult records and return a SnapshotIndex.         Lin" | kind=entity | source=scanner/delta_scanner.py:L161 | neighbors=[.load_jsonl()] | lang=en
+- "scanner_delta_scanner_rationale_206": "Compute security-relevant deltas between baseline and current snapshots." | kind=entity | source=scanner/delta_scanner.py:L206 | neighbors=[.diff()] | lang=en
+- "scanner_delta_scanner_rationale_297": "Heuristic priority for a newly-detected service." | kind=entity | source=scanner/delta_scanner.py:L297 | neighbors=[_new_service_severity()] | lang=en
+- "scanner_delta_scanner_rationale_309": "True if version changed in a security-relevant way (not just whitespace)." | kind=entity | source=scanner/delta_scanner.py:L309 | neighbors=[_significant_version_change()] | lang=en
+- "scanner_delta_scanner_rationale_54": "Normalised representation of one ScanResult JSONL line." | kind=entity | source=scanner/delta_scanner.py:L54 | neighbors=[ScanRecord] | lang=en
+- "scanner_delta_scanner_rationale_70": "One security-relevant change between two scans." | kind=entity | source=scanner/delta_scanner.py:L70 | neighbors=[Delta] | lang=en
+- "scanner_delta_scanner_rationale_92": "Derive a stable host identity from a raw scan record in priority order:       1." | kind=entity | source=scanner/delta_scanner.py:L92 | neighbors=[_stable_host_id()] | lang=en
+- "scanner_device_classifier_rationale_1": "device_classifier.py — infer a device's ROLE from collection-layer facts.  This" | kind=entity | source=scanner/device_classifier.py:L1 | neighbors=[device_classifier.py] | lang=en
+- "scanner_device_classifier_rationale_102": "Fuse OS family + open ports + service products into a device-role guess.      Re" | kind=entity | source=scanner/device_classifier.py:L102 | neighbors=[classify_device()] | lang=pt
+- "scanner_device_classifier_rationale_202": "Convenience adapter: extract classifier inputs from a list of ScanResult     obj" | kind=entity | source=scanner/device_classifier.py:L202 | neighbors=[classify_from_results()] | lang=en
+- "scanner_findings_rationale_1004": "Two or more cleartext services on one host — any sniffing position harvests" | kind=entity | source=scanner/findings.py:L1004 | neighbors=[_corr_cleartext_cluster()] | lang=en
+- "scanner_findings_rationale_1012": "Read a scanner's JSONL output into fact dicts (skips blank/garbage lines)." | kind=entity | source=scanner/findings.py:L1012 | neighbors=[load_facts_jsonl()] | lang=pt
+- "scanner_findings_rationale_1013": "SMBv1 (wormable) + exposed RDP (brute-force/BlueKeep) on one host — the     clas" | kind=entity | source=scanner/findings.py:L1013 | neighbors=[_corr_legacy_windows()] | lang=en
+- "scanner_findings_rationale_1014": "SMB signing not required => a viable NTLM relay target. If SMBv1 is also on," | kind=entity | source=scanner/findings.py:L1014 | neighbors=[_corr_ntlm_relay()] | lang=en
+- "scanner_findings_rationale_1027": "Derive findings from collected facts. Pure; deterministic; safe.      Accepts Sc" | kind=entity | source=scanner/findings.py:L1027 | neighbors=[run_findings()] | lang=en
+- "scanner_findings_rationale_1028": "CLI: derive findings from one or more scanner JSONL files.          python -m ma" | kind=entity | source=scanner/findings.py:L1028 | neighbors=[_main()] | lang=en
+- "scanner_findings_rationale_1030": "Two or more cleartext services on one host — any sniffing position harvests" | kind=entity | source=scanner/findings.py:L1030 | neighbors=[_corr_cleartext_cluster()] | lang=en
+- "scanner_findings_rationale_1037": "SMBv1 (wormable) + exposed RDP (brute-force/BlueKeep) on one host — the     clas" | kind=entity | source=scanner/findings.py:L1037 | neighbors=[_corr_legacy_windows()] | lang=en
+- "scanner_findings_rationale_1054": "Two or more cleartext services on one host — any sniffing position harvests" | kind=entity | source=scanner/findings.py:L1054 | neighbors=[_corr_cleartext_cluster()] | lang=en
+- "scanner_findings_rationale_1057": "Two or more INDEPENDENT anonymous data-exposure channels on one host — the     h" | kind=entity | source=scanner/findings.py:L1057 | neighbors=[_corr_anon_data_exposure()] | lang=en
+- "scanner_findings_rationale_1073": "Read a scanner's JSONL output into fact dicts (skips blank/garbage lines)." | kind=entity | source=scanner/findings.py:L1073 | neighbors=[load_facts_jsonl()] | lang=pt
+- "scanner_findings_rationale_1076": "A disclosed user list (SMB null session) plus a weak/exposed login surface on" | kind=entity | source=scanner/findings.py:L1076 | neighbors=[_corr_user_enum_plus_weak_auth()] | lang=pt
+- "scanner_findings_rationale_1081": "Two or more INDEPENDENT anonymous data-exposure channels on one host — the     h" | kind=entity | source=scanner/findings.py:L1081 | neighbors=[_corr_anon_data_exposure()] | lang=en
+- "scanner_findings_rationale_1089": "CLI: derive findings from one or more scanner JSONL files.          python -m ma" | kind=entity | source=scanner/findings.py:L1089 | neighbors=[_main()] | lang=en
+- "scanner_findings_rationale_1099": "Out-of-band / console management surfaces reachable on one host — these grant" | kind=entity | source=scanner/findings.py:L1099 | neighbors=[_corr_mgmt_plane_exposed()] | lang=en
+- "scanner_findings_rationale_1100": "A disclosed user list (SMB null session) plus a weak/exposed login surface on" | kind=entity | source=scanner/findings.py:L1100 | neighbors=[_corr_user_enum_plus_weak_auth()] | lang=pt
+- "scanner_findings_rationale_1123": "Out-of-band / console management surfaces reachable on one host — these grant" | kind=entity | source=scanner/findings.py:L1123 | neighbors=[_corr_mgmt_plane_exposed()] | lang=en
+- "scanner_findings_rationale_1126": "Derive findings from collected facts. Pure; deterministic; safe.      Accepts Sc" | kind=entity | source=scanner/findings.py:L1126 | neighbors=[run_findings()] | lang=en
+- "scanner_findings_rationale_1150": "Derive findings from collected facts. Pure; deterministic; safe.      Accepts Sc" | kind=entity | source=scanner/findings.py:L1150 | neighbors=[run_findings()] | lang=en
+- "scanner_findings_rationale_1172": "Read a scanner's JSONL output into fact dicts (skips blank/garbage lines)." | kind=entity | source=scanner/findings.py:L1172 | neighbors=[load_facts_jsonl()] | lang=pt
+
+## Instructions
+
+Write a single JSON object mapping each node id to a one-sentence description
+to: /Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha/probe/.graphify/description-instructions/batch-058.json
+
+Keep each description factual and concise (one sentence). No markdown, no prose
+outside the JSON object. It is acceptable to omit a node if context is
+insufficient — but include every node you can ground confidently.
+
+Example answer format:
+```json
+{
+  "node_id_1": "Resolves the configured ontology profile from graphify.yaml.",
+  "node_id_2": "Colonel James Barclay, an antagonist in The Crooked Man."
+}
+```

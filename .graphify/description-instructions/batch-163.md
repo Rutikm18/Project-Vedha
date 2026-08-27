@@ -1,4 +1,4 @@
-# Node Description Batch 164 of 227
+# Node Description Batch 164 of 236
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -26,46 +26,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "reports_page_reporttype": "ReportType" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L14 | neighbors=[page.tsx] | lang=en
-- "reports_page_sev_order": "SEV_ORDER" | kind=code-symbol | source=manager/frontend/app/portal/reports/page.tsx:L25 | neighbors=[page.tsx] | lang=en
-- "reports_page_severity": "Severity" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L15 | neighbors=[page.tsx] | lang=en
-- "reports_page_severitystrip": "SeverityStrip()" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L108 | neighbors=[page.tsx] | lang=en
-- "reports_page_sevs": "SEVS" | kind=code-symbol | source=manager/frontend/app/portal/reports/page.tsx:L24 | neighbors=[page.tsx] | lang=en
-- "reports_page_statuscolor": "statusColor()" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L524 | neighbors=[page.tsx] | lang=en
-- "reports_page_statuslabel": "statusLabel()" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L531 | neighbors=[page.tsx] | lang=en
-- "reports_page_tab": "Tab" | kind=code-symbol | source=manager/frontend/app/portal/reports/page.tsx:L17 | neighbors=[page.tsx] | lang=en
-- "reports_page_tabs": "TABS" | kind=code-symbol | source=manager/frontend/app/portal/reports/page.tsx:L18 | neighbors=[page.tsx] | lang=en
-- "reports_page_technicalreport": "TechnicalReport()" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L198 | neighbors=[page.tsx] | lang=en
-- "reports_page_topfindings": "TopFindings()" | kind=code-symbol | source=manager/frontend/app/portal/reports/page.tsx:L65 | neighbors=[page.tsx] | lang=en
-- "request_route_post": "POST()" | kind=code-symbol | source=manager/frontend/app/api/auth/request/route.ts:L7 | neighbors=[route.ts] | lang=en
-- "results_route_get": "GET()" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/detection-validation/results/route.ts:L5 | neighbors=[route.ts] | lang=en
-- "reveal_route_get": "GET()" | kind=code-symbol | source=manager/frontend/app/api/customers/[id]/reveal/route.ts:L8 | neighbors=[route.ts] | lang=en
-- "routers_ad_ad_assessment_status": "ad_assessment_status()" | kind=code-symbol | source=manager/backend/app/routers/ad.py:L99 | neighbors=[ad.py] | lang=en
-- "routers_ad_launch_ad_assessment": "launch_ad_assessment()" | kind=code-symbol | source=manager/backend/app/routers/ad.py:L64 | neighbors=[ad.py] | lang=en
-- "routers_agent_advisor_run_advisor": "run_advisor()" | kind=code-symbol | source=manager/backend/app/routers/agent_advisor.py:L50 | neighbors=[agent_advisor.py] | lang=en
-- "routers_agent_ws_rationale_115": "Persistent WebSocket for probe → manager push communication.      Authentication" | kind=entity | source=manager/backend/app/routers/agent_ws.py:L115 | neighbors=[agent_websocket_endpoint()] | lang=en
-- "routers_agent_ws_rationale_41": "Read an agent bearer token exclusively from the non-logged auth header." | kind=entity | source=manager/backend/app/routers/agent_ws.py:L41 | neighbors=[_agent_token_from_websocket()] | lang=en
-- "routers_agent_ws_rationale_52": "Validate eligibility and atomically claim a WebSocket job offer." | kind=entity | source=manager/backend/app/routers/agent_ws.py:L52 | neighbors=[_claim_pushed_job()] | lang=en
-- "routers_agents_agentbootstraprequest_validate_network_segments": ".validate_network_segments()" | kind=code-symbol | source=manager/backend/app/routers/agents.py:L540 | neighbors=[AgentBootstrapRequest] | lang=en
-- "routers_agents_agentregisterrequest_validate_network_segments": ".validate_network_segments()" | kind=code-symbol | source=manager/backend/app/routers/agents.py:L188 | neighbors=[AgentRegisterRequest] | lang=en
-- "routers_agents_enqueuejobrequest_validate_uc": "._validate_uc()" | kind=code-symbol | source=manager/backend/app/routers/agents.py:L313 | neighbors=[EnqueueJobRequest] | lang=en
-- "routers_agents_heartbeatrequest_require_fence_for_running_job": ".require_fence_for_running_job()" | kind=code-symbol | source=manager/backend/app/routers/agents.py:L213 | neighbors=[HeartbeatRequest] | lang=en
-- "routers_agents_list_agents": "list_agents()" | kind=code-symbol | source=manager/backend/app/routers/agents.py:L720 | neighbors=[agents.py] | lang=en
-- "routers_agents_rationale_105": "Return whether a probe's declared networks fully cover a job's scope.      A pro" | kind=entity | source=manager/backend/app/routers/agents.py:L105 | neighbors=[_scope_is_reachable()] | lang=pt
-- "routers_agents_rationale_141": "Return the narrow IP scope needed to route this job.      The engagement scope r" | kind=entity | source=manager/backend/app/routers/agents.py:L141 | neighbors=[_job_reachability_scope()] | lang=en
-- "routers_agents_rationale_166": "Apply capability and network reachability policy to one dispatch." | kind=entity | source=manager/backend/app/routers/agents.py:L166 | neighbors=[_agent_can_execute_job()] | lang=en
-- "routers_agents_rationale_215": "Apply capability and network reachability policy to one dispatch." | kind=entity | source=manager/backend/app/routers/agents.py:L215 | neighbors=[_agent_can_execute_job()] | lang=en
-- "routers_agents_rationale_275": "Accept an intensity as a number (1/2/3), a name (light/standard/deep), or a" | kind=entity | source=manager/backend/app/routers/agents.py:L275 | neighbors=[_normalize_intensity_name()] | lang=pt
-- "routers_agents_rationale_319": "Accept an intensity as a number (1/2/3) or a name; return the name (or     None)" | kind=entity | source=manager/backend/app/routers/agents.py:L319 | neighbors=[_normalize_intensity_name()] | lang=en
-- "routers_agents_rationale_324": "Accept an intensity as a number (1/2/3), a name (light/standard/deep), or a" | kind=entity | source=manager/backend/app/routers/agents.py:L324 | neighbors=[_normalize_intensity_name()] | lang=pt
-- "routers_agents_rationale_407": "Encrypt the engagement scope for a specific agent's public key.      Reads agent" | kind=entity | source=manager/backend/app/routers/agents.py:L407 | neighbors=[_encrypt_scope_for_agent()] | lang=en
-- "routers_agents_rationale_445": "Verify that the JWT token bearer IS the agent they claim to be.      Every heart" | kind=entity | source=manager/backend/app/routers/agents.py:L445 | neighbors=[_agent_ownership_check()] | lang=en
-- "routers_agents_rationale_464": "Encrypt the engagement scope for a specific agent's public key.      Reads agent" | kind=entity | source=manager/backend/app/routers/agents.py:L464 | neighbors=[_encrypt_scope_for_agent()] | lang=en
-- "routers_agents_rationale_477": "Encrypt the engagement scope for a specific agent's public key.      Reads agent" | kind=entity | source=manager/backend/app/routers/agents.py:L477 | neighbors=[_encrypt_scope_for_agent()] | lang=en
-- "routers_agents_rationale_478": "Returns the finite library of scan use-cases operators can dispatch to probes." | kind=entity | source=manager/backend/app/routers/agents.py:L478 | neighbors=[list_use_cases()] | lang=en
-- "routers_agents_rationale_491": "Allows a probe to register without an admin-issued PAT.      The manager must ha" | kind=entity | source=manager/backend/app/routers/agents.py:L491 | neighbors=[bootstrap_agent()] | lang=en
-- "routers_agents_rationale_502": "Verify that the JWT token bearer IS the agent they claim to be.      Every heart" | kind=entity | source=manager/backend/app/routers/agents.py:L502 | neighbors=[_agent_ownership_check()] | lang=en
-- "routers_agents_rationale_512": "Encrypt the engagement scope for a specific agent's public key.      Reads agent" | kind=entity | source=manager/backend/app/routers/agents.py:L512 | neighbors=[_encrypt_scope_for_agent()] | lang=en
+- "main_scripts_smb_scanner_rationale_1": "smb_scanner.py — detect which SMB dialects a host supports.  METHOD (collection" | kind=entity | source=probe/main_scripts/smb_scanner.py:L1 | neighbors=[smb_scanner.py] | lang=en
+- "main_scripts_smb_scanner_rationale_37": "Read signing posture from a SUCCESSFUL SMB2 NEGOTIATE response.      Wire layout" | kind=entity | source=probe/main_scripts/smb_scanner.py:L37 | neighbors=[parse_smb2_security_mode()] | lang=en
+- "main_scripts_smb_scanner_smbscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/smb_scanner.py:L145 | neighbors=[SMBScanner] | lang=en
+- "main_scripts_snmp_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/snmp_scanner.py:L401 | neighbors=[snmp_scanner.py] | lang=en
+- "main_scripts_snmp_scanner_rationale_1": "snmp_scanner.py — full SNMP enumeration: community discovery, targeted MIB walk," | kind=entity | source=probe/main_scripts/snmp_scanner.py:L1 | neighbors=[snmp_scanner.py] | lang=en
+- "main_scripts_snmp_scanner_rationale_105": "Shallow parse of BER TLVs starting at offset. Returns [(tag, value), ...]." | kind=entity | source=probe/main_scripts/snmp_scanner.py:L105 | neighbors=[_ber_parse()] | lang=en
+- "main_scripts_snmp_scanner_rationale_127": "Extract (oid_dotted, value_tag, value_bytes) from a GET/GETNEXT/GETBULK response" | kind=entity | source=probe/main_scripts/snmp_scanner.py:L127 | neighbors=[_parse_varbinds()] | lang=en
+- "main_scripts_snmp_scanner_rationale_246": "Phase 1 (community discovery) + Phase 2 (targeted MIB walk) +     Phase 3 (ampli" | kind=entity | source=probe/main_scripts/snmp_scanner.py:L246 | neighbors=[SNMPScanner] | lang=en
+- "main_scripts_snmp_scanner_rationale_278": "Return (community, sysdescr) for the first responding community, or None." | kind=entity | source=probe/main_scripts/snmp_scanner.py:L278 | neighbors=[._discover_community()] | lang=en
+- "main_scripts_snmp_scanner_rationale_292": "GETNEXT walk of one OID subtree.  Returns [(oid, value_str), ...]." | kind=entity | source=probe/main_scripts/snmp_scanner.py:L292 | neighbors=[._walk_subtree()] | lang=en
+- "main_scripts_snmp_scanner_rationale_315": "One GETBULK request — measure response/request size ratio." | kind=entity | source=probe/main_scripts/snmp_scanner.py:L315 | neighbors=[._amplification_factor()] | lang=en
+- "main_scripts_snmp_scanner_rationale_325": "Send a SNMPv3 Discover. Any reply = v3 agent present." | kind=entity | source=probe/main_scripts/snmp_scanner.py:L325 | neighbors=[._snmpv3_present()] | lang=pt
+- "main_scripts_snmp_scanner_rationale_46": "Dotted-notation OID string → BER-encoded bytes." | kind=entity | source=probe/main_scripts/snmp_scanner.py:L46 | neighbors=[_encode_oid()] | lang=en
+- "main_scripts_snmp_scanner_rationale_64": "BER-encoded OID bytes → dotted-notation string." | kind=entity | source=probe/main_scripts/snmp_scanner.py:L64 | neighbors=[_decode_oid()] | lang=en
+- "main_scripts_snmp_scanner_rationale_79": "Human-readable SNMP value for common ASN.1/SNMP types." | kind=entity | source=probe/main_scripts/snmp_scanner.py:L79 | neighbors=[_decode_value()] | lang=en
+- "main_scripts_snmp_scanner_snmpscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/snmp_scanner.py:L252 | neighbors=[SNMPScanner] | lang=en
+- "main_scripts_snmp_scanner_snmpscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/main_scripts/snmp_scanner.py:L329 | neighbors=[SNMPScanner] | lang=en
+- "main_scripts_ssh_collector_collect_over_ssh": "_collect_over_ssh()" | kind=code-symbol | source=probe/main_scripts/ssh_collector.py:L52 | neighbors=[ssh_collector.py] | lang=en
+- "main_scripts_ssh_collector_main": "main()" | kind=code-symbol | source=probe/main_scripts/ssh_collector.py:L125 | neighbors=[ssh_collector.py] | lang=en
+- "main_scripts_ssh_collector_rationale_1": "ssh_collector.py — credentialed (authenticated) inventory collection for Linux." | kind=entity | source=probe/main_scripts/ssh_collector.py:L1 | neighbors=[ssh_collector.py] | lang=en
+- "main_scripts_ssh_collector_sshcollector_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/ssh_collector.py:L83 | neighbors=[SSHCollector] | lang=en
+- "main_scripts_syn_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/syn_scanner.py:L465 | neighbors=[syn_scanner.py] | lang=en
+- "main_scripts_syn_scanner_rationale_1": "syn_scanner.py — stateless TCP SYN (half-open) scan, pure Python (Tier 1.1).  WH" | kind=entity | source=probe/main_scripts/syn_scanner.py:L1 | neighbors=[syn_scanner.py] | lang=en
+- "main_scripts_syn_scanner_rationale_104": "Build a 20-byte TCP SYN segment with a valid checksum (pseudo-header)." | kind=entity | source=probe/main_scripts/syn_scanner.py:L104 | neighbors=[build_tcp_syn()] | lang=pt
+- "main_scripts_syn_scanner_rationale_105": "Build a 20-byte TCP SYN segment with a valid checksum (pseudo-header)." | kind=entity | source=probe/main_scripts/syn_scanner.py:L105 | neighbors=[build_tcp_syn()] | lang=pt
+- "main_scripts_syn_scanner_rationale_107": "Parse a raw IPv4+TCP packet (as received on a raw IPPROTO_TCP socket)." | kind=entity | source=probe/main_scripts/syn_scanner.py:L107 | neighbors=[parse_packet()] | lang=pt
+- "main_scripts_syn_scanner_rationale_123": "SYN/ACK -> open, RST -> closed, anything else -> None (indeterminate)." | kind=entity | source=probe/main_scripts/syn_scanner.py:L123 | neighbors=[classify()] | lang=en
+- "main_scripts_syn_scanner_rationale_125": "Walk a TCP options field for the MSS value (kind 2, len 4).      Bounds-checked" | kind=entity | source=probe/main_scripts/syn_scanner.py:L125 | neighbors=[_parse_mss()] | lang=en
+- "main_scripts_syn_scanner_rationale_126": "Walk a TCP options field for the MSS value (kind 2, len 4).      Bounds-checked" | kind=entity | source=probe/main_scripts/syn_scanner.py:L126 | neighbors=[_parse_mss()] | lang=en
+- "main_scripts_syn_scanner_rationale_134": "Keyed 32-bit ISN for (dst_ip, dst_port, src_port). Reply.ack == cookie+1." | kind=entity | source=probe/main_scripts/syn_scanner.py:L134 | neighbors=[syn_cookie()] | lang=en
+- "main_scripts_syn_scanner_rationale_141": "A genuine reply to our SYN acknowledges ISN+1. The reply's own source     (ip_sr" | kind=entity | source=probe/main_scripts/syn_scanner.py:L141 | neighbors=[verify_reply_cookie()] | lang=en
+- "main_scripts_syn_scanner_rationale_151": "Parse a raw IPv4+TCP packet (as received on a raw IPPROTO_TCP socket).      Also" | kind=entity | source=probe/main_scripts/syn_scanner.py:L151 | neighbors=[parse_packet()] | lang=pt
+- "main_scripts_syn_scanner_rationale_152": "Parse a raw IPv4+TCP packet (as received on a raw IPPROTO_TCP socket).      Also" | kind=entity | source=probe/main_scripts/syn_scanner.py:L152 | neighbors=[parse_packet()] | lang=pt
+- "main_scripts_syn_scanner_rationale_154": "True only when a real SYN scan can work: Linux (BSD/macOS raw sockets can't" | kind=entity | source=probe/main_scripts/syn_scanner.py:L154 | neighbors=[syn_scan_supported()] | lang=pt
+- "main_scripts_syn_scanner_rationale_175": "Outbound-interface IP for reaching dst_ip (no packets sent — UDP connect)." | kind=entity | source=probe/main_scripts/syn_scanner.py:L175 | neighbors=[_local_source_ip()] | lang=en
+- "main_scripts_syn_scanner_rationale_179": "SYN/ACK -> open, RST -> closed, anything else -> None (indeterminate)." | kind=entity | source=probe/main_scripts/syn_scanner.py:L179 | neighbors=[classify()] | lang=en
+- "main_scripts_syn_scanner_rationale_180": "SYN/ACK -> open, RST -> closed, anything else -> None (indeterminate)." | kind=entity | source=probe/main_scripts/syn_scanner.py:L180 | neighbors=[classify()] | lang=en
+- "main_scripts_syn_scanner_rationale_189": "SYN scan on privileged Linux; transparent connect-scan fallback elsewhere." | kind=entity | source=probe/main_scripts/syn_scanner.py:L189 | neighbors=[SynScanner] | lang=en
+- "main_scripts_syn_scanner_rationale_190": "Keyed 32-bit ISN for (dst_ip, dst_port, src_port). Reply.ack == cookie+1." | kind=entity | source=probe/main_scripts/syn_scanner.py:L190 | neighbors=[syn_cookie()] | lang=en
+- "main_scripts_syn_scanner_rationale_191": "Keyed 32-bit ISN for (dst_ip, dst_port, src_port). Reply.ack == cookie+1." | kind=entity | source=probe/main_scripts/syn_scanner.py:L191 | neighbors=[syn_cookie()] | lang=en
 
 ## Instructions
 

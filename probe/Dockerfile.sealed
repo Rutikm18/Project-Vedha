@@ -6,7 +6,7 @@
 # the "sealed probe" — no Python, no bytecode, hardware-bound.
 #
 # Build:
-#   docker build -f Dockerfile.sealed -t vedha-probe:sealed \
+#   docker build -f Dockerfile.sealed -t vedha-agent:sealed \
 #     --build-arg PROBE_LICENSE_PUBKEY=<vendor pubkey hex> \
 #     --build-arg HW_BIND_FINGERPRINT=<target machine fingerprint> \
 #     --build-arg MTLS_CERT="$(cat path/to/mtls_cert.pem)" \
@@ -70,7 +70,7 @@ RUN if [ -n "${PROBE_LICENSE_PUBKEY}" ]; then \
 # already removes ALL source, bytecode, and docstrings — a large step up from
 # shipping .py/.pyc (which decompile trivially).
 RUN python3 -m nuitka --onefile --standalone --output-dir=/out \
-      --output-filename=vedha-probe --follow-imports \
+      --output-filename=vedha-agent --follow-imports \
       --lto=yes --python-flag=no_docstrings --python-flag=no_asserts \
       --include-package=scanner --include-package=workflow --include-package=agent \
       --include-package=cryptography --include-package=httpx \
@@ -85,15 +85,15 @@ WORKDIR /app
 RUN groupadd --gid 10001 vedha && \
     useradd --no-log-init --uid 10001 --gid 10001 \
       --home-dir /nonexistent --shell /usr/sbin/nologin vedha && \
-    mkdir -p /var/lib/vedha-probe && \
+    mkdir -p /var/lib/vedha-agent && \
     # Update root CA certs so the binary can validate TLS (wss://, https://)
     apt-get update && apt-get install -y --no-install-recommends ca-certificates && \
     rm -rf /var/lib/apt/lists/* && \
-    chown 10001:10001 /var/lib/vedha-probe
+    chown 10001:10001 /var/lib/vedha-agent
 
 # Force UTF-8 — the probe uses Unicode characters in status messages.
-ENV STATE_FILE=/var/lib/vedha-probe/state.json \
-    RESULT_SPOOL_DIR=/var/lib/vedha-probe/spool \
+ENV STATE_FILE=/var/lib/vedha-agent/state.json \
+    RESULT_SPOOL_DIR=/var/lib/vedha-agent/spool \
     PYTHONIOENCODING=utf-8 \
     LANG=C.UTF-8
 
@@ -107,9 +107,9 @@ ENV PROBE_LICENSE_PUBKEY=${PROBE_LICENSE_PUBKEY}
 ARG HW_BIND_FINGERPRINT=""
 ENV HW_BIND_FINGERPRINT=${HW_BIND_FINGERPRINT}
 
-COPY --from=build --chown=10001:10001 /out/vedha-probe /app/vedha-probe
+COPY --from=build --chown=10001:10001 /out/vedha-agent /app/vedha-agent
 
 # The binary starts itself — no python, no pip, no code.
 USER 10001:10001
-ENTRYPOINT ["/app/vedha-probe"]
+ENTRYPOINT ["/app/vedha-agent"]
 CMD ["run"]

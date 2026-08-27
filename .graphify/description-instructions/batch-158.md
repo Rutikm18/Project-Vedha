@@ -1,4 +1,4 @@
-# Node Description Batch 159 of 227
+# Node Description Batch 159 of 236
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -26,46 +26,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "main_scripts_snmp_scanner_rationale_127": "Extract (oid_dotted, value_tag, value_bytes) from a GET/GETNEXT/GETBULK response" | kind=entity | source=probe/main_scripts/snmp_scanner.py:L127 | neighbors=[_parse_varbinds()] | lang=en
-- "main_scripts_snmp_scanner_rationale_246": "Phase 1 (community discovery) + Phase 2 (targeted MIB walk) +     Phase 3 (ampli" | kind=entity | source=probe/main_scripts/snmp_scanner.py:L246 | neighbors=[SNMPScanner] | lang=en
-- "main_scripts_snmp_scanner_rationale_278": "Return (community, sysdescr) for the first responding community, or None." | kind=entity | source=probe/main_scripts/snmp_scanner.py:L278 | neighbors=[._discover_community()] | lang=en
-- "main_scripts_snmp_scanner_rationale_292": "GETNEXT walk of one OID subtree.  Returns [(oid, value_str), ...]." | kind=entity | source=probe/main_scripts/snmp_scanner.py:L292 | neighbors=[._walk_subtree()] | lang=en
-- "main_scripts_snmp_scanner_rationale_315": "One GETBULK request — measure response/request size ratio." | kind=entity | source=probe/main_scripts/snmp_scanner.py:L315 | neighbors=[._amplification_factor()] | lang=en
-- "main_scripts_snmp_scanner_rationale_325": "Send a SNMPv3 Discover. Any reply = v3 agent present." | kind=entity | source=probe/main_scripts/snmp_scanner.py:L325 | neighbors=[._snmpv3_present()] | lang=pt
-- "main_scripts_snmp_scanner_rationale_46": "Dotted-notation OID string → BER-encoded bytes." | kind=entity | source=probe/main_scripts/snmp_scanner.py:L46 | neighbors=[_encode_oid()] | lang=en
-- "main_scripts_snmp_scanner_rationale_64": "BER-encoded OID bytes → dotted-notation string." | kind=entity | source=probe/main_scripts/snmp_scanner.py:L64 | neighbors=[_decode_oid()] | lang=en
-- "main_scripts_snmp_scanner_rationale_79": "Human-readable SNMP value for common ASN.1/SNMP types." | kind=entity | source=probe/main_scripts/snmp_scanner.py:L79 | neighbors=[_decode_value()] | lang=en
-- "main_scripts_snmp_scanner_snmpscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/snmp_scanner.py:L252 | neighbors=[SNMPScanner] | lang=en
-- "main_scripts_snmp_scanner_snmpscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/main_scripts/snmp_scanner.py:L329 | neighbors=[SNMPScanner] | lang=en
-- "main_scripts_ssh_collector_collect_over_ssh": "_collect_over_ssh()" | kind=code-symbol | source=probe/main_scripts/ssh_collector.py:L52 | neighbors=[ssh_collector.py] | lang=en
-- "main_scripts_ssh_collector_main": "main()" | kind=code-symbol | source=probe/main_scripts/ssh_collector.py:L125 | neighbors=[ssh_collector.py] | lang=en
-- "main_scripts_ssh_collector_rationale_1": "ssh_collector.py — credentialed (authenticated) inventory collection for Linux." | kind=entity | source=probe/main_scripts/ssh_collector.py:L1 | neighbors=[ssh_collector.py] | lang=en
-- "main_scripts_ssh_collector_sshcollector_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/ssh_collector.py:L83 | neighbors=[SSHCollector] | lang=en
-- "main_scripts_syn_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/syn_scanner.py:L465 | neighbors=[syn_scanner.py] | lang=en
-- "main_scripts_syn_scanner_rationale_1": "syn_scanner.py — stateless TCP SYN (half-open) scan, pure Python (Tier 1.1).  WH" | kind=entity | source=probe/main_scripts/syn_scanner.py:L1 | neighbors=[syn_scanner.py] | lang=en
-- "main_scripts_syn_scanner_rationale_104": "Build a 20-byte TCP SYN segment with a valid checksum (pseudo-header)." | kind=entity | source=probe/main_scripts/syn_scanner.py:L104 | neighbors=[build_tcp_syn()] | lang=pt
-- "main_scripts_syn_scanner_rationale_105": "Build a 20-byte TCP SYN segment with a valid checksum (pseudo-header)." | kind=entity | source=probe/main_scripts/syn_scanner.py:L105 | neighbors=[build_tcp_syn()] | lang=pt
-- "main_scripts_syn_scanner_rationale_107": "Parse a raw IPv4+TCP packet (as received on a raw IPPROTO_TCP socket)." | kind=entity | source=probe/main_scripts/syn_scanner.py:L107 | neighbors=[parse_packet()] | lang=pt
-- "main_scripts_syn_scanner_rationale_123": "SYN/ACK -> open, RST -> closed, anything else -> None (indeterminate)." | kind=entity | source=probe/main_scripts/syn_scanner.py:L123 | neighbors=[classify()] | lang=en
-- "main_scripts_syn_scanner_rationale_125": "Walk a TCP options field for the MSS value (kind 2, len 4).      Bounds-checked" | kind=entity | source=probe/main_scripts/syn_scanner.py:L125 | neighbors=[_parse_mss()] | lang=en
-- "main_scripts_syn_scanner_rationale_126": "Walk a TCP options field for the MSS value (kind 2, len 4).      Bounds-checked" | kind=entity | source=probe/main_scripts/syn_scanner.py:L126 | neighbors=[_parse_mss()] | lang=en
-- "main_scripts_syn_scanner_rationale_134": "Keyed 32-bit ISN for (dst_ip, dst_port, src_port). Reply.ack == cookie+1." | kind=entity | source=probe/main_scripts/syn_scanner.py:L134 | neighbors=[syn_cookie()] | lang=en
-- "main_scripts_syn_scanner_rationale_141": "A genuine reply to our SYN acknowledges ISN+1. The reply's own source     (ip_sr" | kind=entity | source=probe/main_scripts/syn_scanner.py:L141 | neighbors=[verify_reply_cookie()] | lang=en
-- "main_scripts_syn_scanner_rationale_151": "Parse a raw IPv4+TCP packet (as received on a raw IPPROTO_TCP socket).      Also" | kind=entity | source=probe/main_scripts/syn_scanner.py:L151 | neighbors=[parse_packet()] | lang=pt
-- "main_scripts_syn_scanner_rationale_152": "Parse a raw IPv4+TCP packet (as received on a raw IPPROTO_TCP socket).      Also" | kind=entity | source=probe/main_scripts/syn_scanner.py:L152 | neighbors=[parse_packet()] | lang=pt
-- "main_scripts_syn_scanner_rationale_154": "True only when a real SYN scan can work: Linux (BSD/macOS raw sockets can't" | kind=entity | source=probe/main_scripts/syn_scanner.py:L154 | neighbors=[syn_scan_supported()] | lang=pt
-- "main_scripts_syn_scanner_rationale_175": "Outbound-interface IP for reaching dst_ip (no packets sent — UDP connect)." | kind=entity | source=probe/main_scripts/syn_scanner.py:L175 | neighbors=[_local_source_ip()] | lang=en
-- "main_scripts_syn_scanner_rationale_179": "SYN/ACK -> open, RST -> closed, anything else -> None (indeterminate)." | kind=entity | source=probe/main_scripts/syn_scanner.py:L179 | neighbors=[classify()] | lang=en
-- "main_scripts_syn_scanner_rationale_180": "SYN/ACK -> open, RST -> closed, anything else -> None (indeterminate)." | kind=entity | source=probe/main_scripts/syn_scanner.py:L180 | neighbors=[classify()] | lang=en
-- "main_scripts_syn_scanner_rationale_189": "SYN scan on privileged Linux; transparent connect-scan fallback elsewhere." | kind=entity | source=probe/main_scripts/syn_scanner.py:L189 | neighbors=[SynScanner] | lang=en
-- "main_scripts_syn_scanner_rationale_190": "Keyed 32-bit ISN for (dst_ip, dst_port, src_port). Reply.ack == cookie+1." | kind=entity | source=probe/main_scripts/syn_scanner.py:L190 | neighbors=[syn_cookie()] | lang=en
-- "main_scripts_syn_scanner_rationale_191": "Keyed 32-bit ISN for (dst_ip, dst_port, src_port). Reply.ack == cookie+1." | kind=entity | source=probe/main_scripts/syn_scanner.py:L191 | neighbors=[syn_cookie()] | lang=en
-- "main_scripts_syn_scanner_rationale_197": "A genuine reply to our SYN acknowledges ISN+1. The reply's own source     (ip_sr" | kind=entity | source=probe/main_scripts/syn_scanner.py:L197 | neighbors=[verify_reply_cookie()] | lang=en
-- "main_scripts_syn_scanner_rationale_198": "A genuine reply to our SYN acknowledges ISN+1. The reply's own source     (ip_sr" | kind=entity | source=probe/main_scripts/syn_scanner.py:L198 | neighbors=[verify_reply_cookie()] | lang=en
-- "main_scripts_syn_scanner_rationale_210": "True only when a real SYN scan can work: Linux (BSD/macOS raw sockets can't" | kind=entity | source=probe/main_scripts/syn_scanner.py:L210 | neighbors=[syn_scan_supported()] | lang=pt
-- "main_scripts_syn_scanner_rationale_211": "True only when a real SYN scan can work: Linux (BSD/macOS raw sockets can't" | kind=entity | source=probe/main_scripts/syn_scanner.py:L211 | neighbors=[syn_scan_supported()] | lang=pt
-- "main_scripts_syn_scanner_rationale_231": "Outbound-interface IP for reaching dst_ip (no packets sent — UDP connect)." | kind=entity | source=probe/main_scripts/syn_scanner.py:L231 | neighbors=[_local_source_ip()] | lang=en
-- "main_scripts_syn_scanner_rationale_232": "Outbound-interface IP for reaching dst_ip (no packets sent — UDP connect)." | kind=entity | source=probe/main_scripts/syn_scanner.py:L232 | neighbors=[_local_source_ip()] | lang=en
+- "main_scripts_mcp_ai_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/mcp_ai_scanner.py:L323 | neighbors=[mcp_ai_scanner.py] | lang=en
+- "main_scripts_mcp_ai_scanner_mcpaiscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/mcp_ai_scanner.py:L202 | neighbors=[MCPAIScanner] | lang=en
+- "main_scripts_mcp_ai_scanner_noredirect_redirect_request": ".redirect_request()" | kind=code-symbol | source=probe/main_scripts/mcp_ai_scanner.py:L111 | neighbors=[_NoRedirect] | lang=en
+- "main_scripts_mcp_ai_scanner_rationale_1": "mcp_ai_scanner.py — discover exposed AI inference servers and MCP endpoints.  WH" | kind=entity | source=probe/main_scripts/mcp_ai_scanner.py:L1 | neighbors=[mcp_ai_scanner.py] | lang=en
+- "main_scripts_mcp_ai_scanner_rationale_152": "Server/body fingerprint match against known non-AI squatters, or None." | kind=entity | source=probe/main_scripts/mcp_ai_scanner.py:L152 | neighbors=[_known_false_positive()] | lang=en
+- "main_scripts_mcp_ai_scanner_rationale_153": "Server/body fingerprint match against known non-AI squatters, or None." | kind=entity | source=probe/main_scripts/mcp_ai_scanner.py:L153 | neighbors=[_known_false_positive()] | lang=en
+- "main_scripts_mcp_ai_scanner_rationale_161": "The strongest possible evidence for a real MCP server: a WWW-Authenticate     he" | kind=entity | source=probe/main_scripts/mcp_ai_scanner.py:L161 | neighbors=[_mcp_oauth_signal()] | lang=en
+- "main_scripts_mcp_ai_scanner_rationale_162": "The strongest possible evidence for a real MCP server: a WWW-Authenticate     he" | kind=entity | source=probe/main_scripts/mcp_ai_scanner.py:L162 | neighbors=[_mcp_oauth_signal()] | lang=en
+- "main_scripts_mcp_ai_scanner_rationale_174": "JSON-typed body that actually talks about auth, not just any error text." | kind=entity | source=probe/main_scripts/mcp_ai_scanner.py:L174 | neighbors=[_auth_shaped_json_body()] | lang=en
+- "main_scripts_mcp_ai_scanner_rationale_175": "JSON-typed body that actually talks about auth, not just any error text." | kind=entity | source=probe/main_scripts/mcp_ai_scanner.py:L175 | neighbors=[_auth_shaped_json_body()] | lang=en
+- "main_scripts_mcp_ai_scanner_request": "_request()" | kind=code-symbol | source=probe/main_scripts/mcp_ai_scanner.py:L128 | neighbors=[mcp_ai_scanner.py] | lang=en
+- "main_scripts_mobile_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/mobile_scanner.py:L340 | neighbors=[mobile_scanner.py] | lang=en
+- "main_scripts_mobile_scanner_rationale_1": "mobile_scanner.py — mobile device exposure detection.  Covers playbook 13 (Mobil" | kind=entity | source=probe/main_scripts/mobile_scanner.py:L1 | neighbors=[mobile_scanner.py] | lang=en
+- "main_scripts_mobile_scanner_rationale_152": "Attempt TCP connect to lockdownd port 62078.     Port open = iOS device present" | kind=entity | source=probe/main_scripts/mobile_scanner.py:L152 | neighbors=[_probe_lockdownd()] | lang=en
+- "main_scripts_mobile_scanner_rationale_188": "Build a DNS PTR query in mDNS wire format with QU bit set." | kind=entity | source=probe/main_scripts/mobile_scanner.py:L188 | neighbors=[_build_mdns_query()] | lang=en
+- "main_scripts_mobile_scanner_rationale_199": "Extract PTR target names (service instance names) from mDNS reply." | kind=entity | source=probe/main_scripts/mobile_scanner.py:L199 | neighbors=[_parse_mdns_ptr_names()] | lang=en
+- "main_scripts_mobile_scanner_rationale_259": "Send one mDNS PTR query to target:5353 and return instance names." | kind=entity | source=probe/main_scripts/mobile_scanner.py:L259 | neighbors=[_probe_mdns_mobile_sync()] | lang=en
+- "main_scripts_mobile_scanner_rationale_279": "Detects mobile device exposure on the network:     ADB (Android) | lockdownd (iO" | kind=entity | source=probe/main_scripts/mobile_scanner.py:L279 | neighbors=[MobileScanner] | lang=en
+- "main_scripts_mobile_scanner_rationale_60": "Build an ADB A_CNXN (CONNECT) message — the standard handshake initiator." | kind=entity | source=probe/main_scripts/mobile_scanner.py:L60 | neighbors=[_build_adb_cnxn()] | lang=en
+- "main_scripts_mobile_scanner_rationale_71": "Parse a 24-byte ADB message header.  Returns parsed fields or None." | kind=entity | source=probe/main_scripts/mobile_scanner.py:L71 | neighbors=[_parse_adb_header()] | lang=pt
+- "main_scripts_mobile_scanner_rationale_96": "Send ADB CNXN and read the device's CNXN reply.     Returns a dict with connecti" | kind=entity | source=probe/main_scripts/mobile_scanner.py:L96 | neighbors=[_probe_adb()] | lang=en
+- "main_scripts_nmap_wrapper_have_nmap": "_have_nmap()" | kind=code-symbol | source=probe/main_scripts/nmap_wrapper.py:L111 | neighbors=[nmap_wrapper.py] | lang=en
+- "main_scripts_nmap_wrapper_main": "main()" | kind=code-symbol | source=probe/main_scripts/nmap_wrapper.py:L247 | neighbors=[nmap_wrapper.py] | lang=en
+- "main_scripts_nmap_wrapper_nmapexecutionerror_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/nmap_wrapper.py:L45 | neighbors=[NmapExecutionError] | lang=en
+- "main_scripts_nmap_wrapper_rationale_1": "nmap_wrapper.py — orchestrate nmap and normalize its XML into ScanResult.  WHY:" | kind=entity | source=probe/main_scripts/nmap_wrapper.py:L1 | neighbors=[nmap_wrapper.py] | lang=en
+- "main_scripts_nmap_wrapper_rationale_183": "# NOTE: `Element.find(...) or Element.find(...)` is a classic ElementTree" | kind=entity | source=probe/main_scripts/nmap_wrapper.py:L183 | neighbors=[nmap_wrapper.py] | lang=en
+- "main_scripts_nmap_wrapper_rationale_191": "# NOTE: `Element.find(...) or Element.find(...)` is a classic ElementTree" | kind=entity | source=probe/main_scripts/nmap_wrapper.py:L191 | neighbors=[nmap_wrapper.py] | lang=en
+- "main_scripts_nmap_wrapper_rationale_43": "Actionable subprocess failure; never reinterpret it as zero findings." | kind=entity | source=probe/main_scripts/nmap_wrapper.py:L43 | neighbors=[NmapExecutionError] | lang=en
+- "main_scripts_nmap_wrapper_rationale_70": "Allow tuning only; target, script, and output controls stay owned here." | kind=entity | source=probe/main_scripts/nmap_wrapper.py:L70 | neighbors=[_validated_extra_args()] | lang=en
+- "main_scripts_os_fingerprint_main": "main()" | kind=code-symbol | source=probe/main_scripts/os_fingerprint.py:L414 | neighbors=[os_fingerprint.py] | lang=en
+- "main_scripts_os_fingerprint_osfingerprintscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/os_fingerprint.py:L293 | neighbors=[OSFingerprintScanner] | lang=en
+- "main_scripts_os_fingerprint_rationale_1": "os_fingerprint.py — OS/stack fingerprinting via ICMP + TTL (Tier 2.1 + 2.2).  TW" | kind=entity | source=probe/main_scripts/os_fingerprint.py:L1 | neighbors=[os_fingerprint.py] | lang=pt
+- "main_scripts_os_fingerprint_rationale_102": "Round the observed TTL up to the nearest standard initial TTL." | kind=entity | source=probe/main_scripts/os_fingerprint.py:L102 | neighbors=[infer_initial_ttl()] | lang=en
+- "main_scripts_os_fingerprint_rationale_109": "Parse an ICMP timestamp reply (type 14): id/seq/ttl plus the three 32-bit     ti" | kind=entity | source=probe/main_scripts/os_fingerprint.py:L109 | neighbors=[parse_icmp_timestamps()] | lang=en
+- "main_scripts_os_fingerprint_rationale_122": "Interpret a timestamp reply's transmit value. Per RFC 792 a *standard* value" | kind=entity | source=probe/main_scripts/os_fingerprint.py:L122 | neighbors=[remote_clock()] | lang=pt
+- "main_scripts_os_fingerprint_rationale_129": "Combine available stack signals into a best-guess OS family with a calibrated" | kind=entity | source=probe/main_scripts/os_fingerprint.py:L129 | neighbors=[fingerprint_os()] | lang=pt
+- "main_scripts_os_fingerprint_rationale_138": "True only for an ICMP ECHO reply that actually came FROM the probed host.      A" | kind=entity | source=probe/main_scripts/os_fingerprint.py:L138 | neighbors=[accept_echo_reply()] | lang=en
+- "main_scripts_os_fingerprint_rationale_153": "Round the observed TTL up to the nearest standard initial TTL." | kind=entity | source=probe/main_scripts/os_fingerprint.py:L153 | neighbors=[infer_initial_ttl()] | lang=en
+- "main_scripts_os_fingerprint_rationale_180": "Combine available stack signals into a best-guess OS family with a calibrated" | kind=entity | source=probe/main_scripts/os_fingerprint.py:L180 | neighbors=[fingerprint_os()] | lang=pt
+- "main_scripts_os_fingerprint_rationale_188": "True if we can open an ICMP socket (datagram-ICMP or raw)." | kind=entity | source=probe/main_scripts/os_fingerprint.py:L188 | neighbors=[icmp_supported()] | lang=en
 
 ## Instructions
 

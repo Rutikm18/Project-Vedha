@@ -48,6 +48,17 @@ DEFAULT_PORT_ROUTES: dict[str, list[int]] = {
     "smb": [445],
     "web": [80, 8080, 8000, 8443, 443, 8888],
     "ai":  [11434, 9200, 6333, 8000, 8888],
+    "ssh": [22, 2222],
+    "smb_enum": [445],
+    "ldap": [389, 636, 3268, 3269],
+    "dns": [53],
+    "nfs": [111, 2049],
+    "ftp": [21],
+    "rsync": [873],
+    "vnc": [5900, 5901],
+    "smtp": [25, 587],
+    "msrpc": [135],
+    "printer": [9100, 631],
 }
 
 
@@ -217,6 +228,17 @@ def build_default_funnel(scope: ScopeGuard, *, rate: float = 200.0,
     from .web_scanner import WebScanner
     from .mcp_ai_scanner import MCPAIScanner
     from .udp_scanner import UDPScanner
+    from .ssh_scanner import SSHScanner
+    from .smb_enum_scanner import SMBEnumScanner
+    from .ldap_scanner import LDAPScanner
+    from .dns_scanner import DNSScanner
+    from .nfs_scanner import NFSScanner
+    from .ftp_scanner import FTPScanner
+    from .rsync_scanner import RsyncScanner
+    from .vnc_scanner import VNCScanner
+    from .smtp_scanner import SMTPScanner
+    from .msrpc_scanner import MSRPCScanner
+    from .printer_scanner import PrinterScanner
 
     common = dict(rate=rate, concurrency=concurrency, timeout=timeout)
 
@@ -242,6 +264,39 @@ def build_default_funnel(scope: ScopeGuard, *, rate: float = 200.0,
     def ai_factory(ports):
         return MCPAIScanner(scope, ports=ports, **common)
 
+    def ssh_factory(ports):
+        return SSHScanner(scope, ports=ports, **common)
+
+    def smb_enum_factory(ports):
+        return SMBEnumScanner(scope, ports=ports, **common)
+
+    def ldap_factory(ports):
+        return LDAPScanner(scope, ports=ports, **common)
+
+    def dns_factory(ports):
+        return DNSScanner(scope, ports=ports, **common)
+
+    def nfs_factory(ports):
+        return NFSScanner(scope, ports=ports, **common)
+
+    def ftp_factory(ports):
+        return FTPScanner(scope, ports=ports, **common)
+
+    def rsync_factory(ports):
+        return RsyncScanner(scope, ports=ports, **common)
+
+    def vnc_factory(ports):
+        return VNCScanner(scope, ports=ports, **common)
+
+    def smtp_factory(ports):
+        return SMTPScanner(scope, ports=ports, **common)
+
+    def msrpc_factory(ports):
+        return MSRPCScanner(scope, ports=ports, **common)
+
+    def printer_factory(ports):
+        return PrinterScanner(scope, ports=ports, **common)
+
     return ScanFunnel(
         scope,
         discovery=discovery,
@@ -252,6 +307,17 @@ def build_default_funnel(scope: ScopeGuard, *, rate: float = 200.0,
             "smb": smb_factory,
             "web": web_factory,
             "ai": ai_factory,
+            "ssh": ssh_factory,
+            "smb_enum": smb_enum_factory,
+            "ldap": ldap_factory,
+            "dns": dns_factory,
+            "nfs": nfs_factory,
+            "ftp": ftp_factory,
+            "rsync": rsync_factory,
+            "vnc": vnc_factory,
+            "smtp": smtp_factory,
+            "msrpc": msrpc_factory,
+            "printer": printer_factory,
         },
         udp_scanner=UDPScanner(scope, **common) if with_udp else None,
         force=force,

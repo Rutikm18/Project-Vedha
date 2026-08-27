@@ -1,4 +1,4 @@
-# Node Description Batch 225 of 227
+# Node Description Batch 225 of 236
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,51 +19,53 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-Write every description in English (en). Do not switch languages.
+LANGUAGE: each entry has a `lang=` marker giving the language of its source.
+Write that entry's description in EXACTLY that language. Do not translate to
+a single common language — match each node's source language individually.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "workflow_asset_asset_merge_mcp_ai_scan": "._merge_mcp_ai_scan()" | kind=code-symbol | source=probe/workflow/asset.py:L143 | neighbors=[Asset]
-- "workflow_asset_asset_merge_os_fingerprint": "._merge_os_fingerprint()" | kind=code-symbol | source=probe/workflow/asset.py:L171 | neighbors=[Asset]
-- "workflow_asset_asset_merge_passive_collect": "._merge_passive_collect()" | kind=code-symbol | source=probe/workflow/asset.py:L155 | neighbors=[Asset]
-- "workflow_asset_asset_merge_service_banner": "._merge_service_banner()" | kind=code-symbol | source=probe/workflow/asset.py:L117 | neighbors=[Asset]
-- "workflow_asset_asset_merge_service_enum": "._merge_service_enum()" | kind=code-symbol | source=probe/workflow/asset.py:L175 | neighbors=[Asset]
-- "workflow_asset_asset_merge_smb_scan": "._merge_smb_scan()" | kind=code-symbol | source=probe/workflow/asset.py:L129 | neighbors=[Asset]
-- "workflow_asset_asset_merge_snmp_scan": "._merge_snmp_scan()" | kind=code-symbol | source=probe/workflow/asset.py:L135 | neighbors=[Asset]
-- "workflow_asset_asset_merge_ssh_inventory": "._merge_ssh_inventory()" | kind=code-symbol | source=probe/workflow/asset.py:L161 | neighbors=[Asset]
-- "workflow_asset_asset_merge_tls_scan": "._merge_tls_scan()" | kind=code-symbol | source=probe/workflow/asset.py:L121 | neighbors=[Asset]
-- "workflow_asset_asset_merge_web_scan": "._merge_web_scan()" | kind=code-symbol | source=probe/workflow/asset.py:L125 | neighbors=[Asset]
-- "workflow_asset_asset_merge_windows_inventory": "._merge_windows_inventory()" | kind=code-symbol | source=probe/workflow/asset.py:L165 | neighbors=[Asset]
-- "workflow_asset_asset_open_ports_for_deep_scan": ".open_ports_for_deep_scan()" | kind=code-symbol | source=probe/workflow/asset.py:L80 | neighbors=[Asset]
-- "workflow_asset_rationale_1": "asset.py — per-host fact model the workflow engine reasons about.  This is an OR" | kind=entity | source=probe/workflow/asset.py:L1 | neighbors=[asset.py]
-- "workflow_asset_rationale_71": "Is liveness unknown, or stale past `threshold`? Threshold is         profile-dep" | kind=entity | source=probe/workflow/asset.py:L71 | neighbors=[.needs_recheck_live()]
-- "workflow_asset_rationale_72": "Is liveness unknown, or stale past `threshold`? Threshold is         profile-dep" | kind=entity | source=probe/workflow/asset.py:L72 | neighbors=[.needs_recheck_live()]
-- "workflow_asset_rationale_73": "Is liveness unknown, or stale past `threshold`? Threshold is         profile-dep" | kind=entity | source=probe/workflow/asset.py:L73 | neighbors=[.needs_recheck_live()]
-- "workflow_asset_rationale_84": "Dispatch a real ScanResult into the right sub-structure, keyed         on result" | kind=entity | source=probe/workflow/asset.py:L84 | neighbors=[.merge_result()]
-- "workflow_asset_rationale_85": "Dispatch a real ScanResult into the right sub-structure, keyed         on result" | kind=entity | source=probe/workflow/asset.py:L85 | neighbors=[.merge_result()]
-- "workflow_asset_rationale_86": "Dispatch a real ScanResult into the right sub-structure, keyed         on result" | kind=entity | source=probe/workflow/asset.py:L86 | neighbors=[.merge_result()]
-- "workflow_cache_rationale_1": "cache.py — (host, port, scanner) -> CacheEntry, so deterministic facts are colle" | kind=entity | source=probe/workflow/cache.py:L1 | neighbors=[cache.py]
-- "workflow_cache_rationale_122": "True if there's no cached entry, OR the entry is uncertain         (always worth" | kind=entity | source=probe/workflow/cache.py:L122 | neighbors=[.should_recheck()]
-- "workflow_cache_rationale_124": "True if there's no cached entry, OR the entry is uncertain         (always worth" | kind=entity | source=probe/workflow/cache.py:L124 | neighbors=[.should_recheck()]
-- "workflow_cache_rationale_79": "In-memory (host, port, scanner) -> CacheEntry, optionally JSONL-backed     for c" | kind=entity | source=probe/workflow/cache.py:L79 | neighbors=[WorkflowCache]
-- "workflow_cache_rationale_81": "In-memory (host, port, scanner) -> CacheEntry, optionally JSONL-backed     for c" | kind=entity | source=probe/workflow/cache.py:L81 | neighbors=[WorkflowCache]
-- "workflow_cache_workflowcache_all_entries_for_host": ".all_entries_for_host()" | kind=code-symbol | source=probe/workflow/cache.py:L139 | neighbors=[WorkflowCache]
-- "workflow_cli_rationale_1": "cli.py — entrypoint for the conditional workflow engine. Flag conventions follow" | kind=entity | source=probe/workflow/cli.py:L1 | neighbors=[cli.py]
-- "workflow_cli_rationale_29": "7d' / '12h' / '30m' -> timedelta. Simple single-unit parser —     engagements ar" | kind=entity | source=probe/workflow/cli.py:L29 | neighbors=[_parse_duration()]
-- "workflow_cli_rationale_30": "7d' / '12h' / '30m' -> timedelta. Simple single-unit parser —     engagements ar" | kind=entity | source=probe/workflow/cli.py:L30 | neighbors=[_parse_duration()]
-- "workflow_execution_executiontrace_degraded": ".degraded()" | kind=code-symbol | source=probe/workflow/execution.py:L346 | neighbors=[ExecutionTrace]
-- "workflow_execution_executiontrace_issues": ".issues()" | kind=code-symbol | source=probe/workflow/execution.py:L338 | neighbors=[ExecutionTrace]
-- "workflow_execution_rationale_1": "Execution telemetry and failure normalization for the probe workflow." | kind=entity | source=probe/workflow/execution.py:L1 | neighbors=[execution.py]
-- "workflow_execution_rationale_105": "Resolve the exact collector plan for one workflow invocation." | kind=entity | source=probe/workflow/execution.py:L105 | neighbors=[planned_components()]
-- "workflow_execution_rationale_154": "Map low-level failures into stable, operator-actionable categories." | kind=entity | source=probe/workflow/execution.py:L154 | neighbors=[classify_scanner_error()]
-- "workflow_execution_rationale_210": "Represent an unexpected component exception without aborting other hosts." | kind=entity | source=probe/workflow/execution.py:L210 | neighbors=[scanner_failure_result()]
-- "workflow_execution_rationale_232": "Mutable per-run component accounting, serialized only after completion." | kind=entity | source=probe/workflow/execution.py:L232 | neighbors=[ExecutionTrace]
-- "workflow_execution_rationale_351": "True when execution produced errors and no usable or cached facts." | kind=entity | source=probe/workflow/execution.py:L351 | neighbors=[.failed()]
-- "workflow_execution_rationale_59": "Return the runtime engine inventory without claiming optional tools ran." | kind=entity | source=probe/workflow/execution.py:L59 | neighbors=[engine_manifest()]
-- "workflow_gates_gate_4_service_banner": "gate_4_service_banner()" | kind=code-symbol | source=probe/workflow/gates.py:L67 | neighbors=[gates.py]
-- "workflow_gates_gate_6_credentialed_collection": "gate_6_credentialed_collection()" | kind=code-symbol | source=probe/workflow/gates.py:L101 | neighbors=[gates.py]
-- "workflow_gates_rationale_1": "gates.py — precondition functions deciding whether each stage of the workflow ru" | kind=entity | source=probe/workflow/gates.py:L1 | neighbors=[gates.py]
+- "tests_test_vuln_enrichment_test_dedup_hash_case_insensitive_cve": "test_dedup_hash_case_insensitive_cve()" | kind=code-symbol | source=manager/backend/tests/test_vuln_enrichment.py:L242 | neighbors=[test_vuln_enrichment.py] | lang=en
+- "tests_test_vuln_enrichment_test_dedup_hash_different_inputs": "test_dedup_hash_different_inputs()" | kind=code-symbol | source=manager/backend/tests/test_vuln_enrichment.py:L248 | neighbors=[test_vuln_enrichment.py] | lang=en
+- "tests_test_vuln_enrichment_test_dedup_hash_stable": "test_dedup_hash_stable()" | kind=code-symbol | source=manager/backend/tests/test_vuln_enrichment.py:L236 | neighbors=[test_vuln_enrichment.py] | lang=en
+- "tests_test_vuln_enrichment_test_fetch_epss_empty": "test_fetch_epss_empty()" | kind=code-symbol | source=manager/backend/tests/test_vuln_enrichment.py:L114 | neighbors=[test_vuln_enrichment.py] | lang=en
+- "tests_test_vuln_enrichment_test_fetch_mitre_known_cve": "test_fetch_mitre_known_cve()" | kind=code-symbol | source=manager/backend/tests/test_vuln_enrichment.py:L148 | neighbors=[test_vuln_enrichment.py] | lang=en
+- "tests_test_vuln_enrichment_test_fetch_nvd_not_found": "test_fetch_nvd_not_found()" | kind=code-symbol | source=manager/backend/tests/test_vuln_enrichment.py:L82 | neighbors=[test_vuln_enrichment.py] | lang=en
+- "tests_test_vuln_enrichment_test_kev_bonus_increases_score": "test_kev_bonus_increases_score()" | kind=code-symbol | source=manager/backend/tests/test_vuln_enrichment.py:L186 | neighbors=[test_vuln_enrichment.py] | lang=en
+- "tests_test_vuln_enrichment_test_max_risk_score": "test_max_risk_score()" | kind=code-symbol | source=manager/backend/tests/test_vuln_enrichment.py:L164 | neighbors=[test_vuln_enrichment.py] | lang=en
+- "tests_test_vuln_enrichment_test_risk_score_bounds": "test_risk_score_bounds()" | kind=code-symbol | source=manager/backend/tests/test_vuln_enrichment.py:L193 | neighbors=[test_vuln_enrichment.py] | lang=en
+- "tests_test_vuln_enrichment_test_zero_risk_score": "test_zero_risk_score()" | kind=code-symbol | source=manager/backend/tests/test_vuln_enrichment.py:L175 | neighbors=[test_vuln_enrichment.py] | lang=en
+- "tests_test_web_methods_test_dangerous_methods_flagged": "test_dangerous_methods_flagged()" | kind=code-symbol | source=probe/tests/test_web_methods.py:L4 | neighbors=[test_web_methods.py] | lang=en
+- "tests_test_web_methods_test_no_allow_header": "test_no_allow_header()" | kind=code-symbol | source=probe/tests/test_web_methods.py:L17 | neighbors=[test_web_methods.py] | lang=en
+- "tests_test_web_methods_test_safe_methods_only": "test_safe_methods_only()" | kind=code-symbol | source=probe/tests/test_web_methods.py:L12 | neighbors=[test_web_methods.py] | lang=en
+- "tests_test_wire_identity_rationale_1": "test_wire_identity.py — the scanner must NOT sign its own packets.  A brand stri" | kind=entity | source=probe/tests/test_wire_identity.py:L1 | neighbors=[test_wire_identity.py] | lang=en
+- "tests_test_wire_identity_rationale_39": "Evasion: a fixed source port (e.g. 53/88) slips past naive stateless ACLs." | kind=entity | source=probe/tests/test_wire_identity.py:L39 | neighbors=[TestChooseSourcePort] | lang=pt
+- "tests_test_wire_identity_rationale_58": "Evasion: blur a fixed scan cadence with a bounded random per-probe delay." | kind=entity | source=probe/tests/test_wire_identity.py:L58 | neighbors=[TestJitteredDelay] | lang=pt
+- "tests_test_wire_identity_rationale_81": "Import-time probe constants built from user_agent() must be signature-free." | kind=entity | source=probe/tests/test_wire_identity.py:L81 | neighbors=[TestModuleConstantsUnbranded] | lang=en
+- "tests_test_wire_identity_testchoosesourceport_test_boundary_ports_are_valid": ".test_boundary_ports_are_valid()" | kind=code-symbol | source=probe/tests/test_wire_identity.py:L52 | neighbors=[TestChooseSourcePort] | lang=en
+- "tests_test_wire_identity_testchoosesourceport_test_none_gives_random_ephemeral": ".test_none_gives_random_ephemeral()" | kind=code-symbol | source=probe/tests/test_wire_identity.py:L45 | neighbors=[TestChooseSourcePort] | lang=en
+- "tests_test_wire_identity_testchoosesourceport_test_out_of_range_falls_back_to_random": ".test_out_of_range_falls_back_to_random()" | kind=code-symbol | source=probe/tests/test_wire_identity.py:L48 | neighbors=[TestChooseSourcePort] | lang=en
+- "tests_test_wire_identity_testchoosesourceport_test_uses_configured_valid_port": ".test_uses_configured_valid_port()" | kind=code-symbol | source=probe/tests/test_wire_identity.py:L41 | neighbors=[TestChooseSourcePort] | lang=en
+- "tests_test_wire_identity_testevasionflags_test_randomize_and_scan_delay_flags_present": ".test_randomize_and_scan_delay_flags_present()" | kind=code-symbol | source=probe/tests/test_wire_identity.py:L74 | neighbors=[TestEvasionFlags] | lang=en
+- "tests_test_wire_identity_testjittereddelay_test_never_negative_even_at_full_jitter": ".test_never_negative_even_at_full_jitter()" | kind=code-symbol | source=probe/tests/test_wire_identity.py:L68 | neighbors=[TestJitteredDelay] | lang=en
+- "tests_test_wire_identity_testjittereddelay_test_stays_within_jitter_band": ".test_stays_within_jitter_band()" | kind=code-symbol | source=probe/tests/test_wire_identity.py:L64 | neighbors=[TestJitteredDelay] | lang=en
+- "tests_test_wire_identity_testjittereddelay_test_zero_or_negative_base_is_zero": ".test_zero_or_negative_base_is_zero()" | kind=code-symbol | source=probe/tests/test_wire_identity.py:L60 | neighbors=[TestJitteredDelay] | lang=en
+- "tests_test_wire_identity_testmoduleconstantsunbranded_test_iot_rtsp_options": ".test_iot_rtsp_options()" | kind=code-symbol | source=probe/tests/test_wire_identity.py:L87 | neighbors=[TestModuleConstantsUnbranded] | lang=en
+- "tests_test_wire_identity_testmoduleconstantsunbranded_test_service_banner_http_probe": ".test_service_banner_http_probe()" | kind=code-symbol | source=probe/tests/test_wire_identity.py:L83 | neighbors=[TestModuleConstantsUnbranded] | lang=en
+- "tests_test_wire_identity_testprobepayload_test_default_carries_no_brand": ".test_default_carries_no_brand()" | kind=code-symbol | source=probe/tests/test_wire_identity.py:L29 | neighbors=[TestProbePayload] | lang=en
+- "tests_test_wire_identity_testprobepayload_test_env_override": ".test_env_override()" | kind=code-symbol | source=probe/tests/test_wire_identity.py:L33 | neighbors=[TestProbePayload] | lang=en
+- "tests_test_wire_identity_testuseragent_test_default_is_generic_browser_no_brand": ".test_default_is_generic_browser_no_brand()" | kind=code-symbol | source=probe/tests/test_wire_identity.py:L18 | neighbors=[TestUserAgent] | lang=en
+- "tests_test_wire_identity_testuseragent_test_env_override": ".test_env_override()" | kind=code-symbol | source=probe/tests/test_wire_identity.py:L23 | neighbors=[TestUserAgent] | lang=en
+- "tests_test_workflow_execution_concurrencyscanner_init": ".__init__()" | kind=code-symbol | source=probe/tests/test_workflow_execution.py:L49 | neighbors=[_ConcurrencyScanner] | lang=en
+- "tests_test_workflow_execution_concurrencyscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/tests/test_workflow_execution.py:L53 | neighbors=[_ConcurrencyScanner] | lang=en
+- "tests_test_workflow_execution_explodingscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/tests/test_workflow_execution.py:L32 | neighbors=[_ExplodingScanner] | lang=en
+- "tests_test_workflow_execution_test_agent_scan_types_have_distinct_stage_ceilings": "test_agent_scan_types_have_distinct_stage_ceilings()" | kind=code-symbol | source=probe/tests/test_workflow_execution.py:L419 | neighbors=[test_workflow_execution.py] | lang=en
+- "tests_test_workflow_execution_test_database_gate_uses_scanner_port_catalog": "test_database_gate_uses_scanner_port_catalog()" | kind=code-symbol | source=probe/tests/test_workflow_execution.py:L132 | neighbors=[test_workflow_execution.py] | lang=en
+- "tests_test_workflow_execution_test_empty_authoritative_scope_never_falls_back_to_job_targets": "test_empty_authoritative_scope_never_falls_back_to_job_targets()" | kind=code-symbol | source=probe/tests/test_workflow_execution.py:L519 | neighbors=[test_workflow_execution.py] | lang=en
+- "tests_test_workflow_execution_test_engine_applies_configured_target_ceiling": "test_engine_applies_configured_target_ceiling()" | kind=code-symbol | source=probe/tests/test_workflow_execution.py:L446 | neighbors=[test_workflow_execution.py] | lang=en
+- "tests_test_workflow_execution_test_engine_deadline_fails_when_no_evidence_exists": "test_engine_deadline_fails_when_no_evidence_exists()" | kind=code-symbol | source=probe/tests/test_workflow_execution.py:L467 | neighbors=[test_workflow_execution.py] | lang=en
+- "tests_test_workflow_execution_test_engine_deadline_preserves_verified_partial_evidence": "test_engine_deadline_preserves_verified_partial_evidence()" | kind=code-symbol | source=probe/tests/test_workflow_execution.py:L486 | neighbors=[test_workflow_execution.py] | lang=en
 
 ## Instructions
 

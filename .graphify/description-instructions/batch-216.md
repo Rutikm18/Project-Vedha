@@ -1,4 +1,4 @@
-# Node Description Batch 217 of 227
+# Node Description Batch 217 of 236
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,53 +19,51 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-LANGUAGE: each entry has a `lang=` marker giving the language of its source.
-Write that entry's description in EXACTLY that language. Do not translate to
-a single common language — match each node's source language individually.
+Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_use_cases_test_full_port_audit_is_deep": "test_full_port_audit_is_deep()" | kind=code-symbol | source=probe/tests/test_use_cases.py:L64 | neighbors=[test_use_cases.py] | lang=en
-- "tests_test_use_cases_test_intensity_code_and_name_equivalent": "test_intensity_code_and_name_equivalent()" | kind=code-symbol | source=probe/tests/test_use_cases.py:L100 | neighbors=[test_use_cases.py] | lang=en
-- "tests_test_use_cases_test_iot_survey_collects_banners": "test_iot_survey_collects_banners()" | kind=code-symbol | source=probe/tests/test_use_cases.py:L45 | neighbors=[test_use_cases.py] | lang=en
-- "tests_test_use_cases_test_new_use_cases_resolve": "test_new_use_cases_resolve()" | kind=code-symbol | source=probe/tests/test_use_cases.py:L52 | neighbors=[test_use_cases.py] | lang=en
-- "tests_test_use_cases_test_params_intensity_overrides_use_case": "test_params_intensity_overrides_use_case()" | kind=code-symbol | source=probe/tests/test_use_cases.py:L69 | neighbors=[test_use_cases.py] | lang=en
-- "tests_test_use_cases_test_resolve_accepts_string_digits_too": "test_resolve_accepts_string_digits_too()" | kind=code-symbol | source=probe/tests/test_use_cases.py:L95 | neighbors=[test_use_cases.py] | lang=en
-- "tests_test_use_cases_test_resolve_by_numeric_code": "test_resolve_by_numeric_code()" | kind=code-symbol | source=probe/tests/test_use_cases.py:L90 | neighbors=[test_use_cases.py] | lang=en
-- "tests_test_use_cases_test_string_use_case_id_still_wins_over_code": "test_string_use_case_id_still_wins_over_code()" | kind=code-symbol | source=probe/tests/test_use_cases.py:L113 | neighbors=[test_use_cases.py] | lang=en
-- "tests_test_use_cases_test_udp_claims_amplification": "test_udp_claims_amplification()" | kind=code-symbol | source=probe/tests/test_use_cases.py:L36 | neighbors=[test_use_cases.py] | lang=en
-- "tests_test_use_cases_test_unknown_code_is_rejected": "test_unknown_code_is_rejected()" | kind=code-symbol | source=probe/tests/test_use_cases.py:L106 | neighbors=[test_use_cases.py] | lang=en
-- "tests_test_use_cases_test_web_claims_methods": "test_web_claims_methods()" | kind=code-symbol | source=probe/tests/test_use_cases.py:L41 | neighbors=[test_use_cases.py] | lang=en
-- "tests_test_use_cases_test_windows_estate_claims_signing": "test_windows_estate_claims_signing()" | kind=code-symbol | source=probe/tests/test_use_cases.py:L32 | neighbors=[test_use_cases.py] | lang=en
-- "tests_test_validation_endpoints_rationale_1": "Mocked-session unit tests for the P3 active-validation endpoints (Task 4).  No D" | kind=entity | source=manager/backend/tests/test_validation_endpoints.py:L1 | neighbors=[test_validation_endpoints.py] | lang=en
-- "tests_test_validation_fakeclient_init": ".__init__()" | kind=code-symbol | source=probe/tests/test_validation.py:L111 | neighbors=[FakeClient] | lang=en
-- "tests_test_validation_fakeclient_request": ".request()" | kind=code-symbol | source=probe/tests/test_validation.py:L115 | neighbors=[FakeClient] | lang=en
-- "tests_test_validation_ingest_rationale_1": "Unit tests for P3 Task 7: validation-result ingestion → finding verdict.  Pure t" | kind=entity | source=manager/backend/tests/test_validation_ingest.py:L1 | neighbors=[test_validation_ingest.py] | lang=en
-- "tests_test_validation_ingest_test_ingest_normal_scan_is_noop": "test_ingest_normal_scan_is_noop()" | kind=code-symbol | source=manager/backend/tests/test_validation_ingest.py:L79 | neighbors=[test_validation_ingest.py] | lang=en
-- "tests_test_validation_ingest_test_scan_result_is_not_mistaken_for_validation": "test_scan_result_is_not_mistaken_for_validation()" | kind=code-symbol | source=manager/backend/tests/test_validation_ingest.py:L64 | neighbors=[test_validation_ingest.py] | lang=en
-- "tests_test_validation_request_schema_test_validation_request_columns_and_defaults": "test_validation_request_columns_and_defaults()" | kind=code-symbol | source=manager/backend/tests/test_validation_request_schema.py:L8 | neighbors=[test_validation_request_schema.py] | lang=en
-- "tests_test_validation_test_parser_accepts_validate_command": "test_parser_accepts_validate_command()" | kind=code-symbol | source=probe/tests/test_validation.py:L254 | neighbors=[test_validation.py] | lang=en
-- "tests_test_validation_test_resolve_use_cases_deduplicates_combined_suites": "test_resolve_use_cases_deduplicates_combined_suites()" | kind=code-symbol | source=probe/tests/test_validation.py:L19 | neighbors=[test_validation.py] | lang=en
-- "tests_test_validation_test_score_inventory_reports_precision_recall_and_unscored_dimensions": "test_score_inventory_reports_precision_recall_and_unscored_dimensions()" | kind=code-symbol | source=probe/tests/test_validation.py:L62 | neighbors=[test_validation.py] | lang=en
-- "tests_test_validation_test_target_address_count_is_conservative": "test_target_address_count_is_conservative()" | kind=code-symbol | source=probe/tests/test_validation.py:L47 | neighbors=[test_validation.py] | lang=en
-- "tests_test_validation_test_validate_ground_truth_rejects_invalid_ports_and_duplicate_hosts": "test_validate_ground_truth_rejects_invalid_ports_and_duplicate_hosts()" | kind=code-symbol | source=probe/tests/test_validation.py:L51 | neighbors=[test_validation.py] | lang=en
-- "tests_test_validation_test_validate_targets_enforces_scope_and_exclusions": "test_validate_targets_enforces_scope_and_exclusions()" | kind=code-symbol | source=probe/tests/test_validation.py:L32 | neighbors=[test_validation.py] | lang=en
-- "tests_test_vantage_fusion_rationale_1": "test_vantage_fusion.py — fleet-level reconciliation of exposure_matrix across pr" | kind=entity | source=manager/backend/tests/test_vantage_fusion.py:L1 | neighbors=[test_vantage_fusion.py] | lang=en
-- "tests_test_vantage_fusion_rationale_16": "Build a one-target probe exposure result. `ports` maps 'proto/port' →     {vanta" | kind=entity | source=manager/backend/tests/test_vantage_fusion.py:L16 | neighbors=[_probe()] | lang=pt
-- "tests_test_vantage_fusion_test_empty_and_malformed_are_safe": "test_empty_and_malformed_are_safe()" | kind=code-symbol | source=manager/backend/tests/test_vantage_fusion.py:L87 | neighbors=[test_vantage_fusion.py] | lang=en
-- "tests_test_vantage_fusion_test_reconstruct_probe_results_from_persisted_facts": "test_reconstruct_probe_results_from_persisted_facts()" | kind=code-symbol | source=manager/backend/tests/test_vantage_fusion.py:L93 | neighbors=[test_vantage_fusion.py] | lang=en
-- "tests_test_verification_core_test_authoritative_is_confirmed": "test_authoritative_is_confirmed()" | kind=code-symbol | source=manager/backend/tests/test_verification_core.py:L6 | neighbors=[test_verification_core.py] | lang=en
-- "tests_test_verification_core_test_high_confidence_inferred_is_corroborated": "test_high_confidence_inferred_is_corroborated()" | kind=code-symbol | source=manager/backend/tests/test_verification_core.py:L14 | neighbors=[test_verification_core.py] | lang=en
-- "tests_test_verification_core_test_kev_suspected_finding_needs_review": "test_kev_suspected_finding_needs_review()" | kind=code-symbol | source=manager/backend/tests/test_verification_core.py:L26 | neighbors=[test_verification_core.py] | lang=en
-- "tests_test_verification_core_test_low_confidence_inferred_is_inferred": "test_low_confidence_inferred_is_inferred()" | kind=code-symbol | source=manager/backend/tests/test_verification_core.py:L20 | neighbors=[test_verification_core.py] | lang=en
-- "tests_test_verification_core_test_missing_confidence_defaults_to_inferred_not_crash": "test_missing_confidence_defaults_to_inferred_not_crash()" | kind=code-symbol | source=manager/backend/tests/test_verification_core.py:L33 | neighbors=[test_verification_core.py] | lang=en
-- "tests_test_verification_graph_test_graph_available_is_boolean": "test_graph_available_is_boolean()" | kind=code-symbol | source=manager/backend/tests/test_verification_graph.py:L15 | neighbors=[test_verification_graph.py] | lang=en
-- "tests_test_verification_graph_test_run_verification_matches_core_without_llm": "test_run_verification_matches_core_without_llm()" | kind=code-symbol | source=manager/backend/tests/test_verification_graph.py:L9 | neighbors=[test_verification_graph.py] | lang=en
-- "tests_test_verification_llm_test_llm_can_flag_false_positive_and_lower": "test_llm_can_flag_false_positive_and_lower()" | kind=code-symbol | source=manager/backend/tests/test_verification_llm.py:L30 | neighbors=[test_verification_llm.py] | lang=en
-- "tests_test_verification_llm_test_llm_error_falls_back_to_deterministic": "test_llm_error_falls_back_to_deterministic()" | kind=code-symbol | source=manager/backend/tests/test_verification_llm.py:L19 | neighbors=[test_verification_llm.py] | lang=en
-- "tests_test_verification_llm_test_no_llm_matches_deterministic": "test_no_llm_matches_deterministic()" | kind=code-symbol | source=manager/backend/tests/test_verification_llm.py:L11 | neighbors=[test_verification_llm.py] | lang=en
-- "tests_test_version_compare_rationale_1": "Cross-validates the pure-Python Debian version comparator against the real `dpkg" | kind=entity | source=manager/detection_engine/tests/test_version_compare.py:L1 | neighbors=[test_version_compare.py] | lang=en
+- "tests_test_scan_funnel_recordingdeep_scan_target": ".scan_target()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L53 | neighbors=[RecordingDeep]
+- "tests_test_scan_funnel_testbuilddefaultfunnel_test_candidate_ports_cover_all_routes": ".test_candidate_ports_cover_all_routes()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L210 | neighbors=[TestBuildDefaultFunnel]
+- "tests_test_scan_funnel_testrouteports_test_intersection_only": ".test_intersection_only()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L99 | neighbors=[TestRoutePorts]
+- "tests_test_scan_funnel_testrouteports_test_no_match_returns_empty": ".test_no_match_returns_empty()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L103 | neighbors=[TestRoutePorts]
+- "tests_test_scan_funnel_testrouteports_test_port_in_multiple_routes": ".test_port_in_multiple_routes()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L107 | neighbors=[TestRoutePorts]
+- "tests_test_scan_funnel_testrouteports_test_sorted_output": ".test_sorted_output()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L112 | neighbors=[TestRoutePorts]
+- "tests_test_scan_health_rationale_1": "test_scan_health.py — the probe scan-metrics → coverage/health verdict.  Guards" | kind=entity | source=manager/backend/tests/test_scan_health.py:L1 | neighbors=[test_scan_health.py]
+- "tests_test_scan_health_test_aggregates_across_hosts": "test_aggregates_across_hosts()" | kind=code-symbol | source=manager/backend/tests/test_scan_health.py:L48 | neighbors=[test_scan_health.py]
+- "tests_test_scan_health_test_no_metrics_means_nothing_to_attest": "test_no_metrics_means_nothing_to_attest()" | kind=code-symbol | source=manager/backend/tests/test_scan_health.py:L40 | neighbors=[test_scan_health.py]
+- "tests_test_scanner_parity_rationale_1": "test_scanner_parity.py — the no-drift guard.  Decision (probe_next plan, Phase 1" | kind=entity | source=probe/tests/test_scanner_parity.py:L1 | neighbors=[test_scanner_parity.py]
+- "tests_test_scanner_parity_rationale_30": "Every scanner module authored in main_scripts must exist in scanner/." | kind=entity | source=probe/tests/test_scanner_parity.py:L30 | neighbors=[test_scanner_is_superset_of_no_missing_…]
+- "tests_test_scanner_parity_rationale_39": "scanner/ must not carry modules that main_scripts/ does not — otherwise the" | kind=entity | source=probe/tests/test_scanner_parity.py:L39 | neighbors=[test_no_extra_scanner_files()]
+- "tests_test_scanner_parity_rationale_49": "Each scanner/<mod>.py is byte-identical to main_scripts/<mod>.py." | kind=entity | source=probe/tests/test_scanner_parity.py:L49 | neighbors=[test_scanner_module_matches_main_script…]
+- "tests_test_scope_crypt_rationale_1": "Tests for agent/scope_crypt.py" | kind=entity | source=probe/tests/test_scope_crypt.py:L1 | neighbors=[test_scope_crypt.py]
+- "tests_test_scope_crypt_rationale_79": "Each encryption uses a fresh ephemeral key, so blobs are different." | kind=entity | source=probe/tests/test_scope_crypt.py:L79 | neighbors=[.test_multiple_encrypts_different()]
+- "tests_test_scope_crypt_testencryptdecryptroundtrip_test_b64_roundtrip": ".test_b64_roundtrip()" | kind=code-symbol | source=probe/tests/test_scope_crypt.py:L70 | neighbors=[TestEncryptDecryptRoundtrip]
+- "tests_test_scope_crypt_testencryptdecryptroundtrip_test_different_plaintexts_are_distinct": ".test_different_plaintexts_are_distinct()" | kind=code-symbol | source=probe/tests/test_scope_crypt.py:L64 | neighbors=[TestEncryptDecryptRoundtrip]
+- "tests_test_scope_crypt_testencryptdecryptroundtrip_test_different_recipient_cannot_decrypt": ".test_different_recipient_cannot_decrypt()" | kind=code-symbol | source=probe/tests/test_scope_crypt.py:L43 | neighbors=[TestEncryptDecryptRoundtrip]
+- "tests_test_scope_crypt_testencryptdecryptroundtrip_test_roundtrip_empty_scope": ".test_roundtrip_empty_scope()" | kind=code-symbol | source=probe/tests/test_scope_crypt.py:L36 | neighbors=[TestEncryptDecryptRoundtrip]
+- "tests_test_scope_crypt_testencryptdecryptroundtrip_test_roundtrip_plaintext": ".test_roundtrip_plaintext()" | kind=code-symbol | source=probe/tests/test_scope_crypt.py:L29 | neighbors=[TestEncryptDecryptRoundtrip]
+- "tests_test_scope_crypt_testencryptdecryptroundtrip_test_tampered_blob": ".test_tampered_blob()" | kind=code-symbol | source=probe/tests/test_scope_crypt.py:L51 | neighbors=[TestEncryptDecryptRoundtrip]
+- "tests_test_scope_crypt_testencryptdecryptroundtrip_test_too_short_blob": ".test_too_short_blob()" | kind=code-symbol | source=probe/tests/test_scope_crypt.py:L59 | neighbors=[TestEncryptDecryptRoundtrip]
+- "tests_test_scope_crypt_testkeygeneration_test_generates_32_byte_keys": ".test_generates_32_byte_keys()" | kind=code-symbol | source=probe/tests/test_scope_crypt.py:L16 | neighbors=[TestKeyGeneration]
+- "tests_test_scope_crypt_testkeygeneration_test_generates_different_keys_each_call": ".test_generates_different_keys_each_call()" | kind=code-symbol | source=probe/tests/test_scope_crypt.py:L21 | neighbors=[TestKeyGeneration]
+- "tests_test_scope_targets_rationale_1": "test_scope_targets.py — the pure scope-authorization core shared by the dispatch" | kind=entity | source=manager/backend/tests/test_scope_targets.py:L1 | neighbors=[test_scope_targets.py]
+- "tests_test_scope_targets_rationale_99": "Whatever the validator accepts must be provably inside the scope." | kind=entity | source=manager/backend/tests/test_scope_targets.py:L99 | neighbors=[test_property_every_accepted_target_is_…]
+- "tests_test_scope_targets_testexclusions_test_target_clear_of_exclusions_is_allowed": ".test_target_clear_of_exclusions_is_allowed()" | kind=code-symbol | source=manager/backend/tests/test_scope_targets.py:L82 | neighbors=[TestExclusions]
+- "tests_test_scope_targets_testexclusions_test_target_inside_an_exclusion_is_rejected": ".test_target_inside_an_exclusion_is_rejected()" | kind=code-symbol | source=manager/backend/tests/test_scope_targets.py:L71 | neighbors=[TestExclusions]
+- "tests_test_scope_targets_testexclusions_test_target_overlapping_an_exclusion_is_rejected": ".test_target_overlapping_an_exclusion_is_rejected()" | kind=code-symbol | source=manager/backend/tests/test_scope_targets.py:L76 | neighbors=[TestExclusions]
+- "tests_test_scope_targets_testipversionsafety_test_v6_in_v6_scope": ".test_v6_in_v6_scope()" | kind=code-symbol | source=manager/backend/tests/test_scope_targets.py:L92 | neighbors=[TestIpVersionSafety]
+- "tests_test_scope_targets_testipversionsafety_test_v6_target_against_v4_scope_is_rejected": ".test_v6_target_against_v4_scope_is_rejected()" | kind=code-symbol | source=manager/backend/tests/test_scope_targets.py:L89 | neighbors=[TestIpVersionSafety]
+- "tests_test_scope_targets_testnoscopeauthorizesnothing_test_empty_scope_denies_all": ".test_empty_scope_denies_all()" | kind=code-symbol | source=manager/backend/tests/test_scope_targets.py:L17 | neighbors=[TestNoScopeAuthorizesNothing]
+- "tests_test_scope_targets_testoutofscopeisrejected_test_blank_token_is_rejected": ".test_blank_token_is_rejected()" | kind=code-symbol | source=manager/backend/tests/test_scope_targets.py:L63 | neighbors=[TestOutOfScopeIsRejected]
+- "tests_test_scope_targets_testoutofscopeisrejected_test_cidr_broader_than_scope": ".test_cidr_broader_than_scope()" | kind=code-symbol | source=manager/backend/tests/test_scope_targets.py:L48 | neighbors=[TestOutOfScopeIsRejected]
+- "tests_test_scope_targets_testoutofscopeisrejected_test_explicit_empty_list_is_rejected": ".test_explicit_empty_list_is_rejected()" | kind=code-symbol | source=manager/backend/tests/test_scope_targets.py:L57 | neighbors=[TestOutOfScopeIsRejected]
+- "tests_test_scope_targets_testoutofscopeisrejected_test_hostname_is_not_routable": ".test_hostname_is_not_routable()" | kind=code-symbol | source=manager/backend/tests/test_scope_targets.py:L60 | neighbors=[TestOutOfScopeIsRejected]
+- "tests_test_scope_targets_testoutofscopeisrejected_test_ip_outside_scope": ".test_ip_outside_scope()" | kind=code-symbol | source=manager/backend/tests/test_scope_targets.py:L45 | neighbors=[TestOutOfScopeIsRejected]
+- "tests_test_scope_targets_testoutofscopeisrejected_test_one_bad_target_rejects_the_whole_request": ".test_one_bad_target_rejects_the_whole_request()" | kind=code-symbol | source=manager/backend/tests/test_scope_targets.py:L52 | neighbors=[TestOutOfScopeIsRejected]
+- "tests_test_scope_targets_testoutofscopeisrejected_test_reversed_range_is_rejected": ".test_reversed_range_is_rejected()" | kind=code-symbol | source=manager/backend/tests/test_scope_targets.py:L66 | neighbors=[TestOutOfScopeIsRejected]
+- "tests_test_scope_targets_testtargetswithinscope_test_cidr_subset_in_scope": ".test_cidr_subset_in_scope()" | kind=code-symbol | source=manager/backend/tests/test_scope_targets.py:L30 | neighbors=[TestTargetsWithinScope]
 
 ## Instructions
 

@@ -86,14 +86,14 @@ Decide based on who can see this repo:
 ## Running a sealed probe
 
 ```bash
-docker run --rm vedha-probe:sealed hostid          # → the machine's Host ID
+docker run --rm vedha-agent:sealed hostid          # → the machine's Host ID
 # issue a license for that host, save it as license.token, then:
-docker run -d --name vedha-probe \
+docker run -d --name vedha-agent \
   -e PLATFORM_URL=https://manager.example.com \
   -e PROBE_LICENSE_FILE=/lic/license.token -e LICENSE_ENFORCED=true \
   -v "$PWD/license.token:/lic/license.token:ro" \
-  -v vedha-probe-state:/var/lib/vedha-probe \
-  vedha-probe:sealed run
+  -v vedha-agent-state:/var/lib/vedha-agent \
+  vedha-agent:sealed run
 ```
 
 Dev builds skip the gate with `LICENSE_ENFORCED=false` (use the plain

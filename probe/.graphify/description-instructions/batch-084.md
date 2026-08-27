@@ -1,0 +1,83 @@
+# Node Description Batch 85 of 92
+
+Graphify is running in assistant/skill mode (no API key). You are the host
+assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
+your JSON answer to the answer file.
+
+## Prompt
+
+You are documenting nodes in a knowledge graph.
+For each entry below, write ONE concise factual plain-language sentence
+describing what it is or does. Use only the provided context.
+For a code symbol (kind=code-symbol — a function, class, or constant),
+describe what the function/symbol does based on its name, source location
+and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
+For an entity node (any other kind — e.g. a person, place, event, object),
+describe what the entity is and its role, grounded in its type, its
+relations (neighbors) and the provided citations/evidence — e.g.
+"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
+Ground entity descriptions in the citations/evidence when present; do not
+speculate beyond the context, so a node with no supporting context may be
+left out of the reply.
+Write every description in English (en). Do not switch languages.
+No marketing language.
+Respond ONLY with a JSON object mapping each node id (as a string) to its
+one-sentence description — no prose, no markdown fences.
+
+- "tests_test_task_runner_testrunnerheadless_test_explicit_empty_targets_never_expand_to_engagement_scope": ".test_explicit_empty_targets_never_expand_to_engagement_scope()" | kind=code-symbol | source=tests/test_task_runner.py:L71 | neighbors=[TestRunnerHeadless]
+- "tests_test_task_runner_testrunnerheadless_test_rejects_empty_targets": ".test_rejects_empty_targets()" | kind=code-symbol | source=tests/test_task_runner.py:L60 | neighbors=[TestRunnerHeadless]
+- "tests_test_task_runner_testrunnerheadless_test_rejects_non_object_params": ".test_rejects_non_object_params()" | kind=code-symbol | source=tests/test_task_runner.py:L120 | neighbors=[TestRunnerHeadless]
+- "tests_test_task_runner_testrunnerheadless_test_rejects_non_string_target": ".test_rejects_non_string_target()" | kind=code-symbol | source=tests/test_task_runner.py:L132 | neighbors=[TestRunnerHeadless]
+- "tests_test_task_runner_testrunnerheadless_test_rejects_unknown_use_case": ".test_rejects_unknown_use_case()" | kind=code-symbol | source=tests/test_task_runner.py:L49 | neighbors=[TestRunnerHeadless]
+- "tests_test_task_runner_testrunnerheadless_test_resolves_full_assessment": ".test_resolves_full_assessment()" | kind=code-symbol | source=tests/test_task_runner.py:L100 | neighbors=[TestRunnerHeadless]
+- "tests_test_task_runner_testrunnerheadless_test_resolves_use_case_correctly": ".test_resolves_use_case_correctly()" | kind=code-symbol | source=tests/test_task_runner.py:L89 | neighbors=[TestRunnerHeadless]
+- "tests_test_task_runner_testrunnerheadless_test_scan_engine_exception_becomes_submittable_failure": ".test_scan_engine_exception_becomes_submittable_failure()" | kind=code-symbol | source=tests/test_task_runner.py:L180 | neighbors=[TestRunnerHeadless]
+- "tests_test_task_runner_testrunnerheadless_test_target_precedence": ".test_target_precedence()" | kind=code-symbol | source=tests/test_task_runner.py:L168 | neighbors=[TestRunnerHeadless]
+- "tests_test_task_runner_testrunnerheadless_test_uses_job_type_when_no_use_case": ".test_uses_job_type_when_no_use_case()" | kind=code-symbol | source=tests/test_task_runner.py:L110 | neighbors=[TestRunnerHeadless]
+- "tests_test_task_runner_testrunnerscantypes_test_ot_passive_profile": ".test_ot_passive_profile()" | kind=code-symbol | source=tests/test_task_runner.py:L448 | neighbors=[TestRunnerScanTypes]
+- "tests_test_task_runner_testrunnerscantypes_test_web_triage_scan_type": ".test_web_triage_scan_type()" | kind=code-symbol | source=tests/test_task_runner.py:L459 | neighbors=[TestRunnerScanTypes]
+- "tests_test_task_runner_testrunnerscopevalidation_test_allows_in_scope_target": ".test_allows_in_scope_target()" | kind=code-symbol | source=tests/test_task_runner.py:L221 | neighbors=[TestRunnerScopeValidation]
+- "tests_test_task_runner_testrunnerscopevalidation_test_explicit_empty_local_ceiling_fails_closed": ".test_explicit_empty_local_ceiling_fails_closed()" | kind=code-symbol | source=tests/test_task_runner.py:L237 | neighbors=[TestRunnerScopeValidation]
+- "tests_test_task_runner_testrunnerscopevalidation_test_local_ceiling_filters_manager_authorized_targets": ".test_local_ceiling_filters_manager_authorized_targets()" | kind=code-symbol | source=tests/test_task_runner.py:L257 | neighbors=[TestRunnerScopeValidation]
+- "tests_test_task_runner_testrunnerscopevalidation_test_local_ceiling_is_forwarded_to_engine": ".test_local_ceiling_is_forwarded_to_engine()" | kind=code-symbol | source=tests/test_task_runner.py:L277 | neighbors=[TestRunnerScopeValidation]
+- "tests_test_task_runner_testrunnerscopevalidation_test_manager_job_without_scope_fails_closed": ".test_manager_job_without_scope_fails_closed()" | kind=code-symbol | source=tests/test_task_runner.py:L354 | neighbors=[TestRunnerScopeValidation]
+- "tests_test_task_runner_testrunnerscopevalidation_test_merge_engagement_and_job_excludes": ".test_merge_engagement_and_job_excludes()" | kind=code-symbol | source=tests/test_task_runner.py:L366 | neighbors=[TestRunnerScopeValidation]
+- "tests_test_task_runner_testrunnerscopevalidation_test_rejects_excluded_target": ".test_rejects_excluded_target()" | kind=code-symbol | source=tests/test_task_runner.py:L303 | neighbors=[TestRunnerScopeValidation]
+- "tests_test_task_runner_testrunnerscopevalidation_test_scope_fallback_preserves_manager_and_job_exclusions": ".test_scope_fallback_preserves_manager_and_job_exclusions()" | kind=code-symbol | source=tests/test_task_runner.py:L331 | neighbors=[TestRunnerScopeValidation]
+- "tests_test_tls_fingerprint_rationale_1": "test_tls_fingerprint.py — Tier 2.3: active TLS fingerprint (JARM methodology)." | kind=entity | source=tests/test_tls_fingerprint.py:L1 | neighbors=[test_tls_fingerprint.py]
+- "tests_test_tls_fingerprint_testclienthello_test_contains_client_hello_handshake_type": ".test_contains_client_hello_handshake_type()" | kind=code-symbol | source=tests/test_tls_fingerprint.py:L28 | neighbors=[TestClientHello]
+- "tests_test_tls_fingerprint_testclienthello_test_contains_sni_hostname": ".test_contains_sni_hostname()" | kind=code-symbol | source=tests/test_tls_fingerprint.py:L33 | neighbors=[TestClientHello]
+- "tests_test_tls_fingerprint_testclienthello_test_declared_lengths_are_consistent": ".test_declared_lengths_are_consistent()" | kind=code-symbol | source=tests/test_tls_fingerprint.py:L37 | neighbors=[TestClientHello]
+- "tests_test_tls_fingerprint_testclienthello_test_is_tls_handshake_record": ".test_is_tls_handshake_record()" | kind=code-symbol | source=tests/test_tls_fingerprint.py:L23 | neighbors=[TestClientHello]
+- "tests_test_tls_fingerprint_testdigest_test_cipher_code_known_and_unknown": ".test_cipher_code_known_and_unknown()" | kind=code-symbol | source=tests/test_tls_fingerprint.py:L90 | neighbors=[TestDigest]
+- "tests_test_tls_fingerprint_testdigest_test_digest_differs_with_cipher": ".test_digest_differs_with_cipher()" | kind=code-symbol | source=tests/test_tls_fingerprint.py:L109 | neighbors=[TestDigest]
+- "tests_test_tls_fingerprint_testdigest_test_digest_is_62_chars": ".test_digest_is_62_chars()" | kind=code-symbol | source=tests/test_tls_fingerprint.py:L99 | neighbors=[TestDigest]
+- "tests_test_tls_fingerprint_testdigest_test_digest_is_deterministic": ".test_digest_is_deterministic()" | kind=code-symbol | source=tests/test_tls_fingerprint.py:L104 | neighbors=[TestDigest]
+- "tests_test_tls_fingerprint_testdigest_test_version_code": ".test_version_code()" | kind=code-symbol | source=tests/test_tls_fingerprint.py:L84 | neighbors=[TestDigest]
+- "tests_test_tls_fingerprint_testdigest_test_zero_hash_when_no_responses": ".test_zero_hash_when_no_responses()" | kind=code-symbol | source=tests/test_tls_fingerprint.py:L95 | neighbors=[TestDigest]
+- "tests_test_tls_fingerprint_testparseserverhello_test_returns_none_on_alert": ".test_returns_none_on_alert()" | kind=code-symbol | source=tests/test_tls_fingerprint.py:L72 | neighbors=[TestParseServerHello]
+- "tests_test_tls_fingerprint_testparseserverhello_test_returns_none_on_short": ".test_returns_none_on_short()" | kind=code-symbol | source=tests/test_tls_fingerprint.py:L77 | neighbors=[TestParseServerHello]
+- "tests_test_tls_integration_rationale_1": "test_tls_integration.py — Tier 2.4 live check: run the real TLSScanner against a" | kind=entity | source=tests/test_tls_integration.py:L1 | neighbors=[test_tls_integration.py]
+- "tests_test_tls_integration_tlsserver_enter": ".__enter__()" | kind=code-symbol | source=tests/test_tls_integration.py:L77 | neighbors=[_TLSServer]
+- "tests_test_tls_integration_tlsserver_exit": ".__exit__()" | kind=code-symbol | source=tests/test_tls_integration.py:L81 | neighbors=[_TLSServer]
+- "tests_test_tls_integration_tlsserver_init": ".__init__()" | kind=code-symbol | source=tests/test_tls_integration.py:L51 | neighbors=[_TLSServer]
+- "tests_test_tls_integration_tlsserver_serve": "._serve()" | kind=code-symbol | source=tests/test_tls_integration.py:L63 | neighbors=[_TLSServer]
+- "tests_test_tls_posture_rationale_1": "test_tls_posture.py — Tier 2.4: cipher-suite classification + TLS posture gradin" | kind=entity | source=tests/test_tls_posture.py:L1 | neighbors=[test_tls_posture.py]
+- "tests_test_tls_posture_testclassifycipher_test_3des_is_weak": ".test_3des_is_weak()" | kind=code-symbol | source=tests/test_tls_posture.py:L43 | neighbors=[TestClassifyCipher]
+
+## Instructions
+
+Write a single JSON object mapping each node id to a one-sentence description
+to: /Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha/probe/.graphify/description-instructions/batch-084.json
+
+Keep each description factual and concise (one sentence). No markdown, no prose
+outside the JSON object. It is acceptable to omit a node if context is
+insufficient — but include every node you can ground confidently.
+
+Example answer format:
+```json
+{
+  "node_id_1": "Resolves the configured ontology profile from graphify.yaml.",
+  "node_id_2": "Colonel James Barclay, an antagonist in The Crooked Man."
+}
+```

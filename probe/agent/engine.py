@@ -114,6 +114,12 @@ _SCAN_MAP = {
     "service_fingerprint":  ("it",  service_fingerprint_mode,  None),
     "assessment":           ("it",  assessment,  None),
     "vuln_scan":            ("it",  assessment,  None),
+    # Full network vulnerability assessment (uc_network_va): the complete
+    # assessment sweep, then BOTH inference post-stages (device classification +
+    # internet-exposure mapping). Collection-only — it emits facts + CPE identity;
+    # CVE correlation stays a manager-side layer. The richer sequential campaign
+    # with live per-stage progress is the standalone `python -m scanner.va_campaign`.
+    "network_va":           ("it",  assessment,  None),
     "tls_scan":             ("it",  None,        {"tls"}),
     "web_scan":             ("it",  None,        {"web"}),
     "web_tls_scan":         ("it",  None,        {"tls", "web"}),
@@ -440,46 +446,69 @@ def _derive_post_stage(scan_type: str, cache: WorkflowCache) -> tuple[list, dict
     for every scan_type that has no inference post-stage, so the common path pays
     nothing.
     """
-    from scanner.scanner_base import ScanResult
-
+    # network_va (the full assessment) runs BOTH inference post-stages; the two
+    # single-purpose use-cases each run one. Keeping the derivations as helpers
+    # lets network_va compose them without duplicating the classification/vantage
+    # logic.
     if scan_type == "device_inventory":
-        from scanner.device_classifier import classify_from_results
-        extra: list = []
-        rollup: list = []
-        for target, results in _results_by_target(cache).items():
-            clf = classify_from_results(results)
-            if clf["device_type"] == "unknown":
-                continue  # no evidence — never manufacture a role
-            extra.append(ScanResult(
-                scanner="device_classify", target=target, status="observed",
-                data=clf,
-                evidence=(f"device_type={clf['device_type']} "
-                          f"confidence={clf['confidence']}")))
-            rollup.append({"ip": target, **clf})
-        return extra, {"devices": rollup}
+        extra, devices = _derive_devices(cache)
+        return extra, {"devices": devices}
 
     if scan_type == "exposure_matrix":
-        from scanner.vantage_matrix import reconcile_vantages
-        extra = []
-        rollup = []
-        for target, results in _results_by_target(cache).items():
-            by_vantage: dict[str, list] = {}
-            for result in results:
-                if getattr(result, "port", None) is None:
-                    continue  # host-discovery / scan_summary carry no port
-                by_vantage.setdefault(result.vantage or "unknown", []).append(result)
-            if not by_vantage:
-                continue
-            matrix = reconcile_vantages(by_vantage)
-            extra.append(ScanResult(
-                scanner="exposure_matrix", target=target, status="observed",
-                data=matrix,
-                evidence=(f"external={matrix['externally_exposed']} "
-                          f"internal_only={matrix['internal_only']}")))
-            rollup.append({"ip": target, **matrix})
-        return extra, {"exposure": rollup}
+        extra, exposure = _derive_exposure(cache)
+        return extra, {"exposure": exposure}
+
+    if scan_type == "network_va":
+        dev_extra, devices = _derive_devices(cache)
+        exp_extra, exposure = _derive_exposure(cache)
+        return [*dev_extra, *exp_extra], {"devices": devices, "exposure": exposure}
 
     return [], {}
+
+
+def _derive_devices(cache: WorkflowCache) -> tuple[list, list]:
+    """Classify each target's device role from its collected facts (no I/O).
+    Returns (extra ScanResults, per-host rollup)."""
+    from scanner.scanner_base import ScanResult
+    from scanner.device_classifier import classify_from_results
+    extra: list = []
+    rollup: list = []
+    for target, results in _results_by_target(cache).items():
+        clf = classify_from_results(results)
+        if clf["device_type"] == "unknown":
+            continue  # no evidence — never manufacture a role
+        extra.append(ScanResult(
+            scanner="device_classify", target=target, status="observed",
+            data=clf,
+            evidence=(f"device_type={clf['device_type']} "
+                      f"confidence={clf['confidence']}")))
+        rollup.append({"ip": target, **clf})
+    return extra, rollup
+
+
+def _derive_exposure(cache: WorkflowCache) -> tuple[list, list]:
+    """Reconcile each target's per-vantage reachability into an exposure matrix
+    (no I/O). Returns (extra ScanResults, per-host rollup)."""
+    from scanner.scanner_base import ScanResult
+    from scanner.vantage_matrix import reconcile_vantages
+    extra: list = []
+    rollup: list = []
+    for target, results in _results_by_target(cache).items():
+        by_vantage: dict[str, list] = {}
+        for result in results:
+            if getattr(result, "port", None) is None:
+                continue  # host-discovery / scan_summary carry no port
+            by_vantage.setdefault(result.vantage or "unknown", []).append(result)
+        if not by_vantage:
+            continue
+        matrix = reconcile_vantages(by_vantage)
+        extra.append(ScanResult(
+            scanner="exposure_matrix", target=target, status="observed",
+            data=matrix,
+            evidence=(f"external={matrix['externally_exposed']} "
+                      f"internal_only={matrix['internal_only']}")))
+        rollup.append({"ip": target, **matrix})
+    return extra, rollup
 
 
 class LeaseLostError(RuntimeError):
@@ -968,5 +997,5 @@ def run_scan(scan_type: str, params: dict,
         # Richer facts surfaced at top level (probe-only this pass; the manager
         # stores them as-is — teaching detection/UI to use them is the follow-up):
         "scan_metrics": scan_metrics,   # per-host completeness + self-health
-        **derived_rollup,               # {"devices": [...]} or {"exposure": [...]}
+        **derived_rollup,               # {"devices":[...]} and/or {"exposure":[...]}
     }

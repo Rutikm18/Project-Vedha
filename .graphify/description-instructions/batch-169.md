@@ -1,4 +1,4 @@
-# Node Description Batch 170 of 227
+# Node Description Batch 170 of 236
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -9,9 +9,6 @@ your JSON answer to the answer file.
 You are documenting nodes in a knowledge graph.
 For each entry below, write ONE concise factual plain-language sentence
 describing what it is or does. Use only the provided context.
-For a code symbol (kind=code-symbol — a function, class, or constant),
-describe what the function/symbol does based on its name, source location
-and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
 For an entity node (any other kind — e.g. a person, place, event, object),
 describe what the entity is and its role, grounded in its type, its
 relations (neighbors) and the provided citations/evidence — e.g.
@@ -26,46 +23,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "scanner_host_discovery_rationale_311": "Combine TCP + neighbor signals into a confidence-scored verdict.      Returns a" | kind=entity | source=probe/scanner/host_discovery.py:L311 | neighbors=[fuse_liveness()] | lang=pt
-- "scanner_host_discovery_rationale_33": "Return 'open', 'refused', or None (no response)." | kind=entity | source=probe/scanner/host_discovery.py:L33 | neighbors=[._probe()] | lang=en
-- "scanner_host_discovery_rationale_37": "Return 'open', 'refused', or None (no response)." | kind=entity | source=probe/scanner/host_discovery.py:L37 | neighbors=[._probe()] | lang=en
-- "scanner_host_discovery_rationale_396": "Return 'open', 'refused', or None (no response)." | kind=entity | source=probe/scanner/host_discovery.py:L396 | neighbors=[._probe()] | lang=en
-- "scanner_host_discovery_rationale_399": "Return 'open', 'refused', or None (no response)." | kind=entity | source=probe/scanner/host_discovery.py:L399 | neighbors=[._probe()] | lang=en
-- "scanner_host_discovery_rationale_87": "Zero-pad each octet ('d2:58:2b:ff:cb:4' -> 'd2:58:2b:ff:cb:04'); lower." | kind=entity | source=probe/scanner/host_discovery.py:L87 | neighbors=[normalize_mac()] | lang=en
-- "scanner_init_rationale_1": "VA scanner module — pure collection/scanning layer.  Each submodule is an indepe" | kind=entity | source=probe/scanner/__init__.py:L1 | neighbors=[__init__.py] | lang=en
-- "scanner_iot_scanner_main": "main()" | kind=code-symbol | source=probe/scanner/iot_scanner.py:L559 | neighbors=[iot_scanner.py] | lang=en
-- "scanner_iot_scanner_rationale_1": "iot_scanner.py — IoT / embedded device fingerprint and exposure scanner.  Covers" | kind=entity | source=probe/scanner/iot_scanner.py:L1 | neighbors=[iot_scanner.py] | lang=en
-- "scanner_iot_scanner_rationale_130": "Decode a DNS wire-format name, following pointers.  Returns (name, end_offset)." | kind=entity | source=probe/scanner/iot_scanner.py:L130 | neighbors=[_decode_mdns_name()] | lang=pt
-- "scanner_iot_scanner_rationale_131": "Decode a DNS wire-format name, following pointers.  Returns (name, end_offset)." | kind=entity | source=probe/scanner/iot_scanner.py:L131 | neighbors=[_decode_mdns_name()] | lang=pt
-- "scanner_iot_scanner_rationale_156": "Extract PTR target names from mDNS response (services discovered)." | kind=entity | source=probe/scanner/iot_scanner.py:L156 | neighbors=[_parse_mdns_response()] | lang=en
-- "scanner_iot_scanner_rationale_157": "Extract PTR target names from mDNS response (services discovered)." | kind=entity | source=probe/scanner/iot_scanner.py:L157 | neighbors=[_parse_mdns_response()] | lang=en
-- "scanner_iot_scanner_rationale_270": "MQTT variable-length encoding." | kind=entity | source=probe/scanner/iot_scanner.py:L270 | neighbors=[_mqtt_remaining_len()] | lang=en
-- "scanner_iot_scanner_rationale_272": "MQTT variable-length encoding." | kind=entity | source=probe/scanner/iot_scanner.py:L272 | neighbors=[_mqtt_remaining_len()] | lang=en
-- "scanner_iot_scanner_rationale_282": "MQTT SUBSCRIBE to '#' (all topics), QoS 0." | kind=entity | source=probe/scanner/iot_scanner.py:L282 | neighbors=[_mqtt_subscribe_all()] | lang=en
-- "scanner_iot_scanner_rationale_284": "MQTT SUBSCRIBE to '#' (all topics), QoS 0." | kind=entity | source=probe/scanner/iot_scanner.py:L284 | neighbors=[_mqtt_subscribe_all()] | lang=en
-- "scanner_iot_scanner_rationale_347": "CoAP Confirmable GET for /.well-known/core — resource discovery." | kind=entity | source=probe/scanner/iot_scanner.py:L347 | neighbors=[_coap_get_wellknown_core()] | lang=en
-- "scanner_iot_scanner_rationale_349": "CoAP Confirmable GET for /.well-known/core — resource discovery." | kind=entity | source=probe/scanner/iot_scanner.py:L349 | neighbors=[_coap_get_wellknown_core()] | lang=en
-- "scanner_iot_scanner_rationale_360": "Extract CoAP response code and content." | kind=entity | source=probe/scanner/iot_scanner.py:L360 | neighbors=[_parse_coap_response()] | lang=en
-- "scanner_iot_scanner_rationale_362": "Extract CoAP response code and content." | kind=entity | source=probe/scanner/iot_scanner.py:L362 | neighbors=[_parse_coap_response()] | lang=en
-- "scanner_iot_scanner_rationale_404": "HTTP GET to CWMP port — detect ACS or CPE management interface." | kind=entity | source=probe/scanner/iot_scanner.py:L404 | neighbors=[_probe_cwmp()] | lang=en
-- "scanner_iot_scanner_rationale_406": "HTTP GET to CWMP port — detect ACS or CPE management interface." | kind=entity | source=probe/scanner/iot_scanner.py:L406 | neighbors=[_probe_cwmp()] | lang=en
-- "scanner_iot_scanner_rationale_444": "Surveys a target for IoT/embedded device exposure across 6 protocol families." | kind=entity | source=probe/scanner/iot_scanner.py:L444 | neighbors=[IoTScanner] | lang=en
-- "scanner_iot_scanner_rationale_446": "Surveys a target for IoT/embedded device exposure across 6 protocol families." | kind=entity | source=probe/scanner/iot_scanner.py:L446 | neighbors=[IoTScanner] | lang=en
-- "scanner_iot_scanner_rationale_58": "HTTP GET the UPnP rootDesc.xml and extract device info." | kind=entity | source=probe/scanner/iot_scanner.py:L58 | neighbors=[_fetch_upnp_root_desc()] | lang=en
-- "scanner_iot_scanner_rationale_59": "HTTP GET the UPnP rootDesc.xml and extract device info." | kind=entity | source=probe/scanner/iot_scanner.py:L59 | neighbors=[_fetch_upnp_root_desc()] | lang=en
-- "scanner_ja4s_match_suspicious": "match_suspicious()" | kind=code-symbol | source=probe/scanner/ja4s.py:L131 | neighbors=[ja4s.py] | lang=en
-- "scanner_ja4s_rationale_100": "JA4S from `parse_server_hello`'s output ({version, cipher, extensions})." | kind=entity | source=probe/scanner/ja4s.py:L100 | neighbors=[ja4s_from_parsed()] | lang=en
-- "scanner_ja4s_rationale_110": "JA4S from raw ServerHello record bytes (reuses the JARM parser)." | kind=entity | source=probe/scanner/ja4s.py:L110 | neighbors=[ja4s_from_serverhello()] | lang=en
-- "scanner_ja4s_rationale_117": "Do one standard TLS handshake and compute the server's JA4S. Reuses the     JARM" | kind=entity | source=probe/scanner/ja4s.py:L117 | neighbors=[compute_ja4s()] | lang=en
-- "scanner_ja4s_rationale_57": "Yield (type, value) for each extension in a ServerHello extensions blob." | kind=entity | source=probe/scanner/ja4s.py:L57 | neighbors=[_walk_extensions()] | lang=en
-- "scanner_ja4s_rationale_70": "The single ALPN protocol the server chose (b'' if none)." | kind=entity | source=probe/scanner/ja4s.py:L70 | neighbors=[_selected_alpn()] | lang=en
-- "scanner_ja4s_rationale_87": "Pure JA4S from already-extracted ServerHello fields." | kind=entity | source=probe/scanner/ja4s.py:L87 | neighbors=[ja4s_from_fields()] | lang=en
-- "scanner_ja4x_rationale_118": "Return a threat-intel label if this JA4X is a known-suspicious fingerprint," | kind=entity | source=probe/scanner/ja4x.py:L118 | neighbors=[match_suspicious()] | lang=en
-- "scanner_ja4x_rationale_40": "DER-encode an OID's content octets and hex-encode them.      '2.5.4.6' -> '55040" | kind=entity | source=probe/scanner/ja4x.py:L40 | neighbors=[oid_to_hex()] | lang=en
-- "scanner_ja4x_rationale_77": "Pure JA4X from the three ordered OID lists (dotted-decimal strings)." | kind=entity | source=probe/scanner/ja4x.py:L77 | neighbors=[ja4x_from_oid_lists()] | lang=en
-- "scanner_ja4x_rationale_83": "JA4X from a `cryptography` x509 Certificate object. None if unusable." | kind=entity | source=probe/scanner/ja4x.py:L83 | neighbors=[ja4x_from_cert()] | lang=en
-- "scanner_ja4x_rationale_94": "JA4X from raw DER bytes. `cryptography` is imported lazily so this module     st" | kind=entity | source=probe/scanner/ja4x.py:L94 | neighbors=[ja4x_from_der()] | lang=en
-- "scanner_mass_scan_connectsweep_init": ".__init__()" | kind=code-symbol | source=probe/scanner/mass_scan.py:L209 | neighbors=[_ConnectSweep] | lang=en
+- "routers_agents_rationale_319": "Accept an intensity as a number (1/2/3) or a name; return the name (or     None)" | kind=entity | source=manager/backend/app/routers/agents.py:L319 | neighbors=[_normalize_intensity_name()] | lang=en
+- "routers_agents_rationale_324": "Accept an intensity as a number (1/2/3), a name (light/standard/deep), or a" | kind=entity | source=manager/backend/app/routers/agents.py:L324 | neighbors=[_normalize_intensity_name()] | lang=pt
+- "routers_agents_rationale_407": "Encrypt the engagement scope for a specific agent's public key.      Reads agent" | kind=entity | source=manager/backend/app/routers/agents.py:L407 | neighbors=[_encrypt_scope_for_agent()] | lang=en
+- "routers_agents_rationale_445": "Verify that the JWT token bearer IS the agent they claim to be.      Every heart" | kind=entity | source=manager/backend/app/routers/agents.py:L445 | neighbors=[_agent_ownership_check()] | lang=en
+- "routers_agents_rationale_464": "Encrypt the engagement scope for a specific agent's public key.      Reads agent" | kind=entity | source=manager/backend/app/routers/agents.py:L464 | neighbors=[_encrypt_scope_for_agent()] | lang=en
+- "routers_agents_rationale_477": "Encrypt the engagement scope for a specific agent's public key.      Reads agent" | kind=entity | source=manager/backend/app/routers/agents.py:L477 | neighbors=[_encrypt_scope_for_agent()] | lang=en
+- "routers_agents_rationale_478": "Returns the finite library of scan use-cases operators can dispatch to probes." | kind=entity | source=manager/backend/app/routers/agents.py:L478 | neighbors=[list_use_cases()] | lang=en
+- "routers_agents_rationale_491": "Allows a probe to register without an admin-issued PAT.      The manager must ha" | kind=entity | source=manager/backend/app/routers/agents.py:L491 | neighbors=[bootstrap_agent()] | lang=en
+- "routers_agents_rationale_502": "Verify that the JWT token bearer IS the agent they claim to be.      Every heart" | kind=entity | source=manager/backend/app/routers/agents.py:L502 | neighbors=[_agent_ownership_check()] | lang=en
+- "routers_agents_rationale_512": "Encrypt the engagement scope for a specific agent's public key.      Reads agent" | kind=entity | source=manager/backend/app/routers/agents.py:L512 | neighbors=[_encrypt_scope_for_agent()] | lang=en
+- "routers_agents_rationale_515": "Verify that the JWT token bearer IS the agent they claim to be.      Every heart" | kind=entity | source=manager/backend/app/routers/agents.py:L515 | neighbors=[_agent_ownership_check()] | lang=en
+- "routers_agents_rationale_521": "Encrypt the engagement scope for a specific agent's public key.      Reads agent" | kind=entity | source=manager/backend/app/routers/agents.py:L521 | neighbors=[_encrypt_scope_for_agent()] | lang=en
+- "routers_agents_rationale_526": "Encrypt the engagement scope for a specific agent's public key.      Reads agent" | kind=entity | source=manager/backend/app/routers/agents.py:L526 | neighbors=[_encrypt_scope_for_agent()] | lang=en
+- "routers_agents_rationale_535": "Returns the finite library of scan use-cases operators can dispatch to probes." | kind=entity | source=manager/backend/app/routers/agents.py:L535 | neighbors=[list_use_cases()] | lang=en
+- "routers_agents_rationale_536": "Encrypt the engagement scope for a specific agent's public key.      Reads agent" | kind=entity | source=manager/backend/app/routers/agents.py:L536 | neighbors=[_encrypt_scope_for_agent()] | lang=en
+- "routers_agents_rationale_550": "Verify that the JWT token bearer IS the agent they claim to be.      Every heart" | kind=entity | source=manager/backend/app/routers/agents.py:L550 | neighbors=[_agent_ownership_check()] | lang=en
+- "routers_agents_rationale_559": "Verify that the JWT token bearer IS the agent they claim to be.      Every heart" | kind=entity | source=manager/backend/app/routers/agents.py:L559 | neighbors=[_agent_ownership_check()] | lang=en
+- "routers_agents_rationale_560": "The numeric scan-hardness scale: 1 light, 2 standard, 3 deep." | kind=entity | source=manager/backend/app/routers/agents.py:L560 | neighbors=[list_intensities()] | lang=en
+- "routers_agents_rationale_564": "Verify that the JWT token bearer IS the agent they claim to be.      Every heart" | kind=entity | source=manager/backend/app/routers/agents.py:L564 | neighbors=[_agent_ownership_check()] | lang=en
+- "routers_agents_rationale_571": "Allows a probe to register without an admin-issued PAT.      The manager must ha" | kind=entity | source=manager/backend/app/routers/agents.py:L571 | neighbors=[bootstrap_agent()] | lang=en
+- "routers_agents_rationale_574": "Verify that the JWT token bearer IS the agent they claim to be.      Every heart" | kind=entity | source=manager/backend/app/routers/agents.py:L574 | neighbors=[_agent_ownership_check()] | lang=en
+- "routers_agents_rationale_583": "Returns the finite library of scan use-cases operators can dispatch to probes." | kind=entity | source=manager/backend/app/routers/agents.py:L583 | neighbors=[list_use_cases()] | lang=en
+- "routers_agents_rationale_592": "Returns the finite library of scan use-cases operators can dispatch to probes." | kind=entity | source=manager/backend/app/routers/agents.py:L592 | neighbors=[list_use_cases()] | lang=en
+- "routers_agents_rationale_595": "The numeric scan-hardness scale: 1 light, 2 standard, 3 deep." | kind=entity | source=manager/backend/app/routers/agents.py:L595 | neighbors=[list_intensities()] | lang=en
+- "routers_agents_rationale_597": "Returns the finite library of scan use-cases operators can dispatch to probes." | kind=entity | source=manager/backend/app/routers/agents.py:L597 | neighbors=[list_use_cases()] | lang=en
+- "routers_agents_rationale_604": "The numeric scan-hardness scale: 1 light, 2 standard, 3 deep." | kind=entity | source=manager/backend/app/routers/agents.py:L604 | neighbors=[list_intensities()] | lang=en
+- "routers_agents_rationale_606": "Allows a probe to register without an admin-issued PAT.      The manager must ha" | kind=entity | source=manager/backend/app/routers/agents.py:L606 | neighbors=[bootstrap_agent()] | lang=en
+- "routers_agents_rationale_607": "Returns the finite library of scan use-cases operators can dispatch to probes." | kind=entity | source=manager/backend/app/routers/agents.py:L607 | neighbors=[list_use_cases()] | lang=en
+- "routers_agents_rationale_609": "The numeric scan-hardness scale: 1 light, 2 standard, 3 deep." | kind=entity | source=manager/backend/app/routers/agents.py:L609 | neighbors=[list_intensities()] | lang=en
+- "routers_agents_rationale_615": "Allows a probe to register without an admin-issued PAT.      The manager must ha" | kind=entity | source=manager/backend/app/routers/agents.py:L615 | neighbors=[bootstrap_agent()] | lang=en
+- "routers_agents_rationale_619": "The numeric scan-hardness scale: 1 light, 2 standard, 3 deep." | kind=entity | source=manager/backend/app/routers/agents.py:L619 | neighbors=[list_intensities()] | lang=en
+- "routers_agents_rationale_620": "Allows a probe to register without an admin-issued PAT.      The manager must ha" | kind=entity | source=manager/backend/app/routers/agents.py:L620 | neighbors=[bootstrap_agent()] | lang=en
+- "routers_agents_rationale_630": "Allows a probe to register without an admin-issued PAT.      The manager must ha" | kind=entity | source=manager/backend/app/routers/agents.py:L630 | neighbors=[bootstrap_agent()] | lang=en
+- "routers_agents_rationale_858": "Lets the frontend poll a specific job's status without knowing which agent has i" | kind=entity | source=manager/backend/app/routers/agents.py:L858 | neighbors=[get_job_status()] | lang=en
+- "routers_agents_rationale_864": "Lets the frontend poll a specific job's status without knowing which agent has i" | kind=entity | source=manager/backend/app/routers/agents.py:L864 | neighbors=[get_job_status()] | lang=en
+- "routers_agents_rationale_92": "Resolve the capability a probe must advertise for a job." | kind=entity | source=manager/backend/app/routers/agents.py:L92 | neighbors=[_required_scan_type()] | lang=en
+- "routers_agents_rationale_921": "Lets the frontend poll a specific job's status without knowing which agent has i" | kind=entity | source=manager/backend/app/routers/agents.py:L921 | neighbors=[get_job_status()] | lang=en
+- "routers_agents_rationale_944": "Lets the frontend poll a specific job's status without knowing which agent has i" | kind=entity | source=manager/backend/app/routers/agents.py:L944 | neighbors=[get_job_status()] | lang=en
+- "routers_agents_rationale_979": "Lets the frontend poll a specific job's status without knowing which agent has i" | kind=entity | source=manager/backend/app/routers/agents.py:L979 | neighbors=[get_job_status()] | lang=en
+- "routers_agents_rationale_988": "Lets the frontend poll a specific job's status without knowing which agent has i" | kind=entity | source=manager/backend/app/routers/agents.py:L988 | neighbors=[get_job_status()] | lang=en
 
 ## Instructions
 

@@ -1,4 +1,4 @@
-# Node Description Batch 171 of 227
+# Node Description Batch 171 of 236
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -26,46 +26,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "scanner_mass_scan_main": "main()" | kind=code-symbol | source=probe/scanner/mass_scan.py:L341 | neighbors=[mass_scan.py] | lang=en
-- "scanner_mass_scan_rationale_1": "mass_scan.py — fast large-scale TCP port discovery.  WHY THIS EXISTS (modern con" | kind=entity | source=probe/scanner/mass_scan.py:L1 | neighbors=[mass_scan.py] | lang=en
-- "scanner_mass_scan_rationale_148": "Parse masscan -oJ output robustly: handles trailing comma, 'finished'     sentin" | kind=entity | source=probe/scanner/mass_scan.py:L148 | neighbors=[_parse_masscan_json()] | lang=en
-- "scanner_mass_scan_rationale_176": "target_specs: raw CIDRs/ranges/hosts (NOT pre-expanded) — masscan wants them." | kind=entity | source=probe/scanner/mass_scan.py:L176 | neighbors=[run_mass_scan()] | lang=en
-- "scanner_mass_scan_rationale_216": "Excluded networks -> masscan --exclude specs, so they get ZERO packets." | kind=entity | source=probe/scanner/mass_scan.py:L216 | neighbors=[_masscan_excludes()] | lang=en
-- "scanner_mass_scan_rationale_221": "A CIDR spec is in scope only if it is fully contained in an allowed network." | kind=entity | source=probe/scanner/mass_scan.py:L221 | neighbors=[_spec_in_scope()] | lang=en
-- "scanner_mass_scan_rationale_243": "target_specs: raw CIDRs/ranges/hosts (NOT pre-expanded) — masscan wants them." | kind=entity | source=probe/scanner/mass_scan.py:L243 | neighbors=[run_mass_scan()] | lang=en
-- "scanner_mass_scan_rationale_308": "Excluded networks -> masscan --exclude specs, so they get ZERO packets." | kind=entity | source=probe/scanner/mass_scan.py:L308 | neighbors=[_masscan_excludes()] | lang=en
-- "scanner_mass_scan_rationale_313": "A CIDR spec is in scope only if it is fully contained in an allowed network." | kind=entity | source=probe/scanner/mass_scan.py:L313 | neighbors=[_spec_in_scope()] | lang=en
-- "scanner_mass_scan_rationale_55": "Run masscan over the given target specs and return its parsed JSON records." | kind=entity | source=probe/scanner/mass_scan.py:L55 | neighbors=[_run_masscan()] | lang=en
-- "scanner_mass_scan_rationale_66": "Run masscan over the given target specs and return its parsed JSON records." | kind=entity | source=probe/scanner/mass_scan.py:L66 | neighbors=[_run_masscan()] | lang=en
-- "scanner_mass_scan_rationale_90": "Parse masscan -oJ output robustly: handles trailing comma, 'finished'     sentin" | kind=entity | source=probe/scanner/mass_scan.py:L90 | neighbors=[_parse_masscan_json()] | lang=en
-- "scanner_mcp_ai_scanner_main": "main()" | kind=code-symbol | source=probe/scanner/mcp_ai_scanner.py:L323 | neighbors=[mcp_ai_scanner.py] | lang=en
-- "scanner_mcp_ai_scanner_mcpaiscanner_init": ".__init__()" | kind=code-symbol | source=probe/scanner/mcp_ai_scanner.py:L202 | neighbors=[MCPAIScanner] | lang=en
-- "scanner_mcp_ai_scanner_noredirect_redirect_request": ".redirect_request()" | kind=code-symbol | source=probe/scanner/mcp_ai_scanner.py:L111 | neighbors=[_NoRedirect] | lang=en
-- "scanner_mcp_ai_scanner_rationale_1": "mcp_ai_scanner.py — discover exposed AI inference servers and MCP endpoints.  WH" | kind=entity | source=probe/scanner/mcp_ai_scanner.py:L1 | neighbors=[mcp_ai_scanner.py] | lang=en
-- "scanner_mcp_ai_scanner_rationale_152": "Server/body fingerprint match against known non-AI squatters, or None." | kind=entity | source=probe/scanner/mcp_ai_scanner.py:L152 | neighbors=[_known_false_positive()] | lang=en
-- "scanner_mcp_ai_scanner_rationale_153": "Server/body fingerprint match against known non-AI squatters, or None." | kind=entity | source=probe/scanner/mcp_ai_scanner.py:L153 | neighbors=[_known_false_positive()] | lang=en
-- "scanner_mcp_ai_scanner_rationale_161": "The strongest possible evidence for a real MCP server: a WWW-Authenticate     he" | kind=entity | source=probe/scanner/mcp_ai_scanner.py:L161 | neighbors=[_mcp_oauth_signal()] | lang=en
-- "scanner_mcp_ai_scanner_rationale_162": "The strongest possible evidence for a real MCP server: a WWW-Authenticate     he" | kind=entity | source=probe/scanner/mcp_ai_scanner.py:L162 | neighbors=[_mcp_oauth_signal()] | lang=en
-- "scanner_mcp_ai_scanner_rationale_174": "JSON-typed body that actually talks about auth, not just any error text." | kind=entity | source=probe/scanner/mcp_ai_scanner.py:L174 | neighbors=[_auth_shaped_json_body()] | lang=en
-- "scanner_mcp_ai_scanner_rationale_175": "JSON-typed body that actually talks about auth, not just any error text." | kind=entity | source=probe/scanner/mcp_ai_scanner.py:L175 | neighbors=[_auth_shaped_json_body()] | lang=en
-- "scanner_mcp_ai_scanner_request": "_request()" | kind=code-symbol | source=probe/scanner/mcp_ai_scanner.py:L128 | neighbors=[mcp_ai_scanner.py] | lang=en
-- "scanner_mobile_scanner_main": "main()" | kind=code-symbol | source=probe/scanner/mobile_scanner.py:L340 | neighbors=[mobile_scanner.py] | lang=en
-- "scanner_mobile_scanner_rationale_1": "mobile_scanner.py — mobile device exposure detection.  Covers playbook 13 (Mobil" | kind=entity | source=probe/scanner/mobile_scanner.py:L1 | neighbors=[mobile_scanner.py] | lang=en
-- "scanner_mobile_scanner_rationale_152": "Attempt TCP connect to lockdownd port 62078.     Port open = iOS device present" | kind=entity | source=probe/scanner/mobile_scanner.py:L152 | neighbors=[_probe_lockdownd()] | lang=en
-- "scanner_mobile_scanner_rationale_188": "Build a DNS PTR query in mDNS wire format with QU bit set." | kind=entity | source=probe/scanner/mobile_scanner.py:L188 | neighbors=[_build_mdns_query()] | lang=en
-- "scanner_mobile_scanner_rationale_199": "Extract PTR target names (service instance names) from mDNS reply." | kind=entity | source=probe/scanner/mobile_scanner.py:L199 | neighbors=[_parse_mdns_ptr_names()] | lang=en
-- "scanner_mobile_scanner_rationale_259": "Send one mDNS PTR query to target:5353 and return instance names." | kind=entity | source=probe/scanner/mobile_scanner.py:L259 | neighbors=[_probe_mdns_mobile_sync()] | lang=en
-- "scanner_mobile_scanner_rationale_279": "Detects mobile device exposure on the network:     ADB (Android) | lockdownd (iO" | kind=entity | source=probe/scanner/mobile_scanner.py:L279 | neighbors=[MobileScanner] | lang=en
-- "scanner_mobile_scanner_rationale_60": "Build an ADB A_CNXN (CONNECT) message — the standard handshake initiator." | kind=entity | source=probe/scanner/mobile_scanner.py:L60 | neighbors=[_build_adb_cnxn()] | lang=en
-- "scanner_mobile_scanner_rationale_71": "Parse a 24-byte ADB message header.  Returns parsed fields or None." | kind=entity | source=probe/scanner/mobile_scanner.py:L71 | neighbors=[_parse_adb_header()] | lang=pt
-- "scanner_mobile_scanner_rationale_96": "Send ADB CNXN and read the device's CNXN reply.     Returns a dict with connecti" | kind=entity | source=probe/scanner/mobile_scanner.py:L96 | neighbors=[_probe_adb()] | lang=en
-- "scanner_nmap_wrapper_have_nmap": "_have_nmap()" | kind=code-symbol | source=probe/scanner/nmap_wrapper.py:L111 | neighbors=[nmap_wrapper.py] | lang=en
-- "scanner_nmap_wrapper_main": "main()" | kind=code-symbol | source=probe/scanner/nmap_wrapper.py:L247 | neighbors=[nmap_wrapper.py] | lang=en
-- "scanner_nmap_wrapper_nmapexecutionerror_init": ".__init__()" | kind=code-symbol | source=probe/scanner/nmap_wrapper.py:L45 | neighbors=[NmapExecutionError] | lang=en
-- "scanner_nmap_wrapper_rationale_1": "nmap_wrapper.py — orchestrate nmap and normalize its XML into ScanResult.  WHY:" | kind=entity | source=probe/scanner/nmap_wrapper.py:L1 | neighbors=[nmap_wrapper.py] | lang=en
-- "scanner_nmap_wrapper_rationale_183": "# NOTE: `Element.find(...) or Element.find(...)` is a classic ElementTree" | kind=entity | source=probe/scanner/nmap_wrapper.py:L183 | neighbors=[nmap_wrapper.py] | lang=en
-- "scanner_nmap_wrapper_rationale_191": "# NOTE: `Element.find(...) or Element.find(...)` is a classic ElementTree" | kind=entity | source=probe/scanner/nmap_wrapper.py:L191 | neighbors=[nmap_wrapper.py] | lang=en
-- "scanner_nmap_wrapper_rationale_43": "Actionable subprocess failure; never reinterpret it as zero findings." | kind=entity | source=probe/scanner/nmap_wrapper.py:L43 | neighbors=[NmapExecutionError] | lang=en
+- "routers_agents_rationale_993": "Lets the frontend poll a specific job's status without knowing which agent has i" | kind=entity | source=manager/backend/app/routers/agents.py:L993 | neighbors=[get_job_status()] | lang=en
+- "routers_ai_ai_generate": "ai_generate()" | kind=code-symbol | source=manager/backend/app/routers/ai.py:L19 | neighbors=[ai.py] | lang=en
+- "routers_ai_ai_status": "ai_status()" | kind=code-symbol | source=manager/backend/app/routers/ai.py:L13 | neighbors=[ai.py] | lang=en
+- "routers_ai_report_generate_report": "generate_report()" | kind=code-symbol | source=manager/backend/app/routers/ai_report.py:L64 | neighbors=[ai_report.py] | lang=en
+- "routers_ai_report_rationale_192": "Deterministic report section from the same posture payload the dashboard uses." | kind=entity | source=manager/backend/app/routers/ai_report.py:L192 | neighbors=[build_posture_report_section()] | lang=en
+- "routers_ai_report_rationale_293": "Background task: build the summary, generate every section, persist as pending." | kind=entity | source=manager/backend/app/routers/ai_report.py:L293 | neighbors=[_run_generation()] | lang=en
+- "routers_ai_report_rationale_382": "Background task: regenerate rejected sections after human feedback." | kind=entity | source=manager/backend/app/routers/ai_report.py:L382 | neighbors=[_run_regeneration()] | lang=en
+- "routers_ai_report_report_status": "report_status()" | kind=code-symbol | source=manager/backend/app/routers/ai_report.py:L92 | neighbors=[ai_report.py] | lang=en
+- "routers_analytics_exposure": "exposure()" | kind=code-symbol | source=manager/backend/app/routers/analytics.py:L46 | neighbors=[analytics.py] | lang=en
+- "routers_analytics_rationale_87": "Map joined (Finding, Asset.criticality) rows to duck-typed views." | kind=entity | source=manager/backend/app/routers/analytics.py:L87 | neighbors=[_finding_views()] | lang=en
+- "routers_customer_access_assign_agent": "assign_agent()" | kind=code-symbol | source=manager/backend/app/routers/customer_access.py:L270 | neighbors=[customer_access.py] | lang=en
+- "routers_customer_access_list_scan_requests": "list_scan_requests()" | kind=code-symbol | source=manager/backend/app/routers/customer_access.py:L308 | neighbors=[customer_access.py] | lang=en
+- "routers_customer_access_rationale_1": "customer_access.py — operator-facing management of the customer portal (Part 2," | kind=entity | source=manager/backend/app/routers/customer_access.py:L1 | neighbors=[customer_access.py] | lang=en
+- "routers_customer_access_rationale_101": "A lowercase, hyphenated, DNS-label-safe base for a customer portal handle     (s" | kind=entity | source=manager/backend/app/routers/customer_access.py:L101 | neighbors=[_slugify()] | lang=pt
+- "routers_customer_access_rationale_102": "A lowercase, hyphenated, DNS-label-safe base for a customer portal handle     (s" | kind=entity | source=manager/backend/app/routers/customer_access.py:L102 | neighbors=[_slugify()] | lang=pt
+- "routers_customer_access_rationale_103": "A lowercase, hyphenated, DNS-label-safe base for a customer portal handle     (s" | kind=entity | source=manager/backend/app/routers/customer_access.py:L103 | neighbors=[_slugify()] | lang=pt
+- "routers_customer_access_rationale_108": "Per-tenant-unique portal slug: <base>, else <base>-2, <base>-3, … Two     custom" | kind=entity | source=manager/backend/app/routers/customer_access.py:L108 | neighbors=[_unique_portal_slug()] | lang=en
+- "routers_customer_access_rationale_109": "Per-tenant-unique portal slug: <base>, else <base>-2, <base>-3, … Two     custom" | kind=entity | source=manager/backend/app/routers/customer_access.py:L109 | neighbors=[_unique_portal_slug()] | lang=en
+- "routers_customer_access_rationale_110": "Per-tenant-unique portal slug: <base>, else <base>-2, <base>-3, … Two     custom" | kind=entity | source=manager/backend/app/routers/customer_access.py:L110 | neighbors=[_unique_portal_slug()] | lang=en
+- "routers_customer_access_rationale_122": "Pure: turn an approved request into a pending ScanJob on the engagement's     as" | kind=entity | source=manager/backend/app/routers/customer_access.py:L122 | neighbors=[build_scan_job()] | lang=en
+- "routers_customer_access_rationale_123": "Pure: turn an approved request into a pending ScanJob on the engagement's     as" | kind=entity | source=manager/backend/app/routers/customer_access.py:L123 | neighbors=[build_scan_job()] | lang=en
+- "routers_customer_access_rationale_124": "Pure: turn an approved request into a pending ScanJob on the engagement's     as" | kind=entity | source=manager/backend/app/routers/customer_access.py:L124 | neighbors=[build_scan_job()] | lang=en
+- "routers_customer_access_rationale_385": "Every provisioned customer login (role=client) in the tenant, with its     bound" | kind=entity | source=manager/backend/app/routers/customer_access.py:L385 | neighbors=[list_customers()] | lang=en
+- "routers_customer_access_rationale_394": "Every provisioned customer login (role=client) in the tenant, with its     bound" | kind=entity | source=manager/backend/app/routers/customer_access.py:L394 | neighbors=[list_customers()] | lang=en
+- "routers_customer_access_rationale_398": "Every provisioned customer login (role=client) in the tenant, with its     bound" | kind=entity | source=manager/backend/app/routers/customer_access.py:L398 | neighbors=[list_customers()] | lang=en
+- "routers_customer_access_rationale_400": "Every provisioned customer login (role=client) in the tenant, with its     bound" | kind=entity | source=manager/backend/app/routers/customer_access.py:L400 | neighbors=[list_customers()] | lang=en
+- "routers_customer_access_rationale_430": "Decrypt and return a customer login's stored password. Tenant-scoped and     wri" | kind=entity | source=manager/backend/app/routers/customer_access.py:L430 | neighbors=[reveal_customer_password()] | lang=en
+- "routers_customer_access_rationale_432": "Decrypt and return a customer login's stored password. Tenant-scoped and     wri" | kind=entity | source=manager/backend/app/routers/customer_access.py:L432 | neighbors=[reveal_customer_password()] | lang=en
+- "routers_customer_access_rationale_96": "A URL-safe temporary password the operator hands to the customer once." | kind=entity | source=manager/backend/app/routers/customer_access.py:L96 | neighbors=[generate_password()] | lang=en
+- "routers_customer_access_rationale_97": "A URL-safe temporary password the operator hands to the customer once." | kind=entity | source=manager/backend/app/routers/customer_access.py:L97 | neighbors=[generate_password()] | lang=en
+- "routers_customer_access_rationale_98": "A URL-safe temporary password the operator hands to the customer once." | kind=entity | source=manager/backend/app/routers/customer_access.py:L98 | neighbors=[generate_password()] | lang=en
+- "routers_detection_configure_siem": "configure_siem()" | kind=code-symbol | source=manager/backend/app/routers/detection.py:L61 | neighbors=[detection.py] | lang=en
+- "routers_detection_get_coverage": "get_coverage()" | kind=code-symbol | source=manager/backend/app/routers/detection.py:L148 | neighbors=[detection.py] | lang=en
+- "routers_detection_get_gaps": "get_gaps()" | kind=code-symbol | source=manager/backend/app/routers/detection.py:L187 | neighbors=[detection.py] | lang=en
+- "routers_detection_run_validation": "run_validation()" | kind=code-symbol | source=manager/backend/app/routers/detection.py:L96 | neighbors=[detection.py] | lang=en
+- "routers_engagements_engagementupdate_normalize_name": ".normalize_name()" | kind=code-symbol | source=manager/backend/app/routers/engagements.py:L497 | neighbors=[EngagementUpdate] | lang=en
+- "routers_engagements_engagementupdate_validate_dates": ".validate_dates()" | kind=code-symbol | source=manager/backend/app/routers/engagements.py:L513 | neighbors=[EngagementUpdate] | lang=en
+- "routers_engagements_engagementupdate_validate_scopes": ".validate_scopes()" | kind=code-symbol | source=manager/backend/app/routers/engagements.py:L507 | neighbors=[EngagementUpdate] | lang=en
+- "routers_engagements_get_engagement": "get_engagement()" | kind=code-symbol | source=manager/backend/app/routers/engagements.py:L433 | neighbors=[engagements.py] | lang=en
+- "routers_engagements_list_engagement_assets": "list_engagement_assets()" | kind=code-symbol | source=manager/backend/app/routers/engagements.py:L643 | neighbors=[engagements.py] | lang=en
 
 ## Instructions
 
