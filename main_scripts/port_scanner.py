@@ -76,7 +76,7 @@ from .scanner_base import (
     BaseScanner, ScanResult, ScopeGuard, ResultWriter, expand_targets,
     parse_ports, setup_logging, base_argparser,
     main_entrypoint, classify_os_error, STATE_CONFIDENCE, jittered_delay,
-    assess_tarpit,
+    assess_tarpit, LOG, raise_fd_limit, safe_connect_concurrency,
 )
 from .adaptive_timeout import AdaptiveTimeout
 
@@ -260,8 +260,12 @@ class PortScanner(BaseScanner):
                  report_closed: bool = False, vantage: str | None = None,
                  retries: int = 1, emit_summary: bool = True,
                  adaptive_timeout: bool = True, source_port: int | None = None,
-                 randomize: bool = False, scan_delay: float = 0.0, **kwargs):
+                 randomize: bool = False, scan_delay: float = 0.0,
+                 scan_meta: dict | None = None, **kwargs):
         super().__init__(*args, **kwargs)
+        # Audit context (profile, fd ulimit, concurrency actually used) folded into
+        # the scan_summary so a paid engagement's coverage decisions are on record.
+        self.scan_meta = scan_meta or {}
         # Fixed TCP source port (e.g. 53/88) to bypass naive stateless ACLs; None =
         # OS-chosen ephemeral. Bound per-connect below (best-effort under concurrency).
         self.source_port = source_port
@@ -458,6 +462,8 @@ class PortScanner(BaseScanner):
         metrics.duration_s = round(time.monotonic() - t0, 3)
         if self.emit_summary:
             summ = metrics.summary()
+            if self.scan_meta:
+                summ["audit"] = self.scan_meta        # profile + ulimit + concurrency
             ev = (f"{metrics.ports_attempted}/{metrics.ports_requested} "
                   f"ports scanned, {metrics.open} open, "
                   f"health={'degraded' if metrics.degraded else 'ok'}")
@@ -498,24 +504,41 @@ def main() -> None:
     setup_logging(args.verbose)
 
     async def _run():
+        profile_name = None
         if args.profile:
             custom = parse_ports(args.ports) if args.ports else None
             ports = resolve_profile(args.profile, custom)
+            profile_name = args.profile
         elif args.all_ports:
             ports = ALL_TCP_PORTS
+            profile_name = "full"
         elif args.ports:
             ports = parse_ports(args.ports)
+            profile_name = "custom"
         else:
             ports = None
         scope = ScopeGuard.from_file(args.scope)
         targets = expand_targets(args.targets)
-        scanner = PortScanner(scope, rate=args.rate, concurrency=args.concurrency,
+
+        # Size concurrency below the fd ceiling (raising it first) so a full-range
+        # scan never silently loses ports to EMFILE. Log the values for audit.
+        fd_soft, fd_hard = raise_fd_limit()
+        concurrency = safe_connect_concurrency(args.concurrency)
+        n_ports = len(ports) if ports is not None else "default"
+        LOG.info("port scan: profile=%s ports=%s fd_ulimit soft=%d hard=%d "
+                 "concurrency=%d (requested %d)",
+                 profile_name, n_ports, fd_soft, fd_hard, concurrency, args.concurrency)
+        scan_meta = {"profile": profile_name, "fd_soft": fd_soft, "fd_hard": fd_hard,
+                     "concurrency": concurrency, "concurrency_requested": args.concurrency}
+
+        scanner = PortScanner(scope, rate=args.rate, concurrency=concurrency,
                               timeout=args.timeout, ports=ports,
                               report_closed=args.report_closed,
                               vantage=args.vantage, retries=args.retries,
                               adaptive_timeout=not args.fixed_timeout,
                               source_port=args.source_port,
-                              randomize=args.randomize, scan_delay=args.scan_delay)
+                              randomize=args.randomize, scan_delay=args.scan_delay,
+                              scan_meta=scan_meta)
         writer = ResultWriter(args.output, also_stdout=True)
         try:
             await scanner.run(targets, writer)

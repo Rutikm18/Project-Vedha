@@ -64,32 +64,71 @@ def parse_connection_confirm(data: bytes) -> dict | None:
     var = x224[7:]                                # after LI + fixed 6
     if len(var) >= 8 and var[0] == _TYPE_NEG_RSP:
         selected = struct.unpack("<I", var[4:8])[0]
-        return {
-            "rdp_confirmed": True, "negotiation": "response",
-            "selected_protocol": selected,
-            "nla": bool(selected & PROTOCOL_HYBRID),
-            "tls": bool(selected & (PROTOCOL_SSL | PROTOCOL_HYBRID)),
-            "standard_rdp_security": selected == PROTOCOL_RDP,
-        }
+        return _posture_from_selected(selected, negotiation="response")
     if len(var) >= 8 and var[0] == _TYPE_NEG_FAILURE:
         return {"rdp_confirmed": True, "negotiation": "failure",
                 "failure_code": struct.unpack("<I", var[4:8])[0]}
     # CC but no negotiation response -> legacy server that only speaks standard RDP.
-    return {"rdp_confirmed": True, "negotiation": None,
-            "selected_protocol": PROTOCOL_RDP, "nla": False, "tls": False,
-            "standard_rdp_security": True}
+    return _posture_from_selected(PROTOCOL_RDP, negotiation=None)
 
 
-def probe_rdp(ip: str, port: int, timeout: float) -> dict | None:
-    """One synchronous RDP handshake. Best-effort; None on any failure."""
+def _posture_from_selected(selected: int, *, negotiation: str | None) -> dict:
+    """Map an RDP selectedProtocol bitmask to (nla, tls) posture.
+
+    MS-RDPBCGR 5.4.5.2: CredSSP == Network Level Authentication is represented by
+    BOTH PROTOCOL_HYBRID (0x02) AND PROTOCOL_HYBRID_EX (0x08); TLS underlies SSL
+    (0x01), HYBRID and HYBRID_EX. The previous code tested only 0x02, so an
+    Early-User-Auth server that selects 0x08 was mislabelled nla:false/tls:false —
+    the exact inversion this fixes. standard_rdp_security is the 0x00 selection.
+    """
+    nla = bool(selected & (PROTOCOL_HYBRID | PROTOCOL_HYBRID_EX))
+    tls = bool(selected & (PROTOCOL_SSL | PROTOCOL_HYBRID | PROTOCOL_HYBRID_EX))
+    return {
+        "rdp_confirmed": True, "negotiation": negotiation,
+        "selected_protocol": selected,
+        "nla": nla, "tls": tls,
+        "standard_rdp_security": selected == PROTOCOL_RDP,
+    }
+
+
+def probe_rdp(ip: str, port: int, timeout: float,
+              requested_protocols: int = PROTOCOL_SSL | PROTOCOL_HYBRID | PROTOCOL_HYBRID_EX
+              ) -> dict | None:
+    """One synchronous RDP handshake offering `requested_protocols`. Best-effort;
+    None on any failure."""
     try:
         with socket.create_connection((ip, port), timeout=timeout) as sock:
             sock.settimeout(timeout)
-            sock.sendall(build_connection_request())
+            sock.sendall(build_connection_request(requested_protocols))
             data = sock.recv(1024)
     except (OSError, socket.timeout):
         return None
     return parse_connection_confirm(data)
+
+
+def probe_rdp_posture(ip: str, port: int, timeout: float) -> dict | None:
+    """Two-probe RDP posture (MS-RDPBCGR 2.2.1.1.1 / 2.2.1.2.1).
+
+    Probe A offers SSL|HYBRID|HYBRID_EX → what security the server *selects*.
+    Probe B offers standard RDP only (0x00) → whether NLA is *required*: a server
+    that REFUSES the RDP-only request with RDP_NEG_FAILURE is enforcing NLA, so the
+    stack is NOT reachable pre-auth (BlueKeep does not apply). A single probe cannot
+    prove 'required'; the RDP-only probe is what makes the claim honest.
+    """
+    a = probe_rdp(ip, port, timeout)
+    if not a:
+        return None
+    b = probe_rdp(ip, port, timeout, requested_protocols=PROTOCOL_RDP)
+    if b is not None:
+        if b.get("negotiation") == "failure":
+            a["nla_required"] = True
+            a["nla_required_evidence"] = (
+                f"server refused standard-RDP (RDP_NEG_FAILURE, "
+                f"failure_code={b.get('failure_code')})")
+        elif b.get("standard_rdp_security"):
+            # Server accepted a bare-RDP session — NLA is not enforced.
+            a["nla_required"] = False
+    return a
 
 
 class RDPScanner(BaseScanner):
@@ -107,15 +146,19 @@ class RDPScanner(BaseScanner):
                 _family, sockaddr = resolve(target, port, proto="tcp")
             except OSError:
                 return None
-            info = await loop.run_in_executor(None, probe_rdp, sockaddr[0], port, self.timeout)
+            info = await loop.run_in_executor(
+                None, probe_rdp_posture, sockaddr[0], port, self.timeout)
         if not info:
             return None
         sp = info.get("selected_protocol")
         sec = ("NLA" if info.get("nla") else "TLS" if info.get("tls")
                else "standard-rdp" if info.get("standard_rdp_security") else "?")
+        req = info.get("nla_required")
+        req_txt = ("; NLA required" if req is True
+                   else "; NLA NOT required" if req is False else "")
         return ScanResult(
             self.name, target, port=port, proto="tcp", status="open", data=info,
-            evidence=f"RDP confirmed; security={sec}"
+            evidence=f"RDP confirmed; security={sec}" + req_txt
             + (f" (selected_protocol={sp})" if sp is not None else ""))
 
     async def scan_target(self, target: str) -> list[ScanResult]:
@@ -124,17 +167,24 @@ class RDPScanner(BaseScanner):
 
 
 def main() -> None:
-    ap = base_argparser("RDP protocol confirmation + NLA detection")
-    ap.add_argument("-p", "--ports", default="3389")
-    args = ap.parse_args()
-    setup_logging(args)
-    scope = ScopeGuard.from_file(args.scope)
-    ports = parse_ports(args.ports)
-    writer = ResultWriter(args.output)
-    scanner = RDPScanner(scope=scope, rate=float(args.rate),
-                         concurrency=int(args.concurrency), timeout=float(args.timeout),
-                         ports=ports)
-    main_entrypoint(scanner, expand_targets(args.target), writer)
+    parser = base_argparser("RDP protocol confirmation + NLA detection")
+    parser.add_argument("-p", "--ports", default="3389", help="RDP ports (default: 3389)")
+    args = parser.parse_args()
+    setup_logging(args.verbose)
+
+    async def _run():
+        scope = ScopeGuard.from_file(args.scope)
+        ports = parse_ports(args.ports)
+        targets = expand_targets(args.targets)
+        scanner = RDPScanner(scope, rate=args.rate, concurrency=args.concurrency,
+                             timeout=args.timeout, ports=ports)
+        writer = ResultWriter(args.output, also_stdout=True)
+        try:
+            await scanner.run(targets, writer)
+        finally:
+            writer.close()
+
+    main_entrypoint(_run)
 
 
 if __name__ == "__main__":

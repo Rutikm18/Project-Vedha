@@ -1,0 +1,140 @@
+{
+  "target": "192.168.1.77",
+  "profile": "top1000",
+  "started": "20260829_004246",
+  "host_alive_hint": true,
+  "open_tcp_ports": [
+    135,
+    445,
+    2179,
+    3389,
+    7680
+  ],
+  "device_classification": {
+    "device_type": "ambiguous",
+    "confidence": 0.5,
+    "role_detail": "server_or_workstation",
+    "signals": {
+      "scores": {
+        "workstation": 3,
+        "server": 3
+      },
+      "os_guess": "Windows",
+      "open_tcp": [
+        135,
+        445,
+        2179,
+        3389,
+        7680
+      ],
+      "open_udp": [],
+      "support_count": 3,
+      "tie": [
+        "server",
+        "workstation"
+      ]
+    },
+    "evidence": [
+      "os_windows",
+      "rdp_3389",
+      "smb_445"
+    ]
+  },
+  "findings_summary": {
+    "total": 3,
+    "by_severity": {
+      "critical": 0,
+      "high": 0,
+      "medium": 1,
+      "low": 2,
+      "info": 0
+    },
+    "by_category": {
+      "exposure": 1,
+      "misconfiguration": 1,
+      "information_disclosure": 1
+    },
+    "actionable": 1
+  },
+  "top_findings": [
+    {
+      "type": "finding",
+      "rule_id": "SVC-RDP-EXPOSED",
+      "title": "RDP exposed to the scan vantage",
+      "severity": "medium",
+      "confidence": "medium",
+      "category": "exposure",
+      "target": "192.168.1.77",
+      "port": 3389,
+      "proto": "tcp",
+      "evidence": "Port 3389 open \u2014 RDP by convention (port-based, service not confirmed); a common brute-force / exploit target (e.g. BlueKeep class).",
+      "recommendation": "Restrict RDP to VPN/jump hosts; enforce NLA + MFA.",
+      "data": {
+        "port": 3389,
+        "confirmed": false
+      },
+      "source_scanner": "port_scan"
+    },
+    {
+      "type": "finding",
+      "rule_id": "TLS-CERT-SELF-SIGNED",
+      "title": "Self-signed TLS certificate",
+      "severity": "low",
+      "confidence": "high",
+      "category": "misconfiguration",
+      "target": "192.168.1.77",
+      "port": 3389,
+      "proto": "tcp",
+      "evidence": "Certificate is self-signed (subject == issuer) \u2014 no trusted chain. JA4X=7022c563de38_7022c563de38_e73b053161df (for infrastructure correlation).",
+      "recommendation": "Use a CA-issued certificate for anything outside a closed lab.",
+      "data": {
+        "self_signed": true,
+        "ja4x": "7022c563de38_7022c563de38_e73b053161df"
+      },
+      "source_scanner": "tls_scan"
+    },
+    {
+      "type": "finding",
+      "rule_id": "MSRPC-ENDPOINTS-EXPOSED",
+      "title": "Windows RPC endpoint mapper enumerable (165 interfaces)",
+      "severity": "low",
+      "confidence": "high",
+      "category": "information_disclosure",
+      "target": "192.168.1.77",
+      "port": 135,
+      "proto": "tcp",
+      "evidence": "The endpoint mapper answered an ept_lookup, disclosing 422 RPC endpoint(s) across 165 interface(s) (e.g. BFE.DLL, IKEEXT.DLL, MPSSVC.dll, SCardSvr.dll, appinfo.dll, appmgmts.dll, bthserv.dll, certprop.dll) \u2014 the internal RPC service map (services and their dynamic ports) an attacker uses to plan lateral movement.",
+      "recommendation": "Firewall port 135 and the dynamic RPC port range from untrusted networks; restrict RPC to management VLANs.",
+      "data": {
+        "endpoint_count": 422,
+        "interface_count": 165,
+        "named_services": [
+          "BFE.DLL",
+          "IKEEXT.DLL",
+          "MPSSVC.dll",
+          "SCardSvr.dll",
+          "appinfo.dll",
+          "appmgmts.dll",
+          "bthserv.dll",
+          "certprop.dll"
+        ]
+      },
+      "source_scanner": "msrpc_scan"
+    }
+  ],
+  "cve_summary": null,
+  "outputs": [
+    "01_host_discovery.jsonl",
+    "02_port_scan.jsonl",
+    "03_udp.jsonl",
+    "04_os_fingerprint.jsonl",
+    "05_snmp.jsonl",
+    "05b_ipmi.jsonl",
+    "06_smb.jsonl",
+    "06b_smb_enum.jsonl",
+    "07_service_banner.jsonl",
+    "08_tls.jsonl",
+    "19_msrpc.jsonl",
+    "findings.jsonl"
+  ]
+}

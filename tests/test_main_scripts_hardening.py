@@ -149,12 +149,19 @@ class TestSmbParsing:
         assert out["signing_supported"] is True
         assert out["signing_required"] is False
 
-    def test_negotiate_request_excludes_smb311(self):
+    def test_negotiate_request_offers_smb311_with_preauth_context(self):
+        # FIX 4: offer 3.1.1 (MS-SMB2 3.3.5.4 — server picks the greatest common
+        # dialect) AND carry the mandatory preauth-integrity context so Windows
+        # returns a valid negotiate rather than STATUS_INVALID_PARAMETER.
         req = ms_smb._smb2_negotiate()
-        count = struct.unpack_from("<H", req, 64 + 2)[0]     # body DialectCount
+        count = struct.unpack_from("<H", req, 64 + 2)[0]      # body DialectCount
         dialects = [struct.unpack_from("<H", req, 64 + 36 + 2 * i)[0]
                     for i in range(count)]
-        assert 0x0311 not in dialects, (
-            f"offering 3.1.1 without a preauth context makes Windows return "
-            f"STATUS_INVALID_PARAMETER — the root of the parse bug: {dialects}")
-        assert 0x0302 in dialects, "must still offer 3.0.2 to elicit a valid negotiate"
+        assert 0x0311 in dialects and 0x0302 in dialects, dialects
+
+        ctx_count = struct.unpack_from("<H", req, 64 + 32)[0]  # NegotiateContextCount
+        ctx_off = struct.unpack_from("<I", req, 64 + 28)[0]    # NegotiateContextOffset
+        assert ctx_count == 2 and ctx_off % 8 == 0
+        # A SMB2_PREAUTH_INTEGRITY_CAPABILITIES context (type 0x0001) must be present.
+        first_ctx_type = struct.unpack_from("<H", req, ctx_off)[0]
+        assert first_ctx_type == 0x0001

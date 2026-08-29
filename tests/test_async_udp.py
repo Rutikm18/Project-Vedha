@@ -180,6 +180,52 @@ def test_udp_scanner_probe_open_status_via_event_loop():
     assert r.data["responded"] is True
 
 
+def test_udp_scanner_generic_probe_detects_unknown_responder():
+    # A responder on a port with NO protocol-specific payload must still be found
+    # via the generic probe (the 'no UDP probe defined — skipping' gap). service is
+    # labelled unknown-udp; nothing is invented about what it is.
+    import scanner.udp_scanner as us
+
+    async def _run():
+        loop = asyncio.get_running_loop()
+        transport, _ = await loop.create_datagram_endpoint(
+            _EchoProtocol, local_addr=("127.0.0.1", 0))
+        port = transport.get_extra_info("socket").getsockname()[1]
+        assert port not in us.UDP_PROBES              # exercise the GENERIC path
+        try:
+            scope = ScopeGuard.from_list(["127.0.0.0/8"])
+            scanner = us.UDPScanner(scope, ports=[port], timeout=2.0)
+            return await scanner._probe("127.0.0.1", port)
+        finally:
+            transport.close()
+
+    r = asyncio.run(_run())
+    assert r is not None and r.status == "open"
+    assert r.data["responded"] is True
+    assert r.data["service"] == "unknown-udp"
+
+
+def test_udp_scanner_generic_probe_unknown_port_silence_is_open_filtered():
+    import scanner.udp_scanner as us
+
+    async def _run():
+        loop = asyncio.get_running_loop()
+        transport, _ = await loop.create_datagram_endpoint(
+            _SinkProtocol, local_addr=("127.0.0.1", 0))
+        port = transport.get_extra_info("socket").getsockname()[1]
+        assert port not in us.UDP_PROBES
+        try:
+            scope = ScopeGuard.from_list(["127.0.0.0/8"])
+            scanner = us.UDPScanner(scope, ports=[port], timeout=0.3)
+            return await scanner._probe("127.0.0.1", port)
+        finally:
+            transport.close()
+
+    r = asyncio.run(_run())
+    assert r is not None and r.status == "open|filtered"
+    assert r.data["service_guess"] == "unknown-udp"
+
+
 def test_udp_scanner_probe_open_filtered_on_timeout():
     # Canonical (main_scripts) semantics: UDP silence is the ambiguous
     # open|filtered pair, never a definitive "filtered" — collapsing it was the

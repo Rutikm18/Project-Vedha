@@ -317,3 +317,32 @@ def test_cli_view_deduplicates_unchanged_status():
     view(snap)          # same status again (e.g. a totals-only flush)
     lines = [ln for ln in buf.text.splitlines() if ln.strip()]
     assert len(lines) == 1      # printed once, not twice
+
+
+# ── IPv6 discovery wiring (opt-in, scope-gated) ───────────────────────────────
+def test_ipv6_discovery_reports_all_scans_only_in_scope(monkeypatch):
+    from scanner import ipv6_discovery as d6
+    # link-local in scope, global out of scope
+    monkeypatch.setattr(d6, "discover_ipv6_hosts",
+                        lambda *a, **k: ["fe80::1%en0", "2001:db8::5"])
+    scope = ScopeGuard.from_list(["fe80::/10"])
+    res = asyncio.run(vc._discover_ipv6(scope))
+    assert len(res["facts"]) == 2                       # both REPORTED
+    assert {f.target: f.data["in_scope"] for f in res["facts"]} == {
+        "fe80::1%en0": True, "2001:db8::5": False}
+    assert res["in_scope"] == ["fe80::1%en0"]           # only authorized one SCANNED
+    assert all(f.family == "ipv6" and f.scanner == "ipv6_discovery"
+               for f in res["facts"])
+
+
+def test_ipv6_discovery_never_raises(monkeypatch):
+    from scanner import ipv6_discovery as d6
+    monkeypatch.setattr(d6, "discover_ipv6_hosts",
+                        lambda *a, **k: (_ for _ in ()).throw(OSError("no iface")))
+    res = asyncio.run(vc._discover_ipv6(ScopeGuard.from_list(["fe80::/10"])))
+    assert res == {"facts": [], "in_scope": []}
+
+
+def test_ipv6_option_default_off():
+    from scanner.va_campaign import CampaignOptions
+    assert CampaignOptions().ipv6 is False              # opt-in only

@@ -50,10 +50,14 @@ _TCP_SIGNALS: dict[int, list[tuple[str, int, str]]] = {
     903:  [(HYPERVISOR, 2, "vmware_903")],
     5988: [(HYPERVISOR, 1, "cim_http_5988")],
     5989: [(HYPERVISOR, 1, "cim_https_5989")],
-    # Windows endpoint surface.
+    # Windows endpoint surface. SMB (445), RDP (3389) and NetBIOS (139) run on
+    # EVERY Windows box — workstation and server alike — so they are a Windows
+    # signal, NOT a server signal. Counting them for SERVER (the old behaviour) tied
+    # an obvious workstation against "server". A server is proven by ROLE ports
+    # (below) or the authenticated DomainRole, never by baseline endpoint services.
     139:  [(WORKSTATION, 1, "netbios_139")],
-    445:  [(WORKSTATION, 1, "smb_445"), (SERVER, 1, "smb_445")],
-    3389: [(WORKSTATION, 1, "rdp_3389"), (SERVER, 1, "rdp_3389")],
+    445:  [(WORKSTATION, 1, "smb_445")],
+    3389: [(WORKSTATION, 1, "rdp_3389")],
     # Server roles.
     88:   [(SERVER, 3, "kerberos_88")],        # Domain Controller tell
     389:  [(SERVER, 2, "ldap_389")],
@@ -90,6 +94,14 @@ _OS_SIGNALS: dict[str, list[tuple[str, int, str]]] = {
     "Network/Embedded":   [(NETWORK_DEVICE, 2, "os_embedded"), (IOT, 1, "os_embedded")],
 }
 
+# Hostname naming is a deliberate, strong role signal: Windows auto-names clients
+# DESKTOP-xxxxx / LAPTOP-xxxxx, and admins prefix servers SRV-/DC-/SQL-. DomainRole
+# (from an authenticated collector, MS DomainRole enum) is authoritative when
+# present: 0=standalone WS, 1=member WS, 2/3=standalone/member server, 4=backup DC,
+# 5=primary DC.
+_WORKSTATION_HOST_PREFIXES = ("desktop-", "laptop-", "win-", "pc-", "ws-")
+_SERVER_HOST_PREFIXES = ("srv-", "server", "dc-", "sql", "exch", "web-")
+
 # Confidence ceiling by number of independent agreeing signals. Never 1.0 —
 # role inference from network surface is probabilistic, not proof.
 _CEILING = {0: 0.0, 1: 0.5, 2: 0.75, 3: 0.9}
@@ -98,7 +110,9 @@ _CEILING = {0: 0.0, 1: 0.5, 2: 0.75, 3: 0.9}
 def classify_device(*, os_guess: str | None = None,
                     open_tcp_ports: list[int] | None = None,
                     open_udp_ports: list[int] | None = None,
-                    services: list[str] | None = None) -> dict:
+                    services: list[str] | None = None,
+                    hostname: str | None = None,
+                    domain_role: int | None = None) -> dict:
     """Fuse OS family + open ports + service products into a device-role guess.
 
     Returns {device_type, confidence, role_detail, signals, evidence}. `evidence`
@@ -123,6 +137,28 @@ def classify_device(*, os_guess: str | None = None,
         _apply(_UDP_SIGNALS, p)
     if os_guess:
         _apply(_OS_SIGNALS, os_guess)
+
+    # Hostname naming convention — a strong, cheap workstation/server signal.
+    if hostname:
+        hl = hostname.lower()
+        if hl.startswith(_WORKSTATION_HOST_PREFIXES):
+            scores[WORKSTATION] += 3
+            support[WORKSTATION].add("hostname_workstation")
+        elif hl.startswith(_SERVER_HOST_PREFIXES):
+            scores[SERVER] += 2
+            support[SERVER].add("hostname_server")
+
+    # DomainRole (authenticated) is authoritative — it directly states the role.
+    if domain_role is not None:
+        if domain_role in (0, 1):
+            scores[WORKSTATION] += 3
+            support[WORKSTATION].add(f"domain_role_workstation_{domain_role}")
+        elif domain_role in (4, 5):
+            scores[SERVER] += 3
+            support[SERVER].add(f"domain_role_dc_{domain_role}")
+        elif domain_role in (2, 3):
+            scores[SERVER] += 2
+            support[SERVER].add(f"domain_role_server_{domain_role}")
 
     # Service-product hints reinforce role without re-guessing service from port.
     for prod in services:
@@ -212,6 +248,8 @@ def classify_from_results(results) -> dict:
     open_udp: list[int] = []
     os_guess = None
     services: list[str] = []
+    hostname = None
+    domain_role = None
     for r in results:
         data = getattr(r, "data", None) or {}
         status = getattr(r, "status", None)
@@ -219,6 +257,16 @@ def classify_from_results(results) -> dict:
         proto = getattr(r, "proto", None)
         if data.get("os_guess"):
             os_guess = data["os_guess"]
+        # Hostname comes free from the SMB NTLM CHALLENGE (target_name), NetBIOS or
+        # an authenticated collector; DomainRole only from an authenticated collector.
+        for hk in ("target_name", "computer_name", "hostname", "nb_name", "netbios_name"):
+            if data.get(hk) and not hostname:
+                hostname = str(data[hk])
+        if data.get("domain_role") is not None:
+            try:
+                domain_role = int(data["domain_role"])
+            except (TypeError, ValueError):
+                pass
         if port is not None and proto == "tcp" and status == "open":
             open_tcp.append(port)
         if port is not None and proto == "udp" and status == "open":
@@ -227,4 +275,5 @@ def classify_from_results(results) -> dict:
             if data.get(key):
                 services.append(str(data[key]))
     return classify_device(os_guess=os_guess, open_tcp_ports=open_tcp,
-                           open_udp_ports=open_udp, services=services)
+                           open_udp_ports=open_udp, services=services,
+                           hostname=hostname, domain_role=domain_role)

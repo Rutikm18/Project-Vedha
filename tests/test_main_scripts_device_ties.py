@@ -8,8 +8,11 @@ from main_scripts import device_classifier as dc
 
 
 def test_workstation_server_tie_is_ambiguous():
-    # 445 and 3389 each vote workstation+server equally -> 2 vs 2.
-    r = dc.classify_device(open_tcp_ports=[445, 3389])
+    # FIX 5(b): SMB(445)/RDP(3389) are Windows-baseline, NOT server signals, so they
+    # no longer manufacture a workstation/server tie. A GENUINE tie still reports
+    # ambiguous: 445+3389 give workstation 2, a real server role port (SMTP 25,
+    # weight 2) gives server 2 -> an honest 2-vs-2 tie.
+    r = dc.classify_device(open_tcp_ports=[445, 3389, 25])
     assert r["device_type"] == "ambiguous"
     assert set(r["signals"]["tie"]) == {dc.WORKSTATION, dc.SERVER}
     assert r["confidence"] <= 0.5

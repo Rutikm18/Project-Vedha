@@ -1,0 +1,31 @@
+00:42:46  === run_all target=192.168.1.77 profile=top1000 outdir=/Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha/probe/scans/scan_192_168_1_77_20260829_004246 ===
+00:42:46  [01_host_discovery] $ main_scripts.host_discovery -t 192.168.1.77 -s /Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha/probe/scans/scan_192_168_1_77_20260829_004246/scope.txt --rate 300 --concurrency 200 --timeout 3 -o /Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha/probe/scans/scan_192_168_1_77_20260829_004246/01_host_discovery.jsonl
+00:42:46  [01_host_discovery] done -> 01_host_discovery.jsonl
+00:42:46  host_discovery: appears LIVE
+00:42:46  [02_port_scan] $ main_scripts.port_scanner -t 192.168.1.77 -s /Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha/probe/scans/scan_192_168_1_77_20260829_004246/scope.txt --rate 300 --concurrency 200 --timeout 3 --profile top1000 --report-closed -o /Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha/probe/scans/scan_192_168_1_77_20260829_004246/02_port_scan.jsonl
+00:42:56  [02_port_scan] done -> 02_port_scan.jsonl
+00:42:56  open TCP ports: [135, 445, 2179, 3389, 7680]
+00:42:56  [03_udp] $ main_scripts.udp_scanner -t 192.168.1.77 -s /Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha/probe/scans/scan_192_168_1_77_20260829_004246/scope.txt --rate 300 --concurrency 200 --timeout 3 -o /Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha/probe/scans/scan_192_168_1_77_20260829_004246/03_udp.jsonl
+00:43:05  [03_udp] done -> 03_udp.jsonl
+00:43:05  [04_os_fingerprint] $ main_scripts.os_fingerprint -t 192.168.1.77 -s /Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha/probe/scans/scan_192_168_1_77_20260829_004246/scope.txt --rate 300 --concurrency 200 --timeout 3 -o /Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha/probe/scans/scan_192_168_1_77_20260829_004246/04_os_fingerprint.jsonl
+00:43:05  [04_os_fingerprint] done -> 04_os_fingerprint.jsonl
+00:43:05  [05_snmp] $ main_scripts.snmp_scanner -t 192.168.1.77 -s /Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha/probe/scans/scan_192_168_1_77_20260829_004246/scope.txt --timeout 3 -o /Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha/probe/scans/scan_192_168_1_77_20260829_004246/05_snmp.jsonl
+00:43:23  [05_snmp] done -> 05_snmp.jsonl
+00:43:23  [05b_ipmi] $ main_scripts.ipmi_scanner -t 192.168.1.77 -s /Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha/probe/scans/scan_192_168_1_77_20260829_004246/scope.txt --timeout 3 -o /Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha/probe/scans/scan_192_168_1_77_20260829_004246/05b_ipmi.jsonl
+00:43:26  [05b_ipmi] done -> 05b_ipmi.jsonl
+00:43:26  [06_smb] $ main_scripts.smb_scanner -t 192.168.1.77 -s /Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha/probe/scans/scan_192_168_1_77_20260829_004246/scope.txt --rate 300 --concurrency 200 --timeout 3 -o /Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha/probe/scans/scan_192_168_1_77_20260829_004246/06_smb.jsonl
+00:43:26  [06_smb] done -> 06_smb.jsonl
+00:43:26  [06b_smb_enum] $ main_scripts.smb_enum_scanner -t 192.168.1.77 -s /Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha/probe/scans/scan_192_168_1_77_20260829_004246/scope.txt --rate 300 --concurrency 200 --timeout 3 -o /Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha/probe/scans/scan_192_168_1_77_20260829_004246/06b_smb_enum.jsonl
+00:43:27  [06b_smb_enum] done -> 06b_smb_enum.jsonl
+00:43:27  [07_service_banner] $ main_scripts.service_banner -t 192.168.1.77 -s /Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha/probe/scans/scan_192_168_1_77_20260829_004246/scope.txt --rate 300 --concurrency 200 --timeout 3 -p 135,445,2179,3389,7680 -o /Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha/probe/scans/scan_192_168_1_77_20260829_004246/07_service_banner.jsonl
+00:43:40  [07_service_banner] done -> 07_service_banner.jsonl
+00:43:40  [08_tls] $ main_scripts.tls_scanner -t 192.168.1.77 -s /Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha/probe/scans/scan_192_168_1_77_20260829_004246/scope.txt --rate 300 --concurrency 200 --timeout 3 -p 3389 -o /Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha/probe/scans/scan_192_168_1_77_20260829_004246/08_tls.jsonl
+00:43:41  [08_tls] done -> 08_tls.jsonl
+00:43:41  [19_msrpc] $ main_scripts.msrpc_scanner -t 192.168.1.77 -s /Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha/probe/scans/scan_192_168_1_77_20260829_004246/scope.txt --rate 300 --concurrency 200 --timeout 3 -p 135 -o /Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha/probe/scans/scan_192_168_1_77_20260829_004246/19_msrpc.jsonl
+00:43:41  [19_msrpc] done -> 19_msrpc.jsonl
+00:43:41  findings: 3 total, 1 actionable -> findings.jsonl
+00:43:41    [MEDIUM  ] 192.168.1.77:3389      RDP exposed to the scan vantage
+00:43:41    [LOW     ] 192.168.1.77:3389      Self-signed TLS certificate
+00:43:41    [LOW     ] 192.168.1.77:135       Windows RPC endpoint mapper enumerable (165 interfaces)
+00:43:41  device: ambiguous (conf 0.5) role_detail=server_or_workstation
+00:43:41  === done. results in /Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha/probe/scans/scan_192_168_1_77_20260829_004246 ===

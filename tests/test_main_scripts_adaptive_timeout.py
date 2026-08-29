@@ -47,6 +47,23 @@ def test_estimate_converges_on_stable_rtt():
     assert est.timeout() == pytest.approx(0.5, abs=0.05)
 
 
+def test_narrows_then_widens_after_outlier():
+    # FIX 4 accept: the timeout NARROWS as samples stabilize, then WIDENS after an
+    # outlier round-trip — a host that suddenly slows gets more time, individually.
+    est = AdaptiveTimeout(base=2.0, minimum=0.05, maximum=8.0)
+    for _ in range(12):
+        est.observe(0.05)                       # stable, fast
+    tight = est.timeout()
+    assert tight < 0.5                          # narrowed toward the fast SRTT
+    est.observe(2.0)                            # a sudden slow response (outlier)
+    widened = est.timeout()
+    assert widened > tight                      # variance jumped -> timeout widened
+    # ...and it re-narrows as the host settles again
+    for _ in range(20):
+        est.observe(0.05)
+    assert est.timeout() < widened
+
+
 def test_invalid_band_rejected():
     with pytest.raises(ValueError):
         AdaptiveTimeout(base=0.1, minimum=0.3, maximum=8.0)

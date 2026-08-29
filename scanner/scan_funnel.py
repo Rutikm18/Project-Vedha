@@ -58,8 +58,28 @@ DEFAULT_PORT_ROUTES: dict[str, list[int]] = {
     "vnc": [5900, 5901],
     "smtp": [25, 587],
     "msrpc": [135],
+    "rdp": [3389],
     "printer": [9100, 631],
 }
+
+
+# Upper bound on how many EPM-advertised dynamic ports we will connect-confirm in
+# one host's reconcile pass — a bound against a hostile/garbage endpoint map
+# turning one EPM read into an unbounded port sweep.
+MAX_RECONCILE_PORTS = 512
+
+
+def reconcile_ports(*port_lists: list[int]) -> list[int]:
+    """Canonical open-TCP set for a host = deduped, sorted union of every source.
+
+    The report and re-scan delta read this single source of truth, so the port
+    scan and the MSRPC endpoint mapper (and, later, other vantages) can never
+    contradict each other on which ports are open. Pure and order-independent.
+    """
+    merged: set[int] = set()
+    for lst in port_lists:
+        merged.update(p for p in (lst or []) if isinstance(p, int))
+    return sorted(merged)
 
 
 def route_ports(open_ports: list[int],
@@ -186,6 +206,39 @@ class ScanFunnel:
             results.extend(deep)
             stages.append(route_name)
 
+        # Stage 3b — MSRPC endpoint-mapper reconciliation (canonical port set).
+        #   msrpc_scan reads EPM, which advertises dynamic RPC listeners (49152+)
+        #   that Stage 2's fixed candidate-port set never scans — the exact blind
+        #   spot behind "missed the ephemeral RPC range even though msrpc walked
+        #   those ports". EPM *advertising* a port is not proof it is reachable
+        #   from this vantage, so we connect-confirm the newly-advertised ports and
+        #   fold only the CONFIRMED-open ones into the canonical set. The
+        #   advertisement alone is never labeled open (honesty rule).
+        advertised = sorted({
+            p for r in results if r.scanner == "msrpc_scan"
+            for p in ((r.data or {}).get("dynamic_tcp_ports") or [])
+            if isinstance(p, int)
+        })
+        open_set = set(open_ports)
+        new_ports = [p for p in advertised if p not in open_set][:MAX_RECONCILE_PORTS]
+        if new_ports:
+            confirm_results = await self.port_scanner_factory(new_ports).scan_target(target)
+            results.extend(confirm_results)
+            stages.append("rpc_reconcile")
+            confirmed_open = sorted({
+                r.port for r in confirm_results
+                if r.status == "open" and r.proto == "tcp" and r.port is not None
+            })
+            open_ports = reconcile_ports(open_ports, confirmed_open)
+            results.append(ScanResult(
+                "rpc_reconcile", target, status="scan_summary",
+                data={"epm_advertised_dynamic_ports": advertised,
+                      "probed": new_ports,
+                      "confirmed_open": confirmed_open,
+                      "canonical_open_tcp_ports": open_ports},
+                evidence=(f"EPM advertised {len(advertised)} dynamic RPC port(s); "
+                          f"{len(confirmed_open)} confirmed reachable")))
+
         return FunnelResult(target, alive, open_ports, results, stages)
 
     async def run(self, targets, writer) -> None:
@@ -238,6 +291,7 @@ def build_default_funnel(scope: ScopeGuard, *, rate: float = 200.0,
     from .vnc_scanner import VNCScanner
     from .smtp_scanner import SMTPScanner
     from .msrpc_scanner import MSRPCScanner
+    from .rdp_scanner import RDPScanner
     from .printer_scanner import PrinterScanner
 
     common = dict(rate=rate, concurrency=concurrency, timeout=timeout)
@@ -294,6 +348,10 @@ def build_default_funnel(scope: ScopeGuard, *, rate: float = 200.0,
     def msrpc_factory(ports):
         return MSRPCScanner(scope, ports=ports, **common)
 
+    def rdp_factory(ports):
+        # Confirming RDP scanner: X.224 handshake + NLA posture (verified scanner).
+        return RDPScanner(scope, ports=ports, **common)
+
     def printer_factory(ports):
         return PrinterScanner(scope, ports=ports, **common)
 
@@ -317,6 +375,7 @@ def build_default_funnel(scope: ScopeGuard, *, rate: float = 200.0,
             "vnc": vnc_factory,
             "smtp": smtp_factory,
             "msrpc": msrpc_factory,
+            "rdp": rdp_factory,
             "printer": printer_factory,
         },
         udp_scanner=UDPScanner(scope, **common) if with_udp else None,

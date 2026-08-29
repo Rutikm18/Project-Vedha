@@ -175,8 +175,55 @@ def os_family_from_ttl(observed_ttl: int | None) -> str:
     }.get(init, "unknown")
 
 
+# ── p0f-style TCP/IP stack signatures ─────────────────────────────────────────
+# Derived from p0f v3's fingerprint database (Zalewski). Each entry keys on the
+# inferred initial TTL + the SYN/ACK TCP option LAYOUT (p0f "olayout": M=mss,
+# W=wscale, S=sackOK, T=timestamps, N=nop, E=eol) and, optionally, the window
+# scale — the combination that most reliably separates the major stacks. The
+# order/presence of options is a far stronger discriminator than window size
+# alone (which NAT/proxies rewrite), so this refines the coarse TTL family guess
+# into a specific stack WITHOUT ever overriding it. Conservative by design: only
+# widely-stable layouts are encoded; anything else yields no stack label rather
+# than a fabricated one. Most specific (highest-confidence) match wins.
+#   (initial_ttl, olayout | None, wscale | None, label, confidence)
+_STACK_SIGNATURES: tuple = (
+    (64,  "MSTNW", 7,    "Linux (kernel 3.11+ / 4.x-6.x)", 0.90),
+    (64,  "MSTNW", None, "Linux (kernel 2.6.x / modern)", 0.82),
+    (128, "MNWNNS", 8,   "Windows (NT 6.2+ — 8/10/11, Server 2012+)", 0.90),
+    (128, "MNWNNS", None, "Windows (NT 6.x — Vista/7/8+)", 0.80),
+    (128, "MNNS",  None, "Windows (NT 5.x — XP/Server 2003)", 0.75),
+    (64,  "MNWNNTSE", None, "macOS / iOS (Darwin)", 0.85),
+    (64,  "MNWNNTS",  None, "macOS / iOS (Darwin)", 0.83),
+    (64,  "MNWST",  None, "FreeBSD", 0.80),
+    (255, None,     None, "Network / embedded device (initial TTL 255)", 0.60),
+)
+
+
+def match_stack_signature(*, ttl: int | None = None, mss: int | None = None,
+                          window: int | None = None, wscale: int | None = None,
+                          olayout: str | None = None) -> dict | None:
+    """p0f-style match on (initial TTL, option layout, window scale) → a specific
+    stack label. Returns None when nothing matches (never guesses). Pure."""
+    if ttl is None:
+        return None
+    init = infer_initial_ttl(ttl)
+    best: dict | None = None
+    for sig_ttl, sig_ol, sig_ws, label, conf in _STACK_SIGNATURES:
+        if init != sig_ttl:
+            continue
+        if sig_ol is not None and olayout != sig_ol:
+            continue
+        if sig_ws is not None and wscale != sig_ws:
+            continue
+        if best is None or conf > best["stack_confidence"]:
+            best = {"stack": label, "stack_confidence": conf,
+                    "stack_source": "p0f_tcp_options"}
+    return best
+
+
 def fingerprint_os(*, ttl: int | None = None, tcp_window: int | None = None,
-                   mss: int | None = None) -> dict:
+                   mss: int | None = None, ttl_source: str | None = None,
+                   wscale: int | None = None, olayout: str | None = None) -> dict:
     """
     Combine available stack signals into a best-guess OS family with a calibrated
     confidence. Confidence is the share of evidence pointing at the winner, but
@@ -185,6 +232,13 @@ def fingerprint_os(*, ttl: int | None = None, tcp_window: int | None = None,
     value is trivially spoofed and NAT/proxies rewrite it. Two agreeing signals
     -> strong; three+ -> high, but never 1.0. Returns {os_guess, confidence,
     signals} where signals (incl. support_count) exposes what backed the guess.
+
+    PROVENANCE (honesty rule): a TTL harvested from a TCP SYN/ACK and a TTL from
+    an ICMP echo produce the SAME os_guess but are NOT the same evidence — one is
+    read through the firewall on a port that answered, the other needs the host to
+    answer ICMP. `ttl_source` (e.g. "icmp_echo", "icmp_timestamp", "tcp_synack")
+    is recorded in signals so no consumer can later mislabel a TCP-derived TTL as
+    an ICMP result. It is advisory only and never changes the score.
     """
     signals: dict = {}
     scores = {"Linux/Unix/macOS": 0, "Windows": 0, "Network/Embedded": 0}
@@ -195,6 +249,7 @@ def fingerprint_os(*, ttl: int | None = None, tcp_window: int | None = None,
         init = infer_initial_ttl(ttl)
         signals["initial_ttl"] = init
         signals["observed_ttl"] = ttl
+        signals["ttl_source"] = ttl_source or "unspecified"
         signals["hop_estimate"] = hop_estimate(ttl)
         if init == 64:
             scores["Linux/Unix/macOS"] += 2
@@ -234,9 +289,21 @@ def fingerprint_os(*, ttl: int | None = None, tcp_window: int | None = None,
         else:
             signals["link_hint"] = "constrained"
 
+    # p0f-style refinement: a specific stack label from the TCP option layout.
+    # Additive — it enriches, never overrides, the coarse family guess below.
+    stack = match_stack_signature(ttl=ttl, mss=mss, window=tcp_window,
+                                  wscale=wscale, olayout=olayout)
+    stack_guess = None
+    if stack:
+        stack_guess = stack["stack"]
+        signals["stack"] = stack["stack"]
+        signals["stack_confidence"] = stack["stack_confidence"]
+        signals["stack_source"] = stack["stack_source"]
+
     total = sum(scores.values())
     if total == 0:
-        return {"os_guess": "unknown", "confidence": 0.0, "signals": signals}
+        return {"os_guess": "unknown", "confidence": 0.0,
+                "stack_guess": stack_guess, "signals": signals}
     best = max(scores, key=scores.get)
     # A single stack signal is a hint, not proof. Cap confidence by corroboration
     # so TTL-alone maxes at medium and nothing ever claims absolute certainty.
@@ -245,7 +312,7 @@ def fingerprint_os(*, ttl: int | None = None, tcp_window: int | None = None,
     signals["support_count"] = n_support
     return {"os_guess": best,
             "confidence": round(min(scores[best] / total, ceiling), 2),
-            "signals": signals}
+            "stack_guess": stack_guess, "signals": signals}
 
 
 # ── capability detection ──────────────────────────────────────────────────────
@@ -290,10 +357,50 @@ class OSFingerprintScanner(BaseScanner):
     """
     name = "os_fingerprint"
 
-    def __init__(self, *args, tcp_hints: dict[str, dict] | None = None, **kwargs):
+    def __init__(self, *args, tcp_hints: dict[str, dict] | None = None,
+                 smb_build: bool = True, **kwargs):
         super().__init__(*args, **kwargs)
         # {target: {"tcp_window": int, "mss": int}} gathered elsewhere.
         self.tcp_hints = tcp_hints or {}
+        # When True (default), enrich the guess with the exact Windows build from a
+        # pre-auth SMB2 NTLM CHALLENGE if 445 is reachable — turning a TTL-only
+        # "Windows, conf 0.5" into "Windows 11 24H2, build 26100, conf ≥0.95".
+        self.smb_build = smb_build
+
+    def _smb_build(self, target: str) -> dict:
+        """Best-effort exact Windows build via SMB2 NTLM (shared impl). {} on any
+        failure or when 445 is closed. Runs in a worker thread (blocking sockets)."""
+        if not self.smb_build:
+            return {}
+        try:
+            from .smb_scanner import ntlm_os_build
+            _family, sockaddr = resolve(target, 445, proto="tcp")
+        except OSError:
+            return {}
+        return ntlm_os_build(sockaddr[0], 445, min(self.timeout, 5.0))
+
+    def _apply_smb_build(self, target: str, result: ScanResult) -> ScanResult:
+        """Fuse an SMB2 NTLM build into an OS result: authoritative release + build,
+        confidence >=0.95, method records both provenances. No-op if no build."""
+        build = self._smb_build(target)
+        if not build.get("os_build"):
+            return result
+        d = result.data or {}
+        d.update({"os_guess": "Windows",
+                  "os_release": build.get("os_release"),
+                  "os_build": build.get("os_build"),
+                  "os_version": build.get("os_version"),
+                  "hostname": build.get("target_name"),
+                  "confidence": max(d.get("confidence", 0.0) or 0.0,
+                                    build.get("os_confidence", 0.97))})
+        result.data = d
+        result.confidence = d["confidence"]
+        base_method = result.method or "icmp_echo"
+        result.method = f"{base_method}+smb2_ntlm_version"
+        result.evidence = (f"{result.evidence}; SMB2 NTLM build "
+                           f"{build.get('os_build')} -> {build.get('os_release')} "
+                           f"(conf {d['confidence']})")
+        return result
 
     def _icmp_echo_ttl(self, target: str) -> int | None | str:
         """Send one ICMP echo; return observed TTL, None (no TTL), or "down"."""
@@ -358,7 +465,32 @@ class OSFingerprintScanner(BaseScanner):
         finally:
             sock.close()
 
+    def _tcp_ttl_result(self, target: str, hints: dict) -> ScanResult:
+        """FIX 3b: aliveness/TTL came from a TCP SYN-ACK, not ICMP. Label the TTL
+        source honestly as tcp_ttl — NEVER icmp_echo. Liveness is real (a TCP
+        handshake elsewhere reached the host), but no ICMP echo was received."""
+        fp = fingerprint_os(ttl=hints.get("ttl"), tcp_window=hints.get("tcp_window"),
+                            mss=hints.get("mss"), wscale=hints.get("wscale"),
+                            olayout=hints.get("olayout"), ttl_source="tcp_synack")
+        data = {"alive": True, "icmp_reply": False, "icmp_echo_reply": False,
+                "via": "tcp_synack", "observed_ttl": hints.get("ttl"), **fp}
+        return ScanResult(
+            self.name, target, status="observed", method="tcp_ttl", data=data,
+            evidence=(f"no ICMP echo; TTL {hints.get('ttl')} derived from TCP SYN/ACK "
+                      f"-> {fp['os_guess']} (method tcp_ttl)"))
+
     async def scan_target(self, target: str) -> list[ScanResult]:
+        results = await self._icmp_scan_target(target)
+        # Enrich the primary result with the exact Windows build (SMB2 NTLM) — the
+        # single change that lifts standalone os_fingerprint from a TTL-only 0.5
+        # guess to an authoritative build-backed identification when 445 is open.
+        if results and self.smb_build:
+            loop = asyncio.get_running_loop()
+            results[0] = await loop.run_in_executor(
+                None, self._apply_smb_build, target, results[0])
+        return results
+
+    async def _icmp_scan_target(self, target: str) -> list[ScanResult]:
         loop = asyncio.get_running_loop()
         await self.limiter.wait()
         async with self.sem:
@@ -366,13 +498,20 @@ class OSFingerprintScanner(BaseScanner):
 
         hints = self.tcp_hints.get(target, {})
         if ttl == "unavailable":
-            # No ICMP; fingerprint from TCP hints alone if we have any.
+            # No ICMP. If a TCP-derived TTL is available, report it as tcp_ttl (never
+            # icmp_echo). Otherwise fall back to window/MSS-only hints or say so.
+            if hints.get("ttl") is not None:
+                return [self._tcp_ttl_result(target, hints)]
             if hints:
-                fp = fingerprint_os(**hints)
+                fp = fingerprint_os(ttl_source="tcp", **{
+                    k: v for k, v in hints.items()
+                    if k in ("tcp_window", "mss", "wscale", "olayout")})
                 return [ScanResult(self.name, target, status="observed",
+                                   method="tcp_hints",
                                    data={"icmp": "unavailable", **fp},
                                    evidence=f"OS guess {fp['os_guess']} (tcp hints only)")]
             return [ScanResult(self.name, target, status="observed",
+                               method="tcp_hints",
                                data={"icmp": "unavailable"},
                                evidence="ICMP unavailable (need root or ping perms)")]
         if ttl == "down":
@@ -384,31 +523,49 @@ class OSFingerprintScanner(BaseScanner):
                 t_ttl = ts.get("ttl")
                 fp = fingerprint_os(ttl=t_ttl if isinstance(t_ttl, int) else None,
                                     tcp_window=hints.get("tcp_window"),
-                                    mss=hints.get("mss"))
+                                    mss=hints.get("mss"),
+                                    ttl_source="icmp_timestamp")
                 clock = remote_clock(ts["transmit"])
                 data = {"alive": True, "icmp_reply": True, "icmp_echo_reply": False,
                         "icmp_timestamp_reply": True, "via": "icmp_timestamp",
                         "observed_ttl": t_ttl, "remote_clock": clock, **fp}
-                ev = (f"ICMP timestamp reply (echo filtered) ttl={t_ttl} "
+                ttl_txt = t_ttl if t_ttl is not None else "n/a (datagram socket)"
+                ev = (f"ICMP timestamp reply (echo filtered) ttl={ttl_txt} "
                       f"-> {fp['os_guess']}")
                 if clock.get("standard"):
                     ev += f"; remote clock {clock['utc_time']} UTC"
                 return [ScanResult(self.name, target, status="open",
-                                   data=data, evidence=ev)]
+                                   method="icmp_timestamp", data=data, evidence=ev)]
+            # Echo AND timestamp both silent. If a TCP-derived TTL exists, the host
+            # is alive via TCP — report tcp_ttl, never a fabricated ICMP result.
+            if hints.get("ttl") is not None:
+                return [self._tcp_ttl_result(target, hints)]
             return [ScanResult(self.name, target, status="filtered",
                                data={"alive": False, "icmp_reply": False,
                                      "icmp_timestamp_reply": False},
                                evidence="no ICMP echo or timestamp reply")]
 
-        # ttl is an int (or None if the IP header wasn't delivered).
-        fp = fingerprint_os(ttl=ttl if isinstance(ttl, int) else None,
+        # A real ICMP echo reply was accepted (accept_echo_reply). `ttl` is the
+        # observed IP TTL on a raw socket, or None when a datagram-ICMP socket
+        # delivered the reply without the IP header — in which case the OS guess
+        # comes from the TCP hints, NOT from a fabricated ICMP TTL.
+        has_ttl = isinstance(ttl, int)
+        fp = fingerprint_os(ttl=ttl if has_ttl else None,
                             tcp_window=hints.get("tcp_window"),
-                            mss=hints.get("mss"))
-        data = {"alive": True, "icmp_reply": True, "observed_ttl": ttl, **fp}
+                            mss=hints.get("mss"),
+                            ttl_source="icmp_echo" if has_ttl else None)
+        data = {"alive": True, "icmp_reply": True, "icmp_echo_reply": True,
+                "observed_ttl": ttl, **fp}
+        if has_ttl:
+            ev = (f"ICMP echo reply ttl={ttl} -> {fp['os_guess']} "
+                  f"(conf {fp['confidence']})")
+        else:
+            # Alive is proven by the echo reply; the TTL was not observable here.
+            ev = (f"ICMP echo reply (alive); no TTL via datagram socket -> "
+                  f"{fp['os_guess']} (conf {fp['confidence']})")
         return [ScanResult(
-            self.name, target, status="open", data=data,
-            evidence=f"ICMP reply ttl={ttl} -> {fp['os_guess']} "
-                     f"(conf {fp['confidence']})")]
+            self.name, target, status="open", method="icmp_echo",
+            data=data, evidence=ev)]
 
 
 def main() -> None:

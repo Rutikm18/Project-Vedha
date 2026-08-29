@@ -14,7 +14,9 @@ import asyncio
 import pytest
 
 from scanner.scanner_base import ScanResult, ScopeGuard
-from scanner.scan_funnel import ScanFunnel, FunnelResult, route_ports
+from scanner.scan_funnel import (
+    ScanFunnel, FunnelResult, route_ports, reconcile_ports,
+)
 
 
 # ── fakes (real objects with the scan_target contract, no mocks) ──────────────
@@ -212,6 +214,91 @@ class TestBuildDefaultFunnel:
         cands = set(_candidate_ports(DEFAULT_PORT_ROUTES))
         for ports in DEFAULT_PORT_ROUTES.values():
             assert set(ports).issubset(cands)
+
+
+# ── reconcile_ports (pure logic) ──────────────────────────────────────────────
+
+class TestReconcilePorts:
+    def test_union_dedup_sorted(self):
+        assert reconcile_ports([135, 445, 3389], [49668, 49664]) == \
+            [135, 445, 3389, 49664, 49668]
+
+    def test_ignores_non_ints_and_empty(self):
+        assert reconcile_ports(None, [80], [80, "x", 443]) == [80, 443]
+
+
+# ── MSRPC endpoint-mapper reconciliation (Stage 3b) ───────────────────────────
+
+class _OpenSetPortFactory:
+    """Port-scanner factory whose scanners report a port open iff it is in
+    `actually_open`. Records every port set requested, so a test can prove the
+    ephemeral RPC range was actually scanned by the reconcile pass."""
+
+    def __init__(self, actually_open):
+        self.actually_open = set(actually_open)
+        self.requested: list[list[int]] = []
+
+    def __call__(self, ports):
+        ports = list(ports)
+        self.requested.append(sorted(ports))
+        actually_open = self.actually_open
+
+        class _PS:
+            async def scan_target(self, target):
+                return [ScanResult("port_scan", target, port=p, proto="tcp",
+                                   status="open")
+                        for p in ports if p in actually_open]
+        return _PS()
+
+
+class _FakeMSRPC:
+    """A deep scanner on 135 that returns EPM-advertised dynamic ports."""
+
+    def __init__(self, ports, advertised):
+        self.advertised = advertised
+
+    async def scan_target(self, target):
+        return [ScanResult("msrpc_scan", target, port=135, proto="tcp",
+                           status="open",
+                           data={"msrpc": True, "dynamic_tcp_ports": self.advertised})]
+
+
+class TestRpcReconcile:
+    def _funnel(self, actually_open, advertised):
+        factory = _OpenSetPortFactory(actually_open)
+        return ScanFunnel(
+            _scope(),
+            discovery=FakeDiscovery(alive=True),
+            port_scanner_factory=factory,
+            deep_scanner_factories={
+                "msrpc": lambda ports: _FakeMSRPC(ports, advertised)},
+            routes={"msrpc": [135]},
+        ), factory
+
+    def test_advertised_ports_are_scanned_and_only_reachable_confirmed(self):
+        # 135 open; EPM advertises 49664 (reachable) and 49668 (advertised but
+        # NOT reachable from this vantage).
+        funnel, factory = self._funnel(
+            actually_open=[135, 49664], advertised=[49664, 49668])
+        result = asyncio.run(funnel.run_host("10.0.0.7"))
+
+        # The ephemeral range EPM advertised was actually port-scanned (the gap).
+        assert [49664, 49668] in factory.requested
+        assert "rpc_reconcile" in result.stages_run
+        # Canonical open set = union of base scan + CONFIRMED dynamic ports only.
+        # 49668 was advertised but unreachable → never labeled open (honesty rule).
+        assert result.open_tcp_ports == [135, 49664]
+
+        summary = next(r for r in result.results if r.scanner == "rpc_reconcile")
+        assert summary.data["epm_advertised_dynamic_ports"] == [49664, 49668]
+        assert summary.data["confirmed_open"] == [49664]
+        assert summary.data["canonical_open_tcp_ports"] == [135, 49664]
+
+    def test_no_dynamic_ports_no_reconcile_stage(self):
+        funnel, _ = self._funnel(actually_open=[135], advertised=[])
+        result = asyncio.run(funnel.run_host("10.0.0.7"))
+        assert "rpc_reconcile" not in result.stages_run
+        assert result.open_tcp_ports == [135]
 
 
 class TestScanFunnelRun:

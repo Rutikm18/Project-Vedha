@@ -170,7 +170,8 @@ class TestSSHScanner:
         sc = self._scanner()
         kex = _kexinit(["diffie-hellman-group1-sha1"], ["ssh-rsa"],
                        ["aes128-cbc"], ["hmac-md5"])
-        sc._probe = lambda target, port: ("SSH-2.0-OpenSSH_5.3", kex)
+        # _probe now returns (connected, ident, kex_raw) — reachability is separate.
+        sc._probe = lambda target, port: (True, "SSH-2.0-OpenSSH_5.3", kex)
         res = asyncio.run(sc.scan_target("10.0.0.9"))
         assert len(res) == 1
         r = res[0]
@@ -180,8 +181,9 @@ class TestSSHScanner:
         assert {"diffie-hellman-group1-sha1", "hmac-md5"} <= algos
 
     def test_no_response_is_filtered(self):
+        # A failed TCP connect (connected=False) is the only 'filtered' case.
         sc = self._scanner()
-        sc._probe = lambda target, port: (None, None)
+        sc._probe = lambda target, port: (False, None, None)
         res = asyncio.run(sc.scan_target("10.0.0.9"))
         assert res[0].status == "filtered"
 
@@ -331,3 +333,45 @@ class TestMainScriptsParity:
         a = sum(len(ssh_kexdb.MASTER_DB[c]) for c in ("kex", "key", "enc", "mac"))
         b = sum(len(mkexdb.MASTER_DB[c]) for c in ("kex", "key", "enc", "mac"))
         assert a == b
+
+
+# ── FIX 2: status taxonomy (RFC 4253 §4.2) — reachability vs SSH confirmation ──
+class TestSSHStatusTaxonomy:
+    def _scanner(self):
+        return ssh.SSHScanner(ScopeGuard.from_list(["10.0.0.0/8"]),
+                              rate=1e9, concurrency=2, timeout=0.2, ports=[2222])
+
+    def test_open_non_ssh_is_open_not_filtered(self):
+        # The bug: an OPEN TCP port serving a non-SSH banner was labelled filtered.
+        # A successful connect must be status=open, ssh_confirmed=False.
+        sc = self._scanner()
+        sc._probe = lambda t, p: (True, "HTTP/1.1 200 OK", None)   # connected, not SSH
+        r = asyncio.run(sc._scan_port("10.0.0.9", 2222))
+        assert r.status == "open"
+        assert r.data["ssh_confirmed"] is False
+        assert r.reason == "not_ssh_protocol"
+
+    def test_connect_failure_is_filtered(self):
+        # ONLY a failed TCP connect is filtered (network dropped it).
+        sc = self._scanner()
+        sc._probe = lambda t, p: (False, None, None)
+        r = asyncio.run(sc._scan_port("10.0.0.9", 2222))
+        assert r.status == "filtered" and r.reason == "connect_failed"
+
+    def test_confirmed_ssh_open_with_parsed_banner(self):
+        # A real SSH port: open, confirmed, version fingerprint parsed for free.
+        sc = self._scanner()
+        kex = _kexinit(["curve25519-sha256"], ["ssh-ed25519"],
+                       ["aes256-gcm@openssh.com"], ["hmac-sha2-256"])
+        sc._probe = lambda t, p: (True, "SSH-2.0-OpenSSH_9.6", kex)
+        r = asyncio.run(sc._scan_port("10.0.0.9", 2222))
+        assert r.status == "open" and r.data["ssh_confirmed"] is True
+        assert r.data["protoversion"] == "2.0"
+        assert r.data["software"] == "OpenSSH_9.6"
+
+    def test_open_but_no_banner_is_open_not_ssh(self):
+        # Connected, silent (no banner) → still open, not filtered.
+        sc = self._scanner()
+        sc._probe = lambda t, p: (True, None, None)
+        r = asyncio.run(sc._scan_port("10.0.0.9", 2222))
+        assert r.status == "open" and r.data["ssh_confirmed"] is False

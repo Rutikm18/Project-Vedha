@@ -542,14 +542,32 @@ def _rule_rdp(facts: list[dict]) -> Iterable[Finding]:
         if not d.get("rdp_confirmed"):
             continue
         target, port = f.get("target"), f.get("port") or 3389
+        # NLA required (proven by the RDP-only probe being refused) means the RDP
+        # stack is NOT reachable pre-auth: low risk. NLA merely *supported* (or the
+        # requirement unknown) stays medium. This is the confirmed-handshake fact,
+        # not a port-based guess — so no "BlueKeep class" language here.
+        nla_required = d.get("nla_required")
+        if nla_required is True:
+            sev = SEV_LOW
+            desc = ("RDP confirmed via X.224 handshake; NLA (CredSSP) is REQUIRED "
+                    + ("with TLS" if d.get("tls") else "") +
+                    " — the RDP stack is not reachable pre-authentication.")
+        else:
+            sev = SEV_MEDIUM
+            desc = "RDP confirmed via X.224 handshake — reachable from the scan vantage."
         yield Finding(
             "SVC-RDP-EXPOSED", "RDP exposed (confirmed by handshake)",
-            SEV_MEDIUM, CONF_HIGH, CAT_EXPOSURE, target, port, "tcp",
-            "RDP confirmed via X.224 handshake — reachable from the scan vantage.",
+            sev, CONF_HIGH, CAT_EXPOSURE, target, port, "tcp",
+            desc,
             "Restrict RDP to VPN/jump hosts; enforce NLA + MFA.",
             {"port": port, "confirmed": True,
+             "nla": d.get("nla"), "nla_required": nla_required, "tls": d.get("tls"),
              "selected_protocol": d.get("selected_protocol")}, "rdp_scan")
-        if d.get("nla") is False and d.get("negotiation") != "failure":
+        # The BlueKeep-class finding fires ONLY when NLA is genuinely not in force:
+        # nla False AND the server did not refuse (so it accepted a weaker session)
+        # AND NLA is not required. A CONFIRMED-NLA host never reaches this.
+        if (d.get("nla") is False and d.get("negotiation") != "failure"
+                and nla_required is not True):
             yield Finding(
                 "SVC-RDP-NO-NLA", "RDP without Network Level Authentication",
                 SEV_HIGH, CONF_HIGH, CAT_MISCONFIG, target, port, "tcp",
@@ -989,12 +1007,70 @@ def _rule_printer(facts: list[dict]) -> Iterable[Finding]:
             {"protocol": proto, "model": model}, "printer_scan")
 
 
+def _rule_os_identification(facts: list[dict]) -> Iterable[Finding]:
+    """Fuse OS signals across scanners into ONE identification with calibrated
+    confidence (FIX 3a). An exact NTLM build (MS-NLMP 2.2.2.10 VERSION) corroborated
+    by an SMB2 Windows handshake and a known hostname is strong, multi-signal proof
+    that must outrank a lone TTL guess (which stays ~0.5). Provenance in `data`."""
+    agg: dict[str, dict] = {}
+    for f in facts:
+        t = f.get("target")
+        if not t:
+            continue
+        d = _data(f)
+        a = agg.setdefault(t, {})
+        sc = _scanner(f)
+        if sc == "smb_scan":
+            if d.get("smb2_supported"):
+                a["smb2"] = True
+            if d.get("os_build"):
+                a["build"] = d.get("os_build")
+                a["release"] = d.get("os_release")
+            if d.get("target_name"):
+                a.setdefault("hostname", d["target_name"])
+        elif sc == "os_fingerprint":
+            if d.get("os_guess") and d.get("os_guess") != "unknown":
+                a.setdefault("family", d["os_guess"])
+                a.setdefault("ttl_conf", d.get("confidence") or 0.5)
+            if d.get("stack_guess"):
+                a.setdefault("stack", d["stack_guess"])
+        elif sc == "msrpc_scan" and d.get("interface_count"):
+            a["rpc_windows"] = True
+
+    for t, a in agg.items():
+        # Confidence is driven by how many INDEPENDENT signals corroborate: build +
+        # SMB2 + hostname is near-certain; build alone strong; stack (p0f) medium;
+        # a bare TTL family stays a hint. Never fabricate above the evidence.
+        if a.get("build") and a.get("smb2") and a.get("hostname"):
+            conf, release, method = 0.97, a.get("release") or "Windows", "smb2_ntlm_version+smb2+hostname"
+        elif a.get("build"):
+            conf, release, method = 0.90, a.get("release") or "Windows", "smb2_ntlm_version"
+        elif a.get("smb2") and a.get("stack"):
+            conf, release, method = 0.80, a.get("stack"), "smb2+p0f_stack"
+        elif a.get("family"):
+            conf, release, method = float(a.get("ttl_conf") or 0.5), a["family"], "ttl_only"
+        else:
+            continue
+        present = [k for k in ("build", "smb2", "hostname", "stack", "family") if a.get(k)]
+        yield Finding(
+            "ASSET-OS-IDENTIFIED", f"OS identified: {release}",
+            SEV_INFO,
+            CONF_HIGH if conf >= 0.95 else CONF_MEDIUM if conf >= 0.8 else CONF_LOW,
+            CAT_INFO_DISCLOSURE, t, None, None,
+            (f"OS identified as {release} (confidence {conf:.2f}) by fusing "
+             f"{len(present)} signal(s): {', '.join(present)} [method: {method}]."),
+            "Informational — asset inventory and patch-level tracking.",
+            {"os_release": release, "os_build": a.get("build"),
+             "hostname": a.get("hostname"), "confidence": conf, "method": method,
+             "stack": a.get("stack")}, "os_fusion")
+
+
 _RULES: list[Callable[[list[dict]], Iterable[Finding]]] = [
     _rule_tls, _rule_smb, _rule_snmp, _rule_udp_amplification, _rule_rdp,
     _rule_cleartext_and_exposure, _rule_web, _rule_tls_fingerprint, _rule_unauth_access,
     _rule_tls_server_fingerprint, _rule_ssh, _rule_smb_enum, _rule_ldap, _rule_dns,
     _rule_nfs, _rule_ftp, _rule_rsync, _rule_vnc, _rule_ipmi, _rule_smtp, _rule_msrpc,
-    _rule_printer,
+    _rule_printer, _rule_os_identification,
 ]
 
 
@@ -1172,15 +1248,63 @@ def run_findings(facts: Iterable[Any]) -> list[Finding]:
     )
 
 
-def summarize(findings: list[Finding]) -> dict[str, Any]:
+# Severity ordering for ranking the finding section (worst first).
+_SEV_RANK = {SEV_CRITICAL: 4, SEV_HIGH: 3, SEV_MEDIUM: 2, SEV_LOW: 1, SEV_INFO: 0}
+# Confidence tie-break so a confirmed finding outranks a same-severity hint.
+_CONF_RANK = {CONF_HIGH: 2, CONF_MEDIUM: 1, CONF_LOW: 0}
+
+
+def _finding_row(f: Finding) -> dict[str, Any]:
+    """One finding as the finding-section shows it — the ACTUAL vulnerability, with
+    where it came from and whether that source is verified (trusted)."""
+    from .scanner_registry import is_verified
+    src = f.source_scanner
+    return {
+        "rule_id": f.rule_id,
+        "title": f.title,
+        "severity": f.severity,
+        "confidence": f.confidence,
+        "category": f.category,
+        "target": f.target,
+        "port": f.port,
+        "evidence": f.evidence,
+        "recommendation": f.recommendation,
+        "source_scanner": src,
+        # Trust provenance: a finding from a verified scanner is authoritative; one
+        # from an experimental scanner is shown but flagged provisional.
+        "verified": is_verified(src),
+    }
+
+
+def summarize(findings: list[Finding], *, top: int = 50) -> dict[str, Any]:
+    """Roll up findings for the finding section.
+
+    Beyond counts, this returns the ACTUAL ranked vulnerabilities (`findings`) —
+    worst-first, each tagged with its source scanner and whether that source is
+    verified — so the report SHOWS what was found, not just how many. Honest by
+    construction: if nothing was detected the list is empty; nothing is invented.
+    """
     counts = {s: 0 for s in (SEV_CRITICAL, SEV_HIGH, SEV_MEDIUM, SEV_LOW, SEV_INFO)}
     for f in findings:
         counts[f.severity] = counts.get(f.severity, 0) + 1
+
+    ranked = sorted(
+        findings,
+        key=lambda f: (_SEV_RANK.get(f.severity, 0), _CONF_RANK.get(f.confidence, 0)),
+        reverse=True)
+    rows = [_finding_row(f) for f in ranked]
+    verified_rows = [r for r in rows if r["verified"]]
+
     return {
         "total": len(findings),
         "by_severity": counts,
         "by_category": _tally(findings, lambda x: x.category),
         "actionable": sum(1 for f in findings if f.severity in (SEV_CRITICAL, SEV_HIGH, SEV_MEDIUM)),
+        # The finding section itself — the real vulnerabilities, worst first.
+        "findings": rows[:top],
+        "verified_count": len(verified_rows),
+        "experimental_count": len(rows) - len(verified_rows),
+        "has_findings": bool(rows),
     }
 
 

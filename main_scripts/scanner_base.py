@@ -801,6 +801,54 @@ class BaseScanner:
 # --------------------------------------------------------------------------- #
 # Shared CLI scaffolding so each scanner file gets the same flags.
 # --------------------------------------------------------------------------- #
+# ── file-descriptor ceiling for large async connect scans ────────────────────
+# A full 1-65535 connect scan opens many sockets at once. If concurrency exceeds
+# the soft open-file limit (ulimit -n) the kernel returns EMFILE ("too many open
+# files") and those ports simply fail to be probed — a SILENT coverage gap, not an
+# error the operator sees. rustscan hits the same wall and solves it the same way:
+# raise the fd ceiling and size the concurrent-connection batch comfortably under
+# it. (Unix only; on platforms without resource limits we fall back to a safe cap.)
+def get_fd_limit() -> tuple[int, int]:
+    """Return (soft, hard) open-file-descriptor limits, or (0, 0) if unavailable."""
+    try:
+        import resource
+    except ImportError:
+        return (0, 0)
+    try:
+        return resource.getrlimit(resource.RLIMIT_NOFILE)
+    except (ValueError, OSError):
+        return (0, 0)
+
+
+def raise_fd_limit() -> tuple[int, int]:
+    """Raise the soft fd limit toward the hard limit when there is headroom.
+    Returns the (soft_after, hard) actually in force. Best-effort and idempotent."""
+    try:
+        import resource
+    except ImportError:
+        return (0, 0)
+    soft, hard = get_fd_limit()
+    if soft and hard and soft < hard:
+        try:
+            resource.setrlimit(resource.RLIMIT_NOFILE, (hard, hard))
+            soft = hard
+        except (ValueError, OSError):
+            pass
+    return (soft, hard)
+
+
+def safe_connect_concurrency(requested: int, *, margin: int = 200,
+                             floor: int = 16) -> int:
+    """Cap concurrent connections comfortably BELOW the fd ceiling (after raising
+    it), so a large scan can never exhaust descriptors. Honors `requested` when it
+    already fits; on platforms with no rlimit, caps modestly (512)."""
+    soft, _hard = raise_fd_limit()
+    if soft <= 0:                                   # no rlimit info (e.g. Windows)
+        return max(floor, min(requested, 512))
+    ceiling = max(floor, soft - margin)
+    return max(floor, min(requested, ceiling))
+
+
 def base_argparser(description: str) -> argparse.ArgumentParser:
     p = argparse.ArgumentParser(description=description)
     p.add_argument("-t", "--targets", nargs="+", required=True,

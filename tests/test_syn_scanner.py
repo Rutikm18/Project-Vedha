@@ -366,6 +366,27 @@ class TestBuildResultsEnrichment:
                               {3389: {"ip_ttl": 128, "tcp_window": 8192}})[0].data
         assert d["os_guess"] == "Windows"
 
+    def test_os_guess_is_tagged_tcp_derived_not_icmp(self):
+        # The SYN/ACK TTL must never be presentable as an ICMP result: its
+        # provenance is carried explicitly (method=syn + os_ttl_source=tcp_synack).
+        sc = self._scanner([3389])
+        d = sc._build_results("10.0.0.5", {3389: "open"}, {3389: 1},
+                              {3389: {"ip_ttl": 128}})[0].data
+        assert d["method"] == "syn"
+        assert d["os_ttl_source"] == "tcp_synack"
+        assert d["ip_ttl"] == 128                            # named ip_ttl, not icmp
+
+    def test_p0f_stack_label_from_harvested_option_layout(self):
+        # Windows SYN/ACK profile → a specific p0f stack label alongside the family.
+        sc = self._scanner([445])
+        d = sc._build_results("10.0.0.5", {445: "open"}, {445: 1},
+                              {445: {"ip_ttl": 128, "tcp_window": 64240, "mss": 1460,
+                                     "wscale": 8, "olayout": "MNWNNS"}})[0].data
+        assert d["os_guess"] == "Windows"
+        assert "Windows (NT 6.2+" in d["os_stack"]
+        assert d["tcp_wscale"] == 8 and d["tcp_olayout"] == "MNWNNS"
+        assert d["os_stack_confidence"] == 0.90
+
     def test_open_without_signals_has_no_os_guess(self):
         sc = self._scanner([80])
         d = sc._build_results("10.0.0.5", {80: "open"}, {80: 1}, {})[0].data
@@ -376,6 +397,32 @@ class TestBuildResultsEnrichment:
         out = sc._build_results("10.0.0.5", {80: "open", 443: "closed"},
                                 {80: 1, 443: 1, 22: 3}, {})
         assert {r.port for r in out} == {80}                 # only open emitted
+
+
+class TestTcpOptionProfile:
+    def test_parse_windows_syn_ack_options(self):
+        # MSS 1460, NOP, WScale 8, NOP, NOP, SACK-permitted.
+        opts = bytes([2, 4]) + struct.pack("!H", 1460) + bytes([1, 3, 3, 8, 1, 1, 4, 2])
+        p = ss.parse_tcp_options(opts)
+        assert p["mss"] == 1460 and p["wscale"] == 8 and p["sack_ok"] is True
+        assert p["timestamps"] is False and p["olayout"] == "MNWNNS"
+
+    def test_parse_linux_syn_ack_options(self):
+        # MSS 1460, SACK-permitted, Timestamps, NOP, WScale 7.
+        opts = (bytes([2, 4]) + struct.pack("!H", 1460) + bytes([4, 2]) +
+                bytes([8, 10]) + b"\x00" * 8 + bytes([1, 3, 3, 7]))
+        p = ss.parse_tcp_options(opts)
+        assert p["mss"] == 1460 and p["wscale"] == 7
+        assert p["sack_ok"] and p["timestamps"] and p["olayout"] == "MSTNW"
+
+    def test_parse_mss_shim_still_works(self):
+        opts = bytes([2, 4]) + struct.pack("!H", 1400)
+        assert ss._parse_mss(opts) == 1400
+
+    def test_malformed_options_do_not_raise(self):
+        # truncated length byte on a trailing option → graceful stop, no exception
+        p = ss.parse_tcp_options(bytes([2, 4]) + struct.pack("!H", 1460) + bytes([3, 99]))
+        assert p["mss"] == 1460 and p["wscale"] is None
 
 
 class TestAdaptiveTimeoutToggle:

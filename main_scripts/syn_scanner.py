@@ -65,6 +65,16 @@ from .scanner_base import (
 _TCP_OPT_EOL = 0
 _TCP_OPT_NOP = 1
 _TCP_OPT_MSS = 2
+_TCP_OPT_WSCALE = 3
+_TCP_OPT_SACKOK = 4
+_TCP_OPT_TIMESTAMP = 8
+
+# p0f "olayout" tokens: a compact, order-preserving encoding of the TCP option
+# sequence. The ORDER and presence of options is one of p0f v3's strongest OS
+# discriminators (Windows, Linux and the BSDs each emit a characteristic layout),
+# so we preserve it rather than only extracting MSS.
+_OPT_TOKEN = {_TCP_OPT_EOL: "E", _TCP_OPT_NOP: "N", _TCP_OPT_MSS: "M",
+              _TCP_OPT_WSCALE: "W", _TCP_OPT_SACKOK: "S", _TCP_OPT_TIMESTAMP: "T"}
 
 # TCP flag bits
 TCP_FIN = 0x01
@@ -122,16 +132,22 @@ def build_syn_packet(src_ip: str, dst_ip: str, src_port: int, dst_port: int,
     return ip + tcp
 
 
-def _parse_mss(opts: bytes) -> int | None:
-    """Walk a TCP options field for the MSS value (kind 2, len 4).
+def parse_tcp_options(opts: bytes) -> dict:
+    """Walk a TCP options field into a p0f-style profile.
 
-    Bounds-checked and tolerant: EOL ends the walk, NOP is skipped, and any other
-    option is stepped over by its own length byte. Returns None if MSS is absent
-    or the field is malformed — never raises on attacker-controlled bytes.
+    Returns {mss, wscale, sack_ok, timestamps, olayout} where `olayout` is the
+    order-preserving token string (e.g. "MSTNW" for the classic Linux SYN/ACK).
+    Bounds-checked and tolerant of attacker-controlled bytes: EOL ends the walk,
+    NOP is a single byte, every other option is stepped by its own length; a
+    malformed tail simply truncates the profile — it never raises.
     """
+    out: dict = {"mss": None, "wscale": None, "sack_ok": False,
+                 "timestamps": False, "olayout": ""}
+    layout: list[str] = []
     i, n = 0, len(opts)
     while i < n:
         kind = opts[i]
+        layout.append(_OPT_TOKEN.get(kind, "?"))
         if kind == _TCP_OPT_EOL:
             break
         if kind == _TCP_OPT_NOP:
@@ -143,9 +159,21 @@ def _parse_mss(opts: bytes) -> int | None:
         if length < 2 or i + length > n:
             break
         if kind == _TCP_OPT_MSS and length == 4:
-            return int.from_bytes(opts[i + 2:i + 4], "big")
+            out["mss"] = int.from_bytes(opts[i + 2:i + 4], "big")
+        elif kind == _TCP_OPT_WSCALE and length == 3:
+            out["wscale"] = opts[i + 2]
+        elif kind == _TCP_OPT_SACKOK and length == 2:
+            out["sack_ok"] = True
+        elif kind == _TCP_OPT_TIMESTAMP and length == 10:
+            out["timestamps"] = True
         i += length
-    return None
+    out["olayout"] = "".join(layout)
+    return out
+
+
+def _parse_mss(opts: bytes) -> int | None:
+    """Back-compat shim: MSS only. New code uses parse_tcp_options()."""
+    return parse_tcp_options(opts)["mss"]
 
 
 def parse_packet(raw: bytes) -> dict | None:
@@ -166,14 +194,18 @@ def parse_packet(raw: bytes) -> dict | None:
     (src_port, dst_port, seq, ack, off, flags, win, _chk,
      _urg) = struct.unpack("!HHIIBBHHH", tcp)
     # TCP options (present when the data offset exceeds the 20-byte base header)
-    # can carry MSS — a stable OS/path signal. Parse them defensively.
-    mss = None
+    # carry MSS, window scale, SACK/timestamp support and — crucially — their
+    # ORDER, a strong p0f OS signal. Parse the full profile defensively.
+    opts: dict = {"mss": None, "wscale": None, "sack_ok": False,
+                  "timestamps": False, "olayout": ""}
     data_off = (off >> 4) * 4
     if data_off > 20 and len(raw) >= ihl + data_off:
-        mss = _parse_mss(raw[ihl + 20:ihl + data_off])
+        opts = parse_tcp_options(raw[ihl + 20:ihl + data_off])
     return {"ip_src": ip_src, "ip_dst": ip_dst, "src_port": src_port,
             "dst_port": dst_port, "seq": seq, "ack": ack, "flags": flags,
-            "window": win, "ttl": ttl, "mss": mss}
+            "window": win, "ttl": ttl, "mss": opts["mss"],
+            "wscale": opts["wscale"], "sack_ok": opts["sack_ok"],
+            "timestamps": opts["timestamps"], "olayout": opts["olayout"]}
 
 
 def classify(flags: int) -> str | None:
@@ -404,6 +436,10 @@ class SynScanner(BaseScanner):
                         m["ip_ttl"] = parsed.get("ttl")
                         if parsed.get("mss") is not None:
                             m["mss"] = parsed["mss"]
+                        if parsed.get("wscale") is not None:
+                            m["wscale"] = parsed["wscale"]
+                        if parsed.get("olayout"):
+                            m["olayout"] = parsed["olayout"]
                 # Only ports still unresolved go to the next round.
                 pending = [p for p in pending if p not in states]
         finally:
@@ -431,17 +467,34 @@ class SynScanner(BaseScanner):
                     data["rtt_ms"] = m["rtt_ms"]
                 # Attach the harvested stack signals and a best-guess OS family.
                 win, ttl, mss = m.get("tcp_window"), m.get("ip_ttl"), m.get("mss")
+                wscale, olayout = m.get("wscale"), m.get("olayout")
                 if win is not None:
                     data["tcp_window"] = win
                 if ttl is not None:
                     data["ip_ttl"] = ttl
                 if mss is not None:
                     data["mss"] = mss
+                if wscale is not None:
+                    data["tcp_wscale"] = wscale
+                if olayout:
+                    data["tcp_olayout"] = olayout
                 if win is not None or ttl is not None or mss is not None:
-                    fp = fingerprint_os(ttl=ttl, tcp_window=win, mss=mss)
+                    # TTL here is read from the SYN/ACK's IP header — tag it TCP so
+                    # nothing downstream can present it as an ICMP-derived result.
+                    fp = fingerprint_os(ttl=ttl, tcp_window=win, mss=mss,
+                                        ttl_source="tcp_synack",
+                                        wscale=wscale, olayout=olayout)
                     if fp["os_guess"] != "unknown":
                         data["os_guess"] = fp["os_guess"]
                         data["os_confidence"] = fp["confidence"]
+                        # Provenance travels with the guess: this OS family was
+                        # inferred from a TCP SYN/ACK, not an ICMP echo.
+                        data["os_ttl_source"] = fp["signals"].get("ttl_source")
+                    # p0f-style specific stack label (Linux/Windows/BSD/…), when
+                    # the option layout matched a known signature.
+                    if fp.get("stack_guess"):
+                        data["os_stack"] = fp["stack_guess"]
+                        data["os_stack_confidence"] = fp["signals"].get("stack_confidence")
                 results.append(ScanResult(
                     self.name, target, port=port, proto="tcp", status="open",
                     data=data, evidence="syn/ack received"))
