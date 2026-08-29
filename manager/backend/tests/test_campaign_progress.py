@@ -29,7 +29,7 @@ async def test_campaign_progress_aggregates_jobs_detection_and_findings():
         created_at=None, started_at=None, completed_at=None,
     )
     agent = SimpleNamespace(id=agent_id, name="scanner-probe-01")
-    run = SimpleNamespace(status="done", facts_count=42, findings_new=3, findings_current=3,
+    run = SimpleNamespace(status="completed", facts_count=42, findings_new=3, findings_current=3,
                           started_at=None, finished_at=None)
     smbv1 = SimpleNamespace(
         id=uuid.uuid4(), title="SMBv1 enabled (wormable, deprecated)",
@@ -62,9 +62,15 @@ async def test_campaign_progress_aggregates_jobs_detection_and_findings():
                      "prioritization", "remediation"]
     assert all(p["status"] == "done" for p in out["phases"])       # detection complete
     assert out["percent"] == 100
+    # authoritative status: complete ONLY when the whole pipeline finished
+    assert out["overall_status"] == "complete" and out["is_complete"] is True
+    assert out["job_stats"]["total"] == 1 and out["job_stats"]["complete"] == 1
+    assert out["summary"]["total_findings"] == 1 and out["summary"]["actionable"] == 1
+    assert out["summary"]["top_techniques"][0]["technique"] == "T1210"
 
     # detection summary + finding with remediation (for step-by-step UI)
-    assert out["detection"]["status"] == "done" and out["detection"]["by_severity"]["critical"] == 1
+    assert out["detection"]["done"] is True and out["detection"]["status"] == "completed"
+    assert out["detection"]["by_severity"]["critical"] == 1
     f = out["findings"][0]
     assert "SMBv1" in f["title"] and f["severity"] == "critical"
     assert f["risk_score"] == 90.0 and f["mitre_techniques"] == ["T1210"]
@@ -90,3 +96,65 @@ async def test_campaign_progress_no_detection_yet_is_scanning():
     scanning = next(p for p in out["phases"] if p["name"] == "scanning")
     assert scanning["status"] == "active"
     assert out["percent"] == 0
+    # KEY: still scanning → NOT complete (the premature-completed bug)
+    assert out["overall_status"] == "scanning" and out["is_complete"] is False
+
+
+# ── the state machine at EVERY phase (guards the "stuck at detecting" bug) ─────
+def _run_scenario(*, job_status, run_status, findings):
+    """Build a campaign_progress scenario with a given job + detection-run state."""
+    job = SimpleNamespace(
+        id=uuid.uuid4(), job_type=SimpleNamespace(value="discovery"),
+        status=SimpleNamespace(value=job_status), agent_id=None,
+        result={"use_case_id": "uc_network_va"} if job_status else None,
+        created_at=None, started_at=None, completed_at=None)
+    run = None if run_status is None else SimpleNamespace(
+        status=run_status, facts_count=1, findings_new=findings,
+        findings_current=findings, started_at=None, finished_at=None)
+    fs = [SimpleNamespace(
+        id=uuid.uuid4(), title="x", severity=SimpleNamespace(value="high"),
+        risk_score=70, cve_ids=None, mitre_techniques=["T1"],
+        status=SimpleNamespace(value="open"), remediation="fix", asset_id=None,
+        evidence={}) for _ in range(findings)]
+    side = [MagicMock(scalar_one_or_none=lambda: SimpleNamespace(id=uuid.uuid4())),
+            _scalars([job])]
+    # no agent lookup (agent_id None) → next is detection run, then findings
+    side += [MagicMock(scalar_one_or_none=lambda: run), _scalars(fs)]
+    db = MagicMock()
+    db.execute = AsyncMock(side_effect=side)
+    return db
+
+
+import pytest as _pytest
+
+
+@_pytest.mark.asyncio
+@_pytest.mark.parametrize("job_status,run_status,findings,expect_status,expect_complete", [
+    ("running",   None,        0, "scanning",    False),  # scan in flight
+    ("completed", None,        0, "aggregating", False),  # facts submitted, detection not started
+    ("completed", "running",   0, "detecting",   False),  # detection in progress
+    ("completed", "completed", 2, "complete",    True),   # ← the fix: reaches complete (was stuck)
+    ("completed", "completed", 0, "complete",    True),   # complete with zero findings (clean)
+    ("completed", "failed",    0, "error",       False),  # detection errored
+])
+async def test_pipeline_advances_through_every_phase(job_status, run_status, findings,
+                                                     expect_status, expect_complete):
+    db = _run_scenario(job_status=job_status, run_status=run_status, findings=findings)
+    out = await eng.campaign_progress(uuid.uuid4(), db, _user())
+    assert out["overall_status"] == expect_status, \
+        f"{job_status}/{run_status} → {out['overall_status']} (want {expect_status})"
+    assert out["is_complete"] is expect_complete
+    # invariant: never 'complete' unless detection actually finished
+    if out["overall_status"] == "complete":
+        assert out["detection"]["done"] is True
+
+
+@_pytest.mark.asyncio
+async def test_completed_run_is_not_stuck_at_detecting():
+    """Regression: RUN_COMPLETED is 'completed', not 'done' — the endpoint must not
+    stay at 'detecting' after the backend marks the run completed."""
+    db = _run_scenario(job_status="completed", run_status="completed", findings=1)
+    out = await eng.campaign_progress(uuid.uuid4(), db, _user())
+    assert out["overall_status"] == "complete" and out["is_complete"] is True
+    det = next(p for p in out["phases"] if p["name"] == "detection")
+    assert det["status"] == "done"

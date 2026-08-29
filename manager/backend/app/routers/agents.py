@@ -998,6 +998,74 @@ async def get_agent_jobs(
     return response_jobs
 
 
+@router.get("/jobs", summary="List scan jobs across the tenant (Fleet UI) — filter by probe, engagement, status")
+async def list_all_jobs(
+    db: DB,
+    current_user: AuthUser,
+    agent_id: uuid.UUID | None = None,
+    engagement_id: uuid.UUID | None = None,
+    status: ScanJobStatus | None = None,
+    running: bool = False,
+    limit: int = 100,
+):
+    """The tenant-wide job feed powering the Fleet page: every probe's jobs, newest
+    first, with probe + engagement names resolved (no N+1) for display AND filtering.
+    `agent_id`/`engagement_id` filter to one probe/engagement; `running=true` narrows
+    to the live queue (pending+running). Read-only; tenant-scoped."""
+    limit = max(1, min(int(limit), 500))
+
+    def _as_uuid(value):
+        try:
+            return uuid.UUID(str(value))
+        except (ValueError, TypeError, AttributeError):
+            return None
+
+    q = (select(ScanJob)
+         .join(Engagement, ScanJob.engagement_id == Engagement.id)
+         .where(Engagement.tenant_id == current_user.tenant_id))
+    if agent_id is not None:
+        q = q.where(ScanJob.agent_id == str(agent_id))
+    if engagement_id is not None:
+        q = q.where(ScanJob.engagement_id == engagement_id)
+    if status is not None:
+        q = q.where(ScanJob.status == status)
+    if running:
+        q = q.where(ScanJob.status.in_([ScanJobStatus.pending, ScanJobStatus.running]))
+    rows = (await db.execute(
+        q.order_by(ScanJob.created_at.desc()).limit(limit)
+    )).scalars().all()
+
+    a_uuids = {u for j in rows if j.agent_id for u in (_as_uuid(j.agent_id),) if u}
+    a_names: dict = {}
+    if a_uuids:
+        agents = (await db.execute(select(Agent).where(Agent.id.in_(a_uuids)))).scalars().all()
+        a_names = {str(a.id): a.name for a in agents}
+    e_ids = {j.engagement_id for j in rows if j.engagement_id}
+    e_names: dict = {}
+    if e_ids:
+        engs = (await db.execute(
+            select(Engagement.id, Engagement.name).where(Engagement.id.in_(e_ids)))).all()
+        e_names = {str(eid): name for eid, name in engs}
+
+    def _row(r: ScanJob) -> dict:
+        res = r.result if isinstance(r.result, dict) else {}
+        return {
+            "job_id": str(r.id),
+            "agent_id": str(r.agent_id) if r.agent_id else None,
+            "agent_name": a_names.get(str(r.agent_id)) if r.agent_id else None,
+            "engagement_id": str(r.engagement_id) if r.engagement_id else None,
+            "engagement_name": e_names.get(str(r.engagement_id)) if r.engagement_id else None,
+            "job_type": r.job_type.value if hasattr(r.job_type, "value") else str(r.job_type),
+            "status": r.status.value if hasattr(r.status, "value") else str(r.status),
+            "use_case_id": res.get("use_case_id"),
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+            "started_at": r.started_at.isoformat() if r.started_at else None,
+            "completed_at": r.completed_at.isoformat() if r.completed_at else None,
+        }
+
+    return [_row(r) for r in rows]
+
+
 @router.get("/jobs/{job_id}", summary="Get job status for frontend polling")
 async def get_job_status(job_id: uuid.UUID, db: DB, current_user: AuthUser):
     """Lets the frontend poll a specific job's status without knowing which agent has it."""

@@ -13,6 +13,7 @@
  * Polls every 4s while anything is still running; stops when detection is done.
  */
 import { useCallback, useEffect, useState } from "react";
+import RawFacts from "./RawFacts";
 
 type PhaseState = "done" | "active" | "pending";
 interface Phase { name: string; status: PhaseState; count: number | null }
@@ -32,13 +33,25 @@ interface Finding {
 }
 interface Progress {
   engagement_id: string;
+  engagement?: { name: string | null; status: string };
+  overall_status: string;
+  is_complete: boolean;
   jobs: Job[];
+  job_stats?: { total: number; running: number; complete: number; failed: number; probes: string[] };
   detection: { status: string; facts_count: number; findings_new: number;
     findings_current: number; by_severity: Record<string, number> };
+  summary?: { total_findings: number; by_severity: Record<string, number>;
+    max_risk_score: number; exploitable: number; actionable: number;
+    top_techniques: { technique: string; count: number }[] };
   phases: Phase[];
   percent: number;
   findings: Finding[];
 }
+
+const STATUS_LABEL: Record<string, string> = {
+  pending: "Pending", scanning: "Scanning", aggregating: "Aggregating",
+  detecting: "Detecting", complete: "Complete", error: "Error",
+};
 
 const PHASE_LABEL: Record<string, string> = {
   scanning: "Scanning", aggregating: "Aggregating", detection: "Detection",
@@ -78,17 +91,50 @@ export default function CampaignProgress({ engagementId }: { engagementId: strin
 
   useEffect(() => {
     void load();
-    const running = data?.detection.status !== "done";
-    if (!running) return;
+    // Keep polling until the WHOLE pipeline is complete — not just the scan job.
+    if (data?.is_complete) return;
     const t = setInterval(load, 4000);
     return () => clearInterval(t);
-  }, [load, data?.detection.status]);
+  }, [load, data?.is_complete]);
 
   if (err) return <div style={{ color: "var(--sev-high,#f97316)", fontSize: 12 }}>Failed to load campaign: {err}</div>;
   if (!data) return <div style={{ color: "var(--text-muted)", fontSize: 12 }}>Loading campaign…</div>;
 
+  const statusColor = data.is_complete ? "var(--sev-low,#3b82f6)"
+    : data.overall_status === "error" ? "var(--sev-high,#f97316)" : "var(--accent)";
+  const s = data.summary;
+
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: 20 }}>
+      {/* ── high-level exec band: authoritative status + risk rollup ── */}
+      <div style={{ display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap",
+        padding: "12px 16px", borderRadius: 12, border: "0.5px solid var(--border-accent)",
+        background: "var(--bg-panel)", boxShadow: "var(--shadow-md)" }}>
+        <span style={{ display: "flex", alignItems: "center", gap: 8 }}>
+          <span style={{ width: 9, height: 9, borderRadius: "50%", background: statusColor,
+            animation: data.is_complete ? "none" : "pulse 1.4s infinite" }} />
+          <strong style={{ fontSize: 13, color: "var(--text-primary)" }}>
+            {STATUS_LABEL[data.overall_status] ?? data.overall_status}
+          </strong>
+          {/* the fix: "Complete" appears ONLY when the whole pipeline is done */}
+          {!data.is_complete && <span style={{ fontSize: 10.5, color: "var(--text-muted)" }}>· in progress ({data.percent}%)</span>}
+        </span>
+        {data.engagement?.name && <span style={{ fontSize: 11.5, color: "var(--text-secondary)" }}>{data.engagement.name}</span>}
+        {data.job_stats && (
+          <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
+            {data.job_stats.probes.length || 0} probe(s) · {data.job_stats.running} running · {data.job_stats.complete}/{data.job_stats.total} jobs done
+          </span>
+        )}
+        {s && (
+          <span style={{ marginLeft: "auto", display: "flex", gap: 12, alignItems: "center" }}>
+            <span style={{ fontSize: 11, color: "var(--text-muted)" }}><strong style={{ color: "var(--text-primary)" }}>{s.total_findings}</strong> findings</span>
+            {s.actionable > 0 && <span style={{ fontSize: 11, color: "var(--text-muted)" }}><strong style={{ color: "var(--accent)" }}>{s.actionable}</strong> actionable</span>}
+            {s.exploitable > 0 && <span style={{ fontSize: 11, color: "var(--sev-critical,#ef4444)" }}><strong>{s.exploitable}</strong> exploitable</span>}
+            {s.max_risk_score > 0 && <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-muted)" }}>max risk {Math.round(s.max_risk_score)}</span>}
+          </span>
+        )}
+      </div>
+
       {/* ── pipeline ticker + progress bar ── */}
       <div style={{ borderRadius: 12, border: "0.5px solid var(--border-subtle)", background: "var(--bg-panel)", overflow: "hidden", boxShadow: "var(--shadow-md)" }}>
         <div style={{ padding: "13px 16px", display: "flex", alignItems: "center", gap: 11, borderBottom: "0.5px solid var(--border-subtle)" }}>
@@ -156,7 +202,7 @@ export default function CampaignProgress({ engagementId }: { engagementId: strin
       <div>
         <div style={{ fontSize: 10.5, fontWeight: 700, color: "var(--text-faint)", letterSpacing: 1.4, textTransform: "uppercase", marginBottom: 10 }}>Findings & Remediation ({data.findings.length})</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {data.findings.length === 0 && <div style={{ fontSize: 12, color: "var(--text-muted)" }}>No findings yet — {data.detection.status === "done" ? "clean against the current rules." : "detection in progress."}</div>}
+          {data.findings.length === 0 && <div style={{ fontSize: 12, color: "var(--text-muted)" }}>No findings yet — {data.is_complete ? "clean against the current rules." : "detection in progress."}</div>}
           {data.findings.map((f) => {
             const steps = remediationSteps(f.remediation);
             const isOpen = open[f.id];
@@ -186,6 +232,9 @@ export default function CampaignProgress({ engagementId }: { engagementId: strin
           })}
         </div>
       </div>
+
+      {/* ── raw scanner evidence (the facts the vedha-agent actually collected) ── */}
+      <RawFacts engagementId={engagementId} />
     </section>
   );
 }

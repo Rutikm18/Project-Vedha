@@ -16,7 +16,7 @@ from app.models.asset import Asset
 from app.models.engagement import Engagement
 from app.models.enums import AssetType, EngagementStatus, FindingSeverity, FindingStatus
 from app.models.finding import Finding
-from app.models.detection_run import DetectionRun
+from app.models.detection_run import DetectionRun, RUN_COMPLETED, RUN_FAILED
 from app.models.scan_job import ScanJob
 from app.models.scan_result import ScanResult
 from app.models.service import Service
@@ -686,7 +686,7 @@ async def campaign_progress(engagement_id: uuid.UUID, db: DB, current_user: Auth
     result summary), the full pipeline progress (Scanning → Aggregating → Detection
     → Correlation → Prioritization → Remediation), and the findings with remediation
     guidance. Read-only aggregation over jobs + the latest detection run + findings."""
-    await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
+    eng = await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
 
     # ── jobs (per probe) ──────────────────────────────────────────────────────
     job_rows = (await db.execute(
@@ -724,7 +724,11 @@ async def campaign_progress(engagement_id: uuid.UUID, db: DB, current_user: Auth
         select(DetectionRun).where(DetectionRun.engagement_id == engagement_id)
         .order_by(DetectionRun.started_at.desc()).limit(1)
     )).scalar_one_or_none()
-    detection_done = bool(run and run.status == "done")
+    # The DetectionRun completes as RUN_COMPLETED ("completed") — NOT "done". Keying
+    # off the wrong string left the pipeline stuck at "detecting" forever even after
+    # the backend finished.
+    detection_done = bool(run and run.status == RUN_COMPLETED)
+    detection_failed = bool(run and run.status == RUN_FAILED)
 
     # ── findings (open set), with the counts each pipeline phase reports ──────
     findings = (await db.execute(
@@ -750,15 +754,37 @@ async def campaign_progress(engagement_id: uuid.UUID, db: DB, current_user: Auth
         return {"name": name, "status": ("done" if done else "active" if active else "pending"),
                 "count": count}
 
+    scanning_done = bool(jobs) and not any_running
     phases = [
-        _phase("scanning", any_complete and not any_running, any_running),
-        _phase("aggregating", run is not None, any_complete and run is None),
+        _phase("scanning", scanning_done, any_running),
+        _phase("aggregating", run is not None, scanning_done and run is None),
         _phase("detection", detection_done, run is not None and not detection_done, len(findings)),
-        _phase("correlation", detection_done, False, correlated),
-        _phase("prioritization", detection_done, False, prioritized),
-        _phase("remediation", detection_done, False, remediable),
+        # correlation/prioritization/remediation run synchronously inside the same
+        # detection pass, so they complete together — but each keeps its own count.
+        _phase("correlation", detection_done, run is not None and not detection_done, correlated),
+        _phase("prioritization", detection_done, run is not None and not detection_done, prioritized),
+        _phase("remediation", detection_done, run is not None and not detection_done, remediable),
     ]
     percent = round(100 * sum(1 for p in phases if p["status"] == "done") / len(phases))
+
+    # ── ONE authoritative pipeline status ─────────────────────────────────────
+    # The scan job going "complete" is NOT the campaign being complete — detection,
+    # correlation, prioritization and remediation-mapping all follow. is_complete is
+    # true ONLY when the whole pipeline has finished, so the UI never shows a green
+    # "completed" while the manager is still analysing.
+    is_complete = bool(jobs) and scanning_done and detection_done
+    if not jobs:
+        overall_status = "pending"
+    elif any_running:
+        overall_status = "scanning"
+    elif run is None:
+        overall_status = "aggregating"          # facts in flight / detection not started
+    elif detection_failed:
+        overall_status = "error"
+    elif not detection_done:
+        overall_status = "detecting"
+    else:
+        overall_status = "complete"
 
     # ── findings with remediation (top 100, worst first) ─────────────────────
     top = [{
@@ -774,11 +800,40 @@ async def campaign_progress(engagement_id: uuid.UUID, db: DB, current_user: Auth
         "asset_id": str(f.asset_id) if f.asset_id else None,
     } for f in findings[:100]]
 
+    # ── high-level summary (the exec view above the detailed/core findings) ───
+    exploitable = sum(1 for f in findings if getattr(f, "exploit_validated", False))
+    max_risk = max((float(f.risk_score) for f in findings if f.risk_score is not None),
+                   default=0.0)
+    technique_counts: dict = {}
+    for f in findings:
+        for t in (f.mitre_techniques or []):
+            technique_counts[t] = technique_counts.get(t, 0) + 1
+    top_techniques = sorted(technique_counts.items(), key=lambda kv: -kv[1])[:6]
+
     return {
         "engagement_id": str(engagement_id),
+        "engagement": {
+            "name": getattr(eng, "name", None),
+            "status": _val(getattr(eng, "status", "")),
+        },
+        # ONE authoritative campaign status — the UI must key its "complete" badge
+        # off is_complete, NEVER off a single scan job finishing.
+        "overall_status": overall_status,
+        "is_complete": is_complete,
+        "percent": percent,
+        "phases": phases,
         "jobs": jobs,
+        "job_stats": {
+            "total": len(jobs),
+            "running": sum(1 for x in jobs if x["phase"] in ("scanning", "dispatched", "queued")),
+            "complete": sum(1 for x in jobs if x["phase"] == "complete"),
+            "failed": sum(1 for x in jobs if x["phase"] == "failed"),
+            "probes": sorted({x["agent_name"] for x in jobs if x["agent_name"]}),
+        },
         "detection": {
             "status": (run.status if run else "pending"),
+            "done": detection_done,
+            "failed": detection_failed,
             "facts_count": run.facts_count if run else 0,
             "findings_new": run.findings_new if run else 0,
             "findings_current": (run.findings_current if run else len(findings)),
@@ -786,9 +841,76 @@ async def campaign_progress(engagement_id: uuid.UUID, db: DB, current_user: Auth
             "finished_at": run.finished_at.isoformat() if run and run.finished_at else None,
             "by_severity": by_severity,
         },
-        "phases": phases,
-        "percent": percent,
+        # high-level rollup for the exec band
+        "summary": {
+            "total_findings": len(findings),
+            "by_severity": by_severity,
+            "max_risk_score": round(max_risk, 1),
+            "exploitable": exploitable,
+            "actionable": by_severity["critical"] + by_severity["high"] + by_severity["medium"],
+            "top_techniques": [{"technique": t, "count": c} for t, c in top_techniques],
+        },
         "findings": top,
+    }
+
+
+# ── GET /{engagement_id}/raw-facts — inspect exactly what the scanners collected ─
+@router.get("/{engagement_id}/raw-facts",
+            summary="Raw scanner facts (exactly what the vedha-agent/main_scripts collected)")
+async def raw_facts(
+    engagement_id: uuid.UUID,
+    db: DB,
+    current_user: Annotated[AuthUser, require_role(["admin", "manager", "tester"])],
+    job_id: uuid.UUID | None = None,
+    scanner: str | None = None,
+    limit: int = 5,
+    max_facts: int = 2000,
+):
+    """The raw ScanResult facts as the probe submitted them, straight from the
+    append-only scan_results table — the ground truth that feeds detection. This is
+    the "what did the scanner actually see" view: grouped by scanner name, filterable
+    to one submission (job_id) or one scanner. Operator-gated (not exposed to clients)
+    because facts can carry banners/hostnames. `limit` bounds scan submissions,
+    `max_facts` bounds facts per submission so a huge scan can't blow up the payload."""
+    await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
+    limit = max(1, min(int(limit), 25))
+    max_facts = max(1, min(int(max_facts), 20000))
+
+    q = select(ScanResult).where(ScanResult.engagement_id == engagement_id)
+    if job_id is not None:
+        q = q.where(ScanResult.job_id == job_id)
+    rows = (await db.execute(
+        q.order_by(ScanResult.created_at.desc()).limit(limit))).scalars().all()
+
+    total_by_scanner: dict = {}
+    results = []
+    for r in rows:
+        facts = r.facts if isinstance(r.facts, list) else []
+        by_scanner: dict = {}
+        for f in facts:
+            s = (f.get("scanner") if isinstance(f, dict) else None) or "?"
+            by_scanner[s] = by_scanner.get(s, 0) + 1
+            total_by_scanner[s] = total_by_scanner.get(s, 0) + 1
+        shown = [f for f in facts if isinstance(f, dict) and f.get("scanner") == scanner] \
+            if scanner else facts
+        results.append({
+            "id": str(r.id),
+            "job_id": str(r.job_id) if r.job_id else None,
+            "agent_id": str(r.agent_id) if r.agent_id else None,
+            "scan_type": r.scan_type,
+            "fact_count": r.fact_count,
+            "validation_state": r.validation_state,
+            "created_at": r.created_at.isoformat() if r.created_at else None,
+            "by_scanner": dict(sorted(by_scanner.items())),
+            "facts": shown[:max_facts],           # the raw ScanResult dicts, verbatim
+            "truncated": len(shown) > max_facts,
+        })
+
+    return {
+        "engagement_id": str(engagement_id),
+        "scanners": sorted(total_by_scanner),     # every scanner that produced facts
+        "by_scanner": dict(sorted(total_by_scanner.items())),
+        "scan_results": results,
     }
 
 

@@ -7,6 +7,7 @@ import {
 } from "lucide-react";
 import { PageShell } from "../../components/PageShell";
 import { useToast } from "../../hooks/useToast";
+import FleetJobs from "./FleetJobs";
 
 interface EnrollmentRequest {
   request_id: string;
@@ -203,6 +204,11 @@ export default function FleetPage() {
     <PageShell title="Fleet" subtitle="Enroll and govern vedha-agent devices">
       <style>{STYLES}</style>
       <div className="flt-page">
+
+        {/* ── All jobs across every probe (filter by probe + engagement) ── */}
+        <section className="flt-card">
+          <FleetJobs />
+        </section>
 
         {/* ── Add a probe ── */}
         <section className="flt-card">
