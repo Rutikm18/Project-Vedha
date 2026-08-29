@@ -77,9 +77,13 @@ def test_signing_supported_field_present():
     assert out["signing_required"] is True
 
 
-def test_request_omits_311_without_preauth_context():
-    """Offering SMB 3.1.1 with no preauth-integrity negotiate context makes
-    Windows reject with STATUS_INVALID_PARAMETER (the live root cause). Until we
-    add contexts, the request must not advertise 0x0311."""
+def test_request_offers_311_with_preauth_context():
+    """FIX 4: 3.1.1 IS now advertised, together with the mandatory preauth-integrity
+    negotiate context — so Windows selects 3.1.1 (MS-SMB2 3.3.5.4) instead of being
+    forced down to 3.0.2, and does NOT reject with STATUS_INVALID_PARAMETER."""
     req = _smb2_negotiate()
-    assert b"\x11\x03" not in req  # 0x0311 little-endian
+    assert b"\x11\x03" in req                                   # 0x0311 little-endian offered
+    ctx_off = struct.unpack_from("<I", req, 64 + 28)[0]         # NegotiateContextOffset
+    ctx_count = struct.unpack_from("<H", req, 64 + 32)[0]       # NegotiateContextCount
+    assert ctx_count == 2 and ctx_off % 8 == 0
+    assert struct.unpack_from("<H", req, ctx_off)[0] == 0x0001  # PREAUTH_INTEGRITY context

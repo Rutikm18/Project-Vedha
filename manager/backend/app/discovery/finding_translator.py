@@ -51,25 +51,36 @@ def _map_severity(raw: str | None) -> FindingSeverity:
         return FindingSeverity.info
 
 
-async def _resolve_asset(db: AsyncSession, engagement_id: uuid.UUID, target: str | None) -> Asset | None:
+async def _resolve_asset(db: AsyncSession, engagement_id: uuid.UUID, target: str | None,
+                         *, cache: dict | None = None) -> Asset | None:
     """Find the Asset for a probe-reported target IP, creating a minimal one if needed.
 
     A probe's tls_scan/smb_enum/etc. can run standalone (no prior discovery job
     promoted this host yet), so the asset may not exist — create a bare-bones
     row rather than dropping the finding for lack of somewhere to attach it.
+
+    `cache` (a caller-owned {host: Asset} dict for one detection run) eliminates the
+    N+1 where every finding on the same host re-queried/re-created the asset — a
+    host with 20 findings did 20 identical lookups; with the cache it does one.
     """
     if not target:
         return None
     host = target.split(":", 1)[0] if target.count(":") == 1 else target
+    if cache is not None and host in cache:
+        return cache[host]
     existing = (await db.execute(
         select(Asset).where(Asset.engagement_id == engagement_id, Asset.ip_address == host)
     )).scalar_one_or_none()
     if existing:
+        if cache is not None:
+            cache[host] = existing
         return existing
     asset = Asset(engagement_id=engagement_id, ip_address=host,
                   asset_type=AssetType.server, last_seen=datetime.now(timezone.utc))
     db.add(asset)
     await db.flush()
+    if cache is not None:
+        cache[host] = asset
     return asset
 
 

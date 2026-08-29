@@ -84,30 +84,75 @@ def _ensure_importable() -> bool:
         return False
 
 
-def detect_findings_from_facts(facts: list[dict]) -> list[dict]:
-    """facts (ScanResult dicts) -> detection_engine finding dicts. [] on any
-    failure (never raises). Writes facts to a temp JSONL since run_pipeline
-    consumes JSONL paths."""
+def detect_all_from_facts(facts: list[dict]) -> tuple[list[dict], list[dict]]:
+    """Raw scanner facts -> (cve_finding_dicts, posture_finding_dicts), running the
+    FULL detection engine ONCE. The posture track is what turns the VERIFIED
+    scanners' config/exposure observations (SMBv1, RDP-without-NLA, deprecated TLS,
+    exposed RPC, UDP amplifiers) into findings — the CVE/version pipeline alone
+    never sees them, so before this the manager detected only half the risk. []/[]
+    on any failure (never raises). Falls back to CVE-only on an old engine."""
     if not facts or not _ensure_importable():
-        return []
-    from pipeline import run_pipeline  # type: ignore
+        return [], []
     tmp = None
     try:
         with tempfile.NamedTemporaryFile("w", suffix=".jsonl", delete=False) as fh:
             for fact in facts:
                 fh.write(json.dumps(fact, default=str) + "\n")
             tmp = fh.name
-        findings, _ = run_pipeline([tmp])
-        return [f.to_dict() for f in findings]
+        try:
+            from pipeline import run_full_detection  # type: ignore
+            res = run_full_detection([tmp])
+            cve = [f.to_dict() for f in res.get("cve", [])]
+            posture = [f.to_dict() for f in res.get("posture", [])]
+            return cve, posture
+        except ImportError:                          # older engine: CVE-only
+            from pipeline import run_pipeline  # type: ignore
+            findings, _ = run_pipeline([tmp])
+            return [f.to_dict() for f in findings], []
     except Exception as exc:  # noqa: BLE001
-        logger.warning("detection_engine.run_failed", error=str(exc))
-        return []
+        # The CVE track can fail on its own (e.g. a missing/oversized NVD snapshot);
+        # the POSTURE track must NOT go down with it — config-exposure findings need
+        # no vuln DB. Try posture standalone before giving up.
+        logger.warning("detection_engine.full_run_failed", error=str(exc))
+        try:
+            from ingest import ingest_files      # type: ignore
+            from posture_rules import detect_all  # type: ignore
+            posture = [f.to_dict() for f in detect_all(ingest_files([tmp]))]
+            if posture:
+                logger.info("detection_engine.posture_only_fallback", count=len(posture))
+            return [], posture
+        except Exception as exc2:  # noqa: BLE001
+            logger.warning("detection_engine.posture_fallback_failed", error=str(exc2))
+            return [], []
     finally:
         if tmp:
             try:
                 os.unlink(tmp)
             except OSError:
                 pass
+
+
+def detect_findings_from_facts(facts: list[dict]) -> list[dict]:
+    """CVE finding dicts only — backward-compatible wrapper over the full run."""
+    return detect_all_from_facts(facts)[0]
+
+
+# Posture severities are already critical/high/medium/low/info — the same vocabulary
+# the backend uses, so the map is a straight pass-through with an info fallback.
+_POSTURE_SEV = {
+    "critical": FindingSeverity.critical, "high": FindingSeverity.high,
+    "medium": FindingSeverity.medium, "low": FindingSeverity.low,
+    "info": FindingSeverity.info,
+}
+
+
+def _posture_title(p: dict) -> str:
+    """Stable, human title for a posture finding — the same string across runs so
+    dedup/regression tracking works. Port is folded in so a rule that fires on two
+    ports of one host stays two findings, not one collapsed row."""
+    base = p.get("title") or p.get("rule_id") or "configuration weakness"
+    port = p.get("port")
+    return (f"{base} (port {port})" if port else base)[:500]
 
 
 def _apply_regression_reopen(finding, run_id, now) -> None:
@@ -136,6 +181,82 @@ async def _find_remediated_match(db, engagement_id, asset_id, title):
     )
     q = q.where(Finding.asset_id == asset_id) if asset_id else q.where(Finding.asset_id.is_(None))
     return (await db.execute(q.limit(1))).scalar_one_or_none()
+
+
+def _posture_description(p: dict) -> str | None:
+    bits: list[str] = []
+    if p.get("cwe"):
+        bits.append(p["cwe"])
+    if p.get("mitre"):
+        bits.append(f"ATT&CK {p['mitre']}")
+    if p.get("scanner"):
+        bits.append(f"observed by {p['scanner']}")
+    if p.get("fp_notes"):
+        bits.append(p["fp_notes"])
+    return "; ".join(bits) or None
+
+
+async def _persist_posture_findings(db, engagement_id, run_id, now, posture_dicts,
+                                    touched: list, db_version,
+                                    cache: dict | None = None) -> tuple[int, int]:
+    """Translate posture/config-exposure findings (from the VERIFIED scanners) into
+    backend Finding rows, reusing the SAME dedup + regression-reopen lifecycle as
+    the CVE loop so they track across runs identically. Returns (created, reaffirmed).
+    These carry severity, risk_score, MITRE technique and remediation straight from
+    the detection-as-code rule — ready for prioritization and the portal."""
+    created = reaffirmed = 0
+    for p in posture_dicts:
+        try:
+            title = _posture_title(p)
+            asset = await _resolve_asset(db, engagement_id, p.get("asset_ip"), cache=cache)
+            asset_id = asset.id if asset else None
+
+            dup = await _find_open_duplicate(db, engagement_id, asset_id, title)
+            if dup is not None:
+                dup.evidence = p
+                dup.last_seen = now
+                dup.detection_run_id = run_id
+                dup.resolution_miss_count = 0
+                touched.append(dup)
+                reaffirmed += 1
+                continue
+
+            regressed = await _find_remediated_match(db, engagement_id, asset_id, title)
+            if regressed is not None:
+                _apply_regression_reopen(regressed, run_id, now)
+                regressed.evidence = {**(regressed.evidence or {}), **p, "regression": True}
+                touched.append(regressed)
+                reaffirmed += 1
+                continue
+
+            state = p.get("state")
+            f = Finding(
+                engagement_id=engagement_id,
+                asset_id=asset_id,
+                cve_ids=None,
+                title=title,
+                description=_posture_description(p),
+                risk_score=(Decimal(str(p["risk_score"]))
+                            if p.get("risk_score") is not None else None),
+                severity=_POSTURE_SEV.get(p.get("severity"), FindingSeverity.info),
+                status=(FindingStatus.confirmed if state == "confirmed"
+                        else FindingStatus.open),
+                detection_status=DetectionStatus.detected,
+                mitre_techniques=[p["mitre"]] if p.get("mitre") else None,
+                remediation=p.get("remediation"),
+                evidence=p,
+                first_seen=now,
+                last_seen=now,
+                detection_run_id=run_id,
+                detected_db_version=db_version,
+            )
+            db.add(f)
+            touched.append(f)
+            created += 1
+        except Exception as exc:  # noqa: BLE001 — one bad finding must not sink the batch
+            logger.warning("posture_finding.create_failed",
+                           rule_id=p.get("rule_id"), error=str(exc))
+    return created, reaffirmed
 
 
 async def _stamp_verification(findings, llm=None) -> None:
@@ -170,6 +291,7 @@ async def _engagement_device_roles(db: AsyncSession, engagement_id: uuid.UUID) -
 
 async def _persist_attack_paths(
     db: AsyncSession, engagement_id: uuid.UUID, run, facts: list[dict], now,
+    cache: dict | None = None,
 ) -> int:
     """Correlate composite attack paths from the run's facts and persist them as
     Finding rows (deduped by title, reaffirmed across runs). Returns NEW count."""
@@ -177,7 +299,7 @@ async def _persist_attack_paths(
     created = 0
     for d in attack_path_findings(facts, device_roles):
         try:
-            asset = await _resolve_asset(db, engagement_id, d.get("target"))
+            asset = await _resolve_asset(db, engagement_id, d.get("target"), cache=cache)
             asset_id = asset.id if asset else None
             title = d["title"][:500]
             evidence = {
@@ -249,11 +371,17 @@ async def create_findings_from_facts(
     reaffirmed = 0
     try:
         touched: list = []
-        for d in detect_findings_from_facts(facts):
+        # One asset cache shared by the CVE, posture and attack-path loops: the same
+        # host is resolved ONCE per run instead of once per finding (kills the N+1).
+        asset_cache: dict = {}
+        # ONE full-detection pass over the raw facts → BOTH the CVE/version track
+        # and the posture/config-exposure track (the verified scanners' findings).
+        cve_dicts, posture_dicts = detect_all_from_facts(facts)
+        for d in cve_dicts:
             try:
                 cve = d.get("cve_id") or "finding"
                 title = f"{cve} — {d.get('cpe', '').split(':')[4] if d.get('cpe') else ''}".strip(" —")[:500]
-                asset = await _resolve_asset(db, engagement_id, d.get("asset_ip"))
+                asset = await _resolve_asset(db, engagement_id, d.get("asset_ip"), cache=asset_cache)
                 asset_id = asset.id if asset else None
 
                 dup = await _find_open_duplicate(db, engagement_id, asset_id, title)
@@ -303,6 +431,19 @@ async def create_findings_from_facts(
             except Exception as exc:  # noqa: BLE001 — one bad finding must not sink the batch
                 logger.warning("detection_finding.create_failed", error=str(exc))
 
+        # ── Posture / config-exposure track (the VERIFIED scanners' findings) ──
+        # SMBv1, RDP-without-NLA, deprecated TLS, exposed RPC, UDP amplifiers — the
+        # weaknesses the CVE loop cannot see because they are configuration, not a
+        # vulnerable version. Same dedup/regression lifecycle, ready for the portal.
+        try:
+            p_created, p_reaffirmed = await _persist_posture_findings(
+                db, engagement_id, run.id, now, posture_dicts, touched, db_version,
+                cache=asset_cache)
+            created += p_created
+            reaffirmed += p_reaffirmed
+        except Exception as exc:  # noqa: BLE001 — posture must not sink the run
+            logger.warning("posture_findings.batch_failed", error=str(exc))
+
         await db.flush()
 
         # ── Composite attack-path correlation (Track B) ──────────────────────
@@ -311,7 +452,8 @@ async def create_findings_from_facts(
         # legacy-Windows surface, cleartext cluster, exposed-DB+unauth, default
         # SNMP on infra), amplified by the host's device role. Best-effort.
         try:
-            corr_new = await _persist_attack_paths(db, engagement_id, run, facts, now)
+            corr_new = await _persist_attack_paths(db, engagement_id, run, facts, now,
+                                                   cache=asset_cache)
             created += corr_new
         except Exception as exc:  # noqa: BLE001 — correlation must not sink the run
             logger.warning("detection_run.correlation_failed", error=str(exc))

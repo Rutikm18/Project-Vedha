@@ -30,12 +30,18 @@ from .scanner_base import (
 )
 
 # Scan profiles. Note: -sS (SYN) and -O (OS) require root; -sT/-sV do not.
+# Port-scanning profiles carry -Pn (treat host as up, SKIP host discovery). Without
+# it, nmap runs discovery first and a host that blocks ICMP/probes — the norm for a
+# firewalled Windows box — is marked "down" and NEVER port-scanned, so the wrapper
+# returned 0 results while the native scanners (which always scan regardless of
+# liveness) saw the same ports open. -Pn aligns the two. The `discovery` profile is
+# the ONE exception: its whole job is to decide liveness, so it must not assume up.
 PROFILES = {
     "discovery": ["-sn", "-PR", "-PE", "-PS80,443", "-PA80"],
-    "version":   ["-sT", "-sV", "--version-intensity", "5"],
-    "os":        ["-sT", "-O"],
-    "smb":       ["-p", "139,445", "--script", "smb-protocols,smb2-security-mode"],
-    "fast":      ["-sT", "-F"],
+    "version":   ["-Pn", "-sT", "-sV", "--version-intensity", "5"],
+    "os":        ["-Pn", "-sT", "-O"],
+    "smb":       ["-Pn", "-p", "139,445", "--script", "smb-protocols,smb2-security-mode"],
+    "fast":      ["-Pn", "-sT", "-F"],
 }
 
 

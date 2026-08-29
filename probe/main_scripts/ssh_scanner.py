@@ -248,45 +248,72 @@ class SSHScanner(BaseScanner):
 
     def _probe(self, target: str, port: int):
         """Blocking: connect, exchange identification, read the server KEXINIT.
-        Returns (server_ident_str_or_None, kexinit_payload_bytes_or_None).
+        Returns (connected, ident_str_or_None, kexinit_payload_or_None).
 
+        `connected` is the reachability fact — a successful TCP connect() — kept
+        SEPARATE from SSH confirmation (RFC 4253 §4.2: a port is SSH only if its
+        first line starts with "SSH-", which is unrelated to whether TCP came up).
         We send our identification string FIRST, then read the server's — some
-        servers wait for the client banner before sending anything (a common
-        failure mode noted in the risks analysis), and sending first avoids that
-        deadlock while remaining fully RFC 4253 §4.2 compliant."""
+        servers wait for the client banner before sending anything — and only read
+        a KEXINIT packet when the peer actually spoke SSH, so arbitrary bytes from a
+        non-SSH service are never misparsed as an SSH packet."""
         try:
-            with socket.create_connection((target, port), timeout=self.timeout) as s:
-                s.settimeout(self.timeout)
-                s.sendall(CLIENT_ID + b"\r\n")
-                ident = _read_ident(s)
+            s = socket.create_connection((target, port), timeout=self.timeout)
+        except OSError:
+            return False, None, None            # TCP connect failed: NOT reachable
+        try:
+            s.settimeout(self.timeout)
+            s.sendall(CLIENT_ID + b"\r\n")
+            ident = _read_ident(s)
+            payload = None
+            if ident and ident.startswith("SSH-"):
                 payload = _read_packet(s)
                 if not payload or payload[0] != SSH_MSG_KEXINIT:
-                    return ident, None
-                return ident, payload
+                    payload = None
+            return True, ident, payload
         except OSError:
-            return None, None
+            return True, None, None             # connected but read failed → open
+        finally:
+            s.close()
 
     async def _scan_port(self, target: str, port: int) -> ScanResult:
         await self.limiter.wait()
         loop = asyncio.get_running_loop()
         async with self.sem:
             try:
-                ident, kex_raw = await loop.run_in_executor(
+                connected, ident, kex_raw = await loop.run_in_executor(
                     None, self._probe, target, port)
             except Exception as exc:
                 return ScanResult(self.name, target, port=port, proto="tcp",
                                   status="error", error=str(exc))
-        if not kex_raw:
-            return ScanResult(self.name, target, port=port, proto="tcp",
-                              status="filtered", reason="no_ssh_kexinit",
-                              data={"ssh": False, "banner": ident})
 
+        # Reachability: a failed TCP connect is the ONLY thing that is filtered here
+        # (the network dropped it). A successful connect is always status=open —
+        # regardless of whether the service turns out to speak SSH.
+        if not connected:
+            return ScanResult(self.name, target, port=port, proto="tcp",
+                              status="filtered", reason="connect_failed",
+                              data={"ssh_confirmed": False})
+
+        banner = parse_ssh_banner(ident) if ident else None
+        if not kex_raw or not banner:
+            # Open, but not SSH (or SSH ident without a readable KEXINIT). NEVER
+            # 'filtered' — the connect succeeded. Carry whatever banner we saw.
+            return ScanResult(
+                self.name, target, port=port, proto="tcp", status="open",
+                reason="not_ssh_protocol",
+                data={"ssh": False, "ssh_confirmed": False, "banner": ident},
+                evidence=f"TCP open; not SSH (first line: {(ident or '')[:40]!r})")
+
+        # Confirmed SSH: parse the free version fingerprint + audit the KEXINIT.
         kexinit = parse_kexinit(kex_raw)
         ev = evaluate_algorithms(kexinit)
-        banner = parse_ssh_banner(ident) if ident else None
         data = {
             "ssh": True,
+            "ssh_confirmed": True,
             "banner": banner,
+            "protoversion": banner.get("protocol"),
+            "software": banner.get("software"),
             "kex_algorithms": kexinit["kex_algorithms"],
             "server_host_key_algorithms": kexinit["server_host_key_algorithms"],
             "encryption": _dedup(list(kexinit["encryption_s2c"])
@@ -294,8 +321,9 @@ class SSHScanner(BaseScanner):
             "mac": _dedup(list(kexinit["mac_s2c"]) + list(kexinit["mac_c2s"])),
             **ev,
         }
-        sw = banner["software"] if banner else "?"
-        evidence = (f"{sw}; {len(ev['failures'])} weak / {len(ev['warnings'])} warn"
+        sw = banner.get("software", "?")
+        evidence = (f"SSH confirmed: {sw}; {len(ev['failures'])} weak / "
+                    f"{len(ev['warnings'])} warn"
                     + ("; Terrapin-vulnerable" if ev["terrapin_vulnerable"] else ""))
         return ScanResult(self.name, target, port=port, proto="tcp",
                           status="open", data=data, evidence=evidence)

@@ -19,6 +19,7 @@ from ever becoming a hard dependency or a CVE source).
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from ai_normalizer import AIClient, AINormalizerCache, extract_raw_text, propose_candidates
 from correlate import correlate_smb_patch, dedup_findings, suppress_negated
@@ -28,6 +29,7 @@ from enrichment_db import EpssDB, KevDB, load_epss, load_kev
 from ingest import IngestResult, ingest_files
 from matcher import match_candidate
 from models import Finding
+from posture_rules import PostureFinding, detect_all as detect_posture_all
 from verifier import deception_score, verify
 from vuln_db import VulnDB, load_snapshot
 
@@ -104,6 +106,36 @@ def run_pipeline(jsonl_paths: list[str | Path], vuln_db: VulnDB | None = None,
         verify(f, deception=deception_by_asset.get(f.asset_ip, 0.0))
 
     return all_findings, ingest_result
+
+
+def run_full_detection(jsonl_paths: list[str | Path], vuln_db: VulnDB | None = None,
+                       kev_db: KevDB | None = None, epss_db: EpssDB | None = None,
+                       exposure: dict[str, dict] | None = None,
+                       **kwargs) -> dict[str, Any]:
+    """Unified detection over one set of ingested facts: the CVE track
+    (version→CVE, may be empty when no vuln_db is pinned) AND the posture track
+    (config/exposure vulnerabilities from the validated scanners). Shares the SAME
+    exposure context so both use one risk model, and returns both finding sets plus
+    the ingest result — the whole vulnerability picture, not half of it.
+
+    This is what a full network VA should call: the trusted scanners' facts land
+    here and the manager applies its strong detection to them centrally.
+    """
+    cve_findings, ingest_result = run_pipeline(
+        jsonl_paths, vuln_db=vuln_db, kev_db=kev_db, epss_db=epss_db,
+        exposure=exposure, **kwargs)
+    posture_findings = detect_posture_all(ingest_result, exposure=exposure)
+    return {
+        "cve": cve_findings,
+        "posture": posture_findings,
+        "ingest": ingest_result,
+        "counts": {
+            "cve": len(cve_findings),
+            "posture": len(posture_findings),
+            "posture_confirmed": sum(1 for f in posture_findings if f.state == "confirmed"),
+            "assets": len(ingest_result.assets),
+        },
+    }
 
 
 def ab_evaluate(jsonl_paths: list[str | Path], ai_client: AIClient, **kwargs) -> dict:

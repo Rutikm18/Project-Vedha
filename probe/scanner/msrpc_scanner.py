@@ -22,6 +22,7 @@ blocking impacket call runs in a worker thread; the endpoint list is bounded.
 from __future__ import annotations
 
 import asyncio
+import re
 
 from .scanner_base import (
     BaseScanner, ScanResult, ScopeGuard, ResultWriter, expand_targets,
@@ -31,13 +32,51 @@ from .scanner_base import (
 DEFAULT_MSRPC_PORTS = [135]
 MAX_ENTRIES = 2000
 
+# EPM string bindings look like ``ncacn_ip_tcp:192.168.1.77[49664]`` (dynamic TCP),
+# ``ncacn_np:host[\PIPE\atsvc]`` (named pipe), ``ncalrpc:[...]`` (local), etc. Only
+# ncacn_ip_tcp exposes a routable TCP port an attacker can reach directly, so those
+# are the endpoints that turn an EPM read into new scan surface. Match the tower
+# protocol + the bracketed numeric port (bracket contents are never numeric for the
+# pipe/local towers, so the ``\d+`` alone already excludes them, but pinning the
+# ncacn_ip_tcp prefix keeps it explicit).
+_TCP_BINDING = re.compile(r"ncacn_ip_tcp:[^\[]*\[(\d{1,5})\]")
+
+# Ephemeral/dynamic RPC range on modern Windows (2008+). Ports below this are the
+# well-known ones the port scan already covers; surfacing them again as "dynamic"
+# would double-count. We still record ALL ncacn_ip_tcp ports but flag the dynamic
+# subset explicitly because that is the range the funnel never pre-scans.
+DYNAMIC_RPC_FLOOR = 49152
+
+
+def _extract_tcp_ports(endpoints: list[dict]) -> tuple[list[int], list[int]]:
+    """Parse ncacn_ip_tcp bindings → (all_tcp_ports, dynamic_tcp_ports).
+
+    Pure and deterministic so it is unit-testable without impacket or a network.
+    Ports outside 1..65535 are dropped (defensive against malformed towers).
+    """
+    all_ports: set[int] = set()
+    for e in endpoints:
+        m = _TCP_BINDING.search(e.get("binding") or "")
+        if not m:
+            continue
+        port = int(m.group(1))
+        if 1 <= port <= 65535:
+            all_ports.add(port)
+    dynamic = {p for p in all_ports if p >= DYNAMIC_RPC_FLOOR}
+    return sorted(all_ports), sorted(dynamic)
+
 
 def _summarize(endpoints: list[dict]) -> dict:
     """Reduce the raw endpoint list to distinct interfaces and dynamic ports."""
     interfaces = sorted({e.get("uuid", "").split(" ")[0] for e in endpoints if e.get("uuid")})
     named = sorted({e.get("exe") for e in endpoints if e.get("exe")})
+    all_tcp, dynamic_tcp = _extract_tcp_ports(endpoints)
     return {"interface_count": len(interfaces), "interfaces": interfaces,
-            "named_services": named}
+            "named_services": named,
+            "tcp_endpoint_ports": all_tcp,
+            # The recon win: dynamic RPC ports EPM advertised but the funnel's
+            # fixed candidate-port set never scans. The funnel reconciles these.
+            "dynamic_tcp_ports": dynamic_tcp}
 
 
 class MSRPCScanner(BaseScanner):
@@ -118,8 +157,10 @@ class MSRPCScanner(BaseScanner):
             return ScanResult(self.name, target, port=port, proto="tcp",
                               status="filtered", reason=data.get("reason", "no_msrpc"),
                               data=data)
+        dyn = data.get("dynamic_tcp_ports", [])
         evidence = (f"endpoints={data.get('endpoint_count', 0)} "
-                    f"interfaces={data.get('interface_count', 0)}")
+                    f"interfaces={data.get('interface_count', 0)}"
+                    + (f" dynamic_tcp_ports={len(dyn)}" if dyn else ""))
         return ScanResult(self.name, target, port=port, proto="tcp",
                           status="open", data=data, evidence=evidence)
 

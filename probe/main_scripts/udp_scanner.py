@@ -273,6 +273,11 @@ UDP_PROBES: dict[int, tuple[str, bytes | None]] = {
     11211: ("memcached", _memcached_stats_probe()),
 }
 
+# Generic datagram for a requested port with no protocol-specific probe. A short,
+# benign payload — many custom/echo UDP responders reply to any input; a service
+# that ignores unknown input stays honestly open|filtered, never mislabelled.
+_GENERIC_UDP_PROBE = b"\r\n\r\n"
+
 
 class UDPScanner(BaseScanner):
     name = "udp_scan"
@@ -310,9 +315,14 @@ class UDPScanner(BaseScanner):
                 max_retries=self.max_retries)
 
     async def _probe(self, target: str, port: int) -> ScanResult | None:
-        if port not in UDP_PROBES:
-            return None
-        svc, payload = UDP_PROBES[port]
+        # A known port gets its protocol-specific payload; any OTHER requested port
+        # gets a generic datagram so custom / non-standard UDP responders are still
+        # discovered instead of silently skipped. The honest state machine below
+        # (closed / open|filtered / open) is identical either way.
+        if port in UDP_PROBES:
+            svc, payload = UDP_PROBES[port]
+        else:
+            svc, payload = "unknown-udp", _GENERIC_UDP_PROBE
 
         # Build target-specific payloads
         if svc == "sip":
@@ -395,15 +405,13 @@ def main() -> None:
 
     async def _run():
         if args.ports:
-            requested = set(parse_ports(args.ports))
-            ports = [p for p in sorted(requested) if p in UDP_PROBES]
-            unknown = sorted(requested - set(UDP_PROBES))
-            if unknown:
-                LOG.warning("no UDP probe defined for %s — skipping (supported: %s)",
-                            unknown, sorted(UDP_PROBES))
-            if not ports:
-                LOG.error("none of the requested UDP ports have a probe")
-                return
+            # Probe EVERY requested port: protocol-specific where we have a payload,
+            # generic otherwise — an explicitly requested port is never skipped.
+            ports = sorted(set(parse_ports(args.ports)))
+            generic = [p for p in ports if p not in UDP_PROBES]
+            if generic:
+                LOG.info("generic UDP probe for %d port(s) without a service payload: %s",
+                         len(generic), generic)
         else:
             ports = list(UDP_PROBES.keys())
         scope = ScopeGuard.from_file(args.scope)

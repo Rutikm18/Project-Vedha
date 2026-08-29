@@ -81,11 +81,47 @@ class TestClassifyFromResults:
                        data={"service": "smb"}),
         ]
         r = classify_from_results(results)
-        # 445 + 3389 each vote workstation+server equally -> a genuine tie, now
-        # reported explicitly as ambiguous instead of an arbitrary pick (Phase 23).
-        assert r["device_type"] == "ambiguous"
-        assert set(r["signals"]["tie"]) == {dc.WORKSTATION, dc.SERVER}
-        assert r["confidence"] <= 0.5
+        # FIX 5(b): SMB (445) + RDP (3389) are baseline Windows endpoint services,
+        # NOT server signals — so they no longer tie an obvious Windows client
+        # against "server". The host now classifies as a workstation.
+        assert r["device_type"] == dc.WORKSTATION
         assert r["signals"]["os_guess"] == "Windows"
         assert r["signals"]["open_tcp"] == [445, 3389]      # closed 25 excluded
         assert r["signals"]["open_udp"] == [161]            # confirmed only; 500 silence dropped
+
+
+class TestWorkstationVsServer:
+    """FIX 5(b): don't tie an obvious workstation; require role ports/DomainRole
+    for 'server'. Ground truth: 192.168.1.77 = DESKTOP-34M18MB, standalone WS."""
+
+    _WS_PORTS = [135, 445, 2179, 3389, 7680]
+
+    def test_reference_workstation_unauthenticated(self):
+        # hostname comes free from the SMB NTLM CHALLENGE target_name.
+        r = dc.classify_device(os_guess="Windows", open_tcp_ports=self._WS_PORTS,
+                               hostname="DESKTOP-34M18MB")
+        assert r["device_type"] == dc.WORKSTATION and r["confidence"] >= 0.8
+
+    def test_reference_workstation_with_domain_role_0(self):
+        r = dc.classify_device(os_guess="Windows", open_tcp_ports=self._WS_PORTS,
+                               hostname="DESKTOP-34M18MB", domain_role=0)
+        assert r["device_type"] == dc.WORKSTATION and r["confidence"] >= 0.8
+
+    def test_baseline_windows_services_are_not_a_server_signal(self):
+        # SMB+RDP+Windows with NO role port and NO hostname must not become 'server'.
+        r = dc.classify_device(os_guess="Windows", open_tcp_ports=[445, 3389])
+        assert r["device_type"] == dc.WORKSTATION
+
+    def test_real_domain_controller_still_server(self):
+        r = dc.classify_device(os_guess="Windows",
+                               open_tcp_ports=[88, 389, 445, 53, 3389],
+                               hostname="DC-01", domain_role=5)
+        assert r["device_type"] == dc.SERVER
+        assert r["role_detail"] == "domain_controller"
+
+    def test_role_service_makes_server(self):
+        # A genuine server role (MSSQL on 1433, confirmed by banner) outweighs the
+        # baseline Windows endpoint surface → server, not workstation.
+        r = dc.classify_device(os_guess="Windows", open_tcp_ports=[445, 3389, 1433],
+                               services=["mssql"])
+        assert r["device_type"] == dc.SERVER

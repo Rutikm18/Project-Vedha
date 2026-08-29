@@ -91,6 +91,14 @@ def _open_tcp_ports(records: list[dict]) -> list[int]:
                    and r.get("port") is not None})
 
 
+def _advertised_dynamic_ports(msrpc_records: list[dict]) -> list[int]:
+    """EPM-advertised dynamic RPC ports from the msrpc stage (same field the funnel
+    reconciles). Pure — testable without a subprocess."""
+    return sorted({p for r in msrpc_records
+                   for p in ((r.get("data") or {}).get("dynamic_tcp_ports") or [])
+                   if isinstance(p, int)})
+
+
 def _ports_arg(ports) -> str:
     return ",".join(str(p) for p in sorted(ports))
 
@@ -162,6 +170,13 @@ def main() -> None:
         tls_ports = sorted(set(open_tcp) & _TLS_CANDIDATES)
         if tls_ports:
             _run_stage(outdir, "08_tls", "tls_scanner", common + ["-p", _ports_arg(tls_ports)])
+        # RDP: the CONFIRMING scanner (X.224 handshake + NLA posture). Without this
+        # stage, findings only saw the port-based hint and emitted the stale
+        # "port 3389 open — BlueKeep class" finding; rdp_scan's confirmed result
+        # wins the (rule_id,target,port) dedup and downgrades to LOW when NLA is
+        # required. TLS-on-3389 is still covered by the tls stage above.
+        if 3389 in open_tcp:
+            _run_stage(outdir, "08b_rdp", "rdp_scanner", common + ["-p", "3389"])
         http_ports = sorted(set(open_tcp) & _HTTP_CANDIDATES)
         if http_ports:
             _run_stage(outdir, "09_web", "web_scanner", common + ["-p", _ports_arg(http_ports)])
@@ -196,6 +211,30 @@ def main() -> None:
                        common + ["-p", _ports_arg(printer_ports)])
     else:
         _log(outdir, "no open TCP ports — skipping service/tls/web/db stages")
+
+    # ── Canonical port reconciliation (the SAME reconciler scan_funnel uses) ──
+    # MSRPC EPM advertises dynamic RPC ports the fixed port scan never probes.
+    # Confirm-probe the newly-advertised ones and fold ONLY the reachable ones into
+    # a single canonical open set via scan_funnel.reconcile_ports — so run_all and
+    # scan_funnel can never disagree on which TCP ports are open. Advertisement
+    # alone is never treated as open (a firewalled EPM port stays closed).
+    from main_scripts.scan_funnel import reconcile_ports
+    advertised = _advertised_dynamic_ports(_read_jsonl(outdir / "19_msrpc.jsonl"))
+    new_ports = [p for p in advertised if p not in set(open_tcp)]
+    confirmed_dyn: list[int] = []
+    if new_ports:
+        rec = _run_stage(outdir, "19c_rpc_reconcile", "port_scanner",
+                         common + ["-p", _ports_arg(new_ports)])
+        confirmed_dyn = _open_tcp_ports(_read_jsonl(rec))
+    canonical_open = reconcile_ports(open_tcp, confirmed_dyn)
+    (outdir / "canonical_ports.json").write_text(json.dumps({
+        "target": args.target,
+        "port_scan_open": open_tcp,
+        "epm_advertised_dynamic": advertised,
+        "epm_confirmed_dynamic": confirmed_dyn,
+        "canonical_open_tcp": canonical_open}, indent=2))
+    _log(outdir, f"canonical open TCP (reconciled with EPM): {canonical_open}")
+    open_tcp = canonical_open
 
     # ── Inference layer: fuse everything into a device-role guess ──
     from main_scripts.device_classifier import classify_from_results

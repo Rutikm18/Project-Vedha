@@ -100,6 +100,7 @@ class CampaignOptions:
     host_concurrency: int = 64      # hosts probed in parallel within a stage
     full_ports: bool = False        # opt-in: the all-65,535 audit stage
     udp: bool = True                # SNMP/UDP exposure stage
+    ipv6: bool = False              # opt-in: ND-multicast IPv6 neighbor discovery
     vuln_db: str | None = None      # opt-in: offline CVE mirror → CVE stage
     exposed: bool = False           # operator asserts targets are internet-facing
     force: bool = False             # assess even hosts discovery marks down
@@ -241,6 +242,7 @@ class ProgressReporter:
         return round(per_stage * (len(active) - done), 1)
 
     def snapshot(self) -> dict[str, Any]:
+        from .scanner_registry import verification_report
         return {
             "campaign_id": self.campaign_id,
             "targets": self.targets,
@@ -252,6 +254,10 @@ class ProgressReporter:
             "eta_seconds": self._eta_seconds(),
             "stages": [self.stages[i].to_dict() for i in self._order],
             "totals": dict(self.totals),
+            # Scanner-module trust view: which scanners are verified (authoritative)
+            # vs experimental (run, but shown provisional). Lets the operator tell a
+            # validated result from an unvalidated one.
+            "scanners": verification_report(),
         }
 
     def _flush(self) -> None:
@@ -332,6 +338,37 @@ def _candidate_ports(routes: dict[str, list[int]]) -> list[int]:
     return sorted(ports)
 
 
+async def _discover_ipv6(scope) -> dict:
+    """Best-effort IPv6 neighbor discovery (ND multicast, RFC 4861). Returns
+    {facts, in_scope}: one ScanResult per discovered address (ALWAYS reported —
+    knowing the segment's IPv6 hosts is the value) and the subset the scope
+    authorizes for scanning. The blocking discovery runs in a worker thread. Any
+    failure degrades to empty — IPv6 discovery never breaks the campaign."""
+    try:
+        from .ipv6_discovery import discover_ipv6_hosts
+        loop = asyncio.get_running_loop()
+        addrs = await loop.run_in_executor(None, discover_ipv6_hosts)
+    except Exception:  # noqa: BLE001 — best-effort, platform-dependent
+        return {"facts": [], "in_scope": []}
+    facts: list[ScanResult] = []
+    in_scope: list[str] = []
+    for addr in addrs:
+        bare = addr.split("%", 1)[0]                 # drop %iface for the scope test
+        try:
+            authorized = scope.in_scope(bare)
+        except Exception:  # noqa: BLE001 — a weird address must not sink discovery
+            authorized = False
+        facts.append(ScanResult(
+            "ipv6_discovery", addr, status="observed", family="ipv6",
+            data={"address": addr, "in_scope": authorized},
+            evidence=("IPv6 neighbor via ND — "
+                      + ("in scope (queued for scan)" if authorized
+                         else "OUT OF SCOPE, reported only, not scanned"))))
+        if authorized:
+            in_scope.append(addr)
+    return {"facts": facts, "in_scope": in_scope}
+
+
 async def _bounded_gather(items, coro_factory, limit: int):
     """Run coro_factory(item) over items with bounded concurrency; return the
     list of results in completion order (errors become empty lists)."""
@@ -363,9 +400,20 @@ def default_stages(funnel) -> list[Stage]:
             results.extend(res)
             if _alive(res) or ctx.options.force:
                 live.append(h)
+
+        # IPv6 (opt-in): brute-forcing a /64 is infeasible, so discover neighbors via
+        # ND multicast (RFC 4861 ff02::1) + the neighbor cache. EVERY discovered
+        # address is reported (knowing what's on the segment is the point), but only
+        # those the scope AUTHORIZES are added to the scan set — the scope guardrail
+        # holds for auto-discovered hosts exactly as for supplied ones.
+        if ctx.options.ipv6:
+            v6 = await _discover_ipv6(ctx.scope)
+            results.extend(v6["facts"])
+            live.extend(v6["in_scope"])
+
         ctx.live_hosts = live
-        return StageOutcome(results, count=len(live),
-                            note=f"{len(live)} live host(s) of {len(hosts)} probed")
+        note = f"{len(live)} live host(s) of {len(hosts)} probed"
+        return StageOutcome(results, count=len(live), note=note)
 
     async def _map_ports(ctx: CampaignContext, ports: list[int], label: str) -> StageOutcome:
         results: list[ScanResult] = []
@@ -665,6 +713,9 @@ def main() -> None:
                              "scans the curated service-port set)")
     parser.add_argument("--no-udp", action="store_true",
                         help="skip the SNMP / UDP amplification-exposure stage")
+    parser.add_argument("--ipv6", action="store_true",
+                        help="opt-in: discover IPv6 neighbors via ND multicast and "
+                             "scan the ones the scope authorizes")
     parser.add_argument("--vuln-db",
                         help="offline CVE mirror (SQLite) to correlate facts "
                              "against; enables the CVE-correlation stage")
@@ -689,7 +740,7 @@ def main() -> None:
         targets = expand_targets(args.targets)
         options = CampaignOptions(
             rate=args.rate, concurrency=args.concurrency, timeout=args.timeout,
-            full_ports=args.full_ports, udp=not args.no_udp,
+            full_ports=args.full_ports, udp=not args.no_udp, ipv6=args.ipv6,
             vuln_db=args.vuln_db, exposed=args.exposed, force=args.force,
             out_dir=args.out_dir)
         view = None if args.quiet else CliProgressView()

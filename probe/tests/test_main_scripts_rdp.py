@@ -6,7 +6,9 @@ and the confirmed-RDP / NLA-off findings. No live network.
 """
 from __future__ import annotations
 
+import json
 import struct
+import sys
 
 from main_scripts import findings as F
 from main_scripts import rdp_scanner as R
@@ -40,6 +42,46 @@ def test_tls_only_is_not_nla():
     assert r["tls"] is True and r["nla"] is False
 
 
+def test_hybrid_ex_0x08_is_nla_over_tls():
+    # MS-RDPBCGR: CredSSP/NLA is signalled by 0x08 too, not only 0x02. The old code
+    # tested only 0x02 → 0x08 was mislabelled nla:false/tls:false (the inversion).
+    r = R.parse_connection_confirm(_cc(R._TYPE_NEG_RSP, R.PROTOCOL_HYBRID_EX))
+    assert r["nla"] is True and r["tls"] is True
+    assert r["standard_rdp_security"] is False
+
+
+def test_posture_map_matches_spec():
+    # (nla, tls, standard) for each selectedProtocol value.
+    m = lambda s: R._posture_from_selected(s, negotiation="response")
+    assert (m(0x08)["nla"], m(0x08)["tls"]) == (True, True)
+    assert (m(0x00)["nla"], m(0x00)["tls"], m(0x00)["standard_rdp_security"]) == (False, False, True)
+
+
+# ── two-probe NLA-required posture ────────────────────────────────────────────
+def test_nla_required_when_rdp_only_probe_refused(monkeypatch):
+    # Probe A selects NLA; Probe B (standard-RDP only) is REFUSED → NLA required.
+    def _probe(ip, port, timeout, requested_protocols=None):
+        if requested_protocols == R.PROTOCOL_RDP:
+            return {"rdp_confirmed": True, "negotiation": "failure", "failure_code": 5}
+        return {"rdp_confirmed": True, "negotiation": "response", "selected_protocol": 8,
+                "nla": True, "tls": True, "standard_rdp_security": False}
+    monkeypatch.setattr(R, "probe_rdp", _probe)
+    info = R.probe_rdp_posture("1.2.3.4", 3389, 1.0)
+    assert info["nla"] is True and info["tls"] is True
+    assert info["nla_required"] is True and "RDP_NEG_FAILURE" in info["nla_required_evidence"]
+
+
+def test_nla_not_required_when_rdp_only_accepted(monkeypatch):
+    def _probe(ip, port, timeout, requested_protocols=None):
+        if requested_protocols == R.PROTOCOL_RDP:
+            return {"rdp_confirmed": True, "negotiation": "response", "selected_protocol": 0,
+                    "nla": False, "tls": False, "standard_rdp_security": True}
+        return {"rdp_confirmed": True, "negotiation": "response", "selected_protocol": 0,
+                "nla": False, "tls": False, "standard_rdp_security": True}
+    monkeypatch.setattr(R, "probe_rdp", _probe)
+    assert R.probe_rdp_posture("1.2.3.4", 3389, 1.0)["nla_required"] is False
+
+
 def test_standard_rdp_security_no_nla():
     r = R.parse_connection_confirm(_cc(R._TYPE_NEG_RSP, R.PROTOCOL_RDP))
     assert r["standard_rdp_security"] is True and r["nla"] is False and r["tls"] is False
@@ -58,6 +100,37 @@ def test_cc_without_negotiation_is_standard_rdp():
 def test_non_rdp_data_is_none():
     assert R.parse_connection_confirm(b"HTTP/1.1 200 OK\r\n\r\n") is None
     assert R.parse_connection_confirm(b"\x03\x00") is None
+
+
+# ── CLI wiring (regression: main() used args.target and mis-called
+#    main_entrypoint, so `python -m ...rdp_scanner` AttributeError'd before it
+#    ever probed. Drive the real main() end-to-end with the network stubbed.) ──
+def test_main_cli_runs_and_writes_finding(tmp_path, monkeypatch):
+    scope = tmp_path / "scope.txt"
+    scope.write_text("127.0.0.1\n")
+    out = tmp_path / "rdp.jsonl"
+
+    # Stub the blocking handshake so the test never touches the network but the
+    # full argparse -> expand_targets -> RDPScanner.run -> writer path executes.
+    # The two-probe posture calls probe_rdp twice: default (learns selection) and
+    # RDP-only (learns whether NLA is required) — model both.
+    def _fake_probe(ip, port, timeout, requested_protocols=None):
+        if requested_protocols == R.PROTOCOL_RDP:
+            return {"rdp_confirmed": True, "negotiation": "failure", "failure_code": 5}
+        return {"rdp_confirmed": True, "negotiation": "response", "selected_protocol": 2,
+                "nla": True, "tls": True, "standard_rdp_security": False}
+    monkeypatch.setattr(R, "probe_rdp", _fake_probe)
+    monkeypatch.setattr(
+        sys, "argv",
+        ["rdp_scanner", "-t", "127.0.0.1", "-s", str(scope), "-o", str(out),
+         "-p", "3389", "--timeout", "1"])
+
+    R.main()   # must not raise (previously: AttributeError on args.target)
+
+    lines = [json.loads(x) for x in out.read_text().splitlines() if x.strip()]
+    rdp = [r for r in lines if r.get("scanner") == "rdp_scan" and r.get("port") == 3389]
+    assert rdp, "main() produced no rdp_scan result for the stubbed open host"
+    assert rdp[0]["status"] == "open" and rdp[0]["data"]["nla"] is True
 
 
 # ── findings ─────────────────────────────────────────────────────────────────
@@ -79,6 +152,19 @@ def test_confirmed_rdp_with_nla_has_no_nla_finding():
                "data": {"rdp_confirmed": True, "nla": True, "tls": True, "selected_protocol": 2}})
     ids = {f.rule_id for f in fs}
     assert "SVC-RDP-EXPOSED" in ids and "SVC-RDP-NO-NLA" not in ids
+
+
+def test_nla_required_rdp_is_low_severity_no_bluekeep_language():
+    # FIX 5(a): a CONFIRMED NLA-required host is LOW, confirmed, and carries no
+    # "BlueKeep class" port-based language.
+    fs = _run({"scanner": "rdp_scan", "target": "t", "port": 3389, "status": "open",
+               "data": {"rdp_confirmed": True, "nla": True, "tls": True,
+                        "nla_required": True, "selected_protocol": 8}})
+    exposed = next(f for f in fs if f.rule_id == "SVC-RDP-EXPOSED")
+    assert exposed.severity == F.SEV_LOW
+    assert exposed.data["confirmed"] is True and exposed.data["nla_required"] is True
+    assert "BlueKeep" not in exposed.evidence
+    assert "SVC-RDP-NO-NLA" not in {f.rule_id for f in fs}
 
 
 def test_confirmed_rdp_wins_dedup_over_port_hint():

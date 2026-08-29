@@ -24,7 +24,7 @@ async def test_run_records_coverage_and_invokes_resolution():
 
     # evaluate_resolutions is imported INTO engine_bridge, so patch it there.
     with patch.object(engine_bridge, "_vuln_db_meta", return_value=("v1", "t")), \
-         patch.object(engine_bridge, "detect_findings_from_facts", return_value=[]), \
+         patch.object(engine_bridge, "detect_all_from_facts", return_value=([], [])), \
          patch.object(engine_bridge, "evaluate_resolutions",
                       new=AsyncMock(return_value=2)) as mock_eval:
         await engine_bridge.create_findings_from_facts(db, engagement_id, result)

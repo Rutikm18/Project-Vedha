@@ -24,6 +24,35 @@ class TestSummarize:
         assert s["interface_count"] == 2 and s["named_services"] == ["schedsvc.dll"]
 
 
+class TestDynamicPorts:
+    """EPM bindings carry the dynamic RPC ports the funnel's fixed port set never
+    scans — extracting them is what closes the 'missed the ephemeral range' gap."""
+
+    def test_extract_tcp_and_dynamic(self):
+        eps = [
+            {"binding": "ncacn_ip_tcp:192.168.1.77[49664]"},
+            {"binding": "ncacn_ip_tcp:192.168.1.77[49668]"},
+            {"binding": "ncacn_ip_tcp:192.168.1.77[135]"},        # well-known, not dynamic
+            {"binding": r"ncacn_np:192.168.1.77[\PIPE\atsvc]"},   # named pipe, no TCP port
+            {"binding": "ncalrpc:[OLEED9...]"},                    # local RPC
+            {"binding": ""},
+            {},
+        ]
+        all_tcp, dynamic = msrpc._extract_tcp_ports(eps)
+        assert all_tcp == [135, 49664, 49668]
+        assert dynamic == [49664, 49668]                           # only the 49152+ range
+
+    def test_summarize_surfaces_dynamic_ports(self):
+        s = msrpc._summarize([{"uuid": "aaaa v1.0",
+                               "binding": "ncacn_ip_tcp:h[49670]"}])
+        assert s["dynamic_tcp_ports"] == [49670]
+        assert s["tcp_endpoint_ports"] == [49670]
+
+    def test_out_of_range_port_dropped(self):
+        all_tcp, dyn = msrpc._extract_tcp_ports([{"binding": "ncacn_ip_tcp:h[99999]"}])
+        assert all_tcp == [] and dyn == []
+
+
 class TestMSRPCScanner:
     def _sc(self):
         return msrpc.MSRPCScanner(ScopeGuard.from_list(["10.0.0.0/8"]),

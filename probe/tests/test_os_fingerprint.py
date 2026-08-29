@@ -264,6 +264,172 @@ class TestFingerprintOs:
         # a reduced MSS must not change the OS guess — it still tracks TTL
         assert ofp.fingerprint_os(ttl=120, mss=1380)["os_guess"] == "Windows"
 
+    def test_ttl_source_recorded_when_provided(self):
+        # A TCP-derived TTL must be traceable as such — never presentable as ICMP.
+        s = ofp.fingerprint_os(ttl=120, ttl_source="tcp_synack")["signals"]
+        assert s["ttl_source"] == "tcp_synack"
+        assert s["observed_ttl"] == 120
+
+    def test_ttl_source_defaults_to_unspecified(self):
+        assert ofp.fingerprint_os(ttl=64)["signals"]["ttl_source"] == "unspecified"
+
+    def test_no_ttl_means_no_ttl_source(self):
+        # window-only guess carries no TTL, so it must not claim a TTL provenance.
+        assert "ttl_source" not in ofp.fingerprint_os(tcp_window=8192)["signals"]
+
+
+# ── p0f-style TCP/IP stack fingerprint (option layout + TTL + wscale) ─────────
+
+class TestStackSignature:
+    def test_windows_8_plus_from_option_layout(self):
+        # ttl 128 + Windows SYN/ACK layout (MSS,NOP,WScale,NOP,NOP,SACKOK) + ws 8.
+        r = ofp.match_stack_signature(ttl=128, mss=1460, window=64240,
+                                      wscale=8, olayout="MNWNNS")
+        assert "Windows (NT 6.2+" in r["stack"]
+        assert r["stack_confidence"] == 0.90
+        assert r["stack_source"] == "p0f_tcp_options"
+
+    def test_windows_layout_without_wscale_is_lower_confidence(self):
+        r = ofp.match_stack_signature(ttl=128, olayout="MNWNNS")
+        assert "Windows" in r["stack"] and r["stack_confidence"] == 0.80
+
+    def test_linux_from_option_layout_and_wscale(self):
+        r = ofp.match_stack_signature(ttl=64, mss=1460, wscale=7, olayout="MSTNW")
+        assert "Linux (kernel 3.11+" in r["stack"] and r["stack_confidence"] == 0.90
+
+    def test_macos_darwin_layout(self):
+        r = ofp.match_stack_signature(ttl=64, olayout="MNWNNTSE")
+        assert "Darwin" in r["stack"]
+
+    def test_ttl255_matches_embedded_regardless_of_layout(self):
+        r = ofp.match_stack_signature(ttl=250, olayout="ANYTHING")
+        assert "embedded" in r["stack"].lower()
+
+    def test_unknown_layout_yields_no_stack(self):
+        # a TTL-64 host whose layout matches no signature → honest None, not a guess
+        assert ofp.match_stack_signature(ttl=64, olayout="XYZ") is None
+
+    def test_no_ttl_yields_no_stack(self):
+        assert ofp.match_stack_signature(olayout="MNWNNS") is None
+
+    def test_fingerprint_os_folds_in_stack_but_keeps_family(self):
+        r = ofp.fingerprint_os(ttl=128, tcp_window=64240, mss=1460, wscale=8,
+                               olayout="MNWNNS", ttl_source="tcp_synack")
+        assert r["os_guess"] == "Windows"                    # coarse family unchanged
+        assert "Windows (NT 6.2+" in r["stack_guess"]        # refined stack added
+        assert r["signals"]["stack_source"] == "p0f_tcp_options"
+
+    def test_fingerprint_os_stack_guess_none_without_options(self):
+        assert ofp.fingerprint_os(ttl=64)["stack_guess"] is None
+
+
+# ── SMB2 NTLM build enrichment (standalone os_fingerprint gets the exact build) ─
+
+class TestSmbBuildEnrichment:
+    def _scanner(self, **kw):
+        return ofp.OSFingerprintScanner(
+            ScopeGuard.from_list(["10.0.0.0/8"]), rate=1e9, concurrency=2,
+            timeout=0.1, **kw)
+
+    def test_build_lifts_ttl_only_guess_to_authoritative(self, monkeypatch):
+        from scanner import smb_scanner as SMB
+        sc = self._scanner()
+        sc._icmp_echo_ttl = lambda t: 128          # Windows TTL — 0.5 on its own
+        monkeypatch.setattr(SMB, "ntlm_os_build", lambda ip, port=445, timeout=5.0: {
+            "os_build": 26100, "os_release": "Windows 11 24H2",
+            "os_version": "10.0.26100", "target_name": "DESKTOP-34M18MB",
+            "os_confidence": 0.97, "method": "smb2_ntlm_version"})
+        monkeypatch.setattr(ofp, "resolve", lambda t, p, proto="tcp": (2, (t, p)))
+        r = asyncio.run(sc.scan_target("10.0.0.9"))[0]
+        assert r.data["os_build"] == 26100
+        assert r.data["os_release"] == "Windows 11 24H2"
+        assert r.data["confidence"] >= 0.95           # no longer stuck at 0.5
+        assert r.data["hostname"] == "DESKTOP-34M18MB"
+        assert "smb2_ntlm_version" in r.method        # provenance kept, incl. icmp_echo
+
+    def test_no_smb_leaves_ttl_only_result_untouched(self, monkeypatch):
+        from scanner import smb_scanner as SMB
+        sc = self._scanner()
+        sc._icmp_echo_ttl = lambda t: 128
+        monkeypatch.setattr(SMB, "ntlm_os_build", lambda ip, port=445, timeout=5.0: {})
+        monkeypatch.setattr(ofp, "resolve", lambda t, p, proto="tcp": (2, (t, p)))
+        r = asyncio.run(sc.scan_target("10.0.0.9"))[0]
+        assert "os_build" not in r.data and r.method == "icmp_echo"
+        assert r.data["confidence"] == 0.5
+
+    def test_smb_build_can_be_disabled(self):
+        sc = self._scanner(smb_build=False)
+        sc._icmp_echo_ttl = lambda t: 128
+        r = asyncio.run(sc.scan_target("10.0.0.9"))[0]
+        assert "os_build" not in r.data
+
+
+# ── OS-claim provenance (never label a TCP TTL as ICMP) ───────────────────────
+
+class TestProvenance:
+    def _scanner(self):
+        return ofp.OSFingerprintScanner(
+            ScopeGuard.from_list(["10.0.0.0/8"]), rate=1e9, concurrency=4, timeout=0.1)
+
+    def test_real_echo_reply_is_method_icmp_echo(self):
+        sc = self._scanner()
+        sc._icmp_echo_ttl = lambda target: 120           # raw socket delivered a TTL
+        r = asyncio.run(sc.scan_target("10.0.0.9"))[0]
+        assert r.method == "icmp_echo"
+        assert r.data["icmp_echo_reply"] is True
+        assert r.data["signals"]["ttl_source"] == "icmp_echo"
+        assert "ICMP echo reply ttl=120" in r.evidence
+
+    def test_datagram_echo_without_ttl_does_not_fake_a_ttl(self):
+        sc = self._scanner()
+        sc._icmp_echo_ttl = lambda target: None          # datagram: alive, no TTL
+        r = asyncio.run(sc.scan_target("10.0.0.9"))[0]
+        assert r.method == "icmp_echo" and r.data["alive"] is True
+        assert r.data["observed_ttl"] is None
+        # No fabricated "ttl=128"; evidence is explicit the TTL was unobservable.
+        assert "no TTL" in r.evidence
+        assert "ttl_source" not in r.data.get("signals", {})
+
+    def test_icmp_unavailable_tcp_hints_is_method_tcp_hints_not_icmp(self):
+        sc = ofp.OSFingerprintScanner(
+            ScopeGuard.from_list(["10.0.0.0/8"]), rate=1e9, concurrency=4,
+            timeout=0.1, tcp_hints={"10.0.0.9": {"tcp_window": 8192}})
+        sc._icmp_echo_ttl = lambda target: "unavailable"
+        r = asyncio.run(sc.scan_target("10.0.0.9"))[0]
+        assert r.method == "tcp_hints"
+        assert r.data["icmp"] == "unavailable"
+        assert r.data.get("icmp_reply") is not True      # never claim an ICMP reply
+
+    def test_timestamp_reply_tags_ttl_source(self):
+        sc = self._scanner()
+        sc._icmp_echo_ttl = lambda target: "down"
+        sc._icmp_timestamp = lambda target: {"ttl": 57, "transmit": 3_723_004}
+        r = asyncio.run(sc.scan_target("10.0.0.9"))[0]
+        assert r.method == "icmp_timestamp"
+        assert r.data["signals"]["ttl_source"] == "icmp_timestamp"
+
+    def test_no_icmp_but_tcp_ttl_hint_is_method_tcp_ttl(self):
+        # FIX 3b: host filters ICMP (echo+timestamp silent) but a TCP SYN/ACK gave a
+        # TTL. Must report method=tcp_ttl and NEVER claim an ICMP echo.
+        sc = ofp.OSFingerprintScanner(
+            ScopeGuard.from_list(["10.0.0.0/8"]), rate=1e9, concurrency=4, timeout=0.1,
+            tcp_hints={"10.0.0.9": {"ttl": 128, "tcp_window": 64240, "mss": 1460}})
+        sc._icmp_echo_ttl = lambda target: "down"
+        sc._icmp_timestamp = lambda target: "down"
+        r = asyncio.run(sc.scan_target("10.0.0.9"))[0]
+        assert r.method == "tcp_ttl"
+        assert r.data["icmp_echo_reply"] is False and r.data["alive"] is True
+        assert r.data["os_guess"] == "Windows"
+        assert r.data["signals"]["ttl_source"] == "tcp_synack"
+
+    def test_icmp_unavailable_with_tcp_ttl_is_tcp_ttl_not_icmp(self):
+        sc = ofp.OSFingerprintScanner(
+            ScopeGuard.from_list(["10.0.0.0/8"]), rate=1e9, concurrency=4, timeout=0.1,
+            tcp_hints={"10.0.0.9": {"ttl": 64}})
+        sc._icmp_echo_ttl = lambda target: "unavailable"
+        r = asyncio.run(sc.scan_target("10.0.0.9"))[0]
+        assert r.method == "tcp_ttl" and r.data.get("icmp_reply") is False
+
 
 # ── capability detection ──────────────────────────────────────────────────────
 
