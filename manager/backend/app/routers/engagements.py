@@ -16,6 +16,7 @@ from app.models.asset import Asset
 from app.models.engagement import Engagement
 from app.models.enums import AssetType, EngagementStatus, FindingSeverity, FindingStatus
 from app.models.finding import Finding
+from app.models.detection_run import DetectionRun
 from app.models.scan_job import ScanJob
 from app.models.scan_result import ScanResult
 from app.models.service import Service
@@ -642,6 +643,153 @@ async def list_engagement_jobs(
         }
         for j in rows
     ]
+
+
+# ── GET /{engagement_id}/campaign-progress — the VA Campaigns live view ───────
+_OPEN_FINDING_STATES = (FindingStatus.open, FindingStatus.confirmed)
+
+
+def _job_phase(status: str) -> str:
+    """Map a ScanJob status to the operator-facing scan phase shown on the card."""
+    return {
+        "pending": "queued", "queued": "queued", "dispatched": "dispatched",
+        "assigned": "dispatched", "running": "scanning", "in_progress": "scanning",
+        "completed": "complete", "succeeded": "complete",
+        "failed": "failed", "error": "failed", "cancelled": "cancelled",
+    }.get(status, status)
+
+
+def _result_summary(result: dict | None) -> dict:
+    """A SAFE, bounded view of a job's raw result — the counts an operator needs to
+    see 'what the probe found' WITHOUT leaking the full facts blob or credentials."""
+    if not result:
+        return {}
+    runs = result.get("scanner_runs") or result.get("run_stats") or []
+    scanners = sorted({(r.get("id") or r.get("scanner")) for r in runs
+                       if isinstance(r, dict) and (r.get("id") or r.get("scanner"))}) \
+        if isinstance(runs, list) else []
+    return {
+        "scanners": scanners,
+        "scanner_count": len(scanners),
+        "fact_count": result.get("facts_count")
+        or (len(result["facts"]) if isinstance(result.get("facts"), list) else None),
+        "open_ports": result.get("open_tcp") or result.get("open_ports"),
+        "profile": result.get("profile"),
+        "ok": result.get("ok"),
+    }
+
+
+@router.get("/{engagement_id}/campaign-progress",
+            summary="VA campaign live view: per-probe jobs + detection pipeline + findings")
+async def campaign_progress(engagement_id: uuid.UUID, db: DB, current_user: AuthUser):
+    """One call powers the VA Campaigns page: every probe's job (status + a safe raw
+    result summary), the full pipeline progress (Scanning → Aggregating → Detection
+    → Correlation → Prioritization → Remediation), and the findings with remediation
+    guidance. Read-only aggregation over jobs + the latest detection run + findings."""
+    await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
+
+    # ── jobs (per probe) ──────────────────────────────────────────────────────
+    job_rows = (await db.execute(
+        select(ScanJob).where(ScanJob.engagement_id == engagement_id)
+        .order_by(ScanJob.created_at.desc())
+    )).scalars().all()
+    agent_ids = {j.agent_id for j in job_rows if j.agent_id}
+    names: dict = {}
+    if agent_ids:
+        agents = (await db.execute(select(Agent).where(Agent.id.in_(agent_ids)))).scalars().all()
+        names = {str(a.id): a.name for a in agents}
+
+    def _val(x):
+        return x.value if hasattr(x, "value") else str(x)
+
+    jobs = [{
+        "id": str(j.id),
+        "use_case_id": (j.result or {}).get("use_case_id"),
+        "job_type": _val(j.job_type),
+        "status": _val(j.status),
+        "phase": _job_phase(_val(j.status)),
+        "agent_id": str(j.agent_id) if j.agent_id else None,
+        "agent_name": names.get(str(j.agent_id)) if j.agent_id else None,
+        "result_summary": _result_summary(j.result),
+        "created_at": j.created_at.isoformat() if j.created_at else None,
+        "started_at": j.started_at.isoformat() if j.started_at else None,
+        "completed_at": j.completed_at.isoformat() if j.completed_at else None,
+    } for j in job_rows]
+
+    any_running = any(x["phase"] in ("scanning", "dispatched", "queued") for x in jobs)
+    any_complete = any(x["phase"] == "complete" for x in jobs)
+
+    # ── latest detection run ──────────────────────────────────────────────────
+    run = (await db.execute(
+        select(DetectionRun).where(DetectionRun.engagement_id == engagement_id)
+        .order_by(DetectionRun.started_at.desc()).limit(1)
+    )).scalar_one_or_none()
+    detection_done = bool(run and run.status == "done")
+
+    # ── findings (open set), with the counts each pipeline phase reports ──────
+    findings = (await db.execute(
+        select(Finding).where(
+            Finding.engagement_id == engagement_id,
+            Finding.status.in_(_OPEN_FINDING_STATES),
+        ).order_by(Finding.risk_score.desc().nullslast())
+    )).scalars().all()
+
+    def _sev(f):
+        return f.severity.value if hasattr(f.severity, "value") else str(f.severity)
+
+    by_severity: dict = {s: 0 for s in ("critical", "high", "medium", "low", "info")}
+    for f in findings:
+        by_severity[_sev(f)] = by_severity.get(_sev(f), 0) + 1
+    correlated = sum(1 for f in findings
+                     if isinstance(f.evidence, dict)
+                     and ("correlated_findings" in f.evidence or f.evidence.get("correlation")))
+    prioritized = sum(1 for f in findings if f.risk_score is not None)
+    remediable = sum(1 for f in findings if f.remediation)
+
+    def _phase(name, done, active, count=None):
+        return {"name": name, "status": ("done" if done else "active" if active else "pending"),
+                "count": count}
+
+    phases = [
+        _phase("scanning", any_complete and not any_running, any_running),
+        _phase("aggregating", run is not None, any_complete and run is None),
+        _phase("detection", detection_done, run is not None and not detection_done, len(findings)),
+        _phase("correlation", detection_done, False, correlated),
+        _phase("prioritization", detection_done, False, prioritized),
+        _phase("remediation", detection_done, False, remediable),
+    ]
+    percent = round(100 * sum(1 for p in phases if p["status"] == "done") / len(phases))
+
+    # ── findings with remediation (top 100, worst first) ─────────────────────
+    top = [{
+        "id": str(f.id),
+        "title": f.title,
+        "severity": _sev(f),
+        "risk_score": float(f.risk_score) if f.risk_score is not None else None,
+        "priority": f.priority if hasattr(f, "priority") else None,
+        "cve_ids": f.cve_ids,
+        "mitre_techniques": f.mitre_techniques,
+        "state": _val(f.status),
+        "remediation": f.remediation,
+        "asset_id": str(f.asset_id) if f.asset_id else None,
+    } for f in findings[:100]]
+
+    return {
+        "engagement_id": str(engagement_id),
+        "jobs": jobs,
+        "detection": {
+            "status": (run.status if run else "pending"),
+            "facts_count": run.facts_count if run else 0,
+            "findings_new": run.findings_new if run else 0,
+            "findings_current": (run.findings_current if run else len(findings)),
+            "started_at": run.started_at.isoformat() if run and run.started_at else None,
+            "finished_at": run.finished_at.isoformat() if run and run.finished_at else None,
+            "by_severity": by_severity,
+        },
+        "phases": phases,
+        "percent": percent,
+        "findings": top,
+    }
 
 
 # ── GET /{engagement_id}/assets — attack surface (hosts + services) ───────────

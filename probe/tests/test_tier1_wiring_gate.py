@@ -60,6 +60,6 @@ def test_udp_hostwide_branches_have_merge_handlers():
 def test_new_tier1_branches_present():
     # Regression guard: the Tier-1 catalog built this session must stay wired.
     expected = {"ssh", "smb_enum", "ldap", "dns", "nfs", "ftp", "rsync",
-                "vnc", "ipmi", "smtp", "msrpc", "printer"}
+                "vnc", "ipmi", "smtp", "msrpc", "rdp", "printer"}
     assert expected <= PROFILE_DEEP_BRANCHES["it"], (
         f"missing Tier-1 branches: {expected - PROFILE_DEEP_BRANCHES['it']}")

@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { PageShell } from "../../components/PageShell";
 import { useToast } from "../../hooks/useToast";
+import CampaignProgress from "../campaign/[id]/CampaignProgress";
 
 /* ══════════════════════════════════════════════════════
    TYPES
@@ -1132,6 +1133,16 @@ export default function ScanPage() {
               {dispatched && <DispatchReceipt payload={dispatched} />}
               <JobPanel job={job} ucName={ucNameFor(job.use_case_id) || ucObj?.display_name} />
             </div>
+          </section>
+        )}
+
+        {/* ── Detection pipeline — extends the scan past "Complete" into the
+             manager's Detection → Correlation → Prioritization → Remediation,
+             with per-probe jobs and findings + step-by-step remediation. ── */}
+        {selectedEng && (job || recentJobs.length > 0) && (
+          <section>
+            <SectionLabel>Vulnerability Assessment</SectionLabel>
+            <CampaignProgress engagementId={selectedEng} />
           </section>
         )}
 

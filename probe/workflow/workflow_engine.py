@@ -44,6 +44,7 @@ from scanner.vnc_scanner import VNCScanner
 from scanner.ipmi_scanner import IPMIScanner
 from scanner.smtp_scanner import SMTPScanner
 from scanner.msrpc_scanner import MSRPCScanner
+from scanner.rdp_scanner import RDPScanner
 from scanner.printer_scanner import PrinterScanner
 from scanner.passive_collector import PassiveCollector
 from scanner.ssh_collector import SSHCollector
@@ -53,7 +54,7 @@ from .asset import Asset
 from .cache import WorkflowCache
 from .gates import (
     PROFILE_PORTS, PROFILE_DEEP_BRANCHES,
-    TLS_PORTS, WEB_PORTS, SMB_PORTS, DB_PORTS, AI_PORTS, UDP_PORTS, SNMP_PORTS, SSH_PORTS, LDAP_PORTS, SMB_ENUM_PORTS, DNS_PORTS, NFS_PORTS, FTP_PORTS, RSYNC_PORTS, VNC_PORTS, IPMI_PORTS, SMTP_PORTS, MSRPC_PORTS, PRINTER_PORTS,
+    TLS_PORTS, WEB_PORTS, SMB_PORTS, DB_PORTS, AI_PORTS, UDP_PORTS, SNMP_PORTS, SSH_PORTS, LDAP_PORTS, SMB_ENUM_PORTS, DNS_PORTS, NFS_PORTS, FTP_PORTS, RSYNC_PORTS, VNC_PORTS, IPMI_PORTS, SMTP_PORTS, MSRPC_PORTS, RDP_PORTS, PRINTER_PORTS,
     gate_0_is_passive_profile, gate_2_host_discovery, gate_3_port_scan,
     gate_4_service_banner, gate_5_branch_eligible, gate_6_credentialed_collection,
 )
@@ -170,6 +171,8 @@ def _port_candidates(profile: str, service_filter: set[str] | None,
         ports.update(SMTP_PORTS)
     if "msrpc" in requested:
         ports.update(MSRPC_PORTS)
+    if "rdp" in requested:
+        ports.update(RDP_PORTS)
     if "printer" in requested:
         ports.update(PRINTER_PORTS)
     return sorted(ports)
@@ -610,6 +613,21 @@ async def run_engagement(targets: list[str], scope: ScopeGuard, *, profile: str 
                 msrpc = MSRPCScanner(scope, ports=to_scan, rate=rate, concurrency=concurrency, timeout=timeout)
                 results = await _scan_one(msrpc, host)
                 _record(trace, "msrpc_scan", target_count=1, results=results)
+                _store_results(results, assets=assets, cache=cache, profile=profile)
+
+        # RDP: the confirming X.224 + NLA-posture scanner (verified). Without this
+        # branch the agent's network_va never assessed 3389, so RDP-without-NLA and
+        # RDP-exposed weaknesses the scripts catch never reached the manager.
+        if gate_5_branch_eligible("rdp", asset, profile, service_filter):
+            ports = sorted(asset.open_ports_for_deep_scan() & RDP_PORTS)
+            to_scan, reused = _split_cached(cache, host, ports, "rdp_scan", force_recheck_after)
+            for r in reused:
+                asset.merge_result(r)
+            _record_reused(trace, "rdp_scan", reused)
+            if to_scan:
+                rdp = RDPScanner(scope, ports=to_scan, rate=rate, concurrency=concurrency, timeout=timeout)
+                results = await _scan_one(rdp, host)
+                _record(trace, "rdp_scan", target_count=1, results=results)
                 _store_results(results, assets=assets, cache=cache, profile=profile)
 
         if gate_5_branch_eligible("printer", asset, profile, service_filter):
