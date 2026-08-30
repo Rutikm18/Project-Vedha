@@ -18,6 +18,15 @@ def _scalars(items):
     return MagicMock(scalars=lambda: MagicMock(all=lambda: items))
 
 
+def _rows(items):
+    """A result whose .all() returns raw rows (used for the queue-state query)."""
+    return MagicMock(all=lambda: items)
+
+
+# campaign_progress query order: get_or_404, jobs, [agents], runs(all),
+# scan_result_ids, queue_rows, findings.
+
+
 @pytest.mark.asyncio
 async def test_campaign_progress_aggregates_jobs_detection_and_findings():
     agent_id = uuid.uuid4()
@@ -30,7 +39,7 @@ async def test_campaign_progress_aggregates_jobs_detection_and_findings():
     )
     agent = SimpleNamespace(id=agent_id, name="scanner-probe-01")
     run = SimpleNamespace(status="completed", facts_count=42, findings_new=3, findings_current=3,
-                          started_at=None, finished_at=None)
+                          started_at=None, finished_at=None, scan_result_id=None, stats=None)
     smbv1 = SimpleNamespace(
         id=uuid.uuid4(), title="SMBv1 enabled (wormable, deprecated)",
         severity=SimpleNamespace(value="critical"), risk_score=90,
@@ -43,7 +52,9 @@ async def test_campaign_progress_aggregates_jobs_detection_and_findings():
         MagicMock(scalar_one_or_none=lambda: SimpleNamespace(id=uuid.uuid4())),  # get_or_404
         _scalars([job]),                                                         # jobs
         _scalars([agent]),                                                       # agents
-        MagicMock(scalar_one_or_none=lambda: run),                              # detection run
+        _scalars([run]),                                                          # detection runs (all)
+        _scalars([]),                                                             # scan_result ids
+        _rows([]),                                                                # queue rows
         _scalars([smbv1]),                                                       # findings
     ])
 
@@ -87,7 +98,9 @@ async def test_campaign_progress_no_detection_yet_is_scanning():
     db.execute = AsyncMock(side_effect=[
         MagicMock(scalar_one_or_none=lambda: SimpleNamespace(id=uuid.uuid4())),
         _scalars([job]),
-        MagicMock(scalar_one_or_none=lambda: None),     # no detection run
+        _scalars([]),                                    # no detection runs
+        _scalars([]),                                    # scan_result ids
+        _rows([]),                                       # queue rows
         _scalars([]),                                    # no findings
     ])
     out = await eng.campaign_progress(uuid.uuid4(), db, _user())
@@ -110,7 +123,8 @@ def _run_scenario(*, job_status, run_status, findings):
         created_at=None, started_at=None, completed_at=None)
     run = None if run_status is None else SimpleNamespace(
         status=run_status, facts_count=1, findings_new=findings,
-        findings_current=findings, started_at=None, finished_at=None)
+        findings_current=findings, started_at=None, finished_at=None,
+        scan_result_id=None, stats=None, error=None)
     fs = [SimpleNamespace(
         id=uuid.uuid4(), title="x", severity=SimpleNamespace(value="high"),
         risk_score=70, cve_ids=None, mitre_techniques=["T1"],
@@ -118,8 +132,8 @@ def _run_scenario(*, job_status, run_status, findings):
         evidence={}) for _ in range(findings)]
     side = [MagicMock(scalar_one_or_none=lambda: SimpleNamespace(id=uuid.uuid4())),
             _scalars([job])]
-    # no agent lookup (agent_id None) → next is detection run, then findings
-    side += [MagicMock(scalar_one_or_none=lambda: run), _scalars(fs)]
+    # no agent lookup (agent_id None) → runs(all), scan_result ids, queue, findings
+    side += [_scalars([run] if run else []), _scalars([]), _rows([]), _scalars(fs)]
     db = MagicMock()
     db.execute = AsyncMock(side_effect=side)
     return db

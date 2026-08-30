@@ -42,7 +42,7 @@ async def test_posture_finding_becomes_a_finding_row():
     db.execute = AsyncMock(return_value=MagicMock(scalar_one=lambda: 0))
 
     with patch.object(engine_bridge, "_vuln_db_meta", return_value=("v1", "t")), \
-         patch.object(engine_bridge, "detect_all_from_facts", return_value=([], [_POSTURE])), \
+         patch.object(engine_bridge, "detect_all_from_facts_traced", return_value=([], [_POSTURE], {"coverage": {"rules_blind": 0}, "verdicts": {}})), \
          patch.object(engine_bridge, "_resolve_asset", new=AsyncMock(return_value=None)), \
          patch.object(engine_bridge, "_find_open_duplicate", new=AsyncMock(return_value=None)), \
          patch.object(engine_bridge, "_find_remediated_match", new=AsyncMock(return_value=None)), \
@@ -75,7 +75,7 @@ async def test_no_posture_no_finding():
     db.execute = AsyncMock(return_value=MagicMock(scalar_one=lambda: 0))
 
     with patch.object(engine_bridge, "_vuln_db_meta", return_value=("v1", "t")), \
-         patch.object(engine_bridge, "detect_all_from_facts", return_value=([], [])), \
+         patch.object(engine_bridge, "detect_all_from_facts_traced", return_value=([], [], {"coverage": {}, "verdicts": {}})), \
          patch.object(engine_bridge, "_persist_attack_paths", new=AsyncMock(return_value=0)), \
          patch.object(engine_bridge, "_stamp_verification", new=AsyncMock(return_value=None)), \
          patch.object(engine_bridge, "evaluate_resolutions", new=AsyncMock(return_value=0)):

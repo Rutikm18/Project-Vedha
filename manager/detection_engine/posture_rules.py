@@ -57,6 +57,73 @@ def is_validated(scanner: str) -> bool:
     return scanner in VALIDATED_SCANNERS
 
 
+# ── fact-path resolution: absent key ≠ collected null ─────────────────────────
+# The single most important distinction in this file. `d.get("smbv1_enabled")`
+# returns None whether the probe collected `false` (genuinely clean) OR never
+# emitted the key at all (agent-side drift → a SILENT false-negative). Conflating
+# those is how "the scripts catch it but the manager doesn't" happens with no trace.
+# `_MISSING` is returned ONLY for an absent key; a collected `None`/`False` is real
+# data and returns itself.
+_MISSING = object()
+
+
+def get_path(data: Any, dotted: str) -> Any:
+    """Resolve `a.b.c` inside a Fact.data dict. Returns `_MISSING` (never None)
+    when any segment is absent, so callers can tell 'not collected' from 'collected
+    as null/false'."""
+    cur = data
+    for part in dotted.split("."):
+        if isinstance(cur, dict) and part in cur:
+            cur = cur[part]
+        else:
+            return _MISSING
+    return cur
+
+
+# ── detection trace: every rule evaluation records an OUTCOME, not just matches ─
+# A non-finding must explain itself. These are the six mutually-exclusive outcomes
+# of evaluating one rule against one fact (or, for NO_EVIDENCE, against an asset the
+# rule's scanner never covered).
+OUTCOME_MATCH = "match"                  # fired → finding
+OUTCOME_NO_MATCH = "no_match"            # evaluated, predicate false → genuinely clean
+OUTCOME_NO_EVIDENCE = "no_evidence"      # the rule's scanner never ran for this asset
+OUTCOME_MISSING_INPUT = "missing_input"  # facts present, a declared `requires` path absent → DRIFT
+OUTCOME_UNPARSEABLE = "unparseable"      # a declared path is present but the wrong shape
+OUTCOME_ERROR = "error"                  # the detector raised
+
+# Scanner ran but the rule still couldn't be assessed. These are DEFECTS and must
+# degrade a campaign's verdict — they are exactly the silent false-clean class.
+BLIND_OUTCOMES = frozenset({OUTCOME_MISSING_INPUT, OUTCOME_UNPARSEABLE, OUTCOME_ERROR})
+# Scanner was never run. A coverage fact, reported but not a defect.
+UNASSESSED_OUTCOMES = frozenset({OUTCOME_NO_EVIDENCE})
+_ALL_OUTCOMES = (BLIND_OUTCOMES | UNASSESSED_OUTCOMES
+                 | {OUTCOME_MATCH, OUTCOME_NO_MATCH})
+
+# Per-rule verdicts — the roll-up an operator reads to answer "why no finding?"
+VERDICT_FINDING = "finding_exists"
+VERDICT_CLEAN = "evaluated_clean"
+VERDICT_SCHEMA_DRIFT = "schema_drift"
+VERDICT_NO_EVIDENCE = "no_evidence_collected"
+VERDICT_RULE_ERROR = "rule_error"
+
+
+@dataclass
+class TraceRow:
+    """One rule evaluation's outcome. Purely diagnostic — never gates a finding."""
+    rule_id: str
+    scanner: str
+    outcome: str
+    asset_ip: str
+    port: Optional[int] = None
+    reason: Optional[str] = None
+    evidence: Optional[dict] = None      # set only on OUTCOME_MATCH
+
+    def to_dict(self) -> dict[str, Any]:
+        return {"rule_id": self.rule_id, "scanner": self.scanner,
+                "outcome": self.outcome, "asset_ip": self.asset_ip,
+                "port": self.port, "reason": self.reason}
+
+
 # ── risk model ────────────────────────────────────────────────────────────────
 _SEV_BASE = {"critical": 90, "high": 70, "medium": 45, "low": 20, "info": 5}
 _STATE_FACTOR = {"confirmed": 1.0, "suspected": 0.8, "potential": 0.6}
@@ -122,6 +189,10 @@ class PostureFinding:
     priority: str
     created_at: str
     scanner: str
+    # Auditable confidence calibration (set by posture_confidence.calibrate_host_findings
+    # in a second pass): base tier, cross-signal chain corroboration, downgrades. The
+    # `confidence` field above is the calibrated result; this explains how it got there.
+    precision_factors: dict = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if not self.evidence_refs:                    # no evidence, no finding
@@ -146,6 +217,13 @@ class PostureRule:
     fp_notes: str = ""
     # auth_enforced(fact) -> True/False/None; overrides the exposure map per-fact.
     auth_enforced: Optional[Callable[[Fact], Optional[bool]]] = None
+    # The fact.data paths this detector reads. This is a MACHINE-CHECKABLE CONTRACT
+    # between the probe's emitters and this rule: if the probe collected facts for
+    # this rule's scanner but a `requires` path is absent, the rule reports
+    # MISSING_INPUT (drift) instead of silently looking clean. Declare the minimal
+    # set of paths that gate assessability — for rules with OR-alternative inputs,
+    # leave it empty rather than declare a path that isn't always required.
+    requires: tuple[str, ...] = ()
 
 
 # ── detectors (pure: Fact -> evidence dict | None) ────────────────────────────
@@ -256,14 +334,16 @@ RULES: list[PostureRule] = [
         "Disable SMBv1 (Windows: Remove-WindowsFeature FS-SMB1). SMBv1 is the "
         "EternalBlue/WannaCry transport and has no safe use in 2020+.",
         fp_notes="Requires a SUCCESSFUL SMBv1 negotiate — a filtered/negative "
-                 "negotiate does not fire this."),
+                 "negotiate does not fire this.",
+        requires=("smbv1_enabled",)),
     PostureRule(
         "POSTURE-SMB-SIGNING-OFF", "SMB signing not required (NTLM-relay exposure)",
         "high", "CWE-306", "T1557.001", "misconfiguration", ("smb_scan",), _smb_signing,
         "Require SMB signing (GPO: 'Microsoft network server: Digitally sign "
         "communications (always)') to defeat SMB/NTLM relay.",
         fp_notes="signing_required is read from a successful SMB2 negotiate; only "
-                 "fires when SMB2 is up and required=False."),
+                 "fires when SMB2 is up and required=False.",
+        requires=("smb2_supported", "signing_required")),
     PostureRule(
         "POSTURE-RDP-NO-NLA", "RDP without Network Level Authentication",
         "high", "CWE-287", "T1210", "misconfiguration", ("rdp_scan",), _rdp_no_nla,
@@ -271,36 +351,40 @@ RULES: list[PostureRule] = [
         "patch legacy hosts; restrict RDP to VPN/jump hosts.",
         fp_notes="Suppressed when the RDP-only probe was refused (nla_required=True) "
                  "— a CONFIRMED-NLA host never reaches this rule.",
-        auth_enforced=_rdp_auth),
+        auth_enforced=_rdp_auth, requires=("rdp_confirmed", "nla")),
     PostureRule(
         "POSTURE-RDP-EXPOSED", "RDP reachable from the scan vantage (confirmed)",
         "low", "CWE-284", "T1021.001", "exposure", ("rdp_scan",), _rdp_exposed,
         "Restrict RDP to VPN/jump hosts and enforce NLA + MFA.",
         fp_notes="Informational when NLA is required; risk escalates automatically "
                  "when auth is not enforced.",
-        auth_enforced=_rdp_auth),
+        auth_enforced=_rdp_auth, requires=("rdp_confirmed",)),
     PostureRule(
         "POSTURE-TLS-DEPRECATED-VERSION", "Deprecated TLS/SSL version accepted",
         "high", "CWE-326", "T1040", "weak_crypto", ("tls_scan",), _tls_version,
         "Disable SSLv3/TLS1.0/TLS1.1; require TLS 1.2+ (ideally 1.3).",
-        fp_notes="Fires only on versions the server ACCEPTED in a real handshake."),
+        fp_notes="Fires only on versions the server ACCEPTED in a real handshake.",
+        requires=("accepted_versions",)),
     PostureRule(
         "POSTURE-TLS-WEAK-CIPHER", "Weak TLS cipher suite offered",
         "medium", "CWE-327", "T1040", "weak_crypto", ("tls_scan",), _tls_cipher,
         "Remove NULL/EXPORT/RC4/DES/3DES/anon cipher suites; prefer AEAD (GCM/"
         "ChaCha20).",
-        fp_notes="Keyed off the scanner's own cipher_analysis 'weak' flag."),
+        fp_notes="Keyed off the scanner's own cipher_analysis 'weak' flag.",
+        requires=("cipher_analysis",)),
     PostureRule(
         "POSTURE-TLS-SELF-SIGNED", "Self-signed TLS certificate",
         "medium", "CWE-295", "T1557", "weak_crypto", ("tls_scan",), _tls_self_signed,
         "Replace with a certificate from a trusted CA; enable strict validation on "
         "clients.",
         fp_notes="Internal PKI roots also present as self-signed — verify against "
-                 "the org's trusted roots before treating as a defect."),
+                 "the org's trusted roots before treating as a defect.",
+        requires=("certificate",)),
     PostureRule(
         "POSTURE-TLS-EXPIRED-CERT", "Expired TLS certificate",
         "medium", "CWE-298", "T1557", "weak_crypto", ("tls_scan",), _tls_expired,
-        "Renew the certificate and automate renewal (ACME) to prevent recurrence."),
+        "Renew the certificate and automate renewal (ACME) to prevent recurrence.",
+        requires=("certificate",)),
     PostureRule(
         "POSTURE-MSRPC-EPMAP-EXPOSED", "MSRPC endpoint mapper enumerable (anonymous)",
         "medium", "CWE-200", "T1135", "information_disclosure", ("msrpc_scan",),
@@ -308,20 +392,23 @@ RULES: list[PostureRule] = [
         "Firewall TCP/135 and the dynamic RPC range from untrusted zones; the "
         "endpoint map discloses running services and their dynamic ports.",
         fp_notes="Expected inside a Windows domain LAN; treat as a finding at trust "
-                 "boundaries / perimeter."),
+                 "boundaries / perimeter.",
+        requires=("msrpc",)),
     PostureRule(
         "POSTURE-UDP-AMPLIFIER", "UDP amplification service exposed",
         "medium", "CWE-406", "T1498.002", "amplification", ("udp_scan",), _udp_amplifier,
         "Restrict the service to trusted networks; disable monlist / open recursion; "
         "enable response-rate limiting.",
         fp_notes="Only fires when the service actually ANSWERED (responded=True) — "
-                 "no-reply / open|filtered never triggers it."),
+                 "no-reply / open|filtered never triggers it.",
+        requires=()),   # OR-alternative signals (monlist/open_recursion/service) — no single required path
     PostureRule(
         "POSTURE-SNMP-DEFAULT-COMMUNITY", "SNMP default community string",
         "high", "CWE-1392", "T1078", "default_credentials", ("snmp_scan",), _snmp_default,
         "Change the community string; move to SNMPv3 with auth+priv; restrict by ACL.",
         fp_notes="snmp_scan is not in the validated trust tier yet, so this is "
-                 "reported SUSPECTED pending validation."),
+                 "reported SUSPECTED pending validation.",
+        requires=("community",)),
 ]
 
 
@@ -337,28 +424,79 @@ def _evidence_ref(f: Fact) -> str:
     return f"{f.scanner}:{f.target}:{f.port}"
 
 
-def detect_posture(asset: Asset,
-                   exposure: dict[str, dict] | None = None) -> list[PostureFinding]:
-    """Apply every posture rule to one asset's facts. Deduplicates by
-    (rule_id, port) — the same weakness seen twice is one finding."""
+def evaluate_rule(rule: PostureRule, f: Fact) -> TraceRow:
+    """Evaluate ONE rule against ONE fact and record the outcome. NEVER raises —
+    a single malformed rule or fact cannot blind the whole submission (fault F9).
+
+    The ordering is deliberate: the `requires` contract is checked BEFORE the
+    detector runs, so an absent declared path is reported as MISSING_INPUT (drift)
+    and never reaches the predicate that would otherwise render it as a clean
+    no-match. That check is the structural guard against the silent false-negative.
+    """
+    data = f.data if isinstance(f.data, dict) else {}
+    for path in rule.requires:
+        if get_path(data, path) is _MISSING:
+            return TraceRow(rule.rule_id, f.scanner, OUTCOME_MISSING_INPUT,
+                            f.target, f.port,
+                            reason=f"required fact path absent: data.{path}")
+    try:
+        ev = rule.detect(f)
+    except (TypeError, ValueError, KeyError) as exc:
+        return TraceRow(rule.rule_id, f.scanner, OUTCOME_UNPARSEABLE,
+                        f.target, f.port, reason=f"{type(exc).__name__}: {exc}")
+    except Exception as exc:                     # a rule bug must not kill the batch
+        return TraceRow(rule.rule_id, f.scanner, OUTCOME_ERROR,
+                        f.target, f.port, reason=f"{type(exc).__name__}: {exc}")
+    if ev:
+        return TraceRow(rule.rule_id, f.scanner, OUTCOME_MATCH,
+                        f.target, f.port, evidence=ev)
+    return TraceRow(rule.rule_id, f.scanner, OUTCOME_NO_MATCH, f.target, f.port)
+
+
+def _calibrate_host_findings(findings: list, *, reachable_by_id: dict) -> None:
+    """Best-effort confidence calibration (lazy import breaks the module cycle;
+    calibration is enrichment and must never sink detection)."""
+    if not findings:
+        return
+    try:
+        from posture_confidence import calibrate_host_findings
+        calibrate_host_findings(findings, reachable_by_id=reachable_by_id)
+    except Exception:  # noqa: BLE001 — enrichment only
+        pass
+
+
+def detect_posture_traced(
+    asset: Asset, exposure: dict[str, dict] | None = None,
+) -> tuple[list[PostureFinding], list[TraceRow]]:
+    """Like `detect_posture`, but ALSO returns a per-evaluation trace. The findings
+    are byte-for-byte what `detect_posture` produces (that function delegates here),
+    so this adds observability with zero behaviour change. The trace is what lets a
+    non-finding explain itself: MISSING_INPUT (drift) / NO_MATCH (clean) /
+    NO_EVIDENCE (scanner never ran) / ERROR — instead of one undifferentiated 'None'.
+    """
     exposure = exposure or {}
     exp = exposure.get(asset.ip, {})
     internet_facing = exp.get("internet_facing")
     default_auth = exp.get("auth_enforced")
 
     out: list[PostureFinding] = []
+    traces: list[TraceRow] = []
     seen: set[tuple] = set()
+    reachable_by_id: dict[int, bool] = {}   # finding id() → port confirmed reachable
     now = datetime.now(timezone.utc).isoformat()
 
+    # 1) Evaluate every rule whose scanner produced a fact for this asset.
+    scanners_seen = {f.scanner for f in asset.facts}
     for f in asset.facts:
         for rule in RULES:
             if f.scanner not in rule.scanners:
                 continue
-            ev = rule.detect(f)
-            if not ev:
+            row = evaluate_rule(rule, f)
+            traces.append(row)
+            if row.outcome != OUTCOME_MATCH:
                 continue
             key = (rule.rule_id, f.port)
-            if key in seen:
+            if key in seen:                       # same weakness, same port → one finding
                 continue
             seen.add(key)
 
@@ -367,16 +505,109 @@ def detect_posture(asset: Asset,
             if auth is None:
                 auth = default_auth
             risk, priority = compute_risk(rule.severity, state, internet_facing, auth)
-            out.append(PostureFinding(
+            pf = PostureFinding(
                 finding_id=make_posture_id(asset.ip, rule.rule_id, f.port),
                 asset_ip=asset.ip, rule_id=rule.rule_id, title=rule.title,
                 category=rule.category, severity=rule.severity, state=state,
                 confidence=_STATE_CONF.get(state, 65), cwe=rule.cwe, mitre=rule.mitre,
                 port=f.port, proto=f.proto, evidence_refs=[_evidence_ref(f)],
-                evidence=ev, remediation=rule.remediation, fp_notes=rule.fp_notes,
-                internet_facing=internet_facing, auth_enforced=auth,
-                risk_score=risk, priority=priority, created_at=now, scanner=f.scanner))
-    return out
+                evidence=row.evidence, remediation=rule.remediation,
+                fp_notes=rule.fp_notes, internet_facing=internet_facing,
+                auth_enforced=auth, risk_score=risk, priority=priority,
+                created_at=now, scanner=f.scanner)
+            reachable_by_id[id(pf)] = (f.status == "open")   # was the port confirmed up?
+            out.append(pf)
+
+    # 1b) Confidence calibration (second pass, cross-signal aware): now that every rule
+    # that fired on this host is known, calibrate each finding's confidence with
+    # attack-chain corroboration and stamp the auditable precision_factors. Separate
+    # from impact — never changes severity/risk/state.
+    _calibrate_host_findings(out, reachable_by_id=reachable_by_id)
+
+    # 2) NO_EVIDENCE (asset-scoped): a rule whose scanner never ran on this asset
+    #    was not assessed — a coverage fact, not a defect, but it must be visible so
+    #    "no finding" can't masquerade as "checked and clean".
+    for rule in RULES:
+        if not (scanners_seen & set(rule.scanners)):
+            traces.append(TraceRow(
+                rule.rule_id, rule.scanners[0] if rule.scanners else "?",
+                OUTCOME_NO_EVIDENCE, asset.ip,
+                reason=f"no {'/'.join(rule.scanners)} evidence collected for this asset"))
+    return out, traces
+
+
+def detect_posture(asset: Asset,
+                   exposure: dict[str, dict] | None = None) -> list[PostureFinding]:
+    """Apply every posture rule to one asset's facts. Deduplicates by
+    (rule_id, port) — the same weakness seen twice is one finding.
+
+    Thin wrapper over `detect_posture_traced` so existing callers are unchanged."""
+    findings, _traces = detect_posture_traced(asset, exposure)
+    return findings
+
+
+# ── verdict roll-up: the machine-readable answer to "why no finding?" ──────────
+def verdict_for_rule(traces: list[TraceRow], rule_id: str) -> tuple[str, list[str]]:
+    """Collapse every trace for one rule into a single verdict + reason strings.
+    Precedence: a real finding wins; then a rule error; then drift (the dangerous
+    silent-clean case); then a genuine clean; then 'scanner never ran'."""
+    rows = [t for t in traces if t.rule_id == rule_id]
+    outcomes = {t.outcome for t in rows}
+    reasons = sorted({t.reason for t in rows if t.reason})
+    if OUTCOME_MATCH in outcomes:
+        return VERDICT_FINDING, []
+    if OUTCOME_ERROR in outcomes:
+        return VERDICT_RULE_ERROR, reasons
+    if outcomes & {OUTCOME_MISSING_INPUT, OUTCOME_UNPARSEABLE}:
+        return VERDICT_SCHEMA_DRIFT, reasons
+    if OUTCOME_NO_MATCH in outcomes:
+        return VERDICT_CLEAN, []
+    return VERDICT_NO_EVIDENCE, reasons
+
+
+def summarize_traces(traces: list[TraceRow]) -> dict[str, Any]:
+    """Engagement-level coverage roll-up over a set of traces. `rules_blind > 0`
+    is the single number that tells you detection was incomplete — the thing today's
+    empty findings list cannot express."""
+    by_outcome: dict[str, int] = {o: 0 for o in _ALL_OUTCOMES}
+    rules_by_bucket: dict[str, set] = {"blind": set(), "unassessed": set(),
+                                       "matched": set(), "clean": set()}
+    for t in traces:
+        by_outcome[t.outcome] = by_outcome.get(t.outcome, 0) + 1
+        if t.outcome in BLIND_OUTCOMES:
+            rules_by_bucket["blind"].add(t.rule_id)
+        elif t.outcome in UNASSESSED_OUTCOMES:
+            rules_by_bucket["unassessed"].add(t.rule_id)
+        elif t.outcome == OUTCOME_MATCH:
+            rules_by_bucket["matched"].add(t.rule_id)
+        elif t.outcome == OUTCOME_NO_MATCH:
+            rules_by_bucket["clean"].add(t.rule_id)
+    assessed = rules_by_bucket["matched"] | rules_by_bucket["clean"]
+    return {
+        "by_outcome": by_outcome,
+        "rules_total": len(RULES),
+        "rules_matched": len(rules_by_bucket["matched"]),
+        "rules_assessed": len(assessed),
+        "rules_blind": len(rules_by_bucket["blind"] - assessed),
+        "rules_unassessed": len(rules_by_bucket["unassessed"] - assessed
+                                - rules_by_bucket["blind"]),
+        "blind_rule_ids": sorted(rules_by_bucket["blind"] - assessed),
+    }
+
+
+def detect_all_traced(
+    assets: dict[str, Asset] | Any, exposure: dict[str, dict] | None = None,
+) -> tuple[list[PostureFinding], list[TraceRow]]:
+    """Traced counterpart of `detect_all` — findings identical, plus the full trace."""
+    mapping = getattr(assets, "assets", assets)
+    findings: list[PostureFinding] = []
+    traces: list[TraceRow] = []
+    for asset in mapping.values():
+        fs, ts = detect_posture_traced(asset, exposure)
+        findings.extend(fs)
+        traces.extend(ts)
+    findings.sort(key=lambda x: (-x.risk_score, x.asset_ip, x.rule_id))
+    return findings, traces
 
 
 def detect_all(assets: dict[str, Asset] | Any,

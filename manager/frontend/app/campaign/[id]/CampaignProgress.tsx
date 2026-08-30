@@ -28,14 +28,23 @@ interface Job {
 }
 interface Finding {
   id: string; title: string; severity: string; risk_score: number | null;
+  confidence?: number | null; corroborated_by?: string[];
   cve_ids: string[] | null; mitre_techniques: string[] | null; state: string;
   remediation: string | null;
+}
+interface Coverage {
+  rules_total: number; rules_assessed: number; rules_blind: number;
+  rules_unassessed: number; blind_rule_ids: string[]; has_gaps: boolean;
 }
 interface Progress {
   engagement_id: string;
   engagement?: { name: string | null; status: string };
   overall_status: string;
   is_complete: boolean;
+  reasons?: string[];
+  coverage?: Coverage;
+  evidence?: { submissions: number; covered: number; fully_covered: boolean };
+  queue?: { pending: boolean; overdue: boolean; dead: boolean };
   jobs: Job[];
   job_stats?: { total: number; running: number; complete: number; failed: number; probes: string[] };
   detection: { status: string; facts_count: number; findings_new: number;
@@ -50,7 +59,8 @@ interface Progress {
 
 const STATUS_LABEL: Record<string, string> = {
   pending: "Pending", scanning: "Scanning", aggregating: "Aggregating",
-  detecting: "Detecting", complete: "Complete", error: "Error",
+  detecting: "Detecting", stalled: "Stalled", complete: "Complete",
+  complete_with_gaps: "Complete — with gaps", error: "Error",
 };
 
 const PHASE_LABEL: Record<string, string> = {
@@ -93,16 +103,21 @@ export default function CampaignProgress({ engagementId }: { engagementId: strin
     void load();
     // Keep polling until the WHOLE pipeline is complete — not just the scan job.
     if (data?.is_complete) return;
-    const t = setInterval(load, 4000);
+    // Back off on a stalled queue so a dead worker doesn't get hammered every 4s.
+    const delay = data?.overall_status === "stalled" ? 30000 : 4000;
+    const t = setInterval(load, delay);
     return () => clearInterval(t);
-  }, [load, data?.is_complete]);
+  }, [load, data?.is_complete, data?.overall_status]);
 
   if (err) return <div style={{ color: "var(--sev-high,#f97316)", fontSize: 12 }}>Failed to load campaign: {err}</div>;
   if (!data) return <div style={{ color: "var(--text-muted)", fontSize: 12 }}>Loading campaign…</div>;
 
-  const statusColor = data.is_complete ? "var(--sev-low,#3b82f6)"
-    : data.overall_status === "error" ? "var(--sev-high,#f97316)" : "var(--accent)";
+  const gaps = data.coverage?.has_gaps ?? false;
+  const statusColor = data.overall_status === "error" ? "var(--sev-high,#f97316)"
+    : gaps ? "var(--sev-medium,#eab308)"
+    : data.is_complete ? "var(--sev-low,#3b82f6)" : "var(--accent)";
   const s = data.summary;
+  const reasons = data.reasons ?? [];
 
   return (
     <section style={{ display: "flex", flexDirection: "column", gap: 20 }}>
@@ -134,6 +149,53 @@ export default function CampaignProgress({ engagementId }: { engagementId: strin
           </span>
         )}
       </div>
+
+      {/* ── reasons banner: state what happened, never leave a silent spinner ── */}
+      {reasons.length > 0 && (
+        <div style={{ display: "flex", flexDirection: "column", gap: 4, padding: "10px 14px",
+          borderRadius: 10, border: `0.5px solid ${statusColor}`,
+          background: "var(--bg-panel)", boxShadow: "var(--shadow-sm)" }}>
+          {reasons.map((r, i) => (
+            <span key={i} style={{ fontSize: 11.5, color: "var(--text-secondary)", lineHeight: 1.5 }}>
+              <strong style={{ color: statusColor }}>⚠</strong> {r}
+            </span>
+          ))}
+          {gaps && data.coverage && data.coverage.blind_rule_ids.length > 0 && (
+            <span style={{ fontSize: 10.5, fontFamily: "var(--font-mono)", color: "var(--text-faint)" }}>
+              blind checks: {data.coverage.blind_rule_ids.join(" · ")}
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* ── coverage strip: what did detection actually CHECK? ── */}
+      {data.coverage && data.coverage.rules_total > 0 && (
+        <div style={{ display: "flex", gap: 16, alignItems: "center", padding: "8px 14px",
+          borderRadius: 10, border: "0.5px solid var(--border-subtle)", background: "var(--bg-panel)" }}>
+          <span style={{ fontSize: 10.5, fontWeight: 700, color: "var(--text-faint)",
+            letterSpacing: 1.2, textTransform: "uppercase" }}>Coverage</span>
+          <span style={{ fontSize: 11.5, color: "var(--text-muted)" }}>
+            <strong style={{ color: "var(--text-primary)" }}>{data.coverage.rules_assessed}</strong>
+            /{data.coverage.rules_total} checks assessed
+          </span>
+          {data.coverage.rules_blind > 0 && (
+            <span style={{ fontSize: 11.5, color: "var(--sev-medium,#eab308)" }}>
+              <strong>{data.coverage.rules_blind}</strong> blind (unknown, not clean)
+            </span>
+          )}
+          {data.coverage.rules_unassessed > 0 && (
+            <span style={{ fontSize: 11.5, color: "var(--text-muted)" }}>
+              {data.coverage.rules_unassessed} not run
+            </span>
+          )}
+          {data.evidence && data.evidence.submissions > 0 && (
+            <span style={{ marginLeft: "auto", fontSize: 11, fontFamily: "var(--font-mono)",
+              color: data.evidence.fully_covered ? "var(--text-muted)" : "var(--sev-medium,#eab308)" }}>
+              {data.evidence.covered}/{data.evidence.submissions} submissions detected
+            </span>
+          )}
+        </div>
+      )}
 
       {/* ── pipeline ticker + progress bar ── */}
       <div style={{ borderRadius: 12, border: "0.5px solid var(--border-subtle)", background: "var(--bg-panel)", overflow: "hidden", boxShadow: "var(--shadow-md)" }}>
@@ -202,7 +264,7 @@ export default function CampaignProgress({ engagementId }: { engagementId: strin
       <div>
         <div style={{ fontSize: 10.5, fontWeight: 700, color: "var(--text-faint)", letterSpacing: 1.4, textTransform: "uppercase", marginBottom: 10 }}>Findings & Remediation ({data.findings.length})</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-          {data.findings.length === 0 && <div style={{ fontSize: 12, color: "var(--text-muted)" }}>No findings yet — {data.is_complete ? "clean against the current rules." : "detection in progress."}</div>}
+          {data.findings.length === 0 && <FindingsEmpty data={data} gaps={gaps} />}
           {data.findings.map((f) => {
             const steps = remediationSteps(f.remediation);
             const isOpen = open[f.id];
@@ -213,8 +275,13 @@ export default function CampaignProgress({ engagementId }: { engagementId: strin
                   <span style={{ width: 8, height: 8, borderRadius: "50%", background: SEV_COLOR[f.severity], flexShrink: 0 }} />
                   <span style={{ fontSize: 12.5, fontWeight: 600, color: "var(--text-primary)" }}>{f.title}</span>
                   {f.mitre_techniques?.length ? <span style={{ fontSize: 10, fontFamily: "var(--font-mono)", color: "var(--text-faint)" }}>{f.mitre_techniques.join(", ")}</span> : null}
+                  {f.corroborated_by && f.corroborated_by.length > 0 && (
+                    <span title={`Confidence raised by cross-signal corroboration: ${f.corroborated_by.join(", ")}`}
+                      style={{ fontSize: 9.5, fontFamily: "var(--font-mono)", padding: "1px 6px", borderRadius: 5,
+                        background: "var(--accent-ghost)", color: "var(--accent)" }}>⛓ corroborated</span>
+                  )}
                   <span style={{ marginLeft: "auto", fontSize: 10.5, fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}>
-                    {f.severity}{f.risk_score != null ? ` · risk ${Math.round(f.risk_score)}` : ""}{f.state === "confirmed" ? " · confirmed" : ""}
+                    {f.severity}{f.risk_score != null ? ` · risk ${Math.round(f.risk_score)}` : ""}{f.confidence != null ? ` · conf ${f.confidence}` : ""}{f.state === "confirmed" ? " · confirmed" : ""}
                   </span>
                 </button>
                 {isOpen && (
@@ -237,4 +304,34 @@ export default function CampaignProgress({ engagementId }: { engagementId: strin
       <RawFacts engagementId={engagementId} />
     </section>
   );
+}
+
+/**
+ * The honest empty state. "No findings" is NOT "clean" — it can mean detection is
+ * still running, it stalled, it errored, or (worst) it ran but couldn't assess some
+ * checks against the data the scanner returned. Say which; never assert a security
+ * conclusion the backend hasn't established.
+ */
+function FindingsEmpty({ data, gaps }: { data: Progress; gaps: boolean }) {
+  const c = { fontSize: 12, lineHeight: 1.5 } as const;
+  if (data.overall_status === "error")
+    return <div style={{ ...c, color: "var(--sev-high,#f97316)" }}>
+      Detection failed — {data.reasons?.[0] ?? "see run error"}. This is NOT a clean result.
+    </div>;
+  if (data.overall_status === "aggregating" || data.overall_status === "stalled")
+    return <div style={{ ...c, color: "var(--sev-medium,#eab308)" }}>
+      Detection hasn&apos;t produced results yet — {data.reasons?.[0] ?? "waiting on the detection worker"}.
+    </div>;
+  if (gaps && data.coverage)
+    return <div style={{ ...c, color: "var(--sev-medium,#eab308)" }}>
+      No findings, but the scan was incomplete: {data.coverage.rules_blind} of{" "}
+      {data.coverage.rules_total} checks couldn&apos;t run against the data the scanner
+      returned. <strong>Treat this as unknown, not clean.</strong>
+    </div>;
+  if (!data.is_complete)
+    return <div style={{ ...c, color: "var(--text-muted)" }}>Detection in progress…</div>;
+  return <div style={{ ...c, color: "var(--text-muted)" }}>
+    No findings — all {data.coverage?.rules_assessed ?? "applicable"} checks ran against
+    this data and none matched.
+  </div>;
 }

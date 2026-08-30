@@ -21,13 +21,20 @@ from datetime import datetime, timedelta, timezone
 from typing import Awaitable, Callable
 
 import structlog
+import sqlalchemy as sa
 from sqlalchemy import func, select, update
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from app.database import AsyncSessionLocal
+from app.models.detection_run import DetectionRun, RUN_RUNNING, RUN_FAILED
 from app.models.outbox import (
     OutboxEvent, OUTBOX_PENDING, OUTBOX_PROCESSING, OUTBOX_DONE, OUTBOX_FAILED,
     TOPIC_FACTS_READY, TOPIC_NOTIFY,
 )
+from app.models.worker_heartbeat import WorkerHeartbeat
+
+# This worker process's stable name for its heartbeat row.
+WORKER_NAME = "outbox"
 
 logger = structlog.get_logger()
 
@@ -37,6 +44,11 @@ BACKOFF_BASE_SEC = 15          # retry delay = BACKOFF_BASE * 2**(attempts-1), c
 BACKOFF_CAP_SEC = 15 * 60
 PROCESSING_LEASE_SEC = 5 * 60  # a claimed event must finish within this or be reclaimed
 RECLAIM_INTERVAL_SEC = 30      # how often to sweep for stranded PROCESSING rows
+# A DetectionRun still RUNNING past this is orphaned: its handler's event lease
+# (PROCESSING_LEASE_SEC) elapsed and was reclaimed/dead-lettered, but the run row was
+# left behind by the crashed worker. Twice the event lease so a legitimately-slow run
+# is never killed. Without the reaper such a run keeps the campaign at "detecting".
+DETECTION_RUN_STALE_SEC = 2 * PROCESSING_LEASE_SEC
 
 
 def is_stale_processing(
@@ -227,6 +239,58 @@ def _requeue_stale_stmt(cutoff: datetime):
     )
 
 
+def _reap_runs_stmt(now: datetime, age_cutoff: datetime):
+    """DetectionRuns stuck RUNNING → mark FAILED. Prefer the per-run LEASE
+    (`lease_expires_at < now`, precise); fall back to the started_at age heuristic for
+    historical runs written before leases existed (`lease_expires_at IS NULL AND
+    started_at < age_cutoff`). Their worker died mid-detection; the event was already
+    reclaimed/dead-lettered, so this only reaps the orphaned run row."""
+    return (
+        update(DetectionRun)
+        .where(
+            DetectionRun.status == RUN_RUNNING,
+            sa.or_(
+                DetectionRun.lease_expires_at < now,
+                sa.and_(DetectionRun.lease_expires_at.is_(None),
+                        DetectionRun.started_at < age_cutoff),
+            ),
+        )
+        .values(status=RUN_FAILED, finished_at=func.now(),
+                error="lease expired; detection worker presumed dead (reaped)")
+    )
+
+
+async def _reap_stale_runs() -> int:
+    """Fail DetectionRuns a crashed worker left RUNNING. Without this a campaign whose
+    detection worker died mid-run sits at 'detecting' forever — the failure is now
+    surfaced as 'error' by campaign-progress instead of a permanent spinner."""
+    now = datetime.now(timezone.utc)
+    age_cutoff = now - timedelta(seconds=DETECTION_RUN_STALE_SEC)
+    async with AsyncSessionLocal() as db:
+        res = await db.execute(_reap_runs_stmt(now, age_cutoff))
+        await db.commit()
+    n = res.rowcount or 0
+    if n:
+        logger.warning("detection_run.reaped_stale", count=n)
+    return n
+
+
+async def _write_heartbeat(worker_name: str) -> None:
+    """Upsert this worker's heartbeat. A stale row tells campaign-progress the
+    detection worker is down (vs merely busy). Best-effort — a heartbeat write must
+    never interfere with actual work."""
+    now = datetime.now(timezone.utc)
+    async with AsyncSessionLocal() as db:
+        stmt = pg_insert(WorkerHeartbeat).values(
+            worker_name=worker_name, last_beat_at=now,
+        ).on_conflict_do_update(
+            index_elements=["worker_name"],
+            set_={"last_beat_at": now, "updated_at": now},
+        )
+        await db.execute(stmt)
+        await db.commit()
+
+
 async def _reclaim_stale() -> int:
     """Requeue events a dead worker left in PROCESSING past the lease.
 
@@ -297,13 +361,22 @@ async def run_worker(stop: asyncio.Event | None = None) -> None:
     logger.info("outbox.worker.start", topics=sorted(_HANDLERS.keys()))
     last_reclaim = 0.0
     while not stop.is_set():
-        # Periodically requeue events stranded in PROCESSING by a crashed worker,
-        # so no acknowledged-durable event is silently lost.
+        # Periodically requeue events stranded in PROCESSING by a crashed worker, and
+        # reap DetectionRuns that crashed worker left RUNNING — so neither an
+        # acknowledged-durable event nor a campaign's status is silently lost.
         if time.monotonic() - last_reclaim >= RECLAIM_INTERVAL_SEC:
             try:
                 await _reclaim_stale()
             except Exception as exc:  # noqa: BLE001 — reclaim must never kill the loop
                 logger.error("outbox.reclaim_failed", error=str(exc))
+            try:
+                await _reap_stale_runs()
+            except Exception as exc:  # noqa: BLE001 — reaping must never kill the loop
+                logger.error("outbox.reap_runs_failed", error=str(exc))
+            try:
+                await _write_heartbeat(WORKER_NAME)
+            except Exception as exc:  # noqa: BLE001 — heartbeat must never kill the loop
+                logger.error("outbox.heartbeat_failed", error=str(exc))
             last_reclaim = time.monotonic()
 
         try:

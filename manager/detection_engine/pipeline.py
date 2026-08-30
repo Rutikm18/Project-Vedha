@@ -29,7 +29,8 @@ from enrichment_db import EpssDB, KevDB, load_epss, load_kev
 from ingest import IngestResult, ingest_files
 from matcher import match_candidate
 from models import Finding
-from posture_rules import PostureFinding, detect_all as detect_posture_all
+from posture_rules import (PostureFinding, detect_all as detect_posture_all,
+                           detect_all_traced, summarize_traces, verdict_for_rule)
 from verifier import deception_score, verify
 from vuln_db import VulnDB, load_snapshot
 
@@ -124,15 +125,28 @@ def run_full_detection(jsonl_paths: list[str | Path], vuln_db: VulnDB | None = N
     cve_findings, ingest_result = run_pipeline(
         jsonl_paths, vuln_db=vuln_db, kev_db=kev_db, epss_db=epss_db,
         exposure=exposure, **kwargs)
-    posture_findings = detect_posture_all(ingest_result, exposure=exposure)
+    # Traced posture run: findings identical to detect_posture_all, PLUS a per-rule
+    # evaluation trace so a non-finding can explain itself (drift vs clean vs
+    # not-assessed). This is what makes "checked and clean" distinguishable from
+    # "never actually checked".
+    posture_findings, posture_traces = detect_all_traced(ingest_result, exposure=exposure)
+    posture_coverage = summarize_traces(posture_traces)
+    posture_verdicts = {}
+    for rid in sorted({t.rule_id for t in posture_traces}):
+        verdict, reasons = verdict_for_rule(posture_traces, rid)
+        posture_verdicts[rid] = {"verdict": verdict, "reasons": reasons}
     return {
         "cve": cve_findings,
         "posture": posture_findings,
+        "posture_traces": [t.to_dict() for t in posture_traces],
+        "posture_coverage": posture_coverage,
+        "posture_verdicts": posture_verdicts,
         "ingest": ingest_result,
         "counts": {
             "cve": len(cve_findings),
             "posture": len(posture_findings),
             "posture_confirmed": sum(1 for f in posture_findings if f.state == "confirmed"),
+            "posture_blind_rules": posture_coverage.get("rules_blind", 0),
             "assets": len(ingest_result.assets),
         },
     }

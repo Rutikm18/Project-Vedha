@@ -20,7 +20,7 @@ import os
 import sys
 import tempfile
 import uuid
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from pathlib import Path
 
@@ -41,6 +41,11 @@ from app.ai.verification_graph import run_verification
 from app.config import get_settings
 
 logger = structlog.get_logger()
+
+# A detection run's lease. If the worker crashes mid-run, the run stays RUNNING past
+# this and the outbox reaper fails it. Kept equal to the worker's reaper threshold
+# (app.workers.outbox.DETECTION_RUN_STALE_SEC) so a run is never reaped early.
+DETECTION_RUN_LEASE_SEC = 10 * 60
 
 # Finding statuses that count as "still current" (the live risk set) after a run.
 _CURRENT_STATUSES = (FindingStatus.open, FindingStatus.confirmed, FindingStatus.accepted)
@@ -84,15 +89,19 @@ def _ensure_importable() -> bool:
         return False
 
 
-def detect_all_from_facts(facts: list[dict]) -> tuple[list[dict], list[dict]]:
-    """Raw scanner facts -> (cve_finding_dicts, posture_finding_dicts), running the
-    FULL detection engine ONCE. The posture track is what turns the VERIFIED
-    scanners' config/exposure observations (SMBv1, RDP-without-NLA, deprecated TLS,
-    exposed RPC, UDP amplifiers) into findings — the CVE/version pipeline alone
-    never sees them, so before this the manager detected only half the risk. []/[]
-    on any failure (never raises). Falls back to CVE-only on an old engine."""
+def detect_all_from_facts_traced(
+    facts: list[dict],
+) -> tuple[list[dict], list[dict], dict]:
+    """Raw scanner facts -> (cve_finding_dicts, posture_finding_dicts, meta), running
+    the FULL detection engine ONCE. `meta` carries the detection-trace roll-up:
+    `{"coverage": {...}, "verdicts": {rule_id: {"verdict","reasons"}}}` — the
+    machine-readable record of which rules were assessed, which were BLIND (drift /
+    unparseable / error), and which had no evidence. That is what lets a non-finding
+    explain itself instead of collapsing into an empty list. []/[]/{} on any failure
+    (never raises). Falls back to CVE-only on an old engine."""
+    empty_meta: dict = {"coverage": {}, "verdicts": {}}
     if not facts or not _ensure_importable():
-        return [], []
+        return [], [], empty_meta
     tmp = None
     try:
         with tempfile.NamedTemporaryFile("w", suffix=".jsonl", delete=False) as fh:
@@ -104,26 +113,35 @@ def detect_all_from_facts(facts: list[dict]) -> tuple[list[dict], list[dict]]:
             res = run_full_detection([tmp])
             cve = [f.to_dict() for f in res.get("cve", [])]
             posture = [f.to_dict() for f in res.get("posture", [])]
-            return cve, posture
+            meta = {"coverage": res.get("posture_coverage") or {},
+                    "verdicts": res.get("posture_verdicts") or {}}
+            return cve, posture, meta
         except ImportError:                          # older engine: CVE-only
             from pipeline import run_pipeline  # type: ignore
             findings, _ = run_pipeline([tmp])
-            return [f.to_dict() for f in findings], []
+            return [f.to_dict() for f in findings], [], empty_meta
     except Exception as exc:  # noqa: BLE001
         # The CVE track can fail on its own (e.g. a missing/oversized NVD snapshot);
         # the POSTURE track must NOT go down with it — config-exposure findings need
-        # no vuln DB. Try posture standalone before giving up.
+        # no vuln DB. Try posture standalone (traced) before giving up.
         logger.warning("detection_engine.full_run_failed", error=str(exc))
         try:
             from ingest import ingest_files      # type: ignore
-            from posture_rules import detect_all  # type: ignore
-            posture = [f.to_dict() for f in detect_all(ingest_files([tmp]))]
+            from posture_rules import (detect_all_traced,  # type: ignore
+                                       summarize_traces, verdict_for_rule)
+            posture_f, traces = detect_all_traced(ingest_files([tmp]))
+            posture = [f.to_dict() for f in posture_f]
+            verdicts = {}
+            for rid in sorted({t.rule_id for t in traces}):
+                v, reasons = verdict_for_rule(traces, rid)
+                verdicts[rid] = {"verdict": v, "reasons": reasons}
+            meta = {"coverage": summarize_traces(traces), "verdicts": verdicts}
             if posture:
                 logger.info("detection_engine.posture_only_fallback", count=len(posture))
-            return [], posture
+            return [], posture, meta
         except Exception as exc2:  # noqa: BLE001
             logger.warning("detection_engine.posture_fallback_failed", error=str(exc2))
-            return [], []
+            return [], [], empty_meta
     finally:
         if tmp:
             try:
@@ -132,9 +150,15 @@ def detect_all_from_facts(facts: list[dict]) -> tuple[list[dict], list[dict]]:
                 pass
 
 
+def detect_all_from_facts(facts: list[dict]) -> tuple[list[dict], list[dict]]:
+    """Backward-compatible (cve, posture) view — drops the trace meta."""
+    cve, posture, _meta = detect_all_from_facts_traced(facts)
+    return cve, posture
+
+
 def detect_findings_from_facts(facts: list[dict]) -> list[dict]:
     """CVE finding dicts only — backward-compatible wrapper over the full run."""
-    return detect_all_from_facts(facts)[0]
+    return detect_all_from_facts_traced(facts)[0]
 
 
 # Posture severities are already critical/high/medium/low/info — the same vocabulary
@@ -355,6 +379,8 @@ async def create_findings_from_facts(
 
     # Open the run first, so every finding created below can reference run.id and
     # the run row is the single provenance record for this detection execution.
+    # Stamp a lease: if this worker dies mid-detection, the run stays RUNNING past
+    # lease_expires_at and the outbox reaper fails it precisely (vs guessing from age).
     run = DetectionRun(
         engagement_id=engagement_id,
         scan_result_id=scan_result_id,
@@ -362,6 +388,7 @@ async def create_findings_from_facts(
         vuln_db_version=db_version,
         vuln_db_fetched_at=db_fetched,
         started_at=now,
+        lease_expires_at=now + timedelta(seconds=DETECTION_RUN_LEASE_SEC),
         facts_count=len(facts),
     )
     db.add(run)
@@ -375,8 +402,10 @@ async def create_findings_from_facts(
         # host is resolved ONCE per run instead of once per finding (kills the N+1).
         asset_cache: dict = {}
         # ONE full-detection pass over the raw facts → BOTH the CVE/version track
-        # and the posture/config-exposure track (the verified scanners' findings).
-        cve_dicts, posture_dicts = detect_all_from_facts(facts)
+        # and the posture/config-exposure track (the verified scanners' findings),
+        # plus the detection-trace coverage roll-up (which rules were blind/clean/
+        # not-assessed) so a non-finding can explain itself.
+        cve_dicts, posture_dicts, detect_meta = detect_all_from_facts_traced(facts)
         for d in cve_dicts:
             try:
                 cve = d.get("cve_id") or "finding"
@@ -464,10 +493,14 @@ async def create_findings_from_facts(
         try:
             coverage = build_coverage(result.get("scanner_runs"), facts)
             resolved = await evaluate_resolutions(db, engagement_id, run, coverage, now)
-            run.stats = {"coverage": coverage, "auto_resolved": resolved}
+            run.stats = {"coverage": coverage, "auto_resolved": resolved,
+                         "posture_coverage": detect_meta.get("coverage") or {},
+                         "posture_verdicts": detect_meta.get("verdicts") or {}}
         except Exception as exc:  # noqa: BLE001 — resolution must not fail the run
             logger.warning("detection_run.resolution_failed", error=str(exc))
-            run.stats = {"coverage": {}, "auto_resolved": 0}
+            run.stats = {"coverage": {}, "auto_resolved": 0,
+                         "posture_coverage": detect_meta.get("coverage") or {},
+                         "posture_verdicts": detect_meta.get("verdicts") or {}}
 
         # Passive verification (P2): stamp a normalized verdict on findings touched
         # this run. Flagged + best-effort; never breaks the run.

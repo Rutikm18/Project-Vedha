@@ -61,6 +61,9 @@ class DetectionRun(Base, TimestampMixin):
         DateTime(timezone=True), server_default=func.now(), nullable=False
     )
     finished_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # Per-run lease: a run still RUNNING past this was abandoned by a crashed worker.
+    # The outbox reaper fails such runs precisely (vs the coarse started_at heuristic).
+    lease_expires_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
     facts_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     findings_new: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")

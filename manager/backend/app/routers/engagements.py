@@ -16,9 +16,20 @@ from app.models.asset import Asset
 from app.models.engagement import Engagement
 from app.models.enums import AssetType, EngagementStatus, FindingSeverity, FindingStatus
 from app.models.finding import Finding
-from app.models.detection_run import DetectionRun, RUN_COMPLETED, RUN_FAILED
+from app.models.detection_run import DetectionRun, RUN_COMPLETED, RUN_FAILED, RUN_RUNNING
+from app.models.outbox import (
+    OutboxEvent, OUTBOX_PENDING, OUTBOX_PROCESSING, OUTBOX_FAILED, TOPIC_FACTS_READY,
+)
 from app.models.scan_job import ScanJob
 from app.models.scan_result import ScanResult
+from app.models.worker_heartbeat import WorkerHeartbeat
+
+# A queued facts_ready event whose available_at is older than this, still undrained,
+# means the detection queue is not moving — the worker is down or wedged. Surfaced as
+# the `stalled` phase so a dead worker announces itself instead of a permanent spinner.
+_QUEUE_STALL_SEC = 120
+# A worker heartbeat older than this = the detection worker is down (it beats ~30s).
+_WORKER_STALE_SEC = 90
 from app.models.service import Service
 from app.schemas.common import PaginatedResponse, paginate
 from app.schemas.asset import AssetIn, BulkAssetImportResult
@@ -659,6 +670,48 @@ def _job_phase(status: str) -> str:
     }.get(status, status)
 
 
+def _reconcile_status(*, jobs_exist: bool, any_running: bool, scanning_done: bool,
+                      run_exists: bool, latest_failed: bool, detection_done: bool,
+                      evidence_covered: bool, has_gaps: bool,
+                      queue_pending: bool, queue_overdue: bool,
+                      queue_dead: bool,
+                      worker_alive: bool | None = None) -> tuple[str, bool]:
+    """Derive ONE authoritative campaign phase from reconciled evidence, not from a
+    single nullable run row. Precedence is load-bearing (it is what makes multi-agent
+    campaigns correct and a dead worker visible):
+
+      pending → scanning → error(dead-letter) → stalled(queue not draining) →
+      aggregating(queued/no-run-yet) → error(run failed) → detecting →
+      complete_with_gaps / complete
+
+    `evidence_covered` (every scan submission consumed by a COMPLETED run) is what
+    stops a campaign showing 'complete' the moment its LAST job's run finishes while
+    an earlier agent's submission still has no run (F11/F12). Returns
+    (overall_status, is_complete)."""
+    if not jobs_exist:
+        return "pending", False
+    if any_running:
+        return "scanning", False
+    if queue_dead:                                  # a facts_ready event dead-lettered
+        return "error", False
+    # Queue not draining: either an event went overdue, OR the worker's heartbeat is
+    # stale (worker_alive is False) — the latter catches a dead worker BEFORE events
+    # age out. worker_alive None (heartbeat unknown/unavailable) → fall back to overdue.
+    if queue_pending and (queue_overdue or worker_alive is False):
+        return "stalled", False
+    if queue_pending:                               # queued, a worker is draining it
+        return "aggregating", False
+    if not run_exists:                              # facts done, run not created yet
+        return "aggregating", False
+    if latest_failed:
+        return "error", False
+    if not (detection_done and evidence_covered):   # a submission still uncovered
+        return "detecting", False
+    if has_gaps:
+        return "complete_with_gaps", True
+    return "complete", True
+
+
 def _result_summary(result: dict | None) -> dict:
     """A SAFE, bounded view of a job's raw result — the counts an operator needs to
     see 'what the probe found' WITHOUT leaking the full facts blob or credentials."""
@@ -719,16 +772,61 @@ async def campaign_progress(engagement_id: uuid.UUID, db: DB, current_user: Auth
     any_running = any(x["phase"] in ("scanning", "dispatched", "queued") for x in jobs)
     any_complete = any(x["phase"] == "complete" for x in jobs)
 
-    # ── latest detection run ──────────────────────────────────────────────────
-    run = (await db.execute(
+    # ── detection runs (ALL of them — completion is proven by coverage) ─────────
+    # A multi-agent campaign has one run per fact submission. Reading only the latest
+    # run makes the campaign look 'complete' the moment the LAST job's run finishes,
+    # even if an EARLIER agent's submission was never detected. So fetch every run and
+    # prove coverage against the scan submissions.
+    runs = (await db.execute(
         select(DetectionRun).where(DetectionRun.engagement_id == engagement_id)
-        .order_by(DetectionRun.started_at.desc()).limit(1)
-    )).scalar_one_or_none()
-    # The DetectionRun completes as RUN_COMPLETED ("completed") — NOT "done". Keying
-    # off the wrong string left the pipeline stuck at "detecting" forever even after
-    # the backend finished.
+        .order_by(DetectionRun.started_at.desc())
+    )).scalars().all()
+    run = runs[0] if runs else None          # latest, for the stats/display below
+    # The DetectionRun completes as RUN_COMPLETED ("completed") — NOT "done".
     detection_done = bool(run and run.status == RUN_COMPLETED)
     detection_failed = bool(run and run.status == RUN_FAILED)
+
+    # Coverage: every scan submission (scan_results row) must have a COMPLETED run.
+    sr_ids = set((await db.execute(
+        select(ScanResult.id).where(ScanResult.engagement_id == engagement_id)
+    )).scalars().all())
+    covered = {r.scan_result_id for r in runs
+               if r.status == RUN_COMPLETED and r.scan_result_id is not None}
+    # If submissions aren't linkable to runs (older data / no scan_result_id), fall
+    # back to the single-run signal so behaviour is unchanged for that case.
+    evidence_covered = (sr_ids <= covered) if (sr_ids and covered) else detection_done
+
+    # Queue state: undrained facts_ready events are the 'is the worker even alive?'
+    # signal. An overdue pending event means the queue is not draining → stalled.
+    now = datetime.now(timezone.utc)
+    q_rows = (await db.execute(
+        select(OutboxEvent.status, OutboxEvent.available_at).where(
+            OutboxEvent.engagement_id == engagement_id,
+            OutboxEvent.topic == TOPIC_FACTS_READY,
+        )
+    )).all()
+    queue_pending = any(s in (OUTBOX_PENDING, OUTBOX_PROCESSING) for s, _ in q_rows)
+    queue_dead = any(s == OUTBOX_FAILED for s, _ in q_rows)
+    queue_overdue = any(
+        s in (OUTBOX_PENDING, OUTBOX_PROCESSING) and av is not None
+        and (now - av).total_seconds() > _QUEUE_STALL_SEC
+        for s, av in q_rows)
+
+    # ── detection-trace coverage: which RULES were assessed vs BLIND ────────────
+    # From run.stats["posture_coverage"] (written by engine_bridge). rules_blind > 0
+    # means the scanner submitted facts but some rules could NOT be assessed (agent
+    # drift / unparseable / error) — a completed run that is NOT the same as clean.
+    # This is the number that lets "no findings" stop masquerading as "checked".
+    _stats = (getattr(run, "stats", None) if run else None) or {}
+    _stats = _stats if isinstance(_stats, dict) else {}
+    _pcov = _stats.get("posture_coverage") or {}
+    _pverdicts = _stats.get("posture_verdicts") or {}
+    rules_blind = int(_pcov.get("rules_blind") or 0)
+    rules_total = int(_pcov.get("rules_total") or 0)
+    rules_assessed = int(_pcov.get("rules_assessed") or 0)
+    rules_unassessed = int(_pcov.get("rules_unassessed") or 0)
+    blind_rule_ids = _pcov.get("blind_rule_ids") or []
+    has_gaps = detection_done and rules_blind > 0
 
     # ── findings (open set), with the counts each pipeline phase reports ──────
     findings = (await db.execute(
@@ -772,33 +870,76 @@ async def campaign_progress(engagement_id: uuid.UUID, db: DB, current_user: Auth
     # correlation, prioritization and remediation-mapping all follow. is_complete is
     # true ONLY when the whole pipeline has finished, so the UI never shows a green
     # "completed" while the manager is still analysing.
-    is_complete = bool(jobs) and scanning_done and detection_done
-    if not jobs:
-        overall_status = "pending"
-    elif any_running:
-        overall_status = "scanning"
-    elif run is None:
-        overall_status = "aggregating"          # facts in flight / detection not started
-    elif detection_failed:
-        overall_status = "error"
-    elif not detection_done:
-        overall_status = "detecting"
-    else:
-        overall_status = "complete"
+    # Worker liveness (best-effort, LAST query): a stale/absent heartbeat means the
+    # detection worker is down. Wrapped so a missing worker_heartbeats table (migration
+    # not yet run) degrades to the queue-lag signal instead of erroring the whole page.
+    worker_alive: bool | None = None
+    try:
+        last_beat = (await db.execute(
+            select(func.max(WorkerHeartbeat.last_beat_at))
+        )).scalar_one_or_none()
+        if last_beat is not None:
+            worker_alive = (now - last_beat).total_seconds() <= _WORKER_STALE_SEC
+    except Exception:  # noqa: BLE001 — liveness is a nice-to-have, never fail the page
+        worker_alive = None
+
+    overall_status, is_complete = _reconcile_status(
+        jobs_exist=bool(jobs), any_running=any_running, scanning_done=scanning_done,
+        run_exists=run is not None, latest_failed=detection_failed,
+        detection_done=detection_done, evidence_covered=evidence_covered,
+        has_gaps=has_gaps, queue_pending=queue_pending, queue_overdue=queue_overdue,
+        queue_dead=queue_dead, worker_alive=worker_alive)
+
+    # A human-readable reason for any non-clean terminal/blocked state — so the UI
+    # states what happened instead of showing a spinner or a misleading "clean".
+    reasons: list[str] = []
+    if overall_status == "error" and queue_dead:
+        reasons.append("a facts_ready event was dead-lettered after exhausting retries "
+                       "— detection could not run on that submission.")
+    elif overall_status == "error":
+        reasons.append(getattr(run, "error", None) or "detection failed")
+    elif overall_status == "stalled":
+        reasons.append("detection queue is not draining — the outbox worker "
+                       "(python -m app.workers.outbox) appears to be down or wedged.")
+    elif overall_status == "aggregating":
+        reasons.append("facts submitted; detection is queued — the outbox worker "
+                       "(python -m app.workers.outbox) should pick it up shortly.")
+    elif overall_status == "detecting" and detection_done and not evidence_covered:
+        pend = len(sr_ids - covered)
+        reasons.append(f"{pend} scan submission(s) still awaiting detection — the "
+                       f"campaign is not complete until every submission is covered.")
+    elif has_gaps:
+        reasons.append(
+            f"{rules_blind} of {rules_total} checks could not be assessed against the "
+            f"data the scanner returned — treat these as UNKNOWN, not clean.")
 
     # ── findings with remediation (top 100, worst first) ─────────────────────
-    top = [{
-        "id": str(f.id),
-        "title": f.title,
-        "severity": _sev(f),
-        "risk_score": float(f.risk_score) if f.risk_score is not None else None,
-        "priority": f.priority if hasattr(f, "priority") else None,
-        "cve_ids": f.cve_ids,
-        "mitre_techniques": f.mitre_techniques,
-        "state": _val(f.status),
-        "remediation": f.remediation,
-        "asset_id": str(f.asset_id) if f.asset_id else None,
-    } for f in findings[:100]]
+    def _conf(f):
+        """Calibrated confidence + corroboration, read from the posture finding's
+        evidence (posture_confidence stamps confidence + precision_factors there).
+        CVE findings won't carry these — return None/[] then."""
+        ev = f.evidence if isinstance(f.evidence, dict) else {}
+        pf = ev.get("precision_factors") if isinstance(ev.get("precision_factors"), dict) else {}
+        chain = pf.get("chain_corroboration") if isinstance(pf.get("chain_corroboration"), dict) else None
+        return ev.get("confidence"), (chain.get("chains") if chain else [])
+
+    top = []
+    for f in findings[:100]:
+        conf, chains = _conf(f)
+        top.append({
+            "id": str(f.id),
+            "title": f.title,
+            "severity": _sev(f),
+            "risk_score": float(f.risk_score) if f.risk_score is not None else None,
+            "confidence": conf,                 # calibrated TP-likelihood (posture)
+            "corroborated_by": chains,          # attack chains that raised its confidence
+            "priority": f.priority if hasattr(f, "priority") else None,
+            "cve_ids": f.cve_ids,
+            "mitre_techniques": f.mitre_techniques,
+            "state": _val(f.status),
+            "remediation": f.remediation,
+            "asset_id": str(f.asset_id) if f.asset_id else None,
+        })
 
     # ── high-level summary (the exec view above the detailed/core findings) ───
     exploitable = sum(1 for f in findings if getattr(f, "exploit_validated", False))
@@ -821,7 +962,30 @@ async def campaign_progress(engagement_id: uuid.UUID, db: DB, current_user: Auth
         "overall_status": overall_status,
         "is_complete": is_complete,
         "percent": percent,
+        "reasons": reasons,
         "phases": phases,
+        # ── coverage: what did detection actually CHECK? (the honest-coverage view)
+        "coverage": {
+            "rules_total": rules_total,
+            "rules_assessed": rules_assessed,
+            "rules_blind": rules_blind,
+            "rules_unassessed": rules_unassessed,
+            "blind_rule_ids": blind_rule_ids,
+            "has_gaps": has_gaps,
+        },
+        # ── evidence coverage: completion PROVEN by every submission being detected
+        "evidence": {
+            "submissions": len(sr_ids),
+            "covered": len(sr_ids & covered) if sr_ids else len(covered),
+            "fully_covered": evidence_covered,
+        },
+        # ── queue health: is the detection worker actually draining events?
+        "queue": {
+            "pending": queue_pending,
+            "overdue": queue_overdue,
+            "dead": queue_dead,
+            "worker_alive": worker_alive,   # None = heartbeat unknown (pre-migration)
+        },
         "jobs": jobs,
         "job_stats": {
             "total": len(jobs),
@@ -851,6 +1015,59 @@ async def campaign_progress(engagement_id: uuid.UUID, db: DB, current_user: Auth
             "top_techniques": [{"technique": t, "count": c} for t, c in top_techniques],
         },
         "findings": top,
+    }
+
+
+# ── GET /{engagement_id}/detection-explain — why did (or didn't) a rule fire? ──
+@router.get("/{engagement_id}/detection-explain",
+            summary="Per-rule detection verdicts: why a check did/didn't produce a finding")
+async def detection_explain(
+    engagement_id: uuid.UUID,
+    db: DB,
+    current_user: Annotated[AuthUser, require_role(["admin", "manager", "tester"])],
+    rule_id: str | None = None,
+):
+    """The machine-readable answer to "the scripts catch it but the manager doesn't".
+    For the latest detection run, returns each posture rule's verdict:
+      finding_exists | evaluated_clean | schema_drift | no_evidence_collected | rule_error
+    with the reason strings. `schema_drift` means the scanner submitted facts but the
+    field the rule reads was absent (agent drift) — the silent false-negative, now
+    named. Operator-gated (reasons quote fact paths / errors)."""
+    await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
+    run = (await db.execute(
+        select(DetectionRun).where(DetectionRun.engagement_id == engagement_id)
+        .order_by(DetectionRun.started_at.desc()).limit(1)
+    )).scalar_one_or_none()
+
+    stats = (getattr(run, "stats", None) if run else None) or {}
+    stats = stats if isinstance(stats, dict) else {}
+    verdicts = stats.get("posture_verdicts") or {}
+    coverage = stats.get("posture_coverage") or {}
+
+    if rule_id:
+        v = verdicts.get(rule_id)
+        return {
+            "engagement_id": str(engagement_id),
+            "run_id": str(run.id) if run else None,
+            "run_status": run.status if run else "none",
+            "rule_id": rule_id,
+            "verdict": (v or {}).get("verdict", "detection_never_ran" if run is None else "no_evidence_collected"),
+            "reasons": (v or {}).get("reasons", []),
+        }
+
+    return {
+        "engagement_id": str(engagement_id),
+        "run_id": str(run.id) if run else None,
+        "run_status": run.status if run else "none",
+        "coverage": coverage,
+        # sorted worst-first: drift/error before clean, so gaps surface at the top
+        "rules": sorted(
+            [{"rule_id": rid, **v} for rid, v in verdicts.items()],
+            key=lambda r: (
+                {"rule_error": 0, "schema_drift": 1, "finding_exists": 2,
+                 "no_evidence_collected": 3, "evaluated_clean": 4}.get(r.get("verdict"), 5),
+                r["rule_id"]),
+        ),
     }
 
 

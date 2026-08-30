@@ -28,6 +28,7 @@ from app.models.scan_request import ScanRequest
 from app.models.remediation_plan import RemediationPlan
 from app.models.sla_policy import SlaPolicy
 from app.models.integration import Integration
+from app.models.worker_heartbeat import WorkerHeartbeat
 
 __all__ = [
     "Tenant", "User", "Engagement", "Asset",
@@ -38,4 +39,5 @@ __all__ = [
     "DetectionRun", "AgentRecommendation", "PersonalAccessToken",
     "ProbeSite", "ProbeEnrollmentRequest", "AgentCredential", "ProbeEnrollmentToken",
     "ValidationRequest", "ScanRequest", "RemediationPlan", "SlaPolicy", "Integration",
+    "WorkerHeartbeat",
 ]
