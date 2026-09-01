@@ -89,6 +89,21 @@ class TestDetectionCorrelator:
         res = self.c.correlate(actions, siem, [])
         assert res[0].status == DetectionStatus.missed
 
+    def test_hostname_substring_collision_is_not_correlated(self):
+        actions = [_action("a1", "T1190", "web01")]
+        siem = [SIEMAlert("s1", "RCE", "web010", T0 + timedelta(minutes=1))]
+        assert self.c.correlate(actions, siem, [])[0].status == DetectionStatus.missed
+
+    def test_ip_prefix_collision_is_not_correlated(self):
+        actions = [_action("a1", "T1190", None, ip="10.0.0.5")]
+        siem = [SIEMAlert("s1", "RCE", "10.0.0.50", T0 + timedelta(minutes=1))]
+        assert self.c.correlate(actions, siem, [])[0].status == DetectionStatus.missed
+
+    def test_short_hostname_matches_its_fqdn(self):
+        actions = [_action("a1", "T1190", "web01")]
+        siem = [SIEMAlert("s1", "RCE", "web01.corp.example", T0 + timedelta(minutes=1))]
+        assert self.c.correlate(actions, siem, [])[0].status == DetectionStatus.detected
+
     def test_host_match_by_ip(self):
         actions = [_action("a1", "T1190", None, ip="10.0.0.5")]
         siem = [SIEMAlert("s1", "RCE", "10.0.0.5", T0 + timedelta(minutes=1))]
@@ -117,6 +132,18 @@ class TestDetectionCorrelator:
         assert cov["coverage_pct"] == pytest.approx(66.7, abs=0.1)
         assert cov["by_technique"]["T1558.003"]["status"] == "gap"
         assert cov["by_technique"]["T1190"]["status"] == "covered"
+
+    def test_mixed_results_are_partial_not_covered(self):
+        actions = [
+            _action("a1", "T1190", "web01"),
+            _action("a2", "T1190", "web02", offset_min=10),
+        ]
+        siem = [SIEMAlert("s1", "RCE", "web01", T0 + timedelta(minutes=1))]
+
+        bucket = self.c.compute_coverage(self.c.correlate(actions, siem, []))["by_technique"]["T1190"]
+
+        assert bucket["status"] == "partial"
+        assert bucket["coverage_pct"] == 50.0
 
     def test_coverage_empty(self):
         cov = self.c.compute_coverage([])

@@ -13,7 +13,8 @@ import { SEVERITY, Severity, sevVars } from "../../lib/severity";
 /* ------------------------------------------------------------------ Panel */
 
 export function Panel({
-  title, eyebrow, icon, rail, actions, note, footer, bodyPad = false, children,
+  title, eyebrow, icon, rail, actions, note, footer, bodyPad = false,
+  headingLevel = 3, children,
 }: {
   title: string;
   /** Small uppercase kicker above the title — say what the data *is*, not what it's called. */
@@ -23,16 +24,19 @@ export function Panel({
   rail?: string;
   actions?: React.ReactNode;
   /** Right-aligned context in the header, e.g. "updated 2m ago". */
-  note?: string;
+  note?: React.ReactNode;
   footer?: React.ReactNode;
   bodyPad?: boolean;
+  /** Heading level for the title so the page keeps a valid outline (default h3). */
+  headingLevel?: 2 | 3;
   children: React.ReactNode;
 }) {
+  const headingId = React.useId();
   return (
     <section
       className="panel"
       style={rail ? ({ "--rail": rail } as React.CSSProperties) : undefined}
-      aria-label={title}
+      aria-labelledby={headingId}
     >
       <header className="panel-head">
         {icon && (
@@ -41,7 +45,7 @@ export function Panel({
             style={{
               width: 24, height: 24, borderRadius: 6, flexShrink: 0,
               display: "grid", placeItems: "center",
-              background: "var(--bg-panel)", border: "0.5px solid var(--border-subtle)",
+              background: "var(--bg-panel)", border: "var(--hairline) solid var(--border-subtle)",
               color: rail ?? "var(--text-secondary)",
             }}
           >
@@ -50,7 +54,7 @@ export function Panel({
         )}
         <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 1 }}>
           {eyebrow && <span className="eyebrow">{eyebrow}</span>}
-          <h2 className="panel-title">{title}</h2>
+          {React.createElement(`h${headingLevel}`, { id: headingId, className: "panel-title" }, title)}
         </div>
         <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 10 }}>
           {note && <span className="panel-note num">{note}</span>}
@@ -61,7 +65,7 @@ export function Panel({
         {children}
       </div>
       {footer && (
-        <footer style={{ padding: "10px 18px", borderTop: "0.5px solid var(--border-subtle)", background: "var(--bg-surface)" }}>
+        <footer style={{ padding: "10px 18px", borderTop: "var(--hairline) solid var(--border-subtle)", background: "var(--bg-surface)" }}>
           {footer}
         </footer>
       )}

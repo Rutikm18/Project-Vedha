@@ -22,13 +22,13 @@ interface Message {
 }
 
 interface AiStatus {
-  provider: "ollama" | "openrouter" | "anthropic";
+  provider: "ollama" | "openrouter" | "anthropic" | "openai" | null;
   model: string;
   configured: boolean;
   privacy: "local" | "cloud";
   reason?: string;
   providers: Array<{
-    id: "ollama" | "openrouter" | "anthropic";
+    id: "ollama" | "openrouter" | "anthropic" | "openai";
     label: string;
     configured: boolean;
     privacy: "local" | "cloud";
@@ -48,7 +48,7 @@ interface Engagement {
 const STARTER_PROMPTS = [
   {
     title: "Analyze any CVE",
-    prompt: "Explain CVE-2021-44228, including what it is, potential organizational impact, severity and score, remediation, and what must be validated.",
+    prompt: "Explain CVE-2021-44228 in 250 words or fewer: summary paragraph, key facts, impact bullets, recorded severity and score, verification, ordered remediation actions, OS-specific hardening, and evidence gaps.",
   },
   {
     title: "Executive risk brief",
@@ -70,7 +70,8 @@ const WELCOME: Message = {
   content: "Ask about any published CVE or select an engagement for organization-specific analysis. Public CVE metadata is never presented as proof that your organization is affected.",
 };
 
-function providerLabel(provider?: string) {
+function providerLabel(provider?: string | null) {
+  if (provider === "openai") return "OpenAI";
   if (provider === "openrouter") return "OpenRouter";
   if (provider === "anthropic") return "Anthropic";
   return "Ollama";
@@ -323,6 +324,7 @@ export default function AIBrainPage() {
               "Keeps recommendations defensive and non-destructive",
               "Never receives provider credentials from the browser",
               "Public CVE data is not treated as proof of client exposure",
+              "Single-vulnerability briefs are structured and capped at 250 words",
             ].map((item) => <div key={item}><CheckCircle2 size={13} /><span>{item}</span></div>)}
           </section>
 

@@ -6,7 +6,7 @@ import {
   AreaChart, Area, PieChart, Pie, Cell,
   XAxis, YAxis, Tooltip, ResponsiveContainer,
 } from "recharts";
-import { AlertTriangle, TrendingUp, Users, ShieldAlert, ArrowUpRight, ArrowDownRight, Minus } from "lucide-react";
+import { Users, ShieldAlert, ArrowUpRight, ArrowDownRight, Minus } from "lucide-react";
 import Link from "next/link";
 import { useCountUp } from "../hooks/useCountUp";
 import { fetchJson } from "../lib/fetcher";
@@ -261,12 +261,17 @@ export function DashboardCharts() {
   const validatedCount = findingSummary?.validated ?? 0;
 
   const sevTotals = engagements.reduce(
-    (acc, e) => ({
-      CRITICAL: acc.CRITICAL + e.findingsBySeverity.CRITICAL,
-      HIGH:     acc.HIGH     + e.findingsBySeverity.HIGH,
-      MEDIUM:   acc.MEDIUM   + e.findingsBySeverity.MEDIUM,
-      LOW:      acc.LOW      + e.findingsBySeverity.LOW,
-    }),
+    (acc, e) => {
+      // findingsBySeverity can be absent on a lean /api/engagements payload —
+      // guard it so one such engagement can't throw and blank the whole dashboard.
+      const s = e.findingsBySeverity;
+      return {
+        CRITICAL: acc.CRITICAL + (s?.CRITICAL ?? 0),
+        HIGH:     acc.HIGH     + (s?.HIGH ?? 0),
+        MEDIUM:   acc.MEDIUM   + (s?.MEDIUM ?? 0),
+        LOW:      acc.LOW      + (s?.LOW ?? 0),
+      };
+    },
     { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 },
   );
 
@@ -274,9 +279,7 @@ export function DashboardCharts() {
     .filter(([, v]) => v > 0)
     .map(([name, value]) => ({ name, value, color: SEV[name].color }));
 
-  const activeEngagements = stats.activeEngagements ?? engagements.filter((e) => e.status === "ACTIVE").length;
-  const totalFindings     = stats.totalFindings ?? engagements.reduce((s, e) => s + e.findingCount, 0);
-  const totalAssets       = stats.totalAssets   ?? engagements.reduce((s, e) => s + e.assetCount, 0);
+  const totalAssets       = stats.totalAssets   ?? engagements.reduce((s, e) => s + (e.assetCount ?? 0), 0);
 
   const slimTimeline = timeline.map((t, i) => ({
     ...t, displayDate: i % 5 === 0 ? t.date.slice(5) : "",
@@ -288,11 +291,12 @@ export function DashboardCharts() {
       {/* ── KPI Row ── */}
       <div className="dashboard-kpi-grid">
         {/* Trend arrows removed: there is no historical snapshot store to compute
-            a real delta, and a security console must never show fabricated deltas. */}
-        <KpiCard label="Total Findings"     value={isLoading ? 0 : totalFindings}    icon={<AlertTriangle size={14} />} accentColor="var(--sev-critical-color)" accentGlow="var(--sev-critical-glow)" delay={0}   loading={isLoading} />
-        <KpiCard label="Active Engagements" value={isLoading ? 0 : activeEngagements} icon={<TrendingUp    size={14} />} accentColor="var(--accent)"             accentGlow="var(--accent-glow)"       delay={50}  loading={isLoading} />
-        <KpiCard label="Assets Discovered"  value={isLoading ? 0 : totalAssets}       icon={<Users         size={14} />} accentColor="var(--sev-medium-color)"   accentGlow="var(--sev-medium-glow)"   delay={100} loading={isLoading} />
-        <KpiCard label="Validated Findings" value={isLoading ? 0 : validatedCount}    icon={<ShieldAlert   size={14} />} accentColor="var(--sev-high-color)"     accentGlow="var(--sev-high-glow)"     delay={150} loading={isLoading} />
+            a real delta, and a security console must never show fabricated deltas.
+            TASK 9: "Total Findings" and "Active Engagements" removed — they restated
+            the LiveOverview ledger's open-findings total and engagement count. The
+            two below are unique to this section (not on the ledger) and are kept. */}
+        <KpiCard label="Assets Discovered"  value={isLoading ? 0 : totalAssets}       icon={<Users         size={14} />} accentColor="var(--sev-medium-color)"   accentGlow="var(--sev-medium-glow)"   delay={0}   loading={isLoading} />
+        <KpiCard label="Validated Findings" value={isLoading ? 0 : validatedCount}    icon={<ShieldAlert   size={14} />} accentColor="var(--sev-high-color)"     accentGlow="var(--sev-high-glow)"     delay={50}  loading={isLoading} />
       </div>
 
       {/* ── Charts Row ── */}

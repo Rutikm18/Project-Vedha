@@ -27,6 +27,7 @@ API), so the same findings score the same on any machine, any day.
 """
 from __future__ import annotations
 
+import math
 import uuid
 
 import structlog
@@ -60,6 +61,27 @@ _EXPOSURE_DEFAULT = 0.5
 # Rank used to pick an asset's single strongest exposure across its services.
 _EXPOSURE_RANK = {"external": 4, "internet": 4, "partial": 3, "dmz": 3,
                   "internal": 2, "isolated": 1}
+
+
+def _posture_risk_on_manager_scale(evidence: object) -> float | None:
+    """Return an engine posture score on Finding.risk_score's 0-1000 scale.
+
+    Posture rules own a separate 0-100 model that already incorporates severity,
+    evidence state, reachability, and authentication.  Re-running the CVE formula
+    would both erase those signals (posture findings have no CVSS) and make them
+    incomparable with Manager findings.  `rule_id` is the provenance guard that
+    prevents arbitrary imported `risk_score` fields from receiving this conversion.
+    """
+    if not isinstance(evidence, dict) or not evidence.get("rule_id"):
+        return None
+    raw = evidence.get("risk_score")
+    try:
+        score = float(raw)
+    except (TypeError, ValueError):
+        return None
+    if not math.isfinite(score) or not 0.0 <= score <= 100.0:
+        return None
+    return round(score * 10.0, 2)
 
 
 def composite_risk_score(
@@ -170,7 +192,8 @@ async def prioritize_engagement_findings(
         crit = asset.criticality.value if asset and asset.criticality else "medium"
         exposure = exposure_by_asset.get(f.asset_id) if f.asset_id else None
 
-        score = composite_risk_score(
+        posture_score = _posture_risk_on_manager_scale(evidence)
+        score = posture_score if posture_score is not None else composite_risk_score(
             cvss=float(f.cvss_score) if f.cvss_score is not None else 0.0,
             epss=epss,
             kev=kev,

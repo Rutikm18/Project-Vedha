@@ -17,17 +17,17 @@ export type ExploitMaturity = "WEAPONIZED" | "POC" | "THEORETICAL";
 export type DetectionCoverage = "COVERED" | "PARTIAL" | "BLIND";
 
 // Core ramp — AA-compliant on white.
-const RED = "#DC2626";     // rose/red-600   ~4.8:1
+const RED = "#B91C1C";     // red-700: immediate security action
 const ORANGE = "#C2410C";  // orange-700     ~5.4:1
-const AMBER = "#B45309";   // amber-700      ~5.6:1
+const AMBER = "#A16207";   // amber-700: investigation / time-bounded action
 const GREEN = "#15803D";   // green-700      ~4.9:1
 const SKY = "#0369A1";     // sky-700        ~5.4:1
 const SLATE = "#64748B";   // slate-500 (neutral / not-applicable)
 const VIOLET = "#7C3AED";  // violet-600     ~5.0:1
-const BLUE = "#2563EB";    // blue-600 (in-progress / data)
+const BLUE = "#2563EB";    // blue-600 (low-risk observation / data)
 
 export const SEV_COLOR: Record<Severity, string> = {
-  CRITICAL: RED, HIGH: ORANGE, MEDIUM: AMBER, LOW: GREEN, INFO: SKY,
+  CRITICAL: RED, HIGH: ORANGE, MEDIUM: AMBER, LOW: BLUE, INFO: SKY,
 };
 
 export const STATUS_COLOR: Record<FindingStatus, string> = {
@@ -49,7 +49,11 @@ export const COVERAGE_COLOR: Record<DetectionCoverage, string> = {
 };
 
 export const PRIORITY_COLOR: Record<string, string> = {
-  P0: RED, P1: ORANGE, P2: AMBER, P3: SLATE,
+  P0: RED, P1: ORANGE, P2: AMBER, P3: BLUE, P4: SLATE, P5: SLATE,
+};
+
+export const PRIORITY_LABEL: Record<string, string> = {
+  P0: "Immediate", P1: "Urgent", P2: "Planned", P3: "Monitor", P4: "Low", P5: "Informational",
 };
 
 export const KILL_CHAIN_PHASE_COLOR: Record<string, string> = {
@@ -59,12 +63,12 @@ export const KILL_CHAIN_PHASE_COLOR: Record<string, string> = {
   "Collection": BLUE, "Exfiltration": RED, "Impact": RED,
 };
 
-/** Composite risk (0–1000) → color. */
+/** Manager finding risk (0–1000) → semantic response color. */
 export function riskScoreColor(score: number): string {
   if (score >= 800) return RED;
   if (score >= 600) return ORANGE;
   if (score >= 400) return AMBER;
-  return GREEN;
+  return BLUE;
 }
 
 /** EPSS probability (0–1) → color. */

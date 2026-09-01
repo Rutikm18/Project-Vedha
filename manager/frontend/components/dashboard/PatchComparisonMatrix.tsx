@@ -22,20 +22,20 @@ import { SEVERITY, toSeverity } from "../../lib/severity";
 import { Meter } from "../console/Primitives";
 
 const cell: React.CSSProperties = {
-  padding: "9px 10px",
+  padding: "var(--space-2) var(--space-3)",
   textAlign: "right",
   fontFamily: "var(--font-mono)",
   fontVariantNumeric: "tabular-nums",
-  fontSize: 12,
+  fontSize: "var(--fs-body-s)",
   color: "var(--text-primary)",
 };
 
 const head: React.CSSProperties = {
   ...cell,
   fontFamily: "var(--font-ui)",
-  fontSize: 9.5,
+  fontSize: "var(--fs-label)",
   fontWeight: 600,
-  letterSpacing: "0.09em",
+  letterSpacing: "0.06em",
   textTransform: "uppercase",
   color: "var(--text-muted)",
   paddingBottom: 8,
@@ -70,11 +70,11 @@ function NetChip({ net }: { net: number }) {
 export function PatchComparisonMatrix() {
   const { data, isLoading, error, refetch } = usePosture();
 
-  if (isLoading) return <div style={{ padding: 16 }}><SkeletonRows rows={5} height={34} /></div>;
+  if (isLoading) return <div style={{ padding: "var(--space-4)" }}><SkeletonRows rows={5} height={34} /></div>;
   if (error) return <ErrorState title="Patch comparison didn't load. The analytics service returned an error." onRetry={() => refetch()} />;
   if (!data?.has_runs || !data.matrix) {
     return (
-      <div style={{ padding: 28 }}>
+      <div style={{ padding: "var(--space-6)" }}>
         <EmptyState
           icon={GitCompareArrows}
           title="Nothing to compare yet"
@@ -90,7 +90,7 @@ export function PatchComparisonMatrix() {
 
   if (rows.length === 0) {
     return (
-      <div style={{ padding: 28 }}>
+      <div style={{ padding: "var(--space-6)" }}>
         <EmptyState icon={GitCompareArrows} title="No change between scans" hint="Neither scan found open findings on this scope." />
       </div>
     );
@@ -110,18 +110,20 @@ export function PatchComparisonMatrix() {
   const closedShare = totals.prev_open > 0 ? (totals.resolved / totals.prev_open) * 100 : 0;
 
   return (
-    <div style={{ padding: "12px 16px 6px" }}>
-      <table style={{ width: "100%", borderCollapse: "collapse" }}>
+    <div style={{ padding: "var(--space-3) var(--space-4) var(--space-2)" }}>
+      <div style={{ overflowX: "auto", overscrollBehaviorX: "contain" }}
+           tabIndex={0} role="region" aria-label="Scan comparison table, scrollable">
+      <table style={{ width: "100%", minWidth: 320, borderCollapse: "collapse" }}>
         <caption className="sr-only">
           Findings by severity, comparing the previous scan with the latest scan.
         </caption>
         <thead>
           <tr>
             <th scope="col" style={{ ...head, textAlign: "left" }}>Severity</th>
-            <th scope="col" style={head}>Was</th>
+            <th scope="col" style={head}>Before</th>
             <th scope="col" style={head}>New</th>
             <th scope="col" style={head}>Patched</th>
-            <th scope="col" style={head}>Now</th>
+            <th scope="col" style={head}>Open</th>
             <th scope="col" style={{ ...head, paddingRight: 0 }}>Net</th>
           </tr>
         </thead>
@@ -130,7 +132,7 @@ export function PatchComparisonMatrix() {
             const k = toSeverity(r.severity);
             const m = SEVERITY[k];
             return (
-              <tr key={r.severity} style={{ borderTop: "0.5px solid var(--border-subtle)" }}>
+              <tr key={r.severity} className="matrix-row" style={{ borderTop: "var(--hairline) solid var(--border-subtle)" }}>
                 <th
                   scope="row"
                   style={{
@@ -151,24 +153,25 @@ export function PatchComparisonMatrix() {
               </tr>
             );
           })}
-          <tr style={{ borderTop: "0.5px solid var(--border-strong)" }}>
+          <tr style={{ borderTop: "var(--hairline) solid var(--border-strong)" }}>
             <th scope="row" style={{ ...head, textAlign: "left", paddingLeft: 0, paddingTop: 10, color: "var(--text-secondary)" }}>
               All severities
             </th>
             <td style={{ ...n(totals.prev_open, "var(--text-secondary)"), paddingTop: 10 }}>{totals.prev_open}</td>
             <td style={{ ...n(totals.new, "var(--sev-high-color)"), paddingTop: 10 }}>{totals.new}</td>
             <td style={{ ...n(totals.resolved, "var(--nominal-color)"), paddingTop: 10 }}>{totals.resolved}</td>
-            <td style={{ ...n(totals.now_open), paddingTop: 10, fontWeight: 700 }}>{totals.now_open}</td>
+            <td style={{ ...cell, paddingTop: 10, fontWeight: 700, color: totals.now_open === 0 ? "var(--nominal-color)" : "var(--text-primary)" }}>{totals.now_open}</td>
             <td style={{ ...cell, paddingRight: 0, paddingTop: 10 }}><NetChip net={totals.net} /></td>
           </tr>
         </tbody>
       </table>
+      </div>
 
       {/* ---- what the numbers add up to, in one line ---------------------- */}
-      <div style={{ marginTop: 14, paddingTop: 12, borderTop: "0.5px solid var(--border-subtle)", display: "flex", flexDirection: "column", gap: 8 }}>
+      <div style={{ marginTop: 14, paddingTop: 12, borderTop: "var(--hairline) solid var(--border-subtle)", display: "flex", flexDirection: "column", gap: 8 }}>
         <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
           <span className="eyebrow">Closed since last scan</span>
-          <span className="num-mono" style={{ marginLeft: "auto", fontSize: 12, fontWeight: 700, color: "var(--nominal-color)" }}>
+          <span className="num-mono" style={{ marginLeft: "auto", fontSize: "var(--fs-body-s)", fontWeight: 700, color: "var(--nominal-color)" }}>
             {Math.round(closedShare)}%
           </span>
         </div>
@@ -178,7 +181,7 @@ export function PatchComparisonMatrix() {
           height={4}
           label={`${totals.resolved} of ${totals.prev_open} previously open findings patched`}
         />
-        <p style={{ margin: 0, fontFamily: "var(--font-ui)", fontSize: 11.5, color: "var(--text-muted)", lineHeight: 1.5 }}>
+        <p style={{ margin: 0, fontFamily: "var(--font-ui)", fontSize: "var(--fs-body-s)", color: "var(--text-muted)", lineHeight: 1.5 }}>
           {totals.resolved} patched, {totals.new} newly found
           {typeof data.persisting_count === "number" ? `, ${data.persisting_count} still open from before` : ""}.
           {typeof data.risk_burned_down === "number" && data.risk_burned_down > 0 && (

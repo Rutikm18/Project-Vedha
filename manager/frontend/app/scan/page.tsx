@@ -93,6 +93,19 @@ interface EngineManifest {
 ══════════════════════════════════════════════════════ */
 
 const NETWORK_VA_ID = "uc_network_va";
+// Product decision: the Scanner surface currently exposes only the complete
+// Network VA workflow. The catalog and Manager capabilities remain intact so
+// specialized use cases can be enabled later without a backend migration.
+const SHOW_EXTENDED_USE_CASES = false;
+const NETWORK_VA_FALLBACK: UseCase = {
+  use_case_id: NETWORK_VA_ID,
+  display_name: "Network Vulnerability Assessment",
+  description: "Discover assets, assess exposed services, correlate evidence, and prioritize remediation in one traceable campaign.",
+  scan_type: "network_va",
+  profile: "it",
+  expected_runtime_hint: "30–90 min per /24",
+  status: "available",
+};
 
 const UC_META: Record<string, { cat: string; icon: React.ReactNode; risk: "passive" | "low" | "medium" | "high" }> = {
   uc_network_va:           { cat: "Assessment",  icon: <Radar size={17} />,     risk: "high"    },
@@ -111,7 +124,7 @@ const UC_META: Record<string, { cat: string; icon: React.ReactNode; risk: "passi
 };
 
 const RISK: Record<string, { color: string; label: string }> = {
-  passive: { color: "#6ee7b7",                label: "Passive"  },
+  passive: { color: "var(--sev-low-color)",    label: "Passive"  },
   low:     { color: "var(--sev-low-color)",    label: "Low noise" },
   medium:  { color: "var(--sev-medium-color)", label: "Moderate" },
   high:    { color: "var(--sev-high-color)",   label: "Active"   },
@@ -120,7 +133,7 @@ const RISK: Record<string, { color: string; label: string }> = {
 const PROFILE_BADGE: Record<string, { label: string; color: string }> = {
   it:  { label: "IT",  color: "var(--accent)" },
   iot: { label: "IoT", color: "#f59e0b"       },
-  ot:  { label: "OT",  color: "#10b981"       },
+  ot:  { label: "OT",  color: "#7c3aed"       },
 };
 
 const CATS = ["All", "Discovery", "Assessment", "Targeted", "Specialized"] as const;
@@ -669,12 +682,12 @@ function DispatchReceipt({ payload }: { payload: Record<string, unknown> }) {
 export default function ScanPage() {
   const { success: toastOk, error: toastErr } = useToast();
 
-  const [useCases,    setUseCases]    = useState<UseCase[]>([]);
+  const [useCases,    setUseCases]    = useState<UseCase[]>([NETWORK_VA_FALLBACK]);
   const [probes,      setProbes]      = useState<Probe[]>([]);
   const [engagements, setEngagements] = useState<Engagement[]>([]);
   const [loadingData, setLoadingData] = useState(true);
 
-  const [selectedUc,  setSelectedUc]  = useState("");
+  const [selectedUc,  setSelectedUc]  = useState(NETWORK_VA_ID);
   const [selectedEng, setSelectedEng] = useState("");
   const [selectedProbe, setSelectedProbe] = useState("");
   const [targets,     setTargets]     = useState("");
@@ -856,7 +869,7 @@ export default function ScanPage() {
   }
 
   function reset() {
-    setSelectedUc("");
+    setSelectedUc(NETWORK_VA_ID);
     const nextEng = engagements.length === 1 ? engagements[0].id : "";
     setSelectedEng(nextEng);
     // Re-inherit the sole engagement's scope rather than blanking it.
@@ -897,7 +910,7 @@ export default function ScanPage() {
     <PageShell title="Scanner" subtitle="Compose and dispatch a scan to a field-deployed vedha-agent">
       <style>{STYLES}</style>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 1140 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 20, width: "100%", maxWidth: 1180 }}>
 
         <FleetStrip probes={probes} loading={loadingData} />
 
@@ -907,10 +920,18 @@ export default function ScanPage() {
           onConfigure={() => setSelectedUc(NETWORK_VA_ID)}
         />
 
-        <div className="scn-main-grid" style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 20, alignItems: "start" }}>
+        <div
+          className="scn-main-grid"
+          style={{
+            display: "grid",
+            gridTemplateColumns: SHOW_EXTENDED_USE_CASES ? "minmax(0, 1fr) 360px" : "minmax(0, 760px)",
+            gap: 20,
+            alignItems: "start",
+          }}
+        >
 
           {/* ── STEP 1 · Choose a scan ── */}
-          <section>
+          {SHOW_EXTENDED_USE_CASES && <section>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
               <SectionLabel num="01">Choose a scan</SectionLabel>
               {/* category filter pills */}
@@ -940,11 +961,11 @@ export default function ScanPage() {
                 ))}
               </div>
             )}
-          </section>
+          </section>}
 
           {/* ── STEP 2 · Configure & launch ── */}
-          <div className="scn-launch-panel" style={{ position: "sticky", top: 16 }}>
-            <SectionLabel num="02">Configure &amp; launch</SectionLabel>
+          <div className="scn-launch-panel" style={{ position: SHOW_EXTENDED_USE_CASES ? "sticky" : "static", top: 16, width: "100%" }}>
+            <SectionLabel num={SHOW_EXTENDED_USE_CASES ? "02" : undefined}>Configure &amp; launch</SectionLabel>
 
             <HudFrame active={!!ucObj} radius={14}>
             <div style={{ borderRadius: 14, border: "0.5px solid var(--border-subtle)", background: "var(--bg-panel)", boxShadow: "var(--shadow-md)", overflow: "hidden" }}>

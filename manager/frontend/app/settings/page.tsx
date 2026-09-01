@@ -209,14 +209,13 @@ function IntegrationSection({ kind }: { kind: keyof typeof INTEGRATIONS }) {
   });
   const saved = data?.find((i) => i.kind === kind);
 
-  const [config, setConfig] = useState<Record<string, string>>({});
+  const [configOverride, setConfigOverride] = useState<Record<string, string> | null>(null);
   const [secret, setSecret] = useState("");
-  const [enabled, setEnabled] = useState(true);
+  const [enabledOverride, setEnabledOverride] = useState<boolean | null>(null);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
-  React.useEffect(() => {
-    if (saved) { setConfig(saved.config ?? {}); setEnabled(saved.enabled); }
-  }, [saved]);
+  const config = configOverride ?? saved?.config ?? {};
+  const enabled = enabledOverride ?? saved?.enabled ?? true;
 
   const secretField = integration.fields.find((f) => f.secret);
   const configFields = integration.fields.filter((f) => !f.secret);
@@ -229,6 +228,8 @@ function IntegrationSection({ kind }: { kind: keyof typeof INTEGRATIONS }) {
         body: JSON.stringify({ config, secret: secret || null, enabled }),
       });
       setSecret("");
+      setConfigOverride(null);
+      setEnabledOverride(null);
       await refetch();
       setMsg("Saved — secret is encrypted server-side.");
     } catch (e) {
@@ -266,7 +267,7 @@ function IntegrationSection({ kind }: { kind: keyof typeof INTEGRATIONS }) {
             </span>
             <input style={inputStyle} placeholder={field.example}
               value={config[field.key] ?? ""}
-              onChange={(e) => setConfig((c) => ({ ...c, [field.key]: e.target.value }))} />
+              onChange={(e) => setConfigOverride({ ...config, [field.key]: e.target.value })} />
             <span style={{ fontSize: 10.5, color: "var(--text-muted)" }}>{field.purpose}</span>
           </label>
         ))}
@@ -282,7 +283,7 @@ function IntegrationSection({ kind }: { kind: keyof typeof INTEGRATIONS }) {
           </label>
         )}
         <label style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 12.5, color: "var(--text-secondary)" }}>
-          <input type="checkbox" checked={enabled} onChange={(e) => setEnabled(e.target.checked)} /> Enabled
+          <input type="checkbox" checked={enabled} onChange={(e) => setEnabledOverride(e.target.checked)} /> Enabled
         </label>
         <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <button onClick={() => void save()} disabled={saving}
@@ -324,18 +325,20 @@ function SlaSection() {
   const [form, setForm] = useState<SlaForm | null>(null);
   const [saving, setSaving] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
-  React.useEffect(() => {
-    if (data) setForm({
+  const savedForm: SlaForm | null = data
+    ? {
       critical_hours: data.critical_hours, high_hours: data.high_hours,
       medium_hours: data.medium_hours, low_hours: data.low_hours, info_hours: data.info_hours,
-    });
-  }, [data]);
+    }
+    : null;
+  const effectiveForm = form ?? savedForm;
 
   async function save() {
-    if (!form) return;
+    if (!effectiveForm) return;
     setSaving(true); setMsg(null);
     try {
-      await fetchJson("/api/sla-policy", { method: "PUT", body: JSON.stringify(form) });
+      await fetchJson("/api/sla-policy", { method: "PUT", body: JSON.stringify(effectiveForm) });
+      setForm(null);
       await refetch();
       setMsg("SLA policy saved — applies across every SLA surface.");
     } catch (e) {
@@ -355,9 +358,9 @@ function SlaSection() {
           <article key={row.key} style={{ "--severity": row.color } as React.CSSProperties}>
             <span /><div><strong>{row.severity}</strong><p>{row.intent}</p></div>
             <label style={{ display: "flex", alignItems: "center", gap: 8, justifySelf: "end" }}>
-              <input type="number" min={0} max={8760} disabled={!form}
-                value={form ? form[row.key] : ""}
-                onChange={(e) => setForm((f) => (f ? { ...f, [row.key]: Math.max(0, Number(e.target.value) || 0) } : f))}
+              <input type="number" min={0} max={8760} disabled={!effectiveForm}
+                value={effectiveForm ? effectiveForm[row.key] : ""}
+                onChange={(e) => effectiveForm && setForm({ ...effectiveForm, [row.key]: Math.max(0, Number(e.target.value) || 0) })}
                 style={{ width: 84, padding: "6px 8px", borderRadius: 7, textAlign: "right",
                   border: "0.5px solid var(--border-subtle)", background: "var(--bg-surface)",
                   color: "var(--text-primary)", font: "12px var(--font-mono)" }} />
@@ -367,10 +370,10 @@ function SlaSection() {
         ))}
       </div>
       <div style={{ display: "flex", alignItems: "center", gap: 12, marginTop: 12 }}>
-        <button onClick={() => void save()} disabled={saving || !form}
+        <button onClick={() => void save()} disabled={saving || !effectiveForm}
           style={{ display: "inline-flex", alignItems: "center", gap: 6, padding: "8px 14px",
             borderRadius: 8, border: "0.5px solid var(--border-accent)", background: "var(--accent-ghost)",
-            color: "var(--accent)", cursor: saving || !form ? "default" : "pointer", fontWeight: 600, fontSize: 12 }}>
+            color: "var(--accent)", cursor: saving || !effectiveForm ? "default" : "pointer", fontWeight: 600, fontSize: 12 }}>
           {saving ? "Saving…" : "Save SLA policy"}
         </button>
         {msg && <span style={{ fontSize: 11.5, color: "var(--text-muted)" }}>{msg}</span>}

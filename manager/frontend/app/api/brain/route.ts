@@ -116,7 +116,9 @@ export async function POST(req: Request) {
         context,
         provider: body.provider,
         model: body.model,
-        max_tokens: 900,
+        // The Manager prompt caps single-vulnerability briefs at 250 words.
+        // 500 tokens leaves enough room for headings without inviting sprawl.
+        max_tokens: 500,
       },
     });
     return NextResponse.json({

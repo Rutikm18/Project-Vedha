@@ -7,8 +7,8 @@ import { QueryProvider } from "../components/QueryProvider";
 import { AssistantProvider } from "../components/assistant/AssistantProvider";
 
 export const metadata: Metadata = {
-  title: "Vedha — Ops Platform",
-  description: "End-to-end autonomous red-team & security operations platform",
+  title: "Vedha — Network vulnerability operations",
+  description: "Evidence-led network vulnerability assessment and remediation operations",
 };
 
 export default function RootLayout({
@@ -25,12 +25,6 @@ export default function RootLayout({
             __html: `(function(){try{var s=localStorage.getItem('vedha-theme');var p=window.matchMedia('(prefers-color-scheme:dark)').matches?'dark':'light';document.documentElement.setAttribute('data-theme',s||p);}catch(e){document.documentElement.setAttribute('data-theme','light');}
 setTimeout(function(){document.documentElement.classList.add('theme-transition')},400);})();`,
           }}
-        />
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-          rel="stylesheet"
         />
       </head>
       <body className="antialiased">

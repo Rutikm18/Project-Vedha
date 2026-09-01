@@ -238,6 +238,12 @@ class Asset:
 _MERGE_DISPATCH = {
     "host_discovery": Asset._merge_host_discovery,
     "port_scan": Asset._merge_port_scan,
+    # SynScanner/MassScanner emit the SAME per-port fact shape as PortScanner but
+    # under their own scanner name. Without these aliases their open ports never
+    # populate `open_ports`, so the deep-scan gate only saw host_discovery's
+    # liveness port and skipped every TCP deep scanner (RDP/MSRPC/printer/DB/…).
+    "syn_scan": Asset._merge_port_scan,
+    "mass_scan": Asset._merge_port_scan,
     "service_banner": Asset._merge_service_banner,
     "tls_scan": Asset._merge_tls_scan,
     "web_scan": Asset._merge_web_scan,

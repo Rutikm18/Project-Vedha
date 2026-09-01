@@ -1,19 +1,18 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
 @import "tailwindcss";
 
 /* ═══════════════════════════════════════════════════════════════════════════
- *  VEDHA — Design System v9.0  "ARCTIC"
+ *  VEDHA — Design System v10.0  "SIGNAL"
  *
- *  Philosophy: Clean white canvas, refined indigo accent, subtle shadows.
- *  Light mode is the DEFAULT.  Dark mode uses the same accent hue — no
- *  jarring hue-switch between modes.
+ *  Philosophy: quiet operational surfaces with colour reserved for meaning.
+ *  Light mode is the default; dark mode preserves the same semantic roles.
  *
  *  Palette:
- *    White + warm greys   → 60%  — calm, professional, readable
- *    Indigo (4F46E5)      → 10%  — single accent: intent, not decoration
- *    Slate text hierarchy → 30%  — clear, accessible contrast
+ *    Slate neutrals       → structure and hierarchy
+ *    Teal                 → operator action, focus, active processing
+ *    Red/orange/amber     → critical/high/medium security urgency
+ *    Blue                 → low-risk observation; green is reserved for healthy
  *
- *  Typography:  Inter (body + headings + data — one family, clean)
+ *  Typography: native variable UI sans; tabular system mono for evidence/data
  *  Motion:      Apple HIG-inspired cubic-bezier curves, 150-300ms
  *  Shadows:     Subtle layered shadows (no glow unless interactive)
  *
@@ -38,16 +37,51 @@
   --radius-xl:  10px;
 
   /* ─── Spacing scale (4px base) — use instead of magic numbers ─── */
+  --space-0-5: 2px;   /* E1: sub-step for hairline-adjacent gaps */
   --space-1:  4px;
   --space-2:  8px;
   --space-3:  12px;
   --space-4:  16px;
   --space-5:  20px;
   --space-6:  24px;
+  --space-7:  32px;   /* E1 */
+  --space-8:  40px;   /* E1 */
 
-  --font-display: 'Inter', system-ui, sans-serif;
-  --font-body:    'Inter', system-ui, sans-serif;
-  --font-mono:    'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+  /* ─── E1: type scale — responsive display, fixed body/label (floor 11px) ─── */
+  --fs-display-xl: clamp(38px, 7vw, 52px); /* ledger headline only */
+  --fs-display-l:  clamp(30px, 5vw, 38px); /* posture grade only  */
+  --fs-display-m:  26px;                    /* metric readouts     */
+  --fs-display-s:  24px;                    /* SLA state counts    */
+  --fs-body:       13px;                    /* default body        */
+  --fs-body-s:     12px;                    /* dense body, floor   */
+  --fs-label:      11px;                    /* eyebrows, table heads (uppercase) */
+  --lh-tight: 1.1;
+  --lh-body:  1.5;
+
+  /* ─── E1: shape aliases (reuse existing --radius-*), + pill ─── */
+  --r-sm:  var(--radius-sm);
+  --r-lg:  var(--radius-lg);
+  --r-pill: 999px;
+
+  /* ─── E1: hairline — crisp 1px, thinned to 0.5px only on hi-dpi (see media below) ─── */
+  --hairline: 1px;
+
+  /* ─── E1: neutral track (replaces hardcoded rgba greys), theme-aware ─── */
+  --track-bg: color-mix(in srgb, var(--text-primary) 12%, transparent);
+
+  /* ─── E1: agent/probe BUSY — a STATE, not a severity ─── */
+  --state-busy: var(--accent);
+
+  /* ─── E1: data freshness ─── */
+  --fresh-ok:    var(--text-muted);
+  --fresh-stale: var(--sev-medium-color);
+
+  --font-display: -apple-system, BlinkMacSystemFont, "Segoe UI Variable Display", "Segoe UI", sans-serif;
+  --font-body:    -apple-system, BlinkMacSystemFont, "Segoe UI Variable Text", "Segoe UI", sans-serif;
+  --font-mono:    ui-monospace, "SFMono-Regular", "Cascadia Code", "Roboto Mono", Consolas, monospace;
+  /* E1 FIX: --font-ui was referenced across the dashboard but defined NOWHERE
+     (silently fell back to the browser default). Alias it to the body face. */
+  --font-ui:      var(--font-body);
 
   --theme-transition: background var(--dur-theme) ease,
                       border-color var(--dur-theme) ease,
@@ -55,10 +89,10 @@
                       box-shadow var(--dur-theme) ease;
 }
 
-/* ─── Light (DEFAULT) — "Arctic" white canvas ─── */
+/* ─── Light (DEFAULT) — low-glare operations canvas ─── */
 :root,
 :root[data-theme="light"] {
-  /* Backgrounds — pure white, warm undertone */
+  /* Backgrounds — cool, low-chroma surfaces reduce fatigue in dense tables. */
   --bg-root:    #F3F6FA;
   --bg-app:     #F3F6FA;
   --bg-panel:   #FFFFFF;
@@ -72,15 +106,15 @@
   --border-subtle:  #DCE3EC;
   --border-default: #C5D0DE;
   --border-strong:  #8EA0B5;
-  --border-accent:  rgba(79, 70, 229, 0.20);
+  --border-accent:  rgba(15, 118, 110, 0.24);
 
-  /* Brand — Indigo 600 */
-  --accent:         #4F46E5;
-  --accent-dim:     #4338CA;
-  --accent-hover:   #6366F1;
-  --accent-ghost:   rgba(79, 70, 229, 0.08);
-  --accent-glow:    rgba(79, 70, 229, 0.15);
-  --accent-pulse:   rgba(79, 70, 229, 0.30);
+  /* Operator accent — teal means action, selection, focus, or live processing. */
+  --accent:         #0F766E;
+  --accent-dim:     #115E59;
+  --accent-hover:   #0D9488;
+  --accent-ghost:   rgba(15, 118, 110, 0.08);
+  --accent-glow:    rgba(15, 118, 110, 0.15);
+  --accent-pulse:   rgba(15, 118, 110, 0.28);
 
   /* Text — slate scale */
   --text-primary:   #0F172A;
@@ -88,16 +122,16 @@
   --text-muted:     #6B7A90;
   --text-faint:     #A7B3C4;
 
-  /* Severity — saturated for light backgrounds */
-  --sev-critical-color: #DC2626;
+  /* Severity. Green is intentionally absent: it always means healthy/remediated. */
+  --sev-critical-color: #B91C1C;
   --sev-critical-dim:   #B91C1C;
   --sev-critical-bg:    rgba(220, 38, 38, 0.06);
   --sev-critical-glow:  rgba(220, 38, 38, 0.14);
-  --sev-high-color:     #EA580C;
+  --sev-high-color:     #C2410C;
   --sev-high-dim:       #C2410C;
   --sev-high-bg:        rgba(234, 88, 12, 0.06);
   --sev-high-glow:      rgba(234, 88, 12, 0.14);
-  --sev-medium-color:   #CA8A04;
+  --sev-medium-color:   #A16207;
   --sev-medium-dim:     #A16207;
   --sev-medium-bg:      rgba(202, 138, 4, 0.06);
   --sev-medium-glow:    rgba(202, 138, 4, 0.14);
@@ -118,7 +152,7 @@
   --shadow-md:   0 12px 30px rgba(15,23,42,0.075), 0 2px 8px rgba(15,23,42,0.045);
   --shadow-lg:   0 20px 48px rgba(15,23,42,0.10), 0 4px 14px rgba(15,23,42,0.055);
   --shadow-glow:   0 0 20px var(--accent-glow);
-  --shadow-accent: 0 2px 12px rgba(79,70,229,0.15);
+  --shadow-accent: 0 2px 12px rgba(15,118,110,0.15);
 
   /* Misc */
   --modal-backdrop:  rgba(15, 23, 42, 0.45);
@@ -142,14 +176,14 @@
   --border-subtle:  #1E2230;
   --border-default: #2A2E3C;
   --border-strong:  #3D4255;
-  --border-accent:  rgba(99, 102, 241, 0.20);
+  --border-accent:  rgba(45, 212, 191, 0.24);
 
-  --accent:         #818CF8;
-  --accent-dim:     #6366F1;
-  --accent-hover:   #A5B4FC;
-  --accent-ghost:   rgba(99, 102, 241, 0.10);
-  --accent-glow:    rgba(99, 102, 241, 0.20);
-  --accent-pulse:   rgba(99, 102, 241, 0.35);
+  --accent:         #5EEAD4;
+  --accent-dim:     #2DD4BF;
+  --accent-hover:   #99F6E4;
+  --accent-ghost:   rgba(45, 212, 191, 0.10);
+  --accent-glow:    rgba(45, 212, 191, 0.18);
+  --accent-pulse:   rgba(45, 212, 191, 0.32);
 
   --text-primary:   #F1F5F9;
   --text-secondary: #94A3B8;
@@ -183,7 +217,7 @@
   --shadow-md:   0 4px 14px rgba(0,0,0,0.50), 0 2px 4px rgba(0,0,0,0.35);
   --shadow-lg:   0 8px 36px rgba(0,0,0,0.60), 0 4px 8px rgba(0,0,0,0.45);
   --shadow-glow:   0 0 24px var(--accent-glow);
-  --shadow-accent: 0 4px 20px rgba(99,102,241,0.22);
+  --shadow-accent: 0 4px 20px rgba(45,212,191,0.20);
 
   --modal-backdrop:  rgba(0, 0, 0, 0.65);
   --scrollbar-track: #111318;
@@ -222,11 +256,38 @@ html, body {
   font-size: 14px;
   line-height: 1.5;
   margin: 0; padding: 0;
-  min-height: 100vh;
+  min-height: 100dvh;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   transition: var(--theme-transition);
+}
+
+::selection {
+  background: color-mix(in srgb, var(--accent) 24%, transparent);
+  color: var(--text-primary);
+}
+
+:where(button, a, input, select, textarea):focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}
+
+.campaign-result-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  color: var(--accent);
+  font-family: var(--font-body);
+  font-size: 11px;
+  font-weight: 650;
+  text-decoration: none;
+}
+
+.campaign-result-link:hover {
+  color: var(--accent-dim);
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
 html, body, div, header, footer, aside, main, section,
@@ -277,6 +338,10 @@ code, pre, .terminal, kbd, [class*="mono"], .font-mono {
   }
   .shimmer { animation: none !important; }
 }
+
+/* E1: crisp hairlines. 0.5px rounds to 0 on 1× displays (dividers vanish); only
+   thin the hairline where the device can actually render sub-pixel borders. */
+@media (min-resolution: 2dppx) { :root { --hairline: 0.5px; } }
 
 /* ─── Animation utilities ─── */
 .animate-pulse-dot       { animation: pulse 2s ease-in-out infinite; }
@@ -1310,6 +1375,7 @@ code, pre, .terminal, kbd, [class*="mono"], .font-mono {
   .engagement-metric-grid { grid-template-columns: repeat(2, 1fr); }
   .engagement-overview-grid { grid-template-columns: 1fr; }
   .engagement-toolbar { grid-template-columns: 1fr; gap: 0; padding-bottom: 8px; }
+  .engagement-toolbar nav { width: 100%; justify-content: flex-start; }
   .engagement-report-link { display: none; }
 }
 @media (max-width: 680px) {

@@ -20,6 +20,8 @@
  * with the policy engine.
  */
 import React, { useMemo, useState } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useQuery } from "@tanstack/react-query";
 import { Clock } from "lucide-react";
 import { fetchJson } from "../../lib/fetcher";
@@ -50,7 +52,13 @@ const VISIBLE_ROWS = 8;
 
 /** Time left, or "Overdue" once the window has closed. */
 function timeLabel(item: SlaItem): string {
-  if (item.state === "breached") return "Overdue";
+  if (item.state === "breached") {
+    const over = Math.abs(item.hoursRemaining ?? 0);
+    if (!over) return "Overdue";
+    if (over < 24) return `${Math.round(over)}h over`;
+    if (over < 24 * 14) return `${Math.round(over / 24)}d over`;
+    return `${Math.round(over / 168)}w over`;
+  }
   const h = item.hoursRemaining ?? 0;
   if (h < 1) return "<1h";
   if (h < 24) return `${Math.round(h)}h`;
@@ -86,11 +94,11 @@ function StateCell({
       aria-pressed={active}
       className="focusable"
       style={{
-        flex: 1, minWidth: 84, minHeight: 68, padding: "13px 12px",
+        minWidth: 0, minHeight: 68, padding: "var(--space-3)",
         display: "flex", flexDirection: "column", alignItems: "center", gap: 5,
         background: active ? st.bg : "transparent",
         border: "none",
-        borderRight: isLast ? "none" : "0.5px solid var(--border-subtle)",
+        borderRight: isLast ? "none" : "var(--hairline) solid var(--border-subtle)",
         borderBottom: `2px solid ${active ? st.color : "transparent"}`,
         cursor: disabled ? "default" : "pointer",
         transition: "background var(--dur-fast) var(--ease-out)",
@@ -102,14 +110,16 @@ function StateCell({
         <span
           className="num"
           style={{
-            fontFamily: "var(--font-display)", fontSize: 24, fontWeight: 650, lineHeight: 1,
+            fontFamily: "var(--font-display)", fontSize: "var(--fs-display-s)", fontWeight: 650, lineHeight: 1,
             color: disabled ? "var(--text-faint)" : st.color,
           }}
         >
           {value}
         </span>
       </span>
-      <span style={{ fontFamily: "var(--font-ui)", fontSize: 10.5, fontWeight: 500, color: "var(--text-muted)" }}>
+      <span style={{ fontFamily: "var(--font-ui)", fontSize: "var(--fs-label)",
+        fontWeight: active ? 700 : 500,
+        color: active ? "var(--text-primary)" : "var(--text-muted)" }}>
         {st.label}
       </span>
       {!disabled && <span className="sr-only">{active ? "Showing only" : "Show only"} {st.label.toLowerCase()} findings</span>}
@@ -125,20 +135,23 @@ function SlaRowView({ item }: { item: SlaItem }) {
   const sevKey = toSeverity(item.severity);
 
   return (
-    <div
-      className="console-row"
+    <Link
+      href={`/findings/${item.id}`}
+      className="console-row focusable"
       style={{
         "--rail": st.color,
-        display: "flex", alignItems: "center", gap: 12, padding: "11px 20px 11px 22px",
+        display: "flex", alignItems: "center", gap: "var(--space-3)", padding: "var(--space-3) var(--space-5)",
+        textDecoration: "none", color: "inherit",
       } as React.CSSProperties}
       title={deadlineTitle(item)}
+      aria-label={`${SEVERITY[sevKey].label} finding, ${st.label.toLowerCase()}, ${timeLabel(item)} — ${item.title}`}
     >
       <SeverityChip severity={sevKey} />
 
       <div style={{ flex: 1, minWidth: 0 }}>
         <div
           style={{
-            fontFamily: "var(--font-ui)", fontSize: 12.5, color: "var(--text-primary)",
+            fontFamily: "var(--font-ui)", fontSize: "var(--fs-body)", color: "var(--text-primary)",
             whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", marginBottom: 6,
           }}
         >
@@ -156,11 +169,11 @@ function SlaRowView({ item }: { item: SlaItem }) {
 
       <span
         className="num-mono"
-        style={{ fontSize: 11, fontWeight: 700, color: st.color, flexShrink: 0, minWidth: 60, textAlign: "right", letterSpacing: "-0.01em" }}
+        style={{ fontSize: "var(--fs-label)", fontWeight: 700, color: st.color, flexShrink: 0, minWidth: 60, textAlign: "right", letterSpacing: "-0.01em" }}
       >
         {timeLabel(item)}
       </span>
-    </div>
+    </Link>
   );
 }
 
@@ -173,7 +186,18 @@ export function SlaStatus() {
     refetchInterval: 60_000,
   });
 
-  const [filter, setFilter] = useState<SlaState | null>(null);
+  const router = useRouter();
+  const pathname = usePathname();
+  const params = useSearchParams();
+  // useSearchParams()/usePathname() can be null in some render phases — guard the
+  // deref so a transient null never throws (which would blank the whole page).
+  const filter = (params?.get("sla") as SlaState | null) ?? null;
+  const setFilter = (next: SlaState | null) => {
+    const p = new URLSearchParams(params?.toString() ?? "");
+    if (next) p.set("sla", next); else p.delete("sla");
+    router.replace(`${pathname ?? ""}?${p.toString()}`, { scroll: false });
+    setExpanded(false);
+  };
   const [expanded, setExpanded] = useState(false);
 
   const items = useMemo(() => data?.items ?? [], [data?.items]);
@@ -192,13 +216,13 @@ export function SlaStatus() {
     [ordered, filter]
   );
 
-  if (isLoading) return <div style={{ padding: 16 }}><SkeletonRows rows={4} height={44} /></div>;
+  if (isLoading) return <div style={{ padding: "var(--space-4)" }}><><SkeletonRows rows={1} height={68} /><div style={{ height: "var(--space-3)" }} /><SkeletonRows rows={4} height={46} /></></div>;
   if (error) return <ErrorState title="SLA status didn't load. The findings API returned an error." onRetry={() => refetch()} />;
 
   const s = data?.summary;
   if (!s || s.totalTracked === 0) {
     return (
-      <div style={{ padding: 28 }}>
+      <div style={{ padding: "var(--space-6)" }}>
         <EmptyState
           icon={Clock}
           title="Nothing under SLA yet"
@@ -219,7 +243,8 @@ export function SlaStatus() {
       <div
         role="group"
         aria-label="Filter by SLA state"
-        style={{ display: "flex", borderBottom: "0.5px solid var(--border-subtle)", background: "var(--bg-surface)" }}
+        className="sla-state-strip"
+        style={{ borderBottom: "var(--hairline) solid var(--border-subtle)", background: "var(--bg-surface)" }}
       >
         {(Object.keys(STATE) as SlaState[]).map((k, i, arr) => (
           <StateCell
@@ -227,7 +252,7 @@ export function SlaStatus() {
             state={k}
             value={counts[k]}
             active={filter === k}
-            onToggle={() => { setFilter(filter === k ? null : k); setExpanded(false); }}
+            onToggle={() => setFilter(filter === k ? null : k)}
             isLast={i === arr.length - 1}
           />
         ))}
@@ -236,17 +261,17 @@ export function SlaStatus() {
       {filter && (
         <div
           style={{
-            display: "flex", alignItems: "center", gap: 10, padding: "8px 20px",
-            borderBottom: "0.5px solid var(--border-subtle)",
-            fontFamily: "var(--font-ui)", fontSize: 11.5, color: "var(--text-muted)",
+            display: "flex", alignItems: "center", gap: "var(--space-3)", padding: "var(--space-2) var(--space-5)",
+            borderBottom: "var(--hairline) solid var(--border-subtle)",
+            fontFamily: "var(--font-ui)", fontSize: "var(--fs-body-s)", color: "var(--text-muted)",
           }}
         >
-          Showing {shown.length} {STATE[filter].label.toLowerCase()}
+          <span role="status" aria-live="polite">Showing {shown.length} {STATE[filter].label.toLowerCase()}</span>
           <button
             type="button"
             className="focusable"
             onClick={() => setFilter(null)}
-            style={{ marginLeft: "auto", background: "none", border: "none", padding: "4px 2px", color: "var(--accent)", cursor: "pointer", font: "inherit" }}
+            style={{ marginLeft: "auto", background: "none", border: "none", padding: "var(--space-1) var(--space-0-5)", color: "var(--accent)", cursor: "pointer", font: "inherit" }}
           >
             Clear filter
           </button>
@@ -255,19 +280,19 @@ export function SlaStatus() {
 
       {visible.map((it) => <SlaRowView key={it.id} item={it} />)}
 
-      {hidden > 0 && (
+      {(hidden > 0 || expanded) && (
         <button
           type="button"
           className="focusable"
-          onClick={() => setExpanded(true)}
+          onClick={() => setExpanded((v) => !v)}
           style={{
-            width: "100%", minHeight: 44, padding: "12px 20px", background: "none",
-            border: "none", borderTop: "0.5px solid var(--border-subtle)",
+            width: "100%", minHeight: 44, padding: "var(--space-3) var(--space-5)", background: "none",
+            border: "none", borderTop: "var(--hairline) solid var(--border-subtle)",
             color: "var(--accent)", cursor: "pointer",
-            fontFamily: "var(--font-ui)", fontSize: 12, textAlign: "left",
+            fontFamily: "var(--font-ui)", fontSize: "var(--fs-body-s)", textAlign: "left",
           }}
         >
-          Show {hidden} more
+          {expanded ? "Show fewer" : `Show ${hidden} more`}
         </button>
       )}
     </>

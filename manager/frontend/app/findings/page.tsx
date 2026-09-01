@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Copy, Check, Search, CheckCircle, Shield,
-  ArrowUpDown, ChevronLeft, ChevronRight, Link2, Brain, Tag,
+  AlertTriangle, BadgeCheck, ChevronDown, ChevronLeft, ChevronRight,
+  EyeOff, Flag, Link2, LoaderCircle, RotateCcw, Brain, Tag,
 } from "lucide-react";
 import { PageShell } from "../../components/PageShell";
 import { useAssistant } from "../../components/assistant/AssistantProvider";
@@ -14,7 +15,7 @@ import { errorMessage, fetchJson, isUnauthorized } from "../../lib/fetcher";
 import { DataState, SkeletonRows, EmptyState } from "../../components/states/DataState";
 import {
   SEV_COLOR, STATUS_COLOR, STATUS_LABEL, MATURITY_COLOR, COVERAGE_COLOR,
-  PRIORITY_COLOR, KILL_CHAIN_PHASE_COLOR, riskScoreColor, epssColor, SEV_PALETTE,
+  PRIORITY_COLOR, PRIORITY_LABEL, KILL_CHAIN_PHASE_COLOR, riskScoreColor, epssColor, SEV_PALETTE,
 } from "../../lib/severity";
 
 /* ─── Types ─── */
@@ -22,6 +23,7 @@ type Severity = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | "INFO";
 type FindingStatus = "OPEN" | "CONFIRMED" | "REMEDIATED" | "ACCEPTED" | "FALSE_POSITIVE";
 type ExploitMaturity = "WEAPONIZED" | "POC" | "THEORETICAL";
 type DetectionCoverage = "COVERED" | "PARTIAL" | "BLIND";
+type Priority = "P0" | "P1" | "P2" | "P3" | "P4" | "P5";
 const FINDINGS_PER_PAGE = 20;
 
 /* Lifecycle audit-trail event (backend /api/findings/{id}/events, snake_case). */
@@ -96,7 +98,7 @@ interface Finding {
   assignee?: string;
   tags?: string[];
   cves?: string[];
-  aiTriage: { priority: "P0" | "P1" | "P2" | "P3"; reasoning: string; recommendation: string; confidence: number };
+  aiTriage: { priority: Priority; reasoning: string; recommendation: string; confidence: number };
   // ── P2/P4 verification + lifecycle ──
   verificationState?: string | null;
   verificationConfidence?: number | null;
@@ -156,7 +158,7 @@ function CopyBtn({ text }: { text: string }) {
       type="button"
       aria-label={copied ? "Copied command" : "Copy command"}
       onClick={() => { navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
-      style={{ background: "none", border: "none", cursor: "pointer", color: copied ? "#059669" : "#64748B", padding: "2px 4px" }}>
+      style={{ background: "none", border: "none", cursor: "pointer", color: copied ? "var(--nominal-color)" : "var(--text-muted)", padding: "2px 4px" }}>
       {copied ? <Check size={12} /> : <Copy size={12} />}
     </button>
   );
@@ -172,6 +174,67 @@ function SevBadge({ s }: { s: Severity }) {
   );
 }
 
+/* Priority is response order, not technical severity. Always render the plain
+ * language meaning so the P-code is never a color-only or acronym-only signal. */
+function PriorityBadge({ priority, compact = false }: { priority: Priority; compact?: boolean }) {
+  const color = PRIORITY_COLOR[priority];
+  const label = PRIORITY_LABEL[priority];
+  return (
+    <span
+      title={`${priority}: ${label} response priority`}
+      style={{
+        display: "inline-flex", alignItems: "center", gap: 4,
+        fontFamily: "var(--font-ui)", fontSize: compact ? 9 : 10,
+        padding: compact ? "2px 6px" : "3px 8px", borderRadius: 999,
+        background: `color-mix(in srgb, ${color} 10%, transparent)`,
+        color, border: `var(--hairline) solid color-mix(in srgb, ${color} 35%, transparent)`,
+        fontWeight: 700, whiteSpace: "nowrap",
+      }}
+    >
+      <span style={{ fontFamily: "var(--font-mono)" }}>{priority}</span>
+      <span aria-hidden>·</span>
+      <span>{label}</span>
+    </span>
+  );
+}
+
+function TriageKey() {
+  const severityMeaning: Array<{ severity: Severity; meaning: string }> = [
+    { severity: "CRITICAL", meaning: "Immediate material exposure" },
+    { severity: "HIGH", meaning: "Serious exploitable weakness" },
+    { severity: "MEDIUM", meaning: "Time-bounded remediation" },
+    { severity: "LOW", meaning: "Monitor and harden" },
+    { severity: "INFO", meaning: "Context or hygiene signal" },
+  ];
+  const priorities: Priority[] = ["P0", "P1", "P2", "P3", "P4", "P5"];
+  return (
+    <details className="findings-triage-key">
+      <summary>
+        <span>
+          <strong>How Vedha prioritizes findings</strong>
+          <small>Severity = impact · Priority = response order · Risk = Manager score from 0–1000</small>
+        </span>
+        <ChevronDown size={16} aria-hidden />
+      </summary>
+      <div className="findings-triage-key-body">
+        <div className="findings-triage-concepts">
+          <div><strong>Severity</strong><span>Technical consequence if the weakness is exploited.</span></div>
+          <div><strong>Priority</strong><span>Response order after evidence, exploitability, asset context, and SLA.</span></div>
+          <div><strong>Risk</strong><span>Backend-computed ranking signal; it does not replace severity or analyst judgment.</span></div>
+        </div>
+        <div className="findings-severity-key" aria-label="Severity meanings">
+          {severityMeaning.map(({ severity, meaning }) => (
+            <span key={severity}><i style={{ background: SEV_COLOR[severity] }} /> <b>{severity}</b><em>{meaning}</em></span>
+          ))}
+        </div>
+        <div className="findings-priority-key" aria-label="Priority meanings">
+          {priorities.map((priority) => <PriorityBadge priority={priority} compact key={priority} />)}
+        </div>
+      </div>
+    </details>
+  );
+}
+
 /* ─── Risk Score Badge ─── */
 function RiskBadge({ score }: { score: number }) {
   const c = riskScoreColor(score);
@@ -180,7 +243,7 @@ function RiskBadge({ score }: { score: number }) {
       fontFamily: "var(--font-mono)", fontSize: 10, padding: "2px 8px", borderRadius: 4,
       background: `${c}15`, color: c, border: `1px solid ${c}30`, fontWeight: 700,
     }}>
-      RISK {score}
+      RISK {score}/1000
     </span>
   );
 }
@@ -189,11 +252,12 @@ function RiskBadge({ score }: { score: number }) {
 function KevBadge() {
   return (
     <span style={{
+      display: "inline-flex", alignItems: "center", gap: 4,
       fontFamily: "var(--font-mono)", fontSize: 9, padding: "2px 6px", borderRadius: 4,
       background: `${SEV_PALETTE.RED}15`, color: SEV_PALETTE.RED, border: `1px solid ${SEV_PALETTE.RED}55`,
       fontWeight: 700, letterSpacing: 0.5,
     }}>
-      ⚠ KEV
+      <AlertTriangle size={10} aria-hidden /> KEV
     </span>
   );
 }
@@ -202,8 +266,8 @@ function KevBadge() {
 const VERIFICATION_META: Record<string, { label: string; color: string; strike?: boolean }> = {
   confirmed:    { label: "CONFIRMED",    color: SEV_PALETTE.GREEN },
   corroborated: { label: "CORROBORATED", color: SEV_PALETTE.BLUE },
-  inferred:     { label: "INFERRED",     color: "#64748B" },
-  contradicted: { label: "CONTRADICTED", color: "#64748B", strike: true },
+  inferred:     { label: "INFERRED",     color: SEV_PALETTE.SLATE },
+  contradicted: { label: "CONTRADICTED", color: SEV_PALETTE.SLATE, strike: true },
 };
 function VerificationBadge({ state }: { state?: string | null }) {
   if (!state) return null;
@@ -268,13 +332,14 @@ function StatusBadge({ s, onClick }: { s: FindingStatus; onClick?: () => void })
 /* ─── Detection Coverage Pill ─── */
 function DetectionPill({ cov }: { cov: DetectionCoverage }) {
   const c = COVERAGE_COLOR[cov];
-  const icon = cov === "COVERED" ? "◉" : cov === "PARTIAL" ? "◑" : "○";
+  const Icon = cov === "COVERED" ? CheckCircle : cov === "PARTIAL" ? Shield : EyeOff;
   return (
     <span style={{
+      display: "inline-flex", alignItems: "center", gap: 4,
       fontFamily: "var(--font-mono)", fontSize: 9, padding: "2px 6px", borderRadius: 4,
       background: `${c}12`, color: c, border: `1px solid ${c}30`,
     }}>
-      {icon} {cov}
+      <Icon size={10} aria-hidden /> {cov}
     </span>
   );
 }
@@ -293,8 +358,12 @@ function EpssBar({ score, percentile }: { score: number; percentile: number }) {
           {Math.round(percentile * 100)}th pct
         </span>
       </div>
-      <div style={{ height: 4, background: "rgba(100,116,139,0.2)", borderRadius: 2, overflow: "hidden" }}>
-        <div style={{ height: "100%", width: `${pct}%`, background: color, borderRadius: 2, transition: "width 0.4s ease" }} />
+      <div style={{ height: 4, background: "var(--track-bg)", borderRadius: 2, overflow: "hidden" }}>
+        <div style={{
+          height: "100%", width: "100%", background: color, borderRadius: 2,
+          transform: `scaleX(${pct / 100})`, transformOrigin: "left center",
+          transition: "transform 0.4s ease-out",
+        }} />
       </div>
     </div>
   );
@@ -310,11 +379,14 @@ function RiskBreakdownBar({ breakdown }: { breakdown: RiskBreakdown }) {
     { key: "asset",   label: "ASSET",   color: SEV_PALETTE.AMBER,  value: breakdown.asset },
     { key: "lateral", label: "LATERAL", color: SEV_PALETTE.GREEN,  value: breakdown.lateral },
   ];
+  // Show contribution proportions without assuming whether the canonical score
+  // is 0–100 or 0–1000. The score-scale decision is owned by the backend policy.
+  const recordedTotal = segments.reduce((total, segment) => total + Math.max(0, segment.value), 0);
   return (
     <div>
       <div style={{ height: 8, display: "flex", borderRadius: 4, overflow: "hidden", marginBottom: 6 }}>
         {segments.map((s) => (
-          <div key={s.key} style={{ width: `${(s.value / 1000) * 100}%`, background: s.color }} title={`${s.label}: ${s.value}`} />
+          <div key={s.key} style={{ width: `${recordedTotal ? (Math.max(0, s.value) / recordedTotal) * 100 : 0}%`, background: s.color }} title={`${s.label}: ${s.value}`} />
         ))}
       </div>
       <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
@@ -336,7 +408,7 @@ function KillChainViz({ steps }: { steps: KillChainStep[] }) {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
       {steps.map((step, i) => {
-        const color = KILL_CHAIN_PHASE_COLOR[step.phase] ?? "#64748B";
+        const color = KILL_CHAIN_PHASE_COLOR[step.phase] ?? SEV_PALETTE.SLATE;
         return (
           <div key={i} style={{ display: "flex", gap: 0, alignItems: "stretch" }}>
             {/* Timeline line */}
@@ -364,10 +436,10 @@ function KillChainViz({ steps }: { steps: KillChainStep[] }) {
                   </span>
                 )}
               </div>
-              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 12, fontWeight: 600, color: "var(--text-primary)", marginBottom: 1 }}>
+              <div style={{ fontFamily: "var(--font-ui)", fontSize: 12, fontWeight: 600, color: "var(--text-primary)", marginBottom: 1 }}>
                 {step.technique}
               </div>
-              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 11, color: "var(--text-secondary)", lineHeight: 1.4 }}>
+              <div style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: "var(--text-secondary)", lineHeight: 1.4 }}>
                 {step.description}
               </div>
             </div>
@@ -387,30 +459,30 @@ function RemediationChecklist({ steps }: { steps: (string | RemStep)[] }) {
           return (
             <div key={i} style={{ display: "flex", gap: 10, alignItems: "flex-start" }}>
               <span aria-hidden style={{ color: "var(--accent)", marginTop: 2 }}>•</span>
-              <span style={{ fontFamily: "'Inter', sans-serif", fontSize: 13, color: "var(--text-primary)", lineHeight: 1.5 }}>{s}</span>
+              <span style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: "var(--text-primary)", lineHeight: 1.5 }}>{s}</span>
             </div>
           );
         }
         const done = s.completed;
         return (
-          <div key={i} style={{ background: "var(--bg-app)", border: `1px solid ${done ? "rgba(5,150,105,0.2)" : "var(--border-subtle)"}`, borderRadius: 6, padding: "10px 12px" }}>
+          <div key={i} style={{ background: "var(--bg-app)", border: `var(--hairline) solid ${done ? "var(--nominal-edge)" : "var(--border-subtle)"}`, borderRadius: 6, padding: "10px 12px" }}>
             <div style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: s.command ? 8 : 0 }}>
               <div role="img" aria-label={done ? "Completed" : "Not completed"} style={{
                 width: 16, height: 16, borderRadius: 4, flexShrink: 0, marginTop: 2,
-                background: done ? "rgba(5,150,105,0.2)" : "transparent",
-                border: `1.5px solid ${done ? "#059669" : "#E2E8F0"}`,
+                background: done ? "var(--nominal-bg)" : "transparent",
+                border: `1.5px solid ${done ? "var(--nominal-color)" : "var(--border-strong)"}`,
                 display: "flex", alignItems: "center", justifyContent: "center",
               }}>
-                {done && <Check size={10} color="#059669" />}
+                {done && <Check size={10} color="var(--nominal-color)" />}
               </div>
               <div style={{ flex: 1 }}>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontFamily: "'Inter', sans-serif", fontSize: 13, fontWeight: 600, color: done ? "#64748B" : "var(--text-primary)", textDecoration: done ? "line-through" : "none" }}>
+                  <span style={{ fontFamily: "var(--font-ui)", fontSize: 13, fontWeight: 600, color: done ? "var(--text-muted)" : "var(--text-primary)", textDecoration: done ? "line-through" : "none" }}>
                     Step {s.step}: {s.title}
                   </span>
                   <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--text-secondary)" }}>~{s.estimatedHours}h</span>
                 </div>
-                <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 12, color: "var(--text-secondary)", marginTop: 2 }}>{s.description}</div>
+                <div style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "var(--text-secondary)", marginTop: 2 }}>{s.description}</div>
               </div>
             </div>
             {s.command && (
@@ -421,12 +493,12 @@ function RemediationChecklist({ steps }: { steps: (string | RemStep)[] }) {
             )}
             {s.verification && (
               <div style={{ marginTop: 4, display: "flex", gap: 6, alignItems: "center" }}>
-                <CheckCircle size={10} color="#059669" />
-                <code style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "#059669" }}>Verify: {s.verification}</code>
+                <CheckCircle size={10} color="var(--nominal-color)" />
+                <code style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--nominal-color)" }}>Verify: {s.verification}</code>
               </div>
             )}
             {s.completedBy && (
-              <div style={{ marginTop: 4, fontFamily: "var(--font-mono)", fontSize: 9, color: "#059669" }}>
+              <div style={{ marginTop: 4, fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--nominal-color)" }}>
                 ✓ Completed by {s.completedBy}
               </div>
             )}
@@ -514,7 +586,7 @@ function HistoryTimeline({ findingId }: { findingId: string }) {
       <div style={{
         display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap",
         padding: "10px 14px", marginBottom: 14, borderRadius: 10,
-        background: "var(--bg-panel)", border: "0.5px solid var(--border-subtle)",
+        background: "var(--bg-panel)", border: "var(--hairline) solid var(--border-subtle)",
       }}>
         <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--text-secondary)", letterSpacing: 0.8, fontWeight: 700 }}>
           EVENT HISTORY
@@ -561,7 +633,7 @@ function HistoryTimeline({ findingId }: { findingId: string }) {
               {/* Event content */}
               <div style={{ flex: 1, paddingBottom: last ? 0 : 14, paddingLeft: 10 }}>
                 <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", marginBottom: 3 }}>
-                  <span title={fmtEventTs(ev.occurred_at)} style={{ fontFamily: "'Inter', sans-serif", fontSize: 12, color: "var(--text-primary)", fontWeight: 600 }}>
+                  <span title={fmtEventTs(ev.occurred_at)} style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "var(--text-primary)", fontWeight: 600 }}>
                     {fmtRelativeTs(ev.occurred_at)}
                   </span>
                   <span style={{
@@ -582,7 +654,7 @@ function HistoryTimeline({ findingId }: { findingId: string }) {
                     </span>
                   )}
                 </div>
-                <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", fontFamily: "'Inter', sans-serif", fontSize: 12, color: "var(--text-primary)", lineHeight: 1.4 }}>
+                <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap", fontFamily: "var(--font-ui)", fontSize: 12, color: "var(--text-primary)", lineHeight: 1.4 }}>
                   <span>
                     {ev.actor ? <span style={{ color: "var(--accent)" }}>{ev.actor}</span> : <span style={{ color: "var(--text-secondary)" }}>system</span>}
                     {ev.from_status && ev.to_status && (
@@ -632,7 +704,6 @@ function FindingDetail({ f, allFindings, onStatusChange, statusUpdating, onReope
   ];
 
   const related = allFindings.filter((r) => r.id !== f.id && (f.relatedFindings ?? []).includes(r.id));
-  const pc = PRIORITY_COLOR[f.aiTriage.priority];
   const hasAiTriage = Boolean(f.aiTriage.reasoning || f.aiTriage.recommendation) && f.aiTriage.confidence > 0;
   const cveIds = [...new Set([...(f.cves ?? []), ...(f.tags ?? [])].filter((value) => /^CVE-\d{4}-\d{4,7}$/i.test(value)))];
   const firstRemediation = f.remediation.map((step) =>
@@ -654,13 +725,7 @@ function FindingDetail({ f, allFindings, onStatusChange, statusUpdating, onReope
           <NeedsReviewChip show={f.needsReview} />
           <RegressionBadge show={f.regression} />
           <AutoResolvedBadge method={f.resolutionMethod} reopenedCount={f.reopenedCount} />
-          <span style={{
-            fontFamily: "var(--font-mono)", fontSize: 9,
-            color: pc, background: `${pc}15`, border: `1px solid ${pc}30`,
-            borderRadius: 4, padding: "2px 6px", fontWeight: 700,
-          }}>
-            {f.aiTriage.priority}
-          </span>
+          <PriorityBadge priority={f.aiTriage.priority} compact />
           <DetectionPill cov={f.detectionCoverage} />
           {f.exploitMaturityRecorded && (
             <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: MATURITY_COLOR[f.exploitMaturity], background: `${MATURITY_COLOR[f.exploitMaturity]}12`, border: `1px solid ${MATURITY_COLOR[f.exploitMaturity]}25`, borderRadius: 4, padding: "2px 6px" }}>
@@ -692,7 +757,7 @@ function FindingDetail({ f, allFindings, onStatusChange, statusUpdating, onReope
             </button>
           )}
         </div>
-        <h2 style={{ fontFamily: "'Inter', sans-serif", fontSize: 17, fontWeight: 700, color: "var(--text-primary)", margin: 0, lineHeight: 1.3 }}>{f.title}</h2>
+        <h2 style={{ fontFamily: "var(--font-ui)", fontSize: 17, fontWeight: 700, color: "var(--text-primary)", margin: 0, lineHeight: 1.3 }}>{f.title}</h2>
         <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-secondary)", marginTop: 5 }}>
           {f.id} · {f.category} · {f.affectedHost}
           {f.assignee && <span style={{ color: "var(--accent)", marginLeft: 8 }}>@{f.assignee}</span>}
@@ -726,7 +791,7 @@ function FindingDetail({ f, allFindings, onStatusChange, statusUpdating, onReope
         {f.businessImpact && (
           <div style={{ marginTop: 10, padding: "7px 10px", background: `${SEV_COLOR[f.severity]}08`, border: `1px solid ${SEV_COLOR[f.severity]}18`, borderRadius: 5 }}>
             <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: SEV_COLOR[f.severity] }}>BUSINESS IMPACT</span>
-            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 12, color: "var(--text-primary)", marginTop: 3 }}>{f.businessImpact}</div>
+            <div style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "var(--text-primary)", marginTop: 3 }}>{f.businessImpact}</div>
           </div>
         )}
       </div>
@@ -742,7 +807,7 @@ function FindingDetail({ f, allFindings, onStatusChange, statusUpdating, onReope
       </section>
 
       {/* ── AI Triage Panel ── */}
-      {hasAiTriage && <div style={{ padding: "10px 18px", borderBottom: "1px solid var(--border-subtle)", background: "rgba(37,99,235,0.03)" }}>
+      {hasAiTriage && <div style={{ padding: "10px 18px", borderBottom: "var(--hairline) solid var(--border-subtle)", background: "var(--accent-ghost)" }}>
         <div style={{ display: "flex", gap: 6, alignItems: "flex-start" }}>
           <Brain size={13} color="var(--accent)" style={{ flexShrink: 0, marginTop: 1 }} />
           <div style={{ flex: 1 }}>
@@ -752,9 +817,9 @@ function FindingDetail({ f, allFindings, onStatusChange, statusUpdating, onReope
                 {Math.round(f.aiTriage.confidence * 100)}% confidence
               </span>
             </div>
-            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 12, color: "var(--text-primary)", lineHeight: 1.5, marginBottom: 5 }}>{f.aiTriage.reasoning}</div>
-            <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 12, color: "#059669", lineHeight: 1.5 }}>
-              <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "#059669" }}>RECOMMEND: </span>
+            <div style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "var(--text-primary)", lineHeight: 1.5, marginBottom: 5 }}>{f.aiTriage.reasoning}</div>
+            <div style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "var(--accent)", lineHeight: 1.5 }}>
+              <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--accent)" }}>RECOMMEND: </span>
               {f.aiTriage.recommendation}
             </div>
           </div>
@@ -784,7 +849,7 @@ function FindingDetail({ f, allFindings, onStatusChange, statusUpdating, onReope
       <div style={{ display: "flex", borderBottom: "1px solid var(--border-subtle)", overflowX: "auto" }}>
         {(["overview", "intel", "evidence", "remediation", "compliance", "history"] as const).map((t) => (
           <button key={t} onClick={() => setTab(t)} style={{
-            padding: "8px 14px", background: tab === t ? "rgba(37,99,235,0.04)" : "transparent",
+            padding: "8px 14px", background: tab === t ? "var(--accent-ghost)" : "transparent",
             border: "none", borderBottom: tab === t ? "2px solid var(--accent)" : "2px solid transparent",
             color: tab === t ? "var(--text-primary)" : "var(--text-secondary)",
             fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: 0.8,
@@ -802,7 +867,7 @@ function FindingDetail({ f, allFindings, onStatusChange, statusUpdating, onReope
           <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
             <div>
               <div style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--text-secondary)", marginBottom: 5 }}>DESCRIPTION</div>
-              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 13, color: "var(--text-primary)", lineHeight: 1.6, marginBottom: 14 }}>{f.description || "No finding description has been recorded."}</div>
+              <div style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: "var(--text-primary)", lineHeight: 1.6, marginBottom: 14 }}>{f.description || "No finding description has been recorded."}</div>
 
               <div style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--text-secondary)", marginBottom: 8 }}>KILL CHAIN</div>
               {f.killChain.length ? <KillChainViz steps={f.killChain} /> : <div className="finding-data-missing">No kill-chain path has been recorded.</div>}
@@ -816,7 +881,7 @@ function FindingDetail({ f, allFindings, onStatusChange, statusUpdating, onReope
                     <div key={r.id} style={{ display: "flex", gap: 6, alignItems: "center", padding: "5px 8px", background: "var(--bg-panel)", borderRadius: 4, marginBottom: 4 }}>
                       <div style={{ width: 6, height: 6, borderRadius: "50%", background: SEV_COLOR[r.severity], flexShrink: 0 }} />
                       <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--accent)" }}>{r.id}</span>
-                      <span style={{ fontFamily: "'Inter', sans-serif", fontSize: 11, color: "var(--text-primary)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.title}</span>
+                      <span style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: "var(--text-primary)", flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{r.title}</span>
                       <RiskBadge score={r.riskScore} />
                     </div>
                   ))}
@@ -825,14 +890,14 @@ function FindingDetail({ f, allFindings, onStatusChange, statusUpdating, onReope
             </div>
             <div>
               <div style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--text-secondary)", marginBottom: 5 }}>TECHNICAL DETAILS</div>
-              <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 13, color: "var(--text-primary)", lineHeight: 1.6, marginBottom: 12 }}>{f.technicalDetails || "No additional technical narrative has been recorded."}</div>
+              <div style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: "var(--text-primary)", lineHeight: 1.6, marginBottom: 12 }}>{f.technicalDetails || "No additional technical narrative has been recorded."}</div>
 
               <div style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--text-secondary)", marginBottom: 6 }}>MITRE ATT&CK</div>
               {!f.mitre.length && <div className="finding-data-missing">No MITRE ATT&amp;CK technique is mapped.</div>}
               {f.mitre.map((m) => (
                 <div key={m.id} style={{ display: "flex", gap: 8, marginBottom: 4, alignItems: "center" }}>
                   <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--accent)", flexShrink: 0 }}>{m.id}</span>
-                  <span style={{ fontFamily: "'Inter', sans-serif", fontSize: 12, color: "var(--text-secondary)" }}>{m.name}</span>
+                  <span style={{ fontFamily: "var(--font-ui)", fontSize: 12, color: "var(--text-secondary)" }}>{m.name}</span>
                 </div>
               ))}
 
@@ -870,7 +935,7 @@ function FindingDetail({ f, allFindings, onStatusChange, statusUpdating, onReope
                   EPSS · EXPLOIT PREDICTION SCORING
                 </div>
                 {f.epssRecorded ? <EpssBar score={f.epssScore} percentile={f.epssPercentile} /> : <div className="finding-data-missing">EPSS enrichment is not recorded.</div>}
-                <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 11, color: "var(--text-secondary)", marginTop: 8, lineHeight: 1.4 }}>
+                <div style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: "var(--text-secondary)", marginTop: 8, lineHeight: 1.4 }}>
                   {f.epssRecorded ? f.epssScore > 0.5
                     ? `Top ${(100 - f.epssPercentile * 100).toFixed(1)}% most likely to be exploited in the next 30 days (FIRST.org model).`
                     : "Use EPSS as one prioritization signal; it does not prove exploitation."
@@ -883,13 +948,13 @@ function FindingDetail({ f, allFindings, onStatusChange, statusUpdating, onReope
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 4 }}>
                   <div style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--text-secondary)" }}>CISA KEV STATUS</div>
                   {f.kevStatusRecorded && f.kevListed ? <KevBadge /> : f.kevStatusRecorded ? (
-                    <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "#64748B", background: "rgba(100,116,139,0.1)", border: "1px solid rgba(100,116,139,0.2)", borderRadius: 3, padding: "1px 5px" }}>NOT LISTED</span>
+                    <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--text-muted)", background: "var(--bg-surface)", border: "var(--hairline) solid var(--border-subtle)", borderRadius: 3, padding: "1px 5px" }}>NOT LISTED</span>
                   ) : <span className="badge badge-info">NOT ENRICHED</span>}
                 </div>
                 {f.kevListed && f.kevDateAdded && (
                   <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: SEV_PALETTE.RED }}>Added {f.kevDateAdded}</div>
                 )}
-                <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 11, color: "var(--text-secondary)", marginTop: 6, lineHeight: 1.4 }}>
+                <div style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: "var(--text-secondary)", marginTop: 6, lineHeight: 1.4 }}>
                   {f.kevStatusRecorded ? f.kevListed
                     ? "Actively exploited in the wild per CISA. Mandatory patching deadline applies to federal agencies. Treat as highest priority."
                     : "The recorded enrichment did not identify this CVE in CISA KEV."
@@ -901,14 +966,14 @@ function FindingDetail({ f, allFindings, onStatusChange, statusUpdating, onReope
               {f.fpProbabilityRecorded && <div style={{ background: "var(--bg-panel)", border: "1px solid var(--border-subtle)", borderRadius: 6, padding: "12px 14px" }}>
                 <div style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--text-secondary)", marginBottom: 6 }}>FALSE POSITIVE PROBABILITY</div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div style={{ height: 4, flex: 1, background: "rgba(100,116,139,0.2)", borderRadius: 2, overflow: "hidden", marginRight: 10 }}>
+                  <div style={{ height: 4, flex: 1, background: "var(--track-bg)", borderRadius: 2, overflow: "hidden", marginRight: 10 }}>
                     <div style={{ height: "100%", width: `${f.fpProbability * 100}%`, background: f.fpProbability < 0.1 ? SEV_PALETTE.GREEN : f.fpProbability < 0.3 ? SEV_PALETTE.AMBER : SEV_PALETTE.RED, borderRadius: 2 }} />
                   </div>
                   <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: f.fpProbability < 0.1 ? SEV_PALETTE.GREEN : SEV_PALETTE.AMBER, fontWeight: 700, flexShrink: 0 }}>
                     {Math.round(f.fpProbability * 100)}%
                   </span>
                 </div>
-                <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 11, color: "var(--text-secondary)", marginTop: 5 }}>
+                <div style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: "var(--text-secondary)", marginTop: 5 }}>
                   {f.fpProbability < 0.1 ? "Very low FP probability — finding confirmed via exploitation evidence." : f.fpProbability < 0.3 ? "Moderate — correlate with additional evidence before closing." : "Elevated — validate before remediation investment."}
                 </div>
               </div>}
@@ -935,7 +1000,7 @@ function FindingDetail({ f, allFindings, onStatusChange, statusUpdating, onReope
                     </span>
                   )}
                 </div>
-                <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 11, color: "var(--text-secondary)", lineHeight: 1.4 }}>
+                <div style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: "var(--text-secondary)", lineHeight: 1.4 }}>
                   {f.exploitMaturity === "WEAPONIZED"
                     ? "Weaponized exploit available in public toolchains (Metasploit/Sliver/Cobalt Strike). Exploitation is trivial for any attacker."
                     : f.exploitMaturity === "POC"
@@ -951,13 +1016,13 @@ function FindingDetail({ f, allFindings, onStatusChange, statusUpdating, onReope
                   <DetectionPill cov={f.detectionCoverage} />
                 </div>
                 {f.detectionNote && (
-                  <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 11, color: "var(--text-secondary)", lineHeight: 1.4, marginBottom: 8 }}>{f.detectionNote}</div>
+                  <div style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: "var(--text-secondary)", lineHeight: 1.4, marginBottom: 8 }}>{f.detectionNote}</div>
                 )}
                 <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
                   {f.mitre.map((m) => (
                     <div key={m.id} style={{ display: "flex", gap: 6, alignItems: "center", padding: "3px 6px", background: "var(--bg-app)", borderRadius: 3 }}>
                       <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--accent)", flexShrink: 0 }}>{m.id}</span>
-                      <span style={{ fontFamily: "'Inter', sans-serif", fontSize: 10, color: "var(--text-secondary)", flex: 1 }}>{m.name}</span>
+                      <span style={{ fontFamily: "var(--font-ui)", fontSize: 10, color: "var(--text-secondary)", flex: 1 }}>{m.name}</span>
                       <span style={{ fontFamily: "var(--font-mono)", fontSize: 8, color: COVERAGE_COLOR[f.detectionCoverage] }}>
                         {f.detectionCoverage}
                       </span>
@@ -973,11 +1038,11 @@ function FindingDetail({ f, allFindings, onStatusChange, statusUpdating, onReope
                   <span style={{ fontFamily: "var(--font-mono)", fontSize: 28, fontWeight: 800, color: riskScoreColor(f.riskScore) }}>{f.riskScore}</span>
                   <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-secondary)" }}>/ 1000</span>
                 </div>
-                <div style={{ height: 6, background: "rgba(100,116,139,0.2)", borderRadius: 3, overflow: "hidden" }}>
-                  <div style={{ height: "100%", width: `${f.riskScore / 10}%`, background: riskScoreColor(f.riskScore), borderRadius: 3 }} />
+                <div style={{ height: 6, background: "var(--track-bg)", borderRadius: 3, overflow: "hidden" }}>
+                  <div style={{ height: "100%", width: `${Math.min(100, Math.max(0, f.riskScore / 10))}%`, background: riskScoreColor(f.riskScore), borderRadius: 3 }} />
                 </div>
-                <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 11, color: "var(--text-secondary)", marginTop: 6 }}>
-                  Composite score from the available finding signals. When enrichment is missing, Vedha uses the recorded CVSS-derived fallback.
+                <div style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: "var(--text-secondary)", marginTop: 6 }}>
+                  Manager-computed 0–1000 score. The browser displays it but never recalculates the underlying risk.
                 </div>
               </div>
             </div>
@@ -1036,7 +1101,7 @@ function FindingDetail({ f, allFindings, onStatusChange, statusUpdating, onReope
                 <div style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--accent)", marginBottom: 7 }}>{c.framework}</div>
                 <div style={{ display: "flex", flexDirection: "column", gap: 3 }}>
                   {c.refs.map((r, j) => (
-                    <div key={j} style={{ fontFamily: "'Inter', sans-serif", fontSize: 13, color: "var(--text-primary)", lineHeight: 1.4 }}>· {r}</div>
+                    <div key={j} style={{ fontFamily: "var(--font-ui)", fontSize: 13, color: "var(--text-primary)", lineHeight: 1.4 }}>· {r}</div>
                   ))}
                 </div>
               </div>
@@ -1067,6 +1132,16 @@ function urgencyReasons(f: Finding): string[] {
   else if (sla.pct < 25) r.push(`SLA ${sla.label}`);
   if (f.severity === "CRITICAL") r.push("Critical");
   return r;
+}
+
+function decisionDrivers(f: Finding): string[] {
+  const drivers = urgencyReasons(f);
+  if (f.detectionCoverage === "BLIND") drivers.push("Detection blind spot");
+  if (f.needsReview) drivers.push("Analyst review required");
+  if (f.regression) drivers.push("Regression detected");
+  if (f.verificationState?.toLowerCase() === "contradicted") drivers.push("Evidence contradicted");
+  if (f.epssRecorded && f.epssScore >= 0.5) drivers.push(`EPSS ${(f.epssScore * 100).toFixed(0)}%`);
+  return [...new Set(drivers)];
 }
 
 /* Animated number that counts up to `target` (respects reduced-motion). */
@@ -1103,8 +1178,12 @@ function spotlight(e: React.MouseEvent<HTMLElement>) {
   e.currentTarget.style.setProperty("--my", `${e.clientY - r.top}px`);
 }
 
-function FixFirstStrip({ findings, onSelect, exploitedActive, slaActive, onToggleExploited, onToggleSla }: {
+function FixFirstStrip({
+  findings, total, loading, failed, onRetry, onSelect,
+  exploitedActive, slaActive, onToggleExploited, onToggleSla,
+}: {
   findings: Finding[]; onSelect: (id: string) => void;
+  total: number; loading: boolean; failed: boolean; onRetry: () => void;
   exploitedActive: boolean; slaActive: boolean; onToggleExploited: () => void; onToggleSla: () => void;
 }) {
   const open = findings.filter((f) => f.status === "OPEN" || f.status === "CONFIRMED");
@@ -1117,35 +1196,65 @@ function FixFirstStrip({ findings, onSelect, exploitedActive, slaActive, onToggl
   const activeCount = open.filter((f) => f.activelyExploited).length;
   const sev = (["CRITICAL", "HIGH", "MEDIUM", "LOW"] as Severity[]).map((s) => ({ s, n: open.filter((f) => f.severity === s).length }));
   const totalOpen = Math.max(1, open.length);
-  const accent = urgent.length === 0 ? SEV_PALETTE.GREEN : (activeCount > 0 || slaBreached > 0) ? SEV_PALETTE.RED : SEV_PALETTE.ORANGE;
+  const hasData = !loading && !failed;
+  const accent = failed
+    ? SEV_PALETTE.AMBER
+    : !hasData
+      ? "var(--border-accent)"
+      : urgent.length === 0
+        ? SEV_PALETTE.GREEN
+        : (activeCount > 0 || slaBreached > 0) ? SEV_PALETTE.RED : SEV_PALETTE.ORANGE;
 
-  const urgentN = useCountUp(urgent.length);
-  const activeN = useCountUp(activeCount);
-  const slaN = useCountUp(slaBreached);
-  const openRiskN = useCountUp(openRisk);
+  const urgentN = useCountUp(hasData ? urgent.length : 0);
+  const activeN = useCountUp(hasData ? activeCount : 0);
+  const slaN = useCountUp(hasData ? slaBreached : 0);
+  const openRiskN = useCountUp(hasData ? openRisk : 0);
 
   return (
-    <div className="animate-fade-up gradient-frame spotlight" onMouseMove={spotlight} style={{
+    <section className="findings-decision-strip animate-fade-up gradient-frame spotlight" onMouseMove={spotlight} aria-labelledby="visible-triage-title" style={{
       position: "relative",
       background: "var(--bg-panel)", border: "1px solid var(--border-subtle)", borderTop: `2px solid ${accent}`,
-      borderRadius: 10, padding: "16px 18px", marginBottom: 16, boxShadow: "var(--shadow-sm)",
+      borderRadius: 12, padding: "18px 20px", marginBottom: 16, boxShadow: "var(--shadow-sm)",
     }}>
-      {/* Header: the answer + posture */}
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 16, marginBottom: urgent.length ? 14 : 0 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 18, marginBottom: hasData && urgent.length ? 16 : 0 }}>
         <div>
-          <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, letterSpacing: 1.4, color: "var(--text-secondary)", textTransform: "uppercase" }}>Current page triage</span>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 9, marginTop: 4 }}>
-            <span className={urgent.length ? "stat-glow" : undefined} style={{ fontFamily: "var(--font-display)", fontSize: 30, fontWeight: 800, color: accent, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{urgentN}</span>
-            <span style={{ fontFamily: "var(--font-body)", fontSize: 14, color: "var(--text-primary)", fontWeight: 600 }}>
-              {urgent.length === 0 ? "all clear — nothing needs immediate action" : `${urgent.length === 1 ? "finding needs" : "findings need"} action now`}
+          <h2 id="visible-triage-title" style={{ margin: 0, fontFamily: "var(--font-ui)", fontSize: 15, color: "var(--text-primary)" }}>Visible queue triage</h2>
+          <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 7 }}>
+            {loading ? (
+              <LoaderCircle className="findings-spinner" size={20} color="var(--accent)" aria-hidden />
+            ) : failed ? (
+              <AlertTriangle size={20} color={SEV_PALETTE.AMBER} aria-hidden />
+            ) : (
+              <span className={urgent.length ? "stat-glow" : undefined} style={{ fontFamily: "var(--font-display)", fontSize: 30, fontWeight: 800, color: accent, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{urgentN}</span>
+            )}
+            <span style={{ fontFamily: "var(--font-body)", fontSize: 14, color: "var(--text-primary)", fontWeight: 650 }}>
+              {loading
+                ? "Calculating triage posture…"
+                : failed
+                  ? "Triage posture is unavailable"
+                  : urgent.length === 0
+                    ? "No immediate-action triggers in this visible queue"
+                    : `${urgent.length === 1 ? "finding needs" : "findings need"} action now`}
             </span>
           </div>
+          <p style={{ margin: "7px 0 0", color: "var(--text-muted)", fontSize: 12, lineHeight: 1.45 }}>
+            {failed
+              ? "Vedha could not verify the current queue, so no safe-state claim is shown."
+              : loading
+                ? "Waiting for the latest finding and SLA signals."
+                : `Loaded ${findings.length} of ${total} matching findings. Urgency reflects only this visible page.`}
+          </p>
+          {failed && (
+            <button type="button" className="findings-inline-action" onClick={onRetry}>
+              <RotateCcw size={13} aria-hidden /> Retry queue
+            </button>
+          )}
         </div>
-        <div style={{ display: "flex", gap: 12, alignItems: "flex-start", flexWrap: "wrap" }}>
+        {hasData && <div className="findings-triage-metrics">
           {[
-            { label: "ACTIVELY EXPLOITED", value: activeN.toLocaleString(), live: activeCount > 0, color: activeCount ? SEV_PALETTE.RED : "var(--text-secondary)", active: exploitedActive, onClick: onToggleExploited },
+            { label: "ACTIVE EXPLOITATION", value: activeN.toLocaleString(), live: activeCount > 0, color: activeCount ? SEV_PALETTE.RED : "var(--text-secondary)", active: exploitedActive, onClick: onToggleExploited },
             { label: "SLA BREACHED", value: slaN.toLocaleString(), live: false, color: slaBreached ? SEV_PALETTE.RED : "var(--text-secondary)", active: slaActive, onClick: onToggleSla },
-            { label: "OPEN RISK", value: openRiskN.toLocaleString(), live: false, color: "var(--text-primary)", active: false, onClick: undefined as (() => void) | undefined },
+            { label: "OPEN RISK SUM", value: openRiskN.toLocaleString(), live: false, color: "var(--text-primary)", active: false, onClick: undefined as (() => void) | undefined },
           ].map((m) => {
             const inner = (
               <>
@@ -1157,13 +1266,13 @@ function FixFirstStrip({ findings, onSelect, exploitedActive, slaActive, onToggl
               </>
             );
             return m.onClick ? (
-              <button key={m.label} onClick={m.onClick} aria-pressed={m.active} aria-label={`Filter list by ${m.label.toLowerCase()}`} title="Click to filter the list"
+              <button className="findings-triage-metric" key={m.label} onClick={m.onClick} aria-pressed={m.active} aria-label={`Filter list by ${m.label.toLowerCase()}`} title="Filter the visible queue"
                 style={{ textAlign: "right", cursor: "pointer", background: m.active ? "var(--accent-ghost)" : "transparent",
-                  border: m.active ? "1px solid var(--border-accent)" : "1px solid transparent", borderRadius: 6, padding: "4px 8px" }}>
+                  border: m.active ? "1px solid var(--border-accent)" : "1px solid transparent", borderRadius: 8, padding: "6px 9px" }}>
                 {inner}
               </button>
             ) : (
-              <div key={m.label} style={{ textAlign: "right", padding: "4px 8px" }}>{inner}</div>
+              <div key={m.label} title="Sum of Manager risk scores for open findings on this page" style={{ textAlign: "right", padding: "6px 9px" }}>{inner}</div>
             );
           })}
           <div style={{ width: 128 }}>
@@ -1172,23 +1281,22 @@ function FixFirstStrip({ findings, onSelect, exploitedActive, slaActive, onToggl
                 <div key={s} style={{ width: `${(n / totalOpen) * 100}%`, background: SEV_COLOR[s] }} title={`${s}: ${n}`} />
               ) : null)}
             </div>
-            <div style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--text-secondary)", marginTop: 4, textAlign: "right" }}>{open.length} open by severity</div>
+            <div style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--text-secondary)", marginTop: 4, textAlign: "right" }}>{open.length} visible open</div>
           </div>
-        </div>
+        </div>}
       </div>
 
-      {/* Top urgent findings — one-glance justification + direct triage */}
-      {urgent.length > 0 && (
+      {hasData && urgent.length > 0 && (
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(258px, 1fr))", gap: 10 }}>
           {urgent.slice(0, 3).map((f) => (
-            <button key={f.id} onClick={() => onSelect(f.id)} onMouseMove={spotlight} className="card-hover spotlight lift" style={{
+            <button key={f.id} onClick={() => onSelect(f.id)} onMouseMove={spotlight} className="findings-urgent-item card-hover spotlight lift" aria-label={`Triage ${f.title}`} style={{
               textAlign: "left", cursor: "pointer", background: "var(--bg-app)", border: "1px solid var(--border-subtle)",
-              borderLeft: `3px solid ${SEV_COLOR[f.severity]}`, borderRadius: 8, padding: "10px 12px",
+              borderRadius: 10, padding: "11px 13px",
               display: "flex", flexDirection: "column", gap: 7,
             }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
                 <span style={{ fontFamily: "var(--font-body)", fontSize: 13, fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.title}</span>
-                <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, fontWeight: 700, color: riskScoreColor(f.riskScore), flexShrink: 0 }}>{f.riskScore}</span>
+                <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, fontWeight: 700, color: riskScoreColor(f.riskScore), flexShrink: 0 }}>{f.riskScore}/1000</span>
               </div>
               <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
                 {urgencyReasons(f).map((r) => (
@@ -1208,7 +1316,7 @@ function FixFirstStrip({ findings, onSelect, exploitedActive, slaActive, onToggl
           )}
         </div>
       )}
-    </div>
+    </section>
   );
 }
 
@@ -1260,7 +1368,7 @@ export default function FindingsPage() {
   if (filterVerification !== "ALL") queryString.set("verification_state", filterVerification);
   if (engagementId) queryString.set("engagement_id", engagementId);
 
-  const { data, isLoading, error, refetch } = useQuery({
+  const { data, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: [
       "findings-page", page, deferredSearch, filterSev, filterStatus,
       filterBlind, filterExploited, filterSlaBreached, sortBy, engagementId,
@@ -1353,20 +1461,301 @@ export default function FindingsPage() {
     || filterNeedsReview
     || filterVerification !== "ALL",
   );
+  const summaryUnavailable = summaryQuery.isLoading || Boolean(summaryQuery.error);
+  const summaryValue = (value: number) => summaryUnavailable ? "—" : value.toLocaleString();
+  const clearFilters = () => {
+    setSearch("");
+    setFilterSev("ALL");
+    setFilterStatus("ALL");
+    setFilterBlind(false);
+    setFilterExploited(false);
+    setFilterSlaBreached(false);
+    setFilterNeedsReview(false);
+    setFilterVerification("ALL");
+    setSortBy("risk");
+    setPage(1);
+    setSelectedId(null);
+  };
 
   return (
     <PageShell
       title="Findings"
       subtitle="Triage, verify, and remediate discovered vulnerabilities"
       statusItems={[
-        { label: "CRITICAL OPEN", value: String(stats.criticalOpen), color: SEV_PALETTE.RED },
-        { label: "VALIDATED",     value: String(stats.validated),    color: SEV_PALETTE.ORANGE },
-        { label: "BLIND DETECT",  value: String(stats.blind),      color: SEV_PALETTE.AMBER },
-        { label: "AVG RISK",      value: String(stats.averageRisk), color: riskScoreColor(stats.averageRisk) },
+        { label: "CRITICAL OPEN",    value: summaryValue(stats.criticalOpen), color: summaryUnavailable ? "var(--text-muted)" : SEV_PALETTE.RED },
+        { label: "EXPLOIT CONFIRMED", value: summaryValue(stats.validated),    color: summaryUnavailable ? "var(--text-muted)" : SEV_PALETTE.ORANGE },
+        { label: "DETECTION BLIND",   value: summaryValue(stats.blind),        color: summaryUnavailable ? "var(--text-muted)" : SEV_PALETTE.AMBER },
+        { label: "AVG RISK /1000",    value: summaryValue(stats.averageRisk),  color: summaryUnavailable ? "var(--text-muted)" : riskScoreColor(stats.averageRisk) },
       ]}
     >
+      <style>{`
+        .findings-workspace ::selection,
+        .findings-decision-strip ::selection,
+        .findings-triage-key ::selection {
+          color: var(--text-primary);
+          background: var(--accent-ghost);
+        }
+        .findings-workspace {
+          display: grid;
+          grid-template-columns: minmax(0, 1fr);
+          gap: var(--space-4);
+          align-items: start;
+        }
+        .findings-workspace[data-detail="true"] {
+          grid-template-columns: minmax(320px, 380px) minmax(0, 1fr);
+        }
+        .findings-filter-panel {
+          background: var(--bg-panel);
+          border: var(--hairline) solid var(--border-subtle);
+          border-radius: var(--r-lg);
+          padding: var(--space-4);
+          box-shadow: var(--shadow-sm);
+        }
+        .findings-filter-header {
+          display: flex;
+          align-items: flex-start;
+          justify-content: space-between;
+          gap: var(--space-3);
+          margin-bottom: var(--space-3);
+        }
+        .findings-filter-header h2 {
+          margin: 0 0 3px;
+          color: var(--text-primary);
+          font-size: 15px;
+          line-height: 1.25;
+        }
+        .findings-filter-header p {
+          margin: 0;
+          color: var(--text-muted);
+          font-size: 12px;
+          line-height: 1.4;
+        }
+        .findings-clear-filter,
+        .findings-inline-action {
+          display: inline-flex;
+          min-height: 34px;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          border: var(--hairline) solid var(--border-subtle);
+          border-radius: 8px;
+          padding: 6px 10px;
+          color: var(--text-secondary);
+          background: transparent;
+          font: 600 12px/1 var(--font-ui);
+          cursor: pointer;
+        }
+        .findings-inline-action { margin-top: 10px; color: var(--accent); border-color: var(--border-accent); }
+        .findings-clear-filter:hover,
+        .findings-inline-action:hover { color: var(--text-primary); background: var(--bg-hover); }
+        .findings-search {
+          display: flex;
+          min-height: 42px;
+          align-items: center;
+          gap: 9px;
+          margin-bottom: var(--space-4);
+          border: var(--hairline) solid var(--border-strong);
+          border-radius: 9px;
+          padding: 0 12px;
+          background: var(--bg-app);
+        }
+        .findings-search:focus-within { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ghost); }
+        .findings-search input {
+          width: 100%;
+          border: 0;
+          outline: 0;
+          color: var(--text-primary);
+          background: transparent;
+          font: 400 13px/1.4 var(--font-ui);
+          caret-color: var(--accent);
+        }
+        .findings-search input::placeholder { color: var(--text-muted); opacity: 1; }
+        .findings-filter-grid {
+          display: grid;
+          grid-template-columns: minmax(260px, 1.5fr) repeat(3, minmax(145px, .7fr));
+          gap: 12px;
+          align-items: end;
+        }
+        .findings-filter-group { min-width: 0; margin: 0; padding: 0; border: 0; }
+        .findings-filter-group legend,
+        .findings-filter-label {
+          display: block;
+          margin-bottom: 6px;
+          color: var(--text-muted);
+          font: 700 10px/1.2 var(--font-ui);
+          letter-spacing: .035em;
+          text-transform: uppercase;
+        }
+        .findings-severity-controls { display: flex; min-height: 38px; gap: 5px; flex-wrap: wrap; }
+        .findings-severity-controls button,
+        .findings-signal-filter {
+          display: inline-flex;
+          min-height: 36px;
+          align-items: center;
+          justify-content: center;
+          gap: 6px;
+          border-radius: 8px;
+          padding: 7px 10px;
+          font: 700 10px/1 var(--font-ui);
+          cursor: pointer;
+        }
+        .findings-filter-control {
+          width: 100%;
+          min-height: 38px;
+          border: var(--hairline) solid var(--border-subtle);
+          border-radius: 8px;
+          padding: 0 10px;
+          color: var(--text-secondary);
+          background: var(--bg-app);
+          font: 500 12px/1.2 var(--font-ui);
+          outline: none;
+          cursor: pointer;
+        }
+        .findings-filter-control:focus-visible,
+        .findings-severity-controls button:focus-visible,
+        .findings-signal-filter:focus-visible,
+        .findings-triage-metric:focus-visible,
+        .findings-urgent-item:focus-visible,
+        .finding-card:focus-visible,
+        .findings-clear-filter:focus-visible,
+        .findings-inline-action:focus-visible,
+        .findings-triage-key summary:focus-visible {
+          outline: 2px solid var(--accent);
+          outline-offset: 2px;
+        }
+        .findings-signal-filters {
+          display: flex;
+          align-items: center;
+          gap: 7px;
+          flex-wrap: wrap;
+          margin-top: var(--space-3);
+          padding-top: var(--space-3);
+          border-top: var(--hairline) solid var(--border-subtle);
+        }
+        .findings-signal-filters > span {
+          margin-right: 2px;
+          color: var(--text-muted);
+          font: 700 10px/1 var(--font-ui);
+          letter-spacing: .035em;
+          text-transform: uppercase;
+        }
+        .findings-triage-key {
+          margin-bottom: var(--space-4);
+          background: var(--bg-panel);
+          border: var(--hairline) solid var(--border-subtle);
+          border-radius: var(--r-lg);
+          overflow: hidden;
+        }
+        .findings-triage-key summary {
+          display: flex;
+          min-height: 54px;
+          align-items: center;
+          justify-content: space-between;
+          gap: var(--space-4);
+          padding: 10px var(--space-5);
+          color: var(--text-primary);
+          cursor: pointer;
+          list-style: none;
+        }
+        .findings-triage-key summary::-webkit-details-marker { display: none; }
+        .findings-triage-key summary > span { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
+        .findings-triage-key summary strong { font-size: 13px; line-height: 1.2; }
+        .findings-triage-key summary small { color: var(--text-muted); font-size: 11px; line-height: 1.35; }
+        .findings-triage-key summary svg { flex: 0 0 auto; color: var(--text-muted); transition: transform 180ms ease-out; }
+        .findings-triage-key[open] summary { border-bottom: var(--hairline) solid var(--border-subtle); }
+        .findings-triage-key[open] summary svg { transform: rotate(180deg); }
+        .findings-triage-key-body {
+          display: grid;
+          grid-template-columns: minmax(260px, 1.1fr) minmax(330px, 1.35fr) minmax(280px, 1fr);
+          gap: var(--space-5);
+          align-items: start;
+          padding: var(--space-5);
+        }
+        .findings-triage-concepts { display: grid; gap: 9px; }
+        .findings-triage-concepts > div { display: grid; grid-template-columns: 62px minmax(0, 1fr); gap: 8px; }
+        .findings-triage-concepts strong { color: var(--text-primary); font-size: 11px; }
+        .findings-triage-concepts span { color: var(--text-muted); font-size: 11px; line-height: 1.4; }
+        .findings-severity-key { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 14px; }
+        .findings-severity-key > span { display: grid; grid-template-columns: 7px 58px minmax(0, 1fr); gap: 6px; align-items: center; min-width: 0; font-size: 10px; }
+        .findings-severity-key i { width: 7px; height: 7px; border-radius: 2px; }
+        .findings-severity-key b { color: var(--text-primary); font-size: 9px; letter-spacing: .03em; }
+        .findings-severity-key em { color: var(--text-muted); font-style: normal; line-height: 1.35; }
+        .findings-priority-key { display: flex; flex-wrap: wrap; gap: 6px; }
+        .findings-triage-metrics { display: flex; gap: 10px; align-items: flex-start; flex-wrap: wrap; }
+        .findings-triage-metric { min-height: 44px; }
+        .findings-spinner { animation: findings-spin 850ms linear infinite; }
+        @keyframes findings-spin { to { transform: rotate(360deg); } }
+        .finding-card {
+          border: var(--hairline) solid var(--border-subtle);
+          border-radius: 12px;
+          padding: 14px 15px;
+          background: var(--bg-panel);
+          cursor: pointer;
+        }
+        .finding-card:hover { border-color: var(--border-strong); background: var(--bg-hover); }
+        .finding-card[data-selected="true"] { border-color: var(--accent); background: var(--accent-ghost); }
+        .finding-card-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; }
+        .finding-card-badges { display: flex; min-width: 0; flex: 1; align-items: center; gap: 5px; flex-wrap: wrap; }
+        .finding-card-risk { flex: 0 0 auto; text-align: right; }
+        .finding-card-risk strong { display: block; font: 750 15px/1 var(--font-mono); font-variant-numeric: tabular-nums; }
+        .finding-card-risk span { display: block; margin-top: 4px; color: var(--text-muted); font: 700 9px/1 var(--font-ui); letter-spacing: .03em; text-transform: uppercase; }
+        .finding-card-title { margin: 10px 0 7px; color: var(--text-primary); font: 650 15px/1.35 var(--font-ui); }
+        .finding-card-context { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+        .finding-card-host { min-width: 0; overflow: hidden; color: var(--text-muted); font: 500 11px/1.3 var(--font-mono); text-overflow: ellipsis; white-space: nowrap; }
+        .finding-card-signals { display: flex; flex: 0 0 auto; align-items: center; gap: 6px; }
+        .finding-card-drivers { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+        .finding-card-drivers > span:first-child { color: var(--text-muted); font: 700 10px/1 var(--font-ui); }
+        .finding-driver {
+          border: var(--hairline) solid var(--border-subtle);
+          border-radius: 999px;
+          padding: 3px 7px;
+          color: var(--text-secondary);
+          background: var(--bg-app);
+          font: 600 10px/1 var(--font-ui);
+        }
+        .finding-card-metrics {
+          display: grid;
+          grid-template-columns: repeat(4, minmax(0, 1fr));
+          gap: 8px;
+          margin-top: 11px;
+          padding-top: 10px;
+          border-top: var(--hairline) solid var(--border-subtle);
+        }
+        .finding-card-metric { min-width: 0; }
+        .finding-card-metric span { display: block; color: var(--text-muted); font: 700 9px/1 var(--font-ui); letter-spacing: .03em; text-transform: uppercase; }
+        .finding-card-metric strong { display: block; margin-top: 4px; overflow: hidden; color: var(--text-primary); font: 650 11px/1.2 var(--font-mono); font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; }
+        .findings-workspace[data-detail="true"] .finding-card-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        @media (max-width: 1180px) {
+          .findings-triage-key-body { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+          .findings-priority-key { grid-column: 1 / -1; }
+          .findings-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        }
+        @media (max-width: 920px) {
+          .findings-workspace[data-detail="true"] { grid-template-columns: minmax(0, 1fr); }
+          .findings-triage-key-body { grid-template-columns: minmax(0, 1fr); gap: var(--space-4); }
+          .findings-priority-key { grid-column: auto; }
+          .findings-workspace[data-detail="true"] .finding-card-metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+        }
+        @media (max-width: 620px) {
+          .findings-decision-strip { padding: 16px !important; }
+          .findings-triage-metrics { width: 100%; justify-content: space-between; }
+          .findings-filter-grid { grid-template-columns: minmax(0, 1fr); }
+          .findings-filter-header { align-items: center; }
+          .finding-card-header, .finding-card-context { align-items: flex-start; }
+          .finding-card-context { flex-direction: column; gap: 8px; }
+          .finding-card-metrics,
+          .findings-workspace[data-detail="true"] .finding-card-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+          .findings-severity-key { grid-template-columns: minmax(0, 1fr); }
+          .findings-triage-key summary, .findings-triage-key-body { padding: var(--space-4); }
+          .findings-triage-key summary small { max-width: 38ch; }
+        }
+        @media (prefers-reduced-motion: reduce) {
+          .findings-spinner { animation-duration: 1.6s; }
+          .findings-triage-key summary svg { transition: none; }
+        }
+      `}</style>
       {engagementId && (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 12, padding: "10px 14px", background: "var(--accent-ghost)", border: "0.5px solid var(--border-accent)", borderRadius: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 12, padding: "10px 14px", background: "var(--accent-ghost)", border: "var(--hairline) solid var(--border-accent)", borderRadius: 8 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--text-primary)", flexWrap: "wrap" }}>
             <Link2 size={14} color="var(--accent)" />
             <span>Scoped to engagement <b>{engagementQuery.data?.engagement?.name ?? `${engagementId.slice(0, 8)}…`}</b> — {total} finding{total === 1 ? "" : "s"}</span>
@@ -1379,8 +1768,14 @@ export default function FindingsPage() {
         </div>
       )}
 
+      <TriageKey />
+
       <FixFirstStrip
         findings={findings}
+        total={total}
+        loading={isLoading || (isFetching && !data)}
+        failed={Boolean(error)}
+        onRetry={() => { void refetch(); }}
         onSelect={(id) => setSelectedId(id)}
         exploitedActive={filterExploited}
         slaActive={filterSlaBreached}
@@ -1388,72 +1783,107 @@ export default function FindingsPage() {
         onToggleSla={() => { setFilterSlaBreached((p) => !p); setPage(1); }}
       />
 
-      <div style={{ display: "grid", gridTemplateColumns: selected ? "380px 1fr" : "1fr", gap: 16 }}>
+      <div className="findings-workspace" data-detail={selected ? "true" : "false"}>
 
         {/* ── Left: List ── */}
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
 
           {/* Filters */}
-          <div style={{ background: "var(--bg-app)", border: "1px solid var(--border-subtle)", borderRadius: 6, padding: "10px 12px" }}>
-            <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 8, background: "var(--bg-panel)", border: "1px solid var(--border-subtle)", borderRadius: 4, padding: "5px 10px" }}>
-              <Search size={11} color="#64748B" />
+          <section className="findings-filter-panel" aria-labelledby="finding-queue-title">
+            <header className="findings-filter-header">
+              <div>
+                <h2 id="finding-queue-title">Analyst queue</h2>
+                <p aria-live="polite">
+                  {error
+                    ? "Queue unavailable — retry to verify the current state."
+                    : isLoading
+                      ? "Loading ranked findings…"
+                      : total === 0
+                        ? "No findings match the current scope."
+                        : `${total.toLocaleString()} matching · page ${currentPage} of ${pageCount}`}
+                </p>
+              </div>
+              {hasActiveFilters && (
+                <button type="button" className="findings-clear-filter" onClick={clearFilters}>
+                  <RotateCcw size={13} aria-hidden /> Clear filters
+                </button>
+              )}
+            </header>
+
+            <div className="findings-search">
+              <Search size={15} color="var(--text-muted)" aria-hidden />
               <input value={search} onChange={(e) => { setSearch(e.target.value); setPage(1); setSelectedId(null); }} placeholder="Search title, CVE, or finding ID…"
                 aria-label="Search findings"
-                style={{ background: "none", border: "none", outline: "none", color: "var(--text-primary)", fontFamily: "var(--font-mono)", fontSize: 11, width: "100%" }}
               />
             </div>
 
-            {/* Severity filter */}
-            <div style={{ display: "flex", gap: 4, flexWrap: "wrap", marginBottom: 6 }}>
-              {(["ALL", "CRITICAL", "HIGH", "MEDIUM", "LOW"] as const).map((s) => (
-                <button key={s} aria-pressed={filterSev === s} onClick={() => { setFilterSev(s); setPage(1); setSelectedId(null); }} style={{
-                  padding: "3px 8px", borderRadius: 3, cursor: "pointer", fontFamily: "var(--font-mono)", fontSize: 9,
-                  border: `1px solid ${filterSev === s ? (s === "ALL" ? "var(--accent)" : SEV_COLOR[s as Severity]) : "var(--border-subtle)"}`,
-                  background: filterSev === s ? (s === "ALL" ? "rgba(37,99,235,0.1)" : `${SEV_COLOR[s as Severity]}15`) : "transparent",
-                  color: filterSev === s ? (s === "ALL" ? "var(--accent)" : SEV_COLOR[s as Severity]) : "var(--text-secondary)",
-                }}>{s}</button>
-              ))}
+            <div className="findings-filter-grid">
+              <fieldset className="findings-filter-group">
+                <legend>Severity</legend>
+                <div className="findings-severity-controls">
+                  {(["ALL", "CRITICAL", "HIGH", "MEDIUM", "LOW", "INFO"] as const).map((s) => (
+                    <button type="button" key={s} aria-pressed={filterSev === s} onClick={() => { setFilterSev(s); setPage(1); setSelectedId(null); }} style={{
+                      border: `1px solid ${filterSev === s ? (s === "ALL" ? "var(--accent)" : SEV_COLOR[s as Severity]) : "var(--border-subtle)"}`,
+                      background: filterSev === s ? (s === "ALL" ? "var(--accent-ghost)" : `${SEV_COLOR[s as Severity]}15`) : "transparent",
+                      color: filterSev === s ? (s === "ALL" ? "var(--accent)" : SEV_COLOR[s as Severity]) : "var(--text-secondary)",
+                    }}>{s === "ALL" ? "All" : s}</button>
+                  ))}
+                </div>
+              </fieldset>
+
+              <label className="findings-filter-group">
+                <span className="findings-filter-label">Lifecycle</span>
+                <select className="findings-filter-control" value={filterStatus} onChange={(e) => { setFilterStatus(e.target.value as FindingStatus | "ALL"); setPage(1); setSelectedId(null); }}>
+                  {(["ALL", "OPEN", "CONFIRMED", "REMEDIATED", "ACCEPTED", "FALSE_POSITIVE"] as const).map((s) => (
+                    <option key={s} value={s}>{s === "ALL" ? "All statuses" : STATUS_LABEL[s]}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="findings-filter-group">
+                <span className="findings-filter-label">Evidence</span>
+                <select className="findings-filter-control" value={filterVerification} onChange={(e) => { setFilterVerification(e.target.value); setPage(1); setSelectedId(null); }}>
+                  {["ALL", "confirmed", "corroborated", "inferred", "contradicted"].map((s) => (
+                    <option key={s} value={s}>{s === "ALL" ? "All verdicts" : s.charAt(0).toUpperCase() + s.slice(1)}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label className="findings-filter-group">
+                <span className="findings-filter-label">Sort</span>
+                <select className="findings-filter-control" value={sortBy} onChange={(e) => { setSortBy(e.target.value as typeof sortBy); setPage(1); setSelectedId(null); }}>
+                  <option value="risk">Risk: highest first</option>
+                  <option value="cvss">CVSS: highest first</option>
+                  <option value="epss">EPSS: highest first</option>
+                  <option value="date">Newest first</option>
+                </select>
+              </label>
             </div>
 
-            {/* Quick filters row */}
-            <div style={{ display: "flex", gap: 6, alignItems: "center", flexWrap: "wrap" }}>
-              <select value={filterStatus} onChange={(e) => { setFilterStatus(e.target.value as FindingStatus | "ALL"); setPage(1); setSelectedId(null); }}
-                aria-label="Filter findings by status"
-                style={{ background: "var(--bg-panel)", border: "1px solid var(--border-subtle)", borderRadius: 4, color: "var(--text-secondary)", fontFamily: "var(--font-mono)", fontSize: 10, padding: "3px 6px", outline: "none" }}>
-                {["ALL", "OPEN", "CONFIRMED", "REMEDIATED", "ACCEPTED", "FALSE_POSITIVE"].map((s) => <option key={s} value={s}>{s}</option>)}
-              </select>
-              <button aria-pressed={filterExploited} onClick={() => { setFilterExploited((p) => !p); setPage(1); setSelectedId(null); }} style={{
-                padding: "3px 8px", borderRadius: 3, cursor: "pointer", fontFamily: "var(--font-mono)", fontSize: 9,
+            <div className="findings-signal-filters" aria-label="Risk signal filters">
+              <span>Signals</span>
+              <button type="button" className="findings-signal-filter" aria-pressed={filterExploited} onClick={() => { setFilterExploited((p) => !p); setPage(1); setSelectedId(null); }} style={{
                 border: `1px solid ${filterExploited ? `${SEV_PALETTE.RED}66` : "var(--border-subtle)"}`,
                 background: filterExploited ? `${SEV_PALETTE.RED}14` : "transparent",
                 color: filterExploited ? SEV_PALETTE.RED : "var(--text-secondary)",
-              }}>✓ VALIDATED</button>
-              <button aria-pressed={filterBlind} onClick={() => { setFilterBlind((p) => !p); setPage(1); setSelectedId(null); }} style={{
-                padding: "3px 8px", borderRadius: 3, cursor: "pointer", fontFamily: "var(--font-mono)", fontSize: 9,
-                border: `1px solid ${filterBlind ? `${SEV_PALETTE.RED}66` : "var(--border-subtle)"}`,
-                background: filterBlind ? `${SEV_PALETTE.RED}14` : "transparent",
-                color: filterBlind ? SEV_PALETTE.RED : "var(--text-secondary)",
-              }}>○ BLIND</button>
-              <button aria-pressed={filterNeedsReview} onClick={() => { setFilterNeedsReview((p) => !p); setPage(1); setSelectedId(null); }} style={{
-                padding: "3px 8px", borderRadius: 3, cursor: "pointer", fontFamily: "var(--font-mono)", fontSize: 9,
+              }}><BadgeCheck size={13} aria-hidden /> Exploit confirmed</button>
+              <button type="button" className="findings-signal-filter" aria-pressed={filterBlind} onClick={() => { setFilterBlind((p) => !p); setPage(1); setSelectedId(null); }} style={{
+                border: `1px solid ${filterBlind ? `${SEV_PALETTE.AMBER}66` : "var(--border-subtle)"}`,
+                background: filterBlind ? `${SEV_PALETTE.AMBER}14` : "transparent",
+                color: filterBlind ? SEV_PALETTE.AMBER : "var(--text-secondary)",
+              }}><EyeOff size={13} aria-hidden /> Detection blind</button>
+              <button type="button" className="findings-signal-filter" aria-pressed={filterSlaBreached} onClick={() => { setFilterSlaBreached((p) => !p); setPage(1); setSelectedId(null); }} style={{
+                border: `1px solid ${filterSlaBreached ? `${SEV_PALETTE.RED}66` : "var(--border-subtle)"}`,
+                background: filterSlaBreached ? `${SEV_PALETTE.RED}14` : "transparent",
+                color: filterSlaBreached ? SEV_PALETTE.RED : "var(--text-secondary)",
+              }}><AlertTriangle size={13} aria-hidden /> SLA breached</button>
+              <button type="button" className="findings-signal-filter" aria-pressed={filterNeedsReview} onClick={() => { setFilterNeedsReview((p) => !p); setPage(1); setSelectedId(null); }} style={{
                 border: `1px solid ${filterNeedsReview ? `${SEV_PALETTE.AMBER}66` : "var(--border-subtle)"}`,
                 background: filterNeedsReview ? `${SEV_PALETTE.AMBER}14` : "transparent",
                 color: filterNeedsReview ? SEV_PALETTE.AMBER : "var(--text-secondary)",
-              }}>⚑ NEEDS REVIEW</button>
-              <select value={filterVerification} onChange={(e) => { setFilterVerification(e.target.value); setPage(1); setSelectedId(null); }}
-                aria-label="Filter findings by verification verdict"
-                style={{ background: "var(--bg-panel)", border: "1px solid var(--border-subtle)", borderRadius: 4, color: "var(--text-secondary)", fontFamily: "var(--font-mono)", fontSize: 10, padding: "3px 6px", outline: "none" }}>
-                {["ALL", "confirmed", "corroborated", "inferred", "contradicted"].map((s) => (
-                  <option key={s} value={s}>{s === "ALL" ? "VERIFY: ALL" : s.toUpperCase()}</option>
-                ))}
-              </select>
-              <button onClick={() => { setSortBy(sortBy === "risk" ? "cvss" : sortBy === "cvss" ? "epss" : sortBy === "epss" ? "date" : "risk"); setPage(1); setSelectedId(null); }}
-                aria-label={`Sort findings by ${sortBy}; activate to change sort`}
-                style={{ display: "flex", alignItems: "center", gap: 4, padding: "3px 8px", background: "transparent", border: "1px solid var(--border-subtle)", borderRadius: 4, color: "var(--text-secondary)", cursor: "pointer", fontFamily: "var(--font-mono)", fontSize: 9 }}>
-                <ArrowUpDown size={9} /> {sortBy.toUpperCase()}
-              </button>
+              }}><Flag size={13} aria-hidden /> Needs review</button>
             </div>
-          </div>
+          </section>
 
           {/* Finding list */}
           <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -1476,14 +1906,16 @@ export default function FindingsPage() {
             {findings.map((f) => {
               const sla = getSlaColor(f.discoveredAt, f.severity);
               const isSelected = selectedId === f.id;
-              const pc = PRIORITY_COLOR[f.aiTriage.priority];
+              const drivers = decisionDrivers(f).slice(0, 3);
               return (
                 <div
                   key={f.id}
-                  className="card-hover stagger-item"
+                  className="finding-card stagger-item"
+                  data-selected={isSelected}
                   role="button"
                   tabIndex={0}
                   aria-expanded={isSelected}
+                  aria-label={`${f.title}, ${f.severity}, ${f.aiTriage.priority} ${PRIORITY_LABEL[f.aiTriage.priority]}, risk ${f.riskScore} of 1000`}
                   onClick={() => setSelectedId(isSelected ? null : f.id)}
                   onKeyDown={(event) => {
                     if (event.key === "Enter" || event.key === " ") {
@@ -1491,56 +1923,58 @@ export default function FindingsPage() {
                       setSelectedId(isSelected ? null : f.id);
                     }
                   }}
-                  style={{
-                    background: isSelected ? "rgba(37,99,235,0.03)" : "var(--bg-app)",
-                    border: `1px solid ${isSelected ? "var(--accent)" : "var(--border-subtle)"}`,
-                    borderLeft: `3px solid ${SEV_COLOR[f.severity]}`,
-                    borderRadius: 6, padding: "10px 12px", cursor: "pointer",
-                  }}
                 >
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 5 }}>
-                    <div style={{ display: "flex", gap: 5, flexWrap: "wrap", flex: 1, alignItems: "center" }}>
+                  <div className="finding-card-header">
+                    <div className="finding-card-badges">
                       <SevBadge s={f.severity} />
                       <StatusBadge s={f.status} />
                       {f.kevStatusRecorded && f.kevListed && <KevBadge />}
-                      <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: pc, background: `${pc}12`, border: `1px solid ${pc}25`, borderRadius: 3, padding: "1px 4px" }}>{f.aiTriage.priority}</span>
+                      <PriorityBadge priority={f.aiTriage.priority} compact />
                       <VerificationBadge state={f.verificationState} />
                       <NeedsReviewChip show={f.needsReview} />
                       <RegressionBadge show={f.regression} />
                       <AutoResolvedBadge method={f.resolutionMethod} reopenedCount={f.reopenedCount} />
                     </div>
-                    <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 2, flexShrink: 0 }}>
-                      <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 700, color: riskScoreColor(f.riskScore) }}>{f.riskScore}</span>
-                      <span style={{ fontFamily: "var(--font-mono)", fontSize: 8, color: "var(--text-secondary)" }}>RISK</span>
+                    <div className="finding-card-risk">
+                      <strong style={{ color: riskScoreColor(f.riskScore) }}>{f.riskScore}/1000</strong>
+                      <span>Manager risk</span>
                     </div>
                   </div>
 
-                  <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 13, fontWeight: 600, color: "var(--text-primary)", lineHeight: 1.3, marginBottom: 5 }}>
-                    {f.title}
-                  </div>
+                  <h3 className="finding-card-title">{f.title}</h3>
 
-                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 5 }}>
-                    <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--text-secondary)" }}>{f.affectedHost}</span>
-                    <div style={{ display: "flex", gap: 5, alignItems: "center" }}>
+                  <div className="finding-card-context">
+                    <span className="finding-card-host" title={f.affectedHost}>{f.affectedHost}</span>
+                    <div className="finding-card-signals">
                       <DetectionPill cov={f.detectionCoverage} />
-                      {f.exploitMaturityRecorded && <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: MATURITY_COLOR[f.exploitMaturity] }}>{f.exploitMaturity}</span>}
+                      {f.exploitMaturityRecorded && <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, fontWeight: 650, color: MATURITY_COLOR[f.exploitMaturity] }}>{f.exploitMaturity}</span>}
                     </div>
                   </div>
 
-                  {/* EPSS mini */}
-                  <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 4 }}>
-                    <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--text-secondary)" }}>EPSS</span>
-                    <div style={{ flex: 1, height: 3, background: "rgba(100,116,139,0.15)", borderRadius: 2, overflow: "hidden" }}>
-                      <div style={{ height: "100%", width: `${f.epssScore * 100}%`, background: epssColor(f.epssScore), borderRadius: 2 }} />
+                  {drivers.length > 0 && (
+                    <div className="finding-card-drivers" aria-label="Decision drivers">
+                      <span>Why now</span>
+                      {drivers.map((driver) => <span className="finding-driver" key={driver}>{driver}</span>)}
                     </div>
-                    <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--text-secondary)" }}>{(f.epssScore * 100).toFixed(0)}%</span>
-                    <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: SEV_PALETTE.ORANGE }}>CVSS {f.cvss}</span>
-                    <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: sla.color }}>{sla.label}</span>
-                  </div>
+                  )}
 
-                  {/* Risk bar */}
-                  <div style={{ height: 2, background: "rgba(100,116,139,0.15)", borderRadius: 1, overflow: "hidden" }}>
-                    <div style={{ height: "100%", width: `${f.riskScore / 10}%`, background: riskScoreColor(f.riskScore), borderRadius: 1 }} />
+                  <div className="finding-card-metrics">
+                    <div className="finding-card-metric">
+                      <span>EPSS</span>
+                      <strong style={{ color: f.epssRecorded ? epssColor(f.epssScore) : "var(--text-muted)" }}>{f.epssRecorded ? `${(f.epssScore * 100).toFixed(1)}%` : "Not recorded"}</strong>
+                    </div>
+                    <div className="finding-card-metric">
+                      <span>CVSS</span>
+                      <strong>{f.cvss || "Not recorded"}</strong>
+                    </div>
+                    <div className="finding-card-metric">
+                      <span>SLA</span>
+                      <strong style={{ color: sla.color }}>{sla.label}</strong>
+                    </div>
+                    <div className="finding-card-metric">
+                      <span>Evidence</span>
+                      <strong>{f.verificationState ? f.verificationState.toUpperCase() : "NOT VERIFIED"}</strong>
+                    </div>
                   </div>
                 </div>
               );
