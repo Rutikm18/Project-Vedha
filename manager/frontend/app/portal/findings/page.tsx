@@ -77,7 +77,7 @@ export default function PortalFindings() {
         <div className="panel">
           {/* Severity filter — legend chips double as toggles */}
           <div style={{ display: "flex", flexWrap: "wrap", alignItems: "center", gap: 6,
-            padding: "10px 16px", borderBottom: "0.5px solid var(--border-subtle)" }}>
+            padding: "10px 16px", borderBottom: "var(--hairline) solid var(--border-subtle)" }}>
             <span className="eyebrow" style={{ marginRight: 2 }}>Filter</span>
             {SEVS.map((sev) => {
               const on = active.has(sev);

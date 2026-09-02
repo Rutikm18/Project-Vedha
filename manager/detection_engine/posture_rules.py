@@ -424,18 +424,37 @@ def _evidence_ref(f: Fact) -> str:
     return f"{f.scanner}:{f.target}:{f.port}"
 
 
+def _fact_indicates_no_service(f: Fact, data: dict) -> bool:
+    """True when the scanner ran but the service did NOT answer — so a rule's
+    declared field is legitimately absent (there was nothing to report), NOT agent
+    drift. SNMP/UDP/IPMI probes that get no reply carry responded=False and/or a
+    filtered status; treating those as 'blind' cries wolf on every host that simply
+    isn't running that service (the false 'N checks couldn't run' the operator saw).
+    """
+    if data.get("responded") is False:
+        return True
+    status = (str(f.status) if f.status is not None else "").lower()
+    return status in {"filtered", "open|filtered", "closed", "no_response", "unknown", ""}
+
+
 def evaluate_rule(rule: PostureRule, f: Fact) -> TraceRow:
     """Evaluate ONE rule against ONE fact and record the outcome. NEVER raises —
     a single malformed rule or fact cannot blind the whole submission (fault F9).
 
-    The ordering is deliberate: the `requires` contract is checked BEFORE the
-    detector runs, so an absent declared path is reported as MISSING_INPUT (drift)
-    and never reaches the predicate that would otherwise render it as a clean
-    no-match. That check is the structural guard against the silent false-negative.
+    The `requires` contract is checked BEFORE the detector so an absent declared
+    path is DRIFT (MISSING_INPUT), not a silent clean no-match — EXCEPT when the
+    scanner clearly got no service response, where an absent field is 'not
+    applicable' (NO_MATCH), not drift.
     """
     data = f.data if isinstance(f.data, dict) else {}
+    no_service = _fact_indicates_no_service(f, data)
     for path in rule.requires:
         if get_path(data, path) is _MISSING:
+            if no_service:
+                # scanner ran, service didn't answer → nothing to assess → clean/
+                # not-applicable, NOT agent drift. Don't count this as a blind rule.
+                return TraceRow(rule.rule_id, f.scanner, OUTCOME_NO_MATCH,
+                                f.target, f.port)
             return TraceRow(rule.rule_id, f.scanner, OUTCOME_MISSING_INPUT,
                             f.target, f.port,
                             reason=f"required fact path absent: data.{path}")
@@ -518,6 +537,16 @@ def detect_posture_traced(
             reachable_by_id[id(pf)] = (f.status == "open")   # was the port confirmed up?
             out.append(pf)
 
+    # 1a) Exposed-service / suspicious-port layer: the long tail of risky OPEN
+    #     ports — backdoor/C2 listeners, unauthenticated-prone data stores,
+    #     container/orchestration APIs, cleartext protocols, exposed admin/dev UIs —
+    #     that have no dedicated scanner but ARE findable from the open port + banner
+    #     + exposure the validated scanners already collected. Best-effort.
+    try:
+        out.extend(detect_exposed_services(asset, exposure))
+    except Exception:  # noqa: BLE001 — must never sink core detection
+        pass
+
     # 1b) Confidence calibration (second pass, cross-signal aware): now that every rule
     # that fired on this host is known, calibrate each finding's confidence with
     # attack-chain corroboration and stamp the auditable precision_factors. Separate
@@ -544,6 +573,94 @@ def detect_posture(asset: Asset,
     Thin wrapper over `detect_posture_traced` so existing callers are unchanged."""
     findings, _traces = detect_posture_traced(asset, exposure)
     return findings
+
+
+# ── exposed-service / suspicious-port layer ───────────────────────────────────
+# Ports already covered by a dedicated deep rule — skip so we don't double-report.
+_EXPOSED_SVC_DEDICATED_PORTS = {135, 139, 445, 3389}
+_PORTSCAN_SCANNERS = {"port_scan", "syn_scan", "mass_scan"}
+
+_EXPOSED_TITLES = {
+    "backdoor":      "Suspicious/backdoor port {port} open ({svc})",
+    "container":     "Container/orchestration API exposed on {port} ({svc})",
+    "datastore":     "Unauthenticated-prone data store exposed on {port} ({svc})",
+    "database":      "Database reachable on {port} ({svc})",
+    "cleartext":     "Cleartext protocol exposed on {port} ({svc})",
+    "remote_access": "Remote-access service exposed on {port} ({svc})",
+    "admin_ui":      "Admin/dev interface exposed on {port} ({svc})",
+}
+
+
+def _exposed_title(category: str, service: str, port: int, internet: bool) -> str:
+    base = _EXPOSED_TITLES.get(category, "Service exposed on {port}").format(
+        port=port, svc=service)
+    return base + (" — internet-facing" if internet else "")
+
+
+def detect_exposed_services(asset: Asset,
+                            exposure: dict[str, dict] | None = None) -> list[PostureFinding]:
+    """Findings for risky OPEN ports that have no dedicated scanner: backdoor/C2
+    listeners, unauthenticated-prone data stores, container APIs, cleartext
+    protocols, exposed admin UIs. Reads only what the validated scanners already
+    emit — open TCP ports (port/syn/mass scan), banners (service_banner), and the
+    exposure classification (exposure_matrix). Severity escalates one level when the
+    port is internet-facing (the asset-exposure risk variable)."""
+    from port_intel import classify_port, escalate   # standalone module, no cycle
+
+    exposure = exposure or {}
+    exp = exposure.get(asset.ip, {})
+    default_auth = exp.get("auth_enforced")
+    exp_internet = exp.get("internet_facing")
+
+    open_tcp: dict[int, Fact] = {}      # port -> the observing port-scan fact
+    banners: dict[int, str] = {}
+    externally: set[int] = set()
+
+    for f in asset.facts:
+        d = f.data if isinstance(f.data, dict) else {}
+        if (f.scanner in _PORTSCAN_SCANNERS and f.port and f.status == "open"
+                and (f.proto or "tcp") != "udp"):
+            open_tcp.setdefault(f.port, f)
+        elif f.scanner == "service_banner" and f.port:
+            b = d.get("banner")
+            if isinstance(b, str) and b.strip():
+                banners[f.port] = b.strip()[:200]
+        elif f.scanner == "exposure_matrix":
+            for p in (d.get("externally_exposed") or []):
+                if isinstance(p, int):
+                    externally.add(p)
+
+    now = datetime.now(timezone.utc).isoformat()
+    out: list[PostureFinding] = []
+    for port in sorted(open_tcp):
+        if port in _EXPOSED_SVC_DEDICATED_PORTS:
+            continue
+        risk = classify_port(port, banners.get(port))
+        if risk is None:
+            continue
+        f = open_tcp[port]
+        internet = (port in externally) or bool(exp_internet)
+        severity = escalate(risk.severity) if internet else risk.severity
+        state = _state_for(f.scanner)                 # validated port scan → confirmed
+        risk_score, priority = compute_risk(severity, state, internet, default_auth)
+        rule_id = f"POSTURE-EXPOSED-{risk.category.upper()}"
+        ev: dict[str, Any] = {"port": port, "category": risk.category,
+                              "service": risk.service, "internet_facing": internet}
+        if banners.get(port):
+            ev["banner"] = banners[port]
+        out.append(PostureFinding(
+            finding_id=make_posture_id(asset.ip, rule_id, port),
+            asset_ip=asset.ip, rule_id=rule_id,
+            title=_exposed_title(risk.category, risk.service, port, internet),
+            category="exposure", severity=severity, state=state,
+            confidence=_STATE_CONF.get(state, 65), cwe=risk.cwe, mitre=risk.mitre,
+            port=port, proto="tcp", evidence_refs=[_evidence_ref(f)],
+            evidence=ev, remediation=risk.note,
+            fp_notes="Signal derived from the open port (+ banner). A benign internal "
+                     "service can share these ports — confirm the owning process/scope.",
+            internet_facing=internet, auth_enforced=default_auth,
+            risk_score=risk_score, priority=priority, created_at=now, scanner=f.scanner))
+    return out
 
 
 # ── verdict roll-up: the machine-readable answer to "why no finding?" ──────────

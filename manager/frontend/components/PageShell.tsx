@@ -10,7 +10,7 @@ interface PageShellProps {
   title: string;
   subtitle?: string;
   headerActions?: React.ReactNode;
-  statusItems?: Array<{ label: string; value: string; color?: string }>;
+  statusItems?: Array<{ label: string; value: string; color?: string; ariaLabel?: string }>;
   children: React.ReactNode;
   noPadding?: boolean;
 }
@@ -184,8 +184,11 @@ export function PageShell({
               const tone = item.color ?? "var(--text-primary)";
               return (
               <React.Fragment key={i}>
-                <div style={{ width: 0.5, height: 16, background: "var(--border-subtle)", flexShrink: 0 }} />
-                <div style={{
+                <div aria-hidden style={{ width: 0.5, height: 16, background: "var(--border-subtle)", flexShrink: 0 }} />
+                <div
+                  role="img"
+                  aria-label={item.ariaLabel ?? `${item.label} ${item.value}`}
+                  style={{
                   display: "flex",
                   alignItems: "center",
                   gap: 6,

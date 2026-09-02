@@ -293,7 +293,7 @@ function EpssBar({ score, percentile }: { score: number; percentile: number }) {
           {Math.round(percentile * 100)}th pct
         </span>
       </div>
-      <div style={{ height: 4, background: "rgba(100,116,139,0.2)", borderRadius: 2, overflow: "hidden" }}>
+      <div style={{ height: 4, background: "var(--track-bg)", borderRadius: 2, overflow: "hidden" }}>
         <div style={{ height: "100%", width: `${pct}%`, background: color, borderRadius: 2, transition: "width 0.4s ease" }} />
       </div>
     </div>
@@ -514,7 +514,7 @@ function HistoryTimeline({ findingId }: { findingId: string }) {
       <div style={{
         display: "flex", alignItems: "center", gap: 14, flexWrap: "wrap",
         padding: "10px 14px", marginBottom: 14, borderRadius: 10,
-        background: "var(--bg-panel)", border: "0.5px solid var(--border-subtle)",
+        background: "var(--bg-panel)", border: "var(--hairline) solid var(--border-subtle)",
       }}>
         <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--text-secondary)", letterSpacing: 0.8, fontWeight: 700 }}>
           EVENT HISTORY
@@ -901,7 +901,7 @@ function FindingDetail({ f, allFindings, onStatusChange, statusUpdating, onReope
               {f.fpProbabilityRecorded && <div style={{ background: "var(--bg-panel)", border: "1px solid var(--border-subtle)", borderRadius: 6, padding: "12px 14px" }}>
                 <div style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--text-secondary)", marginBottom: 6 }}>FALSE POSITIVE PROBABILITY</div>
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <div style={{ height: 4, flex: 1, background: "rgba(100,116,139,0.2)", borderRadius: 2, overflow: "hidden", marginRight: 10 }}>
+                  <div style={{ height: 4, flex: 1, background: "var(--track-bg)", borderRadius: 2, overflow: "hidden", marginRight: 10 }}>
                     <div style={{ height: "100%", width: `${f.fpProbability * 100}%`, background: f.fpProbability < 0.1 ? SEV_PALETTE.GREEN : f.fpProbability < 0.3 ? SEV_PALETTE.AMBER : SEV_PALETTE.RED, borderRadius: 2 }} />
                   </div>
                   <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: f.fpProbability < 0.1 ? SEV_PALETTE.GREEN : SEV_PALETTE.AMBER, fontWeight: 700, flexShrink: 0 }}>
@@ -973,7 +973,7 @@ function FindingDetail({ f, allFindings, onStatusChange, statusUpdating, onReope
                   <span style={{ fontFamily: "var(--font-mono)", fontSize: 28, fontWeight: 800, color: riskScoreColor(f.riskScore) }}>{f.riskScore}</span>
                   <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-secondary)" }}>/ 1000</span>
                 </div>
-                <div style={{ height: 6, background: "rgba(100,116,139,0.2)", borderRadius: 3, overflow: "hidden" }}>
+                <div style={{ height: 6, background: "var(--track-bg)", borderRadius: 3, overflow: "hidden" }}>
                   <div style={{ height: "100%", width: `${f.riskScore / 10}%`, background: riskScoreColor(f.riskScore), borderRadius: 3 }} />
                 </div>
                 <div style={{ fontFamily: "'Inter', sans-serif", fontSize: 11, color: "var(--text-secondary)", marginTop: 6 }}>
@@ -1366,7 +1366,7 @@ export default function FindingsPage() {
       ]}
     >
       {engagementId && (
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 12, padding: "10px 14px", background: "var(--accent-ghost)", border: "0.5px solid var(--border-accent)", borderRadius: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap", marginBottom: 12, padding: "10px 14px", background: "var(--accent-ghost)", border: "var(--hairline) solid var(--border-accent)", borderRadius: 8 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, fontSize: 13, color: "var(--text-primary)", flexWrap: "wrap" }}>
             <Link2 size={14} color="var(--accent)" />
             <span>Scoped to engagement <b>{engagementQuery.data?.engagement?.name ?? `${engagementId.slice(0, 8)}…`}</b> — {total} finding{total === 1 ? "" : "s"}</span>
@@ -1530,7 +1530,7 @@ export default function FindingsPage() {
                   {/* EPSS mini */}
                   <div style={{ display: "flex", gap: 8, alignItems: "center", marginBottom: 4 }}>
                     <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--text-secondary)" }}>EPSS</span>
-                    <div style={{ flex: 1, height: 3, background: "rgba(100,116,139,0.15)", borderRadius: 2, overflow: "hidden" }}>
+                    <div style={{ flex: 1, height: 3, background: "var(--track-bg)", borderRadius: 2, overflow: "hidden" }}>
                       <div style={{ height: "100%", width: `${f.epssScore * 100}%`, background: epssColor(f.epssScore), borderRadius: 2 }} />
                     </div>
                     <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--text-secondary)" }}>{(f.epssScore * 100).toFixed(0)}%</span>
@@ -1539,7 +1539,7 @@ export default function FindingsPage() {
                   </div>
 
                   {/* Risk bar */}
-                  <div style={{ height: 2, background: "rgba(100,116,139,0.15)", borderRadius: 1, overflow: "hidden" }}>
+                  <div style={{ height: 2, background: "var(--track-bg)", borderRadius: 1, overflow: "hidden" }}>
                     <div style={{ height: "100%", width: `${f.riskScore / 10}%`, background: riskScoreColor(f.riskScore), borderRadius: 1 }} />
                   </div>
                 </div>

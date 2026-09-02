@@ -60,44 +60,44 @@ function Dial({ score, color }: { score: number; color: string }) {
     <svg viewBox="0 0 120 120" width={132} height={132} aria-hidden focusable="false" style={{ flexShrink: 0 }}>
       <circle
         cx="60" cy="60" r="46" fill="none" pathLength={100}
-        stroke="rgba(128,128,128,0.18)" strokeWidth="7" strokeLinecap="round"
+        stroke="var(--track-bg)" strokeWidth="7" strokeLinecap="round"
         strokeDasharray={`${ARC} 100`} transform="rotate(135 60 60)"
       />
       <circle
         cx="60" cy="60" r="46" fill="none" pathLength={100}
         stroke={color} strokeWidth="7" strokeLinecap="round"
         strokeDasharray={`${(ARC * pct) / 100} 100`} transform="rotate(135 60 60)"
-        style={{ transition: "stroke-dasharray var(--dur-slow) var(--ease-out)" }}
+        className="dial-arc"
       />
       {/* endpoint marker — the eye lands on it before it reads the number */}
       <circle
         cx="60" cy="14" r="2.6" fill={color}
         transform={`rotate(${135 + (270 * pct) / 100 + 90} 60 60)`}
-        style={{ transition: "transform var(--dur-slow) var(--ease-out)" }}
+        className="dial-tip"
       />
     </svg>
   );
 }
 
-function Readout({ label, value, delta, hint }: {
+function MetricTile({ label, value, delta, hint }: {
   label: string; value: React.ReactNode; delta?: React.ReactNode; hint: string;
 }) {
   return (
     <div
       style={{
-        flex: "1 1 130px", minWidth: 130, padding: "13px 15px", borderRadius: "var(--r-md)",
-        background: "var(--bg-surface)", border: "0.5px solid var(--border-subtle)",
-        display: "flex", flexDirection: "column", gap: 6,
+        flex: "1 1 148px", minWidth: 0, padding: "var(--space-3) var(--space-4)", borderRadius: "var(--r-md)",
+        background: "var(--bg-surface)", border: "var(--hairline) solid var(--border-subtle)",
+        display: "flex", flexDirection: "column", gap: "var(--space-2)",
       }}
     >
       <span className="eyebrow">{label}</span>
       <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-        <span className="num" style={{ fontFamily: "var(--font-display)", fontSize: 26, fontWeight: 600, letterSpacing: "-0.02em", color: "var(--text-primary)", lineHeight: 1 }}>
+        <span className="num" style={{ fontFamily: "var(--font-display)", fontSize: "var(--fs-display-m)", fontWeight: 600, letterSpacing: "-0.02em", color: "var(--text-primary)", lineHeight: 1 }}>
           {value}
         </span>
         {delta}
       </div>
-      <span style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: "var(--text-muted)", lineHeight: 1.4 }}>{hint}</span>
+      <span style={{ fontFamily: "var(--font-ui)", fontSize: "var(--fs-label)", color: "var(--text-muted)", lineHeight: 1.4 }}>{hint}</span>
     </div>
   );
 }
@@ -105,11 +105,11 @@ function Readout({ label, value, delta, hint }: {
 export function PostureScorecard() {
   const { data, isLoading, error, refetch } = usePosture();
 
-  if (isLoading) return <div style={{ padding: 18 }}><SkeletonRows rows={2} height={70} /></div>;
+  if (isLoading) return <div style={{ padding: "var(--space-5)" }}><SkeletonRows rows={1} height={168} /></div>;
   if (error) return <ErrorState title="Posture didn't load. The analytics service returned an error." onRetry={() => refetch()} />;
   if (!data?.has_runs || !data.scores) {
     return (
-      <div style={{ padding: 28 }}>
+      <div style={{ padding: "var(--space-6)" }}>
         <EmptyState
           icon={ShieldCheck}
           title="No scan history yet"
@@ -121,23 +121,26 @@ export function PostureScorecard() {
 
   const s = data.scores;
   const p = data.scores_prev ?? undefined;
-  const g = GRADE[s.grade?.toUpperCase()] ?? GRADE.C;
+  const g = GRADE[s.grade?.toUpperCase()] ?? {
+    color: "var(--text-muted)", bg: "var(--bg-surface)",
+    edge: "var(--border-subtle)", read: "Ungraded",
+  };
 
   return (
-    <div style={{ display: "flex", gap: 22, alignItems: "center", flexWrap: "wrap", padding: "18px 20px" }}>
+    <div style={{ display: "flex", gap: "var(--space-5)", alignItems: "center", flexWrap: "wrap", padding: "var(--space-5)" }}>
       {/* ---- dial ---------------------------------------------------------- */}
       <div style={{ position: "relative", display: "grid", placeItems: "center" }}>
         <Dial score={s.posture_score} color={g.color} />
         <div style={{ position: "absolute", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
           <span
             style={{
-              fontFamily: "var(--font-display)", fontSize: 40, fontWeight: 600,
+              fontFamily: "var(--font-display)", fontSize: "var(--fs-display-l)", fontWeight: 600,
               lineHeight: 1, letterSpacing: "-0.04em", color: g.color,
             }}
           >
             {s.grade}
           </span>
-          <span className="num-mono" style={{ fontSize: 12, color: "var(--text-secondary)", fontWeight: 600 }}>
+          <span className="num-mono" style={{ fontSize: "var(--fs-body-s)", color: "var(--text-secondary)", fontWeight: 600 }}>
             {s.posture_score}<span style={{ color: "var(--text-faint)" }}>/100</span>
           </span>
         </div>
@@ -147,23 +150,23 @@ export function PostureScorecard() {
       {/* ---- verdict + supporting metrics ---------------------------------- */}
       <div style={{ flex: "1 1 300px", minWidth: 0, display: "flex", flexDirection: "column", gap: 12 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
-          <span className="chip" style={{ color: g.color, background: g.bg, borderColor: g.edge, fontSize: 11 }}>
+          <span className="chip" style={{ color: g.color, background: g.bg, borderColor: g.edge, fontSize: "var(--fs-label)" }}>
             {g.read}
           </span>
           <Delta now={s.posture_score} prev={p?.posture_score} improvedWhenLower={false} />
-          <span style={{ fontFamily: "var(--font-ui)", fontSize: 11.5, color: "var(--text-muted)" }}>
+          <span style={{ fontFamily: "var(--font-ui)", fontSize: "var(--fs-body-s)", color: "var(--text-muted)" }}>
             {p ? "vs. previous scan" : "first scored scan — no comparison yet"}
           </span>
         </div>
 
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-          <Readout
+          <MetricTile
             label="Risk index"
             value={s.risk_index}
             delta={<Delta now={s.risk_index} prev={p?.risk_index} improvedWhenLower />}
             hint="Weighted open risk. Lower is better."
           />
-          <Readout
+          <MetricTile
             label="Exploitable"
             value={s.exploitable_score}
             delta={<Delta now={s.exploitable_score} prev={p?.exploitable_score} improvedWhenLower />}

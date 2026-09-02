@@ -125,6 +125,8 @@
   font-variant-numeric: tabular-nums;
   font-feature-settings: "tnum" 1, "zero" 1;
 }
+/* TASK 16-B: monospace for TEXT labels (protocol names) — no tabular figures. */
+.mono { font-family: var(--font-mono); }
 
 /* ==========================================================================
    Rows — hover in CSS so keyboard focus gets parity
@@ -144,6 +146,30 @@
   outline-offset: -2px;
   border-radius: var(--r-sm);
 }
+
+/* TASK 14: SLA rows are links now — give them the same hover as a console-row. */
+a.console-row:hover { background: var(--bg-surface); }
+
+/* TASK 14-D: the four SLA state buttons on a fluid grid so they never force a
+   336px minimum inside a one-third column; collapse to 2×2 on very narrow. */
+.sla-state-strip { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); }
+@media (max-width: 480px) { .sla-state-strip { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
+/* TASK 15-B: row hover for the six-column patch matrix (eased, existing tokens). */
+.matrix-row { transition: background var(--dur-fast) var(--ease-out); }
+.matrix-row:hover { background: var(--bg-surface); }
+
+/* TASK 20: hover transitions use existing tokens only — no new duration/easing. */
+.console-row, a.console-row, .matrix-row {
+  transition: background var(--dur-fast) var(--ease-out);
+}
+
+/* TASK 18-C: posture dial motion is explicit and reduced-motion safe. */
+.dial-arc, .dial-tip {
+  transition: stroke-dasharray var(--dur-slow) var(--ease-out),
+              transform var(--dur-slow) var(--ease-out);
+}
+@media (prefers-reduced-motion: reduce) { .dial-arc, .dial-tip { transition: none; } }
 
 /* ==========================================================================
    Meter — shared bar, with quarter ticks for scale
@@ -225,6 +251,10 @@
 .legend-chip[aria-pressed="true"] { background: var(--bg-active); border-color: var(--sev-edge, var(--border-strong)); }
 .legend-chip[data-static="true"] { cursor: default; }
 .legend-chip[data-static="true"]:hover { background: transparent; border-color: var(--border-subtle); }
+/* E11: on touch, the interactive filter chip must meet the 44px target. */
+@media (pointer: coarse) {
+  .legend-chip:not([data-static="true"]) { min-height: 44px; padding-inline: var(--space-3); }
+}
 
 /* ==========================================================================
    Live pulse — used only where something is actually breached/overdue
@@ -271,5 +301,7 @@
     animation-iteration-count: 1 !important;
     transition-duration: 0.001ms !important;
   }
-  .pulse-dot, .sla-pulse { opacity: 1; }
+  /* TASK 19: a perpetual pulse at 0.001ms flickers — stop it outright. */
+  .pulse-dot, .sla-pulse { animation: none !important; opacity: 1; }
+  .pulse-dot::after { content: none; }
 }

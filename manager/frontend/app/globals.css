@@ -38,16 +38,51 @@
   --radius-xl:  10px;
 
   /* ─── Spacing scale (4px base) — use instead of magic numbers ─── */
+  --space-0-5: 2px;   /* E1: sub-step for hairline-adjacent gaps */
   --space-1:  4px;
   --space-2:  8px;
   --space-3:  12px;
   --space-4:  16px;
   --space-5:  20px;
   --space-6:  24px;
+  --space-7:  32px;   /* E1 */
+  --space-8:  40px;   /* E1 */
+
+  /* ─── E1: type scale — responsive display, fixed body/label (floor 11px) ─── */
+  --fs-display-xl: clamp(38px, 7vw, 52px); /* ledger headline only */
+  --fs-display-l:  clamp(30px, 5vw, 38px); /* posture grade only  */
+  --fs-display-m:  26px;                    /* metric readouts     */
+  --fs-display-s:  24px;                    /* SLA state counts    */
+  --fs-body:       13px;                    /* default body        */
+  --fs-body-s:     12px;                    /* dense body, floor   */
+  --fs-label:      11px;                    /* eyebrows, table heads (uppercase) */
+  --lh-tight: 1.1;
+  --lh-body:  1.5;
+
+  /* ─── E1: shape aliases (reuse existing --radius-*), + pill ─── */
+  --r-sm:  var(--radius-sm);
+  --r-lg:  var(--radius-lg);
+  --r-pill: 999px;
+
+  /* ─── E1: hairline — crisp 1px, thinned to 0.5px only on hi-dpi (see media below) ─── */
+  --hairline: 1px;
+
+  /* ─── E1: neutral track (replaces hardcoded rgba greys), theme-aware ─── */
+  --track-bg: color-mix(in srgb, var(--text-primary) 12%, transparent);
+
+  /* ─── E1: agent/probe BUSY — a STATE, not a severity ─── */
+  --state-busy: var(--accent);
+
+  /* ─── E1: data freshness ─── */
+  --fresh-ok:    var(--text-muted);
+  --fresh-stale: var(--sev-medium-color);
 
   --font-display: 'Inter', system-ui, sans-serif;
   --font-body:    'Inter', system-ui, sans-serif;
   --font-mono:    'SF Mono', 'Cascadia Code', 'Consolas', monospace;
+  /* E1 FIX: --font-ui was referenced across the dashboard but defined NOWHERE
+     (silently fell back to the browser default). Alias it to the body face. */
+  --font-ui:      var(--font-body);
 
   --theme-transition: background var(--dur-theme) ease,
                       border-color var(--dur-theme) ease,
@@ -277,6 +312,10 @@ code, pre, .terminal, kbd, [class*="mono"], .font-mono {
   }
   .shimmer { animation: none !important; }
 }
+
+/* E1: crisp hairlines. 0.5px rounds to 0 on 1× displays (dividers vanish); only
+   thin the hairline where the device can actually render sub-pixel borders. */
+@media (min-resolution: 2dppx) { :root { --hairline: 0.5px; } }
 
 /* ─── Animation utilities ─── */
 .animate-pulse-dot       { animation: pulse 2s ease-in-out infinite; }
