@@ -42,11 +42,12 @@ VNC_PORTS = {5900, 5901}
 IPMI_PORTS = {623}
 SMTP_PORTS = {25, 587}
 MSRPC_PORTS = {135}
+RDP_PORTS = {3389}
 PRINTER_PORTS = {9100, 631}
 
 PROFILE_PORTS = {"it": IT_PORTS, "iot": IOT_PORTS, "ot": []}
 PROFILE_DEEP_BRANCHES = {
-    "it": {"tls", "web", "smb", "db", "mcp_ai", "snmp", "ssh", "smb_enum", "ldap", "dns", "nfs", "ftp", "rsync", "vnc", "ipmi", "smtp", "msrpc", "printer"},
+    "it": {"tls", "web", "smb", "db", "mcp_ai", "snmp", "ssh", "smb_enum", "ldap", "dns", "nfs", "ftp", "rsync", "vnc", "ipmi", "smtp", "msrpc", "rdp", "printer"},
     "iot": {"tls", "web", "ssh", "ftp", "vnc", "printer"},
     "ot": set(),
 }
@@ -57,7 +58,8 @@ _BRANCH_PORT_TABLE = {"tls": TLS_PORTS, "web": WEB_PORTS, "smb": SMB_PORTS,
                       "ssh": SSH_PORTS, "smb_enum": SMB_ENUM_PORTS, "ldap": LDAP_PORTS,
                       "dns": DNS_PORTS, "nfs": NFS_PORTS, "ftp": FTP_PORTS,
                       "rsync": RSYNC_PORTS, "vnc": VNC_PORTS, "ipmi": IPMI_PORTS,
-                      "smtp": SMTP_PORTS, "msrpc": MSRPC_PORTS, "printer": PRINTER_PORTS}
+                      "smtp": SMTP_PORTS, "msrpc": MSRPC_PORTS, "rdp": RDP_PORTS,
+                      "printer": PRINTER_PORTS}
 
 
 def gate_0_is_passive_profile(profile: str) -> bool:

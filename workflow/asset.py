@@ -69,6 +69,7 @@ class Asset:
     ipmi_facts: dict[int, dict] = field(default_factory=dict)
     smtp_facts: dict[int, dict] = field(default_factory=dict)
     msrpc_facts: dict[int, dict] = field(default_factory=dict)
+    rdp_facts: dict[int, dict] = field(default_factory=dict)
     printer_facts: dict[int, dict] = field(default_factory=dict)
     smb_enum_state: dict | None = None
     nfs_state: dict | None = None
@@ -200,6 +201,10 @@ class Asset:
         if r.port is not None:
             self.msrpc_facts[r.port] = {**r.data, "_collected_at": r.timestamp}
 
+    def _merge_rdp_scan(self, r: ScanResult) -> None:
+        if r.port is not None:
+            self.rdp_facts[r.port] = {**r.data, "_collected_at": r.timestamp}
+
     def _merge_printer_scan(self, r: ScanResult) -> None:
         if r.port is not None:
             self.printer_facts[r.port] = {**r.data, "_collected_at": r.timestamp}
@@ -251,6 +256,7 @@ _MERGE_DISPATCH = {
     "ipmi_scan": Asset._merge_ipmi_scan,
     "smtp_scan": Asset._merge_smtp_scan,
     "msrpc_scan": Asset._merge_msrpc_scan,
+    "rdp_scan": Asset._merge_rdp_scan,
     "printer_scan": Asset._merge_printer_scan,
     "udp_scan": Asset._merge_udp_scan,
     "passive_collect": Asset._merge_passive_collect,
