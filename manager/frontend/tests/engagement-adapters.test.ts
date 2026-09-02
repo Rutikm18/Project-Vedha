@@ -46,6 +46,10 @@ describe("finding status adapters", () => {
   test("keeps risk scoring on the backend's 0-1000 scale", () => {
     assert.equal(toUiFinding({ id: "f-1", risk_score: 825 }).riskScore, 825);
     assert.equal(toUiFinding({ id: "f-2", cvss_score: 7.5 }).riskScore, 750);
+    assert.equal(
+      toUiFinding({ id: "f-3", risk_score: 1000, risk_rank: 884 }).riskScore,
+      884,
+    );
   });
 
   test("maps every UI workflow status back to the backend enum", () => {
@@ -60,5 +64,46 @@ describe("finding status adapters", () => {
     for (const [uiStatus, apiStatus] of Object.entries(expected)) {
       assert.deepEqual(toApiFindingPatch({ status: uiStatus }), { status: apiStatus });
     }
+  });
+});
+
+describe("engagement status lifecycle", () => {
+  // The header status control PATCHes ONLY { status } — sending the whole edit
+  // form there would let a stale copy of scope or dates overwrite someone else's
+  // change. So a status-only patch has to survive the adapter intact and carry
+  // nothing else with it.
+  test("a status-only patch maps to the backend enum and touches nothing else", () => {
+    for (const [ui, api] of [
+      ["PLANNING", "draft"],
+      ["ONGOING", "ongoing"],
+      ["RUNNING", "running"],
+      ["ACTIVE", "active"],          // pre-0035 stored value, still round-trips
+      ["PAUSED", "paused"],
+      ["COMPLETED", "completed"],
+    ] as const) {
+      const body = toApiEngagementPatch({ status: ui });
+      assert.equal(body.status, api, `${ui} should map to ${api}`);
+      assert.deepEqual(Object.keys(body), ["status"],
+        `${ui} patch must carry only the status`);
+    }
+  });
+
+  test("every state the control offers is a state the backend accepts", () => {
+    // Guards the drift that would make a menu entry silently unsavable: the UI
+    // used PLANNING/ACTIVE/PAUSED/COMPLETED while the backend enum is
+    // draft/active/paused/completed, and only the adapter joins them.
+    const offered = ["PLANNING", "ONGOING", "RUNNING", "PAUSED", "COMPLETED"];
+    const backendEnum = new Set([
+      "draft", "active", "ongoing", "running", "paused", "completed",
+    ]);
+    for (const state of offered) {
+      const mapped = toApiEngagementPatch({ status: state }).status;
+      assert.ok(backendEnum.has(mapped),
+        `${state} maps to "${mapped}", which is not an EngagementStatus`);
+    }
+  });
+
+  test("an unknown status falls back to draft rather than sending garbage", () => {
+    assert.equal(toApiEngagementPatch({ status: "NONSENSE" }).status, "draft");
   });
 });

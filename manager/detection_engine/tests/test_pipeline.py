@@ -21,7 +21,7 @@ import ai_normalizer as ai_mod
 import vuln_db as vdb_mod
 from enrichment_db import EpssDB, KevDB
 from models import FindingState, SourceConfidence
-from pipeline import ab_evaluate, run_pipeline
+from pipeline import ab_evaluate, run_full_detection, run_pipeline
 from vuln_db import SnapshotMeta, VulnDB, _content_hash
 
 
@@ -68,6 +68,23 @@ def _openssh_vuln_db() -> VulnDB:
         }]
     }
     return _mock_vuln_db(records)
+
+
+def _openssh_upstream_vuln_db() -> VulnDB:
+    """Upstream boundary for a banner-vs-inventory suppression scenario."""
+    return _mock_vuln_db({
+        "openssh": [{
+            "id": "CVE-2023-12345",
+            "upstream": ["CVE-2023-12345"],
+            "affected": [{
+                "package": {"name": "openssh", "ecosystem": "generic"},
+                "ranges": [{"type": "ECOSYSTEM", "events": [
+                    {"introduced": "0"}, {"fixed": "9.0p1"},
+                ]}],
+            }],
+            "severity": [],
+        }],
+    })
 
 
 def _ssh_inventory_jsonl(tmp_path, target="10.0.0.1",
@@ -194,6 +211,33 @@ class TestRunPipelineVulnMatching:
             kev_db=_empty_kev(), epss_db=_empty_epss(),
         )
         assert findings == []
+
+    def test_full_detection_exposes_authoritative_suppression_audit(self, tmp_path):
+        inventory = _ssh_inventory_jsonl(
+            tmp_path,
+            target="10.0.0.9",
+            packages="openssh-server 1:9.5p1-1\n",
+            filename="inventory.jsonl",
+        )
+        banner = _banner_jsonl(
+            tmp_path,
+            target="10.0.0.9",
+            first_line="SSH-2.0-OpenSSH_8.4p1",
+            filename="banner.jsonl",
+        )
+
+        result = run_full_detection(
+            [inventory, banner],
+            vuln_db=_openssh_upstream_vuln_db(),
+            kev_db=_empty_kev(), epss_db=_empty_epss(),
+        )
+
+        assert result["cve"] == []
+        assert result["counts"]["cve_suppressed"] == 1
+        audit = result["suppression_audit"][0]
+        assert audit["asset_ip"] == "10.0.0.9"
+        assert audit["cve_id"] == "CVE-2023-12345"
+        assert audit["reason"] == "authoritative_version_not_older"
 
 
 # ---------------------------------------------------------------------------

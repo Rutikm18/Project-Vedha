@@ -12,6 +12,7 @@ Data-exposure controls:
 from __future__ import annotations
 
 import uuid
+from datetime import datetime, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Query, status
@@ -28,7 +29,10 @@ from app.models.llm_output import LLMOutput
 from app.models.remediation_plan import RemediationPlan
 from app.models.scan_job import ScanJob
 from app.models.scan_request import ScanRequest, SR_PENDING
+from app.schemas.ai import AiGenerateRequest, AiMessage
 from app.schemas.portal import (
+    ClientAssistantAsk,
+    ClientAssistantReply,
     ClientEngagementOut,
     ClientFindingOut,
     ClientPostureOut,
@@ -41,6 +45,7 @@ from app.schemas.portal import (
     ScanRequestCreate,
 )
 from app.services import portal_metrics
+from app.services.llm import AiRuntimeError, ManagerLlmService
 from app.services import posture as posture_service
 from app.services.audit import record_audit
 from app.services.remediation_kb import os_key, recipe_for_finding
@@ -390,3 +395,195 @@ async def create_scan_request(body: ScanRequestCreate, user: ClientUser, db: DB)
     return ClientScanRequestOut(id=sr.id, scan_type=sr.scan_type, use_case_id=sr.use_case_id,
                                 status=sr.status, targets=sr.targets, intensity=sr.intensity,
                                 note=sr.note, requested_at=sr.requested_at)
+
+
+# ── AI assistant ──────────────────────────────────────────────────────────────
+# A customer-facing assistant, scoped two ways at once:
+#
+#   DATA scope   — the grounding context is built HERE, server-side, from this
+#                  client's own engagement via client_scoped(). The request body
+#                  carries no context, so a crafted client cannot ask about
+#                  another tenant's findings or smuggle its own "facts" in.
+#   SUBJECT scope — the model runs the `client_assistant` task, whose rules
+#                  restrict it to information security and decline anything else.
+#
+# Unlike the reports and remediation routes, replies are NOT operator-reviewed:
+# this was an explicit product decision, so the UI labels every answer as
+# AI-generated and unverified rather than presenting it as assessed fact.
+_ASSISTANT_MAX_FINDINGS = 40
+
+
+def _assistant_finding_view(f: Finding) -> dict:
+    """The whitelist that reaches the model — deliberately the same shape the
+    customer can already see in ClientFindingOut. No internal triage notes,
+    evidence blobs or exploit metadata."""
+    return {
+        "id": str(f.id),
+        "title": f.title,
+        "severity": getattr(f.severity, "value", f.severity),
+        "status": getattr(f.status, "value", f.status),
+        "cvss_score": float(f.cvss_score) if f.cvss_score is not None else None,
+        "risk_score": f.risk_score,
+        "cve_ids": f.cve_ids,
+        "first_seen": f.first_seen.isoformat() if f.first_seen else None,
+        "remediation": f.remediation,
+    }
+
+
+@router.post("/assistant/chat", response_model=ClientAssistantReply,
+             summary="Ask about your own assessment (security topics only)")
+async def portal_assistant_chat(body: ClientAssistantAsk, user: ClientUser, db: DB):
+    eng_id = assert_client(user)
+
+    eng = (await db.execute(
+        select(Engagement).where(Engagement.id == eng_id)
+    )).scalar_one_or_none()
+    if eng is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Engagement not found")
+
+    open_rows = (await db.execute(
+        client_scoped(
+            select(Finding)
+            .where(Finding.status.in_(_OPEN_STATES))
+            .order_by(Finding.risk_score.desc().nullslast(), Finding.severity)
+            .limit(_ASSISTANT_MAX_FINDINGS),
+            user, Finding.engagement_id)
+    )).scalars().all()
+
+    focus = None
+    if body.finding_id is not None:
+        row = (await db.execute(
+            client_scoped(select(Finding).where(Finding.id == body.finding_id),
+                          user, Finding.engagement_id)
+        )).scalar_one_or_none()
+        if row is None:
+            # 404 rather than 403: a client must not be able to probe whether a
+            # finding id exists in someone else's engagement.
+            raise HTTPException(status.HTTP_404_NOT_FOUND, "Finding not found")
+        focus = _assistant_finding_view(row)
+
+    context = {
+        "engagement": {
+            "name": eng.name,
+            "status": getattr(eng.status, "value", eng.status),
+            "authorised_scope": list(eng.scope_cidrs or []),
+        },
+        "open_finding_count": len(open_rows),
+        "open_findings": [_assistant_finding_view(f) for f in open_rows],
+    }
+    if focus is not None:
+        context["question_is_about"] = focus
+
+    request = AiGenerateRequest(
+        task="client_assistant",
+        messages=[AiMessage(role=m.role, content=m.content) for m in body.messages],
+        context=context,
+        max_tokens=900,
+    )
+    try:
+        content, runtime, _fallback = await ManagerLlmService().generate_with_fallback(request)
+    except AiRuntimeError as exc:
+        raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+
+    record_audit(
+        db, actor_id=user.user_id, action="portal.assistant.chat",
+        engagement_id=eng_id, resource_type="engagement", resource_id=eng_id,
+        detail={"turns": len(body.messages), "finding_id": str(body.finding_id)
+                if body.finding_id else None, "model": runtime.model},
+    )
+    await db.flush()
+    return ClientAssistantReply(
+        content=content, provider=runtime.provider, model=runtime.model,
+        grounded=bool(open_rows or focus),
+        generated_at=datetime.now(timezone.utc),
+    )
+
+
+# ── console parity: the same analytics the operator dashboard renders ─────────
+# The customer console shows the SAME components as the operator console
+# (components/dashboard/*), so it needs the SAME response shapes. Rather than
+# fork the aggregation — which would drift the moment either side changed — these
+# routes DELEGATE to the operator handlers with `engagement_id` pinned to the
+# caller's own engagement.
+#
+# Those handlers already take an optional engagement_id and filter on it, and
+# they scope every query by `current_user.tenant_id` on top. A client token
+# carries the client's tenant, so the delegation is scoped twice: by tenant
+# inside the handler, and by the engagement we pin here. `assert_client` refuses
+# any caller that is not a bound client before we get that far.
+#
+# The win is structural: a change to the operator's exposure/posture/SLA
+# aggregation reaches the customer console automatically, because it is the same
+# function.
+
+@router.get("/analytics/exposure", summary="Protocol risk + zone health for your engagement")
+async def portal_exposure(user: ClientUser, db: DB):
+    from app.routers.analytics import exposure as _operator_exposure
+    return await _operator_exposure(db=db, current_user=user,
+                                    engagement_id=assert_client(user))
+
+
+@router.get("/analytics/posture", summary="Posture scores + patch comparison for your engagement")
+async def portal_posture_analytics(user: ClientUser, db: DB):
+    from app.routers.analytics import posture as _operator_posture
+    return await _operator_posture(db=db, current_user=user,
+                                   engagement_id=assert_client(user))
+
+
+@router.get("/sla-summary", summary="Remediation-deadline summary for your engagement")
+async def portal_sla_summary(user: ClientUser, db: DB):
+    from app.routers.findings import sla_summary as _operator_sla
+    return await _operator_sla(db=db, current_user=user,
+                               engagement_id=assert_client(user))
+
+
+@router.get("/activity", summary="Recent activity in your engagement")
+async def portal_activity(user: ClientUser, db: DB,
+                          limit: int = Query(default=20, ge=1, le=100)):
+    from app.routers.activity import recent_activity as _operator_activity
+    return await _operator_activity(db=db, current_user=user, limit=limit,
+                                    engagement_id=assert_client(user))
+
+
+@router.get("/agents", summary="The probe(s) assigned to your engagement")
+async def portal_agents(user: ClientUser, db: DB):
+    """The customer's own probe fleet — normally one. Deliberately a NARROW
+    projection: a customer sees whether their probe is reachable and what it is
+    doing, never enrollment secrets, tokens, hardware identifiers or the other
+    tenants an operator would see on /fleet."""
+    eng_id = assert_client(user)
+    eng = (await db.execute(
+        select(Engagement).where(Engagement.id == eng_id)
+    )).scalar_one_or_none()
+    if eng is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Engagement not found")
+
+    agent_id = getattr(eng, "assigned_agent_id", None)
+    if agent_id is None:
+        return []
+
+    from app.models.agent import Agent
+    agent = (await db.execute(
+        select(Agent).where(Agent.id == agent_id, Agent.tenant_id == user.tenant_id)
+    )).scalar_one_or_none()
+    if agent is None:
+        return []
+
+    status_value = str(getattr(agent.status, "value", agent.status)).upper()
+    # `activity` is the one-line state the shared AgentMonitor panel renders. The
+    # operator fleet view derives it the same way; a customer sees only whether
+    # their own probe is working, never which job or whose.
+    if agent.current_job_id is not None:
+        activity = "Running a scan"
+    elif status_value == "ONLINE":
+        activity = "Idle — ready to scan"
+    else:
+        activity = "Not connected"
+    return [{
+        "id": str(agent.id),
+        "name": agent.name,
+        "status": status_value,
+        "activity": activity,
+        "location": agent.location,
+        "last_heartbeat": agent.last_heartbeat.isoformat() if agent.last_heartbeat else None,
+    }]

@@ -6,6 +6,7 @@ import { PageShell } from "../components/PageShell";
 import { DashboardGrid } from "../components/dashboard/DashboardGrid";
 import { DashboardCharts } from "../components/DashboardCharts";
 import { fetchJson } from "../lib/fetcher";
+import { OperatorConsoleProvider } from "../lib/console-source";
 
 /* The dashboard body is the redesigned console (DashboardGrid): live ledger,
    posture dial, SLA clock, patch matrix, exposure meters, and the live agent
@@ -36,27 +37,71 @@ export default function Dashboard() {
   const breached = slaQuery.data?.summary?.breached ?? 0;
   const tracked = slaQuery.data?.summary?.totalTracked ?? 0;
 
+  const agentsLoading = agentsQuery.isLoading;
+  const slaLoading = slaQuery.isLoading;
+
   const statusItems = [
-    { label: "AGENTS", value: `${agentsOnline}/${agents.length}`, color: "var(--accent)" },
-    ...(tracked > 0
-      ? [{
-          label: "SLA",
-          value: breached > 0 ? `${breached} BREACHED` : "ON TRACK",
-          color: breached > 0 ? "var(--sev-critical-color)" : "var(--accent)",
-        }]
-      : []),
+    {
+      label: "AGENTS",
+      value: agentsLoading ? "—" : `${agentsOnline}/${agents.length}`,
+      color: agentsLoading ? "var(--text-faint)" : "var(--accent)",
+      ariaLabel: agentsLoading
+        ? "Agent status loading"
+        : `${agentsOnline} of ${agents.length} agents online`,
+    },
+    {
+      label: "SLA",
+      value: slaLoading ? "—"
+        : tracked === 0 ? "NONE TRACKED"
+        : breached > 0 ? `${breached} BREACHED`
+        : "ON TRACK",
+      color: slaLoading ? "var(--text-faint)"
+        : breached > 0 ? "var(--sev-critical-color)"
+        : "var(--accent)",
+      ariaLabel: slaLoading
+        ? "S L A status loading"
+        : breached > 0
+          ? `${breached} findings past their remediation deadline`
+          : "All tracked findings within their remediation deadline",
+    },
   ];
 
   return (
     <PageShell
-      title="Security posture"
-      subtitle="Executive exposure, remediation urgency, and assessment health"
+      title="Operations overview"
+      subtitle="Open exposure, remediation clock, and fleet health"
       statusItems={statusItems}
     >
-      <div className="console-scope" style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <OperatorConsoleProvider>
+      <div className="console-scope" style={{ display: "flex", flexDirection: "column" }}>
         <DashboardGrid />
-        <DashboardCharts />
+
+        <section
+          aria-labelledby="trends-heading"
+          style={{
+            marginTop: "var(--space-7)",
+            paddingTop: "var(--space-6)",
+            borderTop: "var(--hairline) solid var(--border-strong)",
+          }}
+        >
+          <h2
+            id="trends-heading"
+            style={{
+              margin: "0 0 var(--space-4)",
+              fontFamily: "var(--font-ui)",
+              fontSize: "var(--fs-body)",
+              fontWeight: 600,
+              letterSpacing: "0.08em",
+              textTransform: "uppercase",
+              color: "var(--text-muted)",
+            }}
+          >
+            Trends and activity
+          </h2>
+          <DashboardCharts />
+        </section>
       </div>
+      </OperatorConsoleProvider>
     </PageShell>
   );
 }

@@ -23,40 +23,53 @@ from datetime import timedelta
 
 from scanner.scanner_base import ScanResult, ScopeGuard
 from scanner.host_discovery import HostDiscoveryScanner
+from scanner.ipv6_discovery import discover_ipv6_hosts
+from scanner.os_fingerprint import OSFingerprintScanner
 from scanner.port_scanner import PortScanner
 from scanner.syn_scanner import SynScanner
 from scanner.service_banner import ServiceBannerScanner
-from scanner.tls_scanner import TLSScanner
-from scanner.web_scanner import WebScanner
-from scanner.smb_scanner import SMBScanner
-from scanner.snmp_scanner import SNMPScanner
-from scanner.db_scanner import DBScanner, DEFAULT_DB_PORTS
-from scanner.mcp_ai_scanner import MCPAIScanner
 from scanner.udp_scanner import UDPScanner
-from scanner.ssh_scanner import SSHScanner
-from scanner.smb_enum_scanner import SMBEnumScanner
-from scanner.ldap_scanner import LDAPScanner
-from scanner.dns_scanner import DNSScanner
-from scanner.nfs_scanner import NFSScanner
-from scanner.ftp_scanner import FTPScanner
-from scanner.rsync_scanner import RsyncScanner
-from scanner.vnc_scanner import VNCScanner
-from scanner.ipmi_scanner import IPMIScanner
-from scanner.smtp_scanner import SMTPScanner
-from scanner.msrpc_scanner import MSRPCScanner
-from scanner.rdp_scanner import RDPScanner
-from scanner.printer_scanner import PrinterScanner
 from scanner.passive_collector import PassiveCollector
+
+# ── deep-scan branch scanners ────────────────────────────────────────────────
+# DO NOT let ruff/vulture strip these: they look unused because no line calls
+# them by name — _run_branch resolves each one out of THIS module's globals()
+# using BranchSpec.scanner. That indirection is deliberate: it keeps the import
+# list (and therefore every `monkeypatch.setattr("workflow.workflow_engine.X")`
+# in the test-suite) exactly where it has always been, while the branch table
+# owns the wiring. Deleting one turns its branch into a KeyError at scan time.
+# Same idiom as the `import X as X  # re-exported for tests` trap in
+# manager/backend/app/routers/agents.py.
+from scanner.tls_scanner import TLSScanner as TLSScanner
+from scanner.web_scanner import WebScanner as WebScanner
+from scanner.smb_scanner import SMBScanner as SMBScanner
+from scanner.snmp_scanner import SNMPScanner as SNMPScanner
+from scanner.db_scanner import DBScanner as DBScanner
+from scanner.mcp_ai_scanner import MCPAIScanner as MCPAIScanner
+from scanner.ssh_scanner import SSHScanner as SSHScanner
+from scanner.smb_enum_scanner import SMBEnumScanner as SMBEnumScanner
+from scanner.ldap_scanner import LDAPScanner as LDAPScanner
+from scanner.dns_scanner import DNSScanner as DNSScanner
+from scanner.nfs_scanner import NFSScanner as NFSScanner
+from scanner.ftp_scanner import FTPScanner as FTPScanner
+from scanner.rsync_scanner import RsyncScanner as RsyncScanner
+from scanner.vnc_scanner import VNCScanner as VNCScanner
+from scanner.ipmi_scanner import IPMIScanner as IPMIScanner
+from scanner.smtp_scanner import SMTPScanner as SMTPScanner
+from scanner.msrpc_scanner import MSRPCScanner as MSRPCScanner
+from scanner.rdp_scanner import RDPScanner as RDPScanner
+from scanner.printer_scanner import PrinterScanner as PrinterScanner
 from scanner.ssh_collector import SSHCollector
 from scanner.windows_collector import WindowsCollector
 
 from .asset import Asset
+from .branches import BRANCHES, BranchSpec
 from .cache import WorkflowCache
 from .gates import (
-    PROFILE_PORTS, PROFILE_DEEP_BRANCHES,
-    TLS_PORTS, WEB_PORTS, SMB_PORTS, DB_PORTS, AI_PORTS, UDP_PORTS, SNMP_PORTS, SSH_PORTS, LDAP_PORTS, SMB_ENUM_PORTS, DNS_PORTS, NFS_PORTS, FTP_PORTS, RSYNC_PORTS, VNC_PORTS, IPMI_PORTS, SMTP_PORTS, MSRPC_PORTS, RDP_PORTS, PRINTER_PORTS,
+    PROFILE_PORTS, PROFILE_DEEP_BRANCHES, SMB_PORTS, UDP_PORTS,
     gate_0_is_passive_profile, gate_2_host_discovery, gate_3_port_scan,
-    gate_4_service_banner, gate_5_branch_eligible, gate_6_credentialed_collection,
+    gate_4_service_banner, gate_4b_os_fingerprint,
+    gate_5_branch_eligible, gate_6_credentialed_collection,
 )
 from .execution import ExecutionTrace, scanner_failure_result
 from .modes import (
@@ -141,40 +154,12 @@ def _port_candidates(profile: str, service_filter: set[str] | None,
         ports = set(base)
     else:
         ports = set()
-    if "tls" in requested:
-        ports.update(TLS_PORTS)
-    if "web" in requested:
-        ports.update(WEB_PORTS)
-    if "smb" in requested:
-        ports.update(SMB_PORTS)
-    if "db" in requested:
-        ports.update(DB_PORTS)
-    if "mcp_ai" in requested:
-        ports.update(AI_PORTS)
-    if "ssh" in requested:
-        ports.update(SSH_PORTS)
-    if "ldap" in requested:
-        ports.update(LDAP_PORTS)
-    if "smb_enum" in requested:
-        ports.update(SMB_ENUM_PORTS)
-    if "dns" in requested:
-        ports.update(DNS_PORTS)
-    if "nfs" in requested:
-        ports.update(NFS_PORTS)
-    if "ftp" in requested:
-        ports.update(FTP_PORTS)
-    if "rsync" in requested:
-        ports.update(RSYNC_PORTS)
-    if "vnc" in requested:
-        ports.update(VNC_PORTS)
-    if "smtp" in requested:
-        ports.update(SMTP_PORTS)
-    if "msrpc" in requested:
-        ports.update(MSRPC_PORTS)
-    if "rdp" in requested:
-        ports.update(RDP_PORTS)
-    if "printer" in requested:
-        ports.update(PRINTER_PORTS)
+    for spec in BRANCHES:
+        if spec.branch not in requested or spec.datagram:
+            continue          # datagram branches need no TCP port in the sweep
+        # smb is host-level for the deep scan, but its ports still belong in the
+        # TCP sweep so the SMB stage has an open 445 to gate on.
+        ports.update(SMB_PORTS if spec.host_level else spec.ports)
     return sorted(ports)
 
 
@@ -269,6 +254,71 @@ def _finalize_trace(trace: ExecutionTrace | None) -> None:
         trace.finalize()
 
 
+async def _run_branch(
+    spec: BranchSpec,
+    host: str,
+    asset: Asset,
+    routed: dict[int, set[str]],
+    *,
+    scope: ScopeGuard,
+    assets: dict[str, Asset],
+    cache: WorkflowCache,
+    trace: ExecutionTrace | None,
+    profile: str,
+    service_filter: set[str] | None,
+    force_recheck_after: timedelta | None,
+    rate: float,
+    concurrency: int,
+    timeout: float,
+) -> None:
+    """Run ONE deep-scan branch for one host: the gate -> split-cache -> scan ->
+    record -> store shape that all twenty branches used to spell out by hand.
+
+    Three port shapes, all decided by the spec, never by a branch name:
+      * host-level  — the fact describes the host, so it is cached under a null
+                      port key and no port intersection happens;
+      * datagram    — the probe is a UDP read at a fixed port, so the port set is
+                      the spec's table and an open TCP port is not required;
+      * per-port    — the spec's table intersected with this host's OPEN ports,
+                      plus any port router.py routed here from observed content.
+    """
+    dynamic = ({p for p, b in routed.items() if spec.dynamic in b}
+               if spec.dynamic else set())
+    if not gate_5_branch_eligible(spec.branch, asset, profile, service_filter,
+                                  bool(dynamic)):
+        return
+
+    if spec.host_level:
+        # Cached under port=None: one fact per host, not per port.
+        if not cache.should_recheck(host, None, spec.component,
+                                    force_recheck_after=force_recheck_after):
+            entry = cache.get(host, None, spec.component)
+            asset.merge_result(entry.result)
+            _record_reused(trace, spec.component, [entry.result])
+            return
+        ports: list[int] = []
+    else:
+        candidates = (sorted(spec.ports) if spec.datagram else
+                      sorted((asset.open_ports_for_deep_scan() & spec.ports) | dynamic))
+        ports, reused = _split_cached(cache, host, candidates, spec.component,
+                                      force_recheck_after)
+        for r in reused:
+            asset.merge_result(r)
+        _record_reused(trace, spec.component, reused)
+        if not ports:
+            return
+
+    # Resolved from THIS module's namespace at call time, so tests that patch
+    # workflow_engine.<Scanner> keep working exactly as they did.
+    scanner_cls = globals()[spec.scanner]
+    for extra in spec.kwargs(asset, ports):
+        scanner = scanner_cls(scope, rate=rate, concurrency=concurrency,
+                              timeout=timeout, **extra)
+        results = await _scan_one(scanner, host)
+        _record(trace, spec.component, target_count=1, results=results)
+        _store_results(results, assets=assets, cache=cache, profile=profile)
+
+
 async def run_engagement(targets: list[str], scope: ScopeGuard, *, profile: str = "it",
                          rate: float = 200.0, concurrency: int = 100, timeout: float = 3.0,
                          disc_timeout: float = 1.5, retries: int = 1,
@@ -282,6 +332,8 @@ async def run_engagement(targets: list[str], scope: ScopeGuard, *, profile: str 
                          force_recheck_after: timedelta | None = None,
                          ssh_creds: dict | None = None, win_creds: dict | None = None,
                          passive_listen_seconds: float = 60.0,
+                         discover_ipv6: bool = False,
+                         ipv6_iface: str | None = None,
                          trace: ExecutionTrace | None = None) -> dict[str, Asset]:
     """Runs gates 0/2-6 (in order) across `targets`, mutating and returning
     the Asset dict. Pass a pre-loaded `assets`/`cache` (e.g. from a prior
@@ -315,6 +367,39 @@ async def run_engagement(targets: list[str], scope: ScopeGuard, *, profile: str 
         _store_results(results, assets=assets, cache=cache, profile=profile)
         _finalize_trace(trace)
         return assets
+
+    # --- Gate 1b: IPv6 neighbour discovery -------------------------------
+    # A /24 names IPv4 addresses only, so an IPv6-only listener on the same
+    # segment was invisible to every stage below no matter how it was scanned.
+    # RFC 4861's all-nodes multicast makes every live IPv6 host on the link
+    # answer, which populates the neighbour cache — no enumeration of a /64.
+    #
+    # SCOPE IS ENFORCED, NOT ASSUMED: a discovered address is scanned only if it
+    # is inside the authorized allowlist. Everything else is REPORTED as an
+    # observation and never probed, so the operator learns those hosts exist
+    # (and can widen scope deliberately) without the probe widening it for them.
+    if discover_ipv6:
+        found = await asyncio.to_thread(
+            discover_ipv6_hosts, ipv6_iface, pings=2, timeout=disc_timeout)
+        in_scope = [h for h in found if scope.in_scope(h)]
+        out_of_scope = [h for h in found if h not in in_scope]
+        added = [h for h in in_scope if h not in assets]
+        for host in added:
+            assets[host] = Asset(host=host, profile=profile)
+            targets.append(host)
+        result = ScanResult(
+            "ipv6_discovery", ipv6_iface or "auto", status="observed",
+            method="icmpv6_nd_multicast",
+            data={"neighbours_found": len(found),
+                  "in_scope": in_scope,
+                  "out_of_scope_not_scanned": out_of_scope,
+                  "added_to_engagement": added,
+                  "interface": ipv6_iface},
+            evidence=(f"{len(found)} IPv6 neighbour(s) via ND multicast; "
+                      f"{len(added)} added to the scan, "
+                      f"{len(out_of_scope)} outside scope (reported, not probed)"))
+        _record(trace, "ipv6_discovery", target_count=1, results=[result])
+        cache.put(result)
 
     ports = _port_candidates(profile, service_filter, port_override=port_override)
     allowed_branches = PROFILE_DEEP_BRANCHES.get(profile, set())
@@ -386,6 +471,39 @@ async def run_engagement(targets: list[str], scope: ScopeGuard, *, profile: str 
         )
         _store_results(results, assets=assets, cache=cache, profile=profile)
 
+    # --- Gate 4b: OS identification --------------------------------------
+    # Runs at the PORT stage, not the deep stage: the OS is an inventory fact
+    # every consumer wants (device_classifier weights os_guess; the manager's
+    # rules and CPE layer read the release/build), and a discovery-only or
+    # device-inventory job must not come back OS-blind. Cheap: one ICMP echo
+    # plus, when 445 is open, one SMB2 negotiate — and it degrades honestly to
+    # the SYN/ACK stack hints when ICMP is filtered or unprivileged.
+    os_targets = [t for t in live_hosts if gate_4b_os_fingerprint(assets[t], profile)]
+    if os_targets:
+        to_scan, reused = [], []
+        for host in os_targets:
+            if cache.should_recheck(host, None, "os_fingerprint",
+                                    force_recheck_after=force_recheck_after):
+                to_scan.append(host)
+            else:
+                reused.append(cache.get(host, None, "os_fingerprint").result)
+        for r in reused:
+            assets[r.target].merge_result(r)
+        _record_reused(trace, "os_fingerprint", reused)
+        if to_scan:
+            hints = {t: assets[t].tcp_stack_hints for t in to_scan
+                     if assets[t].tcp_stack_hints}
+            osfp = OSFingerprintScanner(
+                scope, tcp_hints=hints, rate=rate, concurrency=concurrency,
+                timeout=timeout,
+                # The SMB2 NTLM build probe only pays off where 445 is reachable;
+                # asking every host for it would spend a connect per host for
+                # nothing. Enabled when ANY target showed 445 open.
+                smb_build=any(445 in assets[t].open_ports_for_deep_scan() for t in to_scan))
+            results = await _gather_per_host(osfp, to_scan, max_in_flight=concurrency)
+            _record(trace, "os_fingerprint", target_count=len(to_scan), results=results)
+            _store_results(results, assets=assets, cache=cache, profile=profile)
+
     if not includes_stage(stage_ceiling, STAGE_SERVICE_BANNER):
         _finalize_trace(trace)
         return assets
@@ -414,257 +532,21 @@ async def run_engagement(targets: list[str], scope: ScopeGuard, *, profile: str 
         return assets
 
     # --- Gate 5: dynamic routing + deep-scan branches ---------------------
+    # Every branch is a row in branches.BRANCHES; _run_branch below is the ONE
+    # implementation of the gate -> split-cache -> scan -> record -> store shape
+    # they all shared. Adding a service is now a table row, not ten more lines.
     branch_hosts = targets if direct_datagram else live_hosts
     for host in branch_hosts:
         asset = assets[host]
         routed = route_branches(asset)
-
-        tls_dynamic = {p for p, b in routed.items() if "tls" in b}
-        web_dynamic = {p for p, b in routed.items() if "web" in b}
-
-        if gate_5_branch_eligible("tls", asset, profile, service_filter, bool(tls_dynamic)):
-            ports = sorted((asset.open_ports_for_deep_scan() & TLS_PORTS) | tls_dynamic)
-            to_scan, reused = _split_cached(cache, host, ports, "tls_scan", force_recheck_after)
-            for r in reused:
-                asset.merge_result(r)
-            _record_reused(trace, "tls_scan", reused)
-            if to_scan:
-                tls = TLSScanner(scope, ports=to_scan, rate=rate, concurrency=concurrency, timeout=timeout)
-                results = await _scan_one(tls, host)
-                _record(trace, "tls_scan", target_count=1, results=results)
-                _store_results(results, assets=assets, cache=cache, profile=profile)
-
-        if gate_5_branch_eligible("web", asset, profile, service_filter, bool(web_dynamic)):
-            ports = sorted((asset.open_ports_for_deep_scan() & WEB_PORTS) | web_dynamic)
-            to_scan, reused = _split_cached(cache, host, ports, "web_scan", force_recheck_after)
-            for r in reused:
-                asset.merge_result(r)
-            _record_reused(trace, "web_scan", reused)
-            if to_scan:
-                web = WebScanner(scope, ports=to_scan, rate=rate, concurrency=concurrency, timeout=timeout)
-                results = await _scan_one(web, host)
-                _record(trace, "web_scan", target_count=1, results=results)
-                _store_results(results, assets=assets, cache=cache, profile=profile)
-
-        if gate_5_branch_eligible("smb", asset, profile, service_filter):
-            # host-level, not per-port (see asset.py's _merge_smb_scan)
-            if cache.should_recheck(host, None, "smb_scan", force_recheck_after=force_recheck_after):
-                smb = SMBScanner(scope, rate=rate, concurrency=concurrency, timeout=timeout)
-                results = await _scan_one(smb, host)
-                _record(trace, "smb_scan", target_count=1, results=results)
-                _store_results(results, assets=assets, cache=cache, profile=profile)
-            else:
-                reused = [cache.get(host, None, "smb_scan").result]
-                asset.merge_result(reused[0])
-                _record_reused(trace, "smb_scan", reused)
-
-        db_dynamic = {p for p, b in routed.items() if "db" in b}
-        if gate_5_branch_eligible("db", asset, profile, service_filter, bool(db_dynamic)):
-            ports = sorted((asset.open_ports_for_deep_scan() & DB_PORTS) | db_dynamic)
-            to_scan, reused = _split_cached(cache, host, ports, "db_scan", force_recheck_after)
-            for r in reused:
-                asset.merge_result(r)
-            _record_reused(trace, "db_scan", reused)
-            if to_scan:
-                known = {p: DEFAULT_DB_PORTS[p] for p in to_scan if p in DEFAULT_DB_PORTS}
-                unknown = [p for p in to_scan if p not in DEFAULT_DB_PORTS]
-                if known:
-                    db = DBScanner(scope, port_map=known, rate=rate, concurrency=concurrency, timeout=timeout)
-                    results = await _scan_one(db, host)
-                    _record(trace, "db_scan", target_count=1, results=results)
-                    _store_results(results, assets=assets, cache=cache, profile=profile)
-                if unknown:
-                    # Non-standard port routed by banner signature: try every DB probe.
-                    db2 = DBScanner(scope, port_map={p: "" for p in unknown},
-                                    try_all_on_port=True, rate=rate,
-                                    concurrency=concurrency, timeout=timeout)
-                    results = await _scan_one(db2, host)
-                    _record(trace, "db_scan", target_count=1, results=results)
-                    _store_results(results, assets=assets, cache=cache, profile=profile)
-
-        if gate_5_branch_eligible("mcp_ai", asset, profile, service_filter):
-            ports = sorted(asset.open_ports_for_deep_scan() & AI_PORTS)
-            to_scan, reused = _split_cached(cache, host, ports, "mcp_ai_scan", force_recheck_after)
-            for r in reused:
-                asset.merge_result(r)
-            _record_reused(trace, "mcp_ai_scan", reused)
-            if to_scan:
-                ai = MCPAIScanner(scope, ports=to_scan, rate=rate, concurrency=concurrency, timeout=timeout)
-                results = await _scan_one(ai, host)
-                _record(trace, "mcp_ai_scan", target_count=1, results=results)
-                _store_results(results, assets=assets, cache=cache, profile=profile)
-
-        ssh_dynamic = {p for p, b in routed.items() if "ssh" in b}
-        if gate_5_branch_eligible("ssh", asset, profile, service_filter, bool(ssh_dynamic)):
-            ports = sorted((asset.open_ports_for_deep_scan() & SSH_PORTS) | ssh_dynamic)
-            to_scan, reused = _split_cached(cache, host, ports, "ssh_scan", force_recheck_after)
-            for r in reused:
-                asset.merge_result(r)
-            _record_reused(trace, "ssh_scan", reused)
-            if to_scan:
-                ssh = SSHScanner(scope, ports=to_scan, rate=rate, concurrency=concurrency, timeout=timeout)
-                results = await _scan_one(ssh, host)
-                _record(trace, "ssh_scan", target_count=1, results=results)
-                _store_results(results, assets=assets, cache=cache, profile=profile)
-
-        if gate_5_branch_eligible("smb_enum", asset, profile, service_filter):
-            ports = sorted(asset.open_ports_for_deep_scan() & SMB_ENUM_PORTS)
-            to_scan, reused = _split_cached(cache, host, ports, "smb_enum_scan", force_recheck_after)
-            for r in reused:
-                asset.merge_result(r)
-            _record_reused(trace, "smb_enum_scan", reused)
-            if to_scan:
-                smbe = SMBEnumScanner(scope, ports=to_scan, rate=rate, concurrency=concurrency, timeout=timeout)
-                results = await _scan_one(smbe, host)
-                _record(trace, "smb_enum_scan", target_count=1, results=results)
-                _store_results(results, assets=assets, cache=cache, profile=profile)
-
-        if gate_5_branch_eligible("ldap", asset, profile, service_filter):
-            ports = sorted(asset.open_ports_for_deep_scan() & LDAP_PORTS)
-            to_scan, reused = _split_cached(cache, host, ports, "ldap_scan", force_recheck_after)
-            for r in reused:
-                asset.merge_result(r)
-            _record_reused(trace, "ldap_scan", reused)
-            if to_scan:
-                ldp = LDAPScanner(scope, ports=to_scan, rate=rate, concurrency=concurrency, timeout=timeout)
-                results = await _scan_one(ldp, host)
-                _record(trace, "ldap_scan", target_count=1, results=results)
-                _store_results(results, assets=assets, cache=cache, profile=profile)
-
-        if gate_5_branch_eligible("dns", asset, profile, service_filter):
-            ports = sorted(asset.open_ports_for_deep_scan() & DNS_PORTS)
-            to_scan, reused = _split_cached(cache, host, ports, "dns_scan", force_recheck_after)
-            for r in reused:
-                asset.merge_result(r)
-            _record_reused(trace, "dns_scan", reused)
-            if to_scan:
-                dns = DNSScanner(scope, ports=to_scan, rate=rate, concurrency=concurrency, timeout=timeout)
-                results = await _scan_one(dns, host)
-                _record(trace, "dns_scan", target_count=1, results=results)
-                _store_results(results, assets=assets, cache=cache, profile=profile)
-
-        if gate_5_branch_eligible("nfs", asset, profile, service_filter):
-            ports = sorted(asset.open_ports_for_deep_scan() & NFS_PORTS)
-            to_scan, reused = _split_cached(cache, host, ports, "nfs_scan", force_recheck_after)
-            for r in reused:
-                asset.merge_result(r)
-            _record_reused(trace, "nfs_scan", reused)
-            if to_scan:
-                nfs = NFSScanner(scope, ports=to_scan, rate=rate, concurrency=concurrency, timeout=timeout)
-                results = await _scan_one(nfs, host)
-                _record(trace, "nfs_scan", target_count=1, results=results)
-                _store_results(results, assets=assets, cache=cache, profile=profile)
-
-        if gate_5_branch_eligible("ftp", asset, profile, service_filter):
-            ports = sorted(asset.open_ports_for_deep_scan() & FTP_PORTS)
-            to_scan, reused = _split_cached(cache, host, ports, "ftp_scan", force_recheck_after)
-            for r in reused:
-                asset.merge_result(r)
-            _record_reused(trace, "ftp_scan", reused)
-            if to_scan:
-                ftp = FTPScanner(scope, ports=to_scan, rate=rate, concurrency=concurrency, timeout=timeout)
-                results = await _scan_one(ftp, host)
-                _record(trace, "ftp_scan", target_count=1, results=results)
-                _store_results(results, assets=assets, cache=cache, profile=profile)
-
-        if gate_5_branch_eligible("rsync", asset, profile, service_filter):
-            ports = sorted(asset.open_ports_for_deep_scan() & RSYNC_PORTS)
-            to_scan, reused = _split_cached(cache, host, ports, "rsync_scan", force_recheck_after)
-            for r in reused:
-                asset.merge_result(r)
-            _record_reused(trace, "rsync_scan", reused)
-            if to_scan:
-                rsync = RsyncScanner(scope, ports=to_scan, rate=rate, concurrency=concurrency, timeout=timeout)
-                results = await _scan_one(rsync, host)
-                _record(trace, "rsync_scan", target_count=1, results=results)
-                _store_results(results, assets=assets, cache=cache, profile=profile)
-
-        if gate_5_branch_eligible("vnc", asset, profile, service_filter):
-            ports = sorted(asset.open_ports_for_deep_scan() & VNC_PORTS)
-            to_scan, reused = _split_cached(cache, host, ports, "vnc_scan", force_recheck_after)
-            for r in reused:
-                asset.merge_result(r)
-            _record_reused(trace, "vnc_scan", reused)
-            if to_scan:
-                vnc = VNCScanner(scope, ports=to_scan, rate=rate, concurrency=concurrency, timeout=timeout)
-                results = await _scan_one(vnc, host)
-                _record(trace, "vnc_scan", target_count=1, results=results)
-                _store_results(results, assets=assets, cache=cache, profile=profile)
-
-        if gate_5_branch_eligible("smtp", asset, profile, service_filter):
-            ports = sorted(asset.open_ports_for_deep_scan() & SMTP_PORTS)
-            to_scan, reused = _split_cached(cache, host, ports, "smtp_scan", force_recheck_after)
-            for r in reused:
-                asset.merge_result(r)
-            _record_reused(trace, "smtp_scan", reused)
-            if to_scan:
-                smtp = SMTPScanner(scope, ports=to_scan, rate=rate, concurrency=concurrency, timeout=timeout)
-                results = await _scan_one(smtp, host)
-                _record(trace, "smtp_scan", target_count=1, results=results)
-                _store_results(results, assets=assets, cache=cache, profile=profile)
-
-        if gate_5_branch_eligible("msrpc", asset, profile, service_filter):
-            ports = sorted(asset.open_ports_for_deep_scan() & MSRPC_PORTS)
-            to_scan, reused = _split_cached(cache, host, ports, "msrpc_scan", force_recheck_after)
-            for r in reused:
-                asset.merge_result(r)
-            _record_reused(trace, "msrpc_scan", reused)
-            if to_scan:
-                msrpc = MSRPCScanner(scope, ports=to_scan, rate=rate, concurrency=concurrency, timeout=timeout)
-                results = await _scan_one(msrpc, host)
-                _record(trace, "msrpc_scan", target_count=1, results=results)
-                _store_results(results, assets=assets, cache=cache, profile=profile)
-
-        # RDP: the confirming X.224 + NLA-posture scanner (verified). Without this
-        # branch the agent's network_va never assessed 3389, so RDP-without-NLA and
-        # RDP-exposed weaknesses the scripts catch never reached the manager.
-        if gate_5_branch_eligible("rdp", asset, profile, service_filter):
-            ports = sorted(asset.open_ports_for_deep_scan() & RDP_PORTS)
-            to_scan, reused = _split_cached(cache, host, ports, "rdp_scan", force_recheck_after)
-            for r in reused:
-                asset.merge_result(r)
-            _record_reused(trace, "rdp_scan", reused)
-            if to_scan:
-                rdp = RDPScanner(scope, ports=to_scan, rate=rate, concurrency=concurrency, timeout=timeout)
-                results = await _scan_one(rdp, host)
-                _record(trace, "rdp_scan", target_count=1, results=results)
-                _store_results(results, assets=assets, cache=cache, profile=profile)
-
-        if gate_5_branch_eligible("printer", asset, profile, service_filter):
-            ports = sorted(asset.open_ports_for_deep_scan() & PRINTER_PORTS)
-            to_scan, reused = _split_cached(cache, host, ports, "printer_scan", force_recheck_after)
-            for r in reused:
-                asset.merge_result(r)
-            _record_reused(trace, "printer_scan", reused)
-            if to_scan:
-                printer = PrinterScanner(scope, ports=to_scan, rate=rate, concurrency=concurrency, timeout=timeout)
-                results = await _scan_one(printer, host)
-                _record(trace, "printer_scan", target_count=1, results=results)
-                _store_results(results, assets=assets, cache=cache, profile=profile)
-
-        if gate_5_branch_eligible("snmp", asset, profile, service_filter):
-            ports = sorted(SNMP_PORTS)
-            to_scan, reused = _split_cached(cache, host, ports, "snmp_scan", force_recheck_after)
-            for r in reused:
-                asset.merge_result(r)
-            _record_reused(trace, "snmp_scan", reused)
-            if to_scan:
-                snmp = SNMPScanner(scope, rate=rate, concurrency=concurrency, timeout=timeout)
-                results = await _scan_one(snmp, host)
-                _record(trace, "snmp_scan", target_count=1, results=results)
-                _store_results(results, assets=assets, cache=cache, profile=profile)
-
-        if gate_5_branch_eligible("ipmi", asset, profile, service_filter):
-            ports = sorted(IPMI_PORTS)
-            to_scan, reused = _split_cached(cache, host, ports, "ipmi_scan", force_recheck_after)
-            for r in reused:
-                asset.merge_result(r)
-            _record_reused(trace, "ipmi_scan", reused)
-            if to_scan:
-                ipmi = IPMIScanner(scope, ports=to_scan, rate=rate, concurrency=concurrency, timeout=timeout)
-                results = await _scan_one(ipmi, host)
-                _record(trace, "ipmi_scan", target_count=1, results=results)
-                _store_results(results, assets=assets, cache=cache, profile=profile)
+        for spec in BRANCHES:
+            await _run_branch(
+                spec, host, asset, routed,
+                scope=scope, assets=assets, cache=cache, trace=trace,
+                profile=profile, service_filter=service_filter,
+                force_recheck_after=force_recheck_after,
+                rate=rate, concurrency=concurrency, timeout=timeout,
+            )
 
         if service_filter is None or "udp" in service_filter:
             udp_ports = sorted(UDP_PORTS)

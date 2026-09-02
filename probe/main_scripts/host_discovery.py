@@ -53,21 +53,117 @@ roughly what".
 from __future__ import annotations
 
 import asyncio
+import random
 import re
 import shutil
+import socket
+import struct
 import subprocess
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
 from .scanner_base import (
     BaseScanner, ScanResult, base_argparser, run_cli, setup_logging,
-    main_entrypoint, LOG,
+    main_entrypoint, LOG, async_udp_probe, _UDP_CLOSED,
 )
+from .udp_scanner import _netbios_probe, _mdns_probe, _ssdp_probe, interpret_ssdp
 
 # Ports chosen because almost every live host answers on at least one of these
 # (web, windows, ssh, dns). A RST counts as alive just as much as a SYN/ACK.
 # 62078 is iPhone lockdownd — often open, a positive Apple-mobile signal.
 PROBE_PORTS = [80, 443, 445, 22, 3389, 53, 135, 139, 62078]
+
+# --------------------------------------------------------------------------- #
+# UDP liveness tier (unprivileged). Reached only when every TCP probe was silent
+# AND the host is not on our LAN segment (no neighbour entry can vouch for it):
+# the routed-subnet case where a printer, phone, IoT box or a hardened host that
+# drops all TCP is otherwise invisible. Two independent proofs of life:
+#
+#   * a REPLY to a service datagram — NetBIOS name service (Windows; the
+#     NBSTAT answer also carries the hostname + MAC), mDNS (Apple/Linux/IoT),
+#     SSDP (UPnP devices) — the target's own service answered;
+#   * an ICMP port-unreachable to a datagram sent at a port that is almost
+#     certainly closed (the traceroute range): the target's IP stack answered,
+#     even though no service did. Silently-dropped (no ICMP) is inconclusive.
+# --------------------------------------------------------------------------- #
+UDP_LIVENESS_PROBES: list[tuple[int, str, bytes]] = [
+    (137, "netbios-ns", _netbios_probe()),
+    (5353, "mdns", _mdns_probe()),
+    (1900, "ssdp", _ssdp_probe()),
+]
+_UNREACH_PORT_LO, _UNREACH_PORT_HI = 33434, 34433   # classic traceroute range
+
+# Reverse DNS runs in its own small pool so a resolver that hangs on a network
+# with no PTR zone cannot starve the default executor the neighbour lookups use.
+_RDNS_POOL = ThreadPoolExecutor(max_workers=8, thread_name_prefix="rdns")
+
+
+def parse_nbstat(reply: bytes) -> dict | None:
+    """Parse a NetBIOS NBSTAT (node status) response (RFC 1002 §4.2.18).
+
+    Returns {"names": [{name, suffix, group}], "hostname", "domain", "mac"} or
+    None when the bytes are not a node-status answer. Pure function. The
+    hostname is the first UNIQUE name with the 0x00 (workstation) suffix; the
+    domain/workgroup the first GROUP name with a domain-class suffix; the MAC
+    comes from the statistics block that follows the name table.
+    """
+    if len(reply) < 12:
+        return None
+    flags = struct.unpack(">H", reply[2:4])[0]
+    if not flags & 0x8000:
+        return None                     # not a response
+    ancount = struct.unpack(">H", reply[6:8])[0]
+    if ancount < 1:
+        return None
+    off = 12
+    # Answer RR name: one label-encoded name (or a compression pointer).
+    while off < len(reply):
+        length = reply[off]
+        if length == 0:
+            off += 1
+            break
+        if length & 0xC0 == 0xC0:
+            off += 2
+            break
+        off += 1 + length
+    off += 10                           # type(2) class(2) ttl(4) rdlength(2)
+    if off >= len(reply):
+        return None
+    num_names = reply[off]
+    off += 1
+    names: list[dict] = []
+    for _ in range(num_names):
+        if off + 18 > len(reply):
+            break
+        raw = reply[off:off + 15]
+        suffix = reply[off + 15]
+        nflags = struct.unpack(">H", reply[off + 16:off + 18])[0]
+        name = "".join(ch for ch in raw.decode("latin-1") if ch.isprintable()).strip()
+        if name:
+            names.append({"name": name, "suffix": f"0x{suffix:02x}",
+                          "group": bool(nflags & 0x8000)})
+        off += 18
+    mac = None
+    if off + 6 <= len(reply):
+        mac_bytes = reply[off:off + 6]
+        if any(mac_bytes):
+            mac = normalize_mac(":".join(f"{b:02x}" for b in mac_bytes))
+    hostname = next((n["name"] for n in names
+                     if not n["group"] and n["suffix"] == "0x00"), None)
+    domain = next((n["name"] for n in names
+                   if n["group"] and n["suffix"] in ("0x00", "0x1b", "0x1c", "0x1e")), None)
+    if not names and mac is None:
+        return None
+    return {"names": names, "hostname": hostname, "domain": domain, "mac": mac}
+
+
+def _reverse_dns(ip: str) -> str | None:
+    """PTR lookup; None on any failure. Runs in _RDNS_POOL, never on the loop."""
+    try:
+        return socket.gethostbyaddr(ip)[0] or None
+    except (socket.herror, socket.gaierror, OSError, UnicodeError):
+        return None
 
 # --------------------------------------------------------------------------- #
 # MAC / OUI helpers — small curated vendor table + randomized-MAC detection.
@@ -177,6 +273,8 @@ _NUD_MAP = {
 _SIG_CONF = {
     "tcp_open":       0.97,   # SYN/ACK — port open, host definitely up
     "tcp_refused":    0.93,   # RST — host up, port closed (could be a middlebox)
+    "udp_reply":      0.95,   # a UDP service on the target answered our datagram
+    "icmp_unreach":   0.90,   # ICMP port-unreachable — the target's stack answered
     FRESH_REACHABLE:  0.95,   # fresh solicited ARP/NDP reply, on-LAN ground truth
     FRESH_PROBING:    0.75,   # entry mid-revalidation
     FRESH_STALE:      0.50,   # cache only, may be minutes old
@@ -307,10 +405,13 @@ def _state_for_confidence(conf: float) -> str:
 def fuse_liveness(
     evidence_ports: list[tuple[int, str]],
     neighbor: Neighbor | None,
+    udp_signals: list[dict] | None = None,
 ) -> dict:
-    """Combine TCP + neighbor signals into a confidence-scored verdict.
+    """Combine TCP + UDP + neighbor signals into a confidence-scored verdict.
 
-    Returns a dict with: alive(bool), state(str), confidence(float),
+    `udp_signals` is the structured list `_udp_liveness` produces (each entry
+    carries its own `confidence`); None/[] means the UDP tier did not run or saw
+    nothing. Returns a dict with: alive(bool), state(str), confidence(float),
     method(legacy str), reason(str), and signals(list of structured evidence).
     Pure/deterministic given its inputs — easy to unit-test.
     """
@@ -330,6 +431,16 @@ def fuse_liveness(
             "result": "syn_ack" if state == "open" else "rst",
             "confidence": conf, "observed_at": ts,
         })
+
+    # --- UDP endpoint evidence (service reply / ICMP unreachable) -------------
+    udp_alive = False
+    for sig in udp_signals or []:
+        conf = float(sig.get("confidence", 0.0))
+        if conf <= 0:
+            continue
+        positives.append(conf)
+        udp_alive = True
+        signals.append({**sig, "observed_at": sig.get("observed_at", ts)})
 
     # --- Neighbor / ARP freshness evidence -----------------------------------
     arp_positive = False
@@ -369,14 +480,9 @@ def fuse_liveness(
         headline, state, reason, alive = 0.10, STATE_INCONCLUSIVE, "silent", False
 
     # Legacy `method` string (kept stable for any downstream that branches on it).
-    if tcp_alive and arp_positive:
-        method = "tcp+arp"
-    elif arp_positive:
-        method = "arp"
-    elif tcp_alive:
-        method = "tcp"
-    else:
-        method = None
+    parts = [name for name, hit in (("tcp", tcp_alive), ("udp", udp_alive),
+                                    ("arp", arp_positive)) if hit]
+    method = "+".join(parts) if parts else None
 
     return {
         "alive": alive,
@@ -391,9 +497,20 @@ def fuse_liveness(
 class HostDiscoveryScanner(BaseScanner):
     name = "host_discovery"
 
-    def __init__(self, *args, ports: list[int] | None = None, **kwargs):
+    def __init__(self, *args, ports: list[int] | None = None,
+                 udp_liveness: bool = True,
+                 udp_probes: list[tuple[int, str, bytes]] | None = None,
+                 unreach_port: int | None = None,
+                 reverse_dns: bool = True, **kwargs):
         super().__init__(*args, **kwargs)
         self.ports = list(PROBE_PORTS if ports is None else ports)
+        # UDP tier: on by default; probe table + closed-port choice overridable
+        # so tests can point it at local responders.
+        self.udp_liveness = udp_liveness
+        self.udp_probes = list(UDP_LIVENESS_PROBES if udp_probes is None else udp_probes)
+        self.unreach_port = unreach_port
+        # PTR lookup for hosts found alive — an asset name is a fact worth having.
+        self.reverse_dns = reverse_dns
 
     async def _probe(self, target: str, port: int) -> str | None:
         """Return 'open', 'refused', or None (no response)."""
@@ -408,10 +525,45 @@ class HostDiscoveryScanner(BaseScanner):
                 except Exception:
                     pass
                 return "open"
-            except ConnectionRefusedError:
-                return "refused"        # host is alive, port just closed
+            except (ConnectionRefusedError, ConnectionResetError):
+                return "refused"        # a RST either way: host is alive, port closed
             except (asyncio.TimeoutError, OSError):
                 return None
+
+    async def _udp_one(self, target: str, port: int, service: str,
+                       payload: bytes) -> dict | None:
+        """One UDP liveness probe -> structured signal, or None on silence."""
+        await self.limiter.wait()
+        async with self.sem:
+            reply = await async_udp_probe(target, port, payload,
+                                          timeout=min(self.timeout, 2.0))
+        if reply is None:
+            return None
+        if reply is _UDP_CLOSED:
+            return {"method": "udp_probe", "port": port, "service": service,
+                    "result": "icmp_port_unreachable",
+                    "confidence": _SIG_CONF["icmp_unreach"]}
+        sig = {"method": "udp_probe", "port": port, "service": service,
+               "result": "reply", "confidence": _SIG_CONF["udp_reply"],
+               "bytes": len(reply)}
+        if service == "netbios-ns":
+            nb = parse_nbstat(reply)
+            if nb:
+                sig["netbios"] = nb
+        elif service == "ssdp":
+            ssdp = interpret_ssdp(reply)
+            if ssdp.get("server"):
+                sig["ssdp_server"] = ssdp["server"]
+        return sig
+
+    async def _udp_liveness(self, target: str) -> list[dict]:
+        """Run the UDP tier concurrently; return every positive signal."""
+        unreach = self.unreach_port or random.randint(_UNREACH_PORT_LO, _UNREACH_PORT_HI)
+        probes = [*self.udp_probes, (unreach, "closed-port", b"\r\n")]
+        results = await asyncio.gather(
+            *(self._udp_one(target, p, svc, payload) for p, svc, payload in probes),
+            return_exceptions=True)
+        return [r for r in results if isinstance(r, dict)]
 
     async def scan_target(self, target: str) -> list[ScanResult]:
         # --- TCP probes with early-exit on first proof of life ---------------
@@ -440,12 +592,40 @@ class HostDiscoveryScanner(BaseScanner):
         # connect() just elicited (silent on-LAN hosts still ARP -> REACHABLE).
         # Off the event loop so the subprocess never blocks other targets.
         neighbor = await asyncio.to_thread(read_neighbor, target)
+
+        # --- UDP tier: only when TCP was silent and L2 cannot vouch ----------
+        # (a fresh neighbour entry already proves an on-LAN host; off-LAN there
+        # is no neighbour entry at all, which is exactly where this tier earns
+        # its packets).
+        udp_signals: list[dict] = []
+        l2_vouches = neighbor is not None and neighbor.mac is not None
+        # A FAILED/INCOMPLETE entry means the kernel just tried to ARP for our
+        # TCP probes and nobody answered: the address is on OUR segment and
+        # nothing owns it right now — no datagram can reach it either.
+        l2_denies = neighbor is not None and neighbor.fresh == FRESH_FAILED
+        if self.udp_liveness and not evidence_ports and not l2_vouches and not l2_denies:
+            udp_signals = await self._udp_liveness(target)
+
         mac = neighbor.mac if neighbor else None
+        netbios = next((s["netbios"] for s in udp_signals if s.get("netbios")), None)
+        if not mac and netbios and netbios.get("mac"):
+            mac = netbios["mac"]                  # NBSTAT carries the adapter MAC
         vendor = vendor_for_mac(mac) if mac else None
 
-        verdict = fuse_liveness(evidence_ports, neighbor)
+        verdict = fuse_liveness(evidence_ports, neighbor, udp_signals)
         alive = verdict["alive"]
         hint = device_hint(mac, vendor, ports_open) if alive else None
+
+        # --- Names: PTR record and NetBIOS name (facts for the inventory) -----
+        hostname = None
+        if alive and self.reverse_dns:
+            loop = asyncio.get_running_loop()
+            try:
+                hostname = await asyncio.wait_for(
+                    loop.run_in_executor(_RDNS_POOL, _reverse_dns, target),
+                    timeout=min(self.timeout, 2.0))
+            except (asyncio.TimeoutError, RuntimeError):
+                hostname = None
 
         data: dict = {
             "alive": alive,                       # legacy boolean (kept)
@@ -459,22 +639,42 @@ class HostDiscoveryScanner(BaseScanner):
             "vantage": self.name,                 # exposure is path-dependent
             "evidence": verdict["signals"],       # NEW structured per-signal list
         }
+        if udp_signals:
+            data["udp_evidence"] = [
+                {k: v for k, v in s.items() if k != "netbios"} for s in udp_signals]
+        if hostname:
+            data["hostname"] = hostname
+        if netbios:
+            if netbios.get("hostname"):
+                data["netbios_name"] = netbios["hostname"]
+            if netbios.get("domain"):
+                data["netbios_domain"] = netbios["domain"]
+            data["netbios_names"] = netbios["names"][:16]
         if mac:
             data["mac"] = mac
             data["randomized_mac"] = is_locally_administered(mac)
-            data["arp_state"] = neighbor.fresh    # NEW freshness bucket
+            data["arp_state"] = neighbor.fresh if (neighbor and neighbor.mac) else "nbstat"
         if vendor:
             data["vendor"] = vendor
         if hint:
             data["device_hint"] = hint
+        ssdp_server = next((s.get("ssdp_server") for s in udp_signals if s.get("ssdp_server")), None)
+        if ssdp_server:
+            data["ssdp_server"] = ssdp_server
 
         # Human-readable proof-of-life line.
         bits: list[str] = []
         if evidence_ports:
             bits.append("tcp " + ", ".join(f"{p}/{s}" for p, s in evidence_ports))
+        if udp_signals:
+            bits.append("udp " + ", ".join(
+                f"{s['port']}/{s['result']}" for s in udp_signals))
         if mac:
             bits.append(
-                f"arp {mac} [{neighbor.fresh}]" + (f" ({vendor})" if vendor else ""))
+                f"arp {mac} [{data['arp_state']}]" + (f" ({vendor})" if vendor else ""))
+        if hostname or netbios:
+            names = [n for n in (hostname, (netbios or {}).get("hostname")) if n]
+            bits.append("name " + "/".join(dict.fromkeys(names)))
         if hint:
             bits.append(hint)
         evidence = "; ".join(bits) if alive else (

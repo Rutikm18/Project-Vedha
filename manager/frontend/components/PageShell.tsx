@@ -4,19 +4,23 @@ import React, { useState, useEffect, useCallback } from "react";
 import { Menu, Sun, Moon, LogOut, User } from "lucide-react";
 import { Sidebar } from "./Sidebar";
 import { useTheme } from "./ThemeProvider";
+import { RefreshButton } from "./RefreshButton";
 import { clearAuth } from "../lib/fetcher";
 
 interface PageShellProps {
   title: string;
   subtitle?: string;
   headerActions?: React.ReactNode;
-  statusItems?: Array<{ label: string; value: string; color?: string }>;
+  statusItems?: Array<{ label: string; value: string; color?: string; ariaLabel?: string }>;
   children: React.ReactNode;
   noPadding?: boolean;
+  /** Hide the header refresh control. For pages that already poll themselves —
+   *  a manual refresh there is redundant and invites a reload mid-update. */
+  hideRefresh?: boolean;
 }
 
 export function PageShell({
-  title, subtitle, headerActions, statusItems, children, noPadding,
+  title, subtitle, headerActions, statusItems, children, noPadding, hideRefresh,
 }: PageShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [utcTime, setUtcTime]         = useState("");
@@ -62,6 +66,7 @@ export function PageShell({
       fontFamily: "var(--font-body)",
       overflow: "hidden",
     }}>
+      <style>{SHELL_RESPONSIVE_STYLES}</style>
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div
@@ -88,7 +93,7 @@ export function PageShell({
         minWidth: 0,
       }}>
         {/* ── Header ── */}
-        <header style={{
+        <header className="vedha-page-header" style={{
           height: 50,
           flexShrink: 0,
           background: "var(--bg-panel)",
@@ -101,7 +106,7 @@ export function PageShell({
           gap: 12,
         }}>
           {/* Left */}
-          <div style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
+          <div className="vedha-page-header-left" style={{ display: "flex", alignItems: "center", gap: 8, minWidth: 0 }}>
             <button
               className="md:hidden"
               onClick={() => setSidebarOpen(true)}
@@ -128,7 +133,7 @@ export function PageShell({
               <Menu size={17} />
             </button>
 
-            <div style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
+            <div className="vedha-page-title-meta" style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
               <span style={{
                 fontFamily: "var(--font-display)",
                 fontSize: 14,
@@ -141,8 +146,8 @@ export function PageShell({
               </span>
               {subtitle && (
                 <>
-                  <span style={{ color: "var(--border-strong)", flexShrink: 0, fontSize: 13, fontWeight: 400 }}>/</span>
-                  <span style={{
+                  <span className="vedha-page-title-divider" style={{ color: "var(--border-strong)", flexShrink: 0, fontSize: 13, fontWeight: 400 }}>/</span>
+                  <span className="vedha-page-subtitle" style={{
                     fontSize: 13,
                     color: "var(--text-secondary)",
                     whiteSpace: "nowrap",
@@ -172,9 +177,9 @@ export function PageShell({
           </div>
 
           {/* Right */}
-          <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+          <div className="vedha-page-header-tools" style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
             {headerActions && (
-              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <div className="vedha-page-header-actions" style={{ display: "flex", alignItems: "center", gap: 6 }}>
                 {headerActions}
               </div>
             )}
@@ -184,8 +189,12 @@ export function PageShell({
               const tone = item.color ?? "var(--text-primary)";
               return (
               <React.Fragment key={i}>
-                <div style={{ width: 0.5, height: 16, background: "var(--border-subtle)", flexShrink: 0 }} />
-                <div style={{
+                <div className="vedha-page-header-divider" aria-hidden style={{ width: 0.5, height: 16, background: "var(--border-subtle)", flexShrink: 0 }} />
+                <div
+                  className="vedha-page-status"
+                  role="img"
+                  aria-label={item.ariaLabel ?? `${item.label} ${item.value}`}
+                  style={{
                   display: "flex",
                   alignItems: "center",
                   gap: 6,
@@ -225,7 +234,11 @@ export function PageShell({
               );
             })}
 
-            <div style={{ width: 0.5, height: 16, background: "var(--border-subtle)", flexShrink: 0 }} />
+            <div className="vedha-page-header-divider" style={{ width: 0.5, height: 16, background: "var(--border-subtle)", flexShrink: 0 }} />
+
+            {/* Reload after a short delay — a newly enrolled vedha-agent lands in
+                the API a moment after the UI action, so an instant reload can miss it. */}
+            {!hideRefresh && <RefreshButton size={30} />}
 
             {/* Theme toggle — rotates icon on hover */}
             <button
@@ -269,7 +282,7 @@ export function PageShell({
             {/* User badge + logout */}
             {userEmail && (
               <>
-                <div style={{ width: 0.5, height: 16, background: "var(--border-subtle)", flexShrink: 0 }} />
+                <div className="vedha-page-header-divider" style={{ width: 0.5, height: 16, background: "var(--border-subtle)", flexShrink: 0 }} />
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
                   <User size={14} color="var(--text-muted)" />
                   <span style={{
@@ -317,7 +330,7 @@ export function PageShell({
         </header>
 
         {/* ── Content ── */}
-        <main style={{
+        <main className="vedha-page-main" style={{
           flex: 1,
           overflowY: "auto",
           background: "var(--bg-app)",
@@ -327,7 +340,7 @@ export function PageShell({
         </main>
 
         {/* ── Footer ── */}
-        <footer style={{
+        <footer className="vedha-page-footer" style={{
           height: 26,
           flexShrink: 0,
           background: "var(--bg-panel)",
@@ -363,7 +376,7 @@ export function PageShell({
             ))}
           </div>
 
-          <div style={{
+          <div className="vedha-page-footer-time" style={{
             fontFamily: "var(--font-mono)",
             fontSize: 9,
             color: "var(--text-muted)",
@@ -375,3 +388,35 @@ export function PageShell({
     </div>
   );
 }
+
+const SHELL_RESPONSIVE_STYLES = `
+@media (max-width: 767px) {
+  .vedha-page-header {
+    height: auto !important;
+    min-height: 50px;
+    padding: 8px 12px !important;
+    align-content: center;
+    flex-wrap: wrap;
+    gap: 6px !important;
+  }
+  .vedha-page-header-left { flex: 1 1 auto; max-width: 100%; }
+  .vedha-page-title-divider, .vedha-page-subtitle { display: none; }
+  .vedha-page-header-tools {
+    flex: 1 0 100% !important;
+    width: 100%;
+    min-width: 0;
+    gap: 6px !important;
+    justify-content: flex-start;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+    scrollbar-width: none;
+  }
+  .vedha-page-header-tools::-webkit-scrollbar { display: none; }
+  .vedha-page-header-actions, .vedha-page-status { flex-shrink: 0; }
+  .vedha-page-header-divider { display: none; }
+  .vedha-page-status { height: 26px !important; padding: 0 8px !important; }
+  .vedha-page-main { padding: 16px !important; }
+  .vedha-page-footer { padding: 0 12px !important; }
+  .vedha-page-footer-time { display: none; }
+}
+`;

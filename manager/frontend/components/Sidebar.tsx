@@ -131,7 +131,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                 width: 4,
                 height: 4,
                 borderRadius: "50%",
-                background: "var(--accent)",
+                background: "var(--nominal-color)",
                 display: "inline-block",
                 animation: "pulse 2s ease-in-out infinite",
               }} />
@@ -213,15 +213,15 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                     background: isActive
                       ? "var(--accent-ghost)"
                       : isHovered ? "var(--bg-surface)" : "transparent",
-                    borderLeft: isActive ? "2px solid var(--accent)" : "2px solid transparent",
-                    transition: "background 0.12s ease, border-color 0.12s ease, transform 0.12s var(--ease-spring), padding-left 0.12s ease",
+                    border: isActive ? "1px solid var(--border-accent)" : "1px solid transparent",
+                    transition: "background 0.12s ease, border-color 0.12s ease, transform 0.12s var(--ease-out)",
                     transform: isHovered && !isActive ? "translateX(3px)" : "translateX(0)",
                   }}
                   onMouseEnter={() => handleHover(item.href)}
                   onMouseLeave={() => handleHover(null)}
                 >
                   <div style={{
-                    transition: "transform 0.15s var(--ease-spring)",
+                    transition: "transform 0.15s var(--ease-out)",
                     transform: isHovered ? "scale(1.15)" : "scale(1)",
                     flexShrink: 0,
                     display: "flex",

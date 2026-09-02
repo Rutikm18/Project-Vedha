@@ -6,7 +6,8 @@ pipeline.py — Phase 1 + Phase 2 end to end: JSONL in, Findings out.
                      on a miss, only when use_ai_assist=True — see Phase 2)
   match           -> raw Findings per candidate, against the pinned snapshot
   dedup           -> collapse same (asset, cve, cpe)
-  suppress        -> drop inferred findings a better authoritative source negates
+  suppress        -> omit inferred findings a better authoritative source negates,
+                     while retaining an auditable decision record
   correlate       -> composite cross-fact findings (SMBv1 + missing hotfix)
   enrich          -> CVSS/EPSS/KEV + priority tier
 
@@ -22,13 +23,19 @@ from pathlib import Path
 from typing import Any
 
 from ai_normalizer import AIClient, AINormalizerCache, extract_raw_text, propose_candidates
-from correlate import correlate_smb_patch, dedup_findings, suppress_negated
+from correlate import (
+    SuppressionRecord,
+    correlate_smb_patch,
+    dedup_findings,
+    suppress_negated_with_audit,
+)
 from cpe_normalizer import CPECandidate, normalize
 from enrichment import enrich_finding
 from enrichment_db import EpssDB, KevDB, load_epss, load_kev
 from ingest import IngestResult, ingest_files
 from matcher import match_candidate
 from models import Finding
+from exploitability import apply_to_findings as apply_exploitability
 from posture_rules import (PostureFinding, detect_all as detect_posture_all,
                            detect_all_traced, summarize_traces, verdict_for_rule)
 from verifier import deception_score, verify
@@ -39,7 +46,9 @@ def run_pipeline(jsonl_paths: list[str | Path], vuln_db: VulnDB | None = None,
                  kev_db: KevDB | None = None, epss_db: EpssDB | None = None,
                  exposure: dict[str, dict] | None = None,
                  use_ai_assist: bool = False, ai_client: AIClient | None = None,
-                 ai_cache: AINormalizerCache | None = None) -> tuple[list[Finding], IngestResult]:
+                 ai_cache: AINormalizerCache | None = None,
+                 suppression_audit: list[SuppressionRecord] | None = None,
+                 ) -> tuple[list[Finding], IngestResult]:
     """exposure: optional {asset_ip: {"internet_facing": bool, "auth_enforced":
     bool}} — exposure context this pipeline cannot derive from scan facts
     alone (see enrichment.py's docstring); caller-supplied, never guessed.
@@ -76,7 +85,9 @@ def run_pipeline(jsonl_paths: list[str | Path], vuln_db: VulnDB | None = None,
             all_findings.extend(match_candidate(ip, c, vuln_db))
 
     all_findings = dedup_findings(all_findings)
-    all_findings = suppress_negated(all_findings, candidates_by_asset)
+    all_findings, suppressed = suppress_negated_with_audit(all_findings, candidates_by_asset)
+    if suppression_audit is not None:
+        suppression_audit.extend(suppressed)
 
     for ip, asset in ingest_result.assets.items():
         composite = correlate_smb_patch(asset)
@@ -122,14 +133,25 @@ def run_full_detection(jsonl_paths: list[str | Path], vuln_db: VulnDB | None = N
     This is what a full network VA should call: the trusted scanners' facts land
     here and the manager applies its strong detection to them centrally.
     """
+    suppression_audit: list[SuppressionRecord] = []
+    # Resolve the exploitation snapshots HERE, not only inside run_pipeline: the
+    # posture track needs them too, and leaving them None meant every posture
+    # finding silently skipped enrichment while the CVE track was enriched fine.
+    kev_db = kev_db or load_kev()
+    epss_db = epss_db or load_epss()
     cve_findings, ingest_result = run_pipeline(
         jsonl_paths, vuln_db=vuln_db, kev_db=kev_db, epss_db=epss_db,
-        exposure=exposure, **kwargs)
+        exposure=exposure, suppression_audit=suppression_audit, **kwargs)
     # Traced posture run: findings identical to detect_posture_all, PLUS a per-rule
     # evaluation trace so a non-finding can explain itself (drift vs clean vs
     # not-assessed). This is what makes "checked and clean" distinguishable from
     # "never actually checked".
     posture_findings, posture_traces = detect_all_traced(ingest_result, exposure=exposure)
+    # Exploitability: join CISA KEV + FIRST EPSS onto the POSTURE track too. The
+    # CVE track has had this since enrichment.py; posture findings — which are
+    # most of what a Windows estate actually returns — were ranked by a static
+    # severity constant with no notion of what attackers are using today.
+    posture_findings = apply_exploitability(posture_findings, kev_db, epss_db)
     posture_coverage = summarize_traces(posture_traces)
     posture_verdicts = {}
     for rid in sorted({t.rule_id for t in posture_traces}):
@@ -141,9 +163,11 @@ def run_full_detection(jsonl_paths: list[str | Path], vuln_db: VulnDB | None = N
         "posture_traces": [t.to_dict() for t in posture_traces],
         "posture_coverage": posture_coverage,
         "posture_verdicts": posture_verdicts,
+        "suppression_audit": [record.to_dict() for record in suppression_audit],
         "ingest": ingest_result,
         "counts": {
             "cve": len(cve_findings),
+            "cve_suppressed": len(suppression_audit),
             "posture": len(posture_findings),
             "posture_confirmed": sum(1 for f in posture_findings if f.state == "confirmed"),
             "posture_blind_rules": posture_coverage.get("rules_blind", 0),

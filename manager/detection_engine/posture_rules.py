@@ -189,6 +189,13 @@ class PostureFinding:
     priority: str
     created_at: str
     scanner: str
+    # Real-world exploitation evidence (exploitability.py). `kev_refs` names the
+    # CVEs this weakness is a documented precondition for and HOW it relates —
+    # never a claim that the CVE is present on the host.
+    kev_refs: list = field(default_factory=list)
+    epss_max: Optional[float] = None
+    exploitability: str = "unknown"
+    notes: list = field(default_factory=list)
     # Auditable confidence calibration (set by posture_confidence.calibrate_host_findings
     # in a second pass): base tier, cross-signal chain corroboration, downgrades. The
     # `confidence` field above is the calibrated result; this explains how it got there.
@@ -248,11 +255,59 @@ def _smb_signing(f: Fact) -> Optional[dict]:
 
 
 def _rdp_no_nla(f: Fact) -> Optional[dict]:
+    """Fires on EITHER of the rdp_scanner's two independent probes.
+
+    The scanner probes twice: (A) request SSL|HYBRID|HYBRID_EX and read the
+    selected protocol, and (B) request bare PROTOCOL_RDP to learn whether the
+    server will accept a session with no NLA at all. Probe B sets
+    `nla_required=False` only when the server ANSWERED a standard-RDP request —
+    direct proof that NLA is not enforced, and stronger evidence than A's
+    selected-protocol bitmask.
+
+    Reading only A was a real false negative, found on a live Windows 11 host:
+    A came back RDP_NEG_FAILURE (SSL_NOT_ALLOWED_BY_SERVER), so no `nla` key was
+    emitted at all and the rule went silent — while B had already proved the host
+    accepts a bare, unauthenticated-at-network-level RDP session.
+    """
     d = _d(f)
-    if (d.get("rdp_confirmed") is True and d.get("nla") is False
-            and d.get("negotiation") != "failure" and d.get("nla_required") is not True):
-        return {"selected_protocol": d.get("selected_protocol")}
+    if d.get("rdp_confirmed") is not True or d.get("nla_required") is True:
+        return None
+    # Probe B: the server accepted a bare standard-RDP session.
+    if d.get("nla_required") is False:
+        return {"proof": "server accepted a standard-RDP (no-NLA) connection request",
+                "nla_required": False,
+                "standard_rdp_security": d.get("standard_rdp_security"),
+                "selected_protocol": d.get("selected_protocol")}
+    # Probe A: negotiation completed and selected a protocol without CredSSP.
+    if d.get("nla") is False and d.get("negotiation") != "failure":
+        return {"proof": "negotiated protocol does not include CredSSP/NLA",
+                "selected_protocol": d.get("selected_protocol")}
     return None
+
+
+# MS-RDPBCGR 2.2.1.2.2 failureCode. Only codes that carry POSTURE meaning are
+# interpreted; the rest are transport/configuration noise and stay unreported.
+_RDP_NEG_FAILURE = {
+    2: ("SSL_NOT_ALLOWED_BY_SERVER",
+        "the server is configured not to use TLS for RDP"),
+    3: ("SSL_CERT_NOT_ON_SERVER",
+        "the server has no valid certificate, so TLS cannot be used"),
+}
+
+
+def _rdp_no_tls(f: Fact) -> Optional[dict]:
+    """The server REFUSED a TLS-capable negotiation, so the session falls back to
+    legacy standard-RDP security (RC4-family, no server authentication → MITM).
+    Read straight off the negotiation failure code, which the manager previously
+    ignored entirely even though the probe records it."""
+    d = _d(f)
+    if d.get("rdp_confirmed") is not True or d.get("negotiation") != "failure":
+        return None
+    code = d.get("failure_code")
+    named = _RDP_NEG_FAILURE.get(code)
+    if named is None:
+        return None
+    return {"failure_code": code, "failure": named[0], "meaning": named[1]}
 
 
 def _rdp_exposed(f: Fact) -> Optional[dict]:
@@ -326,6 +381,138 @@ def _snmp_default(f: Fact) -> Optional[dict]:
     return {"community": c} if c in _DEFAULT_COMMUNITIES else None
 
 
+# ── service-layer detectors ───────────────────────────────────────────────────
+# These read the deep-branch scanners that had NO rule at all: their facts were
+# collected, shipped and stored, then never assessed. Every path below was read
+# off the emitting scanner directly (probe/scanner/<x>_scanner.py), never guessed.
+# All of these scanners are EXPERIMENTAL in the trust registry, so their findings
+# land as `suspected` rather than `confirmed` — that gating is automatic
+# (_state_for) and is the correct treatment until each earns rig validation.
+
+def _ssh_terrapin(f: Fact) -> Optional[dict]:
+    d = _d(f)
+    if d.get("ssh_confirmed") is True and d.get("terrapin_vulnerable") is True:
+        return {"software": d.get("software"),
+                "supports_strict_kex": d.get("supports_strict_kex")}
+    return None
+
+
+def _ssh_weak_algos(f: Fact) -> Optional[dict]:
+    d = _d(f)
+    if d.get("ssh_confirmed") is not True:
+        return None
+    failures = d.get("failures")
+    if not isinstance(failures, list) or not failures:
+        return None
+    return {"software": d.get("software"), "weak_count": len(failures),
+            "weak": failures[:8]}
+
+
+def _ftp_anonymous(f: Fact) -> Optional[dict]:
+    d = _d(f)
+    if d.get("ftp") is True and d.get("anonymous_login") is True:
+        return {"software": d.get("software"),
+                "anon_read": d.get("anon_read"),
+                "file_sample": (d.get("file_sample") or [])[:5]}
+    return None
+
+
+def _dns_zone_transfer(f: Fact) -> Optional[dict]:
+    d = _d(f)
+    if d.get("dns") is not True or d.get("zone_transfer") is not True:
+        return None
+    axfr = d.get("axfr") if isinstance(d.get("axfr"), dict) else {}
+    zones = sorted(z for z, r in axfr.items()
+                   if isinstance(r, dict) and r.get("transferred"))
+    return {"zones": zones,
+            "records": sum(r.get("record_count") or 0 for r in axfr.values()
+                           if isinstance(r, dict) and r.get("transferred"))}
+
+
+def _nfs_world_readable(f: Fact) -> Optional[dict]:
+    d = _d(f)
+    wr = d.get("world_readable_exports")
+    if d.get("nfs") is True and isinstance(wr, list) and wr:
+        return {"world_readable_exports": wr[:10], "export_count": len(wr)}
+    return None
+
+
+def _ldap_anonymous_bind(f: Fact) -> Optional[dict]:
+    d = _d(f)
+    if d.get("ldap") is True and d.get("anonymous_bind") is True:
+        return {"default_naming_context": d.get("default_naming_context"),
+                "dns_host_name": d.get("dns_host_name"),
+                "domain_functional_level": d.get("domain_functional_level")}
+    return None
+
+
+def _vnc_no_auth(f: Fact) -> Optional[dict]:
+    d = _d(f)
+    if d.get("vnc") is True and d.get("no_auth") is True:
+        return {"protocol_version": d.get("protocol_version"),
+                "security_types": d.get("security_types")}
+    return None
+
+
+def _vnc_weak_auth(f: Fact) -> Optional[dict]:
+    """VNC type 2 is the legacy DES-based challenge with an 8-character password
+    ceiling — offline-crackable. Reported separately from no-auth, and NOT when
+    no-auth is already the headline (that rule is strictly worse)."""
+    d = _d(f)
+    if (d.get("vnc") is True and d.get("weak_auth") is True
+            and d.get("no_auth") is not True
+            and not d.get("has_strong_auth")):
+        return {"protocol_version": d.get("protocol_version"),
+                "has_strong_auth": d.get("has_strong_auth")}
+    return None
+
+
+def _smtp_user_enum(f: Fact) -> Optional[dict]:
+    d = _d(f)
+    if d.get("smtp") is not True:
+        return None
+    verbs = [v for v, on in (("VRFY", d.get("vrfy_enabled")),
+                             ("EXPN", d.get("expn_enabled"))) if on is True]
+    if not verbs:
+        return None
+    return {"verbs": verbs, "vrfy_postmaster_code": d.get("vrfy_postmaster_code"),
+            "vrfy_random_code": d.get("vrfy_random_code")}
+
+
+def _smtp_no_starttls(f: Fact) -> Optional[dict]:
+    d = _d(f)
+    if d.get("smtp") is True and d.get("starttls") is False:
+        return {"banner": d.get("banner"),
+                "ehlo_capabilities": (d.get("ehlo_capabilities") or [])[:12]}
+    return None
+
+
+def _rsync_anonymous(f: Fact) -> Optional[dict]:
+    d = _d(f)
+    anon = d.get("anon_modules")
+    if d.get("rsync") is True and isinstance(anon, list) and anon:
+        return {"anon_modules": anon[:10], "module_count": d.get("module_count")}
+    return None
+
+
+def _smb_null_session(f: Fact) -> Optional[dict]:
+    d = _d(f)
+    if d.get("smb") is not True or d.get("null_session") is not True:
+        return None
+    return {"guest_session": d.get("guest_session"),
+            "share_count": d.get("share_count"),
+            "user_count": d.get("user_count"),
+            "shares": [s.get("name") for s in (d.get("shares") or [])
+                       if isinstance(s, dict)][:10]}
+
+
+def _ipmi_cipher_zero(f: Fact) -> Optional[dict]:
+    d = _d(f)
+    if d.get("ipmi") is True and d.get("cipher_zero") is True:
+        return {"rmcp_status": d.get("rmcp_status")}
+    return None
+
+
 # ── the rule pack ─────────────────────────────────────────────────────────────
 RULES: list[PostureRule] = [
     PostureRule(
@@ -350,8 +537,25 @@ RULES: list[PostureRule] = [
         "Require NLA (CredSSP) on RDP so the RDP stack is not reachable pre-auth; "
         "patch legacy hosts; restrict RDP to VPN/jump hosts.",
         fp_notes="Suppressed when the RDP-only probe was refused (nla_required=True) "
-                 "— a CONFIRMED-NLA host never reaches this rule.",
-        auth_enforced=_rdp_auth, requires=("rdp_confirmed", "nla")),
+                 "— a CONFIRMED-NLA host never reaches this rule. Fires on EITHER "
+                 "probe: a negotiated protocol without CredSSP, or a server that "
+                 "accepted a bare standard-RDP request.",
+        # `nla` is deliberately NOT required: it is absent whenever the TLS-capable
+        # negotiation returned RDP_NEG_FAILURE, which is a legitimate server
+        # response, not probe drift. Declaring it made every such host report
+        # schema_drift while the second probe's `nla_required` sat unread.
+        auth_enforced=_rdp_auth, requires=("rdp_confirmed",)),
+    PostureRule(
+        "POSTURE-RDP-NO-TLS", "RDP refuses TLS (legacy standard-RDP security)",
+        "high", "CWE-326", "T1040", "weak_crypto", ("rdp_scan",), _rdp_no_tls,
+        "Set the RDP security layer to TLS (or better, require NLA) and install a "
+        "valid certificate. Standard RDP security uses legacy RC4-family crypto with "
+        "no server authentication, so the session is interceptable on the path.",
+        fp_notes="Derived from the MS-RDPBCGR negotiation failure code, not a "
+                 "completed TLS handshake. Only codes 2 (SSL_NOT_ALLOWED_BY_SERVER) "
+                 "and 3 (SSL_CERT_NOT_ON_SERVER) are interpreted; other failure "
+                 "codes are transport noise and never fire this rule.",
+        auth_enforced=_rdp_auth, requires=("rdp_confirmed",)),
     PostureRule(
         "POSTURE-RDP-EXPOSED", "RDP reachable from the scan vantage (confirmed)",
         "low", "CWE-284", "T1021.001", "exposure", ("rdp_scan",), _rdp_exposed,
@@ -409,6 +613,134 @@ RULES: list[PostureRule] = [
         fp_notes="snmp_scan is not in the validated trust tier yet, so this is "
                  "reported SUSPECTED pending validation.",
         requires=("community",)),
+
+    # ── service-layer rules ───────────────────────────────────────────────────
+    # The deep-branch scanners below had NO rule at all: the probe collected,
+    # shipped and stored their facts and nothing ever assessed them, so every one
+    # of these weaknesses was a guaranteed silent false-negative regardless of the
+    # scanner's accuracy. None of these scanners is rig-validated yet, so their
+    # findings are SUSPECTED (see _state_for) until they earn the trust tier.
+    PostureRule(
+        "POSTURE-SSH-TERRAPIN", "SSH vulnerable to Terrapin prefix truncation (CVE-2023-48795)",
+        "medium", "CWE-354", "T1557", "weak_crypto", ("ssh_scan",), _ssh_terrapin,
+        "Upgrade OpenSSH to 9.6+ (or the vendor backport) so strict key exchange "
+        "(kex-strict-s-v00@openssh.com) is offered, or disable ChaCha20-Poly1305 and "
+        "all CBC-with-EtM cipher suites.",
+        fp_notes="Fires only when a vulnerable algorithm combination is OFFERED and "
+                 "strict-kex is absent — the same test ssh-audit applies. A server "
+                 "advertising strict-kex never reaches this rule.",
+        requires=("ssh_confirmed", "terrapin_vulnerable")),
+    PostureRule(
+        "POSTURE-SSH-WEAK-ALGORITHMS", "SSH offers deprecated or weak algorithms",
+        "high", "CWE-327", "T1040", "weak_crypto", ("ssh_scan",), _ssh_weak_algos,
+        "Restrict KexAlgorithms, Ciphers, MACs and HostKeyAlgorithms in sshd_config "
+        "to the current recommended set; remove CBC ciphers, SHA-1 MACs and "
+        "1024-bit Diffie-Hellman groups.",
+        fp_notes="Graded against the scanner's vendored weakness table. Offering a "
+                 "weak algorithm is not proof it is negotiated — but it is reachable "
+                 "by any client that asks for it.",
+        requires=("ssh_confirmed", "failures")),
+    PostureRule(
+        "POSTURE-FTP-ANONYMOUS-LOGIN", "FTP allows anonymous login",
+        "high", "CWE-287", "T1078.001", "misconfiguration", ("ftp_scan",), _ftp_anonymous,
+        "Disable the anonymous account, or restrict it to a dedicated read-only "
+        "directory that contains nothing sensitive and no writable path.",
+        fp_notes="Confirmed by an actual 230 login response, not by the banner. "
+                 "`anon_read` records whether a directory listing was returned.",
+        requires=("ftp", "anonymous_login")),
+    PostureRule(
+        "POSTURE-DNS-ZONE-TRANSFER", "DNS zone transfer (AXFR) allowed to any client",
+        "high", "CWE-200", "T1590.002", "information_disclosure", ("dns_scan",),
+        _dns_zone_transfer,
+        "Restrict AXFR to authorized secondaries with `allow-transfer` (BIND) or the "
+        "equivalent zone-transfer ACL, and prefer TSIG-authenticated transfers.",
+        fp_notes="Fires only when records were actually transferred, not when the "
+                 "query merely succeeded — a refused AXFR returns transferred=false.",
+        requires=("dns", "zone_transfer")),
+    PostureRule(
+        "POSTURE-NFS-WORLD-READABLE-EXPORT", "NFS export readable by any host",
+        "high", "CWE-732", "T1039", "misconfiguration", ("nfs_scan",), _nfs_world_readable,
+        "Replace the wildcard client spec with explicit hosts or subnets, mount "
+        "read-only where possible, and enable root_squash.",
+        fp_notes="World-readable is decided from the export's client list containing "
+                 "a wildcard entry, as reported by the mount daemon itself.",
+        requires=("nfs", "world_readable_exports")),
+    PostureRule(
+        "POSTURE-LDAP-ANONYMOUS-BIND", "LDAP allows anonymous bind (directory disclosure)",
+        "low", "CWE-306", "T1087.002", "information_disclosure", ("ldap_scan",),
+        _ldap_anonymous_bind,
+        "Disable anonymous bind, or restrict the anonymous ACL so the RootDSE alone "
+        "is readable and no naming context can be enumerated.",
+        fp_notes="An anonymous bind that returns only the RootDSE still confirms the "
+                 "bind succeeded; the naming contexts show what was readable. Severity "
+                 "matches probe findings.py LDAP-ANON-BIND — a bind that also returned "
+                 "directory CONTENT is the higher-severity case.",
+        requires=("ldap", "anonymous_bind")),
+    PostureRule(
+        "POSTURE-VNC-NO-AUTH", "VNC accepts connections with no authentication",
+        "critical", "CWE-306", "T1021.005", "misconfiguration", ("vnc_scan",), _vnc_no_auth,
+        "Enable VNC authentication, or front the service with SSH/VPN. An unauthenticated "
+        "VNC endpoint is a full interactive desktop session for anyone who can reach it.",
+        fp_notes="Read from the offered security types in the RFB handshake "
+                 "(type 1 = None). The scanner never attempts to complete a session.",
+        requires=("vnc", "no_auth")),
+    PostureRule(
+        "POSTURE-VNC-WEAK-AUTH", "VNC uses legacy DES challenge authentication",
+        "medium", "CWE-327", "T1021.005", "weak_crypto", ("vnc_scan",), _vnc_weak_auth,
+        "Move to a VNC build offering a modern security type, or tunnel VNC over "
+        "SSH/VPN. The legacy type-2 scheme caps passwords at 8 characters and is "
+        "offline-crackable from a captured challenge.",
+        fp_notes="Suppressed when no-auth is also offered (that finding is strictly "
+                 "worse) and when the server ALSO offers a strong security type, since "
+                 "a client can then choose it. Mirrors probe findings.py VNC-WEAK-AUTH.",
+        requires=("vnc", "weak_auth")),
+    PostureRule(
+        "POSTURE-SMTP-USER-ENUMERATION", "SMTP VRFY/EXPN allows account enumeration",
+        "medium", "CWE-200", "T1087.003", "information_disclosure", ("smtp_scan",),
+        _smtp_user_enum,
+        "Disable VRFY and EXPN (Postfix: `disable_vrfy_command = yes`) so the server "
+        "cannot be used to confirm which mailboxes exist.",
+        fp_notes="Decided by comparing the response to a known address against a "
+                 "random one, so a server that answers everything identically does "
+                 "not fire this rule.",
+        requires=("smtp",)),
+    PostureRule(
+        "POSTURE-SMTP-NO-STARTTLS", "SMTP does not offer STARTTLS (mail in cleartext)",
+        "low", "CWE-319", "T1040", "weak_crypto", ("smtp_scan",), _smtp_no_starttls,
+        "Advertise and enable STARTTLS with a valid certificate so mail and any "
+        "AUTH credentials are not carried in cleartext.",
+        fp_notes="Read from the EHLO capability list. A submission port that requires "
+                 "implicit TLS is never reached by this plaintext probe.",
+        requires=("smtp", "starttls")),
+    PostureRule(
+        "POSTURE-RSYNC-ANONYMOUS-MODULE", "Rsync module accessible without authentication",
+        "high", "CWE-306", "T1039", "misconfiguration", ("rsync_scan",), _rsync_anonymous,
+        "Set `auth users` and `secrets file` on every rsync module, and bind the "
+        "daemon to a management interface rather than a general-purpose one.",
+        fp_notes="A module is counted as anonymous only when the daemon accepted the "
+                 "module without a credential challenge.",
+        requires=("rsync", "anon_modules")),
+    PostureRule(
+        "POSTURE-SMB-NULL-SESSION", "SMB null session permits anonymous enumeration",
+        "medium", "CWE-306", "T1087.002", "misconfiguration", ("smb_enum_scan",),
+        _smb_null_session,
+        "Set RestrictAnonymous / RestrictAnonymousSAM (or `restrict anonymous = 2` on "
+        "Samba) so shares, users and the domain SID cannot be listed without credentials.",
+        fp_notes="Requires a SUCCESSFUL anonymous session — a STATUS_ACCESS_DENIED on "
+                 "the null bind reports null_session=false and never fires this. Base "
+                 "severity matches probe findings.py SMB-NULL-SESSION; a session that "
+                 "also enumerated USERS is the more serious case and is visible in "
+                 "evidence.user_count.",
+        requires=("smb", "null_session")),
+    PostureRule(
+        "POSTURE-IPMI-CIPHER-ZERO", "IPMI 2.0 cipher suite 0 (authentication bypass)",
+        "critical", "CWE-287", "T1078", "misconfiguration", ("ipmi_scan",), _ipmi_cipher_zero,
+        "Disable cipher suite 0 on the BMC and restrict IPMI to an isolated management "
+        "VLAN. Cipher 0 accepts any password, granting full out-of-band control of the "
+        "host including power and console.",
+        fp_notes="Read from the RMCP+ Open Session Response, which states the accepted "
+                 "cipher suite; no authentication is attempted.",
+        requires=("ipmi", "cipher_zero")),
 ]
 
 
@@ -424,18 +756,37 @@ def _evidence_ref(f: Fact) -> str:
     return f"{f.scanner}:{f.target}:{f.port}"
 
 
+def _fact_indicates_no_service(f: Fact, data: dict) -> bool:
+    """True when the scanner ran but the service did NOT answer — so a rule's
+    declared field is legitimately absent (there was nothing to report), NOT agent
+    drift. SNMP/UDP/IPMI probes that get no reply carry responded=False and/or a
+    filtered status; treating those as 'blind' cries wolf on every host that simply
+    isn't running that service (the false 'N checks couldn't run' the operator saw).
+    """
+    if data.get("responded") is False:
+        return True
+    status = (str(f.status) if f.status is not None else "").lower()
+    return status in {"filtered", "open|filtered", "closed", "no_response", "unknown", ""}
+
+
 def evaluate_rule(rule: PostureRule, f: Fact) -> TraceRow:
     """Evaluate ONE rule against ONE fact and record the outcome. NEVER raises —
     a single malformed rule or fact cannot blind the whole submission (fault F9).
 
-    The ordering is deliberate: the `requires` contract is checked BEFORE the
-    detector runs, so an absent declared path is reported as MISSING_INPUT (drift)
-    and never reaches the predicate that would otherwise render it as a clean
-    no-match. That check is the structural guard against the silent false-negative.
+    The `requires` contract is checked BEFORE the detector so an absent declared
+    path is DRIFT (MISSING_INPUT), not a silent clean no-match — EXCEPT when the
+    scanner clearly got no service response, where an absent field is 'not
+    applicable' (NO_MATCH), not drift.
     """
     data = f.data if isinstance(f.data, dict) else {}
+    no_service = _fact_indicates_no_service(f, data)
     for path in rule.requires:
         if get_path(data, path) is _MISSING:
+            if no_service:
+                # scanner ran, service didn't answer → nothing to assess → clean/
+                # not-applicable, NOT agent drift. Don't count this as a blind rule.
+                return TraceRow(rule.rule_id, f.scanner, OUTCOME_NO_MATCH,
+                                f.target, f.port)
             return TraceRow(rule.rule_id, f.scanner, OUTCOME_MISSING_INPUT,
                             f.target, f.port,
                             reason=f"required fact path absent: data.{path}")
@@ -518,6 +869,16 @@ def detect_posture_traced(
             reachable_by_id[id(pf)] = (f.status == "open")   # was the port confirmed up?
             out.append(pf)
 
+    # 1a) Exposed-service / suspicious-port layer: the long tail of risky OPEN
+    #     ports — backdoor/C2 listeners, unauthenticated-prone data stores,
+    #     container/orchestration APIs, cleartext protocols, exposed admin/dev UIs —
+    #     that have no dedicated scanner but ARE findable from the open port + banner
+    #     + exposure the validated scanners already collected. Best-effort.
+    try:
+        out.extend(detect_exposed_services(asset, exposure))
+    except Exception:  # noqa: BLE001 — must never sink core detection
+        pass
+
     # 1b) Confidence calibration (second pass, cross-signal aware): now that every rule
     # that fired on this host is known, calibrate each finding's confidence with
     # attack-chain corroboration and stamp the auditable precision_factors. Separate
@@ -544,6 +905,115 @@ def detect_posture(asset: Asset,
     Thin wrapper over `detect_posture_traced` so existing callers are unchanged."""
     findings, _traces = detect_posture_traced(asset, exposure)
     return findings
+
+
+# ── exposed-service / suspicious-port layer ───────────────────────────────────
+# Ports already covered by a dedicated deep rule — skip so we don't double-report.
+_EXPOSED_SVC_DEDICATED_PORTS = {135, 139, 445, 3389}
+_PORTSCAN_SCANNERS = {"port_scan", "syn_scan", "mass_scan"}
+
+_EXPOSED_TITLES = {
+    "backdoor":      "Suspicious/backdoor port {port} open ({svc})",
+    "container":     "Container/orchestration API exposed on {port} ({svc})",
+    "datastore":     "Unauthenticated-prone data store exposed on {port} ({svc})",
+    "database":      "Database reachable on {port} ({svc})",
+    "cleartext":     "Cleartext protocol exposed on {port} ({svc})",
+    "remote_access": "Remote-access service exposed on {port} ({svc})",
+    "admin_ui":      "Admin/dev interface exposed on {port} ({svc})",
+}
+
+
+def _exposed_title(category: str, service: str, port: int, internet: bool) -> str:
+    base = _EXPOSED_TITLES.get(category, "Service exposed on {port}").format(
+        port=port, svc=service)
+    return base + (" — internet-facing" if internet else "")
+
+
+def detect_exposed_services(asset: Asset,
+                            exposure: dict[str, dict] | None = None) -> list[PostureFinding]:
+    """Findings for risky OPEN ports that have no dedicated scanner: backdoor/C2
+    listeners, unauthenticated-prone data stores, container APIs, cleartext
+    protocols, exposed admin UIs. Reads only what the validated scanners already
+    emit — open TCP ports (port/syn/mass scan), banners (service_banner), and the
+    exposure classification (exposure_matrix). Severity escalates one level when the
+    port is internet-facing (the asset-exposure risk variable)."""
+    from port_intel import classify_port, escalate   # standalone module, no cycle
+
+    exposure = exposure or {}
+    exp = exposure.get(asset.ip, {})
+    default_auth = exp.get("auth_enforced")
+    exp_internet = exp.get("internet_facing")
+
+    open_tcp: dict[int, Fact] = {}      # port -> the observing port-scan fact
+    banners: dict[int, str] = {}
+    # service_banner's soft-matched protocol label + its Basic-over-plaintext
+    # flag: OBSERVED protocol evidence that outranks the port number.
+    svc_labels: dict[int, str] = {}
+    products: dict[int, str] = {}
+    basic_cleartext: set[int] = set()
+    externally: set[int] = set()
+
+    for f in asset.facts:
+        d = f.data if isinstance(f.data, dict) else {}
+        if (f.scanner in _PORTSCAN_SCANNERS and f.port and f.status == "open"
+                and (f.proto or "tcp") != "udp"):
+            open_tcp.setdefault(f.port, f)
+        elif f.scanner == "service_banner" and f.port:
+            b = d.get("banner")
+            if isinstance(b, str) and b.strip():
+                banners[f.port] = b.strip()[:200]
+            svc = d.get("service")
+            if isinstance(svc, str) and svc:
+                svc_labels[f.port] = svc
+            prod = d.get("product")
+            if isinstance(prod, str) and prod:
+                products[f.port] = prod
+            if d.get("http_basic_auth_cleartext") is True:
+                basic_cleartext.add(f.port)
+        elif f.scanner == "exposure_matrix":
+            for p in (d.get("externally_exposed") or []):
+                if isinstance(p, int):
+                    externally.add(p)
+
+    now = datetime.now(timezone.utc).isoformat()
+    out: list[PostureFinding] = []
+    for port in sorted(open_tcp):
+        if port in _EXPOSED_SVC_DEDICATED_PORTS:
+            continue
+        risk = classify_port(port, banners.get(port), service=svc_labels.get(port),
+                             basic_auth_cleartext=port in basic_cleartext,
+                             product=products.get(port))
+        if risk is None:
+            continue
+        f = open_tcp[port]
+        internet = (port in externally) or bool(exp_internet)
+        severity = escalate(risk.severity) if internet else risk.severity
+        state = _state_for(f.scanner)                 # validated port scan → confirmed
+        risk_score, priority = compute_risk(severity, state, internet, default_auth)
+        rule_id = f"POSTURE-EXPOSED-{risk.category.upper()}"
+        ev: dict[str, Any] = {"port": port, "category": risk.category,
+                              "service": risk.service, "internet_facing": internet}
+        if banners.get(port):
+            ev["banner"] = banners[port]
+        if svc_labels.get(port):
+            ev["observed_service"] = svc_labels[port]
+        if products.get(port):
+            # The identified product, so an operator can see at a glance whether it
+            # agrees with the service the port catalog named.
+            ev["observed_product"] = products[port]
+        out.append(PostureFinding(
+            finding_id=make_posture_id(asset.ip, rule_id, port),
+            asset_ip=asset.ip, rule_id=rule_id,
+            title=_exposed_title(risk.category, risk.service, port, internet),
+            category="exposure", severity=severity, state=state,
+            confidence=_STATE_CONF.get(state, 65), cwe=risk.cwe, mitre=risk.mitre,
+            port=port, proto="tcp", evidence_refs=[_evidence_ref(f)],
+            evidence=ev, remediation=risk.note,
+            fp_notes="Signal derived from the open port (+ banner). A benign internal "
+                     "service can share these ports — confirm the owning process/scope.",
+            internet_facing=internet, auth_enforced=default_auth,
+            risk_score=risk_score, priority=priority, created_at=now, scanner=f.scanner))
+    return out
 
 
 # ── verdict roll-up: the machine-readable answer to "why no finding?" ──────────

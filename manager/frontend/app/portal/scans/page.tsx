@@ -7,6 +7,7 @@ import {
   ChevronDown, Clock, XCircle,
 } from "lucide-react";
 import { PortalShell } from "../../../components/portal/PortalShell";
+import { Timestamp } from "../../../components/portal/Timestamp";
 import { portalApi, type PortalScan, type PortalEngagement, type PortalUseCase } from "../../../lib/portal-client";
 import { DataState, SkeletonRows, EmptyState } from "../../../components/states/DataState";
 
@@ -71,18 +72,6 @@ function jobMeta(status: string, kind: string): JobMeta {
   }
 }
 
-function relTime(iso: string | null): string {
-  if (!iso) return "—";
-  const t = new Date(iso).getTime();
-  if (Number.isNaN(t)) return "—";
-  const s = Math.floor((Date.now() - t) / 1000);
-  if (s < 60) return "just now";
-  const m = Math.floor(s / 60); if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60); if (h < 24) return `${h}h ago`;
-  const d = Math.floor(h / 24); if (d < 30) return `${d}d ago`;
-  return new Date(iso).toLocaleDateString();
-}
-
 const prettyType = (s: string) => s.replace(/_/g, " ");
 
 function StatusIcon({ status, color }: { status: string; color: string }) {
@@ -137,7 +126,7 @@ function JobCard({ scan }: { scan: PortalScan }) {
   const [open, setOpen] = useState(false);
   const m = jobMeta(scan.status, scan.kind);
   return (
-    <div style={{ border: "0.5px solid var(--border-subtle)", borderRadius: "var(--radius-md)",
+    <div style={{ border: "var(--hairline) solid var(--border-subtle)", borderRadius: "var(--radius-md)",
       background: "var(--bg-panel)", overflow: "hidden",
       borderLeft: `2px solid ${m.active ? m.color : "transparent"}` }}>
       <button onClick={() => setOpen((v) => !v)} aria-expanded={open} className="focusable"
@@ -149,16 +138,16 @@ function JobCard({ scan }: { scan: PortalScan }) {
         </span>
         <span className="chip" style={{ textTransform: "capitalize", color: m.color,
           background: `color-mix(in srgb, ${m.color} 12%, transparent)`,
-          border: `0.5px solid color-mix(in srgb, ${m.color} 30%, transparent)` }}>{m.label}</span>
+          border: `var(--hairline) solid color-mix(in srgb, ${m.color} 30%, transparent)` }}>{m.label}</span>
         <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>
-          {relTime(scan.at)}
+          <Timestamp value={scan.at} relative />
         </span>
         <ChevronDown size={15} color="var(--text-muted)"
           style={{ transition: "transform var(--dur-fast) var(--ease-out)",
             transform: open ? "rotate(180deg)" : "rotate(0deg)" }} />
       </button>
       {open && (
-        <div className="animate-fade-in" style={{ padding: "8px 16px 16px", borderTop: "0.5px solid var(--border-subtle)" }}>
+        <div className="animate-fade-in" style={{ padding: "8px 16px 16px", borderTop: "var(--hairline) solid var(--border-subtle)" }}>
           {m.terminal === null ? (
             <PhaseTicker phaseIdx={m.phaseIdx} />
           ) : (
@@ -332,7 +321,7 @@ export default function PortalScans() {
                       if (!targets.includes(c)) setTargets([...targets, c]);
                     }}
                       className="chip num-mono" style={{ cursor: "pointer",
-                        color: "var(--text-secondary)", border: "0.5px solid var(--border-default)" }}>
+                        color: "var(--text-secondary)", border: "var(--hairline) solid var(--border-default)" }}>
                       {c}
                     </button>
                   ))}
@@ -354,7 +343,7 @@ export default function PortalScans() {
                     return (
                       <span key={t} className="chip num-mono" style={{
                         color: bad ? "var(--sev-critical-color)" : "var(--text-primary)",
-                        border: `0.5px solid ${bad ? "var(--sev-critical-color)" : "var(--border-default)"}`,
+                        border: `var(--hairline) solid ${bad ? "var(--sev-critical-color)" : "var(--border-default)"}`,
                         background: "var(--bg-surface)" }}>
                         {t}
                         <button type="button" aria-label={`Remove ${t}`}
@@ -401,7 +390,7 @@ export default function PortalScans() {
             <h2 className="panel-title">Activity</h2>
             {active.length > 0 && (
               <span className="chip" style={{ display: "inline-flex", alignItems: "center", gap: 6,
-                color: "var(--accent)", background: "var(--accent-ghost)", border: "0.5px solid var(--border-accent)" }}>
+                color: "var(--accent)", background: "var(--accent-ghost)", border: "var(--hairline) solid var(--border-accent)" }}>
                 <span className="animate-pulse-dot" style={{ width: 6, height: 6, borderRadius: "50%",
                   background: "var(--accent)" }} />
                 {active.length} active

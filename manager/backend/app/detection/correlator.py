@@ -16,6 +16,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
+from ipaddress import ip_address
 from typing import Any
 
 import structlog
@@ -68,8 +69,27 @@ class DetectionGap:
 def _host_matches(action_host: str | None, alert_host: str | None) -> bool:
     if not action_host or not alert_host:
         return False
-    a, b = action_host.lower(), alert_host.lower()
-    return a == b or a in b or b in a
+    a = _host_identity(action_host)
+    b = _host_identity(alert_host)
+    if a is None or b is None or a[0] != b[0]:
+        return False
+    if a[0] == "ip":
+        return a[1] == b[1]
+    # Hostname aliases may be emitted as a short name or an FQDN. Match their
+    # complete normalized names or exact first DNS labels — never substrings,
+    # which would falsely correlate web01 with web010.
+    return a[1] == b[1] or a[2] == b[2]
+
+
+def _host_identity(value: str) -> tuple[str, str, str] | None:
+    normalized = value.strip().lower().rstrip(".").removesuffix("$")
+    if not normalized:
+        return None
+    try:
+        canonical_ip = ip_address(normalized).compressed
+        return ("ip", canonical_ip, canonical_ip)
+    except ValueError:
+        return ("hostname", normalized, normalized.split(".", 1)[0])
 
 
 class DetectionCorrelator:
@@ -105,7 +125,9 @@ class DetectionCorrelator:
             else:
                 status = DetectionStatus.missed
 
-            alert_ids = [a.id for a in siem_hits] + [d.id for d in edr_hits]
+            alert_ids = list(dict.fromkeys(
+                [a.id for a in siem_hits] + [d.id for d in edr_hits]
+            ))
             latency = self._min_latency(action.timestamp, siem_hits, edr_hits)
 
             sigma = None
@@ -175,7 +197,13 @@ class DetectionCorrelator:
             bucket[r.status.value] = bucket.get(r.status.value, 0) + 1
         for tech, b in by_technique.items():
             b["covered"] = b["detected"] + b["prevented"]
-            b["status"] = "covered" if b["covered"] > 0 else "gap"
+            b["coverage_pct"] = round((b["covered"] / b["total"]) * 100, 1)
+            if b["covered"] == 0:
+                b["status"] = "gap"
+            elif b["missed"] > 0:
+                b["status"] = "partial"
+            else:
+                b["status"] = "covered"
 
         return {
             "total_actions": total,

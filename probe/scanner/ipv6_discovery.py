@@ -121,13 +121,23 @@ def discover_ipv6_hosts(iface: str | None = None, *, pings: int = 3,
     """Discover live IPv6 neighbors on the segment via ND multicast + neighbor
     cache. Returns scannable address strings (link-local carry the %iface scope so
     the connect scanner can reach them). Excludes own addresses and dead states.
-    Best-effort: returns [] on any platform/permission problem, never raises."""
+    Best-effort: returns [] on any platform/permission problem, never raises.
+
+    `iface` scopes BOTH halves of the operation. It always scoped the multicast
+    ping; it now also filters the harvest, because the neighbor cache is
+    system-wide. Without that filter a scan of the wired LAN also returned every
+    neighbor on every VPN tunnel (utun*) and Apple's peer-to-peer AWDL link —
+    hosts on entirely different segments that the engagement never authorized.
+    Addresses with no %scope (globals) are kept: they are not interface-bound.
+    """
     _ping_all_nodes(iface, pings, timeout)
     own = _own_ipv6_addresses()
     seen: set[str] = set()
     hosts: list[str] = []
     for addr, state in _read_neighbor_cache():
-        bare = addr.split("%", 1)[0]
+        bare, _, zone = addr.partition("%")
+        if iface and zone and zone != iface:
+            continue                            # a neighbor on a different segment
         if bare in own or bare in seen:
             continue
         if state is not None and state not in _USABLE_STATES:

@@ -13,8 +13,15 @@ class UserRole(str, enum.Enum):
 
 
 class EngagementStatus(str, enum.Enum):
+    """Operator-set lifecycle. `ongoing` (assessment underway) and `running`
+    (active scanning phase) were added in migration 0035 so status reads the way
+    operators report it. Live scan activity is shown SEPARATELY, derived from
+    scan jobs — a stored `running` is an intent, never evidence that a scan is
+    executing right now."""
     draft = "draft"
     active = "active"
+    ongoing = "ongoing"
+    running = "running"
     paused = "paused"
     completed = "completed"
 

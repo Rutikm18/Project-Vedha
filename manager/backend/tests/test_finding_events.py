@@ -29,7 +29,8 @@ def _finding(**over):
         last_seen=NOW, severity=FindingSeverity.high, status=FindingStatus.open,
         evidence={}, detection_run_id=None, detected_db_version=None,
         resolved_at=None, resolution_method=None, resolution_run_id=None,
-        reopened_count=0,
+        reopened_count=0, resolution_miss_count=0,
+        cvss_score=None, risk_score=None, remediation=None,
     )
     base.update(over)
     return SimpleNamespace(**base)
@@ -176,10 +177,49 @@ class TestPatchAudits:
         db.add = MagicMock(side_effect=lambda row: added.append(row))
         user = SimpleNamespace(tenant_id=uuid.uuid4(), user_id=uuid.uuid4())
 
-        await patch_finding(finding.id, FindingPatch(status=FindingStatus.confirmed), db, user)
+        await patch_finding(
+            finding.id,
+            FindingPatch(status=FindingStatus.confirmed, action_reason="Validated against scan evidence"),
+            db,
+            user,
+        )
 
         assert finding.status == FindingStatus.confirmed
         assert any(getattr(r, "event_type", None) == "confirmed" for r in added)
         ev = next(r for r in added if r.event_type == "confirmed")
         assert ev.from_status == "open" and ev.to_status == "confirmed"
         assert ev.actor == str(user.user_id)
+        assert ev.detail == {"reason": "Validated against scan evidence"}
+
+    @pytest.mark.asyncio
+    async def test_manual_remediation_sets_close_metadata_and_audits_reason(self):
+        from app.routers.findings import patch_finding
+        from app.schemas.finding import FindingPatch
+
+        finding = _finding()
+        added = []
+        db = MagicMock()
+        db.execute = AsyncMock(return_value=MagicMock(scalar_one_or_none=lambda: finding))
+        db.flush = AsyncMock()
+        db.refresh = AsyncMock()
+        db.add = MagicMock(side_effect=lambda row: added.append(row))
+        user = SimpleNamespace(tenant_id=uuid.uuid4(), user_id=uuid.uuid4())
+
+        await patch_finding(
+            finding.id,
+            FindingPatch(
+                status=FindingStatus.remediated,
+                action_reason="Patched the service and the follow-up scan passed",
+            ),
+            db,
+            user,
+        )
+
+        assert finding.status == FindingStatus.remediated
+        assert finding.resolution_method == "manual"
+        assert finding.resolved_at is not None
+        event = next(row for row in added if row.event_type == "remediated")
+        assert event.detail == {
+            "reason": "Patched the service and the follow-up scan passed",
+            "resolution_method": "manual",
+        }

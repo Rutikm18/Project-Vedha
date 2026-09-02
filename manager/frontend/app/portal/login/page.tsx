@@ -53,7 +53,7 @@ export default function PortalLoginPage() {
         <div style={{ display: "flex", flexDirection: "column", alignItems: "center",
           gap: 8, marginBottom: 24 }}>
           <div style={{ width: 44, height: 44, borderRadius: 10,
-            background: "var(--accent-ghost)", border: "0.5px solid var(--border-accent)",
+            background: "var(--accent-ghost)", border: "var(--hairline) solid var(--border-accent)",
             display: "flex", alignItems: "center", justifyContent: "center" }}>
             <Shield style={{ width: 24, height: 24, color: "var(--accent)" }} />
           </div>

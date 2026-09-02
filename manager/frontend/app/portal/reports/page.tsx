@@ -6,6 +6,7 @@ import {
   FileText, Download, Loader2, ShieldAlert, BarChart3, FileArchive, Printer,
 } from "lucide-react";
 import { PortalShell } from "../../../components/portal/PortalShell";
+import { Timestamp } from "../../../components/portal/Timestamp";
 import { DataState, SkeletonRows, EmptyState } from "../../../components/states/DataState";
 import {
   portalApi, SEVERITY_VAR, GRADE_VAR,
@@ -160,7 +161,7 @@ function DocumentsTab({ reports, onView, loadingId }: {
                 {r.output_type.replace(/_/g, " ")}
               </div>
               <div style={{ fontSize: 11, color: "var(--text-muted)" }}>
-                {new Date(r.generated_at).toLocaleString()} · {r.model}
+                <Timestamp value={r.generated_at} relative /> · {r.model}
               </div>
             </div>
           </div>

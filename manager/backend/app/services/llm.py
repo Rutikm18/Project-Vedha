@@ -8,6 +8,7 @@ import structlog
 
 from app.config import Settings, get_settings
 from app.schemas.ai import AiGenerateRequest, AiProviderStatus, AiStatusResponse
+from app.services.llm_http_client import AsyncLlmHttpClient
 
 logger = structlog.get_logger()
 
@@ -39,24 +40,32 @@ Use organization-specific claims only when supported by recorded tenant evidence
 Public CVE metadata describes a vulnerability; it never proves the organization is affected.
 Separate confirmed facts from hypotheses and unknowns. Keep recommendations defensive and non-destructive."""
 
-_TASK_RULES = {
-    "security_brief": """Use these exact headings:
+_VULNERABILITY_BRIEF_CONTRACT = """When the request concerns one vulnerability or finding, keep the complete brief within 250 words and use these exact headings:
 ## What is the vulnerability?
-## How could it impact the organization?
+Write one plain-language paragraph.
+## Key facts
+Give 2-4 short evidence-backed points; do not repeat the paragraph.
+## Organizational impact
+Give 2-5 impact bullets ordered from most serious to least serious.
 ## Severity and score
+Report recorded CVSS and Vedha risk score separately with each source and scale. If a score or scale is absent, say Unknown; do not calculate, convert, normalize, or invent one.
 ## Remediation plan
+Use these numbered subheadings:
+1. Verify
+2. Remediation actions
+3. Further hardening
+Under Verify, distinguish safe validation from proof of exploitation. Under Remediation actions, provide ordered vendor-supported actions, rollback considerations, and a retest. Under Further hardening, cover relevant Linux, Windows, macOS, network, and vendor-agnostic controls; mark an operating system Not applicable when the evidence makes that clear.
 ## Evidence and uncertainty
-Write for a client stakeholder. Preserve scores and affected assets exactly as supplied. Give ordered, verifiable remediation steps.""",
+Name the evidence used and the decisions that still require validation."""
+
+_TASK_RULES = {
+    "security_brief": _VULNERABILITY_BRIEF_CONTRACT + """
+Write for a client stakeholder. Preserve scores and affected assets exactly as supplied.""",
     "security_followup": """Answer the follow-up about the supplied security brief.
-For a full explanation use these headings: What it is; Organizational impact; Severity and score; Remediation; Evidence and uncertainty.
+For a full explanation follow the vulnerability brief contract below.
 Do not provide exploit instructions.""",
     "advisor": """Help the authorized team understand exposure, attack paths, validation evidence, detection gaps, and remediation priorities.
-When the question concerns one CVE or finding, use these exact headings:
-## What is the vulnerability?
-## How could it impact the organization?
-## Severity and score
-## Remediation plan
-## Evidence and uncertainty
+When the question concerns one CVE or finding, follow the vulnerability brief contract below.
 Otherwise, answer as a concise decision brief and state evidence limitations.
 When lifecycle facts are supplied (finding age, reopened count, regression, resolution state), factor the material ones into urgency and validation advice — a regressed/reopened finding means an earlier fix did not hold. Use only the supplied values; never invent dates or counts.""",
     "advisor_flow": """Produce a decision-grade vulnerability brief as a SINGLE JSON object and nothing else (no markdown, no code fences, no commentary). Schema:
@@ -72,6 +81,32 @@ Rules:
 - Never provide exploit instructions. Never invent CVEs, versions, scores, or exploit status. Output must be valid minified JSON.""",
 }
 
+_TASK_RULES["client_assistant"] = """You are answering a CUSTOMER about their own security assessment, in their own portal.
+
+SUBJECT BOUNDARY — this is the whole purpose of the assistant. You answer questions about
+information security ONLY: the customer's findings, scans, scope, reports, posture and
+remediation, plus general security concepts needed to explain those (what a CVE is, what
+SMB signing does, how NLA protects RDP, how to read a CVSS score). If a request is not
+about security, decline in one short sentence and offer a security question instead. Do
+not write code, essays, translations, business advice or general knowledge answers, even
+when asked directly and even if the request seems harmless.
+
+GROUNDING — <security_context> holds THIS customer's recorded assessment data. Prefer it
+over general knowledge for anything about their environment, and say plainly when the
+context does not contain the answer rather than filling the gap. Never speculate about
+hosts, findings, or services that are not in the context; never mention other customers,
+operators, internal tooling, or how the platform works internally.
+
+DEFENSIVE ONLY — explain how to verify and fix. Never provide exploit code, payloads, or
+step-by-step intrusion instructions, even for a finding in their own environment.
+
+TONE — the reader owns the risk but may not be a security specialist. Lead with the
+answer, keep it short, define jargon on first use, and be explicit about what is
+confirmed versus what still needs checking."""
+
+_TASK_RULES["security_followup"] += "\n" + _VULNERABILITY_BRIEF_CONTRACT
+_TASK_RULES["advisor"] += "\n" + _VULNERABILITY_BRIEF_CONTRACT
+
 
 class ManagerLlmService:
     def __init__(
@@ -79,9 +114,13 @@ class ManagerLlmService:
         settings: Settings | None = None,
         *,
         transport: httpx.AsyncBaseTransport | None = None,
+        http_client: AsyncLlmHttpClient | None = None,
     ):
         self.settings = settings or get_settings()
-        self._transport = transport
+        self._http = http_client or AsyncLlmHttpClient(
+            timeout_seconds=self.settings.llm_request_timeout_seconds,
+            transport=transport,
+        )
 
     def _auto_cloud_provider(self) -> str | None:
         """First configured cloud provider, or None. Cloud-only: never Ollama."""
@@ -367,10 +406,7 @@ class ManagerLlmService:
         raise last
 
     def _client(self, *, timeout: float | None = None) -> httpx.AsyncClient:
-        return httpx.AsyncClient(
-            timeout=timeout or self.settings.llm_request_timeout_seconds,
-            transport=self._transport,
-        )
+        return self._http.open(timeout_seconds=timeout)
 
     async def _ensure_installed_ollama_model(self, model: str) -> None:
         try:

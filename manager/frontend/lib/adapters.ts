@@ -8,12 +8,16 @@
 const ENG_STATUS_TO_UI: Record<string, string> = {
   draft: "PLANNING",
   active: "ACTIVE",
+  ongoing: "ONGOING",
+  running: "RUNNING",
   paused: "PAUSED",
   completed: "COMPLETED",
 };
 const ENG_STATUS_TO_API: Record<string, string> = {
   PLANNING: "draft",
   ACTIVE: "active",
+  ONGOING: "ongoing",
+  RUNNING: "running",
   PAUSED: "paused",
   COMPLETED: "completed",
   ARCHIVED: "completed",
@@ -115,7 +119,14 @@ export function toUiFinding(api: any): any {
   const epss = api.epss_score != null ? Number(api.epss_score) : 0;
   // The backend composite risk contract is 0–1000. If enrichment has not run,
   // normalize CVSS (0–10) onto that same display scale.
-  const risk = api.risk_score != null ? Number(api.risk_score) : cvss * 100;
+  // `risk_rank` is recalculated by the Manager's canonical non-saturating
+  // formula on every response. Prefer it over legacy persisted scores so rows
+  // written under the old clipping formula do not keep displaying 1000/1000.
+  const risk = api.risk_rank != null
+    ? Number(api.risk_rank)
+    : api.risk_score != null
+      ? Number(api.risk_score)
+      : cvss * 100;
   return {
     id: api.id,
     title: api.title ?? "Untitled finding",
@@ -169,6 +180,7 @@ export function toUiFinding(api: any): any {
     // ── P2/P4 verification + lifecycle surfacing ──
     verificationState: api.verification_state ?? null,
     verificationConfidence: api.verification_confidence ?? null,
+    verificationRationale: api.verification_rationale ?? null,
     needsReview: api.needs_review ?? false,
     riskRank: api.risk_rank ?? null,
     resolutionMethod: api.resolution_method ?? null,
@@ -180,6 +192,18 @@ export function toUiFinding(api: any): any {
       api.evidence && typeof api.evidence === "object" && !Array.isArray(api.evidence)
         ? Boolean((api.evidence as Record<string, unknown>).regression)
         : false,
+    assetContext: api.asset_context ? {
+      id: api.asset_context.id,
+      ipAddress: api.asset_context.ip_address ?? null,
+      hostname: api.asset_context.hostname ?? null,
+      fqdn: api.asset_context.fqdn ?? null,
+      os: api.asset_context.os ?? null,
+      osVersion: api.asset_context.os_version ?? null,
+      assetType: api.asset_context.asset_type ?? "unknown",
+      criticality: api.asset_context.criticality ?? "unknown",
+      owner: api.asset_context.owner ?? null,
+      environment: api.asset_context.environment ?? null,
+    } : null,
   };
 }
 
@@ -211,6 +235,7 @@ const FIND_STATUS_TO_API: Record<string, string> = {
 export function toApiFindingPatch(ui: any): any {
   const out: any = {};
   if (ui.status) out.status = FIND_STATUS_TO_API[String(ui.status).toUpperCase()] ?? "open";
+  if (ui.actionReason != null) out.action_reason = String(ui.actionReason);
   if (ui.notes != null) out.notes = ui.notes;
   if (ui.remediation != null) out.remediation = ui.remediation;
   if (typeof ui.exploitable === "boolean") out.exploitable = ui.exploitable;

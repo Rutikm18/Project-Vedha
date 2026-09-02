@@ -53,7 +53,7 @@ function EngagementSection({ eng }: { eng?: PortalEngagement }) {
           <div className="settings-field-label">Authorised scope</div>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
             {eng.scope_cidrs.map((c) => (
-              <span key={c} className="chip num-mono" style={{ color: "var(--text-secondary)", border: "0.5px solid var(--border-default)" }}>{c}</span>
+              <span key={c} className="chip num-mono" style={{ color: "var(--text-secondary)", border: "var(--hairline) solid var(--border-default)" }}>{c}</span>
             ))}
           </div>
         </div>

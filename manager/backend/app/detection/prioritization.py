@@ -1,5 +1,4 @@
-"""
-prioritization.py — the single risk-scoring engine for ALL findings.
+"""Persist the canonical Manager risk score for all active findings.
 
 WHY THIS EXISTS: findings arrive from three paths — the CVE detection engine
 (engine_bridge), the probe's self-assessed findings (finding_translator), and
@@ -9,18 +8,10 @@ numeric score every dashboard/portal/report sorts by was NULL for the bulk of
 findings, leaving them effectively unprioritized. This module gives every
 finding one comparable, offline, reproducible risk_score.
 
-THE SCORE (0-1000, unified with app/vuln/enrichment.compute_composite_risk so the
-two paths agree):
-
-    risk = ( cvss·0.25 + epss·0.20 + kev·0.20 + exploit_validated·0.15
-             + asset_criticality·0.10 + exposure·0.10 ) · 1000
-
-Only difference from the nessus formula: its two attack-path terms (path_depth,
-lateral_impact — 0.05 each, unavailable when a finding is first persisted) are
-replaced by a single `exposure` term. Exposure — is the vulnerable service
-actually internet-reachable — was missing from risk entirely, yet it is the
-strongest real-world amplifier: the same CVE on an external service is far more
-urgent than on an isolated one.
+The formula itself lives in :mod:`app.services.risk_rank`; keeping one pure
+implementation prevents ingestion paths from silently drifting onto different
+scales. Posture rules may carry their own 0-100 score as evidence, but it never
+bypasses the Manager formula or maps 100 directly to the Manager ceiling.
 
 OFFLINE: EPSS/KEV come from the detection_engine's pinned snapshots (never a live
 API), so the same findings score the same on any machine, any day.
@@ -37,6 +28,7 @@ from app.models.asset import Asset
 from app.models.enums import AssetCriticality, FindingStatus
 from app.models.finding import Finding
 from app.models.service import Service
+from app.services.risk_rank import compute_risk_rank
 
 logger = structlog.get_logger()
 
@@ -62,31 +54,71 @@ _EXPOSURE_RANK = {"external": 4, "internet": 4, "partial": 3, "dmz": 3,
                   "internal": 2, "isolated": 1}
 
 
+def _posture_risk_on_manager_scale(evidence: object) -> float | None:
+    """Score a posture finding with the Manager formula.
+
+    The historical name is retained for compatibility with the ingestion seam.
+    Crucially, the rule's upstream 0-100 value is not multiplied by ten: Manager
+    recomputes from severity, exploitability, context, and evidence quality.
+    """
+    if (not isinstance(evidence, dict) or not evidence.get("rule_id")
+            or not (evidence.get("severity") or evidence.get("priority"))):
+        return None
+
+    try:
+        confidence = int(evidence["confidence"]) if evidence.get("confidence") is not None else None
+    except (TypeError, ValueError, OverflowError):
+        confidence = None
+
+    internet_facing = evidence.get("internet_facing")
+    auth_enforced = evidence.get("auth_enforced")
+    return float(compute_risk_rank(
+        severity=str(evidence.get("severity") or evidence.get("priority") or "info"),
+        cvss_score=None,
+        epss_score=None,
+        kev=bool(evidence.get("kev")),
+        exploit_validated=bool(evidence.get("exploit_validated")),
+        verification_state=str(evidence.get("state")) if evidence.get("state") else None,
+        confidence=confidence,
+        asset_criticality=(str(evidence.get("asset_criticality"))
+                           if evidence.get("asset_criticality") else None),
+        internet_facing=internet_facing if isinstance(internet_facing, bool) else None,
+        auth_enforced=auth_enforced if isinstance(auth_enforced, bool) else None,
+    ))
+
+
 def composite_risk_score(
     *,
     cvss: float,
     epss: float,
     kev: bool,
     exploit_validated: bool,
+    severity: str = "info",
     asset_criticality: str = "medium",
     exposure: str | None = None,
+    verification_state: str | None = None,
+    confidence: int | None = None,
+    auth_enforced: bool | None = None,
 ) -> float:
-    """The unified 0-1000 composite (see module docstring). Pure + deterministic."""
-    cvss_n = min(max(float(cvss), 0.0), 10.0) / 10.0
-    epss_n = min(max(float(epss), 0.0), 1.0)
-    kev_n = 1.0 if kev else 0.0
-    expl_n = 1.0 if exploit_validated else 0.0
-    crit_n = _CRIT_WEIGHT.get(asset_criticality, 0.5)
-    exp_n = _EXPOSURE_WEIGHT.get((exposure or "").lower(), _EXPOSURE_DEFAULT)
-    score = (
-        cvss_n * 0.25
-        + epss_n * 0.20
-        + kev_n * 0.20
-        + expl_n * 0.15
-        + crit_n * 0.10
-        + exp_n * 0.10
-    ) * 1000
-    return round(score, 2)
+    """Compatibility wrapper around the canonical 0-1000 risk function."""
+    exposure_value = (exposure or "").lower()
+    internet_facing = (
+        True if exposure_value in {"external", "internet"}
+        else False if exposure_value in {"internal", "isolated"}
+        else None
+    )
+    return float(compute_risk_rank(
+        severity=severity,
+        cvss_score=cvss,
+        epss_score=epss,
+        kev=kev,
+        exploit_validated=exploit_validated,
+        verification_state=verification_state,
+        confidence=confidence,
+        asset_criticality=asset_criticality,
+        internet_facing=internet_facing,
+        auth_enforced=auth_enforced,
+    ))
 
 
 def _strongest_exposure(values: list[str | None]) -> str | None:
@@ -175,8 +207,13 @@ async def prioritize_engagement_findings(
             epss=epss,
             kev=kev,
             exploit_validated=bool(f.exploit_validated),
+            severity=getattr(f.severity, "value", str(f.severity)),
             asset_criticality=crit,
             exposure=exposure,
+            verification_state=f.verification_state,
+            confidence=f.verification_confidence,
+            auth_enforced=(evidence.get("auth_enforced")
+                           if isinstance(evidence.get("auth_enforced"), bool) else None),
         )
         if f.risk_score is None or float(f.risk_score) != score:
             f.risk_score = score

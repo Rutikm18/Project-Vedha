@@ -30,6 +30,20 @@ from app.models.worker_heartbeat import WorkerHeartbeat
 _QUEUE_STALL_SEC = 120
 # A worker heartbeat older than this = the detection worker is down (it beats ~30s).
 _WORKER_STALE_SEC = 90
+# When to call a still-RUNNING DetectionRun wedged rather than busy. A bare
+# duration cannot decide this: a legitimate run over a large scope can take a long
+# time, and calling that "stalled" cries wolf on exactly the customers with the
+# most to scan. So the call is CORROBORATED, the same discipline the liveness and
+# confidence models use — duration is only half the evidence, worker liveness is
+# the other half:
+#   * worker heartbeat demonstrably STALE  → the thing that would finish this run
+#     is not running; a short floor is enough to be sure it is not a blip.
+#   * worker liveness UNKNOWN (no heartbeat table / not yet migrated) → fall back
+#     to duration alone, but a patient threshold.
+#   * worker heartbeat FRESH → never called stalled on duration alone. It is
+#     working; a big scope is not a defect.
+_RUN_STALL_DEAD_WORKER_SEC = 120
+_RUN_STALL_UNKNOWN_WORKER_SEC = 1800
 from app.models.service import Service
 from app.schemas.common import PaginatedResponse, paginate
 from app.schemas.asset import AssetIn, BulkAssetImportResult
@@ -853,15 +867,28 @@ async def campaign_progress(engagement_id: uuid.UUID, db: DB, current_user: Auth
                 "count": count}
 
     scanning_done = bool(jobs) and not any_running
+
+    # The detection-dependent phases key off the SAME reconciled evidence that
+    # decides is_complete — `detection_done AND evidence_covered` — not off the
+    # latest run alone.
+    #
+    # THE BUG THIS FIXES: `percent` counted phases using detection_done (the LATEST
+    # run completed) while is_complete additionally required evidence_covered
+    # (every scan submission consumed by a completed run). In a multi-agent
+    # campaign where the newest submission was detected but an earlier one was not,
+    # the two disagreed: the bar read 100% while the campaign stayed "detecting"
+    # and never announced completion. Reproduced directly against this handler.
+    pipeline_done = detection_done and evidence_covered
+    detecting_now = run is not None and not pipeline_done
     phases = [
         _phase("scanning", scanning_done, any_running),
         _phase("aggregating", run is not None, scanning_done and run is None),
-        _phase("detection", detection_done, run is not None and not detection_done, len(findings)),
+        _phase("detection", pipeline_done, detecting_now, len(findings)),
         # correlation/prioritization/remediation run synchronously inside the same
         # detection pass, so they complete together — but each keeps its own count.
-        _phase("correlation", detection_done, run is not None and not detection_done, correlated),
-        _phase("prioritization", detection_done, run is not None and not detection_done, prioritized),
-        _phase("remediation", detection_done, run is not None and not detection_done, remediable),
+        _phase("correlation", pipeline_done, detecting_now, correlated),
+        _phase("prioritization", pipeline_done, detecting_now, prioritized),
+        _phase("remediation", pipeline_done, detecting_now, remediable),
     ]
     percent = round(100 * sum(1 for p in phases if p["status"] == "done") / len(phases))
 
@@ -873,6 +900,17 @@ async def campaign_progress(engagement_id: uuid.UUID, db: DB, current_user: Auth
     # Worker liveness (best-effort, LAST query): a stale/absent heartbeat means the
     # detection worker is down. Wrapped so a missing worker_heartbeats table (migration
     # not yet run) degrades to the queue-lag signal instead of erroring the whole page.
+    # How long has the latest run been RUNNING? A run that never finishes is the
+    # other way a campaign never reaches 100%, and it is invisible in the queue
+    # signals because the outbox event was already consumed. Duration alone is NOT
+    # the verdict — see the thresholds above; it is corroborated below.
+    run_running_for: float | None = None
+    if run is not None and run.status == RUN_RUNNING and run.started_at is not None:
+        started = run.started_at
+        if started.tzinfo is None:
+            started = started.replace(tzinfo=timezone.utc)
+        run_running_for = (now - started).total_seconds()
+
     worker_alive: bool | None = None
     try:
         last_beat = (await db.execute(
@@ -882,6 +920,14 @@ async def campaign_progress(engagement_id: uuid.UUID, db: DB, current_user: Auth
             worker_alive = (now - last_beat).total_seconds() <= _WORKER_STALE_SEC
     except Exception:  # noqa: BLE001 — liveness is a nice-to-have, never fail the page
         worker_alive = None
+
+    # Corroborated stall verdict: duration + worker liveness together.
+    if run_running_for is None or worker_alive is True:
+        run_stalled = False                       # not running, or demonstrably working
+    elif worker_alive is False:
+        run_stalled = run_running_for > _RUN_STALL_DEAD_WORKER_SEC
+    else:                                          # liveness unknown — be patient
+        run_stalled = run_running_for > _RUN_STALL_UNKNOWN_WORKER_SEC
 
     overall_status, is_complete = _reconcile_status(
         jobs_exist=bool(jobs), any_running=any_running, scanning_done=scanning_done,
@@ -908,6 +954,22 @@ async def campaign_progress(engagement_id: uuid.UUID, db: DB, current_user: Auth
         pend = len(sr_ids - covered)
         reasons.append(f"{pend} scan submission(s) still awaiting detection — the "
                        f"campaign is not complete until every submission is covered.")
+    elif overall_status == "detecting" and run_stalled:
+        # A run that started and never finished leaves the campaign stuck on
+        # "detecting" with nothing to look at. Name it.
+        mins = int(run_running_for // 60) if run_running_for else 0
+        if worker_alive is False:
+            reasons.append(
+                f"the detection run has been in progress for {mins} minute(s) and the "
+                f"detection worker has stopped heartbeating — it appears to have died "
+                f"mid-run. Restart `python -m app.workers.outbox` and check the run's "
+                f"error field.")
+        else:
+            reasons.append(
+                f"the detection run has been in progress for {mins} minute(s) without "
+                f"finishing and worker liveness is unknown. If this scope is large the "
+                f"run may still be legitimate; otherwise check "
+                f"`python -m app.workers.outbox` and the run's error field.")
     elif has_gaps:
         reasons.append(
             f"{rules_blind} of {rules_total} checks could not be assessed against the "

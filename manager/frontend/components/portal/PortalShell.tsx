@@ -12,8 +12,10 @@ import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import {
   Shield, LayoutDashboard, Bug, Radar, FileText, LogOut, Menu, Sun, Moon, User, Settings,
+  Target, Sparkles, Cpu,
 } from "lucide-react";
 import { useTheme } from "../ThemeProvider";
+import { RefreshButton } from "../RefreshButton";
 
 const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION ?? "dev";
 
@@ -21,7 +23,12 @@ const NAV = [
   { icon: LayoutDashboard, label: "Dashboard", href: "/portal" },
   { icon: Bug,             label: "Findings",  href: "/portal/findings" },
   { icon: Radar,           label: "Scans",     href: "/portal/scans" },
+  { icon: Cpu,             label: "Probe",     href: "/portal/fleet" },
+  // Scope is READ-ONLY here on purpose (see app/portal/scope/page.tsx): it is the
+  // authorisation record for active scanning, so only the security team changes it.
+  { icon: Target,          label: "Scope",     href: "/portal/scope" },
   { icon: FileText,        label: "Reports",   href: "/portal/reports" },
+  { icon: Sparkles,        label: "Assistant", href: "/portal/assistant" },
   { icon: Settings,        label: "Settings",  href: "/portal/settings" },
 ];
 
@@ -196,6 +203,9 @@ export function PortalShell({
             ))}
 
             <div style={{ width: 0.5, height: 14, background: "var(--border-subtle)" }} />
+            {/* Reload after a short delay — a newly enrolled vedha-agent lands in
+                the API a moment after the UI action, so an instant reload can miss it. */}
+            <RefreshButton size={28} />
             <button onClick={toggleTheme}
               aria-label={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
               title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}

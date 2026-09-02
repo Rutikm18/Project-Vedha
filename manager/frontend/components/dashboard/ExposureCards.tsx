@@ -17,9 +17,8 @@
  * ProtocolRow.tsx and ZoneRow.tsx are superseded by MeterRow below.
  */
 import React from "react";
-import { useQuery } from "@tanstack/react-query";
 import { Activity, Shield } from "lucide-react";
-import { fetchJson } from "../../lib/fetcher";
+import { useConsoleQuery } from "../../lib/console-source";
 import { SkeletonRows, ErrorState, EmptyState } from "../states/DataState";
 import { Meter } from "../console/Primitives";
 
@@ -29,9 +28,7 @@ interface Exposure {
 }
 
 export function useExposure() {
-  return useQuery({
-    queryKey: ["exposure"],
-    queryFn: () => fetchJson<Exposure>("/api/analytics/exposure"),
+  return useConsoleQuery<Exposure>("exposure", {
     refetchInterval: 60_000,
   });
 }
@@ -66,18 +63,18 @@ function MeterRow({
   ariaVerb: string;
 }) {
   return (
-    <div className="console-row" style={{ padding: "12px 20px", display: "flex", flexDirection: "column", gap: 8 }}>
-      <div style={{ display: "flex", alignItems: "baseline", gap: 10 }}>
+    <div className="console-row" style={{ padding: "var(--space-3) var(--space-5)", display: "flex", flexDirection: "column", gap: "var(--space-2)" }}>
+      <div style={{ display: "flex", alignItems: "baseline", gap: "var(--space-3)" }}>
         <span
-          className="num-mono"
-          style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)", letterSpacing: "-0.01em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}
+          className="mono"
+          style={{ fontSize: "var(--fs-body-s)", fontWeight: 600, color: "var(--text-primary)", letterSpacing: "-0.01em", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", minWidth: 0 }}
         >
           {name}
         </span>
-        <span style={{ fontFamily: "var(--font-ui)", fontSize: 11, color: "var(--text-muted)", flexShrink: 0 }}>{band.word}</span>
+        <span style={{ fontFamily: "var(--font-ui)", fontSize: "var(--fs-label)", color: "var(--text-muted)", flexShrink: 0 }}>{band.word}</span>
         <span
           className="num-mono"
-          style={{ marginLeft: "auto", fontSize: 12.5, fontWeight: 700, color: band.color, flexShrink: 0 }}
+          style={{ marginLeft: "auto", fontSize: "var(--fs-body)", fontWeight: 700, color: band.color, flexShrink: 0 }}
         >
           {value}{unit}
         </span>
@@ -91,14 +88,19 @@ function MeterRow({
 
 export function ProtocolRiskCard() {
   const { data, isLoading, error, refetch } = useExposure();
+  // Hooks must run unconditionally — declare state BEFORE any early return
+  // (isLoading/error), or the hook count changes between renders (React #310).
+  const [showAll, setShowAll] = React.useState(false);
 
-  if (isLoading) return <div style={{ padding: 16 }}><SkeletonRows rows={4} height={42} /></div>;
+  if (isLoading) return <div style={{ padding: "var(--space-4)" }}><SkeletonRows rows={4} height={51} /></div>;
   if (error) return <ErrorState title="Protocol risk didn't load. The analytics service returned an error." onRetry={() => refetch()} />;
 
   const protocols = [...(data?.protocols ?? [])].sort((a, b) => b.value - a.value);
+  const CAP = 6;
+  const visible = showAll ? protocols : protocols.slice(0, CAP);
   if (protocols.length === 0) {
     return (
-      <div style={{ padding: 28 }}>
+      <div style={{ padding: "var(--space-6)" }}>
         <EmptyState
           icon={Activity}
           title="No exposed services yet"
@@ -110,24 +112,27 @@ export function ProtocolRiskCard() {
 
   return (
     <>
-      <p style={scaleNote}>Worst open finding per exposed service. Higher is worse.</p>
-      {protocols.map((p) => (
+      {visible.map((p) => (
         <MeterRow key={p.name} name={p.name} value={p.value} unit="%" band={riskBand(p.value)} ariaVerb="risk" />
       ))}
+      {protocols.length > CAP && <ShowAllButton showAll={showAll} onClick={() => setShowAll((v) => !v)} total={protocols.length} />}
     </>
   );
 }
 
 export function ZoneHealthCard() {
   const { data, isLoading, error, refetch } = useExposure();
+  const [showAll, setShowAll] = React.useState(false);   // unconditional — before early returns (React #310)
 
-  if (isLoading) return <div style={{ padding: 16 }}><SkeletonRows rows={4} height={42} /></div>;
+  if (isLoading) return <div style={{ padding: "var(--space-4)" }}><SkeletonRows rows={4} height={51} /></div>;
   if (error) return <ErrorState title="Zone health didn't load. The analytics service returned an error." onRetry={() => refetch()} />;
 
   const zones = [...(data?.zones ?? [])].sort((a, b) => a.score - b.score);
+  const CAP = 6;
+  const visible = showAll ? zones : zones.slice(0, CAP);
   if (zones.length === 0) {
     return (
-      <div style={{ padding: 28 }}>
+      <div style={{ padding: "var(--space-6)" }}>
         <EmptyState
           icon={Shield}
           title="No zones yet"
@@ -139,20 +144,23 @@ export function ZoneHealthCard() {
 
   return (
     <>
-      <p style={scaleNote}>Remaining headroom per network zone. Higher is better. Weakest first.</p>
-      {zones.map((z) => (
+      {visible.map((z) => (
         <MeterRow key={z.name} name={z.name} value={z.score} band={healthBand(z.score)} ariaVerb="health score" />
       ))}
+      {zones.length > CAP && <ShowAllButton showAll={showAll} onClick={() => setShowAll((v) => !v)} total={zones.length} />}
     </>
   );
 }
 
-const scaleNote: React.CSSProperties = {
-  margin: 0,
-  padding: "9px 20px",
-  borderBottom: "0.5px solid var(--border-subtle)",
-  background: "var(--bg-surface)",
-  fontFamily: "var(--font-ui)",
-  fontSize: 11,
-  color: "var(--text-muted)",
-};
+/** Disclosure for capped meter lists (keeps band-3 panels height-balanced). */
+function ShowAllButton({ showAll, onClick, total }: { showAll: boolean; onClick: () => void; total: number }) {
+  return (
+    <button type="button" className="focusable" onClick={onClick}
+      style={{ width: "100%", minHeight: 44, padding: "var(--space-3) var(--space-5)",
+        background: "none", border: "none", borderTop: "var(--hairline) solid var(--border-subtle)",
+        color: "var(--accent)", cursor: "pointer", fontFamily: "var(--font-ui)",
+        fontSize: "var(--fs-body-s)", textAlign: "left" }}>
+      {showAll ? "Show fewer" : `Show all ${total}`}
+    </button>
+  );
+}

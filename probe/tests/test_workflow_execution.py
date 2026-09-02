@@ -157,14 +157,17 @@ def test_planned_components_respect_stage_ceiling_and_udp_only_branches() -> Non
         **common,
         stage_ceiling=STAGE_HOST_DISCOVERY,
     ) == ["host_discovery"]
+    # OS identification joins the plan with the port stage: it is an inventory
+    # fact (device classification and the manager's rules read it), so a
+    # discovery/port-stage job must not come back OS-blind.
     assert planned_components(
         **common,
         stage_ceiling=STAGE_PORT_SCAN,
-    ) == ["host_discovery", "port_scan"]
+    ) == ["host_discovery", "port_scan", "os_fingerprint"]
     assert planned_components(
         **common,
         stage_ceiling=STAGE_SERVICE_BANNER,
-    ) == ["host_discovery", "port_scan", "service_banner"]
+    ) == ["host_discovery", "port_scan", "os_fingerprint", "service_banner"]
     assert planned_components(
         "it",
         service_filter={"snmp"},

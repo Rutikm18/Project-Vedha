@@ -136,22 +136,38 @@ def _fetch(url: str, timeout: float) -> dict | None:
 class WebScanner(BaseScanner):
     name = "web_scan"
 
-    def __init__(self, *args, ports: list[int], **kwargs):
+    def __init__(self, *args, ports: list[int], tls_ports: set[int] | None = None,
+                 **kwargs):
         super().__init__(*args, **kwargs)
         self.ports = ports
+        # Ports OBSERVED speaking TLS by service_banner (its `tls: True` fact),
+        # so an HTTPS server on 9444 is fetched with the right scheme first.
+        # The static _TLS_PORTS table is only the fallback guess.
+        self.tls_ports = set(tls_ports or ())
+
+    def _schemes_for(self, port: int) -> tuple[str, str]:
+        """Preferred scheme first, the other as a fallback: a scheme guess must
+        never turn a live web service into a silent miss."""
+        if port in self.tls_ports or port in _TLS_PORTS:
+            return ("https", "http")
+        return ("http", "https")
 
     async def _scan_port(self, target: str, port: int) -> ScanResult | None:
-        scheme = "https" if port in _TLS_PORTS else "http"
-        url = f"{scheme}://{bracket_host(target)}:{port}/"
         await self.limiter.wait()
         loop = asyncio.get_running_loop()
+        info = None
+        url = None
         async with self.sem:
-            info = await loop.run_in_executor(None, _fetch, url, self.timeout)
+            for scheme in self._schemes_for(port):
+                url = f"{scheme}://{bracket_host(target)}:{port}/"
+                info = await loop.run_in_executor(None, _fetch, url, self.timeout)
+                if info is not None:
+                    break
         if info is None:
             return None
         return ScanResult(
             self.name, target, port=port, proto="tcp", status="open",
-            data={"url": url, **info},
+            data={"url": url, "tls": url.startswith("https://"), **info},
             evidence=(f"HTTP {info['status']} "
                       f"server={info.get('server')} "
                       f"title={info.get('title')!r}"),
