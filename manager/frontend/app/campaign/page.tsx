@@ -2,13 +2,24 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { CheckCircle2, ChevronRight, Loader2, Radar, RefreshCw, Target } from "lucide-react";
+import { Activity, CheckCircle2, ChevronRight, Loader2, Radar, RefreshCw, Target } from "lucide-react";
 import { PageShell } from "../../components/PageShell";
+import FleetJobs from "../fleet/FleetJobs";
+import CampaignProgress from "./[id]/CampaignProgress";
 
 interface CampaignSummary {
   campaign_id: string; targets: string[]; status: "running" | "completed";
   percent: number; current_stage: string | null;
   started_at: string; updated_at: string; stage_count: number;
+}
+
+interface EngagementSummary {
+  id: string;
+  name: string;
+  client?: string;
+  status: string;
+  progress?: number;
+  findingCount?: number;
 }
 
 async function fetchJson<T>(path: string): Promise<T> {
@@ -29,11 +40,20 @@ function ago(iso: string): string {
 
 export default function CampaignListPage() {
   const [rows, setRows] = useState<CampaignSummary[]>([]);
+  const [engagements, setEngagements] = useState<EngagementSummary[]>([]);
+  const [selectedEngagement, setSelectedEngagement] = useState("");
   const [loading, setLoading] = useState(true);
 
   const load = useCallback(async () => {
     try {
-      setRows(await fetchJson<CampaignSummary[]>("/api/scan/campaigns"));
+      const [campaignRows, engagementData] = await Promise.all([
+        fetchJson<CampaignSummary[]>("/api/scan/campaigns"),
+        fetchJson<{ engagements?: EngagementSummary[] }>("/api/engagements"),
+      ]);
+      const nextEngagements = engagementData.engagements ?? [];
+      setRows(campaignRows);
+      setEngagements(nextEngagements);
+      setSelectedEngagement((current) => current || nextEngagements.find((item) => item.status === "ACTIVE")?.id || nextEngagements[0]?.id || "");
     } catch { /* keep prior rows on a transient failure */ }
     finally { setLoading(false); }
   }, []);
@@ -56,13 +76,41 @@ export default function CampaignListPage() {
         { label: "Running", value: String(running), color: running ? "var(--accent)" : "var(--text-faint)" },
       ]}
       headerActions={
-        <button className="cmpl-refresh" onClick={() => void load()} aria-label="Refresh campaigns">
-          <RefreshCw size={14} /> Refresh
-        </button>
+        <div style={{ display: "flex", gap: 8 }}>
+          <Link href="/scan" className="cmpl-primary"><Radar size={14} /> Launch campaign</Link>
+          <button className="cmpl-refresh" onClick={() => void load()} aria-label="Refresh campaigns">
+            <RefreshCw size={14} /> Refresh
+          </button>
+        </div>
       }
     >
       <style>{STYLES}</style>
       <div className="cmpl-page">
+        <section className="cmpl-section">
+          <header className="cmpl-section-head">
+            <div><Activity size={15} /><div><strong>Engagement pipeline</strong><span>Jobs, detection, correlation, prioritization, and remediation</span></div></div>
+            <select value={selectedEngagement} onChange={(event) => setSelectedEngagement(event.target.value)} aria-label="Select engagement pipeline">
+              <option value="">Select an engagement</option>
+              {engagements.map((engagement) => (
+                <option value={engagement.id} key={engagement.id}>{engagement.name} · {engagement.status.toLowerCase()}</option>
+              ))}
+            </select>
+          </header>
+          {selectedEngagement ? (
+            <CampaignProgress engagementId={selectedEngagement} />
+          ) : (
+            <div className="cmpl-inline-empty">Create or select an engagement to inspect its vulnerability pipeline.</div>
+          )}
+        </section>
+
+        <section className="cmpl-section cmpl-job-section">
+          <header className="cmpl-section-head">
+            <div><Target size={15} /><div><strong>Tenant job queue</strong><span>Every probe job, resolved to its engagement</span></div></div>
+          </header>
+          <FleetJobs />
+        </section>
+
+        <div className="cmpl-subhead"><Radar size={14} /><div><strong>Collector stage snapshots</strong><span>Low-level progress reported directly by vedha-agent campaigns</span></div></div>
         {loading && rows.length === 0 ? (
           <div className="cmpl-empty"><Loader2 size={16} className="cmpl-spin" /> Loading campaigns…</div>
         ) : rows.length === 0 ? (
@@ -115,10 +163,25 @@ export default function CampaignListPage() {
 }
 
 const STYLES = `
-.cmpl-page { display: flex; flex-direction: column; gap: 12px; max-width: 920px; }
+.cmpl-page { display: flex; flex-direction: column; gap: 20px; width: 100%; max-width: 1180px; margin: 0 auto; }
+.cmpl-primary { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 650; color: #fff;
+  padding: 7px 12px; border: 1px solid var(--accent); border-radius: var(--radius-md); background: var(--accent); text-decoration: none; }
+.cmpl-primary:hover { background: var(--accent-dim); }
 .cmpl-refresh { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-secondary);
   padding: 6px 11px; border: 1px solid var(--border-default); border-radius: var(--radius-md); background: transparent; cursor: pointer; }
 .cmpl-refresh:hover { color: var(--text-primary); background: var(--bg-hover); }
+.cmpl-section { display: flex; flex-direction: column; gap: 14px; }
+.cmpl-job-section { padding: 18px 20px; background: var(--bg-panel); border: 1px solid var(--border-subtle); border-radius: 12px; }
+.cmpl-section-head, .cmpl-subhead { display: flex; align-items: center; justify-content: space-between; gap: 14px; }
+.cmpl-section-head > div, .cmpl-subhead { color: var(--accent); }
+.cmpl-section-head > div, .cmpl-subhead > div { display: flex; align-items: center; gap: 9px; }
+.cmpl-section-head > div > div, .cmpl-subhead > div { display: flex; flex-direction: column; align-items: flex-start; gap: 1px; }
+.cmpl-section-head strong, .cmpl-subhead strong { color: var(--text-primary); font-size: 14px; font-weight: 650; }
+.cmpl-section-head span, .cmpl-subhead span { color: var(--text-muted); font-size: 11.5px; }
+.cmpl-section-head select { min-width: 250px; padding: 8px 10px; color: var(--text-primary); background: var(--bg-panel);
+  border: 1px solid var(--border-default); border-radius: 8px; font: inherit; }
+.cmpl-inline-empty { padding: 24px; color: var(--text-muted); background: var(--bg-surface); border-radius: 10px; }
+.cmpl-subhead { justify-content: flex-start; padding-top: 4px; }
 .cmpl-empty { display: flex; align-items: center; gap: 8px; color: var(--text-muted); font-size: 13px; padding: 28px 6px; }
 .cmpl-empty-block { display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; padding: 44px 24px;
   background: var(--bg-card); border: 1px solid var(--border-default); border-radius: var(--radius-lg); }
@@ -145,4 +208,9 @@ const STYLES = `
 
 .cmpl-spin { animation: cmpl-spin 1s linear infinite; }
 @keyframes cmpl-spin { to { transform: rotate(360deg); } }
+@media (max-width: 720px) {
+  .cmpl-section-head { align-items: stretch; flex-direction: column; }
+  .cmpl-section-head select { width: 100%; min-width: 0; }
+  .cmpl-progress { width: 120px; }
+}
 `;

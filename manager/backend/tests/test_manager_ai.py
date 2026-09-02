@@ -7,6 +7,7 @@ from pydantic import ValidationError
 from app.config import Settings
 from app.schemas.ai import AiGenerateRequest
 from app.services.llm import AiRuntimeError, ManagerLlmService
+from app.services.llm_http_client import AsyncLlmHttpClient
 
 
 @pytest.mark.asyncio
@@ -247,6 +248,49 @@ def test_advisor_flow_prompt_grounds_lifecycle_facts():
     # The real recorded facts flow through as grounded (untrusted) context.
     assert '"ageDays":34' in system
     assert '"regressed":true' in system
+
+
+def test_advisor_prompt_enforces_the_vulnerability_brief_contract():
+    service = ManagerLlmService(Settings(llm_provider="openai", openai_api_key="sk-test"))
+    request = AiGenerateRequest(
+        task="advisor",
+        messages=[{"role": "user", "content": "Explain CVE-2025-32463"}],
+    )
+
+    system = service._build_system(request)
+
+    assert "250 words" in system
+    assert "## Key facts" in system
+    assert "impact bullets" in system.lower()
+    assert "## Severity and score" in system
+    assert "1. Verify" in system
+    assert "2. Remediation actions" in system
+    assert "3. Further hardening" in system
+    assert "Linux" in system
+    assert "Windows" in system
+    assert "macOS" in system
+    assert "do not calculate" in system.lower()
+
+
+@pytest.mark.asyncio
+async def test_async_llm_http_client_uses_injected_transport_and_default_timeout():
+    seen: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        seen.append(request)
+        return httpx.Response(200, json={"ok": True})
+
+    transport = AsyncLlmHttpClient(
+        timeout_seconds=17.0,
+        transport=httpx.MockTransport(handler),
+    )
+
+    async with transport.open() as client:
+        response = await client.get("https://llm.test/health")
+
+    assert response.json() == {"ok": True}
+    assert seen[0].url == httpx.URL("https://llm.test/health")
+    assert response.request.extensions["timeout"]["read"] == 17.0
 
 
 # ── Cloud-only provider selection (auto-detect from key; no local fallback) ─────

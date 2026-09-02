@@ -93,6 +93,19 @@ interface EngineManifest {
 ══════════════════════════════════════════════════════ */
 
 const NETWORK_VA_ID = "uc_network_va";
+// Product decision: the Scanner surface currently exposes only the complete
+// Network VA workflow. The catalog and Manager capabilities remain intact so
+// specialized use cases can be enabled later without a backend migration.
+const SHOW_EXTENDED_USE_CASES = false;
+const NETWORK_VA_FALLBACK: UseCase = {
+  use_case_id: NETWORK_VA_ID,
+  display_name: "Network Vulnerability Assessment",
+  description: "Discover assets, assess exposed services, correlate evidence, and prioritize remediation in one traceable campaign.",
+  scan_type: "network_va",
+  profile: "it",
+  expected_runtime_hint: "30–90 min per /24",
+  status: "available",
+};
 
 const UC_META: Record<string, { cat: string; icon: React.ReactNode; risk: "passive" | "low" | "medium" | "high" }> = {
   uc_network_va:           { cat: "Assessment",  icon: <Radar size={17} />,     risk: "high"    },
@@ -111,7 +124,7 @@ const UC_META: Record<string, { cat: string; icon: React.ReactNode; risk: "passi
 };
 
 const RISK: Record<string, { color: string; label: string }> = {
-  passive: { color: "#6ee7b7",                label: "Passive"  },
+  passive: { color: "var(--sev-low-color)",    label: "Passive"  },
   low:     { color: "var(--sev-low-color)",    label: "Low noise" },
   medium:  { color: "var(--sev-medium-color)", label: "Moderate" },
   high:    { color: "var(--sev-high-color)",   label: "Active"   },
@@ -120,7 +133,7 @@ const RISK: Record<string, { color: string; label: string }> = {
 const PROFILE_BADGE: Record<string, { label: string; color: string }> = {
   it:  { label: "IT",  color: "var(--accent)" },
   iot: { label: "IoT", color: "#f59e0b"       },
-  ot:  { label: "OT",  color: "#10b981"       },
+  ot:  { label: "OT",  color: "#7c3aed"       },
 };
 
 const CATS = ["All", "Discovery", "Assessment", "Targeted", "Specialized"] as const;
@@ -218,9 +231,9 @@ function FleetStrip({ probes, loading }: { probes: Probe[]; loading: boolean }) 
       <div style={{ width: 1, height: 18, background: "var(--border-subtle)" }} />
 
       {loading ? (
-        <span style={{ fontSize: 12, color: "var(--text-muted)" }}>Loading…</span>
+        <span className="scn-fleet-message" style={{ fontSize: 12, color: "var(--text-muted)" }}>Loading…</span>
       ) : !probes.length ? (
-        <span style={{ fontSize: 12, color: "var(--text-muted)" }}>No vedha-agents registered — deploy one to begin</span>
+        <span className="scn-fleet-message" style={{ fontSize: 12, color: "var(--text-muted)" }}>No vedha-agents registered — deploy one to begin</span>
       ) : (
         <>
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
@@ -232,7 +245,7 @@ function FleetStrip({ probes, loading }: { probes: Probe[]; loading: boolean }) 
             ))}
           </div>
 
-          <div style={{ display: "flex", gap: 6, marginLeft: "auto", flexWrap: "wrap" }}>
+          <div className="scn-fleet-probes" style={{ display: "flex", gap: 6, marginLeft: "auto", minWidth: 0 }}>
             {probes.map((p) => {
               // Status is conveyed by BOTH color and a text word (never color alone)
               // so colorblind users and screen readers get the same signal.
@@ -292,19 +305,21 @@ function NetworkVaHero({ uc, selected, onConfigure }: {
 
           <div className="scn-nva-stages" aria-label="Campaign stages, in order">
             {NVA_STAGES.map((s, i) => (
-              <React.Fragment key={s}>
+              <span className="scn-nva-step" key={s}>
                 {i > 0 && <span className="scn-nva-arrow" aria-hidden>→</span>}
                 <span className="scn-nva-stage">{s}</span>
-              </React.Fragment>
+              </span>
             ))}
           </div>
 
           <div className="scn-nva-actions">
-            <button className="scn-nva-cta" data-sel={selected} onClick={onConfigure}>
-              {selected
-                ? <><CheckCircle2 size={16} /> Selected — configure below</>
-                : <><Target size={16} /> Configure campaign</>}
-            </button>
+            {selected ? (
+              <span className="scn-nva-selected"><CheckCircle2 size={15} /> Selected campaign</span>
+            ) : (
+              <button className="scn-nva-cta" onClick={onConfigure}>
+                <Target size={16} /> Configure campaign
+              </button>
+            )}
             <Link className="scn-nva-link" href="/campaign">
               <Activity size={13} /> View live campaigns
             </Link>
@@ -669,12 +684,12 @@ function DispatchReceipt({ payload }: { payload: Record<string, unknown> }) {
 export default function ScanPage() {
   const { success: toastOk, error: toastErr } = useToast();
 
-  const [useCases,    setUseCases]    = useState<UseCase[]>([]);
+  const [useCases,    setUseCases]    = useState<UseCase[]>([NETWORK_VA_FALLBACK]);
   const [probes,      setProbes]      = useState<Probe[]>([]);
   const [engagements, setEngagements] = useState<Engagement[]>([]);
   const [loadingData, setLoadingData] = useState(true);
 
-  const [selectedUc,  setSelectedUc]  = useState("");
+  const [selectedUc,  setSelectedUc]  = useState(NETWORK_VA_ID);
   const [selectedEng, setSelectedEng] = useState("");
   const [selectedProbe, setSelectedProbe] = useState("");
   const [targets,     setTargets]     = useState("");
@@ -856,7 +871,7 @@ export default function ScanPage() {
   }
 
   function reset() {
-    setSelectedUc("");
+    setSelectedUc(NETWORK_VA_ID);
     const nextEng = engagements.length === 1 ? engagements[0].id : "";
     setSelectedEng(nextEng);
     // Re-inherit the sole engagement's scope rather than blanking it.
@@ -897,7 +912,7 @@ export default function ScanPage() {
     <PageShell title="Scanner" subtitle="Compose and dispatch a scan to a field-deployed vedha-agent">
       <style>{STYLES}</style>
 
-      <div style={{ display: "flex", flexDirection: "column", gap: 20, maxWidth: 1140 }}>
+      <div className="scn-page" style={{ display: "flex", flexDirection: "column", gap: 20, width: "100%", maxWidth: 1180, margin: "0 auto" }}>
 
         <FleetStrip probes={probes} loading={loadingData} />
 
@@ -907,10 +922,18 @@ export default function ScanPage() {
           onConfigure={() => setSelectedUc(NETWORK_VA_ID)}
         />
 
-        <div className="scn-main-grid" style={{ display: "grid", gridTemplateColumns: "1fr 340px", gap: 20, alignItems: "start" }}>
+        <div
+          className="scn-main-grid"
+          style={{
+            display: "grid",
+            gridTemplateColumns: SHOW_EXTENDED_USE_CASES ? "minmax(0, 1fr) 360px" : "minmax(0, 1fr)",
+            gap: 20,
+            alignItems: "start",
+          }}
+        >
 
           {/* ── STEP 1 · Choose a scan ── */}
-          <section>
+          {SHOW_EXTENDED_USE_CASES && <section>
             <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12, flexWrap: "wrap", gap: 8 }}>
               <SectionLabel num="01">Choose a scan</SectionLabel>
               {/* category filter pills */}
@@ -940,18 +963,18 @@ export default function ScanPage() {
                 ))}
               </div>
             )}
-          </section>
+          </section>}
 
           {/* ── STEP 2 · Configure & launch ── */}
-          <div className="scn-launch-panel" style={{ position: "sticky", top: 16 }}>
-            <SectionLabel num="02">Configure &amp; launch</SectionLabel>
+          <div className="scn-launch-panel" style={{ position: SHOW_EXTENDED_USE_CASES ? "sticky" : "static", top: 16, width: "100%" }}>
+            <SectionLabel num={SHOW_EXTENDED_USE_CASES ? "02" : undefined}>Configure &amp; launch</SectionLabel>
 
             <HudFrame active={!!ucObj} radius={14}>
-            <div style={{ borderRadius: 14, border: "0.5px solid var(--border-subtle)", background: "var(--bg-panel)", boxShadow: "var(--shadow-md)", overflow: "hidden" }}>
+            <div className="scn-launch-card" style={{ borderRadius: 14, border: "0.5px solid var(--border-subtle)", background: "var(--bg-panel)", boxShadow: "var(--shadow-md)", overflow: "hidden" }}>
 
               {/* Panel hero: selected scan */}
               {ucObj ? (
-                <div style={{ padding: "15px 16px", borderBottom: "0.5px solid var(--border-subtle)", background: "linear-gradient(180deg, var(--accent-ghost), transparent)" }}>
+                <div className="scn-config-head" style={{ padding: "15px 18px", borderBottom: "0.5px solid var(--border-subtle)" }}>
                   <div style={{ display: "flex", alignItems: "center", gap: 11 }}>
                     <span className="scn-card-icon" data-sel="true" style={{ width: 36, height: 36 }}>{UC_META[ucObj.use_case_id]?.icon}</span>
                     <div style={{ flex: 1, minWidth: 0 }}>
@@ -970,101 +993,122 @@ export default function ScanPage() {
               )}
 
               {ucObj && (
-                <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 16 }}>
+                <div className={`scn-launch-body${SHOW_EXTENDED_USE_CASES ? "" : " scn-launch-body-wide"}`}>
+                  <div className="scn-config-primary">
+                    <div className="scn-group-heading">
+                      <Target size={15} />
+                      <div><strong>Target and agent</strong><span>Choose the authorized engagement and execution point.</span></div>
+                    </div>
 
-                  {/* Engagement */}
-                  <div>
-                    <FieldLabel htmlFor="scan-engagement">Engagement</FieldLabel>
-                    <div style={{ position: "relative" }}>
-                      <select id="scan-engagement" className="scn-input scn-select" value={selectedEng} onChange={(e) => selectEngagement(e.target.value)}>
-                        <option value="">— select engagement —</option>
-                        {engagements.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
-                      </select>
-                      <ChevronDown size={13} color="var(--text-muted)" style={{ position: "absolute", right: 11, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
+                    <div className="scn-field-grid">
+                      {/* Engagement */}
+                      <div>
+                        <FieldLabel htmlFor="scan-engagement">Engagement</FieldLabel>
+                        <div style={{ position: "relative" }}>
+                          <select id="scan-engagement" className="scn-input scn-select" value={selectedEng} onChange={(e) => selectEngagement(e.target.value)}>
+                            <option value="">— select engagement —</option>
+                            {engagements.map((e) => <option key={e.id} value={e.id}>{e.name}</option>)}
+                          </select>
+                          <ChevronDown size={13} color="var(--text-muted)" style={{ position: "absolute", right: 11, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
+                        </div>
+                      </div>
+
+                      {/* Probe selection — defaults to an active probe */}
+                      <div>
+                        <FieldLabel htmlFor="scan-probe" icon={<Cpu size={11} />} hint={compatibleProbes.length ? `${compatibleProbes.length} compatible` : "none online"}>vedha-agent</FieldLabel>
+                        <div style={{ position: "relative" }}>
+                          <select
+                            id="scan-probe"
+                            className="scn-input scn-select"
+                            value={effectiveProbe}
+                            onChange={(e) => setSelectedProbe(e.target.value)}
+                            disabled={!compatibleProbes.length}
+                          >
+                            {!compatibleProbes.length && <option value="">No compatible vedha-agent online</option>}
+                            {compatibleProbes.map((p) => (
+                              <option key={p.id} value={p.id}>
+                                {p.name}{p.current_job_id ? " · busy" : " · idle"}
+                              </option>
+                            ))}
+                          </select>
+                          <ChevronDown size={13} color="var(--text-muted)" style={{ position: "absolute", right: 11, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
+                        </div>
+                        <p style={{ margin: "6px 0 0", fontSize: 10, color: "var(--text-faint)", lineHeight: 1.5 }}>
+                          The job is pinned to this vedha-agent. Leave the default to use an idle, capable vedha-agent.
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="scn-group-heading">
+                      <Crosshair size={15} />
+                      <div><strong>Scope boundaries</strong><span>Confirm what the vedha-agent may and may not touch.</span></div>
+                    </div>
+
+                    <div className="scn-scope-grid">
+                      {/* Scope / Targets — pre-filled from the selected engagement */}
+                      <div>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                          <FieldLabel htmlFor="scan-scope" icon={<Crosshair size={11} />} hint={targetCount ? `${targetCount} target${targetCount > 1 ? "s" : ""}` : "engagement scope"}>Scope</FieldLabel>
+                          {scopeIsInherited
+                            ? <span title="Auto-filled from the engagement's defined scope" style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 8.5, fontWeight: 700, color: "var(--accent)", background: "var(--accent-ghost)", border: "0.5px solid var(--border-accent)", borderRadius: 4, padding: "2px 6px", letterSpacing: 0.4, marginBottom: 7 }}><Layers size={9} /> FROM ENGAGEMENT</span>
+                            : (inheritedScope && (
+                                <button type="button" onClick={() => setTargets(inheritedScope)} style={{ fontSize: 9.5, color: "var(--text-muted)", background: "none", border: "none", cursor: "pointer", marginBottom: 7, display: "inline-flex", alignItems: "center", gap: 4 }} title="Reset to the engagement's scope"><RotateCcw size={9} /> reset scope</button>
+                              ))}
+                        </div>
+                        <textarea
+                          id="scan-scope"
+                          className="scn-input"
+                          value={targets} onChange={(e) => setTargets(e.target.value)}
+                          placeholder={selectedEng ? "This engagement declares no scope — add targets\n10.0.0.0/24   ·   172.16.0.5" : "Select an engagement to inherit its scope"}
+                          rows={4}
+                          style={{ fontFamily: "var(--font-mono)", fontSize: 11.5, resize: "vertical", lineHeight: 1.5 }}
+                        />
+                        <p style={{ margin: "6px 0 0", fontSize: 10, color: "var(--text-faint)", lineHeight: 1.5 }}>
+                          {scopeIsInherited
+                            ? "Inherited from the engagement — edit to narrow this run to a subset."
+                            : inheritedScope
+                              ? "Overriding the engagement scope for this run only."
+                              : "No scope defined on the engagement — targets entered here are used as-is."}
+                        </p>
+                      </div>
+
+                      {/* Excluded scope */}
+                      <div>
+                        <FieldLabel htmlFor="scan-excluded" icon={<ShieldAlert size={11} />} hint={excludeCount ? `${excludeCount} carve-out${excludeCount > 1 ? "s" : ""}` : "optional"}>Excluded Scope</FieldLabel>
+                        <textarea
+                          id="scan-excluded"
+                          className="scn-input"
+                          value={excluded} onChange={(e) => setExcluded(e.target.value)}
+                          placeholder={"Carve out hosts to never touch\n10.0.0.5   ·   10.0.0.240/28"}
+                          rows={4}
+                          style={{ fontFamily: "var(--font-mono)", fontSize: 11.5, resize: "vertical", lineHeight: 1.5 }}
+                        />
+                        {excludeCount > 0 && (
+                          <p style={{ margin: "6px 0 0", fontSize: 10, color: "var(--text-faint)", lineHeight: 1.5 }}>
+                            Subtracted from scope — the vedha-agent never sends a packet to these, even if inside the allowed range.
+                          </p>
+                        )}
+                      </div>
                     </div>
                   </div>
 
-                  {/* Probe selection — defaults to an active probe */}
-                  <div>
-                    <FieldLabel htmlFor="scan-probe" icon={<Cpu size={11} />} hint={compatibleProbes.length ? `${compatibleProbes.length} compatible` : "none online"}>vedha-agent</FieldLabel>
-                    <div style={{ position: "relative" }}>
-                      <select
-                        id="scan-probe"
-                        className="scn-input scn-select"
-                        value={effectiveProbe}
-                        onChange={(e) => setSelectedProbe(e.target.value)}
-                        disabled={!compatibleProbes.length}
-                      >
-                        {!compatibleProbes.length && <option value="">No compatible vedha-agent online</option>}
-                        {compatibleProbes.map((p) => (
-                          <option key={p.id} value={p.id}>
-                            {p.name}{p.current_job_id ? " · busy" : " · idle"}
-                          </option>
-                        ))}
-                      </select>
-                      <ChevronDown size={13} color="var(--text-muted)" style={{ position: "absolute", right: 11, top: "50%", transform: "translateY(-50%)", pointerEvents: "none" }} />
+                  <aside className="scn-review-rail" aria-label="Scan review and launch">
+                    <div className="scn-group-heading">
+                      <Radar size={15} />
+                      <div><strong>Scan behavior</strong><span>Balance traffic volume against completion time.</span></div>
                     </div>
-                    <p style={{ margin: "6px 0 0", fontSize: 10, color: "var(--text-faint)", lineHeight: 1.5 }}>
-                      The job is pinned to this vedha-agent. Leave the default to use an idle, capable vedha-agent.
-                    </p>
-                  </div>
 
-                  {/* Scope / Targets — pre-filled from the selected engagement */}
-                  <div>
-                    <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
-                      <FieldLabel htmlFor="scan-scope" icon={<Crosshair size={11} />} hint={targetCount ? `${targetCount} target${targetCount > 1 ? "s" : ""}` : "engagement scope"}>Scope</FieldLabel>
-                      {scopeIsInherited
-                        ? <span title="Auto-filled from the engagement's defined scope" style={{ display: "inline-flex", alignItems: "center", gap: 4, fontSize: 8.5, fontWeight: 700, color: "var(--accent)", background: "var(--accent-ghost)", border: "0.5px solid var(--border-accent)", borderRadius: 4, padding: "2px 6px", letterSpacing: 0.4, marginBottom: 7 }}><Layers size={9} /> FROM ENGAGEMENT</span>
-                        : (inheritedScope && (
-                            <button type="button" onClick={() => setTargets(inheritedScope)} style={{ fontSize: 9.5, color: "var(--text-muted)", background: "none", border: "none", cursor: "pointer", marginBottom: 7, display: "inline-flex", alignItems: "center", gap: 4 }} title="Reset to the engagement's scope"><RotateCcw size={9} /> reset scope</button>
-                          ))}
-                    </div>
-                    <textarea
-                      id="scan-scope"
-                      className="scn-input"
-                      value={targets} onChange={(e) => setTargets(e.target.value)}
-                      placeholder={selectedEng ? "This engagement declares no scope — add targets\n10.0.0.0/24   ·   172.16.0.5" : "Select an engagement to inherit its scope"}
-                      rows={2}
-                      style={{ fontFamily: "var(--font-mono)", fontSize: 11.5, resize: "vertical", lineHeight: 1.5 }}
-                    />
-                    <p style={{ margin: "6px 0 0", fontSize: 10, color: "var(--text-faint)", lineHeight: 1.5 }}>
-                      {scopeIsInherited
-                        ? "Inherited from the engagement — edit to narrow this run to a subset."
-                        : inheritedScope
-                          ? "Overriding the engagement scope for this run only."
-                          : "No scope defined on the engagement — targets entered here are used as-is."}
-                    </p>
-                  </div>
-
-                  {/* Excluded scope */}
-                  <div>
-                    <FieldLabel htmlFor="scan-excluded" icon={<ShieldAlert size={11} />} hint={excludeCount ? `${excludeCount} carve-out${excludeCount > 1 ? "s" : ""}` : "optional"}>Excluded Scope</FieldLabel>
-                    <textarea
-                      id="scan-excluded"
-                      className="scn-input"
-                      value={excluded} onChange={(e) => setExcluded(e.target.value)}
-                      placeholder={"Carve out hosts to never touch\n10.0.0.5   ·   10.0.0.240/28"}
-                      rows={2}
-                      style={{ fontFamily: "var(--font-mono)", fontSize: 11.5, resize: "vertical", lineHeight: 1.5 }}
-                    />
-                    {excludeCount > 0 && (
-                      <p style={{ margin: "6px 0 0", fontSize: 10, color: "var(--text-faint)", lineHeight: 1.5 }}>
-                        Subtracted from scope — the vedha-agent never sends a packet to these, even if inside the allowed range.
-                      </p>
+                    {/* Intensity (non-OT) */}
+                    {!isOt && (
+                      <div>
+                        <FieldLabel icon={<Radar size={11} />}>Scan Intensity</FieldLabel>
+                        <IntensityDial value={intensity} onChange={setIntensity} />
+                      </div>
                     )}
-                  </div>
-
-                  {/* Intensity (non-OT) */}
-                  {!isOt && (
-                    <div>
-                      <FieldLabel icon={<Radar size={11} />}>Scan Intensity</FieldLabel>
-                      <IntensityDial value={intensity} onChange={setIntensity} />
-                    </div>
-                  )}
 
                   {/* OT passive window */}
-                  {isOt && (
-                    <div>
+                    {isOt && (
+                      <div>
                       <FieldLabel htmlFor="scan-passive-seconds" icon={<Timer size={11} />}>Passive Listen Window</FieldLabel>
                       <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
                         <input id="scan-passive-seconds" type="number" min={5} max={3600} value={passiveSecs} className="scn-input"
@@ -1081,11 +1125,13 @@ export default function ScanPage() {
                         <ShieldAlert size={15} color="#10b981" style={{ flexShrink: 0, marginTop: 1 }} />
                         <span style={{ fontSize: 10.5, color: "#34d399", lineHeight: 1.5 }}><strong>OT Safe Mode</strong> — zero active packets. The vedha-agent only listens. Safe for SCADA / ICS / PLC.</span>
                       </div>
-                    </div>
-                  )}
+                      </div>
+                    )}
+
+                    <div className="scn-review-divider" />
 
                   {/* Pre-flight summary */}
-                  <div style={{ borderRadius: 10, background: "var(--bg-card)", border: "0.5px solid var(--border-subtle)", padding: "11px 13px", display: "flex", flexDirection: "column", gap: 7 }}>
+                    <div className="scn-preflight" style={{ borderRadius: 10, background: "var(--bg-card)", border: "0.5px solid var(--border-subtle)", padding: "11px 13px", display: "flex", flexDirection: "column", gap: 7 }}>
                     {([
                       ["Mode", isOt ? `Passive · ${passiveSecs}s` : `${intensityObj.label} · ${intensityObj.pps}`],
                       ["Scope", scopeIsInherited ? `Engagement scope · ${targetCount}` : targetCount ? `${targetCount} explicit target${targetCount > 1 ? "s" : ""}` : "Full engagement scope"],
@@ -1097,10 +1143,10 @@ export default function ScanPage() {
                         <span style={{ color: "var(--text-secondary)", fontWeight: 500 }}>{v}</span>
                       </div>
                     ))}
-                  </div>
+                    </div>
 
                   {/* Probe readiness */}
-                  <div role="status" style={{ display: "flex", alignItems: "flex-start", gap: 7, fontSize: 11, color: compatibleProbes.length ? "var(--text-muted)" : "var(--sev-high-color)", lineHeight: 1.45 }}>
+                    <div className="scn-readiness" role="status" style={{ display: "flex", alignItems: "flex-start", gap: 7, fontSize: 11, color: compatibleProbes.length ? "var(--text-muted)" : "var(--sev-high-color)", lineHeight: 1.45 }}>
                     <span style={{ width: 6, height: 6, borderRadius: "50%", marginTop: 5, flexShrink: 0, background: compatibleIdleProbes.length ? "var(--nominal-color)" : compatibleProbes.length ? "var(--sev-medium-color)" : "var(--sev-high-color)" }} />
                     {!probes.length
                       ? "No probe registered — deploy the Vedha Probe before launching."
@@ -1109,15 +1155,16 @@ export default function ScanPage() {
                         : compatibleIdleProbes.length
                           ? `${compatibleIdleProbes.length} compatible idle probe${compatibleIdleProbes.length > 1 ? "s" : ""} ready`
                           : `${compatibleProbes.length} compatible probe${compatibleProbes.length > 1 ? "s are" : " is"} busy — job will queue`}
-                  </div>
+                    </div>
 
                   {/* Launch + reset */}
-                  <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
-                    <button className="scn-launch" onClick={launch} disabled={!canLaunch}>
-                      {launching ? <><Loader size={15} className="scn-spin" /> Dispatching…</> : <><Play size={15} fill="currentColor" /> Launch Scan</>}
-                    </button>
-                    <button onClick={reset} className="scn-reset"><RotateCcw size={11} /> Reset</button>
-                  </div>
+                    <div style={{ display: "flex", flexDirection: "column", gap: 9 }}>
+                      <button className="scn-launch" onClick={launch} disabled={!canLaunch}>
+                        {launching ? <><Loader size={15} className="scn-spin" /> Dispatching…</> : <><Play size={15} fill="currentColor" /> Launch Scan</>}
+                      </button>
+                      <button onClick={reset} className="scn-reset"><RotateCcw size={11} /> Reset configuration</button>
+                    </div>
+                  </aside>
                 </div>
               )}
             </div>
@@ -1161,14 +1208,14 @@ export default function ScanPage() {
                 const isCur = job?.job_id === rj.job_id;
                 return (
                   <button key={rj.job_id} onClick={() => viewJob(rj)} className="scn-recent" data-on={isCur}>
-                    <span style={{ width: 7, height: 7, borderRadius: "50%", background: st.color, flexShrink: 0 }} />
-                    <span style={{ fontWeight: 600, fontSize: 12.5, color: "var(--text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis", maxWidth: 240 }}>{ucNameFor(rj.use_case_id)}</span>
-                    <span style={{ fontSize: 9.5, fontWeight: 700, color: st.color, textTransform: "uppercase", letterSpacing: 0.4 }}>{st.label}</span>
-                    {rj.agent_name && <span style={{ fontSize: 11, color: "var(--text-muted)" }}>{rj.agent_name}</span>}
-                    <span style={{ marginLeft: "auto", fontSize: 10.5, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>
+                    <span className="scn-recent-dot" style={{ width: 7, height: 7, borderRadius: "50%", background: st.color, flexShrink: 0 }} />
+                    <span className="scn-recent-name" style={{ fontWeight: 600, fontSize: 12.5, color: "var(--text-primary)", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{ucNameFor(rj.use_case_id)}</span>
+                    <span className="scn-recent-status" style={{ fontSize: 9.5, fontWeight: 700, color: st.color, textTransform: "uppercase", letterSpacing: 0.4 }}>{st.label}</span>
+                    {rj.agent_name && <span className="scn-recent-agent" style={{ fontSize: 11, color: "var(--text-muted)" }}>{rj.agent_name}</span>}
+                    <span className="scn-recent-time" style={{ marginLeft: "auto", fontSize: 10.5, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>
                       {rj.created_at ? new Date(rj.created_at).toLocaleString() : ""}
                     </span>
-                    <span style={{ fontSize: 9.5, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>{rj.job_id.slice(0, 8)}</span>
+                    <span className="scn-recent-id" style={{ fontSize: 9.5, color: "var(--text-faint)", fontFamily: "var(--font-mono)" }}>{rj.job_id.slice(0, 8)}</span>
                   </button>
                 );
               })}
@@ -1195,30 +1242,51 @@ const STYLES = `
 .scn-skeleton { border-radius: 12px; background: var(--bg-card); border: 0.5px solid var(--border-subtle); position: relative; overflow: hidden; }
 .scn-skeleton::after { content:""; position:absolute; inset:0; transform: translateX(-100%); background: linear-gradient(90deg, transparent, rgba(255,255,255,0.03), transparent); animation: scn-shimmer 1.4s infinite; }
 
+.scn-fleet-probes { flex-wrap:nowrap; overflow-x:auto; overscroll-behavior-x:contain; scrollbar-width:thin; padding-bottom:2px; }
+.scn-fleet-probes > span { flex-shrink:0; }
+.scn-fleet-message { flex:1 1 240px; min-width:0; line-height:1.4; }
+
 /* Network-VA hero — the flagship full-campaign banner above the grid */
 .scn-nva { position:relative; border-radius:16px; overflow:hidden; border:0.5px solid var(--border-subtle); background:linear-gradient(135deg, var(--accent-ghost), var(--bg-panel) 58%); box-shadow: var(--shadow-md); transition: border-color var(--dur-fast), box-shadow var(--dur-fast); }
 .scn-nva[data-sel="true"] { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent), 0 0 30px var(--accent-glow); }
-.scn-nva-glow { position:absolute; top:-42%; right:-8%; width:340px; height:340px; border-radius:50%; background:radial-gradient(circle, var(--accent-glow), transparent 70%); opacity:0.55; pointer-events:none; }
-.scn-nva-body { position:relative; padding:18px 20px; display:flex; flex-direction:column; gap:14px; }
+.scn-nva-glow { position:absolute; top:-72px; right:-40px; width:260px; height:260px; border-radius:50%; background:radial-gradient(circle, var(--accent-glow), transparent 70%); opacity:0.42; pointer-events:none; }
+.scn-nva-body { position:relative; padding:16px 18px; display:flex; flex-direction:column; gap:11px; }
 .scn-nva-head { display:flex; gap:14px; align-items:flex-start; }
-.scn-nva-icon { width:48px; height:48px; border-radius:13px; flex-shrink:0; display:flex; align-items:center; justify-content:center; color:var(--accent); background:var(--accent-ghost); border:0.5px solid var(--border-accent); box-shadow:inset 0 1px 0 rgba(255,255,255,0.06); }
+.scn-nva-icon { width:44px; height:44px; border-radius:12px; flex-shrink:0; display:flex; align-items:center; justify-content:center; color:var(--accent); background:var(--accent-ghost); border:0.5px solid var(--border-accent); }
 .scn-nva-eyebrow { display:flex; align-items:center; gap:8px; margin-bottom:5px; }
 .scn-nva-tag { font-size:9.5px; font-weight:700; letter-spacing:0.8px; text-transform:uppercase; color:var(--accent); background:var(--accent-ghost); border:0.5px solid var(--border-accent); border-radius:5px; padding:2px 7px; }
 .scn-nva-profile { font-size:9.5px; font-weight:700; letter-spacing:0.6px; color:var(--text-faint); font-family:var(--font-mono); }
-.scn-nva-title { margin:0; font-size:19px; font-weight:750; letter-spacing:-0.2px; color:var(--text-primary); font-family:var(--font-display); }
-.scn-nva-desc { margin:5px 0 0; font-size:12.5px; line-height:1.55; color:var(--text-muted); max-width:660px; }
-.scn-nva-stages { display:flex; align-items:center; flex-wrap:wrap; gap:6px; }
+.scn-nva-title { margin:0; font-size:18px; font-weight:750; letter-spacing:-0.2px; color:var(--text-primary); font-family:var(--font-display); }
+.scn-nva-desc { margin:4px 0 0; font-size:12px; line-height:1.5; color:var(--text-muted); max-width:72ch; }
+.scn-nva-stages { display:flex; align-items:center; flex-wrap:nowrap; gap:6px; overflow-x:auto; overscroll-behavior-x:contain; scrollbar-width:none; padding:1px 0; }
+.scn-nva-stages::-webkit-scrollbar { display:none; }
+.scn-nva-step { display:inline-flex; align-items:center; gap:6px; flex-shrink:0; }
 .scn-nva-stage { font-size:10.5px; font-weight:600; color:var(--text-secondary); background:var(--bg-surface); border:0.5px solid var(--border-subtle); border-radius:6px; padding:4px 9px; }
 .scn-nva-arrow { color:var(--text-faint); font-size:12px; font-family:var(--font-mono); }
 .scn-nva-actions { display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
 .scn-nva-cta { display:inline-flex; align-items:center; gap:8px; padding:11px 20px; border-radius:11px; border:none; font-weight:700; font-size:13.5px; cursor:pointer; color:#fff; background:linear-gradient(180deg, var(--accent-hover), var(--accent)); box-shadow:0 4px 20px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.15); transition: transform var(--dur-fast), box-shadow var(--dur-fast), filter var(--dur-fast); }
 .scn-nva-cta:hover { transform:translateY(-1px); filter:brightness(1.05); box-shadow:0 6px 28px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.2); }
 .scn-nva-cta:active { transform:translateY(0); }
-.scn-nva-cta[data-sel="true"] { background:var(--accent-ghost); color:var(--accent); border:0.5px solid var(--border-accent); box-shadow:none; }
-.scn-nva-cta[data-sel="true"]:hover { transform:none; filter:none; box-shadow:none; }
+.scn-nva-selected { display:inline-flex; align-items:center; gap:7px; min-height:32px; padding:0 11px; border-radius:8px; background:var(--accent-ghost); border:0.5px solid var(--border-accent); color:var(--accent); font-size:11.5px; font-weight:700; }
 .scn-nva-link { display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:600; color:var(--accent); text-decoration:none; transition: color var(--dur-fast); }
 .scn-nva-link:hover { text-decoration:underline; }
 .scn-nva-meta { display:inline-flex; align-items:center; gap:5px; margin-left:auto; font-size:11px; font-family:var(--font-mono); color:var(--text-faint); }
+
+/* Focused Network-VA workspace: target decisions lead, launch review supports. */
+.scn-config-head { background:color-mix(in srgb, var(--accent) 5%, var(--bg-panel)); }
+.scn-launch-body { padding:16px; display:flex; flex-direction:column; gap:18px; }
+.scn-launch-body-wide { display:grid; grid-template-columns:minmax(0, 1.65fr) minmax(320px, 0.9fr); gap:0; padding:0; align-items:stretch; }
+.scn-config-primary { display:flex; flex-direction:column; gap:18px; min-width:0; }
+.scn-launch-body-wide .scn-config-primary { padding:20px 22px 22px; }
+.scn-review-rail { display:flex; flex-direction:column; gap:14px; min-width:0; }
+.scn-launch-body-wide .scn-review-rail { padding:20px 20px 18px; border-left:0.5px solid var(--border-subtle); background:var(--bg-surface); }
+.scn-group-heading { display:flex; align-items:flex-start; gap:9px; color:var(--accent); }
+.scn-group-heading > svg { flex-shrink:0; margin-top:1px; }
+.scn-group-heading strong { display:block; color:var(--text-primary); font-size:12.5px; font-weight:700; line-height:1.25; }
+.scn-group-heading span { display:block; margin-top:3px; color:var(--text-muted); font-size:10.5px; line-height:1.45; }
+.scn-field-grid, .scn-scope-grid { display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:14px; align-items:start; }
+.scn-review-divider { height:0.5px; background:var(--border-subtle); }
+.scn-readiness { padding:9px 10px; border-radius:8px; background:var(--bg-panel); border:0.5px solid var(--border-subtle); }
 
 /* Use-case card */
 @keyframes scn-card-in { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
@@ -1249,14 +1317,14 @@ const STYLES = `
 .scn-pill[data-on="true"] { background:var(--accent-ghost); border-color:var(--accent); color:var(--accent); }
 
 /* Inputs */
-.scn-input { width:100%; padding:9px 11px; border-radius:9px; background:var(--bg-surface); border:0.5px solid var(--border-subtle); color:var(--text-primary); font-size:12.5px; font-family:var(--font-body); outline:none; box-sizing:border-box; transition: border-color var(--dur-fast), box-shadow var(--dur-fast), background var(--dur-fast); }
+.scn-input { width:100%; min-height:40px; padding:9px 11px; border-radius:9px; background:var(--bg-surface); border:0.5px solid var(--border-subtle); color:var(--text-primary); font-size:12.5px; font-family:var(--font-body); outline:none; box-sizing:border-box; transition: border-color var(--dur-fast), box-shadow var(--dur-fast), background var(--dur-fast); }
 .scn-input::placeholder { color:var(--text-faint); }
 .scn-input:focus { border-color:var(--accent); box-shadow:0 0 0 3px var(--accent-ghost); background:var(--bg-card); }
 .scn-mono { font-family:var(--font-mono); font-size:11.5px; }
 .scn-select { appearance:none; -webkit-appearance:none; cursor:pointer; padding-right:30px; }
 
 /* Intensity radar dial */
-.scn-dial-wrap { position:relative; width:100%; max-width:220px; margin:0 auto; height:118px; }
+.scn-dial-wrap { position:relative; width:100%; max-width:240px; margin:0 auto; height:118px; }
 .scn-dial-svg { width:100%; height:100%; overflow:visible; }
 .scn-dial-sweep { position:absolute; inset:0; border-radius:50% 50% 0 0 / 100% 100% 0 0; animation: scn-dial-spin linear infinite; transform-origin:50% 100%; pointer-events:none; }
 @keyframes scn-dial-spin { to { transform: rotate(360deg); } }
@@ -1284,7 +1352,8 @@ const STYLES = `
 .scn-reset:hover { color:var(--text-secondary); }
 
 /* Recent-scans history rows (DB-backed) */
-.scn-recent { display:flex; align-items:center; gap:10px; width:100%; text-align:left; padding:10px 13px; border-radius:10px; background:var(--bg-card); border:0.5px solid var(--border-subtle); cursor:pointer; transition: border-color var(--dur-fast), background var(--dur-fast); }
+.scn-recent { display:flex; align-items:center; gap:10px; width:100%; min-width:0; text-align:left; padding:10px 13px; border-radius:10px; background:var(--bg-card); border:0.5px solid var(--border-subtle); cursor:pointer; transition: border-color var(--dur-fast), background var(--dur-fast); }
+.scn-recent-name { min-width:0; max-width:300px; }
 .scn-recent:hover { border-color:var(--border-strong); background:var(--bg-surface); }
 .scn-recent[data-on="true"] { border-color:var(--accent); background:var(--accent-ghost); }
 
@@ -1312,12 +1381,38 @@ const STYLES = `
 @media (max-width: 900px) {
   .scn-main-grid { grid-template-columns: minmax(0, 1fr) !important; }
   .scn-launch-panel { position: static !important; }
+  .scn-field-grid, .scn-scope-grid { grid-template-columns:minmax(0, 1fr); }
+}
+
+@media (max-width: 1080px) {
+  .scn-launch-body-wide { grid-template-columns:minmax(0, 1fr); }
+  .scn-launch-body-wide .scn-review-rail { border-left:none; border-top:0.5px solid var(--border-subtle); }
 }
 
 @media (max-width: 560px) {
+  .scn-nva-body { padding:14px; }
+  .scn-nva-head { gap:10px; }
+  .scn-nva-icon { width:38px; height:38px; border-radius:10px; }
+  .scn-nva-title { font-size:16px; }
+  .scn-nva-actions { gap:10px; }
+  .scn-nva-meta { margin-left:0; flex-basis:100%; }
+  .scn-launch-body-wide .scn-config-primary, .scn-launch-body-wide .scn-review-rail { padding:16px; }
+  .scn-fleet { align-items:flex-start !important; }
+  .scn-fleet-probes { margin-left:0 !important; flex-basis:100%; width:100%; }
+  .scn-recent { display:grid; grid-template-columns:8px minmax(0, 1fr) auto; grid-template-areas:"dot name status" ". agent id" ". time time"; column-gap:8px; row-gap:5px; align-items:center; }
+  .scn-recent-dot { grid-area:dot; }
+  .scn-recent-name { grid-area:name; max-width:none; }
+  .scn-recent-status { grid-area:status; }
+  .scn-recent-agent { grid-area:agent; }
+  .scn-recent-time { grid-area:time; margin-left:0 !important; }
+  .scn-recent-id { grid-area:id; }
   .scn-result-stats { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
   .scn-ticker { padding-inline: 8px; }
   .scn-phase { width: 66px; }
+}
+
+@media (pointer: coarse) {
+  .scn-input, .scn-nva-cta, .scn-launch, .scn-dial-seg button, .scn-recent { min-height:44px; }
 }
 
 @media (prefers-reduced-motion: reduce) {

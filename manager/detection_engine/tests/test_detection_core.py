@@ -17,7 +17,13 @@ from models import (
 from ingest import ingest_file, ingest_files, IngestResult, _validate, _classify_confidence, _is_ip
 from cvss import base_score, parse_vector, _roundup
 from matcher import _version_in_ranges, _safe_compare, match_candidate
-from correlate import dedup_findings, suppress_negated, correlate_smb_patch, _product_from_cpe
+from correlate import (
+    _product_from_cpe,
+    correlate_smb_patch,
+    dedup_findings,
+    suppress_negated,
+    suppress_negated_with_audit,
+)
 from verifier import classify_tier, deception_score, verify, EvidenceTier
 from enrichment import _compute_priority, enrich_finding
 from enrichment_db import KevDB, EpssDB
@@ -523,6 +529,33 @@ class TestSuppressNegated:
                                source_confidence=SourceConfidence.authoritative)
         out = suppress_negated([f], {"10.0.0.1": [auth_cand]})
         assert len(out) == 0
+
+    def test_suppression_produces_an_evidence_preserving_audit_record(self):
+        f = _finding(
+            state=FindingState.suspected,
+            source_confidence=SourceConfidence.inferred,
+            matched_version="1.0",
+            cve_id="CVE-1",
+            cpe="cpe:2.3:a:vendor:product:1.0:*:*:*:*:*:*:*",
+            evidence_refs=["banner.jsonl:4"],
+        )
+        auth_cand = _candidate(
+            version="2.0", vendor="vendor", product="product",
+            source_confidence=SourceConfidence.authoritative,
+            source_ref="inventory.jsonl:9",
+        )
+
+        kept, audit = suppress_negated_with_audit([f], {"10.0.0.1": [auth_cand]})
+
+        assert kept == []
+        assert len(audit) == 1
+        assert audit[0].finding_id == f.finding_id
+        assert audit[0].asset_ip == "10.0.0.1"
+        assert audit[0].cve_id == "CVE-1"
+        assert audit[0].inferred_evidence_refs == ["banner.jsonl:4"]
+        assert audit[0].authoritative_evidence_ref == "inventory.jsonl:9"
+        assert audit[0].authoritative_version == "2.0"
+        assert audit[0].reason == "authoritative_version_not_older"
 
     def test_keeps_authoritative_finding(self):
         f = _finding(state=FindingState.confirmed,

@@ -18,7 +18,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   if (!token) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
   const { id } = await params;
   try {
-    const updated = await backend<unknown>(`/findings/${id}/reopen`, { token, method: "POST" });
+    const body = await req.json().catch(() => undefined);
+    const updated = await backend<unknown>(`/findings/${id}/reopen`, {
+      token,
+      method: "POST",
+      body,
+    });
     return NextResponse.json(toUiFinding(updated));
   } catch (e) {
     return fail(e);

@@ -38,7 +38,7 @@ const TOAST_STYLES: Record<
 > = {
   success: {
     icon:   CheckCircle,
-    accent: "#059669",
+    accent: "#0F766E",
     bg:     "var(--adv-panel)",
     border: "#A7F3D0",
     iconBg: "#D1FAE5",
@@ -59,7 +59,7 @@ const TOAST_STYLES: Record<
   },
   info: {
     icon:   Info,
-    accent: "#2563EB",
+    accent: "#1D4ED8",
     bg:     "var(--adv-panel)",
     border: "#BFDBFE",
     iconBg: "#DBEAFE",
@@ -76,7 +76,6 @@ function ToastItem({ toast, onDismiss }: { toast: Toast; onDismiss: (id: string)
       style={{
         background: style.bg,
         border: `1px solid ${style.border}`,
-        borderLeft: `4px solid ${style.accent}`,
         borderRadius: 10,
         padding: "12px 14px",
         display: "flex",

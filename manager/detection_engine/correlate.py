@@ -25,11 +25,30 @@ Three distinct jobs, in order:
 """
 from __future__ import annotations
 
+from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
 
 from cpe_normalizer import CPECandidate
 from models import Asset, Finding, FindingState, SourceConfidence, make_finding_id
 from version_compare import dpkg_compare
+
+
+@dataclass(frozen=True)
+class SuppressionRecord:
+    """Why a candidate finding was omitted from the active result set."""
+
+    finding_id: str
+    asset_ip: str
+    cve_id: str
+    product: str
+    inferred_version: str
+    authoritative_version: str
+    inferred_evidence_refs: list[str]
+    authoritative_evidence_ref: str
+    reason: str = "authoritative_version_not_older"
+
+    def to_dict(self) -> dict:
+        return asdict(self)
 
 
 def dedup_findings(findings: list[Finding]) -> list[Finding]:
@@ -75,6 +94,20 @@ def suppress_negated(findings: list[Finding],
     real version) — and the suspected finding built on it should not stand
     next to better evidence that contradicts it.
     """
+    kept, _ = suppress_negated_with_audit(findings, candidates_by_asset)
+    return kept
+
+
+def suppress_negated_with_audit(
+    findings: list[Finding],
+    candidates_by_asset: dict[str, list[CPECandidate]],
+) -> tuple[list[Finding], list[SuppressionRecord]]:
+    """Apply authoritative-version suppression and preserve every decision.
+
+    The active output stays backward-compatible with ``suppress_negated`` while
+    callers that own an audit surface can retain the inferred evidence, the
+    contradicting authoritative observation, and the exact deterministic rule.
+    """
     # (asset_ip, cpe vendor:product) -> best (highest-version) authoritative
     # candidate. Keyed by CPE product, NOT lookup_key — lookup_key is the
     # OSV source-package name (e.g. "apache2"), which can legitimately
@@ -95,7 +128,8 @@ def suppress_negated(findings: list[Finding],
             if existing is None or dpkg_compare(version, existing.version_raw or existing.version_normalized) > 0:
                 best_authoritative[key] = c
 
-    out = []
+    out: list[Finding] = []
+    audit: list[SuppressionRecord] = []
     for f in findings:
         if f.source_confidence == SourceConfidence.authoritative:
             out.append(f)  # never suppress an authoritative finding itself
@@ -105,10 +139,19 @@ def suppress_negated(findings: list[Finding],
         if auth is not None:
             auth_version = auth.version_raw or auth.version_normalized
             if f.matched_version and dpkg_compare(auth_version, f.matched_version) >= 0:
-                continue  # suppressed: real credentialed version is at
-                          # least as new as whatever this finding matched on
+                audit.append(SuppressionRecord(
+                    finding_id=f.finding_id,
+                    asset_ip=f.asset_ip,
+                    cve_id=f.cve_id,
+                    product=product,
+                    inferred_version=f.matched_version,
+                    authoritative_version=auth_version,
+                    inferred_evidence_refs=list(f.evidence_refs),
+                    authoritative_evidence_ref=auth.source_ref,
+                ))
+                continue  # excluded from active findings, retained in audit
         out.append(f)
-    return out
+    return out, audit
 
 
 def _product_from_cpe(cpe: str) -> str:

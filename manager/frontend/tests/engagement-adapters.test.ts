@@ -46,6 +46,10 @@ describe("finding status adapters", () => {
   test("keeps risk scoring on the backend's 0-1000 scale", () => {
     assert.equal(toUiFinding({ id: "f-1", risk_score: 825 }).riskScore, 825);
     assert.equal(toUiFinding({ id: "f-2", cvss_score: 7.5 }).riskScore, 750);
+    assert.equal(
+      toUiFinding({ id: "f-3", risk_score: 1000, risk_rank: 884 }).riskScore,
+      884,
+    );
   });
 
   test("maps every UI workflow status back to the backend enum", () => {

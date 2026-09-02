@@ -6,14 +6,16 @@ import React, { useEffect, useState } from "react";
 export function Freshness({
   updatedAt, isFetching, staleAfterMs = 180_000,
 }: { updatedAt?: number; isFetching?: boolean; staleAfterMs?: number }) {
-  const [, tick] = useState(0);
+  // Keep time in state so render stays deterministic. The interval callback is
+  // the external event that advances it; Date.now() never runs during render.
+  const [now, setNow] = useState(updatedAt ?? 0);
   useEffect(() => {
-    const t = setInterval(() => tick((n) => n + 1), 10_000);
+    const t = setInterval(() => setNow(Date.now()), 10_000);
     return () => clearInterval(t);
   }, []);
 
   if (!updatedAt) return null;
-  const age = Date.now() - updatedAt;
+  const age = Math.max(0, now - updatedAt);
   const stale = age > staleAfterMs;
   const label =
     age < 60_000 ? `${Math.max(1, Math.round(age / 1000))}s ago`

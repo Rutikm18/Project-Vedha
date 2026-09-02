@@ -36,6 +36,7 @@ from app.models.detection_run import (
 )
 from app.discovery.finding_translator import _resolve_asset, _find_open_duplicate
 from app.detection.attack_paths import attack_path_findings
+from app.detection.prioritization import _posture_risk_on_manager_scale
 from app.detection.resolution import build_coverage, evaluate_resolutions
 from app.ai.verification_graph import run_verification
 from app.config import get_settings
@@ -232,6 +233,7 @@ async def _persist_posture_findings(db, engagement_id, run_id, now, posture_dict
     for p in posture_dicts:
         try:
             title = _posture_title(p)
+            manager_risk = _posture_risk_on_manager_scale(p)
             asset = await _resolve_asset(db, engagement_id, p.get("asset_ip"), cache=cache)
             asset_id = asset.id if asset else None
 
@@ -241,6 +243,7 @@ async def _persist_posture_findings(db, engagement_id, run_id, now, posture_dict
                 dup.last_seen = now
                 dup.detection_run_id = run_id
                 dup.resolution_miss_count = 0
+                dup.risk_score = Decimal(str(manager_risk)) if manager_risk is not None else None
                 touched.append(dup)
                 reaffirmed += 1
                 continue
@@ -249,6 +252,7 @@ async def _persist_posture_findings(db, engagement_id, run_id, now, posture_dict
             if regressed is not None:
                 _apply_regression_reopen(regressed, run_id, now)
                 regressed.evidence = {**(regressed.evidence or {}), **p, "regression": True}
+                regressed.risk_score = Decimal(str(manager_risk)) if manager_risk is not None else None
                 touched.append(regressed)
                 reaffirmed += 1
                 continue
@@ -260,8 +264,8 @@ async def _persist_posture_findings(db, engagement_id, run_id, now, posture_dict
                 cve_ids=None,
                 title=title,
                 description=_posture_description(p),
-                risk_score=(Decimal(str(p["risk_score"]))
-                            if p.get("risk_score") is not None else None),
+                risk_score=(Decimal(str(manager_risk))
+                            if manager_risk is not None else None),
                 severity=_POSTURE_SEV.get(p.get("severity"), FindingSeverity.info),
                 status=(FindingStatus.confirmed if state == "confirmed"
                         else FindingStatus.open),

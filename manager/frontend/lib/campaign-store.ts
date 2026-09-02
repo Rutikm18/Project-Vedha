@@ -66,14 +66,19 @@ export interface CampaignSummary {
   stage_count: number;
 }
 
-const DEFAULT_DIR = path.join(process.cwd(), 'data', 'campaigns');
+// This is a runtime data directory, not a build input. Without the annotation,
+// Turbopack's file tracer conservatively includes the whole project in the
+// standalone server artifact and emits an NFT warning during every CI build.
+const DEFAULT_DIR = path.join(/*turbopackIgnore: true*/ process.cwd(), 'data', 'campaigns');
 export let CAMPAIGN_DIR = process.env.CAMPAIGN_DATA_DIR ?? DEFAULT_DIR;
 
 // Exposed for tests: override the campaigns directory.
 export function setCampaignDir(dir: string): void { CAMPAIGN_DIR = dir; }
 
 function ensureDir(): void {
-  if (!fs.existsSync(CAMPAIGN_DIR)) fs.mkdirSync(CAMPAIGN_DIR, { recursive: true });
+  if (!fs.existsSync(/*turbopackIgnore: true*/ CAMPAIGN_DIR)) {
+    fs.mkdirSync(/*turbopackIgnore: true*/ CAMPAIGN_DIR, { recursive: true });
+  }
 }
 
 // A campaign_id is used verbatim as a filename — keep it to a safe charset so it
@@ -84,7 +89,7 @@ export function isSafeCampaignId(id: unknown): id is string {
 }
 
 function fileFor(id: string): string {
-  return path.join(CAMPAIGN_DIR, `${id}.json`);
+  return path.join(/*turbopackIgnore: true*/ CAMPAIGN_DIR, `${id}.json`);
 }
 
 /**
@@ -139,8 +144,8 @@ export function saveCampaign(raw: unknown): CampaignSnapshot {
   // (the same guarantee the probe's ProgressReporter makes on its side).
   const dest = fileFor(snap.campaign_id);
   const tmp = `${dest}.tmp`;
-  fs.writeFileSync(tmp, JSON.stringify(snap, null, 2));
-  fs.renameSync(tmp, dest);
+  fs.writeFileSync(/*turbopackIgnore: true*/ tmp, JSON.stringify(snap, null, 2));
+  fs.renameSync(/*turbopackIgnore: true*/ tmp, /*turbopackIgnore: true*/ dest);
   return snap;
 }
 
@@ -148,9 +153,9 @@ export function saveCampaign(raw: unknown): CampaignSnapshot {
 export function getCampaign(id: string): CampaignSnapshot | null {
   if (!isSafeCampaignId(id)) return null;
   const file = fileFor(id);
-  if (!fs.existsSync(file)) return null;
+  if (!fs.existsSync(/*turbopackIgnore: true*/ file)) return null;
   try {
-    return validateSnapshot(JSON.parse(fs.readFileSync(file, 'utf-8')));
+    return validateSnapshot(JSON.parse(fs.readFileSync(/*turbopackIgnore: true*/ file, 'utf-8')));
   } catch {
     return null;
   }
@@ -160,7 +165,7 @@ export function getCampaign(id: string): CampaignSnapshot | null {
 export function listCampaigns(): CampaignSummary[] {
   ensureDir();
   const out: CampaignSummary[] = [];
-  for (const name of fs.readdirSync(CAMPAIGN_DIR)) {
+  for (const name of fs.readdirSync(/*turbopackIgnore: true*/ CAMPAIGN_DIR)) {
     if (!name.endsWith('.json') || name.endsWith('.tmp')) continue;
     const snap = getCampaign(name.slice(0, -'.json'.length));
     if (!snap) continue;

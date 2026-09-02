@@ -13,6 +13,8 @@
  * Polls every 4s while anything is still running; stops when detection is done.
  */
 import { useCallback, useEffect, useState } from "react";
+import Link from "next/link";
+import { ArrowUpRight, Clock3 } from "lucide-react";
 import RawFacts from "./RawFacts";
 
 type PhaseState = "done" | "active" | "pending";
@@ -100,13 +102,13 @@ export default function CampaignProgress({ engagementId }: { engagementId: strin
   }, [engagementId]);
 
   useEffect(() => {
-    void load();
+    const initial = window.setTimeout(() => void load(), 0);
     // Keep polling until the WHOLE pipeline is complete — not just the scan job.
     if (data?.is_complete) return;
     // Back off on a stalled queue so a dead worker doesn't get hammered every 4s.
     const delay = data?.overall_status === "stalled" ? 30000 : 4000;
     const t = setInterval(load, delay);
-    return () => clearInterval(t);
+    return () => { window.clearTimeout(initial); clearInterval(t); };
   }, [load, data?.is_complete, data?.overall_status]);
 
   if (err) return <div style={{ color: "var(--sev-high,#f97316)", fontSize: 12 }}>Failed to load campaign: {err}</div>;
@@ -148,6 +150,14 @@ export default function CampaignProgress({ engagementId }: { engagementId: strin
             {s.max_risk_score > 0 && <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-muted)" }}>max risk {Math.round(s.max_risk_score)}</span>}
           </span>
         )}
+        <span style={{ display: "flex", gap: 8, marginLeft: s ? 0 : "auto" }}>
+          <Link href={`/engagements/${engagementId}`} className="campaign-result-link">
+            Engagement view <ArrowUpRight size={12} />
+          </Link>
+          <Link href={`/findings?engagement=${engagementId}`} className="campaign-result-link">
+            All results <ArrowUpRight size={12} />
+          </Link>
+        </span>
       </div>
 
       {/* ── reasons banner: state what happened, never leave a silent spinner ── */}
@@ -240,11 +250,14 @@ export default function CampaignProgress({ engagementId }: { engagementId: strin
       <div>
         <div style={{ fontSize: 10.5, fontWeight: 700, color: "var(--text-faint)", letterSpacing: 1.4, textTransform: "uppercase", marginBottom: 10 }}>Jobs ({data.jobs.length})</div>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-          {data.jobs.map((j) => (
+          {data.jobs.map((j) => {
+            const jobPercent = j.status === "completed" ? 100 : j.status === "running" ? 56 : j.status === "failed" ? 100 : 12;
+            return (
             <div key={j.id} style={{ borderRadius: 12, border: "0.5px solid var(--border-subtle)", background: "var(--bg-panel)", padding: "12px 16px", boxShadow: "var(--shadow-md)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                 <span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>{j.use_case_id ?? j.job_type}</span>
                 <span style={{ fontSize: 10.5, fontFamily: "var(--font-mono)", padding: "2px 8px", borderRadius: 6, background: "var(--accent-ghost)", color: "var(--accent)", textTransform: "capitalize" }}>{j.phase}</span>
+                <span style={{ fontSize: 10.5, color: j.status === "failed" ? "var(--sev-critical-color)" : "var(--text-muted)", textTransform: "capitalize" }}>{j.status}</span>
                 {j.agent_name && <span style={{ fontSize: 11, color: "var(--text-muted)" }}>vedha-agent <strong style={{ color: "var(--text-secondary)" }}>{j.agent_name}</strong></span>}
                 <span style={{ marginLeft: "auto", fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-faint)" }}>{j.id.slice(0, 8)}</span>
               </div>
@@ -252,11 +265,21 @@ export default function CampaignProgress({ engagementId }: { engagementId: strin
               <div style={{ display: "flex", gap: 14, marginTop: 8, flexWrap: "wrap", fontSize: 11, color: "var(--text-muted)" }}>
                 {j.result_summary?.scanner_count != null && <span><strong style={{ color: "var(--text-secondary)" }}>{j.result_summary.scanner_count}</strong> scanners</span>}
                 {j.result_summary?.fact_count != null && <span><strong style={{ color: "var(--text-secondary)" }}>{j.result_summary.fact_count}</strong> facts</span>}
+                {j.result_summary?.open_ports != null && <span><strong style={{ color: "var(--text-secondary)" }}>{j.result_summary.open_ports}</strong> open ports</span>}
                 {j.result_summary?.profile && <span>profile <strong style={{ color: "var(--text-secondary)" }}>{j.result_summary.profile}</strong></span>}
                 {j.result_summary?.scanners?.length ? <span style={{ fontFamily: "var(--font-mono)", color: "var(--text-faint)" }}>{j.result_summary.scanners.join(" · ")}</span> : null}
               </div>
+              <div role="progressbar" aria-label={`${j.use_case_id ?? j.job_type} job progress`} aria-valuenow={jobPercent} aria-valuemin={0} aria-valuemax={100}
+                style={{ height: 4, marginTop: 10, overflow: "hidden", borderRadius: 999, background: "var(--track-bg)" }}>
+                <div style={{ width: `${jobPercent}%`, height: "100%", background: j.status === "failed" ? "var(--sev-critical-color)" : j.status === "completed" ? "var(--nominal-color)" : "var(--accent)", transition: "width var(--dur-base) var(--ease-out)" }} />
+              </div>
+              <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 8, fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-faint)" }}>
+                {j.created_at && <span><Clock3 size={10} style={{ display: "inline", verticalAlign: -1, marginRight: 4 }} />queued {new Date(j.created_at).toLocaleString()}</span>}
+                {j.started_at && <span>started {new Date(j.started_at).toLocaleString()}</span>}
+                {j.completed_at && <span>finished {new Date(j.completed_at).toLocaleString()}</span>}
+              </div>
             </div>
-          ))}
+          );})}
         </div>
       </div>
 
@@ -292,6 +315,9 @@ export default function CampaignProgress({ engagementId }: { engagementId: strin
                       </ol>
                     ) : <span style={{ fontSize: 11.5, color: "var(--text-muted)" }}>No remediation guidance recorded.</span>}
                     {f.cve_ids?.length ? <div style={{ marginTop: 8, fontSize: 10.5, fontFamily: "var(--font-mono)", color: "var(--text-faint)" }}>{f.cve_ids.join(", ")}</div> : null}
+                    <Link href={`/findings?engagement=${engagementId}&finding=${f.id}`} className="campaign-result-link" style={{ marginTop: 10 }}>
+                      Open finding result <ArrowUpRight size={12} />
+                    </Link>
                   </div>
                 )}
               </div>
@@ -305,6 +331,7 @@ export default function CampaignProgress({ engagementId }: { engagementId: strin
     </section>
   );
 }
+
 
 /**
  * The honest empty state. "No findings" is NOT "clean" — it can mean detection is

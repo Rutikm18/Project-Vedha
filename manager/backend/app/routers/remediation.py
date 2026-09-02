@@ -28,12 +28,14 @@ from app.dependencies import DB, AuthUser
 from app.models.engagement import Engagement
 from app.models.finding import Finding
 from app.models.remediation_plan import RemediationPlan
+from app.schemas.remediation import RemediationPlanOut
 from app.services.remediation_kb import os_key, recipe_for_finding
 
 router = APIRouter(prefix="/findings", tags=["remediation"])
 logger = structlog.get_logger()
 
-_OPERATOR = require_role(["admin", "manager"])
+_REMEDIATION_READER = require_role(["admin", "manager", "tester", "analyst", "auditor"])
+_REMEDIATION_GENERATOR = require_role(["admin", "manager"])
 
 
 async def _tenant_finding(db: AsyncSession, finding_id: uuid.UUID,
@@ -115,11 +117,12 @@ def _serialize(finding_id: uuid.UUID, os: str, plan: dict, *,
 
 
 @router.get("/{finding_id}/remediation",
+            response_model=RemediationPlanOut,
             summary="Remediation plan for a finding (cached AI or KB fallback)")
 async def get_remediation(
     finding_id: uuid.UUID,
     db: DB,
-    current_user: Annotated[AuthUser, _OPERATOR],
+    current_user: Annotated[AuthUser, _REMEDIATION_READER],
     os: str = Query(default="generic"),
 ):
     finding = await _tenant_finding(db, finding_id, current_user.tenant_id)
@@ -131,11 +134,12 @@ async def get_remediation(
 
 
 @router.post("/{finding_id}/remediation/generate",
+             response_model=RemediationPlanOut,
              summary="Generate (and cache) an AI remediation plan for a finding")
 async def generate_remediation(
     finding_id: uuid.UUID,
     db: DB,
-    current_user: Annotated[AuthUser, _OPERATOR],
+    current_user: Annotated[AuthUser, _REMEDIATION_GENERATOR],
     os: str = Query(default="generic"),
     force: bool = Query(default=False),
     publish: bool = Query(default=False,

@@ -59,7 +59,9 @@ async def test_posture_finding_becomes_a_finding_row():
     assert f.status == FindingStatus.confirmed          # validated scanner → confirmed
     assert f.mitre_techniques == ["T1210"]
     assert f.remediation == "Disable SMBv1."
-    assert float(f.risk_score) == 90.0
+    # The upstream 0-100 rule score is evidence only; Manager recomputes its
+    # non-saturating 0-1000 score from severity, context, and evidence quality.
+    assert 0.0 < float(f.risk_score) < 1000.0
     assert f.cve_ids is None                             # posture, not a CVE
 
 

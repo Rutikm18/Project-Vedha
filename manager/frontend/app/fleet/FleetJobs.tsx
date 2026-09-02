@@ -48,9 +48,9 @@ export default function FleetJobs() {
   }, [probe, engagement, runningOnly]);
 
   useEffect(() => {
-    void load();
+    const initial = window.setTimeout(() => void load(), 0);
     const t = setInterval(load, 5000);       // keep the live queue current
-    return () => clearInterval(t);
+    return () => { window.clearTimeout(initial); clearInterval(t); };
   }, [load]);
 
   // filter option lists derived from the current feed (probe + engagement names)

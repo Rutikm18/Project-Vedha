@@ -2,7 +2,7 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.models.enums import DetectionStatus, FindingSeverity, FindingStatus
 from app.services.risk_rank import compute_risk_rank
@@ -30,6 +30,39 @@ class FindingPatch(BaseModel):
     cvss_score: Decimal | None = Field(default=None, ge=0, le=10)
     epss_score: Decimal | None = Field(default=None, ge=0, le=1)
     risk_score: Decimal | None = Field(default=None, ge=0, le=1000)
+    # Stored only on the immutable lifecycle event, never on the finding row.
+    action_reason: str | None = Field(default=None, max_length=1000)
+
+    @field_validator("action_reason")
+    @classmethod
+    def normalize_action_reason(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return value.strip() or None
+
+
+class FindingReopen(BaseModel):
+    reason: str | None = Field(default=None, max_length=1000)
+
+    @field_validator("reason")
+    @classmethod
+    def normalize_reason(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        return value.strip() or None
+
+
+class FindingAssetContext(BaseModel):
+    id: uuid.UUID
+    ip_address: str | None = None
+    hostname: str | None = None
+    fqdn: str | None = None
+    os: str | None = None
+    os_version: str | None = None
+    asset_type: str
+    criticality: str
+    owner: str | None = None
+    environment: str | None = None
 
 
 class FindingEventOut(BaseModel):
@@ -117,6 +150,9 @@ class FindingOut(BaseModel):
     resolved_at: datetime | None = None
     # P4 unified priority (computed; see services/risk_rank.py).
     risk_rank: int | None = None
+    # Populated on the detail endpoint. List responses intentionally leave this
+    # null to keep portfolio reads bounded and avoid an asset N+1 query.
+    asset_context: FindingAssetContext | None = None
     created_at: datetime
     updated_at: datetime
 
@@ -133,7 +169,7 @@ class FindingOut(BaseModel):
                 severity=str(sev),
                 cvss_score=float(self.cvss_score) if self.cvss_score is not None else None,
                 epss_score=float(self.epss_score) if self.epss_score is not None else None,
-                kev=bool(ev.get("kev")),
+                kev=bool(ev.get("kev") or (ev.get("enrichment") or {}).get("kev")),
                 exploit_validated=bool(self.exploit_validated),
                 verification_state=self.verification_state,
                 confidence=self.verification_confidence,
