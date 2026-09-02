@@ -163,7 +163,7 @@ export default function CampaignListPage() {
 }
 
 const STYLES = `
-.cmpl-page { display: flex; flex-direction: column; gap: 20px; width: 100%; max-width: 1180px; }
+.cmpl-page { display: flex; flex-direction: column; gap: 20px; width: 100%; max-width: 1180px; margin: 0 auto; }
 .cmpl-primary { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 650; color: #fff;
   padding: 7px 12px; border: 1px solid var(--accent); border-radius: var(--radius-md); background: var(--accent); text-decoration: none; }
 .cmpl-primary:hover { background: var(--accent-dim); }

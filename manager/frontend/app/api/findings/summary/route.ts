@@ -21,9 +21,13 @@ export const GET = withBackend(async (req, { token }) => {
     url.searchParams.get("engagement_id")
     ?? url.searchParams.get("engagementId")
     ?? undefined;
+  const agentId =
+    url.searchParams.get("agent_id")
+    ?? url.searchParams.get("agentId")
+    ?? undefined;
   const summary = await backend<ApiSummary>("/findings/summary", {
     token,
-    query: { engagement_id: engagementId },
+    query: { engagement_id: engagementId, agent_id: agentId },
   });
   return NextResponse.json({
     total: summary.total,

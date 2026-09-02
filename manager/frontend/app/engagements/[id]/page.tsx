@@ -82,10 +82,10 @@ const SEVERITY_COLOR: Record<Severity, string> = {
 };
 
 const STATUS_COLOR: Record<string, string> = {
-  ACTIVE: "var(--nominal-color)",
-  PLANNING: "var(--sev-medium-color)",
-  COMPLETED: "var(--accent)",
-  PAUSED: "var(--sev-high-color)",
+  ACTIVE: "var(--accent)",
+  PLANNING: "var(--sev-info-color)",
+  COMPLETED: "var(--nominal-color)",
+  PAUSED: "var(--sev-medium-color)",
 };
 
 function displayDate(value: string) {
@@ -99,10 +99,15 @@ function displayDate(value: string) {
 function OverviewTab({ engagement }: { engagement: Engagement }) {
   const [renderedAt] = useState(() => Date.now());
   const daysLeft = Math.max(0, Math.ceil((new Date(engagement.endDate).getTime() - renderedAt) / 86_400_000));
+  const progress = Math.max(0, Math.min(100, engagement.progress));
+  const severityTotal = (Object.keys(SEVERITY_COLOR) as Severity[]).reduce(
+    (total, severity) => total + (engagement.findingsBySeverity[severity] ?? 0),
+    0,
+  );
   const metrics = [
     { label: "Findings", value: engagement.findingCount, detail: "recorded issues", color: "var(--sev-critical-color)", icon: AlertTriangle },
     { label: "Assets", value: engagement.assetCount, detail: "in attack surface", color: "var(--accent)", icon: Network },
-    { label: "Progress", value: `${engagement.progress}%`, detail: "assessment complete", color: "var(--nominal-color)", icon: CircleDot },
+    { label: "Progress", value: `${progress}%`, detail: "assessment complete", color: "var(--nominal-color)", icon: CircleDot, progress },
     { label: "Time remaining", value: `${daysLeft}d`, detail: `ends ${displayDate(engagement.endDate)}`, color: "var(--sev-medium-color)", icon: Clock3 },
   ];
 
@@ -116,11 +121,23 @@ function OverviewTab({ engagement }: { engagement: Engagement }) {
   return (
     <div className="engagement-stack">
       <section className="engagement-metric-grid" aria-label="Engagement summary">
-        {metrics.map(({ label, value, detail, color, icon: Icon }) => (
+        {metrics.map(({ label, value, detail, color, icon: Icon, progress: metricProgress }) => (
           <article className="engagement-metric-card" key={label} style={{ "--metric-color": color } as React.CSSProperties}>
-            <div className="engagement-metric-label"><Icon size={15} /> {label}</div>
+            <div className="engagement-metric-label"><span><Icon size={16} /></span>{label}</div>
             <strong>{value}</strong>
-            <span>{detail}</span>
+            <span className="engagement-metric-detail">{detail}</span>
+            {typeof metricProgress === "number" && (
+              <div
+                className="engagement-metric-progress"
+                role="progressbar"
+                aria-label="Assessment completion"
+                aria-valuemin={0}
+                aria-valuemax={100}
+                aria-valuenow={metricProgress}
+              >
+                <span style={{ width: `${metricProgress}%` }} />
+              </div>
+            )}
           </article>
         ))}
       </section>
@@ -173,16 +190,38 @@ function OverviewTab({ engagement }: { engagement: Engagement }) {
         </article>
       </section>
 
-      <article className="engagement-panel">
-        <header><div><AlertTriangle size={16} /><span>Finding distribution</span></div><Link href={`/findings?engagement=${engagement.id}`}>Open findings <ChevronRight size={13} /></Link></header>
-        <div className="engagement-severity-grid">
-          {(Object.keys(SEVERITY_COLOR) as Severity[]).map((severity) => (
-            <div key={severity}>
-              <span style={{ background: SEVERITY_COLOR[severity] }} />
-              <strong style={{ color: SEVERITY_COLOR[severity] }}>{engagement.findingsBySeverity[severity] ?? 0}</strong>
-              <small>{severity.toLowerCase()}</small>
+      <article className="engagement-panel engagement-severity-panel">
+        <header>
+          <div><AlertTriangle size={16} /><span>Finding distribution</span></div>
+          <Link href={`/findings?engagement=${engagement.id}`}>Open findings <ChevronRight size={14} /></Link>
+        </header>
+        <div className="engagement-severity-body">
+          <div className="engagement-severity-summary">
+            <div
+              className="engagement-severity-bar"
+              role="img"
+              aria-label={`${severityTotal} scored findings grouped by severity`}
+              data-empty={severityTotal === 0}
+            >
+              {(Object.keys(SEVERITY_COLOR) as Severity[]).map((severity) => {
+                const count = engagement.findingsBySeverity[severity] ?? 0;
+                if (!count || !severityTotal) return null;
+                return <span key={severity} style={{ width: `${(count / severityTotal) * 100}%`, background: SEVERITY_COLOR[severity] }} />;
+              })}
             </div>
-          ))}
+            <span>{severityTotal} scored {severityTotal === 1 ? "finding" : "findings"}</span>
+          </div>
+          <div className="engagement-severity-grid">
+            {(Object.keys(SEVERITY_COLOR) as Severity[]).map((severity) => (
+              <div key={severity} style={{ "--severity-color": SEVERITY_COLOR[severity] } as React.CSSProperties}>
+                <span className="engagement-severity-dot" />
+                <div>
+                  <strong>{engagement.findingsBySeverity[severity] ?? 0}</strong>
+                  <small>{severity.toLowerCase()}</small>
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       </article>
     </div>
@@ -217,7 +256,7 @@ function FindingsTab({ engagementId }: { engagementId: string }) {
           <Link href={`/findings?engagement=${engagementId}&finding=${finding.id}`} className="engagement-finding-row" key={finding.id}>
             <span className={`badge badge-${finding.severity.toLowerCase()}`}>{finding.severity}</span>
             <div><strong>{finding.title}</strong><small>{finding.affectedHost} · {finding.status.replaceAll("_", " ")}</small></div>
-            <span className="engagement-risk-score">{finding.riskScore}</span>
+            <span className="engagement-risk-score"><small>Risk</small><strong>{finding.riskScore}</strong></span>
             <ChevronRight size={14} />
           </Link>
         ))}
@@ -334,7 +373,7 @@ function ImportScanButton({ engagementId }: { engagementId: string }) {
   return (
     <>
       <input ref={inputRef} type="file" accept=".json,.jsonl,application/json" onChange={pickFile} hidden />
-      <button className="btn btn-secondary engagement-action" disabled={busy} onClick={() => inputRef.current?.click()}>
+      <button type="button" className="btn btn-secondary engagement-action" disabled={busy} onClick={() => inputRef.current?.click()}>
         {busy ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
         {busy ? "Importing…" : "Import evidence"}
       </button>
@@ -383,7 +422,7 @@ function EditEngagementModal({ engagement, onClose }: { engagement: Engagement; 
       <div className="engagement-modal" role="dialog" aria-modal="true" aria-labelledby="edit-engagement-title">
         <header>
           <div><span className="engagement-modal-icon"><Pencil size={16} /></span><div><h2 id="edit-engagement-title">Edit engagement</h2><p>Keep client context and scope boundaries accurate.</p></div></div>
-          <button aria-label="Close edit dialog" onClick={onClose}><X size={18} /></button>
+          <button type="button" aria-label="Close edit dialog" onClick={onClose}><X size={18} /></button>
         </header>
         <div className="engagement-form">
           <label className="engagement-form-wide"><span>Engagement name *</span><input value={form.name} onChange={(event) => update({ name: event.target.value })} /></label>
@@ -399,8 +438,8 @@ function EditEngagementModal({ engagement, onClose }: { engagement: Engagement; 
           {!datesValid && <div className="engagement-form-error">End date must be on or after the start date.</div>}
         </div>
         <footer>
-          <button className="btn btn-secondary" onClick={onClose}>Cancel</button>
-          <button className="btn btn-primary" disabled={!valid || mutation.isPending} onClick={() => mutation.mutate()}>
+          <button type="button" className="btn btn-secondary" onClick={onClose}>Cancel</button>
+          <button type="button" className="btn btn-primary" disabled={!valid || mutation.isPending} onClick={() => mutation.mutate()}>
             {mutation.isPending ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />} Save changes
           </button>
         </footer>
@@ -432,7 +471,7 @@ export default function EngagementDetailPage({ params }: { params: Promise<{ id:
       subtitle={engagement ? `${engagement.client || "Unassigned client"} · ${engagement.assessor || "No assessor"}` : undefined}
       headerActions={
         <div className="engagement-actions">
-          {engagement && <button className="btn btn-secondary engagement-action" onClick={() => setEditing(true)}><Pencil size={14} /> Edit details</button>}
+          {engagement && <button type="button" className="btn btn-secondary engagement-action" onClick={() => setEditing(true)}><Pencil size={14} /> Edit details</button>}
           <ImportScanButton engagementId={id} />
           <Link className="btn btn-primary engagement-action" href={`/scan?engagementId=${encodeURIComponent(id)}`}><Play size={14} /> Start scan</Link>
         </div>
@@ -441,25 +480,41 @@ export default function EngagementDetailPage({ params }: { params: Promise<{ id:
         { label: "STATUS", value: engagement.status, color: STATUS_COLOR[engagement.status] || "var(--text-secondary)" },
       ] : []}
     >
-      <div className="engagement-toolbar">
-        <Link href="/engagements" className="engagement-back"><ArrowLeft size={14} /> All engagements</Link>
-        <nav aria-label="Engagement sections">
-          {tabs.map(({ key, label, icon: Icon, count }) => (
-            <button key={key} data-active={activeTab === key} onClick={() => setActiveTab(key)}>
-              <Icon size={14} /> {label}{typeof count === "number" && <span>{count}</span>}
-            </button>
-          ))}
-        </nav>
-        <Link href="/reports" className="engagement-report-link"><FileText size={14} /> Reports <span className="badge badge-info">Beta</span></Link>
-      </div>
+      <div className="engagement-workspace">
+        <div className="engagement-toolbar">
+          <Link href="/engagements" className="engagement-back"><ArrowLeft size={15} /> All engagements</Link>
+          <nav aria-label="Engagement sections" role="tablist">
+            {tabs.map(({ key, label, icon: Icon, count }) => (
+              <button
+                type="button"
+                key={key}
+                id={`engagement-tab-${key}`}
+                role="tab"
+                aria-selected={activeTab === key}
+                aria-controls="engagement-tabpanel"
+                data-active={activeTab === key}
+                onClick={() => setActiveTab(key)}
+              >
+                <Icon size={15} /> {label}{typeof count === "number" && <span>{count}</span>}
+              </button>
+            ))}
+          </nav>
+          <Link href="/reports" className="engagement-report-link"><FileText size={15} /> Reports <span className="badge badge-info">Beta</span></Link>
+        </div>
 
-      <div className="engagement-content">
-        {query.isLoading && <SkeletonRows rows={5} height={76} />}
-        {query.error && <EmptyState icon={AlertTriangle} title="Could not load this engagement" hint="Check the Manager API connection and your access, then retry." />}
-        {engagement && activeTab === "overview" && <OverviewTab engagement={engagement} />}
-        {engagement && activeTab === "findings" && <FindingsTab engagementId={id} />}
-        {engagement && activeTab === "assets" && <AssetsTab engagementId={id} />}
-        {engagement && activeTab === "activity" && <ActivityTab activity={activity} />}
+        <div
+          className="engagement-content"
+          id="engagement-tabpanel"
+          role="tabpanel"
+          aria-labelledby={`engagement-tab-${activeTab}`}
+        >
+          {query.isLoading && <SkeletonRows rows={5} height={76} />}
+          {query.error && <EmptyState icon={AlertTriangle} title="Could not load this engagement" hint="Check the Manager API connection and your access, then retry." />}
+          {engagement && activeTab === "overview" && <OverviewTab engagement={engagement} />}
+          {engagement && activeTab === "findings" && <FindingsTab engagementId={id} />}
+          {engagement && activeTab === "assets" && <AssetsTab engagementId={id} />}
+          {engagement && activeTab === "activity" && <ActivityTab activity={activity} />}
+        </div>
       </div>
 
       {editing && engagement && <EditEngagementModal engagement={engagement} onClose={() => setEditing(false)} />}

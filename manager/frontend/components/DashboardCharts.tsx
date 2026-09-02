@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useRef, useCallback } from "react";
+import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   AreaChart, Area, PieChart, Pie, Cell,
@@ -45,8 +45,7 @@ function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: 
     <div style={{
       background: "var(--bg-panel)", border: "0.5px solid var(--border-default)",
       borderRadius: 8, padding: "10px 14px",
-      boxShadow: "var(--shadow-lg)",
-      backdropFilter: "blur(8px)",
+      boxShadow: "var(--shadow-md)",
     }}>
       <div style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-muted)", marginBottom: 7 }}>{label}</div>
       {payload.map((p) => (
@@ -59,65 +58,31 @@ function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: 
   );
 }
 
-/* ─── KPI Card with mouse-follow gradient ─── */
+/* ─── KPI Card ─── */
 function KpiCard({
-  label, value, icon, accentColor, accentGlow, trend, loading, delay = 0,
+  label, value, icon, accentColor, trend, loading, delay = 0,
 }: {
   label: string; value: number; icon: React.ReactNode;
-  accentColor: string; accentGlow: string; trend?: number; loading?: boolean; delay?: number;
+  accentColor: string; trend?: number; loading?: boolean; delay?: number;
 }) {
-  const cardRef = useRef<HTMLDivElement>(null);
   const displayValue = useCountUp(loading ? 0 : value, 900, delay);
-  const [hovered, setHovered] = React.useState(false);
-
-  const onMouseMove = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    const el = cardRef.current;
-    if (!el) return;
-    const r = el.getBoundingClientRect();
-    el.style.setProperty("--glow-x", `${((e.clientX - r.left) / r.width)  * 100}%`);
-    el.style.setProperty("--glow-y", `${((e.clientY - r.top)  / r.height) * 100}%`);
-  }, []);
 
   return (
     <div
-      ref={cardRef}
       className="stagger-item dashboard-kpi-surface"
-      onMouseMove={onMouseMove}
-      onMouseEnter={() => setHovered(true)}
-      onMouseLeave={() => { setHovered(false); cardRef.current?.style.setProperty("--glow-x", "50%"); cardRef.current?.style.setProperty("--glow-y", "50%"); }}
       style={{
-        "--glow-x": "50%", "--glow-y": "50%",
         "--kpi-accent": accentColor,
         animationDelay: `${delay}ms`,
         background: "var(--bg-panel)",
-        border: `0.5px solid ${hovered ? "var(--border-strong)" : "var(--border-subtle)"}`,
+        border: "0.5px solid var(--border-subtle)",
         borderRadius: 8,
         padding: "16px 18px 14px",
         position: "relative",
         overflow: "hidden",
         cursor: "default",
-        transition: "transform 0.18s var(--ease-out), border-color 0.18s ease, box-shadow 0.2s ease",
-        transform: hovered ? "translateY(-3px)" : "translateY(0)",
-        boxShadow: hovered ? "var(--shadow-md)" : "var(--shadow-sm)",
+        boxShadow: "var(--shadow-sm)",
       } as React.CSSProperties}
     >
-      {/* Mouse-follow glow */}
-      <div style={{
-        position: "absolute", inset: 0, borderRadius: "inherit", pointerEvents: "none", zIndex: 0,
-        opacity: hovered ? 0.35 : 0,
-        transition: "opacity 0.2s ease",
-        background: `radial-gradient(circle at var(--glow-x, 50%) var(--glow-y, 50%), ${accentGlow} 0%, transparent 65%)`,
-      } as React.CSSProperties} />
-
-      {/* Left accent edge */}
-      <div style={{
-        position: "absolute", left: 0, top: 16, bottom: 16, width: 3,
-        borderRadius: "0 2px 2px 0", background: accentColor,
-        opacity: hovered ? 1 : 0.6,
-        transition: "opacity 0.2s ease, box-shadow 0.2s ease",
-        boxShadow: hovered ? `0 0 8px ${accentGlow}` : "none",
-      }} />
-
       <div style={{ position: "relative", zIndex: 1 }}>
         {loading ? (
           <>
@@ -130,9 +95,7 @@ function KpiCard({
                 {label}
               </span>
               <div style={{
-                opacity: hovered ? 1 : 0.5,
-                transition: "opacity 0.18s ease, transform 0.18s var(--ease-spring)",
-                transform: hovered ? "scale(1.15)" : "scale(1)",
+                opacity: 0.78,
                 color: accentColor,
                 width: 26,
                 height: 26,
@@ -183,7 +146,7 @@ function SevBadge({ sev }: { sev: keyof typeof SEV }) {
       fontFamily: "var(--font-body)", fontSize: 10, fontWeight: 700, letterSpacing: 0.5,
       color: s.color, background: s.bg, borderRadius: 5, padding: "2px 8px",
       textTransform: "uppercase" as const,
-      transition: "transform 0.15s var(--ease-spring)",
+      transition: "transform 0.15s var(--ease-out)",
     }}>
       {sev}
     </span>
@@ -210,7 +173,7 @@ const STATUS_STYLE: Record<string, { color: string; bg: string }> = {
   OPEN:           { color: "var(--sev-critical-color)", bg: "var(--sev-critical-bg)" },
   IN_REVIEW:      { color: "var(--sev-high-color)",     bg: "var(--sev-high-bg)"     },
   IN_REMEDIATION: { color: "var(--accent)",             bg: "var(--accent-ghost)"    },
-  VERIFIED:       { color: "var(--accent)",             bg: "var(--accent-ghost)"    },
+  VERIFIED:       { color: "var(--nominal-color)",     bg: "var(--nominal-bg)"      },
   CLOSED:         { color: "var(--text-muted)",         bg: "var(--bg-surface)"      },
 };
 
@@ -295,8 +258,8 @@ export function DashboardCharts() {
             TASK 9: "Total Findings" and "Active Engagements" removed — they restated
             the LiveOverview ledger's open-findings total and engagement count. The
             two below are unique to this section (not on the ledger) and are kept. */}
-        <KpiCard label="Assets Discovered"  value={isLoading ? 0 : totalAssets}       icon={<Users         size={14} />} accentColor="var(--sev-medium-color)"   accentGlow="var(--sev-medium-glow)"   delay={0}   loading={isLoading} />
-        <KpiCard label="Validated Findings" value={isLoading ? 0 : validatedCount}    icon={<ShieldAlert   size={14} />} accentColor="var(--sev-high-color)"     accentGlow="var(--sev-high-glow)"     delay={50}  loading={isLoading} />
+        <KpiCard label="Assets Discovered"  value={isLoading ? 0 : totalAssets}       icon={<Users         size={14} />} accentColor="var(--sev-medium-color)" delay={0}  loading={isLoading} />
+        <KpiCard label="Validated Findings" value={isLoading ? 0 : validatedCount}    icon={<ShieldAlert   size={14} />} accentColor="var(--sev-high-color)"   delay={50} loading={isLoading} />
       </div>
 
       {/* ── Charts Row ── */}

@@ -21,6 +21,7 @@ from fastapi import HTTPException
 
 from app.routers import remediation
 from app.schemas.auth import CurrentUser
+from app.schemas.remediation import RemediationPlanOut
 
 
 def _operator() -> CurrentUser:
@@ -114,6 +115,8 @@ class TestGetRemediation:
         assert res["cached"] is False
         assert res["reviewed"] is False
         assert res["plan"]["steps"]
+        validated = RemediationPlanOut.model_validate(res)
+        assert validated.plan.steps[0].title
 
     def test_cached_ai_on_hit(self):
         row = SimpleNamespace(reviewed=True, source="ai", model="claude-x",
@@ -125,6 +128,10 @@ class TestGetRemediation:
         assert res["cached"] is True
         assert res["reviewed"] is True
         assert res["model"] == "claude-x"
+        # Older cached rows are normalized by the response contract rather than
+        # failing the entire detail view on a newly-added presentation field.
+        validated = RemediationPlanOut.model_validate(res)
+        assert validated.plan.steps[0].title == "Remediation step"
 
     def test_cross_tenant_is_404(self):
         db = _db_scalar(None)                       # tenant-scoped finding query misses

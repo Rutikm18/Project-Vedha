@@ -49,3 +49,28 @@ def test_missing_optionals_do_not_crash():
                           confidence=None, asset_criticality=None,
                           internet_facing=None, auth_enforced=None)
     assert 0 <= r <= 1000
+
+
+def test_distinct_high_risks_do_not_collapse_at_the_ceiling():
+    common = dict(
+        severity="critical",
+        kev=True,
+        exploit_validated=True,
+        verification_state="confirmed",
+        confidence=100,
+        asset_criticality="critical",
+        internet_facing=True,
+        auth_enforced=False,
+    )
+    maximum = compute_risk_rank(cvss_score=10.0, epss_score=1.0, **common)
+    elevated = compute_risk_rank(cvss_score=9.0, epss_score=0.3, **common)
+
+    assert elevated < maximum
+    assert maximum == 1000
+
+
+def test_severity_remains_an_impact_signal_without_cvss():
+    critical = _rank(severity="critical", cvss_score=None)
+    medium = _rank(severity="medium", cvss_score=None)
+
+    assert critical > medium

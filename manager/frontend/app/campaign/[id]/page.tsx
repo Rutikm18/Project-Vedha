@@ -217,7 +217,7 @@ function Totals({ icon: Icon, label, value }: { icon: typeof Server; label: stri
 }
 
 const STYLES = `
-.cmp-page { display: flex; flex-direction: column; gap: 16px; max-width: 920px; }
+.cmp-page { display: flex; flex-direction: column; gap: 16px; width: 100%; max-width: 1180px; margin: 0 auto; }
 .cmp-back { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-secondary);
   text-decoration: none; padding: 5px 10px; border: 1px solid var(--border-default); border-radius: var(--radius-md); }
 .cmp-back:hover { color: var(--text-primary); background: var(--bg-hover); }

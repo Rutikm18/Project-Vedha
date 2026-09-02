@@ -30,6 +30,10 @@ export const GET = withBackend(async (req, { token }) => {
     url.searchParams.get("engagement_id") ??
     url.searchParams.get("engagementId") ??
     undefined;
+  const agentId =
+    url.searchParams.get("agent_id") ??
+    url.searchParams.get("agentId") ??
+    undefined;
   const rawSeverity = url.searchParams.get("severity");
   // Sanitize: only forward valid enum values; skip garbage to avoid 422
   const severity = rawSeverity && VALID_SEVERITIES.has(rawSeverity.toUpperCase())
@@ -55,6 +59,7 @@ export const GET = withBackend(async (req, { token }) => {
       token,
       query: {
         engagement_id: engagementId,
+        agent_id: agentId,
         severity,
         status,
         search,
@@ -89,7 +94,7 @@ export const GET = withBackend(async (req, { token }) => {
   for (let page = 1; page <= MAX_PAGES; page++) {
     const data = await backend<{ items?: any[]; pages?: number } | any[]>("/findings", {
       token,
-      query: { engagement_id: engagementId, severity, page, page_size: PAGE_SIZE },
+      query: { engagement_id: engagementId, agent_id: agentId, severity, page, page_size: PAGE_SIZE },
     });
     const items = Array.isArray(data) ? data : data.items ?? [];
     all.push(...items);

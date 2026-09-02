@@ -9,6 +9,7 @@ from fastapi import HTTPException
 
 from app.models.enums import FindingStatus
 from app.routers.findings import reopen_finding
+from app.schemas.finding import FindingReopen
 
 
 def _db_with(finding):
@@ -28,12 +29,19 @@ async def test_reopen_remediated_finding_sets_open_and_audits():
     user = SimpleNamespace(tenant_id=uuid.uuid4(), user_id=uuid.uuid4())
     db = _db_with(finding)
 
-    result = await reopen_finding(finding.id, db, user)
+    result = await reopen_finding(
+        finding.id,
+        db,
+        user,
+        FindingReopen(reason="Exposure returned in the verification scan"),
+    )
 
     assert result.status == FindingStatus.open
     assert finding.reopened_count == 1
     assert finding.resolution_miss_count == 0
     assert finding.evidence["reopened_by"] == str(user.user_id)
+    event = db.add.call_args.args[0]
+    assert event.detail["reason"] == "Exposure returned in the verification scan"
 
 
 @pytest.mark.asyncio

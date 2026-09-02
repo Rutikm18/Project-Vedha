@@ -27,7 +27,7 @@ setTimeout(function(){document.documentElement.classList.add('theme-transition')
           }}
         />
       </head>
-      <body className="antialiased">
+      <body className="antialiased" suppressHydrationWarning>
         <QueryProvider>
           <ThemeProvider>
             <ToastProvider>
