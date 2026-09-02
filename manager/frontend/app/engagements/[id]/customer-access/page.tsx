@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { ArrowLeft, UserPlus, KeyRound, ServerCog, Loader2, Check, X } from "lucide-react";
+import { RefreshButton } from "../../../../components/RefreshButton";
 
 async function ca<T>(id: string, path: string, opts: { method?: string; body?: unknown } = {}): Promise<T> {
   const res = await fetch(`/api/engagements/${id}/customer-access${path}`, {
@@ -69,7 +70,13 @@ export default function CustomerAccessPage() {
       <Link href={`/engagements/${id}`} className="mb-4 inline-flex items-center gap-1 text-sm text-slate-500 hover:text-slate-800">
         <ArrowLeft className="h-4 w-4" /> Back to engagement
       </Link>
-      <h1 className="text-xl font-semibold text-slate-900">Customer Access</h1>
+      <div className="flex items-start justify-between gap-4">
+        <h1 className="text-xl font-semibold text-slate-900">Customer Access</h1>
+        {/* This page assigns the vedha-agent, so it is the one most likely to be
+            read before the enrollment write has landed. It renders outside
+            PageShell, which is where every other page gets its refresh control. */}
+        <RefreshButton size={30} onBeforeRefresh={() => qc.invalidateQueries()} />
+      </div>
       <p className="mb-6 text-sm text-slate-500">Provision the customer portal login, assign the vedha-agent, and review scan requests.</p>
 
       {note && <div className="mb-4 rounded-md bg-slate-100 px-4 py-2 text-sm text-slate-700">{note}</div>}

@@ -161,14 +161,88 @@ def _banner_confirms_backdoor(banner: str | None) -> bool:
                                 "backdoor", "cobaltstrike", "beacon"))
 
 
-def classify_port(port: int, banner: str | None = None) -> PortRisk | None:
-    """Map an open TCP port (+ optional banner) to its risk class, or None if the
-    port isn't independently interesting. Backdoor classification wins over all."""
-    if port in _BACKDOOR or _banner_confirms_backdoor(banner):
-        name = _BACKDOOR.get(port, "interactive shell suggested by banner")
+# service_banner's soft-matched `service` label -> the risk class it PROVES on
+# any port. Stronger than the port number: the probe observed the protocol.
+#   shell   — a bash/cmd prompt answered the socket: a bind shell, whatever the port
+#   telnet  — IAC negotiation / bare login prompt: cleartext credentials
+_SERVICE_RISK = {
+    "shell":  ("backdoor",  "interactive shell answered the socket", "high"),
+    "telnet": ("cleartext", "Telnet / cleartext login prompt", "high"),
+}
+
+
+# ── observation beats the port-number hypothesis ──────────────────────────────
+# A catalog entry is a HYPOTHESIS ("something on 7000 is probably Cassandra").
+# When service_banner positively identifies a DIFFERENT, well-known product that
+# legitimately occupies that port, the hypothesis is disproven and the finding is a
+# false positive. Real case that motivated this: macOS ships an AirPlay receiver on
+# 5000 and 7000, so a clean laptop reported "Docker registry exposed" and
+# "Cassandra internode exposed" — two high/medium findings, both wrong, on every
+# Mac in scope.
+#
+# Keyed by port -> normalized product/service tokens that mean "not the risky
+# service this port stands for". Deliberately NARROW: only products that are
+# unambiguous and common enough to matter. It suppresses ONLY the port-number
+# guess; a backdoor or cleartext verdict driven by observed protocol is never
+# suppressed here (those are decided before this check).
+_BENIGN_OCCUPANTS: dict[int, set[str]] = {
+    5000: {"airtunes", "airplay"},      # macOS AirPlay Receiver, not a Docker registry
+    7000: {"airtunes", "airplay"},      # macOS AirPlay Receiver, not Cassandra
+    5001: {"airtunes", "airplay"},
+    8080: {"cups"},                     # a print server, not an app admin UI
+    631:  {"cups"},
+}
+
+
+def _normalized(*values: str | None) -> str:
+    return "".join(ch for ch in "".join(v or "" for v in values).lower() if ch.isalnum())
+
+
+def contradicts_port_hypothesis(port: int, product: str | None,
+                                service: str | None = None) -> bool:
+    """True when an identified product proves the catalog's port guess wrong."""
+    expected = _BENIGN_OCCUPANTS.get(port)
+    if not expected:
+        return False
+    seen = _normalized(product, service)
+    return any(token in seen for token in expected)
+
+
+def classify_port(port: int, banner: str | None = None,
+                  service: str | None = None,
+                  basic_auth_cleartext: bool = False,
+                  product: str | None = None) -> PortRisk | None:
+    """Map an open TCP port (+ optional banner, the probe's soft-matched service
+    label and product, and its Basic-auth-over-plaintext flag) to its risk class,
+    or None if the port isn't independently interesting.
+
+    Evidence order: observed-protocol risk (a shell is a shell on any port) beats
+    everything; then a product identification that CONTRADICTS the port's meaning
+    suppresses it; only then does the port-number catalog apply."""
+    svc_risk = _SERVICE_RISK.get((service or "").lower())
+    if port in _BACKDOOR or _banner_confirms_backdoor(banner) or (
+            svc_risk and svc_risk[0] == "backdoor"):
+        name = _BACKDOOR.get(port) or (svc_risk[1] if svc_risk else None) \
+            or "interactive shell suggested by banner"
         return PortRisk("backdoor", name, "high", "CWE-506", "T1571",
                         "Non-standard listener commonly used for backdoors/C2 — "
                         "identify the owning process; treat as compromise until cleared.")
+    if svc_risk and svc_risk[0] == "cleartext" and port not in _CLEARTEXT:
+        # Telnet moved off 23 is still telnet — the probe saw the protocol.
+        return PortRisk("cleartext", svc_risk[1], svc_risk[2], "CWE-319", "T1040",
+                        "Legacy/cleartext protocol — credentials and data are "
+                        "sniffable; replace with an encrypted equivalent.")
+    if basic_auth_cleartext and port not in _CLEARTEXT:
+        return PortRisk("cleartext", "HTTP Basic authentication over plaintext", "medium",
+                        "CWE-319", "T1040",
+                        "The service challenges for Basic credentials on a connection "
+                        "that never negotiated TLS — every login is sniffable. Serve it "
+                        "over HTTPS or put it behind an authenticating proxy.")
+    # Everything below is a port-number hypothesis. A positive identification of a
+    # different, known-benign occupant disproves it, so report nothing rather than
+    # a confidently-wrong service name.
+    if contradicts_port_hypothesis(port, product, service):
+        return None
     if port in _CONTAINER:
         return PortRisk("container", _CONTAINER[port], "high", "CWE-306", "T1610",
                         "Container/orchestration control plane — an unauthenticated "

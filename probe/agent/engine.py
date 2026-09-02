@@ -140,6 +140,14 @@ _SCAN_MAP = {
     "exposure_matrix":      ("it",  port_scan_mode,            None),
 }
 
+# scan_types that also run IPv6 neighbour discovery. A /24 names IPv4 addresses
+# only, so an IPv6-only host on the same segment is invisible to every stage of an
+# IPv4 scan. The full assessments sweep for it; targeted/triage jobs do not, since
+# they are scoped to a question the operator already framed in IPv4 terms.
+# Discovered addresses are still SCOPE-CHECKED before anything probes them (see
+# workflow_engine's Gate 1b) — out-of-scope neighbours are reported, never scanned.
+_DISCOVER_IPV6_SCAN_TYPES = {"network_va", "assessment", "vuln_scan", "discovery"}
+
 # scan_type → a pinned port-coverage profile that overrides the intensity's own
 # choice (see workflow/intensity.py). A full-port audit is the whole TCP space no
 # matter how light/deep the operator set the intensity.
@@ -785,6 +793,7 @@ def run_scan(scan_type: str, params: dict,
     # scanner instead of tens of thousands of connect() calls per host. It falls
     # back to a connect scan off privileged Linux, so behavior is identical here.
     scan_method = _scan_method_for(port_override)
+    discover_ipv6 = scan_type in _DISCOVER_IPV6_SCAN_TYPES
     trace = ExecutionTrace(planned_components(
         profile,
         service_filter=mode.service_filter,
@@ -792,6 +801,7 @@ def run_scan(scan_type: str, params: dict,
         ssh_enabled=bool(tuning.get("ssh_creds")),
         windows_enabled=bool(tuning.get("win_creds")),
         stage_ceiling=mode.stage_ceiling,
+        discover_ipv6=discover_ipv6,
     ))
 
     try:
@@ -806,6 +816,7 @@ def run_scan(scan_type: str, params: dict,
                     scan_method=scan_method,
                     cache=cache,
                     trace=trace,
+                    discover_ipv6=discover_ipv6,
                     **tuning,
                 ),
                 cancellation_event,

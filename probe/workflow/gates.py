@@ -19,9 +19,39 @@ from scanner.db_scanner import DEFAULT_DB_PORTS
 from .asset import Asset
 
 # --- verbatim from pipeline.py ------------------------------------------
-IT_PORTS = [21, 22, 23, 25, 53, 80, 110, 111, 135, 139, 143, 389, 443, 445, 465, 587,
+_IT_BASE_PORTS = [21, 22, 23, 25, 53, 80, 110, 111, 135, 139, 143, 389, 443, 445, 465, 587,
            623, 636, 993, 995, 1433, 1521, 2049, 2375, 3306, 3389, 5060, 5432, 5900,
            5985, 5986, 6379, 6443, 8000, 8080, 8443, 9200, 10250, 11211, 27017]
+
+# --- risk-catalog coverage (the collection half of the exposed-service rules) --
+# MIRRORS manager/detection_engine/port_intel.py. Every port the manager can raise
+# an exposed-service finding on must be SCANNED here, or the rule is dead code: the
+# detector reads the open-port set, so a port nobody probed can never be reported.
+#
+# This was a real, total blind spot. The base catalog above covers 40 ports and the
+# risk catalog names 85; 55 were never swept — including EVERY backdoor/C2 port
+# (4444 Meterpreter, 31337 Back Orifice, 12345 NetBus, 6667 IRC C2, 2323 Mirai,
+# 5555 ADB), etcd, Kafka, Cassandra, Zookeeper, the r-services and X11. So
+# POSTURE-EXPOSED-BACKDOOR — a HIGH-severity rule — could not fire on a default
+# network_va no matter what was listening.
+#
+# tests/test_risk_port_coverage.py asserts probe coverage ⊇ manager catalog, the
+# same governed-data discipline as scanner_registry ↔ VALIDATED_SCANNERS. Add a
+# port there and this list must grow with it.
+VA_RISK_PORTS = [
+    69, 79,                                  # tftp, finger (cleartext legacy)
+    512, 513, 514,                           # r-services (rexec/rlogin/rsh)
+    1080,                                    # socks proxy — common C2 pivot
+    1337, 4444, 4445, 4446, 5555, 6666, 6667, 6668, 6669, 7547, 9999,
+    12345, 12346, 20034, 27374, 30303, 31337, 2323,   # backdoor / C2 / RAT / Mirai
+    1434, 3050, 5433, 8529, 50000,           # mssql-udp-browser, firebird, pg-alt, arangodb, db2
+    2181, 5601, 5984, 7000, 7001, 8086, 9042, 9092, 9300, 27018,  # datastores/APIs
+    2376, 2379, 2380, 10255,                 # docker-tls, etcd client/peer, kubelet ro
+    3283, 5800, 5902, 5903, 6000,            # ARD, vnc-http, vnc:2/:3, X11
+    8006, 8088, 9090, 10000, 15672, 16010, 50070,     # admin UIs
+]
+
+IT_PORTS = sorted(set(_IT_BASE_PORTS) | set(VA_RISK_PORTS))
 IOT_PORTS = [22, 23, 80, 443, 554, 1883, 8883, 5683, 8080, 8443, 8888, 9000, 9100,
             49152, 62078, 5000, 8081, 37777]
 TLS_PORTS = {443, 8443, 993, 995, 465, 636, 989, 990, 5986}
@@ -84,6 +114,17 @@ def gate_3_port_scan(asset: Asset, profile: str) -> bool:
 
 def gate_4_service_banner(asset: Asset) -> bool:
     return len(asset.open_ports_for_deep_scan()) > 0
+
+
+def gate_4b_os_fingerprint(asset: Asset, profile: str) -> bool:
+    """OS identity for a host already proven alive. Runs on the SAME evidence the
+    port stage produced — no extra reachability requirement — because the OS is an
+    inventory fact about the host, not about a service: device classification
+    weights it, and the manager's rules read it. Passive (OT) profiles never
+    actively probe, so they are excluded."""
+    if gate_0_is_passive_profile(profile):
+        return False
+    return asset.last_seen_alive is not None
 
 
 def gate_5_branch_eligible(branch: str, asset: Asset, profile: str,

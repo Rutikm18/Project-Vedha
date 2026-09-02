@@ -22,9 +22,8 @@
 import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
-import { useQuery } from "@tanstack/react-query";
 import { Clock } from "lucide-react";
-import { fetchJson } from "../../lib/fetcher";
+import { useConsoleQuery } from "../../lib/console-source";
 import { SkeletonRows, ErrorState, EmptyState } from "../states/DataState";
 import { SEVERITY, Severity, toSeverity } from "../../lib/severity";
 import { SeverityChip, Meter } from "../console/Primitives";
@@ -180,9 +179,7 @@ function SlaRowView({ item }: { item: SlaItem }) {
 /* ----------------------------------------------------------------- card */
 
 export function SlaStatus() {
-  const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ["sla-summary"],
-    queryFn: () => fetchJson<SlaSummary>("/api/findings/sla-summary"),
+  const { data, isLoading, error, refetch } = useConsoleQuery<SlaSummary>("sla", {
     refetchInterval: 60_000,
   });
 

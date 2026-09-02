@@ -35,6 +35,7 @@ from enrichment_db import EpssDB, KevDB, load_epss, load_kev
 from ingest import IngestResult, ingest_files
 from matcher import match_candidate
 from models import Finding
+from exploitability import apply_to_findings as apply_exploitability
 from posture_rules import (PostureFinding, detect_all as detect_posture_all,
                            detect_all_traced, summarize_traces, verdict_for_rule)
 from verifier import deception_score, verify
@@ -133,6 +134,11 @@ def run_full_detection(jsonl_paths: list[str | Path], vuln_db: VulnDB | None = N
     here and the manager applies its strong detection to them centrally.
     """
     suppression_audit: list[SuppressionRecord] = []
+    # Resolve the exploitation snapshots HERE, not only inside run_pipeline: the
+    # posture track needs them too, and leaving them None meant every posture
+    # finding silently skipped enrichment while the CVE track was enriched fine.
+    kev_db = kev_db or load_kev()
+    epss_db = epss_db or load_epss()
     cve_findings, ingest_result = run_pipeline(
         jsonl_paths, vuln_db=vuln_db, kev_db=kev_db, epss_db=epss_db,
         exposure=exposure, suppression_audit=suppression_audit, **kwargs)
@@ -141,6 +147,11 @@ def run_full_detection(jsonl_paths: list[str | Path], vuln_db: VulnDB | None = N
     # not-assessed). This is what makes "checked and clean" distinguishable from
     # "never actually checked".
     posture_findings, posture_traces = detect_all_traced(ingest_result, exposure=exposure)
+    # Exploitability: join CISA KEV + FIRST EPSS onto the POSTURE track too. The
+    # CVE track has had this since enrichment.py; posture findings — which are
+    # most of what a Windows estate actually returns — were ranked by a static
+    # severity constant with no notion of what attackers are using today.
+    posture_findings = apply_exploitability(posture_findings, kev_db, epss_db)
     posture_coverage = summarize_traces(posture_traces)
     posture_verdicts = {}
     for rid in sorted({t.rule_id for t in posture_traces}):

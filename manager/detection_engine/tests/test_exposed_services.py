@@ -128,3 +128,107 @@ def test_exposed_findings_flow_through_detect_posture():
     rule_ids = {f.rule_id for f in findings}
     assert "POSTURE-SMB-V1-ENABLED" in rule_ids            # the per-fact rule
     assert any(r.startswith("POSTURE-EXPOSED-BACKDOOR") for r in rule_ids)   # the new layer
+
+
+# ── observed-protocol evidence from service_banner (v3 soft-match) ────────────
+class TestObservedServiceSignals:
+    def test_shell_label_is_backdoor_on_any_port(self):
+        r = PI.classify_port(40123, banner="bash-5.1$ ", service="shell")
+        assert r.category == "backdoor" and r.severity == "high"
+        assert "shell" in r.service
+
+    def test_telnet_label_off_port_23_is_cleartext(self):
+        r = PI.classify_port(2323 + 40000, banner="\xff\xfd\x18login: ", service="telnet")
+        assert r.category == "cleartext" and r.severity == "high"
+
+    def test_basic_auth_over_plaintext_is_cleartext_medium(self):
+        r = PI.classify_port(8181, banner="HTTP/1.0 401 Unauthorized",
+                             basic_auth_cleartext=True)
+        assert r.category == "cleartext" and r.severity == "medium"
+        assert "Basic" in r.service
+
+    def test_plain_http_label_on_benign_port_is_none(self):
+        assert PI.classify_port(8181, banner="HTTP/1.1 200 OK", service="http") is None
+
+    def test_catalog_port_still_wins_its_own_class(self):
+        # 23 is already the cleartext catalog entry — no duplicate/override path.
+        assert PI.classify_port(23, service="telnet").category == "cleartext"
+
+    def test_detect_uses_service_label_and_flag(self):
+        a = _asset(
+            _fact("port_scan", 40123, {}),
+            _fact("service_banner", 40123, {"banner": "bash-5.1$ ", "service": "shell"}),
+            _fact("port_scan", 8181, {}),
+            _fact("service_banner", 8181, {"banner": "HTTP/1.0 401 Unauthorized",
+                                           "service": "http", "http_status": 401,
+                                           "http_auth_scheme": "basic",
+                                           "http_basic_auth_cleartext": True}),
+            _fact("port_scan", 8182, {}),
+            _fact("service_banner", 8182, {"banner": "HTTP/1.0 401 Unauthorized",
+                                           "service": "http", "tls": True,
+                                           "http_auth_scheme": "basic"}),
+        )
+        by = _by_port(P.detect_exposed_services(a))
+        assert by[40123].rule_id == "POSTURE-EXPOSED-BACKDOOR"
+        assert by[40123].evidence["observed_service"] == "shell"
+        assert by[8181].rule_id == "POSTURE-EXPOSED-CLEARTEXT"
+        assert 8182 not in by          # Basic over TLS is not cleartext
+
+
+def test_ingest_aliases_from_host_discovery_names():
+    from ingest import _extract_aliases
+    assert _extract_aliases("host_discovery", {"hostname": "fs01.corp.example",
+                                               "netbios_name": "FS01"}) == \
+        ["fs01.corp.example", "FS01"]
+    assert _extract_aliases("host_discovery", {"alive": True}) == []
+    assert _extract_aliases("host_discovery", {"hostname": 42, "netbios_name": " "}) == []
+
+
+# ── observation beats the port-number hypothesis ─────────────────────────────
+class TestPortHypothesisContradiction:
+    """A catalog entry is a guess about what a port means. When service_banner
+    positively identifies a different, known-benign occupant, the guess is
+    disproven — reporting it anyway is a confidently-wrong finding.
+
+    Real case: macOS ships an AirPlay receiver on 5000 and 7000, so every Mac in
+    scope produced "Docker registry exposed" (high) and "Cassandra internode
+    exposed" (medium). Both were false. Found by scanning a real host.
+    """
+
+    def test_airplay_suppresses_the_docker_registry_guess(self):
+        assert PI.classify_port(5000) is not None          # bare port still flags
+        assert PI.classify_port(5000, product="AirTunes", service="http") is None
+
+    def test_airplay_suppresses_the_cassandra_guess(self):
+        assert PI.classify_port(7000) is not None
+        assert PI.classify_port(7000, product="AirTunes", service="http") is None
+
+    def test_an_unrelated_product_does_not_suppress(self):
+        r = PI.classify_port(7000, product="nginx", service="http")
+        assert r is not None and r.category == "datastore"
+
+    def test_backdoor_evidence_is_never_suppressed(self):
+        """A shell answering on a benign-listed port is still a backdoor: the
+        contradiction check runs only on the port-number hypothesis."""
+        r = PI.classify_port(5000, banner="bash-5.1$ ", service="shell",
+                             product="AirTunes")
+        assert r is not None and r.category == "backdoor"
+
+    def test_contradiction_helper_is_case_and_format_insensitive(self):
+        assert PI.contradicts_port_hypothesis(5000, "AirTunes/940.23.1") is True
+        assert PI.contradicts_port_hypothesis(5000, "airplay") is True
+        assert PI.contradicts_port_hypothesis(5000, None) is False
+        assert PI.contradicts_port_hypothesis(9999, "AirTunes") is False
+
+    def test_detect_records_the_observed_product(self):
+        a = _asset(
+            _fact("port_scan", 2379, {}),
+            _fact("service_banner", 2379, {"banner": "HTTP/1.1 404", "service": "etcd",
+                                           "product": "etcd"}),
+            _fact("port_scan", 7000, {}),
+            _fact("service_banner", 7000, {"banner": "HTTP/1.1 403",
+                                           "service": "http", "product": "AirTunes"}),
+        )
+        by = _by_port(P.detect_exposed_services(a))
+        assert by[2379].evidence["observed_product"] == "etcd"
+        assert 7000 not in by            # AirPlay, not Cassandra

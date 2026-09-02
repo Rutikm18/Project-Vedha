@@ -23,9 +23,8 @@
  *    count next to it carries the same information.
  */
 import React from "react";
-import { useQuery } from "@tanstack/react-query";
 import { ShieldCheck, Radar } from "lucide-react";
-import { fetchJson } from "../../lib/fetcher";
+import { useConsoleQuery } from "../../lib/console-source";
 import { SkeletonRows, ErrorState } from "../states/DataState";
 import { SEVERITY, SEVERITY_ORDER, Severity } from "../../lib/severity";
 import { Readout } from "../console/Primitives";
@@ -59,14 +58,13 @@ function verdict(counts: Record<Severity, number>, total: number): { text: strin
 }
 
 export function LiveOverview({ onSelectSeverity }: { onSelectSeverity?: (s: Severity) => void }) {
-  const findings = useQuery({
-    queryKey: ["findings-summary"],
-    queryFn: () => fetchJson<FindingSummary>("/api/findings/summary"),
+  const findings = useConsoleQuery<FindingSummary>("findingsSummary", {
     refetchInterval: 60_000,
   });
-  const engagements = useQuery({
-    queryKey: ["engagements"],
-    queryFn: () => fetchJson<{ engagements: Engagement[] }>("/api/engagements"),
+  // Operator-only: a customer console has exactly one engagement, so this
+  // resolves to `unavailable` there and the engagement count is simply omitted
+  // rather than erroring.
+  const engagements = useConsoleQuery<{ engagements: Engagement[] }>("engagements", {
     refetchInterval: 60_000,
   });
 

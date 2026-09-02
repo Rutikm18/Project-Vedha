@@ -12,6 +12,7 @@ import { PageShell } from "../../../components/PageShell";
 import { DataState, EmptyState, SkeletonRows } from "../../../components/states/DataState";
 import { fetchJson, isUnauthorized } from "../../../lib/fetcher";
 import { useToast } from "../../../hooks/useToast";
+import { EngagementStatusControl, STATUS_COLOR } from "../../../components/EngagementStatusControl";
 
 type TabKey = "overview" | "findings" | "assets" | "activity";
 type Severity = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
@@ -79,13 +80,6 @@ const SEVERITY_COLOR: Record<Severity, string> = {
   HIGH: "var(--sev-high-color)",
   MEDIUM: "var(--sev-medium-color)",
   LOW: "var(--sev-low-color)",
-};
-
-const STATUS_COLOR: Record<string, string> = {
-  ACTIVE: "var(--accent)",
-  PLANNING: "var(--sev-info-color)",
-  COMPLETED: "var(--nominal-color)",
-  PAUSED: "var(--sev-medium-color)",
 };
 
 function displayDate(value: string) {
@@ -458,6 +452,16 @@ export default function EngagementDetailPage({ params }: { params: Promise<{ id:
   });
   const engagement = query.data?.engagement;
   const activity = query.data?.activity ?? [];
+
+  // Live scan state, shown BESIDE the status control rather than inside it: the
+  // stored status is the operator's intent, this is an observed fact.
+  const progress = useQuery({
+    queryKey: ["engagement-progress", id],
+    queryFn: () => fetchJson<{ job_stats?: { running?: number } }>(
+      `/api/engagements/${id}/campaign-progress`),
+    refetchInterval: 20_000,
+  });
+  const runningJobs = progress.data?.job_stats?.running ?? 0;
   const tabs = useMemo(() => [
     { key: "overview" as const, label: "Overview", icon: Shield },
     { key: "findings" as const, label: "Findings", icon: AlertTriangle, count: engagement?.findingCount },
@@ -471,6 +475,15 @@ export default function EngagementDetailPage({ params }: { params: Promise<{ id:
       subtitle={engagement ? `${engagement.client || "Unassigned client"} · ${engagement.assessor || "No assessor"}` : undefined}
       headerActions={
         <div className="engagement-actions">
+          {engagement && (
+            <EngagementStatusControl
+              engagementId={id}
+              status={engagement.status}
+              liveHint={runningJobs > 0
+                ? `${runningJobs} scan${runningJobs === 1 ? "" : "s"} running`
+                : null}
+            />
+          )}
           {engagement && <button type="button" className="btn btn-secondary engagement-action" onClick={() => setEditing(true)}><Pencil size={14} /> Edit details</button>}
           <ImportScanButton engagementId={id} />
           <Link className="btn btn-primary engagement-action" href={`/scan?engagementId=${encodeURIComponent(id)}`}><Play size={14} /> Start scan</Link>

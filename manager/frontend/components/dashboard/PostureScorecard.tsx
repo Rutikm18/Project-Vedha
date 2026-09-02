@@ -15,9 +15,8 @@
  * it never derives a grade or a delta the server didn't send.
  */
 import React from "react";
-import { useQuery } from "@tanstack/react-query";
 import { ShieldCheck } from "lucide-react";
-import { fetchJson } from "../../lib/fetcher";
+import { useConsoleQuery } from "../../lib/console-source";
 import { SkeletonRows, ErrorState, EmptyState } from "../states/DataState";
 import { Delta } from "../console/Primitives";
 
@@ -37,9 +36,7 @@ export interface Posture {
 }
 
 export function usePosture() {
-  return useQuery({
-    queryKey: ["posture"],
-    queryFn: () => fetchJson<Posture>("/api/analytics/posture"),
+  return useConsoleQuery<Posture>("posture", {
     refetchInterval: 60_000,
   });
 }

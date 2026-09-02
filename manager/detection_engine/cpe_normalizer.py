@@ -171,6 +171,37 @@ _HEADER_PRODUCT_TO_CPE: dict[str, tuple[str, str, str]] = {
     # is the CPE product — the key the NVD snapshot is indexed by.
     "dropbear": ("dropbear", "dropbear_ssh_project", "dropbear"),
     "thttpd": ("thttpd", "acme", "thttpd"),
+    # Products the probe's service_banner now names (its expanded soft-match
+    # table). Keys are the exact lower-cased `product` strings it emits. Where
+    # OSV's Debian ecosystem has a source package the lookup_key is that
+    # package; otherwise the CPE product, so only the NVD companion can match.
+    "apache tomcat": ("tomcat9", "apache", "tomcat"),
+    "jetty": ("jetty9", "eclipse", "jetty"),
+    "openresty": ("openresty", "openresty", "openresty"),
+    "caddy": ("caddy", "caddyserver", "caddy"),
+    "gunicorn": ("gunicorn", "gunicorn", "gunicorn"),
+    "werkzeug": ("python-werkzeug", "palletsprojects", "werkzeug"),
+    "squid": ("squid", "squid-cache", "squid"),
+    "cups": ("cups", "apple", "cups"),
+    "jenkins": ("jenkins", "jenkins", "jenkins"),
+    "docker": ("docker.io", "docker", "docker"),
+    "exim": ("exim4", "exim", "exim"),
+    "sendmail": ("sendmail", "sendmail", "sendmail"),
+    "postfix": ("postfix", "postfix", "postfix"),
+    "dovecot": ("dovecot", "dovecot", "dovecot"),
+    "cyrus imap": ("cyrus-imapd", "cyrus", "imap"),
+    "vsftpd": ("vsftpd", "vsftpd_project", "vsftpd"),
+    "proftpd": ("proftpd-dfsg", "proftpd", "proftpd"),
+    "pure-ftpd": ("pure-ftpd", "pureftpd", "pure-ftpd"),
+    "filezilla server": ("filezilla_server", "filezilla-project", "filezilla_server"),
+    "mariadb": ("mariadb", "mariadb", "mariadb"),
+    "mysql": ("mysql", "oracle", "mysql"),
+    "redis": ("redis", "redis", "redis"),
+    "elasticsearch": ("elasticsearch", "elastic", "elasticsearch"),
+    "memcached": ("memcached", "memcached", "memcached"),
+    "goahead-webs": ("goahead", "embedthis", "goahead"),
+    "rompager": ("rompager", "allegrosoft", "rompager"),
+    "mini_httpd": ("mini-httpd", "acme", "mini_httpd"),
 }
 
 # Web tech_hints[] (scanner_module/scanner/web_scanner.py's _TECH_HINTS keys)

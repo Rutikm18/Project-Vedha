@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from "react";
 import { Menu, Sun, Moon, LogOut, User } from "lucide-react";
 import { Sidebar } from "./Sidebar";
 import { useTheme } from "./ThemeProvider";
+import { RefreshButton } from "./RefreshButton";
 import { clearAuth } from "../lib/fetcher";
 
 interface PageShellProps {
@@ -13,10 +14,13 @@ interface PageShellProps {
   statusItems?: Array<{ label: string; value: string; color?: string; ariaLabel?: string }>;
   children: React.ReactNode;
   noPadding?: boolean;
+  /** Hide the header refresh control. For pages that already poll themselves —
+   *  a manual refresh there is redundant and invites a reload mid-update. */
+  hideRefresh?: boolean;
 }
 
 export function PageShell({
-  title, subtitle, headerActions, statusItems, children, noPadding,
+  title, subtitle, headerActions, statusItems, children, noPadding, hideRefresh,
 }: PageShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [utcTime, setUtcTime]         = useState("");
@@ -231,6 +235,10 @@ export function PageShell({
             })}
 
             <div className="vedha-page-header-divider" style={{ width: 0.5, height: 16, background: "var(--border-subtle)", flexShrink: 0 }} />
+
+            {/* Reload after a short delay — a newly enrolled vedha-agent lands in
+                the API a moment after the UI action, so an instant reload can miss it. */}
+            {!hideRefresh && <RefreshButton size={30} />}
 
             {/* Theme toggle — rotates icon on hover */}
             <button

@@ -8,12 +8,16 @@
 const ENG_STATUS_TO_UI: Record<string, string> = {
   draft: "PLANNING",
   active: "ACTIVE",
+  ongoing: "ONGOING",
+  running: "RUNNING",
   paused: "PAUSED",
   completed: "COMPLETED",
 };
 const ENG_STATUS_TO_API: Record<string, string> = {
   PLANNING: "draft",
   ACTIVE: "active",
+  ONGOING: "ongoing",
+  RUNNING: "running",
   PAUSED: "paused",
   COMPLETED: "completed",
   ARCHIVED: "completed",

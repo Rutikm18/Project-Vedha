@@ -6,11 +6,12 @@ import { Bug, ArrowUp, ArrowDown } from "lucide-react";
 import { PortalShell } from "../../../components/portal/PortalShell";
 import { portalApi, severityChip, SEVERITY_VAR, type PortalFinding } from "../../../lib/portal-client";
 import { DataState, SkeletonRows, EmptyState } from "../../../components/states/DataState";
+import { Timestamp } from "../../../components/portal/Timestamp";
 
 const SEVS = ["critical", "high", "medium", "low", "info"] as const;
 const SEV_ORDER: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
 
-type SortKey = "severity" | "cvss" | "risk" | "status";
+type SortKey = "severity" | "cvss" | "risk" | "status" | "first_seen";
 type SortDir = "asc" | "desc";
 
 /* Sortable column header — module-scoped so it isn't re-created each render. */
@@ -50,6 +51,11 @@ export default function PortalFindings() {
       if (sortKey === "severity") c = (SEV_ORDER[a.severity] ?? 9) - (SEV_ORDER[b.severity] ?? 9);
       else if (sortKey === "cvss") c = (a.cvss_score ?? -1) - (b.cvss_score ?? -1);
       else if (sortKey === "risk") c = (a.risk_score ?? -1) - (b.risk_score ?? -1);
+      else if (sortKey === "first_seen") {
+        // Undated findings sort oldest so they never masquerade as the newest.
+        c = (a.first_seen ? Date.parse(a.first_seen) : 0)
+          - (b.first_seen ? Date.parse(b.first_seen) : 0);
+      }
       else c = (a.status ?? "").localeCompare(b.status ?? "");
       return sortDir === "asc" ? c : -c;
     });
@@ -110,12 +116,13 @@ export default function PortalFindings() {
                   <SortHead k="cvss" label="CVSS" align="right" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
                   <SortHead k="risk" label="Risk" align="right" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
                   <SortHead k="status" label="Status" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
+                  <SortHead k="first_seen" label="First seen" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />
                 </tr>
               </thead>
               <tbody>
                 {visible.length === 0 ? (
                   <tr>
-                    <td colSpan={5} style={{ padding: "32px 16px", textAlign: "center",
+                    <td colSpan={6} style={{ padding: "32px 16px", textAlign: "center",
                       color: "var(--text-muted)", fontSize: 13 }}>
                       No findings match this filter.
                     </td>
@@ -143,6 +150,9 @@ export default function PortalFindings() {
                     <td className="num" style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-secondary)" }}>{f.cvss_score ?? "—"}</td>
                     <td className="num" style={{ padding: "12px 16px", textAlign: "right", color: "var(--text-secondary)" }}>{f.risk_score ?? "—"}</td>
                     <td style={{ padding: "12px 16px", color: "var(--text-muted)", textTransform: "capitalize" }}>{f.status}</td>
+                    <td style={{ padding: "12px 16px", color: "var(--text-secondary)", whiteSpace: "nowrap" }}>
+                      <Timestamp value={f.first_seen} relative block />
+                    </td>
                   </tr>
                 ))}
               </tbody>

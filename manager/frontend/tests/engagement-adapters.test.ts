@@ -66,3 +66,44 @@ describe("finding status adapters", () => {
     }
   });
 });
+
+describe("engagement status lifecycle", () => {
+  // The header status control PATCHes ONLY { status } — sending the whole edit
+  // form there would let a stale copy of scope or dates overwrite someone else's
+  // change. So a status-only patch has to survive the adapter intact and carry
+  // nothing else with it.
+  test("a status-only patch maps to the backend enum and touches nothing else", () => {
+    for (const [ui, api] of [
+      ["PLANNING", "draft"],
+      ["ONGOING", "ongoing"],
+      ["RUNNING", "running"],
+      ["ACTIVE", "active"],          // pre-0035 stored value, still round-trips
+      ["PAUSED", "paused"],
+      ["COMPLETED", "completed"],
+    ] as const) {
+      const body = toApiEngagementPatch({ status: ui });
+      assert.equal(body.status, api, `${ui} should map to ${api}`);
+      assert.deepEqual(Object.keys(body), ["status"],
+        `${ui} patch must carry only the status`);
+    }
+  });
+
+  test("every state the control offers is a state the backend accepts", () => {
+    // Guards the drift that would make a menu entry silently unsavable: the UI
+    // used PLANNING/ACTIVE/PAUSED/COMPLETED while the backend enum is
+    // draft/active/paused/completed, and only the adapter joins them.
+    const offered = ["PLANNING", "ONGOING", "RUNNING", "PAUSED", "COMPLETED"];
+    const backendEnum = new Set([
+      "draft", "active", "ongoing", "running", "paused", "completed",
+    ]);
+    for (const state of offered) {
+      const mapped = toApiEngagementPatch({ status: state }).status;
+      assert.ok(backendEnum.has(mapped),
+        `${state} maps to "${mapped}", which is not an EngagementStatus`);
+    }
+  });
+
+  test("an unknown status falls back to draft rather than sending garbage", () => {
+    assert.equal(toApiEngagementPatch({ status: "NONSENSE" }).status, "draft");
+  });
+});

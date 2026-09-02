@@ -7,6 +7,7 @@ import {
   ChevronDown, Clock, XCircle,
 } from "lucide-react";
 import { PortalShell } from "../../../components/portal/PortalShell";
+import { Timestamp } from "../../../components/portal/Timestamp";
 import { portalApi, type PortalScan, type PortalEngagement, type PortalUseCase } from "../../../lib/portal-client";
 import { DataState, SkeletonRows, EmptyState } from "../../../components/states/DataState";
 
@@ -69,18 +70,6 @@ function jobMeta(status: string, kind: string): JobMeta {
     default:
       return { label: status, color: "var(--text-muted)", phaseIdx: 0, active: false, terminal: null, explain: "" };
   }
-}
-
-function relTime(iso: string | null): string {
-  if (!iso) return "—";
-  const t = new Date(iso).getTime();
-  if (Number.isNaN(t)) return "—";
-  const s = Math.floor((Date.now() - t) / 1000);
-  if (s < 60) return "just now";
-  const m = Math.floor(s / 60); if (m < 60) return `${m}m ago`;
-  const h = Math.floor(m / 60); if (h < 24) return `${h}h ago`;
-  const d = Math.floor(h / 24); if (d < 30) return `${d}d ago`;
-  return new Date(iso).toLocaleDateString();
 }
 
 const prettyType = (s: string) => s.replace(/_/g, " ");
@@ -151,7 +140,7 @@ function JobCard({ scan }: { scan: PortalScan }) {
           background: `color-mix(in srgb, ${m.color} 12%, transparent)`,
           border: `var(--hairline) solid color-mix(in srgb, ${m.color} 30%, transparent)` }}>{m.label}</span>
         <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--text-muted)", fontFamily: "var(--font-mono)" }}>
-          {relTime(scan.at)}
+          <Timestamp value={scan.at} relative />
         </span>
         <ChevronDown size={15} color="var(--text-muted)"
           style={{ transition: "transform var(--dur-fast) var(--ease-out)",

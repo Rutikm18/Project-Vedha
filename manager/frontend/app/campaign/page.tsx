@@ -69,6 +69,7 @@ export default function CampaignListPage() {
 
   return (
     <PageShell
+      hideRefresh
       title="VA Campaigns"
       subtitle="Sequential, full-network vulnerability-assessment runs"
       statusItems={[

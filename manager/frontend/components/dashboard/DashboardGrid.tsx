@@ -18,12 +18,12 @@
  */
 import React, { useMemo } from "react";
 import { useRouter } from "next/navigation";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import { Gauge, Timer, Activity, Shield, GitCompareArrows, Cpu } from "lucide-react";
 import { Panel } from "../console/Primitives";
 import { Freshness } from "../console/Freshness";
 import { DataState, SkeletonRows, EmptyState } from "../states/DataState";
-import { fetchJson } from "../../lib/fetcher";
+import { useConsoleQuery } from "../../lib/console-source";
 import { LiveOverview } from "./LiveOverview";
 import { PostureScorecard } from "./PostureScorecard";
 import { SlaStatus } from "./SlaStatus";
@@ -73,11 +73,7 @@ function AgentRow({ agent }: { agent: Agent }) {
 }
 
 function AgentMonitor() {
-  const agentsQuery = useQuery({
-    queryKey: ["agents"],
-    queryFn: () => fetchJson<any[]>("/api/agents/register"),
-    refetchInterval: 15_000,
-  });
+  const agentsQuery = useConsoleQuery<any[]>("agents", { refetchInterval: 15_000 });
   const [agentsExpanded, setAgentsExpanded] = React.useState(false);
   const agents: Agent[] = useMemo(
     () => (agentsQuery.data ?? []).map((a: any): Agent => ({

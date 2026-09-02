@@ -1,0 +1,3232 @@
+[
+ {
+  "scanner": "host_discovery",
+  "target": "192.0.2.69",
+  "port": null,
+  "proto": null,
+  "status": "open",
+  "data": {
+   "alive": true,
+   "state": "confirmed_alive",
+   "confidence": 0.99,
+   "responding_ports": [
+    {
+     "port": 445,
+     "state": "open"
+    }
+   ],
+   "method": "tcp+arp",
+   "reason": "syn_ack",
+   "vantage": "host_discovery",
+   "evidence": [
+    {
+     "method": "tcp_connect",
+     "port": 445,
+     "result": "syn_ack",
+     "confidence": 0.97,
+     "observed_at": "2026-09-02T11:03:50.208953+00:00"
+    },
+    {
+     "method": "arp_neighbor",
+     "result": "cache",
+     "nud": "arp",
+     "mac": "00:00:5e:00:53:69",
+     "confidence": 0.55,
+     "observed_at": "2026-09-02T11:03:50.208953+00:00"
+    }
+   ],
+   "mac": "00:00:5e:00:53:69",
+   "randomized_mac": false,
+   "arp_state": "cache"
+  },
+  "evidence": "tcp 445/open; arp 00:00:5e:00:53:69 [cache]"
+ },
+ {
+  "scanner": "os_fingerprint",
+  "target": "192.0.2.69",
+  "port": null,
+  "proto": null,
+  "status": "open",
+  "data": {
+   "alive": true,
+   "icmp_reply": true,
+   "icmp_echo_reply": true,
+   "observed_ttl": 128,
+   "os_guess": "Windows",
+   "confidence": 0.97,
+   "stack_guess": null,
+   "signals": {
+    "initial_ttl": 128,
+    "observed_ttl": 128,
+    "ttl_source": "icmp_echo",
+    "hop_estimate": 0,
+    "support_count": 1
+   },
+   "os_release": "Windows 11 24H2",
+   "os_build": 26100,
+   "os_version": "10.0.26100",
+   "hostname": "DESKTOP-EXAMPLE"
+  },
+  "evidence": "ICMP echo reply ttl=128 -> Windows (conf 0.5); SMB2 NTLM build 26100 -> Windows 11 24H2 (conf 0.97)"
+ },
+ {
+  "scanner": "service_banner",
+  "target": "192.0.2.69",
+  "port": 22,
+  "proto": "tcp",
+  "status": "open",
+  "data": {
+   "banner": "SSH-2.0-OpenSSH_for_Windows_9.5",
+   "first_line": "SSH-2.0-OpenSSH_for_Windows_9.5",
+   "byte_len": 33,
+   "probe": "null",
+   "service": "ssh",
+   "product": "OpenSSH",
+   "version": "for_Windows_9.5",
+   "cpe": "cpe:2.3:a:openbsd:openssh:9.5:*:*:*:*:*:*:*",
+   "cpe_vendor": "openbsd",
+   "cpe_product": "openssh",
+   "cpe_version": "9.5"
+  },
+  "evidence": "ssh: OpenSSH for_Windows_9.5"
+ },
+ {
+  "scanner": "service_banner",
+  "target": "192.0.2.69",
+  "port": 135,
+  "proto": "tcp",
+  "status": "open",
+  "data": {
+   "banner": null
+  },
+  "evidence": "open, no banner returned"
+ },
+ {
+  "scanner": "service_banner",
+  "target": "192.0.2.69",
+  "port": 139,
+  "proto": "tcp",
+  "status": "open",
+  "data": {
+   "banner": "\u0083\u0000\u0000\u0001\u008f",
+   "first_line": "\u0083\u0000\u0000\u0001\u008f",
+   "byte_len": 5,
+   "probe": "http"
+  },
+  "evidence": "\u0083\u0000\u0000\u0001\u008f"
+ },
+ {
+  "scanner": "service_banner",
+  "target": "192.0.2.69",
+  "port": 445,
+  "proto": "tcp",
+  "status": "open",
+  "data": {
+   "banner": null
+  },
+  "evidence": "open, no banner returned"
+ },
+ {
+  "scanner": "service_banner",
+  "target": "192.0.2.69",
+  "port": 3389,
+  "proto": "tcp",
+  "status": "open",
+  "data": {
+   "banner": null
+  },
+  "evidence": "open, no banner returned"
+ },
+ {
+  "scanner": "service_banner",
+  "target": "192.0.2.69",
+  "port": 5985,
+  "proto": "tcp",
+  "status": "open",
+  "data": {
+   "banner": "HTTP/1.1 404 Not Found\r\nContent-Type: text/html; charset=us-ascii\r\nServer: Microsoft-HTTPAPI/2.0\r\nDate: Wed, 02 Sep 2026 11:03:54 GMT\r\nConnection: close\r\nContent-Length: 315\r\n\r\n<!DOCTYPE HTML PUBLIC \"-//W3C//DTD HTML 4.01//EN\"\"http://www.w3.org/TR/html4/strict.dtd\">\r\n<HTML><HEAD><TITLE>Not Found</TITLE>\r\n<META HTTP-EQUIV=\"Content-Type\" Content=\"text/html; charset=us-ascii\"></HEAD>\r\n<BODY><h2>Not Found</h2>\r\n<hr><p>HTTP Error 404. The requested resource is not found.</p>\r\n</BODY></HTML>",
+   "first_line": "HTTP/1.1 404 Not Found",
+   "byte_len": 492,
+   "probe": "http",
+   "http_status": 404,
+   "http_content_type": "text/html; charset=us-ascii",
+   "http_server": "Microsoft-HTTPAPI/2.0",
+   "http_title": "Not Found",
+   "service": "http",
+   "product": "Microsoft-HTTPAPI",
+   "version": "2.0",
+   "cpe_unmapped": "Microsoft-HTTPAPI 2.0"
+  },
+  "evidence": "http: Microsoft-HTTPAPI 2.0"
+ },
+ {
+  "scanner": "web_scan",
+  "target": "192.0.2.69",
+  "port": 5985,
+  "proto": "tcp",
+  "status": "open",
+  "data": {
+   "url": "http://192.0.2.69:5985/",
+   "tls": false,
+   "status": 404,
+   "final_url": "http://192.0.2.69:5985/",
+   "server": "Microsoft-HTTPAPI/2.0",
+   "x_powered_by": null,
+   "title": "Not Found",
+   "content_type": "text/html; charset=us-ascii",
+   "redirect_location": null,
+   "tech_hints": [],
+   "security_headers_present": [],
+   "security_headers_missing": [
+    "content-security-policy",
+    "strict-transport-security",
+    "x-frame-options",
+    "x-content-type-options",
+    "referrer-policy"
+   ],
+   "all_headers": {
+    "content-type": "text/html; charset=us-ascii",
+    "server": "Microsoft-HTTPAPI/2.0",
+    "date": "Wed, 02 Sep 2026 11:04:15 GMT",
+    "connection": "close",
+    "content-length": "315"
+   },
+   "allowed_methods": [],
+   "dangerous_methods": []
+  },
+  "evidence": "HTTP 404 server=Microsoft-HTTPAPI/2.0 title='Not Found'"
+ },
+ {
+  "scanner": "smb_scan",
+  "target": "192.0.2.69",
+  "port": 445,
+  "proto": "tcp",
+  "status": "open",
+  "data": {
+   "smbv1_enabled": true,
+   "smb2_supported": true,
+   "signing_parsed": true,
+   "signing_supported": true,
+   "signing_required": false,
+   "signing_enabled": true,
+   "negotiated_dialect": "0x0311",
+   "security_mode_raw": "0x0001",
+   "ntlm_challenge": true,
+   "negotiate_flags": "0xa28a8205",
+   "target_name": "DESKTOP-EXAMPLE",
+   "os_major": 10,
+   "os_minor": 0,
+   "os_build": 26100,
+   "ntlm_revision": 15,
+   "os_version": "10.0.26100",
+   "method": "smb2_ntlm_version",
+   "os_release": "Windows 11 24H2",
+   "os_confidence": 0.97,
+   "os_release_alt": "Windows Server 2025"
+  },
+  "evidence": "SMBv1=on, SMB2=on, signing_required=False, os=Windows 11 24H2 (build 26100, conf 0.97)"
+ },
+ {
+  "scanner": "ssh_scan",
+  "target": "192.0.2.69",
+  "port": 22,
+  "proto": "tcp",
+  "status": "open",
+  "data": {
+   "ssh": true,
+   "ssh_confirmed": true,
+   "banner": {
+    "protocol": "2.0",
+    "software": "OpenSSH_for_Windows_9.5",
+    "comments": null,
+    "raw": "SSH-2.0-OpenSSH_for_Windows_9.5"
+   },
+   "protoversion": "2.0",
+   "software": "OpenSSH_for_Windows_9.5",
+   "kex_algorithms": [
+    "curve25519-sha256",
+    "curve25519-sha256@libssh.org",
+    "ecdh-sha2-nistp256",
+    "ecdh-sha2-nistp384",
+    "ecdh-sha2-nistp521",
+    "diffie-hellman-group-exchange-sha256",
+    "diffie-hellman-group16-sha512",
+    "diffie-hellman-group18-sha512",
+    "diffie-hellman-group14-sha256",
+    "kex-strict-s-v00@openssh.com"
+   ],
+   "server_host_key_algorithms": [
+    "rsa-sha2-512",
+    "rsa-sha2-256",
+    "ecdsa-sha2-nistp256",
+    "ssh-ed25519"
+   ],
+   "encryption": [
+    "chacha20-poly1305@openssh.com",
+    "aes128-ctr",
+    "aes192-ctr",
+    "aes256-ctr",
+    "aes128-gcm@openssh.com",
+    "aes256-gcm@openssh.com"
+   ],
+   "mac": [
+    "umac-64-etm@openssh.com",
+    "umac-128-etm@openssh.com",
+    "hmac-sha2-256-etm@openssh.com",
+    "hmac-sha2-512-etm@openssh.com",
+    "umac-64@openssh.com",
+    "umac-128@openssh.com",
+    "hmac-sha2-256",
+    "hmac-sha2-512"
+   ],
+   "failures": [
+    {
+     "category": "kex",
+     "algorithm": "ecdh-sha2-nistp256",
+     "reasons": [
+      "using elliptic curves that are suspected as being backdoored by the U.S. National Security Agency"
+     ]
+    },
+    {
+     "category": "kex",
+     "algorithm": "ecdh-sha2-nistp384",
+     "reasons": [
+      "using elliptic curves that are suspected as being backdoored by the U.S. National Security Agency"
+     ]
+    },
+    {
+     "category": "kex",
+     "algorithm": "ecdh-sha2-nistp521",
+     "reasons": [
+      "using elliptic curves that are suspected as being backdoored by the U.S. National Security Agency"
+     ]
+    },
+    {
+     "category": "key",
+     "algorithm": "ecdsa-sha2-nistp256",
+     "reasons": [
+      "using elliptic curves that are suspected as being backdoored by the U.S. National Security Agency"
+     ]
+    }
+   ],
+   "warnings": [
+    {
+     "category": "kex",
+     "algorithm": "curve25519-sha256",
+     "reasons": [
+      "does not provide protection against post-quantum attacks"
+     ]
+    },
+    {
+     "category": "kex",
+     "algorithm": "curve25519-sha256@libssh.org",
+     "reasons": [
+      "does not provide protection against post-quantum attacks"
+     ]
+    },
+    {
+     "category": "kex",
+     "algorithm": "ecdh-sha2-nistp256",
+     "reasons": [
+      "does not provide protection against post-quantum attacks"
+     ]
+    },
+    {
+     "category": "kex",
+     "algorithm": "ecdh-sha2-nistp384",
+     "reasons": [
+      "does not provide protection against post-quantum attacks"
+     ]
+    },
+    {
+     "category": "kex",
+     "algorithm": "ecdh-sha2-nistp521",
+     "reasons": [
+      "does not provide protection against post-quantum attacks"
+     ]
+    },
+    {
+     "category": "kex",
+     "algorithm": "diffie-hellman-group-exchange-sha256",
+     "reasons": [
+      "does not provide protection against post-quantum attacks"
+     ]
+    },
+    {
+     "category": "kex",
+     "algorithm": "diffie-hellman-group16-sha512",
+     "reasons": [
+      "does not provide protection against post-quantum attacks"
+     ]
+    },
+    {
+     "category": "kex",
+     "algorithm": "diffie-hellman-group18-sha512",
+     "reasons": [
+      "does not provide protection against post-quantum attacks"
+     ]
+    },
+    {
+     "category": "kex",
+     "algorithm": "diffie-hellman-group14-sha256",
+     "reasons": [
+      "2048-bit modulus only provides 112-bits of symmetric strength",
+      "does not provide protection against post-quantum attacks"
+     ]
+    },
+    {
+     "category": "key",
+     "algorithm": "ecdsa-sha2-nistp256",
+     "reasons": [
+      "using weak random number generator could reveal the key"
+     ]
+    },
+    {
+     "category": "mac",
+     "algorithm": "umac-64-etm@openssh.com",
+     "reasons": [
+      "using small 64-bit tag size"
+     ]
+    },
+    {
+     "category": "mac",
+     "algorithm": "umac-64@openssh.com",
+     "reasons": [
+      "using encrypt-and-MAC mode",
+      "using small 64-bit tag size"
+     ]
+    },
+    {
+     "category": "mac",
+     "algorithm": "umac-128@openssh.com",
+     "reasons": [
+      "using encrypt-and-MAC mode"
+     ]
+    },
+    {
+     "category": "mac",
+     "algorithm": "hmac-sha2-256",
+     "reasons": [
+      "using encrypt-and-MAC mode"
+     ]
+    },
+    {
+     "category": "mac",
+     "algorithm": "hmac-sha2-512",
+     "reasons": [
+      "using encrypt-and-MAC mode"
+     ]
+    }
+   ],
+   "unknown": [],
+   "supports_strict_kex": true,
+   "terrapin_vulnerable": false
+  },
+  "evidence": "SSH confirmed: OpenSSH_for_Windows_9.5; 4 weak / 15 warn"
+ },
+ {
+  "scanner": "smb_enum_scan",
+  "target": "192.0.2.69",
+  "port": 445,
+  "proto": "tcp",
+  "status": "open",
+  "data": {
+   "smb": true,
+   "null_session": false,
+   "reason": "null_refused",
+   "detail": "SMB SessionError: code: 0xc0000022 - STATUS_ACCESS_DENIED - {Access Denied} A process has requested access to an object but has not been granted those access rights."
+  },
+  "evidence": "null_session=False shares=0 users=0"
+ },
+ {
+  "scanner": "msrpc_scan",
+  "target": "192.0.2.69",
+  "port": 135,
+  "proto": "tcp",
+  "status": "open",
+  "data": {
+   "msrpc": true,
+   "endpoint_count": 410,
+   "endpoints": [
+    {
+     "uuid": "51A227AE-825B-41F2-B4A9-1AC9557A1018 v1.0",
+     "binding": "ncacn_ip_tcp:192.0.2.69[49664]",
+     "annotation": "Ngc Pop Key Service",
+     "exe": ""
+    },
+    {
+     "uuid": "51A227AE-825B-41F2-B4A9-1AC9557A1018 v1.0",
+     "binding": "ncalrpc:[samss lpc]",
+     "annotation": "Ngc Pop Key Service",
+     "exe": ""
+    },
+    {
+     "uuid": "51A227AE-825B-41F2-B4A9-1AC9557A1018 v1.0",
+     "binding": "ncalrpc:[SidKey Local End Point]",
+     "annotation": "Ngc Pop Key Service",
+     "exe": ""
+    },
+    {
+     "uuid": "51A227AE-825B-41F2-B4A9-1AC9557A1018 v1.0",
+     "binding": "ncalrpc:[protected_storage]",
+     "annotation": "Ngc Pop Key Service",
+     "exe": ""
+    },
+    {
+     "uuid": "51A227AE-825B-41F2-B4A9-1AC9557A1018 v1.0",
+     "binding": "ncalrpc:[lsasspirpc]",
+     "annotation": "Ngc Pop Key Service",
+     "exe": ""
+    },
+    {
+     "uuid": "51A227AE-825B-41F2-B4A9-1AC9557A1018 v1.0",
+     "binding": "ncalrpc:[lsapolicylookup]",
+     "annotation": "Ngc Pop Key Service",
+     "exe": ""
+    },
+    {
+     "uuid": "51A227AE-825B-41F2-B4A9-1AC9557A1018 v1.0",
+     "binding": "ncalrpc:[LSA_EAS_ENDPOINT]",
+     "annotation": "Ngc Pop Key Service",
+     "exe": ""
+    },
+    {
+     "uuid": "51A227AE-825B-41F2-B4A9-1AC9557A1018 v1.0",
+     "binding": "ncalrpc:[LSA_IDPEXT_ENDPOINT]",
+     "annotation": "Ngc Pop Key Service",
+     "exe": ""
+    },
+    {
+     "uuid": "51A227AE-825B-41F2-B4A9-1AC9557A1018 v1.0",
+     "binding": "ncalrpc:[lsacap]",
+     "annotation": "Ngc Pop Key Service",
+     "exe": ""
+    },
+    {
+     "uuid": "51A227AE-825B-41F2-B4A9-1AC9557A1018 v1.0",
+     "binding": "ncalrpc:[LSARPC_ENDPOINT]",
+     "annotation": "Ngc Pop Key Service",
+     "exe": ""
+    },
+    {
+     "uuid": "51A227AE-825B-41F2-B4A9-1AC9557A1018 v1.0",
+     "binding": "ncalrpc:[securityevent]",
+     "annotation": "Ngc Pop Key Service",
+     "exe": ""
+    },
+    {
+     "uuid": "51A227AE-825B-41F2-B4A9-1AC9557A1018 v1.0",
+     "binding": "ncalrpc:[audit]",
+     "annotation": "Ngc Pop Key Service",
+     "exe": ""
+    },
+    {
+     "uuid": "51A227AE-825B-41F2-B4A9-1AC9557A1018 v1.0",
+     "binding": "ncacn_np:\\\\DESKTOP-EXAMPLE[\\pipe\\lsass]",
+     "annotation": "Ngc Pop Key Service",
+     "exe": ""
+    },
+    {
+     "uuid": "51A227AE-825B-41F2-B4A9-1AC9557A1018 v1.0",
+     "binding": "ncalrpc:[imsfk]",
+     "annotation": "Ngc Pop Key Service",
+     "exe": ""
+    },
+    {
+     "uuid": "51A227AE-825B-41F2-B4A9-1AC9557A1018 v1.0",
+     "binding": "ncalrpc:[clipsfk]",
+     "annotation": "Ngc Pop Key Service",
+     "exe": ""
+    },
+    {
+     "uuid": "8FB74744-B2FF-4C00-BE0D-9EF9A191FE1B v1.0",
+     "binding": "ncacn_ip_tcp:192.0.2.69[49664]",
+     "annotation": "Ngc Pop Key Service",
+     "exe": ""
+    },
+    {
+     "uuid": "8FB74744-B2FF-4C00-BE0D-9EF9A191FE1B v1.0",
+     "binding": "ncalrpc:[samss lpc]",
+     "annotation": "Ngc Pop Key Service",
+     "exe": ""
+    },
+    {
+     "uuid": "8FB74744-B2FF-4C00-BE0D-9EF9A191FE1B v1.0",
+     "binding": "ncalrpc:[SidKey Local End Point]",
+     "annotation": "Ngc Pop Key Service",
+     "exe": ""
+    },
+    {
+     "uuid": "8FB74744-B2FF-4C00-BE0D-9EF9A191FE1B v1.0",
+     "binding": "ncalrpc:[protected_storage]",
+     "annotation": "Ngc Pop Key Service",
+     "exe": ""
+    },
+    {
+     "uuid": "8FB74744-B2FF-4C00-BE0D-9EF9A191FE1B v1.0",
+     "binding": "ncalrpc:[lsasspirpc]",
+     "annotation": "Ngc Pop Key Service",
+     "exe": ""
+    },
+    {
+     "uuid": "8FB74744-B2FF-4C00-BE0D-9EF9A191FE1B v1.0",
+     "binding": "ncalrpc:[lsapolicylookup]",
+     "annotation": "Ngc Pop Key Service",
+     "exe": ""
+    },
+    {
+     "uuid": "8FB74744-B2FF-4C00-BE0D-9EF9A191FE1B v1.0",
+     "binding": "ncalrpc:[LSA_EAS_ENDPOINT]",
+     "annotation": "Ngc Pop Key Service",
+     "exe": ""
+    },
+    {
+     "uuid": "8FB74744-B2FF-4C00-BE0D-9EF9A191FE1B v1.0",
+     "binding": "ncalrpc:[LSA_IDPEXT_ENDPOINT]",
+     "annotation": "Ngc Pop Key Service",
+     "exe": ""
+    },
+    {
+     "uuid": "8FB74744-B2FF-4C00-BE0D-9EF9A191FE1B v1.0",
+     "binding": "ncalrpc:[lsacap]",
+     "annotation": "Ngc Pop Key Service",
+     "exe": ""
+    },
+    {
+     "uuid": "8FB74744-B2FF-4C00-BE0D-9EF9A191FE1B v1.0",
+     "binding": "ncalrpc:[LSARPC_ENDPOINT]",
+     "annotation": "Ngc Pop Key Service",
+     "exe": ""
+    },
+    {
+     "uuid": "8FB74744-B2FF-4C00-BE0D-9EF9A191FE1B v1.0",
+     "binding": "ncalrpc:[securityevent]",
+     "annotation": "Ngc Pop Key Service",
+     "exe": ""
+    },
+    {
+     "uuid": "8FB74744-B2FF-4C00-BE0D-9EF9A191FE1B v1.0",
+     "binding": "ncalrpc:[audit]",
+     "annotation": "Ngc Pop Key Service",
+     "exe": ""
+    },
+    {
+     "uuid": "8FB74744-B2FF-4C00-BE0D-9EF9A191FE1B v1.0",
+     "binding": "ncacn_np:\\\\DESKTOP-EXAMPLE[\\pipe\\lsass]",
+     "annotation": "Ngc Pop Key Service",
+     "exe": ""
+    },
+    {
+     "uuid": "8FB74744-B2FF-4C00-BE0D-9EF9A191FE1B v1.0",
+     "binding": "ncalrpc:[imsfk]",
+     "annotation": "Ngc Pop Key Service",
+     "exe": ""
+    },
+    {
+     "uuid": "8FB74744-B2FF-4C00-BE0D-9EF9A191FE1B v1.0",
+     "binding": "ncalrpc:[clipsfk]",
+     "annotation": "Ngc Pop Key Service",
+     "exe": ""
+    },
+    {
+     "uuid": "B25A52BF-E5DD-4F4A-AEA6-8CA7272A0E86 v2.0",
+     "binding": "ncacn_ip_tcp:192.0.2.69[49664]",
+     "annotation": "KeyIso",
+     "exe": ""
+    },
+    {
+     "uuid": "B25A52BF-E5DD-4F4A-AEA6-8CA7272A0E86 v2.0",
+     "binding": "ncalrpc:[samss lpc]",
+     "annotation": "KeyIso",
+     "exe": ""
+    },
+    {
+     "uuid": "B25A52BF-E5DD-4F4A-AEA6-8CA7272A0E86 v2.0",
+     "binding": "ncalrpc:[SidKey Local End Point]",
+     "annotation": "KeyIso",
+     "exe": ""
+    },
+    {
+     "uuid": "B25A52BF-E5DD-4F4A-AEA6-8CA7272A0E86 v2.0",
+     "binding": "ncalrpc:[protected_storage]",
+     "annotation": "KeyIso",
+     "exe": ""
+    },
+    {
+     "uuid": "B25A52BF-E5DD-4F4A-AEA6-8CA7272A0E86 v2.0",
+     "binding": "ncalrpc:[lsasspirpc]",
+     "annotation": "KeyIso",
+     "exe": ""
+    },
+    {
+     "uuid": "B25A52BF-E5DD-4F4A-AEA6-8CA7272A0E86 v2.0",
+     "binding": "ncalrpc:[lsapolicylookup]",
+     "annotation": "KeyIso",
+     "exe": ""
+    },
+    {
+     "uuid": "B25A52BF-E5DD-4F4A-AEA6-8CA7272A0E86 v2.0",
+     "binding": "ncalrpc:[LSA_EAS_ENDPOINT]",
+     "annotation": "KeyIso",
+     "exe": ""
+    },
+    {
+     "uuid": "B25A52BF-E5DD-4F4A-AEA6-8CA7272A0E86 v2.0",
+     "binding": "ncalrpc:[LSA_IDPEXT_ENDPOINT]",
+     "annotation": "KeyIso",
+     "exe": ""
+    },
+    {
+     "uuid": "B25A52BF-E5DD-4F4A-AEA6-8CA7272A0E86 v2.0",
+     "binding": "ncalrpc:[lsacap]",
+     "annotation": "KeyIso",
+     "exe": ""
+    },
+    {
+     "uuid": "B25A52BF-E5DD-4F4A-AEA6-8CA7272A0E86 v2.0",
+     "binding": "ncalrpc:[LSARPC_ENDPOINT]",
+     "annotation": "KeyIso",
+     "exe": ""
+    },
+    {
+     "uuid": "B25A52BF-E5DD-4F4A-AEA6-8CA7272A0E86 v2.0",
+     "binding": "ncalrpc:[securityevent]",
+     "annotation": "KeyIso",
+     "exe": ""
+    },
+    {
+     "uuid": "B25A52BF-E5DD-4F4A-AEA6-8CA7272A0E86 v2.0",
+     "binding": "ncalrpc:[audit]",
+     "annotation": "KeyIso",
+     "exe": ""
+    },
+    {
+     "uuid": "B25A52BF-E5DD-4F4A-AEA6-8CA7272A0E86 v2.0",
+     "binding": "ncacn_np:\\\\DESKTOP-EXAMPLE[\\pipe\\lsass]",
+     "annotation": "KeyIso",
+     "exe": ""
+    },
+    {
+     "uuid": "B25A52BF-E5DD-4F4A-AEA6-8CA7272A0E86 v2.0",
+     "binding": "ncalrpc:[imsfk]",
+     "annotation": "KeyIso",
+     "exe": ""
+    },
+    {
+     "uuid": "B25A52BF-E5DD-4F4A-AEA6-8CA7272A0E86 v2.0",
+     "binding": "ncalrpc:[clipsfk]",
+     "annotation": "KeyIso",
+     "exe": ""
+    },
+    {
+     "uuid": "12345778-1234-ABCD-EF00-0123456789AC v1.0",
+     "binding": "ncacn_ip_tcp:192.0.2.69[49664]",
+     "annotation": "",
+     "exe": "samsrv.dll"
+    },
+    {
+     "uuid": "12345778-1234-ABCD-EF00-0123456789AC v1.0",
+     "binding": "ncalrpc:[samss lpc]",
+     "annotation": "",
+     "exe": "samsrv.dll"
+    },
+    {
+     "uuid": "12345778-1234-ABCD-EF00-0123456789AC v1.0",
+     "binding": "ncalrpc:[SidKey Local End Point]",
+     "annotation": "",
+     "exe": "samsrv.dll"
+    },
+    {
+     "uuid": "12345778-1234-ABCD-EF00-0123456789AC v1.0",
+     "binding": "ncalrpc:[protected_storage]",
+     "annotation": "",
+     "exe": "samsrv.dll"
+    },
+    {
+     "uuid": "12345778-1234-ABCD-EF00-0123456789AC v1.0",
+     "binding": "ncalrpc:[lsasspirpc]",
+     "annotation": "",
+     "exe": "samsrv.dll"
+    },
+    {
+     "uuid": "12345778-1234-ABCD-EF00-0123456789AC v1.0",
+     "binding": "ncalrpc:[lsapolicylookup]",
+     "annotation": "",
+     "exe": "samsrv.dll"
+    },
+    {
+     "uuid": "12345778-1234-ABCD-EF00-0123456789AC v1.0",
+     "binding": "ncalrpc:[LSA_EAS_ENDPOINT]",
+     "annotation": "",
+     "exe": "samsrv.dll"
+    },
+    {
+     "uuid": "12345778-1234-ABCD-EF00-0123456789AC v1.0",
+     "binding": "ncalrpc:[LSA_IDPEXT_ENDPOINT]",
+     "annotation": "",
+     "exe": "samsrv.dll"
+    },
+    {
+     "uuid": "12345778-1234-ABCD-EF00-0123456789AC v1.0",
+     "binding": "ncalrpc:[lsacap]",
+     "annotation": "",
+     "exe": "samsrv.dll"
+    },
+    {
+     "uuid": "12345778-1234-ABCD-EF00-0123456789AC v1.0",
+     "binding": "ncalrpc:[LSARPC_ENDPOINT]",
+     "annotation": "",
+     "exe": "samsrv.dll"
+    },
+    {
+     "uuid": "12345778-1234-ABCD-EF00-0123456789AC v1.0",
+     "binding": "ncalrpc:[securityevent]",
+     "annotation": "",
+     "exe": "samsrv.dll"
+    },
+    {
+     "uuid": "12345778-1234-ABCD-EF00-0123456789AC v1.0",
+     "binding": "ncalrpc:[audit]",
+     "annotation": "",
+     "exe": "samsrv.dll"
+    },
+    {
+     "uuid": "12345778-1234-ABCD-EF00-0123456789AC v1.0",
+     "binding": "ncacn_np:\\\\DESKTOP-EXAMPLE[\\pipe\\lsass]",
+     "annotation": "",
+     "exe": "samsrv.dll"
+    },
+    {
+     "uuid": "12345778-1234-ABCD-EF00-0123456789AC v1.0",
+     "binding": "ncalrpc:[imsfk]",
+     "annotation": "",
+     "exe": "samsrv.dll"
+    },
+    {
+     "uuid": "12345778-1234-ABCD-EF00-0123456789AC v1.0",
+     "binding": "ncalrpc:[clipsfk]",
+     "annotation": "",
+     "exe": "samsrv.dll"
+    },
+    {
+     "uuid": "D95AFE70-A6D5-4259-822E-2C84DA1DDB0D v1.0",
+     "binding": "ncacn_ip_tcp:192.0.2.69[49665]",
+     "annotation": "",
+     "exe": "wininit.exe"
+    },
+    {
+     "uuid": "D95AFE70-A6D5-4259-822E-2C84DA1DDB0D v1.0",
+     "binding": "ncalrpc:[WindowsShutdown]",
+     "annotation": "",
+     "exe": "wininit.exe"
+    },
+    {
+     "uuid": "D95AFE70-A6D5-4259-822E-2C84DA1DDB0D v1.0",
+     "binding": "ncacn_np:\\\\DESKTOP-EXAMPLE[\\PIPE\\InitShutdown]",
+     "annotation": "",
+     "exe": "wininit.exe"
+    },
+    {
+     "uuid": "D95AFE70-A6D5-4259-822E-2C84DA1DDB0D v1.0",
+     "binding": "ncalrpc:[WMsgKRpc0B6590]",
+     "annotation": "",
+     "exe": "wininit.exe"
+    },
+    {
+     "uuid": "76F226C3-EC14-4325-8A99-6A46348418AF v1.0",
+     "binding": "ncalrpc:[WindowsShutdown]",
+     "annotation": "",
+     "exe": "winlogon.exe"
+    },
+    {
+     "uuid": "76F226C3-EC14-4325-8A99-6A46348418AF v1.0",
+     "binding": "ncacn_np:\\\\DESKTOP-EXAMPLE[\\PIPE\\InitShutdown]",
+     "annotation": "",
+     "exe": "winlogon.exe"
+    },
+    {
+     "uuid": "76F226C3-EC14-4325-8A99-6A46348418AF v1.0",
+     "binding": "ncalrpc:[WMsgKRpc0B6590]",
+     "annotation": "",
+     "exe": "winlogon.exe"
+    },
+    {
+     "uuid": "FC48CD89-98D6-4628-9839-86F7A3E4161A v1.0",
+     "binding": "ncalrpc:[dabrpc]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "FC48CD89-98D6-4628-9839-86F7A3E4161A v1.0",
+     "binding": "ncalrpc:[csebpub]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "FC48CD89-98D6-4628-9839-86F7A3E4161A v1.0",
+     "binding": "ncalrpc:[LRPC-034bcc70bbfcfe80f8]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "FC48CD89-98D6-4628-9839-86F7A3E4161A v1.0",
+     "binding": "ncalrpc:[LRPC-e0954313409dac913c]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "FC48CD89-98D6-4628-9839-86F7A3E4161A v1.0",
+     "binding": "ncalrpc:[LRPC-82b161fee4337b30b2]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "FC48CD89-98D6-4628-9839-86F7A3E4161A v1.0",
+     "binding": "ncalrpc:[LRPC-a53c8c0d7c5369f90d]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "FC48CD89-98D6-4628-9839-86F7A3E4161A v1.0",
+     "binding": "ncalrpc:[OLE2D6F0DA89BE17CE5CA8986D65490]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "FC48CD89-98D6-4628-9839-86F7A3E4161A v1.0",
+     "binding": "ncalrpc:[LRPC-96e6e25a49cdb18d3a]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "FC48CD89-98D6-4628-9839-86F7A3E4161A v1.0",
+     "binding": "ncalrpc:[actkernel]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "FC48CD89-98D6-4628-9839-86F7A3E4161A v1.0",
+     "binding": "ncalrpc:[umpo]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "D09BDEB5-6171-4A34-BFE2-06FA82652568 v1.0",
+     "binding": "ncalrpc:[csebpub]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "D09BDEB5-6171-4A34-BFE2-06FA82652568 v1.0",
+     "binding": "ncalrpc:[LRPC-034bcc70bbfcfe80f8]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "D09BDEB5-6171-4A34-BFE2-06FA82652568 v1.0",
+     "binding": "ncalrpc:[LRPC-e0954313409dac913c]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "D09BDEB5-6171-4A34-BFE2-06FA82652568 v1.0",
+     "binding": "ncalrpc:[LRPC-82b161fee4337b30b2]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "D09BDEB5-6171-4A34-BFE2-06FA82652568 v1.0",
+     "binding": "ncalrpc:[LRPC-a53c8c0d7c5369f90d]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "D09BDEB5-6171-4A34-BFE2-06FA82652568 v1.0",
+     "binding": "ncalrpc:[OLE2D6F0DA89BE17CE5CA8986D65490]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "D09BDEB5-6171-4A34-BFE2-06FA82652568 v1.0",
+     "binding": "ncalrpc:[LRPC-96e6e25a49cdb18d3a]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "D09BDEB5-6171-4A34-BFE2-06FA82652568 v1.0",
+     "binding": "ncalrpc:[actkernel]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "D09BDEB5-6171-4A34-BFE2-06FA82652568 v1.0",
+     "binding": "ncalrpc:[umpo]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "697DCDA9-3BA9-4EB2-9247-E11F1901B0D2 v1.0",
+     "binding": "ncalrpc:[LRPC-034bcc70bbfcfe80f8]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "697DCDA9-3BA9-4EB2-9247-E11F1901B0D2 v1.0",
+     "binding": "ncalrpc:[LRPC-e0954313409dac913c]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "697DCDA9-3BA9-4EB2-9247-E11F1901B0D2 v1.0",
+     "binding": "ncalrpc:[LRPC-82b161fee4337b30b2]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "697DCDA9-3BA9-4EB2-9247-E11F1901B0D2 v1.0",
+     "binding": "ncalrpc:[LRPC-a53c8c0d7c5369f90d]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "697DCDA9-3BA9-4EB2-9247-E11F1901B0D2 v1.0",
+     "binding": "ncalrpc:[OLE2D6F0DA89BE17CE5CA8986D65490]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "697DCDA9-3BA9-4EB2-9247-E11F1901B0D2 v1.0",
+     "binding": "ncalrpc:[LRPC-96e6e25a49cdb18d3a]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "697DCDA9-3BA9-4EB2-9247-E11F1901B0D2 v1.0",
+     "binding": "ncalrpc:[actkernel]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "697DCDA9-3BA9-4EB2-9247-E11F1901B0D2 v1.0",
+     "binding": "ncalrpc:[umpo]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "D09BDEB5-6171-4A34-BFE2-06FA82652568 v1.0",
+     "binding": "ncalrpc:[LRPC-e0954313409dac913c]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "D09BDEB5-6171-4A34-BFE2-06FA82652568 v1.0",
+     "binding": "ncalrpc:[LRPC-82b161fee4337b30b2]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "D09BDEB5-6171-4A34-BFE2-06FA82652568 v1.0",
+     "binding": "ncalrpc:[LRPC-a53c8c0d7c5369f90d]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "D09BDEB5-6171-4A34-BFE2-06FA82652568 v1.0",
+     "binding": "ncalrpc:[OLE2D6F0DA89BE17CE5CA8986D65490]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "D09BDEB5-6171-4A34-BFE2-06FA82652568 v1.0",
+     "binding": "ncalrpc:[LRPC-96e6e25a49cdb18d3a]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "D09BDEB5-6171-4A34-BFE2-06FA82652568 v1.0",
+     "binding": "ncalrpc:[actkernel]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "D09BDEB5-6171-4A34-BFE2-06FA82652568 v1.0",
+     "binding": "ncalrpc:[umpo]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "9B008953-F195-4BF9-BDE0-4471971E58ED v1.0",
+     "binding": "ncalrpc:[LRPC-e0954313409dac913c]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "9B008953-F195-4BF9-BDE0-4471971E58ED v1.0",
+     "binding": "ncalrpc:[LRPC-82b161fee4337b30b2]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "9B008953-F195-4BF9-BDE0-4471971E58ED v1.0",
+     "binding": "ncalrpc:[LRPC-a53c8c0d7c5369f90d]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "9B008953-F195-4BF9-BDE0-4471971E58ED v1.0",
+     "binding": "ncalrpc:[OLE2D6F0DA89BE17CE5CA8986D65490]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "9B008953-F195-4BF9-BDE0-4471971E58ED v1.0",
+     "binding": "ncalrpc:[LRPC-96e6e25a49cdb18d3a]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "9B008953-F195-4BF9-BDE0-4471971E58ED v1.0",
+     "binding": "ncalrpc:[actkernel]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "9B008953-F195-4BF9-BDE0-4471971E58ED v1.0",
+     "binding": "ncalrpc:[umpo]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "D09BDEB5-6171-4A34-BFE2-06FA82652568 v1.0",
+     "binding": "ncalrpc:[LRPC-82b161fee4337b30b2]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "D09BDEB5-6171-4A34-BFE2-06FA82652568 v1.0",
+     "binding": "ncalrpc:[LRPC-a53c8c0d7c5369f90d]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "D09BDEB5-6171-4A34-BFE2-06FA82652568 v1.0",
+     "binding": "ncalrpc:[OLE2D6F0DA89BE17CE5CA8986D65490]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "D09BDEB5-6171-4A34-BFE2-06FA82652568 v1.0",
+     "binding": "ncalrpc:[LRPC-96e6e25a49cdb18d3a]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "D09BDEB5-6171-4A34-BFE2-06FA82652568 v1.0",
+     "binding": "ncalrpc:[actkernel]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "D09BDEB5-6171-4A34-BFE2-06FA82652568 v1.0",
+     "binding": "ncalrpc:[umpo]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "0D47017B-B33B-46AD-9E18-FE96456C5078 v1.0",
+     "binding": "ncalrpc:[umpo]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "95406F0B-B239-4318-91BB-CEA3A46FF0DC v1.0",
+     "binding": "ncalrpc:[umpo]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "4ED8ABCC-F1E2-438B-981F-BB0E8ABC010C v1.0",
+     "binding": "ncalrpc:[umpo]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "0FF1F646-13BB-400A-AB50-9A78F2B7A85A v1.0",
+     "binding": "ncalrpc:[umpo]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "6982A06E-5FE2-46B1-B39C-A2C545BFA069 v1.0",
+     "binding": "ncalrpc:[umpo]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "082A3471-31B6-422A-B931-A54401960C62 v1.0",
+     "binding": "ncalrpc:[umpo]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "FAE436B0-B864-4A87-9EDA-298547CD82F2 v1.0",
+     "binding": "ncalrpc:[umpo]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "E53D94CA-7464-4839-B044-09A2FB8B3AE5 v1.0",
+     "binding": "ncalrpc:[umpo]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "178D84BE-9291-4994-82C6-3F909ACA5A03 v1.0",
+     "binding": "ncalrpc:[umpo]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "4DACE966-A243-4450-AE3F-9B7BCB5315B8 v2.0",
+     "binding": "ncalrpc:[umpo]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "2C7FD9CE-E706-4B40-B412-953107EF9BB0 v0.0",
+     "binding": "ncalrpc:[umpo]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "88ABCBC3-34EA-76AE-8215-767520655A23 v0.0",
+     "binding": "ncalrpc:[LRPC-a53c8c0d7c5369f90d]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "88ABCBC3-34EA-76AE-8215-767520655A23 v0.0",
+     "binding": "ncalrpc:[OLE2D6F0DA89BE17CE5CA8986D65490]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "88ABCBC3-34EA-76AE-8215-767520655A23 v0.0",
+     "binding": "ncalrpc:[LRPC-96e6e25a49cdb18d3a]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "88ABCBC3-34EA-76AE-8215-767520655A23 v0.0",
+     "binding": "ncalrpc:[actkernel]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "88ABCBC3-34EA-76AE-8215-767520655A23 v0.0",
+     "binding": "ncalrpc:[umpo]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "76C217BC-C8B4-4201-A745-373AD9032B1A v1.0",
+     "binding": "ncalrpc:[LRPC-a53c8c0d7c5369f90d]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "76C217BC-C8B4-4201-A745-373AD9032B1A v1.0",
+     "binding": "ncalrpc:[OLE2D6F0DA89BE17CE5CA8986D65490]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "76C217BC-C8B4-4201-A745-373AD9032B1A v1.0",
+     "binding": "ncalrpc:[LRPC-96e6e25a49cdb18d3a]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "76C217BC-C8B4-4201-A745-373AD9032B1A v1.0",
+     "binding": "ncalrpc:[actkernel]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "76C217BC-C8B4-4201-A745-373AD9032B1A v1.0",
+     "binding": "ncalrpc:[umpo]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "55E6B932-1979-45D6-90C5-7F6270724112 v1.0",
+     "binding": "ncalrpc:[LRPC-a53c8c0d7c5369f90d]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "55E6B932-1979-45D6-90C5-7F6270724112 v1.0",
+     "binding": "ncalrpc:[OLE2D6F0DA89BE17CE5CA8986D65490]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "55E6B932-1979-45D6-90C5-7F6270724112 v1.0",
+     "binding": "ncalrpc:[LRPC-96e6e25a49cdb18d3a]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "55E6B932-1979-45D6-90C5-7F6270724112 v1.0",
+     "binding": "ncalrpc:[actkernel]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "55E6B932-1979-45D6-90C5-7F6270724112 v1.0",
+     "binding": "ncalrpc:[umpo]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "857FB1BE-084F-4FB5-B59C-4B2C4BE5F0CF v1.0",
+     "binding": "ncalrpc:[OLE2D6F0DA89BE17CE5CA8986D65490]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "857FB1BE-084F-4FB5-B59C-4B2C4BE5F0CF v1.0",
+     "binding": "ncalrpc:[LRPC-96e6e25a49cdb18d3a]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "857FB1BE-084F-4FB5-B59C-4B2C4BE5F0CF v1.0",
+     "binding": "ncalrpc:[actkernel]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "857FB1BE-084F-4FB5-B59C-4B2C4BE5F0CF v1.0",
+     "binding": "ncalrpc:[umpo]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "20C40295-8DBA-48E6-AEBF-3E78EF3BB144 v2.0",
+     "binding": "ncalrpc:[OLE2D6F0DA89BE17CE5CA8986D65490]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "20C40295-8DBA-48E6-AEBF-3E78EF3BB144 v2.0",
+     "binding": "ncalrpc:[LRPC-96e6e25a49cdb18d3a]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "20C40295-8DBA-48E6-AEBF-3E78EF3BB144 v2.0",
+     "binding": "ncalrpc:[actkernel]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "20C40295-8DBA-48E6-AEBF-3E78EF3BB144 v2.0",
+     "binding": "ncalrpc:[umpo]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "2513BCBE-6CD4-4348-855E-7EFB3C336DD3 v2.0",
+     "binding": "ncalrpc:[OLE2D6F0DA89BE17CE5CA8986D65490]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "2513BCBE-6CD4-4348-855E-7EFB3C336DD3 v2.0",
+     "binding": "ncalrpc:[LRPC-96e6e25a49cdb18d3a]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "2513BCBE-6CD4-4348-855E-7EFB3C336DD3 v2.0",
+     "binding": "ncalrpc:[actkernel]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "2513BCBE-6CD4-4348-855E-7EFB3C336DD3 v2.0",
+     "binding": "ncalrpc:[umpo]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "0D3E2735-CEA0-4ECC-A9E2-41A2D81AED4E v1.0",
+     "binding": "ncalrpc:[LRPC-96e6e25a49cdb18d3a]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "0D3E2735-CEA0-4ECC-A9E2-41A2D81AED4E v1.0",
+     "binding": "ncalrpc:[actkernel]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "0D3E2735-CEA0-4ECC-A9E2-41A2D81AED4E v1.0",
+     "binding": "ncalrpc:[umpo]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "C605F9FB-F0A3-4E2A-A073-73560F8D9E3E v1.0",
+     "binding": "ncalrpc:[LRPC-96e6e25a49cdb18d3a]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "C605F9FB-F0A3-4E2A-A073-73560F8D9E3E v1.0",
+     "binding": "ncalrpc:[actkernel]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "C605F9FB-F0A3-4E2A-A073-73560F8D9E3E v1.0",
+     "binding": "ncalrpc:[umpo]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "1B37CA91-76B1-4F5E-A3C7-2ABFC61F2BB0 v1.0",
+     "binding": "ncalrpc:[LRPC-96e6e25a49cdb18d3a]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "1B37CA91-76B1-4F5E-A3C7-2ABFC61F2BB0 v1.0",
+     "binding": "ncalrpc:[actkernel]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "1B37CA91-76B1-4F5E-A3C7-2ABFC61F2BB0 v1.0",
+     "binding": "ncalrpc:[umpo]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "8BFC3BE1-6DEF-4E2D-AF74-7C47CD0ADE4A v1.0",
+     "binding": "ncalrpc:[LRPC-96e6e25a49cdb18d3a]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "8BFC3BE1-6DEF-4E2D-AF74-7C47CD0ADE4A v1.0",
+     "binding": "ncalrpc:[actkernel]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "8BFC3BE1-6DEF-4E2D-AF74-7C47CD0ADE4A v1.0",
+     "binding": "ncalrpc:[umpo]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "2D98A740-581D-41B9-AA0D-A88B9D5CE938 v1.0",
+     "binding": "ncalrpc:[LRPC-96e6e25a49cdb18d3a]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "2D98A740-581D-41B9-AA0D-A88B9D5CE938 v1.0",
+     "binding": "ncalrpc:[actkernel]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "2D98A740-581D-41B9-AA0D-A88B9D5CE938 v1.0",
+     "binding": "ncalrpc:[umpo]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "DD59071B-3215-4C59-8481-972EDADC0F6A v1.0",
+     "binding": "ncalrpc:[actkernel]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "DD59071B-3215-4C59-8481-972EDADC0F6A v1.0",
+     "binding": "ncalrpc:[umpo]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "0361AE94-0316-4C6C-8AD8-C594375800E2 v1.0",
+     "binding": "ncalrpc:[umpo]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "5824833B-3C1A-4AD2-BDFD-C31D19E23ED2 v1.0",
+     "binding": "ncalrpc:[umpo]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "BDAA0970-413B-4A3E-9E5D-F6DC9D7E0760 v1.0",
+     "binding": "ncalrpc:[umpo]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "3B338D89-6CFA-44B8-847E-531531BC9992 v1.0",
+     "binding": "ncalrpc:[umpo]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "8782D3B9-EBBD-4644-A3D8-E8725381919B v1.0",
+     "binding": "ncalrpc:[umpo]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "085B0334-E454-4D91-9B8C-4134F9E793F3 v1.0",
+     "binding": "ncalrpc:[umpo]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "4BEC6BB8-B5C2-4B6F-B2C1-5DA5CF92D0D9 v1.0",
+     "binding": "ncalrpc:[umpo]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "C9AC6DB5-82B7-4E55-AE8A-E464ED7B4277 v1.0",
+     "binding": "ncalrpc:[LRPC-079cc6d82c61a569ec]",
+     "annotation": "Impl friendly name",
+     "exe": "sysntfy.dll"
+    },
+    {
+     "uuid": "C9AC6DB5-82B7-4E55-AE8A-E464ED7B4277 v1.0",
+     "binding": "unknown_proto_0x21:[0]",
+     "annotation": "Impl friendly name",
+     "exe": "sysntfy.dll"
+    },
+    {
+     "uuid": "12E65DD8-887F-41EF-91BF-8D816C42C2E7 v1.0",
+     "binding": "ncalrpc:[WMsgKRpc0B82D1]",
+     "annotation": "Secure Desktop LRPC interface",
+     "exe": "winlogon.exe"
+    },
+    {
+     "uuid": "76F226C3-EC14-4325-8A99-6A46348418AF v1.0",
+     "binding": "ncalrpc:[WMsgKRpc0B82D1]",
+     "annotation": "",
+     "exe": "winlogon.exe"
+    },
+    {
+     "uuid": "E40F7B57-7A25-4CD3-A135-7F7D3DF9D16B v1.0",
+     "binding": "ncalrpc:[LRPC-7217a894452a36cfa5]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "880FD55E-43B9-11E0-B1A8-CF4EDFD72085 v1.0",
+     "binding": "ncalrpc:[LRPC-aa41f7a26863310c00]",
+     "annotation": "KAPI Service endpoint",
+     "exe": ""
+    },
+    {
+     "uuid": "880FD55E-43B9-11E0-B1A8-CF4EDFD72085 v1.0",
+     "binding": "ncalrpc:[OLEDA0FAF1F4047F915C13C2D8A3D4A]",
+     "annotation": "KAPI Service endpoint",
+     "exe": ""
+    },
+    {
+     "uuid": "880FD55E-43B9-11E0-B1A8-CF4EDFD72085 v1.0",
+     "binding": "ncalrpc:[LRPC-05b4ced8dd5381f26c]",
+     "annotation": "KAPI Service endpoint",
+     "exe": ""
+    },
+    {
+     "uuid": "5222821F-D5E2-4885-84F1-5F6185A0EC41 v1.0",
+     "binding": "ncalrpc:[LRPC-9f7e3fc3ccf9d89e27]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "D09BDEB5-6171-4A34-BFE2-06FA82652568 v1.0",
+     "binding": "ncalrpc:[LRPC-05b4ced8dd5381f26c]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "A500D4C6-0DD1-4543-BC0C-D5F93486EAF8 v1.0",
+     "binding": "ncalrpc:[LRPC-3f53ad150d2ff79d1c]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "A500D4C6-0DD1-4543-BC0C-D5F93486EAF8 v1.0",
+     "binding": "ncalrpc:[LRPC-f342a248d4e43402f9]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "D09BDEB5-6171-4A34-BFE2-06FA82652568 v1.0",
+     "binding": "ncalrpc:[LRPC-f342a248d4e43402f9]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "C9AC6DB5-82B7-4E55-AE8A-E464ED7B4277 v1.0",
+     "binding": "ncalrpc:[IUserProfile2]",
+     "annotation": "Impl friendly name",
+     "exe": "sysntfy.dll"
+    },
+    {
+     "uuid": "3A9EF155-691D-4449-8D05-09AD57031823 v1.0",
+     "binding": "ncacn_ip_tcp:192.0.2.69[49666]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "3A9EF155-691D-4449-8D05-09AD57031823 v1.0",
+     "binding": "ncalrpc:[LRPC-dad35eae15331154b5]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "3A9EF155-691D-4449-8D05-09AD57031823 v1.0",
+     "binding": "ncalrpc:[ubpmtaskhostchannel]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "3A9EF155-691D-4449-8D05-09AD57031823 v1.0",
+     "binding": "ncacn_np:\\\\DESKTOP-EXAMPLE[\\PIPE\\atsvc]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "3A9EF155-691D-4449-8D05-09AD57031823 v1.0",
+     "binding": "ncalrpc:[LRPC-8143fb94c5bfec921d]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "86D35949-83C9-4044-B424-DB363231FD0C v1.0",
+     "binding": "ncacn_ip_tcp:192.0.2.69[49666]",
+     "annotation": "",
+     "exe": "schedsvc.dll"
+    },
+    {
+     "uuid": "86D35949-83C9-4044-B424-DB363231FD0C v1.0",
+     "binding": "ncalrpc:[LRPC-dad35eae15331154b5]",
+     "annotation": "",
+     "exe": "schedsvc.dll"
+    },
+    {
+     "uuid": "86D35949-83C9-4044-B424-DB363231FD0C v1.0",
+     "binding": "ncalrpc:[ubpmtaskhostchannel]",
+     "annotation": "",
+     "exe": "schedsvc.dll"
+    },
+    {
+     "uuid": "86D35949-83C9-4044-B424-DB363231FD0C v1.0",
+     "binding": "ncacn_np:\\\\DESKTOP-EXAMPLE[\\PIPE\\atsvc]",
+     "annotation": "",
+     "exe": "schedsvc.dll"
+    },
+    {
+     "uuid": "86D35949-83C9-4044-B424-DB363231FD0C v1.0",
+     "binding": "ncalrpc:[LRPC-8143fb94c5bfec921d]",
+     "annotation": "",
+     "exe": "schedsvc.dll"
+    },
+    {
+     "uuid": "33D84484-3626-47EE-8C6F-E7E98B113BE1 v2.0",
+     "binding": "ncalrpc:[LRPC-dad35eae15331154b5]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "33D84484-3626-47EE-8C6F-E7E98B113BE1 v2.0",
+     "binding": "ncalrpc:[ubpmtaskhostchannel]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "33D84484-3626-47EE-8C6F-E7E98B113BE1 v2.0",
+     "binding": "ncacn_np:\\\\DESKTOP-EXAMPLE[\\PIPE\\atsvc]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "33D84484-3626-47EE-8C6F-E7E98B113BE1 v2.0",
+     "binding": "ncalrpc:[LRPC-8143fb94c5bfec921d]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "378E52B0-C0A9-11CF-822D-00AA0051E40F v1.0",
+     "binding": "ncacn_np:\\\\DESKTOP-EXAMPLE[\\PIPE\\atsvc]",
+     "annotation": "",
+     "exe": "taskcomp.dll"
+    },
+    {
+     "uuid": "378E52B0-C0A9-11CF-822D-00AA0051E40F v1.0",
+     "binding": "ncalrpc:[LRPC-8143fb94c5bfec921d]",
+     "annotation": "",
+     "exe": "taskcomp.dll"
+    },
+    {
+     "uuid": "1FF70682-0A51-30E8-076D-740BE8CEE98B v1.0",
+     "binding": "ncacn_np:\\\\DESKTOP-EXAMPLE[\\PIPE\\atsvc]",
+     "annotation": "",
+     "exe": "taskcomp.dll"
+    },
+    {
+     "uuid": "1FF70682-0A51-30E8-076D-740BE8CEE98B v1.0",
+     "binding": "ncalrpc:[LRPC-8143fb94c5bfec921d]",
+     "annotation": "",
+     "exe": "taskcomp.dll"
+    },
+    {
+     "uuid": "0A74EF1C-41A4-4E06-83AE-DC74FB1CDD53 v1.0",
+     "binding": "ncalrpc:[LRPC-8143fb94c5bfec921d]",
+     "annotation": "",
+     "exe": "schedsvc.dll"
+    },
+    {
+     "uuid": "30B044A5-A225-43F0-B3A4-E060DF91F9C1 v1.0",
+     "binding": "ncalrpc:[LRPC-baf6b62bd1ea1d045a]",
+     "annotation": "",
+     "exe": "certprop.dll"
+    },
+    {
+     "uuid": "7EA70BCF-48AF-4F6A-8968-6A440754D5FA v1.0",
+     "binding": "ncalrpc:[LRPC-84eb99ff9bc87693c1]",
+     "annotation": "NSI server endpoint",
+     "exe": "nsisvc.dll"
+    },
+    {
+     "uuid": "8833D1D0-965F-4216-B3E9-FBE58CAD3100 v1.0",
+     "binding": "ncalrpc:[LRPC-359f881a1ded925970]",
+     "annotation": "",
+     "exe": "SCardSvr.dll"
+    },
+    {
+     "uuid": "8833D1D0-965F-4216-B3E9-FBE58CAD3100 v1.0",
+     "binding": "ncalrpc:[LRPC-bdcabdb4ad7ebb3580]",
+     "annotation": "",
+     "exe": "SCardSvr.dll"
+    },
+    {
+     "uuid": "C6B5235A-E413-481D-9AC8-31681B1FAAF5 v1.1",
+     "binding": "ncalrpc:[LRPC-359f881a1ded925970]",
+     "annotation": "",
+     "exe": "SCardSvr.dll"
+    },
+    {
+     "uuid": "C6B5235A-E413-481D-9AC8-31681B1FAAF5 v1.1",
+     "binding": "ncalrpc:[LRPC-bdcabdb4ad7ebb3580]",
+     "annotation": "",
+     "exe": "SCardSvr.dll"
+    },
+    {
+     "uuid": "D09BDEB5-6171-4A34-BFE2-06FA82652568 v1.0",
+     "binding": "ncalrpc:[LRPC-bdcabdb4ad7ebb3580]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "B54E9AA3-CF29-4F21-A8EA-98C5850CE296 v1.0",
+     "binding": "ncalrpc:[LRPC-d016c0194816eb0441]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "B54E9AA3-CF29-4F21-A8EA-98C5850CE296 v1.0",
+     "binding": "ncalrpc:[LRPC-2194182f04209a05bd]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "A69816F5-83B6-4D48-8633-067F99F5F2D3 v1.0",
+     "binding": "ncalrpc:[LRPC-2194182f04209a05bd]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "4C8D0BEF-D7F1-49F0-9102-CAA05F58D114 v1.0",
+     "binding": "ncalrpc:[LRPC-f63f64fd2231c5b443]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "4C8D0BEF-D7F1-49F0-9102-CAA05F58D114 v1.0",
+     "binding": "ncalrpc:[OLECD2E86F72A4443E86BEF055F6ED4]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "BD6CA954-842E-468F-8B07-89CBFA9522DC v1.0",
+     "binding": "ncalrpc:[LRPC-f63f64fd2231c5b443]",
+     "annotation": "NetworkProfiles Telemetry RPC Interface",
+     "exe": ""
+    },
+    {
+     "uuid": "BD6CA954-842E-468F-8B07-89CBFA9522DC v1.0",
+     "binding": "ncalrpc:[OLECD2E86F72A4443E86BEF055F6ED4]",
+     "annotation": "NetworkProfiles Telemetry RPC Interface",
+     "exe": ""
+    },
+    {
+     "uuid": "3F787932-3452-4363-8651-6EA97BB373BB v1.0",
+     "binding": "ncalrpc:[LRPC-f63f64fd2231c5b443]",
+     "annotation": "NSP Rpc Interface",
+     "exe": ""
+    },
+    {
+     "uuid": "3F787932-3452-4363-8651-6EA97BB373BB v1.0",
+     "binding": "ncalrpc:[OLECD2E86F72A4443E86BEF055F6ED4]",
+     "annotation": "NSP Rpc Interface",
+     "exe": ""
+    },
+    {
+     "uuid": "0D3C7F20-1C8D-4654-A1B3-51563B298BDA v1.0",
+     "binding": "ncalrpc:[LRPC-b19210a1df2fbb3376]",
+     "annotation": "UserMgrCli",
+     "exe": ""
+    },
+    {
+     "uuid": "0D3C7F20-1C8D-4654-A1B3-51563B298BDA v1.0",
+     "binding": "ncalrpc:[OLE8209390E0357BFBBCEB8197012B4]",
+     "annotation": "UserMgrCli",
+     "exe": ""
+    },
+    {
+     "uuid": "B18FBAB6-56F8-4702-84E0-41053293A869 v1.0",
+     "binding": "ncalrpc:[LRPC-b19210a1df2fbb3376]",
+     "annotation": "UserMgrCli",
+     "exe": ""
+    },
+    {
+     "uuid": "B18FBAB6-56F8-4702-84E0-41053293A869 v1.0",
+     "binding": "ncalrpc:[OLE8209390E0357BFBBCEB8197012B4]",
+     "annotation": "UserMgrCli",
+     "exe": ""
+    },
+    {
+     "uuid": "30ADC50C-5CBC-46CE-9A0E-91914789E23C v1.0",
+     "binding": "ncalrpc:[LRPC-8493578d300f710bf4]",
+     "annotation": "NRP server endpoint",
+     "exe": "nrpsrv.dll"
+    },
+    {
+     "uuid": "30ADC50C-5CBC-46CE-9A0E-91914789E23C v1.0",
+     "binding": "ncalrpc:[DNSResolver]",
+     "annotation": "NRP server endpoint",
+     "exe": "nrpsrv.dll"
+    },
+    {
+     "uuid": "3C4728C5-F0AB-448B-BDA1-6CE01EB0A6D5 v1.0",
+     "binding": "ncalrpc:[dhcpcsvc]",
+     "annotation": "DHCP Client LRPC Endpoint",
+     "exe": "dhcpcsvc.dll"
+    },
+    {
+     "uuid": "3C4728C5-F0AB-448B-BDA1-6CE01EB0A6D5 v1.0",
+     "binding": "ncalrpc:[dhcpcsvc6]",
+     "annotation": "DHCP Client LRPC Endpoint",
+     "exe": "dhcpcsvc.dll"
+    },
+    {
+     "uuid": "3C4728C5-F0AB-448B-BDA1-6CE01EB0A6D6 v1.0",
+     "binding": "ncalrpc:[dhcpcsvc6]",
+     "annotation": "DHCPv6 Client LRPC Endpoint",
+     "exe": "dhcpcsvc6.dll"
+    },
+    {
+     "uuid": "C9AC6DB5-82B7-4E55-AE8A-E464ED7B4277 v1.0",
+     "binding": "ncalrpc:[LRPC-fc7773d0e9adec7411]",
+     "annotation": "Impl friendly name",
+     "exe": "sysntfy.dll"
+    },
+    {
+     "uuid": "C9AC6DB5-82B7-4E55-AE8A-E464ED7B4277 v1.0",
+     "binding": "ncalrpc:[senssvc]",
+     "annotation": "Impl friendly name",
+     "exe": "sysntfy.dll"
+    },
+    {
+     "uuid": "F6BEAFF7-1E19-4FBB-9F8F-B89E2018337C v1.0",
+     "binding": "ncacn_ip_tcp:192.0.2.69[49667]",
+     "annotation": "Windows Event Log",
+     "exe": "wevtsvc.dll"
+    },
+    {
+     "uuid": "F6BEAFF7-1E19-4FBB-9F8F-B89E2018337C v1.0",
+     "binding": "ncacn_np:\\\\DESKTOP-EXAMPLE[\\pipe\\eventlog]",
+     "annotation": "Windows Event Log",
+     "exe": "wevtsvc.dll"
+    },
+    {
+     "uuid": "F6BEAFF7-1E19-4FBB-9F8F-B89E2018337C v1.0",
+     "binding": "ncalrpc:[eventlog]",
+     "annotation": "Windows Event Log",
+     "exe": "wevtsvc.dll"
+    },
+    {
+     "uuid": "3473DD4D-2E88-4006-9CBA-22570909DD10 v5.1",
+     "binding": "ncalrpc:[LRPC-7976556d267aed0ae7]",
+     "annotation": "WinHttp Auto-Proxy Service",
+     "exe": ""
+    },
+    {
+     "uuid": "B58AA02E-2884-4E97-8176-4EE06D794184 v1.0",
+     "binding": "ncalrpc:[LRPC-02aa5b5a4fdf49e633]",
+     "annotation": "",
+     "exe": "sysmain.dll"
+    },
+    {
+     "uuid": "13560FA9-8C09-4B56-A1FD-04D083B9B2A1 v1.0",
+     "binding": "ncalrpc:[LRPC-8ff72f41afbc9a4dc2]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "13560FA9-8C09-4B56-A1FD-04D083B9B2A1 v1.0",
+     "binding": "ncalrpc:[OLE52C0819A501EDCB0F743C473E6A7]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "C2D1B5DD-FA81-4460-9DD6-E7658B85454B v1.0",
+     "binding": "ncalrpc:[LRPC-8ff72f41afbc9a4dc2]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "C2D1B5DD-FA81-4460-9DD6-E7658B85454B v1.0",
+     "binding": "ncalrpc:[OLE52C0819A501EDCB0F743C473E6A7]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "F44E62AF-DAB1-44C2-8013-049A9DE417D6 v1.0",
+     "binding": "ncalrpc:[LRPC-8ff72f41afbc9a4dc2]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "F44E62AF-DAB1-44C2-8013-049A9DE417D6 v1.0",
+     "binding": "ncalrpc:[OLE52C0819A501EDCB0F743C473E6A7]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "B37F900A-EAE4-4304-A2AB-12BB668C0188 v1.0",
+     "binding": "ncalrpc:[LRPC-8ff72f41afbc9a4dc2]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "B37F900A-EAE4-4304-A2AB-12BB668C0188 v1.0",
+     "binding": "ncalrpc:[OLE52C0819A501EDCB0F743C473E6A7]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "ABFB6CA3-0C5E-4734-9285-0AEE72FE8D1C v1.0",
+     "binding": "ncalrpc:[LRPC-8ff72f41afbc9a4dc2]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "ABFB6CA3-0C5E-4734-9285-0AEE72FE8D1C v1.0",
+     "binding": "ncalrpc:[OLE52C0819A501EDCB0F743C473E6A7]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "76F03F96-CDFD-44FC-A22C-64950A001209 v1.0",
+     "binding": "ncacn_ip_tcp:192.0.2.69[49668]",
+     "annotation": "",
+     "exe": "spoolsv.exe"
+    },
+    {
+     "uuid": "76F03F96-CDFD-44FC-A22C-64950A001209 v1.0",
+     "binding": "ncalrpc:[LRPC-bf24dee79829858603]",
+     "annotation": "",
+     "exe": "spoolsv.exe"
+    },
+    {
+     "uuid": "4A452661-8290-4B36-8FBE-7F4093A94978 v1.0",
+     "binding": "ncacn_ip_tcp:192.0.2.69[49668]",
+     "annotation": "",
+     "exe": "spoolsv.exe"
+    },
+    {
+     "uuid": "4A452661-8290-4B36-8FBE-7F4093A94978 v1.0",
+     "binding": "ncalrpc:[LRPC-bf24dee79829858603]",
+     "annotation": "",
+     "exe": "spoolsv.exe"
+    },
+    {
+     "uuid": "AE33069B-A2A8-46EE-A235-DDFD339BE281 v1.0",
+     "binding": "ncacn_ip_tcp:192.0.2.69[49668]",
+     "annotation": "",
+     "exe": "spoolsv.exe"
+    },
+    {
+     "uuid": "AE33069B-A2A8-46EE-A235-DDFD339BE281 v1.0",
+     "binding": "ncalrpc:[LRPC-bf24dee79829858603]",
+     "annotation": "",
+     "exe": "spoolsv.exe"
+    },
+    {
+     "uuid": "0B6EDBFA-4A24-4FC6-8A23-942B1ECA65D1 v1.0",
+     "binding": "ncacn_ip_tcp:192.0.2.69[49668]",
+     "annotation": "",
+     "exe": "spoolsv.exe"
+    },
+    {
+     "uuid": "0B6EDBFA-4A24-4FC6-8A23-942B1ECA65D1 v1.0",
+     "binding": "ncalrpc:[LRPC-bf24dee79829858603]",
+     "annotation": "",
+     "exe": "spoolsv.exe"
+    },
+    {
+     "uuid": "12345678-1234-ABCD-EF00-0123456789AB v1.0",
+     "binding": "ncacn_ip_tcp:192.0.2.69[49668]",
+     "annotation": "",
+     "exe": "spoolsv.exe"
+    },
+    {
+     "uuid": "12345678-1234-ABCD-EF00-0123456789AB v1.0",
+     "binding": "ncalrpc:[LRPC-bf24dee79829858603]",
+     "annotation": "",
+     "exe": "spoolsv.exe"
+    },
+    {
+     "uuid": "7F1343FE-50A9-4927-A778-0C5859517BAC v1.0",
+     "binding": "ncacn_np:\\\\DESKTOP-EXAMPLE[\\PIPE\\wkssvc]",
+     "annotation": "DfsDs service",
+     "exe": ""
+    },
+    {
+     "uuid": "7F1343FE-50A9-4927-A778-0C5859517BAC v1.0",
+     "binding": "ncalrpc:[LRPC-e251e7d42a3732f748]",
+     "annotation": "DfsDs service",
+     "exe": ""
+    },
+    {
+     "uuid": "EB081A0D-10EE-478A-A1DD-50995283E7A8 v3.0",
+     "binding": "ncalrpc:[LRPC-e251e7d42a3732f748]",
+     "annotation": "Witness Client Test Interface",
+     "exe": ""
+    },
+    {
+     "uuid": "F2C9B409-C1C9-4100-8639-D8AB1486694A v1.0",
+     "binding": "ncalrpc:[LRPC-e251e7d42a3732f748]",
+     "annotation": "Witness Client Upcall Server",
+     "exe": ""
+    },
+    {
+     "uuid": "E7A216AF-1EC1-447F-8D3F-A87278DB564D v1.0",
+     "binding": "ncalrpc:[LRPC-0e90d4408e17e601fe]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "2FB92682-6599-42DC-AE13-BD2CA89BD11C v1.0",
+     "binding": "ncalrpc:[LRPC-ddee4ef21f8e704b19]",
+     "annotation": "Fw APIs",
+     "exe": "MPSSVC.dll"
+    },
+    {
+     "uuid": "2FB92682-6599-42DC-AE13-BD2CA89BD11C v1.0",
+     "binding": "ncalrpc:[LRPC-799df5a09b7202aa3e]",
+     "annotation": "Fw APIs",
+     "exe": "MPSSVC.dll"
+    },
+    {
+     "uuid": "2FB92682-6599-42DC-AE13-BD2CA89BD11C v1.0",
+     "binding": "ncalrpc:[LRPC-d2793ea7783674fcbc]",
+     "annotation": "Fw APIs",
+     "exe": "MPSSVC.dll"
+    },
+    {
+     "uuid": "2FB92682-6599-42DC-AE13-BD2CA89BD11C v1.0",
+     "binding": "ncalrpc:[LRPC-5e5605aed62e38833f]",
+     "annotation": "Fw APIs",
+     "exe": "MPSSVC.dll"
+    },
+    {
+     "uuid": "F47433C3-3E9D-4157-AAD4-83AA1F5C2D4C v1.0",
+     "binding": "ncalrpc:[LRPC-799df5a09b7202aa3e]",
+     "annotation": "Fw APIs",
+     "exe": ""
+    },
+    {
+     "uuid": "F47433C3-3E9D-4157-AAD4-83AA1F5C2D4C v1.0",
+     "binding": "ncalrpc:[LRPC-d2793ea7783674fcbc]",
+     "annotation": "Fw APIs",
+     "exe": ""
+    },
+    {
+     "uuid": "F47433C3-3E9D-4157-AAD4-83AA1F5C2D4C v1.0",
+     "binding": "ncalrpc:[LRPC-5e5605aed62e38833f]",
+     "annotation": "Fw APIs",
+     "exe": ""
+    },
+    {
+     "uuid": "7F9D11BF-7FB9-436B-A812-B2D50C5D4C03 v1.0",
+     "binding": "ncalrpc:[LRPC-d2793ea7783674fcbc]",
+     "annotation": "Fw APIs",
+     "exe": "MPSSVC.dll"
+    },
+    {
+     "uuid": "7F9D11BF-7FB9-436B-A812-B2D50C5D4C03 v1.0",
+     "binding": "ncalrpc:[LRPC-5e5605aed62e38833f]",
+     "annotation": "Fw APIs",
+     "exe": "MPSSVC.dll"
+    },
+    {
+     "uuid": "DD490425-5325-4565-B774-7E27D6C09C24 v1.0",
+     "binding": "ncalrpc:[LRPC-5e5605aed62e38833f]",
+     "annotation": "Base Firewall Engine API",
+     "exe": "BFE.DLL"
+    },
+    {
+     "uuid": "E64B9AEE-F372-4312-9A14-8F1502B5C8E3 v1.0",
+     "binding": "ncalrpc:[LRPC-c69c601fa638c5f8fc]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "1A0D010F-1C33-432C-B0F5-8CF4E8053099 v1.0",
+     "binding": "ncalrpc:[LRPC-006bca7d77f7ea9b77]",
+     "annotation": "IdSegSrv service",
+     "exe": ""
+    },
+    {
+     "uuid": "98716D03-89AC-44C7-BB8C-285824E51C4A v1.0",
+     "binding": "ncalrpc:[LRPC-006bca7d77f7ea9b77]",
+     "annotation": "XactSrv service",
+     "exe": "srvsvc.dll"
+    },
+    {
+     "uuid": "C49A5A70-8A7F-4E70-BA16-1E8F1F193EF1 v1.0",
+     "binding": "ncalrpc:[OLEF0B6CD84ADC438446D431CD73F90]",
+     "annotation": "Adh APIs",
+     "exe": ""
+    },
+    {
+     "uuid": "C49A5A70-8A7F-4E70-BA16-1E8F1F193EF1 v1.0",
+     "binding": "ncalrpc:[TeredoControl]",
+     "annotation": "Adh APIs",
+     "exe": ""
+    },
+    {
+     "uuid": "C49A5A70-8A7F-4E70-BA16-1E8F1F193EF1 v1.0",
+     "binding": "ncalrpc:[TeredoDiagnostics]",
+     "annotation": "Adh APIs",
+     "exe": ""
+    },
+    {
+     "uuid": "C49A5A70-8A7F-4E70-BA16-1E8F1F193EF1 v1.0",
+     "binding": "ncalrpc:[LRPC-254e7fb3ae26567be9]",
+     "annotation": "Adh APIs",
+     "exe": ""
+    },
+    {
+     "uuid": "C36BE077-E14B-4FE9-8ABC-E856EF4F048B v1.0",
+     "binding": "ncalrpc:[TeredoControl]",
+     "annotation": "Proxy Manager client server endpoint",
+     "exe": ""
+    },
+    {
+     "uuid": "C36BE077-E14B-4FE9-8ABC-E856EF4F048B v1.0",
+     "binding": "ncalrpc:[TeredoDiagnostics]",
+     "annotation": "Proxy Manager client server endpoint",
+     "exe": ""
+    },
+    {
+     "uuid": "C36BE077-E14B-4FE9-8ABC-E856EF4F048B v1.0",
+     "binding": "ncalrpc:[LRPC-254e7fb3ae26567be9]",
+     "annotation": "Proxy Manager client server endpoint",
+     "exe": ""
+    },
+    {
+     "uuid": "2E6035B2-E8F1-41A7-A044-656B439C4C34 v1.0",
+     "binding": "ncalrpc:[TeredoControl]",
+     "annotation": "Proxy Manager provider server endpoint",
+     "exe": ""
+    },
+    {
+     "uuid": "2E6035B2-E8F1-41A7-A044-656B439C4C34 v1.0",
+     "binding": "ncalrpc:[TeredoDiagnostics]",
+     "annotation": "Proxy Manager provider server endpoint",
+     "exe": ""
+    },
+    {
+     "uuid": "2E6035B2-E8F1-41A7-A044-656B439C4C34 v1.0",
+     "binding": "ncalrpc:[LRPC-254e7fb3ae26567be9]",
+     "annotation": "Proxy Manager provider server endpoint",
+     "exe": ""
+    },
+    {
+     "uuid": "552D076A-CB29-4E44-8B6A-D15E59E2C0AF v1.0",
+     "binding": "ncalrpc:[LRPC-254e7fb3ae26567be9]",
+     "annotation": "IP Transition Configuration endpoint",
+     "exe": "iphlpsvc.dll"
+    },
+    {
+     "uuid": "A398E520-D59A-4BDD-AA7A-3C1E0303A511 v1.0",
+     "binding": "ncalrpc:[LRPC-677fc96e9095059124]",
+     "annotation": "IKE/Authip API",
+     "exe": "IKEEXT.DLL"
+    },
+    {
+     "uuid": "7635805D-A473-451A-94B2-5D674D953D39 v1.1",
+     "binding": "ncalrpc:[RstMgmtRpcEndpoint]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "94F974AF-F072-4E68-85C9-D265B55306FE v1.1",
+     "binding": "ncalrpc:[RstMgmtRpcEndpoint]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "6319E220-2FD5-48BC-A92F-BA70384E4D24 v1.0",
+     "binding": "ncalrpc:[LRPC-f1a346c80ca02043ba]",
+     "annotation": "Device Association Framework Provider Management RPC Interface",
+     "exe": ""
+    },
+    {
+     "uuid": "5B665B9A-A086-4E26-AE24-96AB050B0EC3 v1.0",
+     "binding": "ncalrpc:[LRPC-f1a346c80ca02043ba]",
+     "annotation": "Device Association Framework AEP Store Access RPC Interface",
+     "exe": ""
+    },
+    {
+     "uuid": "BD84CD86-9825-4376-813D-334C543F89B1 v1.0",
+     "binding": "ncalrpc:[LRPC-f1a346c80ca02043ba]",
+     "annotation": "Device Association Framework Query RPC Interface",
+     "exe": ""
+    },
+    {
+     "uuid": "2E7D4935-59D2-4312-A2C8-41900AA5495F v1.0",
+     "binding": "ncalrpc:[LRPC-f1a346c80ca02043ba]",
+     "annotation": "Device Association Framework Challenge RPC Interface",
+     "exe": ""
+    },
+    {
+     "uuid": "A1D4EAE7-39F8-4BCA-8E72-832767F5082A v1.0",
+     "binding": "ncalrpc:[LRPC-f1a346c80ca02043ba]",
+     "annotation": "Device Association Framework Inbound RPC Interface",
+     "exe": ""
+    },
+    {
+     "uuid": "850CEE52-3038-4277-B9B4-E05DB8B2C35C v1.0",
+     "binding": "ncalrpc:[LRPC-f1a346c80ca02043ba]",
+     "annotation": "Device Association Framework Association RPC Interface",
+     "exe": ""
+    },
+    {
+     "uuid": "714DC5C4-C5F6-466A-B037-A573C958031E v1.0",
+     "binding": "ncalrpc:[LRPC-0cebd8d0337f173230]",
+     "annotation": "ProcessTag Server Endpoint",
+     "exe": ""
+    },
+    {
+     "uuid": "714DC5C4-C5F6-466A-B037-A573C958031E v1.0",
+     "binding": "ncalrpc:[OLECB58E8904F9C480E7307A5EB7D79]",
+     "annotation": "ProcessTag Server Endpoint",
+     "exe": ""
+    },
+    {
+     "uuid": "26268C86-E770-433E-86EF-5F3BA6731FBA v1.0",
+     "binding": "ncalrpc:[LRPC-5229cc98fd3ed3053a]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "26268C86-E770-433E-86EF-5F3BA6731FBA v1.0",
+     "binding": "ncalrpc:[OLE78E573AE74A26EDB41F1B75999D3]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "01CEB31C-6DA7-44F8-B93B-A390DB4F0D97 v1.0",
+     "binding": "ncalrpc:[LRPC-180e4a0d852df4f838]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "C27F3C08-92BA-478C-B446-B419C4CEF0E2 v1.0",
+     "binding": "ncalrpc:[LRPC-3b1ca58d1e47b97cfe]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "78DCCE84-7F13-4139-B8CD-EF222AA0408B v1.0",
+     "binding": "ncalrpc:[LRPC-4d1b0a3e7c3fe73686]",
+     "annotation": "StateRepository",
+     "exe": ""
+    },
+    {
+     "uuid": "78DCCE84-7F13-4139-B8CD-EF222AA0408B v1.0",
+     "binding": "ncalrpc:[OLEF0159C845D0885C959A56A32414D]",
+     "annotation": "StateRepository",
+     "exe": ""
+    },
+    {
+     "uuid": "C3F42C6E-D4CC-4E5A-938B-9C5E8A5D8C2E v1.0",
+     "binding": "ncalrpc:[LRPC-287cd1790a16525573]",
+     "annotation": "IhvExtRpcServer",
+     "exe": "wlanmsm.dll"
+    },
+    {
+     "uuid": "C3F42C6E-D4CC-4E5A-938B-9C5E8A5D8C2E v1.0",
+     "binding": "ncalrpc:[LRPC-4efac41ee5a027614d]",
+     "annotation": "IhvExtRpcServer",
+     "exe": "wlanmsm.dll"
+    },
+    {
+     "uuid": "C3F42C6E-D4CC-4E5A-938B-9C5E8A5D8C2E v1.0",
+     "binding": "ncalrpc:[LRPC-549c920be3337db1a5]",
+     "annotation": "IhvExtRpcServer",
+     "exe": "wlanmsm.dll"
+    },
+    {
+     "uuid": "C3F42C6E-D4CC-4E5A-938B-9C5E8A5D8C2E v1.0",
+     "binding": "ncalrpc:[OLE0EFC35819B8DD875F407E5C230C3]",
+     "annotation": "IhvExtRpcServer",
+     "exe": "wlanmsm.dll"
+    },
+    {
+     "uuid": "AF7FEAD8-C34A-461F-8894-6D6F0E5EDDCD v1.0",
+     "binding": "ncalrpc:[LRPC-287cd1790a16525573]",
+     "annotation": "WiFiUser Server",
+     "exe": ""
+    },
+    {
+     "uuid": "AF7FEAD8-C34A-461F-8894-6D6F0E5EDDCD v1.0",
+     "binding": "ncalrpc:[LRPC-4efac41ee5a027614d]",
+     "annotation": "WiFiUser Server",
+     "exe": ""
+    },
+    {
+     "uuid": "AF7FEAD8-C34A-461F-8894-6D6F0E5EDDCD v1.0",
+     "binding": "ncalrpc:[LRPC-549c920be3337db1a5]",
+     "annotation": "WiFiUser Server",
+     "exe": ""
+    },
+    {
+     "uuid": "AF7FEAD8-C34A-461F-8894-6D6F0E5EDDCD v1.0",
+     "binding": "ncalrpc:[OLE0EFC35819B8DD875F407E5C230C3]",
+     "annotation": "WiFiUser Server",
+     "exe": ""
+    },
+    {
+     "uuid": "266F33B4-C7C1-4BD1-8F52-DDB8F2214EB0 v1.0",
+     "binding": "ncalrpc:[LRPC-4efac41ee5a027614d]",
+     "annotation": "Wlan Service LowPriv",
+     "exe": ""
+    },
+    {
+     "uuid": "266F33B4-C7C1-4BD1-8F52-DDB8F2214EB0 v1.0",
+     "binding": "ncalrpc:[LRPC-549c920be3337db1a5]",
+     "annotation": "Wlan Service LowPriv",
+     "exe": ""
+    },
+    {
+     "uuid": "266F33B4-C7C1-4BD1-8F52-DDB8F2214EB0 v1.0",
+     "binding": "ncalrpc:[OLE0EFC35819B8DD875F407E5C230C3]",
+     "annotation": "Wlan Service LowPriv",
+     "exe": ""
+    },
+    {
+     "uuid": "266F33B4-C7C1-4BD1-8F52-DDB8F2214EA9 v1.0",
+     "binding": "ncalrpc:[LRPC-4efac41ee5a027614d]",
+     "annotation": "Wlan Service",
+     "exe": "wlansvc.dll"
+    },
+    {
+     "uuid": "266F33B4-C7C1-4BD1-8F52-DDB8F2214EA9 v1.0",
+     "binding": "ncalrpc:[LRPC-549c920be3337db1a5]",
+     "annotation": "Wlan Service",
+     "exe": "wlansvc.dll"
+    },
+    {
+     "uuid": "266F33B4-C7C1-4BD1-8F52-DDB8F2214EA9 v1.0",
+     "binding": "ncalrpc:[OLE0EFC35819B8DD875F407E5C230C3]",
+     "annotation": "Wlan Service",
+     "exe": "wlansvc.dll"
+    },
+    {
+     "uuid": "C9AC6DB5-82B7-4E55-AE8A-E464ED7B4277 v1.0",
+     "binding": "ncalrpc:[LRPC-549c920be3337db1a5]",
+     "annotation": "Impl friendly name",
+     "exe": "sysntfy.dll"
+    },
+    {
+     "uuid": "C9AC6DB5-82B7-4E55-AE8A-E464ED7B4277 v1.0",
+     "binding": "ncalrpc:[OLE0EFC35819B8DD875F407E5C230C3]",
+     "annotation": "Impl friendly name",
+     "exe": "sysntfy.dll"
+    },
+    {
+     "uuid": "25952C5D-7976-4AA1-A3CB-C35F7AE79D1B v1.1",
+     "binding": "ncalrpc:[LRPC-549c920be3337db1a5]",
+     "annotation": "Wireless Diagnostics",
+     "exe": "wlansvc.dll"
+    },
+    {
+     "uuid": "25952C5D-7976-4AA1-A3CB-C35F7AE79D1B v1.1",
+     "binding": "ncalrpc:[OLE0EFC35819B8DD875F407E5C230C3]",
+     "annotation": "Wireless Diagnostics",
+     "exe": "wlansvc.dll"
+    },
+    {
+     "uuid": "49461CAC-A1E3-42B7-9328-972783B9391E v1.0",
+     "binding": "ncalrpc:[LRPC-d12cb9c406221de1f2]",
+     "annotation": "camsvc",
+     "exe": ""
+    },
+    {
+     "uuid": "49461CAC-A1E3-42B7-9328-972783B9391E v1.0",
+     "binding": "ncalrpc:[OLE6289964E0E14A06C8C913817BBD5]",
+     "annotation": "camsvc",
+     "exe": ""
+    },
+    {
+     "uuid": "10D20E7A-2530-494A-AC01-B8DD04480AD2 v1.0",
+     "binding": "ncalrpc:[LRPC-d12cb9c406221de1f2]",
+     "annotation": "camsvc",
+     "exe": ""
+    },
+    {
+     "uuid": "10D20E7A-2530-494A-AC01-B8DD04480AD2 v1.0",
+     "binding": "ncalrpc:[OLE6289964E0E14A06C8C913817BBD5]",
+     "annotation": "camsvc",
+     "exe": ""
+    },
+    {
+     "uuid": "367ABB81-9844-35F1-AD32-98F038001003 v2.0",
+     "binding": "ncacn_ip_tcp:192.0.2.69[49677]",
+     "annotation": "",
+     "exe": "services.exe"
+    },
+    {
+     "uuid": "29770A8F-829B-4158-90A2-78CD488501F7 v1.0",
+     "binding": "ncacn_ip_tcp:192.0.2.69[49678]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "29770A8F-829B-4158-90A2-78CD488501F7 v1.0",
+     "binding": "ncacn_np:\\\\DESKTOP-EXAMPLE[\\pipe\\SessEnvPublicRpc]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "29770A8F-829B-4158-90A2-78CD488501F7 v1.0",
+     "binding": "ncalrpc:[SessEnvPrivateRpc]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "29770A8F-829B-4158-90A2-78CD488501F7 v1.0",
+     "binding": "ncalrpc:[LRPC-58723154f80a50324d]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "C9AC6DB5-82B7-4E55-AE8A-E464ED7B4277 v1.0",
+     "binding": "ncalrpc:[LRPC-58723154f80a50324d]",
+     "annotation": "Impl friendly name",
+     "exe": "sysntfy.dll"
+    },
+    {
+     "uuid": "98E96949-BC59-47F1-92D1-8C25B46F85C7 v1.0",
+     "binding": "ncalrpc:[LRPC-95e06f0d555f9a1c28]",
+     "annotation": "IhvExtRpcServer",
+     "exe": "wlanext.exe"
+    },
+    {
+     "uuid": "1D45E083-478F-437C-9618-3594CED8C235 v1.0",
+     "binding": "ncalrpc:[LRPC-0d5b89b150757e6cc5]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "1D45E083-478F-437C-9618-3594CED8C235 v1.0",
+     "binding": "ncalrpc:[OLE2D8FC9BE82B6EDE9AA379855E165]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "98CD761E-E77D-41C8-A3C0-0FB756D90EC2 v1.0",
+     "binding": "ncalrpc:[LRPC-0d5b89b150757e6cc5]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "98CD761E-E77D-41C8-A3C0-0FB756D90EC2 v1.0",
+     "binding": "ncalrpc:[OLE2D8FC9BE82B6EDE9AA379855E165]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "D22895EF-AFF4-42C5-A5B2-B14466D34AB4 v1.0",
+     "binding": "ncalrpc:[LRPC-0d5b89b150757e6cc5]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "D22895EF-AFF4-42C5-A5B2-B14466D34AB4 v1.0",
+     "binding": "ncalrpc:[OLE2D8FC9BE82B6EDE9AA379855E165]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "E38F5360-8572-473E-B696-1B46873BEEAB v1.0",
+     "binding": "ncalrpc:[LRPC-0d5b89b150757e6cc5]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "E38F5360-8572-473E-B696-1B46873BEEAB v1.0",
+     "binding": "ncalrpc:[OLE2D8FC9BE82B6EDE9AA379855E165]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "95095EC8-32EA-4EB0-A3E2-041F97B36168 v1.0",
+     "binding": "ncalrpc:[LRPC-0d5b89b150757e6cc5]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "95095EC8-32EA-4EB0-A3E2-041F97B36168 v1.0",
+     "binding": "ncalrpc:[OLE2D8FC9BE82B6EDE9AA379855E165]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "FD8BE72B-A9CD-4B2C-A9CA-4DED242FBE4D v1.0",
+     "binding": "ncalrpc:[LRPC-0d5b89b150757e6cc5]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "FD8BE72B-A9CD-4B2C-A9CA-4DED242FBE4D v1.0",
+     "binding": "ncalrpc:[OLE2D8FC9BE82B6EDE9AA379855E165]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "4C9DBF19-D39E-4BB9-90EE-8F7179B20283 v1.0",
+     "binding": "ncalrpc:[LRPC-0d5b89b150757e6cc5]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "4C9DBF19-D39E-4BB9-90EE-8F7179B20283 v1.0",
+     "binding": "ncalrpc:[OLE2D8FC9BE82B6EDE9AA379855E165]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "D4051BDE-9CDD-4910-B393-4AA85EC3C482 v1.0",
+     "binding": "ncalrpc:[LRPC-0d5b89b150757e6cc5]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "D4051BDE-9CDD-4910-B393-4AA85EC3C482 v1.0",
+     "binding": "ncalrpc:[OLE2D8FC9BE82B6EDE9AA379855E165]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "7DF1CEAE-DE4E-4E6F-AB14-49636E7C2052 v1.0",
+     "binding": "ncalrpc:[LRPC-bd41385f3caa126ac5]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "6B5BDD1E-528C-422C-AF8C-A4079BE4FE48 v1.0",
+     "binding": "ncacn_ip_tcp:192.0.2.69[49679]",
+     "annotation": "Remote Fw APIs",
+     "exe": "FwRemoteSvr.dll"
+    },
+    {
+     "uuid": "6B5BDD1E-528C-422C-AF8C-A4079BE4FE48 v1.0",
+     "binding": "ncalrpc:[ipsec]",
+     "annotation": "Remote Fw APIs",
+     "exe": "FwRemoteSvr.dll"
+    },
+    {
+     "uuid": "D09BDEB5-6171-4A34-BFE2-06FA82652568 v1.0",
+     "binding": "ncalrpc:[LRPC-58c6db6d1aa5613796]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "D09BDEB5-6171-4A34-BFE2-06FA82652568 v1.0",
+     "binding": "ncalrpc:[OLE133401732C8F21309C44F344A1DC]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "D09BDEB5-6171-4A34-BFE2-06FA82652568 v1.0",
+     "binding": "ncalrpc:[LRPC-58c6db6d1aa5613796]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "D09BDEB5-6171-4A34-BFE2-06FA82652568 v1.0",
+     "binding": "ncalrpc:[OLE133401732C8F21309C44F344A1DC]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "0767A036-0D22-48AA-BA69-B619480F38CB v1.0",
+     "binding": "ncalrpc:[LRPC-181f9d61d266a6d477]",
+     "annotation": "PcaSvc",
+     "exe": "pcasvc.dll"
+    },
+    {
+     "uuid": "C503F532-443A-4C69-8300-CCD1FBDB3839 v2.0",
+     "binding": "ncalrpc:[LRPC-958e668e276ea67057]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "C503F532-443A-4C69-8300-CCD1FBDB3839 v2.0",
+     "binding": "ncalrpc:[OLE36BCC94C29AAD1A4F2557F6F54EF]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "AE55C4C0-64CE-11DD-AD8B-0800200C9A66 v1.0",
+     "binding": "ncalrpc:[LRPC-63cd94a044929b68d2]",
+     "annotation": "",
+     "exe": "bdesvc.dll"
+    },
+    {
+     "uuid": "0F738E20-73C0-4CA8-AA6A-8DFEF545FEA8 v1.0",
+     "binding": "ncalrpc:[LRPC-4f636de6cb6d2e2788]",
+     "annotation": "AppInfo",
+     "exe": ""
+    },
+    {
+     "uuid": "58E604E8-9ADB-4D2E-A464-3B0683FB1480 v1.0",
+     "binding": "ncalrpc:[LRPC-4f636de6cb6d2e2788]",
+     "annotation": "AppInfo",
+     "exe": "appinfo.dll"
+    },
+    {
+     "uuid": "FD7A0523-DC70-43DD-9B2E-9C5ED48225B1 v1.0",
+     "binding": "ncalrpc:[LRPC-4f636de6cb6d2e2788]",
+     "annotation": "AppInfo",
+     "exe": "appinfo.dll"
+    },
+    {
+     "uuid": "5F54CE7D-5B79-4175-8584-CB65313A0E98 v1.0",
+     "binding": "ncalrpc:[LRPC-4f636de6cb6d2e2788]",
+     "annotation": "AppInfo",
+     "exe": "appinfo.dll"
+    },
+    {
+     "uuid": "201EF99A-7FA0-444C-9399-19BA84F12A1A v1.0",
+     "binding": "ncalrpc:[LRPC-4f636de6cb6d2e2788]",
+     "annotation": "AppInfo",
+     "exe": "appinfo.dll"
+    },
+    {
+     "uuid": "0497B57D-2E66-424F-A0C6-157CD5D41700 v1.0",
+     "binding": "ncalrpc:[LRPC-4f636de6cb6d2e2788]",
+     "annotation": "AppInfo",
+     "exe": ""
+    },
+    {
+     "uuid": "B04D3C44-F014-4530-88F3-EE7DAA3E69B9 v1.0",
+     "binding": "ncalrpc:[LRPC-d45a887125c717215d]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "28942101-43DF-4EB7-B1DD-2C0C0EBF99C0 v0.0",
+     "binding": "ncalrpc:[LRPC-440ae7460e64fe258a]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "44D1520B-6133-41F0-8A66-D37305ECC357 v0.0",
+     "binding": "ncalrpc:[LRPC-440ae7460e64fe258a]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "06BBA54A-BE05-49F9-B0A0-30F790261023 v1.0",
+     "binding": "ncalrpc:[LRPC-decb89d0d9d5e8d6ce]",
+     "annotation": "Security Center",
+     "exe": "wscsvc.dll"
+    },
+    {
+     "uuid": "06BBA54A-BE05-49F9-B0A0-30F790261023 v1.0",
+     "binding": "ncalrpc:[OLE0B3CE7BDBAE7C8B8534C9F5148E4]",
+     "annotation": "Security Center",
+     "exe": "wscsvc.dll"
+    },
+    {
+     "uuid": "572E35B4-1344-4565-96A1-F5DF3BFA89BB v1.0",
+     "binding": "ncalrpc:[liveidsvcnotify]",
+     "annotation": "LiveIdSvcNotify RPC Interface",
+     "exe": ""
+    },
+    {
+     "uuid": "FAF2447B-B348-4FEB-8DBE-BEEE5B7F7778 v1.0",
+     "binding": "ncalrpc:[LRPC-da6d978097b78959c1]",
+     "annotation": "OnlineProviderCert RPC Interface",
+     "exe": ""
+    },
+    {
+     "uuid": "CC105610-DA03-467E-BC73-5B9E2937458D v1.0",
+     "binding": "ncalrpc:[LRPC-da6d978097b78959c1]",
+     "annotation": "LiveIdSvc RPC Interface",
+     "exe": ""
+    },
+    {
+     "uuid": "B1EF227E-DFA5-421E-82BB-67A6A129C496 v0.0",
+     "binding": "ncalrpc:[LRPC-8b5bd4bb0884e03523]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "B1EF227E-DFA5-421E-82BB-67A6A129C496 v0.0",
+     "binding": "ncalrpc:[OLE5826CF427B6EC2CC9F2F42C8CCCD]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "0FC77B1A-95D8-4A2E-A0C0-CFF54237462B v0.0",
+     "binding": "ncalrpc:[LRPC-8b5bd4bb0884e03523]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "0FC77B1A-95D8-4A2E-A0C0-CFF54237462B v0.0",
+     "binding": "ncalrpc:[OLE5826CF427B6EC2CC9F2F42C8CCCD]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "8EC21E98-B5CE-4916-A3D6-449FA428A007 v0.0",
+     "binding": "ncalrpc:[LRPC-8b5bd4bb0884e03523]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "8EC21E98-B5CE-4916-A3D6-449FA428A007 v0.0",
+     "binding": "ncalrpc:[OLE5826CF427B6EC2CC9F2F42C8CCCD]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "4B112204-0E19-11D3-B42B-0000F81FEB9F v1.0",
+     "binding": "ncalrpc:[LRPC-f1abfc0a5965e3abe2]",
+     "annotation": "",
+     "exe": "ssdpsrv.dll"
+    },
+    {
+     "uuid": "A4B8D482-80CE-40D6-934D-B22A01A44FE7 v1.0",
+     "binding": "ncalrpc:[LicenseServiceEndpoint]",
+     "annotation": "LicenseManager",
+     "exe": ""
+    },
+    {
+     "uuid": "2ACB9D68-B434-4B3E-B966-E06B4B3A84CB v1.0",
+     "binding": "ncalrpc:[LRPC-c74e5ef059a92cc3fe]",
+     "annotation": "",
+     "exe": "bthserv.dll"
+    },
+    {
+     "uuid": "2ACB9D68-B434-4B3E-B966-E06B4B3A84CB v1.0",
+     "binding": "ncalrpc:[LRPC-56fc77ceafcdd68a3a]",
+     "annotation": "",
+     "exe": "bthserv.dll"
+    },
+    {
+     "uuid": "2ACB9D68-B434-4B3E-B966-E06B4B3A84CB v1.0",
+     "binding": "ncalrpc:[LRPC-30cba7181eb3be6948]",
+     "annotation": "",
+     "exe": "bthserv.dll"
+    },
+    {
+     "uuid": "2ACB9D68-B434-4B3E-B966-E06B4B3A84CB v1.0",
+     "binding": "ncalrpc:[LRPC-06c918e99f0968207a]",
+     "annotation": "",
+     "exe": "bthserv.dll"
+    },
+    {
+     "uuid": "2ACB9D68-B434-4B3E-B966-E06B4B3A84CB v1.0",
+     "binding": "ncalrpc:[OLE0B906385AF1D49A6D95029DF8202]",
+     "annotation": "",
+     "exe": "bthserv.dll"
+    },
+    {
+     "uuid": "D09BDEB5-6171-4A34-BFE2-06FA82652568 v1.0",
+     "binding": "ncalrpc:[LRPC-56fc77ceafcdd68a3a]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "D09BDEB5-6171-4A34-BFE2-06FA82652568 v1.0",
+     "binding": "ncalrpc:[LRPC-30cba7181eb3be6948]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "D09BDEB5-6171-4A34-BFE2-06FA82652568 v1.0",
+     "binding": "ncalrpc:[LRPC-06c918e99f0968207a]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "D09BDEB5-6171-4A34-BFE2-06FA82652568 v1.0",
+     "binding": "ncalrpc:[OLE0B906385AF1D49A6D95029DF8202]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "5DEA026D-F999-40B1-A234-2164FD086783 v1.0",
+     "binding": "ncalrpc:[LRPC-30cba7181eb3be6948]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "5DEA026D-F999-40B1-A234-2164FD086783 v1.0",
+     "binding": "ncalrpc:[LRPC-06c918e99f0968207a]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "5DEA026D-F999-40B1-A234-2164FD086783 v1.0",
+     "binding": "ncalrpc:[OLE0B906385AF1D49A6D95029DF8202]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "0A533B58-0ED9-4085-B6E8-95795E147972 v1.0",
+     "binding": "ncalrpc:[LRPC-06c918e99f0968207a]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "0A533B58-0ED9-4085-B6E8-95795E147972 v1.0",
+     "binding": "ncalrpc:[OLE0B906385AF1D49A6D95029DF8202]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "650A7E26-EAB8-5533-CE43-9C1DFCE11511 v1.0",
+     "binding": "ncalrpc:[LRPC-7b64cfa3064754dfd7]",
+     "annotation": "Vpn APIs",
+     "exe": ""
+    },
+    {
+     "uuid": "650A7E26-EAB8-5533-CE43-9C1DFCE11511 v1.0",
+     "binding": "ncalrpc:[VpnikeRpc]",
+     "annotation": "Vpn APIs",
+     "exe": ""
+    },
+    {
+     "uuid": "650A7E26-EAB8-5533-CE43-9C1DFCE11511 v1.0",
+     "binding": "ncalrpc:[RasmanLrpc]",
+     "annotation": "Vpn APIs",
+     "exe": ""
+    },
+    {
+     "uuid": "650A7E26-EAB8-5533-CE43-9C1DFCE11511 v1.0",
+     "binding": "ncacn_np:\\\\DESKTOP-EXAMPLE[\\PIPE\\ROUTER]",
+     "annotation": "Vpn APIs",
+     "exe": ""
+    },
+    {
+     "uuid": "2EB08E3E-639F-4FBA-97B1-14F878961076 v1.0",
+     "binding": "ncalrpc:[LRPC-77d6e17ba18ade10a8]",
+     "annotation": "Group Policy RPC Interface",
+     "exe": "gpsvc.dll"
+    },
+    {
+     "uuid": "C9AC6DB5-82B7-4E55-AE8A-E464ED7B4277 v1.0",
+     "binding": "ncalrpc:[LRPC-31382c5aa0d487c669]",
+     "annotation": "Impl friendly name",
+     "exe": "sysntfy.dll"
+    },
+    {
+     "uuid": "FF9FD3C4-742E-45E0-91DD-2F5BC632A1DF v1.0",
+     "binding": "ncalrpc:[LRPC-6c483132546ea504da]",
+     "annotation": "appxsvc",
+     "exe": ""
+    },
+    {
+     "uuid": "AE2DC901-312D-41DF-8B79-E835E63DB874 v1.0",
+     "binding": "ncalrpc:[LRPC-6c483132546ea504da]",
+     "annotation": "appxsvc",
+     "exe": ""
+    },
+    {
+     "uuid": "64D1D045-F675-460B-8A94-570246B36DAB v1.0",
+     "binding": "ncalrpc:[ClipServiceTransportEndpoint-00001]",
+     "annotation": "CLIPSVC Default RPC Interface",
+     "exe": ""
+    },
+    {
+     "uuid": "509BC7AE-77BE-4EE8-B07C-0D096BB44345 v1.0",
+     "binding": "ncalrpc:[LRPC-5be17008d15f2d9701]",
+     "annotation": "",
+     "exe": ""
+    },
+    {
+     "uuid": "509BC7AE-77BE-4EE8-B07C-0D096BB44345 v1.0",
+     "binding": "ncalrpc:[OLE3E513911BD68FC4EB749ECC56879]",
+     "annotation": "",
+     "exe": ""
+    }
+   ],
+   "interface_count": 158,
+   "interfaces": [
+    "01CEB31C-6DA7-44F8-B93B-A390DB4F0D97",
+    "0361AE94-0316-4C6C-8AD8-C594375800E2",
+    "0497B57D-2E66-424F-A0C6-157CD5D41700",
+    "06BBA54A-BE05-49F9-B0A0-30F790261023",
+    "0767A036-0D22-48AA-BA69-B619480F38CB",
+    "082A3471-31B6-422A-B931-A54401960C62",
+    "085B0334-E454-4D91-9B8C-4134F9E793F3",
+    "0A533B58-0ED9-4085-B6E8-95795E147972",
+    "0A74EF1C-41A4-4E06-83AE-DC74FB1CDD53",
+    "0B6EDBFA-4A24-4FC6-8A23-942B1ECA65D1",
+    "0D3C7F20-1C8D-4654-A1B3-51563B298BDA",
+    "0D3E2735-CEA0-4ECC-A9E2-41A2D81AED4E",
+    "0D47017B-B33B-46AD-9E18-FE96456C5078",
+    "0F738E20-73C0-4CA8-AA6A-8DFEF545FEA8",
+    "0FC77B1A-95D8-4A2E-A0C0-CFF54237462B",
+    "0FF1F646-13BB-400A-AB50-9A78F2B7A85A",
+    "10D20E7A-2530-494A-AC01-B8DD04480AD2",
+    "12345678-1234-ABCD-EF00-0123456789AB",
+    "12345778-1234-ABCD-EF00-0123456789AC",
+    "12E65DD8-887F-41EF-91BF-8D816C42C2E7",
+    "13560FA9-8C09-4B56-A1FD-04D083B9B2A1",
+    "178D84BE-9291-4994-82C6-3F909ACA5A03",
+    "1A0D010F-1C33-432C-B0F5-8CF4E8053099",
+    "1B37CA91-76B1-4F5E-A3C7-2ABFC61F2BB0",
+    "1D45E083-478F-437C-9618-3594CED8C235",
+    "1FF70682-0A51-30E8-076D-740BE8CEE98B",
+    "201EF99A-7FA0-444C-9399-19BA84F12A1A",
+    "20C40295-8DBA-48E6-AEBF-3E78EF3BB144",
+    "2513BCBE-6CD4-4348-855E-7EFB3C336DD3",
+    "25952C5D-7976-4AA1-A3CB-C35F7AE79D1B",
+    "26268C86-E770-433E-86EF-5F3BA6731FBA",
+    "266F33B4-C7C1-4BD1-8F52-DDB8F2214EA9",
+    "266F33B4-C7C1-4BD1-8F52-DDB8F2214EB0",
+    "28942101-43DF-4EB7-B1DD-2C0C0EBF99C0",
+    "29770A8F-829B-4158-90A2-78CD488501F7",
+    "2ACB9D68-B434-4B3E-B966-E06B4B3A84CB",
+    "2C7FD9CE-E706-4B40-B412-953107EF9BB0",
+    "2D98A740-581D-41B9-AA0D-A88B9D5CE938",
+    "2E6035B2-E8F1-41A7-A044-656B439C4C34",
+    "2E7D4935-59D2-4312-A2C8-41900AA5495F",
+    "2EB08E3E-639F-4FBA-97B1-14F878961076",
+    "2FB92682-6599-42DC-AE13-BD2CA89BD11C",
+    "30ADC50C-5CBC-46CE-9A0E-91914789E23C",
+    "30B044A5-A225-43F0-B3A4-E060DF91F9C1",
+    "33D84484-3626-47EE-8C6F-E7E98B113BE1",
+    "3473DD4D-2E88-4006-9CBA-22570909DD10",
+    "367ABB81-9844-35F1-AD32-98F038001003",
+    "378E52B0-C0A9-11CF-822D-00AA0051E40F",
+    "3A9EF155-691D-4449-8D05-09AD57031823",
+    "3B338D89-6CFA-44B8-847E-531531BC9992",
+    "3C4728C5-F0AB-448B-BDA1-6CE01EB0A6D5",
+    "3C4728C5-F0AB-448B-BDA1-6CE01EB0A6D6",
+    "3F787932-3452-4363-8651-6EA97BB373BB",
+    "44D1520B-6133-41F0-8A66-D37305ECC357",
+    "49461CAC-A1E3-42B7-9328-972783B9391E",
+    "4A452661-8290-4B36-8FBE-7F4093A94978",
+    "4B112204-0E19-11D3-B42B-0000F81FEB9F",
+    "4BEC6BB8-B5C2-4B6F-B2C1-5DA5CF92D0D9",
+    "4C8D0BEF-D7F1-49F0-9102-CAA05F58D114",
+    "4C9DBF19-D39E-4BB9-90EE-8F7179B20283",
+    "4DACE966-A243-4450-AE3F-9B7BCB5315B8",
+    "4ED8ABCC-F1E2-438B-981F-BB0E8ABC010C",
+    "509BC7AE-77BE-4EE8-B07C-0D096BB44345",
+    "51A227AE-825B-41F2-B4A9-1AC9557A1018",
+    "5222821F-D5E2-4885-84F1-5F6185A0EC41",
+    "552D076A-CB29-4E44-8B6A-D15E59E2C0AF",
+    "55E6B932-1979-45D6-90C5-7F6270724112",
+    "572E35B4-1344-4565-96A1-F5DF3BFA89BB",
+    "5824833B-3C1A-4AD2-BDFD-C31D19E23ED2",
+    "58E604E8-9ADB-4D2E-A464-3B0683FB1480",
+    "5B665B9A-A086-4E26-AE24-96AB050B0EC3",
+    "5DEA026D-F999-40B1-A234-2164FD086783",
+    "5F54CE7D-5B79-4175-8584-CB65313A0E98",
+    "6319E220-2FD5-48BC-A92F-BA70384E4D24",
+    "64D1D045-F675-460B-8A94-570246B36DAB",
+    "650A7E26-EAB8-5533-CE43-9C1DFCE11511",
+    "697DCDA9-3BA9-4EB2-9247-E11F1901B0D2",
+    "6982A06E-5FE2-46B1-B39C-A2C545BFA069",
+    "6B5BDD1E-528C-422C-AF8C-A4079BE4FE48",
+    "714DC5C4-C5F6-466A-B037-A573C958031E",
+    "7635805D-A473-451A-94B2-5D674D953D39",
+    "76C217BC-C8B4-4201-A745-373AD9032B1A",
+    "76F03F96-CDFD-44FC-A22C-64950A001209",
+    "76F226C3-EC14-4325-8A99-6A46348418AF",
+    "78DCCE84-7F13-4139-B8CD-EF222AA0408B",
+    "7DF1CEAE-DE4E-4E6F-AB14-49636E7C2052",
+    "7EA70BCF-48AF-4F6A-8968-6A440754D5FA",
+    "7F1343FE-50A9-4927-A778-0C5859517BAC",
+    "7F9D11BF-7FB9-436B-A812-B2D50C5D4C03",
+    "850CEE52-3038-4277-B9B4-E05DB8B2C35C",
+    "857FB1BE-084F-4FB5-B59C-4B2C4BE5F0CF",
+    "86D35949-83C9-4044-B424-DB363231FD0C",
+    "8782D3B9-EBBD-4644-A3D8-E8725381919B",
+    "880FD55E-43B9-11E0-B1A8-CF4EDFD72085",
+    "8833D1D0-965F-4216-B3E9-FBE58CAD3100",
+    "88ABCBC3-34EA-76AE-8215-767520655A23",
+    "8BFC3BE1-6DEF-4E2D-AF74-7C47CD0ADE4A",
+    "8EC21E98-B5CE-4916-A3D6-449FA428A007",
+    "8FB74744-B2FF-4C00-BE0D-9EF9A191FE1B",
+    "94F974AF-F072-4E68-85C9-D265B55306FE",
+    "95095EC8-32EA-4EB0-A3E2-041F97B36168",
+    "95406F0B-B239-4318-91BB-CEA3A46FF0DC",
+    "98716D03-89AC-44C7-BB8C-285824E51C4A",
+    "98CD761E-E77D-41C8-A3C0-0FB756D90EC2",
+    "98E96949-BC59-47F1-92D1-8C25B46F85C7",
+    "9B008953-F195-4BF9-BDE0-4471971E58ED",
+    "A1D4EAE7-39F8-4BCA-8E72-832767F5082A",
+    "A398E520-D59A-4BDD-AA7A-3C1E0303A511",
+    "A4B8D482-80CE-40D6-934D-B22A01A44FE7",
+    "A500D4C6-0DD1-4543-BC0C-D5F93486EAF8",
+    "A69816F5-83B6-4D48-8633-067F99F5F2D3",
+    "ABFB6CA3-0C5E-4734-9285-0AEE72FE8D1C",
+    "AE2DC901-312D-41DF-8B79-E835E63DB874",
+    "AE33069B-A2A8-46EE-A235-DDFD339BE281",
+    "AE55C4C0-64CE-11DD-AD8B-0800200C9A66",
+    "AF7FEAD8-C34A-461F-8894-6D6F0E5EDDCD",
+    "B04D3C44-F014-4530-88F3-EE7DAA3E69B9",
+    "B18FBAB6-56F8-4702-84E0-41053293A869",
+    "B1EF227E-DFA5-421E-82BB-67A6A129C496",
+    "B25A52BF-E5DD-4F4A-AEA6-8CA7272A0E86",
+    "B37F900A-EAE4-4304-A2AB-12BB668C0188",
+    "B54E9AA3-CF29-4F21-A8EA-98C5850CE296",
+    "B58AA02E-2884-4E97-8176-4EE06D794184",
+    "BD6CA954-842E-468F-8B07-89CBFA9522DC",
+    "BD84CD86-9825-4376-813D-334C543F89B1",
+    "BDAA0970-413B-4A3E-9E5D-F6DC9D7E0760",
+    "C27F3C08-92BA-478C-B446-B419C4CEF0E2",
+    "C2D1B5DD-FA81-4460-9DD6-E7658B85454B",
+    "C36BE077-E14B-4FE9-8ABC-E856EF4F048B",
+    "C3F42C6E-D4CC-4E5A-938B-9C5E8A5D8C2E",
+    "C49A5A70-8A7F-4E70-BA16-1E8F1F193EF1",
+    "C503F532-443A-4C69-8300-CCD1FBDB3839",
+    "C605F9FB-F0A3-4E2A-A073-73560F8D9E3E",
+    "C6B5235A-E413-481D-9AC8-31681B1FAAF5",
+    "C9AC6DB5-82B7-4E55-AE8A-E464ED7B4277",
+    "CC105610-DA03-467E-BC73-5B9E2937458D",
+    "D09BDEB5-6171-4A34-BFE2-06FA82652568",
+    "D22895EF-AFF4-42C5-A5B2-B14466D34AB4",
+    "D4051BDE-9CDD-4910-B393-4AA85EC3C482",
+    "D95AFE70-A6D5-4259-822E-2C84DA1DDB0D",
+    "DD490425-5325-4565-B774-7E27D6C09C24",
+    "DD59071B-3215-4C59-8481-972EDADC0F6A",
+    "E38F5360-8572-473E-B696-1B46873BEEAB",
+    "E40F7B57-7A25-4CD3-A135-7F7D3DF9D16B",
+    "E53D94CA-7464-4839-B044-09A2FB8B3AE5",
+    "E64B9AEE-F372-4312-9A14-8F1502B5C8E3",
+    "E7A216AF-1EC1-447F-8D3F-A87278DB564D",
+    "EB081A0D-10EE-478A-A1DD-50995283E7A8",
+    "F2C9B409-C1C9-4100-8639-D8AB1486694A",
+    "F44E62AF-DAB1-44C2-8013-049A9DE417D6",
+    "F47433C3-3E9D-4157-AAD4-83AA1F5C2D4C",
+    "F6BEAFF7-1E19-4FBB-9F8F-B89E2018337C",
+    "FAE436B0-B864-4A87-9EDA-298547CD82F2",
+    "FAF2447B-B348-4FEB-8DBE-BEEE5B7F7778",
+    "FC48CD89-98D6-4628-9839-86F7A3E4161A",
+    "FD7A0523-DC70-43DD-9B2E-9C5ED48225B1",
+    "FD8BE72B-A9CD-4B2C-A9CA-4DED242FBE4D",
+    "FF9FD3C4-742E-45E0-91DD-2F5BC632A1DF"
+   ],
+   "named_services": [
+    "BFE.DLL",
+    "FwRemoteSvr.dll",
+    "IKEEXT.DLL",
+    "MPSSVC.dll",
+    "SCardSvr.dll",
+    "appinfo.dll",
+    "bdesvc.dll",
+    "bthserv.dll",
+    "certprop.dll",
+    "dhcpcsvc.dll",
+    "dhcpcsvc6.dll",
+    "gpsvc.dll",
+    "iphlpsvc.dll",
+    "nrpsrv.dll",
+    "nsisvc.dll",
+    "pcasvc.dll",
+    "samsrv.dll",
+    "schedsvc.dll",
+    "services.exe",
+    "spoolsv.exe",
+    "srvsvc.dll",
+    "ssdpsrv.dll",
+    "sysmain.dll",
+    "sysntfy.dll",
+    "taskcomp.dll",
+    "wevtsvc.dll",
+    "wininit.exe",
+    "winlogon.exe",
+    "wlanext.exe",
+    "wlanmsm.dll",
+    "wlansvc.dll",
+    "wscsvc.dll"
+   ],
+   "tcp_endpoint_ports": [
+    49664,
+    49665,
+    49666,
+    49667,
+    49668,
+    49677,
+    49678,
+    49679
+   ],
+   "dynamic_tcp_ports": [
+    49664,
+    49665,
+    49666,
+    49667,
+    49668,
+    49677,
+    49678,
+    49679
+   ]
+  },
+  "evidence": "endpoints=410 interfaces=158 dynamic_tcp_ports=8"
+ },
+ {
+  "scanner": "rdp_scan",
+  "target": "192.0.2.69",
+  "port": 3389,
+  "proto": "tcp",
+  "status": "open",
+  "data": {
+   "rdp_confirmed": true,
+   "negotiation": "failure",
+   "failure_code": 2,
+   "nla_required": false
+  },
+  "evidence": "RDP confirmed; security=?; NLA NOT required"
+ },
+ {
+  "scanner": "snmp_scan",
+  "target": "192.0.2.69",
+  "port": 161,
+  "proto": "udp",
+  "status": "open|filtered",
+  "data": {
+   "responded": false,
+   "reason": "no_snmp_response"
+  },
+  "evidence": "no SNMP reply to common communities (open|filtered)"
+ },
+ {
+  "scanner": "ipmi_scan",
+  "target": "192.0.2.69",
+  "port": 623,
+  "proto": "udp",
+  "status": "filtered",
+  "data": {
+   "ipmi": null,
+   "reason": "no_ipmi"
+  },
+  "evidence": null
+ },
+ {
+  "scanner": "udp_scan",
+  "target": "192.0.2.69",
+  "port": 53,
+  "proto": "udp",
+  "status": "closed",
+  "data": {
+   "service_guess": "dns",
+   "responded": false
+  },
+  "evidence": "ICMP port-unreachable (closed)"
+ },
+ {
+  "scanner": "udp_scan",
+  "target": "192.0.2.69",
+  "port": 123,
+  "proto": "udp",
+  "status": "open|filtered",
+  "data": {
+   "service_guess": "ntp",
+   "responded": false,
+   "reason": "no_response"
+  },
+  "evidence": "no UDP or ICMP response (open|filtered)"
+ },
+ {
+  "scanner": "udp_scan",
+  "target": "192.0.2.69",
+  "port": 137,
+  "proto": "udp",
+  "status": "open",
+  "data": {
+   "service": "netbios-ns",
+   "responded": true,
+   "reply_bytes": 175,
+   "reply_hex_head": "80008400000000010000000020434b414141414141414141414141414141414141414141414141414141414141000021"
+  },
+  "evidence": "netbios-ns replied with 175 bytes"
+ },
+ {
+  "scanner": "udp_scan",
+  "target": "192.0.2.69",
+  "port": 161,
+  "proto": "udp",
+  "status": "open|filtered",
+  "data": {
+   "service_guess": "snmp",
+   "responded": false,
+   "reason": "no_response"
+  },
+  "evidence": "no UDP or ICMP response (open|filtered)"
+ },
+ {
+  "scanner": "udp_scan",
+  "target": "192.0.2.69",
+  "port": 11211,
+  "proto": "udp",
+  "status": "closed",
+  "data": {
+   "service_guess": "memcached",
+   "responded": false
+  },
+  "evidence": "ICMP port-unreachable (closed)"
+ }
+]

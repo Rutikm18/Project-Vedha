@@ -14,7 +14,7 @@ from datetime import datetime
 from decimal import Decimal
 from typing import Literal
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from app.models.enums import FindingSeverity, FindingStatus
 
@@ -123,3 +123,34 @@ class ClientScanRequestOut(BaseModel):
     intensity: str | None = None
     note: str | None = None
     requested_at: datetime | None = None
+
+
+class ClientAssistantMessage(BaseModel):
+    """One turn of the customer's conversation. Bounded so a crafted client can't
+    push an unbounded prompt through the portal into the model."""
+    role: Literal["user", "assistant"]
+    content: str = Field(min_length=1, max_length=4_000)
+
+
+class ClientAssistantAsk(BaseModel):
+    messages: list[ClientAssistantMessage] = Field(min_length=1, max_length=16)
+    # Optional finding the customer is asking about — validated against their own
+    # engagement server-side before any of it reaches the model.
+    finding_id: uuid.UUID | None = None
+
+    @model_validator(mode="after")
+    def _bounded(self):
+        if sum(len(m.content) for m in self.messages) > 16_000:
+            raise ValueError("conversation exceeds 16,000 characters")
+        if self.messages[-1].role != "user":
+            raise ValueError("the last message must be from the user")
+        return self
+
+
+class ClientAssistantReply(BaseModel):
+    content: str
+    provider: str
+    model: str
+    # True when the answer was grounded in this engagement's recorded data.
+    grounded: bool
+    generated_at: datetime

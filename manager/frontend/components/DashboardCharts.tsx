@@ -1,7 +1,6 @@
 "use client";
 
 import React from "react";
-import { useQuery } from "@tanstack/react-query";
 import {
   AreaChart, Area, PieChart, Pie, Cell,
   XAxis, YAxis, Tooltip, ResponsiveContainer,
@@ -9,7 +8,7 @@ import {
 import { Users, ShieldAlert, ArrowUpRight, ArrowDownRight, Minus } from "lucide-react";
 import Link from "next/link";
 import { useCountUp } from "../hooks/useCountUp";
-import { fetchJson } from "../lib/fetcher";
+import { useConsoleQuery } from "../lib/console-source";
 
 /* ─── Types ─── */
 interface TimelinePoint { date: string; CRITICAL: number; HIGH: number; MEDIUM: number; LOW: number; }
@@ -179,38 +178,30 @@ const STATUS_STYLE: Record<string, { color: string; bg: string }> = {
 
 /* ─── Main component ─── */
 export function DashboardCharts() {
-  const { data, isLoading } = useQuery({
-    queryKey: ["engagements"],
-    // Must use fetchJson (injects the Bearer token) — a raw fetch hits the
-    // withBackend route with no Authorization header and 401s, which is why the
-    // KPIs/charts previously rendered all-zero while LiveOverview showed real data.
-    queryFn: () => fetchJson<{
-      engagements?: Engagement[];
-      timeline?: TimelinePoint[];
-      activity?: ActivityItem[];
-      stats?: Record<string, number>;
-    }>("/api/engagements"),
-  });
+  // Operator-only (a customer console has exactly one engagement): resolves to
+  // `unavailable` in the portal, where the engagement-derived KPIs are omitted
+  // rather than erroring.
+  const { data, isLoading } = useConsoleQuery<{
+    engagements?: Engagement[];
+    timeline?: TimelinePoint[];
+    activity?: ActivityItem[];
+    stats?: Record<string, number>;
+  }>("engagements");
 
   // Real findings drive the "Critical findings" table and the KEV count — same
   // queryKey as LiveOverview so React Query serves one shared, deduped request.
-  const { data: findingsData } = useQuery({
-    queryKey: ["dashboard-top-findings"],
-    queryFn: () => fetchJson<FindingPage>("/api/findings?paginated=true&page=1&page_size=5&sort=risk"),
-  });
-  const findings: Finding[] = findingsData?.items ?? [];
-  const { data: findingSummary } = useQuery({
-    queryKey: ["findings-summary"],
-    queryFn: () => fetchJson<FindingSummary>("/api/findings/summary"),
-  });
+  // The operator endpoint paginates ({items:[…]}); the portal returns a bare
+  // array. Normalise here so the table below is identical on both consoles.
+  const { data: findingsData } = useConsoleQuery<FindingPage | Finding[]>("topFindings");
+  const findings: Finding[] = Array.isArray(findingsData)
+    ? findingsData.slice(0, 5)
+    : findingsData?.items ?? [];
+  const { data: findingSummary } = useConsoleQuery<FindingSummary>("findingsSummary");
 
   // Real activity feed (merged scan + finding events) — replaces the engagements
   // payload's always-empty activity array.
-  const { data: activityData, isLoading: activityLoading } = useQuery({
-    queryKey: ["activity"],
-    queryFn: () => fetchJson<ActivityItem[]>("/api/activity?limit=20"),
-    refetchInterval: 30_000,
-  });
+  const { data: activityData, isLoading: activityLoading } =
+    useConsoleQuery<ActivityItem[]>("activity", { refetchInterval: 30_000 });
   const activity: ActivityItem[] = activityData ?? [];
 
   const engagements: Engagement[] = data?.engagements ?? [];

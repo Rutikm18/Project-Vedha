@@ -17,9 +17,8 @@
  * ProtocolRow.tsx and ZoneRow.tsx are superseded by MeterRow below.
  */
 import React from "react";
-import { useQuery } from "@tanstack/react-query";
 import { Activity, Shield } from "lucide-react";
-import { fetchJson } from "../../lib/fetcher";
+import { useConsoleQuery } from "../../lib/console-source";
 import { SkeletonRows, ErrorState, EmptyState } from "../states/DataState";
 import { Meter } from "../console/Primitives";
 
@@ -29,9 +28,7 @@ interface Exposure {
 }
 
 export function useExposure() {
-  return useQuery({
-    queryKey: ["exposure"],
-    queryFn: () => fetchJson<Exposure>("/api/analytics/exposure"),
+  return useConsoleQuery<Exposure>("exposure", {
     refetchInterval: 60_000,
   });
 }

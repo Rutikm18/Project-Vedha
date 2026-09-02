@@ -29,6 +29,7 @@ from scanner.scanner_base import ScanResult
 FACT_CERTAINTY = {
     "host_discovery": "uncertain",
     "port_scan": "deterministic",       # TCP; UDP overridden in classify_certainty
+    "os_fingerprint": "deterministic",  # host OS does not change within a scan
     "service_banner": "deterministic",
     "tls_scan": "deterministic",
     "web_scan": "deterministic",
@@ -36,6 +37,26 @@ FACT_CERTAINTY = {
     "snmp_scan": "deterministic",
     "db_scan": "deterministic",
     "mcp_ai_scan": "deterministic",
+    # The remaining TCP deep branches. Each is a protocol handshake against a
+    # confirmed-open port, so a repeat probe inside one engagement returns the
+    # same answer — the same reasoning that makes tls_scan/smb_scan deterministic.
+    # They were simply never added as branches were, so every one of them fell
+    # through to the "uncertain" default and could never be reused by re-scan.
+    "ssh_scan": "deterministic",
+    "smb_enum_scan": "deterministic",
+    "ldap_scan": "deterministic",
+    "dns_scan": "deterministic",
+    "nfs_scan": "deterministic",
+    "ftp_scan": "deterministic",
+    "rsync_scan": "deterministic",
+    "vnc_scan": "deterministic",
+    "smtp_scan": "deterministic",
+    "msrpc_scan": "deterministic",
+    "rdp_scan": "deterministic",
+    "printer_scan": "deterministic",
+    # Datagram probes: silence is ambiguous (lost packet vs filtered vs absent),
+    # so an unanswered probe must stay re-checkable — same call as udp_scan.
+    "ipmi_scan": "uncertain",
     "udp_scan": "uncertain",
     "passive_collect": "uncertain",
     "ssh_inventory": "deterministic",   # credentialed, authoritative, host-stable

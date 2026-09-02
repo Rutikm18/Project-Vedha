@@ -6,6 +6,7 @@ import { PageShell } from "../components/PageShell";
 import { DashboardGrid } from "../components/dashboard/DashboardGrid";
 import { DashboardCharts } from "../components/DashboardCharts";
 import { fetchJson } from "../lib/fetcher";
+import { OperatorConsoleProvider } from "../lib/console-source";
 
 /* The dashboard body is the redesigned console (DashboardGrid): live ledger,
    posture dial, SLA clock, patch matrix, exposure meters, and the live agent
@@ -71,6 +72,7 @@ export default function Dashboard() {
       subtitle="Open exposure, remediation clock, and fleet health"
       statusItems={statusItems}
     >
+      <OperatorConsoleProvider>
       <div className="console-scope" style={{ display: "flex", flexDirection: "column" }}>
         <DashboardGrid />
 
@@ -99,6 +101,7 @@ export default function Dashboard() {
           <DashboardCharts />
         </section>
       </div>
+      </OperatorConsoleProvider>
     </PageShell>
   );
 }

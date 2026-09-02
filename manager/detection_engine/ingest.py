@@ -93,6 +93,13 @@ def _extract_aliases(scanner: str, data: dict) -> list[str]:
     if scanner == "tls_scan":
         san = (data.get("certificate") or {}).get("san") or []
         aliases.extend(s for s in san if isinstance(s, str))
+    if scanner == "host_discovery":
+        # The discovery tier's PTR record and NetBIOS node-status name — both
+        # answered by the target (or its authoritative resolver), not guessed.
+        for key in ("hostname", "netbios_name"):
+            raw = data.get(key)
+            if isinstance(raw, str) and raw.strip():
+                aliases.append(raw.strip())
     return aliases
 
 
