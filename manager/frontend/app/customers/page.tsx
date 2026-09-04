@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  UserPlus, KeyRound, Power, Loader2, RefreshCw, Users, Clipboard, Globe, Eye, EyeOff,
+  UserPlus, KeyRound, Power, Loader2, RefreshCw, Users, Clipboard, Globe, Eye, EyeOff, Link2,
 } from "lucide-react";
 import { PageShell } from "../../components/PageShell";
 import { useToast } from "../../hooks/useToast";
@@ -154,6 +154,14 @@ export default function CustomersPage() {
     );
   }
 
+  // Builds a one-click access link. Credentials go in the URL fragment (#) which
+  // is never sent to the server, never appears in server logs, and is erased by
+  // the login page immediately before the API call fires.
+  function buildAccessLink(userEmail: string, pw: string): string {
+    const params = new URLSearchParams({ e: userEmail, p: pw });
+    return `${portalBase}/portal/login#${params.toString()}`;
+  }
+
   return (
     <PageShell title="Customers" subtitle="Provision customer portal logins and assign them an engagement">
       <style>{STYLES}</style>
@@ -187,6 +195,16 @@ export default function CustomersPage() {
                 <code className="cus-mono">{portalBase}/portal/login</code>
                 <button className="cus-icon-btn" aria-label="Copy portal URL" onClick={() => copy(`${portalBase}/portal/login`)}><Clipboard size={14} /></button>
               </div>
+              {issued.password && (
+                <div className="cus-issued-row">
+                  <span className="cus-issued-label">Access link</span>
+                  <code className="cus-mono cus-access-link">{buildAccessLink(issued.email, issued.password)}</code>
+                  <button className="cus-icon-btn cus-icon-btn--accent" aria-label="Copy one-click access link"
+                    onClick={() => copy(buildAccessLink(issued.email, issued.password))}>
+                    <Link2 size={14} />
+                  </button>
+                </div>
+              )}
               {issued.slug && (
                 <div className="cus-issued-hint">
                   <Globe size={12} /> Handle <strong>{issued.slug}</strong> — becomes <code>{issued.slug}.portal.&lt;your-domain&gt;</code> once a domain is configured.
@@ -264,8 +282,15 @@ export default function CustomersPage() {
                       <span style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
                         <code className="cus-mono cus-pw">{revealed[c.id] ?? "(reset to reveal)"}</code>
                         {revealed[c.id] && (
-                          <button className="cus-icon-btn" aria-label="Copy password"
-                            onClick={() => copy(revealed[c.id]!)}><Clipboard size={12} /></button>
+                          <>
+                            <button className="cus-icon-btn" aria-label="Copy password"
+                              onClick={() => copy(revealed[c.id]!)}><Clipboard size={12} /></button>
+                            <button className="cus-icon-btn cus-icon-btn--accent" aria-label="Copy one-click access link"
+                              title="Copy access link (customer clicks → auto-login)"
+                              onClick={() => copy(buildAccessLink(c.email, revealed[c.id]!))}>
+                              <Link2 size={12} />
+                            </button>
+                          </>
                         )}
                       </span>
                     )}
@@ -317,6 +342,9 @@ const STYLES = `
 .cus-mono { font-family: var(--font-mono); }
 .cus-icon-btn { width: 30px; height: 30px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; border-radius: 7px; background: var(--bg-surface); border: 0.5px solid var(--border-subtle); color: var(--text-secondary); cursor: pointer; }
 .cus-icon-btn:hover { color: var(--accent); border-color: var(--border-accent); }
+.cus-icon-btn--accent { color: var(--accent); border-color: var(--border-accent); background: var(--accent-ghost); }
+.cus-icon-btn--accent:hover { filter: brightness(1.1); }
+.cus-access-link { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 240px; font-size: 10px; color: var(--accent); }
 
 .cus-list-head { padding: 13px 14px; display: flex; align-items: center; justify-content: space-between; border-bottom: 0.5px solid var(--border-subtle); }
 .cus-count { font: 700 10px var(--font-mono); color: var(--text-muted); background: var(--bg-surface); border: 0.5px solid var(--border-subtle); border-radius: 5px; padding: 1px 6px; }

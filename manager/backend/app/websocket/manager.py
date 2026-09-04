@@ -16,6 +16,8 @@ from collections import defaultdict
 from typing import Dict, Optional, Set
 from datetime import datetime, timezone
 
+from app.services.project_time import project_timestamp
+
 from fastapi import WebSocket, WebSocketDisconnect
 import structlog
 
@@ -372,7 +374,7 @@ class GraphWebSocketManager:
                     await self.manager.send_personal(websocket, {
                         "type": "error",
                         "message": "Invalid JSON",
-                        "timestamp": datetime.utcnow().isoformat(),
+                        "timestamp": project_timestamp(),
                     })
         except WebSocketDisconnect:
             await self.manager.disconnect(websocket)
@@ -384,20 +386,20 @@ class GraphWebSocketManager:
         if msg_type == "ping":
             await self.manager.send_personal(websocket, {
                 "type": "pong",
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": project_timestamp(),
             })
 
         elif msg_type == "graph.update":
             await self.manager.broadcast(room_id, {
                 "type": "graph.updated",
                 "data": message.get("data"),
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": project_timestamp(),
             }, exclude=websocket)
 
         elif msg_type == "graph.subscribe":
             await self.manager.send_personal(websocket, {
                 "type": "graph.subscribed",
-                "timestamp": datetime.utcnow().isoformat(),
+                "timestamp": project_timestamp(),
             })
 
     async def broadcast_graph_update(self, engagement_id: str, graph_data: dict):
@@ -406,7 +408,7 @@ class GraphWebSocketManager:
         await self.manager.broadcast(room_id, {
             "type": "graph.data",
             "data": graph_data,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": project_timestamp(),
         })
 
     async def broadcast_node_update(self, engagement_id: str, node_id: str, node_data: dict):
@@ -416,7 +418,7 @@ class GraphWebSocketManager:
             "type": "graph.node.updated",
             "node_id": node_id,
             "data": node_data,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": project_timestamp(),
         })
 
     async def broadcast_layout_update(self, engagement_id: str, layout_type: str):
@@ -425,5 +427,5 @@ class GraphWebSocketManager:
         await self.manager.broadcast(room_id, {
             "type": "graph.layout.changed",
             "layout": layout_type,
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": project_timestamp(),
         })

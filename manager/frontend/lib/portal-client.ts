@@ -4,6 +4,7 @@
  * FastAPI — this layer just fetches and unwraps errors.
  */
 import type { CSSProperties } from "react";
+import { useQuery } from "@tanstack/react-query";
 export async function portalApi<T>(
   path: string,
   opts: { method?: string; body?: unknown } = {},
@@ -138,3 +139,16 @@ export const GRADE_VAR: Record<string, string> = {
   D: "var(--sev-high-color)",
   F: "var(--sev-critical-color)",
 };
+
+/**
+ * Shared hook for the current customer's engagement. Deduplicates the
+ * /engagement fetch via React Query's ["portal","engagement"] cache key —
+ * any page that also calls this gets the same cached result at zero extra cost.
+ */
+export function usePortalEngagement() {
+  return useQuery({
+    queryKey: ["portal", "engagement"],
+    queryFn: () => portalApi<PortalEngagement>("/engagement"),
+    staleTime: 5 * 60 * 1000,
+  });
+}

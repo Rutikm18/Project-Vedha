@@ -6,7 +6,7 @@ import { PageShell } from "../components/PageShell";
 import { DashboardGrid } from "../components/dashboard/DashboardGrid";
 import { DashboardCharts } from "../components/DashboardCharts";
 import { fetchJson } from "../lib/fetcher";
-import { OperatorConsoleProvider } from "../lib/console-source";
+import { OperatorConsoleProvider, consoleQueryKey } from "../lib/console-source";
 
 /* The dashboard body is the redesigned console (DashboardGrid): live ledger,
    posture dial, SLA clock, patch matrix, exposure meters, and the live agent
@@ -17,20 +17,23 @@ import { OperatorConsoleProvider } from "../lib/console-source";
    engagement counts — a deliberate, flagged redundancy to trim in a follow-up
    rather than delete real data here. */
 export default function Dashboard() {
-  // Live probe count for the header status chip. Shares the ["agents"] key with
-  // the Agent Monitor panel, so React Query serves both from one request.
+  // Live probe count for the header status chip. It must use the SAME key the
+  // Agent Monitor panel does, or React Query treats them as two datasets and
+  // fetches the identical endpoint twice. Since the panels moved behind the
+  // console seam, that key comes from consoleQueryKey — hand-writing ["agents"]
+  // here silently doubled the request.
   const agentsQuery = useQuery({
-    queryKey: ["agents"],
+    queryKey: consoleQueryKey("operator", "agents"),
     queryFn: () => fetchJson<any[]>("/api/agents/register"),
     refetchInterval: 15_000,
   });
   const agents = agentsQuery.data ?? [];
   const agentsOnline = agents.filter((a: any) => a?.status === "ONLINE" || a?.status === "BUSY").length;
 
-  // SLA breach count for the header chip — shares the ["sla-summary"] key with
-  // <SlaStatus/>, so both come from one deduped request.
+  // SLA breach count for the header chip — shares <SlaStatus/>'s cache entry, so
+  // both come from one deduped request.
   const slaQuery = useQuery({
-    queryKey: ["sla-summary"],
+    queryKey: consoleQueryKey("operator", "sla"),
     queryFn: () => fetchJson<{ summary?: { breached: number; totalTracked: number } }>("/api/findings/sla-summary"),
     refetchInterval: 60_000,
   });

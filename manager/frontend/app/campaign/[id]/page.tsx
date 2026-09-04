@@ -103,7 +103,6 @@ export default function CampaignDetailPage() {
 
   return (
     <PageShell
-      hideRefresh
       title="VA Campaign"
       subtitle={id ? `Live progress — ${id}` : "Live progress"}
       statusItems={statusItems}

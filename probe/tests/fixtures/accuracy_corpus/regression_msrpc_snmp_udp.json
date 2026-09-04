@@ -1,0 +1,64 @@
+{
+ "name": "regression_msrpc_snmp_udp",
+ "provenance": "self_regression",
+ "description": "MSRPC endpoint + SNMP UDP exposure",
+ "labeling_note": "Labels are THIS engine's current output over real captured scanner facts. This detects behavioural DRIFT only. It is not evidence that the engine is correct \u2014 see README.md for building a ground-truth corpus with an independent validator.",
+ "source_facts": "manager/detection_engine/tests/fixtures/probe_corpus/msrpc_snmp_udp.json",
+ "facts": [
+  {
+   "scanner": "msrpc_scan",
+   "target": "10.0.0.10",
+   "timestamp": "2026-09-02T11:03:50.208953+00:00",
+   "port": 135,
+   "status": "open",
+   "data": {
+    "msrpc": true,
+    "endpoint_count": 166,
+    "dynamic_tcp_ports": [
+     49664,
+     49665
+    ]
+   }
+  },
+  {
+   "scanner": "snmp_scan",
+   "target": "10.0.0.14",
+   "timestamp": "2026-09-02T11:03:50.208953+00:00",
+   "port": 161,
+   "status": "open",
+   "data": {
+    "community": "public",
+    "sysdescr": "redacted"
+   }
+  },
+  {
+   "scanner": "udp_scan",
+   "target": "10.0.0.15",
+   "timestamp": "2026-09-02T11:03:50.208953+00:00",
+   "port": 123,
+   "status": "open",
+   "data": {
+    "service": "ntp",
+    "responded": true,
+    "monlist_enabled": true
+   }
+  }
+ ],
+ "expected_findings": [
+  [
+   "MSRPC-ENDPOINTS-EXPOSED",
+   "10.0.0.10",
+   135
+  ],
+  [
+   "SNMP-COMMUNITY-READABLE",
+   "10.0.0.14",
+   161
+  ],
+  [
+   "UDP-NTP-MONLIST",
+   "10.0.0.15",
+   123
+  ]
+ ]
+}

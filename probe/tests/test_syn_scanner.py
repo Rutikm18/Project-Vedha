@@ -210,8 +210,9 @@ class TestSynRetransmit:
         # Fixed source port so we can craft cookie-valid replies; deterministic
         # resolve/source-IP; fake raw sockets in place of privileged ones.
         monkeypatch.setattr(ss.random, "randint", lambda a, b: 50000)
-        monkeypatch.setattr(ss, "resolve",
-                            lambda t, p, proto="tcp": (socket.AF_INET, (t, 0)))
+        monkeypatch.setattr(
+            ss, "resolve",
+            lambda t, p, proto="tcp", family=None: (socket.AF_INET, (t, 0)))
         monkeypatch.setattr(ss, "_local_source_ip", lambda dst: "10.0.0.1")
 
         class _Send:

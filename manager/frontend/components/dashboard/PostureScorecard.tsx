@@ -82,7 +82,7 @@ function MetricTile({ label, value, delta, hint }: {
   return (
     <div
       style={{
-        flex: "1 1 148px", minWidth: 0, padding: "var(--space-3) var(--space-4)", borderRadius: "var(--r-md)",
+        flex: "1 1 120px", minWidth: 0, padding: "var(--space-3) var(--space-4)", borderRadius: "var(--r-md)",
         background: "var(--bg-surface)", border: "var(--hairline) solid var(--border-subtle)",
         display: "flex", flexDirection: "column", gap: "var(--space-2)",
       }}
@@ -124,7 +124,7 @@ export function PostureScorecard() {
   };
 
   return (
-    <div style={{ display: "flex", gap: "var(--space-5)", alignItems: "center", flexWrap: "wrap", padding: "var(--space-5)" }}>
+    <div style={{ display: "flex", gap: "var(--space-5)", alignItems: "center", flexWrap: "wrap", padding: "var(--space-5)", height: "100%", boxSizing: "border-box" }}>
       {/* ---- dial ---------------------------------------------------------- */}
       <div style={{ position: "relative", display: "grid", placeItems: "center" }}>
         <Dial score={s.posture_score} color={g.color} />
@@ -145,7 +145,7 @@ export function PostureScorecard() {
       </div>
 
       {/* ---- verdict + supporting metrics ---------------------------------- */}
-      <div style={{ flex: "1 1 300px", minWidth: 0, display: "flex", flexDirection: "column", gap: 12 }}>
+      <div style={{ flex: "1 1 200px", minWidth: 0, display: "flex", flexDirection: "column", gap: 12 }}>
         <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
           <span className="chip" style={{ color: g.color, background: g.bg, borderColor: g.edge, fontSize: "var(--fs-label)" }}>
             {g.read}

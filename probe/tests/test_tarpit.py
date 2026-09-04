@@ -52,7 +52,7 @@ class TestPortScannerTarpitFlag:
         ports = list(range(1, 121))                 # 120 ports, all "open"
         sc = self._scanner(ports)
 
-        async def all_open(target, port, est=None):
+        async def all_open(target, port, est=None, cwnd=None):
             return sc._build(target, port, "open", "connect_success", "forced open")
 
         sc._scan_port = all_open
@@ -64,7 +64,7 @@ class TestPortScannerTarpitFlag:
         ports = list(range(1, 121))
         sc = self._scanner(ports)
 
-        async def one_open(target, port, est=None):
+        async def one_open(target, port, est=None, cwnd=None):
             status = "open" if port == 22 else "closed"
             return sc._build(target, port, status, "reason", "e")
 

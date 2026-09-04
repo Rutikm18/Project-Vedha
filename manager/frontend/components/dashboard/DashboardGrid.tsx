@@ -23,7 +23,7 @@ import { Gauge, Timer, Activity, Shield, GitCompareArrows, Cpu } from "lucide-re
 import { Panel } from "../console/Primitives";
 import { Freshness } from "../console/Freshness";
 import { DataState, SkeletonRows, EmptyState } from "../states/DataState";
-import { useConsoleQuery } from "../../lib/console-source";
+import { useConsoleQuery, useConsoleQueryKey, type ConsoleKey } from "../../lib/console-source";
 import { LiveOverview } from "./LiveOverview";
 import { PostureScorecard } from "./PostureScorecard";
 import { SlaStatus } from "./SlaStatus";
@@ -123,8 +123,8 @@ function AgentMonitor() {
 
 /** Reads a query's freshness straight from the React Query cache — no new
  *  subscription/fetch (spec: do not add a useQuery). Renders into a Panel note. */
-function FreshNote({ qk, staleAfterMs }: { qk: unknown[]; staleAfterMs?: number }) {
-  const st = useQueryClient().getQueryState(qk);
+function FreshNote({ dataset, staleAfterMs }: { dataset: ConsoleKey; staleAfterMs?: number }) {
+  const st = useQueryClient().getQueryState(useConsoleQueryKey(dataset));
   if (!st?.dataUpdatedAt) return null;
   return (
     <Freshness
@@ -146,16 +146,21 @@ export function DashboardGrid() {
           align-items: stretch;
           margin-bottom: var(--space-4);
         }
+        .console-band:last-of-type { margin-bottom: 0; }
         .console-band > * { min-width: 0; }
         .console-band > * > .panel,
         .console-band > .panel { height: 100%; }
 
         .band-1 { grid-template-columns: minmax(0, 1fr); }
         .band-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-        .band-3 { grid-template-columns: minmax(340px, 1.35fr) minmax(240px, 1fr) minmax(240px, 1fr); }
+        /* band-3: patch matrix gets slightly more width than the two exposure cards
+           but not so much that they look mismatched side-by-side. */
+        .band-3 { grid-template-columns: minmax(300px, 1.15fr) minmax(220px, 1fr) minmax(220px, 1fr); }
         .band-4 { grid-template-columns: minmax(0, 1fr); }
 
-        @media (max-width: 1280px) {
+        /* At 1100px the three-column layout starts to feel cramped; collapse
+           patch matrix to full-width with the two exposure cards beneath it. */
+        @media (max-width: 1100px) {
           .band-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
           .band-3 > :first-child { grid-column: span 2; }
         }
@@ -165,6 +170,7 @@ export function DashboardGrid() {
         }
         @media (max-width: 640px) {
           .console-band { gap: var(--space-3); margin-bottom: var(--space-3); }
+          .console-band:last-of-type { margin-bottom: 0; }
         }
       `}</style>
 
@@ -175,10 +181,10 @@ export function DashboardGrid() {
       </div>
 
       <div className="console-band band-2">
-        <Panel title="Security posture" eyebrow="Latest scan" icon={<Gauge size={13} />} headingLevel={3} note={<FreshNote qk={["posture"]} />}>
+        <Panel title="Security posture" eyebrow="Latest scan" icon={<Gauge size={13} />} headingLevel={3} note={<FreshNote dataset="posture" />}>
           <PostureScorecard />
         </Panel>
-        <Panel title="Remediation SLA" eyebrow="Clock running" icon={<Timer size={13} />} headingLevel={3} note={<FreshNote qk={["sla-summary"]} />}>
+        <Panel title="Remediation SLA" eyebrow="Clock running" icon={<Timer size={13} />} headingLevel={3} note={<FreshNote dataset="sla" />}>
           {/* SlaStatus reads useSearchParams() for its shareable ?sla= filter; that
               API bails static prerender unless wrapped in a Suspense boundary (Next 15). */}
           <React.Suspense fallback={<div style={{ padding: "var(--space-4)" }}><SkeletonRows rows={4} height={46} /></div>}>
@@ -188,19 +194,19 @@ export function DashboardGrid() {
       </div>
 
       <div className="console-band band-3">
-        <Panel title="Scan-to-scan change" eyebrow="Previous vs latest" icon={<GitCompareArrows size={13} />} headingLevel={3} note={<FreshNote qk={["posture"]} />}>
+        <Panel title="Scan-to-scan change" eyebrow="Previous vs latest" icon={<GitCompareArrows size={13} />} headingLevel={3} note={<FreshNote dataset="posture" />}>
           <PatchComparisonMatrix />
         </Panel>
-        <Panel title="Protocol risk" eyebrow="Worst finding per service · higher is worse" icon={<Activity size={13} />} headingLevel={3} note={<FreshNote qk={["exposure"]} />}>
+        <Panel title="Protocol risk" eyebrow="Worst finding per service · higher is worse" icon={<Activity size={13} />} headingLevel={3} note={<FreshNote dataset="exposure" />}>
           <ProtocolRiskCard />
         </Panel>
-        <Panel title="Zone health" eyebrow="Headroom per zone · higher is better · weakest first" icon={<Shield size={13} />} headingLevel={3} note={<FreshNote qk={["exposure"]} />}>
+        <Panel title="Zone health" eyebrow="Headroom per zone · higher is better · weakest first" icon={<Shield size={13} />} headingLevel={3} note={<FreshNote dataset="exposure" />}>
           <ZoneHealthCard />
         </Panel>
       </div>
 
       <div className="console-band band-4">
-        <Panel title="Agent monitor" eyebrow="Live vedha-agent fleet" icon={<Cpu size={13} />} headingLevel={3} note={<FreshNote qk={["agents"]} staleAfterMs={60_000} />}>
+        <Panel title="Agent monitor" eyebrow="Live vedha-agent fleet" icon={<Cpu size={13} />} headingLevel={3} note={<FreshNote dataset="agents" staleAfterMs={60_000} />}>
           <AgentMonitor />
         </Panel>
       </div>

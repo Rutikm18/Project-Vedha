@@ -2,6 +2,7 @@
  {
   "scanner": "ftp_scan",
   "target": "127.0.0.1",
+  "timestamp": "2026-09-02T11:03:50.208953+00:00",
   "port": 49374,
   "proto": "tcp",
   "status": "open",
@@ -21,6 +22,7 @@
  {
   "scanner": "dns_scan",
   "target": "127.0.0.1",
+  "timestamp": "2026-09-02T11:03:50.208953+00:00",
   "port": 49475,
   "proto": "udp",
   "status": "open",
@@ -68,6 +70,7 @@
  {
   "scanner": "nfs_scan",
   "target": "127.0.0.1",
+  "timestamp": "2026-09-02T11:03:50.208953+00:00",
   "port": 2049,
   "proto": "tcp",
   "status": "open",
@@ -110,6 +113,7 @@
  {
   "scanner": "ldap_scan",
   "target": "127.0.0.1",
+  "timestamp": "2026-09-02T11:03:50.208953+00:00",
   "port": 389,
   "proto": "tcp",
   "status": "open",
@@ -136,6 +140,7 @@
  {
   "scanner": "vnc_scan",
   "target": "127.0.0.1",
+  "timestamp": "2026-09-02T11:03:50.208953+00:00",
   "port": 49368,
   "proto": "tcp",
   "status": "open",
@@ -161,6 +166,7 @@
  {
   "scanner": "smtp_scan",
   "target": "127.0.0.1",
+  "timestamp": "2026-09-02T11:03:50.208953+00:00",
   "port": 49378,
   "proto": "tcp",
   "status": "open",
@@ -187,6 +193,7 @@
  {
   "scanner": "rsync_scan",
   "target": "127.0.0.1",
+  "timestamp": "2026-09-02T11:03:50.208953+00:00",
   "port": 49569,
   "proto": "tcp",
   "status": "open",
@@ -215,6 +222,7 @@
  {
   "scanner": "ipmi_scan",
   "target": "127.0.0.1",
+  "timestamp": "2026-09-02T11:03:50.208953+00:00",
   "port": 58628,
   "proto": "udp",
   "status": "open",

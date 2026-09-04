@@ -7,6 +7,8 @@ import re
 import shutil
 import socket
 import ssl
+import time
+from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Iterable
 
@@ -260,11 +262,29 @@ class ExecutionTrace:
                 "fact_count": 0,
                 "error_count": 0,
                 "reused_fact_count": 0,
+                "duration_s": 0.0,
                 "skip_reason": None,
                 "coverage": None,
                 "issues": [],
             }
         return self._runs[component_id]
+
+    @contextmanager
+    def timing(self, component_id: str):
+        """Accumulate wall time for one component.
+
+        Without this, `scanner_runs` said WHICH phases ran but not which ones cost
+        the time, so "the job is slow" could not be narrowed to a stage without a
+        profiler. Accumulates across invocations, since per-host branches are
+        recorded under one component id.
+        """
+        run = self._ensure(component_id)
+        started = time.monotonic()
+        try:
+            yield
+        finally:
+            run["duration_s"] = round(
+                run["duration_s"] + (time.monotonic() - started), 3)
 
     def record(
         self,

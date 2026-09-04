@@ -20,7 +20,7 @@ import {
 } from "lucide-react";
 import { PortalShell } from "../../../components/portal/PortalShell";
 import { Timestamp } from "../../../components/portal/Timestamp";
-import { portalApi, type PortalEngagement } from "../../../lib/portal-client";
+import { portalApi, usePortalEngagement } from "../../../lib/portal-client";
 import { DataState, SkeletonRows, EmptyState } from "../../../components/states/DataState";
 
 interface PortalAgent {
@@ -44,10 +44,7 @@ export default function PortalFleet() {
     queryFn: () => portalApi<PortalAgent[]>("/agents"),
     refetchInterval: 15_000,
   });
-  const eng = useQuery({
-    queryKey: ["portal", "engagement"],
-    queryFn: () => portalApi<PortalEngagement>("/engagement"),
-  });
+  const eng = usePortalEngagement();
 
   const list = agents.data ?? [];
   const online = list.filter((a) => a.status === "ONLINE" || a.status === "BUSY").length;
@@ -61,7 +58,7 @@ export default function PortalFleet() {
   return (
     <PortalShell
       title="Probe"
-      subtitle="The scanner assigned to your network"
+      subtitle={eng.data?.name ?? "The scanner assigned to your network"}
       statusItems={statusItems}
       live={list.some((a) => a.status === "BUSY")}
     >

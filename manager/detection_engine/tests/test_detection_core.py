@@ -234,6 +234,42 @@ class TestIngestFile:
         assert result.fact_count == 1
         assert "10.0.0.1" in result.assets
 
+    def test_run_scoped_fact_is_ingested_but_creates_no_asset(self, tmp_path):
+        """ipv6_discovery reports on the RUN, not a host: its target is the local
+        interface it swept, or the literal "auto" when none resolved. Keying an
+        asset off it invented a phantom host named "auto" in the inventory on every
+        assessment. The fact is still real evidence, so it counts as ingested — it
+        just may not mint a host."""
+        p = tmp_path / "run_scoped.jsonl"
+        p.write_text("\n".join([
+            json.dumps({
+                "scanner": "ipv6_discovery", "target": "auto",
+                "timestamp": "2026-01-01T00:00:00Z", "status": "observed",
+                "data": {"neighbours_found": 0},
+            }),
+            json.dumps({
+                "scanner": "port_scan", "target": "10.0.0.1",
+                "timestamp": "2026-01-01T00:00:00Z", "status": "open", "port": 443,
+            }),
+        ]) + "\n")
+        result = ingest_file(str(p))
+        assert set(result.assets) == {"10.0.0.1"}, "phantom asset minted from a run-scoped fact"
+        assert result.fact_count == 2, "run-scoped evidence must not be silently dropped"
+        assert len(result.quarantined) == 0
+        assert len(result.run_scoped) == 1
+        assert result.run_scoped[0].scanner == "ipv6_discovery"
+
+    def test_run_scoped_fact_with_interface_target_creates_no_asset(self, tmp_path):
+        p = tmp_path / "iface.jsonl"
+        p.write_text(json.dumps({
+            "scanner": "ipv6_discovery", "target": "eth0",
+            "timestamp": "2026-01-01T00:00:00Z", "status": "observed",
+            "data": {"neighbours_found": 3},
+        }) + "\n")
+        result = ingest_file(str(p))
+        assert result.assets == {}
+        assert result.fact_count == 1
+
     def test_quarantines_malformed(self, tmp_path):
         p = tmp_path / "bad.jsonl"
         p.write_text("not-json\n")

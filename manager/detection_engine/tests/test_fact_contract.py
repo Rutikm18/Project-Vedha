@@ -15,9 +15,11 @@ captures from GET /engagements/{id}/raw-facts — see that dir's README).
 from __future__ import annotations
 
 import json
+import tempfile
 from pathlib import Path
 
 import posture_rules as P
+from ingest import ingest_files
 
 CORPUS_DIR = Path(__file__).parent / "fixtures" / "probe_corpus"
 
@@ -41,9 +43,40 @@ def _emitted_paths_by_scanner(facts: list[dict]) -> dict[str, set[str]]:
     return out
 
 
+def _ingest_corpus():
+    """Run the corpus through the REAL ingester, exactly as engine_bridge does:
+    one JSON fact per line, then ingest_files()."""
+    facts = _load_corpus()
+    with tempfile.NamedTemporaryFile("w", suffix=".jsonl", delete=False) as fh:
+        for fact in facts:
+            fh.write(json.dumps(fact, default=str) + "\n")
+        tmp = fh.name
+    try:
+        return facts, ingest_files([tmp])
+    finally:
+        Path(tmp).unlink(missing_ok=True)
+
+
 def test_corpus_is_present_and_nonempty():
     facts = _load_corpus()
     assert facts, f"probe corpus is empty at {CORPUS_DIR}"
+
+
+def test_corpus_survives_ingestion():
+    """The gate the name-level check above cannot provide: a corpus whose field NAMES
+    all look right is still worthless if ingest rejects the records wholesale. Every
+    downstream rule reads ingest's Assets, so a fact that never becomes one can never
+    fire anything — the host reports clean and nothing logs an error.
+
+    Compare against the real ingester, not against json.loads."""
+    facts, ing = _ingest_corpus()
+    reasons = sorted({q.reason for q in ing.quarantined})
+    assert not ing.quarantined, (
+        f"{len(ing.quarantined)}/{len(facts)} corpus facts are rejected by ingest "
+        f"and can never reach a rule. Reasons: {reasons}\n"
+        "The corpus must be the shape the ingester actually accepts "
+        "(see ingest.REQUIRED_FIELDS).")
+    assert ing.assets, "corpus ingested to zero assets — no rule can fire"
 
 
 def test_every_rule_input_is_emitted_by_its_scanner():

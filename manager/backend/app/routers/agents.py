@@ -10,7 +10,7 @@ from typing import Annotated
 import structlog
 from fastapi import APIRouter, HTTPException, Request, status
 from pydantic import BaseModel, Field, field_validator, model_validator
-from sqlalchemy import select
+from sqlalchemy import func, select
 
 from app.auth.jwt import create_access_token
 from app.auth.rbac import require_role
@@ -22,6 +22,7 @@ from app.models.asset import Asset as Asset  # re-exported for tests (ag.Asset)
 from app.models.engagement import Engagement
 from app.models.enums import ScanJobStatus, ScanJobType
 from app.models.scan_job import ScanJob
+from app.models.scan_job_attempt import ScanJobAttempt
 from app.models.service import Service as Service  # re-exported for tests (ag.Service)
 from app.services.job_result_service import _promote_assets as _promote_assets
 from app.services.scope_targets import validate_targets_in_scope
@@ -1107,6 +1108,117 @@ async def get_job_status(job_id: uuid.UUID, db: DB, current_user: AuthUser):
     }
 
 
+#: An engagement may hold at most this many jobs WAITING to run. The cap exists
+#: because a queue is a promise: every pending job says "a probe will run this".
+#: Ten queued scans against a fleet of one is not a plan, it is a backlog nobody
+#: is watching, and the work at the end of it is stale by the time it starts.
+#: Running jobs are NOT counted — the cap limits the backlog, not the throughput.
+MAX_PENDING_JOBS_PER_ENGAGEMENT = 3
+
+
+async def _pending_job_count(db, engagement_id: uuid.UUID) -> int:
+    """How many jobs are queued (not yet claimed) for this engagement."""
+    return int((await db.execute(
+        select(func.count())
+        .select_from(ScanJob)
+        .where(
+            ScanJob.engagement_id == engagement_id,
+            ScanJob.status == ScanJobStatus.pending,
+        )
+    )).scalar_one())
+
+
+@router.post(
+    "/jobs/{job_id}/cancel",
+    summary="Stop a running job, or remove one that is still queued",
+)
+async def cancel_agent_job(
+    job_id: uuid.UUID,
+    db: DB,
+    current_user: Annotated[AuthUser, require_role(["admin", "manager", "tester"])],
+):
+    """Operator-initiated stop for a queued or running scan job.
+
+    Two cases, one endpoint, because from the dashboard they are the same
+    intent ("stop this"):
+
+      * PENDING — nothing has run, so the job simply becomes `cancelled` and is
+        never offered to a probe again.
+      * RUNNING — the probe is mid-scan. We mark the job `cancelled`, release the
+        agent, and BUMP THE FENCE. That last part is what actually stops the
+        work: the probe renews its lease on every heartbeat, `renew_job_attempt`
+        refuses a superseded fence, and the probe treats that refusal as "abandon
+        this job". No new protocol, and it is race-safe by construction — a
+        result that was already in flight when we cancelled carries the old fence
+        and is rejected on arrival, so a cancelled job can never be completed by
+        a straggler.
+
+    Freeing the probe is the point: it polls again immediately and picks up the
+    next queued job for the engagement.
+
+    Terminal jobs (completed/failed/already-cancelled) are refused with 409 —
+    silently "cancelling" finished work would let the UI imply it undid something.
+    """
+    job = (await db.execute(
+        select(ScanJob)
+        .join(Engagement, ScanJob.engagement_id == Engagement.id)
+        .where(ScanJob.id == job_id, Engagement.tenant_id == current_user.tenant_id)
+    )).scalar_one_or_none()
+    if not job:
+        raise HTTPException(404, "Job not found")
+
+    if job.status not in (ScanJobStatus.pending, ScanJobStatus.running):
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"Job is already {job.status.value}; only queued or running jobs can be cancelled",
+        )
+
+    was_running = job.status == ScanJobStatus.running
+    released_agent = str(job.agent_id) if job.agent_id else None
+    now = datetime.now(timezone.utc)
+
+    if was_running and job.current_attempt_id:
+        # Close the open attempt so the audit trail records a stop, not a gap.
+        attempt = (await db.execute(
+            select(ScanJobAttempt).where(ScanJobAttempt.id == job.current_attempt_id)
+        )).scalar_one_or_none()
+        if attempt is not None:
+            attempt.status = "cancelled"
+            attempt.ended_at = now
+            attempt.error = f"cancelled by user {current_user.user_id}"
+
+    # Superseding the fence is the abort signal (see docstring).
+    job.current_fence = (job.current_fence or 0) + 1
+    job.current_attempt_id = None
+    job.agent_id = None
+    job.lease_expires_at = None
+    job.status = ScanJobStatus.cancelled
+    job.completed_at = now
+    prior = job.result if isinstance(job.result, dict) else {}
+    job.result = {
+        **prior,
+        "cancelled_by": str(current_user.user_id),
+        "cancelled_at": now.isoformat(),
+        "cancelled_while": "running" if was_running else "queued",
+    }
+    await db.flush()
+
+    logger.info(
+        "agent.job.cancelled",
+        job_id=str(job.id),
+        was_running=was_running,
+        released_agent=released_agent,
+        cancelled_by=str(current_user.user_id),
+    )
+    return {
+        "job_id": str(job.id),
+        "status": job.status.value,
+        "was_running": was_running,
+        "released_agent_id": released_agent,
+        "pending_remaining": await _pending_job_count(db, job.engagement_id),
+    }
+
+
 @router.get("/{agent_id}/job-history",
             summary="Scan jobs claimed by this probe (running + history) for the Fleet UI")
 async def get_agent_job_history(
@@ -1179,6 +1291,19 @@ async def enqueue_agent_job(
     )).scalar_one_or_none()
     if not eng:
         raise HTTPException(404, "Engagement not found")
+
+    # Queue depth cap. Checked AFTER the engagement is resolved (so the count is
+    # tenant-safe) and BEFORE any expensive scope/use-case work, so a rejected
+    # enqueue is cheap. Only PENDING jobs count: the cap bounds the backlog, not
+    # how much work a probe may be doing.
+    queued = await _pending_job_count(db, body.engagement_id)
+    if queued >= MAX_PENDING_JOBS_PER_ENGAGEMENT:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"Queue is full: this engagement already has {queued} job(s) waiting "
+            f"(limit {MAX_PENDING_JOBS_PER_ENGAGEMENT}). Cancel a queued job "
+            f"before adding another.",
+        )
 
     requested_scope = _job_reachability_scope(
         body.params,

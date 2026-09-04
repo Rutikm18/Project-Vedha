@@ -333,7 +333,15 @@ def _cert(f: Fact) -> dict:
 
 
 def _tls_version(f: Fact) -> Optional[dict]:
-    acc = [str(v).upper().replace(" ", "") for v in (_d(f).get("accepted_versions") or [])]
+    # Protocol labels reach us in two spellings: the dotted "TLSv1.0" that
+    # ssl.version() and the probe's cipher_by_version use, and the underscored
+    # "TLSv1_0" that tls_scanner's own probe list emits into accepted_versions
+    # (they are ssl.TLSVersion member names). Normalising the separator is what
+    # makes this rule fire on real scanner output — matching only the dotted form
+    # silently missed every legacy-TLS server, and would keep missing the facts
+    # already stored in that spelling.
+    acc = [str(v).upper().replace(" ", "").replace("_", ".")
+           for v in (_d(f).get("accepted_versions") or [])]
     bad = sorted(set(acc) & _WEAK_TLS)
     return {"deprecated_versions": bad} if bad else None
 

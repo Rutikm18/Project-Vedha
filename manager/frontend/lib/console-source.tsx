@@ -132,6 +132,19 @@ export function useConsoleSource(): ConsoleSource {
   return useContext(ConsoleSourceContext);
 }
 
+/** The React Query key `useConsoleQuery` stores a dataset under. Exported so
+ *  freshness indicators read the SAME cache entry the panel's data came from —
+ *  reading a hand-written key silently returns undefined and the indicator
+ *  disappears, which is exactly what happened when these moved behind the seam. */
+export function consoleQueryKey(mode: ConsoleSource["mode"], key: ConsoleKey): unknown[] {
+  return ["console", mode, key];
+}
+
+/** Convenience for components already inside a provider. */
+export function useConsoleQueryKey(key: ConsoleKey): unknown[] {
+  return consoleQueryKey(useConsoleSource().mode, key);
+}
+
 export function useConsoleCapability(cap: ConsoleCapability): boolean {
   return useConsoleSource().capabilities.has(cap);
 }

@@ -38,7 +38,13 @@ import time
 from pathlib import Path
 from urllib.parse import urlparse
 
-from agent.transport import DeviceAlreadyEnrolledError, Transport, TransportError
+from agent.transport import (
+    HEARTBEAT_LEASE_REVOKED,
+    HEARTBEAT_OK,
+    DeviceAlreadyEnrolledError,
+    Transport,
+    TransportError,
+)
 
 VERSION = "2.0.0"
 LOG = logging.getLogger("agent")
@@ -195,6 +201,64 @@ def _wait_for_manager(transport, *, attempts: int = 6, base_delay: float = 5.0) 
     raise SystemExit(2)
 
 
+_LOG_LEVELS = ("CRITICAL", "ERROR", "WARNING", "INFO", "DEBUG")
+
+
+def configure_logging() -> str:
+    """Install a root log handler for the daemon.
+
+    Nothing on the daemon path called basicConfig(), so the root logger had no
+    handler and Python fell back to its last-resort handler — which emits
+    WARNING and above ONLY. Every LOG.info() the probe writes (job claimed,
+    use-case resolved, scope guard decisions, "done — N hosts, M open ports",
+    "result archived -> ...") was produced and then discarded before reaching
+    `docker compose logs`, which is why probe-side troubleshooting was blind.
+
+    Level comes from LOG_LEVEL (default INFO); PROBE_DEBUG=1 forces DEBUG so the
+    existing connection-tracing switch also turns up the rest of the probe.
+    Idempotent: safe to call more than once, and it never overrides a handler an
+    embedding process already installed.
+    """
+    requested = (os.environ.get("LOG_LEVEL") or "").strip().upper()
+    # Re-read PROBE_DEBUG rather than trusting the import-time constant: probe.env
+    # is loaded inside main(), i.e. AFTER this module was imported, so a value set
+    # there would otherwise never be seen.
+    debug = _DEBUG or os.environ.get("PROBE_DEBUG", "").lower() in ("1", "true", "yes", "on")
+    if debug:
+        level_name = "DEBUG"
+    elif requested in _LOG_LEVELS:
+        level_name = requested
+    else:
+        if requested:
+            print(f"[warn] ignoring unknown LOG_LEVEL={requested!r}; "
+                  f"valid: {', '.join(_LOG_LEVELS)}", file=sys.stderr, flush=True)
+        level_name = "INFO"
+
+    root = logging.getLogger()
+    if not root.handlers:
+        logging.basicConfig(
+            level=getattr(logging, level_name),
+            format="%(asctime)s %(levelname)-7s %(name)s: %(message)s",
+            stream=sys.stderr,
+        )
+    else:
+        root.setLevel(getattr(logging, level_name))
+    # Third-party chatter would bury the probe's own narration.
+    #
+    # httpx logs one INFO line per request, and the probe polls the manager every
+    # POLL_INTERVAL seconds (default 10) FOREVER, plus a heartbeat every 30s. At
+    # the old floor of INFO that produced an endless scroll of
+    #   HTTP Request: GET /agents/<id>/jobs "HTTP/1.1 200 OK"
+    # which tells an operator nothing, hides the lines that do matter (job
+    # claimed, scan finished, errors), and makes an idle probe look busy.
+    # Routine transport chatter is DEBUG-only now; warnings and errors — the ones
+    # that actually indicate a problem reaching the manager — still surface.
+    transport_level = logging.DEBUG if level_name == "DEBUG" else logging.WARNING
+    for noisy in ("httpx", "httpcore", "websockets", "asyncio", "urllib3"):
+        logging.getLogger(noisy).setLevel(transport_level)
+    return level_name
+
+
 def _poll_jobs_or_empty(transport: Transport, limit: int) -> list[dict]:
     """Poll for work. Auth failures (TransportError) and transient network
     failures both propagate to the caller's unified retry/backoff handler so
@@ -205,6 +269,10 @@ def _poll_jobs_or_empty(transport: Transport, limit: int) -> list[dict]:
 def main() -> None:
     # ── Load environment ──────────────────────────────────────────────────────
     _load_env(Path(__file__).resolve().parent.parent / "probe.env")
+
+    # Logging BEFORE anything else, so startup failures are narrated too.
+    level = configure_logging()
+    logging.getLogger("agent").info("Vedha Probe %s starting (log level %s)", VERSION, level)
 
     PLATFORM_URL = os.environ.get("PLATFORM_URL", "").rstrip("/")
     PROBE_NAME = os.environ.get("PROBE_NAME") or socket.gethostname()
@@ -309,6 +377,13 @@ def main() -> None:
         max_bytes=SPOOL_MAX_BYTES,
         max_files=SPOOL_MAX_FILES,
     )
+
+    # Stand up the local result archive now, so the directory exists and any
+    # permission problem is reported at boot rather than after the first scan.
+    # Unlike the spool above (a delivery buffer that empties itself on success),
+    # this keeps every submitted payload for offline accuracy review.
+    from agent.task_runner import prepare_result_dir
+    prepare_result_dir()
 
     # ── Preflight: is the Manager actually reachable? ────────────────────────
     # Bounded, self-diagnosing check BEFORE the identity dance so a down/blocked
@@ -527,7 +602,20 @@ def _run_polled_job_with_heartbeats(
             try:
                 return future.result(timeout=interval)
             except concurrent.futures.TimeoutError:
-                if not transport.heartbeat("busy", job_id, attempt_id, fence):
+                outcome = transport.heartbeat_ex("busy", job_id, attempt_id, fence)
+                if outcome == HEARTBEAT_LEASE_REVOKED:
+                    # 409 is DEFINITIVE: the operator cancelled this job (or it
+                    # was reassigned). Unlike a network blip there is nothing to
+                    # retry — the manager will reject our results anyway — so
+                    # stop now and free the probe for the next queued job
+                    # instead of burning the whole failure budget first.
+                    say(
+                        f"Job {job_id} was stopped by the operator "
+                        f"(lease revoked) — abandoning it.",
+                        1,
+                    )
+                    cancellation_event.set()
+                elif outcome != HEARTBEAT_OK:
                     consecutive_failures += 1
                     say(
                         f"Lease heartbeat failed for running job {job_id}; "
@@ -1439,6 +1527,8 @@ if __name__ == "__main__":
             # On-box diagnostic: run the REAL scan engine locally, no manager.
             # Lazily imported so the daemon path and the `manifest` contract (which
             # the seal-parity job diffs byte-for-byte) are completely unaffected.
+            _load_env(Path(__file__).resolve().parent.parent / "probe.env")
+            configure_logging()
             from agent.local_run import run as _local_run
             raise SystemExit(_local_run(sys.argv[2:]))
         else:

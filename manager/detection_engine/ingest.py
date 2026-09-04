@@ -30,6 +30,13 @@ _AUTHORITATIVE_SCANNERS = {"ssh_inventory", "windows_inventory"}
 
 REQUIRED_FIELDS = {"scanner", "target", "timestamp", "status"}
 
+# Scanners whose `target` is NOT a host: it names the interface/segment the run
+# swept, or the literal "auto" when none resolved. Their evidence is real and is
+# counted as ingested, but it must never mint an Asset — doing so put a phantom
+# host called "auto" into the inventory on every assessment and inflated host
+# counts by one. Mirrors probe/agent/engine.py's _RUN_SCOPED_SCANNERS.
+_RUN_SCOPED_SCANNERS = {"ipv6_discovery"}
+
 
 @dataclass
 class QuarantinedLine:
@@ -43,6 +50,10 @@ class IngestResult:
     def __init__(self) -> None:
         self.assets: dict[str, Asset] = {}
         self.quarantined: list[QuarantinedLine] = []
+        # Accepted facts that describe the run rather than a host (see
+        # _RUN_SCOPED_SCANNERS). Kept, not dropped: they count toward fact_count
+        # so the ingest census still balances against what the probe submitted.
+        self.run_scoped: list[Fact] = []
         self.fact_count = 0
 
     def get_or_create_asset(self, key: str) -> Asset:
@@ -68,6 +79,14 @@ def _validate(record: dict) -> str | None:
     port = record.get("port")
     if port is not None and not isinstance(port, int):
         return "port must be an int or null"
+    # `data` carries every scanner-specific field the rules read, and they read it
+    # with .get(). A non-mapping here is not a degraded fact, it is one that makes
+    # the whole CVE pass raise mid-batch and take every other host's findings down
+    # with it. Reject it at the same gate as the rest, so it is quarantined and
+    # counted rather than fatal.
+    data = record.get("data")
+    if data is not None and not isinstance(data, dict):
+        return f"data must be an object or null (got {type(data).__name__})"
     return None
 
 
@@ -142,6 +161,13 @@ def ingest_file(path: str | Path, result: IngestResult | None = None) -> IngestR
                 source_confidence=_classify_confidence(record["scanner"]),
                 source_file=source_file, source_line=lineno,
             )
+            # A run-scoped fact is evidence about the SCAN, not about a host at
+            # `target`. Count it, keep it, but never let it mint an Asset.
+            if record["scanner"] in _RUN_SCOPED_SCANNERS:
+                result.run_scoped.append(fact)
+                result.fact_count += 1
+                continue
+
             # IP is the join key (per spec). A hostname-only target becomes
             # an asset keyed by that hostname string itself — this module
             # does not perform DNS resolution to merge it into some other

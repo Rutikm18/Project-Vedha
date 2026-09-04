@@ -2,6 +2,7 @@
  {
   "scanner": "host_discovery",
   "target": "192.0.2.69",
+  "timestamp": "2026-09-02T11:03:50.208953+00:00",
   "port": null,
   "proto": null,
   "status": "open",
@@ -44,6 +45,7 @@
  {
   "scanner": "os_fingerprint",
   "target": "192.0.2.69",
+  "timestamp": "2026-09-02T11:03:50.208953+00:00",
   "port": null,
   "proto": null,
   "status": "open",
@@ -72,6 +74,7 @@
  {
   "scanner": "service_banner",
   "target": "192.0.2.69",
+  "timestamp": "2026-09-02T11:03:50.208953+00:00",
   "port": 22,
   "proto": "tcp",
   "status": "open",
@@ -93,6 +96,7 @@
  {
   "scanner": "service_banner",
   "target": "192.0.2.69",
+  "timestamp": "2026-09-02T11:03:50.208953+00:00",
   "port": 135,
   "proto": "tcp",
   "status": "open",
@@ -104,6 +108,7 @@
  {
   "scanner": "service_banner",
   "target": "192.0.2.69",
+  "timestamp": "2026-09-02T11:03:50.208953+00:00",
   "port": 139,
   "proto": "tcp",
   "status": "open",
@@ -118,6 +123,7 @@
  {
   "scanner": "service_banner",
   "target": "192.0.2.69",
+  "timestamp": "2026-09-02T11:03:50.208953+00:00",
   "port": 445,
   "proto": "tcp",
   "status": "open",
@@ -129,6 +135,7 @@
  {
   "scanner": "service_banner",
   "target": "192.0.2.69",
+  "timestamp": "2026-09-02T11:03:50.208953+00:00",
   "port": 3389,
   "proto": "tcp",
   "status": "open",
@@ -140,6 +147,7 @@
  {
   "scanner": "service_banner",
   "target": "192.0.2.69",
+  "timestamp": "2026-09-02T11:03:50.208953+00:00",
   "port": 5985,
   "proto": "tcp",
   "status": "open",
@@ -162,6 +170,7 @@
  {
   "scanner": "web_scan",
   "target": "192.0.2.69",
+  "timestamp": "2026-09-02T11:03:50.208953+00:00",
   "port": 5985,
   "proto": "tcp",
   "status": "open",
@@ -199,6 +208,7 @@
  {
   "scanner": "smb_scan",
   "target": "192.0.2.69",
+  "timestamp": "2026-09-02T11:03:50.208953+00:00",
   "port": 445,
   "proto": "tcp",
   "status": "open",
@@ -229,6 +239,7 @@
  {
   "scanner": "ssh_scan",
   "target": "192.0.2.69",
+  "timestamp": "2026-09-02T11:03:50.208953+00:00",
   "port": 22,
   "proto": "tcp",
   "status": "open",
@@ -427,6 +438,7 @@
  {
   "scanner": "smb_enum_scan",
   "target": "192.0.2.69",
+  "timestamp": "2026-09-02T11:03:50.208953+00:00",
   "port": 445,
   "proto": "tcp",
   "status": "open",
@@ -441,6 +453,7 @@
  {
   "scanner": "msrpc_scan",
   "target": "192.0.2.69",
+  "timestamp": "2026-09-02T11:03:50.208953+00:00",
   "port": 135,
   "proto": "tcp",
   "status": "open",
@@ -3130,6 +3143,7 @@
  {
   "scanner": "rdp_scan",
   "target": "192.0.2.69",
+  "timestamp": "2026-09-02T11:03:50.208953+00:00",
   "port": 3389,
   "proto": "tcp",
   "status": "open",
@@ -3144,6 +3158,7 @@
  {
   "scanner": "snmp_scan",
   "target": "192.0.2.69",
+  "timestamp": "2026-09-02T11:03:50.208953+00:00",
   "port": 161,
   "proto": "udp",
   "status": "open|filtered",
@@ -3156,6 +3171,7 @@
  {
   "scanner": "ipmi_scan",
   "target": "192.0.2.69",
+  "timestamp": "2026-09-02T11:03:50.208953+00:00",
   "port": 623,
   "proto": "udp",
   "status": "filtered",
@@ -3168,6 +3184,7 @@
  {
   "scanner": "udp_scan",
   "target": "192.0.2.69",
+  "timestamp": "2026-09-02T11:03:50.208953+00:00",
   "port": 53,
   "proto": "udp",
   "status": "closed",
@@ -3180,6 +3197,7 @@
  {
   "scanner": "udp_scan",
   "target": "192.0.2.69",
+  "timestamp": "2026-09-02T11:03:50.208953+00:00",
   "port": 123,
   "proto": "udp",
   "status": "open|filtered",
@@ -3193,6 +3211,7 @@
  {
   "scanner": "udp_scan",
   "target": "192.0.2.69",
+  "timestamp": "2026-09-02T11:03:50.208953+00:00",
   "port": 137,
   "proto": "udp",
   "status": "open",
@@ -3207,6 +3226,7 @@
  {
   "scanner": "udp_scan",
   "target": "192.0.2.69",
+  "timestamp": "2026-09-02T11:03:50.208953+00:00",
   "port": 161,
   "proto": "udp",
   "status": "open|filtered",
@@ -3220,6 +3240,7 @@
  {
   "scanner": "udp_scan",
   "target": "192.0.2.69",
+  "timestamp": "2026-09-02T11:03:50.208953+00:00",
   "port": 11211,
   "proto": "udp",
   "status": "closed",

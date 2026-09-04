@@ -15,6 +15,10 @@ from __future__ import annotations
 from datetime import timedelta
 
 from scanner.db_scanner import DEFAULT_DB_PORTS
+# ONE authoritative TLS port set. gates.py used to keep its own copy, and the two
+# had already drifted (3269 in one, 989 in the other), so a port could satisfy the
+# branch spec and then be refused by the gate — a silent coverage hole.
+from scanner.service_enum import TLS_PORTS
 
 from .asset import Asset
 
@@ -54,7 +58,6 @@ VA_RISK_PORTS = [
 IT_PORTS = sorted(set(_IT_BASE_PORTS) | set(VA_RISK_PORTS))
 IOT_PORTS = [22, 23, 80, 443, 554, 1883, 8883, 5683, 8080, 8443, 8888, 9000, 9100,
             49152, 62078, 5000, 8081, 37777]
-TLS_PORTS = {443, 8443, 993, 995, 465, 636, 989, 990, 5986}
 WEB_PORTS = {80, 443, 8080, 8443, 8000, 8888, 9000, 9200, 8081, 5000}
 SMB_PORTS = {139, 445}
 DB_PORTS = set(DEFAULT_DB_PORTS)

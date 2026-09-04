@@ -15,6 +15,8 @@ from __future__ import annotations
 
 import asyncio
 
+import pytest
+
 from scanner import smb_enum_scanner as smbe
 from scanner import ldap_scanner as ldp
 from scanner import findings
@@ -129,6 +131,76 @@ class TestLDAPScanner:
 
 
 # ── findings ──────────────────────────────────────────────────────────────────
+
+class TestLDAPTimeoutTypes:
+    """ldap3 packs receive_timeout into a struct for SO_RCVTIMEO, so it must be an
+    int; BaseScanner.timeout is a float. Passing it straight through raised
+    'required argument is not an integer' on EVERY ldap_scan. The bug was invisible
+    because the probe image also shipped without ldap3, so the missing-dependency
+    error fired first and masked it."""
+
+    def test_receive_timeout_is_an_int(self, monkeypatch):
+        pytest.importorskip("ldap3")
+        import ldap3
+
+        captured = {}
+
+        class _FakeConn:
+            def __init__(self, server, **kw):
+                captured.update(kw)
+                self.entries = []
+
+            def search(self, *a, **kw):
+                return False
+
+            def unbind(self):
+                return None
+
+        class _FakeServer:
+            def __init__(self, host, **kw):
+                captured["connect_timeout"] = kw.get("connect_timeout")
+                self.info = None
+
+        monkeypatch.setattr(ldap3, "Server", _FakeServer)
+        monkeypatch.setattr(ldap3, "Connection", _FakeConn)
+
+        sc = ldp.LDAPScanner(ScopeGuard.from_list(["10.0.0.0/8"]),
+                            rate=1e9, concurrency=2, timeout=3.5, ports=[389])
+        sc._probe("10.0.0.5", 389)
+
+        rt = captured.get("receive_timeout")
+        assert isinstance(rt, int), f"receive_timeout must be int, got {type(rt).__name__}"
+        assert rt >= 1, "a sub-second float must not floor to a 0-second timeout"
+
+    def test_sub_second_timeout_does_not_floor_to_zero(self, monkeypatch):
+        pytest.importorskip("ldap3")
+        import ldap3
+
+        captured = {}
+
+        class _FakeConn:
+            def __init__(self, server, **kw):
+                captured.update(kw)
+                self.entries = []
+
+            def search(self, *a, **kw):
+                return False
+
+            def unbind(self):
+                return None
+
+        class _FakeServer:
+            def __init__(self, host, **kw):
+                self.info = None
+
+        monkeypatch.setattr(ldap3, "Server", _FakeServer)
+        monkeypatch.setattr(ldap3, "Connection", _FakeConn)
+
+        sc = ldp.LDAPScanner(ScopeGuard.from_list(["10.0.0.0/8"]),
+                            rate=1e9, concurrency=2, timeout=0.4, ports=[389])
+        sc._probe("10.0.0.5", 389)
+        assert captured["receive_timeout"] == 1
+
 
 class TestSMBLDAPFindings:
     def test_smb_null_session_and_users(self):

@@ -46,6 +46,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from .scanner_base import project_timestamp
+
 
 # ── Data types ────────────────────────────────────────────────────────────────
 
@@ -351,7 +353,7 @@ def main() -> None:
 
     if args.output:
         out = Path(args.output)
-        ts = datetime.now(timezone.utc).isoformat()
+        ts = project_timestamp()
         with out.open("w") as fh:
             for d in deltas:
                 rec = d.to_dict()

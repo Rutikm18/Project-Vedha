@@ -58,12 +58,34 @@ def result_checksum(success: bool, result: dict, error: str | None) -> str:
     return hashlib.sha256(canonical).hexdigest()
 
 
+#: Scanners whose fact describes the SCAN RUN rather than a host. Their
+#: ``target`` is the local interface that was swept — or the literal string
+#: ``"auto"`` when none resolved — so it is not a network identity and must not
+#: be scope-checked as one.
+#:
+#: Without this, a completed job was rejected wholesale with 422
+#: (``rejected=[{'path': 'facts[0].target', 'value': 'auto'}]``), discarding every
+#: legitimate finding in the payload. The job then sat ``running`` until its lease
+#: expired, was requeued, exhausted ``max_attempts`` and failed — which presents
+#: to an operator as "stuck in scanning, no results".
+#:
+#: Mirrors ``agent/engine.py::_RUN_SCOPED_SCANNERS`` on the probe, which already
+#: skips these during asset promotion so a phantom asset named "auto" is never
+#: invented. Keep the two sets in step.
+_RUN_SCOPED_SCANNERS = frozenset({"ipv6_discovery"})
+
+
 def _result_network_identities(result: dict) -> list[tuple[str, str]]:
     """Return network identities that could create assets or findings.
 
     Scanner-level control records use targets such as ``<nmap-run>`` to report
     process failures. They describe the scanner itself, not a network target,
-    and therefore do not participate in scope authorization.
+    and therefore do not participate in scope authorization. Run-scoped scanner
+    facts (see ``_RUN_SCOPED_SCANNERS``) are excluded for the same reason.
+
+    Exclusion here is strictly SAFER than exempting the value later: the record
+    contributes no identity at all, so naming a fact ``ipv6_discovery`` cannot
+    launder an out-of-scope host into the inventory — it is dropped, not trusted.
     """
     identities: list[tuple[str, str]] = []
     collections = (
@@ -77,6 +99,9 @@ def _result_network_identities(result: dict) -> list[tuple[str, str]]:
             continue
         for index, item in enumerate(collection):
             if not isinstance(item, dict):
+                continue
+            # Describes the run, not a host — carries no network identity.
+            if item.get("scanner") in _RUN_SCOPED_SCANNERS:
                 continue
             raw = item.get(key)
             if not isinstance(raw, str) or not raw.strip():
@@ -302,6 +327,30 @@ async def process_job_result(
 
     await db.flush()   # assigns scan_result_row.id (needed for the outbox event)
 
+    # ── Durable detection via transactional outbox ─────────────────────────
+    # Enqueue in THIS transaction so the event commits atomically with the facts
+    # above. The outbox worker (python -m app.workers.outbox) runs the detection
+    # pipeline. This replaces the old asyncio.create_task, which ran in-process
+    # and silently dropped work on any crash/restart between the commit and the
+    # coroutine executing (no durability, retry, or DLQ).
+    #
+    # Gated on "did we STORE facts", NOT on `success`. Those are two different
+    # questions and coupling detection to the wrong one loses data: a submission
+    # that reports ok=false can still carry real facts (the probe sets ok from
+    # its successful-fact count, and `success` is a wire field any caller can
+    # set), and those facts were persisted just above. Detection never ran on
+    # them, nothing logged, and the orphan scan_results row also blocked the
+    # campaign's evidence_covered check forever. If it was worth storing, it is
+    # worth detecting on. See docs/adr/0001-manager-detection-pipeline.md.
+    if scan_result_row is not None:
+        from app.models.outbox import TOPIC_FACTS_READY
+        from app.workers.outbox import enqueue
+        enqueue(
+            db, TOPIC_FACTS_READY,
+            engagement_id=row.engagement_id,
+            scan_result_id=scan_result_row.id,
+        )
+
     # ── Promote discovered hosts ───────────────────────────────────────────
     promoted = 0
     findings_created = 0
@@ -371,21 +420,6 @@ async def process_job_result(
                 )
         except Exception as exc:  # noqa: BLE001
             logger.warning("job.scan_health_failed", job_id=str(job_id), error=str(exc))
-
-        # ── Durable detection via transactional outbox ─────────────────────
-        # Enqueue in THIS transaction so the event commits atomically with the
-        # facts above. The outbox worker (python -m app.workers.outbox) runs the
-        # detection pipeline. This replaces the old asyncio.create_task, which
-        # ran in-process and silently dropped work on any crash/restart between
-        # the commit and the coroutine executing (no durability, retry, or DLQ).
-        if scan_result_row is not None:
-            from app.models.outbox import TOPIC_FACTS_READY
-            from app.workers.outbox import enqueue
-            enqueue(
-                db, TOPIC_FACTS_READY,
-                engagement_id=row.engagement_id,
-                scan_result_id=scan_result_row.id,
-            )
 
     logger.info(
         "job.result_processed",

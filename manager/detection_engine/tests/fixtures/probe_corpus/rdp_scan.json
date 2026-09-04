@@ -1,8 +1,30 @@
 [
-  {"scanner": "rdp_scan", "target": "10.0.0.10", "port": 3389, "status": "open",
-   "data": {"rdp_confirmed": true, "nla": false, "nla_required": false, "tls": true,
-            "selected_protocol": 1}},
-  {"scanner": "rdp_scan", "target": "10.0.0.11", "port": 3389, "status": "open",
-   "data": {"rdp_confirmed": true, "nla": true, "nla_required": true, "tls": true,
-            "selected_protocol": 8}}
+ {
+  "scanner": "rdp_scan",
+  "target": "10.0.0.10",
+  "timestamp": "2026-09-02T11:03:50.208953+00:00",
+  "port": 3389,
+  "status": "open",
+  "data": {
+   "rdp_confirmed": true,
+   "nla": false,
+   "nla_required": false,
+   "tls": true,
+   "selected_protocol": 1
+  }
+ },
+ {
+  "scanner": "rdp_scan",
+  "target": "10.0.0.11",
+  "timestamp": "2026-09-02T11:03:50.208953+00:00",
+  "port": 3389,
+  "status": "open",
+  "data": {
+   "rdp_confirmed": true,
+   "nla": true,
+   "nla_required": true,
+   "tls": true,
+   "selected_protocol": 8
+  }
+ }
 ]

@@ -116,9 +116,21 @@ export function DataState({
 }
 
 /* ── shared styles ── */
+// Placeholder states (empty / error / unauthorized) must FILL the panel body,
+// not perch at the top of it.
+//
+// Dashboard panels sit in a stretch grid, so every panel in a row is as tall as
+// the tallest. `.panel-body` grows with it (flex: 1), but a placeholder rendered
+// at its natural height inside that grown block leaves the remaining space blank
+// — which reads as a broken layout rather than "nothing to show here", and is
+// worse the more panels are empty.
+//
+// height:100% resolves because .panel-body is a flex item with a definite used
+// height; minHeight keeps it sane if a future parent is auto-height.
 const center: React.CSSProperties = {
   display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center",
-  padding: "56px 16px", textAlign: "center",
+  height: "100%", minHeight: 160, boxSizing: "border-box",
+  padding: "32px 16px", textAlign: "center",
 };
 const btn: React.CSSProperties = {
   display: "inline-flex", alignItems: "center", gap: 6, marginTop: 16,

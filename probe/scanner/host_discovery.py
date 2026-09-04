@@ -64,6 +64,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 
 from .scanner_base import (
+    project_timestamp,
     BaseScanner, ScanResult, base_argparser, run_cli, setup_logging,
     main_entrypoint, LOG, async_udp_probe, _UDP_CLOSED,
 )
@@ -389,7 +390,7 @@ def read_arp_table() -> dict[str, str]:
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).isoformat()
+    return project_timestamp()
 
 
 def _state_for_confidence(conf: float) -> str:

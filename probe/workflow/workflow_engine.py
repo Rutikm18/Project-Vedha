@@ -18,7 +18,12 @@ nothing in scanner/ is modified.
 """
 from __future__ import annotations
 
+from contextlib import contextmanager
+
 import asyncio
+import logging
+import os
+import time
 from datetime import timedelta
 
 from scanner.scanner_base import ScanResult, ScopeGuard
@@ -65,6 +70,7 @@ from scanner.windows_collector import WindowsCollector
 from .asset import Asset
 from .branches import BRANCHES, BranchSpec
 from .cache import WorkflowCache
+from .host_health import HostHealthMonitor
 from .gates import (
     PROFILE_PORTS, PROFILE_DEEP_BRANCHES, SMB_PORTS, UDP_PORTS,
     gate_0_is_passive_profile, gate_2_host_discovery, gate_3_port_scan,
@@ -80,6 +86,8 @@ from .modes import (
     resolve_stage_ceiling,
 )
 from .router import route_branches
+
+LOG = logging.getLogger("workflow")
 
 
 async def _scan_one(scanner, host: str) -> list[ScanResult]:
@@ -240,6 +248,33 @@ def _record(
         )
 
 
+def _default_host_concurrency(concurrency: int) -> int:
+    """Hosts scanned in parallel during the deep-branch stage.
+
+    Env override: PROBE_HOST_CONCURRENCY. Capped hard, because the deep stage is
+    dominated by waiting rather than bandwidth — a modest fan-out reclaims nearly
+    all of the wall time, while a large one just multiplies simultaneous load on
+    the customer network for no gain.
+    """
+    raw = (os.environ.get("PROBE_HOST_CONCURRENCY") or "").strip()
+    if raw:
+        try:
+            return max(1, min(64, int(raw)))
+        except ValueError:
+            LOG.warning("ignoring non-numeric PROBE_HOST_CONCURRENCY=%r", raw)
+    return max(1, min(8, concurrency))
+
+
+@contextmanager
+def _timed(trace: ExecutionTrace | None, component_id: str):
+    """Accumulate wall time for a stage. No-op when tracing is off."""
+    if trace is None:
+        yield
+        return
+    with trace.timing(component_id):
+        yield
+
+
 def _record_reused(
     trace: ExecutionTrace | None,
     component_id: str,
@@ -270,7 +305,7 @@ async def _run_branch(
     rate: float,
     concurrency: int,
     timeout: float,
-) -> None:
+) -> list[ScanResult]:
     """Run ONE deep-scan branch for one host: the gate -> split-cache -> scan ->
     record -> store shape that all twenty branches used to spell out by hand.
 
@@ -286,7 +321,7 @@ async def _run_branch(
                if spec.dynamic else set())
     if not gate_5_branch_eligible(spec.branch, asset, profile, service_filter,
                                   bool(dynamic)):
-        return
+        return []
 
     if spec.host_level:
         # Cached under port=None: one fact per host, not per port.
@@ -295,7 +330,7 @@ async def _run_branch(
             entry = cache.get(host, None, spec.component)
             asset.merge_result(entry.result)
             _record_reused(trace, spec.component, [entry.result])
-            return
+            return []
         ports: list[int] = []
     else:
         candidates = (sorted(spec.ports) if spec.datagram else
@@ -306,17 +341,21 @@ async def _run_branch(
             asset.merge_result(r)
         _record_reused(trace, spec.component, reused)
         if not ports:
-            return
+            return []
 
     # Resolved from THIS module's namespace at call time, so tests that patch
     # workflow_engine.<Scanner> keep working exactly as they did.
     scanner_cls = globals()[spec.scanner]
+    produced: list[ScanResult] = []
     for extra in spec.kwargs(asset, ports):
         scanner = scanner_cls(scope, rate=rate, concurrency=concurrency,
                               timeout=timeout, **extra)
-        results = await _scan_one(scanner, host)
+        with _timed(trace, spec.component):
+            results = await _scan_one(scanner, host)
         _record(trace, spec.component, target_count=1, results=results)
         _store_results(results, assets=assets, cache=cache, profile=profile)
+        produced.extend(results)
+    return produced
 
 
 async def run_engagement(targets: list[str], scope: ScopeGuard, *, profile: str = "it",
@@ -334,6 +373,7 @@ async def run_engagement(targets: list[str], scope: ScopeGuard, *, profile: str 
                          passive_listen_seconds: float = 60.0,
                          discover_ipv6: bool = False,
                          ipv6_iface: str | None = None,
+                         host_concurrency: int | None = None,
                          trace: ExecutionTrace | None = None) -> dict[str, Asset]:
     """Runs gates 0/2-6 (in order) across `targets`, mutating and returning
     the Asset dict. Pass a pre-loaded `assets`/`cache` (e.g. from a prior
@@ -341,6 +381,12 @@ async def run_engagement(targets: list[str], scope: ScopeGuard, *, profile: str 
     cache.should_recheck() naturally skip work that's still fresh.
     """
     cache = cache or WorkflowCache()
+    # How many hosts run their deep-branch sequence at once. Deliberately far
+    # below `concurrency` (which bounds sockets WITHIN one scanner): this
+    # multiplies total in-flight work, and a lab that tolerates 100 sockets to
+    # one host will not thank us for 100 hosts at once.
+    if host_concurrency is None:
+        host_concurrency = _default_host_concurrency(concurrency)
     stage_ceiling = resolve_stage_ceiling(
         stage_ceiling,
         stop_after_banner=stop_after_banner,
@@ -356,7 +402,8 @@ async def run_engagement(targets: list[str], scope: ScopeGuard, *, profile: str 
 
     # --- Gate 0: OT passive-only hard stop ------------------------------
     if gate_0_is_passive_profile(profile):
-        results, coverage = await _run_passive(scope, passive_listen_seconds)
+        with _timed(trace, "passive_collect"):
+            results, coverage = await _run_passive(scope, passive_listen_seconds)
         _record(
             trace,
             "passive_collect",
@@ -379,8 +426,9 @@ async def run_engagement(targets: list[str], scope: ScopeGuard, *, profile: str 
     # observation and never probed, so the operator learns those hosts exist
     # (and can widen scope deliberately) without the probe widening it for them.
     if discover_ipv6:
-        found = await asyncio.to_thread(
-            discover_ipv6_hosts, ipv6_iface, pings=2, timeout=disc_timeout)
+        with _timed(trace, "ipv6_discovery"):
+            found = await asyncio.to_thread(
+                discover_ipv6_hosts, ipv6_iface, pings=2, timeout=disc_timeout)
         in_scope = [h for h in found if scope.in_scope(h)]
         out_of_scope = [h for h in found if h not in in_scope]
         added = [h for h in in_scope if h not in assets]
@@ -417,6 +465,7 @@ async def run_engagement(targets: list[str], scope: ScopeGuard, *, profile: str 
         t for t in targets if gate_2_host_discovery(assets[t], profile)
     ]
     if disc_targets:
+        LOG.info("stage host_discovery: probing %d target(s)", len(disc_targets))
         discovery_ports = ports if service_filter is not None else None
         disc = HostDiscoveryScanner(
             scope,
@@ -425,11 +474,12 @@ async def run_engagement(targets: list[str], scope: ScopeGuard, *, profile: str 
             concurrency=concurrency,
             timeout=disc_timeout,
         )
-        results = await _gather_per_host(
-            disc,
-            disc_targets,
-            max_in_flight=concurrency,
-        )
+        with _timed(trace, "host_discovery"):
+            results = await _gather_per_host(
+                disc,
+                disc_targets,
+                max_in_flight=concurrency,
+            )
         _record(
             trace,
             "host_discovery",
@@ -446,7 +496,9 @@ async def run_engagement(targets: list[str], scope: ScopeGuard, *, profile: str 
 
     # --- Gate 3: port scan ------------------------------------------------
     port_targets = [t for t in live_hosts if gate_3_port_scan(assets[t], profile)]
+    LOG.info("stage host_discovery: %d of %d target(s) alive", len(live_hosts), len(targets))
     if port_targets and ports:
+        LOG.info("stage port_scan: %d host(s) x %d port(s)", len(port_targets), len(ports))
         # Wide sweeps (full-port audit / deep intensity) go through the stateless
         # SYN scanner — far cheaper than 65k connect() calls per host. It
         # transparently falls back to a connect scan off privileged Linux, so the
@@ -458,11 +510,12 @@ async def run_engagement(targets: list[str], scope: ScopeGuard, *, profile: str 
         else:
             scanner = PortScanner(scope, ports=ports, rate=rate, concurrency=concurrency,
                                   timeout=timeout, retries=retries)
-        results = await _gather_per_host(
-            scanner,
-            port_targets,
-            max_in_flight=concurrency,
-        )
+        with _timed(trace, "port_scan"):
+            results = await _gather_per_host(
+                scanner,
+                port_targets,
+                max_in_flight=concurrency,
+            )
         _record(
             trace,
             "port_scan",
@@ -500,7 +553,8 @@ async def run_engagement(targets: list[str], scope: ScopeGuard, *, profile: str 
                 # asking every host for it would spend a connect per host for
                 # nothing. Enabled when ANY target showed 445 open.
                 smb_build=any(445 in assets[t].open_ports_for_deep_scan() for t in to_scan))
-            results = await _gather_per_host(osfp, to_scan, max_in_flight=concurrency)
+            with _timed(trace, "os_fingerprint"):
+                results = await _gather_per_host(osfp, to_scan, max_in_flight=concurrency)
             _record(trace, "os_fingerprint", target_count=len(to_scan), results=results)
             _store_results(results, assets=assets, cache=cache, profile=profile)
 
@@ -509,6 +563,7 @@ async def run_engagement(targets: list[str], scope: ScopeGuard, *, profile: str 
         return assets
 
     # --- Gate 4: service banner ------------------------------------------
+    LOG.info("stage service_banner: %d host(s)", len(live_hosts))
     for host in live_hosts:
         asset = assets[host]
         if not gate_4_service_banner(asset):
@@ -523,7 +578,8 @@ async def run_engagement(targets: list[str], scope: ScopeGuard, *, profile: str 
         _record_reused(trace, "service_banner", reused)
         if to_scan:
             banner = ServiceBannerScanner(scope, ports=to_scan, rate=rate, concurrency=concurrency, timeout=timeout)
-            results = await _scan_one(banner, host)
+            with _timed(trace, "service_banner"):
+                results = await _scan_one(banner, host)
             _record(trace, "service_banner", target_count=1, results=results)
             _store_results(results, assets=assets, cache=cache, profile=profile)
 
@@ -536,19 +592,79 @@ async def run_engagement(targets: list[str], scope: ScopeGuard, *, profile: str 
     # implementation of the gate -> split-cache -> scan -> record -> store shape
     # they all shared. Adding a service is now a table row, not ten more lines.
     branch_hosts = targets if direct_datagram else live_hosts
-    for host in branch_hosts:
+
+    # A host proven alive at Gate 2 can still go away mid-scan — rebooted,
+    # unplugged, DHCP-moved. The monitor watches every branch's results and, on
+    # sustained silence, spends ONE active liveness re-check to decide between
+    # "gone" and "merely filtered". See workflow/host_health.py for why silence
+    # alone can never be the verdict.
+    async def _recheck_alive(host: str) -> bool:
+        """Is this host still answering?
+
+        A plain asyncio connect to a port THIS SCAN already proved open. Two
+        reasons it is not HostDiscoveryScanner:
+
+        * Cost of being wrong is low but cost of being slow is high — every
+          scanner offloads its blocking socket work to the default thread pool,
+          and during the datagram tail that pool is saturated. A heartbeat that
+          needs a worker thread just queues behind the very scanners it is
+          supposed to be watching, and silently stops heartbeating. That is
+          exactly what happened: one beat got through, then nothing.
+        * "The port that was open thirty seconds ago no longer accepts a
+          connection" is a sharper liveness signal than a fresh discovery sweep,
+          and it costs one socket.
+
+        Falls back to discovery only when no open TCP port is known.
+        """
+        known_open = sorted(assets[host].open_ports_for_deep_scan())[:2]
+        for port in known_open:
+            try:
+                fut = asyncio.open_connection(host, port)
+                reader, writer = await asyncio.wait_for(fut, timeout=disc_timeout)
+                writer.close()
+                try:
+                    await writer.wait_closed()
+                except Exception:
+                    pass
+                return True
+            except (OSError, asyncio.TimeoutError):
+                continue
+        if known_open:
+            return False
+        disc = HostDiscoveryScanner(scope, rate=rate, concurrency=1,
+                                    timeout=disc_timeout)
+        results = await _scan_one(disc, host)
+        return any((r.data or {}).get("alive") for r in results)
+
+    health = HostHealthMonitor(_recheck_alive)
+    _deep_done = [0]            # list so the closure can mutate it
+
+    async def _scan_one_host(host: str) -> None:
         asset = assets[host]
         routed = route_branches(asset)
         for spec in BRANCHES:
-            await _run_branch(
+            if health.is_offline(host):
+                health.note_skipped(host, spec.component)
+                continue
+            results = await _run_branch(
                 spec, host, asset, routed,
                 scope=scope, assets=assets, cache=cache, trace=trace,
                 profile=profile, service_filter=service_filter,
                 force_recheck_after=force_recheck_after,
                 rate=rate, concurrency=concurrency, timeout=timeout,
             )
+            # Datagram branches are excluded on purpose: "no reply" is their
+            # normal answer on nearly every host, so they carry no information
+            # about whether the target is still there.
+            if not spec.datagram:
+                health.observe(host, spec.component, results)
+                if health.suspect(host):
+                    await health.confirm(host)
 
         if service_filter is None or "udp" in service_filter:
+            if health.is_offline(host):
+                health.note_skipped(host, "udp_scan")
+                return
             udp_ports = sorted(UDP_PORTS)
             to_scan, reused = _split_cached(cache, host, udp_ports, "udp_scan", force_recheck_after)
             for r in reused:
@@ -556,28 +672,80 @@ async def run_engagement(targets: list[str], scope: ScopeGuard, *, profile: str 
             _record_reused(trace, "udp_scan", reused)
             if to_scan:
                 udp = UDPScanner(scope, ports=to_scan, rate=rate, concurrency=concurrency, timeout=timeout)
-                results = await _scan_one(udp, host)
+                with _timed(trace, "udp_scan"):
+                    results = await _scan_one(udp, host)
                 _record(trace, "udp_scan", target_count=1, results=results)
                 _store_results(results, assets=assets, cache=cache, profile=profile)
+
+    async def _scan_one_host_logged(host: str) -> None:
+        started = time.monotonic()
+        # Heartbeat this host for exactly as long as it has work in flight. This
+        # is the detector that actually works: the TCP branches finish in
+        # milliseconds, so branch-failure evidence covers almost none of a scan,
+        # while the datagram tail — where most of the wall time goes — produces no
+        # usable signal at all.
+        beat = asyncio.create_task(health.watch(host))
+        try:
+            await _scan_one_host(host)
+        finally:
+            beat.cancel()
+            try:
+                await beat
+            except asyncio.CancelledError:
+                pass
+            _deep_done[0] += 1
+            LOG.info("  deep_scan %d/%d  %s  (%.1fs)%s",
+                     _deep_done[0], len(branch_hosts), host,
+                     time.monotonic() - started,
+                     "  OFFLINE" if health.is_offline(host) else "")
+
+    # Hosts run CONCURRENTLY here. Every earlier stage already fans out across
+    # hosts (_gather_per_host); this stage did not, so a job spent the sum of
+    # every host's every branch end to end — and since most branches are waiting
+    # on a UDP timeout that will never be answered, that wait dominated the whole
+    # job. Each host keeps its branches in order (later branches read facts the
+    # earlier ones stored); it is the hosts that overlap.
+    host_slots = asyncio.Semaphore(max(1, host_concurrency))
+
+    async def _guarded(host: str) -> None:
+        async with host_slots:
+            await _scan_one_host_logged(host)
+
+    if branch_hosts:
+        LOG.info("stage deep_scan: %d host(s), %d branch(es) each, %d host(s) in parallel",
+                 len(branch_hosts), len(BRANCHES), host_concurrency)
+        await asyncio.gather(*(_guarded(h) for h in branch_hosts))
+        LOG.info("stage deep_scan: complete (%d/%d host(s))", _deep_done[0], len(branch_hosts))
+
+    # Offline/flaky verdicts are facts like any other: they reach the manager,
+    # and they carry scan_complete=false so an incomplete host can never be read
+    # as a clean one.
+    health_facts = health.finalize()
+    if health_facts:
+        _record(trace, "host_liveness", target_count=len(health_facts),
+                results=health_facts)
+        _store_results(health_facts, assets=assets, cache=cache, profile=profile)
 
     # --- Gate 6: credentialed collection -----------------------------------
     for host in live_hosts:
         asset = assets[host]
         if gate_6_credentialed_collection(asset, bool(ssh_creds), bool(win_creds)):
             if ssh_creds:
-                results = await _run_inventory(
-                    "ssh_inventory",
-                    host,
-                    lambda: SSHCollector(scope, **ssh_creds),
-                )
+                with _timed(trace, "ssh_inventory"):
+                    results = await _run_inventory(
+                        "ssh_inventory",
+                        host,
+                        lambda: SSHCollector(scope, **ssh_creds),
+                    )
                 _record(trace, "ssh_inventory", target_count=1, results=results)
                 _store_results(results, assets=assets, cache=cache, profile=profile)
             if win_creds:
-                results = await _run_inventory(
-                    "windows_inventory",
-                    host,
-                    lambda: WindowsCollector(scope, **win_creds),
-                )
+                with _timed(trace, "windows_inventory"):
+                    results = await _run_inventory(
+                        "windows_inventory",
+                        host,
+                        lambda: WindowsCollector(scope, **win_creds),
+                    )
                 _record(trace, "windows_inventory", target_count=1, results=results)
                 _store_results(results, assets=assets, cache=cache, profile=profile)
 

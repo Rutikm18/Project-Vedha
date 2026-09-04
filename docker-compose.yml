@@ -35,6 +35,15 @@ x-backend-env: &backend-env
   AUTH_COOKIE_SECURE: ${AUTH_COOKIE_SECURE:-false}
   LOG_LEVEL: ${LOG_LEVEL:-INFO}
   NEO4J_ENABLED: ${NEO4J_ENABLED:-false}
+  # Project timezone. Containers default to UTC, which made every container log
+  # line and every rendered timestamp disagree with the operator's wall clock.
+  # Safe to set: the codebase has ZERO naive datetime.now() calls (88 aware
+  # ones), and Postgres timestamptz stores an instant regardless of the offset
+  # it was written with — so this changes RENDERING only, never stored values.
+  # TZ drives container-local time (log lines); VEDHA_TZ drives the app's own
+  # project_time helpers. Keep them the same.
+  TZ: ${VEDHA_TZ:-Asia/Kolkata}
+  VEDHA_TZ: ${VEDHA_TZ:-Asia/Kolkata}
   NEO4J_URI: bolt://neo4j:7687
   NEO4J_USER: ${NEO4J_USER:-neo4j}
   NEO4J_PASSWORD: ${NEO4J_PASSWORD:-vedha-neo4j}

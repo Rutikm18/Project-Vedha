@@ -14,8 +14,13 @@
  */
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { ArrowUpRight, Clock3 } from "lucide-react";
+import { ArrowUpRight, Clock3, CircleSlash, Trash2 } from "lucide-react";
 import RawFacts from "./RawFacts";
+
+// Mirrors MAX_PENDING_JOBS_PER_ENGAGEMENT in the manager (agents router). The
+// backend is authoritative and rejects the 4th queued job with 409; this copy
+// exists only so the UI can WARN before the operator hits that wall.
+const MAX_QUEUED_JOBS = 3;
 
 type PhaseState = "done" | "active" | "pending";
 interface Phase { name: string; status: PhaseState; count: number | null }
@@ -26,6 +31,7 @@ interface JobSummary {
 interface Job {
   id: string; use_case_id: string | null; job_type: string; status: string;
   phase: string; agent_name: string | null; result_summary: JobSummary;
+  reference?: string | null;
   created_at: string | null; started_at: string | null; completed_at: string | null;
 }
 interface Finding {
@@ -63,7 +69,33 @@ const STATUS_LABEL: Record<string, string> = {
   pending: "Pending", scanning: "Scanning", aggregating: "Aggregating",
   detecting: "Detecting", stalled: "Stalled", complete: "Complete",
   complete_with_gaps: "Complete — with gaps", error: "Error",
+  cancelled: "Cancelled",
 };
+
+/** How a job's bar should read.
+ *
+ *  `running` is INDETERMINATE on purpose. The old code drew a fixed 56% for every
+ *  running job, which is a number the app does not have: the probe reports no
+ *  percentage, so a static bar claims progress it cannot know and never moves.
+ *  An indeterminate bar says "working, duration unknown", which is the truth.
+ *
+ *  Terminal states are all 100% — a cancelled job is FINISHED, not 12% done.
+ *  They differ by colour, not by length. */
+function jobBar(status: string): { pct: number; color: string; indeterminate: boolean } {
+  switch (status) {
+    case "completed":
+      return { pct: 100, color: "var(--nominal-color)", indeterminate: false };
+    case "failed":
+      return { pct: 100, color: "var(--sev-critical-color)", indeterminate: false };
+    case "cancelled":
+      // Muted, never the accent: an operator stop must not look like live work.
+      return { pct: 100, color: "var(--text-faint)", indeterminate: false };
+    case "running":
+      return { pct: 100, color: "var(--accent)", indeterminate: true };
+    default:                                    // pending / queued — nothing yet
+      return { pct: 0, color: "var(--accent)", indeterminate: false };
+  }
+}
 
 const PHASE_LABEL: Record<string, string> = {
   scanning: "Scanning", aggregating: "Aggregating", detection: "Detection",
@@ -75,9 +107,11 @@ const SEV_COLOR: Record<string, string> = {
   info: "var(--text-muted)",
 };
 
-async function fetchJson<T>(path: string): Promise<T> {
-  const res = await fetch(path, { credentials: "same-origin" });
+async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
+  const res = await fetch(path, { credentials: "same-origin", ...init });
   const body = await res.json().catch(() => ({}));
+  // The backend's message is the useful one here — a cancel that lost a race
+  // returns 409 with "Job is already completed", which the UI shows verbatim.
   if (!res.ok) throw new Error(body.error ?? res.statusText);
   return body as T;
 }
@@ -94,12 +128,37 @@ export default function CampaignProgress({ engagementId }: { engagementId: strin
   const [data, setData] = useState<Progress | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [open, setOpen] = useState<Record<string, boolean>>({});
+  // Per-job in-flight/error state so one failing cancel can't blank the page and
+  // a double-click can't fire two cancels.
+  const [cancelling, setCancelling] = useState<Record<string, boolean>>({});
+  const [cancelErr, setCancelErr] = useState<Record<string, string>>({});
 
   const load = useCallback(async () => {
     try {
       setData(await fetchJson<Progress>(`/api/engagements/${engagementId}/campaign-progress`));
     } catch (e) { setErr((e as Error).message); }
   }, [engagementId]);
+
+  // Stop a running job or drop a queued one. Both go to the same endpoint: the
+  // manager decides which case applies. On success we reload immediately rather
+  // than wait for the 4s poll, so the card reflects the click straight away.
+  const cancelJob = useCallback(async (jobId: string, running: boolean) => {
+    const verb = running ? "Stop this running job" : "Remove this queued job";
+    if (!window.confirm(`${verb}? This cannot be undone.`)) return;
+    setCancelling((c) => ({ ...c, [jobId]: true }));
+    setCancelErr((e) => ({ ...e, [jobId]: "" }));
+    try {
+      await fetchJson(`/api/fleet/jobs/${jobId}/cancel`, { method: "POST" });
+      await load();
+    } catch (e) {
+      // A 409 means it finished on its own between render and click — reload so
+      // the card stops offering an action that no longer applies.
+      setCancelErr((prev) => ({ ...prev, [jobId]: (e as Error).message }));
+      await load();
+    } finally {
+      setCancelling((c) => ({ ...c, [jobId]: false }));
+    }
+  }, [load]);
 
   useEffect(() => {
     const initial = window.setTimeout(() => void load(), 0);
@@ -248,18 +307,68 @@ export default function CampaignProgress({ engagementId }: { engagementId: strin
 
       {/* ── per-probe jobs ── */}
       <div>
-        <div style={{ fontSize: 10.5, fontWeight: 700, color: "var(--text-faint)", letterSpacing: 1.4, textTransform: "uppercase", marginBottom: 10 }}>Jobs ({data.jobs.length})</div>
+        <div style={{ display: "flex", alignItems: "baseline", gap: 10, marginBottom: 10, flexWrap: "wrap" }}>
+          <div style={{ fontSize: 10.5, fontWeight: 700, color: "var(--text-faint)", letterSpacing: 1.4, textTransform: "uppercase" }}>Jobs ({data.jobs.length})</div>
+          {(() => {
+            // Surface the queue cap BEFORE the operator hits it, so a refused
+            // enqueue is never a surprise.
+            const queued = data.jobs.filter((j) => j.status === "pending").length;
+            const full = queued >= MAX_QUEUED_JOBS;
+            return (
+              <span style={{ fontSize: 10.5, fontFamily: "var(--font-mono)", padding: "2px 8px", borderRadius: 6,
+                background: full ? "var(--sev-medium-bg, var(--accent-ghost))" : "var(--accent-ghost)",
+                color: full ? "var(--sev-medium-color, var(--accent))" : "var(--text-muted)" }}
+                title={full
+                  ? `Queue is full (${MAX_QUEUED_JOBS} max). Remove a queued job before adding another.`
+                  : `${queued} of ${MAX_QUEUED_JOBS} queue slots used`}>
+                queue {queued}/{MAX_QUEUED_JOBS}{full ? " · full" : ""}
+              </span>
+            );
+          })()}
+        </div>
         <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
           {data.jobs.map((j) => {
-            const jobPercent = j.status === "completed" ? 100 : j.status === "running" ? 56 : j.status === "failed" ? 100 : 12;
+            const bar = jobBar(j.status);
             return (
             <div key={j.id} style={{ borderRadius: 12, border: "0.5px solid var(--border-subtle)", background: "var(--bg-panel)", padding: "12px 16px", boxShadow: "var(--shadow-md)" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                 <span style={{ fontSize: 12.5, fontWeight: 700, color: "var(--text-primary)", fontFamily: "var(--font-display)" }}>{j.use_case_id ?? j.job_type}</span>
                 <span style={{ fontSize: 10.5, fontFamily: "var(--font-mono)", padding: "2px 8px", borderRadius: 6, background: "var(--accent-ghost)", color: "var(--accent)", textTransform: "capitalize" }}>{j.phase}</span>
-                <span style={{ fontSize: 10.5, color: j.status === "failed" ? "var(--sev-critical-color)" : "var(--text-muted)", textTransform: "capitalize" }}>{j.status}</span>
+                <span style={{ fontSize: 10.5, color: j.status === "failed" ? "var(--sev-critical-color)" : "var(--text-muted)", textTransform: "capitalize", ...(j.status === "cancelled" ? { fontStyle: "italic" } : {}) }}>{j.status}</span>
                 {j.agent_name && <span style={{ fontSize: 11, color: "var(--text-muted)" }}>vedha-agent <strong style={{ color: "var(--text-secondary)" }}>{j.agent_name}</strong></span>}
-                <span style={{ marginLeft: "auto", fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-faint)" }}>{j.id.slice(0, 8)}</span>
+                <span
+                  title={j.reference ? `Job ${j.reference}` : j.id}
+                  style={{ marginLeft: "auto", fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-faint)" }}
+                >
+                  {/* The quotable reference, not eight characters of a UUID. */}
+                  {j.reference ?? j.id.slice(0, 8)}
+                </span>
+                {/* Stop / Remove — offered ONLY for jobs that can still be acted
+                    on. A finished job shows no control at all, rather than a
+                    disabled one that implies the action might work. */}
+                {(j.status === "running" || j.status === "pending") && (
+                  <button
+                    type="button"
+                    onClick={() => void cancelJob(j.id, j.status === "running")}
+                    disabled={!!cancelling[j.id]}
+                    title={j.status === "running"
+                      ? "Stop this running job and free the probe for the next queued job"
+                      : "Remove this job from the queue"}
+                    aria-label={`${j.status === "running" ? "Stop" : "Remove"} job ${j.reference ?? j.id.slice(0, 8)}`}
+                    style={{
+                      display: "inline-flex", alignItems: "center", gap: 5,
+                      fontSize: 10.5, fontWeight: 600, padding: "3px 9px",
+                      borderRadius: 6, cursor: cancelling[j.id] ? "wait" : "pointer",
+                      border: "0.5px solid var(--border-subtle)",
+                      background: "transparent",
+                      color: cancelling[j.id] ? "var(--text-faint)" : "var(--sev-high-color, #f97316)",
+                      opacity: cancelling[j.id] ? 0.6 : 1,
+                    }}
+                  >
+                    {j.status === "running" ? <CircleSlash size={11} /> : <Trash2 size={11} />}
+                    {cancelling[j.id] ? "Stopping…" : j.status === "running" ? "Stop" : "Remove"}
+                  </button>
+                )}
               </div>
               {/* SAFE raw-result summary */}
               <div style={{ display: "flex", gap: 14, marginTop: 8, flexWrap: "wrap", fontSize: 11, color: "var(--text-muted)" }}>
@@ -269,10 +378,28 @@ export default function CampaignProgress({ engagementId }: { engagementId: strin
                 {j.result_summary?.profile && <span>profile <strong style={{ color: "var(--text-secondary)" }}>{j.result_summary.profile}</strong></span>}
                 {j.result_summary?.scanners?.length ? <span style={{ fontFamily: "var(--font-mono)", color: "var(--text-faint)" }}>{j.result_summary.scanners.join(" · ")}</span> : null}
               </div>
-              <div role="progressbar" aria-label={`${j.use_case_id ?? j.job_type} job progress`} aria-valuenow={jobPercent} aria-valuemin={0} aria-valuemax={100}
+              <div
+                role="progressbar"
+                aria-label={`${j.use_case_id ?? j.job_type} job progress`}
+                {...(bar.indeterminate
+                  // No aria-valuenow when the value is genuinely unknown — a
+                  // screen reader should hear "in progress", not a made-up number.
+                  ? { "aria-valuetext": "in progress" }
+                  : { "aria-valuenow": bar.pct, "aria-valuemin": 0, "aria-valuemax": 100 })}
                 style={{ height: 4, marginTop: 10, overflow: "hidden", borderRadius: 999, background: "var(--track-bg)" }}>
-                <div style={{ width: `${jobPercent}%`, height: "100%", background: j.status === "failed" ? "var(--sev-critical-color)" : j.status === "completed" ? "var(--nominal-color)" : "var(--accent)", transition: "width var(--dur-base) var(--ease-out)" }} />
+                <div style={{
+                  width: bar.indeterminate ? "40%" : `${bar.pct}%`,
+                  height: "100%", background: bar.color,
+                  borderRadius: 999,
+                  animation: bar.indeterminate ? "vedhaIndeterminate 1.4s ease-in-out infinite" : undefined,
+                  transition: bar.indeterminate ? undefined : "width var(--dur-base) var(--ease-out)",
+                }} />
               </div>
+              {cancelErr[j.id] && (
+                <div role="alert" style={{ marginTop: 8, fontSize: 10.5, color: "var(--sev-high-color, #f97316)" }}>
+                  Could not stop this job: {cancelErr[j.id]}
+                </div>
+              )}
               <div style={{ display: "flex", gap: 14, flexWrap: "wrap", marginTop: 8, fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-faint)" }}>
                 {j.created_at && <span><Clock3 size={10} style={{ display: "inline", verticalAlign: -1, marginRight: 4 }} />queued {new Date(j.created_at).toLocaleString()}</span>}
                 {j.started_at && <span>started {new Date(j.started_at).toLocaleString()}</span>}

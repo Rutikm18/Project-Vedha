@@ -1,0 +1,316 @@
+{
+ "name": "regression_service_branches",
+ "provenance": "self_regression",
+ "description": "service-branch identification facts",
+ "labeling_note": "Labels are THIS engine's current output over real captured scanner facts. This detects behavioural DRIFT only. It is not evidence that the engine is correct \u2014 see README.md for building a ground-truth corpus with an independent validator.",
+ "source_facts": "manager/detection_engine/tests/fixtures/probe_corpus/service_branches.json",
+ "facts": [
+  {
+   "scanner": "ftp_scan",
+   "target": "127.0.0.1",
+   "timestamp": "2026-09-02T11:03:50.208953+00:00",
+   "port": 49374,
+   "proto": "tcp",
+   "status": "open",
+   "data": {
+    "ftp": true,
+    "banner": "220 (vsFTPd 3.0.3)",
+    "software": "(vsFTPd 3.0.3)",
+    "anonymous_login": true,
+    "anon_read": true,
+    "file_sample": [
+     "-rw-r--r-- 1 ftp ftp 1024 Jan 01 00:00 readme.txt",
+     "drwxr-xr-x 2 ftp ftp 4096 Jan 01 00:00 pub"
+    ]
+   },
+   "evidence": "anon_login=True anon_read=True software='(vsFTPd 3.0.3)'"
+  },
+  {
+   "scanner": "dns_scan",
+   "target": "127.0.0.1",
+   "timestamp": "2026-09-02T11:03:50.208953+00:00",
+   "port": 49475,
+   "proto": "udp",
+   "status": "open",
+   "data": {
+    "dns": true,
+    "version_bind": "9.18.24-fake",
+    "hostname_bind": "9.18.24-fake",
+    "ptr_self": "\"9.18.24-fake\"",
+    "zones_tested": [
+     "example.test",
+     "\"9.18.24-fake\"",
+     "18.24-fake\""
+    ],
+    "axfr": {
+     "example.test": {
+      "transferred": true,
+      "record_count": 5,
+      "sample": [
+       "@ 3600 IN SOA ns1 admin 1 7200 3600 1209600 3600",
+       "@ 3600 IN NS ns1",
+       "www 3600 IN A 10.0.0.10",
+       "mail 3600 IN A 10.0.0.11",
+       "@ 3600 IN SOA ns1 admin 1 7200 3600 1209600 3600"
+      ],
+      "capped": false
+     },
+     "\"9.18.24-fake\"": {
+      "transferred": false,
+      "reason": "FormError"
+     },
+     "18.24-fake\"": {
+      "transferred": false,
+      "reason": "FormError"
+     }
+    },
+    "zone_transfer": true,
+    "dnssec": {
+     "example.test": false,
+     "\"9.18.24-fake\"": false,
+     "18.24-fake\"": false
+    }
+   },
+   "evidence": "version.bind='9.18.24-fake' zone_transfer=True (example.test)"
+  },
+  {
+   "scanner": "nfs_scan",
+   "target": "127.0.0.1",
+   "timestamp": "2026-09-02T11:03:50.208953+00:00",
+   "port": 2049,
+   "proto": "tcp",
+   "status": "open",
+   "data": {
+    "nfs": true,
+    "portmap_open": false,
+    "rpc_programs": [],
+    "mountd_port": 20048,
+    "exports": [
+     {
+      "path": "/srv/public",
+      "clients": [
+       "*"
+      ],
+      "world_readable": true
+     },
+     {
+      "path": "/export/home",
+      "clients": [
+       "everyone"
+      ],
+      "world_readable": true
+     },
+     {
+      "path": "/srv/private",
+      "clients": [
+       "10.0.0.0/24"
+      ],
+      "world_readable": false
+     }
+    ],
+    "export_count": 3,
+    "world_readable_exports": [
+     "/srv/public",
+     "/export/home"
+    ]
+   },
+   "evidence": "portmap=False exports=3 world_readable=2"
+  },
+  {
+   "scanner": "ldap_scan",
+   "target": "127.0.0.1",
+   "timestamp": "2026-09-02T11:03:50.208953+00:00",
+   "port": 389,
+   "proto": "tcp",
+   "status": "open",
+   "data": {
+    "ldap": true,
+    "ssl": false,
+    "anonymous_bind": true,
+    "naming_contexts": [
+     "DC=corp,DC=example,DC=test"
+    ],
+    "default_naming_context": "DC=corp,DC=example,DC=test",
+    "dns_host_name": "dc01.corp.example.test",
+    "domain_functional_level": "7",
+    "forest_functional_level": "7",
+    "supported_ldap_versions": [
+     "3"
+    ],
+    "vendor": "Microsoft Active Directory",
+    "anonymous_search_allowed": true,
+    "sample_entry_count": 3
+   },
+   "evidence": "anon_bind=True anon_search=True naming_contexts=1"
+  },
+  {
+   "scanner": "vnc_scan",
+   "target": "127.0.0.1",
+   "timestamp": "2026-09-02T11:03:50.208953+00:00",
+   "port": 49368,
+   "proto": "tcp",
+   "status": "open",
+   "data": {
+    "vnc": true,
+    "protocol_version": "3.8",
+    "security_types": [
+     {
+      "id": 1,
+      "name": "None"
+     },
+     {
+      "id": 2,
+      "name": "VNC"
+     }
+    ],
+    "no_auth": true,
+    "weak_auth": true,
+    "has_strong_auth": false
+   },
+   "evidence": "rfb=3.8 no_auth=True weak_auth=True"
+  },
+  {
+   "scanner": "smtp_scan",
+   "target": "127.0.0.1",
+   "timestamp": "2026-09-02T11:03:50.208953+00:00",
+   "port": 49378,
+   "proto": "tcp",
+   "status": "open",
+   "data": {
+    "smtp": true,
+    "banner": "220 mail.example.org ESMTP Postfix (Debian)",
+    "ehlo_capabilities": [
+     "MAIL.EXAMPLE.ORG",
+     "PIPELINING",
+     "SIZE 10240000",
+     "VRFY",
+     "EXPN",
+     "8BITMIME"
+    ],
+    "starttls": false,
+    "vrfy_postmaster_code": 250,
+    "vrfy_random_code": 550,
+    "vrfy_enabled": true,
+    "expn_code": 250,
+    "expn_enabled": true
+   },
+   "evidence": "starttls=False vrfy=True expn=True"
+  },
+  {
+   "scanner": "rsync_scan",
+   "target": "127.0.0.1",
+   "timestamp": "2026-09-02T11:03:50.208953+00:00",
+   "port": 49569,
+   "proto": "tcp",
+   "status": "open",
+   "data": {
+    "rsync": true,
+    "version": "31.0",
+    "modules": [
+     {
+      "name": "backups",
+      "comment": "nightly backups",
+      "anonymous": false
+     },
+     {
+      "name": "public",
+      "comment": "public mirror",
+      "anonymous": true
+     }
+    ],
+    "module_count": 2,
+    "anon_modules": [
+     "public"
+    ]
+   },
+   "evidence": "modules=2 anon=1"
+  },
+  {
+   "scanner": "ipmi_scan",
+   "target": "127.0.0.1",
+   "timestamp": "2026-09-02T11:03:50.208953+00:00",
+   "port": 58628,
+   "proto": "udp",
+   "status": "open",
+   "data": {
+    "ipmi": true,
+    "open_session_response": true,
+    "rmcp_status": 0,
+    "cipher_zero": true
+   },
+   "evidence": "ipmi2.0 cipher_zero=True rmcp_status=0"
+  }
+ ],
+ "expected_findings": [
+  [
+   "CORR-ANON-DATA-EXPOSURE",
+   "127.0.0.1",
+   null
+  ],
+  [
+   "CORR-MGMT-PLANE-EXPOSED",
+   "127.0.0.1",
+   null
+  ],
+  [
+   "DNS-DNSSEC-ABSENT",
+   "127.0.0.1",
+   49475
+  ],
+  [
+   "DNS-VERSION-DISCLOSURE",
+   "127.0.0.1",
+   49475
+  ],
+  [
+   "DNS-ZONE-TRANSFER",
+   "127.0.0.1",
+   49475
+  ],
+  [
+   "FTP-ANON-ACCESS",
+   "127.0.0.1",
+   49374
+  ],
+  [
+   "IPMI-CIPHER-ZERO",
+   "127.0.0.1",
+   58628
+  ],
+  [
+   "LDAP-ANON-BIND",
+   "127.0.0.1",
+   389
+  ],
+  [
+   "LDAP-ANON-SEARCH",
+   "127.0.0.1",
+   389
+  ],
+  [
+   "NFS-EXPORT-WORLD-READABLE",
+   "127.0.0.1",
+   2049
+  ],
+  [
+   "RSYNC-ANON-MODULES",
+   "127.0.0.1",
+   49569
+  ],
+  [
+   "SMTP-NO-STARTTLS",
+   "127.0.0.1",
+   49378
+  ],
+  [
+   "SMTP-USER-ENUM",
+   "127.0.0.1",
+   49378
+  ],
+  [
+   "VNC-NO-AUTH",
+   "127.0.0.1",
+   49368
+  ]
+ ]
+}

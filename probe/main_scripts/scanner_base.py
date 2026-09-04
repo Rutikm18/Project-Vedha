@@ -33,9 +33,75 @@ import struct
 import sys
 import time
 from dataclasses import dataclass, field, asdict
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any, Iterable, Iterator
+
+try:                                    # stdlib since 3.9
+    from zoneinfo import ZoneInfo
+except ImportError:                     # pragma: no cover - ancient runtime
+    ZoneInfo = None                     # type: ignore[assignment]
+
+
+# --------------------------------------------------------------------------- #
+# Project timezone — every operator-facing timestamp is rendered here.
+# --------------------------------------------------------------------------- #
+# Scan directory names, log lines and the timestamps inside result files are all
+# read by an operator working in ONE timezone. Rendering them in UTC forced that
+# person to translate every reading ("the scan I watched at 17:31 is filed under
+# 12:01"), which is friction at best and a mistake waiting to happen during an
+# incident. So the project renders local time, IST by default.
+#
+# They stay TIMEZONE-AWARE (`...+05:30`) and are never naive local strings. That
+# distinction is the whole safety of this change: an aware timestamp is still an
+# exact instant, still sorts correctly against the UTC rows already in the
+# database, and still round-trips through Postgres `timestamptz` unchanged —
+# only its RENDERING moves. Naive local strings would silently corrupt ordering
+# and break interop with anything that assumed UTC.
+#
+# Override with VEDHA_TZ (any IANA name) for a deployment outside India.
+_DEFAULT_TZ_NAME = "Asia/Kolkata"
+
+
+def _resolve_project_tz():
+    """The project timezone, degrading safely when tzdata is unavailable."""
+    name = (os.environ.get("VEDHA_TZ") or "").strip() or _DEFAULT_TZ_NAME
+    if ZoneInfo is not None:
+        try:
+            return ZoneInfo(name)
+        except Exception:
+            pass
+    # A stripped image (no tzdata) or a bad VEDHA_TZ must never crash a scan.
+    # IST observes no DST, so a fixed offset is an EXACT stand-in for the
+    # default; any other zone falls back to UTC rather than guessing an offset.
+    if name == _DEFAULT_TZ_NAME:
+        return timezone(timedelta(hours=5, minutes=30), "IST")
+    return timezone.utc
+
+
+PROJECT_TZ = _resolve_project_tz()
+
+
+def project_now() -> datetime:
+    """Current time as an AWARE datetime in the project timezone."""
+    return datetime.now(PROJECT_TZ)
+
+
+def project_timestamp() -> str:
+    """ISO-8601 instant in the project timezone: 2026-09-03T23:15:05+05:30."""
+    return project_now().isoformat()
+
+
+def project_file_stamp(fmt: str = "%Y%m%dT%H%M%S") -> str:
+    """Compact project-local stamp for FILE and DIRECTORY names.
+
+    Deliberately carries no offset suffix: a `Z` would be an outright lie for a
+    local-time stamp, and an offset is not filename-safe on every platform. The
+    format keeps lexicographic order equal to chronological order, which is what
+    a directory listing needs.
+    """
+    return project_now().strftime(fmt)
+
 
 LOG = logging.getLogger("scanner")
 
@@ -206,9 +272,7 @@ class ScanResult:
     """
     scanner: str                      # which module produced this
     target: str                       # ip or host the observation is about
-    timestamp: str = field(
-        default_factory=lambda: datetime.now(timezone.utc).isoformat()
-    )
+    timestamp: str = field(default_factory=lambda: project_timestamp())
     port: int | None = None           # if the observation is port-scoped
     proto: str | None = None          # tcp / udp
     status: str = "observed"          # a CANONICAL_STATES value (+ observed/scan_summary)
@@ -465,6 +529,91 @@ class AdaptiveRateController:
 
 
 # --------------------------------------------------------------------------- #
+# SendPacer — synchronous AIMD send pacing (thread-side counterpart to
+# AdaptiveRateController).
+# --------------------------------------------------------------------------- #
+class SendPacer:
+    """
+    Blocking packets-per-second pacer with AIMD rate adaptation, for raw-socket
+    scanners that run in a worker thread and therefore cannot await the asyncio
+    `AdaptiveRateController`.
+
+    WHY THIS EXISTS (accuracy, not politeness): an unpaced raw-SYN send loop
+    emits every probe as fast as the CPU allows. A /24 x top-1000 is a burst of
+    tens of thousands of packets that overruns switch buffers and trips the
+    target's RFC-1812 ICMP error-rate budget. The drops that follow are
+    indistinguishable from silence, so they are reported as `filtered` — a
+    scanner-MANUFACTURED false negative. Pacing the send and backing off when
+    replies stop arriving is precisely why masscan/ZMap are both fast and
+    accurate.
+
+    Two independent controls:
+      * `pace()` — a monotonic token schedule enforcing `rate` packets/sec. It
+        sleeps only when actually ahead of schedule, so a rate the machine
+        cannot reach costs nothing (no per-packet sleep syscall).
+      * `observe_round()` — AIMD on the observed per-round reply ratio: a round
+        that loses more than `loss_threshold` of its probes HALVES the rate
+        (multiplicative decrease); a clean round adds `increment` (additive
+        increase), capped at `max_rate`. That is the classic congestion-control
+        response to the loss signal.
+    """
+
+    def __init__(self, rate: float, *, min_rate: float = 20.0,
+                 max_rate: float | None = None, loss_threshold: float = 0.15,
+                 increment: float | None = None):
+        self.initial_rate = float(rate)
+        self.rate = float(rate)
+        self.min_rate = float(min_rate)
+        # Never let the controller grow past 4x its starting budget: the operator's
+        # --rate stays a meaningful ceiling on scan aggressiveness.
+        self.max_rate = float(max_rate) if max_rate is not None else max(float(rate) * 4.0, float(rate))
+        self.loss_threshold = loss_threshold
+        # Additive increase step; default to 10% of the starting rate per clean round.
+        self.increment = float(increment) if increment is not None else max(1.0, float(rate) * 0.1)
+        self._next = 0.0
+        self.rounds = 0
+        self.backoffs = 0
+
+    def pace(self) -> None:
+        """Block just long enough to hold `rate` packets/sec. No-op at rate <= 0."""
+        if self.rate <= 0:
+            return
+        interval = 1.0 / self.rate
+        now = time.monotonic()
+        if now < self._next:
+            time.sleep(self._next - now)
+            now = time.monotonic()
+        # max(now, ...) re-bases the schedule after a stall instead of trying to
+        # "catch up" with a burst, which would defeat the point of pacing.
+        self._next = max(now, self._next) + interval
+
+    def observe_round(self, sent: int, answered: int) -> float:
+        """Fold one send/collect round's reply ratio into the rate (AIMD).
+
+        Returns the new rate. `sent <= 0` is ignored so an empty round never
+        looks like total loss."""
+        if sent <= 0:
+            return self.rate
+        self.rounds += 1
+        loss = 1.0 - (answered / sent)
+        if loss > self.loss_threshold:
+            self.rate = max(self.min_rate, self.rate / 2.0)   # multiplicative decrease
+            self.backoffs += 1
+        else:
+            self.rate = min(self.max_rate, self.rate + self.increment)   # additive increase
+        return self.rate
+
+    def stats(self) -> dict:
+        """Pacing telemetry for the scan summary (so a throttled scan is visible)."""
+        return {
+            "initial_rate": round(self.initial_rate, 2),
+            "final_rate": round(self.rate, 2),
+            "rounds": self.rounds,
+            "backoffs": self.backoffs,
+        }
+
+
+# --------------------------------------------------------------------------- #
 # Target expansion — CIDR / range / single host -> list of host strings.
 # --------------------------------------------------------------------------- #
 def expand_targets(specs: Iterable[str], *, max_hosts: int = 200_000) -> list[str]:
@@ -550,6 +699,78 @@ def resolve(target: str, port: int, *, proto: str = "tcp", family=None):
                 return fam, sockaddr
     fam0, _stype, _proto, _canon, sockaddr = infos[0]
     return fam0, sockaddr
+
+
+def resolve_candidates(target: str, port: int, *, proto: str = "tcp",
+                       family=None) -> list[tuple]:
+    """
+    EVERY distinct (family, sockaddr) for `target`, in getaddrinfo/RFC-6724 order.
+
+    `resolve()` deliberately returns only the FIRST address, which is a real
+    source of false negatives on dual-stack estates: a host whose AAAA sorts
+    first but whose IPv6 path is black-holed (no route, filtered ICMPv6, broken
+    tunnel) is reported unreachable even though its A record answers instantly.
+    To the operator that is indistinguishable from a genuinely filtered host.
+
+    Callers that can retry — anything performing a TCP connect — should walk this
+    list and accept the first address that answers, which is what nmap does.
+    De-duplicated (getaddrinfo repeats an address once per socktype) while
+    preserving order. Pass `family` to restrict to one address family.
+
+    Raises OSError if the name does not resolve at all.
+    """
+    socktype = socket.SOCK_DGRAM if proto == "udp" else socket.SOCK_STREAM
+    infos = socket.getaddrinfo(target, port, socket.AF_UNSPEC, socktype)
+    if not infos:
+        raise OSError(f"cannot resolve {target!r}")
+    out: list[tuple] = []
+    seen: set = set()
+    for fam, _st, _pr, _cn, sockaddr in infos:
+        if family is not None and fam != family:
+            continue
+        key = (fam, sockaddr[:2])
+        if key in seen:
+            continue
+        seen.add(key)
+        out.append((fam, sockaddr))
+    if not out:
+        # Requested family absent — mirror resolve()'s permissive fallback rather
+        # than failing, so an IPv4-only caller still sees the v4-less host's addrs.
+        for fam, _st, _pr, _cn, sockaddr in infos:
+            key = (fam, sockaddr[:2])
+            if key not in seen:
+                seen.add(key)
+                out.append((fam, sockaddr))
+    return out
+
+
+def resolve_ip_candidates(target: str, port: int, *, proto: str = "tcp",
+                          family=None) -> list[str]:
+    """
+    Just the candidate IP strings for `target`, in RFC-6724 order, de-duplicated.
+
+    Convenience over `resolve_candidates()` for the many protocol scanners whose
+    blocking helper takes an IP string rather than a sockaddr (`ntlm_os_build`,
+    `probe_rdp_posture`, `fingerprint_host`, ...). Those call sites walk this
+    list and keep the first address that actually answers, so a dual-stack host
+    whose AAAA sorts first but whose IPv6 path is black-holed is still scanned
+    over IPv4 instead of being written off as dead.
+
+    Returns [] instead of raising when the name does not resolve: every such call
+    site already treats "cannot resolve" as "no result", not as an error worth
+    aborting the scan for.
+
+    NOT FOR UDP, deliberately. Walking families needs a success signal to stop
+    on, and UDP has none: silence is the NORMAL ambiguous outcome
+    (`open|filtered`), not evidence that a family is unreachable. Iterating would
+    double the probe budget and risk relabelling an ordinary silent-but-open UDP
+    port as a failed address. The UDP scanners therefore keep plain `resolve()`.
+    """
+    try:
+        return [sa[0] for _fam, sa in resolve_candidates(
+            target, port, proto=proto, family=family)]
+    except OSError:
+        return []
 
 
 # --------------------------------------------------------------------------- #

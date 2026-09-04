@@ -16,6 +16,7 @@ from dataclasses import asdict
 from datetime import datetime, timedelta, timezone
 
 from scanner.scanner_base import ScopeGuard, expand_targets
+from scanner.scanner_base import project_timestamp
 
 from workflow.cache import WorkflowCache
 from workflow.execution import (
@@ -90,8 +91,8 @@ def _error_result(
         "result_schema_version": RESULT_SCHEMA_VERSION,
         "probe_id": PROBE_ID,
         "scan_type": scan_type,
-        "started_at": datetime.now(timezone.utc).isoformat(),
-        "finished_at": datetime.now(timezone.utc).isoformat(),
+        "started_at": project_timestamp(),
+        "finished_at": project_timestamp(),
         "ok": False,
         "outcome": "failed",
         "engine": ENGINE_ID,
@@ -308,11 +309,23 @@ def _facts_from_cache(cache: WorkflowCache) -> list[dict]:
     return [asdict(entry.result) for entry in cache._store.values()]
 
 
+# Scanners whose facts are keyed by something other than a host address (an
+# interface, a segment, the run itself). Their evidence is real and is still
+# submitted; it just must never be read as "a host exists at this target".
+_RUN_SCOPED_SCANNERS = {"ipv6_discovery"}
+
+
 def _hosts_from_facts(facts: list[dict]) -> list[dict]:
     """Build promotion-ready hosts without duplicating scanner facts per port."""
     host_map: dict[str, dict] = {}
     port_map: dict[str, dict[tuple[int, str], dict]] = {}
     for fact in facts:
+        # Run-scoped scanners describe the SCAN, not a host: ipv6_discovery's
+        # target is the local interface it swept (or the literal "auto" when none
+        # was resolved). Promoting those invented a phantom asset named "auto" on
+        # every assessment and inflated run_stats.host_count by one.
+        if fact.get("scanner") in _RUN_SCOPED_SCANNERS:
+            continue
         # Only affirmative network evidence may create an inventory asset.
         # Negative/ambiguous observations such as host-discovery "filtered",
         # closed TCP ports, and unanswered UDP probes are useful run telemetry,
@@ -563,7 +576,7 @@ def run_scan(scan_type: str, params: dict,
         local_allowed_scope: optional deployment-local CIDR ceiling. When supplied,
             targets must pass this guard in addition to the engagement allowlist.
     """
-    started_at = datetime.now(timezone.utc).isoformat()
+    started_at = project_timestamp()
     errors: list[str] = []
 
     if not isinstance(params, dict):
@@ -987,7 +1000,7 @@ def run_scan(scan_type: str, params: dict,
         "scan_type": scan_type,
         "profile": profile,
         "started_at": started_at,
-        "finished_at": datetime.now(timezone.utc).isoformat(),
+        "finished_at": project_timestamp(),
         "ok": not trace.failed,
         "outcome": outcome,
         "degraded": trace.degraded,

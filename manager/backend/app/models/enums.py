@@ -104,6 +104,11 @@ class ScanJobStatus(str, enum.Enum):
     running = "running"
     completed = "completed"
     failed = "failed"
+    # Operator-initiated stop. Deliberately distinct from `failed`: a failure is
+    # the system's fault and is worth retrying/alerting on, whereas a cancel is a
+    # human decision and must never page anyone or count against reliability
+    # metrics. Terminal — a cancelled job is never re-claimed.
+    cancelled = "cancelled"
 
 
 class ReviewStatus(str, enum.Enum):

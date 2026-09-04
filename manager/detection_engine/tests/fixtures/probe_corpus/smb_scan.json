@@ -1,8 +1,28 @@
 [
-  {"scanner": "smb_scan", "target": "10.0.0.10", "port": 445, "status": "open",
-   "data": {"smbv1_enabled": true, "smb2_supported": true, "signing_required": false,
-            "negotiated_dialect": "0x0311"}},
-  {"scanner": "smb_scan", "target": "10.0.0.11", "port": 445, "status": "open",
-   "data": {"smbv1_enabled": false, "smb2_supported": true, "signing_required": true,
-            "negotiated_dialect": "0x0311"}}
+ {
+  "scanner": "smb_scan",
+  "target": "10.0.0.10",
+  "timestamp": "2026-09-02T11:03:50.208953+00:00",
+  "port": 445,
+  "status": "open",
+  "data": {
+   "smbv1_enabled": true,
+   "smb2_supported": true,
+   "signing_required": false,
+   "negotiated_dialect": "0x0311"
+  }
+ },
+ {
+  "scanner": "smb_scan",
+  "target": "10.0.0.11",
+  "timestamp": "2026-09-02T11:03:50.208953+00:00",
+  "port": 445,
+  "status": "open",
+  "data": {
+   "smbv1_enabled": false,
+   "smb2_supported": true,
+   "signing_required": true,
+   "negotiated_dialect": "0x0311"
+  }
+ }
 ]

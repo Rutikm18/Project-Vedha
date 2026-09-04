@@ -51,7 +51,7 @@ from typing import Any, Awaitable, Callable
 
 from .scanner_base import (
     ScanResult, ScopeGuard, ResultWriter, expand_targets, setup_logging,
-    base_argparser, main_entrypoint, LOG,
+    base_argparser, main_entrypoint, project_timestamp, LOG,
 )
 from .scan_funnel import (
     build_default_funnel, route_ports, DEFAULT_PORT_ROUTES,
@@ -59,7 +59,9 @@ from .scan_funnel import (
 
 
 def _now() -> str:
-    return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    # Aware, project-local (…+05:30) — still an exact instant, just readable to
+    # the operator who ran the campaign.
+    return project_timestamp()
 
 
 # ── the operator-facing capability catalog (ORDER IS THE CAMPAIGN) ─────────────

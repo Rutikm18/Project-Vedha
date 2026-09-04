@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { PortalShell } from "../../../components/portal/PortalShell";
 import { useTheme } from "../../../components/ThemeProvider";
-import { portalApi, type PortalEngagement } from "../../../lib/portal-client";
+import { portalApi, usePortalEngagement, type PortalEngagement } from "../../../lib/portal-client";
 
 const SLA_POLICY = [
   { severity: "Critical", window: "24 hours", escalation: "12 hours remaining", color: "var(--sev-critical-color)", intent: "Immediate owner assignment and executive visibility" },
@@ -135,7 +135,7 @@ function AccountSection() {
 
 export default function PortalSettings() {
   const [section, setSection] = useState("engagement");
-  const eng = useQuery({ queryKey: ["portal", "engagement"], queryFn: () => portalApi<PortalEngagement>("/engagement") });
+  const eng = usePortalEngagement();
 
   const sections = [
     { key: "engagement", label: "Engagement & scope", icon: Building2 },

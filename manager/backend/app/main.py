@@ -14,6 +14,7 @@ from app.auth.startup import StartupAbortError, run_startup_diagnostics
 from app.config import get_settings
 from app.dependencies import close_redis
 from app.routers.activity import router as activity_router
+from app.routers.users import router as users_router
 from app.routers.analytics import router as analytics_router
 from app.routers.ad import router as ad_router
 from app.routers.agents import router as agents_router
@@ -243,6 +244,7 @@ app.include_router(ai_report_router)
 app.include_router(ai_router)
 app.include_router(activity_router)
 app.include_router(analytics_router)
+app.include_router(users_router)
 
 
 # ── P2: Prometheus metrics — request latency/count/in-progress at /metrics, so

@@ -656,6 +656,10 @@ async def list_engagement_jobs(
     return [
         {
             "id": str(j.id),
+        # The label a customer quotes; the UUID stays for machines. getattr keeps
+        # this readable for a row loaded before migration 0036 stamped one (and
+        # matches how the rest of this handler reads optional fields).
+        "reference": getattr(j, "reference", None),
             "job_type": j.job_type.value if hasattr(j.job_type, "value") else str(j.job_type),
             "status": j.status.value if hasattr(j.status, "value") else str(j.status),
             "agent_id": str(j.agent_id) if j.agent_id else None,
@@ -689,7 +693,9 @@ def _reconcile_status(*, jobs_exist: bool, any_running: bool, scanning_done: boo
                       evidence_covered: bool, has_gaps: bool,
                       queue_pending: bool, queue_overdue: bool,
                       queue_dead: bool,
-                      worker_alive: bool | None = None) -> tuple[str, bool]:
+                      worker_alive: bool | None = None,
+                      any_complete: bool = True,
+                      all_cancelled: bool = False) -> tuple[str, bool]:
     """Derive ONE authoritative campaign phase from reconciled evidence, not from a
     single nullable run row. Precedence is load-bearing (it is what makes multi-agent
     campaigns correct and a dead worker visible):
@@ -715,6 +721,15 @@ def _reconcile_status(*, jobs_exist: bool, any_running: bool, scanning_done: boo
         return "stalled", False
     if queue_pending:                               # queued, a worker is draining it
         return "aggregating", False
+    # NOTHING was ever submitted. "aggregating" infers "facts are in, the run is
+    # coming", which is only true when some job actually completed. If every job
+    # was cancelled or failed there is no submission, hence no facts.ready event
+    # and no DetectionRun — ever. Without this branch the campaign waits on
+    # `run_exists` forever: a bar frozen at 1-of-6 phases (~17%), a spinner that
+    # never stops, and a frontend polling every 4s for a state that cannot change.
+    # A cancel is a legitimate operator action, so this is now reachable on purpose.
+    if not any_complete:
+        return ("cancelled" if all_cancelled else "error"), True
     if not run_exists:                              # facts done, run not created yet
         return "aggregating", False
     if latest_failed:
@@ -771,6 +786,10 @@ async def campaign_progress(engagement_id: uuid.UUID, db: DB, current_user: Auth
 
     jobs = [{
         "id": str(j.id),
+        # The label a customer quotes; the UUID stays for machines. getattr keeps
+        # this readable for a row loaded before migration 0036 stamped one (and
+        # matches how the rest of this handler reads optional fields).
+        "reference": getattr(j, "reference", None),
         "use_case_id": (j.result or {}).get("use_case_id"),
         "job_type": _val(j.job_type),
         "status": _val(j.status),
@@ -785,6 +804,9 @@ async def campaign_progress(engagement_id: uuid.UUID, db: DB, current_user: Auth
 
     any_running = any(x["phase"] in ("scanning", "dispatched", "queued") for x in jobs)
     any_complete = any(x["phase"] == "complete" for x in jobs)
+    # Every job stopped, and an operator stopped them: report that plainly rather
+    # than as an error, so housekeeping never looks like a system fault.
+    all_cancelled = bool(jobs) and all(x["phase"] == "cancelled" for x in jobs)
 
     # ── detection runs (ALL of them — completion is proven by coverage) ─────────
     # A multi-agent campaign has one run per fact submission. Reading only the latest
@@ -931,6 +953,7 @@ async def campaign_progress(engagement_id: uuid.UUID, db: DB, current_user: Auth
 
     overall_status, is_complete = _reconcile_status(
         jobs_exist=bool(jobs), any_running=any_running, scanning_done=scanning_done,
+        any_complete=any_complete, all_cancelled=all_cancelled,
         run_exists=run is not None, latest_failed=detection_failed,
         detection_done=detection_done, evidence_covered=evidence_covered,
         has_gaps=has_gaps, queue_pending=queue_pending, queue_overdue=queue_overdue,

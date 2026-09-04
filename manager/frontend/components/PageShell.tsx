@@ -390,6 +390,15 @@ export function PageShell({
 }
 
 const SHELL_RESPONSIVE_STYLES = `
+/* Tablet: 768px–1023px — sidebar always visible, but content is tighter */
+@media (min-width: 768px) and (max-width: 1023px) {
+  .vedha-page-header { padding: 0 14px !important; }
+  .vedha-page-main { padding: 16px 18px !important; }
+  .vedha-page-footer { padding: 0 14px !important; }
+  .vedha-page-footer-time { display: none; }
+  .vedha-page-status { padding: 0 7px !important; }
+}
+
 @media (max-width: 767px) {
   .vedha-page-header {
     height: auto !important;

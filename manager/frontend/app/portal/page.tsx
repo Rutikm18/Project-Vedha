@@ -28,13 +28,10 @@ import { PortalShell } from "../../components/portal/PortalShell";
 import { DashboardGrid } from "../../components/dashboard/DashboardGrid";
 import { DashboardCharts } from "../../components/DashboardCharts";
 import { PortalConsoleProvider } from "../../lib/console-source";
-import { portalApi, type PortalEngagement, type PortalSummary } from "../../lib/portal-client";
+import { portalApi, usePortalEngagement, type PortalSummary } from "../../lib/portal-client";
 
 export default function PortalOverview() {
-  const eng = useQuery({
-    queryKey: ["portal", "engagement"],
-    queryFn: () => portalApi<PortalEngagement>("/engagement"),
-  });
+  const eng = usePortalEngagement();
   const summary = useQuery({
     queryKey: ["portal", "summary"],
     queryFn: () => portalApi<PortalSummary>("/summary"),

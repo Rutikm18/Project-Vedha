@@ -1,0 +1,74 @@
+name: scanner-accuracy
+
+# The accuracy MERGE GATE (main_scripts/RESEARCH_IMPROVEMENTS.md roadmap #4).
+#
+# The collection layer's central claim is "evidence-backed, anti-false-positive".
+# Until this job existed that claim was asserted, never measured: accuracy.py
+# could compute precision/recall but nothing ran it and no corpus was committed,
+# so a change that started inventing OPEN ports or dropping findings shipped
+# silently. This scores every labeled corpus on each change and fails the build
+# when a threshold is breached.
+#
+# NOTE ON WHAT THIS PROVES: corpora declare `provenance`. Only independently
+# labeled ones (nmap / second vantage / manual remote validation) are evidence of
+# ACCURACY; `self_regression` corpora prove only that behaviour has not drifted.
+# The gate prints which is which and warns when no independent corpus is present.
+# See probe/tests/fixtures/accuracy_corpus/README.md.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'probe/main_scripts/**'
+      - 'probe/scanner/**'
+      - 'probe/tests/fixtures/accuracy_corpus/**'
+      - '.github/workflows/scanner-accuracy.yml'
+  pull_request:
+    paths:
+      - 'probe/main_scripts/**'
+      - 'probe/scanner/**'
+      - 'probe/tests/fixtures/accuracy_corpus/**'
+      - '.github/workflows/scanner-accuracy.yml'
+  workflow_dispatch: {}
+
+concurrency:
+  group: scanner-accuracy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  accuracy-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install probe runtime deps
+        working-directory: probe
+        run: |
+          python -m venv .venv
+          ./.venv/bin/pip install --upgrade pip
+          ./.venv/bin/pip install -r requirements-runtime.txt
+          ./.venv/bin/pip install pytest
+
+      # Fails the build on any threshold breach, a malformed corpus, or a corpus
+      # that would pass vacuously because it carries no labels.
+      - name: Accuracy gate over labeled corpora
+        working-directory: probe
+        run: ./.venv/bin/python -m main_scripts.accuracy_gate tests/fixtures/accuracy_corpus
+
+      # The accuracy/pacing/congestion proof tests, plus the two-tree parity
+      # guard so a fix landing in only one mirrored tree fails here.
+      - name: Scanner accuracy + congestion proof tests
+        working-directory: probe
+        run: |
+          ./.venv/bin/python -m pytest -q \
+            tests/test_accuracy_gate.py \
+            tests/test_main_scripts_accuracy.py \
+            tests/test_scanner_congestion.py \
+            tests/test_dualstack_fallback.py \
+            tests/test_syn_scanner.py \
+            tests/test_tarpit.py \
+            tests/test_two_tree_parity.py

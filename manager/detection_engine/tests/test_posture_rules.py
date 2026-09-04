@@ -92,6 +92,23 @@ class TestVulnerableHost:
         f = [x for x in P.detect_posture(a) if x.rule_id == "POSTURE-TLS-DEPRECATED-VERSION"][0]
         assert f.evidence["deprecated_versions"] == ["TLSV1.0"]
 
+    def test_deprecated_tls_version_underscore_labels(self):
+        """The live tls_scanner labels its probe list "TLSv1_0"/"TLSv1_1" (from
+        ssl.TLSVersion names) while cipher_by_version, the captured probe corpus
+        and this rule all use the dotted "TLSv1.0" form. The separator mismatch
+        meant a server that genuinely accepted TLS 1.0 produced no finding. The
+        rule must accept both spellings — including for facts already stored."""
+        a = _asset(_fact("tls_scan", 443,
+                         {"accepted_versions": ["TLSv1_2", "TLSv1_1", "TLSv1_0"]}))
+        f = [x for x in P.detect_posture(a) if x.rule_id == "POSTURE-TLS-DEPRECATED-VERSION"][0]
+        assert f.evidence["deprecated_versions"] == ["TLSV1.0", "TLSV1.1"]
+
+    def test_modern_only_tls_raises_nothing(self):
+        a = _asset(_fact("tls_scan", 443,
+                         {"accepted_versions": ["TLSv1_2", "TLSv1_3"]}))
+        ids = {x.rule_id for x in P.detect_posture(a)}
+        assert "POSTURE-TLS-DEPRECATED-VERSION" not in ids
+
     def test_self_signed_and_expired_cert(self):
         a = _asset(_fact("tls_scan", 443, {"certificate": {"self_signed": True,
                                                            "expired": True, "subject": "CN=x"}}))

@@ -147,7 +147,7 @@ export function LiveOverview({ onSelectSeverity }: { onSelectSeverity?: (s: Seve
         </div>
 
         {/* ---- engagement context ----------------------------------------- */}
-        <div style={{ borderLeft: "var(--hairline) solid var(--border-subtle)", display: "flex" }}>
+        <div style={{ borderLeft: "var(--hairline) solid var(--border-subtle)", display: "flex", flexShrink: 0 }}>
           <Readout
             label="Engagements running"
             value={engFailed ? "—" : activeEngs}

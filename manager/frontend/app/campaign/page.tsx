@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
-import { Activity, CheckCircle2, ChevronRight, Loader2, Radar, RefreshCw, Target } from "lucide-react";
+import { Activity, CheckCircle2, ChevronRight, Loader2, Radar, Target } from "lucide-react";
 import { PageShell } from "../../components/PageShell";
 import FleetJobs from "../fleet/FleetJobs";
 import CampaignProgress from "./[id]/CampaignProgress";
@@ -69,7 +69,6 @@ export default function CampaignListPage() {
 
   return (
     <PageShell
-      hideRefresh
       title="VA Campaigns"
       subtitle="Sequential, full-network vulnerability-assessment runs"
       statusItems={[
@@ -79,9 +78,6 @@ export default function CampaignListPage() {
       headerActions={
         <div style={{ display: "flex", gap: 8 }}>
           <Link href="/scan" className="cmpl-primary"><Radar size={14} /> Launch campaign</Link>
-          <button className="cmpl-refresh" onClick={() => void load()} aria-label="Refresh campaigns">
-            <RefreshCw size={14} /> Refresh
-          </button>
         </div>
       }
     >
@@ -168,9 +164,6 @@ const STYLES = `
 .cmpl-primary { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 650; color: #fff;
   padding: 7px 12px; border: 1px solid var(--accent); border-radius: var(--radius-md); background: var(--accent); text-decoration: none; }
 .cmpl-primary:hover { background: var(--accent-dim); }
-.cmpl-refresh { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-secondary);
-  padding: 6px 11px; border: 1px solid var(--border-default); border-radius: var(--radius-md); background: transparent; cursor: pointer; }
-.cmpl-refresh:hover { color: var(--text-primary); background: var(--bg-hover); }
 .cmpl-section { display: flex; flex-direction: column; gap: 14px; }
 .cmpl-job-section { padding: 18px 20px; background: var(--bg-panel); border: 1px solid var(--border-subtle); border-radius: 12px; }
 .cmpl-section-head, .cmpl-subhead { display: flex; align-items: center; justify-content: space-between; gap: 14px; }

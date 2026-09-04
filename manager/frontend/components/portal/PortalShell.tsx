@@ -16,6 +16,7 @@ import {
 } from "lucide-react";
 import { useTheme } from "../ThemeProvider";
 import { RefreshButton } from "../RefreshButton";
+import { usePortalEngagement } from "../../lib/portal-client";
 
 const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION ?? "dev";
 
@@ -42,7 +43,12 @@ interface PortalShellProps {
   children: React.ReactNode;
 }
 
-function PortalSidebar({ open, onClose }: { open: boolean; onClose: () => void }) {
+function PortalSidebar({ open, onClose, engName, engStatus }: {
+  open: boolean;
+  onClose: () => void;
+  engName?: string;
+  engStatus?: string;
+}) {
   const pathname = usePathname();
 
   return (
@@ -83,6 +89,38 @@ function PortalSidebar({ open, onClose }: { open: boolean; onClose: () => void }
           </div>
         </div>
       </div>
+
+      {/* Engagement context — always visible so the customer knows which engagement they're in */}
+      {engName && (
+        <div style={{
+          padding: "10px 16px", borderBottom: "0.5px solid var(--border-subtle)",
+          flexShrink: 0,
+        }}>
+          <div style={{ fontSize: 9, fontWeight: 700, color: "var(--text-faint)",
+            letterSpacing: 1.4, textTransform: "uppercase", marginBottom: 6 }}>
+            Engagement
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
+            <span style={{
+              width: 7, height: 7, borderRadius: "50%", flexShrink: 0,
+              background: engStatus === "active" ? "var(--nominal-color)" : "var(--text-muted)",
+              boxShadow: engStatus === "active" ? "0 0 5px var(--nominal-color)" : "none",
+            }} />
+            <div style={{ minWidth: 0 }}>
+              <div style={{ fontSize: 12, fontWeight: 600, color: "var(--text-primary)",
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                {engName}
+              </div>
+              {engStatus && (
+                <div style={{ fontSize: 10, color: "var(--text-muted)", textTransform: "capitalize",
+                  marginTop: 1 }}>
+                  {engStatus}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
 
       <nav style={{ paddingTop: 10, flex: 1 }}>
         <div style={{
@@ -128,6 +166,7 @@ export function PortalShell({
   const router = useRouter();
   const { theme, toggleTheme } = useTheme();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const eng = usePortalEngagement();
 
   const logout = useCallback(async () => {
     await fetch("/api/portal/logout", { method: "POST" }).catch(() => {});
@@ -143,7 +182,12 @@ export function PortalShell({
             zIndex: 40, backdropFilter: "blur(4px)" }} />
       )}
 
-      <PortalSidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <PortalSidebar
+        open={sidebarOpen}
+        onClose={() => setSidebarOpen(false)}
+        engName={eng.data?.name}
+        engStatus={eng.data?.status}
+      />
 
       <div style={{ flex: 1, display: "flex", flexDirection: "column",
         overflow: "hidden", minWidth: 0 }}>
@@ -232,7 +276,7 @@ export function PortalShell({
         </header>
 
         <main className="console-scope" style={{ flex: 1, overflowY: "auto",
-          background: "var(--bg-app)", padding: "20px 24px" }}>
+          background: "var(--bg-app)", padding: "20px 24px", userSelect: "text" }}>
           {children}
         </main>
 

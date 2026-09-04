@@ -25,7 +25,7 @@ from decimal import Decimal
 from pathlib import Path
 
 import structlog
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.enums import DetectionStatus, FindingSeverity, FindingStatus
@@ -90,6 +90,81 @@ def _ensure_importable() -> bool:
         return False
 
 
+# ── ingest health ─────────────────────────────────────────────────────────────
+# Every detection rule — CVE and posture alike — reads the Assets that ingest
+# builds. A fact the ingester rejects therefore reaches NOTHING: it is not a
+# degraded result, it is an absent one. ingest quarantines silently by design (one
+# corrupt line must not sink a 100k-record pass), and the pipeline returned that
+# quarantine list to a caller that dropped it on the floor. The failure mode that
+# produced was the worst kind: facts arrive, the run completes, findings are zero,
+# and "we scanned and you are clean" is indistinguishable from "we understood
+# nothing you sent". These two helpers make the difference observable.
+
+
+def _ingest_census(ingest_result, submitted: int) -> tuple[dict, set[int]]:
+    """(census, rejected_line_numbers) from the engine's IngestResult.
+
+    The census — {submitted, ingested, quarantined, assets, reasons} — is what gets
+    stamped onto the DetectionRun. The line numbers are 1-based and index the JSONL
+    we just wrote one-fact-per-line, so they map straight back to the caller's list;
+    that is how a caller filters to the facts ingest actually accepted WITHOUT
+    re-implementing (and drifting from) ingest's own validation.
+
+    Best-effort — an older engine may not return an IngestResult at all."""
+    census = {"submitted": submitted, "ingested": 0, "quarantined": 0,
+              "assets": 0, "reasons": {}}
+    rejected: set[int] = set()
+    if ingest_result is None:
+        return census, rejected
+    try:
+        census["ingested"] = int(getattr(ingest_result, "fact_count", 0) or 0)
+        census["assets"] = len(getattr(ingest_result, "assets", {}) or {})
+        quarantined = list(getattr(ingest_result, "quarantined", []) or [])
+        census["quarantined"] = len(quarantined)
+        reasons: dict[str, int] = {}
+        for q in quarantined:
+            reason = str(getattr(q, "reason", "unknown"))
+            reasons[reason] = reasons.get(reason, 0) + 1
+            line = getattr(q, "source_line", None)
+            if isinstance(line, int):
+                rejected.add(line)
+        # Cap the reason cardinality — this is stamped onto every DetectionRun.
+        census["reasons"] = dict(sorted(reasons.items(), key=lambda kv: -kv[1])[:10])
+    except Exception as exc:  # noqa: BLE001 — census must never break detection
+        logger.debug("ingest_census.failed", error=str(exc))
+    return census, rejected
+
+
+def _accepted(facts: list[dict], rejected_lines: set[int]) -> list[dict]:
+    """The subset of `facts` ingest accepted. We wrote one fact per line in order,
+    so line N is facts[N-1]. Every downstream consumer must agree on what counts as
+    a usable fact — a fact too malformed for the CVE and posture tracks must not be
+    good enough for the attack-path track either."""
+    if not rejected_lines:
+        return facts
+    return [f for i, f in enumerate(facts, start=1) if i not in rejected_lines]
+
+
+def _log_ingest_health(census: dict, findings: int) -> None:
+    """Escalate by severity of loss. A TOTAL wipeout with facts submitted is the
+    agent/manager contract breaking — the one case that must never be quiet."""
+    submitted = census.get("submitted") or 0
+    quarantined = census.get("quarantined") or 0
+    if not submitted or not quarantined:
+        return
+    if census.get("ingested"):
+        logger.warning("detection_engine.facts_partially_rejected",
+                       submitted=submitted, ingested=census.get("ingested"),
+                       quarantined=quarantined, reasons=census.get("reasons"))
+        return
+    logger.error("detection_engine.all_facts_rejected",
+                 submitted=submitted, quarantined=quarantined,
+                 assets=census.get("assets"), findings=findings,
+                 reasons=census.get("reasons"),
+                 hint="probe/manager fact-shape drift — detection saw NOTHING; "
+                      "a zero-finding result here does not mean the host is clean")
+
+
 def detect_all_from_facts_traced(
     facts: list[dict],
 ) -> tuple[list[dict], list[dict], dict]:
@@ -99,8 +174,19 @@ def detect_all_from_facts_traced(
     machine-readable record of which rules were assessed, which were BLIND (drift /
     unparseable / error), and which had no evidence. That is what lets a non-finding
     explain itself instead of collapsing into an empty list. []/[]/{} on any failure
-    (never raises). Falls back to CVE-only on an old engine."""
-    empty_meta: dict = {"coverage": {}, "verdicts": {}}
+    (never raises). Falls back to CVE-only on an old engine.
+
+    `meta["ingest"]` carries the INGEST census — how many submitted facts actually
+    became assets and how many the ingester rejected. Without it, a fact shape the
+    ingester refuses is indistinguishable from a clean network: every rule reads
+    ingest's Assets, so zero assets means zero findings, silently. See
+    _log_ingest_health."""
+    # accepted_facts falls back to the raw list on every path where no ingest
+    # verdict exists (engine missing, older engine, hard failure). Without a
+    # verdict we cannot say a fact is bad, and silently disabling attack-path
+    # correlation would trade one blind spot for another.
+    empty_meta: dict = {"coverage": {}, "verdicts": {}, "ingest": {},
+                        "accepted_facts": list(facts or [])}
     if not facts or not _ensure_importable():
         return [], [], empty_meta
     tmp = None
@@ -114,8 +200,14 @@ def detect_all_from_facts_traced(
             res = run_full_detection([tmp])
             cve = [f.to_dict() for f in res.get("cve", [])]
             posture = [f.to_dict() for f in res.get("posture", [])]
+            census, rejected = _ingest_census(res.get("ingest"), len(facts))
             meta = {"coverage": res.get("posture_coverage") or {},
-                    "verdicts": res.get("posture_verdicts") or {}}
+                    "verdicts": res.get("posture_verdicts") or {},
+                    "ingest": census,
+                    # NOT persisted — an in-memory view for this run's other
+                    # consumers (attack paths). Same list objects, not a copy.
+                    "accepted_facts": _accepted(facts, rejected)}
+            _log_ingest_health(census, len(cve) + len(posture))
             return cve, posture, meta
         except ImportError:                          # older engine: CVE-only
             from pipeline import run_pipeline  # type: ignore
@@ -130,13 +222,18 @@ def detect_all_from_facts_traced(
             from ingest import ingest_files      # type: ignore
             from posture_rules import (detect_all_traced,  # type: ignore
                                        summarize_traces, verdict_for_rule)
-            posture_f, traces = detect_all_traced(ingest_files([tmp]))
+            ing = ingest_files([tmp])
+            posture_f, traces = detect_all_traced(ing)
             posture = [f.to_dict() for f in posture_f]
             verdicts = {}
             for rid in sorted({t.rule_id for t in traces}):
                 v, reasons = verdict_for_rule(traces, rid)
                 verdicts[rid] = {"verdict": v, "reasons": reasons}
-            meta = {"coverage": summarize_traces(traces), "verdicts": verdicts}
+            census, rejected = _ingest_census(ing, len(facts))
+            _log_ingest_health(census, len(posture))
+            meta = {"coverage": summarize_traces(traces), "verdicts": verdicts,
+                    "ingest": census,
+                    "accepted_facts": _accepted(facts, rejected)}
             if posture:
                 logger.info("detection_engine.posture_only_fallback", count=len(posture))
             return [], posture, meta
@@ -366,6 +463,29 @@ async def _persist_attack_paths(
     return created
 
 
+# ── R1: one engagement's detection is a critical section ──────────────────────
+# The outbox worker processes a claimed batch with asyncio.gather, so two
+# facts.ready events for the SAME engagement (two probes, or a re-submission) run
+# detection concurrently. Everything below — duplicate detection, regression
+# reopening, resolution evaluation — is read-then-write against the same Finding
+# rows, with no unique constraint underneath. Concurrently, both passes read
+# "absent" and both insert, and the customer sees one issue twice.
+#
+# A transaction-scoped Postgres advisory lock serialises detection PER ENGAGEMENT
+# and nothing else: different engagements still run fully in parallel, which is
+# the axis that actually scales. pg_advisory_xact_lock releases on COMMIT or
+# ROLLBACK, so no path can leak it — that is why the xact variant is used rather
+# than the session one.
+#
+# See docs/adr/0001-manager-detection-pipeline.md.
+async def _lock_engagement_for_detection(db: AsyncSession, engagement_id: uuid.UUID) -> None:
+    # A UUID is 128 bits and the lock key is 64, so fold it. Collisions across
+    # engagements are harmless: the worst case is two unrelated engagements
+    # briefly serialising with each other.
+    key = (engagement_id.int ^ (engagement_id.int >> 64)) & 0x7FFFFFFFFFFFFFFF
+    await db.execute(text("SELECT pg_advisory_xact_lock(:k)"), {"k": key})
+
+
 async def create_findings_from_facts(
     db: AsyncSession, engagement_id: uuid.UUID, result: dict,
     *, scan_result_id: uuid.UUID | None = None, trigger: str = TRIGGER_FACTS_READY,
@@ -377,6 +497,10 @@ async def create_findings_from_facts(
     facts = result.get("facts")
     if not isinstance(facts, list) or not facts:
         return 0
+
+    # Serialise this engagement's detection before reading anything — see
+    # _lock_engagement_for_detection. Held until this transaction ends.
+    await _lock_engagement_for_detection(db, engagement_id)
 
     now = datetime.now(timezone.utc)
     db_version, db_fetched = _vuln_db_meta()
@@ -484,9 +608,14 @@ async def create_findings_from_facts(
         # one host into the attack PATH an operator must fix first (NTLM relay,
         # legacy-Windows surface, cleartext cluster, exposed-DB+unauth, default
         # SNMP on infra), amplified by the host's device role. Best-effort.
+        # Correlate over the facts INGEST ACCEPTED, not the raw submission. A fact
+        # the CVE and posture tracks refused is not evidence this track may use
+        # either — otherwise a submission rejected wholesale still emits an
+        # "NTLM relay attack path", which is a finding built on nothing.
         try:
-            corr_new = await _persist_attack_paths(db, engagement_id, run, facts, now,
-                                                   cache=asset_cache)
+            corr_new = await _persist_attack_paths(
+                db, engagement_id, run, detect_meta.get("accepted_facts") or [], now,
+                cache=asset_cache)
             created += corr_new
         except Exception as exc:  # noqa: BLE001 — correlation must not sink the run
             logger.warning("detection_run.correlation_failed", error=str(exc))
@@ -499,12 +628,14 @@ async def create_findings_from_facts(
             resolved = await evaluate_resolutions(db, engagement_id, run, coverage, now)
             run.stats = {"coverage": coverage, "auto_resolved": resolved,
                          "posture_coverage": detect_meta.get("coverage") or {},
-                         "posture_verdicts": detect_meta.get("verdicts") or {}}
+                         "posture_verdicts": detect_meta.get("verdicts") or {},
+                         "ingest": detect_meta.get("ingest") or {}}
         except Exception as exc:  # noqa: BLE001 — resolution must not fail the run
             logger.warning("detection_run.resolution_failed", error=str(exc))
             run.stats = {"coverage": {}, "auto_resolved": 0,
                          "posture_coverage": detect_meta.get("coverage") or {},
-                         "posture_verdicts": detect_meta.get("verdicts") or {}}
+                         "posture_verdicts": detect_meta.get("verdicts") or {},
+                         "ingest": detect_meta.get("ingest") or {}}
 
         # Passive verification (P2): stamp a normalized verdict on findings touched
         # this run. Flagged + best-effort; never breaks the run.

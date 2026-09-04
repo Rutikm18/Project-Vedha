@@ -17,7 +17,7 @@ import {
   Building2, Info, Lock, ShieldCheck, Target,
 } from "lucide-react";
 import { PortalShell } from "../../../components/portal/PortalShell";
-import { portalApi, type PortalEngagement, type PortalScan } from "../../../lib/portal-client";
+import { portalApi, usePortalEngagement, type PortalScan } from "../../../lib/portal-client";
 import { DataState, SkeletonRows, EmptyState } from "../../../components/states/DataState";
 
 /** Split a CIDR so the prefix can be de-emphasised against the network part. */
@@ -48,10 +48,7 @@ function Kpi({ label, value, hint }: { label: string; value: React.ReactNode; hi
 }
 
 export default function PortalScope() {
-  const eng = useQuery({
-    queryKey: ["portal", "engagement"],
-    queryFn: () => portalApi<PortalEngagement>("/engagement"),
-  });
+  const eng = usePortalEngagement();
   const scans = useQuery({
     queryKey: ["portal", "scans"],
     queryFn: () => portalApi<PortalScan[]>("/scans"),
@@ -68,7 +65,7 @@ export default function PortalScope() {
   return (
     <PortalShell
       title="Scope"
-      subtitle="The network ranges your security team has authorised us to assess."
+      subtitle={eng.data?.name ?? "The network ranges your security team has authorised us to assess."}
     >
       {/* the authorisation boundary, stated before anything else */}
       <div className="panel" style={{ display: "flex", gap: 12, alignItems: "flex-start", padding: 16 }}>

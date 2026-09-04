@@ -23,7 +23,7 @@ import {
 } from "lucide-react";
 import { PortalShell } from "../../../components/portal/PortalShell";
 import { Timestamp } from "../../../components/portal/Timestamp";
-import { portalApi, type PortalFinding } from "../../../lib/portal-client";
+import { portalApi, usePortalEngagement, type PortalFinding } from "../../../lib/portal-client";
 
 interface Turn {
   id: string;
@@ -61,6 +61,8 @@ export default function PortalAssistant() {
   // counter is the better key anyway — two turns in the same millisecond
   // would otherwise collide.
   const nextId = useRef(0);
+
+  const eng = usePortalEngagement();
 
   const findings = useQuery({
     queryKey: ["portal", "findings"],
@@ -108,7 +110,7 @@ export default function PortalAssistant() {
   return (
     <PortalShell
       title="Assistant"
-      subtitle="Ask about your findings, scans and how to fix them."
+      subtitle={eng.data?.name ?? "Ask about your findings, scans and how to fix them."}
     >
       {/* what this is, and what it is not */}
       <div className="panel" style={{ display: "flex", gap: 12, alignItems: "flex-start", padding: 14 }}>

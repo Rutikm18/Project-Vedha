@@ -8,7 +8,7 @@ import {
 } from "lucide-react";
 import { PortalShell } from "../../../components/portal/PortalShell";
 import { Timestamp } from "../../../components/portal/Timestamp";
-import { portalApi, type PortalScan, type PortalEngagement, type PortalUseCase } from "../../../lib/portal-client";
+import { portalApi, usePortalEngagement, type PortalScan, type PortalEngagement, type PortalUseCase } from "../../../lib/portal-client";
 import { DataState, SkeletonRows, EmptyState } from "../../../components/states/DataState";
 
 // Scan use-cases are fetched from the operator capability catalog (GET
@@ -183,7 +183,7 @@ function Group({ label, count, children }: { label: string; count: number; child
 
 export default function PortalScans() {
   const qc = useQueryClient();
-  const eng = useQuery({ queryKey: ["portal", "engagement"], queryFn: () => portalApi<PortalEngagement>("/engagement") });
+  const eng = usePortalEngagement();
   const scans = useQuery({
     queryKey: ["portal", "scans"],
     queryFn: () => portalApi<PortalScan[]>("/scans"),
@@ -246,7 +246,7 @@ export default function PortalScans() {
   const history = all.filter((s) => !jobMeta(s.status, s.kind).active);
 
   return (
-    <PortalShell title="Scans" subtitle="Request a scan and track activity" live={active.length > 0}>
+    <PortalShell title="Scans" subtitle={eng.data?.name ?? "Request a scan and track activity"} live={active.length > 0}>
       <div style={{ display: "grid", gap: 16, gridTemplateColumns: "minmax(0, 1fr)" }}>
         {/* ── New request ── */}
         <div className="panel">

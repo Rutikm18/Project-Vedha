@@ -129,8 +129,52 @@ async def _handle_facts_ready(event: Event) -> None:
             logger.warning("outbox.facts_ready.missing_scan_result",
                            scan_result_id=event.scan_result_id)
             return
+
+        # R2: an outbox is at-least-once. The handler commits its work, then
+        # _mark_done commits separately; a crash in that window leaves the event
+        # PROCESSING, the reclaimer requeues it, and detection runs a second time
+        # for a submission that was already detected. Findings absorb the repeat
+        # (they reaffirm rather than duplicate), but campaign coverage maps
+        # submissions to completed runs, so the phantom run corrupts that count.
+        # Detecting the same submission twice adds nothing, so don't.
+        # See docs/adr/0001-manager-detection-pipeline.md.
+        from sqlalchemy import select as _select
+        from app.models.detection_run import DetectionRun, RUN_COMPLETED
+        already = (await db.execute(
+            _select(DetectionRun.id).where(
+                DetectionRun.scan_result_id == sr.id,
+                DetectionRun.status == RUN_COMPLETED,
+            ).limit(1)
+        )).first()
+        if already is not None:
+            logger.info("outbox.facts_ready.already_detected",
+                        scan_result_id=event.scan_result_id)
+            return
+
+        # R3: coverage needs scanner_runs, and scan_results does not carry them —
+        # they live on the JOB's result blob. Passing only {"facts": ...} meant
+        # build_coverage always fail-closed to empty coverage, so auto-resolution
+        # could never fire: a host proven clean on a re-scan kept its old finding
+        # open forever. Read them from the job that produced this submission.
+        # See docs/adr/0001-manager-detection-pipeline.md.
+        scanner_runs = None
+        if sr.job_id:
+            from app.models.scan_job import ScanJob
+            job = await db.get(ScanJob, sr.job_id)
+            job_result = job.result if job and isinstance(job.result, dict) else {}
+            runs = job_result.get("scanner_runs")
+            if isinstance(runs, list):
+                scanner_runs = runs
+        if scanner_runs is None:
+            # Not an error — an older probe simply did not report them. Coverage
+            # stays empty and nothing auto-resolves, which is the safe direction.
+            logger.info("outbox.facts_ready.no_scanner_runs",
+                        scan_result_id=str(sr.id), job_id=str(sr.job_id or ""))
+
         n = await create_findings_from_facts(
-            db, sr.engagement_id, {"facts": sr.facts}, scan_result_id=sr.id,
+            db, sr.engagement_id,
+            {"facts": sr.facts, "scanner_runs": scanner_runs},
+            scan_result_id=sr.id,
         )
         # All finding-producing paths for this scan have now run (engine here,
         # service_vuln/finding_translator at submit); stamp the unified
