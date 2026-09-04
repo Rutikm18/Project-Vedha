@@ -1,4 +1,4 @@
-# Node Description Batch 165 of 236
+# Node Description Batch 165 of 330
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,60 +12,51 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
-For an entity node (any other kind — e.g. a person, place, event, object),
-describe what the entity is and its role, grounded in its type, its
-relations (neighbors) and the provided citations/evidence — e.g.
-"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
-Ground entity descriptions in the citations/evidence when present; do not
-speculate beyond the context, so a node with no supporting context may be
-left out of the reply.
-LANGUAGE: each entry has a `lang=` marker giving the language of its source.
-Write that entry's description in EXACTLY that language. Do not translate to
-a single common language — match each node's source language individually.
+Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "main_scripts_syn_scanner_rationale_197": "A genuine reply to our SYN acknowledges ISN+1. The reply's own source     (ip_sr" | kind=entity | source=probe/main_scripts/syn_scanner.py:L197 | neighbors=[verify_reply_cookie()] | lang=en
-- "main_scripts_syn_scanner_rationale_198": "A genuine reply to our SYN acknowledges ISN+1. The reply's own source     (ip_sr" | kind=entity | source=probe/main_scripts/syn_scanner.py:L198 | neighbors=[verify_reply_cookie()] | lang=en
-- "main_scripts_syn_scanner_rationale_210": "True only when a real SYN scan can work: Linux (BSD/macOS raw sockets can't" | kind=entity | source=probe/main_scripts/syn_scanner.py:L210 | neighbors=[syn_scan_supported()] | lang=pt
-- "main_scripts_syn_scanner_rationale_211": "True only when a real SYN scan can work: Linux (BSD/macOS raw sockets can't" | kind=entity | source=probe/main_scripts/syn_scanner.py:L211 | neighbors=[syn_scan_supported()] | lang=pt
-- "main_scripts_syn_scanner_rationale_231": "Outbound-interface IP for reaching dst_ip (no packets sent — UDP connect)." | kind=entity | source=probe/main_scripts/syn_scanner.py:L231 | neighbors=[_local_source_ip()] | lang=en
-- "main_scripts_syn_scanner_rationale_232": "Outbound-interface IP for reaching dst_ip (no packets sent — UDP connect)." | kind=entity | source=probe/main_scripts/syn_scanner.py:L232 | neighbors=[_local_source_ip()] | lang=en
-- "main_scripts_syn_scanner_rationale_245": "SYN scan on privileged Linux; transparent connect-scan fallback elsewhere." | kind=entity | source=probe/main_scripts/syn_scanner.py:L245 | neighbors=[SynScanner] | lang=en
-- "main_scripts_syn_scanner_rationale_246": "SYN scan on privileged Linux; transparent connect-scan fallback elsewhere." | kind=entity | source=probe/main_scripts/syn_scanner.py:L246 | neighbors=[SynScanner] | lang=en
-- "main_scripts_syn_scanner_rationale_414": "Turn resolved port states + harvested intel into ScanResults. Pure —         no" | kind=entity | source=probe/main_scripts/syn_scanner.py:L414 | neighbors=[._build_results()] | lang=en
-- "main_scripts_syn_scanner_rationale_418": "Turn resolved port states + harvested intel into ScanResults. Pure —         no" | kind=entity | source=probe/main_scripts/syn_scanner.py:L418 | neighbors=[._build_results()] | lang=en
-- "main_scripts_syn_scanner_rationale_63": "Build a 20-byte IPv4 header with a valid checksum.      NOTE (BSD caveat): on ma" | kind=entity | source=probe/main_scripts/syn_scanner.py:L63 | neighbors=[build_ip_header()] | lang=pt
-- "main_scripts_syn_scanner_rationale_81": "Build a 20-byte IPv4 header with a valid checksum.      NOTE (BSD caveat): on ma" | kind=entity | source=probe/main_scripts/syn_scanner.py:L81 | neighbors=[build_ip_header()] | lang=pt
-- "main_scripts_syn_scanner_rationale_82": "Build a 20-byte IPv4 header with a valid checksum.      NOTE (BSD caveat): on ma" | kind=entity | source=probe/main_scripts/syn_scanner.py:L82 | neighbors=[build_ip_header()] | lang=pt
-- "main_scripts_syn_scanner_rationale_86": "Build a 20-byte TCP SYN segment with a valid checksum (pseudo-header)." | kind=entity | source=probe/main_scripts/syn_scanner.py:L86 | neighbors=[build_tcp_syn()] | lang=pt
-- "main_scripts_tls_fingerprint_main": "main()" | kind=code-symbol | source=probe/main_scripts/tls_fingerprint.py:L320 | neighbors=[tls_fingerprint.py] | lang=en
-- "main_scripts_tls_fingerprint_rationale_1": "tls_fingerprint.py — active TLS server fingerprint (Tier 2.3, JARM methodology)." | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L1 | neighbors=[tls_fingerprint.py] | lang=en
-- "main_scripts_tls_fingerprint_rationale_136": "Parse the negotiated version + cipher + extensions from a ServerHello." | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L136 | neighbors=[parse_server_hello()] | lang=en
-- "main_scripts_tls_fingerprint_rationale_137": "Parse the negotiated version + cipher + extensions from a ServerHello." | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L137 | neighbors=[parse_server_hello()] | lang=en
-- "main_scripts_tls_fingerprint_rationale_177": "2-char code from the cipher's position in CIPHER_LIST ('00' if unknown)." | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L177 | neighbors=[cipher_code()] | lang=en
-- "main_scripts_tls_fingerprint_rationale_178": "2-char code from the cipher's position in CIPHER_LIST ('00' if unknown)." | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L178 | neighbors=[cipher_code()] | lang=en
-- "main_scripts_tls_fingerprint_rationale_184": "Concatenate the ServerHello extension TYPE codes (2 bytes each). We hash types," | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L184 | neighbors=[_server_ext_types()] | lang=en
-- "main_scripts_tls_fingerprint_rationale_185": "Concatenate the ServerHello extension TYPE codes (2 bytes each). We hash types," | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L185 | neighbors=[_server_ext_types()] | lang=en
-- "main_scripts_tls_fingerprint_rationale_200": "JARM-shaped 62-char fuzzy hash: 3 chars per probe (cipher[2] + version[1])," | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L200 | neighbors=[jarm_style_digest()] | lang=it
-- "main_scripts_tls_fingerprint_rationale_201": "JARM-shaped 62-char fuzzy hash: 3 chars per probe (cipher[2] + version[1])," | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L201 | neighbors=[jarm_style_digest()] | lang=it
-- "main_scripts_tls_fingerprint_rationale_241": "Read exactly the first TLS record (the ServerHello or an alert) and stop —     n" | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L241 | neighbors=[_recv_first_record()] | lang=en
-- "main_scripts_tls_fingerprint_rationale_242": "Read exactly the first TLS record (the ServerHello or an alert) and stop —     n" | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L242 | neighbors=[_recv_first_record()] | lang=en
-- "main_scripts_tls_fingerprint_rationale_261": "Send one crafted ClientHello, read + parse the ServerHello. Sync." | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L261 | neighbors=[_one_probe()] | lang=en
-- "main_scripts_tls_fingerprint_rationale_262": "Send one crafted ClientHello, read + parse the ServerHello. Sync." | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L262 | neighbors=[_one_probe()] | lang=en
-- "main_scripts_tls_fingerprint_rationale_274": "Run all probes and return (62-char digest, per-probe results)." | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L274 | neighbors=[fingerprint_host()] | lang=en
-- "main_scripts_tls_fingerprint_rationale_275": "Run all probes and return (62-char digest, per-probe results)." | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L275 | neighbors=[fingerprint_host()] | lang=en
-- "main_scripts_tls_fingerprint_rationale_90": "Build a complete TLS ClientHello record (record layer + handshake)." | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L90 | neighbors=[build_client_hello()] | lang=pt
-- "main_scripts_tls_fingerprint_rationale_91": "Build a complete TLS ClientHello record (record layer + handshake)." | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L91 | neighbors=[build_client_hello()] | lang=pt
-- "main_scripts_tls_fingerprint_tlsfingerprintscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/tls_fingerprint.py:L285 | neighbors=[TLSFingerprintScanner] | lang=en
-- "main_scripts_tls_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/tls_scanner.py:L287 | neighbors=[tls_scanner.py] | lang=en
-- "main_scripts_tls_scanner_rationale_1": "tls_scanner.py — collect TLS/SSL configuration facts.  METHOD (collection only):" | kind=entity | source=probe/main_scripts/tls_scanner.py:L1 | neighbors=[tls_scanner.py] | lang=en
-- "main_scripts_tls_scanner_rationale_105": "Grade overall TLS posture A/B/C/F from accepted protocol versions and the     cl" | kind=entity | source=probe/main_scripts/tls_scanner.py:L105 | neighbors=[grade_tls_posture()] | lang=en
-- "main_scripts_tls_scanner_rationale_147": "Never send an IP literal as SNI — non-conformant; some servers reject it." | kind=entity | source=probe/main_scripts/tls_scanner.py:L147 | neighbors=[_sni()] | lang=en
-- "main_scripts_tls_scanner_rationale_156": "Attempt a handshake forcing one protocol version. Returns cipher dict or None." | kind=entity | source=probe/main_scripts/tls_scanner.py:L156 | neighbors=[_try_version()] | lang=pt
-- "main_scripts_tls_scanner_rationale_61": "Flag the security-relevant properties of an OpenSSL cipher-suite name:     forwa" | kind=entity | source=probe/main_scripts/tls_scanner.py:L61 | neighbors=[classify_cipher()] | lang=en
-- "main_scripts_tls_scanner_tlsscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/tls_scanner.py:L258 | neighbors=[TLSScanner] | lang=en
+- "tests_test_smb_scanner_test_truncated_negotiate_body_not_parsed": "test_truncated_negotiate_body_not_parsed()" | kind=code-symbol | source=probe/tests/test_smb_scanner.py:L62 | neighbors=[test_smb_scanner.py, A response with the wrong body Structur…]
+- "tests_test_smtp_scanner_testparity": "TestParity" | kind=code-symbol | source=probe/tests/test_smtp_scanner.py:L73 | neighbors=[test_smtp_scanner.py, .test_main_scripts()]
+- "tests_test_smtp_scanner_testsmtpfindings_test_expn_alone_triggers_enum": ".test_expn_alone_triggers_enum()" | kind=code-symbol | source=probe/tests/test_smtp_scanner.py:L67 | neighbors=[TestSMTPFindings, ._fact()]
+- "tests_test_smtp_scanner_testsmtpfindings_test_hardened_is_silent": ".test_hardened_is_silent()" | kind=code-symbol | source=probe/tests/test_smtp_scanner.py:L62 | neighbors=[TestSMTPFindings, ._fact()]
+- "tests_test_smtp_scanner_testsmtpfindings_test_user_enum_and_no_starttls": ".test_user_enum_and_no_starttls()" | kind=code-symbol | source=probe/tests/test_smtp_scanner.py:L55 | neighbors=[TestSMTPFindings, ._fact()]
+- "tests_test_smtp_scanner_testsmtpscanner_test_no_smtp_filtered": ".test_no_smtp_filtered()" | kind=code-symbol | source=probe/tests/test_smtp_scanner.py:L44 | neighbors=[TestSMTPScanner, ._sc()]
+- "tests_test_smtp_scanner_testsmtpscanner_test_open": ".test_open()" | kind=code-symbol | source=probe/tests/test_smtp_scanner.py:L36 | neighbors=[TestSMTPScanner, ._sc()]
+- "tests_test_ssh_scanner_testevaluate_eval": "._eval()" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L95 | neighbors=[TestEvaluate, _kexinit()]
+- "tests_test_ssh_scanner_testfulldbcoverage_eval": "._eval()" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L243 | neighbors=[TestFullDBCoverage, _kexinit()]
+- "tests_test_ssh_scanner_testmainscriptsparity_test_main_scripts_scanner_and_findings_agree": ".test_main_scripts_scanner_and_findings_agree()" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L316 | neighbors=[TestMainScriptsParity, _kexinit()]
+- "tests_test_ssh_scanner_testnofalsepositives_eval": "._eval()" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L272 | neighbors=[TestNoFalsePositives, _kexinit()]
+- "tests_test_ssh_scanner_testparsekexinit_test_empty_language_list": ".test_empty_language_list()" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L85 | neighbors=[TestParseKexinit, _kexinit()]
+- "tests_test_ssh_scanner_testparsekexinit_test_handles_payload_without_leading_type_byte": ".test_handles_payload_without_leading_type_byte()" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L79 | neighbors=[TestParseKexinit, _kexinit()]
+- "tests_test_ssh_scanner_testparsekexinit_test_parses_all_name_lists": ".test_parses_all_name_lists()" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L70 | neighbors=[TestParseKexinit, _kexinit()]
+- "tests_test_ssh_scanner_testsshfindings_test_clean_server_raises_nothing": ".test_clean_server_raises_nothing()" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L211 | neighbors=[TestSSHFindings, ._fact()]
+- "tests_test_ssh_scanner_testsshfindings_test_terrapin_raises_finding": ".test_terrapin_raises_finding()" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L206 | neighbors=[TestSSHFindings, ._fact()]
+- "tests_test_ssh_scanner_testsshfindings_test_weak_algorithms_raise_finding": ".test_weak_algorithms_raise_finding()" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L198 | neighbors=[TestSSHFindings, ._fact()]
+- "tests_test_ssh_scanner_testsshscanner_test_weak_server_reports_open_with_failures": ".test_weak_server_reports_open_with_failures()" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L169 | neighbors=[TestSSHScanner, _kexinit()]
+- "tests_test_ssh_scanner_testsshstatustaxonomy_test_confirmed_ssh_open_with_parsed_banner": ".test_confirmed_ssh_open_with_parsed_banner()" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L361 | neighbors=[TestSSHStatusTaxonomy, _kexinit()]
+- "tests_test_ssh_scanner_testterrapin_test_chacha20_without_strict_kex_is_vulnerable": ".test_chacha20_without_strict_kex_is_vulnerable()" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L153 | neighbors=[TestTerrapin, _kexinit()]
+- "tests_test_ssh_scanner_testterrapin_test_strict_kex_present_is_not_vulnerable": ".test_strict_kex_present_is_not_vulnerable()" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L145 | neighbors=[TestTerrapin, _kexinit()]
+- "tests_test_ssh_scanner_testterrapinfidelity_test_cbc_plus_etm_is_vulnerable_without_strict_kex": ".test_cbc_plus_etm_is_vulnerable_without_strict_kex()" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L302 | neighbors=[TestTerrapinFidelity, ._ev()]
+- "tests_test_ssh_scanner_testterrapinfidelity_test_cbc_without_etm_mac_is_not_terrapin": ".test_cbc_without_etm_mac_is_not_terrapin()" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L307 | neighbors=[TestTerrapinFidelity, ._ev()]
+- "tests_test_ssh_scanner_testterrapinfidelity_test_chacha20_without_openssh_suffix_still_vulnerable": ".test_chacha20_without_openssh_suffix_still_vulnerable()" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L296 | neighbors=[TestTerrapinFidelity, ._ev()]
+- "tests_test_stage2_reconcile_test_reap_stale_runs_marks_running_as_failed": "test_reap_stale_runs_marks_running_as_failed()" | kind=code-symbol | source=manager/backend/tests/test_stage2_reconcile.py:L175 | neighbors=[test_stage2_reconcile.py, _CM]
+- "tests_test_stage2_reconcile_test_write_heartbeat_upserts": "test_write_heartbeat_upserts()" | kind=code-symbol | source=manager/backend/tests/test_stage2_reconcile.py:L195 | neighbors=[test_stage2_reconcile.py, _CM]
+- "tests_test_syn_scanner_testbuildresultsenrichment_test_closed_and_filtered_suppressed_by_default": ".test_closed_and_filtered_suppressed_by_default()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L396 | neighbors=[TestBuildResultsEnrichment, ._scanner()]
+- "tests_test_syn_scanner_testbuildresultsenrichment_test_open_result_carries_signals_and_os_guess": ".test_open_result_carries_signals_and_os_guess()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L354 | neighbors=[TestBuildResultsEnrichment, ._scanner()]
+- "tests_test_syn_scanner_testbuildresultsenrichment_test_open_without_signals_has_no_os_guess": ".test_open_without_signals_has_no_os_guess()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L391 | neighbors=[TestBuildResultsEnrichment, ._scanner()]
+- "tests_test_syn_scanner_testbuildresultsenrichment_test_os_guess_is_tagged_tcp_derived_not_icmp": ".test_os_guess_is_tagged_tcp_derived_not_icmp()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L370 | neighbors=[TestBuildResultsEnrichment, ._scanner()]
+- "tests_test_syn_scanner_testbuildresultsenrichment_test_p0f_stack_label_from_harvested_option_layout": ".test_p0f_stack_label_from_harvested_option_layout()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L380 | neighbors=[TestBuildResultsEnrichment, ._scanner()]
+- "tests_test_syn_scanner_testbuildresultsenrichment_test_windows_ttl_maps_to_windows": ".test_windows_ttl_maps_to_windows()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L364 | neighbors=[TestBuildResultsEnrichment, ._scanner()]
+- "tests_test_syn_scanner_testparsepacketsignals_test_window_ttl_mss_surfaced": ".test_window_ttl_mss_surfaced()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L337 | neighbors=[TestParsePacketSignals, _synack_with_options()]
+- "tests_test_syn_scanner_testsynretransmit_test_answered_ports_are_not_retransmitted": ".test_answered_ports_are_not_retransmitted()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L248 | neighbors=[TestSynRetransmit, ._patch()]
+- "tests_test_syn_scanner_testsynretransmit_test_retries_zero_sends_one_syn_per_port": ".test_retries_zero_sends_one_syn_per_port()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L278 | neighbors=[TestSynRetransmit, ._patch()]
+- "tests_test_syn_scanner_testsynretransmit_test_silent_ports_are_retried_retries_plus_one_times": ".test_silent_ports_are_retried_retries_plus_one_times()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L233 | neighbors=[TestSynRetransmit, ._patch()]
+- "tests_test_syn_scanner_testverifyreplycookie_test_reply_from_other_host_fails": ".test_reply_from_other_host_fails()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L129 | neighbors=[TestVerifyReplyCookie, ._make_synack_reply()]
+- "tests_test_syn_scanner_testverifyreplycookie_test_valid_cookie_verifies": ".test_valid_cookie_verifies()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L119 | neighbors=[TestVerifyReplyCookie, ._make_synack_reply()]
+- "tests_test_syn_scanner_testverifyreplycookie_test_wrong_ack_fails": ".test_wrong_ack_fails()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L124 | neighbors=[TestVerifyReplyCookie, ._make_synack_reply()]
+- "tests_test_task_runner_fake_run_scan": "_fake_run_scan()" | kind=code-symbol | source=probe/tests/test_task_runner.py:L12 | neighbors=[test_task_runner.py, Return a minimal successful result with…]
 
 ## Instructions
 

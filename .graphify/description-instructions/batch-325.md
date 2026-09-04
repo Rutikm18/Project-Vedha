@@ -1,0 +1,83 @@
+# Node Description Batch 326 of 330
+
+Graphify is running in assistant/skill mode (no API key). You are the host
+assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
+your JSON answer to the answer file.
+
+## Prompt
+
+You are documenting nodes in a knowledge graph.
+For each entry below, write ONE concise factual plain-language sentence
+describing what it is or does. Use only the provided context.
+For a code symbol (kind=code-symbol — a function, class, or constant),
+describe what the function/symbol does based on its name, source location
+and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
+For an entity node (any other kind — e.g. a person, place, event, object),
+describe what the entity is and its role, grounded in its type, its
+relations (neighbors) and the provided citations/evidence — e.g.
+"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
+Ground entity descriptions in the citations/evidence when present; do not
+speculate beyond the context, so a node with no supporting context may be
+left out of the reply.
+Write every description in English (en). Do not switch languages.
+No marketing language.
+Respond ONLY with a JSON object mapping each node id (as a string) to its
+one-sentence description — no prose, no markdown fences.
+
+- "workflow_asset_asset_merge_ipmi_scan": "._merge_ipmi_scan()" | kind=code-symbol | source=probe/workflow/asset.py:L220 | neighbors=[Asset]
+- "workflow_asset_asset_merge_ldap_scan": "._merge_ldap_scan()" | kind=code-symbol | source=probe/workflow/asset.py:L192 | neighbors=[Asset]
+- "workflow_asset_asset_merge_mcp_ai_scan": "._merge_mcp_ai_scan()" | kind=code-symbol | source=probe/workflow/asset.py:L184 | neighbors=[Asset]
+- "workflow_asset_asset_merge_msrpc_scan": "._merge_msrpc_scan()" | kind=code-symbol | source=probe/workflow/asset.py:L228 | neighbors=[Asset]
+- "workflow_asset_asset_merge_nfs_scan": "._merge_nfs_scan()" | kind=code-symbol | source=probe/workflow/asset.py:L204 | neighbors=[Asset]
+- "workflow_asset_asset_merge_os_fingerprint": "._merge_os_fingerprint()" | kind=code-symbol | source=probe/workflow/asset.py:L152 | neighbors=[Asset]
+- "workflow_asset_asset_merge_passive_collect": "._merge_passive_collect()" | kind=code-symbol | source=probe/workflow/asset.py:L248 | neighbors=[Asset]
+- "workflow_asset_asset_merge_printer_scan": "._merge_printer_scan()" | kind=code-symbol | source=probe/workflow/asset.py:L236 | neighbors=[Asset]
+- "workflow_asset_asset_merge_rdp_scan": "._merge_rdp_scan()" | kind=code-symbol | source=probe/workflow/asset.py:L232 | neighbors=[Asset]
+- "workflow_asset_asset_merge_rsync_scan": "._merge_rsync_scan()" | kind=code-symbol | source=probe/workflow/asset.py:L212 | neighbors=[Asset]
+- "workflow_asset_asset_merge_service_banner": "._merge_service_banner()" | kind=code-symbol | source=probe/workflow/asset.py:L158 | neighbors=[Asset]
+- "workflow_asset_asset_merge_service_enum": "._merge_service_enum()" | kind=code-symbol | source=probe/workflow/asset.py:L175 | neighbors=[Asset]
+- "workflow_asset_asset_merge_smb_enum_scan": "._merge_smb_enum_scan()" | kind=code-symbol | source=probe/workflow/asset.py:L200 | neighbors=[Asset]
+- "workflow_asset_asset_merge_smb_scan": "._merge_smb_scan()" | kind=code-symbol | source=probe/workflow/asset.py:L170 | neighbors=[Asset]
+- "workflow_asset_asset_merge_smtp_scan": "._merge_smtp_scan()" | kind=code-symbol | source=probe/workflow/asset.py:L224 | neighbors=[Asset]
+- "workflow_asset_asset_merge_snmp_scan": "._merge_snmp_scan()" | kind=code-symbol | source=probe/workflow/asset.py:L176 | neighbors=[Asset]
+- "workflow_asset_asset_merge_ssh_inventory": "._merge_ssh_inventory()" | kind=code-symbol | source=probe/workflow/asset.py:L254 | neighbors=[Asset]
+- "workflow_asset_asset_merge_ssh_scan": "._merge_ssh_scan()" | kind=code-symbol | source=probe/workflow/asset.py:L188 | neighbors=[Asset]
+- "workflow_asset_asset_merge_tls_scan": "._merge_tls_scan()" | kind=code-symbol | source=probe/workflow/asset.py:L162 | neighbors=[Asset]
+- "workflow_asset_asset_merge_vnc_scan": "._merge_vnc_scan()" | kind=code-symbol | source=probe/workflow/asset.py:L216 | neighbors=[Asset]
+- "workflow_asset_asset_merge_web_scan": "._merge_web_scan()" | kind=code-symbol | source=probe/workflow/asset.py:L166 | neighbors=[Asset]
+- "workflow_asset_asset_merge_windows_inventory": "._merge_windows_inventory()" | kind=code-symbol | source=probe/workflow/asset.py:L258 | neighbors=[Asset]
+- "workflow_asset_asset_open_ports_for_deep_scan": ".open_ports_for_deep_scan()" | kind=code-symbol | source=probe/workflow/asset.py:L99 | neighbors=[Asset]
+- "workflow_asset_rationale_1": "asset.py — per-host fact model the workflow engine reasons about.  This is an OR" | kind=entity | source=probe/workflow/asset.py:L1 | neighbors=[asset.py]
+- "workflow_asset_rationale_103": "Dispatch a real ScanResult into the right sub-structure, keyed         on result" | kind=entity | source=probe/workflow/asset.py:L103 | neighbors=[.merge_result()]
+- "workflow_asset_rationale_71": "Is liveness unknown, or stale past `threshold`? Threshold is         profile-dep" | kind=entity | source=probe/workflow/asset.py:L71 | neighbors=[.needs_recheck_live()]
+- "workflow_asset_rationale_72": "Is liveness unknown, or stale past `threshold`? Threshold is         profile-dep" | kind=entity | source=probe/workflow/asset.py:L72 | neighbors=[.needs_recheck_live()]
+- "workflow_asset_rationale_73": "Is liveness unknown, or stale past `threshold`? Threshold is         profile-dep" | kind=entity | source=probe/workflow/asset.py:L73 | neighbors=[.needs_recheck_live()]
+- "workflow_asset_rationale_83": "Is liveness unknown, or stale past `threshold`? Threshold is         profile-dep" | kind=entity | source=probe/workflow/asset.py:L83 | neighbors=[.needs_recheck_live()]
+- "workflow_asset_rationale_84": "Dispatch a real ScanResult into the right sub-structure, keyed         on result" | kind=entity | source=probe/workflow/asset.py:L84 | neighbors=[.merge_result()]
+- "workflow_asset_rationale_85": "Dispatch a real ScanResult into the right sub-structure, keyed         on result" | kind=entity | source=probe/workflow/asset.py:L85 | neighbors=[.merge_result()]
+- "workflow_asset_rationale_86": "Dispatch a real ScanResult into the right sub-structure, keyed         on result" | kind=entity | source=probe/workflow/asset.py:L86 | neighbors=[.merge_result()]
+- "workflow_asset_rationale_90": "Is liveness unknown, or stale past `threshold`? Threshold is         profile-dep" | kind=entity | source=probe/workflow/asset.py:L90 | neighbors=[.needs_recheck_live()]
+- "workflow_asset_rationale_96": "Dispatch a real ScanResult into the right sub-structure, keyed         on result" | kind=entity | source=probe/workflow/asset.py:L96 | neighbors=[.merge_result()]
+- "workflow_branches_rationale_1": "branches.py — the deep-scan branch registry: ONE declarative description of ever" | kind=entity | source=probe/workflow/branches.py:L1 | neighbors=[branches.py]
+- "workflow_branches_rationale_102": "True when the fact describes the host rather than one port — it is         cache" | kind=entity | source=probe/workflow/branches.py:L102 | neighbors=[.host_level()]
+- "workflow_branches_rationale_50": "The default: hand the scanner the ports that still need probing." | kind=entity | source=probe/workflow/branches.py:L50 | neighbors=[_ports_kwargs()]
+- "workflow_branches_rationale_55": "For scanners that take no `ports` argument — a host-level branch, or a     datag" | kind=entity | source=probe/workflow/branches.py:L55 | neighbors=[_no_kwargs()]
+- "workflow_branches_rationale_61": "Tell the web scanner which of these ports service_banner OBSERVED     speaking T" | kind=entity | source=probe/workflow/branches.py:L61 | neighbors=[_web_kwargs()]
+- "workflow_branches_rationale_69": "Ports with a known database engine get that engine's probe; ports the     router" | kind=entity | source=probe/workflow/branches.py:L69 | neighbors=[_db_kwargs()]
+
+## Instructions
+
+Write a single JSON object mapping each node id to a one-sentence description
+to: /Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha/.graphify/description-instructions/batch-325.json
+
+Keep each description factual and concise (one sentence). No markdown, no prose
+outside the JSON object. It is acceptable to omit a node if context is
+insufficient — but include every node you can ground confidently.
+
+Example answer format:
+```json
+{
+  "node_id_1": "Resolves the configured ontology profile from graphify.yaml.",
+  "node_id_2": "Colonel James Barclay, an antagonist in The Crooked Man."
+}
+```

@@ -1,4 +1,4 @@
-# Node Description Batch 188 of 236
+# Node Description Batch 188 of 330
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -26,46 +26,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "scripts_startup_validator_rationale_28": "Raised when a required configuration invariant is violated at boot." | kind=entity | source=manager/backend/scripts/startup_validator.py:L28 | neighbors=[StartupValidationError] | lang=en
-- "scripts_startup_validator_rationale_280": "Validates the baked-in detection engine is present." | kind=entity | source=manager/backend/scripts/startup_validator.py:L280 | neighbors=[DetectionEngineValidator] | lang=en
-- "scripts_startup_validator_rationale_311": "Verifies actual database connectivity at startup." | kind=entity | source=manager/backend/scripts/startup_validator.py:L311 | neighbors=[DatabaseConnectivityValidator] | lang=en
-- "scripts_startup_validator_rationale_355": "Verifies Redis connectivity at startup." | kind=entity | source=manager/backend/scripts/startup_validator.py:L355 | neighbors=[RedisConnectivityValidator] | lang=en
-- "scripts_startup_validator_rationale_397": "Run all validators. Use in FastAPI lifespan:          from scripts.startup_valid" | kind=entity | source=manager/backend/scripts/startup_validator.py:L397 | neighbors=[run_all_validators()] | lang=en
-- "scripts_startup_validator_rationale_73": "Validates required env vars are present and non-default." | kind=entity | source=manager/backend/scripts/startup_validator.py:L73 | neighbors=[ConfigValidator] | lang=en
-- "scripts_startup_validator_validationreport_errors": ".errors()" | kind=code-symbol | source=manager/backend/scripts/startup_validator.py:L49 | neighbors=[ValidationReport] | lang=en
-- "scripts_startup_validator_validationreport_warnings": ".warnings()" | kind=code-symbol | source=manager/backend/scripts/startup_validator.py:L53 | neighbors=[ValidationReport] | lang=en
-- "services_agent_policy_rationale_1": "agent_policy.py — the deterministic policy engine for the Autonomous Engagement" | kind=entity | source=manager/backend/app/services/agent_policy.py:L1 | neighbors=[agent_policy.py] | lang=en
-- "services_agent_policy_rationale_50": "Map an action name to its risk tier; unknown actions fail closed." | kind=entity | source=manager/backend/app/services/agent_policy.py:L50 | neighbors=[classify_action()] | lang=en
-- "services_agent_policy_rationale_56": "The deterministic authorization envelope for one engagement's agent." | kind=entity | source=manager/backend/app/services/agent_policy.py:L56 | neighbors=[RulesOfEngagement] | lang=en
-- "services_agent_policy_rationale_68": "Running engagement usage, checked against the blast-radius caps." | kind=entity | source=manager/backend/app/services/agent_policy.py:L68 | neighbors=[UsageCounters] | lang=en
-- "services_agent_policy_rationale_89": "Decide whether `action` may proceed under `roe`. Order is deliberate:     hard d" | kind=entity | source=manager/backend/app/services/agent_policy.py:L89 | neighbors=[evaluate_action()] | lang=en
-- "services_analytics_rationale_1": "Exposure analytics — protocol risk + zone health.  Derives two dashboard aggrega" | kind=entity | source=manager/backend/app/services/analytics.py:L1 | neighbors=[analytics.py] | lang=en
-- "services_audit_rationale_1": "audit.py — the append-only audit-log writer, shared by the operator and portal r" | kind=entity | source=manager/backend/app/services/audit.py:L1 | neighbors=[audit.py] | lang=en
-- "services_audit_rationale_16": "Append one immutable audit row (caller flushes within its own txn)." | kind=entity | source=manager/backend/app/services/audit.py:L16 | neighbors=[record_audit()] | lang=en
-- "services_job_attempt_service_rationale_31": "Atomically claim a pending job and create its fenced attempt ledger row." | kind=entity | source=manager/backend/app/services/job_attempt_service.py:L31 | neighbors=[claim_job_attempt()] | lang=en
-- "services_job_attempt_service_rationale_94": "Renew only the currently installed running attempt/fence." | kind=entity | source=manager/backend/app/services/job_attempt_service.py:L94 | neighbors=[renew_job_attempt()] | lang=en
-- "services_job_result_service_rationale_111": "Return result identities outside the job's authoritative IP scope.      Fail clo" | kind=entity | source=manager/backend/app/services/job_result_service.py:L111 | neighbors=[validate_result_scope()] | lang=en
-- "services_job_result_service_rationale_137": "Process a scan job result.  Called from both HTTP and WebSocket paths.      Retu" | kind=entity | source=manager/backend/app/services/job_result_service.py:L137 | neighbors=[process_job_result()] | lang=en
-- "services_job_result_service_rationale_157": "Process a scan job result.  Called from both HTTP and WebSocket paths.      Retu" | kind=entity | source=manager/backend/app/services/job_result_service.py:L157 | neighbors=[process_job_result()] | lang=en
-- "services_job_result_service_rationale_327": "Upsert discovered hosts/services into the asset inventory.      Keyed by (engage" | kind=entity | source=manager/backend/app/services/job_result_service.py:L327 | neighbors=[_promote_assets()] | lang=en
-- "services_job_result_service_rationale_356": "Stamp the probe's evidence-based device role onto an Asset (create/update)." | kind=entity | source=manager/backend/app/services/job_result_service.py:L356 | neighbors=[_apply_device_profile()] | lang=en
-- "services_job_result_service_rationale_379": "Upsert discovered hosts/services into the asset inventory.      Keyed by (engage" | kind=entity | source=manager/backend/app/services/job_result_service.py:L379 | neighbors=[_promote_assets()] | lang=en
-- "services_job_result_service_rationale_404": "Stamp the probe's evidence-based device role onto an Asset (create/update)." | kind=entity | source=manager/backend/app/services/job_result_service.py:L404 | neighbors=[_apply_device_profile()] | lang=en
-- "services_job_result_service_rationale_42": "Return network identities that could create assets or findings.      Scanner-lev" | kind=entity | source=manager/backend/app/services/job_result_service.py:L42 | neighbors=[_result_network_identities()] | lang=en
-- "services_job_result_service_rationale_427": "Upsert discovered hosts/services into the asset inventory.      Keyed by (engage" | kind=entity | source=manager/backend/app/services/job_result_service.py:L427 | neighbors=[_promote_assets()] | lang=en
-- "services_job_result_service_rationale_50": "Stable idempotency checksum for one attempt completion payload." | kind=entity | source=manager/backend/app/services/job_result_service.py:L50 | neighbors=[result_checksum()] | lang=en
-- "services_job_result_service_rationale_62": "Return network identities that could create assets or findings.      Scanner-lev" | kind=entity | source=manager/backend/app/services/job_result_service.py:L62 | neighbors=[_result_network_identities()] | lang=en
-- "services_job_result_service_rationale_72": "Parse a probe identity as an IP, tolerating common host:port notation." | kind=entity | source=manager/backend/app/services/job_result_service.py:L72 | neighbors=[_identity_ip()] | lang=en
-- "services_job_result_service_rationale_91": "Return result identities outside the job's authoritative IP scope.      Fail clo" | kind=entity | source=manager/backend/app/services/job_result_service.py:L91 | neighbors=[validate_result_scope()] | lang=en
-- "services_job_result_service_rationale_92": "Parse a probe identity as an IP, tolerating common host:port notation." | kind=entity | source=manager/backend/app/services/job_result_service.py:L92 | neighbors=[_identity_ip()] | lang=en
-- "services_llm_airuntimeerror_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/services/llm.py:L22 | neighbors=[AiRuntimeError] | lang=en
-- "services_llm_managerllmservice_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/services/llm.py:L75 | neighbors=[ManagerLlmService] | lang=en
-- "services_llm_rationale_259": "Call one provider and normalize failures to AiRuntimeError.         Preserves th" | kind=entity | source=manager/backend/app/services/llm.py:L259 | neighbors=[._dispatch()] | lang=en
-- "services_llm_rationale_301": "Ordered runtimes to try: requested/default first, then the OpenRouter         fr" | kind=entity | source=manager/backend/app/services/llm.py:L301 | neighbors=[._fallback_candidates()] | lang=en
-- "services_llm_rationale_325": "Try each candidate until one succeeds. On ANY provider failure (credit         e" | kind=entity | source=manager/backend/app/services/llm.py:L325 | neighbors=[.generate_with_fallback()] | lang=en
-- "services_llm_rationale_85": "First configured cloud provider, or None. Cloud-only: never Ollama." | kind=entity | source=manager/backend/app/services/llm.py:L85 | neighbors=[._auto_cloud_provider()] | lang=en
-- "services_notifications_rationale_1": "notifications.py — deliver a message to a tenant's configured integrations (emai" | kind=entity | source=manager/backend/app/services/notifications.py:L1 | neighbors=[notifications.py] | lang=pt
-- "services_notifications_rationale_102": "Producer API: enqueue a durable notify event (commits with the caller's txn)." | kind=entity | source=manager/backend/app/services/notifications.py:L102 | neighbors=[enqueue_notification()] | lang=en
+- "customer_access_page_scanreq": "ScanReq" | kind=code-symbol | source=manager/frontend/app/engagements/[id]/customer-access/page.tsx:L21 | neighbors=[page.tsx] | lang=en
+- "customers_page_clientuserresp": "ClientUserResp" | kind=code-symbol | source=manager/frontend/app/customers/page.tsx:L20 | neighbors=[page.tsx] | lang=en
+- "customers_page_customer": "Customer" | kind=code-symbol | source=manager/frontend/app/customers/page.tsx:L10 | neighbors=[page.tsx] | lang=en
+- "customers_page_customerspage": "CustomersPage()" | kind=code-symbol | source=manager/frontend/app/customers/page.tsx:L36 | neighbors=[page.tsx] | lang=en
+- "customers_page_engagement": "Engagement" | kind=code-symbol | source=manager/frontend/app/customers/page.tsx:L19 | neighbors=[page.tsx] | lang=en
+- "customers_page_fetchjson": "fetchJson()" | kind=code-symbol | source=manager/frontend/app/customers/page.tsx:L25 | neighbors=[page.tsx] | lang=en
+- "customers_route_get": "GET" | kind=code-symbol | source=manager/frontend/app/api/customers/route.ts:L10 | neighbors=[route.ts] | lang=en
+- "cve_cli_cmd_ingest": "cmd_ingest()" | kind=code-symbol | source=probe/cve/cli.py:L44 | neighbors=[cli.py] | lang=en
+- "cve_cli_rationale_1": "cli.py — the two operator verbs for the offline CVE layer.      python -m cve.cl" | kind=entity | source=probe/cve/cli.py:L1 | neighbors=[cli.py] | lang=en
+- "cve_cli_rationale_120": "Verify the offline mirror: feed counts, freshness, and — critically — whether" | kind=entity | source=probe/cve/cli.py:L120 | neighbors=[cmd_status()] | lang=en
+- "cve_cli_rationale_27": "Yield fact dicts from a JSONL file ('-' = stdin). Blank/comment/bad lines     ar" | kind=entity | source=probe/cve/cli.py:L27 | neighbors=[_read_facts()] | lang=en
+- "cve_cli_rationale_66": "Merge CVE-finding lists, dedup by (cve_id, target, port), highest risk first." | kind=entity | source=probe/cve/cli.py:L66 | neighbors=[_merge_findings()] | lang=en
+- "cve_correlator_cvefinding_to_dict": ".to_dict()" | kind=code-symbol | source=probe/cve/correlator.py:L104 | neighbors=[CVEFinding] | lang=en
+- "cve_correlator_rationale_1": "correlator.py — map probe facts to prioritized CVE findings.  Consumes the CPE i" | kind=entity | source=probe/cve/correlator.py:L1 | neighbors=[correlator.py] | lang=en
+- "cve_correlator_rationale_124": "Correlate facts carrying a CPE identity against the vuln DB. Deduped by     (cve" | kind=entity | source=probe/cve/correlator.py:L124 | neighbors=[correlate()] | lang=en
+- "cve_correlator_rationale_31": "Human-readable note on how old the mirror is (from meta.last_ingest_utc),     pr" | kind=entity | source=probe/cve/correlator.py:L31 | neighbors=[mirror_age_note()] | lang=en
+- "cve_correlator_rationale_58": "Return the distro-backport token found in the banner, else None." | kind=entity | source=probe/cve/correlator.py:L58 | neighbors=[_backport_marker()] | lang=en
+- "cve_correlator_rationale_64": "0–100 prioritization score. CVSS is halved so it can't dominate; KEV and     int" | kind=entity | source=probe/cve/correlator.py:L64 | neighbors=[risk_score()] | lang=en
+- "cve_correlator_summarize": "summarize()" | kind=code-symbol | source=probe/cve/correlator.py:L170 | neighbors=[correlator.py] | lang=en
+- "cve_ingest_rationale_1": "ingest.py — build / refresh the offline vulnerability mirror.  Three public feed" | kind=entity | source=probe/cve/ingest.py:L1 | neighbors=[ingest.py] | lang=en
+- "cve_ingest_rationale_110": "cpe:2.3:a:vendor:product:version:... -> (part, vendor, product, version)." | kind=entity | source=probe/cve/ingest.py:L110 | neighbors=[_parse_criteria()] | lang=pt
+- "cve_ingest_rationale_118": "Upsert one NVD `cve` object + its CPE-applicability rows. Idempotent:     existi" | kind=entity | source=probe/cve/ingest.py:L118 | neighbors=[ingest_one_cve()] | lang=en
+- "cve_ingest_rationale_153": "Pull the NVD CVE corpus into the mirror. Resumable via meta.nvd_next_index." | kind=entity | source=probe/cve/ingest.py:L153 | neighbors=[ingest_nvd()] | lang=en
+- "cve_ingest_rationale_237": "Refresh every enabled feed. KEV/EPSS first (cheap, always fresh); NVD last     (" | kind=entity | source=probe/cve/ingest.py:L237 | neighbors=[ingest_all()] | lang=en
+- "cve_ingest_rationale_46": "certifi CA bundle if present, else the system default. Feeds served TLS     from" | kind=entity | source=probe/cve/ingest.py:L46 | neighbors=[_ssl_context()] | lang=en
+- "cve_ingest_rationale_57": "GET with backoff on the transient failures NVD/CDNs throw under load     (403/42" | kind=entity | source=probe/cve/ingest.py:L57 | neighbors=[_get()] | lang=en
+- "cve_ingest_rationale_89": "Best available CVSS: prefer v3.1 > v3.0 > v2. Returns (score, severity,     vect" | kind=entity | source=probe/cve/ingest.py:L89 | neighbors=[_cvss()] | lang=en
+- "cve_init_rationale_1": "cve — vulnerability (CVE) correlation layer.  SEPARATE from the probe's collecti" | kind=entity | source=probe/cve/__init__.py:L1 | neighbors=[__init__.py] | lang=en
+- "cve_online_rationale_1": "online.py — OPT-IN live enrichment for CVE findings.  The offline mirror (vulndb" | kind=entity | source=probe/cve/online.py:L1 | neighbors=[online.py] | lang=en
+- "cve_online_rationale_134": "Enrich CVE findings in place from live sources and return the same list.      `o" | kind=entity | source=probe/cve/online.py:L134 | neighbors=[enrich_findings()] | lang=en
+- "cve_online_rationale_175": "Fold one CVE's live result into a finding. FILLS a missing CVSS (and     recompu" | kind=entity | source=probe/cve/online.py:L175 | neighbors=[_apply()] | lang=pt
+- "cve_online_rationale_215": "Recover whether the exposure boost was applied, so a re-scored (gap-filled)" | kind=entity | source=probe/cve/online.py:L215 | neighbors=[_was_exposed()] | lang=en
+- "cve_online_rationale_52": "What a live lookup could establish for one CVE (any field may be None when     t" | kind=entity | source=probe/cve/online.py:L52 | neighbors=[OnlineResult] | lang=en
+- "cve_online_rationale_68": "Query live NVD 2.0 for one CVE. Returns an OnlineResult, or None on any     netw" | kind=entity | source=probe/cve/online.py:L68 | neighbors=[lookup_nvd()] | lang=en
+- "cve_online_rationale_93": "Ask Vulners whether a public exploit is catalogued for `cve_id`. Returns     Tru" | kind=entity | source=probe/cve/online.py:L93 | neighbors=[lookup_vulners()] | lang=en
+- "cve_version_rationale_1": "version.py — loose version comparison for CVE range matching.  Real service bann" | kind=entity | source=probe/cve/version.py:L1 | neighbors=[version.py] | lang=en
+- "cve_version_rationale_29": "Normalize a version string into a comparable tuple of ints." | kind=entity | source=probe/cve/version.py:L29 | neighbors=[parse_version()] | lang=pt
+- "cve_version_rationale_48": "Return -1/0/1 for version a vs b (zero-padded tuple comparison)." | kind=entity | source=probe/cve/version.py:L48 | neighbors=[compare()] | lang=en
+- "cve_version_rationale_58": "Is `version` inside the NVD-style bound set? An `exact` match (no range     boun" | kind=entity | source=probe/cve/version.py:L58 | neighbors=[in_range()] | lang=en
+- "cve_vulndb_rationale_1": "vulndb.py — the offline vulnerability mirror (SQLite) and its query surface.  Ho" | kind=entity | source=probe/cve/vulndb.py:L1 | neighbors=[vulndb.py] | lang=en
 
 ## Instructions
 

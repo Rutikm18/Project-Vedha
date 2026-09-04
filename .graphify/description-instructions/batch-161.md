@@ -1,4 +1,4 @@
-# Node Description Batch 162 of 236
+# Node Description Batch 162 of 330
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -9,60 +9,54 @@ your JSON answer to the answer file.
 You are documenting nodes in a knowledge graph.
 For each entry below, write ONE concise factual plain-language sentence
 describing what it is or does. Use only the provided context.
-For an entity node (any other kind — e.g. a person, place, event, object),
-describe what the entity is and its role, grounded in its type, its
-relations (neighbors) and the provided citations/evidence — e.g.
-"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
-Ground entity descriptions in the citations/evidence when present; do not
-speculate beyond the context, so a node with no supporting context may be
-left out of the reply.
-LANGUAGE: each entry has a `lang=` marker giving the language of its source.
-Write that entry's description in EXACTLY that language. Do not translate to
-a single common language — match each node's source language individually.
+For a code symbol (kind=code-symbol — a function, class, or constant),
+describe what the function/symbol does based on its name, source location
+and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
+Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "main_scripts_scanner_base_rationale_170": "Map a connect()/socket-time OSError to (state, reason).      DNS failures (``soc" | kind=entity | source=probe/main_scripts/scanner_base.py:L170 | neighbors=[classify_os_error()] | lang=en
-- "main_scripts_scanner_base_rationale_181": "Loads an allowlist of CIDRs / IPs / hostnames and decides whether a target     i" | kind=entity | source=probe/main_scripts/scanner_base.py:L181 | neighbors=[ScopeGuard] | lang=en
-- "main_scripts_scanner_base_rationale_186": "Full, debuggable classification for attaching to a ScanResult: state,     reason" | kind=entity | source=probe/main_scripts/scanner_base.py:L186 | neighbors=[describe_os_error()] | lang=en
-- "main_scripts_scanner_base_rationale_201": "One observation about one target. Pure fact, no interpretation.      Network-sta" | kind=entity | source=probe/main_scripts/scanner_base.py:L201 | neighbors=[ScanResult] | lang=en
-- "main_scripts_scanner_base_rationale_252": "Loads an allowlist of CIDRs / IPs / hostnames and decides whether a target     i" | kind=entity | source=probe/main_scripts/scanner_base.py:L252 | neighbors=[ScopeGuard] | lang=en
-- "main_scripts_scanner_base_rationale_282": "Read-only view of allowed networks (for CIDR-level engines)." | kind=entity | source=probe/main_scripts/scanner_base.py:L282 | neighbors=[.networks()] | lang=en
-- "main_scripts_scanner_base_rationale_287": "Read-only view of excluded networks (to build masscan --exclude)." | kind=entity | source=probe/main_scripts/scanner_base.py:L287 | neighbors=[.excludes()] | lang=en
-- "main_scripts_scanner_base_rationale_295": "Simple async rate limiter: at most `rate` operations per second." | kind=entity | source=probe/main_scripts/scanner_base.py:L295 | neighbors=[RateLimiter] | lang=it
-- "main_scripts_scanner_base_rationale_314": "Standard 16-bit one's-complement Internet checksum (RFC 1071), used for IP," | kind=entity | source=probe/main_scripts/scanner_base.py:L314 | neighbors=[inet_checksum()] | lang=en
-- "main_scripts_scanner_base_rationale_331": "A self-tuning concurrency window, modelled on TCP congestion control (AIMD)," | kind=entity | source=probe/main_scripts/scanner_base.py:L331 | neighbors=[AdaptiveRateController] | lang=pt
-- "main_scripts_scanner_base_rationale_353": "Read-only view of allowed networks (for CIDR-level engines)." | kind=entity | source=probe/main_scripts/scanner_base.py:L353 | neighbors=[.networks()] | lang=en
-- "main_scripts_scanner_base_rationale_358": "Read-only view of excluded networks (to build masscan --exclude)." | kind=entity | source=probe/main_scripts/scanner_base.py:L358 | neighbors=[.excludes()] | lang=en
-- "main_scripts_scanner_base_rationale_363": "Current integer window (>= min_window)." | kind=entity | source=probe/main_scripts/scanner_base.py:L363 | neighbors=[.window()] | lang=en
-- "main_scripts_scanner_base_rationale_366": "Simple async rate limiter: at most `rate` operations per second." | kind=entity | source=probe/main_scripts/scanner_base.py:L366 | neighbors=[RateLimiter] | lang=it
-- "main_scripts_scanner_base_rationale_385": "Standard 16-bit one's-complement Internet checksum (RFC 1071), used for IP," | kind=entity | source=probe/main_scripts/scanner_base.py:L385 | neighbors=[inet_checksum()] | lang=en
-- "main_scripts_scanner_base_rationale_400": "Accepts CIDRs ('10.0.0.0/24'), single IPs, hostnames, and simple ranges     ('10" | kind=entity | source=probe/main_scripts/scanner_base.py:L400 | neighbors=[expand_targets()] | lang=en
-- "main_scripts_scanner_base_rationale_402": "A self-tuning concurrency window, modelled on TCP congestion control (AIMD)," | kind=entity | source=probe/main_scripts/scanner_base.py:L402 | neighbors=[AdaptiveRateController] | lang=pt
-- "main_scripts_scanner_base_rationale_434": "Current integer window (>= min_window)." | kind=entity | source=probe/main_scripts/scanner_base.py:L434 | neighbors=[.window()] | lang=en
-- "main_scripts_scanner_base_rationale_461": "Resolve `target` to a concrete (family, sockaddr) covering IPv4, IPv6, and     h" | kind=entity | source=probe/main_scripts/scanner_base.py:L461 | neighbors=[resolve()] | lang=en
-- "main_scripts_scanner_base_rationale_471": "Accepts CIDRs ('10.0.0.0/24'), single IPs, hostnames, and simple ranges     ('10" | kind=entity | source=probe/main_scripts/scanner_base.py:L471 | neighbors=[expand_targets()] | lang=en
-- "main_scripts_scanner_base_rationale_485": "One-shot datagram protocol backing `async_udp_probe`. Resolves its future     wi" | kind=entity | source=probe/main_scripts/scanner_base.py:L485 | neighbors=[_UDPProbeProtocol] | lang=en
-- "main_scripts_scanner_base_rationale_518": "Send one UDP datagram and await the first reply — fully on the event loop." | kind=entity | source=probe/main_scripts/scanner_base.py:L518 | neighbors=[async_udp_probe()] | lang=en
-- "main_scripts_scanner_base_rationale_532": "Resolve `target` to a concrete (family, sockaddr) covering IPv4, IPv6, and     h" | kind=entity | source=probe/main_scripts/scanner_base.py:L532 | neighbors=[resolve()] | lang=en
-- "main_scripts_scanner_base_rationale_549": "`async_udp_probe` with bounded per-port retransmit.      Returns on the FIRST de" | kind=entity | source=probe/main_scripts/scanner_base.py:L549 | neighbors=[async_udp_probe_retry()] | lang=en
-- "main_scripts_scanner_base_rationale_56": "HTTP/RTSP User-Agent to send — a generic browser UA by default so it does     no" | kind=entity | source=probe/main_scripts/scanner_base.py:L56 | neighbors=[user_agent()] | lang=en
-- "main_scripts_scanner_base_rationale_565": "One-shot datagram protocol backing `async_udp_probe`. Resolves its future     wi" | kind=entity | source=probe/main_scripts/scanner_base.py:L565 | neighbors=[_UDPProbeProtocol] | lang=en
-- "main_scripts_scanner_base_rationale_568": "Wrap an IPv6 literal in [] for a URL authority; leave v4/hostnames as-is.     'h" | kind=entity | source=probe/main_scripts/scanner_base.py:L568 | neighbors=[bracket_host()] | lang=en
-- "main_scripts_scanner_base_rationale_580": "Parse '22,80,443,8000-8100' into a sorted unique port list (1-65535)." | kind=entity | source=probe/main_scripts/scanner_base.py:L580 | neighbors=[parse_ports()] | lang=pt
-- "main_scripts_scanner_base_rationale_598": "Send one UDP datagram and await the first reply — fully on the event loop." | kind=entity | source=probe/main_scripts/scanner_base.py:L598 | neighbors=[async_udp_probe()] | lang=en
-- "main_scripts_scanner_base_rationale_616": "Writes ScanResult objects as JSONL to a file and/or stdout." | kind=entity | source=probe/main_scripts/scanner_base.py:L616 | neighbors=[ResultWriter] | lang=en
-- "main_scripts_scanner_base_rationale_62": "Benign, non-attributing payload for ICMP/UDP probes — looks like ordinary     pi" | kind=entity | source=probe/main_scripts/scanner_base.py:L62 | neighbors=[probe_payload()] | lang=en
-- "main_scripts_scanner_base_rationale_629": "`async_udp_probe` with bounded per-port retransmit.      Returns on the FIRST de" | kind=entity | source=probe/main_scripts/scanner_base.py:L629 | neighbors=[async_udp_probe_retry()] | lang=en
-- "main_scripts_scanner_base_rationale_646": "Subclasses implement `scan_target(self, target)` (async), returning a list     o" | kind=entity | source=probe/main_scripts/scanner_base.py:L646 | neighbors=[BaseScanner] | lang=pt
-- "main_scripts_scanner_base_rationale_648": "Wrap an IPv6 literal in [] for a URL authority; leave v4/hostnames as-is.     'h" | kind=entity | source=probe/main_scripts/scanner_base.py:L648 | neighbors=[bracket_host()] | lang=en
-- "main_scripts_scanner_base_rationale_660": "Parse '22,80,443,8000-8100' into a sorted unique port list (1-65535)." | kind=entity | source=probe/main_scripts/scanner_base.py:L660 | neighbors=[parse_ports()] | lang=pt
-- "main_scripts_scanner_base_rationale_69": "The TCP source port for probes. A FIXED port (e.g. 53/88) lets a scan slip     p" | kind=entity | source=probe/main_scripts/scanner_base.py:L69 | neighbors=[choose_source_port()] | lang=en
-- "main_scripts_scanner_base_rationale_696": "Writes ScanResult objects as JSONL to a file and/or stdout." | kind=entity | source=probe/main_scripts/scanner_base.py:L696 | neighbors=[ResultWriter] | lang=en
-- "main_scripts_scanner_base_rationale_726": "Subclasses implement `scan_target(self, target)` (async), returning a list     o" | kind=entity | source=probe/main_scripts/scanner_base.py:L726 | neighbors=[BaseScanner] | lang=pt
-- "main_scripts_scanner_base_rationale_750": "Run a scanner CLI's body with consistent, operator-friendly error handling." | kind=entity | source=probe/main_scripts/scanner_base.py:L750 | neighbors=[main_entrypoint()] | lang=en
-- "main_scripts_scanner_base_rationale_778": "Wire argparse args into a scanner instance and execute it." | kind=entity | source=probe/main_scripts/scanner_base.py:L778 | neighbors=[run_cli()] | lang=en
+- "tests_test_remediation_upsert_integration_test_upsert_resets_gate_and_is_race_safe": "test_upsert_resets_gate_and_is_race_safe()" | kind=code-symbol | source=manager/backend/tests/test_remediation_upsert_integration.py:L103 | neighbors=[test_remediation_upsert_integration.py, _run()]
+- "tests_test_resolve_testresolvefamily_test_default_no_family_is_backward_compatible": ".test_default_no_family_is_backward_compatible()" | kind=code-symbol | source=probe/tests/test_resolve.py:L34 | neighbors=[TestResolveFamily, _infos()]
+- "tests_test_resolve_testresolvefamily_test_requested_family_absent_falls_back_to_first": ".test_requested_family_absent_falls_back_to_first()" | kind=code-symbol | source=probe/tests/test_resolve.py:L28 | neighbors=[TestResolveFamily, _infos()]
+- "tests_test_resolve_testresolvefamily_test_requested_ipv4_selected_over_v6_first": ".test_requested_ipv4_selected_over_v6_first()" | kind=code-symbol | source=probe/tests/test_resolve.py:L21 | neighbors=[TestResolveFamily, _infos()]
+- "tests_test_result_archive_reset_archive_latch": "_reset_archive_latch()" | kind=code-symbol | source=probe/tests/test_result_archive.py:L26 | neighbors=[test_result_archive.py, The disable latch is module state; keep…]
+- "tests_test_result_archive_testarchiveisbesteffort_test_default_location_is_the_probe_root": ".test_default_location_is_the_probe_root()" | kind=code-symbol | source=probe/tests/test_result_archive.py:L151 | neighbors=[Unset env => alongside agent/ scanner/ …, TestArchiveIsBestEffort]
+- "tests_test_result_archive_testprepareatstartup_test_existing_but_unwritable_directory_is_caught_at_startup": ".test_existing_but_unwritable_directory_is_caught_at_startup()" | kind=code-symbol | source=probe/tests/test_result_archive.py:L184 | neighbors=[The Linux bind-mount case: Docker creat…, TestPrepareAtStartup]
+- "tests_test_risk_port_coverage_test_named_high_value_ports_are_scanned": "test_named_high_value_ports_are_scanned()" | kind=code-symbol | source=probe/tests/test_risk_port_coverage.py:L151 | neighbors=[test_risk_port_coverage.py, _swept_by_network_va()]
+- "tests_test_risk_rank_test_bounds": "test_bounds()" | kind=code-symbol | source=manager/backend/tests/test_risk_rank.py:L15 | neighbors=[test_risk_rank.py, _rank()]
+- "tests_test_risk_rank_test_confirmed_exploitable_outranks_contradicted": "test_confirmed_exploitable_outranks_contradicted()" | kind=code-symbol | source=manager/backend/tests/test_risk_rank.py:L23 | neighbors=[test_risk_rank.py, _rank()]
+- "tests_test_risk_rank_test_contradicted_sinks_below_inferred": "test_contradicted_sinks_below_inferred()" | kind=code-symbol | source=manager/backend/tests/test_risk_rank.py:L29 | neighbors=[test_risk_rank.py, _rank()]
+- "tests_test_risk_rank_test_internet_facing_raises_and_auth_lowers": "test_internet_facing_raises_and_auth_lowers()" | kind=code-symbol | source=manager/backend/tests/test_risk_rank.py:L37 | neighbors=[test_risk_rank.py, _rank()]
+- "tests_test_risk_rank_test_kev_raises_rank": "test_kev_raises_rank()" | kind=code-symbol | source=manager/backend/tests/test_risk_rank.py:L33 | neighbors=[test_risk_rank.py, _rank()]
+- "tests_test_risk_rank_test_low_confidence_lowers_rank": "test_low_confidence_lowers_rank()" | kind=code-symbol | source=manager/backend/tests/test_risk_rank.py:L42 | neighbors=[test_risk_rank.py, _rank()]
+- "tests_test_risk_rank_test_severity_remains_an_impact_signal_without_cvss": "test_severity_remains_an_impact_signal_without_cvss()" | kind=code-symbol | source=manager/backend/tests/test_risk_rank.py:L72 | neighbors=[test_risk_rank.py, _rank()]
+- "tests_test_router_signals_test_https_on_odd_port_routes_tls_and_web": "test_https_on_odd_port_routes_tls_and_web()" | kind=code-symbol | source=probe/tests/test_router_signals.py:L52 | neighbors=[test_router_signals.py, _open()]
+- "tests_test_router_signals_test_no_tls_flag_omits_the_marker": "test_no_tls_flag_omits_the_marker()" | kind=code-symbol | source=probe/tests/test_router_signals.py:L161 | neighbors=[test_router_signals.py, --no-tls means no handshake was tried, …]
+- "tests_test_router_signals_test_service_banner_records_tls_probed": "test_service_banner_records_tls_probed()" | kind=code-symbol | source=probe/tests/test_router_signals.py:L137 | neighbors=[test_router_signals.py, The flag must actually be emitted, or t…]
+- "tests_test_router_signals_test_workflow_hands_observed_tls_ports_to_web_scanner": "test_workflow_hands_observed_tls_ports_to_web_scanner()" | kind=code-symbol | source=probe/tests/test_router_signals.py:L70 | neighbors=[test_router_signals.py, 9000 is in the static WEB table but NOT…]
+- "tests_test_router_signals_testtlsprobednegative_test_binary_protocol_ports_route_nowhere": ".test_binary_protocol_ports_route_nowhere()" | kind=code-symbol | source=probe/tests/test_router_signals.py:L129 | neighbors=[TestTlsProbedNegative, _open()]
+- "tests_test_rsync_scanner_testhandshake_test_echo_stops_at_the_first_line": ".test_echo_stops_at_the_first_line()" | kind=code-symbol | source=probe/tests/test_rsync_scanner.py:L68 | neighbors=[TestHandshake, _FakeSock]
+- "tests_test_rsync_scanner_testhandshake_test_greeting_is_echoed_verbatim_including_digest_list": ".test_greeting_is_echoed_verbatim_including_digest_list()" | kind=code-symbol | source=probe/tests/test_rsync_scanner.py:L57 | neighbors=[TestHandshake, _FakeSock]
+- "tests_test_rsync_scanner_testhandshake_test_legacy_greeting_without_digest_list_still_works": ".test_legacy_greeting_without_digest_list_still_works()" | kind=code-symbol | source=probe/tests/test_rsync_scanner.py:L63 | neighbors=[TestHandshake, _FakeSock]
+- "tests_test_rsync_scanner_testhandshake_test_non_rsync_greeting_returns_none_and_sends_nothing": ".test_non_rsync_greeting_returns_none_and_sends_nothing()" | kind=code-symbol | source=probe/tests/test_rsync_scanner.py:L73 | neighbors=[TestHandshake, _FakeSock]
+- "tests_test_rsync_scanner_testparity": "TestParity" | kind=code-symbol | source=probe/tests/test_rsync_scanner.py:L120 | neighbors=[test_rsync_scanner.py, .test_main_scripts()]
+- "tests_test_rsync_scanner_testrsyncfindings_test_anon_modules_high": ".test_anon_modules_high()" | kind=code-symbol | source=probe/tests/test_rsync_scanner.py:L104 | neighbors=[TestRsyncFindings, ._fact()]
+- "tests_test_rsync_scanner_testrsyncfindings_test_auth_only_is_low_disclosure": ".test_auth_only_is_low_disclosure()" | kind=code-symbol | source=probe/tests/test_rsync_scanner.py:L109 | neighbors=[TestRsyncFindings, ._fact()]
+- "tests_test_rsync_scanner_testrsyncfindings_test_no_modules_silent": ".test_no_modules_silent()" | kind=code-symbol | source=probe/tests/test_rsync_scanner.py:L115 | neighbors=[TestRsyncFindings, ._fact()]
+- "tests_test_rsync_scanner_testrsyncscanner_test_anon_modules_open": ".test_anon_modules_open()" | kind=code-symbol | source=probe/tests/test_rsync_scanner.py:L84 | neighbors=[TestRsyncScanner, ._sc()]
+- "tests_test_rsync_scanner_testrsyncscanner_test_no_rsync_filtered": ".test_no_rsync_filtered()" | kind=code-symbol | source=probe/tests/test_rsync_scanner.py:L93 | neighbors=[TestRsyncScanner, ._sc()]
+- "tests_test_run_scoped_fact_scope_testrunscopedfactsareexempt_test_run_scoped_fact_is_not_collected_as_an_identity": ".test_run_scoped_fact_is_not_collected_as_an_identity()" | kind=code-symbol | source=manager/backend/tests/test_run_scoped_fact_scope.py:L54 | neighbors=[TestRunScopedFactsAreExempt, _fact()]
+- "tests_test_run_scoped_fact_scope_testthescopegatestillworks_test_excluded_cidr_still_wins": ".test_excluded_cidr_still_wins()" | kind=code-symbol | source=manager/backend/tests/test_run_scoped_fact_scope.py:L107 | neighbors=[TestTheScopeGateStillWorks, _fact()]
+- "tests_test_run_scoped_fact_scope_testthescopegatestillworks_test_out_of_scope_host_fact_is_still_rejected": ".test_out_of_scope_host_fact_is_still_rejected()" | kind=code-symbol | source=manager/backend/tests/test_run_scoped_fact_scope.py:L75 | neighbors=[TestTheScopeGateStillWorks, _fact()]
+- "tests_test_runtime_requirements_coverage_test_runtime_image_installs_every_wired_branch_dependency": "test_runtime_image_installs_every_wired_branch_dependency()" | kind=code-symbol | source=probe/tests/test_runtime_requirements_coverage.py:L56 | neighbors=[test_runtime_requirements_coverage.py, _declared()]
+- "tests_test_scan_funnel_testbuilddefaultfunnel_test_constructs_and_wires_real_scanners": ".test_constructs_and_wires_real_scanners()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L193 | neighbors=[TestBuildDefaultFunnel, _scope()]
+- "tests_test_scan_funnel_testbuilddefaultfunnel_test_port_scanner_is_syn_scanner": ".test_port_scanner_is_syn_scanner()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L203 | neighbors=[TestBuildDefaultFunnel, _scope()]
+- "tests_test_scan_funnel_testrpcreconcile_test_advertised_ports_are_scanned_and_only_reachable_confirmed": ".test_advertised_ports_are_scanned_and_only_reachable_confirmed()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L278 | neighbors=[TestRpcReconcile, ._funnel()]
+- "tests_test_scan_funnel_testrpcreconcile_test_no_dynamic_ports_no_reconcile_stage": ".test_no_dynamic_ports_no_reconcile_stage()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L297 | neighbors=[TestRpcReconcile, ._funnel()]
+- "tests_test_scan_funnel_testscanfunnel_test_db_scanner_invoked_with_db_port": ".test_db_scanner_invoked_with_db_port()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L156 | neighbors=[TestScanFunnel, _make_funnel()]
+- "tests_test_scan_funnel_testscanfunnel_test_db_scanner_not_invoked_without_db_port": ".test_db_scanner_not_invoked_without_db_port()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L151 | neighbors=[TestScanFunnel, _make_funnel()]
 
 ## Instructions
 

@@ -1,4 +1,4 @@
-# Node Description Batch 228 of 236
+# Node Description Batch 228 of 330
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,51 +19,53 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-Write every description in English (en). Do not switch languages.
+LANGUAGE: each entry has a `lang=` marker giving the language of its source.
+Write that entry's description in EXACTLY that language. Do not translate to
+a single common language — match each node's source language individually.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "versions_0010_detection_runs_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0010_detection_runs.py:L23 | neighbors=[0010_detection_runs.py]
-- "versions_0011_job_lease_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0011_job_lease.py:L33 | neighbors=[0011_job_lease.py]
-- "versions_0011_job_lease_rationale_1": "Job leasing: scan_jobs.lease_expires_at for the dead-probe reaper.  A claimed (r" | kind=entity | source=manager/backend/alembic/versions/0011_job_lease.py:L1 | neighbors=[0011_job_lease.py]
-- "versions_0011_job_lease_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0011_job_lease.py:L21 | neighbors=[0011_job_lease.py]
-- "versions_0012_agent_recommendations_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0012_agent_recommendations.py:L48 | neighbors=[0012_agent_recommendations.py]
-- "versions_0012_agent_recommendations_rationale_1": "Agentic AI advisor: agent_recommendations (recommend-only, human-approved).  Sto" | kind=entity | source=manager/backend/alembic/versions/0012_agent_recommendations.py:L1 | neighbors=[0012_agent_recommendations.py]
-- "versions_0012_agent_recommendations_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0012_agent_recommendations.py:L22 | neighbors=[0012_agent_recommendations.py]
-- "versions_0013_agent_public_key_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0013_agent_public_key.py:L26 | neighbors=[0013_agent_public_key.py]
-- "versions_0013_agent_public_key_rationale_1": "Add agents.public_key (Phase-4 X25519 identity for scope encryption).  The probe" | kind=entity | source=manager/backend/alembic/versions/0013_agent_public_key.py:L1 | neighbors=[0013_agent_public_key.py]
-- "versions_0013_agent_public_key_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0013_agent_public_key.py:L22 | neighbors=[0013_agent_public_key.py]
-- "versions_0015_finding_risk_score_scale_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0015_finding_risk_score_scale.py:L27 | neighbors=[0015_finding_risk_score_scale.py]
-- "versions_0015_finding_risk_score_scale_rationale_1": "Allow the documented 0-1000 finding risk score range.  Revision ID: 0015 Revises" | kind=entity | source=manager/backend/alembic/versions/0015_finding_risk_score_scale.py:L1 | neighbors=[0015_finding_risk_score_scale.py]
-- "versions_0015_finding_risk_score_scale_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0015_finding_risk_score_scale.py:L17 | neighbors=[0015_finding_risk_score_scale.py]
-- "versions_0016_user_tenant_is_active_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0016_user_tenant_is_active.py:L53 | neighbors=[0016_user_tenant_is_active.py]
-- "versions_0016_user_tenant_is_active_rationale_1": "Add is_active to users and tenants; add password_expires_at to users.  All exist" | kind=entity | source=manager/backend/alembic/versions/0016_user_tenant_is_active.py:L1 | neighbors=[0016_user_tenant_is_active.py]
-- "versions_0016_user_tenant_is_active_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0016_user_tenant_is_active.py:L21 | neighbors=[0016_user_tenant_is_active.py]
-- "versions_0017_scan_job_attempts_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0017_scan_job_attempts.py:L105 | neighbors=[0017_scan_job_attempts.py]
-- "versions_0017_scan_job_attempts_rationale_1": "Add fenced execution attempts for agent-dispatched scan jobs.  Revision ID: 0017" | kind=entity | source=manager/backend/alembic/versions/0017_scan_job_attempts.py:L1 | neighbors=[0017_scan_job_attempts.py]
-- "versions_0017_scan_job_attempts_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0017_scan_job_attempts.py:L18 | neighbors=[0017_scan_job_attempts.py]
-- "versions_0018_probe_enrollment_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0018_probe_enrollment.py:L129 | neighbors=[0018_probe_enrollment.py]
-- "versions_0018_probe_enrollment_rationale_1": "Add Manager-approved device-key probe enrollment and Site policy.  Revision ID:" | kind=entity | source=manager/backend/alembic/versions/0018_probe_enrollment.py:L1 | neighbors=[0018_probe_enrollment.py]
-- "versions_0018_probe_enrollment_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0018_probe_enrollment.py:L18 | neighbors=[0018_probe_enrollment.py]
-- "versions_0020_finding_resolution_lifecycle_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0020_finding_resolution_lifecycle.py:L31 | neighbors=[0020_finding_resolution_lifecycle.py]
-- "versions_0020_finding_resolution_lifecycle_rationale_1": "Finding resolution lifecycle: coverage-gated auto-resolution columns.  Revision" | kind=entity | source=manager/backend/alembic/versions/0020_finding_resolution_lifecycle.py:L1 | neighbors=[0020_finding_resolution_lifecycle.py]
-- "versions_0020_finding_resolution_lifecycle_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0020_finding_resolution_lifecycle.py:L18 | neighbors=[0020_finding_resolution_lifecycle.py]
-- "versions_0021_finding_verification_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0021_finding_verification.py:L27 | neighbors=[0021_finding_verification.py]
-- "versions_0021_finding_verification_rationale_1": "Finding verification verdict columns (P2 passive verification).  Revision ID: 00" | kind=entity | source=manager/backend/alembic/versions/0021_finding_verification.py:L1 | neighbors=[0021_finding_verification.py]
-- "versions_0021_finding_verification_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0021_finding_verification.py:L17 | neighbors=[0021_finding_verification.py]
-- "versions_0022_validation_requests_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0022_validation_requests.py:L43 | neighbors=[0022_validation_requests.py]
-- "versions_0022_validation_requests_rationale_1": "Approval-gated safe active-validation requests (P3).  Revision ID: 0022 Revises:" | kind=entity | source=manager/backend/alembic/versions/0022_validation_requests.py:L1 | neighbors=[0022_validation_requests.py]
-- "versions_0022_validation_requests_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0022_validation_requests.py:L18 | neighbors=[0022_validation_requests.py]
-- "versions_0023_customer_portal_foundation_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0023_customer_portal_foundation.py:L64 | neighbors=[0023_customer_portal_foundation.py]
-- "versions_0023_customer_portal_foundation_rationale_1": "Customer portal foundation (Part 2, Phase 0): client role, engagement↔agent assi" | kind=entity | source=manager/backend/alembic/versions/0023_customer_portal_foundation.py:L1 | neighbors=[0023_customer_portal_foundation.py]
-- "versions_0023_customer_portal_foundation_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0023_customer_portal_foundation.py:L19 | neighbors=[0023_customer_portal_foundation.py]
-- "versions_0024_device_role_inventory_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0024_device_role_inventory.py:L33 | neighbors=[0024_device_role_inventory.py]
-- "versions_0024_device_role_inventory_rationale_1": "Device-role inventory: persist the probe device_classifier's role on assets.  Ad" | kind=entity | source=manager/backend/alembic/versions/0024_device_role_inventory.py:L1 | neighbors=[0024_device_role_inventory.py]
-- "versions_0024_device_role_inventory_rationale_37": "# NOTE: Postgres cannot DROP a single enum value; the added 'printer' /" | kind=entity | source=manager/backend/alembic/versions/0024_device_role_inventory.py:L37 | neighbors=[0024_device_role_inventory.py]
-- "versions_0024_device_role_inventory_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0024_device_role_inventory.py:L22 | neighbors=[0024_device_role_inventory.py]
-- "versions_0025_service_exposure_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0025_service_exposure.py:L25 | neighbors=[0025_service_exposure.py]
-- "versions_0025_service_exposure_rationale_1": "Service exposure: persist the exposure_matrix reachability verdict.  Adds servic" | kind=entity | source=manager/backend/alembic/versions/0025_service_exposure.py:L1 | neighbors=[0025_service_exposure.py]
+- "main_scripts_va_campaign_rationale_170": "Owns the live campaign record. Every transition recomputes percent + ETA,     wr" | kind=entity | source=probe/main_scripts/va_campaign.py:L170 | neighbors=[ProgressReporter] | lang=en
+- "main_scripts_va_campaign_rationale_291": "Runs the ordered stages sequentially, emitting progress throughout.      The eng" | kind=entity | source=probe/main_scripts/va_campaign.py:L291 | neighbors=[VACampaign] | lang=en
+- "main_scripts_va_campaign_rationale_344": "Best-effort IPv6 neighbor discovery (ND multicast, RFC 4861). Returns     {facts" | kind=entity | source=probe/main_scripts/va_campaign.py:L344 | neighbors=[_discover_ipv6()] | lang=en
+- "main_scripts_va_campaign_rationale_375": "Run coro_factory(item) over items with bounded concurrency; return the     list" | kind=entity | source=probe/main_scripts/va_campaign.py:L375 | neighbors=[_bounded_gather()] | lang=en
+- "main_scripts_va_campaign_rationale_391": "Build the real capability stages from a pre-wired ScanFunnel, reusing its     pr" | kind=entity | source=probe/main_scripts/va_campaign.py:L391 | neighbors=[default_stages()] | lang=en
+- "main_scripts_va_campaign_rationale_624": "Wire a campaign with the real scanners (or injected stages for tests)." | kind=entity | source=probe/main_scripts/va_campaign.py:L624 | neighbors=[build_campaign()] | lang=en
+- "main_scripts_va_campaign_rationale_650": "Renders campaign progress to a stream. On a TTY it re-draws one live block     i" | kind=entity | source=probe/main_scripts/va_campaign.py:L650 | neighbors=[CliProgressView] | lang=en
+- "main_scripts_va_campaign_rationale_98": "Everything that changes WHAT the campaign does (not HOW it reports)." | kind=entity | source=probe/main_scripts/va_campaign.py:L98 | neighbors=[CampaignOptions] | lang=en
+- "main_scripts_va_campaign_vacampaign_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/va_campaign.py:L297 | neighbors=[VACampaign] | lang=en
+- "main_scripts_vantage_matrix_rationale_1": "vantage_matrix.py — reconcile the SAME target scanned from MULTIPLE vantages.  E" | kind=entity | source=probe/main_scripts/vantage_matrix.py:L1 | neighbors=[vantage_matrix.py] | lang=en
+- "main_scripts_vantage_matrix_rationale_42": "(proto, port, status) from a ScanResult or a plain dict." | kind=entity | source=probe/main_scripts/vantage_matrix.py:L42 | neighbors=[_extract()] | lang=pt
+- "main_scripts_vantage_matrix_rationale_51": "Compare per-vantage observations of one target.      `observations` maps a vanta" | kind=entity | source=probe/main_scripts/vantage_matrix.py:L51 | neighbors=[reconcile_vantages()] | lang=en
+- "main_scripts_vnc_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/vnc_scanner.py:L150 | neighbors=[vnc_scanner.py] | lang=en
+- "main_scripts_vnc_scanner_rationale_1": "vnc_scanner.py — VNC/RFB authentication exposure (VA checklist: unauthenticated" | kind=entity | source=probe/main_scripts/vnc_scanner.py:L1 | neighbors=[vnc_scanner.py] | lang=en
+- "main_scripts_vnc_scanner_rationale_109": "Blocking: RFB version handshake + read offered security types.         Monkeypat" | kind=entity | source=probe/main_scripts/vnc_scanner.py:L109 | neighbors=[._probe()] | lang=en
+- "main_scripts_vnc_scanner_rationale_47": "Parse a 'RFB 003.008' banner into (major, minor), or None if not RFB." | kind=entity | source=probe/main_scripts/vnc_scanner.py:L47 | neighbors=[parse_rfb_version()] | lang=pt
+- "main_scripts_vnc_scanner_rationale_61": "Turn a list of offered security-type ids into a verdict." | kind=entity | source=probe/main_scripts/vnc_scanner.py:L61 | neighbors=[classify_security_types()] | lang=pt
+- "main_scripts_vnc_scanner_rationale_82": "Read the offered security types, handling the RFB 3.3 (single 4-byte type)     v" | kind=entity | source=probe/main_scripts/vnc_scanner.py:L82 | neighbors=[_read_security_types()] | lang=en
+- "main_scripts_vnc_scanner_vncscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/vnc_scanner.py:L104 | neighbors=[VNCScanner] | lang=en
+- "main_scripts_web_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/web_scanner.py:L182 | neighbors=[web_scanner.py] | lang=en
+- "main_scripts_web_scanner_noredirect_redirect_request": ".redirect_request()" | kind=code-symbol | source=probe/main_scripts/web_scanner.py:L56 | neighbors=[_NoRedirect] | lang=en
+- "main_scripts_web_scanner_rationale_1": "web_scanner.py — passive HTTP(S) service fingerprinting.  METHOD (collection onl" | kind=entity | source=probe/main_scripts/web_scanner.py:L1 | neighbors=[web_scanner.py] | lang=en
+- "main_scripts_web_scanner_rationale_149": "Preferred scheme first, the other as a fallback: a scheme guess must         nev" | kind=entity | source=probe/main_scripts/web_scanner.py:L149 | neighbors=[._schemes_for()] | lang=pt
+- "main_scripts_web_scanner_rationale_45": "Read the Allow header from an OPTIONS response. Read-only." | kind=entity | source=probe/main_scripts/web_scanner.py:L45 | neighbors=[parse_allow_header()] | lang=en
+- "main_scripts_web_scanner_rationale_46": "Read the Allow header from an OPTIONS response. Read-only." | kind=entity | source=probe/main_scripts/web_scanner.py:L46 | neighbors=[parse_allow_header()] | lang=en
+- "main_scripts_web_scanner_webscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/web_scanner.py:L139 | neighbors=[WebScanner] | lang=en
+- "main_scripts_windows_collector_main": "main()" | kind=code-symbol | source=probe/main_scripts/windows_collector.py:L335 | neighbors=[windows_collector.py] | lang=en
+- "main_scripts_windows_collector_rationale_1": "windows_collector.py — credentialed (authenticated) inventory for Windows hosts." | kind=entity | source=probe/main_scripts/windows_collector.py:L1 | neighbors=[windows_collector.py] | lang=en
+- "main_scripts_windows_collector_rationale_160": "Connect to RemoteRegistry over SMB and enumerate installed-software keys plus" | kind=entity | source=probe/main_scripts/windows_collector.py:L160 | neighbors=[_smb_registry_collect()] | lang=en
+- "main_scripts_windows_collector_windowscollector_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/windows_collector.py:L239 | neighbors=[WindowsCollector] | lang=en
+- "main_scripts_windows_collector_winrm_collect": "_winrm_collect()" | kind=code-symbol | source=probe/main_scripts/windows_collector.py:L114 | neighbors=[windows_collector.py] | lang=en
+- "me_route_get": "GET" | kind=code-symbol | source=manager/frontend/app/api/auth/me/route.ts:L10 | neighbors=[route.ts] | lang=en
+- "models_base_uuidmixin": "UUIDMixin" | kind=code-symbol | source=manager/backend/app/models/base.py:L25 | neighbors=[base.py] | lang=en
+- "models_enums_rationale_16": "Operator-set lifecycle. `ongoing` (assessment underway) and `running`     (activ" | kind=entity | source=manager/backend/app/models/enums.py:L16 | neighbors=[EngagementStatus] | lang=en
+- "models_enums_rationale_71": "A single entry in a finding's lifecycle audit trail. Stored as a plain     strin" | kind=entity | source=manager/backend/app/models/enums.py:L71 | neighbors=[FindingEventType] | lang=pt
+- "models_finding_event_rationale_12": "Append-only lifecycle audit trail for a single finding — one row per     transit" | kind=entity | source=manager/backend/app/models/finding_event.py:L12 | neighbors=[FindingEvent] | lang=en
+- "models_integration_rationale_1": "integration.py — a tenant's notification integration config (email / Slack / Jir" | kind=entity | source=manager/backend/app/models/integration.py:L1 | neighbors=[integration.py] | lang=pt
+- "models_probe_enrollment_rationale_73": "Pre-authorized, Site-bound enrollment token.      Lets a probe auto-enroll (no o" | kind=entity | source=manager/backend/app/models/probe_enrollment.py:L73 | neighbors=[ProbeEnrollmentToken] | lang=pt
+- "models_remediation_plan_rationale_1": "remediation_plan.py — a generated, OS-specific remediation plan for a finding." | kind=entity | source=manager/backend/app/models/remediation_plan.py:L1 | neighbors=[remediation_plan.py] | lang=pt
+- "models_scan_job_attempt_rationale_12": "One immutable, fenced execution claim for a logical scan job." | kind=entity | source=manager/backend/app/models/scan_job_attempt.py:L12 | neighbors=[ScanJobAttempt] | lang=en
 
 ## Instructions
 

@@ -1,4 +1,4 @@
-# Node Description Batch 224 of 236
+# Node Description Batch 224 of 330
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -26,46 +26,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_use_cases_test_new_use_cases_resolve": "test_new_use_cases_resolve()" | kind=code-symbol | source=probe/tests/test_use_cases.py:L52 | neighbors=[test_use_cases.py] | lang=en
-- "tests_test_use_cases_test_params_intensity_overrides_use_case": "test_params_intensity_overrides_use_case()" | kind=code-symbol | source=probe/tests/test_use_cases.py:L69 | neighbors=[test_use_cases.py] | lang=en
-- "tests_test_use_cases_test_resolve_accepts_string_digits_too": "test_resolve_accepts_string_digits_too()" | kind=code-symbol | source=probe/tests/test_use_cases.py:L95 | neighbors=[test_use_cases.py] | lang=en
-- "tests_test_use_cases_test_resolve_by_numeric_code": "test_resolve_by_numeric_code()" | kind=code-symbol | source=probe/tests/test_use_cases.py:L90 | neighbors=[test_use_cases.py] | lang=en
-- "tests_test_use_cases_test_string_use_case_id_still_wins_over_code": "test_string_use_case_id_still_wins_over_code()" | kind=code-symbol | source=probe/tests/test_use_cases.py:L113 | neighbors=[test_use_cases.py] | lang=en
-- "tests_test_use_cases_test_udp_claims_amplification": "test_udp_claims_amplification()" | kind=code-symbol | source=probe/tests/test_use_cases.py:L36 | neighbors=[test_use_cases.py] | lang=en
-- "tests_test_use_cases_test_unknown_code_is_rejected": "test_unknown_code_is_rejected()" | kind=code-symbol | source=probe/tests/test_use_cases.py:L106 | neighbors=[test_use_cases.py] | lang=en
-- "tests_test_use_cases_test_web_claims_methods": "test_web_claims_methods()" | kind=code-symbol | source=probe/tests/test_use_cases.py:L41 | neighbors=[test_use_cases.py] | lang=en
-- "tests_test_use_cases_test_windows_estate_claims_signing": "test_windows_estate_claims_signing()" | kind=code-symbol | source=probe/tests/test_use_cases.py:L32 | neighbors=[test_use_cases.py] | lang=en
-- "tests_test_validation_endpoints_rationale_1": "Mocked-session unit tests for the P3 active-validation endpoints (Task 4).  No D" | kind=entity | source=manager/backend/tests/test_validation_endpoints.py:L1 | neighbors=[test_validation_endpoints.py] | lang=en
-- "tests_test_validation_fakeclient_init": ".__init__()" | kind=code-symbol | source=probe/tests/test_validation.py:L111 | neighbors=[FakeClient] | lang=en
-- "tests_test_validation_fakeclient_request": ".request()" | kind=code-symbol | source=probe/tests/test_validation.py:L115 | neighbors=[FakeClient] | lang=en
-- "tests_test_validation_ingest_rationale_1": "Unit tests for P3 Task 7: validation-result ingestion → finding verdict.  Pure t" | kind=entity | source=manager/backend/tests/test_validation_ingest.py:L1 | neighbors=[test_validation_ingest.py] | lang=en
-- "tests_test_validation_ingest_test_ingest_normal_scan_is_noop": "test_ingest_normal_scan_is_noop()" | kind=code-symbol | source=manager/backend/tests/test_validation_ingest.py:L79 | neighbors=[test_validation_ingest.py] | lang=en
-- "tests_test_validation_ingest_test_scan_result_is_not_mistaken_for_validation": "test_scan_result_is_not_mistaken_for_validation()" | kind=code-symbol | source=manager/backend/tests/test_validation_ingest.py:L64 | neighbors=[test_validation_ingest.py] | lang=en
-- "tests_test_validation_request_schema_test_validation_request_columns_and_defaults": "test_validation_request_columns_and_defaults()" | kind=code-symbol | source=manager/backend/tests/test_validation_request_schema.py:L8 | neighbors=[test_validation_request_schema.py] | lang=en
-- "tests_test_validation_test_parser_accepts_validate_command": "test_parser_accepts_validate_command()" | kind=code-symbol | source=probe/tests/test_validation.py:L254 | neighbors=[test_validation.py] | lang=en
-- "tests_test_validation_test_resolve_use_cases_deduplicates_combined_suites": "test_resolve_use_cases_deduplicates_combined_suites()" | kind=code-symbol | source=probe/tests/test_validation.py:L19 | neighbors=[test_validation.py] | lang=en
-- "tests_test_validation_test_score_inventory_reports_precision_recall_and_unscored_dimensions": "test_score_inventory_reports_precision_recall_and_unscored_dimensions()" | kind=code-symbol | source=probe/tests/test_validation.py:L62 | neighbors=[test_validation.py] | lang=en
-- "tests_test_validation_test_target_address_count_is_conservative": "test_target_address_count_is_conservative()" | kind=code-symbol | source=probe/tests/test_validation.py:L47 | neighbors=[test_validation.py] | lang=en
-- "tests_test_validation_test_validate_ground_truth_rejects_invalid_ports_and_duplicate_hosts": "test_validate_ground_truth_rejects_invalid_ports_and_duplicate_hosts()" | kind=code-symbol | source=probe/tests/test_validation.py:L51 | neighbors=[test_validation.py] | lang=en
-- "tests_test_validation_test_validate_targets_enforces_scope_and_exclusions": "test_validate_targets_enforces_scope_and_exclusions()" | kind=code-symbol | source=probe/tests/test_validation.py:L32 | neighbors=[test_validation.py] | lang=en
-- "tests_test_vantage_fusion_rationale_1": "test_vantage_fusion.py — fleet-level reconciliation of exposure_matrix across pr" | kind=entity | source=manager/backend/tests/test_vantage_fusion.py:L1 | neighbors=[test_vantage_fusion.py] | lang=en
-- "tests_test_vantage_fusion_rationale_16": "Build a one-target probe exposure result. `ports` maps 'proto/port' →     {vanta" | kind=entity | source=manager/backend/tests/test_vantage_fusion.py:L16 | neighbors=[_probe()] | lang=pt
-- "tests_test_vantage_fusion_test_empty_and_malformed_are_safe": "test_empty_and_malformed_are_safe()" | kind=code-symbol | source=manager/backend/tests/test_vantage_fusion.py:L87 | neighbors=[test_vantage_fusion.py] | lang=en
-- "tests_test_vantage_fusion_test_reconstruct_probe_results_from_persisted_facts": "test_reconstruct_probe_results_from_persisted_facts()" | kind=code-symbol | source=manager/backend/tests/test_vantage_fusion.py:L93 | neighbors=[test_vantage_fusion.py] | lang=en
-- "tests_test_verification_core_test_authoritative_is_confirmed": "test_authoritative_is_confirmed()" | kind=code-symbol | source=manager/backend/tests/test_verification_core.py:L6 | neighbors=[test_verification_core.py] | lang=en
-- "tests_test_verification_core_test_high_confidence_inferred_is_corroborated": "test_high_confidence_inferred_is_corroborated()" | kind=code-symbol | source=manager/backend/tests/test_verification_core.py:L14 | neighbors=[test_verification_core.py] | lang=en
-- "tests_test_verification_core_test_kev_suspected_finding_needs_review": "test_kev_suspected_finding_needs_review()" | kind=code-symbol | source=manager/backend/tests/test_verification_core.py:L26 | neighbors=[test_verification_core.py] | lang=en
-- "tests_test_verification_core_test_low_confidence_inferred_is_inferred": "test_low_confidence_inferred_is_inferred()" | kind=code-symbol | source=manager/backend/tests/test_verification_core.py:L20 | neighbors=[test_verification_core.py] | lang=en
-- "tests_test_verification_core_test_missing_confidence_defaults_to_inferred_not_crash": "test_missing_confidence_defaults_to_inferred_not_crash()" | kind=code-symbol | source=manager/backend/tests/test_verification_core.py:L33 | neighbors=[test_verification_core.py] | lang=en
-- "tests_test_verification_graph_test_graph_available_is_boolean": "test_graph_available_is_boolean()" | kind=code-symbol | source=manager/backend/tests/test_verification_graph.py:L15 | neighbors=[test_verification_graph.py] | lang=en
-- "tests_test_verification_graph_test_run_verification_matches_core_without_llm": "test_run_verification_matches_core_without_llm()" | kind=code-symbol | source=manager/backend/tests/test_verification_graph.py:L9 | neighbors=[test_verification_graph.py] | lang=en
-- "tests_test_verification_llm_test_llm_can_flag_false_positive_and_lower": "test_llm_can_flag_false_positive_and_lower()" | kind=code-symbol | source=manager/backend/tests/test_verification_llm.py:L30 | neighbors=[test_verification_llm.py] | lang=en
-- "tests_test_verification_llm_test_llm_error_falls_back_to_deterministic": "test_llm_error_falls_back_to_deterministic()" | kind=code-symbol | source=manager/backend/tests/test_verification_llm.py:L19 | neighbors=[test_verification_llm.py] | lang=en
-- "tests_test_verification_llm_test_no_llm_matches_deterministic": "test_no_llm_matches_deterministic()" | kind=code-symbol | source=manager/backend/tests/test_verification_llm.py:L11 | neighbors=[test_verification_llm.py] | lang=en
-- "tests_test_version_compare_rationale_1": "Cross-validates the pure-Python Debian version comparator against the real `dpkg" | kind=entity | source=manager/detection_engine/tests/test_version_compare.py:L1 | neighbors=[test_version_compare.py] | lang=en
-- "tests_test_version_compare_test_dpkg_compare_public_api": "test_dpkg_compare_public_api()" | kind=code-symbol | source=manager/detection_engine/tests/test_version_compare.py:L65 | neighbors=[test_version_compare.py] | lang=en
-- "tests_test_version_compare_test_pure_python_matches_known_pairs": "test_pure_python_matches_known_pairs()" | kind=code-symbol | source=manager/detection_engine/tests/test_version_compare.py:L45 | neighbors=[test_version_compare.py] | lang=en
-- "tests_test_version_compare_test_pure_python_matches_real_dpkg_binary": "test_pure_python_matches_real_dpkg_binary()" | kind=code-symbol | source=manager/detection_engine/tests/test_version_compare.py:L52 | neighbors=[test_version_compare.py] | lang=en
+- "main_scripts_smb_scanner_rationale_338": "Pre-auth SMB2 NEGOTIATE → SESSION_SETUP → parse the NTLMSSP CHALLENGE Version" | kind=entity | source=probe/main_scripts/smb_scanner.py:L338 | neighbors=[ntlm_os_build()] | lang=en
+- "main_scripts_smb_scanner_rationale_37": "Read signing posture from a SUCCESSFUL SMB2 NEGOTIATE response.      Wire layout" | kind=entity | source=probe/main_scripts/smb_scanner.py:L37 | neighbors=[parse_smb2_security_mode()] | lang=en
+- "main_scripts_smb_scanner_rationale_370": "SMB negotiate against the first address that actually answers.          Walks ev" | kind=entity | source=probe/main_scripts/smb_scanner.py:L370 | neighbors=[._negotiate()] | lang=en
+- "main_scripts_smb_scanner_rationale_39": "Read signing posture from a SUCCESSFUL SMB2 NEGOTIATE response.      Wire layout" | kind=entity | source=probe/main_scripts/smb_scanner.py:L39 | neighbors=[parse_smb2_security_mode()] | lang=en
+- "main_scripts_smb_scanner_rationale_394": "Best-effort: SMB2 NEGOTIATE then a pre-auth SESSION_SETUP to harvest the" | kind=entity | source=probe/main_scripts/smb_scanner.py:L394 | neighbors=[._ntlm_fingerprint()] | lang=en
+- "main_scripts_smb_scanner_smbscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/smb_scanner.py:L365 | neighbors=[SMBScanner] | lang=en
+- "main_scripts_smtp_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/smtp_scanner.py:L147 | neighbors=[smtp_scanner.py] | lang=en
+- "main_scripts_smtp_scanner_rationale_1": "smtp_scanner.py — SMTP hygiene: user enumeration + transport encryption (VA chec" | kind=entity | source=probe/main_scripts/smtp_scanner.py:L1 | neighbors=[smtp_scanner.py] | lang=en
+- "main_scripts_smtp_scanner_rationale_40": "Extract EHLO capability tokens from a multi-line 250 response." | kind=entity | source=probe/main_scripts/smtp_scanner.py:L40 | neighbors=[parse_ehlo_capabilities()] | lang=en
+- "main_scripts_smtp_scanner_rationale_52": "VRFY leaks usernames when it gives DIFFERENT definitive answers for an     exist" | kind=entity | source=probe/main_scripts/smtp_scanner.py:L52 | neighbors=[vrfy_leaks()] | lang=en
+- "main_scripts_smtp_scanner_rationale_88": "Blocking: greeting → EHLO → STARTTLS/VRFY/EXPN checks. Monkeypatchable." | kind=entity | source=probe/main_scripts/smtp_scanner.py:L88 | neighbors=[._probe()] | lang=en
+- "main_scripts_smtp_scanner_smtpscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/smtp_scanner.py:L63 | neighbors=[SMTPScanner] | lang=en
+- "main_scripts_snmp_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/snmp_scanner.py:L401 | neighbors=[snmp_scanner.py] | lang=en
+- "main_scripts_snmp_scanner_rationale_1": "snmp_scanner.py — full SNMP enumeration: community discovery, targeted MIB walk," | kind=entity | source=probe/main_scripts/snmp_scanner.py:L1 | neighbors=[snmp_scanner.py] | lang=en
+- "main_scripts_snmp_scanner_rationale_105": "Shallow parse of BER TLVs starting at offset. Returns [(tag, value), ...]." | kind=entity | source=probe/main_scripts/snmp_scanner.py:L105 | neighbors=[_ber_parse()] | lang=en
+- "main_scripts_snmp_scanner_rationale_127": "Extract (oid_dotted, value_tag, value_bytes) from a GET/GETNEXT/GETBULK response" | kind=entity | source=probe/main_scripts/snmp_scanner.py:L127 | neighbors=[_parse_varbinds()] | lang=en
+- "main_scripts_snmp_scanner_rationale_246": "Phase 1 (community discovery) + Phase 2 (targeted MIB walk) +     Phase 3 (ampli" | kind=entity | source=probe/main_scripts/snmp_scanner.py:L246 | neighbors=[SNMPScanner] | lang=en
+- "main_scripts_snmp_scanner_rationale_278": "Return (community, sysdescr) for the first responding community, or None." | kind=entity | source=probe/main_scripts/snmp_scanner.py:L278 | neighbors=[._discover_community()] | lang=en
+- "main_scripts_snmp_scanner_rationale_292": "GETNEXT walk of one OID subtree.  Returns [(oid, value_str), ...]." | kind=entity | source=probe/main_scripts/snmp_scanner.py:L292 | neighbors=[._walk_subtree()] | lang=en
+- "main_scripts_snmp_scanner_rationale_315": "One GETBULK request — measure response/request size ratio." | kind=entity | source=probe/main_scripts/snmp_scanner.py:L315 | neighbors=[._amplification_factor()] | lang=en
+- "main_scripts_snmp_scanner_rationale_325": "Send a SNMPv3 Discover. Any reply = v3 agent present." | kind=entity | source=probe/main_scripts/snmp_scanner.py:L325 | neighbors=[._snmpv3_present()] | lang=pt
+- "main_scripts_snmp_scanner_rationale_46": "Dotted-notation OID string → BER-encoded bytes." | kind=entity | source=probe/main_scripts/snmp_scanner.py:L46 | neighbors=[_encode_oid()] | lang=en
+- "main_scripts_snmp_scanner_rationale_64": "BER-encoded OID bytes → dotted-notation string." | kind=entity | source=probe/main_scripts/snmp_scanner.py:L64 | neighbors=[_decode_oid()] | lang=en
+- "main_scripts_snmp_scanner_rationale_79": "Human-readable SNMP value for common ASN.1/SNMP types." | kind=entity | source=probe/main_scripts/snmp_scanner.py:L79 | neighbors=[_decode_value()] | lang=en
+- "main_scripts_snmp_scanner_snmpscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/snmp_scanner.py:L252 | neighbors=[SNMPScanner] | lang=en
+- "main_scripts_snmp_scanner_snmpscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/main_scripts/snmp_scanner.py:L329 | neighbors=[SNMPScanner] | lang=en
+- "main_scripts_ssh_collector_collect_over_ssh": "_collect_over_ssh()" | kind=code-symbol | source=probe/main_scripts/ssh_collector.py:L52 | neighbors=[ssh_collector.py] | lang=en
+- "main_scripts_ssh_collector_main": "main()" | kind=code-symbol | source=probe/main_scripts/ssh_collector.py:L125 | neighbors=[ssh_collector.py] | lang=en
+- "main_scripts_ssh_collector_rationale_1": "ssh_collector.py — credentialed (authenticated) inventory collection for Linux." | kind=entity | source=probe/main_scripts/ssh_collector.py:L1 | neighbors=[ssh_collector.py] | lang=en
+- "main_scripts_ssh_collector_sshcollector_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/ssh_collector.py:L83 | neighbors=[SSHCollector] | lang=en
+- "main_scripts_ssh_kexdb_rationale_1": "ssh_kexdb.py — vendored SSH algorithm weakness database (the \"content\" half of t" | kind=entity | source=probe/main_scripts/ssh_kexdb.py:L1 | neighbors=[ssh_kexdb.py] | lang=en
+- "main_scripts_ssh_kexdb_rationale_478": "Return (failures, warnings, infos) for one offered algorithm, or None if     the" | kind=entity | source=probe/main_scripts/ssh_kexdb.py:L478 | neighbors=[lookup()] | lang=en
+- "main_scripts_ssh_scanner_cursor_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/ssh_scanner.py:L73 | neighbors=[_Cursor] | lang=en
+- "main_scripts_ssh_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/ssh_scanner.py:L336 | neighbors=[ssh_scanner.py] | lang=en
+- "main_scripts_ssh_scanner_rationale_1": "ssh_scanner.py — SSH configuration / algorithm audit (VA checklist §6).  METHOD" | kind=entity | source=probe/main_scripts/ssh_scanner.py:L1 | neighbors=[ssh_scanner.py] | lang=en
+- "main_scripts_ssh_scanner_rationale_107": "Parse a SSH_MSG_KEXINIT body into its name-lists.      Accepts the payload with" | kind=entity | source=probe/main_scripts/ssh_scanner.py:L107 | neighbors=[parse_kexinit()] | lang=en
+- "main_scripts_ssh_scanner_rationale_134": "Grade a server's offered algorithms against the vendored weakness table.      Re" | kind=entity | source=probe/main_scripts/ssh_scanner.py:L134 | neighbors=[evaluate_algorithms()] | lang=en
+- "main_scripts_ssh_scanner_rationale_196": "Read the server SSH identification line, skipping any pre-banner text     lines" | kind=entity | source=probe/main_scripts/ssh_scanner.py:L196 | neighbors=[_read_ident()] | lang=en
+- "main_scripts_ssh_scanner_rationale_226": "Read one unencrypted SSH binary packet and return its payload (RFC 4253     §6)." | kind=entity | source=probe/main_scripts/ssh_scanner.py:L226 | neighbors=[_read_packet()] | lang=en
+- "main_scripts_ssh_scanner_rationale_250": "Blocking: connect, exchange identification, read the server KEXINIT.         Ret" | kind=entity | source=probe/main_scripts/ssh_scanner.py:L250 | neighbors=[._probe()] | lang=en
 
 ## Instructions
 

@@ -1,4 +1,4 @@
-# Node Description Batch 128 of 236
+# Node Description Batch 128 of 330
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,53 +19,51 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-LANGUAGE: each entry has a `lang=` marker giving the language of its source.
-Write that entry's description in EXACTLY that language. Do not translate to
-a single common language — match each node's source language individually.
+Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "agent_engine_rationale_541": "Execute a scan and return the enriched result bundle.      Args:         scan_ty" | kind=entity | source=probe/agent/engine.py:L541 | neighbors=[run_scan()] | lang=en
-- "agent_engine_rationale_75": "Single factory for error result dicts — no copy-paste." | kind=entity | source=probe/agent/engine.py:L75 | neighbors=[_error_result()] | lang=en
-- "agent_engine_rationale_77": "Coerce val to float and clamp to [lo, hi]; fall back to default on junk.     Def" | kind=entity | source=probe/agent/engine.py:L77 | neighbors=[_clamp()] | lang=en
-- "agent_engine_rationale_80": "Single factory for error result dicts — no copy-paste." | kind=entity | source=probe/agent/engine.py:L80 | neighbors=[_error_result()] | lang=en
-- "agent_engine_rationale_87": "Translate operator-supplied job params into run_engagement() kwargs.      This i" | kind=entity | source=probe/agent/engine.py:L87 | neighbors=[_tuning_from_params()] | lang=en
-- "agent_engine_resolve_scan_type": "resolve_scan_type()" | kind=code-symbol | source=probe/agent/engine.py:L167 | neighbors=[engine.py] | lang=en
-- "agent_hw_bind_rationale_1": "hw_bind.py — hardware fingerprinting for binary host-locking.  The compiled bina" | kind=entity | source=probe/agent/hw_bind.py:L1 | neighbors=[hw_bind.py] | lang=en
-- "agent_hw_bind_rationale_20": "Raised when the binary is running on an unauthorized machine." | kind=entity | source=probe/agent/hw_bind.py:L20 | neighbors=[HWBindError] | lang=en
-- "agent_hw_bind_rationale_24": "Deterministic per-machine fingerprint built from stable hardware IDs.      Combi" | kind=entity | source=probe/agent/hw_bind.py:L24 | neighbors=[get_hw_id()] | lang=en
-- "agent_hw_bind_rationale_35": "Verify the binary is running on the machine it was compiled for.      Reads HW_B" | kind=entity | source=probe/agent/hw_bind.py:L35 | neighbors=[check_hw_bind()] | lang=en
-- "agent_init_rationale_1": "agent — the probe transport layer (sealed, push-driven, hardware-bound).  Archit" | kind=entity | source=probe/agent/__init__.py:L1 | neighbors=[__init__.py] | lang=en
-- "agent_license_licenseerror_init": ".__init__()" | kind=code-symbol | source=probe/agent/license.py:L30 | neighbors=[LicenseError] | lang=en
-- "agent_license_rationale_1": "license.py — host-locked, vendor-signed anti-copy gate for the probe.  DESIGN (p" | kind=entity | source=probe/agent/license.py:L1 | neighbors=[license.py] | lang=en
-- "agent_license_rationale_102": "Combined startup gauntlet: HW bind → license check. Fails fast.      This is the" | kind=entity | source=probe/agent/license.py:L102 | neighbors=[gauntlet()] | lang=en
-- "agent_license_rationale_105": "Combined startup gauntlet: HW bind → license check. Fails fast.      This is the" | kind=entity | source=probe/agent/license.py:L105 | neighbors=[gauntlet()] | lang=en
-- "agent_license_rationale_36": "Stable per-machine ID, derived from hw_bind's hardware fingerprint." | kind=entity | source=probe/agent/license.py:L36 | neighbors=[host_fingerprint()] | lang=en
-- "agent_license_rationale_39": "Stable per-machine ID, derived from hw_bind's hardware fingerprint." | kind=entity | source=probe/agent/license.py:L39 | neighbors=[host_fingerprint()] | lang=en
-- "agent_license_rationale_51": "Returns the license payload dict if valid; raises LicenseError otherwise.     To" | kind=entity | source=probe/agent/license.py:L51 | neighbors=[verify_license()] | lang=en
-- "agent_license_rationale_54": "Returns the license payload dict if valid; raises LicenseError otherwise.     To" | kind=entity | source=probe/agent/license.py:L54 | neighbors=[verify_license()] | lang=en
-- "agent_license_rationale_85": "The gate the agent calls at startup. Honors LICENSE_ENFORCED and     reads the t" | kind=entity | source=probe/agent/license.py:L85 | neighbors=[check_license()] | lang=en
-- "agent_license_rationale_88": "The gate the agent calls at startup. Honors LICENSE_ENFORCED and     reads the t" | kind=entity | source=probe/agent/license.py:L88 | neighbors=[check_license()] | lang=en
-- "agent_local_run_rationale_1": "local_run.py — run the probe's REAL pipeline (workflow.run_engagement) directly" | kind=entity | source=probe/agent/local_run.py:L1 | neighbors=[local_run.py] | lang=en
-- "agent_local_run_rationale_110": "Actionable input error on stderr → exit code 2. No traceback: this is     operat" | kind=entity | source=probe/agent/local_run.py:L110 | neighbors=[_usage_error()] | lang=en
-- "agent_local_run_rationale_121": "Validate positional args (args[0]=target, [1]=profile, [2]=stage, [3]=filter)" | kind=entity | source=probe/agent/local_run.py:L121 | neighbors=[_parse_args()] | lang=en
-- "agent_local_run_rationale_200": "Synchronous entrypoint for the `local-run` CLI subcommand." | kind=entity | source=probe/agent/local_run.py:L200 | neighbors=[run()] | lang=en
-- "agent_local_run_rationale_43": "Resolve the port set from PROBE_LOCAL_PORTS.        unset      → [22, 80, 443]" | kind=entity | source=probe/agent/local_run.py:L43 | neighbors=[_ports_from_env()] | lang=en
-- "agent_local_run_rationale_69": "Drop internal bookkeeping keys (_collected_at, _via…) for readable output." | kind=entity | source=probe/agent/local_run.py:L69 | neighbors=[_clean()] | lang=en
-- "agent_local_run_rationale_76": "Render a port fact unambiguously: '445/tcp open', '11211/udp open|filtered     (" | kind=entity | source=probe/agent/local_run.py:L76 | neighbors=[_port_label()] | lang=pt
-- "agent_result_spool_rationale_1": "result_spool.py — local result persistence with upload retry.  When the probe co" | kind=entity | source=probe/agent/result_spool.py:L1 | neighbors=[result_spool.py] | lang=en
-- "agent_result_spool_rationale_100": "Load a previously spooled result, returning None if missing/corrupt." | kind=entity | source=probe/agent/result_spool.py:L100 | neighbors=[.load()] | lang=pt
-- "agent_result_spool_rationale_102": "Remove the spool file for a successfully uploaded result." | kind=entity | source=probe/agent/result_spool.py:L102 | neighbors=[.remove()] | lang=en
-- "agent_result_spool_rationale_111": "Remove the spool file for a successfully uploaded result." | kind=entity | source=probe/agent/result_spool.py:L111 | neighbors=[.remove()] | lang=en
-- "agent_result_spool_rationale_114": "Attempt to upload a result with retries and local spool as fallback.          Ar" | kind=entity | source=probe/agent/result_spool.py:L114 | neighbors=[.submit_with_retry()] | lang=en
-- "agent_result_spool_rationale_116": "Move a terminally rejected result out of the retry queue." | kind=entity | source=probe/agent/result_spool.py:L116 | neighbors=[.quarantine()] | lang=en
-- "agent_result_spool_rationale_130": "Re-attempt upload of all previously spooled results.          Called once at pro" | kind=entity | source=probe/agent/result_spool.py:L130 | neighbors=[.flush_spool()] | lang=en
-- "agent_result_spool_rationale_135": "Attempt to upload a result with retries and local spool as fallback.          Ar" | kind=entity | source=probe/agent/result_spool.py:L135 | neighbors=[.submit_with_retry()] | lang=en
-- "agent_result_spool_rationale_153": "Number of pending (unsubmitted) results in the spool." | kind=entity | source=probe/agent/result_spool.py:L153 | neighbors=[.spool_count()] | lang=en
-- "agent_result_spool_rationale_156": "Re-attempt upload of all previously spooled results.          Called once at pro" | kind=entity | source=probe/agent/result_spool.py:L156 | neighbors=[.flush_spool()] | lang=en
-- "agent_result_spool_rationale_180": "Number of pending (unsubmitted) results in the spool." | kind=entity | source=probe/agent/result_spool.py:L180 | neighbors=[.spool_count()] | lang=en
-- "agent_result_spool_rationale_185": "Re-attempt upload of all previously spooled results.          Called once at pro" | kind=entity | source=probe/agent/result_spool.py:L185 | neighbors=[.flush_spool()] | lang=en
+- "detection_engine_posture_rules_is_validated": "is_validated()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L56 | neighbors=[posture_rules.py, _state_for()]
+- "detection_engine_posture_rules_ldap_anonymous_bind": "_ldap_anonymous_bind()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L448 | neighbors=[posture_rules.py, _d()]
+- "detection_engine_posture_rules_msrpc_exposed": "_msrpc_exposed()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L367 | neighbors=[posture_rules.py, _d()]
+- "detection_engine_posture_rules_nfs_world_readable": "_nfs_world_readable()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L440 | neighbors=[posture_rules.py, _d()]
+- "detection_engine_posture_rules_rdp_auth": "_rdp_auth()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L321 | neighbors=[posture_rules.py, _d()]
+- "detection_engine_posture_rules_rdp_exposed": "_rdp_exposed()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L313 | neighbors=[posture_rules.py, _d()]
+- "detection_engine_posture_rules_rsync_anonymous": "_rsync_anonymous()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L498 | neighbors=[posture_rules.py, _d()]
+- "detection_engine_posture_rules_smb_null_session": "_smb_null_session()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L506 | neighbors=[posture_rules.py, _d()]
+- "detection_engine_posture_rules_smb_signing": "_smb_signing()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L250 | neighbors=[posture_rules.py, _d()]
+- "detection_engine_posture_rules_smbv1": "_smbv1()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L246 | neighbors=[posture_rules.py, _d()]
+- "detection_engine_posture_rules_smtp_no_starttls": "_smtp_no_starttls()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L490 | neighbors=[posture_rules.py, _d()]
+- "detection_engine_posture_rules_smtp_user_enum": "_smtp_user_enum()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L478 | neighbors=[posture_rules.py, _d()]
+- "detection_engine_posture_rules_snmp_default": "_snmp_default()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L387 | neighbors=[posture_rules.py, _d()]
+- "detection_engine_posture_rules_ssh_terrapin": "_ssh_terrapin()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L400 | neighbors=[posture_rules.py, _d()]
+- "detection_engine_posture_rules_ssh_weak_algos": "_ssh_weak_algos()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L408 | neighbors=[posture_rules.py, _d()]
+- "detection_engine_posture_rules_summarize_traces": "summarize_traces()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L1046 | neighbors=[posture_rules.py, Engagement-level coverage roll-up over …]
+- "detection_engine_posture_rules_tls_cipher": "_tls_cipher()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L349 | neighbors=[posture_rules.py, _d()]
+- "detection_engine_posture_rules_tls_expired": "_tls_expired()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L362 | neighbors=[posture_rules.py, _cert()]
+- "detection_engine_posture_rules_tls_self_signed": "_tls_self_signed()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L357 | neighbors=[posture_rules.py, _cert()]
+- "detection_engine_posture_rules_tls_version": "_tls_version()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L335 | neighbors=[posture_rules.py, _d()]
+- "detection_engine_posture_rules_udp_amplifier": "_udp_amplifier()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L375 | neighbors=[posture_rules.py, _d()]
+- "detection_engine_posture_rules_verdict_for_rule": "verdict_for_rule()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L1028 | neighbors=[posture_rules.py, Collapse every trace for one rule into …]
+- "detection_engine_posture_rules_vnc_no_auth": "_vnc_no_auth()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L457 | neighbors=[posture_rules.py, _d()]
+- "detection_engine_update_snapshot_all_known_cve_ids": "_all_known_cve_ids()" | kind=code-symbol | source=manager/detection_engine/update_snapshot.py:L223 | neighbors=[update_snapshot.py, main()]
+- "detection_engine_verifier_deception_score": "deception_score()" | kind=code-symbol | source=manager/detection_engine/verifier.py:L75 | neighbors=[verifier.py, A starter honeypot/deception heuristic …]
+- "detection_engine_version_compare_clear_validation_cache": "_clear_validation_cache()" | kind=code-symbol | source=manager/detection_engine/version_compare.py:L219 | neighbors=[version_compare.py, Test hook: drop the in-memory record of…]
+- "detection_engine_version_compare_split_segments": "_split_segments()" | kind=code-symbol | source=manager/detection_engine/version_compare.py:L84 | neighbors=[version_compare.py, _compare_part()]
+- "detection_engine_vuln_db_vulndb_build_cve_index": "._build_cve_index()" | kind=code-symbol | source=manager/detection_engine/vuln_db.py:L96 | neighbors=[VulnDB, .__init__()]
+- "detection_engine_vuln_db_vulndb_init": ".__init__()" | kind=code-symbol | source=manager/detection_engine/vuln_db.py:L90 | neighbors=[VulnDB, ._build_cve_index()]
+- "detection_explain_route_fail": "fail()" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/detection-explain/route.ts:L11 | neighbors=[route.ts, GET()]
+- "detection_explain_route_get": "GET()" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/detection-explain/route.ts:L16 | neighbors=[route.ts, fail()]
+- "detection_init": "__init__.py" | kind=code-symbol | source=manager/backend/app/detection/__init__.py:L1 | neighbors=[d1b4dd3 trim frontend to 7 core pages; …, 298a9d4 trim frontend to 7 core pages; …]
+- "detection_logger_as_uuid": "_as_uuid()" | kind=code-symbol | source=manager/backend/app/detection/logger.py:L69 | neighbors=[logger.py, .log_action()]
+- "detection_logger_rationale_1": "AttackLogger — records every attack action to the ``attack_timeline`` table.  Al" | kind=entity | source=manager/backend/app/detection/logger.py:L1 | neighbors=[logger.py, AttackTimeline]
+- "detection_logger_rationale_40": "Persist a single attack action. Returns the AttackTimeline row.          ``times" | kind=entity | source=manager/backend/app/detection/logger.py:L40 | neighbors=[.log_action(), AttackTimeline]
+- "detection_prioritization_posture_risk_on_manager_scale": "_posture_risk_on_manager_scale()" | kind=code-symbol | source=manager/backend/app/detection/prioritization.py:L57 | neighbors=[prioritization.py, Score a posture finding with the Manage…]
+- "detection_resolution_resolutionoutcome": "ResolutionOutcome" | kind=code-symbol | source=manager/backend/app/detection/resolution.py:L66 | neighbors=[resolution.py, decide_resolution()]
+- "detection_siem_elasticsiem_build_query": ".build_query()" | kind=code-symbol | source=manager/backend/app/detection/siem.py:L191 | neighbors=[ElasticSIEM, .query_alerts()]
+- "detection_siem_sentinelsiem_build_kql": ".build_kql()" | kind=code-symbol | source=manager/backend/app/detection/siem.py:L141 | neighbors=[SentinelSIEM, .query_alerts()]
+- "detection_siem_splunksiem_build_spl": ".build_spl()" | kind=code-symbol | source=manager/backend/app/detection/siem.py:L88 | neighbors=[SplunkSIEM, .query_alerts()]
 
 ## Instructions
 

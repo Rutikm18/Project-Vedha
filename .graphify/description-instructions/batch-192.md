@@ -1,4 +1,4 @@
-# Node Description Batch 193 of 236
+# Node Description Batch 193 of 330
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,51 +19,53 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-Write every description in English (en). Do not switch languages.
+LANGUAGE: each entry has a `lang=` marker giving the language of its source.
+Write that entry's description in EXACTLY that language. Do not translate to
+a single common language — match each node's source language individually.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_agent_auth_boundary_test_only_device_side_enrollment_posts_are_public": "test_only_device_side_enrollment_posts_are_public()" | kind=code-symbol | source=manager/backend/tests/test_agent_auth_boundary.py:L89 | neighbors=[test_agent_auth_boundary.py]
-- "tests_test_agent_dispatch_testagentwebsocketauthentication_test_accepts_bearer_header": ".test_accepts_bearer_header()" | kind=code-symbol | source=manager/backend/tests/test_agent_dispatch.py:L18 | neighbors=[TestAgentWebSocketAuthentication]
-- "tests_test_agent_dispatch_testagentwebsocketauthentication_test_rejects_query_string_credentials": ".test_rejects_query_string_credentials()" | kind=code-symbol | source=manager/backend/tests/test_agent_dispatch.py:L26 | neighbors=[TestAgentWebSocketAuthentication]
-- "tests_test_agent_dispatch_testjobsecretboundary_test_allows_non_secret_scan_tuning": ".test_allows_non_secret_scan_tuning()" | kind=code-symbol | source=manager/backend/tests/test_agent_dispatch.py:L84 | neighbors=[TestJobSecretBoundary]
-- "tests_test_agent_dispatch_testjobsecretboundary_test_detects_persisted_secret_material": ".test_detects_persisted_secret_material()" | kind=code-symbol | source=manager/backend/tests/test_agent_dispatch.py:L79 | neighbors=[TestJobSecretBoundary]
-- "tests_test_agent_dispatch_testtenantwebsocketselection_test_displaced_socket_cannot_unregister_reconnect": ".test_displaced_socket_cannot_unregister_reconnect()" | kind=code-symbol | source=manager/backend/tests/test_agent_dispatch.py:L111 | neighbors=[TestTenantWebSocketSelection]
-- "tests_test_agent_dispatch_testtenantwebsocketselection_test_first_online_push_cannot_cross_tenants": ".test_first_online_push_cannot_cross_tenants()" | kind=code-symbol | source=manager/backend/tests/test_agent_dispatch.py:L165 | neighbors=[TestTenantWebSocketSelection]
-- "tests_test_agent_dispatch_testtenantwebsocketselection_test_online_heartbeat_clears_finished_job": ".test_online_heartbeat_clears_finished_job()" | kind=code-symbol | source=manager/backend/tests/test_agent_dispatch.py:L98 | neighbors=[TestTenantWebSocketSelection]
-- "tests_test_agent_dispatch_testtenantwebsocketselection_test_only_returns_online_agents_in_requested_tenant": ".test_only_returns_online_agents_in_requested_tenant()" | kind=code-symbol | source=manager/backend/tests/test_agent_dispatch.py:L138 | neighbors=[TestTenantWebSocketSelection]
-- "tests_test_agent_dispatch_testusecasecatalogparity_test_manager_and_probe_route_use_cases_identically": ".test_manager_and_probe_route_use_cases_identically()" | kind=code-symbol | source=manager/backend/tests/test_agent_dispatch.py:L37 | neighbors=[TestUseCaseCatalogParity]
-- "tests_test_agent_identity_test_generated_scope_identity_preserves_agent_credentials": "test_generated_scope_identity_preserves_agent_credentials()" | kind=code-symbol | source=probe/tests/test_agent_identity.py:L19 | neighbors=[test_agent_identity.py]
-- "tests_test_agent_policy_rationale_1": "test_agent_policy.py — the pure deterministic agent policy engine." | kind=entity | source=manager/backend/tests/test_agent_policy.py:L1 | neighbors=[test_agent_policy.py]
-- "tests_test_agent_policy_testclassifyaction_test_known_actions_map_to_expected_tier": ".test_known_actions_map_to_expected_tier()" | kind=code-symbol | source=manager/backend/tests/test_agent_policy.py:L23 | neighbors=[TestClassifyAction]
-- "tests_test_agent_policy_testclassifyaction_test_unknown_action_fails_closed_to_highest_tier": ".test_unknown_action_fails_closed_to_highest_tier()" | kind=code-symbol | source=manager/backend/tests/test_agent_policy.py:L26 | neighbors=[TestClassifyAction]
-- "tests_test_agent_read_tools_fakesession_execute": ".execute()" | kind=code-symbol | source=manager/backend/tests/test_agent_read_tools.py:L39 | neighbors=[_FakeSession]
-- "tests_test_agent_read_tools_fakesession_init": ".__init__()" | kind=code-symbol | source=manager/backend/tests/test_agent_read_tools.py:L35 | neighbors=[_FakeSession]
-- "tests_test_agent_read_tools_rationale_1": "Regression tests for AgentDecisionEngine._list_assets service batching.  The rea" | kind=entity | source=manager/backend/tests/test_agent_read_tools.py:L1 | neighbors=[test_agent_read_tools.py]
-- "tests_test_agent_read_tools_rationale_20": "Mimics the subset of a SQLAlchemy Result the read tools use." | kind=entity | source=manager/backend/tests/test_agent_read_tools.py:L20 | neighbors=[_Result]
-- "tests_test_agent_read_tools_rationale_33": "Returns queued results in call order and counts execute() calls." | kind=entity | source=manager/backend/tests/test_agent_read_tools.py:L33 | neighbors=[_FakeSession]
-- "tests_test_agent_read_tools_result_all": ".all()" | kind=code-symbol | source=manager/backend/tests/test_agent_read_tools.py:L28 | neighbors=[_Result]
-- "tests_test_agent_read_tools_result_init": ".__init__()" | kind=code-symbol | source=manager/backend/tests/test_agent_read_tools.py:L22 | neighbors=[_Result]
-- "tests_test_agent_read_tools_result_scalars": ".scalars()" | kind=code-symbol | source=manager/backend/tests/test_agent_read_tools.py:L25 | neighbors=[_Result]
-- "tests_test_agents_rationale_641": "Re-registering the same-named probe must reuse the row, not create a dup." | kind=entity | source=manager/backend/tests/test_agents.py:L641 | neighbors=[.test_reuses_existing_probe_by_name()]
-- "tests_test_agents_rationale_649": "Re-registering the same-named probe must reuse the row, not create a dup." | kind=entity | source=manager/backend/tests/test_agents.py:L649 | neighbors=[.test_reuses_existing_probe_by_name()]
-- "tests_test_agents_rationale_676": "Agent token must outlive the 15-min access default so it doesn't churn." | kind=entity | source=manager/backend/tests/test_agents.py:L676 | neighbors=[.test_agent_token_is_long_lived()]
-- "tests_test_agents_rationale_684": "Agent token must outlive the 15-min access default so it doesn't churn." | kind=entity | source=manager/backend/tests/test_agents.py:L684 | neighbors=[.test_agent_token_is_long_lived()]
-- "tests_test_agents_rationale_694": "Discovery results → assets/services promotion (makes the Attack Surface populate" | kind=entity | source=manager/backend/tests/test_agents.py:L694 | neighbors=[TestPromoteAssets]
-- "tests_test_agents_rationale_702": "Discovery results → assets/services promotion (makes the Attack Surface populate" | kind=entity | source=manager/backend/tests/test_agents.py:L702 | neighbors=[TestPromoteAssets]
-- "tests_test_agents_rationale_722": "A single web scan can emit multiple facts for the same host:port." | kind=entity | source=manager/backend/tests/test_agents.py:L722 | neighbors=[.test_dedupes_duplicate_services_in_sam…]
-- "tests_test_agents_rationale_730": "A single web scan can emit multiple facts for the same host:port." | kind=entity | source=manager/backend/tests/test_agents.py:L730 | neighbors=[.test_dedupes_duplicate_services_in_sam…]
-- "tests_test_agents_testaccesstokenexpiry_test_custom_expiry_overrides_default": ".test_custom_expiry_overrides_default()" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L769 | neighbors=[TestAccessTokenExpiry]
-- "tests_test_agents_testagentexecutabletypes_test_network_types_included": ".test_network_types_included()" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L36 | neighbors=[TestAgentExecutableTypes]
-- "tests_test_agents_testagentexecutabletypes_test_server_side_types_excluded": ".test_server_side_types_excluded()" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L41 | neighbors=[TestAgentExecutableTypes]
-- "tests_test_agents_testagentjobcompatibility_test_agent_network_segments_are_normalized_and_validated": ".test_agent_network_segments_are_normalized_and_validated()" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L521 | neighbors=[TestAgentJobCompatibility]
-- "tests_test_agents_testagentjobcompatibility_test_declared_segment_must_cover_entire_scope": ".test_declared_segment_must_cover_entire_scope()" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L421 | neighbors=[TestAgentJobCompatibility]
-- "tests_test_agents_testagentjobcompatibility_test_declared_segment_rejects_missing_or_invalid_scope": ".test_declared_segment_rejects_missing_or_invalid_scope()" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L431 | neighbors=[TestAgentJobCompatibility]
-- "tests_test_agents_testagentjobcompatibility_test_empty_capabilities_receive_no_jobs": ".test_empty_capabilities_receive_no_jobs()" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L441 | neighbors=[TestAgentJobCompatibility]
-- "tests_test_agents_testagentjobcompatibility_test_empty_segments_are_fail_closed": ".test_empty_segments_are_fail_closed()" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L438 | neighbors=[TestAgentJobCompatibility]
-- "tests_test_agents_testagentjobcompatibility_test_explicit_out_of_scope_target_is_never_dispatched": ".test_explicit_out_of_scope_target_is_never_dispatched()" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L468 | neighbors=[TestAgentJobCompatibility]
-- "tests_test_agents_testagentjobcompatibility_test_hostname_and_explicit_empty_targets_are_not_routable": ".test_hostname_and_explicit_empty_targets_are_not_routable()" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L511 | neighbors=[TestAgentJobCompatibility]
+- "detection_engine_ingest_ingestresult_init": ".__init__()" | kind=code-symbol | source=manager/detection_engine/ingest.py:L50 | neighbors=[IngestResult] | lang=en
+- "detection_engine_ingest_rationale_102": "Real, verified hostname-alias sources in scanner_module's output —     deliberat" | kind=entity | source=manager/detection_engine/ingest.py:L102 | neighbors=[_extract_aliases()] | lang=en
+- "detection_engine_ingest_rationale_126": "Stream-read one JSONL file, validating and assembling Assets as it goes.      Pa" | kind=entity | source=manager/detection_engine/ingest.py:L126 | neighbors=[ingest_file()] | lang=en
+- "detection_engine_ingest_rationale_71": "Returns an error reason string if invalid, else None." | kind=entity | source=manager/detection_engine/ingest.py:L71 | neighbors=[_validate()] | lang=en
+- "detection_engine_models_asset_add_alias": ".add_alias()" | kind=code-symbol | source=manager/detection_engine/models.py:L97 | neighbors=[Asset] | lang=en
+- "detection_engine_models_asset_facts_by_scanner": ".facts_by_scanner()" | kind=code-symbol | source=manager/detection_engine/models.py:L101 | neighbors=[Asset] | lang=en
+- "detection_engine_models_asset_open_ports": ".open_ports()" | kind=code-symbol | source=manager/detection_engine/models.py:L104 | neighbors=[Asset] | lang=en
+- "detection_engine_models_finding_post_init": ".__post_init__()" | kind=code-symbol | source=manager/detection_engine/models.py:L179 | neighbors=[Finding] | lang=en
+- "detection_engine_models_finding_to_dict": ".to_dict()" | kind=code-symbol | source=manager/detection_engine/models.py:L187 | neighbors=[Finding] | lang=en
+- "detection_engine_models_rationale_1": "models.py — shared schema for the detection/correlation layer.  Two core objects" | kind=entity | source=manager/detection_engine/models.py:L1 | neighbors=[models.py] | lang=en
+- "detection_engine_models_rationale_108": "Reconstruct this asset using only facts observed at or before         cutoff_ts" | kind=entity | source=manager/detection_engine/models.py:L108 | neighbors=[.as_of()] | lang=en
+- "detection_engine_models_rationale_126": "Deterministic finding ID: the SAME (asset, CVE, CPE) triple always     hashes to" | kind=entity | source=manager/detection_engine/models.py:L126 | neighbors=[make_finding_id()] | lang=en
+- "detection_engine_models_rationale_25": "How was this fact obtained? Drives every downstream confidence decision     (CPE" | kind=entity | source=manager/detection_engine/models.py:L25 | neighbors=[SourceConfidence] | lang=en
+- "detection_engine_models_rationale_45": "One ScanResult line, carried forward with its ingestion-time     confidence tag" | kind=entity | source=manager/detection_engine/models.py:L45 | neighbors=[Fact] | lang=en
+- "detection_engine_models_rationale_61": "A stable, human-readable pointer back to this exact observation —         what a" | kind=entity | source=manager/detection_engine/models.py:L61 | neighbors=[.ref()] | lang=en
+- "detection_engine_models_rationale_71": "Every fact known about one host, merged across all scanners/runs.      IP is the" | kind=entity | source=manager/detection_engine/models.py:L71 | neighbors=[Asset] | lang=en
+- "detection_engine_pipeline_rationale_127": "Unified detection over one set of ingested facts: the CVE track     (version→CVE" | kind=entity | source=manager/detection_engine/pipeline.py:L127 | neighbors=[run_full_detection()] | lang=en
+- "detection_engine_pipeline_rationale_180": "Phase 2 exit criteria: recall gain from AI assist, with zero precision     regre" | kind=entity | source=manager/detection_engine/pipeline.py:L180 | neighbors=[ab_evaluate()] | lang=en
+- "detection_engine_pipeline_rationale_52": "exposure: optional {asset_ip: {\"internet_facing\": bool, \"auth_enforced\":     boo" | kind=entity | source=manager/detection_engine/pipeline.py:L52 | neighbors=[run_pipeline()] | lang=en
+- "detection_engine_port_intel_escalate": "escalate()" | kind=code-symbol | source=manager/detection_engine/port_intel.py:L25 | neighbors=[port_intel.py] | lang=en
+- "detection_engine_port_intel_rationale_1": "port_intel.py — port-intelligence catalog for the exposed-service detector.  The" | kind=entity | source=manager/detection_engine/port_intel.py:L1 | neighbors=[port_intel.py] | lang=en
+- "detection_engine_port_intel_rationale_203": "True when an identified product proves the catalog's port guess wrong." | kind=entity | source=manager/detection_engine/port_intel.py:L203 | neighbors=[contradicts_port_hypothesis()] | lang=en
+- "detection_engine_port_intel_rationale_215": "Map an open TCP port (+ optional banner, the probe's soft-matched service     la" | kind=entity | source=manager/detection_engine/port_intel.py:L215 | neighbors=[classify_port()] | lang=en
+- "detection_engine_posture_confidence_rationale_1": "posture_confidence.py — calibrated, auditable confidence for posture findings." | kind=entity | source=manager/detection_engine/posture_confidence.py:L1 | neighbors=[posture_confidence.py] | lang=en
+- "detection_engine_posture_confidence_rationale_121": "Second pass over ONE host's posture findings: now that every rule that fired on" | kind=entity | source=manager/detection_engine/posture_confidence.py:L121 | neighbors=[calibrate_host_findings()] | lang=en
+- "detection_engine_posture_confidence_rationale_69": "Chains this rule belongs to where ≥1 OTHER member also fired on the host.     A" | kind=entity | source=manager/detection_engine/posture_confidence.py:L69 | neighbors=[corroborating_chains()] | lang=en
+- "detection_engine_posture_confidence_rationale_81": "Return (confidence 0-100, precision_factors). Pure and deterministic:     same i" | kind=entity | source=manager/detection_engine/posture_confidence.py:L81 | neighbors=[assess_confidence()] | lang=en
+- "detection_engine_posture_rules_posturefinding_post_init": ".__post_init__()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L204 | neighbors=[PostureFinding] | lang=en
+- "detection_engine_posture_rules_posturefinding_to_dict": ".to_dict()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L209 | neighbors=[PostureFinding] | lang=en
+- "detection_engine_posture_rules_posturerule": "PostureRule" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L214 | neighbors=[posture_rules.py] | lang=en
+- "detection_engine_posture_rules_rationale_1": "posture_rules.py — the manager's POSTURE/CONFIG detection engine (detection-as-c" | kind=entity | source=manager/detection_engine/posture_rules.py:L1 | neighbors=[posture_rules.py] | lang=en
+- "detection_engine_posture_rules_rationale_1029": "Collapse every trace for one rule into a single verdict + reason strings.     Pr" | kind=entity | source=manager/detection_engine/posture_rules.py:L1029 | neighbors=[verdict_for_rule()] | lang=en
+- "detection_engine_posture_rules_rationale_1047": "Engagement-level coverage roll-up over a set of traces. `rules_blind > 0`     is" | kind=entity | source=manager/detection_engine/posture_rules.py:L1047 | neighbors=[summarize_traces()] | lang=en
+- "detection_engine_posture_rules_rationale_1079": "Traced counterpart of `detect_all` — findings identical, plus the full trace." | kind=entity | source=manager/detection_engine/posture_rules.py:L1079 | neighbors=[detect_all_traced()] | lang=en
+- "detection_engine_posture_rules_rationale_1093": "Run posture detection across every asset. Accepts an IngestResult (uses its" | kind=entity | source=manager/detection_engine/posture_rules.py:L1093 | neighbors=[detect_all()] | lang=en
+- "detection_engine_posture_rules_rationale_112": "One rule evaluation's outcome. Purely diagnostic — never gates a finding." | kind=entity | source=manager/detection_engine/posture_rules.py:L112 | neighbors=[TraceRow] | lang=pt
+- "detection_engine_posture_rules_rationale_136": "severity × exposure × state → (risk_score 0-100, priority).      Authentication" | kind=entity | source=manager/detection_engine/posture_rules.py:L136 | neighbors=[compute_risk()] | lang=en
+- "detection_engine_posture_rules_rationale_162": "Deterministic id — same (asset, rule, port) always hashes the same, so     re-sc" | kind=entity | source=manager/detection_engine/posture_rules.py:L162 | neighbors=[make_posture_id()] | lang=en
+- "detection_engine_posture_rules_rationale_258": "Fires on EITHER of the rdp_scanner's two independent probes.      The scanner pr" | kind=entity | source=manager/detection_engine/posture_rules.py:L258 | neighbors=[_rdp_no_nla()] | lang=en
+- "detection_engine_posture_rules_rationale_299": "The server REFUSED a TLS-capable negotiation, so the session falls back to     l" | kind=entity | source=manager/detection_engine/posture_rules.py:L299 | neighbors=[_rdp_no_tls()] | lang=en
 
 ## Instructions
 

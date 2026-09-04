@@ -1,4 +1,4 @@
-# Node Description Batch 229 of 236
+# Node Description Batch 229 of 330
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -26,46 +26,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "versions_0025_service_exposure_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0025_service_exposure.py:L21 | neighbors=[0025_service_exposure.py] | lang=en
-- "versions_0026_client_portal_slug_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0026_client_portal_slug.py:L29 | neighbors=[0026_client_portal_slug.py] | lang=en
-- "versions_0026_client_portal_slug_rationale_1": "Client portal slug — the customer's stable 'user as domain' handle.  Adds users." | kind=entity | source=manager/backend/alembic/versions/0026_client_portal_slug.py:L1 | neighbors=[0026_client_portal_slug.py] | lang=en
-- "versions_0026_client_portal_slug_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0026_client_portal_slug.py:L22 | neighbors=[0026_client_portal_slug.py] | lang=en
-- "versions_0027_scan_request_targets_intensity_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0027_scan_request_targets_intensity.py:L39 | neighbors=[0027_scan_request_targets_intensity.py] | lang=en
-- "versions_0027_scan_request_targets_intensity_rationale_1": "Scan-request targets + intensity — the rich customer scan request.  Adds two nul" | kind=entity | source=manager/backend/alembic/versions/0027_scan_request_targets_intensity.py:L1 | neighbors=[0027_scan_request_targets_intensity.py] | lang=en
-- "versions_0027_scan_request_targets_intensity_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0027_scan_request_targets_intensity.py:L28 | neighbors=[0027_scan_request_targets_intensity.py] | lang=en
-- "versions_0028_remediation_plans_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0028_remediation_plans.py:L51 | neighbors=[0028_remediation_plans.py] | lang=en
-- "versions_0028_remediation_plans_rationale_1": "Remediation plans — cached, OS-specific, structured remediation for a finding." | kind=entity | source=manager/backend/alembic/versions/0028_remediation_plans.py:L1 | neighbors=[0028_remediation_plans.py] | lang=en
-- "versions_0028_remediation_plans_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0028_remediation_plans.py:L22 | neighbors=[0028_remediation_plans.py] | lang=en
-- "versions_0030_sla_policies_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0030_sla_policies.py:L42 | neighbors=[0030_sla_policies.py] | lang=en
-- "versions_0030_sla_policies_rationale_1": "SLA policies — per-tenant custom remediation windows (hours per severity).  One" | kind=entity | source=manager/backend/alembic/versions/0030_sla_policies.py:L1 | neighbors=[0030_sla_policies.py] | lang=it
-- "versions_0030_sla_policies_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0030_sla_policies.py:L21 | neighbors=[0030_sla_policies.py] | lang=en
-- "versions_0031_integrations_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0031_integrations.py:L42 | neighbors=[0031_integrations.py] | lang=en
-- "versions_0031_integrations_rationale_1": "Integrations — per-tenant notification config (email / Slack / Jira).  One row p" | kind=entity | source=manager/backend/alembic/versions/0031_integrations.py:L1 | neighbors=[0031_integrations.py] | lang=en
-- "versions_0031_integrations_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0031_integrations.py:L21 | neighbors=[0031_integrations.py] | lang=en
-- "versions_0032_scan_request_use_case_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0032_scan_request_use_case.py:L29 | neighbors=[0032_scan_request_use_case.py] | lang=en
-- "versions_0032_scan_request_use_case_rationale_1": "scan_requests.use_case_id — the capability use-case a customer requested.  The p" | kind=entity | source=manager/backend/alembic/versions/0032_scan_request_use_case.py:L1 | neighbors=[0032_scan_request_use_case.py] | lang=en
-- "versions_0032_scan_request_use_case_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0032_scan_request_use_case.py:L22 | neighbors=[0032_scan_request_use_case.py] | lang=en
-- "vuln_enrichment_ttlcache_contains": ".__contains__()" | kind=code-symbol | source=manager/backend/app/vuln/enrichment.py:L36 | neighbors=[TTLCache] | lang=en
-- "vuln_enrichment_ttlcache_getitem": ".__getitem__()" | kind=code-symbol | source=manager/backend/app/vuln/enrichment.py:L43 | neighbors=[TTLCache] | lang=en
-- "vuln_enrichment_ttlcache_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/vuln/enrichment.py:L31 | neighbors=[TTLCache] | lang=en
-- "vuln_enrichment_ttlcache_setitem": ".__setitem__()" | kind=code-symbol | source=manager/backend/app/vuln/enrichment.py:L51 | neighbors=[TTLCache] | lang=en
-- "vuln_nessus_nessusscanner_close": ".close()" | kind=code-symbol | source=manager/backend/app/vuln/nessus.py:L66 | neighbors=[NessusScanner] | lang=en
-- "vuln_nessus_nessusscanner_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/vuln/nessus.py:L40 | neighbors=[NessusScanner] | lang=en
-- "vuln_nuclei_nucleiscanerror_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/vuln/nuclei.py:L92 | neighbors=[NucleiScanError] | lang=en
-- "vuln_nuclei_nucleiscanner_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/vuln/nuclei.py:L113 | neighbors=[NucleiScanner] | lang=en
-- "vuln_prioritizer_route_demo_assets": "DEMO_ASSETS" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/vuln-prioritizer/route.ts:L16 | neighbors=[route.ts] | lang=en
-- "vuln_prioritizer_route_demo_findings": "DEMO_FINDINGS" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/vuln-prioritizer/route.ts:L5 | neighbors=[route.ts] | lang=en
-- "vuln_prioritizer_route_get": "GET()" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/vuln-prioritizer/route.ts:L27 | neighbors=[route.ts] | lang=en
-- "websocket_manager_agentconnectionmanager_connected_count": ".connected_count()" | kind=code-symbol | source=manager/backend/app/websocket/manager.py:L329 | neighbors=[AgentConnectionManager] | lang=en
-- "websocket_manager_agentconnectionmanager_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/websocket/manager.py:L86 | neighbors=[AgentConnectionManager] | lang=en
-- "websocket_manager_connectionmanager_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/websocket/manager.py:L28 | neighbors=[ConnectionManager] | lang=en
-- "websocket_manager_rationale_1": "WebSocket manager for real-time graph updates, agent push, and live collaboratio" | kind=entity | source=manager/backend/app/websocket/manager.py:L1 | neighbors=[manager.py] | lang=en
-- "websocket_manager_rationale_123": "Remove an agent's WebSocket registration." | kind=entity | source=manager/backend/app/websocket/manager.py:L123 | neighbors=[.unregister()] | lang=en
-- "websocket_manager_rationale_129": "Remove the current registration, optionally only for one socket.          Return" | kind=entity | source=manager/backend/app/websocket/manager.py:L129 | neighbors=[.unregister()] | lang=en
-- "websocket_manager_rationale_136": "Record a heartbeat from an agent." | kind=entity | source=manager/backend/app/websocket/manager.py:L136 | neighbors=[.record_heartbeat()] | lang=en
-- "websocket_manager_rationale_147": "Push a job to a specific agent over WebSocket.          Returns True if the job" | kind=entity | source=manager/backend/app/websocket/manager.py:L147 | neighbors=[.push_job()] | lang=en
-- "websocket_manager_rationale_153": "Record a heartbeat from an agent." | kind=entity | source=manager/backend/app/websocket/manager.py:L153 | neighbors=[.record_heartbeat()] | lang=en
-- "websocket_manager_rationale_165": "Push a job to the first online connected agent.          Returns the agent_id th" | kind=entity | source=manager/backend/app/websocket/manager.py:L165 | neighbors=[.push_job_to_first_online()] | lang=en
+- "models_scan_job_stamp_reference": "_stamp_reference()" | kind=code-symbol | source=manager/backend/app/models/scan_job.py:L80 | neighbors=[scan_job.py] | lang=en
+- "models_scan_request_rationale_1": "scan_request.py — a customer-initiated, operator-approved request to run a scan" | kind=entity | source=manager/backend/app/models/scan_request.py:L1 | neighbors=[scan_request.py] | lang=pt
+- "models_sla_policy_rationale_1": "sla_policy.py — a tenant's custom SLA remediation windows (hours per severity)." | kind=entity | source=manager/backend/app/models/sla_policy.py:L1 | neighbors=[sla_policy.py] | lang=en
+- "models_validation_request_rationale_1": "validation_request.py — an approval-gated request to safely re-check a finding l" | kind=entity | source=manager/backend/app/models/validation_request.py:L1 | neighbors=[validation_request.py] | lang=en
+- "models_worker_heartbeat_rationale_1": "worker_heartbeat.py — one row per background worker process, refreshed every tic" | kind=entity | source=manager/backend/app/models/worker_heartbeat.py:L1 | neighbors=[worker_heartbeat.py] | lang=it
+- "native_dir_bust_builtin_paths": "BUILTIN_PATHS" | kind=code-symbol | source=manager/frontend/lib/engine/native/dir-bust.ts:L16 | neighbors=[dir-bust.ts] | lang=en
+- "native_dir_bust_dirbustresult": "DirBustResult" | kind=code-symbol | source=manager/frontend/lib/engine/native/dir-bust.ts:L57 | neighbors=[dir-bust.ts] | lang=en
+- "native_dir_bust_nativediropts": "NativeDirOpts" | kind=code-symbol | source=manager/frontend/lib/engine/native/dir-bust.ts:L90 | neighbors=[dir-bust.ts] | lang=en
+- "native_dir_bust_proberesp": "ProbeResp" | kind=code-symbol | source=manager/frontend/lib/engine/native/dir-bust.ts:L66 | neighbors=[dir-bust.ts] | lang=en
+- "native_dns_recon_common_subdomains": "COMMON_SUBDOMAINS" | kind=code-symbol | source=manager/frontend/lib/engine/native/dns-recon.ts:L33 | neighbors=[dns-recon.ts] | lang=en
+- "native_dns_recon_dnsreconresult": "DnsReconResult" | kind=code-symbol | source=manager/frontend/lib/engine/native/dns-recon.ts:L15 | neighbors=[dns-recon.ts] | lang=en
+- "native_dns_recon_ptrsweepresult": "PtrSweepResult" | kind=code-symbol | source=manager/frontend/lib/engine/native/dns-recon.ts:L28 | neighbors=[dns-recon.ts] | lang=en
+- "native_http_probe_extracttitle": "extractTitle()" | kind=code-symbol | source=manager/frontend/lib/engine/native/http-probe.ts:L103 | neighbors=[http-probe.ts] | lang=en
+- "native_http_probe_fingerprint": "fingerprint()" | kind=code-symbol | source=manager/frontend/lib/engine/native/http-probe.ts:L108 | neighbors=[http-probe.ts] | lang=en
+- "native_http_probe_httpproberesult": "HttpProbeResult" | kind=code-symbol | source=manager/frontend/lib/engine/native/http-probe.ts:L79 | neighbors=[http-probe.ts] | lang=en
+- "native_http_probe_nativehttpopts": "NativeHttpOpts" | kind=code-symbol | source=manager/frontend/lib/engine/native/http-probe.ts:L239 | neighbors=[http-probe.ts] | lang=en
+- "native_http_probe_probeone": "probeOne()" | kind=code-symbol | source=manager/frontend/lib/engine/native/http-probe.ts:L143 | neighbors=[http-probe.ts] | lang=en
+- "native_http_probe_tech_rules": "TECH_RULES" | kind=code-symbol | source=manager/frontend/lib/engine/native/http-probe.ts:L38 | neighbors=[http-probe.ts] | lang=en
+- "native_http_probe_techrule": "TechRule" | kind=code-symbol | source=manager/frontend/lib/engine/native/http-probe.ts:L30 | neighbors=[http-probe.ts] | lang=en
+- "native_http_probe_web_port_proto": "WEB_PORT_PROTO" | kind=code-symbol | source=manager/frontend/lib/engine/native/http-probe.ts:L21 | neighbors=[http-probe.ts] | lang=en
+- "native_port_scan_checkopts": "CheckOpts" | kind=code-symbol | source=manager/frontend/lib/engine/native/port-scan.ts:L159 | neighbors=[port-scan.ts] | lang=en
+- "native_port_scan_checkport": "checkPort()" | kind=code-symbol | source=manager/frontend/lib/engine/native/port-scan.ts:L165 | neighbors=[port-scan.ts] | lang=en
+- "native_port_scan_expandtarget": "expandTarget()" | kind=code-symbol | source=manager/frontend/lib/engine/native/port-scan.ts:L140 | neighbors=[port-scan.ts] | lang=en
+- "native_port_scan_nativeportresult": "NativePortResult" | kind=code-symbol | source=manager/frontend/lib/engine/native/port-scan.ts:L122 | neighbors=[port-scan.ts] | lang=en
+- "native_port_scan_nativescanopts": "NativeScanOpts" | kind=code-symbol | source=manager/frontend/lib/engine/native/port-scan.ts:L209 | neighbors=[port-scan.ts] | lang=en
+- "native_port_scan_port_names": "PORT_NAMES" | kind=code-symbol | source=manager/frontend/lib/engine/native/port-scan.ts:L111 | neighbors=[port-scan.ts] | lang=en
+- "native_port_scan_portrange": "PortRange" | kind=code-symbol | source=manager/frontend/lib/engine/native/port-scan.ts:L129 | neighbors=[port-scan.ts] | lang=en
+- "native_port_scan_top_1000_tcp": "TOP_1000_TCP" | kind=code-symbol | source=manager/frontend/lib/engine/native/port-scan.ts:L23 | neighbors=[port-scan.ts] | lang=en
+- "native_tls_info_tlsinforesult": "TlsInfoResult" | kind=code-symbol | source=manager/frontend/lib/engine/native/tls-info.ts:L14 | neighbors=[tls-info.ts] | lang=en
+- "native_tls_info_weak_protocols": "WEAK_PROTOCOLS" | kind=code-symbol | source=manager/frontend/lib/engine/native/tls-info.ts:L36 | neighbors=[tls-info.ts] | lang=en
+- "native_tls_info_weak_signatures": "WEAK_SIGNATURES" | kind=code-symbol | source=manager/frontend/lib/engine/native/tls-info.ts:L35 | neighbors=[tls-info.ts] | lang=en
+- "ordereddict": "OrderedDict" | kind=code-symbol | neighbors=[TTLCache] | lang=en
+- "pathid_route_get": "GET()" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/attack-paths/[pathId]/route.ts:L5 | neighbors=[route.ts] | lang=en
+- "pats_route_get": "GET" | kind=code-symbol | source=manager/frontend/app/api/auth/pats/route.ts:L5 | neighbors=[route.ts] | lang=en
+- "pats_route_post": "POST" | kind=code-symbol | source=manager/frontend/app/api/auth/pats/route.ts:L10 | neighbors=[route.ts] | lang=en
+- "portal_layout_nav": "NAV" | kind=code-symbol | source=manager/frontend/app/portal/layout.tsx:L7 | neighbors=[layout.tsx] | lang=en
+- "portal_layout_portallayout": "PortalLayout()" | kind=code-symbol | source=manager/frontend/app/portal/layout.tsx:L6 | neighbors=[layout.tsx] | lang=en
+- "portal_page_dashboardskeleton": "DashboardSkeleton()" | kind=code-symbol | source=manager/frontend/app/portal/page.tsx:L189 | neighbors=[page.tsx] | lang=en
+- "portal_page_kpi": "Kpi()" | kind=code-symbol | source=manager/frontend/app/portal/page.tsx:L16 | neighbors=[page.tsx] | lang=en
+- "portal_page_legend": "Legend()" | kind=code-symbol | source=manager/frontend/app/portal/page.tsx:L209 | neighbors=[page.tsx] | lang=en
 
 ## Instructions
 

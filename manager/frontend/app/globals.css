@@ -2256,24 +2256,32 @@ code, pre, .terminal, kbd, [class*="mono"], .font-mono {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  font: 700 9px/1 var(--font-mono);
-  letter-spacing: 0.16em;
+  font: 700 10px/1 var(--font-mono);
+  letter-spacing: 0.14em;
   text-transform: uppercase;
-  color: #93C5FD;
-  margin-bottom: 16px;
+  color: #A9CBFB;
+  margin-bottom: 18px;
 }
 
 .report-cover-v2-title {
-  margin: 0 0 8px;
-  font: 750 clamp(24px, 3.5vw, 40px)/1.05 var(--font-display);
-  letter-spacing: -0.025em;
-  color: #F8FAFC;
+  margin: 0 0 10px;
+  /* Weight 800 (a real font weight — 750 fell back unpredictably) and a lighter
+     negative tracking so the near-white title stays crisp on the dark gradient. */
+  font: 800 clamp(26px, 3.6vw, 42px)/1.1 var(--font-display);
+  letter-spacing: -0.01em;
+  color: #FFFFFF;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  overflow-wrap: anywhere;
 }
 
 .report-cover-v2-sub {
   margin: 0;
-  font-size: 12px;
-  color: #CBD5E1;
+  font-size: 12.5px;
+  font-weight: 500;
+  color: #D6E0EC;
   letter-spacing: 0.01em;
 }
 

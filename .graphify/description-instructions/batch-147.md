@@ -1,4 +1,4 @@
-# Node Description Batch 148 of 236
+# Node Description Batch 148 of 330
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,58 +12,51 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
-For an entity node (any other kind — e.g. a person, place, event, object),
-describe what the entity is and its role, grounded in its type, its
-relations (neighbors) and the provided citations/evidence — e.g.
-"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
-Ground entity descriptions in the citations/evidence when present; do not
-speculate beyond the context, so a node with no supporting context may be
-left out of the reply.
 Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "findings_page_verification_meta": "VERIFICATION_META" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L187 | neighbors=[page.tsx]
-- "findings_page_verificationbadge": "VerificationBadge()" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L193 | neighbors=[page.tsx]
-- "findings_route_get": "GET" | kind=code-symbol | source=manager/frontend/app/api/findings/route.ts:L27 | neighbors=[route.ts]
-- "findings_route_positiveint": "positiveInt()" | kind=code-symbol | source=manager/frontend/app/api/findings/route.ts:L22 | neighbors=[route.ts]
-- "findings_route_post": "POST()" | kind=code-symbol | source=manager/frontend/app/api/findings/route.ts:L103 | neighbors=[route.ts]
-- "findings_route_status_to_api": "STATUS_TO_API" | kind=code-symbol | source=manager/frontend/app/api/findings/route.ts:L12 | neighbors=[route.ts]
-- "findings_route_valid_severities": "VALID_SEVERITIES" | kind=code-symbol | source=manager/frontend/app/api/findings/route.ts:L11 | neighbors=[route.ts]
-- "findings_route_valid_sorts": "VALID_SORTS" | kind=code-symbol | source=manager/frontend/app/api/findings/route.ts:L19 | neighbors=[route.ts]
-- "findings_route_valid_verification": "VALID_VERIFICATION" | kind=code-symbol | source=manager/frontend/app/api/findings/route.ts:L20 | neighbors=[route.ts]
-- "fleet_page_agentstatus": "agentStatus()" | kind=code-symbol | source=manager/frontend/app/fleet/page.tsx:L79 | neighbors=[page.tsx]
-- "fleet_page_ago": "ago()" | kind=code-symbol | source=manager/frontend/app/fleet/page.tsx:L86 | neighbors=[page.tsx]
-- "fleet_page_enrollmentrequest": "EnrollmentRequest" | kind=code-symbol | source=manager/frontend/app/fleet/page.tsx:L11 | neighbors=[page.tsx]
-- "fleet_page_fetchjson": "fetchJson()" | kind=code-symbol | source=manager/frontend/app/fleet/page.tsx:L95 | neighbors=[page.tsx]
-- "fleet_page_fleetpage": "FleetPage()" | kind=code-symbol | source=manager/frontend/app/fleet/page.tsx:L106 | neighbors=[page.tsx]
-- "fleet_page_fleetresponse": "FleetResponse" | kind=code-symbol | source=manager/frontend/app/fleet/page.tsx:L23 | neighbors=[page.tsx]
-- "fleet_page_inputstyle": "inputStyle" | kind=code-symbol | source=manager/frontend/app/fleet/page.tsx:L28 | neighbors=[page.tsx]
-- "fleet_page_jobbadge": "jobBadge()" | kind=code-symbol | source=manager/frontend/app/fleet/page.tsx:L67 | neighbors=[page.tsx]
-- "fleet_page_probe": "Probe" | kind=code-symbol | source=manager/frontend/app/fleet/page.tsx:L42 | neighbors=[page.tsx]
-- "fleet_page_probejob": "ProbeJob" | kind=code-symbol | source=manager/frontend/app/fleet/page.tsx:L55 | neighbors=[page.tsx]
-- "fleet_page_statebadge": "stateBadge()" | kind=code-symbol | source=manager/frontend/app/fleet/page.tsx:L30 | neighbors=[page.tsx]
-- "frontend_eslint_config_eslintconfig": "eslintConfig" | kind=code-symbol | source=manager/frontend/eslint.config.mjs:L5 | neighbors=[eslint.config.mjs]
-- "frontend_next_config_app_version": "APP_VERSION" | kind=code-symbol | source=manager/frontend/next.config.mjs:L22 | neighbors=[next.config.mjs]
-- "frontend_next_config_dirname": "__dirname" | kind=code-symbol | source=manager/frontend/next.config.mjs:L5 | neighbors=[next.config.mjs]
-- "frontend_next_config_frontendroot": "frontendRoot" | kind=code-symbol | source=manager/frontend/next.config.mjs:L6 | neighbors=[next.config.mjs]
-- "frontend_next_config_nextconfig": "nextConfig" | kind=code-symbol | source=manager/frontend/next.config.mjs:L36 | neighbors=[next.config.mjs]
-- "frontend_next_config_resolveappversion": "resolveAppVersion()" | kind=code-symbol | source=manager/frontend/next.config.mjs:L12 | neighbors=[next.config.mjs]
-- "frontend_next_config_securityheaders": "securityHeaders" | kind=code-symbol | source=manager/frontend/next.config.mjs:L24 | neighbors=[next.config.mjs]
-- "frontend_postcss_config_config": "config" | kind=code-symbol | source=manager/frontend/postcss.config.mjs:L1 | neighbors=[postcss.config.mjs]
-- "frontend_proxy_config": "config" | kind=code-symbol | source=manager/frontend/proxy.ts:L57 | neighbors=[proxy.ts]
-- "frontend_proxy_public_paths": "PUBLIC_PATHS" | kind=code-symbol | source=manager/frontend/proxy.ts:L5 | neighbors=[proxy.ts]
-- "frontend_proxy_public_prefixes": "PUBLIC_PREFIXES" | kind=code-symbol | source=manager/frontend/proxy.ts:L8 | neighbors=[proxy.ts]
-- "gaps_route_get": "GET()" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/detection-validation/gaps/route.ts:L5 | neighbors=[route.ts]
-- "generate_route_demo_asset": "DEMO_ASSET" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/ai-report/generate/route.ts:L28 | neighbors=[route.ts]
-- "generate_route_demo_engagement": "DEMO_ENGAGEMENT" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/ai-report/generate/route.ts:L7 | neighbors=[route.ts]
-- "generate_route_demo_finding": "DEMO_FINDING" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/ai-report/generate/route.ts:L19 | neighbors=[route.ts]
-- "generate_route_post": "POST()" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/ai-report/generate/route.ts:L5 | neighbors=[route.ts]
-- "graph_analyzer_pathanalyzer_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/graph/analyzer.py:L61 | neighbors=[PathAnalyzer]
-- "graph_analyzer_rationale_1": "PathAnalyzer — attack-path discovery, scoring, chokepoint and blast-radius analy" | kind=entity | source=manager/backend/app/graph/analyzer.py:L1 | neighbors=[analyzer.py]
-- "graph_analyzer_rationale_147": "Return scored attack paths from every source asset to the target.         Each p" | kind=entity | source=manager/backend/app/graph/analyzer.py:L147 | neighbors=[.find_paths_to_target()]
-- "graph_analyzer_rationale_200": "Risk score 0–100 from: sum of exploit CVSS along the path, a penalty for" | kind=entity | source=manager/backend/app/graph/analyzer.py:L200 | neighbors=[.score_path()]
+- "tests_test_branch_registry_test_web_branch_passes_observed_tls_ports": "test_web_branch_passes_observed_tls_ports()" | kind=code-symbol | source=probe/tests/test_branch_registry.py:L197 | neighbors=[test_branch_registry.py, _asset_with()]
+- "tests_test_branch_registry_testregistryconsistency_test_every_branch_is_gateable": ".test_every_branch_is_gateable()" | kind=code-symbol | source=probe/tests/test_branch_registry.py:L35 | neighbors=[A spec the profile tables don't know ab…, TestRegistryConsistency]
+- "tests_test_branch_registry_testregistryconsistency_test_every_component_can_be_merged_into_an_asset": ".test_every_component_can_be_merged_into_an_asset()" | kind=code-symbol | source=probe/tests/test_branch_registry.py:L65 | neighbors=[A fact whose scanner name has no merge …, TestRegistryConsistency]
+- "tests_test_branch_registry_testregistryconsistency_test_every_component_has_a_cache_certainty": ".test_every_component_has_a_cache_certainty()" | kind=code-symbol | source=probe/tests/test_branch_registry.py:L71 | neighbors=[An unlisted scanner falls back to 'unce…, TestRegistryConsistency]
+- "tests_test_branch_registry_testregistryconsistency_test_port_tables_match_gates": ".test_port_tables_match_gates()" | kind=code-symbol | source=probe/tests/test_branch_registry.py:L40 | neighbors=[gate_5 intersects open ports with its o…, TestRegistryConsistency]
+- "tests_test_campaign_progress_terminal_testnormalpipelineunaffected_test_complete_campaign": ".test_complete_campaign()" | kind=code-symbol | source=manager/backend/tests/test_campaign_progress_terminal.py:L75 | neighbors=[TestNormalPipelineUnaffected, _status()]
+- "tests_test_campaign_progress_terminal_testnormalpipelineunaffected_test_complete_with_gaps": ".test_complete_with_gaps()" | kind=code-symbol | source=manager/backend/tests/test_campaign_progress_terminal.py:L79 | neighbors=[TestNormalPipelineUnaffected, _status()]
+- "tests_test_campaign_progress_terminal_testnormalpipelineunaffected_test_defaults_keep_backwards_compatibility": ".test_defaults_keep_backwards_compatibility()" | kind=code-symbol | source=manager/backend/tests/test_campaign_progress_terminal.py:L93 | neighbors=[Callers that don't pass the new inputs …, TestNormalPipelineUnaffected]
+- "tests_test_campaign_progress_terminal_testnormalpipelineunaffected_test_no_jobs_is_pending": ".test_no_jobs_is_pending()" | kind=code-symbol | source=manager/backend/tests/test_campaign_progress_terminal.py:L89 | neighbors=[TestNormalPipelineUnaffected, _status()]
+- "tests_test_campaign_progress_terminal_testnormalpipelineunaffected_test_uncovered_submission_keeps_it_detecting": ".test_uncovered_submission_keeps_it_detecting()" | kind=code-symbol | source=manager/backend/tests/test_campaign_progress_terminal.py:L84 | neighbors=[TestNormalPipelineUnaffected, _status()]
+- "tests_test_campaign_progress_terminal_testterminalwithoutresults_test_a_dead_queue_is_still_reported_as_error_first": ".test_a_dead_queue_is_still_reported_as_error_first()" | kind=code-symbol | source=manager/backend/tests/test_campaign_progress_terminal.py:L62 | neighbors=[TestTerminalWithoutResults, _status()]
+- "tests_test_campaign_progress_terminal_testterminalwithoutresults_test_all_cancelled_campaign_is_terminal": ".test_all_cancelled_campaign_is_terminal()" | kind=code-symbol | source=manager/backend/tests/test_campaign_progress_terminal.py:L39 | neighbors=[TestTerminalWithoutResults, _status()]
+- "tests_test_campaign_progress_terminal_testterminalwithoutresults_test_all_failed_campaign_is_terminal": ".test_all_failed_campaign_is_terminal()" | kind=code-symbol | source=manager/backend/tests/test_campaign_progress_terminal.py:L44 | neighbors=[TestTerminalWithoutResults, _status()]
+- "tests_test_cli_test_cmd_doctor_success_with_online_agent": "test_cmd_doctor_success_with_online_agent()" | kind=code-symbol | source=probe/tests/test_cli.py:L204 | neighbors=[test_cli.py, FakeClient]
+- "tests_test_cli_test_cmd_scan_run_builds_dispatch_payload": "test_cmd_scan_run_builds_dispatch_payload()" | kind=code-symbol | source=probe/tests/test_cli.py:L167 | neighbors=[test_cli.py, FakeClient]
+- "tests_test_cli_test_poll_job_rejects_invalid_timing": "test_poll_job_rejects_invalid_timing()" | kind=code-symbol | source=probe/tests/test_cli.py:L291 | neighbors=[test_cli.py, FakeClient]
+- "tests_test_cli_test_poll_job_returns_terminal_status": "test_poll_job_returns_terminal_status()" | kind=code-symbol | source=probe/tests/test_cli.py:L298 | neighbors=[test_cli.py, FakeClient]
+- "tests_test_cli_test_poll_job_times_out": "test_poll_job_times_out()" | kind=code-symbol | source=probe/tests/test_cli.py:L308 | neighbors=[test_cli.py, FakeClient]
+- "tests_test_customer_access_testrejectscanrequest": "TestRejectScanRequest" | kind=code-symbol | source=manager/backend/tests/test_customer_access.py:L193 | neighbors=[test_customer_access.py, .test_reject_records_reason()]
+- "tests_test_cve_correlation_testingestpagination_pages": "._pages()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L266 | neighbors=[TestIngestPagination, .test_resume()]
+- "tests_test_cve_correlation_testingestpagination_test_resume": ".test_resume()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L274 | neighbors=[TestIngestPagination, ._pages()]
+- "tests_test_db_scanner_run": "_run()" | kind=code-symbol | source=probe/tests/test_db_scanner.py:L33 | neighbors=[test_db_scanner.py, _probe()]
+- "tests_test_db_scanner_testmysqlxvsoracle_test_oracle_rejects_garbage_with_type_byte": ".test_oracle_rejects_garbage_with_type_byte()" | kind=code-symbol | source=probe/tests/test_db_scanner.py:L73 | neighbors=[TestMysqlxVsOracle, _probe()]
+- "tests_test_detection_core_testaggregate_test_dedup_within_run": ".test_dedup_within_run()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L1143 | neighbors=[TestAggregate, _finding()]
+- "tests_test_detection_core_testaggregate_test_multi_run_intermittent": ".test_multi_run_intermittent()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L1137 | neighbors=[TestAggregate, _finding()]
+- "tests_test_detection_core_testaggregate_test_multi_run_stable": ".test_multi_run_stable()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L1130 | neighbors=[TestAggregate, _finding()]
+- "tests_test_detection_core_testaggregate_test_single_run": ".test_single_run()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L1123 | neighbors=[TestAggregate, _finding()]
+- "tests_test_detection_core_testasset_test_add_fact_updates_first_last_seen": ".test_add_fact_updates_first_last_seen()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L135 | neighbors=[TestAsset, _fact()]
+- "tests_test_detection_core_testasset_test_as_of_cutoff": ".test_as_of_cutoff()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L156 | neighbors=[TestAsset, _fact()]
+- "tests_test_detection_core_testasset_test_facts_by_scanner": ".test_facts_by_scanner()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L142 | neighbors=[TestAsset, _fact()]
+- "tests_test_detection_core_testasset_test_open_ports": ".test_open_ports()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L149 | neighbors=[TestAsset, _fact()]
+- "tests_test_detection_core_testclassifytier_test_authoritative_tier4": ".test_authoritative_tier4()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L665 | neighbors=[TestClassifyTier, _finding()]
+- "tests_test_detection_core_testclassifytier_test_multi_signal_tier2": ".test_multi_signal_tier2()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L674 | neighbors=[TestClassifyTier, _finding()]
+- "tests_test_detection_core_testclassifytier_test_protocol_scanner_tier3": ".test_protocol_scanner_tier3()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L669 | neighbors=[TestClassifyTier, _finding()]
+- "tests_test_detection_core_testclassifytier_test_single_banner_tier1": ".test_single_banner_tier1()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L679 | neighbors=[TestClassifyTier, _finding()]
+- "tests_test_detection_core_testcomputepriority_test_cvss_critical": ".test_cvss_critical()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L825 | neighbors=[TestComputePriority, _finding()]
+- "tests_test_detection_core_testcomputepriority_test_cvss_high": ".test_cvss_high()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L831 | neighbors=[TestComputePriority, _finding()]
+- "tests_test_detection_core_testcomputepriority_test_cvss_low": ".test_cvss_low()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L843 | neighbors=[TestComputePriority, _finding()]
+- "tests_test_detection_core_testcomputepriority_test_cvss_medium": ".test_cvss_medium()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L837 | neighbors=[TestComputePriority, _finding()]
+- "tests_test_detection_core_testcomputepriority_test_elevated_epss_high": ".test_elevated_epss_high()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L818 | neighbors=[TestComputePriority, _finding()]
 
 ## Instructions
 

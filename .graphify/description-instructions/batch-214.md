@@ -1,4 +1,4 @@
-# Node Description Batch 215 of 236
+# Node Description Batch 215 of 330
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -26,46 +26,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_probe_simple_approve_rationale_12": "db.execute(...).scalars().all() → the given agent-name list." | kind=entity | source=manager/backend/tests/test_probe_simple_approve.py:L12 | neighbors=[_db_names()] | lang=en
-- "tests_test_probe_simple_approve_testsimpleapproveinput_test_defaults_are_all_optional": ".test_defaults_are_all_optional()" | kind=code-symbol | source=manager/backend/tests/test_probe_simple_approve.py:L34 | neighbors=[TestSimpleApproveInput] | lang=en
-- "tests_test_probe_simple_approve_testsimpleapproveinput_test_overrides_accepted": ".test_overrides_accepted()" | kind=code-symbol | source=manager/backend/tests/test_probe_simple_approve.py:L41 | neighbors=[TestSimpleApproveInput] | lang=en
-- "tests_test_remediation_generator_rationale_1": "test_remediation_generator.py — Section 3: the AI remediation-plan helpers.  Pur" | kind=entity | source=manager/backend/tests/test_remediation_generator.py:L1 | neighbors=[test_remediation_generator.py] | lang=en
-- "tests_test_remediation_generator_testnormalizeaiplan_test_missing_steps_yields_empty": ".test_missing_steps_yields_empty()" | kind=code-symbol | source=manager/backend/tests/test_remediation_generator.py:L105 | neighbors=[TestNormalizeAiPlan] | lang=en
-- "tests_test_remediation_generator_testnormalizeaiplan_test_non_dict_step_is_skipped_and_missing_title_defaults": ".test_non_dict_step_is_skipped_and_missing_title_defaults()" | kind=code-symbol | source=manager/backend/tests/test_remediation_generator.py:L109 | neighbors=[TestNormalizeAiPlan] | lang=en
-- "tests_test_remediation_generator_testparsejsonresponse_test_empty_returns_empty": ".test_empty_returns_empty()" | kind=code-symbol | source=manager/backend/tests/test_remediation_generator.py:L51 | neighbors=[TestParseJsonResponse] | lang=en
-- "tests_test_remediation_generator_testparsejsonresponse_test_junk_returns_empty": ".test_junk_returns_empty()" | kind=code-symbol | source=manager/backend/tests/test_remediation_generator.py:L45 | neighbors=[TestParseJsonResponse] | lang=en
-- "tests_test_remediation_generator_testparsejsonresponse_test_non_object_json_returns_empty": ".test_non_object_json_returns_empty()" | kind=code-symbol | source=manager/backend/tests/test_remediation_generator.py:L48 | neighbors=[TestParseJsonResponse] | lang=en
-- "tests_test_remediation_generator_testparsejsonresponse_test_plain_object": ".test_plain_object()" | kind=code-symbol | source=manager/backend/tests/test_remediation_generator.py:L33 | neighbors=[TestParseJsonResponse] | lang=en
-- "tests_test_remediation_generator_testparsejsonresponse_test_recovers_from_preamble": ".test_recovers_from_preamble()" | kind=code-symbol | source=manager/backend/tests/test_remediation_generator.py:L42 | neighbors=[TestParseJsonResponse] | lang=en
-- "tests_test_remediation_generator_testparsejsonresponse_test_strips_bare_fence": ".test_strips_bare_fence()" | kind=code-symbol | source=manager/backend/tests/test_remediation_generator.py:L39 | neighbors=[TestParseJsonResponse] | lang=en
-- "tests_test_remediation_generator_testparsejsonresponse_test_strips_json_fence": ".test_strips_json_fence()" | kind=code-symbol | source=manager/backend/tests/test_remediation_generator.py:L36 | neighbors=[TestParseJsonResponse] | lang=en
-- "tests_test_remediation_generator_testsafecommands_test_drops_destructive_keeps_safe": ".test_drops_destructive_keeps_safe()" | kind=code-symbol | source=manager/backend/tests/test_remediation_generator.py:L56 | neighbors=[TestSafeCommands] | lang=en
-- "tests_test_remediation_generator_testsafecommands_test_null_command_yields_nothing": ".test_null_command_yields_nothing()" | kind=code-symbol | source=manager/backend/tests/test_remediation_generator.py:L63 | neighbors=[TestSafeCommands] | lang=en
-- "tests_test_remediation_kb_rationale_1": "test_remediation_kb.py — the pure deterministic remediation knowledge base." | kind=entity | source=manager/backend/tests/test_remediation_kb.py:L1 | neighbors=[test_remediation_kb.py] | lang=en
-- "tests_test_remediation_kb_testrecipeshape_test_every_recipe_has_required_fields": ".test_every_recipe_has_required_fields()" | kind=code-symbol | source=manager/backend/tests/test_remediation_kb.py:L52 | neighbors=[TestRecipeShape] | lang=en
-- "tests_test_remediation_kb_testrecipeshape_test_every_recipe_step_has_all_os_keys": ".test_every_recipe_step_has_all_os_keys()" | kind=code-symbol | source=manager/backend/tests/test_remediation_kb.py:L44 | neighbors=[TestRecipeShape] | lang=en
-- "tests_test_remediation_routes_fakedb_flush": ".flush()" | kind=code-symbol | source=manager/backend/tests/test_remediation_routes.py:L75 | neighbors=[_FakeDB] | lang=en
-- "tests_test_remediation_routes_fakedb_init": ".__init__()" | kind=code-symbol | source=manager/backend/tests/test_remediation_routes.py:L66 | neighbors=[_FakeDB] | lang=en
-- "tests_test_remediation_routes_genai_generate_remediation_plan": ".generate_remediation_plan()" | kind=code-symbol | source=manager/backend/tests/test_remediation_routes.py:L88 | neighbors=[_GenAI] | lang=en
-- "tests_test_remediation_routes_genai_init": ".__init__()" | kind=code-symbol | source=manager/backend/tests/test_remediation_routes.py:L85 | neighbors=[_GenAI] | lang=en
-- "tests_test_remediation_routes_genunavailable_init": ".__init__()" | kind=code-symbol | source=manager/backend/tests/test_remediation_routes.py:L80 | neighbors=[_GenUnavailable] | lang=en
-- "tests_test_remediation_routes_rationale_1": "test_remediation_routes.py — Section 5: operator remediation endpoints + wiring." | kind=entity | source=manager/backend/tests/test_remediation_routes.py:L1 | neighbors=[test_remediation_routes.py] | lang=en
-- "tests_test_remediation_routes_rationale_182": "Verify the ON CONFLICT logic at the SQL level (no DB needed)." | kind=entity | source=manager/backend/tests/test_remediation_routes.py:L182 | neighbors=[TestUpsertStatement] | lang=en
-- "tests_test_remediation_routes_rationale_53": "A result whose .one() yields the RETURNING row (upsert path)." | kind=entity | source=manager/backend/tests/test_remediation_routes.py:L53 | neighbors=[_one_result()] | lang=en
-- "tests_test_remediation_routes_rationale_65": "execute() returns the next queued result object; flush is counted." | kind=entity | source=manager/backend/tests/test_remediation_routes.py:L65 | neighbors=[_FakeDB] | lang=en
-- "tests_test_remediation_routes_test_remediation_router_is_mounted": "test_remediation_router_is_mounted()" | kind=code-symbol | source=manager/backend/tests/test_remediation_routes.py:L100 | neighbors=[test_remediation_routes.py] | lang=en
-- "tests_test_remediation_upsert_integration_rationale_1": "test_remediation_upsert_integration.py — real-Postgres verification of the remed" | kind=entity | source=manager/backend/tests/test_remediation_upsert_integration.py:L1 | neighbors=[test_remediation_upsert_integration.py] | lang=en
-- "tests_test_resolution_coverage_test_coverage_counts_only_completed_scanner_observations": "test_coverage_counts_only_completed_scanner_observations()" | kind=code-symbol | source=manager/backend/tests/test_resolution_coverage.py:L12 | neighbors=[test_resolution_coverage.py] | lang=en
-- "tests_test_resolution_coverage_test_coverage_empty_when_no_scanner_runs": "test_coverage_empty_when_no_scanner_runs()" | kind=code-symbol | source=manager/backend/tests/test_resolution_coverage.py:L27 | neighbors=[test_resolution_coverage.py] | lang=en
-- "tests_test_resolution_coverage_test_host_of_strips_single_port": "test_host_of_strips_single_port()" | kind=code-symbol | source=manager/backend/tests/test_resolution_coverage.py:L6 | neighbors=[test_resolution_coverage.py] | lang=en
-- "tests_test_resolution_decision_test_db_change_blocks_resolution": "test_db_change_blocks_resolution()" | kind=code-symbol | source=manager/backend/tests/test_resolution_decision.py:L22 | neighbors=[test_resolution_decision.py] | lang=en
-- "tests_test_resolution_decision_test_high_needs_two_covered_clean_runs": "test_high_needs_two_covered_clean_runs()" | kind=code-symbol | source=manager/backend/tests/test_resolution_decision.py:L36 | neighbors=[test_resolution_decision.py] | lang=en
-- "tests_test_resolution_decision_test_medium_resolves_on_first_covered_clean_run": "test_medium_resolves_on_first_covered_clean_run()" | kind=code-symbol | source=manager/backend/tests/test_resolution_decision.py:L29 | neighbors=[test_resolution_decision.py] | lang=en
-- "tests_test_resolution_decision_test_not_covered_is_skipped_and_counter_untouched": "test_not_covered_is_skipped_and_counter_untouched()" | kind=code-symbol | source=manager/backend/tests/test_resolution_decision.py:L15 | neighbors=[test_resolution_decision.py] | lang=en
-- "tests_test_resolution_decision_test_threshold_is_stricter_for_critical_and_high": "test_threshold_is_stricter_for_critical_and_high()" | kind=code-symbol | source=manager/backend/tests/test_resolution_decision.py:L7 | neighbors=[test_resolution_decision.py] | lang=en
-- "tests_test_resolve_rationale_1": "test_resolve.py — resolve() address-family selection (task A9)." | kind=entity | source=probe/tests/test_resolve.py:L1 | neighbors=[test_resolve.py] | lang=pt
-- "tests_test_resolve_rationale_12": "Fake getaddrinfo results: (family, socktype, proto, canonname, sockaddr)." | kind=entity | source=probe/tests/test_resolve.py:L12 | neighbors=[_infos()] | lang=en
-- "tests_test_resolve_testresolvefamily_test_unresolvable_raises": ".test_unresolvable_raises()" | kind=code-symbol | source=probe/tests/test_resolve.py:L40 | neighbors=[TestResolveFamily] | lang=en
+- "main_scripts_ja4x_rationale_118": "Return a threat-intel label if this JA4X is a known-suspicious fingerprint," | kind=entity | source=probe/main_scripts/ja4x.py:L118 | neighbors=[match_suspicious()] | lang=en
+- "main_scripts_ja4x_rationale_40": "DER-encode an OID's content octets and hex-encode them.      '2.5.4.6' -> '55040" | kind=entity | source=probe/main_scripts/ja4x.py:L40 | neighbors=[oid_to_hex()] | lang=en
+- "main_scripts_ja4x_rationale_77": "Pure JA4X from the three ordered OID lists (dotted-decimal strings)." | kind=entity | source=probe/main_scripts/ja4x.py:L77 | neighbors=[ja4x_from_oid_lists()] | lang=en
+- "main_scripts_ja4x_rationale_83": "JA4X from a `cryptography` x509 Certificate object. None if unusable." | kind=entity | source=probe/main_scripts/ja4x.py:L83 | neighbors=[ja4x_from_cert()] | lang=en
+- "main_scripts_ja4x_rationale_94": "JA4X from raw DER bytes. `cryptography` is imported lazily so this module     st" | kind=entity | source=probe/main_scripts/ja4x.py:L94 | neighbors=[ja4x_from_der()] | lang=en
+- "main_scripts_ldap_scanner_ldapscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/ldap_scanner.py:L50 | neighbors=[LDAPScanner] | lang=en
+- "main_scripts_ldap_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/ldap_scanner.py:L161 | neighbors=[ldap_scanner.py] | lang=en
+- "main_scripts_ldap_scanner_rationale_1": "ldap_scanner.py — LDAP anonymous-bind enumeration (VA checklist: anonymous direc" | kind=entity | source=probe/main_scripts/ldap_scanner.py:L1 | neighbors=[ldap_scanner.py] | lang=en
+- "main_scripts_ldap_scanner_rationale_55": "Blocking: anonymous bind + RootDSE read + bounded tree-read probe.         Retur" | kind=entity | source=probe/main_scripts/ldap_scanner.py:L55 | neighbors=[._probe()] | lang=en
+- "main_scripts_mass_scan_connectsweep_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/mass_scan.py:L209 | neighbors=[_ConnectSweep] | lang=en
+- "main_scripts_mass_scan_main": "main()" | kind=code-symbol | source=probe/main_scripts/mass_scan.py:L341 | neighbors=[mass_scan.py] | lang=en
+- "main_scripts_mass_scan_rationale_1": "mass_scan.py — fast large-scale TCP port discovery.  WHY THIS EXISTS (modern con" | kind=entity | source=probe/main_scripts/mass_scan.py:L1 | neighbors=[mass_scan.py] | lang=en
+- "main_scripts_mass_scan_rationale_148": "Parse masscan -oJ output robustly: handles trailing comma, 'finished'     sentin" | kind=entity | source=probe/main_scripts/mass_scan.py:L148 | neighbors=[_parse_masscan_json()] | lang=en
+- "main_scripts_mass_scan_rationale_243": "target_specs: raw CIDRs/ranges/hosts (NOT pre-expanded) — masscan wants them." | kind=entity | source=probe/main_scripts/mass_scan.py:L243 | neighbors=[run_mass_scan()] | lang=en
+- "main_scripts_mass_scan_rationale_308": "Excluded networks -> masscan --exclude specs, so they get ZERO packets." | kind=entity | source=probe/main_scripts/mass_scan.py:L308 | neighbors=[_masscan_excludes()] | lang=en
+- "main_scripts_mass_scan_rationale_313": "A CIDR spec is in scope only if it is fully contained in an allowed network." | kind=entity | source=probe/main_scripts/mass_scan.py:L313 | neighbors=[_spec_in_scope()] | lang=en
+- "main_scripts_mass_scan_rationale_66": "Run masscan over the given target specs and return its parsed JSON records." | kind=entity | source=probe/main_scripts/mass_scan.py:L66 | neighbors=[_run_masscan()] | lang=en
+- "main_scripts_mcp_ai_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/mcp_ai_scanner.py:L323 | neighbors=[mcp_ai_scanner.py] | lang=en
+- "main_scripts_mcp_ai_scanner_mcpaiscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/mcp_ai_scanner.py:L202 | neighbors=[MCPAIScanner] | lang=en
+- "main_scripts_mcp_ai_scanner_noredirect_redirect_request": ".redirect_request()" | kind=code-symbol | source=probe/main_scripts/mcp_ai_scanner.py:L111 | neighbors=[_NoRedirect] | lang=en
+- "main_scripts_mcp_ai_scanner_rationale_1": "mcp_ai_scanner.py — discover exposed AI inference servers and MCP endpoints.  WH" | kind=entity | source=probe/main_scripts/mcp_ai_scanner.py:L1 | neighbors=[mcp_ai_scanner.py] | lang=en
+- "main_scripts_mcp_ai_scanner_rationale_152": "Server/body fingerprint match against known non-AI squatters, or None." | kind=entity | source=probe/main_scripts/mcp_ai_scanner.py:L152 | neighbors=[_known_false_positive()] | lang=en
+- "main_scripts_mcp_ai_scanner_rationale_153": "Server/body fingerprint match against known non-AI squatters, or None." | kind=entity | source=probe/main_scripts/mcp_ai_scanner.py:L153 | neighbors=[_known_false_positive()] | lang=en
+- "main_scripts_mcp_ai_scanner_rationale_161": "The strongest possible evidence for a real MCP server: a WWW-Authenticate     he" | kind=entity | source=probe/main_scripts/mcp_ai_scanner.py:L161 | neighbors=[_mcp_oauth_signal()] | lang=en
+- "main_scripts_mcp_ai_scanner_rationale_162": "The strongest possible evidence for a real MCP server: a WWW-Authenticate     he" | kind=entity | source=probe/main_scripts/mcp_ai_scanner.py:L162 | neighbors=[_mcp_oauth_signal()] | lang=en
+- "main_scripts_mcp_ai_scanner_rationale_174": "JSON-typed body that actually talks about auth, not just any error text." | kind=entity | source=probe/main_scripts/mcp_ai_scanner.py:L174 | neighbors=[_auth_shaped_json_body()] | lang=en
+- "main_scripts_mcp_ai_scanner_rationale_175": "JSON-typed body that actually talks about auth, not just any error text." | kind=entity | source=probe/main_scripts/mcp_ai_scanner.py:L175 | neighbors=[_auth_shaped_json_body()] | lang=en
+- "main_scripts_mcp_ai_scanner_request": "_request()" | kind=code-symbol | source=probe/main_scripts/mcp_ai_scanner.py:L128 | neighbors=[mcp_ai_scanner.py] | lang=en
+- "main_scripts_mobile_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/mobile_scanner.py:L340 | neighbors=[mobile_scanner.py] | lang=en
+- "main_scripts_mobile_scanner_rationale_1": "mobile_scanner.py — mobile device exposure detection.  Covers playbook 13 (Mobil" | kind=entity | source=probe/main_scripts/mobile_scanner.py:L1 | neighbors=[mobile_scanner.py] | lang=en
+- "main_scripts_mobile_scanner_rationale_152": "Attempt TCP connect to lockdownd port 62078.     Port open = iOS device present" | kind=entity | source=probe/main_scripts/mobile_scanner.py:L152 | neighbors=[_probe_lockdownd()] | lang=en
+- "main_scripts_mobile_scanner_rationale_188": "Build a DNS PTR query in mDNS wire format with QU bit set." | kind=entity | source=probe/main_scripts/mobile_scanner.py:L188 | neighbors=[_build_mdns_query()] | lang=en
+- "main_scripts_mobile_scanner_rationale_199": "Extract PTR target names (service instance names) from mDNS reply." | kind=entity | source=probe/main_scripts/mobile_scanner.py:L199 | neighbors=[_parse_mdns_ptr_names()] | lang=en
+- "main_scripts_mobile_scanner_rationale_259": "Send one mDNS PTR query to target:5353 and return instance names." | kind=entity | source=probe/main_scripts/mobile_scanner.py:L259 | neighbors=[_probe_mdns_mobile_sync()] | lang=en
+- "main_scripts_mobile_scanner_rationale_279": "Detects mobile device exposure on the network:     ADB (Android) | lockdownd (iO" | kind=entity | source=probe/main_scripts/mobile_scanner.py:L279 | neighbors=[MobileScanner] | lang=en
+- "main_scripts_mobile_scanner_rationale_60": "Build an ADB A_CNXN (CONNECT) message — the standard handshake initiator." | kind=entity | source=probe/main_scripts/mobile_scanner.py:L60 | neighbors=[_build_adb_cnxn()] | lang=en
+- "main_scripts_mobile_scanner_rationale_71": "Parse a 24-byte ADB message header.  Returns parsed fields or None." | kind=entity | source=probe/main_scripts/mobile_scanner.py:L71 | neighbors=[_parse_adb_header()] | lang=pt
+- "main_scripts_mobile_scanner_rationale_96": "Send ADB CNXN and read the device's CNXN reply.     Returns a dict with connecti" | kind=entity | source=probe/main_scripts/mobile_scanner.py:L96 | neighbors=[_probe_adb()] | lang=en
+- "main_scripts_msrpc_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/msrpc_scanner.py:L172 | neighbors=[msrpc_scanner.py] | lang=en
+- "main_scripts_msrpc_scanner_msrpcscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/msrpc_scanner.py:L85 | neighbors=[MSRPCScanner] | lang=en
 
 ## Instructions
 

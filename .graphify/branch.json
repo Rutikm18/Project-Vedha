@@ -1,16 +1,16 @@
 {
   "schemaVersion": 1,
-  "branchName": "feat/nvd-vuln-detection-and-ingest-hardening",
+  "branchName": "main",
   "worktreePath": "/Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha",
-  "upstream": null,
-  "mergeBase": null,
-  "firstSeenHead": "0236a6011fa2a49e65e7f5cad6b04f643f83c6f7",
-  "lastSeenHead": "0236a6011fa2a49e65e7f5cad6b04f643f83c6f7",
-  "lastAnalyzedHead": "0236a6011fa2a49e65e7f5cad6b04f643f83c6f7",
+  "upstream": "origin/main",
+  "mergeBase": "8f6bf49a772d45589953b440df3b81342f019095",
+  "firstSeenHead": "8f6bf49a772d45589953b440df3b81342f019095",
+  "lastSeenHead": "8f6bf49a772d45589953b440df3b81342f019095",
+  "lastAnalyzedHead": "8f6bf49a772d45589953b440df3b81342f019095",
   "stale": false,
   "staleReason": null,
   "staleSince": null,
   "lifecycleEvent": null,
-  "createdAt": "2026-08-26T17:45:51.590Z",
-  "updatedAt": "2026-08-26T20:50:57.423Z"
+  "createdAt": "2026-09-04T13:03:50.432Z",
+  "updatedAt": "2026-09-04T13:03:50.432Z"
 }

@@ -39,11 +39,15 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from agent.transport import (
+    DEVICE_REFRESH_OK,
+    DEVICE_REFRESH_REJECTED,
+    DEVICE_REFRESH_UNAVAILABLE,
     HEARTBEAT_LEASE_REVOKED,
     HEARTBEAT_OK,
     DeviceAlreadyEnrolledError,
     Transport,
     TransportError,
+    manager_fingerprint,
 )
 
 VERSION = "2.0.0"
@@ -1339,6 +1343,10 @@ def _obtain_identity(
     # credentials on the probe.
     if transport.is_authenticated():
         _refresh_tries = 0
+        # Transient-failure budget, kept separate from _refresh_tries: a manager
+        # that cannot ANSWER is a different situation from one that answers "no".
+        _unavail_tries = 0
+        _UNAVAIL_LIMIT = _bounded_env_int("PROBE_CREDENTIAL_RETRY_LIMIT", 5, 1, 50)
         while True:
             try:
                 state = transport.load_state()
@@ -1362,11 +1370,56 @@ def _obtain_identity(
                 _dbg(f"refresh_registration → {refreshed!r} (agent_id={transport.agent_id})")
             except TransportError as exc:
                 _dbg(f"refresh_registration raised: {exc}")
-                if transport.refresh_device_access(signing_sk):
+                outcome = transport.refresh_device_access_ex(signing_sk)
+                if outcome == DEVICE_REFRESH_OK:
                     say("Refreshed short-lived device access token.", 1)
                     continue
+
+                # WHOSE credential is this? Device credentials are issued BY a
+                # manager and are meaningless to any other one, so before calling
+                # anything a revocation we check we are even talking to the
+                # issuer. Pointing a probe at a second manager used to print
+                # "revoked ... stopping for administrator review" and exit — an
+                # alarming, wrong diagnosis for an ordinary re-point.
+                issuer = state.get("manager_fingerprint")
+                current = manager_fingerprint(transport._base_url)
+                if issuer and issuer != current:
+                    say(f"These credentials were issued by {issuer}, but this "
+                        f"probe is pointed at {current}.", 1)
+                    say("Re-enrolling with the new manager (the old credential "
+                        "is untouched and still valid there).", 1)
+                    transport.clear_state()
+                    break
+
+                if outcome == DEVICE_REFRESH_UNAVAILABLE:
+                    # We never got a VERDICT — a network failure, a 5xx, or the
+                    # manager's 503 "replay protection unavailable". Treating
+                    # that as revocation meant a brief manager-side outage could
+                    # permanently stop the whole fleet.
+                    #
+                    # Retry, then give up WITHOUT clearing state: if the manager
+                    # cannot answer, re-enrolling cannot work either, and
+                    # discarding a valid device credential during an outage
+                    # turns a five-minute blip into a manual re-enrollment.
+                    # Exit 2 (not 1) so callers can tell "unreachable" from
+                    # "revoked".
+                    _unavail_tries += 1
+                    if _unavail_tries >= _UNAVAIL_LIMIT:
+                        say(f"Manager could not answer the credential refresh after "
+                            f"{_unavail_tries} attempts.")
+                        say("This is NOT a revocation — the credential is kept. "
+                            "Check the manager, then re-run.", 1)
+                        raise SystemExit(2)
+                    say(f"Credential refresh unavailable (temporary) — retrying "
+                        f"({_unavail_tries}/{_UNAVAIL_LIMIT}).", 1)
+                    time.sleep(min(30, 5 * _unavail_tries))
+                    continue
+
                 if state.get("device_refresh_secret"):
-                    say("Device credential was revoked, expired, or disabled; stopping for administrator review.")
+                    # Same manager, authoritative rejection: genuinely revoked,
+                    # disabled, or superseded by a newer credential generation.
+                    say("Device credential was revoked, expired, or disabled by "
+                        f"{current}; stopping for administrator review.")
                     raise SystemExit(1)
                 say("Cached agent token was rejected — identity requires re-enrollment.")
                 transport.clear_state()
@@ -1398,6 +1451,11 @@ def _obtain_identity(
 
     reg_fail_streak = 0
     REG_FAIL_LIMIT = _bounded_env_int("PROBE_REGISTER_NET_FAIL_LIMIT", 12, 3, 100)
+    # A configured PAT/token (typically from probe.env) that the manager rejects
+    # should not dead-end when operator email/password are ALSO available: drop
+    # the dead token and retry via login. Guarded to run once so a genuinely bad
+    # password cannot loop.
+    pat_fallback_done = False
     while True:
         try:
             if not operator_token:
@@ -1452,11 +1510,25 @@ def _obtain_identity(
 
         except TransportError:
             # A stale/invalid PAT — or a Manager that was re-created — must not
-            # dead-end the probe. When the only credential was a token (no
-            # operator login, no bootstrap key), fall back to DEVICE ENROLLMENT:
-            # the probe's own keypair is its id, and the Manager issues a token
-            # (auto-approved when PROBE_AUTO_ENROLL is on, else a pairing code).
-            # This is what makes a bare `install.sh <manager-ip>` self-heal.
+            # dead-end the probe. Prefer self-healing, in this order:
+            #
+            #   1. A configured PAT/OPERATOR_TOKEN was rejected but we ALSO have
+            #      operator email/password: drop the dead token and retry via
+            #      login. This is the common "stale probe.env PROBE_PAT" case —
+            #      a token minted against a manager that was since recreated,
+            #      expired, or revoked. Without this the probe stopped with a
+            #      misleading "check credentials" even though the password worked.
+            if operator_token and email and password and not pat_fallback_done:
+                pat_fallback_done = True
+                say("Configured PROBE_PAT/OPERATOR_TOKEN was rejected — "
+                    "falling back to operator sign-in.")
+                operator_token = ""
+                continue
+            #   2. A token was the ONLY credential (no login, no bootstrap key):
+            #      fall back to DEVICE ENROLLMENT — the probe's own keypair is its
+            #      id, and the Manager issues a token (auto-approved when
+            #      PROBE_AUTO_ENROLL is on, else a pairing code). This is what
+            #      makes a bare `install.sh <manager-ip>` self-heal.
             if operator_token and not (email and password) and not BOOTSTRAP_KEY:
                 say("Saved credential rejected — falling back to device enrollment…")
                 data = _enroll_device(
@@ -1468,7 +1540,16 @@ def _obtain_identity(
                 )
                 return data["agent_id"], data["access_token"], True, \
                        identity_sk, identity_pk, public_key_b64
-            say("Manager rejected sign-in — check credentials.")
+            #   3. Nothing else to try — say WHICH credential failed so the fix is
+            #      obvious (re-mint the PAT vs check the password), not a vague
+            #      "check credentials".
+            if operator_token:
+                say("Manager rejected the configured PROBE_PAT/OPERATOR_TOKEN — it is "
+                    "expired, revoked, or was minted against a different manager.")
+                say("Re-mint one with `make probe-pat`, or clear PROBE_PAT to use "
+                    "OPERATOR_EMAIL/OPERATOR_PASSWORD.", 1)
+            else:
+                say("Manager rejected sign-in — check OPERATOR_EMAIL / OPERATOR_PASSWORD.")
             raise SystemExit(1)
         except SystemExit:
             raise

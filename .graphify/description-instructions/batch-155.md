@@ -1,4 +1,4 @@
-# Node Description Batch 156 of 236
+# Node Description Batch 156 of 330
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,60 +12,51 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
-For an entity node (any other kind — e.g. a person, place, event, object),
-describe what the entity is and its role, grounded in its type, its
-relations (neighbors) and the provided citations/evidence — e.g.
-"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
-Ground entity descriptions in the citations/evidence when present; do not
-speculate beyond the context, so a node with no supporting context may be
-left out of the reply.
-LANGUAGE: each entry has a `lang=` marker giving the language of its source.
-Write that entry's description in EXACTLY that language. Do not translate to
-a single common language — match each node's source language individually.
+Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "main_scripts_db_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/db_scanner.py:L287 | neighbors=[db_scanner.py] | lang=en
-- "main_scripts_db_scanner_probe_mongodb": "_probe_mongodb()" | kind=code-symbol | source=probe/main_scripts/db_scanner.py:L131 | neighbors=[db_scanner.py] | lang=en
-- "main_scripts_db_scanner_probe_mssql": "_probe_mssql()" | kind=code-symbol | source=probe/main_scripts/db_scanner.py:L82 | neighbors=[db_scanner.py] | lang=en
-- "main_scripts_db_scanner_probe_mysql": "_probe_mysql()" | kind=code-symbol | source=probe/main_scripts/db_scanner.py:L47 | neighbors=[db_scanner.py] | lang=en
-- "main_scripts_db_scanner_probe_mysqlx": "_probe_mysqlx()" | kind=code-symbol | source=probe/main_scripts/db_scanner.py:L166 | neighbors=[db_scanner.py] | lang=en
-- "main_scripts_db_scanner_probe_oracle": "_probe_oracle()" | kind=code-symbol | source=probe/main_scripts/db_scanner.py:L195 | neighbors=[db_scanner.py] | lang=en
-- "main_scripts_db_scanner_probe_postgres": "_probe_postgres()" | kind=code-symbol | source=probe/main_scripts/db_scanner.py:L67 | neighbors=[db_scanner.py] | lang=en
-- "main_scripts_db_scanner_rationale_1": "db_scanner.py — fingerprint database services.  WHY: databases are everywhere on" | kind=entity | source=probe/main_scripts/db_scanner.py:L1 | neighbors=[db_scanner.py] | lang=en
-- "main_scripts_db_scanner_rationale_102": "Classify a Redis INFO reply. `unauthenticated_read` is True only when we     act" | kind=entity | source=probe/main_scripts/db_scanner.py:L102 | neighbors=[interpret_redis_info()] | lang=en
-- "main_scripts_delta_scanner_rationale_1": "delta_scanner.py — scan-state comparison and continuous attack-surface monitorin" | kind=entity | source=probe/main_scripts/delta_scanner.py:L1 | neighbors=[delta_scanner.py] | lang=en
-- "main_scripts_delta_scanner_rationale_122": "Best-effort service name from data dict or scanner name." | kind=entity | source=probe/main_scripts/delta_scanner.py:L122 | neighbors=[_extract_service()] | lang=en
-- "main_scripts_delta_scanner_rationale_139": "Best-effort version string." | kind=entity | source=probe/main_scripts/delta_scanner.py:L139 | neighbors=[_extract_version()] | lang=en
-- "main_scripts_delta_scanner_rationale_158": "Load JSONL scan snapshots and compute security-relevant diffs." | kind=entity | source=probe/main_scripts/delta_scanner.py:L158 | neighbors=[DeltaEngine] | lang=en
-- "main_scripts_delta_scanner_rationale_161": "Parse a JSONL file of ScanResult records and return a SnapshotIndex.         Lin" | kind=entity | source=probe/main_scripts/delta_scanner.py:L161 | neighbors=[.load_jsonl()] | lang=en
-- "main_scripts_delta_scanner_rationale_206": "Compute security-relevant deltas between baseline and current snapshots." | kind=entity | source=probe/main_scripts/delta_scanner.py:L206 | neighbors=[.diff()] | lang=en
-- "main_scripts_delta_scanner_rationale_297": "Heuristic priority for a newly-detected service." | kind=entity | source=probe/main_scripts/delta_scanner.py:L297 | neighbors=[_new_service_severity()] | lang=en
-- "main_scripts_delta_scanner_rationale_309": "True if version changed in a security-relevant way (not just whitespace)." | kind=entity | source=probe/main_scripts/delta_scanner.py:L309 | neighbors=[_significant_version_change()] | lang=en
-- "main_scripts_delta_scanner_rationale_54": "Normalised representation of one ScanResult JSONL line." | kind=entity | source=probe/main_scripts/delta_scanner.py:L54 | neighbors=[ScanRecord] | lang=en
-- "main_scripts_delta_scanner_rationale_70": "One security-relevant change between two scans." | kind=entity | source=probe/main_scripts/delta_scanner.py:L70 | neighbors=[Delta] | lang=en
-- "main_scripts_delta_scanner_rationale_92": "Derive a stable host identity from a raw scan record in priority order:       1." | kind=entity | source=probe/main_scripts/delta_scanner.py:L92 | neighbors=[_stable_host_id()] | lang=en
-- "main_scripts_device_classifier_rationale_1": "device_classifier.py — infer a device's ROLE from collection-layer facts.  This" | kind=entity | source=probe/main_scripts/device_classifier.py:L1 | neighbors=[device_classifier.py] | lang=en
-- "main_scripts_device_classifier_rationale_102": "Fuse OS family + open ports + service products into a device-role guess.      Re" | kind=entity | source=probe/main_scripts/device_classifier.py:L102 | neighbors=[classify_device()] | lang=pt
-- "main_scripts_device_classifier_rationale_182": "Convenience adapter: extract classifier inputs from a list of ScanResult     obj" | kind=entity | source=probe/main_scripts/device_classifier.py:L182 | neighbors=[classify_from_results()] | lang=en
-- "main_scripts_device_classifier_rationale_202": "Convenience adapter: extract classifier inputs from a list of ScanResult     obj" | kind=entity | source=probe/main_scripts/device_classifier.py:L202 | neighbors=[classify_from_results()] | lang=en
-- "main_scripts_findings_rationale_1013": "SMBv1 (wormable) + exposed RDP (brute-force/BlueKeep) on one host — the     clas" | kind=entity | source=probe/main_scripts/findings.py:L1013 | neighbors=[_corr_legacy_windows()] | lang=en
-- "main_scripts_findings_rationale_1030": "Two or more cleartext services on one host — any sniffing position harvests" | kind=entity | source=probe/main_scripts/findings.py:L1030 | neighbors=[_corr_cleartext_cluster()] | lang=en
-- "main_scripts_findings_rationale_1057": "Two or more INDEPENDENT anonymous data-exposure channels on one host — the     h" | kind=entity | source=probe/main_scripts/findings.py:L1057 | neighbors=[_corr_anon_data_exposure()] | lang=en
-- "main_scripts_findings_rationale_1076": "A disclosed user list (SMB null session) plus a weak/exposed login surface on" | kind=entity | source=probe/main_scripts/findings.py:L1076 | neighbors=[_corr_user_enum_plus_weak_auth()] | lang=pt
-- "main_scripts_findings_rationale_1099": "Out-of-band / console management surfaces reachable on one host — these grant" | kind=entity | source=probe/main_scripts/findings.py:L1099 | neighbors=[_corr_mgmt_plane_exposed()] | lang=en
-- "main_scripts_findings_rationale_1126": "Derive findings from collected facts. Pure; deterministic; safe.      Accepts Sc" | kind=entity | source=probe/main_scripts/findings.py:L1126 | neighbors=[run_findings()] | lang=en
-- "main_scripts_findings_rationale_1172": "Read a scanner's JSONL output into fact dicts (skips blank/garbage lines)." | kind=entity | source=probe/main_scripts/findings.py:L1172 | neighbors=[load_facts_jsonl()] | lang=pt
-- "main_scripts_findings_rationale_1188": "CLI: derive findings from one or more scanner JSONL files.          python -m ma" | kind=entity | source=probe/main_scripts/findings.py:L1188 | neighbors=[_main()] | lang=en
-- "main_scripts_findings_rationale_120": "A definitively open TCP port. `open|filtered` is NOT open — we never     raise a" | kind=entity | source=probe/main_scripts/findings.py:L120 | neighbors=[_is_open()] | lang=pt
-- "main_scripts_findings_rationale_154": "Map (target, port) -> confirmed-service info from service_banner facts.      Onl" | kind=entity | source=probe/main_scripts/findings.py:L154 | neighbors=[build_service_index()] | lang=en
-- "main_scripts_findings_rationale_444": "JA4X-based threat-intel match. Fires only when a certificate's structural     fi" | kind=entity | source=probe/main_scripts/findings.py:L444 | neighbors=[_rule_tls_fingerprint()] | lang=pt
-- "main_scripts_findings_rationale_466": "Proven UNAUTHENTICATED access to a datastore (from the collected banner) —     a" | kind=entity | source=probe/main_scripts/findings.py:L466 | neighbors=[_rule_unauth_access()] | lang=en
-- "main_scripts_findings_rationale_492": "JA4S-based threat-intel match on the TLS ServerHello fingerprint. Fires only" | kind=entity | source=probe/main_scripts/findings.py:L492 | neighbors=[_rule_tls_server_fingerprint()] | lang=en
-- "main_scripts_findings_rationale_510": "SMB signing not required => a viable NTLM relay target. If SMBv1 is also on," | kind=entity | source=probe/main_scripts/findings.py:L510 | neighbors=[_corr_ntlm_relay()] | lang=en
-- "main_scripts_findings_rationale_512": "Confirmed RDP (X.224 handshake) + NLA detection. Runs before the port-hint     e" | kind=entity | source=probe/main_scripts/findings.py:L512 | neighbors=[_rule_rdp()] | lang=en
-- "main_scripts_findings_rationale_533": "SMBv1 (wormable) + exposed RDP (brute-force/BlueKeep) on one host — the     clas" | kind=entity | source=probe/main_scripts/findings.py:L533 | neighbors=[_corr_legacy_windows()] | lang=en
+- "tests_test_manager_ai_test_fallback_never_includes_local_ollama": "test_fallback_never_includes_local_ollama()" | kind=code-symbol | source=manager/backend/tests/test_manager_ai.py:L337 | neighbors=[test_manager_ai.py, _cloud()]
+- "tests_test_manager_ai_test_generate_fails_closed_when_no_cloud_provider_configured": "test_generate_fails_closed_when_no_cloud_provider_configured()" | kind=code-symbol | source=manager/backend/tests/test_manager_ai.py:L328 | neighbors=[test_manager_ai.py, _cloud()]
+- "tests_test_manager_ai_test_status_fails_safe_without_cloud_key": "test_status_fails_safe_without_cloud_key()" | kind=code-symbol | source=manager/backend/tests/test_manager_ai.py:L349 | neighbors=[test_manager_ai.py, _cloud()]
+- "tests_test_manual_reopen": "test_manual_reopen.py" | kind=code-symbol | source=manager/backend/tests/test_manual_reopen.py:L1 | neighbors=[3c7740e feat(lifecycle): pure manual-re…, test_manual_reopen_restores_open_and_au…]
+- "tests_test_msrpc_scanner_testmsrpcfindings_test_endpoints_low": ".test_endpoints_low()" | kind=code-symbol | source=probe/tests/test_msrpc_scanner.py:L86 | neighbors=[TestMSRPCFindings, ._fact()]
+- "tests_test_msrpc_scanner_testmsrpcfindings_test_zero_endpoints_silent": ".test_zero_endpoints_silent()" | kind=code-symbol | source=probe/tests/test_msrpc_scanner.py:L92 | neighbors=[TestMSRPCFindings, ._fact()]
+- "tests_test_msrpc_scanner_testmsrpcscanner_test_impacket_missing_is_error": ".test_impacket_missing_is_error()" | kind=code-symbol | source=probe/tests/test_msrpc_scanner.py:L74 | neighbors=[TestMSRPCScanner, ._sc()]
+- "tests_test_msrpc_scanner_testmsrpcscanner_test_no_msrpc_filtered": ".test_no_msrpc_filtered()" | kind=code-symbol | source=probe/tests/test_msrpc_scanner.py:L69 | neighbors=[TestMSRPCScanner, ._sc()]
+- "tests_test_msrpc_scanner_testmsrpcscanner_test_open": ".test_open()" | kind=code-symbol | source=probe/tests/test_msrpc_scanner.py:L61 | neighbors=[TestMSRPCScanner, ._sc()]
+- "tests_test_msrpc_scanner_testparity": "TestParity" | kind=code-symbol | source=probe/tests/test_msrpc_scanner.py:L97 | neighbors=[test_msrpc_scanner.py, .test_main_scripts()]
+- "tests_test_msrpc_scanner_testsummarize": "TestSummarize" | kind=code-symbol | source=probe/tests/test_msrpc_scanner.py:L18 | neighbors=[test_msrpc_scanner.py, .test_distinct_interfaces_and_named()]
+- "tests_test_nessus_scanner_test_create_scan": "test_create_scan()" | kind=code-symbol | source=manager/backend/tests/test_nessus_scanner.py:L48 | neighbors=[test_nessus_scanner.py, _mock_response()]
+- "tests_test_nessus_scanner_test_create_scan_with_credentials": "test_create_scan_with_credentials()" | kind=code-symbol | source=manager/backend/tests/test_nessus_scanner.py:L65 | neighbors=[test_nessus_scanner.py, _mock_response()]
+- "tests_test_nessus_scanner_test_launch_scan": "test_launch_scan()" | kind=code-symbol | source=manager/backend/tests/test_nessus_scanner.py:L85 | neighbors=[test_nessus_scanner.py, _mock_response()]
+- "tests_test_nessus_scanner_test_poll_status_completed": "test_poll_status_completed()" | kind=code-symbol | source=manager/backend/tests/test_nessus_scanner.py:L114 | neighbors=[test_nessus_scanner.py, _mock_response()]
+- "tests_test_nessus_scanner_test_poll_status_running": "test_poll_status_running()" | kind=code-symbol | source=manager/backend/tests/test_nessus_scanner.py:L99 | neighbors=[test_nessus_scanner.py, _mock_response()]
+- "tests_test_network_va_accuracy_listener_loop": "._loop()" | kind=code-symbol | source=probe/tests/test_network_va_accuracy.py:L48 | neighbors=[_Listener, .start()]
+- "tests_test_network_va_accuracy_listener_stop": ".stop()" | kind=code-symbol | source=probe/tests/test_network_va_accuracy.py:L72 | neighbors=[_Listener, va_scan()]
+- "tests_test_network_va_accuracy_test_every_planted_risk_port_is_found": "test_every_planted_risk_port_is_found()" | kind=code-symbol | source=probe/tests/test_network_va_accuracy.py:L119 | neighbors=[test_network_va_accuracy.py, The regression this guards: these ports…]
+- "tests_test_network_va_accuracy_test_irc_is_identified_by_protocol_not_port": "test_irc_is_identified_by_protocol_not_port()" | kind=code-symbol | source=probe/tests/test_network_va_accuracy.py:L140 | neighbors=[test_network_va_accuracy.py, Positive protocol evidence turns the bo…]
+- "tests_test_network_va_accuracy_test_no_branch_runs_without_evidence": "test_no_branch_runs_without_evidence()" | kind=code-symbol | source=probe/tests/test_network_va_accuracy.py:L168 | neighbors=[test_network_va_accuracy.py, Every deep branch that ran must have pr…]
+- "tests_test_network_va_accuracy_test_post_stages_ran": "test_post_stages_ran()" | kind=code-symbol | source=probe/tests/test_network_va_accuracy.py:L188 | neighbors=[test_network_va_accuracy.py, network_va composes device classificati…]
+- "tests_test_network_va_accuracy_test_silent_port_reports_no_banner_honestly": "test_silent_port_reports_no_banner_honestly()" | kind=code-symbol | source=probe/tests/test_network_va_accuracy.py:L156 | neighbors=[test_network_va_accuracy.py, 4444 says nothing. The scanner must rec…]
+- "tests_test_network_va_accuracy_test_tls_branch_is_not_routed_by_silence": "test_tls_branch_is_not_routed_by_silence()" | kind=code-symbol | source=probe/tests/test_network_va_accuracy.py:L180 | neighbors=[test_network_va_accuracy.py, service_banner now proves non-TLS by at…]
+- "tests_test_new_scanners_testdeltaengine_test_load_jsonl_skips_invalid_json": ".test_load_jsonl_skips_invalid_json()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L502 | neighbors=[TestDeltaEngine, _make_scan_record()]
+- "tests_test_nfs_scanner_portmap_dump_reply": "_portmap_dump_reply()" | kind=code-symbol | source=probe/tests/test_nfs_scanner.py:L41 | neighbors=[test_nfs_scanner.py, .test_portmap_dump_parse()]
+- "tests_test_nfs_scanner_testnfsfindings_test_restricted_exports_no_high_finding": ".test_restricted_exports_no_high_finding()" | kind=code-symbol | source=probe/tests/test_nfs_scanner.py:L133 | neighbors=[TestNFSFindings, ._fact()]
+- "tests_test_nfs_scanner_testnfsfindings_test_world_readable_and_portmapper": ".test_world_readable_and_portmapper()" | kind=code-symbol | source=probe/tests/test_nfs_scanner.py:L122 | neighbors=[TestNFSFindings, ._fact()]
+- "tests_test_nfs_scanner_testnfsscanner_test_no_rpc_is_filtered": ".test_no_rpc_is_filtered()" | kind=code-symbol | source=probe/tests/test_nfs_scanner.py:L109 | neighbors=[TestNFSScanner, ._sc()]
+- "tests_test_nfs_scanner_testnfsscanner_test_world_readable_export_open": ".test_world_readable_export_open()" | kind=code-symbol | source=probe/tests/test_nfs_scanner.py:L99 | neighbors=[TestNFSScanner, ._sc()]
+- "tests_test_nfs_scanner_testparity": "TestParity" | kind=code-symbol | source=probe/tests/test_nfs_scanner.py:L142 | neighbors=[test_nfs_scanner.py, .test_main_scripts()]
+- "tests_test_nfs_scanner_testparity_test_main_scripts": ".test_main_scripts()" | kind=code-symbol | source=probe/tests/test_nfs_scanner.py:L143 | neighbors=[TestParity, _mount_export_reply()]
+- "tests_test_nfs_scanner_testxdrparsers_test_mount_export_parse_and_world_flag": ".test_mount_export_parse_and_world_flag()" | kind=code-symbol | source=probe/tests/test_nfs_scanner.py:L52 | neighbors=[TestXdrParsers, _mount_export_reply()]
+- "tests_test_nfs_scanner_testxdrparsers_test_portmap_dump_parse": ".test_portmap_dump_parse()" | kind=code-symbol | source=probe/tests/test_nfs_scanner.py:L62 | neighbors=[TestXdrParsers, _portmap_dump_reply()]
+- "tests_test_nfs_scanner_testxdrparsers_test_rpc_reply_header_stripping": ".test_rpc_reply_header_stripping()" | kind=code-symbol | source=probe/tests/test_nfs_scanner.py:L68 | neighbors=[TestXdrParsers, _mount_export_reply()]
+- "tests_test_nfs_scanner_xstr": "_xstr()" | kind=code-symbol | source=probe/tests/test_nfs_scanner.py:L25 | neighbors=[test_nfs_scanner.py, _mount_export_reply()]
+- "tests_test_nuclei_background_fakesession_begin_nested": ".begin_nested()" | kind=code-symbol | source=manager/backend/tests/test_nuclei_background.py:L43 | neighbors=[_FakeSession, _NestedTransaction]
+- "tests_test_nuclei_background_fakesession_execute": ".execute()" | kind=code-symbol | source=manager/backend/tests/test_nuclei_background.py:L40 | neighbors=[_FakeSession, _ScalarResult]
+- "tests_test_nuclei_background_sessionfactory_call": ".__call__()" | kind=code-symbol | source=manager/backend/tests/test_nuclei_background.py:L71 | neighbors=[_SessionFactory, _FakeSession]
+- "tests_test_nuclei_background_test_fatal_nuclei_error_marks_background_job_failed": "test_fatal_nuclei_error_marks_background_job_failed()" | kind=code-symbol | source=manager/backend/tests/test_nuclei_background.py:L76 | neighbors=[test_nuclei_background.py, _SessionFactory]
 
 ## Instructions
 

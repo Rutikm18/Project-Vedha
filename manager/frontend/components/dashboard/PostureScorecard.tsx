@@ -49,10 +49,24 @@ const GRADE: Record<string, { color: string; bg: string; edge: string; read: str
   F: { color: "var(--sev-critical-color)",bg: "var(--sev-critical-bg)",edge: "var(--sev-critical-edge)",read: "Failing" },
 };
 
-/** 270° dial. pathLength=100 makes the dash maths score-in-percent directly. */
+/** 270° dial. pathLength=100 makes the dash maths score-in-percent directly.
+ *  The arc grows from empty on mount and re-tweens on every score change (the
+ *  .dial-arc/.dial-tip transitions live in the panel's scoped <style>), so the
+ *  eye tracks the delta, not just the resting value. A zero score is hidden by
+ *  the wrapper's data-empty guard rather than drawn as a misleading sliver. */
 function Dial({ score, color }: { score: number; color: string }) {
   const pct = Math.max(0, Math.min(100, score));
   const ARC = 75; // 270° of a 360° circle, in pathLength units
+
+  // Render empty first, then advance to the real value one frame later so the
+  // CSS transition has a delta to interpolate. Re-runs whenever the score moves;
+  // under prefers-reduced-motion the global transition-kill makes it snap.
+  const [shown, setShown] = React.useState(0);
+  React.useEffect(() => {
+    const id = requestAnimationFrame(() => setShown(pct));
+    return () => cancelAnimationFrame(id);
+  }, [pct]);
+
   return (
     <svg viewBox="0 0 120 120" width={132} height={132} aria-hidden focusable="false" style={{ flexShrink: 0 }}>
       <circle
@@ -63,14 +77,16 @@ function Dial({ score, color }: { score: number; color: string }) {
       <circle
         cx="60" cy="60" r="46" fill="none" pathLength={100}
         stroke={color} strokeWidth="7" strokeLinecap="round"
-        strokeDasharray={`${(ARC * pct) / 100} 100`} transform="rotate(135 60 60)"
+        strokeDasharray={`${(ARC * shown) / 100} 100`} transform="rotate(135 60 60)"
         className="dial-arc"
       />
-      {/* endpoint marker — the eye lands on it before it reads the number */}
+      {/* endpoint marker — the eye lands on it before it reads the number. Its
+          rotation rides a CSS transform (not the SVG attribute) so it tweens
+          alongside the arc. */}
       <circle
         cx="60" cy="14" r="2.6" fill={color}
-        transform={`rotate(${135 + (270 * pct) / 100 + 90} 60 60)`}
         className="dial-tip"
+        style={{ transform: `rotate(${135 + (270 * shown) / 100 + 90}deg)` }}
       />
     </svg>
   );
@@ -126,7 +142,24 @@ export function PostureScorecard() {
   return (
     <div style={{ display: "flex", gap: "var(--space-5)", alignItems: "center", flexWrap: "wrap", padding: "var(--space-5)", height: "100%", boxSizing: "border-box" }}>
       {/* ---- dial ---------------------------------------------------------- */}
-      <div style={{ position: "relative", display: "grid", placeItems: "center" }}>
+      <style>{`
+        .posture-dial .dial-arc,
+        .posture-dial .dial-tip {
+          transition: stroke-dasharray .8s cubic-bezier(.22, 1, .36, 1),
+                      transform        .8s cubic-bezier(.22, 1, .36, 1);
+        }
+        .posture-dial .dial-tip { transform-box: view-box; transform-origin: 60px 60px; }
+        /* At zero the round line-cap + tip marker still paint a small wedge that
+           reads as real progress — hide both until there's a score to show.
+           (prefers-reduced-motion is handled by the global transition-kill.) */
+        .posture-dial[data-empty="true"] .dial-arc,
+        .posture-dial[data-empty="true"] .dial-tip { visibility: hidden; }
+      `}</style>
+      <div
+        className="posture-dial"
+        data-empty={s.posture_score === 0 ? "true" : "false"}
+        style={{ position: "relative", display: "grid", placeItems: "center" }}
+      >
         <Dial score={s.posture_score} color={g.color} />
         <div style={{ position: "absolute", textAlign: "center", display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
           <span
@@ -159,13 +192,13 @@ export function PostureScorecard() {
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
           <MetricTile
             label="Risk index"
-            value={s.risk_index}
+            value={Number(s.risk_index ?? 0).toFixed(2)}
             delta={<Delta now={s.risk_index} prev={p?.risk_index} improvedWhenLower />}
             hint="Weighted open risk. Lower is better."
           />
           <MetricTile
             label="Exploitable"
-            value={s.exploitable_score}
+            value={`${Number(s.exploitable_score ?? 0).toFixed(1)}%`}
             delta={<Delta now={s.exploitable_score} prev={p?.exploitable_score} improvedWhenLower />}
             hint="Share of risk with known exploits. Lower is better."
           />

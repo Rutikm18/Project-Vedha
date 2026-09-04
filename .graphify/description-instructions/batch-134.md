@@ -1,4 +1,4 @@
-# Node Description Batch 135 of 236
+# Node Description Batch 135 of 330
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,53 +19,51 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-LANGUAGE: each entry has a `lang=` marker giving the language of its source.
-Write that entry's description in EXACTLY that language. Do not translate to
-a single common language — match each node's source language individually.
+Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "app_page_agentrow": "AgentRow()" | kind=code-symbol | source=manager/frontend/app/page.tsx:L117 | neighbors=[page.tsx] | lang=en
-- "app_page_agentstatus": "AgentStatus" | kind=code-symbol | source=manager/frontend/app/page.tsx:L24 | neighbors=[page.tsx] | lang=en
-- "app_page_confidencebar": "ConfidenceBar()" | kind=code-symbol | source=manager/frontend/app/page.tsx:L64 | neighbors=[page.tsx] | lang=en
-- "app_page_dashboard": "Dashboard()" | kind=code-symbol | source=manager/frontend/app/page.tsx:L18 | neighbors=[page.tsx] | lang=en
-- "app_page_decisioncenter": "DecisionCenter()" | kind=code-symbol | source=manager/frontend/app/page.tsx:L55 | neighbors=[page.tsx] | lang=en
-- "app_page_glowcard": "GlowCard()" | kind=code-symbol | source=manager/frontend/app/page.tsx:L75 | neighbors=[page.tsx] | lang=en
-- "app_page_path_status": "PATH_STATUS" | kind=code-symbol | source=manager/frontend/app/page.tsx:L26 | neighbors=[page.tsx] | lang=en
-- "app_page_sectionheader": "SectionHeader()" | kind=code-symbol | source=manager/frontend/app/page.tsx:L36 | neighbors=[page.tsx] | lang=en
-- "app_page_sev_label": "SEV_LABEL" | kind=code-symbol | source=manager/frontend/app/page.tsx:L32 | neighbors=[page.tsx] | lang=en
-- "app_page_widgetplaceholder": "WidgetPlaceholder()" | kind=code-symbol | source=manager/frontend/app/page.tsx:L55 | neighbors=[page.tsx] | lang=en
-- "app_ratelimit_check": "_check()" | kind=code-symbol | source=manager/backend/app/ratelimit.py:L26 | neighbors=[ratelimit.py] | lang=en
-- "app_ratelimit_rationale_1": "ratelimit.py — P2: Redis-backed rate limiting (no new dependency; reuses the exi" | kind=entity | source=manager/backend/app/ratelimit.py:L1 | neighbors=[ratelimit.py] | lang=en
-- "app_ratelimit_rationale_17": "Best-effort client IP. Honors X-Forwarded-For (first hop) when behind a     prox" | kind=entity | source=manager/backend/app/ratelimit.py:L17 | neighbors=[client_ip()] | lang=pt
-- "app_ratelimit_rationale_44": "FastAPI dependency factory. Keys the window by (scope, client-IP)." | kind=entity | source=manager/backend/app/ratelimit.py:L44 | neighbors=[rate_limit()] | lang=en
-- "app_version_get_version": "get_version()" | kind=code-symbol | source=manager/backend/app/version.py:L17 | neighbors=[version.py] | lang=en
-- "app_version_rationale_1": "Single source of truth for the deployed application version.  The value is injec" | kind=entity | source=manager/backend/app/version.py:L1 | neighbors=[version.py] | lang=en
-- "approve_route_post": "POST()" | kind=code-symbol | source=manager/frontend/app/api/fleet/enrollment/[id]/approve/route.ts:L10 | neighbors=[route.ts] | lang=en
-- "assetid_route_get": "GET()" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/blast-radius/[assetId]/route.ts:L5 | neighbors=[route.ts] | lang=en
-- "assets_route_get": "GET()" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/assets/route.ts:L8 | neighbors=[route.ts] | lang=en
-- "assistant_advisorflow_commandrow": "CommandRow()" | kind=code-symbol | source=manager/frontend/components/assistant/AdvisorFlow.tsx:L46 | neighbors=[AdvisorFlow.tsx] | lang=en
-- "assistant_advisorflow_copybutton": "CopyButton()" | kind=code-symbol | source=manager/frontend/components/assistant/AdvisorFlow.tsx:L27 | neighbors=[AdvisorFlow.tsx] | lang=en
-- "assistant_advisorflow_patch_pill": "PATCH_PILL" | kind=code-symbol | source=manager/frontend/components/assistant/AdvisorFlow.tsx:L67 | neighbors=[AdvisorFlow.tsx] | lang=en
-- "assistant_advisorflow_richtext": "RichText()" | kind=code-symbol | source=manager/frontend/components/assistant/AdvisorFlow.tsx:L10 | neighbors=[AdvisorFlow.tsx] | lang=en
-- "assistant_advisorflow_section": "Section()" | kind=code-symbol | source=manager/frontend/components/assistant/AdvisorFlow.tsx:L55 | neighbors=[AdvisorFlow.tsx] | lang=en
-- "assistant_assistantdrawer_explainresponse": "ExplainResponse" | kind=code-symbol | source=manager/frontend/components/assistant/AssistantDrawer.tsx:L14 | neighbors=[AssistantDrawer.tsx] | lang=en
-- "assistant_assistantdrawer_msg": "Msg" | kind=code-symbol | source=manager/frontend/components/assistant/AssistantDrawer.tsx:L12 | neighbors=[AssistantDrawer.tsx] | lang=en
-- "assistant_assistantdrawer_served": "Served" | kind=code-symbol | source=manager/frontend/components/assistant/AssistantDrawer.tsx:L13 | neighbors=[AssistantDrawer.tsx] | lang=en
-- "assistant_assistantprovider_assistantctx": "AssistantCtx" | kind=code-symbol | source=manager/frontend/components/assistant/AssistantProvider.tsx:L14 | neighbors=[AssistantProvider.tsx] | lang=en
-- "assistant_assistantprovider_ctx": "Ctx" | kind=code-symbol | source=manager/frontend/components/assistant/AssistantProvider.tsx:L6 | neighbors=[AssistantProvider.tsx] | lang=en
-- "assistant_assistanttext_plain": "plain()" | kind=code-symbol | source=manager/frontend/components/assistant/AssistantText.tsx:L5 | neighbors=[AssistantText.tsx] | lang=en
-- "assistant_factcard_pip": "Pip()" | kind=code-symbol | source=manager/frontend/components/assistant/FactCard.tsx:L10 | neighbors=[FactCard.tsx] | lang=en
-- "assistant_modelswitcher_aistatus": "AiStatus" | kind=code-symbol | source=manager/frontend/components/assistant/ModelSwitcher.tsx:L16 | neighbors=[ModelSwitcher.tsx] | lang=en
-- "assistant_modelswitcher_providerstatus": "ProviderStatus" | kind=code-symbol | source=manager/frontend/components/assistant/ModelSwitcher.tsx:L7 | neighbors=[ModelSwitcher.tsx] | lang=en
-- "assistant_modelswitcher_readstored": "readStored()" | kind=code-symbol | source=manager/frontend/components/assistant/ModelSwitcher.tsx:L24 | neighbors=[ModelSwitcher.tsx] | lang=en
-- "attack_graph_route_get": "GET()" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/attack-graph/route.ts:L5 | neighbors=[route.ts] | lang=en
-- "attack_paths_route_get": "GET()" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/attack-paths/route.ts:L5 | neighbors=[route.ts] | lang=en
-- "auth_exceptions_rationale_1": "Typed exception hierarchy for Vedha authentication.  Design principle:   - Every" | kind=entity | source=manager/backend/app/auth/exceptions.py:L1 | neighbors=[exceptions.py] | lang=en
-- "auth_exceptions_rationale_16": "Base for all Vedha auth exceptions." | kind=entity | source=manager/backend/app/auth/exceptions.py:L16 | neighbors=[VedhaAuthError] | lang=en
-- "auth_exceptions_rationale_29": "A login attempt failed for any reason." | kind=entity | source=manager/backend/app/auth/exceptions.py:L29 | neighbors=[AuthenticationError] | lang=en
-- "auth_exceptions_rationale_34": "No user record for the supplied email." | kind=entity | source=manager/backend/app/auth/exceptions.py:L34 | neighbors=[UserNotFoundError] | lang=en
+- "main_scripts_scanner_base_basescanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/scanner_base.py:L966 | neighbors=[BaseScanner, RateLimiter]
+- "main_scripts_scanner_base_basescanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/main_scripts/scanner_base.py:L974 | neighbors=[BaseScanner, ._guarded()]
+- "main_scripts_scanner_base_rationale_252": "Full, debuggable classification for attaching to a ScanResult: state,     reason" | kind=entity | source=probe/main_scripts/scanner_base.py:L252 | neighbors=[describe_os_error(), ScopeGuard]
+- "main_scripts_scanner_base_resolve_project_tz": "_resolve_project_tz()" | kind=code-symbol | source=probe/main_scripts/scanner_base.py:L66 | neighbors=[scanner_base.py, The project timezone, degrading safely …]
+- "main_scripts_scanner_base_scanresult_to_json": ".to_json()" | kind=code-symbol | source=probe/main_scripts/scanner_base.py:L304 | neighbors=[.write(), ScanResult]
+- "main_scripts_scanner_base_scopeguard_filter": ".filter()" | kind=code-symbol | source=probe/main_scripts/scanner_base.py:L408 | neighbors=[ScopeGuard, .in_scope()]
+- "main_scripts_scanner_base_sendpacer_observe_round": ".observe_round()" | kind=code-symbol | source=probe/main_scripts/scanner_base.py:L590 | neighbors=[Fold one send/collect round's reply rat…, SendPacer]
+- "main_scripts_scanner_base_sendpacer_pace": ".pace()" | kind=code-symbol | source=probe/main_scripts/scanner_base.py:L577 | neighbors=[Block just long enough to hold `rate` p…, SendPacer]
+- "main_scripts_scanner_base_sendpacer_stats": ".stats()" | kind=code-symbol | source=probe/main_scripts/scanner_base.py:L606 | neighbors=[Pacing telemetry for the scan summary (…, SendPacer]
+- "main_scripts_scanner_registry_is_verified": "is_verified()" | kind=code-symbol | source=probe/main_scripts/scanner_registry.py:L97 | neighbors=[scanner_registry.py, True only for a scanner explicitly on t…]
+- "main_scripts_scanner_registry_verification_report": "verification_report()" | kind=code-symbol | source=probe/main_scripts/scanner_registry.py:L107 | neighbors=[scanner_registry.py, The scanner-module trust view: which sc…]
+- "main_scripts_service_banner_dec": "_dec()" | kind=code-symbol | source=probe/main_scripts/service_banner.py:L229 | neighbors=[service_banner.py, match_service()]
+- "main_scripts_service_banner_servicebannerscanner_connect": "._connect()" | kind=code-symbol | source=probe/main_scripts/service_banner.py:L339 | neighbors=[ServiceBannerScanner, ._rung()]
+- "main_scripts_service_banner_servicebannerscanner_ladder_for": "._ladder_for()" | kind=code-symbol | source=probe/main_scripts/service_banner.py:L416 | neighbors=[ServiceBannerScanner, ._grab()]
+- "main_scripts_service_banner_servicebannerscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/main_scripts/service_banner.py:L524 | neighbors=[ServiceBannerScanner, ._grab()]
+- "main_scripts_service_banner_tls_context": "_tls_context()" | kind=code-symbol | source=probe/main_scripts/service_banner.py:L50 | neighbors=[service_banner.py, A permissive client context for FINGERP…]
+- "main_scripts_service_enum_main": "main()" | kind=code-symbol | source=probe/main_scripts/service_enum.py:L630 | neighbors=[service_enum.py, local_topology()]
+- "main_scripts_service_enum_serviceenumscanner_open": "._open()" | kind=code-symbol | source=probe/main_scripts/service_enum.py:L485 | neighbors=[ServiceEnumScanner, ._probe_port()]
+- "main_scripts_service_enum_tags_for": "tags_for()" | kind=code-symbol | source=probe/main_scripts/service_enum.py:L417 | neighbors=[service_enum.py, .scan_target()]
+- "main_scripts_smb_enum_scanner_smbenumscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/smb_enum_scanner.py:L221 | neighbors=[SMBEnumScanner, parse_rid_ranges()]
+- "main_scripts_smb_enum_scanner_smbenumscanner_scan_port": "._scan_port()" | kind=code-symbol | source=probe/main_scripts/smb_enum_scanner.py:L274 | neighbors=[SMBEnumScanner, .scan_target()]
+- "main_scripts_smb_enum_scanner_smbenumscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/main_scripts/smb_enum_scanner.py:L295 | neighbors=[SMBEnumScanner, ._scan_port()]
+- "main_scripts_smb_scanner_der_len": "_der_len()" | kind=code-symbol | source=probe/main_scripts/smb_scanner.py:L104 | neighbors=[smb_scanner.py, _der()]
+- "main_scripts_smb_scanner_smb1_negotiate": "_smb1_negotiate()" | kind=code-symbol | source=probe/main_scripts/smb_scanner.py:L229 | neighbors=[smb_scanner.py, .scan_target()]
+- "main_scripts_smtp_scanner_smtpscanner_scan_port": "._scan_port()" | kind=code-symbol | source=probe/main_scripts/smtp_scanner.py:L124 | neighbors=[SMTPScanner, .scan_target()]
+- "main_scripts_smtp_scanner_smtpscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/main_scripts/smtp_scanner.py:L142 | neighbors=[SMTPScanner, ._scan_port()]
+- "main_scripts_snmp_scanner_oid_in_subtree": "_oid_in_subtree()" | kind=code-symbol | source=probe/main_scripts/snmp_scanner.py:L240 | neighbors=[snmp_scanner.py, ._walk_subtree()]
+- "main_scripts_ssh_collector_sshcollector_collect": "._collect()" | kind=code-symbol | source=probe/main_scripts/ssh_collector.py:L95 | neighbors=[SSHCollector, .run()]
+- "main_scripts_ssh_collector_sshcollector_run": ".run()" | kind=code-symbol | source=probe/main_scripts/ssh_collector.py:L117 | neighbors=[SSHCollector, ._collect()]
+- "main_scripts_ssh_kexdb_lookup": "lookup()" | kind=code-symbol | source=probe/main_scripts/ssh_kexdb.py:L477 | neighbors=[ssh_kexdb.py, Return (failures, warnings, infos) for …]
+- "main_scripts_ssh_scanner_recv_exact": "_recv_exact()" | kind=code-symbol | source=probe/main_scripts/ssh_scanner.py:L215 | neighbors=[ssh_scanner.py, _read_packet()]
+- "main_scripts_ssh_scanner_sshscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/main_scripts/ssh_scanner.py:L331 | neighbors=[SSHScanner, ._scan_port()]
+- "main_scripts_syn_scanner_rationale_232": "A genuine reply to our SYN acknowledges ISN+1. The reply's own source     (ip_sr" | kind=entity | source=probe/main_scripts/syn_scanner.py:L232 | neighbors=[verify_reply_cookie(), _local_source_ip()]
+- "main_scripts_syn_scanner_synscanner_fallback_scan": "._fallback_scan()" | kind=code-symbol | source=probe/main_scripts/syn_scanner.py:L371 | neighbors=[SynScanner, .scan_target()]
+- "main_scripts_syn_scanner_synscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/syn_scanner.py:L315 | neighbors=[SynScanner, syn_scan_supported()]
+- "main_scripts_syn_scanner_synscanner_syn_scan_target": "._syn_scan_target()" | kind=code-symbol | source=probe/main_scripts/syn_scanner.py:L379 | neighbors=[SynScanner, .scan_target()]
+- "main_scripts_tls_fingerprint_probe_specs": "_probe_specs()" | kind=code-symbol | source=probe/main_scripts/tls_fingerprint.py:L221 | neighbors=[tls_fingerprint.py, fingerprint_host()]
+- "main_scripts_tls_fingerprint_tlsfingerprintscanner_scan_port": "._scan_port()" | kind=code-symbol | source=probe/main_scripts/tls_fingerprint.py:L290 | neighbors=[TLSFingerprintScanner, .scan_target()]
+- "main_scripts_tls_fingerprint_tlsfingerprintscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/main_scripts/tls_fingerprint.py:L320 | neighbors=[TLSFingerprintScanner, ._scan_port()]
+- "main_scripts_tls_fingerprint_version_code": "version_code()" | kind=code-symbol | source=probe/main_scripts/tls_fingerprint.py:L174 | neighbors=[tls_fingerprint.py, jarm_style_digest()]
 
 ## Instructions
 

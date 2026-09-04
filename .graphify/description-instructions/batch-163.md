@@ -1,4 +1,4 @@
-# Node Description Batch 164 of 236
+# Node Description Batch 164 of 330
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,53 +19,51 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-LANGUAGE: each entry has a `lang=` marker giving the language of its source.
-Write that entry's description in EXACTLY that language. Do not translate to
-a single common language — match each node's source language individually.
+Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "main_scripts_smb_scanner_rationale_1": "smb_scanner.py — detect which SMB dialects a host supports.  METHOD (collection" | kind=entity | source=probe/main_scripts/smb_scanner.py:L1 | neighbors=[smb_scanner.py] | lang=en
-- "main_scripts_smb_scanner_rationale_37": "Read signing posture from a SUCCESSFUL SMB2 NEGOTIATE response.      Wire layout" | kind=entity | source=probe/main_scripts/smb_scanner.py:L37 | neighbors=[parse_smb2_security_mode()] | lang=en
-- "main_scripts_smb_scanner_smbscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/smb_scanner.py:L145 | neighbors=[SMBScanner] | lang=en
-- "main_scripts_snmp_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/snmp_scanner.py:L401 | neighbors=[snmp_scanner.py] | lang=en
-- "main_scripts_snmp_scanner_rationale_1": "snmp_scanner.py — full SNMP enumeration: community discovery, targeted MIB walk," | kind=entity | source=probe/main_scripts/snmp_scanner.py:L1 | neighbors=[snmp_scanner.py] | lang=en
-- "main_scripts_snmp_scanner_rationale_105": "Shallow parse of BER TLVs starting at offset. Returns [(tag, value), ...]." | kind=entity | source=probe/main_scripts/snmp_scanner.py:L105 | neighbors=[_ber_parse()] | lang=en
-- "main_scripts_snmp_scanner_rationale_127": "Extract (oid_dotted, value_tag, value_bytes) from a GET/GETNEXT/GETBULK response" | kind=entity | source=probe/main_scripts/snmp_scanner.py:L127 | neighbors=[_parse_varbinds()] | lang=en
-- "main_scripts_snmp_scanner_rationale_246": "Phase 1 (community discovery) + Phase 2 (targeted MIB walk) +     Phase 3 (ampli" | kind=entity | source=probe/main_scripts/snmp_scanner.py:L246 | neighbors=[SNMPScanner] | lang=en
-- "main_scripts_snmp_scanner_rationale_278": "Return (community, sysdescr) for the first responding community, or None." | kind=entity | source=probe/main_scripts/snmp_scanner.py:L278 | neighbors=[._discover_community()] | lang=en
-- "main_scripts_snmp_scanner_rationale_292": "GETNEXT walk of one OID subtree.  Returns [(oid, value_str), ...]." | kind=entity | source=probe/main_scripts/snmp_scanner.py:L292 | neighbors=[._walk_subtree()] | lang=en
-- "main_scripts_snmp_scanner_rationale_315": "One GETBULK request — measure response/request size ratio." | kind=entity | source=probe/main_scripts/snmp_scanner.py:L315 | neighbors=[._amplification_factor()] | lang=en
-- "main_scripts_snmp_scanner_rationale_325": "Send a SNMPv3 Discover. Any reply = v3 agent present." | kind=entity | source=probe/main_scripts/snmp_scanner.py:L325 | neighbors=[._snmpv3_present()] | lang=pt
-- "main_scripts_snmp_scanner_rationale_46": "Dotted-notation OID string → BER-encoded bytes." | kind=entity | source=probe/main_scripts/snmp_scanner.py:L46 | neighbors=[_encode_oid()] | lang=en
-- "main_scripts_snmp_scanner_rationale_64": "BER-encoded OID bytes → dotted-notation string." | kind=entity | source=probe/main_scripts/snmp_scanner.py:L64 | neighbors=[_decode_oid()] | lang=en
-- "main_scripts_snmp_scanner_rationale_79": "Human-readable SNMP value for common ASN.1/SNMP types." | kind=entity | source=probe/main_scripts/snmp_scanner.py:L79 | neighbors=[_decode_value()] | lang=en
-- "main_scripts_snmp_scanner_snmpscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/snmp_scanner.py:L252 | neighbors=[SNMPScanner] | lang=en
-- "main_scripts_snmp_scanner_snmpscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/main_scripts/snmp_scanner.py:L329 | neighbors=[SNMPScanner] | lang=en
-- "main_scripts_ssh_collector_collect_over_ssh": "_collect_over_ssh()" | kind=code-symbol | source=probe/main_scripts/ssh_collector.py:L52 | neighbors=[ssh_collector.py] | lang=en
-- "main_scripts_ssh_collector_main": "main()" | kind=code-symbol | source=probe/main_scripts/ssh_collector.py:L125 | neighbors=[ssh_collector.py] | lang=en
-- "main_scripts_ssh_collector_rationale_1": "ssh_collector.py — credentialed (authenticated) inventory collection for Linux." | kind=entity | source=probe/main_scripts/ssh_collector.py:L1 | neighbors=[ssh_collector.py] | lang=en
-- "main_scripts_ssh_collector_sshcollector_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/ssh_collector.py:L83 | neighbors=[SSHCollector] | lang=en
-- "main_scripts_syn_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/syn_scanner.py:L465 | neighbors=[syn_scanner.py] | lang=en
-- "main_scripts_syn_scanner_rationale_1": "syn_scanner.py — stateless TCP SYN (half-open) scan, pure Python (Tier 1.1).  WH" | kind=entity | source=probe/main_scripts/syn_scanner.py:L1 | neighbors=[syn_scanner.py] | lang=en
-- "main_scripts_syn_scanner_rationale_104": "Build a 20-byte TCP SYN segment with a valid checksum (pseudo-header)." | kind=entity | source=probe/main_scripts/syn_scanner.py:L104 | neighbors=[build_tcp_syn()] | lang=pt
-- "main_scripts_syn_scanner_rationale_105": "Build a 20-byte TCP SYN segment with a valid checksum (pseudo-header)." | kind=entity | source=probe/main_scripts/syn_scanner.py:L105 | neighbors=[build_tcp_syn()] | lang=pt
-- "main_scripts_syn_scanner_rationale_107": "Parse a raw IPv4+TCP packet (as received on a raw IPPROTO_TCP socket)." | kind=entity | source=probe/main_scripts/syn_scanner.py:L107 | neighbors=[parse_packet()] | lang=pt
-- "main_scripts_syn_scanner_rationale_123": "SYN/ACK -> open, RST -> closed, anything else -> None (indeterminate)." | kind=entity | source=probe/main_scripts/syn_scanner.py:L123 | neighbors=[classify()] | lang=en
-- "main_scripts_syn_scanner_rationale_125": "Walk a TCP options field for the MSS value (kind 2, len 4).      Bounds-checked" | kind=entity | source=probe/main_scripts/syn_scanner.py:L125 | neighbors=[_parse_mss()] | lang=en
-- "main_scripts_syn_scanner_rationale_126": "Walk a TCP options field for the MSS value (kind 2, len 4).      Bounds-checked" | kind=entity | source=probe/main_scripts/syn_scanner.py:L126 | neighbors=[_parse_mss()] | lang=en
-- "main_scripts_syn_scanner_rationale_134": "Keyed 32-bit ISN for (dst_ip, dst_port, src_port). Reply.ack == cookie+1." | kind=entity | source=probe/main_scripts/syn_scanner.py:L134 | neighbors=[syn_cookie()] | lang=en
-- "main_scripts_syn_scanner_rationale_141": "A genuine reply to our SYN acknowledges ISN+1. The reply's own source     (ip_sr" | kind=entity | source=probe/main_scripts/syn_scanner.py:L141 | neighbors=[verify_reply_cookie()] | lang=en
-- "main_scripts_syn_scanner_rationale_151": "Parse a raw IPv4+TCP packet (as received on a raw IPPROTO_TCP socket).      Also" | kind=entity | source=probe/main_scripts/syn_scanner.py:L151 | neighbors=[parse_packet()] | lang=pt
-- "main_scripts_syn_scanner_rationale_152": "Parse a raw IPv4+TCP packet (as received on a raw IPPROTO_TCP socket).      Also" | kind=entity | source=probe/main_scripts/syn_scanner.py:L152 | neighbors=[parse_packet()] | lang=pt
-- "main_scripts_syn_scanner_rationale_154": "True only when a real SYN scan can work: Linux (BSD/macOS raw sockets can't" | kind=entity | source=probe/main_scripts/syn_scanner.py:L154 | neighbors=[syn_scan_supported()] | lang=pt
-- "main_scripts_syn_scanner_rationale_175": "Outbound-interface IP for reaching dst_ip (no packets sent — UDP connect)." | kind=entity | source=probe/main_scripts/syn_scanner.py:L175 | neighbors=[_local_source_ip()] | lang=en
-- "main_scripts_syn_scanner_rationale_179": "SYN/ACK -> open, RST -> closed, anything else -> None (indeterminate)." | kind=entity | source=probe/main_scripts/syn_scanner.py:L179 | neighbors=[classify()] | lang=en
-- "main_scripts_syn_scanner_rationale_180": "SYN/ACK -> open, RST -> closed, anything else -> None (indeterminate)." | kind=entity | source=probe/main_scripts/syn_scanner.py:L180 | neighbors=[classify()] | lang=en
-- "main_scripts_syn_scanner_rationale_189": "SYN scan on privileged Linux; transparent connect-scan fallback elsewhere." | kind=entity | source=probe/main_scripts/syn_scanner.py:L189 | neighbors=[SynScanner] | lang=en
-- "main_scripts_syn_scanner_rationale_190": "Keyed 32-bit ISN for (dst_ip, dst_port, src_port). Reply.ack == cookie+1." | kind=entity | source=probe/main_scripts/syn_scanner.py:L190 | neighbors=[syn_cookie()] | lang=en
-- "main_scripts_syn_scanner_rationale_191": "Keyed 32-bit ISN for (dst_ip, dst_port, src_port). Reply.ack == cookie+1." | kind=entity | source=probe/main_scripts/syn_scanner.py:L191 | neighbors=[syn_cookie()] | lang=en
+- "tests_test_service_identifier_testserviceidentifier_test_mysql_banner": ".test_mysql_banner()" | kind=code-symbol | source=manager/backend/tests/test_service_identifier.py:L36 | neighbors=[TestServiceIdentifier, ._id()]
+- "tests_test_service_identifier_testserviceidentifier_test_rdp_port_hint": ".test_rdp_port_hint()" | kind=code-symbol | source=manager/backend/tests/test_service_identifier.py:L56 | neighbors=[TestServiceIdentifier, ._id()]
+- "tests_test_service_identifier_testserviceidentifier_test_redis_pong": ".test_redis_pong()" | kind=code-symbol | source=manager/backend/tests/test_service_identifier.py:L40 | neighbors=[TestServiceIdentifier, ._id()]
+- "tests_test_service_identifier_testserviceidentifier_test_smb_detection": ".test_smb_detection()" | kind=code-symbol | source=manager/backend/tests/test_service_identifier.py:L32 | neighbors=[TestServiceIdentifier, ._id()]
+- "tests_test_service_identifier_testserviceidentifier_test_smtp_banner": ".test_smtp_banner()" | kind=code-symbol | source=manager/backend/tests/test_service_identifier.py:L24 | neighbors=[TestServiceIdentifier, ._id()]
+- "tests_test_service_identifier_testserviceidentifier_test_ssh_banner": ".test_ssh_banner()" | kind=code-symbol | source=manager/backend/tests/test_service_identifier.py:L13 | neighbors=[TestServiceIdentifier, ._id()]
+- "tests_test_service_identifier_testserviceidentifier_test_unknown_service_empty_banner": ".test_unknown_service_empty_banner()" | kind=code-symbol | source=manager/backend/tests/test_service_identifier.py:L65 | neighbors=[TestServiceIdentifier, ._id()]
+- "tests_test_service_identifier_testserviceidentifier_test_version_extraction": ".test_version_extraction()" | kind=code-symbol | source=manager/backend/tests/test_service_identifier.py:L61 | neighbors=[TestServiceIdentifier, ._id()]
+- "tests_test_service_match_testscannerintegration": "TestScannerIntegration" | kind=code-symbol | source=probe/tests/test_service_match.py:L108 | neighbors=[test_service_match.py, .test_scanner_identifies_ssh_on_nonstan…]
+- "tests_test_service_posture_rules_test_new_rules_agree_with_probe_findings_severity": "test_new_rules_agree_with_probe_findings_severity()" | kind=code-symbol | source=manager/detection_engine/tests/test_service_posture_rules.py:L227 | neighbors=[test_service_posture_rules.py, The manager and the probe's own finding…]
+- "tests_test_service_posture_rules_test_smb_null_session_fires_when_permitted": "test_smb_null_session_fires_when_permitted()" | kind=code-symbol | source=manager/detection_engine/tests/test_service_posture_rules.py:L106 | neighbors=[test_service_posture_rules.py, _fire()]
+- "tests_test_service_posture_rules_test_ssh_terrapin_fires_when_strict_kex_absent": "test_ssh_terrapin_fires_when_strict_kex_absent()" | kind=code-symbol | source=manager/detection_engine/tests/test_service_posture_rules.py:L80 | neighbors=[test_service_posture_rules.py, _fire()]
+- "tests_test_service_posture_rules_test_ssh_weak_algorithms": "test_ssh_weak_algorithms()" | kind=code-symbol | source=manager/detection_engine/tests/test_service_posture_rules.py:L87 | neighbors=[test_service_posture_rules.py, _fire()]
+- "tests_test_service_posture_rules_testnegatives_test_dns_refused_transfer": ".test_dns_refused_transfer()" | kind=code-symbol | source=manager/detection_engine/tests/test_service_posture_rules.py:L121 | neighbors=[TestNegatives, _fire()]
+- "tests_test_service_posture_rules_testnegatives_test_ftp_without_anonymous": ".test_ftp_without_anonymous()" | kind=code-symbol | source=manager/detection_engine/tests/test_service_posture_rules.py:L117 | neighbors=[TestNegatives, _fire()]
+- "tests_test_service_posture_rules_testnegatives_test_ipmi_cipher_zero_rejected": ".test_ipmi_cipher_zero_rejected()" | kind=code-symbol | source=manager/detection_engine/tests/test_service_posture_rules.py:L158 | neighbors=[TestNegatives, _fire()]
+- "tests_test_service_posture_rules_testnegatives_test_ldap_bind_refused": ".test_ldap_bind_refused()" | kind=code-symbol | source=manager/detection_engine/tests/test_service_posture_rules.py:L130 | neighbors=[TestNegatives, _fire()]
+- "tests_test_service_posture_rules_testnegatives_test_nfs_restricted_exports": ".test_nfs_restricted_exports()" | kind=code-symbol | source=manager/detection_engine/tests/test_service_posture_rules.py:L126 | neighbors=[TestNegatives, _fire()]
+- "tests_test_service_posture_rules_testnegatives_test_rsync_auth_required": ".test_rsync_auth_required()" | kind=code-symbol | source=manager/detection_engine/tests/test_service_posture_rules.py:L153 | neighbors=[TestNegatives, _fire()]
+- "tests_test_service_posture_rules_testnegatives_test_smtp_with_starttls": ".test_smtp_with_starttls()" | kind=code-symbol | source=manager/detection_engine/tests/test_service_posture_rules.py:L149 | neighbors=[TestNegatives, _fire()]
+- "tests_test_service_posture_rules_testnegatives_test_vnc_weak_fires_when_it_is_the_only_option": ".test_vnc_weak_fires_when_it_is_the_only_option()" | kind=code-symbol | source=manager/detection_engine/tests/test_service_posture_rules.py:L144 | neighbors=[TestNegatives, _fire()]
+- "tests_test_service_posture_rules_testnegatives_test_vnc_weak_suppressed_when_strong_type_offered": ".test_vnc_weak_suppressed_when_strong_type_offered()" | kind=code-symbol | source=manager/detection_engine/tests/test_service_posture_rules.py:L139 | neighbors=[TestNegatives, _fire()]
+- "tests_test_service_posture_rules_testrdpnonla_test_fires_from_the_first_probe_when_it_negotiated": ".test_fires_from_the_first_probe_when_it_negotiated()" | kind=code-symbol | source=manager/detection_engine/tests/test_service_posture_rules.py:L176 | neighbors=[TestRdpNoNla, _fire()]
+- "tests_test_service_posture_rules_testrdpnonla_test_silent_when_nla_is_required": ".test_silent_when_nla_is_required()" | kind=code-symbol | source=manager/detection_engine/tests/test_service_posture_rules.py:L182 | neighbors=[TestRdpNoNla, _fire()]
+- "tests_test_service_posture_rules_testrdpnotls_test_silent_when_negotiation_succeeded": ".test_silent_when_negotiation_succeeded()" | kind=code-symbol | source=manager/detection_engine/tests/test_service_posture_rules.py:L209 | neighbors=[TestRdpNoTls, _fire()]
+- "tests_test_sla_policy_testpolicyawarecompute_test_custom_window_relaxes_state": ".test_custom_window_relaxes_state()" | kind=code-symbol | source=manager/backend/tests/test_sla_policy.py:L27 | neighbors=[TestPolicyAwareCompute, _finding()]
+- "tests_test_sla_policy_testpolicyawarecompute_test_default_window_breaches": ".test_default_window_breaches()" | kind=code-symbol | source=manager/backend/tests/test_sla_policy.py:L24 | neighbors=[TestPolicyAwareCompute, _finding()]
+- "tests_test_smb_ntlm_build_testntlmfingerprintframing_test_end_to_end_framing_extracts_build": ".test_end_to_end_framing_extracts_build()" | kind=code-symbol | source=probe/tests/test_smb_ntlm_build.py:L85 | neighbors=[TestNtlmFingerprintFraming, _challenge()]
+- "tests_test_smb_ntlm_build_testntlmfingerprintframing_test_ntlm_os_build_shared_function": ".test_ntlm_os_build_shared_function()" | kind=code-symbol | source=probe/tests/test_smb_ntlm_build.py:L113 | neighbors=[TestNtlmFingerprintFraming, _challenge()]
+- "tests_test_smb_ntlm_build_testparsechallenge_test_legacy_6_1_is_win7": ".test_legacy_6_1_is_win7()" | kind=code-symbol | source=probe/tests/test_smb_ntlm_build.py:L63 | neighbors=[TestParseChallenge, _challenge()]
+- "tests_test_smb_ntlm_build_testparsechallenge_test_no_version_field_yields_name_but_no_build": ".test_no_version_field_yields_name_but_no_build()" | kind=code-symbol | source=probe/tests/test_smb_ntlm_build.py:L66 | neighbors=[TestParseChallenge, _challenge()]
+- "tests_test_smb_ntlm_build_testparsechallenge_test_server_2022_build_20348": ".test_server_2022_build_20348()" | kind=code-symbol | source=probe/tests/test_smb_ntlm_build.py:L55 | neighbors=[TestParseChallenge, _challenge()]
+- "tests_test_smb_ntlm_build_testparsechallenge_test_unknown_build_still_classified_win11_vs_win10": ".test_unknown_build_still_classified_win11_vs_win10()" | kind=code-symbol | source=probe/tests/test_smb_ntlm_build.py:L59 | neighbors=[TestParseChallenge, _challenge()]
+- "tests_test_smb_ntlm_build_testparsechallenge_test_win10_22h2": ".test_win10_22h2()" | kind=code-symbol | source=probe/tests/test_smb_ntlm_build.py:L51 | neighbors=[TestParseChallenge, _challenge()]
+- "tests_test_smb_ntlm_build_testparsechallenge_test_win11_24h2_build_26100": ".test_win11_24h2_build_26100()" | kind=code-symbol | source=probe/tests/test_smb_ntlm_build.py:L39 | neighbors=[TestParseChallenge, _challenge()]
+- "tests_test_smb_scanner_rationale_81": "FIX 4: 3.1.1 IS now advertised, together with the mandatory preauth-integrity" | kind=entity | source=probe/tests/test_smb_scanner.py:L81 | neighbors=[test_request_offers_311_with_preauth_co…, test_request_omits_311_without_preauth_…]
+- "tests_test_smb_scanner_test_request_offers_311_with_preauth_context": "test_request_offers_311_with_preauth_context()" | kind=code-symbol | source=probe/tests/test_smb_scanner.py:L80 | neighbors=[test_smb_scanner.py, FIX 4: 3.1.1 IS now advertised, togethe…]
+- "tests_test_smb_scanner_test_request_omits_311_without_preauth_context": "test_request_omits_311_without_preauth_context()" | kind=code-symbol | source=probe/tests/test_smb_scanner.py:L80 | neighbors=[test_smb_scanner.py, FIX 4: 3.1.1 IS now advertised, togethe…]
+- "tests_test_smb_scanner_test_signing_not_required": "test_signing_not_required()" | kind=code-symbol | source=probe/tests/test_smb_scanner.py:L38 | neighbors=[test_smb_scanner.py, _smb2_negotiate_response()]
+- "tests_test_smb_scanner_test_signing_required_smb311": "test_signing_required_smb311()" | kind=code-symbol | source=probe/tests/test_smb_scanner.py:L29 | neighbors=[test_smb_scanner.py, _smb2_negotiate_response()]
 
 ## Instructions
 

@@ -93,8 +93,9 @@ function FindingDetail({ f }: { f: PortalFinding }) {
             </div>
           )}
 
-          {/* Scores row */}
-          <div style={{ display: "flex", flexWrap: "wrap", gap: 16 }}>
+          {/* Scores row — auto-fit grid so the tiles spread to fill whatever
+              width the viewport gives us (narrow laptop → wide monitor). */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(130px, 1fr))", gap: 14 }}>
             <div>
               <div className="eyebrow" style={{ marginBottom: 3 }}>CVSS</div>
               <span className="num" style={{ fontSize: 16, fontWeight: 600,
@@ -252,7 +253,18 @@ export default function PortalFindings() {
           )}
 
           <div style={{ overflowX: "auto" }}>
-            <table style={{ width: "100%", minWidth: 620, fontSize: 13, borderCollapse: "collapse" }}>
+            <table style={{ width: "100%", minWidth: 560, fontSize: 13, borderCollapse: "collapse", tableLayout: "auto" }}>
+              {/* The Finding column is left unsized so it absorbs all slack;
+                  the rest shrink to content (width:1% + nowrap). The table then
+                  fills the panel at any width instead of leaving dead space. */}
+              <colgroup>
+                <col style={{ width: "1%" }} />
+                <col />
+                <col style={{ width: "1%" }} />
+                <col style={{ width: "1%" }} />
+                <col style={{ width: "1%" }} />
+                <col style={{ width: "1%" }} />
+              </colgroup>
               <thead>
                 <tr style={{ background: "var(--bg-surface)" }}>
                   <SortHead k="severity" label="Severity" sortKey={sortKey} sortDir={sortDir} onSort={toggleSort} />

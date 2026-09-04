@@ -1,4 +1,4 @@
-# Node Description Batch 223 of 236
+# Node Description Batch 223 of 330
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,51 +19,51 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-Write every description in Portuguese (pt). Do not switch languages.
+Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_transport_testidentity_test_failed_atomic_replace_preserves_previous_state": ".test_failed_atomic_replace_preserves_previous_state()" | kind=code-symbol | source=probe/tests/test_transport.py:L107 | neighbors=[TestIdentity]
-- "tests_test_transport_testidentity_test_is_authenticated_false_initially": ".test_is_authenticated_false_initially()" | kind=code-symbol | source=probe/tests/test_transport.py:L30 | neighbors=[TestIdentity]
-- "tests_test_transport_testidentity_test_is_authenticated_true_with_creds": ".test_is_authenticated_true_with_creds()" | kind=code-symbol | source=probe/tests/test_transport.py:L34 | neighbors=[TestIdentity]
-- "tests_test_transport_testidentity_test_loads_cached_agent_identity_from_state": ".test_loads_cached_agent_identity_from_state()" | kind=code-symbol | source=probe/tests/test_transport.py:L57 | neighbors=[TestIdentity]
-- "tests_test_transport_testidentity_test_private_state_uses_restrictive_modes_and_fsync": ".test_private_state_uses_restrictive_modes_and_fsync()" | kind=code-symbol | source=probe/tests/test_transport.py:L94 | neighbors=[TestIdentity]
-- "tests_test_transport_testidentity_test_save_and_clear_state": ".test_save_and_clear_state()" | kind=code-symbol | source=probe/tests/test_transport.py:L42 | neighbors=[TestIdentity]
-- "tests_test_transport_testpolljobs_test_poll_401_raises": ".test_poll_401_raises()" | kind=code-symbol | source=probe/tests/test_transport.py:L384 | neighbors=[TestPollJobs]
-- "tests_test_transport_testpolljobs_test_poll_uses_limit_param": ".test_poll_uses_limit_param()" | kind=code-symbol | source=probe/tests/test_transport.py:L393 | neighbors=[TestPollJobs]
-- "tests_test_transport_testpolljobs_test_returns_jobs": ".test_returns_jobs()" | kind=code-symbol | source=probe/tests/test_transport.py:L373 | neighbors=[TestPollJobs]
-- "tests_test_transport_testrefreshregistration_test_cached_agent_refreshes_capabilities": ".test_cached_agent_refreshes_capabilities()" | kind=code-symbol | source=probe/tests/test_transport.py:L296 | neighbors=[TestRefreshRegistration]
-- "tests_test_transport_testrefreshregistration_test_old_manager_returns_compatibility_signal": ".test_old_manager_returns_compatibility_signal()" | kind=code-symbol | source=probe/tests/test_transport.py:L316 | neighbors=[TestRefreshRegistration]
-- "tests_test_transport_testrefreshregistration_test_rejected_cached_identity_raises": ".test_rejected_cached_identity_raises()" | kind=code-symbol | source=probe/tests/test_transport.py:L327 | neighbors=[TestRefreshRegistration]
-- "tests_test_transport_testregister_test_registration_401_raises": ".test_registration_401_raises()" | kind=code-symbol | source=probe/tests/test_transport.py:L154 | neighbors=[TestRegister]
-- "tests_test_transport_testregister_test_registration_sends_public_key": ".test_registration_sends_public_key()" | kind=code-symbol | source=probe/tests/test_transport.py:L161 | neighbors=[TestRegister]
-- "tests_test_transport_testregister_test_successful_registration": ".test_successful_registration()" | kind=code-symbol | source=probe/tests/test_transport.py:L130 | neighbors=[TestRegister]
-- "tests_test_transport_testsubmitresult_test_2xx_variants_return_true": ".test_2xx_variants_return_true()" | kind=code-symbol | source=probe/tests/test_transport.py:L474 | neighbors=[TestSubmitResult]
-- "tests_test_transport_testsubmitresult_test_client_errors_return_false_no_data_loss": ".test_client_errors_return_false_no_data_loss()" | kind=code-symbol | source=probe/tests/test_transport.py:L327 | neighbors=[TestSubmitResult]
-- "tests_test_transport_testsubmitresult_test_large_payload_is_gzipped": ".test_large_payload_is_gzipped()" | kind=code-symbol | source=probe/tests/test_transport.py:L481 | neighbors=[TestSubmitResult]
-- "tests_test_transport_testsubmitresult_test_network_error_returns_false": ".test_network_error_returns_false()" | kind=code-symbol | source=probe/tests/test_transport.py:L444 | neighbors=[TestSubmitResult]
-- "tests_test_transport_testsubmitresult_test_permanent_client_errors_are_marked_for_quarantine": ".test_permanent_client_errors_are_marked_for_quarantine()" | kind=code-symbol | source=probe/tests/test_transport.py:L462 | neighbors=[TestSubmitResult]
-- "tests_test_transport_testsubmitresult_test_retryable_client_errors_return_false_no_data_loss": ".test_retryable_client_errors_return_false_no_data_loss()" | kind=code-symbol | source=probe/tests/test_transport.py:L452 | neighbors=[TestSubmitResult]
-- "tests_test_transport_testsubmitresult_test_server_error_returns_false": ".test_server_error_returns_false()" | kind=code-symbol | source=probe/tests/test_transport.py:L435 | neighbors=[TestSubmitResult]
-- "tests_test_transport_testsubmitresult_test_small_payload_not_gzipped": ".test_small_payload_not_gzipped()" | kind=code-symbol | source=probe/tests/test_transport.py:L492 | neighbors=[TestSubmitResult]
-- "tests_test_transport_testsubmitresult_test_successful_submit": ".test_successful_submit()" | kind=code-symbol | source=probe/tests/test_transport.py:L426 | neighbors=[TestSubmitResult]
-- "tests_test_transport_testwebsocket_test_is_ws_connected_false_by_default": ".test_is_ws_connected_false_by_default()" | kind=code-symbol | source=probe/tests/test_transport.py:L531 | neighbors=[TestWebSocket]
-- "tests_test_transport_testwebsocket_test_ws_requires_token": ".test_ws_requires_token()" | kind=code-symbol | source=probe/tests/test_transport.py:L549 | neighbors=[TestWebSocket]
-- "tests_test_transport_testwebsocket_test_ws_url_http": ".test_ws_url_http()" | kind=code-symbol | source=probe/tests/test_transport.py:L535 | neighbors=[TestWebSocket]
-- "tests_test_transport_testwebsocket_test_ws_url_https": ".test_ws_url_https()" | kind=code-symbol | source=probe/tests/test_transport.py:L542 | neighbors=[TestWebSocket]
-- "tests_test_udp_amplifiers_test_dns_open_recursion": "test_dns_open_recursion()" | kind=code-symbol | source=probe/tests/test_udp_amplifiers.py:L18 | neighbors=[test_udp_amplifiers.py]
-- "tests_test_udp_amplifiers_test_memcached_exposed": "test_memcached_exposed()" | kind=code-symbol | source=probe/tests/test_udp_amplifiers.py:L26 | neighbors=[test_udp_amplifiers.py]
-- "tests_test_udp_amplifiers_test_ntp_monlist_absent": "test_ntp_monlist_absent()" | kind=code-symbol | source=probe/tests/test_udp_amplifiers.py:L13 | neighbors=[test_udp_amplifiers.py]
-- "tests_test_udp_amplifiers_test_ntp_monlist_enabled": "test_ntp_monlist_enabled()" | kind=code-symbol | source=probe/tests/test_udp_amplifiers.py:L8 | neighbors=[test_udp_amplifiers.py]
-- "tests_test_udp_amplifiers_test_probe_builders_are_bytes": "test_probe_builders_are_bytes()" | kind=code-symbol | source=probe/tests/test_udp_amplifiers.py:L31 | neighbors=[test_udp_amplifiers.py]
-- "tests_test_use_cases_rationale_1": "Use-case library guards.  FORBIDDEN is a *living* set: a phrase stays here only" | kind=entity | source=probe/tests/test_use_cases.py:L1 | neighbors=[test_use_cases.py]
-- "tests_test_use_cases_test_codes_are_unique_and_stable": "test_codes_are_unique_and_stable()" | kind=code-symbol | source=probe/tests/test_use_cases.py:L82 | neighbors=[test_use_cases.py]
-- "tests_test_use_cases_test_descriptions_do_not_overclaim": "test_descriptions_do_not_overclaim()" | kind=code-symbol | source=probe/tests/test_use_cases.py:L25 | neighbors=[test_use_cases.py]
-- "tests_test_use_cases_test_every_code_maps_to_a_real_use_case": "test_every_code_maps_to_a_real_use_case()" | kind=code-symbol | source=probe/tests/test_use_cases.py:L77 | neighbors=[test_use_cases.py]
-- "tests_test_use_cases_test_full_port_audit_is_deep": "test_full_port_audit_is_deep()" | kind=code-symbol | source=probe/tests/test_use_cases.py:L64 | neighbors=[test_use_cases.py]
-- "tests_test_use_cases_test_intensity_code_and_name_equivalent": "test_intensity_code_and_name_equivalent()" | kind=code-symbol | source=probe/tests/test_use_cases.py:L100 | neighbors=[test_use_cases.py]
-- "tests_test_use_cases_test_iot_survey_collects_banners": "test_iot_survey_collects_banners()" | kind=code-symbol | source=probe/tests/test_use_cases.py:L45 | neighbors=[test_use_cases.py]
+- "main_scripts_service_enum_rationale_185": "NBNS node-status (NBSTAT) query to UDP/137; return the workstation name." | kind=entity | source=probe/main_scripts/service_enum.py:L185 | neighbors=[netbios_name()]
+- "main_scripts_service_enum_rationale_204": "NetBIOS first-level name encoding (16-byte name -> 32 nibble bytes)." | kind=entity | source=probe/main_scripts/service_enum.py:L204 | neighbors=[_nb_encode()]
+- "main_scripts_service_enum_rationale_214": "NBNS node-status (NBSTAT) query to UDP/137; return the workstation name." | kind=entity | source=probe/main_scripts/service_enum.py:L214 | neighbors=[netbios_name()]
+- "main_scripts_service_enum_rationale_216": "Run the three name sources concurrently off the event loop." | kind=entity | source=probe/main_scripts/service_enum.py:L216 | neighbors=[resolve_hostnames()]
+- "main_scripts_service_enum_rationale_236": "One permissive TLS handshake: negotiated version + cert subject/issuer." | kind=entity | source=probe/main_scripts/service_enum.py:L236 | neighbors=[tls_info()]
+- "main_scripts_service_enum_rationale_245": "Run the three name sources concurrently off the event loop." | kind=entity | source=probe/main_scripts/service_enum.py:L245 | neighbors=[resolve_hostnames()]
+- "main_scripts_service_enum_rationale_259": "Which deprecated TLS/SSL versions the server still accepts (weak-config)." | kind=entity | source=probe/main_scripts/service_enum.py:L259 | neighbors=[tls_accepts_old()]
+- "main_scripts_service_enum_rationale_265": "One permissive TLS handshake: negotiated version + cert subject/issuer." | kind=entity | source=probe/main_scripts/service_enum.py:L265 | neighbors=[tls_info()]
+- "main_scripts_service_enum_rationale_288": "Which deprecated TLS/SSL versions the server still accepts (weak-config)." | kind=entity | source=probe/main_scripts/service_enum.py:L288 | neighbors=[tls_accepts_old()]
+- "main_scripts_service_enum_rationale_294": "Negotiate against 445; report whether SMBv1 is offered (defensive flag)." | kind=entity | source=probe/main_scripts/service_enum.py:L294 | neighbors=[smb_dialects()]
+- "main_scripts_service_enum_rationale_313": "Best-effort OS guess from voluntary evidence. Returns (label, confidence)." | kind=entity | source=probe/main_scripts/service_enum.py:L313 | neighbors=[guess_os()]
+- "main_scripts_service_enum_rationale_323": "Negotiate against 445; report whether SMBv1 is offered (defensive flag)." | kind=entity | source=probe/main_scripts/service_enum.py:L323 | neighbors=[smb_dialects()]
+- "main_scripts_service_enum_rationale_342": "Best-effort OS guess from voluntary evidence. Returns (label, confidence)." | kind=entity | source=probe/main_scripts/service_enum.py:L342 | neighbors=[guess_os()]
+- "main_scripts_service_enum_rationale_361": "Descriptive role tags from the open-port signature." | kind=entity | source=probe/main_scripts/service_enum.py:L361 | neighbors=[classify_roles()]
+- "main_scripts_service_enum_rationale_390": "Descriptive role tags from the open-port signature." | kind=entity | source=probe/main_scripts/service_enum.py:L390 | neighbors=[classify_roles()]
+- "main_scripts_service_enum_rationale_396": "Directly-connected subnets and default gateway(s) from the OS route table." | kind=entity | source=probe/main_scripts/service_enum.py:L396 | neighbors=[local_topology()]
+- "main_scripts_service_enum_rationale_425": "Directly-connected subnets and default gateway(s) from the OS route table." | kind=entity | source=probe/main_scripts/service_enum.py:L425 | neighbors=[local_topology()]
+- "main_scripts_service_enum_rationale_466": "Connect to one port and read whatever it voluntarily advertises." | kind=entity | source=probe/main_scripts/service_enum.py:L466 | neighbors=[._probe_port()]
+- "main_scripts_service_enum_rationale_495": "Connect to one port and read whatever it voluntarily advertises." | kind=entity | source=probe/main_scripts/service_enum.py:L495 | neighbors=[._probe_port()]
+- "main_scripts_service_enum_reverse_dns": "reverse_dns()" | kind=code-symbol | source=probe/main_scripts/service_enum.py:L148 | neighbors=[service_enum.py]
+- "main_scripts_service_enum_serviceenumscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/service_enum.py:L481 | neighbors=[ServiceEnumScanner]
+- "main_scripts_smb_enum_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/smb_enum_scanner.py:L307 | neighbors=[smb_enum_scanner.py]
+- "main_scripts_smb_enum_scanner_rationale_1": "smb_enum_scanner.py — SMB null-session enumeration (VA checklist: anonymous info" | kind=entity | source=probe/main_scripts/smb_enum_scanner.py:L1 | neighbors=[smb_enum_scanner.py]
+- "main_scripts_smb_enum_scanner_rationale_103": "Enumerate domain/local users via the SAMR named pipe, reusing the null     sessi" | kind=entity | source=probe/main_scripts/smb_enum_scanner.py:L103 | neighbors=[_enum_users_samr()]
+- "main_scripts_smb_enum_scanner_rationale_149": "RID-cycling fallback via LSAT: resolve <DomainSID>-<rid> for each rid to a     n" | kind=entity | source=probe/main_scripts/smb_enum_scanner.py:L149 | neighbors=[_enum_users_ridcycle()]
+- "main_scripts_smb_enum_scanner_rationale_201": "Merge user lists, de-duplicated by (name, rid); SAMR entries win over RID     cy" | kind=entity | source=probe/main_scripts/smb_enum_scanner.py:L201 | neighbors=[_merge_users()]
+- "main_scripts_smb_enum_scanner_rationale_228": "Blocking: attempt a null session and enumerate what the server         volunteer" | kind=entity | source=probe/main_scripts/smb_enum_scanner.py:L228 | neighbors=[._enumerate()]
+- "main_scripts_smb_enum_scanner_rationale_53": "Parse 'a-b,c-d,e' into a sorted, de-duplicated, bounded list of RIDs.      Bound" | kind=entity | source=probe/main_scripts/smb_enum_scanner.py:L53 | neighbors=[parse_rid_ranges()]
+- "main_scripts_smb_enum_scanner_rationale_88": "List SMB shares over the null session. Read-only (share listing, no file     acc" | kind=entity | source=probe/main_scripts/smb_enum_scanner.py:L88 | neighbors=[_enum_shares()]
+- "main_scripts_smb_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/smb_scanner.py:L452 | neighbors=[smb_scanner.py]
+- "main_scripts_smb_scanner_rationale_1": "smb_scanner.py — detect which SMB dialects a host supports.  METHOD (collection" | kind=entity | source=probe/main_scripts/smb_scanner.py:L1 | neighbors=[smb_scanner.py]
+- "main_scripts_smb_scanner_rationale_116": "NTLMSSP NEGOTIATE (Type-1). Sets NEGOTIATE_VERSION so the server discloses     i" | kind=entity | source=probe/main_scripts/smb_scanner.py:L116 | neighbors=[build_ntlmssp_negotiate()]
+- "main_scripts_smb_scanner_rationale_134": "Wrap an NTLMSSP Type-1 in a minimal SPNEGO NegTokenInit (GSS-API)." | kind=entity | source=probe/main_scripts/smb_scanner.py:L134 | neighbors=[_spnego_init()]
+- "main_scripts_smb_scanner_rationale_142": "Map an NT major.minor.build to a friendly release. Client and server share     s" | kind=entity | source=probe/main_scripts/smb_scanner.py:L142 | neighbors=[windows_release_from_build()]
+- "main_scripts_smb_scanner_rationale_177": "Parse an NTLMSSP CHALLENGE (Type-2) out of any containing buffer (SPNEGO or" | kind=entity | source=probe/main_scripts/smb_scanner.py:L177 | neighbors=[parse_ntlm_challenge()]
+- "main_scripts_smb_scanner_rationale_204": "SMB2 SESSION_SETUP request (MessageId 1, SessionId 0) carrying `security_blob`." | kind=entity | source=probe/main_scripts/smb_scanner.py:L204 | neighbors=[_smb2_session_setup()]
+- "main_scripts_smb_scanner_rationale_250": "Pad to the 8-byte boundary MS-SMB2 requires between negotiate contexts." | kind=entity | source=probe/main_scripts/smb_scanner.py:L250 | neighbors=[_align8()]
+- "main_scripts_smb_scanner_rationale_255": "SMB2_PREAUTH_INTEGRITY_CAPABILITIES (MS-SMB2 2.2.3.1.1): mandatory for any     c" | kind=entity | source=probe/main_scripts/smb_scanner.py:L255 | neighbors=[_preauth_integrity_context()]
+- "main_scripts_smb_scanner_rationale_266": "SMB2_ENCRYPTION_CAPABILITIES (MS-SMB2 2.2.3.1.2): offer AES-128-GCM/CCM so     t" | kind=entity | source=probe/main_scripts/smb_scanner.py:L266 | neighbors=[_encryption_context()]
+- "main_scripts_smb_scanner_rationale_317": "Read one length-prefixed (Direct-TCP/NBT) SMB frame in full, STRIPPING the     4" | kind=entity | source=probe/main_scripts/smb_scanner.py:L317 | neighbors=[_recv_smb_frame()]
 
 ## Instructions
 

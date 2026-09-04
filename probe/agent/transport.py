@@ -69,6 +69,44 @@ HEARTBEAT_FAILED = "failed"
 HEARTBEAT_LEASE_REVOKED = "lease_revoked"
 
 
+# Device access-refresh outcomes.
+#
+# The old bool return collapsed three very different situations into False, and
+# the caller then treated ALL of them as "your credential was revoked" and exited
+# for administrator review. Two of them are not revocation at all:
+#
+#   * REJECTED  - the manager authoritatively refused (401/403/409). NOTE the
+#     manager returns 401 for BOTH "unknown device" and "revoked/disabled", on
+#     purpose, so an attacker cannot enumerate agent ids. The status code alone
+#     therefore CANNOT tell those apart — which manager we are talking to can
+#     (see `manager_fingerprint`).
+#   * UNAVAILABLE - a network error, a 5xx, or the manager's 503 "replay
+#     protection unavailable". Transient. Treating this as revocation meant a
+#     brief Redis outage on the manager could permanently stop every probe in
+#     the fleet until a human intervened.
+DEVICE_REFRESH_OK = "ok"
+DEVICE_REFRESH_REJECTED = "rejected"
+DEVICE_REFRESH_UNAVAILABLE = "unavailable"
+
+
+def manager_fingerprint(platform_url: str) -> str:
+    """Stable identity for the manager a credential belongs to.
+
+    Device credentials are issued BY a manager and are meaningless to any other
+    one. The probe stores this alongside them so that pointing it at a different
+    manager is recognised as "these credentials are not for you" rather than
+    misdiagnosed as "you have been revoked".
+
+    Scheme+host+port only: a path or trailing slash does not change which
+    manager you are talking to, and neither should this value.
+    """
+    from urllib.parse import urlsplit
+    parts = urlsplit((platform_url or "").strip().rstrip("/"))
+    if not parts.netloc:                       # bare host[:port] with no scheme
+        return (platform_url or "").strip().rstrip("/").lower()
+    return f"{parts.scheme}://{parts.netloc}".lower()
+
+
 def _enrollment_conflict_detail(response: "httpx.Response") -> str:
     """Best-effort extraction of the manager's 409 ``detail`` message."""
     try:
@@ -93,7 +131,15 @@ def _atomic_write_private_state(path: Path, state: dict[str, Any]) -> None:
     payload = json.dumps(state)
     path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
     if os.name == "posix":
-        os.chmod(path.parent, 0o700)
+        # Best-effort hardening: tighten the state directory to 0700. This can
+        # legitimately fail when the dir is a PRE-EXISTING one we do not own
+        # (a shared /tmp, a system path like /var/lib without root). That is NOT
+        # fatal — every state file is written 0600 below regardless — so a
+        # directory we cannot re-permission must degrade, never crash the probe.
+        try:
+            os.chmod(path.parent, 0o700)
+        except OSError:
+            pass
 
     fd, tmp_name = tempfile.mkstemp(
         prefix=f".{path.name}.",
@@ -398,18 +444,33 @@ class Transport:
             "credential_generation": data["credential_generation"],
             "site_policy": data["policy"],
             "policy_signing_public_key": policy_public_key,
+            # WHICH manager issued this credential. Without it the probe cannot
+            # tell "revoked by this manager" from "unknown to a different one",
+            # and defaults to the alarming reading.
+            "manager_fingerprint": manager_fingerprint(self._base_url),
+            "site_id": (data.get("policy") or {}).get("site_id"),
             "access_expires_at": time.time() + int(data.get("access_expires_in_seconds") or 600),
         }, remove=("enrollment_request_id", "enrollment_device_secret"))
         return data
 
     def refresh_device_access(self, signing_private_key: bytes) -> bool:
+        """Backwards-compatible bool wrapper over `refresh_device_access_ex`."""
+        return self.refresh_device_access_ex(signing_private_key) == DEVICE_REFRESH_OK
+
+    def refresh_device_access_ex(self, signing_private_key: bytes) -> str:
+        """Refresh the short-lived device access token, reporting WHY it failed.
+
+        Returns DEVICE_REFRESH_OK / _REJECTED / _UNAVAILABLE. The caller needs
+        the distinction: only an authoritative rejection FROM THE MANAGER THAT
+        ISSUED THE CREDENTIAL justifies stopping for administrator review.
+        """
         try:
             state = self.load_state()
             agent_id = str(state.get("agent_id") or self._agent_id)
             refresh_secret = state.get("device_refresh_secret")
             generation = int(state.get("credential_generation") or 0)
             if not agent_id or not refresh_secret or generation < 1:
-                return False
+                return DEVICE_REFRESH_REJECTED       # nothing to refresh with
             import secrets
             from agent.device_identity import sign_b64
 
@@ -429,7 +490,11 @@ class Transport:
                 },
             )
             if response.status_code in (401, 403, 409):
-                return False
+                return DEVICE_REFRESH_REJECTED       # authoritative "no"
+            if response.status_code >= 500:
+                # Includes the manager's 503 "replay protection unavailable".
+                # Transient infrastructure trouble is NOT a revocation.
+                return DEVICE_REFRESH_UNAVAILABLE
             response.raise_for_status()
             self._agent_id = agent_id
             self._agent_token = str(response.json()["access_token"])
@@ -439,9 +504,11 @@ class Transport:
                 "access_expires_at": time.time()
                 + int(response.json().get("access_expires_in_seconds") or 600),
             })
-            return True
+            return DEVICE_REFRESH_OK
         except (OSError, ValueError, TypeError, httpx.HTTPError):
-            return False
+            # Network/parse failure — we never reached a verdict, so we must not
+            # invent one. Transient until proven otherwise.
+            return DEVICE_REFRESH_UNAVAILABLE
 
     def ensure_device_access(self) -> bool:
         """Refresh a device token before expiry; legacy identities are unchanged."""
