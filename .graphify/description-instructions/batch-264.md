@@ -1,4 +1,4 @@
-# Node Description Batch 265 of 330
+# Node Description Batch 265 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,51 +12,60 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
-Write every description in English (en). Do not switch languages.
+For an entity node (any other kind — e.g. a person, place, event, object),
+describe what the entity is and its role, grounded in its type, its
+relations (neighbors) and the provided citations/evidence — e.g.
+"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
+Ground entity descriptions in the citations/evidence when present; do not
+speculate beyond the context, so a node with no supporting context may be
+left out of the reply.
+LANGUAGE: each entry has a `lang=` marker giving the language of its source.
+Write that entry's description in EXACTLY that language. Do not translate to
+a single common language — match each node's source language individually.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_accuracy_gate_testshippedcorpora_test_every_shipped_corpus_declares_provenance": ".test_every_shipped_corpus_declares_provenance()" | kind=code-symbol | source=probe/tests/test_accuracy_gate.py:L48 | neighbors=[TestShippedCorpora]
-- "tests_test_accuracy_gate_testshippedcorpora_test_report_marks_regression_corpora_as_not_accuracy_evidence": ".test_report_marks_regression_corpora_as_not_accuracy_evidence()" | kind=code-symbol | source=probe/tests/test_accuracy_gate.py:L53 | neighbors=[TestShippedCorpora]
-- "tests_test_accuracy_gate_testshippedcorpora_test_unlabeled_findings_dimension_is_marked_in_the_report": ".test_unlabeled_findings_dimension_is_marked_in_the_report()" | kind=code-symbol | source=probe/tests/test_accuracy_gate.py:L77 | neighbors=[TestShippedCorpora]
-- "tests_test_accuracy_gate_testthresholds_test_clean_result_produces_no_violations": ".test_clean_result_produces_no_violations()" | kind=code-symbol | source=probe/tests/test_accuracy_gate.py:L178 | neighbors=[TestThresholds]
-- "tests_test_accuracy_gate_testthresholds_test_false_positive_finding_trips_precision": ".test_false_positive_finding_trips_precision()" | kind=code-symbol | source=probe/tests/test_accuracy_gate.py:L165 | neighbors=[TestThresholds]
-- "tests_test_accuracy_gate_testthresholds_test_missed_open_port_trips_open_recall": ".test_missed_open_port_trips_open_recall()" | kind=code-symbol | source=probe/tests/test_accuracy_gate.py:L157 | neighbors=[TestThresholds]
-- "tests_test_accuracy_gate_testthresholds_test_phantom_open_port_trips_open_precision": ".test_phantom_open_port_trips_open_precision()" | kind=code-symbol | source=probe/tests/test_accuracy_gate.py:L149 | neighbors=[TestThresholds]
-- "tests_test_accuracy_gate_testthresholds_test_unlabeled_dimension_is_skipped_not_scored_as_perfect": ".test_unlabeled_dimension_is_skipped_not_scored_as_perfect()" | kind=code-symbol | source=probe/tests/test_accuracy_gate.py:L172 | neighbors=[TestThresholds]
-- "tests_test_active_validation_interpret_test_confirmed_upgrades_and_sets_exploit_validated": "test_confirmed_upgrades_and_sets_exploit_validated()" | kind=code-symbol | source=manager/backend/tests/test_active_validation_interpret.py:L6 | neighbors=[test_active_validation_interpret.py]
-- "tests_test_active_validation_interpret_test_contradicted_marks_false_positive": "test_contradicted_marks_false_positive()" | kind=code-symbol | source=manager/backend/tests/test_active_validation_interpret.py:L13 | neighbors=[test_active_validation_interpret.py]
-- "tests_test_active_validation_interpret_test_inconclusive_keeps_state_unchanged": "test_inconclusive_keeps_state_unchanged()" | kind=code-symbol | source=manager/backend/tests/test_active_validation_interpret.py:L20 | neighbors=[test_active_validation_interpret.py]
-- "tests_test_active_validation_interpret_test_missing_or_garbage_result_is_inconclusive": "test_missing_or_garbage_result_is_inconclusive()" | kind=code-symbol | source=manager/backend/tests/test_active_validation_interpret.py:L27 | neighbors=[test_active_validation_interpret.py]
-- "tests_test_ad_assessment_fakeattr_init": ".__init__()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L32 | neighbors=[_FakeAttr]
-- "tests_test_ad_assessment_fakeentry_init": ".__init__()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L37 | neighbors=[_FakeEntry]
-- "tests_test_ad_assessment_testadcschecker_setup_method": ".setup_method()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L280 | neighbors=[TestADCSChecker]
-- "tests_test_ad_assessment_testadcschecker_test_esc1_negative_when_manager_approval": ".test_esc1_negative_when_manager_approval()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L292 | neighbors=[TestADCSChecker]
-- "tests_test_ad_assessment_testadcschecker_test_esc1_negative_without_low_priv_enrollment": ".test_esc1_negative_without_low_priv_enrollment()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L299 | neighbors=[TestADCSChecker]
-- "tests_test_ad_assessment_testadcschecker_test_esc1_positive": ".test_esc1_positive()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L283 | neighbors=[TestADCSChecker]
-- "tests_test_ad_assessment_testadcschecker_test_esc4_negative_when_deny_ace": ".test_esc4_negative_when_deny_ace()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L313 | neighbors=[TestADCSChecker]
-- "tests_test_ad_assessment_testadcschecker_test_esc4_positive": ".test_esc4_positive()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L306 | neighbors=[TestADCSChecker]
-- "tests_test_ad_assessment_testadcschecker_test_esc8_negative_no_web_enrollment": ".test_esc8_negative_no_web_enrollment()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L332 | neighbors=[TestADCSChecker]
-- "tests_test_ad_assessment_testadcschecker_test_esc8_negative_with_epa_and_https": ".test_esc8_negative_with_epa_and_https()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L326 | neighbors=[TestADCSChecker]
-- "tests_test_ad_assessment_testadcschecker_test_esc8_positive": ".test_esc8_positive()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L320 | neighbors=[TestADCSChecker]
-- "tests_test_ad_assessment_testadcschecker_test_generate_findings_produces_esc1_and_esc8": ".test_generate_findings_produces_esc1_and_esc8()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L335 | neighbors=[TestADCSChecker]
-- "tests_test_ad_assessment_testasreproastchecker_setup_method": ".setup_method()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L217 | neighbors=[TestASREPRoastChecker]
-- "tests_test_ad_assessment_testasreproastchecker_test_finding_shape": ".test_finding_shape()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L229 | neighbors=[TestASREPRoastChecker]
-- "tests_test_ad_assessment_testasreproastchecker_test_get_no_preauth_accounts": ".test_get_no_preauth_accounts()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L220 | neighbors=[TestASREPRoastChecker]
-- "tests_test_ad_assessment_testasreproastchecker_test_no_finding_when_empty": ".test_no_finding_when_empty()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L235 | neighbors=[TestASREPRoastChecker]
-- "tests_test_ad_assessment_testasreproastchecker_test_request_asrep_without_impacket": ".test_request_asrep_without_impacket()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L238 | neighbors=[TestASREPRoastChecker]
-- "tests_test_ad_assessment_testbloodhoundcollector_setup_method": ".setup_method()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L358 | neighbors=[TestBloodHoundCollector]
-- "tests_test_ad_assessment_testbloodhoundcollector_test_da_path_finding_critical_when_short": ".test_da_path_finding_critical_when_short()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L361 | neighbors=[TestBloodHoundCollector]
-- "tests_test_ad_assessment_testbloodhoundcollector_test_da_path_finding_high_when_long": ".test_da_path_finding_high_when_long()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L368 | neighbors=[TestBloodHoundCollector]
-- "tests_test_ad_assessment_testbloodhoundcollector_test_import_without_neo4j": ".test_import_without_neo4j()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L379 | neighbors=[TestBloodHoundCollector]
-- "tests_test_ad_assessment_testbloodhoundcollector_test_no_finding_without_paths": ".test_no_finding_without_paths()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L373 | neighbors=[TestBloodHoundCollector]
-- "tests_test_ad_assessment_testbloodhoundcollector_test_query_da_paths_without_driver": ".test_query_da_paths_without_driver()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L376 | neighbors=[TestBloodHoundCollector]
-- "tests_test_ad_assessment_testbuildadfinding_test_attack_narrative_carried_in_evidence": ".test_attack_narrative_carried_in_evidence()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L84 | neighbors=[TestBuildADFinding]
-- "tests_test_ad_assessment_testbuildadfinding_test_invalid_severity_falls_back_to_info": ".test_invalid_severity_falls_back_to_info()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L76 | neighbors=[TestBuildADFinding]
-- "tests_test_ad_assessment_testbuildadfinding_test_required_fields_present": ".test_required_fields_present()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L60 | neighbors=[TestBuildADFinding]
-- "tests_test_ad_assessment_testkerberoastchecker_setup_method": ".setup_method()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L170 | neighbors=[TestKerberoastChecker]
-- "tests_test_ad_assessment_testkerberoastchecker_test_finding_critical_when_privileged": ".test_finding_critical_when_privileged()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L189 | neighbors=[TestKerberoastChecker]
+- "settings_page_toggle": "Toggle()" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L141 | neighbors=[page.tsx] | lang=en
+- "siem_config_route_get": "GET()" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/detection-validation/siem-config/route.ts:L5 | neighbors=[route.ts] | lang=en
+- "siem_config_route_post": "POST()" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/detection-validation/siem-config/route.ts:L14 | neighbors=[route.ts] | lang=en
+- "sla_policy_route_get": "GET" | kind=code-symbol | source=manager/frontend/app/api/sla-policy/route.ts:L10 | neighbors=[route.ts] | lang=en
+- "sla_policy_route_put": "PUT" | kind=code-symbol | source=manager/frontend/app/api/sla-policy/route.ts:L14 | neighbors=[route.ts] | lang=en
+- "sla_summary_route_apislaitem": "ApiSlaItem" | kind=code-symbol | source=manager/frontend/app/api/findings/sla-summary/route.ts:L17 | neighbors=[route.ts] | lang=en
+- "sla_summary_route_apislasummary": "ApiSlaSummary" | kind=code-symbol | source=manager/frontend/app/api/findings/sla-summary/route.ts:L22 | neighbors=[route.ts] | lang=en
+- "sla_summary_route_get": "GET" | kind=code-symbol | source=manager/frontend/app/api/findings/sla-summary/route.ts:L27 | neighbors=[route.ts] | lang=en
+- "sla_summary_route_sev_to_ui": "SEV_TO_UI" | kind=code-symbol | source=manager/frontend/app/api/findings/sla-summary/route.ts:L13 | neighbors=[route.ts] | lang=en
+- "states_datastate_btn": "btn" | kind=code-symbol | source=manager/frontend/components/states/DataState.tsx:L135 | neighbors=[DataState.tsx] | lang=en
+- "states_datastate_center": "center" | kind=code-symbol | source=manager/frontend/components/states/DataState.tsx:L130 | neighbors=[DataState.tsx] | lang=en
+- "states_datastate_datastateprops": "DataStateProps" | kind=code-symbol | source=manager/frontend/components/states/DataState.tsx:L96 | neighbors=[DataState.tsx] | lang=en
+- "states_datastate_offlinebanner": "OfflineBanner()" | kind=code-symbol | source=manager/frontend/components/states/DataState.tsx:L83 | neighbors=[DataState.tsx] | lang=en
+- "states_datastate_unauthorized": "Unauthorized()" | kind=code-symbol | source=manager/frontend/components/states/DataState.tsx:L70 | neighbors=[DataState.tsx] | lang=en
+- "status_route_required": "required" | kind=code-symbol | source=manager/frontend/app/api/settings/status/route.ts:L4 | neighbors=[route.ts] | lang=en
+- "summary_route_apisummary": "ApiSummary" | kind=code-symbol | source=manager/frontend/app/api/findings/summary/route.ts:L5 | neighbors=[route.ts] | lang=en
+- "summary_route_get": "GET" | kind=code-symbol | source=manager/frontend/app/api/findings/summary/route.ts:L18 | neighbors=[route.ts] | lang=en
+- "supporting_research_evidence_store_connect": "connect()" | kind=code-symbol | source=Supporting_research/evidence_store.py:L89 | neighbors=[evidence_store.py] | lang=en
+- "supporting_research_evidence_store_identityresult_asset_count": ".asset_count()" | kind=code-symbol | source=Supporting_research/evidence_store.py:L139 | neighbors=[IdentityResult] | lang=en
+- "supporting_research_evidence_store_identityresult_observations_for": ".observations_for()" | kind=code-symbol | source=Supporting_research/evidence_store.py:L142 | neighbors=[IdentityResult] | lang=en
+- "supporting_research_evidence_store_rationale_1": "vedha_ref.evidence_store -- the layer the whole strategy rests on.  Thesis under" | kind=entity | source=Supporting_research/evidence_store.py:L1 | neighbors=[evidence_store.py] | lang=en
+- "supporting_research_evidence_store_rationale_175": "Cluster observations into assets using fingerprint keys.      Strong keys merge" | kind=entity | source=Supporting_research/evidence_store.py:L175 | neighbors=[resolve_identity()] | lang=en
+- "supporting_research_evidence_store_rationale_258": "The industry default, for comparison. Included so the cost is measurable." | kind=entity | source=Supporting_research/evidence_store.py:L258 | neighbors=[naive_ip_identity()] | lang=en
+- "supporting_research_evidence_store_rationale_300": "Answer a brand-new rule against evidence already on disk.      No network traffi" | kind=entity | source=Supporting_research/evidence_store.py:L300 | neighbors=[retroactive_detect()] | lang=pt
+- "supporting_research_evidence_store_rationale_363": "What a customer should actually be shown: three numbers, not one." | kind=entity | source=Supporting_research/evidence_store.py:L363 | neighbors=[coverage_summary()] | lang=pt
+- "supporting_research_evidence_store_rationale_382": "Audit-grade: what did the evidence support on a specific date?" | kind=entity | source=Supporting_research/evidence_store.py:L382 | neighbors=[time_travel()] | lang=en
+- "supporting_research_evidence_store_rationale_391": "(observed_at, answer) transitions -- the real remediation-verification signal." | kind=entity | source=Supporting_research/evidence_store.py:L391 | neighbors=[exposure_timeline()] | lang=en
+- "supporting_research_evidence_store_rule": "Rule" | kind=code-symbol | source=Supporting_research/evidence_store.py:L271 | neighbors=[evidence_store.py] | lang=en
+- "supporting_research_evidence_store_unionfind_init": ".__init__()" | kind=code-symbol | source=Supporting_research/evidence_store.py:L147 | neighbors=[_UnionFind] | lang=en
+- "supporting_research_evidence_store_utcnow": "utcnow()" | kind=code-symbol | source=Supporting_research/evidence_store.py:L81 | neighbors=[evidence_store.py] | lang=en
+- "supporting_research_test_evidence_store_rationale_1": "Tests for the evidence store, and a demo that puts numbers on the strategic clai" | kind=entity | source=Supporting_research/test_evidence_store.py:L1 | neighbors=[test_evidence_store.py] | lang=en
+- "supporting_research_test_evidence_store_rationale_105": "Not merely coarse -- wrong. It splits one machine and merges two." | kind=entity | source=Supporting_research/test_evidence_store.py:L105 | neighbors=[.test_ip_identity_is_wrong_in_both_dire…] | lang=en
+- "supporting_research_test_evidence_store_rationale_146": "No rescan. The whole point." | kind=entity | source=Supporting_research/test_evidence_store.py:L146 | neighbors=[.test_a_brand_new_rule_answers_against_…] | lang=en
+- "supporting_research_test_evidence_store_rationale_169": "Regression guard. An OR over history means a patched host stays vulnerable" | kind=entity | source=Supporting_research/test_evidence_store.py:L169 | neighbors=[.test_current_state_comes_from_latest_e…] | lang=en
+- "supporting_research_test_evidence_store_rationale_195": "Drifted payload: the probe ran, the field moved." | kind=entity | source=Supporting_research/test_evidence_store.py:L195 | neighbors=[.test_collected_but_unusable_evidence_i…] | lang=en
+- "supporting_research_test_evidence_store_rationale_73": "30 days of history. HOST_A is patched on day 10." | kind=entity | source=Supporting_research/test_evidence_store.py:L73 | neighbors=[build_fleet()] | lang=en
+- "supporting_research_test_evidence_store_testidentity_test_fingerprint_identity_finds_exactly_three_machines": ".test_fingerprint_identity_finds_exactly_three_machines()" | kind=code-symbol | source=Supporting_research/test_evidence_store.py:L100 | neighbors=[TestIdentity] | lang=en
+- "supporting_research_test_evidence_store_testidentity_test_observations_without_any_fingerprint_fall_back_to_hostname": ".test_observations_without_any_fingerprint_fall_back_to_hostname()" | kind=code-symbol | source=Supporting_research/test_evidence_store.py:L127 | neighbors=[TestIdentity] | lang=en
+- "supporting_research_test_evidence_store_testretroactivedetection_test_cannot_answer_is_reported_rather_than_assumed_clean": ".test_cannot_answer_is_reported_rather_than_assumed_clean()" | kind=code-symbol | source=Supporting_research/test_evidence_store.py:L178 | neighbors=[TestRetroactiveDetection] | lang=en
+- "test_route_post": "POST" | kind=code-symbol | source=manager/frontend/app/api/integrations/test/route.ts:L9 | neighbors=[route.ts] | lang=en
 
 ## Instructions
 

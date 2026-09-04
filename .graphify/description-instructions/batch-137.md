@@ -1,4 +1,4 @@
-# Node Description Batch 138 of 330
+# Node Description Batch 138 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -24,6 +24,25 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
+- "prompts_report_scoredomain": "ScoreDomain" | kind=code-symbol | source=manager/frontend/lib/prompts/report.ts:L56 | neighbors=[ai-engine.ts, report.ts]
+- "prompts_report_validatereport": "validateReport()" | kind=code-symbol | source=manager/frontend/lib/prompts/report.ts:L326 | neighbors=[ai-engine.ts, report.ts]
+- "raw_facts_route_fail": "fail()" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/raw-facts/route.ts:L12 | neighbors=[route.ts, GET()]
+- "raw_facts_route_get": "GET()" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/raw-facts/route.ts:L17 | neighbors=[route.ts, fail()]
+- "remediation_route_fail": "fail()" | kind=code-symbol | source=manager/frontend/app/api/findings/[id]/remediation/route.ts:L7 | neighbors=[route.ts, GET()]
+- "remediation_route_get": "GET()" | kind=code-symbol | source=manager/frontend/app/api/findings/[id]/remediation/route.ts:L15 | neighbors=[route.ts, fail()]
+- "reopen_route_fail": "fail()" | kind=code-symbol | source=manager/frontend/app/api/findings/[id]/reopen/route.ts:L11 | neighbors=[route.ts, POST()]
+- "reopen_route_post": "POST()" | kind=code-symbol | source=manager/frontend/app/api/findings/[id]/reopen/route.ts:L16 | neighbors=[route.ts, fail()]
+- "reports_page_cvsscolor": "cvssColor()" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L76 | neighbors=[page.tsx, FindingCard()]
+- "reports_page_cvssvector": "CvssVector()" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L177 | neighbors=[page.tsx, parseCvssVector()]
+- "reports_page_formatdate": "formatDate()" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L84 | neighbors=[page.tsx, ReportsPage()]
+- "reports_page_parsecvss": "parseCvss()" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L73 | neighbors=[page.tsx, FindingCard()]
+- "reports_page_parsecvssvector": "parseCvssVector()" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L83 | neighbors=[page.tsx, CvssVector()]
+- "reports_page_portalreports": "PortalReports()" | kind=code-symbol | source=manager/frontend/app/portal/reports/page.tsx:L705 | neighbors=[page.tsx, fmtDate()]
+- "reports_page_reportcontent": "ReportContent" | kind=code-symbol | source=manager/frontend/app/portal/reports/page.tsx:L17 | neighbors=[page.tsx, PortalReport]
+- "routers_activity_recent_activity": "recent_activity()" | kind=code-symbol | source=manager/backend/app/routers/activity.py:L41 | neighbors=[activity.py, ActivityItem]
+- "routers_ad_set_job_status": "_set_job_status()" | kind=code-symbol | source=manager/backend/app/routers/ad.py:L201 | neighbors=[ad.py, _run_ad_assessment_and_save()]
+- "routers_agent_advisor_list_recommendations": "list_recommendations()" | kind=code-symbol | source=manager/backend/app/routers/agent_advisor.py:L72 | neighbors=[agent_advisor.py, _rec_dict()]
+- "routers_agent_advisor_rec_dict": "_rec_dict()" | kind=code-symbol | source=manager/backend/app/routers/agent_advisor.py:L31 | neighbors=[agent_advisor.py, list_recommendations()]
 - "routers_agent_ws_rationale_44": "Persistent WebSocket for probe → manager push communication.      Query params:" | kind=entity | source=manager/backend/app/routers/agent_ws.py:L44 | neighbors=[ScanJob, agent_websocket_endpoint()]
 - "routers_agents_enqueuejobrequest_validate_intensity": "._validate_intensity()" | kind=code-symbol | source=manager/backend/app/routers/agents.py:L322 | neighbors=[EnqueueJobRequest, _normalize_intensity_name()]
 - "routers_agents_heartbeat": "heartbeat()" | kind=code-symbol | source=manager/backend/app/routers/agents.py:L821 | neighbors=[agents.py, _agent_ownership_check()]
@@ -45,25 +64,6 @@ one-sentence description — no prose, no markdown fences.
 - "routers_customer_access_assignagentbody": "AssignAgentBody" | kind=code-symbol | source=manager/backend/app/routers/customer_access.py:L71 | neighbors=[customer_access.py, BaseModel]
 - "routers_customer_access_clientusercreate": "ClientUserCreate" | kind=code-symbol | source=manager/backend/app/routers/customer_access.py:L52 | neighbors=[customer_access.py, BaseModel]
 - "routers_customer_access_clientuserpatch": "ClientUserPatch" | kind=code-symbol | source=manager/backend/app/routers/customer_access.py:L57 | neighbors=[customer_access.py, BaseModel]
-- "routers_customer_access_reject_scan_request": "reject_scan_request()" | kind=code-symbol | source=manager/backend/app/routers/customer_access.py:L358 | neighbors=[customer_access.py, _get_scan_request()]
-- "routers_customer_access_rejectbody": "RejectBody" | kind=code-symbol | source=manager/backend/app/routers/customer_access.py:L89 | neighbors=[customer_access.py, BaseModel]
-- "routers_customer_access_scanrequestout": "ScanRequestOut" | kind=code-symbol | source=manager/backend/app/routers/customer_access.py:L75 | neighbors=[customer_access.py, BaseModel]
-- "routers_detection_get_results": "get_results()" | kind=code-symbol | source=manager/backend/app/routers/detection.py:L128 | neighbors=[detection.py, _result_out()]
-- "routers_detection_result_out": "_result_out()" | kind=code-symbol | source=manager/backend/app/routers/detection.py:L217 | neighbors=[detection.py, get_results()]
-- "routers_detection_runs_latest_run_delta": "latest_run_delta()" | kind=code-symbol | source=manager/backend/app/routers/detection_runs.py:L72 | neighbors=[detection_runs.py, _run_dict()]
-- "routers_detection_runs_list_detection_runs": "list_detection_runs()" | kind=code-symbol | source=manager/backend/app/routers/detection_runs.py:L55 | neighbors=[detection_runs.py, _run_dict()]
-- "routers_detection_set_job": "_set_job()" | kind=code-symbol | source=manager/backend/app/routers/detection.py:L322 | neighbors=[detection.py, _run_correlation()]
-- "routers_engagements_bulk_import_assets": "bulk_import_assets()" | kind=code-symbol | source=manager/backend/app/routers/engagements.py:L579 | neighbors=[engagements.py, _refresh_overview_cache()]
-- "routers_engagements_create_engagement": "create_engagement()" | kind=code-symbol | source=manager/backend/app/routers/engagements.py:L378 | neighbors=[engagements.py, _refresh_overview_cache()]
-- "routers_engagements_detection_explain": "detection_explain()" | kind=code-symbol | source=manager/backend/app/routers/engagements.py:L1109 | neighbors=[engagements.py, The machine-readable answer to "the scr…]
-- "routers_engagements_raw_facts": "raw_facts()" | kind=code-symbol | source=manager/backend/app/routers/engagements.py:L1162 | neighbors=[engagements.py, The raw ScanResult facts as the probe s…]
-- "routers_engagements_update_engagement": "update_engagement()" | kind=code-symbol | source=manager/backend/app/routers/engagements.py:L545 | neighbors=[engagements.py, _refresh_overview_cache()]
-- "routers_exploits_approve_exploit": "approve_exploit()" | kind=code-symbol | source=manager/backend/app/routers/exploits.py:L244 | neighbors=[exploits.py, _get_approval_or_404()]
-- "routers_exploits_get_result_or_404": "_get_result_or_404()" | kind=code-symbol | source=manager/backend/app/routers/exploits.py:L395 | neighbors=[exploits.py, get_exploit_result()]
-- "routers_exploits_list_approvals": "list_approvals()" | kind=code-symbol | source=manager/backend/app/routers/exploits.py:L217 | neighbors=[exploits.py, _approval_out()]
-- "routers_exploits_list_exploit_results": "list_exploit_results()" | kind=code-symbol | source=manager/backend/app/routers/exploits.py:L176 | neighbors=[exploits.py, _result_out()]
-- "routers_exploits_load_finding_and_eng": "_load_finding_and_eng()" | kind=code-symbol | source=manager/backend/app/routers/exploits.py:L368 | neighbors=[exploits.py, run_exploit()]
-- "routers_exploits_reject_exploit": "reject_exploit()" | kind=code-symbol | source=manager/backend/app/routers/exploits.py:L302 | neighbors=[exploits.py, _get_approval_or_404()]
 
 ## Instructions
 

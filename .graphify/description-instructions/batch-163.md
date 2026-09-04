@@ -1,4 +1,4 @@
-# Node Description Batch 164 of 330
+# Node Description Batch 164 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -24,6 +24,25 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
+- "tests_test_scope_targets_test_property_every_accepted_target_is_subnet_of_scope": "test_property_every_accepted_target_is_subnet_of_scope()" | kind=code-symbol | source=manager/backend/tests/test_scope_targets.py:L98 | neighbors=[test_scope_targets.py, Whatever the validator accepts must be …]
+- "tests_test_scope_targets_testnoscopeauthorizesnothing": "TestNoScopeAuthorizesNothing" | kind=code-symbol | source=manager/backend/tests/test_scope_targets.py:L15 | neighbors=[test_scope_targets.py, .test_empty_scope_denies_all()]
+- "tests_test_seed_admin_testdatabaseunavailable": "TestDatabaseUnavailable" | kind=code-symbol | source=manager/backend/tests/test_seed_admin.py:L288 | neighbors=[test_seed_admin.py, .test_retries_then_raises_database_unav…]
+- "tests_test_seed_admin_testexistingadminnoreset": "TestExistingAdminNoReset" | kind=code-symbol | source=manager/backend/tests/test_seed_admin.py:L139 | neighbors=[test_seed_admin.py, .test_noop_when_user_exists_and_no_forc…]
+- "tests_test_seed_admin_testfirstdeployment": "TestFirstDeployment" | kind=code-symbol | source=manager/backend/tests/test_seed_admin.py:L96 | neighbors=[test_seed_admin.py, .test_creates_tenant_and_admin_on_first…]
+- "tests_test_service_banner_ident_self_signed": "_self_signed()" | kind=code-symbol | source=probe/tests/test_service_banner_ident.py:L247 | neighbors=[test_service_banner_ident.py, test_https_on_arbitrary_port_identifies…]
+- "tests_test_service_banner_ident_test_prefers_decrypted_tls_reply_over_plaintext_noise": "test_prefers_decrypted_tls_reply_over_plaintext_noise()" | kind=code-symbol | source=probe/tests/test_service_banner_ident.py:L196 | neighbors=[test_service_banner_ident.py, _scanner()]
+- "tests_test_service_banner_ident_test_slow_greeting_still_identifies": "test_slow_greeting_still_identifies()" | kind=code-symbol | source=probe/tests/test_service_banner_ident.py:L170 | neighbors=[test_service_banner_ident.py, A speak-first daemon that delays its 22…]
+- "tests_test_service_banner_ident_testladder_test_client_first_ports_skip_null_rung": ".test_client_first_ports_skip_null_rung()" | kind=code-symbol | source=probe/tests/test_service_banner_ident.py:L147 | neighbors=[TestLadder, _scanner()]
+- "tests_test_service_banner_ident_testladder_test_greet_timeout_tracks_operator_timeout": ".test_greet_timeout_tracks_operator_timeout()" | kind=code-symbol | source=probe/tests/test_service_banner_ident.py:L156 | neighbors=[TestLadder, _scanner()]
+- "tests_test_service_banner_ident_testladder_test_no_tls_flag_drops_rung": ".test_no_tls_flag_drops_rung()" | kind=code-symbol | source=probe/tests/test_service_banner_ident.py:L153 | neighbors=[TestLadder, _scanner()]
+- "tests_test_service_identifier_rationale_1": "Unit tests for ServiceIdentifier." | kind=entity | source=manager/backend/tests/test_service_identifier.py:L1 | neighbors=[test_service_identifier.py, ServiceIdentifier]
+- "tests_test_service_identifier_testserviceidentifier_test_confidence_floor_port_hint": ".test_confidence_floor_port_hint()" | kind=code-symbol | source=manager/backend/tests/test_service_identifier.py:L70 | neighbors=[TestServiceIdentifier, ._id()]
+- "tests_test_service_identifier_testserviceidentifier_test_ftp_banner": ".test_ftp_banner()" | kind=code-symbol | source=manager/backend/tests/test_service_identifier.py:L28 | neighbors=[TestServiceIdentifier, ._id()]
+- "tests_test_service_identifier_testserviceidentifier_test_high_confidence_combined": ".test_high_confidence_combined()" | kind=code-symbol | source=manager/backend/tests/test_service_identifier.py:L75 | neighbors=[TestServiceIdentifier, ._id()]
+- "tests_test_service_identifier_testserviceidentifier_test_http_server_header": ".test_http_server_header()" | kind=code-symbol | source=manager/backend/tests/test_service_identifier.py:L19 | neighbors=[TestServiceIdentifier, ._id()]
+- "tests_test_service_identifier_testserviceidentifier_test_kerberos_banner": ".test_kerberos_banner()" | kind=code-symbol | source=manager/backend/tests/test_service_identifier.py:L48 | neighbors=[TestServiceIdentifier, ._id()]
+- "tests_test_service_identifier_testserviceidentifier_test_ldap_banner": ".test_ldap_banner()" | kind=code-symbol | source=manager/backend/tests/test_service_identifier.py:L52 | neighbors=[TestServiceIdentifier, ._id()]
+- "tests_test_service_identifier_testserviceidentifier_test_mssql_banner": ".test_mssql_banner()" | kind=code-symbol | source=manager/backend/tests/test_service_identifier.py:L44 | neighbors=[TestServiceIdentifier, ._id()]
 - "tests_test_service_identifier_testserviceidentifier_test_mysql_banner": ".test_mysql_banner()" | kind=code-symbol | source=manager/backend/tests/test_service_identifier.py:L36 | neighbors=[TestServiceIdentifier, ._id()]
 - "tests_test_service_identifier_testserviceidentifier_test_rdp_port_hint": ".test_rdp_port_hint()" | kind=code-symbol | source=manager/backend/tests/test_service_identifier.py:L56 | neighbors=[TestServiceIdentifier, ._id()]
 - "tests_test_service_identifier_testserviceidentifier_test_redis_pong": ".test_redis_pong()" | kind=code-symbol | source=manager/backend/tests/test_service_identifier.py:L40 | neighbors=[TestServiceIdentifier, ._id()]
@@ -45,25 +64,6 @@ one-sentence description — no prose, no markdown fences.
 - "tests_test_service_posture_rules_testnegatives_test_rsync_auth_required": ".test_rsync_auth_required()" | kind=code-symbol | source=manager/detection_engine/tests/test_service_posture_rules.py:L153 | neighbors=[TestNegatives, _fire()]
 - "tests_test_service_posture_rules_testnegatives_test_smtp_with_starttls": ".test_smtp_with_starttls()" | kind=code-symbol | source=manager/detection_engine/tests/test_service_posture_rules.py:L149 | neighbors=[TestNegatives, _fire()]
 - "tests_test_service_posture_rules_testnegatives_test_vnc_weak_fires_when_it_is_the_only_option": ".test_vnc_weak_fires_when_it_is_the_only_option()" | kind=code-symbol | source=manager/detection_engine/tests/test_service_posture_rules.py:L144 | neighbors=[TestNegatives, _fire()]
-- "tests_test_service_posture_rules_testnegatives_test_vnc_weak_suppressed_when_strong_type_offered": ".test_vnc_weak_suppressed_when_strong_type_offered()" | kind=code-symbol | source=manager/detection_engine/tests/test_service_posture_rules.py:L139 | neighbors=[TestNegatives, _fire()]
-- "tests_test_service_posture_rules_testrdpnonla_test_fires_from_the_first_probe_when_it_negotiated": ".test_fires_from_the_first_probe_when_it_negotiated()" | kind=code-symbol | source=manager/detection_engine/tests/test_service_posture_rules.py:L176 | neighbors=[TestRdpNoNla, _fire()]
-- "tests_test_service_posture_rules_testrdpnonla_test_silent_when_nla_is_required": ".test_silent_when_nla_is_required()" | kind=code-symbol | source=manager/detection_engine/tests/test_service_posture_rules.py:L182 | neighbors=[TestRdpNoNla, _fire()]
-- "tests_test_service_posture_rules_testrdpnotls_test_silent_when_negotiation_succeeded": ".test_silent_when_negotiation_succeeded()" | kind=code-symbol | source=manager/detection_engine/tests/test_service_posture_rules.py:L209 | neighbors=[TestRdpNoTls, _fire()]
-- "tests_test_sla_policy_testpolicyawarecompute_test_custom_window_relaxes_state": ".test_custom_window_relaxes_state()" | kind=code-symbol | source=manager/backend/tests/test_sla_policy.py:L27 | neighbors=[TestPolicyAwareCompute, _finding()]
-- "tests_test_sla_policy_testpolicyawarecompute_test_default_window_breaches": ".test_default_window_breaches()" | kind=code-symbol | source=manager/backend/tests/test_sla_policy.py:L24 | neighbors=[TestPolicyAwareCompute, _finding()]
-- "tests_test_smb_ntlm_build_testntlmfingerprintframing_test_end_to_end_framing_extracts_build": ".test_end_to_end_framing_extracts_build()" | kind=code-symbol | source=probe/tests/test_smb_ntlm_build.py:L85 | neighbors=[TestNtlmFingerprintFraming, _challenge()]
-- "tests_test_smb_ntlm_build_testntlmfingerprintframing_test_ntlm_os_build_shared_function": ".test_ntlm_os_build_shared_function()" | kind=code-symbol | source=probe/tests/test_smb_ntlm_build.py:L113 | neighbors=[TestNtlmFingerprintFraming, _challenge()]
-- "tests_test_smb_ntlm_build_testparsechallenge_test_legacy_6_1_is_win7": ".test_legacy_6_1_is_win7()" | kind=code-symbol | source=probe/tests/test_smb_ntlm_build.py:L63 | neighbors=[TestParseChallenge, _challenge()]
-- "tests_test_smb_ntlm_build_testparsechallenge_test_no_version_field_yields_name_but_no_build": ".test_no_version_field_yields_name_but_no_build()" | kind=code-symbol | source=probe/tests/test_smb_ntlm_build.py:L66 | neighbors=[TestParseChallenge, _challenge()]
-- "tests_test_smb_ntlm_build_testparsechallenge_test_server_2022_build_20348": ".test_server_2022_build_20348()" | kind=code-symbol | source=probe/tests/test_smb_ntlm_build.py:L55 | neighbors=[TestParseChallenge, _challenge()]
-- "tests_test_smb_ntlm_build_testparsechallenge_test_unknown_build_still_classified_win11_vs_win10": ".test_unknown_build_still_classified_win11_vs_win10()" | kind=code-symbol | source=probe/tests/test_smb_ntlm_build.py:L59 | neighbors=[TestParseChallenge, _challenge()]
-- "tests_test_smb_ntlm_build_testparsechallenge_test_win10_22h2": ".test_win10_22h2()" | kind=code-symbol | source=probe/tests/test_smb_ntlm_build.py:L51 | neighbors=[TestParseChallenge, _challenge()]
-- "tests_test_smb_ntlm_build_testparsechallenge_test_win11_24h2_build_26100": ".test_win11_24h2_build_26100()" | kind=code-symbol | source=probe/tests/test_smb_ntlm_build.py:L39 | neighbors=[TestParseChallenge, _challenge()]
-- "tests_test_smb_scanner_rationale_81": "FIX 4: 3.1.1 IS now advertised, together with the mandatory preauth-integrity" | kind=entity | source=probe/tests/test_smb_scanner.py:L81 | neighbors=[test_request_offers_311_with_preauth_co…, test_request_omits_311_without_preauth_…]
-- "tests_test_smb_scanner_test_request_offers_311_with_preauth_context": "test_request_offers_311_with_preauth_context()" | kind=code-symbol | source=probe/tests/test_smb_scanner.py:L80 | neighbors=[test_smb_scanner.py, FIX 4: 3.1.1 IS now advertised, togethe…]
-- "tests_test_smb_scanner_test_request_omits_311_without_preauth_context": "test_request_omits_311_without_preauth_context()" | kind=code-symbol | source=probe/tests/test_smb_scanner.py:L80 | neighbors=[test_smb_scanner.py, FIX 4: 3.1.1 IS now advertised, togethe…]
-- "tests_test_smb_scanner_test_signing_not_required": "test_signing_not_required()" | kind=code-symbol | source=probe/tests/test_smb_scanner.py:L38 | neighbors=[test_smb_scanner.py, _smb2_negotiate_response()]
-- "tests_test_smb_scanner_test_signing_required_smb311": "test_signing_required_smb311()" | kind=code-symbol | source=probe/tests/test_smb_scanner.py:L29 | neighbors=[test_smb_scanner.py, _smb2_negotiate_response()]
 
 ## Instructions
 

@@ -1,4 +1,4 @@
-# Node Description Batch 62 of 330
+# Node Description Batch 62 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -17,6 +17,13 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
+- "services_validation_ingest": "validation_ingest.py" | kind=code-symbol | source=manager/backend/app/services/validation_ingest.py:L1 | neighbors=[50d6554 feat(active-validation): approv…, apply_validation_outcome(), ingest_validation_result(), looks_like_validation_result(), validation_ingest.py — turn a probe's s…]
+- "supporting_research_evidence_store_retroactive_detect": "retroactive_detect()" | kind=code-symbol | source=Supporting_research/evidence_store.py:L296 | neighbors=[evidence_store.py, Answer a brand-new rule against evidenc…, AssetVerdict, _iso(), time_travel()]
+- "supporting_research_evidence_store_unionfind": "_UnionFind" | kind=code-symbol | source=Supporting_research/evidence_store.py:L146 | neighbors=[evidence_store.py, resolve_identity(), .find(), .__init__(), .union()]
+- "tests_conftest": "conftest.py" | kind=code-symbol | source=probe/tests/conftest.py:L1 | neighbors=[10dfc80 Add comprehensive probe testing…, 8f6bf49 Refactor code structure and rem…, _isolate_result_archive(), pytest_configure(), 2885afa Add comprehensive probe testing…]
+- "tests_test_active_validation_interpret": "test_active_validation_interpret.py" | kind=code-symbol | source=manager/backend/tests/test_active_validation_interpret.py:L1 | neighbors=[7bd104a feat(active-validation): pure r…, test_confirmed_upgrades_and_sets_exploi…, test_contradicted_marks_false_positive(), test_inconclusive_keeps_state_unchanged…, test_missing_or_garbage_result_is_incon…]
+- "tests_test_ad_assessment_enum_with_entries": "_enum_with_entries()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L45 | neighbors=[test_ad_assessment.py, .test_get_computers_flags_dc(), .test_get_groups_marks_privileged(), .test_get_users_disabled_account(), .test_get_users_parses_uac_and_spn()]
+- "tests_test_adaptive_rate_testudpretransmit": "TestUdpRetransmit" | kind=code-symbol | source=probe/tests/test_adaptive_rate.py:L119 | neighbors=[test_adaptive_rate.py, .test_retries_exhaust_on_silence(), .test_retry_recovers_dropped_reply(), .test_returns_immediately_on_closed(), .test_returns_immediately_on_reply()]
 - "tests_test_agent_dispatch_testusecasecatalogparity": "TestUseCaseCatalogParity" | kind=code-symbol | source=manager/backend/tests/test_agent_dispatch.py:L35 | neighbors=[test_agent_dispatch.py, .test_manager_and_probe_route_use_cases…, ScanJobStatus, ScanJobType, AgentConnectionManager]
 - "tests_test_agent_read_tools_test_list_assets_batches_services_no_n_plus_one": "test_list_assets_batches_services_no_n_plus_one()" | kind=code-symbol | source=manager/backend/tests/test_agent_read_tools.py:L59 | neighbors=[test_agent_read_tools.py, _asset(), _FakeSession, _Result, _svc()]
 - "tests_test_agent_read_tools_test_list_assets_caps_services_at_30": "test_list_assets_caps_services_at_30()" | kind=code-symbol | source=manager/backend/tests/test_agent_read_tools.py:L79 | neighbors=[test_agent_read_tools.py, _asset(), _FakeSession, _Result, _svc()]
@@ -50,13 +57,6 @@ one-sentence description — no prose, no markdown fences.
 - "tests_test_dns_scanner_testdnsscanner": "TestDNSScanner" | kind=code-symbol | source=probe/tests/test_dns_scanner.py:L97 | neighbors=[test_dns_scanner.py, ._sc(), .test_dnspython_missing_is_error(), .test_no_dns_is_filtered(), .test_zone_transfer_open()]
 - "tests_test_dualstack_fallback_testsmbnegotiatefallback": "TestSmbNegotiateFallback" | kind=code-symbol | source=probe/tests/test_dualstack_fallback.py:L46 | neighbors=[test_dualstack_fallback.py, ._fake_socket(), ._patch_candidates(), .test_falls_back_to_ipv4_when_ipv6_is_b…, .test_returns_none_only_when_every_fami…]
 - "tests_test_e2e_engagement_to_findings_manager": "_manager()" | kind=code-symbol | source=probe/tests/test_e2e_engagement_to_findings.py:L51 | neighbors=[test_e2e_engagement_to_findings.py, Return (http_get, submit_result, captur…, test_engagement_dispatch_reaches_probe_…, test_out_of_scope_target_is_refused_end…, test_real_scan_of_open_datastore_yields…]
-- "tests_test_e2e_engagement_to_findings_vulnerable_host_facts": "_vulnerable_host_facts()" | kind=code-symbol | source=probe/tests/test_e2e_engagement_to_findings.py:L137 | neighbors=[test_e2e_engagement_to_findings.py, Exactly what the probe's smb/port scann…, test_correlated_findings_cite_their_bas…, test_manager_correlation_finds_all_thre…, test_ntlm_relay_is_high_when_smbv1_pres…]
-- "tests_test_engagement_validation": "test_engagement_validation.py" | kind=code-symbol | source=manager/backend/tests/test_engagement_validation.py:L1 | neighbors=[1fe16c8 stable but some dead code, need…, test_create_normalizes_name_scopes_and_…, test_create_rejects_invalid_scope_entri…, test_create_rejects_reversed_date_range…, test_update_rejects_blank_name_invalid_…]
-- "tests_test_exploitability_testapplytofindings_test_declared_severity_is_never_rewritten": ".test_declared_severity_is_never_rewritten()" | kind=code-symbol | source=manager/detection_engine/tests/test_exploitability.py:L119 | neighbors=[Severity is the rule's judgement of the…, TestApplyToFindings, _epss(), _finding(), _kev()]
-- "tests_test_exploitability_testapplytofindings_test_idempotent_across_repeated_application": ".test_idempotent_across_repeated_application()" | kind=code-symbol | source=manager/detection_engine/tests/test_exploitability.py:L162 | neighbors=[The pipeline may enrich the same findin…, TestApplyToFindings, _epss(), _finding(), _kev()]
-- "tests_test_fact_contract_load_corpus": "_load_corpus()" | kind=code-symbol | source=manager/detection_engine/tests/test_fact_contract.py:L27 | neighbors=[test_fact_contract.py, _ingest_corpus(), test_corpus_is_present_and_nonempty(), test_every_rule_input_is_emitted_by_its…, test_report_unconsumed_evidence()]
-- "tests_test_finding_section": "test_finding_section.py" | kind=code-symbol | source=probe/tests/test_finding_section.py:L1 | neighbors=[26ea68c Add comprehensive tests for OS …, findings.py, TestFindingSection, TestScannerRegistry, test_finding_section.py — the scanner-m…]
-- "tests_test_ftp_scanner_testftpfindings": "TestFTPFindings" | kind=code-symbol | source=probe/tests/test_ftp_scanner.py:L53 | neighbors=[test_ftp_scanner.py, ._fact(), .test_anon_denied_is_silent(), .test_anon_login_only_is_medium(), .test_anon_read_is_high()]
 
 ## Instructions
 

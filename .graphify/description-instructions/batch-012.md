@@ -1,4 +1,4 @@
-# Node Description Batch 13 of 330
+# Node Description Batch 13 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -24,6 +24,9 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
+- "campaign_page": "page.tsx" | kind=code-symbol | source=manager/frontend/app/campaign/page.tsx:L1 | neighbors=[ago(), CampaignListPage(), CampaignSummary, EngagementSummary, fetchJson(), PageShell.tsx]
+- "commit:repo:github.com/Rutikm18/Project-Vedha@1d5ae943f799b5d9bba43f41c366d70ed4c00b1a": "1d5ae94 feat(fleet): live \"Connected probes\" status section" | kind=Commit | source=git | neighbors=[addcapabilities-fable, feat/autonomous-offensive-agent, feat/complete-pending-work, feat/engagement-detail-uiux, feat/nvd-vuln-detection-and-ingest-hard…, feat/remediation-ai-plans]
+- "commit:repo:github.com/Rutikm18/Project-Vedha@25c014d75e19e4bf82d8f4033426ad02425be6f8": "25c014d feat: enhance campaign progress tracking and add raw facts inspection- …" | kind=Commit | source=git | neighbors=[addcapabilities-fable, main, ui-ux-backend-updates0109, 6bb51ab feat: add detection-explain end…, FleetJobs.tsx, page.tsx]
 - "commit:repo:github.com/Rutikm18/Project-Vedha@3ad95f45b1a7fcabc284bdb92a99e96a7ed33d57": "3ad95f4 feat: Optimize asset service fetching and enhance password handling- Re…" | kind=Commit | source=git | neighbors=[agent.py, router.py, startup.py, addcapabilities-fable, feat/nvd-vuln-detection-and-ingest-hard…, fix/probe-already-enrolled-409]
 - "commit:repo:github.com/Rutikm18/Project-Vedha@65e568441bfb43e313c743db52bd2f65fb7e86fe": "65e5684 feat(probe): transparent job logging (real use-case + result summary)" | kind=Commit | source=git | neighbors=[1af3404 feat(deploy): probe-free manage…, agent.py, addcapabilities-fable, feat/autonomous-offensive-agent, feat/complete-pending-work, feat/engagement-detail-uiux]
 - "commit:repo:github.com/Rutikm18/Project-Vedha@6a1c958273a695fdfb8a8e43254742b6436b3b8e": "6a1c958 docs(plans): record execution status for active-validation + risk-rank …" | kind=Commit | source=git | neighbors=[50d6554 feat(active-validation): approv…, addcapabilities-fable, feat/autonomous-offensive-agent, feat/complete-pending-work, feat/coverage-gated-auto-resolution, feat/engagement-detail-uiux]
@@ -61,9 +64,6 @@ one-sentence description — no prose, no markdown fences.
 - "tests_test_service_identifier_testserviceidentifier_id": "._id()" | kind=code-symbol | source=manager/backend/tests/test_service_identifier.py:L10 | neighbors=[TestServiceIdentifier, .test_confidence_floor_port_hint(), .test_ftp_banner(), .test_high_confidence_combined(), .test_http_server_header(), .test_kerberos_banner()]
 - "workflow_router": "router.py" | kind=code-symbol | source=probe/workflow/router.py:L1 | neighbors=[explain_plan.py, 6e2818f Add support for additional serv…, 7a637eb feat: network VA accuracy, KEV …, bb0ef3d feat(probe): route DB services …, d1b4dd3 trim frontend to 7 core pages; …, f473173 merge: network VA accuracy, KEV…]
 - "ad_adcs_certtemplate": "CertTemplate" | kind=code-symbol | source=manager/backend/app/ad/adcs.py:L37 | neighbors=[adcs.py, .enumerate_templates(), ACE, LDAPEnumerator, FindingSeverity, _FakeAttr]
-- "agent_agent_main": "main()" | kind=code-symbol | source=probe/agent/agent.py:L273 | neighbors=[agent.py, _bounded_env_int(), _classify_connection_error(), configure_logging(), _dbg(), _is_local_manager_url()]
-- "agent_agent_ws_http_poll_fallback": "_ws_http_poll_fallback()" | kind=code-symbol | source=probe/agent/agent.py:L896 | neighbors=[agent.py, Poll pending jobs even while WS is conn…, _run_ws_push_loop(), _flush_spool_over_http(), say(), _ws_run_job()]
-- "agent_agent_ws_run_job": "_ws_run_job()" | kind=code-symbol | source=probe/agent/agent.py:L825 | neighbors=[agent.py, Run one job while keeping WS status/res…, _run_ws_push_loop(), _ws_http_poll_fallback(), _dbg(), _job_intent()]
 
 ## Instructions
 

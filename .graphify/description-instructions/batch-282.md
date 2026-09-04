@@ -1,4 +1,4 @@
-# Node Description Batch 283 of 330
+# Node Description Batch 283 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,53 +19,51 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-LANGUAGE: each entry has a `lang=` marker giving the language of its source.
-Write that entry's description in EXACTLY that language. Do not translate to
-a single common language — match each node's source language individually.
+Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_ipmi_scanner_testparity_test_main_scripts": ".test_main_scripts()" | kind=code-symbol | source=probe/tests/test_ipmi_scanner.py:L77 | neighbors=[TestParity] | lang=en
-- "tests_test_ipmi_scanner_testwireformat_test_open_session_request_offers_cipher_zero": ".test_open_session_request_offers_cipher_zero()" | kind=code-symbol | source=probe/tests/test_ipmi_scanner.py:L24 | neighbors=[TestWireFormat] | lang=en
-- "tests_test_ipmi_scanner_testwireformat_test_parse_rejects_non_response": ".test_parse_rejects_non_response()" | kind=code-symbol | source=probe/tests/test_ipmi_scanner.py:L39 | neighbors=[TestWireFormat] | lang=en
-- "tests_test_ipv6_discovery_rationale_1": "test_ipv6_discovery.py — FIX 3: IPv6 neighbor discovery (RFC 4861 ND multicast)." | kind=entity | source=probe/tests/test_ipv6_discovery.py:L1 | neighbors=[test_ipv6_discovery.py] | lang=en
-- "tests_test_ipv6_discovery_testparsers_test_ignores_non_ipv6_lines": ".test_ignores_non_ipv6_lines()" | kind=code-symbol | source=probe/tests/test_ipv6_discovery.py:L33 | neighbors=[TestParsers] | lang=en
-- "tests_test_ipv6_discovery_testparsers_test_parse_ip_neigh_linux": ".test_parse_ip_neigh_linux()" | kind=code-symbol | source=probe/tests/test_ipv6_discovery.py:L24 | neighbors=[TestParsers] | lang=en
-- "tests_test_ipv6_discovery_testparsers_test_parse_ndp_macos": ".test_parse_ndp_macos()" | kind=code-symbol | source=probe/tests/test_ipv6_discovery.py:L14 | neighbors=[TestParsers] | lang=en
-- "tests_test_ipv6_wiring_rationale_1": "test_ipv6_wiring.py — IPv6 neighbour discovery inside the engagement.  An IPv4 /" | kind=entity | source=probe/tests/test_ipv6_wiring.py:L1 | neighbors=[test_ipv6_wiring.py] | lang=en
-- "tests_test_ipv6_wiring_rationale_111": "The core restraint: discovery must not widen authorization." | kind=entity | source=probe/tests/test_ipv6_wiring.py:L111 | neighbors=[test_out_of_scope_neighbour_is_reported…] | lang=en
-- "tests_test_ipv6_wiring_rationale_137": "Only the scan types that opt in pay for the multicast ping." | kind=entity | source=probe/tests/test_ipv6_wiring.py:L137 | neighbors=[test_disabled_by_default()] | lang=en
-- "tests_test_ipv6_wiring_rationale_28": "The neighbour cache is system-wide. Pinging en0 and then harvesting every     in" | kind=entity | source=probe/tests/test_ipv6_wiring.py:L28 | neighbors=[TestInterfaceScoping] | lang=en
-- "tests_test_ipv6_wiring_test_component_is_in_the_catalog": "test_component_is_in_the_catalog()" | kind=code-symbol | source=probe/tests/test_ipv6_wiring.py:L160 | neighbors=[test_ipv6_wiring.py] | lang=en
-- "tests_test_ipv6_wiring_test_network_va_opts_in": "test_network_va_opts_in()" | kind=code-symbol | source=probe/tests/test_ipv6_wiring.py:L172 | neighbors=[test_ipv6_wiring.py] | lang=en
-- "tests_test_ipv6_wiring_test_planned_only_when_enabled": "test_planned_only_when_enabled()" | kind=code-symbol | source=probe/tests/test_ipv6_wiring.py:L164 | neighbors=[test_ipv6_wiring.py] | lang=en
-- "tests_test_ipv6_wiring_testinterfacescoping_stub": "._stub()" | kind=code-symbol | source=probe/tests/test_ipv6_wiring.py:L42 | neighbors=[TestInterfaceScoping] | lang=en
-- "tests_test_ipv6_wiring_testinterfacescoping_test_globals_are_kept_they_are_not_interface_bound": ".test_globals_are_kept_they_are_not_interface_bound()" | kind=code-symbol | source=probe/tests/test_ipv6_wiring.py:L56 | neighbors=[TestInterfaceScoping] | lang=en
-- "tests_test_ipv6_wiring_testinterfacescoping_test_iface_filters_out_other_segments": ".test_iface_filters_out_other_segments()" | kind=code-symbol | source=probe/tests/test_ipv6_wiring.py:L47 | neighbors=[TestInterfaceScoping] | lang=en
-- "tests_test_ipv6_wiring_testinterfacescoping_test_iface_keeps_its_own_neighbours": ".test_iface_keeps_its_own_neighbours()" | kind=code-symbol | source=probe/tests/test_ipv6_wiring.py:L52 | neighbors=[TestInterfaceScoping] | lang=en
-- "tests_test_ipv6_wiring_testinterfacescoping_test_link_local_keeps_its_zone_so_connect_can_route": ".test_link_local_keeps_its_zone_so_connect_can_route()" | kind=code-symbol | source=probe/tests/test_ipv6_wiring.py:L66 | neighbors=[TestInterfaceScoping] | lang=en
-- "tests_test_ipv6_wiring_testinterfacescoping_test_no_iface_keeps_everything": ".test_no_iface_keeps_everything()" | kind=code-symbol | source=probe/tests/test_ipv6_wiring.py:L62 | neighbors=[TestInterfaceScoping] | lang=en
-- "tests_test_ipv6_wiring_testinterfacescoping_test_unresolved_neighbours_are_never_returned": ".test_unresolved_neighbours_are_never_returned()" | kind=code-symbol | source=probe/tests/test_ipv6_wiring.py:L59 | neighbors=[TestInterfaceScoping] | lang=en
-- "tests_test_job_attempt_service_test_claim_creates_immutable_attempt_with_returned_fence": "test_claim_creates_immutable_attempt_with_returned_fence()" | kind=code-symbol | source=manager/backend/tests/test_job_attempt_service.py:L13 | neighbors=[test_job_attempt_service.py] | lang=en
-- "tests_test_job_attempt_service_test_current_fence_renews_attempt_and_logical_job": "test_current_fence_renews_attempt_and_logical_job()" | kind=code-symbol | source=manager/backend/tests/test_job_attempt_service.py:L75 | neighbors=[test_job_attempt_service.py] | lang=en
-- "tests_test_job_attempt_service_test_lost_claim_does_not_create_attempt": "test_lost_claim_does_not_create_attempt()" | kind=code-symbol | source=manager/backend/tests/test_job_attempt_service.py:L40 | neighbors=[test_job_attempt_service.py] | lang=en
-- "tests_test_job_attempt_service_test_stale_fence_cannot_renew_attempt": "test_stale_fence_cannot_renew_attempt()" | kind=code-symbol | source=manager/backend/tests/test_job_attempt_service.py:L58 | neighbors=[test_job_attempt_service.py] | lang=en
-- "tests_test_job_cancel_probe_rationale_1": "Probe-side operator job control + polling-noise suppression.  Two independent be" | kind=entity | source=probe/tests/test_job_cancel_probe.py:L1 | neighbors=[test_job_cancel_probe.py] | lang=en
-- "tests_test_job_cancel_probe_rationale_54": "These may be transient/refreshable, so they must NOT read as a cancel         —" | kind=entity | source=probe/tests/test_job_cancel_probe.py:L54 | neighbors=[.test_other_rejections_are_plain_failur…] | lang=pt
-- "tests_test_job_cancel_probe_rationale_74": "The probe polls forever; routine transport chatter must stay out of the     term" | kind=entity | source=probe/tests/test_job_cancel_probe.py:L74 | neighbors=[TestPollingNoiseIsSuppressed] | lang=en
-- "tests_test_job_cancel_probe_rationale_92": "The actual regression: one INFO line per poll, every POLL_INTERVAL." | kind=entity | source=probe/tests/test_job_cancel_probe.py:L92 | neighbors=[.test_per_request_info_lines_are_suppre…] | lang=en
-- "tests_test_job_cancel_probe_rationale_97": "Quieting must not hide a genuinely unreachable manager." | kind=entity | source=probe/tests/test_job_cancel_probe.py:L97 | neighbors=[.test_transport_errors_still_surface()] | lang=pt
-- "tests_test_job_cancel_probe_testheartbeatoutcomes_test_200_is_ok": ".test_200_is_ok()" | kind=code-symbol | source=probe/tests/test_job_cancel_probe.py:L48 | neighbors=[TestHeartbeatOutcomes] | lang=en
-- "tests_test_job_cancel_probe_testheartbeatoutcomes_test_409_is_reported_as_a_revoked_lease": ".test_409_is_reported_as_a_revoked_lease()" | kind=code-symbol | source=probe/tests/test_job_cancel_probe.py:L44 | neighbors=[TestHeartbeatOutcomes] | lang=en
-- "tests_test_job_cancel_probe_testheartbeatoutcomes_test_bool_heartbeat_contract_is_unchanged": ".test_bool_heartbeat_contract_is_unchanged()" | kind=code-symbol | source=probe/tests/test_job_cancel_probe.py:L64 | neighbors=[TestHeartbeatOutcomes] | lang=en
-- "tests_test_job_cancel_probe_testheartbeatoutcomes_test_network_error_is_a_plain_failure": ".test_network_error_is_a_plain_failure()" | kind=code-symbol | source=probe/tests/test_job_cancel_probe.py:L59 | neighbors=[TestHeartbeatOutcomes] | lang=en
-- "tests_test_job_cancel_probe_testheartbeatoutcomes_test_revoked_lease_is_distinct_from_failure": ".test_revoked_lease_is_distinct_from_failure()" | kind=code-symbol | source=probe/tests/test_job_cancel_probe.py:L69 | neighbors=[TestHeartbeatOutcomes] | lang=en
-- "tests_test_job_cancel_probe_transport": "transport()" | kind=code-symbol | source=probe/tests/test_job_cancel_probe.py:L35 | neighbors=[test_job_cancel_probe.py] | lang=en
-- "tests_test_job_cancel_rationale_1": "Operator job control: stop a running job, remove a queued one, and cap the queue" | kind=entity | source=manager/backend/tests/test_job_cancel.py:L1 | neighbors=[test_job_cancel.py] | lang=en
-- "tests_test_job_cancel_rationale_176": "An operator stop must never be mistaken for a system fault." | kind=entity | source=manager/backend/tests/test_job_cancel.py:L176 | neighbors=[test_cancelled_is_distinct_from_failed()] | lang=en
-- "tests_test_job_cancel_rationale_208": "Two queued jobs must leave room for a third — an off-by-one here         would s" | kind=entity | source=manager/backend/tests/test_job_cancel.py:L208 | neighbors=[.test_third_queued_job_is_still_accepte…] | lang=en
-- "tests_test_job_cancel_rationale_225": "Pins the reason this endpoint may not reference `.email`.      If CurrentUser ev" | kind=entity | source=manager/backend/tests/test_job_cancel.py:L225 | neighbors=[test_current_user_has_no_email_field()] | lang=en
+- "tests_test_host_health_rationale_132": "The whole point: 'we stopped early' must never read as 'nothing found'." | kind=entity | source=probe/tests/test_host_health.py:L132 | neighbors=[.test_offline_fact_marks_the_scan_incom…]
+- "tests_test_host_health_rationale_186": "Regression: \"open|filtered\" is the UDP no-reply verdict, not an open port.     R" | kind=entity | source=probe/tests/test_host_health.py:L186 | neighbors=[TestUdpNoReplyIsNotContact]
+- "tests_test_host_health_rationale_203": "The primary detector. Branch-failure evidence covers only the milliseconds     t" | kind=entity | source=probe/tests/test_host_health.py:L203 | neighbors=[TestHeartbeat]
+- "tests_test_host_health_rationale_281": "An offline host must reach the operator's screen, not just the fact list.     Ex" | kind=entity | source=probe/tests/test_host_health.py:L281 | neighbors=[TestOperatorVisibility]
+- "tests_test_host_health_rationale_295": "A host that is merely filtered is not a problem with the run." | kind=entity | source=probe/tests/test_host_health.py:L295 | neighbors=[.test_flaky_note_is_not_an_error()]
+- "tests_test_host_health_rationale_38": "A closed port is the host's own stack answering — positive proof of         life" | kind=entity | source=probe/tests/test_host_health.py:L38 | neighbors=[.test_rst_is_contact_not_silence()]
+- "tests_test_host_health_rationale_57": "A branch that declined to run says nothing about the host." | kind=entity | source=probe/tests/test_host_health.py:L57 | neighbors=[.test_no_results_is_not_silence()]
+- "tests_test_host_health_rationale_67": "A healthy host with many inapplicable branches must never accumulate         its" | kind=entity | source=probe/tests/test_host_health.py:L67 | neighbors=[.test_strikes_must_be_consecutive()]
+- "tests_test_host_health_rationale_85": "The headline false positive: silence from every branch, but the host         is" | kind=entity | source=probe/tests/test_host_health.py:L85 | neighbors=[.test_firewalled_host_that_still_answer…]
+- "tests_test_host_health_testconfiguration_test_bad_threshold_falls_back_to_a_sane_value": ".test_bad_threshold_falls_back_to_a_sane_value()" | kind=code-symbol | source=probe/tests/test_host_health.py:L179 | neighbors=[TestConfiguration]
+- "tests_test_host_health_testconfiguration_test_threshold_is_tunable_by_env": ".test_threshold_is_tunable_by_env()" | kind=code-symbol | source=probe/tests/test_host_health.py:L173 | neighbors=[TestConfiguration]
+- "tests_test_host_health_testheartbeat_test_a_broken_probe_never_condemns_a_host": ".test_a_broken_probe_never_condemns_a_host()" | kind=code-symbol | source=probe/tests/test_host_health.py:L262 | neighbors=[TestHeartbeat]
+- "tests_test_host_health_testheartbeat_test_a_single_miss_is_not_enough": ".test_a_single_miss_is_not_enough()" | kind=code-symbol | source=probe/tests/test_host_health.py:L215 | neighbors=[TestHeartbeat]
+- "tests_test_http_lease_rationale_121": "An operator cancel (409) is DEFINITIVE, unlike a flaky network.      The grace b" | kind=entity | source=probe/tests/test_http_lease.py:L121 | neighbors=[test_revoked_lease_cancels_the_attempt_…]
+- "tests_test_http_lease_test_engine_cancellation_stops_async_scan_work": "test_engine_cancellation_stops_async_scan_work()" | kind=code-symbol | source=probe/tests/test_http_lease.py:L101 | neighbors=[test_http_lease.py]
+- "tests_test_http_lease_test_poll_auth_failure_is_not_hidden": "test_poll_auth_failure_is_not_hidden()" | kind=code-symbol | source=probe/tests/test_http_lease.py:L33 | neighbors=[test_http_lease.py]
+- "tests_test_http_lease_test_polled_job_renews_lease_until_runner_finishes": "test_polled_job_renews_lease_until_runner_finishes()" | kind=code-symbol | source=probe/tests/test_http_lease.py:L42 | neighbors=[test_http_lease.py]
+- "tests_test_http_lease_test_repeated_lease_rejection_cancels_running_attempt": "test_repeated_lease_rejection_cancels_running_attempt()" | kind=code-symbol | source=probe/tests/test_http_lease.py:L74 | neighbors=[test_http_lease.py]
+- "tests_test_http_lease_test_transient_poll_failure_propagates_to_loop_handler": "test_transient_poll_failure_propagates_to_loop_handler()" | kind=code-symbol | source=probe/tests/test_http_lease.py:L20 | neighbors=[test_http_lease.py]
+- "tests_test_http_lease_test_transient_poll_failure_returns_no_jobs": "test_transient_poll_failure_returns_no_jobs()" | kind=code-symbol | source=probe/tests/test_http_lease.py:L15 | neighbors=[test_http_lease.py]
+- "tests_test_hw_bind_rationale_1": "Tests for agent/hw_bind.py" | kind=entity | source=probe/tests/test_hw_bind.py:L1 | neighbors=[test_hw_bind.py]
+- "tests_test_hw_bind_testcheckhwbind_test_passes_when_match": ".test_passes_when_match()" | kind=code-symbol | source=probe/tests/test_hw_bind.py:L22 | neighbors=[TestCheckHwBind]
+- "tests_test_hw_bind_testcheckhwbind_test_raises_on_mismatch": ".test_raises_on_mismatch()" | kind=code-symbol | source=probe/tests/test_hw_bind.py:L28 | neighbors=[TestCheckHwBind]
+- "tests_test_hw_bind_testcheckhwbind_test_raises_when_unset_and_enforced": ".test_raises_when_unset_and_enforced()" | kind=code-symbol | source=probe/tests/test_hw_bind.py:L39 | neighbors=[TestCheckHwBind]
+- "tests_test_hw_bind_testcheckhwbind_test_skips_when_unset_and_dev_mode": ".test_skips_when_unset_and_dev_mode()" | kind=code-symbol | source=probe/tests/test_hw_bind.py:L34 | neighbors=[TestCheckHwBind]
+- "tests_test_hw_bind_testgethwid_test_deterministic_within_session": ".test_deterministic_within_session()" | kind=code-symbol | source=probe/tests/test_hw_bind.py:L17 | neighbors=[TestGetHwId]
+- "tests_test_hw_bind_testgethwid_test_returns_32_hex_chars": ".test_returns_32_hex_chars()" | kind=code-symbol | source=probe/tests/test_hw_bind.py:L12 | neighbors=[TestGetHwId]
+- "tests_test_installer_contract_test_installer_rejects_missing_or_unknown_arguments": "test_installer_rejects_missing_or_unknown_arguments()" | kind=code-symbol | source=probe/tests/test_installer_contract.py:L31 | neighbors=[test_installer_contract.py]
+- "tests_test_installer_contract_test_installer_requires_only_manager_endpoint_in_dry_run": "test_installer_requires_only_manager_endpoint_in_dry_run()" | kind=code-symbol | source=probe/tests/test_installer_contract.py:L11 | neighbors=[test_installer_contract.py]
+- "tests_test_installer_contract_test_installer_source_has_no_human_or_job_credentials": "test_installer_source_has_no_human_or_job_credentials()" | kind=code-symbol | source=probe/tests/test_installer_contract.py:L49 | neighbors=[test_installer_contract.py]
+- "tests_test_integration_rationale_1": "Integration tests — full probe lifecycles exercised through the public APIs of a" | kind=entity | source=probe/tests/test_integration.py:L1 | neighbors=[test_integration.py]
+- "tests_test_integration_rationale_101": "Phase 4 + Phase 1: TaskRunner receives encrypted scope and decrypts it." | kind=entity | source=probe/tests/test_integration.py:L101 | neighbors=[TestTaskRunnerWithEncryptedScope]
+- "tests_test_integration_rationale_104": "Job carries encrypted_scope → TaskRunner decrypts → uses it." | kind=entity | source=probe/tests/test_integration.py:L104 | neighbors=[.test_decrypts_encrypted_scope_from_job…]
+- "tests_test_integration_rationale_136": "Wrong key → decryption fails → graceful fallback to params scope." | kind=entity | source=probe/tests/test_integration.py:L136 | neighbors=[.test_falls_back_when_decryption_fails()]
+- "tests_test_integration_rationale_166": "Phase 1: combined scope validation (validate + excludes)." | kind=entity | source=probe/tests/test_integration.py:L166 | neighbors=[TestScopeValidationPipeline]
+- "tests_test_integration_rationale_198": "Phase 1: result spool with upload retry." | kind=entity | source=probe/tests/test_integration.py:L198 | neighbors=[TestResultSpoolWithRetry]
+- "tests_test_integration_rationale_239": "Phase 4 + Phase 1: Transport sends public_key during registration." | kind=entity | source=probe/tests/test_integration.py:L239 | neighbors=[TestTransportWithIdentity]
+- "tests_test_integration_rationale_260": "Backward compat: registration without public_key is fine." | kind=entity | source=probe/tests/test_integration.py:L260 | neighbors=[.test_register_without_public_key()]
+- "tests_test_integration_rationale_274": "Phase 2: WebSocket message parsing." | kind=entity | source=probe/tests/test_integration.py:L274 | neighbors=[TestWebSocketMessageProtocol]
+- "tests_test_integration_rationale_312": "End-to-end: identity → register → job → decrypt → validate → scan → submit." | kind=entity | source=probe/tests/test_integration.py:L312 | neighbors=[TestFullJobLifecycle]
 
 ## Instructions
 

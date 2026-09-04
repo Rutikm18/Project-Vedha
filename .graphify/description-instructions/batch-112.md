@@ -1,4 +1,4 @@
-# Node Description Batch 113 of 330
+# Node Description Batch 113 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -17,6 +17,8 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
+- "tests_test_ipmi_scanner_resp": "_resp()" | kind=code-symbol | source=probe/tests/test_ipmi_scanner.py:L18 | neighbors=[test_ipmi_scanner.py, .test_parse_nonzero_status_is_safe(), .test_parse_status_zero_is_cipher_zero()]
+- "tests_test_ipmi_scanner_testipmifindings_fact": "._fact()" | kind=code-symbol | source=probe/tests/test_ipmi_scanner.py:L63 | neighbors=[TestIPMIFindings, .test_cipher_zero_is_critical(), .test_reachable_bmc_is_low()]
 - "tests_test_ipmi_scanner_testipmiscanner_sc": "._sc()" | kind=code-symbol | source=probe/tests/test_ipmi_scanner.py:L45 | neighbors=[TestIPMIScanner, .test_cipher_zero_open(), .test_no_ipmi_filtered()]
 - "tests_test_ipv6_wiring_test_disabled_by_default": "test_disabled_by_default()" | kind=code-symbol | source=probe/tests/test_ipv6_wiring.py:L136 | neighbors=[test_ipv6_wiring.py, Only the scan types that opt in pay for…, _wire()]
 - "tests_test_ipv6_wiring_test_discovery_failure_does_not_abort_the_engagement": "test_discovery_failure_does_not_abort_the_engagement()" | kind=code-symbol | source=probe/tests/test_ipv6_wiring.py:L149 | neighbors=[test_ipv6_wiring.py, _run(), _wire()]
@@ -55,8 +57,6 @@ one-sentence description — no prose, no markdown fences.
 - "tests_test_main_scripts_findings_test_smb_signing_not_required_is_medium": "test_smb_signing_not_required_is_medium()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L110 | neighbors=[test_main_scripts_findings.py, _ids(), _run()]
 - "tests_test_main_scripts_findings_test_snmp_amplification": "test_snmp_amplification()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L137 | neighbors=[test_main_scripts_findings.py, _ids(), _run()]
 - "tests_test_main_scripts_findings_test_snmpv3_only_no_finding": "test_snmpv3_only_no_finding()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L143 | neighbors=[test_main_scripts_findings.py, _ids(), _run()]
-- "tests_test_main_scripts_findings_test_tls_expired_and_self_signed_cert": "test_tls_expired_and_self_signed_cert()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L55 | neighbors=[test_main_scripts_findings.py, _ids(), _run()]
-- "tests_test_main_scripts_findings_test_tls_legacy_protocol_is_medium_and_not_double_reported_with_obsolete": "test_tls_legacy_protocol_is_medium_and_not_double_reported_with_obsolete()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L33 | neighbors=[test_main_scripts_findings.py, _ids(), _run()]
 
 ## Instructions
 

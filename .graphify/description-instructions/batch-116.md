@@ -1,4 +1,4 @@
-# Node Description Batch 117 of 330
+# Node Description Batch 117 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -17,6 +17,8 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
+- "tests_test_remediation_generator_testgenerateremediationplan_gen": "._gen()" | kind=code-symbol | source=manager/backend/tests/test_remediation_generator.py:L117 | neighbors=[TestGenerateRemediationPlan, .test_unparseable_output_raises_value_e…, .test_valid_output_returns_ai_plan_with…]
+- "tests_test_remediation_generator_testgenerateremediationplan_test_unparseable_output_raises_value_error": ".test_unparseable_output_raises_value_error()" | kind=code-symbol | source=manager/backend/tests/test_remediation_generator.py:L122 | neighbors=[TestGenerateRemediationPlan, _finding(), ._gen()]
 - "tests_test_remediation_generator_testgenerateremediationplan_test_valid_output_returns_ai_plan_with_model": ".test_valid_output_returns_ai_plan_with_model()" | kind=code-symbol | source=manager/backend/tests/test_remediation_generator.py:L127 | neighbors=[TestGenerateRemediationPlan, _finding(), ._gen()]
 - "tests_test_remediation_generator_testsafecommands": "TestSafeCommands" | kind=code-symbol | source=manager/backend/tests/test_remediation_generator.py:L55 | neighbors=[test_remediation_generator.py, .test_drops_destructive_keeps_safe(), .test_null_command_yields_nothing()]
 - "tests_test_remediation_kb_testrecipeshape": "TestRecipeShape" | kind=code-symbol | source=manager/backend/tests/test_remediation_kb.py:L43 | neighbors=[test_remediation_kb.py, .test_every_recipe_has_required_fields(), .test_every_recipe_step_has_all_os_keys…]
@@ -55,8 +57,6 @@ one-sentence description — no prose, no markdown fences.
 - "tests_test_scanner_congestion_testharvesttcpstack_test_tcp_info_yields_wscale_rtt_and_advmss": ".test_tcp_info_yields_wscale_rtt_and_advmss()" | kind=code-symbol | source=probe/tests/test_scanner_congestion.py:L249 | neighbors=[TestHarvestTcpStack, _FakeSock, _tcp_info_buf()]
 - "tests_test_scanner_congestion_testharvesttcpstack_test_timestamped_ethernet_host_is_not_mislabelled_a_tunnel": ".test_timestamped_ethernet_host_is_not_mislabelled_a_tunnel()" | kind=code-symbol | source=probe/tests/test_scanner_congestion.py:L241 | neighbors=[End-to-end form of the same guarantee, …, TestHarvestTcpStack, _FakeSock]
 - "tests_test_scanner_congestion_testreprobecleanuppass_test_cleanup_raises_the_timeout_floor": ".test_cleanup_raises_the_timeout_floor()" | kind=code-symbol | source=probe/tests/test_scanner_congestion.py:L414 | neighbors=[A converged estimator can be tuned to a…, TestReprobeCleanupPass, _scanner()]
-- "tests_test_scanner_congestion_testreprobecleanuppass_test_no_ambiguous_ports_means_no_cleanup_pass": ".test_no_ambiguous_ports_means_no_cleanup_pass()" | kind=code-symbol | source=probe/tests/test_scanner_congestion.py:L405 | neighbors=[TestReprobeCleanupPass, _scanner(), ._summary()]
-- "tests_test_scanner_congestion_testresolvecandidates_test_v4_is_reachable_even_when_aaaa_sorts_first": ".test_v4_is_reachable_even_when_aaaa_sorts_first()" | kind=code-symbol | source=probe/tests/test_scanner_congestion.py:L305 | neighbors=[The false negative #9 exists to kill: a…, TestResolveCandidates, _fake_gai()]
 
 ## Instructions
 

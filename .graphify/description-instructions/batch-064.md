@@ -1,4 +1,4 @@
-# Node Description Batch 65 of 330
+# Node Description Batch 65 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -17,6 +17,13 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
+- "tests_test_remediation_upsert_integration": "test_remediation_upsert_integration.py" | kind=code-symbol | source=manager/backend/tests/test_remediation_upsert_integration.py:L1 | neighbors=[fbe7450 Add comprehensive documentation…, _run(), _stmt(), test_upsert_resets_gate_and_is_race_saf…, test_remediation_upsert_integration.py …]
+- "tests_test_resolve_asset_cache": "test_resolve_asset_cache.py" | kind=code-symbol | source=manager/backend/tests/test_resolve_asset_cache.py:L1 | neighbors=[26ea68c Add comprehensive tests for OS …, test_cache_resolves_each_host_once(), test_host_port_target_normalized(), test_no_cache_keeps_old_behavior(), Perf/N+1: _resolve_asset memoizes per-r…]
+- "tests_test_resolve_infos": "_infos()" | kind=code-symbol | source=probe/tests/test_resolve.py:L11 | neighbors=[test_resolve.py, Fake getaddrinfo results: (family, sock…, .test_default_no_family_is_backward_com…, .test_requested_family_absent_falls_bac…, .test_requested_ipv4_selected_over_v6_f…]
+- "tests_test_resolve_testresolvefamily": "TestResolveFamily" | kind=code-symbol | source=probe/tests/test_resolve.py:L20 | neighbors=[test_resolve.py, .test_default_no_family_is_backward_com…, .test_requested_family_absent_falls_bac…, .test_requested_ipv4_selected_over_v6_f…, .test_unresolvable_raises()]
+- "tests_test_result_archive_testarchiveisbesteffort_test_unwritable_directory_does_not_fail_the_job": ".test_unwritable_directory_does_not_fail_the_job()" | kind=code-symbol | source=probe/tests/test_result_archive.py:L129 | neighbors=[A read-only filesystem must cost a warn…, TestArchiveIsBestEffort, _job(), _ok_result(), _runner()]
+- "tests_test_router_db": "test_router_db.py" | kind=code-symbol | source=probe/tests/test_router_db.py:L1 | neighbors=[bb0ef3d feat(probe): route DB services …, test_mysql_greeting_on_odd_port(), test_plain_http_is_not_db(), test_redis_noauth_signature(), router.py]
+- "tests_test_rsync_scanner_testrsyncfindings": "TestRsyncFindings" | kind=code-symbol | source=probe/tests/test_rsync_scanner.py:L99 | neighbors=[test_rsync_scanner.py, ._fact(), .test_anon_modules_high(), .test_auth_only_is_low_disclosure(), .test_no_modules_silent()]
 - "tests_test_run_scoped_fact_scope": "test_run_scoped_fact_scope.py" | kind=code-symbol | source=manager/backend/tests/test_run_scoped_fact_scope.py:L1 | neighbors=[8f6bf49 Refactor code structure and rem…, _fact(), TestRunScopedFactsAreExempt, TestTheScopeGateStillWorks, Run-scoped facts must not be scope-chec…]
 - "tests_test_run_scoped_fact_scope_testrunscopedfactsareexempt": "TestRunScopedFactsAreExempt" | kind=code-symbol | source=manager/backend/tests/test_run_scoped_fact_scope.py:L43 | neighbors=[test_run_scoped_fact_scope.py, .test_a_real_result_with_one_run_scoped…, .test_ipv6_discovery_auto_target_is_not…, .test_ipv6_discovery_interface_name_is_…, .test_run_scoped_fact_is_not_collected_…]
 - "tests_test_runtime_requirements_coverage": "test_runtime_requirements_coverage.py" | kind=code-symbol | source=probe/tests/test_runtime_requirements_coverage.py:L1 | neighbors=[8f6bf49 Refactor code structure and rem…, _declared(), test_runtime_image_installs_every_wired…, test_runtime_is_a_subset_of_the_develop…, test_runtime_requirements_coverage.py —…]
@@ -50,13 +57,6 @@ one-sentence description — no prose, no markdown fences.
 - "tests_test_syn_scanner_testsyncookie": "TestSynCookie" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L47 | neighbors=[test_syn_scanner.py, .test_cookie_is_32_bit(), .test_cookie_is_deterministic(), .test_cookie_varies_with_key(), .test_cookie_varies_with_port()]
 - "tests_test_syn_scanner_testtcpoptionprofile": "TestTcpOptionProfile" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L403 | neighbors=[test_syn_scanner.py, .test_malformed_options_do_not_raise(), .test_parse_linux_syn_ack_options(), .test_parse_mss_shim_still_works(), .test_parse_windows_syn_ack_options()]
 - "tests_test_syn_scanner_testverifyreplycookie": "TestVerifyReplyCookie" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L109 | neighbors=[test_syn_scanner.py, ._make_synack_reply(), .test_reply_from_other_host_fails(), .test_valid_cookie_verifies(), .test_wrong_ack_fails()]
-- "tests_test_tarpit_testportscannertarpitflag": "TestPortScannerTarpitFlag" | kind=code-symbol | source=probe/tests/test_tarpit.py:L42 | neighbors=[test_tarpit.py, ._scanner(), ._summary(), .test_all_open_host_flagged_as_tarpit(), .test_mostly_closed_host_not_flagged()]
-- "tests_test_tls_fingerprint_testclienthello": "TestClientHello" | kind=code-symbol | source=probe/tests/test_tls_fingerprint.py:L22 | neighbors=[test_tls_fingerprint.py, .test_contains_client_hello_handshake_t…, .test_contains_sni_hostname(), .test_declared_lengths_are_consistent(), .test_is_tls_handshake_record()]
-- "tests_test_tls_fingerprint_testparseserverhello": "TestParseServerHello" | kind=code-symbol | source=probe/tests/test_tls_fingerprint.py:L58 | neighbors=[test_tls_fingerprint.py, .test_extracts_version_and_cipher(), .test_returns_none_on_alert(), .test_returns_none_on_short(), .test_tls13_version_from_supported_vers…]
-- "tests_test_tls_port_coverage_testdeliberateexclusions": "TestDeliberateExclusions" | kind=code-symbol | source=probe/tests/test_tls_port_coverage.py:L66 | neighbors=[test_tls_port_coverage.py, Excluded on purpose — a bare ClientHell…, .test_rdp_is_excluded(), .test_starttls_upgrade_ports_excluded(), .test_winrm_plaintext_listeners_exclude…]
-- "tests_test_tls_posture_modern": "_modern()" | kind=code-symbol | source=probe/tests/test_tls_posture.py:L68 | neighbors=[test_tls_posture.py, .test_grade_a_modern(), .test_grade_b_no_tls13(), .test_grade_c_tls11(), .test_grade_f_tls10()]
-- "tests_test_transport_testwebsocket": "TestWebSocket" | kind=code-symbol | source=probe/tests/test_transport.py:L530 | neighbors=[test_transport.py, .test_is_ws_connected_false_by_default(), .test_ws_requires_token(), .test_ws_url_http(), .test_ws_url_https()]
-- "tests_test_va_campaign_scope": "_scope()" | kind=code-symbol | source=probe/tests/test_va_campaign.py:L22 | neighbors=[test_va_campaign.py, _detect_stage(), _run(), test_catalog_ids_are_unique_and_match_d…, test_detect_stage_turns_facts_into_weak…]
 
 ## Instructions
 

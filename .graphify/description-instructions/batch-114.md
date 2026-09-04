@@ -1,4 +1,4 @@
-# Node Description Batch 115 of 330
+# Node Description Batch 115 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -17,6 +17,8 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
+- "tests_test_os_fingerprint_testinetchecksum": "TestInetChecksum" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L24 | neighbors=[test_os_fingerprint.py, .test_checksum_handles_odd_length(), .test_checksum_verifies_to_zero()]
+- "tests_test_os_fingerprint_testremoteclock": "TestRemoteClock" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L123 | neighbors=[test_os_fingerprint.py, .test_high_bit_marks_nonstandard_clock(), .test_standard_value_decodes_to_wall_cl…]
 - "tests_test_os_fingerprint_testtimestampfallback_scanner": "._scanner()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L139 | neighbors=[TestTimestampFallback, .test_both_filtered_reports_no_reply(), .test_timestamp_reply_when_echo_is_filt…]
 - "tests_test_outbox_reclaim_test_dead_letter_and_requeue_are_mutually_exclusive": "test_dead_letter_and_requeue_are_mutually_exclusive()" | kind=code-symbol | source=manager/backend/tests/test_outbox_reclaim.py:L92 | neighbors=[test_outbox_reclaim.py, _now(), _sql()]
 - "tests_test_outbox_reclaim_test_dead_letter_stmt_targets_exhausted_stranded_rows": "test_dead_letter_stmt_targets_exhausted_stranded_rows()" | kind=code-symbol | source=manager/backend/tests/test_outbox_reclaim.py:L68 | neighbors=[test_outbox_reclaim.py, _now(), _sql()]
@@ -55,8 +57,6 @@ one-sentence description — no prose, no markdown fences.
 - "tests_test_posture_rules_testtrusttier_test_validated_scanner_confirms": ".test_validated_scanner_confirms()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_rules.py:L31 | neighbors=[TestTrustTier, _asset(), _fact()]
 - "tests_test_posture_rules_testudphonesty": "TestUdpHonesty" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_rules.py:L120 | neighbors=[test_posture_rules.py, .test_amplifier_fires_only_when_it_answ…, .test_no_reply_udp_raises_nothing()]
 - "tests_test_posture_rules_testudphonesty_test_amplifier_fires_only_when_it_answered": ".test_amplifier_fires_only_when_it_answered()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_rules.py:L121 | neighbors=[TestUdpHonesty, _asset(), _fact()]
-- "tests_test_posture_rules_testudphonesty_test_no_reply_udp_raises_nothing": ".test_no_reply_udp_raises_nothing()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_rules.py:L125 | neighbors=[TestUdpHonesty, _asset(), _fact()]
-- "tests_test_posture_rules_testvulnerablehost_test_deprecated_tls_version": ".test_deprecated_tls_version()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_rules.py:L90 | neighbors=[TestVulnerableHost, _asset(), _fact()]
 
 ## Instructions
 

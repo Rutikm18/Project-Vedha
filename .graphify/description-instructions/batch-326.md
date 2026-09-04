@@ -1,4 +1,4 @@
-# Node Description Batch 327 of 330
+# Node Description Batch 327 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,51 +19,53 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-Write every description in English (en). Do not switch languages.
+LANGUAGE: each entry has a `lang=` marker giving the language of its source.
+Write that entry's description in EXACTLY that language. Do not translate to
+a single common language — match each node's source language individually.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "workflow_branches_rationale_86": "One deep-scan branch. `branch` is the gate key (gates.PROFILE_DEEP_BRANCHES" | kind=entity | source=probe/workflow/branches.py:L86 | neighbors=[BranchSpec]
-- "workflow_cache_rationale_1": "cache.py — (host, port, scanner) -> CacheEntry, so deterministic facts are colle" | kind=entity | source=probe/workflow/cache.py:L1 | neighbors=[cache.py]
-- "workflow_cache_rationale_100": "In-memory (host, port, scanner) -> CacheEntry, optionally JSONL-backed     for c" | kind=entity | source=probe/workflow/cache.py:L100 | neighbors=[WorkflowCache]
-- "workflow_cache_rationale_122": "True if there's no cached entry, OR the entry is uncertain         (always worth" | kind=entity | source=probe/workflow/cache.py:L122 | neighbors=[.should_recheck()]
-- "workflow_cache_rationale_124": "True if there's no cached entry, OR the entry is uncertain         (always worth" | kind=entity | source=probe/workflow/cache.py:L124 | neighbors=[.should_recheck()]
-- "workflow_cache_rationale_143": "True if there's no cached entry, OR the entry is uncertain         (always worth" | kind=entity | source=probe/workflow/cache.py:L143 | neighbors=[.should_recheck()]
-- "workflow_cache_rationale_79": "In-memory (host, port, scanner) -> CacheEntry, optionally JSONL-backed     for c" | kind=entity | source=probe/workflow/cache.py:L79 | neighbors=[WorkflowCache]
-- "workflow_cache_rationale_81": "In-memory (host, port, scanner) -> CacheEntry, optionally JSONL-backed     for c" | kind=entity | source=probe/workflow/cache.py:L81 | neighbors=[WorkflowCache]
-- "workflow_cache_workflowcache_all_entries_for_host": ".all_entries_for_host()" | kind=code-symbol | source=probe/workflow/cache.py:L160 | neighbors=[WorkflowCache]
-- "workflow_cli_rationale_1": "cli.py — entrypoint for the conditional workflow engine. Flag conventions follow" | kind=entity | source=probe/workflow/cli.py:L1 | neighbors=[cli.py]
-- "workflow_cli_rationale_29": "7d' / '12h' / '30m' -> timedelta. Simple single-unit parser —     engagements ar" | kind=entity | source=probe/workflow/cli.py:L29 | neighbors=[_parse_duration()]
-- "workflow_cli_rationale_30": "7d' / '12h' / '30m' -> timedelta. Simple single-unit parser —     engagements ar" | kind=entity | source=probe/workflow/cli.py:L30 | neighbors=[_parse_duration()]
-- "workflow_execution_executiontrace_degraded": ".degraded()" | kind=code-symbol | source=probe/workflow/execution.py:L376 | neighbors=[ExecutionTrace]
-- "workflow_execution_executiontrace_issues": ".issues()" | kind=code-symbol | source=probe/workflow/execution.py:L368 | neighbors=[ExecutionTrace]
-- "workflow_execution_rationale_1": "Execution telemetry and failure normalization for the probe workflow." | kind=entity | source=probe/workflow/execution.py:L1 | neighbors=[execution.py]
-- "workflow_execution_rationale_105": "Resolve the exact collector plan for one workflow invocation." | kind=entity | source=probe/workflow/execution.py:L105 | neighbors=[planned_components()]
-- "workflow_execution_rationale_114": "Resolve the exact collector plan for one workflow invocation." | kind=entity | source=probe/workflow/execution.py:L114 | neighbors=[planned_components()]
-- "workflow_execution_rationale_154": "Map low-level failures into stable, operator-actionable categories." | kind=entity | source=probe/workflow/execution.py:L154 | neighbors=[classify_scanner_error()]
-- "workflow_execution_rationale_166": "Map low-level failures into stable, operator-actionable categories." | kind=entity | source=probe/workflow/execution.py:L166 | neighbors=[classify_scanner_error()]
-- "workflow_execution_rationale_210": "Represent an unexpected component exception without aborting other hosts." | kind=entity | source=probe/workflow/execution.py:L210 | neighbors=[scanner_failure_result()]
-- "workflow_execution_rationale_222": "Represent an unexpected component exception without aborting other hosts." | kind=entity | source=probe/workflow/execution.py:L222 | neighbors=[scanner_failure_result()]
-- "workflow_execution_rationale_232": "Mutable per-run component accounting, serialized only after completion." | kind=entity | source=probe/workflow/execution.py:L232 | neighbors=[ExecutionTrace]
-- "workflow_execution_rationale_244": "Mutable per-run component accounting, serialized only after completion." | kind=entity | source=probe/workflow/execution.py:L244 | neighbors=[ExecutionTrace]
-- "workflow_execution_rationale_274": "Accumulate wall time for one component.          Without this, `scanner_runs` sa" | kind=entity | source=probe/workflow/execution.py:L274 | neighbors=[.timing()]
-- "workflow_execution_rationale_351": "True when execution produced errors and no usable or cached facts." | kind=entity | source=probe/workflow/execution.py:L351 | neighbors=[.failed()]
-- "workflow_execution_rationale_381": "True when execution produced errors and no usable or cached facts." | kind=entity | source=probe/workflow/execution.py:L381 | neighbors=[.failed()]
-- "workflow_execution_rationale_59": "Return the runtime engine inventory without claiming optional tools ran." | kind=entity | source=probe/workflow/execution.py:L59 | neighbors=[engine_manifest()]
-- "workflow_execution_rationale_67": "Return the runtime engine inventory without claiming optional tools ran." | kind=entity | source=probe/workflow/execution.py:L67 | neighbors=[engine_manifest()]
-- "workflow_gates_gate_4_service_banner": "gate_4_service_banner()" | kind=code-symbol | source=probe/workflow/gates.py:L118 | neighbors=[gates.py]
-- "workflow_gates_gate_6_credentialed_collection": "gate_6_credentialed_collection()" | kind=code-symbol | source=probe/workflow/gates.py:L163 | neighbors=[gates.py]
-- "workflow_gates_rationale_1": "gates.py — precondition functions deciding whether each stage of the workflow ru" | kind=entity | source=probe/workflow/gates.py:L1 | neighbors=[gates.py]
-- "workflow_gates_rationale_123": "OS identity for a host already proven alive. Runs on the SAME evidence the     p" | kind=entity | source=probe/workflow/gates.py:L123 | neighbors=[gate_4b_os_fingerprint()]
-- "workflow_gates_rationale_136": "Does `branch` apply to this host?       - Must be in this profile's allowed deep" | kind=entity | source=probe/workflow/gates.py:L136 | neighbors=[gate_5_branch_eligible()]
-- "workflow_gates_rationale_46": "True means OT/ICS passive-only mode — a hard stop, never reached by     any acti" | kind=entity | source=probe/workflow/gates.py:L46 | neighbors=[gate_0_is_passive_profile()]
-- "workflow_gates_rationale_48": "True means OT/ICS passive-only mode — a hard stop, never reached by     any acti" | kind=entity | source=probe/workflow/gates.py:L48 | neighbors=[gate_0_is_passive_profile()]
-- "workflow_gates_rationale_64": "True means OT/ICS passive-only mode — a hard stop, never reached by     any acti" | kind=entity | source=probe/workflow/gates.py:L64 | neighbors=[gate_0_is_passive_profile()]
-- "workflow_gates_rationale_72": "Does `branch` apply to this host?       - Must be in this profile's allowed deep" | kind=entity | source=probe/workflow/gates.py:L72 | neighbors=[gate_5_branch_eligible()]
-- "workflow_gates_rationale_74": "Does `branch` apply to this host?       - Must be in this profile's allowed deep" | kind=entity | source=probe/workflow/gates.py:L74 | neighbors=[gate_5_branch_eligible()]
-- "workflow_gates_rationale_90": "Does `branch` apply to this host?       - Must be in this profile's allowed deep" | kind=entity | source=probe/workflow/gates.py:L90 | neighbors=[gate_5_branch_eligible()]
-- "workflow_gates_rationale_99": "True means OT/ICS passive-only mode — a hard stop, never reached by     any acti" | kind=entity | source=probe/workflow/gates.py:L99 | neighbors=[gate_0_is_passive_profile()]
+- "workers_outbox_rationale_260": "Reschedule with exponential backoff, or dead-letter once attempts are     exhaus" | kind=entity | source=manager/backend/app/workers/outbox.py:L260 | neighbors=[_mark_retry_or_dead()] | lang=en
+- "workers_outbox_rationale_267": "Main loop: claim → process → repeat. Sleeps only when the queue is idle,     so" | kind=entity | source=manager/backend/app/workers/outbox.py:L267 | neighbors=[run_worker()] | lang=en
+- "workers_outbox_rationale_269": "Stranded events with retry budget left → make due now so a live worker     re-cl" | kind=entity | source=manager/backend/app/workers/outbox.py:L269 | neighbors=[_requeue_stale_stmt()] | lang=en
+- "workers_outbox_rationale_285": "Main loop: claim → process → repeat. Sleeps only when the queue is idle,     so" | kind=entity | source=manager/backend/app/workers/outbox.py:L285 | neighbors=[run_worker()] | lang=en
+- "workers_outbox_rationale_287": "DetectionRuns stuck RUNNING → mark FAILED. Prefer the per-run LEASE     (`lease_" | kind=entity | source=manager/backend/app/workers/outbox.py:L287 | neighbors=[_reap_runs_stmt()] | lang=en
+- "workers_outbox_rationale_294": "Main loop: claim → process → repeat. Sleeps only when the queue is idle,     so" | kind=entity | source=manager/backend/app/workers/outbox.py:L294 | neighbors=[run_worker()] | lang=en
+- "workers_outbox_rationale_308": "Fail DetectionRuns a crashed worker left RUNNING. Without this a campaign whose" | kind=entity | source=manager/backend/app/workers/outbox.py:L308 | neighbors=[_reap_stale_runs()] | lang=pt
+- "workers_outbox_rationale_323": "Upsert this worker's heartbeat. A stale row tells campaign-progress the     dete" | kind=entity | source=manager/backend/app/workers/outbox.py:L323 | neighbors=[_write_heartbeat()] | lang=en
+- "workers_outbox_rationale_339": "Requeue events a dead worker left in PROCESSING past the lease.      `_claim_bat" | kind=entity | source=manager/backend/app/workers/outbox.py:L339 | neighbors=[_reclaim_stale()] | lang=en
+- "workers_outbox_rationale_368": "Reschedule with exponential backoff, or dead-letter once attempts are     exhaus" | kind=entity | source=manager/backend/app/workers/outbox.py:L368 | neighbors=[_mark_retry_or_dead()] | lang=en
+- "workers_outbox_rationale_402": "Main loop: claim → process → repeat. Sleeps only when the queue is idle,     so" | kind=entity | source=manager/backend/app/workers/outbox.py:L402 | neighbors=[run_worker()] | lang=en
+- "workers_outbox_rationale_47": "Return whether a claimed event was stranded by a dead worker.      `_claim_batch" | kind=entity | source=manager/backend/app/workers/outbox.py:L47 | neighbors=[is_stale_processing()] | lang=en
+- "workers_outbox_rationale_48": "Return whether a claimed event was stranded by a dead worker.      `_claim_batch" | kind=entity | source=manager/backend/app/workers/outbox.py:L48 | neighbors=[is_stale_processing()] | lang=en
+- "workers_outbox_rationale_60": "Return whether a claimed event was stranded by a dead worker.      `_claim_batch" | kind=entity | source=manager/backend/app/workers/outbox.py:L60 | neighbors=[is_stale_processing()] | lang=en
+- "workers_outbox_rationale_76": "Decorator: bind an async handler to a topic." | kind=entity | source=manager/backend/app/workers/outbox.py:L76 | neighbors=[register()] | lang=en
+- "workers_outbox_rationale_77": "Decorator: bind an async handler to a topic." | kind=entity | source=manager/backend/app/workers/outbox.py:L77 | neighbors=[register()] | lang=en
+- "workers_outbox_rationale_87": "Add an outbox event to the caller's session. Does NOT commit — it commits     at" | kind=entity | source=manager/backend/app/workers/outbox.py:L87 | neighbors=[enqueue()] | lang=en
+- "workers_outbox_rationale_88": "Add an outbox event to the caller's session. Does NOT commit — it commits     at" | kind=entity | source=manager/backend/app/workers/outbox.py:L88 | neighbors=[enqueue()] | lang=en
+- "workers_outbox_rationale_89": "Decorator: bind an async handler to a topic." | kind=entity | source=manager/backend/app/workers/outbox.py:L89 | neighbors=[register()] | lang=en
+- "workers_reaper_rationale_34": "Expire one fenced attempt; return True when the job may be retried." | kind=entity | source=manager/backend/app/workers/reaper.py:L34 | neighbors=[expire_attempt()] | lang=en
+- "workers_reaper_rationale_57": "Expire current attempts and requeue only jobs within their retry budget." | kind=entity | source=manager/backend/app/workers/reaper.py:L57 | neighbors=[reap_once()] | lang=en
+- "workers_reaper_rationale_88": "Poll loop: requeue expired jobs every reaper_interval_seconds until stopped." | kind=entity | source=manager/backend/app/workers/reaper.py:L88 | neighbors=[run_reaper()] | lang=en
+- "workflow_asset_asset_merge_db_scan": "._merge_db_scan()" | kind=code-symbol | source=probe/workflow/asset.py:L180 | neighbors=[Asset] | lang=en
+- "workflow_asset_asset_merge_dns_scan": "._merge_dns_scan()" | kind=code-symbol | source=probe/workflow/asset.py:L196 | neighbors=[Asset] | lang=en
+- "workflow_asset_asset_merge_ftp_scan": "._merge_ftp_scan()" | kind=code-symbol | source=probe/workflow/asset.py:L208 | neighbors=[Asset] | lang=en
+- "workflow_asset_asset_merge_ipmi_scan": "._merge_ipmi_scan()" | kind=code-symbol | source=probe/workflow/asset.py:L220 | neighbors=[Asset] | lang=en
+- "workflow_asset_asset_merge_ldap_scan": "._merge_ldap_scan()" | kind=code-symbol | source=probe/workflow/asset.py:L192 | neighbors=[Asset] | lang=en
+- "workflow_asset_asset_merge_mcp_ai_scan": "._merge_mcp_ai_scan()" | kind=code-symbol | source=probe/workflow/asset.py:L184 | neighbors=[Asset] | lang=en
+- "workflow_asset_asset_merge_msrpc_scan": "._merge_msrpc_scan()" | kind=code-symbol | source=probe/workflow/asset.py:L228 | neighbors=[Asset] | lang=en
+- "workflow_asset_asset_merge_nfs_scan": "._merge_nfs_scan()" | kind=code-symbol | source=probe/workflow/asset.py:L204 | neighbors=[Asset] | lang=en
+- "workflow_asset_asset_merge_os_fingerprint": "._merge_os_fingerprint()" | kind=code-symbol | source=probe/workflow/asset.py:L152 | neighbors=[Asset] | lang=en
+- "workflow_asset_asset_merge_passive_collect": "._merge_passive_collect()" | kind=code-symbol | source=probe/workflow/asset.py:L248 | neighbors=[Asset] | lang=en
+- "workflow_asset_asset_merge_printer_scan": "._merge_printer_scan()" | kind=code-symbol | source=probe/workflow/asset.py:L236 | neighbors=[Asset] | lang=en
+- "workflow_asset_asset_merge_rdp_scan": "._merge_rdp_scan()" | kind=code-symbol | source=probe/workflow/asset.py:L232 | neighbors=[Asset] | lang=en
+- "workflow_asset_asset_merge_rsync_scan": "._merge_rsync_scan()" | kind=code-symbol | source=probe/workflow/asset.py:L212 | neighbors=[Asset] | lang=en
+- "workflow_asset_asset_merge_service_banner": "._merge_service_banner()" | kind=code-symbol | source=probe/workflow/asset.py:L158 | neighbors=[Asset] | lang=en
+- "workflow_asset_asset_merge_service_enum": "._merge_service_enum()" | kind=code-symbol | source=probe/workflow/asset.py:L175 | neighbors=[Asset] | lang=en
+- "workflow_asset_asset_merge_smb_enum_scan": "._merge_smb_enum_scan()" | kind=code-symbol | source=probe/workflow/asset.py:L200 | neighbors=[Asset] | lang=en
+- "workflow_asset_asset_merge_smb_scan": "._merge_smb_scan()" | kind=code-symbol | source=probe/workflow/asset.py:L170 | neighbors=[Asset] | lang=en
+- "workflow_asset_asset_merge_smtp_scan": "._merge_smtp_scan()" | kind=code-symbol | source=probe/workflow/asset.py:L224 | neighbors=[Asset] | lang=en
 
 ## Instructions
 

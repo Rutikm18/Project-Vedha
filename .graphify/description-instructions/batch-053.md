@@ -1,4 +1,4 @@
-# Node Description Batch 54 of 330
+# Node Description Batch 54 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -26,6 +26,12 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
+- "auth_startup_check_bcrypt": "_check_bcrypt()" | kind=code-symbol | source=manager/backend/app/auth/startup.py:L145 | neighbors=[startup.py, CheckResult, Verify the bcrypt library can round-tri…, run_startup_diagnostics(), Verify the bcrypt library can round-tri…] | lang=en
+- "auth_startup_check_tenant": "_check_tenant()" | kind=code-symbol | source=manager/backend/app/auth/startup.py:L195 | neighbors=[startup.py, CheckResult, Verify the default tenant is active., run_startup_diagnostics(), Verify the default tenant is active.] | lang=en
+- "auth_startup_diagnosticsreport": "DiagnosticsReport" | kind=code-symbol | source=manager/backend/app/auth/startup.py:L65 | neighbors=[startup.py, .all_ok(), .as_dict(), .has_fatal(), run_startup_diagnostics()] | lang=en
+- "auth_startup_startupaborterror": "StartupAbortError" | kind=code-symbol | source=manager/backend/app/auth/startup.py:L90 | neighbors=[startup.py, Raised when one or more fatal checks fa…, run_startup_diagnostics(), RuntimeError, Raised when one or more fatal checks fa…] | lang=en
+- "branch:repo:github.com/Rutikm18/Agentic-VA-Automation#agents/greeting-introduction": "agents/greeting-introduction" | kind=Branch | source=git | neighbors=[0510df3 going to build prompt and conne…, 8d65c92 first commit, a388bb3 script updated, architecture de…, bd7383f scanner fine ..now integrations, f5ce592 first commit] | lang=en
+- "chokepoints_route": "route.ts" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/chokepoints/route.ts:L1 | neighbors=[GET(), graphStore, d1b4dd3 trim frontend to 7 core pages; …, graph-store.ts, 298a9d4 trim frontend to 7 core pages; …] | lang=en
 - "cli_auth_serverurl": "serverUrl()" | kind=code-symbol | source=manager/frontend/cli/auth.ts:L42 | neighbors=[auth.ts, apiFetch(), doctor.ts, interactive.ts, login.ts] | lang=en
 - "commands_interactive_runinteractive": "runInteractive()" | kind=code-symbol | source=manager/frontend/cli/commands/interactive.ts:L2102 | neighbors=[index.ts, interactive.ts, banner(), ensureAuthenticated(), mainMenu()] | lang=en
 - "commands_interactive_runphaseexploitation": "runPhaseExploitation()" | kind=code-symbol | source=manager/frontend/cli/commands/interactive.ts:L1070 | neighbors=[interactive.ts, runIterativeEngagement(), choose(), confirm(), ln()] | lang=en
@@ -60,12 +66,6 @@ one-sentence description — no prose, no markdown fences.
 - "detection_engine_enrichment_rationale_53": "Returns (tier, human-readable reason). Order of precedence, per spec:     KEV-li" | kind=entity | source=manager/detection_engine/enrichment.py:L53 | neighbors=[_compute_priority(), EpssDB, KevDB, Finding, VulnDB] | lang=en
 - "detection_engine_exploitability_assess": "assess()" | kind=code-symbol | source=manager/detection_engine/exploitability.py:L130 | neighbors=[exploitability.py, apply_to_findings(), kev_links_for(), _tier(), Exploitability evidence for one posture…] | lang=en
 - "detection_engine_ingest_quarantinedline": "QuarantinedLine" | kind=code-symbol | source=manager/detection_engine/ingest.py:L42 | neighbors=[ingest.py, ingest_file(), Asset, Fact, SourceConfidence] | lang=en
-- "detection_engine_pipeline_run_pipeline": "run_pipeline()" | kind=code-symbol | source=manager/detection_engine/pipeline.py:L45 | neighbors=[pipeline.py, ab_evaluate(), exposure: optional {asset_ip: {"interne…, run_full_detection(), exposure: optional {asset_ip: {"interne…] | lang=en
-- "detection_engine_port_intel_classify_port": "classify_port()" | kind=code-symbol | source=manager/detection_engine/port_intel.py:L211 | neighbors=[port_intel.py, _banner_confirms_backdoor(), contradicts_port_hypothesis(), PortRisk, Map an open TCP port (+ optional banner…] | lang=en
-- "detection_engine_posture_confidence": "posture_confidence.py" | kind=code-symbol | source=manager/detection_engine/posture_confidence.py:L1 | neighbors=[6bb51ab feat: add detection-explain end…, assess_confidence(), calibrate_host_findings(), corroborating_chains(), posture_confidence.py — calibrated, aud…] | lang=en
-- "detection_engine_posture_rules_posturefinding": "PostureFinding" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L169 | neighbors=[posture_rules.py, detect_exposed_services(), detect_posture_traced(), .__post_init__(), .to_dict()] | lang=en
-- "detection_engine_posture_rules_tracerow": "TraceRow" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L111 | neighbors=[posture_rules.py, detect_posture_traced(), evaluate_rule(), One rule evaluation's outcome. Purely d…, .to_dict()] | lang=en
-- "detection_engine_update_snapshot_sync_epss_snapshot": "sync_epss_snapshot()" | kind=code-symbol | source=manager/detection_engine/update_snapshot.py:L141 | neighbors=[update_snapshot.py, EPSS scores for exactly the CVE IDs thi…, _ssl_context(), main(), EPSS scores for exactly the CVE IDs thi…] | lang=en
 
 ## Instructions
 

@@ -1,4 +1,4 @@
-# Node Description Batch 304 of 330
+# Node Description Batch 304 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,53 +19,51 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-LANGUAGE: each entry has a `lang=` marker giving the language of its source.
-Write that entry's description in EXACTLY that language. Do not translate to
-a single common language — match each node's source language individually.
+Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_scan_funnel_fakeportscanner_init": ".__init__()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L37 | neighbors=[FakePortScanner] | lang=en
-- "tests_test_scan_funnel_fakeportscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L42 | neighbors=[FakePortScanner] | lang=en
-- "tests_test_scan_funnel_opensetportfactory_call": ".__call__()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L241 | neighbors=[_OpenSetPortFactory] | lang=en
-- "tests_test_scan_funnel_opensetportfactory_init": ".__init__()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L237 | neighbors=[_OpenSetPortFactory] | lang=en
-- "tests_test_scan_funnel_rationale_1": "test_scan_funnel.py — per-host scan funnel orchestrator (Tier 1.4).  The funnel" | kind=entity | source=probe/tests/test_scan_funnel.py:L1 | neighbors=[test_scan_funnel.py] | lang=en
-- "tests_test_scan_funnel_rationale_233": "Port-scanner factory whose scanners report a port open iff it is in     `actuall" | kind=entity | source=probe/tests/test_scan_funnel.py:L233 | neighbors=[_OpenSetPortFactory] | lang=en
-- "tests_test_scan_funnel_rationale_255": "A deep scanner on 135 that returns EPM-advertised dynamic ports." | kind=entity | source=probe/tests/test_scan_funnel.py:L255 | neighbors=[_FakeMSRPC] | lang=en
-- "tests_test_scan_funnel_rationale_65": "Build a funnel with fakes; return (funnel, discovery, port_scanner, created)." | kind=entity | source=probe/tests/test_scan_funnel.py:L65 | neighbors=[_make_funnel()] | lang=en
-- "tests_test_scan_funnel_rationale_67": "Build a funnel with fakes; return (funnel, discovery, port_scanner, created)." | kind=entity | source=probe/tests/test_scan_funnel.py:L67 | neighbors=[_make_funnel()] | lang=en
-- "tests_test_scan_funnel_recordingdeep_init": ".__init__()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L50 | neighbors=[RecordingDeep] | lang=en
-- "tests_test_scan_funnel_recordingdeep_scan_target": ".scan_target()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L55 | neighbors=[RecordingDeep] | lang=en
-- "tests_test_scan_funnel_testbuilddefaultfunnel_test_candidate_ports_cover_all_routes": ".test_candidate_ports_cover_all_routes()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L212 | neighbors=[TestBuildDefaultFunnel] | lang=en
-- "tests_test_scan_funnel_testreconcileports_test_ignores_non_ints_and_empty": ".test_ignores_non_ints_and_empty()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L226 | neighbors=[TestReconcilePorts] | lang=en
-- "tests_test_scan_funnel_testreconcileports_test_union_dedup_sorted": ".test_union_dedup_sorted()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L222 | neighbors=[TestReconcilePorts] | lang=en
-- "tests_test_scan_funnel_testrouteports_test_intersection_only": ".test_intersection_only()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L101 | neighbors=[TestRoutePorts] | lang=en
-- "tests_test_scan_funnel_testrouteports_test_no_match_returns_empty": ".test_no_match_returns_empty()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L105 | neighbors=[TestRoutePorts] | lang=en
-- "tests_test_scan_funnel_testrouteports_test_port_in_multiple_routes": ".test_port_in_multiple_routes()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L109 | neighbors=[TestRoutePorts] | lang=en
-- "tests_test_scan_funnel_testrouteports_test_sorted_output": ".test_sorted_output()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L114 | neighbors=[TestRoutePorts] | lang=en
-- "tests_test_scan_health_rationale_1": "test_scan_health.py — the probe scan-metrics → coverage/health verdict.  Guards" | kind=entity | source=manager/backend/tests/test_scan_health.py:L1 | neighbors=[test_scan_health.py] | lang=en
-- "tests_test_scan_health_test_aggregates_across_hosts": "test_aggregates_across_hosts()" | kind=code-symbol | source=manager/backend/tests/test_scan_health.py:L48 | neighbors=[test_scan_health.py] | lang=en
-- "tests_test_scan_health_test_no_metrics_means_nothing_to_attest": "test_no_metrics_means_nothing_to_attest()" | kind=code-symbol | source=manager/backend/tests/test_scan_health.py:L40 | neighbors=[test_scan_health.py] | lang=en
-- "tests_test_scanner_congestion_fakesock_getsockopt": ".getsockopt()" | kind=code-symbol | source=probe/tests/test_scanner_congestion.py:L214 | neighbors=[_FakeSock] | lang=en
-- "tests_test_scanner_congestion_fakesock_init": ".__init__()" | kind=code-symbol | source=probe/tests/test_scanner_congestion.py:L211 | neighbors=[_FakeSock] | lang=en
-- "tests_test_scanner_congestion_rationale_1": "test_scanner_congestion.py — proof tests for the offensive-accuracy pass (RESEAR" | kind=entity | source=probe/tests/test_scanner_congestion.py:L1 | neighbors=[test_scanner_congestion.py] | lang=en
-- "tests_test_scanner_congestion_rationale_201": "A synthetic Linux `struct tcp_info`: 8 u8 flag bytes then 20 u32 fields." | kind=entity | source=probe/tests/test_scanner_congestion.py:L201 | neighbors=[_tcp_info_buf()] | lang=pt
-- "tests_test_scanner_congestion_rationale_232": "TCP_MAXSEG on an ESTABLISHED socket is the post-options effective         segmen" | kind=entity | source=probe/tests/test_scanner_congestion.py:L232 | neighbors=[.test_maxseg_is_reported_but_never_as_a…] | lang=en
-- "tests_test_scanner_congestion_rationale_242": "End-to-end form of the same guarantee, through os_fingerprint." | kind=entity | source=probe/tests/test_scanner_congestion.py:L242 | neighbors=[.test_timestamped_ethernet_host_is_not_…] | lang=en
-- "tests_test_scanner_congestion_rationale_264": "THE accuracy guarantee for #6b.          os_fingerprint scores `tcp_window` agai" | kind=entity | source=probe/tests/test_scanner_congestion.py:L264 | neighbors=[.test_never_synthesizes_an_initial_tcp_…] | lang=en
-- "tests_test_scanner_congestion_rationale_306": "The false negative #9 exists to kill: a dual-stack host whose IPv6         path" | kind=entity | source=probe/tests/test_scanner_congestion.py:L306 | neighbors=[.test_v4_is_reachable_even_when_aaaa_so…] | lang=en
-- "tests_test_scanner_congestion_rationale_337": "A host that rate-limits its RSTs answers only when probed gently. The     fast s" | kind=entity | source=probe/tests/test_scanner_congestion.py:L337 | neighbors=[TestReprobeCleanupPass] | lang=en
-- "tests_test_scanner_congestion_rationale_342": "Silent for the first `answer_after` probes per port, then a real RST." | kind=entity | source=probe/tests/test_scanner_congestion.py:L342 | neighbors=[._rate_limited()] | lang=en
-- "tests_test_scanner_congestion_rationale_384": "Corrected ports must be recorded ONCE, with their final state." | kind=entity | source=probe/tests/test_scanner_congestion.py:L384 | neighbors=[.test_completeness_holds_after_correcti…] | lang=en
-- "tests_test_scanner_congestion_rationale_415": "A converged estimator can be tuned to a path that was dropping us." | kind=entity | source=probe/tests/test_scanner_congestion.py:L415 | neighbors=[.test_cleanup_raises_the_timeout_floor()] | lang=en
-- "tests_test_scanner_congestion_testconnectcongestionwindow_test_window_never_falls_below_one": ".test_window_never_falls_below_one()" | kind=code-symbol | source=probe/tests/test_scanner_congestion.py:L192 | neighbors=[TestConnectCongestionWindow] | lang=en
-- "tests_test_scanner_congestion_testharvesttcpstack_test_none_socket_yields_nothing": ".test_none_socket_yields_nothing()" | kind=code-symbol | source=probe/tests/test_scanner_congestion.py:L225 | neighbors=[TestHarvestTcpStack] | lang=en
-- "tests_test_scanner_congestion_testharvesttcpstack_test_object_without_getsockopt_is_survivable": ".test_object_without_getsockopt_is_survivable()" | kind=code-symbol | source=probe/tests/test_scanner_congestion.py:L228 | neighbors=[TestHarvestTcpStack] | lang=en
-- "tests_test_scanner_congestion_testresolvecandidates_test_absent_requested_family_falls_back_rather_than_failing": ".test_absent_requested_family_falls_back_rather_than_failing()" | kind=code-symbol | source=probe/tests/test_scanner_congestion.py:L317 | neighbors=[TestResolveCandidates] | lang=en
-- "tests_test_scanner_congestion_testresolvecandidates_test_literal_ip_resolves_to_itself": ".test_literal_ip_resolves_to_itself()" | kind=code-symbol | source=probe/tests/test_scanner_congestion.py:L330 | neighbors=[TestResolveCandidates] | lang=en
-- "tests_test_scanner_congestion_testresolvecandidates_test_unresolvable_name_raises": ".test_unresolvable_name_raises()" | kind=code-symbol | source=probe/tests/test_scanner_congestion.py:L324 | neighbors=[TestResolveCandidates] | lang=en
-- "tests_test_scanner_congestion_testsendpacer_test_backoff_is_bounded_by_min_rate": ".test_backoff_is_bounded_by_min_rate()" | kind=code-symbol | source=probe/tests/test_scanner_congestion.py:L51 | neighbors=[TestSendPacer] | lang=en
+- "tests_test_risk_port_coverage_test_it_ports_is_the_union_and_stays_sorted_unique": "test_it_ports_is_the_union_and_stays_sorted_unique()" | kind=code-symbol | source=probe/tests/test_risk_port_coverage.py:L95 | neighbors=[test_risk_port_coverage.py]
+- "tests_test_risk_port_coverage_test_va_risk_ports_has_no_duplicates_and_is_valid": "test_va_risk_ports_has_no_duplicates_and_is_valid()" | kind=code-symbol | source=probe/tests/test_risk_port_coverage.py:L90 | neighbors=[test_risk_port_coverage.py]
+- "tests_test_risk_rank_test_distinct_high_risks_do_not_collapse_at_the_ceiling": "test_distinct_high_risks_do_not_collapse_at_the_ceiling()" | kind=code-symbol | source=manager/backend/tests/test_risk_rank.py:L54 | neighbors=[test_risk_rank.py]
+- "tests_test_risk_rank_test_missing_optionals_do_not_crash": "test_missing_optionals_do_not_crash()" | kind=code-symbol | source=manager/backend/tests/test_risk_rank.py:L46 | neighbors=[test_risk_rank.py]
+- "tests_test_risk_score_contract_rationale_1": "Regression tests for posture findings entering the Manager risk contract." | kind=entity | source=manager/backend/tests/test_risk_score_contract.py:L1 | neighbors=[test_risk_score_contract.py]
+- "tests_test_risk_score_contract_test_only_detection_engine_posture_evidence_uses_the_boundary_conversion": "test_only_detection_engine_posture_evidence_uses_the_boundary_conversion()" | kind=code-symbol | source=manager/backend/tests/test_risk_score_contract.py:L30 | neighbors=[test_risk_score_contract.py]
+- "tests_test_risk_score_contract_test_posture_severity_and_evidence_drive_manager_risk": "test_posture_severity_and_evidence_drive_manager_risk()" | kind=code-symbol | source=manager/backend/tests/test_risk_score_contract.py:L18 | neighbors=[test_risk_score_contract.py]
+- "tests_test_risk_score_contract_test_upstream_posture_score_cannot_force_the_manager_ceiling": "test_upstream_posture_score_cannot_force_the_manager_ceiling()" | kind=code-symbol | source=manager/backend/tests/test_risk_score_contract.py:L6 | neighbors=[test_risk_score_contract.py]
+- "tests_test_router_db_test_mysql_greeting_on_odd_port": "test_mysql_greeting_on_odd_port()" | kind=code-symbol | source=probe/tests/test_router_db.py:L4 | neighbors=[test_router_db.py]
+- "tests_test_router_db_test_plain_http_is_not_db": "test_plain_http_is_not_db()" | kind=code-symbol | source=probe/tests/test_router_db.py:L13 | neighbors=[test_router_db.py]
+- "tests_test_router_db_test_redis_noauth_signature": "test_redis_noauth_signature()" | kind=code-symbol | source=probe/tests/test_router_db.py:L9 | neighbors=[test_router_db.py]
+- "tests_test_router_signals_rationale_1": "test_router_signals.py — router.py consumes service_banner's POSITIVE signals (t" | kind=entity | source=probe/tests/test_router_signals.py:L1 | neighbors=[test_router_signals.py]
+- "tests_test_router_signals_rationale_108": "service_banner now ATTEMPTS a TLS handshake on every unidentified port and     r" | kind=entity | source=probe/tests/test_router_signals.py:L108 | neighbors=[TestTlsProbedNegative]
+- "tests_test_router_signals_rationale_138": "The flag must actually be emitted, or the router change is inert." | kind=entity | source=probe/tests/test_router_signals.py:L138 | neighbors=[test_service_banner_records_tls_probed()]
+- "tests_test_router_signals_rationale_162": "--no-tls means no handshake was tried, so the absence guess must remain     avai" | kind=entity | source=probe/tests/test_router_signals.py:L162 | neighbors=[test_no_tls_flag_omits_the_marker()]
+- "tests_test_router_signals_rationale_71": "9000 is in the static WEB table but NOT the TLS table: only the banner's     obs" | kind=entity | source=probe/tests/test_router_signals.py:L71 | neighbors=[test_workflow_hands_observed_tls_ports_…]
+- "tests_test_router_signals_testpositivetls_test_absence_heuristic_still_works": ".test_absence_heuristic_still_works()" | kind=code-symbol | source=probe/tests/test_router_signals.py:L31 | neighbors=[TestPositiveTls]
+- "tests_test_router_signals_testpositivetls_test_alert_record_service_routes": ".test_alert_record_service_routes()" | kind=code-symbol | source=probe/tests/test_router_signals.py:L28 | neighbors=[TestPositiveTls]
+- "tests_test_router_signals_testpositivetls_test_handshake_fact_routes_even_on_client_first_port": ".test_handshake_fact_routes_even_on_client_first_port()" | kind=code-symbol | source=probe/tests/test_router_signals.py:L25 | neighbors=[TestPositiveTls]
+- "tests_test_router_signals_teststructuredservice_test_db_by_service_field": ".test_db_by_service_field()" | kind=code-symbol | source=probe/tests/test_router_signals.py:L38 | neighbors=[TestStructuredService]
+- "tests_test_router_signals_teststructuredservice_test_http_by_service_field": ".test_http_by_service_field()" | kind=code-symbol | source=probe/tests/test_router_signals.py:L43 | neighbors=[TestStructuredService]
+- "tests_test_router_signals_teststructuredservice_test_ssh_by_service_field": ".test_ssh_by_service_field()" | kind=code-symbol | source=probe/tests/test_router_signals.py:L48 | neighbors=[TestStructuredService]
+- "tests_test_router_signals_testtlsprobednegative_test_absence_guess_kept_for_facts_without_the_flag": ".test_absence_guess_kept_for_facts_without_the_flag()" | kind=code-symbol | source=probe/tests/test_router_signals.py:L125 | neighbors=[TestTlsProbedNegative]
+- "tests_test_router_signals_testtlsprobednegative_test_probed_and_failed_is_not_tls": ".test_probed_and_failed_is_not_tls()" | kind=code-symbol | source=probe/tests/test_router_signals.py:L117 | neighbors=[TestTlsProbedNegative]
+- "tests_test_router_signals_testtlsprobednegative_test_probed_and_succeeded_still_routes": ".test_probed_and_succeeded_still_routes()" | kind=code-symbol | source=probe/tests/test_router_signals.py:L122 | neighbors=[TestTlsProbedNegative]
+- "tests_test_router_signals_testwebschemes_test_observed_tls_prefers_https": ".test_observed_tls_prefers_https()" | kind=code-symbol | source=probe/tests/test_router_signals.py:L60 | neighbors=[TestWebSchemes]
+- "tests_test_router_signals_testwebschemes_test_static_table_still_applies": ".test_static_table_still_applies()" | kind=code-symbol | source=probe/tests/test_router_signals.py:L65 | neighbors=[TestWebSchemes]
+- "tests_test_rsync_scanner_fakesock_init": ".__init__()" | kind=code-symbol | source=probe/tests/test_rsync_scanner.py:L38 | neighbors=[_FakeSock]
+- "tests_test_rsync_scanner_fakesock_recv": ".recv()" | kind=code-symbol | source=probe/tests/test_rsync_scanner.py:L42 | neighbors=[_FakeSock]
+- "tests_test_rsync_scanner_fakesock_sendall": ".sendall()" | kind=code-symbol | source=probe/tests/test_rsync_scanner.py:L46 | neighbors=[_FakeSock]
+- "tests_test_rsync_scanner_rationale_1": "test_rsync_scanner.py — rsync daemon anonymous-module exposure.  Pure protocol p" | kind=entity | source=probe/tests/test_rsync_scanner.py:L1 | neighbors=[test_rsync_scanner.py]
+- "tests_test_rsync_scanner_rationale_35": "Minimal socket stand-in: replays the daemon greeting, records what the     scann" | kind=entity | source=probe/tests/test_rsync_scanner.py:L35 | neighbors=[_FakeSock]
+- "tests_test_rsync_scanner_rationale_51": "Protocol >= 32 daemons append their digest-name list to the greeting and     rej" | kind=entity | source=probe/tests/test_rsync_scanner.py:L51 | neighbors=[TestHandshake]
+- "tests_test_rsync_scanner_testparity_test_main_scripts": ".test_main_scripts()" | kind=code-symbol | source=probe/tests/test_rsync_scanner.py:L121 | neighbors=[TestParity]
+- "tests_test_rsync_scanner_testparsemodules_test_bounded": ".test_bounded()" | kind=code-symbol | source=probe/tests/test_rsync_scanner.py:L29 | neighbors=[TestParseModules]
+- "tests_test_rsync_scanner_testparsemodules_test_protocol_lines_ignored": ".test_protocol_lines_ignored()" | kind=code-symbol | source=probe/tests/test_rsync_scanner.py:L25 | neighbors=[TestParseModules]
+- "tests_test_rsync_scanner_testparsemodules_test_tab_and_space_separated": ".test_tab_and_space_separated()" | kind=code-symbol | source=probe/tests/test_rsync_scanner.py:L19 | neighbors=[TestParseModules]
+- "tests_test_run_all_reconcile_rationale_1": "test_run_all_reconcile.py — cross-cutting: run_all and scan_funnel must derive t" | kind=entity | source=probe/tests/test_run_all_reconcile.py:L1 | neighbors=[test_run_all_reconcile.py]
+- "tests_test_run_all_reconcile_test_advertised_dynamic_ports_extraction": "test_advertised_dynamic_ports_extraction()" | kind=code-symbol | source=probe/tests/test_run_all_reconcile.py:L34 | neighbors=[test_run_all_reconcile.py]
+- "tests_test_run_all_reconcile_test_open_tcp_ports_ignores_non_open_and_udp": "test_open_tcp_ports_ignores_non_open_and_udp()" | kind=code-symbol | source=probe/tests/test_run_all_reconcile.py:L57 | neighbors=[test_run_all_reconcile.py]
 
 ## Instructions
 

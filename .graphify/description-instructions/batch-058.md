@@ -1,4 +1,4 @@
-# Node Description Batch 59 of 330
+# Node Description Batch 59 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -24,6 +24,13 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
+- "routers_attack_paths_list_chokepoints": "list_chokepoints()" | kind=code-symbol | source=manager/backend/app/routers/attack_paths.py:L117 | neighbors=[attack_paths.py, _all_paths_to_critical(), _asset_labels(), _build_analyzer(), _critical_asset_ids()]
+- "routers_attack_paths_recompute_and_store": "_recompute_and_store()" | kind=code-symbol | source=manager/backend/app/routers/attack_paths.py:L199 | neighbors=[attack_paths.py, list_attack_paths(), _all_paths_to_critical(), _build_analyzer(), _critical_asset_ids()]
+- "routers_customer_access_build_scan_job": "build_scan_job()" | kind=code-symbol | source=manager/backend/app/routers/customer_access.py:L121 | neighbors=[customer_access.py, approve_scan_request(), Pure: turn an approved request into a p…, Pure: turn an approved request into a p…, Pure: turn an approved request into a p…]
+- "routers_customer_access_clientuserout": "ClientUserOut" | kind=code-symbol | source=manager/backend/app/routers/customer_access.py:L62 | neighbors=[customer_access.py, BaseModel, get_client_user(), patch_client_user(), provision_client_user()]
+- "routers_customer_access_provision_client_user": "provision_client_user()" | kind=code-symbol | source=manager/backend/app/routers/customer_access.py:L171 | neighbors=[customer_access.py, ClientUserOut, _existing_client_user(), generate_password(), _unique_portal_slug()]
+- "routers_customer_access_slugify": "_slugify()" | kind=code-symbol | source=manager/backend/app/routers/customer_access.py:L100 | neighbors=[customer_access.py, A lowercase, hyphenated, DNS-label-safe…, _unique_portal_slug(), A lowercase, hyphenated, DNS-label-safe…, A lowercase, hyphenated, DNS-label-safe…]
+- "routers_detection_runs_rationale_1": "detection_runs.py — temporal detection API (\"what changed since last time\").  GE" | kind=entity | source=manager/backend/app/routers/detection_runs.py:L1 | neighbors=[detection_runs.py, DetectionRun, Engagement, FindingStatus, Finding]
 - "routers_engagements_campaign_progress": "campaign_progress()" | kind=code-symbol | source=manager/backend/app/routers/engagements.py:L766 | neighbors=[engagements.py, _job_phase(), _reconcile_status(), _result_summary(), One call powers the VA Campaigns page: …]
 - "routers_engagements_get_engagement_scope": "get_engagement_scope()" | kind=code-symbol | source=manager/backend/app/routers/engagements.py:L1259 | neighbors=[engagements.py, Probe-facing: the probe calls this inde…, Probe-facing: the probe calls this inde…, Probe-facing: the probe calls this inde…, Probe-facing: the probe calls this inde…]
 - "routers_engagements_re_detect": "re_detect()" | kind=code-symbol | source=manager/backend/app/routers/engagements.py:L150 | neighbors=[engagements.py, Re-runs the detection pipeline against …, Re-runs the detection pipeline against …, Re-runs the detection pipeline against …, Re-runs the detection pipeline against …]
@@ -57,13 +64,6 @@ one-sentence description — no prose, no markdown fences.
 - "scanner_iot_scanner_iotscanner": "IoTScanner" | kind=code-symbol | source=probe/scanner/iot_scanner.py:L445 | neighbors=[iot_scanner.py, BaseScanner, .scan_target(), Surveys a target for IoT/embedded devic…, Surveys a target for IoT/embedded devic…]
 - "scanner_iot_scanner_mqtt_remaining_len": "_mqtt_remaining_len()" | kind=code-symbol | source=probe/scanner/iot_scanner.py:L271 | neighbors=[iot_scanner.py, _mqtt_connect(), _mqtt_subscribe_all(), MQTT variable-length encoding., MQTT variable-length encoding.]
 - "scanner_iot_scanner_mqtt_subscribe_all": "_mqtt_subscribe_all()" | kind=code-symbol | source=probe/scanner/iot_scanner.py:L283 | neighbors=[iot_scanner.py, _mqtt_remaining_len(), _probe_mqtt(), MQTT SUBSCRIBE to '#' (all topics), QoS…, MQTT SUBSCRIBE to '#' (all topics), QoS…]
-- "scanner_iot_scanner_parse_mdns_response": "_parse_mdns_response()" | kind=code-symbol | source=probe/scanner/iot_scanner.py:L156 | neighbors=[iot_scanner.py, _decode_mdns_name(), _probe_mdns_sync(), Extract PTR target names from mDNS resp…, Extract PTR target names from mDNS resp…]
-- "scanner_ipv6_discovery_read_neighbor_cache": "_read_neighbor_cache()" | kind=code-symbol | source=probe/scanner/ipv6_discovery.py:L112 | neighbors=[ipv6_discovery.py, discover_ipv6_hosts(), parse_ip_neigh6(), parse_ndp(), _run()]
-- "scanner_ja4s_ja4s_from_fields": "ja4s_from_fields()" | kind=code-symbol | source=probe/scanner/ja4s.py:L85 | neighbors=[ja4s.py, _alpn_code(), _version_str(), ja4s_from_parsed(), Pure JA4S from already-extracted Server…]
-- "scanner_mass_scan_parse_masscan_json": "_parse_masscan_json()" | kind=code-symbol | source=probe/scanner/mass_scan.py:L147 | neighbors=[mass_scan.py, _parse_masscan_json_detailed(), Parse masscan -oJ output robustly: hand…, Parse masscan -oJ output robustly: hand…, _run_masscan()]
-- "scanner_mobile_scanner_probe_adb": "_probe_adb()" | kind=code-symbol | source=probe/scanner/mobile_scanner.py:L94 | neighbors=[mobile_scanner.py, .scan_target(), _build_adb_cnxn(), _parse_adb_header(), Send ADB CNXN and read the device's CNX…]
-- "scanner_nfs_scanner_nfsscanner_probe": "._probe()" | kind=code-symbol | source=probe/scanner/nfs_scanner.py:L232 | neighbors=[NFSScanner, ._mount_export(), ._portmap_dump(), ._portmap_getport(), Blocking: portmap DUMP + mountd EXPORT.…]
-- "scanner_nfs_scanner_nfsscanner_rpc": "._rpc()" | kind=code-symbol | source=probe/scanner/nfs_scanner.py:L194 | neighbors=[NFSScanner, ._mount_export(), ._portmap_dump(), ._portmap_getport(), _rpc_call()]
 
 ## Instructions
 

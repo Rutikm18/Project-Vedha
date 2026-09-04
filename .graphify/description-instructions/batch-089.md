@@ -1,4 +1,4 @@
-# Node Description Batch 90 of 330
+# Node Description Batch 90 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,11 +12,23 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
+For an entity node (any other kind — e.g. a person, place, event, object),
+describe what the entity is and its role, grounded in its type, its
+relations (neighbors) and the provided citations/evidence — e.g.
+"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
+Ground entity descriptions in the citations/evidence when present; do not
+speculate beyond the context, so a node with no supporting context may be
+left out of the reply.
 Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
+- "agent_agent_rationale_557": "Persistent WebSocket push loop.      Returns False if WebSocket is unavailable (" | kind=entity | source=probe/agent/agent.py:L557 | neighbors=[_run_ws_push_loop(), _ws_stage_job_offer(), _ws_http_poll_fallback()]
+- "agent_agent_runautonomousengagement": "runAutonomousEngagement()" | kind=code-symbol | source=manager/frontend/lib/agent/agent.ts:L95 | neighbors=[agent.py, isBlocked(), requiresApproval()]
+- "agent_cli_cmd_auth_logout": "cmd_auth_logout()" | kind=code-symbol | source=probe/agent/cli.py:L292 | neighbors=[cli.py, ConfigStore, .remove_profile()]
+- "agent_cli_cmd_daemon_run": "cmd_daemon_run()" | kind=code-symbol | source=probe/agent/cli.py:L913 | neighbors=[cli.py, resolve_profile(), split_values()]
+- "agent_cli_configstore_get_profile": ".get_profile()" | kind=code-symbol | source=probe/agent/cli.py:L87 | neighbors=[ConfigStore, .load(), resolve_profile()]
 - "agent_cli_configstore_save": ".save()" | kind=code-symbol | source=probe/agent/cli.py:L75 | neighbors=[ConfigStore, .remove_profile(), .set_profile()]
 - "agent_cli_default_config_path": "default_config_path()" | kind=code-symbol | source=probe/agent/cli.py:L40 | neighbors=[cli.py, build_parser(), _env()]
 - "agent_cli_fetch_all_findings": "_fetch_all_findings()" | kind=code-symbol | source=probe/agent/cli.py:L549 | neighbors=[cli.py, cmd_validate(), .request()]
@@ -44,19 +56,14 @@ one-sentence description — no prose, no markdown fences.
 - "agent_scope_validator_merge_exclusions": "merge_exclusions()" | kind=code-symbol | source=probe/agent/scope_validator.py:L154 | neighbors=[scope_validator.py, Merge engagement-level exclusions with …, Merge engagement-level exclusions with …]
 - "agent_task_runner_prepare_result_dir": "prepare_result_dir()" | kind=code-symbol | source=probe/agent/task_runner.py:L55 | neighbors=[task_runner.py, _result_dir(), Create the result archive directory at …]
 - "agent_task_runner_result_dir": "_result_dir()" | kind=code-symbol | source=probe/agent/task_runner.py:L47 | neighbors=[task_runner.py, prepare_result_dir(), ._archive_result()]
-- "agent_transport_manager_fingerprint": "manager_fingerprint()" | kind=code-symbol | source=probe/agent/transport.py:L92 | neighbors=[transport.py, Stable identity for the manager a crede…, .activate_enrollment()]
 - "agent_transport_strip_nul": "_strip_nul()" | kind=code-symbol | source=probe/agent/transport.py:L31 | neighbors=[transport.py, Recursively remove NUL (U+0000) charact…, .submit_result()]
-- "agent_transport_transport_create_enrollment_request": ".create_enrollment_request()" | kind=code-symbol | source=probe/agent/transport.py:L404 | neighbors=[Transport, DeviceAlreadyEnrolledError, _enrollment_conflict_detail()]
+- "agent_transport_transport_create_enrollment_request": ".create_enrollment_request()" | kind=code-symbol | source=probe/agent/transport.py:L416 | neighbors=[Transport, DeviceAlreadyEnrolledError, _enrollment_conflict_detail()]
 - "agent_validation_validate_ground_truth": "validate_ground_truth()" | kind=code-symbol | source=probe/agent/validation.py:L106 | neighbors=[validation.py, Validate the small, explicit inventory …, score_inventory()]
 - "ai_agent_agentdecisionengine_list_findings": "._list_findings()" | kind=code-symbol | source=manager/backend/app/ai/agent.py:L283 | neighbors=[AgentDecisionEngine, ._exec_read_tool(), _val()]
 - "ai_agent_val": "_val()" | kind=code-symbol | source=manager/backend/app/ai/agent.py:L393 | neighbors=[agent.py, ._list_findings(), ._overview()]
 - "ai_hallucination_hallucinationguard_validate_cve_claims": ".validate_cve_claims()" | kind=code-symbol | source=manager/backend/app/ai/hallucination.py:L45 | neighbors=[HallucinationGuard, .validate(), Flag any CVE ID mentioned in ``text`` t…]
 - "ai_hallucination_hallucinationguard_validate_cvss_scores": ".validate_cvss_scores()" | kind=code-symbol | source=manager/backend/app/ai/hallucination.py:L60 | neighbors=[HallucinationGuard, .validate(), Flag CVSS scores in the text that don't…]
 - "ai_hallucination_hallucinationguard_validate_remediation_commands": ".validate_remediation_commands()" | kind=code-symbol | source=manager/backend/app/ai/hallucination.py:L89 | neighbors=[HallucinationGuard, .validate(), Flag destructive-looking commands that …]
-- "ai_llm_report_finding_scores": "_finding_scores()" | kind=code-symbol | source=manager/backend/app/ai/llm_report.py:L473 | neighbors=[llm_report.py, .generate_remediation_steps(), .generate_technical_finding()]
-- "ai_llm_report_llmreportgenerator_generate_executive_summary": ".generate_executive_summary()" | kind=code-symbol | source=manager/backend/app/ai/llm_report.py:L173 | neighbors=[LLMReportGenerator, _collect_cves_scores(), ._generate_and_store()]
-- "ai_prioritizer_vulnprioritizer_formula_contributions": "._formula_contributions()" | kind=code-symbol | source=manager/backend/app/ai/prioritizer.py:L191 | neighbors=[VulnPrioritizer, .explain_prediction(), .fallback_score()]
-- "app_database_get_read_db": "get_read_db()" | kind=code-symbol | source=manager/backend/app/database.py:L63 | neighbors=[database.py, Read-only session (no commit) routed to…, Read-only session (no commit) routed to…]
 
 ## Instructions
 

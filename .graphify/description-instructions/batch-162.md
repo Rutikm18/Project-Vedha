@@ -1,4 +1,4 @@
-# Node Description Batch 163 of 330
+# Node Description Batch 163 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,18 +12,30 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
-For an entity node (any other kind — e.g. a person, place, event, object),
-describe what the entity is and its role, grounded in its type, its
-relations (neighbors) and the provided citations/evidence — e.g.
-"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
-Ground entity descriptions in the citations/evidence when present; do not
-speculate beyond the context, so a node with no supporting context may be
-left out of the reply.
 Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
+- "tests_test_rsync_scanner_testhandshake_test_greeting_is_echoed_verbatim_including_digest_list": ".test_greeting_is_echoed_verbatim_including_digest_list()" | kind=code-symbol | source=probe/tests/test_rsync_scanner.py:L57 | neighbors=[TestHandshake, _FakeSock]
+- "tests_test_rsync_scanner_testhandshake_test_legacy_greeting_without_digest_list_still_works": ".test_legacy_greeting_without_digest_list_still_works()" | kind=code-symbol | source=probe/tests/test_rsync_scanner.py:L63 | neighbors=[TestHandshake, _FakeSock]
+- "tests_test_rsync_scanner_testhandshake_test_non_rsync_greeting_returns_none_and_sends_nothing": ".test_non_rsync_greeting_returns_none_and_sends_nothing()" | kind=code-symbol | source=probe/tests/test_rsync_scanner.py:L73 | neighbors=[TestHandshake, _FakeSock]
+- "tests_test_rsync_scanner_testparity": "TestParity" | kind=code-symbol | source=probe/tests/test_rsync_scanner.py:L120 | neighbors=[test_rsync_scanner.py, .test_main_scripts()]
+- "tests_test_rsync_scanner_testrsyncfindings_test_anon_modules_high": ".test_anon_modules_high()" | kind=code-symbol | source=probe/tests/test_rsync_scanner.py:L104 | neighbors=[TestRsyncFindings, ._fact()]
+- "tests_test_rsync_scanner_testrsyncfindings_test_auth_only_is_low_disclosure": ".test_auth_only_is_low_disclosure()" | kind=code-symbol | source=probe/tests/test_rsync_scanner.py:L109 | neighbors=[TestRsyncFindings, ._fact()]
+- "tests_test_rsync_scanner_testrsyncfindings_test_no_modules_silent": ".test_no_modules_silent()" | kind=code-symbol | source=probe/tests/test_rsync_scanner.py:L115 | neighbors=[TestRsyncFindings, ._fact()]
+- "tests_test_rsync_scanner_testrsyncscanner_test_anon_modules_open": ".test_anon_modules_open()" | kind=code-symbol | source=probe/tests/test_rsync_scanner.py:L84 | neighbors=[TestRsyncScanner, ._sc()]
+- "tests_test_rsync_scanner_testrsyncscanner_test_no_rsync_filtered": ".test_no_rsync_filtered()" | kind=code-symbol | source=probe/tests/test_rsync_scanner.py:L93 | neighbors=[TestRsyncScanner, ._sc()]
+- "tests_test_run_scoped_fact_scope_testrunscopedfactsareexempt_test_run_scoped_fact_is_not_collected_as_an_identity": ".test_run_scoped_fact_is_not_collected_as_an_identity()" | kind=code-symbol | source=manager/backend/tests/test_run_scoped_fact_scope.py:L54 | neighbors=[TestRunScopedFactsAreExempt, _fact()]
+- "tests_test_run_scoped_fact_scope_testthescopegatestillworks_test_excluded_cidr_still_wins": ".test_excluded_cidr_still_wins()" | kind=code-symbol | source=manager/backend/tests/test_run_scoped_fact_scope.py:L107 | neighbors=[TestTheScopeGateStillWorks, _fact()]
+- "tests_test_run_scoped_fact_scope_testthescopegatestillworks_test_out_of_scope_host_fact_is_still_rejected": ".test_out_of_scope_host_fact_is_still_rejected()" | kind=code-symbol | source=manager/backend/tests/test_run_scoped_fact_scope.py:L75 | neighbors=[TestTheScopeGateStillWorks, _fact()]
+- "tests_test_runtime_requirements_coverage_test_runtime_image_installs_every_wired_branch_dependency": "test_runtime_image_installs_every_wired_branch_dependency()" | kind=code-symbol | source=probe/tests/test_runtime_requirements_coverage.py:L56 | neighbors=[test_runtime_requirements_coverage.py, _declared()]
+- "tests_test_scan_funnel_testbuilddefaultfunnel_test_constructs_and_wires_real_scanners": ".test_constructs_and_wires_real_scanners()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L193 | neighbors=[TestBuildDefaultFunnel, _scope()]
+- "tests_test_scan_funnel_testbuilddefaultfunnel_test_port_scanner_is_syn_scanner": ".test_port_scanner_is_syn_scanner()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L203 | neighbors=[TestBuildDefaultFunnel, _scope()]
+- "tests_test_scan_funnel_testrpcreconcile_test_advertised_ports_are_scanned_and_only_reachable_confirmed": ".test_advertised_ports_are_scanned_and_only_reachable_confirmed()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L278 | neighbors=[TestRpcReconcile, ._funnel()]
+- "tests_test_scan_funnel_testrpcreconcile_test_no_dynamic_ports_no_reconcile_stage": ".test_no_dynamic_ports_no_reconcile_stage()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L297 | neighbors=[TestRpcReconcile, ._funnel()]
+- "tests_test_scan_funnel_testscanfunnel_test_db_scanner_invoked_with_db_port": ".test_db_scanner_invoked_with_db_port()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L156 | neighbors=[TestScanFunnel, _make_funnel()]
+- "tests_test_scan_funnel_testscanfunnel_test_db_scanner_not_invoked_without_db_port": ".test_db_scanner_not_invoked_without_db_port()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L151 | neighbors=[TestScanFunnel, _make_funnel()]
 - "tests_test_scan_funnel_testscanfunnel_test_dead_host_forced_runs_full": ".test_dead_host_forced_runs_full()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L132 | neighbors=[TestScanFunnel, _make_funnel()]
 - "tests_test_scan_funnel_testscanfunnel_test_dead_host_skips_port_scan": ".test_dead_host_skips_port_scan()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L122 | neighbors=[TestScanFunnel, _make_funnel()]
 - "tests_test_scan_funnel_testscanfunnel_test_deep_scanner_receives_only_open_ports": ".test_deep_scanner_receives_only_open_ports()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L144 | neighbors=[TestScanFunnel, _make_funnel()]
@@ -45,25 +57,6 @@ one-sentence description — no prose, no markdown fences.
 - "tests_test_scanner_congestion_testresolvecandidates_test_returns_every_family_in_order": ".test_returns_every_family_in_order()" | kind=code-symbol | source=probe/tests/test_scanner_congestion.py:L296 | neighbors=[TestResolveCandidates, _fake_gai()]
 - "tests_test_scanner_parity_test_scanner_module_matches_main_scripts": "test_scanner_module_matches_main_scripts()" | kind=code-symbol | source=probe/tests/test_scanner_parity.py:L48 | neighbors=[test_scanner_parity.py, Each scanner/<mod>.py is byte-identical…]
 - "tests_test_scope_crypt_testencryptdecryptroundtrip_test_multiple_encrypts_different": ".test_multiple_encrypts_different()" | kind=code-symbol | source=probe/tests/test_scope_crypt.py:L78 | neighbors=[Each encryption uses a fresh ephemeral …, TestEncryptDecryptRoundtrip]
-- "tests_test_scope_targets_test_property_every_accepted_target_is_subnet_of_scope": "test_property_every_accepted_target_is_subnet_of_scope()" | kind=code-symbol | source=manager/backend/tests/test_scope_targets.py:L98 | neighbors=[test_scope_targets.py, Whatever the validator accepts must be …]
-- "tests_test_scope_targets_testnoscopeauthorizesnothing": "TestNoScopeAuthorizesNothing" | kind=code-symbol | source=manager/backend/tests/test_scope_targets.py:L15 | neighbors=[test_scope_targets.py, .test_empty_scope_denies_all()]
-- "tests_test_seed_admin_testdatabaseunavailable": "TestDatabaseUnavailable" | kind=code-symbol | source=manager/backend/tests/test_seed_admin.py:L288 | neighbors=[test_seed_admin.py, .test_retries_then_raises_database_unav…]
-- "tests_test_seed_admin_testexistingadminnoreset": "TestExistingAdminNoReset" | kind=code-symbol | source=manager/backend/tests/test_seed_admin.py:L139 | neighbors=[test_seed_admin.py, .test_noop_when_user_exists_and_no_forc…]
-- "tests_test_seed_admin_testfirstdeployment": "TestFirstDeployment" | kind=code-symbol | source=manager/backend/tests/test_seed_admin.py:L96 | neighbors=[test_seed_admin.py, .test_creates_tenant_and_admin_on_first…]
-- "tests_test_service_banner_ident_self_signed": "_self_signed()" | kind=code-symbol | source=probe/tests/test_service_banner_ident.py:L247 | neighbors=[test_service_banner_ident.py, test_https_on_arbitrary_port_identifies…]
-- "tests_test_service_banner_ident_test_prefers_decrypted_tls_reply_over_plaintext_noise": "test_prefers_decrypted_tls_reply_over_plaintext_noise()" | kind=code-symbol | source=probe/tests/test_service_banner_ident.py:L196 | neighbors=[test_service_banner_ident.py, _scanner()]
-- "tests_test_service_banner_ident_test_slow_greeting_still_identifies": "test_slow_greeting_still_identifies()" | kind=code-symbol | source=probe/tests/test_service_banner_ident.py:L170 | neighbors=[test_service_banner_ident.py, A speak-first daemon that delays its 22…]
-- "tests_test_service_banner_ident_testladder_test_client_first_ports_skip_null_rung": ".test_client_first_ports_skip_null_rung()" | kind=code-symbol | source=probe/tests/test_service_banner_ident.py:L147 | neighbors=[TestLadder, _scanner()]
-- "tests_test_service_banner_ident_testladder_test_greet_timeout_tracks_operator_timeout": ".test_greet_timeout_tracks_operator_timeout()" | kind=code-symbol | source=probe/tests/test_service_banner_ident.py:L156 | neighbors=[TestLadder, _scanner()]
-- "tests_test_service_banner_ident_testladder_test_no_tls_flag_drops_rung": ".test_no_tls_flag_drops_rung()" | kind=code-symbol | source=probe/tests/test_service_banner_ident.py:L153 | neighbors=[TestLadder, _scanner()]
-- "tests_test_service_identifier_rationale_1": "Unit tests for ServiceIdentifier." | kind=entity | source=manager/backend/tests/test_service_identifier.py:L1 | neighbors=[test_service_identifier.py, ServiceIdentifier]
-- "tests_test_service_identifier_testserviceidentifier_test_confidence_floor_port_hint": ".test_confidence_floor_port_hint()" | kind=code-symbol | source=manager/backend/tests/test_service_identifier.py:L70 | neighbors=[TestServiceIdentifier, ._id()]
-- "tests_test_service_identifier_testserviceidentifier_test_ftp_banner": ".test_ftp_banner()" | kind=code-symbol | source=manager/backend/tests/test_service_identifier.py:L28 | neighbors=[TestServiceIdentifier, ._id()]
-- "tests_test_service_identifier_testserviceidentifier_test_high_confidence_combined": ".test_high_confidence_combined()" | kind=code-symbol | source=manager/backend/tests/test_service_identifier.py:L75 | neighbors=[TestServiceIdentifier, ._id()]
-- "tests_test_service_identifier_testserviceidentifier_test_http_server_header": ".test_http_server_header()" | kind=code-symbol | source=manager/backend/tests/test_service_identifier.py:L19 | neighbors=[TestServiceIdentifier, ._id()]
-- "tests_test_service_identifier_testserviceidentifier_test_kerberos_banner": ".test_kerberos_banner()" | kind=code-symbol | source=manager/backend/tests/test_service_identifier.py:L48 | neighbors=[TestServiceIdentifier, ._id()]
-- "tests_test_service_identifier_testserviceidentifier_test_ldap_banner": ".test_ldap_banner()" | kind=code-symbol | source=manager/backend/tests/test_service_identifier.py:L52 | neighbors=[TestServiceIdentifier, ._id()]
-- "tests_test_service_identifier_testserviceidentifier_test_mssql_banner": ".test_mssql_banner()" | kind=code-symbol | source=manager/backend/tests/test_service_identifier.py:L44 | neighbors=[TestServiceIdentifier, ._id()]
 
 ## Instructions
 

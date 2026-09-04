@@ -1,4 +1,4 @@
-# Node Description Batch 83 of 330
+# Node Description Batch 83 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -17,6 +17,12 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
+- "tests_test_notifications_testdeliver": "TestDeliver" | kind=code-symbol | source=manager/backend/tests/test_notifications.py:L13 | neighbors=[test_notifications.py, .test_dispatches_to_the_kind(), .test_sender_error_is_swallowed(), .test_unknown_kind_returns_false()]
+- "tests_test_nuclei_scanner_finding_line": "_finding_line()" | kind=code-symbol | source=manager/backend/tests/test_nuclei_scanner.py:L12 | neighbors=[test_nuclei_scanner.py, test_nonzero_exit_retains_and_marks_par…, test_run_scan_streams_jsonl_and_separat…, test_timeout_retains_findings_emitted_b…]
+- "tests_test_online_get_raising": "_get_raising()" | kind=code-symbol | source=probe/tests/test_online.py:L58 | neighbors=[test_online.py, .test_fail_open_leaves_offline_result_u…, .test_network_error_is_fail_open(), .test_error_is_none()]
+- "tests_test_online_nvd_bytes": "_nvd_bytes()" | kind=code-symbol | source=probe/tests/test_online.py:L25 | neighbors=[test_online.py, .test_gap_fill_sets_cvss_and_recomputes…, .test_online_all_cross_checks_and_annot…, .test_parses_score_severity_refs()]
+- "tests_test_online_testenrichfindings_test_gap_fill_sets_cvss_and_recomputes_risk": ".test_gap_fill_sets_cvss_and_recomputes_risk()" | kind=code-symbol | source=probe/tests/test_online.py:L118 | neighbors=[TestEnrichFindings, _finding(), _get_returning(), _nvd_bytes()]
+- "tests_test_online_testenrichfindings_test_online_all_cross_checks_and_annotates_mismatch": ".test_online_all_cross_checks_and_annotates_mismatch()" | kind=code-symbol | source=probe/tests/test_online.py:L139 | neighbors=[TestEnrichFindings, _finding(), _get_returning(), _nvd_bytes()]
 - "tests_test_os_fingerprint_testtimestampfallback": "TestTimestampFallback" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L138 | neighbors=[test_os_fingerprint.py, ._scanner(), .test_both_filtered_reports_no_reply(), .test_timestamp_reply_when_echo_is_filt…]
 - "tests_test_outbox_reclaim_mock_session": "_mock_session()" | kind=code-symbol | source=manager/backend/tests/test_outbox_reclaim.py:L104 | neighbors=[test_outbox_reclaim.py, test_reclaim_handles_none_rowcount_from…, test_reclaim_is_noop_when_nothing_is_st…, test_reclaim_runs_both_sweeps_commits_a…]
 - "tests_test_outbox_reclaim_sql": "_sql()" | kind=code-symbol | source=manager/backend/tests/test_outbox_reclaim.py:L20 | neighbors=[test_outbox_reclaim.py, test_dead_letter_and_requeue_are_mutual…, test_dead_letter_stmt_targets_exhausted…, test_requeue_stmt_makes_retryable_stran…]
@@ -51,12 +57,6 @@ one-sentence description — no prose, no markdown fences.
 - "tests_test_posture_confidence_testendtoend_test_corroborated_host_gets_floored_confidence_and_factors": ".test_corroborated_host_gets_floored_confidence_and_factors()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_confidence.py:L94 | neighbors=[TestEndToEnd, _asset(), _by_rule(), _fact()]
 - "tests_test_posture_confidence_testendtoend_test_filtered_port_lowers_confidence": ".test_filtered_port_lowers_confidence()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_confidence.py:L114 | neighbors=[TestEndToEnd, _asset(), _by_rule(), _fact()]
 - "tests_test_posture_confidence_testendtoend_test_lone_finding_keeps_base_confidence": ".test_lone_finding_keeps_base_confidence()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_confidence.py:L107 | neighbors=[TestEndToEnd, _asset(), _by_rule(), _fact()]
-- "tests_test_posture_fv": "_fv()" | kind=code-symbol | source=manager/backend/tests/test_posture.py:L12 | neighbors=[test_posture.py, test_build_posture_buckets_resolved_new…, test_build_posture_single_run_has_no_pr…, test_compute_scores_uses_risk_epss_expl…]
-- "tests_test_posture_row": "_Row" | kind=code-symbol | source=manager/backend/tests/test_posture.py:L109 | neighbors=[test_posture.py, .__init__(), test_finding_views_handles_null_asset_a…, test_finding_views_maps_columns_and_ass…]
-- "tests_test_posture_rules_testinvariants": "TestInvariants" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_rules.py:L154 | neighbors=[test_posture_rules.py, .test_dedup_same_rule_same_port(), .test_detect_all_sorts_by_risk_desc(), .test_deterministic_id_across_runs()]
-- "tests_test_posture_rules_testtrusttier": "TestTrustTier" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_rules.py:L30 | neighbors=[test_posture_rules.py, .test_registry_contains_user_validated_…, .test_unvalidated_scanner_only_suspects…, .test_validated_scanner_confirms()]
-- "tests_test_posture_rules_testvulnerablehost_test_deprecated_tls_version_underscore_labels": ".test_deprecated_tls_version_underscore_labels()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_rules.py:L95 | neighbors=[The live tls_scanner labels its probe l…, TestVulnerableHost, _asset(), _fact()]
-- "tests_test_posture_trace_testabsentversusclean_test_key_absent_is_missing_input_not_clean": ".test_key_absent_is_missing_input_not_clean()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_trace.py:L50 | neighbors=[TestAbsentVersusClean, _asset(), _fact(), _outcome()]
 
 ## Instructions
 

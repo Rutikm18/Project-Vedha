@@ -1,4 +1,4 @@
-# Node Description Batch 276 of 330
+# Node Description Batch 276 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,51 +19,53 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-Write every description in English (en). Do not switch languages.
+LANGUAGE: each entry has a `lang=` marker giving the language of its source.
+Write that entry's description in EXACTLY that language. Do not translate to
+a single common language — match each node's source language individually.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_device_profile_test_every_device_type_maps_to_the_right_asset_type": "test_every_device_type_maps_to_the_right_asset_type()" | kind=code-symbol | source=manager/backend/tests/test_device_profile.py:L14 | neighbors=[test_device_profile.py]
-- "tests_test_device_profile_test_malformed_entries_are_skipped": "test_malformed_entries_are_skipped()" | kind=code-symbol | source=manager/backend/tests/test_device_profile.py:L70 | neighbors=[test_device_profile.py]
-- "tests_test_device_profile_test_non_device_inventory_result_yields_no_profiles": "test_non_device_inventory_result_yields_no_profiles()" | kind=code-symbol | source=manager/backend/tests/test_device_profile.py:L64 | neighbors=[test_device_profile.py]
-- "tests_test_device_profile_test_unmappable_roles_leave_asset_type_untouched": "test_unmappable_roles_leave_asset_type_untouched()" | kind=code-symbol | source=manager/backend/tests/test_device_profile.py:L23 | neighbors=[test_device_profile.py]
-- "tests_test_dns_scanner_rationale_1": "test_dns_scanner.py — DNS AXFR / DNSSEC / version.bind audit.  The live dnspytho" | kind=entity | source=probe/tests/test_dns_scanner.py:L1 | neighbors=[test_dns_scanner.py]
-- "tests_test_dns_scanner_testaxfrbounded_test_axfr_refused_reports_not_transferred": ".test_axfr_refused_reports_not_transferred()" | kind=code-symbol | source=probe/tests/test_dns_scanner.py:L78 | neighbors=[TestAxfrBounded]
-- "tests_test_dns_scanner_testaxfrbounded_test_axfr_stops_at_cap": ".test_axfr_stops_at_cap()" | kind=code-symbol | source=probe/tests/test_dns_scanner.py:L50 | neighbors=[TestAxfrBounded]
-- "tests_test_dns_scanner_testderivezones_test_bounded": ".test_bounded()" | kind=code-symbol | source=probe/tests/test_dns_scanner.py:L41 | neighbors=[TestDeriveZones]
-- "tests_test_dns_scanner_testderivezones_test_explicit_zone_used_as_is": ".test_explicit_zone_used_as_is()" | kind=code-symbol | source=probe/tests/test_dns_scanner.py:L33 | neighbors=[TestDeriveZones]
-- "tests_test_dns_scanner_testderivezones_test_extra_before_target_derived": ".test_extra_before_target_derived()" | kind=code-symbol | source=probe/tests/test_dns_scanner.py:L36 | neighbors=[TestDeriveZones]
-- "tests_test_dns_scanner_testderivezones_test_hostname_target_reduces_to_registrable_and_parent": ".test_hostname_target_reduces_to_registrable_and_parent()" | kind=code-symbol | source=probe/tests/test_dns_scanner.py:L26 | neighbors=[TestDeriveZones]
-- "tests_test_dns_scanner_testderivezones_test_ip_target_derives_nothing": ".test_ip_target_derives_nothing()" | kind=code-symbol | source=probe/tests/test_dns_scanner.py:L29 | neighbors=[TestDeriveZones]
-- "tests_test_dns_scanner_testparity_test_scanner_and_findings_in_main_scripts": ".test_scanner_and_findings_in_main_scripts()" | kind=code-symbol | source=probe/tests/test_dns_scanner.py:L159 | neighbors=[TestParity]
-- "tests_test_dualstack_fallback_rationale_1": "test_dualstack_fallback.py — roadmap #9 / #4.1, the CALL-SITE migration.  `resol" | kind=entity | source=probe/tests/test_dualstack_fallback.py:L1 | neighbors=[test_dualstack_fallback.py]
-- "tests_test_dualstack_fallback_rationale_52": "A socket whose connect() fails for `dead_family`, succeeds otherwise." | kind=entity | source=probe/tests/test_dualstack_fallback.py:L52 | neighbors=[._fake_socket()]
-- "tests_test_dualstack_fallback_testosfingerprintsmbbuildfallback_test_falls_back_across_families": ".test_falls_back_across_families()" | kind=code-symbol | source=probe/tests/test_dualstack_fallback.py:L119 | neighbors=[TestOsFingerprintSmbBuildFallback]
-- "tests_test_dualstack_fallback_testrdpfallback_test_none_when_no_family_speaks_rdp": ".test_none_when_no_family_speaks_rdp()" | kind=code-symbol | source=probe/tests/test_dualstack_fallback.py:L150 | neighbors=[TestRdpFallback]
-- "tests_test_dualstack_fallback_testrdpfallback_test_probes_next_family_when_first_is_silent": ".test_probes_next_family_when_first_is_silent()" | kind=code-symbol | source=probe/tests/test_dualstack_fallback.py:L136 | neighbors=[TestRdpFallback]
-- "tests_test_dualstack_fallback_testrdpfallback_test_unresolvable_host_is_survivable": ".test_unresolvable_host_is_survivable()" | kind=code-symbol | source=probe/tests/test_dualstack_fallback.py:L158 | neighbors=[TestRdpFallback]
-- "tests_test_dualstack_fallback_testresolveipcandidates_test_returns_ips_in_order": ".test_returns_ips_in_order()" | kind=code-symbol | source=probe/tests/test_dualstack_fallback.py:L32 | neighbors=[TestResolveIpCandidates]
-- "tests_test_dualstack_fallback_testresolveipcandidates_test_unresolvable_returns_empty_not_raises": ".test_unresolvable_returns_empty_not_raises()" | kind=code-symbol | source=probe/tests/test_dualstack_fallback.py:L38 | neighbors=[TestResolveIpCandidates]
-- "tests_test_dualstack_fallback_testsmbntlmfallback_test_empty_when_no_address_answers": ".test_empty_when_no_address_answers()" | kind=code-symbol | source=probe/tests/test_dualstack_fallback.py:L110 | neighbors=[TestSmbNtlmFallback]
-- "tests_test_dualstack_fallback_testsmbntlmfallback_test_first_answering_address_wins": ".test_first_answering_address_wins()" | kind=code-symbol | source=probe/tests/test_dualstack_fallback.py:L97 | neighbors=[TestSmbNtlmFallback]
-- "tests_test_dualstack_fallback_testsynscannerrequestsipv4_test_resolve_is_asked_for_ipv4": ".test_resolve_is_asked_for_ipv4()" | kind=code-symbol | source=probe/tests/test_dualstack_fallback.py:L202 | neighbors=[TestSynScannerRequestsIPv4]
-- "tests_test_dualstack_fallback_testtlsfingerprintfallback_test_none_when_no_family_speaks_tls": ".test_none_when_no_family_speaks_tls()" | kind=code-symbol | source=probe/tests/test_dualstack_fallback.py:L185 | neighbors=[TestTlsFingerprintFallback]
-- "tests_test_dualstack_fallback_testtlsfingerprintfallback_test_unresolvable_host_is_survivable": ".test_unresolvable_host_is_survivable()" | kind=code-symbol | source=probe/tests/test_dualstack_fallback.py:L193 | neighbors=[TestTlsFingerprintFallback]
-- "tests_test_dualstack_fallback_testtlsfingerprintfallback_test_uses_the_family_that_actually_speaks_tls": ".test_uses_the_family_that_actually_speaks_tls()" | kind=code-symbol | source=probe/tests/test_dualstack_fallback.py:L170 | neighbors=[TestTlsFingerprintFallback]
-- "tests_test_e2e_engagement_to_findings_accept_loop": "_accept_loop()" | kind=code-symbol | source=probe/tests/test_e2e_engagement_to_findings.py:L27 | neighbors=[test_e2e_engagement_to_findings.py]
-- "tests_test_e2e_engagement_to_findings_rationale_1": "test_e2e_engagement_to_findings.py — the whole pipeline in one place.      manag" | kind=entity | source=probe/tests/test_e2e_engagement_to_findings.py:L1 | neighbors=[test_e2e_engagement_to_findings.py]
-- "tests_test_e2e_engagement_to_findings_rationale_138": "Exactly what the probe's smb/port scanners emit for a vulnerable host." | kind=entity | source=probe/tests/test_e2e_engagement_to_findings.py:L138 | neighbors=[_vulnerable_host_facts()]
-- "tests_test_e2e_engagement_to_findings_rationale_52": "Return (http_get, submit_result, captured) simulating the manager side." | kind=entity | source=probe/tests/test_e2e_engagement_to_findings.py:L52 | neighbors=[_manager()]
-- "tests_test_engagement_lists_rationale_1": "Unit tests for the dashboard list endpoints (jobs + assets)." | kind=entity | source=manager/backend/tests/test_engagement_lists.py:L1 | neighbors=[test_engagement_lists.py]
-- "tests_test_engagement_validation_test_create_normalizes_name_scopes_and_duplicates": "test_create_normalizes_name_scopes_and_duplicates()" | kind=code-symbol | source=manager/backend/tests/test_engagement_validation.py:L10 | neighbors=[test_engagement_validation.py]
-- "tests_test_engagement_validation_test_create_rejects_invalid_scope_entries": "test_create_rejects_invalid_scope_entries()" | kind=code-symbol | source=manager/backend/tests/test_engagement_validation.py:L31 | neighbors=[test_engagement_validation.py]
-- "tests_test_engagement_validation_test_create_rejects_reversed_date_range": "test_create_rejects_reversed_date_range()" | kind=code-symbol | source=manager/backend/tests/test_engagement_validation.py:L36 | neighbors=[test_engagement_validation.py]
-- "tests_test_engagement_validation_test_update_rejects_blank_name_invalid_scope_and_reversed_dates": "test_update_rejects_blank_name_invalid_scope_and_reversed_dates()" | kind=code-symbol | source=manager/backend/tests/test_engagement_validation.py:L46 | neighbors=[test_engagement_validation.py]
-- "tests_test_engine_bridge_ingest_health_rationale_1": "test_engine_bridge_ingest_health.py — a zero-finding run must never be able to L" | kind=entity | source=manager/backend/tests/test_engine_bridge_ingest_health.py:L1 | neighbors=[test_engine_bridge_ingest_health.py]
-- "tests_test_engine_bridge_ingest_health_rationale_44": "Baseline: the shape the agent actually sends survives ingest and fires rules." | kind=entity | source=manager/backend/tests/test_engine_bridge_ingest_health.py:L44 | neighbors=[test_healthy_facts_ingest_completely_an…]
-- "tests_test_engine_bridge_ingest_health_rationale_56": "The regression. Drop the one field an agent rename could plausibly drop and" | kind=entity | source=manager/backend/tests/test_engine_bridge_ingest_health.py:L56 | neighbors=[test_total_shape_drift_is_reported_not_…]
-- "tests_test_engine_bridge_ingest_health_rationale_73": "A partly-bad batch must keep its good findings AND still admit what it lost." | kind=entity | source=manager/backend/tests/test_engine_bridge_ingest_health.py:L73 | neighbors=[test_partial_drift_still_detects_but_re…]
+- "tests_test_detection_core_testingestvalidation_test_missing_required_field": ".test_missing_required_field()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L194 | neighbors=[TestIngestValidation] | lang=en
+- "tests_test_detection_core_testingestvalidation_test_non_dict_record": ".test_non_dict_record()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L198 | neighbors=[TestIngestValidation] | lang=en
+- "tests_test_detection_core_testingestvalidation_test_port_not_int": ".test_port_not_int()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L204 | neighbors=[TestIngestValidation] | lang=en
+- "tests_test_detection_core_testingestvalidation_test_valid_record": ".test_valid_record()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L191 | neighbors=[TestIngestValidation] | lang=en
+- "tests_test_detection_core_testisip_test_hostname": ".test_hostname()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L222 | neighbors=[TestIsIp] | lang=en
+- "tests_test_detection_core_testisip_test_valid_ipv4": ".test_valid_ipv4()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L219 | neighbors=[TestIsIp] | lang=en
+- "tests_test_detection_core_testmakefindingid_test_deterministic": ".test_deterministic()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L105 | neighbors=[TestMakeFindingId] | lang=en
+- "tests_test_detection_core_testmakefindingid_test_different_inputs_different_ids": ".test_different_inputs_different_ids()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L110 | neighbors=[TestMakeFindingId] | lang=en
+- "tests_test_detection_core_testmakefindingid_test_length_16": ".test_length_16()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L115 | neighbors=[TestMakeFindingId] | lang=en
+- "tests_test_detection_core_testproductfromcpe_test_extracts_product": ".test_extracts_product()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L622 | neighbors=[TestProductFromCpe] | lang=en
+- "tests_test_detection_core_testproductfromcpe_test_short_cpe_returns_cpe": ".test_short_cpe_returns_cpe()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L625 | neighbors=[TestProductFromCpe] | lang=en
+- "tests_test_detection_core_testversioninranges_test_empty_ranges": ".test_empty_ranges()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L415 | neighbors=[TestVersionInRanges] | lang=en
+- "tests_test_detection_core_testversioninranges_test_ignores_unknown_type": ".test_ignores_unknown_type()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L393 | neighbors=[TestVersionInRanges] | lang=en
+- "tests_test_detection_core_testversioninranges_test_introduced_fixed": ".test_introduced_fixed()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L355 | neighbors=[TestVersionInRanges] | lang=en
+- "tests_test_detection_core_testversioninranges_test_last_affected": ".test_last_affected()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L377 | neighbors=[TestVersionInRanges] | lang=en
+- "tests_test_detection_core_testversioninranges_test_no_match_returns_false_none": ".test_no_match_returns_false_none()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L407 | neighbors=[TestVersionInRanges] | lang=en
+- "tests_test_detection_core_testversioninranges_test_regression_sequence": ".test_regression_sequence()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L420 | neighbors=[TestVersionInRanges] | lang=en
+- "tests_test_detection_core_testversioninranges_test_semver_type_included": ".test_semver_type_included()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L400 | neighbors=[TestVersionInRanges] | lang=en
+- "tests_test_detection_core_testversioninranges_test_unbounded_introduced": ".test_unbounded_introduced()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L385 | neighbors=[TestVersionInRanges] | lang=en
+- "tests_test_detection_core_testversioninranges_test_version_at_fixed": ".test_version_at_fixed()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L370 | neighbors=[TestVersionInRanges] | lang=en
+- "tests_test_detection_core_testversioninranges_test_version_before_introduced": ".test_version_before_introduced()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L363 | neighbors=[TestVersionInRanges] | lang=en
+- "tests_test_detection_core_testvulndb_test_content_hash_deterministic": ".test_content_hash_deterministic()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L967 | neighbors=[TestVulnDB] | lang=en
+- "tests_test_detection_core_testwilsonci_test_all_appearances": ".test_all_appearances()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L1086 | neighbors=[TestWilsonCi] | lang=en
+- "tests_test_detection_core_testwilsonci_test_perfect_appearance": ".test_perfect_appearance()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L1078 | neighbors=[TestWilsonCi] | lang=en
+- "tests_test_detection_core_testwilsonci_test_zero_appearances": ".test_zero_appearances()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L1082 | neighbors=[TestWilsonCi] | lang=en
+- "tests_test_detection_core_testwilsonci_test_zero_n": ".test_zero_n()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L1090 | neighbors=[TestWilsonCi] | lang=en
+- "tests_test_detection_coverage_rationale_1": "Detection-trace coverage surfaced in the API: complete_with_gaps + explain.  Gua" | kind=entity | source=manager/backend/tests/test_detection_coverage.py:L1 | neighbors=[test_detection_coverage.py] | lang=en
+- "tests_test_detection_pipeline_gaps_ctx_aenter": ".__aenter__()" | kind=code-symbol | source=manager/backend/tests/test_detection_pipeline_gaps.py:L171 | neighbors=[_ctx] | lang=en
+- "tests_test_detection_pipeline_gaps_ctx_aexit": ".__aexit__()" | kind=code-symbol | source=manager/backend/tests/test_detection_pipeline_gaps.py:L172 | neighbors=[_ctx] | lang=en
+- "tests_test_detection_pipeline_gaps_ctx_init": ".__init__()" | kind=code-symbol | source=manager/backend/tests/test_detection_pipeline_gaps.py:L170 | neighbors=[_ctx] | lang=en
+- "tests_test_detection_pipeline_gaps_rationale_1": "test_detection_pipeline_gaps.py — four ways facts reached the manager and then f" | kind=entity | source=manager/backend/tests/test_detection_pipeline_gaps.py:L1 | neighbors=[test_detection_pipeline_gaps.py] | lang=en
+- "tests_test_detection_pipeline_gaps_rationale_126": "An older probe reports none. Coverage stays empty and nothing auto-resolves —" | kind=entity | source=manager/backend/tests/test_detection_pipeline_gaps.py:L126 | neighbors=[test_missing_scanner_runs_degrades_to_e…] | lang=en
+- "tests_test_detection_pipeline_gaps_rationale_150": "Facts are persisted whenever they are present, but the outbox enqueue used to" | kind=entity | source=manager/backend/tests/test_detection_pipeline_gaps.py:L150 | neighbors=[test_enqueue_is_not_gated_on_success()] | lang=en
+- "tests_test_detection_pipeline_gaps_rationale_169": "Minimal async-context-manager wrapper around a mock session." | kind=entity | source=manager/backend/tests/test_detection_pipeline_gaps.py:L169 | neighbors=[_ctx] | lang=pt
+- "tests_test_detection_pipeline_gaps_rationale_46": "`data` is read with .get() by every rule. A string there used to raise mid-run" | kind=entity | source=manager/backend/tests/test_detection_pipeline_gaps.py:L46 | neighbors=[test_a_non_dict_data_payload_is_quarant…] | lang=en
+- "tests_test_detection_pipeline_gaps_rationale_65": "attack_path_findings runs on meta['accepted_facts']. If that still contained" | kind=entity | source=manager/backend/tests/test_detection_pipeline_gaps.py:L65 | neighbors=[test_accepted_facts_excludes_what_inges…] | lang=en
+- "tests_test_detection_pipeline_gaps_rationale_85": "No engine means no ingest verdict. Without a verdict we cannot call any fact" | kind=entity | source=manager/backend/tests/test_detection_pipeline_gaps.py:L85 | neighbors=[test_accepted_facts_falls_back_to_raw_w…] | lang=pt
+- "tests_test_detection_pipeline_gaps_rationale_97": "scan_results has no scanner_runs column; the job's result blob does. Passing" | kind=entity | source=manager/backend/tests/test_detection_pipeline_gaps.py:L97 | neighbors=[test_facts_ready_reads_scanner_runs_fro…] | lang=en
+- "tests_test_detection_validation_pytest_addoption": "pytest_addoption()" | kind=code-symbol | source=manager/backend/tests/test_detection_validation.py:L339 | neighbors=[test_detection_validation.py] | lang=en
+- "tests_test_detection_validation_testdetectioncorrelator_setup_method": ".setup_method()" | kind=code-symbol | source=manager/backend/tests/test_detection_validation.py:L51 | neighbors=[TestDetectionCorrelator] | lang=en
 
 ## Instructions
 

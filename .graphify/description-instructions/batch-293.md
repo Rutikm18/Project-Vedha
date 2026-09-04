@@ -1,4 +1,4 @@
-# Node Description Batch 294 of 330
+# Node Description Batch 294 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,51 +19,53 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-Write every description in English (en). Do not switch languages.
+LANGUAGE: each entry has a `lang=` marker giving the language of its source.
+Write that entry's description in EXACTLY that language. Do not translate to
+a single common language — match each node's source language individually.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_pipeline_rationale_281": "With use_ai_assist=False (the default) and no ai_client, the pipeline         pr" | kind=entity | source=manager/detection_engine/tests/test_pipeline.py:L281 | neighbors=[.test_ai_assist_off_by_default()]
-- "tests_test_pipeline_rationale_291": "The same (asset, CVE) can't appear twice in the output — dedup         must coll" | kind=entity | source=manager/detection_engine/tests/test_pipeline.py:L291 | neighbors=[.test_findings_deduped_within_same_host…]
-- "tests_test_pipeline_rationale_292": "ab_evaluate must return a dict with the expected structure." | kind=entity | source=manager/detection_engine/tests/test_pipeline.py:L292 | neighbors=[.test_ab_evaluate_returns_expected_keys…]
-- "tests_test_pipeline_rationale_304": "When FakeAIClient returns nothing new, there must be no precision         regres" | kind=entity | source=manager/detection_engine/tests/test_pipeline.py:L304 | neighbors=[.test_ab_evaluate_no_precision_regressi…]
-- "tests_test_pipeline_rationale_325": "With use_ai_assist=False (the default) and no ai_client, the pipeline         pr" | kind=entity | source=manager/detection_engine/tests/test_pipeline.py:L325 | neighbors=[.test_ai_assist_off_by_default()]
-- "tests_test_pipeline_rationale_336": "ab_evaluate must return a dict with the expected structure." | kind=entity | source=manager/detection_engine/tests/test_pipeline.py:L336 | neighbors=[.test_ab_evaluate_returns_expected_keys…]
-- "tests_test_pipeline_rationale_348": "When FakeAIClient returns nothing new, there must be no precision         regres" | kind=entity | source=manager/detection_engine/tests/test_pipeline.py:L348 | neighbors=[.test_ab_evaluate_no_precision_regressi…]
-- "tests_test_pipeline_rationale_50": "Returns a VulnDB with a record that matches openssh 8.4p1 (vulnerable).      The" | kind=entity | source=manager/detection_engine/tests/test_pipeline.py:L50 | neighbors=[_openssh_vuln_db()]
-- "tests_test_pipeline_rationale_74": "Upstream boundary for a banner-vs-inventory suppression scenario." | kind=entity | source=manager/detection_engine/tests/test_pipeline.py:L74 | neighbors=[_openssh_upstream_vuln_db()]
-- "tests_test_port_catalog_test_modern_infra_ports_present": "test_modern_infra_ports_present()" | kind=code-symbol | source=probe/tests/test_port_catalog.py:L4 | neighbors=[test_port_catalog.py]
-- "tests_test_portal_assistant_rationale_1": "test_portal_assistant.py — the customer-facing AI assistant.  Free-form chat was" | kind=entity | source=manager/backend/tests/test_portal_assistant.py:L1 | neighbors=[test_portal_assistant.py]
-- "tests_test_portal_assistant_rationale_114": "The schema has no context field, so a client cannot inject its own     'evidence" | kind=entity | source=manager/backend/tests/test_portal_assistant.py:L114 | neighbors=[test_request_body_cannot_carry_context()]
-- "tests_test_portal_assistant_rationale_120": "Internal triage/evidence fields must never leave the operator side." | kind=entity | source=manager/backend/tests/test_portal_assistant.py:L120 | neighbors=[test_only_the_whitelisted_finding_field…]
-- "tests_test_portal_assistant_rationale_136": "403 would confirm the id exists somewhere — a cross-tenant oracle." | kind=entity | source=manager/backend/tests/test_portal_assistant.py:L136 | neighbors=[test_focus_finding_outside_the_engageme…]
-- "tests_test_portal_assistant_rationale_61": "execute() → engagement, then findings, then (optionally) the focus finding." | kind=entity | source=manager/backend/tests/test_portal_assistant.py:L61 | neighbors=[_db()]
-- "tests_test_portal_assistant_runtime": "_Runtime" | kind=code-symbol | source=manager/backend/tests/test_portal_assistant.py:L80 | neighbors=[test_portal_assistant.py]
-- "tests_test_portal_assistant_test_the_task_rules_confine_the_model_to_security": "test_the_task_rules_confine_the_model_to_security()" | kind=code-symbol | source=manager/backend/tests/test_portal_assistant.py:L176 | neighbors=[test_portal_assistant.py]
-- "tests_test_portal_assistant_testbounds_test_accepts_a_normal_exchange": ".test_accepts_a_normal_exchange()" | kind=code-symbol | source=manager/backend/tests/test_portal_assistant.py:L210 | neighbors=[TestBounds]
-- "tests_test_portal_assistant_testbounds_test_last_message_must_be_the_user": ".test_last_message_must_be_the_user()" | kind=code-symbol | source=manager/backend/tests/test_portal_assistant.py:L206 | neighbors=[TestBounds]
-- "tests_test_portal_assistant_testbounds_test_rejects_an_empty_conversation": ".test_rejects_an_empty_conversation()" | kind=code-symbol | source=manager/backend/tests/test_portal_assistant.py:L188 | neighbors=[TestBounds]
-- "tests_test_portal_assistant_testbounds_test_rejects_an_oversized_conversation": ".test_rejects_an_oversized_conversation()" | kind=code-symbol | source=manager/backend/tests/test_portal_assistant.py:L196 | neighbors=[TestBounds]
-- "tests_test_portal_assistant_testbounds_test_rejects_an_oversized_turn": ".test_rejects_an_oversized_turn()" | kind=code-symbol | source=manager/backend/tests/test_portal_assistant.py:L192 | neighbors=[TestBounds]
-- "tests_test_portal_assistant_testbounds_test_rejects_too_many_turns": ".test_rejects_too_many_turns()" | kind=code-symbol | source=manager/backend/tests/test_portal_assistant.py:L201 | neighbors=[TestBounds]
-- "tests_test_portal_metrics_rationale_1": "test_portal_metrics.py — pure dashboard aggregations." | kind=entity | source=manager/backend/tests/test_portal_metrics.py:L1 | neighbors=[test_portal_metrics.py]
-- "tests_test_portal_metrics_testseveritybreakdown_test_all_buckets_present_zero_filled": ".test_all_buckets_present_zero_filled()" | kind=code-symbol | source=manager/backend/tests/test_portal_metrics.py:L20 | neighbors=[TestSeverityBreakdown]
-- "tests_test_portal_metrics_teststatustimeline_test_emits_continuous_zero_filled_months": ".test_emits_continuous_zero_filled_months()" | kind=code-symbol | source=manager/backend/tests/test_portal_metrics.py:L42 | neighbors=[TestStatusTimeline]
-- "tests_test_portal_read_rationale_1": "test_portal_read.py — Phase 2: the customer-facing read API. Verifies the two da" | kind=entity | source=manager/backend/tests/test_portal_read.py:L1 | neighbors=[test_portal_read.py]
-- "tests_test_portal_read_rationale_153": "Each db.execute(...) → result whose .scalars().first() is the next value;     pl" | kind=entity | source=manager/backend/tests/test_portal_read.py:L153 | neighbors=[_db_first()]
-- "tests_test_portal_read_rationale_217": "Mock the create_scan_request db flow: execute#1 → engagement lookup     (.scalar" | kind=entity | source=manager/backend/tests/test_portal_read.py:L217 | neighbors=[_db_for_create()]
-- "tests_test_portal_read_rationale_36": "Each db.execute(...) → result whose .scalars().all() is the next list." | kind=entity | source=manager/backend/tests/test_portal_read.py:L36 | neighbors=[_db_list()]
-- "tests_test_portal_read_rationale_59": "A finding-like ORM object carrying BOTH whitelisted and internal fields." | kind=entity | source=manager/backend/tests/test_portal_read.py:L59 | neighbors=[_finding_with_internal()]
-- "tests_test_portal_read_testclientfindingwhitelist_test_schema_is_a_whitelist": ".test_schema_is_a_whitelist()" | kind=code-symbol | source=manager/backend/tests/test_portal_read.py:L83 | neighbors=[TestClientFindingWhitelist]
-- "tests_test_portal_remediation_rationale_1": "test_portal_remediation.py — Section 6: the customer-facing remediation route." | kind=entity | source=manager/backend/tests/test_portal_remediation.py:L1 | neighbors=[test_portal_remediation.py]
-- "tests_test_portal_remediation_rationale_33": "Each db.execute(...) → result whose .scalar_one_or_none() is the next val." | kind=entity | source=manager/backend/tests/test_portal_remediation.py:L33 | neighbors=[_db_scalar()]
-- "tests_test_portal_scope_rationale_1": "test_portal_scope.py — Phase 0 of the customer portal: the engagement-scoping au" | kind=entity | source=manager/backend/tests/test_portal_scope.py:L1 | neighbors=[test_portal_scope.py]
-- "tests_test_portal_scope_testassertclient_test_client_without_engagement_is_forbidden": ".test_client_without_engagement_is_forbidden()" | kind=code-symbol | source=manager/backend/tests/test_portal_scope.py:L47 | neighbors=[TestAssertClient]
-- "tests_test_portal_scope_testportaltokenclaims_test_client_role_enum_exists": ".test_client_role_enum_exists()" | kind=code-symbol | source=manager/backend/tests/test_portal_scope.py:L99 | neighbors=[TestPortalTokenClaims]
-- "tests_test_portal_scope_testportaltokenclaims_test_client_token_carries_portal_aud_and_engagement": ".test_client_token_carries_portal_aud_and_engagement()" | kind=code-symbol | source=manager/backend/tests/test_portal_scope.py:L85 | neighbors=[TestPortalTokenClaims]
-- "tests_test_portal_scope_testportaltokenclaims_test_operator_and_portal_audiences_differ": ".test_operator_and_portal_audiences_differ()" | kind=code-symbol | source=manager/backend/tests/test_portal_scope.py:L96 | neighbors=[TestPortalTokenClaims]
-- "tests_test_posture_confidence_rationale_1": "test_posture_confidence.py — calibrated, auditable posture confidence with cross" | kind=entity | source=manager/detection_engine/tests/test_posture_confidence.py:L1 | neighbors=[test_posture_confidence.py]
+- "tests_test_os_fingerprint_testttlinference_test_os_family_linux": ".test_os_family_linux()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L209 | neighbors=[TestTtlInference] | lang=en
+- "tests_test_os_fingerprint_testttlinference_test_os_family_network": ".test_os_family_network()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L215 | neighbors=[TestTtlInference] | lang=en
+- "tests_test_os_fingerprint_testttlinference_test_os_family_unknown_on_none": ".test_os_family_unknown_on_none()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L218 | neighbors=[TestTtlInference] | lang=en
+- "tests_test_os_fingerprint_testttlinference_test_os_family_windows": ".test_os_family_windows()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L212 | neighbors=[TestTtlInference] | lang=en
+- "tests_test_os_fingerprint_testttlinference_test_round_up_to_128": ".test_round_up_to_128()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L197 | neighbors=[TestTtlInference] | lang=en
+- "tests_test_os_fingerprint_testttlinference_test_round_up_to_255": ".test_round_up_to_255()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L201 | neighbors=[TestTtlInference] | lang=en
+- "tests_test_os_fingerprint_testttlinference_test_round_up_to_64": ".test_round_up_to_64()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L193 | neighbors=[TestTtlInference] | lang=en
+- "tests_test_os_fusion_rationale_1": "test_os_fusion.py — FIX 3(a): cross-scanner OS identification with calibrated, m" | kind=entity | source=probe/tests/test_os_fusion.py:L1 | neighbors=[test_os_fusion.py] | lang=pt
+- "tests_test_os_stage_wiring_open": "_open()" | kind=code-symbol | source=probe/tests/test_os_stage_wiring.py:L32 | neighbors=[test_os_stage_wiring.py] | lang=en
+- "tests_test_os_stage_wiring_rationale_1": "test_os_stage_wiring.py — the OS-identification stage in the agent workflow.  Be" | kind=entity | source=probe/tests/test_os_stage_wiring.py:L1 | neighbors=[test_os_stage_wiring.py] | lang=en
+- "tests_test_os_stage_wiring_test_dead_host_is_never_os_probed": "test_dead_host_is_never_os_probed()" | kind=code-symbol | source=probe/tests/test_os_stage_wiring.py:L199 | neighbors=[test_os_stage_wiring.py] | lang=en
+- "tests_test_os_stage_wiring_test_smb_build_probe_skipped_when_445_is_closed": "test_smb_build_probe_skipped_when_445_is_closed()" | kind=code-symbol | source=probe/tests/test_os_stage_wiring.py:L172 | neighbors=[test_os_stage_wiring.py] | lang=en
+- "tests_test_os_stage_wiring_testassetmerge_test_os_fact_is_cacheable_as_deterministic": ".test_os_fact_is_cacheable_as_deterministic()" | kind=code-symbol | source=probe/tests/test_os_stage_wiring.py:L108 | neighbors=[TestAssetMerge] | lang=en
+- "tests_test_os_stage_wiring_testplan_test_full_assessment_includes_it": ".test_full_assessment_includes_it()" | kind=code-symbol | source=probe/tests/test_os_stage_wiring.py:L70 | neighbors=[TestPlan] | lang=en
+- "tests_test_os_stage_wiring_testplan_test_not_planned_for_a_udp_only_job": ".test_not_planned_for_a_udp_only_job()" | kind=code-symbol | source=probe/tests/test_os_stage_wiring.py:L65 | neighbors=[TestPlan] | lang=en
+- "tests_test_os_stage_wiring_testplan_test_not_planned_for_liveness_only": ".test_not_planned_for_liveness_only()" | kind=code-symbol | source=probe/tests/test_os_stage_wiring.py:L59 | neighbors=[TestPlan] | lang=en
+- "tests_test_os_stage_wiring_testplan_test_os_stage_planned_from_the_port_stage_up": ".test_os_stage_planned_from_the_port_stage_up()" | kind=code-symbol | source=probe/tests/test_os_stage_wiring.py:L53 | neighbors=[TestPlan] | lang=en
+- "tests_test_passive_collector_socket_fileno": ".fileno()" | kind=code-symbol | source=probe/tests/test_passive_collector.py:L28 | neighbors=[_Socket] | lang=en
+- "tests_test_passive_collector_socket_init": ".__init__()" | kind=code-symbol | source=probe/tests/test_passive_collector.py:L24 | neighbors=[_Socket] | lang=en
+- "tests_test_passive_collector_test_zero_listeners_returns_structured_failure": "test_zero_listeners_returns_structured_failure()" | kind=code-symbol | source=probe/tests/test_passive_collector.py:L135 | neighbors=[test_passive_collector.py] | lang=en
+- "tests_test_passive_collector_writer_init": ".__init__()" | kind=code-symbol | source=probe/tests/test_passive_collector.py:L16 | neighbors=[_Writer] | lang=en
+- "tests_test_passive_collector_writer_write": ".write()" | kind=code-symbol | source=probe/tests/test_passive_collector.py:L19 | neighbors=[_Writer] | lang=en
+- "tests_test_pat_auth_test_new_pat_token_shape_and_hash_stability": "test_new_pat_token_shape_and_hash_stability()" | kind=code-symbol | source=manager/backend/tests/test_pat_auth.py:L44 | neighbors=[test_pat_auth.py] | lang=en
+- "tests_test_pat_auth_test_pat_builder_rejects_unknown_scope": "test_pat_builder_rejects_unknown_scope()" | kind=code-symbol | source=manager/backend/tests/test_pat_auth.py:L88 | neighbors=[test_pat_auth.py] | lang=en
+- "tests_test_pat_auth_test_pat_builder_returns_token_once_and_stores_hash_only": "test_pat_builder_returns_token_once_and_stores_hash_only()" | kind=code-symbol | source=manager/backend/tests/test_pat_auth.py:L52 | neighbors=[test_pat_auth.py] | lang=en
+- "tests_test_pat_auth_test_pat_builder_supports_non_expiring_tokens_only_when_requested": "test_pat_builder_supports_non_expiring_tokens_only_when_requested()" | kind=code-symbol | source=manager/backend/tests/test_pat_auth.py:L74 | neighbors=[test_pat_auth.py] | lang=en
+- "tests_test_pat_auth_test_pat_scope_allows_probe_cli_paths": "test_pat_scope_allows_probe_cli_paths()" | kind=code-symbol | source=manager/backend/tests/test_pat_auth.py:L16 | neighbors=[test_pat_auth.py] | lang=en
+- "tests_test_pat_auth_test_pat_scope_matrix_for_api_scopes": "test_pat_scope_matrix_for_api_scopes()" | kind=code-symbol | source=manager/backend/tests/test_pat_auth.py:L27 | neighbors=[test_pat_auth.py] | lang=en
+- "tests_test_pat_auth_test_validate_pat_scopes_dedupes_and_rejects_unknown": "test_validate_pat_scopes_dedupes_and_rejects_unknown()" | kind=code-symbol | source=manager/backend/tests/test_pat_auth.py:L35 | neighbors=[test_pat_auth.py] | lang=en
+- "tests_test_perf_optimization_rationale_1": "Tests for the P1+P2 performance optimization of the detection engine.  P1 — vers" | kind=entity | source=manager/detection_engine/tests/test_perf_optimization.py:L1 | neighbors=[test_perf_optimization.py] | lang=en
+- "tests_test_perf_optimization_rationale_27": "dpkg_compare must use the pure-Python comparator in the hot path.     Shelling o" | kind=entity | source=manager/detection_engine/tests/test_perf_optimization.py:L27 | neighbors=[test_dpkg_compare_does_not_call_the_bin…] | lang=en
+- "tests_test_perf_optimization_rationale_50": "Isolate the guard's in-memory + on-disk validation cache per test." | kind=entity | source=manager/detection_engine/tests/test_perf_optimization.py:L50 | neighbors=[clean_guard_cache()] | lang=en
+- "tests_test_perf_optimization_rationale_58": "No dpkg binary → nothing to cross-check against; return [] and never     attempt" | kind=entity | source=manager/detection_engine/tests/test_perf_optimization.py:L58 | neighbors=[test_guard_is_noop_without_dpkg()] | lang=en
+- "tests_test_perf_optimization_rationale_76": "When the binary disagrees with pure-Python on an adjacent pair, that pair     is" | kind=entity | source=manager/detection_engine/tests/test_perf_optimization.py:L76 | neighbors=[test_guard_reports_divergence_and_warns…] | lang=en
+- "tests_test_perf_optimization_test_guard_passes_when_pure_python_agrees_with_dpkg": "test_guard_passes_when_pure_python_agrees_with_dpkg()" | kind=code-symbol | source=manager/detection_engine/tests/test_perf_optimization.py:L67 | neighbors=[test_perf_optimization.py] | lang=en
+- "tests_test_perf_optimization_test_guard_validates_once_per_cache_key": "test_guard_validates_once_per_cache_key()" | kind=code-symbol | source=manager/detection_engine/tests/test_perf_optimization.py:L86 | neighbors=[test_perf_optimization.py] | lang=en
+- "tests_test_perf_optimization_test_load_kev_and_epss_memoized": "test_load_kev_and_epss_memoized()" | kind=code-symbol | source=manager/detection_engine/tests/test_perf_optimization.py:L142 | neighbors=[test_perf_optimization.py] | lang=en
+- "tests_test_pipeline_concurrency_rationale_1": "test_pipeline_concurrency.py — the two correctness fixes from ADR-0001.  R1: the" | kind=entity | source=manager/backend/tests/test_pipeline_concurrency.py:L1 | neighbors=[test_pipeline_concurrency.py] | lang=en
+- "tests_test_pipeline_concurrency_rationale_129": "The guard must not swallow real work." | kind=entity | source=manager/backend/tests/test_pipeline_concurrency.py:L129 | neighbors=[test_a_first_delivery_still_runs_detect…] | lang=en
+- "tests_test_pipeline_concurrency_rationale_148": "Pre-existing behaviour: a vanished scan_result logs and returns rather     than" | kind=entity | source=manager/backend/tests/test_pipeline_concurrency.py:L148 | neighbors=[test_a_missing_submission_is_not_an_err…] | lang=en
 
 ## Instructions
 

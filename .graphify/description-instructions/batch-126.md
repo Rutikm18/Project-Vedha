@@ -1,4 +1,4 @@
-# Node Description Batch 127 of 330
+# Node Description Batch 127 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -24,6 +24,15 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
+- "dashboard_slastatus_elapsedpct": "elapsedPct()" | kind=code-symbol | source=manager/frontend/components/dashboard/SlaStatus.tsx:L69 | neighbors=[SlaStatus.tsx, SlaRowView()]
+- "dashboard_slastatus_pct": "pct()" | kind=code-symbol | source=manager/frontend/components/dashboard/SlaStatus.tsx:L54 | neighbors=[SlaStatus.tsx, SlaRowView()]
+- "dashboard_slastatus_timelabel": "timeLabel()" | kind=code-symbol | source=manager/frontend/components/dashboard/SlaStatus.tsx:L53 | neighbors=[SlaStatus.tsx, SlaRowView()]
+- "detection_active_validation_should_escalate": "should_escalate()" | kind=code-symbol | source=manager/backend/app/detection/active_validation.py:L17 | neighbors=[active_validation.py, True iff this finding warrants an appro…]
+- "detection_active_validation_validationoutcome": "ValidationOutcome" | kind=code-symbol | source=manager/backend/app/detection/active_validation.py:L34 | neighbors=[active_validation.py, interpret_validation()]
+- "detection_attack_paths_exposed_db_unauth": "_exposed_db_unauth()" | kind=code-symbol | source=manager/backend/app/detection/attack_paths.py:L221 | neighbors=[attack_paths.py, B3: an exposed datastore with unauthent…]
+- "detection_attack_paths_hostsignals_observe": ".observe()" | kind=code-symbol | source=manager/backend/app/detection/attack_paths.py:L76 | neighbors=[_group(), _HostSignals]
+- "detection_attack_paths_is_network_device": "_is_network_device()" | kind=code-symbol | source=manager/backend/app/detection/attack_paths.py:L57 | neighbors=[attack_paths.py, _snmp_public_lateral()]
+- "detection_attack_paths_legacy_windows": "_legacy_windows()" | kind=code-symbol | source=manager/backend/app/detection/attack_paths.py:L178 | neighbors=[attack_paths.py, _is_domain_controller()]
 - "detection_attack_paths_ntlm_relay": "_ntlm_relay()" | kind=code-symbol | source=manager/backend/app/detection/attack_paths.py:L146 | neighbors=[attack_paths.py, _is_domain_controller()]
 - "detection_correlator_detectioncorrelator_generate_gap_report": ".generate_gap_report()" | kind=code-symbol | source=manager/backend/app/detection/correlator.py:L220 | neighbors=[DetectionCorrelator, DetectionGap]
 - "detection_correlator_host_identity": "_host_identity()" | kind=code-symbol | source=manager/backend/app/detection/correlator.py:L84 | neighbors=[correlator.py, _host_matches()]
@@ -55,15 +64,6 @@ one-sentence description — no prose, no markdown fences.
 - "detection_engine_ingest_is_ip": "_is_ip()" | kind=code-symbol | source=manager/detection_engine/ingest.py:L93 | neighbors=[ingest.py, .get_or_create_asset()]
 - "detection_engine_init": "__init__.py" | kind=code-symbol | source=manager/detection_engine/__init__.py:L1 | neighbors=[10dfc80 Add comprehensive probe testing…, 2885afa Add comprehensive probe testing…]
 - "detection_engine_models_asset_add_fact": ".add_fact()" | kind=code-symbol | source=manager/detection_engine/models.py:L90 | neighbors=[Asset, .as_of()]
-- "detection_engine_models_fact_ref": ".ref()" | kind=code-symbol | source=manager/detection_engine/models.py:L60 | neighbors=[Fact, A stable, human-readable pointer back t…]
-- "detection_engine_models_make_finding_id": "make_finding_id()" | kind=code-symbol | source=manager/detection_engine/models.py:L125 | neighbors=[models.py, Deterministic finding ID: the SAME (ass…]
-- "detection_engine_port_intel_banner_confirms_backdoor": "_banner_confirms_backdoor()" | kind=code-symbol | source=manager/detection_engine/port_intel.py:L156 | neighbors=[port_intel.py, classify_port()]
-- "detection_engine_port_intel_normalized": "_normalized()" | kind=code-symbol | source=manager/detection_engine/port_intel.py:L197 | neighbors=[port_intel.py, contradicts_port_hypothesis()]
-- "detection_engine_port_intel_portrisk": "PortRisk" | kind=code-symbol | source=manager/detection_engine/port_intel.py:L34 | neighbors=[port_intel.py, classify_port()]
-- "detection_engine_posture_rules_dns_zone_transfer": "_dns_zone_transfer()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L428 | neighbors=[posture_rules.py, _d()]
-- "detection_engine_posture_rules_exposed_title": "_exposed_title()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L934 | neighbors=[posture_rules.py, detect_exposed_services()]
-- "detection_engine_posture_rules_ftp_anonymous": "_ftp_anonymous()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L419 | neighbors=[posture_rules.py, _d()]
-- "detection_engine_posture_rules_ipmi_cipher_zero": "_ipmi_cipher_zero()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L517 | neighbors=[posture_rules.py, _d()]
 
 ## Instructions
 

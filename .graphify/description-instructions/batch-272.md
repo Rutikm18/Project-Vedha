@@ -1,4 +1,4 @@
-# Node Description Batch 273 of 330
+# Node Description Batch 273 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,51 +19,53 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-Write every description in English (en). Do not switch languages.
+LANGUAGE: each entry has a `lang=` marker giving the language of its source.
+Write that entry's description in EXACTLY that language. Do not translate to
+a single common language — match each node's source language individually.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_cve_correlation_testriskscore_test_bands": ".test_bands()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L151 | neighbors=[TestRiskScore]
-- "tests_test_cve_correlation_testriskscore_test_capped_at_100": ".test_capped_at_100()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L163 | neighbors=[TestRiskScore]
-- "tests_test_cve_correlation_testriskscore_test_kev_and_exposure_weight": ".test_kev_and_exposure_weight()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L157 | neighbors=[TestRiskScore]
-- "tests_test_cve_correlation_testversion_test_compare": ".test_compare()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L51 | neighbors=[TestVersion]
-- "tests_test_cve_correlation_testversion_test_in_range_end_exclusive": ".test_in_range_end_exclusive()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L56 | neighbors=[TestVersion]
-- "tests_test_cve_correlation_testversion_test_in_range_exact": ".test_in_range_exact()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L65 | neighbors=[TestVersion]
-- "tests_test_cve_correlation_testversion_test_in_range_start_inclusive": ".test_in_range_start_inclusive()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L61 | neighbors=[TestVersion]
-- "tests_test_cve_correlation_testversion_test_in_range_unconstrained_is_false": ".test_in_range_unconstrained_is_false()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L69 | neighbors=[TestVersion]
-- "tests_test_cve_correlation_testversion_test_parse_debian_epoch_and_distro_suffix": ".test_parse_debian_epoch_and_distro_suffix()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L41 | neighbors=[TestVersion]
-- "tests_test_cve_correlation_testversion_test_parse_leading_v_and_empty": ".test_parse_leading_v_and_empty()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L46 | neighbors=[TestVersion]
-- "tests_test_cve_correlation_testversion_test_parse_openssh_portable": ".test_parse_openssh_portable()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L35 | neighbors=[TestVersion]
-- "tests_test_cve_correlation_testversion_test_parse_openssl_letter_suffix": ".test_parse_openssl_letter_suffix()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L38 | neighbors=[TestVersion]
-- "tests_test_cve_correlation_testvulndb_test_counts": ".test_counts()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L137 | neighbors=[TestVulnDB]
-- "tests_test_cve_correlation_testvulndb_test_cves_for_cpe_in_range": ".test_cves_for_cpe_in_range()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L120 | neighbors=[TestVulnDB]
-- "tests_test_cve_correlation_testvulndb_test_kev_sorts_first": ".test_kev_sorts_first()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L125 | neighbors=[TestVulnDB]
-- "tests_test_cve_correlation_testvulndb_test_out_of_range_excluded": ".test_out_of_range_excluded()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L130 | neighbors=[TestVulnDB]
-- "tests_test_cve_correlation_testvulndb_test_vendor_norm": ".test_vendor_norm()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L134 | neighbors=[TestVulnDB]
-- "tests_test_db_scanner_fakereader_init": ".__init__()" | kind=code-symbol | source=probe/tests/test_db_scanner.py:L18 | neighbors=[FakeReader]
-- "tests_test_db_scanner_fakereader_read": ".read()" | kind=code-symbol | source=probe/tests/test_db_scanner.py:L21 | neighbors=[FakeReader]
-- "tests_test_db_scanner_fakewriter_drain": ".drain()" | kind=code-symbol | source=probe/tests/test_db_scanner.py:L29 | neighbors=[FakeWriter]
-- "tests_test_db_scanner_fakewriter_write": ".write()" | kind=code-symbol | source=probe/tests/test_db_scanner.py:L26 | neighbors=[FakeWriter]
-- "tests_test_db_scanner_rationale_1": "Regression tests for db_scanner fingerprint matchers.  Focus: MySQL X Protocol (" | kind=entity | source=probe/tests/test_db_scanner.py:L1 | neighbors=[test_db_scanner.py]
-- "tests_test_db_unauth_test_redis_authenticated": "test_redis_authenticated()" | kind=code-symbol | source=probe/tests/test_db_unauth.py:L11 | neighbors=[test_db_unauth.py]
-- "tests_test_db_unauth_test_redis_unauthenticated": "test_redis_unauthenticated()" | kind=code-symbol | source=probe/tests/test_db_unauth.py:L4 | neighbors=[test_db_unauth.py]
-- "tests_test_detection_core_rationale_238": "ipv6_discovery reports on the RUN, not a host: its target is the local         i" | kind=entity | source=manager/detection_engine/tests/test_detection_core.py:L238 | neighbors=[.test_run_scoped_fact_is_ingested_but_c…]
-- "tests_test_detection_core_testallosvsourcepackages_test_returns_list": ".test_returns_list()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L1063 | neighbors=[TestAllOsvSourcePackages]
-- "tests_test_detection_core_testallosvsourcepackages_test_sorted": ".test_sorted()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L1068 | neighbors=[TestAllOsvSourcePackages]
-- "tests_test_detection_core_testasset_test_add_alias": ".test_add_alias()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L163 | neighbors=[TestAsset]
-- "tests_test_detection_core_testclassifyconfidence_test_authoritative_scanners": ".test_authoritative_scanners()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L209 | neighbors=[TestClassifyConfidence]
-- "tests_test_detection_core_testclassifyconfidence_test_inferred_scanners": ".test_inferred_scanners()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L213 | neighbors=[TestClassifyConfidence]
-- "tests_test_detection_core_testcleandebianversion_test_no_revision": ".test_no_revision()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L1051 | neighbors=[TestCleanDebianVersion]
-- "tests_test_detection_core_testcleandebianversion_test_strips_epoch": ".test_strips_epoch()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L1046 | neighbors=[TestCleanDebianVersion]
-- "tests_test_detection_core_testcleandebianversion_test_strips_revision": ".test_strips_revision()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L1041 | neighbors=[TestCleanDebianVersion]
-- "tests_test_detection_core_testcleanrpmversion_test_strips_release": ".test_strips_release()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L1058 | neighbors=[TestCleanRpmVersion]
-- "tests_test_detection_core_testcorrelatesmbpatch_test_no_smb_facts_returns_none": ".test_no_smb_facts_returns_none()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L630 | neighbors=[TestCorrelateSmbPatch]
-- "tests_test_detection_core_testcvss_test_known_vectors": ".test_known_vectors()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L328 | neighbors=[TestCvss]
-- "tests_test_detection_core_testcvss_test_parse_vector": ".test_parse_vector()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L340 | neighbors=[TestCvss]
-- "tests_test_detection_core_testcvss_test_returns_none_for_malformed": ".test_returns_none_for_malformed()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L336 | neighbors=[TestCvss]
-- "tests_test_detection_core_testcvss_test_returns_none_for_v2_vector": ".test_returns_none_for_v2_vector()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L333 | neighbors=[TestCvss]
-- "tests_test_detection_core_testcvss_test_roundup_exact_boundary": ".test_roundup_exact_boundary()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L345 | neighbors=[TestCvss]
+- "tests_test_campaign_progress_rationale_284": "A run that started seconds ago is busy, not wedged — no alarming reason." | kind=entity | source=manager/backend/tests/test_campaign_progress.py:L284 | neighbors=[test_a_briefly_running_run_is_not_calle…] | lang=en
+- "tests_test_campaign_progress_rationale_295": "started_at can come back tz-naive depending on the driver; subtracting it     fr" | kind=entity | source=manager/backend/tests/test_campaign_progress.py:L295 | neighbors=[test_naive_started_at_does_not_crash_th…] | lang=en
+- "tests_test_campaign_progress_rationale_327": "THE CRY-WOLF CASE. 90 minutes in, worker heartbeating — this is a large     scop" | kind=entity | source=manager/backend/tests/test_campaign_progress.py:L327 | neighbors=[test_a_long_run_with_a_live_worker_is_n…] | lang=en
+- "tests_test_campaign_progress_rationale_337": "No patience needed when the thing that would finish the run has stopped     hear" | kind=entity | source=manager/backend/tests/test_campaign_progress.py:L337 | neighbors=[test_a_dead_worker_is_called_out_quickl…] | lang=en
+- "tests_test_campaign_progress_rationale_346": "Under the floor: a heartbeat gap of a few seconds around a restart must not" | kind=entity | source=manager/backend/tests/test_campaign_progress.py:L346 | neighbors=[test_a_briefly_running_run_with_a_dead_…] | lang=pt
+- "tests_test_campaign_progress_rationale_354": "No heartbeat table (migration not yet run) — duration is all we have, so the" | kind=entity | source=manager/backend/tests/test_campaign_progress.py:L354 | neighbors=[test_unknown_worker_liveness_falls_back…] | lang=en
+- "tests_test_campaign_progress_rationale_367": "Whatever the verdict, a stalled run must not flip the campaign complete." | kind=entity | source=manager/backend/tests/test_campaign_progress.py:L367 | neighbors=[test_stall_never_claims_completion_eith…] | lang=en
+- "tests_test_campaign_progress_terminal_rationale_1": "A campaign whose jobs all ended without producing results must reach a TERMINAL" | kind=entity | source=manager/backend/tests/test_campaign_progress_terminal.py:L1 | neighbors=[test_campaign_progress_terminal.py] | lang=pt
+- "tests_test_campaign_progress_terminal_rationale_50": "The normal path must be untouched: a completed job with no run yet is         ge" | kind=entity | source=manager/backend/tests/test_campaign_progress_terminal.py:L50 | neighbors=[.test_does_not_hijack_a_campaign_that_p…] | lang=en
+- "tests_test_campaign_progress_terminal_rationale_57": "Precedence: work in flight is reported before any terminal verdict." | kind=entity | source=manager/backend/tests/test_campaign_progress_terminal.py:L57 | neighbors=[.test_running_job_still_wins()] | lang=en
+- "tests_test_campaign_progress_terminal_rationale_67": "One good job is enough to expect a detection run." | kind=entity | source=manager/backend/tests/test_campaign_progress_terminal.py:L67 | neighbors=[.test_partial_cancel_with_one_success_s…] | lang=en
+- "tests_test_campaign_progress_terminal_rationale_73": "Regression guard: the happy path and its known edge cases still hold." | kind=entity | source=manager/backend/tests/test_campaign_progress_terminal.py:L73 | neighbors=[TestNormalPipelineUnaffected] | lang=en
+- "tests_test_campaign_progress_terminal_rationale_94": "Callers that don't pass the new inputs must behave as before." | kind=entity | source=manager/backend/tests/test_campaign_progress_terminal.py:L94 | neighbors=[.test_defaults_keep_backwards_compatibi…] | lang=en
+- "tests_test_cli_fakeclient_init": ".__init__()" | kind=code-symbol | source=probe/tests/test_cli.py:L153 | neighbors=[FakeClient] | lang=en
+- "tests_test_cli_fakeclient_request": ".request()" | kind=code-symbol | source=probe/tests/test_cli.py:L157 | neighbors=[FakeClient] | lang=en
+- "tests_test_cli_test_cmd_daemon_run_overrides_stale_env_and_sets_probe_identity": "test_cmd_daemon_run_overrides_stale_env_and_sets_probe_identity()" | kind=code-symbol | source=probe/tests/test_cli.py:L318 | neighbors=[test_cli.py] | lang=en
+- "tests_test_cli_test_cmd_doctor_fails_when_no_agent_unless_allowed": "test_cmd_doctor_fails_when_no_agent_unless_allowed()" | kind=code-symbol | source=probe/tests/test_cli.py:L248 | neighbors=[test_cli.py] | lang=en
+- "tests_test_cli_test_config_store_rejects_malformed_json": "test_config_store_rejects_malformed_json()" | kind=code-symbol | source=probe/tests/test_cli.py:L31 | neighbors=[test_cli.py] | lang=en
+- "tests_test_cli_test_config_store_rejects_non_object_profiles": "test_config_store_rejects_non_object_profiles()" | kind=code-symbol | source=probe/tests/test_cli.py:L38 | neighbors=[test_cli.py] | lang=en
+- "tests_test_cli_test_config_store_writes_private_file": "test_config_store_writes_private_file()" | kind=code-symbol | source=probe/tests/test_cli.py:L13 | neighbors=[test_cli.py] | lang=en
+- "tests_test_cli_test_normalize_manager_url_trims_and_validates": "test_normalize_manager_url_trims_and_validates()" | kind=code-symbol | source=probe/tests/test_cli.py:L72 | neighbors=[test_cli.py] | lang=en
+- "tests_test_cli_test_parse_param_pairs_rejects_missing_equals": "test_parse_param_pairs_rejects_missing_equals()" | kind=code-symbol | source=probe/tests/test_cli.py:L59 | neighbors=[test_cli.py] | lang=en
+- "tests_test_cli_test_parse_param_pairs_supports_json_values": "test_parse_param_pairs_supports_json_values()" | kind=code-symbol | source=probe/tests/test_cli.py:L45 | neighbors=[test_cli.py] | lang=en
+- "tests_test_cli_test_parser_accepts_json_after_concrete_commands": "test_parser_accepts_json_after_concrete_commands()" | kind=code-symbol | source=probe/tests/test_cli.py:L80 | neighbors=[test_cli.py] | lang=en
+- "tests_test_cli_test_resolve_profile_env_overrides_config": "test_resolve_profile_env_overrides_config()" | kind=code-symbol | source=probe/tests/test_cli.py:L106 | neighbors=[test_cli.py] | lang=en
+- "tests_test_cli_test_resolve_profile_reports_missing_manager_or_token": "test_resolve_profile_reports_missing_manager_or_token()" | kind=code-symbol | source=probe/tests/test_cli.py:L134 | neighbors=[test_cli.py] | lang=en
+- "tests_test_cli_test_split_values_accepts_repeated_and_csv_values": "test_split_values_accepts_repeated_and_csv_values()" | kind=code-symbol | source=probe/tests/test_cli.py:L64 | neighbors=[test_cli.py] | lang=en
+- "tests_test_customer_access_rationale_1": "test_customer_access.py — Phase 1: operator provisioning + scan-request inbox. H" | kind=entity | source=manager/backend/tests/test_customer_access.py:L1 | neighbors=[test_customer_access.py] | lang=en
+- "tests_test_customer_access_rationale_125": "An email already used elsewhere in the tenant (the operator's own login," | kind=entity | source=manager/backend/tests/test_customer_access.py:L125 | neighbors=[.test_duplicate_email_in_tenant_is_conf…] | lang=en
+- "tests_test_customer_access_rationale_28": "db.execute yields the given scalar_one_or_none values in order." | kind=entity | source=manager/backend/tests/test_customer_access.py:L28 | neighbors=[_mock_db()] | lang=en
+- "tests_test_customer_access_test_generate_password_is_unique_and_nonempty": "test_generate_password_is_unique_and_nonempty()" | kind=code-symbol | source=manager/backend/tests/test_customer_access.py:L82 | neighbors=[test_customer_access.py] | lang=en
+- "tests_test_customer_access_testbuildscanjob_test_dispatches_on_the_assigned_agent": ".test_dispatches_on_the_assigned_agent()" | kind=code-symbol | source=manager/backend/tests/test_customer_access.py:L59 | neighbors=[TestBuildScanJob] | lang=en
+- "tests_test_customer_access_testbuildscanjob_test_no_assigned_agent_raises": ".test_no_assigned_agent_raises()" | kind=code-symbol | source=manager/backend/tests/test_customer_access.py:L75 | neighbors=[TestBuildScanJob] | lang=en
+- "tests_test_customer_access_testbuildscanjob_test_unknown_scan_type_falls_back_to_vuln_scan": ".test_unknown_scan_type_falls_back_to_vuln_scan()" | kind=code-symbol | source=manager/backend/tests/test_customer_access.py:L70 | neighbors=[TestBuildScanJob] | lang=en
+- "tests_test_customer_reveal_rationale_1": "test_customer_reveal.py — operator reveal of a customer login password (item 1)." | kind=entity | source=manager/backend/tests/test_customer_reveal.py:L1 | neighbors=[test_customer_reveal.py] | lang=en
+- "tests_test_cve_correlation_db": "db()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L107 | neighbors=[test_cve_correlation.py] | lang=en
+- "tests_test_cve_correlation_rationale_1": "test_cve_correlation.py — the offline CVE-correlation layer (cve/ package).  Thi" | kind=entity | source=probe/tests/test_cve_correlation.py:L1 | neighbors=[test_cve_correlation.py] | lang=en
+- "tests_test_cve_correlation_testcli_test_correlate_writes_findings": ".test_correlate_writes_findings()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L351 | neighbors=[TestCli] | lang=en
+- "tests_test_cve_correlation_testcli_test_ingest_stdout_is_clean_json": ".test_ingest_stdout_is_clean_json()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L371 | neighbors=[TestCli] | lang=en
+- "tests_test_cve_correlation_testcorrelate_test_backport_banner_downgrades_confidence": ".test_backport_banner_downgrades_confidence()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L203 | neighbors=[TestCorrelate] | lang=en
 
 ## Instructions
 

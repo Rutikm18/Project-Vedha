@@ -1,4 +1,4 @@
-# Node Description Batch 32 of 330
+# Node Description Batch 32 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -24,6 +24,12 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
+- "main_scripts_rsync_scanner": "rsync_scanner.py" | kind=code-symbol | source=probe/main_scripts/rsync_scanner.py:L1 | neighbors=[6e2818f Add support for additional serv…, 8f6bf49 Refactor code structure and rem…, _handshake(), main(), parse_modules(), _recv_until()]
+- "main_scripts_rsync_scanner_rsyncscanner": "RsyncScanner" | kind=code-symbol | source=probe/main_scripts/rsync_scanner.py:L93 | neighbors=[rsync_scanner.py, BaseScanner, .__init__(), ._list_modules(), ._probe(), ._scan_port()]
+- "main_scripts_scan_funnel_scanfunnel": "ScanFunnel" | kind=code-symbol | source=probe/main_scripts/scan_funnel.py:L129 | neighbors=[scan_funnel.py, build_default_funnel(), Orchestrates discovery → port scan → ro…, .__init__(), .run(), .run_host()]
+- "main_scripts_scanner_base_basescanner": "BaseScanner" | kind=code-symbol | source=probe/main_scripts/scanner_base.py:L946 | neighbors=[scanner_base.py, ._guarded(), .__init__(), .run(), .scan_target(), Subclasses implement `scan_target(self,…]
+- "main_scripts_scanner_base_resultwriter": "ResultWriter" | kind=code-symbol | source=probe/main_scripts/scanner_base.py:L916 | neighbors=[scanner_base.py, Writes ScanResult objects as JSONL to a…, .close(), .__init__(), .write(), run_cli()]
+- "main_scripts_service_banner_servicebannerscanner_rung": "._rung()" | kind=code-symbol | source=probe/main_scripts/service_banner.py:L366 | neighbors=[One probe-ladder rung on its own connec…, ServiceBannerScanner, ._grab(), ._connect(), ._read_some(), One probe-ladder rung on its own connec…]
 - "main_scripts_smtp_scanner_smtpscanner": "SMTPScanner" | kind=code-symbol | source=probe/main_scripts/smtp_scanner.py:L60 | neighbors=[smtp_scanner.py, BaseScanner, ._cmd(), .__init__(), ._probe(), ._read_response()]
 - "main_scripts_snmp_scanner_snmpscanner_walk_subtree": "._walk_subtree()" | kind=code-symbol | source=probe/main_scripts/snmp_scanner.py:L290 | neighbors=[GETNEXT walk of one OID subtree.  Retur…, SNMPScanner, _build_getnext(), _decode_value(), _encode_oid(), _oid_in_subtree()]
 - "main_scripts_syn_scanner_parse_packet": "parse_packet()" | kind=code-symbol | source=probe/main_scripts/syn_scanner.py:L181 | neighbors=[syn_scanner.py, parse_tcp_options(), Parse a raw IPv4+TCP packet (as receive…, ._syn_scan_blocking(), _parse_mss(), Parse a raw IPv4+TCP packet (as receive…]
@@ -58,12 +64,6 @@ one-sentence description — no prose, no markdown fences.
 - "scanner_snmp_scanner_snmpscanner_walk_subtree": "._walk_subtree()" | kind=code-symbol | source=probe/scanner/snmp_scanner.py:L290 | neighbors=[GETNEXT walk of one OID subtree.  Retur…, SNMPScanner, _build_getnext(), _decode_value(), _encode_oid(), _oid_in_subtree()]
 - "scanner_syn_scanner_parse_packet": "parse_packet()" | kind=code-symbol | source=probe/scanner/syn_scanner.py:L181 | neighbors=[syn_scanner.py, parse_tcp_options(), Parse a raw IPv4+TCP packet (as receive…, ._syn_scan_blocking(), _parse_mss(), Parse a raw IPv4+TCP packet (as receive…]
 - "scanner_tls_fingerprint_jarm_style_digest": "jarm_style_digest()" | kind=code-symbol | source=probe/scanner/tls_fingerprint.py:L201 | neighbors=[tls_fingerprint.py, fingerprint_host(), cipher_code(), _server_ext_types(), version_code(), JARM-shaped 62-char fuzzy hash: 3 chars…]
-- "scanner_tls_fingerprint_one_probe": "_one_probe()" | kind=code-symbol | source=probe/scanner/tls_fingerprint.py:L262 | neighbors=[tls_fingerprint.py, fingerprint_host(), build_client_hello(), parse_server_hello(), _recv_first_record(), Send one crafted ClientHello, read + pa…]
-- "scanner_va_campaign_progressreporter_snapshot": ".snapshot()" | kind=code-symbol | source=probe/scanner/va_campaign.py:L246 | neighbors=[ProgressReporter, ._flush(), _now(), ._current(), ._eta_seconds(), ._percent()]
-- "scanner_windows_collector": "windows_collector.py" | kind=code-symbol | source=probe/scanner/windows_collector.py:L1 | neighbors=[d1b4dd3 trim frontend to 7 core pages; …, main(), _smb_registry_collect(), WindowsCollector, _winrm_collect(), windows_collector.py — credentialed (au…]
-- "scanner_windows_collector_windowscollector": "WindowsCollector" | kind=code-symbol | source=probe/scanner/windows_collector.py:L236 | neighbors=[windows_collector.py, ._collect_host(), ._full_user(), .__init__(), .run(), ._smb_result()]
-- "schemas_finding_findingpatch": "FindingPatch" | kind=code-symbol | source=manager/backend/app/schemas/finding.py:L21 | neighbors=[finding.py, BaseModel, .normalize_action_reason(), All fields optional — PATCH semantics., All fields optional — PATCH semantics., DetectionStatus]
-- "services_job_result_service_rationale_1": "job_result_service.py — shared job result processing. Single source of truth for" | kind=entity | source=manager/backend/app/services/job_result_service.py:L1 | neighbors=[job_result_service.py, Asset, AssetType, ScanJobStatus, ScanJob, ScanResult]
 
 ## Instructions
 

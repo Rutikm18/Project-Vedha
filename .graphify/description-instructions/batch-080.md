@@ -1,4 +1,4 @@
-# Node Description Batch 81 of 330
+# Node Description Batch 81 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -17,6 +17,12 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
+- "tests_test_customer_access_testprovisionclientuser_test_creates_a_scoped_client_login": ".test_creates_a_scoped_client_login()" | kind=code-symbol | source=manager/backend/tests/test_customer_access.py:L90 | neighbors=[TestProvisionClientUser, _added(), _mock_db(), _operator()]
+- "tests_test_customer_access_testprovisionclientuser_test_duplicate_email_in_tenant_is_conflict": ".test_duplicate_email_in_tenant_is_conflict()" | kind=code-symbol | source=manager/backend/tests/test_customer_access.py:L124 | neighbors=[An email already used elsewhere in the …, TestProvisionClientUser, _mock_db(), _operator()]
+- "tests_test_customer_access_testrejectscanrequest_test_reject_records_reason": ".test_reject_records_reason()" | kind=code-symbol | source=manager/backend/tests/test_customer_access.py:L194 | neighbors=[TestRejectScanRequest, _mock_db(), _operator(), _pending_request()]
+- "tests_test_customer_reveal_db": "_db()" | kind=code-symbol | source=manager/backend/tests/test_customer_reveal.py:L21 | neighbors=[test_customer_reveal.py, test_reveal_missing_user_is_404(), test_reveal_null_ciphertext_returns_non…, test_reveal_returns_decrypted_password()]
+- "tests_test_customer_reveal_operator": "_operator()" | kind=code-symbol | source=manager/backend/tests/test_customer_reveal.py:L17 | neighbors=[test_customer_reveal.py, test_reveal_missing_user_is_404(), test_reveal_null_ciphertext_returns_non…, test_reveal_returns_decrypted_password()]
+- "tests_test_customer_reveal_test_reveal_null_ciphertext_returns_none": "test_reveal_null_ciphertext_returns_none()" | kind=code-symbol | source=manager/backend/tests/test_customer_reveal.py:L42 | neighbors=[test_customer_reveal.py, _db(), _operator(), _user()]
 - "tests_test_customer_reveal_test_reveal_returns_decrypted_password": "test_reveal_returns_decrypted_password()" | kind=code-symbol | source=manager/backend/tests/test_customer_reveal.py:L35 | neighbors=[test_customer_reveal.py, _db(), _operator(), _user()]
 - "tests_test_cve_correlation_testingestfeeds": "TestIngestFeeds" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L294 | neighbors=[test_cve_correlation.py, .test_epss_tolerates_plain_csv(), .test_ingest_all_stamps_last_ingest(), .test_kev_and_epss()]
 - "tests_test_cve_correlation_testriskscore": "TestRiskScore" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L150 | neighbors=[test_cve_correlation.py, .test_bands(), .test_capped_at_100(), .test_kev_and_exposure_weight()]
@@ -51,12 +57,6 @@ one-sentence description — no prose, no markdown fences.
 - "tests_test_fact_contract_test_every_rule_input_is_emitted_by_its_scanner": "test_every_rule_input_is_emitted_by_its_scanner()" | kind=code-symbol | source=manager/detection_engine/tests/test_fact_contract.py:L82 | neighbors=[test_fact_contract.py, The gate: for every rule, every declare…, _emitted_paths_by_scanner(), _load_corpus()]
 - "tests_test_fact_contract_test_report_unconsumed_evidence": "test_report_unconsumed_evidence()" | kind=code-symbol | source=manager/detection_engine/tests/test_fact_contract.py:L102 | neighbors=[test_fact_contract.py, Reverse direction, informational: data …, _emitted_paths_by_scanner(), _load_corpus()]
 - "tests_test_finding_events_testmerge_synth": "._synth()" | kind=code-symbol | source=manager/backend/tests/test_finding_events.py:L93 | neighbors=[TestMerge, .test_labels_attached(), .test_sorted_oldest_first(), .test_stored_supersedes_synthesized_sam…]
-- "tests_test_finding_events_testmerge_test_sorted_oldest_first": ".test_sorted_oldest_first()" | kind=code-symbol | source=manager/backend/tests/test_finding_events.py:L111 | neighbors=[TestMerge, ._stored(), ._synth(), _types()]
-- "tests_test_finding_schema": "test_finding_schema.py" | kind=code-symbol | source=manager/backend/tests/test_finding_schema.py:L1 | neighbors=[1fe16c8 stable but some dead code, need…, test_finding_patch_accepts_documented_m…, test_finding_patch_rejects_risk_score_a…, test_finding_summary_exposes_full_open_…]
-- "tests_test_fleet_jobs_scalars": "_scalars()" | kind=code-symbol | source=manager/backend/tests/test_fleet_jobs.py:L17 | neighbors=[test_fleet_jobs.py, test_filter_by_probe_and_engagement_run…, test_lists_jobs_with_probe_and_engageme…, test_running_filter_is_accepted()]
-- "tests_test_fleet_jobs_user": "_user()" | kind=code-symbol | source=manager/backend/tests/test_fleet_jobs.py:L13 | neighbors=[test_fleet_jobs.py, test_filter_by_probe_and_engagement_run…, test_lists_jobs_with_probe_and_engageme…, test_running_filter_is_accepted()]
-- "tests_test_ftp_scanner_testftpfindings_fact": "._fact()" | kind=code-symbol | source=probe/tests/test_ftp_scanner.py:L54 | neighbors=[TestFTPFindings, .test_anon_denied_is_silent(), .test_anon_login_only_is_medium(), .test_anon_read_is_high()]
-- "tests_test_ftp_scanner_testftpscanner_sc": "._sc()" | kind=code-symbol | source=probe/tests/test_ftp_scanner.py:L29 | neighbors=[TestFTPScanner, .test_anon_login_and_read_open(), .test_ftp_present_anon_denied_open_but_…, .test_no_ftp_filtered()]
 
 ## Instructions
 

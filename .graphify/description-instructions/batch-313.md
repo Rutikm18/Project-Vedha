@@ -1,4 +1,4 @@
-# Node Description Batch 314 of 330
+# Node Description Batch 314 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,51 +12,58 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
+For an entity node (any other kind — e.g. a person, place, event, object),
+describe what the entity is and its role, grounded in its type, its
+relations (neighbors) and the provided citations/evidence — e.g.
+"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
+Ground entity descriptions in the citations/evidence when present; do not
+speculate beyond the context, so a node with no supporting context may be
+left out of the reply.
 Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_transport_testdeviceenrollment_test_create_enrollment_request_409_raises_already_enrolled": ".test_create_enrollment_request_409_raises_already_enrolled()" | kind=code-symbol | source=probe/tests/test_transport.py:L230 | neighbors=[TestDeviceEnrollment]
-- "tests_test_transport_testdeviceenrollment_test_create_enrollment_request_409_without_detail_has_default_message": ".test_create_enrollment_request_409_without_detail_has_default_message()" | kind=code-symbol | source=probe/tests/test_transport.py:L244 | neighbors=[TestDeviceEnrollment]
-- "tests_test_transport_testdeviceenrollment_test_create_enrollment_request_forwards_enroll_token": ".test_create_enrollment_request_forwards_enroll_token()" | kind=code-symbol | source=probe/tests/test_transport.py:L210 | neighbors=[TestDeviceEnrollment]
-- "tests_test_transport_testdeviceenrollment_test_device_refresh_signs_unique_nonce_and_rotates_access_token": ".test_device_refresh_signs_unique_nonce_and_rotates_access_token()" | kind=code-symbol | source=probe/tests/test_transport.py:L263 | neighbors=[TestDeviceEnrollment]
-- "tests_test_transport_testdeviceenrollment_test_legacy_token_is_not_forced_through_device_refresh": ".test_legacy_token_is_not_forced_through_device_refresh()" | kind=code-symbol | source=probe/tests/test_transport.py:L253 | neighbors=[TestDeviceEnrollment]
-- "tests_test_transport_testfetchscope_test_http_error_returns_none": ".test_http_error_returns_none()" | kind=code-symbol | source=probe/tests/test_transport.py:L416 | neighbors=[TestFetchScope]
-- "tests_test_transport_testfetchscope_test_returns_scope": ".test_returns_scope()" | kind=code-symbol | source=probe/tests/test_transport.py:L406 | neighbors=[TestFetchScope]
-- "tests_test_transport_testheartbeat_test_heartbeat_401_returns_false": ".test_heartbeat_401_returns_false()" | kind=code-symbol | source=probe/tests/test_transport.py:L349 | neighbors=[TestHeartbeat]
-- "tests_test_transport_testheartbeat_test_heartbeat_sends_current_job": ".test_heartbeat_sends_current_job()" | kind=code-symbol | source=probe/tests/test_transport.py:L358 | neighbors=[TestHeartbeat]
-- "tests_test_transport_testheartbeat_test_successful_heartbeat": ".test_successful_heartbeat()" | kind=code-symbol | source=probe/tests/test_transport.py:L340 | neighbors=[TestHeartbeat]
-- "tests_test_transport_testhttpget_test_exception_returns_none": ".test_exception_returns_none()" | kind=code-symbol | source=probe/tests/test_transport.py:L521 | neighbors=[TestHttpGet]
-- "tests_test_transport_testhttpget_test_non_200_returns_none": ".test_non_200_returns_none()" | kind=code-symbol | source=probe/tests/test_transport.py:L512 | neighbors=[TestHttpGet]
-- "tests_test_transport_testhttpget_test_successful_get": ".test_successful_get()" | kind=code-symbol | source=probe/tests/test_transport.py:L502 | neighbors=[TestHttpGet]
-- "tests_test_transport_testidentity_test_agent_state_updates_preserve_scope_identity": ".test_agent_state_updates_preserve_scope_identity()" | kind=code-symbol | source=probe/tests/test_transport.py:L70 | neighbors=[TestIdentity]
-- "tests_test_transport_testidentity_test_auth_header": ".test_auth_header()" | kind=code-symbol | source=probe/tests/test_transport.py:L38 | neighbors=[TestIdentity]
-- "tests_test_transport_testidentity_test_failed_atomic_replace_preserves_previous_state": ".test_failed_atomic_replace_preserves_previous_state()" | kind=code-symbol | source=probe/tests/test_transport.py:L107 | neighbors=[TestIdentity]
-- "tests_test_transport_testidentity_test_is_authenticated_false_initially": ".test_is_authenticated_false_initially()" | kind=code-symbol | source=probe/tests/test_transport.py:L30 | neighbors=[TestIdentity]
-- "tests_test_transport_testidentity_test_is_authenticated_true_with_creds": ".test_is_authenticated_true_with_creds()" | kind=code-symbol | source=probe/tests/test_transport.py:L34 | neighbors=[TestIdentity]
-- "tests_test_transport_testidentity_test_loads_cached_agent_identity_from_state": ".test_loads_cached_agent_identity_from_state()" | kind=code-symbol | source=probe/tests/test_transport.py:L57 | neighbors=[TestIdentity]
-- "tests_test_transport_testidentity_test_private_state_uses_restrictive_modes_and_fsync": ".test_private_state_uses_restrictive_modes_and_fsync()" | kind=code-symbol | source=probe/tests/test_transport.py:L94 | neighbors=[TestIdentity]
-- "tests_test_transport_testidentity_test_save_and_clear_state": ".test_save_and_clear_state()" | kind=code-symbol | source=probe/tests/test_transport.py:L42 | neighbors=[TestIdentity]
-- "tests_test_transport_testpolljobs_test_poll_401_raises": ".test_poll_401_raises()" | kind=code-symbol | source=probe/tests/test_transport.py:L384 | neighbors=[TestPollJobs]
-- "tests_test_transport_testpolljobs_test_poll_uses_limit_param": ".test_poll_uses_limit_param()" | kind=code-symbol | source=probe/tests/test_transport.py:L393 | neighbors=[TestPollJobs]
-- "tests_test_transport_testpolljobs_test_returns_jobs": ".test_returns_jobs()" | kind=code-symbol | source=probe/tests/test_transport.py:L373 | neighbors=[TestPollJobs]
-- "tests_test_transport_testrefreshregistration_test_cached_agent_refreshes_capabilities": ".test_cached_agent_refreshes_capabilities()" | kind=code-symbol | source=probe/tests/test_transport.py:L296 | neighbors=[TestRefreshRegistration]
-- "tests_test_transport_testrefreshregistration_test_old_manager_returns_compatibility_signal": ".test_old_manager_returns_compatibility_signal()" | kind=code-symbol | source=probe/tests/test_transport.py:L316 | neighbors=[TestRefreshRegistration]
-- "tests_test_transport_testrefreshregistration_test_rejected_cached_identity_raises": ".test_rejected_cached_identity_raises()" | kind=code-symbol | source=probe/tests/test_transport.py:L327 | neighbors=[TestRefreshRegistration]
-- "tests_test_transport_testregister_test_registration_401_raises": ".test_registration_401_raises()" | kind=code-symbol | source=probe/tests/test_transport.py:L154 | neighbors=[TestRegister]
-- "tests_test_transport_testregister_test_registration_sends_public_key": ".test_registration_sends_public_key()" | kind=code-symbol | source=probe/tests/test_transport.py:L161 | neighbors=[TestRegister]
-- "tests_test_transport_testregister_test_successful_registration": ".test_successful_registration()" | kind=code-symbol | source=probe/tests/test_transport.py:L130 | neighbors=[TestRegister]
-- "tests_test_transport_testsubmitresult_test_2xx_variants_return_true": ".test_2xx_variants_return_true()" | kind=code-symbol | source=probe/tests/test_transport.py:L474 | neighbors=[TestSubmitResult]
-- "tests_test_transport_testsubmitresult_test_client_errors_return_false_no_data_loss": ".test_client_errors_return_false_no_data_loss()" | kind=code-symbol | source=probe/tests/test_transport.py:L327 | neighbors=[TestSubmitResult]
-- "tests_test_transport_testsubmitresult_test_large_payload_is_gzipped": ".test_large_payload_is_gzipped()" | kind=code-symbol | source=probe/tests/test_transport.py:L481 | neighbors=[TestSubmitResult]
-- "tests_test_transport_testsubmitresult_test_network_error_returns_false": ".test_network_error_returns_false()" | kind=code-symbol | source=probe/tests/test_transport.py:L444 | neighbors=[TestSubmitResult]
-- "tests_test_transport_testsubmitresult_test_permanent_client_errors_are_marked_for_quarantine": ".test_permanent_client_errors_are_marked_for_quarantine()" | kind=code-symbol | source=probe/tests/test_transport.py:L462 | neighbors=[TestSubmitResult]
-- "tests_test_transport_testsubmitresult_test_retryable_client_errors_return_false_no_data_loss": ".test_retryable_client_errors_return_false_no_data_loss()" | kind=code-symbol | source=probe/tests/test_transport.py:L452 | neighbors=[TestSubmitResult]
-- "tests_test_transport_testsubmitresult_test_server_error_returns_false": ".test_server_error_returns_false()" | kind=code-symbol | source=probe/tests/test_transport.py:L435 | neighbors=[TestSubmitResult]
-- "tests_test_transport_testsubmitresult_test_small_payload_not_gzipped": ".test_small_payload_not_gzipped()" | kind=code-symbol | source=probe/tests/test_transport.py:L492 | neighbors=[TestSubmitResult]
-- "tests_test_transport_testsubmitresult_test_successful_submit": ".test_successful_submit()" | kind=code-symbol | source=probe/tests/test_transport.py:L426 | neighbors=[TestSubmitResult]
-- "tests_test_transport_testwebsocket_test_is_ws_connected_false_by_default": ".test_is_ws_connected_false_by_default()" | kind=code-symbol | source=probe/tests/test_transport.py:L531 | neighbors=[TestWebSocket]
+- "tests_test_task_runner_testrunnerscopevalidation_test_manager_job_without_scope_fails_closed": ".test_manager_job_without_scope_fails_closed()" | kind=code-symbol | source=probe/tests/test_task_runner.py:L354 | neighbors=[TestRunnerScopeValidation]
+- "tests_test_task_runner_testrunnerscopevalidation_test_merge_engagement_and_job_excludes": ".test_merge_engagement_and_job_excludes()" | kind=code-symbol | source=probe/tests/test_task_runner.py:L366 | neighbors=[TestRunnerScopeValidation]
+- "tests_test_task_runner_testrunnerscopevalidation_test_rejects_excluded_target": ".test_rejects_excluded_target()" | kind=code-symbol | source=probe/tests/test_task_runner.py:L303 | neighbors=[TestRunnerScopeValidation]
+- "tests_test_task_runner_testrunnerscopevalidation_test_scope_fallback_preserves_manager_and_job_exclusions": ".test_scope_fallback_preserves_manager_and_job_exclusions()" | kind=code-symbol | source=probe/tests/test_task_runner.py:L331 | neighbors=[TestRunnerScopeValidation]
+- "tests_test_tier1_correlations_rationale_1": "test_tier1_correlations.py — enterprise attack-path correlations built from the" | kind=entity | source=probe/tests/test_tier1_correlations.py:L1 | neighbors=[test_tier1_correlations.py]
+- "tests_test_tier1_wiring_gate_rationale_1": "test_tier1_wiring_gate.py — integration/accuracy gate for deep-scan capabilities" | kind=entity | source=probe/tests/test_tier1_wiring_gate.py:L1 | neighbors=[test_tier1_wiring_gate.py]
+- "tests_test_tier1_wiring_gate_test_every_it_branch_has_port_table_entry": "test_every_it_branch_has_port_table_entry()" | kind=code-symbol | source=probe/tests/test_tier1_wiring_gate.py:L39 | neighbors=[test_tier1_wiring_gate.py]
+- "tests_test_tier1_wiring_gate_test_new_tier1_branches_present": "test_new_tier1_branches_present()" | kind=code-symbol | source=probe/tests/test_tier1_wiring_gate.py:L60 | neighbors=[test_tier1_wiring_gate.py]
+- "tests_test_tier1_wiring_gate_test_udp_hostwide_branches_have_merge_handlers": "test_udp_hostwide_branches_have_merge_handlers()" | kind=code-symbol | source=probe/tests/test_tier1_wiring_gate.py:L55 | neighbors=[test_tier1_wiring_gate.py]
+- "tests_test_tls_fingerprint_rationale_1": "test_tls_fingerprint.py — Tier 2.3: active TLS fingerprint (JARM methodology)." | kind=entity | source=probe/tests/test_tls_fingerprint.py:L1 | neighbors=[test_tls_fingerprint.py]
+- "tests_test_tls_fingerprint_testclienthello_test_contains_client_hello_handshake_type": ".test_contains_client_hello_handshake_type()" | kind=code-symbol | source=probe/tests/test_tls_fingerprint.py:L28 | neighbors=[TestClientHello]
+- "tests_test_tls_fingerprint_testclienthello_test_contains_sni_hostname": ".test_contains_sni_hostname()" | kind=code-symbol | source=probe/tests/test_tls_fingerprint.py:L33 | neighbors=[TestClientHello]
+- "tests_test_tls_fingerprint_testclienthello_test_declared_lengths_are_consistent": ".test_declared_lengths_are_consistent()" | kind=code-symbol | source=probe/tests/test_tls_fingerprint.py:L37 | neighbors=[TestClientHello]
+- "tests_test_tls_fingerprint_testclienthello_test_is_tls_handshake_record": ".test_is_tls_handshake_record()" | kind=code-symbol | source=probe/tests/test_tls_fingerprint.py:L23 | neighbors=[TestClientHello]
+- "tests_test_tls_fingerprint_testdigest_test_cipher_code_known_and_unknown": ".test_cipher_code_known_and_unknown()" | kind=code-symbol | source=probe/tests/test_tls_fingerprint.py:L90 | neighbors=[TestDigest]
+- "tests_test_tls_fingerprint_testdigest_test_digest_differs_with_cipher": ".test_digest_differs_with_cipher()" | kind=code-symbol | source=probe/tests/test_tls_fingerprint.py:L109 | neighbors=[TestDigest]
+- "tests_test_tls_fingerprint_testdigest_test_digest_is_62_chars": ".test_digest_is_62_chars()" | kind=code-symbol | source=probe/tests/test_tls_fingerprint.py:L99 | neighbors=[TestDigest]
+- "tests_test_tls_fingerprint_testdigest_test_digest_is_deterministic": ".test_digest_is_deterministic()" | kind=code-symbol | source=probe/tests/test_tls_fingerprint.py:L104 | neighbors=[TestDigest]
+- "tests_test_tls_fingerprint_testdigest_test_version_code": ".test_version_code()" | kind=code-symbol | source=probe/tests/test_tls_fingerprint.py:L84 | neighbors=[TestDigest]
+- "tests_test_tls_fingerprint_testdigest_test_zero_hash_when_no_responses": ".test_zero_hash_when_no_responses()" | kind=code-symbol | source=probe/tests/test_tls_fingerprint.py:L95 | neighbors=[TestDigest]
+- "tests_test_tls_fingerprint_testparseserverhello_test_returns_none_on_alert": ".test_returns_none_on_alert()" | kind=code-symbol | source=probe/tests/test_tls_fingerprint.py:L72 | neighbors=[TestParseServerHello]
+- "tests_test_tls_fingerprint_testparseserverhello_test_returns_none_on_short": ".test_returns_none_on_short()" | kind=code-symbol | source=probe/tests/test_tls_fingerprint.py:L77 | neighbors=[TestParseServerHello]
+- "tests_test_tls_integration_rationale_1": "test_tls_integration.py — Tier 2.4 live check: run the real TLSScanner against a" | kind=entity | source=probe/tests/test_tls_integration.py:L1 | neighbors=[test_tls_integration.py]
+- "tests_test_tls_integration_tlsserver_enter": ".__enter__()" | kind=code-symbol | source=probe/tests/test_tls_integration.py:L77 | neighbors=[_TLSServer]
+- "tests_test_tls_integration_tlsserver_exit": ".__exit__()" | kind=code-symbol | source=probe/tests/test_tls_integration.py:L81 | neighbors=[_TLSServer]
+- "tests_test_tls_integration_tlsserver_init": ".__init__()" | kind=code-symbol | source=probe/tests/test_tls_integration.py:L51 | neighbors=[_TLSServer]
+- "tests_test_tls_integration_tlsserver_serve": "._serve()" | kind=code-symbol | source=probe/tests/test_tls_integration.py:L63 | neighbors=[_TLSServer]
+- "tests_test_tls_legacy_versions_legacytlsserver_enter": ".__enter__()" | kind=code-symbol | source=probe/tests/test_tls_legacy_versions.py:L87 | neighbors=[_LegacyTLSServer]
+- "tests_test_tls_legacy_versions_legacytlsserver_exit": ".__exit__()" | kind=code-symbol | source=probe/tests/test_tls_legacy_versions.py:L91 | neighbors=[_LegacyTLSServer]
+- "tests_test_tls_legacy_versions_legacytlsserver_init": ".__init__()" | kind=code-symbol | source=probe/tests/test_tls_legacy_versions.py:L58 | neighbors=[_LegacyTLSServer]
+- "tests_test_tls_legacy_versions_legacytlsserver_serve": "._serve()" | kind=code-symbol | source=probe/tests/test_tls_legacy_versions.py:L73 | neighbors=[_LegacyTLSServer]
+- "tests_test_tls_legacy_versions_rationale_1": "test_tls_legacy_versions.py — the deprecated-TLS detection must measure the SERV" | kind=entity | source=probe/tests/test_tls_legacy_versions.py:L1 | neighbors=[test_tls_legacy_versions.py]
+- "tests_test_tls_legacy_versions_rationale_126": "A version the probe cannot OFFER is 'not tested', not 'server refused'." | kind=entity | source=probe/tests/test_tls_legacy_versions.py:L126 | neighbors=[test_try_version_reports_client_side_re…]
+- "tests_test_tls_legacy_versions_rationale_145": "When the probe genuinely cannot test a version, the result must say so     inste" | kind=entity | source=probe/tests/test_tls_legacy_versions.py:L145 | neighbors=[test_untested_versions_are_surfaced_in_…]
+- "tests_test_tls_legacy_versions_rationale_56": "A loopback server pinned to exactly one (legacy) TLS version." | kind=entity | source=probe/tests/test_tls_legacy_versions.py:L56 | neighbors=[_LegacyTLSServer]
+- "tests_test_tls_legacy_versions_rationale_98": "Skip rather than fail on a build with the legacy protocol compiled out." | kind=entity | source=probe/tests/test_tls_legacy_versions.py:L98 | neighbors=[_server_supports()]
+- "tests_test_tls_legacy_versions_test_try_version_reports_server_rejection_as_none": "test_try_version_reports_server_rejection_as_none()" | kind=code-symbol | source=probe/tests/test_tls_legacy_versions.py:L136 | neighbors=[test_tls_legacy_versions.py]
+- "tests_test_tls_port_coverage_rationale_1": "TLS branch coverage — the gap behind `tls_scan: invocations: 0`.  A real scan of" | kind=entity | source=probe/tests/test_tls_port_coverage.py:L1 | neighbors=[test_tls_port_coverage.py]
+- "tests_test_tls_port_coverage_rationale_39": "The drift that used to exist: spec allows a port the gate refuses." | kind=entity | source=probe/tests/test_tls_port_coverage.py:L39 | neighbors=[.test_branch_spec_matches_the_gate()]
+- "tests_test_tls_port_coverage_rationale_67": "Excluded on purpose — a bare ClientHello is the WRONG packet here." | kind=entity | source=probe/tests/test_tls_port_coverage.py:L67 | neighbors=[TestDeliberateExclusions]
 
 ## Instructions
 

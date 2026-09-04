@@ -1,4 +1,4 @@
-# Node Description Batch 85 of 330
+# Node Description Batch 85 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -17,6 +17,12 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
+- "tests_test_resolution_apply_finding": "_finding()" | kind=code-symbol | source=manager/backend/tests/test_resolution_apply.py:L16 | neighbors=[test_resolution_apply.py, test_covered_clean_medium_finding_is_au…, test_db_version_change_blocks_resolutio…, test_uncovered_finding_is_left_open()]
+- "tests_test_resolution_coverage": "test_resolution_coverage.py" | kind=code-symbol | source=manager/backend/tests/test_resolution_coverage.py:L1 | neighbors=[9a36729 feat(resolution): coverage buil…, test_coverage_counts_only_completed_sca…, test_coverage_empty_when_no_scanner_run…, test_host_of_strips_single_port()]
+- "tests_test_resolve": "test_resolve.py" | kind=code-symbol | source=probe/tests/test_resolve.py:L1 | neighbors=[dec1e7c fix(scanner): resolve() family …, _infos(), TestResolveFamily, test_resolve.py — resolve() address-fam…]
+- "tests_test_result_archive_testarchiveidentity_test_archived_json_equals_the_submitted_payload": ".test_archived_json_equals_the_submitted_payload()" | kind=code-symbol | source=probe/tests/test_result_archive.py:L67 | neighbors=[TestArchiveIdentity, _job(), _ok_result(), _runner()]
+- "tests_test_result_archive_testarchiveidentity_test_failure_envelopes_are_archived_too": ".test_failure_envelopes_are_archived_too()" | kind=code-symbol | source=probe/tests/test_result_archive.py:L98 | neighbors=[A rejected job is exactly the case an o…, TestArchiveIdentity, _job(), _runner()]
+- "tests_test_result_archive_testarchiveidentity_test_filename_is_result_plus_timestamp": ".test_filename_is_result_plus_timestamp()" | kind=code-symbol | source=probe/tests/test_result_archive.py:L83 | neighbors=[TestArchiveIdentity, _job(), _ok_result(), _runner()]
 - "tests_test_result_archive_testarchiveidentity_test_no_partial_files_are_left_behind": ".test_no_partial_files_are_left_behind()" | kind=code-symbol | source=probe/tests/test_result_archive.py:L120 | neighbors=[TestArchiveIdentity, _job(), _ok_result(), _runner()]
 - "tests_test_result_archive_testarchiveidentity_test_two_jobs_in_the_same_second_do_not_clobber": ".test_two_jobs_in_the_same_second_do_not_clobber()" | kind=code-symbol | source=probe/tests/test_result_archive.py:L112 | neighbors=[TestArchiveIdentity, _job(), _ok_result(), _runner()]
 - "tests_test_result_archive_testarchiveisbesteffort": "TestArchiveIsBestEffort" | kind=code-symbol | source=probe/tests/test_result_archive.py:L128 | neighbors=[test_result_archive.py, .test_default_location_is_the_probe_roo…, .test_empty_env_var_disables_archiving(), .test_unwritable_directory_does_not_fai…]
@@ -51,12 +57,6 @@ one-sentence description — no prose, no markdown fences.
 - "tests_test_sla_policy_testslapolicyroutes_test_get_custom_when_row_present": ".test_get_custom_when_row_present()" | kind=code-symbol | source=manager/backend/tests/test_sla_policy.py:L58 | neighbors=[TestSlaPolicyRoutes, _db(), _operator(), _row()]
 - "tests_test_smb_ldap_scanners_testldaptimeouttypes": "TestLDAPTimeoutTypes" | kind=code-symbol | source=probe/tests/test_smb_ldap_scanners.py:L135 | neighbors=[test_smb_ldap_scanners.py, ldap3 packs receive_timeout into a stru…, .test_receive_timeout_is_an_int(), .test_sub_second_timeout_does_not_floor…]
 - "tests_test_smb_ntlm_build_testntlmfingerprintframing": "TestNtlmFingerprintFraming" | kind=code-symbol | source=probe/tests/test_smb_ntlm_build.py:L79 | neighbors=[test_smb_ntlm_build.py, Regression: _recv_smb_frame STRIPS the …, .test_end_to_end_framing_extracts_build…, .test_ntlm_os_build_shared_function()]
-- "tests_test_smb_ntlm_build_testtype1andspnego": "TestType1AndSpnego" | kind=code-symbol | source=probe/tests/test_smb_ntlm_build.py:L143 | neighbors=[test_smb_ntlm_build.py, .test_session_setup_packet_shape(), .test_spnego_wraps_and_contains_type1(), .test_type1_sets_negotiate_version()]
-- "tests_test_smb_scanner_smb2_negotiate_response": "_smb2_negotiate_response()" | kind=code-symbol | source=probe/tests/test_smb_scanner.py:L5 | neighbors=[test_smb_scanner.py, test_signing_not_required(), test_signing_required_smb311(), test_signing_supported_field_present()]
-- "tests_test_smtp_scanner_testsmtpfindings_fact": "._fact()" | kind=code-symbol | source=probe/tests/test_smtp_scanner.py:L51 | neighbors=[TestSMTPFindings, .test_expn_alone_triggers_enum(), .test_hardened_is_silent(), .test_user_enum_and_no_starttls()]
-- "tests_test_smtp_scanner_testsmtpscanner": "TestSMTPScanner" | kind=code-symbol | source=probe/tests/test_smtp_scanner.py:L31 | neighbors=[test_smtp_scanner.py, ._sc(), .test_no_smtp_filtered(), .test_open()]
-- "tests_test_ssh_scanner_testnofalsepositives": "TestNoFalsePositives" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L271 | neighbors=[test_ssh_scanner.py, ._eval(), .test_ed25519_hostkey_is_clean(), .test_rsa_sha2_hostkeys_are_not_failure…]
-- "tests_test_ssh_scanner_testparsebanner": "TestParseBanner" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L51 | neighbors=[test_ssh_scanner.py, .test_dropbear_no_comments_from_bytes(), .test_openssh_with_comments(), .test_rejects_non_ssh()]
 
 ## Instructions
 

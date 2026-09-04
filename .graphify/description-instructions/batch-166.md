@@ -1,4 +1,4 @@
-# Node Description Batch 167 of 330
+# Node Description Batch 167 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -24,6 +24,25 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
+- "tests_test_two_tree_parity_test_no_unmirrored_scanner_files": "test_no_unmirrored_scanner_files()" | kind=code-symbol | source=probe/tests/test_two_tree_parity.py:L56 | neighbors=[test_two_tree_parity.py, A scanner that exists in only one tree …]
+- "tests_test_va_campaign_test_catalog_ids_are_unique_and_match_default_stages": "test_catalog_ids_are_unique_and_match_default_stages()" | kind=code-symbol | source=probe/tests/test_va_campaign.py:L222 | neighbors=[test_va_campaign.py, _scope()]
+- "tests_test_va_campaign_test_cli_view_deduplicates_unchanged_status": "test_cli_view_deduplicates_unchanged_status()" | kind=code-symbol | source=probe/tests/test_va_campaign.py:L311 | neighbors=[test_va_campaign.py, _Buf]
+- "tests_test_va_campaign_test_cli_view_emits_one_line_per_transition": "test_cli_view_emits_one_line_per_transition()" | kind=code-symbol | source=probe/tests/test_va_campaign.py:L298 | neighbors=[test_va_campaign.py, _Buf]
+- "tests_test_va_campaign_test_disabled_opt_in_stage_is_skipped_and_excluded_from_percent": "test_disabled_opt_in_stage_is_skipped_and_excluded_from_percent()" | kind=code-symbol | source=probe/tests/test_va_campaign.py:L80 | neighbors=[test_va_campaign.py, _run()]
+- "tests_test_va_campaign_test_enabled_opt_in_stage_runs": "test_enabled_opt_in_stage_runs()" | kind=code-symbol | source=probe/tests/test_va_campaign.py:L99 | neighbors=[test_va_campaign.py, _run()]
+- "tests_test_va_campaign_test_facts_accumulate_into_totals": "test_facts_accumulate_into_totals()" | kind=code-symbol | source=probe/tests/test_va_campaign.py:L137 | neighbors=[test_va_campaign.py, _run()]
+- "tests_test_va_campaign_test_gate_not_met_skips_stage": "test_gate_not_met_skips_stage()" | kind=code-symbol | source=probe/tests/test_va_campaign.py:L64 | neighbors=[test_va_campaign.py, _run()]
+- "tests_test_va_campaign_test_percent_and_current_stage_transitions": "test_percent_and_current_stage_transitions()" | kind=code-symbol | source=probe/tests/test_va_campaign.py:L175 | neighbors=[test_va_campaign.py, _reporter()]
+- "tests_test_va_campaign_test_progress_snapshot_shape": "test_progress_snapshot_shape()" | kind=code-symbol | source=probe/tests/test_va_campaign.py:L159 | neighbors=[test_va_campaign.py, _reporter()]
+- "tests_test_va_campaign_test_stage_error_is_isolated_not_fatal": "test_stage_error_is_isolated_not_fatal()" | kind=code-symbol | source=probe/tests/test_va_campaign.py:L119 | neighbors=[test_va_campaign.py, _run()]
+- "tests_test_va_campaign_test_stages_run_in_order_and_thread_context": "test_stages_run_in_order_and_thread_context()" | kind=code-symbol | source=probe/tests/test_va_campaign.py:L40 | neighbors=[test_va_campaign.py, _run()]
+- "tests_test_validation_endpoints_exec": "_exec()" | kind=code-symbol | source=manager/backend/tests/test_validation_endpoints.py:L28 | neighbors=[test_validation_endpoints.py, _mock_db()]
+- "tests_test_validation_gate_testnofabricatedicmpliveness": "TestNoFabricatedIcmpLiveness" | kind=code-symbol | source=probe/tests/test_validation_gate.py:L71 | neighbors=[test_validation_gate.py, .test_icmp_unavailable_os_observation_r…]
+- "tests_test_validation_gate_testnofabricatedicmpliveness_test_icmp_unavailable_os_observation_raises_no_exposure": ".test_icmp_unavailable_os_observation_raises_no_exposure()" | kind=code-symbol | source=probe/tests/test_validation_gate.py:L72 | neighbors=[TestNoFabricatedIcmpLiveness, _ids()]
+- "tests_test_validation_gate_testrdpnlagate_test_nla_enforced_suppresses_no_nla_finding": ".test_nla_enforced_suppresses_no_nla_finding()" | kind=code-symbol | source=probe/tests/test_validation_gate.py:L56 | neighbors=[TestRdpNlaGate, _ids()]
+- "tests_test_validation_gate_testrdpnlagate_test_positive_control_nla_off_is_flagged": ".test_positive_control_nla_off_is_flagged()" | kind=code-symbol | source=probe/tests/test_validation_gate.py:L62 | neighbors=[TestRdpNlaGate, _ids()]
+- "tests_test_validation_gate_testudpnoreplyrejected_test_open_filtered_amplifier_not_flagged": ".test_open_filtered_amplifier_not_flagged()" | kind=code-symbol | source=probe/tests/test_validation_gate.py:L36 | neighbors=[TestUdpNoReplyRejected, _ids()]
+- "tests_test_validation_gate_testudpnoreplyrejected_test_positive_control_answered_amplifier_is_flagged": ".test_positive_control_answered_amplifier_is_flagged()" | kind=code-symbol | source=probe/tests/test_validation_gate.py:L43 | neighbors=[TestUdpNoReplyRejected, _ids()]
 - "tests_test_validation_ingest_test_confirmed_never_overrides_human_closed_finding": "test_confirmed_never_overrides_human_closed_finding()" | kind=code-symbol | source=manager/backend/tests/test_validation_ingest.py:L55 | neighbors=[test_validation_ingest.py, _finding()]
 - "tests_test_validation_ingest_test_confirmed_raises_certainty": "test_confirmed_raises_certainty()" | kind=code-symbol | source=manager/backend/tests/test_validation_ingest.py:L32 | neighbors=[test_validation_ingest.py, _finding()]
 - "tests_test_validation_ingest_test_contradicted_marks_false_positive_without_touching_status": "test_contradicted_marks_false_positive_without_touching_status()" | kind=code-symbol | source=manager/backend/tests/test_validation_ingest.py:L40 | neighbors=[test_validation_ingest.py, _finding()]
@@ -45,25 +64,6 @@ one-sentence description — no prose, no markdown fences.
 - "tests_test_vnc_scanner_testvncscanner_test_no_auth_open": ".test_no_auth_open()" | kind=code-symbol | source=probe/tests/test_vnc_scanner.py:L38 | neighbors=[TestVNCScanner, ._sc()]
 - "tests_test_vnc_scanner_testvncscanner_test_no_vnc_filtered": ".test_no_vnc_filtered()" | kind=code-symbol | source=probe/tests/test_vnc_scanner.py:L46 | neighbors=[TestVNCScanner, ._sc()]
 - "tests_test_vuln_enrichment_rationale_1": "Unit tests for VulnEnrichmentService — all external HTTP calls mocked." | kind=entity | source=manager/backend/tests/test_vuln_enrichment.py:L1 | neighbors=[test_vuln_enrichment.py, VulnEnrichmentService]
-- "tests_test_vuln_enrichment_rationale_53": "Create a mock httpx.AsyncClient that returns different responses per URL." | kind=entity | source=manager/backend/tests/test_vuln_enrichment.py:L53 | neighbors=[_make_http_mock(), VulnEnrichmentService]
-- "tests_test_vuln_enrichment_test_check_cisa_kev_absent": "test_check_cisa_kev_absent()" | kind=code-symbol | source=manager/backend/tests/test_vuln_enrichment.py:L134 | neighbors=[test_vuln_enrichment.py, _make_http_mock()]
-- "tests_test_vuln_enrichment_test_check_cisa_kev_case_insensitive": "test_check_cisa_kev_case_insensitive()" | kind=code-symbol | source=manager/backend/tests/test_vuln_enrichment.py:L140 | neighbors=[test_vuln_enrichment.py, _make_http_mock()]
-- "tests_test_vuln_enrichment_test_check_cisa_kev_present": "test_check_cisa_kev_present()" | kind=code-symbol | source=manager/backend/tests/test_vuln_enrichment.py:L128 | neighbors=[test_vuln_enrichment.py, _make_http_mock()]
-- "tests_test_vuln_enrichment_test_enrich_full": "test_enrich_full()" | kind=code-symbol | source=manager/backend/tests/test_vuln_enrichment.py:L205 | neighbors=[test_vuln_enrichment.py, _make_http_mock()]
-- "tests_test_vuln_enrichment_test_fetch_epss_success": "test_fetch_epss_success()" | kind=code-symbol | source=manager/backend/tests/test_vuln_enrichment.py:L106 | neighbors=[test_vuln_enrichment.py, _make_http_mock()]
-- "tests_test_vuln_enrichment_test_fetch_mitre_from_nvd_references": "test_fetch_mitre_from_nvd_references()" | kind=code-symbol | source=manager/backend/tests/test_vuln_enrichment.py:L155 | neighbors=[test_vuln_enrichment.py, _make_http_mock()]
-- "tests_test_vuln_enrichment_test_fetch_nvd_caches_result": "test_fetch_nvd_caches_result()" | kind=code-symbol | source=manager/backend/tests/test_vuln_enrichment.py:L94 | neighbors=[test_vuln_enrichment.py, _make_http_mock()]
-- "tests_test_vuln_enrichment_test_fetch_nvd_success": "test_fetch_nvd_success()" | kind=code-symbol | source=manager/backend/tests/test_vuln_enrichment.py:L72 | neighbors=[test_vuln_enrichment.py, _make_http_mock()]
-- "tests_test_weakness_map_testclicorrelatemerges_test_correlate_includes_weakness_findings": ".test_correlate_includes_weakness_findings()" | kind=code-symbol | source=probe/tests/test_weakness_map.py:L189 | neighbors=[TestCliCorrelateMerges, _wrapped()]
-- "tests_test_weakness_map_testclicorrelatemerges_test_no_weakness_map_flag_disables_it": ".test_no_weakness_map_flag_disables_it()" | kind=code-symbol | source=probe/tests/test_weakness_map.py:L200 | neighbors=[TestCliCorrelateMerges, _wrapped()]
-- "tests_test_weakness_map_testcorrelateweaknesses_test_cve_absent_from_mirror_still_emitted_with_note": ".test_cve_absent_from_mirror_still_emitted_with_note()" | kind=code-symbol | source=probe/tests/test_weakness_map.py:L113 | neighbors=[TestCorrelateWeaknesses, _raw()]
-- "tests_test_weakness_map_testcorrelateweaknesses_test_exposure_boosts_risk": ".test_exposure_boosts_risk()" | kind=code-symbol | source=probe/tests/test_weakness_map.py:L82 | neighbors=[TestCorrelateWeaknesses, _raw()]
-- "tests_test_weakness_map_testcorrelateweaknesses_test_no_db_degrades_gracefully": ".test_no_db_degrades_gracefully()" | kind=code-symbol | source=probe/tests/test_weakness_map.py:L120 | neighbors=[TestCorrelateWeaknesses, _raw()]
-- "tests_test_weakness_map_testcorrelateweaknesses_test_obsolete_tls_both_when_both_offered": ".test_obsolete_tls_both_when_both_offered()" | kind=code-symbol | source=probe/tests/test_weakness_map.py:L104 | neighbors=[TestCorrelateWeaknesses, _raw()]
-- "tests_test_weakness_map_testcorrelateweaknesses_test_obsolete_tls_sslv2_only_drown": ".test_obsolete_tls_sslv2_only_drown()" | kind=code-symbol | source=probe/tests/test_weakness_map.py:L98 | neighbors=[TestCorrelateWeaknesses, _raw()]
-- "tests_test_weakness_map_testcorrelateweaknesses_test_obsolete_tls_sslv3_only_poodle": ".test_obsolete_tls_sslv3_only_poodle()" | kind=code-symbol | source=probe/tests/test_weakness_map.py:L92 | neighbors=[TestCorrelateWeaknesses, _raw()]
-- "tests_test_weakness_map_testcorrelateweaknesses_test_smbv1_maps_to_eternalblue_with_live_enrichment": ".test_smbv1_maps_to_eternalblue_with_live_enrichment()" | kind=code-symbol | source=probe/tests/test_weakness_map.py:L70 | neighbors=[TestCorrelateWeaknesses, _wrapped()]
-- "tests_test_weakness_map_testcorrelateweaknesses_test_sorted_by_risk_desc": ".test_sorted_by_risk_desc()" | kind=code-symbol | source=probe/tests/test_weakness_map.py:L130 | neighbors=[TestCorrelateWeaknesses, _raw()]
 
 ## Instructions
 

@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 
 from agent.agent import _load_or_create_identity, _obtain_identity
 from agent.engine import CAPABILITIES
-from agent.transport import Transport, TransportError
+from agent.transport import DEVICE_REFRESH_REJECTED, Transport, TransportError
 
 
 def _cached_transport():
@@ -13,6 +13,10 @@ def _cached_transport():
     transport.is_authenticated.return_value = True
     transport.agent_id = "cached-agent"
     transport.agent_token = "cached-token"
+    # A real base URL: the credential-diagnosis path calls
+    # manager_fingerprint(transport._base_url), which urlsplit()s it — a bare
+    # MagicMock attribute would blow up inside urllib, not in our code.
+    transport._base_url = "http://manager.test:8000"
     return transport
 
 
@@ -94,10 +98,10 @@ def test_rejected_cached_token_falls_back_to_idempotent_registration(load_identi
     transport.refresh_registration.side_effect = TransportError("expired")
     # Model the current _obtain_identity contract: when the agent token is
     # rejected, the probe first tries to renew its short-lived device access
-    # token. Only when THAT also fails and there is no device_refresh_secret to
-    # protect does it clear state and re-enroll. A bare MagicMock returns truthy
-    # for both, which would loop on the device-refresh branch forever.
-    transport.refresh_device_access.return_value = False
+    # token. Only when THAT is authoritatively REJECTED (not merely unavailable)
+    # and there is no device_refresh_secret to protect does it clear state and
+    # re-enroll. The refresh now reports WHY it failed via refresh_device_access_ex.
+    transport.refresh_device_access_ex.return_value = DEVICE_REFRESH_REJECTED
     transport.load_state.return_value = {}
     transport.register.return_value = {
         "agent_id": "refreshed-agent",

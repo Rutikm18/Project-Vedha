@@ -61,6 +61,18 @@ class DeviceAlreadyEnrolledError(TransportError):
     generic 'manager unreachable' path."""
 
 
+class EnrollmentRequestNotFound(TransportError):
+    """A poll/activate targeted an enrollment request the manager does not have
+    (HTTP 404). The request was spent, expired, purged, or the manager's
+    enrollment store was reset since it was created.
+
+    This is AUTHORITATIVE, not a network blip: the caller must DISCARD the stored
+    request_id/device_secret and create a fresh enrollment request. Retrying the
+    same dead id — the old behaviour, which misread the 404 as a transient
+    'connection error' — loops until the retry budget is exhausted and then lies
+    that the manager is unreachable."""
+
+
 # Heartbeat outcomes. A revoked lease is deliberately its own value: it is a
 # DEFINITIVE "stop working on this job" from the manager (operator cancel, or
 # reassignment after a lease expiry), whereas a plain failure may be transient.
@@ -417,6 +429,13 @@ class Transport:
             f"/probe-enrollment/requests/{request_id}/poll",
             json={"device_secret": device_secret},
         )
+        # 404 = this request is gone (spent/expired/purged, or the manager's
+        # enrollment store was reset). Authoritative, NOT a network blip — the
+        # caller must discard it and enroll afresh, not retry the dead id.
+        if response.status_code == 404:
+            raise EnrollmentRequestNotFound(
+                f"enrollment request {request_id} not found on the manager (HTTP 404)"
+            )
         response.raise_for_status()
         return response.json()
 
@@ -430,6 +449,13 @@ class Transport:
             f"/probe-enrollment/requests/{request_id}/activate",
             json={"device_secret": device_secret, "signature": signature},
         )
+        # An approved request that vanishes before activation (e.g. the manager
+        # was reset in the window between poll and activate) — same discard-and-
+        # re-enroll recovery as poll, not a transient error.
+        if response.status_code == 404:
+            raise EnrollmentRequestNotFound(
+                f"enrollment request {request_id} not found on activate (HTTP 404)"
+            )
         response.raise_for_status()
         data = response.json()
         from agent.device_identity import verify_site_policy

@@ -1,4 +1,4 @@
-# Node Description Batch 94 of 330
+# Node Description Batch 94 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -17,6 +17,10 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
+- "detection_engine_posture_rules_calibrate_host_findings": "_calibrate_host_findings()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L815 | neighbors=[posture_rules.py, detect_posture_traced(), Best-effort confidence calibration (laz…]
+- "detection_engine_posture_rules_detect_all": "detect_all()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L1091 | neighbors=[posture_rules.py, detect_posture(), Run posture detection across every asse…]
+- "detection_engine_posture_rules_detect_all_traced": "detect_all_traced()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L1076 | neighbors=[posture_rules.py, detect_posture_traced(), Traced counterpart of `detect_all` — fi…]
+- "detection_engine_posture_rules_evidence_ref": "_evidence_ref()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L761 | neighbors=[posture_rules.py, detect_exposed_services(), detect_posture_traced()]
 - "detection_engine_posture_rules_fact_indicates_no_service": "_fact_indicates_no_service()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L767 | neighbors=[posture_rules.py, evaluate_rule(), True when the scanner ran but the servi…]
 - "detection_engine_posture_rules_get_path": "get_path()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L70 | neighbors=[posture_rules.py, evaluate_rule(), Resolve `a.b.c` inside a Fact.data dict…]
 - "detection_engine_posture_rules_rdp_no_nla": "_rdp_no_nla()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L257 | neighbors=[posture_rules.py, Fires on EITHER of the rdp_scanner's tw…, _d()]
@@ -53,10 +57,6 @@ one-sentence description — no prose, no markdown fences.
 - "discovery_service_vuln_ssh_rules": "_ssh_rules()" | kind=code-symbol | source=manager/backend/app/discovery/service_vuln.py:L64 | neighbors=[service_vuln.py, create_service_vuln_findings(), SSH hygiene findings the CVE engine doe…]
 - "discovery_worker_discoveryworker_banner_grab_all": "._banner_grab_all()" | kind=code-symbol | source=manager/backend/app/discovery/worker.py:L149 | neighbors=[DiscoveryWorker, ._grab_one(), .run()]
 - "discovery_xml_parser_nmapxmlparser_parse_port": "._parse_port()" | kind=code-symbol | source=manager/backend/app/discovery/xml_parser.py:L114 | neighbors=[NmapXMLParser, ._parse_host(), ParsedPort]
-- "engagements_page_engagementspage": "EngagementsPage()" | kind=code-symbol | source=manager/frontend/app/engagements/page.tsx:L87 | neighbors=[page.tsx, hasValidDateRange(), splitEntries()]
-- "engine_tool_runners_hassystembinary": "hasSystemBinary()" | kind=code-symbol | source=manager/frontend/lib/engine/tool-runners.ts:L35 | neighbors=[tool-runners.ts, isWindows(), resolveBinPath()]
-- "engine_tool_runners_nativebannergrab": "nativeBannerGrab()" | kind=code-symbol | source=manager/frontend/lib/engine/tool-runners.ts:L303 | neighbors=[tool-runners.ts, httpBannerGrab(), tcpBannerGrab()]
-- "engine_tool_runners_resolvebinpath": "resolveBinPath()" | kind=code-symbol | source=manager/frontend/lib/engine/tool-runners.ts:L54 | neighbors=[tool-runners.ts, hasBinary(), hasSystemBinary()]
 
 ## Instructions
 

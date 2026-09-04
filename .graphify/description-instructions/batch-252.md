@@ -1,4 +1,4 @@
-# Node Description Batch 253 of 330
+# Node Description Batch 253 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,51 +19,53 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-Write every description in English (en). Do not switch languages.
+LANGUAGE: each entry has a `lang=` marker giving the language of its source.
+Write that entry's description in EXACTLY that language. Do not translate to
+a single common language — match each node's source language individually.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "scanner_service_enum_rationale_425": "Directly-connected subnets and default gateway(s) from the OS route table." | kind=entity | source=probe/scanner/service_enum.py:L425 | neighbors=[local_topology()]
-- "scanner_service_enum_rationale_466": "Connect to one port and read whatever it voluntarily advertises." | kind=entity | source=probe/scanner/service_enum.py:L466 | neighbors=[._probe_port()]
-- "scanner_service_enum_rationale_495": "Connect to one port and read whatever it voluntarily advertises." | kind=entity | source=probe/scanner/service_enum.py:L495 | neighbors=[._probe_port()]
-- "scanner_service_enum_reverse_dns": "reverse_dns()" | kind=code-symbol | source=probe/scanner/service_enum.py:L148 | neighbors=[service_enum.py]
-- "scanner_service_enum_serviceenumscanner_init": ".__init__()" | kind=code-symbol | source=probe/scanner/service_enum.py:L481 | neighbors=[ServiceEnumScanner]
-- "scanner_smb_enum_scanner_main": "main()" | kind=code-symbol | source=probe/scanner/smb_enum_scanner.py:L307 | neighbors=[smb_enum_scanner.py]
-- "scanner_smb_enum_scanner_rationale_1": "smb_enum_scanner.py — SMB null-session enumeration (VA checklist: anonymous info" | kind=entity | source=probe/scanner/smb_enum_scanner.py:L1 | neighbors=[smb_enum_scanner.py]
-- "scanner_smb_enum_scanner_rationale_103": "Enumerate domain/local users via the SAMR named pipe, reusing the null     sessi" | kind=entity | source=probe/scanner/smb_enum_scanner.py:L103 | neighbors=[_enum_users_samr()]
-- "scanner_smb_enum_scanner_rationale_149": "RID-cycling fallback via LSAT: resolve <DomainSID>-<rid> for each rid to a     n" | kind=entity | source=probe/scanner/smb_enum_scanner.py:L149 | neighbors=[_enum_users_ridcycle()]
-- "scanner_smb_enum_scanner_rationale_201": "Merge user lists, de-duplicated by (name, rid); SAMR entries win over RID     cy" | kind=entity | source=probe/scanner/smb_enum_scanner.py:L201 | neighbors=[_merge_users()]
-- "scanner_smb_enum_scanner_rationale_228": "Blocking: attempt a null session and enumerate what the server         volunteer" | kind=entity | source=probe/scanner/smb_enum_scanner.py:L228 | neighbors=[._enumerate()]
-- "scanner_smb_enum_scanner_rationale_53": "Parse 'a-b,c-d,e' into a sorted, de-duplicated, bounded list of RIDs.      Bound" | kind=entity | source=probe/scanner/smb_enum_scanner.py:L53 | neighbors=[parse_rid_ranges()]
-- "scanner_smb_enum_scanner_rationale_88": "List SMB shares over the null session. Read-only (share listing, no file     acc" | kind=entity | source=probe/scanner/smb_enum_scanner.py:L88 | neighbors=[_enum_shares()]
-- "scanner_smb_scanner_main": "main()" | kind=code-symbol | source=probe/scanner/smb_scanner.py:L452 | neighbors=[smb_scanner.py]
-- "scanner_smb_scanner_rationale_1": "smb_scanner.py — detect which SMB dialects a host supports.  METHOD (collection" | kind=entity | source=probe/scanner/smb_scanner.py:L1 | neighbors=[smb_scanner.py]
-- "scanner_smb_scanner_rationale_116": "NTLMSSP NEGOTIATE (Type-1). Sets NEGOTIATE_VERSION so the server discloses     i" | kind=entity | source=probe/scanner/smb_scanner.py:L116 | neighbors=[build_ntlmssp_negotiate()]
-- "scanner_smb_scanner_rationale_134": "Wrap an NTLMSSP Type-1 in a minimal SPNEGO NegTokenInit (GSS-API)." | kind=entity | source=probe/scanner/smb_scanner.py:L134 | neighbors=[_spnego_init()]
-- "scanner_smb_scanner_rationale_142": "Map an NT major.minor.build to a friendly release. Client and server share     s" | kind=entity | source=probe/scanner/smb_scanner.py:L142 | neighbors=[windows_release_from_build()]
-- "scanner_smb_scanner_rationale_177": "Parse an NTLMSSP CHALLENGE (Type-2) out of any containing buffer (SPNEGO or" | kind=entity | source=probe/scanner/smb_scanner.py:L177 | neighbors=[parse_ntlm_challenge()]
-- "scanner_smb_scanner_rationale_204": "SMB2 SESSION_SETUP request (MessageId 1, SessionId 0) carrying `security_blob`." | kind=entity | source=probe/scanner/smb_scanner.py:L204 | neighbors=[_smb2_session_setup()]
-- "scanner_smb_scanner_rationale_250": "Pad to the 8-byte boundary MS-SMB2 requires between negotiate contexts." | kind=entity | source=probe/scanner/smb_scanner.py:L250 | neighbors=[_align8()]
-- "scanner_smb_scanner_rationale_255": "SMB2_PREAUTH_INTEGRITY_CAPABILITIES (MS-SMB2 2.2.3.1.1): mandatory for any     c" | kind=entity | source=probe/scanner/smb_scanner.py:L255 | neighbors=[_preauth_integrity_context()]
-- "scanner_smb_scanner_rationale_266": "SMB2_ENCRYPTION_CAPABILITIES (MS-SMB2 2.2.3.1.2): offer AES-128-GCM/CCM so     t" | kind=entity | source=probe/scanner/smb_scanner.py:L266 | neighbors=[_encryption_context()]
-- "scanner_smb_scanner_rationale_317": "Read one length-prefixed (Direct-TCP/NBT) SMB frame in full, STRIPPING the     4" | kind=entity | source=probe/scanner/smb_scanner.py:L317 | neighbors=[_recv_smb_frame()]
-- "scanner_smb_scanner_rationale_338": "Pre-auth SMB2 NEGOTIATE → SESSION_SETUP → parse the NTLMSSP CHALLENGE Version" | kind=entity | source=probe/scanner/smb_scanner.py:L338 | neighbors=[ntlm_os_build()]
-- "scanner_smb_scanner_rationale_37": "Read signing posture from a SUCCESSFUL SMB2 NEGOTIATE response.      Wire layout" | kind=entity | source=probe/scanner/smb_scanner.py:L37 | neighbors=[parse_smb2_security_mode()]
-- "scanner_smb_scanner_rationale_370": "SMB negotiate against the first address that actually answers.          Walks ev" | kind=entity | source=probe/scanner/smb_scanner.py:L370 | neighbors=[._negotiate()]
-- "scanner_smb_scanner_rationale_39": "Read signing posture from a SUCCESSFUL SMB2 NEGOTIATE response.      Wire layout" | kind=entity | source=probe/scanner/smb_scanner.py:L39 | neighbors=[parse_smb2_security_mode()]
-- "scanner_smb_scanner_rationale_394": "Best-effort: SMB2 NEGOTIATE then a pre-auth SESSION_SETUP to harvest the" | kind=entity | source=probe/scanner/smb_scanner.py:L394 | neighbors=[._ntlm_fingerprint()]
-- "scanner_smb_scanner_smbscanner_init": ".__init__()" | kind=code-symbol | source=probe/scanner/smb_scanner.py:L365 | neighbors=[SMBScanner]
-- "scanner_smtp_scanner_main": "main()" | kind=code-symbol | source=probe/scanner/smtp_scanner.py:L147 | neighbors=[smtp_scanner.py]
-- "scanner_smtp_scanner_rationale_1": "smtp_scanner.py — SMTP hygiene: user enumeration + transport encryption (VA chec" | kind=entity | source=probe/scanner/smtp_scanner.py:L1 | neighbors=[smtp_scanner.py]
-- "scanner_smtp_scanner_rationale_40": "Extract EHLO capability tokens from a multi-line 250 response." | kind=entity | source=probe/scanner/smtp_scanner.py:L40 | neighbors=[parse_ehlo_capabilities()]
-- "scanner_smtp_scanner_rationale_52": "VRFY leaks usernames when it gives DIFFERENT definitive answers for an     exist" | kind=entity | source=probe/scanner/smtp_scanner.py:L52 | neighbors=[vrfy_leaks()]
-- "scanner_smtp_scanner_rationale_88": "Blocking: greeting → EHLO → STARTTLS/VRFY/EXPN checks. Monkeypatchable." | kind=entity | source=probe/scanner/smtp_scanner.py:L88 | neighbors=[._probe()]
-- "scanner_smtp_scanner_smtpscanner_init": ".__init__()" | kind=code-symbol | source=probe/scanner/smtp_scanner.py:L63 | neighbors=[SMTPScanner]
-- "scanner_snmp_scanner_main": "main()" | kind=code-symbol | source=probe/scanner/snmp_scanner.py:L401 | neighbors=[snmp_scanner.py]
-- "scanner_snmp_scanner_rationale_1": "snmp_scanner.py — full SNMP enumeration: community discovery, targeted MIB walk," | kind=entity | source=probe/scanner/snmp_scanner.py:L1 | neighbors=[snmp_scanner.py]
-- "scanner_snmp_scanner_rationale_105": "Shallow parse of BER TLVs starting at offset. Returns [(tag, value), ...]." | kind=entity | source=probe/scanner/snmp_scanner.py:L105 | neighbors=[_ber_parse()]
-- "scanner_snmp_scanner_rationale_127": "Extract (oid_dotted, value_tag, value_bytes) from a GET/GETNEXT/GETBULK response" | kind=entity | source=probe/scanner/snmp_scanner.py:L127 | neighbors=[_parse_varbinds()]
+- "scanner_scanner_base_rationale_837": "Run a scanner CLI's body with consistent, operator-friendly error handling." | kind=entity | source=probe/scanner/scanner_base.py:L837 | neighbors=[main_entrypoint()] | lang=en
+- "scanner_scanner_base_rationale_850": "`async_udp_probe` with bounded per-port retransmit.      Returns on the FIRST de" | kind=entity | source=probe/scanner/scanner_base.py:L850 | neighbors=[async_udp_probe_retry()] | lang=en
+- "scanner_scanner_base_rationale_86": "Current time as an AWARE datetime in the project timezone." | kind=entity | source=probe/scanner/scanner_base.py:L86 | neighbors=[project_now()] | lang=en
+- "scanner_scanner_base_rationale_865": "Wire argparse args into a scanner instance and execute it." | kind=entity | source=probe/scanner/scanner_base.py:L865 | neighbors=[run_cli()] | lang=en
+- "scanner_scanner_base_rationale_869": "Wrap an IPv6 literal in [] for a URL authority; leave v4/hostnames as-is.     'h" | kind=entity | source=probe/scanner/scanner_base.py:L869 | neighbors=[bracket_host()] | lang=en
+- "scanner_scanner_base_rationale_881": "Parse '22,80,443,8000-8100' into a sorted unique port list (1-65535)." | kind=entity | source=probe/scanner/scanner_base.py:L881 | neighbors=[parse_ports()] | lang=pt
+- "scanner_scanner_base_rationale_90": "Heuristic: is this host a tarpit / honeypot / ACK-everything middlebox?      Suc" | kind=entity | source=probe/scanner/scanner_base.py:L90 | neighbors=[assess_tarpit()] | lang=en
+- "scanner_scanner_base_rationale_91": "ISO-8601 instant in the project timezone: 2026-09-03T23:15:05+05:30." | kind=entity | source=probe/scanner/scanner_base.py:L91 | neighbors=[project_timestamp()] | lang=en
+- "scanner_scanner_base_rationale_917": "Writes ScanResult objects as JSONL to a file and/or stdout." | kind=entity | source=probe/scanner/scanner_base.py:L917 | neighbors=[ResultWriter] | lang=en
+- "scanner_scanner_base_rationale_947": "Subclasses implement `scan_target(self, target)` (async), returning a list     o" | kind=entity | source=probe/scanner/scanner_base.py:L947 | neighbors=[BaseScanner] | lang=pt
+- "scanner_scanner_base_rationale_96": "Compact project-local stamp for FILE and DIRECTORY names.      Deliberately carr" | kind=entity | source=probe/scanner/scanner_base.py:L96 | neighbors=[project_file_stamp()] | lang=en
+- "scanner_scanner_base_rationale_99": "Map a connect()/socket-time OSError to (state, reason).      DNS failures (``soc" | kind=entity | source=probe/scanner/scanner_base.py:L99 | neighbors=[classify_os_error()] | lang=en
+- "scanner_scanner_base_resultwriter_init": ".__init__()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L919 | neighbors=[ResultWriter] | lang=en
+- "scanner_scanner_base_scanresult_post_init": ".__post_init__()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L295 | neighbors=[ScanResult] | lang=en
+- "scanner_scanner_base_scopeguard_from_list": ".from_list()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L363 | neighbors=[ScopeGuard] | lang=en
+- "scanner_scanner_base_scopeguard_init": ".__init__()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L327 | neighbors=[ScopeGuard] | lang=en
+- "scanner_scanner_base_sendpacer_init": ".__init__()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L561 | neighbors=[SendPacer] | lang=en
+- "scanner_scanner_base_setup_logging": "setup_logging()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L1097 | neighbors=[scanner_base.py] | lang=en
+- "scanner_scanner_base_udpprobeprotocol_connection_lost": ".connection_lost()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L812 | neighbors=[_UDPProbeProtocol] | lang=en
+- "scanner_scanner_base_udpprobeprotocol_datagram_received": ".datagram_received()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L798 | neighbors=[_UDPProbeProtocol] | lang=en
+- "scanner_scanner_base_udpprobeprotocol_error_received": ".error_received()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L802 | neighbors=[_UDPProbeProtocol] | lang=en
+- "scanner_scanner_base_udpprobeprotocol_init": ".__init__()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L795 | neighbors=[_UDPProbeProtocol] | lang=en
+- "scanner_scanner_registry_info": "info()" | kind=code-symbol | source=probe/scanner/scanner_registry.py:L103 | neighbors=[scanner_registry.py] | lang=en
+- "scanner_scanner_registry_rationale_1": "scanner_registry.py — the single source of truth for WHICH scanners are trusted." | kind=entity | source=probe/scanner/scanner_registry.py:L1 | neighbors=[scanner_registry.py] | lang=en
+- "scanner_scanner_registry_rationale_108": "The scanner-module trust view: which scanners are verified vs experimental," | kind=entity | source=probe/scanner/scanner_registry.py:L108 | neighbors=[verification_report()] | lang=en
+- "scanner_scanner_registry_rationale_98": "True only for a scanner explicitly on the verified (trusted) list. Unknown     s" | kind=entity | source=probe/scanner/scanner_registry.py:L98 | neighbors=[is_verified()] | lang=en
+- "scanner_scanner_registry_scannerinfo": "ScannerInfo" | kind=code-symbol | source=probe/scanner/scanner_registry.py:L27 | neighbors=[scanner_registry.py] | lang=en
+- "scanner_service_banner_main": "main()" | kind=code-symbol | source=probe/scanner/service_banner.py:L530 | neighbors=[service_banner.py] | lang=en
+- "scanner_service_banner_rationale_1": "service_banner.py — grab service banners and identify the service behind a port." | kind=entity | source=probe/scanner/service_banner.py:L1 | neighbors=[service_banner.py] | lang=en
+- "scanner_service_banner_rationale_116": "One probe-ladder rung on its own connection. Returns banner bytes, b\"\"         (" | kind=entity | source=probe/scanner/service_banner.py:L116 | neighbors=[._rung()] | lang=en
+- "scanner_service_banner_rationale_130": "One probe-ladder rung on its own connection. Returns banner bytes, b\"\"         (" | kind=entity | source=probe/scanner/service_banner.py:L130 | neighbors=[._rung()] | lang=en
+- "scanner_service_banner_rationale_133": "One probe-ladder rung on its own connection. Returns banner bytes, b\"\"         (" | kind=entity | source=probe/scanner/service_banner.py:L133 | neighbors=[._rung()] | lang=en
+- "scanner_service_banner_rationale_236": "Soft-match collected bytes to {service, product, version}; None if unknown." | kind=entity | source=probe/scanner/service_banner.py:L236 | neighbors=[match_service()] | lang=en
+- "scanner_service_banner_rationale_268": "Pull status code, the identifying headers and the <title> out of an     HTTP/RTS" | kind=entity | source=probe/scanner/service_banner.py:L268 | neighbors=[parse_http_head()] | lang=en
+- "scanner_service_banner_rationale_349": "Read up to read_bytes: wait `first_wait` for the first segment, then         onl" | kind=entity | source=probe/scanner/service_banner.py:L349 | neighbors=[._read_some()] | lang=en
+- "scanner_service_banner_rationale_368": "One probe-ladder rung on its own connection. Returns (banner, extra):         ba" | kind=entity | source=probe/scanner/service_banner.py:L368 | neighbors=[._rung()] | lang=en
+- "scanner_service_banner_rationale_51": "A permissive client context for FINGERPRINTING only: no verification, any     ve" | kind=entity | source=probe/scanner/service_banner.py:L51 | neighbors=[_tls_context()] | lang=en
+- "scanner_service_banner_rationale_82": "Soft-match collected bytes to {service, product, version}; None if unknown." | kind=entity | source=probe/scanner/service_banner.py:L82 | neighbors=[match_service()] | lang=en
+- "scanner_service_banner_rationale_89": "Soft-match collected bytes to {service, product, version}; None if unknown." | kind=entity | source=probe/scanner/service_banner.py:L89 | neighbors=[match_service()] | lang=en
+- "scanner_service_banner_rationale_92": "Soft-match collected bytes to {service, product, version}; None if unknown." | kind=entity | source=probe/scanner/service_banner.py:L92 | neighbors=[match_service()] | lang=en
 
 ## Instructions
 

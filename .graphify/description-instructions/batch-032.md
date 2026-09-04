@@ -1,4 +1,4 @@
-# Node Description Batch 33 of 330
+# Node Description Batch 33 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -24,6 +24,12 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
+- "scanner_tls_fingerprint_one_probe": "_one_probe()" | kind=code-symbol | source=probe/scanner/tls_fingerprint.py:L262 | neighbors=[tls_fingerprint.py, fingerprint_host(), build_client_hello(), parse_server_hello(), _recv_first_record(), Send one crafted ClientHello, read + pa…]
+- "scanner_va_campaign_progressreporter_snapshot": ".snapshot()" | kind=code-symbol | source=probe/scanner/va_campaign.py:L246 | neighbors=[ProgressReporter, ._flush(), _now(), ._current(), ._eta_seconds(), ._percent()]
+- "scanner_windows_collector": "windows_collector.py" | kind=code-symbol | source=probe/scanner/windows_collector.py:L1 | neighbors=[d1b4dd3 trim frontend to 7 core pages; …, main(), _smb_registry_collect(), WindowsCollector, _winrm_collect(), windows_collector.py — credentialed (au…]
+- "scanner_windows_collector_windowscollector": "WindowsCollector" | kind=code-symbol | source=probe/scanner/windows_collector.py:L236 | neighbors=[windows_collector.py, ._collect_host(), ._full_user(), .__init__(), .run(), ._smb_result()]
+- "schemas_finding_findingpatch": "FindingPatch" | kind=code-symbol | source=manager/backend/app/schemas/finding.py:L21 | neighbors=[finding.py, BaseModel, .normalize_action_reason(), All fields optional — PATCH semantics., All fields optional — PATCH semantics., DetectionStatus]
+- "services_job_result_service_rationale_1": "job_result_service.py — shared job result processing. Single source of truth for" | kind=entity | source=manager/backend/app/services/job_result_service.py:L1 | neighbors=[job_result_service.py, Asset, AssetType, ScanJobStatus, ScanJob, ScanResult]
 - "services_job_result_service_rationale_140": "Upsert discovered hosts/services into the asset inventory.      Keyed by (engage" | kind=entity | source=manager/backend/app/services/job_result_service.py:L140 | neighbors=[Asset, Engagement, AssetType, ScanJobStatus, ScanJob, ScanResult]
 - "services_job_result_service_rationale_145": "Upsert discovered hosts/services into the asset inventory.      Keyed by (engage" | kind=entity | source=manager/backend/app/services/job_result_service.py:L145 | neighbors=[Asset, Engagement, AssetType, ScanJobStatus, ScanJob, ScanResult]
 - "services_job_result_service_rationale_35": "Process a scan job result.  Called from both HTTP and WebSocket paths.      Retu" | kind=entity | source=manager/backend/app/services/job_result_service.py:L35 | neighbors=[Asset, Engagement, AssetType, ScanJobStatus, ScanJob, ScanResult]
@@ -58,12 +64,6 @@ one-sentence description — no prose, no markdown fences.
 - "tests_test_installer_contract": "test_installer_contract.py" | kind=code-symbol | source=probe/tests/test_installer_contract.py:L1 | neighbors=[81c81cb feat: implement outbox reclaim …, b5ffcb0 Refactor Vedha probe installer …, _dry_run(), test_installer_accepts_enroll_token_and…, test_installer_rejects_missing_or_unkno…, test_installer_requires_only_manager_en…]
 - "tests_test_ipmi_scanner": "test_ipmi_scanner.py" | kind=code-symbol | source=probe/tests/test_ipmi_scanner.py:L1 | neighbors=[6e2818f Add support for additional serv…, scanner_base.py, _resp(), TestIPMIFindings, TestIPMIScanner, TestParity]
 - "tests_test_job_cancel_job": "_job()" | kind=code-symbol | source=manager/backend/tests/test_job_cancel.py:L45 | neighbors=[test_job_cancel.py, test_cancel_records_who_did_it(), test_missing_attempt_row_does_not_break…, test_open_attempt_is_closed_as_cancelle…, test_pending_job_is_cancelled_and_freed…, test_running_job_bumps_the_fence_to_abo…]
-- "tests_test_job_cancel_probe_testpollingnoiseissuppressed": "TestPollingNoiseIsSuppressed" | kind=code-symbol | source=probe/tests/test_job_cancel_probe.py:L73 | neighbors=[test_job_cancel_probe.py, The probe polls forever; routine transp…, ._configure(), .test_per_request_info_lines_are_suppre…, .test_probe_debug_restores_full_tracing…, .test_probe_own_narration_is_unaffected…]
-- "tests_test_main_scripts_vantage_r": "_r()" | kind=code-symbol | source=probe/tests/test_main_scripts_vantage.py:L12 | neighbors=[test_main_scripts_vantage.py, .test_ambiguous_when_only_open_filtered…, .test_auto_detects_external_by_name(), .test_explicit_external_vantage_by_name…, .test_external_exposure_is_flagged(), .test_internal_only_not_called_external…]
-- "tests_test_main_scripts_vantage_testreconcilevantages": "TestReconcileVantages" | kind=code-symbol | source=probe/tests/test_main_scripts_vantage.py:L16 | neighbors=[test_main_scripts_vantage.py, .test_ambiguous_when_only_open_filtered…, .test_auto_detects_external_by_name(), .test_explicit_external_vantage_by_name…, .test_external_exposure_is_flagged(), .test_internal_only_not_called_external…]
-- "tests_test_network_va_accuracy_listener": "_Listener" | kind=code-symbol | source=probe/tests/test_network_va_accuracy.py:L26 | neighbors=[test_network_va_accuracy.py, .__init__(), ._loop(), ._serve(), .start(), .stop()]
-- "tests_test_nuclei_background_sessionfactory": "_SessionFactory" | kind=code-symbol | source=manager/backend/tests/test_nuclei_background.py:L59 | neighbors=[test_nuclei_background.py, .__call__(), .__init__(), test_fatal_nuclei_error_marks_backgroun…, test_partial_nuclei_run_preserves_findi…, ScanJobStatus]
-- "tests_test_online_finding": "_finding()" | kind=code-symbol | source=probe/tests/test_online.py:L64 | neighbors=[test_online.py, A CVEFinding as the offline pass would …, .test_caches_per_cve_id(), .test_fail_open_leaves_offline_result_u…, .test_gap_fill_sets_cvss_and_recomputes…, .test_online_all_cross_checks_and_annot…]
 
 ## Instructions
 

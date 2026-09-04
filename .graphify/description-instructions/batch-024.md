@@ -1,4 +1,4 @@
-# Node Description Batch 25 of 330
+# Node Description Batch 25 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -17,6 +17,10 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
+- "main_scripts_rdp_scanner": "rdp_scanner.py" | kind=code-symbol | source=probe/main_scripts/rdp_scanner.py:L1 | neighbors=[22701ea Add tests for scanner parity an…, 26ea68c Add comprehensive tests for OS …, 8f6bf49 Refactor code structure and rem…, build_connection_request(), main(), parse_connection_confirm()]
+- "main_scripts_smb_scanner_ntlm_os_build": "ntlm_os_build()" | kind=code-symbol | source=probe/main_scripts/smb_scanner.py:L337 | neighbors=[smb_scanner.py, build_ntlmssp_negotiate(), _netbios_session(), parse_ntlm_challenge(), _recv_smb_frame(), _smb2_negotiate()]
+- "main_scripts_snmp_scanner_snmpscanner": "SNMPScanner" | kind=code-symbol | source=probe/main_scripts/snmp_scanner.py:L245 | neighbors=[snmp_scanner.py, Phase 1 (community discovery) + Phase 2…, BaseScanner, ._amplification_factor(), ._discover_community(), .__init__()]
+- "main_scripts_web_scanner": "web_scanner.py" | kind=code-symbol | source=probe/main_scripts/web_scanner.py:L1 | neighbors=[37376de hardening(scanner): OPSEC de-si…, 4d0377d Add unit tests for SMB scanner,…, 7a637eb feat: network VA accuracy, KEV …, f473173 merge: network VA accuracy, KEV…, _fetch(), main()]
 - "models_agent_recommendation_agentrecommendation": "AgentRecommendation" | kind=code-symbol | source=manager/backend/app/models/agent_recommendation.py:L34 | neighbors=[agent_recommendation.py, Base, TimestampMixin, AgentDecisionEngine, AgentUnavailableError, agent.py — AgentDecisionEngine: the age…]
 - "models_detection_config_detectionconfig": "DetectionConfig" | kind=code-symbol | source=manager/backend/app/models/detection_config.py:L10 | neighbors=[detection_config.py, Base, TimestampMixin, Per-engagement SIEM + EDR connection se…, Base, TimestampMixin]
 - "native_dns_recon": "dns-recon.ts" | kind=code-symbol | source=manager/frontend/lib/engine/native/dns-recon.ts:L1 | neighbors=[d1b4dd3 trim frontend to 7 core pages; …, tool-runners.ts, attemptZoneTransfer(), COMMON_SUBDOMAINS, DnsReconResult, nativeDnsRecon()]
@@ -53,10 +57,6 @@ one-sentence description — no prose, no markdown fences.
 - "tests_test_ai_normalizer_testproposecandidates": "TestProposeCandidates" | kind=code-symbol | source=manager/detection_engine/tests/test_ai_normalizer.py:L153 | neighbors=[test_ai_normalizer.py, .test_ai_assisted_flag_set_on_candidate…, .test_cache_hit_bypasses_client(), .test_client_failure_returns_empty(), .test_malformed_response_missing_produc…, .test_malformed_response_not_a_list_ret…]
 - "tests_test_attack_path_correlation_get": "_get()" | kind=code-symbol | source=manager/backend/tests/test_attack_path_correlation.py:L19 | neighbors=[test_attack_path_correlation.py, test_cleartext_cluster_needs_two(), test_device_role_from_facts_also_amplif…, test_exposed_db_with_unauth_is_critical…, test_legacy_windows_smbv1_plus_rdp(), test_ntlm_relay_high_when_smbv1_also_en…]
 - "tests_test_attack_paths_testneo4jclient": "TestNeo4jClient" | kind=code-symbol | source=manager/backend/tests/test_attack_paths.py:L220 | neighbors=[test_attack_paths.py, .test_run_without_connection_returns_em…, .test_run_write_noop_without_connection…, .test_sync_to_neo4j_noop_without_client…, PathAnalyzer, GraphBuilder]
-- "tests_test_auth_login_teststartupdiagnostics": "TestStartupDiagnostics" | kind=code-symbol | source=manager/backend/tests/test_auth_login.py:L251 | neighbors=[test_auth_login.py, .test_bcrypt_round_trip_passes(), .test_cookie_config_fatal_in_production…, .test_cookie_config_ok_in_development(), .test_database_check_returns_fatal_on_c…, .test_jwt_secret_known_weak_is_fatal()]
-- "tests_test_customer_access_operator": "_operator()" | kind=code-symbol | source=manager/backend/tests/test_customer_access.py:L23 | neighbors=[test_customer_access.py, .test_approve_dispatches_job_and_links_…, .test_approve_non_pending_is_conflict(), .test_approve_without_assigned_agent_is…, .test_assigns_agent_to_engagement(), .test_unknown_agent_is_404()]
-- "tests_test_cve_correlation_testcorrelate": "TestCorrelate" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L167 | neighbors=[test_cve_correlation.py, .test_backport_banner_downgrades_confid…, .test_clean_banner_stays_medium(), .test_dedup_by_cve_target_port(), .test_exposed_top_finding(), .test_facts_without_cpe_ignored()]
-- "tests_test_cve_correlation_testversion": "TestVersion" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L34 | neighbors=[test_cve_correlation.py, .test_compare(), .test_in_range_end_exclusive(), .test_in_range_exact(), .test_in_range_start_inclusive(), .test_in_range_unconstrained_is_false()]
 
 ## Instructions
 

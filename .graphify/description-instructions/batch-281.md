@@ -1,4 +1,4 @@
-# Node Description Batch 282 of 330
+# Node Description Batch 282 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -26,46 +26,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_hw_bind_testgethwid_test_deterministic_within_session": ".test_deterministic_within_session()" | kind=code-symbol | source=probe/tests/test_hw_bind.py:L17 | neighbors=[TestGetHwId] | lang=en
-- "tests_test_hw_bind_testgethwid_test_returns_32_hex_chars": ".test_returns_32_hex_chars()" | kind=code-symbol | source=probe/tests/test_hw_bind.py:L12 | neighbors=[TestGetHwId] | lang=en
-- "tests_test_installer_contract_test_installer_rejects_missing_or_unknown_arguments": "test_installer_rejects_missing_or_unknown_arguments()" | kind=code-symbol | source=probe/tests/test_installer_contract.py:L31 | neighbors=[test_installer_contract.py] | lang=en
-- "tests_test_installer_contract_test_installer_requires_only_manager_endpoint_in_dry_run": "test_installer_requires_only_manager_endpoint_in_dry_run()" | kind=code-symbol | source=probe/tests/test_installer_contract.py:L11 | neighbors=[test_installer_contract.py] | lang=en
-- "tests_test_installer_contract_test_installer_source_has_no_human_or_job_credentials": "test_installer_source_has_no_human_or_job_credentials()" | kind=code-symbol | source=probe/tests/test_installer_contract.py:L49 | neighbors=[test_installer_contract.py] | lang=en
-- "tests_test_integration_rationale_1": "Integration tests — full probe lifecycles exercised through the public APIs of a" | kind=entity | source=probe/tests/test_integration.py:L1 | neighbors=[test_integration.py] | lang=en
-- "tests_test_integration_rationale_101": "Phase 4 + Phase 1: TaskRunner receives encrypted scope and decrypts it." | kind=entity | source=probe/tests/test_integration.py:L101 | neighbors=[TestTaskRunnerWithEncryptedScope] | lang=en
-- "tests_test_integration_rationale_104": "Job carries encrypted_scope → TaskRunner decrypts → uses it." | kind=entity | source=probe/tests/test_integration.py:L104 | neighbors=[.test_decrypts_encrypted_scope_from_job…] | lang=en
-- "tests_test_integration_rationale_136": "Wrong key → decryption fails → graceful fallback to params scope." | kind=entity | source=probe/tests/test_integration.py:L136 | neighbors=[.test_falls_back_when_decryption_fails()] | lang=en
-- "tests_test_integration_rationale_166": "Phase 1: combined scope validation (validate + excludes)." | kind=entity | source=probe/tests/test_integration.py:L166 | neighbors=[TestScopeValidationPipeline] | lang=en
-- "tests_test_integration_rationale_198": "Phase 1: result spool with upload retry." | kind=entity | source=probe/tests/test_integration.py:L198 | neighbors=[TestResultSpoolWithRetry] | lang=en
-- "tests_test_integration_rationale_239": "Phase 4 + Phase 1: Transport sends public_key during registration." | kind=entity | source=probe/tests/test_integration.py:L239 | neighbors=[TestTransportWithIdentity] | lang=en
-- "tests_test_integration_rationale_260": "Backward compat: registration without public_key is fine." | kind=entity | source=probe/tests/test_integration.py:L260 | neighbors=[.test_register_without_public_key()] | lang=en
-- "tests_test_integration_rationale_274": "Phase 2: WebSocket message parsing." | kind=entity | source=probe/tests/test_integration.py:L274 | neighbors=[TestWebSocketMessageProtocol] | lang=en
-- "tests_test_integration_rationale_312": "End-to-end: identity → register → job → decrypt → validate → scan → submit." | kind=entity | source=probe/tests/test_integration.py:L312 | neighbors=[TestFullJobLifecycle] | lang=en
-- "tests_test_integration_rationale_315": "Simulate the full probe lifecycle from identity to result submission." | kind=entity | source=probe/tests/test_integration.py:L315 | neighbors=[.test_complete_flow_with_encrypted_scop…] | lang=en
-- "tests_test_integration_rationale_383": "All targets outside scope → job is rejected cleanly." | kind=entity | source=probe/tests/test_integration.py:L383 | neighbors=[.test_job_rejected_all_targets_out_of_s…] | lang=en
-- "tests_test_integration_rationale_409": "OT passive profile resolves correctly." | kind=entity | source=probe/tests/test_integration.py:L409 | neighbors=[.test_job_ot_passive_profile()] | lang=en
-- "tests_test_integration_rationale_42": "Return a minimal valid scan result (no real network I/O)." | kind=entity | source=probe/tests/test_integration.py:L42 | neighbors=[_fake_run_scan()] | lang=pt
-- "tests_test_integration_rationale_432": "Phase 5: startup gauntlet checks." | kind=entity | source=probe/tests/test_integration.py:L432 | neighbors=[TestStartupGauntlet] | lang=en
-- "tests_test_integration_rationale_435": "With LICENSE_ENFORCED=false, gauntlet returns None." | kind=entity | source=probe/tests/test_integration.py:L435 | neighbors=[.test_gauntlet_skips_in_dev_mode()] | lang=en
-- "tests_test_integration_rationale_443": "Wrong HW fingerprint blocks startup." | kind=entity | source=probe/tests/test_integration.py:L443 | neighbors=[.test_gauntlet_hw_bind_blocks()] | lang=en
-- "tests_test_integration_rationale_65": "Phase 4: identity generation + scope encryption roundtrip." | kind=entity | source=probe/tests/test_integration.py:L65 | neighbors=[TestIdentityAndEncryption] | lang=en
-- "tests_test_integration_rationale_68": "Generate identity → encrypt scope → decrypt scope." | kind=entity | source=probe/tests/test_integration.py:L68 | neighbors=[.test_full_identity_lifecycle()] | lang=en
-- "tests_test_integration_rationale_79": "Manager encrypts → probe decrypts." | kind=entity | source=probe/tests/test_integration.py:L79 | neighbors=[.test_scope_encryption_roundtrip()] | lang=en
-- "tests_test_integration_rationale_92": "A different probe cannot decrypt scope meant for another probe." | kind=entity | source=probe/tests/test_integration.py:L92 | neighbors=[.test_different_key_cannot_decrypt()] | lang=en
-- "tests_test_integration_testresultspoolwithretry_test_spool_persists_and_flushes": ".test_spool_persists_and_flushes()" | kind=code-symbol | source=probe/tests/test_integration.py:L200 | neighbors=[TestResultSpoolWithRetry] | lang=en
-- "tests_test_integration_testresultspoolwithretry_test_submit_exhausts_retries": ".test_submit_exhausts_retries()" | kind=code-symbol | source=probe/tests/test_integration.py:L227 | neighbors=[TestResultSpoolWithRetry] | lang=en
-- "tests_test_integration_testresultspoolwithretry_test_submit_retries_on_failure": ".test_submit_retries_on_failure()" | kind=code-symbol | source=probe/tests/test_integration.py:L216 | neighbors=[TestResultSpoolWithRetry] | lang=en
-- "tests_test_integration_testscopevalidationpipeline_test_accepts_in_scope_rejects_out_of_scope": ".test_accepts_in_scope_rejects_out_of_scope()" | kind=code-symbol | source=probe/tests/test_integration.py:L168 | neighbors=[TestScopeValidationPipeline] | lang=en
-- "tests_test_integration_testscopevalidationpipeline_test_all_excluded_returns_empty": ".test_all_excluded_returns_empty()" | kind=code-symbol | source=probe/tests/test_integration.py:L190 | neighbors=[TestScopeValidationPipeline] | lang=en
-- "tests_test_integration_testscopevalidationpipeline_test_excludes_override_scope": ".test_excludes_override_scope()" | kind=code-symbol | source=probe/tests/test_integration.py:L174 | neighbors=[TestScopeValidationPipeline] | lang=en
-- "tests_test_integration_testscopevalidationpipeline_test_merge_exclusions_deduplicates": ".test_merge_exclusions_deduplicates()" | kind=code-symbol | source=probe/tests/test_integration.py:L184 | neighbors=[TestScopeValidationPipeline] | lang=en
-- "tests_test_integration_testtransportwithidentity_test_register_sends_public_key": ".test_register_sends_public_key()" | kind=code-symbol | source=probe/tests/test_integration.py:L241 | neighbors=[TestTransportWithIdentity] | lang=en
-- "tests_test_integration_testwebsocketmessageprotocol_test_heartbeat_message": ".test_heartbeat_message()" | kind=code-symbol | source=probe/tests/test_integration.py:L306 | neighbors=[TestWebSocketMessageProtocol] | lang=en
-- "tests_test_integration_testwebsocketmessageprotocol_test_hello_message": ".test_hello_message()" | kind=code-symbol | source=probe/tests/test_integration.py:L276 | neighbors=[TestWebSocketMessageProtocol] | lang=en
-- "tests_test_integration_testwebsocketmessageprotocol_test_job_push_message": ".test_job_push_message()" | kind=code-symbol | source=probe/tests/test_integration.py:L280 | neighbors=[TestWebSocketMessageProtocol] | lang=en
-- "tests_test_integration_testwebsocketmessageprotocol_test_result_message": ".test_result_message()" | kind=code-symbol | source=probe/tests/test_integration.py:L294 | neighbors=[TestWebSocketMessageProtocol] | lang=en
-- "tests_test_integrations_rationale_1": "test_integrations.py — operator notification-integration config (item 3)." | kind=entity | source=manager/backend/tests/test_integrations.py:L1 | neighbors=[test_integrations.py] | lang=en
-- "tests_test_ipmi_scanner_rationale_1": "test_ipmi_scanner.py — IPMI 2.0 cipher-zero auth-bypass detection.  Byte-exact R" | kind=entity | source=probe/tests/test_ipmi_scanner.py:L1 | neighbors=[test_ipmi_scanner.py] | lang=en
+- "tests_test_ftp_scanner_testparity_test_main_scripts": ".test_main_scripts()" | kind=code-symbol | source=probe/tests/test_ftp_scanner.py:L76 | neighbors=[TestParity] | lang=en
+- "tests_test_ftp_scanner_testpurelogic_test_banner_software": ".test_banner_software()" | kind=code-symbol | source=probe/tests/test_ftp_scanner.py:L23 | neighbors=[TestPureLogic] | lang=en
+- "tests_test_ftp_scanner_testpurelogic_test_parse_pasv": ".test_parse_pasv()" | kind=code-symbol | source=probe/tests/test_ftp_scanner.py:L19 | neighbors=[TestPureLogic] | lang=en
+- "tests_test_host_discovery_mobile_rationale_1": "Pure-logic tests for the ARP/MAC/mobile-detection helpers in host_discovery. No" | kind=entity | source=probe/tests/test_host_discovery_mobile.py:L1 | neighbors=[test_host_discovery_mobile.py] | lang=en
+- "tests_test_host_discovery_mobile_testdevicehint_test_iphone_lockdownd_port": ".test_iphone_lockdownd_port()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L53 | neighbors=[TestDeviceHint] | lang=en
+- "tests_test_host_discovery_mobile_testdevicehint_test_mobile_vendor": ".test_mobile_vendor()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L59 | neighbors=[TestDeviceHint] | lang=en
+- "tests_test_host_discovery_mobile_testdevicehint_test_no_signal": ".test_no_signal()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L65 | neighbors=[TestDeviceHint] | lang=en
+- "tests_test_host_discovery_mobile_testdevicehint_test_plain_vendor_passthrough": ".test_plain_vendor_passthrough()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L62 | neighbors=[TestDeviceHint] | lang=en
+- "tests_test_host_discovery_mobile_testdevicehint_test_randomized_mac_is_mobile": ".test_randomized_mac_is_mobile()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L56 | neighbors=[TestDeviceHint] | lang=en
+- "tests_test_host_discovery_mobile_testlocallyadministered_test_globally_unique_macs": ".test_globally_unique_macs()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L39 | neighbors=[TestLocallyAdministered] | lang=en
+- "tests_test_host_discovery_mobile_testlocallyadministered_test_randomized_phone_macs": ".test_randomized_phone_macs()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L33 | neighbors=[TestLocallyAdministered] | lang=en
+- "tests_test_host_discovery_mobile_testnormalizemac_test_extracts_from_arp_line": ".test_extracts_from_arp_line()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L17 | neighbors=[TestNormalizeMac] | lang=en
+- "tests_test_host_discovery_mobile_testnormalizemac_test_lowercases": ".test_lowercases()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L14 | neighbors=[TestNormalizeMac] | lang=en
+- "tests_test_host_discovery_mobile_testnormalizemac_test_rejects_broadcast": ".test_rejects_broadcast()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L21 | neighbors=[TestNormalizeMac] | lang=en
+- "tests_test_host_discovery_mobile_testnormalizemac_test_rejects_garbage": ".test_rejects_garbage()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L27 | neighbors=[TestNormalizeMac] | lang=en
+- "tests_test_host_discovery_mobile_testnormalizemac_test_rejects_multicast": ".test_rejects_multicast()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L24 | neighbors=[TestNormalizeMac] | lang=en
+- "tests_test_host_discovery_mobile_testnormalizemac_test_zero_pads_octets": ".test_zero_pads_octets()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L10 | neighbors=[TestNormalizeMac] | lang=en
+- "tests_test_host_discovery_mobile_testvendorlookup_test_known_oui": ".test_known_oui()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L45 | neighbors=[TestVendorLookup] | lang=en
+- "tests_test_host_discovery_mobile_testvendorlookup_test_unknown_oui": ".test_unknown_oui()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L48 | neighbors=[TestVendorLookup] | lang=en
+- "tests_test_host_discovery_udp_closed_udp_port": "_closed_udp_port()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L110 | neighbors=[test_host_discovery_udp.py] | lang=en
+- "tests_test_host_discovery_udp_no_neighbor": "no_neighbor()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L120 | neighbors=[test_host_discovery_udp.py] | lang=en
+- "tests_test_host_discovery_udp_rationale_1": "test_host_discovery_udp.py — the unprivileged UDP liveness tier + name facts.  C" | kind=entity | source=probe/tests/test_host_discovery_udp.py:L1 | neighbors=[test_host_discovery_udp.py] | lang=en
+- "tests_test_host_discovery_udp_rationale_233": "A RST mid-handshake (ConnectionResetError) is the target's stack talking." | kind=entity | source=probe/tests/test_host_discovery_udp.py:L233 | neighbors=[test_tcp_reset_counts_as_proof_of_life()] | lang=en
+- "tests_test_host_discovery_udp_rationale_25": "Build a NetBIOS node-status response (RFC 1002 §4.2.18)." | kind=entity | source=probe/tests/test_host_discovery_udp.py:L25 | neighbors=[_nbstat_reply()] | lang=pt
+- "tests_test_host_discovery_udp_rationale_252": "On-LAN INCOMPLETE/FAILED = nobody owns the address right now; spending     datag" | kind=entity | source=probe/tests/test_host_discovery_udp.py:L252 | neighbors=[test_udp_tier_skipped_when_arp_definiti…] | lang=en
+- "tests_test_host_discovery_udp_responder_connection_made": ".connection_made()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L95 | neighbors=[_Responder] | lang=en
+- "tests_test_host_discovery_udp_responder_datagram_received": ".datagram_received()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L98 | neighbors=[_Responder] | lang=en
+- "tests_test_host_discovery_udp_responder_init": ".__init__()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L91 | neighbors=[_Responder] | lang=en
+- "tests_test_host_discovery_udp_scanner": "_scanner()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L124 | neighbors=[test_host_discovery_udp.py] | lang=en
+- "tests_test_host_discovery_udp_test_icmp_unreachable_from_closed_port_proves_stack_is_up": "test_icmp_unreachable_from_closed_port_proves_stack_is_up()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L155 | neighbors=[test_host_discovery_udp.py] | lang=en
+- "tests_test_host_discovery_udp_test_reverse_dns_name_recorded_and_becomes_alias": "test_reverse_dns_name_recorded_and_becomes_alias()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L206 | neighbors=[test_host_discovery_udp.py] | lang=en
+- "tests_test_host_discovery_udp_test_udp_tier_skipped_when_neighbor_vouches": "test_udp_tier_skipped_when_neighbor_vouches()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L187 | neighbors=[test_host_discovery_udp.py] | lang=en
+- "tests_test_host_discovery_udp_test_udp_tier_skipped_when_tcp_proves_life": "test_udp_tier_skipped_when_tcp_proves_life()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L166 | neighbors=[test_host_discovery_udp.py] | lang=en
+- "tests_test_host_discovery_udp_testfusewithudp_test_icmp_unreachable_alone": ".test_icmp_unreachable_alone()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L68 | neighbors=[TestFuseWithUdp] | lang=en
+- "tests_test_host_discovery_udp_testfusewithudp_test_no_signals_unchanged": ".test_no_signals_unchanged()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L82 | neighbors=[TestFuseWithUdp] | lang=en
+- "tests_test_host_discovery_udp_testfusewithudp_test_tcp_plus_udp_corroborate": ".test_tcp_plus_udp_corroborate()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L74 | neighbors=[TestFuseWithUdp] | lang=en
+- "tests_test_host_discovery_udp_testfusewithudp_test_udp_reply_alone_is_confirmed_alive": ".test_udp_reply_alone_is_confirmed_alive()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L60 | neighbors=[TestFuseWithUdp] | lang=en
+- "tests_test_host_discovery_udp_testparsenbstat_test_not_a_response": ".test_not_a_response()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L48 | neighbors=[TestParseNbstat] | lang=en
+- "tests_test_host_health_rationale_1": "test_host_health.py — mid-scan target-offline detection.  The interesting cases" | kind=entity | source=probe/tests/test_host_health.py:L1 | neighbors=[test_host_health.py] | lang=en
+- "tests_test_host_health_rationale_122": "One false alarm must not disable the check for the rest of the scan." | kind=entity | source=probe/tests/test_host_health.py:L122 | neighbors=[.test_flaky_host_can_be_suspected_again…] | lang=en
 
 ## Instructions
 

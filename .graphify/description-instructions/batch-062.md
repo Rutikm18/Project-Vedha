@@ -1,4 +1,4 @@
-# Node Description Batch 63 of 330
+# Node Description Batch 63 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -17,6 +17,13 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
+- "tests_test_e2e_engagement_to_findings_vulnerable_host_facts": "_vulnerable_host_facts()" | kind=code-symbol | source=probe/tests/test_e2e_engagement_to_findings.py:L137 | neighbors=[test_e2e_engagement_to_findings.py, Exactly what the probe's smb/port scann…, test_correlated_findings_cite_their_bas…, test_manager_correlation_finds_all_thre…, test_ntlm_relay_is_high_when_smbv1_pres…]
+- "tests_test_engagement_validation": "test_engagement_validation.py" | kind=code-symbol | source=manager/backend/tests/test_engagement_validation.py:L1 | neighbors=[1fe16c8 stable but some dead code, need…, test_create_normalizes_name_scopes_and_…, test_create_rejects_invalid_scope_entri…, test_create_rejects_reversed_date_range…, test_update_rejects_blank_name_invalid_…]
+- "tests_test_exploitability_testapplytofindings_test_declared_severity_is_never_rewritten": ".test_declared_severity_is_never_rewritten()" | kind=code-symbol | source=manager/detection_engine/tests/test_exploitability.py:L119 | neighbors=[Severity is the rule's judgement of the…, TestApplyToFindings, _epss(), _finding(), _kev()]
+- "tests_test_exploitability_testapplytofindings_test_idempotent_across_repeated_application": ".test_idempotent_across_repeated_application()" | kind=code-symbol | source=manager/detection_engine/tests/test_exploitability.py:L162 | neighbors=[The pipeline may enrich the same findin…, TestApplyToFindings, _epss(), _finding(), _kev()]
+- "tests_test_fact_contract_load_corpus": "_load_corpus()" | kind=code-symbol | source=manager/detection_engine/tests/test_fact_contract.py:L27 | neighbors=[test_fact_contract.py, _ingest_corpus(), test_corpus_is_present_and_nonempty(), test_every_rule_input_is_emitted_by_its…, test_report_unconsumed_evidence()]
+- "tests_test_finding_section": "test_finding_section.py" | kind=code-symbol | source=probe/tests/test_finding_section.py:L1 | neighbors=[26ea68c Add comprehensive tests for OS …, findings.py, TestFindingSection, TestScannerRegistry, test_finding_section.py — the scanner-m…]
+- "tests_test_ftp_scanner_testftpfindings": "TestFTPFindings" | kind=code-symbol | source=probe/tests/test_ftp_scanner.py:L53 | neighbors=[test_ftp_scanner.py, ._fact(), .test_anon_denied_is_silent(), .test_anon_login_only_is_medium(), .test_anon_read_is_high()]
 - "tests_test_ftp_scanner_testftpscanner": "TestFTPScanner" | kind=code-symbol | source=probe/tests/test_ftp_scanner.py:L28 | neighbors=[test_ftp_scanner.py, ._sc(), .test_anon_login_and_read_open(), .test_ftp_present_anon_denied_open_but_…, .test_no_ftp_filtered()]
 - "tests_test_host_discovery_udp_nbstat_reply": "_nbstat_reply()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L24 | neighbors=[test_host_discovery_udp.py, Build a NetBIOS node-status response (R…, test_netbios_reply_proves_life_and_name…, .test_msbrowse_control_chars_dropped(), .test_names_hostname_domain_mac()]
 - "tests_test_host_discovery_udp_responder": "_Responder" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L90 | neighbors=[test_host_discovery_udp.py, .connection_made(), .datagram_received(), .__init__(), _udp_server()]
@@ -50,13 +57,6 @@ one-sentence description — no prose, no markdown fences.
 - "tests_test_online_testclionlineflag": "TestCliOnlineFlag" | kind=code-symbol | source=probe/tests/test_online.py:L180 | neighbors=[test_online.py, ._db(), ._facts(), .test_no_online_flag_skips_enrichment(), .test_online_flag_invokes_enrichment()]
 - "tests_test_online_testlookupnvd": "TestLookupNvd" | kind=code-symbol | source=probe/tests/test_online.py:L77 | neighbors=[test_online.py, .test_empty_result_is_none(), .test_garbage_json_is_fail_open(), .test_network_error_is_fail_open(), .test_parses_score_severity_refs()]
 - "tests_test_online_testlookupvulners": "TestLookupVulners" | kind=code-symbol | source=probe/tests/test_online.py:L100 | neighbors=[test_online.py, .test_error_is_none(), .test_exploit_present_is_true(), .test_no_exploit_is_false(), .test_no_key_returns_none()]
-- "tests_test_os_fingerprint_testacceptechoreply_reply": "._reply()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L170 | neighbors=[TestAcceptEchoReply, .test_accepts_echo_reply_from_target(), .test_accepts_when_source_unknown(), .test_rejects_non_echo_type(), .test_rejects_reply_from_a_different_ho…]
-- "tests_test_os_fingerprint_testicmpbuilders": "TestIcmpBuilders" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L37 | neighbors=[test_os_fingerprint.py, .test_address_mask_request_type(), .test_echo_payload_preserved(), .test_echo_request_type_and_checksum(), .test_timestamp_request_type()]
-- "tests_test_os_fingerprint_testicmpparse": "TestIcmpParse" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L62 | neighbors=[test_os_fingerprint.py, ._ip_icmp(), .test_parse_extracts_ttl_and_type(), .test_parse_raw_icmp_without_ip_header(), .test_parse_rejects_short()]
-- "tests_test_os_fingerprint_testicmptimestamps": "TestIcmpTimestamps" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L95 | neighbors=[test_os_fingerprint.py, .test_parse_datagram_delivery_has_no_tt…, .test_parse_extracts_ttl_and_transmit(), .test_parse_rejects_short_body(), ._ts_reply()]
-- "tests_test_os_fingerprint_testsmbbuildenrichment": "TestSmbBuildEnrichment" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L328 | neighbors=[test_os_fingerprint.py, ._scanner(), .test_build_lifts_ttl_only_guess_to_aut…, .test_no_smb_leaves_ttl_only_result_unt…, .test_smb_build_can_be_disabled()]
-- "tests_test_os_stage_wiring_testgate": "TestGate" | kind=code-symbol | source=probe/tests/test_os_stage_wiring.py:L36 | neighbors=[test_os_stage_wiring.py, .test_alive_host_is_eligible(), .test_dead_host_is_not(), .test_no_open_ports_still_eligible(), .test_passive_profile_never_probes()]
-- "tests_test_os_stage_wiring_testplan": "TestPlan" | kind=code-symbol | source=probe/tests/test_os_stage_wiring.py:L52 | neighbors=[test_os_stage_wiring.py, .test_full_assessment_includes_it(), .test_not_planned_for_a_udp_only_job(), .test_not_planned_for_liveness_only(), .test_os_stage_planned_from_the_port_st…]
 
 ## Instructions
 

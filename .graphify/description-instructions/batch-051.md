@@ -1,4 +1,4 @@
-# Node Description Batch 52 of 330
+# Node Description Batch 52 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -17,6 +17,13 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
+- "tests_test_ssh_scanner_testsshstatustaxonomy": "TestSSHStatusTaxonomy" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L339 | neighbors=[test_ssh_scanner.py, ._scanner(), .test_confirmed_ssh_open_with_parsed_ba…, .test_connect_failure_is_filtered(), .test_open_but_no_banner_is_open_not_ss…, .test_open_non_ssh_is_open_not_filtered…]
+- "tests_test_stage2_reconcile_cm": "_CM" | kind=code-symbol | source=manager/backend/tests/test_stage2_reconcile.py:L168 | neighbors=[test_stage2_reconcile.py, .__aenter__(), .__aexit__(), .__init__(), test_reap_stale_runs_marks_running_as_f…, test_write_heartbeat_upserts()]
+- "tests_test_stage2_reconcile_test_multi_agent_all_covered_is_complete": "test_multi_agent_all_covered_is_complete()" | kind=code-symbol | source=manager/backend/tests/test_stage2_reconcile.py:L113 | neighbors=[test_stage2_reconcile.py, _job(), _rows(), _run(), _scalars(), _user()]
+- "tests_test_stage2_reconcile_test_multi_agent_latest_done_but_earlier_uncovered_is_detecting": "test_multi_agent_latest_done_but_earlier_uncovered_is_detecting()" | kind=code-symbol | source=manager/backend/tests/test_stage2_reconcile.py:L90 | neighbors=[test_stage2_reconcile.py, _job(), _rows(), _run(), _scalars(), _user()]
+- "tests_test_stage2_reconcile_test_stale_heartbeat_with_pending_is_stalled_before_overdue": "test_stale_heartbeat_with_pending_is_stalled_before_overdue()" | kind=code-symbol | source=manager/backend/tests/test_stage2_reconcile.py:L229 | neighbors=[test_stage2_reconcile.py, _hb(), _job(), _rows(), _scalars(), _user()]
+- "tests_test_syn_scanner_testoptionparsing": "TestOptionParsing" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L304 | neighbors=[test_syn_scanner.py, .test_malformed_options_never_raise(), .test_mss_absent_returns_none(), .test_mss_after_nop_padding(), .test_mss_extracted(), .test_mss_skips_other_options()]
+- "tests_test_tarpit_testassesstarpit": "TestAssessTarpit" | kind=code-symbol | source=probe/tests/test_tarpit.py:L17 | neighbors=[test_tarpit.py, .test_boundary_floor_and_ratio_trip_exa…, .test_busy_real_host_is_not_flagged(), .test_nearly_all_open_large_scan_is_fla…, .test_tiny_all_open_scan_is_below_the_f…, .test_zero_attempted_is_safe()]
 - "tests_test_tier1_correlations_run": "_run()" | kind=code-symbol | source=probe/tests/test_tier1_correlations.py:L13 | neighbors=[test_tier1_correlations.py, test_anon_data_exposure_cluster(), test_mgmt_plane_exposed_on_cipher_zero_…, test_mgmt_plane_needs_two_when_no_ciphe…, test_single_anon_finding_does_not_corre…, test_user_enum_plus_weak_auth()]
 - "tests_test_tls_fingerprint": "test_tls_fingerprint.py" | kind=code-symbol | source=probe/tests/test_tls_fingerprint.py:L1 | neighbors=[4d0377d Add unit tests for SMB scanner,…, _synthetic_server_hello(), TestClientHello, TestDigest, TestParseServerHello, test_tls_fingerprint.py — Tier 2.3: act…]
 - "tests_test_tls_posture": "test_tls_posture.py" | kind=code-symbol | source=probe/tests/test_tls_posture.py:L1 | neighbors=[4d0377d Add unit tests for SMB scanner,…, tls_scanner.py, _modern(), TestClassifyCipher, TestGradeTlsPosture, test_tls_posture.py — Tier 2.4: cipher-…]
@@ -50,13 +57,6 @@ one-sentence description — no prose, no markdown fences.
 - "workflow_host_health_hosthealthmonitor_watch": ".watch()" | kind=code-symbol | source=probe/workflow/host_health.py:L255 | neighbors=[HostHealthMonitor, _heartbeat_interval(), _heartbeat_misses(), .is_offline(), ._mark_offline(), Heartbeat a host for as long as it is b…]
 - "workflow_report": "report.py" | kind=code-symbol | source=probe/workflow/report.py:L1 | neighbors=[d1b4dd3 trim frontend to 7 core pages; …, asset_to_dict(), diff_assets(), engagement_summary(), report.py — JSON-safe Asset serializati…, 298a9d4 trim frontend to 7 core pages; …]
 - "ad_adcs": "adcs.py" | kind=code-symbol | source=manager/backend/app/ad/adcs.py:L1 | neighbors=[ADCSChecker, CertTemplate, ADCSChecker — Active Directory Certific…, d1b4dd3 trim frontend to 7 core pages; …, 298a9d4 trim frontend to 7 core pages; …]
-- "ad_kerberoast": "kerberoast.py" | kind=code-symbol | source=manager/backend/app/ad/kerberoast.py:L1 | neighbors=[KerberoastChecker, KerberoastChecker — find SPN-bearing ac…, cac022c Everything is done and verified…, d1b4dd3 trim frontend to 7 core pages; …, 298a9d4 trim frontend to 7 core pages; …]
-- "ad_ldap_enum_ldapenumerator_attr": "._attr()" | kind=code-symbol | source=manager/backend/app/ad/ldap_enum.py:L204 | neighbors=[LDAPEnumerator, .get_aces(), .get_computers(), .get_groups(), .get_users()]
-- "ad_ldap_enum_ldapenumerator_get_groups": ".get_groups()" | kind=code-symbol | source=manager/backend/app/ad/ldap_enum.py:L266 | neighbors=[LDAPEnumerator, ADGroup, _as_list(), ._attr(), ._search()]
-- "ad_ldap_enum_ldapenumerator_search": "._search()" | kind=code-symbol | source=manager/backend/app/ad/ldap_enum.py:L193 | neighbors=[LDAPEnumerator, .get_computers(), .get_groups(), .get_users(), ._require_conn()]
-- "agent_agent_is_local_manager_url": "_is_local_manager_url()" | kind=code-symbol | source=probe/agent/agent.py:L66 | neighbors=[agent.py, main(), Recognize only explicit single-host dev…, Recognize only explicit single-host dev…, Recognize only explicit single-host dev…]
-- "agent_agent_manager_reachable": "_manager_reachable()" | kind=code-symbol | source=probe/agent/agent.py:L166 | neighbors=[agent.py, _classify_connection_error(), GET /health. Returns (ok, human-detail)…, _wait_for_manager(), GET /health. Returns (ok, human-detail)…]
-- "agent_agent_result_summary": "_result_summary()" | kind=code-symbol | source=probe/agent/agent.py:L116 | neighbors=[agent.py, main(), One-line, transparent summary of what a…, _ws_run_job(), One-line, transparent summary of what a…]
 
 ## Instructions
 

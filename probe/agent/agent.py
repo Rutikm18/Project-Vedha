@@ -45,6 +45,7 @@ from agent.transport import (
     HEARTBEAT_LEASE_REVOKED,
     HEARTBEAT_OK,
     DeviceAlreadyEnrolledError,
+    EnrollmentRequestNotFound,
     Transport,
     TransportError,
     manager_fingerprint,
@@ -142,6 +143,17 @@ def _classify_connection_error(exc: Exception, url: str) -> tuple[str, str]:
     host = url.split("://", 1)[-1].split("/", 1)[0] if "://" in url else url
     s = str(exc).lower()
     tname = type(exc).__name__.lower()
+    # An HTTP status error means the manager ANSWERED and rejected the request —
+    # a server/API fault, never a network one. Classify it by its code so we
+    # never again call an HTTP 4xx/5xx a "connection error" (which sent the probe
+    # into a 12x retry against a manager that was replying all along).
+    _resp = getattr(exc, "response", None)
+    _code = getattr(_resp, "status_code", None)
+    if _code is not None:
+        return (f"manager returned HTTP {_code}",
+                f"The manager at {host} answered but rejected the request "
+                f"(HTTP {_code}). This is a manager-side/API fault, not the "
+                f"network — check the manager logs, not the firewall.")
     if "timed out" in s or "timeout" in tname:
         return ("connection timed out",
                 f"A firewall/security-group is likely DROPPING traffic to {host}. "
@@ -1146,8 +1158,14 @@ def _enroll_device(
     signing_public_key: str,
     encryption_public_key: str,
     probe_name: str,
+    _recreate_budget: int = 3,
 ) -> dict:
-    """Request UI approval, poll, prove key possession, and activate."""
+    """Request UI approval, poll, prove key possession, and activate.
+
+    `_recreate_budget` bounds how many times a stored enrollment request that the
+    manager 404s (spent/expired/purged) may be discarded and re-created before we
+    give up — so a manager that keeps losing requests fails loudly instead of
+    looping, while an ordinary stale request self-heals on the next attempt."""
     from agent.device_identity import sign_b64
     from agent.engine import CAPABILITIES
 
@@ -1293,6 +1311,36 @@ def _enroll_device(
                 transport.update_state(remove=("enrollment_request_id", "enrollment_device_secret"))
                 raise TransportError(f"Enrollment {state_name}: {response.get('reason', '')}".strip())
             raise RuntimeError(f"unexpected enrollment state: {state_name}")
+        except EnrollmentRequestNotFound as exc:
+            # The request we were polling is GONE on the manager (spent, expired,
+            # purged, or the manager's enrollment store was reset). This is the
+            # bug that surfaced as "connection error … retrying [n/12]" then a
+            # false "Manager unreachable": a 404 is authoritative, so discard the
+            # dead request and create a fresh one instead of retrying the id.
+            transport.update_state(remove=("enrollment_request_id", "enrollment_device_secret"))
+            if _recreate_budget <= 0:
+                say("")
+                say("═" * 58)
+                say("  ENROLLMENT FAILED — manager keeps losing the request")
+                say("═" * 58)
+                say("  The manager accepted enrollment requests but then reported")
+                say("  them missing (HTTP 404) repeatedly. This points at the")
+                say("  manager side, not the network:")
+                say("   • its probe-enrollment service / Redis was reset mid-flight, or")
+                say("   • requests are evicted faster than approval completes, or")
+                say("   • it is load-balanced across instances with a non-shared store.")
+                say("═" * 58)
+                raise SystemExit(2) from exc
+            say("Stored enrollment request no longer exists on the manager — "
+                f"starting a fresh enrollment ({_recreate_budget} attempt(s) left).")
+            return _enroll_device(
+                transport,
+                signing_private_key=signing_private_key,
+                signing_public_key=signing_public_key,
+                encryption_public_key=encryption_public_key,
+                probe_name=probe_name,
+                _recreate_budget=_recreate_budget - 1,
+            )
         except TransportError:
             raise
         except SystemExit:

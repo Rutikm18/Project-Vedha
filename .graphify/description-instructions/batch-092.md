@@ -1,4 +1,4 @@
-# Node Description Batch 93 of 330
+# Node Description Batch 93 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -24,6 +24,10 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
+- "detection_engine_ai_normalizer_rationale_1": "ai_normalizer.py — Phase 2: AI normalization assist, gated by deterministic look" | kind=entity | source=manager/detection_engine/ai_normalizer.py:L1 | neighbors=[ai_normalizer.py, CPECandidate, Fact]
+- "detection_engine_ai_normalizer_rationale_124": "Test double — a fixed lookup table, no network. Used to validate the     surroun" | kind=entity | source=manager/detection_engine/ai_normalizer.py:L124 | neighbors=[FakeAIClient, CPECandidate, Fact]
+- "detection_engine_ai_normalizer_rationale_170": "True iff the real NVD CPE dictionary has at least one entry for this     vendor:" | kind=entity | source=manager/detection_engine/ai_normalizer.py:L170 | neighbors=[validate_cpe_exists(), CPECandidate, Fact]
+- "detection_engine_ai_normalizer_rationale_207": "The raw observable text worth sending to the AI normalizer for this     Fact's s" | kind=entity | source=manager/detection_engine/ai_normalizer.py:L207 | neighbors=[extract_raw_text(), CPECandidate, Fact]
 - "detection_engine_ai_normalizer_rationale_233": "The Phase 2 entry point. raw_text is whatever observed string the     rule-based" | kind=entity | source=manager/detection_engine/ai_normalizer.py:L233 | neighbors=[propose_candidates(), CPECandidate, Fact]
 - "detection_engine_ai_normalizer_rationale_90": "Returns a list of {\"vendor\", \"product\", \"version\"} dicts —         exactly the v" | kind=entity | source=manager/detection_engine/ai_normalizer.py:L90 | neighbors=[.propose_cpe(), CPECandidate, Fact]
 - "detection_engine_ai_normalizer_rationale_97": "Real implementation, gated behind the anthropic SDK + an API key.     Forces the" | kind=entity | source=manager/detection_engine/ai_normalizer.py:L97 | neighbors=[AnthropicAIClient, CPECandidate, Fact]
@@ -60,10 +64,6 @@ one-sentence description — no prose, no markdown fences.
 - "detection_engine_pipeline_run_full_detection": "run_full_detection()" | kind=code-symbol | source=manager/detection_engine/pipeline.py:L123 | neighbors=[pipeline.py, Unified detection over one set of inges…, run_pipeline()]
 - "detection_engine_posture_confidence_calibrate_host_findings": "calibrate_host_findings()" | kind=code-symbol | source=manager/detection_engine/posture_confidence.py:L119 | neighbors=[posture_confidence.py, assess_confidence(), Second pass over ONE host's posture fin…]
 - "detection_engine_posture_confidence_corroborating_chains": "corroborating_chains()" | kind=code-symbol | source=manager/detection_engine/posture_confidence.py:L68 | neighbors=[posture_confidence.py, assess_confidence(), Chains this rule belongs to where ≥1 OT…]
-- "detection_engine_posture_rules_calibrate_host_findings": "_calibrate_host_findings()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L815 | neighbors=[posture_rules.py, detect_posture_traced(), Best-effort confidence calibration (laz…]
-- "detection_engine_posture_rules_detect_all": "detect_all()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L1091 | neighbors=[posture_rules.py, detect_posture(), Run posture detection across every asse…]
-- "detection_engine_posture_rules_detect_all_traced": "detect_all_traced()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L1076 | neighbors=[posture_rules.py, detect_posture_traced(), Traced counterpart of `detect_all` — fi…]
-- "detection_engine_posture_rules_evidence_ref": "_evidence_ref()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L761 | neighbors=[posture_rules.py, detect_exposed_services(), detect_posture_traced()]
 
 ## Instructions
 

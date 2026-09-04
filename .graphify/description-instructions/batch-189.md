@@ -1,4 +1,4 @@
-# Node Description Batch 190 of 330
+# Node Description Batch 190 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -26,46 +26,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "dashboard_posturescorecard_delta": "Delta()" | kind=code-symbol | source=manager/frontend/components/dashboard/PostureScorecard.tsx:L45 | neighbors=[PostureScorecard.tsx] | lang=en
-- "dashboard_posturescorecard_dial": "Dial()" | kind=code-symbol | source=manager/frontend/components/dashboard/PostureScorecard.tsx:L57 | neighbors=[PostureScorecard.tsx] | lang=en
-- "dashboard_posturescorecard_grade": "GRADE" | kind=code-symbol | source=manager/frontend/components/dashboard/PostureScorecard.tsx:L44 | neighbors=[PostureScorecard.tsx] | lang=en
-- "dashboard_posturescorecard_grade_color": "GRADE_COLOR" | kind=code-symbol | source=manager/frontend/components/dashboard/PostureScorecard.tsx:L39 | neighbors=[PostureScorecard.tsx] | lang=en
-- "dashboard_posturescorecard_metrictile": "MetricTile()" | kind=code-symbol | source=manager/frontend/components/dashboard/PostureScorecard.tsx:L95 | neighbors=[PostureScorecard.tsx] | lang=en
-- "dashboard_posturescorecard_posture": "Posture" | kind=code-symbol | source=manager/frontend/components/dashboard/PostureScorecard.tsx:L29 | neighbors=[PostureScorecard.tsx] | lang=en
-- "dashboard_posturescorecard_readout": "Readout()" | kind=code-symbol | source=manager/frontend/components/dashboard/PostureScorecard.tsx:L82 | neighbors=[PostureScorecard.tsx] | lang=en
-- "dashboard_posturescorecard_scores": "Scores" | kind=code-symbol | source=manager/frontend/components/dashboard/PostureScorecard.tsx:L23 | neighbors=[PostureScorecard.tsx] | lang=en
-- "dashboard_posturescorecard_statcard": "StatCard()" | kind=code-symbol | source=manager/frontend/components/dashboard/PostureScorecard.tsx:L55 | neighbors=[PostureScorecard.tsx] | lang=en
-- "dashboard_slastatus_sev": "Sev" | kind=code-symbol | source=manager/frontend/components/dashboard/SlaStatus.tsx:L17 | neighbors=[SlaStatus.tsx] | lang=en
-- "dashboard_slastatus_sev_style": "SEV_STYLE" | kind=code-symbol | source=manager/frontend/components/dashboard/SlaStatus.tsx:L37 | neighbors=[SlaStatus.tsx] | lang=en
-- "dashboard_slastatus_slaitem": "SlaItem" | kind=code-symbol | source=manager/frontend/components/dashboard/SlaStatus.tsx:L33 | neighbors=[SlaStatus.tsx] | lang=en
-- "dashboard_slastatus_slastate": "SlaState" | kind=code-symbol | source=manager/frontend/components/dashboard/SlaStatus.tsx:L31 | neighbors=[SlaStatus.tsx] | lang=en
-- "dashboard_slastatus_slasummary": "SlaSummary" | kind=code-symbol | source=manager/frontend/components/dashboard/SlaStatus.tsx:L38 | neighbors=[SlaStatus.tsx] | lang=en
-- "dashboard_slastatus_state": "STATE" | kind=code-symbol | source=manager/frontend/components/dashboard/SlaStatus.tsx:L43 | neighbors=[SlaStatus.tsx] | lang=en
-- "dashboard_slastatus_state_color": "STATE_COLOR" | kind=code-symbol | source=manager/frontend/components/dashboard/SlaStatus.tsx:L30 | neighbors=[SlaStatus.tsx] | lang=en
-- "dashboard_slastatus_statecell": "StateCell()" | kind=code-symbol | source=manager/frontend/components/dashboard/SlaStatus.tsx:L83 | neighbors=[SlaStatus.tsx] | lang=en
-- "dashboard_slastatus_summarycell": "SummaryCell()" | kind=code-symbol | source=manager/frontend/components/dashboard/SlaStatus.tsx:L61 | neighbors=[SlaStatus.tsx] | lang=en
-- "declarativebase": "DeclarativeBase" | kind=code-symbol | neighbors=[Base] | lang=en
-- "detection_active_validation_rationale_1": "active_validation.py — manager-side decision core for safe active validation.  P" | kind=entity | source=manager/backend/app/detection/active_validation.py:L1 | neighbors=[active_validation.py] | lang=en
-- "detection_active_validation_rationale_18": "True iff this finding warrants an approval-gated active re-check.     Escalate o" | kind=entity | source=manager/backend/app/detection/active_validation.py:L18 | neighbors=[should_escalate()] | lang=en
-- "detection_active_validation_rationale_41": "Map a probe safe-check result to a verdict transition. Anything that isn't     a" | kind=entity | source=manager/backend/app/detection/active_validation.py:L41 | neighbors=[interpret_validation()] | lang=pt
-- "detection_attack_paths_bump": "_bump()" | kind=code-symbol | source=manager/backend/app/detection/attack_paths.py:L45 | neighbors=[attack_paths.py] | lang=en
-- "detection_attack_paths_cleartext_cluster": "_cleartext_cluster()" | kind=code-symbol | source=manager/backend/app/detection/attack_paths.py:L202 | neighbors=[attack_paths.py] | lang=en
-- "detection_attack_paths_hostsignals_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/detection/attack_paths.py:L65 | neighbors=[_HostSignals] | lang=en
-- "detection_attack_paths_rationale_1": "attack_paths.py — manager-native composite correlation over raw probe facts.  Th" | kind=entity | source=manager/backend/app/detection/attack_paths.py:L1 | neighbors=[attack_paths.py] | lang=en
-- "detection_attack_paths_rationale_125": "Fold in a persisted device role (from a prior device_inventory scan)." | kind=entity | source=manager/backend/app/detection/attack_paths.py:L125 | neighbors=[.finalize()] | lang=en
-- "detection_attack_paths_rationale_222": "B3: an exposed datastore with unauthenticated access = direct data breach." | kind=entity | source=manager/backend/app/detection/attack_paths.py:L222 | neighbors=[_exposed_db_unauth()] | lang=en
-- "detection_attack_paths_rationale_243": "B3: a default SNMP community on network gear = topology/creds for lateral moveme" | kind=entity | source=manager/backend/app/detection/attack_paths.py:L243 | neighbors=[_snmp_public_lateral()] | lang=en
-- "detection_attack_paths_rationale_276": "Correlate composite attack paths from raw probe facts.      `device_roles` maps" | kind=entity | source=manager/backend/app/detection/attack_paths.py:L276 | neighbors=[attack_path_findings()] | lang=en
-- "detection_attack_paths_rationale_63": "The weaknesses observed on ONE host, distilled from its facts." | kind=entity | source=manager/backend/app/detection/attack_paths.py:L63 | neighbors=[_HostSignals] | lang=en
-- "detection_correlator_detectioncorrelator_compute_coverage": ".compute_coverage()" | kind=code-symbol | source=manager/backend/app/detection/correlator.py:L181 | neighbors=[DetectionCorrelator] | lang=en
-- "detection_correlator_detectioncorrelator_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/detection/correlator.py:L96 | neighbors=[DetectionCorrelator] | lang=en
-- "detection_correlator_rationale_238": "Normalise naive datetimes to UTC so comparisons never raise." | kind=entity | source=manager/backend/app/detection/correlator.py:L238 | neighbors=[_aware()] | lang=en
-- "detection_edr_build_edr_engine": "build_edr_engine()" | kind=code-symbol | source=manager/backend/app/detection/edr.py:L235 | neighbors=[edr.py] | lang=en
-- "detection_edr_edrdetection_is_prevented": ".is_prevented()" | kind=code-symbol | source=manager/backend/app/detection/edr.py:L43 | neighbors=[EDRDetection] | lang=en
-- "detection_edr_edrqueryengine_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/detection/edr.py:L65 | neighbors=[EDRQueryEngine] | lang=en
-- "detection_edr_edrqueryengine_query_detections": ".query_detections()" | kind=code-symbol | source=manager/backend/app/detection/edr.py:L70 | neighbors=[EDRQueryEngine] | lang=en
-- "detection_edr_rationale_1": "EDR query engines — abstract interface + CrowdStrike Falcon / Microsoft Defender" | kind=entity | source=manager/backend/app/detection/edr.py:L1 | neighbors=[edr.py] | lang=en
-- "detection_edr_rationale_141": "Microsoft Defender via the Graph Security API ``/security/alerts_v2``.     confi" | kind=entity | source=manager/backend/app/detection/edr.py:L141 | neighbors=[MicrosoftDefender] | lang=en
+- "cve_online_rationale_1": "online.py — OPT-IN live enrichment for CVE findings.  The offline mirror (vulndb" | kind=entity | source=probe/cve/online.py:L1 | neighbors=[online.py] | lang=en
+- "cve_online_rationale_134": "Enrich CVE findings in place from live sources and return the same list.      `o" | kind=entity | source=probe/cve/online.py:L134 | neighbors=[enrich_findings()] | lang=en
+- "cve_online_rationale_175": "Fold one CVE's live result into a finding. FILLS a missing CVSS (and     recompu" | kind=entity | source=probe/cve/online.py:L175 | neighbors=[_apply()] | lang=pt
+- "cve_online_rationale_215": "Recover whether the exposure boost was applied, so a re-scored (gap-filled)" | kind=entity | source=probe/cve/online.py:L215 | neighbors=[_was_exposed()] | lang=en
+- "cve_online_rationale_52": "What a live lookup could establish for one CVE (any field may be None when     t" | kind=entity | source=probe/cve/online.py:L52 | neighbors=[OnlineResult] | lang=en
+- "cve_online_rationale_68": "Query live NVD 2.0 for one CVE. Returns an OnlineResult, or None on any     netw" | kind=entity | source=probe/cve/online.py:L68 | neighbors=[lookup_nvd()] | lang=en
+- "cve_online_rationale_93": "Ask Vulners whether a public exploit is catalogued for `cve_id`. Returns     Tru" | kind=entity | source=probe/cve/online.py:L93 | neighbors=[lookup_vulners()] | lang=en
+- "cve_version_rationale_1": "version.py — loose version comparison for CVE range matching.  Real service bann" | kind=entity | source=probe/cve/version.py:L1 | neighbors=[version.py] | lang=en
+- "cve_version_rationale_29": "Normalize a version string into a comparable tuple of ints." | kind=entity | source=probe/cve/version.py:L29 | neighbors=[parse_version()] | lang=pt
+- "cve_version_rationale_48": "Return -1/0/1 for version a vs b (zero-padded tuple comparison)." | kind=entity | source=probe/cve/version.py:L48 | neighbors=[compare()] | lang=en
+- "cve_version_rationale_58": "Is `version` inside the NVD-style bound set? An `exact` match (no range     boun" | kind=entity | source=probe/cve/version.py:L58 | neighbors=[in_range()] | lang=en
+- "cve_vulndb_rationale_1": "vulndb.py — the offline vulnerability mirror (SQLite) and its query surface.  Ho" | kind=entity | source=probe/cve/vulndb.py:L1 | neighbors=[vulndb.py] | lang=en
+- "cve_vulndb_rationale_120": "All vulnerable CVEs whose CPE applicability covers (vendor, product,         ver" | kind=entity | source=probe/cve/vulndb.py:L120 | neighbors=[.cves_for_cpe()] | lang=en
+- "cve_vulndb_vulndb_close": ".close()" | kind=code-symbol | source=probe/cve/vulndb.py:L110 | neighbors=[VulnDB] | lang=en
+- "cve_vulndb_vulndb_counts": ".counts()" | kind=code-symbol | source=probe/cve/vulndb.py:L113 | neighbors=[VulnDB] | lang=en
+- "cve_vulndb_vulndb_get_meta": ".get_meta()" | kind=code-symbol | source=probe/cve/vulndb.py:L103 | neighbors=[VulnDB] | lang=en
+- "cve_vulndb_vulndb_replace_cpe_matches": ".replace_cpe_matches()" | kind=code-symbol | source=probe/cve/vulndb.py:L89 | neighbors=[VulnDB] | lang=en
+- "cve_vulndb_vulndb_set_meta": ".set_meta()" | kind=code-symbol | source=probe/cve/vulndb.py:L100 | neighbors=[VulnDB] | lang=en
+- "cve_vulndb_vulndb_upsert_cve": ".upsert_cve()" | kind=code-symbol | source=probe/cve/vulndb.py:L72 | neighbors=[VulnDB] | lang=en
+- "cve_vulndb_vulndb_upsert_epss": ".upsert_epss()" | kind=code-symbol | source=probe/cve/vulndb.py:L96 | neighbors=[VulnDB] | lang=en
+- "cve_weakness_map_has_version": "_has_version()" | kind=code-symbol | source=probe/cve/weakness_map.py:L52 | neighbors=[weakness_map.py] | lang=en
+- "cve_weakness_map_rationale_1": "weakness_map.py — bridge the probe's deterministic weakness findings to canonica" | kind=entity | source=probe/cve/weakness_map.py:L1 | neighbors=[weakness_map.py] | lang=en
+- "cve_weakness_map_rationale_121": "Return the Finding dict from a fact, or None if the fact is not a finding." | kind=entity | source=probe/cve/weakness_map.py:L121 | neighbors=[_finding_view()] | lang=en
+- "cve_weakness_map_rationale_142": "Pull CVSS/KEV/EPSS for one CVE straight from the mirror tables. Degrades to" | kind=entity | source=probe/cve/weakness_map.py:L142 | neighbors=[_mirror_cve()] | lang=en
+- "cve_weakness_map_rationale_165": "Map observed weakness findings to their canonical CVE(s), enriched with live" | kind=entity | source=probe/cve/weakness_map.py:L165 | neighbors=[correlate_weaknesses()] | lang=en
+- "cve_weakness_map_rationale_217": "Every canonical CVE referenced by the weakness map that the mirror does NOT" | kind=entity | source=probe/cve/weakness_map.py:L217 | neighbors=[missing_from_mirror()] | lang=en
+- "cve_weakness_map_rationale_38": "One canonical CVE a weakness can map to, optionally gated on the finding's     s" | kind=entity | source=probe/cve/weakness_map.py:L38 | neighbors=[_Assoc] | lang=en
+- "cve_weakness_map_weaknessmapping": "WeaknessMapping" | kind=code-symbol | source=probe/cve/weakness_map.py:L46 | neighbors=[weakness_map.py] | lang=en
+- "dashboard_dashboardgrid_agent": "Agent" | kind=code-symbol | source=manager/frontend/components/dashboard/DashboardGrid.tsx:L38 | neighbors=[DashboardGrid.tsx] | lang=en
+- "dashboard_dashboardgrid_agent_status": "AGENT_STATUS" | kind=code-symbol | source=manager/frontend/components/dashboard/DashboardGrid.tsx:L40 | neighbors=[DashboardGrid.tsx] | lang=en
+- "dashboard_dashboardgrid_agentmonitor": "AgentMonitor()" | kind=code-symbol | source=manager/frontend/components/dashboard/DashboardGrid.tsx:L75 | neighbors=[DashboardGrid.tsx] | lang=en
+- "dashboard_dashboardgrid_agentrow": "AgentRow()" | kind=code-symbol | source=manager/frontend/components/dashboard/DashboardGrid.tsx:L46 | neighbors=[DashboardGrid.tsx] | lang=en
+- "dashboard_dashboardgrid_agentstatus": "AgentStatus" | kind=code-symbol | source=manager/frontend/components/dashboard/DashboardGrid.tsx:L37 | neighbors=[DashboardGrid.tsx] | lang=en
+- "dashboard_dashboardgrid_freshnote": "FreshNote()" | kind=code-symbol | source=manager/frontend/components/dashboard/DashboardGrid.tsx:L126 | neighbors=[DashboardGrid.tsx] | lang=en
+- "dashboard_exposurecards_exposure": "Exposure" | kind=code-symbol | source=manager/frontend/components/dashboard/ExposureCards.tsx:L25 | neighbors=[ExposureCards.tsx] | lang=en
+- "dashboard_exposurecards_healthband": "healthBand()" | kind=code-symbol | source=manager/frontend/components/dashboard/ExposureCards.tsx:L47 | neighbors=[ExposureCards.tsx] | lang=en
+- "dashboard_exposurecards_meterrow": "MeterRow()" | kind=code-symbol | source=manager/frontend/components/dashboard/ExposureCards.tsx:L56 | neighbors=[ExposureCards.tsx] | lang=en
+- "dashboard_exposurecards_riskband": "riskBand()" | kind=code-symbol | source=manager/frontend/components/dashboard/ExposureCards.tsx:L39 | neighbors=[ExposureCards.tsx] | lang=en
+- "dashboard_exposurecards_scalenote": "scaleNote" | kind=code-symbol | source=manager/frontend/components/dashboard/ExposureCards.tsx:L150 | neighbors=[ExposureCards.tsx] | lang=en
+- "dashboard_exposurecards_showallbutton": "ShowAllButton()" | kind=code-symbol | source=manager/frontend/components/dashboard/ExposureCards.tsx:L156 | neighbors=[ExposureCards.tsx] | lang=en
 
 ## Instructions
 

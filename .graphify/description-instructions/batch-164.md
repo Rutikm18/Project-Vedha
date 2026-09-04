@@ -1,4 +1,4 @@
-# Node Description Batch 165 of 330
+# Node Description Batch 165 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,11 +12,37 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
+For an entity node (any other kind — e.g. a person, place, event, object),
+describe what the entity is and its role, grounded in its type, its
+relations (neighbors) and the provided citations/evidence — e.g.
+"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
+Ground entity descriptions in the citations/evidence when present; do not
+speculate beyond the context, so a node with no supporting context may be
+left out of the reply.
 Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
+- "tests_test_service_posture_rules_testnegatives_test_vnc_weak_suppressed_when_strong_type_offered": ".test_vnc_weak_suppressed_when_strong_type_offered()" | kind=code-symbol | source=manager/detection_engine/tests/test_service_posture_rules.py:L139 | neighbors=[TestNegatives, _fire()]
+- "tests_test_service_posture_rules_testrdpnonla_test_fires_from_the_first_probe_when_it_negotiated": ".test_fires_from_the_first_probe_when_it_negotiated()" | kind=code-symbol | source=manager/detection_engine/tests/test_service_posture_rules.py:L176 | neighbors=[TestRdpNoNla, _fire()]
+- "tests_test_service_posture_rules_testrdpnonla_test_silent_when_nla_is_required": ".test_silent_when_nla_is_required()" | kind=code-symbol | source=manager/detection_engine/tests/test_service_posture_rules.py:L182 | neighbors=[TestRdpNoNla, _fire()]
+- "tests_test_service_posture_rules_testrdpnotls_test_silent_when_negotiation_succeeded": ".test_silent_when_negotiation_succeeded()" | kind=code-symbol | source=manager/detection_engine/tests/test_service_posture_rules.py:L209 | neighbors=[TestRdpNoTls, _fire()]
+- "tests_test_sla_policy_testpolicyawarecompute_test_custom_window_relaxes_state": ".test_custom_window_relaxes_state()" | kind=code-symbol | source=manager/backend/tests/test_sla_policy.py:L27 | neighbors=[TestPolicyAwareCompute, _finding()]
+- "tests_test_sla_policy_testpolicyawarecompute_test_default_window_breaches": ".test_default_window_breaches()" | kind=code-symbol | source=manager/backend/tests/test_sla_policy.py:L24 | neighbors=[TestPolicyAwareCompute, _finding()]
+- "tests_test_smb_ntlm_build_testntlmfingerprintframing_test_end_to_end_framing_extracts_build": ".test_end_to_end_framing_extracts_build()" | kind=code-symbol | source=probe/tests/test_smb_ntlm_build.py:L85 | neighbors=[TestNtlmFingerprintFraming, _challenge()]
+- "tests_test_smb_ntlm_build_testntlmfingerprintframing_test_ntlm_os_build_shared_function": ".test_ntlm_os_build_shared_function()" | kind=code-symbol | source=probe/tests/test_smb_ntlm_build.py:L113 | neighbors=[TestNtlmFingerprintFraming, _challenge()]
+- "tests_test_smb_ntlm_build_testparsechallenge_test_legacy_6_1_is_win7": ".test_legacy_6_1_is_win7()" | kind=code-symbol | source=probe/tests/test_smb_ntlm_build.py:L63 | neighbors=[TestParseChallenge, _challenge()]
+- "tests_test_smb_ntlm_build_testparsechallenge_test_no_version_field_yields_name_but_no_build": ".test_no_version_field_yields_name_but_no_build()" | kind=code-symbol | source=probe/tests/test_smb_ntlm_build.py:L66 | neighbors=[TestParseChallenge, _challenge()]
+- "tests_test_smb_ntlm_build_testparsechallenge_test_server_2022_build_20348": ".test_server_2022_build_20348()" | kind=code-symbol | source=probe/tests/test_smb_ntlm_build.py:L55 | neighbors=[TestParseChallenge, _challenge()]
+- "tests_test_smb_ntlm_build_testparsechallenge_test_unknown_build_still_classified_win11_vs_win10": ".test_unknown_build_still_classified_win11_vs_win10()" | kind=code-symbol | source=probe/tests/test_smb_ntlm_build.py:L59 | neighbors=[TestParseChallenge, _challenge()]
+- "tests_test_smb_ntlm_build_testparsechallenge_test_win10_22h2": ".test_win10_22h2()" | kind=code-symbol | source=probe/tests/test_smb_ntlm_build.py:L51 | neighbors=[TestParseChallenge, _challenge()]
+- "tests_test_smb_ntlm_build_testparsechallenge_test_win11_24h2_build_26100": ".test_win11_24h2_build_26100()" | kind=code-symbol | source=probe/tests/test_smb_ntlm_build.py:L39 | neighbors=[TestParseChallenge, _challenge()]
+- "tests_test_smb_scanner_rationale_81": "FIX 4: 3.1.1 IS now advertised, together with the mandatory preauth-integrity" | kind=entity | source=probe/tests/test_smb_scanner.py:L81 | neighbors=[test_request_offers_311_with_preauth_co…, test_request_omits_311_without_preauth_…]
+- "tests_test_smb_scanner_test_request_offers_311_with_preauth_context": "test_request_offers_311_with_preauth_context()" | kind=code-symbol | source=probe/tests/test_smb_scanner.py:L80 | neighbors=[test_smb_scanner.py, FIX 4: 3.1.1 IS now advertised, togethe…]
+- "tests_test_smb_scanner_test_request_omits_311_without_preauth_context": "test_request_omits_311_without_preauth_context()" | kind=code-symbol | source=probe/tests/test_smb_scanner.py:L80 | neighbors=[test_smb_scanner.py, FIX 4: 3.1.1 IS now advertised, togethe…]
+- "tests_test_smb_scanner_test_signing_not_required": "test_signing_not_required()" | kind=code-symbol | source=probe/tests/test_smb_scanner.py:L38 | neighbors=[test_smb_scanner.py, _smb2_negotiate_response()]
+- "tests_test_smb_scanner_test_signing_required_smb311": "test_signing_required_smb311()" | kind=code-symbol | source=probe/tests/test_smb_scanner.py:L29 | neighbors=[test_smb_scanner.py, _smb2_negotiate_response()]
 - "tests_test_smb_scanner_test_truncated_negotiate_body_not_parsed": "test_truncated_negotiate_body_not_parsed()" | kind=code-symbol | source=probe/tests/test_smb_scanner.py:L62 | neighbors=[test_smb_scanner.py, A response with the wrong body Structur…]
 - "tests_test_smtp_scanner_testparity": "TestParity" | kind=code-symbol | source=probe/tests/test_smtp_scanner.py:L73 | neighbors=[test_smtp_scanner.py, .test_main_scripts()]
 - "tests_test_smtp_scanner_testsmtpfindings_test_expn_alone_triggers_enum": ".test_expn_alone_triggers_enum()" | kind=code-symbol | source=probe/tests/test_smtp_scanner.py:L67 | neighbors=[TestSMTPFindings, ._fact()]
@@ -38,25 +64,6 @@ one-sentence description — no prose, no markdown fences.
 - "tests_test_ssh_scanner_testsshstatustaxonomy_test_confirmed_ssh_open_with_parsed_banner": ".test_confirmed_ssh_open_with_parsed_banner()" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L361 | neighbors=[TestSSHStatusTaxonomy, _kexinit()]
 - "tests_test_ssh_scanner_testterrapin_test_chacha20_without_strict_kex_is_vulnerable": ".test_chacha20_without_strict_kex_is_vulnerable()" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L153 | neighbors=[TestTerrapin, _kexinit()]
 - "tests_test_ssh_scanner_testterrapin_test_strict_kex_present_is_not_vulnerable": ".test_strict_kex_present_is_not_vulnerable()" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L145 | neighbors=[TestTerrapin, _kexinit()]
-- "tests_test_ssh_scanner_testterrapinfidelity_test_cbc_plus_etm_is_vulnerable_without_strict_kex": ".test_cbc_plus_etm_is_vulnerable_without_strict_kex()" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L302 | neighbors=[TestTerrapinFidelity, ._ev()]
-- "tests_test_ssh_scanner_testterrapinfidelity_test_cbc_without_etm_mac_is_not_terrapin": ".test_cbc_without_etm_mac_is_not_terrapin()" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L307 | neighbors=[TestTerrapinFidelity, ._ev()]
-- "tests_test_ssh_scanner_testterrapinfidelity_test_chacha20_without_openssh_suffix_still_vulnerable": ".test_chacha20_without_openssh_suffix_still_vulnerable()" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L296 | neighbors=[TestTerrapinFidelity, ._ev()]
-- "tests_test_stage2_reconcile_test_reap_stale_runs_marks_running_as_failed": "test_reap_stale_runs_marks_running_as_failed()" | kind=code-symbol | source=manager/backend/tests/test_stage2_reconcile.py:L175 | neighbors=[test_stage2_reconcile.py, _CM]
-- "tests_test_stage2_reconcile_test_write_heartbeat_upserts": "test_write_heartbeat_upserts()" | kind=code-symbol | source=manager/backend/tests/test_stage2_reconcile.py:L195 | neighbors=[test_stage2_reconcile.py, _CM]
-- "tests_test_syn_scanner_testbuildresultsenrichment_test_closed_and_filtered_suppressed_by_default": ".test_closed_and_filtered_suppressed_by_default()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L396 | neighbors=[TestBuildResultsEnrichment, ._scanner()]
-- "tests_test_syn_scanner_testbuildresultsenrichment_test_open_result_carries_signals_and_os_guess": ".test_open_result_carries_signals_and_os_guess()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L354 | neighbors=[TestBuildResultsEnrichment, ._scanner()]
-- "tests_test_syn_scanner_testbuildresultsenrichment_test_open_without_signals_has_no_os_guess": ".test_open_without_signals_has_no_os_guess()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L391 | neighbors=[TestBuildResultsEnrichment, ._scanner()]
-- "tests_test_syn_scanner_testbuildresultsenrichment_test_os_guess_is_tagged_tcp_derived_not_icmp": ".test_os_guess_is_tagged_tcp_derived_not_icmp()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L370 | neighbors=[TestBuildResultsEnrichment, ._scanner()]
-- "tests_test_syn_scanner_testbuildresultsenrichment_test_p0f_stack_label_from_harvested_option_layout": ".test_p0f_stack_label_from_harvested_option_layout()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L380 | neighbors=[TestBuildResultsEnrichment, ._scanner()]
-- "tests_test_syn_scanner_testbuildresultsenrichment_test_windows_ttl_maps_to_windows": ".test_windows_ttl_maps_to_windows()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L364 | neighbors=[TestBuildResultsEnrichment, ._scanner()]
-- "tests_test_syn_scanner_testparsepacketsignals_test_window_ttl_mss_surfaced": ".test_window_ttl_mss_surfaced()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L337 | neighbors=[TestParsePacketSignals, _synack_with_options()]
-- "tests_test_syn_scanner_testsynretransmit_test_answered_ports_are_not_retransmitted": ".test_answered_ports_are_not_retransmitted()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L248 | neighbors=[TestSynRetransmit, ._patch()]
-- "tests_test_syn_scanner_testsynretransmit_test_retries_zero_sends_one_syn_per_port": ".test_retries_zero_sends_one_syn_per_port()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L278 | neighbors=[TestSynRetransmit, ._patch()]
-- "tests_test_syn_scanner_testsynretransmit_test_silent_ports_are_retried_retries_plus_one_times": ".test_silent_ports_are_retried_retries_plus_one_times()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L233 | neighbors=[TestSynRetransmit, ._patch()]
-- "tests_test_syn_scanner_testverifyreplycookie_test_reply_from_other_host_fails": ".test_reply_from_other_host_fails()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L129 | neighbors=[TestVerifyReplyCookie, ._make_synack_reply()]
-- "tests_test_syn_scanner_testverifyreplycookie_test_valid_cookie_verifies": ".test_valid_cookie_verifies()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L119 | neighbors=[TestVerifyReplyCookie, ._make_synack_reply()]
-- "tests_test_syn_scanner_testverifyreplycookie_test_wrong_ack_fails": ".test_wrong_ack_fails()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L124 | neighbors=[TestVerifyReplyCookie, ._make_synack_reply()]
-- "tests_test_task_runner_fake_run_scan": "_fake_run_scan()" | kind=code-symbol | source=probe/tests/test_task_runner.py:L12 | neighbors=[test_task_runner.py, Return a minimal successful result with…]
 
 ## Instructions
 

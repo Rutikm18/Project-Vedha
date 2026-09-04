@@ -1,4 +1,4 @@
-# Node Description Batch 124 of 330
+# Node Description Batch 124 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -24,6 +24,15 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
+- "agent_transport_rationale_65": "A poll/activate targeted an enrollment request the manager does not have     (HT" | kind=entity | source=probe/agent/transport.py:L65 | neighbors=[EnrollmentRequestNotFound, _enrollment_conflict_detail()]
+- "agent_transport_rationale_673": "Poll for pending jobs (HTTP fallback for WebSocket).          Returns a list of" | kind=entity | source=probe/agent/transport.py:L673 | neighbors=[.poll_jobs(), .connect_ws()]
+- "agent_transport_rationale_777": "Generic authenticated GET, returns parsed JSON or None on failure.          Used" | kind=entity | source=probe/agent/transport.py:L777 | neighbors=[.http_get(), .connect_ws()]
+- "agent_transport_transport_clear_state": ".clear_state()" | kind=code-symbol | source=probe/agent/transport.py:L311 | neighbors=[Transport, .update_state()]
+- "agent_transport_transport_close": ".close()" | kind=code-symbol | source=probe/agent/transport.py:L843 | neighbors=[_sync_directory(), Transport]
+- "agent_transport_transport_init": ".__init__()" | kind=code-symbol | source=probe/agent/transport.py:L189 | neighbors=[Transport, .load_state()]
+- "agent_transport_transport_poll_enrollment": ".poll_enrollment()" | kind=code-symbol | source=probe/agent/transport.py:L427 | neighbors=[Transport, EnrollmentRequestNotFound]
+- "agent_validation_metric": "_metric()" | kind=code-symbol | source=probe/agent/validation.py:L173 | neighbors=[validation.py, score_inventory()]
+- "agent_validation_not_scored": "_not_scored()" | kind=code-symbol | source=probe/agent/validation.py:L197 | neighbors=[validation.py, score_inventory()]
 - "agent_validation_resolve_use_cases": "resolve_use_cases()" | kind=code-symbol | source=probe/agent/validation.py:L38 | neighbors=[validation.py, Resolve suites plus explicit use-cases,…]
 - "agent_validation_target_address_count": "target_address_count()" | kind=code-symbol | source=probe/agent/validation.py:L93 | neighbors=[validation.py, Return the conservative number of addre…]
 - "agent_validation_validate_targets": "validate_targets()" | kind=code-symbol | source=probe/agent/validation.py:L55 | neighbors=[validation.py, Require every IP/CIDR target to be full…]
@@ -55,15 +64,6 @@ one-sentence description — no prose, no markdown fences.
 - "assistant_advisorflow_advisorflow": "AdvisorFlow()" | kind=code-symbol | source=manager/frontend/components/assistant/AdvisorFlow.tsx:L73 | neighbors=[AdvisorFlow.tsx, AssistantDrawer.tsx]
 - "assistant_assistantdrawer_assistantdrawer": "AssistantDrawer()" | kind=code-symbol | source=manager/frontend/components/assistant/AssistantDrawer.tsx:L21 | neighbors=[AssistantDrawer.tsx, AssistantProvider.tsx]
 - "assistant_assistantfab_assistantfab": "AssistantFab()" | kind=code-symbol | source=manager/frontend/components/assistant/AssistantFab.tsx:L6 | neighbors=[AssistantFab.tsx, AssistantProvider.tsx]
-- "assistant_assistantprovider_assistantprovider": "AssistantProvider()" | kind=code-symbol | source=manager/frontend/components/assistant/AssistantProvider.tsx:L28 | neighbors=[layout.tsx, AssistantProvider.tsx]
-- "assistant_factcard_lifecyclesummary": "lifecycleSummary()" | kind=code-symbol | source=manager/frontend/components/assistant/FactCard.tsx:L16 | neighbors=[FactCard.tsx, FactCard()]
-- "assistant_modelswitcher_modelselection": "ModelSelection" | kind=code-symbol | source=manager/frontend/components/assistant/ModelSwitcher.tsx:L5 | neighbors=[AssistantDrawer.tsx, ModelSwitcher.tsx]
-- "assistant_modelswitcher_modelswitcher": "ModelSwitcher()" | kind=code-symbol | source=manager/frontend/components/assistant/ModelSwitcher.tsx:L34 | neighbors=[AssistantDrawer.tsx, ModelSwitcher.tsx]
-- "auth_init": "__init__.py" | kind=code-symbol | source=manager/backend/app/auth/__init__.py:L1 | neighbors=[d1b4dd3 trim frontend to 7 core pages; …, 298a9d4 trim frontend to 7 core pages; …]
-- "auth_jwt_create_device_access_token": "create_device_access_token()" | kind=code-symbol | source=manager/backend/app/auth/jwt.py:L47 | neighbors=[jwt.py, create_access_token()]
-- "auth_middleware_is_public_enrollment_request": "_is_public_enrollment_request()" | kind=code-symbol | source=manager/backend/app/auth/middleware.py:L33 | neighbors=[middleware.py, .dispatch()]
-- "auth_middleware_tenantisolationmiddleware_authenticate_pat": "._authenticate_pat()" | kind=code-symbol | source=manager/backend/app/auth/middleware.py:L183 | neighbors=[TenantIsolationMiddleware, .dispatch()]
-- "auth_pat_hash_pat_token": "hash_pat_token()" | kind=code-symbol | source=manager/backend/app/auth/pat.py:L36 | neighbors=[pat.py, build_personal_access_token()]
 
 ## Instructions
 

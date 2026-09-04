@@ -1,4 +1,4 @@
-# Node Description Batch 146 of 330
+# Node Description Batch 146 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,18 +12,30 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
-For an entity node (any other kind — e.g. a person, place, event, object),
-describe what the entity is and its role, grounded in its type, its
-relations (neighbors) and the provided citations/evidence — e.g.
-"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
-Ground entity descriptions in the citations/evidence when present; do not
-speculate beyond the context, so a node with no supporting context may be
-left out of the reply.
 Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
+- "settings_page_integrationsection": "IntegrationSection()" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L570 | neighbors=[page.tsx, inlineInput()]
+- "status_route_get": "GET()" | kind=code-symbol | source=manager/frontend/app/api/settings/status/route.ts:L15 | neighbors=[route.ts, readiness()]
+- "status_route_readiness": "readiness()" | kind=code-symbol | source=manager/frontend/app/api/settings/status/route.ts:L10 | neighbors=[route.ts, GET()]
+- "supporting_research_evidence_store_coverage_summary": "coverage_summary()" | kind=code-symbol | source=Supporting_research/evidence_store.py:L362 | neighbors=[evidence_store.py, What a customer should actually be show…]
+- "supporting_research_evidence_store_naive_ip_identity": "naive_ip_identity()" | kind=code-symbol | source=Supporting_research/evidence_store.py:L257 | neighbors=[evidence_store.py, The industry default, for comparison. I…]
+- "supporting_research_evidence_store_record_observation": "record_observation()" | kind=code-symbol | source=Supporting_research/evidence_store.py:L113 | neighbors=[evidence_store.py, _iso()]
+- "supporting_research_test_evidence_store_smb_obs": "smb_obs()" | kind=code-symbol | source=Supporting_research/test_evidence_store.py:L45 | neighbors=[test_evidence_store.py, build_fleet()]
+- "supporting_research_test_evidence_store_testidentity_setup": ".setUp()" | kind=code-symbol | source=Supporting_research/test_evidence_store.py:L96 | neighbors=[TestIdentity, build_fleet()]
+- "supporting_research_test_evidence_store_testidentity_test_hostname_never_overrides_a_fingerprint": ".test_hostname_never_overrides_a_fingerprint()" | kind=code-symbol | source=Supporting_research/test_evidence_store.py:L119 | neighbors=[TestIdentity, ssh_obs()]
+- "supporting_research_test_evidence_store_testidentity_test_ip_identity_is_wrong_in_both_directions": ".test_ip_identity_is_wrong_in_both_directions()" | kind=code-symbol | source=Supporting_research/test_evidence_store.py:L104 | neighbors=[Not merely coarse -- wrong. It splits o…, TestIdentity]
+- "supporting_research_test_evidence_store_testretroactivedetection_setup": ".setUp()" | kind=code-symbol | source=Supporting_research/test_evidence_store.py:L141 | neighbors=[TestRetroactiveDetection, build_fleet()]
+- "supporting_research_test_evidence_store_testretroactivedetection_test_collected_but_unusable_evidence_is_distinguished_from_absent": ".test_collected_but_unusable_evidence_is_distinguished_from_absent()" | kind=code-symbol | source=Supporting_research/test_evidence_store.py:L194 | neighbors=[Drifted payload: the probe ran, the fie…, TestRetroactiveDetection]
+- "supporting_research_test_evidence_store_testretroactivedetection_test_remediation_is_verified_by_evidence_not_by_a_ticket": ".test_remediation_is_verified_by_evidence_not_by_a_ticket()" | kind=code-symbol | source=Supporting_research/test_evidence_store.py:L162 | neighbors=[TestRetroactiveDetection, openssh_below()]
+- "supporting_research_test_evidence_store_testretroactivedetection_test_third_party_conclusions_are_kept_separate_from_first_party_evidence": ".test_third_party_conclusions_are_kept_separate_from_first_party_evidence()" | kind=code-symbol | source=Supporting_research/test_evidence_store.py:L206 | neighbors=[TestRetroactiveDetection, ssh_obs()]
+- "supporting_research_test_evidence_store_testretroactivedetection_test_time_travel_recovers_the_historical_answer": ".test_time_travel_recovers_the_historical_answer()" | kind=code-symbol | source=Supporting_research/test_evidence_store.py:L151 | neighbors=[TestRetroactiveDetection, openssh_below()]
+- "tests_conftest_isolate_result_archive": "_isolate_result_archive()" | kind=code-symbol | source=probe/tests/conftest.py:L10 | neighbors=[conftest.py, Keep the local result archive out of th…]
+- "tests_init": "__init__.py" | kind=code-symbol | source=manager/backend/tests/__init__.py:L1 | neighbors=[d1b4dd3 trim frontend to 7 core pages; …, 298a9d4 trim frontend to 7 core pages; …]
+- "tests_test_accuracy_gate_testcorpusvalidation_test_corpus_without_any_labels_is_rejected": ".test_corpus_without_any_labels_is_rejected()" | kind=code-symbol | source=probe/tests/test_accuracy_gate.py:L101 | neighbors=[TestCorpusValidation, _write()]
+- "tests_test_accuracy_gate_testcorpusvalidation_test_corpus_without_facts_is_rejected": ".test_corpus_without_facts_is_rejected()" | kind=code-symbol | source=probe/tests/test_accuracy_gate.py:L107 | neighbors=[TestCorpusValidation, _write()]
 - "tests_test_accuracy_gate_testcorpusvalidation_test_unknown_provenance_is_rejected": ".test_unknown_provenance_is_rejected()" | kind=code-symbol | source=probe/tests/test_accuracy_gate.py:L95 | neighbors=[TestCorpusValidation, _write()]
 - "tests_test_accuracy_gate_testcorpusvalidation_test_unlabeled_provenance_is_rejected": ".test_unlabeled_provenance_is_rejected()" | kind=code-symbol | source=probe/tests/test_accuracy_gate.py:L90 | neighbors=[TestCorpusValidation, _write()]
 - "tests_test_accuracy_gate_testshippedcorpora_test_an_independently_labeled_corpus_is_committed": ".test_an_independently_labeled_corpus_is_committed()" | kind=code-symbol | source=probe/tests/test_accuracy_gate.py:L57 | neighbors=[Without one of these the gate proves on…, TestShippedCorpora]
@@ -43,27 +55,8 @@ one-sentence description — no prose, no markdown fences.
 - "tests_test_agent_dispatch_testatomicwebsocketclaim_test_claim_commits_before_confirmation": ".test_claim_commits_before_confirmation()" | kind=code-symbol | source=manager/backend/tests/test_agent_dispatch.py:L223 | neighbors=[TestAtomicWebSocketClaim, _claim_fixture()]
 - "tests_test_agent_dispatch_testatomicwebsocketclaim_test_incompatible_capability_is_never_claimed": ".test_incompatible_capability_is_never_claimed()" | kind=code-symbol | source=manager/backend/tests/test_agent_dispatch.py:L251 | neighbors=[TestAtomicWebSocketClaim, _claim_fixture()]
 - "tests_test_agent_dispatch_testatomicwebsocketclaim_test_lost_atomic_update_is_reported_as_unclaimed": ".test_lost_atomic_update_is_reported_as_unclaimed()" | kind=code-symbol | source=manager/backend/tests/test_agent_dispatch.py:L275 | neighbors=[TestAtomicWebSocketClaim, _claim_fixture()]
-- "tests_test_agent_identity_test_cached_identity_refreshes_current_capabilities": "test_cached_identity_refreshes_current_capabilities()" | kind=code-symbol | source=probe/tests/test_agent_identity.py:L42 | neighbors=[test_agent_identity.py, _cached_transport()]
-- "tests_test_agent_identity_test_cached_identity_retries_transient_refresh_failure": "test_cached_identity_retries_transient_refresh_failure()" | kind=code-symbol | source=probe/tests/test_agent_identity.py:L69 | neighbors=[test_agent_identity.py, _cached_transport()]
-- "tests_test_agent_identity_test_rejected_cached_token_falls_back_to_idempotent_registration": "test_rejected_cached_token_falls_back_to_idempotent_registration()" | kind=code-symbol | source=probe/tests/test_agent_identity.py:L92 | neighbors=[test_agent_identity.py, _cached_transport()]
-- "tests_test_agent_policy_testevaluateaction_test_decision_carries_action_and_tier": ".test_decision_carries_action_and_tier()" | kind=code-symbol | source=manager/backend/tests/test_agent_policy.py:L94 | neighbors=[TestEvaluateAction, _roe()]
-- "tests_test_agent_policy_testevaluateaction_test_denylisted_module_denied": ".test_denylisted_module_denied()" | kind=code-symbol | source=manager/backend/tests/test_agent_policy.py:L68 | neighbors=[TestEvaluateAction, _roe()]
-- "tests_test_agent_policy_testevaluateaction_test_excluded_target_denied": ".test_excluded_target_denied()" | kind=code-symbol | source=manager/backend/tests/test_agent_policy.py:L63 | neighbors=[TestEvaluateAction, _roe()]
-- "tests_test_agent_policy_testevaluateaction_test_exploit_attempt_cap_denied": ".test_exploit_attempt_cap_denied()" | kind=code-symbol | source=manager/backend/tests/test_agent_policy.py:L77 | neighbors=[TestEvaluateAction, _roe()]
-- "tests_test_agent_policy_testevaluateaction_test_halted_engagement_denies_everything": ".test_halted_engagement_denies_everything()" | kind=code-symbol | source=manager/backend/tests/test_agent_policy.py:L73 | neighbors=[TestEvaluateAction, _roe()]
-- "tests_test_agent_policy_testevaluateaction_test_host_cap_denied": ".test_host_cap_denied()" | kind=code-symbol | source=manager/backend/tests/test_agent_policy.py:L83 | neighbors=[TestEvaluateAction, _roe()]
-- "tests_test_agent_policy_testevaluateaction_test_intrusive_above_ceiling_needs_approval": ".test_intrusive_above_ceiling_needs_approval()" | kind=code-symbol | source=manager/backend/tests/test_agent_policy.py:L45 | neighbors=[TestEvaluateAction, _roe()]
-- "tests_test_agent_policy_testevaluateaction_test_intrusive_auto_when_ceiling_raised": ".test_intrusive_auto_when_ceiling_raised()" | kind=code-symbol | source=manager/backend/tests/test_agent_policy.py:L49 | neighbors=[TestEvaluateAction, _roe()]
-- "tests_test_agent_policy_testevaluateaction_test_irreversible_always_needs_approval_even_with_max_ceiling": ".test_irreversible_always_needs_approval_even_with_max_ceiling()" | kind=code-symbol | source=manager/backend/tests/test_agent_policy.py:L54 | neighbors=[TestEvaluateAction, _roe()]
-- "tests_test_agent_policy_testevaluateaction_test_no_targets_skips_scope_check": ".test_no_targets_skips_scope_check()" | kind=code-symbol | source=manager/backend/tests/test_agent_policy.py:L89 | neighbors=[TestEvaluateAction, _roe()]
-- "tests_test_agent_policy_testevaluateaction_test_passive_action_auto_authorized": ".test_passive_action_auto_authorized()" | kind=code-symbol | source=manager/backend/tests/test_agent_policy.py:L37 | neighbors=[TestEvaluateAction, _roe()]
-- "tests_test_agent_policy_testevaluateaction_test_reversible_within_default_ceiling_auto": ".test_reversible_within_default_ceiling_auto()" | kind=code-symbol | source=manager/backend/tests/test_agent_policy.py:L41 | neighbors=[TestEvaluateAction, _roe()]
-- "tests_test_agent_policy_testevaluateaction_test_target_out_of_scope_denied": ".test_target_out_of_scope_denied()" | kind=code-symbol | source=manager/backend/tests/test_agent_policy.py:L59 | neighbors=[TestEvaluateAction, _roe()]
-- "tests_test_agents_rationale_1": "Unit tests for the agent/probe protocol changes:   * agent polling is restricted" | kind=entity | source=manager/backend/tests/test_agents.py:L1 | neighbors=[test_agents.py, ScanJobType]
-- "tests_test_agents_rationale_207": "Re-registering the same-named probe must reuse the row, not create a dup." | kind=entity | source=manager/backend/tests/test_agents.py:L207 | neighbors=[ScanJobType, .test_reuses_existing_probe_by_name()]
-- "tests_test_agents_rationale_242": "Agent token must outlive the 15-min access default so it doesn't churn." | kind=entity | source=manager/backend/tests/test_agents.py:L242 | neighbors=[ScanJobType, .test_agent_token_is_long_lived()]
-- "tests_test_agents_rationale_260": "Discovery results → assets/services promotion (makes the Attack Surface populate" | kind=entity | source=manager/backend/tests/test_agents.py:L260 | neighbors=[ScanJobType, TestPromoteAssets]
-- "tests_test_agents_rationale_288": "A single web scan can emit multiple facts for the same host:port." | kind=entity | source=manager/backend/tests/test_agents.py:L288 | neighbors=[ScanJobType, .test_dedupes_duplicate_services_in_sam…]
+- "tests_test_agent_identity_test_cached_identity_refreshes_current_capabilities": "test_cached_identity_refreshes_current_capabilities()" | kind=code-symbol | source=probe/tests/test_agent_identity.py:L46 | neighbors=[test_agent_identity.py, _cached_transport()]
+- "tests_test_agent_identity_test_cached_identity_retries_transient_refresh_failure": "test_cached_identity_retries_transient_refresh_failure()" | kind=code-symbol | source=probe/tests/test_agent_identity.py:L73 | neighbors=[test_agent_identity.py, _cached_transport()]
 
 ## Instructions
 

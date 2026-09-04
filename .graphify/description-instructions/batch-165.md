@@ -1,4 +1,4 @@
-# Node Description Batch 166 of 330
+# Node Description Batch 166 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -17,6 +17,25 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
+- "tests_test_ssh_scanner_testterrapinfidelity_test_cbc_plus_etm_is_vulnerable_without_strict_kex": ".test_cbc_plus_etm_is_vulnerable_without_strict_kex()" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L302 | neighbors=[TestTerrapinFidelity, ._ev()]
+- "tests_test_ssh_scanner_testterrapinfidelity_test_cbc_without_etm_mac_is_not_terrapin": ".test_cbc_without_etm_mac_is_not_terrapin()" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L307 | neighbors=[TestTerrapinFidelity, ._ev()]
+- "tests_test_ssh_scanner_testterrapinfidelity_test_chacha20_without_openssh_suffix_still_vulnerable": ".test_chacha20_without_openssh_suffix_still_vulnerable()" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L296 | neighbors=[TestTerrapinFidelity, ._ev()]
+- "tests_test_stage2_reconcile_test_reap_stale_runs_marks_running_as_failed": "test_reap_stale_runs_marks_running_as_failed()" | kind=code-symbol | source=manager/backend/tests/test_stage2_reconcile.py:L175 | neighbors=[test_stage2_reconcile.py, _CM]
+- "tests_test_stage2_reconcile_test_write_heartbeat_upserts": "test_write_heartbeat_upserts()" | kind=code-symbol | source=manager/backend/tests/test_stage2_reconcile.py:L195 | neighbors=[test_stage2_reconcile.py, _CM]
+- "tests_test_syn_scanner_testbuildresultsenrichment_test_closed_and_filtered_suppressed_by_default": ".test_closed_and_filtered_suppressed_by_default()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L396 | neighbors=[TestBuildResultsEnrichment, ._scanner()]
+- "tests_test_syn_scanner_testbuildresultsenrichment_test_open_result_carries_signals_and_os_guess": ".test_open_result_carries_signals_and_os_guess()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L354 | neighbors=[TestBuildResultsEnrichment, ._scanner()]
+- "tests_test_syn_scanner_testbuildresultsenrichment_test_open_without_signals_has_no_os_guess": ".test_open_without_signals_has_no_os_guess()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L391 | neighbors=[TestBuildResultsEnrichment, ._scanner()]
+- "tests_test_syn_scanner_testbuildresultsenrichment_test_os_guess_is_tagged_tcp_derived_not_icmp": ".test_os_guess_is_tagged_tcp_derived_not_icmp()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L370 | neighbors=[TestBuildResultsEnrichment, ._scanner()]
+- "tests_test_syn_scanner_testbuildresultsenrichment_test_p0f_stack_label_from_harvested_option_layout": ".test_p0f_stack_label_from_harvested_option_layout()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L380 | neighbors=[TestBuildResultsEnrichment, ._scanner()]
+- "tests_test_syn_scanner_testbuildresultsenrichment_test_windows_ttl_maps_to_windows": ".test_windows_ttl_maps_to_windows()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L364 | neighbors=[TestBuildResultsEnrichment, ._scanner()]
+- "tests_test_syn_scanner_testparsepacketsignals_test_window_ttl_mss_surfaced": ".test_window_ttl_mss_surfaced()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L337 | neighbors=[TestParsePacketSignals, _synack_with_options()]
+- "tests_test_syn_scanner_testsynretransmit_test_answered_ports_are_not_retransmitted": ".test_answered_ports_are_not_retransmitted()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L248 | neighbors=[TestSynRetransmit, ._patch()]
+- "tests_test_syn_scanner_testsynretransmit_test_retries_zero_sends_one_syn_per_port": ".test_retries_zero_sends_one_syn_per_port()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L278 | neighbors=[TestSynRetransmit, ._patch()]
+- "tests_test_syn_scanner_testsynretransmit_test_silent_ports_are_retried_retries_plus_one_times": ".test_silent_ports_are_retried_retries_plus_one_times()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L233 | neighbors=[TestSynRetransmit, ._patch()]
+- "tests_test_syn_scanner_testverifyreplycookie_test_reply_from_other_host_fails": ".test_reply_from_other_host_fails()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L129 | neighbors=[TestVerifyReplyCookie, ._make_synack_reply()]
+- "tests_test_syn_scanner_testverifyreplycookie_test_valid_cookie_verifies": ".test_valid_cookie_verifies()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L119 | neighbors=[TestVerifyReplyCookie, ._make_synack_reply()]
+- "tests_test_syn_scanner_testverifyreplycookie_test_wrong_ack_fails": ".test_wrong_ack_fails()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L124 | neighbors=[TestVerifyReplyCookie, ._make_synack_reply()]
+- "tests_test_task_runner_fake_run_scan": "_fake_run_scan()" | kind=code-symbol | source=probe/tests/test_task_runner.py:L12 | neighbors=[test_task_runner.py, Return a minimal successful result with…]
 - "tests_test_task_runner_runner": "runner()" | kind=code-symbol | source=probe/tests/test_task_runner.py:L37 | neighbors=[test_task_runner.py, TaskRunner with no-op dependencies (no …]
 - "tests_test_tier1_correlations_test_anon_data_exposure_cluster": "test_anon_data_exposure_cluster()" | kind=code-symbol | source=probe/tests/test_tier1_correlations.py:L17 | neighbors=[test_tier1_correlations.py, _run()]
 - "tests_test_tier1_correlations_test_mgmt_plane_exposed_on_cipher_zero_alone": "test_mgmt_plane_exposed_on_cipher_zero_alone()" | kind=code-symbol | source=probe/tests/test_tier1_correlations.py:L49 | neighbors=[test_tier1_correlations.py, _run()]
@@ -38,25 +57,6 @@ one-sentence description — no prose, no markdown fences.
 - "tests_test_tls_posture_testgradetlsposture_test_grade_c_tls11": ".test_grade_c_tls11()" | kind=code-symbol | source=probe/tests/test_tls_posture.py:L83 | neighbors=[TestGradeTlsPosture, _modern()]
 - "tests_test_tls_posture_testgradetlsposture_test_grade_f_tls10": ".test_grade_f_tls10()" | kind=code-symbol | source=probe/tests/test_tls_posture.py:L94 | neighbors=[TestGradeTlsPosture, _modern()]
 - "tests_test_two_tree_parity_test_mirrored_set_is_nonempty": "test_mirrored_set_is_nonempty()" | kind=code-symbol | source=probe/tests/test_two_tree_parity.py:L40 | neighbors=[test_two_tree_parity.py, _mirrored_py_files()]
-- "tests_test_two_tree_parity_test_no_unmirrored_scanner_files": "test_no_unmirrored_scanner_files()" | kind=code-symbol | source=probe/tests/test_two_tree_parity.py:L56 | neighbors=[test_two_tree_parity.py, A scanner that exists in only one tree …]
-- "tests_test_va_campaign_test_catalog_ids_are_unique_and_match_default_stages": "test_catalog_ids_are_unique_and_match_default_stages()" | kind=code-symbol | source=probe/tests/test_va_campaign.py:L222 | neighbors=[test_va_campaign.py, _scope()]
-- "tests_test_va_campaign_test_cli_view_deduplicates_unchanged_status": "test_cli_view_deduplicates_unchanged_status()" | kind=code-symbol | source=probe/tests/test_va_campaign.py:L311 | neighbors=[test_va_campaign.py, _Buf]
-- "tests_test_va_campaign_test_cli_view_emits_one_line_per_transition": "test_cli_view_emits_one_line_per_transition()" | kind=code-symbol | source=probe/tests/test_va_campaign.py:L298 | neighbors=[test_va_campaign.py, _Buf]
-- "tests_test_va_campaign_test_disabled_opt_in_stage_is_skipped_and_excluded_from_percent": "test_disabled_opt_in_stage_is_skipped_and_excluded_from_percent()" | kind=code-symbol | source=probe/tests/test_va_campaign.py:L80 | neighbors=[test_va_campaign.py, _run()]
-- "tests_test_va_campaign_test_enabled_opt_in_stage_runs": "test_enabled_opt_in_stage_runs()" | kind=code-symbol | source=probe/tests/test_va_campaign.py:L99 | neighbors=[test_va_campaign.py, _run()]
-- "tests_test_va_campaign_test_facts_accumulate_into_totals": "test_facts_accumulate_into_totals()" | kind=code-symbol | source=probe/tests/test_va_campaign.py:L137 | neighbors=[test_va_campaign.py, _run()]
-- "tests_test_va_campaign_test_gate_not_met_skips_stage": "test_gate_not_met_skips_stage()" | kind=code-symbol | source=probe/tests/test_va_campaign.py:L64 | neighbors=[test_va_campaign.py, _run()]
-- "tests_test_va_campaign_test_percent_and_current_stage_transitions": "test_percent_and_current_stage_transitions()" | kind=code-symbol | source=probe/tests/test_va_campaign.py:L175 | neighbors=[test_va_campaign.py, _reporter()]
-- "tests_test_va_campaign_test_progress_snapshot_shape": "test_progress_snapshot_shape()" | kind=code-symbol | source=probe/tests/test_va_campaign.py:L159 | neighbors=[test_va_campaign.py, _reporter()]
-- "tests_test_va_campaign_test_stage_error_is_isolated_not_fatal": "test_stage_error_is_isolated_not_fatal()" | kind=code-symbol | source=probe/tests/test_va_campaign.py:L119 | neighbors=[test_va_campaign.py, _run()]
-- "tests_test_va_campaign_test_stages_run_in_order_and_thread_context": "test_stages_run_in_order_and_thread_context()" | kind=code-symbol | source=probe/tests/test_va_campaign.py:L40 | neighbors=[test_va_campaign.py, _run()]
-- "tests_test_validation_endpoints_exec": "_exec()" | kind=code-symbol | source=manager/backend/tests/test_validation_endpoints.py:L28 | neighbors=[test_validation_endpoints.py, _mock_db()]
-- "tests_test_validation_gate_testnofabricatedicmpliveness": "TestNoFabricatedIcmpLiveness" | kind=code-symbol | source=probe/tests/test_validation_gate.py:L71 | neighbors=[test_validation_gate.py, .test_icmp_unavailable_os_observation_r…]
-- "tests_test_validation_gate_testnofabricatedicmpliveness_test_icmp_unavailable_os_observation_raises_no_exposure": ".test_icmp_unavailable_os_observation_raises_no_exposure()" | kind=code-symbol | source=probe/tests/test_validation_gate.py:L72 | neighbors=[TestNoFabricatedIcmpLiveness, _ids()]
-- "tests_test_validation_gate_testrdpnlagate_test_nla_enforced_suppresses_no_nla_finding": ".test_nla_enforced_suppresses_no_nla_finding()" | kind=code-symbol | source=probe/tests/test_validation_gate.py:L56 | neighbors=[TestRdpNlaGate, _ids()]
-- "tests_test_validation_gate_testrdpnlagate_test_positive_control_nla_off_is_flagged": ".test_positive_control_nla_off_is_flagged()" | kind=code-symbol | source=probe/tests/test_validation_gate.py:L62 | neighbors=[TestRdpNlaGate, _ids()]
-- "tests_test_validation_gate_testudpnoreplyrejected_test_open_filtered_amplifier_not_flagged": ".test_open_filtered_amplifier_not_flagged()" | kind=code-symbol | source=probe/tests/test_validation_gate.py:L36 | neighbors=[TestUdpNoReplyRejected, _ids()]
-- "tests_test_validation_gate_testudpnoreplyrejected_test_positive_control_answered_amplifier_is_flagged": ".test_positive_control_answered_amplifier_is_flagged()" | kind=code-symbol | source=probe/tests/test_validation_gate.py:L43 | neighbors=[TestUdpNoReplyRejected, _ids()]
 
 ## Instructions
 

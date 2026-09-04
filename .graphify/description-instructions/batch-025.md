@@ -1,4 +1,4 @@
-# Node Description Batch 26 of 330
+# Node Description Batch 26 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -26,6 +26,10 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
+- "tests_test_auth_login_teststartupdiagnostics": "TestStartupDiagnostics" | kind=code-symbol | source=manager/backend/tests/test_auth_login.py:L251 | neighbors=[test_auth_login.py, .test_bcrypt_round_trip_passes(), .test_cookie_config_fatal_in_production…, .test_cookie_config_ok_in_development(), .test_database_check_returns_fatal_on_c…, .test_jwt_secret_known_weak_is_fatal()] | lang=en
+- "tests_test_customer_access_operator": "_operator()" | kind=code-symbol | source=manager/backend/tests/test_customer_access.py:L23 | neighbors=[test_customer_access.py, .test_approve_dispatches_job_and_links_…, .test_approve_non_pending_is_conflict(), .test_approve_without_assigned_agent_is…, .test_assigns_agent_to_engagement(), .test_unknown_agent_is_404()] | lang=en
+- "tests_test_cve_correlation_testcorrelate": "TestCorrelate" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L167 | neighbors=[test_cve_correlation.py, .test_backport_banner_downgrades_confid…, .test_clean_banner_stays_medium(), .test_dedup_by_cve_target_port(), .test_exposed_top_finding(), .test_facts_without_cpe_ignored()] | lang=en
+- "tests_test_cve_correlation_testversion": "TestVersion" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L34 | neighbors=[test_cve_correlation.py, .test_compare(), .test_in_range_end_exclusive(), .test_in_range_exact(), .test_in_range_start_inclusive(), .test_in_range_unconstrained_is_false()] | lang=en
 - "tests_test_dualstack_fallback": "test_dualstack_fallback.py" | kind=code-symbol | source=probe/tests/test_dualstack_fallback.py:L1 | neighbors=[8f6bf49 Refactor code structure and rem…, scanner_base.py, TestOsFingerprintSmbBuildFallback, TestRdpFallback, TestResolveIpCandidates, TestSmbNegotiateFallback] | lang=en
 - "tests_test_exploit_engine_rationale_1": "Unit tests for the exploitation engine.  All external connections (Metasploit RP" | kind=entity | source=manager/backend/tests/test_exploit_engine.py:L1 | neighbors=[test_exploit_engine.py, MetasploitRPCClient, MetasploitRPCError, NucleiExploitRunner, ApprovalRequiredError, BlastRadiusExceededError] | lang=en
 - "tests_test_exploit_engine_rationale_420": "Run against a live Metasploitable2 lab target.     Requires: msfrpcd running, Me" | kind=entity | source=manager/backend/tests/test_exploit_engine.py:L420 | neighbors=[TestMetasploitIntegration, MetasploitRPCClient, MetasploitRPCError, NucleiExploitRunner, ApprovalRequiredError, BlastRadiusExceededError] | lang=pt
@@ -62,10 +66,6 @@ one-sentence description — no prose, no markdown fences.
 - "tests_test_vantage_fusion_probe": "_probe()" | kind=code-symbol | source=manager/backend/tests/test_vantage_fusion.py:L15 | neighbors=[test_vantage_fusion.py, Build a one-target probe exposure resul…, test_ambiguous_when_only_open_filtered(), test_declared_external_vantage_without_…, test_external_vantage_open_makes_port_e…, test_fused_service_exposure_is_keyed_fo…] | lang=en
 - "tests_test_vuln_enrichment_make_http_mock": "_make_http_mock()" | kind=code-symbol | source=manager/backend/tests/test_vuln_enrichment.py:L52 | neighbors=[test_vuln_enrichment.py, Create a mock httpx.AsyncClient that re…, test_check_cisa_kev_absent(), test_check_cisa_kev_case_insensitive(), test_check_cisa_kev_present(), test_enrich_full()] | lang=en
 - "tests_test_wire_identity": "test_wire_identity.py" | kind=code-symbol | source=probe/tests/test_wire_identity.py:L1 | neighbors=[2c53ae9 evasion(scanner): randomized sc…, 37376de hardening(scanner): OPSEC de-si…, 4733f24 evasion(scanner): --source-port…, TestChooseSourcePort, TestEvasionFlags, TestJitteredDelay] | lang=en
-- "tests_test_ws_claim_protocol": "test_ws_claim_protocol.py" | kind=code-symbol | source=probe/tests/test_ws_claim_protocol.py:L1 | neighbors=[b4b12a9 Rename project and update files, b5ffcb0 Refactor Vedha probe installer …, agent.py, result_spool.py, test_busy_probe_declines_additional_off…, test_http_spool_flush_removes_only_mana…] | lang=en
-- "verify_route": "route.ts" | kind=code-symbol | source=manager/frontend/app/api/auth/verify/route.ts:L1 | neighbors=[10dfc80 Add comprehensive probe testing…, d1b4dd3 trim frontend to 7 core pages; …, verifyOtp(), addUser(), getUser(), POST()] | lang=en
-- "vuln_enrichment_ttlcache": "TTLCache" | kind=code-symbol | source=manager/backend/app/vuln/enrichment.py:L27 | neighbors=[enrichment.py, LRU + TTL eviction. Expired keys are pu…, OrderedDict, .__contains__(), .get(), .__getitem__()] | lang=en
-- "websocket_manager_connectionmanager": "ConnectionManager" | kind=code-symbol | source=manager/backend/app/websocket/manager.py:L27 | neighbors=[manager.py, .broadcast(), .connect(), .disconnect(), .get_room_clients(), .__init__()] | lang=en
 
 ## Instructions
 

@@ -1,4 +1,4 @@
-# Node Description Batch 41 of 330
+# Node Description Batch 41 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -17,6 +17,10 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
+- "tests_test_pipeline_testrunpipelineemptyinput_test_empty_jsonl_returns_no_findings": ".test_empty_jsonl_returns_no_findings()" | kind=code-symbol | source=manager/detection_engine/tests/test_pipeline.py:L130 | neighbors=[A completely empty file must not produc…, TestRunPipelineEmptyInput, _empty_epss(), _empty_jsonl(), _empty_kev(), _mock_vuln_db()]
+- "tests_test_pipeline_testrunpipelineexposure_test_no_exposure_fields_are_none": ".test_no_exposure_fields_are_none()" | kind=code-symbol | source=manager/detection_engine/tests/test_pipeline.py:L260 | neighbors=[Without an exposure dict the fields sta…, TestRunPipelineExposure, _empty_epss(), _empty_kev(), _openssh_vuln_db(), _ssh_inventory_jsonl()]
+- "tests_test_pipeline_testrunpipelinevulnmatching": "TestRunPipelineVulnMatching" | kind=code-symbol | source=manager/detection_engine/tests/test_pipeline.py:L155 | neighbors=[test_pipeline.py, .test_banner_finding_is_suspected_not_c…, .test_full_detection_exposes_authoritat…, .test_injected_dbs_used_no_file_io(), .test_no_finding_for_patched_version(), .test_ssh_inventory_finding_is_confirme…]
+- "tests_test_pipeline_testrunpipelinevulnmatching_test_banner_finding_is_suspected_not_confirmed": ".test_banner_finding_is_suspected_not_confirmed()" | kind=code-symbol | source=manager/detection_engine/tests/test_pipeline.py:L180 | neighbors=[A banner-derived (inferred) source matc…, TestRunPipelineVulnMatching, _banner_jsonl(), _empty_epss(), _empty_kev(), _openssh_vuln_db()]
 - "tests_test_pipeline_testrunpipelinevulnmatching_test_injected_dbs_used_no_file_io": ".test_injected_dbs_used_no_file_io()" | kind=code-symbol | source=manager/detection_engine/tests/test_pipeline.py:L204 | neighbors=[When all three dbs are injected, the pi…, TestRunPipelineVulnMatching, _empty_epss(), _empty_kev(), _mock_vuln_db(), _ssh_inventory_jsonl()]
 - "tests_test_pipeline_testrunpipelinevulnmatching_test_no_finding_for_patched_version": ".test_no_finding_for_patched_version()" | kind=code-symbol | source=manager/detection_engine/tests/test_pipeline.py:L193 | neighbors=[A host running the fixed version must n…, TestRunPipelineVulnMatching, _empty_epss(), _empty_kev(), _openssh_vuln_db(), _ssh_inventory_jsonl()]
 - "tests_test_pipeline_testrunpipelinevulnmatching_test_ssh_inventory_finding_is_confirmed": ".test_ssh_inventory_finding_is_confirmed()" | kind=code-symbol | source=manager/detection_engine/tests/test_pipeline.py:L167 | neighbors=[Findings from an authoritative (credent…, TestRunPipelineVulnMatching, _empty_epss(), _empty_kev(), _openssh_vuln_db(), _ssh_inventory_jsonl()]
@@ -53,10 +57,6 @@ one-sentence description — no prose, no markdown fences.
 - "tests_test_stage2_reconcile_scalars": "_scalars()" | kind=code-symbol | source=manager/backend/tests/test_stage2_reconcile.py:L28 | neighbors=[test_stage2_reconcile.py, test_dead_lettered_facts_event_is_error…, test_fresh_heartbeat_reports_worker_ali…, test_multi_agent_all_covered_is_complet…, test_multi_agent_latest_done_but_earlie…, test_stale_heartbeat_with_pending_is_st…]
 - "tests_test_stage2_reconcile_test_fresh_heartbeat_reports_worker_alive": "test_fresh_heartbeat_reports_worker_alive()" | kind=code-symbol | source=manager/backend/tests/test_stage2_reconcile.py:L211 | neighbors=[test_stage2_reconcile.py, _hb(), _job(), _rows(), _run(), _scalars()]
 - "tests_test_stage2_reconcile_user": "_user()" | kind=code-symbol | source=manager/backend/tests/test_stage2_reconcile.py:L24 | neighbors=[test_stage2_reconcile.py, test_dead_lettered_facts_event_is_error…, test_fresh_heartbeat_reports_worker_ali…, test_multi_agent_all_covered_is_complet…, test_multi_agent_latest_done_but_earlie…, test_stale_heartbeat_with_pending_is_st…]
-- "tests_test_syn_scanner_testbuildresultsenrichment_scanner": "._scanner()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L350 | neighbors=[TestBuildResultsEnrichment, .test_closed_and_filtered_suppressed_by…, .test_open_result_carries_signals_and_o…, .test_open_without_signals_has_no_os_gu…, .test_os_guess_is_tagged_tcp_derived_no…, .test_p0f_stack_label_from_harvested_op…]
-- "tests_test_syn_scanner_testsynretransmit": "TestSynRetransmit" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L204 | neighbors=[test_syn_scanner.py, The raw SYN path resends ONLY still-sil…, ._patch(), .test_answered_ports_are_not_retransmit…, .test_retries_zero_sends_one_syn_per_po…, .test_silent_ports_are_retried_retries_…]
-- "tests_test_tarpit": "test_tarpit.py" | kind=code-symbol | source=probe/tests/test_tarpit.py:L1 | neighbors=[8f6bf49 Refactor code structure and rem…, 9c973dd feat(scanner): tarpit/honeypot …, port_scanner.py, scanner_base.py, TestAssessTarpit, TestPortScannerTarpitFlag]
-- "tests_test_tls_fingerprint_testdigest": "TestDigest" | kind=code-symbol | source=probe/tests/test_tls_fingerprint.py:L83 | neighbors=[test_tls_fingerprint.py, .test_cipher_code_known_and_unknown(), .test_digest_differs_with_cipher(), .test_digest_is_62_chars(), .test_digest_is_deterministic(), .test_version_code()]
 
 ## Instructions
 

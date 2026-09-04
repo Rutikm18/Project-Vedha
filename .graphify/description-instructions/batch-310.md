@@ -1,4 +1,4 @@
-# Node Description Batch 311 of 330
+# Node Description Batch 311 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,53 +19,51 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-LANGUAGE: each entry has a `lang=` marker giving the language of its source.
-Write that entry's description in EXACTLY that language. Do not translate to
-a single common language — match each node's source language individually.
+Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_syn_scanner_testoptionparsing_test_mss_after_nop_padding": ".test_mss_after_nop_padding()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L308 | neighbors=[TestOptionParsing] | lang=en
-- "tests_test_syn_scanner_testoptionparsing_test_mss_extracted": ".test_mss_extracted()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L305 | neighbors=[TestOptionParsing] | lang=en
-- "tests_test_syn_scanner_testoptionparsing_test_mss_skips_other_options": ".test_mss_skips_other_options()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L311 | neighbors=[TestOptionParsing] | lang=en
-- "tests_test_syn_scanner_testpacketroundtrip_test_ip_checksum_valid_in_full_packet": ".test_ip_checksum_valid_in_full_packet()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L84 | neighbors=[TestPacketRoundTrip] | lang=en
-- "tests_test_syn_scanner_testpacketroundtrip_test_parse_rejects_short_packet": ".test_parse_rejects_short_packet()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L88 | neighbors=[TestPacketRoundTrip] | lang=en
-- "tests_test_syn_scanner_testpacketroundtrip_test_syn_flag_is_set": ".test_syn_flag_is_set()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L79 | neighbors=[TestPacketRoundTrip] | lang=en
-- "tests_test_syn_scanner_testpacketroundtrip_test_syn_packet_parses_back_to_fields": ".test_syn_packet_parses_back_to_fields()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L69 | neighbors=[TestPacketRoundTrip] | lang=en
-- "tests_test_syn_scanner_testparsepacketsignals_test_no_options_gives_none_mss": ".test_no_options_gives_none_mss()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L342 | neighbors=[TestParsePacketSignals] | lang=en
-- "tests_test_syn_scanner_testsyncookie_test_cookie_is_32_bit": ".test_cookie_is_32_bit()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L53 | neighbors=[TestSynCookie] | lang=en
-- "tests_test_syn_scanner_testsyncookie_test_cookie_is_deterministic": ".test_cookie_is_deterministic()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L48 | neighbors=[TestSynCookie] | lang=en
-- "tests_test_syn_scanner_testsyncookie_test_cookie_varies_with_key": ".test_cookie_varies_with_key()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L61 | neighbors=[TestSynCookie] | lang=en
-- "tests_test_syn_scanner_testsyncookie_test_cookie_varies_with_port": ".test_cookie_varies_with_port()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L57 | neighbors=[TestSynCookie] | lang=en
-- "tests_test_syn_scanner_testsyndefaults_test_default_ports_are_nmap_top100": ".test_default_ports_are_nmap_top100()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L289 | neighbors=[TestSynDefaults] | lang=en
-- "tests_test_syn_scanner_testsyndefaults_test_default_retries_is_two": ".test_default_retries_is_two()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L296 | neighbors=[TestSynDefaults] | lang=en
-- "tests_test_syn_scanner_testsynscannerfallback_test_fallback_detects_open_port_on_loopback": ".test_fallback_detects_open_port_on_loopback()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L164 | neighbors=[TestSynScannerFallback] | lang=en
-- "tests_test_syn_scanner_testsynscannerfallback_test_fallback_labels_scanner_name": ".test_fallback_labels_scanner_name()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L184 | neighbors=[TestSynScannerFallback] | lang=en
-- "tests_test_syn_scanner_testsynscannerfallback_test_forced_fallback_builds_connect_scanner": ".test_forced_fallback_builds_connect_scanner()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L158 | neighbors=[TestSynScannerFallback] | lang=en
-- "tests_test_syn_scanner_testtcpoptionprofile_test_malformed_options_do_not_raise": ".test_malformed_options_do_not_raise()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L423 | neighbors=[TestTcpOptionProfile] | lang=en
-- "tests_test_syn_scanner_testtcpoptionprofile_test_parse_linux_syn_ack_options": ".test_parse_linux_syn_ack_options()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L411 | neighbors=[TestTcpOptionProfile] | lang=en
-- "tests_test_syn_scanner_testtcpoptionprofile_test_parse_mss_shim_still_works": ".test_parse_mss_shim_still_works()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L419 | neighbors=[TestTcpOptionProfile] | lang=en
-- "tests_test_syn_scanner_testtcpoptionprofile_test_parse_windows_syn_ack_options": ".test_parse_windows_syn_ack_options()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L404 | neighbors=[TestTcpOptionProfile] | lang=en
-- "tests_test_tarpit_rationale_1": "test_tarpit.py — tarpit / honeypot detection (task C5).  A tarpit (LaBrea), hone" | kind=entity | source=probe/tests/test_tarpit.py:L1 | neighbors=[test_tarpit.py] | lang=pt
-- "tests_test_tarpit_testassesstarpit_test_boundary_floor_and_ratio_trip_exactly": ".test_boundary_floor_and_ratio_trip_exactly()" | kind=code-symbol | source=probe/tests/test_tarpit.py:L33 | neighbors=[TestAssessTarpit] | lang=en
-- "tests_test_tarpit_testassesstarpit_test_busy_real_host_is_not_flagged": ".test_busy_real_host_is_not_flagged()" | kind=code-symbol | source=probe/tests/test_tarpit.py:L23 | neighbors=[TestAssessTarpit] | lang=en
-- "tests_test_tarpit_testassesstarpit_test_nearly_all_open_large_scan_is_flagged": ".test_nearly_all_open_large_scan_is_flagged()" | kind=code-symbol | source=probe/tests/test_tarpit.py:L18 | neighbors=[TestAssessTarpit] | lang=en
-- "tests_test_tarpit_testassesstarpit_test_tiny_all_open_scan_is_below_the_floor": ".test_tiny_all_open_scan_is_below_the_floor()" | kind=code-symbol | source=probe/tests/test_tarpit.py:L28 | neighbors=[TestAssessTarpit] | lang=en
-- "tests_test_tarpit_testassesstarpit_test_zero_attempted_is_safe": ".test_zero_attempted_is_safe()" | kind=code-symbol | source=probe/tests/test_tarpit.py:L37 | neighbors=[TestAssessTarpit] | lang=en
-- "tests_test_task_runner_rationale_1": "Tests for agent/task_runner.py" | kind=entity | source=probe/tests/test_task_runner.py:L1 | neighbors=[test_task_runner.py] | lang=en
-- "tests_test_task_runner_rationale_105": "When scope is fetched and targets are outside it." | kind=entity | source=probe/tests/test_task_runner.py:L105 | neighbors=[.test_rejects_out_of_scope_target()] | lang=en
-- "tests_test_task_runner_rationale_13": "Return a minimal successful result without doing any real I/O." | kind=entity | source=probe/tests/test_task_runner.py:L13 | neighbors=[_fake_run_scan()] | lang=pt
-- "tests_test_task_runner_rationale_152": "When scope fetch fails, manager-embedded scope is still enforced." | kind=entity | source=probe/tests/test_task_runner.py:L152 | neighbors=[.test_scope_fallback_when_fetch_fails()] | lang=en
-- "tests_test_task_runner_rationale_201": "Verify the submit callback is called with the correct payload." | kind=entity | source=probe/tests/test_task_runner.py:L201 | neighbors=[.test_calls_submit_with_result()] | lang=en
-- "tests_test_task_runner_rationale_206": "When scope is fetched and targets are outside it." | kind=entity | source=probe/tests/test_task_runner.py:L206 | neighbors=[.test_rejects_out_of_scope_target()] | lang=en
-- "tests_test_task_runner_rationale_226": "When spool_submit is provided, it's used instead of direct submit." | kind=entity | source=probe/tests/test_task_runner.py:L226 | neighbors=[.test_uses_spool_when_available()] | lang=en
-- "tests_test_task_runner_rationale_319": "When scope fetch fails, manager-embedded scope is still enforced." | kind=entity | source=probe/tests/test_task_runner.py:L319 | neighbors=[.test_scope_fallback_when_fetch_fails()] | lang=en
-- "tests_test_task_runner_rationale_38": "TaskRunner with no-op dependencies (no real scanning)." | kind=entity | source=probe/tests/test_task_runner.py:L38 | neighbors=[runner()] | lang=en
-- "tests_test_task_runner_rationale_391": "Verify the submit callback is called with the correct payload." | kind=entity | source=probe/tests/test_task_runner.py:L391 | neighbors=[.test_calls_submit_with_result()] | lang=en
-- "tests_test_task_runner_rationale_416": "When spool_submit is provided, it's used instead of direct submit." | kind=entity | source=probe/tests/test_task_runner.py:L416 | neighbors=[.test_uses_spool_when_available()] | lang=en
-- "tests_test_task_runner_rationale_47": "Tests that use the real engine but with no-op callbacks." | kind=entity | source=probe/tests/test_task_runner.py:L47 | neighbors=[TestRunnerHeadless] | lang=en
-- "tests_test_task_runner_testrunnerheadless_test_explicit_empty_targets_never_expand_to_engagement_scope": ".test_explicit_empty_targets_never_expand_to_engagement_scope()" | kind=code-symbol | source=probe/tests/test_task_runner.py:L71 | neighbors=[TestRunnerHeadless] | lang=en
+- "tests_test_smb_ntlm_build_testtype1andspnego_test_session_setup_packet_shape": ".test_session_setup_packet_shape()" | kind=code-symbol | source=probe/tests/test_smb_ntlm_build.py:L158 | neighbors=[TestType1AndSpnego]
+- "tests_test_smb_ntlm_build_testtype1andspnego_test_spnego_wraps_and_contains_type1": ".test_spnego_wraps_and_contains_type1()" | kind=code-symbol | source=probe/tests/test_smb_ntlm_build.py:L151 | neighbors=[TestType1AndSpnego]
+- "tests_test_smb_ntlm_build_testtype1andspnego_test_type1_sets_negotiate_version": ".test_type1_sets_negotiate_version()" | kind=code-symbol | source=probe/tests/test_smb_ntlm_build.py:L144 | neighbors=[TestType1AndSpnego]
+- "tests_test_smb_scanner_rationale_15": "An SMB2 ERROR response (e.g. STATUS_INVALID_PARAMETER). Windows returns     this" | kind=entity | source=probe/tests/test_smb_scanner.py:L15 | neighbors=[_smb2_error_response()]
+- "tests_test_smb_scanner_rationale_51": "The confirmed bug: an SMB2 error response (STATUS_INVALID_PARAMETER) was     rea" | kind=entity | source=probe/tests/test_smb_scanner.py:L51 | neighbors=[test_error_response_not_parsed_as_signi…]
+- "tests_test_smb_scanner_rationale_63": "A response with the wrong body StructureSize is not a valid NEGOTIATE." | kind=entity | source=probe/tests/test_smb_scanner.py:L63 | neighbors=[test_truncated_negotiate_body_not_parse…]
+- "tests_test_smb_scanner_rationale_72": "Step 13: expose signing_supported (protocol-precise), not only the     ambiguous" | kind=entity | source=probe/tests/test_smb_scanner.py:L72 | neighbors=[test_signing_supported_field_present()]
+- "tests_test_smb_scanner_test_garbage_response": "test_garbage_response()" | kind=code-symbol | source=probe/tests/test_smb_scanner.py:L44 | neighbors=[test_smb_scanner.py]
+- "tests_test_smtp_scanner_rationale_1": "test_smtp_scanner.py — SMTP hygiene (VRFY/EXPN user-enum + STARTTLS presence)." | kind=entity | source=probe/tests/test_smtp_scanner.py:L1 | neighbors=[test_smtp_scanner.py]
+- "tests_test_smtp_scanner_testparity_test_main_scripts": ".test_main_scripts()" | kind=code-symbol | source=probe/tests/test_smtp_scanner.py:L74 | neighbors=[TestParity]
+- "tests_test_smtp_scanner_testpurelogic_test_parse_ehlo_capabilities": ".test_parse_ehlo_capabilities()" | kind=code-symbol | source=probe/tests/test_smtp_scanner.py:L18 | neighbors=[TestPureLogic]
+- "tests_test_smtp_scanner_testpurelogic_test_vrfy_leaks": ".test_vrfy_leaks()" | kind=code-symbol | source=probe/tests/test_smtp_scanner.py:L23 | neighbors=[TestPureLogic]
+- "tests_test_ssh_scanner_rationale_1": "test_ssh_scanner.py — SSH configuration audit (Tier 2.x, §6 of the VA checklist)" | kind=entity | source=probe/tests/test_ssh_scanner.py:L1 | neighbors=[test_ssh_scanner.py]
+- "tests_test_ssh_scanner_rationale_30": "Encode an SSH name-list: uint32 length + comma-joined ASCII." | kind=entity | source=probe/tests/test_ssh_scanner.py:L30 | neighbors=[_nl()]
+- "tests_test_ssh_scanner_testevaluate_test_arcfour_is_rc4_failure": ".test_arcfour_is_rc4_failure()" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L114 | neighbors=[TestEvaluate]
+- "tests_test_ssh_scanner_testevaluate_test_cbc_cipher_is_warning_not_failure": ".test_cbc_cipher_is_warning_not_failure()" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L108 | neighbors=[TestEvaluate]
+- "tests_test_ssh_scanner_testevaluate_test_group1_sha1_is_failure_with_modulus_and_sha1_reasons": ".test_group1_sha1_is_failure_with_modulus_and_sha1_reasons()" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L99 | neighbors=[TestEvaluate]
+- "tests_test_ssh_scanner_testevaluate_test_hmac_md5_is_failure": ".test_hmac_md5_is_failure()" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L119 | neighbors=[TestEvaluate]
+- "tests_test_ssh_scanner_testevaluate_test_modern_set_is_clean": ".test_modern_set_is_clean()" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L129 | neighbors=[TestEvaluate]
+- "tests_test_ssh_scanner_testevaluate_test_ssh_rsa_hostkey_is_sha1_failure": ".test_ssh_rsa_hostkey_is_sha1_failure()" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L124 | neighbors=[TestEvaluate]
+- "tests_test_ssh_scanner_testevaluate_test_unknown_algorithm_is_recorded_not_failed": ".test_unknown_algorithm_is_recorded_not_failed()" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L135 | neighbors=[TestEvaluate]
+- "tests_test_ssh_scanner_testfulldbcoverage_test_3des_ctr_cipher_is_failure": ".test_3des_ctr_cipher_is_failure()" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L252 | neighbors=[TestFullDBCoverage]
+- "tests_test_ssh_scanner_testfulldbcoverage_test_gss_kex_offered_by_server_is_failure": ".test_gss_kex_offered_by_server_is_failure()" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L262 | neighbors=[TestFullDBCoverage]
+- "tests_test_ssh_scanner_testfulldbcoverage_test_hmac_ripemd160_is_failure": ".test_hmac_ripemd160_is_failure()" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L257 | neighbors=[TestFullDBCoverage]
+- "tests_test_ssh_scanner_testfulldbcoverage_test_rijndael_cbc_cipher_is_failure": ".test_rijndael_cbc_cipher_is_failure()" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L247 | neighbors=[TestFullDBCoverage]
+- "tests_test_ssh_scanner_testmainscriptsparity_test_main_scripts_vendored_db_matches_scanner_tree": ".test_main_scripts_vendored_db_matches_scanner_tree()" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L331 | neighbors=[TestMainScriptsParity]
+- "tests_test_ssh_scanner_testnofalsepositives_test_ed25519_hostkey_is_clean": ".test_ed25519_hostkey_is_clean()" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L283 | neighbors=[TestNoFalsePositives]
+- "tests_test_ssh_scanner_testnofalsepositives_test_rsa_sha2_hostkeys_are_not_failures": ".test_rsa_sha2_hostkeys_are_not_failures()" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L276 | neighbors=[TestNoFalsePositives]
+- "tests_test_ssh_scanner_testparsebanner_test_dropbear_no_comments_from_bytes": ".test_dropbear_no_comments_from_bytes()" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L58 | neighbors=[TestParseBanner]
+- "tests_test_ssh_scanner_testparsebanner_test_openssh_with_comments": ".test_openssh_with_comments()" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L52 | neighbors=[TestParseBanner]
+- "tests_test_ssh_scanner_testparsebanner_test_rejects_non_ssh": ".test_rejects_non_ssh()" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L63 | neighbors=[TestParseBanner]
+- "tests_test_ssh_scanner_testsshscanner_scanner": "._scanner()" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L165 | neighbors=[TestSSHScanner]
+- "tests_test_ssh_scanner_testsshscanner_test_no_response_is_filtered": ".test_no_response_is_filtered()" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L183 | neighbors=[TestSSHScanner]
+- "tests_test_ssh_scanner_testsshstatustaxonomy_scanner": "._scanner()" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L340 | neighbors=[TestSSHStatusTaxonomy]
+- "tests_test_ssh_scanner_testsshstatustaxonomy_test_connect_failure_is_filtered": ".test_connect_failure_is_filtered()" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L354 | neighbors=[TestSSHStatusTaxonomy]
+- "tests_test_ssh_scanner_testsshstatustaxonomy_test_open_but_no_banner_is_open_not_ssh": ".test_open_but_no_banner_is_open_not_ssh()" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L372 | neighbors=[TestSSHStatusTaxonomy]
+- "tests_test_ssh_scanner_testsshstatustaxonomy_test_open_non_ssh_is_open_not_filtered": ".test_open_non_ssh_is_open_not_filtered()" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L344 | neighbors=[TestSSHStatusTaxonomy]
+- "tests_test_ssh_scanner_testvendoreddb_test_full_db_is_large_not_a_subset": ".test_full_db_is_large_not_a_subset()" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L220 | neighbors=[TestVendoredDB]
+- "tests_test_ssh_scanner_testvendoreddb_test_gss_wildcard_match": ".test_gss_wildcard_match()" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L233 | neighbors=[TestVendoredDB]
+- "tests_test_ssh_scanner_testvendoreddb_test_lookup_exact_and_unknown": ".test_lookup_exact_and_unknown()" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L227 | neighbors=[TestVendoredDB]
 
 ## Instructions
 

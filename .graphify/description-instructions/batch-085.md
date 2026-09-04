@@ -1,4 +1,4 @@
-# Node Description Batch 86 of 330
+# Node Description Batch 86 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -17,6 +17,12 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
+- "tests_test_smb_ntlm_build_testtype1andspnego": "TestType1AndSpnego" | kind=code-symbol | source=probe/tests/test_smb_ntlm_build.py:L143 | neighbors=[test_smb_ntlm_build.py, .test_session_setup_packet_shape(), .test_spnego_wraps_and_contains_type1(), .test_type1_sets_negotiate_version()]
+- "tests_test_smb_scanner_smb2_negotiate_response": "_smb2_negotiate_response()" | kind=code-symbol | source=probe/tests/test_smb_scanner.py:L5 | neighbors=[test_smb_scanner.py, test_signing_not_required(), test_signing_required_smb311(), test_signing_supported_field_present()]
+- "tests_test_smtp_scanner_testsmtpfindings_fact": "._fact()" | kind=code-symbol | source=probe/tests/test_smtp_scanner.py:L51 | neighbors=[TestSMTPFindings, .test_expn_alone_triggers_enum(), .test_hardened_is_silent(), .test_user_enum_and_no_starttls()]
+- "tests_test_smtp_scanner_testsmtpscanner": "TestSMTPScanner" | kind=code-symbol | source=probe/tests/test_smtp_scanner.py:L31 | neighbors=[test_smtp_scanner.py, ._sc(), .test_no_smtp_filtered(), .test_open()]
+- "tests_test_ssh_scanner_testnofalsepositives": "TestNoFalsePositives" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L271 | neighbors=[test_ssh_scanner.py, ._eval(), .test_ed25519_hostkey_is_clean(), .test_rsa_sha2_hostkeys_are_not_failure…]
+- "tests_test_ssh_scanner_testparsebanner": "TestParseBanner" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L51 | neighbors=[test_ssh_scanner.py, .test_dropbear_no_comments_from_bytes(), .test_openssh_with_comments(), .test_rejects_non_ssh()]
 - "tests_test_ssh_scanner_testparsekexinit": "TestParseKexinit" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L69 | neighbors=[test_ssh_scanner.py, .test_empty_language_list(), .test_handles_payload_without_leading_t…, .test_parses_all_name_lists()]
 - "tests_test_ssh_scanner_testsshfindings_fact": "._fact()" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L194 | neighbors=[TestSSHFindings, .test_clean_server_raises_nothing(), .test_terrapin_raises_finding(), .test_weak_algorithms_raise_finding()]
 - "tests_test_ssh_scanner_testsshscanner": "TestSSHScanner" | kind=code-symbol | source=probe/tests/test_ssh_scanner.py:L164 | neighbors=[test_ssh_scanner.py, ._scanner(), .test_no_response_is_filtered(), .test_weak_server_reports_open_with_fai…]
@@ -51,12 +57,6 @@ one-sentence description — no prose, no markdown fences.
 - "tests_test_weakness_map_testfindingview": "TestFindingView" | kind=code-symbol | source=probe/tests/test_weakness_map.py:L56 | neighbors=[test_weakness_map.py, .test_non_finding_ignored(), .test_raw_shape(), .test_wrapped_shape()]
 - "tests_test_wire_identity_testmoduleconstantsunbranded": "TestModuleConstantsUnbranded" | kind=code-symbol | source=probe/tests/test_wire_identity.py:L80 | neighbors=[test_wire_identity.py, Import-time probe constants built from …, .test_iot_rtsp_options(), .test_service_banner_http_probe()]
 - "tests_test_workflow_execution_concurrencyscanner": "_ConcurrencyScanner" | kind=code-symbol | source=probe/tests/test_workflow_execution.py:L46 | neighbors=[test_workflow_execution.py, .__init__(), .scan_target(), test_host_fanout_is_bounded()]
-- "tests_test_xml_parser": "test_xml_parser.py" | kind=code-symbol | source=manager/backend/tests/test_xml_parser.py:L1 | neighbors=[d1b4dd3 trim frontend to 7 core pages; …, TestNmapXMLParser, Unit tests for NmapXMLParser., 298a9d4 trim frontend to 7 core pages; …]
-- "tools_installer_installall": "installAll()" | kind=code-symbol | source=manager/frontend/lib/tools/installer.ts:L226 | neighbors=[tools.ts, installer.ts, getInstalledRecord(), installTool()]
-- "tools_issue_license_main": "main()" | kind=code-symbol | source=probe/tools/issue_license.py:L75 | neighbors=[issue_license.py, issue(), keygen(), pubkey()]
-- "utils_db": "db.py" | kind=code-symbol | source=manager/backend/app/utils/db.py:L1 | neighbors=[d1b4dd3 trim frontend to 7 core pages; …, get_or_404(), Shared database helpers — single source…, 298a9d4 trim frontend to 7 core pages; …]
-- "utils_hash": "hash.py" | kind=code-symbol | source=manager/backend/app/utils/hash.py:L1 | neighbors=[d1b4dd3 trim frontend to 7 core pages; …, dedup_hash(), Shared hashing utilities — deduplicatio…, 298a9d4 trim frontend to 7 core pages; …]
-- "versions_0015_finding_risk_score_scale": "0015_finding_risk_score_scale.py" | kind=code-symbol | source=manager/backend/alembic/versions/0015_finding_risk_score_scale.py:L1 | neighbors=[1fe16c8 stable but some dead code, need…, downgrade(), upgrade(), Allow the documented 0-1000 finding ris…]
 
 ## Instructions
 

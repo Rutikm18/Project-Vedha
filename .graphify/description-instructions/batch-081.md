@@ -1,4 +1,4 @@
-# Node Description Batch 82 of 330
+# Node Description Batch 82 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -24,6 +24,12 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
+- "tests_test_finding_events_testmerge_test_sorted_oldest_first": ".test_sorted_oldest_first()" | kind=code-symbol | source=manager/backend/tests/test_finding_events.py:L111 | neighbors=[TestMerge, ._stored(), ._synth(), _types()]
+- "tests_test_finding_schema": "test_finding_schema.py" | kind=code-symbol | source=manager/backend/tests/test_finding_schema.py:L1 | neighbors=[1fe16c8 stable but some dead code, need…, test_finding_patch_accepts_documented_m…, test_finding_patch_rejects_risk_score_a…, test_finding_summary_exposes_full_open_…]
+- "tests_test_fleet_jobs_scalars": "_scalars()" | kind=code-symbol | source=manager/backend/tests/test_fleet_jobs.py:L17 | neighbors=[test_fleet_jobs.py, test_filter_by_probe_and_engagement_run…, test_lists_jobs_with_probe_and_engageme…, test_running_filter_is_accepted()]
+- "tests_test_fleet_jobs_user": "_user()" | kind=code-symbol | source=manager/backend/tests/test_fleet_jobs.py:L13 | neighbors=[test_fleet_jobs.py, test_filter_by_probe_and_engagement_run…, test_lists_jobs_with_probe_and_engageme…, test_running_filter_is_accepted()]
+- "tests_test_ftp_scanner_testftpfindings_fact": "._fact()" | kind=code-symbol | source=probe/tests/test_ftp_scanner.py:L54 | neighbors=[TestFTPFindings, .test_anon_denied_is_silent(), .test_anon_login_only_is_medium(), .test_anon_read_is_high()]
+- "tests_test_ftp_scanner_testftpscanner_sc": "._sc()" | kind=code-symbol | source=probe/tests/test_ftp_scanner.py:L29 | neighbors=[TestFTPScanner, .test_anon_login_and_read_open(), .test_ftp_present_anon_denied_open_but_…, .test_no_ftp_filtered()]
 - "tests_test_host_discovery_udp_testparsenbstat": "TestParseNbstat" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L37 | neighbors=[test_host_discovery_udp.py, .test_msbrowse_control_chars_dropped(), .test_names_hostname_domain_mac(), .test_not_a_response()]
 - "tests_test_host_health_testoperatorvisibility": "TestOperatorVisibility" | kind=code-symbol | source=probe/tests/test_host_health.py:L280 | neighbors=[test_host_health.py, An offline host must reach the operator…, .test_flaky_note_is_not_an_error(), .test_offline_fact_carries_an_error_so_…]
 - "tests_test_host_health_testoperatorvisibility_test_flaky_note_is_not_an_error": ".test_flaky_note_is_not_an_error()" | kind=code-symbol | source=probe/tests/test_host_health.py:L294 | neighbors=[A host that is merely filtered is not a…, TestOperatorVisibility, _monitor(), _r()]
@@ -58,12 +64,6 @@ one-sentence description — no prose, no markdown fences.
 - "tests_test_nfs_scanner_testnfsscanner": "TestNFSScanner" | kind=code-symbol | source=probe/tests/test_nfs_scanner.py:L94 | neighbors=[test_nfs_scanner.py, ._sc(), .test_no_rpc_is_filtered(), .test_world_readable_export_open()]
 - "tests_test_nmap_xml_safety_testnmapentityguard": "TestNmapEntityGuard" | kind=code-symbol | source=probe/tests/test_nmap_xml_safety.py:L27 | neighbors=[test_nmap_xml_safety.py, .test_entity_declaration_is_refused(), .test_entity_guard_is_case_insensitive(), .test_legitimate_doctype_output_still_p…]
 - "tests_test_notifications": "test_notifications.py" | kind=code-symbol | source=manager/backend/tests/test_notifications.py:L1 | neighbors=[6be8259 feat(integrations): outbox deli…, TestDeliver, TestNotifyTenant, test_notifications.py — integration del…]
-- "tests_test_notifications_testdeliver": "TestDeliver" | kind=code-symbol | source=manager/backend/tests/test_notifications.py:L13 | neighbors=[test_notifications.py, .test_dispatches_to_the_kind(), .test_sender_error_is_swallowed(), .test_unknown_kind_returns_false()]
-- "tests_test_nuclei_scanner_finding_line": "_finding_line()" | kind=code-symbol | source=manager/backend/tests/test_nuclei_scanner.py:L12 | neighbors=[test_nuclei_scanner.py, test_nonzero_exit_retains_and_marks_par…, test_run_scan_streams_jsonl_and_separat…, test_timeout_retains_findings_emitted_b…]
-- "tests_test_online_get_raising": "_get_raising()" | kind=code-symbol | source=probe/tests/test_online.py:L58 | neighbors=[test_online.py, .test_fail_open_leaves_offline_result_u…, .test_network_error_is_fail_open(), .test_error_is_none()]
-- "tests_test_online_nvd_bytes": "_nvd_bytes()" | kind=code-symbol | source=probe/tests/test_online.py:L25 | neighbors=[test_online.py, .test_gap_fill_sets_cvss_and_recomputes…, .test_online_all_cross_checks_and_annot…, .test_parses_score_severity_refs()]
-- "tests_test_online_testenrichfindings_test_gap_fill_sets_cvss_and_recomputes_risk": ".test_gap_fill_sets_cvss_and_recomputes_risk()" | kind=code-symbol | source=probe/tests/test_online.py:L118 | neighbors=[TestEnrichFindings, _finding(), _get_returning(), _nvd_bytes()]
-- "tests_test_online_testenrichfindings_test_online_all_cross_checks_and_annotates_mismatch": ".test_online_all_cross_checks_and_annotates_mismatch()" | kind=code-symbol | source=probe/tests/test_online.py:L139 | neighbors=[TestEnrichFindings, _finding(), _get_returning(), _nvd_bytes()]
 
 ## Instructions
 

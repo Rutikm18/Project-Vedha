@@ -1,4 +1,4 @@
-# Node Description Batch 2 of 330
+# Node Description Batch 2 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -36,6 +36,7 @@ one-sentence description — no prose, no markdown fences.
 - "detection_engine_models_finding": "Finding" | kind=code-symbol | source=manager/detection_engine/models.py:L138 | neighbors=[models.py, .__post_init__(), .to_dict(), ConsistencyReport, FindingConsistency, consistency.py — Phase 5: N-run consist…]
 - "basescanner": "BaseScanner" | kind=code-symbol | neighbors=[DBScanner, DNSScanner, FTPScanner, HostDiscoveryScanner, IoTScanner, IPMIScanner]
 - "commit:repo:github.com/Rutikm18/Project-Vedha@7d8d3f3b50ca9f1d4c76921b8e656f345023b616": "7d8d3f3 merge: resolve conflicts with origin/ui-ux-backend-updates0109" | kind=Commit | source=git | neighbors=[42f4e28 feat: enhance security operatio…, page.tsx, layout.tsx, AssistantProvider.tsx, route.ts, addcapabilities-fable]
+- "lib_ai_engine": "ai-engine.ts" | kind=code-symbol | source=manager/frontend/lib/ai-engine.ts:L1 | neighbors=[10dfc80 Add comprehensive probe testing…, 1fe16c8 stable but some dead code, need…, d1b4dd3 trim frontend to 7 core pages; …, types.ts, LiveFinding, aiReportStore]
 - "models_enums_assettype": "AssetType" | kind=code-symbol | source=manager/backend/app/models/enums.py:L29 | neighbors=[enums.py, str, Convert a probe's self-assessed `findin…, Find the Asset for a probe-reported tar…, A still-relevant Finding with the same …, Bump severity one rung when the finding…]
 - "detection_engine_vuln_db_vulndb": "VulnDB" | kind=code-symbol | source=manager/detection_engine/vuln_db.py:L85 | neighbors=[vuln_db.py, _merge_companion(), In-memory index over a loaded snapshot:…, _read_snapshot(), ._build_cve_index(), .covers()]
 - "lib_backend": "backend.ts" | kind=code-symbol | source=manager/frontend/lib/backend.ts:L1 | neighbors=[route.ts, route.ts, route.ts, route.ts, route.ts, route.ts]
@@ -60,7 +61,6 @@ one-sentence description — no prose, no markdown fences.
 - "detection_engine_ingest_ingestresult": "IngestResult" | kind=code-symbol | source=manager/detection_engine/ingest.py:L49 | neighbors=[ingest.py, ingest_file(), ingest_files(), .get_or_create_asset(), .__init__(), Asset]
 - "detection_engine_enrichment_db_epssdb": "EpssDB" | kind=code-symbol | source=manager/detection_engine/enrichment_db.py:L24 | neighbors=[enrichment_db.py, .get(), .__init__(), load_epss(), enrichment.py — join CVSS + KEV + EPSS …, Mutates and returns `finding` with cvss…]
 - "detection_engine_enrichment_db_kevdb": "KevDB" | kind=code-symbol | source=manager/detection_engine/enrichment_db.py:L15 | neighbors=[enrichment_db.py, .__init__(), .is_kev(), load_kev(), enrichment.py — join CVSS + KEV + EPSS …, Mutates and returns `finding` with cvss…]
-- "lib_ai_engine": "ai-engine.ts" | kind=code-symbol | source=manager/frontend/lib/ai-engine.ts:L1 | neighbors=[10dfc80 Add comprehensive probe testing…, 1fe16c8 stable but some dead code, need…, d1b4dd3 trim frontend to 7 core pages; …, types.ts, LiveFinding, aiReportStore]
 - "lib_backend_backend": "backend()" | kind=code-symbol | source=manager/frontend/lib/backend.ts:L33 | neighbors=[route.ts, route.ts, route.ts, route.ts, route.ts, route.ts]
 - "tests_test_probe_core_asset": "_asset()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L71 | neighbors=[test_probe_core.py, .test_ssh_inventory(), .test_windows_inventory(), .test_alive_sets_timestamp(), .test_responding_ports(), .test_passive_facts_appended()]
 - "scanner_findings": "findings.py" | kind=code-symbol | source=probe/scanner/findings.py:L1 | neighbors=[22701ea Add tests for scanner parity an…, 26ea68c Add comprehensive tests for OS …, 6e2818f Add support for additional serv…, _as_dict(), build_service_index(), _by_target()]

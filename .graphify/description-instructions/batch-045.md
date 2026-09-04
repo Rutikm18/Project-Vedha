@@ -1,4 +1,4 @@
-# Node Description Batch 46 of 330
+# Node Description Batch 46 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -17,6 +17,13 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
+- "main_scripts_ipmi_scanner_ipmiscanner": "IPMIScanner" | kind=code-symbol | source=probe/main_scripts/ipmi_scanner.py:L65 | neighbors=[ipmi_scanner.py, BaseScanner, .__init__(), ._probe(), ._scan_port(), .scan_target()]
+- "main_scripts_ipv6_discovery_discover_ipv6_hosts": "discover_ipv6_hosts()" | kind=code-symbol | source=probe/main_scripts/ipv6_discovery.py:L118 | neighbors=[ipv6_discovery.py, _own_ipv6_addresses(), _ping_all_nodes(), _read_neighbor_cache(), main(), Discover live IPv6 neighbors on the seg…]
+- "main_scripts_ldap_scanner": "ldap_scanner.py" | kind=code-symbol | source=probe/main_scripts/ldap_scanner.py:L1 | neighbors=[6e2818f Add support for additional serv…, 8f6bf49 Refactor code structure and rem…, _first(), LDAPScanner, main(), ldap_scanner.py — LDAP anonymous-bind e…]
+- "main_scripts_ldap_scanner_ldapscanner": "LDAPScanner" | kind=code-symbol | source=probe/main_scripts/ldap_scanner.py:L47 | neighbors=[ldap_scanner.py, BaseScanner, .__init__(), ._probe(), ._scan_port(), .scan_target()]
+- "main_scripts_mass_scan_connectsweep": "_ConnectSweep" | kind=code-symbol | source=probe/main_scripts/mass_scan.py:L206 | neighbors=[mass_scan.py, BaseScanner, .__init__(), ._probe(), .scan_target(), run_mass_scan()]
+- "main_scripts_msrpc_scanner_msrpcscanner": "MSRPCScanner" | kind=code-symbol | source=probe/main_scripts/msrpc_scanner.py:L82 | neighbors=[msrpc_scanner.py, BaseScanner, ._enumerate(), .__init__(), ._scan_port(), .scan_target()]
+- "main_scripts_os_fingerprint_icmp": "_icmp()" | kind=code-symbol | source=probe/main_scripts/os_fingerprint.py:L59 | neighbors=[os_fingerprint.py, build_icmp_addrmask(), build_icmp_echo(), build_icmp_timestamp(), Build an ICMP message (header + rest) w…, Build an ICMP message (header + rest) w…]
 - "main_scripts_os_fingerprint_open_icmp_socket": "_open_icmp_socket()" | kind=code-symbol | source=probe/main_scripts/os_fingerprint.py:L337 | neighbors=[os_fingerprint.py, ._icmp_echo_ttl(), ._icmp_timestamp(), Return (socket, is_raw). Prefer datagra…, Return (socket, is_raw). Prefer datagra…, p0f-style match on (initial TTL, option…]
 - "main_scripts_os_fingerprint_osfingerprintscanner_icmp_timestamp": "._icmp_timestamp()" | kind=code-symbol | source=probe/main_scripts/os_fingerprint.py:L436 | neighbors=[OSFingerprintScanner, build_icmp_timestamp(), _open_icmp_socket(), parse_icmp_timestamps(), Send an ICMP timestamp request (type 13…, Send an ICMP timestamp request (type 13…]
 - "main_scripts_port_scanner_family_of": "_family_of()" | kind=code-symbol | source=probe/main_scripts/port_scanner.py:L175 | neighbors=[port_scanner.py, ._attempt(), Return 'ipv4'/'ipv6' for an IP literal,…, Return 'ipv4'/'ipv6' for an IP literal,…, Return 'ipv4'/'ipv6' for an IP literal,…, Return 'ipv4'/'ipv6' for an IP literal,…]
@@ -50,13 +57,6 @@ one-sentence description — no prose, no markdown fences.
 - "main_scripts_va_campaign_vacampaign": "VACampaign" | kind=code-symbol | source=probe/main_scripts/va_campaign.py:L290 | neighbors=[va_campaign.py, build_campaign(), Runs the ordered stages sequentially, e…, .__init__(), ._refresh_totals(), .run()]
 - "main_scripts_va_campaign_vacampaign_run": ".run()" | kind=code-symbol | source=probe/main_scripts/va_campaign.py:L301 | neighbors=[run_campaign(), VACampaign, .finish(), .mark(), .snapshot(), ._refresh_totals()]
 - "main_scripts_vantage_matrix": "vantage_matrix.py" | kind=code-symbol | source=probe/main_scripts/vantage_matrix.py:L1 | neighbors=[4d0377d Add unit tests for SMB scanner,…, _extract(), _is_external(), reconcile_vantages(), vantage_matrix.py — reconcile the SAME …, test_main_scripts_vantage.py]
-- "main_scripts_vnc_scanner_vncscanner": "VNCScanner" | kind=code-symbol | source=probe/main_scripts/vnc_scanner.py:L101 | neighbors=[vnc_scanner.py, BaseScanner, .__init__(), ._probe(), ._scan_port(), .scan_target()]
-- "main_scripts_vnc_scanner_vncscanner_probe": "._probe()" | kind=code-symbol | source=probe/main_scripts/vnc_scanner.py:L108 | neighbors=[Blocking: RFB version handshake + read …, VNCScanner, classify_security_types(), parse_rfb_version(), _read_security_types(), _recv_exact()]
-- "main_scripts_web_scanner_webscanner": "WebScanner" | kind=code-symbol | source=probe/main_scripts/web_scanner.py:L136 | neighbors=[web_scanner.py, BaseScanner, .__init__(), ._scan_port(), .scan_target(), ._schemes_for()]
-- "main_scripts_windows_collector": "windows_collector.py" | kind=code-symbol | source=probe/main_scripts/windows_collector.py:L1 | neighbors=[4d0377d Add unit tests for SMB scanner,…, main(), _smb_registry_collect(), WindowsCollector, _winrm_collect(), windows_collector.py — credentialed (au…]
-- "main_scripts_windows_collector_windowscollector_collect_host": "._collect_host()" | kind=code-symbol | source=probe/main_scripts/windows_collector.py:L255 | neighbors=[WindowsCollector, ._full_user(), ._smb_result(), ._transport_order(), ._winrm_result(), .run()]
-- "reveal_route": "route.ts" | kind=code-symbol | source=manager/frontend/app/api/customers/[id]/reveal/route.ts:L1 | neighbors=[e3958e7 feat(customers): reveal + copy …, backend.ts, backend(), BackendError, bearerFrom(), GET()]
-- "routers_activity_activityitem": "ActivityItem" | kind=code-symbol | source=manager/backend/app/routers/activity.py:L31 | neighbors=[activity.py, BaseModel, recent_activity(), Engagement, Finding, ScanJob]
 
 ## Instructions
 

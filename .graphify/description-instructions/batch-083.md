@@ -1,4 +1,4 @@
-# Node Description Batch 84 of 330
+# Node Description Batch 84 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -17,6 +17,12 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
+- "tests_test_posture_fv": "_fv()" | kind=code-symbol | source=manager/backend/tests/test_posture.py:L12 | neighbors=[test_posture.py, test_build_posture_buckets_resolved_new…, test_build_posture_single_run_has_no_pr…, test_compute_scores_uses_risk_epss_expl…]
+- "tests_test_posture_row": "_Row" | kind=code-symbol | source=manager/backend/tests/test_posture.py:L109 | neighbors=[test_posture.py, .__init__(), test_finding_views_handles_null_asset_a…, test_finding_views_maps_columns_and_ass…]
+- "tests_test_posture_rules_testinvariants": "TestInvariants" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_rules.py:L154 | neighbors=[test_posture_rules.py, .test_dedup_same_rule_same_port(), .test_detect_all_sorts_by_risk_desc(), .test_deterministic_id_across_runs()]
+- "tests_test_posture_rules_testtrusttier": "TestTrustTier" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_rules.py:L30 | neighbors=[test_posture_rules.py, .test_registry_contains_user_validated_…, .test_unvalidated_scanner_only_suspects…, .test_validated_scanner_confirms()]
+- "tests_test_posture_rules_testvulnerablehost_test_deprecated_tls_version_underscore_labels": ".test_deprecated_tls_version_underscore_labels()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_rules.py:L95 | neighbors=[The live tls_scanner labels its probe l…, TestVulnerableHost, _asset(), _fact()]
+- "tests_test_posture_trace_testabsentversusclean_test_key_absent_is_missing_input_not_clean": ".test_key_absent_is_missing_input_not_clean()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_trace.py:L50 | neighbors=[TestAbsentVersusClean, _asset(), _fact(), _outcome()]
 - "tests_test_posture_trace_testabsentversusclean_test_key_present_false_is_clean_no_match": ".test_key_present_false_is_clean_no_match()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_trace.py:L44 | neighbors=[TestAbsentVersusClean, _asset(), _fact(), _outcome()]
 - "tests_test_posture_trace_testabsentversusclean_test_key_present_true_is_match": ".test_key_present_true_is_match()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_trace.py:L39 | neighbors=[TestAbsentVersusClean, _asset(), _fact(), _outcome()]
 - "tests_test_posture_trace_testbehaviourpreserved": "TestBehaviourPreserved" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_trace.py:L110 | neighbors=[test_posture_trace.py, ._mixed(), .test_dedup_still_one_finding_per_rule_…, .test_detect_posture_matches_traced_fin…]
@@ -51,12 +57,6 @@ one-sentence description — no prose, no markdown fences.
 - "tests_test_remediation_routes_testgetremediation_test_kb_on_cache_miss": ".test_kb_on_cache_miss()" | kind=code-symbol | source=manager/backend/tests/test_remediation_routes.py:L111 | neighbors=[TestGetRemediation, _db_scalar(), _finding(), _operator()]
 - "tests_test_remediation_routes_testupsertstatement_sql": "._sql()" | kind=code-symbol | source=manager/backend/tests/test_remediation_routes.py:L191 | neighbors=[TestUpsertStatement, .test_refreshes_generated_at_on_conflic…, .test_regeneration_resets_review_gate_n…, .test_targets_the_unique_constraint()]
 - "tests_test_resolution_apply_db_returning": "_db_returning()" | kind=code-symbol | source=manager/backend/tests/test_resolution_apply.py:L27 | neighbors=[test_resolution_apply.py, test_covered_clean_medium_finding_is_au…, test_db_version_change_blocks_resolutio…, test_uncovered_finding_is_left_open()]
-- "tests_test_resolution_apply_finding": "_finding()" | kind=code-symbol | source=manager/backend/tests/test_resolution_apply.py:L16 | neighbors=[test_resolution_apply.py, test_covered_clean_medium_finding_is_au…, test_db_version_change_blocks_resolutio…, test_uncovered_finding_is_left_open()]
-- "tests_test_resolution_coverage": "test_resolution_coverage.py" | kind=code-symbol | source=manager/backend/tests/test_resolution_coverage.py:L1 | neighbors=[9a36729 feat(resolution): coverage buil…, test_coverage_counts_only_completed_sca…, test_coverage_empty_when_no_scanner_run…, test_host_of_strips_single_port()]
-- "tests_test_resolve": "test_resolve.py" | kind=code-symbol | source=probe/tests/test_resolve.py:L1 | neighbors=[dec1e7c fix(scanner): resolve() family …, _infos(), TestResolveFamily, test_resolve.py — resolve() address-fam…]
-- "tests_test_result_archive_testarchiveidentity_test_archived_json_equals_the_submitted_payload": ".test_archived_json_equals_the_submitted_payload()" | kind=code-symbol | source=probe/tests/test_result_archive.py:L67 | neighbors=[TestArchiveIdentity, _job(), _ok_result(), _runner()]
-- "tests_test_result_archive_testarchiveidentity_test_failure_envelopes_are_archived_too": ".test_failure_envelopes_are_archived_too()" | kind=code-symbol | source=probe/tests/test_result_archive.py:L98 | neighbors=[A rejected job is exactly the case an o…, TestArchiveIdentity, _job(), _runner()]
-- "tests_test_result_archive_testarchiveidentity_test_filename_is_result_plus_timestamp": ".test_filename_is_result_plus_timestamp()" | kind=code-symbol | source=probe/tests/test_result_archive.py:L83 | neighbors=[TestArchiveIdentity, _job(), _ok_result(), _runner()]
 
 ## Instructions
 

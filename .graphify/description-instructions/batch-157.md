@@ -1,4 +1,4 @@
-# Node Description Batch 158 of 330
+# Node Description Batch 158 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -17,6 +17,25 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
+- "tests_test_os_fusion_test_build_only_is_strong_but_not_certain": "test_build_only_is_strong_but_not_certain()" | kind=code-symbol | source=probe/tests/test_os_fusion.py:L29 | neighbors=[test_os_fusion.py, _os()]
+- "tests_test_os_fusion_test_build_smb2_hostname_is_high_confidence": "test_build_smb2_hostname_is_high_confidence()" | kind=code-symbol | source=probe/tests/test_os_fusion.py:L17 | neighbors=[test_os_fusion.py, _os()]
+- "tests_test_os_fusion_test_no_os_signal_yields_no_finding": "test_no_os_signal_yields_no_finding()" | kind=code-symbol | source=probe/tests/test_os_fusion.py:L51 | neighbors=[test_os_fusion.py, _os()]
+- "tests_test_os_fusion_test_smb2_plus_p0f_stack_is_medium": "test_smb2_plus_p0f_stack_is_medium()" | kind=code-symbol | source=probe/tests/test_os_fusion.py:L42 | neighbors=[test_os_fusion.py, _os()]
+- "tests_test_os_fusion_test_ttl_only_stays_a_hint": "test_ttl_only_stays_a_hint()" | kind=code-symbol | source=probe/tests/test_os_fusion.py:L35 | neighbors=[test_os_fusion.py, _os()]
+- "tests_test_os_stage_wiring_test_cached_os_fact_is_reused_not_reprobed": "test_cached_os_fact_is_reused_not_reprobed()" | kind=code-symbol | source=probe/tests/test_os_stage_wiring.py:L223 | neighbors=[test_os_stage_wiring.py, _wire()]
+- "tests_test_os_stage_wiring_test_os_stage_runs_for_a_port_stage_job": "test_os_stage_runs_for_a_port_stage_job()" | kind=code-symbol | source=probe/tests/test_os_stage_wiring.py:L138 | neighbors=[test_os_stage_wiring.py, _wire()]
+- "tests_test_os_stage_wiring_test_rescan_mode_reprobes_a_stale_os_fact": "test_rescan_mode_reprobes_a_stale_os_fact()" | kind=code-symbol | source=probe/tests/test_os_stage_wiring.py:L238 | neighbors=[test_os_stage_wiring.py, _wire()]
+- "tests_test_os_stage_wiring_test_stack_hints_from_syn_scan_reach_the_os_scanner": "test_stack_hints_from_syn_scan_reach_the_os_scanner()" | kind=code-symbol | source=probe/tests/test_os_stage_wiring.py:L157 | neighbors=[test_os_stage_wiring.py, _wire()]
+- "tests_test_os_stage_wiring_testassetmerge_test_closed_port_contributes_no_hints": ".test_closed_port_contributes_no_hints()" | kind=code-symbol | source=probe/tests/test_os_stage_wiring.py:L93 | neighbors=[TestAssetMerge, _asset()]
+- "tests_test_os_stage_wiring_testassetmerge_test_connect_scan_without_stack_signals_leaves_hints_empty": ".test_connect_scan_without_stack_signals_leaves_hints_empty()" | kind=code-symbol | source=probe/tests/test_os_stage_wiring.py:L87 | neighbors=[TestAssetMerge, _asset()]
+- "tests_test_os_stage_wiring_testassetmerge_test_os_fact_stored_and_ntlm_name_becomes_alias": ".test_os_fact_stored_and_ntlm_name_becomes_alias()" | kind=code-symbol | source=probe/tests/test_os_stage_wiring.py:L99 | neighbors=[TestAssetMerge, _asset()]
+- "tests_test_os_stage_wiring_testassetmerge_test_syn_stack_hints_harvested_from_open_port": ".test_syn_stack_hints_harvested_from_open_port()" | kind=code-symbol | source=probe/tests/test_os_stage_wiring.py:L78 | neighbors=[TestAssetMerge, _asset()]
+- "tests_test_os_stage_wiring_testgate_test_alive_host_is_eligible": ".test_alive_host_is_eligible()" | kind=code-symbol | source=probe/tests/test_os_stage_wiring.py:L37 | neighbors=[TestGate, _asset()]
+- "tests_test_os_stage_wiring_testgate_test_dead_host_is_not": ".test_dead_host_is_not()" | kind=code-symbol | source=probe/tests/test_os_stage_wiring.py:L40 | neighbors=[TestGate, _asset()]
+- "tests_test_os_stage_wiring_testgate_test_no_open_ports_still_eligible": ".test_no_open_ports_still_eligible()" | kind=code-symbol | source=probe/tests/test_os_stage_wiring.py:L47 | neighbors=[TestGate, _asset()]
+- "tests_test_os_stage_wiring_testgate_test_passive_profile_never_probes": ".test_passive_profile_never_probes()" | kind=code-symbol | source=probe/tests/test_os_stage_wiring.py:L43 | neighbors=[TestGate, _asset()]
+- "tests_test_outbox_reclaim_test_boundary_at_exactly_the_lease_is_reclaimed": "test_boundary_at_exactly_the_lease_is_reclaimed()" | kind=code-symbol | source=manager/backend/tests/test_outbox_reclaim.py:L41 | neighbors=[test_outbox_reclaim.py, _now()]
+- "tests_test_outbox_reclaim_test_expired_processing_lock_is_reclaimed": "test_expired_processing_lock_is_reclaimed()" | kind=code-symbol | source=manager/backend/tests/test_outbox_reclaim.py:L35 | neighbors=[test_outbox_reclaim.py, _now()]
 - "tests_test_outbox_reclaim_test_fresh_processing_lock_is_not_reclaimed": "test_fresh_processing_lock_is_not_reclaimed()" | kind=code-symbol | source=manager/backend/tests/test_outbox_reclaim.py:L29 | neighbors=[test_outbox_reclaim.py, _now()]
 - "tests_test_outbox_reclaim_test_missing_locked_at_is_not_reclaimed": "test_missing_locked_at_is_not_reclaimed()" | kind=code-symbol | source=manager/backend/tests/test_outbox_reclaim.py:L55 | neighbors=[test_outbox_reclaim.py, _now()]
 - "tests_test_outbox_reclaim_test_pending_and_done_rows_are_never_reclaimed": "test_pending_and_done_rows_are_never_reclaimed()" | kind=code-symbol | source=manager/backend/tests/test_outbox_reclaim.py:L47 | neighbors=[test_outbox_reclaim.py, _now()]
@@ -38,25 +57,6 @@ one-sentence description — no prose, no markdown fences.
 - "tests_test_pipeline_concurrency_test_different_engagements_generally_do_not_contend": "test_different_engagements_generally_do_not_contend()" | kind=code-symbol | source=manager/backend/tests/test_pipeline_concurrency.py:L70 | neighbors=[test_pipeline_concurrency.py, Collisions are harmless (two unrelated …]
 - "tests_test_pipeline_concurrency_test_the_key_fits_a_postgres_bigint": "test_the_key_fits_a_postgres_bigint()" | kind=code-symbol | source=manager/backend/tests/test_pipeline_concurrency.py:L82 | neighbors=[test_pipeline_concurrency.py, pg_advisory_xact_lock takes a signed bi…]
 - "tests_test_pipeline_concurrency_test_the_lock_is_transaction_scoped_not_session_scoped": "test_the_lock_is_transaction_scoped_not_session_scoped()" | kind=code-symbol | source=manager/backend/tests/test_pipeline_concurrency.py:L44 | neighbors=[test_pipeline_concurrency.py, pg_advisory_lock (session) would leak o…]
-- "tests_test_pipeline_concurrency_test_the_same_engagement_always_maps_to_the_same_key": "test_the_same_engagement_always_maps_to_the_same_key()" | kind=code-symbol | source=manager/backend/tests/test_pipeline_concurrency.py:L57 | neighbors=[test_pipeline_concurrency.py, Two concurrent handlers must contend, s…]
-- "tests_test_pipeline_empty_jsonl": "_empty_jsonl()" | kind=code-symbol | source=manager/detection_engine/tests/test_pipeline.py:L119 | neighbors=[test_pipeline.py, .test_empty_jsonl_returns_no_findings()]
-- "tests_test_pipeline_testrunpipelinereturnvalue": "TestRunPipelineReturnValue" | kind=code-symbol | source=manager/detection_engine/tests/test_pipeline.py:L306 | neighbors=[test_pipeline.py, .test_returns_tuple_of_findings_and_ing…]
-- "tests_test_portal_assistant_test_a_non_client_user_is_refused": "test_a_non_client_user_is_refused()" | kind=code-symbol | source=manager/backend/tests/test_portal_assistant.py:L158 | neighbors=[test_portal_assistant.py, _ask()]
-- "tests_test_portal_assistant_test_request_body_cannot_carry_context": "test_request_body_cannot_carry_context()" | kind=code-symbol | source=manager/backend/tests/test_portal_assistant.py:L113 | neighbors=[test_portal_assistant.py, The schema has no context field, so a c…]
-- "tests_test_portal_metrics_testopenclosed": "TestOpenClosed" | kind=code-symbol | source=manager/backend/tests/test_portal_metrics.py:L34 | neighbors=[test_portal_metrics.py, .test_counts_by_status_and_resolved_at()]
-- "tests_test_portal_metrics_testopenclosed_test_counts_by_status_and_resolved_at": ".test_counts_by_status_and_resolved_at()" | kind=code-symbol | source=manager/backend/tests/test_portal_metrics.py:L35 | neighbors=[TestOpenClosed, _f()]
-- "tests_test_portal_metrics_testseveritybreakdown_test_open_only_excludes_closed": ".test_open_only_excludes_closed()" | kind=code-symbol | source=manager/backend/tests/test_portal_metrics.py:L24 | neighbors=[TestSeverityBreakdown, _f()]
-- "tests_test_portal_metrics_testseveritybreakdown_test_unknown_severity_falls_into_info": ".test_unknown_severity_falls_into_info()" | kind=code-symbol | source=manager/backend/tests/test_portal_metrics.py:L30 | neighbors=[TestSeverityBreakdown, _f()]
-- "tests_test_portal_metrics_teststatustimeline_test_activity_outside_window_is_ignored": ".test_activity_outside_window_is_ignored()" | kind=code-symbol | source=manager/backend/tests/test_portal_metrics.py:L60 | neighbors=[TestStatusTimeline, _f()]
-- "tests_test_portal_metrics_teststatustimeline_test_buckets_opened_and_closed": ".test_buckets_opened_and_closed()" | kind=code-symbol | source=manager/backend/tests/test_portal_metrics.py:L49 | neighbors=[TestStatusTimeline, _f()]
-- "tests_test_portal_read_testclientfindingwhitelist_test_serialization_drops_internal_fields": ".test_serialization_drops_internal_fields()" | kind=code-symbol | source=manager/backend/tests/test_portal_read.py:L89 | neighbors=[TestClientFindingWhitelist, _finding_with_internal()]
-- "tests_test_portal_read_testsummary": "TestSummary" | kind=code-symbol | source=manager/backend/tests/test_portal_read.py:L189 | neighbors=[test_portal_read.py, .test_aggregates_posture_counts_and_que…]
-- "tests_test_portal_read_testtrends": "TestTrends" | kind=code-symbol | source=manager/backend/tests/test_portal_read.py:L208 | neighbors=[test_portal_read.py, .test_returns_severity_and_timeline()]
-- "tests_test_portal_scope_testassertclient_test_bound_client_returns_engagement": ".test_bound_client_returns_engagement()" | kind=code-symbol | source=manager/backend/tests/test_portal_scope.py:L38 | neighbors=[TestAssertClient, _client()]
-- "tests_test_portal_scope_testassertclient_test_operator_is_forbidden": ".test_operator_is_forbidden()" | kind=code-symbol | source=manager/backend/tests/test_portal_scope.py:L42 | neighbors=[TestAssertClient, _operator()]
-- "tests_test_portal_scope_testclientscoped_test_applies_engagement_filter_for_bound_id": ".test_applies_engagement_filter_for_bound_id()" | kind=code-symbol | source=manager/backend/tests/test_portal_scope.py:L71 | neighbors=[TestClientScoped, _client()]
-- "tests_test_portal_scope_testclientscoped_test_operator_cannot_scope": ".test_operator_cannot_scope()" | kind=code-symbol | source=manager/backend/tests/test_portal_scope.py:L79 | neighbors=[TestClientScoped, _operator()]
-- "tests_test_portal_scope_testresolvescope_test_matching_request_ok": ".test_matching_request_ok()" | kind=code-symbol | source=manager/backend/tests/test_portal_scope.py:L60 | neighbors=[TestResolveScope, _client()]
 
 ## Instructions
 

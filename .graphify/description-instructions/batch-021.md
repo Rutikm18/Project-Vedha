@@ -1,4 +1,4 @@
-# Node Description Batch 22 of 330
+# Node Description Batch 22 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -24,6 +24,14 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
+- "exploit_safety": "safety.py" | kind=code-symbol | source=manager/backend/app/exploit/safety.py:L1 | neighbors=[d1b4dd3 trim frontend to 7 core pages; …, ApprovalRequiredError, BlastRadiusExceededError, OutOfScopeError, requires_approval(), SafetyViolationError]
+- "graph_builder": "builder.py" | kind=code-symbol | source=manager/backend/app/graph/builder.py:L1 | neighbors=[d1b4dd3 trim frontend to 7 core pages; …, asset_node_id(), _enum_value(), exploit_complexity(), finding_node_id(), GraphBuilder]
+- "lib_auth_middleware": "auth-middleware.ts" | kind=code-symbol | source=manager/frontend/lib/auth-middleware.ts:L1 | neighbors=[10dfc80 Add comprehensive probe testing…, d1b4dd3 trim frontend to 7 core pages; …, AuthContext, Handler, withAuth(), verifyToken()]
+- "lib_nmap_parser": "nmap-parser.ts" | kind=code-symbol | source=manager/frontend/lib/nmap-parser.ts:L1 | neighbors=[d1b4dd3 trim frontend to 7 core pages; …, tool-runners.ts, extractScripts(), NmapHost, NmapScriptResult, NmapService]
+- "main_scripts_ja4s": "ja4s.py" | kind=code-symbol | source=probe/main_scripts/ja4s.py:L1 | neighbors=[22701ea Add tests for scanner parity an…, _alpn_code(), compute_ja4s(), _ext_types(), ja4s_from_fields(), ja4s_from_parsed()]
+- "main_scripts_mcp_ai_scanner": "mcp_ai_scanner.py" | kind=code-symbol | source=probe/main_scripts/mcp_ai_scanner.py:L1 | neighbors=[37376de hardening(scanner): OPSEC de-si…, 4d0377d Add unit tests for SMB scanner,…, _auth_shaped_json_body(), _known_false_positive(), main(), _mcp_oauth_signal()]
+- "main_scripts_passive_collector": "passive_collector.py" | kind=code-symbol | source=probe/main_scripts/passive_collector.py:L1 | neighbors=[4d0377d Add unit tests for SMB scanner,…, _coverage(), _device_hint(), _is_readable(), _listener_error_code(), main()]
+- "main_scripts_scanner_base_adaptiveratecontroller": "AdaptiveRateController" | kind=code-symbol | source=probe/main_scripts/scanner_base.py:L465 | neighbors=[scanner_base.py, .acquire(), .__init__(), ._on_loss(), ._on_success(), .report_loss()]
 - "main_scripts_smb_enum_scanner": "smb_enum_scanner.py" | kind=code-symbol | source=probe/main_scripts/smb_enum_scanner.py:L1 | neighbors=[6e2818f Add support for additional serv…, _decode(), _enum_shares(), _enum_users_ridcycle(), _enum_users_samr(), main()]
 - "models_detection_run_detectionrun": "DetectionRun" | kind=code-symbol | source=manager/backend/app/models/detection_run.py:L40 | neighbors=[detection_run.py, Base, TimestampMixin, engine_bridge.py — run the deterministi…, A previously-remediated finding whose i…, Background entry point (P1: keep detect…]
 - "path_route": "route.ts" | kind=code-symbol | source=manager/frontend/app/api/portal/[...path]/route.ts:L1 | neighbors=[22701ea Add tests for scanner parity an…, backend.ts, backend(), BackendError, bearerFrom(), cookieFrom()]
@@ -56,14 +64,6 @@ one-sentence description — no prose, no markdown fences.
 - "tests_test_auth_login_make_db": "_make_db()" | kind=code-symbol | source=manager/backend/tests/test_auth_login.py:L69 | neighbors=[test_auth_login.py, AsyncSession mock that returns user on …, .test_raises_bcrypt_failure_on_passlib_…, .test_raises_disabled_tenant(), .test_raises_disabled_user(), .test_not_expired_when_future()]
 - "tests_test_branch_registry_testregistryconsistency": "TestRegistryConsistency" | kind=code-symbol | source=probe/tests/test_branch_registry.py:L34 | neighbors=[test_branch_registry.py, .test_branch_component_map_is_derived(), .test_catalog_entries_are_labelled(), .test_components_are_unique(), .test_every_branch_has_a_scanner_the_en…, .test_every_branch_is_gateable()]
 - "tests_test_campaign_progress_progress": "_progress()" | kind=code-symbol | source=manager/backend/tests/test_campaign_progress.py:L204 | neighbors=[test_campaign_progress.py, _rows(), _scalars(), _user(), _running_run(), test_a_briefly_running_run_is_not_calle…]
-- "tests_test_campaign_progress_terminal_status": "_status()" | kind=code-symbol | source=manager/backend/tests/test_campaign_progress_terminal.py:L34 | neighbors=[test_campaign_progress_terminal.py, .test_complete_campaign(), .test_complete_with_gaps(), .test_no_jobs_is_pending(), .test_uncovered_submission_keeps_it_det…, .test_a_dead_queue_is_still_reported_as…]
-- "tests_test_customer_access_mock_db": "_mock_db()" | kind=code-symbol | source=manager/backend/tests/test_customer_access.py:L27 | neighbors=[test_customer_access.py, db.execute yields the given scalar_one_…, .test_approve_dispatches_job_and_links_…, .test_approve_non_pending_is_conflict(), .test_approve_without_assigned_agent_is…, .test_assigns_agent_to_engagement()]
-- "tests_test_db_scanner": "test_db_scanner.py" | kind=code-symbol | source=probe/tests/test_db_scanner.py:L1 | neighbors=[10dfc80 Add comprehensive probe testing…, db_scanner.py, FakeReader, FakeWriter, _probe(), _run()]
-- "tests_test_detection_pipeline_gaps": "test_detection_pipeline_gaps.py" | kind=code-symbol | source=manager/backend/tests/test_detection_pipeline_gaps.py:L1 | neighbors=[8f6bf49 Refactor code structure and rem…, _ctx, _fact(), test_a_non_dict_data_payload_is_quarant…, test_accepted_facts_excludes_what_inges…, test_accepted_facts_falls_back_to_raw_w…]
-- "tests_test_finding_events_testsynthesize": "TestSynthesize" | kind=code-symbol | source=manager/backend/tests/test_finding_events.py:L44 | neighbors=[test_finding_events.py, .test_auto_resolution_event(), .test_detected_actor_falls_back_to_dete…, .test_detected_actor_labels_network_va_…, .test_genesis_detected_from_first_seen(), .test_manual_remediation_event()]
-- "tests_test_main_scripts_ja4s": "test_main_scripts_ja4s.py" | kind=code-symbol | source=probe/tests/test_main_scripts_ja4s.py:L1 | neighbors=[22701ea Add tests for scanner parity an…, _ext(), _serverhello(), test_empty_extensions_sentinel(), test_extension_hash_is_order_sensitive(), test_ja4s_from_bad_serverhello_is_none()]
-- "tests_test_passive_collector": "test_passive_collector.py" | kind=code-symbol | source=probe/tests/test_passive_collector.py:L1 | neighbors=[b4b12a9 Rename project and update files, passive_collector.py, scanner_base.py, _Socket, test_collector_raises_when_no_listener_…, test_ot_udp_backend_never_joins_or_tran…]
-- "tests_test_posture_rules": "test_posture_rules.py" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_rules.py:L1 | neighbors=[26ea68c Add comprehensive tests for OS …, 8f6bf49 Refactor code structure and rem…, _asset(), _fact(), TestHardenedGroundTruth, TestInvariants]
 
 ## Instructions
 

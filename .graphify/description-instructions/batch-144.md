@@ -1,4 +1,4 @@
-# Node Description Batch 145 of 330
+# Node Description Batch 145 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -24,6 +24,25 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
+- "schemas_portal_clientscanrequestout": "ClientScanRequestOut" | kind=code-symbol | source=manager/backend/app/schemas/portal.py:L117 | neighbors=[portal.py, BaseModel]
+- "schemas_portal_clienttrendpoint": "ClientTrendPoint" | kind=code-symbol | source=manager/backend/app/schemas/portal.py:L69 | neighbors=[portal.py, BaseModel]
+- "schemas_portal_clienttrendsout": "ClientTrendsOut" | kind=code-symbol | source=manager/backend/app/schemas/portal.py:L75 | neighbors=[portal.py, BaseModel]
+- "schemas_remediation_remediationplanout": "RemediationPlanOut" | kind=code-symbol | source=manager/backend/app/schemas/remediation.py:L48 | neighbors=[remediation.py, BaseModel]
+- "scripts_seed_admin_hash": "_hash()" | kind=code-symbol | source=manager/backend/scripts/seed_admin.py:L135 | neighbors=[seed_admin.py, _seed_once()]
+- "scripts_seed_admin_verify_hash": "_verify_hash()" | kind=code-symbol | source=manager/backend/scripts/seed_admin.py:L139 | neighbors=[seed_admin.py, _seed_once()]
+- "scripts_startup_validator_validationreport_print_summary": ".print_summary()" | kind=code-symbol | source=manager/backend/scripts/startup_validator.py:L56 | neighbors=[run_all_validators(), ValidationReport]
+- "services_agent_policy_rulesofengagement": "RulesOfEngagement" | kind=code-symbol | source=manager/backend/app/services/agent_policy.py:L55 | neighbors=[agent_policy.py, The deterministic authorization envelop…]
+- "services_agent_policy_usagecounters": "UsageCounters" | kind=code-symbol | source=manager/backend/app/services/agent_policy.py:L67 | neighbors=[agent_policy.py, Running engagement usage, checked again…]
+- "services_analytics_compute_exposure": "compute_exposure()" | kind=code-symbol | source=manager/backend/app/services/analytics.py:L35 | neighbors=[analytics.py, _sev()]
+- "services_analytics_sev": "_sev()" | kind=code-symbol | source=manager/backend/app/services/analytics.py:L31 | neighbors=[analytics.py, compute_exposure()]
+- "services_audit_record_audit": "record_audit()" | kind=code-symbol | source=manager/backend/app/services/audit.py:L13 | neighbors=[audit.py, Append one immutable audit row (caller …]
+- "services_finding_events_decorate": "_decorate()" | kind=code-symbol | source=manager/backend/app/services/finding_events.py:L201 | neighbors=[finding_events.py, merge_timeline()]
+- "services_finding_events_detected_detail": "_detected_detail()" | kind=code-symbol | source=manager/backend/app/services/finding_events.py:L96 | neighbors=[finding_events.py, synthesize_events()]
+- "services_finding_events_ev": "_ev()" | kind=code-symbol | source=manager/backend/app/services/finding_events.py:L61 | neighbors=[finding_events.py, synthesize_events()]
+- "services_finding_events_row_to_dict": "_row_to_dict()" | kind=code-symbol | source=manager/backend/app/services/finding_events.py:L187 | neighbors=[finding_events.py, build_timeline()]
+- "services_init": "__init__.py" | kind=code-symbol | source=manager/backend/app/services/__init__.py:L1 | neighbors=[10dfc80 Add comprehensive probe testing…, 2885afa Add comprehensive probe testing…]
+- "services_job_attempt_service_attemptclaim": "AttemptClaim" | kind=code-symbol | source=manager/backend/app/services/job_attempt_service.py:L17 | neighbors=[job_attempt_service.py, claim_job_attempt()]
+- "services_job_attempt_service_renew_job_attempt": "renew_job_attempt()" | kind=code-symbol | source=manager/backend/app/services/job_attempt_service.py:L86 | neighbors=[job_attempt_service.py, Renew only the currently installed runn…]
 - "services_job_result_service_rationale_30": "Recursively strip NUL (U+0000) from every string in a result payload.      Defen" | kind=entity | source=manager/backend/app/services/job_result_service.py:L30 | neighbors=[sanitize_jsonb(), result_checksum()]
 - "services_notifications_enqueue_notification": "enqueue_notification()" | kind=code-symbol | source=manager/backend/app/services/notifications.py:L101 | neighbors=[notifications.py, Producer API: enqueue a durable notify …]
 - "services_portal_metrics_period": "_period()" | kind=code-symbol | source=manager/backend/app/services/portal_metrics.py:L50 | neighbors=[portal_metrics.py, status_timeline()]
@@ -45,25 +64,6 @@ one-sentence description — no prose, no markdown fences.
 - "services_scope_targets_parse_networks": "_parse_networks()" | kind=code-symbol | source=manager/backend/app/services/scope_targets.py:L28 | neighbors=[scope_targets.py, validate_targets_in_scope()]
 - "settings_page_apikeyssection": "ApiKeysSection()" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L287 | neighbors=[page.tsx, inlineInput()]
 - "settings_page_auditlogsection": "AuditLogSection()" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L795 | neighbors=[page.tsx, inlineInput()]
-- "settings_page_integrationsection": "IntegrationSection()" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L570 | neighbors=[page.tsx, inlineInput()]
-- "status_route_get": "GET()" | kind=code-symbol | source=manager/frontend/app/api/settings/status/route.ts:L15 | neighbors=[route.ts, readiness()]
-- "status_route_readiness": "readiness()" | kind=code-symbol | source=manager/frontend/app/api/settings/status/route.ts:L10 | neighbors=[route.ts, GET()]
-- "supporting_research_evidence_store_coverage_summary": "coverage_summary()" | kind=code-symbol | source=Supporting_research/evidence_store.py:L362 | neighbors=[evidence_store.py, What a customer should actually be show…]
-- "supporting_research_evidence_store_naive_ip_identity": "naive_ip_identity()" | kind=code-symbol | source=Supporting_research/evidence_store.py:L257 | neighbors=[evidence_store.py, The industry default, for comparison. I…]
-- "supporting_research_evidence_store_record_observation": "record_observation()" | kind=code-symbol | source=Supporting_research/evidence_store.py:L113 | neighbors=[evidence_store.py, _iso()]
-- "supporting_research_test_evidence_store_smb_obs": "smb_obs()" | kind=code-symbol | source=Supporting_research/test_evidence_store.py:L45 | neighbors=[test_evidence_store.py, build_fleet()]
-- "supporting_research_test_evidence_store_testidentity_setup": ".setUp()" | kind=code-symbol | source=Supporting_research/test_evidence_store.py:L96 | neighbors=[TestIdentity, build_fleet()]
-- "supporting_research_test_evidence_store_testidentity_test_hostname_never_overrides_a_fingerprint": ".test_hostname_never_overrides_a_fingerprint()" | kind=code-symbol | source=Supporting_research/test_evidence_store.py:L119 | neighbors=[TestIdentity, ssh_obs()]
-- "supporting_research_test_evidence_store_testidentity_test_ip_identity_is_wrong_in_both_directions": ".test_ip_identity_is_wrong_in_both_directions()" | kind=code-symbol | source=Supporting_research/test_evidence_store.py:L104 | neighbors=[Not merely coarse -- wrong. It splits o…, TestIdentity]
-- "supporting_research_test_evidence_store_testretroactivedetection_setup": ".setUp()" | kind=code-symbol | source=Supporting_research/test_evidence_store.py:L141 | neighbors=[TestRetroactiveDetection, build_fleet()]
-- "supporting_research_test_evidence_store_testretroactivedetection_test_collected_but_unusable_evidence_is_distinguished_from_absent": ".test_collected_but_unusable_evidence_is_distinguished_from_absent()" | kind=code-symbol | source=Supporting_research/test_evidence_store.py:L194 | neighbors=[Drifted payload: the probe ran, the fie…, TestRetroactiveDetection]
-- "supporting_research_test_evidence_store_testretroactivedetection_test_remediation_is_verified_by_evidence_not_by_a_ticket": ".test_remediation_is_verified_by_evidence_not_by_a_ticket()" | kind=code-symbol | source=Supporting_research/test_evidence_store.py:L162 | neighbors=[TestRetroactiveDetection, openssh_below()]
-- "supporting_research_test_evidence_store_testretroactivedetection_test_third_party_conclusions_are_kept_separate_from_first_party_evidence": ".test_third_party_conclusions_are_kept_separate_from_first_party_evidence()" | kind=code-symbol | source=Supporting_research/test_evidence_store.py:L206 | neighbors=[TestRetroactiveDetection, ssh_obs()]
-- "supporting_research_test_evidence_store_testretroactivedetection_test_time_travel_recovers_the_historical_answer": ".test_time_travel_recovers_the_historical_answer()" | kind=code-symbol | source=Supporting_research/test_evidence_store.py:L151 | neighbors=[TestRetroactiveDetection, openssh_below()]
-- "tests_conftest_isolate_result_archive": "_isolate_result_archive()" | kind=code-symbol | source=probe/tests/conftest.py:L10 | neighbors=[conftest.py, Keep the local result archive out of th…]
-- "tests_init": "__init__.py" | kind=code-symbol | source=manager/backend/tests/__init__.py:L1 | neighbors=[d1b4dd3 trim frontend to 7 core pages; …, 298a9d4 trim frontend to 7 core pages; …]
-- "tests_test_accuracy_gate_testcorpusvalidation_test_corpus_without_any_labels_is_rejected": ".test_corpus_without_any_labels_is_rejected()" | kind=code-symbol | source=probe/tests/test_accuracy_gate.py:L101 | neighbors=[TestCorpusValidation, _write()]
-- "tests_test_accuracy_gate_testcorpusvalidation_test_corpus_without_facts_is_rejected": ".test_corpus_without_facts_is_rejected()" | kind=code-symbol | source=probe/tests/test_accuracy_gate.py:L107 | neighbors=[TestCorpusValidation, _write()]
 
 ## Instructions
 

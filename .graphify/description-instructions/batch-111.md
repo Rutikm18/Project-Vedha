@@ -1,4 +1,4 @@
-# Node Description Batch 112 of 330
+# Node Description Batch 112 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -17,6 +17,8 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
+- "tests_test_exploitability_testtiers_test_epss_max_takes_the_worst_linked_cve": ".test_epss_max_takes_the_worst_linked_cve()" | kind=code-symbol | source=manager/detection_engine/tests/test_exploitability.py:L102 | neighbors=[TestTiers, _epss(), _kev()]
+- "tests_test_exploitability_testtiers_test_high_epss_without_kev_is_likely": ".test_high_epss_without_kev_is_likely()" | kind=code-symbol | source=manager/detection_engine/tests/test_exploitability.py:L79 | neighbors=[TestTiers, _epss(), _kev()]
 - "tests_test_exploitability_testtiers_test_kev_listed_is_actively_exploited": ".test_kev_listed_is_actively_exploited()" | kind=code-symbol | source=manager/detection_engine/tests/test_exploitability.py:L74 | neighbors=[TestTiers, _epss(), _kev()]
 - "tests_test_exploitability_testtiers_test_kev_outranks_epss": ".test_kev_outranks_epss()" | kind=code-symbol | source=manager/detection_engine/tests/test_exploitability.py:L92 | neighbors=[TestTiers, _epss(), _kev()]
 - "tests_test_exploitability_testtiers_test_low_epss_is_unknown": ".test_low_epss_is_unknown()" | kind=code-symbol | source=manager/detection_engine/tests/test_exploitability.py:L88 | neighbors=[TestTiers, _epss(), _kev()]
@@ -55,8 +57,6 @@ one-sentence description — no prose, no markdown fences.
 - "tests_test_integrations_testputintegration_test_create_encrypts_secret_and_masks_it": ".test_create_encrypts_secret_and_masks_it()" | kind=code-symbol | source=manager/backend/tests/test_integrations.py:L38 | neighbors=[TestPutIntegration, _db(), _operator()]
 - "tests_test_integrations_testputintegration_test_rejects_unknown_kind": ".test_rejects_unknown_kind()" | kind=code-symbol | source=manager/backend/tests/test_integrations.py:L32 | neighbors=[TestPutIntegration, _db(), _operator()]
 - "tests_test_integrations_testputintegration_test_update_without_secret_keeps_existing": ".test_update_without_secret_keeps_existing()" | kind=code-symbol | source=manager/backend/tests/test_integrations.py:L52 | neighbors=[TestPutIntegration, _db(), _operator()]
-- "tests_test_ipmi_scanner_resp": "_resp()" | kind=code-symbol | source=probe/tests/test_ipmi_scanner.py:L18 | neighbors=[test_ipmi_scanner.py, .test_parse_nonzero_status_is_safe(), .test_parse_status_zero_is_cipher_zero()]
-- "tests_test_ipmi_scanner_testipmifindings_fact": "._fact()" | kind=code-symbol | source=probe/tests/test_ipmi_scanner.py:L63 | neighbors=[TestIPMIFindings, .test_cipher_zero_is_critical(), .test_reachable_bmc_is_low()]
 
 ## Instructions
 

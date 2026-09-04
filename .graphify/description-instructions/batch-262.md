@@ -1,4 +1,4 @@
-# Node Description Batch 263 of 330
+# Node Description Batch 263 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -26,46 +26,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "settings_page_probefleetsection": "ProbeFleetSection()" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L411 | neighbors=[page.tsx] | lang=en
-- "settings_page_readonlynotice": "ReadOnlyNotice()" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L171 | neighbors=[page.tsx] | lang=en
-- "settings_page_role_colors": "ROLE_COLORS" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L133 | neighbors=[page.tsx] | lang=en
-- "settings_page_sectionheader": "SectionHeader()" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L54 | neighbors=[page.tsx] | lang=en
-- "settings_page_sectiontitle": "SectionTitle()" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L159 | neighbors=[page.tsx] | lang=en
-- "settings_page_settingspage": "SettingsPage()" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L839 | neighbors=[page.tsx] | lang=en
-- "settings_page_sla_policy": "SLA_POLICY" | kind=code-symbol | source=manager/frontend/app/portal/settings/page.tsx:L13 | neighbors=[page.tsx] | lang=en
-- "settings_page_sla_rows": "SLA_ROWS" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L660 | neighbors=[page.tsx] | lang=en
-- "settings_page_slack_fields": "SLACK_FIELDS" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L24 | neighbors=[page.tsx] | lang=en
-- "settings_page_slaform": "SlaForm" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L50 | neighbors=[page.tsx] | lang=en
-- "settings_page_slapolicyresp": "SlaPolicyResp" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L42 | neighbors=[page.tsx] | lang=en
-- "settings_page_slasection": "SlaSection()" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L668 | neighbors=[page.tsx] | lang=en
-- "settings_page_teamsection": "TeamSection()" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L223 | neighbors=[page.tsx] | lang=en
-- "settings_page_teamuser": "TeamUser" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L59 | neighbors=[page.tsx] | lang=en
-- "settings_page_testbutton": "TestButton()" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L111 | neighbors=[page.tsx] | lang=en
-- "settings_page_toggle": "Toggle()" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L141 | neighbors=[page.tsx] | lang=en
-- "siem_config_route_get": "GET()" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/detection-validation/siem-config/route.ts:L5 | neighbors=[route.ts] | lang=en
-- "siem_config_route_post": "POST()" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/detection-validation/siem-config/route.ts:L14 | neighbors=[route.ts] | lang=en
-- "sla_policy_route_get": "GET" | kind=code-symbol | source=manager/frontend/app/api/sla-policy/route.ts:L10 | neighbors=[route.ts] | lang=en
-- "sla_policy_route_put": "PUT" | kind=code-symbol | source=manager/frontend/app/api/sla-policy/route.ts:L14 | neighbors=[route.ts] | lang=en
-- "sla_summary_route_apislaitem": "ApiSlaItem" | kind=code-symbol | source=manager/frontend/app/api/findings/sla-summary/route.ts:L17 | neighbors=[route.ts] | lang=en
-- "sla_summary_route_apislasummary": "ApiSlaSummary" | kind=code-symbol | source=manager/frontend/app/api/findings/sla-summary/route.ts:L22 | neighbors=[route.ts] | lang=en
-- "sla_summary_route_get": "GET" | kind=code-symbol | source=manager/frontend/app/api/findings/sla-summary/route.ts:L27 | neighbors=[route.ts] | lang=en
-- "sla_summary_route_sev_to_ui": "SEV_TO_UI" | kind=code-symbol | source=manager/frontend/app/api/findings/sla-summary/route.ts:L13 | neighbors=[route.ts] | lang=en
-- "states_datastate_btn": "btn" | kind=code-symbol | source=manager/frontend/components/states/DataState.tsx:L135 | neighbors=[DataState.tsx] | lang=en
-- "states_datastate_center": "center" | kind=code-symbol | source=manager/frontend/components/states/DataState.tsx:L130 | neighbors=[DataState.tsx] | lang=en
-- "states_datastate_datastateprops": "DataStateProps" | kind=code-symbol | source=manager/frontend/components/states/DataState.tsx:L96 | neighbors=[DataState.tsx] | lang=en
-- "states_datastate_offlinebanner": "OfflineBanner()" | kind=code-symbol | source=manager/frontend/components/states/DataState.tsx:L83 | neighbors=[DataState.tsx] | lang=en
-- "states_datastate_unauthorized": "Unauthorized()" | kind=code-symbol | source=manager/frontend/components/states/DataState.tsx:L70 | neighbors=[DataState.tsx] | lang=en
-- "status_route_required": "required" | kind=code-symbol | source=manager/frontend/app/api/settings/status/route.ts:L4 | neighbors=[route.ts] | lang=en
-- "summary_route_apisummary": "ApiSummary" | kind=code-symbol | source=manager/frontend/app/api/findings/summary/route.ts:L5 | neighbors=[route.ts] | lang=en
-- "summary_route_get": "GET" | kind=code-symbol | source=manager/frontend/app/api/findings/summary/route.ts:L18 | neighbors=[route.ts] | lang=en
-- "supporting_research_evidence_store_connect": "connect()" | kind=code-symbol | source=Supporting_research/evidence_store.py:L89 | neighbors=[evidence_store.py] | lang=en
-- "supporting_research_evidence_store_identityresult_asset_count": ".asset_count()" | kind=code-symbol | source=Supporting_research/evidence_store.py:L139 | neighbors=[IdentityResult] | lang=en
-- "supporting_research_evidence_store_identityresult_observations_for": ".observations_for()" | kind=code-symbol | source=Supporting_research/evidence_store.py:L142 | neighbors=[IdentityResult] | lang=en
-- "supporting_research_evidence_store_rationale_1": "vedha_ref.evidence_store -- the layer the whole strategy rests on.  Thesis under" | kind=entity | source=Supporting_research/evidence_store.py:L1 | neighbors=[evidence_store.py] | lang=en
-- "supporting_research_evidence_store_rationale_175": "Cluster observations into assets using fingerprint keys.      Strong keys merge" | kind=entity | source=Supporting_research/evidence_store.py:L175 | neighbors=[resolve_identity()] | lang=en
-- "supporting_research_evidence_store_rationale_258": "The industry default, for comparison. Included so the cost is measurable." | kind=entity | source=Supporting_research/evidence_store.py:L258 | neighbors=[naive_ip_identity()] | lang=en
-- "supporting_research_evidence_store_rationale_300": "Answer a brand-new rule against evidence already on disk.      No network traffi" | kind=entity | source=Supporting_research/evidence_store.py:L300 | neighbors=[retroactive_detect()] | lang=pt
-- "supporting_research_evidence_store_rationale_363": "What a customer should actually be shown: three numbers, not one." | kind=entity | source=Supporting_research/evidence_store.py:L363 | neighbors=[coverage_summary()] | lang=pt
+- "services_portal_metrics_rationale_33": "Count findings by severity (all five buckets always present, zero-filled).     o" | kind=entity | source=manager/backend/app/services/portal_metrics.py:L33 | neighbors=[severity_breakdown()] | lang=en
+- "services_portal_metrics_rationale_45": "(open, closed) totals over the given findings." | kind=entity | source=manager/backend/app/services/portal_metrics.py:L45 | neighbors=[open_closed_counts()] | lang=en
+- "services_portal_metrics_rationale_56": "Per-month {period, opened, closed} for the last `months` months.      opened = f" | kind=entity | source=manager/backend/app/services/portal_metrics.py:L56 | neighbors=[status_timeline()] | lang=en
+- "services_posture_rationale_1": "Posture scoring & patch-comparison — the single source of truth behind the dashb" | kind=entity | source=manager/backend/app/services/posture.py:L1 | neighbors=[posture.py] | lang=en
+- "services_posture_rationale_105": "True when the finding was live as of run_at (first_seen ≤ run_at ≤ last_seen)." | kind=entity | source=manager/backend/app/services/posture.py:L105 | neighbors=[_present_in_run()] | lang=en
+- "services_posture_rationale_121": "Bucket findings across the previous→latest run transition." | kind=entity | source=manager/backend/app/services/posture.py:L121 | neighbors=[compare()] | lang=en
+- "services_posture_rationale_164": "Full dashboard/report payload. Degrades gracefully with 0 or 1 run." | kind=entity | source=manager/backend/app/services/posture.py:L164 | neighbors=[build_posture()] | lang=en
+- "services_posture_rationale_23": "Duck-typed projection of a Finding + its asset's criticality." | kind=entity | source=manager/backend/app/services/posture.py:L23 | neighbors=[FindingView] | lang=en
+- "services_posture_rationale_48": "Noisy-OR: 100·(1 − ∏(1 − clamp(p))). Empty → 0.0. Always in [0, 100]." | kind=entity | source=manager/backend/app/services/posture.py:L48 | neighbors=[aggregate()] | lang=en
+- "services_project_time_rationale_1": "project_time — one place that decides what \"now\" looks like to a human.  The man" | kind=entity | source=manager/backend/app/services/project_time.py:L1 | neighbors=[project_time.py] | lang=en
+- "services_project_time_rationale_42": "The project timezone, degrading safely when tzdata is unavailable." | kind=entity | source=manager/backend/app/services/project_time.py:L42 | neighbors=[_resolve_project_tz()] | lang=en
+- "services_project_time_rationale_61": "Current time as an AWARE datetime in the project timezone." | kind=entity | source=manager/backend/app/services/project_time.py:L61 | neighbors=[project_now()] | lang=en
+- "services_project_time_rationale_66": "ISO-8601 instant in the project timezone: 2026-09-03T23:15:05+05:30." | kind=entity | source=manager/backend/app/services/project_time.py:L66 | neighbors=[project_timestamp()] | lang=en
+- "services_project_time_rationale_71": "Re-render an existing datetime in the project timezone.      The instant is pres" | kind=entity | source=manager/backend/app/services/project_time.py:L71 | neighbors=[to_project_tz()] | lang=en
+- "services_project_time_rationale_85": "Compact project-local stamp for FILE and DIRECTORY names.      Carries no offset" | kind=entity | source=manager/backend/app/services/project_time.py:L85 | neighbors=[project_file_stamp()] | lang=en
+- "services_reference_rationale_1": "reference.py — human-readable references for things a customer has to talk about" | kind=entity | source=manager/backend/app/services/reference.py:L1 | neighbors=[reference.py] | lang=en
+- "services_reference_rationale_102": "Canonicalise a reference a human typed: trim, upper-case, and apply     Crockfor" | kind=entity | source=manager/backend/app/services/reference.py:L102 | neighbors=[normalize()] | lang=pt
+- "services_reference_rationale_112": "True when `text` looks like one of our references rather than a UUID, so a     l" | kind=entity | source=manager/backend/app/services/reference.py:L112 | neighbors=[is_reference()] | lang=pt
+- "services_reference_rationale_73": "The stable code for one row. Deterministic, so a backfill and a fresh     insert" | kind=entity | source=manager/backend/app/services/reference.py:L73 | neighbors=[suffix_for()] | lang=en
+- "services_reference_rationale_85": "Build a reference. `created_at` should be the row's own creation time so a     b" | kind=entity | source=manager/backend/app/services/reference.py:L85 | neighbors=[make_reference()] | lang=pt
+- "services_remediation_kb_rationale_1": "remediation_kb.py — the deterministic remediation knowledge base.  Pure (no DB," | kind=entity | source=manager/backend/app/services/remediation_kb.py:L1 | neighbors=[remediation_kb.py] | lang=en
+- "services_remediation_kb_rationale_27": "Normalize an arbitrary OS/target string to a supported KB key.      Public becau" | kind=entity | source=manager/backend/app/services/remediation_kb.py:L27 | neighbors=[os_key()] | lang=en
+- "services_remediation_kb_rationale_347": "Return a structured, OS-filtered remediation plan for `finding`.      Always ret" | kind=entity | source=manager/backend/app/services/remediation_kb.py:L347 | neighbors=[recipe_for_finding()] | lang=en
+- "services_remediation_kb_rationale_80": "Map a finding to a KB category key using title/description/CVE hints.      Deter" | kind=entity | source=manager/backend/app/services/remediation_kb.py:L80 | neighbors=[classify_finding()] | lang=pt
+- "services_remediation_kb_rationale_97": "One remediation step. `generic` is REQUIRED (the vendor-neutral fallback);     p" | kind=entity | source=manager/backend/app/services/remediation_kb.py:L97 | neighbors=[_step()] | lang=en
+- "services_risk_rank_rationale_1": "One explainable, non-saturating 0-1000 Manager risk score.  The score is additiv" | kind=entity | source=manager/backend/app/services/risk_rank.py:L1 | neighbors=[risk_rank.py] | lang=en
+- "services_scope_crypto_rationale_1": "scope_crypto.py — manager-side: encrypt scope payloads to a probe's X25519 publi" | kind=entity | source=manager/backend/app/services/scope_crypto.py:L1 | neighbors=[scope_crypto.py] | lang=en
+- "services_scope_crypto_rationale_35": "Encrypt scope JSON to a specific probe's X25519 public key.      Args:         s" | kind=entity | source=manager/backend/app/services/scope_crypto.py:L35 | neighbors=[encrypt_scope()] | lang=en
+- "services_scope_crypto_rationale_78": "Convenience: dict → JSON → encrypt → base64 string." | kind=entity | source=manager/backend/app/services/scope_crypto.py:L78 | neighbors=[encrypt_scope_b64()] | lang=en
+- "services_scope_crypto_rationale_86": "Decode a base64-encoded X25519 public key to raw bytes.      Returns empty bytes" | kind=entity | source=manager/backend/app/services/scope_crypto.py:L86 | neighbors=[public_key_from_b64()] | lang=en
+- "services_scope_targets_rationale_1": "scope_targets.py — the single source of truth for \"is this scan target inside th" | kind=entity | source=manager/backend/app/services/scope_targets.py:L1 | neighbors=[scope_targets.py] | lang=en
+- "services_scope_targets_rationale_38": "Expand raw target tokens (IP / CIDR / ``a-b`` range) into networks.      Returns" | kind=entity | source=manager/backend/app/services/scope_targets.py:L38 | neighbors=[_expand_requested()] | lang=en
+- "services_scope_targets_rationale_71": "Return the normalized list of authorized target networks, or ``None``.      * ``" | kind=entity | source=manager/backend/app/services/scope_targets.py:L71 | neighbors=[validate_targets_in_scope()] | lang=en
+- "services_sla_rationale_109": "The env-configured SLA windows — the fallback when a tenant has no policy." | kind=entity | source=manager/backend/app/services/sla.py:L109 | neighbors=[default_windows()] | lang=en
+- "services_sla_rationale_115": "Aggregate SLA states across a set of findings.      Returns counts per state plu" | kind=entity | source=manager/backend/app/services/sla.py:L115 | neighbors=[summarize()] | lang=en
+- "services_sla_rationale_62": "Compute the SLA state for one finding. Never raises on missing data.      `windo" | kind=entity | source=manager/backend/app/services/sla.py:L62 | neighbors=[compute()] | lang=en
+- "services_sla_slaresult_is_tracked": ".is_tracked()" | kind=code-symbol | source=manager/backend/app/services/sla.py:L56 | neighbors=[SlaResult] | lang=en
+- "services_validation_ingest_rationale_1": "validation_ingest.py — turn a probe's safe active-validation result into a findi" | kind=entity | source=manager/backend/app/services/validation_ingest.py:L1 | neighbors=[validation_ingest.py] | lang=pt
+- "services_validation_ingest_rationale_33": "Apply a validation verdict to a finding object (pure — no DB/session)." | kind=entity | source=manager/backend/app/services/validation_ingest.py:L33 | neighbors=[apply_validation_outcome()] | lang=pt
+- "services_validation_ingest_rationale_45": "Cheap gate so normal scan submissions never trigger a lookup: a probe     valida" | kind=entity | source=manager/backend/app/services/validation_ingest.py:L45 | neighbors=[looks_like_validation_result()] | lang=pt
 
 ## Instructions
 

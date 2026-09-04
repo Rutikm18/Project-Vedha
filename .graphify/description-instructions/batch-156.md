@@ -1,4 +1,4 @@
-# Node Description Batch 157 of 330
+# Node Description Batch 157 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -17,6 +17,25 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
+- "tests_test_network_va_accuracy_test_post_stages_ran": "test_post_stages_ran()" | kind=code-symbol | source=probe/tests/test_network_va_accuracy.py:L188 | neighbors=[test_network_va_accuracy.py, network_va composes device classificati…]
+- "tests_test_network_va_accuracy_test_silent_port_reports_no_banner_honestly": "test_silent_port_reports_no_banner_honestly()" | kind=code-symbol | source=probe/tests/test_network_va_accuracy.py:L156 | neighbors=[test_network_va_accuracy.py, 4444 says nothing. The scanner must rec…]
+- "tests_test_network_va_accuracy_test_tls_branch_is_not_routed_by_silence": "test_tls_branch_is_not_routed_by_silence()" | kind=code-symbol | source=probe/tests/test_network_va_accuracy.py:L180 | neighbors=[test_network_va_accuracy.py, service_banner now proves non-TLS by at…]
+- "tests_test_new_scanners_testdeltaengine_test_load_jsonl_skips_invalid_json": ".test_load_jsonl_skips_invalid_json()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L502 | neighbors=[TestDeltaEngine, _make_scan_record()]
+- "tests_test_nfs_scanner_portmap_dump_reply": "_portmap_dump_reply()" | kind=code-symbol | source=probe/tests/test_nfs_scanner.py:L41 | neighbors=[test_nfs_scanner.py, .test_portmap_dump_parse()]
+- "tests_test_nfs_scanner_testnfsfindings_test_restricted_exports_no_high_finding": ".test_restricted_exports_no_high_finding()" | kind=code-symbol | source=probe/tests/test_nfs_scanner.py:L133 | neighbors=[TestNFSFindings, ._fact()]
+- "tests_test_nfs_scanner_testnfsfindings_test_world_readable_and_portmapper": ".test_world_readable_and_portmapper()" | kind=code-symbol | source=probe/tests/test_nfs_scanner.py:L122 | neighbors=[TestNFSFindings, ._fact()]
+- "tests_test_nfs_scanner_testnfsscanner_test_no_rpc_is_filtered": ".test_no_rpc_is_filtered()" | kind=code-symbol | source=probe/tests/test_nfs_scanner.py:L109 | neighbors=[TestNFSScanner, ._sc()]
+- "tests_test_nfs_scanner_testnfsscanner_test_world_readable_export_open": ".test_world_readable_export_open()" | kind=code-symbol | source=probe/tests/test_nfs_scanner.py:L99 | neighbors=[TestNFSScanner, ._sc()]
+- "tests_test_nfs_scanner_testparity": "TestParity" | kind=code-symbol | source=probe/tests/test_nfs_scanner.py:L142 | neighbors=[test_nfs_scanner.py, .test_main_scripts()]
+- "tests_test_nfs_scanner_testparity_test_main_scripts": ".test_main_scripts()" | kind=code-symbol | source=probe/tests/test_nfs_scanner.py:L143 | neighbors=[TestParity, _mount_export_reply()]
+- "tests_test_nfs_scanner_testxdrparsers_test_mount_export_parse_and_world_flag": ".test_mount_export_parse_and_world_flag()" | kind=code-symbol | source=probe/tests/test_nfs_scanner.py:L52 | neighbors=[TestXdrParsers, _mount_export_reply()]
+- "tests_test_nfs_scanner_testxdrparsers_test_portmap_dump_parse": ".test_portmap_dump_parse()" | kind=code-symbol | source=probe/tests/test_nfs_scanner.py:L62 | neighbors=[TestXdrParsers, _portmap_dump_reply()]
+- "tests_test_nfs_scanner_testxdrparsers_test_rpc_reply_header_stripping": ".test_rpc_reply_header_stripping()" | kind=code-symbol | source=probe/tests/test_nfs_scanner.py:L68 | neighbors=[TestXdrParsers, _mount_export_reply()]
+- "tests_test_nfs_scanner_xstr": "_xstr()" | kind=code-symbol | source=probe/tests/test_nfs_scanner.py:L25 | neighbors=[test_nfs_scanner.py, _mount_export_reply()]
+- "tests_test_nuclei_background_fakesession_begin_nested": ".begin_nested()" | kind=code-symbol | source=manager/backend/tests/test_nuclei_background.py:L43 | neighbors=[_FakeSession, _NestedTransaction]
+- "tests_test_nuclei_background_fakesession_execute": ".execute()" | kind=code-symbol | source=manager/backend/tests/test_nuclei_background.py:L40 | neighbors=[_FakeSession, _ScalarResult]
+- "tests_test_nuclei_background_sessionfactory_call": ".__call__()" | kind=code-symbol | source=manager/backend/tests/test_nuclei_background.py:L71 | neighbors=[_SessionFactory, _FakeSession]
+- "tests_test_nuclei_background_test_fatal_nuclei_error_marks_background_job_failed": "test_fatal_nuclei_error_marks_background_job_failed()" | kind=code-symbol | source=manager/backend/tests/test_nuclei_background.py:L76 | neighbors=[test_nuclei_background.py, _SessionFactory]
 - "tests_test_nuclei_background_test_partial_nuclei_run_preserves_findings_and_diagnostics": "test_partial_nuclei_run_preserves_findings_and_diagnostics()" | kind=code-symbol | source=manager/backend/tests/test_nuclei_background.py:L117 | neighbors=[test_nuclei_background.py, _SessionFactory]
 - "tests_test_nuclei_scanner_test_nonzero_exit_without_findings_raises_with_stderr": "test_nonzero_exit_without_findings_raises_with_stderr()" | kind=code-symbol | source=manager/backend/tests/test_nuclei_scanner.py:L108 | neighbors=[test_nuclei_scanner.py, FakeProcess]
 - "tests_test_nuclei_scanner_test_template_initialization_failure_cannot_be_clean_zero": "test_template_initialization_failure_cannot_be_clean_zero()" | kind=code-symbol | source=manager/backend/tests/test_nuclei_scanner.py:L177 | neighbors=[test_nuclei_scanner.py, FakeProcess]
@@ -38,25 +57,6 @@ one-sentence description — no prose, no markdown fences.
 - "tests_test_os_fingerprint_testicmptimestamps_test_parse_extracts_ttl_and_transmit": ".test_parse_extracts_ttl_and_transmit()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L107 | neighbors=[TestIcmpTimestamps, ._ts_reply()]
 - "tests_test_os_fingerprint_testtimestampfallback_test_both_filtered_reports_no_reply": ".test_both_filtered_reports_no_reply()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L158 | neighbors=[TestTimestampFallback, ._scanner()]
 - "tests_test_os_fingerprint_testtimestampfallback_test_timestamp_reply_when_echo_is_filtered": ".test_timestamp_reply_when_echo_is_filtered()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L144 | neighbors=[TestTimestampFallback, ._scanner()]
-- "tests_test_os_fusion_test_build_only_is_strong_but_not_certain": "test_build_only_is_strong_but_not_certain()" | kind=code-symbol | source=probe/tests/test_os_fusion.py:L29 | neighbors=[test_os_fusion.py, _os()]
-- "tests_test_os_fusion_test_build_smb2_hostname_is_high_confidence": "test_build_smb2_hostname_is_high_confidence()" | kind=code-symbol | source=probe/tests/test_os_fusion.py:L17 | neighbors=[test_os_fusion.py, _os()]
-- "tests_test_os_fusion_test_no_os_signal_yields_no_finding": "test_no_os_signal_yields_no_finding()" | kind=code-symbol | source=probe/tests/test_os_fusion.py:L51 | neighbors=[test_os_fusion.py, _os()]
-- "tests_test_os_fusion_test_smb2_plus_p0f_stack_is_medium": "test_smb2_plus_p0f_stack_is_medium()" | kind=code-symbol | source=probe/tests/test_os_fusion.py:L42 | neighbors=[test_os_fusion.py, _os()]
-- "tests_test_os_fusion_test_ttl_only_stays_a_hint": "test_ttl_only_stays_a_hint()" | kind=code-symbol | source=probe/tests/test_os_fusion.py:L35 | neighbors=[test_os_fusion.py, _os()]
-- "tests_test_os_stage_wiring_test_cached_os_fact_is_reused_not_reprobed": "test_cached_os_fact_is_reused_not_reprobed()" | kind=code-symbol | source=probe/tests/test_os_stage_wiring.py:L223 | neighbors=[test_os_stage_wiring.py, _wire()]
-- "tests_test_os_stage_wiring_test_os_stage_runs_for_a_port_stage_job": "test_os_stage_runs_for_a_port_stage_job()" | kind=code-symbol | source=probe/tests/test_os_stage_wiring.py:L138 | neighbors=[test_os_stage_wiring.py, _wire()]
-- "tests_test_os_stage_wiring_test_rescan_mode_reprobes_a_stale_os_fact": "test_rescan_mode_reprobes_a_stale_os_fact()" | kind=code-symbol | source=probe/tests/test_os_stage_wiring.py:L238 | neighbors=[test_os_stage_wiring.py, _wire()]
-- "tests_test_os_stage_wiring_test_stack_hints_from_syn_scan_reach_the_os_scanner": "test_stack_hints_from_syn_scan_reach_the_os_scanner()" | kind=code-symbol | source=probe/tests/test_os_stage_wiring.py:L157 | neighbors=[test_os_stage_wiring.py, _wire()]
-- "tests_test_os_stage_wiring_testassetmerge_test_closed_port_contributes_no_hints": ".test_closed_port_contributes_no_hints()" | kind=code-symbol | source=probe/tests/test_os_stage_wiring.py:L93 | neighbors=[TestAssetMerge, _asset()]
-- "tests_test_os_stage_wiring_testassetmerge_test_connect_scan_without_stack_signals_leaves_hints_empty": ".test_connect_scan_without_stack_signals_leaves_hints_empty()" | kind=code-symbol | source=probe/tests/test_os_stage_wiring.py:L87 | neighbors=[TestAssetMerge, _asset()]
-- "tests_test_os_stage_wiring_testassetmerge_test_os_fact_stored_and_ntlm_name_becomes_alias": ".test_os_fact_stored_and_ntlm_name_becomes_alias()" | kind=code-symbol | source=probe/tests/test_os_stage_wiring.py:L99 | neighbors=[TestAssetMerge, _asset()]
-- "tests_test_os_stage_wiring_testassetmerge_test_syn_stack_hints_harvested_from_open_port": ".test_syn_stack_hints_harvested_from_open_port()" | kind=code-symbol | source=probe/tests/test_os_stage_wiring.py:L78 | neighbors=[TestAssetMerge, _asset()]
-- "tests_test_os_stage_wiring_testgate_test_alive_host_is_eligible": ".test_alive_host_is_eligible()" | kind=code-symbol | source=probe/tests/test_os_stage_wiring.py:L37 | neighbors=[TestGate, _asset()]
-- "tests_test_os_stage_wiring_testgate_test_dead_host_is_not": ".test_dead_host_is_not()" | kind=code-symbol | source=probe/tests/test_os_stage_wiring.py:L40 | neighbors=[TestGate, _asset()]
-- "tests_test_os_stage_wiring_testgate_test_no_open_ports_still_eligible": ".test_no_open_ports_still_eligible()" | kind=code-symbol | source=probe/tests/test_os_stage_wiring.py:L47 | neighbors=[TestGate, _asset()]
-- "tests_test_os_stage_wiring_testgate_test_passive_profile_never_probes": ".test_passive_profile_never_probes()" | kind=code-symbol | source=probe/tests/test_os_stage_wiring.py:L43 | neighbors=[TestGate, _asset()]
-- "tests_test_outbox_reclaim_test_boundary_at_exactly_the_lease_is_reclaimed": "test_boundary_at_exactly_the_lease_is_reclaimed()" | kind=code-symbol | source=manager/backend/tests/test_outbox_reclaim.py:L41 | neighbors=[test_outbox_reclaim.py, _now()]
-- "tests_test_outbox_reclaim_test_expired_processing_lock_is_reclaimed": "test_expired_processing_lock_is_reclaimed()" | kind=code-symbol | source=manager/backend/tests/test_outbox_reclaim.py:L35 | neighbors=[test_outbox_reclaim.py, _now()]
 
 ## Instructions
 

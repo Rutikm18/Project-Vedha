@@ -1,4 +1,4 @@
-# Node Description Batch 14 of 330
+# Node Description Batch 14 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -24,6 +24,7 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
+- "agent_agent_main": "main()" | kind=code-symbol | source=probe/agent/agent.py:L285 | neighbors=[agent.py, _bounded_env_int(), _classify_connection_error(), configure_logging(), _dbg(), _is_local_manager_url()]
 - "agent_cli_managerclient_request": ".request()" | kind=code-symbol | source=probe/agent/cli.py:L127 | neighbors=[cmd_agents_list(), cmd_auth_login(), cmd_auth_status(), cmd_doctor(), cmd_engagements_create(), cmd_engagements_list()]
 - "assistant_page": "page.tsx" | kind=code-symbol | source=manager/frontend/app/portal/assistant/page.tsx:L1 | neighbors=[AssistantReply, PortalAssistant(), STARTERS, Turn, portal-client.ts, portalApi()]
 - "auth_startup_run_startup_diagnostics": "run_startup_diagnostics()" | kind=code-symbol | source=manager/backend/app/auth/startup.py:L280 | neighbors=[startup.py, Run all startup checks concurrently.   …, _check_admin_account(), _check_bcrypt(), _check_cookie_config(), _check_cors()]
@@ -61,9 +62,8 @@ one-sentence description — no prose, no markdown fences.
 - "tools_manifest": "manifest.ts" | kind=code-symbol | source=manager/frontend/lib/tools/manifest.ts:L1 | neighbors=[tools.ts, 10dfc80 Add comprehensive probe testing…, d1b4dd3 trim frontend to 7 core pages; …, currentPlatform(), Platform, TOOL_MANIFEST]
 - "workflow_execution_executiontrace": "ExecutionTrace" | kind=code-symbol | source=probe/workflow/execution.py:L243 | neighbors=[execution.py, .as_list(), .degraded(), ._ensure(), .failed(), .finalize()]
 - "ad_ldap_enum_aduser": "ADUser" | kind=code-symbol | source=manager/backend/app/ad/ldap_enum.py:L55 | neighbors=[ldap_enum.py, .get_users(), ADConnectionError, DependencyMissingError, _FakeAttr, _FakeEntry]
+- "agent_agent_startup_gauntlet": "_startup_gauntlet()" | kind=code-symbol | source=probe/agent/agent.py:L984 | neighbors=[agent.py, main(), Run all startup security checks before …, _check_anti_debug(), say(), Run all startup security checks before …]
 - "agent_explain_plan": "explain_plan.py" | kind=code-symbol | source=probe/agent/explain_plan.py:L1 | neighbors=[main(), _print_table(), _why(), scanner_base.py, branches.py, cache.py]
-- "agent_license": "license.py" | kind=code-symbol | source=probe/agent/license.py:L1 | neighbors=[agent.py, _b64d(), check_license(), gauntlet(), host_fingerprint(), LicenseError]
-- "commands_interactive_ask": "ask()" | kind=code-symbol | source=manager/frontend/cli/commands/interactive.ts:L39 | neighbors=[interactive.ts, choose(), confirm(), ensureAuthenticated(), pickHostSubset(), pickTargets()]
 
 ## Instructions
 

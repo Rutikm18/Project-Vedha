@@ -1,4 +1,4 @@
-# Node Description Batch 34 of 330
+# Node Description Batch 34 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -17,6 +17,12 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
+- "tests_test_job_cancel_probe_testpollingnoiseissuppressed": "TestPollingNoiseIsSuppressed" | kind=code-symbol | source=probe/tests/test_job_cancel_probe.py:L73 | neighbors=[test_job_cancel_probe.py, The probe polls forever; routine transp…, ._configure(), .test_per_request_info_lines_are_suppre…, .test_probe_debug_restores_full_tracing…, .test_probe_own_narration_is_unaffected…]
+- "tests_test_main_scripts_vantage_r": "_r()" | kind=code-symbol | source=probe/tests/test_main_scripts_vantage.py:L12 | neighbors=[test_main_scripts_vantage.py, .test_ambiguous_when_only_open_filtered…, .test_auto_detects_external_by_name(), .test_explicit_external_vantage_by_name…, .test_external_exposure_is_flagged(), .test_internal_only_not_called_external…]
+- "tests_test_main_scripts_vantage_testreconcilevantages": "TestReconcileVantages" | kind=code-symbol | source=probe/tests/test_main_scripts_vantage.py:L16 | neighbors=[test_main_scripts_vantage.py, .test_ambiguous_when_only_open_filtered…, .test_auto_detects_external_by_name(), .test_explicit_external_vantage_by_name…, .test_external_exposure_is_flagged(), .test_internal_only_not_called_external…]
+- "tests_test_network_va_accuracy_listener": "_Listener" | kind=code-symbol | source=probe/tests/test_network_va_accuracy.py:L26 | neighbors=[test_network_va_accuracy.py, .__init__(), ._loop(), ._serve(), .start(), .stop()]
+- "tests_test_nuclei_background_sessionfactory": "_SessionFactory" | kind=code-symbol | source=manager/backend/tests/test_nuclei_background.py:L59 | neighbors=[test_nuclei_background.py, .__call__(), .__init__(), test_fatal_nuclei_error_marks_backgroun…, test_partial_nuclei_run_preserves_findi…, ScanJobStatus]
+- "tests_test_online_finding": "_finding()" | kind=code-symbol | source=probe/tests/test_online.py:L64 | neighbors=[test_online.py, A CVEFinding as the offline pass would …, .test_caches_per_cve_id(), .test_fail_open_leaves_offline_result_u…, .test_gap_fill_sets_cvss_and_recomputes…, .test_online_all_cross_checks_and_annot…]
 - "tests_test_os_fingerprint_testprovenance": "TestProvenance" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L369 | neighbors=[test_os_fingerprint.py, ._scanner(), .test_datagram_echo_without_ttl_does_no…, .test_icmp_unavailable_tcp_hints_is_met…, .test_icmp_unavailable_with_tcp_ttl_is_…, .test_no_icmp_but_tcp_ttl_hint_is_metho…]
 - "tests_test_os_fusion": "test_os_fusion.py" | kind=code-symbol | source=probe/tests/test_os_fusion.py:L1 | neighbors=[26ea68c Add comprehensive tests for OS …, _os(), test_build_only_is_strong_but_not_certa…, test_build_smb2_hostname_is_high_confid…, test_no_os_signal_yields_no_finding(), test_smb2_plus_p0f_stack_is_medium()]
 - "tests_test_portal_assistant_llm": "_llm()" | kind=code-symbol | source=manager/backend/tests/test_portal_assistant.py:L86 | neighbors=[test_portal_assistant.py, test_context_is_built_server_side_from_…, test_focus_finding_in_scope_is_added_to…, test_focus_finding_outside_the_engageme…, test_only_the_whitelisted_finding_field…, test_reply_is_timestamped_and_attribute…]
@@ -51,12 +57,6 @@ one-sentence description — no prose, no markdown fences.
 - "vuln_tasks": "tasks.py" | kind=code-symbol | source=manager/backend/app/vuln/tasks.py:L1 | neighbors=[cac022c Everything is done and verified…, d1b4dd3 trim frontend to 7 core pages; …, database.py, _dedup_hash(), _fire_critical_webhook(), run_post_scan_enrichment()]
 - "websocket_manager_agentconnectionmanager_push_job_to_first_online": ".push_job_to_first_online()" | kind=code-symbol | source=manager/backend/app/websocket/manager.py:L207 | neighbors=[AgentConnectionManager, .online_agents_for_tenant(), .push_job(), Push a job to the first online agent in…, Push a job to the first online agent in…, Push a job to the first online agent in…]
 - "websocket_manager_connectionmanager_broadcast": ".broadcast()" | kind=code-symbol | source=manager/backend/app/websocket/manager.py:L51 | neighbors=[ConnectionManager, .disconnect(), .broadcast_graph_update(), .broadcast_layout_update(), .broadcast_node_update(), ._handle_message()]
-- "workers_outbox_mark_retry_or_dead": "_mark_retry_or_dead()" | kind=code-symbol | source=manager/backend/app/workers/outbox.py:L367 | neighbors=[outbox.py, _process(), Reschedule with exponential backoff, or…, Reschedule with exponential backoff, or…, Reschedule with exponential backoff, or…, Reschedule with exponential backoff, or…]
-- "workflow_gates_gate_0_is_passive_profile": "gate_0_is_passive_profile()" | kind=code-symbol | source=probe/workflow/gates.py:L98 | neighbors=[gates.py, gate_2_host_discovery(), gate_3_port_scan(), gate_4b_os_fingerprint(), True means OT/ICS passive-only mode — a…, True means OT/ICS passive-only mode — a…]
-- "workflow_host_health_hosthealthmonitor_state": "._state()" | kind=code-symbol | source=probe/workflow/host_health.py:L129 | neighbors=[HostHealthMonitor, .confirm(), .is_offline(), ._mark_offline(), .note_skipped(), .observe()]
-- "workflow_workflow_engine_run_branch": "_run_branch()" | kind=code-symbol | source=probe/workflow/workflow_engine.py:L292 | neighbors=[workflow_engine.py, Run ONE deep-scan branch for one host: …, _record(), _record_reused(), _scan_one(), _split_cached()]
-- "ad_findings_aderror": "ADError" | kind=code-symbol | source=manager/backend/app/ad/findings.py:L22 | neighbors=[findings.py, ADConnectionError, Exception, DependencyMissingError, Base class for Active Directory assessm…, FindingSeverity]
-- "ad_ldap_enum_ldapenumerator_get_users": ".get_users()" | kind=code-symbol | source=manager/backend/app/ad/ldap_enum.py:L213 | neighbors=[LDAPEnumerator, ADUser, _as_list(), ._attr(), ._search(), All user accounts (excludes computer ac…]
 
 ## Instructions
 

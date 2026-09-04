@@ -1,4 +1,4 @@
-# Node Description Batch 55 of 330
+# Node Description Batch 55 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -26,6 +26,12 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
+- "detection_engine_pipeline_run_pipeline": "run_pipeline()" | kind=code-symbol | source=manager/detection_engine/pipeline.py:L45 | neighbors=[pipeline.py, ab_evaluate(), exposure: optional {asset_ip: {"interne…, run_full_detection(), exposure: optional {asset_ip: {"interne…] | lang=en
+- "detection_engine_port_intel_classify_port": "classify_port()" | kind=code-symbol | source=manager/detection_engine/port_intel.py:L211 | neighbors=[port_intel.py, _banner_confirms_backdoor(), contradicts_port_hypothesis(), PortRisk, Map an open TCP port (+ optional banner…] | lang=en
+- "detection_engine_posture_confidence": "posture_confidence.py" | kind=code-symbol | source=manager/detection_engine/posture_confidence.py:L1 | neighbors=[6bb51ab feat: add detection-explain end…, assess_confidence(), calibrate_host_findings(), corroborating_chains(), posture_confidence.py — calibrated, aud…] | lang=en
+- "detection_engine_posture_rules_posturefinding": "PostureFinding" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L169 | neighbors=[posture_rules.py, detect_exposed_services(), detect_posture_traced(), .__post_init__(), .to_dict()] | lang=en
+- "detection_engine_posture_rules_tracerow": "TraceRow" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L111 | neighbors=[posture_rules.py, detect_posture_traced(), evaluate_rule(), One rule evaluation's outcome. Purely d…, .to_dict()] | lang=en
+- "detection_engine_update_snapshot_sync_epss_snapshot": "sync_epss_snapshot()" | kind=code-symbol | source=manager/detection_engine/update_snapshot.py:L141 | neighbors=[update_snapshot.py, EPSS scores for exactly the CVE IDs thi…, _ssl_context(), main(), EPSS scores for exactly the CVE IDs thi…] | lang=en
 - "detection_engine_update_snapshot_sync_kev_snapshot": "sync_kev_snapshot()" | kind=code-symbol | source=manager/detection_engine/update_snapshot.py:L120 | neighbors=[update_snapshot.py, main(), The full CISA Known Exploited Vulnerabi…, _ssl_context(), The full CISA Known Exploited Vulnerabi…] | lang=en
 - "detection_engine_version_compare_dpkg_compare": "dpkg_compare()" | kind=code-symbol | source=manager/detection_engine/version_compare.py:L172 | neighbors=[version_compare.py, _dpkg_compare_pure_python(), -1 if a<b, 0 if a==b, 1 if a>b, per Deb…, _dpkg_compare_via_binary(), -1 if a<b, 0 if a==b, 1 if a>b, per Deb…] | lang=en
 - "detection_engine_version_compare_dpkg_compare_pure_python": "_dpkg_compare_pure_python()" | kind=code-symbol | source=manager/detection_engine/version_compare.py:L161 | neighbors=[version_compare.py, dpkg_compare(), _compare_part(), _split_dpkg_version(), verify_pure_python_matches_dpkg()] | lang=en
@@ -60,12 +66,6 @@ one-sentence description — no prose, no markdown fences.
 - "graph_builder_rationale_209": "Add CONNECTS_TO (directed reachability) and SAME_SEGMENT edges from         segm" | kind=entity | source=manager/backend/app/graph/builder.py:L209 | neighbors=[.add_network_edges(), Neo4jClient, Asset, Finding, Service] | lang=en
 - "graph_builder_rationale_245": "CREDENTIAL_REUSE edges between assets sharing a credential.         ``credential" | kind=entity | source=manager/backend/app/graph/builder.py:L245 | neighbors=[._add_credential_edges(), Neo4jClient, Asset, Finding, Service] | lang=pt
 - "graph_builder_rationale_266": "Load assets/services/findings for an engagement and build the graph." | kind=entity | source=manager/backend/app/graph/builder.py:L266 | neighbors=[.build_from_db(), Neo4jClient, Asset, Finding, Service] | lang=en
-- "graph_builder_rationale_295": "Mirror the current in-memory graph into Neo4j via batched writes." | kind=entity | source=manager/backend/app/graph/builder.py:L295 | neighbors=[.sync_to_neo4j(), Neo4jClient, Asset, Finding, Service] | lang=en
-- "graph_builder_rationale_53": "Normalise a value that may be an Enum, str, or None to a lowercase str." | kind=entity | source=manager/backend/app/graph/builder.py:L53 | neighbors=[_enum_value(), Neo4jClient, Asset, Finding, Service] | lang=en
-- "graph_builder_rationale_71": "Edge cost for an EXPLOITS edge. Derived from the CVSS Attack Complexity     comp" | kind=entity | source=manager/backend/app/graph/builder.py:L71 | neighbors=[exploit_complexity(), Neo4jClient, Asset, Finding, Service] | lang=en
-- "graph_demo_generate_demo_dataset": "generate_demo_dataset()" | kind=code-symbol | source=manager/backend/app/graph/demo.py:L57 | neighbors=[demo.py, DemoAsset, DemoFinding, DemoService, Returns {engagement_id, assets, service…] | lang=en
-- "graph_visualizer": "visualizer.py" | kind=code-symbol | source=manager/backend/app/graph/visualizer.py:L1 | neighbors=[d1b4dd3 trim frontend to 7 core pages; …, _deterministic_layout(), GraphVisualizer, GraphVisualizer — serialise the attack …, 298a9d4 trim frontend to 7 core pages; …] | lang=en
-- "hooks_usecountup": "useCountUp.ts" | kind=code-symbol | source=manager/frontend/hooks/useCountUp.ts:L1 | neighbors=[1fe16c8 stable but some dead code, need…, d1b4dd3 trim frontend to 7 core pages; …, DashboardCharts.tsx, useCountUp(), 298a9d4 trim frontend to 7 core pages; …] | lang=en
 
 ## Instructions
 

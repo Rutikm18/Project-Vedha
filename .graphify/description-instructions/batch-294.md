@@ -1,4 +1,4 @@
-# Node Description Batch 295 of 330
+# Node Description Batch 295 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,51 +19,53 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-Write every description in English (en). Do not switch languages.
+LANGUAGE: each entry has a `lang=` marker giving the language of its source.
+Write that entry's description in EXACTLY that language. Do not translate to
+a single common language — match each node's source language individually.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_posture_confidence_testassessor_test_deception_penalty": ".test_deception_penalty()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_confidence.py:L60 | neighbors=[TestAssessor]
-- "tests_test_posture_confidence_testassessor_test_final_is_clamped_and_recorded": ".test_final_is_clamped_and_recorded()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_confidence.py:L66 | neighbors=[TestAssessor]
-- "tests_test_posture_confidence_testassessor_test_lone_chain_member_gets_no_floor": ".test_lone_chain_member_gets_no_floor()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_confidence.py:L52 | neighbors=[TestAssessor]
-- "tests_test_posture_confidence_testassessor_test_unreachable_downgrades_and_is_recorded": ".test_unreachable_downgrades_and_is_recorded()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_confidence.py:L46 | neighbors=[TestAssessor]
-- "tests_test_posture_confidence_testassessor_test_validated_base_higher_than_unvalidated": ".test_validated_base_higher_than_unvalidated()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_confidence.py:L39 | neighbors=[TestAssessor]
-- "tests_test_posture_confidence_testchains_test_chain_floor_never_lowers_confidence": ".test_chain_floor_never_lowers_confidence()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_confidence.py:L82 | neighbors=[TestChains]
-- "tests_test_posture_confidence_testchains_test_ntlm_relay_chain_floors_both": ".test_ntlm_relay_chain_floors_both()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_confidence.py:L74 | neighbors=[TestChains]
-- "tests_test_posture_row_init": ".__init__()" | kind=code-symbol | source=manager/backend/tests/test_posture.py:L110 | neighbors=[_Row]
-- "tests_test_posture_rules_rationale_1": "test_posture_rules.py — the manager posture/config detection engine.  Covers: th" | kind=entity | source=manager/detection_engine/tests/test_posture_rules.py:L1 | neighbors=[test_posture_rules.py]
-- "tests_test_posture_rules_rationale_96": "The live tls_scanner labels its probe list \"TLSv1_0\"/\"TLSv1_1\" (from         ssl" | kind=entity | source=manager/detection_engine/tests/test_posture_rules.py:L96 | neighbors=[.test_deprecated_tls_version_underscore…]
-- "tests_test_posture_rules_testriskmodel_test_auth_enforced_deescalates": ".test_auth_enforced_deescalates()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_rules.py:L133 | neighbors=[TestRiskModel]
-- "tests_test_posture_rules_testriskmodel_test_internet_facing_unauth_escalates": ".test_internet_facing_unauth_escalates()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_rules.py:L138 | neighbors=[TestRiskModel]
-- "tests_test_posture_rules_testriskmodel_test_priority_buckets": ".test_priority_buckets()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_rules.py:L148 | neighbors=[TestRiskModel]
-- "tests_test_posture_rules_testriskmodel_test_suspected_scores_below_confirmed": ".test_suspected_scores_below_confirmed()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_rules.py:L143 | neighbors=[TestRiskModel]
-- "tests_test_posture_rules_testtrusttier_test_registry_contains_user_validated_set": ".test_registry_contains_user_validated_set()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_rules.py:L43 | neighbors=[TestTrustTier]
-- "tests_test_posture_test_aggregate_is_bounded_and_empty_is_zero": "test_aggregate_is_bounded_and_empty_is_zero()" | kind=code-symbol | source=manager/backend/tests/test_posture.py:L22 | neighbors=[test_posture.py]
-- "tests_test_posture_test_aggregate_is_monotonic": "test_aggregate_is_monotonic()" | kind=code-symbol | source=manager/backend/tests/test_posture.py:L31 | neighbors=[test_posture.py]
-- "tests_test_posture_test_build_posture_no_runs": "test_build_posture_no_runs()" | kind=code-symbol | source=manager/backend/tests/test_posture.py:L72 | neighbors=[test_posture.py]
-- "tests_test_posture_test_compute_scores_empty_is_perfect": "test_compute_scores_empty_is_perfect()" | kind=code-symbol | source=manager/backend/tests/test_posture.py:L48 | neighbors=[test_posture.py]
-- "tests_test_posture_test_grade_bands": "test_grade_bands()" | kind=code-symbol | source=manager/backend/tests/test_posture.py:L37 | neighbors=[test_posture.py]
-- "tests_test_posture_test_posture_report_section_omitted_without_runs": "test_posture_report_section_omitted_without_runs()" | kind=code-symbol | source=manager/backend/tests/test_posture.py:L167 | neighbors=[test_posture.py]
-- "tests_test_posture_test_posture_report_section_renders_scores_and_matrix": "test_posture_report_section_renders_scores_and_matrix()" | kind=code-symbol | source=manager/backend/tests/test_posture.py:L149 | neighbors=[test_posture.py]
-- "tests_test_posture_test_sev_str_passes_through_plain_string": "test_sev_str_passes_through_plain_string()" | kind=code-symbol | source=manager/backend/tests/test_posture.py:L143 | neighbors=[test_posture.py]
-- "tests_test_posture_trace_rationale_1": "test_posture_trace.py — the detection trace: every rule evaluation records an OU" | kind=entity | source=manager/detection_engine/tests/test_posture_trace.py:L1 | neighbors=[test_posture_trace.py]
-- "tests_test_posture_trace_rationale_63": "I10 structurally: for EVERY rule with a declared contract, feeding a fact" | kind=entity | source=manager/detection_engine/tests/test_posture_trace.py:L63 | neighbors=[.test_missing_input_invariant_across_al…]
-- "tests_test_printer_scanner_rationale_1": "test_printer_scanner.py — network printer exposure (9100 PJL / 631 IPP).  Pure P" | kind=entity | source=probe/tests/test_printer_scanner.py:L1 | neighbors=[test_printer_scanner.py]
-- "tests_test_printer_scanner_testparity_test_main_scripts": ".test_main_scripts()" | kind=code-symbol | source=probe/tests/test_printer_scanner.py:L62 | neighbors=[TestParity]
-- "tests_test_printer_scanner_testprinterfindings_test_exposed_low": ".test_exposed_low()" | kind=code-symbol | source=probe/tests/test_printer_scanner.py:L53 | neighbors=[TestPrinterFindings]
-- "tests_test_printer_scanner_testpurelogic_test_build_ipp": ".test_build_ipp()" | kind=code-symbol | source=probe/tests/test_printer_scanner.py:L23 | neighbors=[TestPureLogic]
-- "tests_test_printer_scanner_testpurelogic_test_parse_ipp_make_model": ".test_parse_ipp_make_model()" | kind=code-symbol | source=probe/tests/test_printer_scanner.py:L27 | neighbors=[TestPureLogic]
-- "tests_test_printer_scanner_testpurelogic_test_parse_pjl_id": ".test_parse_pjl_id()" | kind=code-symbol | source=probe/tests/test_printer_scanner.py:L19 | neighbors=[TestPureLogic]
-- "tests_test_probe_auto_enroll_rationale_1": "test_probe_auto_enroll.py — trust-on-first-use enrollment gate + CIDR policy.  T" | kind=entity | source=manager/backend/tests/test_probe_auto_enroll.py:L1 | neighbors=[test_probe_auto_enroll.py]
-- "tests_test_probe_auto_enroll_test_auto_enroll_cidrs_defaults_to_rfc1918": "test_auto_enroll_cidrs_defaults_to_rfc1918()" | kind=code-symbol | source=manager/backend/tests/test_probe_auto_enroll.py:L23 | neighbors=[test_probe_auto_enroll.py]
-- "tests_test_probe_auto_enroll_test_auto_enroll_cidrs_parses_and_trims_custom": "test_auto_enroll_cidrs_parses_and_trims_custom()" | kind=code-symbol | source=manager/backend/tests/test_probe_auto_enroll.py:L29 | neighbors=[test_probe_auto_enroll.py]
-- "tests_test_probe_auto_enroll_test_auto_enroll_is_off_by_default": "test_auto_enroll_is_off_by_default()" | kind=code-symbol | source=manager/backend/tests/test_probe_auto_enroll.py:L17 | neighbors=[test_probe_auto_enroll.py]
-- "tests_test_probe_auto_enroll_test_auto_enroll_site_name_is_stable": "test_auto_enroll_site_name_is_stable()" | kind=code-symbol | source=manager/backend/tests/test_probe_auto_enroll.py:L36 | neighbors=[test_probe_auto_enroll.py]
-- "tests_test_probe_core_rationale_1": "Probe test suite — unit tests for the probe's pure-logic modules. Covers: ScopeG" | kind=entity | source=probe/tests/test_probe_core.py:L1 | neighbors=[test_probe_core.py]
-- "tests_test_probe_core_rationale_673": "ipv6_discovery reports on the RUN (its target is an interface name, or         t" | kind=entity | source=probe/tests/test_probe_core.py:L673 | neighbors=[.test_run_scoped_summary_does_not_becom…]
-- "tests_test_probe_core_test_explicit_local_manager_urls": "test_explicit_local_manager_urls()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L47 | neighbors=[test_probe_core.py]
-- "tests_test_probe_core_test_nonlocal_manager_urls": "test_nonlocal_manager_urls()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L57 | neighbors=[test_probe_core.py]
+- "tests_test_pipeline_concurrency_rationale_31": "The lock must be taken BEFORE the first read, or the race it prevents can     st" | kind=entity | source=manager/backend/tests/test_pipeline_concurrency.py:L31 | neighbors=[test_detection_locks_the_engagement_bef…] | lang=en
+- "tests_test_pipeline_concurrency_rationale_45": "pg_advisory_lock (session) would leak on any path that forgets to unlock.     Th" | kind=entity | source=manager/backend/tests/test_pipeline_concurrency.py:L45 | neighbors=[test_the_lock_is_transaction_scoped_not…] | lang=en
+- "tests_test_pipeline_concurrency_rationale_58": "Two concurrent handlers must contend, so the key has to be a pure function     o" | kind=entity | source=manager/backend/tests/test_pipeline_concurrency.py:L58 | neighbors=[test_the_same_engagement_always_maps_to…] | lang=en
+- "tests_test_pipeline_concurrency_rationale_71": "Collisions are harmless (two unrelated engagements briefly serialise) but     sh" | kind=entity | source=manager/backend/tests/test_pipeline_concurrency.py:L71 | neighbors=[test_different_engagements_generally_do…] | lang=en
+- "tests_test_pipeline_concurrency_rationale_83": "pg_advisory_xact_lock takes a signed bigint; an out-of-range key raises." | kind=entity | source=manager/backend/tests/test_pipeline_concurrency.py:L83 | neighbors=[test_the_key_fits_a_postgres_bigint()] | lang=en
+- "tests_test_pipeline_rationale_1": "Tests for pipeline.py — the orchestrator with 0% prior coverage.  Covers the cri" | kind=entity | source=manager/detection_engine/tests/test_pipeline.py:L1 | neighbors=[test_pipeline.py] | lang=en
+- "tests_test_pipeline_rationale_114": "A completely empty file must not produce any findings." | kind=entity | source=manager/detection_engine/tests/test_pipeline.py:L114 | neighbors=[.test_empty_jsonl_returns_no_findings()] | lang=pt
+- "tests_test_pipeline_rationale_124": "Passing an empty path list must return empty findings and no facts." | kind=entity | source=manager/detection_engine/tests/test_pipeline.py:L124 | neighbors=[.test_no_paths_returns_empty()] | lang=en
+- "tests_test_pipeline_rationale_131": "A completely empty file must not produce any findings." | kind=entity | source=manager/detection_engine/tests/test_pipeline.py:L131 | neighbors=[.test_empty_jsonl_returns_no_findings()] | lang=pt
+- "tests_test_pipeline_rationale_140": "A credentialed package at a version inside a vulnerable range must         produ" | kind=entity | source=manager/detection_engine/tests/test_pipeline.py:L140 | neighbors=[.test_ssh_inventory_vulnerable_package_…] | lang=pt
+- "tests_test_pipeline_rationale_141": "Passing an empty path list must return empty findings and no facts." | kind=entity | source=manager/detection_engine/tests/test_pipeline.py:L141 | neighbors=[.test_no_paths_returns_empty()] | lang=en
+- "tests_test_pipeline_rationale_151": "Findings from an authoritative (credentialed) source must be         confirmed —" | kind=entity | source=manager/detection_engine/tests/test_pipeline.py:L151 | neighbors=[.test_ssh_inventory_finding_is_confirme…] | lang=en
+- "tests_test_pipeline_rationale_157": "A credentialed package at a version inside a vulnerable range must         produ" | kind=entity | source=manager/detection_engine/tests/test_pipeline.py:L157 | neighbors=[.test_ssh_inventory_vulnerable_package_…] | lang=pt
+- "tests_test_pipeline_rationale_164": "A banner-derived (inferred) source match can only produce 'suspected'         —" | kind=entity | source=manager/detection_engine/tests/test_pipeline.py:L164 | neighbors=[.test_banner_finding_is_suspected_not_c…] | lang=pt
+- "tests_test_pipeline_rationale_168": "Findings from an authoritative (credentialed) source must be         confirmed —" | kind=entity | source=manager/detection_engine/tests/test_pipeline.py:L168 | neighbors=[.test_ssh_inventory_finding_is_confirme…] | lang=en
+- "tests_test_pipeline_rationale_177": "A host running the fixed version must not produce a finding." | kind=entity | source=manager/detection_engine/tests/test_pipeline.py:L177 | neighbors=[.test_no_finding_for_patched_version()] | lang=pt
+- "tests_test_pipeline_rationale_181": "A banner-derived (inferred) source match can only produce 'suspected'         —" | kind=entity | source=manager/detection_engine/tests/test_pipeline.py:L181 | neighbors=[.test_banner_finding_is_suspected_not_c…] | lang=pt
+- "tests_test_pipeline_rationale_188": "When all three dbs are injected, the pipeline must not try to read         the d" | kind=entity | source=manager/detection_engine/tests/test_pipeline.py:L188 | neighbors=[.test_injected_dbs_used_no_file_io()] | lang=en
+- "tests_test_pipeline_rationale_194": "A host running the fixed version must not produce a finding." | kind=entity | source=manager/detection_engine/tests/test_pipeline.py:L194 | neighbors=[.test_no_finding_for_patched_version()] | lang=pt
+- "tests_test_pipeline_rationale_205": "When all three dbs are injected, the pipeline must not try to read         the d" | kind=entity | source=manager/detection_engine/tests/test_pipeline.py:L205 | neighbors=[.test_injected_dbs_used_no_file_io()] | lang=en
+- "tests_test_pipeline_rationale_217": "Without an exposure dict the fields stay None — pipeline never guesses." | kind=entity | source=manager/detection_engine/tests/test_pipeline.py:L217 | neighbors=[.test_no_exposure_fields_are_none()] | lang=en
+- "tests_test_pipeline_rationale_234": "Different IPs must produce independent findings — dedup is per         (asset, C" | kind=entity | source=manager/detection_engine/tests/test_pipeline.py:L234 | neighbors=[.test_two_identical_hosts_each_get_thei…] | lang=en
+- "tests_test_pipeline_rationale_247": "The same (asset, CVE) can't appear twice in the output — dedup         must coll" | kind=entity | source=manager/detection_engine/tests/test_pipeline.py:L247 | neighbors=[.test_findings_deduped_within_same_host…] | lang=en
+- "tests_test_pipeline_rationale_261": "Without an exposure dict the fields stay None — pipeline never guesses." | kind=entity | source=manager/detection_engine/tests/test_pipeline.py:L261 | neighbors=[.test_no_exposure_fields_are_none()] | lang=en
+- "tests_test_pipeline_rationale_278": "Different IPs must produce independent findings — dedup is per         (asset, C" | kind=entity | source=manager/detection_engine/tests/test_pipeline.py:L278 | neighbors=[.test_two_identical_hosts_each_get_thei…] | lang=en
+- "tests_test_pipeline_rationale_281": "With use_ai_assist=False (the default) and no ai_client, the pipeline         pr" | kind=entity | source=manager/detection_engine/tests/test_pipeline.py:L281 | neighbors=[.test_ai_assist_off_by_default()] | lang=en
+- "tests_test_pipeline_rationale_291": "The same (asset, CVE) can't appear twice in the output — dedup         must coll" | kind=entity | source=manager/detection_engine/tests/test_pipeline.py:L291 | neighbors=[.test_findings_deduped_within_same_host…] | lang=en
+- "tests_test_pipeline_rationale_292": "ab_evaluate must return a dict with the expected structure." | kind=entity | source=manager/detection_engine/tests/test_pipeline.py:L292 | neighbors=[.test_ab_evaluate_returns_expected_keys…] | lang=en
+- "tests_test_pipeline_rationale_304": "When FakeAIClient returns nothing new, there must be no precision         regres" | kind=entity | source=manager/detection_engine/tests/test_pipeline.py:L304 | neighbors=[.test_ab_evaluate_no_precision_regressi…] | lang=en
+- "tests_test_pipeline_rationale_325": "With use_ai_assist=False (the default) and no ai_client, the pipeline         pr" | kind=entity | source=manager/detection_engine/tests/test_pipeline.py:L325 | neighbors=[.test_ai_assist_off_by_default()] | lang=en
+- "tests_test_pipeline_rationale_336": "ab_evaluate must return a dict with the expected structure." | kind=entity | source=manager/detection_engine/tests/test_pipeline.py:L336 | neighbors=[.test_ab_evaluate_returns_expected_keys…] | lang=en
+- "tests_test_pipeline_rationale_348": "When FakeAIClient returns nothing new, there must be no precision         regres" | kind=entity | source=manager/detection_engine/tests/test_pipeline.py:L348 | neighbors=[.test_ab_evaluate_no_precision_regressi…] | lang=en
+- "tests_test_pipeline_rationale_50": "Returns a VulnDB with a record that matches openssh 8.4p1 (vulnerable).      The" | kind=entity | source=manager/detection_engine/tests/test_pipeline.py:L50 | neighbors=[_openssh_vuln_db()] | lang=en
+- "tests_test_pipeline_rationale_74": "Upstream boundary for a banner-vs-inventory suppression scenario." | kind=entity | source=manager/detection_engine/tests/test_pipeline.py:L74 | neighbors=[_openssh_upstream_vuln_db()] | lang=en
+- "tests_test_port_catalog_test_modern_infra_ports_present": "test_modern_infra_ports_present()" | kind=code-symbol | source=probe/tests/test_port_catalog.py:L4 | neighbors=[test_port_catalog.py] | lang=en
+- "tests_test_portal_assistant_rationale_1": "test_portal_assistant.py — the customer-facing AI assistant.  Free-form chat was" | kind=entity | source=manager/backend/tests/test_portal_assistant.py:L1 | neighbors=[test_portal_assistant.py] | lang=en
+- "tests_test_portal_assistant_rationale_114": "The schema has no context field, so a client cannot inject its own     'evidence" | kind=entity | source=manager/backend/tests/test_portal_assistant.py:L114 | neighbors=[test_request_body_cannot_carry_context()] | lang=en
+- "tests_test_portal_assistant_rationale_120": "Internal triage/evidence fields must never leave the operator side." | kind=entity | source=manager/backend/tests/test_portal_assistant.py:L120 | neighbors=[test_only_the_whitelisted_finding_field…] | lang=en
+- "tests_test_portal_assistant_rationale_136": "403 would confirm the id exists somewhere — a cross-tenant oracle." | kind=entity | source=manager/backend/tests/test_portal_assistant.py:L136 | neighbors=[test_focus_finding_outside_the_engageme…] | lang=en
+- "tests_test_portal_assistant_rationale_61": "execute() → engagement, then findings, then (optionally) the focus finding." | kind=entity | source=manager/backend/tests/test_portal_assistant.py:L61 | neighbors=[_db()] | lang=en
 
 ## Instructions
 

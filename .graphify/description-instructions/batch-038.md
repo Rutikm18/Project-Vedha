@@ -1,4 +1,4 @@
-# Node Description Batch 39 of 330
+# Node Description Batch 39 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -24,6 +24,10 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
+- "scanner_scan_funnel_scanfunnel_run_host": ".run_host()" | kind=code-symbol | source=probe/scanner/scan_funnel.py:L162 | neighbors=[ScanFunnel, _candidate_ports(), FunnelResult, _is_alive(), reconcile_ports(), route_ports()]
+- "scanner_scanner_base_async_udp_probe_retry": "async_udp_probe_retry()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L848 | neighbors=[scanner_base.py, async_udp_probe(), `async_udp_probe` with bounded per-port…, `async_udp_probe` with bounded per-port…, `async_udp_probe` with bounded per-port…, `async_udp_probe` with bounded per-port…]
+- "scanner_scanner_base_resolve": "resolve()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L680 | neighbors=[scanner_base.py, Resolve `target` to a concrete (family,…, Resolve `target` to a concrete (family,…, Resolve `target` to a concrete (family,…, Resolve `target` to a concrete (family,…, Resolve `target` to a concrete (family,…]
+- "scanner_service_banner_match_service": "match_service()" | kind=code-symbol | source=probe/scanner/service_banner.py:L235 | neighbors=[service_banner.py, _dec(), Soft-match collected bytes to {service,…, ._grab(), Soft-match collected bytes to {service,…, Soft-match collected bytes to {service,…]
 - "scanner_service_enum_serviceenumscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/scanner/service_enum.py:L558 | neighbors=[ServiceEnumScanner, classify_roles(), Enrichment, guess_os(), resolve_hostnames(), ._probe_port()]
 - "scanner_smb_enum_scanner_smbenumscanner_enumerate": "._enumerate()" | kind=code-symbol | source=probe/scanner/smb_enum_scanner.py:L227 | neighbors=[Blocking: attempt a null session and en…, SMBEnumScanner, _enum_shares(), _enum_users_ridcycle(), _enum_users_samr(), _merge_users()]
 - "scanner_smtp_scanner": "smtp_scanner.py" | kind=code-symbol | source=probe/scanner/smtp_scanner.py:L1 | neighbors=[6e2818f Add support for additional serv…, main(), parse_ehlo_capabilities(), SMTPScanner, vrfy_leaks(), smtp_scanner.py — SMTP hygiene: user en…]
@@ -60,10 +64,6 @@ one-sentence description — no prose, no markdown fences.
 - "tests_test_agents_testenqueueagentjob": "TestEnqueueAgentJob" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L49 | neighbors=[test_agents.py, .test_404_when_engagement_missing(), .test_materializes_direct_job_capabilit…, .test_rejects_server_side_type(), .test_scope_fields_cannot_override_enga…, .test_success_creates_pending_job()]
 - "tests_test_ai_engine_finding": "_finding()" | kind=code-symbol | source=manager/backend/tests/test_ai_engine.py:L24 | neighbors=[test_ai_engine.py, .test_technical_finding_runs_guard(), .test_unavailable_without_client(), .test_explain_prediction_fallback_shape…, .test_extract_features_order_and_values…, .test_higher_cvss_scores_higher()]
 - "tests_test_ai_normalizer": "test_ai_normalizer.py" | kind=code-symbol | source=manager/detection_engine/tests/test_ai_normalizer.py:L1 | neighbors=[4d0377d Add unit tests for SMB scanner,…, _fact(), TestAINormalizerCache, TestExtractRawText, TestFakeAIClient, TestProposeCandidates]
-- "tests_test_attack_paths_rationale_1": "Unit tests for the attack-path analysis engine (Prompt 6).  The engine is exerci" | kind=entity | source=manager/backend/tests/test_attack_paths.py:L1 | neighbors=[test_attack_paths.py, PathAnalyzer, GraphBuilder, DemoAsset, DemoFinding, Neo4jClient]
-- "tests_test_campaign_progress_terminal_testnormalpipelineunaffected": "TestNormalPipelineUnaffected" | kind=code-symbol | source=manager/backend/tests/test_campaign_progress_terminal.py:L72 | neighbors=[test_campaign_progress_terminal.py, Regression guard: the happy path and it…, .test_complete_campaign(), .test_complete_with_gaps(), .test_defaults_keep_backwards_compatibi…, .test_no_jobs_is_pending()]
-- "tests_test_campaign_progress_terminal_testterminalwithoutresults": "TestTerminalWithoutResults" | kind=code-symbol | source=manager/backend/tests/test_campaign_progress_terminal.py:L38 | neighbors=[test_campaign_progress_terminal.py, .test_a_dead_queue_is_still_reported_as…, .test_all_cancelled_campaign_is_termina…, .test_all_failed_campaign_is_terminal(), .test_does_not_hijack_a_campaign_that_p…, .test_partial_cancel_with_one_success_s…]
-- "tests_test_cve_correlation_testcpe": "TestCpe" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L75 | neighbors=[test_cve_correlation.py, .test_datastore_map_entries(), .test_mysql_vs_mariadb_vendor(), .test_no_version_returns_none(), .test_openssh(), .test_unknown_product_returns_none()]
 
 ## Instructions
 

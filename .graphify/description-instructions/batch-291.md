@@ -1,4 +1,4 @@
-# Node Description Batch 292 of 330
+# Node Description Batch 292 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -26,46 +26,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_os_fingerprint_testremoteclock_test_standard_value_decodes_to_wall_clock": ".test_standard_value_decodes_to_wall_clock()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L124 | neighbors=[TestRemoteClock] | lang=en
-- "tests_test_os_fingerprint_testsmbbuildenrichment_scanner": "._scanner()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L329 | neighbors=[TestSmbBuildEnrichment] | lang=en
-- "tests_test_os_fingerprint_testsmbbuildenrichment_test_build_lifts_ttl_only_guess_to_authoritative": ".test_build_lifts_ttl_only_guess_to_authoritative()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L334 | neighbors=[TestSmbBuildEnrichment] | lang=en
-- "tests_test_os_fingerprint_testsmbbuildenrichment_test_no_smb_leaves_ttl_only_result_untouched": ".test_no_smb_leaves_ttl_only_result_untouched()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L350 | neighbors=[TestSmbBuildEnrichment] | lang=en
-- "tests_test_os_fingerprint_testsmbbuildenrichment_test_smb_build_can_be_disabled": ".test_smb_build_can_be_disabled()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L360 | neighbors=[TestSmbBuildEnrichment] | lang=en
-- "tests_test_os_fingerprint_teststacksignature_test_fingerprint_os_folds_in_stack_but_keeps_family": ".test_fingerprint_os_folds_in_stack_but_keeps_family()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L315 | neighbors=[TestStackSignature] | lang=en
-- "tests_test_os_fingerprint_teststacksignature_test_fingerprint_os_stack_guess_none_without_options": ".test_fingerprint_os_stack_guess_none_without_options()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L322 | neighbors=[TestStackSignature] | lang=en
-- "tests_test_os_fingerprint_teststacksignature_test_linux_from_option_layout_and_wscale": ".test_linux_from_option_layout_and_wscale()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L296 | neighbors=[TestStackSignature] | lang=en
-- "tests_test_os_fingerprint_teststacksignature_test_macos_darwin_layout": ".test_macos_darwin_layout()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L300 | neighbors=[TestStackSignature] | lang=en
-- "tests_test_os_fingerprint_teststacksignature_test_no_ttl_yields_no_stack": ".test_no_ttl_yields_no_stack()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L312 | neighbors=[TestStackSignature] | lang=en
-- "tests_test_os_fingerprint_teststacksignature_test_ttl255_matches_embedded_regardless_of_layout": ".test_ttl255_matches_embedded_regardless_of_layout()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L304 | neighbors=[TestStackSignature] | lang=en
-- "tests_test_os_fingerprint_teststacksignature_test_unknown_layout_yields_no_stack": ".test_unknown_layout_yields_no_stack()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L308 | neighbors=[TestStackSignature] | lang=en
-- "tests_test_os_fingerprint_teststacksignature_test_windows_8_plus_from_option_layout": ".test_windows_8_plus_from_option_layout()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L284 | neighbors=[TestStackSignature] | lang=en
-- "tests_test_os_fingerprint_teststacksignature_test_windows_layout_without_wscale_is_lower_confidence": ".test_windows_layout_without_wscale_is_lower_confidence()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L292 | neighbors=[TestStackSignature] | lang=en
-- "tests_test_os_fingerprint_testttlinference_test_hop_estimate": ".test_hop_estimate()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L205 | neighbors=[TestTtlInference] | lang=en
-- "tests_test_os_fingerprint_testttlinference_test_os_family_linux": ".test_os_family_linux()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L209 | neighbors=[TestTtlInference] | lang=en
-- "tests_test_os_fingerprint_testttlinference_test_os_family_network": ".test_os_family_network()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L215 | neighbors=[TestTtlInference] | lang=en
-- "tests_test_os_fingerprint_testttlinference_test_os_family_unknown_on_none": ".test_os_family_unknown_on_none()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L218 | neighbors=[TestTtlInference] | lang=en
-- "tests_test_os_fingerprint_testttlinference_test_os_family_windows": ".test_os_family_windows()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L212 | neighbors=[TestTtlInference] | lang=en
-- "tests_test_os_fingerprint_testttlinference_test_round_up_to_128": ".test_round_up_to_128()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L197 | neighbors=[TestTtlInference] | lang=en
-- "tests_test_os_fingerprint_testttlinference_test_round_up_to_255": ".test_round_up_to_255()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L201 | neighbors=[TestTtlInference] | lang=en
-- "tests_test_os_fingerprint_testttlinference_test_round_up_to_64": ".test_round_up_to_64()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L193 | neighbors=[TestTtlInference] | lang=en
-- "tests_test_os_fusion_rationale_1": "test_os_fusion.py — FIX 3(a): cross-scanner OS identification with calibrated, m" | kind=entity | source=probe/tests/test_os_fusion.py:L1 | neighbors=[test_os_fusion.py] | lang=pt
-- "tests_test_os_stage_wiring_open": "_open()" | kind=code-symbol | source=probe/tests/test_os_stage_wiring.py:L32 | neighbors=[test_os_stage_wiring.py] | lang=en
-- "tests_test_os_stage_wiring_rationale_1": "test_os_stage_wiring.py — the OS-identification stage in the agent workflow.  Be" | kind=entity | source=probe/tests/test_os_stage_wiring.py:L1 | neighbors=[test_os_stage_wiring.py] | lang=en
-- "tests_test_os_stage_wiring_test_dead_host_is_never_os_probed": "test_dead_host_is_never_os_probed()" | kind=code-symbol | source=probe/tests/test_os_stage_wiring.py:L199 | neighbors=[test_os_stage_wiring.py] | lang=en
-- "tests_test_os_stage_wiring_test_smb_build_probe_skipped_when_445_is_closed": "test_smb_build_probe_skipped_when_445_is_closed()" | kind=code-symbol | source=probe/tests/test_os_stage_wiring.py:L172 | neighbors=[test_os_stage_wiring.py] | lang=en
-- "tests_test_os_stage_wiring_testassetmerge_test_os_fact_is_cacheable_as_deterministic": ".test_os_fact_is_cacheable_as_deterministic()" | kind=code-symbol | source=probe/tests/test_os_stage_wiring.py:L108 | neighbors=[TestAssetMerge] | lang=en
-- "tests_test_os_stage_wiring_testplan_test_full_assessment_includes_it": ".test_full_assessment_includes_it()" | kind=code-symbol | source=probe/tests/test_os_stage_wiring.py:L70 | neighbors=[TestPlan] | lang=en
-- "tests_test_os_stage_wiring_testplan_test_not_planned_for_a_udp_only_job": ".test_not_planned_for_a_udp_only_job()" | kind=code-symbol | source=probe/tests/test_os_stage_wiring.py:L65 | neighbors=[TestPlan] | lang=en
-- "tests_test_os_stage_wiring_testplan_test_not_planned_for_liveness_only": ".test_not_planned_for_liveness_only()" | kind=code-symbol | source=probe/tests/test_os_stage_wiring.py:L59 | neighbors=[TestPlan] | lang=en
-- "tests_test_os_stage_wiring_testplan_test_os_stage_planned_from_the_port_stage_up": ".test_os_stage_planned_from_the_port_stage_up()" | kind=code-symbol | source=probe/tests/test_os_stage_wiring.py:L53 | neighbors=[TestPlan] | lang=en
-- "tests_test_passive_collector_socket_fileno": ".fileno()" | kind=code-symbol | source=probe/tests/test_passive_collector.py:L28 | neighbors=[_Socket] | lang=en
-- "tests_test_passive_collector_socket_init": ".__init__()" | kind=code-symbol | source=probe/tests/test_passive_collector.py:L24 | neighbors=[_Socket] | lang=en
-- "tests_test_passive_collector_test_zero_listeners_returns_structured_failure": "test_zero_listeners_returns_structured_failure()" | kind=code-symbol | source=probe/tests/test_passive_collector.py:L135 | neighbors=[test_passive_collector.py] | lang=en
-- "tests_test_passive_collector_writer_init": ".__init__()" | kind=code-symbol | source=probe/tests/test_passive_collector.py:L16 | neighbors=[_Writer] | lang=en
-- "tests_test_passive_collector_writer_write": ".write()" | kind=code-symbol | source=probe/tests/test_passive_collector.py:L19 | neighbors=[_Writer] | lang=en
-- "tests_test_pat_auth_test_new_pat_token_shape_and_hash_stability": "test_new_pat_token_shape_and_hash_stability()" | kind=code-symbol | source=manager/backend/tests/test_pat_auth.py:L44 | neighbors=[test_pat_auth.py] | lang=en
-- "tests_test_pat_auth_test_pat_builder_rejects_unknown_scope": "test_pat_builder_rejects_unknown_scope()" | kind=code-symbol | source=manager/backend/tests/test_pat_auth.py:L88 | neighbors=[test_pat_auth.py] | lang=en
-- "tests_test_pat_auth_test_pat_builder_returns_token_once_and_stores_hash_only": "test_pat_builder_returns_token_once_and_stores_hash_only()" | kind=code-symbol | source=manager/backend/tests/test_pat_auth.py:L52 | neighbors=[test_pat_auth.py] | lang=en
+- "tests_test_nmap_wrapper_test_port_scan_profiles_carry_pn": "test_port_scan_profiles_carry_pn()" | kind=code-symbol | source=probe/tests/test_nmap_wrapper.py:L24 | neighbors=[test_nmap_wrapper.py] | lang=en
+- "tests_test_nmap_xml_safety_rationale_1": "test_nmap_xml_safety.py — nmap XML parsing must resist XML-bomb / entity injecti" | kind=entity | source=probe/tests/test_nmap_xml_safety.py:L1 | neighbors=[test_nmap_xml_safety.py] | lang=en
+- "tests_test_nmap_xml_safety_testnmapentityguard_test_entity_declaration_is_refused": ".test_entity_declaration_is_refused()" | kind=code-symbol | source=probe/tests/test_nmap_xml_safety.py:L28 | neighbors=[TestNmapEntityGuard] | lang=en
+- "tests_test_nmap_xml_safety_testnmapentityguard_test_entity_guard_is_case_insensitive": ".test_entity_guard_is_case_insensitive()" | kind=code-symbol | source=probe/tests/test_nmap_xml_safety.py:L33 | neighbors=[TestNmapEntityGuard] | lang=en
+- "tests_test_nmap_xml_safety_testnmapentityguard_test_legitimate_doctype_output_still_parses": ".test_legitimate_doctype_output_still_parses()" | kind=code-symbol | source=probe/tests/test_nmap_xml_safety.py:L38 | neighbors=[TestNmapEntityGuard] | lang=en
+- "tests_test_notifications_rationale_1": "test_notifications.py — integration delivery fan-out (item 3 delivery worker)." | kind=entity | source=manager/backend/tests/test_notifications.py:L1 | neighbors=[test_notifications.py] | lang=en
+- "tests_test_notifications_testdeliver_test_dispatches_to_the_kind": ".test_dispatches_to_the_kind()" | kind=code-symbol | source=manager/backend/tests/test_notifications.py:L14 | neighbors=[TestDeliver] | lang=en
+- "tests_test_notifications_testdeliver_test_sender_error_is_swallowed": ".test_sender_error_is_swallowed()" | kind=code-symbol | source=manager/backend/tests/test_notifications.py:L24 | neighbors=[TestDeliver] | lang=en
+- "tests_test_notifications_testdeliver_test_unknown_kind_returns_false": ".test_unknown_kind_returns_false()" | kind=code-symbol | source=manager/backend/tests/test_notifications.py:L21 | neighbors=[TestDeliver] | lang=en
+- "tests_test_notifications_testnotifytenant_test_counts_only_successful_channels": ".test_counts_only_successful_channels()" | kind=code-symbol | source=manager/backend/tests/test_notifications.py:L52 | neighbors=[TestNotifyTenant] | lang=en
+- "tests_test_notifications_testnotifytenant_test_fans_to_enabled_and_decrypts_secret": ".test_fans_to_enabled_and_decrypts_secret()" | kind=code-symbol | source=manager/backend/tests/test_notifications.py:L31 | neighbors=[TestNotifyTenant] | lang=en
+- "tests_test_nuclei_background_fakesession_add": ".add()" | kind=code-symbol | source=manager/backend/tests/test_nuclei_background.py:L46 | neighbors=[_FakeSession] | lang=en
+- "tests_test_nuclei_background_fakesession_aenter": ".__aenter__()" | kind=code-symbol | source=manager/backend/tests/test_nuclei_background.py:L34 | neighbors=[_FakeSession] | lang=en
+- "tests_test_nuclei_background_fakesession_aexit": ".__aexit__()" | kind=code-symbol | source=manager/backend/tests/test_nuclei_background.py:L37 | neighbors=[_FakeSession] | lang=en
+- "tests_test_nuclei_background_fakesession_commit": ".commit()" | kind=code-symbol | source=manager/backend/tests/test_nuclei_background.py:L52 | neighbors=[_FakeSession] | lang=en
+- "tests_test_nuclei_background_fakesession_flush": ".flush()" | kind=code-symbol | source=manager/backend/tests/test_nuclei_background.py:L49 | neighbors=[_FakeSession] | lang=en
+- "tests_test_nuclei_background_fakesession_init": ".__init__()" | kind=code-symbol | source=manager/backend/tests/test_nuclei_background.py:L31 | neighbors=[_FakeSession] | lang=en
+- "tests_test_nuclei_background_fakesession_rollback": ".rollback()" | kind=code-symbol | source=manager/backend/tests/test_nuclei_background.py:L55 | neighbors=[_FakeSession] | lang=en
+- "tests_test_nuclei_background_nestedtransaction_aenter": ".__aenter__()" | kind=code-symbol | source=manager/backend/tests/test_nuclei_background.py:L23 | neighbors=[_NestedTransaction] | lang=en
+- "tests_test_nuclei_background_nestedtransaction_aexit": ".__aexit__()" | kind=code-symbol | source=manager/backend/tests/test_nuclei_background.py:L26 | neighbors=[_NestedTransaction] | lang=en
+- "tests_test_nuclei_background_scalarresult_init": ".__init__()" | kind=code-symbol | source=manager/backend/tests/test_nuclei_background.py:L15 | neighbors=[_ScalarResult] | lang=en
+- "tests_test_nuclei_background_scalarresult_scalar_one_or_none": ".scalar_one_or_none()" | kind=code-symbol | source=manager/backend/tests/test_nuclei_background.py:L18 | neighbors=[_ScalarResult] | lang=en
+- "tests_test_nuclei_background_sessionfactory_init": ".__init__()" | kind=code-symbol | source=manager/backend/tests/test_nuclei_background.py:L60 | neighbors=[_SessionFactory] | lang=en
+- "tests_test_nuclei_scanner_fakeprocess_init": ".__init__()" | kind=code-symbol | source=manager/backend/tests/test_nuclei_scanner.py:L31 | neighbors=[FakeProcess] | lang=en
+- "tests_test_nuclei_scanner_fakeprocess_kill": ".kill()" | kind=code-symbol | source=manager/backend/tests/test_nuclei_scanner.py:L61 | neighbors=[FakeProcess] | lang=en
+- "tests_test_nuclei_scanner_fakeprocess_terminate": ".terminate()" | kind=code-symbol | source=manager/backend/tests/test_nuclei_scanner.py:L57 | neighbors=[FakeProcess] | lang=en
+- "tests_test_nuclei_scanner_fakeprocess_wait": ".wait()" | kind=code-symbol | source=manager/backend/tests/test_nuclei_scanner.py:L50 | neighbors=[FakeProcess] | lang=en
+- "tests_test_nuclei_scanner_test_missing_binary_is_a_reported_failure": "test_missing_binary_is_a_reported_failure()" | kind=code-symbol | source=manager/backend/tests/test_nuclei_scanner.py:L95 | neighbors=[test_nuclei_scanner.py] | lang=en
+- "tests_test_online_rationale_1": "test_online.py — the OPT-IN live enrichment layer (cve/online.py).  Every test i" | kind=entity | source=probe/tests/test_online.py:L1 | neighbors=[test_online.py] | lang=en
+- "tests_test_online_rationale_52": "A fake transport that ignores its args and returns fixed bytes." | kind=entity | source=probe/tests/test_online.py:L52 | neighbors=[_get_returning()] | lang=en
+- "tests_test_online_rationale_65": "A CVEFinding as the offline pass would emit it — CVSS None models a mirror gap." | kind=entity | source=probe/tests/test_online.py:L65 | neighbors=[_finding()] | lang=en
+- "tests_test_os_fingerprint_rationale_1": "test_os_fingerprint.py — Tier 2.1 (OS fingerprinting) + 2.2 (ICMP multi-probe +" | kind=entity | source=probe/tests/test_os_fingerprint.py:L1 | neighbors=[test_os_fingerprint.py] | lang=pt
+- "tests_test_os_fingerprint_testacceptechoreply_test_rejects_none_parsed": ".test_rejects_none_parsed()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L183 | neighbors=[TestAcceptEchoReply] | lang=en
+- "tests_test_os_fingerprint_testfingerprintos_test_mss_flags_jumbo_even_without_os_signal": ".test_mss_flags_jumbo_even_without_os_signal()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L260 | neighbors=[TestFingerprintOs] | lang=en
+- "tests_test_os_fingerprint_testfingerprintos_test_mss_flags_tunnel_or_vpn": ".test_mss_flags_tunnel_or_vpn()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L256 | neighbors=[TestFingerprintOs] | lang=en
+- "tests_test_os_fingerprint_testfingerprintos_test_mss_is_path_intel_not_an_os_signal": ".test_mss_is_path_intel_not_an_os_signal()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L263 | neighbors=[TestFingerprintOs] | lang=en
+- "tests_test_os_fingerprint_testfingerprintos_test_mss_yields_ethernet_mtu": ".test_mss_yields_ethernet_mtu()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L252 | neighbors=[TestFingerprintOs] | lang=en
+- "tests_test_os_fingerprint_testfingerprintos_test_network_device_from_ttl_255": ".test_network_device_from_ttl_255()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L244 | neighbors=[TestFingerprintOs] | lang=en
+- "tests_test_os_fingerprint_testfingerprintos_test_no_signals_is_unknown": ".test_no_signals_is_unknown()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L239 | neighbors=[TestFingerprintOs] | lang=en
+- "tests_test_os_fingerprint_testfingerprintos_test_no_ttl_means_no_ttl_source": ".test_no_ttl_means_no_ttl_source()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L276 | neighbors=[TestFingerprintOs] | lang=en
 
 ## Instructions
 

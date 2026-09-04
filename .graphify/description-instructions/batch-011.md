@@ -1,4 +1,4 @@
-# Node Description Batch 12 of 330
+# Node Description Batch 12 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -24,6 +24,8 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
+- "commit:repo:github.com/Rutikm18/Project-Vedha@f1da96f64e70aef9d0275a6cdcdbf89b7334e948": "f1da96f fix: update environment variables and resource limits in docker-compose…" | kind=Commit | source=git | neighbors=[2a36f8a fix: update docker compose comm…, addcapabilities-fable, feat/autonomous-offensive-agent, feat/complete-pending-work, feat/coverage-gated-auto-resolution, feat/engagement-detail-uiux]
+- "commit:repo:github.com/Rutikm18/Project-Vedha@f3c359163f16baf103a46a5170e40a9e95edda9d": "f3c3591 docs: Phase 0 queue-control implementation plan (8 TDD tasks)" | kind=Commit | source=git | neighbors=[879cdfa docs: probe fleet automation de…, addcapabilities-fable, feat/autonomous-offensive-agent, feat/complete-pending-work, feat/coverage-gated-auto-resolution, feat/engagement-detail-uiux]
 - "detection_edr_edrdetection": "EDRDetection" | kind=code-symbol | source=manager/backend/app/detection/edr.py:L31 | neighbors=[edr.py, .parse_response(), .is_prevented(), .parse_response(), .parse_response(), AttackAction]
 - "detection_engine_cpe_normalizer": "cpe_normalizer.py" | kind=code-symbol | source=manager/detection_engine/cpe_normalizer.py:L1 | neighbors=[7a637eb feat: network VA accuracy, KEV …, d0d1931 feat(detection): NVD/CPE vuln f…, d1b4dd3 trim frontend to 7 core pages; …, f473173 merge: network VA accuracy, KEV…, all_osv_source_packages(), clean_debian_version()]
 - "engine_scan_modules": "scan-modules.ts" | kind=code-symbol | source=manager/frontend/lib/engine/scan-modules.ts:L1 | neighbors=[interactive.ts, d1b4dd3 trim frontend to 7 core pages; …, defaultModules(), depthDefaults(), moduleById(), ModuleCategory]
@@ -58,12 +60,10 @@ one-sentence description — no prose, no markdown fences.
 - "tests_test_risk_port_coverage": "test_risk_port_coverage.py" | kind=code-symbol | source=probe/tests/test_risk_port_coverage.py:L1 | neighbors=[7a637eb feat: network VA accuracy, KEV …, f473173 merge: network VA accuracy, KEV…, _port_intel(), _risk_ports(), _swept_by_network_va(), test_branch_tables_still_contribute()]
 - "tests_test_router_signals": "test_router_signals.py" | kind=code-symbol | source=probe/tests/test_router_signals.py:L1 | neighbors=[7a637eb feat: network VA accuracy, KEV …, f473173 merge: network VA accuracy, KEV…, scanner_base.py, web_scanner.py, _open(), test_https_on_odd_port_routes_tls_and_w…]
 - "tests_test_scan_funnel_make_funnel": "_make_funnel()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L66 | neighbors=[test_scan_funnel.py, FakeDiscovery, FakePortScanner, _scope(), Build a funnel with fakes; return (funn…, .test_db_scanner_invoked_with_db_port()]
-- "agent_agent_say": "say()" | kind=code-symbol | source=probe/agent/agent.py:L86 | neighbors=[agent.py, _check_anti_debug(), _enroll_device(), _flush_spool_over_http(), _load_or_create_identity(), main()]
-- "agent_transport_transport_update_state": ".update_state()" | kind=code-symbol | source=probe/agent/transport.py:L271 | neighbors=[Merge and atomically persist private st…, Transport, .activate_enrollment(), .clear_state(), .refresh_device_access_ex(), .refresh_registration()]
+- "agent_agent_say": "say()" | kind=code-symbol | source=probe/agent/agent.py:L87 | neighbors=[agent.py, _check_anti_debug(), _enroll_device(), _flush_spool_over_http(), _load_or_create_identity(), main()]
+- "agent_agent_ws_http_poll_fallback": "_ws_http_poll_fallback()" | kind=code-symbol | source=probe/agent/agent.py:L908 | neighbors=[agent.py, Poll pending jobs even while WS is conn…, _run_ws_push_loop(), _flush_spool_over_http(), say(), _ws_run_job()]
+- "agent_agent_ws_run_job": "_ws_run_job()" | kind=code-symbol | source=probe/agent/agent.py:L837 | neighbors=[agent.py, Run one job while keeping WS status/res…, _run_ws_push_loop(), _ws_http_poll_fallback(), _dbg(), _job_intent()]
 - "auth_exceptions": "exceptions.py" | kind=code-symbol | source=manager/backend/app/auth/exceptions.py:L1 | neighbors=[AuthenticationError, BcryptFailureError, DatabaseFailureError, DatabaseUnavailableError, DisabledTenantError, DisabledUserError]
-- "campaign_page": "page.tsx" | kind=code-symbol | source=manager/frontend/app/campaign/page.tsx:L1 | neighbors=[ago(), CampaignListPage(), CampaignSummary, EngagementSummary, fetchJson(), PageShell.tsx]
-- "commit:repo:github.com/Rutikm18/Project-Vedha@1d5ae943f799b5d9bba43f41c366d70ed4c00b1a": "1d5ae94 feat(fleet): live \"Connected probes\" status section" | kind=Commit | source=git | neighbors=[addcapabilities-fable, feat/autonomous-offensive-agent, feat/complete-pending-work, feat/engagement-detail-uiux, feat/nvd-vuln-detection-and-ingest-hard…, feat/remediation-ai-plans]
-- "commit:repo:github.com/Rutikm18/Project-Vedha@25c014d75e19e4bf82d8f4033426ad02425be6f8": "25c014d feat: enhance campaign progress tracking and add raw facts inspection- …" | kind=Commit | source=git | neighbors=[addcapabilities-fable, main, ui-ux-backend-updates0109, 6bb51ab feat: add detection-explain end…, FleetJobs.tsx, page.tsx]
 
 ## Instructions
 

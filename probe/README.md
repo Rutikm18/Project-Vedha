@@ -28,6 +28,11 @@ The Manager dispatches a scan by a compact numeric protocol — `{ "uc": 80,
 **[DEPLOYMENT.md](DEPLOYMENT.md)** for the full flow, the use-case code table, and
 the firewall/ports the client must open.
 
+**Won't connect, or connects but gets no jobs?** See
+**[TROUBLESHOOTING.md](TROUBLESHOOTING.md)** — a stage-by-stage runbook
+(reachability → credential → enrollment → WebSocket → jobs) mapping every error
+line to its cause and fix, with exit codes, env vars, and reset recipes.
+
 ## Ship it (protect the IP)
 
 Compile the probe to a sealed native binary (no source, no bytecode), gated by a

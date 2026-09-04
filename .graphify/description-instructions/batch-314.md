@@ -1,4 +1,4 @@
-# Node Description Batch 315 of 330
+# Node Description Batch 315 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -26,46 +26,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_transport_testwebsocket_test_ws_requires_token": ".test_ws_requires_token()" | kind=code-symbol | source=probe/tests/test_transport.py:L549 | neighbors=[TestWebSocket] | lang=en
-- "tests_test_transport_testwebsocket_test_ws_url_http": ".test_ws_url_http()" | kind=code-symbol | source=probe/tests/test_transport.py:L535 | neighbors=[TestWebSocket] | lang=en
-- "tests_test_transport_testwebsocket_test_ws_url_https": ".test_ws_url_https()" | kind=code-symbol | source=probe/tests/test_transport.py:L542 | neighbors=[TestWebSocket] | lang=en
-- "tests_test_trust_alignment_rationale_1": "test_trust_alignment.py — cross-tree invariant: the manager's VALIDATED_SCANNERS" | kind=entity | source=manager/detection_engine/tests/test_trust_alignment.py:L1 | neighbors=[test_trust_alignment.py] | lang=en
-- "tests_test_trust_alignment_test_manager_and_probe_trust_sets_match": "test_manager_and_probe_trust_sets_match()" | kind=code-symbol | source=manager/detection_engine/tests/test_trust_alignment.py:L22 | neighbors=[test_trust_alignment.py] | lang=en
-- "tests_test_two_tree_parity_rationale_1": "test_two_tree_parity.py — the guard the architecture review (#4) demanded.  `sca" | kind=entity | source=probe/tests/test_two_tree_parity.py:L1 | neighbors=[test_two_tree_parity.py] | lang=en
-- "tests_test_two_tree_parity_rationale_34": "Every .py present in BOTH trees (the mirrored set), excluding caches." | kind=entity | source=probe/tests/test_two_tree_parity.py:L34 | neighbors=[_mirrored_py_files()] | lang=en
-- "tests_test_two_tree_parity_rationale_57": "A scanner that exists in only one tree is a wiring bug: one orchestrator     fam" | kind=entity | source=probe/tests/test_two_tree_parity.py:L57 | neighbors=[test_no_unmirrored_scanner_files()] | lang=en
-- "tests_test_two_tree_parity_test_scanner_and_main_scripts_are_byte_identical": "test_scanner_and_main_scripts_are_byte_identical()" | kind=code-symbol | source=probe/tests/test_two_tree_parity.py:L46 | neighbors=[test_two_tree_parity.py] | lang=en
-- "tests_test_udp_amplifiers_test_dns_open_recursion": "test_dns_open_recursion()" | kind=code-symbol | source=probe/tests/test_udp_amplifiers.py:L18 | neighbors=[test_udp_amplifiers.py] | lang=en
-- "tests_test_udp_amplifiers_test_memcached_exposed": "test_memcached_exposed()" | kind=code-symbol | source=probe/tests/test_udp_amplifiers.py:L26 | neighbors=[test_udp_amplifiers.py] | lang=en
-- "tests_test_udp_amplifiers_test_ntp_monlist_absent": "test_ntp_monlist_absent()" | kind=code-symbol | source=probe/tests/test_udp_amplifiers.py:L13 | neighbors=[test_udp_amplifiers.py] | lang=en
-- "tests_test_udp_amplifiers_test_ntp_monlist_enabled": "test_ntp_monlist_enabled()" | kind=code-symbol | source=probe/tests/test_udp_amplifiers.py:L8 | neighbors=[test_udp_amplifiers.py] | lang=en
-- "tests_test_udp_amplifiers_test_probe_builders_are_bytes": "test_probe_builders_are_bytes()" | kind=code-symbol | source=probe/tests/test_udp_amplifiers.py:L31 | neighbors=[test_udp_amplifiers.py] | lang=en
-- "tests_test_use_cases_rationale_1": "Use-case library guards.  FORBIDDEN is a *living* set: a phrase stays here only" | kind=entity | source=probe/tests/test_use_cases.py:L1 | neighbors=[test_use_cases.py] | lang=pt
-- "tests_test_use_cases_test_codes_are_unique_and_stable": "test_codes_are_unique_and_stable()" | kind=code-symbol | source=probe/tests/test_use_cases.py:L82 | neighbors=[test_use_cases.py] | lang=en
-- "tests_test_use_cases_test_descriptions_do_not_overclaim": "test_descriptions_do_not_overclaim()" | kind=code-symbol | source=probe/tests/test_use_cases.py:L25 | neighbors=[test_use_cases.py] | lang=en
-- "tests_test_use_cases_test_every_code_maps_to_a_real_use_case": "test_every_code_maps_to_a_real_use_case()" | kind=code-symbol | source=probe/tests/test_use_cases.py:L77 | neighbors=[test_use_cases.py] | lang=en
-- "tests_test_use_cases_test_full_port_audit_is_deep": "test_full_port_audit_is_deep()" | kind=code-symbol | source=probe/tests/test_use_cases.py:L64 | neighbors=[test_use_cases.py] | lang=en
-- "tests_test_use_cases_test_intensity_code_and_name_equivalent": "test_intensity_code_and_name_equivalent()" | kind=code-symbol | source=probe/tests/test_use_cases.py:L100 | neighbors=[test_use_cases.py] | lang=en
-- "tests_test_use_cases_test_iot_survey_collects_banners": "test_iot_survey_collects_banners()" | kind=code-symbol | source=probe/tests/test_use_cases.py:L45 | neighbors=[test_use_cases.py] | lang=en
-- "tests_test_use_cases_test_new_use_cases_resolve": "test_new_use_cases_resolve()" | kind=code-symbol | source=probe/tests/test_use_cases.py:L52 | neighbors=[test_use_cases.py] | lang=en
-- "tests_test_use_cases_test_params_intensity_overrides_use_case": "test_params_intensity_overrides_use_case()" | kind=code-symbol | source=probe/tests/test_use_cases.py:L69 | neighbors=[test_use_cases.py] | lang=en
-- "tests_test_use_cases_test_resolve_accepts_string_digits_too": "test_resolve_accepts_string_digits_too()" | kind=code-symbol | source=probe/tests/test_use_cases.py:L95 | neighbors=[test_use_cases.py] | lang=en
-- "tests_test_use_cases_test_resolve_by_numeric_code": "test_resolve_by_numeric_code()" | kind=code-symbol | source=probe/tests/test_use_cases.py:L90 | neighbors=[test_use_cases.py] | lang=en
-- "tests_test_use_cases_test_string_use_case_id_still_wins_over_code": "test_string_use_case_id_still_wins_over_code()" | kind=code-symbol | source=probe/tests/test_use_cases.py:L113 | neighbors=[test_use_cases.py] | lang=en
-- "tests_test_use_cases_test_udp_claims_amplification": "test_udp_claims_amplification()" | kind=code-symbol | source=probe/tests/test_use_cases.py:L36 | neighbors=[test_use_cases.py] | lang=en
-- "tests_test_use_cases_test_unknown_code_is_rejected": "test_unknown_code_is_rejected()" | kind=code-symbol | source=probe/tests/test_use_cases.py:L106 | neighbors=[test_use_cases.py] | lang=en
-- "tests_test_use_cases_test_web_claims_methods": "test_web_claims_methods()" | kind=code-symbol | source=probe/tests/test_use_cases.py:L41 | neighbors=[test_use_cases.py] | lang=en
-- "tests_test_use_cases_test_windows_estate_claims_signing": "test_windows_estate_claims_signing()" | kind=code-symbol | source=probe/tests/test_use_cases.py:L32 | neighbors=[test_use_cases.py] | lang=en
-- "tests_test_va_campaign_buf_flush": ".flush()" | kind=code-symbol | source=probe/tests/test_va_campaign.py:L291 | neighbors=[_Buf] | lang=en
-- "tests_test_va_campaign_buf_init": ".__init__()" | kind=code-symbol | source=probe/tests/test_va_campaign.py:L285 | neighbors=[_Buf] | lang=en
-- "tests_test_va_campaign_buf_isatty": ".isatty()" | kind=code-symbol | source=probe/tests/test_va_campaign.py:L294 | neighbors=[_Buf] | lang=en
-- "tests_test_va_campaign_buf_write": ".write()" | kind=code-symbol | source=probe/tests/test_va_campaign.py:L288 | neighbors=[_Buf] | lang=en
-- "tests_test_va_campaign_rationale_1": "test_va_campaign.py — the VA-campaign orchestrator (scanner/va_campaign.py).  Th" | kind=entity | source=probe/tests/test_va_campaign.py:L1 | neighbors=[test_va_campaign.py] | lang=en
-- "tests_test_va_campaign_test_callback_error_never_breaks_reporting": "test_callback_error_never_breaks_reporting()" | kind=code-symbol | source=probe/tests/test_va_campaign.py:L210 | neighbors=[test_va_campaign.py] | lang=en
-- "tests_test_va_campaign_test_capability_list_covers_the_user_requested_set": "test_capability_list_covers_the_user_requested_set()" | kind=code-symbol | source=probe/tests/test_va_campaign.py:L233 | neighbors=[test_va_campaign.py] | lang=en
-- "tests_test_va_campaign_test_ipv6_discovery_never_raises": "test_ipv6_discovery_never_raises()" | kind=code-symbol | source=probe/tests/test_va_campaign.py:L338 | neighbors=[test_va_campaign.py] | lang=en
-- "tests_test_va_campaign_test_ipv6_discovery_reports_all_scans_only_in_scope": "test_ipv6_discovery_reports_all_scans_only_in_scope()" | kind=code-symbol | source=probe/tests/test_va_campaign.py:L323 | neighbors=[test_va_campaign.py] | lang=en
-- "tests_test_va_campaign_test_ipv6_option_default_off": "test_ipv6_option_default_off()" | kind=code-symbol | source=probe/tests/test_va_campaign.py:L346 | neighbors=[test_va_campaign.py] | lang=en
+- "tests_test_tls_port_coverage_rationale_70": "3389 reaches TLS only after the X.224 rdpNegReq. rdp_scanner already         obs" | kind=entity | source=probe/tests/test_tls_port_coverage.py:L70 | neighbors=[.test_rdp_is_excluded()] | lang=en
+- "tests_test_tls_port_coverage_rationale_77": "5986 is WinRM's TLS listener and IS included; these two are plaintext." | kind=entity | source=probe/tests/test_tls_port_coverage.py:L77 | neighbors=[.test_winrm_plaintext_listeners_exclude…] | lang=en
+- "tests_test_tls_port_coverage_rationale_83": "STARTTLS negotiates in-band; implicit TLS would fail." | kind=entity | source=probe/tests/test_tls_port_coverage.py:L83 | neighbors=[.test_starttls_upgrade_ports_excluded()] | lang=en
+- "tests_test_tls_port_coverage_rationale_88": "Why widening is safe.      A port that does not speak TLS yields `status=\"error\"" | kind=entity | source=probe/tests/test_tls_port_coverage.py:L88 | neighbors=[test_refused_handshake_is_an_error_not_…] | lang=en
+- "tests_test_tls_port_coverage_testsinglesourceoftruth_test_branch_port_table_reuses_it_too": ".test_branch_port_table_reuses_it_too()" | kind=code-symbol | source=probe/tests/test_tls_port_coverage.py:L35 | neighbors=[TestSingleSourceOfTruth] | lang=en
+- "tests_test_tls_port_coverage_testsinglesourceoftruth_test_gates_reuses_the_same_object": ".test_gates_reuses_the_same_object()" | kind=code-symbol | source=probe/tests/test_tls_port_coverage.py:L32 | neighbors=[TestSingleSourceOfTruth] | lang=en
+- "tests_test_tls_port_coverage_testwidenedcoverage_test_classic_implicit_tls_still_covered": ".test_classic_implicit_tls_still_covered()" | kind=code-symbol | source=probe/tests/test_tls_port_coverage.py:L46 | neighbors=[TestWidenedCoverage] | lang=en
+- "tests_test_tls_port_coverage_testwidenedcoverage_test_management_and_api_surfaces_now_covered": ".test_management_and_api_surfaces_now_covered()" | kind=code-symbol | source=probe/tests/test_tls_port_coverage.py:L59 | neighbors=[TestWidenedCoverage] | lang=en
+- "tests_test_tls_port_coverage_testwidenedcoverage_test_the_set_actually_grew": ".test_the_set_actually_grew()" | kind=code-symbol | source=probe/tests/test_tls_port_coverage.py:L62 | neighbors=[TestWidenedCoverage] | lang=en
+- "tests_test_tls_posture_rationale_1": "test_tls_posture.py — Tier 2.4: cipher-suite classification + TLS posture gradin" | kind=entity | source=probe/tests/test_tls_posture.py:L1 | neighbors=[test_tls_posture.py] | lang=en
+- "tests_test_tls_posture_testclassifycipher_test_3des_is_weak": ".test_3des_is_weak()" | kind=code-symbol | source=probe/tests/test_tls_posture.py:L43 | neighbors=[TestClassifyCipher] | lang=en
+- "tests_test_tls_posture_testclassifycipher_test_anonymous_is_weak": ".test_anonymous_is_weak()" | kind=code-symbol | source=probe/tests/test_tls_posture.py:L55 | neighbors=[TestClassifyCipher] | lang=en
+- "tests_test_tls_posture_testclassifycipher_test_chacha20_is_aead": ".test_chacha20_is_aead()" | kind=code-symbol | source=probe/tests/test_tls_posture.py:L60 | neighbors=[TestClassifyCipher] | lang=en
+- "tests_test_tls_posture_testclassifycipher_test_export_and_md5_are_weak": ".test_export_and_md5_are_weak()" | kind=code-symbol | source=probe/tests/test_tls_posture.py:L48 | neighbors=[TestClassifyCipher] | lang=en
+- "tests_test_tls_posture_testclassifycipher_test_modern_aead_pfs": ".test_modern_aead_pfs()" | kind=code-symbol | source=probe/tests/test_tls_posture.py:L19 | neighbors=[TestClassifyCipher] | lang=en
+- "tests_test_tls_posture_testclassifycipher_test_null_cipher_is_weak": ".test_null_cipher_is_weak()" | kind=code-symbol | source=probe/tests/test_tls_posture.py:L38 | neighbors=[TestClassifyCipher] | lang=en
+- "tests_test_tls_posture_testclassifycipher_test_rc4_is_weak": ".test_rc4_is_weak()" | kind=code-symbol | source=probe/tests/test_tls_posture.py:L33 | neighbors=[TestClassifyCipher] | lang=en
+- "tests_test_tls_posture_testclassifycipher_test_rsa_cbc_no_pfs": ".test_rsa_cbc_no_pfs()" | kind=code-symbol | source=probe/tests/test_tls_posture.py:L26 | neighbors=[TestClassifyCipher] | lang=en
+- "tests_test_tls_posture_testgradetlsposture_test_empty_cipher_details_still_grades_protocols": ".test_empty_cipher_details_still_grades_protocols()" | kind=code-symbol | source=probe/tests/test_tls_posture.py:L104 | neighbors=[TestGradeTlsPosture] | lang=en
+- "tests_test_tls_posture_testgradetlsposture_test_grade_c_no_forward_secrecy": ".test_grade_c_no_forward_secrecy()" | kind=code-symbol | source=probe/tests/test_tls_posture.py:L88 | neighbors=[TestGradeTlsPosture] | lang=en
+- "tests_test_tls_posture_testgradetlsposture_test_grade_f_weak_cipher": ".test_grade_f_weak_cipher()" | kind=code-symbol | source=probe/tests/test_tls_posture.py:L99 | neighbors=[TestGradeTlsPosture] | lang=en
+- "tests_test_transport_rationale_1": "Tests for agent/transport.py" | kind=entity | source=probe/tests/test_transport.py:L1 | neighbors=[test_transport.py] | lang=en
+- "tests_test_transport_rationale_16": "Create a Transport with a real state file path but no actual HTTP calls." | kind=entity | source=probe/tests/test_transport.py:L16 | neighbors=[transport()] | lang=pt
+- "tests_test_transport_rationale_18": "Create a Transport with a real state file path but no actual HTTP calls." | kind=entity | source=probe/tests/test_transport.py:L18 | neighbors=[transport()] | lang=pt
+- "tests_test_transport_testdeviceenrollment_test_activation_persists_recoverable_device_credential": ".test_activation_persists_recoverable_device_credential()" | kind=code-symbol | source=probe/tests/test_transport.py:L172 | neighbors=[TestDeviceEnrollment] | lang=en
+- "tests_test_transport_testdeviceenrollment_test_create_enrollment_request_409_raises_already_enrolled": ".test_create_enrollment_request_409_raises_already_enrolled()" | kind=code-symbol | source=probe/tests/test_transport.py:L230 | neighbors=[TestDeviceEnrollment] | lang=en
+- "tests_test_transport_testdeviceenrollment_test_create_enrollment_request_409_without_detail_has_default_message": ".test_create_enrollment_request_409_without_detail_has_default_message()" | kind=code-symbol | source=probe/tests/test_transport.py:L244 | neighbors=[TestDeviceEnrollment] | lang=en
+- "tests_test_transport_testdeviceenrollment_test_create_enrollment_request_forwards_enroll_token": ".test_create_enrollment_request_forwards_enroll_token()" | kind=code-symbol | source=probe/tests/test_transport.py:L210 | neighbors=[TestDeviceEnrollment] | lang=en
+- "tests_test_transport_testdeviceenrollment_test_device_refresh_signs_unique_nonce_and_rotates_access_token": ".test_device_refresh_signs_unique_nonce_and_rotates_access_token()" | kind=code-symbol | source=probe/tests/test_transport.py:L263 | neighbors=[TestDeviceEnrollment] | lang=en
+- "tests_test_transport_testdeviceenrollment_test_legacy_token_is_not_forced_through_device_refresh": ".test_legacy_token_is_not_forced_through_device_refresh()" | kind=code-symbol | source=probe/tests/test_transport.py:L253 | neighbors=[TestDeviceEnrollment] | lang=en
+- "tests_test_transport_testfetchscope_test_http_error_returns_none": ".test_http_error_returns_none()" | kind=code-symbol | source=probe/tests/test_transport.py:L416 | neighbors=[TestFetchScope] | lang=en
+- "tests_test_transport_testfetchscope_test_returns_scope": ".test_returns_scope()" | kind=code-symbol | source=probe/tests/test_transport.py:L406 | neighbors=[TestFetchScope] | lang=en
+- "tests_test_transport_testheartbeat_test_heartbeat_401_returns_false": ".test_heartbeat_401_returns_false()" | kind=code-symbol | source=probe/tests/test_transport.py:L349 | neighbors=[TestHeartbeat] | lang=en
+- "tests_test_transport_testheartbeat_test_heartbeat_sends_current_job": ".test_heartbeat_sends_current_job()" | kind=code-symbol | source=probe/tests/test_transport.py:L358 | neighbors=[TestHeartbeat] | lang=en
+- "tests_test_transport_testheartbeat_test_successful_heartbeat": ".test_successful_heartbeat()" | kind=code-symbol | source=probe/tests/test_transport.py:L340 | neighbors=[TestHeartbeat] | lang=en
+- "tests_test_transport_testhttpget_test_exception_returns_none": ".test_exception_returns_none()" | kind=code-symbol | source=probe/tests/test_transport.py:L521 | neighbors=[TestHttpGet] | lang=en
+- "tests_test_transport_testhttpget_test_non_200_returns_none": ".test_non_200_returns_none()" | kind=code-symbol | source=probe/tests/test_transport.py:L512 | neighbors=[TestHttpGet] | lang=en
+- "tests_test_transport_testhttpget_test_successful_get": ".test_successful_get()" | kind=code-symbol | source=probe/tests/test_transport.py:L502 | neighbors=[TestHttpGet] | lang=en
+- "tests_test_transport_testidentity_test_agent_state_updates_preserve_scope_identity": ".test_agent_state_updates_preserve_scope_identity()" | kind=code-symbol | source=probe/tests/test_transport.py:L70 | neighbors=[TestIdentity] | lang=en
+- "tests_test_transport_testidentity_test_auth_header": ".test_auth_header()" | kind=code-symbol | source=probe/tests/test_transport.py:L38 | neighbors=[TestIdentity] | lang=en
 
 ## Instructions
 

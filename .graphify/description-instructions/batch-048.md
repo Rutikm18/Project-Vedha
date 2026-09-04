@@ -1,4 +1,4 @@
-# Node Description Batch 49 of 330
+# Node Description Batch 49 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -24,6 +24,13 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
+- "scanner_ssh_scanner_sshscanner": "SSHScanner" | kind=code-symbol | source=probe/scanner/ssh_scanner.py:L242 | neighbors=[ssh_scanner.py, BaseScanner, .__init__(), ._probe(), ._scan_port(), .scan_target()]
+- "scanner_ssh_scanner_sshscanner_scan_port": "._scan_port()" | kind=code-symbol | source=probe/scanner/ssh_scanner.py:L279 | neighbors=[SSHScanner, _dedup(), evaluate_algorithms(), parse_kexinit(), parse_ssh_banner(), .scan_target()]
+- "scanner_syn_scanner_build_ip_header": "build_ip_header()" | kind=code-symbol | source=probe/scanner/syn_scanner.py:L91 | neighbors=[syn_scanner.py, build_syn_packet(), Build a 20-byte IPv4 header with a vali…, Build a 20-byte IPv4 header with a vali…, Build a 20-byte IPv4 header with a vali…, Build a 20-byte IPv4 header with a vali…]
+- "scanner_syn_scanner_build_tcp_syn": "build_tcp_syn()" | kind=code-symbol | source=probe/scanner/syn_scanner.py:L115 | neighbors=[syn_scanner.py, build_syn_packet(), Build a 20-byte TCP SYN segment with a …, Build a 20-byte TCP SYN segment with a …, Build a 20-byte TCP SYN segment with a …, Build a 20-byte TCP SYN segment with a …]
+- "scanner_syn_scanner_classify": "classify()" | kind=code-symbol | source=probe/scanner/syn_scanner.py:L213 | neighbors=[syn_scanner.py, SYN/ACK -> open, RST -> closed, anythin…, ._syn_scan_blocking(), SYN/ACK -> open, RST -> closed, anythin…, SYN/ACK -> open, RST -> closed, anythin…, SYN/ACK -> open, RST -> closed, anythin…]
+- "scanner_syn_scanner_local_source_ip": "_local_source_ip()" | kind=code-symbol | source=probe/scanner/syn_scanner.py:L295 | neighbors=[syn_scanner.py, Outbound-interface IP for reaching dst_…, ._syn_scan_blocking(), A genuine reply to our SYN acknowledges…, Outbound-interface IP for reaching dst_…, Outbound-interface IP for reaching dst_…]
+- "scanner_syn_scanner_parse_mss": "_parse_mss()" | kind=code-symbol | source=probe/scanner/syn_scanner.py:L176 | neighbors=[syn_scanner.py, parse_tcp_options(), Back-compat shim: MSS only. New code us…, parse_packet(), Walk a TCP options field for the MSS va…, Walk a TCP options field for the MSS va…]
 - "scanner_syn_scanner_syn_scan_supported": "syn_scan_supported()" | kind=code-symbol | source=probe/scanner/syn_scanner.py:L273 | neighbors=[syn_scanner.py, True only when a real SYN scan can work…, .__init__(), True only when a real SYN scan can work…, True only when a real SYN scan can work…, True only when a real SYN scan can work…]
 - "scanner_tls_scanner_scan_tls_sync": "_scan_tls_sync()" | kind=code-symbol | source=probe/scanner/tls_scanner.py:L274 | neighbors=[tls_scanner.py, classify_cipher(), _get_cert_der(), grade_tls_posture(), _parse_cert_der(), _try_version()]
 - "scanner_tls_scanner_sni": "_sni()" | kind=code-symbol | source=probe/scanner/tls_scanner.py:L146 | neighbors=[tls_scanner.py, _get_cert_der(), Never send an IP literal as SNI — non-c…, _try_version(), Never send an IP literal as SNI — non-c…, Never send an IP literal as SNI — non-c…]
@@ -57,13 +64,6 @@ one-sentence description — no prose, no markdown fences.
 - "tests_test_ai_engine_mock_db": "_mock_db()" | kind=code-symbol | source=manager/backend/tests/test_ai_engine.py:L170 | neighbors=[test_ai_engine.py, .test_complete_retries_then_succeeds(), .test_detection_rule_explanation(), .test_executive_summary_persists_pendin…, .test_technical_finding_runs_guard(), .test_unavailable_without_client()]
 - "tests_test_ai_engine_rationale_1": "Unit tests for the AI engine (Prompt 8).  The Anthropic client is mocked (no API" | kind=entity | source=manager/backend/tests/test_ai_engine.py:L1 | neighbors=[test_ai_engine.py, HallucinationGuard, LLMReportGenerator, LLMUnavailableError, VulnPrioritizer, ReviewStatus]
 - "tests_test_campaign_progress_rows": "_rows()" | kind=code-symbol | source=manager/backend/tests/test_campaign_progress.py:L21 | neighbors=[test_campaign_progress.py, _progress(), A result whose .all() returns raw rows …, _run_scenario(), test_campaign_progress_aggregates_jobs_…, test_campaign_progress_no_detection_yet…]
-- "tests_test_campaign_progress_run_scenario": "_run_scenario()" | kind=code-symbol | source=manager/backend/tests/test_campaign_progress.py:L117 | neighbors=[test_campaign_progress.py, Build a campaign_progress scenario with…, _rows(), _scalars(), test_completed_run_is_not_stuck_at_dete…, test_pipeline_advances_through_every_ph…]
-- "tests_test_campaign_progress_user": "_user()" | kind=code-symbol | source=manager/backend/tests/test_campaign_progress.py:L13 | neighbors=[test_campaign_progress.py, _progress(), test_campaign_progress_aggregates_jobs_…, test_campaign_progress_no_detection_yet…, test_completed_run_is_not_stuck_at_dete…, test_pipeline_advances_through_every_ph…]
-- "tests_test_cve_correlation_testvulndb": "TestVulnDB" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L119 | neighbors=[test_cve_correlation.py, .test_counts(), .test_cves_for_cpe_in_range(), .test_kev_sorts_first(), .test_out_of_range_excluded(), .test_vendor_norm()]
-- "tests_test_db_scanner_testmysqlxvsoracle": "TestMysqlxVsOracle" | kind=code-symbol | source=probe/tests/test_db_scanner.py:L53 | neighbors=[test_db_scanner.py, .test_mysqlx_identified(), .test_mysqlx_not_misread_as_oracle(), .test_oracle_rejects_garbage_with_type_…, .test_oracle_reply_not_misread_as_mysql…, .test_oracle_still_identified()]
-- "tests_test_detection_coverage_test_completed_no_blind_is_plain_complete": "test_completed_no_blind_is_plain_complete()" | kind=code-symbol | source=manager/backend/tests/test_detection_coverage.py:L73 | neighbors=[test_detection_coverage.py, _job(), _rows(), _run(), _scalars(), _user()]
-- "tests_test_detection_coverage_test_completed_with_blind_rules_is_complete_with_gaps": "test_completed_with_blind_rules_is_complete_with_gaps()" | kind=code-symbol | source=manager/backend/tests/test_detection_coverage.py:L47 | neighbors=[test_detection_coverage.py, _job(), _rows(), _run(), _scalars(), _user()]
-- "tests_test_dns_scanner_testderivezones": "TestDeriveZones" | kind=code-symbol | source=probe/tests/test_dns_scanner.py:L25 | neighbors=[test_dns_scanner.py, .test_bounded(), .test_explicit_zone_used_as_is(), .test_extra_before_target_derived(), .test_hostname_target_reduces_to_regist…, .test_ip_target_derives_nothing()]
 
 ## Instructions
 

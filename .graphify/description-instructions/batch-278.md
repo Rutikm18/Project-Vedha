@@ -1,4 +1,4 @@
-# Node Description Batch 279 of 330
+# Node Description Batch 279 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,58 +12,51 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
-For an entity node (any other kind — e.g. a person, place, event, object),
-describe what the entity is and its role, grounded in its type, its
-relations (neighbors) and the provided citations/evidence — e.g.
-"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
-Ground entity descriptions in the citations/evidence when present; do not
-speculate beyond the context, so a node with no supporting context may be
-left out of the reply.
 Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_exposed_services_testobservedservicesignals_test_basic_auth_over_plaintext_is_cleartext_medium": ".test_basic_auth_over_plaintext_is_cleartext_medium()" | kind=code-symbol | source=manager/detection_engine/tests/test_exposed_services.py:L144 | neighbors=[TestObservedServiceSignals]
-- "tests_test_exposed_services_testobservedservicesignals_test_catalog_port_still_wins_its_own_class": ".test_catalog_port_still_wins_its_own_class()" | kind=code-symbol | source=manager/detection_engine/tests/test_exposed_services.py:L153 | neighbors=[TestObservedServiceSignals]
-- "tests_test_exposed_services_testobservedservicesignals_test_plain_http_label_on_benign_port_is_none": ".test_plain_http_label_on_benign_port_is_none()" | kind=code-symbol | source=manager/detection_engine/tests/test_exposed_services.py:L150 | neighbors=[TestObservedServiceSignals]
-- "tests_test_exposed_services_testobservedservicesignals_test_shell_label_is_backdoor_on_any_port": ".test_shell_label_is_backdoor_on_any_port()" | kind=code-symbol | source=manager/detection_engine/tests/test_exposed_services.py:L135 | neighbors=[TestObservedServiceSignals]
-- "tests_test_exposed_services_testobservedservicesignals_test_telnet_label_off_port_23_is_cleartext": ".test_telnet_label_off_port_23_is_cleartext()" | kind=code-symbol | source=manager/detection_engine/tests/test_exposed_services.py:L140 | neighbors=[TestObservedServiceSignals]
-- "tests_test_exposed_services_testporthypothesiscontradiction_test_airplay_suppresses_the_cassandra_guess": ".test_airplay_suppresses_the_cassandra_guess()" | kind=code-symbol | source=manager/detection_engine/tests/test_exposed_services.py:L202 | neighbors=[TestPortHypothesisContradiction]
-- "tests_test_exposed_services_testporthypothesiscontradiction_test_airplay_suppresses_the_docker_registry_guess": ".test_airplay_suppresses_the_docker_registry_guess()" | kind=code-symbol | source=manager/detection_engine/tests/test_exposed_services.py:L198 | neighbors=[TestPortHypothesisContradiction]
-- "tests_test_exposed_services_testporthypothesiscontradiction_test_an_unrelated_product_does_not_suppress": ".test_an_unrelated_product_does_not_suppress()" | kind=code-symbol | source=manager/detection_engine/tests/test_exposed_services.py:L206 | neighbors=[TestPortHypothesisContradiction]
-- "tests_test_exposed_services_testporthypothesiscontradiction_test_contradiction_helper_is_case_and_format_insensitive": ".test_contradiction_helper_is_case_and_format_insensitive()" | kind=code-symbol | source=manager/detection_engine/tests/test_exposed_services.py:L217 | neighbors=[TestPortHypothesisContradiction]
-- "tests_test_exposure_rationale_1": "test_exposure.py — the probe exposure_matrix → Service verdict + severity bump." | kind=entity | source=manager/backend/tests/test_exposure.py:L1 | neighbors=[test_exposure.py]
-- "tests_test_exposure_test_critical_stays_critical": "test_critical_stays_critical()" | kind=code-symbol | source=manager/backend/tests/test_exposure.py:L43 | neighbors=[test_exposure.py]
-- "tests_test_exposure_test_external_escalates_one_rung": "test_external_escalates_one_rung()" | kind=code-symbol | source=manager/backend/tests/test_exposure.py:L37 | neighbors=[test_exposure.py]
-- "tests_test_exposure_test_non_external_never_escalates": "test_non_external_never_escalates()" | kind=code-symbol | source=manager/backend/tests/test_exposure.py:L47 | neighbors=[test_exposure.py]
-- "tests_test_exposure_test_service_exposure_flattens_per_port_verdicts": "test_service_exposure_flattens_per_port_verdicts()" | kind=code-symbol | source=manager/backend/tests/test_exposure.py:L13 | neighbors=[test_exposure.py]
-- "tests_test_exposure_test_service_exposure_ignores_malformed_and_non_exposure": "test_service_exposure_ignores_malformed_and_non_exposure()" | kind=code-symbol | source=manager/backend/tests/test_exposure.py:L30 | neighbors=[test_exposure.py]
-- "tests_test_external_engine_wrappers_test_masscan_nonzero_with_valid_output_is_degraded": "test_masscan_nonzero_with_valid_output_is_degraded()" | kind=code-symbol | source=probe/tests/test_external_engine_wrappers.py:L103 | neighbors=[test_external_engine_wrappers.py]
-- "tests_test_external_engine_wrappers_test_masscan_range_must_be_fully_in_scope": "test_masscan_range_must_be_fully_in_scope()" | kind=code-symbol | source=probe/tests/test_external_engine_wrappers.py:L123 | neighbors=[test_external_engine_wrappers.py]
-- "tests_test_external_engine_wrappers_test_masscan_timeout_is_not_zero_findings": "test_masscan_timeout_is_not_zero_findings()" | kind=code-symbol | source=probe/tests/test_external_engine_wrappers.py:L91 | neighbors=[test_external_engine_wrappers.py]
-- "tests_test_external_engine_wrappers_test_masscan_tolerates_partial_json_and_counts_bad_records": "test_masscan_tolerates_partial_json_and_counts_bad_records()" | kind=code-symbol | source=probe/tests/test_external_engine_wrappers.py:L82 | neighbors=[test_external_engine_wrappers.py]
-- "tests_test_external_engine_wrappers_test_nmap_empty_failure_is_not_zero_findings": "test_nmap_empty_failure_is_not_zero_findings()" | kind=code-symbol | source=probe/tests/test_external_engine_wrappers.py:L42 | neighbors=[test_external_engine_wrappers.py]
-- "tests_test_external_engine_wrappers_test_nmap_extra_args_accept_bounded_tuning": "test_nmap_extra_args_accept_bounded_tuning()" | kind=code-symbol | source=probe/tests/test_external_engine_wrappers.py:L29 | neighbors=[test_external_engine_wrappers.py]
-- "tests_test_external_engine_wrappers_test_nmap_extra_args_cannot_replace_validated_targets": "test_nmap_extra_args_cannot_replace_validated_targets()" | kind=code-symbol | source=probe/tests/test_external_engine_wrappers.py:L21 | neighbors=[test_external_engine_wrappers.py]
-- "tests_test_external_engine_wrappers_test_nmap_malformed_xml_is_an_explicit_parse_error": "test_nmap_malformed_xml_is_an_explicit_parse_error()" | kind=code-symbol | source=probe/tests/test_external_engine_wrappers.py:L60 | neighbors=[test_external_engine_wrappers.py]
-- "tests_test_external_engine_wrappers_test_nmap_xml_error_state_is_preserved_as_result": "test_nmap_xml_error_state_is_preserved_as_result()" | kind=code-symbol | source=probe/tests/test_external_engine_wrappers.py:L67 | neighbors=[test_external_engine_wrappers.py]
-- "tests_test_fact_contract_rationale_1": "test_fact_contract.py — the machine-checkable contract between the probe's emitt" | kind=entity | source=manager/detection_engine/tests/test_fact_contract.py:L1 | neighbors=[test_fact_contract.py]
-- "tests_test_fact_contract_rationale_103": "Reverse direction, informational: data the probe collects that NO rule reads." | kind=entity | source=manager/detection_engine/tests/test_fact_contract.py:L103 | neighbors=[test_report_unconsumed_evidence()]
-- "tests_test_fact_contract_rationale_35": "Map scanner -> set of top-level data keys it has been observed to emit." | kind=entity | source=manager/detection_engine/tests/test_fact_contract.py:L35 | neighbors=[_emitted_paths_by_scanner()]
-- "tests_test_fact_contract_rationale_47": "Run the corpus through the REAL ingester, exactly as engine_bridge does:     one" | kind=entity | source=manager/detection_engine/tests/test_fact_contract.py:L47 | neighbors=[_ingest_corpus()]
-- "tests_test_fact_contract_rationale_66": "The gate the name-level check above cannot provide: a corpus whose field NAMES" | kind=entity | source=manager/detection_engine/tests/test_fact_contract.py:L66 | neighbors=[test_corpus_survives_ingestion()]
-- "tests_test_fact_contract_rationale_83": "The gate: for every rule, every declared `requires` path must be emitted by at" | kind=entity | source=manager/detection_engine/tests/test_fact_contract.py:L83 | neighbors=[test_every_rule_input_is_emitted_by_its…]
-- "tests_test_fd_limit_rationale_1": "test_fd_limit.py — FIX 1: ulimit-aware concurrency for full-range scans.  A full" | kind=entity | source=probe/tests/test_fd_limit.py:L1 | neighbors=[test_fd_limit.py]
-- "tests_test_fd_limit_test_caps_below_soft_limit": "test_caps_below_soft_limit()" | kind=code-symbol | source=probe/tests/test_fd_limit.py:L14 | neighbors=[test_fd_limit.py]
-- "tests_test_fd_limit_test_floor_when_limit_tiny": "test_floor_when_limit_tiny()" | kind=code-symbol | source=probe/tests/test_fd_limit.py:L27 | neighbors=[test_fd_limit.py]
-- "tests_test_fd_limit_test_full_profile_covers_the_whole_tcp_space": "test_full_profile_covers_the_whole_tcp_space()" | kind=code-symbol | source=probe/tests/test_fd_limit.py:L37 | neighbors=[test_fd_limit.py]
-- "tests_test_fd_limit_test_get_fd_limit_returns_pair": "test_get_fd_limit_returns_pair()" | kind=code-symbol | source=probe/tests/test_fd_limit.py:L32 | neighbors=[test_fd_limit.py]
-- "tests_test_fd_limit_test_no_rlimit_caps_modestly": "test_no_rlimit_caps_modestly()" | kind=code-symbol | source=probe/tests/test_fd_limit.py:L20 | neighbors=[test_fd_limit.py]
-- "tests_test_fd_limit_test_top1000_misses_arbitrary_high_ports_full_does_not": "test_top1000_misses_arbitrary_high_ports_full_does_not()" | kind=code-symbol | source=probe/tests/test_fd_limit.py:L45 | neighbors=[test_fd_limit.py]
-- "tests_test_finding_events_rationale_1": "test_finding_events.py — the finding lifecycle audit trail.  The synthesis half" | kind=entity | source=manager/backend/tests/test_finding_events.py:L1 | neighbors=[test_finding_events.py]
-- "tests_test_finding_events_testeventtypeforstatus_test_maps_status_to_specific_event": ".test_maps_status_to_specific_event()" | kind=code-symbol | source=manager/backend/tests/test_finding_events.py:L132 | neighbors=[TestEventTypeForStatus]
-- "tests_test_finding_out_computed_rationale_1": "FindingOut computes the explainable risk_rank at serialization (P4 Task 5 wiring" | kind=entity | source=manager/backend/tests/test_finding_out_computed.py:L1 | neighbors=[test_finding_out_computed.py]
+- "tests_test_enqueue_intensity_test_use_case_catalog_exposes_intensity_for_new_cases": "test_use_case_catalog_exposes_intensity_for_new_cases()" | kind=code-symbol | source=manager/backend/tests/test_enqueue_intensity.py:L44 | neighbors=[test_enqueue_intensity.py]
+- "tests_test_enqueue_intensity_test_valid_intensities_mirror_the_probe_set": "test_valid_intensities_mirror_the_probe_set()" | kind=code-symbol | source=manager/backend/tests/test_enqueue_intensity.py:L40 | neighbors=[test_enqueue_intensity.py]
+- "tests_test_enqueue_intensity_test_valid_intensity_is_accepted": "test_valid_intensity_is_accepted()" | kind=code-symbol | source=manager/backend/tests/test_enqueue_intensity.py:L24 | neighbors=[test_enqueue_intensity.py]
+- "tests_test_exploit_engine_testmetasploitintegration_skip_without_flag": ".skip_without_flag()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L434 | neighbors=[TestMetasploitIntegration]
+- "tests_test_exploit_engine_testmetasploitintegration_test_connect_and_list_modules": ".test_connect_and_list_modules()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L441 | neighbors=[TestMetasploitIntegration]
+- "tests_test_exploit_engine_testmetasploitintegration_test_run_safe_scanner_smb": ".test_run_safe_scanner_smb()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L450 | neighbors=[TestMetasploitIntegration]
+- "tests_test_exploit_engine_testmetasploitrpcclient_test_call_without_connect_raises": ".test_call_without_connect_raises()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L233 | neighbors=[TestMetasploitRPCClient]
+- "tests_test_exploit_engine_testnucleiexploitrunner_setup_method": ".setup_method()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L351 | neighbors=[TestNucleiExploitRunner]
+- "tests_test_exploit_engine_testnucleiexploitrunner_test_evidence_truncated_to_max_bytes": ".test_evidence_truncated_to_max_bytes()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L405 | neighbors=[TestNucleiExploitRunner]
+- "tests_test_exploit_engine_testnucleiexploitrunner_test_extract_evidence_includes_curl": ".test_extract_evidence_includes_curl()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L395 | neighbors=[TestNucleiExploitRunner]
+- "tests_test_exploit_engine_testnucleiexploitrunner_test_nonexistent_template_not_safe": ".test_nonexistent_template_not_safe()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L369 | neighbors=[TestNucleiExploitRunner]
+- "tests_test_exploit_engine_testnucleiexploitrunner_test_parse_poc_output_hit": ".test_parse_poc_output_hit()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L374 | neighbors=[TestNucleiExploitRunner]
+- "tests_test_exploit_engine_testnucleiexploitrunner_test_parse_poc_output_malformed_json_skipped": ".test_parse_poc_output_malformed_json_skipped()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L389 | neighbors=[TestNucleiExploitRunner]
+- "tests_test_exploit_engine_testnucleiexploitrunner_test_parse_poc_output_miss": ".test_parse_poc_output_miss()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L380 | neighbors=[TestNucleiExploitRunner]
+- "tests_test_exploit_engine_testnucleiexploitrunner_test_parse_poc_output_wrong_cve": ".test_parse_poc_output_wrong_cve()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L385 | neighbors=[TestNucleiExploitRunner]
+- "tests_test_exploit_engine_testnucleiexploitrunner_test_safe_template_passes": ".test_safe_template_passes()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L354 | neighbors=[TestNucleiExploitRunner]
+- "tests_test_exploit_engine_testnucleiexploitrunner_test_unsafe_template_blocked": ".test_unsafe_template_blocked()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L362 | neighbors=[TestNucleiExploitRunner]
+- "tests_test_exploit_engine_testrequiresapproval_test_adcs_server": ".test_adcs_server()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L170 | neighbors=[TestRequiresApproval]
+- "tests_test_exploit_engine_testrequiresapproval_test_critical_asset_needs_approval": ".test_critical_asset_needs_approval()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L155 | neighbors=[TestRequiresApproval]
+- "tests_test_exploit_engine_testrequiresapproval_test_dc_hostname_needs_approval": ".test_dc_hostname_needs_approval()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L161 | neighbors=[TestRequiresApproval]
+- "tests_test_exploit_engine_testrequiresapproval_test_dc02_pattern": ".test_dc02_pattern()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L164 | neighbors=[TestRequiresApproval]
+- "tests_test_exploit_engine_testrequiresapproval_test_exchange_server": ".test_exchange_server()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L167 | neighbors=[TestRequiresApproval]
+- "tests_test_exploit_engine_testrequiresapproval_test_medium_non_dc_no_approval": ".test_medium_non_dc_no_approval()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L158 | neighbors=[TestRequiresApproval]
+- "tests_test_exploit_engine_testrequiresapproval_test_normal_workstation": ".test_normal_workstation()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L173 | neighbors=[TestRequiresApproval]
+- "tests_test_exploit_engine_testvalidatemodule_test_dos_blocked": ".test_dos_blocked()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L108 | neighbors=[TestValidateModule]
+- "tests_test_exploit_engine_testvalidatemodule_test_encoder_blocked": ".test_encoder_blocked()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L123 | neighbors=[TestValidateModule]
+- "tests_test_exploit_engine_testvalidatemodule_test_exploit_module_allowed": ".test_exploit_module_allowed()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L120 | neighbors=[TestValidateModule]
+- "tests_test_exploit_engine_testvalidatemodule_test_fuzzer_blocked": ".test_fuzzer_blocked()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L112 | neighbors=[TestValidateModule]
+- "tests_test_exploit_engine_testvalidatemodule_test_scanner_module_allowed": ".test_scanner_module_allowed()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L105 | neighbors=[TestValidateModule]
+- "tests_test_exploit_engine_testvalidatemodule_test_shell_to_meterpreter_blocked": ".test_shell_to_meterpreter_blocked()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L116 | neighbors=[TestValidateModule]
+- "tests_test_exploit_engine_testvalidatepayload_test_allowed_payload_passes": ".test_allowed_payload_passes()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L64 | neighbors=[TestValidatePayload]
+- "tests_test_exploit_engine_testvalidatepayload_test_bind_shell_blocked": ".test_bind_shell_blocked()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L76 | neighbors=[TestValidatePayload]
+- "tests_test_exploit_engine_testvalidatepayload_test_encrypt_payload_blocked": ".test_encrypt_payload_blocked()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L98 | neighbors=[TestValidatePayload]
+- "tests_test_exploit_engine_testvalidatepayload_test_generic_none_always_allowed": ".test_generic_none_always_allowed()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L95 | neighbors=[TestValidatePayload]
+- "tests_test_exploit_engine_testvalidatepayload_test_meterpreter_blocked": ".test_meterpreter_blocked()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L68 | neighbors=[TestValidatePayload]
+- "tests_test_exploit_engine_testvalidatepayload_test_reverse_tcp_blocked": ".test_reverse_tcp_blocked()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L72 | neighbors=[TestValidatePayload]
+- "tests_test_exploit_engine_testvalidatepayload_test_unknown_payload_blocked": ".test_unknown_payload_blocked()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L80 | neighbors=[TestValidatePayload]
+- "tests_test_exploit_engine_testvalidatepayload_test_windows_exec_bad_command_blocked": ".test_windows_exec_bad_command_blocked()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L87 | neighbors=[TestValidatePayload]
+- "tests_test_exploit_engine_testvalidatepayload_test_windows_exec_rm_rf_blocked": ".test_windows_exec_rm_rf_blocked()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L91 | neighbors=[TestValidatePayload]
+- "tests_test_exploit_engine_testvalidatepayload_test_windows_exec_whoami_allowed": ".test_windows_exec_whoami_allowed()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L84 | neighbors=[TestValidatePayload]
 
 ## Instructions
 

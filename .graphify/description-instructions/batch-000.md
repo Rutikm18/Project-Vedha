@@ -1,4 +1,4 @@
-# Node Description Batch 1 of 330
+# Node Description Batch 1 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -40,7 +40,7 @@ one-sentence description — no prose, no markdown fences.
 - "branch:repo:github.com/Rutikm18/Project-Vedha#feat/complete-pending-work": "feat/complete-pending-work" | kind=Branch | source=git | neighbors=[00c6648 feat(settings): editable email/…, 01f4398 feat(probe): IoT survey reaches…, 027f4e4 feat(integrations): per-tenant …, 02b6341 feat(active-validation): pure e…, 045c9ae fix(posture): normalize run_at …, 0510df3 going to build prompt and conne…]
 - "commit:repo:github.com/Rutikm18/Project-Vedha@22701eac5f56fcb6c026fcba3f0aee458b7a45e0": "22701ea Add tests for scanner parity and enhance use case resolution- Introduce…" | kind=Commit | source=git | neighbors=[agent.py, engine.py, __init__.py, task_runner.py, use_cases.py, dependencies.py]
 - "commit:repo:github.com/Rutikm18/Project-Vedha@f4731730b8a44c981c1fe959f2e17f801be64e2a": "f473173 merge: network VA accuracy, KEV exploitability, console parity (addcapa…" | kind=Commit | source=git | neighbors=[6bb51ab feat: add detection-explain end…, 7a637eb feat: network VA accuracy, KEV …, engine.py, explain_plan.py, page.tsx, layout.tsx]
-- "reports_page": "page.tsx" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L1 | neighbors=[10dfc80 Add comprehensive probe testing…, 1fe16c8 stable but some dead code, need…, 22701ea Add tests for scanner parity an…, 5c6aa54 feat(portal-ui): portal shell/p…, 7a637eb feat: network VA accuracy, KEV …, 8f6bf49 Refactor code structure and rem…]
+- "reports_page": "page.tsx" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L1 | neighbors=[10dfc80 Add comprehensive probe testing…, 1fe16c8 stable but some dead code, need…, 22701ea Add tests for scanner parity an…, 5c6aa54 feat(portal-ui): portal shell/p…, 6b41065 probe fixed, 7a637eb feat: network VA accuracy, KEV …]
 - "commit:repo:github.com/Rutikm18/Project-Vedha@8f6bf49a772d45589953b440df3b81342f019095": "8f6bf49 Refactor code structure and remove redundant sections for improved read…" | kind=Commit | source=git | neighbors=[2c38782 docs: spec CVE-breadth phase — …, agent.py, cli.py, engine.py, task_runner.py, transport.py]
 - "commit:repo:github.com/Rutikm18/Project-Vedha@1fe16c8ae308d129d848d84656ca57d9ac472939": "1fe16c8 stable but some dead code, need to optimize" | kind=Commit | source=git | neighbors=[route.ts, agent.py, cli.py, engine.py, scope_validator.py, task_runner.py]
 - "models_finding_finding": "Finding" | kind=code-symbol | source=manager/backend/app/models/finding.py:L13 | neighbors=[finding.py, Base, TimestampMixin, AgentDecisionEngine, AgentUnavailableError, agent.py — AgentDecisionEngine: the age…]

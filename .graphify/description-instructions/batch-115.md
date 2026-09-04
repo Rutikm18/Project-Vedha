@@ -1,4 +1,4 @@
-# Node Description Batch 116 of 330
+# Node Description Batch 116 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -17,6 +17,8 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
+- "tests_test_posture_rules_testudphonesty_test_no_reply_udp_raises_nothing": ".test_no_reply_udp_raises_nothing()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_rules.py:L125 | neighbors=[TestUdpHonesty, _asset(), _fact()]
+- "tests_test_posture_rules_testvulnerablehost_test_deprecated_tls_version": ".test_deprecated_tls_version()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_rules.py:L90 | neighbors=[TestVulnerableHost, _asset(), _fact()]
 - "tests_test_posture_rules_testvulnerablehost_test_modern_only_tls_raises_nothing": ".test_modern_only_tls_raises_nothing()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_rules.py:L106 | neighbors=[TestVulnerableHost, _asset(), _fact()]
 - "tests_test_posture_rules_testvulnerablehost_test_rdp_no_nla_confirmed_high_and_unauth": ".test_rdp_no_nla_confirmed_high_and_unauth()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_rules.py:L82 | neighbors=[TestVulnerableHost, _asset(), _fact()]
 - "tests_test_posture_rules_testvulnerablehost_test_self_signed_and_expired_cert": ".test_self_signed_and_expired_cert()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_rules.py:L112 | neighbors=[TestVulnerableHost, _asset(), _fact()]
@@ -55,8 +57,6 @@ one-sentence description — no prose, no markdown fences.
 - "tests_test_reference_teststability_test_the_same_row_always_gets_the_same_reference": ".test_the_same_row_always_gets_the_same_reference()" | kind=code-symbol | source=manager/backend/tests/test_reference.py:L87 | neighbors=[It is quoted in tickets — it must not m…, TestStability, _at()]
 - "tests_test_reference_testtellingthemapart": "TestTellingThemApart" | kind=code-symbol | source=manager/backend/tests/test_reference.py:L74 | neighbors=[test_reference.py, .test_a_reference_is_distinguishable_fr…, .test_an_unregistered_prefix_is_not_our…]
 - "tests_test_remediation_generator_finding": "_finding()" | kind=code-symbol | source=manager/backend/tests/test_remediation_generator.py:L26 | neighbors=[test_remediation_generator.py, .test_unparseable_output_raises_value_e…, .test_valid_output_returns_ai_plan_with…]
-- "tests_test_remediation_generator_testgenerateremediationplan_gen": "._gen()" | kind=code-symbol | source=manager/backend/tests/test_remediation_generator.py:L117 | neighbors=[TestGenerateRemediationPlan, .test_unparseable_output_raises_value_e…, .test_valid_output_returns_ai_plan_with…]
-- "tests_test_remediation_generator_testgenerateremediationplan_test_unparseable_output_raises_value_error": ".test_unparseable_output_raises_value_error()" | kind=code-symbol | source=manager/backend/tests/test_remediation_generator.py:L122 | neighbors=[TestGenerateRemediationPlan, _finding(), ._gen()]
 
 ## Instructions
 

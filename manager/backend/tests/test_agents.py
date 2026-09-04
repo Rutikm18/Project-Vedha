@@ -465,6 +465,36 @@ class TestAgentJobCompatibility:
             ["10.0.0.0/16"],
         )
 
+    def test_ineligibility_reason_pinpoints_each_cause(self):
+        """The diagnostic that turns a silent stuck-pending job into a fixable
+        one: each ineligibility must name its actual cause (mirrors the gate)."""
+        # 1. Missing capability
+        no_cap = SimpleNamespace(capabilities=[], network_segments=["10.0.0.0/8"])
+        assert "missing capability" in ag._ineligibility_reason(
+            no_cap, ScanJobType.discovery, {}, ["10.0.0.0/24"])
+
+        # 2. Engagement has no scope at all
+        ok = SimpleNamespace(capabilities=["discovery"], network_segments=["10.0.0.0/8"])
+        assert "no scope_cidrs" in ag._ineligibility_reason(
+            ok, ScanJobType.discovery, {}, [])
+
+        # 3. Probe declares no reachable networks
+        no_net = SimpleNamespace(capabilities=["discovery"], network_segments=[])
+        assert "no network_segments" in ag._ineligibility_reason(
+            no_net, ScanJobType.discovery, {}, ["10.0.0.0/24"])
+
+        # 4. Probe reach does not cover the engagement scope (the AWS symptom):
+        #    probe on 192.168.1.0/24, engagement scope 10.0.0.0/24.
+        mismatch = SimpleNamespace(
+            capabilities=["discovery"], network_segments=["192.168.1.0/24"])
+        reason = ag._ineligibility_reason(
+            mismatch, ScanJobType.discovery, {}, ["10.0.0.0/24"])
+        assert "do not fully cover" in reason and "192.168.1.0/24" in reason
+
+        # A genuinely eligible probe reports "eligible".
+        assert ag._ineligibility_reason(
+            mismatch, ScanJobType.discovery, {}, ["192.168.1.0/24"]) == "eligible"
+
     def test_explicit_out_of_scope_target_is_never_dispatched(self):
         agent = SimpleNamespace(
             capabilities=["discovery"],

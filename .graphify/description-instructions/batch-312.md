@@ -1,4 +1,4 @@
-# Node Description Batch 313 of 330
+# Node Description Batch 313 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -26,46 +26,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_tls_integration_tlsserver_init": ".__init__()" | kind=code-symbol | source=probe/tests/test_tls_integration.py:L51 | neighbors=[_TLSServer] | lang=en
-- "tests_test_tls_integration_tlsserver_serve": "._serve()" | kind=code-symbol | source=probe/tests/test_tls_integration.py:L63 | neighbors=[_TLSServer] | lang=en
-- "tests_test_tls_legacy_versions_legacytlsserver_enter": ".__enter__()" | kind=code-symbol | source=probe/tests/test_tls_legacy_versions.py:L87 | neighbors=[_LegacyTLSServer] | lang=en
-- "tests_test_tls_legacy_versions_legacytlsserver_exit": ".__exit__()" | kind=code-symbol | source=probe/tests/test_tls_legacy_versions.py:L91 | neighbors=[_LegacyTLSServer] | lang=en
-- "tests_test_tls_legacy_versions_legacytlsserver_init": ".__init__()" | kind=code-symbol | source=probe/tests/test_tls_legacy_versions.py:L58 | neighbors=[_LegacyTLSServer] | lang=en
-- "tests_test_tls_legacy_versions_legacytlsserver_serve": "._serve()" | kind=code-symbol | source=probe/tests/test_tls_legacy_versions.py:L73 | neighbors=[_LegacyTLSServer] | lang=en
-- "tests_test_tls_legacy_versions_rationale_1": "test_tls_legacy_versions.py — the deprecated-TLS detection must measure the SERV" | kind=entity | source=probe/tests/test_tls_legacy_versions.py:L1 | neighbors=[test_tls_legacy_versions.py] | lang=en
-- "tests_test_tls_legacy_versions_rationale_126": "A version the probe cannot OFFER is 'not tested', not 'server refused'." | kind=entity | source=probe/tests/test_tls_legacy_versions.py:L126 | neighbors=[test_try_version_reports_client_side_re…] | lang=en
-- "tests_test_tls_legacy_versions_rationale_145": "When the probe genuinely cannot test a version, the result must say so     inste" | kind=entity | source=probe/tests/test_tls_legacy_versions.py:L145 | neighbors=[test_untested_versions_are_surfaced_in_…] | lang=en
-- "tests_test_tls_legacy_versions_rationale_56": "A loopback server pinned to exactly one (legacy) TLS version." | kind=entity | source=probe/tests/test_tls_legacy_versions.py:L56 | neighbors=[_LegacyTLSServer] | lang=en
-- "tests_test_tls_legacy_versions_rationale_98": "Skip rather than fail on a build with the legacy protocol compiled out." | kind=entity | source=probe/tests/test_tls_legacy_versions.py:L98 | neighbors=[_server_supports()] | lang=en
-- "tests_test_tls_legacy_versions_test_try_version_reports_server_rejection_as_none": "test_try_version_reports_server_rejection_as_none()" | kind=code-symbol | source=probe/tests/test_tls_legacy_versions.py:L136 | neighbors=[test_tls_legacy_versions.py] | lang=en
-- "tests_test_tls_port_coverage_rationale_1": "TLS branch coverage — the gap behind `tls_scan: invocations: 0`.  A real scan of" | kind=entity | source=probe/tests/test_tls_port_coverage.py:L1 | neighbors=[test_tls_port_coverage.py] | lang=en
-- "tests_test_tls_port_coverage_rationale_39": "The drift that used to exist: spec allows a port the gate refuses." | kind=entity | source=probe/tests/test_tls_port_coverage.py:L39 | neighbors=[.test_branch_spec_matches_the_gate()] | lang=en
-- "tests_test_tls_port_coverage_rationale_67": "Excluded on purpose — a bare ClientHello is the WRONG packet here." | kind=entity | source=probe/tests/test_tls_port_coverage.py:L67 | neighbors=[TestDeliberateExclusions] | lang=en
-- "tests_test_tls_port_coverage_rationale_70": "3389 reaches TLS only after the X.224 rdpNegReq. rdp_scanner already         obs" | kind=entity | source=probe/tests/test_tls_port_coverage.py:L70 | neighbors=[.test_rdp_is_excluded()] | lang=en
-- "tests_test_tls_port_coverage_rationale_77": "5986 is WinRM's TLS listener and IS included; these two are plaintext." | kind=entity | source=probe/tests/test_tls_port_coverage.py:L77 | neighbors=[.test_winrm_plaintext_listeners_exclude…] | lang=en
-- "tests_test_tls_port_coverage_rationale_83": "STARTTLS negotiates in-band; implicit TLS would fail." | kind=entity | source=probe/tests/test_tls_port_coverage.py:L83 | neighbors=[.test_starttls_upgrade_ports_excluded()] | lang=en
-- "tests_test_tls_port_coverage_rationale_88": "Why widening is safe.      A port that does not speak TLS yields `status=\"error\"" | kind=entity | source=probe/tests/test_tls_port_coverage.py:L88 | neighbors=[test_refused_handshake_is_an_error_not_…] | lang=en
-- "tests_test_tls_port_coverage_testsinglesourceoftruth_test_branch_port_table_reuses_it_too": ".test_branch_port_table_reuses_it_too()" | kind=code-symbol | source=probe/tests/test_tls_port_coverage.py:L35 | neighbors=[TestSingleSourceOfTruth] | lang=en
-- "tests_test_tls_port_coverage_testsinglesourceoftruth_test_gates_reuses_the_same_object": ".test_gates_reuses_the_same_object()" | kind=code-symbol | source=probe/tests/test_tls_port_coverage.py:L32 | neighbors=[TestSingleSourceOfTruth] | lang=en
-- "tests_test_tls_port_coverage_testwidenedcoverage_test_classic_implicit_tls_still_covered": ".test_classic_implicit_tls_still_covered()" | kind=code-symbol | source=probe/tests/test_tls_port_coverage.py:L46 | neighbors=[TestWidenedCoverage] | lang=en
-- "tests_test_tls_port_coverage_testwidenedcoverage_test_management_and_api_surfaces_now_covered": ".test_management_and_api_surfaces_now_covered()" | kind=code-symbol | source=probe/tests/test_tls_port_coverage.py:L59 | neighbors=[TestWidenedCoverage] | lang=en
-- "tests_test_tls_port_coverage_testwidenedcoverage_test_the_set_actually_grew": ".test_the_set_actually_grew()" | kind=code-symbol | source=probe/tests/test_tls_port_coverage.py:L62 | neighbors=[TestWidenedCoverage] | lang=en
-- "tests_test_tls_posture_rationale_1": "test_tls_posture.py — Tier 2.4: cipher-suite classification + TLS posture gradin" | kind=entity | source=probe/tests/test_tls_posture.py:L1 | neighbors=[test_tls_posture.py] | lang=en
-- "tests_test_tls_posture_testclassifycipher_test_3des_is_weak": ".test_3des_is_weak()" | kind=code-symbol | source=probe/tests/test_tls_posture.py:L43 | neighbors=[TestClassifyCipher] | lang=en
-- "tests_test_tls_posture_testclassifycipher_test_anonymous_is_weak": ".test_anonymous_is_weak()" | kind=code-symbol | source=probe/tests/test_tls_posture.py:L55 | neighbors=[TestClassifyCipher] | lang=en
-- "tests_test_tls_posture_testclassifycipher_test_chacha20_is_aead": ".test_chacha20_is_aead()" | kind=code-symbol | source=probe/tests/test_tls_posture.py:L60 | neighbors=[TestClassifyCipher] | lang=en
-- "tests_test_tls_posture_testclassifycipher_test_export_and_md5_are_weak": ".test_export_and_md5_are_weak()" | kind=code-symbol | source=probe/tests/test_tls_posture.py:L48 | neighbors=[TestClassifyCipher] | lang=en
-- "tests_test_tls_posture_testclassifycipher_test_modern_aead_pfs": ".test_modern_aead_pfs()" | kind=code-symbol | source=probe/tests/test_tls_posture.py:L19 | neighbors=[TestClassifyCipher] | lang=en
-- "tests_test_tls_posture_testclassifycipher_test_null_cipher_is_weak": ".test_null_cipher_is_weak()" | kind=code-symbol | source=probe/tests/test_tls_posture.py:L38 | neighbors=[TestClassifyCipher] | lang=en
-- "tests_test_tls_posture_testclassifycipher_test_rc4_is_weak": ".test_rc4_is_weak()" | kind=code-symbol | source=probe/tests/test_tls_posture.py:L33 | neighbors=[TestClassifyCipher] | lang=en
-- "tests_test_tls_posture_testclassifycipher_test_rsa_cbc_no_pfs": ".test_rsa_cbc_no_pfs()" | kind=code-symbol | source=probe/tests/test_tls_posture.py:L26 | neighbors=[TestClassifyCipher] | lang=en
-- "tests_test_tls_posture_testgradetlsposture_test_empty_cipher_details_still_grades_protocols": ".test_empty_cipher_details_still_grades_protocols()" | kind=code-symbol | source=probe/tests/test_tls_posture.py:L104 | neighbors=[TestGradeTlsPosture] | lang=en
-- "tests_test_tls_posture_testgradetlsposture_test_grade_c_no_forward_secrecy": ".test_grade_c_no_forward_secrecy()" | kind=code-symbol | source=probe/tests/test_tls_posture.py:L88 | neighbors=[TestGradeTlsPosture] | lang=en
-- "tests_test_tls_posture_testgradetlsposture_test_grade_f_weak_cipher": ".test_grade_f_weak_cipher()" | kind=code-symbol | source=probe/tests/test_tls_posture.py:L99 | neighbors=[TestGradeTlsPosture] | lang=en
-- "tests_test_transport_rationale_1": "Tests for agent/transport.py" | kind=entity | source=probe/tests/test_transport.py:L1 | neighbors=[test_transport.py] | lang=en
-- "tests_test_transport_rationale_16": "Create a Transport with a real state file path but no actual HTTP calls." | kind=entity | source=probe/tests/test_transport.py:L16 | neighbors=[transport()] | lang=pt
-- "tests_test_transport_rationale_18": "Create a Transport with a real state file path but no actual HTTP calls." | kind=entity | source=probe/tests/test_transport.py:L18 | neighbors=[transport()] | lang=pt
-- "tests_test_transport_testdeviceenrollment_test_activation_persists_recoverable_device_credential": ".test_activation_persists_recoverable_device_credential()" | kind=code-symbol | source=probe/tests/test_transport.py:L172 | neighbors=[TestDeviceEnrollment] | lang=en
+- "tests_test_syn_scanner_testsynscannerfallback_test_fallback_labels_scanner_name": ".test_fallback_labels_scanner_name()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L184 | neighbors=[TestSynScannerFallback] | lang=en
+- "tests_test_syn_scanner_testsynscannerfallback_test_forced_fallback_builds_connect_scanner": ".test_forced_fallback_builds_connect_scanner()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L158 | neighbors=[TestSynScannerFallback] | lang=en
+- "tests_test_syn_scanner_testtcpoptionprofile_test_malformed_options_do_not_raise": ".test_malformed_options_do_not_raise()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L423 | neighbors=[TestTcpOptionProfile] | lang=en
+- "tests_test_syn_scanner_testtcpoptionprofile_test_parse_linux_syn_ack_options": ".test_parse_linux_syn_ack_options()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L411 | neighbors=[TestTcpOptionProfile] | lang=en
+- "tests_test_syn_scanner_testtcpoptionprofile_test_parse_mss_shim_still_works": ".test_parse_mss_shim_still_works()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L419 | neighbors=[TestTcpOptionProfile] | lang=en
+- "tests_test_syn_scanner_testtcpoptionprofile_test_parse_windows_syn_ack_options": ".test_parse_windows_syn_ack_options()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L404 | neighbors=[TestTcpOptionProfile] | lang=en
+- "tests_test_tarpit_rationale_1": "test_tarpit.py — tarpit / honeypot detection (task C5).  A tarpit (LaBrea), hone" | kind=entity | source=probe/tests/test_tarpit.py:L1 | neighbors=[test_tarpit.py] | lang=pt
+- "tests_test_tarpit_testassesstarpit_test_boundary_floor_and_ratio_trip_exactly": ".test_boundary_floor_and_ratio_trip_exactly()" | kind=code-symbol | source=probe/tests/test_tarpit.py:L33 | neighbors=[TestAssessTarpit] | lang=en
+- "tests_test_tarpit_testassesstarpit_test_busy_real_host_is_not_flagged": ".test_busy_real_host_is_not_flagged()" | kind=code-symbol | source=probe/tests/test_tarpit.py:L23 | neighbors=[TestAssessTarpit] | lang=en
+- "tests_test_tarpit_testassesstarpit_test_nearly_all_open_large_scan_is_flagged": ".test_nearly_all_open_large_scan_is_flagged()" | kind=code-symbol | source=probe/tests/test_tarpit.py:L18 | neighbors=[TestAssessTarpit] | lang=en
+- "tests_test_tarpit_testassesstarpit_test_tiny_all_open_scan_is_below_the_floor": ".test_tiny_all_open_scan_is_below_the_floor()" | kind=code-symbol | source=probe/tests/test_tarpit.py:L28 | neighbors=[TestAssessTarpit] | lang=en
+- "tests_test_tarpit_testassesstarpit_test_zero_attempted_is_safe": ".test_zero_attempted_is_safe()" | kind=code-symbol | source=probe/tests/test_tarpit.py:L37 | neighbors=[TestAssessTarpit] | lang=en
+- "tests_test_task_runner_rationale_1": "Tests for agent/task_runner.py" | kind=entity | source=probe/tests/test_task_runner.py:L1 | neighbors=[test_task_runner.py] | lang=en
+- "tests_test_task_runner_rationale_105": "When scope is fetched and targets are outside it." | kind=entity | source=probe/tests/test_task_runner.py:L105 | neighbors=[.test_rejects_out_of_scope_target()] | lang=en
+- "tests_test_task_runner_rationale_13": "Return a minimal successful result without doing any real I/O." | kind=entity | source=probe/tests/test_task_runner.py:L13 | neighbors=[_fake_run_scan()] | lang=pt
+- "tests_test_task_runner_rationale_152": "When scope fetch fails, manager-embedded scope is still enforced." | kind=entity | source=probe/tests/test_task_runner.py:L152 | neighbors=[.test_scope_fallback_when_fetch_fails()] | lang=en
+- "tests_test_task_runner_rationale_201": "Verify the submit callback is called with the correct payload." | kind=entity | source=probe/tests/test_task_runner.py:L201 | neighbors=[.test_calls_submit_with_result()] | lang=en
+- "tests_test_task_runner_rationale_206": "When scope is fetched and targets are outside it." | kind=entity | source=probe/tests/test_task_runner.py:L206 | neighbors=[.test_rejects_out_of_scope_target()] | lang=en
+- "tests_test_task_runner_rationale_226": "When spool_submit is provided, it's used instead of direct submit." | kind=entity | source=probe/tests/test_task_runner.py:L226 | neighbors=[.test_uses_spool_when_available()] | lang=en
+- "tests_test_task_runner_rationale_319": "When scope fetch fails, manager-embedded scope is still enforced." | kind=entity | source=probe/tests/test_task_runner.py:L319 | neighbors=[.test_scope_fallback_when_fetch_fails()] | lang=en
+- "tests_test_task_runner_rationale_38": "TaskRunner with no-op dependencies (no real scanning)." | kind=entity | source=probe/tests/test_task_runner.py:L38 | neighbors=[runner()] | lang=en
+- "tests_test_task_runner_rationale_391": "Verify the submit callback is called with the correct payload." | kind=entity | source=probe/tests/test_task_runner.py:L391 | neighbors=[.test_calls_submit_with_result()] | lang=en
+- "tests_test_task_runner_rationale_416": "When spool_submit is provided, it's used instead of direct submit." | kind=entity | source=probe/tests/test_task_runner.py:L416 | neighbors=[.test_uses_spool_when_available()] | lang=en
+- "tests_test_task_runner_rationale_47": "Tests that use the real engine but with no-op callbacks." | kind=entity | source=probe/tests/test_task_runner.py:L47 | neighbors=[TestRunnerHeadless] | lang=en
+- "tests_test_task_runner_testrunnerheadless_test_explicit_empty_targets_never_expand_to_engagement_scope": ".test_explicit_empty_targets_never_expand_to_engagement_scope()" | kind=code-symbol | source=probe/tests/test_task_runner.py:L71 | neighbors=[TestRunnerHeadless] | lang=en
+- "tests_test_task_runner_testrunnerheadless_test_rejects_empty_targets": ".test_rejects_empty_targets()" | kind=code-symbol | source=probe/tests/test_task_runner.py:L60 | neighbors=[TestRunnerHeadless] | lang=en
+- "tests_test_task_runner_testrunnerheadless_test_rejects_non_object_params": ".test_rejects_non_object_params()" | kind=code-symbol | source=probe/tests/test_task_runner.py:L120 | neighbors=[TestRunnerHeadless] | lang=en
+- "tests_test_task_runner_testrunnerheadless_test_rejects_non_string_target": ".test_rejects_non_string_target()" | kind=code-symbol | source=probe/tests/test_task_runner.py:L132 | neighbors=[TestRunnerHeadless] | lang=en
+- "tests_test_task_runner_testrunnerheadless_test_rejects_unknown_use_case": ".test_rejects_unknown_use_case()" | kind=code-symbol | source=probe/tests/test_task_runner.py:L49 | neighbors=[TestRunnerHeadless] | lang=en
+- "tests_test_task_runner_testrunnerheadless_test_resolves_full_assessment": ".test_resolves_full_assessment()" | kind=code-symbol | source=probe/tests/test_task_runner.py:L100 | neighbors=[TestRunnerHeadless] | lang=en
+- "tests_test_task_runner_testrunnerheadless_test_resolves_use_case_correctly": ".test_resolves_use_case_correctly()" | kind=code-symbol | source=probe/tests/test_task_runner.py:L89 | neighbors=[TestRunnerHeadless] | lang=en
+- "tests_test_task_runner_testrunnerheadless_test_scan_engine_exception_becomes_submittable_failure": ".test_scan_engine_exception_becomes_submittable_failure()" | kind=code-symbol | source=probe/tests/test_task_runner.py:L180 | neighbors=[TestRunnerHeadless] | lang=en
+- "tests_test_task_runner_testrunnerheadless_test_target_precedence": ".test_target_precedence()" | kind=code-symbol | source=probe/tests/test_task_runner.py:L168 | neighbors=[TestRunnerHeadless] | lang=en
+- "tests_test_task_runner_testrunnerheadless_test_uses_job_type_when_no_use_case": ".test_uses_job_type_when_no_use_case()" | kind=code-symbol | source=probe/tests/test_task_runner.py:L110 | neighbors=[TestRunnerHeadless] | lang=en
+- "tests_test_task_runner_testrunnerscantypes_test_ot_passive_profile": ".test_ot_passive_profile()" | kind=code-symbol | source=probe/tests/test_task_runner.py:L448 | neighbors=[TestRunnerScanTypes] | lang=en
+- "tests_test_task_runner_testrunnerscantypes_test_web_triage_scan_type": ".test_web_triage_scan_type()" | kind=code-symbol | source=probe/tests/test_task_runner.py:L459 | neighbors=[TestRunnerScanTypes] | lang=en
+- "tests_test_task_runner_testrunnerscopevalidation_test_allows_in_scope_target": ".test_allows_in_scope_target()" | kind=code-symbol | source=probe/tests/test_task_runner.py:L221 | neighbors=[TestRunnerScopeValidation] | lang=en
+- "tests_test_task_runner_testrunnerscopevalidation_test_explicit_empty_local_ceiling_fails_closed": ".test_explicit_empty_local_ceiling_fails_closed()" | kind=code-symbol | source=probe/tests/test_task_runner.py:L237 | neighbors=[TestRunnerScopeValidation] | lang=en
+- "tests_test_task_runner_testrunnerscopevalidation_test_local_ceiling_filters_manager_authorized_targets": ".test_local_ceiling_filters_manager_authorized_targets()" | kind=code-symbol | source=probe/tests/test_task_runner.py:L257 | neighbors=[TestRunnerScopeValidation] | lang=en
+- "tests_test_task_runner_testrunnerscopevalidation_test_local_ceiling_is_forwarded_to_engine": ".test_local_ceiling_is_forwarded_to_engine()" | kind=code-symbol | source=probe/tests/test_task_runner.py:L277 | neighbors=[TestRunnerScopeValidation] | lang=en
 
 ## Instructions
 

@@ -1,4 +1,4 @@
-# Node Description Batch 40 of 330
+# Node Description Batch 40 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,11 +12,22 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
+For an entity node (any other kind — e.g. a person, place, event, object),
+describe what the entity is and its role, grounded in its type, its
+relations (neighbors) and the provided citations/evidence — e.g.
+"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
+Ground entity descriptions in the citations/evidence when present; do not
+speculate beyond the context, so a node with no supporting context may be
+left out of the reply.
 Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
+- "tests_test_attack_paths_rationale_1": "Unit tests for the attack-path analysis engine (Prompt 6).  The engine is exerci" | kind=entity | source=manager/backend/tests/test_attack_paths.py:L1 | neighbors=[test_attack_paths.py, PathAnalyzer, GraphBuilder, DemoAsset, DemoFinding, Neo4jClient]
+- "tests_test_campaign_progress_terminal_testnormalpipelineunaffected": "TestNormalPipelineUnaffected" | kind=code-symbol | source=manager/backend/tests/test_campaign_progress_terminal.py:L72 | neighbors=[test_campaign_progress_terminal.py, Regression guard: the happy path and it…, .test_complete_campaign(), .test_complete_with_gaps(), .test_defaults_keep_backwards_compatibi…, .test_no_jobs_is_pending()]
+- "tests_test_campaign_progress_terminal_testterminalwithoutresults": "TestTerminalWithoutResults" | kind=code-symbol | source=manager/backend/tests/test_campaign_progress_terminal.py:L38 | neighbors=[test_campaign_progress_terminal.py, .test_a_dead_queue_is_still_reported_as…, .test_all_cancelled_campaign_is_termina…, .test_all_failed_campaign_is_terminal(), .test_does_not_hijack_a_campaign_that_p…, .test_partial_cancel_with_one_success_s…]
+- "tests_test_cve_correlation_testcpe": "TestCpe" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L75 | neighbors=[test_cve_correlation.py, .test_datastore_map_entries(), .test_mysql_vs_mariadb_vendor(), .test_no_version_returns_none(), .test_openssh(), .test_unknown_product_returns_none()]
 - "tests_test_detection_coverage_user": "_user()" | kind=code-symbol | source=manager/backend/tests/test_detection_coverage.py:L18 | neighbors=[test_detection_coverage.py, test_aggregating_reason_names_the_outbo…, test_completed_no_blind_is_plain_comple…, test_completed_with_blind_rules_is_comp…, test_explain_all_rules_sorts_gaps_first…, test_explain_no_run_says_never_ran()]
 - "tests_test_detection_pipeline_gaps_ctx": "_ctx" | kind=code-symbol | source=manager/backend/tests/test_detection_pipeline_gaps.py:L168 | neighbors=[test_detection_pipeline_gaps.py, .__aenter__(), .__aexit__(), .__init__(), Minimal async-context-manager wrapper a…, test_facts_ready_reads_scanner_runs_fro…]
 - "tests_test_detection_pipeline_gaps_fact": "_fact()" | kind=code-symbol | source=manager/backend/tests/test_detection_pipeline_gaps.py:L28 | neighbors=[test_detection_pipeline_gaps.py, test_a_non_dict_data_payload_is_quarant…, test_accepted_facts_excludes_what_inges…, test_accepted_facts_falls_back_to_raw_w…, test_facts_ready_reads_scanner_runs_fro…, test_missing_scanner_runs_degrades_to_e…]
@@ -53,10 +64,6 @@ one-sentence description — no prose, no markdown fences.
 - "tests_test_pipeline_testrunpipelineaiassist_test_ai_assist_off_by_default": ".test_ai_assist_off_by_default()" | kind=code-symbol | source=manager/detection_engine/tests/test_pipeline.py:L324 | neighbors=[With use_ai_assist=False (the default) …, TestRunPipelineAiAssist, _empty_epss(), _empty_kev(), _openssh_vuln_db(), _ssh_inventory_jsonl()]
 - "tests_test_pipeline_testrunpipelinededup_test_findings_deduped_within_same_host": ".test_findings_deduped_within_same_host()" | kind=code-symbol | source=manager/detection_engine/tests/test_pipeline.py:L290 | neighbors=[The same (asset, CVE) can't appear twic…, TestRunPipelineDedup, _empty_epss(), _empty_kev(), _openssh_vuln_db(), _ssh_inventory_jsonl()]
 - "tests_test_pipeline_testrunpipelinededup_test_two_identical_hosts_each_get_their_own_finding": ".test_two_identical_hosts_each_get_their_own_finding()" | kind=code-symbol | source=manager/detection_engine/tests/test_pipeline.py:L277 | neighbors=[Different IPs must produce independent …, TestRunPipelineDedup, _empty_epss(), _empty_kev(), _openssh_vuln_db(), _ssh_inventory_jsonl()]
-- "tests_test_pipeline_testrunpipelineemptyinput_test_empty_jsonl_returns_no_findings": ".test_empty_jsonl_returns_no_findings()" | kind=code-symbol | source=manager/detection_engine/tests/test_pipeline.py:L130 | neighbors=[A completely empty file must not produc…, TestRunPipelineEmptyInput, _empty_epss(), _empty_jsonl(), _empty_kev(), _mock_vuln_db()]
-- "tests_test_pipeline_testrunpipelineexposure_test_no_exposure_fields_are_none": ".test_no_exposure_fields_are_none()" | kind=code-symbol | source=manager/detection_engine/tests/test_pipeline.py:L260 | neighbors=[Without an exposure dict the fields sta…, TestRunPipelineExposure, _empty_epss(), _empty_kev(), _openssh_vuln_db(), _ssh_inventory_jsonl()]
-- "tests_test_pipeline_testrunpipelinevulnmatching": "TestRunPipelineVulnMatching" | kind=code-symbol | source=manager/detection_engine/tests/test_pipeline.py:L155 | neighbors=[test_pipeline.py, .test_banner_finding_is_suspected_not_c…, .test_full_detection_exposes_authoritat…, .test_injected_dbs_used_no_file_io(), .test_no_finding_for_patched_version(), .test_ssh_inventory_finding_is_confirme…]
-- "tests_test_pipeline_testrunpipelinevulnmatching_test_banner_finding_is_suspected_not_confirmed": ".test_banner_finding_is_suspected_not_confirmed()" | kind=code-symbol | source=manager/detection_engine/tests/test_pipeline.py:L180 | neighbors=[A banner-derived (inferred) source matc…, TestRunPipelineVulnMatching, _banner_jsonl(), _empty_epss(), _empty_kev(), _openssh_vuln_db()]
 
 ## Instructions
 

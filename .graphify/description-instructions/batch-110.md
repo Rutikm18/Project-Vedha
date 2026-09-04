@@ -1,4 +1,4 @@
-# Node Description Batch 111 of 330
+# Node Description Batch 111 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -17,6 +17,8 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
+- "tests_test_cve_correlation_testcli": "TestCli" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L350 | neighbors=[test_cve_correlation.py, .test_correlate_writes_findings(), .test_ingest_stdout_is_clean_json()]
+- "tests_test_cve_correlation_testingestpagination": "TestIngestPagination" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L265 | neighbors=[test_cve_correlation.py, ._pages(), .test_resume()]
 - "tests_test_db_scanner_testmysqlxvsoracle_test_mysqlx_identified": ".test_mysqlx_identified()" | kind=code-symbol | source=probe/tests/test_db_scanner.py:L54 | neighbors=[TestMysqlxVsOracle, _probe(), _xproto_frame()]
 - "tests_test_db_scanner_testmysqlxvsoracle_test_mysqlx_not_misread_as_oracle": ".test_mysqlx_not_misread_as_oracle()" | kind=code-symbol | source=probe/tests/test_db_scanner.py:L59 | neighbors=[TestMysqlxVsOracle, _probe(), _xproto_frame()]
 - "tests_test_db_scanner_testmysqlxvsoracle_test_oracle_reply_not_misread_as_mysqlx": ".test_oracle_reply_not_misread_as_mysqlx()" | kind=code-symbol | source=probe/tests/test_db_scanner.py:L70 | neighbors=[TestMysqlxVsOracle, _probe(), _tns_packet()]
@@ -55,8 +57,6 @@ one-sentence description — no prose, no markdown fences.
 - "tests_test_exploit_engine_testexploitorchestrator_test_validate_scope_out_of_range": ".test_validate_scope_out_of_range()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L284 | neighbors=[TestExploitOrchestrator, _engagement(), ._make_orchestrator()]
 - "tests_test_exploitability_testneverclaimsthecveispresent_test_refs_carry_the_relation_and_kev_status": ".test_refs_carry_the_relation_and_kev_status()" | kind=code-symbol | source=manager/detection_engine/tests/test_exploitability.py:L54 | neighbors=[TestNeverClaimsTheCveIsPresent, _epss(), _kev()]
 - "tests_test_exploitability_testtiers_test_elevated_epss_band": ".test_elevated_epss_band()" | kind=code-symbol | source=manager/detection_engine/tests/test_exploitability.py:L84 | neighbors=[TestTiers, _epss(), _kev()]
-- "tests_test_exploitability_testtiers_test_epss_max_takes_the_worst_linked_cve": ".test_epss_max_takes_the_worst_linked_cve()" | kind=code-symbol | source=manager/detection_engine/tests/test_exploitability.py:L102 | neighbors=[TestTiers, _epss(), _kev()]
-- "tests_test_exploitability_testtiers_test_high_epss_without_kev_is_likely": ".test_high_epss_without_kev_is_likely()" | kind=code-symbol | source=manager/detection_engine/tests/test_exploitability.py:L79 | neighbors=[TestTiers, _epss(), _kev()]
 
 ## Instructions
 

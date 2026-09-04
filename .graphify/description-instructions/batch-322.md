@@ -1,4 +1,4 @@
-# Node Description Batch 323 of 330
+# Node Description Batch 323 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -9,6 +9,9 @@ your JSON answer to the answer file.
 You are documenting nodes in a knowledge graph.
 For each entry below, write ONE concise factual plain-language sentence
 describing what it is or does. Use only the provided context.
+For a code symbol (kind=code-symbol — a function, class, or constant),
+describe what the function/symbol does based on its name, source location
+and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
 For an entity node (any other kind — e.g. a person, place, event, object),
 describe what the entity is and its role, grounded in its type, its
 relations (neighbors) and the provided citations/evidence — e.g.
@@ -23,46 +26,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "websocket_manager_rationale_233": "Check if a specific agent is online (connected + not busy)." | kind=entity | source=manager/backend/app/websocket/manager.py:L233 | neighbors=[.is_online()] | lang=en
-- "websocket_manager_rationale_235": "Check if a specific agent is online (connected + not busy)." | kind=entity | source=manager/backend/app/websocket/manager.py:L235 | neighbors=[.is_online()] | lang=en
-- "websocket_manager_rationale_237": "Handle a new WebSocket client connection." | kind=entity | source=manager/backend/app/websocket/manager.py:L237 | neighbors=[.handle_client()] | lang=pt
-- "websocket_manager_rationale_238": "Return a snapshot of all connected agent IDs." | kind=entity | source=manager/backend/app/websocket/manager.py:L238 | neighbors=[.connected_agents()] | lang=en
-- "websocket_manager_rationale_240": "Return a snapshot of all connected agent IDs." | kind=entity | source=manager/backend/app/websocket/manager.py:L240 | neighbors=[.connected_agents()] | lang=en
-- "websocket_manager_rationale_251": "Return idle connected agents belonging to exactly one tenant." | kind=entity | source=manager/backend/app/websocket/manager.py:L251 | neighbors=[.online_agents_for_tenant()] | lang=en
-- "websocket_manager_rationale_253": "Return idle connected agents belonging to exactly one tenant." | kind=entity | source=manager/backend/app/websocket/manager.py:L253 | neighbors=[.online_agents_for_tenant()] | lang=en
-- "websocket_manager_rationale_257": "Handle incoming WebSocket messages." | kind=entity | source=manager/backend/app/websocket/manager.py:L257 | neighbors=[._handle_message()] | lang=en
-- "websocket_manager_rationale_26": "Manages WebSocket connections with room-based broadcasting." | kind=entity | source=manager/backend/app/websocket/manager.py:L26 | neighbors=[ConnectionManager] | lang=en
-- "websocket_manager_rationale_261": "Subscribe to the push backplane and forward any job whose target agent         i" | kind=entity | source=manager/backend/app/websocket/manager.py:L261 | neighbors=[.run_backplane()] | lang=en
-- "websocket_manager_rationale_263": "Subscribe to the push backplane and forward any job whose target agent         i" | kind=entity | source=manager/backend/app/websocket/manager.py:L263 | neighbors=[.run_backplane()] | lang=en
-- "websocket_manager_rationale_270": "Return 'online', 'busy', or 'offline'." | kind=entity | source=manager/backend/app/websocket/manager.py:L270 | neighbors=[.get_agent_status()] | lang=en
-- "websocket_manager_rationale_272": "Return 'online', 'busy', or 'offline'." | kind=entity | source=manager/backend/app/websocket/manager.py:L272 | neighbors=[.get_agent_status()] | lang=en
-- "websocket_manager_rationale_274": "Return agent_ids whose last heartbeat is older than `seconds`.          These ag" | kind=entity | source=manager/backend/app/websocket/manager.py:L274 | neighbors=[.agent_stale_after()] | lang=en
-- "websocket_manager_rationale_276": "Return agent_ids whose last heartbeat is older than `seconds`.          These ag" | kind=entity | source=manager/backend/app/websocket/manager.py:L276 | neighbors=[.agent_stale_after()] | lang=en
-- "websocket_manager_rationale_28": "Manages WebSocket connections with room-based broadcasting." | kind=entity | source=manager/backend/app/websocket/manager.py:L28 | neighbors=[ConnectionManager] | lang=en
-- "websocket_manager_rationale_280": "Broadcast graph data update to all subscribers." | kind=entity | source=manager/backend/app/websocket/manager.py:L280 | neighbors=[.broadcast_graph_update()] | lang=en
-- "websocket_manager_rationale_289": "Broadcast a single node update." | kind=entity | source=manager/backend/app/websocket/manager.py:L289 | neighbors=[.broadcast_node_update()] | lang=pt
-- "websocket_manager_rationale_291": "High-level manager for graph-specific WebSocket operations." | kind=entity | source=manager/backend/app/websocket/manager.py:L291 | neighbors=[GraphWebSocketManager] | lang=en
-- "websocket_manager_rationale_292": "Check if a specific agent is connected." | kind=entity | source=manager/backend/app/websocket/manager.py:L292 | neighbors=[.is_connected()] | lang=en
-- "websocket_manager_rationale_293": "High-level manager for graph-specific WebSocket operations." | kind=entity | source=manager/backend/app/websocket/manager.py:L293 | neighbors=[GraphWebSocketManager] | lang=en
-- "websocket_manager_rationale_294": "Check if a specific agent is connected." | kind=entity | source=manager/backend/app/websocket/manager.py:L294 | neighbors=[.is_connected()] | lang=en
-- "websocket_manager_rationale_296": "Check if a specific agent is online (connected + not busy)." | kind=entity | source=manager/backend/app/websocket/manager.py:L296 | neighbors=[.is_online()] | lang=en
-- "websocket_manager_rationale_299": "Broadcast layout change to all subscribers." | kind=entity | source=manager/backend/app/websocket/manager.py:L299 | neighbors=[.broadcast_layout_update()] | lang=en
-- "websocket_manager_rationale_300": "Handle a new WebSocket client connection." | kind=entity | source=manager/backend/app/websocket/manager.py:L300 | neighbors=[.handle_client()] | lang=pt
-- "websocket_manager_rationale_301": "Return a snapshot of all connected agent IDs." | kind=entity | source=manager/backend/app/websocket/manager.py:L301 | neighbors=[.connected_agents()] | lang=en
-- "websocket_manager_rationale_303": "Return a snapshot of all connected agent IDs." | kind=entity | source=manager/backend/app/websocket/manager.py:L303 | neighbors=[.connected_agents()] | lang=en
-- "websocket_manager_rationale_306": "Return agent IDs whose status is 'online' (idle, ready for job)." | kind=entity | source=manager/backend/app/websocket/manager.py:L306 | neighbors=[.online_agents()] | lang=en
-- "websocket_manager_rationale_308": "Return agent IDs whose status is 'online' (idle, ready for job)." | kind=entity | source=manager/backend/app/websocket/manager.py:L308 | neighbors=[.online_agents()] | lang=en
-- "websocket_manager_rationale_314": "Return idle connected agents belonging to exactly one tenant." | kind=entity | source=manager/backend/app/websocket/manager.py:L314 | neighbors=[.online_agents_for_tenant()] | lang=en
-- "websocket_manager_rationale_316": "Return idle connected agents belonging to exactly one tenant." | kind=entity | source=manager/backend/app/websocket/manager.py:L316 | neighbors=[.online_agents_for_tenant()] | lang=en
-- "websocket_manager_rationale_318": "Handle incoming WebSocket messages." | kind=entity | source=manager/backend/app/websocket/manager.py:L318 | neighbors=[._handle_message()] | lang=en
-- "websocket_manager_rationale_320": "Handle incoming WebSocket messages." | kind=entity | source=manager/backend/app/websocket/manager.py:L320 | neighbors=[._handle_message()] | lang=en
-- "websocket_manager_rationale_333": "Return 'online', 'busy', or 'offline'." | kind=entity | source=manager/backend/app/websocket/manager.py:L333 | neighbors=[.get_agent_status()] | lang=en
-- "websocket_manager_rationale_335": "Return 'online', 'busy', or 'offline'." | kind=entity | source=manager/backend/app/websocket/manager.py:L335 | neighbors=[.get_agent_status()] | lang=en
-- "websocket_manager_rationale_337": "Return agent_ids whose last heartbeat is older than `seconds`.          These ag" | kind=entity | source=manager/backend/app/websocket/manager.py:L337 | neighbors=[.agent_stale_after()] | lang=en
-- "websocket_manager_rationale_339": "Return agent_ids whose last heartbeat is older than `seconds`.          These ag" | kind=entity | source=manager/backend/app/websocket/manager.py:L339 | neighbors=[.agent_stale_after()] | lang=en
-- "websocket_manager_rationale_34": "Accept connection and add to room." | kind=entity | source=manager/backend/app/websocket/manager.py:L34 | neighbors=[.connect()] | lang=en
-- "websocket_manager_rationale_341": "Broadcast graph data update to all subscribers." | kind=entity | source=manager/backend/app/websocket/manager.py:L341 | neighbors=[.broadcast_graph_update()] | lang=en
-- "websocket_manager_rationale_343": "Broadcast graph data update to all subscribers." | kind=entity | source=manager/backend/app/websocket/manager.py:L343 | neighbors=[.broadcast_graph_update()] | lang=en
+- "versions_0028_remediation_plans_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0028_remediation_plans.py:L51 | neighbors=[0028_remediation_plans.py] | lang=en
+- "versions_0028_remediation_plans_rationale_1": "Remediation plans — cached, OS-specific, structured remediation for a finding." | kind=entity | source=manager/backend/alembic/versions/0028_remediation_plans.py:L1 | neighbors=[0028_remediation_plans.py] | lang=en
+- "versions_0028_remediation_plans_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0028_remediation_plans.py:L22 | neighbors=[0028_remediation_plans.py] | lang=en
+- "versions_0030_sla_policies_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0030_sla_policies.py:L42 | neighbors=[0030_sla_policies.py] | lang=en
+- "versions_0030_sla_policies_rationale_1": "SLA policies — per-tenant custom remediation windows (hours per severity).  One" | kind=entity | source=manager/backend/alembic/versions/0030_sla_policies.py:L1 | neighbors=[0030_sla_policies.py] | lang=it
+- "versions_0030_sla_policies_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0030_sla_policies.py:L21 | neighbors=[0030_sla_policies.py] | lang=en
+- "versions_0031_integrations_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0031_integrations.py:L42 | neighbors=[0031_integrations.py] | lang=en
+- "versions_0031_integrations_rationale_1": "Integrations — per-tenant notification config (email / Slack / Jira).  One row p" | kind=entity | source=manager/backend/alembic/versions/0031_integrations.py:L1 | neighbors=[0031_integrations.py] | lang=en
+- "versions_0031_integrations_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0031_integrations.py:L21 | neighbors=[0031_integrations.py] | lang=en
+- "versions_0032_scan_request_use_case_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0032_scan_request_use_case.py:L29 | neighbors=[0032_scan_request_use_case.py] | lang=en
+- "versions_0032_scan_request_use_case_rationale_1": "scan_requests.use_case_id — the capability use-case a customer requested.  The p" | kind=entity | source=manager/backend/alembic/versions/0032_scan_request_use_case.py:L1 | neighbors=[0032_scan_request_use_case.py] | lang=en
+- "versions_0032_scan_request_use_case_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0032_scan_request_use_case.py:L22 | neighbors=[0032_scan_request_use_case.py] | lang=en
+- "versions_0033_finding_events_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0033_finding_events.py:L47 | neighbors=[0033_finding_events.py] | lang=en
+- "versions_0033_finding_events_rationale_1": "Finding lifecycle audit trail — append-only per-finding event log.  One row per" | kind=entity | source=manager/backend/alembic/versions/0033_finding_events.py:L1 | neighbors=[0033_finding_events.py] | lang=it
+- "versions_0033_finding_events_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0033_finding_events.py:L23 | neighbors=[0033_finding_events.py] | lang=en
+- "versions_0034_run_lease_worker_heartbeat_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0034_run_lease_worker_heartbeat.py:L54 | neighbors=[0034_run_lease_worker_heartbeat.py] | lang=en
+- "versions_0034_run_lease_worker_heartbeat_rationale_1": "Stage 2b: DetectionRun lease + worker heartbeat (precise liveness).  Two additiv" | kind=entity | source=manager/backend/alembic/versions/0034_run_lease_worker_heartbeat.py:L1 | neighbors=[0034_run_lease_worker_heartbeat.py] | lang=en
+- "versions_0034_run_lease_worker_heartbeat_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0034_run_lease_worker_heartbeat.py:L31 | neighbors=[0034_run_lease_worker_heartbeat.py] | lang=en
+- "versions_0035_engagement_lifecycle_states_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0035_engagement_lifecycle_states.py:L44 | neighbors=[0035_engagement_lifecycle_states.py] | lang=en
+- "versions_0035_engagement_lifecycle_states_rationale_1": "engagement lifecycle: add 'ongoing' and 'running' states  The engagement lifecyc" | kind=entity | source=manager/backend/alembic/versions/0035_engagement_lifecycle_states.py:L1 | neighbors=[0035_engagement_lifecycle_states.py] | lang=en
+- "versions_0035_engagement_lifecycle_states_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0035_engagement_lifecycle_states.py:L39 | neighbors=[0035_engagement_lifecycle_states.py] | lang=en
+- "versions_0036_scan_job_reference_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0036_scan_job_reference.py:L78 | neighbors=[0036_scan_job_reference.py] | lang=en
+- "versions_0036_scan_job_reference_rationale_1": "scan jobs get a human-readable reference (SCN-YYMMDD-XXXXXX)  A scan job could o" | kind=entity | source=manager/backend/alembic/versions/0036_scan_job_reference.py:L1 | neighbors=[0036_scan_job_reference.py] | lang=pt
+- "versions_0036_scan_job_reference_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0036_scan_job_reference.py:L31 | neighbors=[0036_scan_job_reference.py] | lang=en
+- "versions_0037_scan_job_cancelled_status_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0037_scan_job_cancelled_status.py:L40 | neighbors=[0037_scan_job_cancelled_status.py] | lang=en
+- "versions_0037_scan_job_cancelled_status_rationale_1": "scan jobs gain a terminal `cancelled` status  An operator could start work but n" | kind=entity | source=manager/backend/alembic/versions/0037_scan_job_cancelled_status.py:L1 | neighbors=[0037_scan_job_cancelled_status.py] | lang=en
+- "versions_0037_scan_job_cancelled_status_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0037_scan_job_cancelled_status.py:L34 | neighbors=[0037_scan_job_cancelled_status.py] | lang=en
+- "vuln_enrichment_ttlcache_contains": ".__contains__()" | kind=code-symbol | source=manager/backend/app/vuln/enrichment.py:L36 | neighbors=[TTLCache] | lang=en
+- "vuln_enrichment_ttlcache_getitem": ".__getitem__()" | kind=code-symbol | source=manager/backend/app/vuln/enrichment.py:L43 | neighbors=[TTLCache] | lang=en
+- "vuln_enrichment_ttlcache_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/vuln/enrichment.py:L31 | neighbors=[TTLCache] | lang=en
+- "vuln_enrichment_ttlcache_setitem": ".__setitem__()" | kind=code-symbol | source=manager/backend/app/vuln/enrichment.py:L51 | neighbors=[TTLCache] | lang=en
+- "vuln_nessus_nessusscanner_close": ".close()" | kind=code-symbol | source=manager/backend/app/vuln/nessus.py:L66 | neighbors=[NessusScanner] | lang=en
+- "vuln_nessus_nessusscanner_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/vuln/nessus.py:L40 | neighbors=[NessusScanner] | lang=en
+- "vuln_nuclei_nucleiscanerror_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/vuln/nuclei.py:L92 | neighbors=[NucleiScanError] | lang=en
+- "vuln_nuclei_nucleiscanner_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/vuln/nuclei.py:L113 | neighbors=[NucleiScanner] | lang=en
+- "vuln_prioritizer_route_demo_assets": "DEMO_ASSETS" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/vuln-prioritizer/route.ts:L16 | neighbors=[route.ts] | lang=en
+- "vuln_prioritizer_route_demo_findings": "DEMO_FINDINGS" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/vuln-prioritizer/route.ts:L5 | neighbors=[route.ts] | lang=en
+- "vuln_prioritizer_route_get": "GET()" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/vuln-prioritizer/route.ts:L27 | neighbors=[route.ts] | lang=en
+- "websocket_manager_agentconnectionmanager_connected_count": ".connected_count()" | kind=code-symbol | source=manager/backend/app/websocket/manager.py:L331 | neighbors=[AgentConnectionManager] | lang=en
+- "websocket_manager_agentconnectionmanager_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/websocket/manager.py:L88 | neighbors=[AgentConnectionManager] | lang=en
 
 ## Instructions
 

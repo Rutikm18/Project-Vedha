@@ -175,6 +175,40 @@ def _agent_can_execute_job(
     return _scope_is_reachable(agent.network_segments, dispatch_scope)
 
 
+def _ineligibility_reason(
+    agent: Agent,
+    job_type: ScanJobType | str,
+    params: dict | None,
+    scope_cidrs: list[str] | None,
+) -> str:
+    """Explain, in one line, WHY a probe can't execute a job.
+
+    Mirrors :func:`_agent_can_execute_job`'s checks in the same order. Exists so a
+    job that finds no eligible probe records the actual cause instead of sitting
+    ``pending`` forever while the probe idles "waiting for jobs" — the single most
+    confusing failure mode in probe onboarding, because both sides look healthy.
+    """
+    required_capability = _required_scan_type(job_type, params)
+    capabilities = {str(value).strip() for value in (agent.capabilities or [])}
+    if required_capability not in capabilities:
+        return (f"missing capability {required_capability!r} "
+                f"(probe advertises {sorted(capabilities)})")
+    if not scope_cidrs:
+        return "engagement has no scope_cidrs — nothing is authorized to scan"
+    dispatch_scope = _job_reachability_scope(params, scope_cidrs)
+    if dispatch_scope is None:
+        return ("requested targets are outside the engagement scope, "
+                "or are hostnames/unparseable")
+    if not agent.network_segments:
+        return ("probe declares no network_segments — set PROBE_NETWORK_SEGMENTS "
+                "on the probe to the CIDRs it can reach")
+    if not _scope_is_reachable(agent.network_segments, dispatch_scope):
+        return (f"probe network_segments {list(agent.network_segments)} do not fully "
+                f"cover the job scope {dispatch_scope} — the probe's declared reach "
+                f"must contain every scope CIDR (overlap is not enough)")
+    return "eligible"
+
+
 # ── Schemas ───────────────────────────────────────────────────────────────────
 
 class AgentRegisterRequest(BaseModel):
@@ -1436,6 +1470,27 @@ async def enqueue_agent_job(
         candidate for candidate in online_rows
         if _agent_can_execute_job(candidate, job.job_type, job_params, eng.scope_cidrs or [])
     ]
+
+    # Observability: a job with online probes but ZERO eligible ones is the
+    # silent failure that looks like "the probe does nothing" — the job stays
+    # pending and the probe idles "waiting for jobs", with nothing explaining the
+    # mismatch. Record the precise per-probe reason so it is diagnosable instead
+    # of invisible. HTTP polling applies the identical gate, so this covers both
+    # delivery paths.
+    if online_rows and not eligible_agents:
+        logger.warning(
+            "agent.job.no_eligible_probe",
+            job_id=str(job.id),
+            job_type=job.job_type.value,
+            use_case_id=resolved_use_case_id,
+            engagement_scope=list(eng.scope_cidrs or []),
+            online_probe_count=len(online_rows),
+            reasons={
+                str(candidate.id): _ineligibility_reason(
+                    candidate, job.job_type, job_params, eng.scope_cidrs or [])
+                for candidate in online_rows
+            },
+        )
 
     # The claim runs in another DB session, so commit before offering the job.
     await db.commit()

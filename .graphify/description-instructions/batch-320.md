@@ -1,4 +1,4 @@
-# Node Description Batch 321 of 330
+# Node Description Batch 321 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,53 +19,51 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-LANGUAGE: each entry has a `lang=` marker giving the language of its source.
-Write that entry's description in EXACTLY that language. Do not translate to
-a single common language — match each node's source language individually.
+Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "versions_0023_customer_portal_foundation_rationale_1": "Customer portal foundation (Part 2, Phase 0): client role, engagement↔agent assi" | kind=entity | source=manager/backend/alembic/versions/0023_customer_portal_foundation.py:L1 | neighbors=[0023_customer_portal_foundation.py] | lang=en
-- "versions_0023_customer_portal_foundation_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0023_customer_portal_foundation.py:L19 | neighbors=[0023_customer_portal_foundation.py] | lang=en
-- "versions_0024_device_role_inventory_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0024_device_role_inventory.py:L33 | neighbors=[0024_device_role_inventory.py] | lang=en
-- "versions_0024_device_role_inventory_rationale_1": "Device-role inventory: persist the probe device_classifier's role on assets.  Ad" | kind=entity | source=manager/backend/alembic/versions/0024_device_role_inventory.py:L1 | neighbors=[0024_device_role_inventory.py] | lang=en
-- "versions_0024_device_role_inventory_rationale_37": "# NOTE: Postgres cannot DROP a single enum value; the added 'printer' /" | kind=entity | source=manager/backend/alembic/versions/0024_device_role_inventory.py:L37 | neighbors=[0024_device_role_inventory.py] | lang=en
-- "versions_0024_device_role_inventory_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0024_device_role_inventory.py:L22 | neighbors=[0024_device_role_inventory.py] | lang=en
-- "versions_0025_service_exposure_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0025_service_exposure.py:L25 | neighbors=[0025_service_exposure.py] | lang=en
-- "versions_0025_service_exposure_rationale_1": "Service exposure: persist the exposure_matrix reachability verdict.  Adds servic" | kind=entity | source=manager/backend/alembic/versions/0025_service_exposure.py:L1 | neighbors=[0025_service_exposure.py] | lang=en
-- "versions_0025_service_exposure_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0025_service_exposure.py:L21 | neighbors=[0025_service_exposure.py] | lang=en
-- "versions_0026_client_portal_slug_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0026_client_portal_slug.py:L29 | neighbors=[0026_client_portal_slug.py] | lang=en
-- "versions_0026_client_portal_slug_rationale_1": "Client portal slug — the customer's stable 'user as domain' handle.  Adds users." | kind=entity | source=manager/backend/alembic/versions/0026_client_portal_slug.py:L1 | neighbors=[0026_client_portal_slug.py] | lang=en
-- "versions_0026_client_portal_slug_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0026_client_portal_slug.py:L22 | neighbors=[0026_client_portal_slug.py] | lang=en
-- "versions_0027_scan_request_targets_intensity_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0027_scan_request_targets_intensity.py:L39 | neighbors=[0027_scan_request_targets_intensity.py] | lang=en
-- "versions_0027_scan_request_targets_intensity_rationale_1": "Scan-request targets + intensity — the rich customer scan request.  Adds two nul" | kind=entity | source=manager/backend/alembic/versions/0027_scan_request_targets_intensity.py:L1 | neighbors=[0027_scan_request_targets_intensity.py] | lang=en
-- "versions_0027_scan_request_targets_intensity_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0027_scan_request_targets_intensity.py:L28 | neighbors=[0027_scan_request_targets_intensity.py] | lang=en
-- "versions_0028_remediation_plans_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0028_remediation_plans.py:L51 | neighbors=[0028_remediation_plans.py] | lang=en
-- "versions_0028_remediation_plans_rationale_1": "Remediation plans — cached, OS-specific, structured remediation for a finding." | kind=entity | source=manager/backend/alembic/versions/0028_remediation_plans.py:L1 | neighbors=[0028_remediation_plans.py] | lang=en
-- "versions_0028_remediation_plans_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0028_remediation_plans.py:L22 | neighbors=[0028_remediation_plans.py] | lang=en
-- "versions_0030_sla_policies_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0030_sla_policies.py:L42 | neighbors=[0030_sla_policies.py] | lang=en
-- "versions_0030_sla_policies_rationale_1": "SLA policies — per-tenant custom remediation windows (hours per severity).  One" | kind=entity | source=manager/backend/alembic/versions/0030_sla_policies.py:L1 | neighbors=[0030_sla_policies.py] | lang=it
-- "versions_0030_sla_policies_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0030_sla_policies.py:L21 | neighbors=[0030_sla_policies.py] | lang=en
-- "versions_0031_integrations_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0031_integrations.py:L42 | neighbors=[0031_integrations.py] | lang=en
-- "versions_0031_integrations_rationale_1": "Integrations — per-tenant notification config (email / Slack / Jira).  One row p" | kind=entity | source=manager/backend/alembic/versions/0031_integrations.py:L1 | neighbors=[0031_integrations.py] | lang=en
-- "versions_0031_integrations_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0031_integrations.py:L21 | neighbors=[0031_integrations.py] | lang=en
-- "versions_0032_scan_request_use_case_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0032_scan_request_use_case.py:L29 | neighbors=[0032_scan_request_use_case.py] | lang=en
-- "versions_0032_scan_request_use_case_rationale_1": "scan_requests.use_case_id — the capability use-case a customer requested.  The p" | kind=entity | source=manager/backend/alembic/versions/0032_scan_request_use_case.py:L1 | neighbors=[0032_scan_request_use_case.py] | lang=en
-- "versions_0032_scan_request_use_case_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0032_scan_request_use_case.py:L22 | neighbors=[0032_scan_request_use_case.py] | lang=en
-- "versions_0033_finding_events_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0033_finding_events.py:L47 | neighbors=[0033_finding_events.py] | lang=en
-- "versions_0033_finding_events_rationale_1": "Finding lifecycle audit trail — append-only per-finding event log.  One row per" | kind=entity | source=manager/backend/alembic/versions/0033_finding_events.py:L1 | neighbors=[0033_finding_events.py] | lang=it
-- "versions_0033_finding_events_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0033_finding_events.py:L23 | neighbors=[0033_finding_events.py] | lang=en
-- "versions_0034_run_lease_worker_heartbeat_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0034_run_lease_worker_heartbeat.py:L54 | neighbors=[0034_run_lease_worker_heartbeat.py] | lang=en
-- "versions_0034_run_lease_worker_heartbeat_rationale_1": "Stage 2b: DetectionRun lease + worker heartbeat (precise liveness).  Two additiv" | kind=entity | source=manager/backend/alembic/versions/0034_run_lease_worker_heartbeat.py:L1 | neighbors=[0034_run_lease_worker_heartbeat.py] | lang=en
-- "versions_0034_run_lease_worker_heartbeat_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0034_run_lease_worker_heartbeat.py:L31 | neighbors=[0034_run_lease_worker_heartbeat.py] | lang=en
-- "versions_0035_engagement_lifecycle_states_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0035_engagement_lifecycle_states.py:L44 | neighbors=[0035_engagement_lifecycle_states.py] | lang=en
-- "versions_0035_engagement_lifecycle_states_rationale_1": "engagement lifecycle: add 'ongoing' and 'running' states  The engagement lifecyc" | kind=entity | source=manager/backend/alembic/versions/0035_engagement_lifecycle_states.py:L1 | neighbors=[0035_engagement_lifecycle_states.py] | lang=en
-- "versions_0035_engagement_lifecycle_states_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0035_engagement_lifecycle_states.py:L39 | neighbors=[0035_engagement_lifecycle_states.py] | lang=en
-- "versions_0036_scan_job_reference_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0036_scan_job_reference.py:L78 | neighbors=[0036_scan_job_reference.py] | lang=en
-- "versions_0036_scan_job_reference_rationale_1": "scan jobs get a human-readable reference (SCN-YYMMDD-XXXXXX)  A scan job could o" | kind=entity | source=manager/backend/alembic/versions/0036_scan_job_reference.py:L1 | neighbors=[0036_scan_job_reference.py] | lang=pt
-- "versions_0036_scan_job_reference_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0036_scan_job_reference.py:L31 | neighbors=[0036_scan_job_reference.py] | lang=en
-- "versions_0037_scan_job_cancelled_status_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0037_scan_job_cancelled_status.py:L40 | neighbors=[0037_scan_job_cancelled_status.py] | lang=en
+- "utils_hash_rationale_1": "Shared hashing utilities — deduplication keys, fingerprinting." | kind=entity | source=manager/backend/app/utils/hash.py:L1 | neighbors=[hash.py]
+- "utils_hash_rationale_11": "SHA-256 of (asset_id, cve_id, plugin_id) for finding deduplication.      Used by" | kind=entity | source=manager/backend/app/utils/hash.py:L11 | neighbors=[dedup_hash()]
+- "utils_pagination_rationale_12": "Returns (items, total). Applies OFFSET/LIMIT to `query`." | kind=entity | source=manager/backend/app/utils/pagination.py:L12 | neighbors=[paginate_query()]
+- "verify_route_post": "POST()" | kind=code-symbol | source=manager/frontend/app/api/auth/verify/route.ts:L6 | neighbors=[route.ts]
+- "versions_0001_initial_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0001_initial.py:L174 | neighbors=[0001_initial.py]
+- "versions_0001_initial_rationale_1": "Initial schema — all tables  Revision ID: 0001 Revises: Create Date: 2026-05-19" | kind=entity | source=manager/backend/alembic/versions/0001_initial.py:L1 | neighbors=[0001_initial.py]
+- "versions_0001_initial_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0001_initial.py:L19 | neighbors=[0001_initial.py]
+- "versions_0002_services_agents_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0002_services_agents.py:L59 | neighbors=[0002_services_agents.py]
+- "versions_0002_services_agents_rationale_1": "Add services and agents tables  Revision ID: 0002 Revises: 0001 Create Date: 202" | kind=entity | source=manager/backend/alembic/versions/0002_services_agents.py:L1 | neighbors=[0002_services_agents.py]
+- "versions_0002_services_agents_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0002_services_agents.py:L19 | neighbors=[0002_services_agents.py]
+- "versions_0003_vuln_scan_fields_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0003_vuln_scan_fields.py:L43 | neighbors=[0003_vuln_scan_fields.py]
+- "versions_0003_vuln_scan_fields_rationale_1": "Add enrichment fields index + webhook column to engagements  Revision ID: 0003 R" | kind=entity | source=manager/backend/alembic/versions/0003_vuln_scan_fields.py:L1 | neighbors=[0003_vuln_scan_fields.py]
+- "versions_0003_vuln_scan_fields_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0003_vuln_scan_fields.py:L18 | neighbors=[0003_vuln_scan_fields.py]
+- "versions_0004_exploit_tables_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0004_exploit_tables.py:L93 | neighbors=[0004_exploit_tables.py]
+- "versions_0004_exploit_tables_rationale_1": "Exploit results, approvals, and audit log tables  Revision ID: 0004 Revises: 000" | kind=entity | source=manager/backend/alembic/versions/0004_exploit_tables.py:L1 | neighbors=[0004_exploit_tables.py]
+- "versions_0004_exploit_tables_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0004_exploit_tables.py:L19 | neighbors=[0004_exploit_tables.py]
+- "versions_0005_detection_validation_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0005_detection_validation.py:L80 | neighbors=[0005_detection_validation.py]
+- "versions_0005_detection_validation_rationale_1": "Detection validation: attack_timeline, detection_configs, extend detection_resul" | kind=entity | source=manager/backend/alembic/versions/0005_detection_validation.py:L1 | neighbors=[0005_detection_validation.py]
+- "versions_0005_detection_validation_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0005_detection_validation.py:L19 | neighbors=[0005_detection_validation.py]
+- "versions_0006_llm_outputs_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0006_llm_outputs.py:L48 | neighbors=[0006_llm_outputs.py]
+- "versions_0006_llm_outputs_rationale_1": "AI engine: llm_outputs table + reviewstatus enum  Revision ID: 0006 Revises: 000" | kind=entity | source=manager/backend/alembic/versions/0006_llm_outputs.py:L1 | neighbors=[0006_llm_outputs.py]
+- "versions_0006_llm_outputs_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0006_llm_outputs.py:L19 | neighbors=[0006_llm_outputs.py]
+- "versions_0007_scale_indexes_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0007_scale_indexes.py:L35 | neighbors=[0007_scale_indexes.py]
+- "versions_0007_scale_indexes_rationale_1": "P3: composite indexes for the hot aggregate + poll query paths.  The dashboard's" | kind=entity | source=manager/backend/alembic/versions/0007_scale_indexes.py:L1 | neighbors=[0007_scale_indexes.py]
+- "versions_0007_scale_indexes_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0007_scale_indexes.py:L22 | neighbors=[0007_scale_indexes.py]
+- "versions_0008_scan_results_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0008_scan_results.py:L39 | neighbors=[0008_scan_results.py]
+- "versions_0008_scan_results_rationale_1": "P3-#10: append-only scan_results table (raw facts).  Decouples the (large) raw f" | kind=entity | source=manager/backend/alembic/versions/0008_scan_results.py:L1 | neighbors=[0008_scan_results.py]
+- "versions_0008_scan_results_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0008_scan_results.py:L21 | neighbors=[0008_scan_results.py]
+- "versions_0009_outbox_events_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0009_outbox_events.py:L45 | neighbors=[0009_outbox_events.py]
+- "versions_0009_outbox_events_rationale_1": "Transactional outbox for durable background work (detection, etc.).  Producers i" | kind=entity | source=manager/backend/alembic/versions/0009_outbox_events.py:L1 | neighbors=[0009_outbox_events.py]
+- "versions_0009_outbox_events_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0009_outbox_events.py:L23 | neighbors=[0009_outbox_events.py]
+- "versions_0010_detection_runs_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0010_detection_runs.py:L63 | neighbors=[0010_detection_runs.py]
+- "versions_0010_detection_runs_rationale_1": "Temporal detection: detection_runs table + finding provenance columns.  Records" | kind=entity | source=manager/backend/alembic/versions/0010_detection_runs.py:L1 | neighbors=[0010_detection_runs.py]
+- "versions_0010_detection_runs_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0010_detection_runs.py:L23 | neighbors=[0010_detection_runs.py]
+- "versions_0011_job_lease_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0011_job_lease.py:L33 | neighbors=[0011_job_lease.py]
+- "versions_0011_job_lease_rationale_1": "Job leasing: scan_jobs.lease_expires_at for the dead-probe reaper.  A claimed (r" | kind=entity | source=manager/backend/alembic/versions/0011_job_lease.py:L1 | neighbors=[0011_job_lease.py]
+- "versions_0011_job_lease_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0011_job_lease.py:L21 | neighbors=[0011_job_lease.py]
+- "versions_0012_agent_recommendations_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0012_agent_recommendations.py:L48 | neighbors=[0012_agent_recommendations.py]
+- "versions_0012_agent_recommendations_rationale_1": "Agentic AI advisor: agent_recommendations (recommend-only, human-approved).  Sto" | kind=entity | source=manager/backend/alembic/versions/0012_agent_recommendations.py:L1 | neighbors=[0012_agent_recommendations.py]
+- "versions_0012_agent_recommendations_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0012_agent_recommendations.py:L22 | neighbors=[0012_agent_recommendations.py]
 
 ## Instructions
 

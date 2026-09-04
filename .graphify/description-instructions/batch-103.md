@@ -1,4 +1,4 @@
-# Node Description Batch 104 of 330
+# Node Description Batch 104 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -17,6 +17,8 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
+- "scanner_cpe_extract_version": "_extract_version()" | kind=code-symbol | source=probe/scanner/cpe.py:L103 | neighbors=[cpe.py, Prefer an explicit version field; else …, to_cpe()]
+- "scanner_cpe_to_cpe": "to_cpe()" | kind=code-symbol | source=probe/scanner/cpe.py:L116 | neighbors=[cpe.py, Return {vendor, product, version, cpe23…, _extract_version()]
 - "scanner_db_scanner_dbscanner_scan_port": "._scan_port()" | kind=code-symbol | source=probe/scanner/db_scanner.py:L266 | neighbors=[DBScanner, ._probe_one(), .scan_target()]
 - "scanner_db_scanner_interpret_redis_info": "interpret_redis_info()" | kind=code-symbol | source=probe/scanner/db_scanner.py:L101 | neighbors=[db_scanner.py, _probe_redis(), Classify a Redis INFO reply. `unauthent…]
 - "scanner_dns_scanner_derive_zones": "derive_zones()" | kind=code-symbol | source=probe/scanner/dns_scanner.py:L55 | neighbors=[dns_scanner.py, ._probe(), Candidate zone names to try AXFR / DNSS…]
@@ -55,8 +57,6 @@ one-sentence description — no prose, no markdown fences.
 - "scanner_nfs_scanner_parse_rpc_reply": "_parse_rpc_reply()" | kind=code-symbol | source=probe/scanner/nfs_scanner.py:L166 | neighbors=[nfs_scanner.py, Strip the ONC-RPC reply header; return …, _rpc_call()]
 - "scanner_nfs_scanner_xdr_opaque": ".opaque()" | kind=code-symbol | source=probe/scanner/nfs_scanner.py:L70 | neighbors=[_XDR, .u32(), .string()]
 - "scanner_nfs_scanner_xdr_string": ".string()" | kind=code-symbol | source=probe/scanner/nfs_scanner.py:L78 | neighbors=[parse_mount_export(), _XDR, .opaque()]
-- "scanner_nmap_wrapper_validated_extra_args": "_validated_extra_args()" | kind=code-symbol | source=probe/scanner/nmap_wrapper.py:L75 | neighbors=[nmap_wrapper.py, Allow tuning only; target, script, and …, Allow tuning only; target, script, and …]
-- "scanner_os_fingerprint_accept_echo_reply": "accept_echo_reply()" | kind=code-symbol | source=probe/scanner/os_fingerprint.py:L137 | neighbors=[os_fingerprint.py, ._icmp_echo_ttl(), True only for an ICMP ECHO reply that a…]
 
 ## Instructions
 

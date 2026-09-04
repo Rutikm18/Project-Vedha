@@ -1,4 +1,4 @@
-# Node Description Batch 80 of 330
+# Node Description Batch 80 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -17,6 +17,12 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
+- "services_remediation_kb_recipe_for_finding": "recipe_for_finding()" | kind=code-symbol | source=manager/backend/app/services/remediation_kb.py:L346 | neighbors=[remediation_kb.py, Return a structured, OS-filtered remedi…, classify_finding(), os_key()]
+- "services_scope_targets_validate_targets_in_scope": "validate_targets_in_scope()" | kind=code-symbol | source=manager/backend/app/services/scope_targets.py:L66 | neighbors=[scope_targets.py, Return the normalized list of authorize…, _expand_requested(), _parse_networks()]
+- "services_sla_summarize": "summarize()" | kind=code-symbol | source=manager/backend/app/services/sla.py:L113 | neighbors=[sla.py, Aggregate SLA states across a set of fi…, compute(), Aggregate SLA states across a set of fi…]
+- "services_validation_ingest_ingest_validation_result": "ingest_validation_result()" | kind=code-symbol | source=manager/backend/app/services/validation_ingest.py:L51 | neighbors=[validation_ingest.py, apply_validation_outcome(), looks_like_validation_result(), If ``job_id`` belongs to a ValidationRe…]
+- "settings_page_inlineinput": "inlineInput()" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L183 | neighbors=[page.tsx, ApiKeysSection(), AuditLogSection(), IntegrationSection()]
+- "supporting_research_evidence_store_identityresult": "IdentityResult" | kind=code-symbol | source=Supporting_research/evidence_store.py:L133 | neighbors=[evidence_store.py, .asset_count(), .observations_for(), resolve_identity()]
 - "supporting_research_evidence_store_time_travel": "time_travel()" | kind=code-symbol | source=Supporting_research/evidence_store.py:L378 | neighbors=[evidence_store.py, Audit-grade: what did the evidence supp…, AssetVerdict, retroactive_detect()]
 - "supporting_research_test_evidence_store_ssh_obs": "ssh_obs()" | kind=code-symbol | source=Supporting_research/test_evidence_store.py:L32 | neighbors=[test_evidence_store.py, build_fleet(), .test_hostname_never_overrides_a_finger…, .test_third_party_conclusions_are_kept_…]
 - "tests_backend_auth_test": "backend-auth.test.ts" | kind=code-symbol | source=manager/frontend/tests/backend-auth.test.ts:L1 | neighbors=[1fe16c8 stable but some dead code, need…, backend.ts, bearerFrom(), cookieFrom()]
@@ -51,12 +57,6 @@ one-sentence description — no prose, no markdown fences.
 - "tests_test_customer_access_testapprovescanrequest_test_approve_without_assigned_agent_is_conflict": ".test_approve_without_assigned_agent_is_conflict()" | kind=code-symbol | source=manager/backend/tests/test_customer_access.py:L169 | neighbors=[TestApproveScanRequest, _mock_db(), _operator(), _pending_request()]
 - "tests_test_customer_access_testbuildscanjob": "TestBuildScanJob" | kind=code-symbol | source=manager/backend/tests/test_customer_access.py:L58 | neighbors=[test_customer_access.py, .test_dispatches_on_the_assigned_agent(), .test_no_assigned_agent_raises(), .test_unknown_scan_type_falls_back_to_v…]
 - "tests_test_customer_access_testprovisionclientuser": "TestProvisionClientUser" | kind=code-symbol | source=manager/backend/tests/test_customer_access.py:L89 | neighbors=[test_customer_access.py, .test_creates_a_scoped_client_login(), .test_duplicate_email_in_tenant_is_conf…, .test_duplicate_is_conflict()]
-- "tests_test_customer_access_testprovisionclientuser_test_creates_a_scoped_client_login": ".test_creates_a_scoped_client_login()" | kind=code-symbol | source=manager/backend/tests/test_customer_access.py:L90 | neighbors=[TestProvisionClientUser, _added(), _mock_db(), _operator()]
-- "tests_test_customer_access_testprovisionclientuser_test_duplicate_email_in_tenant_is_conflict": ".test_duplicate_email_in_tenant_is_conflict()" | kind=code-symbol | source=manager/backend/tests/test_customer_access.py:L124 | neighbors=[An email already used elsewhere in the …, TestProvisionClientUser, _mock_db(), _operator()]
-- "tests_test_customer_access_testrejectscanrequest_test_reject_records_reason": ".test_reject_records_reason()" | kind=code-symbol | source=manager/backend/tests/test_customer_access.py:L194 | neighbors=[TestRejectScanRequest, _mock_db(), _operator(), _pending_request()]
-- "tests_test_customer_reveal_db": "_db()" | kind=code-symbol | source=manager/backend/tests/test_customer_reveal.py:L21 | neighbors=[test_customer_reveal.py, test_reveal_missing_user_is_404(), test_reveal_null_ciphertext_returns_non…, test_reveal_returns_decrypted_password()]
-- "tests_test_customer_reveal_operator": "_operator()" | kind=code-symbol | source=manager/backend/tests/test_customer_reveal.py:L17 | neighbors=[test_customer_reveal.py, test_reveal_missing_user_is_404(), test_reveal_null_ciphertext_returns_non…, test_reveal_returns_decrypted_password()]
-- "tests_test_customer_reveal_test_reveal_null_ciphertext_returns_none": "test_reveal_null_ciphertext_returns_none()" | kind=code-symbol | source=manager/backend/tests/test_customer_reveal.py:L42 | neighbors=[test_customer_reveal.py, _db(), _operator(), _user()]
 
 ## Instructions
 

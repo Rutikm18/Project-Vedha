@@ -1,4 +1,4 @@
-# Node Description Batch 286 of 330
+# Node Description Batch 286 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,53 +19,51 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-LANGUAGE: each entry has a `lang=` marker giving the language of its source.
-Write that entry's description in EXACTLY that language. Do not translate to
-a single common language — match each node's source language individually.
+Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_main_scripts_errno_rationale_1": "test_main_scripts_errno.py — Phase 2: shared TCP/UDP errno classification.  Veri" | kind=entity | source=probe/tests/test_main_scripts_errno.py:L1 | neighbors=[test_main_scripts_errno.py] | lang=en
-- "tests_test_main_scripts_errno_test_dns_failure_is_error_not_filtered": "test_dns_failure_is_error_not_filtered()" | kind=code-symbol | source=probe/tests/test_main_scripts_errno.py:L45 | neighbors=[test_main_scripts_errno.py] | lang=en
-- "tests_test_main_scripts_errno_test_errno_none_falls_back_to_os_error": "test_errno_none_falls_back_to_os_error()" | kind=code-symbol | source=probe/tests/test_main_scripts_errno.py:L41 | neighbors=[test_main_scripts_errno.py] | lang=en
-- "tests_test_main_scripts_errno_test_port_scanner_uses_the_same_shared_classifier": "test_port_scanner_uses_the_same_shared_classifier()" | kind=code-symbol | source=probe/tests/test_main_scripts_errno.py:L58 | neighbors=[test_main_scripts_errno.py] | lang=en
-- "tests_test_main_scripts_findings_rationale_1": "test_main_scripts_findings.py — the findings interpretation layer.  Pure-logic," | kind=entity | source=probe/tests/test_main_scripts_findings.py:L1 | neighbors=[test_main_scripts_findings.py] | lang=en
-- "tests_test_main_scripts_findings_test_build_service_index_extracts_confirmed_services": "test_build_service_index_extracts_confirmed_services()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L198 | neighbors=[test_main_scripts_findings.py] | lang=en
-- "tests_test_main_scripts_hardening_rationale_1": "test_main_scripts_hardening.py — verifies the Phase-1 correctness fixes applied" | kind=entity | source=probe/tests/test_main_scripts_hardening.py:L1 | neighbors=[test_main_scripts_hardening.py] | lang=en
-- "tests_test_main_scripts_hardening_rationale_101": "A 64-byte SMB2 header. Caller prepends a 4-byte NBT transport prefix, so     Pro" | kind=entity | source=probe/tests/test_main_scripts_hardening.py:L101 | neighbors=[_smb2_header()] | lang=pt
-- "tests_test_main_scripts_hardening_rationale_123": "STATUS_INVALID_PARAMETER error response: same header, body StructureSize 9," | kind=entity | source=probe/tests/test_main_scripts_hardening.py:L123 | neighbors=[make_smb2_error()] | lang=en
-- "tests_test_main_scripts_hardening_testosconfidence_test_linux_ttl_only_capped": ".test_linux_ttl_only_capped()" | kind=code-symbol | source=probe/tests/test_main_scripts_hardening.py:L92 | neighbors=[TestOsConfidence] | lang=en
-- "tests_test_main_scripts_hardening_testosconfidence_test_no_signal_is_unknown": ".test_no_signal_is_unknown()" | kind=code-symbol | source=probe/tests/test_main_scripts_hardening.py:L87 | neighbors=[TestOsConfidence] | lang=en
-- "tests_test_main_scripts_hardening_testosconfidence_test_ttl_only_is_not_absolute": ".test_ttl_only_is_not_absolute()" | kind=code-symbol | source=probe/tests/test_main_scripts_hardening.py:L74 | neighbors=[TestOsConfidence] | lang=en
-- "tests_test_main_scripts_hardening_testosconfidence_test_two_signals_beat_one": ".test_two_signals_beat_one()" | kind=code-symbol | source=probe/tests/test_main_scripts_hardening.py:L81 | neighbors=[TestOsConfidence] | lang=en
-- "tests_test_main_scripts_hardening_testsmbparsing_test_negotiate_request_excludes_smb311": ".test_negotiate_request_excludes_smb311()" | kind=code-symbol | source=probe/tests/test_main_scripts_hardening.py:L152 | neighbors=[TestSmbParsing] | lang=en
-- "tests_test_main_scripts_hardening_testsmbparsing_test_negotiate_request_offers_smb311_with_preauth_context": ".test_negotiate_request_offers_smb311_with_preauth_context()" | kind=code-symbol | source=probe/tests/test_main_scripts_hardening.py:L152 | neighbors=[TestSmbParsing] | lang=en
-- "tests_test_main_scripts_ja4s_rationale_1": "test_main_scripts_ja4s.py — JA4S TLS ServerHello fingerprint (advanced capabilit" | kind=entity | source=probe/tests/test_main_scripts_ja4s.py:L1 | neighbors=[test_main_scripts_ja4s.py] | lang=en
-- "tests_test_main_scripts_ja4s_test_empty_extensions_sentinel": "test_empty_extensions_sentinel()" | kind=code-symbol | source=probe/tests/test_main_scripts_ja4s.py:L48 | neighbors=[test_main_scripts_ja4s.py] | lang=en
-- "tests_test_main_scripts_ja4s_test_extension_hash_is_order_sensitive": "test_extension_hash_is_order_sensitive()" | kind=code-symbol | source=probe/tests/test_main_scripts_ja4s.py:L53 | neighbors=[test_main_scripts_ja4s.py] | lang=en
-- "tests_test_main_scripts_ja4s_test_ja4s_from_bad_serverhello_is_none": "test_ja4s_from_bad_serverhello_is_none()" | kind=code-symbol | source=probe/tests/test_main_scripts_ja4s.py:L73 | neighbors=[test_main_scripts_ja4s.py] | lang=en
-- "tests_test_main_scripts_ja4s_test_ja4s_from_fields_shape_and_parts": "test_ja4s_from_fields_shape_and_parts()" | kind=code-symbol | source=probe/tests/test_main_scripts_ja4s.py:L31 | neighbors=[test_main_scripts_ja4s.py] | lang=en
-- "tests_test_main_scripts_ja4s_test_suspicious_ja4s_finding_fires_only_on_match": "test_suspicious_ja4s_finding_fires_only_on_match()" | kind=code-symbol | source=probe/tests/test_main_scripts_ja4s.py:L78 | neighbors=[test_main_scripts_ja4s.py] | lang=en
-- "tests_test_main_scripts_ja4s_test_version_and_alpn_encodings": "test_version_and_alpn_encodings()" | kind=code-symbol | source=probe/tests/test_main_scripts_ja4s.py:L40 | neighbors=[test_main_scripts_ja4s.py] | lang=en
-- "tests_test_main_scripts_ja4x_rationale_1": "test_main_scripts_ja4x.py — JA4X X.509 certificate fingerprinting (advanced capa" | kind=entity | source=probe/tests/test_main_scripts_ja4x.py:L1 | neighbors=[test_main_scripts_ja4x.py] | lang=en
-- "tests_test_main_scripts_ja4x_test_empty_list_hashes_to_sentinel": "test_empty_list_hashes_to_sentinel()" | kind=code-symbol | source=probe/tests/test_main_scripts_ja4x.py:L38 | neighbors=[test_main_scripts_ja4x.py] | lang=en
-- "tests_test_main_scripts_ja4x_test_ja4x_format_is_three_12hex_fields": "test_ja4x_format_is_three_12hex_fields()" | kind=code-symbol | source=probe/tests/test_main_scripts_ja4x.py:L30 | neighbors=[test_main_scripts_ja4x.py] | lang=en
-- "tests_test_main_scripts_ja4x_test_ja4x_from_cert_handles_garbage": "test_ja4x_from_cert_handles_garbage()" | kind=code-symbol | source=probe/tests/test_main_scripts_ja4x.py:L65 | neighbors=[test_main_scripts_ja4x.py] | lang=en
-- "tests_test_main_scripts_ja4x_test_ja4x_is_deterministic_and_order_sensitive": "test_ja4x_is_deterministic_and_order_sensitive()" | kind=code-symbol | source=probe/tests/test_main_scripts_ja4x.py:L43 | neighbors=[test_main_scripts_ja4x.py] | lang=en
-- "tests_test_main_scripts_ja4x_test_match_suspicious_registry": "test_match_suspicious_registry()" | kind=code-symbol | source=probe/tests/test_main_scripts_ja4x.py:L94 | neighbors=[test_main_scripts_ja4x.py] | lang=en
-- "tests_test_main_scripts_ja4x_test_oid_to_hex_known_values": "test_oid_to_hex_known_values()" | kind=code-symbol | source=probe/tests/test_main_scripts_ja4x.py:L21 | neighbors=[test_main_scripts_ja4x.py] | lang=en
-- "tests_test_main_scripts_ja4x_test_real_self_signed_cert_round_trip": "test_real_self_signed_cert_round_trip()" | kind=code-symbol | source=probe/tests/test_main_scripts_ja4x.py:L72 | neighbors=[test_main_scripts_ja4x.py] | lang=en
-- "tests_test_main_scripts_ja4x_test_self_signed_finding_carries_ja4x_for_correlation": "test_self_signed_finding_carries_ja4x_for_correlation()" | kind=code-symbol | source=probe/tests/test_main_scripts_ja4x.py:L123 | neighbors=[test_main_scripts_ja4x.py] | lang=en
-- "tests_test_main_scripts_ja4x_test_suspicious_fingerprint_finding_fires_only_on_match": "test_suspicious_fingerprint_finding_fires_only_on_match()" | kind=code-symbol | source=probe/tests/test_main_scripts_ja4x.py:L104 | neighbors=[test_main_scripts_ja4x.py] | lang=en
-- "tests_test_main_scripts_rdp_rationale_1": "test_main_scripts_rdp.py — Phase 18: protocol-level RDP confirmation + NLA detec" | kind=entity | source=probe/tests/test_main_scripts_rdp.py:L1 | neighbors=[test_main_scripts_rdp.py] | lang=en
-- "tests_test_main_scripts_rdp_rationale_16": "A TPKT + X.224 Connection Confirm, optionally carrying an rdpNeg PDU." | kind=entity | source=probe/tests/test_main_scripts_rdp.py:L16 | neighbors=[_cc()] | lang=en
-- "tests_test_main_scripts_rdp_rationale_18": "A TPKT + X.224 Connection Confirm, optionally carrying an rdpNeg PDU." | kind=entity | source=probe/tests/test_main_scripts_rdp.py:L18 | neighbors=[_cc()] | lang=en
-- "tests_test_main_scripts_rdp_test_connection_request_is_valid_tpkt_and_requests_protocols": "test_connection_request_is_valid_tpkt_and_requests_protocols()" | kind=code-symbol | source=probe/tests/test_main_scripts_rdp.py:L25 | neighbors=[test_main_scripts_rdp.py] | lang=en
-- "tests_test_main_scripts_rdp_test_main_cli_runs_and_writes_finding": "test_main_cli_runs_and_writes_finding()" | kind=code-symbol | source=probe/tests/test_main_scripts_rdp.py:L108 | neighbors=[test_main_scripts_rdp.py] | lang=en
-- "tests_test_main_scripts_rdp_test_nla_not_required_when_rdp_only_accepted": "test_nla_not_required_when_rdp_only_accepted()" | kind=code-symbol | source=probe/tests/test_main_scripts_rdp.py:L74 | neighbors=[test_main_scripts_rdp.py] | lang=en
-- "tests_test_main_scripts_rdp_test_nla_required_when_rdp_only_probe_refused": "test_nla_required_when_rdp_only_probe_refused()" | kind=code-symbol | source=probe/tests/test_main_scripts_rdp.py:L61 | neighbors=[test_main_scripts_rdp.py] | lang=en
-- "tests_test_main_scripts_rdp_test_non_rdp_data_is_none": "test_non_rdp_data_is_none()" | kind=code-symbol | source=probe/tests/test_main_scripts_rdp.py:L100 | neighbors=[test_main_scripts_rdp.py] | lang=en
+- "tests_test_loaders_rationale_86": "A JSON file that is valid JSON but missing the 'records' key         must raise" | kind=entity | source=manager/detection_engine/tests/test_loaders.py:L86 | neighbors=[.test_missing_required_key_raises()]
+- "tests_test_loaders_rationale_94": "A well-formed snapshot must load without error and return a VulnDB         that" | kind=entity | source=manager/detection_engine/tests/test_loaders.py:L94 | neighbors=[.test_valid_snapshot_loads_cleanly()]
+- "tests_test_loaders_testloadepsserrors_setup_method": ".setup_method()" | kind=code-symbol | source=manager/detection_engine/tests/test_loaders.py:L151 | neighbors=[TestLoadEpssErrors]
+- "tests_test_loaders_testloadepsserrors_test_malformed_epss_json_raises": ".test_malformed_epss_json_raises()" | kind=code-symbol | source=manager/detection_engine/tests/test_loaders.py:L158 | neighbors=[TestLoadEpssErrors]
+- "tests_test_loaders_testloadepsserrors_test_missing_epss_file_raises": ".test_missing_epss_file_raises()" | kind=code-symbol | source=manager/detection_engine/tests/test_loaders.py:L154 | neighbors=[TestLoadEpssErrors]
+- "tests_test_loaders_testloadkeverrors_setup_method": ".setup_method()" | kind=code-symbol | source=manager/detection_engine/tests/test_loaders.py:L125 | neighbors=[TestLoadKevErrors]
+- "tests_test_loaders_testloadkeverrors_test_malformed_kev_json_raises": ".test_malformed_kev_json_raises()" | kind=code-symbol | source=manager/detection_engine/tests/test_loaders.py:L132 | neighbors=[TestLoadKevErrors]
+- "tests_test_loaders_testloadkeverrors_test_missing_kev_file_raises": ".test_missing_kev_file_raises()" | kind=code-symbol | source=manager/detection_engine/tests/test_loaders.py:L128 | neighbors=[TestLoadKevErrors]
+- "tests_test_loaders_testloadsnapshoterrors_setup_method": ".setup_method()" | kind=code-symbol | source=manager/detection_engine/tests/test_loaders.py:L56 | neighbors=[TestLoadSnapshotErrors]
+- "tests_test_main_scripts_accuracy_rationale_1": "test_main_scripts_accuracy.py — Epic 6: the ground-truth accuracy harness.  Scor" | kind=entity | source=probe/tests/test_main_scripts_accuracy.py:L1 | neighbors=[test_main_scripts_accuracy.py]
+- "tests_test_main_scripts_accuracy_test_by_rule_breakdown": "test_by_rule_breakdown()" | kind=code-symbol | source=probe/tests/test_main_scripts_accuracy.py:L37 | neighbors=[test_main_scripts_accuracy.py]
+- "tests_test_main_scripts_accuracy_test_clean_host_has_zero_false_positives": "test_clean_host_has_zero_false_positives()" | kind=code-symbol | source=probe/tests/test_main_scripts_accuracy.py:L103 | neighbors=[test_main_scripts_accuracy.py]
+- "tests_test_main_scripts_accuracy_test_corpus_flags_a_missed_expected_finding": "test_corpus_flags_a_missed_expected_finding()" | kind=code-symbol | source=probe/tests/test_main_scripts_accuracy.py:L91 | neighbors=[test_main_scripts_accuracy.py]
+- "tests_test_main_scripts_accuracy_test_corpus_matches_real_engine_output": "test_corpus_matches_real_engine_output()" | kind=code-symbol | source=probe/tests/test_main_scripts_accuracy.py:L73 | neighbors=[test_main_scripts_accuracy.py]
+- "tests_test_main_scripts_accuracy_test_corpus_scores_port_states_when_ground_truth_given": "test_corpus_scores_port_states_when_ground_truth_given()" | kind=code-symbol | source=probe/tests/test_main_scripts_accuracy.py:L119 | neighbors=[test_main_scripts_accuracy.py]
+- "tests_test_main_scripts_accuracy_test_empty_expected_and_produced_is_perfect": "test_empty_expected_and_produced_is_perfect()" | kind=code-symbol | source=probe/tests/test_main_scripts_accuracy.py:L45 | neighbors=[test_main_scripts_accuracy.py]
+- "tests_test_main_scripts_accuracy_test_false_negative_lowers_recall": "test_false_negative_lowers_recall()" | kind=code-symbol | source=probe/tests/test_main_scripts_accuracy.py:L30 | neighbors=[test_main_scripts_accuracy.py]
+- "tests_test_main_scripts_accuracy_test_false_positive_lowers_precision": "test_false_positive_lowers_precision()" | kind=code-symbol | source=probe/tests/test_main_scripts_accuracy.py:L22 | neighbors=[test_main_scripts_accuracy.py]
+- "tests_test_main_scripts_accuracy_test_open_precision_recall_and_accuracy": "test_open_precision_recall_and_accuracy()" | kind=code-symbol | source=probe/tests/test_main_scripts_accuracy.py:L51 | neighbors=[test_main_scripts_accuracy.py]
+- "tests_test_main_scripts_accuracy_test_perfect_findings_score": "test_perfect_findings_score()" | kind=code-symbol | source=probe/tests/test_main_scripts_accuracy.py:L15 | neighbors=[test_main_scripts_accuracy.py]
+- "tests_test_main_scripts_accuracy_test_unscanned_open_port_is_false_negative": "test_unscanned_open_port_is_false_negative()" | kind=code-symbol | source=probe/tests/test_main_scripts_accuracy.py:L65 | neighbors=[test_main_scripts_accuracy.py]
+- "tests_test_main_scripts_adaptive_timeout_rationale_1": "test_main_scripts_adaptive_timeout.py — Phase 7: per-host adaptive probe timeout" | kind=entity | source=probe/tests/test_main_scripts_adaptive_timeout.py:L1 | neighbors=[test_main_scripts_adaptive_timeout.py]
+- "tests_test_main_scripts_adaptive_timeout_test_estimate_converges_on_stable_rtt": "test_estimate_converges_on_stable_rtt()" | kind=code-symbol | source=probe/tests/test_main_scripts_adaptive_timeout.py:L44 | neighbors=[test_main_scripts_adaptive_timeout.py]
+- "tests_test_main_scripts_adaptive_timeout_test_fast_lan_gets_short_timeout_slow_wan_gets_long": "test_fast_lan_gets_short_timeout_slow_wan_gets_long()" | kind=code-symbol | source=probe/tests/test_main_scripts_adaptive_timeout.py:L25 | neighbors=[test_main_scripts_adaptive_timeout.py]
+- "tests_test_main_scripts_adaptive_timeout_test_first_sample_sets_srtt_and_timeout": "test_first_sample_sets_srtt_and_timeout()" | kind=code-symbol | source=probe/tests/test_main_scripts_adaptive_timeout.py:L18 | neighbors=[test_main_scripts_adaptive_timeout.py]
+- "tests_test_main_scripts_adaptive_timeout_test_invalid_band_rejected": "test_invalid_band_rejected()" | kind=code-symbol | source=probe/tests/test_main_scripts_adaptive_timeout.py:L67 | neighbors=[test_main_scripts_adaptive_timeout.py]
+- "tests_test_main_scripts_adaptive_timeout_test_narrows_then_widens_after_outlier": "test_narrows_then_widens_after_outlier()" | kind=code-symbol | source=probe/tests/test_main_scripts_adaptive_timeout.py:L50 | neighbors=[test_main_scripts_adaptive_timeout.py]
+- "tests_test_main_scripts_adaptive_timeout_test_no_samples_returns_base": "test_no_samples_returns_base()" | kind=code-symbol | source=probe/tests/test_main_scripts_adaptive_timeout.py:L14 | neighbors=[test_main_scripts_adaptive_timeout.py]
+- "tests_test_main_scripts_adaptive_timeout_test_observe_ignores_bad_samples": "test_observe_ignores_bad_samples()" | kind=code-symbol | source=probe/tests/test_main_scripts_adaptive_timeout.py:L38 | neighbors=[test_main_scripts_adaptive_timeout.py]
+- "tests_test_main_scripts_adaptive_timeout_test_timeout_is_clamped_to_max": "test_timeout_is_clamped_to_max()" | kind=code-symbol | source=probe/tests/test_main_scripts_adaptive_timeout.py:L33 | neighbors=[test_main_scripts_adaptive_timeout.py]
+- "tests_test_main_scripts_completeness_rationale_1": "test_main_scripts_completeness.py — Epic 4: set-based scan-completeness invarian" | kind=entity | source=probe/tests/test_main_scripts_completeness.py:L1 | neighbors=[test_main_scripts_completeness.py]
+- "tests_test_main_scripts_correlation_rationale_1": "test_main_scripts_correlation.py — Epic 2: correlation findings.  Composite, hig" | kind=entity | source=probe/tests/test_main_scripts_correlation.py:L1 | neighbors=[test_main_scripts_correlation.py]
+- "tests_test_main_scripts_coverage_closed": "_closed()" | kind=code-symbol | source=probe/tests/test_main_scripts_coverage.py:L76 | neighbors=[test_main_scripts_coverage.py]
+- "tests_test_main_scripts_coverage_rationale_1": "test_main_scripts_coverage.py — P0 coverage + self-health capabilities added to" | kind=entity | source=probe/tests/test_main_scripts_coverage.py:L1 | neighbors=[test_main_scripts_coverage.py]
+- "tests_test_main_scripts_coverage_testprofiles_test_custom_dedups_and_requires_ports": ".test_custom_dedups_and_requires_ports()" | kind=code-symbol | source=probe/tests/test_main_scripts_coverage.py:L64 | neighbors=[TestProfiles]
+- "tests_test_main_scripts_coverage_testprofiles_test_full_is_entire_tcp_space": ".test_full_is_entire_tcp_space()" | kind=code-symbol | source=probe/tests/test_main_scripts_coverage.py:L42 | neighbors=[TestProfiles]
+- "tests_test_main_scripts_coverage_testprofiles_test_quick_is_small_and_contains_smb": ".test_quick_is_small_and_contains_smb()" | kind=code-symbol | source=probe/tests/test_main_scripts_coverage.py:L54 | neighbors=[TestProfiles]
+- "tests_test_main_scripts_coverage_testprofiles_test_top100_is_100_unique": ".test_top100_is_100_unique()" | kind=code-symbol | source=probe/tests/test_main_scripts_coverage.py:L49 | neighbors=[TestProfiles]
+- "tests_test_main_scripts_coverage_testprofiles_test_top1000_covers_windows_ground_truth_extras": ".test_top1000_covers_windows_ground_truth_extras()" | kind=code-symbol | source=probe/tests/test_main_scripts_coverage.py:L58 | neighbors=[TestProfiles]
+- "tests_test_main_scripts_coverage_testprofiles_test_unknown_profile_raises": ".test_unknown_profile_raises()" | kind=code-symbol | source=probe/tests/test_main_scripts_coverage.py:L69 | neighbors=[TestProfiles]
 
 ## Instructions
 

@@ -401,7 +401,17 @@ export const aiReportStore = {
 import Anthropic from '@anthropic-ai/sdk';
 import type { LiveFinding } from './engine/types';
 import { TRIAGE_SYSTEM_PROMPT } from './prompts/triage';
-import { REPORT_SYSTEM_PROMPT } from './prompts/report';
+import {
+  REPORT_SYSTEM_PROMPT,
+  buildScorecard,
+  buildReportUserMessage,
+  validateReport,
+  normaliseSeverity,
+  type ScoreDomain,
+  type ScorecardInput,
+  type Confidence,
+  type ReportResult,
+} from './prompts/report';
 
 export interface ReportSession {
   clientName:     string;
@@ -409,15 +419,15 @@ export interface ReportSession {
   findings:       LiveFinding[];
   exploitResults: unknown[];
   engagementType: string;
+  /** Overall score from the previous assessment, so the executive summary can
+   *  describe the delta the prompt asks for. Omit for a first engagement. */
+  previousOverall?: number | null;
 }
 
-export interface ReportResult {
-  executive_summary: string;
-  risk_scorecard:    Record<string, number>;
-  findings:          unknown[];
-  remediation_roadmap: Record<string, string[]>;
-  positive_findings:   string[];
-}
+// ReportResult is now the deterministic-scorecard schema defined by the report
+// contract (lib/prompts/report.ts). Re-exported so any importer of
+// `ReportResult` from this module keeps resolving to the new shape.
+export type { ReportResult };
 
 function getClient(): Anthropic {
   return new Anthropic({ apiKey: process.env.ANTHROPIC_API_KEY });
@@ -468,17 +478,150 @@ export async function triageFindings(findings: LiveFinding[]): Promise<LiveFindi
   }
 }
 
+// ── LiveFinding → report-contract adapters ─────────────────────────────────
+// The scorecard is computed, not generated (see buildScorecard), but LiveFinding
+// carries no explicit domain/EPSS/KEV. Map those here with a transparent
+// heuristic (source + service + port) rather than an LLM guess — the whole point
+// of the deterministic scorecard is a number no one had to invent.
+
+const numOrNull = (v: string | undefined): number | null => {
+  if (v == null || v === '') return null;
+  const n = Number(v);
+  return Number.isFinite(n) ? n : null;
+};
+
+function classifyDomain(f: LiveFinding): ScoreDomain {
+  const src  = f.source;
+  const svc  = `${f.service ?? ''} ${f.protocol ?? ''}`.toLowerCase();
+  const port = f.port ?? 0;
+  if (src === 'nuclei' || src === 'httpx' || src === 'whatweb' || src === 'ffuf'
+      || /https?|www|web/.test(svc) || [80, 443, 8080, 8443, 8000, 8888].includes(port)) {
+    return 'web_application';
+  }
+  if (['ssh-audit', 'smb-enum', 'ldap-enum', 'netbios-enum', 'rdp-fingerprint', 'rpc-enum'].includes(src)
+      || /ssh|ldap|kerberos|smb|rdp|telnet|ftp|netbios|winrm|rpc|nfs/.test(svc)) {
+    return 'authentication';
+  }
+  if (src === 'testssl' || /tls|ssl|snmp|cert/.test(svc)) return 'configuration';
+  if ((f.cveIds?.length ?? 0) > 0 || src === 'openvas') return 'patch_management';
+  return 'network';
+}
+
+// buildScorecard treats "open" | "confirmed" as live exposure; anything else
+// drops out of the score.
+function mapStatus(s: LiveFinding['status']): string {
+  if (s === 'VERIFIED') return 'confirmed';
+  if (s === 'CLOSED') return 'closed';
+  return 'open'; // OPEN, IN_REVIEW, IN_REMEDIATION are still open exposure
+}
+
+function deriveConfidence(f: LiveFinding): Confidence {
+  if (f.status === 'VERIFIED') return 'confirmed';
+  if ((f.cveIds?.length ?? 0) > 0 || f.cvss) return 'likely';
+  return 'potential';
+}
+
+function toScorecardInput(session: ReportSession): ScorecardInput {
+  return {
+    previousOverall: session.previousOverall ?? null,
+    findings: session.findings
+      .filter((f) => !f.falsePositive)
+      .map((f) => ({
+        severity: normaliseSeverity(f.severity),
+        cvss: numOrNull(f.cvss),
+        epss: null,  // EPSS is not carried on LiveFinding — absent, not zero
+        kev: false,  // no KEV signal on LiveFinding yet
+        exploitValidated: f.status === 'VERIFIED',
+        status: mapStatus(f.status),
+        domain: classifyDomain(f),
+      })),
+  };
+}
+
+// The findings handed to the model: grounded, structured, and carrying the
+// confidence value the prompt is told to match (rule 5). This is the untrusted
+// payload buildReportUserMessage fences.
+function toModelFindings(session: ReportSession) {
+  return session.findings
+    .filter((f) => !f.falsePositive)
+    .map((f) => ({
+      finding_id: f.id,
+      title: f.title,
+      severity: normaliseSeverity(f.severity),
+      confidence: deriveConfidence(f),
+      validation_method: f.status === 'VERIFIED'
+        ? 'Safely validated during testing'
+        : `Observed via ${f.source}`,
+      affected_assets: [f.port ? `${f.host}:${f.port}` : f.host],
+      service: f.service ?? null,
+      version: f.serviceVersion ?? null,
+      protocol: f.protocol ?? null,
+      cvss: numOrNull(f.cvss),
+      cvss_vector: f.cvssVector ?? null,
+      cve_ids: f.cveIds ?? [],
+      mitre: f.mitre ?? [],
+      compliance: f.compliance ?? [],
+      evidence: f.evidence ?? [],
+      attack_path: f.attackPath ?? null,
+      remediation_hint: f.remediation ?? null,
+      status: mapStatus(f.status),
+    }));
+}
+
 export async function generateReport(session: ReportSession): Promise<ReportResult> {
   const client = getClient();
+
+  // 1. Compute the scorecard upstream — the model describes it, never derives it.
+  const scorecard = buildScorecard(toScorecardInput(session));
+
+  // 2. Only frameworks the findings actually cite may be referenced; this caps
+  //    the model's compliance_refs to real control families (prompt rule 7).
+  const complianceFrameworks = Array.from(
+    new Set(session.findings.flatMap((f) => (f.compliance ?? []).map((c) => c.framework))),
+  );
+
+  // 3. Assemble the user message with scan output fenced as untrusted.
+  const userMessage = buildReportUserMessage({
+    engagement: {
+      name: session.clientName,
+      scope: session.scope,
+      window: 'Not specified',
+      authorisation_ref: 'Not specified',
+    },
+    scorecard,
+    findings: toModelFindings(session),
+    attackChains: [],       // no chain model available yet — prompt returns null
+    controlsEvidence: [],   // none surfaced yet — prompt returns its default item
+    complianceFrameworks,
+    outOfScope: [],
+  });
+
   try {
     const msg = await client.messages.create({
       model:      'claude-sonnet-4-6',
-      max_tokens: 8192,
+      max_tokens: 16000,
       system:     REPORT_SYSTEM_PROMPT,
-      messages:   [{ role: 'user', content: JSON.stringify(session) }],
+      messages:   [{ role: 'user', content: userMessage }],
     });
-    const text = (msg.content[0] as { text: string }).text;
-    return JSON.parse(stripFences(text)) as ReportResult;
+    const text   = (msg.content[0] as { text: string }).text;
+    const report = JSON.parse(stripFences(text)) as ReportResult;
+
+    // Defensive shape + severity normalisation at the boundary (the prompt asks
+    // for lowercase, but the portal colour map depends on it — don't trust it).
+    report.findings        = (report.findings ?? []).map((f) => ({ ...f, severity: normaliseSeverity(f.severity) }));
+    report.remediation_plan = report.remediation_plan ?? [];
+
+    // Structural cross-checks the HallucinationGuard doesn't cover. Advisory:
+    // surface issues for the human reviewer rather than failing generation.
+    const check = validateReport(report, {
+      findingIds: session.findings.map((f) => f.id),
+      frameworks: complianceFrameworks,
+    });
+    if (!check.valid) {
+      console.warn('[ai-engine] generateReport: report failed structural validation:', check.issues);
+    }
+
+    return report;
   } catch (err) {
     throw new Error(`Report generation failed: ${err instanceof Error ? err.message : String(err)}`);
   }

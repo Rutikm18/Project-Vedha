@@ -1,4 +1,4 @@
-# Node Description Batch 128 of 330
+# Node Description Batch 128 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,18 +12,20 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
-For an entity node (any other kind — e.g. a person, place, event, object),
-describe what the entity is and its role, grounded in its type, its
-relations (neighbors) and the provided citations/evidence — e.g.
-"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
-Ground entity descriptions in the citations/evidence when present; do not
-speculate beyond the context, so a node with no supporting context may be
-left out of the reply.
 Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
+- "detection_engine_models_fact_ref": ".ref()" | kind=code-symbol | source=manager/detection_engine/models.py:L60 | neighbors=[Fact, A stable, human-readable pointer back t…]
+- "detection_engine_models_make_finding_id": "make_finding_id()" | kind=code-symbol | source=manager/detection_engine/models.py:L125 | neighbors=[models.py, Deterministic finding ID: the SAME (ass…]
+- "detection_engine_port_intel_banner_confirms_backdoor": "_banner_confirms_backdoor()" | kind=code-symbol | source=manager/detection_engine/port_intel.py:L156 | neighbors=[port_intel.py, classify_port()]
+- "detection_engine_port_intel_normalized": "_normalized()" | kind=code-symbol | source=manager/detection_engine/port_intel.py:L197 | neighbors=[port_intel.py, contradicts_port_hypothesis()]
+- "detection_engine_port_intel_portrisk": "PortRisk" | kind=code-symbol | source=manager/detection_engine/port_intel.py:L34 | neighbors=[port_intel.py, classify_port()]
+- "detection_engine_posture_rules_dns_zone_transfer": "_dns_zone_transfer()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L428 | neighbors=[posture_rules.py, _d()]
+- "detection_engine_posture_rules_exposed_title": "_exposed_title()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L934 | neighbors=[posture_rules.py, detect_exposed_services()]
+- "detection_engine_posture_rules_ftp_anonymous": "_ftp_anonymous()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L419 | neighbors=[posture_rules.py, _d()]
+- "detection_engine_posture_rules_ipmi_cipher_zero": "_ipmi_cipher_zero()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L517 | neighbors=[posture_rules.py, _d()]
 - "detection_engine_posture_rules_is_validated": "is_validated()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L56 | neighbors=[posture_rules.py, _state_for()]
 - "detection_engine_posture_rules_ldap_anonymous_bind": "_ldap_anonymous_bind()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L448 | neighbors=[posture_rules.py, _d()]
 - "detection_engine_posture_rules_msrpc_exposed": "_msrpc_exposed()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L367 | neighbors=[posture_rules.py, _d()]
@@ -55,15 +57,6 @@ one-sentence description — no prose, no markdown fences.
 - "detection_engine_vuln_db_vulndb_init": ".__init__()" | kind=code-symbol | source=manager/detection_engine/vuln_db.py:L90 | neighbors=[VulnDB, ._build_cve_index()]
 - "detection_explain_route_fail": "fail()" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/detection-explain/route.ts:L11 | neighbors=[route.ts, GET()]
 - "detection_explain_route_get": "GET()" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/detection-explain/route.ts:L16 | neighbors=[route.ts, fail()]
-- "detection_init": "__init__.py" | kind=code-symbol | source=manager/backend/app/detection/__init__.py:L1 | neighbors=[d1b4dd3 trim frontend to 7 core pages; …, 298a9d4 trim frontend to 7 core pages; …]
-- "detection_logger_as_uuid": "_as_uuid()" | kind=code-symbol | source=manager/backend/app/detection/logger.py:L69 | neighbors=[logger.py, .log_action()]
-- "detection_logger_rationale_1": "AttackLogger — records every attack action to the ``attack_timeline`` table.  Al" | kind=entity | source=manager/backend/app/detection/logger.py:L1 | neighbors=[logger.py, AttackTimeline]
-- "detection_logger_rationale_40": "Persist a single attack action. Returns the AttackTimeline row.          ``times" | kind=entity | source=manager/backend/app/detection/logger.py:L40 | neighbors=[.log_action(), AttackTimeline]
-- "detection_prioritization_posture_risk_on_manager_scale": "_posture_risk_on_manager_scale()" | kind=code-symbol | source=manager/backend/app/detection/prioritization.py:L57 | neighbors=[prioritization.py, Score a posture finding with the Manage…]
-- "detection_resolution_resolutionoutcome": "ResolutionOutcome" | kind=code-symbol | source=manager/backend/app/detection/resolution.py:L66 | neighbors=[resolution.py, decide_resolution()]
-- "detection_siem_elasticsiem_build_query": ".build_query()" | kind=code-symbol | source=manager/backend/app/detection/siem.py:L191 | neighbors=[ElasticSIEM, .query_alerts()]
-- "detection_siem_sentinelsiem_build_kql": ".build_kql()" | kind=code-symbol | source=manager/backend/app/detection/siem.py:L141 | neighbors=[SentinelSIEM, .query_alerts()]
-- "detection_siem_splunksiem_build_spl": ".build_spl()" | kind=code-symbol | source=manager/backend/app/detection/siem.py:L88 | neighbors=[SplunkSIEM, .query_alerts()]
 
 ## Instructions
 

@@ -1,4 +1,4 @@
-# Node Description Batch 45 of 330
+# Node Description Batch 45 of 332
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -17,6 +17,13 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
+- "lib_errors_adversaerror": "AdversaError" | kind=code-symbol | source=manager/frontend/lib/errors.ts:L57 | neighbors=[index.ts, errors.ts, .constructor(), .render(), .toJSON(), diagnoseSpawnError()]
+- "lib_errors_vedhaerror": "VedhaError" | kind=code-symbol | source=manager/frontend/lib/errors.ts:L57 | neighbors=[index.ts, errors.ts, diagnoseSpawnError(), .constructor(), .render(), .toJSON()]
+- "lib_findings_store_ensuredir": "ensureDir()" | kind=code-symbol | source=manager/frontend/lib/findings-store.ts:L22 | neighbors=[findings-store.ts, deleteFinding(), getAllFindings(), saveFindings(), updateFinding(), updateFindingStatus()]
+- "lib_graph_store_graphstore": "graphStore" | kind=code-symbol | source=manager/frontend/lib/graph-store.ts:L329 | neighbors=[route.ts, route.ts, route.ts, route.ts, graph-store.ts, route.ts]
+- "lib_httpx_parser_parsehttpxjsonline": "parseHttpxJsonLine()" | kind=code-symbol | source=manager/frontend/lib/httpx-parser.ts:L41 | neighbors=[httpx-parser.ts, .decode(), isOptionalNumber(), isOptionalString(), normalizePort(), parsers.test.ts]
+- "lib_netexec_parser": "netexec-parser.ts" | kind=code-symbol | source=manager/frontend/lib/netexec-parser.ts:L1 | neighbors=[b4b12a9 Rename project and update files, NetExecHost, NetExecParseResult, parseBoolean(), parseNetExecLog(), scanner-adapters.test.ts]
+- "lib_scan_events": "scan-events.ts" | kind=code-symbol | source=manager/frontend/lib/scan-events.ts:L1 | neighbors=[d1b4dd3 trim frontend to 7 core pages; …, broadcastToScan(), Callback, scanListeners, subscribeScan(), 298a9d4 trim frontend to 7 core pages; …]
 - "lib_scanner_request_validation_validateopenvasscanrequest": "validateOpenVASScanRequest()" | kind=code-symbol | source=manager/frontend/lib/scanner-request-validation.ts:L112 | neighbors=[scanner-request-validation.ts, isRecord(), validateHost(), validateSafeString(), validateScannerTargets(), scanner-adapters.test.ts]
 - "lib_security_context_resolvesecurityreference": "resolveSecurityReference()" | kind=code-symbol | source=manager/frontend/lib/security-context.ts:L37 | neighbors=[route.ts, route.ts, route.ts, security-context.ts, publicCveRecord(), SecurityContextError]
 - "lib_severity_severity": "Severity" | kind=code-symbol | source=manager/frontend/lib/severity.ts:L8 | neighbors=[Primitives.tsx, LiveOverview.tsx, PatchComparisonMatrix.tsx, SlaStatus.tsx, severity.ts, page.tsx]
@@ -50,13 +57,6 @@ one-sentence description — no prose, no markdown fences.
 - "main_scripts_ftp_scanner_ftpscanner_list_bounded": "._list_bounded()" | kind=code-symbol | source=probe/main_scripts/ftp_scanner.py:L128 | neighbors=[FTPScanner, ._cmd(), ._read_response(), parse_pasv(), ._probe(), Confirm anonymous READ via PASV + LIST,…]
 - "main_scripts_ftp_scanner_ftpscanner_probe": "._probe()" | kind=code-symbol | source=probe/main_scripts/ftp_scanner.py:L95 | neighbors=[FTPScanner, banner_software(), ._cmd(), ._list_bounded(), ._read_response(), Blocking: greeting → anonymous login → …]
 - "main_scripts_ipmi_scanner": "ipmi_scanner.py" | kind=code-symbol | source=probe/main_scripts/ipmi_scanner.py:L1 | neighbors=[6e2818f Add support for additional serv…, build_open_session_request(), IPMIScanner, main(), parse_open_session_response(), ipmi_scanner.py — IPMI 2.0 cipher-zero …]
-- "main_scripts_ipmi_scanner_ipmiscanner": "IPMIScanner" | kind=code-symbol | source=probe/main_scripts/ipmi_scanner.py:L65 | neighbors=[ipmi_scanner.py, BaseScanner, .__init__(), ._probe(), ._scan_port(), .scan_target()]
-- "main_scripts_ipv6_discovery_discover_ipv6_hosts": "discover_ipv6_hosts()" | kind=code-symbol | source=probe/main_scripts/ipv6_discovery.py:L118 | neighbors=[ipv6_discovery.py, _own_ipv6_addresses(), _ping_all_nodes(), _read_neighbor_cache(), main(), Discover live IPv6 neighbors on the seg…]
-- "main_scripts_ldap_scanner": "ldap_scanner.py" | kind=code-symbol | source=probe/main_scripts/ldap_scanner.py:L1 | neighbors=[6e2818f Add support for additional serv…, 8f6bf49 Refactor code structure and rem…, _first(), LDAPScanner, main(), ldap_scanner.py — LDAP anonymous-bind e…]
-- "main_scripts_ldap_scanner_ldapscanner": "LDAPScanner" | kind=code-symbol | source=probe/main_scripts/ldap_scanner.py:L47 | neighbors=[ldap_scanner.py, BaseScanner, .__init__(), ._probe(), ._scan_port(), .scan_target()]
-- "main_scripts_mass_scan_connectsweep": "_ConnectSweep" | kind=code-symbol | source=probe/main_scripts/mass_scan.py:L206 | neighbors=[mass_scan.py, BaseScanner, .__init__(), ._probe(), .scan_target(), run_mass_scan()]
-- "main_scripts_msrpc_scanner_msrpcscanner": "MSRPCScanner" | kind=code-symbol | source=probe/main_scripts/msrpc_scanner.py:L82 | neighbors=[msrpc_scanner.py, BaseScanner, ._enumerate(), .__init__(), ._scan_port(), .scan_target()]
-- "main_scripts_os_fingerprint_icmp": "_icmp()" | kind=code-symbol | source=probe/main_scripts/os_fingerprint.py:L59 | neighbors=[os_fingerprint.py, build_icmp_addrmask(), build_icmp_echo(), build_icmp_timestamp(), Build an ICMP message (header + rest) w…, Build an ICMP message (header + rest) w…]
 
 ## Instructions
 
