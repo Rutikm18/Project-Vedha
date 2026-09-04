@@ -31,6 +31,51 @@ class TestParseModules:
         assert len(rs.parse_modules(big)) <= rs.MAX_MODULES
 
 
+class _FakeSock:
+    """Minimal socket stand-in: replays the daemon greeting, records what the
+    scanner echoes back."""
+
+    def __init__(self, greeting: bytes):
+        self._to_read = greeting
+        self.sent: list[bytes] = []
+
+    def recv(self, n: int) -> bytes:
+        chunk, self._to_read = self._to_read[:n], self._to_read[n:]
+        return chunk
+
+    def sendall(self, data: bytes) -> None:
+        self.sent.append(data)
+
+
+class TestHandshake:
+    """Protocol >= 32 daemons append their digest-name list to the greeting and
+    reject a client that echoes only the version with
+    '@ERROR: your client omitted the digest name list' — which aborts the session
+    before any module listing, so every module scan silently returned zero
+    modules against rsync 3.2+ (Debian 12, Ubuntu 22.04+, RHEL 9)."""
+
+    def test_greeting_is_echoed_verbatim_including_digest_list(self):
+        sock = _FakeSock(b"@RSYNCD: 32.0 sha512 sha256 sha1 md5 md4\n")
+        ver = rs._handshake(sock)
+        assert ver == "32.0"
+        assert sock.sent == [b"@RSYNCD: 32.0 sha512 sha256 sha1 md5 md4\n"]
+
+    def test_legacy_greeting_without_digest_list_still_works(self):
+        sock = _FakeSock(b"@RSYNCD: 31.0\n")
+        assert rs._handshake(sock) == "31.0"
+        assert sock.sent == [b"@RSYNCD: 31.0\n"]
+
+    def test_echo_stops_at_the_first_line(self):
+        sock = _FakeSock(b"@RSYNCD: 32.0 sha512\nbackups\tNightly\n")
+        assert rs._handshake(sock) == "32.0"
+        assert sock.sent == [b"@RSYNCD: 32.0 sha512\n"]
+
+    def test_non_rsync_greeting_returns_none_and_sends_nothing(self):
+        sock = _FakeSock(b"SSH-2.0-OpenSSH_9.2p1\n")
+        assert rs._handshake(sock) is None
+        assert sock.sent == []
+
+
 class TestRsyncScanner:
     def _sc(self):
         return rs.RsyncScanner(ScopeGuard.from_list(["10.0.0.0/8"]),

@@ -79,7 +79,36 @@ SERVICE_NAMES = {
 # trivial newline nudge is enough).
 BANNER_PORTS = {21, 22, 23, 25, 110, 143, 587, 465, 993, 995, 3306, 6379, 11211}
 HTTP_PORTS = {80, 8080, 8888, 8006, 9200, 11434, 631}
-TLS_PORTS = {443, 8443, 465, 993, 995, 636, 3269, 5986, 990}
+# Ports where a bare TLS ClientHello IS the correct opening move, so the TLS
+# inspector can read protocol/cipher/certificate facts directly.
+#
+# WIDENED (2026-09-04): the old set was nine ports, so a host running TLS on any
+# management or API port had its TLS posture silently uncollected — the branch
+# never fired and the run reported `invocations: 0`, which reads as "nothing to
+# see" rather than "never looked". A refused handshake is cheap and is recorded
+# honestly as `status="error"`, so the cost of trying is a truthful
+# "attempted and refused" record instead of a blind spot.
+#
+# DELIBERATELY EXCLUDED — protocols that reach TLS only AFTER an application-layer
+# negotiation, where a bare ClientHello is simply the wrong packet and would
+# always fail:
+#   3389 RDP    - needs the X.224 rdpNegReq first; rdp_scanner already observes
+#                 the TLS/NLA outcome, so adding it here would only manufacture a
+#                 misleading "TLS refused" record for a port that does use TLS.
+#   5985/47001  - WinRM's PLAINTEXT listeners (5986 is the TLS one, included).
+#   25/587/110/143/21 - STARTTLS upgrades, not implicit TLS.
+# Ports observed speaking TLS at runtime still reach the branch through the
+# router's dynamic `tls` hint, which is what covers the non-standard cases.
+TLS_PORTS = {
+    # classic implicit-TLS services
+    443, 465, 636, 853, 989, 990, 992, 993, 995, 3269,
+    # management / API / app surfaces that default to implicit TLS
+    902,        # VMware authd
+    2376,       # docker TLS
+    4443, 5061, 5671, 6443, 8443, 8883, 9443, 10443,
+    5986,       # WinRM over TLS
+    8834,       # Nessus
+}
 
 # Management / remote-admin surfaces (identification only).
 MGMT_PORTS = {

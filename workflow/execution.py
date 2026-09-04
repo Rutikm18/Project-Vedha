@@ -7,11 +7,14 @@ import re
 import shutil
 import socket
 import ssl
+import time
+from contextlib import contextmanager
 from dataclasses import dataclass
 from typing import Iterable
 
 from scanner.scanner_base import ScanResult
 
+from .branches import BRANCH_COMPONENT, BRANCHES
 from .gates import PROFILE_DEEP_BRANCHES
 from .modes import (
     STAGE_DEEP_SCAN,
@@ -26,33 +29,38 @@ MANIFEST_SCHEMA_VERSION = "1.0"
 
 # Ordered by the normal workflow. These are collector components inside the
 # scanner_module orchestrator, not independent vulnerability verdict engines.
-COMPONENT_CATALOG: tuple[dict[str, str], ...] = (
+# The funnel stages every job shares, then EVERY deep-scan branch (derived from
+# the branch registry so a branch can never run without appearing in the plan —
+# the hand-maintained version of this list had fallen 13 branches behind the
+# engine, so a service-specific rdp/ssh/ldap job planned nothing and its
+# coverage report could not say what had been skipped), then the tail stages.
+_STAGE_COMPONENTS: tuple[dict[str, str], ...] = (
     {"id": "host_discovery", "label": "Host Discovery", "role": "Establish host liveness before deeper active probes."},
+    {"id": "ipv6_discovery", "label": "IPv6 Neighbour Discovery", "role": "Find IPv6-only hosts on the segment via ND multicast; scans only those inside scope."},
     {"id": "port_scan", "label": "TCP Port Scan", "role": "Identify open TCP services with bounded connect probes."},
+    {"id": "os_fingerprint", "label": "OS Identification", "role": "Identify the host OS from ICMP/TCP stack signals and the SMB2 NTLM build."},
     {"id": "service_banner", "label": "Service Banner", "role": "Collect service and version evidence from confirmed open ports."},
-    {"id": "tls_scan", "label": "TLS Inspector", "role": "Collect supported protocol, cipher, and certificate facts."},
-    {"id": "web_scan", "label": "Web Fingerprint", "role": "Collect passive HTTP response, header, and technology facts."},
-    {"id": "smb_scan", "label": "SMB Negotiation", "role": "Collect SMB dialect support through negotiation only."},
-    {"id": "db_scan", "label": "Database Fingerprint", "role": "Identify database listeners through minimal protocol handshakes."},
-    {"id": "mcp_ai_scan", "label": "AI / MCP Discovery", "role": "Identify exposed AI and MCP discovery endpoints without invoking tools."},
-    {"id": "snmp_scan", "label": "SNMP Read Probe", "role": "Collect read-only SNMP service facts."},
+)
+_TAIL_COMPONENTS: tuple[dict[str, str], ...] = (
     {"id": "udp_scan", "label": "UDP Service Probe", "role": "Probe selected UDP services with protocol-specific read requests."},
     {"id": "passive_collect", "label": "Passive Discovery", "role": "Observe receive-only broadcast announcements and report unavailable multicast coverage."},
     {"id": "ssh_inventory", "label": "SSH Inventory", "role": "Collect authorized Linux inventory with supplied credentials."},
     {"id": "windows_inventory", "label": "Windows Inventory", "role": "Collect authorized Windows inventory with supplied credentials."},
 )
 
+COMPONENT_CATALOG: tuple[dict[str, str], ...] = (
+    *_STAGE_COMPONENTS,
+    *({"id": s.component, "label": s.label, "role": s.role} for s in BRANCHES),
+    *_TAIL_COMPONENTS,
+)
+
 _COMPONENT_META = {item["id"]: item for item in COMPONENT_CATALOG}
-_BRANCH_COMPONENT = {
-    "tls": "tls_scan",
-    "web": "web_scan",
-    "smb": "smb_scan",
-    "db": "db_scan",
-    "mcp_ai": "mcp_ai_scan",
-    "snmp": "snmp_scan",
-    "udp": "udp_scan",
-}
-_TCP_BRANCHES = {"tls", "web", "smb", "db", "mcp_ai"}
+# Derived from the branch registry, so a branch cannot exist in the engine
+# without appearing in the plan (the old hand-maintained copy of this map could,
+# and did, fall behind the engine). "udp" is not a Gate-5 branch — the engine
+# runs it unconditionally alongside them — so it is added explicitly.
+_BRANCH_COMPONENT = {**BRANCH_COMPONENT, "udp": "udp_scan"}
+_TCP_BRANCHES = {s.branch for s in BRANCHES if not s.datagram}
 
 
 def engine_manifest(*, build_version: str, build_sha: str | None = None) -> dict:
@@ -101,6 +109,7 @@ def planned_components(
     ssh_enabled: bool,
     windows_enabled: bool,
     stage_ceiling: str | None = None,
+    discover_ipv6: bool = False,
 ) -> list[str]:
     """Resolve the exact collector plan for one workflow invocation."""
     if profile == "ot":
@@ -122,8 +131,11 @@ def planned_components(
     planned = []
     if tcp_stage_required or not direct_datagram:
         planned.append("host_discovery")
+        if discover_ipv6:
+            planned.append("ipv6_discovery")
     if includes_stage(ceiling, STAGE_PORT_SCAN) and tcp_stage_required:
         planned.append("port_scan")
+        planned.append("os_fingerprint")
     if includes_stage(ceiling, STAGE_SERVICE_BANNER) and tcp_stage_required:
         planned.append("service_banner")
     if not includes_stage(ceiling, STAGE_DEEP_SCAN):
@@ -250,11 +262,29 @@ class ExecutionTrace:
                 "fact_count": 0,
                 "error_count": 0,
                 "reused_fact_count": 0,
+                "duration_s": 0.0,
                 "skip_reason": None,
                 "coverage": None,
                 "issues": [],
             }
         return self._runs[component_id]
+
+    @contextmanager
+    def timing(self, component_id: str):
+        """Accumulate wall time for one component.
+
+        Without this, `scanner_runs` said WHICH phases ran but not which ones cost
+        the time, so "the job is slow" could not be narrowed to a stage without a
+        profiler. Accumulates across invocations, since per-host branches are
+        recorded under one component id.
+        """
+        run = self._ensure(component_id)
+        started = time.monotonic()
+        try:
+            yield
+        finally:
+            run["duration_s"] = round(
+                run["duration_s"] + (time.monotonic() - started), 3)
 
     def record(
         self,

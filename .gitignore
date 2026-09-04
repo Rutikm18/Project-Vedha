@@ -3,3 +3,6 @@ dist/
 *.build/
 *.dist/
 scope*.txt
+
+# Local scan-result archive (PROBE_RESULT_DIR) — real scan output, never commit it.
+result/

@@ -1,7 +1,19 @@
 # Minimal dependencies for the production Vedha Probe agent.
-# Network scanners are stdlib-based. Credential collectors are intentionally
+# Most network scanners are stdlib-based. Credential collectors are intentionally
 # excluded because Manager jobs reject credential material until an ephemeral
 # secret broker exists.
 httpx>=0.27
 websockets>=12.0
 cryptography>=42.0
+
+# ── Deep-branch scanner dependencies ──────────────────────────────────────────
+# NOT optional in practice. Each of these backs a deep branch that the workflow
+# wires and dispatches unconditionally; without them the branch runs, raises
+# "<pkg> not installed", and is recorded as a scanner_error — which forces
+# outcome="partial"/degraded=true on EVERY assessment and silently makes three
+# manager posture rules unreachable (SMB-NULL-SESSION, LDAP-ANONYMOUS-BIND,
+# DNS-ZONE-TRANSFER). Keep in step with requirements.txt.
+# All three are pure-Python/wheel-only: no build toolchain is added to the image.
+impacket>=0.11.0     # SMB null-session enumeration (smb_enum_scanner)
+ldap3>=2.9           # LDAP anonymous-bind enumeration (ldap_scanner)
+dnspython>=2.6       # DNS AXFR / DNSSEC / version.bind (dns_scanner)

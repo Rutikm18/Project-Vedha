@@ -71,15 +71,23 @@ def _recv_until(sock: socket.socket, markers: list[bytes],
 
 
 def _handshake(sock: socket.socket) -> str | None:
-    """Read the @RSYNCD greeting and echo a compatible version. Returns the
-    negotiated protocol version string, or None if this isn't an rsync daemon."""
-    greet = _recv_until(sock, [b"\n"], 256).decode("latin-1", "replace")
+    """Read the @RSYNCD greeting and echo it back VERBATIM. Returns the negotiated
+    protocol version string, or None if this isn't an rsync daemon.
+
+    The greeting must be echoed whole, not reduced to its version number: since
+    protocol 32 the daemon appends its digest-name list ("@RSYNCD: 32.0 sha512
+    sha256 sha1 md5 md4") and answers a version-only reply with "@ERROR: your
+    client omitted the digest name list", tearing the session down before any
+    module listing is sent. That made module enumeration return empty against
+    every rsync 3.2+ daemon.
+    """
+    raw = _recv_until(sock, [b"\n"], 256).decode("latin-1", "replace")
+    greet = raw.split("\n", 1)[0].rstrip("\r")
     m = _GREETING_RE.search(greet)
     if not m:
         return None
-    ver = m.group(1)
-    sock.sendall(f"@RSYNCD: {ver}\n".encode())
-    return ver
+    sock.sendall(f"{greet}\n".encode("latin-1", "replace"))
+    return m.group(1)
 
 
 class RsyncScanner(BaseScanner):

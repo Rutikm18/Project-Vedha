@@ -1,0 +1,143 @@
+{
+  "target": "127.0.0.1",
+  "profile": "quick",
+  "started": "20260903_232251",
+  "host_alive_hint": true,
+  "open_tcp_ports": [
+    80
+  ],
+  "device_classification": {
+    "device_type": "ambiguous",
+    "confidence": 0.33,
+    "role_detail": "server_or_workstation",
+    "signals": {
+      "scores": {
+        "server": 2,
+        "network_device": 1,
+        "workstation": 2,
+        "iot": 1
+      },
+      "os_guess": "Linux/Unix/macOS",
+      "open_tcp": [
+        80
+      ],
+      "open_udp": [
+        5353
+      ],
+      "support_count": 2,
+      "tie": [
+        "server",
+        "workstation"
+      ]
+    },
+    "evidence": [
+      "http_80",
+      "mdns_5353",
+      "os_unix"
+    ]
+  },
+  "findings_summary": {
+    "total": 2,
+    "by_severity": {
+      "critical": 0,
+      "high": 0,
+      "medium": 0,
+      "low": 1,
+      "info": 1
+    },
+    "by_category": {
+      "misconfiguration": 1,
+      "information_disclosure": 1
+    },
+    "actionable": 0,
+    "findings": [
+      {
+        "rule_id": "WEB-MISSING-SECURITY-HEADERS",
+        "title": "Missing HTTP security headers (4)",
+        "severity": "low",
+        "confidence": "high",
+        "category": "misconfiguration",
+        "target": "127.0.0.1",
+        "port": 80,
+        "evidence": "Response omits hardening headers: content-security-policy, strict-transport-security, x-frame-options, x-content-type-options.",
+        "recommendation": "Add HSTS, Content-Security-Policy, X-Frame-Options, and X-Content-Type-Options.",
+        "source_scanner": "web_scan",
+        "verified": false
+      },
+      {
+        "rule_id": "ASSET-OS-IDENTIFIED",
+        "title": "OS identified: Linux/Unix/macOS",
+        "severity": "info",
+        "confidence": "low",
+        "category": "information_disclosure",
+        "target": "127.0.0.1",
+        "port": null,
+        "evidence": "OS identified as Linux/Unix/macOS (confidence 0.50) by fusing 1 signal(s): family [method: ttl_only].",
+        "recommendation": "Informational \u2014 asset inventory and patch-level tracking.",
+        "source_scanner": "os_fusion",
+        "verified": false
+      }
+    ],
+    "verified_count": 0,
+    "experimental_count": 2,
+    "has_findings": true
+  },
+  "top_findings": [
+    {
+      "type": "finding",
+      "rule_id": "WEB-MISSING-SECURITY-HEADERS",
+      "title": "Missing HTTP security headers (4)",
+      "severity": "low",
+      "confidence": "high",
+      "category": "misconfiguration",
+      "target": "127.0.0.1",
+      "port": 80,
+      "proto": "tcp",
+      "evidence": "Response omits hardening headers: content-security-policy, strict-transport-security, x-frame-options, x-content-type-options.",
+      "recommendation": "Add HSTS, Content-Security-Policy, X-Frame-Options, and X-Content-Type-Options.",
+      "data": {
+        "missing": [
+          "content-security-policy",
+          "strict-transport-security",
+          "x-frame-options",
+          "x-content-type-options"
+        ]
+      },
+      "source_scanner": "web_scan"
+    },
+    {
+      "type": "finding",
+      "rule_id": "ASSET-OS-IDENTIFIED",
+      "title": "OS identified: Linux/Unix/macOS",
+      "severity": "info",
+      "confidence": "low",
+      "category": "information_disclosure",
+      "target": "127.0.0.1",
+      "port": null,
+      "proto": null,
+      "evidence": "OS identified as Linux/Unix/macOS (confidence 0.50) by fusing 1 signal(s): family [method: ttl_only].",
+      "recommendation": "Informational \u2014 asset inventory and patch-level tracking.",
+      "data": {
+        "os_release": "Linux/Unix/macOS",
+        "os_build": null,
+        "hostname": null,
+        "confidence": 0.5,
+        "method": "ttl_only",
+        "stack": null
+      },
+      "source_scanner": "os_fusion"
+    }
+  ],
+  "cve_summary": null,
+  "outputs": [
+    "01_host_discovery.jsonl",
+    "02_port_scan.jsonl",
+    "03_udp.jsonl",
+    "04_os_fingerprint.jsonl",
+    "05_snmp.jsonl",
+    "05b_ipmi.jsonl",
+    "07_service_banner.jsonl",
+    "09_web.jsonl",
+    "findings.jsonl"
+  ]
+}

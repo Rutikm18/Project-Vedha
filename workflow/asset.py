@@ -75,6 +75,12 @@ class Asset:
     nfs_state: dict | None = None
     passive_facts: list[dict] = field(default_factory=list)
     credential_inventory: dict | None = None
+    # OS identity: `os_fact` is os_fingerprint's own result; `tcp_stack_hints`
+    # are the per-host window/TTL/MSS signals the SYN scanner harvests from a
+    # SYN/ACK, which sharpen that guess (and are the ONLY OS signal available
+    # when ICMP is filtered or unprivileged).
+    os_fact: dict | None = None
+    tcp_stack_hints: dict = field(default_factory=dict)
 
     profile: str = "it"
     cred_collected: bool = False
@@ -112,6 +118,12 @@ class Asset:
     def _merge_host_discovery(self, r: ScanResult) -> None:
         if r.data.get("alive"):
             self.last_seen_alive = _parse_ts(r.timestamp)
+        # Names the discovery tier learned (PTR record, NetBIOS name) are
+        # aliases of this asset — the inventory can show a name, not just an IP.
+        for key in ("hostname", "netbios_name"):
+            name = r.data.get(key)
+            if isinstance(name, str) and name:
+                self.aliases.add(name)
         for entry in r.data.get("responding_ports") or []:
             port = entry.get("port")
             if port is not None:
@@ -126,6 +138,22 @@ class Asset:
             proto=r.proto or "tcp", status=r.status,
             last_scan_time=_parse_ts(r.timestamp),
             certainty="deterministic" if r.proto != "udp" else "uncertain")
+        # Harvest the SYN/ACK stack signals (syn_scanner emits these on open
+        # ports) so the OS stage can identify a host whose ICMP is filtered.
+        # First open port wins — they describe the host, not the port.
+        if r.status == "open" and not self.tcp_stack_hints:
+            hints = {k: r.data[src] for k, src in
+                     (("ttl", "ip_ttl"), ("tcp_window", "tcp_window"), ("mss", "mss"),
+                      ("wscale", "tcp_wscale"), ("olayout", "tcp_olayout"))
+                     if r.data.get(src) is not None}
+            if hints:
+                self.tcp_stack_hints = hints
+
+    def _merge_os_fingerprint(self, r: ScanResult) -> None:
+        self.os_fact = {**r.data, "_collected_at": r.timestamp}
+        name = r.data.get("hostname")     # SMB2 NTLM target name, when present
+        if isinstance(name, str) and name:
+            self.aliases.add(name)
 
     def _merge_service_banner(self, r: ScanResult) -> None:
         if r.port is not None:
@@ -238,6 +266,13 @@ class Asset:
 _MERGE_DISPATCH = {
     "host_discovery": Asset._merge_host_discovery,
     "port_scan": Asset._merge_port_scan,
+    # SynScanner/MassScanner emit the SAME per-port fact shape as PortScanner but
+    # under their own scanner name. Without these aliases their open ports never
+    # populate `open_ports`, so the deep-scan gate only saw host_discovery's
+    # liveness port and skipped every TCP deep scanner (RDP/MSRPC/printer/DB/…).
+    "syn_scan": Asset._merge_port_scan,
+    "mass_scan": Asset._merge_port_scan,
+    "os_fingerprint": Asset._merge_os_fingerprint,
     "service_banner": Asset._merge_service_banner,
     "tls_scan": Asset._merge_tls_scan,
     "web_scan": Asset._merge_web_scan,

@@ -225,14 +225,109 @@ currently **trades accuracy for speed** in ways masscan/ZMap do not.
 | 1 | Wire `AdaptiveTimeout` into TCP scan | adaptive_timeout, port_scanner | S | ★★★ | ✅ done (2026-08-15) |
 | 2 | SYN retransmit on silence | syn_scanner | S | ★★★ | ✅ done (2026-08-15) |
 | 3 | Default no-arg scan → top100 | port_scanner, syn_scanner | XS | ★★ | ✅ done (2026-08-15) |
-| 4 | Stand up ground-truth corpus + run `accuracy.py` in CI | new corpus, CI | M | ★★★ (measures everything) | next |
-| 5 | Wire AIMD into TCP paths + pace SYN sends | scanner_base, port_scanner, syn_scanner | M | ★★★ | |
-| 6 | Harvest TCP window/MSS → feed os_fingerprint | port_scanner, scan_funnel, os_fingerprint | M | ★★ | |
-| 7 | Expand service-ID patterns (nmap-service-probes subset) + TLS-wrap rung | service_banner | M/L | ★★★ (what-is-this) | |
-| 8 | `select`/epoll SYN receive | syn_scanner | S | ★★ | |
-| 9 | `resolve()` multi-family fallback | scanner_base | XS | ★ | |
+| 4 | Stand up ground-truth corpus + run `accuracy.py` in CI | accuracy_gate, corpus, CI | M | ★★★ (measures everything) | ✅ harness done (2026-09-03) — needs independent labels |
+| 5 | Wire AIMD into TCP paths + pace SYN sends | scanner_base, port_scanner, syn_scanner | M | ★★★ | ✅ done (2026-09-03) |
+| 6 | Harvest TCP window/MSS → feed os_fingerprint | port_scanner, syn_scanner, os_fingerprint | M | ★★ | ✅ done (SYN path earlier; connect path 2026-09-03) |
+| 7 | Expand service-ID patterns (nmap-service-probes subset) + TLS-wrap rung | service_banner | M/L | ★★★ (what-is-this) | ✅ largely done (88 patterns + TLS rung) |
+| 8 | `select`/epoll SYN receive | syn_scanner | S | ★★ | ✅ done (2026-09-03) |
+| 9 | `resolve()` multi-family fallback | scanner_base | XS | ★ | ✅ primitive done (2026-09-03) — call sites pending |
 
 ### Progress log
+
+- **2026-09-03 (live-fire, 192.168.1.65 Win11 24H2) — cleanup pass added (#10, new).**
+  Running the full pipeline against a real LAN host exposed a defect no unit test
+  or loopback run could: the fast sweep (rate 300 / concurrency 200) reported
+  **69 ports `filtered`**. Re-probing only those at rate 40 / concurrency 10
+  resolved **all 69 as `closed` (connection_refused)** in 5.4s — every one a FALSE
+  NEGATIVE. The host rate-limits its RSTs; the fast pass outran them.
+  AIMD *detected* the loss and backed the window off 200→26, but per-port retries
+  are spent EARLY, at the aggressive rate, before the controller converges — so
+  the converged rate was knowledge we acquired and threw away.
+  **Fix:** `PortScanner._reprobe_ambiguous()` — a bounded, deliberately gentle
+  second pass over ports still `filtered/no_response`, at `reprobe_rate` (40/s),
+  `reprobe_concurrency` (10), `reprobe_retries` (3) and a raised timeout floor.
+  Only DEFINITIVE results are accepted, so it can correct a false `filtered` but
+  never invent one. Results are collected first and recorded once with their FINAL
+  state, so completeness invariants hold (duplicates 0, missing 0). Surfaced as
+  `scan_summary.reprobe{candidates,resolved,remaining}`; `--no-reprobe` opts out.
+  **Measured, same settings:** filtered 69 → **0**, open unchanged at 20,
+  cost +6.2s. Via the full pipeline: 66/66 recovered, and the run was faster
+  overall (41.8s vs 46.9s port-scan).
+  Also fixed: `_harvest_tcp_stack` was feeding `TCP_MAXSEG` (the post-options
+  EFFECTIVE segment size) into the advertised-MSS slot. On a host with TCP
+  timestamps that reads 1448 → mtu 1488 → a confident, WRONG
+  `link_hint="tunnel_or_vpn"` on plain Ethernet — the same trap as the initial
+  window, through a different door. Only Linux `tcpi_advmss` may populate `mss`
+  now; `TCP_MAXSEG` is reported separately as `mss_effective`.
+
+- **2026-09-03 — validator lesson (corpus discipline).** nmap over all 1121 ports
+  at once called **1101 of them `filtered`**, and even in 100-port chunks still
+  called 218 `filtered`, for ports where this scanner held errno ECONNREFUSED —
+  a real RST. An RST is positive proof of reachability; silence is absence of
+  evidence. Labeling from validator silence would encode nmap's own false
+  negatives as ground truth and score the CORRECT answer as wrong (a first
+  attempt did exactly that: 1.78% "agreement"). The committed corpus therefore
+  labels a port **only where the validator produced positive evidence**
+  (syn-ack / conn-refused) and EXCLUDES validator-silence ports.
+  Result: **903/903 = 100%** agreement (20 open, 883 closed), 218 excluded.
+  A corpus is only as good as the regime its validator was operated in.
+
+
+> **NOTE (2026-09-03):** the TIER sections below were written on 2026-08-15 and
+> several of their "Now:" statements are STALE — the v2/v3 scanner work landed in
+> between. Verified against HEAD on 2026-09-03: `service_banner` has **88**
+> match patterns (not "~25") and already has a TLS-handshake rung, so 3.1 is
+> largely closed; the raw SYN path already harvests window/MSS/wscale/option-
+> layout and calls `fingerprint_os`, so 3.2 was only open on the *connect* path;
+> `AdaptiveTimeout` is wired into **both** `port_scanner` and `syn_scanner`.
+> Trust the status table above over the prose below.
+
+- **2026-09-03 — items 4–9 shipped.**
+  * **#5 AIMD.** `port_scanner` gained a per-host `AdaptiveRateController`
+    congestion window (`congestion=True`, `--no-congestion` opts out): silence
+    surviving every retry is the loss signal, any definitive answer is success.
+    It starts at full concurrency, so a healthy LAN scan is not slowed; the
+    `scan_summary` now carries `congestion.{final_window,max_window,throttled}`
+    so a throttled scan is visible when judging how much to trust `filtered`.
+    New `scanner_base.SendPacer` (synchronous AIMD, the thread-side counterpart
+    to `AdaptiveRateController`) paces **every** raw SYN — previously
+    `limiter.wait()` was awaited once per *target* and the inner loop then
+    emitted the whole cohort at CPU speed, so `--rate` was effectively ignored
+    for the packets that matter. Rate halves on a lossy round, grows additively
+    on a clean one, bounded by `min_rate` and 4× the operator's `--rate`.
+  * **#8 event-driven receive.** The SYN recv loop no longer polls with a fixed
+    5 ms sleep; `_wait_readable()` selects on the fd for the remaining round
+    deadline. Also raises `SO_RCVBUF` to 4 MB — a reply burst that overflows the
+    raw socket is dropped **by the kernel** and reported `filtered`, a false
+    negative manufactured entirely inside the scanner.
+  * **#6b connect-path stack harvest.** `_harvest_tcp_stack()` reads the peer's
+    MSS, window-scale and the kernel's smoothed RTT off the completed handshake
+    (`TCP_MAXSEG` + Linux `TCP_INFO`) — no extra packets. The kernel RTT now
+    feeds `AdaptiveTimeout` in preference to wall-clock, which also contains
+    event-loop scheduling delay. **Deliberately does NOT emit `tcp_window`:**
+    post-handshake the kernel only exposes the current, window-scaled value,
+    while `os_fingerprint` matches against INITIAL-window tables, so supplying
+    it would manufacture confident-but-wrong OS attributions. The raw SYN path
+    reads the true SYN/ACK window and remains the right source for that signal.
+  * **#9 dual-stack fallback.** `resolve_candidates()` returns every distinct
+    (family, sockaddr) in RFC-6724 order, de-duplicated. `resolve()` is
+    unchanged (still first-result), so this is additive; the ~8 protocol-scanner
+    call sites that could retry across families are **not yet migrated**.
+  * **#4 accuracy gate.** New `accuracy_gate.py` turns `accuracy.py` from an
+    instrument into a merge gate: corpora on disk, thresholds, non-zero exit.
+    It enforces a **provenance rule** — only independently labeled corpora
+    (`nmap`, `second_vantage`, `manual_remote_validation`, `vendor_documented`)
+    count as accuracy evidence; `self_regression` corpora prove only that
+    behaviour has not drifted, and the report says so. It refuses a corpus with
+    no labels (which would score a vacuous 1.0) and skips any dimension the
+    corpus never claimed to label. Five regression corpora built from the real
+    captured probe facts; CI workflow `.github/workflows/scanner-accuracy.yml`.
+    **Still open:** no independently-labeled corpus is committed yet, so the
+    gate currently proves non-drift, not accuracy. See the fixtures README for
+    the nmap-validated procedure.
+  * New proof tests: `test_scanner_congestion.py` (33) + `test_accuracy_gate.py`
+    (23). Affected suites re-run green (393). Both trees synced byte-identical.
+
 - **2026-08-15 — items 1–3 shipped.** `port_scanner`: per-host `AdaptiveTimeout`
   (SRTT+4·RTTVAR, fed by completed-handshake/RST RTTs; `--fixed-timeout` opts
   out) + default port set now nmap top-100. `syn_scanner`: retransmit-on-silence

@@ -669,6 +669,43 @@ class TestEngineSummary:
         ]
         assert _hosts_from_facts(facts) == []
 
+    def test_run_scoped_summary_does_not_become_a_host(self):
+        """ipv6_discovery reports on the RUN (its target is an interface name, or
+        the literal "auto" when none was resolved), not on a host. Promoting it
+        invented an asset called "auto" on every assessment and inflated
+        run_stats.host_count by one."""
+        facts = [
+            {
+                "scanner": "ipv6_discovery",
+                "target": "auto",
+                "port": None,
+                "proto": None,
+                "status": "observed",
+                "data": {"neighbours_found": 0, "in_scope": []},
+            },
+            {
+                "scanner": "port_scan",
+                "target": "10.0.0.10",
+                "port": 443,
+                "proto": "tcp",
+                "status": "open",
+                "data": {},
+            },
+        ]
+        hosts = _hosts_from_facts(facts)
+        assert [h["ip"] for h in hosts] == ["10.0.0.10"]
+
+    def test_run_scoped_summary_with_interface_target_is_also_excluded(self):
+        facts = [{
+            "scanner": "ipv6_discovery",
+            "target": "eth0",
+            "port": None,
+            "proto": None,
+            "status": "observed",
+            "data": {"neighbours_found": 2},
+        }]
+        assert _hosts_from_facts(facts) == []
+
     def test_affirmative_fact_creates_one_deduplicated_host(self):
         facts = [
             {

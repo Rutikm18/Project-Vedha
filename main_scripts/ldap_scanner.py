@@ -25,6 +25,7 @@ huge or hostile directory cannot hang or flood the probe.
 from __future__ import annotations
 
 import asyncio
+import math
 
 from .scanner_base import (
     BaseScanner, ScanResult, ScopeGuard, ResultWriter, expand_targets,
@@ -61,11 +62,17 @@ class LDAPScanner(BaseScanner):
             return {"ldap": None, "error": "ldap3_not_installed"}
 
         use_ssl = (port == LDAPS_PORT)
+        # ldap3 packs receive_timeout into a struct for SO_RCVTIMEO, so it must be
+        # a whole number of seconds — BaseScanner.timeout is a float, and passing
+        # it straight through raised "required argument is not an integer" on every
+        # single scan. Round UP so a sub-second timeout never floors to 0 (which
+        # SO_RCVTIMEO reads as "block forever").
+        receive_timeout = max(1, math.ceil(self.timeout))
         try:
             server = Server(target, port=port, use_ssl=use_ssl, get_info=ALL,
                             connect_timeout=self.timeout)
             conn = Connection(server, authentication=ANONYMOUS, auto_bind=True,
-                              receive_timeout=self.timeout)
+                              receive_timeout=receive_timeout)
         except LDAPSocketOpenError as exc:
             return {"ldap": False, "reason": "no_ldap", "detail": str(exc)[:200]}
         except LDAPBindError as exc:

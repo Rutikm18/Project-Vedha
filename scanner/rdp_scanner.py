@@ -24,7 +24,8 @@ import struct
 
 from .scanner_base import (
     BaseScanner, ScanResult, ScopeGuard, ResultWriter, expand_targets,
-    parse_ports, resolve, setup_logging, base_argparser, main_entrypoint,
+    parse_ports, resolve, resolve_ip_candidates, setup_logging, base_argparser,
+    main_entrypoint,
 )
 
 # RDP security protocols (rdpNegReq/rdpNegRsp `requestedProtocols`/`selectedProtocol`)
@@ -142,12 +143,15 @@ class RDPScanner(BaseScanner):
         await self.limiter.wait()
         loop = asyncio.get_running_loop()
         async with self.sem:
-            try:
-                _family, sockaddr = resolve(target, port, proto="tcp")
-            except OSError:
-                return None
-            info = await loop.run_in_executor(
-                None, probe_rdp_posture, sockaddr[0], port, self.timeout)
+            # Try every resolved family, not just getaddrinfo's first result: a
+            # dual-stack host with a black-holed IPv6 path would otherwise be
+            # reported as having no RDP at all.
+            info = None
+            for ip in resolve_ip_candidates(target, port, proto="tcp"):
+                info = await loop.run_in_executor(
+                    None, probe_rdp_posture, ip, port, self.timeout)
+                if info:
+                    break
         if not info:
             return None
         sp = info.get("selected_protocol")

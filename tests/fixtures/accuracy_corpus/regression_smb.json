@@ -1,0 +1,42 @@
+{
+ "name": "regression_smb",
+ "provenance": "self_regression",
+ "description": "SMB dialect/signing posture from real smb_scan output",
+ "labeling_note": "Labels are THIS engine's current output over real captured scanner facts. This detects behavioural DRIFT only. It is not evidence that the engine is correct \u2014 see README.md for building a ground-truth corpus with an independent validator.",
+ "source_facts": "manager/detection_engine/tests/fixtures/probe_corpus/smb_scan.json",
+ "facts": [
+  {
+   "scanner": "smb_scan",
+   "target": "10.0.0.10",
+   "timestamp": "2026-09-02T11:03:50.208953+00:00",
+   "port": 445,
+   "status": "open",
+   "data": {
+    "smbv1_enabled": true,
+    "smb2_supported": true,
+    "signing_required": false,
+    "negotiated_dialect": "0x0311"
+   }
+  },
+  {
+   "scanner": "smb_scan",
+   "target": "10.0.0.11",
+   "timestamp": "2026-09-02T11:03:50.208953+00:00",
+   "port": 445,
+   "status": "open",
+   "data": {
+    "smbv1_enabled": false,
+    "smb2_supported": true,
+    "signing_required": true,
+    "negotiated_dialect": "0x0311"
+   }
+  }
+ ],
+ "expected_findings": [
+  [
+   "SMB-V1-ENABLED",
+   "10.0.0.10",
+   445
+  ]
+ ]
+}

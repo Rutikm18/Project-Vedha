@@ -34,8 +34,8 @@ import time
 
 from .scanner_base import (
     BaseScanner, ScanResult, ScopeGuard, ResultWriter, expand_targets,
-    resolve, inet_checksum, setup_logging, base_argparser, main_entrypoint, LOG,
-    probe_payload,
+    resolve, resolve_ip_candidates, inet_checksum, setup_logging,
+    base_argparser, main_entrypoint, LOG, probe_payload,
 )
 
 # ICMP message types
@@ -372,12 +372,12 @@ class OSFingerprintScanner(BaseScanner):
         failure or when 445 is closed. Runs in a worker thread (blocking sockets)."""
         if not self.smb_build:
             return {}
-        try:
-            from .smb_scanner import ntlm_os_build
-            _family, sockaddr = resolve(target, 445, proto="tcp")
-        except OSError:
-            return {}
-        return ntlm_os_build(sockaddr[0], 445, min(self.timeout, 5.0))
+        from .smb_scanner import ntlm_os_build
+        for ip in resolve_ip_candidates(target, 445, proto="tcp"):
+            build = ntlm_os_build(ip, 445, min(self.timeout, 5.0))
+            if build:
+                return build      # first address that answers wins
+        return {}
 
     def _apply_smb_build(self, target: str, result: ScanResult) -> ScanResult:
         """Fuse an SMB2 NTLM build into an OS result: authoritative release + build,

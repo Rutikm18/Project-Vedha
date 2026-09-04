@@ -1,0 +1,11 @@
+{
+  "target": "127.0.0.1",
+  "port_scan_open": [
+    80
+  ],
+  "epm_advertised_dynamic": [],
+  "epm_confirmed_dynamic": [],
+  "canonical_open_tcp": [
+    80
+  ]
+}

@@ -61,6 +61,14 @@ class DeviceAlreadyEnrolledError(TransportError):
     generic 'manager unreachable' path."""
 
 
+# Heartbeat outcomes. A revoked lease is deliberately its own value: it is a
+# DEFINITIVE "stop working on this job" from the manager (operator cancel, or
+# reassignment after a lease expiry), whereas a plain failure may be transient.
+HEARTBEAT_OK = "ok"
+HEARTBEAT_FAILED = "failed"
+HEARTBEAT_LEASE_REVOKED = "lease_revoked"
+
+
 def _enrollment_conflict_detail(response: "httpx.Response") -> str:
     """Best-effort extraction of the manager's 409 ``detail`` message."""
     try:
@@ -504,21 +512,32 @@ class Transport:
 
     # ── Heartbeat ─────────────────────────────────────────────────────────────
 
-    def heartbeat(
+    def heartbeat_ex(
         self,
         status: str = "online",
         current_job_id: str | None = None,
         attempt_id: str | None = None,
         fence: int | None = None,
-    ) -> bool:
-        """Send a heartbeat to the manager.
+    ) -> str:
+        """Send a heartbeat and report WHY it failed, not just that it did.
 
-        Returns True if the heartbeat was accepted (HTTP 2xx),
-        False if rejected (401 — token expired).
+        Returns one of:
+          * HEARTBEAT_OK            — accepted (2xx).
+          * HEARTBEAT_LEASE_REVOKED — 409. The manager no longer considers this
+            attempt current: the operator cancelled the job, or it was reassigned
+            after a lease expiry. Either way this probe must STOP working on it.
+            This is a definitive answer, so the caller should abort immediately
+            rather than spend a retry budget on it.
+          * HEARTBEAT_FAILED        — anything else (auth, validation, network).
+            Possibly transient, so the caller retries a bounded number of times.
+
+        The old bool return collapsed all of these together, which meant a
+        cancelled job was indistinguishable from a flaky network and kept running
+        until the failure budget ran out.
         """
         try:
             if not self.ensure_device_access():
-                return False
+                return HEARTBEAT_FAILED
             r = self._client.post(
                 "/agents/heartbeat",
                 headers=self.auth_header,
@@ -530,12 +549,30 @@ class Transport:
                     "fence": fence,
                 },
             )
-            if r.status_code in (401, 403, 409, 422):
-                return False
+            if r.status_code == 409:
+                return HEARTBEAT_LEASE_REVOKED
+            if r.status_code in (401, 403, 422):
+                return HEARTBEAT_FAILED
             r.raise_for_status()
-            return True
+            return HEARTBEAT_OK
         except httpx.HTTPError:
-            return False
+            return HEARTBEAT_FAILED
+
+    def heartbeat(
+        self,
+        status: str = "online",
+        current_job_id: str | None = None,
+        attempt_id: str | None = None,
+        fence: int | None = None,
+    ) -> bool:
+        """Backwards-compatible bool form of `heartbeat_ex`.
+
+        Returns True only when the heartbeat was accepted; every rejection —
+        including a revoked lease — is False, matching the historical contract.
+        """
+        return self.heartbeat_ex(
+            status, current_job_id, attempt_id, fence
+        ) == HEARTBEAT_OK
 
     # ── Job polling (HTTP fallback) ────────────────────────────────────────────
 

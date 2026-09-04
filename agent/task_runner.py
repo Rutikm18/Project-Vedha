@@ -7,20 +7,85 @@ the runner:
   2. Fetches engagement scope (belt-and-suspenders validation)
   3. Validates targets against scope + exclusions
   4. Executes the scan (via engine.run_scan)
-  5. Submits the result (via transport or result_spool with retry)
+  5. Archives the result locally, then submits it (via transport or result_spool)
 
 All I/O dependencies are injected so the runner is fully testable with mocks.
 """
 from __future__ import annotations
 
+from scanner.scanner_base import project_file_stamp
+
 import json
 import logging
+import os
+from datetime import datetime, timezone
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Callable
 
 from agent.use_cases import resolve as resolve_use_case
 
 LOG = logging.getLogger("task_runner")
+
+# ── Local result archive ─────────────────────────────────────────────────────
+# Every payload is written here BEFORE it reaches the transport, so the file on
+# disk is what the manager receives — the transport's only further edits are
+# stripping NUL bytes and (over a size threshold) gzipping. That makes the
+# archive usable for auditing scan accuracy independently of the manager.
+#
+# This is deliberately NOT the result spool: the spool is a delivery buffer and
+# deletes each file the moment upload succeeds, so a healthy probe leaves nothing
+# behind to inspect. These files are never deleted by the probe.
+#
+# Default: <probe root>/result, i.e. alongside agent/ scanner/ workflow/ (in the
+# container image, /app/result). Point PROBE_RESULT_DIR elsewhere to relocate it,
+# or set it empty to turn archiving off.
+_DEFAULT_RESULT_DIR = Path(__file__).resolve().parent.parent / "result"
+_ARCHIVE_DISABLED = False       # latched after the first write failure
+
+
+def _result_dir() -> Path | None:
+    raw = os.environ.get("PROBE_RESULT_DIR")
+    if raw is None:
+        return _DEFAULT_RESULT_DIR
+    raw = raw.strip()
+    return Path(raw) if raw else None
+
+
+def prepare_result_dir() -> Path | None:
+    """Create the result archive directory at agent startup.
+
+    _archive_result() would create it lazily anyway, but doing it here means the
+    operator sees the path in the boot log and — more importantly — learns about
+    a permission problem immediately instead of after the first scan has already
+    finished. The directory existing is not enough to know it will work: a bind
+    mount Docker created as root is present but unwritable by the probe's uid, so
+    this actually writes a file and removes it.
+
+    Never raises: archiving is best-effort and must not block a probe from
+    starting.
+    """
+    global _ARCHIVE_DISABLED
+    target = _result_dir()
+    if target is None:
+        LOG.info("local result archive is off (PROBE_RESULT_DIR is empty)")
+        return None
+    try:
+        target.mkdir(parents=True, exist_ok=True)
+        canary = target / ".vedha-write-test"
+        canary.write_text("", encoding="utf-8")
+        canary.unlink()
+    except Exception as exc:
+        _ARCHIVE_DISABLED = True
+        LOG.warning(
+            "local result archive disabled — %s is not writable (%s: %s). Set "
+            "PROBE_RESULT_DIR to a writable path, or empty to silence this. "
+            "Scanning and result submission are unaffected.",
+            target, type(exc).__name__, exc,
+        )
+        return None
+    LOG.info("scan results will be archived to %s", target)
+    return target
 
 
 @dataclass
@@ -439,8 +504,54 @@ class TaskRunner:
             use_case_id=use_case_id,
         )
 
+    def _archive_result(self, payload: dict[str, Any]) -> Path | None:
+        """Write the outbound payload to the local result archive.
+
+        Called on the submission path so the archived bytes are the submitted
+        bytes. Archiving is best-effort by design: a read-only filesystem or a
+        full disk must never cost the operator a completed scan, so every failure
+        is swallowed, warned once, and the submission continues.
+        """
+        global _ARCHIVE_DISABLED
+        if _ARCHIVE_DISABLED:
+            return None
+        target_dir = _result_dir()
+        if target_dir is None:
+            return None
+        try:
+            target_dir.mkdir(parents=True, exist_ok=True)
+            # Project-local (IST): the operator finds evidence under the time
+            # they watched the scan run, not a UTC translation of it.
+            stamp = project_file_stamp()
+            path = target_dir / f"result{stamp}.json"
+            # Two jobs can finish inside the same second; never clobber evidence.
+            suffix = 2
+            while path.exists():
+                path = target_dir / f"result{stamp}-{suffix}.json"
+                suffix += 1
+            # Write-then-rename so a reader never sees a half-written result.
+            tmp = path.with_suffix(".json.partial")
+            tmp.write_text(json.dumps(payload, indent=2, default=str), encoding="utf-8")
+            tmp.replace(path)
+            LOG.info("result archived -> %s", path)
+            return path
+        except Exception as exc:
+            _ARCHIVE_DISABLED = True    # warn once, not once per job
+            LOG.warning(
+                "local result archive disabled (%s: %s) — set PROBE_RESULT_DIR to a "
+                "writable path, or empty to silence this. Submission is unaffected.",
+                type(exc).__name__, exc,
+            )
+            return None
+
     def _submit_or_spool(self, job_id: str, payload: dict[str, Any]) -> None:
-        """Submit the result, with spool-and-retry if available."""
+        """Submit the result, with spool-and-retry if available.
+
+        Every outbound payload — success and failure envelopes alike — funnels
+        through here, which is why the archive hangs off this method rather than
+        off the happy path in run_job().
+        """
+        self._archive_result(payload)
         attempt_id = payload.get("attempt_id")
         delivery_id = f"{job_id}--{attempt_id}" if attempt_id else job_id
         if self._spool_submit:

@@ -1,0 +1,26 @@
+23:22:51  === run_all target=127.0.0.1 profile=quick outdir=/Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha/probe/scans/scan_127_0_0_1_20260903_232251 ===
+23:22:51  [01_host_discovery] $ main_scripts.host_discovery -t 127.0.0.1 -s /Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha/probe/scans/scan_127_0_0_1_20260903_232251/scope.txt --rate 300 --concurrency 200 --timeout 2.0 -o /Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha/probe/scans/scan_127_0_0_1_20260903_232251/01_host_discovery.jsonl
+23:22:51  [01_host_discovery] done -> 01_host_discovery.jsonl
+23:22:51  host_discovery: appears LIVE
+23:22:51  [02_port_scan] $ main_scripts.port_scanner -t 127.0.0.1 -s /Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha/probe/scans/scan_127_0_0_1_20260903_232251/scope.txt --rate 300 --concurrency 200 --timeout 2.0 --profile quick --report-closed -o /Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha/probe/scans/scan_127_0_0_1_20260903_232251/02_port_scan.jsonl
+23:22:51  [02_port_scan] done -> 02_port_scan.jsonl
+23:22:51  open TCP ports: [80]
+23:22:51  [03_udp] $ main_scripts.udp_scanner -t 127.0.0.1 -s /Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha/probe/scans/scan_127_0_0_1_20260903_232251/scope.txt --rate 300 --concurrency 200 --timeout 2.0 -o /Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha/probe/scans/scan_127_0_0_1_20260903_232251/03_udp.jsonl
+23:22:57  [03_udp] done -> 03_udp.jsonl
+23:22:57  [04_os_fingerprint] $ main_scripts.os_fingerprint -t 127.0.0.1 -s /Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha/probe/scans/scan_127_0_0_1_20260903_232251/scope.txt --rate 300 --concurrency 200 --timeout 2.0 -o /Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha/probe/scans/scan_127_0_0_1_20260903_232251/04_os_fingerprint.jsonl
+23:22:57  [04_os_fingerprint] done -> 04_os_fingerprint.jsonl
+23:22:57  [05_snmp] $ main_scripts.snmp_scanner -t 127.0.0.1 -s /Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha/probe/scans/scan_127_0_0_1_20260903_232251/scope.txt --timeout 2.0 -o /Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha/probe/scans/scan_127_0_0_1_20260903_232251/05_snmp.jsonl
+23:23:10  [05_snmp] done -> 05_snmp.jsonl
+23:23:10  [05b_ipmi] $ main_scripts.ipmi_scanner -t 127.0.0.1 -s /Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha/probe/scans/scan_127_0_0_1_20260903_232251/scope.txt --timeout 2.0 -o /Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha/probe/scans/scan_127_0_0_1_20260903_232251/05b_ipmi.jsonl
+23:23:12  [05b_ipmi] done -> 05b_ipmi.jsonl
+23:23:12  [06_smb] skipped (445/139 not open)
+23:23:12  [07_service_banner] $ main_scripts.service_banner -t 127.0.0.1 -s /Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha/probe/scans/scan_127_0_0_1_20260903_232251/scope.txt --rate 300 --concurrency 200 --timeout 2.0 -p 80 -o /Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha/probe/scans/scan_127_0_0_1_20260903_232251/07_service_banner.jsonl
+23:23:12  [07_service_banner] done -> 07_service_banner.jsonl
+23:23:12  [09_web] $ main_scripts.web_scanner -t 127.0.0.1 -s /Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha/probe/scans/scan_127_0_0_1_20260903_232251/scope.txt --rate 300 --concurrency 200 --timeout 2.0 -p 80 -o /Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha/probe/scans/scan_127_0_0_1_20260903_232251/09_web.jsonl
+23:23:12  [09_web] done -> 09_web.jsonl
+23:23:12  canonical open TCP (reconciled with EPM): [80]
+23:23:12  findings: 2 total, 0 actionable -> findings.jsonl
+23:23:12    [LOW     ] 127.0.0.1:80           Missing HTTP security headers (4)
+23:23:12    [INFO    ] 127.0.0.1              OS identified: Linux/Unix/macOS
+23:23:12  device: ambiguous (conf 0.33) role_detail=server_or_workstation
+23:23:12  === done. results in /Users/rutikmangale/Documents/DRIVE T -Var/Security-projects/Vedha/probe/scans/scan_127_0_0_1_20260903_232251 ===

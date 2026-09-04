@@ -11,6 +11,8 @@ The CLI is the operator-facing control plane for deployed probes:
 """
 from __future__ import annotations
 
+from scanner.scanner_base import project_file_stamp
+
 import argparse
 import getpass
 import json
@@ -760,7 +762,7 @@ def cmd_validate(args: argparse.Namespace) -> int:
         except (OSError, json.JSONDecodeError, ValueError) as exc:
             raise CliError(f"invalid ground truth: {exc}") from exc
 
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    timestamp = project_file_stamp()
     output_dir = Path(args.output_dir or f"validation-results/{timestamp}")
     plan = {
         "manager_url": profile["manager_url"],

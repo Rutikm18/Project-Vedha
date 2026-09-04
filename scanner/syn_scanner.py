@@ -35,6 +35,7 @@ import hashlib
 import hmac
 import os
 import random
+import select
 import socket
 import struct
 import sys
@@ -55,6 +56,7 @@ from .scanner_base import (
     main_entrypoint,
     parse_ports,
     resolve,
+    SendPacer,
     setup_logging,
 )
 from .scanner_base import (
@@ -238,6 +240,36 @@ def verify_reply_cookie(parsed: dict, our_src_port: int, key: bytes) -> bool:
 
 # ── capability detection ──────────────────────────────────────────────────────
 
+def _wait_readable(sock, timeout: float) -> bool:
+    """
+    Block until `sock` has a packet waiting, or `timeout` seconds elapse.
+    Returns True when a read should be attempted.
+
+    This replaces a fixed 5 ms poll: polling both burned CPU and let the raw
+    socket's buffer overflow BETWEEN wakeups during a reply burst, silently
+    dropping SYN/ACKs that were then reported as `filtered`. select() wakes the
+    instant a reply lands and sleeps the rest of the time.
+
+    We select on the integer fd rather than the object so any socket-like wrapper
+    works. Anything that cannot be selected (no usable fileno, or a platform that
+    rejects the call) degrades to "assume readable", i.e. a plain non-blocking
+    read attempt — the previous behaviour — instead of aborting the scan.
+    """
+    if timeout <= 0:
+        return False
+    try:
+        fd = sock.fileno()
+    except (AttributeError, OSError):
+        return True
+    if not isinstance(fd, int) or fd < 0:
+        return True
+    try:
+        ready, _, _ = select.select([fd], [], [], timeout)
+    except (OSError, ValueError):
+        return True
+    return bool(ready)
+
+
 def syn_scan_supported(*, platform: str | None = None,
                        socket_factory=None) -> bool:
     """
@@ -284,7 +316,8 @@ class SynScanner(BaseScanner):
                  key: bytes | None = None, report_closed: bool = False,
                  force_fallback: bool = False, retries: int = 2,
                  adaptive_timeout: bool = True, source_port: int | None = None,
-                 randomize: bool = False, scan_delay: float = 0.0, **kwargs):
+                 randomize: bool = False, scan_delay: float = 0.0,
+                 pace_sends: bool = True, **kwargs):
         super().__init__(*args, **kwargs)
         # Default to nmap top-100 (not the 35-port TOP_TCP_PORTS): a no-arg scan
         # shouldn't silently miss common services.
@@ -304,6 +337,13 @@ class SynScanner(BaseScanner):
         self.source_port = source_port          # fixed TCP src port, or None = random
         self._key = key or os.urandom(16)
         self._rate = kwargs.get("rate", 200.0)
+        # Pace the raw SYN send loop and adapt it to observed loss (AIMD).
+        # Previously `limiter.wait()` was awaited ONCE per target and the inner
+        # loop then blasted every SYN back-to-back, so the configured --rate was
+        # effectively ignored for the packets that matter. An unpaced burst
+        # causes its own drops, which the scanner then reports as `filtered`.
+        self.pace_sends = pace_sends
+        self._pacer = SendPacer(self._rate) if pace_sends else None
         self._supported = (not force_fallback) and syn_scan_supported()
         self._fallback: PortScanner | None = None
         if not self._supported:
@@ -342,7 +382,12 @@ class SynScanner(BaseScanner):
         return await loop.run_in_executor(None, self._syn_scan_blocking, target)
 
     def _syn_scan_blocking(self, target: str) -> list[ScanResult]:
-        family, sockaddr = resolve(target, 0, proto="tcp")
+        # REQUEST IPv4 explicitly: this raw path is v4-only, so taking whatever
+        # getaddrinfo sorts first meant a dual-stack host whose AAAA leads was
+        # kicked to the slower connect fallback even though its A record was
+        # perfectly scannable. `resolve(family=...)` still returns the first
+        # result when no v4 exists, so a genuinely v6-only host still falls back.
+        family, sockaddr = resolve(target, 0, proto="tcp", family=socket.AF_INET)
         if family != socket.AF_INET:
             # This raw implementation is IPv4-only; signal fallback.
             raise OSError("syn scan is IPv4-only")
@@ -356,6 +401,15 @@ class SynScanner(BaseScanner):
         recv_sock = socket.socket(socket.AF_INET, socket.SOCK_RAW,
                                   socket.IPPROTO_TCP)
         recv_sock.setblocking(False)
+        # Enlarge the raw receive buffer. Replies to a wide scan arrive in a
+        # burst; when the default (often ~208KB) overflows, the KERNEL silently
+        # discards SYN/ACKs and those ports are reported `filtered`. This is a
+        # false negative created entirely inside the scanner, so buy headroom.
+        # Best-effort: an unprivileged/!Linux kernel may refuse or clamp it.
+        try:
+            recv_sock.setsockopt(socket.SOL_SOCKET, socket.SO_RCVBUF, 4 << 20)
+        except (OSError, AttributeError):
+            LOG.debug("could not raise SO_RCVBUF on the raw socket")
 
         # One adaptive timer per host: it warms from each SYN-ACK/RST round-trip,
         # so later rounds wait exactly as long as this path actually needs.
@@ -390,6 +444,12 @@ class SynScanner(BaseScanner):
                     attempts_by_port[port] = attempts_by_port.get(port, 0) + 1
                     seq = syn_cookie(dst_ip, port, src_port, self._key)
                     pkt = build_syn_packet(src_ip, dst_ip, src_port, port, seq)
+                    # Pace EVERY packet. `limiter.wait()` is awaited once per
+                    # target, which left this inner loop free to emit the whole
+                    # cohort at CPU speed -- the burst that causes the drops the
+                    # scanner then misreports as `filtered`.
+                    if self._pacer is not None:
+                        self._pacer.pace()
                     try:
                         send_sock.sendto(pkt, (dst_ip, 0))
                         send_at[port] = time.monotonic()
@@ -398,13 +458,22 @@ class SynScanner(BaseScanner):
 
                 # Collect replies for this round within the adaptive window.
                 pending_set = set(pending)
+                sent_ports = set(send_at)
                 window = est.timeout() if est is not None else self.timeout
                 deadline = time.monotonic() + max(window, 1.0)
-                while time.monotonic() < deadline and pending_set:
+                while pending_set:
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
+                        break
+                    # Block until a reply is genuinely readable (or the round
+                    # deadline expires) instead of polling with a fixed 5ms
+                    # sleep. The old poll both burned CPU and could let the raw
+                    # socket overflow between wakeups during a reply burst.
+                    if not _wait_readable(recv_sock, remaining):
+                        break                  # deadline expired with no reply
                     try:
                         raw = recv_sock.recv(65535)
                     except BlockingIOError:
-                        time.sleep(0.005)
                         continue
                     except OSError:
                         break
@@ -440,6 +509,14 @@ class SynScanner(BaseScanner):
                             m["wscale"] = parsed["wscale"]
                         if parsed.get("olayout"):
                             m["olayout"] = parsed["olayout"]
+                # AIMD: the per-round reply ratio IS the loss signal. A round
+                # that loses most of its probes halves the send rate before the
+                # next retransmit round; a clean round accelerates again. This is
+                # what keeps a fast scan from manufacturing its own false
+                # negatives on a fragile path or a rate-limiting target.
+                if self._pacer is not None and sent_ports:
+                    answered = len(sent_ports - pending_set)
+                    self._pacer.observe_round(len(sent_ports), answered)
                 # Only ports still unresolved go to the next round.
                 pending = [p for p in pending if p not in states]
         finally:
@@ -530,6 +607,10 @@ def main() -> None:
     parser.add_argument("--fixed-timeout", action="store_true",
                         help="disable the per-host RTT-adaptive recv window; use "
                              "the fixed --timeout instead")
+    parser.add_argument("--no-pacing", action="store_true",
+                        help="disable AIMD send pacing and emit SYNs as fast as "
+                             "the CPU allows (faster, but self-inflicted drops "
+                             "get reported as 'filtered')")
     args = parser.parse_args()
     setup_logging(args.verbose)
 
@@ -543,6 +624,7 @@ def main() -> None:
                              force_fallback=args.force_fallback,
                              retries=args.retries,
                              adaptive_timeout=not args.fixed_timeout,
+                             pace_sends=not args.no_pacing,
                              source_port=args.source_port,
                              randomize=args.randomize, scan_delay=args.scan_delay)
         if scanner._supported:

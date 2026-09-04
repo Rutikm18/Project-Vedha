@@ -152,8 +152,23 @@ def _sni(host: str) -> str | None:
         return host
 
 
+# Returned when the SCANNING host's own TLS stack refuses to offer a version, so
+# the server was never actually asked. Distinct from None, which means the server
+# was asked and said no. Collapsing the two reports the probe's crypto policy as
+# the target's posture — a legacy-TLS server then looks correctly hardened.
+_UNTESTABLE = object()
+
+# OpenSSL errors raised locally, before anything is sent to the target.
+_CLIENT_SIDE_SSL_REASONS = {"NO_PROTOCOLS_AVAILABLE", "UNSUPPORTED_PROTOCOL"}
+
+
 def _try_version(host: str, port: int, version, timeout: float):
-    """Attempt a handshake forcing one protocol version. Returns cipher dict or None."""
+    """Attempt a handshake forcing one protocol version.
+
+    Returns a cipher dict when the server accepted the version, ``None`` when the
+    server refused it, and ``_UNTESTABLE`` when this probe could not offer it at
+    all (so nothing may be concluded about the server).
+    """
     ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
     ctx.check_hostname = False
     ctx.verify_mode = ssl.CERT_NONE
@@ -161,11 +176,26 @@ def _try_version(host: str, port: int, version, timeout: float):
         ctx.minimum_version = version
         ctx.maximum_version = version
     except (ValueError, OSError):
-        return None     # this Python/OpenSSL build can't pin that version
+        return _UNTESTABLE      # this Python/OpenSSL build can't pin that version
+    # Distribution OpenSSL defaults to SECLEVEL=2, which bans TLS < 1.2 and the
+    # legacy cipher suites CLIENT-side. Measuring a server's deprecated-protocol
+    # support therefore requires dropping our own floor first; without this the
+    # handshake never reaches the wire and every host looks TLS-1.2-only.
+    try:
+        ctx.set_ciphers("ALL:@SECLEVEL=0")
+    except ssl.SSLError:
+        pass                    # build without legacy suites; the pin still holds
     try:
         with socket.create_connection((host, port), timeout=timeout) as sock:
             with ctx.wrap_socket(sock, server_hostname=_sni(host)) as ssock:
                 return {"cipher": ssock.cipher(), "version": ssock.version()}
+    except ssl.SSLError as exc:
+        reason = getattr(exc, "reason", None) or ""
+        text = str(exc)
+        if reason in _CLIENT_SIDE_SSL_REASONS or any(
+                r in text for r in _CLIENT_SIDE_SSL_REASONS):
+            return _UNTESTABLE
+        return None
     except Exception:
         return None
 
@@ -243,11 +273,16 @@ def _parse_cert_der(der: bytes | None) -> dict:
 
 def _scan_tls_sync(host: str, port: int, timeout: float) -> dict | None:
     accepted: list[str] = []
+    not_tested: list[str] = []
     cipher_by_ver: dict[str, str] = {}
     for label, ver in _PROTOCOLS:
         if ver is None:
+            not_tested.append(label)     # protocol absent from this Python build
             continue
         res = _try_version(host, port, ver, timeout)
+        if res is _UNTESTABLE:
+            not_tested.append(label)
+            continue
         if res:
             accepted.append(label)
             c = res["cipher"]
@@ -258,10 +293,16 @@ def _scan_tls_sync(host: str, port: int, timeout: float) -> dict | None:
     cipher_details = [classify_cipher(name)
                       for name in dict.fromkeys(v for v in cipher_by_ver.values() if v)]
     posture = grade_tls_posture(accepted, cipher_details)
+    if not_tested:
+        # Never let an untested version read as an absent one: say so on the fact
+        # so a downstream rule can tell "hardened" from "we couldn't check".
+        posture.setdefault("findings", []).append(
+            "not tested by this probe (local TLS policy): " + ", ".join(not_tested))
 
     der = _get_cert_der(host, port, timeout)
     return {
         "accepted_versions": accepted,
+        "versions_not_tested": not_tested,
         "cipher_by_version": cipher_by_ver,
         "cipher_analysis": cipher_details,
         "posture": posture,

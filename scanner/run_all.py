@@ -25,6 +25,8 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+from .scanner_base import project_file_stamp, project_now
+
 # Directory that contains the main_scripts package (so `-m main_scripts.X` works).
 _PKG_ROOT = Path(__file__).resolve().parent.parent
 
@@ -46,7 +48,9 @@ _PRINTER_CANDIDATES = {9100, 631}
 
 
 def _log(outdir: Path, msg: str) -> None:
-    line = f"{datetime.now().strftime('%H:%M:%S')}  {msg}"
+    # Project-local (IST) and EXPLICIT — this used to be a naive datetime.now(),
+    # which only looked right because the dev box happened to be in that zone.
+    line = f"{project_now().strftime('%H:%M:%S')}  {msg}"
     print(line, flush=True)
     with (outdir / "run.log").open("a") as fh:
         fh.write(line + "\n")
@@ -122,7 +126,7 @@ def main() -> None:
                          "An internal enterprise scan should NOT pass this.")
     args = ap.parse_args()
 
-    stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+    stamp = project_file_stamp("%Y%m%d_%H%M%S")
     safe = args.target.replace(".", "_").replace(":", "_")
     outdir = Path(args.outdir) if args.outdir else _PKG_ROOT / "scans" / f"scan_{safe}_{stamp}"
     outdir.mkdir(parents=True, exist_ok=True)

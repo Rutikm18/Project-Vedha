@@ -33,7 +33,8 @@ import struct
 
 from .scanner_base import (
     BaseScanner, ScanResult, ScopeGuard, ResultWriter, expand_targets,
-    parse_ports, resolve, setup_logging, base_argparser, main_entrypoint, LOG,
+    parse_ports, resolve, resolve_ip_candidates, setup_logging, base_argparser,
+    main_entrypoint, LOG,
 )
 from .ja4s import compute_ja4s   # JA4S server-hello fingerprint (advanced capability)
 
@@ -289,15 +290,19 @@ class TLSFingerprintScanner(BaseScanner):
     async def _scan_port(self, target: str, port: int) -> ScanResult | None:
         await self.limiter.wait()
         loop = asyncio.get_running_loop()
+        _NULL_DIGEST = "0" * 62
         async with self.sem:
-            try:
-                family, sockaddr = resolve(target, port, proto="tcp")
-            except OSError:
-                return None
-            ip = sockaddr[0]
-            digest, results = await loop.run_in_executor(
-                None, fingerprint_host, target, ip, port, self.timeout)
-        if digest == "0" * 62:
+            # Walk every resolved family rather than only getaddrinfo's first
+            # result: a dual-stack host whose AAAA sorts first but whose IPv6
+            # path is black-holed would otherwise be reported as speaking no TLS.
+            ip, digest, results = None, _NULL_DIGEST, []
+            for cand in resolve_ip_candidates(target, port, proto="tcp"):
+                digest, results = await loop.run_in_executor(
+                    None, fingerprint_host, target, cand, port, self.timeout)
+                ip = cand
+                if digest != _NULL_DIGEST:
+                    break                            # this address speaks TLS
+        if digest == _NULL_DIGEST:
             return None                              # no TLS here / all silent
         responded = sum(1 for r in results if r)
         # JA4S — one standard handshake for the modern server fingerprint.

@@ -25,7 +25,8 @@ import struct
 
 from .scanner_base import (
     BaseScanner, ScanResult, ScopeGuard, ResultWriter, expand_targets,
-    resolve, setup_logging, base_argparser, main_entrypoint,
+    resolve, resolve_candidates, resolve_ip_candidates,
+    setup_logging, base_argparser, main_entrypoint,
 )
 
 
@@ -366,30 +367,38 @@ class SMBScanner(BaseScanner):
         self.port = port
 
     def _negotiate(self, target: str, payload: bytes) -> bytes | None:
+        """SMB negotiate against the first address that actually answers.
+
+        Walks every resolved family rather than only getaddrinfo's first result:
+        on a dual-stack host whose AAAA sorts first but whose IPv6 path is
+        black-holed, taking only the first address reports the share as
+        unreachable when IPv4 would have answered instantly."""
         try:
-            family, sockaddr = resolve(target, self.port, proto="tcp")
+            candidates = resolve_candidates(target, self.port, proto="tcp")
         except OSError:
             return None
-        sock = socket.socket(family, socket.SOCK_STREAM)
-        sock.settimeout(self.timeout)
-        try:
-            sock.connect(sockaddr)
-            sock.sendall(_netbios_session(payload))
-            return sock.recv(1024)
-        except OSError:
-            return None
-        finally:
-            sock.close()
+        for family, sockaddr in candidates:
+            sock = socket.socket(family, socket.SOCK_STREAM)
+            sock.settimeout(self.timeout)
+            try:
+                sock.connect(sockaddr)
+                sock.sendall(_netbios_session(payload))
+                return sock.recv(1024)
+            except OSError:
+                continue          # this family is unreachable — try the next
+            finally:
+                sock.close()
+        return None
 
     def _ntlm_fingerprint(self, target: str) -> dict:
         """Best-effort: SMB2 NEGOTIATE then a pre-auth SESSION_SETUP to harvest the
         server's NTLMSSP Version (exact Windows build). Any failure → {} (the SMB
         result is still emitted without a build). Read-only, unauthenticated."""
-        try:
-            _family, sockaddr = resolve(target, self.port, proto="tcp")
-        except OSError:
-            return {}
-        return ntlm_os_build(sockaddr[0], self.port, self.timeout)
+        for ip in resolve_ip_candidates(target, self.port, proto="tcp"):
+            build = ntlm_os_build(ip, self.port, self.timeout)
+            if build:
+                return build      # first address that answers wins
+        return {}
 
     async def scan_target(self, target: str) -> list[ScanResult]:
         await self.limiter.wait()
