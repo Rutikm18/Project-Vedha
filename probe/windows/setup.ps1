@@ -22,18 +22,66 @@ param(
 $ErrorActionPreference = 'Stop'
 $probeRoot = Split-Path $PSScriptRoot -Parent      # ...\probe
 
+# Admin? (affects Python install scope + the background-task install)
+$isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+
 if ($Update) {
-  Write-Host 'Updating from git...'
-  git -C $probeRoot pull --ff-only
+  if (Get-Command git -ErrorAction SilentlyContinue) {
+    Write-Host 'Updating from git...'
+    git -C $probeRoot pull --ff-only
+  } else {
+    Write-Warning 'git not found - skipping -Update (re-download the ZIP to update, or install Git).'
+  }
 }
 
-# 1) Find Python
-$python = $null
-foreach ($c in @('python','py')) {
-  $cmd = Get-Command $c -ErrorAction SilentlyContinue
-  if ($cmd) { $python = $cmd.Source; break }
+# ── Find or AUTO-INSTALL Python (fresh machine: nothing preinstalled) ─────────
+function Get-PythonExe {
+  # Real python 3.8+ on PATH (skips the Windows Store stub, which fails -c).
+  foreach ($c in @('python','py')) {
+    $cmd = Get-Command $c -ErrorAction SilentlyContinue
+    if ($cmd) {
+      try {
+        $v = & $cmd.Source -c "import sys;print('%d.%d'%sys.version_info[:2])" 2>$null
+        if ($LASTEXITCODE -eq 0 -and [version]$v -ge [version]'3.8') { return $cmd.Source }
+      } catch {}
+    }
+  }
+  # PATH may not be refreshed in this process right after an install - check known dirs.
+  foreach ($pat in @(
+      "$env:LOCALAPPDATA\Programs\Python\Python3*\python.exe",
+      "$env:ProgramFiles\Python3*\python.exe",
+      "C:\Python3*\python.exe")) {
+    $f = Get-ChildItem $pat -ErrorAction SilentlyContinue | Sort-Object FullName -Descending | Select-Object -First 1
+    if ($f) { return $f.FullName }
+  }
+  return $null
 }
-if (-not $python) { Write-Error 'Python 3.8+ not found. Install from https://python.org (tick "Add to PATH"), then re-run.'; exit 1 }
+
+function Install-Python {
+  Write-Host 'Python not found - installing Python 3.12 automatically...'
+  [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+  # Prefer winget (Win10 1809+/Win11); silent, handles PATH.
+  if (Get-Command winget -ErrorAction SilentlyContinue) {
+    $scope = if ($isAdmin) { 'machine' } else { 'user' }
+    try { winget install --id Python.Python.3.12 -e --scope $scope --accept-package-agreements --accept-source-agreements --silent | Out-Null } catch {}
+    $p = Get-PythonExe; if ($p) { return $p }
+  }
+  # Fallback: official silent installer - works with nothing else installed.
+  $ver = '3.12.7'
+  $installer = Join-Path $env:TEMP "python-$ver-amd64.exe"
+  Write-Host "Downloading python-$ver-amd64.exe ..."
+  Invoke-WebRequest -Uri "https://www.python.org/ftp/python/$ver/python-$ver-amd64.exe" -OutFile $installer -UseBasicParsing
+  $allUsers = if ($isAdmin) { '1' } else { '0' }   # all-users needs admin; per-user otherwise
+  Write-Host 'Installing Python (silent; ~1 min)...'
+  Start-Process -FilePath $installer -ArgumentList "/quiet InstallAllUsers=$allUsers PrependPath=1 Include_pip=1 Include_test=0" -Wait
+  Remove-Item $installer -ErrorAction SilentlyContinue
+  return (Get-PythonExe)
+}
+
+$python = Get-PythonExe
+if (-not $python) { $python = Install-Python }
+if (-not $python) { Write-Error 'Could not find or install Python. Install Python 3.10+ from https://python.org and re-run.'; exit 1 }
+Write-Host "Using Python: $python"
 
 # 2) venv + deps (idempotent; venv lives in probe\windows so .gitignore covers it)
 $venv = Join-Path $PSScriptRoot '.venv-win'
@@ -72,8 +120,7 @@ if ($Foreground) {
   exit $LASTEXITCODE
 }
 
-# 5b) PERSISTENT - background task (needs admin)
-$isAdmin = ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
+# 5b) PERSISTENT - background task (needs admin; $isAdmin computed at top)
 if (-not $isAdmin) { Write-Error 'Installing the background task needs Administrator. Run setup.cmd (it elevates), or use -Foreground to just run now.'; exit 1 }
 
 if (Get-ScheduledTask -TaskName 'VedhaAgent' -ErrorAction SilentlyContinue) {

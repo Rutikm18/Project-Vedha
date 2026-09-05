@@ -12,8 +12,10 @@ sets up a venv, installs dependencies, and starts the agent.
 
 ## The customer commands (on the target Windows machine)
 
-**Prerequisites:** [Git](https://git-scm.com/download/win) and
-[Python 3.10+](https://www.python.org/downloads/windows/) (tick *Add to PATH*).
+**Prerequisites:** none pre-installed is required — `setup.ps1` **auto-installs
+Python** if it's missing (winget or the official installer). Use
+[Git](https://git-scm.com/download/win) to clone, or just download the repo ZIP.
+Needs internet on first run (to fetch Python + Python deps).
 
 **First time:**
 ```bat
