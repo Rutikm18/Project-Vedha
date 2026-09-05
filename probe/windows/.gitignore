@@ -1,0 +1,5 @@
+# Build/packaging artifacts — never commit these (keeps the repo non-disrupted).
+dist/
+.venv-win/
+*.exe
+*.zip
