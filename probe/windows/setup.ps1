@@ -86,6 +86,18 @@ Write-Host "Using Python: $python"
 # 2) venv + deps (idempotent; venv lives in probe\windows so .gitignore covers it)
 $venv = Join-Path $PSScriptRoot '.venv-win'
 $vpy  = Join-Path $venv 'Scripts\python.exe'
+
+# Windows Defender flags impacket's example scripts as a HackTool and quarantines
+# them mid-install -> pip dies with "[Errno 22] Invalid argument: ...DumpNTLMInfo.py",
+# and it would also block the agent at runtime. Exclude the venv + state dir (admin only).
+$agentDataDir = Join-Path $env:ProgramData 'vedha-agent'
+if ($isAdmin) {
+  foreach ($ex in @($venv, $agentDataDir)) { try { Add-MpPreference -ExclusionPath $ex -ErrorAction SilentlyContinue } catch {} }
+  try { Add-MpPreference -ExclusionProcess 'python.exe' -ErrorAction SilentlyContinue } catch {}
+} else {
+  Write-Warning 'Not admin: if pip fails on impacket (Errno 22) or the agent gets blocked, Windows Defender is the cause. Re-run elevated (setup.cmd), or add: Add-MpPreference -ExclusionPath "<repo folder>".'
+}
+
 if (-not (Test-Path $vpy)) { Write-Host 'Creating virtualenv...'; & $python -m venv $venv }
 Write-Host 'Installing dependencies...'
 & $vpy -m pip install --quiet --upgrade pip
@@ -108,6 +120,7 @@ New-Item -ItemType Directory -Force -Path $stateDir, (Join-Path $stateDir 'spool
 if ($Foreground) {
   $env:PLATFORM_URL           = $Manager
   $env:VERIFY_TLS             = 'true'
+  $env:LICENSE_ENFORCED       = 'false'   # source build: no baked HW fingerprint/license
   $env:PROBE_NAME             = "$env:COMPUTERNAME-probe"
   $env:PROBE_NETWORK_SEGMENTS = $Scope
   $env:STATE_FILE             = Join-Path $stateDir 'state.json'
@@ -133,6 +146,7 @@ $wrapper = @"
 @echo off
 set "PLATFORM_URL=$Manager"
 set "VERIFY_TLS=true"
+set "LICENSE_ENFORCED=false"
 set "PROBE_NAME=%COMPUTERNAME%-probe"
 set "PROBE_NETWORK_SEGMENTS=$Scope"
 set "STATE_FILE=$stateDir\state.json"
