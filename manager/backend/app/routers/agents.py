@@ -992,9 +992,28 @@ async def get_agent_jobs(
         # Honor an operator-pinned probe: a job targeted at a specific agent is
         # only claimable by that agent. Untargeted jobs (no preferred_agent_id)
         # remain claimable by any compatible probe.
+        #
+        # ...unless the pin is STALE. Every probe re-registration mints a new
+        # agent_id and leaves the OLD row behind as `offline` forever, so a job
+        # pinned to that old id is unclaimable BY ANYONE — it sits `pending`
+        # indefinitely, silently consuming a slot in the per-engagement queue cap.
+        # Observed 2026-09-05: two jobs queued ~11 hours behind probes that had
+        # long since re-enrolled under new ids.
+        #
+        # A pin to a RECENTLY-SEEN agent stays a HARD constraint (operator
+        # intent, and it may just be restarting). A pin to one silent for longer
+        # than PINNED_AGENT_STALE_AFTER_SECONDS is stale metadata, not intent, so
+        # the job falls back to any compatible probe. That fallback is safe because
+        # `_agent_can_execute_job` below still enforces capability AND network
+        # reachability — a job can never be routed to a probe that cannot reach
+        # its scope, pinned or not.
         preferred = params.get("preferred_agent_id")
         if preferred and str(preferred) != str(agent_id):
-            continue
+            if await _pinned_agent_is_live(db, preferred):
+                continue                      # live pin — respect it
+            logger.info("agent.job.dangling_pin_ignored",
+                        job_id=str(job.id), preferred_agent_id=str(preferred),
+                        claiming_agent_id=str(agent_id))
         if not _agent_can_execute_job(
             agent, job.job_type, params, engagement.scope_cidrs or [],
         ):
@@ -1148,6 +1167,39 @@ async def get_job_status(job_id: uuid.UUID, db: DB, current_user: AuthUser):
 #: is watching, and the work at the end of it is stale by the time it starts.
 #: Running jobs are NOT counted — the cap limits the backlog, not the throughput.
 MAX_PENDING_JOBS_PER_ENGAGEMENT = 3
+
+
+#: How long a pinned probe may be silent before its pin is treated as stale.
+#: Deliberately far longer than the 90s liveness window used elsewhere: a probe
+#: that is merely restarting, redeploying, or briefly off the network must NOT
+#: lose a job an operator deliberately routed to it. Only a probe that has been
+#: gone long enough to be considered never-coming-back releases its claim.
+PINNED_AGENT_STALE_AFTER_SECONDS = 900          # 15 minutes
+
+
+async def _pinned_agent_is_live(db, agent_id) -> bool:
+    """Can the probe a job is pinned to still plausibly run it?
+
+    Row existence is NOT the test — that was the first version of this check and
+    it was wrong. A re-registered probe leaves its OLD row in place, `offline`,
+    forever; the observed orphans were pinned to agents whose rows existed but
+    whose last heartbeat was ~11 hours old. Existence would have kept honouring
+    those pins and the jobs would still be stranded.
+
+    So the test is RECENCY. A malformed or unknown id is not live either: a pin
+    nobody can satisfy must never strand a job permanently.
+    """
+    try:
+        parsed = uuid.UUID(str(agent_id))
+    except (ValueError, TypeError, AttributeError):
+        return False
+    last = (await db.execute(
+        select(Agent.last_heartbeat).where(Agent.id == parsed).limit(1)
+    )).scalar_one_or_none()
+    if last is None:                    # unknown agent, or one that never beat
+        return False
+    age = (datetime.now(timezone.utc) - last).total_seconds()
+    return age <= PINNED_AGENT_STALE_AFTER_SECONDS
 
 
 async def _pending_job_count(db, engagement_id: uuid.UUID) -> int:

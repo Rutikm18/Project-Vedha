@@ -101,6 +101,11 @@ export interface LiveFinding {
   timestamp: string;
   engagementId?: string;
   status: 'OPEN' | 'IN_REVIEW' | 'IN_REMEDIATION' | 'VERIFIED' | 'CLOSED';
+  /** Exploit-signal inputs consumed by the report scorecard (buildScorecard).
+   *  Optional — populated when a finding is on the CISA KEV list / carries an
+   *  EPSS score; absent otherwise (never assume zero). */
+  kev?: boolean;
+  epss?: number;
   slaDeadline?: string;
   falsePositive?: boolean;
   falsePositiveReason?: string;

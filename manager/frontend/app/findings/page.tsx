@@ -2300,7 +2300,7 @@ button.findings-triage-metric:hover { background: var(--bg-hover); }
   color: var(--text-secondary); font: 700 8.5px/1.2 var(--font-mono); letter-spacing: .05em;
 }
 
-.findings-urgent-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(256px, 1fr)); gap: 10px; margin-top: 16px; }
+.findings-urgent-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(256px, 1fr)); gap: 10px; margin-top: 16px; }
 .findings-urgent-item {
   display: grid; grid-template-columns: minmax(0, 1fr); gap: 7px;
   padding: 11px 13px; text-align: left; cursor: pointer;
@@ -2388,10 +2388,21 @@ button.findings-triage-metric:hover { background: var(--bg-hover); }
 /* Centred page column. The PageShell main element is full-bleed, so without this
    the workspace stretched across an ultrawide display and the queue drifted away
    from the detail panel. 1180px matches the campaign and scans screens. */
-.findings-page { width: 100%; max-width: 1180px; margin: 0 auto; }
+/* Width and centring come from .vedha-page-container in the shell, so the
+   findings column widens on a large display instead of stranding margin. */
+.findings-page { width: 100%; }
 
 .findings-workspace { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-4); align-items: start; }
 .findings-workspace[data-detail="true"] { grid-template-columns: minmax(300px, 356px) minmax(0, 1fr); gap: 18px; }
+/* Give the queue a share of the extra width on large displays rather than
+   handing all of it to the detail pane. Pairs with the --page-max ladder. */
+@media (min-width: 1600px) {
+  .findings-workspace[data-detail="true"] { grid-template-columns: minmax(340px, 420px) minmax(0, 1fr); gap: 20px; }
+  .findings-workspace[data-detail="true"] .finding-card-metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
+@media (min-width: 1920px) {
+  .findings-workspace[data-detail="true"] { grid-template-columns: minmax(380px, 460px) minmax(0, 1fr); gap: 24px; }
+}
 .findings-queue { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
 .findings-list { display: flex; flex-direction: column; gap: 6px; }
 .findings-list[data-refreshing="true"] { opacity: .72; transition: opacity 160ms var(--ease-out); }

@@ -912,7 +912,8 @@ export default function ScanPage() {
     <PageShell title="Scanner" subtitle="Compose and dispatch a scan to a field-deployed vedha-agent">
       <style>{STYLES}</style>
 
-      <div className="scn-page" style={{ display: "flex", flexDirection: "column", gap: 20, width: "100%", maxWidth: 1180, margin: "0 auto" }}>
+      {/* Width and centring come from .vedha-page-container in the shell. */}
+      <div className="scn-page" style={{ display: "flex", flexDirection: "column", gap: 20, width: "100%" }}>
 
         <FleetStrip probes={probes} loading={loadingData} />
 

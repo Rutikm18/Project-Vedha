@@ -1,4 +1,4 @@
-# Node Description Batch 129 of 332
+# Node Description Batch 129 of 336
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,58 +12,51 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
-For an entity node (any other kind — e.g. a person, place, event, object),
-describe what the entity is and its role, grounded in its type, its
-relations (neighbors) and the provided citations/evidence — e.g.
-"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
-Ground entity descriptions in the citations/evidence when present; do not
-speculate beyond the context, so a node with no supporting context may be
-left out of the reply.
 Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
+- "detection_engine_port_intel_banner_confirms_backdoor": "_banner_confirms_backdoor()" | kind=code-symbol | source=manager/detection_engine/port_intel.py:L156 | neighbors=[port_intel.py, classify_port()]
+- "detection_engine_port_intel_normalized": "_normalized()" | kind=code-symbol | source=manager/detection_engine/port_intel.py:L197 | neighbors=[port_intel.py, contradicts_port_hypothesis()]
+- "detection_engine_port_intel_portrisk": "PortRisk" | kind=code-symbol | source=manager/detection_engine/port_intel.py:L34 | neighbors=[port_intel.py, classify_port()]
+- "detection_engine_posture_rules_dns_zone_transfer": "_dns_zone_transfer()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L428 | neighbors=[posture_rules.py, _d()]
+- "detection_engine_posture_rules_exposed_title": "_exposed_title()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L934 | neighbors=[posture_rules.py, detect_exposed_services()]
+- "detection_engine_posture_rules_ftp_anonymous": "_ftp_anonymous()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L419 | neighbors=[posture_rules.py, _d()]
+- "detection_engine_posture_rules_ipmi_cipher_zero": "_ipmi_cipher_zero()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L517 | neighbors=[posture_rules.py, _d()]
+- "detection_engine_posture_rules_is_validated": "is_validated()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L56 | neighbors=[posture_rules.py, _state_for()]
+- "detection_engine_posture_rules_ldap_anonymous_bind": "_ldap_anonymous_bind()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L448 | neighbors=[posture_rules.py, _d()]
+- "detection_engine_posture_rules_msrpc_exposed": "_msrpc_exposed()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L367 | neighbors=[posture_rules.py, _d()]
+- "detection_engine_posture_rules_nfs_world_readable": "_nfs_world_readable()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L440 | neighbors=[posture_rules.py, _d()]
+- "detection_engine_posture_rules_rdp_auth": "_rdp_auth()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L321 | neighbors=[posture_rules.py, _d()]
+- "detection_engine_posture_rules_rdp_exposed": "_rdp_exposed()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L313 | neighbors=[posture_rules.py, _d()]
+- "detection_engine_posture_rules_rsync_anonymous": "_rsync_anonymous()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L498 | neighbors=[posture_rules.py, _d()]
+- "detection_engine_posture_rules_smb_null_session": "_smb_null_session()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L506 | neighbors=[posture_rules.py, _d()]
+- "detection_engine_posture_rules_smb_signing": "_smb_signing()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L250 | neighbors=[posture_rules.py, _d()]
+- "detection_engine_posture_rules_smbv1": "_smbv1()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L246 | neighbors=[posture_rules.py, _d()]
+- "detection_engine_posture_rules_smtp_no_starttls": "_smtp_no_starttls()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L490 | neighbors=[posture_rules.py, _d()]
+- "detection_engine_posture_rules_smtp_user_enum": "_smtp_user_enum()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L478 | neighbors=[posture_rules.py, _d()]
+- "detection_engine_posture_rules_snmp_default": "_snmp_default()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L387 | neighbors=[posture_rules.py, _d()]
+- "detection_engine_posture_rules_ssh_terrapin": "_ssh_terrapin()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L400 | neighbors=[posture_rules.py, _d()]
+- "detection_engine_posture_rules_ssh_weak_algos": "_ssh_weak_algos()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L408 | neighbors=[posture_rules.py, _d()]
+- "detection_engine_posture_rules_summarize_traces": "summarize_traces()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L1046 | neighbors=[posture_rules.py, Engagement-level coverage roll-up over …]
+- "detection_engine_posture_rules_tls_cipher": "_tls_cipher()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L349 | neighbors=[posture_rules.py, _d()]
+- "detection_engine_posture_rules_tls_expired": "_tls_expired()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L362 | neighbors=[posture_rules.py, _cert()]
+- "detection_engine_posture_rules_tls_self_signed": "_tls_self_signed()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L357 | neighbors=[posture_rules.py, _cert()]
+- "detection_engine_posture_rules_tls_version": "_tls_version()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L335 | neighbors=[posture_rules.py, _d()]
+- "detection_engine_posture_rules_udp_amplifier": "_udp_amplifier()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L375 | neighbors=[posture_rules.py, _d()]
+- "detection_engine_posture_rules_verdict_for_rule": "verdict_for_rule()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L1028 | neighbors=[posture_rules.py, Collapse every trace for one rule into …]
+- "detection_engine_posture_rules_vnc_no_auth": "_vnc_no_auth()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L457 | neighbors=[posture_rules.py, _d()]
+- "detection_engine_update_snapshot_all_known_cve_ids": "_all_known_cve_ids()" | kind=code-symbol | source=manager/detection_engine/update_snapshot.py:L223 | neighbors=[update_snapshot.py, main()]
+- "detection_engine_verifier_deception_score": "deception_score()" | kind=code-symbol | source=manager/detection_engine/verifier.py:L75 | neighbors=[verifier.py, A starter honeypot/deception heuristic …]
+- "detection_engine_version_compare_clear_validation_cache": "_clear_validation_cache()" | kind=code-symbol | source=manager/detection_engine/version_compare.py:L219 | neighbors=[version_compare.py, Test hook: drop the in-memory record of…]
+- "detection_engine_version_compare_split_segments": "_split_segments()" | kind=code-symbol | source=manager/detection_engine/version_compare.py:L84 | neighbors=[version_compare.py, _compare_part()]
+- "detection_engine_vuln_db_vulndb_build_cve_index": "._build_cve_index()" | kind=code-symbol | source=manager/detection_engine/vuln_db.py:L96 | neighbors=[VulnDB, .__init__()]
+- "detection_engine_vuln_db_vulndb_init": ".__init__()" | kind=code-symbol | source=manager/detection_engine/vuln_db.py:L90 | neighbors=[VulnDB, ._build_cve_index()]
+- "detection_explain_route_fail": "fail()" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/detection-explain/route.ts:L11 | neighbors=[route.ts, GET()]
+- "detection_explain_route_get": "GET()" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/detection-explain/route.ts:L16 | neighbors=[route.ts, fail()]
 - "detection_init": "__init__.py" | kind=code-symbol | source=manager/backend/app/detection/__init__.py:L1 | neighbors=[d1b4dd3 trim frontend to 7 core pages; …, 298a9d4 trim frontend to 7 core pages; …]
 - "detection_logger_as_uuid": "_as_uuid()" | kind=code-symbol | source=manager/backend/app/detection/logger.py:L69 | neighbors=[logger.py, .log_action()]
-- "detection_logger_rationale_1": "AttackLogger — records every attack action to the ``attack_timeline`` table.  Al" | kind=entity | source=manager/backend/app/detection/logger.py:L1 | neighbors=[logger.py, AttackTimeline]
-- "detection_logger_rationale_40": "Persist a single attack action. Returns the AttackTimeline row.          ``times" | kind=entity | source=manager/backend/app/detection/logger.py:L40 | neighbors=[.log_action(), AttackTimeline]
-- "detection_prioritization_posture_risk_on_manager_scale": "_posture_risk_on_manager_scale()" | kind=code-symbol | source=manager/backend/app/detection/prioritization.py:L57 | neighbors=[prioritization.py, Score a posture finding with the Manage…]
-- "detection_resolution_resolutionoutcome": "ResolutionOutcome" | kind=code-symbol | source=manager/backend/app/detection/resolution.py:L66 | neighbors=[resolution.py, decide_resolution()]
-- "detection_siem_elasticsiem_build_query": ".build_query()" | kind=code-symbol | source=manager/backend/app/detection/siem.py:L191 | neighbors=[ElasticSIEM, .query_alerts()]
-- "detection_siem_sentinelsiem_build_kql": ".build_kql()" | kind=code-symbol | source=manager/backend/app/detection/siem.py:L141 | neighbors=[SentinelSIEM, .query_alerts()]
-- "detection_siem_splunksiem_build_spl": ".build_spl()" | kind=code-symbol | source=manager/backend/app/detection/siem.py:L88 | neighbors=[SplunkSIEM, .query_alerts()]
-- "detection_sigma_sigmarulegenerator_customise_detection": "._customise_detection()" | kind=code-symbol | source=manager/backend/app/detection/sigma.py:L153 | neighbors=[SigmaRuleGenerator, .generate_sigma_for_technique()]
-- "detection_sigma_sigmarulegenerator_lookup_template": "._lookup_template()" | kind=code-symbol | source=manager/backend/app/detection/sigma.py:L144 | neighbors=[SigmaRuleGenerator, .generate_sigma_for_technique()]
-- "detection_sigma_stable_rule_id": "_stable_rule_id()" | kind=code-symbol | source=manager/backend/app/detection/sigma.py:L166 | neighbors=[sigma.py, .generate_sigma_for_technique()]
-- "detection_verification_int_confidence": "_int_confidence()" | kind=code-symbol | source=manager/backend/app/detection/verification.py:L37 | neighbors=[verification.py, compute_verdict()]
-- "dev_hint_route": "route.ts" | kind=code-symbol | source=manager/frontend/app/api/auth/dev-hint/route.ts:L1 | neighbors=[81c81cb feat: implement outbox reclaim …, GET()]
-- "discovery_exposure_escalate_for_exposure": "escalate_for_exposure()" | kind=code-symbol | source=manager/backend/app/discovery/exposure.py:L66 | neighbors=[exposure.py, Bump a finding one severity rung when i…]
-- "discovery_exposure_service_exposure": "service_exposure()" | kind=code-symbol | source=manager/backend/app/discovery/exposure.py:L37 | neighbors=[exposure.py, (ip, proto, port) → exposure verdict, f…]
-- "discovery_finding_translator_map_severity": "_map_severity()" | kind=code-symbol | source=manager/backend/app/discovery/finding_translator.py:L47 | neighbors=[finding_translator.py, create_findings_from_probe_result()]
-- "discovery_init": "__init__.py" | kind=code-symbol | source=manager/backend/app/discovery/__init__.py:L1 | neighbors=[d1b4dd3 trim frontend to 7 core pages; …, 298a9d4 trim frontend to 7 core pages; …]
-- "discovery_rate_limiter_ratelimiter_consume_token": "._consume_token()" | kind=code-symbol | source=manager/backend/app/discovery/rate_limiter.py:L85 | neighbors=[RateLimiter, .acquire()]
-- "discovery_rate_limiter_ratelimiter_resolve_cidr": "._resolve_cidr()" | kind=code-symbol | source=manager/backend/app/discovery/rate_limiter.py:L75 | neighbors=[RateLimiter, .acquire()]
-- "discovery_scan_health_scan_health_summary": "scan_health_summary()" | kind=code-symbol | source=manager/backend/app/discovery/scan_health.py:L17 | neighbors=[scan_health.py, Aggregate result['scan_metrics'] into a…]
-- "discovery_service_id_serviceidentifier_identify": ".identify()" | kind=code-symbol | source=manager/backend/app/discovery/service_id.py:L73 | neighbors=[ServiceIdentifier, ServiceFingerprint]
-- "discovery_service_vuln_cleartext_rule": "_cleartext_rule()" | kind=code-symbol | source=manager/backend/app/discovery/service_vuln.py:L126 | neighbors=[service_vuln.py, create_service_vuln_findings()]
-- "discovery_service_vuln_new_finding": "_new_finding()" | kind=code-symbol | source=manager/backend/app/discovery/service_vuln.py:L45 | neighbors=[service_vuln.py, create_service_vuln_findings()]
-- "discovery_worker_discoveryworker_grab_one": "._grab_one()" | kind=code-symbol | source=manager/backend/app/discovery/worker.py:L159 | neighbors=[DiscoveryWorker, ._banner_grab_all()]
-- "discovery_worker_discoveryworker_run_nmap": "._run_nmap()" | kind=code-symbol | source=manager/backend/app/discovery/worker.py:L117 | neighbors=[DiscoveryWorker, .run()]
-- "discovery_worker_discoveryworker_save_assets": "._save_assets()" | kind=code-symbol | source=manager/backend/app/discovery/worker.py:L192 | neighbors=[DiscoveryWorker, .run()]
-- "discovery_worker_discoveryworker_set_status": "._set_status()" | kind=code-symbol | source=manager/backend/app/discovery/worker.py:L268 | neighbors=[DiscoveryWorker, .run()]
-- "discovery_xml_parser_nmapxmlparser_parse": ".parse()" | kind=code-symbol | source=manager/backend/app/discovery/xml_parser.py:L43 | neighbors=[NmapXMLParser, ._parse_host()]
-- "engagements_page_hasvaliddaterange": "hasValidDateRange()" | kind=code-symbol | source=manager/frontend/app/engagements/page.tsx:L51 | neighbors=[page.tsx, EngagementsPage()]
-- "engagements_page_splitentries": "splitEntries()" | kind=code-symbol | source=manager/frontend/app/engagements/page.tsx:L48 | neighbors=[page.tsx, EngagementsPage()]
-- "engine_scan_modules_modules": "MODULES" | kind=code-symbol | source=manager/frontend/lib/engine/scan-modules.ts:L48 | neighbors=[scan-modules.ts, interactive.ts]
-- "engine_scan_modules_modulesbycategory": "modulesByCategory()" | kind=code-symbol | source=manager/frontend/lib/engine/scan-modules.ts:L333 | neighbors=[interactive.ts, scan-modules.ts]
-- "engine_scan_modules_modulesforports": "modulesForPorts()" | kind=code-symbol | source=manager/frontend/lib/engine/scan-modules.ts:L378 | neighbors=[scan-modules.ts, scanner.ts]
-- "engine_scan_modules_profilemodules": "profileModules()" | kind=code-symbol | source=manager/frontend/lib/engine/scan-modules.ts:L349 | neighbors=[interactive.ts, scan-modules.ts]
-- "engine_scanner_byseveritycount": "bySeverityCount()" | kind=code-symbol | source=manager/frontend/lib/engine/scanner.ts:L11 | neighbors=[scanner.ts, runScan()]
-- "engine_tool_runners_httpbannergrab": "httpBannerGrab()" | kind=code-symbol | source=manager/frontend/lib/engine/tool-runners.ts:L311 | neighbors=[tool-runners.ts, nativeBannerGrab()]
-- "engine_tool_runners_tcpbannergrab": "tcpBannerGrab()" | kind=code-symbol | source=manager/frontend/lib/engine/tool-runners.ts:L357 | neighbors=[tool-runners.ts, nativeBannerGrab()]
-- "engine_types_evidence": "Evidence" | kind=code-symbol | source=manager/frontend/lib/engine/types.ts:L77 | neighbors=[types.ts, findings-store.ts]
-- "events_route_fail": "fail()" | kind=code-symbol | source=manager/frontend/app/api/findings/[id]/events/route.ts:L5 | neighbors=[route.ts, GET()]
 
 ## Instructions
 

@@ -1,4 +1,4 @@
-# Node Description Batch 127 of 332
+# Node Description Batch 127 of 336
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,58 +12,51 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
-For an entity node (any other kind — e.g. a person, place, event, object),
-describe what the entity is and its role, grounded in its type, its
-relations (neighbors) and the provided citations/evidence — e.g.
-"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
-Ground entity descriptions in the citations/evidence when present; do not
-speculate beyond the context, so a node with no supporting context may be
-left out of the reply.
 Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
+- "commands_logout_buildlogoutcommand": "buildLogoutCommand()" | kind=code-symbol | source=manager/frontend/cli/commands/logout.ts:L4 | neighbors=[index.ts, logout.ts]
+- "commands_report_buildreportcommand": "buildReportCommand()" | kind=code-symbol | source=manager/frontend/cli/commands/report.ts:L85 | neighbors=[index.ts, report.ts]
+- "commands_scan_buildscancommand": "buildScanCommand()" | kind=code-symbol | source=manager/frontend/cli/commands/scan.ts:L143 | neighbors=[index.ts, scan.ts]
+- "commands_status_buildstatuscommand": "buildStatusCommand()" | kind=code-symbol | source=manager/frontend/cli/commands/status.ts:L21 | neighbors=[index.ts, status.ts]
+- "commands_tools_buildtoolscommand": "buildToolsCommand()" | kind=code-symbol | source=manager/frontend/cli/commands/tools.ts:L29 | neighbors=[index.ts, tools.ts]
+- "commands_tools_ln": "ln()" | kind=code-symbol | source=manager/frontend/cli/commands/tools.ts:L14 | neighbors=[tools.ts, showSpinner()]
+- "commands_tools_showspinner": "showSpinner()" | kind=code-symbol | source=manager/frontend/cli/commands/tools.ts:L16 | neighbors=[tools.ts, ln()]
+- "commands_whoami_buildwhoamicommand": "buildWhoamiCommand()" | kind=code-symbol | source=manager/frontend/cli/commands/whoami.ts:L4 | neighbors=[index.ts, whoami.ts]
+- "components_engagementstatuscontrol_engagementstatuscontrol": "EngagementStatusControl()" | kind=code-symbol | source=manager/frontend/components/EngagementStatusControl.tsx:L59 | neighbors=[EngagementStatusControl.tsx, page.tsx]
+- "components_engagementstatuscontrol_status_color": "STATUS_COLOR" | kind=code-symbol | source=manager/frontend/components/EngagementStatusControl.tsx:L39 | neighbors=[EngagementStatusControl.tsx, page.tsx]
+- "components_queryprovider_queryprovider": "QueryProvider()" | kind=code-symbol | source=manager/frontend/components/QueryProvider.tsx:L6 | neighbors=[layout.tsx, QueryProvider.tsx]
+- "components_themeprovider_themeprovider": "ThemeProvider()" | kind=code-symbol | source=manager/frontend/components/ThemeProvider.tsx:L30 | neighbors=[layout.tsx, ThemeProvider.tsx]
+- "components_toastprovider_toastcontext": "ToastContext" | kind=code-symbol | source=manager/frontend/components/ToastProvider.tsx:L26 | neighbors=[ToastProvider.tsx, useToast.ts]
+- "components_toastprovider_toastprovider": "ToastProvider()" | kind=code-symbol | source=manager/frontend/components/ToastProvider.tsx:L158 | neighbors=[layout.tsx, ToastProvider.tsx]
+- "console_freshness_freshness": "Freshness()" | kind=code-symbol | source=manager/frontend/components/console/Freshness.tsx:L6 | neighbors=[Freshness.tsx, DashboardGrid.tsx]
+- "console_primitives_delta": "Delta()" | kind=code-symbol | source=manager/frontend/components/console/Primitives.tsx:L123 | neighbors=[Primitives.tsx, PostureScorecard.tsx]
+- "console_primitives_panel": "Panel()" | kind=code-symbol | source=manager/frontend/components/console/Primitives.tsx:L15 | neighbors=[Primitives.tsx, DashboardGrid.tsx]
+- "console_primitives_readout": "Readout()" | kind=code-symbol | source=manager/frontend/components/console/Primitives.tsx:L161 | neighbors=[Primitives.tsx, LiveOverview.tsx]
+- "console_primitives_severitychip": "SeverityChip()" | kind=code-symbol | source=manager/frontend/components/console/Primitives.tsx:L78 | neighbors=[Primitives.tsx, SlaStatus.tsx]
+- "cve_cli_build_parser": "build_parser()" | kind=code-symbol | source=probe/cve/cli.py:L151 | neighbors=[cli.py, main()]
+- "cve_cli_cmd_status": "cmd_status()" | kind=code-symbol | source=probe/cve/cli.py:L119 | neighbors=[cli.py, Verify the offline mirror: feed counts,…]
+- "cve_cli_main": "main()" | kind=code-symbol | source=probe/cve/cli.py:L192 | neighbors=[cli.py, build_parser()]
+- "cve_correlator_as_dict": "_as_dict()" | kind=code-symbol | source=probe/cve/correlator.py:L114 | neighbors=[correlator.py, correlate()]
+- "cve_correlator_mirror_age_note": "mirror_age_note()" | kind=code-symbol | source=probe/cve/correlator.py:L30 | neighbors=[correlator.py, Human-readable note on how old the mirr…]
+- "cve_correlator_risk_band": "risk_band()" | kind=code-symbol | source=probe/cve/correlator.py:L73 | neighbors=[correlator.py, correlate()]
+- "cve_ingest_iter_cpe_matches": "_iter_cpe_matches()" | kind=code-symbol | source=probe/cve/ingest.py:L102 | neighbors=[ingest.py, ingest_one_cve()]
+- "cve_init": "__init__.py" | kind=code-symbol | source=probe/cve/__init__.py:L1 | neighbors=[6e2818f Add support for additional serv…, cve — vulnerability (CVE) correlation l…]
+- "cve_vulndb_vulndb_add_cpe_match": ".add_cpe_match()" | kind=code-symbol | source=probe/cve/vulndb.py:L79 | neighbors=[VulnDB, _norm()]
+- "cve_vulndb_vulndb_commit": ".commit()" | kind=code-symbol | source=probe/cve/vulndb.py:L107 | neighbors=[VulnDB, .__init__()]
+- "cve_vulndb_vulndb_enrich": "._enrich()" | kind=code-symbol | source=probe/cve/vulndb.py:L141 | neighbors=[VulnDB, .cves_for_cpe()]
+- "cve_vulndb_vulndb_init": ".__init__()" | kind=code-symbol | source=probe/cve/vulndb.py:L63 | neighbors=[VulnDB, .commit()]
+- "cve_vulndb_vulndb_upsert_kev": ".upsert_kev()" | kind=code-symbol | source=probe/cve/vulndb.py:L92 | neighbors=[VulnDB, _norm()]
+- "cve_weakness_map_assoc": "_Assoc" | kind=code-symbol | source=probe/cve/weakness_map.py:L37 | neighbors=[weakness_map.py, One canonical CVE a weakness can map to…]
+- "cve_weakness_map_missing_from_mirror": "missing_from_mirror()" | kind=code-symbol | source=probe/cve/weakness_map.py:L216 | neighbors=[weakness_map.py, Every canonical CVE referenced by the w…]
+- "dashboard_liveoverview_verdict": "verdict()" | kind=code-symbol | source=manager/frontend/components/dashboard/LiveOverview.tsx:L46 | neighbors=[LiveOverview.tsx, LiveOverview()]
+- "dashboard_patchcomparisonmatrix_n": "n()" | kind=code-symbol | source=manager/frontend/components/dashboard/PatchComparisonMatrix.tsx:L45 | neighbors=[PatchComparisonMatrix.tsx, PatchComparisonMatrix()]
+- "dashboard_posturescorecard_matrixrow": "MatrixRow" | kind=code-symbol | source=manager/frontend/components/dashboard/PostureScorecard.tsx:L26 | neighbors=[PatchComparisonMatrix.tsx, PostureScorecard.tsx]
+- "dashboard_slastatus_deadlinetitle": "deadlineTitle()" | kind=code-symbol | source=manager/frontend/components/dashboard/SlaStatus.tsx:L75 | neighbors=[SlaStatus.tsx, SlaRowView()]
 - "dashboard_slastatus_elapsedpct": "elapsedPct()" | kind=code-symbol | source=manager/frontend/components/dashboard/SlaStatus.tsx:L69 | neighbors=[SlaStatus.tsx, SlaRowView()]
 - "dashboard_slastatus_pct": "pct()" | kind=code-symbol | source=manager/frontend/components/dashboard/SlaStatus.tsx:L54 | neighbors=[SlaStatus.tsx, SlaRowView()]
-- "dashboard_slastatus_timelabel": "timeLabel()" | kind=code-symbol | source=manager/frontend/components/dashboard/SlaStatus.tsx:L53 | neighbors=[SlaStatus.tsx, SlaRowView()]
-- "detection_active_validation_should_escalate": "should_escalate()" | kind=code-symbol | source=manager/backend/app/detection/active_validation.py:L17 | neighbors=[active_validation.py, True iff this finding warrants an appro…]
-- "detection_active_validation_validationoutcome": "ValidationOutcome" | kind=code-symbol | source=manager/backend/app/detection/active_validation.py:L34 | neighbors=[active_validation.py, interpret_validation()]
-- "detection_attack_paths_exposed_db_unauth": "_exposed_db_unauth()" | kind=code-symbol | source=manager/backend/app/detection/attack_paths.py:L221 | neighbors=[attack_paths.py, B3: an exposed datastore with unauthent…]
-- "detection_attack_paths_hostsignals_observe": ".observe()" | kind=code-symbol | source=manager/backend/app/detection/attack_paths.py:L76 | neighbors=[_group(), _HostSignals]
-- "detection_attack_paths_is_network_device": "_is_network_device()" | kind=code-symbol | source=manager/backend/app/detection/attack_paths.py:L57 | neighbors=[attack_paths.py, _snmp_public_lateral()]
-- "detection_attack_paths_legacy_windows": "_legacy_windows()" | kind=code-symbol | source=manager/backend/app/detection/attack_paths.py:L178 | neighbors=[attack_paths.py, _is_domain_controller()]
-- "detection_attack_paths_ntlm_relay": "_ntlm_relay()" | kind=code-symbol | source=manager/backend/app/detection/attack_paths.py:L146 | neighbors=[attack_paths.py, _is_domain_controller()]
-- "detection_correlator_detectioncorrelator_generate_gap_report": ".generate_gap_report()" | kind=code-symbol | source=manager/backend/app/detection/correlator.py:L220 | neighbors=[DetectionCorrelator, DetectionGap]
-- "detection_correlator_host_identity": "_host_identity()" | kind=code-symbol | source=manager/backend/app/detection/correlator.py:L84 | neighbors=[correlator.py, _host_matches()]
-- "detection_edr_crowdstrikefalcon_query_detections": ".query_detections()" | kind=code-symbol | source=manager/backend/app/detection/edr.py:L98 | neighbors=[CrowdStrikeFalcon, ._request()]
-- "detection_edr_microsoftdefender_query_detections": ".query_detections()" | kind=code-symbol | source=manager/backend/app/detection/edr.py:L147 | neighbors=[MicrosoftDefender, ._request()]
-- "detection_edr_sentinelone_query_detections": ".query_detections()" | kind=code-symbol | source=manager/backend/app/detection/edr.py:L193 | neighbors=[SentinelOne, ._request()]
-- "detection_engine_ai_normalizer_aiclient_propose_cpe": ".propose_cpe()" | kind=code-symbol | source=manager/detection_engine/ai_normalizer.py:L89 | neighbors=[AIClient, Returns a list of {"vendor", "product",…]
-- "detection_engine_ai_normalizer_anthropicaiclient_propose_cpe": ".propose_cpe()" | kind=code-symbol | source=manager/detection_engine/ai_normalizer.py:L108 | neighbors=[AnthropicAIClient, .get()]
-- "detection_engine_ai_normalizer_fakeaiclient_propose_cpe": ".propose_cpe()" | kind=code-symbol | source=manager/detection_engine/ai_normalizer.py:L134 | neighbors=[FakeAIClient, .get()]
-- "detection_engine_bridge_lock_engagement_for_detection": "_lock_engagement_for_detection()" | kind=code-symbol | source=manager/backend/app/detection/engine_bridge.py:L481 | neighbors=[engine_bridge.py, create_findings_from_facts()]
-- "detection_engine_bridge_posture_description": "_posture_description()" | kind=code-symbol | source=manager/backend/app/detection/engine_bridge.py:L308 | neighbors=[engine_bridge.py, _persist_posture_findings()]
-- "detection_engine_build_nvd_cpe_snapshot_content_hash": "_content_hash()" | kind=code-symbol | source=manager/detection_engine/build_nvd_cpe_snapshot.py:L65 | neighbors=[build_nvd_cpe_snapshot.py, main()]
-- "detection_engine_build_nvd_cpe_snapshot_main": "main()" | kind=code-symbol | source=manager/detection_engine/build_nvd_cpe_snapshot.py:L70 | neighbors=[build_nvd_cpe_snapshot.py, _content_hash()]
-- "detection_engine_build_nvd_cpe_snapshot_rec": "_rec()" | kind=code-symbol | source=manager/detection_engine/build_nvd_cpe_snapshot.py:L32 | neighbors=[build_nvd_cpe_snapshot.py, One OSV-shaped record: affected below `…]
-- "detection_engine_consistency_findingconsistency_ci": ".ci()" | kind=code-symbol | source=manager/detection_engine/consistency.py:L63 | neighbors=[FindingConsistency, wilson_ci()]
-- "detection_engine_consistency_format_line": "format_line()" | kind=code-symbol | source=manager/detection_engine/consistency.py:L130 | neighbors=[consistency.py, The spec's reporting line, e.g.:     'H…]
-- "detection_engine_consistency_rationale_1": "consistency.py — Phase 5: N-run consistency & reporting.  \"A single scan is an a" | kind=entity | source=manager/detection_engine/consistency.py:L1 | neighbors=[consistency.py, Finding]
-- "detection_engine_consistency_rationale_102": "run_findings: one list of Findings per run (N runs). Aggregated by     the deter" | kind=entity | source=manager/detection_engine/consistency.py:L102 | neighbors=[aggregate(), Finding]
-- "detection_engine_consistency_rationale_131": "The spec's reporting line, e.g.:     'Host 10.0.0.5 — CVE-2021-41773 in 27/30 ru" | kind=entity | source=manager/detection_engine/consistency.py:L131 | neighbors=[format_line(), Finding]
-- "detection_engine_consistency_rationale_33": "Wilson score interval for a binomial proportion k/n, as percentages.     Chosen" | kind=entity | source=manager/detection_engine/consistency.py:L33 | neighbors=[wilson_ci(), Finding]
-- "detection_engine_cpe_normalizer_clean_rpm_version": "clean_rpm_version()" | kind=code-symbol | source=manager/detection_engine/cpe_normalizer.py:L92 | neighbors=[cpe_normalizer.py, rpm queried as '%{VERSION}-%{RELEASE}' …]
-- "detection_engine_cpe_normalizer_osv_source_packages": "osv_source_packages()" | kind=code-symbol | source=manager/detection_engine/cpe_normalizer.py:L149 | neighbors=[cpe_normalizer.py, Every distinct OSV source-package name …]
-- "detection_engine_cvss_parse_vector": "parse_vector()" | kind=code-symbol | source=manager/detection_engine/cvss.py:L33 | neighbors=[cvss.py, base_score()]
-- "detection_engine_enrichment_db_clear_caches": "_clear_caches()" | kind=code-symbol | source=manager/detection_engine/enrichment_db.py:L43 | neighbors=[enrichment_db.py, Test hook: drop the memoized KEV/EPSS c…]
-- "detection_engine_exploitability_kev_links_for": "kev_links_for()" | kind=code-symbol | source=manager/detection_engine/exploitability.py:L103 | neighbors=[exploitability.py, assess()]
-- "detection_engine_exploitability_kevlink": "KevLink" | kind=code-symbol | source=manager/detection_engine/exploitability.py:L57 | neighbors=[exploitability.py, One documented relationship between a p…]
-- "detection_engine_exploitability_tier": "_tier()" | kind=code-symbol | source=manager/detection_engine/exploitability.py:L107 | neighbors=[exploitability.py, assess()]
-- "detection_engine_ingest_classify_confidence": "_classify_confidence()" | kind=code-symbol | source=manager/detection_engine/ingest.py:L65 | neighbors=[ingest.py, ingest_file()]
-- "detection_engine_ingest_is_ip": "_is_ip()" | kind=code-symbol | source=manager/detection_engine/ingest.py:L93 | neighbors=[ingest.py, .get_or_create_asset()]
-- "detection_engine_init": "__init__.py" | kind=code-symbol | source=manager/detection_engine/__init__.py:L1 | neighbors=[10dfc80 Add comprehensive probe testing…, 2885afa Add comprehensive probe testing…]
-- "detection_engine_models_asset_add_fact": ".add_fact()" | kind=code-symbol | source=manager/detection_engine/models.py:L90 | neighbors=[Asset, .as_of()]
 
 ## Instructions
 

@@ -411,7 +411,15 @@ import {
   type ScorecardInput,
   type Confidence,
   type ReportResult,
+  type ReportFinding,
+  type FindingWriteupOut,
+  type AttackNarrativeOut,
+  type RemediationGroupingOut,
+  type ControlsObservedOut,
+  type LimitationsOut,
+  type VerdictSummaryOut,
 } from './prompts/report';
+import { SECTION_PROMPTS, buildSectionInput, type SectionKey } from './prompts/report-sections';
 
 export interface ReportSession {
   clientName:     string;
@@ -517,7 +525,7 @@ function mapStatus(s: LiveFinding['status']): string {
 
 function deriveConfidence(f: LiveFinding): Confidence {
   if (f.status === 'VERIFIED') return 'confirmed';
-  if ((f.cveIds?.length ?? 0) > 0 || f.cvss) return 'likely';
+  if (f.kev || (f.cveIds?.length ?? 0) > 0 || f.cvss) return 'likely';
   return 'potential';
 }
 
@@ -529,8 +537,8 @@ function toScorecardInput(session: ReportSession): ScorecardInput {
       .map((f) => ({
         severity: normaliseSeverity(f.severity),
         cvss: numOrNull(f.cvss),
-        epss: null,  // EPSS is not carried on LiveFinding — absent, not zero
-        kev: false,  // no KEV signal on LiveFinding yet
+        epss: f.epss ?? null,       // absent, not zero — buildScorecard treats null as no-signal
+        kev: Boolean(f.kev),        // CISA KEV membership doubles the weight
         exploitValidated: f.status === 'VERIFIED',
         status: mapStatus(f.status),
         domain: classifyDomain(f),
@@ -558,6 +566,8 @@ function toModelFindings(session: ReportSession) {
       protocol: f.protocol ?? null,
       cvss: numOrNull(f.cvss),
       cvss_vector: f.cvssVector ?? null,
+      epss: f.epss ?? null,
+      kev: Boolean(f.kev),
       cve_ids: f.cveIds ?? [],
       mitre: f.mitre ?? [],
       compliance: f.compliance ?? [],
@@ -568,62 +578,244 @@ function toModelFindings(session: ReportSession) {
     }));
 }
 
-export async function generateReport(session: ReportSession): Promise<ReportResult> {
+// ── Section orchestration (decomposed prompts, report-sections.ts) ──────────
+// The report is generated section by section rather than in one call, because a
+// single prompt asked for a verdict + N finding write-ups budgets its tokens
+// against the section a board actually reads. Per-finding write-ups are bounded
+// (top-N by severity; the rest are tabulated), and later sections consume the
+// output of earlier ones (GENERATION_ORDER).
+
+const REPORT_MODEL = 'claude-sonnet-4-6';
+const MAX_FULL_WRITEUPS = 8; // full records for the worst N; the rest tabulate
+const SEV_RANK_LOCAL: Record<string, number> = { critical: 0, high: 1, medium: 2, low: 3, info: 4 };
+
+type ModelFinding = ReturnType<typeof toModelFindings>[number];
+type RankedFinding = ModelFinding & { ref: string };
+
+/** One section call: fenced input + the section's own system prompt and token
+ *  cap. Fail-soft — a section that errors or returns unparseable JSON yields the
+ *  fallback, so one bad section never fails the whole report. */
+async function runSection<T>(
+  client: Anthropic, key: SectionKey, payload: unknown, fallback: T,
+): Promise<T> {
+  try {
+    const { prompt, maxTokens } = SECTION_PROMPTS[key];
+    const msg = await client.messages.create({
+      model: REPORT_MODEL,
+      max_tokens: maxTokens,
+      system: prompt,
+      messages: [{ role: 'user', content: buildSectionInput(payload) }],
+    });
+    const text = (msg.content[0] as { text: string }).text;
+    return JSON.parse(stripFences(text)) as T;
+  } catch (err) {
+    console.warn(`[ai-engine] report section "${key}" failed, using fallback:`, err);
+    return fallback;
+  }
+}
+
+function mapFindingForWriteup(f: RankedFinding, frameworks: string[]) {
+  return {
+    id: f.finding_id, ref: f.ref, title: f.title, severity: f.severity,
+    confidence: f.confidence, validation_method: f.validation_method,
+    cvss_score: f.cvss, cvss_vector: f.cvss_vector, epss_score: null,
+    kev: null, exploit_validated: f.status === 'confirmed', internet_reachable: null,
+    cve_ids: f.cve_ids, affected_assets: f.affected_assets, description: null,
+    evidence_snippet: f.evidence?.[0]?.content ?? null, first_seen: null,
+    existing_remediation: f.remediation_hint, compliance_candidates: frameworks,
+  };
+}
+
+function fallbackWriteup(f: RankedFinding): FindingWriteupOut {
+  const asset = f.affected_assets.join(', ') || 'the assessed host';
+  return {
+    ref: f.ref, title: f.title,
+    business_impact: `Affects ${asset}. Automated write-up was unavailable; review the evidence and confirm the impact before delivery.`,
+    technical_detail: 'Automated technical write-up was unavailable for this finding. See the captured evidence.',
+    evidence_summary: f.evidence?.[0]?.content
+      ? String(f.evidence[0].content).slice(0, 400)
+      : 'No evidence snippet was captured for this finding.',
+    severity_rationale: `Severity ${f.severity} as classified during the scan.`,
+    severity_flag: null,
+    remediation_detail: f.remediation_hint ?? 'Remediation guidance not available; consult the relevant vendor advisory.',
+    verification: 'Re-run the scan against the affected assets and confirm the condition is no longer reported.',
+    compliance_refs: [],
+  };
+}
+
+function assembleFinding(f: RankedFinding, w: FindingWriteupOut): ReportFinding {
+  return {
+    finding_id: f.finding_id, ref: f.ref, title: w.title || f.title,
+    severity: normaliseSeverity(f.severity), confidence: f.confidence,
+    validation_method: f.validation_method, affected_assets: f.affected_assets,
+    business_impact: w.business_impact, technical_detail: w.technical_detail,
+    evidence_summary: w.evidence_summary, remediation_detail: w.remediation_detail,
+    verification: w.verification, compliance_refs: w.compliance_refs ?? [],
+    severity_rationale: w.severity_rationale, severity_flag: w.severity_flag ?? null,
+    first_seen: null, references: f.cve_ids ?? [],
+    cvss: f.cvss, cvss_vector: f.cvss_vector, epss: f.epss, kev: f.kev,
+    exploit_validated: f.status === 'confirmed', internet_reachable: null,
+  };
+}
+
+// Tabulated finding — carries the citable facts without a generated write-up.
+function compactFinding(f: RankedFinding): ReportFinding {
+  return {
+    finding_id: f.finding_id, ref: f.ref, title: f.title,
+    severity: normaliseSeverity(f.severity), confidence: f.confidence,
+    validation_method: f.validation_method, affected_assets: f.affected_assets,
+    business_impact: '', technical_detail: '', evidence_summary: '',
+    remediation_detail: f.remediation_hint ?? '', verification: '',
+    compliance_refs: [], references: f.cve_ids ?? [],
+    cvss: f.cvss, cvss_vector: f.cvss_vector, epss: f.epss, kev: f.kev,
+    exploit_validated: f.status === 'confirmed', internet_reachable: null,
+  };
+}
+
+function groupingInput(rf: ReportFinding) {
+  return {
+    ref: rf.ref, title: rf.title, severity: rf.severity, confidence: rf.confidence,
+    remediation_detail: rf.remediation_detail, affected_assets: rf.affected_assets,
+    verification: rf.verification,
+  };
+}
+
+function countSeverities(findings: ReportFinding[]) {
+  const c: Record<string, number> = { critical: 0, high: 0, medium: 0, low: 0 };
+  for (const f of findings) if (f.severity in c) c[f.severity]++;
+  return c;
+}
+
+/** Section-by-section orchestrator — the primary path. */
+async function generateReportSectioned(session: ReportSession): Promise<ReportResult> {
   const client = getClient();
 
-  // 1. Compute the scorecard upstream — the model describes it, never derives it.
+  // Deterministic scorecard — computed, never generated.
   const scorecard = buildScorecard(toScorecardInput(session));
-
-  // 2. Only frameworks the findings actually cite may be referenced; this caps
-  //    the model's compliance_refs to real control families (prompt rule 7).
-  const complianceFrameworks = Array.from(
+  const frameworks = Array.from(
     new Set(session.findings.flatMap((f) => (f.compliance ?? []).map((c) => c.framework))),
   );
 
-  // 3. Assemble the user message with scan output fenced as untrusted.
-  const userMessage = buildReportUserMessage({
-    engagement: {
-      name: session.clientName,
-      scope: session.scope,
-      window: 'Not specified',
-      authorisation_ref: 'Not specified',
-    },
+  // Rank worst-first, assign stable F-01… refs, split into full write-ups vs. tail.
+  const ranked: RankedFinding[] = [...toModelFindings(session)]
+    .sort((a, b) => (SEV_RANK_LOCAL[a.severity] ?? 4) - (SEV_RANK_LOCAL[b.severity] ?? 4))
+    .map((f, i) => ({ ...f, ref: `F-${String(i + 1).padStart(2, '0')}` }));
+  const top = ranked.slice(0, MAX_FULL_WRITEUPS);
+  const tail = ranked.slice(MAX_FULL_WRITEUPS);
+
+  // 1. Finding write-ups — bounded and parallel (independent of each other).
+  const writeups = await Promise.all(
+    top.map((f) => runSection<FindingWriteupOut>(
+      client, 'finding_writeup',
+      { finding: mapFindingForWriteup(f, frameworks), asset_context: {}, frameworks },
+      fallbackWriteup(f),
+    )),
+  );
+  const findings: ReportFinding[] = [
+    ...top.map((f, i) => assembleFinding(f, writeups[i])),
+    ...tail.map(compactFinding),
+  ];
+
+  // 2. Attack narrative — no chain model available yet, so chains are empty and
+  //    the prompt returns null rather than inventing one.
+  const narrative = await runSection<AttackNarrativeOut>(
+    client, 'attack_narrative',
+    { chains: [], findings: top.map((f) => ({ ref: f.ref, title: f.title })) },
+    { narrative: null, cheapest_break: null, preconditions: [], confidence_caveat: null },
+  );
+
+  // 3. Remediation grouping — consumes the finding refs + their remediation detail.
+  const grouping = await runSection<RemediationGroupingOut>(
+    client, 'remediation_grouping',
+    { findings: findings.map(groupingInput), scorecard, constraints: {} },
+    { groups: [], immediate_window_empty_reason: null },
+  );
+
+  // 4. Controls + limitations — independent, run in parallel.
+  const lowConfidence = findings.filter((f) => f.confidence !== 'confirmed').length;
+  const [controls, limits] = await Promise.all([
+    runSection<ControlsObservedOut>(
+      client, 'controls_observed',
+      { controls_evidence: [], detection_results: {}, segmentation_tests: [], negative_findings: [] },
+      { items: [{ control: 'No controls were specifically evidenced as effective within the tested scope.', test: '', result: '', evidence_ref: null }] },
+    ),
+    runSection<LimitationsOut>(
+      client, 'limitations',
+      { engagement: { window: 'Not specified', authorisation_ref: 'Not specified', methodologies: [], asset_count: session.findings.length },
+        in_scope: session.scope, out_of_scope: [], exclusions: [], coverage: {}, low_confidence_count: lowConfidence },
+      { method: '', limitations: [] },
+    ),
+  ]);
+
+  // 5. Verdict + summary LAST — its decisions derive from the grouped plan (§4)
+  //    and the narrative (§3), which is why it cannot run first.
+  const vs = await runSection<VerdictSummaryOut>(
+    client, 'verdict_and_summary',
+    { engagement: { name: session.clientName, window: 'Not specified', scope_summary: session.scope.join(', '), asset_count: session.findings.length, locale: 'en' },
+      scorecard, severity_counts: countSeverities(findings),
+      remediation_plan: grouping.groups, top_chain: narrative.narrative, closed_since_last: 0 },
+    { verdict: '', summary: '', decisions: [] },
+  );
+
+  const report: ReportResult = {
+    verdict: vs.verdict,
+    executive_summary: vs.summary,
+    decisions: vs.decisions ?? [],
+    attack_narrative: narrative.narrative,
+    cheapest_break: narrative.cheapest_break,
+    preconditions: narrative.preconditions ?? [],
+    findings,
+    findings_detailed: top.length,
+    remediation_plan: grouping.groups ?? [],
+    immediate_window_empty_reason: grouping.immediate_window_empty_reason ?? null,
+    controls: controls.items ?? [],
+    controls_observed: (controls.items ?? []).map((i) => [i.control, i.test, i.result].filter(Boolean).join(' — ')),
+    limitations: limits.limitations ?? [],
+    method: limits.method ?? '',
     scorecard,
-    findings: toModelFindings(session),
-    attackChains: [],       // no chain model available yet — prompt returns null
-    controlsEvidence: [],   // none surfaced yet — prompt returns its default item
-    complianceFrameworks,
-    outOfScope: [],
+  };
+
+  const check = validateReport(report, { findingIds: session.findings.map((f) => f.id), frameworks });
+  if (!check.valid) console.warn('[ai-engine] generateReport: structural validation issues:', check.issues);
+  return report;
+}
+
+/** Single-call fallback (the original monolithic path) — used only if the
+ *  sectioned orchestrator throws catastrophically. Keeps report generation
+ *  resilient and the REPORT_SYSTEM_PROMPT contract exercised. */
+async function generateReportSingleCall(session: ReportSession): Promise<ReportResult> {
+  const client = getClient();
+  const scorecard = buildScorecard(toScorecardInput(session));
+  const complianceFrameworks = Array.from(
+    new Set(session.findings.flatMap((f) => (f.compliance ?? []).map((c) => c.framework))),
+  );
+  const userMessage = buildReportUserMessage({
+    engagement: { name: session.clientName, scope: session.scope, window: 'Not specified', authorisation_ref: 'Not specified' },
+    scorecard, findings: toModelFindings(session),
+    attackChains: [], controlsEvidence: [], complianceFrameworks, outOfScope: [],
   });
+  const msg = await client.messages.create({
+    model: REPORT_MODEL, max_tokens: 16000, system: REPORT_SYSTEM_PROMPT,
+    messages: [{ role: 'user', content: userMessage }],
+  });
+  const text = (msg.content[0] as { text: string }).text;
+  const report = JSON.parse(stripFences(text)) as ReportResult;
+  report.findings = (report.findings ?? []).map((f) => ({ ...f, severity: normaliseSeverity(f.severity) }));
+  report.remediation_plan = report.remediation_plan ?? [];
+  report.scorecard = scorecard;
+  return report;
+}
 
+export async function generateReport(session: ReportSession): Promise<ReportResult> {
   try {
-    const msg = await client.messages.create({
-      model:      'claude-sonnet-4-6',
-      max_tokens: 16000,
-      system:     REPORT_SYSTEM_PROMPT,
-      messages:   [{ role: 'user', content: userMessage }],
-    });
-    const text   = (msg.content[0] as { text: string }).text;
-    const report = JSON.parse(stripFences(text)) as ReportResult;
-
-    // Defensive shape + severity normalisation at the boundary (the prompt asks
-    // for lowercase, but the portal colour map depends on it — don't trust it).
-    report.findings        = (report.findings ?? []).map((f) => ({ ...f, severity: normaliseSeverity(f.severity) }));
-    report.remediation_plan = report.remediation_plan ?? [];
-
-    // Structural cross-checks the HallucinationGuard doesn't cover. Advisory:
-    // surface issues for the human reviewer rather than failing generation.
-    const check = validateReport(report, {
-      findingIds: session.findings.map((f) => f.id),
-      frameworks: complianceFrameworks,
-    });
-    if (!check.valid) {
-      console.warn('[ai-engine] generateReport: report failed structural validation:', check.issues);
-    }
-
-    return report;
+    return await generateReportSectioned(session);
   } catch (err) {
-    throw new Error(`Report generation failed: ${err instanceof Error ? err.message : String(err)}`);
+    console.warn('[ai-engine] sectioned report generation failed, falling back to single call:', err);
+    try {
+      return await generateReportSingleCall(session);
+    } catch (err2) {
+      throw new Error(`Report generation failed: ${err2 instanceof Error ? err2.message : String(err2)}`);
+    }
   }
 }
 

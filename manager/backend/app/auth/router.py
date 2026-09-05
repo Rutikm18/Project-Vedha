@@ -53,6 +53,32 @@ logger = structlog.get_logger()
 _GENERIC_401 = "Invalid credentials"
 
 
+def access_claims_for(user: User) -> dict:
+    """The audience + scoping claims an access token MUST carry for this user.
+
+    Shared by login and refresh on purpose. These claims are the credential's
+    CLASS, not a login-time decoration: `aud` keeps a portal token off operator
+    APIs even if a role check is ever missed, and `client_engagement_id` is the
+    portal's entire scoping boundary. Refresh used to rebuild the token without
+    them, so a rotation silently downgraded a scoped portal token into an
+    unscoped, audience-less one — which locked the customer out of their own
+    portal (assert_client fails closed) and erased the audience separation.
+    Build them in one place so the two paths cannot drift again.
+    """
+    is_client = user.role == UserRole.client
+    claims: dict = {"aud": PORTAL_AUDIENCE if is_client else MANAGER_AUDIENCE}
+    if is_client:
+        # A client login MUST be bound to exactly one engagement. Refuse to mint
+        # an unscoped token — on refresh exactly as on login.
+        if user.client_engagement_id is None:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Client login is not bound to an engagement",
+            )
+        claims["client_engagement_id"] = str(user.client_engagement_id)
+    return claims
+
+
 # ── Private authentication service ───────────────────────────────────────────
 
 async def _authenticate(email: str, password: str, db: AsyncSession) -> User:
@@ -165,17 +191,7 @@ async def login(body: LoginRequest, request: Request, db: AsyncSession = Depends
 
     # Portal scoping + audience separation. Computed BEFORE the token try below so
     # a misconfigured client login surfaces as 403 rather than being masked as 401.
-    is_client = user.role == UserRole.client
-    extra_claims: dict = {"aud": PORTAL_AUDIENCE if is_client else MANAGER_AUDIENCE}
-    if is_client:
-        # A client login MUST be bound to exactly one engagement — that binding is
-        # the portal's entire scoping boundary. Refuse to mint an unscoped token.
-        if user.client_engagement_id is None:
-            raise HTTPException(
-                status_code=status.HTTP_403_FORBIDDEN,
-                detail="Client login is not bound to an engagement",
-            )
-        extra_claims["client_engagement_id"] = str(user.client_engagement_id)
+    extra_claims = access_claims_for(user)
 
     # ── Success path ──────────────────────────────────────────────────────
     try:
@@ -243,6 +259,7 @@ async def refresh(refresh_token: str, db: AsyncSession = Depends(get_db)):
         subject=str(user.id),
         tenant_id=str(user.tenant_id),
         role=user.role.value,
+        extra_claims=access_claims_for(user),
     )
     new_refresh, _ = create_refresh_token(
         subject=str(user.id),

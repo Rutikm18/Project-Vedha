@@ -1,4 +1,4 @@
-# Node Description Batch 14 of 332
+# Node Description Batch 14 of 336
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -24,7 +24,10 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "agent_agent_main": "main()" | kind=code-symbol | source=probe/agent/agent.py:L285 | neighbors=[agent.py, _bounded_env_int(), _classify_connection_error(), configure_logging(), _dbg(), _is_local_manager_url()]
+- "workflow_router": "router.py" | kind=code-symbol | source=probe/workflow/router.py:L1 | neighbors=[explain_plan.py, 6e2818f Add support for additional serv…, 7a637eb feat: network VA accuracy, KEV …, bb0ef3d feat(probe): route DB services …, d1b4dd3 trim frontend to 7 core pages; …, f473173 merge: network VA accuracy, KEV…]
+- "ad_adcs_certtemplate": "CertTemplate" | kind=code-symbol | source=manager/backend/app/ad/adcs.py:L37 | neighbors=[adcs.py, .enumerate_templates(), ACE, LDAPEnumerator, FindingSeverity, _FakeAttr]
+- "agent_agent_check_anti_debug": "_check_anti_debug()" | kind=code-symbol | source=probe/agent/agent.py:L1123 | neighbors=[agent.py, say(), Detect common debugging/tracing tools. …, _startup_gauntlet(), Detect common debugging/tracing tools. …, Retry durable result files using the ac…]
+- "agent_agent_load_or_create_identity": "_load_or_create_identity()" | kind=code-symbol | source=probe/agent/agent.py:L1171 | neighbors=[agent.py, say(), _obtain_identity(), Load the probe's X25519 identity from p…, Load the probe's X25519 identity from p…, Load the probe's X25519 identity from p…]
 - "agent_cli_managerclient_request": ".request()" | kind=code-symbol | source=probe/agent/cli.py:L127 | neighbors=[cmd_agents_list(), cmd_auth_login(), cmd_auth_status(), cmd_doctor(), cmd_engagements_create(), cmd_engagements_list()]
 - "assistant_page": "page.tsx" | kind=code-symbol | source=manager/frontend/app/portal/assistant/page.tsx:L1 | neighbors=[AssistantReply, PortalAssistant(), STARTERS, Turn, portal-client.ts, portalApi()]
 - "auth_startup_run_startup_diagnostics": "run_startup_diagnostics()" | kind=code-symbol | source=manager/backend/app/auth/startup.py:L280 | neighbors=[startup.py, Run all startup checks concurrently.   …, _check_admin_account(), _check_bcrypt(), _check_cookie_config(), _check_cors()]
@@ -39,6 +42,7 @@ one-sentence description — no prose, no markdown fences.
 - "lib_job_store": "job-store.ts" | kind=code-symbol | source=manager/frontend/lib/job-store.ts:L1 | neighbors=[d1b4dd3 trim frontend to 7 core pages; …, createJob(), ensureDir(), genJobId(), getAllJobs(), getJobByScanId()]
 - "lib_scanner_request_validation": "scanner-request-validation.ts" | kind=code-symbol | source=manager/frontend/lib/scanner-request-validation.ts:L1 | neighbors=[b4b12a9 Rename project and update files, isRecord(), isValidHostname(), isValidScannerTarget(), NETEXEC_CHECKS, NetExecScanRequest]
 - "models_agent_agent": "Agent" | kind=code-symbol | source=manager/backend/app/models/agent.py:L18 | neighbors=[agent.py, Base, TimestampMixin, Base, TimestampMixin, AgentRegisterRequest]
+- "routers_agents_encrypt_scope_for_agent": "_encrypt_scope_for_agent()" | kind=code-symbol | source=manager/backend/app/routers/agents.py:L570 | neighbors=[agents.py, enqueue_agent_job(), get_agent_jobs(), Encrypt the engagement scope for a spec…, Encrypt the engagement scope for a spec…, Encrypt the engagement scope for a spec…]
 - "routers_ai_report_reviewrequest": "ReviewRequest" | kind=code-symbol | source=manager/backend/app/routers/ai_report.py:L52 | neighbors=[ai_report.py, RejectRequest, BaseModel, LLMReportGenerator, LLMUnavailableError, Asset]
 - "routers_analytics": "analytics.py" | kind=code-symbol | source=manager/backend/app/routers/analytics.py:L1 | neighbors=[10dfc80 Add comprehensive probe testing…, 2cddd52 fix(posture): tenant-scope run …, 9de087a feat(posture): add GET /analyti…, a0b870c fix(posture): score over open f…, dependencies.py, exposure()]
 - "routers_detection": "detection.py" | kind=code-symbol | source=manager/backend/app/routers/detection.py:L1 | neighbors=[cac022c Everything is done and verified…, d1b4dd3 trim frontend to 7 core pages; …, dependencies.py, configure_siem(), get_coverage(), get_gaps()]
@@ -60,10 +64,6 @@ one-sentence description — no prose, no markdown fences.
 - "tests_test_posture_rules_asset": "_asset()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_rules.py:L22 | neighbors=[test_posture_rules.py, ._host(), .test_dedup_same_rule_same_port(), .test_detect_all_sorts_by_risk_desc(), .test_deterministic_id_across_runs(), .test_unvalidated_scanner_only_suspects…]
 - "tests_test_posture_rules_fact": "_fact()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_rules.py:L15 | neighbors=[test_posture_rules.py, ._host(), .test_dedup_same_rule_same_port(), .test_detect_all_sorts_by_risk_desc(), .test_deterministic_id_across_runs(), .test_unvalidated_scanner_only_suspects…]
 - "tools_manifest": "manifest.ts" | kind=code-symbol | source=manager/frontend/lib/tools/manifest.ts:L1 | neighbors=[tools.ts, 10dfc80 Add comprehensive probe testing…, d1b4dd3 trim frontend to 7 core pages; …, currentPlatform(), Platform, TOOL_MANIFEST]
-- "workflow_execution_executiontrace": "ExecutionTrace" | kind=code-symbol | source=probe/workflow/execution.py:L243 | neighbors=[execution.py, .as_list(), .degraded(), ._ensure(), .failed(), .finalize()]
-- "ad_ldap_enum_aduser": "ADUser" | kind=code-symbol | source=manager/backend/app/ad/ldap_enum.py:L55 | neighbors=[ldap_enum.py, .get_users(), ADConnectionError, DependencyMissingError, _FakeAttr, _FakeEntry]
-- "agent_agent_startup_gauntlet": "_startup_gauntlet()" | kind=code-symbol | source=probe/agent/agent.py:L984 | neighbors=[agent.py, main(), Run all startup security checks before …, _check_anti_debug(), say(), Run all startup security checks before …]
-- "agent_explain_plan": "explain_plan.py" | kind=code-symbol | source=probe/agent/explain_plan.py:L1 | neighbors=[main(), _print_table(), _why(), scanner_base.py, branches.py, cache.py]
 
 ## Instructions
 

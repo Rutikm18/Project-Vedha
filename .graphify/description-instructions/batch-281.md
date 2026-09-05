@@ -1,4 +1,4 @@
-# Node Description Batch 282 of 332
+# Node Description Batch 282 of 336
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,53 +19,51 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-LANGUAGE: each entry has a `lang=` marker giving the language of its source.
-Write that entry's description in EXACTLY that language. Do not translate to
-a single common language — match each node's source language individually.
+Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_ftp_scanner_testparity_test_main_scripts": ".test_main_scripts()" | kind=code-symbol | source=probe/tests/test_ftp_scanner.py:L76 | neighbors=[TestParity] | lang=en
-- "tests_test_ftp_scanner_testpurelogic_test_banner_software": ".test_banner_software()" | kind=code-symbol | source=probe/tests/test_ftp_scanner.py:L23 | neighbors=[TestPureLogic] | lang=en
-- "tests_test_ftp_scanner_testpurelogic_test_parse_pasv": ".test_parse_pasv()" | kind=code-symbol | source=probe/tests/test_ftp_scanner.py:L19 | neighbors=[TestPureLogic] | lang=en
-- "tests_test_host_discovery_mobile_rationale_1": "Pure-logic tests for the ARP/MAC/mobile-detection helpers in host_discovery. No" | kind=entity | source=probe/tests/test_host_discovery_mobile.py:L1 | neighbors=[test_host_discovery_mobile.py] | lang=en
-- "tests_test_host_discovery_mobile_testdevicehint_test_iphone_lockdownd_port": ".test_iphone_lockdownd_port()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L53 | neighbors=[TestDeviceHint] | lang=en
-- "tests_test_host_discovery_mobile_testdevicehint_test_mobile_vendor": ".test_mobile_vendor()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L59 | neighbors=[TestDeviceHint] | lang=en
-- "tests_test_host_discovery_mobile_testdevicehint_test_no_signal": ".test_no_signal()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L65 | neighbors=[TestDeviceHint] | lang=en
-- "tests_test_host_discovery_mobile_testdevicehint_test_plain_vendor_passthrough": ".test_plain_vendor_passthrough()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L62 | neighbors=[TestDeviceHint] | lang=en
-- "tests_test_host_discovery_mobile_testdevicehint_test_randomized_mac_is_mobile": ".test_randomized_mac_is_mobile()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L56 | neighbors=[TestDeviceHint] | lang=en
-- "tests_test_host_discovery_mobile_testlocallyadministered_test_globally_unique_macs": ".test_globally_unique_macs()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L39 | neighbors=[TestLocallyAdministered] | lang=en
-- "tests_test_host_discovery_mobile_testlocallyadministered_test_randomized_phone_macs": ".test_randomized_phone_macs()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L33 | neighbors=[TestLocallyAdministered] | lang=en
-- "tests_test_host_discovery_mobile_testnormalizemac_test_extracts_from_arp_line": ".test_extracts_from_arp_line()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L17 | neighbors=[TestNormalizeMac] | lang=en
-- "tests_test_host_discovery_mobile_testnormalizemac_test_lowercases": ".test_lowercases()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L14 | neighbors=[TestNormalizeMac] | lang=en
-- "tests_test_host_discovery_mobile_testnormalizemac_test_rejects_broadcast": ".test_rejects_broadcast()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L21 | neighbors=[TestNormalizeMac] | lang=en
-- "tests_test_host_discovery_mobile_testnormalizemac_test_rejects_garbage": ".test_rejects_garbage()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L27 | neighbors=[TestNormalizeMac] | lang=en
-- "tests_test_host_discovery_mobile_testnormalizemac_test_rejects_multicast": ".test_rejects_multicast()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L24 | neighbors=[TestNormalizeMac] | lang=en
-- "tests_test_host_discovery_mobile_testnormalizemac_test_zero_pads_octets": ".test_zero_pads_octets()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L10 | neighbors=[TestNormalizeMac] | lang=en
-- "tests_test_host_discovery_mobile_testvendorlookup_test_known_oui": ".test_known_oui()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L45 | neighbors=[TestVendorLookup] | lang=en
-- "tests_test_host_discovery_mobile_testvendorlookup_test_unknown_oui": ".test_unknown_oui()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L48 | neighbors=[TestVendorLookup] | lang=en
-- "tests_test_host_discovery_udp_closed_udp_port": "_closed_udp_port()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L110 | neighbors=[test_host_discovery_udp.py] | lang=en
-- "tests_test_host_discovery_udp_no_neighbor": "no_neighbor()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L120 | neighbors=[test_host_discovery_udp.py] | lang=en
-- "tests_test_host_discovery_udp_rationale_1": "test_host_discovery_udp.py — the unprivileged UDP liveness tier + name facts.  C" | kind=entity | source=probe/tests/test_host_discovery_udp.py:L1 | neighbors=[test_host_discovery_udp.py] | lang=en
-- "tests_test_host_discovery_udp_rationale_233": "A RST mid-handshake (ConnectionResetError) is the target's stack talking." | kind=entity | source=probe/tests/test_host_discovery_udp.py:L233 | neighbors=[test_tcp_reset_counts_as_proof_of_life()] | lang=en
-- "tests_test_host_discovery_udp_rationale_25": "Build a NetBIOS node-status response (RFC 1002 §4.2.18)." | kind=entity | source=probe/tests/test_host_discovery_udp.py:L25 | neighbors=[_nbstat_reply()] | lang=pt
-- "tests_test_host_discovery_udp_rationale_252": "On-LAN INCOMPLETE/FAILED = nobody owns the address right now; spending     datag" | kind=entity | source=probe/tests/test_host_discovery_udp.py:L252 | neighbors=[test_udp_tier_skipped_when_arp_definiti…] | lang=en
-- "tests_test_host_discovery_udp_responder_connection_made": ".connection_made()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L95 | neighbors=[_Responder] | lang=en
-- "tests_test_host_discovery_udp_responder_datagram_received": ".datagram_received()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L98 | neighbors=[_Responder] | lang=en
-- "tests_test_host_discovery_udp_responder_init": ".__init__()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L91 | neighbors=[_Responder] | lang=en
-- "tests_test_host_discovery_udp_scanner": "_scanner()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L124 | neighbors=[test_host_discovery_udp.py] | lang=en
-- "tests_test_host_discovery_udp_test_icmp_unreachable_from_closed_port_proves_stack_is_up": "test_icmp_unreachable_from_closed_port_proves_stack_is_up()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L155 | neighbors=[test_host_discovery_udp.py] | lang=en
-- "tests_test_host_discovery_udp_test_reverse_dns_name_recorded_and_becomes_alias": "test_reverse_dns_name_recorded_and_becomes_alias()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L206 | neighbors=[test_host_discovery_udp.py] | lang=en
-- "tests_test_host_discovery_udp_test_udp_tier_skipped_when_neighbor_vouches": "test_udp_tier_skipped_when_neighbor_vouches()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L187 | neighbors=[test_host_discovery_udp.py] | lang=en
-- "tests_test_host_discovery_udp_test_udp_tier_skipped_when_tcp_proves_life": "test_udp_tier_skipped_when_tcp_proves_life()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L166 | neighbors=[test_host_discovery_udp.py] | lang=en
-- "tests_test_host_discovery_udp_testfusewithudp_test_icmp_unreachable_alone": ".test_icmp_unreachable_alone()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L68 | neighbors=[TestFuseWithUdp] | lang=en
-- "tests_test_host_discovery_udp_testfusewithudp_test_no_signals_unchanged": ".test_no_signals_unchanged()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L82 | neighbors=[TestFuseWithUdp] | lang=en
-- "tests_test_host_discovery_udp_testfusewithudp_test_tcp_plus_udp_corroborate": ".test_tcp_plus_udp_corroborate()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L74 | neighbors=[TestFuseWithUdp] | lang=en
-- "tests_test_host_discovery_udp_testfusewithudp_test_udp_reply_alone_is_confirmed_alive": ".test_udp_reply_alone_is_confirmed_alive()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L60 | neighbors=[TestFuseWithUdp] | lang=en
-- "tests_test_host_discovery_udp_testparsenbstat_test_not_a_response": ".test_not_a_response()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L48 | neighbors=[TestParseNbstat] | lang=en
-- "tests_test_host_health_rationale_1": "test_host_health.py — mid-scan target-offline detection.  The interesting cases" | kind=entity | source=probe/tests/test_host_health.py:L1 | neighbors=[test_host_health.py] | lang=en
-- "tests_test_host_health_rationale_122": "One false alarm must not disable the check for the rest of the scan." | kind=entity | source=probe/tests/test_host_health.py:L122 | neighbors=[.test_flaky_host_can_be_suspected_again…] | lang=en
+- "tests_test_dns_scanner_rationale_1": "test_dns_scanner.py — DNS AXFR / DNSSEC / version.bind audit.  The live dnspytho" | kind=entity | source=probe/tests/test_dns_scanner.py:L1 | neighbors=[test_dns_scanner.py]
+- "tests_test_dns_scanner_testaxfrbounded_test_axfr_refused_reports_not_transferred": ".test_axfr_refused_reports_not_transferred()" | kind=code-symbol | source=probe/tests/test_dns_scanner.py:L78 | neighbors=[TestAxfrBounded]
+- "tests_test_dns_scanner_testaxfrbounded_test_axfr_stops_at_cap": ".test_axfr_stops_at_cap()" | kind=code-symbol | source=probe/tests/test_dns_scanner.py:L50 | neighbors=[TestAxfrBounded]
+- "tests_test_dns_scanner_testderivezones_test_bounded": ".test_bounded()" | kind=code-symbol | source=probe/tests/test_dns_scanner.py:L41 | neighbors=[TestDeriveZones]
+- "tests_test_dns_scanner_testderivezones_test_explicit_zone_used_as_is": ".test_explicit_zone_used_as_is()" | kind=code-symbol | source=probe/tests/test_dns_scanner.py:L33 | neighbors=[TestDeriveZones]
+- "tests_test_dns_scanner_testderivezones_test_extra_before_target_derived": ".test_extra_before_target_derived()" | kind=code-symbol | source=probe/tests/test_dns_scanner.py:L36 | neighbors=[TestDeriveZones]
+- "tests_test_dns_scanner_testderivezones_test_hostname_target_reduces_to_registrable_and_parent": ".test_hostname_target_reduces_to_registrable_and_parent()" | kind=code-symbol | source=probe/tests/test_dns_scanner.py:L26 | neighbors=[TestDeriveZones]
+- "tests_test_dns_scanner_testderivezones_test_ip_target_derives_nothing": ".test_ip_target_derives_nothing()" | kind=code-symbol | source=probe/tests/test_dns_scanner.py:L29 | neighbors=[TestDeriveZones]
+- "tests_test_dns_scanner_testparity_test_scanner_and_findings_in_main_scripts": ".test_scanner_and_findings_in_main_scripts()" | kind=code-symbol | source=probe/tests/test_dns_scanner.py:L159 | neighbors=[TestParity]
+- "tests_test_dualstack_fallback_rationale_1": "test_dualstack_fallback.py — roadmap #9 / #4.1, the CALL-SITE migration.  `resol" | kind=entity | source=probe/tests/test_dualstack_fallback.py:L1 | neighbors=[test_dualstack_fallback.py]
+- "tests_test_dualstack_fallback_rationale_52": "A socket whose connect() fails for `dead_family`, succeeds otherwise." | kind=entity | source=probe/tests/test_dualstack_fallback.py:L52 | neighbors=[._fake_socket()]
+- "tests_test_dualstack_fallback_testosfingerprintsmbbuildfallback_test_falls_back_across_families": ".test_falls_back_across_families()" | kind=code-symbol | source=probe/tests/test_dualstack_fallback.py:L119 | neighbors=[TestOsFingerprintSmbBuildFallback]
+- "tests_test_dualstack_fallback_testrdpfallback_test_none_when_no_family_speaks_rdp": ".test_none_when_no_family_speaks_rdp()" | kind=code-symbol | source=probe/tests/test_dualstack_fallback.py:L150 | neighbors=[TestRdpFallback]
+- "tests_test_dualstack_fallback_testrdpfallback_test_probes_next_family_when_first_is_silent": ".test_probes_next_family_when_first_is_silent()" | kind=code-symbol | source=probe/tests/test_dualstack_fallback.py:L136 | neighbors=[TestRdpFallback]
+- "tests_test_dualstack_fallback_testrdpfallback_test_unresolvable_host_is_survivable": ".test_unresolvable_host_is_survivable()" | kind=code-symbol | source=probe/tests/test_dualstack_fallback.py:L158 | neighbors=[TestRdpFallback]
+- "tests_test_dualstack_fallback_testresolveipcandidates_test_returns_ips_in_order": ".test_returns_ips_in_order()" | kind=code-symbol | source=probe/tests/test_dualstack_fallback.py:L32 | neighbors=[TestResolveIpCandidates]
+- "tests_test_dualstack_fallback_testresolveipcandidates_test_unresolvable_returns_empty_not_raises": ".test_unresolvable_returns_empty_not_raises()" | kind=code-symbol | source=probe/tests/test_dualstack_fallback.py:L38 | neighbors=[TestResolveIpCandidates]
+- "tests_test_dualstack_fallback_testsmbntlmfallback_test_empty_when_no_address_answers": ".test_empty_when_no_address_answers()" | kind=code-symbol | source=probe/tests/test_dualstack_fallback.py:L110 | neighbors=[TestSmbNtlmFallback]
+- "tests_test_dualstack_fallback_testsmbntlmfallback_test_first_answering_address_wins": ".test_first_answering_address_wins()" | kind=code-symbol | source=probe/tests/test_dualstack_fallback.py:L97 | neighbors=[TestSmbNtlmFallback]
+- "tests_test_dualstack_fallback_testsynscannerrequestsipv4_test_resolve_is_asked_for_ipv4": ".test_resolve_is_asked_for_ipv4()" | kind=code-symbol | source=probe/tests/test_dualstack_fallback.py:L202 | neighbors=[TestSynScannerRequestsIPv4]
+- "tests_test_dualstack_fallback_testtlsfingerprintfallback_test_none_when_no_family_speaks_tls": ".test_none_when_no_family_speaks_tls()" | kind=code-symbol | source=probe/tests/test_dualstack_fallback.py:L185 | neighbors=[TestTlsFingerprintFallback]
+- "tests_test_dualstack_fallback_testtlsfingerprintfallback_test_unresolvable_host_is_survivable": ".test_unresolvable_host_is_survivable()" | kind=code-symbol | source=probe/tests/test_dualstack_fallback.py:L193 | neighbors=[TestTlsFingerprintFallback]
+- "tests_test_dualstack_fallback_testtlsfingerprintfallback_test_uses_the_family_that_actually_speaks_tls": ".test_uses_the_family_that_actually_speaks_tls()" | kind=code-symbol | source=probe/tests/test_dualstack_fallback.py:L170 | neighbors=[TestTlsFingerprintFallback]
+- "tests_test_e2e_engagement_to_findings_accept_loop": "_accept_loop()" | kind=code-symbol | source=probe/tests/test_e2e_engagement_to_findings.py:L27 | neighbors=[test_e2e_engagement_to_findings.py]
+- "tests_test_e2e_engagement_to_findings_rationale_1": "test_e2e_engagement_to_findings.py — the whole pipeline in one place.      manag" | kind=entity | source=probe/tests/test_e2e_engagement_to_findings.py:L1 | neighbors=[test_e2e_engagement_to_findings.py]
+- "tests_test_e2e_engagement_to_findings_rationale_138": "Exactly what the probe's smb/port scanners emit for a vulnerable host." | kind=entity | source=probe/tests/test_e2e_engagement_to_findings.py:L138 | neighbors=[_vulnerable_host_facts()]
+- "tests_test_e2e_engagement_to_findings_rationale_52": "Return (http_get, submit_result, captured) simulating the manager side." | kind=entity | source=probe/tests/test_e2e_engagement_to_findings.py:L52 | neighbors=[_manager()]
+- "tests_test_engagement_lists_rationale_1": "Unit tests for the dashboard list endpoints (jobs + assets)." | kind=entity | source=manager/backend/tests/test_engagement_lists.py:L1 | neighbors=[test_engagement_lists.py]
+- "tests_test_engagement_validation_test_create_normalizes_name_scopes_and_duplicates": "test_create_normalizes_name_scopes_and_duplicates()" | kind=code-symbol | source=manager/backend/tests/test_engagement_validation.py:L10 | neighbors=[test_engagement_validation.py]
+- "tests_test_engagement_validation_test_create_rejects_invalid_scope_entries": "test_create_rejects_invalid_scope_entries()" | kind=code-symbol | source=manager/backend/tests/test_engagement_validation.py:L31 | neighbors=[test_engagement_validation.py]
+- "tests_test_engagement_validation_test_create_rejects_reversed_date_range": "test_create_rejects_reversed_date_range()" | kind=code-symbol | source=manager/backend/tests/test_engagement_validation.py:L36 | neighbors=[test_engagement_validation.py]
+- "tests_test_engagement_validation_test_update_rejects_blank_name_invalid_scope_and_reversed_dates": "test_update_rejects_blank_name_invalid_scope_and_reversed_dates()" | kind=code-symbol | source=manager/backend/tests/test_engagement_validation.py:L46 | neighbors=[test_engagement_validation.py]
+- "tests_test_engine_bridge_ingest_health_rationale_1": "test_engine_bridge_ingest_health.py — a zero-finding run must never be able to L" | kind=entity | source=manager/backend/tests/test_engine_bridge_ingest_health.py:L1 | neighbors=[test_engine_bridge_ingest_health.py]
+- "tests_test_engine_bridge_ingest_health_rationale_44": "Baseline: the shape the agent actually sends survives ingest and fires rules." | kind=entity | source=manager/backend/tests/test_engine_bridge_ingest_health.py:L44 | neighbors=[test_healthy_facts_ingest_completely_an…]
+- "tests_test_engine_bridge_ingest_health_rationale_56": "The regression. Drop the one field an agent rename could plausibly drop and" | kind=entity | source=manager/backend/tests/test_engine_bridge_ingest_health.py:L56 | neighbors=[test_total_shape_drift_is_reported_not_…]
+- "tests_test_engine_bridge_ingest_health_rationale_73": "A partly-bad batch must keep its good findings AND still admit what it lost." | kind=entity | source=manager/backend/tests/test_engine_bridge_ingest_health.py:L73 | neighbors=[test_partial_drift_still_detects_but_re…]
+- "tests_test_engine_bridge_ingest_health_rationale_85": "The census is best-effort by contract: an older engine returning no     IngestRe" | kind=entity | source=manager/backend/tests/test_engine_bridge_ingest_health.py:L85 | neighbors=[test_census_survives_an_engine_that_ret…]
+- "tests_test_engine_bridge_posture_rationale_1": "test_engine_bridge_posture.py — the posture/config-exposure track reaches Findin" | kind=entity | source=manager/backend/tests/test_engine_bridge_posture.py:L1 | neighbors=[test_engine_bridge_posture.py]
+- "tests_test_engine_bridge_posture_test_no_posture_no_finding": "test_no_posture_no_finding()" | kind=code-symbol | source=manager/backend/tests/test_engine_bridge_posture.py:L69 | neighbors=[test_engine_bridge_posture.py]
+- "tests_test_engine_bridge_posture_test_posture_finding_becomes_a_finding_row": "test_posture_finding_becomes_a_finding_row()" | kind=code-symbol | source=manager/backend/tests/test_engine_bridge_posture.py:L33 | neighbors=[test_engine_bridge_posture.py]
 
 ## Instructions
 

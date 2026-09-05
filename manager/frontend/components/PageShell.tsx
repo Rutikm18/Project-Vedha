@@ -334,9 +334,11 @@ export function PageShell({
           flex: 1,
           overflowY: "auto",
           background: "var(--bg-app)",
-          padding: noPadding ? 0 : "20px 24px",
+          // Gutters come from the shared ladder in globals.css so a tablet is not
+          // paying desktop-sized margins. See "Responsive page container".
+          padding: noPadding ? 0 : "var(--page-pad-y) var(--page-pad-x)",
         }}>
-          {children}
+          {noPadding ? children : <div className="vedha-page-container">{children}</div>}
         </main>
 
         {/* ── Footer ── */}

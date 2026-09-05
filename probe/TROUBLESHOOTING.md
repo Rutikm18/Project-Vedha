@@ -131,7 +131,18 @@ state was wiped). The probe **wipes the stale local identity and exits 4** so th
 next start generates a **fresh key** and enrolls clean.
 
 - **Docker**: the restart policy makes this automatic — it self-heals to online.
-- **Local (`install.sh`)**: there's no auto-restart — **just run `./install.sh <manager>` again.** The orphaned agent can be pruned later in Fleet.
+- **Local (`install.sh`)**: a built-in supervisor now **auto-restarts on exit 4/2**
+  (bounded by `PROBE_SELFHEAL_MAX`, default 6), so a manager redeploy that orphans
+  the credential self-heals in one command — you'll see
+  `↻ Orphaned credential cleared — re-enrolling with a fresh identity (n/6)…`.
+  The orphaned agent can be pruned later in Fleet.
+
+> **Manager redeploy = orphaned credential.** When the manager's DB is reset (a
+> redeploy), it forgets the probe's credential but the probe still holds it. The
+> probe can't refresh (credential gone) *or* re-enroll (its device key is still
+> registered → 409), so it wipes its key and re-enrolls fresh. This is the single
+> most common "enrollment error / unavailable" after a manager deploy — and it now
+> resolves itself.
 
 ### 4d. `PROBE PAIRING REQUIRED — approve to start scanning`
 No auto-approve, so the manager issued a **pairing code**. Approve it:

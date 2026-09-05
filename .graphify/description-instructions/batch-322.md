@@ -1,4 +1,4 @@
-# Node Description Batch 323 of 332
+# Node Description Batch 323 of 336
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -26,46 +26,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "versions_0028_remediation_plans_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0028_remediation_plans.py:L51 | neighbors=[0028_remediation_plans.py] | lang=en
-- "versions_0028_remediation_plans_rationale_1": "Remediation plans — cached, OS-specific, structured remediation for a finding." | kind=entity | source=manager/backend/alembic/versions/0028_remediation_plans.py:L1 | neighbors=[0028_remediation_plans.py] | lang=en
-- "versions_0028_remediation_plans_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0028_remediation_plans.py:L22 | neighbors=[0028_remediation_plans.py] | lang=en
-- "versions_0030_sla_policies_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0030_sla_policies.py:L42 | neighbors=[0030_sla_policies.py] | lang=en
-- "versions_0030_sla_policies_rationale_1": "SLA policies — per-tenant custom remediation windows (hours per severity).  One" | kind=entity | source=manager/backend/alembic/versions/0030_sla_policies.py:L1 | neighbors=[0030_sla_policies.py] | lang=it
-- "versions_0030_sla_policies_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0030_sla_policies.py:L21 | neighbors=[0030_sla_policies.py] | lang=en
-- "versions_0031_integrations_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0031_integrations.py:L42 | neighbors=[0031_integrations.py] | lang=en
-- "versions_0031_integrations_rationale_1": "Integrations — per-tenant notification config (email / Slack / Jira).  One row p" | kind=entity | source=manager/backend/alembic/versions/0031_integrations.py:L1 | neighbors=[0031_integrations.py] | lang=en
-- "versions_0031_integrations_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0031_integrations.py:L21 | neighbors=[0031_integrations.py] | lang=en
-- "versions_0032_scan_request_use_case_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0032_scan_request_use_case.py:L29 | neighbors=[0032_scan_request_use_case.py] | lang=en
-- "versions_0032_scan_request_use_case_rationale_1": "scan_requests.use_case_id — the capability use-case a customer requested.  The p" | kind=entity | source=manager/backend/alembic/versions/0032_scan_request_use_case.py:L1 | neighbors=[0032_scan_request_use_case.py] | lang=en
-- "versions_0032_scan_request_use_case_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0032_scan_request_use_case.py:L22 | neighbors=[0032_scan_request_use_case.py] | lang=en
-- "versions_0033_finding_events_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0033_finding_events.py:L47 | neighbors=[0033_finding_events.py] | lang=en
-- "versions_0033_finding_events_rationale_1": "Finding lifecycle audit trail — append-only per-finding event log.  One row per" | kind=entity | source=manager/backend/alembic/versions/0033_finding_events.py:L1 | neighbors=[0033_finding_events.py] | lang=it
-- "versions_0033_finding_events_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0033_finding_events.py:L23 | neighbors=[0033_finding_events.py] | lang=en
-- "versions_0034_run_lease_worker_heartbeat_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0034_run_lease_worker_heartbeat.py:L54 | neighbors=[0034_run_lease_worker_heartbeat.py] | lang=en
-- "versions_0034_run_lease_worker_heartbeat_rationale_1": "Stage 2b: DetectionRun lease + worker heartbeat (precise liveness).  Two additiv" | kind=entity | source=manager/backend/alembic/versions/0034_run_lease_worker_heartbeat.py:L1 | neighbors=[0034_run_lease_worker_heartbeat.py] | lang=en
-- "versions_0034_run_lease_worker_heartbeat_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0034_run_lease_worker_heartbeat.py:L31 | neighbors=[0034_run_lease_worker_heartbeat.py] | lang=en
-- "versions_0035_engagement_lifecycle_states_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0035_engagement_lifecycle_states.py:L44 | neighbors=[0035_engagement_lifecycle_states.py] | lang=en
-- "versions_0035_engagement_lifecycle_states_rationale_1": "engagement lifecycle: add 'ongoing' and 'running' states  The engagement lifecyc" | kind=entity | source=manager/backend/alembic/versions/0035_engagement_lifecycle_states.py:L1 | neighbors=[0035_engagement_lifecycle_states.py] | lang=en
-- "versions_0035_engagement_lifecycle_states_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0035_engagement_lifecycle_states.py:L39 | neighbors=[0035_engagement_lifecycle_states.py] | lang=en
-- "versions_0036_scan_job_reference_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0036_scan_job_reference.py:L78 | neighbors=[0036_scan_job_reference.py] | lang=en
-- "versions_0036_scan_job_reference_rationale_1": "scan jobs get a human-readable reference (SCN-YYMMDD-XXXXXX)  A scan job could o" | kind=entity | source=manager/backend/alembic/versions/0036_scan_job_reference.py:L1 | neighbors=[0036_scan_job_reference.py] | lang=pt
-- "versions_0036_scan_job_reference_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0036_scan_job_reference.py:L31 | neighbors=[0036_scan_job_reference.py] | lang=en
-- "versions_0037_scan_job_cancelled_status_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0037_scan_job_cancelled_status.py:L40 | neighbors=[0037_scan_job_cancelled_status.py] | lang=en
-- "versions_0037_scan_job_cancelled_status_rationale_1": "scan jobs gain a terminal `cancelled` status  An operator could start work but n" | kind=entity | source=manager/backend/alembic/versions/0037_scan_job_cancelled_status.py:L1 | neighbors=[0037_scan_job_cancelled_status.py] | lang=en
-- "versions_0037_scan_job_cancelled_status_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0037_scan_job_cancelled_status.py:L34 | neighbors=[0037_scan_job_cancelled_status.py] | lang=en
-- "vuln_enrichment_ttlcache_contains": ".__contains__()" | kind=code-symbol | source=manager/backend/app/vuln/enrichment.py:L36 | neighbors=[TTLCache] | lang=en
-- "vuln_enrichment_ttlcache_getitem": ".__getitem__()" | kind=code-symbol | source=manager/backend/app/vuln/enrichment.py:L43 | neighbors=[TTLCache] | lang=en
-- "vuln_enrichment_ttlcache_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/vuln/enrichment.py:L31 | neighbors=[TTLCache] | lang=en
-- "vuln_enrichment_ttlcache_setitem": ".__setitem__()" | kind=code-symbol | source=manager/backend/app/vuln/enrichment.py:L51 | neighbors=[TTLCache] | lang=en
-- "vuln_nessus_nessusscanner_close": ".close()" | kind=code-symbol | source=manager/backend/app/vuln/nessus.py:L66 | neighbors=[NessusScanner] | lang=en
-- "vuln_nessus_nessusscanner_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/vuln/nessus.py:L40 | neighbors=[NessusScanner] | lang=en
-- "vuln_nuclei_nucleiscanerror_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/vuln/nuclei.py:L92 | neighbors=[NucleiScanError] | lang=en
-- "vuln_nuclei_nucleiscanner_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/vuln/nuclei.py:L113 | neighbors=[NucleiScanner] | lang=en
-- "vuln_prioritizer_route_demo_assets": "DEMO_ASSETS" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/vuln-prioritizer/route.ts:L16 | neighbors=[route.ts] | lang=en
-- "vuln_prioritizer_route_demo_findings": "DEMO_FINDINGS" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/vuln-prioritizer/route.ts:L5 | neighbors=[route.ts] | lang=en
-- "vuln_prioritizer_route_get": "GET()" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/vuln-prioritizer/route.ts:L27 | neighbors=[route.ts] | lang=en
-- "websocket_manager_agentconnectionmanager_connected_count": ".connected_count()" | kind=code-symbol | source=manager/backend/app/websocket/manager.py:L331 | neighbors=[AgentConnectionManager] | lang=en
-- "websocket_manager_agentconnectionmanager_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/websocket/manager.py:L88 | neighbors=[AgentConnectionManager] | lang=en
+- "tests_test_verification_llm_test_llm_error_falls_back_to_deterministic": "test_llm_error_falls_back_to_deterministic()" | kind=code-symbol | source=manager/backend/tests/test_verification_llm.py:L19 | neighbors=[test_verification_llm.py] | lang=en
+- "tests_test_verification_llm_test_no_llm_matches_deterministic": "test_no_llm_matches_deterministic()" | kind=code-symbol | source=manager/backend/tests/test_verification_llm.py:L11 | neighbors=[test_verification_llm.py] | lang=en
+- "tests_test_version_compare_rationale_1": "Cross-validates the pure-Python Debian version comparator against the real `dpkg" | kind=entity | source=manager/detection_engine/tests/test_version_compare.py:L1 | neighbors=[test_version_compare.py] | lang=en
+- "tests_test_version_compare_test_dpkg_compare_public_api": "test_dpkg_compare_public_api()" | kind=code-symbol | source=manager/detection_engine/tests/test_version_compare.py:L65 | neighbors=[test_version_compare.py] | lang=en
+- "tests_test_version_compare_test_pure_python_matches_known_pairs": "test_pure_python_matches_known_pairs()" | kind=code-symbol | source=manager/detection_engine/tests/test_version_compare.py:L45 | neighbors=[test_version_compare.py] | lang=en
+- "tests_test_version_compare_test_pure_python_matches_real_dpkg_binary": "test_pure_python_matches_real_dpkg_binary()" | kind=code-symbol | source=manager/detection_engine/tests/test_version_compare.py:L52 | neighbors=[test_version_compare.py] | lang=en
+- "tests_test_vnc_scanner_rationale_1": "test_vnc_scanner.py — VNC/RFB authentication exposure.  Pure RFB parsing/classif" | kind=entity | source=probe/tests/test_vnc_scanner.py:L1 | neighbors=[test_vnc_scanner.py] | lang=en
+- "tests_test_vnc_scanner_testparity_test_main_scripts": ".test_main_scripts()" | kind=code-symbol | source=probe/tests/test_vnc_scanner.py:L77 | neighbors=[TestParity] | lang=en
+- "tests_test_vnc_scanner_testpurelogic_test_classify": ".test_classify()" | kind=code-symbol | source=probe/tests/test_vnc_scanner.py:L25 | neighbors=[TestPureLogic] | lang=en
+- "tests_test_vnc_scanner_testpurelogic_test_parse_version": ".test_parse_version()" | kind=code-symbol | source=probe/tests/test_vnc_scanner.py:L19 | neighbors=[TestPureLogic] | lang=en
+- "tests_test_vuln_enrichment_test_dedup_hash_case_insensitive_cve": "test_dedup_hash_case_insensitive_cve()" | kind=code-symbol | source=manager/backend/tests/test_vuln_enrichment.py:L242 | neighbors=[test_vuln_enrichment.py] | lang=en
+- "tests_test_vuln_enrichment_test_dedup_hash_different_inputs": "test_dedup_hash_different_inputs()" | kind=code-symbol | source=manager/backend/tests/test_vuln_enrichment.py:L248 | neighbors=[test_vuln_enrichment.py] | lang=en
+- "tests_test_vuln_enrichment_test_dedup_hash_stable": "test_dedup_hash_stable()" | kind=code-symbol | source=manager/backend/tests/test_vuln_enrichment.py:L236 | neighbors=[test_vuln_enrichment.py] | lang=en
+- "tests_test_vuln_enrichment_test_fetch_epss_empty": "test_fetch_epss_empty()" | kind=code-symbol | source=manager/backend/tests/test_vuln_enrichment.py:L114 | neighbors=[test_vuln_enrichment.py] | lang=en
+- "tests_test_vuln_enrichment_test_fetch_mitre_known_cve": "test_fetch_mitre_known_cve()" | kind=code-symbol | source=manager/backend/tests/test_vuln_enrichment.py:L148 | neighbors=[test_vuln_enrichment.py] | lang=en
+- "tests_test_vuln_enrichment_test_fetch_nvd_not_found": "test_fetch_nvd_not_found()" | kind=code-symbol | source=manager/backend/tests/test_vuln_enrichment.py:L82 | neighbors=[test_vuln_enrichment.py] | lang=en
+- "tests_test_vuln_enrichment_test_kev_bonus_increases_score": "test_kev_bonus_increases_score()" | kind=code-symbol | source=manager/backend/tests/test_vuln_enrichment.py:L186 | neighbors=[test_vuln_enrichment.py] | lang=en
+- "tests_test_vuln_enrichment_test_max_risk_score": "test_max_risk_score()" | kind=code-symbol | source=manager/backend/tests/test_vuln_enrichment.py:L164 | neighbors=[test_vuln_enrichment.py] | lang=en
+- "tests_test_vuln_enrichment_test_risk_score_bounds": "test_risk_score_bounds()" | kind=code-symbol | source=manager/backend/tests/test_vuln_enrichment.py:L193 | neighbors=[test_vuln_enrichment.py] | lang=en
+- "tests_test_vuln_enrichment_test_zero_risk_score": "test_zero_risk_score()" | kind=code-symbol | source=manager/backend/tests/test_vuln_enrichment.py:L175 | neighbors=[test_vuln_enrichment.py] | lang=en
+- "tests_test_weakness_map_db": "db()" | kind=code-symbol | source=probe/tests/test_weakness_map.py:L29 | neighbors=[test_weakness_map.py] | lang=en
+- "tests_test_weakness_map_rationale_1": "test_weakness_map.py — the weakness -> canonical-CVE bridge (cve/weakness_map.py" | kind=entity | source=probe/tests/test_weakness_map.py:L1 | neighbors=[test_weakness_map.py] | lang=en
+- "tests_test_weakness_map_rationale_44": "A detect-stage fact: ScanResult('findings', ..., data=Finding.to_dict())." | kind=entity | source=probe/tests/test_weakness_map.py:L44 | neighbors=[_wrapped()] | lang=en
+- "tests_test_weakness_map_rationale_51": "A bare Finding dict (findings.py --json output)." | kind=entity | source=probe/tests/test_weakness_map.py:L51 | neighbors=[_raw()] | lang=pt
+- "tests_test_weakness_map_testclicorrelatemerges_disk_db": "._disk_db()" | kind=code-symbol | source=probe/tests/test_weakness_map.py:L181 | neighbors=[TestCliCorrelateMerges] | lang=en
+- "tests_test_weakness_map_testclistatus_disk_db": "._disk_db()" | kind=code-symbol | source=probe/tests/test_weakness_map.py:L157 | neighbors=[TestCliStatus] | lang=en
+- "tests_test_weakness_map_testclistatus_test_status_reports_counts_and_gaps": ".test_status_reports_counts_and_gaps()" | kind=code-symbol | source=probe/tests/test_weakness_map.py:L167 | neighbors=[TestCliStatus] | lang=en
+- "tests_test_weakness_map_testfindingview_test_non_finding_ignored": ".test_non_finding_ignored()" | kind=code-symbol | source=probe/tests/test_weakness_map.py:L65 | neighbors=[TestFindingView] | lang=en
+- "tests_test_weakness_map_testmirrorgap_test_every_mapping_has_at_least_one_cve": ".test_every_mapping_has_at_least_one_cve()" | kind=code-symbol | source=probe/tests/test_weakness_map.py:L149 | neighbors=[TestMirrorGap] | lang=en
+- "tests_test_weakness_map_testmirrorgap_test_missing_from_mirror_lists_absent_canonical_cves": ".test_missing_from_mirror_lists_absent_canonical_cves()" | kind=code-symbol | source=probe/tests/test_weakness_map.py:L143 | neighbors=[TestMirrorGap] | lang=en
+- "tests_test_web_methods_test_dangerous_methods_flagged": "test_dangerous_methods_flagged()" | kind=code-symbol | source=probe/tests/test_web_methods.py:L4 | neighbors=[test_web_methods.py] | lang=en
+- "tests_test_web_methods_test_no_allow_header": "test_no_allow_header()" | kind=code-symbol | source=probe/tests/test_web_methods.py:L17 | neighbors=[test_web_methods.py] | lang=en
+- "tests_test_web_methods_test_safe_methods_only": "test_safe_methods_only()" | kind=code-symbol | source=probe/tests/test_web_methods.py:L12 | neighbors=[test_web_methods.py] | lang=en
+- "tests_test_wire_identity_rationale_1": "test_wire_identity.py — the scanner must NOT sign its own packets.  A brand stri" | kind=entity | source=probe/tests/test_wire_identity.py:L1 | neighbors=[test_wire_identity.py] | lang=en
+- "tests_test_wire_identity_rationale_39": "Evasion: a fixed source port (e.g. 53/88) slips past naive stateless ACLs." | kind=entity | source=probe/tests/test_wire_identity.py:L39 | neighbors=[TestChooseSourcePort] | lang=pt
+- "tests_test_wire_identity_rationale_58": "Evasion: blur a fixed scan cadence with a bounded random per-probe delay." | kind=entity | source=probe/tests/test_wire_identity.py:L58 | neighbors=[TestJitteredDelay] | lang=pt
+- "tests_test_wire_identity_rationale_81": "Import-time probe constants built from user_agent() must be signature-free." | kind=entity | source=probe/tests/test_wire_identity.py:L81 | neighbors=[TestModuleConstantsUnbranded] | lang=en
+- "tests_test_wire_identity_testchoosesourceport_test_boundary_ports_are_valid": ".test_boundary_ports_are_valid()" | kind=code-symbol | source=probe/tests/test_wire_identity.py:L52 | neighbors=[TestChooseSourcePort] | lang=en
+- "tests_test_wire_identity_testchoosesourceport_test_none_gives_random_ephemeral": ".test_none_gives_random_ephemeral()" | kind=code-symbol | source=probe/tests/test_wire_identity.py:L45 | neighbors=[TestChooseSourcePort] | lang=en
+- "tests_test_wire_identity_testchoosesourceport_test_out_of_range_falls_back_to_random": ".test_out_of_range_falls_back_to_random()" | kind=code-symbol | source=probe/tests/test_wire_identity.py:L48 | neighbors=[TestChooseSourcePort] | lang=en
 
 ## Instructions
 

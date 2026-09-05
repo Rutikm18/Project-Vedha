@@ -7,7 +7,7 @@ from fastapi import Request, Response
 from sqlalchemy import select
 from starlette.middleware.base import BaseHTTPMiddleware
 
-from app.auth.jwt import decode_token
+from app.auth.jwt import PORTAL_AUDIENCE, decode_token
 from app.auth.pat import TOKEN_PREFIX, hash_pat_token, pat_scope_allows
 from app.database import AsyncSessionLocal
 from app.models.personal_access_token import PersonalAccessToken
@@ -32,6 +32,25 @@ _PUBLIC_ENROLLMENT_PATHS = (
 
 def _is_public_enrollment_request(path: str, method: str) -> bool:
     return method.upper() == "POST" and any(pattern.fullmatch(path) for pattern in _PUBLIC_ENROLLMENT_PATHS)
+
+
+def portal_jwt_path_allows(path: str) -> bool:
+    """Routes a customer-portal token (aud=vedha-portal) may reach.
+
+    The audience separation in jwt.py exists so a portal token is rejected on
+    operator APIs "even if a role check is ever missed" — but it was minted and
+    never verified, so per-route `require_role` was the only barrier and one
+    forgotten gate would expose an operator route to a customer login. This is
+    that missing layer: portal tokens reach the portal and the auth endpoints
+    (identify / refresh / logout) and nothing else.
+
+    Matching is prefix-with-separator, never bare startswith, so `/portal` does
+    not also authorize `/portal-admin/...`.
+    """
+    return any(
+        path == prefix or path.startswith(prefix + "/")
+        for prefix in ("/portal", "/auth")
+    )
 
 
 def agent_jwt_path_allows(path: str, method: str) -> bool:
@@ -129,6 +148,23 @@ class TenantIsolationMiddleware(BaseHTTPMiddleware):
             )
             return Response(
                 content='{"detail":"Agent credential is not permitted on this endpoint"}',
+                status_code=403,
+                media_type="application/json",
+            )
+
+        # Audience separation for human tokens: a customer-portal credential is
+        # confined to the portal regardless of what any route's role gate says.
+        # Tokens minted before this claim existed carry no `aud` and are left to
+        # RBAC — they lapse within the access-token TTL.
+        if payload.get("aud") == PORTAL_AUDIENCE and not portal_jwt_path_allows(path):
+            logger.warning(
+                "auth.portal_token_on_operator_route",
+                path=path,
+                method=request.method,
+                user_id=payload.get("sub"),
+            )
+            return Response(
+                content='{"detail":"Customer-portal credential is not permitted on operator APIs"}',
                 status_code=403,
                 media_type="application/json",
             )

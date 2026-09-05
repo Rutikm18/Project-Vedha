@@ -1,4 +1,4 @@
-# Node Description Batch 71 of 332
+# Node Description Batch 71 of 336
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -17,6 +17,24 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
+- "detection_prioritization_load_offline_kev_epss": "_load_offline_kev_epss()" | kind=code-symbol | source=manager/backend/app/detection/prioritization.py:L130 | neighbors=[prioritization.py, prioritize_engagement_findings(), (kev_db, epss_db) from the pinned snaps…, (kev_db, epss_db) from the pinned snaps…]
+- "detection_prioritization_strongest_exposure": "_strongest_exposure()" | kind=code-symbol | source=manager/backend/app/detection/prioritization.py:L124 | neighbors=[prioritization.py, prioritize_engagement_findings(), The most-exposed value among an asset's…, The most-exposed value among an asset's…]
+- "detection_resolution_apply_manual_reopen": "apply_manual_reopen()" | kind=code-symbol | source=manager/backend/app/detection/resolution.py:L149 | neighbors=[resolution.py, Operator reopens an auto/'manually'-res…, Operator reopens an auto/'manually'-res…, Operator reopens an auto/'manually'-res…]
+- "detection_resolution_build_coverage": "build_coverage()" | kind=code-symbol | source=manager/backend/app/detection/resolution.py:L36 | neighbors=[resolution.py, host_of(), What this run PROVABLY re-observed. An …, What this run PROVABLY re-observed. An …]
+- "detection_resolution_host_of": "host_of()" | kind=code-symbol | source=manager/backend/app/detection/resolution.py:L28 | neighbors=[resolution.py, build_coverage(), IP/host part of a probe target: '10.0.0…, IP/host part of a probe target: '10.0.0…]
+- "detection_siem_parse_dt": "_parse_dt()" | kind=code-symbol | source=manager/backend/app/detection/siem.py:L35 | neighbors=[siem.py, .parse_response(), .parse_response(), .parse_response()]
+- "detection_siem_siemqueryengine_request": "._request()" | kind=code-symbol | source=manager/backend/app/detection/siem.py:L68 | neighbors=[.query_alerts(), .query_alerts(), SIEMQueryEngine, .query_alerts()]
+- "discovery_device_profile": "device_profile.py" | kind=code-symbol | source=manager/backend/app/discovery/device_profile.py:L1 | neighbors=[22701ea Add tests for scanner parity an…, asset_type_for(), device_profiles(), device_profile.py — map a probe device_…]
+- "discovery_exposure": "exposure.py" | kind=code-symbol | source=manager/backend/app/discovery/exposure.py:L1 | neighbors=[22701ea Add tests for scanner parity an…, escalate_for_exposure(), service_exposure(), exposure.py — reachability-aware risk f…]
+- "discovery_finding_translator_create_scan_health_finding": "create_scan_health_finding()" | kind=code-symbol | source=manager/backend/app/discovery/finding_translator.py:L218 | neighbors=[finding_translator.py, _find_open_duplicate(), Raise ONE engagement-level finding when…, Raise ONE engagement-level finding when…]
+- "discovery_finding_translator_finding_port": "_finding_port()" | kind=code-symbol | source=manager/backend/app/discovery/finding_translator.py:L87 | neighbors=[finding_translator.py, _escalate_by_exposure(), Best-effort port for a probe finding: e…, Best-effort port for a probe finding: e…]
+- "discovery_rate_limiter": "rate_limiter.py" | kind=code-symbol | source=manager/backend/app/discovery/rate_limiter.py:L1 | neighbors=[d1b4dd3 trim frontend to 7 core pages; …, RateLimiter, RateLimiter — enforces PPS limits per C…, 298a9d4 trim frontend to 7 core pages; …]
+- "discovery_xml_parser_nmapxmlparser_parse_host": "._parse_host()" | kind=code-symbol | source=manager/backend/app/discovery/xml_parser.py:L52 | neighbors=[NmapXMLParser, .parse(), ._parse_port(), ParsedHost]
+- "engine_tool_runners_iswindows": "isWindows()" | kind=code-symbol | source=manager/frontend/lib/engine/tool-runners.ts:L30 | neighbors=[tool-runners.ts, binName(), hasSystemBinary(), spawnOpts()]
+- "engine_types_scansummary": "ScanSummary" | kind=code-symbol | source=manager/frontend/lib/engine/types.ts:L124 | neighbors=[llm.ts, scanner.ts, types.ts, output.ts]
+- "exploit_msf_client_metasploitrpcclient_connect": ".connect()" | kind=code-symbol | source=manager/backend/app/exploit/msf_client.py:L38 | neighbors=[MetasploitRPCClient, ._raw_call(), MetasploitRPCError, Authenticate with msfrpcd and store the…]
+- "exploit_msf_client_metasploitrpcclient_get_job_status": ".get_job_status()" | kind=code-symbol | source=manager/backend/app/exploit/msf_client.py:L102 | neighbors=[MetasploitRPCClient, ._call(), .wait_for_job(), Returns {status, output, uuid}.]
+- "exploit_msf_client_metasploitrpcclient_kill_job": ".kill_job()" | kind=code-symbol | source=manager/backend/app/exploit/msf_client.py:L118 | neighbors=[MetasploitRPCClient, ._call(), .wait_for_job(), Returns True if job was successfully ki…]
 - "exploit_msf_client_metasploitrpcclient_raw_call": "._raw_call()" | kind=code-symbol | source=manager/backend/app/exploit/msf_client.py:L157 | neighbors=[MetasploitRPCClient, ._call(), .connect(), MetasploitRPCError]
 - "exploit_msf_client_metasploitrpcclient_run_module": ".run_module()" | kind=code-symbol | source=manager/backend/app/exploit/msf_client.py:L83 | neighbors=[MetasploitRPCClient, ._call(), MetasploitRPCError, Execute a Metasploit module.         Re…]
 - "exploit_msf_client_metasploitrpcclient_wait_for_job": ".wait_for_job()" | kind=code-symbol | source=manager/backend/app/exploit/msf_client.py:L132 | neighbors=[MetasploitRPCClient, .get_job_status(), .kill_job(), Poll until job completes or max_wait ex…]
@@ -39,24 +57,6 @@ one-sentence description — no prose, no markdown fences.
 - "graph_neo4j_client_neo4jclient_run": ".run()" | kind=code-symbol | source=manager/backend/app/graph/neo4j_client.py:L87 | neighbors=[Neo4jClient, .ensure_schema(), .run_write(), Run a Cypher statement and return recor…]
 - "hooks_usemousegradient": "useMouseGradient.ts" | kind=code-symbol | source=manager/frontend/hooks/useMouseGradient.ts:L1 | neighbors=[d1b4dd3 trim frontend to 7 core pages; …, useMouseGradient(), page.tsx, 298a9d4 trim frontend to 7 core pages; …]
 - "lib_adapters_toapiengagementcreate": "toApiEngagementCreate()" | kind=code-symbol | source=manager/frontend/lib/adapters.ts:L65 | neighbors=[route.ts, adapters.ts, normalizeList(), engagement-adapters.test.ts]
-- "lib_adapters_toapifindingpatch": "toApiFindingPatch()" | kind=code-symbol | source=manager/frontend/lib/adapters.ts:L235 | neighbors=[route.ts, adapters.ts, engagement-adapters.test.ts, findings-adapters.test.ts]
-- "lib_adapters_touiengagement": "toUiEngagement()" | kind=code-symbol | source=manager/frontend/lib/adapters.ts:L35 | neighbors=[route.ts, route.ts, adapters.ts, engStatusToUi()]
-- "lib_agents_store_registeragent": "registerAgent()" | kind=code-symbol | source=manager/frontend/lib/agents-store.ts:L362 | neighbors=[agents-store.ts, genFieldAgentId(), readFieldAgents(), writeFieldAgents()]
-- "lib_agents_store_writefieldagents": "writeFieldAgents()" | kind=code-symbol | source=manager/frontend/lib/agents-store.ts:L350 | neighbors=[agents-store.ts, registerAgent(), updateAgentLastSeen(), ensureDataDir()]
-- "lib_ai_engine_getclient": "getClient()" | kind=code-symbol | source=manager/frontend/lib/ai-engine.ts:L432 | neighbors=[ai-engine.ts, chat(), generateReport(), triageFindings()]
-- "lib_assistant_access_canmountassistant": "canMountAssistant()" | kind=code-symbol | source=manager/frontend/lib/assistant-access.ts:L12 | neighbors=[AssistantProvider.tsx, assistant-access.ts, isAssistantRoute(), operator-routes.test.ts]
-- "lib_assistant_access_isassistantroute": "isAssistantRoute()" | kind=code-symbol | source=manager/frontend/lib/assistant-access.ts:L2 | neighbors=[AssistantProvider.tsx, assistant-access.ts, canMountAssistant(), operator-routes.test.ts]
-- "lib_campaign_store_issafecampaignid": "isSafeCampaignId()" | kind=code-symbol | source=manager/frontend/lib/campaign-store.ts:L87 | neighbors=[campaign-store.ts, getCampaign(), validateSnapshot(), campaign-store.test.ts]
-- "lib_clients_store_createclient": "createClient()" | kind=code-symbol | source=manager/frontend/lib/clients-store.ts:L87 | neighbors=[clients-store.ts, read(), slugify(), write()]
-- "lib_clients_store_updateclient": "updateClient()" | kind=code-symbol | source=manager/frontend/lib/clients-store.ts:L105 | neighbors=[clients-store.ts, read(), slugify(), write()]
-- "lib_console_source_consolequerykey": "consoleQueryKey()" | kind=code-symbol | source=manager/frontend/lib/console-source.tsx:L139 | neighbors=[page.tsx, page.tsx, console-source.tsx, useConsoleQueryKey()]
-- "lib_console_source_useconsolequerykey": "useConsoleQueryKey()" | kind=code-symbol | source=manager/frontend/lib/console-source.tsx:L144 | neighbors=[DashboardGrid.tsx, console-source.tsx, consoleQueryKey(), useConsoleSource()]
-- "lib_console_source_useconsolesource": "useConsoleSource()" | kind=code-symbol | source=manager/frontend/lib/console-source.tsx:L131 | neighbors=[console-source.tsx, useConsoleCapability(), useConsoleQuery(), useConsoleQueryKey()]
-- "lib_errors_diagnosespawnerror": "diagnoseSpawnError()" | kind=code-symbol | source=manager/frontend/lib/errors.ts:L244 | neighbors=[tool-runners.ts, errors.ts, VedhaError, AdversaError]
-- "lib_httpx_parser_httpxjsonldecoder_decode": ".decode()" | kind=code-symbol | source=manager/frontend/lib/httpx-parser.ts:L116 | neighbors=[HttpxJsonlDecoder, .push(), parseHttpxJsonLine(), .finish()]
-- "lib_job_store_createjob": "createJob()" | kind=code-symbol | source=manager/frontend/lib/job-store.ts:L41 | neighbors=[job-store.ts, genJobId(), readJobs(), writeJobs()]
-- "lib_nuclei_parser_nucleiseveritytoseverity": "nucleiSeverityToSeverity()" | kind=code-symbol | source=manager/frontend/lib/nuclei-parser.ts:L71 | neighbors=[tool-runners.ts, nuclei-parser.ts, nucleiMatchToFinding(), parsers.test.ts]
-- "lib_permissions_store_adduser": "addUser()" | kind=code-symbol | source=manager/frontend/lib/permissions-store.ts:L60 | neighbors=[permissions-store.ts, read(), write(), route.ts]
 
 ## Instructions
 

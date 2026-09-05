@@ -33,12 +33,13 @@ from workflow.modes import (
     service_specific,
     triage,
 )
-from workflow.workflow_engine import run_engagement
+from workflow.workflow_engine import PROFILE_PORTS, run_engagement
 from workflow.intensity import (
     DEFAULT_INTENSITY,
     intensity_port_override,
     resolve_intensity,
 )
+from scanner.port_scanner import resolve_profile
 
 RESULT_SCHEMA_VERSION = "1.1"
 PROBE_ID = os.environ.get("PROBE_NAME") or socket.gethostname()
@@ -154,9 +155,23 @@ _DISCOVER_IPV6_SCAN_TYPES = {"network_va", "assessment", "vuln_scan", "discovery
 # matter how light/deep the operator set the intensity.
 _FORCE_PORT_PROFILE = {"full_port_audit": "full"}
 
+# Broad assessments run a wider baseline at STANDARD intensity so a manager
+# "Full Assessment" matches the CLI's `run_all` default (top1000 ≈ 1121 ports)
+# instead of the narrow 95-port `it` catalog. Only the standard baseline widens:
+# `light` stays light (~65 ports) and `deep` stays the full 65,535 range — both
+# resolve a non-None port_override and so bypass this. Without it, a manager
+# assessment quietly scanned ~9× fewer ports than the same standalone scan,
+# which read as "manager results are inaccurate".
+_STANDARD_ASSESSMENT_SCAN_TYPES = {"assessment", "network_va", "vuln_scan"}
+_STANDARD_ASSESSMENT_PORT_PROFILE = "top1000"
+
 # Above this many TCP ports, a connect scan (one socket per port) is wasteful —
 # switch the port stage to the stateless SYN scanner (connect fallback off root).
-_SYN_PORT_THRESHOLD = 1024
+# Set above a curated/top1000 assessment (~1.2k ports) so those keep the proven,
+# platform-independent connect path — SYN is reserved for full-range sweeps
+# (deep intensity / full-port audit, 65,535 ports), where its efficiency is
+# decisive and its off-root connect fallback isn't asked to carry an assessment.
+_SYN_PORT_THRESHOLD = 4096
 
 
 def _scan_method_for(port_override: list[int] | None) -> str:
@@ -636,6 +651,20 @@ def run_scan(scan_type: str, params: dict,
         port_override = intensity_port_override(
             intensity, force_profile=_FORCE_PORT_PROFILE.get(scan_type),
         )
+        # Widen ONLY the standard baseline for broad assessments to the CLI's
+        # top1000 default. port_override is None exactly when intensity resolved
+        # to `standard` (light→quick, deep→full both return a concrete list), so
+        # this leaves light/deep untouched and never overrides a full-port audit.
+        # UNION with the profile's own catalog, never replace it: top1000 is a
+        # generic breadth list that OMITS the high-signal risk ports the catalog
+        # curates (4444 backdoor, 6379 Redis, 27017 Mongo, 9200 Elasticsearch,
+        # 31337, …). Replacing would gain breadth but drop exactly the ports a
+        # security assessment exists to find.
+        if port_override is None and scan_type in _STANDARD_ASSESSMENT_SCAN_TYPES:
+            port_override = sorted(
+                set(resolve_profile(_STANDARD_ASSESSMENT_PORT_PROFILE))
+                | set(PROFILE_PORTS.get(profile, []))
+            )
     except ValueError as exc:
         return _error_result(
             scan_type,

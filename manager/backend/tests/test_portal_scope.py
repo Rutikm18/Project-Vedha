@@ -6,6 +6,7 @@ inside its one engagement and rejects any attempt to reach another.
 from __future__ import annotations
 
 import uuid
+from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 from fastapi import HTTPException
@@ -15,9 +16,12 @@ from app.auth.jwt import (
     MANAGER_AUDIENCE,
     PORTAL_AUDIENCE,
     create_access_token,
+    create_refresh_token,
     decode_token,
 )
+from app.auth.middleware import portal_jwt_path_allows
 from app.auth.portal_scope import assert_client, client_scoped, resolve_scope
+from app.auth.router import refresh
 from app.models.enums import UserRole
 from app.models.finding import Finding
 from app.schemas.auth import CurrentUser
@@ -98,3 +102,94 @@ class TestPortalTokenClaims:
 
     def test_client_role_enum_exists(self):
         assert UserRole.client.value == "client"
+
+
+class TestPortalTokenIsConfinedToPortalRoutes:
+    """`jwt.py` states the portal audience exists "so it can be rejected on
+    operator APIs even if a role check is ever missed" — but nothing enforced it:
+    the audience was minted and never read, leaving per-route `require_role` as
+    the only barrier. That is the layer the audience was meant to back up, so a
+    single forgotten role gate exposed an operator route to a customer login."""
+
+    def test_portal_routes_are_allowed(self):
+        assert portal_jwt_path_allows("/portal")
+        assert portal_jwt_path_allows("/portal/findings")
+        assert portal_jwt_path_allows("/portal/scans")
+
+    def test_auth_routes_are_allowed(self):
+        # The portal UI must still be able to identify, refresh and log out.
+        assert portal_jwt_path_allows("/auth/me")
+        assert portal_jwt_path_allows("/auth/refresh")
+        assert portal_jwt_path_allows("/auth/logout")
+
+    def test_operator_routes_are_rejected(self):
+        # The exact route that surfaced this: launching a scan job.
+        assert not portal_jwt_path_allows("/agents/jobs")
+        assert not portal_jwt_path_allows("/agents")
+        assert not portal_jwt_path_allows("/engagements")
+        assert not portal_jwt_path_allows("/findings")
+        assert not portal_jwt_path_allows("/users")
+
+    def test_prefix_lookalikes_do_not_slip_through(self):
+        """`/portal` must not authorize `/portalsomething` or a crafted path."""
+        assert not portal_jwt_path_allows("/portalx")
+        assert not portal_jwt_path_allows("/portal-admin/jobs")
+        assert not portal_jwt_path_allows("/authz/escalate")
+
+
+class TestRefreshPreservesAudienceAndScope:
+    """`/auth/refresh` must re-mint the SAME credential class the login issued.
+
+    Login refuses to mint a client token without `client_engagement_id` ("the
+    portal's entire scoping boundary"), but refresh rebuilt the access token with
+    no extra claims at all — dropping both `aud` and `client_engagement_id`. The
+    customer was then locked out of their own portal on the next rotation
+    (assert_client fails closed with "not bound to an engagement"), and the
+    audience separation silently disappeared from every refreshed token.
+    """
+
+    @staticmethod
+    def _db_returning(user):
+        result = MagicMock()
+        result.scalar_one_or_none.return_value = user
+        db = MagicMock()
+        db.execute = AsyncMock(return_value=result)
+        return db
+
+    @pytest.mark.asyncio
+    async def test_client_refresh_keeps_portal_aud_and_engagement(self):
+        eng, uid, tid = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
+        user = MagicMock(id=uid, tenant_id=tid, role=UserRole.client,
+                         client_engagement_id=eng)
+        token, _ = create_refresh_token(subject=str(uid), tenant_id=str(tid))
+
+        resp = await refresh(token, db=self._db_returning(user))
+
+        claims = decode_token(resp.access_token)
+        assert claims["aud"] == PORTAL_AUDIENCE
+        assert claims["client_engagement_id"] == str(eng)
+
+    @pytest.mark.asyncio
+    async def test_operator_refresh_keeps_manager_aud(self):
+        uid, tid = uuid.uuid4(), uuid.uuid4()
+        user = MagicMock(id=uid, tenant_id=tid, role=UserRole.manager,
+                         client_engagement_id=None)
+        token, _ = create_refresh_token(subject=str(uid), tenant_id=str(tid))
+
+        resp = await refresh(token, db=self._db_returning(user))
+
+        claims = decode_token(resp.access_token)
+        assert claims["aud"] == MANAGER_AUDIENCE
+        assert "client_engagement_id" not in claims
+
+    @pytest.mark.asyncio
+    async def test_unbound_client_cannot_refresh_into_an_unscoped_token(self):
+        """Same rule as login: never mint an unscoped client token."""
+        uid, tid = uuid.uuid4(), uuid.uuid4()
+        user = MagicMock(id=uid, tenant_id=tid, role=UserRole.client,
+                         client_engagement_id=None)
+        token, _ = create_refresh_token(subject=str(uid), tenant_id=str(tid))
+
+        with pytest.raises(HTTPException) as exc:
+            await refresh(token, db=self._db_returning(user))
+        assert exc.value.status_code == 403

@@ -38,6 +38,10 @@ import time
 from pathlib import Path
 from urllib.parse import urlparse
 
+from agent.instance_lock import (
+    InstanceLockError,
+    acquire_instance_lock,
+)
 from agent.transport import (
     DEVICE_REFRESH_OK,
     DEVICE_REFRESH_REJECTED,
@@ -190,6 +194,60 @@ def _manager_reachable(transport) -> tuple[bool, str]:
         return False, f"{reason} — {fix}"
 
 
+def _detect_primary_ipv4() -> str | None:
+    """Best-effort primary IPv4 of this host — the address a scan sources from.
+    Uses a UDP socket to a public IP to read the routing decision; no packet is
+    actually sent, and it works on any interface (not just en0)."""
+    import socket
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            s.connect(("1.1.1.1", 80))
+            return s.getsockname()[0]
+        finally:
+            s.close()
+    except OSError:
+        return None
+
+
+def _preflight_scope_check(network_segments: list[str]) -> None:
+    """Auto-troubleshoot the single silent killer of job execution: a scan
+    ceiling that doesn't match the network this probe is actually on.
+
+    The manager only dispatches a job whose targets are inside the probe's
+    declared PROBE_NETWORK_SEGMENTS, and the probe re-enforces the same ceiling
+    locally. If that ceiling excludes the probe's own network, the probe connects
+    happily and then rejects (or is never offered) every job — the "connected but
+    nothing scans" failure. Warn loudly at startup instead of failing in silence.
+    Warnings only: the manager stays the authority, and an operator may
+    deliberately declare a remote range they route to.
+    """
+    if not network_segments:
+        say("⚠ PROBE_NETWORK_SEGMENTS is empty — the probe will REJECT every job.", 1)
+        say("  Set it to the CIDR(s) this probe can reach (e.g. its own /24).", 1)
+        return
+    ip = _detect_primary_ipv4()
+    if not ip:
+        return
+    try:
+        addr = ipaddress.ip_address(ip)
+    except ValueError:
+        return
+    for seg in network_segments:
+        try:
+            if addr in ipaddress.ip_network(seg, strict=False):
+                say(f"✓ Scan ceiling {network_segments} covers this host ({ip}).", 1)
+                return
+        except ValueError:
+            continue
+    suggested = f"{ip.rsplit('.', 1)[0]}.0/24"
+    say(f"⚠ This probe is on {ip}, but PROBE_NETWORK_SEGMENTS={network_segments} "
+        f"does not include it.", 1)
+    say(f"  Jobs targeting this network will be rejected as out-of-ceiling. If you "
+        f"mean to scan the local network, set PROBE_NETWORK_SEGMENTS={suggested} "
+        f"(or the exact range you intend to scan) and restart.", 1)
+
+
 def _wait_for_manager(transport, *, attempts: int = 6, base_delay: float = 5.0) -> None:
     """Bounded reachability preflight. Proceeds the moment the Manager answers
     /health; after `attempts` failures prints a boxed diagnosis and EXITS(2) —
@@ -319,6 +377,35 @@ def main() -> None:
     JOB_LIMIT = 1
     VERIFY_TLS = os.environ.get("VERIFY_TLS", "true").lower() not in ("false", "0", "no")
     STATE_FILE = Path(os.environ.get("STATE_FILE", "/var/lib/vedha-agent/state.json"))
+
+    # ── One probe per state file ──────────────────────────────────────────────
+    # STATE_FILE holds the probe's IDENTITY. A second process sharing it is not a
+    # second probe, it is a second impersonation of the same one: both heartbeat
+    # for one agent_id, both claim jobs, and — the part that actually corrupts
+    # results — both scan, doubling the probe rate the target sees from a single
+    # source. Hosts that rate-limit RSTs then suppress replies, and suppressed
+    # replies are reported as `filtered`. Two honest probes manufacture false
+    # negatives in each other's scans. Refuse early and say exactly how to fix it.
+    # Held for the process lifetime; the kernel releases it if we die.
+    try:
+        _INSTANCE_LOCK = acquire_instance_lock(STATE_FILE)
+    except InstanceLockError as exc:
+        say("")
+        say("=" * 62)
+        say("  ANOTHER PROBE IS ALREADY RUNNING")
+        say("=" * 62)
+        say(f"  {exc}")
+        say("")
+        say("  Two probes sharing one state file share ONE identity. They")
+        say("  corrupt each other's job leases and, because both scan, they")
+        say("  double the load on every target — which makes hosts suppress")
+        say("  replies and turns real 'closed' ports into false 'filtered'.")
+        say("")
+        say("  Either stop the other probe, or give this one its own identity:")
+        say(f"    STATE_FILE=~/vedha-agent/state-2.json {sys.argv[0] if sys.argv else 'probe'}")
+        say("=" * 62)
+        raise SystemExit(1) from exc
+
     SPOOL_DIR = Path(os.environ.get("RESULT_SPOOL_DIR", "/var/lib/vedha-agent/spool"))
     SPOOL_MAX_BYTES = _bounded_env_int(
         "RESULT_SPOOL_MAX_BYTES", 512 << 20, 1 << 20, 16 << 30,
@@ -352,6 +439,12 @@ def main() -> None:
             "(MITM-exposed). Trusted links only; set PROBE_CA_BUNDLE for private PKI.")
     if CLIENT_CERT:
         say(f"mTLS enabled — presenting client certificate {CLIENT_CERT}.")
+
+    # ── Auto-troubleshoot: catch the silent job-blockers before connecting ────
+    # Surfaces a scan-ceiling/network mismatch (the #1 "connected but never
+    # scans" cause) at startup instead of leaving it to be discovered by a job
+    # that quietly never runs. Warnings only — never blocks startup.
+    _preflight_scope_check(NETWORK_SEGMENTS)
 
     # ── Step 1: Startup gauntlet ─────────────────────────────────────────────
     # One function: HW bind → license → anti-debug.  Fails fast with clear,
@@ -648,6 +741,9 @@ def _run_polled_job_with_heartbeats(
 
 WS_RECONNECT_BACKOFF_MIN = 1.0
 WS_RECONNECT_BACKOFF_MAX = 60.0
+# Consecutive WS auth rejections (403/401) tolerated — each triggers a forced
+# device-token refresh — before falling back to HTTP poll / re-registration.
+WS_AUTH_FAIL_LIMIT = 3
 
 
 async def _run_ws_push_loop(
@@ -667,6 +763,7 @@ async def _run_ws_push_loop(
     import websockets
 
     backoff = WS_RECONNECT_BACKOFF_MIN
+    auth_failures = 0
 
     while True:
         try:
@@ -733,6 +830,10 @@ async def _run_ws_push_loop(
                 ),
             )
 
+            # Auth succeeded (hello_ok received above) — clear the auth-failure
+            # streak so a later expiry gets its own full refresh budget.
+            auth_failures = 0
+
             # ── Main receive loop ────────────────────────────────────────
             async for raw in ws:
                 try:
@@ -785,6 +886,30 @@ async def _run_ws_push_loop(
             say(f"WebSocket auth error: {exc} — falling back to HTTP poll.")
             return False
         except Exception as exc:
+            # A 403/401 on the WS upgrade means the manager REJECTED our token —
+            # usually time-valid locally but stale to the manager (superseded
+            # credential generation, revoked lease, or a redeployed manager).
+            # Reconnecting with the same token loops on 403 forever; force a fresh
+            # token and retry, and if forced refreshes keep failing the credential
+            # is genuinely dead — fall back so the outer loop can re-register.
+            code = getattr(getattr(exc, "response", None), "status_code", None)
+            msg = str(exc)
+            if code in (401, 403) or " 403" in msg or " 401" in msg:
+                auth_failures += 1
+                say(f"WebSocket rejected (auth) — refreshing device token and "
+                    f"retrying [{auth_failures}/{WS_AUTH_FAIL_LIMIT}].", 1)
+                refreshed = False
+                try:
+                    refreshed = await asyncio.to_thread(
+                        transport.ensure_device_access, force=True)
+                except Exception as rexc:  # noqa: BLE001
+                    _dbg(f"forced device-access refresh raised: {rexc!r}")
+                if not refreshed or auth_failures >= WS_AUTH_FAIL_LIMIT:
+                    say("WebSocket auth keeps failing — the device credential looks "
+                        "stale; falling back to re-registration.", 1)
+                    return False
+                # Retry immediately with the fresh token — don't sit on the backoff.
+                continue
             say(f"WebSocket error: {type(exc).__name__}: {exc} — reconnecting in {backoff:.0f}s...", 1)
 
         # Exponential backoff
@@ -1345,6 +1470,26 @@ def _enroll_device(
             raise
         except SystemExit:
             raise
+        except ValueError as exc:
+            # The manager ANSWERED (poll/activate returned 200) but its response
+            # failed a verification check — almost always the site-policy signing
+            # key ("...changed outside an approved rotation"). This is NOT a
+            # network fault, so retrying it as a "connection error" (the old bug)
+            # just spun forever at [1/12]. A deliberate manager re-point clears
+            # the pin up front (clear_manager_binding); reaching here means the
+            # pin is still set and mismatched — security-relevant, so stop loud.
+            say("")
+            say("═" * 58)
+            say("  ENROLLMENT REJECTED — site policy verification failed")
+            say("═" * 58)
+            say(f"  Why : {exc}")
+            say("  If you deliberately re-pointed this probe to a DIFFERENT")
+            say("  manager, clear its identity and re-enroll:")
+            say("     mv ~/vedha-agent/state.json ~/vedha-agent/state.json.bak")
+            say("  Otherwise the manager's policy-signing key changed")
+            say("  unexpectedly — investigate before trusting it.")
+            say("═" * 58)
+            raise SystemExit(1) from exc
         except Exception as exc:
             net_fail_streak += 1
             reason, fix = _classify_connection_error(exc, transport._base_url)
@@ -1436,7 +1581,10 @@ def _obtain_identity(
                         f"probe is pointed at {current}.", 1)
                     say("Re-enrolling with the new manager (the old credential "
                         "is untouched and still valid there).", 1)
-                    transport.clear_state()
+                    # FULL unbind, not just agent_id/token: the old manager's
+                    # pinned site-policy key would otherwise reject the new
+                    # manager's policy at activation and loop forever.
+                    transport.clear_manager_binding()
                     break
 
                 if outcome == DEVICE_REFRESH_UNAVAILABLE:
@@ -1464,6 +1612,23 @@ def _obtain_identity(
                     continue
 
                 if state.get("device_refresh_secret"):
+                    if not issuer:
+                        # LEGACY state, enrolled before credentials recorded their
+                        # issuer. We genuinely cannot tell "revoked by this
+                        # manager" from "belongs to a different one", so say that
+                        # instead of asserting the alarming reading — and give the
+                        # operator the exact way out. State is kept, so a probe
+                        # pointed back at its real manager still works.
+                        say("Cached device credential was refused by "
+                            f"{current}, and it does not record which manager "
+                            "issued it (enrolled before that was tracked).")
+                        say("If this is a DIFFERENT manager, re-enroll against it "
+                            "with a separate state file, e.g.:", 1)
+                        say("STATE_FILE=~/vedha-agent/state-<manager>.json "
+                            "./install.sh <manager> --enroll", 2)
+                        say("If this IS the issuing manager, the credential was "
+                            "revoked or disabled — see an administrator.", 1)
+                        raise SystemExit(1)
                     # Same manager, authoritative rejection: genuinely revoked,
                     # disabled, or superseded by a newer credential generation.
                     say("Device credential was revoked, expired, or disabled by "

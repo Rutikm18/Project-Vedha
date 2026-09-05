@@ -1,4 +1,4 @@
-# Node Description Batch 270 of 332
+# Node Description Batch 270 of 336
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,53 +19,51 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-LANGUAGE: each entry has a `lang=` marker giving the language of its source.
-Write that entry's description in EXACTLY that language. Do not translate to
-a single common language — match each node's source language individually.
+Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_ai_engine_testhallucinationguard_test_drop_table_flagged": ".test_drop_table_flagged()" | kind=code-symbol | source=manager/backend/tests/test_ai_engine.py:L135 | neighbors=[TestHallucinationGuard] | lang=en
-- "tests_test_ai_engine_testhallucinationguard_test_safe_remediation_passes": ".test_safe_remediation_passes()" | kind=code-symbol | source=manager/backend/tests/test_ai_engine.py:L139 | neighbors=[TestHallucinationGuard] | lang=en
-- "tests_test_ai_engine_testhallucinationguard_test_validate_aggregate_confidence": ".test_validate_aggregate_confidence()" | kind=code-symbol | source=manager/backend/tests/test_ai_engine.py:L143 | neighbors=[TestHallucinationGuard] | lang=en
-- "tests_test_ai_engine_testhallucinationguard_test_validate_clean_text": ".test_validate_clean_text()" | kind=code-symbol | source=manager/backend/tests/test_ai_engine.py:L152 | neighbors=[TestHallucinationGuard] | lang=en
-- "tests_test_ai_engine_testvulnprioritizer_setup_method": ".setup_method()" | kind=code-symbol | source=manager/backend/tests/test_ai_engine.py:L49 | neighbors=[TestVulnPrioritizer] | lang=en
-- "tests_test_ai_engine_testvulnprioritizer_test_fallback_score_capped": ".test_fallback_score_capped()" | kind=code-symbol | source=manager/backend/tests/test_ai_engine.py:L88 | neighbors=[TestVulnPrioritizer] | lang=en
-- "tests_test_ai_engine_testvulnprioritizer_test_starts_untrained": ".test_starts_untrained()" | kind=code-symbol | source=manager/backend/tests/test_ai_engine.py:L52 | neighbors=[TestVulnPrioritizer] | lang=en
-- "tests_test_ai_engine_testvulnprioritizer_test_train_without_xgboost_raises": ".test_train_without_xgboost_raises()" | kind=code-symbol | source=manager/backend/tests/test_ai_engine.py:L92 | neighbors=[TestVulnPrioritizer] | lang=en
-- "tests_test_ai_normalizer_rationale_1": "Tests for ai_normalizer.py — 0% prior coverage.  Covers:   - extract_raw_text: p" | kind=entity | source=manager/detection_engine/tests/test_ai_normalizer.py:L1 | neighbors=[test_ai_normalizer.py] | lang=en
-- "tests_test_ai_normalizer_rationale_155": "Any exception from the AI client yields [] — never raises, never         blocks" | kind=entity | source=manager/detection_engine/tests/test_ai_normalizer.py:L155 | neighbors=[.test_client_failure_returns_empty()] | lang=en
-- "tests_test_ai_normalizer_rationale_168": "When the cache already has an answer, the client must not be called." | kind=entity | source=manager/detection_engine/tests/test_ai_normalizer.py:L168 | neighbors=[.test_cache_hit_bypasses_client()] | lang=en
-- "tests_test_ai_normalizer_rationale_185": "A candidate dict without a 'product' key must be silently skipped." | kind=entity | source=manager/detection_engine/tests/test_ai_normalizer.py:L185 | neighbors=[.test_malformed_response_missing_produc…] | lang=pt
-- "tests_test_ai_normalizer_rationale_194": "If the client returns something that isn't a list, return []." | kind=entity | source=manager/detection_engine/tests/test_ai_normalizer.py:L194 | neighbors=[.test_malformed_response_not_a_list_ret…] | lang=en
-- "tests_test_ai_normalizer_rationale_206": "Every candidate produced by propose_candidates must be tagged         ai_assiste" | kind=entity | source=manager/detection_engine/tests/test_ai_normalizer.py:L206 | neighbors=[.test_ai_assisted_flag_set_on_candidate…] | lang=en
-- "tests_test_ai_normalizer_rationale_219": "source_confidence on the resulting CPECandidate must match the         originati" | kind=entity | source=manager/detection_engine/tests/test_ai_normalizer.py:L219 | neighbors=[.test_source_confidence_propagated_from…] | lang=en
-- "tests_test_ai_normalizer_rationale_231": "When the AI response includes a version, it lands on the candidate." | kind=entity | source=manager/detection_engine/tests/test_ai_normalizer.py:L231 | neighbors=[.test_version_propagated_when_present()] | lang=en
-- "tests_test_ai_normalizer_rationale_243": "A candidate without a version key produces version_raw=None." | kind=entity | source=manager/detection_engine/tests/test_ai_normalizer.py:L243 | neighbors=[.test_version_none_when_absent()] | lang=pt
-- "tests_test_ai_normalizer_rationale_253": "The result of a first successful client call must be stored in the         cache" | kind=entity | source=manager/detection_engine/tests/test_ai_normalizer.py:L253 | neighbors=[.test_result_is_cached_after_first_call…] | lang=en
-- "tests_test_ai_normalizer_rationale_96": "ssh_inventory facts have no banner-style text for the AI to normalise." | kind=entity | source=manager/detection_engine/tests/test_ai_normalizer.py:L96 | neighbors=[.test_ssh_inventory_returns_none()] | lang=en
-- "tests_test_ai_normalizer_testainormalizercache_test_cache_persists_across_instances": ".test_cache_persists_across_instances()" | kind=code-symbol | source=manager/detection_engine/tests/test_ai_normalizer.py:L134 | neighbors=[TestAINormalizerCache] | lang=en
-- "tests_test_ai_normalizer_testainormalizercache_test_get_returns_none_on_miss": ".test_get_returns_none_on_miss()" | kind=code-symbol | source=manager/detection_engine/tests/test_ai_normalizer.py:L124 | neighbors=[TestAINormalizerCache] | lang=en
-- "tests_test_ai_normalizer_testainormalizercache_test_key_is_content_hash_not_plaintext": ".test_key_is_content_hash_not_plaintext()" | kind=code-symbol | source=manager/detection_engine/tests/test_ai_normalizer.py:L141 | neighbors=[TestAINormalizerCache] | lang=en
-- "tests_test_ai_normalizer_testainormalizercache_test_put_and_get_roundtrip": ".test_put_and_get_roundtrip()" | kind=code-symbol | source=manager/detection_engine/tests/test_ai_normalizer.py:L128 | neighbors=[TestAINormalizerCache] | lang=en
-- "tests_test_ai_normalizer_testfakeaiclient_test_returns_empty_for_unknown_text": ".test_returns_empty_for_unknown_text()" | kind=code-symbol | source=manager/detection_engine/tests/test_ai_normalizer.py:L114 | neighbors=[TestFakeAIClient] | lang=en
-- "tests_test_ai_normalizer_testfakeaiclient_test_returns_registered_response": ".test_returns_registered_response()" | kind=code-symbol | source=manager/detection_engine/tests/test_ai_normalizer.py:L110 | neighbors=[TestFakeAIClient] | lang=en
-- "tests_test_async_udp_echoprotocol_connection_made": ".connection_made()" | kind=code-symbol | source=probe/tests/test_async_udp.py:L24 | neighbors=[_EchoProtocol] | lang=en
-- "tests_test_async_udp_echoprotocol_datagram_received": ".datagram_received()" | kind=code-symbol | source=probe/tests/test_async_udp.py:L27 | neighbors=[_EchoProtocol] | lang=en
-- "tests_test_async_udp_rationale_1": "test_async_udp.py — tests for the true-async UDP probe helper in scanner_base." | kind=entity | source=probe/tests/test_async_udp.py:L1 | neighbors=[test_async_udp.py] | lang=en
-- "tests_test_async_udp_sinkprotocol_datagram_received": ".datagram_received()" | kind=code-symbol | source=probe/tests/test_async_udp.py:L32 | neighbors=[_SinkProtocol] | lang=en
-- "tests_test_async_udp_start_server": "_start_server()" | kind=code-symbol | source=probe/tests/test_async_udp.py:L36 | neighbors=[test_async_udp.py] | lang=en
-- "tests_test_async_udp_test_datagram_received_resolves_future_with_bytes": "test_datagram_received_resolves_future_with_bytes()" | kind=code-symbol | source=probe/tests/test_async_udp.py:L77 | neighbors=[test_async_udp.py] | lang=en
-- "tests_test_async_udp_test_error_received_connection_refused_maps_to_closed": "test_error_received_connection_refused_maps_to_closed()" | kind=code-symbol | source=probe/tests/test_async_udp.py:L86 | neighbors=[test_async_udp.py] | lang=en
-- "tests_test_async_udp_test_probe_concurrency_all_complete": "test_probe_concurrency_all_complete()" | kind=code-symbol | source=probe/tests/test_async_udp.py:L106 | neighbors=[test_async_udp.py] | lang=en
-- "tests_test_async_udp_test_probe_no_reply_returns_none_on_timeout": "test_probe_no_reply_returns_none_on_timeout()" | kind=code-symbol | source=probe/tests/test_async_udp.py:L67 | neighbors=[test_async_udp.py] | lang=en
-- "tests_test_async_udp_test_probe_open_returns_exact_payload": "test_probe_open_returns_exact_payload()" | kind=code-symbol | source=probe/tests/test_async_udp.py:L56 | neighbors=[test_async_udp.py] | lang=en
-- "tests_test_async_udp_test_probe_open_returns_reply_bytes": "test_probe_open_returns_reply_bytes()" | kind=code-symbol | source=probe/tests/test_async_udp.py:L46 | neighbors=[test_async_udp.py] | lang=en
-- "tests_test_async_udp_test_probe_unbound_loopback_port_is_not_open": "test_probe_unbound_loopback_port_is_not_open()" | kind=code-symbol | source=probe/tests/test_async_udp.py:L95 | neighbors=[test_async_udp.py] | lang=en
-- "tests_test_async_udp_test_probe_unresolvable_host_returns_none": "test_probe_unresolvable_host_returns_none()" | kind=code-symbol | source=probe/tests/test_async_udp.py:L126 | neighbors=[test_async_udp.py] | lang=en
-- "tests_test_async_udp_test_udp_scanner_generic_probe_detects_unknown_responder": "test_udp_scanner_generic_probe_detects_unknown_responder()" | kind=code-symbol | source=probe/tests/test_async_udp.py:L183 | neighbors=[test_async_udp.py] | lang=en
-- "tests_test_async_udp_test_udp_scanner_generic_probe_unknown_port_silence_is_open_filtered": "test_udp_scanner_generic_probe_unknown_port_silence_is_open_filtered()" | kind=code-symbol | source=probe/tests/test_async_udp.py:L208 | neighbors=[test_async_udp.py] | lang=en
+- "supporting_research_test_evidence_store_rationale_195": "Drifted payload: the probe ran, the field moved." | kind=entity | source=Supporting_research/test_evidence_store.py:L195 | neighbors=[.test_collected_but_unusable_evidence_i…]
+- "supporting_research_test_evidence_store_rationale_73": "30 days of history. HOST_A is patched on day 10." | kind=entity | source=Supporting_research/test_evidence_store.py:L73 | neighbors=[build_fleet()]
+- "supporting_research_test_evidence_store_testidentity_test_fingerprint_identity_finds_exactly_three_machines": ".test_fingerprint_identity_finds_exactly_three_machines()" | kind=code-symbol | source=Supporting_research/test_evidence_store.py:L100 | neighbors=[TestIdentity]
+- "supporting_research_test_evidence_store_testidentity_test_observations_without_any_fingerprint_fall_back_to_hostname": ".test_observations_without_any_fingerprint_fall_back_to_hostname()" | kind=code-symbol | source=Supporting_research/test_evidence_store.py:L127 | neighbors=[TestIdentity]
+- "supporting_research_test_evidence_store_testretroactivedetection_test_cannot_answer_is_reported_rather_than_assumed_clean": ".test_cannot_answer_is_reported_rather_than_assumed_clean()" | kind=code-symbol | source=Supporting_research/test_evidence_store.py:L178 | neighbors=[TestRetroactiveDetection]
+- "test_route_post": "POST" | kind=code-symbol | source=manager/frontend/app/api/integrations/test/route.ts:L9 | neighbors=[route.ts]
+- "tests_assistant_test_cansubmit": "canSubmit()" | kind=code-symbol | source=manager/frontend/tests/assistant.test.ts:L108 | neighbors=[assistant.test.ts]
+- "tests_assistant_test_sendbtnlabel": "sendBtnLabel()" | kind=code-symbol | source=manager/frontend/tests/assistant.test.ts:L112 | neighbors=[assistant.test.ts]
+- "tests_assistant_test_textareaplaceholder": "textareaPlaceholder()" | kind=code-symbol | source=manager/frontend/tests/assistant.test.ts:L116 | neighbors=[assistant.test.ts]
+- "tests_campaign_store_test_makesnapshot": "makeSnapshot()" | kind=code-symbol | source=manager/frontend/tests/campaign-store.test.ts:L18 | neighbors=[campaign-store.test.ts]
+- "tests_campaign_store_test_tmp_dir": "TMP_DIR" | kind=code-symbol | source=manager/frontend/tests/campaign-store.test.ts:L8 | neighbors=[campaign-store.test.ts]
+- "tests_conftest_pytest_configure": "pytest_configure()" | kind=code-symbol | source=probe/tests/conftest.py:L25 | neighbors=[conftest.py]
+- "tests_conftest_rationale_11": "Keep the local result archive out of the checkout.      TaskRunner writes every" | kind=entity | source=probe/tests/conftest.py:L11 | neighbors=[_isolate_result_archive()]
+- "tests_findings_detail_layout_test_findingspage": "findingsPage" | kind=code-symbol | source=manager/frontend/tests/findings-detail-layout.test.ts:L5 | neighbors=[findings-detail-layout.test.ts]
+- "tests_findings_store_test_makefinding": "makeFinding()" | kind=code-symbol | source=manager/frontend/tests/findings-store.test.ts:L25 | neighbors=[findings-store.test.ts]
+- "tests_findings_store_test_tmp_dir": "TMP_DIR" | kind=code-symbol | source=manager/frontend/tests/findings-store.test.ts:L8 | neighbors=[findings-store.test.ts]
+- "tests_findings_store_test_tmp_file": "TMP_FILE" | kind=code-symbol | source=manager/frontend/tests/findings-store.test.ts:L9 | neighbors=[findings-store.test.ts]
+- "tests_parsers_test_naabu_line": "NAABU_LINE" | kind=code-symbol | source=manager/frontend/tests/parsers.test.ts:L81 | neighbors=[parsers.test.ts]
+- "tests_parsers_test_nuclei_valid": "NUCLEI_VALID" | kind=code-symbol | source=manager/frontend/tests/parsers.test.ts:L56 | neighbors=[parsers.test.ts]
+- "tests_parsers_test_testssl_valid": "TESTSSL_VALID" | kind=code-symbol | source=manager/frontend/tests/parsers.test.ts:L73 | neighbors=[parsers.test.ts]
+- "tests_test_accuracy_gate_rationale_1": "test_accuracy_gate.py — the accuracy MERGE GATE (roadmap #4 / Tier 1.3).  `accur" | kind=entity | source=probe/tests/test_accuracy_gate.py:L1 | neighbors=[test_accuracy_gate.py]
+- "tests_test_accuracy_gate_rationale_44": "CI's actual assertion: the engine still matches every labeled corpus." | kind=entity | source=probe/tests/test_accuracy_gate.py:L44 | neighbors=[.test_gate_passes_on_the_committed_corp…]
+- "tests_test_accuracy_gate_rationale_58": "Without one of these the gate proves only non-drift, never accuracy." | kind=entity | source=probe/tests/test_accuracy_gate.py:L58 | neighbors=[.test_an_independently_labeled_corpus_i…]
+- "tests_test_accuracy_gate_rationale_64": "Locks in the measured results: every port state agrees with nmap on         both" | kind=entity | source=probe/tests/test_accuracy_gate.py:L64 | neighbors=[.test_every_independent_corpus_scores_p…]
+- "tests_test_accuracy_gate_testcli_test_cli_exits_two_on_a_corpus_error": ".test_cli_exits_two_on_a_corpus_error()" | kind=code-symbol | source=probe/tests/test_accuracy_gate.py:L209 | neighbors=[TestCli]
+- "tests_test_accuracy_gate_testcli_test_cli_exits_zero_on_passing_corpora": ".test_cli_exits_zero_on_passing_corpora()" | kind=code-symbol | source=probe/tests/test_accuracy_gate.py:L206 | neighbors=[TestCli]
+- "tests_test_accuracy_gate_testcli_test_cli_json_mode_is_machine_readable": ".test_cli_json_mode_is_machine_readable()" | kind=code-symbol | source=probe/tests/test_accuracy_gate.py:L212 | neighbors=[TestCli]
+- "tests_test_accuracy_gate_testcorpusvalidation_test_malformed_json_is_a_gate_error_not_a_crash": ".test_malformed_json_is_a_gate_error_not_a_crash()" | kind=code-symbol | source=probe/tests/test_accuracy_gate.py:L113 | neighbors=[TestCorpusValidation]
+- "tests_test_accuracy_gate_testcorpusvalidation_test_missing_directory_is_rejected": ".test_missing_directory_is_rejected()" | kind=code-symbol | source=probe/tests/test_accuracy_gate.py:L118 | neighbors=[TestCorpusValidation]
+- "tests_test_accuracy_gate_testprovenance_test_nmap_labels_count_as_accuracy_evidence": ".test_nmap_labels_count_as_accuracy_evidence()" | kind=code-symbol | source=probe/tests/test_accuracy_gate.py:L130 | neighbors=[TestProvenance]
+- "tests_test_accuracy_gate_testprovenance_test_self_regression_labels_do_not": ".test_self_regression_labels_do_not()" | kind=code-symbol | source=probe/tests/test_accuracy_gate.py:L133 | neighbors=[TestProvenance]
+- "tests_test_accuracy_gate_testshippedcorpora_test_every_shipped_corpus_declares_provenance": ".test_every_shipped_corpus_declares_provenance()" | kind=code-symbol | source=probe/tests/test_accuracy_gate.py:L48 | neighbors=[TestShippedCorpora]
+- "tests_test_accuracy_gate_testshippedcorpora_test_report_marks_regression_corpora_as_not_accuracy_evidence": ".test_report_marks_regression_corpora_as_not_accuracy_evidence()" | kind=code-symbol | source=probe/tests/test_accuracy_gate.py:L53 | neighbors=[TestShippedCorpora]
+- "tests_test_accuracy_gate_testshippedcorpora_test_unlabeled_findings_dimension_is_marked_in_the_report": ".test_unlabeled_findings_dimension_is_marked_in_the_report()" | kind=code-symbol | source=probe/tests/test_accuracy_gate.py:L77 | neighbors=[TestShippedCorpora]
+- "tests_test_accuracy_gate_testthresholds_test_clean_result_produces_no_violations": ".test_clean_result_produces_no_violations()" | kind=code-symbol | source=probe/tests/test_accuracy_gate.py:L178 | neighbors=[TestThresholds]
+- "tests_test_accuracy_gate_testthresholds_test_false_positive_finding_trips_precision": ".test_false_positive_finding_trips_precision()" | kind=code-symbol | source=probe/tests/test_accuracy_gate.py:L165 | neighbors=[TestThresholds]
+- "tests_test_accuracy_gate_testthresholds_test_missed_open_port_trips_open_recall": ".test_missed_open_port_trips_open_recall()" | kind=code-symbol | source=probe/tests/test_accuracy_gate.py:L157 | neighbors=[TestThresholds]
+- "tests_test_accuracy_gate_testthresholds_test_phantom_open_port_trips_open_precision": ".test_phantom_open_port_trips_open_precision()" | kind=code-symbol | source=probe/tests/test_accuracy_gate.py:L149 | neighbors=[TestThresholds]
+- "tests_test_accuracy_gate_testthresholds_test_unlabeled_dimension_is_skipped_not_scored_as_perfect": ".test_unlabeled_dimension_is_skipped_not_scored_as_perfect()" | kind=code-symbol | source=probe/tests/test_accuracy_gate.py:L172 | neighbors=[TestThresholds]
+- "tests_test_active_validation_interpret_test_confirmed_upgrades_and_sets_exploit_validated": "test_confirmed_upgrades_and_sets_exploit_validated()" | kind=code-symbol | source=manager/backend/tests/test_active_validation_interpret.py:L6 | neighbors=[test_active_validation_interpret.py]
 
 ## Instructions
 

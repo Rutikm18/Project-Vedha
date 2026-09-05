@@ -1,11 +1,11 @@
 "use client";
 
 import React, { useCallback, useMemo, useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import {
-  Activity, AlertTriangle, BarChart3, CheckCircle2, ChevronDown,
+  Activity, AlertTriangle, ArrowDownRight, ArrowUpRight, BarChart3, CheckCircle2, ChevronDown,
   ChevronRight, Copy, FileSearch, FileText, Fingerprint, Flame,
-  Globe, Lock, Printer, RefreshCw, Shield, ShieldAlert, ShieldCheck,
+  Globe, Lock, Minus, Printer, RefreshCw, Shield, ShieldAlert, ShieldCheck,
   Sparkles, Target, Terminal, Zap,
 } from "lucide-react";
 import { PageShell } from "../../components/PageShell";
@@ -15,6 +15,11 @@ import {
   SEV_COLOR, SEV_PALETTE, SEVERITY_ORDER, toSeverity, riskScoreColor,
   type Severity,
 } from "../../lib/severity";
+import {
+  type ScoreDomain, type Confidence, type RemediationGroup,
+  type Scorecard, type ReportFinding, type ReportDecision,
+} from "../../lib/prompts/report";
+import { type ReportResult } from "../../lib/ai-engine";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -42,8 +47,6 @@ interface Finding {
 interface FindingPage { items: Finding[]; total: number; page: number; pageSize: number; pages: number; }
 interface FindingSummary { total: number; criticalOpen: number; validated: number; blind: number; averageRisk: number; }
 interface ActivityItem { id: string; timestamp: string; actor: string; action: string; detail: string; }
-interface AiJobStatus { job_id: string; status: "queued" | "running" | "complete" | "failed"; progress?: number; stage?: string; error?: string; }
-interface AiDraft { sections: Array<{ id: string; title: string; content: string; review_status: "pending" | "approved" | "rejected" }>; }
 
 // ─── Constants ────────────────────────────────────────────────────────────────
 
@@ -410,37 +413,291 @@ function FindingCard({ f, idx }: { f: Finding; idx: number }) {
   );
 }
 
-// ─── AI panel (compact) ───────────────────────────────────────────────────────
+// ─── AI report (deterministic scorecard · injection-fenced) ───────────────────
 
-function AiPanel({ engId }: { engId: string }) {
-  const qc = useQueryClient();
-  const [jobId, setJobId] = useState<string | null>(null);
-  const [showDraft, setShowDraft] = useState(false);
+const DOMAIN_LABEL: Record<ScoreDomain, string> = {
+  network: "Network",
+  authentication: "Authentication",
+  configuration: "Configuration",
+  patch_management: "Patch mgmt",
+  web_application: "Web app",
+};
 
-  const statusQ = useQuery({
-    queryKey: ["ai-report-status", engId, jobId],
-    queryFn: () => fetchJson<AiJobStatus>(`/api/ai/report/${engId}/status/${jobId}`),
-    enabled: Boolean(jobId),
-    refetchInterval: q => { const s = q.state.data?.status; return (s === "complete" || s === "failed") ? false : 2500; },
-  });
-  const draftQ = useQuery({
-    queryKey: ["ai-report-draft", engId],
-    queryFn: () => fetchJson<AiDraft>(`/api/ai/report/${engId}/draft`),
-    enabled: showDraft,
-  });
+// Overall / domain scores are an open-risk index: 0–100, higher = worse.
+function scoreColor(n: number): string {
+  if (n >= 75) return SEV_PALETTE.RED;
+  if (n >= 50) return SEV_PALETTE.ORANGE;
+  if (n >= 25) return SEV_PALETTE.AMBER;
+  return SEV_PALETTE.GREEN;
+}
+
+const CONF_STYLE: Record<Confidence, { color: string; label: string }> = {
+  confirmed: { color: SEV_PALETTE.GREEN, label: "Confirmed" },
+  likely:    { color: SEV_PALETTE.AMBER, label: "Likely" },
+  potential: { color: SEV_PALETTE.SLATE, label: "Potential" },
+};
+
+const WINDOW_STYLE: Record<RemediationGroup["window"], { color: string; label: string }> = {
+  immediate: { color: SEV_PALETTE.RED,    label: "Immediate" },
+  "30_days": { color: SEV_PALETTE.ORANGE, label: "Within 30 days" },
+  "90_days": { color: SEV_PALETTE.SLATE,  label: "Within 90 days" },
+};
+
+function EffortDot({ label, level }: { label: string; level: string }) {
+  const col = level === "high" ? SEV_PALETTE.RED : level === "medium" ? SEV_PALETTE.AMBER : SEV_PALETTE.GREEN;
+  return (
+    <span style={{ fontSize: 10.5, color: "var(--text-muted)" }}>
+      {label} <strong style={{ color: col, textTransform: "capitalize" }}>{level}</strong>
+    </span>
+  );
+}
+
+function ScorecardCard({ sc }: { sc: Scorecard }) {
+  const d = sc.delta;
+  const DeltaIcon = d.direction === "improved" ? ArrowDownRight : d.direction === "worsened" ? ArrowUpRight : Minus;
+  const deltaColor = d.direction === "improved" ? SEV_PALETTE.GREEN : d.direction === "worsened" ? SEV_PALETTE.RED : "var(--text-muted)";
+  return (
+    <div className="rpt-section" style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: 20, alignItems: "center" }}>
+      {/* Overall */}
+      <div style={{ textAlign: "center", minWidth: 120 }}>
+        <div style={{ fontSize: 9, fontWeight: 800, color: "var(--text-muted)", letterSpacing: "0.1em", fontFamily: "var(--font-mono)" }}>OPEN RISK</div>
+        <div style={{ fontSize: 46, fontWeight: 800, lineHeight: 1.05, color: scoreColor(sc.overall), fontFamily: "var(--font-mono)" }}>{sc.overall}</div>
+        <div style={{ fontSize: 10, color: "var(--text-muted)" }}>of 100 · lower is better</div>
+        {d.overall !== null && (
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 3, marginTop: 4, fontSize: 11, fontWeight: 700, color: deltaColor }}>
+            <DeltaIcon size={12} /> {d.overall > 0 ? `+${d.overall}` : d.overall} vs. previous
+          </div>
+        )}
+      </div>
+      <div>
+        {/* Domain split */}
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(96px, 1fr))", gap: 8, marginBottom: 12 }}>
+          {(Object.keys(DOMAIN_LABEL) as ScoreDomain[]).map(key => {
+            const dm = sc.domains[key];
+            return (
+              <div key={key} style={{ padding: "8px 10px", borderRadius: 7, border: "1px solid var(--border-subtle)", background: "var(--bg-panel)" }}>
+                <div style={{ fontSize: 9.5, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.04em" }}>{DOMAIN_LABEL[key]}</div>
+                <div style={{ display: "flex", alignItems: "baseline", gap: 5, marginTop: 2 }}>
+                  <span style={{ fontSize: 18, fontWeight: 800, fontFamily: "var(--font-mono)", color: scoreColor(dm.score) }}>{dm.score}</span>
+                  <span style={{ fontSize: 10, color: "var(--text-muted)" }}>{dm.open} open</span>
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        {/* Exploitability */}
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+          {([
+            ["Open", sc.exploitability.open, "var(--text-secondary)"],
+            ["On KEV", sc.exploitability.kev, SEV_PALETTE.RED],
+            ["Exploit-validated", sc.exploitability.validated, SEV_PALETTE.ORANGE],
+            ["EPSS ≥ 0.5", sc.exploitability.epssHigh, SEV_PALETTE.AMBER],
+          ] as const).map(([label, n, col]) => (
+            <span key={label} style={{ display: "inline-flex", alignItems: "center", gap: 5, fontSize: 11, padding: "3px 9px", borderRadius: 20, border: "1px solid var(--border-subtle)", background: "var(--bg-surface)" }}>
+              <strong style={{ color: col, fontFamily: "var(--font-mono)" }}>{n}</strong>
+              <span style={{ color: "var(--text-muted)" }}>{label}</span>
+            </span>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Signal chip — a single element of the severity-justification strip. "hot"
+// signals (KEV, high EPSS, internet exposure) are the ones that turn a score
+// into urgency, so they read in critical colour.
+function Signal({ label, value, hot }: { label: string; value?: React.ReactNode; hot?: boolean }) {
+  return (
+    <span style={{
+      display: "inline-flex", alignItems: "center", gap: 5, padding: "3px 9px", borderRadius: 4,
+      fontSize: 10.5, whiteSpace: "nowrap",
+      color: hot ? SEV_PALETTE.RED : "var(--text-secondary)",
+      background: hot ? `${SEV_PALETTE.RED}14` : "var(--bg-hover)",
+      border: `1px solid ${hot ? `${SEV_PALETTE.RED}44` : "var(--border-subtle)"}`,
+    }}>
+      {label}{value != null && <b style={{ fontFamily: "var(--font-mono)", color: hot ? SEV_PALETTE.RED : "var(--text-primary)" }}>{value}</b>}
+    </span>
+  );
+}
+
+// Severity justification — "critical" is an assertion until the reader sees the
+// vector and exploit signals that produced it. All values are scanner facts.
+function RationaleStrip({ f }: { f: ReportFinding }) {
+  const signals: React.ReactNode[] = [];
+  if (f.cvss != null) signals.push(<Signal key="cvss" label="CVSS " value={f.cvss.toFixed(1)} />);
+  if (f.cvss_vector) signals.push(<Signal key="vec" label={f.cvss_vector} />);
+  if (f.epss != null) signals.push(<Signal key="epss" label="EPSS " value={f.epss.toFixed(2)} hot={f.epss >= 0.5} />);
+  if (f.kev) signals.push(<Signal key="kev" label="CISA KEV" hot />);
+  if (f.exploit_validated) signals.push(<Signal key="val" label="Validated in test" />);
+  if (f.internet_reachable) signals.push(<Signal key="net" label="Internet-reachable" hot />);
+  if (signals.length === 0) return null;
+  return (
+    <div style={{ display: "flex", flexWrap: "wrap", gap: 7, marginTop: 10, paddingTop: 10, borderTop: "1px dashed var(--border-subtle)" }}>
+      {signals}
+    </div>
+  );
+}
+
+function ReportFindingCard({ f }: { f: ReportFinding }) {
+  const sev = toSeverity(f.severity);
+  const sevColor = SEV_COLOR[sev];
+  const conf = CONF_STYLE[f.confidence] ?? CONF_STYLE.potential;
+  return (
+    <div style={{ border: "1px solid var(--border-subtle)", borderLeft: `3px solid ${sevColor}`, borderRadius: 8, background: "var(--bg-panel)", padding: "14px 16px" }}>
+      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
+        <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 800, color: "var(--text-faint)" }}>{f.ref}</span>
+        <SevBadge sev={sev} />
+        <span style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: "0.04em", padding: "2px 7px", borderRadius: 4, color: conf.color, background: `${conf.color}16`, border: `1px solid ${conf.color}33` }}>{conf.label.toUpperCase()}</span>
+        <strong style={{ fontSize: 13.5, color: "var(--text-primary)", lineHeight: 1.35 }}>{f.title}</strong>
+      </div>
+      {f.affected_assets.length > 0 && (
+        <div style={{ fontSize: 11, color: "var(--text-muted)", fontFamily: "var(--font-mono)", marginBottom: 4 }}>{f.affected_assets.join(" · ")}</div>
+      )}
+      <RationaleStrip f={f} />
+      {f.severity_flag && (
+        <div style={{ display: "flex", gap: 7, alignItems: "flex-start", marginTop: 10, padding: "8px 10px", borderRadius: 6, background: "var(--sev-medium-bg)", border: "1px solid var(--sev-medium-color)" }}>
+          <AlertTriangle size={12} style={{ color: "var(--sev-medium-color)", flexShrink: 0, marginTop: 1 }} />
+          <span style={{ fontSize: 11, color: "var(--text-primary)" }}>{f.severity_flag}</span>
+        </div>
+      )}
+      <div style={{ marginTop: 12 }}>
+        {[
+          ["Business impact", f.business_impact],
+          ["Why this severity", f.severity_rationale],
+          ["Technical detail", f.technical_detail],
+          ["Evidence", f.evidence_summary],
+          ["Remediation", f.remediation_detail],
+          ["Verification", f.verification],
+          ["How this was established", f.validation_method],
+        ].filter(([, v]) => v).map(([label, v]) => (
+          <div key={label} style={{ marginBottom: 8 }}>
+            <div className="fc-section-label">{label}</div>
+            <p style={{ margin: "3px 0 0", fontSize: 12.5, color: "var(--text-secondary)", lineHeight: 1.6 }}>{v}</p>
+          </div>
+        ))}
+      </div>
+      {(f.compliance_refs.length > 0 || (f.references?.length ?? 0) > 0) && (
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 6 }}>
+          {f.compliance_refs.map(r => <span key={r} className="rpt-chip">{r}</span>)}
+          {f.references?.map(r => (
+            /^CVE-/i.test(r)
+              ? <a key={r} href={`https://nvd.nist.gov/vuln/detail/${r}`} target="_blank" rel="noopener noreferrer" className="rpt-chip rpt-chip--cve">{r}</a>
+              : <span key={r} className="rpt-chip">{r}</span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ── Exposure matrix: severity (how bad) × exploitability (how likely). The
+// three top-left cells are where real exposure sits; all counts are derived
+// from finding signals, not generated. ────────────────────────────────────────
+const MATRIX_ROWS: Severity[] = ["CRITICAL", "HIGH", "MEDIUM", "LOW"];
+const MATRIX_COLS = ["Weaponised", "Likely", "Theoretical"] as const;
+const MATRIX_COL_AXIS = ["KEV or validated", "EPSS ≥ 0.50", "No known exploit"] as const;
+// heat[rowIndex][colIndex]; higher = more worrying. Overridden to 0 when empty.
+const MATRIX_HEAT = [
+  [3, 2, 1], // critical
+  [3, 2, 1], // high
+  [2, 1, 1], // medium
+  [1, 1, 0], // low
+];
+const HEAT_STYLE: Record<number, { bg: string; border: string; count: string }> = {
+  0: { bg: "var(--bg-surface)", border: "var(--border-subtle)", count: "var(--text-muted)" },
+  1: { bg: `${SEV_PALETTE.AMBER}12`, border: `${SEV_PALETTE.AMBER}38`, count: "var(--text-primary)" },
+  2: { bg: `${SEV_PALETTE.ORANGE}18`, border: `${SEV_PALETTE.ORANGE}55`, count: SEV_PALETTE.ORANGE },
+  3: { bg: `${SEV_PALETTE.RED}22`, border: `${SEV_PALETTE.RED}66`, count: SEV_PALETTE.RED },
+};
+
+function exploitCol(f: ReportFinding): 0 | 1 | 2 {
+  if (f.kev || f.exploit_validated) return 0;
+  if ((f.epss ?? 0) >= 0.5) return 1;
+  return 2;
+}
+
+function ExposureMatrix({ findings }: { findings: ReportFinding[] }) {
+  const grid = MATRIX_ROWS.map(() => [0, 0, 0]);
+  for (const f of findings) {
+    const r = MATRIX_ROWS.indexOf(toSeverity(f.severity));
+    if (r >= 0) grid[r][exploitCol(f)]++;
+  }
+  return (
+    <div style={{ overflowX: "auto" }}>
+      <table style={{ borderCollapse: "separate", borderSpacing: 3, width: "auto" }}>
+        <thead>
+          <tr>
+            <td />
+            {MATRIX_COLS.map((c, i) => (
+              <th key={c} style={{ fontSize: 10.5, fontWeight: 700, color: "var(--text-muted)", padding: "4px 8px", textAlign: "center" }}>
+                {c}<br /><span style={{ fontSize: 9, textTransform: "uppercase", letterSpacing: "0.04em" }}>{MATRIX_COL_AXIS[i]}</span>
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {MATRIX_ROWS.map((sev, r) => (
+            <tr key={sev}>
+              <th scope="row" style={{ textAlign: "right", paddingRight: 10 }}><SevBadge sev={sev} /></th>
+              {grid[r].map((n, c) => {
+                const heat = n === 0 ? 0 : MATRIX_HEAT[r][c];
+                const s = HEAT_STYLE[heat];
+                return (
+                  <td key={c} style={{ width: 92, height: 52, textAlign: "center", verticalAlign: "middle", borderRadius: 5, background: s.bg, border: `1px solid ${s.border}` }}>
+                    <span style={{ fontFamily: "var(--font-display)", fontSize: 19, fontWeight: 700, color: s.count }}>{n}</span>
+                  </td>
+                );
+              })}
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
+// ── Decision box: board-level calls, three horizons, owner slots. ─────────────
+const HORIZON_STYLE: Record<string, { color: string; label: string }> = {
+  this_week:    { color: SEV_PALETTE.RED,    label: "Decide this week" },
+  this_month:   { color: SEV_PALETTE.ORANGE, label: "Decide this month" },
+  this_quarter: { color: "var(--border-default)", label: "Decide this quarter" },
+};
+
+function DecisionBox({ decisions }: { decisions: ReportDecision[] }) {
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 10, margin: "14px 0" }}>
+      {decisions.map((d, i) => {
+        const h = HORIZON_STYLE[d.horizon] ?? HORIZON_STYLE.this_quarter;
+        return (
+          <div key={i} style={{ background: "var(--bg-surface)", border: "1px solid var(--border-subtle)", borderTop: `2px solid ${h.color}`, borderRadius: 8, padding: "14px 16px" }}>
+            <div style={{ fontSize: 10, color: "var(--text-muted)", marginBottom: 8, textTransform: "uppercase", letterSpacing: "0.05em" }}>{h.label}</div>
+            <div style={{ fontFamily: "var(--font-display)", fontSize: 13.5, fontWeight: 700, color: "var(--text-primary)", lineHeight: 1.35, marginBottom: 6 }}>{d.ask}</div>
+            <div style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.55 }}>{d.rationale}</div>
+            <div style={{ display: "flex", gap: 6, alignItems: "center", marginTop: 10, flexWrap: "wrap" }}>
+              {d.fix_ids?.map(fx => <span key={fx} className="rpt-chip" style={{ fontSize: 9.5 }}>{fx}</span>)}
+              <span style={{ marginLeft: "auto", padding: "2px 10px", border: "1px dashed var(--border-default)", borderRadius: 4, fontSize: 10, color: "var(--text-muted)" }}>Owner: ______</span>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+function AiReportPanel({ eng, findings }: { eng: Engagement; findings: Finding[] }) {
+  const [report, setReport] = useState<ReportResult | null>(null);
   const genMut = useMutation({
-    mutationFn: () => fetchJson<{ job_id: string }>(`/api/ai/report/${engId}/generate`, { method: "POST" }),
-    onSuccess: d => { setJobId(d.job_id); void qc.invalidateQueries({ queryKey: ["ai-report-draft", engId] }); },
+    mutationFn: () => fetchJson<ReportResult>("/api/reports/generate", {
+      method: "POST",
+      body: JSON.stringify({
+        engagement: { name: eng.name, client: eng.client, scopeCidrs: eng.scopeCidrs },
+        findings,
+      }),
+    }),
+    onSuccess: setReport,
   });
-  const approveMut = useMutation({
-    mutationFn: (sid: string) => fetchJson(`/api/ai/report/${engId}/approve`, { method: "POST", body: JSON.stringify({ section_id: sid }) }),
-    onSuccess: () => void qc.invalidateQueries({ queryKey: ["ai-report-draft", engId] }),
-  });
-
-  const st = statusQ.data;
-  const running = st && st.status !== "complete" && st.status !== "failed";
-  const done = st?.status === "complete";
-  const failed = st?.status === "failed";
+  const err = genMut.error instanceof Error ? genMut.error.message : genMut.error ? String(genMut.error) : null;
 
   return (
     <div style={{
@@ -448,70 +705,165 @@ function AiPanel({ engId }: { engId: string }) {
       background: "color-mix(in srgb, var(--accent) 3%, var(--bg-panel))",
       padding: "14px 16px", marginBottom: 18,
     }}>
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12 }}>
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 12, flexWrap: "wrap" }}>
         <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
           <Sparkles size={14} style={{ color: "var(--accent)" }} />
           <span style={{ fontSize: 13, fontWeight: 700 }}>AI Report Generation</span>
-          <span style={{ fontSize: 10.5, color: "var(--text-muted)" }}>Claude Sonnet · hallucination-guarded</span>
+          <span style={{ fontSize: 10.5, color: "var(--text-muted)" }}>Claude Sonnet 4.6 · deterministic scorecard · injection-fenced</span>
         </div>
-        <div style={{ display: "flex", gap: 8 }}>
-          {done && (
-            <button className="btn btn-secondary" style={{ fontSize: 11, padding: "5px 10px" }} onClick={() => setShowDraft(!showDraft)}>
-              {showDraft ? "Hide draft" : "Review draft"}
-            </button>
-          )}
-          {!jobId && (
-            <button className="btn btn-primary" style={{ fontSize: 11, padding: "5px 12px", display: "flex", alignItems: "center", gap: 5 }}
-              onClick={() => genMut.mutate()} disabled={genMut.isPending}>
-              {genMut.isPending ? <RefreshCw size={11} className="spin" /> : <Zap size={11} />}
-              Generate draft
-            </button>
-          )}
-        </div>
+        <button className="btn btn-primary no-print" style={{ fontSize: 11, padding: "5px 12px", display: "flex", alignItems: "center", gap: 5 }}
+          onClick={() => genMut.mutate()} disabled={genMut.isPending || findings.length === 0}>
+          {genMut.isPending ? <RefreshCw size={11} className="spin" /> : <Zap size={11} />}
+          {report ? "Regenerate" : "Generate report"}
+        </button>
       </div>
 
-      {jobId && (
-        <div style={{ marginTop: 12 }}>
-          <div style={{ height: 3, borderRadius: 2, background: "var(--bg-surface)", overflow: "hidden", marginBottom: 6 }}>
-            <div style={{
-              height: "100%", borderRadius: 2, transition: "width 0.6s ease",
-              background: failed ? "var(--sev-critical-color)" : done ? "var(--nominal-color)" : "var(--accent)",
-              width: `${done ? 100 : failed ? 100 : (st?.progress ?? 55)}%`,
-            }} />
-          </div>
-          <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>
-            {failed ? `Failed: ${st?.error ?? "Unknown error"}` : done ? "Draft ready for review" : st?.stage ?? "Processing…"}
-          </span>
+      {genMut.isPending && (
+        <p style={{ marginTop: 10, fontSize: 11.5, color: "var(--text-secondary)" }}>
+          Composing a client-ready draft from {findings.length} finding{findings.length !== 1 ? "s" : ""} — scorecard is computed locally; the narrative is written by the model.
+        </p>
+      )}
+      {err && !genMut.isPending && (
+        <div style={{ marginTop: 10, display: "flex", gap: 8, alignItems: "flex-start", padding: "9px 11px", borderRadius: 7, background: "var(--sev-critical-bg)", border: "1px solid var(--sev-critical-color)" }}>
+          <AlertTriangle size={14} style={{ color: "var(--sev-critical-color)", flexShrink: 0, marginTop: 1 }} />
+          <span style={{ fontSize: 11.5, color: "var(--text-primary)" }}>{err}</span>
         </div>
       )}
 
-      {showDraft && draftQ.data && (
-        <div style={{ marginTop: 14, display: "flex", flexDirection: "column", gap: 10 }}>
-          {draftQ.data.sections.map(s => (
-            <div key={s.id} style={{
-              borderRadius: 7, border: "1px solid var(--border-subtle)",
-              overflow: "hidden",
-              ...(s.review_status === "approved" ? { borderColor: "var(--nominal-color)" } : {}),
-            }}>
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "9px 12px", background: "var(--bg-surface)", borderBottom: "1px solid var(--border-subtle)" }}>
-                <strong style={{ fontSize: 12 }}>{s.title}</strong>
-                <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                  <span style={{
-                    fontSize: 9, fontWeight: 800, letterSpacing: "0.05em", padding: "2px 6px", borderRadius: 4,
-                    color: s.review_status === "approved" ? "var(--nominal-color)" : "var(--sev-medium-color)",
-                    background: s.review_status === "approved" ? "var(--nominal-bg)" : "var(--sev-medium-bg)",
-                  }}>{s.review_status.toUpperCase()}</span>
-                  {s.review_status === "pending" && (
-                    <button className="btn btn-secondary" style={{ fontSize: 10, padding: "3px 8px" }}
-                      onClick={() => approveMut.mutate(s.id)} disabled={approveMut.isPending}>Approve</button>
-                  )}
-                </div>
-              </div>
-              <div style={{ padding: "12px", fontSize: 12.5, color: "var(--text-primary)", lineHeight: 1.65 }}>
-                {s.content.split("\n\n").map((p, i) => <p key={i} style={{ margin: "0 0 8px" }}>{p}</p>)}
+      {report && (
+        <div style={{ marginTop: 14 }}>
+          {/* Verdict */}
+          <div style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 14 }}>
+            <Target size={16} style={{ color: "var(--accent)", flexShrink: 0, marginTop: 3 }} />
+            <h3 style={{ margin: 0, fontSize: 17, fontWeight: 750, color: "var(--text-primary)", lineHeight: 1.4 }}>{report.verdict}</h3>
+          </div>
+
+          {/* Board decisions — three horizons, owner slots */}
+          {(report.decisions?.length ?? 0) > 0 && <DecisionBox decisions={report.decisions!} />}
+
+          <ScorecardCard sc={report.scorecard} />
+
+          {/* Exposure matrix — severity × exploitability */}
+          <div className="rpt-section">
+            <div className="rpt-section-head" style={{ marginBottom: 6 }}><small>EXPOSURE MATRIX</small><h3>How bad × how likely</h3></div>
+            <p style={{ fontSize: 11.5, color: "var(--text-muted)", margin: "0 0 12px", maxWidth: 620, lineHeight: 1.5 }}>
+              Severity is how bad a finding would be if used; exploitability is how likely it is to be used. The shaded top-left cells are where the real exposure sits.
+            </p>
+            <ExposureMatrix findings={report.findings} />
+          </div>
+
+          {/* Executive summary */}
+          <div className="rpt-section">
+            <div className="rpt-section-head"><small>EXECUTIVE SUMMARY</small><h3>Business risk position</h3></div>
+            <div className="fc-prose">
+              {report.executive_summary.split("\n\n").map((p, i) => <p key={i}>{p}</p>)}
+            </div>
+          </div>
+
+          {/* Attack narrative */}
+          {report.attack_narrative && (
+            <div className="rpt-section">
+              <div className="rpt-section-head"><small>ATTACK NARRATIVE</small><h3>How findings chain together</h3></div>
+              <div className="fc-prose">
+                {report.attack_narrative.split("\n\n").map((p, i) => <p key={i}>{p}</p>)}
               </div>
             </div>
-          ))}
+          )}
+
+          {/* Findings register — full records for the worst N, the rest tabulated */}
+          {(() => {
+            const nDetailed = report.findings_detailed ?? report.findings.length;
+            const detailed = report.findings.slice(0, nDetailed);
+            const rest = report.findings.slice(nDetailed);
+            return (
+              <div className="rpt-section">
+                <div className="rpt-section-head" style={{ marginBottom: 0 }}><small>FINDINGS REGISTER</small><h3>{report.findings.length} finding{report.findings.length !== 1 ? "s" : ""}</h3><span style={{ marginLeft: "auto", fontSize: 10, color: "var(--text-muted)" }}>{detailed.length} full · {rest.length} tabulated</span></div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                  {detailed.map(f => <ReportFindingCard key={f.ref} f={f} />)}
+                </div>
+                {rest.length > 0 && (
+                  <div className="report-table-wrap" style={{ marginTop: 12 }}>
+                    <table className="report-table">
+                      <caption style={{ textAlign: "left", fontSize: 11, color: "var(--text-muted)", paddingBottom: 8 }}>Remaining open findings.</caption>
+                      <thead><tr><th>Ref</th><th>Sev</th><th>Finding</th><th>Confidence</th><th className="num">Assets</th></tr></thead>
+                      <tbody>
+                        {rest.map(f => (
+                          <tr key={f.ref}>
+                            <td><span style={{ fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 700, color: "var(--text-secondary)" }}>{f.ref}</span></td>
+                            <td><SevBadge sev={toSeverity(f.severity)} /></td>
+                            <td><strong>{f.title}</strong></td>
+                            <td>{(CONF_STYLE[f.confidence] ?? CONF_STYLE.potential).label}</td>
+                            <td className="num">{f.affected_assets.length}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+            );
+          })()}
+
+          {/* Remediation plan (fix-grouped) */}
+          <div className="rpt-section">
+            <div className="rpt-section-head" style={{ marginBottom: 0 }}><small>REMEDIATION PLAN</small><h3>Grouped by fix · {report.remediation_plan.length} unit{report.remediation_plan.length !== 1 ? "s" : ""} of work</h3></div>
+            {report.immediate_window_empty_reason && (
+              <p style={{ fontSize: 11.5, color: "var(--text-muted)", margin: "6px 0 0", lineHeight: 1.5 }}>
+                <strong style={{ color: "var(--text-secondary)" }}>Immediate window empty:</strong> {report.immediate_window_empty_reason}
+              </p>
+            )}
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginTop: 10 }}>
+              {report.remediation_plan.map(g => {
+                const w = WINDOW_STYLE[g.window] ?? WINDOW_STYLE["90_days"];
+                return (
+                  <div key={g.fix_id} style={{ border: "1px solid var(--border-subtle)", borderRadius: 8, background: "var(--bg-panel)", padding: "12px 14px" }}>
+                    <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 6 }}>
+                      <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 800, color: "var(--text-faint)" }}>{g.fix_id}</span>
+                      <span style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: "0.04em", padding: "2px 7px", borderRadius: 4, color: w.color, background: `${w.color}16`, border: `1px solid ${w.color}33` }}>{w.label.toUpperCase()}</span>
+                      <strong style={{ fontSize: 13, color: "var(--text-primary)" }}>{g.title}</strong>
+                    </div>
+                    <p style={{ margin: "0 0 8px", fontSize: 12.5, color: "var(--text-secondary)", lineHeight: 1.6 }}>{g.description}</p>
+                    <div style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "center", marginBottom: 6 }}>
+                      <EffortDot label="Effort" level={g.effort} />
+                      <EffortDot label="Change risk" level={g.change_risk} />
+                      <span style={{ fontSize: 10.5, color: "var(--text-muted)" }}>Assets <strong style={{ color: "var(--text-primary)", fontFamily: "var(--font-mono)" }}>{g.asset_count}</strong></span>
+                      {g.resolves.length > 0 && (
+                        <span style={{ display: "flex", gap: 4, flexWrap: "wrap", alignItems: "center" }}>
+                          <span style={{ fontSize: 10.5, color: "var(--text-muted)" }}>Resolves</span>
+                          {g.resolves.map(r => <span key={r} className="rpt-chip" style={{ fontSize: 9.5 }}>{r}</span>)}
+                        </span>
+                      )}
+                    </div>
+                    {g.verification && (
+                      <div>
+                        <div className="fc-section-label"><CheckCircle2 size={11} /> Verification</div>
+                        <p style={{ margin: "3px 0 0", fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.55 }}>{g.verification}</p>
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Controls observed + limitations */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))", gap: 12 }}>
+            <div className="rpt-section" style={{ marginBottom: 0 }}>
+              <div className="rpt-section-head" style={{ marginBottom: 8 }}><small>WHAT HELD</small><h3><ShieldCheck size={13} style={{ color: SEV_PALETTE.GREEN }} /> Controls observed</h3></div>
+              <ul style={{ margin: 0, paddingLeft: 18, display: "grid", gap: 6 }}>
+                {report.controls_observed.map((c, i) => <li key={i} style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.55 }}>{c}</li>)}
+              </ul>
+            </div>
+            <div className="rpt-section" style={{ marginBottom: 0 }}>
+              <div className="rpt-section-head" style={{ marginBottom: 8 }}><small>SCOPE BOUNDARY</small><h3><Lock size={13} style={{ color: "var(--text-muted)" }} /> Scope &amp; limitations</h3></div>
+              {report.method && (
+                <p style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.55, margin: "0 0 10px" }}>{report.method}</p>
+              )}
+              <ul style={{ margin: 0, paddingLeft: 18, display: "grid", gap: 6 }}>
+                {report.limitations.map((l, i) => <li key={i} style={{ fontSize: 12, color: "var(--text-secondary)", lineHeight: 1.55 }}>{l}</li>)}
+              </ul>
+            </div>
+          </div>
         </div>
       )}
     </div>
@@ -538,7 +890,7 @@ function ExecTab({ eng, findings, summary }: { eng: Engagement; findings: Findin
 
   return (
     <>
-      <AiPanel engId={eng.id} />
+      <AiReportPanel eng={eng} findings={findings} />
 
       {/* Risk position hero */}
       <div style={{

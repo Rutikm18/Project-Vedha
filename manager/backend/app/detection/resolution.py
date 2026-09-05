@@ -40,10 +40,18 @@ def build_coverage(scanner_runs: list[dict] | None, facts: list[dict] | None) ->
     scanner_runs = scanner_runs or []
     facts = facts or []
     completed = {sr.get("id") for sr in scanner_runs if sr.get("status") == "completed"}
+    # "degraded" and "skipped" are both non-proof for coverage, but they are NOT
+    # the same event and must not share a label. A scanner that stood down
+    # because the service isn't on the host ("No eligible target or service was
+    # observed.") is the funnel working; reporting it as degraded made a healthy
+    # full run look like ten broken scanners. Keep the coverage semantics —
+    # `assets` is still built from `completed` alone, so neither state can prove
+    # we looked — and only split what the operator reads.
     degraded = {
         sr.get("id") for sr in scanner_runs
-        if sr.get("status") in ("degraded", "failed", "skipped")
+        if sr.get("status") in ("degraded", "failed")
     }
+    skipped = {sr.get("id") for sr in scanner_runs if sr.get("status") == "skipped"}
     assets = {
         host_of(f.get("target", "")) for f in facts
         if f.get("scanner") in completed and host_of(f.get("target", ""))
@@ -52,6 +60,7 @@ def build_coverage(scanner_runs: list[dict] | None, facts: list[dict] | None) ->
         "assets": sorted(a for a in assets if a),
         "scanners_completed": sorted(c for c in completed if c),
         "scanners_degraded": sorted(d for d in degraded if d),
+        "scanners_skipped": sorted(s for s in skipped if s),
     }
 
 

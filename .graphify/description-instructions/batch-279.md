@@ -1,4 +1,4 @@
-# Node Description Batch 280 of 332
+# Node Description Batch 280 of 336
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,53 +19,51 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-LANGUAGE: each entry has a `lang=` marker giving the language of its source.
-Write that entry's description in EXACTLY that language. Do not translate to
-a single common language — match each node's source language individually.
+Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_exploit_engine_testvalidatescope_test_excluded_cidr_takes_priority": ".test_excluded_cidr_takes_priority()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L148 | neighbors=[TestValidateScope] | lang=en
-- "tests_test_exploit_engine_testvalidatescope_test_invalid_ip_fails": ".test_invalid_ip_fails()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L144 | neighbors=[TestValidateScope] | lang=en
-- "tests_test_exploit_engine_testvalidatescope_test_ip_in_excluded_fails": ".test_ip_in_excluded_fails()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L137 | neighbors=[TestValidateScope] | lang=en
-- "tests_test_exploit_engine_testvalidatescope_test_ip_in_scope_passes": ".test_ip_in_scope_passes()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L130 | neighbors=[TestValidateScope] | lang=en
-- "tests_test_exploit_engine_testvalidatescope_test_ip_out_of_scope_fails": ".test_ip_out_of_scope_fails()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L133 | neighbors=[TestValidateScope] | lang=en
-- "tests_test_exploit_engine_testvalidatescope_test_multiple_scope_cidrs": ".test_multiple_scope_cidrs()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L141 | neighbors=[TestValidateScope] | lang=en
-- "tests_test_exploitability_rationale_1": "test_exploitability.py — CISA KEV + FIRST EPSS on the POSTURE track.  The CVE tr" | kind=entity | source=manager/detection_engine/tests/test_exploitability.py:L1 | neighbors=[test_exploitability.py] | lang=en
-- "tests_test_exploitability_rationale_120": "Severity is the rule's judgement of the weakness. Exploitation         evidence" | kind=entity | source=manager/detection_engine/tests/test_exploitability.py:L120 | neighbors=[.test_declared_severity_is_never_rewrit…] | lang=en
-- "tests_test_exploitability_rationale_151": "A re-rank here must never disagree with the original scoring, so the         two" | kind=entity | source=manager/detection_engine/tests/test_exploitability.py:L151 | neighbors=[.test_priority_bands_match_posture_rule…] | lang=en
-- "tests_test_exploitability_rationale_163": "The pipeline may enrich the same finding twice (a re-run, or a caller         th" | kind=entity | source=manager/detection_engine/tests/test_exploitability.py:L163 | neighbors=[.test_idempotent_across_repeated_applic…] | lang=en
-- "tests_test_exploitability_rationale_191": "If a curated link names a CVE the shipped snapshot does not list, the     boost" | kind=entity | source=manager/detection_engine/tests/test_exploitability.py:L191 | neighbors=[test_linked_cves_are_actually_on_the_pi…] | lang=en
-- "tests_test_exploitability_rationale_62": "A stale or narrowed KEV snapshot must be VISIBLE, not silently drop         the" | kind=entity | source=manager/detection_engine/tests/test_exploitability.py:L62 | neighbors=[.test_a_link_not_on_the_kev_list_is_kep…] | lang=en
-- "tests_test_exploitability_testneverclaimsthecveispresent_test_every_link_states_a_relation": ".test_every_link_states_a_relation()" | kind=code-symbol | source=manager/detection_engine/tests/test_exploitability.py:L46 | neighbors=[TestNeverClaimsTheCveIsPresent] | lang=en
-- "tests_test_exposed_services_rationale_1": "test_exposed_services.py — the exposed-service / suspicious-port detection layer" | kind=entity | source=manager/detection_engine/tests/test_exposed_services.py:L1 | neighbors=[test_exposed_services.py] | lang=en
-- "tests_test_exposed_services_rationale_189": "A catalog entry is a guess about what a port means. When service_banner     posi" | kind=entity | source=manager/detection_engine/tests/test_exposed_services.py:L189 | neighbors=[TestPortHypothesisContradiction] | lang=pt
-- "tests_test_exposed_services_rationale_211": "A shell answering on a benign-listed port is still a backdoor: the         contr" | kind=entity | source=manager/detection_engine/tests/test_exposed_services.py:L211 | neighbors=[.test_backdoor_evidence_is_never_suppre…] | lang=pt
-- "tests_test_exposed_services_test_ingest_aliases_from_host_discovery_names": "test_ingest_aliases_from_host_discovery_names()" | kind=code-symbol | source=manager/detection_engine/tests/test_exposed_services.py:L178 | neighbors=[test_exposed_services.py] | lang=en
-- "tests_test_exposed_services_testclassify_test_backdoor_ports": ".test_backdoor_ports()" | kind=code-symbol | source=manager/detection_engine/tests/test_exposed_services.py:L35 | neighbors=[TestClassify] | lang=en
-- "tests_test_exposed_services_testclassify_test_banner_confirms_backdoor_on_any_port": ".test_banner_confirms_backdoor_on_any_port()" | kind=code-symbol | source=manager/detection_engine/tests/test_exposed_services.py:L58 | neighbors=[TestClassify] | lang=en
-- "tests_test_exposed_services_testclassify_test_benign_port_is_none": ".test_benign_port_is_none()" | kind=code-symbol | source=manager/detection_engine/tests/test_exposed_services.py:L63 | neighbors=[TestClassify] | lang=en
-- "tests_test_exposed_services_testclassify_test_cleartext_telnet_is_high": ".test_cleartext_telnet_is_high()" | kind=code-symbol | source=manager/detection_engine/tests/test_exposed_services.py:L54 | neighbors=[TestClassify] | lang=en
-- "tests_test_exposed_services_testclassify_test_container_apis_are_high": ".test_container_apis_are_high()" | kind=code-symbol | source=manager/detection_engine/tests/test_exposed_services.py:L40 | neighbors=[TestClassify] | lang=en
-- "tests_test_exposed_services_testclassify_test_databases": ".test_databases()" | kind=code-symbol | source=manager/detection_engine/tests/test_exposed_services.py:L50 | neighbors=[TestClassify] | lang=en
-- "tests_test_exposed_services_testclassify_test_escalate": ".test_escalate()" | kind=code-symbol | source=manager/detection_engine/tests/test_exposed_services.py:L68 | neighbors=[TestClassify] | lang=en
-- "tests_test_exposed_services_testclassify_test_unauth_data_stores": ".test_unauth_data_stores()" | kind=code-symbol | source=manager/detection_engine/tests/test_exposed_services.py:L45 | neighbors=[TestClassify] | lang=en
-- "tests_test_exposed_services_testobservedservicesignals_test_basic_auth_over_plaintext_is_cleartext_medium": ".test_basic_auth_over_plaintext_is_cleartext_medium()" | kind=code-symbol | source=manager/detection_engine/tests/test_exposed_services.py:L144 | neighbors=[TestObservedServiceSignals] | lang=en
-- "tests_test_exposed_services_testobservedservicesignals_test_catalog_port_still_wins_its_own_class": ".test_catalog_port_still_wins_its_own_class()" | kind=code-symbol | source=manager/detection_engine/tests/test_exposed_services.py:L153 | neighbors=[TestObservedServiceSignals] | lang=en
-- "tests_test_exposed_services_testobservedservicesignals_test_plain_http_label_on_benign_port_is_none": ".test_plain_http_label_on_benign_port_is_none()" | kind=code-symbol | source=manager/detection_engine/tests/test_exposed_services.py:L150 | neighbors=[TestObservedServiceSignals] | lang=en
-- "tests_test_exposed_services_testobservedservicesignals_test_shell_label_is_backdoor_on_any_port": ".test_shell_label_is_backdoor_on_any_port()" | kind=code-symbol | source=manager/detection_engine/tests/test_exposed_services.py:L135 | neighbors=[TestObservedServiceSignals] | lang=en
-- "tests_test_exposed_services_testobservedservicesignals_test_telnet_label_off_port_23_is_cleartext": ".test_telnet_label_off_port_23_is_cleartext()" | kind=code-symbol | source=manager/detection_engine/tests/test_exposed_services.py:L140 | neighbors=[TestObservedServiceSignals] | lang=en
-- "tests_test_exposed_services_testporthypothesiscontradiction_test_airplay_suppresses_the_cassandra_guess": ".test_airplay_suppresses_the_cassandra_guess()" | kind=code-symbol | source=manager/detection_engine/tests/test_exposed_services.py:L202 | neighbors=[TestPortHypothesisContradiction] | lang=en
-- "tests_test_exposed_services_testporthypothesiscontradiction_test_airplay_suppresses_the_docker_registry_guess": ".test_airplay_suppresses_the_docker_registry_guess()" | kind=code-symbol | source=manager/detection_engine/tests/test_exposed_services.py:L198 | neighbors=[TestPortHypothesisContradiction] | lang=en
-- "tests_test_exposed_services_testporthypothesiscontradiction_test_an_unrelated_product_does_not_suppress": ".test_an_unrelated_product_does_not_suppress()" | kind=code-symbol | source=manager/detection_engine/tests/test_exposed_services.py:L206 | neighbors=[TestPortHypothesisContradiction] | lang=en
-- "tests_test_exposed_services_testporthypothesiscontradiction_test_contradiction_helper_is_case_and_format_insensitive": ".test_contradiction_helper_is_case_and_format_insensitive()" | kind=code-symbol | source=manager/detection_engine/tests/test_exposed_services.py:L217 | neighbors=[TestPortHypothesisContradiction] | lang=en
-- "tests_test_exposure_rationale_1": "test_exposure.py — the probe exposure_matrix → Service verdict + severity bump." | kind=entity | source=manager/backend/tests/test_exposure.py:L1 | neighbors=[test_exposure.py] | lang=en
-- "tests_test_exposure_test_critical_stays_critical": "test_critical_stays_critical()" | kind=code-symbol | source=manager/backend/tests/test_exposure.py:L43 | neighbors=[test_exposure.py] | lang=en
-- "tests_test_exposure_test_external_escalates_one_rung": "test_external_escalates_one_rung()" | kind=code-symbol | source=manager/backend/tests/test_exposure.py:L37 | neighbors=[test_exposure.py] | lang=en
-- "tests_test_exposure_test_non_external_never_escalates": "test_non_external_never_escalates()" | kind=code-symbol | source=manager/backend/tests/test_exposure.py:L47 | neighbors=[test_exposure.py] | lang=en
-- "tests_test_exposure_test_service_exposure_flattens_per_port_verdicts": "test_service_exposure_flattens_per_port_verdicts()" | kind=code-symbol | source=manager/backend/tests/test_exposure.py:L13 | neighbors=[test_exposure.py] | lang=en
-- "tests_test_exposure_test_service_exposure_ignores_malformed_and_non_exposure": "test_service_exposure_ignores_malformed_and_non_exposure()" | kind=code-symbol | source=manager/backend/tests/test_exposure.py:L30 | neighbors=[test_exposure.py] | lang=en
+- "tests_test_detection_core_testdeceptionscore_test_low_product_count": ".test_low_product_count()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L686 | neighbors=[TestDeceptionScore]
+- "tests_test_detection_core_testdeceptionscore_test_moderate_product_count": ".test_moderate_product_count()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L689 | neighbors=[TestDeceptionScore]
+- "tests_test_detection_core_testfindingpostinit_test_refuses_zero_evidence_refs": ".test_refuses_zero_evidence_refs()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L120 | neighbors=[TestFindingPostInit]
+- "tests_test_detection_core_testingestfile_test_authoritative_scanner_creates_authoritative_fact": ".test_authoritative_scanner_creates_authoritative_fact()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L297 | neighbors=[TestIngestFile]
+- "tests_test_detection_core_testingestfile_test_empty_file": ".test_empty_file()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L280 | neighbors=[TestIngestFile]
+- "tests_test_detection_core_testingestfile_test_hostname_target_not_ip_keyed": ".test_hostname_target_not_ip_keyed()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L307 | neighbors=[TestIngestFile]
+- "tests_test_detection_core_testingestfile_test_multi_file_accumulation": ".test_multi_file_accumulation()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L287 | neighbors=[TestIngestFile]
+- "tests_test_detection_core_testingestfile_test_quarantines_malformed": ".test_quarantines_malformed()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L273 | neighbors=[TestIngestFile]
+- "tests_test_detection_core_testingestfile_test_run_scoped_fact_with_interface_target_creates_no_asset": ".test_run_scoped_fact_with_interface_target_creates_no_asset()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L262 | neighbors=[TestIngestFile]
+- "tests_test_detection_core_testingestfile_test_valid_jsonl": ".test_valid_jsonl()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L227 | neighbors=[TestIngestFile]
+- "tests_test_detection_core_testingestvalidation_test_empty_target": ".test_empty_target()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L201 | neighbors=[TestIngestValidation]
+- "tests_test_detection_core_testingestvalidation_test_missing_required_field": ".test_missing_required_field()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L194 | neighbors=[TestIngestValidation]
+- "tests_test_detection_core_testingestvalidation_test_non_dict_record": ".test_non_dict_record()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L198 | neighbors=[TestIngestValidation]
+- "tests_test_detection_core_testingestvalidation_test_port_not_int": ".test_port_not_int()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L204 | neighbors=[TestIngestValidation]
+- "tests_test_detection_core_testingestvalidation_test_valid_record": ".test_valid_record()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L191 | neighbors=[TestIngestValidation]
+- "tests_test_detection_core_testisip_test_hostname": ".test_hostname()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L222 | neighbors=[TestIsIp]
+- "tests_test_detection_core_testisip_test_valid_ipv4": ".test_valid_ipv4()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L219 | neighbors=[TestIsIp]
+- "tests_test_detection_core_testmakefindingid_test_deterministic": ".test_deterministic()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L105 | neighbors=[TestMakeFindingId]
+- "tests_test_detection_core_testmakefindingid_test_different_inputs_different_ids": ".test_different_inputs_different_ids()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L110 | neighbors=[TestMakeFindingId]
+- "tests_test_detection_core_testmakefindingid_test_length_16": ".test_length_16()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L115 | neighbors=[TestMakeFindingId]
+- "tests_test_detection_core_testproductfromcpe_test_extracts_product": ".test_extracts_product()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L622 | neighbors=[TestProductFromCpe]
+- "tests_test_detection_core_testproductfromcpe_test_short_cpe_returns_cpe": ".test_short_cpe_returns_cpe()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L625 | neighbors=[TestProductFromCpe]
+- "tests_test_detection_core_testversioninranges_test_empty_ranges": ".test_empty_ranges()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L415 | neighbors=[TestVersionInRanges]
+- "tests_test_detection_core_testversioninranges_test_ignores_unknown_type": ".test_ignores_unknown_type()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L393 | neighbors=[TestVersionInRanges]
+- "tests_test_detection_core_testversioninranges_test_introduced_fixed": ".test_introduced_fixed()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L355 | neighbors=[TestVersionInRanges]
+- "tests_test_detection_core_testversioninranges_test_last_affected": ".test_last_affected()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L377 | neighbors=[TestVersionInRanges]
+- "tests_test_detection_core_testversioninranges_test_no_match_returns_false_none": ".test_no_match_returns_false_none()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L407 | neighbors=[TestVersionInRanges]
+- "tests_test_detection_core_testversioninranges_test_regression_sequence": ".test_regression_sequence()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L420 | neighbors=[TestVersionInRanges]
+- "tests_test_detection_core_testversioninranges_test_semver_type_included": ".test_semver_type_included()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L400 | neighbors=[TestVersionInRanges]
+- "tests_test_detection_core_testversioninranges_test_unbounded_introduced": ".test_unbounded_introduced()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L385 | neighbors=[TestVersionInRanges]
+- "tests_test_detection_core_testversioninranges_test_version_at_fixed": ".test_version_at_fixed()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L370 | neighbors=[TestVersionInRanges]
+- "tests_test_detection_core_testversioninranges_test_version_before_introduced": ".test_version_before_introduced()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L363 | neighbors=[TestVersionInRanges]
+- "tests_test_detection_core_testvulndb_test_content_hash_deterministic": ".test_content_hash_deterministic()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L967 | neighbors=[TestVulnDB]
+- "tests_test_detection_core_testwilsonci_test_all_appearances": ".test_all_appearances()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L1086 | neighbors=[TestWilsonCi]
+- "tests_test_detection_core_testwilsonci_test_perfect_appearance": ".test_perfect_appearance()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L1078 | neighbors=[TestWilsonCi]
+- "tests_test_detection_core_testwilsonci_test_zero_appearances": ".test_zero_appearances()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L1082 | neighbors=[TestWilsonCi]
+- "tests_test_detection_core_testwilsonci_test_zero_n": ".test_zero_n()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L1090 | neighbors=[TestWilsonCi]
+- "tests_test_detection_coverage_rationale_1": "Detection-trace coverage surfaced in the API: complete_with_gaps + explain.  Gua" | kind=entity | source=manager/backend/tests/test_detection_coverage.py:L1 | neighbors=[test_detection_coverage.py]
+- "tests_test_detection_pipeline_gaps_ctx_aenter": ".__aenter__()" | kind=code-symbol | source=manager/backend/tests/test_detection_pipeline_gaps.py:L171 | neighbors=[_ctx]
+- "tests_test_detection_pipeline_gaps_ctx_aexit": ".__aexit__()" | kind=code-symbol | source=manager/backend/tests/test_detection_pipeline_gaps.py:L172 | neighbors=[_ctx]
 
 ## Instructions
 

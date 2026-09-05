@@ -1,4 +1,4 @@
-# Node Description Batch 108 of 332
+# Node Description Batch 108 of 336
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,11 +19,36 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-Write every description in Portuguese (pt). Do not switch languages.
+Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
+- "scanner_vnc_scanner_recv_exact": "_recv_exact()" | kind=code-symbol | source=probe/scanner/vnc_scanner.py:L71 | neighbors=[vnc_scanner.py, _read_security_types(), ._probe()]
+- "scanner_web_scanner_webscanner_scan_port": "._scan_port()" | kind=code-symbol | source=probe/scanner/web_scanner.py:L155 | neighbors=[WebScanner, ._schemes_for(), .scan_target()]
+- "scanner_web_scanner_webscanner_schemes_for": "._schemes_for()" | kind=code-symbol | source=probe/scanner/web_scanner.py:L148 | neighbors=[Preferred scheme first, the other as a …, WebScanner, ._scan_port()]
+- "scans_page_jobcard": "JobCard()" | kind=code-symbol | source=manager/frontend/app/portal/scans/page.tsx:L125 | neighbors=[page.tsx, prettyType(), relTime()]
+- "schemas_engagement_rationale_14": "Validate and de-duplicate exact IP/CIDR authorization boundaries." | kind=entity | source=manager/backend/app/schemas/engagement.py:L14 | neighbors=[EngagementStatus, FindingSeverity, validate_scope_entries()]
+- "schemas_finding_findingeventout": "FindingEventOut" | kind=code-symbol | source=manager/backend/app/schemas/finding.py:L68 | neighbors=[finding.py, BaseModel, One entry in a finding's lifecycle time…]
+- "schemas_finding_findingout_populate_risk_rank": "._populate_risk_rank()" | kind=code-symbol | source=manager/backend/app/schemas/finding.py:L160 | neighbors=[FindingOut, Compute the explainable 0-1000 unified …, Compute the explainable 0-1000 unified …]
+- "schemas_finding_findingreopen": "FindingReopen" | kind=code-symbol | source=manager/backend/app/schemas/finding.py:L44 | neighbors=[finding.py, BaseModel, .normalize_reason()]
+- "schemas_portal_clientassistantask": "ClientAssistantAsk" | kind=code-symbol | source=manager/backend/app/schemas/portal.py:L135 | neighbors=[portal.py, BaseModel, ._bounded()]
+- "schemas_portal_clientassistantmessage": "ClientAssistantMessage" | kind=code-symbol | source=manager/backend/app/schemas/portal.py:L128 | neighbors=[portal.py, BaseModel, One turn of the customer's conversation…]
+- "schemas_portal_clientfindingout": "ClientFindingOut" | kind=code-symbol | source=manager/backend/app/schemas/portal.py:L22 | neighbors=[portal.py, BaseModel, A finding as a CUSTOMER may see it. mod…]
+- "schemas_portal_clientreportout": "ClientReportOut" | kind=code-symbol | source=manager/backend/app/schemas/portal.py:L80 | neighbors=[portal.py, ClientReportContent, BaseModel]
+- "schemas_portal_clientsummaryout": "ClientSummaryOut" | kind=code-symbol | source=manager/backend/app/schemas/portal.py:L59 | neighbors=[portal.py, BaseModel, One call powering the dashboard header:…]
+- "schemas_portal_scanrequestcreate": "ScanRequestCreate" | kind=code-symbol | source=manager/backend/app/schemas/portal.py:L100 | neighbors=[portal.py, A customer's rich scan request. The cus…, BaseModel]
+- "schemas_remediation_remediationplandetailout": "RemediationPlanDetailOut" | kind=code-symbol | source=manager/backend/app/schemas/remediation.py:L28 | neighbors=[remediation.py, BaseModel, .normalize_risk_levels()]
+- "schemas_remediation_remediationstepout": "RemediationStepOut" | kind=code-symbol | source=manager/backend/app/schemas/remediation.py:L11 | neighbors=[remediation.py, BaseModel, .normalize_risk()]
+- "scripts_startup_validator_appenvironmentvalidator": "AppEnvironmentValidator" | kind=code-symbol | source=manager/backend/scripts/startup_validator.py:L151 | neighbors=[startup_validator.py, .validate(), Validates APP_ENV and related productio…]
+- "scripts_startup_validator_appenvironmentvalidator_validate": ".validate()" | kind=code-symbol | source=manager/backend/scripts/startup_validator.py:L154 | neighbors=[AppEnvironmentValidator, CheckResult, .add()]
+- "scripts_startup_validator_configvalidator": "ConfigValidator" | kind=code-symbol | source=manager/backend/scripts/startup_validator.py:L72 | neighbors=[startup_validator.py, .validate(), Validates required env vars are present…]
+- "scripts_startup_validator_configvalidator_validate": ".validate()" | kind=code-symbol | source=manager/backend/scripts/startup_validator.py:L93 | neighbors=[ConfigValidator, CheckResult, .add()]
+- "scripts_startup_validator_cookievalidator": "CookieValidator" | kind=code-symbol | source=manager/backend/scripts/startup_validator.py:L214 | neighbors=[startup_validator.py, .validate(), Validates secure cookie configuration.]
+- "scripts_startup_validator_cookievalidator_validate": ".validate()" | kind=code-symbol | source=manager/backend/scripts/startup_validator.py:L217 | neighbors=[CookieValidator, CheckResult, .add()]
+- "scripts_startup_validator_corsvalidator": "CorsValidator" | kind=code-symbol | source=manager/backend/scripts/startup_validator.py:L174 | neighbors=[startup_validator.py, .validate(), Validates CORS_ORIGINS is production-sa…]
+- "scripts_startup_validator_corsvalidator_validate": ".validate()" | kind=code-symbol | source=manager/backend/scripts/startup_validator.py:L179 | neighbors=[CorsValidator, CheckResult, .add()]
+- "scripts_startup_validator_databaseconnectivityvalidator_validate": ".validate()" | kind=code-symbol | source=manager/backend/scripts/startup_validator.py:L313 | neighbors=[DatabaseConnectivityValidator, CheckResult, .add()]
 - "scripts_startup_validator_databaseurlvalidator": "DatabaseURLValidator" | kind=code-symbol | source=manager/backend/scripts/startup_validator.py:L244 | neighbors=[startup_validator.py, .validate(), Validates DATABASE_URL format and safet…]
 - "scripts_startup_validator_databaseurlvalidator_validate": ".validate()" | kind=code-symbol | source=manager/backend/scripts/startup_validator.py:L249 | neighbors=[DatabaseURLValidator, CheckResult, .add()]
 - "scripts_startup_validator_detectionenginevalidator": "DetectionEngineValidator" | kind=code-symbol | source=manager/backend/scripts/startup_validator.py:L279 | neighbors=[startup_validator.py, .validate(), Validates the baked-in detection engine…]
@@ -39,31 +64,6 @@ one-sentence description — no prose, no markdown fences.
 - "services_finding_events_detected_actor": "_detected_actor()" | kind=code-symbol | source=manager/backend/app/services/finding_events.py:L81 | neighbors=[finding_events.py, Best label for who first produced this …, synthesize_events()]
 - "services_finding_events_event_type_for_status": "event_type_for_status()" | kind=code-symbol | source=manager/backend/app/services/finding_events.py:L173 | neighbors=[finding_events.py, _val(), Map a target FindingStatus to its speci…]
 - "services_finding_events_record_event": "record_event()" | kind=code-symbol | source=manager/backend/app/services/finding_events.py:L160 | neighbors=[finding_events.py, Append one immutable audit row. The cal…, _val()]
-- "services_job_attempt_service_claim_job_attempt": "claim_job_attempt()" | kind=code-symbol | source=manager/backend/app/services/job_attempt_service.py:L24 | neighbors=[job_attempt_service.py, AttemptClaim, Atomically claim a pending job and crea…]
-- "services_job_result_service_sanitize_jsonb": "sanitize_jsonb()" | kind=code-symbol | source=manager/backend/app/services/job_result_service.py:L29 | neighbors=[job_result_service.py, process_job_result(), Recursively strip NUL (U+0000) from eve…]
-- "services_llm_http_client_asyncllmhttpclient": "AsyncLlmHttpClient" | kind=code-symbol | source=manager/backend/app/services/llm_http_client.py:L17 | neighbors=[llm_http_client.py, .open(), Create bounded ``httpx.AsyncClient`` in…]
-- "services_llm_is_local_ollama_model": "_is_local_ollama_model()" | kind=code-symbol | source=manager/backend/app/services/llm.py:L16 | neighbors=[llm.py, ._runtime(), .status()]
-- "services_llm_managerllmservice_build_system": "._build_system()" | kind=code-symbol | source=manager/backend/app/services/llm.py:L282 | neighbors=[ManagerLlmService, .generate(), .generate_with_fallback()]
-- "services_notifications_deliver": "deliver()" | kind=code-symbol | source=manager/backend/app/services/notifications.py:L70 | neighbors=[notifications.py, notify_tenant(), Send via one integration. True on succe…]
-- "services_notifications_notify_tenant": "notify_tenant()" | kind=code-symbol | source=manager/backend/app/services/notifications.py:L86 | neighbors=[notifications.py, deliver(), Deliver to every ENABLED integration fo…]
-- "services_portal_metrics_is_closed": "_is_closed()" | kind=code-symbol | source=manager/backend/app/services/portal_metrics.py:L28 | neighbors=[portal_metrics.py, open_closed_counts(), severity_breakdown()]
-- "services_portal_metrics_open_closed_counts": "open_closed_counts()" | kind=code-symbol | source=manager/backend/app/services/portal_metrics.py:L44 | neighbors=[portal_metrics.py, _is_closed(), (open, closed) totals over the given fi…]
-- "services_portal_metrics_severity_breakdown": "severity_breakdown()" | kind=code-symbol | source=manager/backend/app/services/portal_metrics.py:L32 | neighbors=[portal_metrics.py, Count findings by severity (all five bu…, _is_closed()]
-- "services_portal_metrics_status_timeline": "status_timeline()" | kind=code-symbol | source=manager/backend/app/services/portal_metrics.py:L54 | neighbors=[portal_metrics.py, Per-month {period, opened, closed} for …, _period()]
-- "services_posture_clamp01": "_clamp01()" | kind=code-symbol | source=manager/backend/app/services/posture.py:L43 | neighbors=[posture.py, aggregate(), _exploit_prob()]
-- "services_posture_exploit_prob": "_exploit_prob()" | kind=code-symbol | source=manager/backend/app/services/posture.py:L67 | neighbors=[posture.py, compute_scores(), _clamp01()]
-- "services_posture_to_utc": "_to_utc()" | kind=code-symbol | source=manager/backend/app/services/posture.py:L98 | neighbors=[posture.py, build_posture(), _present_in_run()]
-- "services_project_time_project_file_stamp": "project_file_stamp()" | kind=code-symbol | source=manager/backend/app/services/project_time.py:L84 | neighbors=[project_time.py, project_now(), Compact project-local stamp for FILE an…]
-- "services_project_time_project_timestamp": "project_timestamp()" | kind=code-symbol | source=manager/backend/app/services/project_time.py:L65 | neighbors=[project_time.py, project_now(), ISO-8601 instant in the project timezon…]
-- "services_reference_is_reference": "is_reference()" | kind=code-symbol | source=manager/backend/app/services/reference.py:L111 | neighbors=[reference.py, normalize(), True when `text` looks like one of our …]
-- "services_reference_normalize": "normalize()" | kind=code-symbol | source=manager/backend/app/services/reference.py:L101 | neighbors=[reference.py, is_reference(), Canonicalise a reference a human typed:…]
-- "services_remediation_kb_os_key": "os_key()" | kind=code-symbol | source=manager/backend/app/services/remediation_kb.py:L26 | neighbors=[remediation_kb.py, Normalize an arbitrary OS/target string…, recipe_for_finding()]
-- "services_scope_crypto_encrypt_scope": "encrypt_scope()" | kind=code-symbol | source=manager/backend/app/services/scope_crypto.py:L34 | neighbors=[scope_crypto.py, encrypt_scope_b64(), Encrypt scope JSON to a specific probe'…]
-- "services_scope_crypto_encrypt_scope_b64": "encrypt_scope_b64()" | kind=code-symbol | source=manager/backend/app/services/scope_crypto.py:L77 | neighbors=[scope_crypto.py, encrypt_scope(), Convenience: dict → JSON → encrypt → ba…]
-- "services_scope_targets_expand_requested": "_expand_requested()" | kind=code-symbol | source=manager/backend/app/services/scope_targets.py:L37 | neighbors=[scope_targets.py, Expand raw target tokens (IP / CIDR / `…, validate_targets_in_scope()]
-- "services_sla_default_windows": "default_windows()" | kind=code-symbol | source=manager/backend/app/services/sla.py:L108 | neighbors=[sla.py, _windows(), The env-configured SLA windows — the fa…]
-- "services_sla_rationale_1": "SLA policy engine.  Turns a severity + \"first seen\" timestamp into a remediation" | kind=entity | source=manager/backend/app/services/sla.py:L1 | neighbors=[sla.py, FindingStatus, Finding]
-- "services_sla_rationale_101": "Aggregate SLA states across a set of findings.      Returns counts per state plu" | kind=entity | source=manager/backend/app/services/sla.py:L101 | neighbors=[summarize(), FindingStatus, Finding]
 
 ## Instructions
 

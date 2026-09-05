@@ -128,7 +128,54 @@ if [ "$_MODE" = "local" ]; then
   fi
   printf '▶ probe → %s   name=%s  scope-ceiling=%s\n' \
     "$PLATFORM_URL" "$PROBE_NAME" "${PROBE_NETWORK_SEGMENTS:-<unset>}"
-  exec "$_PY" -m agent.agent
+
+  # ── Self-heal supervisor (LOCAL mode) ───────────────────────────────────────
+  # The probe uses exit codes to ask its supervisor to restart it:
+  #   4 = it wiped an ORPHANED identity (its device key is still registered on a
+  #       manager whose credential was reset — e.g. a redeploy — so it can neither
+  #       refresh nor re-enroll) and needs a restart to enroll with a FRESH key.
+  #   2 = the manager was unreachable/unavailable past the probe's own retry budget
+  #       (a redeploy window can outlast it); a backed-off restart usually recovers.
+  # A container's restart policy does exactly this. LOCAL mode has no supervisor,
+  # so a routine manager redeploy looked like a permanently broken probe until the
+  # operator happened to re-run install.sh. Do the bounded restart here instead.
+  _SELFHEAL_MAX="${PROBE_SELFHEAL_MAX:-6}"
+  _heal=0
+  while :; do
+    set +e
+    "$_PY" -m agent.agent
+    _rc=$?
+    set -e
+    case "$_rc" in
+      4)
+        _heal=$((_heal + 1))
+        if [ "$_heal" -ge "$_SELFHEAL_MAX" ]; then
+          printf '✗ Re-enrollment did not converge after %d fresh-key attempts. The\n' "$_heal" >&2
+          printf '  manager keeps rejecting enrollment — remove the stale probe in Fleet\n' >&2
+          printf '  and check the manager, then re-run.\n' >&2
+          exit 4
+        fi
+        printf '↻ Orphaned credential cleared — re-enrolling with a fresh identity (%d/%d)…\n' \
+          "$_heal" "$_SELFHEAL_MAX"
+        ;;
+      2)
+        _heal=$((_heal + 1))
+        if [ "$_heal" -ge "$_SELFHEAL_MAX" ]; then
+          printf '✗ Manager stayed unreachable across %d attempts — giving up. Check the\n' "$_heal" >&2
+          printf '  manager is up and PLATFORM_URL/network are correct, then re-run.\n' >&2
+          exit 2
+        fi
+        _sleep=$(( _heal * 5 )); [ "$_sleep" -gt 30 ] && _sleep=30
+        printf '↻ Manager unavailable — retrying in %ss (%d/%d)…\n' "$_sleep" "$_heal" "$_SELFHEAL_MAX"
+        sleep "$_sleep"
+        ;;
+      *)
+        # 0 (clean), 1 (needs a human: bad config/revoked), 3 (awaiting approval),
+        # 130 (Ctrl-C), etc. — surface as-is; the probe already explained why.
+        exit "$_rc"
+        ;;
+    esac
+  done
 fi
 
 # ==== DOCKER MODE (production; hardened container) — original installer below ====

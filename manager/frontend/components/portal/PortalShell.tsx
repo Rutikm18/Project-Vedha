@@ -276,8 +276,9 @@ export function PortalShell({
         </header>
 
         <main className="console-scope" style={{ flex: 1, overflowY: "auto",
-          background: "var(--bg-app)", padding: "20px 24px", userSelect: "text" }}>
-          {children}
+          background: "var(--bg-app)", userSelect: "text",
+          padding: "var(--page-pad-y) var(--page-pad-x)" }}>
+          <div className="vedha-page-container">{children}</div>
         </main>
 
         <footer style={{ height: 26, flexShrink: 0, background: "var(--bg-panel)",

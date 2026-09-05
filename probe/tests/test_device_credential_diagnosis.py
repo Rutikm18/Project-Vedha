@@ -152,3 +152,104 @@ class TestDecisionLogic:
         src = self._src
         i = src.index("DEVICE_REFRESH_UNAVAILABLE:")
         assert "SystemExit(2)" in src[i:i + 1400]
+
+
+class TestLegacyStateWithoutIssuer:
+    """Credentials enrolled BEFORE the issuer was recorded (i.e. every existing
+    install). We cannot prove which manager owns them, so we must not assert
+    revocation — but we must not silently continue either."""
+
+    @property
+    def _src(self) -> str:
+        return (Path(__file__).resolve().parent.parent
+                / "agent" / "agent.py").read_text()
+
+    def test_legacy_path_does_not_assert_revocation(self):
+        """Scoped to the legacy branch itself, which ends at its own
+        SystemExit — the same-manager branch that follows SHOULD still say
+        'revoked', and must not be caught by this assertion."""
+        src = self._src
+        start = src.index("does not record which manager")
+        end = src.index("raise SystemExit(1)", start)
+        branch = src[start:end]
+        assert "was revoked, expired, or disabled by" not in branch
+        assert "see an administrator" in branch      # hedged, not asserted
+
+    def test_legacy_path_tells_the_operator_what_to_do(self):
+        src = self._src
+        assert "STATE_FILE=~/vedha-agent/state-<manager>.json" in src
+
+    def test_legacy_path_keeps_the_credential(self):
+        """Pointing the probe back at its real manager must still work."""
+        src = self._src
+        start = src.index("does not record which manager")
+        end = src.index("raise SystemExit(1)", start)
+        assert "clear_state" not in src[start:end]
+
+
+def test_successful_refresh_backfills_the_issuer(tmp_path):
+    """Existing installs self-heal: one legitimate refresh records the issuer,
+    so the NEXT re-point is diagnosed correctly rather than as a revocation."""
+    t = _transport(tmp_path, _STATE)
+    t._client.post.return_value = MagicMock(
+        status_code=200,
+        json=lambda: {"access_token": "tok", "access_expires_in_seconds": 600},
+    )
+    assert t.refresh_device_access_ex(b"k" * 32) == DEVICE_REFRESH_OK
+    assert t.load_state()["manager_fingerprint"] == "http://mgr.example:18080"
+
+
+class TestIssuerIsWrittenOnEveryIdentityPath:
+    """Regression: the binding was originally written ONLY on device refresh.
+
+    A probe that re-registered against a new manager kept the OLD issuer, so its
+    state claimed AWS-issued credentials came from localhost. That is worse than
+    no binding: pointed back at localhost it would MATCH and report a revocation
+    that never happened. Observed for real on 2026-09-04.
+    """
+
+    def test_save_state_records_the_issuer(self, tmp_path):
+        t = Transport("http://aws.example:18080", verify_tls=False,
+                      state_file=tmp_path / "state.json")
+        t._client = MagicMock()
+        t._agent_id, t._agent_token = "new-id", "new-token"
+        t.save_state()
+        assert t.load_state()["manager_fingerprint"] == "http://aws.example:18080"
+
+    def test_re_registering_overwrites_a_stale_issuer(self, tmp_path):
+        """The exact observed failure: identity moves managers, binding must follow."""
+        t = Transport("http://aws.example:18080", verify_tls=False,
+                      state_file=tmp_path / "state.json")
+        t._client = MagicMock()
+        t.update_state({"manager_fingerprint": "http://127.0.0.1:18080",
+                        "agent_id": "old-id"})
+        t._agent_id, t._agent_token = "new-id", "new-token"
+        t.save_state()
+        st = t.load_state()
+        assert st["manager_fingerprint"] == "http://aws.example:18080"
+        assert st["agent_id"] == "new-id"
+
+    def test_clear_state_drops_the_issuer_too(self, tmp_path):
+        """A stale binding left behind would misdiagnose the NEXT manager."""
+        t = Transport("http://aws.example:18080", verify_tls=False,
+                      state_file=tmp_path / "state.json")
+        t._client = MagicMock()
+        t._agent_id, t._agent_token = "id", "tok"
+        t.save_state()
+        t.clear_state()
+        st = t.load_state()
+        assert "manager_fingerprint" not in st
+        assert "agent_id" not in st and "token" not in st
+
+    def test_device_secrets_survive_clear_state(self, tmp_path):
+        """clear_state drops the AGENT identity; the device keypair/secret is a
+        separate, longer-lived thing and must not be collateral damage."""
+        t = Transport("http://aws.example:18080", verify_tls=False,
+                      state_file=tmp_path / "state.json")
+        t._client = MagicMock()
+        t.update_state({"device_refresh_secret": "s", "identity_sk": "k"})
+        t._agent_id, t._agent_token = "id", "tok"
+        t.save_state()
+        t.clear_state()
+        st = t.load_state()
+        assert st["device_refresh_secret"] == "s" and st["identity_sk"] == "k"

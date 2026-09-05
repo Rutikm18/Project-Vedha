@@ -303,15 +303,51 @@ class Transport:
         _sync_directory(self._state_file.parent)
 
     def save_state(self) -> None:
+        """Persist the agent identity AND the manager that issued it.
+
+        The issuer belongs here, not only on the device-refresh path: an identity
+        can also be established by registration or enrollment, and those go
+        through this method. Recording it in one place only left state that
+        claimed AWS-issued credentials came from localhost — worse than no
+        binding at all, because the mismatch check would then wrongly MATCH when
+        the probe was pointed back at the original manager and report a
+        revocation that never happened.
+        """
         self.update_state({
             "agent_id": self._agent_id,
             "token": self._agent_token,
+            "manager_fingerprint": manager_fingerprint(self._base_url),
         })
 
     def clear_state(self) -> None:
         self._agent_id = ""
         self._agent_token = ""
-        self.update_state(remove=("agent_id", "token"))
+        # The issuer describes the credential we are discarding, so it must go
+        # with it — a stale binding would misdiagnose the NEXT manager.
+        self.update_state(remove=("agent_id", "token", "manager_fingerprint"))
+
+    def clear_manager_binding(self) -> None:
+        """Forget everything a SPECIFIC manager issued, keeping the probe's own
+        keypairs so it re-enrolls with the same device identity.
+
+        Use this when re-pointing to a DIFFERENT manager. A device credential,
+        site policy, and — critically — the pinned policy-signing key are all
+        bound to the issuing manager and are meaningless to (and rejected by) a
+        new one. Leaving the pinned ``policy_signing_public_key`` behind was a
+        real bug: the new manager's policy then failed activation with
+        "Site policy signing key changed outside an approved rotation", which the
+        enrollment loop misread as a transient "connection error" and retried
+        forever without ever enrolling.
+        """
+        self._agent_id = ""
+        self._agent_token = ""
+        self.update_state(remove=(
+            "agent_id", "token",
+            "device_refresh_secret", "credential_generation",
+            "policy_signing_public_key", "site_policy", "site_id",
+            "manager_fingerprint",
+            "enrollment_request_id", "enrollment_device_secret",
+        ))
 
     # ── Registration ──────────────────────────────────────────────────────────
 
@@ -527,6 +563,10 @@ class Transport:
             self.update_state({
                 "agent_id": agent_id,
                 "token": self._agent_token,
+                # Backfill the issuer for credentials enrolled before this
+                # binding existed: a SUCCESSFUL refresh proves this manager owns
+                # them, so record it and legacy installs self-heal on first use.
+                "manager_fingerprint": manager_fingerprint(self._base_url),
                 "access_expires_at": time.time()
                 + int(response.json().get("access_expires_in_seconds") or 600),
             })
@@ -536,8 +576,16 @@ class Transport:
             # invent one. Transient until proven otherwise.
             return DEVICE_REFRESH_UNAVAILABLE
 
-    def ensure_device_access(self) -> bool:
-        """Refresh a device token before expiry; legacy identities are unchanged."""
+    def ensure_device_access(self, *, force: bool = False) -> bool:
+        """Refresh a device token before expiry; legacy identities are unchanged.
+
+        `force=True` bypasses the time-based check and re-mints the token
+        unconditionally. Use it when the MANAGER rejected the token (401/403):
+        the token can be valid by the local clock yet stale to the manager — a
+        superseded credential generation, a revoked lease, or a manager that was
+        redeployed. Without a forced path the probe reconnected forever with the
+        same rejected token (the WebSocket 403 loop).
+        """
         if self._device_signing_private_key is None:
             return True
         try:
@@ -547,6 +595,24 @@ class Transport:
             # existing token must remain on the legacy path.
             if not state.get("device_refresh_secret"):
                 return True
+            if force:
+                return self.refresh_device_access(self._device_signing_private_key)
+            # `access_expires_at` describes the token IN THE FILE, but requests
+            # authenticate with the in-memory one. Another probe process sharing
+            # this state.json (a lingering instance, a CLI run) may have rotated
+            # the credential out from under us: the file then reads "fresh" while
+            # we keep sending our own expired token, so the manager answers 403
+            # "Token expired" on every reconnect — forever, because this check
+            # never asks for a refresh. Adopt the stored credential first, so the
+            # expiry we trust describes the token we actually send.
+            stored_token = str(state.get("token") or "")
+            if stored_token and stored_token != self._agent_token:
+                self._agent_token = stored_token
+                stored_agent_id = str(state.get("agent_id") or "")
+                if stored_agent_id:
+                    # id and token are written as one credential; never mix a
+                    # rotated token with a stale id.
+                    self._agent_id = stored_agent_id
             expires_at = float(state.get("access_expires_at") or 0)
             if self._agent_token and expires_at > time.time() + 60:
                 return True
@@ -682,8 +748,20 @@ class Transport:
             headers=self.auth_header,
             params={"limit": limit},
         )
-        if r.status_code == 401:
-            raise TransportError("Token rejected during job poll — re-register needed.")
+        if r.status_code in (401, 403):
+            # The token was time-valid (ensure_device_access above was happy) but
+            # the manager REJECTED it — a stale credential generation, revoked
+            # lease, or a redeployed manager. Force a fresh token and retry ONCE
+            # before declaring re-registration, so a routine credential rotation
+            # doesn't surface as a hard failure.
+            if self.ensure_device_access(force=True):
+                r = self._client.get(
+                    f"/agents/{self._agent_id}/jobs",
+                    headers=self.auth_header,
+                    params={"limit": limit},
+                )
+            if r.status_code in (401, 403):
+                raise TransportError("Token rejected during job poll — re-register needed.")
         r.raise_for_status()
         return r.json()
 

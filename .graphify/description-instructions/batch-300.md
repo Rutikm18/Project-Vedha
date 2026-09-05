@@ -1,4 +1,4 @@
-# Node Description Batch 301 of 332
+# Node Description Batch 301 of 336
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,53 +19,51 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-LANGUAGE: each entry has a `lang=` marker giving the language of its source.
-Write that entry's description in EXACTLY that language. Do not translate to
-a single common language — match each node's source language individually.
+Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_project_timezone_rationale_1": "Project timestamps render in IST, and stay timezone-AWARE while doing it.  Opera" | kind=entity | source=probe/tests/test_project_timezone.py:L1 | neighbors=[test_project_timezone.py] | lang=en
-- "tests_test_project_timezone_rationale_36": "Rendering moved; the instant did not." | kind=entity | source=probe/tests/test_project_timezone.py:L36 | neighbors=[.test_timestamp_is_the_same_instant_as_…] | lang=en
-- "tests_test_project_timezone_rationale_42": "The ordering guarantee that makes this change safe." | kind=entity | source=probe/tests/test_project_timezone.py:L42 | neighbors=[.test_aware_timestamps_still_compare_ag…] | lang=en
-- "tests_test_project_timezone_rationale_51": "A `Z` on a local-time stamp is an outright lie." | kind=entity | source=probe/tests/test_project_timezone.py:L51 | neighbors=[.test_file_stamp_has_no_z_suffix()] | lang=en
-- "tests_test_project_timezone_rationale_72": "The timestamp that ends up inside every result file." | kind=entity | source=probe/tests/test_project_timezone.py:L72 | neighbors=[.test_scan_result_timestamp_is_ist()] | lang=en
-- "tests_test_project_timezone_rationale_86": "A bad VEDHA_TZ must never take a scan down mid-engagement." | kind=entity | source=probe/tests/test_project_timezone.py:L86 | neighbors=[.test_unknown_zone_falls_back_without_c…] | lang=pt
-- "tests_test_project_timezone_rationale_93": "Sealed/slim images may ship no tzdata. IST has no DST, so the fixed         +05:" | kind=entity | source=probe/tests/test_project_timezone.py:L93 | neighbors=[.test_ist_survives_a_missing_tzdata()] | lang=en
-- "tests_test_project_timezone_testfilestamps_test_custom_format_is_honoured": ".test_custom_format_is_honoured()" | kind=code-symbol | source=probe/tests/test_project_timezone.py:L66 | neighbors=[TestFileStamps] | lang=en
-- "tests_test_project_timezone_testfilestamps_test_file_stamp_is_filename_safe": ".test_file_stamp_is_filename_safe()" | kind=code-symbol | source=probe/tests/test_project_timezone.py:L57 | neighbors=[TestFileStamps] | lang=en
-- "tests_test_project_timezone_testfilestamps_test_file_stamp_is_local_wall_clock": ".test_file_stamp_is_local_wall_clock()" | kind=code-symbol | source=probe/tests/test_project_timezone.py:L54 | neighbors=[TestFileStamps] | lang=en
-- "tests_test_project_timezone_testfilestamps_test_file_stamp_sorts_chronologically": ".test_file_stamp_sorts_chronologically()" | kind=code-symbol | source=probe/tests/test_project_timezone.py:L61 | neighbors=[TestFileStamps] | lang=en
-- "tests_test_project_timezone_testoverrideandfallback_test_vedha_tz_overrides_the_default": ".test_vedha_tz_overrides_the_default()" | kind=code-symbol | source=probe/tests/test_project_timezone.py:L79 | neighbors=[TestOverrideAndFallback] | lang=en
-- "tests_test_project_timezone_testprojecttimezone_test_default_is_ist": ".test_default_is_ist()" | kind=code-symbol | source=probe/tests/test_project_timezone.py:L27 | neighbors=[TestProjectTimezone] | lang=en
-- "tests_test_project_timezone_testprojecttimezone_test_timestamp_is_iso_with_offset_not_naive": ".test_timestamp_is_iso_with_offset_not_naive()" | kind=code-symbol | source=probe/tests/test_project_timezone.py:L30 | neighbors=[TestProjectTimezone] | lang=en
-- "tests_test_raw_facts_rationale_1": "Raw scanner facts endpoint — inspect exactly what the vedha-agent collected." | kind=entity | source=manager/backend/tests/test_raw_facts.py:L1 | neighbors=[test_raw_facts.py] | lang=en
-- "tests_test_reference_rationale_1": "test_reference.py — the human-readable reference scheme.  A scan job could only" | kind=entity | source=manager/backend/tests/test_reference.py:L1 | neighbors=[test_reference.py] | lang=en
-- "tests_test_reference_rationale_118": "Migration 0036 backfills in SQL so it needs no application layer. If the     two" | kind=entity | source=manager/backend/tests/test_reference.py:L118 | neighbors=[test_the_migration_backfill_agrees_with…] | lang=en
-- "tests_test_reference_rationale_36": "A backfilled reference must match what the row would have been given         whe" | kind=entity | source=manager/backend/tests/test_reference.py:L36 | neighbors=[.test_uses_the_rows_own_date_not_today()] | lang=en
-- "tests_test_reference_rationale_50": "The whole point of the scheme: a human relays it." | kind=entity | source=manager/backend/tests/test_reference.py:L50 | neighbors=[TestSurvivesBeingReadAloud] | lang=en
-- "tests_test_reference_rationale_70": "The prefix and date are literal — folding them would corrupt a date." | kind=entity | source=manager/backend/tests/test_reference.py:L70 | neighbors=[.test_only_the_suffix_is_alias_folded()] | lang=en
-- "tests_test_reference_rationale_88": "It is quoted in tickets — it must not move." | kind=entity | source=manager/backend/tests/test_reference.py:L88 | neighbors=[.test_the_same_row_always_gets_the_same…] | lang=en
-- "tests_test_reference_testshape_test_an_unknown_prefix_is_refused": ".test_an_unknown_prefix_is_refused()" | kind=code-symbol | source=manager/backend/tests/test_reference.py:L44 | neighbors=[TestShape] | lang=en
-- "tests_test_reference_testshape_test_naive_created_at_is_treated_as_utc": ".test_naive_created_at_is_treated_as_utc()" | kind=code-symbol | source=manager/backend/tests/test_reference.py:L40 | neighbors=[TestShape] | lang=en
-- "tests_test_reference_teststability_test_different_rows_get_different_references": ".test_different_rows_get_different_references()" | kind=code-symbol | source=manager/backend/tests/test_reference.py:L92 | neighbors=[TestStability] | lang=en
-- "tests_test_reference_teststamping_test_an_explicit_reference_is_never_overwritten": ".test_an_explicit_reference_is_never_overwritten()" | kind=code-symbol | source=manager/backend/tests/test_reference.py:L106 | neighbors=[TestStamping] | lang=en
-- "tests_test_reference_teststamping_test_every_insert_gets_one": ".test_every_insert_gets_one()" | kind=code-symbol | source=manager/backend/tests/test_reference.py:L100 | neighbors=[TestStamping] | lang=en
-- "tests_test_reference_teststamping_test_the_reference_matches_the_row_id": ".test_the_reference_matches_the_row_id()" | kind=code-symbol | source=manager/backend/tests/test_reference.py:L111 | neighbors=[TestStamping] | lang=en
-- "tests_test_reference_testsurvivesbeingreadaloud_test_o_for_zero_and_l_for_one_resolve": ".test_o_for_zero_and_l_for_one_resolve()" | kind=code-symbol | source=manager/backend/tests/test_reference.py:L62 | neighbors=[TestSurvivesBeingReadAloud] | lang=en
-- "tests_test_reference_testsurvivesbeingreadaloud_test_stray_spaces_are_tolerated": ".test_stray_spaces_are_tolerated()" | kind=code-symbol | source=manager/backend/tests/test_reference.py:L66 | neighbors=[TestSurvivesBeingReadAloud] | lang=en
-- "tests_test_reference_testsurvivesbeingreadaloud_test_the_confusable_letters_are_absent": ".test_the_confusable_letters_are_absent()" | kind=code-symbol | source=manager/backend/tests/test_reference.py:L52 | neighbors=[TestSurvivesBeingReadAloud] | lang=en
-- "tests_test_reference_testtellingthemapart_test_an_unregistered_prefix_is_not_ours": ".test_an_unregistered_prefix_is_not_ours()" | kind=code-symbol | source=manager/backend/tests/test_reference.py:L82 | neighbors=[TestTellingThemApart] | lang=en
-- "tests_test_remediation_generator_rationale_1": "test_remediation_generator.py — Section 3: the AI remediation-plan helpers.  Pur" | kind=entity | source=manager/backend/tests/test_remediation_generator.py:L1 | neighbors=[test_remediation_generator.py] | lang=en
-- "tests_test_remediation_generator_testnormalizeaiplan_test_missing_steps_yields_empty": ".test_missing_steps_yields_empty()" | kind=code-symbol | source=manager/backend/tests/test_remediation_generator.py:L105 | neighbors=[TestNormalizeAiPlan] | lang=en
-- "tests_test_remediation_generator_testnormalizeaiplan_test_non_dict_step_is_skipped_and_missing_title_defaults": ".test_non_dict_step_is_skipped_and_missing_title_defaults()" | kind=code-symbol | source=manager/backend/tests/test_remediation_generator.py:L109 | neighbors=[TestNormalizeAiPlan] | lang=en
-- "tests_test_remediation_generator_testparsejsonresponse_test_empty_returns_empty": ".test_empty_returns_empty()" | kind=code-symbol | source=manager/backend/tests/test_remediation_generator.py:L51 | neighbors=[TestParseJsonResponse] | lang=en
-- "tests_test_remediation_generator_testparsejsonresponse_test_junk_returns_empty": ".test_junk_returns_empty()" | kind=code-symbol | source=manager/backend/tests/test_remediation_generator.py:L45 | neighbors=[TestParseJsonResponse] | lang=en
-- "tests_test_remediation_generator_testparsejsonresponse_test_non_object_json_returns_empty": ".test_non_object_json_returns_empty()" | kind=code-symbol | source=manager/backend/tests/test_remediation_generator.py:L48 | neighbors=[TestParseJsonResponse] | lang=en
-- "tests_test_remediation_generator_testparsejsonresponse_test_plain_object": ".test_plain_object()" | kind=code-symbol | source=manager/backend/tests/test_remediation_generator.py:L33 | neighbors=[TestParseJsonResponse] | lang=en
-- "tests_test_remediation_generator_testparsejsonresponse_test_recovers_from_preamble": ".test_recovers_from_preamble()" | kind=code-symbol | source=manager/backend/tests/test_remediation_generator.py:L42 | neighbors=[TestParseJsonResponse] | lang=en
-- "tests_test_remediation_generator_testparsejsonresponse_test_strips_bare_fence": ".test_strips_bare_fence()" | kind=code-symbol | source=manager/backend/tests/test_remediation_generator.py:L39 | neighbors=[TestParseJsonResponse] | lang=en
+- "tests_test_portal_scope_testportaltokenisconfinedtoportalroutes_test_operator_routes_are_rejected": ".test_operator_routes_are_rejected()" | kind=code-symbol | source=manager/backend/tests/test_portal_scope.py:L125 | neighbors=[TestPortalTokenIsConfinedToPortalRoutes]
+- "tests_test_portal_scope_testportaltokenisconfinedtoportalroutes_test_portal_routes_are_allowed": ".test_portal_routes_are_allowed()" | kind=code-symbol | source=manager/backend/tests/test_portal_scope.py:L114 | neighbors=[TestPortalTokenIsConfinedToPortalRoutes]
+- "tests_test_posture_confidence_rationale_1": "test_posture_confidence.py — calibrated, auditable posture confidence with cross" | kind=entity | source=manager/detection_engine/tests/test_posture_confidence.py:L1 | neighbors=[test_posture_confidence.py]
+- "tests_test_posture_confidence_testassessor_test_deception_penalty": ".test_deception_penalty()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_confidence.py:L60 | neighbors=[TestAssessor]
+- "tests_test_posture_confidence_testassessor_test_final_is_clamped_and_recorded": ".test_final_is_clamped_and_recorded()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_confidence.py:L66 | neighbors=[TestAssessor]
+- "tests_test_posture_confidence_testassessor_test_lone_chain_member_gets_no_floor": ".test_lone_chain_member_gets_no_floor()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_confidence.py:L52 | neighbors=[TestAssessor]
+- "tests_test_posture_confidence_testassessor_test_unreachable_downgrades_and_is_recorded": ".test_unreachable_downgrades_and_is_recorded()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_confidence.py:L46 | neighbors=[TestAssessor]
+- "tests_test_posture_confidence_testassessor_test_validated_base_higher_than_unvalidated": ".test_validated_base_higher_than_unvalidated()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_confidence.py:L39 | neighbors=[TestAssessor]
+- "tests_test_posture_confidence_testchains_test_chain_floor_never_lowers_confidence": ".test_chain_floor_never_lowers_confidence()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_confidence.py:L82 | neighbors=[TestChains]
+- "tests_test_posture_confidence_testchains_test_ntlm_relay_chain_floors_both": ".test_ntlm_relay_chain_floors_both()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_confidence.py:L74 | neighbors=[TestChains]
+- "tests_test_posture_row_init": ".__init__()" | kind=code-symbol | source=manager/backend/tests/test_posture.py:L110 | neighbors=[_Row]
+- "tests_test_posture_rules_rationale_1": "test_posture_rules.py — the manager posture/config detection engine.  Covers: th" | kind=entity | source=manager/detection_engine/tests/test_posture_rules.py:L1 | neighbors=[test_posture_rules.py]
+- "tests_test_posture_rules_rationale_96": "The live tls_scanner labels its probe list \"TLSv1_0\"/\"TLSv1_1\" (from         ssl" | kind=entity | source=manager/detection_engine/tests/test_posture_rules.py:L96 | neighbors=[.test_deprecated_tls_version_underscore…]
+- "tests_test_posture_rules_testriskmodel_test_auth_enforced_deescalates": ".test_auth_enforced_deescalates()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_rules.py:L133 | neighbors=[TestRiskModel]
+- "tests_test_posture_rules_testriskmodel_test_internet_facing_unauth_escalates": ".test_internet_facing_unauth_escalates()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_rules.py:L138 | neighbors=[TestRiskModel]
+- "tests_test_posture_rules_testriskmodel_test_priority_buckets": ".test_priority_buckets()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_rules.py:L148 | neighbors=[TestRiskModel]
+- "tests_test_posture_rules_testriskmodel_test_suspected_scores_below_confirmed": ".test_suspected_scores_below_confirmed()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_rules.py:L143 | neighbors=[TestRiskModel]
+- "tests_test_posture_rules_testtrusttier_test_registry_contains_user_validated_set": ".test_registry_contains_user_validated_set()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_rules.py:L43 | neighbors=[TestTrustTier]
+- "tests_test_posture_test_aggregate_is_bounded_and_empty_is_zero": "test_aggregate_is_bounded_and_empty_is_zero()" | kind=code-symbol | source=manager/backend/tests/test_posture.py:L22 | neighbors=[test_posture.py]
+- "tests_test_posture_test_aggregate_is_monotonic": "test_aggregate_is_monotonic()" | kind=code-symbol | source=manager/backend/tests/test_posture.py:L31 | neighbors=[test_posture.py]
+- "tests_test_posture_test_build_posture_no_runs": "test_build_posture_no_runs()" | kind=code-symbol | source=manager/backend/tests/test_posture.py:L72 | neighbors=[test_posture.py]
+- "tests_test_posture_test_compute_scores_empty_is_perfect": "test_compute_scores_empty_is_perfect()" | kind=code-symbol | source=manager/backend/tests/test_posture.py:L48 | neighbors=[test_posture.py]
+- "tests_test_posture_test_grade_bands": "test_grade_bands()" | kind=code-symbol | source=manager/backend/tests/test_posture.py:L37 | neighbors=[test_posture.py]
+- "tests_test_posture_test_posture_report_section_omitted_without_runs": "test_posture_report_section_omitted_without_runs()" | kind=code-symbol | source=manager/backend/tests/test_posture.py:L167 | neighbors=[test_posture.py]
+- "tests_test_posture_test_posture_report_section_renders_scores_and_matrix": "test_posture_report_section_renders_scores_and_matrix()" | kind=code-symbol | source=manager/backend/tests/test_posture.py:L149 | neighbors=[test_posture.py]
+- "tests_test_posture_test_sev_str_passes_through_plain_string": "test_sev_str_passes_through_plain_string()" | kind=code-symbol | source=manager/backend/tests/test_posture.py:L143 | neighbors=[test_posture.py]
+- "tests_test_posture_trace_rationale_1": "test_posture_trace.py — the detection trace: every rule evaluation records an OU" | kind=entity | source=manager/detection_engine/tests/test_posture_trace.py:L1 | neighbors=[test_posture_trace.py]
+- "tests_test_posture_trace_rationale_63": "I10 structurally: for EVERY rule with a declared contract, feeding a fact" | kind=entity | source=manager/detection_engine/tests/test_posture_trace.py:L63 | neighbors=[.test_missing_input_invariant_across_al…]
+- "tests_test_printer_scanner_rationale_1": "test_printer_scanner.py — network printer exposure (9100 PJL / 631 IPP).  Pure P" | kind=entity | source=probe/tests/test_printer_scanner.py:L1 | neighbors=[test_printer_scanner.py]
+- "tests_test_printer_scanner_testparity_test_main_scripts": ".test_main_scripts()" | kind=code-symbol | source=probe/tests/test_printer_scanner.py:L62 | neighbors=[TestParity]
+- "tests_test_printer_scanner_testprinterfindings_test_exposed_low": ".test_exposed_low()" | kind=code-symbol | source=probe/tests/test_printer_scanner.py:L53 | neighbors=[TestPrinterFindings]
+- "tests_test_printer_scanner_testpurelogic_test_build_ipp": ".test_build_ipp()" | kind=code-symbol | source=probe/tests/test_printer_scanner.py:L23 | neighbors=[TestPureLogic]
+- "tests_test_printer_scanner_testpurelogic_test_parse_ipp_make_model": ".test_parse_ipp_make_model()" | kind=code-symbol | source=probe/tests/test_printer_scanner.py:L27 | neighbors=[TestPureLogic]
+- "tests_test_printer_scanner_testpurelogic_test_parse_pjl_id": ".test_parse_pjl_id()" | kind=code-symbol | source=probe/tests/test_printer_scanner.py:L19 | neighbors=[TestPureLogic]
+- "tests_test_probe_auto_enroll_rationale_1": "test_probe_auto_enroll.py — trust-on-first-use enrollment gate + CIDR policy.  T" | kind=entity | source=manager/backend/tests/test_probe_auto_enroll.py:L1 | neighbors=[test_probe_auto_enroll.py]
+- "tests_test_probe_auto_enroll_test_auto_enroll_cidrs_defaults_to_rfc1918": "test_auto_enroll_cidrs_defaults_to_rfc1918()" | kind=code-symbol | source=manager/backend/tests/test_probe_auto_enroll.py:L23 | neighbors=[test_probe_auto_enroll.py]
+- "tests_test_probe_auto_enroll_test_auto_enroll_cidrs_parses_and_trims_custom": "test_auto_enroll_cidrs_parses_and_trims_custom()" | kind=code-symbol | source=manager/backend/tests/test_probe_auto_enroll.py:L29 | neighbors=[test_probe_auto_enroll.py]
+- "tests_test_probe_auto_enroll_test_auto_enroll_is_off_by_default": "test_auto_enroll_is_off_by_default()" | kind=code-symbol | source=manager/backend/tests/test_probe_auto_enroll.py:L17 | neighbors=[test_probe_auto_enroll.py]
+- "tests_test_probe_auto_enroll_test_auto_enroll_site_name_is_stable": "test_auto_enroll_site_name_is_stable()" | kind=code-symbol | source=manager/backend/tests/test_probe_auto_enroll.py:L36 | neighbors=[test_probe_auto_enroll.py]
+- "tests_test_probe_core_rationale_1": "Probe test suite — unit tests for the probe's pure-logic modules. Covers: ScopeG" | kind=entity | source=probe/tests/test_probe_core.py:L1 | neighbors=[test_probe_core.py]
 
 ## Instructions
 

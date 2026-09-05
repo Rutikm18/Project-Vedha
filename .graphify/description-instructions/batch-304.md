@@ -1,4 +1,4 @@
-# Node Description Batch 305 of 332
+# Node Description Batch 305 of 336
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,51 +19,53 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-Write every description in English (en). Do not switch languages.
+LANGUAGE: each entry has a `lang=` marker giving the language of its source.
+Write that entry's description in EXACTLY that language. Do not translate to
+a single common language — match each node's source language individually.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_run_all_reconcile_test_reconcile_folds_in_only_reachable_dynamic_ports": "test_reconcile_folds_in_only_reachable_dynamic_ports()" | kind=code-symbol | source=probe/tests/test_run_all_reconcile.py:L51 | neighbors=[test_run_all_reconcile.py]
-- "tests_test_run_all_reconcile_test_reconcile_matches_between_pipelines_when_epm_unreachable": "test_reconcile_matches_between_pipelines_when_epm_unreachable()" | kind=code-symbol | source=probe/tests/test_run_all_reconcile.py:L41 | neighbors=[test_run_all_reconcile.py]
-- "tests_test_run_all_reconcile_test_run_all_imports_the_shared_reconciler_not_a_copy": "test_run_all_imports_the_shared_reconciler_not_a_copy()" | kind=code-symbol | source=probe/tests/test_run_all_reconcile.py:L26 | neighbors=[test_run_all_reconcile.py]
-- "tests_test_run_all_reconcile_test_run_all_runs_rdp_scanner_stage": "test_run_all_runs_rdp_scanner_stage()" | kind=code-symbol | source=probe/tests/test_run_all_reconcile.py:L18 | neighbors=[test_run_all_reconcile.py]
-- "tests_test_run_scoped_fact_scope_rationale_1": "Run-scoped facts must not be scope-checked as if they were hosts.  THE BUG THIS" | kind=entity | source=manager/backend/tests/test_run_scoped_fact_scope.py:L1 | neighbors=[test_run_scoped_fact_scope.py]
-- "tests_test_run_scoped_fact_scope_rationale_103": "Authorization is IP/CIDR-only; a hostname must not pass." | kind=entity | source=manager/backend/tests/test_run_scoped_fact_scope.py:L103 | neighbors=[.test_hostname_target_is_still_refused()]
-- "tests_test_run_scoped_fact_scope_rationale_112": "The pre-existing <nmap-run> exemption this fix is modelled on." | kind=entity | source=manager/backend/tests/test_run_scoped_fact_scope.py:L112 | neighbors=[.test_scanner_control_record_exemption_…]
-- "tests_test_run_scoped_fact_scope_rationale_45": "The exact payload that caused the 422." | kind=entity | source=manager/backend/tests/test_run_scoped_fact_scope.py:L45 | neighbors=[.test_ipv6_discovery_auto_target_is_not…]
-- "tests_test_run_scoped_fact_scope_rationale_50": "Same record, but an interface actually resolved — still not a host." | kind=entity | source=manager/backend/tests/test_run_scoped_fact_scope.py:L50 | neighbors=[.test_ipv6_discovery_interface_name_is_…]
-- "tests_test_run_scoped_fact_scope_rationale_59": "The damage was collateral: one non-host descriptor discarded every         legit" | kind=entity | source=manager/backend/tests/test_run_scoped_fact_scope.py:L59 | neighbors=[.test_a_real_result_with_one_run_scoped…]
-- "tests_test_run_scoped_fact_scope_rationale_73": "The exemption must be narrow. These are the security assertions." | kind=entity | source=manager/backend/tests/test_run_scoped_fact_scope.py:L73 | neighbors=[TestTheScopeGateStillWorks]
-- "tests_test_run_scoped_fact_scope_rationale_89": "Only the documented run-scoped scanners are exempt — a scanner name         the" | kind=entity | source=manager/backend/tests/test_run_scoped_fact_scope.py:L89 | neighbors=[.test_an_unknown_scanner_gets_no_exempt…]
-- "tests_test_run_scoped_fact_scope_rationale_95": "The exemption skips the record entirely rather than trusting its         target," | kind=entity | source=manager/backend/tests/test_run_scoped_fact_scope.py:L95 | neighbors=[.test_run_scoped_name_does_not_launder_…]
-- "tests_test_run_scoped_fact_scope_testthescopegatestillworks_test_out_of_scope_finding_is_still_rejected": ".test_out_of_scope_finding_is_still_rejected()" | kind=code-symbol | source=manager/backend/tests/test_run_scoped_fact_scope.py:L84 | neighbors=[TestTheScopeGateStillWorks]
-- "tests_test_run_scoped_fact_scope_testthescopegatestillworks_test_out_of_scope_host_row_is_still_rejected": ".test_out_of_scope_host_row_is_still_rejected()" | kind=code-symbol | source=manager/backend/tests/test_run_scoped_fact_scope.py:L80 | neighbors=[TestTheScopeGateStillWorks]
-- "tests_test_runtime_requirements_coverage_rationale_1": "test_runtime_requirements_coverage.py — the probe IMAGE must be able to run ever" | kind=entity | source=probe/tests/test_runtime_requirements_coverage.py:L1 | neighbors=[test_runtime_requirements_coverage.py]
-- "tests_test_runtime_requirements_coverage_rationale_43": "Package names declared in a requirements file, normalised and lowercased." | kind=entity | source=probe/tests/test_runtime_requirements_coverage.py:L43 | neighbors=[_declared()]
-- "tests_test_runtime_requirements_coverage_rationale_67": "A package shipped in the image but absent from requirements.txt is a     depende" | kind=entity | source=probe/tests/test_runtime_requirements_coverage.py:L67 | neighbors=[test_runtime_is_a_subset_of_the_develop…]
-- "tests_test_runtime_topology_rationale_1": "Product-boundary tests for the single-dashboard Manager API." | kind=entity | source=manager/backend/tests/test_runtime_topology.py:L1 | neighbors=[test_runtime_topology.py]
-- "tests_test_runtime_topology_test_manager_does_not_mount_a_static_dashboard": "test_manager_does_not_mount_a_static_dashboard()" | kind=code-symbol | source=manager/backend/tests/test_runtime_topology.py:L6 | neighbors=[test_runtime_topology.py]
-- "tests_test_runtime_topology_test_manager_root_is_service_metadata": "test_manager_root_is_service_metadata()" | kind=code-symbol | source=manager/backend/tests/test_runtime_topology.py:L13 | neighbors=[test_runtime_topology.py]
-- "tests_test_scan_funnel_fakediscovery_init": ".__init__()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L25 | neighbors=[FakeDiscovery]
-- "tests_test_scan_funnel_fakediscovery_scan_target": ".scan_target()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L29 | neighbors=[FakeDiscovery]
-- "tests_test_scan_funnel_fakemsrpc_init": ".__init__()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L257 | neighbors=[_FakeMSRPC]
-- "tests_test_scan_funnel_fakemsrpc_scan_target": ".scan_target()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L260 | neighbors=[_FakeMSRPC]
-- "tests_test_scan_funnel_fakeportscanner_init": ".__init__()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L37 | neighbors=[FakePortScanner]
-- "tests_test_scan_funnel_fakeportscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L42 | neighbors=[FakePortScanner]
-- "tests_test_scan_funnel_opensetportfactory_call": ".__call__()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L241 | neighbors=[_OpenSetPortFactory]
-- "tests_test_scan_funnel_opensetportfactory_init": ".__init__()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L237 | neighbors=[_OpenSetPortFactory]
-- "tests_test_scan_funnel_rationale_1": "test_scan_funnel.py — per-host scan funnel orchestrator (Tier 1.4).  The funnel" | kind=entity | source=probe/tests/test_scan_funnel.py:L1 | neighbors=[test_scan_funnel.py]
-- "tests_test_scan_funnel_rationale_233": "Port-scanner factory whose scanners report a port open iff it is in     `actuall" | kind=entity | source=probe/tests/test_scan_funnel.py:L233 | neighbors=[_OpenSetPortFactory]
-- "tests_test_scan_funnel_rationale_255": "A deep scanner on 135 that returns EPM-advertised dynamic ports." | kind=entity | source=probe/tests/test_scan_funnel.py:L255 | neighbors=[_FakeMSRPC]
-- "tests_test_scan_funnel_rationale_65": "Build a funnel with fakes; return (funnel, discovery, port_scanner, created)." | kind=entity | source=probe/tests/test_scan_funnel.py:L65 | neighbors=[_make_funnel()]
-- "tests_test_scan_funnel_rationale_67": "Build a funnel with fakes; return (funnel, discovery, port_scanner, created)." | kind=entity | source=probe/tests/test_scan_funnel.py:L67 | neighbors=[_make_funnel()]
-- "tests_test_scan_funnel_recordingdeep_init": ".__init__()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L50 | neighbors=[RecordingDeep]
-- "tests_test_scan_funnel_recordingdeep_scan_target": ".scan_target()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L55 | neighbors=[RecordingDeep]
-- "tests_test_scan_funnel_testbuilddefaultfunnel_test_candidate_ports_cover_all_routes": ".test_candidate_ports_cover_all_routes()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L212 | neighbors=[TestBuildDefaultFunnel]
-- "tests_test_scan_funnel_testreconcileports_test_ignores_non_ints_and_empty": ".test_ignores_non_ints_and_empty()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L226 | neighbors=[TestReconcilePorts]
-- "tests_test_scan_funnel_testreconcileports_test_union_dedup_sorted": ".test_union_dedup_sorted()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L222 | neighbors=[TestReconcilePorts]
-- "tests_test_scan_funnel_testrouteports_test_intersection_only": ".test_intersection_only()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L101 | neighbors=[TestRoutePorts]
+- "tests_test_probe_simple_approve_rationale_1": "test_probe_simple_approve.py — one-click probe approval helpers (item 5)." | kind=entity | source=manager/backend/tests/test_probe_simple_approve.py:L1 | neighbors=[test_probe_simple_approve.py] | lang=en
+- "tests_test_probe_simple_approve_rationale_12": "db.execute(...).scalars().all() → the given agent-name list." | kind=entity | source=manager/backend/tests/test_probe_simple_approve.py:L12 | neighbors=[_db_names()] | lang=en
+- "tests_test_probe_simple_approve_testsimpleapproveinput_test_defaults_are_all_optional": ".test_defaults_are_all_optional()" | kind=code-symbol | source=manager/backend/tests/test_probe_simple_approve.py:L39 | neighbors=[TestSimpleApproveInput] | lang=en
+- "tests_test_probe_simple_approve_testsimpleapproveinput_test_overrides_accepted": ".test_overrides_accepted()" | kind=code-symbol | source=manager/backend/tests/test_probe_simple_approve.py:L46 | neighbors=[TestSimpleApproveInput] | lang=en
+- "tests_test_project_time_rationale_1": "Manager-side project time: render in IST, stay timezone-AWARE.  The manager stor" | kind=entity | source=manager/backend/tests/test_project_time.py:L1 | neighbors=[test_project_time.py] | lang=en
+- "tests_test_project_time_rationale_38": "The property that makes this safe next to existing UTC data." | kind=entity | source=manager/backend/tests/test_project_time.py:L38 | neighbors=[.test_still_orders_against_utc_rows()] | lang=en
+- "tests_test_project_time_rationale_46": "Every naive datetime in this codebase's history came from utcnow().         Assu" | kind=entity | source=manager/backend/tests/test_project_time.py:L46 | neighbors=[.test_naive_is_assumed_utc()] | lang=en
+- "tests_test_project_time_rationale_87": "Guards the actual bug: utcnow() strings carried no offset." | kind=entity | source=manager/backend/tests/test_project_time.py:L87 | neighbors=[test_websocket_no_longer_emits_naive_ti…] | lang=en
+- "tests_test_project_time_testfilestamp_test_filename_safe": ".test_filename_safe()" | kind=code-symbol | source=manager/backend/tests/test_project_time.py:L64 | neighbors=[TestFileStamp] | lang=en
+- "tests_test_project_time_testfilestamp_test_no_z_suffix_on_local_time": ".test_no_z_suffix_on_local_time()" | kind=code-symbol | source=manager/backend/tests/test_project_time.py:L61 | neighbors=[TestFileStamp] | lang=en
+- "tests_test_project_time_testoverrideandfallback_test_bad_zone_does_not_crash_the_api": ".test_bad_zone_does_not_crash_the_api()" | kind=code-symbol | source=manager/backend/tests/test_project_time.py:L75 | neighbors=[TestOverrideAndFallback] | lang=en
+- "tests_test_project_time_testoverrideandfallback_test_ist_survives_missing_tzdata": ".test_ist_survives_missing_tzdata()" | kind=code-symbol | source=manager/backend/tests/test_project_time.py:L81 | neighbors=[TestOverrideAndFallback] | lang=en
+- "tests_test_project_time_testoverrideandfallback_test_vedha_tz_override": ".test_vedha_tz_override()" | kind=code-symbol | source=manager/backend/tests/test_project_time.py:L69 | neighbors=[TestOverrideAndFallback] | lang=en
+- "tests_test_project_time_testrendering_test_default_is_ist": ".test_default_is_ist()" | kind=code-symbol | source=manager/backend/tests/test_project_time.py:L24 | neighbors=[TestRendering] | lang=en
+- "tests_test_project_time_testrendering_test_same_instant_as_utc": ".test_same_instant_as_utc()" | kind=code-symbol | source=manager/backend/tests/test_project_time.py:L32 | neighbors=[TestRendering] | lang=en
+- "tests_test_project_time_testrendering_test_timestamp_carries_an_offset": ".test_timestamp_carries_an_offset()" | kind=code-symbol | source=manager/backend/tests/test_project_time.py:L27 | neighbors=[TestRendering] | lang=en
+- "tests_test_project_time_testtoprojecttz_test_aware_input_keeps_its_instant": ".test_aware_input_keeps_its_instant()" | kind=code-symbol | source=manager/backend/tests/test_project_time.py:L51 | neighbors=[TestToProjectTz] | lang=en
+- "tests_test_project_time_testtoprojecttz_test_none_passes_through": ".test_none_passes_through()" | kind=code-symbol | source=manager/backend/tests/test_project_time.py:L56 | neighbors=[TestToProjectTz] | lang=en
+- "tests_test_project_timezone_rationale_1": "Project timestamps render in IST, and stay timezone-AWARE while doing it.  Opera" | kind=entity | source=probe/tests/test_project_timezone.py:L1 | neighbors=[test_project_timezone.py] | lang=en
+- "tests_test_project_timezone_rationale_36": "Rendering moved; the instant did not." | kind=entity | source=probe/tests/test_project_timezone.py:L36 | neighbors=[.test_timestamp_is_the_same_instant_as_…] | lang=en
+- "tests_test_project_timezone_rationale_42": "The ordering guarantee that makes this change safe." | kind=entity | source=probe/tests/test_project_timezone.py:L42 | neighbors=[.test_aware_timestamps_still_compare_ag…] | lang=en
+- "tests_test_project_timezone_rationale_51": "A `Z` on a local-time stamp is an outright lie." | kind=entity | source=probe/tests/test_project_timezone.py:L51 | neighbors=[.test_file_stamp_has_no_z_suffix()] | lang=en
+- "tests_test_project_timezone_rationale_72": "The timestamp that ends up inside every result file." | kind=entity | source=probe/tests/test_project_timezone.py:L72 | neighbors=[.test_scan_result_timestamp_is_ist()] | lang=en
+- "tests_test_project_timezone_rationale_86": "A bad VEDHA_TZ must never take a scan down mid-engagement." | kind=entity | source=probe/tests/test_project_timezone.py:L86 | neighbors=[.test_unknown_zone_falls_back_without_c…] | lang=pt
+- "tests_test_project_timezone_rationale_93": "Sealed/slim images may ship no tzdata. IST has no DST, so the fixed         +05:" | kind=entity | source=probe/tests/test_project_timezone.py:L93 | neighbors=[.test_ist_survives_a_missing_tzdata()] | lang=en
+- "tests_test_project_timezone_testfilestamps_test_custom_format_is_honoured": ".test_custom_format_is_honoured()" | kind=code-symbol | source=probe/tests/test_project_timezone.py:L66 | neighbors=[TestFileStamps] | lang=en
+- "tests_test_project_timezone_testfilestamps_test_file_stamp_is_filename_safe": ".test_file_stamp_is_filename_safe()" | kind=code-symbol | source=probe/tests/test_project_timezone.py:L57 | neighbors=[TestFileStamps] | lang=en
+- "tests_test_project_timezone_testfilestamps_test_file_stamp_is_local_wall_clock": ".test_file_stamp_is_local_wall_clock()" | kind=code-symbol | source=probe/tests/test_project_timezone.py:L54 | neighbors=[TestFileStamps] | lang=en
+- "tests_test_project_timezone_testfilestamps_test_file_stamp_sorts_chronologically": ".test_file_stamp_sorts_chronologically()" | kind=code-symbol | source=probe/tests/test_project_timezone.py:L61 | neighbors=[TestFileStamps] | lang=en
+- "tests_test_project_timezone_testoverrideandfallback_test_vedha_tz_overrides_the_default": ".test_vedha_tz_overrides_the_default()" | kind=code-symbol | source=probe/tests/test_project_timezone.py:L79 | neighbors=[TestOverrideAndFallback] | lang=en
+- "tests_test_project_timezone_testprojecttimezone_test_default_is_ist": ".test_default_is_ist()" | kind=code-symbol | source=probe/tests/test_project_timezone.py:L27 | neighbors=[TestProjectTimezone] | lang=en
+- "tests_test_project_timezone_testprojecttimezone_test_timestamp_is_iso_with_offset_not_naive": ".test_timestamp_is_iso_with_offset_not_naive()" | kind=code-symbol | source=probe/tests/test_project_timezone.py:L30 | neighbors=[TestProjectTimezone] | lang=en
+- "tests_test_raw_facts_rationale_1": "Raw scanner facts endpoint — inspect exactly what the vedha-agent collected." | kind=entity | source=manager/backend/tests/test_raw_facts.py:L1 | neighbors=[test_raw_facts.py] | lang=en
+- "tests_test_reference_rationale_1": "test_reference.py — the human-readable reference scheme.  A scan job could only" | kind=entity | source=manager/backend/tests/test_reference.py:L1 | neighbors=[test_reference.py] | lang=en
+- "tests_test_reference_rationale_118": "Migration 0036 backfills in SQL so it needs no application layer. If the     two" | kind=entity | source=manager/backend/tests/test_reference.py:L118 | neighbors=[test_the_migration_backfill_agrees_with…] | lang=en
+- "tests_test_reference_rationale_36": "A backfilled reference must match what the row would have been given         whe" | kind=entity | source=manager/backend/tests/test_reference.py:L36 | neighbors=[.test_uses_the_rows_own_date_not_today()] | lang=en
+- "tests_test_reference_rationale_50": "The whole point of the scheme: a human relays it." | kind=entity | source=manager/backend/tests/test_reference.py:L50 | neighbors=[TestSurvivesBeingReadAloud] | lang=en
+- "tests_test_reference_rationale_70": "The prefix and date are literal — folding them would corrupt a date." | kind=entity | source=manager/backend/tests/test_reference.py:L70 | neighbors=[.test_only_the_suffix_is_alias_folded()] | lang=en
+- "tests_test_reference_rationale_88": "It is quoted in tickets — it must not move." | kind=entity | source=manager/backend/tests/test_reference.py:L88 | neighbors=[.test_the_same_row_always_gets_the_same…] | lang=en
+- "tests_test_reference_testshape_test_an_unknown_prefix_is_refused": ".test_an_unknown_prefix_is_refused()" | kind=code-symbol | source=manager/backend/tests/test_reference.py:L44 | neighbors=[TestShape] | lang=en
 
 ## Instructions
 

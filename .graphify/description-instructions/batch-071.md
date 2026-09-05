@@ -1,4 +1,4 @@
-# Node Description Batch 72 of 332
+# Node Description Batch 72 of 336
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -17,6 +17,25 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
+- "lib_adapters_toapifindingpatch": "toApiFindingPatch()" | kind=code-symbol | source=manager/frontend/lib/adapters.ts:L235 | neighbors=[route.ts, adapters.ts, engagement-adapters.test.ts, findings-adapters.test.ts]
+- "lib_adapters_touiengagement": "toUiEngagement()" | kind=code-symbol | source=manager/frontend/lib/adapters.ts:L35 | neighbors=[route.ts, route.ts, adapters.ts, engStatusToUi()]
+- "lib_agents_store_registeragent": "registerAgent()" | kind=code-symbol | source=manager/frontend/lib/agents-store.ts:L362 | neighbors=[agents-store.ts, genFieldAgentId(), readFieldAgents(), writeFieldAgents()]
+- "lib_agents_store_writefieldagents": "writeFieldAgents()" | kind=code-symbol | source=manager/frontend/lib/agents-store.ts:L350 | neighbors=[agents-store.ts, registerAgent(), updateAgentLastSeen(), ensureDataDir()]
+- "lib_ai_engine_tomodelfindings": "toModelFindings()" | kind=code-symbol | source=manager/frontend/lib/ai-engine.ts:L552 | neighbors=[ai-engine.ts, generateReportSectioned(), generateReportSingleCall(), generateReport()]
+- "lib_ai_engine_toscorecardinput": "toScorecardInput()" | kind=code-symbol | source=manager/frontend/lib/ai-engine.ts:L532 | neighbors=[ai-engine.ts, generateReportSectioned(), generateReportSingleCall(), generateReport()]
+- "lib_assistant_access_canmountassistant": "canMountAssistant()" | kind=code-symbol | source=manager/frontend/lib/assistant-access.ts:L12 | neighbors=[AssistantProvider.tsx, assistant-access.ts, isAssistantRoute(), operator-routes.test.ts]
+- "lib_assistant_access_isassistantroute": "isAssistantRoute()" | kind=code-symbol | source=manager/frontend/lib/assistant-access.ts:L2 | neighbors=[AssistantProvider.tsx, assistant-access.ts, canMountAssistant(), operator-routes.test.ts]
+- "lib_campaign_store_issafecampaignid": "isSafeCampaignId()" | kind=code-symbol | source=manager/frontend/lib/campaign-store.ts:L87 | neighbors=[campaign-store.ts, getCampaign(), validateSnapshot(), campaign-store.test.ts]
+- "lib_clients_store_createclient": "createClient()" | kind=code-symbol | source=manager/frontend/lib/clients-store.ts:L87 | neighbors=[clients-store.ts, read(), slugify(), write()]
+- "lib_clients_store_updateclient": "updateClient()" | kind=code-symbol | source=manager/frontend/lib/clients-store.ts:L105 | neighbors=[clients-store.ts, read(), slugify(), write()]
+- "lib_console_source_consolequerykey": "consoleQueryKey()" | kind=code-symbol | source=manager/frontend/lib/console-source.tsx:L139 | neighbors=[page.tsx, page.tsx, console-source.tsx, useConsoleQueryKey()]
+- "lib_console_source_useconsolequerykey": "useConsoleQueryKey()" | kind=code-symbol | source=manager/frontend/lib/console-source.tsx:L144 | neighbors=[DashboardGrid.tsx, console-source.tsx, consoleQueryKey(), useConsoleSource()]
+- "lib_console_source_useconsolesource": "useConsoleSource()" | kind=code-symbol | source=manager/frontend/lib/console-source.tsx:L131 | neighbors=[console-source.tsx, useConsoleCapability(), useConsoleQuery(), useConsoleQueryKey()]
+- "lib_errors_diagnosespawnerror": "diagnoseSpawnError()" | kind=code-symbol | source=manager/frontend/lib/errors.ts:L244 | neighbors=[tool-runners.ts, errors.ts, VedhaError, AdversaError]
+- "lib_httpx_parser_httpxjsonldecoder_decode": ".decode()" | kind=code-symbol | source=manager/frontend/lib/httpx-parser.ts:L116 | neighbors=[HttpxJsonlDecoder, .push(), parseHttpxJsonLine(), .finish()]
+- "lib_job_store_createjob": "createJob()" | kind=code-symbol | source=manager/frontend/lib/job-store.ts:L41 | neighbors=[job-store.ts, genJobId(), readJobs(), writeJobs()]
+- "lib_nuclei_parser_nucleiseveritytoseverity": "nucleiSeverityToSeverity()" | kind=code-symbol | source=manager/frontend/lib/nuclei-parser.ts:L71 | neighbors=[tool-runners.ts, nuclei-parser.ts, nucleiMatchToFinding(), parsers.test.ts]
+- "lib_permissions_store_adduser": "addUser()" | kind=code-symbol | source=manager/frontend/lib/permissions-store.ts:L60 | neighbors=[permissions-store.ts, read(), write(), route.ts]
 - "lib_permissions_store_isemailallowed": "isEmailAllowed()" | kind=code-symbol | source=manager/frontend/lib/permissions-store.ts:L48 | neighbors=[auth-middleware.ts, permissions-store.ts, read(), route.ts]
 - "lib_portal_client_severity_var": "SEVERITY_VAR" | kind=code-symbol | source=manager/frontend/lib/portal-client.ts:L117 | neighbors=[page.tsx, portal-client.ts, page.tsx, page.tsx]
 - "lib_severity_sev_color": "SEV_COLOR" | kind=code-symbol | source=manager/frontend/lib/severity.ts:L24 | neighbors=[FactCard.tsx, page.tsx, severity.ts, page.tsx]
@@ -38,25 +57,6 @@ one-sentence description — no prose, no markdown fences.
 - "main_scripts_findings_rule_smb": "_rule_smb()" | kind=code-symbol | source=probe/main_scripts/findings.py:L254 | neighbors=[findings.py, _data(), Finding, _scanner()]
 - "main_scripts_findings_rule_snmp": "_rule_snmp()" | kind=code-symbol | source=probe/main_scripts/findings.py:L277 | neighbors=[findings.py, _data(), Finding, _scanner()]
 - "main_scripts_findings_rule_ssh": "_rule_ssh()" | kind=code-symbol | source=probe/main_scripts/findings.py:L582 | neighbors=[findings.py, _data(), Finding, _scanner()]
-- "main_scripts_findings_rule_tls": "_rule_tls()" | kind=code-symbol | source=probe/main_scripts/findings.py:L175 | neighbors=[findings.py, _data(), Finding, _scanner()]
-- "main_scripts_findings_rule_udp_amplification": "_rule_udp_amplification()" | kind=code-symbol | source=probe/main_scripts/findings.py:L308 | neighbors=[findings.py, _data(), Finding, _scanner()]
-- "main_scripts_findings_rule_web": "_rule_web()" | kind=code-symbol | source=probe/main_scripts/findings.py:L419 | neighbors=[findings.py, _data(), Finding, _scanner()]
-- "main_scripts_ftp_scanner_ftpscanner_cmd": "._cmd()" | kind=code-symbol | source=probe/main_scripts/ftp_scanner.py:L91 | neighbors=[FTPScanner, ._read_response(), ._list_bounded(), ._probe()]
-- "main_scripts_host_discovery_hostdiscoveryscanner_udp_liveness": "._udp_liveness()" | kind=code-symbol | source=probe/main_scripts/host_discovery.py:L560 | neighbors=[HostDiscoveryScanner, .scan_target(), ._udp_one(), Run the UDP tier concurrently; return e…]
-- "main_scripts_host_discovery_hostdiscoveryscanner_udp_one": "._udp_one()" | kind=code-symbol | source=probe/main_scripts/host_discovery.py:L534 | neighbors=[HostDiscoveryScanner, ._udp_liveness(), parse_nbstat(), One UDP liveness probe -> structured si…]
-- "main_scripts_host_discovery_neighbor": "Neighbor" | kind=code-symbol | source=probe/main_scripts/host_discovery.py:L294 | neighbors=[host_discovery.py, parse_neighbor_line(), One OS neighbor-cache observation about…, One OS neighbor-cache observation about…]
-- "main_scripts_host_discovery_parse_nbstat": "parse_nbstat()" | kind=code-symbol | source=probe/main_scripts/host_discovery.py:L103 | neighbors=[host_discovery.py, ._udp_one(), normalize_mac(), Parse a NetBIOS NBSTAT (node status) re…]
-- "main_scripts_host_discovery_read_neighbor": "read_neighbor()" | kind=code-symbol | source=probe/main_scripts/host_discovery.py:L331 | neighbors=[host_discovery.py, Targeted, POST-probe neighbor lookup fo…, parse_neighbor_line(), Targeted, POST-probe neighbor lookup fo…]
-- "main_scripts_iot_scanner_coap_get_wellknown_core": "_coap_get_wellknown_core()" | kind=code-symbol | source=probe/main_scripts/iot_scanner.py:L348 | neighbors=[iot_scanner.py, _probe_coap_sync(), CoAP Confirmable GET for /.well-known/c…, CoAP Confirmable GET for /.well-known/c…]
-- "main_scripts_iot_scanner_decode_mdns_name": "_decode_mdns_name()" | kind=code-symbol | source=probe/main_scripts/iot_scanner.py:L130 | neighbors=[iot_scanner.py, _parse_mdns_response(), Decode a DNS wire-format name, followin…, Decode a DNS wire-format name, followin…]
-- "main_scripts_iot_scanner_fetch_upnp_root_desc": "_fetch_upnp_root_desc()" | kind=code-symbol | source=probe/main_scripts/iot_scanner.py:L58 | neighbors=[iot_scanner.py, _probe_ssdp_sync(), HTTP GET the UPnP rootDesc.xml and extr…, HTTP GET the UPnP rootDesc.xml and extr…]
-- "main_scripts_iot_scanner_iotscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/main_scripts/iot_scanner.py:L452 | neighbors=[IoTScanner, _probe_cwmp(), _probe_mqtt(), _probe_rtsp()]
-- "main_scripts_iot_scanner_parse_coap_response": "_parse_coap_response()" | kind=code-symbol | source=probe/main_scripts/iot_scanner.py:L361 | neighbors=[iot_scanner.py, _probe_coap_sync(), Extract CoAP response code and content., Extract CoAP response code and content.]
-- "main_scripts_iot_scanner_probe_cwmp": "_probe_cwmp()" | kind=code-symbol | source=probe/main_scripts/iot_scanner.py:L405 | neighbors=[iot_scanner.py, .scan_target(), HTTP GET to CWMP port — detect ACS or C…, HTTP GET to CWMP port — detect ACS or C…]
-- "main_scripts_iot_scanner_probe_mqtt": "_probe_mqtt()" | kind=code-symbol | source=probe/main_scripts/iot_scanner.py:L291 | neighbors=[iot_scanner.py, .scan_target(), _mqtt_connect(), _mqtt_subscribe_all()]
-- "main_scripts_ipmi_scanner_ipmiscanner_probe": "._probe()" | kind=code-symbol | source=probe/main_scripts/ipmi_scanner.py:L72 | neighbors=[IPMIScanner, build_open_session_request(), parse_open_session_response(), Blocking: one RMCP+ Open Session Reques…]
-- "main_scripts_ipv6_discovery_parse_ip_neigh6": "parse_ip_neigh6()" | kind=code-symbol | source=probe/main_scripts/ipv6_discovery.py:L42 | neighbors=[ipv6_discovery.py, _is_ipv6(), Parse Linux `ip -6 neigh show` into [(a…, _read_neighbor_cache()]
-- "main_scripts_ipv6_discovery_parse_ndp": "parse_ndp()" | kind=code-symbol | source=probe/main_scripts/ipv6_discovery.py:L59 | neighbors=[ipv6_discovery.py, _is_ipv6(), Parse macOS/BSD `ndp -an` into [(addres…, _read_neighbor_cache()]
 
 ## Instructions
 
