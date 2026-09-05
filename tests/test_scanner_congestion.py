@@ -423,3 +423,150 @@ class TestReprobeCleanupPass:
         asyncio.run(asyncio.wait_for(sc.scan_target("127.0.0.1"), 30))
         assert seen[0] is None                    # main sweep: no floor
         assert any(f is not None and f >= 3.0 for f in seen[1:])
+
+
+# ── delivery-aware loss signal (measured regression, 2026-09-05) ─────────────
+class TestDeliveryAwareBackoff:
+    """Congestion control must react to a CHANGE in delivery, not to a steady
+    rate of non-answers.
+
+    A host that rate-limits its RSTs leaves a large, roughly CONSTANT fraction of
+    ports silent as a matter of POLICY. Treating each of those as a loss made
+    multiplicative decrease (/2) outrun additive increase (+1/cwnd), so over a
+    full 65,535-port range the window ratcheted to its floor and never recovered.
+    Measured on a real Windows host: bounded 1121-port scan 13.3 ports/sec, the
+    SAME envelope over the full range 0.62 ports/sec — a 24-hour scan.
+    """
+
+    def _sc(self, **kw):
+        return _scanner([80], retries=0, **kw)
+
+    def test_mostly_answering_host_is_not_treated_as_congested(self):
+        """~97% definitive (the measured RST-suppressing host) must NOT throttle."""
+        sc = self._sc()
+        for i in range(200):
+            healthy = sc._note_probe_outcome(definitive=(i % 32 != 0))   # ~97%
+        assert healthy is True
+
+    def test_collapsed_delivery_still_backs_off(self):
+        """A genuinely lossy path (verified separately with 60% netem loss) must
+        still trip the backoff — this is the behaviour worth keeping."""
+        sc = self._sc()
+        for _ in range(200):
+            healthy = sc._note_probe_outcome(definitive=False)
+        assert healthy is False
+
+    def test_no_opinion_before_the_sample_floor(self):
+        """Never throttle on a handful of early probes."""
+        sc = self._sc()
+        for _ in range(5):
+            assert sc._note_probe_outcome(definitive=False) is True
+
+    def test_window_is_bounded(self):
+        sc = self._sc()
+        for _ in range(5000):
+            sc._note_probe_outcome(definitive=True)
+        assert len(sc._probe_window) <= sc._probe_window_size
+
+    def test_recovery_after_a_bad_patch(self):
+        """Delivery returning must clear the loss condition — the ratchet that
+        made the long scan unrecoverable."""
+        sc = self._sc()
+        for _ in range(100):
+            sc._note_probe_outcome(definitive=False)
+        assert sc._note_probe_outcome(definitive=False) is False
+        for _ in range(300):
+            healthy = sc._note_probe_outcome(definitive=True)
+        assert healthy is True
+
+    def test_floor_is_configurable(self):
+        assert self._sc(delivery_floor=0.9).delivery_floor == 0.9
+
+    def test_floor_is_clamped(self):
+        assert self._sc(delivery_floor=5.0).delivery_floor == 1.0
+        assert self._sc(delivery_floor=-1.0).delivery_floor == 0.0
+
+    def test_window_resets_between_hosts(self):
+        """One quiet host must not throttle the next."""
+        sc = _scanner([80], retries=0)
+
+        async def _closed(target, port, est=None, min_timeout=None):
+            return sc._build(target, port, "closed", "connection_refused", "rst")
+        sc._attempt = _closed
+        for _ in range(100):
+            sc._note_probe_outcome(definitive=False)      # poison from "host A"
+        asyncio.run(asyncio.wait_for(sc.scan_target("127.0.0.1"), 30))
+        assert len(sc._probe_window) <= 1 + 1              # cleared, then this host
+
+
+# ── recovery after collapse (measured regression, 2026-09-05) ────────────────
+class TestCollapseRecovery:
+    """A collapsed window must be able to climb back within the scan's lifetime.
+
+    `ssthresh` is the MEMORY of the last known-good window; slow start uses it to
+    climb back exponentially. Letting repeated losses drag it to the floor
+    alongside cwnd destroyed that memory, so recovery became congestion-avoidance
+    all the way up — quadratic. Measured against a real host: after collapsing to
+    cwnd=1/ssthresh=1 it needed **2,400 successful probes** to regain a window of
+    80, i.e. 1.2 hours at the rate the collapsed scan was managing. The live
+    65,535-port sweep sat at ONE probe in flight for hours and never recovered.
+    """
+
+    def _collapsed(self, **kw):
+        c = AdaptiveRateController(init_window=80, max_window=80, **kw)
+        for _ in range(12):
+            c._on_loss()
+        return c
+
+    def test_ssthresh_keeps_a_slow_start_runway(self):
+        """The floor is tied to min_window (2x), NOT to max_window.
+
+        A max_window-derived floor would override ordinary halving for any
+        controller working below it and break textbook AIMD — the existing
+        state-machine tests caught exactly that. All this needs to do is keep a
+        RUNWAY above the cwnd floor so a recovered path climbs exponentially for
+        a while before the gentle ramp."""
+        c = self._collapsed(min_window=8)
+        assert c.ssthresh >= 16
+        assert c.cwnd < c.ssthresh, "must be in slow start, not congestion avoidance"
+
+    def test_window_never_fully_serialises(self):
+        """A window of 1 turns a 65,535-port sweep into a 12-hour crawl, and buys
+        no politeness: a rate-limiting host limits whether we run 1 probe or 8."""
+        assert self._collapsed(min_window=8).window >= 8
+
+    def test_recovery_to_usable_throughput_is_faster(self):
+        """Measured: 80 successes with the floors vs 198 without — and, more
+        importantly, the window STARTS at 8 rather than 1, so throughput is 8x
+        higher from the very first probe after a collapse."""
+        c = self._collapsed(min_window=8)
+        n = 0
+        while c.window < 20 and n < 10_000:
+            c._on_success(); n += 1
+        assert n <= 120, f"took {n} successes to regain a usable window"
+
+    def test_old_behaviour_was_slow(self):
+        """Documents the regression: without the floors, recovery is quadratic."""
+        c = self._collapsed(min_window=1, ssthresh_floor=1.0)
+        assert c.window == 1
+        n = 0
+        while c.window < 20 and n < 10_000:
+            c._on_success(); n += 1
+        assert n > 100, "the old path needed ~198 successes just to reach window 20"
+
+    def test_slow_start_is_used_below_ssthresh(self):
+        c = self._collapsed(min_window=8)
+        before = c.cwnd
+        c._on_success()
+        assert c.cwnd == before + 1, "below ssthresh must be slow start (+1)"
+
+    def test_backoff_is_still_meaningful(self):
+        """The floor must not neuter congestion control: 80 -> 8 is still 10x."""
+        c = self._collapsed(min_window=8)
+        assert c.window <= 8 and c.window < 80
+
+    def test_floor_scales_with_concurrency(self):
+        """port_scanner derives the floor from concurrency, so a small scan does
+        not get a floor larger than its own window."""
+        sc = _scanner([80], retries=0)
+        assert sc._concurrency // 10 <= max(1, sc._concurrency)

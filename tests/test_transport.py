@@ -54,6 +54,34 @@ class TestIdentity:
         assert t.agent_token == ""
         assert state_file.exists() is False
 
+    def test_clear_manager_binding_drops_pin_keeps_keypairs(self, tmp_path):
+        """Re-pointing to a different manager must forget the OLD manager's
+        pinned site-policy key (else the new manager's policy fails activation
+        with 'signing key changed' and the enroll loop spins forever), while
+        keeping the probe's own device keypairs so it re-enrolls as itself."""
+        state_file = tmp_path / "state.json"
+        t = Transport("http://127.0.0.1:8000", state_file=state_file)
+        t.update_state({
+            "agent_id": "a", "token": "tok",
+            "device_refresh_secret": "s", "credential_generation": 1,
+            "policy_signing_public_key": "OLD-MANAGER-KEY",
+            "site_policy": {"x": 1}, "site_id": "sid",
+            "manager_fingerprint": "http://13.127.147.205:18080",
+            "signing_identity_sk": "SK", "signing_identity_pk": "PK",
+            "identity_sk": "ISK", "identity_pk": "IPK",
+        })
+
+        t.clear_manager_binding()
+        s = t.load_state()
+
+        for gone in ("agent_id", "token", "policy_signing_public_key",
+                     "site_policy", "site_id", "device_refresh_secret",
+                     "credential_generation", "manager_fingerprint"):
+            assert gone not in s, f"{gone} should be cleared on manager re-point"
+        for kept in ("signing_identity_sk", "signing_identity_pk",
+                     "identity_sk", "identity_pk"):
+            assert s.get(kept), f"{kept} (probe's own key) must survive a re-point"
+
     def test_loads_cached_agent_identity_from_state(self, tmp_path):
         state_file = tmp_path / "state.json"
         state_file.write_text(json.dumps({
@@ -249,6 +277,35 @@ class TestDeviceEnrollment:
         with pytest.raises(DeviceAlreadyEnrolledError) as excinfo:
             transport.create_enrollment_request({"signing_public_key": "k"})
         assert "already enrolled" in str(excinfo.value)
+
+    def test_token_rotated_by_another_process_is_readopted(self, transport):
+        """The freshness check reads the STATE FILE but requests authenticate with
+        the IN-MEMORY token. When a second probe process sharing the same
+        state.json rotates the credential, this process's `access_expires_at`
+        check passes on the other process's word while it keeps sending its own
+        expired token — the manager answers 403 "Token expired" on every
+        reconnect, forever, and the probe never receives another job.
+        Adopt the file's token instead of trusting its expiry alone."""
+        import time
+
+        transport.agent_id = "agent-1"
+        transport.agent_token = "stale-token"          # what THIS process will send
+        transport._device_signing_private_key = b"x" * 32
+        transport.update_state({
+            "agent_id": "agent-1",
+            "token": "rotated-by-other-process",       # what the other process wrote
+            "device_refresh_secret": "refresh-secret-value",
+            "credential_generation": 1,
+            "access_expires_at": time.time() + 600,    # file says "fresh"
+        })
+
+        with patch.object(transport, "refresh_device_access") as refresh:
+            assert transport.ensure_device_access() is True
+            # The file already holds a good token — no network round-trip needed.
+            refresh.assert_not_called()
+
+        assert transport.agent_token == "rotated-by-other-process"
+        assert transport.auth_header["Authorization"] == "Bearer rotated-by-other-process"
 
     def test_legacy_token_is_not_forced_through_device_refresh(self, transport):
         transport.agent_id = "legacy-agent"

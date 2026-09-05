@@ -483,13 +483,33 @@ class AdaptiveRateController:
     """
 
     def __init__(self, *, init_window: int = 10, min_window: int = 1,
-                 max_window: int = 300, ssthresh: float | None = None):
+                 max_window: int = 300, ssthresh: float | None = None,
+                 ssthresh_floor: float | None = None):
         self.min_window = max(1, min_window)
         self.max_window = max(self.min_window, max_window)
         self.cwnd: float = float(min(max(init_window, self.min_window),
                                      self.max_window))
         self.ssthresh: float = float(ssthresh) if ssthresh is not None \
             else float(self.max_window)
+        # ssthresh is the MEMORY of the last known-good window: slow start uses it
+        # to climb back exponentially after a loss, then hands over to the gentle
+        # congestion-avoidance ramp. Letting repeated losses drag it to the floor
+        # alongside cwnd destroys that memory, so recovery becomes
+        # congestion-avoidance ALL the way up — which is quadratic.
+        #
+        # Measured 2026-09-05: after a collapse to cwnd=1/ssthresh=1 it took
+        # **2,400 successful probes** to climb back to a window of 80 — 1.2 hours
+        # at the rate the collapsed scan was achieving. The scan never recovered
+        # within its own lifetime, so a 65,535-port sweep sat at 1 probe in flight
+        # for hours. Giving ssthresh its own floor restores the fast path back.
+        # Tied to min_window, NOT to max_window: the goal is only to keep a
+        # slow-start RUNWAY above the cwnd floor, so a recovered path climbs
+        # exponentially for a while before the gentle ramp. A floor derived from
+        # max_window would override ordinary halving for any controller working
+        # below it and break the textbook AIMD the state machine is meant to be.
+        self.ssthresh_floor: float = float(
+            ssthresh_floor if ssthresh_floor is not None
+            else max(2.0, self.min_window * 2.0))
         self._in_flight = 0
         self._cond = asyncio.Condition()
 
@@ -506,7 +526,9 @@ class AdaptiveRateController:
         self.cwnd = min(self.cwnd, float(self.max_window))
 
     def _on_loss(self) -> None:
-        self.ssthresh = max(float(self.min_window), self.cwnd / 2.0)
+        # Halve, but never forget how far we once got: ssthresh keeps its own
+        # floor so slow start can bring cwnd back quickly when the path recovers.
+        self.ssthresh = max(self.ssthresh_floor, self.cwnd / 2.0)
         self.cwnd = max(float(self.min_window), self.cwnd / 2.0)
 
     async def acquire(self) -> None:

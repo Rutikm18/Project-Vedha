@@ -38,12 +38,21 @@ import time
 from pathlib import Path
 from urllib.parse import urlparse
 
+from agent.instance_lock import (
+    InstanceLockError,
+    acquire_instance_lock,
+)
 from agent.transport import (
+    DEVICE_REFRESH_OK,
+    DEVICE_REFRESH_REJECTED,
+    DEVICE_REFRESH_UNAVAILABLE,
     HEARTBEAT_LEASE_REVOKED,
     HEARTBEAT_OK,
     DeviceAlreadyEnrolledError,
+    EnrollmentRequestNotFound,
     Transport,
     TransportError,
+    manager_fingerprint,
 )
 
 VERSION = "2.0.0"
@@ -138,6 +147,17 @@ def _classify_connection_error(exc: Exception, url: str) -> tuple[str, str]:
     host = url.split("://", 1)[-1].split("/", 1)[0] if "://" in url else url
     s = str(exc).lower()
     tname = type(exc).__name__.lower()
+    # An HTTP status error means the manager ANSWERED and rejected the request —
+    # a server/API fault, never a network one. Classify it by its code so we
+    # never again call an HTTP 4xx/5xx a "connection error" (which sent the probe
+    # into a 12x retry against a manager that was replying all along).
+    _resp = getattr(exc, "response", None)
+    _code = getattr(_resp, "status_code", None)
+    if _code is not None:
+        return (f"manager returned HTTP {_code}",
+                f"The manager at {host} answered but rejected the request "
+                f"(HTTP {_code}). This is a manager-side/API fault, not the "
+                f"network — check the manager logs, not the firewall.")
     if "timed out" in s or "timeout" in tname:
         return ("connection timed out",
                 f"A firewall/security-group is likely DROPPING traffic to {host}. "
@@ -172,6 +192,60 @@ def _manager_reachable(transport) -> tuple[bool, str]:
     except Exception as exc:  # noqa: BLE001 — classify every transport failure
         reason, fix = _classify_connection_error(exc, getattr(transport, "_base_url", "?"))
         return False, f"{reason} — {fix}"
+
+
+def _detect_primary_ipv4() -> str | None:
+    """Best-effort primary IPv4 of this host — the address a scan sources from.
+    Uses a UDP socket to a public IP to read the routing decision; no packet is
+    actually sent, and it works on any interface (not just en0)."""
+    import socket
+    try:
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        try:
+            s.connect(("1.1.1.1", 80))
+            return s.getsockname()[0]
+        finally:
+            s.close()
+    except OSError:
+        return None
+
+
+def _preflight_scope_check(network_segments: list[str]) -> None:
+    """Auto-troubleshoot the single silent killer of job execution: a scan
+    ceiling that doesn't match the network this probe is actually on.
+
+    The manager only dispatches a job whose targets are inside the probe's
+    declared PROBE_NETWORK_SEGMENTS, and the probe re-enforces the same ceiling
+    locally. If that ceiling excludes the probe's own network, the probe connects
+    happily and then rejects (or is never offered) every job — the "connected but
+    nothing scans" failure. Warn loudly at startup instead of failing in silence.
+    Warnings only: the manager stays the authority, and an operator may
+    deliberately declare a remote range they route to.
+    """
+    if not network_segments:
+        say("⚠ PROBE_NETWORK_SEGMENTS is empty — the probe will REJECT every job.", 1)
+        say("  Set it to the CIDR(s) this probe can reach (e.g. its own /24).", 1)
+        return
+    ip = _detect_primary_ipv4()
+    if not ip:
+        return
+    try:
+        addr = ipaddress.ip_address(ip)
+    except ValueError:
+        return
+    for seg in network_segments:
+        try:
+            if addr in ipaddress.ip_network(seg, strict=False):
+                say(f"✓ Scan ceiling {network_segments} covers this host ({ip}).", 1)
+                return
+        except ValueError:
+            continue
+    suggested = f"{ip.rsplit('.', 1)[0]}.0/24"
+    say(f"⚠ This probe is on {ip}, but PROBE_NETWORK_SEGMENTS={network_segments} "
+        f"does not include it.", 1)
+    say(f"  Jobs targeting this network will be rejected as out-of-ceiling. If you "
+        f"mean to scan the local network, set PROBE_NETWORK_SEGMENTS={suggested} "
+        f"(or the exact range you intend to scan) and restart.", 1)
 
 
 def _wait_for_manager(transport, *, attempts: int = 6, base_delay: float = 5.0) -> None:
@@ -303,6 +377,35 @@ def main() -> None:
     JOB_LIMIT = 1
     VERIFY_TLS = os.environ.get("VERIFY_TLS", "true").lower() not in ("false", "0", "no")
     STATE_FILE = Path(os.environ.get("STATE_FILE", "/var/lib/vedha-agent/state.json"))
+
+    # ── One probe per state file ──────────────────────────────────────────────
+    # STATE_FILE holds the probe's IDENTITY. A second process sharing it is not a
+    # second probe, it is a second impersonation of the same one: both heartbeat
+    # for one agent_id, both claim jobs, and — the part that actually corrupts
+    # results — both scan, doubling the probe rate the target sees from a single
+    # source. Hosts that rate-limit RSTs then suppress replies, and suppressed
+    # replies are reported as `filtered`. Two honest probes manufacture false
+    # negatives in each other's scans. Refuse early and say exactly how to fix it.
+    # Held for the process lifetime; the kernel releases it if we die.
+    try:
+        _INSTANCE_LOCK = acquire_instance_lock(STATE_FILE)
+    except InstanceLockError as exc:
+        say("")
+        say("=" * 62)
+        say("  ANOTHER PROBE IS ALREADY RUNNING")
+        say("=" * 62)
+        say(f"  {exc}")
+        say("")
+        say("  Two probes sharing one state file share ONE identity. They")
+        say("  corrupt each other's job leases and, because both scan, they")
+        say("  double the load on every target — which makes hosts suppress")
+        say("  replies and turns real 'closed' ports into false 'filtered'.")
+        say("")
+        say("  Either stop the other probe, or give this one its own identity:")
+        say(f"    STATE_FILE=~/vedha-agent/state-2.json {sys.argv[0] if sys.argv else 'probe'}")
+        say("=" * 62)
+        raise SystemExit(1) from exc
+
     SPOOL_DIR = Path(os.environ.get("RESULT_SPOOL_DIR", "/var/lib/vedha-agent/spool"))
     SPOOL_MAX_BYTES = _bounded_env_int(
         "RESULT_SPOOL_MAX_BYTES", 512 << 20, 1 << 20, 16 << 30,
@@ -336,6 +439,12 @@ def main() -> None:
             "(MITM-exposed). Trusted links only; set PROBE_CA_BUNDLE for private PKI.")
     if CLIENT_CERT:
         say(f"mTLS enabled — presenting client certificate {CLIENT_CERT}.")
+
+    # ── Auto-troubleshoot: catch the silent job-blockers before connecting ────
+    # Surfaces a scan-ceiling/network mismatch (the #1 "connected but never
+    # scans" cause) at startup instead of leaving it to be discovered by a job
+    # that quietly never runs. Warnings only — never blocks startup.
+    _preflight_scope_check(NETWORK_SEGMENTS)
 
     # ── Step 1: Startup gauntlet ─────────────────────────────────────────────
     # One function: HW bind → license → anti-debug.  Fails fast with clear,
@@ -632,6 +741,9 @@ def _run_polled_job_with_heartbeats(
 
 WS_RECONNECT_BACKOFF_MIN = 1.0
 WS_RECONNECT_BACKOFF_MAX = 60.0
+# Consecutive WS auth rejections (403/401) tolerated — each triggers a forced
+# device-token refresh — before falling back to HTTP poll / re-registration.
+WS_AUTH_FAIL_LIMIT = 3
 
 
 async def _run_ws_push_loop(
@@ -651,6 +763,7 @@ async def _run_ws_push_loop(
     import websockets
 
     backoff = WS_RECONNECT_BACKOFF_MIN
+    auth_failures = 0
 
     while True:
         try:
@@ -717,6 +830,10 @@ async def _run_ws_push_loop(
                 ),
             )
 
+            # Auth succeeded (hello_ok received above) — clear the auth-failure
+            # streak so a later expiry gets its own full refresh budget.
+            auth_failures = 0
+
             # ── Main receive loop ────────────────────────────────────────
             async for raw in ws:
                 try:
@@ -769,6 +886,30 @@ async def _run_ws_push_loop(
             say(f"WebSocket auth error: {exc} — falling back to HTTP poll.")
             return False
         except Exception as exc:
+            # A 403/401 on the WS upgrade means the manager REJECTED our token —
+            # usually time-valid locally but stale to the manager (superseded
+            # credential generation, revoked lease, or a redeployed manager).
+            # Reconnecting with the same token loops on 403 forever; force a fresh
+            # token and retry, and if forced refreshes keep failing the credential
+            # is genuinely dead — fall back so the outer loop can re-register.
+            code = getattr(getattr(exc, "response", None), "status_code", None)
+            msg = str(exc)
+            if code in (401, 403) or " 403" in msg or " 401" in msg:
+                auth_failures += 1
+                say(f"WebSocket rejected (auth) — refreshing device token and "
+                    f"retrying [{auth_failures}/{WS_AUTH_FAIL_LIMIT}].", 1)
+                refreshed = False
+                try:
+                    refreshed = await asyncio.to_thread(
+                        transport.ensure_device_access, force=True)
+                except Exception as rexc:  # noqa: BLE001
+                    _dbg(f"forced device-access refresh raised: {rexc!r}")
+                if not refreshed or auth_failures >= WS_AUTH_FAIL_LIMIT:
+                    say("WebSocket auth keeps failing — the device credential looks "
+                        "stale; falling back to re-registration.", 1)
+                    return False
+                # Retry immediately with the fresh token — don't sit on the backoff.
+                continue
             say(f"WebSocket error: {type(exc).__name__}: {exc} — reconnecting in {backoff:.0f}s...", 1)
 
         # Exponential backoff
@@ -1142,8 +1283,14 @@ def _enroll_device(
     signing_public_key: str,
     encryption_public_key: str,
     probe_name: str,
+    _recreate_budget: int = 3,
 ) -> dict:
-    """Request UI approval, poll, prove key possession, and activate."""
+    """Request UI approval, poll, prove key possession, and activate.
+
+    `_recreate_budget` bounds how many times a stored enrollment request that the
+    manager 404s (spent/expired/purged) may be discarded and re-created before we
+    give up — so a manager that keeps losing requests fails loudly instead of
+    looping, while an ordinary stale request self-heals on the next attempt."""
     from agent.device_identity import sign_b64
     from agent.engine import CAPABILITIES
 
@@ -1289,10 +1436,60 @@ def _enroll_device(
                 transport.update_state(remove=("enrollment_request_id", "enrollment_device_secret"))
                 raise TransportError(f"Enrollment {state_name}: {response.get('reason', '')}".strip())
             raise RuntimeError(f"unexpected enrollment state: {state_name}")
+        except EnrollmentRequestNotFound as exc:
+            # The request we were polling is GONE on the manager (spent, expired,
+            # purged, or the manager's enrollment store was reset). This is the
+            # bug that surfaced as "connection error … retrying [n/12]" then a
+            # false "Manager unreachable": a 404 is authoritative, so discard the
+            # dead request and create a fresh one instead of retrying the id.
+            transport.update_state(remove=("enrollment_request_id", "enrollment_device_secret"))
+            if _recreate_budget <= 0:
+                say("")
+                say("═" * 58)
+                say("  ENROLLMENT FAILED — manager keeps losing the request")
+                say("═" * 58)
+                say("  The manager accepted enrollment requests but then reported")
+                say("  them missing (HTTP 404) repeatedly. This points at the")
+                say("  manager side, not the network:")
+                say("   • its probe-enrollment service / Redis was reset mid-flight, or")
+                say("   • requests are evicted faster than approval completes, or")
+                say("   • it is load-balanced across instances with a non-shared store.")
+                say("═" * 58)
+                raise SystemExit(2) from exc
+            say("Stored enrollment request no longer exists on the manager — "
+                f"starting a fresh enrollment ({_recreate_budget} attempt(s) left).")
+            return _enroll_device(
+                transport,
+                signing_private_key=signing_private_key,
+                signing_public_key=signing_public_key,
+                encryption_public_key=encryption_public_key,
+                probe_name=probe_name,
+                _recreate_budget=_recreate_budget - 1,
+            )
         except TransportError:
             raise
         except SystemExit:
             raise
+        except ValueError as exc:
+            # The manager ANSWERED (poll/activate returned 200) but its response
+            # failed a verification check — almost always the site-policy signing
+            # key ("...changed outside an approved rotation"). This is NOT a
+            # network fault, so retrying it as a "connection error" (the old bug)
+            # just spun forever at [1/12]. A deliberate manager re-point clears
+            # the pin up front (clear_manager_binding); reaching here means the
+            # pin is still set and mismatched — security-relevant, so stop loud.
+            say("")
+            say("═" * 58)
+            say("  ENROLLMENT REJECTED — site policy verification failed")
+            say("═" * 58)
+            say(f"  Why : {exc}")
+            say("  If you deliberately re-pointed this probe to a DIFFERENT")
+            say("  manager, clear its identity and re-enroll:")
+            say("     mv ~/vedha-agent/state.json ~/vedha-agent/state.json.bak")
+            say("  Otherwise the manager's policy-signing key changed")
+            say("  unexpectedly — investigate before trusting it.")
+            say("═" * 58)
+            raise SystemExit(1) from exc
         except Exception as exc:
             net_fail_streak += 1
             reason, fix = _classify_connection_error(exc, transport._base_url)
@@ -1339,6 +1536,10 @@ def _obtain_identity(
     # credentials on the probe.
     if transport.is_authenticated():
         _refresh_tries = 0
+        # Transient-failure budget, kept separate from _refresh_tries: a manager
+        # that cannot ANSWER is a different situation from one that answers "no".
+        _unavail_tries = 0
+        _UNAVAIL_LIMIT = _bounded_env_int("PROBE_CREDENTIAL_RETRY_LIMIT", 5, 1, 50)
         while True:
             try:
                 state = transport.load_state()
@@ -1362,11 +1563,76 @@ def _obtain_identity(
                 _dbg(f"refresh_registration → {refreshed!r} (agent_id={transport.agent_id})")
             except TransportError as exc:
                 _dbg(f"refresh_registration raised: {exc}")
-                if transport.refresh_device_access(signing_sk):
+                outcome = transport.refresh_device_access_ex(signing_sk)
+                if outcome == DEVICE_REFRESH_OK:
                     say("Refreshed short-lived device access token.", 1)
                     continue
+
+                # WHOSE credential is this? Device credentials are issued BY a
+                # manager and are meaningless to any other one, so before calling
+                # anything a revocation we check we are even talking to the
+                # issuer. Pointing a probe at a second manager used to print
+                # "revoked ... stopping for administrator review" and exit — an
+                # alarming, wrong diagnosis for an ordinary re-point.
+                issuer = state.get("manager_fingerprint")
+                current = manager_fingerprint(transport._base_url)
+                if issuer and issuer != current:
+                    say(f"These credentials were issued by {issuer}, but this "
+                        f"probe is pointed at {current}.", 1)
+                    say("Re-enrolling with the new manager (the old credential "
+                        "is untouched and still valid there).", 1)
+                    # FULL unbind, not just agent_id/token: the old manager's
+                    # pinned site-policy key would otherwise reject the new
+                    # manager's policy at activation and loop forever.
+                    transport.clear_manager_binding()
+                    break
+
+                if outcome == DEVICE_REFRESH_UNAVAILABLE:
+                    # We never got a VERDICT — a network failure, a 5xx, or the
+                    # manager's 503 "replay protection unavailable". Treating
+                    # that as revocation meant a brief manager-side outage could
+                    # permanently stop the whole fleet.
+                    #
+                    # Retry, then give up WITHOUT clearing state: if the manager
+                    # cannot answer, re-enrolling cannot work either, and
+                    # discarding a valid device credential during an outage
+                    # turns a five-minute blip into a manual re-enrollment.
+                    # Exit 2 (not 1) so callers can tell "unreachable" from
+                    # "revoked".
+                    _unavail_tries += 1
+                    if _unavail_tries >= _UNAVAIL_LIMIT:
+                        say(f"Manager could not answer the credential refresh after "
+                            f"{_unavail_tries} attempts.")
+                        say("This is NOT a revocation — the credential is kept. "
+                            "Check the manager, then re-run.", 1)
+                        raise SystemExit(2)
+                    say(f"Credential refresh unavailable (temporary) — retrying "
+                        f"({_unavail_tries}/{_UNAVAIL_LIMIT}).", 1)
+                    time.sleep(min(30, 5 * _unavail_tries))
+                    continue
+
                 if state.get("device_refresh_secret"):
-                    say("Device credential was revoked, expired, or disabled; stopping for administrator review.")
+                    if not issuer:
+                        # LEGACY state, enrolled before credentials recorded their
+                        # issuer. We genuinely cannot tell "revoked by this
+                        # manager" from "belongs to a different one", so say that
+                        # instead of asserting the alarming reading — and give the
+                        # operator the exact way out. State is kept, so a probe
+                        # pointed back at its real manager still works.
+                        say("Cached device credential was refused by "
+                            f"{current}, and it does not record which manager "
+                            "issued it (enrolled before that was tracked).")
+                        say("If this is a DIFFERENT manager, re-enroll against it "
+                            "with a separate state file, e.g.:", 1)
+                        say("STATE_FILE=~/vedha-agent/state-<manager>.json "
+                            "./install.sh <manager> --enroll", 2)
+                        say("If this IS the issuing manager, the credential was "
+                            "revoked or disabled — see an administrator.", 1)
+                        raise SystemExit(1)
+                    # Same manager, authoritative rejection: genuinely revoked,
+                    # disabled, or superseded by a newer credential generation.
+                    say("Device credential was revoked, expired, or disabled by "
+                        f"{current}; stopping for administrator review.")
                     raise SystemExit(1)
                 say("Cached agent token was rejected — identity requires re-enrollment.")
                 transport.clear_state()
@@ -1398,6 +1664,11 @@ def _obtain_identity(
 
     reg_fail_streak = 0
     REG_FAIL_LIMIT = _bounded_env_int("PROBE_REGISTER_NET_FAIL_LIMIT", 12, 3, 100)
+    # A configured PAT/token (typically from probe.env) that the manager rejects
+    # should not dead-end when operator email/password are ALSO available: drop
+    # the dead token and retry via login. Guarded to run once so a genuinely bad
+    # password cannot loop.
+    pat_fallback_done = False
     while True:
         try:
             if not operator_token:
@@ -1452,11 +1723,25 @@ def _obtain_identity(
 
         except TransportError:
             # A stale/invalid PAT — or a Manager that was re-created — must not
-            # dead-end the probe. When the only credential was a token (no
-            # operator login, no bootstrap key), fall back to DEVICE ENROLLMENT:
-            # the probe's own keypair is its id, and the Manager issues a token
-            # (auto-approved when PROBE_AUTO_ENROLL is on, else a pairing code).
-            # This is what makes a bare `install.sh <manager-ip>` self-heal.
+            # dead-end the probe. Prefer self-healing, in this order:
+            #
+            #   1. A configured PAT/OPERATOR_TOKEN was rejected but we ALSO have
+            #      operator email/password: drop the dead token and retry via
+            #      login. This is the common "stale probe.env PROBE_PAT" case —
+            #      a token minted against a manager that was since recreated,
+            #      expired, or revoked. Without this the probe stopped with a
+            #      misleading "check credentials" even though the password worked.
+            if operator_token and email and password and not pat_fallback_done:
+                pat_fallback_done = True
+                say("Configured PROBE_PAT/OPERATOR_TOKEN was rejected — "
+                    "falling back to operator sign-in.")
+                operator_token = ""
+                continue
+            #   2. A token was the ONLY credential (no login, no bootstrap key):
+            #      fall back to DEVICE ENROLLMENT — the probe's own keypair is its
+            #      id, and the Manager issues a token (auto-approved when
+            #      PROBE_AUTO_ENROLL is on, else a pairing code). This is what
+            #      makes a bare `install.sh <manager-ip>` self-heal.
             if operator_token and not (email and password) and not BOOTSTRAP_KEY:
                 say("Saved credential rejected — falling back to device enrollment…")
                 data = _enroll_device(
@@ -1468,7 +1753,16 @@ def _obtain_identity(
                 )
                 return data["agent_id"], data["access_token"], True, \
                        identity_sk, identity_pk, public_key_b64
-            say("Manager rejected sign-in — check credentials.")
+            #   3. Nothing else to try — say WHICH credential failed so the fix is
+            #      obvious (re-mint the PAT vs check the password), not a vague
+            #      "check credentials".
+            if operator_token:
+                say("Manager rejected the configured PROBE_PAT/OPERATOR_TOKEN — it is "
+                    "expired, revoked, or was minted against a different manager.")
+                say("Re-mint one with `make probe-pat`, or clear PROBE_PAT to use "
+                    "OPERATOR_EMAIL/OPERATOR_PASSWORD.", 1)
+            else:
+                say("Manager rejected sign-in — check OPERATOR_EMAIL / OPERATOR_PASSWORD.")
             raise SystemExit(1)
         except SystemExit:
             raise

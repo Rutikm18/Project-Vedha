@@ -70,7 +70,7 @@ import random
 import socket
 import struct
 import time
-from collections import Counter
+from collections import Counter, deque
 from dataclasses import dataclass, field
 
 from .scanner_base import (
@@ -344,7 +344,8 @@ class PortScanner(BaseScanner):
                  retries: int = 1, emit_summary: bool = True,
                  adaptive_timeout: bool = True, source_port: int | None = None,
                  randomize: bool = False, scan_delay: float = 0.0,
-                 congestion: bool = True, reprobe: bool = True,
+                 congestion: bool = True, delivery_floor: float = 0.35,
+                 reprobe: bool = True,
                  reprobe_rate: float = 40.0, reprobe_concurrency: int = 10,
                  reprobe_retries: int = 3,
                  scan_meta: dict | None = None, **kwargs):
@@ -385,6 +386,16 @@ class PortScanner(BaseScanner):
         # AIMD reads that loss and backs off, which RAISES recall. It starts at
         # full concurrency, so a healthy LAN scan is not slowed down.
         self.congestion = congestion
+        # Fraction of recent probes that must still get a DEFINITIVE answer for
+        # the path to count as healthy. Above it, silence is read as host policy
+        # (do not throttle); below it, delivery has genuinely collapsed and AIMD
+        # backs off. 0.35 sits well clear of both measured regimes: an
+        # RST-suppressing Windows host still answers ~97% of probes definitively,
+        # while a path under 60% induced packet loss falls far below it.
+        self.delivery_floor = max(0.0, min(1.0, delivery_floor))
+        self._probe_window: deque[bool] = deque()
+        self._probe_window_size = 256
+        self._probe_window_min = 32
         # Cleanup pass over ports still ambiguous after the main sweep.
         #
         # WHY (measured, 192.168.1.65 over LAN, 2026-09-03): a fast sweep
@@ -552,18 +563,52 @@ class PortScanner(BaseScanner):
             return result
         finally:
             if cwnd is not None:
-                # Silence that survived every retry is the loss signal. Any
-                # definitive answer (open / closed / unreachable) proves the path
-                # is carrying our packets, so it counts as a success.
-                lost = (result is None
-                        or (result.status == "filtered"
-                            and (result.data or {}).get("reason") == "no_response"))
+                # A definitive answer proves the path carried our packets.
+                # Silence is AMBIGUOUS: it may be congestion, or it may simply be
+                # this host's RST policy. Only treat it as congestion when recent
+                # delivery has actually fallen off (see _note_probe_outcome) —
+                # otherwise a host that suppresses RSTs throttles us to a crawl.
+                definitive = not (result is None
+                                  or (result.status == "filtered"
+                                      and (result.data or {}).get("reason")
+                                      == "no_response"))
+                lost = not self._note_probe_outcome(definitive)
                 try:
                     await (cwnd.report_loss() if lost else cwnd.report_success())
                 except asyncio.CancelledError:
                     raise
                 except Exception:      # never let telemetry break a scan
                     LOG.debug("congestion window report failed", exc_info=True)
+
+    def _note_probe_outcome(self, definitive: bool) -> bool:
+        """Record one probe and answer: is the PATH still delivering?
+
+        WHY THIS EXISTS (measured regression, 2026-09-05). The congestion window
+        originally treated every silent port as a loss signal. On a host that
+        rate-limits its RSTs — which is common, and which this codebase already
+        documents — a large, roughly CONSTANT fraction of ports go silent as a
+        matter of host POLICY, not path congestion. Because multiplicative
+        decrease (/2) far outpaces additive increase (+1/cwnd), that constant
+        background of "loss" ratchets the window to its floor and it never
+        recovers. Measured against a real Windows host: a bounded 1121-port scan
+        ran at 13.3 ports/sec, while the SAME envelope over the full 65,535-port
+        range collapsed to 0.62 ports/sec — a 24-hour scan.
+
+        Congestion control must react to a CHANGE in delivery, not to a steady
+        rate of non-answers. So we keep a rolling window of recent outcomes and
+        only call it loss when definitive answers (SYN-ACK / RST / unreachable)
+        genuinely dry up. A host that keeps answering most probes is delivering,
+        whatever its RST policy; a genuinely lossy path stops answering at all
+        and still trips the backoff (verified with 60% netem loss).
+        """
+        self._probe_window.append(definitive)
+        if len(self._probe_window) > self._probe_window_size:
+            self._probe_window.popleft()
+        # Below the sample floor we have no opinion yet — never throttle on noise.
+        if len(self._probe_window) < self._probe_window_min:
+            return True
+        delivered = sum(self._probe_window) / len(self._probe_window)
+        return delivered >= self.delivery_floor
 
     @staticmethod
     def _is_ambiguous(result: ScanResult) -> bool:
@@ -626,11 +671,20 @@ class PortScanner(BaseScanner):
         # per host: loss is a property of the path to THAT target. It starts at
         # full concurrency (so a healthy scan runs at today's speed) and only
         # shrinks if this host starts swallowing probes.
+        # Delivery history is a property of the path to THIS host, exactly like
+        # the congestion window and the RTT estimator. Carrying it across targets
+        # would let one quiet host throttle the next.
+        self._probe_window.clear()
         cwnd = None
         if self.congestion:
             cwnd = AdaptiveRateController(
                 init_window=max(1, self._concurrency),
-                min_window=1,
+                # Never serialise completely. A window of 1 turns a 65,535-port
+                # sweep into a 12-hour crawl, and the extra politeness buys
+                # nothing: a host that is rate-limiting will rate-limit whether
+                # we have 1 probe in flight or 8. Backing off 80 -> 8 is still a
+                # 10x reduction, which is a real and sufficient concession.
+                min_window=max(1, self._concurrency // 10),
                 max_window=max(1, self._concurrency),
             )
         queue: asyncio.Queue[int] = asyncio.Queue()
