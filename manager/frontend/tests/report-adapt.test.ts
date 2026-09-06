@@ -63,3 +63,18 @@ test("toRawFinding: preserves required fields for assess()", () => {
   assert.equal(r.exploitValidated, true);
   assert.equal(r.detectionMethod, "exploit");
 });
+
+test("toRawFinding: prefers backend detectionMethod over derivation", () => {
+  // No local signals → derivation is undefined; the backend value must win.
+  assert.equal(toRawFinding(U({ detectionMethod: "version" })).detectionMethod, "version");
+});
+
+test("toRawFinding: passes through backend verification block and KEV date", () => {
+  const r = toRawFinding(U({ verification: { expected: "no longer offered" }, kevDateAdded: "2024-01-15" }));
+  assert.equal(r.verification?.expected, "no longer offered");
+  assert.equal(r.kevAddedAt, "2024-01-15");
+});
+
+test("toRawFinding: prefers backend internetReachable", () => {
+  assert.equal(toRawFinding(U({ internetReachable: true })).internetReachable, true);
+});

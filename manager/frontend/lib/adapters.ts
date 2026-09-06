@@ -164,7 +164,7 @@ export function toUiFinding(api: any): any {
     epssRecorded: api.epss_score != null,
     kevListed: api.kev_listed ?? false,
     kevStatusRecorded: api.kev_listed != null,
-    kevDateAdded: api.kev_date_added ?? undefined,
+    kevDateAdded: api.kev_added_at ?? api.kev_date_added ?? undefined,
     exploitMaturity: api.exploit_maturity ?? "THEORETICAL",
     exploitMaturityRecorded: api.exploit_maturity != null,
     pocAvailable: api.poc_available ?? false,
@@ -188,6 +188,11 @@ export function toUiFinding(api: any): any {
     verificationState: api.verification_state ?? null,
     verificationConfidence: api.verification_confidence ?? null,
     verificationRationale: api.verification_rationale ?? null,
+    // ── Phase 3 report enrichment (backend-computed; the report adapter prefers
+    //    these over its own client-side derivations). ──
+    detectionMethod: api.detection_method ?? undefined,
+    verification: api.verification ?? undefined,
+    internetReachable: api.internet_reachable ?? undefined,
     needsReview: api.needs_review ?? false,
     riskRank: api.risk_rank ?? null,
     resolutionMethod: api.resolution_method ?? null,

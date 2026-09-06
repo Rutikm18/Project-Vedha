@@ -55,8 +55,12 @@ export function toRawFinding(f: any): RawFinding {
     epss: f?.epssRecorded && typeof f.epssScore === "number" ? f.epssScore : undefined,
     epssPercentile: f?.epssPercentile || undefined,
     assets: toReportAssets(f),
-    detectionMethod: deriveDetectionMethod(f),
-    internetReachable: deriveInternetReachable(f),
+    // Prefer the backend's authoritative values (Phase 3); fall back to the
+    // client-side derivation when the API hasn't provided them.
+    detectionMethod: f?.detectionMethod ?? deriveDetectionMethod(f),
+    internetReachable: f?.internetReachable ?? deriveInternetReachable(f),
+    verification: f?.verification ?? undefined,
+    kevAddedAt: f?.kevDateAdded ?? undefined,
     exploitValidated: Boolean(f?.exploitValidated),
     activelyExploited: Boolean(f?.activelyExploited),
     detectionCoverage: f?.detectionCoverage ?? "",
