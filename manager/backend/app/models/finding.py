@@ -46,6 +46,12 @@ class Finding(Base, TimestampMixin):
     evidence: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
     remediation: Mapped[str | None] = mapped_column(Text(), nullable=True)
 
+    # Persisted enrichment overrides — AI-generated prose or an analyst's manual
+    # edits that win, field-by-field, over the deterministic finding_content KB
+    # (impact / business_impact / technical_details). Null = pure KB, the common
+    # case. The KB is always the floor; this column can only raise the ceiling.
+    content_overrides: Mapped[dict | None] = mapped_column(JSONB, nullable=True)
+
     # ── Temporal / provenance (detection-run time series) ──────────────────────
     # first_seen: when detection FIRST produced this finding (stable across runs).
     # last_seen:  the most recent run that reaffirmed it (advances each run).

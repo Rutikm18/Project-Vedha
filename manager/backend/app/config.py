@@ -49,9 +49,9 @@ class Settings(BaseSettings):
 
     # Manager-owned AI runtime. The dashboard never receives provider credentials
     # and never calls a model directly. Cloud-only by default: an empty provider
-    # auto-detects a configured cloud key (openai → anthropic → openrouter) and
-    # fails closed if none is set. "ollama" is an explicit local-dev opt-in and is
-    # never selected automatically or used as an implicit fallback.
+    # auto-detects a configured cloud key (openai → anthropic → gemini → openrouter)
+    # and fails closed if none is set. "ollama" is an explicit local-dev opt-in and
+    # is never selected automatically or used as an implicit fallback.
     llm_provider: str = ""
     llm_request_timeout_seconds: float = 180.0
     ollama_base_url: str = "http://host.docker.internal:11434"
@@ -68,6 +68,13 @@ class Settings(BaseSettings):
     openai_api_key: str = ""
     openai_model: str = "gpt-4o-mini"
     openai_base_url: str = "https://api.openai.com/v1"
+    # Google Gemini — server-side cloud provider. Uses the Generative Language
+    # `generateContent` API (NOT OpenAI-compatible), so it has its own adapter.
+    # Get a key at aistudio.google.com/apikey (standard keys look like `AIza...`).
+    # Set LLM_PROVIDER=gemini to make it the default; otherwise it is selectable.
+    gemini_api_key: str = ""
+    gemini_model: str = "gemini-2.0-flash"
+    gemini_base_url: str = "https://generativelanguage.googleapis.com/v1beta"
     llm_max_tokens: int = 4096
     # Reasoning depth = token spend. Report writing is straightforward generation, so
     # "low" minimizes thinking-token cost on thinking-capable models (Sonnet 4.6,

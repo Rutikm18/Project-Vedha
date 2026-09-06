@@ -19,6 +19,30 @@ def _is_local_ollama_model(model: str) -> bool:
     return not model.lower().endswith(":cloud")
 
 
+def _usable_key(key: str | None) -> bool:
+    """Is an API key actually usable — not just present?
+
+    A key must be non-empty after trimming AND ASCII-encodable. A non-ASCII value
+    (e.g. a stray '₹' placeholder someone typed into .env) is worse than a missing
+    key: written into an ``Authorization`` header it raises ``UnicodeEncodeError``
+    deep in the transport, which surfaces to the operator as an opaque
+    "provider response was unavailable" 502. Treating such a key as UNCONFIGURED
+    keeps it out of the auto-detect and fallback chains, so a broken free-tier key
+    can never mask the real error from the provider the operator actually meant to
+    use. This is the single guard that turns a cryptic 502 into an honest 503.
+    """
+    if not key:
+        return False
+    trimmed = key.strip()
+    if not trimmed:
+        return False
+    try:
+        trimmed.encode("ascii")
+    except UnicodeEncodeError:
+        return False
+    return True
+
+
 class AiRuntimeError(RuntimeError):
     def __init__(self, message: str, status_code: int = 502):
         super().__init__(message)
@@ -124,11 +148,13 @@ class ManagerLlmService:
 
     def _auto_cloud_provider(self) -> str | None:
         """First configured cloud provider, or None. Cloud-only: never Ollama."""
-        if self.settings.openai_api_key:
+        if _usable_key(self.settings.openai_api_key):
             return "openai"
-        if self.settings.anthropic_api_key:
+        if _usable_key(self.settings.anthropic_api_key):
             return "anthropic"
-        if self.settings.openrouter_api_key:
+        if _usable_key(self.settings.gemini_api_key):
+            return "gemini"
+        if _usable_key(self.settings.openrouter_api_key):
             return "openrouter"
         return None
 
@@ -136,12 +162,12 @@ class ManagerLlmService:
         provider = self.settings.llm_provider.strip().lower()
         # Empty/"auto"/unknown → resolve a configured cloud provider. Ollama is
         # only ever used when an operator sets it explicitly (local dev).
-        if provider not in {"ollama", "openrouter", "anthropic", "openai"}:
+        if provider not in {"ollama", "openrouter", "anthropic", "openai", "gemini"}:
             provider = self._auto_cloud_provider()
             if provider is None:
                 raise AiRuntimeError(
                     "No cloud AI provider is configured. Set OPENAI_API_KEY, "
-                    "ANTHROPIC_API_KEY, or OPENROUTER_API_KEY on the Manager.",
+                    "ANTHROPIC_API_KEY, GEMINI_API_KEY, or OPENROUTER_API_KEY on the Manager.",
                     503,
                 )
         if provider == "openrouter":
@@ -150,12 +176,14 @@ class ManagerLlmService:
             return Runtime("anthropic", self.settings.llm_model, "cloud")
         if provider == "openai":
             return Runtime("openai", self.settings.openai_model, "cloud")
+        if provider == "gemini":
+            return Runtime("gemini", self.settings.gemini_model, "cloud")
         return Runtime("ollama", self.settings.ollama_model, "local")
 
     def _runtime(self, provider: str, model: str | None) -> Runtime:
         if provider == "openrouter":
-            if not self.settings.openrouter_api_key:
-                raise AiRuntimeError("OpenRouter is not configured in Manager", 503)
+            if not _usable_key(self.settings.openrouter_api_key):
+                raise AiRuntimeError("OpenRouter is not configured in Manager (missing or invalid API key)", 503)
             selected = model or self.settings.openrouter_model
             allowed = {"openrouter/free", self.settings.openrouter_model}
             if selected not in allowed:
@@ -165,8 +193,8 @@ class ManagerLlmService:
                 )
             return Runtime("openrouter", selected, "cloud")
         if provider == "anthropic":
-            if not self.settings.anthropic_api_key:
-                raise AiRuntimeError("Anthropic is not configured in Manager", 503)
+            if not _usable_key(self.settings.anthropic_api_key):
+                raise AiRuntimeError("Anthropic is not configured in Manager (missing or invalid API key)", 503)
             selected = model or self.settings.llm_model
             if selected != self.settings.llm_model:
                 raise AiRuntimeError(
@@ -175,8 +203,8 @@ class ManagerLlmService:
                 )
             return Runtime("anthropic", selected, "cloud")
         if provider == "openai":
-            if not self.settings.openai_api_key:
-                raise AiRuntimeError("OpenAI is not configured in Manager", 503)
+            if not _usable_key(self.settings.openai_api_key):
+                raise AiRuntimeError("OpenAI is not configured in Manager (missing or invalid API key)", 503)
             selected = model or self.settings.openai_model
             if selected != self.settings.openai_model:
                 raise AiRuntimeError(
@@ -184,6 +212,16 @@ class ManagerLlmService:
                     403,
                 )
             return Runtime("openai", selected, "cloud")
+        if provider == "gemini":
+            if not _usable_key(self.settings.gemini_api_key):
+                raise AiRuntimeError("Gemini is not configured in Manager (missing or invalid API key)", 503)
+            selected = model or self.settings.gemini_model
+            if selected != self.settings.gemini_model:
+                raise AiRuntimeError(
+                    "Gemini model is not enabled by the Manager deployment",
+                    403,
+                )
+            return Runtime("gemini", selected, "cloud")
         selected = model or self.settings.ollama_model
         if not _is_local_ollama_model(selected):
             raise AiRuntimeError(
@@ -228,29 +266,38 @@ class ManagerLlmService:
             AiProviderStatus(
                 id="openrouter",
                 label="OpenRouter",
-                configured=bool(self.settings.openrouter_api_key),
+                configured=_usable_key(self.settings.openrouter_api_key),
                 privacy="cloud",
                 default_model=self.settings.openrouter_model,
                 models=list(dict.fromkeys(["openrouter/free", self.settings.openrouter_model])),
-                reason=None if self.settings.openrouter_api_key else "OPENROUTER_API_KEY is not configured in Manager",
+                reason=None if _usable_key(self.settings.openrouter_api_key) else "OPENROUTER_API_KEY is missing or invalid in Manager",
             ),
             AiProviderStatus(
                 id="anthropic",
                 label="Anthropic",
-                configured=bool(self.settings.anthropic_api_key),
+                configured=_usable_key(self.settings.anthropic_api_key),
                 privacy="cloud",
                 default_model=self.settings.llm_model,
                 models=[self.settings.llm_model],
-                reason=None if self.settings.anthropic_api_key else "ANTHROPIC_API_KEY is not configured in Manager",
+                reason=None if _usable_key(self.settings.anthropic_api_key) else "ANTHROPIC_API_KEY is missing or invalid in Manager",
             ),
             AiProviderStatus(
                 id="openai",
                 label="OpenAI",
-                configured=bool(self.settings.openai_api_key),
+                configured=_usable_key(self.settings.openai_api_key),
                 privacy="cloud",
                 default_model=self.settings.openai_model,
                 models=[self.settings.openai_model],
-                reason=None if self.settings.openai_api_key else "OPENAI_API_KEY is not configured in Manager",
+                reason=None if _usable_key(self.settings.openai_api_key) else "OPENAI_API_KEY is missing or invalid in Manager",
+            ),
+            AiProviderStatus(
+                id="gemini",
+                label="Google Gemini",
+                configured=_usable_key(self.settings.gemini_api_key),
+                privacy="cloud",
+                default_model=self.settings.gemini_model,
+                models=[self.settings.gemini_model],
+                reason=None if _usable_key(self.settings.gemini_api_key) else "GEMINI_API_KEY is missing or invalid in Manager",
             ),
         ]
 
@@ -275,7 +322,7 @@ class ManagerLlmService:
             model="",
             configured=False,
             privacy="cloud",
-            reason="No cloud AI provider is configured. Set OPENAI_API_KEY, ANTHROPIC_API_KEY, or OPENROUTER_API_KEY.",
+            reason="No cloud AI provider is configured. Set OPENAI_API_KEY, ANTHROPIC_API_KEY, GEMINI_API_KEY, or OPENROUTER_API_KEY.",
             providers=providers,
         )
 
@@ -308,6 +355,8 @@ class ManagerLlmService:
                 content = await self._openrouter(runtime, system, messages, max_tokens, json_mode)
             elif runtime.provider == "openai":
                 content = await self._openai(runtime, system, messages, max_tokens, json_mode)
+            elif runtime.provider == "gemini":
+                content = await self._gemini(runtime, system, messages, max_tokens, json_mode)
             else:
                 content = await self._anthropic(runtime, system, messages, max_tokens)
         except AiRuntimeError:
@@ -317,6 +366,14 @@ class ManagerLlmService:
         except httpx.HTTPStatusError as exc:
             status = 429 if exc.response.status_code == 429 else 502
             raise AiRuntimeError(f"{runtime.provider} returned HTTP {exc.response.status_code}", status) from exc
+        except UnicodeEncodeError as exc:
+            # A non-ASCII API key (or header value) can't be encoded into the HTTP
+            # request. The _usable_key guard normally stops this at selection time;
+            # this is defense-in-depth so the message stays honest if one slips
+            # through — a configuration fault (503), not a provider outage (502).
+            raise AiRuntimeError(
+                f"{runtime.provider} is misconfigured (API key contains invalid characters)", 503
+            ) from exc
         except (httpx.HTTPError, ValueError, KeyError, TypeError) as exc:
             raise AiRuntimeError(f"{runtime.provider} response was unavailable", 502) from exc
 
@@ -354,7 +411,7 @@ class ManagerLlmService:
         # Free cloud fallback: OpenRouter free tier (needs a free key). Uses the
         # configured OPENROUTER_MODEL — set it to a live ':free' model id, because
         # the literal 'openrouter/free' is not a real model and would 400.
-        if self.settings.openrouter_api_key and not any(c.provider == "openrouter" for c in candidates):
+        if _usable_key(self.settings.openrouter_api_key) and not any(c.provider == "openrouter" for c in candidates):
             rt = Runtime("openrouter", self.settings.openrouter_model, "cloud")
             if (rt.provider, rt.model) not in have:
                 candidates.append(rt)
@@ -517,4 +574,51 @@ class ManagerLlmService:
                 str(block.get("text", ""))
                 for block in blocks
                 if isinstance(block, dict) and block.get("type") == "text"
+            )
+
+    async def _gemini(
+        self, runtime: Runtime, system: str, messages: list[dict[str, str]], max_tokens: int,
+        json_mode: bool = False,
+    ) -> str:
+        # Gemini's Generative Language API is NOT OpenAI-shaped: the system prompt
+        # is a separate `system_instruction`, turns are `contents` with `parts`,
+        # and the assistant role is spelled "model" (not "assistant").
+        contents = [
+            {
+                "role": "model" if message["role"] == "assistant" else "user",
+                "parts": [{"text": message["content"]}],
+            }
+            for message in messages
+        ]
+        generation_config: dict = {"temperature": 0.15, "maxOutputTokens": max_tokens}
+        if json_mode:
+            # Native structured output — the advisor_flow contract wants raw JSON,
+            # not JSON wrapped in reasoning prose.
+            generation_config["responseMimeType"] = "application/json"
+        body = {
+            "system_instruction": {"parts": [{"text": system}]},
+            "contents": contents,
+            "generationConfig": generation_config,
+        }
+        url = (
+            f"{self.settings.gemini_base_url.rstrip('/')}"
+            f"/models/{runtime.model}:generateContent"
+        )
+        async with self._client() as client:
+            response = await client.post(
+                url,
+                # Key travels in a header (not the query string) so it never lands
+                # in a proxy/access log. Works for standard AI Studio API keys.
+                headers={"x-goog-api-key": self.settings.gemini_api_key},
+                json=body,
+            )
+            response.raise_for_status()
+            candidates = response.json().get("candidates", [])
+            if not candidates:
+                return ""
+            parts = candidates[0].get("content", {}).get("parts", [])
+            return "\n".join(
+                str(part.get("text", ""))
+                for part in parts
+                if isinstance(part, dict) and part.get("text")
             )

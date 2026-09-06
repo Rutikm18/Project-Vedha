@@ -22,13 +22,13 @@ interface Message {
 }
 
 interface AiStatus {
-  provider: "ollama" | "openrouter" | "anthropic" | "openai" | null;
+  provider: "ollama" | "openrouter" | "anthropic" | "openai" | "gemini" | null;
   model: string;
   configured: boolean;
   privacy: "local" | "cloud";
   reason?: string;
   providers: Array<{
-    id: "ollama" | "openrouter" | "anthropic" | "openai";
+    id: "ollama" | "openrouter" | "anthropic" | "openai" | "gemini";
     label: string;
     configured: boolean;
     privacy: "local" | "cloud";
@@ -74,6 +74,7 @@ function providerLabel(provider?: string | null) {
   if (provider === "openai") return "OpenAI";
   if (provider === "openrouter") return "OpenRouter";
   if (provider === "anthropic") return "Anthropic";
+  if (provider === "gemini") return "Google Gemini";
   return "Ollama";
 }
 

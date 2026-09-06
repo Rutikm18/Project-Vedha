@@ -2661,6 +2661,42 @@ code, pre, .terminal, kbd, [class*="mono"], .font-mono {
 /* Evidence stack */
 .finding-evidence-stack { display: flex; flex-direction: column; gap: 10px; }
 
+/* ── Findings enrichment: evidence facts · compliance rationale · fix-plan pills ── */
+.finding-evidence-wrap { display: flex; flex-direction: column; gap: 14px; }
+.finding-evidence-facts { display: flex; flex-direction: column; gap: 8px; }
+.finding-fact-grid {
+  margin: 0; display: grid; gap: 8px;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
+.finding-fact {
+  display: flex; flex-direction: column; gap: 2px;
+  padding: 8px 10px; border: 0.5px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  background: color-mix(in srgb, var(--text-primary) 3%, transparent);
+}
+.finding-fact dt {
+  font-size: 10px; font-weight: 800; letter-spacing: 0.05em;
+  text-transform: uppercase; color: var(--text-muted);
+}
+.finding-fact dd {
+  margin: 0; font-size: 13px; font-weight: 600; color: var(--text-primary);
+  word-break: break-word;
+}
+.finding-evidence-raw > summary {
+  cursor: pointer; list-style: none; padding: 6px 0;
+  display: inline-flex; align-items: center; gap: 6px;
+  font-size: 12px; font-weight: 700; color: var(--text-secondary);
+}
+.finding-evidence-raw > summary::-webkit-details-marker { display: none; }
+.finding-compliance-rationale {
+  margin: 2px 0 8px; font-size: 12.5px; line-height: 1.5; color: var(--text-secondary);
+}
+.finding-rem-pill {
+  display: inline-flex; align-items: center; gap: 4px;
+  padding: 2px 9px; border-radius: 999px; border: 1px solid transparent;
+  font-size: 11px; font-weight: 700; line-height: 1.6; text-transform: capitalize;
+}
+
 /* Tags row */
 .finding-tags-row { display: flex; flex-wrap: wrap; gap: 6px; }
 

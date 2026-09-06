@@ -15,7 +15,7 @@ import { fetchJson } from "../../lib/fetcher";
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface AiStatus {
-  provider: "ollama" | "openrouter" | "anthropic";
+  provider: "ollama" | "openrouter" | "anthropic" | "openai" | "gemini";
   model: string;
   configured: boolean;
   privacy: "local" | "cloud";
@@ -515,12 +515,21 @@ function AiRuntimeSection() {
           </dl>
         </article>
         <article data-active={runtime?.provider === "anthropic"}>
-          <header><Bot size={17} /><div><strong>Anthropic</strong><small>Backward compatible</small></div></header>
-          <p>Retained for existing deployments. Credentials remain server-only.</p>
+          <header><Bot size={17} /><div><strong>Anthropic</strong><small>Claude · server-side cloud</small></div></header>
+          <p>Claude models for grounded briefs. Credentials remain server-only.</p>
           <dl>
             <div><dt>Provider</dt><dd>LLM_PROVIDER=anthropic</dd></div>
             <div><dt>Secret</dt><dd>ANTHROPIC_API_KEY</dd></div>
             <div><dt>Model</dt><dd>LLM_MODEL</dd></div>
+          </dl>
+        </article>
+        <article data-active={runtime?.provider === "gemini"}>
+          <header><Cloud size={17} /><div><strong>Google Gemini</strong><small>Cloud · Generative Language API</small></div></header>
+          <p>Fast, low-cost cloud model. Credentials remain server-only.</p>
+          <dl>
+            <div><dt>Provider</dt><dd>LLM_PROVIDER=gemini</dd></div>
+            <div><dt>Secret</dt><dd>GEMINI_API_KEY</dd></div>
+            <div><dt>Model</dt><dd>GEMINI_MODEL</dd></div>
           </dl>
         </article>
       </div>

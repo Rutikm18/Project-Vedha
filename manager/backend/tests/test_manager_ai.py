@@ -351,3 +351,106 @@ async def test_status_fails_safe_without_cloud_key():
     assert st.configured is False
     assert st.provider is None
     assert "No cloud AI provider" in (st.reason or "")
+
+
+@pytest.mark.asyncio
+async def test_manager_gemini_generation_is_server_side():
+    def handler(request: httpx.Request) -> httpx.Response:
+        # generateContent endpoint, key in a header (never the query string).
+        assert request.url.path == "/v1beta/models/gemini-2.0-flash:generateContent"
+        assert request.headers["x-goog-api-key"] == "gemini-secret"
+        body = __import__("json").loads(request.content)
+        # Gemini shape: separate system_instruction + contents/parts, role "user".
+        assert "Public CVE metadata" in body["system_instruction"]["parts"][0]["text"]
+        assert body["contents"][0]["role"] == "user"
+        assert body["contents"][0]["parts"][0]["text"] == "Prioritize remediation"
+        assert body["generationConfig"]["maxOutputTokens"] == 900
+        return httpx.Response(200, json={
+            "candidates": [{"content": {"parts": [{"text": "Defensive Gemini answer"}]}}]
+        })
+
+    service = ManagerLlmService(
+        Settings(
+            llm_provider="gemini",
+            gemini_api_key="gemini-secret",
+            gemini_model="gemini-2.0-flash",
+        ),
+        transport=httpx.MockTransport(handler),
+    )
+    request = AiGenerateRequest(
+        task="advisor",
+        provider="gemini",
+        model="gemini-2.0-flash",
+        messages=[{"role": "user", "content": "Prioritize remediation"}],
+    )
+
+    content, runtime = await service.generate(request)
+
+    assert content == "Defensive Gemini answer"
+    assert runtime.provider == "gemini"
+    assert runtime.privacy == "cloud"
+
+
+@pytest.mark.asyncio
+async def test_manager_gemini_rejects_unconfigured_and_unenabled_model():
+    unconfigured = ManagerLlmService(Settings(gemini_api_key=""))
+    with pytest.raises(AiRuntimeError, match="not configured") as exc:
+        await unconfigured.generate(AiGenerateRequest(
+            task="advisor", provider="gemini",
+            messages=[{"role": "user", "content": "Hello"}],
+        ))
+    assert exc.value.status_code == 503
+
+    configured = ManagerLlmService(
+        Settings(gemini_api_key="configured", gemini_model="gemini-2.0-flash"),
+    )
+    with pytest.raises(AiRuntimeError, match="not enabled") as exc:
+        await configured.generate(AiGenerateRequest(
+            task="advisor", provider="gemini", model="gemini-1.5-pro",
+            messages=[{"role": "user", "content": "Hello"}],
+        ))
+    assert exc.value.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_non_ascii_key_is_treated_as_unconfigured_not_a_crash():
+    # Regression: a '₹' (non-ASCII) OpenRouter key used to poison the fallback and
+    # surface as an opaque "openrouter response was unavailable" 502. It must now
+    # read as simply NOT configured everywhere.
+    svc = ManagerLlmService(Settings(openrouter_api_key="₹", anthropic_api_key=""))
+    st = await svc.status()
+    router = next(p for p in st.providers if p.id == "openrouter")
+    assert router.configured is False
+    assert "invalid" in (router.reason or "").lower()
+    # Selecting it explicitly gives a clean 503, not a downstream crash.
+    with pytest.raises(AiRuntimeError, match="not configured") as exc:
+        await svc.generate(AiGenerateRequest(
+            task="advisor", provider="openrouter",
+            messages=[{"role": "user", "content": "Hello"}],
+        ))
+    assert exc.value.status_code == 503
+
+
+@pytest.mark.asyncio
+async def test_fallback_skips_provider_with_invalid_key():
+    # With only a broken OpenRouter key, the fallback chain must be empty and the
+    # caller gets an honest "no provider configured" instead of a poisoned attempt.
+    svc = ManagerLlmService(Settings(openrouter_api_key="  ", llm_provider=""))
+    with pytest.raises(AiRuntimeError) as exc:
+        await svc.generate_with_fallback(AiGenerateRequest(
+            task="advisor", messages=[{"role": "user", "content": "Hello"}],
+        ))
+    assert exc.value.status_code == 503
+
+
+@pytest.mark.asyncio
+async def test_gemini_is_auto_detected_and_reported_in_status():
+    # Only a Gemini key configured (no openai/anthropic) → it becomes the default,
+    # and it appears configured in the provider status list.
+    service = ManagerLlmService(Settings(gemini_api_key="gemini-secret"))
+    st = await service.status()
+    assert st.provider == "gemini"
+    assert st.configured is True
+    gemini = next(p for p in st.providers if p.id == "gemini")
+    assert gemini.configured is True
+    assert gemini.privacy == "cloud"

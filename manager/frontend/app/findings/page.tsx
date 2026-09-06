@@ -93,7 +93,16 @@ interface RemStep {
   description: string; estimatedHours: number;
   verification?: string; completed: boolean; completedBy?: string;
 }
-interface ComplianceRef { framework: string; refs: string[]; }
+interface ComplianceRef { framework: string; controls?: string[]; refs?: string[]; rationale?: string; }
+interface ExploitationView {
+  status: "validated" | "not_validated" | string;
+  maturity: string;
+  actively_exploited: boolean;
+  summary: string;
+  note: string;
+  signals?: Record<string, unknown>;
+}
+interface EvidenceFact { label: string; value: string; }
 type RemediationOs = "generic" | "linux" | "windows" | "macos";
 interface RemediationPlanStep {
   step: number;
@@ -138,6 +147,8 @@ interface Finding {
   category: string; status: FindingStatus; affectedHost: string; discoveredAt: string;
   description: string; technicalDetails: string; attackPath: string;
   evidence: { label: string; content: string }[];
+  evidenceSummary?: EvidenceFact[];
+  exploitation?: ExploitationView | null;
   impact: string; businessImpact?: string;
   exploitability?: "EASY" | "MODERATE" | "DIFFICULT";
   remediation: (string | RemStep)[];
@@ -685,6 +696,48 @@ function EvidenceGallery({ evidence }: { evidence: Finding["evidence"] }) {
   );
 }
 
+/* ─── Evidence: a plain key-facts table, raw artifacts behind a disclosure ──
+ * evidence_summary (from the backend normalizer) is the glanceable view — short
+ * label/value facts anyone can read at speed. The raw scanner artifacts are kept,
+ * but demoted behind a disclosure so they never bury the point. */
+function EvidenceFacts({ facts }: { facts: EvidenceFact[] }) {
+  if (!facts.length) return null;
+  return (
+    <div className="finding-evidence-facts">
+      <div className="finding-section-heading">
+        <div><ListChecks size={15} aria-hidden /><h3>Key facts</h3></div>
+        <span>{facts.length} fact{facts.length === 1 ? "" : "s"}</span>
+      </div>
+      <dl className="finding-fact-grid">
+        {facts.map((fact, i) => (
+          <div className="finding-fact" key={`${fact.label}-${i}`}>
+            <dt>{fact.label}</dt>
+            <dd>{fact.value}</dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
+}
+
+function EvidenceView({ finding }: { finding: Finding }) {
+  const facts = finding.evidenceSummary ?? [];
+  const rawCount = finding.evidence.length;
+  // No clean facts → fall straight back to the raw gallery (or its empty state).
+  if (!facts.length) return <EvidenceGallery evidence={finding.evidence} />;
+  return (
+    <div className="finding-evidence-wrap">
+      <EvidenceFacts facts={facts} />
+      {rawCount > 0 && (
+        <details className="finding-evidence-raw">
+          <summary><ChevronDown size={14} aria-hidden /> Raw evidence artifacts ({rawCount})</summary>
+          <EvidenceGallery evidence={finding.evidence} />
+        </details>
+      )}
+    </div>
+  );
+}
+
 /* ─── Remediation ─────────────────────────────────────────────────────────
  * The OS selector defaults to the asset's own platform, so the common case
  * needs no interaction at all. */
@@ -695,6 +748,26 @@ function remediationOsFor(finding: Finding): RemediationOs {
   if (value.includes("linux") || value.includes("unix")) return "linux";
   return "generic";
 }
+
+// Fix-plan colour language: change-risk is a hazard scale (green→amber→red);
+// effort is an ease scale (low effort reads positive/green). Both resolve to the
+// same WCAG-AA palette + tint helpers every other chip in this file uses.
+const REM_RISK_COLOR: Record<string, string> = {
+  high: SEV_PALETTE.RED,
+  medium: SEV_PALETTE.AMBER,
+  low: SEV_PALETTE.GREEN,
+};
+const remRiskColor = (v: string | undefined) =>
+  REM_RISK_COLOR[(v ?? "").toLowerCase()] ?? SEV_PALETTE.SLATE;
+const effortColor = (v: string | undefined) => {
+  const k = (v ?? "").toLowerCase();
+  return k === "high" ? SEV_PALETTE.RED : k === "medium" ? SEV_PALETTE.AMBER : SEV_PALETTE.GREEN;
+};
+const pillStyle = (color: string) => ({
+  color,
+  background: tint(color, TINT.fill),
+  borderColor: tint(color, TINT.hairline),
+});
 
 function RemediationPlanView({ finding }: { finding: Finding }) {
   const [os, setOs] = useState<RemediationOs>(() => remediationOsFor(finding));
@@ -727,9 +800,6 @@ function RemediationPlanView({ finding }: { finding: Finding }) {
   }
 
   const plan = data.plan;
-  const changeRiskColor = plan.remediation_risk === "high"
-    ? SEV_PALETTE.RED
-    : plan.remediation_risk === "medium" ? SEV_PALETTE.AMBER : "var(--text-secondary)";
   const recordedNotes = finding.remediation
     .map((step) => typeof step === "string" ? step : step.description || step.title)
     .filter(Boolean);
@@ -742,8 +812,8 @@ function RemediationPlanView({ finding }: { finding: Finding }) {
           <p>{plan.summary}</p>
           <div className="finding-remediation-meta">
             <span>{data.source === "ai" ? "AI-generated operator plan" : "Vedha remediation knowledge base"}</span>
-            <span>Effort: {plan.effort}</span>
-            <span style={{ color: changeRiskColor }}>Change risk: {plan.remediation_risk}</span>
+            <span className="finding-rem-pill" style={pillStyle(effortColor(plan.effort))}>Effort: {plan.effort}</span>
+            <span className="finding-rem-pill" style={pillStyle(remRiskColor(plan.remediation_risk))}>Change risk: {plan.remediation_risk}</span>
             {data.generated_at && <span>Generated {fmtEventDay(data.generated_at)}</span>}
           </div>
         </div>
@@ -777,7 +847,7 @@ function RemediationPlanView({ finding }: { finding: Finding }) {
               <div>
                 <header>
                   <h4>{step.title}</h4>
-                  <span data-risk={step.risk}>{step.risk} change risk</span>
+                  <span className="finding-rem-pill" style={pillStyle(remRiskColor(step.risk))}>{step.risk} change risk</span>
                 </header>
                 <p>{step.description}</p>
                 {step.commands_for_os.length > 0 && (
@@ -989,9 +1059,10 @@ function FindingOverview({
         <article>
           <h3>Evidence</h3>
           <p>
-            {finding.evidence.length
-              ? `${finding.evidence.length} artifact${finding.evidence.length === 1 ? "" : "s"} attached.`
-              : "Nothing attached."} Verdict {finding.verificationState || "unassessed"} ({confidence}).
+            {(() => {
+              const n = finding.evidenceSummary?.length || finding.evidence.length;
+              return n ? `${n} evidence item${n === 1 ? "" : "s"} recorded.` : "Nothing attached.";
+            })()} Verdict {finding.verificationState || "unassessed"} ({confidence}).
           </p>
           <button type="button" className="findings-inline-action" onClick={() => onOpenTab("evidence")}>
             <FileText size={13} aria-hidden /> Review the evidence
@@ -999,9 +1070,10 @@ function FindingOverview({
         </article>
         <article>
           <h3>Exploitation</h3>
-          <p>{finding.activelyExploited
-            ? "Recorded as validated in the wild."
-            : "Not validated. Absence of proof is not proof of absence."}</p>
+          <p>{finding.exploitation?.note
+            ?? (finding.activelyExploited
+              ? "Recorded as validated in the wild."
+              : "Not validated. Absence of proof is not proof of absence.")}</p>
         </article>
         <article>
           <h3>Ownership</h3>
@@ -1329,12 +1401,16 @@ function CompliancePanel({ compliance }: { compliance: ComplianceRef[] }) {
         <div><ListChecks size={15} aria-hidden /><h3>Mapped controls</h3></div>
         <span>{compliance.length} framework{compliance.length === 1 ? "" : "s"}</span>
       </div>
-      {compliance.map((c, i) => (
-        <section key={`${c.framework}-${i}`}>
-          <h4>{c.framework}</h4>
-          <ul>{c.refs.map((r, j) => <li key={j}>{r}</li>)}</ul>
-        </section>
-      ))}
+      {compliance.map((c, i) => {
+        const controls = c.controls ?? c.refs ?? [];
+        return (
+          <section key={`${c.framework}-${i}`}>
+            <h4>{c.framework}</h4>
+            {c.rationale && <p className="finding-compliance-rationale">{c.rationale}</p>}
+            <ul>{controls.map((r, j) => <li key={j}>{r}</li>)}</ul>
+          </section>
+        );
+      })}
     </div>
   );
 }
@@ -1577,7 +1653,7 @@ function FindingDetail({
   const tabs: { id: DetailTab; label: string; badge?: string }[] = [
     { id: "overview", label: "Overview" },
     { id: "intel", label: "Threat intel" },
-    { id: "evidence", label: "Evidence", badge: f.evidence.length ? String(f.evidence.length) : undefined },
+    { id: "evidence", label: "Evidence", badge: (f.evidenceSummary?.length || f.evidence.length) ? String(f.evidenceSummary?.length || f.evidence.length) : undefined },
     { id: "remediation", label: "Fix plan" },
     { id: "compliance", label: "Compliance", badge: f.compliance.length ? String(f.compliance.length) : undefined },
     { id: "history", label: "History" },
@@ -1791,7 +1867,7 @@ function FindingDetail({
           />
         )}
         {tab === "intel" && <IntelPanel finding={f} />}
-        {tab === "evidence" && <EvidenceGallery evidence={f.evidence} />}
+        {tab === "evidence" && <EvidenceView finding={f} />}
         {tab === "remediation" && <RemediationPlanView finding={f} />}
         {tab === "compliance" && <CompliancePanel compliance={f.compliance} />}
         {tab === "history" && <HistoryTimeline findingId={f.id} now={now} />}

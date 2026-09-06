@@ -20,7 +20,7 @@ class AiGenerateRequest(BaseModel):
                   "client_assistant"]
     messages: list[AiMessage] = Field(min_length=1, max_length=24)
     context: dict[str, Any] = Field(default_factory=dict)
-    provider: Literal["ollama", "openrouter", "anthropic", "openai"] | None = None
+    provider: Literal["ollama", "openrouter", "anthropic", "openai", "gemini"] | None = None
     model: str | None = Field(default=None, min_length=1, max_length=160)
     max_tokens: int = Field(default=900, ge=128, le=2_048)
 
@@ -36,7 +36,7 @@ class AiGenerateRequest(BaseModel):
 
 
 class AiProviderStatus(BaseModel):
-    id: Literal["ollama", "openrouter", "anthropic", "openai"]
+    id: Literal["ollama", "openrouter", "anthropic", "openai", "gemini"]
     label: str
     configured: bool
     privacy: Literal["local", "cloud"]
@@ -48,7 +48,7 @@ class AiProviderStatus(BaseModel):
 class AiStatusResponse(BaseModel):
     # None = no default provider is usable (no cloud key configured). The UI then
     # prompts for a key instead of preselecting a provider.
-    provider: Literal["ollama", "openrouter", "anthropic", "openai"] | None
+    provider: Literal["ollama", "openrouter", "anthropic", "openai", "gemini"] | None
     model: str
     configured: bool
     privacy: Literal["local", "cloud"]
@@ -58,7 +58,7 @@ class AiStatusResponse(BaseModel):
 
 class AiGenerateResponse(BaseModel):
     content: str
-    provider: Literal["ollama", "openrouter", "anthropic", "openai"]
+    provider: Literal["ollama", "openrouter", "anthropic", "openai", "gemini"]
     model: str
     privacy: Literal["local", "cloud"]
     # True when the requested/default provider failed (e.g. out of credit) and a

@@ -21,6 +21,9 @@ from app.schemas.finding import (
 )
 from app.services import finding_events as events_service
 from app.services import sla as sla_service
+from app.services.finding_enrichment import detail_enrichment
+from app.services.finding_priority import severity_order_case
+from app.services.risk_rank import compute_risk_rank
 from app.routers.sla_policy import resolve_windows
 from app.utils.pagination import paginate_query
 
@@ -74,9 +77,35 @@ async def _finding_detail_out(db: AsyncSession, finding: Finding) -> FindingOut:
                 owner=asset.owner,
                 environment=asset.environment,
             )
-    return FindingOut.model_validate(finding).model_copy(
-        update={"asset_context": asset_context},
-    )
+    update: dict = {"asset_context": asset_context}
+    # On the detail read we know the asset, so recompute the explainable rank WITH
+    # real criticality/exposure instead of the neutral defaults the list path uses.
+    # Exposure (internet_facing/auth_enforced) is only honoured if the engine
+    # actually recorded it in evidence — never guessed. When absent it stays None
+    # and compute_risk_rank treats it as neutral (see risk_rank.py's contract).
+    if asset_context is not None:
+        ev = finding.evidence if isinstance(finding.evidence, dict) else {}
+        enr = ev.get("enrichment") if isinstance(ev.get("enrichment"), dict) else {}
+        update["risk_rank"] = compute_risk_rank(
+            severity=str(getattr(finding.severity, "value", finding.severity)),
+            cvss_score=float(finding.cvss_score) if finding.cvss_score is not None else None,
+            epss_score=float(finding.epss_score) if finding.epss_score is not None else None,
+            kev=bool(ev.get("kev") or enr.get("kev")),
+            exploit_validated=bool(finding.exploit_validated),
+            verification_state=finding.verification_state,
+            confidence=finding.verification_confidence,
+            asset_criticality=asset_context.criticality,
+            internet_facing=ev.get("internet_facing"),
+            auth_enforced=ev.get("auth_enforced"),
+        )
+    # Detail-only heavy enrichment: explanation, business impact, technical detail,
+    # exploitation posture, evidence-as-facts, and five-framework compliance. The
+    # list endpoint deliberately omits this to stay bounded (see the schema note).
+    update.update(detail_enrichment(
+        finding,
+        asset_criticality=(asset_context.criticality if asset_context is not None else None),
+    ))
+    return FindingOut.model_validate(finding).model_copy(update=update)
 
 
 @router.get("/sla-summary", response_model=SlaSummary, summary="SLA breach/at-risk summary for the tenant")
@@ -188,13 +217,19 @@ async def list_findings(
         Finding.cvss_score * 100,
         0,
     )
+    # "Critical always on top": the default risk view sorts by SEVERITY TIER first
+    # (so a KEV'd high can never jump above an ordinary critical), then by the
+    # composite risk within the tier. The explicit cvss/epss/date sorts stay pure
+    # single-axis views — an operator picking those is deliberately overriding the
+    # tier grouping. See services/finding_priority.py for the shared definition.
+    sev_tier = severity_order_case(Finding.severity)
     order_by = {
-        "risk": effective_risk.desc(),
-        "cvss": Finding.cvss_score.desc().nullslast(),
-        "epss": Finding.epss_score.desc().nullslast(),
-        "date": Finding.created_at.desc(),
+        "risk": [sev_tier.desc(), effective_risk.desc()],
+        "cvss": [Finding.cvss_score.desc().nullslast()],
+        "epss": [Finding.epss_score.desc().nullslast()],
+        "date": [Finding.created_at.desc()],
     }[sort]
-    q = q.order_by(order_by, Finding.created_at.desc(), Finding.id)
+    q = q.order_by(*order_by, Finding.created_at.desc(), Finding.id)
     items, total = await paginate_query(db, q, page, page_size)
     return paginate(items, total, page, page_size)
 
