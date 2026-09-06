@@ -5,7 +5,11 @@ from decimal import Decimal
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.models.enums import DetectionStatus, FindingSeverity, FindingStatus
+from app.services.finding_content import detection_method as _detection_method
+from app.services.finding_content import exploit_maturity as _compute_maturity
+from app.services.finding_content import exploitation_signals
 from app.services.risk_rank import compute_risk_rank
+from app.services.verification_kb import verification_for_finding as _verification_for_finding
 
 
 class FindingFilter(BaseModel):
@@ -153,6 +157,31 @@ class FindingOut(BaseModel):
     # Populated on the detail endpoint. List responses intentionally leave this
     # null to keep portfolio reads bounded and avoid an asset N+1 query.
     asset_context: FindingAssetContext | None = None
+
+    # ── Enrichment content (services/finding_content, _compliance, evidence_summary) ──
+    # LIGHT fields — computed on EVERY response by the validator below; cheap,
+    # evidence-derived, safe to show as list badges.
+    exploit_maturity: str | None = None          # WEAPONIZED | POC | THEORETICAL
+    actively_exploited: bool = False
+    # HEAVY prose — the detail endpoint fills these via finding_enrichment; the LIST
+    # deliberately leaves them null so portfolio reads stay bounded (no per-row KB).
+    technical_details: str | None = None
+    impact: str | None = None
+    business_impact: str | None = None
+    exploitation: dict | None = None
+    evidence_summary: list[dict] | None = None
+    compliance: list[dict] | None = None
+
+    # ── Report enrichment (Phase 3) — computed by the validator below; no column.
+    # detection_method → report confidence; verification → the retest block (its
+    # `expected` is the pass criterion). epss_percentile / kev_added_at /
+    # internet_reachable are surfaced from evidence when enrichment recorded them.
+    detection_method: str | None = None
+    verification: dict | None = None
+    epss_percentile: float | None = None
+    kev_added_at: str | None = None
+    internet_reachable: bool | None = None
+
     created_at: datetime
     updated_at: datetime
 
@@ -177,4 +206,52 @@ class FindingOut(BaseModel):
                 internet_facing=None,
                 auth_enforced=None,
             )
+        return self
+
+    @model_validator(mode="after")
+    def _populate_enrichment_light(self) -> "FindingOut":
+        """Fill the cheap, evidence-derived enrichment badges on every response
+        (list + detail) so the maturity / actively-exploited signal is always
+        available without the heavier detail-only prose. Detail responses may
+        override these via ``model_copy`` after validation — the values agree
+        because both read the same signals."""
+        signals = exploitation_signals(self)
+        if self.exploit_maturity is None:
+            self.exploit_maturity = _compute_maturity(signals)
+        if not self.actively_exploited:
+            self.actively_exploited = bool(signals.get("kev") or signals.get("validated"))
+        return self
+
+    @model_validator(mode="after")
+    def _populate_report_enrichment(self) -> "FindingOut":
+        """Report-facing enrichment, computed on every response (cheap, no DB):
+        the detection method (→ confidence) and a deterministic retest block,
+        plus EPSS percentile / KEV date / internet exposure surfaced from
+        evidence when the enrichment recorded them."""
+        if self.detection_method is None:
+            self.detection_method = _detection_method(self)
+        if self.verification is None:
+            self.verification = _verification_for_finding(self)
+        ev = self.evidence if isinstance(self.evidence, dict) else {}
+        enr = ev.get("enrichment") if isinstance(ev.get("enrichment"), dict) else {}
+        if self.epss_percentile is None:
+            pct = enr.get("epss_percentile")
+            if pct is None:
+                pct = ev.get("epss_percentile")
+            if pct is not None:
+                try:
+                    self.epss_percentile = float(pct)
+                except (TypeError, ValueError):
+                    self.epss_percentile = None
+        if self.kev_added_at is None:
+            kev_date = (
+                enr.get("kev_added") or enr.get("kev_date_added")
+                or ev.get("kev_added") or ev.get("kev_date_added")
+            )
+            self.kev_added_at = str(kev_date) if kev_date else None
+        if self.internet_reachable is None:
+            reach = enr.get("internet_facing")
+            if reach is None:
+                reach = ev.get("internet_facing")
+            self.internet_reachable = bool(reach) if reach is not None else None
         return self
