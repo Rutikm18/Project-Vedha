@@ -10,12 +10,8 @@ import { OperatorConsoleProvider, consoleQueryKey } from "../lib/console-source"
 
 /* The dashboard body is the redesigned console (DashboardGrid): live ledger,
    posture dial, SLA clock, patch matrix, exposure meters, and the live agent
-   monitor. DashboardCharts (KPI/trend/donut + critical-findings table +
-   activity feed) is retained below it so no operational data is lost.
-
-   Note: DashboardCharts' KPI cards overlap the new ledger's open-findings and
-   engagement counts — a deliberate, flagged redundancy to trim in a follow-up
-   rather than delete real data here. */
+   monitor. DashboardCharts keeps only non-duplicated signals below it: assets,
+   validation count, historical trend, highest-risk findings, and activity. */
 export default function Dashboard() {
   // Live probe count for the header status chip. It must use the SAME key the
   // Agent Monitor panel does, or React Query treats them as two datasets and
@@ -87,20 +83,24 @@ export default function Dashboard() {
             borderTop: "var(--hairline) solid var(--border-strong)",
           }}
         >
-          <h2
-            id="trends-heading"
-            style={{
-              margin: "0 0 var(--space-4)",
-              fontFamily: "var(--font-ui)",
-              fontSize: "var(--fs-body)",
-              fontWeight: 600,
-              letterSpacing: "0.08em",
-              textTransform: "uppercase",
-              color: "var(--text-muted)",
-            }}
-          >
-            Trends and activity
-          </h2>
+          <div style={{ marginBottom: "var(--space-4)" }}>
+            <h2
+              id="trends-heading"
+              style={{
+                margin: 0,
+                fontFamily: "var(--font-display)",
+                fontSize: 16,
+                fontWeight: 650,
+                letterSpacing: "-0.015em",
+                color: "var(--text-primary)",
+              }}
+            >
+              Trends and response queue
+            </h2>
+            <p style={{ margin: "var(--space-1) 0 0", color: "var(--text-muted)", fontSize: "var(--fs-body-s)" }}>
+              Historical movement, highest-risk work, and the latest assessment activity.
+            </p>
+          </div>
           <DashboardCharts />
         </section>
       </div>

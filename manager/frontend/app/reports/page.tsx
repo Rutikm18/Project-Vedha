@@ -903,7 +903,7 @@ function ExecTab({ eng, findings, summary }: { eng: Engagement; findings: Findin
           <div style={{ fontSize: 9, fontWeight: 800, color: "var(--text-muted)", letterSpacing: "0.12em", fontFamily: "var(--font-mono)", textTransform: "uppercase" }}>RISK POSITION</div>
           <h2 style={{ margin: "6px 0 8px", fontSize: 22, fontWeight: 750, color: "var(--text-primary)" }}>{posture}</h2>
           <p style={{ margin: 0, fontSize: 12, color: "var(--text-secondary)", maxWidth: 640, lineHeight: 1.6 }}>
-            All metrics are derived from Vedha scanner evidence for <strong>{eng.name}</strong>. Untested assets and controls are outside this report's scope.
+            All metrics are derived from Vedha scanner evidence for <strong>{eng.name}</strong>. Untested assets and controls are outside this report&apos;s scope.
           </p>
         </div>
         <ShieldAlert size={28} style={{ color: "var(--sev-critical-color)", flexShrink: 0 }} />

@@ -92,25 +92,23 @@ database schema:
 - Portfolio metrics answer "how much exposure exists?" They render an em dash
   while the summary is unavailable because an unverified zero would imply a
   safe state.
-- Visible queue triage answers "what needs action on this page?" Its scope is
-  explicit because urgency and SLA counts are calculated from the loaded page,
-  not the entire portfolio.
-- The triage-model explanation is a disclosure. It keeps severity, priority,
-  and risk definitions available without pushing the working queue below a
-  permanently open legend.
-- Analyst queue controls use persistent labels and explicit sort options.
-  Predictable controls are safer than cycling buttons when filters affect an
-  operational decision set.
-- Finding cards read in decision order: severity and lifecycle, P0–P5 response
-  priority, Manager risk `/1000`, affected host, decision drivers, then evidence
-  metrics. "Why now" chips expose the facts that influence urgency instead of
-  asking the analyst to infer them from color.
+- The queue begins immediately after portfolio metrics; it does not repeat the
+  same posture in a second hero or glossary panel. Search, engagement, agent,
+  and sort remain visible while severity, lifecycle, evidence, and risk-signal
+  filters use a single "More filters" disclosure.
+- Finding records are compact rows. Severity, lifecycle, title, affected host,
+  response priority, Manager risk `/1000`, CVSS, EPSS, SLA, and evidence state
+  remain scannable without turning each metric into a separate box. Only active
+  attention signals add a short text-and-icon line.
 - Finding detail follows the same operational sequence: Overview establishes the
-  affected system and decision context; Evidence preserves reviewable artifacts;
-  Remediation renders the Manager's structured, OS-aware plan; History explains
-  stored operator actions and system observations. Threat-intelligence and
-  compliance views remain outside the detail navigation until their data
-  contracts and decision use are ready for operators.
+  summary, impact, recommended next action, and affected-system facts. Technical
+  scoring and attack correlation use disclosures so Evidence, Remediation, and
+  History remain the primary review views. Threat-intelligence and compliance
+  views remain outside the detail navigation until their data contracts and
+  decision use are ready for operators.
+- Lifecycle actions use one explicit action selector. The reason composer appears
+  only after an action is chosen, reducing competing controls while preserving
+  the same auditable backend workflow.
 - Lifecycle actions require a concise reason in the interface. The Manager stores
   that reason with the append-only event—not in the mutable finding narrative—so
   accepted risk, false-positive, remediation, and reopen decisions remain auditable.
