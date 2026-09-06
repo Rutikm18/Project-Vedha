@@ -22,7 +22,6 @@ import {
 import { type ReportResult } from "../../lib/ai-engine";
 import { FindingsSection, EvidenceArtifact } from "../../components/report/FindingReport";
 import { toRawFinding } from "../../lib/report/adapt";
-import "../../styles/report-finding.css"; // after globals.css (imported in app/layout.tsx)
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -888,7 +887,6 @@ function CoverageTab({ findings, total }: { findings: Finding[]; total: number }
 
 export default function ReportsPage() {
   const [selId, setSelId] = useState("");
-  const [tab, setTab] = useState<ReportTab>("executive");
 
   const engQ = useQuery({ queryKey: ["engagements"], queryFn: () => fetchJson<{ engagements: Engagement[] }>("/api/engagements"), retry: (c, e) => !isUnauthorized(e) && c < 2 });
   const engs = engQ.data?.engagements ?? [];
@@ -928,17 +926,10 @@ export default function ReportsPage() {
       <div className="report-controls no-print">
         <label>
           <span>Engagement</span>
-          <select value={engId} onChange={e => { setSelId(e.target.value); setTab("executive"); }}>
+          <select value={engId} onChange={e => setSelId(e.target.value)}>
             {engs.map(e => <option key={e.id} value={e.id}>{e.name} · {e.client}</option>)}
           </select>
         </label>
-        <div role="tablist">
-          {TABS.map(({ id, label, icon: Icon }) => (
-            <button key={id} role="tab" aria-selected={tab === id} data-active={tab === id} onClick={() => setTab(id)}>
-              <Icon size={13} />{label}
-            </button>
-          ))}
-        </div>
       </div>
 
       <DataState
@@ -975,13 +966,17 @@ export default function ReportsPage() {
               </div>
             </div>
 
-            {/* Tab content */}
-            <div style={{ padding: "20px 24px 24px" }}>
-              {tab === "executive" && <ExecTab eng={eng} findings={findings} summary={summary} />}
-              {tab === "technical" && <FindingsSection findings={reportFindings} total={summary.total} />}
-              {tab === "evidence"  && <EvidTab findings={findings} activity={actQ.data ?? []} total={summary.total} />}
-              {tab === "cve"       && <CveTab findings={findings} total={summary.total} />}
-              {tab === "coverage"  && <CoverageTab findings={findings} total={summary.total} />}
+            {/* Report body — one continuous deliverable, ordered like a real report */}
+            <div style={{ padding: "20px 24px 24px", display: "flex", flexDirection: "column", gap: 32 }}>
+              <ExecTab eng={eng} findings={findings} summary={summary} />
+
+              <section>
+                <div className="rpt-section-head"><small>TECHNICAL FINDINGS</small><h3>Detailed findings register</h3></div>
+                <FindingsSection findings={reportFindings} total={summary.total} />
+              </section>
+
+              <CveTab findings={findings} total={summary.total} />
+              <CoverageTab findings={findings} total={summary.total} />
             </div>
 
             <footer className="report-footer">
