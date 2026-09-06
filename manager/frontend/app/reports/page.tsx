@@ -163,51 +163,6 @@ function SevStrip({ eng }: { eng: Engagement }) {
   );
 }
 
-
-// ─── Evidence block ───────────────────────────────────────────────────────────
-
-function EvidBlock({ item }: { item: EvidenceItem }) {
-  const [open, setOpen] = useState(false);
-  const long = item.content.length > 300;
-  const shown = open || !long ? item.content : item.content.slice(0, 300) + "\n…";
-  return (
-    <div style={{ border: "1px solid #1E293B", borderRadius: 7, overflow: "hidden" }}>
-      <div style={{
-        display: "flex", alignItems: "center", justifyContent: "space-between",
-        padding: "7px 12px", background: "#0F172A", borderBottom: "1px solid #1E293B",
-      }}>
-        <span style={{ display: "flex", alignItems: "center", gap: 6, fontSize: 11, fontWeight: 600, color: "#64748B", fontFamily: "var(--font-mono)" }}>
-          <Terminal size={12} style={{ color: "#475569" }} />
-          {item.label}
-          {item.type && (
-            <span style={{ fontSize: 9, fontWeight: 700, padding: "1px 5px", borderRadius: 3, background: "#1E293B", color: "#64748B" }}>{item.type}</span>
-          )}
-        </span>
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-          <CopyBtn text={item.content} />
-          {long && (
-            <button onClick={() => setOpen(!open)} style={{
-              fontSize: 10, fontWeight: 700, padding: "2px 7px", borderRadius: 4,
-              border: "1px solid #1E293B", background: "transparent", color: "#64748B", cursor: "pointer",
-            }}>
-              {open ? "Collapse" : "Expand"}
-            </button>
-          )}
-        </div>
-      </div>
-      <pre style={{
-        margin: 0, padding: "12px 14px", background: "#0B1120",
-        fontFamily: "var(--font-mono)", fontSize: 11.5, lineHeight: 1.7,
-        color: "#CBD5E1", overflowX: "auto", whiteSpace: "pre-wrap",
-        wordBreak: "break-all", maxHeight: open ? "none" : 280, overflowY: open ? "visible" : "auto",
-      }}>{shown}</pre>
-    </div>
-  );
-}
-
-// ─── Finding card ─────────────────────────────────────────────────────────────
-
-
 // ─── AI report (deterministic scorecard · injection-fenced) ───────────────────
 
 const DOMAIN_LABEL: Record<ScoreDomain, string> = {
@@ -791,7 +746,7 @@ function EvidTab({ findings, activity, total }: { findings: Finding[]; activity:
                 <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>{item.finding.affectedHost}</span>
                 <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-secondary)", marginLeft: "auto" }}>{item.finding.title}</span>
               </div>
-              <EvidBlock item={item} />
+              <EvidenceArtifact item={item} refId={`${item.finding.id}/E${String(i + 1).padStart(2, "0")}`} />
             </div>
           ))}
         </div>
