@@ -20,6 +20,9 @@ import {
   type Scorecard, type ReportFinding, type ReportDecision,
 } from "../../lib/prompts/report";
 import { type ReportResult } from "../../lib/ai-engine";
+import { FindingsSection, EvidenceArtifact } from "../../components/report/FindingReport";
+import { toRawFinding } from "../../lib/report/adapt";
+import "../../styles/report-finding.css"; // after globals.css (imported in app/layout.tsx)
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -83,21 +86,6 @@ function cvssColor(n: number | null) {
   if (n >= 4) return SEV_PALETTE.AMBER;
   return SEV_PALETTE.STONE;
 }
-function parseCvssVector(v: string) {
-  if (!v?.startsWith("CVSS")) return [];
-  return v.split("/").slice(1).map(p => { const [k, val] = p.split(":"); return { k: k ?? p, v: val ?? "" }; });
-}
-const VM_LABEL: Record<string, Record<string, string>> = {
-  AV: { N: "Network", A: "Adjacent", L: "Local", P: "Physical" },
-  AC: { L: "Low", H: "High" }, PR: { N: "None", L: "Low", H: "High" },
-  UI: { N: "None", R: "Required" }, S: { U: "Unchanged", C: "Changed" },
-  C: { N: "None", L: "Low", H: "High" }, I: { N: "None", L: "Low", H: "High" },
-  A: { N: "None", L: "Low", H: "High" },
-};
-const VM_NAME: Record<string, string> = {
-  AV: "Attack Vector", AC: "Attack Complexity", PR: "Privileges Required",
-  UI: "User Interaction", S: "Scope", C: "Confidentiality", I: "Integrity", A: "Availability",
-};
 
 // ─── Atoms ────────────────────────────────────────────────────────────────────
 
@@ -175,26 +163,6 @@ function SevStrip({ eng }: { eng: Engagement }) {
   );
 }
 
-// ─── CVSS vector row ──────────────────────────────────────────────────────────
-
-function CvssVector({ vector }: { vector: string }) {
-  const parts = parseCvssVector(vector);
-  if (!parts.length) return null;
-  return (
-    <div style={{ display: "flex", flexWrap: "wrap", gap: 4 }}>
-      {parts.map(({ k, v }) => (
-        <span key={k} title={`${VM_NAME[k] ?? k}: ${VM_LABEL[k]?.[v] ?? v}`} style={{
-          display: "inline-flex", flexDirection: "column", alignItems: "center",
-          padding: "4px 8px", borderRadius: 5, background: "var(--bg-surface)",
-          border: "1px solid var(--border-subtle)", minWidth: 52,
-        }}>
-          <span style={{ fontSize: 8, fontWeight: 800, color: "var(--text-muted)", fontFamily: "var(--font-mono)", letterSpacing: "0.06em" }}>{k}</span>
-          <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-primary)", marginTop: 1 }}>{VM_LABEL[k]?.[v] ?? v}</span>
-        </span>
-      ))}
-    </div>
-  );
-}
 
 // ─── Evidence block ───────────────────────────────────────────────────────────
 
@@ -239,179 +207,6 @@ function EvidBlock({ item }: { item: EvidenceItem }) {
 
 // ─── Finding card ─────────────────────────────────────────────────────────────
 
-function FindingCard({ f, idx }: { f: Finding; idx: number }) {
-  const [open, setOpen] = useState(false);
-  const sev = toSeverity(f.severity);
-  const sevColor = SEV_COLOR[sev];
-  const cvss = parseCvss(f.cvss);
-  const riskCol = riskScoreColor(f.riskScore);
-
-  return (
-    <div style={{
-      border: "1px solid var(--border-subtle)", borderLeft: `3px solid ${sevColor}`,
-      borderRadius: 8, background: "var(--bg-panel)", overflow: "hidden",
-      transition: "border-color 0.12s",
-    }}>
-      {/* ── Header (always visible) ── */}
-      <button
-        onClick={() => setOpen(!open)}
-        style={{
-          display: "grid", gridTemplateColumns: "28px 1fr auto 20px", gap: 12,
-          alignItems: "center", width: "100%", padding: "14px 16px",
-          background: "none", border: "none", cursor: "pointer", textAlign: "left",
-        }}
-      >
-        {/* Index */}
-        <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, fontWeight: 800, color: "var(--text-faint)" }}>
-          {String(idx + 1).padStart(2, "0")}
-        </span>
-
-        {/* Title + meta */}
-        <div style={{ minWidth: 0 }}>
-          <div style={{ fontSize: 11, color: "var(--text-muted)", marginBottom: 3, fontFamily: "var(--font-mono)" }}>
-            {f.id} · {f.affectedHost}
-          </div>
-          <div style={{ fontSize: 13.5, fontWeight: 700, color: "var(--text-primary)", lineHeight: 1.35 }}>{f.title}</div>
-        </div>
-
-        {/* Badges */}
-        <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0, flexWrap: "wrap", justifyContent: "flex-end" }}>
-          <SevBadge sev={sev} />
-          {cvss !== null && (
-            <span style={{
-              fontFamily: "var(--font-mono)", fontSize: 10, fontWeight: 800,
-              color: cvssColor(cvss), padding: "2px 7px", borderRadius: 4,
-              border: `1px solid ${cvssColor(cvss)}44`, background: `${cvssColor(cvss)}12`,
-            }}>CVSS {cvss.toFixed(1)}</span>
-          )}
-          <StatusPill status={f.status} />
-          {f.activelyExploited && (
-            <span style={{
-              display: "inline-flex", alignItems: "center", gap: 3,
-              fontSize: 9, fontWeight: 800, color: SEV_PALETTE.RED,
-              padding: "2px 6px", borderRadius: 4, background: `${SEV_PALETTE.RED}14`,
-            }}>
-              <Flame size={9} /> KEV
-            </span>
-          )}
-        </div>
-
-        {/* Chevron */}
-        {open ? <ChevronDown size={14} style={{ color: "var(--text-muted)", flexShrink: 0 }} />
-               : <ChevronRight size={14} style={{ color: "var(--text-muted)", flexShrink: 0 }} />}
-      </button>
-
-      {/* ── Body (expanded) ── */}
-      {open && (
-        <div style={{ borderTop: "1px solid var(--border-subtle)" }}>
-
-          {/* Metadata strip */}
-          <div style={{
-            display: "flex", flexWrap: "wrap", gap: 0,
-            borderBottom: "1px solid var(--border-subtle)",
-          }}>
-            {[
-              ["Affected Host", f.affectedHost],
-              ["Risk Score", f.riskScore, riskCol],
-              ["CVSS", cvss !== null ? cvss.toFixed(1) : "—", cvssColor(cvss)],
-              ["Discovered", fmtDate(f.discoveredAt)],
-              ["Detection", f.detectionCoverage],
-            ].map(([label, val, col]) => (
-              <div key={String(label)} style={{
-                padding: "9px 14px", borderRight: "1px solid var(--border-subtle)", flexShrink: 0,
-              }}>
-                <div style={{ fontSize: 9, fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", fontFamily: "var(--font-mono)" }}>{label}</div>
-                <div style={{ fontSize: 12, fontWeight: 700, color: col ? String(col) : "var(--text-primary)", marginTop: 2 }}>{String(val)}</div>
-              </div>
-            ))}
-          </div>
-
-          <div style={{ padding: "16px" }}>
-
-            {/* CVSS Vector */}
-            {f.cvssVector && (
-              <div className="fc-section">
-                <div className="fc-section-label">CVSS Vector</div>
-                <code style={{ display: "block", fontSize: 10.5, fontFamily: "var(--font-mono)", color: "var(--text-muted)", marginBottom: 8, wordBreak: "break-all" }}>{f.cvssVector}</code>
-                <CvssVector vector={f.cvssVector} />
-              </div>
-            )}
-
-            {/* Description */}
-            <div className="fc-section">
-              <div className="fc-section-label">Description</div>
-              <div className="fc-prose">
-                {(f.description || f.technicalDetails || "No description recorded.").split("\n\n").map((p, i) => <p key={i}>{p}</p>)}
-              </div>
-            </div>
-
-            {/* Impact */}
-            {f.impact && (
-              <div className="fc-section">
-                <div className="fc-section-label">Business Impact</div>
-                <div className="fc-prose">
-                  {f.impact.split("\n\n").map((p, i) => <p key={i}>{p}</p>)}
-                </div>
-              </div>
-            )}
-
-            {/* Steps to reproduce */}
-            {f.reproductionSteps && (
-              <div className="fc-section">
-                <div className="fc-section-label">Steps to Reproduce</div>
-                <EvidBlock item={{ label: "Reproduction", content: f.reproductionSteps }} />
-              </div>
-            )}
-
-            {/* Evidence */}
-            {f.evidence.length > 0 && (
-              <div className="fc-section">
-                <div className="fc-section-label">Evidence ({f.evidence.length})</div>
-                <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-                  {f.evidence.map((item, i) => <EvidBlock key={i} item={item} />)}
-                </div>
-              </div>
-            )}
-
-            {/* Remediation */}
-            <div className="fc-section fc-section--rem">
-              <div className="fc-section-label"><Shield size={11} /> Remediation</div>
-              {f.remediation.length > 0 ? (
-                <ol className="fc-rem-list">
-                  {f.remediation.map((s, i) => { const t = remText(s); return t ? <li key={i}>{t}</li> : null; })}
-                </ol>
-              ) : (
-                <p className="report-missing">No remediation steps recorded.</p>
-              )}
-            </div>
-
-            {/* Tags row */}
-            {(f.mitre.length > 0 || (f.cwe?.length ?? 0) > 0 || (f.cve?.length ?? 0) > 0) && (
-              <div className="fc-section" style={{ marginBottom: 0 }}>
-                <div className="fc-section-label">References</div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-                  {f.mitre.map(t => (
-                    <a key={t.id} href={`https://attack.mitre.org/techniques/${t.id.replace(".", "/")}/`}
-                       target="_blank" rel="noopener noreferrer" className="rpt-chip rpt-chip--mitre" title={t.name}>
-                      {t.id}
-                    </a>
-                  ))}
-                  {f.cwe?.map(c => <span key={c.id} className="rpt-chip" title={c.name}>{c.id}</span>)}
-                  {f.cve?.map(cve => (
-                    <a key={cve} href={`https://nvd.nist.gov/vuln/detail/${cve}`}
-                       target="_blank" rel="noopener noreferrer" className="rpt-chip rpt-chip--cve">
-                      {cve}
-                    </a>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
-  );
-}
 
 // ─── AI report (deterministic scorecard · injection-fenced) ───────────────────
 
@@ -967,31 +762,6 @@ function ExecTab({ eng, findings, summary }: { eng: Engagement; findings: Findin
 
 // ─── Tab: Technical Findings ──────────────────────────────────────────────────
 
-function TechTab({ findings, total }: { findings: Finding[]; total: number }) {
-  const [filter, setFilter] = useState<Severity | "ALL">("ALL");
-  const filtered = filter === "ALL" ? findings : findings.filter(f => toSeverity(f.severity) === filter);
-
-  return (
-    <>
-      <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
-        <span style={{ fontSize: 11, color: "var(--text-muted)", fontWeight: 600 }}>Severity:</span>
-        {(["ALL", ...SEVERITY_ORDER] as const).map(s => (
-          <button key={s} onClick={() => setFilter(s as Severity | "ALL")} style={{
-            padding: "4px 10px", borderRadius: 20, fontSize: 10.5, fontWeight: 700, cursor: "pointer",
-            border: `1px solid ${filter === s ? (s === "ALL" ? "var(--accent)" : SEV_COLOR[s as Severity]) : "var(--border-subtle)"}`,
-            background: filter === s ? (s === "ALL" ? "var(--accent-ghost)" : `${SEV_COLOR[s as Severity]}14`) : "transparent",
-            color: filter === s ? (s === "ALL" ? "var(--accent)" : SEV_COLOR[s as Severity]) : "var(--text-muted)",
-          }}>{s}</button>
-        ))}
-        <span style={{ marginLeft: "auto", fontSize: 11, color: "var(--text-muted)" }}>{filtered.length} / {total}</span>
-      </div>
-      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-        {filtered.length === 0 && <p className="report-missing">No findings match the selected filter.</p>}
-        {filtered.map((f, i) => <FindingCard key={f.id} f={f} idx={i} />)}
-      </div>
-    </>
-  );
-}
 
 // ─── Tab: Evidence Vault ──────────────────────────────────────────────────────
 
@@ -1175,6 +945,7 @@ export default function ReportsPage() {
   const actQ  = useQuery({ queryKey: ["rpt-activity", engId], queryFn: () => fetchJson<ActivityItem[]>(`/api/activity?engagement_id=${encodeURIComponent(engId)}&limit=50`), enabled: Boolean(engId), retry: (c, e) => !isUnauthorized(e) && c < 2 });
 
   const findings = findQ.data?.items ?? [];
+  const reportFindings = useMemo(() => findings.map(toRawFinding), [findings]);
   const summary: FindingSummary = sumQ.data ?? { total: eng?.findingCount ?? 0, criticalOpen: 0, validated: 0, blind: 0, averageRisk: 0 };
   const loading  = engQ.isLoading || (Boolean(engId) && (findQ.isLoading || sumQ.isLoading));
   const loadErr  = engQ.error || findQ.error || sumQ.error;
@@ -1252,7 +1023,7 @@ export default function ReportsPage() {
             {/* Tab content */}
             <div style={{ padding: "20px 24px 24px" }}>
               {tab === "executive" && <ExecTab eng={eng} findings={findings} summary={summary} />}
-              {tab === "technical" && <TechTab findings={findings} total={summary.total} />}
+              {tab === "technical" && <FindingsSection findings={reportFindings} total={summary.total} />}
               {tab === "evidence"  && <EvidTab findings={findings} activity={actQ.data ?? []} total={summary.total} />}
               {tab === "cve"       && <CveTab findings={findings} total={summary.total} />}
               {tab === "coverage"  && <CoverageTab findings={findings} total={summary.total} />}
