@@ -13,6 +13,9 @@ import {
   portalApi, usePortalEngagement, SEVERITY_VAR, GRADE_VAR,
   type PortalSummary, type PortalTrends, type PortalFinding, type PortalReport,
 } from "../../../lib/portal-client";
+import { FindingsSection } from "../../../components/report/FindingReport";
+import { portalToRawFinding } from "../../../lib/report/adapt";
+import "../../../styles/report-finding.css"; // after globals.css (imported in the root layout)
 
 interface ReportContent extends PortalReport { content: string; }
 
@@ -252,159 +255,6 @@ function FieldLabel({ children, color }: { children: React.ReactNode; color?: st
   );
 }
 
-/** A professional, self-contained finding record: identification, evidence,
- *  provenance (time + source), and the recommended action. Numbered so a reader
- *  can cite "F-03" the way a real assessment report is cross-referenced. */
-function FindingCard({ f, index }: { f: PortalFinding; index: number }) {
-  const sevColor = SEVERITY_VAR[f.severity] ?? SEVERITY_VAR.info;
-  const ref = `F-${String(index + 1).padStart(2, "0")}`;
-  const cves = f.cve_ids ?? [];
-
-  return (
-    <article style={{
-      borderRadius: 10, border: "1px solid var(--border-subtle)",
-      background: "var(--bg-surface)", overflow: "hidden",
-      borderLeft: `4px solid ${sevColor}`,
-    }}>
-      {/* Header row — reference, severity, CVEs, title */}
-      <div style={{
-        display: "flex", alignItems: "flex-start", justifyContent: "space-between",
-        gap: 12, padding: "14px 18px",
-        borderBottom: "1px solid var(--border-subtle)",
-        background: "var(--bg-panel)",
-      }}>
-        <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-            <span style={{
-              fontSize: 10, fontWeight: 800, fontFamily: "var(--font-mono)",
-              letterSpacing: "0.06em", color: "var(--text-secondary)",
-              padding: "2px 7px", borderRadius: 5, background: "var(--bg-hover)",
-              border: "0.5px solid var(--border-default)",
-            }}>
-              {ref}
-            </span>
-            <SevChip severity={f.severity} />
-            {cves.map((cve) => (
-              <a key={cve} href={`https://nvd.nist.gov/vuln/detail/${cve}`}
-                target="_blank" rel="noopener noreferrer"
-                style={{
-                  display: "inline-flex", alignItems: "center", gap: 3,
-                  fontSize: 9, fontWeight: 700, fontFamily: "var(--font-mono)",
-                  color: "var(--sev-high-color)", textDecoration: "none", letterSpacing: "0.04em",
-                  padding: "2px 7px", borderRadius: 5,
-                  background: `color-mix(in srgb, var(--sev-high-color) 8%, transparent)`,
-                  border: `0.5px solid color-mix(in srgb, var(--sev-high-color) 25%, transparent)`,
-                }}>
-                {cve} <ExternalLink size={8} />
-              </a>
-            ))}
-          </div>
-          <h4 style={{ margin: "8px 0 0", fontSize: 14, fontWeight: 700,
-            color: "var(--text-primary)", lineHeight: 1.35 }}>
-            {f.title}
-          </h4>
-        </div>
-      </div>
-
-      {/* Scores row */}
-      <div style={{
-        display: "flex", gap: 0, borderBottom: "1px solid var(--border-subtle)",
-        background: "var(--bg-panel)",
-      }}>
-        {[
-          { label: "CVSS", value: f.cvss_score ?? "—", color: f.cvss_score !== null ? sevColor : "var(--text-muted)" },
-          { label: "Risk score", value: f.risk_score ?? "—", color: f.risk_score !== null ? sevColor : "var(--text-muted)" },
-          { label: "Status", value: f.status, color: "var(--text-secondary)" },
-        ].map((item, i) => (
-          <div key={item.label} style={{
-            flex: 1, padding: "10px 16px",
-            borderRight: i < 2 ? "1px solid var(--border-subtle)" : "none",
-          }}>
-            <FieldLabel>{item.label}</FieldLabel>
-            <div style={{ marginTop: 4, fontSize: 16, fontWeight: 700,
-              color: item.color, textTransform: "capitalize", fontFamily: "var(--font-mono)" }}>
-              {item.value}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      {/* Body — observation, provenance, recommended action */}
-      <div style={{ padding: "16px 18px", display: "flex", flexDirection: "column", gap: 16 }}>
-        {/* Observation & evidence */}
-        <div>
-          <FieldLabel>Observation &amp; evidence</FieldLabel>
-          <p style={{ margin: "7px 0 0", fontSize: 12.5, color: "var(--text-secondary)", lineHeight: 1.65 }}>
-            {f.description
-              ?? "This finding was recorded during the assessment. A detailed technical description was not captured for this item."}
-          </p>
-        </div>
-
-        {/* Provenance grid — time, source, references, status */}
-        <div style={{
-          display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 14,
-          padding: "13px 15px", borderRadius: 8,
-          background: "var(--bg-panel)", border: "1px solid var(--border-subtle)",
-        }}>
-          <div>
-            <FieldLabel>Identified</FieldLabel>
-            <div style={{ marginTop: 4, fontSize: 11.5, color: "var(--text-secondary)" }}>
-              <Timestamp value={f.first_seen} variant="exact" />
-            </div>
-          </div>
-          <div>
-            <FieldLabel>Source</FieldLabel>
-            <div style={{ marginTop: 4, fontSize: 11.5, color: "var(--text-secondary)" }}>
-              Vedha automated assessment
-            </div>
-          </div>
-          <div>
-            <FieldLabel>References</FieldLabel>
-            <div style={{ marginTop: 4, fontSize: 11.5, color: "var(--text-secondary)",
-              display: "flex", flexWrap: "wrap", gap: 6 }}>
-              {cves.length > 0
-                ? cves.map((cve) => (
-                    <a key={cve} href={`https://nvd.nist.gov/vuln/detail/${cve}`}
-                      target="_blank" rel="noopener noreferrer"
-                      style={{ display: "inline-flex", alignItems: "center", gap: 3,
-                        color: "var(--accent)", textDecoration: "none",
-                        fontFamily: "var(--font-mono)", fontSize: 11 }}>
-                      {cve} <ExternalLink size={9} />
-                    </a>
-                  ))
-                : <span style={{ color: "var(--text-muted)" }}>No public CVE mapping</span>}
-            </div>
-          </div>
-          <div>
-            <FieldLabel>Current status</FieldLabel>
-            <div style={{ marginTop: 4, fontSize: 11.5, color: "var(--text-secondary)",
-              textTransform: "capitalize" }}>
-              {f.status}
-            </div>
-          </div>
-        </div>
-
-        {/* Recommended action */}
-        <div style={{
-          padding: "12px 14px", borderRadius: 8,
-          background: `color-mix(in srgb, var(--nominal-color) 6%, var(--bg-panel))`,
-          border: `1px solid color-mix(in srgb, var(--nominal-color) 22%, transparent)`,
-          borderLeft: `3px solid var(--nominal-color)`,
-        }}>
-          <FieldLabel color="var(--nominal-color)">
-            <span style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
-              <CheckCircle size={10} /> Recommended action
-            </span>
-          </FieldLabel>
-          <p style={{ margin: "7px 0 0", fontSize: 12.5, color: "var(--text-primary)", lineHeight: 1.65 }}>
-            {f.remediation
-              ?? "Remediation guidance for this finding is being prepared by your security team."}
-          </p>
-        </div>
-      </div>
-    </article>
-  );
-}
 
 // ── Executive tab ─────────────────────────────────────────────────────────────
 
@@ -545,9 +395,7 @@ function FindingsTab({ findings }: { findings: PortalFinding[] }) {
     );
   }
 
-  // Count by severity for the register summary line.
-  const bySev = SEVS.map((s) => ({ s, n: sorted.filter((f) => f.severity === s).length }))
-    .filter((x) => x.n > 0);
+  const reportFindings = sorted.map(portalToRawFinding);
 
   return (
     <SectionBlock
@@ -555,28 +403,7 @@ function FindingsTab({ findings }: { findings: PortalFinding[] }) {
       title="Detailed findings register"
       aside={`${sorted.length} finding${sorted.length === 1 ? "" : "s"}`}
     >
-      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-        {/* Register summary: what's inside, ordered highest-risk first */}
-        <div style={{ display: "flex", alignItems: "center", flexWrap: "wrap", gap: 14,
-          paddingBottom: 12, borderBottom: "1px solid var(--border-subtle)" }}>
-          <span style={{ fontSize: 11, color: "var(--text-muted)" }}>
-            Every recorded finding, ordered by risk. Each entry carries its evidence, time of
-            identification, source and recommended action.
-          </span>
-          <div style={{ display: "flex", gap: 12, marginLeft: "auto", flexWrap: "wrap" }}>
-            {bySev.map(({ s, n }) => (
-              <span key={s} style={{ display: "inline-flex", alignItems: "center", gap: 5 }}>
-                <span style={{ width: 8, height: 8, borderRadius: 2, background: SEVERITY_VAR[s] }} />
-                <span style={{ fontSize: 11, color: "var(--text-secondary)", textTransform: "capitalize" }}>{s}</span>
-                <span style={{ fontSize: 12, fontWeight: 700, fontFamily: "var(--font-mono)",
-                  color: "var(--text-primary)" }}>{n}</span>
-              </span>
-            ))}
-          </div>
-        </div>
-
-        {sorted.map((f, i) => <FindingCard key={f.id} f={f} index={i} />)}
-      </div>
+      <FindingsSection mode="client" findings={reportFindings} total={sorted.length} />
     </SectionBlock>
   );
 }
