@@ -141,8 +141,14 @@ export function toUiFinding(api: any): any {
     technicalDetails: api.technical_details ?? "",
     attackPath: api.attack_path ?? "",
     evidence: evidenceToUi(api.evidence),
+    // Clean, deterministic "key facts" from the backend evidence_summary service —
+    // the glanceable view. Raw artifacts (evidence above) stay behind a disclosure.
+    evidenceSummary: Array.isArray(api.evidence_summary) ? api.evidence_summary : [],
     impact: api.impact ?? "",
     businessImpact: api.business_impact ?? "",
+    // Honest exploitation posture block (finding_content): validated vs
+    // "Not validated. Absence of proof is not proof of absence." + KEV/EPSS framing.
+    exploitation: api.exploitation ?? null,
     remediation: api.remediation ? [api.remediation] : [],
     compliance: Array.isArray(api.compliance) ? api.compliance : [],
     mitre: (api.mitre_techniques ?? []).map((m: any) =>
@@ -163,6 +169,7 @@ export function toUiFinding(api: any): any {
     exploitMaturityRecorded: api.exploit_maturity != null,
     pocAvailable: api.poc_available ?? false,
     activelyExploited: api.actively_exploited ?? api.exploit_validated ?? api.kev_listed ?? false,
+    exploitValidated: api.exploit_validated ?? false,
     detectionCoverage: DETECTION_TO_UI[api.detection_status] ?? "PARTIAL",
     detectionNote: api.detection_note ?? undefined,
     fpProbability: api.fp_probability ?? 0,
