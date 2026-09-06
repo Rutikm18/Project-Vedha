@@ -6,6 +6,7 @@
  * for the fields derived here, at which point the derivations become pass-throughs.
  */
 import type { RawFinding, RawAsset, DetectionMethod } from "./finding-model";
+import type { PortalFinding } from "../portal-client";
 
 /** Best-effort exposure read from the asset's environment label. */
 function deriveInternetReachable(f: any): boolean | undefined {
@@ -60,4 +61,33 @@ export function toRawFinding(f: any): RawFinding {
     activelyExploited: Boolean(f?.activelyExploited),
     detectionCoverage: f?.detectionCoverage ?? "",
   } as RawFinding;
+}
+
+/**
+ * Map the deliberately-thin customer `PortalFinding` to a `RawFinding` for the
+ * client report. Curated by construction: the portal payload never carries
+ * evidence, exploit validation or internal judgment, so none can leak — and the
+ * component is additionally rendered in `mode="client"`. Missing fields degrade
+ * to empty, which client mode renders as absence rather than a gap notice.
+ */
+export function portalToRawFinding(pf: PortalFinding): RawFinding {
+  return {
+    id: pf.id,
+    title: pf.title,
+    severity: pf.severity ?? "",
+    status: pf.status ?? "",
+    affectedHost: "",
+    discoveredAt: pf.first_seen ?? "",
+    description: pf.description ?? "",
+    technicalDetails: "",
+    evidence: [],
+    impact: "",
+    remediation: pf.remediation ? [pf.remediation] : [],
+    mitre: [],
+    cve: pf.cve_ids ?? undefined,
+    riskScore: pf.risk_score ?? 0,
+    cvss: pf.cvss_score != null ? String(pf.cvss_score) : "",
+    activelyExploited: false,
+    detectionCoverage: "",
+  };
 }
