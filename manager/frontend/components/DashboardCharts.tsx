@@ -3,8 +3,7 @@
 import React from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
-  AreaChart, Area, PieChart, Pie, Cell,
-  XAxis, YAxis, Tooltip, ResponsiveContainer,
+  AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer,
 } from "recharts";
 import { Users, ShieldAlert, ArrowUpRight, ArrowDownRight, Minus } from "lucide-react";
 import Link from "next/link";
@@ -223,25 +222,6 @@ export function DashboardCharts() {
     .slice(0, 5);
   const validatedCount = findingSummary?.validated ?? 0;
 
-  const sevTotals = engagements.reduce(
-    (acc, e) => {
-      // findingsBySeverity can be absent on a lean /api/engagements payload —
-      // guard it so one such engagement can't throw and blank the whole dashboard.
-      const s = e.findingsBySeverity;
-      return {
-        CRITICAL: acc.CRITICAL + (s?.CRITICAL ?? 0),
-        HIGH:     acc.HIGH     + (s?.HIGH ?? 0),
-        MEDIUM:   acc.MEDIUM   + (s?.MEDIUM ?? 0),
-        LOW:      acc.LOW      + (s?.LOW ?? 0),
-      };
-    },
-    { CRITICAL: 0, HIGH: 0, MEDIUM: 0, LOW: 0 },
-  );
-
-  const pieData = (Object.entries(sevTotals) as [keyof typeof SEV, number][])
-    .filter(([, v]) => v > 0)
-    .map(([name, value]) => ({ name, value, color: SEV[name].color }));
-
   const totalAssets       = stats.totalAssets   ?? engagements.reduce((s, e) => s + (e.assetCount ?? 0), 0);
 
   const slimTimeline = timeline.map((t, i) => ({
@@ -312,56 +292,6 @@ export function DashboardCharts() {
           )}
         </div>
 
-        {/* Donut */}
-        <div className="stagger-item dashboard-card" style={{
-          animationDelay: "160ms",
-          background: "var(--bg-panel)", border: "0.5px solid var(--border-subtle)",
-          borderRadius: 8, padding: "16px 16px 14px",
-          display: "flex", flexDirection: "column",
-          boxShadow: "var(--shadow-sm)",
-          transition: "border-color 0.18s ease",
-        }}
-          onMouseEnter={(e) => (e.currentTarget.style.borderColor = "var(--border-strong)")}
-          onMouseLeave={(e) => (e.currentTarget.style.borderColor = "var(--border-subtle)")}
-        >
-          <span style={{ fontFamily: "var(--font-body)", fontSize: 13, fontWeight: 600, color: "var(--text-primary)", marginBottom: 8 }}>
-            By severity
-          </span>
-          {isLoading ? (
-            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center" }}>
-              <Bone w={96} h={96} radius={48} />
-            </div>
-          ) : pieData.length === 0 ? (
-            <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-body)", fontSize: 13, color: "var(--text-muted)" }}>
-              No data
-            </div>
-          ) : (
-            <>
-              <ResponsiveContainer width="100%" height={110}>
-                <PieChart>
-                  <Pie data={pieData} cx="50%" cy="50%" innerRadius={26} outerRadius={48}
-                    dataKey="value" strokeWidth={0} animationBegin={200} animationDuration={800}>
-                    {pieData.map((e, i) => <Cell key={i} fill={e.color} />)}
-                  </Pie>
-                  <Tooltip formatter={(v: number, name: string) => [v, name]}
-                    contentStyle={{ background: "var(--bg-panel)", border: "0.5px solid var(--border-default)", fontFamily: "var(--font-mono)", fontSize: 10, borderRadius: 8, boxShadow: "var(--shadow-lg)" }} />
-                </PieChart>
-              </ResponsiveContainer>
-              <div style={{ display: "flex", flexDirection: "column", gap: 7, marginTop: 4 }}>
-                {pieData.map((d) => (
-                  <div key={d.name} style={{ display: "flex", alignItems: "center", gap: 8, padding: "3px 4px", borderRadius: 6, transition: "background 0.15s ease", cursor: "default" }}
-                    onMouseEnter={(e) => (e.currentTarget.style.background = "var(--bg-surface)")}
-                    onMouseLeave={(e) => (e.currentTarget.style.background = "transparent")}
-                  >
-                    <div style={{ width: 8, height: 8, borderRadius: 2, background: d.color, flexShrink: 0 }} />
-                    <span style={{ fontFamily: "var(--font-body)", fontSize: 11, color: "var(--text-secondary)", flex: 1 }}>{d.name}</span>
-                    <span style={{ fontFamily: "var(--font-body)", fontSize: 13, fontWeight: 700, color: d.color }}>{d.value}</span>
-                  </div>
-                ))}
-              </div>
-            </>
-          )}
-        </div>
       </div>
 
       {/* ── Findings + Activity ── */}

@@ -1,19 +1,20 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useDeferredValue, useSyncExternalStore } from "react";
+import React, { useState, useCallback, useDeferredValue, useSyncExternalStore } from "react";
 import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Copy, Check, Search, CheckCircle, Shield,
   AlertTriangle, BadgeCheck, ChevronDown, ChevronLeft, ChevronRight,
-  EyeOff, Flag, Link2, LoaderCircle, RotateCcw, Brain, Tag,
-  FileText, Server, Terminal, Wrench, X,
+  EyeOff, Flag, Link2, LoaderCircle, RefreshCw, RotateCcw, Brain, Tag,
+  FileText, Terminal, Wrench, X,
 } from "lucide-react";
 import { PageShell } from "../../components/PageShell";
 import { useAssistant } from "../../components/assistant/AssistantProvider";
 import { useToast } from "../../hooks/useToast";
 import { errorMessage, fetchJson, isUnauthorized } from "../../lib/fetcher";
 import { DataState, SkeletonRows, EmptyState } from "../../components/states/DataState";
+import { presentEvidence, type EvidenceArtifact } from "../../lib/evidence-presentation";
 import {
   SEV_COLOR, STATUS_COLOR, STATUS_LABEL, MATURITY_COLOR, COVERAGE_COLOR,
   PRIORITY_COLOR, PRIORITY_LABEL, KILL_CHAIN_PHASE_COLOR, riskScoreColor, epssColor, SEV_PALETTE,
@@ -26,6 +27,7 @@ type ExploitMaturity = "WEAPONIZED" | "POC" | "THEORETICAL";
 type DetectionCoverage = "COVERED" | "PARTIAL" | "BLIND";
 type Priority = "P0" | "P1" | "P2" | "P3" | "P4" | "P5";
 const FINDINGS_PER_PAGE = 20;
+const AGENT_REFRESH_FEEDBACK_MS = 2_000;
 
 /* Lifecycle audit-trail event (backend /api/findings/{id}/events, snake_case). */
 type TimelineEvent = {
@@ -104,7 +106,7 @@ interface Finding {
   id: string; title: string; severity: Severity; cvss: string; cvssVector: string;
   category: string; status: FindingStatus; affectedHost: string; discoveredAt: string;
   description: string; technicalDetails: string; attackPath: string;
-  evidence: { label: string; content: string }[];
+  evidence: EvidenceArtifact[];
   impact: string; businessImpact?: string;
   exploitability?: "EASY" | "MODERATE" | "DIFFICULT";
   remediation: (string | RemStep)[];
@@ -210,15 +212,17 @@ function getSlaColor(discoveredAt: string, severity: Severity) {
 
 
 /* ─── Copy Button ─── */
-function CopyBtn({ text }: { text: string }) {
+function CopyBtn({ text, showLabel = false }: { text: string; showLabel?: boolean }) {
   const [copied, setCopied] = useState(false);
   return (
     <button
       type="button"
-      aria-label={copied ? "Copied command" : "Copy command"}
+      aria-label={copied ? "Copied" : "Copy"}
       onClick={() => { navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 2000); }}
-      style={{ background: "none", border: "none", cursor: "pointer", color: copied ? "var(--nominal-color)" : "var(--text-muted)", padding: "2px 4px" }}>
+      className={showLabel ? "finding-evidence-copy" : undefined}
+      style={showLabel ? undefined : { background: "none", border: "none", cursor: "pointer", color: copied ? "var(--nominal-color)" : "var(--text-muted)", padding: "2px 4px" }}>
       {copied ? <Check size={12} /> : <Copy size={12} />}
+      {showLabel && <span>{copied ? "Copied" : "Copy"}</span>}
     </button>
   );
 }
@@ -259,43 +263,6 @@ function PriorityBadge({ priority, compact = false }: { priority: Priority; comp
   );
 }
 
-function TriageKey() {
-  const severityMeaning: Array<{ severity: Severity; meaning: string }> = [
-    { severity: "CRITICAL", meaning: "Immediate material exposure" },
-    { severity: "HIGH", meaning: "Serious exploitable weakness" },
-    { severity: "MEDIUM", meaning: "Time-bounded remediation" },
-    { severity: "LOW", meaning: "Monitor and harden" },
-    { severity: "INFO", meaning: "Context or hygiene signal" },
-  ];
-  const priorities: Priority[] = ["P0", "P1", "P2", "P3", "P4", "P5"];
-  return (
-    <details className="findings-triage-key">
-      <summary>
-        <span>
-          <strong>How Vedha prioritizes findings</strong>
-          <small>Severity = impact · Priority = response order · Risk = Manager score from 0–1000</small>
-        </span>
-        <ChevronDown size={16} aria-hidden />
-      </summary>
-      <div className="findings-triage-key-body">
-        <div className="findings-triage-concepts">
-          <div><strong>Severity</strong><span>Technical consequence if the weakness is exploited.</span></div>
-          <div><strong>Priority</strong><span>Response order after evidence, exploitability, asset context, and SLA.</span></div>
-          <div><strong>Risk</strong><span>Backend-computed ranking signal; it does not replace severity or analyst judgment.</span></div>
-        </div>
-        <div className="findings-severity-key" aria-label="Severity meanings">
-          {severityMeaning.map(({ severity, meaning }) => (
-            <span key={severity}><i style={{ background: SEV_COLOR[severity] }} /> <b>{severity}</b><em>{meaning}</em></span>
-          ))}
-        </div>
-        <div className="findings-priority-key" aria-label="Priority meanings">
-          {priorities.map((priority) => <PriorityBadge priority={priority} compact key={priority} />)}
-        </div>
-      </div>
-    </details>
-  );
-}
-
 /* ─── Risk Score Badge ─── */
 function RiskBadge({ score }: { score: number }) {
   const c = riskScoreColor(score);
@@ -323,26 +290,6 @@ function KevBadge() {
   );
 }
 
-/* ─── Verification Badge (P2 passive-verification verdict) ─── */
-const VERIFICATION_META: Record<string, { label: string; color: string; strike?: boolean }> = {
-  confirmed:    { label: "CONFIRMED",    color: SEV_PALETTE.GREEN },
-  corroborated: { label: "CORROBORATED", color: SEV_PALETTE.GREEN },
-  inferred:     { label: "INFERRED",     color: SEV_PALETTE.SLATE },
-  contradicted: { label: "CONTRADICTED", color: SEV_PALETTE.SLATE, strike: true },
-};
-function VerificationBadge({ state }: { state?: string | null }) {
-  if (!state) return null;
-  const m = VERIFICATION_META[state.toLowerCase()];
-  if (!m) return null;
-  return (
-    <span title={`Verification verdict: ${m.label}`} style={{
-      fontFamily: "var(--font-mono)", fontSize: 9, padding: "2px 6px", borderRadius: 4,
-      background: tint(m.color, 7), color: m.color, border: `1px solid ${tint(m.color, 19)}`,
-      textDecoration: m.strike ? "line-through" : "none", fontWeight: 700, letterSpacing: 0.3,
-    }}>{m.label}</span>
-  );
-}
-
 /* ─── Needs-review chip ─── */
 function NeedsReviewChip({ show }: { show?: boolean }) {
   if (!show) return null;
@@ -352,28 +299,6 @@ function NeedsReviewChip({ show }: { show?: boolean }) {
       background: tint(SEV_PALETTE.AMBER, 8), color: SEV_PALETTE.AMBER,
       border: `1px solid ${tint(SEV_PALETTE.AMBER, 25)}`, fontWeight: 700,
     }}>NEEDS REVIEW</span>
-  );
-}
-
-/* ─── Lifecycle badges: regression + auto-resolved ─── */
-function RegressionBadge({ show }: { show?: boolean }) {
-  if (!show) return null;
-  return (
-    <span title="Reappeared after being resolved (regression)" style={{
-      fontFamily: "var(--font-mono)", fontSize: 9, padding: "2px 6px", borderRadius: 4,
-      background: tint(SEV_PALETTE.RED, 7), color: SEV_PALETTE.RED,
-      border: `1px solid ${tint(SEV_PALETTE.RED, 25)}`, fontWeight: 700,
-    }}>↺ REGRESSION</span>
-  );
-}
-function AutoResolvedBadge({ method, reopenedCount }: { method?: string | null; reopenedCount?: number }) {
-  if (method !== "auto") return null;
-  return (
-    <span title="Closed by coverage-gated auto-resolution" style={{
-      fontFamily: "var(--font-mono)", fontSize: 9, padding: "2px 6px", borderRadius: 4,
-      background: tint(SEV_PALETTE.GREEN, 7), color: SEV_PALETTE.GREEN,
-      border: `1px solid ${tint(SEV_PALETTE.GREEN, 19)}`,
-    }}>AUTO-RESOLVED{reopenedCount ? ` · ${reopenedCount}× reopened` : ""}</span>
   );
 }
 
@@ -486,58 +411,96 @@ function KillChainViz({ steps }: { steps: KillChainStep[] }) {
 }
 
 /* ─── Evidence artifacts ─── */
-function evidencePresentation(label: string, content: string) {
-  let formatted = content;
-  let kind = "TEXT";
-  try {
-    if (content.length > 100_000) throw new Error("Artifact is too large for inline JSON formatting");
-    const parsed = JSON.parse(content);
-    formatted = JSON.stringify(parsed, null, 2);
-    kind = "JSON";
-  } catch {
-    const hint = `${label} ${content.slice(0, 120)}`.toLowerCase();
-    if (/command|stdout|stderr|terminal|scan|nmap|curl|powershell|shell/.test(hint)) kind = "OUTPUT";
-    else if (/log|event|trace/.test(hint)) kind = "LOG";
-  }
-  const lines = formatted.split("\n");
-  return { formatted, kind, lines, visibleLines: lines.slice(0, 200) };
-}
-
 function EvidenceGallery({ evidence }: { evidence: Finding["evidence"] }) {
   if (!evidence.length) {
-    return <div className="finding-data-missing finding-data-missing-large">No structured evidence is recorded. Validate the finding and attach reproducible proof before client delivery.</div>;
+    return (
+      <section className="finding-evidence-empty" aria-labelledby="finding-evidence-empty-title">
+        <FileText size={20} aria-hidden />
+        <div>
+          <h3 id="finding-evidence-empty-title">No recorded evidence</h3>
+          <p>Validate the finding and attach reproducible proof before it is used for remediation or client delivery.</p>
+        </div>
+      </section>
+    );
   }
-  const totalLines = evidence.reduce((total, artifact) => total + artifact.content.split("\n").length, 0);
+
+  const prepared = evidence.map((artifact) => ({ artifact, presentation: presentEvidence(artifact) }));
+  const totalLines = prepared.reduce((total, item) => total + item.presentation.lines.length, 0);
+  const totalRedactions = prepared.reduce((total, item) => total + item.presentation.redactions, 0);
+
   return (
     <div className="finding-evidence-view">
-      <div className="finding-evidence-summary">
-        <div><FileText size={15} /><strong>{evidence.length} recorded artifact{evidence.length === 1 ? "" : "s"}</strong></div>
-        <span>{totalLines.toLocaleString()} line{totalLines === 1 ? "" : "s"} available for review</span>
-      </div>
-      {evidence.map((artifact, index) => {
-        const presentation = evidencePresentation(artifact.label, artifact.content);
-        const truncated = presentation.lines.length > presentation.visibleLines.length;
+      <section className="finding-evidence-summary" aria-labelledby="finding-evidence-title">
+        <div className="finding-evidence-summary-copy">
+          <span className="finding-evidence-summary-icon"><FileText size={16} aria-hidden /></span>
+          <div>
+            <h3 id="finding-evidence-title">Evidence review</h3>
+            <p>Scanner-captured proof is shown as recorded. Likely credentials and secrets are masked in this view and copied output.</p>
+          </div>
+        </div>
+        <dl>
+          <div><dt>Artifacts</dt><dd>{evidence.length}</dd></div>
+          <div><dt>Lines</dt><dd>{totalLines.toLocaleString()}</dd></div>
+          <div><dt>Masked</dt><dd>{totalRedactions}</dd></div>
+        </dl>
+      </section>
+
+      {prepared.map(({ artifact, presentation }, index) => {
+        const label = artifact.label.trim() || `Evidence artifact ${index + 1}`;
         return (
-          <article className="finding-evidence-artifact" key={`${artifact.label}-${index}`}>
+          <article className="finding-evidence-artifact" key={`${label}-${index}`}>
             <header>
-              <div>
-                <span className="finding-evidence-index">{String(index + 1).padStart(2, "0")}</span>
+              <div className="finding-evidence-identity">
+                <span className="finding-evidence-kind">{presentation.kind}</span>
                 <div>
-                  <h3>{artifact.label || `Evidence artifact ${index + 1}`}</h3>
-                  <p>{presentation.kind} · {presentation.lines.length} line{presentation.lines.length === 1 ? "" : "s"}</p>
+                  <h3>{label}</h3>
+                  <p>{presentation.lines.length.toLocaleString()} line{presentation.lines.length === 1 ? "" : "s"} recorded</p>
                 </div>
               </div>
-              <CopyBtn text={artifact.content} />
+              <CopyBtn text={presentation.copyText} showLabel />
             </header>
-            <div className="finding-evidence-code" role="region" aria-label={`${artifact.label} evidence content`} tabIndex={0}>
-              {presentation.visibleLines.map((line, lineIndex) => (
-                <div key={lineIndex}>
-                  <span aria-hidden>{lineIndex + 1}</span>
-                  <code>{line || " "}</code>
-                </div>
-              ))}
+
+            {presentation.provenance.length ? (
+              <dl className="finding-evidence-provenance" aria-label={`${label} provenance`}>
+                {presentation.provenance.map((item) => (
+                  <div key={item.label}>
+                    <dt>{item.label}</dt>
+                    <dd title={item.title}>{item.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            ) : (
+              <p className="finding-evidence-provenance-empty">Capture source and timestamp were not recorded.</p>
+            )}
+
+            {presentation.command && (
+              <div className="finding-evidence-command">
+                <Terminal size={13} aria-hidden />
+                <span>Command</span>
+                <code>{presentation.command}</code>
+              </div>
+            )}
+
+            <div className="finding-evidence-output-heading">
+              <span>Captured output</span>
+              <span>{presentation.redactions ? `${presentation.redactions} sensitive value${presentation.redactions === 1 ? "" : "s"} masked` : "No sensitive values detected"}</span>
             </div>
-            {truncated && <footer>Showing the first 200 lines. Copy includes the complete artifact.</footer>}
+            {presentation.visibleLines.length ? (
+              <div className="finding-evidence-code" role="region" aria-label={`${label} evidence content`} tabIndex={0}>
+                {presentation.visibleLines.map((line, lineIndex) => (
+                  <div key={lineIndex}>
+                    <span aria-hidden>{lineIndex + 1}</span>
+                    <code>{line || " "}</code>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="finding-evidence-artifact-empty">This artifact was recorded without output.</div>
+            )}
+            <footer>
+              <span>Showing {presentation.visibleLines.length.toLocaleString()} of {presentation.lines.length.toLocaleString()} lines</span>
+              <span>{presentation.truncated ? "Copy includes all masked lines." : "Displayed output is complete."}</span>
+            </footer>
           </article>
         );
       })}
@@ -685,98 +648,90 @@ function FindingOverview({
   const confidence = finding.verificationConfidence == null ? "Not scored" : `${finding.verificationConfidence}%`;
   return (
     <div className="finding-overview-view">
-      <div className="finding-overview-layout">
-        <div className="finding-overview-narrative">
+      <div className="finding-overview-primary">
+        <section>
+          <h3>Summary</h3>
+          <p>{finding.description || "No finding description has been recorded."}</p>
+        </section>
+        <section>
+          <h3>Impact</h3>
+          <p>{customerImpact}</p>
+        </section>
+        <section className="finding-overview-next-action">
+          <h3>Recommended next action</h3>
+          <p>{firstRemediation || "Assign an owner, validate the evidence, and record an approved remediation plan."}</p>
+        </section>
+      </div>
+
+      <dl className="finding-overview-facts" aria-label="Affected asset and decision signals">
+        <div><dt>Host</dt><dd>{host || "Not recorded"}</dd></div>
+        <div><dt>Platform</dt><dd>{[asset?.os, asset?.osVersion].filter(Boolean).join(" ") || "Not recorded"}</dd></div>
+        <div><dt>Owner</dt><dd>{asset?.owner || finding.assignee || "Unassigned"}</dd></div>
+        <div><dt>Evidence</dt><dd>{finding.verificationState || "Unassessed"} · {confidence}</dd></div>
+        <div><dt>Exploit status</dt><dd>{finding.activelyExploited ? "Validated exploitation" : "Not validated"}</dd></div>
+        <div><dt>SLA</dt><dd style={{ color: sla.color }}>{sla.label}</dd></div>
+      </dl>
+
+      <details className="finding-overview-disclosure">
+        <summary><span><Shield size={15} /> Technical details and scoring</span><ChevronDown size={16} aria-hidden /></summary>
+        <div className="finding-overview-technical-grid">
           <section>
-            <h3>What this finding means</h3>
-            <p>{finding.description || "No finding description has been recorded."}</p>
+            <h3>Scoring and identifiers</h3>
+            <dl>
+              <div><dt>Manager risk</dt><dd style={{ color: riskScoreColor(finding.riskScore) }}>{finding.riskScore}/1000</dd></div>
+              <div><dt>CVSS</dt><dd>{finding.cvss || "Not recorded"}</dd></div>
+              <div><dt>CVSS vector</dt><dd><code>{finding.cvssVector || "Not recorded"}</code></dd></div>
+              <div><dt>CVE identifiers</dt><dd>{finding.cves?.length ? finding.cves.join(", ") : "None recorded"}</dd></div>
+              <div><dt>Category</dt><dd>{finding.category}</dd></div>
+            </dl>
           </section>
           <section>
-            <h3>Why it matters</h3>
-            <p>{customerImpact}</p>
+            <h3>Detection and verification</h3>
+            <dl>
+              <div><dt>Detection coverage</dt><dd>{finding.detectionCoverage}</dd></div>
+              <div><dt>Verification state</dt><dd>{finding.verificationState || "Unassessed"}</dd></div>
+              <div><dt>Confidence</dt><dd>{confidence}</dd></div>
+              <div><dt>First seen</dt><dd>{new Date(finding.discoveredAt).toLocaleString()}</dd></div>
+              <div><dt>Last seen</dt><dd>{finding.lastSeen ? new Date(finding.lastSeen).toLocaleString() : "Not recorded"}</dd></div>
+            </dl>
           </section>
-          <section>
+          <section className="finding-overview-risk-factors">
+            <h3>Risk factors</h3>
+            <RiskBreakdownBar breakdown={finding.riskBreakdown} />
+          </section>
+          <section className="finding-overview-technical-narrative">
             <h3>Technical explanation</h3>
-            <p>{finding.technicalDetails || finding.verificationRationale || "No additional technical explanation is recorded. Review the evidence artifacts and source scan before making a closure decision."}</p>
+            <p>{finding.technicalDetails || finding.verificationRationale || "No additional technical explanation is recorded. Review the evidence and source scan before making a closure decision."}</p>
           </section>
         </div>
+      </details>
 
-        <aside className="finding-overview-facts">
-          <div><Server size={15} /><h3>Affected system</h3></div>
-          <dl>
-            <div><dt>Host</dt><dd>{host || "Not recorded"}</dd></div>
-            <div><dt>Platform</dt><dd>{[asset?.os, asset?.osVersion].filter(Boolean).join(" ") || "Not recorded"}</dd></div>
-            <div><dt>Asset type</dt><dd>{asset?.assetType || "Not recorded"}</dd></div>
-            <div><dt>Criticality</dt><dd>{asset?.criticality || "Not recorded"}</dd></div>
-            <div><dt>Environment</dt><dd>{asset?.environment || "Not recorded"}</dd></div>
-            <div><dt>Owner</dt><dd>{asset?.owner || finding.assignee || "Unassigned"}</dd></div>
-          </dl>
-        </aside>
-      </div>
-
-      <section className="finding-decision-context">
-        <div className="finding-section-heading">
-          <div><Shield size={15} /><h3>Decision context</h3></div>
-          <span>Recorded data only</span>
-        </div>
-        <div>
-          <article><h4>Recommended first action</h4><p>{firstRemediation || "Assign an owner to validate the finding and record an approved remediation plan."}</p></article>
-          <article><h4>Evidence confidence</h4><p>{finding.evidence.length ? `${finding.evidence.length} evidence artifact${finding.evidence.length === 1 ? "" : "s"} recorded.` : "No structured evidence artifact is recorded."} Verification: {finding.verificationState || "unassessed"} ({confidence}).</p></article>
-          <article><h4>Exploit validation</h4><p>{finding.activelyExploited ? "Exploitation is recorded as validated." : "Exploitation has not been validated; do not infer absence of exploitability."}</p></article>
-          <article><h4>Accountability</h4><p>{finding.assignee ? `Assigned to ${finding.assignee}.` : "No remediation owner is assigned."} SLA status: {sla.label}.</p></article>
-        </div>
-      </section>
-
-      <div className="finding-overview-technical-grid">
-        <section>
-          <h3>Scoring and identifiers</h3>
-          <dl>
-            <div><dt>Manager risk</dt><dd style={{ color: riskScoreColor(finding.riskScore) }}>{finding.riskScore}/1000</dd></div>
-            <div><dt>CVSS</dt><dd>{finding.cvss}</dd></div>
-            <div><dt>CVSS vector</dt><dd><code>{finding.cvssVector || "Not recorded"}</code></dd></div>
-            <div><dt>CVE identifiers</dt><dd>{finding.cves?.length ? finding.cves.join(", ") : "None recorded"}</dd></div>
-            <div><dt>Category</dt><dd>{finding.category}</dd></div>
-          </dl>
-        </section>
-        <section>
-          <h3>Detection and verification</h3>
-          <dl>
-            <div><dt>Detection coverage</dt><dd>{finding.detectionCoverage}</dd></div>
-            <div><dt>Verification state</dt><dd>{finding.verificationState || "Unassessed"}</dd></div>
-            <div><dt>Confidence</dt><dd>{confidence}</dd></div>
-            <div><dt>First seen</dt><dd>{new Date(finding.discoveredAt).toLocaleString()}</dd></div>
-            <div><dt>Last seen</dt><dd>{finding.lastSeen ? new Date(finding.lastSeen).toLocaleString() : "Not recorded"}</dd></div>
-          </dl>
-        </section>
-      </div>
-
-      <section className="finding-attack-context">
-        <div className="finding-section-heading">
-          <div><Link2 size={15} /><h3>Attack and correlation context</h3></div>
-          <span>{finding.mitre.length} MITRE mapping{finding.mitre.length === 1 ? "" : "s"}</span>
-        </div>
-        <div className="finding-attack-context-grid">
-          <div>
-            <h4>MITRE ATT&amp;CK</h4>
-            {finding.mitre.length ? finding.mitre.map((mapping) => (
-              <div className="finding-mitre-row" key={mapping.id}><code>{mapping.id}</code><span>{mapping.name}</span></div>
-            )) : <p className="finding-data-missing">No MITRE ATT&amp;CK technique is mapped.</p>}
-            {finding.tags && finding.tags.length > 0 && <div className="finding-overview-tags">{finding.tags.map((tag) => <span key={tag}>{tag}</span>)}</div>}
+      <details className="finding-overview-disclosure">
+        <summary><span><Link2 size={15} /> Attack path and correlated findings</span><ChevronDown size={16} aria-hidden /></summary>
+        <div className="finding-attack-context">
+          <div className="finding-attack-context-grid">
+            <div>
+              <h4>MITRE ATT&amp;CK</h4>
+              {finding.mitre.length ? finding.mitre.map((mapping) => (
+                <div className="finding-mitre-row" key={mapping.id}><code>{mapping.id}</code><span>{mapping.name}</span></div>
+              )) : <p className="finding-data-missing">No MITRE ATT&amp;CK technique is mapped.</p>}
+              {finding.tags && finding.tags.length > 0 && <div className="finding-overview-tags">{finding.tags.map((tag) => <span key={tag}>{tag}</span>)}</div>}
+            </div>
+            <div>
+              <h4>Kill chain</h4>
+              {finding.killChain.length ? <KillChainViz steps={finding.killChain} /> : <p className="finding-data-missing">No kill-chain path has been recorded.</p>}
+            </div>
           </div>
-          <div>
-            <h4>Kill chain</h4>
-            {finding.killChain.length ? <KillChainViz steps={finding.killChain} /> : <p className="finding-data-missing">No kill-chain path has been recorded.</p>}
-          </div>
+          {related.length > 0 && (
+            <div className="finding-related-list">
+              <h4>Correlated findings</h4>
+              {related.map((item) => (
+                <div key={item.id}><span style={{ background: SEV_COLOR[item.severity] }} /><code>{item.id}</code><strong>{item.title}</strong><RiskBadge score={item.riskScore} /></div>
+              ))}
+            </div>
+          )}
         </div>
-        {related.length > 0 && (
-          <div className="finding-related-list">
-            <h4>Correlated findings</h4>
-            {related.map((item) => (
-              <div key={item.id}><span style={{ background: SEV_COLOR[item.severity] }} /><code>{item.id}</code><strong>{item.title}</strong><RiskBadge score={item.riskScore} /></div>
-            ))}
-          </div>
-        )}
-      </section>
+      </details>
     </div>
   );
 }
@@ -977,12 +932,12 @@ function FindingDetail({ f, allFindings, onStatusChange, statusUpdating, onReope
   const { explain } = useAssistant();
   const sla = getSlaColor(f.discoveredAt, f.severity);
 
-  const WORKFLOW: { status: FindingStatus; label: string; color: string }[] = [
-    { status: "CONFIRMED",      label: "Confirm finding",       color: SEV_PALETTE.ORANGE },
-    { status: "REMEDIATED",     label: "Close as remediated",   color: SEV_PALETTE.GREEN },
-    { status: "ACCEPTED",       label: "Accept Risk",  color: SEV_PALETTE.AMBER },
-    { status: "FALSE_POSITIVE", label: "Mark false positive",   color: "var(--text-secondary)" },
-    { status: "OPEN",           label: "Reopen finding",        color: SEV_PALETTE.RED },
+  const WORKFLOW: { status: FindingStatus; label: string }[] = [
+    { status: "CONFIRMED",      label: "Confirm finding" },
+    { status: "REMEDIATED",     label: "Close as remediated" },
+    { status: "ACCEPTED",       label: "Accept risk" },
+    { status: "FALSE_POSITIVE", label: "Mark false positive" },
+    { status: "OPEN",           label: "Reopen finding" },
   ];
   const terminal = f.status === "REMEDIATED" || f.status === "ACCEPTED" || f.status === "FALSE_POSITIVE";
   const availableActions = terminal
@@ -1019,26 +974,14 @@ function FindingDetail({ f, allFindings, onStatusChange, statusUpdating, onReope
     <div className="finding-detail-panel">
 
       {/* ── Header ── */}
-      <div className="finding-detail-header" style={{ background: `linear-gradient(135deg, ${tint(SEV_COLOR[f.severity], 3)} 0%, transparent 60%)` }}>
+      <div className="finding-detail-header">
         <div className="finding-detail-badges">
           <SevBadge s={f.severity} />
           <StatusBadge s={f.status} />
           <RiskBadge score={f.riskScore} />
           {f.kevStatusRecorded && f.kevListed && <KevBadge />}
-          <VerificationBadge state={f.verificationState} />
           <NeedsReviewChip show={f.needsReview} />
-          <RegressionBadge show={f.regression} />
-          <AutoResolvedBadge method={f.resolutionMethod} reopenedCount={f.reopenedCount} />
           <PriorityBadge priority={f.aiTriage.priority} compact />
-          <DetectionPill cov={f.detectionCoverage} />
-          {f.exploitMaturityRecorded && (
-            <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: MATURITY_COLOR[f.exploitMaturity], background: tint(MATURITY_COLOR[f.exploitMaturity], 7), border: `1px solid ${tint(MATURITY_COLOR[f.exploitMaturity], 15)}`, borderRadius: 4, padding: "2px 6px" }}>
-              {f.exploitMaturity}
-            </span>
-          )}
-          <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: sla.color, background: tint(sla.color, 6), border: `1px solid ${tint(sla.color, 15)}`, borderRadius: 4, padding: "2px 6px" }}>
-            SLA {sla.label}
-          </span>
           <button
             className="btn btn-secondary"
             onClick={() => explain(f.id)}
@@ -1050,55 +993,32 @@ function FindingDetail({ f, allFindings, onStatusChange, statusUpdating, onReope
         </div>
         <h2 className="finding-detail-title">{f.title}</h2>
         <div className="finding-detail-meta">
-          {f.id} · {f.category} · {f.affectedHost}
-          {f.assignee && <span style={{ color: "var(--accent)", marginLeft: 8 }}>@{f.assignee}</span>}
-        </div>
-
-        {/* ── Lifecycle timeline (first seen → last seen → resolution/regression) ── */}
-        <div className="finding-detail-lifecycle">
-          <span style={{ letterSpacing: 0.6 }}>LIFECYCLE</span>
-          <span>◦ first seen {new Date(f.discoveredAt).toLocaleDateString()}</span>
-          {f.lastSeen && <span>→ last seen {new Date(f.lastSeen).toLocaleDateString()}</span>}
-          {f.resolvedAt && (
-            <span style={{ color: SEV_PALETTE.GREEN }}>
-              → resolved {new Date(f.resolvedAt).toLocaleDateString()}{f.resolutionMethod ? ` (${f.resolutionMethod})` : ""}
-            </span>
-          )}
-          {f.regression && <span style={{ color: SEV_PALETTE.RED }}>→ regressed</span>}
-          {typeof f.reopenedCount === "number" && f.reopenedCount > 0 && (
-            <span style={{ color: SEV_PALETTE.AMBER }}>→ reopened {f.reopenedCount}×</span>
-          )}
+          <span>{f.affectedHost}</span>
+          <span>{f.category}</span>
+          <span>{f.id}</span>
+          {f.assignee && <span style={{ color: "var(--accent)" }}>Owner: {f.assignee}</span>}
         </div>
         {cveIds.length > 0 && (
           <div className="finding-cve-list">{cveIds.map((cve) => <code key={cve}>{cve}</code>)}</div>
         )}
-
-        {/* Risk breakdown bar */}
-        <div className="finding-detail-risk-breakdown">
-          <RiskBreakdownBar breakdown={f.riskBreakdown} />
-        </div>
-
       </div>
 
       {/* ── AI Triage Panel ── */}
-      {hasAiTriage && <div className="finding-ai-triage">
-        <div className="finding-ai-triage-layout">
+      {hasAiTriage && <details className="finding-ai-triage">
+        <summary>
           <Brain size={13} color="var(--accent)" style={{ flexShrink: 0, marginTop: 1 }} />
-          <div className="finding-ai-triage-content">
-            <div className="finding-ai-triage-meta">
-              <span>AI TRIAGE</span>
-              <span>
-                {Math.round(f.aiTriage.confidence * 100)}% confidence
-              </span>
-            </div>
+          <span>AI triage</span>
+          <small>{Math.round(f.aiTriage.confidence * 100)}% confidence</small>
+          <ChevronDown size={15} aria-hidden />
+        </summary>
+        <div className="finding-ai-triage-content">
             <div className="finding-ai-triage-reasoning">{f.aiTriage.reasoning}</div>
             <div className="finding-ai-triage-recommendation">
-              <span>RECOMMEND: </span>
+              <span>Recommended: </span>
               {f.aiTriage.recommendation}
             </div>
-          </div>
         </div>
-      </div>}
+      </details>}
 
       {/* ── Workflow ── */}
       <section className="finding-action-bar" aria-label="Finding lifecycle actions">
@@ -1106,20 +1026,20 @@ function FindingDetail({ f, allFindings, onStatusChange, statusUpdating, onReope
           <strong>Record an action</strong>
           <span>Every decision is added to the immutable activity history.</span>
         </div>
-        <div className="finding-action-options">
-        {availableActions.map((action) => (
-          <button
-            key={action.status}
-            onClick={() => { setPendingAction(action.status); setActionReason(""); }}
-            disabled={actionBusy}
-            style={{
-              borderColor: tint(action.color, 27),
-              background: tint(action.color, 6),
-              color: action.color,
+        <label className="finding-action-select">
+          <span>Action</span>
+          <select
+            value={pendingAction ?? ""}
+            onChange={(event) => {
+              setPendingAction((event.target.value || null) as FindingStatus | null);
+              setActionReason("");
             }}
-          >{action.label}</button>
-        ))}
-        </div>
+            disabled={actionBusy}
+          >
+            <option value="">Choose an action…</option>
+            {availableActions.map((action) => <option key={action.status} value={action.status}>{action.label}</option>)}
+          </select>
+        </label>
         {pendingAction && (
           <div className="finding-action-composer">
             <div>
@@ -1376,22 +1296,6 @@ function FindingDetail({ f, allFindings, onStatusChange, statusUpdating, onReope
 
         {/* Evidence tab */}
         {tab === "evidence" && <EvidenceGallery evidence={f.evidence} />}
-        {false && tab === "evidence" && (
-          <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-            {!f.evidence.length && <div className="finding-data-missing finding-data-missing-large">No structured evidence is recorded. Validate the finding and attach reproducible proof before client delivery.</div>}
-            {f.evidence.map((e, i) => (
-              <div key={i} style={{ background: "var(--bg-app)", border: "1px solid var(--border-subtle)", borderRadius: 6, overflow: "hidden" }}>
-                <div style={{ padding: "7px 12px", borderBottom: "1px solid var(--border-subtle)", display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                  <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--text-secondary)" }}>{e.label}</span>
-                  <CopyBtn text={e.content} />
-                </div>
-                <pre style={{ margin: 0, padding: "12px", fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-primary)", whiteSpace: "pre-wrap", wordBreak: "break-word", lineHeight: 1.6, maxHeight: 250, overflow: "auto" }}>
-                  {e.content}
-                </pre>
-              </div>
-            ))}
-          </div>
-        )}
 
         {/* Remediation tab */}
         {tab === "remediation" && <RemediationPlanView finding={f} />}
@@ -1443,210 +1347,6 @@ function FindingDetail({ f, allFindings, onStatusChange, statusUpdating, onReope
   );
 }
 
-/* ─── Fix-First Priority Queue (decision-first hero) ─── */
-function isUrgent(f: Finding): boolean {
-  if (f.status !== "OPEN" && f.status !== "CONFIRMED") return false;
-  const breached = getSlaColor(f.discoveredAt, f.severity).label === "BREACHED";
-  return f.activelyExploited || (f.kevStatusRecorded && f.kevListed) || breached || f.severity === "CRITICAL";
-}
-
-function urgencyReasons(f: Finding): string[] {
-  const r: string[] = [];
-  if (f.activelyExploited) r.push("Actively exploited");
-  if (f.kevStatusRecorded && f.kevListed) r.push("CISA KEV");
-  const sla = getSlaColor(f.discoveredAt, f.severity);
-  if (sla.label === "BREACHED") r.push("SLA breached");
-  else if (sla.pct < 25) r.push(`SLA ${sla.label}`);
-  if (f.severity === "CRITICAL") r.push("Critical");
-  return r;
-}
-
-function decisionDrivers(f: Finding): string[] {
-  const drivers = urgencyReasons(f);
-  if (f.detectionCoverage === "BLIND") drivers.push("Detection blind spot");
-  if (f.needsReview) drivers.push("Analyst review required");
-  if (f.regression) drivers.push("Regression detected");
-  if (f.verificationState?.toLowerCase() === "contradicted") drivers.push("Evidence contradicted");
-  if (f.epssRecorded && f.epssScore >= 0.5) drivers.push(`EPSS ${(f.epssScore * 100).toFixed(0)}%`);
-  return [...new Set(drivers)];
-}
-
-/* Animated number that counts up to `target` (respects reduced-motion). */
-function useCountUp(target: number, ms = 750) {
-  const [n, setN] = useState(0);
-  useEffect(() => {
-    const reduce = typeof window !== "undefined"
-      && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
-    let raf = 0;
-    // Jump straight to the target (no animation), but defer through rAF so we
-    // never setState synchronously in the effect body (avoids cascading renders
-    // and keeps the initial server/client render at 0 for hydration safety).
-    if (reduce || target <= 0) {
-      raf = requestAnimationFrame(() => setN(target));
-      return () => cancelAnimationFrame(raf);
-    }
-    const start = performance.now();
-    const tick = (t: number) => {
-      const p = Math.min(1, (t - start) / ms);
-      const eased = 1 - Math.pow(1 - p, 3); // easeOutCubic
-      setN(Math.round(target * eased));
-      if (p < 1) raf = requestAnimationFrame(tick);
-    };
-    raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
-  }, [target, ms]);
-  return n;
-}
-
-/* Track cursor position for the `.spotlight` radial highlight. */
-function spotlight(e: React.MouseEvent<HTMLElement>) {
-  const r = e.currentTarget.getBoundingClientRect();
-  e.currentTarget.style.setProperty("--mx", `${e.clientX - r.left}px`);
-  e.currentTarget.style.setProperty("--my", `${e.clientY - r.top}px`);
-}
-
-function FixFirstStrip({
-  findings, total, loading, failed, onRetry, onSelect,
-  exploitedActive, slaActive, onToggleExploited, onToggleSla,
-}: {
-  findings: Finding[]; onSelect: (id: string) => void;
-  total: number; loading: boolean; failed: boolean; onRetry: () => void;
-  exploitedActive: boolean; slaActive: boolean; onToggleExploited: () => void; onToggleSla: () => void;
-}) {
-  const open = findings.filter((f) => f.status === "OPEN" || f.status === "CONFIRMED");
-  const urgent = open.filter(isUrgent).sort((a, b) => {
-    if (a.activelyExploited !== b.activelyExploited) return a.activelyExploited ? -1 : 1;
-    return b.riskScore - a.riskScore;
-  });
-  const openRisk = open.reduce((s, f) => s + f.riskScore, 0);
-  const slaBreached = open.filter((f) => getSlaColor(f.discoveredAt, f.severity).label === "BREACHED").length;
-  const activeCount = open.filter((f) => f.activelyExploited).length;
-  const sev = (["CRITICAL", "HIGH", "MEDIUM", "LOW"] as Severity[]).map((s) => ({ s, n: open.filter((f) => f.severity === s).length }));
-  const totalOpen = Math.max(1, open.length);
-  const hasData = !loading && !failed;
-  const accent = failed
-    ? SEV_PALETTE.AMBER
-    : !hasData
-      ? "var(--border-accent)"
-      : urgent.length === 0
-        ? SEV_PALETTE.GREEN
-        : (activeCount > 0 || slaBreached > 0) ? SEV_PALETTE.RED : SEV_PALETTE.ORANGE;
-
-  const urgentN = useCountUp(hasData ? urgent.length : 0);
-  const activeN = useCountUp(hasData ? activeCount : 0);
-  const slaN = useCountUp(hasData ? slaBreached : 0);
-  const openRiskN = useCountUp(hasData ? openRisk : 0);
-
-  return (
-    <section className="findings-decision-strip animate-fade-up gradient-frame spotlight" onMouseMove={spotlight} aria-labelledby="visible-triage-title" style={{
-      position: "relative",
-      background: "var(--bg-panel)", border: "1px solid var(--border-subtle)", borderTop: `2px solid ${accent}`,
-      borderRadius: 12, padding: "18px 20px", marginBottom: 16, boxShadow: "var(--shadow-sm)",
-    }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", flexWrap: "wrap", gap: 18, marginBottom: hasData && urgent.length ? 16 : 0 }}>
-        <div>
-          <h2 id="visible-triage-title" style={{ margin: 0, fontFamily: "var(--font-ui)", fontSize: 15, color: "var(--text-primary)" }}>Visible queue triage</h2>
-          <div style={{ display: "flex", alignItems: "center", gap: 10, marginTop: 7 }}>
-            {loading ? (
-              <LoaderCircle className="findings-spinner" size={20} color="var(--accent)" aria-hidden />
-            ) : failed ? (
-              <AlertTriangle size={20} color={SEV_PALETTE.AMBER} aria-hidden />
-            ) : (
-              <span className={urgent.length ? "stat-glow" : undefined} style={{ fontFamily: "var(--font-display)", fontSize: 30, fontWeight: 800, color: accent, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{urgentN}</span>
-            )}
-            <span style={{ fontFamily: "var(--font-body)", fontSize: 14, color: "var(--text-primary)", fontWeight: 650 }}>
-              {loading
-                ? "Calculating triage posture…"
-                : failed
-                  ? "Triage posture is unavailable"
-                  : urgent.length === 0
-                    ? "No immediate-action triggers in this visible queue"
-                    : `${urgent.length === 1 ? "finding needs" : "findings need"} action now`}
-            </span>
-          </div>
-          <p style={{ margin: "7px 0 0", color: "var(--text-muted)", fontSize: 12, lineHeight: 1.45 }}>
-            {failed
-              ? "Vedha could not verify the current queue, so no safe-state claim is shown."
-              : loading
-                ? "Waiting for the latest finding and SLA signals."
-                : `Loaded ${findings.length} of ${total} matching findings. Urgency reflects only this visible page.`}
-          </p>
-          {failed && (
-            <button type="button" className="findings-inline-action" onClick={onRetry}>
-              <RotateCcw size={13} aria-hidden /> Retry queue
-            </button>
-          )}
-        </div>
-        {hasData && <div className="findings-triage-metrics">
-          {[
-            { label: "ACTIVE EXPLOITATION", value: activeN.toLocaleString(), live: activeCount > 0, color: activeCount ? SEV_PALETTE.RED : "var(--text-secondary)", active: exploitedActive, onClick: onToggleExploited },
-            { label: "SLA BREACHED", value: slaN.toLocaleString(), live: false, color: slaBreached ? SEV_PALETTE.RED : "var(--text-secondary)", active: slaActive, onClick: onToggleSla },
-            { label: "OPEN RISK SUM", value: openRiskN.toLocaleString(), live: false, color: "var(--text-primary)", active: false, onClick: undefined as (() => void) | undefined },
-          ].map((m) => {
-            const inner = (
-              <>
-                <div style={{ fontFamily: "var(--font-mono)", fontSize: 20, fontWeight: 700, color: m.color, lineHeight: 1, fontVariantNumeric: "tabular-nums" }}>{m.value}</div>
-                <div style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--text-secondary)", marginTop: 3, letterSpacing: 0.4, display: "flex", alignItems: "center", gap: 5, justifyContent: "flex-end" }}>
-                  {m.live && <span className="live-dot" style={{ color: SEV_PALETTE.RED }} aria-hidden />}
-                  {m.label}
-                </div>
-              </>
-            );
-            return m.onClick ? (
-              <button className="findings-triage-metric" key={m.label} onClick={m.onClick} aria-pressed={m.active} aria-label={`Filter list by ${m.label.toLowerCase()}`} title="Filter the visible queue"
-                style={{ textAlign: "right", cursor: "pointer", background: m.active ? "var(--accent-ghost)" : "transparent",
-                  border: m.active ? "1px solid var(--border-accent)" : "1px solid transparent", borderRadius: 8, padding: "6px 9px" }}>
-                {inner}
-              </button>
-            ) : (
-              <div key={m.label} title="Sum of Manager risk scores for open findings on this page" style={{ textAlign: "right", padding: "6px 9px" }}>{inner}</div>
-            );
-          })}
-          <div style={{ width: 128 }}>
-            <div className="sev-bar" style={{ height: 8, display: "flex", borderRadius: 4, overflow: "hidden", background: "var(--bg-app)" }}>
-              {sev.map(({ s, n }) => n > 0 ? (
-                <div key={s} style={{ width: `${(n / totalOpen) * 100}%`, background: SEV_COLOR[s] }} title={`${s}: ${n}`} />
-              ) : null)}
-            </div>
-            <div style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--text-secondary)", marginTop: 4, textAlign: "right" }}>{open.length} visible open</div>
-          </div>
-        </div>}
-      </div>
-
-      {hasData && urgent.length > 0 && (
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(258px, 1fr))", gap: 10 }}>
-          {urgent.slice(0, 3).map((f) => (
-            <button key={f.id} onClick={() => onSelect(f.id)} onMouseMove={spotlight} className="findings-urgent-item card-hover spotlight lift" aria-label={`Triage ${f.title}`} style={{
-              textAlign: "left", cursor: "pointer", background: "var(--bg-app)", border: "1px solid var(--border-subtle)",
-              borderRadius: 10, padding: "11px 13px",
-              display: "flex", flexDirection: "column", gap: 7,
-            }}>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-                <span style={{ fontFamily: "var(--font-body)", fontSize: 13, fontWeight: 600, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.title}</span>
-                <span style={{ fontFamily: "var(--font-mono)", fontSize: 12, fontWeight: 700, color: riskScoreColor(f.riskScore), flexShrink: 0 }}>{f.riskScore}/1000</span>
-              </div>
-              <div style={{ display: "flex", gap: 5, flexWrap: "wrap" }}>
-                {urgencyReasons(f).map((r) => (
-                  <span key={r} style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: SEV_PALETTE.RED, background: tint(SEV_PALETTE.RED, 7), border: `1px solid ${tint(SEV_PALETTE.RED, 19)}`, borderRadius: 3, padding: "1px 6px" }}>{r}</span>
-                ))}
-              </div>
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-                <span style={{ fontFamily: "var(--font-mono)", fontSize: 9, color: "var(--text-secondary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{f.affectedHost}</span>
-                <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, color: "var(--accent)", fontWeight: 600, flexShrink: 0 }}>Triage →</span>
-              </div>
-            </button>
-          ))}
-          {urgent.length > 3 && (
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "center", fontFamily: "var(--font-mono)", fontSize: 11, color: "var(--text-secondary)", border: "1px dashed var(--border-subtle)", borderRadius: 8, padding: 10 }}>
-              +{urgent.length - 3} more urgent
-            </div>
-          )}
-        </div>
-      )}
-    </section>
-  );
-}
-
 /* ─── Main Page ─── */
 export default function FindingsPage() {
   const { success, error: showError } = useToast();
@@ -1672,6 +1372,8 @@ export default function FindingsPage() {
   const [filterNeedsReview, setFilterNeedsReview] = useState(false);
   const [filterVerification, setFilterVerification] = useState<string>("ALL");
   const [filterAgentId, setFilterAgentId] = useState<string>("");
+  const [agentsRefreshing, setAgentsRefreshing] = useState(false);
+  const [agentRefreshFeedback, setAgentRefreshFeedback] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [engagementOverride, setEngagementId] = useState<string | null | undefined>();
   // URL state is an external store. Local overrides let the operator clear a
@@ -1697,7 +1399,7 @@ export default function FindingsPage() {
   if (engagementId) queryString.set("engagement_id", engagementId);
   if (filterAgentId) queryString.set("agent_id", filterAgentId);
 
-  const { data, isLoading, isFetching, error, refetch } = useQuery({
+  const { data, isLoading, error, refetch } = useQuery({
     queryKey: [
       "findings-page", page, deferredSearch, filterSev, filterStatus,
       filterBlind, filterExploited, filterSlaBreached, sortBy, engagementId,
@@ -1740,6 +1442,28 @@ export default function FindingsPage() {
     queryFn: () => fetchJson<VedhaAgentOption[]>("/api/agents/register"),
     retry: (count, err) => !isUnauthorized(err) && count < 2,
   });
+  const activeAgentCount = (agentOptionsQuery.data ?? []).filter((agent) => agent.status !== "OFFLINE").length;
+  const registeredAgentCount = agentOptionsQuery.data?.length ?? 0;
+  const refreshAgents = async () => {
+    if (agentsRefreshing) return;
+    setAgentsRefreshing(true);
+    setAgentRefreshFeedback("Checking agent heartbeats…");
+    try {
+      const [result] = await Promise.all([
+        agentOptionsQuery.refetch(),
+        new Promise<void>((resolve) => window.setTimeout(resolve, AGENT_REFRESH_FEEDBACK_MS)),
+      ]);
+      if (result.error) throw result.error;
+      const agents = result.data ?? [];
+      const active = agents.filter((agent) => agent.status !== "OFFLINE").length;
+      setAgentRefreshFeedback(`${active} active of ${agents.length} registered`);
+    } catch (refreshError) {
+      setAgentRefreshFeedback("Agent status unavailable — retry");
+      showError("Agent refresh failed", errorMessage(refreshError));
+    } finally {
+      setAgentsRefreshing(false);
+    }
+  };
 
   // Engagement context (for the scoped banner) + robust detail: if the selected
   // finding isn't on the current page (deep link, or another page), fetch it by id.
@@ -1812,6 +1536,15 @@ export default function FindingsPage() {
     || engagementId
     || filterAgentId,
   );
+  const advancedFilterCount = [
+    filterSev !== "ALL",
+    filterStatus !== "ALL",
+    filterVerification !== "ALL",
+    filterBlind,
+    filterExploited,
+    filterSlaBreached,
+    filterNeedsReview,
+  ].filter(Boolean).length;
   const summaryUnavailable = summaryQuery.isLoading || Boolean(summaryQuery.error);
   const summaryValue = (value: number) => summaryUnavailable ? "—" : value.toLocaleString();
   const clearFilters = () => {
@@ -1834,6 +1567,35 @@ export default function FindingsPage() {
     <PageShell
       title="Findings"
       subtitle="Triage, verify, and remediate discovered vulnerabilities"
+      headerActions={
+        <div className="findings-agent-refresh">
+          <span
+            className="findings-agent-refresh-status"
+            data-tone={agentsRefreshing ? "idle" : agentOptionsQuery.error ? "error" : activeAgentCount > 0 ? "active" : "idle"}
+            role="status"
+            aria-live="polite"
+          >
+            <i aria-hidden />
+            {agentRefreshFeedback
+              ?? (agentOptionsQuery.isLoading
+                ? "Checking agent status…"
+                : agentOptionsQuery.error
+                  ? "Agent status unavailable"
+                  : `${activeAgentCount} active of ${registeredAgentCount} registered`)}
+          </span>
+          <button
+            type="button"
+            className="findings-agent-refresh-button"
+            onClick={() => { void refreshAgents(); }}
+            disabled={agentsRefreshing}
+            aria-busy={agentsRefreshing}
+            aria-label="Refresh active Vedha agents and probes"
+          >
+            <RefreshCw className={agentsRefreshing ? "findings-spinner" : undefined} size={14} aria-hidden />
+            {agentsRefreshing ? "Checking agents…" : "Refresh agents"}
+          </button>
+        </div>
+      }
       statusItems={[
         { label: "CRITICAL OPEN",    value: summaryValue(stats.criticalOpen), color: summaryUnavailable ? "var(--text-muted)" : SEV_PALETTE.RED },
         { label: "EXPLOIT CONFIRMED", value: summaryValue(stats.validated),    color: summaryUnavailable ? "var(--text-muted)" : SEV_PALETTE.ORANGE },
@@ -1842,12 +1604,42 @@ export default function FindingsPage() {
       ]}
     >
       <style>{`
-        .findings-workspace ::selection,
-        .findings-decision-strip ::selection,
-        .findings-triage-key ::selection {
+        .findings-workspace ::selection {
           color: var(--text-primary);
           background: var(--accent-ghost);
         }
+        .findings-agent-refresh { display: flex; align-items: center; gap: 8px; }
+        .findings-agent-refresh-status {
+          display: inline-flex;
+          min-width: 0;
+          align-items: center;
+          gap: 6px;
+          color: var(--text-secondary);
+          font: 550 10.5px/1.3 var(--font-ui);
+          white-space: nowrap;
+        }
+        .findings-agent-refresh-status i { width: 6px; height: 6px; flex: 0 0 auto; border-radius: 50%; background: var(--text-muted); }
+        .findings-agent-refresh-status[data-tone="active"] i { background: var(--nominal-color); }
+        .findings-agent-refresh-status[data-tone="error"] { color: var(--sev-medium-color); }
+        .findings-agent-refresh-status[data-tone="error"] i { background: var(--sev-medium-color); }
+        .findings-agent-refresh-button {
+          display: inline-flex;
+          min-height: 32px;
+          align-items: center;
+          justify-content: center;
+          gap: 7px;
+          border: var(--hairline) solid var(--border-default);
+          border-radius: 8px;
+          padding: 0 10px;
+          color: var(--text-primary);
+          background: var(--bg-panel);
+          font: 650 11px/1.2 var(--font-ui);
+          white-space: nowrap;
+          cursor: pointer;
+        }
+        .findings-agent-refresh-button:hover:not(:disabled) { border-color: var(--border-strong); background: var(--bg-hover); }
+        .findings-agent-refresh-button:disabled { color: var(--text-muted); cursor: wait; }
+        .findings-agent-refresh-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
         .findings-workspace {
           display: grid;
           grid-template-columns: minmax(0, 1fr);
@@ -1904,32 +1696,35 @@ export default function FindingsPage() {
           text-wrap: balance;
         }
         .finding-detail-meta {
+          display: flex;
+          gap: 4px 12px;
+          flex-wrap: wrap;
           margin-top: 7px;
           overflow-wrap: anywhere;
           color: var(--text-secondary);
           font: 500 10.5px/1.5 var(--font-mono);
         }
-        .finding-detail-lifecycle {
-          display: flex;
-          align-items: center;
-          gap: 6px 10px;
-          flex-wrap: wrap;
-          margin-top: 11px;
-          color: var(--text-secondary);
-          font: 500 10px/1.4 var(--font-mono);
-        }
-        .finding-detail-lifecycle > span:first-child { color: var(--text-muted); font-weight: 700; letter-spacing: .06em; }
-        .finding-detail-risk-breakdown { margin-top: 13px; }
+        .finding-detail-meta > span + span::before { margin-right: 12px; color: var(--border-strong); content: "·"; }
         .finding-ai-triage {
-          padding: 13px 22px;
           border-bottom: var(--hairline) solid var(--border-subtle);
           background: var(--accent-ghost);
         }
-        .finding-ai-triage-layout { display: flex; align-items: flex-start; gap: 9px; }
-        .finding-ai-triage-content { min-width: 0; flex: 1; }
-        .finding-ai-triage-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 6px; font: 650 9.5px/1.3 var(--font-mono); }
-        .finding-ai-triage-meta span:first-child { color: var(--accent); letter-spacing: .06em; }
-        .finding-ai-triage-meta span:last-child { color: var(--text-secondary); }
+        .finding-ai-triage summary {
+          display: flex;
+          min-height: 42px;
+          align-items: center;
+          gap: 8px;
+          padding: 0 22px;
+          color: var(--text-primary);
+          font: 650 12px/1.3 var(--font-ui);
+          cursor: pointer;
+          list-style: none;
+        }
+        .finding-ai-triage summary::-webkit-details-marker { display: none; }
+        .finding-ai-triage summary small { margin-left: 2px; color: var(--text-muted); font: 500 10px/1.3 var(--font-mono); }
+        .finding-ai-triage summary svg:last-child { margin-left: auto; color: var(--text-muted); transition: transform 180ms ease-out; }
+        .finding-ai-triage[open] summary svg:last-child { transform: rotate(180deg); }
+        .finding-ai-triage-content { min-width: 0; padding: 0 22px 14px 43px; }
         .finding-ai-triage-reasoning { max-width: 72ch; color: var(--text-primary); font: 450 13px/1.6 var(--font-ui); }
         .finding-ai-triage-recommendation { max-width: 72ch; margin-top: 5px; color: var(--accent); font: 550 13px/1.55 var(--font-ui); }
         .finding-ai-triage-recommendation > span { font: 700 9.5px/1.4 var(--font-mono); letter-spacing: .04em; }
@@ -1959,13 +1754,11 @@ export default function FindingsPage() {
         .finding-detail-tabs button[data-active="true"] { border-bottom-color: var(--accent); color: var(--text-primary); background: var(--accent-ghost); }
         .finding-detail-tabs button:focus-visible { position: relative; z-index: 1; outline: 2px solid var(--accent); outline-offset: -3px; }
         .finding-detail-content { padding: 22px; }
-        }
         .findings-filter-panel {
           background: var(--bg-panel);
           border: var(--hairline) solid var(--border-subtle);
           border-radius: var(--r-lg);
           padding: var(--space-4);
-          box-shadow: var(--shadow-sm);
         }
         .findings-filter-header {
           display: flex;
@@ -2028,17 +1821,36 @@ export default function FindingsPage() {
         .findings-search input::placeholder { color: var(--text-muted); opacity: 1; }
         .findings-scope-grid {
           display: grid;
-          grid-template-columns: repeat(2, minmax(220px, 1fr));
+          grid-template-columns: repeat(3, minmax(150px, 1fr));
           gap: 12px;
-          margin-bottom: var(--space-4);
-          padding-bottom: var(--space-4);
-          border-bottom: var(--hairline) solid var(--border-subtle);
+          margin-bottom: var(--space-3);
         }
+        .findings-workspace[data-detail="true"] .findings-scope-grid,
+        .findings-workspace[data-detail="true"] .findings-filter-grid { grid-template-columns: minmax(0, 1fr); }
+        .findings-advanced-filters {
+          border-top: var(--hairline) solid var(--border-subtle);
+        }
+        .findings-advanced-filters summary {
+          display: flex;
+          min-height: 38px;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+          color: var(--text-secondary);
+          font: 650 11.5px/1.3 var(--font-ui);
+          cursor: pointer;
+          list-style: none;
+        }
+        .findings-advanced-filters summary::-webkit-details-marker { display: none; }
+        .findings-advanced-filters summary svg { color: var(--text-muted); transition: transform 180ms ease-out; }
+        .findings-advanced-filters[open] summary svg { transform: rotate(180deg); }
         .findings-filter-grid {
           display: grid;
-          grid-template-columns: minmax(260px, 1.5fr) repeat(3, minmax(145px, .7fr));
+          grid-template-columns: minmax(260px, 1.5fr) repeat(2, minmax(145px, .7fr));
           gap: 12px;
           align-items: end;
+          padding-top: var(--space-3);
+          border-top: var(--hairline) solid var(--border-subtle);
         }
         .findings-filter-group { min-width: 0; margin: 0; padding: 0; border: 0; }
         .findings-filter-group legend,
@@ -2078,12 +1890,12 @@ export default function FindingsPage() {
         .findings-filter-control:focus-visible,
         .findings-severity-controls button:focus-visible,
         .findings-signal-filter:focus-visible,
-        .findings-triage-metric:focus-visible,
-        .findings-urgent-item:focus-visible,
         .finding-card:focus-visible,
         .findings-clear-filter:focus-visible,
         .findings-inline-action:focus-visible,
-        .findings-triage-key summary:focus-visible {
+        .findings-advanced-filters summary:focus-visible,
+        .finding-overview-disclosure summary:focus-visible,
+        .finding-ai-triage summary:focus-visible {
           outline: 2px solid var(--accent);
           outline-offset: 2px;
         }
@@ -2103,56 +1915,12 @@ export default function FindingsPage() {
           letter-spacing: .035em;
           text-transform: uppercase;
         }
-        .findings-triage-key {
-          margin-bottom: var(--space-4);
-          background: var(--bg-panel);
-          border: var(--hairline) solid var(--border-subtle);
-          border-radius: var(--r-lg);
-          overflow: hidden;
-        }
-        .findings-triage-key summary {
-          display: flex;
-          min-height: 54px;
-          align-items: center;
-          justify-content: space-between;
-          gap: var(--space-4);
-          padding: 10px var(--space-5);
-          color: var(--text-primary);
-          cursor: pointer;
-          list-style: none;
-        }
-        .findings-triage-key summary::-webkit-details-marker { display: none; }
-        .findings-triage-key summary > span { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
-        .findings-triage-key summary strong { font-size: 13px; line-height: 1.2; }
-        .findings-triage-key summary small { color: var(--text-muted); font-size: 11px; line-height: 1.35; }
-        .findings-triage-key summary svg { flex: 0 0 auto; color: var(--text-muted); transition: transform 180ms ease-out; }
-        .findings-triage-key[open] summary { border-bottom: var(--hairline) solid var(--border-subtle); }
-        .findings-triage-key[open] summary svg { transform: rotate(180deg); }
-        .findings-triage-key-body {
-          display: grid;
-          grid-template-columns: minmax(260px, 1.1fr) minmax(330px, 1.35fr) minmax(280px, 1fr);
-          gap: var(--space-5);
-          align-items: start;
-          padding: var(--space-5);
-        }
-        .findings-triage-concepts { display: grid; gap: 9px; }
-        .findings-triage-concepts > div { display: grid; grid-template-columns: 62px minmax(0, 1fr); gap: 8px; }
-        .findings-triage-concepts strong { color: var(--text-primary); font-size: 11px; }
-        .findings-triage-concepts span { color: var(--text-muted); font-size: 11px; line-height: 1.4; }
-        .findings-severity-key { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px 14px; }
-        .findings-severity-key > span { display: grid; grid-template-columns: 7px 58px minmax(0, 1fr); gap: 6px; align-items: center; min-width: 0; font-size: 10px; }
-        .findings-severity-key i { width: 7px; height: 7px; border-radius: 2px; }
-        .findings-severity-key b { color: var(--text-primary); font-size: 9px; letter-spacing: .03em; }
-        .findings-severity-key em { color: var(--text-muted); font-style: normal; line-height: 1.35; }
-        .findings-priority-key { display: flex; flex-wrap: wrap; gap: 6px; }
-        .findings-triage-metrics { display: flex; gap: 10px; align-items: flex-start; flex-wrap: wrap; }
-        .findings-triage-metric { min-height: 44px; }
         .findings-spinner { animation: findings-spin 850ms linear infinite; }
         @keyframes findings-spin { to { transform: rotate(360deg); } }
         .finding-card {
           border: var(--hairline) solid var(--border-subtle);
-          border-radius: 12px;
-          padding: 14px 15px;
+          border-radius: 10px;
+          padding: 12px 13px;
           background: var(--bg-panel);
           cursor: pointer;
         }
@@ -2161,34 +1929,25 @@ export default function FindingsPage() {
         .finding-card-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; }
         .finding-card-badges { display: flex; min-width: 0; flex: 1; align-items: center; gap: 5px; flex-wrap: wrap; }
         .finding-card-risk { flex: 0 0 auto; text-align: right; }
-        .finding-card-risk strong { display: block; font: 750 15px/1 var(--font-mono); font-variant-numeric: tabular-nums; }
+        .finding-card-risk strong { display: block; font: 750 16px/1 var(--font-mono); font-variant-numeric: tabular-nums; }
         .finding-card-risk span { display: block; margin-top: 4px; color: var(--text-muted); font: 700 9px/1 var(--font-ui); letter-spacing: .03em; text-transform: uppercase; }
-        .finding-card-title { margin: 10px 0 7px; color: var(--text-primary); font: 650 15px/1.35 var(--font-ui); }
+        .finding-card-title { margin: 8px 0 5px; color: var(--text-primary); font: 650 14px/1.35 var(--font-ui); }
         .finding-card-context { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
         .finding-card-host { min-width: 0; overflow: hidden; color: var(--text-muted); font: 500 11px/1.3 var(--font-mono); text-overflow: ellipsis; white-space: nowrap; }
-        .finding-card-signals { display: flex; flex: 0 0 auto; align-items: center; gap: 6px; }
-        .finding-card-drivers { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
-        .finding-card-drivers > span:first-child { color: var(--text-muted); font: 700 10px/1 var(--font-ui); }
-        .finding-driver {
-          border: var(--hairline) solid var(--border-subtle);
-          border-radius: 999px;
-          padding: 3px 7px;
-          color: var(--text-secondary);
-          background: var(--bg-app);
-          font: 600 10px/1 var(--font-ui);
-        }
-        .finding-card-metrics {
-          display: grid;
-          grid-template-columns: repeat(4, minmax(0, 1fr));
-          gap: 8px;
-          margin-top: 11px;
-          padding-top: 10px;
+        .finding-card-meta {
+          display: flex;
+          gap: 5px 12px;
+          flex-wrap: wrap;
+          margin-top: 9px;
+          padding-top: 8px;
           border-top: var(--hairline) solid var(--border-subtle);
+          color: var(--text-secondary);
+          font: 500 10.5px/1.35 var(--font-mono);
         }
-        .finding-card-metric { min-width: 0; }
-        .finding-card-metric span { display: block; color: var(--text-muted); font: 700 9px/1 var(--font-ui); letter-spacing: .03em; text-transform: uppercase; }
-        .finding-card-metric strong { display: block; margin-top: 4px; overflow: hidden; color: var(--text-primary); font: 650 11px/1.2 var(--font-mono); font-variant-numeric: tabular-nums; text-overflow: ellipsis; white-space: nowrap; }
-        .findings-workspace[data-detail="true"] .finding-card-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .finding-card-meta b { color: var(--text-muted); font-weight: 650; }
+        .finding-card-meta i { font-style: normal; font-weight: 650; }
+        .finding-card-alerts { display: flex; gap: 5px 10px; flex-wrap: wrap; margin-top: 7px; color: var(--sev-high-color); font: 600 10px/1.3 var(--font-ui); }
+        .finding-card-alerts span { display: inline-flex; align-items: center; gap: 4px; }
         .finding-action-bar {
           display: grid;
           grid-template-columns: minmax(190px, .72fr) minmax(0, 1.28fr);
@@ -2201,16 +1960,19 @@ export default function FindingsPage() {
         .finding-action-bar > div:first-child { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
         .finding-action-bar > div:first-child strong { color: var(--text-primary); font: 650 13px/1.3 var(--font-ui); }
         .finding-action-bar > div:first-child span { color: var(--text-muted); font: 400 11px/1.45 var(--font-ui); }
-        .finding-action-options { display: flex; justify-content: flex-end; gap: 6px; flex-wrap: wrap; }
-        .finding-action-options button {
-          min-height: 34px;
-          border: var(--hairline) solid;
+        .finding-action-select { display: grid; grid-template-columns: auto minmax(180px, 280px); align-items: center; justify-content: end; gap: 9px; }
+        .finding-action-select > span { color: var(--text-muted); font: 650 10px/1.2 var(--font-ui); text-transform: uppercase; letter-spacing: .035em; }
+        .finding-action-select select {
+          min-height: 36px;
+          border: var(--hairline) solid var(--border-default);
           border-radius: 8px;
-          padding: 7px 10px;
-          font: 650 11.5px/1.2 var(--font-ui);
+          padding: 0 10px;
+          color: var(--text-primary);
+          background: var(--bg-app);
+          font: 550 12px/1.2 var(--font-ui);
           cursor: pointer;
         }
-        .finding-action-options button:disabled { cursor: wait; opacity: .55; }
+        .finding-action-select select:disabled { cursor: wait; opacity: .55; }
         .finding-action-composer {
           grid-column: 1 / -1;
           display: grid;
@@ -2238,36 +2000,43 @@ export default function FindingsPage() {
         .finding-action-composer-footer { grid-column: 2; display: flex; align-items: center; justify-content: flex-end; gap: 8px; }
         .finding-action-composer-footer > span { margin-right: auto; color: var(--text-muted); font: 500 9px/1.2 var(--font-mono); }
 
-        .finding-overview-view { display: grid; gap: 24px; }
-        .finding-overview-layout { display: grid; grid-template-columns: minmax(0, 1.55fr) minmax(250px, .72fr); gap: 24px; align-items: start; }
-        .finding-overview-narrative { display: grid; gap: 18px; }
-        .finding-overview-narrative section + section { padding-top: 18px; border-top: var(--hairline) solid var(--border-subtle); }
+        .finding-overview-view { display: grid; gap: 18px; }
         .finding-overview-view h3 { margin: 0; color: var(--text-primary); font: 650 15.5px/1.35 var(--font-ui); letter-spacing: -.012em; }
         .finding-overview-view h4 { margin: 0; color: var(--text-primary); font: 650 12.5px/1.35 var(--font-ui); }
-        .finding-overview-narrative p { max-width: 72ch; margin: 8px 0 0; color: var(--text-secondary); font: 400 14px/1.65 var(--font-ui); }
-        .finding-overview-facts { border: var(--hairline) solid var(--border-subtle); border-radius: 10px; padding: 14px; background: var(--bg-surface); }
-        .finding-overview-facts > div { display: flex; align-items: center; gap: 7px; margin-bottom: 12px; }
-        .finding-overview-facts > div svg { color: var(--accent); }
-        .finding-overview-facts dl,
+        .finding-overview-primary { display: grid; gap: 18px; }
+        .finding-overview-primary section + section { padding-top: 18px; border-top: var(--hairline) solid var(--border-subtle); }
+        .finding-overview-primary p,
+        .finding-overview-technical-narrative p { max-width: 72ch; margin: 7px 0 0; color: var(--text-secondary); font: 400 14px/1.65 var(--font-ui); }
+        .finding-overview-next-action h3 { color: var(--accent); }
+        .finding-overview-next-action p { color: var(--text-primary); font-weight: 500; }
+        .finding-overview-facts,
         .finding-overview-technical-grid dl { display: grid; gap: 0; margin: 0; }
-        .finding-overview-facts dl > div,
+        .finding-overview-facts { grid-template-columns: repeat(3, minmax(0, 1fr)); border-top: var(--hairline) solid var(--border-subtle); border-bottom: var(--hairline) solid var(--border-subtle); }
+        .finding-overview-facts > div,
         .finding-overview-technical-grid dl > div { display: grid; grid-template-columns: minmax(88px, .62fr) minmax(0, 1fr); gap: 12px; padding: 8px 0; border-top: var(--hairline) solid var(--border-subtle); }
+        .finding-overview-facts > div { display: block; padding: 10px 12px; border-top: 0; }
+        .finding-overview-facts > div:nth-child(3n + 1) { padding-left: 0; }
+        .finding-overview-facts > div:nth-child(-n + 3) { border-bottom: var(--hairline) solid var(--border-subtle); }
         .finding-overview-facts dt,
         .finding-overview-technical-grid dt { color: var(--text-muted); font: 600 11px/1.4 var(--font-ui); }
         .finding-overview-facts dd,
         .finding-overview-technical-grid dd { min-width: 0; margin: 0; overflow-wrap: anywhere; color: var(--text-primary); font: 550 12px/1.5 var(--font-ui); }
+        .finding-overview-facts dd { margin-top: 3px; }
         .finding-overview-technical-grid dd code { font: 500 10px/1.55 var(--font-mono); }
-        .finding-section-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
-        .finding-section-heading > div { display: flex; align-items: center; gap: 7px; }
-        .finding-section-heading svg { color: var(--accent); }
-        .finding-section-heading > span { color: var(--text-muted); font: 600 9px/1.2 var(--font-mono); }
-        .finding-decision-context { padding: 18px 0; border-top: var(--hairline) solid var(--border-subtle); border-bottom: var(--hairline) solid var(--border-subtle); }
-        .finding-decision-context > div:last-child { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 22px; }
-        .finding-decision-context article { padding-top: 9px; border-top: 2px solid var(--border-subtle); }
-        .finding-decision-context article p { margin: 6px 0 0; color: var(--text-secondary); font: 400 12.5px/1.55 var(--font-ui); }
+        .finding-overview-disclosure { border-top: var(--hairline) solid var(--border-subtle); }
+        .finding-overview-disclosure summary { display: flex; min-height: 44px; align-items: center; justify-content: space-between; gap: 10px; color: var(--text-primary); font: 650 12.5px/1.3 var(--font-ui); cursor: pointer; list-style: none; }
+        .finding-overview-disclosure summary::-webkit-details-marker { display: none; }
+        .finding-overview-disclosure summary > span { display: inline-flex; align-items: center; gap: 7px; }
+        .finding-overview-disclosure summary span svg { color: var(--accent); }
+        .finding-overview-disclosure summary > svg { color: var(--text-muted); transition: transform 180ms ease-out; }
+        .finding-overview-disclosure[open] summary > svg { transform: rotate(180deg); }
+        .finding-overview-disclosure[open] summary { border-bottom: var(--hairline) solid var(--border-subtle); }
         .finding-overview-technical-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 24px; }
+        .finding-overview-technical-grid,
+        .finding-attack-context { padding: 16px 0 2px; }
         .finding-overview-technical-grid > section > h3 { margin-bottom: 9px; }
-        .finding-attack-context { padding-top: 18px; border-top: var(--hairline) solid var(--border-subtle); }
+        .finding-overview-risk-factors,
+        .finding-overview-technical-narrative { grid-column: 1 / -1; }
         .finding-attack-context-grid { display: grid; grid-template-columns: minmax(220px, .72fr) minmax(0, 1.28fr); gap: 24px; }
         .finding-attack-context-grid h4, .finding-related-list h4 { margin-bottom: 9px; }
         .finding-mitre-row { display: grid; grid-template-columns: 72px minmax(0, 1fr); gap: 8px; padding: 6px 0; border-top: var(--hairline) solid var(--border-subtle); }
@@ -2281,24 +2050,48 @@ export default function FindingsPage() {
         .finding-related-list code { color: var(--accent); font: 500 9px/1.3 var(--font-mono); }
         .finding-related-list strong { overflow: hidden; color: var(--text-primary); font: 550 11px/1.3 var(--font-ui); text-overflow: ellipsis; white-space: nowrap; }
 
-        .finding-evidence-view { display: grid; gap: 14px; }
-        .finding-evidence-summary { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding-bottom: 12px; border-bottom: var(--hairline) solid var(--border-subtle); }
-        .finding-evidence-summary > div { display: flex; align-items: center; gap: 8px; color: var(--text-primary); }
-        .finding-evidence-summary svg { color: var(--accent); }
-        .finding-evidence-summary strong { font: 650 14px/1.35 var(--font-ui); }
-        .finding-evidence-summary > span { color: var(--text-muted); font: 500 10px/1.3 var(--font-mono); }
-        .finding-evidence-artifact { overflow: hidden; border: var(--hairline) solid var(--border-subtle); border-radius: 10px; background: var(--bg-panel); }
-        .finding-evidence-artifact > header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 12px; border-bottom: var(--hairline) solid var(--border-subtle); }
-        .finding-evidence-artifact > header > div { display: flex; min-width: 0; align-items: center; gap: 10px; }
-        .finding-evidence-index { display: grid; width: 28px; height: 28px; flex: 0 0 auto; place-items: center; border-radius: 6px; color: var(--accent); background: var(--accent-ghost); font: 700 9px/1 var(--font-mono); }
-        .finding-evidence-artifact h3 { margin: 0; color: var(--text-primary); font: 650 13px/1.35 var(--font-ui); }
-        .finding-evidence-artifact header p { margin: 3px 0 0; color: var(--text-muted); font: 500 10px/1.3 var(--font-mono); }
-        .finding-evidence-code { max-height: 360px; overflow: auto; padding: 8px 0; background: var(--bg-surface); }
-        .finding-evidence-code > div { display: grid; grid-template-columns: 44px minmax(0, 1fr); min-height: 22px; }
+        .finding-evidence-view { display: grid; gap: 18px; }
+        .finding-evidence-summary { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; padding-bottom: 16px; border-bottom: var(--hairline) solid var(--border-subtle); }
+        .finding-evidence-summary-copy { display: flex; min-width: 0; align-items: flex-start; gap: 10px; }
+        .finding-evidence-summary-icon { display: grid; width: 32px; height: 32px; flex: 0 0 auto; place-items: center; border-radius: 8px; color: var(--accent); background: var(--accent-ghost); }
+        .finding-evidence-summary h3 { margin: 0; color: var(--text-primary); font: 650 15px/1.35 var(--font-ui); }
+        .finding-evidence-summary p { max-width: 64ch; margin: 5px 0 0; color: var(--text-secondary); font: 400 12.5px/1.55 var(--font-ui); }
+        .finding-evidence-summary dl { display: flex; flex: 0 0 auto; gap: 18px; margin: 0; }
+        .finding-evidence-summary dl > div { display: grid; min-width: 48px; gap: 3px; }
+        .finding-evidence-summary dt { color: var(--text-muted); font: 650 9px/1.25 var(--font-ui); text-transform: uppercase; letter-spacing: .045em; }
+        .finding-evidence-summary dd { margin: 0; color: var(--text-primary); font: 700 13px/1.3 var(--font-mono); font-variant-numeric: tabular-nums; }
+        .finding-evidence-empty { display: flex; align-items: flex-start; gap: 11px; border: var(--hairline) solid var(--border-default); border-radius: 10px; padding: 17px 18px; background: var(--bg-surface); }
+        .finding-evidence-empty > svg { flex: 0 0 auto; margin-top: 1px; color: var(--text-muted); }
+        .finding-evidence-empty h3 { margin: 0; color: var(--text-primary); font: 650 14px/1.4 var(--font-ui); }
+        .finding-evidence-empty p { max-width: 64ch; margin: 5px 0 0; color: var(--text-secondary); font: 400 12.5px/1.55 var(--font-ui); }
+        .finding-evidence-artifact { overflow: hidden; border: var(--hairline) solid var(--border-default); border-radius: 10px; background: var(--bg-panel); }
+        .finding-evidence-artifact > header { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 12px 14px; border-bottom: var(--hairline) solid var(--border-subtle); }
+        .finding-evidence-identity { display: flex; min-width: 0; align-items: center; gap: 10px; }
+        .finding-evidence-kind { flex: 0 0 auto; border-radius: 5px; padding: 4px 6px; color: var(--machine-text); background: var(--machine-bg); font: 700 9px/1 var(--font-mono); letter-spacing: .035em; }
+        .finding-evidence-artifact h3 { overflow: hidden; margin: 0; color: var(--text-primary); font: 650 13.5px/1.35 var(--font-ui); text-overflow: ellipsis; white-space: nowrap; }
+        .finding-evidence-artifact header p { margin: 3px 0 0; color: var(--text-muted); font: 500 9.5px/1.3 var(--font-mono); font-variant-numeric: tabular-nums; }
+        .finding-evidence-copy { display: inline-flex; min-height: 30px; flex: 0 0 auto; align-items: center; gap: 6px; border: var(--hairline) solid var(--border-default); border-radius: 7px; padding: 0 9px; color: var(--text-secondary); background: var(--bg-panel); cursor: pointer; font: 600 10.5px/1 var(--font-ui); }
+        .finding-evidence-copy:hover { color: var(--text-primary); background: var(--bg-hover); }
+        .finding-evidence-copy:focus-visible { outline: 0; box-shadow: var(--focus-ring); }
+        .finding-evidence-provenance { display: flex; flex-wrap: wrap; gap: 10px 24px; margin: 0; padding: 10px 14px; border-bottom: var(--hairline) solid var(--border-subtle); }
+        .finding-evidence-provenance > div { display: grid; max-width: 280px; min-width: 92px; gap: 3px; }
+        .finding-evidence-provenance dt { color: var(--text-muted); font: 650 8.5px/1.2 var(--font-ui); text-transform: uppercase; letter-spacing: .045em; }
+        .finding-evidence-provenance dd { overflow: hidden; margin: 0; color: var(--text-secondary); font: 500 10px/1.35 var(--font-mono); text-overflow: ellipsis; white-space: nowrap; }
+        .finding-evidence-provenance-empty { margin: 0; padding: 9px 14px; border-bottom: var(--hairline) solid var(--border-subtle); color: var(--text-muted); font: 400 10.5px/1.45 var(--font-ui); }
+        .finding-evidence-command { display: grid; grid-template-columns: auto auto minmax(0, 1fr); gap: 7px; align-items: start; padding: 9px 14px; border-bottom: var(--hairline) solid var(--border-subtle); background: var(--bg-surface); }
+        .finding-evidence-command svg { margin-top: 1px; color: var(--machine-color); }
+        .finding-evidence-command span { color: var(--text-muted); font: 650 9px/1.45 var(--font-ui); text-transform: uppercase; letter-spacing: .035em; }
+        .finding-evidence-command code { overflow-wrap: anywhere; color: var(--text-primary); font: 500 10.5px/1.45 var(--font-mono); }
+        .finding-evidence-output-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 14px; background: var(--bg-surface); }
+        .finding-evidence-output-heading span:first-child { color: var(--text-secondary); font: 650 9px/1.3 var(--font-ui); text-transform: uppercase; letter-spacing: .045em; }
+        .finding-evidence-output-heading span:last-child { color: var(--text-muted); font: 500 9px/1.3 var(--font-ui); }
+        .finding-evidence-code { max-height: 390px; overflow: auto; border-top: var(--hairline) solid var(--border-subtle); border-bottom: var(--hairline) solid var(--border-subtle); background: var(--bg-surface); scrollbar-color: var(--border-strong) var(--bg-surface); }
+        .finding-evidence-code > div { display: grid; grid-template-columns: 46px minmax(0, 1fr); min-height: 24px; }
         .finding-evidence-code > div:hover { background: var(--bg-hover); }
-        .finding-evidence-code span { padding: 2px 10px 2px 0; color: var(--text-faint); font: 500 9px/1.6 var(--font-mono); text-align: right; user-select: none; }
-        .finding-evidence-code code { padding: 2px 12px; border-left: var(--hairline) solid var(--border-subtle); color: var(--text-primary); font: 500 11px/1.65 var(--font-mono); white-space: pre-wrap; overflow-wrap: anywhere; }
-        .finding-evidence-artifact > footer { padding: 7px 12px; border-top: var(--hairline) solid var(--border-subtle); color: var(--text-muted); font: 500 9px/1.3 var(--font-ui); }
+        .finding-evidence-code span { padding: 3px 10px 3px 0; color: var(--text-muted); font: 500 9px/1.7 var(--font-mono); text-align: right; user-select: none; font-variant-numeric: tabular-nums; }
+        .finding-evidence-code code { padding: 3px 14px; border-left: var(--hairline) solid var(--border-subtle); color: var(--text-primary); font: 500 11px/1.7 var(--font-mono); white-space: pre-wrap; overflow-wrap: anywhere; }
+        .finding-evidence-artifact-empty { padding: 22px 14px; border-top: var(--hairline) solid var(--border-subtle); border-bottom: var(--hairline) solid var(--border-subtle); color: var(--text-muted); background: var(--bg-surface); font: 400 11.5px/1.5 var(--font-ui); }
+        .finding-evidence-artifact > footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 14px; color: var(--text-muted); font: 500 9.5px/1.35 var(--font-ui); }
 
         .finding-remediation-view { display: grid; gap: 22px; }
         .finding-remediation-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 22px; padding-bottom: 16px; border-bottom: var(--hairline) solid var(--border-subtle); }
@@ -2356,15 +2149,13 @@ export default function FindingsPage() {
         .finding-history-details dt { color: var(--text-muted); font: 600 9px/1.35 var(--font-ui); }
         .finding-history-details dd { margin: 0; color: var(--text-secondary); font: 500 9px/1.35 var(--font-mono); }
         @media (max-width: 1180px) {
-          .findings-triage-key-body { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-          .findings-priority-key { grid-column: 1 / -1; }
           .findings-filter-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-          .finding-overview-layout, .finding-attack-context-grid { grid-template-columns: minmax(0, 1fr); }
-          .finding-overview-facts { display: grid; grid-template-columns: 150px minmax(0, 1fr); gap: 14px; }
-          .finding-overview-facts > div { align-items: flex-start; margin: 0; }
+          .finding-attack-context-grid { grid-template-columns: minmax(0, 1fr); }
           .finding-remediation-closeout { grid-template-columns: minmax(0, 1fr); }
           .finding-remediation-closeout section + section { border-top: var(--hairline) solid var(--border-subtle); border-left: 0; }
-          .finding-detail-header, .finding-ai-triage { padding-right: 18px; padding-left: 18px; }
+          .finding-detail-header { padding-right: 18px; padding-left: 18px; }
+          .finding-ai-triage summary { padding-right: 18px; padding-left: 18px; }
+          .finding-ai-triage-content { padding-right: 18px; padding-left: 39px; }
           .finding-detail-content { padding: 18px; }
         }
         @media (max-width: 920px) {
@@ -2376,44 +2167,51 @@ export default function FindingsPage() {
             overscroll-behavior: auto;
             scrollbar-gutter: auto;
           }
-          .findings-triage-key-body { grid-template-columns: minmax(0, 1fr); gap: var(--space-4); }
-          .findings-priority-key { grid-column: auto; }
-          .findings-workspace[data-detail="true"] .finding-card-metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
           .finding-action-bar, .finding-action-composer { grid-template-columns: minmax(0, 1fr); }
-          .finding-action-options { justify-content: flex-start; }
+          .finding-action-select { justify-content: start; }
           .finding-action-composer-footer { grid-column: 1; }
           .finding-overview-technical-grid { grid-template-columns: minmax(0, 1fr); }
-          .finding-overview-facts { display: block; }
-          .finding-overview-facts > div { margin-bottom: 12px; }
+          .finding-overview-risk-factors,
+          .finding-overview-technical-narrative { grid-column: auto; }
         }
         @media (max-width: 620px) {
-          .findings-decision-strip { padding: 16px !important; }
-          .findings-triage-metrics { width: 100%; justify-content: space-between; }
           .findings-filter-grid { grid-template-columns: minmax(0, 1fr); }
           .findings-scope-grid { grid-template-columns: minmax(0, 1fr); }
           .findings-filter-header { align-items: center; }
           .finding-card-header, .finding-card-context { align-items: flex-start; }
           .finding-card-context { flex-direction: column; gap: 8px; }
-          .finding-card-metrics,
-          .findings-workspace[data-detail="true"] .finding-card-metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-          .findings-severity-key { grid-template-columns: minmax(0, 1fr); }
-          .findings-triage-key summary, .findings-triage-key-body { padding: var(--space-4); }
-          .findings-triage-key summary small { max-width: 38ch; }
-          .finding-decision-context > div:last-child { grid-template-columns: minmax(0, 1fr); }
+          .finding-overview-facts { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+          .finding-overview-facts > div:nth-child(3n + 1) { padding-left: 12px; }
+          .finding-overview-facts > div:nth-child(2n + 1) { padding-left: 0; }
+          .finding-overview-facts > div:nth-child(-n + 4) { border-bottom: var(--hairline) solid var(--border-subtle); }
           .finding-action-composer-footer { align-items: stretch; flex-wrap: wrap; }
           .finding-action-composer-footer > span { width: 100%; margin: 0; }
           .finding-remediation-header, .finding-history-summary, .finding-evidence-summary { flex-direction: column; }
           .finding-remediation-os { width: 100%; }
           .finding-history-summary dl { justify-content: flex-start; }
+          .finding-evidence-summary { gap: 14px; }
+          .finding-evidence-summary dl { width: 100%; justify-content: space-between; }
+          .finding-evidence-artifact > header { align-items: flex-start; }
+          .finding-evidence-identity { align-items: flex-start; }
+          .finding-evidence-output-heading, .finding-evidence-artifact > footer { align-items: flex-start; flex-direction: column; gap: 4px; }
+          .finding-evidence-command { grid-template-columns: auto minmax(0, 1fr); }
+          .finding-evidence-command code { grid-column: 1 / -1; }
+          .finding-evidence-code > div { grid-template-columns: 36px minmax(0, 1fr); }
+          .finding-evidence-code span { padding-right: 7px; }
+          .finding-evidence-code code { padding-right: 10px; padding-left: 10px; font-size: 10.5px; }
           .finding-related-list > div { grid-template-columns: 7px minmax(0, 1fr) auto; }
           .finding-related-list code { display: none; }
-          .finding-detail-header, .finding-ai-triage { padding-right: 16px; padding-left: 16px; }
+          .finding-detail-header { padding-right: 16px; padding-left: 16px; }
+          .finding-ai-triage summary { padding-right: 16px; padding-left: 16px; }
+          .finding-ai-triage-content { padding-right: 16px; padding-left: 37px; }
           .finding-detail-title { max-width: none; font-size: 18px; }
           .finding-detail-content { padding: 16px; }
         }
         @media (prefers-reduced-motion: reduce) {
           .findings-spinner { animation-duration: 1.6s; }
-          .findings-triage-key summary svg { transition: none; }
+          .findings-advanced-filters summary svg,
+          .finding-overview-disclosure summary > svg,
+          .finding-ai-triage summary svg:last-child { transition: none; }
           .finding-detail-panel { animation: none; }
         }
       `}</style>
@@ -2430,21 +2228,6 @@ export default function FindingsPage() {
           </button>
         </div>
       )}
-
-      <TriageKey />
-
-      <FixFirstStrip
-        findings={findings}
-        total={total}
-        loading={isLoading || (isFetching && !data)}
-        failed={Boolean(error)}
-        onRetry={() => { void refetch(); }}
-        onSelect={(id) => setSelectedId(id)}
-        exploitedActive={filterExploited}
-        slaActive={filterSlaBreached}
-        onToggleExploited={() => { setFilterExploited((p) => !p); setPage(1); }}
-        onToggleSla={() => { setFilterSlaBreached((p) => !p); setPage(1); }}
-      />
 
       <div className="findings-workspace" data-detail={selected ? "true" : "false"}>
 
@@ -2520,9 +2303,24 @@ export default function FindingsPage() {
                   ))}
                 </select>
               </label>
+
+              <label className="findings-filter-group">
+                <span className="findings-filter-label">Sort</span>
+                <select className="findings-filter-control" value={sortBy} onChange={(e) => { setSortBy(e.target.value as typeof sortBy); setPage(1); setSelectedId(null); }}>
+                  <option value="risk">Risk: highest first</option>
+                  <option value="cvss">CVSS: highest first</option>
+                  <option value="epss">EPSS: highest first</option>
+                  <option value="date">Newest first</option>
+                </select>
+              </label>
             </div>
 
-            <div className="findings-filter-grid">
+            <details className="findings-advanced-filters">
+              <summary>
+                <span>More filters{advancedFilterCount > 0 ? ` · ${advancedFilterCount} active` : ""}</span>
+                <ChevronDown size={15} aria-hidden />
+              </summary>
+              <div className="findings-filter-grid">
               <fieldset className="findings-filter-group">
                 <legend>Severity</legend>
                 <div className="findings-severity-controls">
@@ -2554,15 +2352,6 @@ export default function FindingsPage() {
                 </select>
               </label>
 
-              <label className="findings-filter-group">
-                <span className="findings-filter-label">Sort</span>
-                <select className="findings-filter-control" value={sortBy} onChange={(e) => { setSortBy(e.target.value as typeof sortBy); setPage(1); setSelectedId(null); }}>
-                  <option value="risk">Risk: highest first</option>
-                  <option value="cvss">CVSS: highest first</option>
-                  <option value="epss">EPSS: highest first</option>
-                  <option value="date">Newest first</option>
-                </select>
-              </label>
             </div>
 
             <div className="findings-signal-filters" aria-label="Risk signal filters">
@@ -2588,6 +2377,7 @@ export default function FindingsPage() {
                 color: filterNeedsReview ? SEV_PALETTE.AMBER : "var(--text-secondary)",
               }}><Flag size={13} aria-hidden /> Needs review</button>
             </div>
+            </details>
           </section>
 
           {/* Finding list */}
@@ -2611,7 +2401,6 @@ export default function FindingsPage() {
             {findings.map((f) => {
               const sla = getSlaColor(f.discoveredAt, f.severity);
               const isSelected = selectedId === f.id;
-              const drivers = decisionDrivers(f).slice(0, 3);
               return (
                 <div
                   key={f.id}
@@ -2634,15 +2423,10 @@ export default function FindingsPage() {
                       <SevBadge s={f.severity} />
                       <StatusBadge s={f.status} />
                       {f.kevStatusRecorded && f.kevListed && <KevBadge />}
-                      <PriorityBadge priority={f.aiTriage.priority} compact />
-                      <VerificationBadge state={f.verificationState} />
-                      <NeedsReviewChip show={f.needsReview} />
-                      <RegressionBadge show={f.regression} />
-                      <AutoResolvedBadge method={f.resolutionMethod} reopenedCount={f.reopenedCount} />
                     </div>
                     <div className="finding-card-risk">
-                      <strong style={{ color: riskScoreColor(f.riskScore) }}>{f.riskScore}/1000</strong>
-                      <span>Manager risk</span>
+                      <strong style={{ color: riskScoreColor(f.riskScore) }}>{f.riskScore}</strong>
+                      <span>Risk /1000</span>
                     </div>
                   </div>
 
@@ -2650,37 +2434,24 @@ export default function FindingsPage() {
 
                   <div className="finding-card-context">
                     <span className="finding-card-host" title={f.affectedHost}>{f.affectedHost}</span>
-                    <div className="finding-card-signals">
-                      <DetectionPill cov={f.detectionCoverage} />
-                      {f.exploitMaturityRecorded && <span style={{ fontFamily: "var(--font-mono)", fontSize: 10, fontWeight: 650, color: MATURITY_COLOR[f.exploitMaturity] }}>{f.exploitMaturity}</span>}
-                    </div>
+                    <PriorityBadge priority={f.aiTriage.priority} compact />
                   </div>
 
-                  {drivers.length > 0 && (
-                    <div className="finding-card-drivers" aria-label="Decision drivers">
-                      <span>Why now</span>
-                      {drivers.map((driver) => <span className="finding-driver" key={driver}>{driver}</span>)}
+                  <div className="finding-card-meta" aria-label="Finding signals">
+                    <span><b>CVSS</b> {f.cvss || "—"}</span>
+                    <span><b>EPSS</b> <i style={{ color: f.epssRecorded ? epssColor(f.epssScore) : "var(--text-muted)" }}>{f.epssRecorded ? `${(f.epssScore * 100).toFixed(1)}%` : "—"}</i></span>
+                    <span><b>SLA</b> <i style={{ color: sla.color }}>{sla.label}</i></span>
+                    <span><b>Evidence</b> {f.verificationState || "Unassessed"}</span>
+                  </div>
+
+                  {(f.activelyExploited || f.detectionCoverage === "BLIND" || f.needsReview || f.regression) && (
+                    <div className="finding-card-alerts" aria-label="Attention signals">
+                      {f.activelyExploited && <span><BadgeCheck size={12} /> Exploit confirmed</span>}
+                      {f.detectionCoverage === "BLIND" && <span><EyeOff size={12} /> Detection blind</span>}
+                      {f.needsReview && <span><Flag size={12} /> Needs review</span>}
+                      {f.regression && <span><RotateCcw size={12} /> Regression</span>}
                     </div>
                   )}
-
-                  <div className="finding-card-metrics">
-                    <div className="finding-card-metric">
-                      <span>EPSS</span>
-                      <strong style={{ color: f.epssRecorded ? epssColor(f.epssScore) : "var(--text-muted)" }}>{f.epssRecorded ? `${(f.epssScore * 100).toFixed(1)}%` : "Not recorded"}</strong>
-                    </div>
-                    <div className="finding-card-metric">
-                      <span>CVSS</span>
-                      <strong>{f.cvss || "Not recorded"}</strong>
-                    </div>
-                    <div className="finding-card-metric">
-                      <span>SLA</span>
-                      <strong style={{ color: sla.color }}>{sla.label}</strong>
-                    </div>
-                    <div className="finding-card-metric">
-                      <span>Evidence</span>
-                      <strong>{f.verificationState ? f.verificationState.toUpperCase() : "NOT VERIFIED"}</strong>
-                    </div>
-                  </div>
                 </div>
               );
             })}

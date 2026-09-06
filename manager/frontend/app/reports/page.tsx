@@ -4,12 +4,16 @@ import React, { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   Activity, AlertTriangle, BarChart3, CheckCircle2, ClipboardCheck,
-  FileSearch, FileText, Fingerprint, Printer, ShieldAlert,
+  FileSearch, FileText, Fingerprint, Lock, Printer, ShieldAlert,
 } from "lucide-react";
 import { PageShell } from "../../components/PageShell";
+import { EvidenceArtifact, FindingsSection } from "../../components/report/FindingReport";
 import { DataState, EmptyState, SkeletonRows } from "../../components/states/DataState";
 import { fetchJson, isUnauthorized } from "../../lib/fetcher";
+import { toRawFinding } from "../../lib/report/adapt";
+import type { RawFinding } from "../../lib/report/finding-model";
 import { SEV_COLOR, SEV_PALETTE } from "../../lib/severity";
+import "../../styles/report-finding.css";
 
 type ReportType = "executive" | "technical" | "evidence" | "compliance";
 type Severity = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW" | "INFO";
@@ -38,7 +42,11 @@ interface Finding {
   discoveredAt: string;
   description: string;
   technicalDetails: string;
-  evidence: Array<{ label: string; content: string }>;
+  evidence: Array<{
+    label: string; content: string; type?: string; tool?: string;
+    command?: string; capturedAt?: string; capturedBy?: string;
+    sourceHost?: string; sha256?: string;
+  }>;
   impact: string;
   remediation: Array<string | { title?: string; description?: string }>;
   mitre: Array<{ id: string; name: string }>;
@@ -46,6 +54,25 @@ interface Finding {
   cvss: string;
   exploitability?: string;
   activelyExploited: boolean;
+  exploitedInWild?: boolean;
+  exploitValidated?: boolean;
+  kevListed?: boolean;
+  kevDateAdded?: string;
+  pocAvailable?: boolean;
+  epssScore?: number;
+  epssPercentile?: number;
+  epssRecorded?: boolean;
+  verificationState?: string | null;
+  businessImpact?: string;
+  reproductionSteps?: string;
+  cves?: string[];
+  assetContext?: {
+    ipAddress?: string | null; hostname?: string | null; fqdn?: string | null;
+    os?: string | null; osVersion?: string | null; environment?: string | null;
+    owner?: string | null; internetReachable?: boolean;
+  } | null;
+  assignee?: string;
+  resolvedAt?: string | null;
   detectionCoverage: string;
 }
 
@@ -74,6 +101,10 @@ interface ActivityItem {
   engagementId: string;
 }
 
+interface SlaSummaryResponse {
+  items: Array<{ id: string; deadline: string | null }>;
+}
+
 const REPORT_TABS: Array<{ id: ReportType; label: string; icon: React.ElementType }> = [
   { id: "executive", label: "Executive", icon: BarChart3 },
   { id: "technical", label: "Technical", icon: FileSearch },
@@ -87,12 +118,6 @@ function formatDate(value?: string) {
   return Number.isNaN(date.getTime())
     ? "Not recorded"
     : new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(date);
-}
-
-function plainRemediation(finding: Finding) {
-  const first = finding.remediation[0];
-  if (typeof first === "string") return first;
-  return first?.description || first?.title || "No remediation guidance has been recorded.";
 }
 
 function Metric({ label, value, detail, tone = "var(--accent)" }: {
@@ -195,40 +220,8 @@ function ExecutiveReport({ engagement, findings, summary }: {
   );
 }
 
-function TechnicalReport({ findings, total }: { findings: Finding[]; total: number }) {
-  return (
-    <section className="report-section">
-      <header><div><small>TECHNICAL FINDINGS</small><h3>Verification and remediation detail</h3></div><span>Top {Math.min(25, findings.length)} of {total}</span></header>
-      {!findings.length && <p className="report-missing">No technical findings have been recorded.</p>}
-      <div className="report-finding-stack">
-        {findings.slice(0, 25).map((finding, index) => (
-          <article key={finding.id}>
-            <header>
-              <span>{String(index + 1).padStart(2, "0")}</span>
-              <div><small>{finding.id} · {finding.affectedHost}</small><h4>{finding.title}</h4></div>
-              <b style={{ color: SEV_COLOR[finding.severity] }}>{finding.severity}</b>
-            </header>
-            <dl>
-              <div><dt>CVSS</dt><dd>{finding.cvss || "Not recorded"}</dd></div>
-              <div><dt>Risk score</dt><dd>{finding.riskScore}</dd></div>
-              <div><dt>Status</dt><dd>{finding.status.replaceAll("_", " ")}</dd></div>
-              <div><dt>Detection</dt><dd>{finding.detectionCoverage}</dd></div>
-            </dl>
-            <div className="report-copy-grid">
-              <div><strong>Description</strong><p>{finding.description || "No description has been recorded."}</p></div>
-              <div><strong>Impact</strong><p>{finding.impact || "No impact statement has been recorded."}</p></div>
-              <div><strong>Remediation</strong><p>{plainRemediation(finding)}</p></div>
-              <div><strong>Evidence</strong><p>{finding.evidence.length ? `${finding.evidence.length} evidence item(s) recorded.` : "No evidence item has been recorded."}</p></div>
-            </div>
-          </article>
-        ))}
-      </div>
-    </section>
-  );
-}
-
 function EvidenceReport({ findings, activity, total }: {
-  findings: Finding[]; activity: ActivityItem[]; total: number;
+  findings: RawFinding[]; activity: ActivityItem[]; total: number;
 }) {
   const artifacts = findings.reduce((sum, finding) => sum + finding.evidence.length, 0);
   const withEvidence = findings.filter((finding) => finding.evidence.length > 0).length;
@@ -241,13 +234,15 @@ function EvidenceReport({ findings, activity, total }: {
         <Metric label="Coverage boundary" value={`${findings.length}/${total}`} detail="Loaded / total findings" />
       </div>
       <section className="report-section">
-        <header><div><small>EVIDENCE INVENTORY</small><h3>Recorded artifacts</h3></div><span>Values are shown as stored</span></header>
+        <header><div><small>EVIDENCE INVENTORY</small><h3>Recorded artifacts</h3></div><span>Secrets are masked by default</span></header>
         {!artifacts && <p className="report-missing">No structured finding evidence is recorded in the loaded result set.</p>}
-        <div className="report-evidence-grid">
+        <div className="vf-artifacts">
           {findings.flatMap((finding) => finding.evidence.map((item, index) => (
-            <article key={`${finding.id}-${item.label}-${index}`}>
-              <small>{finding.id} · {finding.severity}</small><strong>{item.label}</strong><pre>{item.content}</pre>
-            </article>
+            <EvidenceArtifact
+              key={`${finding.id}-${item.label}-${index}`}
+              item={item}
+              refId={`${finding.id}/E${String(index + 1).padStart(2, "0")}`}
+            />
           )))}
         </div>
       </section>
@@ -323,7 +318,21 @@ export default function ReportsPage() {
     enabled: Boolean(engagementId),
     retry: (count, error) => !isUnauthorized(error) && count < 2,
   });
+  const slaQuery = useQuery({
+    queryKey: ["report-sla-summary", engagementId],
+    queryFn: () => fetchJson<SlaSummaryResponse>(`/api/findings/sla-summary?engagement_id=${encodeURIComponent(engagementId)}`),
+    enabled: Boolean(engagementId),
+    retry: (count, error) => !isUnauthorized(error) && count < 2,
+  });
   const findings = findingsQuery.data?.items ?? [];
+  const deadlines = useMemo(
+    () => new Map((slaQuery.data?.items ?? []).map((item) => [item.id, item.deadline])),
+    [slaQuery.data?.items],
+  );
+  const reportFindings = useMemo(
+    () => findings.map((finding) => toRawFinding(finding, deadlines.get(finding.id))),
+    [findings, deadlines],
+  );
   const summary = summaryQuery.data ?? {
     total: engagement?.findingCount ?? 0,
     criticalOpen: 0,
@@ -357,7 +366,7 @@ export default function ReportsPage() {
         loading={loading}
         error={loadError}
         isEmpty={!engagement}
-        onRetry={() => { void engagementsQuery.refetch(); void findingsQuery.refetch(); void summaryQuery.refetch(); }}
+        onRetry={() => { void engagementsQuery.refetch(); void findingsQuery.refetch(); void summaryQuery.refetch(); void activityQuery.refetch(); void slaQuery.refetch(); }}
         skeleton={<SkeletonRows rows={5} height={92} />}
         empty={<EmptyState icon={FileText} title="No engagement available" hint="Create an engagement and collect assessment evidence before generating a report." />}
       >
@@ -368,18 +377,25 @@ export default function ReportsPage() {
               <dl>
                 <div><dt>Status</dt><dd>{engagement.status}</dd></div>
                 <div><dt>Assessment window</dt><dd>{formatDate(engagement.startDate)} — {formatDate(engagement.endDate)}</dd></div>
-                <div><dt>Assessor</dt><dd>{engagement.assessor || "Not recorded"}</dd></div>
+                <div><dt>Lead assessor</dt><dd>{engagement.assessor || "Not recorded"}</dd></div>
                 <div><dt>Scope</dt><dd>{engagement.scopeCidrs.length ? engagement.scopeCidrs.join(", ") : "Not recorded"}</dd></div>
+                <div><dt>Assets in scope</dt><dd>{engagement.assetCount}</dd></div>
+                <div><dt>Total findings</dt><dd>{summary.total}</dd></div>
               </dl>
             </header>
             <div className="report-boundary">
-              <FileText size={17} /><div><strong>Evidence boundary</strong><span>
+              <Lock size={17} /><div><strong>Evidence boundary</strong><span>
                 Findings are ranked by stored risk. Detailed sections load up to 100 of {summary.total} findings; aggregate metrics cover the full selected engagement. Missing data is stated explicitly.
               </span></div>
             </div>
             {reportType === "executive" && <ExecutiveReport engagement={engagement} findings={findings} summary={summary} />}
-            {reportType === "technical" && <TechnicalReport findings={findings} total={summary.total} />}
-            {reportType === "evidence" && <EvidenceReport findings={findings} activity={activityQuery.data ?? []} total={summary.total} />}
+            {reportType === "technical" && (
+              <section className="report-section report-section-technical">
+                <header><div><small>TECHNICAL FINDINGS</small><h3>Risk, evidence, remediation, and verification</h3></div><span>{reportFindings.length} of {summary.total} loaded</span></header>
+                <FindingsSection findings={reportFindings} total={summary.total} />
+              </section>
+            )}
+            {reportType === "evidence" && <EvidenceReport findings={reportFindings} activity={activityQuery.data ?? []} total={summary.total} />}
             {reportType === "compliance" && <ComplianceReport findings={findings} total={summary.total} />}
             <footer className="report-footer"><FileText size={13} /> Generated from Vedha live engagement records · Beta · Human review required</footer>
           </main>

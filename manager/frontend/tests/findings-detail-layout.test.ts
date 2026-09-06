@@ -34,8 +34,25 @@ describe("findings detail layout", () => {
     );
     assert.match(
       findingsPage,
-      /\.finding-overview-narrative p\s*\{[^}]*max-width:\s*72ch;[^}]*font:\s*400 14px\/1\.65 var\(--font-ui\);/,
+      /\.finding-overview-primary p,[\s\S]*?\.finding-overview-technical-narrative p\s*\{[^}]*max-width:\s*72ch;[^}]*font:\s*400 14px\/1\.65 var\(--font-ui\);/,
     );
+  });
+
+  test("keeps the queue compact and progressively reveals secondary analysis", () => {
+    assert.doesNotMatch(findingsPage, /<FixFirstStrip/);
+    assert.doesNotMatch(findingsPage, /<TriageKey/);
+    assert.match(findingsPage, /<details className="findings-advanced-filters">/);
+    assert.match(findingsPage, /className="finding-card-meta"/);
+    assert.match(findingsPage, /<details className="finding-overview-disclosure">/);
+    assert.match(findingsPage, /className="finding-action-select"/);
+  });
+
+  test("refreshes active agents from heartbeats with perceptible feedback", () => {
+    assert.match(findingsPage, /const AGENT_REFRESH_FEEDBACK_MS = 2_000;/);
+    assert.match(findingsPage, /agentOptionsQuery\.refetch\(\)/);
+    assert.match(findingsPage, /agent\.status !== "OFFLINE"/);
+    assert.match(findingsPage, /aria-label="Refresh active Vedha agents and probes"/);
+    assert.match(findingsPage, /agentsRefreshing \? "Checking agents…" : "Refresh agents"/);
   });
 
   test("returns the detail panel to document flow on narrow screens", () => {
@@ -43,5 +60,14 @@ describe("findings detail layout", () => {
       findingsPage,
       /@media \(max-width: 920px\)[\s\S]*?\.finding-detail-column\s*\{[^}]*position:\s*static;[^}]*max-height:\s*none;[^}]*overflow:\s*visible;/,
     );
+  });
+
+  test("presents evidence as an analyst review record", () => {
+    assert.match(findingsPage, /<h3 id="finding-evidence-title">Evidence review<\/h3>/);
+    assert.match(findingsPage, /className="finding-evidence-provenance"/);
+    assert.match(findingsPage, /className="finding-evidence-output-heading"/);
+    assert.match(findingsPage, /text=\{presentation\.copyText\} showLabel/);
+    assert.match(findingsPage, /Copy includes all masked lines\./);
+    assert.doesNotMatch(findingsPage, /\{false && tab === "evidence"/);
   });
 });

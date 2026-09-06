@@ -50,3 +50,48 @@ test("finding detail maps bounded asset context for the overview", () => {
     environment: "production",
   });
 });
+
+test("finding detail keeps structured backend evidence as one reviewable artifact", () => {
+  const finding = toUiFinding({
+    id: "finding-1",
+    evidence: {
+      engine: "nuclei",
+      template_id: "CVE-2021-44228",
+      matched_at: "https://example.test",
+      timestamp: "2026-09-06T12:30:00Z",
+    },
+  });
+
+  assert.equal(finding.evidence.length, 1);
+  assert.equal(finding.evidence[0].label, "nuclei evidence");
+  assert.equal(finding.evidence[0].type, "json");
+  assert.equal(finding.evidence[0].tool, "nuclei");
+  assert.equal(JSON.parse(finding.evidence[0].content).template_id, "CVE-2021-44228");
+});
+
+test("finding detail preserves provenance on legacy evidence arrays", () => {
+  const finding = toUiFinding({
+    id: "finding-1",
+    evidence: [{
+      label: "Probe output",
+      content: "443/tcp open",
+      tool: "nmap",
+      timestamp: "2026-09-06T12:30:00Z",
+      source_host: "probe-01",
+    }],
+  });
+
+  assert.deepEqual(finding.evidence[0], {
+    label: "Probe output",
+    content: "443/tcp open",
+    type: undefined,
+    tool: "nmap",
+    source: undefined,
+    command: undefined,
+    timestamp: "2026-09-06T12:30:00Z",
+    capturedAt: undefined,
+    capturedBy: undefined,
+    sourceHost: "probe-01",
+    sha256: undefined,
+  });
+});
