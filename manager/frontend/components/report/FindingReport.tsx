@@ -15,7 +15,7 @@
  */
 
 import {
-  useCallback, useEffect, useMemo, useRef, useState,
+  createContext, useCallback, useContext, useEffect, useMemo, useRef, useState,
   type ElementType, type ReactNode,
 } from "react";
 import { flushSync } from "react-dom";
@@ -30,6 +30,15 @@ import {
   assess, provenanceOf, redact, triageSort, TIER_META,
   type AssessedFinding, type RawEvidence, type RawFinding, type RemediationTier,
 } from "../../lib/report/finding-model";
+
+/**
+ * Audience mode. "assessor" is the internal report (everything shown, gaps
+ * flagged for delivery-readiness). "client" is the customer-facing report:
+ * internal-only sections are omitted and missing data is simply absent rather
+ * than flagged with internal "not recorded / not ready" copy.
+ */
+export type ReportMode = "assessor" | "client";
+const ReportModeContext = createContext<ReportMode>("assessor");
 
 /* ─── small shared pieces ─────────────────────────────────────────────────── */
 
@@ -74,10 +83,14 @@ function CopyButton({ text, label }: { text: string; label: string }) {
 }
 
 function Section({
-  index, title, icon: Icon, children, tone,
+  index, title, icon: Icon, children, tone, clientOmit,
 }: {
-  index: string; title: string; icon: ElementType; children: ReactNode; tone?: "fix" | "verify";
+  index: string; title: string; icon: ElementType; children: ReactNode;
+  tone?: "fix" | "verify"; clientOmit?: boolean;
 }) {
+  // Whole-section suppression for the client report (e.g. Evidence, or an
+  // Affected-assets section with nothing to show).
+  if (clientOmit) return null;
   return (
     <section className="vf-block" data-tone={tone}>
       <h4 className="vf-block-head">
@@ -92,6 +105,8 @@ function Section({
 
 /** Says what is missing rather than rendering an empty box. */
 function Gap({ children }: { children: ReactNode }) {
+  // The client report shows absence as absence — no internal nag copy.
+  if (useContext(ReportModeContext) === "client") return null;
   return (
     <p className="vf-gap">
       <FileWarning size={12} aria-hidden="true" />
@@ -204,19 +219,26 @@ export interface FindingReportProps {
   ordinal: number;
   open: boolean;
   onToggle: (id: string) => void;
+  mode?: ReportMode;
 }
 
-export function FindingReport({ finding, ordinal, open, onToggle }: FindingReportProps) {
+export function FindingReport({ finding, ordinal, open, onToggle, mode = "assessor" }: FindingReportProps) {
   const a: AssessedFinding = useMemo(() => assess(finding), [finding]);
   const f = a.raw;
+  const isClient = mode === "client";
   const bodyId = `vf-body-${f.id}`;
   const n = String(ordinal).padStart(2, "0");
 
   const byTier = (t: RemediationTier) => a.remediation.filter(s => s.tier === t);
   const discovered = fmtDate(f.discoveredAt);
   const due = fmtDate(a.sla.dueAt?.toISOString());
+  const hasTechnical = Boolean(
+    f.technicalDetails?.trim() || f.rootCause || f.impact?.trim() ||
+    f.prerequisites?.length || f.attackPath?.length
+  );
 
   return (
+    <ReportModeContext.Provider value={mode}>
     <article className="vf-card" data-sev={a.severity.toLowerCase()} data-open={open}>
       <button
         type="button"
@@ -232,11 +254,11 @@ export function FindingReport({ finding, ordinal, open, onToggle }: FindingRepor
             <SevTag sev={a.severity} />
             <span className="vf-prio" data-prio={a.priority.code}>{a.priority.code} {a.priority.label}</span>
             {a.cvssScore !== null && <span className="vf-cvss">CVSS {a.cvssScore.toFixed(1)}</span>}
-            <span className="vf-conf" data-level={a.confidence.level.toLowerCase()}>{a.confidence.label}</span>
+            {!isClient && <span className="vf-conf" data-level={a.confidence.level.toLowerCase()}>{a.confidence.label}</span>}
             {f.activelyExploited && (
               <span className="vf-kev"><Flame size={10} aria-hidden="true" />Exploited in the wild</span>
             )}
-            {!a.readiness.ready && (
+            {!isClient && !a.readiness.ready && (
               <span className="vf-notready no-print">
                 {a.readiness.blocking} field{a.readiness.blocking === 1 ? "" : "s"} missing
               </span>
@@ -247,7 +269,7 @@ export function FindingReport({ finding, ordinal, open, onToggle }: FindingRepor
 
           <span className="vf-head-meta">
             <span className="vf-ref">{f.id}</span>
-            <span>{a.assets.length} asset{a.assets.length === 1 ? "" : "s"}</span>
+            {(!isClient || a.assets.length > 0) && <span>{a.assets.length} asset{a.assets.length === 1 ? "" : "s"}</span>}
             {discovered && <span>Found {discovered}</span>}
             <span className="vf-status">{f.status.replace(/_/g, " ").toLowerCase()}</span>
             <span className="vf-sla" data-state={a.sla.state}>
@@ -288,9 +310,11 @@ export function FindingReport({ finding, ordinal, open, onToggle }: FindingRepor
                     ? `${f.epss.toFixed(2)}${f.epssPercentile != null ? ` (${Math.round(f.epssPercentile * 100)}th percentile)` : ""}`
                     : "not scored"}
                 </li>
-                <li data-hot={f.exploitValidated || undefined}>
-                  <b>Reproduced here</b>{f.exploitValidated ? "yes, during this assessment" : "no"}
-                </li>
+                {!isClient && (
+                  <li data-hot={f.exploitValidated || undefined}>
+                    <b>Reproduced here</b>{f.exploitValidated ? "yes, during this assessment" : "no"}
+                  </li>
+                )}
                 <li data-hot={f.internetReachable || undefined}>
                   <b>Exposure</b>{f.internetReachable === true ? "internet-facing" : f.internetReachable === false ? "internal only" : "not recorded"}
                 </li>
@@ -345,15 +369,17 @@ export function FindingReport({ finding, ordinal, open, onToggle }: FindingRepor
             )}
           </div>
 
-          <div className="vf-confidence" data-level={a.confidence.level.toLowerCase()}>
-            <h5>How this was established — {a.confidence.label.toLowerCase()}</h5>
-            <p>{a.confidence.basis}</p>
-            {a.confidence.caveat && <p className="vf-confidence-caveat">{a.confidence.caveat}</p>}
-          </div>
+          {!isClient && (
+            <div className="vf-confidence" data-level={a.confidence.level.toLowerCase()}>
+              <h5>How this was established — {a.confidence.label.toLowerCase()}</h5>
+              <p>{a.confidence.basis}</p>
+              {a.confidence.caveat && <p className="vf-confidence-caveat">{a.confidence.caveat}</p>}
+            </div>
+          )}
         </Section>
 
         {/* 3 — what it touches */}
-        <Section index={`${n}.3`} title="Affected assets" icon={Server}>
+        <Section index={`${n}.3`} title="Affected assets" icon={Server} clientOmit={isClient && a.assets.length === 0}>
           {a.assets.length ? (
             <div className="vf-table-wrap">
               <table className="vf-table">
@@ -386,7 +412,7 @@ export function FindingReport({ finding, ordinal, open, onToggle }: FindingRepor
         </Section>
 
         {/* 4 — the mechanism */}
-        <Section index={`${n}.4`} title="Technical detail" icon={ListChecks}>
+        <Section index={`${n}.4`} title="Technical detail" icon={ListChecks} clientOmit={isClient && !hasTechnical}>
           {f.technicalDetails?.trim()
             ? <Prose text={f.technicalDetails} />
             : <Gap>No technical detail recorded.</Gap>}
@@ -421,7 +447,7 @@ export function FindingReport({ finding, ordinal, open, onToggle }: FindingRepor
         </Section>
 
         {/* 5 — what we actually saw */}
-        <Section index={`${n}.5`} title={`Evidence (${f.evidence?.length ?? 0})`} icon={Terminal}>
+        <Section index={`${n}.5`} title={`Evidence (${f.evidence?.length ?? 0})`} icon={Terminal} clientOmit={isClient}>
           {f.evidence?.length ? (
             <div className="vf-artifacts">
               {f.evidence.map((item, i) => (
@@ -432,7 +458,7 @@ export function FindingReport({ finding, ordinal, open, onToggle }: FindingRepor
         </Section>
 
         {/* 6 — so the client can see it themselves */}
-        <Section index={`${n}.6`} title="Reproduction" icon={ClipboardCheck}>
+        <Section index={`${n}.6`} title="Reproduction" icon={ClipboardCheck} clientOmit={isClient}>
           {f.reproductionSteps?.trim() ? (
             <>
               <pre className="vf-repro">{f.reproductionSteps}</pre>
@@ -475,7 +501,7 @@ export function FindingReport({ finding, ordinal, open, onToggle }: FindingRepor
         </Section>
 
         {/* 8 — the part almost every automated report skips */}
-        <Section index={`${n}.8`} title="Verification" icon={ShieldCheck} tone="verify">
+        <Section index={`${n}.8`} title="Verification" icon={ShieldCheck} tone="verify" clientOmit={isClient && !f.verification?.expected?.trim()}>
           {f.verification?.expected?.trim() ? (
             <dl className="vf-verify">
               {f.verification.method && <div><dt>Retest method</dt><dd>{f.verification.method}</dd></div>}
@@ -521,7 +547,7 @@ export function FindingReport({ finding, ordinal, open, onToggle }: FindingRepor
           ) : null}
         </Section>
 
-        {!a.readiness.ready && (
+        {!isClient && !a.readiness.ready && (
           <div className="vf-blockers no-print">
             <h5><AlertTriangle size={12} aria-hidden="true" />Not ready for delivery</h5>
             <ul>
@@ -535,6 +561,7 @@ export function FindingReport({ finding, ordinal, open, onToggle }: FindingRepor
         )}
       </div>
     </article>
+    </ReportModeContext.Provider>
   );
 }
 
@@ -542,7 +569,7 @@ export function FindingReport({ finding, ordinal, open, onToggle }: FindingRepor
 
 type SevFilter = Severity | "ALL";
 
-export function FindingsSection({ findings, total }: { findings: RawFinding[]; total: number }) {
+export function FindingsSection({ findings, total, mode = "assessor" }: { findings: RawFinding[]; total: number; mode?: ReportMode }) {
   const assessed = useMemo(() => findings.map(f => assess(f)).sort(triageSort), [findings]);
 
   const [sev, setSev] = useState<SevFilter>("ALL");
@@ -647,6 +674,7 @@ export function FindingsSection({ findings, total }: { findings: RawFinding[]; t
             ordinal={i + 1}
             open={open.has(a.raw.id)}
             onToggle={toggle}
+            mode={mode}
           />
         ))}
       </div>
