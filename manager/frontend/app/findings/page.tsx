@@ -38,7 +38,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Activity, AlertTriangle, ArrowLeft, BadgeCheck, Brain, Check, CheckCircle,
   ChevronDown, ChevronLeft, ChevronRight, Copy, ExternalLink, EyeOff, FileText, Flag,
-  Keyboard, Link2, ListChecks, LoaderCircle, RotateCcw, Search, Server,
+  Keyboard, Link2, ListChecks, LoaderCircle, RefreshCw, RotateCcw, Search, Server,
   Shield, SlidersHorizontal, Tag, Terminal, Wrench, X,
 } from "lucide-react";
 import { PageShell } from "../../components/PageShell";
@@ -47,6 +47,7 @@ import { useAssistant } from "../../components/assistant/AssistantProvider";
 import { useToast } from "../../hooks/useToast";
 import { errorMessage, fetchJson, isUnauthorized } from "../../lib/fetcher";
 import { DataState, SkeletonRows, EmptyState } from "../../components/states/DataState";
+import { presentEvidence, type EvidenceArtifact } from "../../lib/evidence-presentation";
 import {
   SEV_COLOR, STATUS_COLOR, STATUS_LABEL, MATURITY_COLOR, COVERAGE_COLOR,
   PRIORITY_COLOR, PRIORITY_LABEL, KILL_CHAIN_PHASE_COLOR, riskScoreColor, epssColor, SEV_PALETTE,
@@ -59,6 +60,7 @@ type ExploitMaturity = "WEAPONIZED" | "POC" | "THEORETICAL";
 type DetectionCoverage = "COVERED" | "PARTIAL" | "BLIND";
 type Priority = "P0" | "P1" | "P2" | "P3" | "P4" | "P5";
 const FINDINGS_PER_PAGE = 20;
+const AGENT_REFRESH_FEEDBACK_MS = 2_000;
 
 /* Lifecycle audit-trail event (backend /api/findings/{id}/events, snake_case). */
 type TimelineEvent = {
@@ -146,7 +148,7 @@ interface Finding {
   id: string; title: string; severity: Severity; cvss: string; cvssVector: string;
   category: string; status: FindingStatus; affectedHost: string; discoveredAt: string;
   description: string; technicalDetails: string; attackPath: string;
-  evidence: { label: string; content: string }[];
+  evidence: EvidenceArtifact[];
   evidenceSummary?: EvidenceFact[];
   exploitation?: ExploitationView | null;
   impact: string; businessImpact?: string;
@@ -294,7 +296,7 @@ function prefersReducedMotion() {
  * Was silent to screen readers and left no trace on failure. Now it reports
  * the outcome through a polite live region and degrades honestly when the
  * clipboard API is unavailable (non-secure origins, locked-down kiosks). */
-function CopyBtn({ text, label = "command" }: { text: string; label?: string }) {
+function CopyBtn({ text, label = "command", showLabel = false }: { text: string; label?: string; showLabel?: boolean }) {
   const [state, setState] = useState<"idle" | "copied" | "failed">("idle");
   const copy = async () => {
     try {
@@ -308,12 +310,13 @@ function CopyBtn({ text, label = "command" }: { text: string; label?: string }) 
   return (
     <button
       type="button"
-      className="finding-copy-btn"
+      className={`finding-copy-btn${showLabel ? " finding-copy-btn-labelled" : ""}`}
       data-state={state}
       aria-label={state === "copied" ? `Copied ${label}` : `Copy ${label}`}
       onClick={() => { void copy(); }}
     >
       {state === "copied" ? <Check size={12} aria-hidden /> : <Copy size={12} aria-hidden />}
+      {showLabel && <span aria-hidden>{state === "copied" ? "Copied" : state === "failed" ? "Try again" : "Copy"}</span>}
       <span className="findings-sr-only" role="status">
         {state === "copied" ? "Copied" : state === "failed" ? "Copy blocked by the browser" : ""}
       </span>
@@ -623,72 +626,102 @@ function TriageKey() {
 }
 
 /* ─── Evidence ────────────────────────────────────────────────────────────
- * Artifacts are collapsible and only the first opens by default. Ten stacked
- * 360px code wells previously buried the remediation tab below a screen of
- * scroll; the analyst now chooses what to expand. */
-function evidencePresentation(label: string, content: string) {
-  let formatted = content;
-  let kind = "Text";
-  try {
-    if (content.length > 100_000) throw new Error("Artifact is too large for inline JSON formatting");
-    const parsed = JSON.parse(content);
-    formatted = JSON.stringify(parsed, null, 2);
-    kind = "JSON";
-  } catch {
-    const hint = `${label} ${content.slice(0, 120)}`.toLowerCase();
-    if (/command|stdout|stderr|terminal|scan|nmap|curl|powershell|shell/.test(hint)) kind = "Console output";
-    else if (/log|event|trace/.test(hint)) kind = "Log";
-  }
-  const lines = formatted.split("\n");
-  return { formatted, kind, lines, visibleLines: lines.slice(0, 200) };
-}
-
+ * Artifacts remain collapsible so long scanner output does not bury the next
+ * decision. Inside each record, identity, provenance, command, masked output
+ * and completeness follow the same order an analyst uses to validate proof. */
 function EvidenceGallery({ evidence }: { evidence: Finding["evidence"] }) {
   if (!evidence.length) {
     return (
-      <div className="finding-blank">
-        <FileText size={17} aria-hidden />
+      <section className="finding-evidence-empty" aria-labelledby="finding-evidence-empty-title">
+        <FileText size={20} aria-hidden />
         <div>
-          <strong>No evidence is attached</strong>
-          <p>Validate the finding and attach reproducible proof before it goes to a client.</p>
+          <h3 id="finding-evidence-empty-title">No recorded evidence</h3>
+          <p>Validate the finding and attach reproducible proof before it is used for remediation or client delivery.</p>
         </div>
-      </div>
+      </section>
     );
   }
-  const totalLines = evidence.reduce((total, artifact) => total + artifact.content.split("\n").length, 0);
+
+  const prepared = evidence.map((artifact) => ({ artifact, presentation: presentEvidence(artifact) }));
+  const totalLines = prepared.reduce((total, item) => total + item.presentation.lines.length, 0);
+  const totalRedactions = prepared.reduce((total, item) => total + item.presentation.redactions, 0);
+
   return (
     <div className="finding-evidence-view">
-      <div className="finding-section-heading">
-        <div><FileText size={15} aria-hidden /><h3>{evidence.length} attached artifact{evidence.length === 1 ? "" : "s"}</h3></div>
-        <span>{totalLines.toLocaleString()} line{totalLines === 1 ? "" : "s"} on record</span>
-      </div>
-      {evidence.map((artifact, index) => {
-        const presentation = evidencePresentation(artifact.label, artifact.content);
-        const truncated = presentation.lines.length > presentation.visibleLines.length;
+      <section className="finding-evidence-summary" aria-labelledby="finding-evidence-title">
+        <div className="finding-evidence-summary-copy">
+          <span className="finding-evidence-summary-icon"><FileText size={16} aria-hidden /></span>
+          <div>
+            <h3 id="finding-evidence-title">Evidence review</h3>
+            <p>Scanner-captured proof is shown as recorded. Likely credentials and secrets are masked in this view and copied output.</p>
+          </div>
+        </div>
+        <dl>
+          <div><dt>Artifacts</dt><dd>{evidence.length}</dd></div>
+          <div><dt>Lines</dt><dd>{totalLines.toLocaleString()}</dd></div>
+          <div><dt>Masked</dt><dd>{totalRedactions}</dd></div>
+        </dl>
+      </section>
+
+      {prepared.map(({ artifact, presentation }, index) => {
+        const label = artifact.label.trim() || `Evidence artifact ${index + 1}`;
         return (
-          <details className="finding-evidence-artifact" key={`${artifact.label}-${index}`} open={index === 0}>
+          <details className="finding-evidence-artifact" key={`${label}-${index}`} open={index === 0}>
             <summary>
               <ChevronDown size={14} aria-hidden />
-              <div>
-                <h4>{artifact.label || `Artifact ${index + 1}`}</h4>
-                <p>
-                  <span className="finding-evidence-kind">{presentation.kind}</span>
-                  {presentation.lines.length} line{presentation.lines.length === 1 ? "" : "s"}
-                </p>
+              <div className="finding-evidence-identity">
+                <span className="finding-evidence-kind">{presentation.kind}</span>
+                <div>
+                  <h4>{label}</h4>
+                  <p>{presentation.lines.length.toLocaleString()} line{presentation.lines.length === 1 ? "" : "s"} recorded</p>
+                </div>
               </div>
-              <span onClick={(event) => event.preventDefault()}>
-                <CopyBtn text={artifact.content} label={`${artifact.label || "artifact"} contents`} />
+              <span onClick={(event) => event.stopPropagation()}>
+                <CopyBtn text={presentation.copyText} label={`${label} masked contents`} showLabel />
               </span>
             </summary>
-            <div className="finding-evidence-code" role="region" aria-label={`${artifact.label} contents`} tabIndex={0}>
-              {presentation.visibleLines.map((line, lineIndex) => (
-                <div key={lineIndex}>
-                  <span aria-hidden>{lineIndex + 1}</span>
-                  <code>{line || " "}</code>
-                </div>
-              ))}
+
+            {presentation.provenance.length ? (
+              <dl className="finding-evidence-provenance" aria-label={`${label} provenance`}>
+                {presentation.provenance.map((item) => (
+                  <div key={item.label}>
+                    <dt>{item.label}</dt>
+                    <dd title={item.title}>{item.value}</dd>
+                  </div>
+                ))}
+              </dl>
+            ) : (
+              <p className="finding-evidence-provenance-empty">Capture source and timestamp were not recorded.</p>
+            )}
+
+            {presentation.command && (
+              <div className="finding-evidence-command">
+                <Terminal size={13} aria-hidden />
+                <span>Command</span>
+                <code>{presentation.command}</code>
+              </div>
+            )}
+
+            <div className="finding-evidence-output-heading">
+              <span>Captured output</span>
+              <span>{presentation.redactions ? `${presentation.redactions} sensitive value${presentation.redactions === 1 ? "" : "s"} masked` : "No sensitive values detected"}</span>
             </div>
-            {truncated && <footer>First 200 lines shown. Copy takes the complete artifact.</footer>}
+            {presentation.visibleLines.length ? (
+              <div className="finding-evidence-code" role="region" aria-label={`${label} evidence content`} tabIndex={0}>
+                {presentation.visibleLines.map((line, lineIndex) => (
+                  <div key={lineIndex}>
+                    <span aria-hidden>{lineIndex + 1}</span>
+                    <code>{line || " "}</code>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="finding-evidence-artifact-empty">This artifact was recorded without output.</div>
+            )}
+            <footer>
+              <span>Showing {presentation.visibleLines.length.toLocaleString()} of {presentation.lines.length.toLocaleString()} lines</span>
+              <span>{presentation.truncated ? "Copy includes all masked lines." : "Displayed output is complete."}</span>
+            </footer>
           </details>
         );
       })}
@@ -2235,6 +2268,11 @@ const FINDINGS_CSS = `
 .finding-copy-btn:hover { color: var(--text-primary); background: var(--bg-hover); }
 .finding-copy-btn[data-state="copied"] { color: var(--nominal-color); }
 .finding-copy-btn[data-state="failed"] { color: var(--sev-high-color); }
+.finding-copy-btn-labelled {
+  display: inline-flex; width: auto; min-width: 60px; min-height: 30px; gap: 6px;
+  border: var(--hairline) solid var(--border-default); border-radius: 7px; padding: 0 9px;
+  background: var(--bg-panel); font: 600 10.5px/1 var(--font-ui);
+}
 
 /* Single focus treatment for the whole page — one visual language for
    "you are here" instead of five near-misses. */
@@ -2467,6 +2505,24 @@ button.findings-triage-metric:hover { background: var(--bg-hover); }
 /* Width and centring come from .vedha-page-container in the shell, so the
    findings column widens on a large display instead of stranding margin. */
 .findings-page { width: 100%; }
+.findings-agent-refresh { display: flex; align-items: center; gap: 8px; }
+.findings-agent-refresh-status {
+  display: inline-flex; min-width: 0; align-items: center; gap: 6px;
+  color: var(--text-secondary); font: 550 10.5px/1.3 var(--font-ui); white-space: nowrap;
+}
+.findings-agent-refresh-status i { width: 6px; height: 6px; flex: 0 0 auto; border-radius: 50%; background: var(--text-muted); }
+.findings-agent-refresh-status[data-tone="active"] i { background: var(--nominal-color); }
+.findings-agent-refresh-status[data-tone="error"] { color: var(--sev-medium-color); }
+.findings-agent-refresh-status[data-tone="error"] i { background: var(--sev-medium-color); }
+.findings-agent-refresh-button {
+  display: inline-flex; min-height: 32px; align-items: center; justify-content: center; gap: 6px;
+  border: var(--hairline) solid var(--border-default); border-radius: 7px; padding: 0 10px;
+  color: var(--text-secondary); background: var(--bg-panel);
+  font: 650 11px/1.2 var(--font-ui); white-space: nowrap; cursor: pointer;
+}
+.findings-agent-refresh-button:hover:not(:disabled) { border-color: var(--border-strong); background: var(--bg-hover); }
+.findings-agent-refresh-button:disabled { color: var(--text-muted); cursor: wait; }
+.findings-agent-refresh-button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 
 .findings-workspace { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--space-4); align-items: start; }
 .findings-workspace[data-detail="true"] { grid-template-columns: minmax(300px, 356px) minmax(0, 1fr); gap: 18px; }
@@ -2757,42 +2813,67 @@ button.findings-triage-metric:hover { background: var(--bg-hover); }
 .finding-compliance-view ul { display: grid; gap: 4px; margin: 0; padding-left: 16px; }
 .finding-compliance-view li { max-width: 76ch; color: var(--text-primary); font: 400 12.5px/1.5 var(--font-ui); }
 
-.finding-evidence-view { display: grid; gap: 10px; }
-.finding-evidence-artifact { overflow: hidden; border: var(--hairline) solid var(--border-subtle); border-radius: 10px; background: var(--bg-panel); }
-.finding-evidence-artifact summary { display: flex; align-items: center; gap: 10px; padding: 10px 12px; cursor: pointer; list-style: none; }
+.finding-evidence-view { display: grid; gap: 18px; }
+.finding-evidence-summary { display: flex; align-items: flex-start; justify-content: space-between; gap: 24px; padding-bottom: 16px; border-bottom: var(--hairline) solid var(--border-subtle); }
+.finding-evidence-summary-copy { display: flex; min-width: 0; align-items: flex-start; gap: 10px; }
+.finding-evidence-summary-icon { display: grid; width: 32px; height: 32px; flex: 0 0 auto; place-items: center; border-radius: 8px; color: var(--accent); background: var(--accent-ghost); }
+.finding-evidence-summary h3 { margin: 0; color: var(--text-primary); font: 650 15px/1.35 var(--font-ui); }
+.finding-evidence-summary p { max-width: 64ch; margin: 5px 0 0; color: var(--text-secondary); font: 400 12.5px/1.55 var(--font-ui); }
+.finding-evidence-summary dl { display: flex; flex: 0 0 auto; gap: 18px; margin: 0; }
+.finding-evidence-summary dl > div { display: grid; min-width: 48px; gap: 3px; }
+.finding-evidence-summary dt { color: var(--text-muted); font: 650 9px/1.25 var(--font-ui); text-transform: uppercase; letter-spacing: .045em; }
+.finding-evidence-summary dd { margin: 0; color: var(--text-primary); font: 700 13px/1.3 var(--font-mono); font-variant-numeric: tabular-nums; }
+.finding-evidence-empty { display: flex; align-items: flex-start; gap: 11px; border: var(--hairline) solid var(--border-default); border-radius: 10px; padding: 17px 18px; background: var(--bg-surface); }
+.finding-evidence-empty > svg { flex: 0 0 auto; margin-top: 1px; color: var(--text-muted); }
+.finding-evidence-empty h3 { margin: 0; color: var(--text-primary); font: 650 14px/1.4 var(--font-ui); }
+.finding-evidence-empty p { max-width: 64ch; margin: 5px 0 0; color: var(--text-secondary); font: 400 12.5px/1.55 var(--font-ui); }
+.finding-evidence-artifact { overflow: hidden; border: var(--hairline) solid var(--border-default); border-radius: 10px; background: var(--bg-panel); }
+.finding-evidence-artifact summary { display: flex; align-items: center; gap: 11px; padding: 11px 14px; cursor: pointer; list-style: none; }
 .finding-evidence-artifact summary::-webkit-details-marker { display: none; }
 .finding-evidence-artifact[open] summary { border-bottom: var(--hairline) solid var(--border-subtle); }
 .finding-evidence-artifact summary > svg { flex: 0 0 auto; color: var(--text-muted); transition: transform 160ms var(--ease-out); }
 .finding-evidence-artifact[open] summary > svg { transform: rotate(180deg); }
-.finding-evidence-artifact summary > div { min-width: 0; flex: 1; }
-.finding-evidence-artifact h4 { margin: 0; overflow: hidden; color: var(--text-primary); font: 650 12.5px/1.35 var(--font-ui); text-overflow: ellipsis; white-space: nowrap; }
-.finding-evidence-artifact summary p { margin: 3px 0 0; color: var(--text-muted); font: 500 10px/1.3 var(--font-mono); }
+.finding-evidence-identity { display: flex; min-width: 0; flex: 1; align-items: center; gap: 10px; }
+.finding-evidence-identity > div { min-width: 0; }
+.finding-evidence-artifact h4 { margin: 0; overflow: hidden; color: var(--text-primary); font: 650 13.5px/1.35 var(--font-ui); text-overflow: ellipsis; white-space: nowrap; }
+.finding-evidence-artifact summary p { margin: 3px 0 0; color: var(--text-muted); font: 500 9.5px/1.3 var(--font-mono); font-variant-numeric: tabular-nums; }
 .finding-evidence-artifact[open] { border-color: var(--border-accent); }
 .finding-evidence-artifact summary:hover { background: var(--bg-hover); }
-/* Kind is a colour-coded pill, so JSON / console / log are separable at a glance. */
 .finding-evidence-kind {
-  display: inline-flex; align-items: center; height: 17px; padding: 0 7px; margin-right: 7px;
-  border-radius: 4px; color: var(--accent); background: var(--accent-ghost);
-  border: var(--hairline) solid var(--border-accent);
-  font: 700 8.5px/1 var(--font-mono); letter-spacing: .04em; text-transform: uppercase;
+  flex: 0 0 auto; border-radius: 5px; padding: 4px 6px;
+  color: var(--machine-text); background: var(--machine-bg);
+  font: 700 9px/1 var(--font-mono); letter-spacing: .035em;
 }
+.finding-evidence-provenance { display: flex; flex-wrap: wrap; gap: 10px 24px; margin: 0; padding: 10px 14px; border-bottom: var(--hairline) solid var(--border-subtle); }
+.finding-evidence-provenance > div { display: grid; max-width: 280px; min-width: 92px; gap: 3px; }
+.finding-evidence-provenance dt { color: var(--text-muted); font: 650 8.5px/1.2 var(--font-ui); text-transform: uppercase; letter-spacing: .045em; }
+.finding-evidence-provenance dd { overflow: hidden; margin: 0; color: var(--text-secondary); font: 500 10px/1.35 var(--font-mono); text-overflow: ellipsis; white-space: nowrap; }
+.finding-evidence-provenance-empty { margin: 0; padding: 9px 14px; border-bottom: var(--hairline) solid var(--border-subtle); color: var(--text-muted); font: 400 10.5px/1.45 var(--font-ui); }
+.finding-evidence-command { display: grid; grid-template-columns: auto auto minmax(0, 1fr); gap: 7px; align-items: start; padding: 9px 14px; border-bottom: var(--hairline) solid var(--border-subtle); background: var(--bg-surface); }
+.finding-evidence-command svg { margin-top: 1px; color: var(--machine-color); }
+.finding-evidence-command span { color: var(--text-muted); font: 650 9px/1.45 var(--font-ui); text-transform: uppercase; letter-spacing: .035em; }
+.finding-evidence-command code { overflow-wrap: anywhere; color: var(--text-primary); font: 500 10.5px/1.45 var(--font-mono); }
+.finding-evidence-output-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 14px; background: var(--bg-surface); }
+.finding-evidence-output-heading span:first-child { color: var(--text-secondary); font: 650 9px/1.3 var(--font-ui); text-transform: uppercase; letter-spacing: .045em; }
+.finding-evidence-output-heading span:last-child { color: var(--text-muted); font: 500 9px/1.3 var(--font-ui); }
 .finding-evidence-code {
-  max-height: 380px; overflow: auto; padding: 10px 0;
-  background: var(--bg-app); border-top: var(--hairline) solid var(--border-subtle);
-  scrollbar-width: thin; scrollbar-color: var(--border-strong) transparent;
+  max-height: 390px; overflow: auto;
+  border-top: var(--hairline) solid var(--border-subtle); border-bottom: var(--hairline) solid var(--border-subtle);
+  background: var(--bg-surface); scrollbar-width: thin; scrollbar-color: var(--border-strong) var(--bg-surface);
 }
-.finding-evidence-code > div { display: grid; grid-template-columns: 46px minmax(0, 1fr); min-height: 22px; }
-.finding-evidence-code > div:hover { background: var(--accent-ghost); }
+.finding-evidence-code > div { display: grid; grid-template-columns: 46px minmax(0, 1fr); min-height: 24px; }
+.finding-evidence-code > div:hover { background: var(--bg-hover); }
 .finding-evidence-code span {
-  padding: 2px 11px 2px 0; color: var(--text-faint);
-  font: 500 9.5px/1.7 var(--font-mono); text-align: right; user-select: none;
-  border-right: var(--hairline) solid var(--border-subtle);
+  padding: 3px 10px 3px 0; color: var(--text-muted);
+  font: 500 9px/1.7 var(--font-mono); text-align: right; user-select: none;
+  font-variant-numeric: tabular-nums;
 }
 .finding-evidence-code code {
-  padding: 2px 14px; color: var(--text-primary);
-  font: 500 11.5px/1.7 var(--font-mono); white-space: pre-wrap; overflow-wrap: anywhere;
+  padding: 3px 14px; border-left: var(--hairline) solid var(--border-subtle); color: var(--text-primary);
+  font: 500 11px/1.7 var(--font-mono); white-space: pre-wrap; overflow-wrap: anywhere;
 }
-.finding-evidence-artifact > footer { padding: 7px 12px; border-top: var(--hairline) solid var(--border-subtle); color: var(--text-muted); font: 500 9.5px/1.3 var(--font-ui); }
+.finding-evidence-artifact-empty { padding: 22px 14px; border-top: var(--hairline) solid var(--border-subtle); border-bottom: var(--hairline) solid var(--border-subtle); color: var(--text-muted); background: var(--bg-surface); font: 400 11.5px/1.5 var(--font-ui); }
+.finding-evidence-artifact > footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 14px; color: var(--text-muted); font: 500 9.5px/1.35 var(--font-ui); }
 
 .finding-remediation-view { display: grid; gap: 20px; }
 .finding-remediation-view[data-refreshing] { opacity: .75; }
@@ -2951,9 +3032,19 @@ button.findings-triage-metric:hover { background: var(--bg-hover); }
   .findings-severity-key, .finding-decision-row { grid-template-columns: minmax(0, 1fr); }
   .finding-decision-row article + article { border-left: 0; border-top: var(--hairline) solid var(--border-subtle); }
   .findings-triage-key summary, .findings-triage-key-body { padding: var(--space-4); }
-  .finding-remediation-header, .finding-history-summary { flex-direction: column; }
+  .finding-remediation-header, .finding-history-summary, .finding-evidence-summary { flex-direction: column; }
   .finding-remediation-os { width: 100%; }
   .finding-history-summary dl { justify-content: flex-start; }
+  .finding-evidence-summary { gap: 14px; }
+  .finding-evidence-summary dl { width: 100%; justify-content: space-between; }
+  .finding-evidence-artifact summary { align-items: flex-start; }
+  .finding-evidence-identity { align-items: flex-start; }
+  .finding-evidence-output-heading, .finding-evidence-artifact > footer { align-items: flex-start; flex-direction: column; gap: 4px; }
+  .finding-evidence-command { grid-template-columns: auto minmax(0, 1fr); }
+  .finding-evidence-command code { grid-column: 1 / -1; }
+  .finding-evidence-code > div { grid-template-columns: 36px minmax(0, 1fr); }
+  .finding-evidence-code span { padding-right: 7px; }
+  .finding-evidence-code code { padding-right: 10px; padding-left: 10px; font-size: 10.5px; }
   .finding-related-list > div { grid-template-columns: 7px minmax(0, 1fr) auto; }
   .finding-related-list code { display: none; }
   .finding-detail-header, .finding-ai-triage, .finding-action-bar { padding-right: 16px; padding-left: 16px; }
@@ -2994,6 +3085,8 @@ export default function FindingsPage() {
   const [filterNeedsReview, setFilterNeedsReview] = useState(false);
   const [filterVerification, setFilterVerification] = useState<string>("ALL");
   const [filterAgentId, setFilterAgentId] = useState<string>("");
+  const [agentsRefreshing, setAgentsRefreshing] = useState(false);
+  const [agentRefreshFeedback, setAgentRefreshFeedback] = useState<string | null>(null);
   const [page, setPage] = useState(1);
   const [engagementOverride, setEngagementId] = useState<string | null | undefined>();
   // URL state is an external store. Local overrides let the operator clear a
@@ -3078,6 +3171,28 @@ export default function FindingsPage() {
     queryFn: () => fetchJson<VedhaAgentOption[]>("/api/agents/register"),
     retry: (count, err) => !isUnauthorized(err) && count < 2,
   });
+  const activeAgentCount = (agentOptionsQuery.data ?? []).filter((agent) => agent.status !== "OFFLINE").length;
+  const registeredAgentCount = agentOptionsQuery.data?.length ?? 0;
+  const refreshAgents = async () => {
+    if (agentsRefreshing) return;
+    setAgentsRefreshing(true);
+    setAgentRefreshFeedback("Checking agent heartbeats…");
+    try {
+      const [result] = await Promise.all([
+        agentOptionsQuery.refetch(),
+        new Promise<void>((resolve) => window.setTimeout(resolve, AGENT_REFRESH_FEEDBACK_MS)),
+      ]);
+      if (result.error) throw result.error;
+      const agents = result.data ?? [];
+      const active = agents.filter((agent) => agent.status !== "OFFLINE").length;
+      setAgentRefreshFeedback(`${active} active of ${agents.length} registered`);
+    } catch (refreshError) {
+      setAgentRefreshFeedback("Agent status unavailable — retry");
+      showError("Agent refresh failed", errorMessage(refreshError));
+    } finally {
+      setAgentsRefreshing(false);
+    }
+  };
   const engagementQuery = useQuery({
     queryKey: ["engagement-name", engagementId],
     queryFn: () => fetchJson<{ engagement?: { name?: string } }>(`/api/engagements/${engagementId}`),
@@ -3245,6 +3360,35 @@ export default function FindingsPage() {
     <PageShell
       title="Findings"
       subtitle="Triage, verify and remediate discovered vulnerabilities"
+      headerActions={
+        <div className="findings-agent-refresh">
+          <span
+            className="findings-agent-refresh-status"
+            data-tone={agentsRefreshing ? "idle" : agentOptionsQuery.error ? "error" : activeAgentCount > 0 ? "active" : "idle"}
+            role="status"
+            aria-live="polite"
+          >
+            <i aria-hidden />
+            {agentRefreshFeedback
+              ?? (agentOptionsQuery.isLoading
+                ? "Checking agent status…"
+                : agentOptionsQuery.error
+                  ? "Agent status unavailable"
+                  : `${activeAgentCount} active of ${registeredAgentCount} registered`)}
+          </span>
+          <button
+            type="button"
+            className="findings-agent-refresh-button"
+            onClick={() => { void refreshAgents(); }}
+            disabled={agentsRefreshing}
+            aria-busy={agentsRefreshing}
+            aria-label="Refresh active Vedha agents and probes"
+          >
+            <RefreshCw className={agentsRefreshing ? "findings-spinner" : undefined} size={14} aria-hidden />
+            {agentsRefreshing ? "Checking agents…" : "Refresh agents"}
+          </button>
+        </div>
+      }
       statusItems={[
         { label: "CRITICAL OPEN",     value: summaryValue(stats.criticalOpen), color: summaryUnavailable ? "var(--text-muted)" : SEV_PALETTE.RED },
         { label: "EXPLOIT CONFIRMED", value: summaryValue(stats.validated),    color: summaryUnavailable ? "var(--text-muted)" : SEV_PALETTE.ORANGE },
@@ -3534,10 +3678,9 @@ export default function FindingsPage() {
 
         {/* ── Detail ── */}
         {selectedId && (
-          <aside ref={detailRef} className="finding-detail-column" aria-label={selected ? `Details for ${selected.title}` : "Finding details"}>
+          <aside key={selectedId} ref={detailRef} className="finding-detail-column" aria-label={selected ? `Details for ${selected.title}` : "Finding details"}>
             {selected ? (
               <FindingDetail
-                key={selected.id}
                 f={selected}
                 allFindings={findings}
                 sla={slaFor(selected)}

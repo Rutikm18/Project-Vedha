@@ -4,6 +4,8 @@
  * route handlers stay thin and the UI components don't change.
  */
 
+import type { EvidenceArtifact } from "./evidence-presentation";
+
 // ── enums ──────────────────────────────────────────────────────────────────
 const ENG_STATUS_TO_UI: Record<string, string> = {
   draft: "PLANNING",
@@ -101,13 +103,61 @@ function severityToPriority(sev: string): string {
   return sev === "CRITICAL" ? "P0" : sev === "HIGH" ? "P1" : sev === "MEDIUM" ? "P2" : "P3";
 }
 
-function evidenceToUi(value: unknown): Array<{ label: string; content: string }> {
-  if (Array.isArray(value)) return value;
+function evidenceString(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (value === undefined) return "";
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return String(value);
+  }
+}
+
+function optionalEvidenceString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim() ? value : undefined;
+}
+
+function evidenceToUi(value: unknown): EvidenceArtifact[] {
+  if (Array.isArray(value)) {
+    return value.map((item, index) => {
+      if (typeof item === "string") {
+        return { label: `Evidence artifact ${index + 1}`, content: item };
+      }
+      if (!item || typeof item !== "object") {
+        return { label: `Evidence artifact ${index + 1}`, content: evidenceString(item) };
+      }
+
+      const record = item as Record<string, unknown>;
+      return {
+        label: optionalEvidenceString(record.label) ?? `Evidence artifact ${index + 1}`,
+        content: evidenceString(record.content ?? record.output ?? record.value ?? record),
+        type: optionalEvidenceString(record.type),
+        tool: optionalEvidenceString(record.tool),
+        source: optionalEvidenceString(record.source),
+        command: optionalEvidenceString(record.command),
+        timestamp: optionalEvidenceString(record.timestamp),
+        capturedAt: optionalEvidenceString(record.capturedAt ?? record.captured_at),
+        capturedBy: optionalEvidenceString(record.capturedBy ?? record.captured_by),
+        sourceHost: optionalEvidenceString(record.sourceHost ?? record.source_host),
+        sha256: optionalEvidenceString(record.sha256),
+      };
+    });
+  }
   if (!value || typeof value !== "object") return [];
-  return Object.entries(value as Record<string, unknown>).map(([label, content]) => ({
-    label,
-    content: typeof content === "string" ? content : JSON.stringify(content),
-  }));
+
+  const record = value as Record<string, unknown>;
+  const source = optionalEvidenceString(record.tool ?? record.engine ?? record.source ?? record.scan_type);
+  return [{
+    label: source ? `${source} evidence` : "Structured scanner evidence",
+    content: evidenceString(record),
+    type: "json",
+    tool: source,
+    timestamp: optionalEvidenceString(record.timestamp),
+    capturedAt: optionalEvidenceString(record.capturedAt ?? record.captured_at),
+    capturedBy: optionalEvidenceString(record.capturedBy ?? record.captured_by),
+    sourceHost: optionalEvidenceString(record.sourceHost ?? record.source_host),
+    sha256: optionalEvidenceString(record.sha256),
+  }];
 }
 
 // FastAPI Finding → the UI's rich Finding shape. Real backend fields are mapped;
@@ -168,7 +218,11 @@ export function toUiFinding(api: any): any {
     exploitMaturity: api.exploit_maturity ?? "THEORETICAL",
     exploitMaturityRecorded: api.exploit_maturity != null,
     pocAvailable: api.poc_available ?? false,
-    activelyExploited: api.actively_exploited ?? api.exploit_validated ?? api.kev_listed ?? false,
+    // Keep these signals distinct. Reproducing an exploit in an authorised
+    // assessment is not the same claim as exploitation in the wild or KEV.
+    // (Backend now emits actively_exploited directly; prefer it over derivation.)
+    activelyExploited: api.actively_exploited ?? api.kev_listed ?? false,
+    exploitedInWild: api.actively_exploited ?? false,
     exploitValidated: api.exploit_validated ?? false,
     detectionCoverage: DETECTION_TO_UI[api.detection_status] ?? "PARTIAL",
     detectionNote: api.detection_note ?? undefined,
