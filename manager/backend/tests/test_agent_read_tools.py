@@ -98,3 +98,27 @@ async def test_list_assets_empty_skips_service_query():
     # No assets → no batched service query at all (only the assets query ran).
     assert session.execute_calls == 1
     assert out == {"count": 0, "assets": []}
+
+
+@pytest.mark.asyncio
+async def test_create_caches_system_and_tools():
+    """AgentDecisionEngine._create must send the system prompt as an Anthropic
+    cache-control block (which also caches the preceding, stable tool defs) so the
+    8-iteration loop reuses one cache instead of re-billing tools+system each turn."""
+    from unittest.mock import AsyncMock, MagicMock
+
+    from app.ai.agent import _TOOLS
+
+    client = MagicMock()
+    client.messages = MagicMock()
+    client.messages.create = AsyncMock(return_value=SimpleNamespace(content=[]))
+
+    engine = AgentDecisionEngine(MagicMock(), client=client)
+    await engine._create([{"role": "user", "content": "review"}])
+
+    kwargs = client.messages.create.call_args.kwargs
+    system = kwargs["system"]
+    assert isinstance(system, list)
+    assert system[0]["cache_control"] == {"type": "ephemeral"}
+    assert system[0]["text"].strip()          # the real SYSTEM_PROMPT
+    assert kwargs["tools"] is _TOOLS           # tools still sent (cached via the system breakpoint)

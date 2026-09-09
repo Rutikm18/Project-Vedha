@@ -412,6 +412,62 @@ async def test_manager_gemini_rejects_unconfigured_and_unenabled_model():
     assert exc.value.status_code == 403
 
 
+def test_anthropic_system_blocks_split_stable_prefix_from_context():
+    from app.services.llm import _anthropic_system_blocks
+
+    system = "BASE RULES + task contract\n\n<security_context>\n{\"finding\":\"x\"}\n</security_context>"
+    blocks = _anthropic_system_blocks(system)
+    assert len(blocks) == 2
+    # Stable rules prefix is cached and does NOT contain the per-request context.
+    assert blocks[0]["text"] == "BASE RULES + task contract"
+    assert blocks[0]["cache_control"] == {"type": "ephemeral"}
+    assert "<security_context>" not in blocks[0]["text"]
+    # Context is its own (also-cached) block, reconstructed exactly.
+    assert blocks[1]["text"] == "<security_context>\n{\"finding\":\"x\"}\n</security_context>"
+    assert blocks[1]["cache_control"] == {"type": "ephemeral"}
+
+
+def test_anthropic_system_blocks_single_block_when_no_context():
+    from app.services.llm import _anthropic_system_blocks
+
+    blocks = _anthropic_system_blocks("just the stable rules")
+    assert len(blocks) == 1
+    assert blocks[0]["text"] == "just the stable rules"
+    assert blocks[0]["cache_control"] == {"type": "ephemeral"}
+
+
+@pytest.mark.asyncio
+async def test_anthropic_generate_sends_prompt_cache_blocks():
+    captured: dict = {}
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        assert request.url.path == "/v1/messages"
+        captured["body"] = __import__("json").loads(request.content)
+        return httpx.Response(200, json={"content": [{"type": "text", "text": "Grounded answer"}]})
+
+    service = ManagerLlmService(
+        Settings(llm_provider="anthropic", anthropic_api_key="ak", llm_model="claude-sonnet-4-6"),
+        transport=httpx.MockTransport(handler),
+    )
+    content, runtime = await service.generate(AiGenerateRequest(
+        task="advisor", provider="anthropic", model="claude-sonnet-4-6",
+        messages=[{"role": "user", "content": "Prioritise"}],
+        context={"finding": "SMB signing not required"},
+    ))
+
+    assert content == "Grounded answer"
+    system = captured["body"]["system"]
+    # System is now a list of cache-control blocks, not a bare string.
+    assert isinstance(system, list)
+    assert system[0]["cache_control"] == {"type": "ephemeral"}
+    # The stable rules block carries the base policy (which itself references the
+    # <security_context> tag by name — that's fine); the per-request finding DATA
+    # must live in a later, separate block, not the cached stable prefix.
+    assert "senior defensive security advisor" in system[0]["text"]
+    assert "SMB signing not required" not in system[0]["text"]
+    assert any("SMB signing not required" in b["text"] for b in system[1:])
+
+
 @pytest.mark.asyncio
 async def test_non_ascii_key_is_treated_as_unconfigured_not_a_crash():
     # Regression: a '₹' (non-ASCII) OpenRouter key used to poison the fallback and

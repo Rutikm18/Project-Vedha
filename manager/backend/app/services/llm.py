@@ -43,6 +43,53 @@ def _usable_key(key: str | None) -> bool:
     return True
 
 
+# The exact delimiter _build_system inserts between the stable rules and the
+# per-request security context. Kept in one place so prompt-cache splitting and
+# system-prompt building can never drift.
+_CONTEXT_MARKER = "\n\n<security_context>"
+
+
+def _anthropic_system_blocks(system: str) -> list[dict]:
+    """Shape the system prompt into Anthropic prompt-cache blocks.
+
+    The system prompt is `<stable rules> [+ <security_context>]`. The stable rules
+    (base policy + task contract) are IDENTICAL across every request of the same
+    task, so we mark that prefix cacheable (`cache_control: ephemeral`). When a
+    per-request context is present we cache the `stable + context` prefix too, so a
+    multi-turn follow-up about the SAME finding reuses the whole system prompt.
+    Anthropic reads the longest matching cached prefix and only bills the
+    uncached remainder — up to ~90% off input tokens and a large TTFT win on hits.
+    A prefix below the model's minimum cacheable size is silently not cached, so
+    marking it is always safe.
+    """
+    stable, marker, rest = system.partition(_CONTEXT_MARKER)
+    blocks: list[dict] = [
+        {"type": "text", "text": stable, "cache_control": {"type": "ephemeral"}}
+    ]
+    if marker:  # a <security_context> was appended for this request
+        blocks.append(
+            {
+                "type": "text",
+                "text": "<security_context>" + rest,
+                "cache_control": {"type": "ephemeral"},
+            }
+        )
+    return blocks
+
+
+def cached_system_prompt(text: str) -> list[dict]:
+    """Wrap a plain system prompt as a single Anthropic prompt-cache block.
+
+    For the anthropic-SDK callers (LLMReportGenerator, AgentDecisionEngine) whose
+    system prompt has no embedded per-request context to split. A cache breakpoint
+    on the system block ALSO caches any preceding ``tools`` — Anthropic's cache
+    order is tools → system → messages — so the agent's large, stable tool
+    definitions ride the same cache for free. A prefix below the model's minimum
+    cacheable size is silently not cached, so wrapping is always safe.
+    """
+    return [{"type": "text", "text": text, "cache_control": {"type": "ephemeral"}}]
+
+
 class AiRuntimeError(RuntimeError):
     def __init__(self, message: str, status_code: int = 502):
         super().__init__(message)
@@ -531,6 +578,11 @@ class ManagerLlmService:
         self, runtime: Runtime, system: str, messages: list[dict[str, str]], max_tokens: int,
         json_mode: bool = False,
     ) -> str:
+        # Prompt caching here is AUTOMATIC: OpenAI (and OpenRouter for models that
+        # support it) cache the longest common PREFIX of the input with no API flag.
+        # The stable rules live at the front of the system message, which is message
+        # index 0 — so the cache-worthy prefix is already in the right place. No
+        # cache_control needed (unlike Anthropic, which is opt-in per block).
         body: dict = {
             "model": runtime.model,
             "messages": [{"role": "system", "content": system}, *messages],
@@ -560,7 +612,9 @@ class ManagerLlmService:
                 },
                 json={
                     "model": runtime.model,
-                    "system": system,
+                    # System as prompt-cache blocks: the stable rules prefix is
+                    # cached across requests (see _anthropic_system_blocks).
+                    "system": _anthropic_system_blocks(system),
                     "messages": messages,
                     "max_tokens": max_tokens,
                     # Low temperature for deterministic, factual briefs — matches
@@ -583,6 +637,11 @@ class ManagerLlmService:
         # Gemini's Generative Language API is NOT OpenAI-shaped: the system prompt
         # is a separate `system_instruction`, turns are `contents` with `parts`,
         # and the assistant role is spelled "model" (not "assistant").
+        # Prompt caching: Gemini 2.5+ caches implicitly (automatic). For explicit
+        # control (and 2.0 models) Gemini uses a stateful `cachedContent` resource —
+        # create-then-reference — which is a heavier, separate flow than Anthropic's
+        # inline cache_control. Left as a future enhancement; the system_instruction
+        # here is already the stable prefix that implicit caching keys on.
         contents = [
             {
                 "role": "model" if message["role"] == "assistant" else "user",

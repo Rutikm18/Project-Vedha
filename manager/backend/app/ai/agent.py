@@ -35,6 +35,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import get_settings
+from app.services.llm import cached_system_prompt
 from app.models.agent_recommendation import (
     AgentRecommendation, CAT_ATTACK_PATH, CAT_NEXT_ACTION, CAT_TRIAGE, STATUS_PENDING,
 )
@@ -236,7 +237,11 @@ class AgentDecisionEngine:
         kwargs: dict[str, Any] = {
             "model": self._model,
             "max_tokens": self._max_tokens,
-            "system": SYSTEM_PROMPT,
+            # Prompt caching: SYSTEM_PROMPT + the (large, stable) _TOOLS definitions
+            # are identical across all 8 loop iterations. A cache breakpoint on the
+            # system block caches BOTH (Anthropic order: tools → system → messages),
+            # so each iteration only pays for the growing message tail.
+            "system": cached_system_prompt(SYSTEM_PROMPT),
             "tools": _TOOLS,
             "messages": messages,
         }

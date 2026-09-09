@@ -30,6 +30,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.ai.hallucination import HallucinationGuard
 from app.config import get_settings
 from app.models.enums import ReviewStatus
+from app.services.llm import cached_system_prompt
 from app.models.llm_output import LLMOutput
 
 logger = structlog.get_logger()
@@ -121,7 +122,10 @@ class LLMReportGenerator:
                 kwargs: dict[str, Any] = {
                     "model": self._model,
                     "max_tokens": max_tokens or self._max_tokens,
-                    "system": SYSTEM_PROMPT,
+                    # Prompt caching: SYSTEM_PROMPT is identical across every section
+                    # this generator writes (exec summary, per-finding, remediation…),
+                    # so cache it once and reuse across the whole report run.
+                    "system": cached_system_prompt(SYSTEM_PROMPT),
                     "messages": [{"role": "user", "content": user_prompt}],
                 }
                 # effort caps thinking-token spend and is accepted by Sonnet 4.6 /

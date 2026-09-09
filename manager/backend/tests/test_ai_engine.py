@@ -202,6 +202,24 @@ class TestLLMReportGenerator:
         db.add.assert_called_once()
 
     @pytest.mark.asyncio
+    async def test_system_prompt_is_prompt_cached(self):
+        # The report system prompt is identical across every section; it must be
+        # sent as an Anthropic cache-control block so the run reuses one cache.
+        client = MagicMock()
+        client.messages = MagicMock()
+        client.messages.create = AsyncMock(return_value=_resp("ok"))
+        gen = LLMReportGenerator(_mock_db(), client=client)
+        await gen.generate_executive_summary({
+            "engagement_id": str(uuid.uuid4()), "engagement_name": "X",
+            "total_findings": 0, "severity_counts": {}, "top_critical": [],
+            "attack_path_count": 0, "shortest_path_hops": 0, "detection_coverage_pct": 0,
+        })
+        system = client.messages.create.call_args.kwargs["system"]
+        assert isinstance(system, list)
+        assert system[0]["cache_control"] == {"type": "ephemeral"}
+        assert system[0]["text"].strip()  # carries the real SYSTEM_PROMPT text
+
+    @pytest.mark.asyncio
     async def test_technical_finding_runs_guard(self):
         # LLM invents a CVE not in the finding → validation should flag it.
         client = MagicMock()
