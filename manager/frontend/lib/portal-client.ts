@@ -5,16 +5,75 @@
  */
 import type { CSSProperties } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { canReplayPortalRequest } from "./portal-request";
+
+export interface PortalApiOptions {
+  method?: string;
+  body?: unknown;
+  headers?: HeadersInit;
+  idempotencyKey?: string;
+  responseType?: "json" | "text" | "blob";
+}
+
+export class PortalApiError extends Error {
+  constructor(
+    public readonly status: number,
+    message: string,
+    public readonly retryAfter?: number,
+  ) {
+    super(message);
+  }
+}
+
+function isNativeBody(value: unknown): value is BodyInit {
+  return typeof value === "string"
+    || value instanceof FormData
+    || value instanceof URLSearchParams
+    || value instanceof Blob
+    || value instanceof ArrayBuffer
+    || ArrayBuffer.isView(value)
+    || (typeof ReadableStream !== "undefined" && value instanceof ReadableStream);
+}
+
+async function readPortalResponse(res: Response, responseType: PortalApiOptions["responseType"]) {
+  if (res.status === 204) return undefined;
+  if (responseType === "blob") return res.blob();
+  if (responseType === "text") return res.text();
+
+  const text = await res.text();
+  if (!text) return undefined;
+  try {
+    return JSON.parse(text);
+  } catch {
+    return text;
+  }
+}
+
 export async function portalApi<T>(
   path: string,
-  opts: { method?: string; body?: unknown } = {},
+  opts: PortalApiOptions = {},
 ): Promise<T> {
+  const method = (opts.method ?? "GET").toUpperCase();
+  const headers = new Headers(opts.headers);
+  if (opts.idempotencyKey) headers.set("Idempotency-Key", opts.idempotencyKey);
+
+  let body: BodyInit | undefined;
+  if (opts.body !== undefined) {
+    if (isNativeBody(opts.body)) {
+      body = opts.body;
+    } else {
+      headers.set("Content-Type", "application/json");
+      body = JSON.stringify(opts.body);
+    }
+  }
+
   const send = () =>
     fetch(`/api/portal${path}`, {
-      method: opts.method ?? "GET",
-      headers: { "Content-Type": "application/json" },
-      body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+      method,
+      headers,
+      body,
       cache: "no-store",
+      credentials: "same-origin",
     });
 
   let res = await send();
@@ -24,17 +83,29 @@ export async function portalApi<T>(
   // kicked to login mid-task. Matches the operator fetcher's refresh-on-401.
   if (res.status === 401) {
     const rr = await fetch("/api/portal/login", { method: "PUT" }).catch(() => null);
-    if (rr && rr.ok) {
+    if (rr?.ok && canReplayPortalRequest(method, opts.idempotencyKey)) {
       res = await send();
     }
     if (res.status === 401) {
-      if (typeof window !== "undefined") window.location.href = "/portal/login";
-      throw new Error("Not authenticated");
+      if (rr?.ok) {
+        throw new PortalApiError(401, "Your session was refreshed. Please retry this action.");
+      }
+      if (typeof window !== "undefined") window.location.assign("/portal/login");
+      throw new PortalApiError(401, "Not authenticated");
     }
   }
-  const data = await res.json().catch(() => null);
+  const data = await readPortalResponse(res, opts.responseType);
   if (!res.ok) {
-    throw new Error((data && (data.error || data.detail)) || res.statusText);
+    const retryHeader = res.headers.get("retry-after");
+    const retryAfter = retryHeader && /^\d+$/.test(retryHeader.trim())
+      ? Number(retryHeader.trim())
+      : undefined;
+    const message = typeof data === "object" && data !== null
+      ? String((data as { error?: unknown; detail?: unknown }).error
+        ?? (data as { detail?: unknown }).detail
+        ?? res.statusText)
+      : String(data || res.statusText);
+    throw new PortalApiError(res.status, message, retryAfter);
   }
   return data as T;
 }

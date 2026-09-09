@@ -16,7 +16,9 @@ import pytest
 from fastapi import HTTPException
 
 from app.routers import agents as ag
+from app.models.audit_log import AuditLog
 from app.models.enums import ScanJobType
+from app.models.scan_job import ScanJob
 
 
 def _user():
@@ -27,6 +29,13 @@ def _redis():
     # enqueue_agent_job now depends on a Redis client (WS-push backplane). These
     # unit tests never reach a live-agent push, so an AsyncMock is sufficient.
     return AsyncMock()
+
+
+def _added(db, model_type):
+    return next(
+        call.args[0] for call in db.add.call_args_list
+        if isinstance(call.args[0], model_type)
+    )
 
 
 # ── AGENT_EXECUTABLE_TYPES guard ────────────────────────────────────────────────
@@ -84,8 +93,8 @@ class TestEnqueueAgentJob:
         out = await ag.enqueue_agent_job(body, db, _redis(), _user())
         assert out["job_type"] == "discovery"
         assert out["status"] == "pending"
-        db.add.assert_called_once()
-        created = db.add.call_args[0][0]
+        assert db.add.call_count == 2
+        created = _added(db, ScanJob)
         assert created.result == {
             "targets": ["10.0.1.0/24"],
             "ports": "1-1024",
@@ -93,6 +102,9 @@ class TestEnqueueAgentJob:
             "scope_cidrs": ["10.0.0.0/8"],
             "_scope_cidrs": ["10.0.0.0/8"],
         }
+        audit = _added(db, AuditLog)
+        assert audit.action == "scan_job.launched"
+        assert audit.detail["origin"] == "manager"
         db.commit.assert_awaited_once()
 
     @pytest.mark.asyncio
@@ -121,7 +133,7 @@ class TestEnqueueAgentJob:
             _user(),
         )
 
-        created = db.add.call_args.args[0]
+        created = _added(db, ScanJob)
         assert created.result["scan_type"] == "smb_enum"
 
     @pytest.mark.asyncio
@@ -155,7 +167,7 @@ class TestEnqueueAgentJob:
             _user(),
         )
 
-        created = db.add.call_args.args[0]
+        created = _added(db, ScanJob)
         assert created.result["scope_cidrs"] == ["10.0.0.0/24"]
         assert created.result["_scope_cidrs"] == ["10.0.0.0/24"]
         assert created.result["_excluded_cidrs"] == ["10.0.0.250/32"]

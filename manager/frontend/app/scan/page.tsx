@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
 import {
   Play, Shield, Globe, Database, Server, Wifi,
@@ -10,8 +10,14 @@ import {
   Timer, ShieldAlert, Crosshair, Send, Radar,
 } from "lucide-react";
 import { PageShell } from "../../components/PageShell";
+import { PortalShell } from "../../components/portal/PortalShell";
 import { useToast } from "../../hooks/useToast";
 import CampaignProgress from "../campaign/[id]/CampaignProgress";
+import {
+  createScannerApi,
+  type ScannerSurface,
+  type ScanLaunchBody,
+} from "../../lib/scan-workspace-api";
 
 /* ══════════════════════════════════════════════════════
    TYPES
@@ -150,22 +156,6 @@ const INTENSITY: { id: Intensity; label: string; pps: string; why: string; color
   { id: "aggressive", label: "Aggressive", pps: "600 pps", color: "var(--sev-high-color)", angle: 60,  sweep: "1.3s",
     why: "Fast and loud. Large scopes under time pressure — expect alerts and noticeable traffic." },
 ];
-
-async function apiFetch<T>(path: string, opts?: RequestInit): Promise<T> {
-  const res = await fetch(path, {
-    ...opts,
-    credentials: "same-origin",
-    headers: {
-      "Content-Type": "application/json",
-      ...(opts?.headers ?? {}),
-    },
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: res.statusText })) as { error?: string };
-    throw new Error(err.error ?? res.statusText);
-  }
-  return res.json() as Promise<T>;
-}
 
 /* ══════════════════════════════════════════════════════
    SMALL PRIMITIVES
@@ -681,8 +671,9 @@ function DispatchReceipt({ payload }: { payload: Record<string, unknown> }) {
    PAGE
 ══════════════════════════════════════════════════════ */
 
-export default function ScanPage() {
+export function ScannerWorkspace({ surface = "manager" }: { surface?: ScannerSurface }) {
   const { success: toastOk, error: toastErr } = useToast();
+  const api = useMemo(() => createScannerApi(surface), [surface]);
 
   const [useCases,    setUseCases]    = useState<UseCase[]>([NETWORK_VA_FALLBACK]);
   const [probes,      setProbes]      = useState<Probe[]>([]);
@@ -711,9 +702,9 @@ export default function ScanPage() {
       setLoadingData(true);
       try {
         const [uc, pr, engRaw] = await Promise.all([
-          apiFetch<UseCase[]>("/api/scan/use-cases"),
-          apiFetch<Probe[]>("/api/scan/probes"),
-          apiFetch<{ engagements?: Engagement[] } | Engagement[]>("/api/engagements"),
+          api.useCases<UseCase[]>(),
+          api.probes<Probe[]>(),
+          api.engagements<{ engagements?: Engagement[] } | Engagement[]>(),
         ]);
         if (!alive) return;
         setUseCases(uc);
@@ -738,7 +729,7 @@ export default function ScanPage() {
     if (pollRef.current) clearInterval(pollRef.current);
     pollRef.current = setInterval(async () => {
       try {
-        const j = await apiFetch<JobStatus>(`/api/scan/jobs/${jobId}`);
+        const j = await api.job<JobStatus>(jobId);
         // Don't clobber the panel if the operator switched to viewing another job.
         setJob((cur) => (cur && cur.job_id !== j.job_id ? cur : j));
         // Keep the recent-scans list live as the job progresses.
@@ -751,19 +742,19 @@ export default function ScanPage() {
         }
       } catch { /* network blip */ }
     }, 4000);
-  }, [toastOk, toastErr]);
+  }, [api, toastOk, toastErr]);
 
   // Rehydrate this engagement's jobs from the DB so a launched job survives a
   // page refresh or navigation (root-cause fix: the queue lived only in memory).
   const loadJobs = useCallback(async (engagementId: string) => {
     if (!engagementId) { setRecentJobs([]); return; }
     try {
-      const rows = await apiFetch<Array<{
+      const rows = await api.jobs<Array<{
         id: string; status: JobStatus["status"]; agent_id: string | null;
         agent_name: string | null; use_case_id: string | null;
         result: Record<string, unknown> | null;
         created_at: string | null; started_at: string | null; completed_at: string | null;
-      }>>(`/api/scan/jobs?engagement_id=${encodeURIComponent(engagementId)}`);
+      }>>(engagementId);
       const jobs: JobStatus[] = rows.map((r) => ({
         job_id: r.id, engagement_id: engagementId, status: r.status,
         created_at: r.created_at, started_at: r.started_at, completed_at: r.completed_at,
@@ -777,7 +768,7 @@ export default function ScanPage() {
       setJob((cur) => cur ?? active ?? null);
       if (active && !pollRef.current) startPolling(active.job_id);
     } catch { /* history is non-critical; leave the launcher usable */ }
-  }, [startPolling]);
+  }, [api, startPolling]);
 
   useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current); }, []);
 
@@ -797,7 +788,7 @@ export default function ScanPage() {
   const inheritedScope = (selectedEngagement?.scopeCidrs ?? []).join("\n");
   const inheritedExcluded = (selectedEngagement?.excludedCidrs ?? []).join("\n");
   const compatibleProbes = ucObj
-    ? probes.filter((p) => p.online && p.capabilities.includes(ucObj.scan_type))
+    ? probes.filter((p) => (surface === "portal" || p.online) && p.capabilities.includes(ucObj.scan_type))
     : [];
   const compatibleIdleProbes = compatibleProbes.filter((p) => !p.current_job_id);
 
@@ -824,10 +815,10 @@ export default function ScanPage() {
     setExcluded((engagement?.excludedCidrs ?? []).join("\n"));
   }
 
-  function buildLaunchBody() {
+  function buildLaunchBody(): ScanLaunchBody {
     const targetList  = parseList(targets);
     const excludeList = parseList(excluded);
-    const b: Record<string, unknown> = {
+    const b: ScanLaunchBody = {
       engagement_id: selectedEng, use_case_id: selectedUc,
       // Only send an explicit list when the operator narrowed it beyond what the
       // engagement declares; otherwise send nothing and let the backend apply the
@@ -844,14 +835,21 @@ export default function ScanPage() {
     if (!selectedUc)  { toastErr("Select a scan"); return; }
     if (!selectedEng) { toastErr("Select an engagement"); return; }
     if (!compatibleProbes.length) {
-      toastErr("No compatible probe", `An online probe must advertise ${ucObj?.scan_type ?? "this capability"}.`);
+      toastErr(
+        "No compatible probe",
+        surface === "portal"
+          ? `The assigned probe must advertise ${ucObj?.scan_type ?? "this capability"}.`
+          : `An online probe must advertise ${ucObj?.scan_type ?? "this capability"}.`,
+      );
       return;
     }
     setLaunching(true); setJob(null); setDispatched(null);
     try {
-      const res = await apiFetch<{ job_id: string; status: string; dispatched?: Record<string, unknown> }>("/api/scan/launch", {
-        method: "POST", body: JSON.stringify(buildLaunchBody()),
-      });
+      const res = await api.launch<{
+        job_id: string;
+        status: string;
+        dispatched?: Record<string, unknown>;
+      }>(buildLaunchBody());
       if (res.dispatched) setDispatched(res.dispatched);
       const launched: JobStatus = {
         job_id: res.job_id, engagement_id: selectedEng, status: "pending",
@@ -908,8 +906,9 @@ export default function ScanPage() {
     else if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
   }
 
+  const Shell = surface === "portal" ? PortalShell : PageShell;
   return (
-    <PageShell title="Scanner" subtitle="Compose and dispatch a scan to a field-deployed vedha-agent">
+    <Shell title="Scanner" subtitle="Compose and dispatch a scan to a field-deployed vedha-agent">
       <style>{STYLES}</style>
 
       {/* Width and centring come from .vedha-page-container in the shell. */}
@@ -1224,8 +1223,12 @@ export default function ScanPage() {
           </section>
         )}
       </div>
-    </PageShell>
+    </Shell>
   );
+}
+
+export default function ScanPage() {
+  return <ScannerWorkspace surface="manager" />;
 }
 
 /* ══════════════════════════════════════════════════════

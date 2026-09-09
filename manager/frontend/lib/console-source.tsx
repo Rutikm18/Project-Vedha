@@ -31,6 +31,7 @@ import React, { createContext, useContext, useMemo } from "react";
 import { useQuery, type UseQueryResult } from "@tanstack/react-query";
 import { fetchJson } from "./fetcher";
 import { portalApi } from "./portal-client";
+import { toUiFinding } from "./adapters";
 
 /** Logical datasets the console can render. Adding a panel means adding a key
  *  here and an endpoint in BOTH providers — a compile-time reminder that the
@@ -90,15 +91,48 @@ const PORTAL_SOURCE: ConsoleSource = {
   endpoints: {
     agents: "/agents",
     sla: "/sla-summary",
-    findingsSummary: "/summary",
+    findingsSummary: "/workspace/findings/summary",
     posture: "/analytics/posture",
     exposure: "/analytics/exposure",
     activity: "/activity?limit=20",
-    topFindings: "/findings",
+    topFindings: "/workspace/findings?page=1&page_size=5&sort=risk",
     engagements: null,
   },
-  capabilities: new Set<ConsoleCapability>(),
+  capabilities: new Set<ConsoleCapability>(["mutateFindings"]),
 };
+
+/** Make engagement-scoped backend contracts identical to the manager BFF. */
+export function adaptPortalConsoleData(key: ConsoleKey, value: unknown): unknown {
+  if (!value || typeof value !== "object") return value;
+
+  if (key === "topFindings") {
+    if (Array.isArray(value)) return value.map(toUiFinding);
+    const page = value as { items?: unknown[]; page_size?: number };
+    return {
+      ...page,
+      items: (page.items ?? []).map(toUiFinding),
+      pageSize: page.page_size,
+    };
+  }
+
+  if (key === "findingsSummary") {
+    const summary = value as Record<string, unknown>;
+    return {
+      total: summary.total ?? 0,
+      openTotal: summary.open_total ?? 0,
+      criticalOpen: summary.critical_open ?? 0,
+      highOpen: summary.high_open ?? 0,
+      mediumOpen: summary.medium_open ?? 0,
+      lowOpen: summary.low_open ?? 0,
+      infoOpen: summary.info_open ?? 0,
+      validated: summary.validated ?? 0,
+      blind: summary.blind ?? 0,
+      averageRisk: summary.average_risk ?? 0,
+    };
+  }
+
+  return value;
+}
 
 const ConsoleSourceContext = createContext<ConsoleSource>(OPERATOR_SOURCE);
 
@@ -173,9 +207,10 @@ export function useConsoleQuery<T>(
     queryKey: ["console", source.mode, key],
     queryFn: () => {
       if (!endpoint) throw new Error(`"${key}" is not available in the ${source.mode} console`);
-      return source.mode === "portal"
-        ? portalApi<T>(endpoint)
-        : fetchJson<T>(endpoint);
+      if (source.mode === "portal") {
+        return portalApi<unknown>(endpoint).then((value) => adaptPortalConsoleData(key, value) as T);
+      }
+      return fetchJson<T>(endpoint);
     },
     enabled: (opts.enabled ?? true) && endpoint !== null,
     refetchInterval: opts.refetchInterval,

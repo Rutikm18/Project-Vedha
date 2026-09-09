@@ -9,10 +9,15 @@ import {
   Shield, Tags, Upload, UserRound, Users, X,
 } from "lucide-react";
 import { PageShell } from "../../../components/PageShell";
+import { PortalShell } from "../../../components/portal/PortalShell";
 import { DataState, EmptyState, SkeletonRows } from "../../../components/states/DataState";
-import { fetchJson, isUnauthorized } from "../../../lib/fetcher";
+import { isUnauthorized } from "../../../lib/fetcher";
 import { useToast } from "../../../hooks/useToast";
 import { EngagementStatusControl, STATUS_COLOR } from "../../../components/EngagementStatusControl";
+import {
+  createEngagementWorkspaceApi,
+  type EngagementWorkspaceSurface,
+} from "../../../lib/engagement-workspace-api";
 
 type TabKey = "overview" | "findings" | "assets" | "activity";
 type Severity = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
@@ -90,7 +95,13 @@ function displayDate(value: string) {
   });
 }
 
-function OverviewTab({ engagement }: { engagement: Engagement }) {
+function OverviewTab({
+  engagement,
+  surface,
+}: {
+  engagement: Engagement;
+  surface: EngagementWorkspaceSurface;
+}) {
   const [renderedAt] = useState(() => Date.now());
   const daysLeft = Math.max(0, Math.ceil((new Date(engagement.endDate).getTime() - renderedAt) / 86_400_000));
   const progress = Math.max(0, Math.min(100, engagement.progress));
@@ -187,7 +198,7 @@ function OverviewTab({ engagement }: { engagement: Engagement }) {
       <article className="engagement-panel engagement-severity-panel">
         <header>
           <div><AlertTriangle size={16} /><span>Finding distribution</span></div>
-          <Link href={`/findings?engagement=${engagement.id}`}>Open findings <ChevronRight size={14} /></Link>
+          <Link href={`${surface === "portal" ? "/portal/findings" : "/findings"}?engagement=${engagement.id}`}>Open findings <ChevronRight size={14} /></Link>
         </header>
         <div className="engagement-severity-body">
           <div className="engagement-severity-summary">
@@ -222,13 +233,18 @@ function OverviewTab({ engagement }: { engagement: Engagement }) {
   );
 }
 
-function FindingsTab({ engagementId }: { engagementId: string }) {
+function FindingsTab({
+  engagementId,
+  surface,
+}: {
+  engagementId: string;
+  surface: EngagementWorkspaceSurface;
+}) {
+  const api = useMemo(() => createEngagementWorkspaceApi(surface), [surface]);
   const [page, setPage] = useState(1);
   const query = useQuery({
-    queryKey: ["engagement-findings", engagementId, page],
-    queryFn: () => fetchJson<FindingPage>(
-      `/api/findings?paginated=true&engagement_id=${encodeURIComponent(engagementId)}&page=${page}&page_size=20&sort=risk`,
-    ),
+    queryKey: ["engagement-findings", surface, engagementId, page],
+    queryFn: () => api.findings<FindingPage>(engagementId, page),
   });
   const rows = query.data?.items ?? [];
   const total = query.data?.total ?? 0;
@@ -247,7 +263,7 @@ function FindingsTab({ engagementId }: { engagementId: string }) {
       <div className="engagement-list-panel">
         <div className="engagement-list-heading"><span>Highest risk first</span><span>{total} findings · 20 per page</span></div>
         {rows.map((finding) => (
-          <Link href={`/findings?engagement=${engagementId}&finding=${finding.id}`} className="engagement-finding-row" key={finding.id}>
+          <Link href={`${surface === "portal" ? "/portal/findings" : "/findings"}?engagement=${engagementId}&finding=${finding.id}`} className="engagement-finding-row" key={finding.id}>
             <span className={`badge badge-${finding.severity.toLowerCase()}`}>{finding.severity}</span>
             <div><strong>{finding.title}</strong><small>{finding.affectedHost} · {finding.status.replaceAll("_", " ")}</small></div>
             <span className="engagement-risk-score"><small>Risk</small><strong>{finding.riskScore}</strong></span>
@@ -273,10 +289,17 @@ function FindingsTab({ engagementId }: { engagementId: string }) {
   );
 }
 
-function AssetsTab({ engagementId }: { engagementId: string }) {
+function AssetsTab({
+  engagementId,
+  surface,
+}: {
+  engagementId: string;
+  surface: EngagementWorkspaceSurface;
+}) {
+  const api = useMemo(() => createEngagementWorkspaceApi(surface), [surface]);
   const query = useQuery({
-    queryKey: ["assets", engagementId],
-    queryFn: () => fetchJson<AssetRow[]>(`/api/engagements/${engagementId}/assets`),
+    queryKey: ["assets", surface, engagementId],
+    queryFn: () => api.assets<AssetRow[]>(engagementId),
     refetchInterval: 20_000,
     retry: (count, error) => !isUnauthorized(error) && count < 2,
   });
@@ -332,7 +355,14 @@ function ActivityTab({ activity }: { activity: ActivityItem[] }) {
   );
 }
 
-function ImportScanButton({ engagementId }: { engagementId: string }) {
+function ImportScanButton({
+  engagementId,
+  surface,
+}: {
+  engagementId: string;
+  surface: EngagementWorkspaceSurface;
+}) {
+  const api = useMemo(() => createEngagementWorkspaceApi(surface), [surface]);
   const inputRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState(false);
   const toast = useToast();
@@ -346,17 +376,11 @@ function ImportScanButton({ engagementId }: { engagementId: string }) {
     try {
       const form = new FormData();
       form.append("file", file);
-      const response = await fetch(`/api/engagements/${engagementId}/import-facts`, {
-        method: "POST",
-        body: form,
-        credentials: "same-origin",
-      });
-      const data = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(data.error || data.detail || `Import failed (${response.status})`);
+      const data = await api.importFacts<{ fact_count?: number }>(engagementId, form);
       toast.success("Evidence imported", `${data.fact_count ?? 0} facts accepted; detection processing has started.`);
-      void queryClient.invalidateQueries({ queryKey: ["engagement", engagementId] });
-      void queryClient.invalidateQueries({ queryKey: ["assets", engagementId] });
-      void queryClient.invalidateQueries({ queryKey: ["engagement-findings", engagementId] });
+      void queryClient.invalidateQueries({ queryKey: ["engagement", surface, engagementId] });
+      void queryClient.invalidateQueries({ queryKey: ["assets", surface, engagementId] });
+      void queryClient.invalidateQueries({ queryKey: ["engagement-findings", surface, engagementId] });
     } catch (error) {
       toast.error("Import failed", error instanceof Error ? error.message : "Unknown error");
     } finally {
@@ -377,7 +401,16 @@ function ImportScanButton({ engagementId }: { engagementId: string }) {
 
 const EDIT_STATUSES = ["PLANNING", "ACTIVE", "PAUSED", "COMPLETED"] as const;
 
-function EditEngagementModal({ engagement, onClose }: { engagement: Engagement; onClose: () => void }) {
+function EditEngagementModal({
+  engagement,
+  surface,
+  onClose,
+}: {
+  engagement: Engagement;
+  surface: EngagementWorkspaceSurface;
+  onClose: () => void;
+}) {
+  const api = useMemo(() => createEngagementWorkspaceApi(surface), [surface]);
   const queryClient = useQueryClient();
   const toast = useToast();
   const [form, setForm] = useState({
@@ -398,12 +431,9 @@ function EditEngagementModal({ engagement, onClose }: { engagement: Engagement; 
   const valid = Boolean(form.name.trim() && scope.length && datesValid);
 
   const mutation = useMutation({
-    mutationFn: () => fetchJson(`/api/engagements/${engagement.id}`, {
-      method: "PUT",
-      body: JSON.stringify(form),
-    }),
+    mutationFn: () => api.update(engagement.id, form),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: ["engagement", engagement.id] });
+      void queryClient.invalidateQueries({ queryKey: ["engagement", surface, engagement.id] });
       void queryClient.invalidateQueries({ queryKey: ["engagements"] });
       toast.success("Engagement updated", "Scope and assessment details were saved.");
       onClose();
@@ -442,13 +472,19 @@ function EditEngagementModal({ engagement, onClose }: { engagement: Engagement; 
   );
 }
 
-export default function EngagementDetailPage({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = use(params);
+export function EngagementWorkspace({
+  id,
+  surface,
+}: {
+  id: string;
+  surface: EngagementWorkspaceSurface;
+}) {
+  const api = useMemo(() => createEngagementWorkspaceApi(surface), [surface]);
   const [activeTab, setActiveTab] = useState<TabKey>("overview");
   const [editing, setEditing] = useState(false);
   const query = useQuery({
-    queryKey: ["engagement", id],
-    queryFn: () => fetchJson<{ engagement: Engagement; activity?: ActivityItem[] }>(`/api/engagements/${id}`),
+    queryKey: ["engagement", surface, id],
+    queryFn: () => api.detail<{ engagement: Engagement; activity?: ActivityItem[] }>(id),
   });
   const engagement = query.data?.engagement;
   const activity = query.data?.activity ?? [];
@@ -456,9 +492,8 @@ export default function EngagementDetailPage({ params }: { params: Promise<{ id:
   // Live scan state, shown BESIDE the status control rather than inside it: the
   // stored status is the operator's intent, this is an observed fact.
   const progress = useQuery({
-    queryKey: ["engagement-progress", id],
-    queryFn: () => fetchJson<{ job_stats?: { running?: number } }>(
-      `/api/engagements/${id}/campaign-progress`),
+    queryKey: ["engagement-progress", surface, id],
+    queryFn: () => api.progress<{ job_stats?: { running?: number } }>(id),
     refetchInterval: 20_000,
   });
   const runningJobs = progress.data?.job_stats?.running ?? 0;
@@ -468,9 +503,11 @@ export default function EngagementDetailPage({ params }: { params: Promise<{ id:
     { key: "assets" as const, label: "Attack surface", icon: Network, count: engagement?.assetCount },
     { key: "activity" as const, label: "Activity", icon: Activity, count: activity.length },
   ], [activity.length, engagement?.assetCount, engagement?.findingCount]);
+  const Shell = surface === "portal" ? PortalShell : PageShell;
+  const workspaceRoot = surface === "portal" ? "/portal" : "/engagements";
 
   return (
-    <PageShell
+    <Shell
       title={query.isLoading ? "Loading engagement…" : engagement?.name || "Engagement"}
       subtitle={engagement ? `${engagement.client || "Unassigned client"} · ${engagement.assessor || "No assessor"}` : undefined}
       headerActions={
@@ -479,14 +516,20 @@ export default function EngagementDetailPage({ params }: { params: Promise<{ id:
             <EngagementStatusControl
               engagementId={id}
               status={engagement.status}
+              updateStatus={(next) => api.update(id, { status: next })}
+              invalidateKeys={[
+                ["engagement", surface, id],
+                ["engagement-progress", surface, id],
+                ["engagements"],
+              ]}
               liveHint={runningJobs > 0
                 ? `${runningJobs} scan${runningJobs === 1 ? "" : "s"} running`
                 : null}
             />
           )}
           {engagement && <button type="button" className="btn btn-secondary engagement-action" onClick={() => setEditing(true)}><Pencil size={14} /> Edit details</button>}
-          <ImportScanButton engagementId={id} />
-          <Link className="btn btn-primary engagement-action" href={`/scan?engagementId=${encodeURIComponent(id)}`}><Play size={14} /> Start scan</Link>
+          <ImportScanButton engagementId={id} surface={surface} />
+          <Link className="btn btn-primary engagement-action" href={`${surface === "portal" ? "/portal/scans" : "/scan"}?engagementId=${encodeURIComponent(id)}`}><Play size={14} /> Start scan</Link>
         </div>
       }
       statusItems={engagement ? [
@@ -495,7 +538,7 @@ export default function EngagementDetailPage({ params }: { params: Promise<{ id:
     >
       <div className="engagement-workspace">
         <div className="engagement-toolbar">
-          <Link href="/engagements" className="engagement-back"><ArrowLeft size={15} /> All engagements</Link>
+          <Link href={workspaceRoot} className="engagement-back"><ArrowLeft size={15} /> {surface === "portal" ? "Dashboard" : "All engagements"}</Link>
           <nav aria-label="Engagement sections" role="tablist">
             {tabs.map(({ key, label, icon: Icon, count }) => (
               <button
@@ -512,7 +555,7 @@ export default function EngagementDetailPage({ params }: { params: Promise<{ id:
               </button>
             ))}
           </nav>
-          <Link href="/reports" className="engagement-report-link"><FileText size={15} /> Reports <span className="badge badge-info">Beta</span></Link>
+          <Link href={surface === "portal" ? "/portal/reports" : "/reports"} className="engagement-report-link"><FileText size={15} /> Reports <span className="badge badge-info">Beta</span></Link>
         </div>
 
         <div
@@ -523,14 +566,19 @@ export default function EngagementDetailPage({ params }: { params: Promise<{ id:
         >
           {query.isLoading && <SkeletonRows rows={5} height={76} />}
           {query.error && <EmptyState icon={AlertTriangle} title="Could not load this engagement" hint="Check the Manager API connection and your access, then retry." />}
-          {engagement && activeTab === "overview" && <OverviewTab engagement={engagement} />}
-          {engagement && activeTab === "findings" && <FindingsTab engagementId={id} />}
-          {engagement && activeTab === "assets" && <AssetsTab engagementId={id} />}
+          {engagement && activeTab === "overview" && <OverviewTab engagement={engagement} surface={surface} />}
+          {engagement && activeTab === "findings" && <FindingsTab engagementId={id} surface={surface} />}
+          {engagement && activeTab === "assets" && <AssetsTab engagementId={id} surface={surface} />}
           {engagement && activeTab === "activity" && <ActivityTab activity={activity} />}
         </div>
       </div>
 
-      {editing && engagement && <EditEngagementModal engagement={engagement} onClose={() => setEditing(false)} />}
-    </PageShell>
+      {editing && engagement && <EditEngagementModal engagement={engagement} surface={surface} onClose={() => setEditing(false)} />}
+    </Shell>
   );
+}
+
+export default function EngagementDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params);
+  return <EngagementWorkspace id={id} surface="manager" />;
 }

@@ -189,7 +189,11 @@ class TestPatchAudits:
         ev = next(r for r in added if r.event_type == "confirmed")
         assert ev.from_status == "open" and ev.to_status == "confirmed"
         assert ev.actor == str(user.user_id)
-        assert ev.detail == {"reason": "Validated against scan evidence"}
+        assert ev.detail == {
+            "origin": "manager",
+            "reason": "Validated against scan evidence",
+        }
+        assert ev.actor_type == "manager"
 
     @pytest.mark.asyncio
     async def test_manual_remediation_sets_close_metadata_and_audits_reason(self):
@@ -220,6 +224,7 @@ class TestPatchAudits:
         assert finding.resolved_at is not None
         event = next(row for row in added if row.event_type == "remediated")
         assert event.detail == {
+            "origin": "manager",
             "reason": "Patched the service and the follow-up scan passed",
             "resolution_method": "manual",
         }

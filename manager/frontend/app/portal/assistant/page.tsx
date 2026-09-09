@@ -16,13 +16,14 @@
  * mitigation and should not be removed.
  */
 
-import React, { useEffect, useRef, useState } from "react";
+import React, { useEffect, useRef, useState, useSyncExternalStore } from "react";
 import { useQuery } from "@tanstack/react-query";
 import {
   AlertTriangle, Bot, Loader2, Send, Sparkles, User as UserIcon,
 } from "lucide-react";
 import { PortalShell } from "../../../components/portal/PortalShell";
 import { Timestamp } from "../../../components/portal/Timestamp";
+import { portalFindingAssistantPrompt } from "../../../lib/findings-workspace-api";
 import { portalApi, usePortalEngagement, type PortalFinding } from "../../../lib/portal-client";
 
 interface Turn {
@@ -51,9 +52,21 @@ const STARTERS = [
 
 const MAX_CHARS = 4000;
 
+function subscribeToLocation(onChange: () => void) {
+  window.addEventListener("popstate", onChange);
+  return () => window.removeEventListener("popstate", onChange);
+}
+
+function getLocationSearch() {
+  return window.location.search;
+}
+
 export default function PortalAssistant() {
   const [turns, setTurns] = useState<Turn[]>([]);
-  const [draft, setDraft] = useState("");
+  const locationSearch = useSyncExternalStore(subscribeToLocation, getLocationSearch, () => "");
+  const focusedFindingId = new URLSearchParams(locationSearch).get("finding")?.trim() || null;
+  const [draftOverride, setDraft] = useState<string | null>(null);
+  const draft = draftOverride ?? (focusedFindingId ? portalFindingAssistantPrompt(focusedFindingId) : "");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const endRef = useRef<HTMLDivElement>(null);
@@ -94,6 +107,7 @@ export default function PortalAssistant() {
         method: "POST",
         body: {
           messages: history.map((t) => ({ role: t.role, content: t.content })),
+          finding_id: focusedFindingId,
         },
       });
       setTurns((prev) => [...prev, {

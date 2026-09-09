@@ -20,7 +20,7 @@ from app.auth.jwt import (
     decode_token,
 )
 from app.auth.middleware import portal_jwt_path_allows
-from app.auth.portal_scope import assert_client, client_scoped, resolve_scope
+from app.auth.portal_scope import assert_client, client_scoped, require_client, resolve_scope
 from app.auth.router import refresh
 from app.models.enums import UserRole
 from app.models.finding import Finding
@@ -83,6 +83,44 @@ class TestClientScoped:
     def test_operator_cannot_scope(self):
         with pytest.raises(HTTPException):
             client_scoped(select(Finding), _operator(), Finding.engagement_id)
+
+
+class TestLiveClientBinding:
+    @staticmethod
+    def _db_returning(value):
+        result = MagicMock()
+        result.scalar_one_or_none.return_value = value
+        db = MagicMock()
+        db.execute = AsyncMock(return_value=result)
+        return db
+
+    @pytest.mark.asyncio
+    async def test_accepts_an_active_unchanged_binding(self):
+        principal = _client()
+        live_user = MagicMock(
+            id=principal.user_id,
+            role=UserRole.client,
+            is_active=True,
+            client_engagement_id=principal.client_engagement_id,
+        )
+
+        resolved = await require_client(principal, self._db_returning(live_user))
+
+        assert resolved == principal
+
+    @pytest.mark.asyncio
+    async def test_disabled_or_deleted_binding_is_rejected_immediately(self):
+        with pytest.raises(HTTPException) as exc:
+            await require_client(_client(), self._db_returning(None))
+        assert exc.value.status_code == 403
+
+    @pytest.mark.asyncio
+    async def test_stale_token_is_rejected_after_rebinding(self):
+        principal = _client()
+        live_user = MagicMock(client_engagement_id=uuid.uuid4())
+        with pytest.raises(HTTPException) as exc:
+            await require_client(principal, self._db_returning(live_user))
+        assert exc.value.status_code == 401
 
 
 class TestPortalTokenClaims:

@@ -11,14 +11,20 @@ import {
 // Resolved at build time from the repo-root VERSION file (see next.config.mjs).
 const APP_VERSION = process.env.NEXT_PUBLIC_APP_VERSION ?? "dev";
 
-interface NavItem {
+export interface SidebarNavItem {
   icon: React.ComponentType<{ size?: number; color?: string }>;
   label: string;
   href: string;
   badge?: string;
+  exact?: boolean;
 }
 
-const NAV_SECTIONS: { label: string; items: NavItem[] }[] = [
+export interface SidebarNavSection {
+  label: string;
+  items: SidebarNavItem[];
+}
+
+export const MANAGER_NAV_SECTIONS: SidebarNavSection[] = [
   {
     label: "OPERATIONS",
     items: [
@@ -49,9 +55,20 @@ const NAV_SECTIONS: { label: string; items: NavItem[] }[] = [
 interface SidebarProps {
   open: boolean;
   onClose: () => void;
+  sections?: SidebarNavSection[];
+  context?: React.ReactNode;
+  editionLabel?: string;
+  statusLabel?: string;
 }
 
-export function Sidebar({ open, onClose }: SidebarProps) {
+export function Sidebar({
+  open,
+  onClose,
+  sections = MANAGER_NAV_SECTIONS,
+  context,
+  editionLabel = "Enterprise",
+  statusLabel = "System Nominal",
+}: SidebarProps) {
   const pathname = usePathname();
   const [hoveredHref, setHoveredHref] = useState<string | null>(null);
 
@@ -141,7 +158,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
                 fontWeight: 500,
                 letterSpacing: 0.3,
               }}>
-                v{APP_VERSION} Enterprise
+                v{APP_VERSION} {editionLabel}
               </span>
             </div>
           </div>
@@ -174,9 +191,11 @@ export function Sidebar({ open, onClose }: SidebarProps) {
         </button>
       </div>
 
+      {context}
+
       {/* ── Navigation ─── */}
       <nav style={{ paddingTop: 10, flex: 1 }}>
-        {NAV_SECTIONS.map((section, si) => (
+        {sections.map((section, si) => (
           <div key={section.label} style={{ marginBottom: 6 }}>
             {/* Section label */}
             <div style={{
@@ -192,7 +211,8 @@ export function Sidebar({ open, onClose }: SidebarProps) {
 
             {section.items.map((item, ii) => {
               const Icon = item.icon;
-              const isActive  = pathname === item.href;
+              const isActive = pathname === item.href
+                || (!item.exact && item.href !== "/" && pathname.startsWith(`${item.href}/`));
               const isHovered = hoveredHref === item.href;
 
               return (
@@ -292,7 +312,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
             fontWeight: 600,
             color: "var(--accent)",
           }}>
-            System Nominal
+            {statusLabel}
           </span>
         </div>
         <div style={{
@@ -318,7 +338,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
             letterSpacing: 0.5,
             textTransform: "uppercase" as const,
           }}>
-            Enterprise
+            {editionLabel}
           </span>
         </div>
       </div>

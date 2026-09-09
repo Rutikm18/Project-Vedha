@@ -6,8 +6,22 @@ const findingsPage = readFileSync(
   new URL("../app/findings/page.tsx", import.meta.url),
   "utf8",
 );
+const portalFindingsPage = readFileSync(
+  new URL("../app/portal/findings/page.tsx", import.meta.url),
+  "utf8",
+);
+const portalAssistantPage = readFileSync(
+  new URL("../app/portal/assistant/page.tsx", import.meta.url),
+  "utf8",
+);
 
 describe("findings detail layout", () => {
+  test("renders the exact shared workspace in the customer portal", () => {
+    assert.match(findingsPage, /export function FindingsWorkspace/);
+    assert.match(portalFindingsPage, /<FindingsWorkspace surface="portal" \/>/);
+    assert.doesNotMatch(portalFindingsPage, /read.only/i);
+  });
+
   test("keeps the desktop detail panel visible and independently scrollable", () => {
     assert.match(findingsPage, /className="finding-detail-column"/);
     assert.match(
@@ -45,6 +59,28 @@ describe("findings detail layout", () => {
     assert.match(findingsPage, /className="finding-card-metrics"/);
     assert.match(findingsPage, /className="finding-overview-narrative"/);
     assert.match(findingsPage, /className="finding-action-options"/);
+    assert.match(findingsPage, /onExplain=\{explainFinding\}/);
+    assert.match(findingsPage, /surface === "portal"[\s\S]*?portalFindingAssistantHref/);
+  });
+
+  test("keeps transport-specific detail caches isolated", () => {
+    assert.match(findingsPage, /queryKey: \["finding-remediation", surface, finding\.id, os\]/);
+    assert.match(findingsPage, /queryKey: \["finding-events", surface, findingId\]/);
+  });
+
+  test("sends the backend's exploit validation filter name", () => {
+    assert.match(findingsPage, /queryString\.set\("exploit_validated", "true"\)/);
+    assert.doesNotMatch(findingsPage, /queryString\.set\("validated", "true"\)/);
+  });
+
+  test("sends the backend's detection-blind filter value", () => {
+    assert.match(findingsPage, /queryString\.set\("detection_status", "missed"\)/);
+    assert.doesNotMatch(findingsPage, /queryString\.set\("blind", "true"\)/);
+  });
+
+  test("grounds portal explanations in the selected finding", () => {
+    assert.match(portalAssistantPage, /finding_id: focusedFindingId/);
+    assert.match(portalAssistantPage, /portalFindingAssistantPrompt\(focusedFindingId\)/);
   });
 
   test("refreshes active agents from heartbeats with perceptible feedback", () => {

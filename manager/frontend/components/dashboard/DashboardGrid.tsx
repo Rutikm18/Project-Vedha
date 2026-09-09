@@ -6,10 +6,8 @@
  *
  * Layout is a hierarchy argument, not a packing problem. Tiers:
  *   1. Ledger      — full bleed. What is open, right now.
- *   2. Posture     — wide left, clock right. Are we winning, and what is late.
- *   3. Exposure    — three equal panels. Where the risk sits.
- *   4. Fleet       — live probe/agent state (kept from the previous dashboard;
- *                    it's real-time operational data the ledger doesn't cover).
+ *   2. Assessment  — posture and scan change left, remediation clock right.
+ *   3. Operations  — protocol, zone, and agent health in one balanced row.
  * Nothing below tier 1 competes with tier 1 for attention: smaller type, no
  * display numerals above 26px, no colour outside severity and state.
  *
@@ -23,7 +21,12 @@ import { Gauge, Timer, Activity, Shield, GitCompareArrows, Cpu } from "lucide-re
 import { Panel } from "../console/Primitives";
 import { Freshness } from "../console/Freshness";
 import { DataState, SkeletonRows, EmptyState } from "../states/DataState";
-import { useConsoleQuery, useConsoleQueryKey, type ConsoleKey } from "../../lib/console-source";
+import {
+  useConsoleQuery,
+  useConsoleQueryKey,
+  useConsoleSource,
+  type ConsoleKey,
+} from "../../lib/console-source";
 import { LiveOverview } from "./LiveOverview";
 import { PostureScorecard } from "./PostureScorecard";
 import { SlaStatus } from "./SlaStatus";
@@ -36,6 +39,8 @@ import { ProtocolRiskCard, ZoneHealthCard } from "./ExposureCards";
 
 type AgentStatus = "ONLINE" | "BUSY" | "OFFLINE";
 interface Agent { id?: string; name: string; status: AgentStatus; activity: string }
+
+const VISIBLE_AGENT_ROWS = 3;
 
 const AGENT_STATUS: Record<AgentStatus, { color: string; label: string; pulse: boolean }> = {
   ONLINE:  { color: "var(--nominal-color)", label: "Online",  pulse: false },
@@ -102,11 +107,11 @@ function AgentMonitor() {
       empty={<div style={{ padding: "var(--space-6)" }}><EmptyState icon={Cpu} title="No vedha-agents connected" hint="Deploy a vedha-agent to see live agent activity here." /></div>}
     >
       <ul role="list" style={{ listStyle: "none", margin: 0, padding: 0 }}>
-        {agents.slice(0, agentsExpanded ? undefined : 6).map((a) => (
+        {agents.slice(0, agentsExpanded ? undefined : VISIBLE_AGENT_ROWS).map((a) => (
           <li key={a.id ?? a.name}><AgentRow agent={a} /></li>
         ))}
       </ul>
-      {agents.length > 6 && (
+      {agents.length > VISIBLE_AGENT_ROWS && (
         <button type="button" className="focusable" onClick={() => setAgentsExpanded((v) => !v)}
           style={{ width: "100%", minHeight: 44, padding: "var(--space-3) var(--space-5)",
             background: "none", border: "none", borderTop: "var(--hairline) solid var(--border-subtle)",
@@ -137,6 +142,8 @@ function FreshNote({ dataset, staleAfterMs }: { dataset: ConsoleKey; staleAfterM
 
 export function DashboardGrid() {
   const router = useRouter();
+  const source = useConsoleSource();
+  const findingsPath = source.mode === "portal" ? "/portal/findings" : "/findings";
   return (
     <>
       <style>{`
@@ -152,21 +159,42 @@ export function DashboardGrid() {
         .console-band > .panel { height: 100%; }
 
         .band-1 { grid-template-columns: minmax(0, 1fr); }
-        .band-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-        /* band-3: patch matrix gets slightly more width than the two exposure cards
-           but not so much that they look mismatched side-by-side. */
-        .band-3 { grid-template-columns: minmax(300px, 1.15fr) minmax(220px, 1fr) minmax(220px, 1fr); }
-        .band-4 { grid-template-columns: minmax(0, 1fr); }
-
-        /* At 1100px the three-column layout starts to feel cramped; collapse
-           patch matrix to full-width with the two exposure cards beneath it. */
-        @media (max-width: 1100px) {
-          .band-3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-          .band-3 > :first-child { grid-column: span 2; }
+        .band-2 {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          grid-template-areas:
+            "posture sla"
+            "comparison sla";
+          align-items: start;
         }
+        .band-2 > .panel:nth-child(1) { grid-area: posture; height: auto; }
+        .band-2 > .panel:nth-child(2) { grid-area: sla; align-self: stretch; }
+        .band-2 > .panel:nth-child(3) { grid-area: comparison; height: auto; }
+
+        /* Protocol is the dense exposure view; zone and fleet are compact
+           supporting signals. The asymmetric grid keeps all three readable
+           without stretching a one-row zone panel into an empty card. */
+        .band-3 {
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          grid-template-areas:
+            "protocol zone"
+            "protocol agents";
+          align-items: start;
+        }
+        .band-3 > .panel:nth-child(1) { grid-area: protocol; align-self: stretch; }
+        .band-3 > .panel:nth-child(2) { grid-area: zone; height: auto; }
+        .band-3 > .panel:nth-child(3) { grid-area: agents; height: auto; }
+
         @media (max-width: 900px) {
-          .band-2, .band-3 { grid-template-columns: minmax(0, 1fr); }
-          .band-3 > :first-child { grid-column: span 1; }
+          .band-2 {
+            grid-template-columns: minmax(0, 1fr);
+            grid-template-areas: "posture" "sla" "comparison";
+          }
+          .band-2 > .panel:nth-child(2) { height: auto; }
+          .band-3 {
+            grid-template-columns: minmax(0, 1fr);
+            grid-template-areas: "protocol" "zone" "agents";
+          }
+          .band-3 > .panel:nth-child(1) { height: auto; }
         }
         @media (max-width: 640px) {
           .console-band { gap: var(--space-3); margin-bottom: var(--space-3); }
@@ -176,7 +204,7 @@ export function DashboardGrid() {
 
       <div className="console-band band-1">
         <LiveOverview
-          onSelectSeverity={(s) => router.push(`/findings?severity=${s}&status=open`)}
+          onSelectSeverity={(s) => router.push(`${findingsPath}?severity=${s}&status=open`)}
         />
       </div>
 
@@ -191,21 +219,18 @@ export function DashboardGrid() {
             <SlaStatus />
           </React.Suspense>
         </Panel>
-      </div>
-
-      <div className="console-band band-3">
         <Panel title="Scan-to-scan change" eyebrow="Previous vs latest" icon={<GitCompareArrows size={13} />} headingLevel={3} note={<FreshNote dataset="posture" />}>
           <PatchComparisonMatrix />
         </Panel>
+      </div>
+
+      <div className="console-band band-3">
         <Panel title="Protocol risk" eyebrow="Worst finding per service · higher is worse" icon={<Activity size={13} />} headingLevel={3} note={<FreshNote dataset="exposure" />}>
           <ProtocolRiskCard />
         </Panel>
         <Panel title="Zone health" eyebrow="Headroom per zone · higher is better · weakest first" icon={<Shield size={13} />} headingLevel={3} note={<FreshNote dataset="exposure" />}>
           <ZoneHealthCard />
         </Panel>
-      </div>
-
-      <div className="console-band band-4">
         <Panel title="Agent monitor" eyebrow="Live vedha-agent fleet" icon={<Cpu size={13} />} headingLevel={3} note={<FreshNote dataset="agents" staleAfterMs={60_000} />}>
           <AgentMonitor />
         </Panel>

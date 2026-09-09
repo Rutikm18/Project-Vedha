@@ -45,7 +45,9 @@ class ClientEngagementOut(BaseModel):
     # The customer's own authorized scope, so the scan-request form can show what
     # they may target. Excluded ranges are enforced server-side (not exposed here).
     scope_cidrs: list[str] = []
+    excluded_cidrs: list[str] = []
     has_assigned_agent: bool
+    assigned_agent_id: uuid.UUID | None = None
 
 
 class ClientPostureOut(BaseModel):

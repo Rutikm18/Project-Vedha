@@ -7,7 +7,7 @@ import {
 import { Users, ShieldAlert, ArrowUpRight, ArrowDownRight, Minus } from "lucide-react";
 import Link from "next/link";
 import { useCountUp } from "../hooks/useCountUp";
-import { useConsoleQuery } from "../lib/console-source";
+import { useConsoleQuery, useConsoleSource } from "../lib/console-source";
 
 /* ─── Types ─── */
 interface TimelinePoint { date: string; CRITICAL: number; HIGH: number; MEDIUM: number; LOW: number; }
@@ -157,7 +157,7 @@ function ScoreBar({ score }: { score: number }) {
   const color = score >= 900 ? "var(--sev-critical-color)" : score >= 700 ? "var(--sev-high-color)" : "var(--sev-medium-color)";
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-      <div className="progress-track" style={{ width: 64, height: 4 }}>
+      <div className="progress-track" style={{ width: 50, height: 4 }}>
         <div className="progress-fill" style={{ width: `${pct}%`, background: color }} />
       </div>
       <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 700, color, minWidth: 36 }}>
@@ -175,8 +175,13 @@ const STATUS_STYLE: Record<string, { color: string; bg: string }> = {
   CLOSED:         { color: "var(--text-muted)",         bg: "var(--bg-surface)"      },
 };
 
+const VISIBLE_ACTIVITY_ITEMS = 4;
+
 /* ─── Main component ─── */
 export function DashboardCharts() {
+  const source = useConsoleSource();
+  const findingsPath = source.mode === "portal" ? "/portal/findings" : "/findings";
+  const activityPath = source.mode === "portal" ? "/portal" : "/engagements";
   // Operator-only (a customer console has exactly one engagement): resolves to
   // `unavailable` in the portal, where the engagement-derived KPIs are omitted
   // rather than erroring.
@@ -303,7 +308,7 @@ export function DashboardCharts() {
             <span style={{ fontFamily: "var(--font-body)", fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
               Critical findings
             </span>
-            <Link href="/findings" style={{
+            <Link href={findingsPath} style={{
               display: "flex", alignItems: "center", gap: 4,
               fontFamily: "var(--font-body)", fontSize: 12, fontWeight: 500,
               color: "var(--accent)", textDecoration: "none",
@@ -316,12 +321,18 @@ export function DashboardCharts() {
             </Link>
           </div>
 
-          <table style={{ width: "100%", borderCollapse: "collapse" }}>
+          <table style={{ width: "100%", borderCollapse: "collapse", tableLayout: "fixed" }}>
+            <colgroup>
+              <col style={{ width: "42%" }} />
+              <col style={{ width: "22%" }} />
+              <col style={{ width: "20%" }} />
+              <col style={{ width: "16%" }} />
+            </colgroup>
             <thead>
               <tr className="dashboard-table-head">
                 {["Title", "Host", "Risk Score", "Status"].map((h) => (
                   <th key={h} style={{
-                    padding: "8px 20px", textAlign: "left",
+                    padding: "8px 12px", textAlign: "left",
                     fontFamily: "var(--font-body)", fontSize: 11, fontWeight: 600,
                     color: "var(--text-muted)", letterSpacing: 0.3,
                     borderBottom: "0.5px solid var(--border-subtle)",
@@ -335,12 +346,12 @@ export function DashboardCharts() {
               {isLoading ? (
                 [0, 1, 2, 3, 4].map((i) => (
                   <tr key={i} style={{ borderBottom: i < 4 ? "0.5px solid var(--border-subtle)" : "none" }}>
-                    <td style={{ padding: "11px 20px" }} colSpan={4}><Bone w="90%" h={12} /></td>
+                    <td style={{ padding: "11px 12px" }} colSpan={4}><Bone w="90%" h={12} /></td>
                   </tr>
                 ))
               ) : topFindings.length === 0 ? (
                 <tr>
-                  <td colSpan={4} style={{ padding: "36px 20px", textAlign: "center", fontFamily: "var(--font-body)", fontSize: 13, color: "var(--text-muted)" }}>
+                  <td colSpan={4} style={{ padding: "36px 12px", textAlign: "center", fontFamily: "var(--font-body)", fontSize: 13, color: "var(--text-muted)" }}>
                     No findings yet — run a scan to populate this table.
                   </td>
                 </tr>
@@ -349,32 +360,32 @@ export function DashboardCharts() {
                   const ss = STATUS_STYLE[f.status] ?? STATUS_STYLE.OPEN;
                   const sev = (f.severity in SEV ? f.severity : "LOW") as keyof typeof SEV;
                   return (
-                    <tr key={f.id} className="table-row-hover stagger-item" style={{
-                      animationDelay: `${240 + i * 40}ms`,
+                    <tr key={f.id} className="table-row-hover" style={{
                       borderBottom: i < topFindings.length - 1 ? "0.5px solid var(--border-subtle)" : "none",
                       cursor: "pointer",
                     }}>
-                      <td style={{ padding: "11px 20px", maxWidth: 280 }}>
-                        <div style={{ display: "flex", alignItems: "center", gap: 9 }}>
+                      <td style={{ padding: "11px 12px", maxWidth: 280 }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: 9, minWidth: 0 }}>
                           <SevBadge sev={sev} />
                           <span style={{ fontFamily: "var(--font-body)", fontSize: 13, color: "var(--text-primary)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
                             {f.title}
                           </span>
                         </div>
                       </td>
-                      <td style={{ padding: "11px 20px" }}>
-                        <span style={{
+                      <td style={{ padding: "11px 12px" }}>
+                        <span title={f.affectedHost} style={{
                           fontFamily: "var(--font-mono)", fontSize: 11,
                           color: "var(--accent)", background: "var(--accent-ghost)",
-                          borderRadius: 5, padding: "2px 7px",
+                          borderRadius: 5, padding: "2px 7px", display: "block",
+                          maxWidth: "100%", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                         }}>
                           {f.affectedHost}
                         </span>
                       </td>
-                      <td style={{ padding: "11px 20px" }}>
+                      <td style={{ padding: "11px 12px" }}>
                         <ScoreBar score={f.riskScore} />
                       </td>
-                      <td style={{ padding: "11px 20px" }}>
+                      <td style={{ padding: "11px 12px" }}>
                         <span style={{
                           fontFamily: "var(--font-body)", fontSize: 11, fontWeight: 600,
                           color: ss.color, background: ss.bg, borderRadius: 5, padding: "3px 8px",
@@ -405,7 +416,7 @@ export function DashboardCharts() {
             <span style={{ fontFamily: "var(--font-body)", fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
               Recent activity
             </span>
-            <Link href="/engagements" style={{ display: "flex", alignItems: "center", gap: 4, fontFamily: "var(--font-body)", fontSize: 12, fontWeight: 500, color: "var(--accent)", textDecoration: "none" }}>
+            <Link href={activityPath} style={{ display: "flex", alignItems: "center", gap: 4, fontFamily: "var(--font-body)", fontSize: 12, fontWeight: 500, color: "var(--accent)", textDecoration: "none" }}>
               All <ArrowUpRight size={12} />
             </Link>
           </div>
@@ -421,12 +432,12 @@ export function DashboardCharts() {
                 No recent activity
               </div>
             ) : (
-              activity.slice(0, 8).map((a, i) => (
+              activity.slice(0, VISIBLE_ACTIVITY_ITEMS).map((a, i) => (
                 <div key={a.id} className="stagger-item"
                   style={{
                     animationDelay: `${280 + i * 35}ms`,
                     padding: "11px 16px",
-                    borderBottom: i < Math.min(activity.length, 8) - 1 ? "0.5px solid var(--border-subtle)" : "none",
+                    borderBottom: i < Math.min(activity.length, VISIBLE_ACTIVITY_ITEMS) - 1 ? "0.5px solid var(--border-subtle)" : "none",
                     display: "flex", gap: 10, cursor: "default",
                     transition: "background 0.12s ease",
                   }}

@@ -96,15 +96,9 @@ function MetricTile({ label, value, delta, hint }: {
   label: string; value: React.ReactNode; delta?: React.ReactNode; hint: string;
 }) {
   return (
-    <div
-      style={{
-        flex: "1 1 120px", minWidth: 0, padding: "var(--space-3) var(--space-4)", borderRadius: "var(--r-md)",
-        background: "var(--bg-surface)", border: "var(--hairline) solid var(--border-subtle)",
-        display: "flex", flexDirection: "column", gap: "var(--space-2)",
-      }}
-    >
+    <div className="posture-metric">
       <span className="eyebrow">{label}</span>
-      <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+      <div className="posture-metric-value">
         <span className="num" style={{ fontFamily: "var(--font-display)", fontSize: "var(--fs-display-m)", fontWeight: 600, letterSpacing: "-0.02em", color: "var(--text-primary)", lineHeight: 1 }}>
           {value}
         </span>
@@ -140,9 +134,75 @@ export function PostureScorecard() {
   };
 
   return (
-    <div style={{ display: "flex", gap: "var(--space-5)", alignItems: "center", flexWrap: "wrap", padding: "var(--space-5)", height: "100%", boxSizing: "border-box" }}>
+    <div className="posture-scorecard">
       {/* ---- dial ---------------------------------------------------------- */}
       <style>{`
+        .posture-scorecard {
+          container-type: inline-size;
+          display: grid;
+          grid-template-columns: 132px minmax(0, 1fr);
+          gap: var(--space-5);
+          align-items: center;
+          padding: var(--space-5);
+          box-sizing: border-box;
+        }
+        .posture-detail {
+          min-width: 0;
+          display: grid;
+          gap: var(--space-4);
+        }
+        .posture-verdict {
+          display: flex;
+          align-items: center;
+          gap: var(--space-3);
+          min-height: 26px;
+          flex-wrap: wrap;
+        }
+        .posture-comparison {
+          display: inline-flex;
+          align-items: center;
+          gap: var(--space-2);
+          min-width: 0;
+          flex-wrap: wrap;
+        }
+        .posture-metrics {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          border-top: var(--hairline) solid var(--border-subtle);
+        }
+        .posture-metric {
+          min-width: 0;
+          display: flex;
+          flex-direction: column;
+          gap: var(--space-2);
+          padding: var(--space-4) var(--space-4) 0 0;
+        }
+        .posture-metric + .posture-metric {
+          border-left: var(--hairline) solid var(--border-subtle);
+          padding-right: 0;
+          padding-left: var(--space-4);
+        }
+        .posture-metric-value {
+          display: flex;
+          align-items: center;
+          gap: var(--space-2);
+          flex-wrap: wrap;
+        }
+        @container (max-width: 390px) {
+          .posture-scorecard { grid-template-columns: 1fr; justify-items: center; }
+          .posture-detail { width: 100%; }
+          .posture-verdict { justify-content: center; text-align: center; }
+        }
+        @container (max-width: 300px) {
+          .posture-metrics { grid-template-columns: 1fr; }
+          .posture-metric { padding-right: 0; }
+          .posture-metric + .posture-metric {
+            border-top: var(--hairline) solid var(--border-subtle);
+            border-left: 0;
+            margin-top: var(--space-3);
+            padding-left: 0;
+          }
+        }
         .posture-dial .dial-arc,
         .posture-dial .dial-tip {
           transition: stroke-dasharray .8s cubic-bezier(.22, 1, .36, 1),
@@ -178,18 +238,20 @@ export function PostureScorecard() {
       </div>
 
       {/* ---- verdict + supporting metrics ---------------------------------- */}
-      <div style={{ flex: "1 1 200px", minWidth: 0, display: "flex", flexDirection: "column", gap: 12 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
+      <div className="posture-detail">
+        <div className="posture-verdict">
           <span className="chip" style={{ color: g.color, background: g.bg, borderColor: g.edge, fontSize: "var(--fs-label)" }}>
             {g.read}
           </span>
-          <Delta now={s.posture_score} prev={p?.posture_score} improvedWhenLower={false} />
-          <span style={{ fontFamily: "var(--font-ui)", fontSize: "var(--fs-body-s)", color: "var(--text-muted)" }}>
-            {p ? "vs. previous scan" : "first scored scan — no comparison yet"}
-          </span>
+          <div className="posture-comparison">
+            <Delta now={s.posture_score} prev={p?.posture_score} improvedWhenLower={false} />
+            <span style={{ fontFamily: "var(--font-ui)", fontSize: "var(--fs-body-s)", color: "var(--text-muted)" }}>
+              {p ? "vs. previous scan" : "first scored scan — no comparison yet"}
+            </span>
+          </div>
         </div>
 
-        <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+        <div className="posture-metrics">
           <MetricTile
             label="Risk index"
             value={Number(s.risk_index ?? 0).toFixed(2)}

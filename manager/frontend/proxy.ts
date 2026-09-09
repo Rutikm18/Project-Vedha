@@ -1,20 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { resolveTenantSubdomain, TENANT_HEADER } from "./lib/tenant";
-
-// Routes that don't need an auth token
-const PUBLIC_PATHS = new Set(["/login"]);
-// API routes carry their own Authorization header — don't block them at the middleware layer.
-// Only page routes need the cookie check so the browser can be redirected to /login.
-const PUBLIC_PREFIXES = [
-  "/_next/",
-  "/favicon",
-  "/api/",
-];
-
-function isPublic(pathname: string): boolean {
-  if (PUBLIC_PATHS.has(pathname)) return true;
-  return PUBLIC_PREFIXES.some((p) => pathname.startsWith(p));
-}
+import { pageAuthSurface } from "./lib/page-auth";
 
 export function proxy(req: NextRequest) {
   const url = req.nextUrl;
@@ -25,10 +11,13 @@ export function proxy(req: NextRequest) {
   // We only verify *presence* here — actual JWT validation happens inside
   // withBackend → FastAPI on every BFF call. Edge middleware cannot import
   // jsonwebtoken (Node.js only), so we keep this layer lightweight.
-  if (!isPublic(pathname)) {
-    const token = req.cookies.get("vedha_token")?.value;
+  const authSurface = pageAuthSurface(pathname);
+  if (authSurface !== "public") {
+    const tokenName = authSurface === "portal" ? "vedha_portal_token" : "vedha_token";
+    const loginPath = authSurface === "portal" ? "/portal/login" : "/login";
+    const token = req.cookies.get(tokenName)?.value;
     if (!token) {
-      const loginUrl = new URL("/login", req.url);
+      const loginUrl = new URL(loginPath, req.url);
       loginUrl.searchParams.set("next", pathname);
       return NextResponse.redirect(loginUrl);
     }

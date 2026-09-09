@@ -24,6 +24,7 @@ from app.models.enums import ScanJobStatus, ScanJobType
 from app.models.scan_job import ScanJob
 from app.models.scan_job_attempt import ScanJobAttempt
 from app.models.service import Service as Service  # re-exported for tests (ag.Service)
+from app.services.audit import record_audit
 from app.services.job_result_service import _promote_assets as _promote_assets
 from app.services.scope_targets import validate_targets_in_scope
 
@@ -1345,16 +1346,14 @@ async def get_agent_job_history(
     return [_summ(r) for r in rows]
 
 
-@router.post(
-    "/jobs",
-    status_code=status.HTTP_201_CREATED,
-    summary="Enqueue an agent-executable scan job (discovery/lateral/cloud) for probes to pick up",
-)
-async def enqueue_agent_job(
+async def enqueue_agent_job_for_actor(
     body: EnqueueJobRequest,
     db: DB,
     redis: RedisConn,
-    current_user: Annotated[AuthUser, require_role(["admin", "manager", "tester"])],
+    current_user: AuthUser,
+    *,
+    audit_origin: str,
+    audit_actor_type: str,
 ):
     if body.job_type not in AGENT_EXECUTABLE_TYPES:
         raise HTTPException(
@@ -1545,6 +1544,22 @@ async def enqueue_agent_job(
         )
 
     # The claim runs in another DB session, so commit before offering the job.
+    # Persist the action trace in this same commit: a scan job must never become
+    # visible without the immutable audit event that explains who launched it.
+    record_audit(
+        db,
+        actor_id=current_user.user_id,
+        action="scan_job.launched",
+        engagement_id=job.engagement_id,
+        resource_type="scan_job",
+        resource_id=job.id,
+        detail={
+            "origin": audit_origin,
+            "actor_type": audit_actor_type,
+            "use_case_id": resolved_use_case_id,
+            "assigned_agent_id": job_params.get("preferred_agent_id"),
+        },
+    )
     await db.commit()
 
     for candidate in eligible_agents:
@@ -1574,6 +1589,27 @@ async def enqueue_agent_job(
         "intensity": intensity_name,
         "status": job.status.value,
     }
+
+
+@router.post(
+    "/jobs",
+    status_code=status.HTTP_201_CREATED,
+    summary="Enqueue an agent-executable scan job (discovery/lateral/cloud) for probes to pick up",
+)
+async def enqueue_agent_job(
+    body: EnqueueJobRequest,
+    db: DB,
+    redis: RedisConn,
+    current_user: Annotated[AuthUser, require_role(["admin", "manager", "tester"])],
+):
+    return await enqueue_agent_job_for_actor(
+        body=body,
+        db=db,
+        redis=redis,
+        current_user=current_user,
+        audit_origin="manager",
+        audit_actor_type="operator",
+    )
 
 
 @router.post("/{agent_id}/jobs/{job_id}/result", summary="Agent submits job result")

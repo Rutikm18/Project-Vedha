@@ -9,7 +9,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.rbac import require_role
 from app.dependencies import DB, ReadDB, AuthUser
-from app.detection.resolution import apply_manual_reopen
 from app.models.asset import Asset
 from app.models.engagement import Engagement
 from app.models.finding import Finding
@@ -20,6 +19,7 @@ from app.schemas.finding import (
     FindingSummary, FindingTimeline, SlaSummary,
 )
 from app.services import finding_events as events_service
+from app.services import finding_workflow
 from app.services import sla as sla_service
 from app.routers.sla_policy import resolve_windows
 from app.utils.pagination import paginate_query
@@ -284,72 +284,21 @@ async def patch_finding(
     db: DB,
     current_user: Annotated[AuthUser, require_role(["admin", "manager", "tester", "analyst"])],
 ):
-    finding = await _tenant_finding(db, finding_id, current_user.tenant_id)
-
-    patch = body.model_dump(exclude_unset=True)
-    action_reason = patch.pop("action_reason", None)
-    actor = str(current_user.user_id)
-    prev_status = finding.status
-    prev_cvss, prev_risk = finding.cvss_score, finding.risk_score
-    target_status = patch.get("status")
-
-    # Keep lifecycle columns consistent with the status transition. The event
-    # log records the action; these columns remain the queryable current truth.
-    if target_status == FindingStatus.remediated and prev_status != FindingStatus.remediated:
-        finding.resolved_at = datetime.now(timezone.utc)
-        finding.resolution_method = "manual"
-        finding.resolution_run_id = None
-    elif target_status == FindingStatus.open and prev_status == FindingStatus.remediated:
-        apply_manual_reopen(
-            finding,
-            by=actor,
-            now=datetime.now(timezone.utc),
-        )
-
-    if "notes" in patch:
-        notes = patch.pop("notes")
-        finding.remediation = (
-            f"{finding.remediation}\n\n[Note] {notes}" if finding.remediation else f"[Note] {notes}"
-        )
-        await events_service.record_event(
-            db, finding, "note", actor=actor, actor_type="user",
-            detail={"note": notes},
-        )
-
-    for field, value in patch.items():
-        setattr(finding, field, value)
-
-    # Emit one audit event per meaningful transition the patch caused.
-    if "status" in patch and patch["status"] != prev_status:
-        event_detail = {}
-        if action_reason:
-            event_detail["reason"] = action_reason
-        if finding.status == FindingStatus.remediated:
-            event_detail["resolution_method"] = "manual"
-        if finding.status == FindingStatus.open and prev_status == FindingStatus.remediated:
-            event_detail["reopened_count"] = finding.reopened_count
-        await events_service.record_event(
-            db, finding, events_service.event_type_for_status(finding.status),
-            actor=actor, actor_type="user",
-            from_status=prev_status, to_status=finding.status,
-            detail=event_detail or None,
-        )
-    if ("cvss_score" in patch and patch["cvss_score"] != prev_cvss) or \
-            ("risk_score" in patch and patch["risk_score"] != prev_risk):
-        await events_service.record_event(
-            db, finding, "risk_changed", actor=actor, actor_type="user",
-            detail={
-                "cvss_from": float(prev_cvss) if prev_cvss is not None else None,
-                "cvss_to": float(finding.cvss_score) if finding.cvss_score is not None else None,
-                "risk_from": float(prev_risk) if prev_risk is not None else None,
-                "risk_to": float(finding.risk_score) if finding.risk_score is not None else None,
-            },
-        )
-
-    await db.flush()
-    await db.refresh(finding)
-    logger.info("finding.patched", id=str(finding_id), changes=list(patch.keys()))
-    return finding
+    finding = await finding_workflow.get_finding_for_action(
+        db,
+        finding_id,
+        tenant_id=current_user.tenant_id,
+    )
+    updated = await finding_workflow.patch_finding(
+        db,
+        finding,
+        body,
+        actor_id=current_user.user_id,
+        actor_type="manager",
+        origin="manager",
+    )
+    logger.info("finding.patched", id=str(finding_id), by=str(current_user.user_id))
+    return updated
 
 
 @router.post("/{finding_id}/reopen", response_model=FindingOut,
@@ -363,25 +312,21 @@ async def reopen_finding(
     """Operator reverses a resolution (auto or manual). Only a `remediated`
     finding can be reopened; history (reopened_count) is preserved and the
     reopening user is recorded in evidence."""
-    finding = await _tenant_finding(db, finding_id, current_user.tenant_id)
-    if finding.status != FindingStatus.remediated:
-        raise HTTPException(
-            status_code=status.HTTP_409_CONFLICT,
-            detail="Only a remediated finding can be reopened",
-        )
-    apply_manual_reopen(finding, by=str(current_user.user_id), now=datetime.now(timezone.utc))
-    detail = {"reopened_count": finding.reopened_count}
-    if body is not None and body.reason:
-        detail["reason"] = body.reason
-    await events_service.record_event(
-        db, finding, "reopened", actor=str(current_user.user_id), actor_type="user",
-        from_status=FindingStatus.remediated, to_status=FindingStatus.open,
-        detail=detail,
+    finding = await finding_workflow.get_finding_for_action(
+        db,
+        finding_id,
+        tenant_id=current_user.tenant_id,
     )
-    await db.flush()
-    await db.refresh(finding)
+    updated = await finding_workflow.reopen_finding(
+        db,
+        finding,
+        actor_id=current_user.user_id,
+        actor_type="manager",
+        origin="manager",
+        reason=body.reason if body is not None else None,
+    )
     logger.info("finding.reopened", id=str(finding_id), by=str(current_user.user_id))
-    return finding
+    return updated
 
 
 # `get_or_404` lives in app/utils/db.py — imported at top of file.

@@ -1,8 +1,7 @@
 """
-portal.py — the CUSTOMER-facing read API (Part 2, Phase 2). Every route is scoped
-to the client's one bound engagement via `client_scoped` / `assert_client` (the
-Phase-0 choke point), so a route physically cannot return another engagement's
-data. Read-only; customers cannot create engagements, run scans, or see fleet.
+portal.py — the customer engagement workspace API. Every route is scoped to the
+client's one live engagement binding via `client_scoped` / `assert_client`, so a
+route cannot read or mutate another engagement's data.
 
 Data-exposure controls:
   * findings are serialized through the ClientFindingOut whitelist (no internal
@@ -13,16 +12,18 @@ from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
-from typing import Annotated
+from typing import Annotated, Literal
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, File, HTTPException, Query, UploadFile, status
 from sqlalchemy import func, select
 
 from app.auth.portal_scope import ClientUser, assert_client, client_scoped
-from app.dependencies import DB
+from app.dependencies import DB, RedisConn
+from app.routers.agents import EnqueueJobRequest
+from app.routers.engagements import EngagementUpdate
 from app.models.engagement import Engagement
 from app.models.enums import (
-    FindingSeverity, FindingStatus, ReviewStatus, ScanJobStatus, ScanJobType,
+    DetectionStatus, FindingSeverity, FindingStatus, ReviewStatus, ScanJobStatus, ScanJobType,
 )
 from app.models.finding import Finding
 from app.models.llm_output import LLMOutput
@@ -30,6 +31,14 @@ from app.models.remediation_plan import RemediationPlan
 from app.models.scan_job import ScanJob
 from app.models.scan_request import ScanRequest, SR_PENDING
 from app.schemas.ai import AiGenerateRequest, AiMessage
+from app.schemas.finding import (
+    FindingEventOut,
+    FindingOut,
+    FindingPatch,
+    FindingReopen,
+    FindingTimeline,
+)
+from app.schemas.engagement import EngagementDetail
 from app.schemas.portal import (
     ClientAssistantAsk,
     ClientAssistantReply,
@@ -45,6 +54,7 @@ from app.schemas.portal import (
     ScanRequestCreate,
 )
 from app.services import portal_metrics
+from app.services import finding_events, finding_workflow
 from app.services.llm import AiRuntimeError, ManagerLlmService
 from app.services import posture as posture_service
 from app.services.audit import record_audit
@@ -96,7 +106,9 @@ async def portal_engagement(user: ClientUser, db: DB):
         id=eng.id, name=eng.name, status=_enum_val(eng.status),
         scope_cidr_count=len(eng.scope_cidrs or []),
         scope_cidrs=list(eng.scope_cidrs or []),
+        excluded_cidrs=list(getattr(eng, "excluded_cidrs", None) or []),
         has_assigned_agent=eng.assigned_agent_id is not None,
+        assigned_agent_id=eng.assigned_agent_id,
     )
 
 
@@ -128,6 +140,70 @@ async def portal_finding(finding_id: uuid.UUID, user: ClientUser, db: DB):
     if r is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Finding not found")
     return ClientFindingOut.model_validate(r)
+
+
+@router.get("/findings/{finding_id}/events", response_model=FindingTimeline,
+            summary="Finding lifecycle timeline for the assigned engagement")
+async def portal_finding_timeline(finding_id: uuid.UUID, user: ClientUser, db: DB):
+    finding = await finding_workflow.get_finding_for_action(
+        db,
+        finding_id,
+        tenant_id=user.tenant_id,
+        engagement_id=assert_client(user),
+    )
+    timeline = await finding_events.build_timeline(db, finding)
+    return FindingTimeline(
+        finding_id=finding.id,
+        events=[FindingEventOut(**event) for event in timeline],
+    )
+
+
+@router.patch("/findings/{finding_id}", response_model=FindingOut,
+              summary="Apply the shared finding workflow in the assigned engagement")
+async def patch_portal_finding(
+    finding_id: uuid.UUID,
+    body: FindingPatch,
+    user: ClientUser,
+    db: DB,
+):
+    finding = await finding_workflow.get_finding_for_action(
+        db,
+        finding_id,
+        tenant_id=user.tenant_id,
+        engagement_id=assert_client(user),
+    )
+    return await finding_workflow.patch_finding(
+        db,
+        finding,
+        body,
+        actor_id=user.user_id,
+        actor_type="customer",
+        origin="portal",
+    )
+
+
+@router.post("/findings/{finding_id}/reopen", response_model=FindingOut,
+             summary="Reopen a remediated finding in the assigned engagement")
+async def reopen_portal_finding(
+    finding_id: uuid.UUID,
+    user: ClientUser,
+    db: DB,
+    body: FindingReopen | None = None,
+):
+    finding = await finding_workflow.get_finding_for_action(
+        db,
+        finding_id,
+        tenant_id=user.tenant_id,
+        engagement_id=assert_client(user),
+    )
+    return await finding_workflow.reopen_finding(
+        db,
+        finding,
+        actor_id=user.user_id,
+        actor_type="customer",
+        origin="portal",
+        reason=body.reason if body is not None else None,
+    )
 
 
 @router.get("/findings/{finding_id}/remediation",
@@ -313,6 +389,240 @@ async def portal_use_cases(user: ClientUser):
          "expected_runtime_hint": uc.get("expected_runtime_hint")}
         for uid, uc in _portal_use_cases().items()
     ]
+
+
+@router.get("/workspace/use-cases", summary="Scanner use-cases available to the shared workspace")
+async def portal_workspace_use_cases(user: ClientUser):
+    from app.routers.agents import list_use_cases
+    return await list_use_cases(current_user=user)
+
+
+@router.get(
+    "/workspace/engagement",
+    response_model=EngagementDetail,
+    summary="Manager-parity detail for the assigned engagement",
+)
+async def portal_workspace_engagement(user: ClientUser, db: DB):
+    from app.routers.engagements import get_engagement
+    return await get_engagement(
+        engagement_id=assert_client(user),
+        db=db,
+        current_user=user,
+    )
+
+
+@router.patch(
+    "/workspace/engagement",
+    response_model=EngagementDetail,
+    summary="Update the assigned engagement through the shared workflow",
+)
+async def patch_portal_workspace_engagement(
+    body: EngagementUpdate,
+    user: ClientUser,
+    db: DB,
+):
+    from app.routers.engagements import get_engagement, update_engagement
+    engagement_id = assert_client(user)
+    await update_engagement(
+        engagement_id=engagement_id,
+        body=body,
+        db=db,
+        current_user=user,
+    )
+    record_audit(
+        db,
+        actor_id=user.user_id,
+        action="engagement.updated",
+        engagement_id=engagement_id,
+        resource_type="engagement",
+        resource_id=engagement_id,
+        detail={
+            "origin": "portal",
+            "actor_type": "customer",
+            "fields": sorted(body.model_dump(exclude_unset=True)),
+        },
+    )
+    await db.flush()
+    return await get_engagement(
+        engagement_id=engagement_id,
+        db=db,
+        current_user=user,
+    )
+
+
+@router.get(
+    "/workspace/engagement/assets",
+    summary="Attack surface for the assigned engagement",
+)
+async def portal_workspace_engagement_assets(user: ClientUser, db: DB):
+    from app.routers.engagements import list_engagement_assets
+    return await list_engagement_assets(
+        engagement_id=assert_client(user),
+        db=db,
+        current_user=user,
+    )
+
+
+@router.get(
+    "/workspace/engagement/campaign-progress",
+    summary="Campaign progress for the assigned engagement",
+)
+async def portal_workspace_engagement_progress(user: ClientUser, db: DB):
+    from app.routers.engagements import campaign_progress
+    return await campaign_progress(
+        engagement_id=assert_client(user),
+        db=db,
+        current_user=user,
+    )
+
+
+@router.post(
+    "/workspace/engagement/import-facts",
+    status_code=status.HTTP_202_ACCEPTED,
+    summary="Import evidence into the assigned engagement",
+)
+async def portal_workspace_import_facts(
+    user: ClientUser,
+    db: DB,
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...),
+):
+    from app.routers.engagements import import_facts
+    engagement_id = assert_client(user)
+    result = await import_facts(
+        engagement_id=engagement_id,
+        db=db,
+        current_user=user,
+        background_tasks=background_tasks,
+        file=file,
+    )
+    record_audit(
+        db,
+        actor_id=user.user_id,
+        action="engagement.evidence_imported",
+        engagement_id=engagement_id,
+        resource_type="engagement",
+        resource_id=engagement_id,
+        detail={
+            "origin": "portal",
+            "actor_type": "customer",
+            "filename": file.filename,
+            "fact_count": result.get("fact_count", 0),
+        },
+    )
+    await db.flush()
+    return result
+
+
+@router.get("/workspace/probes", summary="The assigned probe in manager scanner format")
+async def portal_workspace_probes(user: ClientUser, db: DB):
+    from app.models.agent import Agent, AgentStatus
+
+    engagement_id = assert_client(user)
+    engagement = (await db.execute(
+        select(Engagement).where(
+            Engagement.id == engagement_id,
+            Engagement.tenant_id == user.tenant_id,
+        )
+    )).scalar_one_or_none()
+    if engagement is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Engagement not found")
+    if engagement.assigned_agent_id is None:
+        return []
+
+    agent = (await db.execute(
+        select(Agent).where(
+            Agent.id == engagement.assigned_agent_id,
+            Agent.tenant_id == user.tenant_id,
+        )
+    )).scalar_one_or_none()
+    if agent is None:
+        return []
+    persisted_status = _enum_val(agent.status)
+    heartbeat_fresh = bool(
+        agent.last_heartbeat
+        and (datetime.now(timezone.utc) - agent.last_heartbeat).total_seconds() < 90
+    )
+    online = heartbeat_fresh and persisted_status in {
+        AgentStatus.online.value,
+        AgentStatus.busy.value,
+    }
+    return [{
+        "id": str(agent.id),
+        "name": agent.name,
+        "location": agent.location,
+        "status": persisted_status,
+        "capabilities": list(agent.capabilities or []),
+        "network_segments": list(agent.network_segments or []),
+        "last_heartbeat": agent.last_heartbeat.isoformat() if agent.last_heartbeat else None,
+        "current_job_id": str(agent.current_job_id) if agent.current_job_id else None,
+        "online": online,
+    }]
+
+
+@router.get("/workspace/jobs", summary="Scan jobs for the assigned engagement")
+async def portal_workspace_jobs(user: ClientUser, db: DB):
+    from app.routers.engagements import list_engagement_jobs
+    return await list_engagement_jobs(
+        engagement_id=assert_client(user),
+        db=db,
+        current_user=user,
+    )
+
+
+@router.get("/workspace/jobs/{job_id}", summary="One assigned-engagement job")
+async def portal_workspace_job(job_id: uuid.UUID, user: ClientUser, db: DB):
+    row = (await db.execute(
+        client_scoped(select(ScanJob).where(ScanJob.id == job_id), user, ScanJob.engagement_id)
+    )).scalar_one_or_none()
+    if row is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Job not found")
+    from app.routers.agents import get_job_status
+    return await get_job_status(job_id=job_id, db=db, current_user=user)
+
+
+@router.post("/workspace/jobs", status_code=status.HTTP_201_CREATED,
+             summary="Launch a scan on the engagement's assigned probe")
+async def launch_portal_workspace_job(
+    body: EnqueueJobRequest,
+    user: ClientUser,
+    db: DB,
+    redis: RedisConn,
+):
+    from app.routers.agents import enqueue_agent_job_for_actor
+    engagement_id = assert_client(user)
+    if body.engagement_id != engagement_id:
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Engagement is out of scope")
+
+    engagement = (await db.execute(
+        select(Engagement).where(
+            Engagement.id == engagement_id,
+            Engagement.tenant_id == user.tenant_id,
+        )
+    )).scalar_one_or_none()
+    if engagement is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Engagement not found")
+    if engagement.assigned_agent_id is None:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Assign a vedha-agent to this engagement before launching a scan",
+        )
+
+    params = dict(body.params)
+    requested_agent = params.get("preferred_agent_id")
+    if requested_agent and str(requested_agent) != str(engagement.assigned_agent_id):
+        raise HTTPException(status.HTTP_403_FORBIDDEN, "Probe is out of scope")
+    params["preferred_agent_id"] = str(engagement.assigned_agent_id)
+    scoped_body = body.model_copy(update={"engagement_id": engagement_id, "params": params})
+    result = await enqueue_agent_job_for_actor(
+        body=scoped_body,
+        db=db,
+        redis=redis,
+        current_user=user,
+        audit_origin="portal",
+        audit_actor_type="customer",
+    )
+    return result
 
 
 @router.post("/scan-requests", response_model=ClientScanRequestOut,
@@ -515,6 +825,77 @@ async def portal_assistant_chat(body: ClientAssistantAsk, user: ClientUser, db: 
 # The win is structural: a change to the operator's exposure/posture/SLA
 # aggregation reaches the customer console automatically, because it is the same
 # function.
+
+@router.get("/workspace/findings", summary="Manager-parity finding queue for the assigned engagement")
+async def portal_workspace_findings(
+    user: ClientUser,
+    db: DB,
+    severity: FindingSeverity | None = Query(default=None),
+    status_filter: FindingStatus | None = Query(default=None, alias="status"),
+    asset_id: uuid.UUID | None = Query(default=None),
+    agent_id: uuid.UUID | None = Query(default=None),
+    mitre_technique: str | None = Query(default=None),
+    search: str | None = Query(default=None, min_length=1, max_length=200),
+    detection_status: DetectionStatus | None = Query(default=None),
+    exploit_validated: bool | None = Query(default=None),
+    verification_state: str | None = Query(default=None),
+    needs_review: bool | None = Query(default=None),
+    sla_breached: bool = Query(default=False),
+    sort: Literal["risk", "cvss", "epss", "date"] = Query(default="risk"),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+):
+    # Transitional route adapter: it pins engagement scope, then invokes the
+    # same query implementation as the manager. The next extraction moves this
+    # query body into a shared service without changing either contract.
+    from app.routers.findings import list_findings as _operator_findings
+    return await _operator_findings(
+        db=db,
+        current_user=user,
+        severity=severity,
+        status_filter=status_filter,
+        asset_id=asset_id,
+        mitre_technique=mitre_technique,
+        engagement_id=assert_client(user),
+        agent_id=agent_id,
+        search=search,
+        detection_status=detection_status,
+        exploit_validated=exploit_validated,
+        verification_state=verification_state,
+        needs_review=needs_review,
+        sla_breached=sla_breached,
+        sort=sort,
+        page=page,
+        page_size=page_size,
+    )
+
+
+@router.get("/workspace/findings/summary", summary="Manager-parity finding summary for the assigned engagement")
+async def portal_workspace_finding_summary(
+    user: ClientUser,
+    db: DB,
+    agent_id: uuid.UUID | None = Query(default=None),
+):
+    from app.routers.findings import finding_summary as _operator_summary
+    return await _operator_summary(
+        db=db,
+        current_user=user,
+        engagement_id=assert_client(user),
+        agent_id=agent_id,
+    )
+
+
+@router.get("/workspace/findings/{finding_id}", response_model=FindingOut,
+            summary="Manager-parity finding detail for the assigned engagement")
+async def portal_workspace_finding_detail(finding_id: uuid.UUID, user: ClientUser, db: DB):
+    finding = await finding_workflow.get_finding_for_action(
+        db,
+        finding_id,
+        tenant_id=user.tenant_id,
+        engagement_id=assert_client(user),
+    )
+    from app.routers.findings import _finding_detail_out
+    return await _finding_detail_out(db, finding)
 
 @router.get("/analytics/exposure", summary="Protocol risk + zone health for your engagement")
 async def portal_exposure(user: ClientUser, db: DB):

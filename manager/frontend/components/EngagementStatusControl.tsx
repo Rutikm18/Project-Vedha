@@ -54,10 +54,13 @@ export interface EngagementStatusControlProps {
   /** Live, observed state shown beside the control — e.g. "1 scan running".
    *  Never conflated with the stored status. */
   liveHint?: string | null;
+  /** Optional surface adapter. Defaults to the manager BFF. */
+  updateStatus?: (next: string) => Promise<unknown>;
+  invalidateKeys?: ReadonlyArray<readonly unknown[]>;
 }
 
 export function EngagementStatusControl({
-  engagementId, status, liveHint,
+  engagementId, status, liveHint, updateStatus, invalidateKeys,
 }: EngagementStatusControlProps) {
   const [open, setOpen] = useState(false);
   const queryClient = useQueryClient();
@@ -74,14 +77,15 @@ export function EngagementStatusControl({
   const mutation = useMutation({
     // PATCH only the status. Sending the whole form here would let a stale copy
     // of scope or dates overwrite a change someone else just made.
-    mutationFn: (next: string) =>
-      fetchJson(`/api/engagements/${engagementId}`, {
-        method: "PUT",
-        body: JSON.stringify({ status: next }),
-      }),
+    mutationFn: (next: string) => updateStatus
+      ? updateStatus(next)
+      : fetchJson(`/api/engagements/${engagementId}`, {
+          method: "PUT",
+          body: JSON.stringify({ status: next }),
+        }),
     onSuccess: (_d, next) => {
-      void queryClient.invalidateQueries({ queryKey: ["engagement", engagementId] });
-      void queryClient.invalidateQueries({ queryKey: ["engagements"] });
+      const keys = invalidateKeys ?? [["engagement", engagementId], ["engagements"]];
+      keys.forEach((queryKey) => void queryClient.invalidateQueries({ queryKey }));
       const label = ENGAGEMENT_STATES.find((s) => s.value === next)?.label ?? next;
       toast.success("Status updated", `Engagement is now ${label}.`);
       setOpen(false);

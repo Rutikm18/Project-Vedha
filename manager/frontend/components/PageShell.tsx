@@ -7,7 +7,7 @@ import { useTheme } from "./ThemeProvider";
 import { RefreshButton } from "./RefreshButton";
 import { clearAuth } from "../lib/fetcher";
 
-interface PageShellProps {
+export interface PageShellProps {
   title: string;
   subtitle?: string;
   headerActions?: React.ReactNode;
@@ -17,10 +17,30 @@ interface PageShellProps {
   /** Hide the header refresh control. For pages that already poll themselves —
    *  a manual refresh there is redundant and invites a reload mid-update. */
   hideRefresh?: boolean;
+  /** Injects a scoped navigation while retaining the exact application shell. */
+  renderSidebar?: (props: { open: boolean; onClose: () => void }) => React.ReactNode;
+  /** Skip operator-session discovery when a route owns a different auth session. */
+  manageOperatorSession?: boolean;
+  userLabel?: string;
+  onLogout?: () => void | Promise<void>;
+  footerLabel?: string;
+  contentClassName?: string;
 }
 
 export function PageShell({
-  title, subtitle, headerActions, statusItems, children, noPadding, hideRefresh,
+  title,
+  subtitle,
+  headerActions,
+  statusItems,
+  children,
+  noPadding,
+  hideRefresh,
+  renderSidebar,
+  manageOperatorSession = true,
+  userLabel,
+  onLogout,
+  footerLabel = "VEDHA v1.0",
+  contentClassName,
 }: PageShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [utcTime, setUtcTime]         = useState("");
@@ -28,6 +48,8 @@ export function PageShell({
 
   // Read current user
   useEffect(() => {
+    if (!manageOperatorSession) return;
+
     // One-time migration from builds that stored JWTs in browser storage.
     // End that legacy session so the next login receives HttpOnly cookies.
     if (localStorage.getItem("vedha_token") || localStorage.getItem("vedha_refresh_token")) {
@@ -41,12 +63,16 @@ export function PageShell({
       .then((r) => (r.ok ? r.json() : null))
       .then((d: { email?: string } | null) => { if (d?.email) setUserEmail(d.email); })
       .catch(() => {});
-  }, []);
+  }, [manageOperatorSession]);
 
   const handleLogout = useCallback(async () => {
+    if (onLogout) {
+      await onLogout();
+      return;
+    }
     await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
     clearAuth(true);
-  }, []);
+  }, [onLogout]);
 
   const { theme, toggleTheme } = useTheme();
 
@@ -83,7 +109,9 @@ export function PageShell({
         />
       )}
 
-      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      {renderSidebar
+        ? renderSidebar({ open: sidebarOpen, onClose: () => setSidebarOpen(false) })
+        : <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />}
 
       <div style={{
         flex: 1,
@@ -280,7 +308,7 @@ export function PageShell({
             </button>
 
             {/* User badge + logout */}
-            {userEmail && (
+            {(userLabel || userEmail) && (
               <>
                 <div className="vedha-page-header-divider" style={{ width: 0.5, height: 16, background: "var(--border-subtle)", flexShrink: 0 }} />
                 <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -293,7 +321,7 @@ export function PageShell({
                     textOverflow: "ellipsis",
                     whiteSpace: "nowrap",
                   }}>
-                    {userEmail}
+                    {userLabel ?? userEmail}
                   </span>
                 </div>
                 <button
@@ -330,7 +358,7 @@ export function PageShell({
         </header>
 
         {/* ── Content ── */}
-        <main className="vedha-page-main" style={{
+        <main className={["vedha-page-main", contentClassName].filter(Boolean).join(" ")} style={{
           flex: 1,
           overflowY: "auto",
           background: "var(--bg-app)",
@@ -383,7 +411,7 @@ export function PageShell({
             fontSize: 9,
             color: "var(--text-muted)",
           }}>
-            {utcTime} · VEDHA v1.0
+            {utcTime} · {footerLabel}
           </div>
         </footer>
       </div>
@@ -395,6 +423,10 @@ const SHELL_RESPONSIVE_STYLES = `
 /* Tablet: 768px–1023px — sidebar always visible, but content is tighter */
 @media (min-width: 768px) and (max-width: 1023px) {
   .vedha-page-header { padding: 0 14px !important; }
+  .vedha-page-header-left { flex: 1 1 auto; overflow: hidden; }
+  .vedha-page-title-divider, .vedha-page-subtitle { display: none; }
+  .vedha-page-header-tools { gap: 6px !important; }
+  .vedha-page-header-divider { display: none; }
   .vedha-page-main { padding: 16px 18px !important; }
   .vedha-page-footer { padding: 0 14px !important; }
   .vedha-page-footer-time { display: none; }

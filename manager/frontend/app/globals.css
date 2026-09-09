@@ -1896,7 +1896,7 @@ code, pre, .terminal, kbd, [class*="mono"], .font-mono {
 
 .dashboard-kpi-grid {
   display: grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
 }
 
@@ -1910,6 +1910,7 @@ code, pre, .terminal, kbd, [class*="mono"], .font-mono {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 300px;
   gap: 14px;
+  align-items: start;
 }
 
 .dashboard-triple-grid {
@@ -2456,13 +2457,10 @@ code, pre, .terminal, kbd, [class*="mono"], .font-mono {
 .table-row    { border-bottom: 0.5px solid var(--border-subtle); transition: background var(--dur-micro) ease; }
 .table-row:hover { background: var(--bg-surface); }
 .table-row-hover { position: relative; transition: background var(--dur-micro) ease; cursor: pointer; }
-.table-row-hover::before {
-  content: ''; position: absolute; left: 0; top: 0; bottom: 0; width: 2px;
-  background: var(--accent); transform: scaleY(0); transform-origin: center;
-  transition: transform var(--dur-fast) var(--ease-spring); border-radius: 0 1px 1px 0;
+.table-row-hover:hover {
+  background: var(--bg-surface);
+  box-shadow: inset 2px 0 var(--accent);
 }
-.table-row-hover:hover { background: var(--bg-surface); }
-.table-row-hover:hover::before { transform: scaleY(1); }
 
 /* ─── Status dot ─── */
 .status-dot { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 10px; height: 10px; }

@@ -20,9 +20,14 @@ import uuid
 from typing import Annotated
 
 from fastapi import Depends, HTTPException, Query, status
-from sqlalchemy import ColumnElement, Select
+from sqlalchemy import ColumnElement, Select, select
+from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.database import get_db
 from app.dependencies import get_current_user
+from app.models.engagement import Engagement
+from app.models.enums import UserRole
+from app.models.user import User
 from app.schemas.auth import CurrentUser
 
 CLIENT_ROLE = "client"
@@ -69,11 +74,33 @@ def client_scoped(stmt: Select, user: CurrentUser,
 
 # ── FastAPI dependencies ──────────────────────────────────────────────────────
 
-def require_client(
+async def require_client(
     user: Annotated[CurrentUser, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> CurrentUser:
-    """Role gate for portal routes — 403 unless a properly-bound client."""
-    assert_client(user)
+    """Resolve the customer binding from live database state on every request.
+
+    JWT claims identify the session, but account disablement and engagement
+    rebinding must take effect immediately rather than waiting for token expiry.
+    """
+    token_engagement_id = assert_client(user)
+    live_user = (await db.execute(
+        select(User)
+        .join(Engagement, User.client_engagement_id == Engagement.id)
+        .where(
+            User.id == user.user_id,
+            User.tenant_id == user.tenant_id,
+            User.role == UserRole.client,
+            User.is_active.is_(True),
+            Engagement.tenant_id == user.tenant_id,
+        )
+    )).scalar_one_or_none()
+    if live_user is None or live_user.client_engagement_id is None:
+        raise HTTPException(status.HTTP_403_FORBIDDEN,
+                            "Customer access is disabled or no longer assigned")
+    if live_user.client_engagement_id != token_engagement_id:
+        raise HTTPException(status.HTTP_401_UNAUTHORIZED,
+                            "Customer engagement changed; sign in again")
     return user
 
 
