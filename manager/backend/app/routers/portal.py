@@ -1,19 +1,20 @@
 """
-portal.py — the CUSTOMER-facing read API (Part 2, Phase 2). Every route is scoped
+portal.py — the CUSTOMER-facing engagement API (Part 2, Phase 2). Every route is scoped
 to the client's one bound engagement via `client_scoped` / `assert_client` (the
 Phase-0 choke point), so a route physically cannot return another engagement's
-data. Read-only; customers cannot create engagements, run scans, or see fleet.
+data. Customers can perform finding lifecycle actions and submit scoped scan
+requests; they cannot change engagement scope or access another engagement.
 
 Data-exposure controls:
-  * findings are serialized through the ClientFindingOut whitelist (no internal
-    triage/exploit/evidence fields)
+  * legacy summary findings use ClientFindingOut; the authenticated workspace
+    uses the manager FindingOut contract so both surfaces share one workflow
   * reports are gated to review_status == approved (drafts/internal never leak)
 """
 from __future__ import annotations
 
 import uuid
 from datetime import datetime, timezone
-from typing import Annotated
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, HTTPException, Query, status
 from sqlalchemy import func, select
@@ -22,7 +23,7 @@ from app.auth.portal_scope import ClientUser, assert_client, client_scoped
 from app.dependencies import DB
 from app.models.engagement import Engagement
 from app.models.enums import (
-    FindingSeverity, FindingStatus, ReviewStatus, ScanJobStatus, ScanJobType,
+    DetectionStatus, FindingSeverity, FindingStatus, ReviewStatus, ScanJobStatus, ScanJobType,
 )
 from app.models.finding import Finding
 from app.models.llm_output import LLMOutput
@@ -30,6 +31,8 @@ from app.models.remediation_plan import RemediationPlan
 from app.models.scan_job import ScanJob
 from app.models.scan_request import ScanRequest, SR_PENDING
 from app.schemas.ai import AiGenerateRequest, AiMessage
+from app.schemas.common import PaginatedResponse
+from app.schemas.finding import FindingEventOut, FindingOut, FindingPatch, FindingReopen, FindingTimeline
 from app.schemas.portal import (
     ClientAssistantAsk,
     ClientAssistantReply,
@@ -44,7 +47,7 @@ from app.schemas.portal import (
     ClientTrendsOut,
     ScanRequestCreate,
 )
-from app.services import portal_metrics
+from app.services import finding_events, finding_workflow, portal_metrics
 from app.services.llm import AiRuntimeError, ManagerLlmService
 from app.services import posture as posture_service
 from app.services.audit import record_audit
@@ -128,6 +131,70 @@ async def portal_finding(finding_id: uuid.UUID, user: ClientUser, db: DB):
     if r is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Finding not found")
     return ClientFindingOut.model_validate(r)
+
+
+@router.get("/findings/{finding_id}/events", response_model=FindingTimeline,
+            summary="Finding lifecycle timeline for the assigned engagement")
+async def portal_finding_timeline(finding_id: uuid.UUID, user: ClientUser, db: DB):
+    finding = await finding_workflow.get_finding_for_action(
+        db,
+        finding_id,
+        tenant_id=user.tenant_id,
+        engagement_id=assert_client(user),
+    )
+    timeline = await finding_events.build_timeline(db, finding)
+    return FindingTimeline(
+        finding_id=finding.id,
+        events=[FindingEventOut(**event) for event in timeline],
+    )
+
+
+@router.patch("/findings/{finding_id}", response_model=FindingOut,
+              summary="Apply the shared finding workflow in the assigned engagement")
+async def patch_portal_finding(
+    finding_id: uuid.UUID,
+    body: FindingPatch,
+    user: ClientUser,
+    db: DB,
+):
+    finding = await finding_workflow.get_finding_for_action(
+        db,
+        finding_id,
+        tenant_id=user.tenant_id,
+        engagement_id=assert_client(user),
+    )
+    return await finding_workflow.patch_finding(
+        db,
+        finding,
+        body,
+        actor_id=user.user_id,
+        actor_type="customer",
+        origin="portal",
+    )
+
+
+@router.post("/findings/{finding_id}/reopen", response_model=FindingOut,
+             summary="Reopen a remediated finding in the assigned engagement")
+async def reopen_portal_finding(
+    finding_id: uuid.UUID,
+    user: ClientUser,
+    db: DB,
+    body: FindingReopen | None = None,
+):
+    finding = await finding_workflow.get_finding_for_action(
+        db,
+        finding_id,
+        tenant_id=user.tenant_id,
+        engagement_id=assert_client(user),
+    )
+    return await finding_workflow.reopen_finding(
+        db,
+        finding,
+        actor_id=user.user_id,
+        actor_type="customer",
+        origin="portal",
+        reason=body.reason if body is not None else None,
+    )
 
 
 @router.get("/findings/{finding_id}/remediation",
@@ -497,6 +564,79 @@ async def portal_assistant_chat(body: ClientAssistantAsk, user: ClientUser, db: 
         grounded=bool(open_rows or focus),
         generated_at=datetime.now(timezone.utc),
     )
+
+
+@router.get(
+    "/workspace/findings",
+    response_model=PaginatedResponse[FindingOut],
+    summary="Manager-parity finding queue for the assigned engagement",
+)
+async def portal_workspace_findings(
+    user: ClientUser,
+    db: DB,
+    severity: FindingSeverity | None = Query(default=None),
+    status_filter: FindingStatus | None = Query(default=None, alias="status"),
+    asset_id: uuid.UUID | None = Query(default=None),
+    agent_id: uuid.UUID | None = Query(default=None),
+    mitre_technique: str | None = Query(default=None),
+    search: str | None = Query(default=None, min_length=1, max_length=200),
+    detection_status: DetectionStatus | None = Query(default=None),
+    exploit_validated: bool | None = Query(default=None),
+    verification_state: str | None = Query(default=None),
+    needs_review: bool | None = Query(default=None),
+    sla_breached: bool = Query(default=False),
+    sort: Literal["risk", "cvss", "epss", "date"] = Query(default="risk"),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+):
+    from app.routers.findings import list_findings as operator_findings
+    return await operator_findings(
+        db=db,
+        current_user=user,
+        severity=severity,
+        status_filter=status_filter,
+        asset_id=asset_id,
+        mitre_technique=mitre_technique,
+        engagement_id=assert_client(user),
+        agent_id=agent_id,
+        search=search,
+        detection_status=detection_status,
+        exploit_validated=exploit_validated,
+        verification_state=verification_state,
+        needs_review=needs_review,
+        sla_breached=sla_breached,
+        sort=sort,
+        page=page,
+        page_size=page_size,
+    )
+
+
+@router.get("/workspace/findings/summary", summary="Manager-parity finding summary for the assigned engagement")
+async def portal_workspace_finding_summary(
+    user: ClientUser,
+    db: DB,
+    agent_id: uuid.UUID | None = Query(default=None),
+):
+    from app.routers.findings import finding_summary as operator_summary
+    return await operator_summary(
+        db=db,
+        current_user=user,
+        engagement_id=assert_client(user),
+        agent_id=agent_id,
+    )
+
+
+@router.get("/workspace/findings/{finding_id}", response_model=FindingOut,
+            summary="Manager-parity finding detail for the assigned engagement")
+async def portal_workspace_finding_detail(finding_id: uuid.UUID, user: ClientUser, db: DB):
+    finding = await finding_workflow.get_finding_for_action(
+        db,
+        finding_id,
+        tenant_id=user.tenant_id,
+        engagement_id=assert_client(user),
+    )
+    from app.routers.findings import _finding_detail_out
+    return await _finding_detail_out(db, finding)
 
 
 # ── console parity: the same analytics the operator dashboard renders ─────────

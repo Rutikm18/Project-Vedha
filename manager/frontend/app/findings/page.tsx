@@ -34,6 +34,7 @@ import React, {
   useSyncExternalStore,
 } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Activity, AlertTriangle, ArrowLeft, BadgeCheck, Brain, Check, CheckCircle,
@@ -42,10 +43,16 @@ import {
   Shield, SlidersHorizontal, Tag, Terminal, Wrench, X,
 } from "lucide-react";
 import { PageShell } from "../../components/PageShell";
+import { PortalShell } from "../../components/portal/PortalShell";
 import { consoleQueryKey } from "../../lib/console-source";
 import { useAssistant } from "../../components/assistant/AssistantProvider";
 import { useToast } from "../../hooks/useToast";
-import { errorMessage, fetchJson, isUnauthorized } from "../../lib/fetcher";
+import { errorMessage, isUnauthorized } from "../../lib/fetcher";
+import {
+  createFindingsWorkspaceApi,
+  portalFindingAssistantHref,
+  type FindingsWorkspaceSurface,
+} from "../../lib/findings-workspace-api";
 import { DataState, SkeletonRows, EmptyState } from "../../components/states/DataState";
 import { presentEvidence, type EvidenceArtifact } from "../../lib/evidence-presentation";
 import {
@@ -61,6 +68,7 @@ type DetectionCoverage = "COVERED" | "PARTIAL" | "BLIND";
 type Priority = "P0" | "P1" | "P2" | "P3" | "P4" | "P5";
 const FINDINGS_PER_PAGE = 20;
 const AGENT_REFRESH_FEEDBACK_MS = 2_000;
+type FindingsWorkspaceApi = ReturnType<typeof createFindingsWorkspaceApi>;
 
 /* Lifecycle audit-trail event (backend /api/findings/{id}/events, snake_case). */
 type TimelineEvent = {
@@ -802,11 +810,19 @@ const pillStyle = (color: string) => ({
   borderColor: tint(color, TINT.hairline),
 });
 
-function RemediationPlanView({ finding }: { finding: Finding }) {
+function RemediationPlanView({
+  finding,
+  api,
+  surface,
+}: {
+  finding: Finding;
+  api: FindingsWorkspaceApi;
+  surface: FindingsWorkspaceSurface;
+}) {
   const [os, setOs] = useState<RemediationOs>(() => remediationOsFor(finding));
   const { data, isLoading, isFetching, error, refetch } = useQuery({
-    queryKey: ["finding-remediation", finding.id, os],
-    queryFn: () => fetchJson<RemediationPlanResponse>(`/api/findings/${finding.id}/remediation?os=${os}`),
+    queryKey: ["finding-remediation", surface, finding.id, os],
+    queryFn: () => api.remediation<RemediationPlanResponse>(finding.id, os),
     staleTime: 60_000,
   });
 
@@ -1493,10 +1509,20 @@ function eventDetailLabel(key: string): string {
   return key.replaceAll("_", " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
-function HistoryTimeline({ findingId, now }: { findingId: string; now: number }) {
+function HistoryTimeline({
+  findingId,
+  now,
+  api,
+  surface,
+}: {
+  findingId: string;
+  now: number;
+  api: FindingsWorkspaceApi;
+  surface: FindingsWorkspaceSurface;
+}) {
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ["finding-events", findingId],
-    queryFn: () => fetchJson<FindingTimeline>(`/api/findings/${findingId}/events`),
+    queryKey: ["finding-events", surface, findingId],
+    queryFn: () => api.events<FindingTimeline>(findingId),
     staleTime: 30_000,
   });
 
@@ -1631,6 +1657,7 @@ const REASON_TEMPLATES: Partial<Record<FindingStatus, string[]>> = {
 
 function FindingDetail({
   f, allFindings, sla, now, onStatusChange, statusUpdating, onReopen, reopening, onClose,
+  onExplain, api, surface,
 }: {
   f: Finding;
   allFindings: Finding[];
@@ -1641,13 +1668,15 @@ function FindingDetail({
   onReopen: (id: string, reason: string) => Promise<void>;
   reopening: boolean;
   onClose: () => void;
+  onExplain: (id: string) => void;
+  api: FindingsWorkspaceApi;
+  surface: FindingsWorkspaceSurface;
 }) {
   const [tab, setTab] = useState<DetailTab>("overview");
   const [pendingAction, setPendingAction] = useState<FindingStatus | null>(null);
   const [actionReason, setActionReason] = useState("");
   const reasonRef = useRef<HTMLTextAreaElement>(null);
   const tabRefs = useRef<Record<string, HTMLButtonElement | null>>({});
-  const { explain } = useAssistant();
 
   const terminal = f.status === "REMEDIATED" || f.status === "ACCEPTED" || f.status === "FALSE_POSITIVE";
   const availableActions = terminal
@@ -1714,7 +1743,7 @@ function FindingDetail({
       <div className="finding-detail-bar">
         <span className="finding-detail-bar-dot" style={{ background: SEV_COLOR[f.severity] }} aria-hidden />
         <span className="finding-detail-bar-title" title={f.title}>{f.title}</span>
-        <button type="button" className="btn btn-secondary finding-detail-explain" onClick={() => explain(f.id)}>
+        <button type="button" className="btn btn-secondary finding-detail-explain" onClick={() => onExplain(f.id)}>
           <Brain size={13} aria-hidden /> Explain
         </button>
         <button type="button" className="finding-detail-close" onClick={onClose} aria-label="Close finding detail. Shortcut: Escape">
@@ -1901,9 +1930,9 @@ function FindingDetail({
         )}
         {tab === "intel" && <IntelPanel finding={f} />}
         {tab === "evidence" && <EvidenceView finding={f} />}
-        {tab === "remediation" && <RemediationPlanView finding={f} />}
+        {tab === "remediation" && <RemediationPlanView finding={f} api={api} surface={surface} />}
         {tab === "compliance" && <CompliancePanel compliance={f.compliance} />}
-        {tab === "history" && <HistoryTimeline findingId={f.id} now={now} />}
+        {tab === "history" && <HistoryTimeline findingId={f.id} now={now} api={api} surface={surface} />}
       </div>
     </div>
   );
@@ -3064,10 +3093,13 @@ button.findings-triage-metric:hover { background: var(--bg-hover); }
 `;
 
 /* ─── Page ────────────────────────────────────────────────────────────────*/
-export default function FindingsPage() {
+export function FindingsWorkspace({ surface = "manager" }: { surface?: FindingsWorkspaceSurface }) {
   const { success, error: showError } = useToast();
   const queryClient = useQueryClient();
+  const router = useRouter();
+  const { explain } = useAssistant();
   const now = useNow();
+  const api = useMemo(() => createFindingsWorkspaceApi(surface), [surface]);
 
   const locationSearch = useSyncExternalStore(subscribeToLocationChange, getLocationSearch, getServerLocationSearch);
   const deepLinkParams = new URLSearchParams(locationSearch);
@@ -3105,8 +3137,8 @@ export default function FindingsPage() {
   if (deferredSearch) queryString.set("search", deferredSearch);
   if (filterSev !== "ALL") queryString.set("severity", filterSev);
   if (filterStatus !== "ALL") queryString.set("status", filterStatus);
-  if (filterBlind) queryString.set("blind", "true");
-  if (filterExploited) queryString.set("validated", "true");
+  if (filterBlind) queryString.set("detection_status", "missed");
+  if (filterExploited) queryString.set("exploit_validated", "true");
   if (filterSlaBreached) queryString.set("sla_breached", "true");
   if (filterNeedsReview) queryString.set("needs_review", "true");
   if (filterVerification !== "ALL") queryString.set("verification_state", filterVerification);
@@ -3115,11 +3147,11 @@ export default function FindingsPage() {
 
   const { data, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: [
-      "findings-page", page, deferredSearch, filterSev, filterStatus,
+      "findings-page", surface, page, deferredSearch, filterSev, filterStatus,
       filterBlind, filterExploited, filterSlaBreached, sortBy, engagementId,
       filterNeedsReview, filterVerification, filterAgentId,
     ],
-    queryFn: () => fetchJson<FindingPage>(`/api/findings?${queryString}`),
+    queryFn: () => api.list<FindingPage>(queryString.toString()),
     refetchInterval: 30_000,
     retry: (count, err) => !isUnauthorized(err) && count < 2,
   });
@@ -3129,8 +3161,8 @@ export default function FindingsPage() {
   if (filterAgentId) summaryParams.set("agent_id", filterAgentId);
   const summarySuffix = summaryParams.toString();
   const summaryQuery = useQuery({
-    queryKey: ["findings-summary", engagementId, filterAgentId],
-    queryFn: () => fetchJson<FindingSummary>(`/api/findings/summary${summarySuffix ? `?${summarySuffix}` : ""}`),
+    queryKey: ["findings-summary", surface, engagementId, filterAgentId],
+    queryFn: () => api.summary<FindingSummary>(summarySuffix),
     refetchInterval: 30_000,
     retry: (count, err) => !isUnauthorized(err) && count < 2,
   });
@@ -3162,13 +3194,13 @@ export default function FindingsPage() {
   );
 
   const engagementOptionsQuery = useQuery({
-    queryKey: ["engagements"],
-    queryFn: () => fetchJson<{ engagements: EngagementOption[] }>("/api/engagements"),
+    queryKey: ["engagements", surface],
+    queryFn: () => api.engagements<{ engagements: EngagementOption[] }>(),
     retry: (count, err) => !isUnauthorized(err) && count < 2,
   });
   const agentOptionsQuery = useQuery({
-    queryKey: ["agents"],
-    queryFn: () => fetchJson<VedhaAgentOption[]>("/api/agents/register"),
+    queryKey: ["agents", surface],
+    queryFn: () => api.agents<VedhaAgentOption[]>(),
     retry: (count, err) => !isUnauthorized(err) && count < 2,
   });
   const activeAgentCount = (agentOptionsQuery.data ?? []).filter((agent) => agent.status !== "OFFLINE").length;
@@ -3194,16 +3226,16 @@ export default function FindingsPage() {
     }
   };
   const engagementQuery = useQuery({
-    queryKey: ["engagement-name", engagementId],
-    queryFn: () => fetchJson<{ engagement?: { name?: string } }>(`/api/engagements/${engagementId}`),
-    enabled: Boolean(engagementId),
+    queryKey: ["engagement-name", surface, engagementId],
+    queryFn: () => api.engagement<{ engagement?: { name?: string } }>(engagementId ?? "current"),
+    enabled: surface === "portal" || Boolean(engagementId),
     retry: false,
   });
 
   const inCurrentPage = findings.find((f) => f.id === selectedId) ?? null;
   const detailQuery = useQuery({
-    queryKey: ["finding-detail", selectedId],
-    queryFn: () => fetchJson<Finding>(`/api/findings/${selectedId}`),
+    queryKey: ["finding-detail", surface, selectedId],
+    queryFn: () => api.detail<Finding>(selectedId ?? ""),
     enabled: Boolean(selectedId),
     retry: false,
   });
@@ -3214,34 +3246,33 @@ export default function FindingsPage() {
   const detailPending = Boolean(selectedId) && !selected && detailQuery.isLoading;
   const detailFailed = Boolean(selectedId) && !selected && Boolean(detailQuery.error);
 
+  const invalidateFindingData = useCallback(() => {
+    void queryClient.invalidateQueries({ queryKey: ["findings-page"] });
+    void queryClient.invalidateQueries({ queryKey: ["findings-summary"] });
+    void queryClient.invalidateQueries({ queryKey: ["finding-detail"] });
+    void queryClient.invalidateQueries({ queryKey: ["finding-events"] });
+    void queryClient.invalidateQueries({ queryKey: ["portal", "findings"] });
+    for (const mode of ["operator", "portal"] as const) {
+      for (const key of ["findingsSummary", "topFindings", "posture", "sla", "activity"] as const) {
+        void queryClient.invalidateQueries({ queryKey: consoleQueryKey(mode, key) });
+      }
+    }
+  }, [queryClient]);
+
   const statusMutation = useMutation({
     mutationFn: ({ id, status, reason }: { id: string; status: FindingStatus; reason: string }) =>
-      fetchJson<Finding>(`/api/findings/${id}`, { method: "PUT", body: JSON.stringify({ status, actionReason: reason }) }),
+      api.update<Finding>(id, { status, actionReason: reason }),
     onError: (mutationError) => showError("Status update failed", errorMessage(mutationError)),
     onSuccess: (updated) => success("Status updated", `${updated.id} → ${STATUS_LABEL[updated.status]}`),
-    onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: ["findings-page"] });
-      void queryClient.invalidateQueries({ queryKey: ["findings-summary"] });
-      // The dashboard reads this through the console seam under a different
-      // key; without this the summary panels stay stale after a triage change.
-      void queryClient.invalidateQueries({ queryKey: consoleQueryKey("operator", "findingsSummary") });
-      void queryClient.invalidateQueries({ queryKey: ["finding-detail"] });
-      void queryClient.invalidateQueries({ queryKey: ["finding-events"] });
-    },
+    onSettled: invalidateFindingData,
   });
 
   const reopenMutation = useMutation({
     mutationFn: ({ id, reason }: { id: string; reason: string }) =>
-      fetchJson<Finding>(`/api/findings/${id}/reopen`, { method: "POST", body: JSON.stringify({ reason }) }),
+      api.reopen<Finding>(id, reason),
     onError: (mutationError) => showError("Reopen failed", errorMessage(mutationError)),
     onSuccess: (updated) => success("Finding reopened", `${updated.id} → open`),
-    onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: ["findings-page"] });
-      void queryClient.invalidateQueries({ queryKey: ["finding-detail"] });
-      void queryClient.invalidateQueries({ queryKey: ["findings-summary"] });
-      void queryClient.invalidateQueries({ queryKey: consoleQueryKey("operator", "findingsSummary") });
-      void queryClient.invalidateQueries({ queryKey: ["finding-events"] });
-    },
+    onSettled: invalidateFindingData,
   });
 
   const handleStatusChange = useCallback(async (id: string, newStatus: FindingStatus, reason: string) => {
@@ -3273,6 +3304,13 @@ export default function FindingsPage() {
   }, [setSelectedId]);
   const openFinding = useCallback((id: string) => setSelectedId(id), [setSelectedId]);
   const closeDetail = useCallback(() => setSelectedId(null), [setSelectedId]);
+  const explainFinding = useCallback((id: string) => {
+    if (surface === "portal") {
+      router.push(portalFindingAssistantHref(id));
+      return;
+    }
+    explain(id);
+  }, [explain, router, surface]);
 
   const moveSelection = useCallback((delta: number) => {
     const list = findingsRef.current;
@@ -3326,7 +3364,8 @@ export default function FindingsPage() {
 
   const hasActiveFilters = Boolean(
     search.trim() || filterSev !== "ALL" || filterStatus !== "ALL" || filterBlind || filterExploited
-    || filterSlaBreached || filterNeedsReview || filterVerification !== "ALL" || engagementId || filterAgentId,
+    || filterSlaBreached || filterNeedsReview || filterVerification !== "ALL"
+    || (surface === "manager" && Boolean(engagementId)) || filterAgentId,
   );
   const summaryUnavailable = summaryQuery.isLoading || Boolean(summaryQuery.error);
   const summaryValue = (value: number) => summaryUnavailable ? "—" : value.toLocaleString();
@@ -3341,7 +3380,7 @@ export default function FindingsPage() {
     setFilterNeedsReview(false);
     setFilterVerification("ALL");
     setFilterAgentId("");
-    setEngagementId(null);
+    if (surface === "manager") setEngagementId(null);
     setSortBy("risk");
     setPage(1);
     setSelectedId(null);
@@ -3355,9 +3394,10 @@ export default function FindingsPage() {
     setPage(1);
     setSelectedId(null);
   };
+  const Shell = surface === "portal" ? PortalShell : PageShell;
 
   return (
-    <PageShell
+    <Shell
       title="Findings"
       subtitle="Triage, verify and remediate discovered vulnerabilities"
       headerActions={
@@ -3403,24 +3443,29 @@ export default function FindingsPage() {
         {selected ? `Open finding: ${selected.title}` : ""}
       </div>
 
-      {engagementId && (
+      {(surface === "portal" || engagementId) && (
         <div className="findings-scope-banner">
           <div>
             <Link2 size={14} color="var(--accent)" aria-hidden />
-            <span>Scoped to <b>{engagementQuery.data?.engagement?.name ?? `${engagementId.slice(0, 8)}…`}</b> — {total} finding{total === 1 ? "" : "s"}</span>
-            <Link href={`/engagements/${engagementId}`}>Open the engagement</Link>
+            <span>
+              Scoped to <b>{engagementQuery.data?.engagement?.name ?? (engagementId ? `${engagementId.slice(0, 8)}…` : "assigned engagement")}</b>
+              {" — "}{total} finding{total === 1 ? "" : "s"}
+            </span>
+            <Link href={surface === "portal" ? "/portal/scope" : `/engagements/${engagementId}`}>Open the engagement</Link>
           </div>
-          <button
-            type="button"
-            className="btn btn-ghost"
-            style={{ height: 28, fontSize: 12 }}
-            onClick={() => {
-              setEngagementId(null); setPage(1); setSelectedId(null);
-              if (typeof window !== "undefined") window.history.replaceState(null, "", "/findings");
-            }}
-          >
-            View all findings
-          </button>
+          {surface === "manager" && (
+            <button
+              type="button"
+              className="btn btn-ghost"
+              style={{ height: 28, fontSize: 12 }}
+              onClick={() => {
+                setEngagementId(null); setPage(1); setSelectedId(null);
+                if (typeof window !== "undefined") window.history.replaceState(null, "", "/findings");
+              }}
+            >
+              View all findings
+            </button>
+          )}
         </div>
       )}
 
@@ -3500,11 +3545,14 @@ export default function FindingsPage() {
                 <span className="findings-filter-label">Engagement</span>
                 <select
                   className="findings-filter-control"
-                  value={engagementId ?? ""}
+                  value={surface === "portal"
+                    ? (engagementOptionsQuery.data?.engagements?.[0]?.id ?? "")
+                    : (engagementId ?? "")}
                   onChange={(event) => applyFilter(() => setEngagementId(event.target.value || null))}
-                  disabled={engagementOptionsQuery.isLoading}
+                  disabled={surface === "portal" || engagementOptionsQuery.isLoading}
+                  aria-label={surface === "portal" ? "Assigned engagement (locked to your session)" : "Filter by engagement"}
                 >
-                  <option value="">All engagements</option>
+                  <option value="">{surface === "portal" ? "Assigned engagement" : "All engagements"}</option>
                   {(engagementOptionsQuery.data?.engagements ?? []).map((engagement) => (
                     <option key={engagement.id} value={engagement.id}>{engagement.name}</option>
                   ))}
@@ -3690,6 +3738,9 @@ export default function FindingsPage() {
                 onReopen={handleReopen}
                 reopening={reopenMutation.isPending}
                 onClose={closeDetail}
+                onExplain={explainFinding}
+                api={api}
+                surface={surface}
               />
             ) : detailFailed ? (
               <div className="finding-detail-panel" style={{ padding: 18 }}>
@@ -3713,6 +3764,10 @@ export default function FindingsPage() {
         )}
       </div>
       </div>
-    </PageShell>
+    </Shell>
   );
+}
+
+export default function FindingsPage() {
+  return <FindingsWorkspace surface="manager" />;
 }
