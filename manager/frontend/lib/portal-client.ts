@@ -5,16 +5,27 @@
  */
 import type { CSSProperties } from "react";
 import { useQuery } from "@tanstack/react-query";
+
+interface PortalApiOptions {
+  method?: string;
+  body?: unknown;
+  idempotencyKey?: string;
+}
+
 export async function portalApi<T>(
   path: string,
-  opts: { method?: string; body?: unknown } = {},
+  opts: PortalApiOptions = {},
 ): Promise<T> {
+  const method = (opts.method ?? "GET").toUpperCase();
+  const headers = new Headers({ "Content-Type": "application/json" });
+  if (opts.idempotencyKey) headers.set("Idempotency-Key", opts.idempotencyKey);
   const send = () =>
     fetch(`/api/portal${path}`, {
-      method: opts.method ?? "GET",
-      headers: { "Content-Type": "application/json" },
+      method,
+      headers,
       body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
       cache: "no-store",
+      credentials: "same-origin",
     });
 
   let res = await send();
@@ -24,11 +35,13 @@ export async function portalApi<T>(
   // kicked to login mid-task. Matches the operator fetcher's refresh-on-401.
   if (res.status === 401) {
     const rr = await fetch("/api/portal/login", { method: "PUT" }).catch(() => null);
-    if (rr && rr.ok) {
+    const replaySafe = method === "GET" || method === "HEAD" || Boolean(opts.idempotencyKey);
+    if (rr?.ok && replaySafe) {
       res = await send();
     }
     if (res.status === 401) {
-      if (typeof window !== "undefined") window.location.href = "/portal/login";
+      if (rr?.ok) throw new Error("Your session was refreshed. Please retry this action.");
+      if (typeof window !== "undefined") window.location.assign("/portal/login");
       throw new Error("Not authenticated");
     }
   }

@@ -6,8 +6,18 @@ const findingsPage = readFileSync(
   new URL("../app/findings/page.tsx", import.meta.url),
   "utf8",
 );
+const portalFindingsPage = readFileSync(
+  new URL("../app/portal/findings/page.tsx", import.meta.url),
+  "utf8",
+);
 
 describe("findings detail layout", () => {
+  test("renders the exact shared workspace in the customer portal", () => {
+    assert.match(findingsPage, /export function FindingsWorkspace/);
+    assert.match(portalFindingsPage, /<FindingsWorkspace surface="portal" \/>/);
+    assert.doesNotMatch(portalFindingsPage, /read.only/i);
+  });
+
   test("keeps the desktop detail panel visible and independently scrollable", () => {
     assert.match(findingsPage, /className="finding-detail-column"/);
     assert.match(

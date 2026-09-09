@@ -26,26 +26,43 @@ export interface BackendOpts {
   method?: string;
   token?: string | null;
   body?: unknown;
+  rawBody?: BodyInit | null;
+  headers?: HeadersInit;
   query?: Record<string, string | number | boolean | undefined>;
 }
 
-/** Call a FastAPI endpoint, forwarding the operator's bearer token. */
-export async function backend<T = unknown>(path: string, opts: BackendOpts = {}): Promise<T> {
+/** Low-level transport used by method-complete BFF routes. */
+export async function backendResponse(path: string, opts: BackendOpts = {}): Promise<Response> {
   const url = new URL(BASE + path);
   if (opts.query) {
     for (const [k, v] of Object.entries(opts.query)) {
       if (v !== undefined) url.searchParams.set(k, String(v));
     }
   }
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
-  if (opts.token) headers.Authorization = `Bearer ${opts.token}`;
+  const headers = new Headers(opts.headers);
+  if (opts.token) headers.set("Authorization", `Bearer ${opts.token}`);
 
-  const res = await fetch(url.toString(), {
+  let requestBody: BodyInit | undefined;
+  if (opts.rawBody !== undefined && opts.rawBody !== null) {
+    requestBody = opts.rawBody;
+  } else if (opts.body !== undefined) {
+    headers.set("Content-Type", "application/json");
+    requestBody = JSON.stringify(opts.body);
+  }
+
+  const init: RequestInit & { duplex?: "half" } = {
     method: opts.method ?? "GET",
     headers,
-    body: opts.body !== undefined ? JSON.stringify(opts.body) : undefined,
+    body: requestBody,
     cache: "no-store",
-  });
+  };
+  if (requestBody instanceof ReadableStream) init.duplex = "half";
+  return fetch(url.toString(), init);
+}
+
+/** Call a FastAPI endpoint, forwarding the operator's bearer token. */
+export async function backend<T = unknown>(path: string, opts: BackendOpts = {}): Promise<T> {
+  const res = await backendResponse(path, opts);
 
   const text = await res.text();
   const data = text ? safeJson(text) : null;
