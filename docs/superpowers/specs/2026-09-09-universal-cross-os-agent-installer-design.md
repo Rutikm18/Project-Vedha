@@ -114,6 +114,47 @@ open a UDP socket, `connect(("1.1.1.1", 80))` (no packets sent), read
 Works unprivileged on macOS, Linux, and Windows. `self-scan` uses the bare IP;
 `connect` uses the `/24` ceiling.
 
+## Per-OS dependency bootstrap (hard requirement: the script installs everything)
+
+The installer must leave a target able to run with **nothing pre-installed but a
+package manager**. It installs both layers — the OS runtime and the Python deps —
+and never asks the user to install anything by hand.
+
+**Layer 1 — Python runtime + venv module (done by the bootstrap shim):**
+
+| OS / family | Detect | Install if missing |
+|---|---|---|
+| Debian/Ubuntu | `python3 --version` ≥ 3.8, `python3 -m venv` works | `apt-get install -y python3 python3-venv python3-pip` |
+| RHEL/Fedora | same | `dnf install -y python3 python3-pip` |
+| Arch | same | `pacman -S --noconfirm python python-pip` |
+| macOS | `python3` present | `brew install python@3.12`, else prompt `xcode-select --install` (system python3) |
+| Windows | `py`/`python` present | `winget install -e --id Python.Python.3.12`, fallback: official installer `/quiet InstallAllUsers=1 PrependPath=1` |
+
+If no supported package manager is found, the shim exits non-zero with the exact
+manual command for that OS — never proceeds half-configured.
+
+**Layer 2 — Python packages (done by the brain, inside the venv):**
+
+- `pip install -r requirements-runtime.txt` into the probe's `.venv`.
+- **Wheel-first, compile-fallback:** attempt `pip install --only-binary=:all:` first
+  so the common path needs **no C toolchain** (all runtime deps —
+  `httpx`, `websockets`, `cryptography`, `impacket`, `ldap3`, `dnspython` — ship
+  wheels for mainstream OS/arch). Only if a wheel is genuinely unavailable (rare
+  arch, e.g. musl/uncommon ARM) does it install the OS build toolchain and retry
+  from source:
+  | family | build toolchain (fallback only) |
+  |---|---|
+  | Debian/Ubuntu | `build-essential python3-dev libffi-dev libssl-dev` |
+  | RHEL/Fedora | `gcc python3-devel libffi-devel openssl-devel` |
+  | macOS | Xcode Command Line Tools (`xcode-select --install`) |
+  | Windows | wheels always available for supported Pythons → no compiler needed |
+- Idempotent via a requirements-hash stamp (skip when unchanged; heal a partial venv).
+- **No nmap/masscan/system scanner tools** are needed — the scanners are stdlib TCP
+  (verified in `Dockerfile`), so Layer 1 + Layer 2 is the complete dependency set.
+
+`doctor` reports exactly which of these are present/missing so a failed bootstrap
+is diagnosable in one command.
+
 ## CLI / UX surface (the "one command")
 
 `<base>` is the repo's raw GitHub path, e.g.
@@ -155,15 +196,36 @@ python -m agent.setup doctor
 - **Manual:** `self-scan` against localhost on each OS; `connect --enroll` against a
   test Manager; `--service` install/uninstall round-trip per OS.
 
+## Alternatives considered & future hardening
+
+Recorded so the choices are auditable (see the decision-record table discussion):
+
+- **`uv` instead of raw `venv`+`pip`** — faster, lockfile-backed, self-bootstrapping.
+  A cheap, real upgrade; deferred to keep phase 1 dependency-free, but the
+  wheel-first install is written so swapping the resolver later is localized.
+- **Go/Rust single static binary** (osquery/Tailscale/Sliver model) — the most
+  robust no-runtime cross-OS agent, but a full rewrite of a Python codebase; out
+  of scope. The existing **sealed Nuitka binary** (`seal-probe.sh`) already
+  captures the no-Python/no-source benefit without a rewrite.
+- **`netifaces`/`psutil` for scope detection** — enumerates *all* NICs (correct for
+  multi-homed/VPN hosts) at the cost of a dependency; the stdlib primary-route
+  trick is chosen for zero-dep simplicity, with multi-NIC as a known limitation.
+- **Supply-chain hardening (post-MVP):** `curl|sh` over GitHub raw has no integrity
+  pinning. Future: publish **checksums + GPG/cosign signatures**, and/or ship via
+  package managers (Homebrew tap, `winget`/`choco`, apt/yum repo, notarized
+  `.pkg`/signed `.msi`). Flagged as a dedicated hardening phase, not MVP.
+
 ## Build order (phasing)
 
-1. **Brain core** — `agent/setup.py` with `doctor`, scope auto-detect, venv/deps,
-   arg parsing + unit tests.
+1. **Brain core** — `agent/setup.py` with `doctor`, scope auto-detect, arg parsing,
+   and **Layer-2 dependency install** (venv + wheel-first/compile-fallback pip) +
+   unit tests.
 2. **`self-scan`** — own-IP detect → `agent.agent local-run` (delivers standalone
    value with no Manager).
 3. **`connect`** — enrollment env + cross-OS supervisor loop.
-4. **Bootstraps** — refactor `install.sh` + `install.ps1` to thin shims; repo-root
-   `vedha-setup.py`.
+4. **Bootstraps** — refactor `install.sh` + `install.ps1` to thin shims that do the
+   **Layer-1 Python + venv-module install** per OS (apt/dnf/pacman/brew/winget),
+   then hand off to the brain; repo-root `vedha-setup.py`.
 5. **`--service`** — systemd / launchd / Scheduled Task templates.
 6. **CI matrix** — the three-OS `doctor` smoke test.
 
