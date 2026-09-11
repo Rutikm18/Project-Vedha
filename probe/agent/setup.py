@@ -67,6 +67,8 @@ def build_parser() -> argparse.ArgumentParser:
     g = cn.add_mutually_exclusive_group()
     g.add_argument("--pat")
     g.add_argument("--token")
+    cd = sub.add_parser("collect-diagnostics")
+    cd.add_argument("--out")
     return p
 
 
@@ -100,6 +102,24 @@ def cmd_connect(args) -> int:
     return connect.run(values, mode=enroll, pat=args.pat, token=args.token, state_dir=_state_dir())
 
 
+def cmd_collect_diagnostics(args) -> int:
+    import json as _json
+
+    from agent import obs, self_scan
+    values, _ = _resolved({})
+    checks = doctor.run(str(values.get("manager_url", "")), _is_privileged(), _state_dir())
+    ip = self_scan.primary_ipv4()
+    interfaces = [{"name": "primary", "kind": "physical", "addresses": [f"{ip}/?"]}] if ip else []
+    bundle = obs.build_diagnostics(config_values=values, doctor_checks=checks,
+                                   interfaces=interfaces, recent_logs=[], clock_offset_s=0.0)
+    out = args.out or os.path.join(_state_dir(), "diagnostics.json")
+    os.makedirs(os.path.dirname(out) or ".", exist_ok=True)
+    with open(out, "w", encoding="utf-8") as fh:
+        _json.dump(bundle, fh, indent=2)
+    print(f"diagnostics written to {out} (secrets redacted, own-IP masked)")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     # thread the security mode down (connect reads args.strict/insecure directly)
@@ -108,6 +128,7 @@ def main(argv: list[str] | None = None) -> int:
         "config": cmd_config,
         "self-scan": cmd_self_scan,
         "connect": cmd_connect,
+        "collect-diagnostics": cmd_collect_diagnostics,
     }[args.cmd](args)
 
 
