@@ -65,18 +65,18 @@ The supervisor parses this — it never infers policy from the bare code.
 
 ### Enrollment env contract (the flagged coupling — now specified)
 
-The brain sets exactly these; the daemon reads exactly these (add a contract test
-asserting the mapping on both sides):
+The brain sets exactly these; the daemon reads exactly these. **VERIFIED in Phase 6
+against `agent/agent.py`** (not guessed) — the daemon already supports all three:
 
-| Mode | Brain sets | Daemon behavior |
+| Mode | Brain sets | Daemon read site |
 |---|---|---|
-| pairing | `VEDHA_ENROLL_MODE=pairing` | fresh device enrollment; print pairing code; exit 40 until approved |
-| pat | `VEDHA_ENROLL_MODE=pat`, `VEDHA_PAT=<t>` | authenticate with the PAT |
-| token | `VEDHA_ENROLL_MODE=token`, `VEDHA_ENROLL_TOKEN=<t>` | pre-authorized, site-bound token |
+| pairing | *(neither credential var)* | `_enroll_device` device-enrolls + prints the pairing code (agent.py:1372) |
+| pat | `VEDHA_PAT=<t>` | `OPERATOR_TOKEN` = `OPERATOR_TOKEN` \| `PROBE_PAT` \| `VEDHA_PAT` (agent.py:366-369) |
+| token | `PROBE_ENROLL_TOKEN=<t>` | `_enroll_device` reads `PROBE_ENROLL_TOKEN` (agent.py:1314) |
 
-> Migration note: today's daemon reads `PROBE_PAT`/saved `probe.env`. Phase 0b
-> pins the new names above; Phase 6 wires the daemon to read them and keeps a
-> back-compat shim for `PROBE_PAT` for one release.
+> Verified 2026-09-11: the daemon already reads `VEDHA_PAT` and
+> `PROBE_ENROLL_TOKEN`, so `connect_env` maps straight onto them with no daemon
+> change and no shim needed. `PROBE_PAT`/`OPERATOR_TOKEN` remain accepted.
 
 ---
 
