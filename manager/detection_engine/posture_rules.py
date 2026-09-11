@@ -390,6 +390,30 @@ def _snmp_default(f: Fact) -> Optional[dict]:
     return {"community": c} if c in _DEFAULT_COMMUNITIES else None
 
 
+def group_key_for(rule_id: str, evidence: dict | None) -> str:
+    """A stable handle for collapsing identical findings across a fleet.
+
+    Twelve identical cameras produce twelve identical findings. Listed one per
+    row they bury the three findings that actually matter, and rows 2-12 tell the
+    reader nothing row 1 didn't. This key lets the presentation layer fold them
+    into a single row with an asset count.
+
+    PRESENTATION ONLY. Every per-asset finding is still stored with its own
+    evidence — merging the underlying records would destroy the ability to say
+    "eleven of these are fixed, that one isn't", which is exactly what an
+    operator needs during remediation.
+
+    The signature is the strongest device identity in the evidence (product, then
+    service). Cosmetic differences in banner strings — casing, padding — must not
+    split a group, so it is normalised. With no signature at all the key degrades
+    to rule-only: coarser, but deterministic and never a crash.
+    """
+    ev = evidence or {}
+    sig = ev.get("product") or ev.get("service") or ""
+    raw = f"{rule_id}|{str(sig).strip().lower()}"
+    return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
+
+
 def _os_eol(f: Fact) -> Optional[dict]:
     """An OS past its vendor end-of-SECURITY-support date.
 
