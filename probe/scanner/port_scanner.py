@@ -345,7 +345,7 @@ class PortScanner(BaseScanner):
                  adaptive_timeout: bool = True, source_port: int | None = None,
                  randomize: bool = False, scan_delay: float = 0.0,
                  congestion: bool = True, delivery_floor: float = 0.35,
-                 reprobe: bool = True,
+                 deadline_seconds: float | None = None, reprobe: bool = True,
                  reprobe_rate: float = 40.0, reprobe_concurrency: int = 10,
                  reprobe_retries: int = 3,
                  scan_meta: dict | None = None, **kwargs):
@@ -386,6 +386,16 @@ class PortScanner(BaseScanner):
         # AIMD reads that loss and backs off, which RAISES recall. It starts at
         # full concurrency, so a healthy LAN scan is not slowed down.
         self.congestion = congestion
+        # Wall-clock budget for ONE host. None = scan to completion.
+        #
+        # Measured need: a deep 65,535-port sweep of an RST-suppressing host had
+        # an 11.9-hour ETA while other jobs queued behind it. The budget bounds
+        # that, and the existing SET-BASED accounting keeps the result honest for
+        # free — a port never dequeued is never recorded, so `classified <
+        # ports_requested` and `complete` is already False. Crucially such ports
+        # are NOT reported `filtered`: that is a claim about the target, and a
+        # clock running out is not evidence of a firewall.
+        self.deadline_seconds = deadline_seconds
         # Fraction of recent probes that must still get a DEFINITIVE answer for
         # the path to count as healthy. Above it, silence is read as host policy
         # (do not throttle); below it, delivery has genuinely collapsed and AIMD
@@ -697,9 +707,14 @@ class PortScanner(BaseScanner):
         # each port exactly once carrying its FINAL state (re-recording a
         # corrected port would register as a duplicate and fail completeness).
         collected: dict[int, ScanResult] = {}
+        _deadline = (t0 + self.deadline_seconds) if self.deadline_seconds else None
 
         async def _worker() -> None:
             while True:
+                # Checked before dequeuing, not mid-probe: a port already taken
+                # off the queue gets finished, so no port is left half-observed.
+                if _deadline is not None and time.monotonic() >= _deadline:
+                    return
                 try:
                     port = queue.get_nowait()
                 except asyncio.QueueEmpty:
@@ -744,9 +759,16 @@ class PortScanner(BaseScanner):
             if result.status == "open" or self.report_closed:
                 emitted.append(result)
 
+        # Anything still queued was never probed. The count comes from the
+        # existing accounting; this flag only records WHY, so a partial result
+        # reads as "we ran out of time" rather than an unexplained gap.
+        budget_exhausted = bool(_deadline is not None and not queue.empty())
+
         metrics.duration_s = round(time.monotonic() - t0, 3)
         if self.emit_summary:
             summ = metrics.summary()
+            # Always present so consumers can branch without a key check.
+            summ["budget_exhausted"] = budget_exhausted
             if self.scan_meta:
                 summ["audit"] = self.scan_meta        # profile + ulimit + concurrency
             if reprobe_stats is not None:
@@ -780,6 +802,10 @@ def main() -> None:
     parser.add_argument("--fixed-timeout", action="store_true",
                         help="disable per-host RTT-adaptive timeout; use the fixed "
                              "--timeout for every probe (old behaviour)")
+    parser.add_argument("--max-seconds", type=float, default=None,
+                        help="per-host wall-clock budget. Ports not reached are "
+                             "reported not_scanned (never 'filtered') and the run "
+                             "is marked incomplete — an honest partial result")
     parser.add_argument("--no-reprobe", action="store_true",
                         help="skip the gentle cleanup pass over ports that stayed "
                              "silent (faster, but a host that rate-limits its RSTs "
@@ -844,6 +870,7 @@ def main() -> None:
                               adaptive_timeout=not args.fixed_timeout,
                               congestion=not args.no_congestion,
                               reprobe=not args.no_reprobe,
+                              deadline_seconds=args.max_seconds,
                               source_port=args.source_port,
                               randomize=args.randomize, scan_delay=args.scan_delay,
                               scan_meta=scan_meta)
