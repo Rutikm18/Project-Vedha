@@ -31,6 +31,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Callable, Optional
 
+from default_creds_catalog import has_known_defaults
 from eol_catalog import lookup_eol
 from models import Asset, Fact, FindingState
 
@@ -414,6 +415,47 @@ def group_key_for(rule_id: str, evidence: dict | None) -> str:
     return hashlib.sha256(raw.encode("utf-8")).hexdigest()[:16]
 
 
+def _default_cred_candidate(f: Fact) -> Optional[dict]:
+    """A device from a known-defaults vendor that is exposing a login.
+
+    CANDIDATE, never confirmation. Vedha does not attempt the credential — a
+    login attempt can lock accounts, trip IDS, and wedge embedded management
+    interfaces, and it changes the tool from one that observes to one that
+    authenticates. So this reports what is provable from evidence already held:
+    the vendor publishes defaults, and a login surface is reachable.
+
+    Both halves are required. A known-defaults vendor with no observed login
+    surface (web UI firewalled off) is not this risk, and a login surface from an
+    uncatalogued vendor is not evidence a default password exists.
+    """
+    d = _d(f)
+    surface = d.get("auth_surface")
+    if not isinstance(surface, dict):
+        return None
+    scheme = surface.get("scheme")
+    if not scheme or scheme == "none":
+        return None                       # no reachable login -> not this finding
+
+    vendor = surface.get("vendor") or d.get("vendor")
+    hit = has_known_defaults(vendor)
+    if hit is None:
+        return None                       # uncatalogued vendor -> never guess
+
+    vendor = str(vendor).strip().lower()
+    return {
+        "vendor": vendor,
+        "auth_scheme": scheme,
+        "realm": surface.get("realm"),
+        "default_login": hit["default_login"],
+        "reference": hit["reference"],
+        "product": d.get("model") or d.get("product") or vendor,
+        "detail": (f"{vendor} devices ship a documented default login "
+                   f"({hit['default_login']}) and this host exposes a {scheme} "
+                   f"login surface. Confirm the default was changed — Vedha does "
+                   f"not attempt credentials, so this is unverified."),
+    }
+
+
 def _os_eol(f: Fact) -> Optional[dict]:
     """An OS past its vendor end-of-SECURITY-support date.
 
@@ -682,6 +724,25 @@ RULES: list[PostureRule] = [
                  "absent from the catalog stays silent rather than guessing — the "
                  "cost is catalog freshness, never a false accusation.",
         requires=("os_release",)),
+
+    PostureRule(
+        "POSTURE-DEFAULT-CRED-CANDIDATE", "Device may still use vendor default credentials",
+        "high", "CWE-1392", "T1078.001", "default_credentials",
+        ("web_scan",), _default_cred_candidate,
+        "Change the device's default administrator password; where the platform "
+        "supports it, disable or rename the default account and require a "
+        "password change on first login.",
+        fp_notes="A CANDIDATE, not a confirmation: Vedha never attempts the "
+                 "credential, so this says 'this vendor ships defaults and a "
+                 "login is reachable', not 'the default works'. Confirmation is a "
+                 "separate RoE-gated active-validation step. Requires BOTH a "
+                 "catalogued vendor and an observed login surface; neither alone "
+                 "fires. Scoped to web_scan because that is the only scanner that "
+                 "emits auth_surface today — extend BOTH the emitter and this "
+                 "tuple together, or the fact-contract gate will (correctly) fail. "
+                 "web_scan is not in the validated trust tier, so findings land "
+                 "SUSPECTED.",
+        requires=("auth_surface",)),
 
     # ── service-layer rules ───────────────────────────────────────────────────
     # The deep-branch scanners below had NO rule at all: the probe collected,

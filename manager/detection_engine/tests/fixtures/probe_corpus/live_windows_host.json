@@ -201,7 +201,12 @@
     "content-length": "315"
    },
    "allowed_methods": [],
-   "dangerous_methods": []
+   "dangerous_methods": [],
+   "auth_surface": {
+    "scheme": "none",
+    "realm": null,
+    "vendor": null
+   }
   },
   "evidence": "HTTP 404 server=Microsoft-HTTPAPI/2.0 title='Not Found'"
  },
