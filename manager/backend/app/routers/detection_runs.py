@@ -33,6 +33,26 @@ logger = structlog.get_logger()
 _OPEN_STATUSES = (FindingStatus.open, FindingStatus.confirmed, FindingStatus.accepted)
 
 
+def _select_new_since(findings, *, run_started_at):
+    """Findings FIRST produced by this run — the "what appeared" half of a delta.
+
+    Uses `first_seen` against the run's start, deliberately the same mechanism
+    the resolution-candidate half already uses (`last_seen < run.started_at`)
+    rather than a separate run-id diff. Two independent notions of "what changed"
+    would drift, and the one that disagreed would be silently wrong.
+
+    `>=` not `>`: a run's own findings share its start instant, so a strict
+    comparison would drop every one of them. A row with no `first_seen` predates
+    the time series and is NOT claimed as new — calling legacy rows new on every
+    rescan would flood the delta forever and train the operator to ignore it.
+    """
+    return [
+        f for f in findings
+        if getattr(f, "first_seen", None) is not None
+        and f.first_seen >= run_started_at
+    ]
+
+
 def _run_dict(r: DetectionRun) -> dict:
     return {
         "id": str(r.id),
@@ -107,9 +127,35 @@ async def latest_run_delta(
     )).scalar_one()
     cand_rows = (await db.execute(cand_q.limit(candidates_limit))).scalars().all()
 
+    # The other half of the delta: what APPEARED in this run. Without it a
+    # rescan could only ever report disappearances, so a new SOCKS proxy or a
+    # newly exposed host stayed invisible — the most actionable line in a repeat
+    # assessment.
+    new_rows = (await db.execute(
+        select(Finding)
+        .where(
+            Finding.engagement_id == engagement_id,
+            Finding.first_seen.is_not(None),
+            Finding.first_seen >= run.started_at,
+        )
+        .order_by(Finding.severity)
+        .limit(candidates_limit)
+    )).scalars().all()
+
     return {
         "has_runs": True,
         "run": _run_dict(run),
+        "new_findings_count": len(new_rows),
+        "new_findings": [
+            {
+                "id": str(f.id),
+                "title": f.title,
+                "severity": f.severity.value if f.severity else None,
+                "status": f.status.value if f.status else None,
+                "first_seen": f.first_seen.isoformat() if f.first_seen else None,
+            }
+            for f in new_rows
+        ],
         "resolution_candidates_count": int(cand_count or 0),
         "resolution_candidates": [
             {
