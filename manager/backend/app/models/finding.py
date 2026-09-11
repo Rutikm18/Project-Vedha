@@ -75,6 +75,15 @@ class Finding(Base, TimestampMixin):
     # resolution_run_id: the run that auto-closed it; resolution_method: auto|manual.
     resolution_miss_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    # assigned_to: who owns REMEDIATING this finding. Nullable because unassigned
+    # is the normal state — most findings never get an individual owner, and
+    # forcing one would either invent accountability or block triage. Indexed
+    # because "what is on my plate" is a per-owner query. ondelete=SET NULL: a
+    # departing user must not cascade-delete the security history they touched.
+    assigned_to: Mapped[uuid.UUID | None] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("users.id", ondelete="SET NULL"),
+        nullable=True, index=True,
+    )
     resolution_method: Mapped[str | None] = mapped_column(String(16), nullable=True)
     resolution_run_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("detection_runs.id", ondelete="SET NULL"), nullable=True
