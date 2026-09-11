@@ -11,6 +11,30 @@
 #     sudo sh install.sh --manager https://manager.example.com
 set -eu
 
+# ── Native cross-OS brain path (Phase 7) ─────────────────────────────────────
+# `install.sh <doctor|config|self-scan|connect> [--strict|--insecure] ...`
+# Ensures Python 3.8+ (+ the venv module) per OS, then hands off to the ONE brain
+# CLI (agent.setup). Strict security is optional in this initial phase: pass
+# --strict for fail-closed verification, or --insecure (default) to skip it.
+# The legacy LOCAL/DOCKER modes below are unchanged for backward compatibility.
+case "${1:-}" in
+  doctor|config|self-scan|connect|--strict|--insecure)
+    cd "$(dirname "$0")"
+    if ! command -v python3 >/dev/null 2>&1; then
+      if   command -v apt-get >/dev/null 2>&1; then sudo apt-get update && sudo apt-get install -y python3 python3-venv python3-pip
+      elif command -v dnf     >/dev/null 2>&1; then sudo dnf install -y python3 python3-pip
+      elif command -v pacman  >/dev/null 2>&1; then sudo pacman -S --noconfirm python python-pip
+      elif command -v brew    >/dev/null 2>&1; then brew install python
+      else echo "Install Python 3.8+ (and the venv module), then re-run." >&2; exit 1; fi
+    fi
+    python3 -c 'import sys; raise SystemExit(0 if sys.version_info[:2] >= (3, 8) else 1)' \
+      || { echo "Python 3.8+ required." >&2; exit 1; }
+    python3 -c 'import venv' 2>/dev/null \
+      || { command -v apt-get >/dev/null 2>&1 && sudo apt-get install -y python3-venv; }
+    exec python3 -m agent.setup "$@"
+    ;;
+esac
+
 # ─────────────────────────────────────────────────────────────────────────────
 # ONE installer, two modes:
 #
