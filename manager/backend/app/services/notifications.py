@@ -64,7 +64,38 @@ def _send_jira(config: dict, secret: str | None, subject: str, body: str) -> Non
     resp.raise_for_status()
 
 
-_SENDERS: dict[str, Sender] = {"email": _send_email, "slack": _send_slack, "jira": _send_jira}
+def _send_servicenow(config: dict, secret: str | None, subject: str, body: str) -> None:
+    """Create a ServiceNow incident via the Table API.
+
+    ServiceNow is the ticketing system most enterprise security teams actually
+    run on, and a finding that cannot reach the queue where work is tracked is a
+    finding nobody will action.
+
+    Validates config up front and RAISES on anything missing. deliver() owns the
+    catch-and-log policy, so a misconfigured integration degrades to a logged
+    failure — but it must fail loudly rather than no-op, or an operator would
+    believe tickets were being filed when none were. Same reason
+    raise_for_status() is not swallowed here.
+
+    The table is configurable because not every org files security work as
+    `incident` (many use sn_si_incident from the Security Incident Response app).
+    """
+    url = (config.get("SERVICENOW_URL") or "").rstrip("/")
+    user = config.get("SERVICENOW_USERNAME")
+    table = config.get("SERVICENOW_TABLE") or "incident"
+    if not (url and user and secret):
+        raise ValueError("servicenow integration missing URL/USERNAME/token")
+    resp = httpx.post(
+        f"{url}/api/now/table/{table}",
+        auth=(user, secret),
+        json={"short_description": subject, "description": body},
+        timeout=20,
+    )
+    resp.raise_for_status()
+
+
+_SENDERS: dict[str, Sender] = {"email": _send_email, "slack": _send_slack,
+                               "jira": _send_jira, "servicenow": _send_servicenow}
 
 
 def deliver(kind: str, config: dict, secret: str | None, subject: str, body: str, *,

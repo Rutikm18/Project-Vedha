@@ -24,7 +24,7 @@ from app.services.notifications import enqueue_notification
 
 router = APIRouter(prefix="/integrations", tags=["integrations"])
 _OPERATOR = require_role(["admin", "manager"])
-_KINDS = {"email", "slack", "jira"}
+_KINDS = {"email", "slack", "jira", "servicenow"}
 
 
 class IntegrationIn(BaseModel):
@@ -61,7 +61,7 @@ async def list_integrations(db: DB, current_user: Annotated[AuthUser, _OPERATOR]
 
 
 @router.put("/{kind}", response_model=IntegrationOut,
-            summary="Add or update an integration (email|slack|jira)")
+            summary="Add or update an integration (email|slack|jira|servicenow)")
 async def put_integration(kind: str, body: IntegrationIn, db: DB,
                           current_user: Annotated[AuthUser, _OPERATOR]):
     if kind not in _KINDS:
