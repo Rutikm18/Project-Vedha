@@ -39,6 +39,9 @@ INTENSITY_PRESETS: dict[str, dict] = {
         "timeout": 1.0,
         "disc_timeout": 1.0,
         "retries": 0,
+        # Already bounded by BREADTH (~15 ports); a time ceiling here could only
+        # ever cut short a scan that was going to finish anyway.
+        "max_host_seconds": None,
     },
     "standard": {
         "port_profile": None,        # defer to the profile's own catalog
@@ -47,6 +50,7 @@ INTENSITY_PRESETS: dict[str, dict] = {
         "timeout": 3.0,
         "disc_timeout": 1.5,
         "retries": 1,
+        "max_host_seconds": None,      # bounded by the profile's port catalog
     },
     "deep": {
         "port_profile": "full",      # the entire 1–65535 TCP space
@@ -55,6 +59,14 @@ INTENSITY_PRESETS: dict[str, dict] = {
         "timeout": 4.0,
         "disc_timeout": 2.0,
         "retries": 2,
+        # The ONLY preset that needs a ceiling: port_profile="full" is all 65,535
+        # ports, and against a host that rate-limits its RSTs that measured an
+        # 11.9-hour ETA for a single host while other jobs queued behind it.
+        # 30 min comfortably exceeds a healthy full sweep (~21 min at the ~51
+        # ports/sec measured after the congestion fixes), so this stops the
+        # pathological case without touching a scan that is working. Ports not
+        # reached are reported not_scanned, never "filtered".
+        "max_host_seconds": 1800,
     },
 }
 

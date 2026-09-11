@@ -361,6 +361,7 @@ async def _run_branch(
 async def run_engagement(targets: list[str], scope: ScopeGuard, *, profile: str = "it",
                          rate: float = 200.0, concurrency: int = 100, timeout: float = 3.0,
                          disc_timeout: float = 1.5, retries: int = 1,
+                         max_host_seconds: float | None = None,
                          port_override: list[int] | None = None,
                          scan_method: str = "connect",
                          cache: WorkflowCache | None = None,
@@ -508,8 +509,12 @@ async def run_engagement(targets: list[str], scope: ScopeGuard, *, profile: str 
             scanner = SynScanner(scope, ports=ports, rate=rate,
                                  concurrency=concurrency, timeout=timeout)
         else:
+            # max_host_seconds bounds ONE host's port sweep. Only `deep` sets it
+            # (all 65,535 ports); ports not reached are reported not_scanned,
+            # never "filtered", so a truncated sweep stays honest.
             scanner = PortScanner(scope, ports=ports, rate=rate, concurrency=concurrency,
-                                  timeout=timeout, retries=retries)
+                                  timeout=timeout, retries=retries,
+                                  deadline_seconds=max_host_seconds)
         with _timed(trace, "port_scan"):
             results = await _gather_per_host(
                 scanner,

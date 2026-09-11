@@ -265,6 +265,16 @@ def _tuning_from_params(params: dict, preset: dict | None = None) -> dict:
         "timeout":      _clamp(params.get("timeout"),      0.5, 30.0, preset["timeout"]),
         "disc_timeout": _clamp(params.get("disc_timeout"), 0.5, 15.0, preset["disc_timeout"]),
         "retries":      int(_clamp(params.get("retries"),  0,   5,    preset["retries"])),
+        # Per-host wall-clock ceiling. Only `deep` ships a non-None default (all
+        # 65,535 ports); an operator may override within the clamp. None means
+        # unbounded, which is correct for the breadth-bounded presets.
+        "max_host_seconds": (
+            _clamp(params.get("max_host_seconds"), 60, 14400,
+                   preset["max_host_seconds"])
+            if (params.get("max_host_seconds") is not None
+                or preset["max_host_seconds"] is not None)
+            else None
+        ),
     }
 
     # OT passive listen window — the OT use-case promises "duration set by operator".
