@@ -7,6 +7,7 @@ from app.models.finding_event import FindingEvent
 from app.models.attack_path import AttackPath
 from app.models.detection import DetectionResult
 from app.models.scan_job import ScanJob
+from app.models.scan_schedule import ScanSchedule
 from app.models.scan_job_attempt import ScanJobAttempt
 from app.models.scan_result import ScanResult
 from app.models.service import Service
