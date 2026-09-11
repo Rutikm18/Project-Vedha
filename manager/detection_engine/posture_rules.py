@@ -31,6 +31,7 @@ from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from typing import Any, Callable, Optional
 
+from eol_catalog import lookup_eol
 from models import Asset, Fact, FindingState
 
 # ── trust tier ────────────────────────────────────────────────────────────────
@@ -389,6 +390,29 @@ def _snmp_default(f: Fact) -> Optional[dict]:
     return {"community": c} if c in _DEFAULT_COMMUNITIES else None
 
 
+def _os_eol(f: Fact) -> Optional[dict]:
+    """An OS past its vendor end-of-SECURITY-support date.
+
+    Reads the release string os_fingerprint already emits; the catalog decides.
+    An OS absent from the catalog is treated as SUPPORTED (returns None) rather
+    than guessed at — telling a customer their supported fleet is dead destroys
+    trust in every other finding, so the asymmetry favours silence.
+    """
+    d = _d(f)
+    hit = lookup_eol(d.get("os_release"), d.get("os_version"))
+    if hit is None:
+        return None
+    return {
+        "product": hit["product"],
+        "eol_date": hit["eol_date"],
+        "days_past_eol": hit["days_past_eol"],
+        "source": hit["source"],
+        "detail": (f"{hit['product']} reached end-of-support on {hit['eol_date']} "
+                   f"({hit['days_past_eol']} days ago). No security patches are "
+                   f"issued, so its vulnerability count can only grow."),
+    }
+
+
 # ── service-layer detectors ───────────────────────────────────────────────────
 # These read the deep-branch scanners that had NO rule at all: their facts were
 # collected, shipped and stored, then never assessed. Every path below was read
@@ -621,6 +645,19 @@ RULES: list[PostureRule] = [
         fp_notes="snmp_scan is not in the validated trust tier yet, so this is "
                  "reported SUSPECTED pending validation.",
         requires=("community",)),
+
+    PostureRule(
+        "POSTURE-OS-END-OF-LIFE", "Operating system is end-of-life / unsupported",
+        "high", "CWE-1104", "T1190", "eol_software", ("os_fingerprint",), _os_eol,
+        "Upgrade to a vendor-supported OS release. An unsupported OS receives no "
+        "security patches, so known vulnerabilities accumulate permanently and no "
+        "amount of hardening closes them.",
+        fp_notes="Fires only on a release string present in the curated EOL "
+                 "catalog (eol_catalog.py), matched longest-key-first so a "
+                 "supported successor never inherits its ancestor's date. An OS "
+                 "absent from the catalog stays silent rather than guessing — the "
+                 "cost is catalog freshness, never a false accusation.",
+        requires=("os_release",)),
 
     # ── service-layer rules ───────────────────────────────────────────────────
     # The deep-branch scanners below had NO rule at all: the probe collected,
