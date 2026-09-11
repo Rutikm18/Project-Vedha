@@ -75,6 +75,65 @@ _TECH_HINTS = {
 }
 
 
+# Vendors whose devices ship widely-documented default credentials. Used ONLY to
+# tag an observation with a vendor hint — the probe never acts on it. The manager
+# decides whether a hint plus a login surface is worth a finding.
+_VENDOR_HINTS = (
+    "hikvision", "dahua", "axis", "netgear", "ubiquiti", "tp-link", "d-link",
+    "zyxel", "mikrotik", "hp", "canon", "epson", "brother", "synology", "qnap",
+)
+# How much body to inspect for a vendor string. A management login page names its
+# vendor in the first few KB (title/logo/script paths); scanning megabytes of a
+# large page would cost far more than the hint is worth.
+_VENDOR_SCAN_BYTES = 4096
+_REALM_RE = re.compile(r'realm="([^"]*)"', re.I)
+
+
+def parse_auth_surface(headers: dict | None, body: str | None = "") -> dict:
+    """Classify the login a web service ASKS for. Pure observation.
+
+    The probe records what the device ADVERTISES — an HTTP auth challenge, or a
+    password form — and stops. It never sends a credential. Confirming that a
+    default password works is an active, RoE-gated step that belongs nowhere near
+    a discovery scan, and keeping the decision in the manager keeps a credential
+    list out of the scanner entirely.
+
+    Returns {scheme, realm, vendor}:
+      scheme  basic | digest | other | form | none
+      realm   the challenge realm, when the server supplied one
+      vendor  a known-defaults vendor hinted by the realm or page, else None
+
+    An explicit challenge outranks a form: the header is the server stating its
+    auth scheme, whereas a password input is a heuristic read of markup.
+    """
+    www = ""
+    for k, v in (headers or {}).items():
+        if str(k).lower() == "www-authenticate":
+            www = str(v)
+            break
+
+    realm = None
+    if www:
+        low = www.strip().lower()
+        scheme = ("digest" if low.startswith("digest")
+                  else "basic" if low.startswith("basic")
+                  else "other")          # named, never guessed at
+        m = _REALM_RE.search(www)
+        realm = m.group(1) if m else None
+    else:
+        text = body if isinstance(body, str) else ""
+        low_body = text[:_VENDOR_SCAN_BYTES].lower()
+        scheme = "form" if ('type="password"' in low_body
+                            or "type='password'" in low_body) else "none"
+
+    if scheme == "none":
+        return {"scheme": "none", "realm": None, "vendor": None}
+
+    hay = f"{realm or ''} {(body or '')[:_VENDOR_SCAN_BYTES]}".lower()
+    vendor = next((v for v in _VENDOR_HINTS if v in hay), None)
+    return {"scheme": scheme, "realm": realm, "vendor": vendor}
+
+
 def _fetch(url: str, timeout: float) -> dict | None:
     req = urllib.request.Request(
         url, headers={"User-Agent": user_agent()}, method="GET")
@@ -129,6 +188,11 @@ def _fetch(url: str, timeout: float) -> dict | None:
         "security_headers_present": [h for h in _SECURITY_HEADERS if h in headers],
         "security_headers_missing": missing_sec,
         "all_headers": headers,
+        # What login this service ASKS for (observation only — no credential is
+        # ever sent). The manager pairs this with its known-defaults vendor list
+        # to raise a default-credential CANDIDATE finding.
+        "auth_surface": parse_auth_surface(
+            headers, body.decode("latin-1", "replace") if isinstance(body, bytes) else (body or "")),
         **parse_allow_header(allow),
     }
 
