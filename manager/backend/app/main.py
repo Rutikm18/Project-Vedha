@@ -38,6 +38,7 @@ from app.routers.probe_enrollment import router as probe_enrollment_router
 from app.routers.integrations import router as integrations_router
 from app.routers.remediation import router as remediation_router
 from app.routers.sla_policy import router as sla_policy_router
+from app.routers.scan_schedules import router as scan_schedules_router
 from app.routers.validation import router as validation_router
 from app.routers.vuln_scans import router as vuln_router
 from app.version import get_version
@@ -245,6 +246,7 @@ app.include_router(ai_router)
 app.include_router(activity_router)
 app.include_router(analytics_router)
 app.include_router(users_router)
+app.include_router(scan_schedules_router)
 
 
 # ── P2: Prometheus metrics — request latency/count/in-progress at /metrics, so
