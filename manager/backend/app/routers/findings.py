@@ -19,6 +19,7 @@ from app.schemas.finding import (
     FindingSummary, FindingTimeline, SlaSummary,
 )
 from app.services import finding_events as events_service
+from app.services.finding_metrics import compute_mttr
 from app.services import finding_workflow
 from app.services import sla as sla_service
 from app.services.finding_enrichment import detail_enrichment
@@ -132,6 +133,51 @@ async def sla_summary(
     findings = (await db.execute(q)).scalars().all()
     windows = await resolve_windows(db, current_user.tenant_id)   # tenant custom policy or env
     return sla_service.summarize(list(findings), windows=windows)
+
+
+@router.get("/metrics", summary="MTTR + ownership metrics")
+async def finding_metrics(
+    db: ReadDB,
+    current_user: AuthUser,
+    engagement_id: uuid.UUID | None = Query(default=None),
+):
+    """Mobilization metrics: how fast findings actually close, and who owns the
+    open ones.
+
+    Detection answers "what is wrong"; this answers "are we fixing it". Both
+    inputs already existed on the model — first_seen from the run that produced
+    the finding, resolved_at from the auto-resolver or a manual close — so this
+    is aggregation, not new bookkeeping.
+
+    Tenant-scoped through the engagement join like every other route here, and
+    read-only, so it routes to the read replica when one is configured.
+    """
+    def _scoped(q):
+        q = q.join(Engagement, Finding.engagement_id == Engagement.id).where(
+            Engagement.tenant_id == current_user.tenant_id)
+        return q.where(Finding.engagement_id == engagement_id) if engagement_id else q
+
+    # MTTR over findings that actually closed.
+    pairs = (await db.execute(_scoped(
+        select(Finding.first_seen, Finding.resolved_at)
+    ).where(Finding.resolved_at.is_not(None)))).all()
+
+    # Open work by owner. `unassigned` is a first-class bucket, not an omission:
+    # a large unassigned pile is itself the finding a manager needs to see.
+    owner_rows = (await db.execute(_scoped(
+        select(Finding.assigned_to, func.count())
+    ).where(Finding.status.in_([FindingStatus.open, FindingStatus.confirmed]))
+     .group_by(Finding.assigned_to))).all()
+
+    open_count = sum(int(n) for _, n in owner_rows)
+    return {
+        "mttr": compute_mttr([(seen, resolved) for seen, resolved in pairs]),
+        "open_by_owner": {
+            (str(owner) if owner else "unassigned"): int(n) for owner, n in owner_rows
+        },
+        "open_count": open_count,
+        "resolved_count": len(pairs),
+    }
 
 
 @router.get("", response_model=PaginatedResponse[FindingOut], summary="List findings with filters")
