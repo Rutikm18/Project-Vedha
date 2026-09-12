@@ -15,6 +15,7 @@ and logs — the probe submission still succeeds.
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 import sys
@@ -165,6 +166,21 @@ def _log_ingest_health(census: dict, findings: int) -> None:
                       "a zero-finding result here does not mean the host is clean")
 
 
+async def _run_detection_engine(
+    facts: list[dict],
+) -> tuple[list[dict], list[dict], dict]:
+    """`detect_all_from_facts_traced` on a worker thread.
+
+    The engine is synchronous CPU work (measured: 6.5s for 500 hosts' facts) and
+    its only async caller is the outbox handler. Run inline, it froze that
+    worker's whole event loop for the duration — no other event claimed, no
+    reclaim sweep — and the reclaim lease is 5 minutes, so a large enough
+    engagement had its event requeued and detected a second time while the first
+    run was still going. Same engine, same contract; it just stops owning the loop.
+    """
+    return await asyncio.to_thread(detect_all_from_facts_traced, facts)
+
+
 def detect_all_from_facts_traced(
     facts: list[dict],
 ) -> tuple[list[dict], list[dict], dict]:
@@ -293,9 +309,24 @@ def _apply_regression_reopen(finding, run_id, now) -> None:
     finding.evidence = ev
 
 
-async def _find_remediated_match(db, engagement_id, asset_id, title):
+async def _load_remediated_index(db, engagement_id) -> dict:
+    """The regression candidates, in ONE query. See load_finding_index."""
+    from app.discovery.finding_translator import load_finding_index
+    return await load_finding_index(db, engagement_id,
+                                    [FindingStatus.remediated])
+
+
+async def _find_remediated_match(db, engagement_id, asset_id, title, *,
+                                 index: dict | None = None):
     """A remediated finding with the same (engagement, asset, title) — the
-    regression candidate. Mirrors _find_open_duplicate but for the closed set."""
+    regression candidate. Mirrors _find_open_duplicate but for the closed set.
+
+    `index` (from _load_remediated_index) answers from memory. A row reopened
+    through it must be removed from the index by the caller, so one run cannot
+    reopen the same row twice.
+    """
+    if index is not None:
+        return index.get((asset_id, title))
     q = select(Finding).where(
         Finding.engagement_id == engagement_id,
         Finding.title == title,
@@ -320,7 +351,10 @@ def _posture_description(p: dict) -> str | None:
 
 async def _persist_posture_findings(db, engagement_id, run_id, now, posture_dicts,
                                     touched: list, db_version,
-                                    cache: dict | None = None) -> tuple[int, int]:
+                                    cache: dict | None = None,
+                                    open_index: dict | None = None,
+                                    remediated_index: dict | None = None,
+                                    ) -> tuple[int, int]:
     """Translate posture/config-exposure findings (from the VERIFIED scanners) into
     backend Finding rows, reusing the SAME dedup + regression-reopen lifecycle as
     the CVE loop so they track across runs identically. Returns (created, reaffirmed).
@@ -334,7 +368,8 @@ async def _persist_posture_findings(db, engagement_id, run_id, now, posture_dict
             asset = await _resolve_asset(db, engagement_id, p.get("asset_ip"), cache=cache)
             asset_id = asset.id if asset else None
 
-            dup = await _find_open_duplicate(db, engagement_id, asset_id, title)
+            dup = await _find_open_duplicate(db, engagement_id, asset_id, title,
+                                             index=open_index)
             if dup is not None:
                 dup.evidence = p
                 dup.last_seen = now
@@ -345,13 +380,21 @@ async def _persist_posture_findings(db, engagement_id, run_id, now, posture_dict
                 reaffirmed += 1
                 continue
 
-            regressed = await _find_remediated_match(db, engagement_id, asset_id, title)
+            regressed = await _find_remediated_match(db, engagement_id, asset_id,
+                                                     title,
+                                                     index=remediated_index)
             if regressed is not None:
                 _apply_regression_reopen(regressed, run_id, now)
                 regressed.evidence = {**(regressed.evidence or {}), **p, "regression": True}
                 regressed.risk_score = Decimal(str(manager_risk)) if manager_risk is not None else None
                 touched.append(regressed)
                 reaffirmed += 1
+                # Reopened: it is no longer a regression candidate, and it IS now
+                # the open row this identity dedups against.
+                if remediated_index is not None:
+                    remediated_index.pop((asset_id, title), None)
+                if open_index is not None:
+                    open_index[(asset_id, title)] = regressed
                 continue
 
             state = p.get("state")
@@ -378,6 +421,11 @@ async def _persist_posture_findings(db, engagement_id, run_id, now, posture_dict
             db.add(f)
             touched.append(f)
             created += 1
+            # The dedup lookup no longer autoflushes into a query, so a second
+            # finding with this identity in the SAME run only collapses onto
+            # this row if the index knows about it.
+            if open_index is not None:
+                open_index[(asset_id, title)] = f
         except Exception as exc:  # noqa: BLE001 — one bad finding must not sink the batch
             logger.warning("posture_finding.create_failed",
                            rule_id=p.get("rule_id"), error=str(exc))
@@ -416,7 +464,7 @@ async def _engagement_device_roles(db: AsyncSession, engagement_id: uuid.UUID) -
 
 async def _persist_attack_paths(
     db: AsyncSession, engagement_id: uuid.UUID, run, facts: list[dict], now,
-    cache: dict | None = None,
+    cache: dict | None = None, open_index: dict | None = None,
 ) -> int:
     """Correlate composite attack paths from the run's facts and persist them as
     Finding rows (deduped by title, reaffirmed across runs). Returns NEW count."""
@@ -433,7 +481,8 @@ async def _persist_attack_paths(
                 "mitre_techniques": d.get("mitre_techniques"),
                 **(d.get("evidence") or {}),
             }
-            dup = await _find_open_duplicate(db, engagement_id, asset_id, title)
+            dup = await _find_open_duplicate(db, engagement_id, asset_id, title,
+                                             index=open_index)
             if dup is not None:
                 dup.severity = d["severity"]     # re-amplify if the role changed
                 dup.evidence = evidence
@@ -441,7 +490,7 @@ async def _persist_attack_paths(
                 dup.detection_run_id = run.id
                 dup.resolution_miss_count = 0
                 continue
-            db.add(Finding(
+            path_finding = Finding(
                 engagement_id=engagement_id,
                 asset_id=asset_id,
                 title=title,
@@ -455,7 +504,10 @@ async def _persist_attack_paths(
                 first_seen=now,
                 last_seen=now,
                 detection_run_id=run.id,
-            ))
+            )
+            db.add(path_finding)
+            if open_index is not None:
+                open_index[(asset_id, title)] = path_finding
             created += 1
         except Exception as exc:  # noqa: BLE001 — one composite must not sink the batch
             logger.warning("attack_path.create_failed", rule_id=d.get("rule_id"), error=str(exc))
@@ -529,11 +581,20 @@ async def create_findings_from_facts(
         # One asset cache shared by the CVE, posture and attack-path loops: the same
         # host is resolved ONCE per run instead of once per finding (kills the N+1).
         asset_cache: dict = {}
+        # The same treatment for the dedup/regression lookups, which were the
+        # other N+1 in these loops: TWO queries load this engagement's existing
+        # findings, instead of one or two per finding produced (~12 per host, so
+        # thousands of round trips on a large run — inside the outbox handler,
+        # whose lease is 5 minutes). Both loops must keep these dicts current as
+        # they create or reopen rows; see _find_open_duplicate.
+        from app.discovery.finding_translator import load_open_finding_index
+        open_index = await load_open_finding_index(db, engagement_id)
+        remediated_index = await _load_remediated_index(db, engagement_id)
         # ONE full-detection pass over the raw facts → BOTH the CVE/version track
         # and the posture/config-exposure track (the verified scanners' findings),
         # plus the detection-trace coverage roll-up (which rules were blind/clean/
         # not-assessed) so a non-finding can explain itself.
-        cve_dicts, posture_dicts, detect_meta = detect_all_from_facts_traced(facts)
+        cve_dicts, posture_dicts, detect_meta = await _run_detection_engine(facts)
         for d in cve_dicts:
             try:
                 cve = d.get("cve_id") or "finding"
@@ -541,7 +602,8 @@ async def create_findings_from_facts(
                 asset = await _resolve_asset(db, engagement_id, d.get("asset_ip"), cache=asset_cache)
                 asset_id = asset.id if asset else None
 
-                dup = await _find_open_duplicate(db, engagement_id, asset_id, title)
+                dup = await _find_open_duplicate(db, engagement_id, asset_id, title,
+                                                 index=open_index)
                 if dup is not None:
                     # Same issue still present → reaffirm: advance last_seen and
                     # point it at this run (first_seen is preserved).
@@ -553,7 +615,9 @@ async def create_findings_from_facts(
                     reaffirmed += 1
                     continue
 
-                regressed = await _find_remediated_match(db, engagement_id, asset_id, title)
+                regressed = await _find_remediated_match(db, engagement_id, asset_id,
+                                                         title,
+                                                         index=remediated_index)
                 if regressed is not None:
                     # An auto/manually-resolved issue is back → reopen the SAME row
                     # and flag the regression (its history is preserved).
@@ -561,6 +625,9 @@ async def create_findings_from_facts(
                     regressed.evidence = {**(regressed.evidence or {}), **d, "regression": True}
                     touched.append(regressed)
                     reaffirmed += 1
+                    # Reopened rows leave the regression set and join the open one.
+                    remediated_index.pop((asset_id, title), None)
+                    open_index[(asset_id, title)] = regressed
                     continue
 
                 state = d.get("state")
@@ -585,6 +652,10 @@ async def create_findings_from_facts(
                 db.add(new_finding)
                 touched.append(new_finding)
                 created += 1
+                # Index it: without the autoflush the old per-finding query
+                # relied on, a second identical finding in this run would
+                # otherwise be created twice.
+                open_index[(asset_id, title)] = new_finding
             except Exception as exc:  # noqa: BLE001 — one bad finding must not sink the batch
                 logger.warning("detection_finding.create_failed", error=str(exc))
 
@@ -595,7 +666,8 @@ async def create_findings_from_facts(
         try:
             p_created, p_reaffirmed = await _persist_posture_findings(
                 db, engagement_id, run.id, now, posture_dicts, touched, db_version,
-                cache=asset_cache)
+                cache=asset_cache, open_index=open_index,
+                remediated_index=remediated_index)
             created += p_created
             reaffirmed += p_reaffirmed
         except Exception as exc:  # noqa: BLE001 — posture must not sink the run
@@ -615,7 +687,7 @@ async def create_findings_from_facts(
         try:
             corr_new = await _persist_attack_paths(
                 db, engagement_id, run, detect_meta.get("accepted_facts") or [], now,
-                cache=asset_cache)
+                cache=asset_cache, open_index=open_index)
             created += corr_new
         except Exception as exc:  # noqa: BLE001 — correlation must not sink the run
             logger.warning("detection_run.correlation_failed", error=str(exc))

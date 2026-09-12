@@ -73,6 +73,19 @@ async def reap_once() -> list[str]:
         requeued: list[str] = []
         for attempt, job in rows:
             if not expire_attempt(attempt, job, now):
+                # Giving up on the job must not throw away what it DID scan.
+                # The probe never came back, so no final submission is coming;
+                # its buffered per-host evidence becomes the job's result and
+                # detection runs on it. Best-effort: a rescue that fails must
+                # not stop the reaper from expiring the rest of the batch.
+                try:
+                    from app.services.result_chunk_service import (
+                        promote_chunks_to_result,
+                    )
+                    await promote_chunks_to_result(db, job)
+                except Exception as exc:  # noqa: BLE001
+                    logger.warning("reaper.promote_failed",
+                                   job_id=str(job.id), error=str(exc))
                 logger.error(
                     "reaper.attempts_exhausted",
                     job_id=str(job.id),

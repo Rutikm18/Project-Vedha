@@ -129,8 +129,41 @@ async def _escalate_by_exposure(
     return escalate_for_exposure(severity, svc.exposure), svc.exposure
 
 
+async def load_finding_index(
+    db: AsyncSession, engagement_id: uuid.UUID, statuses,
+) -> dict[tuple[uuid.UUID | None, str], Finding]:
+    """{(asset_id, title): Finding} for one engagement, in ONE query.
+
+    Detection asks "have I seen this finding before?" once per finding, which is
+    thousands of sequential round trips on a large engagement. This is the same
+    caller-owned-cache idiom `_resolve_asset(..., cache=...)` already uses for
+    the asset lookups in that loop: load once per run, then look up in memory.
+
+    First row wins per key, matching the `.limit(1)` the per-finding query used.
+    """
+    rows = (await db.execute(
+        select(Finding).where(
+            Finding.engagement_id == engagement_id,
+            Finding.status.in_(statuses),
+        )
+    )).scalars().all()
+    index: dict[tuple[uuid.UUID | None, str], Finding] = {}
+    for row in rows:
+        index.setdefault((row.asset_id, row.title), row)
+    return index
+
+
+async def load_open_finding_index(
+    db: AsyncSession, engagement_id: uuid.UUID,
+) -> dict[tuple[uuid.UUID | None, str], Finding]:
+    """The dedup-suppressing set: what `_find_open_duplicate` would match."""
+    return await load_finding_index(db, engagement_id,
+                                    _DEDUP_SUPPRESSING_STATUSES)
+
+
 async def _find_open_duplicate(
     db: AsyncSession, engagement_id: uuid.UUID, asset_id: uuid.UUID | None, title: str,
+    *, index: dict | None = None,
 ) -> Finding | None:
     """A still-relevant Finding with the same (engagement, asset, title), if any.
 
@@ -139,7 +172,13 @@ async def _find_open_duplicate(
     fp is intentionally NOT matched here (see _DEDUP_SUPPRESSING_STATUSES):
     if it reappears on a later scan that's a regression worth a fresh row,
     not noise to suppress.
+
+    `index` (from load_open_finding_index) answers from memory instead of a
+    query. A caller that passes one MUST add the findings it creates to it, or
+    two findings with the same identity in one run would both be created.
     """
+    if index is not None:
+        return index.get((asset_id, title))
     q = select(Finding).where(
         Finding.engagement_id == engagement_id,
         Finding.title == title,

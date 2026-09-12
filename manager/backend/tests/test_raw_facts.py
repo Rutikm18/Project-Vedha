@@ -1,4 +1,9 @@
-"""Raw scanner facts endpoint — inspect exactly what the vedha-agent collected."""
+"""Raw scanner facts endpoint — inspect exactly what the vedha-agent collected.
+
+The endpoint slices the fact array and counts scanners in Postgres (see
+test_raw_facts_db_slicing.py for why), so these fakes return the row shape that
+query produces: metadata + a fact SLICE + a DB-side per-scanner census.
+"""
 from __future__ import annotations
 
 import uuid
@@ -14,15 +19,24 @@ def _user():
     return SimpleNamespace(tenant_id=uuid.uuid4(), user_id=uuid.uuid4(), role="admin")
 
 
-def _scalars(items):
-    return MagicMock(scalars=lambda: MagicMock(all=lambda: items))
+def _row(facts, by_scanner, *, matched=None, fact_count=None):
+    return {
+        "id": uuid.uuid4(), "job_id": uuid.uuid4(), "agent_id": uuid.uuid4(),
+        "scan_type": "network_va",
+        "fact_count": fact_count if fact_count is not None else len(facts),
+        "validation_state": "accepted", "created_at": None,
+        "facts": facts, "by_scanner": by_scanner,
+        "matched": len(facts) if matched is None else matched,
+    }
 
 
-def _sr(facts):
-    return SimpleNamespace(
-        id=uuid.uuid4(), job_id=uuid.uuid4(), agent_id=uuid.uuid4(),
-        scan_type="network_va", fact_count=len(facts), validation_state="accepted",
-        created_at=None, facts=facts)
+def _db(rows):
+    db = MagicMock()
+    db.execute = AsyncMock(side_effect=[
+        MagicMock(scalar_one_or_none=lambda: SimpleNamespace(id=uuid.uuid4())),
+        MagicMock(mappings=lambda: MagicMock(all=lambda: rows)),
+    ])
+    return db
 
 
 @pytest.mark.asyncio
@@ -35,12 +49,10 @@ async def test_raw_facts_grouped_by_scanner():
         {"scanner": "rdp_scan", "target": "10.0.0.5", "port": 3389, "status": "open",
          "data": {"nla": False, "nla_required": False}},
     ]
-    db = MagicMock()
-    db.execute = AsyncMock(side_effect=[
-        MagicMock(scalar_one_or_none=lambda: SimpleNamespace(id=uuid.uuid4())),  # get_or_404
-        _scalars([_sr(facts)]),                                                  # scan_results
-    ])
+    db = _db([_row(facts, {"port_scan": 2, "rdp_scan": 1, "smb_scan": 1})])
+
     out = await eng.raw_facts(uuid.uuid4(), db, _user())
+
     assert out["scanners"] == ["port_scan", "rdp_scan", "smb_scan"]
     assert out["by_scanner"] == {"port_scan": 2, "rdp_scan": 1, "smb_scan": 1}
     r = out["scan_results"][0]
@@ -52,28 +64,24 @@ async def test_raw_facts_grouped_by_scanner():
 
 @pytest.mark.asyncio
 async def test_raw_facts_filter_by_scanner():
-    facts = [
-        {"scanner": "port_scan", "target": "t", "port": 445, "status": "open"},
-        {"scanner": "smb_scan", "target": "t", "port": 445, "status": "open", "data": {"x": 1}},
-    ]
-    db = MagicMock()
-    db.execute = AsyncMock(side_effect=[
-        MagicMock(scalar_one_or_none=lambda: SimpleNamespace(id=uuid.uuid4())),
-        _scalars([_sr(facts)]),
-    ])
+    """The filter is applied by the query, so only matching facts come back —
+    but the breakdown still describes every scanner in the submission."""
+    db = _db([_row([{"scanner": "smb_scan", "target": "t", "port": 445,
+                     "status": "open", "data": {"x": 1}}],
+                   {"port_scan": 1, "smb_scan": 1}, fact_count=2)])
+
     out = await eng.raw_facts(uuid.uuid4(), db, _user(), scanner="smb_scan")
+
     shown = out["scan_results"][0]["facts"]
     assert len(shown) == 1 and shown[0]["scanner"] == "smb_scan"
-    # by_scanner still reflects ALL scanners (the breakdown), only `facts` is filtered
     assert out["by_scanner"] == {"port_scan": 1, "smb_scan": 1}
 
 
 @pytest.mark.asyncio
 async def test_raw_facts_bounds_and_no_results():
-    db = MagicMock()
-    db.execute = AsyncMock(side_effect=[
-        MagicMock(scalar_one_or_none=lambda: SimpleNamespace(id=uuid.uuid4())),
-        _scalars([]),
-    ])
-    out = await eng.raw_facts(uuid.uuid4(), db, _user(), limit=999, max_facts=999999)
+    db = _db([])
+
+    out = await eng.raw_facts(uuid.uuid4(), db, _user(), limit=999,
+                              max_facts=999999)
+
     assert out["scan_results"] == [] and out["scanners"] == []

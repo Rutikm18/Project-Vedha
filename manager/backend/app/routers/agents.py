@@ -271,6 +271,19 @@ class JobResultRequest(BaseModel):
     error: str | None = None
 
 
+class JobResultChunkRequest(BaseModel):
+    """ONE host's facts, committed while the job is still running.
+
+    Same fencing fields as a result submission, because it obeys the same rule:
+    a superseded attempt may not write evidence.
+    """
+    attempt_id: uuid.UUID
+    fence: int = Field(ge=1)
+    host: str = Field(min_length=1, max_length=255)
+    facts: list = Field(default_factory=list)
+    scan_type: str | None = None
+
+
 # The probe's scan-hardness knob (probe/workflow/intensity.py). Duplicated here
 # for the same reason as _USE_CASES: manager and probe are separate processes.
 _VALID_INTENSITIES = {"light", "standard", "deep"}
@@ -1578,6 +1591,54 @@ async def enqueue_agent_job(
         "intensity": intensity_name,
         "status": job.status.value,
     }
+
+
+@router.post("/{agent_id}/jobs/{job_id}/chunks",
+             summary="Agent commits one finished host while the job runs")
+async def submit_result_chunk(
+    agent_id: uuid.UUID,
+    job_id: uuid.UUID,
+    body: JobResultChunkRequest,
+    db: DB,
+    request: Request,
+):
+    """Buffer one host's evidence so a probe that dies mid-scan does not lose it.
+
+    Thin by design: the rules (fencing, scope, at-least-once) live in the
+    service. What matters here is that a refusal reaches the probe as the right
+    status — a permanent rejection must stop it retrying, while a transient
+    failure must not make it discard evidence.
+    """
+    _agent_ownership_check(request, str(agent_id))
+
+    from app.services import result_chunk_service
+    summary = await result_chunk_service.process_result_chunk(
+        db, agent_id, job_id,
+        attempt_id=body.attempt_id, fence=body.fence, host=body.host,
+        facts=body.facts, scan_type=body.scan_type,
+    )
+    if not summary.get("ok"):
+        raise HTTPException(
+            summary.get("status_code", 404),
+            summary.get("error", "Job not found"),
+        )
+    return summary
+
+
+@router.get("/{agent_id}/jobs/{job_id}/chunks",
+            summary="Hosts this job has already committed")
+async def list_result_chunks(
+    agent_id: uuid.UUID,
+    job_id: uuid.UUID,
+    db: DB,
+    request: Request,
+):
+    """What a retrying probe reads so it does not rescan finished hosts."""
+    _agent_ownership_check(request, str(agent_id))
+
+    from app.services import result_chunk_service
+    hosts = await result_chunk_service.committed_hosts(db, job_id)
+    return {"job_id": str(job_id), "hosts": hosts, "count": len(hosts)}
 
 
 @router.post("/{agent_id}/jobs/{job_id}/result", summary="Agent submits job result")

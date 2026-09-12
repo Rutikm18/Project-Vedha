@@ -10,6 +10,7 @@ from app.models.scan_job import ScanJob
 from app.models.scan_schedule import ScanSchedule
 from app.models.scan_job_attempt import ScanJobAttempt
 from app.models.scan_result import ScanResult
+from app.models.scan_result_chunk import ScanResultChunk
 from app.models.service import Service
 from app.models.agent import Agent
 from app.models.exploit_result import ExploitResult
@@ -34,6 +35,7 @@ from app.models.worker_heartbeat import WorkerHeartbeat
 __all__ = [
     "Tenant", "User", "Engagement", "Asset",
     "Finding", "FindingEvent", "AttackPath", "DetectionResult", "ScanJob", "ScanJobAttempt", "ScanResult",
+    "ScanResultChunk",
     "Service", "Agent",
     "ExploitResult", "ExploitApprovalRequest", "AuditLog",
     "AttackTimeline", "DetectionConfig", "LLMOutput", "OutboxEvent",

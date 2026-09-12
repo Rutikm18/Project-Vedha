@@ -286,6 +286,19 @@ async def process_job_result(
             "rejected_targets": rejected_identities[:10],
         }
 
+    # ── Fold in the per-host evidence this job buffered while it ran ───────
+    # Chunks are a buffer, not a second result path: everything downstream still
+    # reads ONE scan_results row. This is where hosts finished by an attempt that
+    # died (and so never made it into this payload) rejoin the result. Deliberately
+    # AFTER the scope check and the idempotency checksum — a rejected or duplicate
+    # submission must not drain the buffer, and the checksum has to describe what
+    # the probe actually sent.
+    from app.services.result_chunk_service import (
+        apply_chunks_to_result,
+        discard_chunks,
+    )
+    result = await apply_chunks_to_result(db, job_id, result)
+
     # ── Update job status ──────────────────────────────────────────────────
     row.status = ScanJobStatus.completed if success else ScanJobStatus.failed
     row.completed_at = datetime.now(timezone.utc)
@@ -350,6 +363,10 @@ async def process_job_result(
             engagement_id=row.engagement_id,
             scan_result_id=scan_result_row.id,
         )
+
+    # The buffer has landed in scan_results (or there was nothing to land), so
+    # drop it. Runs after the flush above: a rolled-back transaction keeps it.
+    await discard_chunks(db, job_id)
 
     # ── Promote discovered hosts ───────────────────────────────────────────
     promoted = 0
@@ -465,6 +482,8 @@ async def _promote_assets(
     Returns the number of newly-created assets.
     """
     hosts = (result or {}).get("hosts") or []
+    if not hosts:
+        return 0
     promoted = 0
     # Evidence-based device roles from the probe's device_inventory use-case,
     # keyed by ip. Empty for every other scan_type — a no-op then.
@@ -480,17 +499,31 @@ async def _promote_assets(
     # creating two pending inserts that violate uq_service_asset_port_proto.
     service_cache: dict[tuple[uuid.UUID | None, int, str], Service] = {}
 
+    # ── Which of these IPs do we already have? ONE query, not one per host ──
+    # This runs inside the submit request, under a FOR UPDATE lock on the job
+    # row, so every round trip here is latency the probe waits on: a 1,000-host
+    # result used to cost ~11,000 sequential queries and blow the probe's 30s
+    # read timeout, which then re-uploaded the whole payload.
+    ips = list(dict.fromkeys(h.get("ip") for h in hosts if h.get("ip")))
+    if not ips:
+        return 0
+    known: dict[str, Asset] = {
+        a.ip_address: a
+        for a in (await db.execute(
+            select(Asset).where(
+                Asset.engagement_id == engagement_id,
+                Asset.ip_address.in_(ips),
+            )
+        )).scalars().all()
+    }
+    assets_by_ip: dict[str, Asset] = {}
+
     for h in hosts:
         ip = h.get("ip")
         if not ip:
             continue
 
-        asset = (await db.execute(
-            select(Asset).where(
-                Asset.engagement_id == engagement_id,
-                Asset.ip_address == ip,
-            )
-        )).scalar_one_or_none()
+        asset = known.get(ip)
 
         prof = profiles.get(ip)
         if asset:
@@ -511,8 +544,29 @@ async def _promote_assets(
             )
             _apply_device_profile(asset, prof)
             db.add(asset)
-            await db.flush()
+            # A payload can name the same IP twice; reuse the pending object
+            # rather than inserting it again.
+            known[ip] = asset
             promoted += 1
+        assets_by_ip[ip] = asset
+
+    # ONE flush assigns every new asset its id (services below need them), and
+    # ONE query fetches the services those assets already have.
+    if promoted:
+        await db.flush()
+    asset_ids = [a.id for a in assets_by_ip.values() if a.id is not None]
+    if asset_ids:
+        for svc_row in (await db.execute(
+            select(Service).where(Service.asset_id.in_(asset_ids))
+        )).scalars().all():
+            service_cache[(svc_row.asset_id, svc_row.port,
+                           svc_row.protocol)] = svc_row
+
+    for h in hosts:
+        ip = h.get("ip")
+        if not ip:
+            continue
+        asset = assets_by_ip[ip]
 
         # Upsert services
         for p in h.get("ports") or []:
@@ -529,23 +583,16 @@ async def _promote_assets(
             cpe_str = ",".join(cpe) if isinstance(cpe, list) else cpe
             key = (asset.id, port_no, proto)
 
+            # The cache was pre-loaded with every service these assets already
+            # have, so a miss means "new service" — no per-port lookup.
             svc = service_cache.get(key)
             if svc is None:
-                svc = (await db.execute(
-                    select(Service).where(
-                        Service.asset_id == asset.id,
-                        Service.port == port_no,
-                        Service.protocol == proto,
-                    )
-                )).scalar_one_or_none()
-
-                if svc is None:
-                    svc = Service(
-                        asset_id=asset.id,
-                        port=port_no,
-                        protocol=proto,
-                    )
-                    db.add(svc)
+                svc = Service(
+                    asset_id=asset.id,
+                    port=port_no,
+                    protocol=proto,
+                )
+                db.add(svc)
                 service_cache[key] = svc
 
             svc.service_name = p.get("service") or svc.service_name
@@ -557,6 +604,6 @@ async def _promote_assets(
             extra = p.get("extra_info") or p.get("data")
             if isinstance(extra, dict):
                 svc.extra_info = {**(svc.extra_info or {}), **extra}
-        await db.flush()
 
+    await db.flush()
     return promoted
