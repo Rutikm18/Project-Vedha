@@ -51,3 +51,12 @@ def test_exit_code_nonzero_only_on_fail():
 def test_format_report_marks_each_status():
     body = doc.format_report([doc.Check("x", "pass", "ok"), doc.Check("y", "fail", "bad", "fix it")])
     assert "x" in body and "y" in body and "fix it" in body
+
+
+def test_offset_from_date_header_pure():
+    from email.utils import formatdate
+    now = 1_000_000.0
+    off = doc._offset_from_date_header(formatdate(now + 120, usegmt=True), now)
+    assert off is not None and abs(off - 120) < 2          # server ~120s ahead
+    assert doc._offset_from_date_header(None, now) is None
+    assert doc._offset_from_date_header("garbage", now) is None

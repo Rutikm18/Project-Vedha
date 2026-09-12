@@ -113,6 +113,30 @@ def _measure_manager(url: str, timeout: float = 5.0) -> tuple[bool, bool, bool, 
     return dns_ok, tcp_ok, tls_ok, cert_ok
 
 
+def _offset_from_date_header(date_header: str | None, now_epoch: float) -> float | None:
+    """Pure: server clock offset (seconds) from an HTTP Date header vs local now."""
+    if not date_header:
+        return None
+    import email.utils
+    try:
+        server = email.utils.parsedate_to_datetime(date_header).timestamp()
+    except (TypeError, ValueError, OverflowError):
+        return None
+    return server - now_epoch
+
+
+def _server_date_offset(url: str, timeout: float = 5.0) -> float | None:
+    import time as _t
+    import urllib.request
+    for req in (urllib.request.Request(url, method="HEAD"), url):
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:  # noqa: S310
+                return _offset_from_date_header(resp.headers.get("Date"), _t.time())
+        except Exception:
+            continue
+    return None
+
+
 def run(manager_url: str, is_privileged: bool, state_dir: str = ".") -> list[Check]:
     checks = [check_python(sys.version_info), check_privilege(is_privileged)]
     try:
@@ -122,6 +146,12 @@ def run(manager_url: str, is_privileged: bool, state_dir: str = ".") -> list[Che
         checks.append(Check("disk", "warn", "could not stat the state dir"))
     if manager_url:
         checks.append(classify_connectivity(*_measure_manager(manager_url)))
+        offset = _server_date_offset(manager_url)
+        if offset is not None:
+            checks.append(check_clock(offset))
+        else:
+            checks.append(Check("clock", "warn", "clock offset vs manager not measured",
+                                "needs a reachable manager to check skew"))
     else:
         checks.append(Check("manager", "warn", "no manager URL configured",
                             "run `connect --manager <url>` or set PLATFORM_URL"))

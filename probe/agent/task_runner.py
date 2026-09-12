@@ -445,7 +445,8 @@ class TaskRunner:
                 use_case_id=use_case_id,
             )
         if params.get("targets"):
-            kept_ok, denied = job_admission.drop_denied(params["targets"])
+            kept_ok, denied = job_admission.drop_denied(
+                params["targets"], manager_ip=job_admission.manager_ip_from_env())
             if denied:
                 LOG.warning("denylist guard: dropped %d never-scan target(s): %s",
                             len(denied), denied[:5])

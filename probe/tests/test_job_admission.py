@@ -47,3 +47,13 @@ def test_signed_job_accepts_valid_and_rejects_tampered():
     job["targets"] = ["10.20.0.99"]     # tamper after signing
     ok2, reason = ja.verify_signed_job(job, pinned_key_b64=pub, now=1000.0)
     assert not ok2 and "signature" in reason.lower()
+
+
+def test_drop_denied_removes_manager_ip():
+    kept, denied = ja.drop_denied(["10.0.0.5", "10.0.0.9"], manager_ip="10.0.0.9")
+    assert kept == ["10.0.0.5"] and denied == ["10.0.0.9"]
+
+
+def test_manager_ip_from_env_none_without_platform_url(monkeypatch):
+    monkeypatch.delenv("PLATFORM_URL", raising=False)
+    assert ja.manager_ip_from_env() is None

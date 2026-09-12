@@ -18,6 +18,21 @@ import time
 from agent import scope_model as sm
 
 
+def manager_ip_from_env() -> str | None:
+    """Resolve the Manager's IP from PLATFORM_URL so the fleet can never scan its
+    own control plane. Best-effort — None when unset/unresolvable."""
+    import os
+    import socket
+    from urllib.parse import urlparse
+    host = urlparse(os.environ.get("PLATFORM_URL", "")).hostname
+    if not host:
+        return None
+    try:
+        return socket.gethostbyname(host)
+    except OSError:
+        return None
+
+
 def drop_denied(targets: list[str], manager_ip: str | None = None) -> tuple[list[str], list[str]]:
     kept: list[str] = []
     denied: list[str] = []
