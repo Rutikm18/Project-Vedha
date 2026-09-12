@@ -1,4 +1,4 @@
-# Node Description Batch 142 of 336
+# Node Description Batch 142 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,51 +12,58 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
+For an entity node (any other kind — e.g. a person, place, event, object),
+describe what the entity is and its role, grounded in its type, its
+relations (neighbors) and the provided citations/evidence — e.g.
+"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
+Ground entity descriptions in the citations/evidence when present; do not
+speculate beyond the context, so a node with no supporting context may be
+left out of the reply.
 Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "scanner_dns_scanner_is_ip": "_is_ip()" | kind=code-symbol | source=probe/scanner/dns_scanner.py:L47 | neighbors=[dns_scanner.py, ._ptr_self()]
-- "scanner_findings_finding_to_dict": ".to_dict()" | kind=code-symbol | source=probe/scanner/findings.py:L78 | neighbors=[Finding, _main()]
-- "scanner_findings_tally": "_tally()" | kind=code-symbol | source=probe/scanner/findings.py:L1311 | neighbors=[findings.py, summarize()]
-- "scanner_ftp_scanner_ftpscanner_scan_port": "._scan_port()" | kind=code-symbol | source=probe/scanner/ftp_scanner.py:L152 | neighbors=[FTPScanner, .scan_target()]
-- "scanner_ftp_scanner_ftpscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/scanner/ftp_scanner.py:L171 | neighbors=[FTPScanner, ._scan_port()]
-- "scanner_host_discovery_now": "_now()" | kind=code-symbol | source=probe/scanner/host_discovery.py:L392 | neighbors=[host_discovery.py, fuse_liveness()]
-- "scanner_host_discovery_reverse_dns": "_reverse_dns()" | kind=code-symbol | source=probe/scanner/host_discovery.py:L162 | neighbors=[host_discovery.py, PTR lookup; None on any failure. Runs i…]
-- "scanner_host_discovery_state_for_confidence": "_state_for_confidence()" | kind=code-symbol | source=probe/scanner/host_discovery.py:L396 | neighbors=[host_discovery.py, fuse_liveness()]
-- "scanner_host_discovery_vendor_for_mac": "vendor_for_mac()" | kind=code-symbol | source=probe/scanner/host_discovery.py:L233 | neighbors=[host_discovery.py, .scan_target()]
-- "scanner_iot_scanner_parse_ssdp_headers": "_parse_ssdp_headers()" | kind=code-symbol | source=probe/scanner/iot_scanner.py:L49 | neighbors=[iot_scanner.py, _probe_ssdp_sync()]
-- "scanner_iot_scanner_probe_mdns_sync": "_probe_mdns_sync()" | kind=code-symbol | source=probe/scanner/iot_scanner.py:L190 | neighbors=[iot_scanner.py, _parse_mdns_response()]
-- "scanner_iot_scanner_probe_rtsp": "_probe_rtsp()" | kind=code-symbol | source=probe/scanner/iot_scanner.py:L216 | neighbors=[iot_scanner.py, .scan_target()]
-- "scanner_ipmi_scanner_ipmiscanner_scan_port": "._scan_port()" | kind=code-symbol | source=probe/scanner/ipmi_scanner.py:L90 | neighbors=[IPMIScanner, .scan_target()]
-- "scanner_ipmi_scanner_ipmiscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/scanner/ipmi_scanner.py:L108 | neighbors=[IPMIScanner, ._scan_port()]
-- "scanner_ipv6_discovery_main": "main()" | kind=code-symbol | source=probe/scanner/ipv6_discovery.py:L155 | neighbors=[ipv6_discovery.py, discover_ipv6_hosts()]
-- "scanner_ja4s_alpn_code": "_alpn_code()" | kind=code-symbol | source=probe/scanner/ja4s.py:L78 | neighbors=[ja4s.py, ja4s_from_fields()]
-- "scanner_ja4s_version_str": "_version_str()" | kind=code-symbol | source=probe/scanner/ja4s.py:L52 | neighbors=[ja4s.py, ja4s_from_fields()]
-- "scanner_ja4x_match_suspicious": "match_suspicious()" | kind=code-symbol | source=probe/scanner/ja4x.py:L117 | neighbors=[ja4x.py, Return a threat-intel label if this JA4…]
-- "scanner_ldap_scanner_first": "_first()" | kind=code-symbol | source=probe/scanner/ldap_scanner.py:L40 | neighbors=[ldap_scanner.py, ._probe()]
-- "scanner_ldap_scanner_ldapscanner_scan_port": "._scan_port()" | kind=code-symbol | source=probe/scanner/ldap_scanner.py:L134 | neighbors=[LDAPScanner, .scan_target()]
-- "scanner_ldap_scanner_ldapscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/scanner/ldap_scanner.py:L156 | neighbors=[LDAPScanner, ._scan_port()]
-- "scanner_mass_scan_connectsweep_probe": "._probe()" | kind=code-symbol | source=probe/scanner/mass_scan.py:L213 | neighbors=[_ConnectSweep, .scan_target()]
-- "scanner_mass_scan_connectsweep_scan_target": ".scan_target()" | kind=code-symbol | source=probe/scanner/mass_scan.py:L229 | neighbors=[_ConnectSweep, ._probe()]
-- "scanner_mass_scan_have_masscan": "_have_masscan()" | kind=code-symbol | source=probe/scanner/mass_scan.py:L60 | neighbors=[mass_scan.py, run_mass_scan()]
-- "scanner_mass_scan_masscan_records_to_results": "_masscan_records_to_results()" | kind=code-symbol | source=probe/scanner/mass_scan.py:L184 | neighbors=[mass_scan.py, run_mass_scan()]
-- "scanner_mass_scan_masscanrun": "MasscanRun" | kind=code-symbol | source=probe/scanner/mass_scan.py:L51 | neighbors=[mass_scan.py, _run_masscan()]
-- "scanner_mcp_ai_scanner_mcpaiscanner_fetch": "._fetch()" | kind=code-symbol | source=probe/scanner/mcp_ai_scanner.py:L206 | neighbors=[MCPAIScanner, ._probe_port()]
-- "scanner_mcp_ai_scanner_mcpaiscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/scanner/mcp_ai_scanner.py:L316 | neighbors=[MCPAIScanner, ._probe_port()]
-- "scanner_mcp_ai_scanner_model_count": "_model_count()" | kind=code-symbol | source=probe/scanner/mcp_ai_scanner.py:L183 | neighbors=[mcp_ai_scanner.py, ._result()]
-- "scanner_mcp_ai_scanner_noredirect": "_NoRedirect" | kind=code-symbol | source=probe/scanner/mcp_ai_scanner.py:L110 | neighbors=[mcp_ai_scanner.py, .redirect_request()]
-- "scanner_mobile_scanner_adb_checksum": "_adb_checksum()" | kind=code-symbol | source=probe/scanner/mobile_scanner.py:L55 | neighbors=[mobile_scanner.py, _build_adb_cnxn()]
-- "scanner_msrpc_scanner_msrpcscanner_scan_port": "._scan_port()" | kind=code-symbol | source=probe/scanner/msrpc_scanner.py:L144 | neighbors=[MSRPCScanner, .scan_target()]
-- "scanner_msrpc_scanner_msrpcscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/scanner/msrpc_scanner.py:L167 | neighbors=[MSRPCScanner, ._scan_port()]
-- "scanner_nfs_scanner_nfsscanner_scan_port": "._scan_port()" | kind=code-symbol | source=probe/scanner/nfs_scanner.py:L259 | neighbors=[NFSScanner, .scan_target()]
-- "scanner_nfs_scanner_nfsscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/scanner/nfs_scanner.py:L277 | neighbors=[NFSScanner, ._scan_port()]
-- "scanner_nfs_scanner_recv_exact": "_recv_exact()" | kind=code-symbol | source=probe/scanner/nfs_scanner.py:L156 | neighbors=[nfs_scanner.py, _recv_record()]
-- "scanner_nmap_wrapper_parse_nmap_xml": "_parse_nmap_xml()" | kind=code-symbol | source=probe/scanner/nmap_wrapper.py:L160 | neighbors=[nmap_wrapper.py, NmapExecutionError]
-- "scanner_nmap_wrapper_run_nmap": "_run_nmap()" | kind=code-symbol | source=probe/scanner/nmap_wrapper.py:L121 | neighbors=[nmap_wrapper.py, NmapExecutionError]
-- "scanner_os_fingerprint_build_icmp_addrmask": "build_icmp_addrmask()" | kind=code-symbol | source=probe/scanner/os_fingerprint.py:L76 | neighbors=[os_fingerprint.py, _icmp()]
-- "scanner_os_fingerprint_os_family_from_ttl": "os_family_from_ttl()" | kind=code-symbol | source=probe/scanner/os_fingerprint.py:L169 | neighbors=[os_fingerprint.py, infer_initial_ttl()]
+- "auth_middleware_tenantisolationmiddleware_authenticate_pat": "._authenticate_pat()" | kind=code-symbol | source=manager/backend/app/auth/middleware.py:L219 | neighbors=[TenantIsolationMiddleware, .dispatch()]
+- "auth_pat_hash_pat_token": "hash_pat_token()" | kind=code-symbol | source=manager/backend/app/auth/pat.py:L36 | neighbors=[pat.py, build_personal_access_token()]
+- "auth_pat_new_pat_token": "new_pat_token()" | kind=code-symbol | source=manager/backend/app/auth/pat.py:L32 | neighbors=[pat.py, build_personal_access_token()]
+- "auth_pat_pat_display_prefix": "pat_display_prefix()" | kind=code-symbol | source=manager/backend/app/auth/pat.py:L40 | neighbors=[pat.py, build_personal_access_token()]
+- "auth_pat_validate_pat_scopes": "validate_pat_scopes()" | kind=code-symbol | source=manager/backend/app/auth/pat.py:L44 | neighbors=[pat.py, build_personal_access_token()]
+- "auth_rbac_rationale_10": "FastAPI dependency that enforces role-based access.      Usage:         @router." | kind=entity | source=manager/backend/app/auth/rbac.py:L10 | neighbors=[require_role(), CurrentUser]
+- "auth_rbac_require_role": "require_role()" | kind=code-symbol | source=manager/backend/app/auth/rbac.py:L9 | neighbors=[rbac.py, FastAPI dependency that enforces role-b…]
+- "auth_router_create_personal_access_token": "create_personal_access_token()" | kind=code-symbol | source=manager/backend/app/auth/router.py:L277 | neighbors=[router.py, refresh()]
+- "brain_route_validmessages": "validMessages()" | kind=code-symbol | source=manager/frontend/app/api/brain/route.ts:L21 | neighbors=[route.ts, POST()]
+- "campaign_progress_route_fail": "fail()" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/campaign-progress/route.ts:L11 | neighbors=[route.ts, GET()]
+- "campaign_progress_route_get": "GET()" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/campaign-progress/route.ts:L16 | neighbors=[route.ts, fail()]
+- "cli_llm_commentonstage": "commentOnStage()" | kind=code-symbol | source=manager/frontend/cli/llm.ts:L22 | neighbors=[llm.ts, client()]
+- "cli_llm_explainfindings": "explainFindings()" | kind=code-symbol | source=manager/frontend/cli/llm.ts:L54 | neighbors=[llm.ts, client()]
+- "cli_llm_planexploit": "planExploit()" | kind=code-symbol | source=manager/frontend/cli/llm.ts:L278 | neighbors=[llm.ts, client()]
+- "cli_llm_recommendnextphase": "recommendNextPhase()" | kind=code-symbol | source=manager/frontend/cli/llm.ts:L222 | neighbors=[llm.ts, client()]
+- "cli_llm_suggestattackpath": "suggestAttackPath()" | kind=code-symbol | source=manager/frontend/cli/llm.ts:L92 | neighbors=[llm.ts, client()]
+- "cli_llm_validatefindings": "validateFindings()" | kind=code-symbol | source=manager/frontend/cli/llm.ts:L138 | neighbors=[llm.ts, client()]
+- "commands_admin_buildadmincommand": "buildAdminCommand()" | kind=code-symbol | source=manager/frontend/cli/commands/admin.ts:L13 | neighbors=[index.ts, admin.ts]
+- "commands_ask_buildaskcommand": "buildAskCommand()" | kind=code-symbol | source=manager/frontend/cli/commands/ask.ts:L59 | neighbors=[index.ts, ask.ts]
+- "commands_doctor_builddoctorcommand": "buildDoctorCommand()" | kind=code-symbol | source=manager/frontend/cli/commands/doctor.ts:L216 | neighbors=[index.ts, doctor.ts]
+- "commands_doctor_checktool": "checkTool()" | kind=code-symbol | source=manager/frontend/cli/commands/doctor.ts:L92 | neighbors=[doctor.ts, which()]
+- "commands_doctor_ln": "ln()" | kind=code-symbol | source=manager/frontend/cli/commands/doctor.ts:L33 | neighbors=[doctor.ts, render()]
+- "commands_doctor_symbol": "symbol()" | kind=code-symbol | source=manager/frontend/cli/commands/doctor.ts:L35 | neighbors=[doctor.ts, render()]
+- "commands_doctor_which": "which()" | kind=code-symbol | source=manager/frontend/cli/commands/doctor.ts:L73 | neighbors=[doctor.ts, checkTool()]
+- "commands_engagement_buildengagementcommand": "buildEngagementCommand()" | kind=code-symbol | source=manager/frontend/cli/commands/engagement.ts:L36 | neighbors=[index.ts, engagement.ts]
+- "commands_findings_buildfindingscommand": "buildFindingsCommand()" | kind=code-symbol | source=manager/frontend/cli/commands/findings.ts:L6 | neighbors=[index.ts, findings.ts]
+- "commands_interactive_asksecret": "askSecret()" | kind=code-symbol | source=manager/frontend/cli/commands/interactive.ts:L51 | neighbors=[interactive.ts, ensureAuthenticated()]
+- "commands_interactive_buildinteractivecommand": "buildInteractiveCommand()" | kind=code-symbol | source=manager/frontend/cli/commands/interactive.ts:L2091 | neighbors=[index.ts, interactive.ts]
+- "commands_interactive_detectlocalsubnet": "detectLocalSubnet()" | kind=code-symbol | source=manager/frontend/cli/commands/interactive.ts:L194 | neighbors=[interactive.ts, pickTargets()]
+- "commands_interactive_parsemanualhosts": "parseManualHosts()" | kind=code-symbol | source=manager/frontend/cli/commands/interactive.ts:L1448 | neighbors=[interactive.ts, wizardScan()]
+- "commands_interactive_phaselabel": "phaseLabel()" | kind=code-symbol | source=manager/frontend/cli/commands/interactive.ts:L880 | neighbors=[interactive.ts, runIterativeEngagement()]
+- "commands_interactive_w": "w()" | kind=code-symbol | source=manager/frontend/cli/commands/interactive.ts:L31 | neighbors=[interactive.ts, wizardAsk()]
+- "commands_login_buildlogincommand": "buildLoginCommand()" | kind=code-symbol | source=manager/frontend/cli/commands/login.ts:L46 | neighbors=[index.ts, login.ts]
+- "commands_logout_buildlogoutcommand": "buildLogoutCommand()" | kind=code-symbol | source=manager/frontend/cli/commands/logout.ts:L4 | neighbors=[index.ts, logout.ts]
+- "commands_report_buildreportcommand": "buildReportCommand()" | kind=code-symbol | source=manager/frontend/cli/commands/report.ts:L85 | neighbors=[index.ts, report.ts]
+- "commands_scan_buildscancommand": "buildScanCommand()" | kind=code-symbol | source=manager/frontend/cli/commands/scan.ts:L143 | neighbors=[index.ts, scan.ts]
+- "commands_status_buildstatuscommand": "buildStatusCommand()" | kind=code-symbol | source=manager/frontend/cli/commands/status.ts:L21 | neighbors=[index.ts, status.ts]
+- "commands_tools_buildtoolscommand": "buildToolsCommand()" | kind=code-symbol | source=manager/frontend/cli/commands/tools.ts:L29 | neighbors=[index.ts, tools.ts]
+- "commands_tools_ln": "ln()" | kind=code-symbol | source=manager/frontend/cli/commands/tools.ts:L14 | neighbors=[tools.ts, showSpinner()]
+- "commands_tools_showspinner": "showSpinner()" | kind=code-symbol | source=manager/frontend/cli/commands/tools.ts:L16 | neighbors=[tools.ts, ln()]
 
 ## Instructions
 

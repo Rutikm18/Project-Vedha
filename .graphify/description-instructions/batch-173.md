@@ -1,4 +1,4 @@
-# Node Description Batch 174 of 336
+# Node Description Batch 174 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -9,60 +9,54 @@ your JSON answer to the answer file.
 You are documenting nodes in a knowledge graph.
 For each entry below, write ONE concise factual plain-language sentence
 describing what it is or does. Use only the provided context.
-For an entity node (any other kind — e.g. a person, place, event, object),
-describe what the entity is and its role, grounded in its type, its
-relations (neighbors) and the provided citations/evidence — e.g.
-"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
-Ground entity descriptions in the citations/evidence when present; do not
-speculate beyond the context, so a node with no supporting context may be
-left out of the reply.
-LANGUAGE: each entry has a `lang=` marker giving the language of its source.
-Write that entry's description in EXACTLY that language. Do not translate to
-a single common language — match each node's source language individually.
+For a code symbol (kind=code-symbol — a function, class, or constant),
+describe what the function/symbol does based on its name, source location
+and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
+Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "agent_agent_rationale_212": "Install a root log handler for the daemon.      Nothing on the daemon path calle" | kind=entity | source=probe/agent/agent.py:L212 | neighbors=[configure_logging()] | lang=en
-- "agent_agent_rationale_224": "Install a root log handler for the daemon.      Nothing on the daemon path calle" | kind=entity | source=probe/agent/agent.py:L224 | neighbors=[configure_logging()] | lang=en
-- "agent_agent_rationale_248": "Bounded reachability preflight. Proceeds the moment the Manager answers     /hea" | kind=entity | source=probe/agent/agent.py:L248 | neighbors=[_wait_for_manager()] | lang=en
-- "agent_agent_rationale_258": "Persistent WebSocket push loop.      Returns False if WebSocket is unavailable (" | kind=entity | source=probe/agent/agent.py:L258 | neighbors=[_run_ws_push_loop()] | lang=en
-- "agent_agent_rationale_263": "Persistent WebSocket push loop.      Returns False if WebSocket is unavailable (" | kind=entity | source=probe/agent/agent.py:L263 | neighbors=[_run_ws_push_loop()] | lang=en
-- "agent_agent_rationale_267": "Poll for work. Auth failures (TransportError) and transient network     failures" | kind=entity | source=probe/agent/agent.py:L267 | neighbors=[_poll_jobs_or_empty()] | lang=en
-- "agent_agent_rationale_278": "Install a root log handler for the daemon.      Nothing on the daemon path calle" | kind=entity | source=probe/agent/agent.py:L278 | neighbors=[configure_logging()] | lang=en
-- "agent_agent_rationale_279": "Poll for work. Auth failures (TransportError) and transient network     failures" | kind=entity | source=probe/agent/agent.py:L279 | neighbors=[_poll_jobs_or_empty()] | lang=en
-- "agent_agent_rationale_293": "Run an HTTP-claimed job while renewing its manager lease." | kind=entity | source=probe/agent/agent.py:L293 | neighbors=[_run_polled_job_with_heartbeats()] | lang=en
-- "agent_agent_rationale_302": "Run an HTTP-claimed job while renewing its manager lease." | kind=entity | source=probe/agent/agent.py:L302 | neighbors=[_run_polled_job_with_heartbeats()] | lang=en
-- "agent_agent_rationale_327": "Persistent WebSocket push loop.      Returns False if WebSocket is unavailable (" | kind=entity | source=probe/agent/agent.py:L327 | neighbors=[_run_ws_push_loop()] | lang=en
-- "agent_agent_rationale_333": "Poll for work. Auth failures (TransportError) and transient network     failures" | kind=entity | source=probe/agent/agent.py:L333 | neighbors=[_poll_jobs_or_empty()] | lang=en
-- "agent_agent_rationale_336": "Persistent WebSocket push loop.      Returns False if WebSocket is unavailable (" | kind=entity | source=probe/agent/agent.py:L336 | neighbors=[_run_ws_push_loop()] | lang=en
-- "agent_agent_rationale_372": "Run an HTTP-claimed job while renewing its manager lease." | kind=entity | source=probe/agent/agent.py:L372 | neighbors=[_run_polled_job_with_heartbeats()] | lang=en
-- "agent_agent_rationale_373": "Run an HTTP-claimed job while renewing its manager lease." | kind=entity | source=probe/agent/agent.py:L373 | neighbors=[_run_polled_job_with_heartbeats()] | lang=en
-- "agent_agent_rationale_382": "Run one job while keeping WS status/result frames best-effort." | kind=entity | source=probe/agent/agent.py:L382 | neighbors=[_ws_run_job()] | lang=en
-- "agent_agent_rationale_387": "Run one job while keeping WS status/result frames best-effort." | kind=entity | source=probe/agent/agent.py:L387 | neighbors=[_ws_run_job()] | lang=en
-- "agent_agent_rationale_421": "Persistent WebSocket push loop.      Returns False if WebSocket is unavailable (" | kind=entity | source=probe/agent/agent.py:L421 | neighbors=[_run_ws_push_loop()] | lang=en
-- "agent_agent_rationale_422": "Persistent WebSocket push loop.      Returns False if WebSocket is unavailable (" | kind=entity | source=probe/agent/agent.py:L422 | neighbors=[_run_ws_push_loop()] | lang=en
-- "agent_agent_rationale_43": "Load key=value lines from probe.env for dev convenience." | kind=entity | source=probe/agent/agent.py:L43 | neighbors=[_load_env()] | lang=en
-- "agent_agent_rationale_437": "Poll pending jobs even while WS is connected.      This makes result delivery re" | kind=entity | source=probe/agent/agent.py:L437 | neighbors=[_ws_http_poll_fallback()] | lang=en
-- "agent_agent_rationale_442": "Poll pending jobs even while WS is connected.      This makes result delivery re" | kind=entity | source=probe/agent/agent.py:L442 | neighbors=[_ws_http_poll_fallback()] | lang=en
-- "agent_agent_rationale_45": "Return an integer environment setting constrained to a safe range." | kind=entity | source=probe/agent/agent.py:L45 | neighbors=[_bounded_env_int()] | lang=en
-- "agent_agent_rationale_46": "Return an integer environment setting constrained to a safe range." | kind=entity | source=probe/agent/agent.py:L46 | neighbors=[_bounded_env_int()] | lang=en
-- "agent_agent_rationale_463": "Acknowledge an offer without executing it before claim confirmation." | kind=entity | source=probe/agent/agent.py:L463 | neighbors=[_ws_stage_job_offer()] | lang=en
-- "agent_agent_rationale_475": "Send periodic heartbeats over WebSocket." | kind=entity | source=probe/agent/agent.py:L475 | neighbors=[_ws_heartbeat_sender()] | lang=en
-- "agent_agent_rationale_48": "Return an integer environment setting constrained to a safe range." | kind=entity | source=probe/agent/agent.py:L48 | neighbors=[_bounded_env_int()] | lang=en
-- "agent_agent_rationale_481": "Release a staged job only after the manager confirms its claim." | kind=entity | source=probe/agent/agent.py:L481 | neighbors=[_ws_take_confirmed_job()] | lang=en
-- "agent_agent_rationale_485": "Re-submit previously spooled results over WebSocket." | kind=entity | source=probe/agent/agent.py:L485 | neighbors=[_ws_flush_spool()] | lang=en
-- "agent_agent_rationale_488": "Release a staged job only after the manager confirms its claim." | kind=entity | source=probe/agent/agent.py:L488 | neighbors=[_ws_take_confirmed_job()] | lang=en
-- "agent_agent_rationale_490": "Re-submit previously spooled results over WebSocket." | kind=entity | source=probe/agent/agent.py:L490 | neighbors=[_ws_flush_spool()] | lang=en
-- "agent_agent_rationale_507": "Run one job while keeping WS status/result frames best-effort." | kind=entity | source=probe/agent/agent.py:L507 | neighbors=[_ws_run_job()] | lang=en
-- "agent_agent_rationale_508": "Run an HTTP-claimed job while renewing its manager lease." | kind=entity | source=probe/agent/agent.py:L508 | neighbors=[_run_polled_job_with_heartbeats()] | lang=en
-- "agent_agent_rationale_511": "Run all startup security checks before any network I/O.      Order matters: HW b" | kind=entity | source=probe/agent/agent.py:L511 | neighbors=[_startup_gauntlet()] | lang=pt
-- "agent_agent_rationale_514": "Run one job while keeping WS status/result frames best-effort." | kind=entity | source=probe/agent/agent.py:L514 | neighbors=[_ws_run_job()] | lang=en
-- "agent_agent_rationale_516": "Run all startup security checks before any network I/O.      Order matters: HW b" | kind=entity | source=probe/agent/agent.py:L516 | neighbors=[_startup_gauntlet()] | lang=pt
-- "agent_agent_rationale_54": "Load key=value lines from probe.env for dev convenience." | kind=entity | source=probe/agent/agent.py:L54 | neighbors=[_load_env()] | lang=en
-- "agent_agent_rationale_55": "Recognize only explicit single-host development/Compose manager names." | kind=entity | source=probe/agent/agent.py:L55 | neighbors=[_is_local_manager_url()] | lang=en
-- "agent_agent_rationale_550": "Poll pending jobs even while WS is connected.      This makes result delivery re" | kind=entity | source=probe/agent/agent.py:L550 | neighbors=[_ws_http_poll_fallback()] | lang=en
-- "agent_agent_rationale_556": "Acknowledge an offer without executing it before claim confirmation." | kind=entity | source=probe/agent/agent.py:L556 | neighbors=[_ws_stage_job_offer()] | lang=en
+- "tests_test_finding_section_testfindingsection_test_clean_host_shows_no_findings_honestly": ".test_clean_host_shows_no_findings_honestly()" | kind=code-symbol | source=probe/tests/test_finding_section.py:L51 | neighbors=[TestFindingSection, ._sum()]
+- "tests_test_finding_section_testfindingsection_test_each_finding_tagged_with_verified_provenance": ".test_each_finding_tagged_with_verified_provenance()" | kind=code-symbol | source=probe/tests/test_finding_section.py:L88 | neighbors=[TestFindingSection, ._sum()]
+- "tests_test_finding_section_testfindingsection_test_findings_are_ranked_worst_first": ".test_findings_are_ranked_worst_first()" | kind=code-symbol | source=probe/tests/test_finding_section.py:L76 | neighbors=[TestFindingSection, ._sum()]
+- "tests_test_finding_section_testfindingsection_test_vulnerable_host_shows_ranked_vulnerabilities": ".test_vulnerable_host_shows_ranked_vulnerabilities()" | kind=code-symbol | source=probe/tests/test_finding_section.py:L61 | neighbors=[TestFindingSection, ._sum()]
+- "tests_test_finding_verification_api": "test_finding_verification_api.py" | kind=code-symbol | source=manager/backend/tests/test_finding_verification_api.py:L1 | neighbors=[72f68af feat(verification): expose veri…, test_finding_schema_exposes_verificatio…]
+- "tests_test_finding_verification_schema": "test_finding_verification_schema.py" | kind=code-symbol | source=manager/backend/tests/test_finding_verification_schema.py:L1 | neighbors=[0fbec7d feat(verification): add finding…, test_finding_has_verification_columns()]
+- "tests_test_ftp_scanner_testftpfindings_test_anon_denied_is_silent": ".test_anon_denied_is_silent()" | kind=code-symbol | source=probe/tests/test_ftp_scanner.py:L70 | neighbors=[TestFTPFindings, ._fact()]
+- "tests_test_ftp_scanner_testftpfindings_test_anon_login_only_is_medium": ".test_anon_login_only_is_medium()" | kind=code-symbol | source=probe/tests/test_ftp_scanner.py:L65 | neighbors=[TestFTPFindings, ._fact()]
+- "tests_test_ftp_scanner_testftpfindings_test_anon_read_is_high": ".test_anon_read_is_high()" | kind=code-symbol | source=probe/tests/test_ftp_scanner.py:L58 | neighbors=[TestFTPFindings, ._fact()]
+- "tests_test_ftp_scanner_testftpscanner_test_anon_login_and_read_open": ".test_anon_login_and_read_open()" | kind=code-symbol | source=probe/tests/test_ftp_scanner.py:L33 | neighbors=[TestFTPScanner, ._sc()]
+- "tests_test_ftp_scanner_testftpscanner_test_ftp_present_anon_denied_open_but_secure": ".test_ftp_present_anon_denied_open_but_secure()" | kind=code-symbol | source=probe/tests/test_ftp_scanner.py:L46 | neighbors=[TestFTPScanner, ._sc()]
+- "tests_test_ftp_scanner_testftpscanner_test_no_ftp_filtered": ".test_no_ftp_filtered()" | kind=code-symbol | source=probe/tests/test_ftp_scanner.py:L41 | neighbors=[TestFTPScanner, ._sc()]
+- "tests_test_ftp_scanner_testparity": "TestParity" | kind=code-symbol | source=probe/tests/test_ftp_scanner.py:L75 | neighbors=[test_ftp_scanner.py, .test_main_scripts()]
+- "tests_test_host_discovery_udp_test_netbios_reply_proves_life_and_names_host": "test_netbios_reply_proves_life_and_names_host()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L129 | neighbors=[test_host_discovery_udp.py, _nbstat_reply()]
+- "tests_test_host_discovery_udp_test_tcp_reset_counts_as_proof_of_life": "test_tcp_reset_counts_as_proof_of_life()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L232 | neighbors=[test_host_discovery_udp.py, A RST mid-handshake (ConnectionResetErr…]
+- "tests_test_host_discovery_udp_test_udp_tier_skipped_when_arp_definitively_failed": "test_udp_tier_skipped_when_arp_definitively_failed()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L251 | neighbors=[test_host_discovery_udp.py, On-LAN INCOMPLETE/FAILED = nobody owns …]
+- "tests_test_host_discovery_udp_testparsenbstat_test_msbrowse_control_chars_dropped": ".test_msbrowse_control_chars_dropped()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L52 | neighbors=[TestParseNbstat, _nbstat_reply()]
+- "tests_test_host_discovery_udp_testparsenbstat_test_names_hostname_domain_mac": ".test_names_hostname_domain_mac()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L38 | neighbors=[TestParseNbstat, _nbstat_reply()]
+- "tests_test_host_discovery_udp_udp_server": "_udp_server()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L103 | neighbors=[test_host_discovery_udp.py, _Responder]
+- "tests_test_host_health_testheartbeat_test_cancellation_is_clean": ".test_cancellation_is_clean()" | kind=code-symbol | source=probe/tests/test_host_health.py:L251 | neighbors=[TestHeartbeat, _monitor()]
+- "tests_test_host_health_testheartbeat_test_declares_offline_after_consecutive_misses": ".test_declares_offline_after_consecutive_misses()" | kind=code-symbol | source=probe/tests/test_host_health.py:L207 | neighbors=[TestHeartbeat, _monitor()]
+- "tests_test_host_health_testheartbeat_test_healthy_host_is_never_marked": ".test_healthy_host_is_never_marked()" | kind=code-symbol | source=probe/tests/test_host_health.py:L235 | neighbors=[TestHeartbeat, _monitor()]
+- "tests_test_host_health_testsilencedetection_test_any_contact_beats_many_failures": ".test_any_contact_beats_many_failures()" | kind=code-symbol | source=probe/tests/test_host_health.py:L60 | neighbors=[TestSilenceDetection, _r()]
+- "tests_test_host_health_testsilencedetection_test_filtered_is_silence_but_only_suspicion": ".test_filtered_is_silence_but_only_suspicion()" | kind=code-symbol | source=probe/tests/test_host_health.py:L49 | neighbors=[TestSilenceDetection, _r()]
+- "tests_test_host_health_testsilencedetection_test_no_results_is_not_silence": ".test_no_results_is_not_silence()" | kind=code-symbol | source=probe/tests/test_host_health.py:L56 | neighbors=[A branch that declined to run says noth…, TestSilenceDetection]
+- "tests_test_host_health_testsilencedetection_test_open_and_observed_are_contact": ".test_open_and_observed_are_contact()" | kind=code-symbol | source=probe/tests/test_host_health.py:L42 | neighbors=[TestSilenceDetection, _r()]
+- "tests_test_host_health_testsilencedetection_test_transport_error_code_is_silence": ".test_transport_error_code_is_silence()" | kind=code-symbol | source=probe/tests/test_host_health.py:L52 | neighbors=[TestSilenceDetection, _r()]
+- "tests_test_host_health_testsilencedetection_test_unreachable_is_silence": ".test_unreachable_is_silence()" | kind=code-symbol | source=probe/tests/test_host_health.py:L46 | neighbors=[TestSilenceDetection, _r()]
+- "tests_test_host_health_testudpnoreplyisnotcontact_test_a_real_open_port_still_counts_as_contact": ".test_a_real_open_port_still_counts_as_contact()" | kind=code-symbol | source=probe/tests/test_host_health.py:L195 | neighbors=[TestUdpNoReplyIsNotContact, _r()]
+- "tests_test_host_health_testudpnoreplyisnotcontact_test_mixed_udp_silence_and_a_real_open_port_is_contact": ".test_mixed_udp_silence_and_a_real_open_port_is_contact()" | kind=code-symbol | source=probe/tests/test_host_health.py:L198 | neighbors=[TestUdpNoReplyIsNotContact, _r()]
+- "tests_test_host_health_testudpnoreplyisnotcontact_test_udp_no_reply_counts_as_silence": ".test_udp_no_reply_counts_as_silence()" | kind=code-symbol | source=probe/tests/test_host_health.py:L192 | neighbors=[TestUdpNoReplyIsNotContact, _r()]
+- "tests_test_host_health_testverdict_test_a_broken_liveness_probe_never_aborts_the_scan": ".test_a_broken_liveness_probe_never_aborts_the_scan()" | kind=code-symbol | source=probe/tests/test_host_health.py:L113 | neighbors=[TestVerdict, _r()]
+- "tests_test_http_lease_test_revoked_lease_cancels_the_attempt_immediately": "test_revoked_lease_cancels_the_attempt_immediately()" | kind=code-symbol | source=probe/tests/test_http_lease.py:L120 | neighbors=[test_http_lease.py, An operator cancel (409) is DEFINITIVE,…]
+- "tests_test_installer_contract_test_installer_accepts_enroll_token_and_insecure_for_http_manager": "test_installer_accepts_enroll_token_and_insecure_for_http_manager()" | kind=code-symbol | source=probe/tests/test_installer_contract.py:L62 | neighbors=[test_installer_contract.py, _dry_run()]
+- "tests_test_installer_contract_test_installer_without_token_still_shows_manual_approval": "test_installer_without_token_still_shows_manual_approval()" | kind=code-symbol | source=probe/tests/test_installer_contract.py:L76 | neighbors=[test_installer_contract.py, _dry_run()]
+- "tests_test_instance_lock_testdegradessafely_test_corrupt_lockfile_still_refuses_a_second_holder": ".test_corrupt_lockfile_still_refuses_a_second_holder()" | kind=code-symbol | source=probe/tests/test_instance_lock.py:L142 | neighbors=[A garbled hint must never be able to ST…, TestDegradesSafely]
+- "tests_test_instance_lock_testdegradessafely_test_unwritable_directory_does_not_block_the_scan": ".test_unwritable_directory_does_not_block_the_scan()" | kind=code-symbol | source=probe/tests/test_instance_lock.py:L134 | neighbors=[A guard that cannot run must not become…, TestDegradesSafely]
+- "tests_test_instance_lock_testlockfile_test_sidecar_never_the_state_file_itself": ".test_sidecar_never_the_state_file_itself()" | kind=code-symbol | source=probe/tests/test_instance_lock.py:L93 | neighbors=[Locking the file we also rewrite invite…, TestLockFile]
+- "tests_test_instance_lock_testmutualexclusion_test_different_state_files_do_not_contend": ".test_different_state_files_do_not_contend()" | kind=code-symbol | source=probe/tests/test_instance_lock.py:L84 | neighbors=[Several probes on one host is legitimat…, TestMutualExclusion]
+- "tests_test_instance_lock_testmutualexclusion_test_lock_is_released_when_the_holder_exits": ".test_lock_is_released_when_the_holder_exits()" | kind=code-symbol | source=probe/tests/test_instance_lock.py:L65 | neighbors=[A PID file would go stale here; flock i…, TestMutualExclusion]
 
 ## Instructions
 

@@ -1,4 +1,4 @@
-# Node Description Batch 272 of 336
+# Node Description Batch 272 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,51 +19,53 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-Write every description in English (en). Do not switch languages.
+LANGUAGE: each entry has a `lang=` marker giving the language of its source.
+Write that entry's description in EXACTLY that language. Do not translate to
+a single common language — match each node's source language individually.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_ad_assessment_testntlmrelaychecker_test_smb_signing_without_impacket_marks_unreachable": ".test_smb_signing_without_impacket_marks_unreachable()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L252 | neighbors=[TestNTLMRelayChecker]
-- "tests_test_adaptive_rate_echoprotocol_connection_made": ".connection_made()" | kind=code-symbol | source=probe/tests/test_adaptive_rate.py:L178 | neighbors=[_EchoProtocol]
-- "tests_test_adaptive_rate_echoprotocol_datagram_received": ".datagram_received()" | kind=code-symbol | source=probe/tests/test_adaptive_rate.py:L181 | neighbors=[_EchoProtocol]
-- "tests_test_adaptive_rate_rationale_1": "test_adaptive_rate.py — Tier 1.3: adaptive congestion control + UDP retransmit." | kind=entity | source=probe/tests/test_adaptive_rate.py:L1 | neighbors=[test_adaptive_rate.py]
-- "tests_test_adaptive_rate_testudpretransmit_test_retries_exhaust_on_silence": ".test_retries_exhaust_on_silence()" | kind=code-symbol | source=probe/tests/test_adaptive_rate.py:L146 | neighbors=[TestUdpRetransmit]
-- "tests_test_adaptive_rate_testudpretransmit_test_retry_recovers_dropped_reply": ".test_retry_recovers_dropped_reply()" | kind=code-symbol | source=probe/tests/test_adaptive_rate.py:L159 | neighbors=[TestUdpRetransmit]
-- "tests_test_adaptive_rate_testudpretransmit_test_returns_immediately_on_closed": ".test_returns_immediately_on_closed()" | kind=code-symbol | source=probe/tests/test_adaptive_rate.py:L133 | neighbors=[TestUdpRetransmit]
-- "tests_test_adaptive_rate_testudpretransmit_test_returns_immediately_on_reply": ".test_returns_immediately_on_reply()" | kind=code-symbol | source=probe/tests/test_adaptive_rate.py:L120 | neighbors=[TestUdpRetransmit]
-- "tests_test_adaptive_rate_testudpscanneradaptive_test_adaptive_scanner_creates_controller": ".test_adaptive_scanner_creates_controller()" | kind=code-symbol | source=probe/tests/test_adaptive_rate.py:L186 | neighbors=[TestUdpScannerAdaptive]
-- "tests_test_adaptive_rate_testudpscanneradaptive_test_adaptive_scanner_detects_open_on_loopback": ".test_adaptive_scanner_detects_open_on_loopback()" | kind=code-symbol | source=probe/tests/test_adaptive_rate.py:L198 | neighbors=[TestUdpScannerAdaptive]
-- "tests_test_adaptive_rate_testudpscanneradaptive_test_non_adaptive_scanner_has_no_controller": ".test_non_adaptive_scanner_has_no_controller()" | kind=code-symbol | source=probe/tests/test_adaptive_rate.py:L192 | neighbors=[TestUdpScannerAdaptive]
-- "tests_test_adaptive_rate_testwindowgating_test_acquire_blocks_when_window_full": ".test_acquire_blocks_when_window_full()" | kind=code-symbol | source=probe/tests/test_adaptive_rate.py:L80 | neighbors=[TestWindowGating]
-- "tests_test_adaptive_rate_testwindowgating_test_release_unblocks_waiter": ".test_release_unblocks_waiter()" | kind=code-symbol | source=probe/tests/test_adaptive_rate.py:L92 | neighbors=[TestWindowGating]
-- "tests_test_adaptive_rate_testwindowgating_test_report_loss_shrinks_and_releases": ".test_report_loss_shrinks_and_releases()" | kind=code-symbol | source=probe/tests/test_adaptive_rate.py:L108 | neighbors=[TestWindowGating]
-- "tests_test_adaptive_rate_testwindowstatemachine_test_congestion_avoidance_grows_sublinearly": ".test_congestion_avoidance_grows_sublinearly()" | kind=code-symbol | source=probe/tests/test_adaptive_rate.py:L39 | neighbors=[TestWindowStateMachine]
-- "tests_test_adaptive_rate_testwindowstatemachine_test_initial_window": ".test_initial_window()" | kind=code-symbol | source=probe/tests/test_adaptive_rate.py:L28 | neighbors=[TestWindowStateMachine]
-- "tests_test_adaptive_rate_testwindowstatemachine_test_loss_halves_window": ".test_loss_halves_window()" | kind=code-symbol | source=probe/tests/test_adaptive_rate.py:L45 | neighbors=[TestWindowStateMachine]
-- "tests_test_adaptive_rate_testwindowstatemachine_test_loss_sets_ssthresh_to_half": ".test_loss_sets_ssthresh_to_half()" | kind=code-symbol | source=probe/tests/test_adaptive_rate.py:L50 | neighbors=[TestWindowStateMachine]
-- "tests_test_adaptive_rate_testwindowstatemachine_test_recovery_after_loss_enters_congestion_avoidance": ".test_recovery_after_loss_enters_congestion_avoidance()" | kind=code-symbol | source=probe/tests/test_adaptive_rate.py:L69 | neighbors=[TestWindowStateMachine]
-- "tests_test_adaptive_rate_testwindowstatemachine_test_slow_start_grows_by_one_per_success": ".test_slow_start_grows_by_one_per_success()" | kind=code-symbol | source=probe/tests/test_adaptive_rate.py:L32 | neighbors=[TestWindowStateMachine]
-- "tests_test_adaptive_rate_testwindowstatemachine_test_window_never_above_max": ".test_window_never_above_max()" | kind=code-symbol | source=probe/tests/test_adaptive_rate.py:L62 | neighbors=[TestWindowStateMachine]
-- "tests_test_adaptive_rate_testwindowstatemachine_test_window_never_below_min": ".test_window_never_below_min()" | kind=code-symbol | source=probe/tests/test_adaptive_rate.py:L55 | neighbors=[TestWindowStateMachine]
-- "tests_test_agent_auth_boundary_test_admin_enrollment_approval_is_not_public": "test_admin_enrollment_approval_is_not_public()" | kind=code-symbol | source=manager/backend/tests/test_agent_auth_boundary.py:L94 | neighbors=[test_agent_auth_boundary.py]
-- "tests_test_agent_auth_boundary_test_legacy_agent_jwt_allows_only_workload_operations": "test_legacy_agent_jwt_allows_only_workload_operations()" | kind=code-symbol | source=manager/backend/tests/test_agent_auth_boundary.py:L23 | neighbors=[test_agent_auth_boundary.py]
-- "tests_test_agent_auth_boundary_test_legacy_agent_jwt_rejects_human_and_wrong_method_operations": "test_legacy_agent_jwt_rejects_human_and_wrong_method_operations()" | kind=code-symbol | source=manager/backend/tests/test_agent_auth_boundary.py:L43 | neighbors=[test_agent_auth_boundary.py]
-- "tests_test_agent_auth_boundary_test_only_device_side_enrollment_posts_are_public": "test_only_device_side_enrollment_posts_are_public()" | kind=code-symbol | source=manager/backend/tests/test_agent_auth_boundary.py:L89 | neighbors=[test_agent_auth_boundary.py]
-- "tests_test_agent_dispatch_testagentwebsocketauthentication_test_accepts_bearer_header": ".test_accepts_bearer_header()" | kind=code-symbol | source=manager/backend/tests/test_agent_dispatch.py:L18 | neighbors=[TestAgentWebSocketAuthentication]
-- "tests_test_agent_dispatch_testagentwebsocketauthentication_test_rejects_query_string_credentials": ".test_rejects_query_string_credentials()" | kind=code-symbol | source=manager/backend/tests/test_agent_dispatch.py:L26 | neighbors=[TestAgentWebSocketAuthentication]
-- "tests_test_agent_dispatch_testjobsecretboundary_test_allows_non_secret_scan_tuning": ".test_allows_non_secret_scan_tuning()" | kind=code-symbol | source=manager/backend/tests/test_agent_dispatch.py:L84 | neighbors=[TestJobSecretBoundary]
-- "tests_test_agent_dispatch_testjobsecretboundary_test_detects_persisted_secret_material": ".test_detects_persisted_secret_material()" | kind=code-symbol | source=manager/backend/tests/test_agent_dispatch.py:L79 | neighbors=[TestJobSecretBoundary]
-- "tests_test_agent_dispatch_testtenantwebsocketselection_test_displaced_socket_cannot_unregister_reconnect": ".test_displaced_socket_cannot_unregister_reconnect()" | kind=code-symbol | source=manager/backend/tests/test_agent_dispatch.py:L111 | neighbors=[TestTenantWebSocketSelection]
-- "tests_test_agent_dispatch_testtenantwebsocketselection_test_first_online_push_cannot_cross_tenants": ".test_first_online_push_cannot_cross_tenants()" | kind=code-symbol | source=manager/backend/tests/test_agent_dispatch.py:L165 | neighbors=[TestTenantWebSocketSelection]
-- "tests_test_agent_dispatch_testtenantwebsocketselection_test_online_heartbeat_clears_finished_job": ".test_online_heartbeat_clears_finished_job()" | kind=code-symbol | source=manager/backend/tests/test_agent_dispatch.py:L98 | neighbors=[TestTenantWebSocketSelection]
-- "tests_test_agent_dispatch_testtenantwebsocketselection_test_only_returns_online_agents_in_requested_tenant": ".test_only_returns_online_agents_in_requested_tenant()" | kind=code-symbol | source=manager/backend/tests/test_agent_dispatch.py:L138 | neighbors=[TestTenantWebSocketSelection]
-- "tests_test_agent_dispatch_testusecasecatalogparity_test_manager_and_probe_route_use_cases_identically": ".test_manager_and_probe_route_use_cases_identically()" | kind=code-symbol | source=manager/backend/tests/test_agent_dispatch.py:L37 | neighbors=[TestUseCaseCatalogParity]
-- "tests_test_agent_identity_test_generated_scope_identity_preserves_agent_credentials": "test_generated_scope_identity_preserves_agent_credentials()" | kind=code-symbol | source=probe/tests/test_agent_identity.py:L23 | neighbors=[test_agent_identity.py]
-- "tests_test_agent_policy_rationale_1": "test_agent_policy.py — the pure deterministic agent policy engine." | kind=entity | source=manager/backend/tests/test_agent_policy.py:L1 | neighbors=[test_agent_policy.py]
-- "tests_test_agent_policy_testclassifyaction_test_known_actions_map_to_expected_tier": ".test_known_actions_map_to_expected_tier()" | kind=code-symbol | source=manager/backend/tests/test_agent_policy.py:L23 | neighbors=[TestClassifyAction]
-- "tests_test_agent_policy_testclassifyaction_test_unknown_action_fails_closed_to_highest_tier": ".test_unknown_action_fails_closed_to_highest_tier()" | kind=code-symbol | source=manager/backend/tests/test_agent_policy.py:L26 | neighbors=[TestClassifyAction]
-- "tests_test_agent_read_tools_fakesession_execute": ".execute()" | kind=code-symbol | source=manager/backend/tests/test_agent_read_tools.py:L39 | neighbors=[_FakeSession]
+- "routers_findings_rationale_242": "Operator reverses a resolution (auto or manual). Only a `remediated`     finding" | kind=entity | source=manager/backend/app/routers/findings.py:L242 | neighbors=[reopen_finding()] | lang=pt
+- "routers_findings_rationale_248": "Operator reverses a resolution (auto or manual). Only a `remediated`     finding" | kind=entity | source=manager/backend/app/routers/findings.py:L248 | neighbors=[reopen_finding()] | lang=pt
+- "routers_findings_rationale_250": "Operator reverses a resolution (auto or manual). Only a `remediated`     finding" | kind=entity | source=manager/backend/app/routers/findings.py:L250 | neighbors=[reopen_finding()] | lang=pt
+- "routers_findings_rationale_269": "The finding's full lifecycle, oldest-first: stored audit events (who did     wha" | kind=entity | source=manager/backend/app/routers/findings.py:L269 | neighbors=[finding_timeline()] | lang=en
+- "routers_findings_rationale_27": "Fetch a finding scoped to the caller's tenant via its parent engagement.      Fi" | kind=entity | source=manager/backend/app/routers/findings.py:L27 | neighbors=[_tenant_finding()] | lang=en
+- "routers_findings_rationale_32": "Fetch a finding scoped to the caller's tenant via its parent engagement.      Fi" | kind=entity | source=manager/backend/app/routers/findings.py:L32 | neighbors=[_tenant_finding()] | lang=en
+- "routers_findings_rationale_350": "The finding's full lifecycle, oldest-first: stored audit events (who did     wha" | kind=entity | source=manager/backend/app/routers/findings.py:L350 | neighbors=[finding_timeline()] | lang=en
+- "routers_findings_rationale_36": "Fetch a finding scoped to the caller's tenant via its parent engagement.      Fi" | kind=entity | source=manager/backend/app/routers/findings.py:L36 | neighbors=[_tenant_finding()] | lang=en
+- "routers_findings_rationale_363": "Operator reverses a resolution (auto or manual). Only a `remediated`     finding" | kind=entity | source=manager/backend/app/routers/findings.py:L363 | neighbors=[reopen_finding()] | lang=pt
+- "routers_findings_rationale_393": "Operator reverses a resolution (auto or manual). Only a `remediated`     finding" | kind=entity | source=manager/backend/app/routers/findings.py:L393 | neighbors=[reopen_finding()] | lang=pt
+- "routers_findings_rationale_54": "Build the detail contract with bounded asset context.      Portfolio/list respon" | kind=entity | source=manager/backend/app/routers/findings.py:L54 | neighbors=[_finding_detail_out()] | lang=en
+- "routers_findings_rationale_88": "Compute SLA state across the tenant's tracked findings (open/confirmed).     Opt" | kind=entity | source=manager/backend/app/routers/findings.py:L88 | neighbors=[sla_summary()] | lang=en
+- "routers_health_health": "health()" | kind=code-symbol | source=manager/backend/app/routers/health.py:L40 | neighbors=[health.py] | lang=en
+- "routers_health_rationale_1": "Health endpoints.  GET /health          — liveness: DB + Redis reachability (fas" | kind=entity | source=manager/backend/app/routers/health.py:L1 | neighbors=[health.py] | lang=en
+- "routers_health_rationale_163": "Returns the cached report from the last startup diagnostics run.     If the repo" | kind=entity | source=manager/backend/app/routers/health.py:L163 | neighbors=[health_startup()] | lang=en
+- "routers_health_rationale_165": "Returns the cached report from the last startup diagnostics run.     If the repo" | kind=entity | source=manager/backend/app/routers/health.py:L165 | neighbors=[health_startup()] | lang=en
+- "routers_health_rationale_82": "Validates the authentication subsystem without touching login state.     Returns" | kind=entity | source=manager/backend/app/routers/health.py:L82 | neighbors=[health_auth()] | lang=en
+- "routers_integrations_rationale_1": "integrations.py — operator management of notification integrations (email/Slack/" | kind=entity | source=manager/backend/app/routers/integrations.py:L1 | neighbors=[integrations.py] | lang=en
+- "routers_integrations_rationale_107": "Enqueue a durable test notification; the outbox worker fans it out to every" | kind=entity | source=manager/backend/app/routers/integrations.py:L107 | neighbors=[test_integrations()] | lang=en
+- "routers_integrations_rationale_118": "Decrypt an integration's secret for the delivery worker (never the API)." | kind=entity | source=manager/backend/app/routers/integrations.py:L118 | neighbors=[integration_secret()] | lang=en
+- "routers_portal_patch_portal_finding": "patch_portal_finding()" | kind=code-symbol | source=manager/backend/app/routers/portal.py:L173 | neighbors=[portal.py] | lang=en
+- "routers_portal_portal_activity": "portal_activity()" | kind=code-symbol | source=manager/backend/app/routers/portal.py:L1062 | neighbors=[portal.py] | lang=en
+- "routers_portal_portal_exposure": "portal_exposure()" | kind=code-symbol | source=manager/backend/app/routers/portal.py:L1041 | neighbors=[portal.py] | lang=en
+- "routers_portal_portal_finding": "portal_finding()" | kind=code-symbol | source=manager/backend/app/routers/portal.py:L145 | neighbors=[portal.py] | lang=en
+- "routers_portal_portal_finding_timeline": "portal_finding_timeline()" | kind=code-symbol | source=manager/backend/app/routers/portal.py:L157 | neighbors=[portal.py] | lang=en
+- "routers_portal_portal_findings": "portal_findings()" | kind=code-symbol | source=manager/backend/app/routers/portal.py:L127 | neighbors=[portal.py] | lang=en
+- "routers_portal_portal_posture_analytics": "portal_posture_analytics()" | kind=code-symbol | source=manager/backend/app/routers/portal.py:L1048 | neighbors=[portal.py] | lang=en
+- "routers_portal_portal_report": "portal_report()" | kind=code-symbol | source=manager/backend/app/routers/portal.py:L345 | neighbors=[portal.py] | lang=en
+- "routers_portal_portal_reports": "portal_reports()" | kind=code-symbol | source=manager/backend/app/routers/portal.py:L334 | neighbors=[portal.py] | lang=en
+- "routers_portal_portal_sla_summary": "portal_sla_summary()" | kind=code-symbol | source=manager/backend/app/routers/portal.py:L1055 | neighbors=[portal.py] | lang=en
+- "routers_portal_portal_workspace_campaign_progress": "portal_workspace_campaign_progress()" | kind=code-symbol | source=manager/backend/app/routers/portal.py:L836 | neighbors=[portal.py] | lang=en
+- "routers_portal_portal_workspace_engagement_assets": "portal_workspace_engagement_assets()" | kind=code-symbol | source=manager/backend/app/routers/portal.py:L706 | neighbors=[portal.py] | lang=en
+- "routers_portal_portal_workspace_finding_detail": "portal_workspace_finding_detail()" | kind=code-symbol | source=manager/backend/app/routers/portal.py:L660 | neighbors=[portal.py] | lang=en
+- "routers_portal_portal_workspace_finding_summary": "portal_workspace_finding_summary()" | kind=code-symbol | source=manager/backend/app/routers/portal.py:L644 | neighbors=[portal.py] | lang=en
+- "routers_portal_portal_workspace_findings": "portal_workspace_findings()" | kind=code-symbol | source=manager/backend/app/routers/portal.py:L603 | neighbors=[portal.py] | lang=en
+- "routers_portal_portal_workspace_fleet_agent_jobs": "portal_workspace_fleet_agent_jobs()" | kind=code-symbol | source=manager/backend/app/routers/portal.py:L1002 | neighbors=[portal.py] | lang=en
+- "routers_portal_portal_workspace_fleet_jobs": "portal_workspace_fleet_jobs()" | kind=code-symbol | source=manager/backend/app/routers/portal.py:L862 | neighbors=[portal.py] | lang=en
+- "routers_portal_portal_workspace_import_facts": "portal_workspace_import_facts()" | kind=code-symbol | source=manager/backend/app/routers/portal.py:L715 | neighbors=[portal.py] | lang=en
+- "routers_portal_portal_workspace_raw_facts": "portal_workspace_raw_facts()" | kind=code-symbol | source=manager/backend/app/routers/portal.py:L845 | neighbors=[portal.py] | lang=en
+- "routers_portal_portal_workspace_scan_job": "portal_workspace_scan_job()" | kind=code-symbol | source=manager/backend/app/routers/portal.py:L756 | neighbors=[portal.py] | lang=en
 
 ## Instructions
 

@@ -1,4 +1,4 @@
-# Node Description Batch 288 of 336
+# Node Description Batch 288 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -9,9 +9,6 @@ your JSON answer to the answer file.
 You are documenting nodes in a knowledge graph.
 For each entry below, write ONE concise factual plain-language sentence
 describing what it is or does. Use only the provided context.
-For a code symbol (kind=code-symbol — a function, class, or constant),
-describe what the function/symbol does based on its name, source location
-and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
 For an entity node (any other kind — e.g. a person, place, event, object),
 describe what the entity is and its role, grounded in its type, its
 relations (neighbors) and the provided citations/evidence — e.g.
@@ -26,46 +23,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_installer_contract_test_installer_source_has_no_human_or_job_credentials": "test_installer_source_has_no_human_or_job_credentials()" | kind=code-symbol | source=probe/tests/test_installer_contract.py:L49 | neighbors=[test_installer_contract.py] | lang=en
-- "tests_test_integration_rationale_1": "Integration tests — full probe lifecycles exercised through the public APIs of a" | kind=entity | source=probe/tests/test_integration.py:L1 | neighbors=[test_integration.py] | lang=en
-- "tests_test_integration_rationale_101": "Phase 4 + Phase 1: TaskRunner receives encrypted scope and decrypts it." | kind=entity | source=probe/tests/test_integration.py:L101 | neighbors=[TestTaskRunnerWithEncryptedScope] | lang=en
-- "tests_test_integration_rationale_104": "Job carries encrypted_scope → TaskRunner decrypts → uses it." | kind=entity | source=probe/tests/test_integration.py:L104 | neighbors=[.test_decrypts_encrypted_scope_from_job…] | lang=en
-- "tests_test_integration_rationale_136": "Wrong key → decryption fails → graceful fallback to params scope." | kind=entity | source=probe/tests/test_integration.py:L136 | neighbors=[.test_falls_back_when_decryption_fails()] | lang=en
-- "tests_test_integration_rationale_166": "Phase 1: combined scope validation (validate + excludes)." | kind=entity | source=probe/tests/test_integration.py:L166 | neighbors=[TestScopeValidationPipeline] | lang=en
-- "tests_test_integration_rationale_198": "Phase 1: result spool with upload retry." | kind=entity | source=probe/tests/test_integration.py:L198 | neighbors=[TestResultSpoolWithRetry] | lang=en
-- "tests_test_integration_rationale_239": "Phase 4 + Phase 1: Transport sends public_key during registration." | kind=entity | source=probe/tests/test_integration.py:L239 | neighbors=[TestTransportWithIdentity] | lang=en
-- "tests_test_integration_rationale_260": "Backward compat: registration without public_key is fine." | kind=entity | source=probe/tests/test_integration.py:L260 | neighbors=[.test_register_without_public_key()] | lang=en
-- "tests_test_integration_rationale_274": "Phase 2: WebSocket message parsing." | kind=entity | source=probe/tests/test_integration.py:L274 | neighbors=[TestWebSocketMessageProtocol] | lang=en
-- "tests_test_integration_rationale_312": "End-to-end: identity → register → job → decrypt → validate → scan → submit." | kind=entity | source=probe/tests/test_integration.py:L312 | neighbors=[TestFullJobLifecycle] | lang=en
-- "tests_test_integration_rationale_315": "Simulate the full probe lifecycle from identity to result submission." | kind=entity | source=probe/tests/test_integration.py:L315 | neighbors=[.test_complete_flow_with_encrypted_scop…] | lang=en
-- "tests_test_integration_rationale_383": "All targets outside scope → job is rejected cleanly." | kind=entity | source=probe/tests/test_integration.py:L383 | neighbors=[.test_job_rejected_all_targets_out_of_s…] | lang=en
-- "tests_test_integration_rationale_409": "OT passive profile resolves correctly." | kind=entity | source=probe/tests/test_integration.py:L409 | neighbors=[.test_job_ot_passive_profile()] | lang=en
-- "tests_test_integration_rationale_42": "Return a minimal valid scan result (no real network I/O)." | kind=entity | source=probe/tests/test_integration.py:L42 | neighbors=[_fake_run_scan()] | lang=pt
-- "tests_test_integration_rationale_432": "Phase 5: startup gauntlet checks." | kind=entity | source=probe/tests/test_integration.py:L432 | neighbors=[TestStartupGauntlet] | lang=en
-- "tests_test_integration_rationale_435": "With LICENSE_ENFORCED=false, gauntlet returns None." | kind=entity | source=probe/tests/test_integration.py:L435 | neighbors=[.test_gauntlet_skips_in_dev_mode()] | lang=en
-- "tests_test_integration_rationale_443": "Wrong HW fingerprint blocks startup." | kind=entity | source=probe/tests/test_integration.py:L443 | neighbors=[.test_gauntlet_hw_bind_blocks()] | lang=en
-- "tests_test_integration_rationale_65": "Phase 4: identity generation + scope encryption roundtrip." | kind=entity | source=probe/tests/test_integration.py:L65 | neighbors=[TestIdentityAndEncryption] | lang=en
-- "tests_test_integration_rationale_68": "Generate identity → encrypt scope → decrypt scope." | kind=entity | source=probe/tests/test_integration.py:L68 | neighbors=[.test_full_identity_lifecycle()] | lang=en
-- "tests_test_integration_rationale_79": "Manager encrypts → probe decrypts." | kind=entity | source=probe/tests/test_integration.py:L79 | neighbors=[.test_scope_encryption_roundtrip()] | lang=en
-- "tests_test_integration_rationale_92": "A different probe cannot decrypt scope meant for another probe." | kind=entity | source=probe/tests/test_integration.py:L92 | neighbors=[.test_different_key_cannot_decrypt()] | lang=en
-- "tests_test_integration_testresultspoolwithretry_test_spool_persists_and_flushes": ".test_spool_persists_and_flushes()" | kind=code-symbol | source=probe/tests/test_integration.py:L200 | neighbors=[TestResultSpoolWithRetry] | lang=en
-- "tests_test_integration_testresultspoolwithretry_test_submit_exhausts_retries": ".test_submit_exhausts_retries()" | kind=code-symbol | source=probe/tests/test_integration.py:L227 | neighbors=[TestResultSpoolWithRetry] | lang=en
-- "tests_test_integration_testresultspoolwithretry_test_submit_retries_on_failure": ".test_submit_retries_on_failure()" | kind=code-symbol | source=probe/tests/test_integration.py:L216 | neighbors=[TestResultSpoolWithRetry] | lang=en
-- "tests_test_integration_testscopevalidationpipeline_test_accepts_in_scope_rejects_out_of_scope": ".test_accepts_in_scope_rejects_out_of_scope()" | kind=code-symbol | source=probe/tests/test_integration.py:L168 | neighbors=[TestScopeValidationPipeline] | lang=en
-- "tests_test_integration_testscopevalidationpipeline_test_all_excluded_returns_empty": ".test_all_excluded_returns_empty()" | kind=code-symbol | source=probe/tests/test_integration.py:L190 | neighbors=[TestScopeValidationPipeline] | lang=en
-- "tests_test_integration_testscopevalidationpipeline_test_excludes_override_scope": ".test_excludes_override_scope()" | kind=code-symbol | source=probe/tests/test_integration.py:L174 | neighbors=[TestScopeValidationPipeline] | lang=en
-- "tests_test_integration_testscopevalidationpipeline_test_merge_exclusions_deduplicates": ".test_merge_exclusions_deduplicates()" | kind=code-symbol | source=probe/tests/test_integration.py:L184 | neighbors=[TestScopeValidationPipeline] | lang=en
-- "tests_test_integration_testtransportwithidentity_test_register_sends_public_key": ".test_register_sends_public_key()" | kind=code-symbol | source=probe/tests/test_integration.py:L241 | neighbors=[TestTransportWithIdentity] | lang=en
-- "tests_test_integration_testwebsocketmessageprotocol_test_heartbeat_message": ".test_heartbeat_message()" | kind=code-symbol | source=probe/tests/test_integration.py:L306 | neighbors=[TestWebSocketMessageProtocol] | lang=en
-- "tests_test_integration_testwebsocketmessageprotocol_test_hello_message": ".test_hello_message()" | kind=code-symbol | source=probe/tests/test_integration.py:L276 | neighbors=[TestWebSocketMessageProtocol] | lang=en
-- "tests_test_integration_testwebsocketmessageprotocol_test_job_push_message": ".test_job_push_message()" | kind=code-symbol | source=probe/tests/test_integration.py:L280 | neighbors=[TestWebSocketMessageProtocol] | lang=en
-- "tests_test_integration_testwebsocketmessageprotocol_test_result_message": ".test_result_message()" | kind=code-symbol | source=probe/tests/test_integration.py:L294 | neighbors=[TestWebSocketMessageProtocol] | lang=en
-- "tests_test_integrations_rationale_1": "test_integrations.py — operator notification-integration config (item 3)." | kind=entity | source=manager/backend/tests/test_integrations.py:L1 | neighbors=[test_integrations.py] | lang=en
-- "tests_test_ipmi_scanner_rationale_1": "test_ipmi_scanner.py — IPMI 2.0 cipher-zero auth-bypass detection.  Byte-exact R" | kind=entity | source=probe/tests/test_ipmi_scanner.py:L1 | neighbors=[test_ipmi_scanner.py] | lang=en
-- "tests_test_ipmi_scanner_testparity_test_main_scripts": ".test_main_scripts()" | kind=code-symbol | source=probe/tests/test_ipmi_scanner.py:L77 | neighbors=[TestParity] | lang=en
-- "tests_test_ipmi_scanner_testwireformat_test_open_session_request_offers_cipher_zero": ".test_open_session_request_offers_cipher_zero()" | kind=code-symbol | source=probe/tests/test_ipmi_scanner.py:L24 | neighbors=[TestWireFormat] | lang=en
-- "tests_test_ipmi_scanner_testwireformat_test_parse_rejects_non_response": ".test_parse_rejects_non_response()" | kind=code-symbol | source=probe/tests/test_ipmi_scanner.py:L39 | neighbors=[TestWireFormat] | lang=en
-- "tests_test_ipv6_discovery_rationale_1": "test_ipv6_discovery.py — FIX 3: IPv6 neighbor discovery (RFC 4861 ND multicast)." | kind=entity | source=probe/tests/test_ipv6_discovery.py:L1 | neighbors=[test_ipv6_discovery.py] | lang=en
+- "scanner_scanner_base_rationale_469": "Parse '22,80,443,8000-8100' into a sorted unique port list (1-65535)." | kind=entity | source=probe/scanner/scanner_base.py:L469 | neighbors=[parse_ports()] | lang=pt
+- "scanner_scanner_base_rationale_471": "Accepts CIDRs ('10.0.0.0/24'), single IPs, hostnames, and simple ranges     ('10" | kind=entity | source=probe/scanner/scanner_base.py:L471 | neighbors=[expand_targets()] | lang=en
+- "scanner_scanner_base_rationale_485": "One-shot datagram protocol backing `async_udp_probe`. Resolves its future     wi" | kind=entity | source=probe/scanner/scanner_base.py:L485 | neighbors=[_UDPProbeProtocol] | lang=en
+- "scanner_scanner_base_rationale_490": "Writes ScanResult objects as JSONL to a file and/or stdout." | kind=entity | source=probe/scanner/scanner_base.py:L490 | neighbors=[ResultWriter] | lang=en
+- "scanner_scanner_base_rationale_491": "Wire argparse args into a scanner instance and execute it." | kind=entity | source=probe/scanner/scanner_base.py:L491 | neighbors=[run_cli()] | lang=en
+- "scanner_scanner_base_rationale_498": "Current integer window (>= min_window)." | kind=entity | source=probe/scanner/scanner_base.py:L498 | neighbors=[.window()] | lang=en
+- "scanner_scanner_base_rationale_505": "Writes ScanResult objects as JSONL to a file and/or stdout." | kind=entity | source=probe/scanner/scanner_base.py:L505 | neighbors=[ResultWriter] | lang=en
+- "scanner_scanner_base_rationale_520": "Subclasses implement `scan_target(self, target)` (async), returning a list     o" | kind=entity | source=probe/scanner/scanner_base.py:L520 | neighbors=[BaseScanner] | lang=pt
+- "scanner_scanner_base_rationale_532": "Resolve `target` to a concrete (family, sockaddr) covering IPv4, IPv6, and     h" | kind=entity | source=probe/scanner/scanner_base.py:L532 | neighbors=[resolve()] | lang=en
+- "scanner_scanner_base_rationale_536": "Blocking packets-per-second pacer with AIMD rate adaptation, for raw-socket" | kind=entity | source=probe/scanner/scanner_base.py:L536 | neighbors=[SendPacer] | lang=en
+- "scanner_scanner_base_rationale_549": "`async_udp_probe` with bounded per-port retransmit.      Returns on the FIRST de" | kind=entity | source=probe/scanner/scanner_base.py:L549 | neighbors=[async_udp_probe_retry()] | lang=en
+- "scanner_scanner_base_rationale_558": "Blocking packets-per-second pacer with AIMD rate adaptation, for raw-socket" | kind=entity | source=probe/scanner/scanner_base.py:L558 | neighbors=[SendPacer] | lang=en
+- "scanner_scanner_base_rationale_56": "HTTP/RTSP User-Agent to send — a generic browser UA by default so it does     no" | kind=entity | source=probe/scanner/scanner_base.py:L56 | neighbors=[user_agent()] | lang=en
+- "scanner_scanner_base_rationale_563": "Wire argparse args into a scanner instance and execute it." | kind=entity | source=probe/scanner/scanner_base.py:L563 | neighbors=[run_cli()] | lang=en
+- "scanner_scanner_base_rationale_565": "One-shot datagram protocol backing `async_udp_probe`. Resolves its future     wi" | kind=entity | source=probe/scanner/scanner_base.py:L565 | neighbors=[_UDPProbeProtocol] | lang=en
+- "scanner_scanner_base_rationale_568": "Wrap an IPv6 literal in [] for a URL authority; leave v4/hostnames as-is.     'h" | kind=entity | source=probe/scanner/scanner_base.py:L568 | neighbors=[bracket_host()] | lang=en
+- "scanner_scanner_base_rationale_578": "Block just long enough to hold `rate` packets/sec. No-op at rate <= 0." | kind=entity | source=probe/scanner/scanner_base.py:L578 | neighbors=[.pace()] | lang=en
+- "scanner_scanner_base_rationale_580": "Parse '22,80,443,8000-8100' into a sorted unique port list (1-65535)." | kind=entity | source=probe/scanner/scanner_base.py:L580 | neighbors=[parse_ports()] | lang=pt
+- "scanner_scanner_base_rationale_591": "Fold one send/collect round's reply ratio into the rate (AIMD).          Returns" | kind=entity | source=probe/scanner/scanner_base.py:L591 | neighbors=[.observe_round()] | lang=en
+- "scanner_scanner_base_rationale_598": "Send one UDP datagram and await the first reply — fully on the event loop." | kind=entity | source=probe/scanner/scanner_base.py:L598 | neighbors=[async_udp_probe()] | lang=en
+- "scanner_scanner_base_rationale_600": "Block just long enough to hold `rate` packets/sec. No-op at rate <= 0." | kind=entity | source=probe/scanner/scanner_base.py:L600 | neighbors=[.pace()] | lang=en
+- "scanner_scanner_base_rationale_607": "Pacing telemetry for the scan summary (so a throttled scan is visible)." | kind=entity | source=probe/scanner/scanner_base.py:L607 | neighbors=[.stats()] | lang=en
+- "scanner_scanner_base_rationale_613": "Fold one send/collect round's reply ratio into the rate (AIMD).          Returns" | kind=entity | source=probe/scanner/scanner_base.py:L613 | neighbors=[.observe_round()] | lang=en
+- "scanner_scanner_base_rationale_616": "Writes ScanResult objects as JSONL to a file and/or stdout." | kind=entity | source=probe/scanner/scanner_base.py:L616 | neighbors=[ResultWriter] | lang=en
+- "scanner_scanner_base_rationale_62": "Benign, non-attributing payload for ICMP/UDP probes — looks like ordinary     pi" | kind=entity | source=probe/scanner/scanner_base.py:L62 | neighbors=[probe_payload()] | lang=en
+- "scanner_scanner_base_rationale_620": "Accepts CIDRs ('10.0.0.0/24'), single IPs, hostnames, and simple ranges     ('10" | kind=entity | source=probe/scanner/scanner_base.py:L620 | neighbors=[expand_targets()] | lang=en
+- "scanner_scanner_base_rationale_624": "Run a scanner CLI's body with consistent, operator-friendly error handling." | kind=entity | source=probe/scanner/scanner_base.py:L624 | neighbors=[main_entrypoint()] | lang=en
+- "scanner_scanner_base_rationale_639": "Run a scanner CLI's body with consistent, operator-friendly error handling." | kind=entity | source=probe/scanner/scanner_base.py:L639 | neighbors=[main_entrypoint()] | lang=en
+- "scanner_scanner_base_rationale_642": "Accepts CIDRs ('10.0.0.0/24'), single IPs, hostnames, and simple ranges     ('10" | kind=entity | source=probe/scanner/scanner_base.py:L642 | neighbors=[expand_targets()] | lang=en
+- "scanner_scanner_base_rationale_646": "Subclasses implement `scan_target(self, target)` (async), returning a list     o" | kind=entity | source=probe/scanner/scanner_base.py:L646 | neighbors=[BaseScanner] | lang=pt
+- "scanner_scanner_base_rationale_648": "Wrap an IPv6 literal in [] for a URL authority; leave v4/hostnames as-is.     'h" | kind=entity | source=probe/scanner/scanner_base.py:L648 | neighbors=[bracket_host()] | lang=en
+- "scanner_scanner_base_rationale_652": "Wire argparse args into a scanner instance and execute it." | kind=entity | source=probe/scanner/scanner_base.py:L652 | neighbors=[run_cli()] | lang=en
+- "scanner_scanner_base_rationale_660": "Parse '22,80,443,8000-8100' into a sorted unique port list (1-65535)." | kind=entity | source=probe/scanner/scanner_base.py:L660 | neighbors=[parse_ports()] | lang=pt
+- "scanner_scanner_base_rationale_667": "Wire argparse args into a scanner instance and execute it." | kind=entity | source=probe/scanner/scanner_base.py:L667 | neighbors=[run_cli()] | lang=en
+- "scanner_scanner_base_rationale_67": "The project timezone, degrading safely when tzdata is unavailable." | kind=entity | source=probe/scanner/scanner_base.py:L67 | neighbors=[_resolve_project_tz()] | lang=en
+- "scanner_scanner_base_rationale_681": "Resolve `target` to a concrete (family, sockaddr) covering IPv4, IPv6, and     h" | kind=entity | source=probe/scanner/scanner_base.py:L681 | neighbors=[resolve()] | lang=en
+- "scanner_scanner_base_rationale_696": "Writes ScanResult objects as JSONL to a file and/or stdout." | kind=entity | source=probe/scanner/scanner_base.py:L696 | neighbors=[ResultWriter] | lang=en
+- "scanner_scanner_base_rationale_70": "Loads an allowlist of CIDRs / IPs / hostnames and decides whether a target     i" | kind=entity | source=probe/scanner/scanner_base.py:L70 | neighbors=[ScopeGuard] | lang=en
+- "scanner_scanner_base_rationale_703": "Resolve `target` to a concrete (family, sockaddr) covering IPv4, IPv6, and     h" | kind=entity | source=probe/scanner/scanner_base.py:L703 | neighbors=[resolve()] | lang=en
+- "scanner_scanner_base_rationale_706": "EVERY distinct (family, sockaddr) for `target`, in getaddrinfo/RFC-6724 order." | kind=entity | source=probe/scanner/scanner_base.py:L706 | neighbors=[resolve_candidates()] | lang=en
 
 ## Instructions
 

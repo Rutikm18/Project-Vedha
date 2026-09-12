@@ -1,4 +1,4 @@
-# Node Description Batch 226 of 336
+# Node Description Batch 226 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,53 +19,51 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-LANGUAGE: each entry has a `lang=` marker giving the language of its source.
-Write that entry's description in EXACTLY that language. Do not translate to
-a single common language — match each node's source language individually.
+Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "main_scripts_scanner_base_rationale_565": "One-shot datagram protocol backing `async_udp_probe`. Resolves its future     wi" | kind=entity | source=probe/main_scripts/scanner_base.py:L565 | neighbors=[_UDPProbeProtocol] | lang=en
-- "main_scripts_scanner_base_rationale_568": "Wrap an IPv6 literal in [] for a URL authority; leave v4/hostnames as-is.     'h" | kind=entity | source=probe/main_scripts/scanner_base.py:L568 | neighbors=[bracket_host()] | lang=en
-- "main_scripts_scanner_base_rationale_578": "Block just long enough to hold `rate` packets/sec. No-op at rate <= 0." | kind=entity | source=probe/main_scripts/scanner_base.py:L578 | neighbors=[.pace()] | lang=en
-- "main_scripts_scanner_base_rationale_580": "Parse '22,80,443,8000-8100' into a sorted unique port list (1-65535)." | kind=entity | source=probe/main_scripts/scanner_base.py:L580 | neighbors=[parse_ports()] | lang=pt
-- "main_scripts_scanner_base_rationale_591": "Fold one send/collect round's reply ratio into the rate (AIMD).          Returns" | kind=entity | source=probe/main_scripts/scanner_base.py:L591 | neighbors=[.observe_round()] | lang=en
-- "main_scripts_scanner_base_rationale_598": "Send one UDP datagram and await the first reply — fully on the event loop." | kind=entity | source=probe/main_scripts/scanner_base.py:L598 | neighbors=[async_udp_probe()] | lang=en
-- "main_scripts_scanner_base_rationale_607": "Pacing telemetry for the scan summary (so a throttled scan is visible)." | kind=entity | source=probe/main_scripts/scanner_base.py:L607 | neighbors=[.stats()] | lang=en
-- "main_scripts_scanner_base_rationale_616": "Writes ScanResult objects as JSONL to a file and/or stdout." | kind=entity | source=probe/main_scripts/scanner_base.py:L616 | neighbors=[ResultWriter] | lang=en
-- "main_scripts_scanner_base_rationale_62": "Benign, non-attributing payload for ICMP/UDP probes — looks like ordinary     pi" | kind=entity | source=probe/main_scripts/scanner_base.py:L62 | neighbors=[probe_payload()] | lang=en
-- "main_scripts_scanner_base_rationale_620": "Accepts CIDRs ('10.0.0.0/24'), single IPs, hostnames, and simple ranges     ('10" | kind=entity | source=probe/main_scripts/scanner_base.py:L620 | neighbors=[expand_targets()] | lang=en
-- "main_scripts_scanner_base_rationale_629": "`async_udp_probe` with bounded per-port retransmit.      Returns on the FIRST de" | kind=entity | source=probe/main_scripts/scanner_base.py:L629 | neighbors=[async_udp_probe_retry()] | lang=en
-- "main_scripts_scanner_base_rationale_646": "Subclasses implement `scan_target(self, target)` (async), returning a list     o" | kind=entity | source=probe/main_scripts/scanner_base.py:L646 | neighbors=[BaseScanner] | lang=pt
-- "main_scripts_scanner_base_rationale_648": "Wrap an IPv6 literal in [] for a URL authority; leave v4/hostnames as-is.     'h" | kind=entity | source=probe/main_scripts/scanner_base.py:L648 | neighbors=[bracket_host()] | lang=en
-- "main_scripts_scanner_base_rationale_660": "Parse '22,80,443,8000-8100' into a sorted unique port list (1-65535)." | kind=entity | source=probe/main_scripts/scanner_base.py:L660 | neighbors=[parse_ports()] | lang=pt
-- "main_scripts_scanner_base_rationale_67": "The project timezone, degrading safely when tzdata is unavailable." | kind=entity | source=probe/main_scripts/scanner_base.py:L67 | neighbors=[_resolve_project_tz()] | lang=en
-- "main_scripts_scanner_base_rationale_681": "Resolve `target` to a concrete (family, sockaddr) covering IPv4, IPv6, and     h" | kind=entity | source=probe/main_scripts/scanner_base.py:L681 | neighbors=[resolve()] | lang=en
-- "main_scripts_scanner_base_rationale_69": "The TCP source port for probes. A FIXED port (e.g. 53/88) lets a scan slip     p" | kind=entity | source=probe/main_scripts/scanner_base.py:L69 | neighbors=[choose_source_port()] | lang=en
-- "main_scripts_scanner_base_rationale_696": "Writes ScanResult objects as JSONL to a file and/or stdout." | kind=entity | source=probe/main_scripts/scanner_base.py:L696 | neighbors=[ResultWriter] | lang=en
-- "main_scripts_scanner_base_rationale_706": "EVERY distinct (family, sockaddr) for `target`, in getaddrinfo/RFC-6724 order." | kind=entity | source=probe/main_scripts/scanner_base.py:L706 | neighbors=[resolve_candidates()] | lang=en
-- "main_scripts_scanner_base_rationale_726": "Subclasses implement `scan_target(self, target)` (async), returning a list     o" | kind=entity | source=probe/main_scripts/scanner_base.py:L726 | neighbors=[BaseScanner] | lang=pt
-- "main_scripts_scanner_base_rationale_749": "Just the candidate IP strings for `target`, in RFC-6724 order, de-duplicated." | kind=entity | source=probe/main_scripts/scanner_base.py:L749 | neighbors=[resolve_ip_candidates()] | lang=en
-- "main_scripts_scanner_base_rationale_750": "Run a scanner CLI's body with consistent, operator-friendly error handling." | kind=entity | source=probe/main_scripts/scanner_base.py:L750 | neighbors=[main_entrypoint()] | lang=en
-- "main_scripts_scanner_base_rationale_778": "Wire argparse args into a scanner instance and execute it." | kind=entity | source=probe/main_scripts/scanner_base.py:L778 | neighbors=[run_cli()] | lang=en
-- "main_scripts_scanner_base_rationale_786": "One-shot datagram protocol backing `async_udp_probe`. Resolves its future     wi" | kind=entity | source=probe/main_scripts/scanner_base.py:L786 | neighbors=[_UDPProbeProtocol] | lang=en
-- "main_scripts_scanner_base_rationale_79": "A per-probe delay of `base` seconds ± up to `jitter` fraction of random     vari" | kind=entity | source=probe/main_scripts/scanner_base.py:L79 | neighbors=[jittered_delay()] | lang=en
-- "main_scripts_scanner_base_rationale_819": "Send one UDP datagram and await the first reply — fully on the event loop." | kind=entity | source=probe/main_scripts/scanner_base.py:L819 | neighbors=[async_udp_probe()] | lang=en
-- "main_scripts_scanner_base_rationale_837": "Run a scanner CLI's body with consistent, operator-friendly error handling." | kind=entity | source=probe/main_scripts/scanner_base.py:L837 | neighbors=[main_entrypoint()] | lang=en
-- "main_scripts_scanner_base_rationale_850": "`async_udp_probe` with bounded per-port retransmit.      Returns on the FIRST de" | kind=entity | source=probe/main_scripts/scanner_base.py:L850 | neighbors=[async_udp_probe_retry()] | lang=en
-- "main_scripts_scanner_base_rationale_86": "Current time as an AWARE datetime in the project timezone." | kind=entity | source=probe/main_scripts/scanner_base.py:L86 | neighbors=[project_now()] | lang=en
-- "main_scripts_scanner_base_rationale_865": "Wire argparse args into a scanner instance and execute it." | kind=entity | source=probe/main_scripts/scanner_base.py:L865 | neighbors=[run_cli()] | lang=en
-- "main_scripts_scanner_base_rationale_869": "Wrap an IPv6 literal in [] for a URL authority; leave v4/hostnames as-is.     'h" | kind=entity | source=probe/main_scripts/scanner_base.py:L869 | neighbors=[bracket_host()] | lang=en
-- "main_scripts_scanner_base_rationale_881": "Parse '22,80,443,8000-8100' into a sorted unique port list (1-65535)." | kind=entity | source=probe/main_scripts/scanner_base.py:L881 | neighbors=[parse_ports()] | lang=pt
-- "main_scripts_scanner_base_rationale_90": "Heuristic: is this host a tarpit / honeypot / ACK-everything middlebox?      Suc" | kind=entity | source=probe/main_scripts/scanner_base.py:L90 | neighbors=[assess_tarpit()] | lang=en
-- "main_scripts_scanner_base_rationale_91": "ISO-8601 instant in the project timezone: 2026-09-03T23:15:05+05:30." | kind=entity | source=probe/main_scripts/scanner_base.py:L91 | neighbors=[project_timestamp()] | lang=en
-- "main_scripts_scanner_base_rationale_917": "Writes ScanResult objects as JSONL to a file and/or stdout." | kind=entity | source=probe/main_scripts/scanner_base.py:L917 | neighbors=[ResultWriter] | lang=en
-- "main_scripts_scanner_base_rationale_947": "Subclasses implement `scan_target(self, target)` (async), returning a list     o" | kind=entity | source=probe/main_scripts/scanner_base.py:L947 | neighbors=[BaseScanner] | lang=pt
-- "main_scripts_scanner_base_rationale_96": "Compact project-local stamp for FILE and DIRECTORY names.      Deliberately carr" | kind=entity | source=probe/main_scripts/scanner_base.py:L96 | neighbors=[project_file_stamp()] | lang=en
-- "main_scripts_scanner_base_rationale_99": "Map a connect()/socket-time OSError to (state, reason).      DNS failures (``soc" | kind=entity | source=probe/main_scripts/scanner_base.py:L99 | neighbors=[classify_os_error()] | lang=en
-- "main_scripts_scanner_base_resultwriter_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/scanner_base.py:L919 | neighbors=[ResultWriter] | lang=en
-- "main_scripts_scanner_base_scanresult_post_init": ".__post_init__()" | kind=code-symbol | source=probe/main_scripts/scanner_base.py:L295 | neighbors=[ScanResult] | lang=en
+- "detection_engine_vuln_db_vulndb_known_products": ".known_products()" | kind=code-symbol | source=manager/detection_engine/vuln_db.py:L122 | neighbors=[VulnDB]
+- "detection_exposure_fusion_service_rationale_1": "exposure_fusion_service.py — apply multi-probe vantage fusion to Service rows." | kind=entity | source=manager/backend/app/detection/exposure_fusion_service.py:L1 | neighbors=[exposure_fusion_service.py]
+- "detection_exposure_fusion_service_rationale_31": "Reconstruct one {\"exposure\": [...]} dict per probe from persisted facts.      Ea" | kind=entity | source=manager/backend/app/detection/exposure_fusion_service.py:L31 | neighbors=[_results_from_scan_rows()]
+- "detection_exposure_fusion_service_rationale_53": "Fuse all probes' exposure_matrix observations for an engagement and stamp     th" | kind=entity | source=manager/backend/app/detection/exposure_fusion_service.py:L53 | neighbors=[recompute_fused_exposure()]
+- "detection_logger_attacklogger_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/detection/logger.py:L24 | neighbors=[AttackLogger]
+- "detection_prioritization_rationale_1": "Persist the canonical Manager risk score for all active findings.  WHY THIS EXIS" | kind=entity | source=manager/backend/app/detection/prioritization.py:L1 | neighbors=[prioritization.py]
+- "detection_prioritization_rationale_103": "Compatibility wrapper around the canonical 0-1000 risk function." | kind=entity | source=manager/backend/app/detection/prioritization.py:L103 | neighbors=[composite_risk_score()]
+- "detection_prioritization_rationale_116": "(Re)compute risk_score for every still-relevant finding in the engagement." | kind=entity | source=manager/backend/app/detection/prioritization.py:L116 | neighbors=[prioritize_engagement_findings()]
+- "detection_prioritization_rationale_125": "The most-exposed value among an asset's services (external beats internal)." | kind=entity | source=manager/backend/app/detection/prioritization.py:L125 | neighbors=[_strongest_exposure()]
+- "detection_prioritization_rationale_131": "(kev_db, epss_db) from the pinned snapshots, or (None, None) if the     detectio" | kind=entity | source=manager/backend/app/detection/prioritization.py:L131 | neighbors=[_load_offline_kev_epss()]
+- "detection_prioritization_rationale_148": "(Re)compute risk_score for every still-relevant finding in the engagement." | kind=entity | source=manager/backend/app/detection/prioritization.py:L148 | neighbors=[prioritize_engagement_findings()]
+- "detection_prioritization_rationale_58": "Score a posture finding with the Manager formula.      The historical name is re" | kind=entity | source=manager/backend/app/detection/prioritization.py:L58 | neighbors=[_posture_risk_on_manager_scale()]
+- "detection_prioritization_rationale_74": "The unified 0-1000 composite (see module docstring). Pure + deterministic." | kind=entity | source=manager/backend/app/detection/prioritization.py:L74 | neighbors=[composite_risk_score()]
+- "detection_prioritization_rationale_93": "The most-exposed value among an asset's services (external beats internal)." | kind=entity | source=manager/backend/app/detection/prioritization.py:L93 | neighbors=[_strongest_exposure()]
+- "detection_prioritization_rationale_99": "(kev_db, epss_db) from the pinned snapshots, or (None, None) if the     detectio" | kind=entity | source=manager/backend/app/detection/prioritization.py:L99 | neighbors=[_load_offline_kev_epss()]
+- "detection_resolution_rationale_1": "resolution.py — coverage-gated auto-resolution of findings.  Split into a PURE c" | kind=entity | source=manager/backend/app/detection/resolution.py:L1 | neighbors=[resolution.py]
+- "detection_resolution_rationale_103": "Apply decide_resolution to every engine-managed open/confirmed finding     NOT t" | kind=entity | source=manager/backend/app/detection/resolution.py:L103 | neighbors=[evaluate_resolutions()]
+- "detection_resolution_rationale_132": "Operator reopens an auto/'manually'-resolved finding. Mirrors the engine's     r" | kind=entity | source=manager/backend/app/detection/resolution.py:L132 | neighbors=[apply_manual_reopen()]
+- "detection_resolution_rationale_141": "Operator reopens an auto/'manually'-resolved finding. Mirrors the engine's     r" | kind=entity | source=manager/backend/app/detection/resolution.py:L141 | neighbors=[apply_manual_reopen()]
+- "detection_resolution_rationale_150": "Operator reopens an auto/'manually'-resolved finding. Mirrors the engine's     r" | kind=entity | source=manager/backend/app/detection/resolution.py:L150 | neighbors=[apply_manual_reopen()]
+- "detection_resolution_rationale_28": "IP/host part of a probe target: '10.0.0.5:443' -> '10.0.0.5'.     Mirrors findin" | kind=entity | source=manager/backend/app/detection/resolution.py:L28 | neighbors=[host_of()]
+- "detection_resolution_rationale_29": "IP/host part of a probe target: '10.0.0.5:443' -> '10.0.0.5'.     Mirrors findin" | kind=entity | source=manager/backend/app/detection/resolution.py:L29 | neighbors=[host_of()]
+- "detection_resolution_rationale_36": "What this run PROVABLY re-observed. An asset is covered only if a     completed" | kind=entity | source=manager/backend/app/detection/resolution.py:L36 | neighbors=[build_coverage()]
+- "detection_resolution_rationale_37": "What this run PROVABLY re-observed. An asset is covered only if a     completed" | kind=entity | source=manager/backend/app/detection/resolution.py:L37 | neighbors=[build_coverage()]
+- "detection_resolution_rationale_58": "Consecutive coverage-proven clean runs required before auto-close.     critical/" | kind=entity | source=manager/backend/app/detection/resolution.py:L58 | neighbors=[resolution_threshold()]
+- "detection_resolution_rationale_59": "Consecutive coverage-proven clean runs required before auto-close.     critical/" | kind=entity | source=manager/backend/app/detection/resolution.py:L59 | neighbors=[resolution_threshold()]
+- "detection_resolution_rationale_68": "Consecutive coverage-proven clean runs required before auto-close.     critical/" | kind=entity | source=manager/backend/app/detection/resolution.py:L68 | neighbors=[resolution_threshold()]
+- "detection_resolution_rationale_73": "Pure heart of auto-resolution. Given whether the finding's asset was     re-obse" | kind=entity | source=manager/backend/app/detection/resolution.py:L73 | neighbors=[decide_resolution()]
+- "detection_resolution_rationale_74": "Pure heart of auto-resolution. Given whether the finding's asset was     re-obse" | kind=entity | source=manager/backend/app/detection/resolution.py:L74 | neighbors=[decide_resolution()]
+- "detection_resolution_rationale_83": "Pure heart of auto-resolution. Given whether the finding's asset was     re-obse" | kind=entity | source=manager/backend/app/detection/resolution.py:L83 | neighbors=[decide_resolution()]
+- "detection_resolution_rationale_93": "Apply decide_resolution to every engine-managed open/confirmed finding     NOT t" | kind=entity | source=manager/backend/app/detection/resolution.py:L93 | neighbors=[evaluate_resolutions()]
+- "detection_resolution_rationale_94": "Apply decide_resolution to every engine-managed open/confirmed finding     NOT t" | kind=entity | source=manager/backend/app/detection/resolution.py:L94 | neighbors=[evaluate_resolutions()]
+- "detection_siem_build_siem_engine": "build_siem_engine()" | kind=code-symbol | source=manager/backend/app/detection/siem.py:L249 | neighbors=[siem.py]
+- "detection_siem_rationale_1": "SIEM query engines — abstract interface + Splunk / Microsoft Sentinel / Elastic" | kind=entity | source=manager/backend/app/detection/siem.py:L1 | neighbors=[siem.py]
+- "detection_siem_rationale_135": "Microsoft Sentinel via the Azure Monitor Logs query REST API with KQL.     confi" | kind=entity | source=manager/backend/app/detection/siem.py:L135 | neighbors=[SentinelSIEM]
+- "detection_siem_rationale_185": "Elasticsearch via the _search API (KQL/EQL-style bool query).     config: {base_" | kind=entity | source=manager/backend/app/detection/siem.py:L185 | neighbors=[ElasticSIEM]
+- "detection_siem_rationale_51": "Abstract SIEM connector." | kind=entity | source=manager/backend/app/detection/siem.py:L51 | neighbors=[SIEMQueryEngine]
+- "detection_siem_rationale_82": "Splunk via the REST search endpoint (``/services/search/jobs/export``) with an" | kind=entity | source=manager/backend/app/detection/siem.py:L82 | neighbors=[SplunkSIEM]
+- "detection_siem_siemqueryengine_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/detection/siem.py:L55 | neighbors=[SIEMQueryEngine]
+- "detection_siem_siemqueryengine_query_alerts": ".query_alerts()" | kind=code-symbol | source=manager/backend/app/detection/siem.py:L60 | neighbors=[SIEMQueryEngine]
 
 ## Instructions
 

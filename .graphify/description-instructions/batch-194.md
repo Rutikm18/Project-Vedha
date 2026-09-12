@@ -1,4 +1,4 @@
-# Node Description Batch 195 of 336
+# Node Description Batch 195 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -9,9 +9,6 @@ your JSON answer to the answer file.
 You are documenting nodes in a knowledge graph.
 For each entry below, write ONE concise factual plain-language sentence
 describing what it is or does. Use only the provided context.
-For a code symbol (kind=code-symbol — a function, class, or constant),
-describe what the function/symbol does based on its name, source location
-and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
 For an entity node (any other kind — e.g. a person, place, event, object),
 describe what the entity is and its role, grounded in its type, its
 relations (neighbors) and the provided citations/evidence — e.g.
@@ -26,46 +23,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "detection_attack_paths_rationale_222": "B3: an exposed datastore with unauthenticated access = direct data breach." | kind=entity | source=manager/backend/app/detection/attack_paths.py:L222 | neighbors=[_exposed_db_unauth()] | lang=en
-- "detection_attack_paths_rationale_243": "B3: a default SNMP community on network gear = topology/creds for lateral moveme" | kind=entity | source=manager/backend/app/detection/attack_paths.py:L243 | neighbors=[_snmp_public_lateral()] | lang=en
-- "detection_attack_paths_rationale_276": "Correlate composite attack paths from raw probe facts.      `device_roles` maps" | kind=entity | source=manager/backend/app/detection/attack_paths.py:L276 | neighbors=[attack_path_findings()] | lang=en
-- "detection_attack_paths_rationale_63": "The weaknesses observed on ONE host, distilled from its facts." | kind=entity | source=manager/backend/app/detection/attack_paths.py:L63 | neighbors=[_HostSignals] | lang=en
-- "detection_correlator_detectioncorrelator_compute_coverage": ".compute_coverage()" | kind=code-symbol | source=manager/backend/app/detection/correlator.py:L181 | neighbors=[DetectionCorrelator] | lang=en
-- "detection_correlator_detectioncorrelator_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/detection/correlator.py:L96 | neighbors=[DetectionCorrelator] | lang=en
-- "detection_correlator_rationale_238": "Normalise naive datetimes to UTC so comparisons never raise." | kind=entity | source=manager/backend/app/detection/correlator.py:L238 | neighbors=[_aware()] | lang=en
-- "detection_edr_build_edr_engine": "build_edr_engine()" | kind=code-symbol | source=manager/backend/app/detection/edr.py:L235 | neighbors=[edr.py] | lang=en
-- "detection_edr_edrdetection_is_prevented": ".is_prevented()" | kind=code-symbol | source=manager/backend/app/detection/edr.py:L43 | neighbors=[EDRDetection] | lang=en
-- "detection_edr_edrqueryengine_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/detection/edr.py:L65 | neighbors=[EDRQueryEngine] | lang=en
-- "detection_edr_edrqueryengine_query_detections": ".query_detections()" | kind=code-symbol | source=manager/backend/app/detection/edr.py:L70 | neighbors=[EDRQueryEngine] | lang=en
-- "detection_edr_rationale_1": "EDR query engines — abstract interface + CrowdStrike Falcon / Microsoft Defender" | kind=entity | source=manager/backend/app/detection/edr.py:L1 | neighbors=[edr.py] | lang=en
-- "detection_edr_rationale_141": "Microsoft Defender via the Graph Security API ``/security/alerts_v2``.     confi" | kind=entity | source=manager/backend/app/detection/edr.py:L141 | neighbors=[MicrosoftDefender] | lang=en
-- "detection_edr_rationale_187": "SentinelOne via the REST ``/web/api/v2.1/threats`` endpoint.     config: {base_u" | kind=entity | source=manager/backend/app/detection/edr.py:L187 | neighbors=[SentinelOne] | lang=en
-- "detection_edr_rationale_92": "Falcon: query detection IDs then fetch their summaries.     config: {base_url, t" | kind=entity | source=manager/backend/app/detection/edr.py:L92 | neighbors=[CrowdStrikeFalcon] | lang=en
-- "detection_engine_ai_normalizer_ainormalizercache_post_init": ".__post_init__()" | kind=code-symbol | source=manager/detection_engine/ai_normalizer.py:L142 | neighbors=[AINormalizerCache] | lang=en
-- "detection_engine_ai_normalizer_anthropicaiclient_init": ".__init__()" | kind=code-symbol | source=manager/detection_engine/ai_normalizer.py:L103 | neighbors=[AnthropicAIClient] | lang=en
-- "detection_engine_ai_normalizer_fakeaiclient_init": ".__init__()" | kind=code-symbol | source=manager/detection_engine/ai_normalizer.py:L131 | neighbors=[FakeAIClient] | lang=en
-- "detection_engine_bridge_rationale_105": "(census, rejected_line_numbers) from the engine's IngestResult.      The census" | kind=entity | source=manager/backend/app/detection/engine_bridge.py:L105 | neighbors=[_ingest_census()] | lang=en
-- "detection_engine_bridge_rationale_114": "A previously-remediated finding whose issue reappeared this run: reopen     the" | kind=entity | source=manager/backend/app/detection/engine_bridge.py:L114 | neighbors=[_apply_regression_reopen()] | lang=en
-- "detection_engine_bridge_rationale_128": "A remediated finding with the same (engagement, asset, title) — the     regressi" | kind=entity | source=manager/backend/app/detection/engine_bridge.py:L128 | neighbors=[_find_remediated_match()] | lang=en
-- "detection_engine_bridge_rationale_130": "A remediated finding with the same (engagement, asset, title) — the     regressi" | kind=entity | source=manager/backend/app/detection/engine_bridge.py:L130 | neighbors=[_find_remediated_match()] | lang=en
-- "detection_engine_bridge_rationale_139": "The subset of `facts` ingest accepted. We wrote one fact per line in order," | kind=entity | source=manager/backend/app/detection/engine_bridge.py:L139 | neighbors=[_accepted()] | lang=en
-- "detection_engine_bridge_rationale_140": "Best-effort: compute + stamp each finding's verification verdict. A failure" | kind=entity | source=manager/backend/app/detection/engine_bridge.py:L140 | neighbors=[_stamp_verification()] | lang=pt
-- "detection_engine_bridge_rationale_142": "Best-effort: compute + stamp each finding's verification verdict. A failure" | kind=entity | source=manager/backend/app/detection/engine_bridge.py:L142 | neighbors=[_stamp_verification()] | lang=pt
-- "detection_engine_bridge_rationale_149": "Escalate by severity of loss. A TOTAL wipeout with facts submitted is the     ag" | kind=entity | source=manager/backend/app/detection/engine_bridge.py:L149 | neighbors=[_log_ingest_health()] | lang=en
-- "detection_engine_bridge_rationale_157": "ip → {device_role, role_detail} from already-promoted assets, so a prior     dev" | kind=entity | source=manager/backend/app/detection/engine_bridge.py:L157 | neighbors=[_engagement_device_roles()] | lang=en
-- "detection_engine_bridge_rationale_158": "New raw-facts path: detect CVE findings from result['facts'] and persist     the" | kind=entity | source=manager/backend/app/detection/engine_bridge.py:L158 | neighbors=[create_findings_from_facts()] | lang=en
-- "detection_engine_bridge_rationale_171": "Raw scanner facts -> (cve_finding_dicts, posture_finding_dicts, meta), running" | kind=entity | source=manager/backend/app/detection/engine_bridge.py:L171 | neighbors=[detect_all_from_facts_traced()] | lang=en
-- "detection_engine_bridge_rationale_174": "Correlate composite attack paths from the run's facts and persist them as     Fi" | kind=entity | source=manager/backend/app/detection/engine_bridge.py:L174 | neighbors=[_persist_attack_paths()] | lang=en
-- "detection_engine_bridge_rationale_223": "New raw-facts path: detect CVE findings from result['facts'] and persist     the" | kind=entity | source=manager/backend/app/detection/engine_bridge.py:L223 | neighbors=[create_findings_from_facts()] | lang=en
-- "detection_engine_bridge_rationale_252": "Backward-compatible (cve, posture) view — drops the trace meta." | kind=entity | source=manager/backend/app/detection/engine_bridge.py:L252 | neighbors=[detect_all_from_facts()] | lang=en
-- "detection_engine_bridge_rationale_258": "CVE finding dicts only — backward-compatible wrapper over the full run." | kind=entity | source=manager/backend/app/detection/engine_bridge.py:L258 | neighbors=[detect_findings_from_facts()] | lang=en
-- "detection_engine_bridge_rationale_272": "Stable, human title for a posture finding — the same string across runs so     d" | kind=entity | source=manager/backend/app/detection/engine_bridge.py:L272 | neighbors=[_posture_title()] | lang=en
-- "detection_engine_bridge_rationale_279": "Background entry point (P1: keep detection OFF the probe-result request     path" | kind=entity | source=manager/backend/app/detection/engine_bridge.py:L279 | neighbors=[run_detection_job()] | lang=en
-- "detection_engine_bridge_rationale_281": "A previously-remediated finding whose issue reappeared this run: reopen     the" | kind=entity | source=manager/backend/app/detection/engine_bridge.py:L281 | neighbors=[_apply_regression_reopen()] | lang=en
-- "detection_engine_bridge_rationale_292": "Background entry point (P1: keep detection OFF the probe-result request     path" | kind=entity | source=manager/backend/app/detection/engine_bridge.py:L292 | neighbors=[run_detection_job()] | lang=en
-- "detection_engine_bridge_rationale_297": "A remediated finding with the same (engagement, asset, title) — the     regressi" | kind=entity | source=manager/backend/app/detection/engine_bridge.py:L297 | neighbors=[_find_remediated_match()] | lang=en
-- "detection_engine_bridge_rationale_324": "Translate posture/config-exposure findings (from the VERIFIED scanners) into" | kind=entity | source=manager/backend/app/detection/engine_bridge.py:L324 | neighbors=[_persist_posture_findings()] | lang=en
-- "detection_engine_bridge_rationale_368": "Background entry point (P1: keep detection OFF the probe-result request     path" | kind=entity | source=manager/backend/app/detection/engine_bridge.py:L368 | neighbors=[run_detection_job()] | lang=en
+- "agent_agent_rationale_1077": "Run all startup security checks before any network I/O.      Order matters: HW b" | kind=entity | source=probe/agent/agent.py:L1077 | neighbors=[_startup_gauntlet()] | lang=pt
+- "agent_agent_rationale_108": "Human label for what a job will actually run — the use-case (real intent),     n" | kind=entity | source=probe/agent/agent.py:L108 | neighbors=[_job_intent()] | lang=en
+- "agent_agent_rationale_1086": "Send periodic heartbeats over WebSocket." | kind=entity | source=probe/agent/agent.py:L1086 | neighbors=[_ws_heartbeat_sender()] | lang=en
+- "agent_agent_rationale_1092": "Detect common debugging/tracing tools.  Informational only — does     NOT block" | kind=entity | source=probe/agent/agent.py:L1092 | neighbors=[_check_anti_debug()] | lang=en
+- "agent_agent_rationale_1097": "Retry durable result files using the acknowledged HTTP result path." | kind=entity | source=probe/agent/agent.py:L1097 | neighbors=[_flush_spool_over_http()] | lang=en
+- "agent_agent_rationale_1103": "Retry durable result files using the acknowledged HTTP result path." | kind=entity | source=probe/agent/agent.py:L1103 | neighbors=[_flush_spool_over_http()] | lang=en
+- "agent_agent_rationale_1110": "Run all startup security checks before any network I/O.      Order matters: HW b" | kind=entity | source=probe/agent/agent.py:L1110 | neighbors=[_startup_gauntlet()] | lang=pt
+- "agent_agent_rationale_1116": "Run all startup security checks before any network I/O.      Order matters: HW b" | kind=entity | source=probe/agent/agent.py:L1116 | neighbors=[_startup_gauntlet()] | lang=pt
+- "agent_agent_rationale_1117": "Load or atomically create the probe's Ed25519 enrollment identity." | kind=entity | source=probe/agent/agent.py:L1117 | neighbors=[_load_or_create_signing_identity()] | lang=en
+- "agent_agent_rationale_1124": "Detect common debugging/tracing tools.  Informational only — does     NOT block" | kind=entity | source=probe/agent/agent.py:L1124 | neighbors=[_check_anti_debug()] | lang=en
+- "agent_agent_rationale_1129": "Load or atomically create the probe's Ed25519 enrollment identity." | kind=entity | source=probe/agent/agent.py:L1129 | neighbors=[_load_or_create_signing_identity()] | lang=en
+- "agent_agent_rationale_1140": "Load the probe's X25519 identity from persistent state, or create one.      Retu" | kind=entity | source=probe/agent/agent.py:L1140 | neighbors=[_load_or_create_identity()] | lang=en
+- "agent_agent_rationale_1150": "Request UI approval, poll, prove key possession, and activate." | kind=entity | source=probe/agent/agent.py:L1150 | neighbors=[_enroll_device()] | lang=en
+- "agent_agent_rationale_1157": "Detect common debugging/tracing tools.  Informational only — does     NOT block" | kind=entity | source=probe/agent/agent.py:L1157 | neighbors=[_check_anti_debug()] | lang=en
+- "agent_agent_rationale_117": "One-line, transparent summary of what a scan actually found so the operator" | kind=entity | source=probe/agent/agent.py:L117 | neighbors=[_result_summary()] | lang=en
+- "agent_agent_rationale_1172": "Load the probe's X25519 identity from persistent state, or create one.      Retu" | kind=entity | source=probe/agent/agent.py:L1172 | neighbors=[_load_or_create_identity()] | lang=en
+- "agent_agent_rationale_118": "One-line, transparent summary of what a scan actually found so the operator" | kind=entity | source=probe/agent/agent.py:L118 | neighbors=[_result_summary()] | lang=en
+- "agent_agent_rationale_1187": "Return (agent_id, token, fresh, identity_sk, identity_pk, public_key_b64)." | kind=entity | source=probe/agent/agent.py:L1187 | neighbors=[_obtain_identity()] | lang=en
+- "agent_agent_rationale_1189": "Load or atomically create the probe's Ed25519 enrollment identity." | kind=entity | source=probe/agent/agent.py:L1189 | neighbors=[_load_or_create_signing_identity()] | lang=en
+- "agent_agent_rationale_1205": "Load the probe's X25519 identity from persistent state, or create one.      Retu" | kind=entity | source=probe/agent/agent.py:L1205 | neighbors=[_load_or_create_identity()] | lang=en
+- "agent_agent_rationale_1211": "Load the probe's X25519 identity from persistent state, or create one.      Retu" | kind=entity | source=probe/agent/agent.py:L1211 | neighbors=[_load_or_create_identity()] | lang=en
+- "agent_agent_rationale_1213": "Return (agent_id, token, fresh, identity_sk, identity_pk, public_key_b64)." | kind=entity | source=probe/agent/agent.py:L1213 | neighbors=[_obtain_identity()] | lang=en
+- "agent_agent_rationale_122": "One-line, transparent summary of what a scan actually found so the operator" | kind=entity | source=probe/agent/agent.py:L122 | neighbors=[_result_summary()] | lang=en
+- "agent_agent_rationale_1221": "Load or atomically create the probe's Ed25519 enrollment identity." | kind=entity | source=probe/agent/agent.py:L1221 | neighbors=[_load_or_create_signing_identity()] | lang=en
+- "agent_agent_rationale_1223": "Request UI approval, poll, prove key possession, and activate.      `_recreate_b" | kind=entity | source=probe/agent/agent.py:L1223 | neighbors=[_enroll_device()] | lang=en
+- "agent_agent_rationale_1231": "Return (agent_id, token, fresh, identity_sk, identity_pk, public_key_b64)." | kind=entity | source=probe/agent/agent.py:L1231 | neighbors=[_obtain_identity()] | lang=en
+- "agent_agent_rationale_1254": "Load or atomically create the probe's Ed25519 enrollment identity." | kind=entity | source=probe/agent/agent.py:L1254 | neighbors=[_load_or_create_signing_identity()] | lang=en
+- "agent_agent_rationale_1255": "Request UI approval, poll, prove key possession, and activate.      `_recreate_b" | kind=entity | source=probe/agent/agent.py:L1255 | neighbors=[_enroll_device()] | lang=en
+- "agent_agent_rationale_1260": "Load or atomically create the probe's Ed25519 enrollment identity." | kind=entity | source=probe/agent/agent.py:L1260 | neighbors=[_load_or_create_signing_identity()] | lang=en
+- "agent_agent_rationale_1288": "Request UI approval, poll, prove key possession, and activate.      `_recreate_b" | kind=entity | source=probe/agent/agent.py:L1288 | neighbors=[_enroll_device()] | lang=en
+- "agent_agent_rationale_1294": "Request UI approval, poll, prove key possession, and activate.      `_recreate_b" | kind=entity | source=probe/agent/agent.py:L1294 | neighbors=[_enroll_device()] | lang=en
+- "agent_agent_rationale_131": "Map a low-level connection exception to (reason, how-to-fix)." | kind=entity | source=probe/agent/agent.py:L131 | neighbors=[_classify_connection_error()] | lang=en
+- "agent_agent_rationale_1323": "Return (agent_id, token, fresh, identity_sk, identity_pk, public_key_b64)." | kind=entity | source=probe/agent/agent.py:L1323 | neighbors=[_obtain_identity()] | lang=en
+- "agent_agent_rationale_1371": "Return (agent_id, token, fresh, identity_sk, identity_pk, public_key_b64)." | kind=entity | source=probe/agent/agent.py:L1371 | neighbors=[_obtain_identity()] | lang=en
+- "agent_agent_rationale_141": "Map a low-level connection exception to (reason, how-to-fix)." | kind=entity | source=probe/agent/agent.py:L141 | neighbors=[_classify_connection_error()] | lang=en
+- "agent_agent_rationale_142": "Map a low-level connection exception to (reason, how-to-fix)." | kind=entity | source=probe/agent/agent.py:L142 | neighbors=[_classify_connection_error()] | lang=en
+- "agent_agent_rationale_1451": "Return (agent_id, token, fresh, identity_sk, identity_pk, public_key_b64)." | kind=entity | source=probe/agent/agent.py:L1451 | neighbors=[_obtain_identity()] | lang=en
+- "agent_agent_rationale_146": "Map a low-level connection exception to (reason, how-to-fix)." | kind=entity | source=probe/agent/agent.py:L146 | neighbors=[_classify_connection_error()] | lang=en
+- "agent_agent_rationale_1483": "Return (agent_id, token, fresh, identity_sk, identity_pk, public_key_b64)." | kind=entity | source=probe/agent/agent.py:L1483 | neighbors=[_obtain_identity()] | lang=en
+- "agent_agent_rationale_1516": "Return (agent_id, token, fresh, identity_sk, identity_pk, public_key_b64)." | kind=entity | source=probe/agent/agent.py:L1516 | neighbors=[_obtain_identity()] | lang=en
 
 ## Instructions
 

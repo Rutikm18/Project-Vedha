@@ -1,4 +1,4 @@
-# Node Description Batch 241 of 336
+# Node Description Batch 241 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -26,46 +26,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "routers_engagements_rationale_426": "P1: kills the BFF N+1 (was list + one detail call per engagement).     Computes" | kind=entity | source=manager/backend/app/routers/engagements.py:L426 | neighbors=[engagements_overview()] | lang=en
-- "routers_engagements_rationale_68": "Shared aggregation — used by both the cached read path (ReadDB) and the     writ" | kind=entity | source=manager/backend/app/routers/engagements.py:L68 | neighbors=[_compute_overview()] | lang=en
-- "routers_engagements_rationale_682": "Map a ScanJob status to the operator-facing scan phase shown on the card." | kind=entity | source=manager/backend/app/routers/engagements.py:L682 | neighbors=[_job_phase()] | lang=en
-- "routers_engagements_rationale_685": "Probe-facing: the probe calls this independently before scanning a job to     re" | kind=entity | source=manager/backend/app/routers/engagements.py:L685 | neighbors=[get_engagement_scope()] | lang=en
-- "routers_engagements_rationale_699": "Derive ONE authoritative campaign phase from reconciled evidence, not from a" | kind=entity | source=manager/backend/app/routers/engagements.py:L699 | neighbors=[_reconcile_status()] | lang=en
-- "routers_engagements_rationale_745": "A SAFE, bounded view of a job's raw result — the counts an operator needs to" | kind=entity | source=manager/backend/app/routers/engagements.py:L745 | neighbors=[_result_summary()] | lang=en
-- "routers_engagements_rationale_767": "One call powers the VA Campaigns page: every probe's job (status + a safe raw" | kind=entity | source=manager/backend/app/routers/engagements.py:L767 | neighbors=[campaign_progress()] | lang=en
-- "routers_engagements_rationale_99": "Write-through cache refresh on the WRITE session, right after flush.      Replac" | kind=entity | source=manager/backend/app/routers/engagements.py:L99 | neighbors=[_refresh_overview_cache()] | lang=en
-- "routers_exploits_list_audit_logs": "list_audit_logs()" | kind=code-symbol | source=manager/backend/app/routers/exploits.py:L337 | neighbors=[exploits.py] | lang=en
-- "routers_findings_finding_summary": "finding_summary()" | kind=code-symbol | source=manager/backend/app/routers/findings.py:L203 | neighbors=[findings.py] | lang=en
-- "routers_findings_list_findings": "list_findings()" | kind=code-symbol | source=manager/backend/app/routers/findings.py:L109 | neighbors=[findings.py] | lang=en
-- "routers_findings_rationale_242": "Operator reverses a resolution (auto or manual). Only a `remediated`     finding" | kind=entity | source=manager/backend/app/routers/findings.py:L242 | neighbors=[reopen_finding()] | lang=pt
-- "routers_findings_rationale_248": "Operator reverses a resolution (auto or manual). Only a `remediated`     finding" | kind=entity | source=manager/backend/app/routers/findings.py:L248 | neighbors=[reopen_finding()] | lang=pt
-- "routers_findings_rationale_250": "Operator reverses a resolution (auto or manual). Only a `remediated`     finding" | kind=entity | source=manager/backend/app/routers/findings.py:L250 | neighbors=[reopen_finding()] | lang=pt
-- "routers_findings_rationale_269": "The finding's full lifecycle, oldest-first: stored audit events (who did     wha" | kind=entity | source=manager/backend/app/routers/findings.py:L269 | neighbors=[finding_timeline()] | lang=en
-- "routers_findings_rationale_27": "Fetch a finding scoped to the caller's tenant via its parent engagement.      Fi" | kind=entity | source=manager/backend/app/routers/findings.py:L27 | neighbors=[_tenant_finding()] | lang=en
-- "routers_findings_rationale_32": "Fetch a finding scoped to the caller's tenant via its parent engagement.      Fi" | kind=entity | source=manager/backend/app/routers/findings.py:L32 | neighbors=[_tenant_finding()] | lang=en
-- "routers_findings_rationale_363": "Operator reverses a resolution (auto or manual). Only a `remediated`     finding" | kind=entity | source=manager/backend/app/routers/findings.py:L363 | neighbors=[reopen_finding()] | lang=pt
-- "routers_findings_rationale_88": "Compute SLA state across the tenant's tracked findings (open/confirmed).     Opt" | kind=entity | source=manager/backend/app/routers/findings.py:L88 | neighbors=[sla_summary()] | lang=en
-- "routers_health_health": "health()" | kind=code-symbol | source=manager/backend/app/routers/health.py:L40 | neighbors=[health.py] | lang=en
-- "routers_health_rationale_1": "Health endpoints.  GET /health          — liveness: DB + Redis reachability (fas" | kind=entity | source=manager/backend/app/routers/health.py:L1 | neighbors=[health.py] | lang=en
-- "routers_health_rationale_163": "Returns the cached report from the last startup diagnostics run.     If the repo" | kind=entity | source=manager/backend/app/routers/health.py:L163 | neighbors=[health_startup()] | lang=en
-- "routers_health_rationale_165": "Returns the cached report from the last startup diagnostics run.     If the repo" | kind=entity | source=manager/backend/app/routers/health.py:L165 | neighbors=[health_startup()] | lang=en
-- "routers_health_rationale_82": "Validates the authentication subsystem without touching login state.     Returns" | kind=entity | source=manager/backend/app/routers/health.py:L82 | neighbors=[health_auth()] | lang=en
-- "routers_integrations_rationale_1": "integrations.py — operator management of notification integrations (email/Slack/" | kind=entity | source=manager/backend/app/routers/integrations.py:L1 | neighbors=[integrations.py] | lang=en
-- "routers_integrations_rationale_107": "Enqueue a durable test notification; the outbox worker fans it out to every" | kind=entity | source=manager/backend/app/routers/integrations.py:L107 | neighbors=[test_integrations()] | lang=en
-- "routers_integrations_rationale_118": "Decrypt an integration's secret for the delivery worker (never the API)." | kind=entity | source=manager/backend/app/routers/integrations.py:L118 | neighbors=[integration_secret()] | lang=en
-- "routers_portal_portal_activity": "portal_activity()" | kind=code-symbol | source=manager/backend/app/routers/portal.py:L541 | neighbors=[portal.py] | lang=en
-- "routers_portal_portal_exposure": "portal_exposure()" | kind=code-symbol | source=manager/backend/app/routers/portal.py:L520 | neighbors=[portal.py] | lang=en
-- "routers_portal_portal_finding": "portal_finding()" | kind=code-symbol | source=manager/backend/app/routers/portal.py:L123 | neighbors=[portal.py] | lang=en
-- "routers_portal_portal_findings": "portal_findings()" | kind=code-symbol | source=manager/backend/app/routers/portal.py:L105 | neighbors=[portal.py] | lang=en
-- "routers_portal_portal_posture_analytics": "portal_posture_analytics()" | kind=code-symbol | source=manager/backend/app/routers/portal.py:L527 | neighbors=[portal.py] | lang=en
-- "routers_portal_portal_report": "portal_report()" | kind=code-symbol | source=manager/backend/app/routers/portal.py:L259 | neighbors=[portal.py] | lang=en
-- "routers_portal_portal_reports": "portal_reports()" | kind=code-symbol | source=manager/backend/app/routers/portal.py:L248 | neighbors=[portal.py] | lang=en
-- "routers_portal_portal_sla_summary": "portal_sla_summary()" | kind=code-symbol | source=manager/backend/app/routers/portal.py:L534 | neighbors=[portal.py] | lang=en
-- "routers_portal_rationale_1": "portal.py — the CUSTOMER-facing read API (Part 2, Phase 2). Every route is scope" | kind=entity | source=manager/backend/app/routers/portal.py:L1 | neighbors=[portal.py] | lang=en
-- "routers_portal_rationale_116": "Customer-facing structured remediation, replacing the plain `remediation`     st" | kind=entity | source=manager/backend/app/routers/portal.py:L116 | neighbors=[portal_finding_remediation()] | lang=en
-- "routers_portal_rationale_134": "Customer-facing structured remediation, replacing the plain `remediation`     st" | kind=entity | source=manager/backend/app/routers/portal.py:L134 | neighbors=[portal_finding_remediation()] | lang=en
-- "routers_portal_rationale_139": "Customer-facing structured remediation, replacing the plain `remediation`     st" | kind=entity | source=manager/backend/app/routers/portal.py:L139 | neighbors=[portal_finding_remediation()] | lang=en
-- "routers_portal_rationale_417": "The whitelist that reaches the model — deliberately the same shape the     custo" | kind=entity | source=manager/backend/app/routers/portal.py:L417 | neighbors=[_assistant_finding_view()] | lang=en
+- "lib_scanner_request_validation_validationresult": "ValidationResult" | kind=code-symbol | source=manager/frontend/lib/scanner-request-validation.ts:L12 | neighbors=[scanner-request-validation.ts] | lang=en
+- "lib_security_context_securitycontexterror_constructor": ".constructor()" | kind=code-symbol | source=manager/frontend/lib/security-context.ts:L11 | neighbors=[SecurityContextError] | lang=en
+- "lib_severity_detectioncoverage": "DetectionCoverage" | kind=code-symbol | source=manager/frontend/lib/severity.ts:L12 | neighbors=[severity.ts] | lang=en
+- "lib_severity_exploitmaturity": "ExploitMaturity" | kind=code-symbol | source=manager/frontend/lib/severity.ts:L11 | neighbors=[severity.ts] | lang=en
+- "lib_severity_findingstatus": "FindingStatus" | kind=code-symbol | source=manager/frontend/lib/severity.ts:L9 | neighbors=[severity.ts] | lang=en
+- "lib_severity_severitymeta": "SeverityMeta" | kind=code-symbol | source=manager/frontend/lib/severity.ts:L94 | neighbors=[severity.ts] | lang=en
+- "lib_target_parser_common_ranges": "COMMON_RANGES" | kind=code-symbol | source=manager/frontend/lib/target-parser.ts:L132 | neighbors=[target-parser.ts] | lang=en
+- "lib_target_parser_isprivaterange": "isPrivateRange()" | kind=code-symbol | source=manager/frontend/lib/target-parser.ts:L35 | neighbors=[target-parser.ts] | lang=en
+- "lib_target_parser_parseresult": "ParseResult" | kind=code-symbol | source=manager/frontend/lib/target-parser.ts:L59 | neighbors=[target-parser.ts] | lang=en
+- "lib_target_parser_rfc1918": "RFC1918" | kind=code-symbol | source=manager/frontend/lib/target-parser.ts:L6 | neighbors=[target-parser.ts] | lang=en
+- "lib_target_parser_toapitargets": "toApiTargets()" | kind=code-symbol | source=manager/frontend/lib/target-parser.ts:L127 | neighbors=[target-parser.ts] | lang=en
+- "lib_tenant_reserved": "RESERVED" | kind=code-symbol | source=manager/frontend/lib/tenant.ts:L15 | neighbors=[tenant.ts] | lang=en
+- "lib_testssl_parser_skip_severity": "SKIP_SEVERITY" | kind=code-symbol | source=manager/frontend/lib/testssl-parser.ts:L12 | neighbors=[testssl-parser.ts] | lang=en
+- "lib_testssl_parser_testsslissue": "TestsslIssue" | kind=code-symbol | source=manager/frontend/lib/testssl-parser.ts:L4 | neighbors=[testssl-parser.ts] | lang=en
+- "lib_testssl_parser_testssloutput": "TestsslOutput" | kind=code-symbol | source=manager/frontend/lib/testssl-parser.ts:L26 | neighbors=[testssl-parser.ts] | lang=en
+- "lib_testssl_parser_testsslparseresult": "TestsslParseResult" | kind=code-symbol | source=manager/frontend/lib/testssl-parser.ts:L28 | neighbors=[testssl-parser.ts] | lang=en
+- "lib_whatweb_parser_whatwebparseresult": "WhatWebParseResult" | kind=code-symbol | source=manager/frontend/lib/whatweb-parser.ts:L6 | neighbors=[whatweb-parser.ts] | lang=en
+- "lib_whatweb_parser_whatwebresult": "WhatWebResult" | kind=code-symbol | source=manager/frontend/lib/whatweb-parser.ts:L1 | neighbors=[whatweb-parser.ts] | lang=en
+- "lib_with_backend_backendctx": "BackendCtx" | kind=code-symbol | source=manager/frontend/lib/with-backend.ts:L12 | neighbors=[with-backend.ts] | lang=en
+- "lib_with_backend_handler": "Handler" | kind=code-symbol | source=manager/frontend/lib/with-backend.ts:L16 | neighbors=[with-backend.ts] | lang=en
+- "login_page_loginform": "LoginForm()" | kind=code-symbol | source=manager/frontend/app/login/page.tsx:L18 | neighbors=[page.tsx] | lang=en
+- "login_page_loginpage": "LoginPage()" | kind=code-symbol | source=manager/frontend/app/login/page.tsx:L10 | neighbors=[page.tsx] | lang=en
+- "login_page_portalloginpage": "PortalLoginPage()" | kind=code-symbol | source=manager/frontend/app/portal/login/page.tsx:L7 | neighbors=[page.tsx] | lang=en
+- "logout_route_post": "POST()" | kind=code-symbol | source=manager/frontend/app/api/portal/logout/route.ts:L6 | neighbors=[route.ts] | lang=en
+- "main_scripts_accuracy_gate_rationale_101": "True when this corpus's labels can support an ACCURACY claim." | kind=entity | source=probe/main_scripts/accuracy_gate.py:L101 | neighbors=[is_independent()] | lang=en
+- "main_scripts_accuracy_gate_rationale_106": "Threshold violations for one scored corpus (empty list = passed)." | kind=entity | source=probe/main_scripts/accuracy_gate.py:L106 | neighbors=[check_thresholds()] | lang=en
+- "main_scripts_accuracy_gate_rationale_143": "Score every corpus in `directory` and collect threshold violations.      Returns" | kind=entity | source=probe/main_scripts/accuracy_gate.py:L143 | neighbors=[run_gate()] | lang=en
+- "main_scripts_accuracy_gate_rationale_62": "A corpus is malformed or unlabeled — a gate failure, never a silent pass." | kind=entity | source=probe/main_scripts/accuracy_gate.py:L62 | neighbors=[CorpusError] | lang=pt
+- "main_scripts_accuracy_gate_rationale_66": "Load and structurally validate one corpus file." | kind=entity | source=probe/main_scripts/accuracy_gate.py:L66 | neighbors=[load_corpus()] | lang=en
+- "main_scripts_accuracy_gate_rationale_93": "Every *.json corpus in `directory`, sorted by name for stable reports." | kind=entity | source=probe/main_scripts/accuracy_gate.py:L93 | neighbors=[load_corpora()] | lang=en
+- "main_scripts_accuracy_rationale_125": "Run the findings engine over a labeled corpus and score it.      corpus = {name," | kind=entity | source=probe/main_scripts/accuracy.py:L125 | neighbors=[evaluate_corpus()] | lang=en
+- "main_scripts_accuracy_rationale_49": "Precision / recall / F1 of produced findings vs a labeled expected set.      Key" | kind=entity | source=probe/main_scripts/accuracy.py:L49 | neighbors=[score_findings()] | lang=en
+- "main_scripts_accuracy_rationale_80": "(target, port) -> status, from port/syn/mass scan facts (last one wins)." | kind=entity | source=probe/main_scripts/accuracy.py:L80 | neighbors=[_observed_states()] | lang=en
+- "main_scripts_accuracy_rationale_95": "OPEN precision/recall + overall state accuracy vs a remote-validated     ground" | kind=entity | source=probe/main_scripts/accuracy.py:L95 | neighbors=[score_port_states()] | lang=pt
+- "main_scripts_adaptive_timeout_adaptivetimeout_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/adaptive_timeout.py:L21 | neighbors=[AdaptiveTimeout] | lang=en
+- "main_scripts_adaptive_timeout_rationale_32": "Fold one round-trip sample (seconds) into the estimate. Ignores         missing/" | kind=entity | source=probe/main_scripts/adaptive_timeout.py:L32 | neighbors=[.observe()] | lang=en
+- "main_scripts_adaptive_timeout_rationale_45": "Current timeout: base until we have a sample, then SRTT + 4*RTTVAR         clamp" | kind=entity | source=probe/main_scripts/adaptive_timeout.py:L45 | neighbors=[.timeout()] | lang=pt
+- "main_scripts_adaptive_timeout_rationale_55": "Convenience: build an estimator and fold in a sequence of RTT samples." | kind=entity | source=probe/main_scripts/adaptive_timeout.py:L55 | neighbors=[from_rtts()] | lang=en
+- "main_scripts_cpe_rationale_1": "cpe.py — derive a CPE 2.3 identity from an observed (service, product, version)." | kind=entity | source=probe/main_scripts/cpe.py:L1 | neighbors=[cpe.py] | lang=en
+- "main_scripts_cpe_rationale_104": "Prefer an explicit version field; else pull a version-like token out of the" | kind=entity | source=probe/main_scripts/cpe.py:L104 | neighbors=[_extract_version()] | lang=en
 
 ## Instructions
 

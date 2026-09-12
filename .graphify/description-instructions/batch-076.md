@@ -1,4 +1,4 @@
-# Node Description Batch 77 of 336
+# Node Description Batch 77 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,51 +12,60 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
-Write every description in English (en). Do not switch languages.
+For an entity node (any other kind — e.g. a person, place, event, object),
+describe what the entity is and its role, grounded in its type, its
+relations (neighbors) and the provided citations/evidence — e.g.
+"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
+Ground entity descriptions in the citations/evidence when present; do not
+speculate beyond the context, so a node with no supporting context may be
+left out of the reply.
+LANGUAGE: each entry has a `lang=` marker giving the language of its source.
+Write that entry's description in EXACTLY that language. Do not translate to
+a single common language — match each node's source language individually.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "scanner_delta_scanner_extract_version": "_extract_version()" | kind=code-symbol | source=probe/scanner/delta_scanner.py:L140 | neighbors=[delta_scanner.py, .load_jsonl(), Best-effort version string., Best-effort version string.]
-- "scanner_delta_scanner_new_service_severity": "_new_service_severity()" | kind=code-symbol | source=probe/scanner/delta_scanner.py:L298 | neighbors=[delta_scanner.py, .diff(), Heuristic priority for a newly-detected…, Heuristic priority for a newly-detected…]
-- "scanner_delta_scanner_scanrecord": "ScanRecord" | kind=code-symbol | source=probe/scanner/delta_scanner.py:L55 | neighbors=[delta_scanner.py, .load_jsonl(), Normalised representation of one ScanRe…, Normalised representation of one ScanRe…]
-- "scanner_delta_scanner_significant_version_change": "_significant_version_change()" | kind=code-symbol | source=probe/scanner/delta_scanner.py:L310 | neighbors=[delta_scanner.py, .diff(), True if version changed in a security-r…, True if version changed in a security-r…]
-- "scanner_delta_scanner_stable_host_id": "_stable_host_id()" | kind=code-symbol | source=probe/scanner/delta_scanner.py:L93 | neighbors=[delta_scanner.py, .load_jsonl(), Derive a stable host identity from a ra…, Derive a stable host identity from a ra…]
-- "scanner_device_classifier_classify_device": "classify_device()" | kind=code-symbol | source=probe/scanner/device_classifier.py:L110 | neighbors=[device_classifier.py, classify_from_results(), Fuse OS family + open ports + service p…, Fuse OS family + open ports + service p…]
-- "scanner_device_classifier_classify_from_results": "classify_from_results()" | kind=code-symbol | source=probe/scanner/device_classifier.py:L237 | neighbors=[device_classifier.py, classify_device(), Convenience adapter: extract classifier…, Convenience adapter: extract classifier…]
-- "scanner_dns_scanner_dnsscanner_ptr_self": "._ptr_self()" | kind=code-symbol | source=probe/scanner/dns_scanner.py:L119 | neighbors=[DNSScanner, ._probe(), _is_ip(), Ask the target (as a resolver) for the …]
-- "scanner_findings_as_dict": "_as_dict()" | kind=code-symbol | source=probe/scanner/findings.py:L97 | neighbors=[findings.py, build_service_index(), Accept a raw JSONL dict or a ScanResult…, run_findings()]
-- "scanner_findings_rule_smb": "_rule_smb()" | kind=code-symbol | source=probe/scanner/findings.py:L254 | neighbors=[findings.py, _data(), Finding, _scanner()]
-- "scanner_findings_rule_snmp": "_rule_snmp()" | kind=code-symbol | source=probe/scanner/findings.py:L277 | neighbors=[findings.py, _data(), Finding, _scanner()]
-- "scanner_findings_rule_ssh": "_rule_ssh()" | kind=code-symbol | source=probe/scanner/findings.py:L582 | neighbors=[findings.py, _data(), Finding, _scanner()]
-- "scanner_findings_rule_tls": "_rule_tls()" | kind=code-symbol | source=probe/scanner/findings.py:L175 | neighbors=[findings.py, _data(), Finding, _scanner()]
-- "scanner_findings_rule_udp_amplification": "_rule_udp_amplification()" | kind=code-symbol | source=probe/scanner/findings.py:L308 | neighbors=[findings.py, _data(), Finding, _scanner()]
-- "scanner_findings_rule_web": "_rule_web()" | kind=code-symbol | source=probe/scanner/findings.py:L419 | neighbors=[findings.py, _data(), Finding, _scanner()]
-- "scanner_ftp_scanner_ftpscanner_cmd": "._cmd()" | kind=code-symbol | source=probe/scanner/ftp_scanner.py:L91 | neighbors=[FTPScanner, ._read_response(), ._list_bounded(), ._probe()]
-- "scanner_host_discovery_hostdiscoveryscanner_udp_liveness": "._udp_liveness()" | kind=code-symbol | source=probe/scanner/host_discovery.py:L560 | neighbors=[HostDiscoveryScanner, .scan_target(), ._udp_one(), Run the UDP tier concurrently; return e…]
-- "scanner_host_discovery_hostdiscoveryscanner_udp_one": "._udp_one()" | kind=code-symbol | source=probe/scanner/host_discovery.py:L534 | neighbors=[HostDiscoveryScanner, ._udp_liveness(), parse_nbstat(), One UDP liveness probe -> structured si…]
-- "scanner_host_discovery_neighbor": "Neighbor" | kind=code-symbol | source=probe/scanner/host_discovery.py:L294 | neighbors=[host_discovery.py, parse_neighbor_line(), One OS neighbor-cache observation about…, One OS neighbor-cache observation about…]
-- "scanner_host_discovery_parse_nbstat": "parse_nbstat()" | kind=code-symbol | source=probe/scanner/host_discovery.py:L103 | neighbors=[host_discovery.py, ._udp_one(), normalize_mac(), Parse a NetBIOS NBSTAT (node status) re…]
-- "scanner_host_discovery_read_neighbor": "read_neighbor()" | kind=code-symbol | source=probe/scanner/host_discovery.py:L331 | neighbors=[host_discovery.py, Targeted, POST-probe neighbor lookup fo…, parse_neighbor_line(), Targeted, POST-probe neighbor lookup fo…]
-- "scanner_init": "__init__.py" | kind=code-symbol | source=probe/scanner/__init__.py:L1 | neighbors=[4d0377d Add unit tests for SMB scanner,…, d1b4dd3 trim frontend to 7 core pages; …, VA scanner module — pure collection/sca…, 298a9d4 trim frontend to 7 core pages; …]
-- "scanner_iot_scanner_coap_get_wellknown_core": "_coap_get_wellknown_core()" | kind=code-symbol | source=probe/scanner/iot_scanner.py:L348 | neighbors=[iot_scanner.py, _probe_coap_sync(), CoAP Confirmable GET for /.well-known/c…, CoAP Confirmable GET for /.well-known/c…]
-- "scanner_iot_scanner_decode_mdns_name": "_decode_mdns_name()" | kind=code-symbol | source=probe/scanner/iot_scanner.py:L130 | neighbors=[iot_scanner.py, _parse_mdns_response(), Decode a DNS wire-format name, followin…, Decode a DNS wire-format name, followin…]
-- "scanner_iot_scanner_fetch_upnp_root_desc": "_fetch_upnp_root_desc()" | kind=code-symbol | source=probe/scanner/iot_scanner.py:L58 | neighbors=[iot_scanner.py, _probe_ssdp_sync(), HTTP GET the UPnP rootDesc.xml and extr…, HTTP GET the UPnP rootDesc.xml and extr…]
-- "scanner_iot_scanner_iotscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/scanner/iot_scanner.py:L452 | neighbors=[IoTScanner, _probe_cwmp(), _probe_mqtt(), _probe_rtsp()]
-- "scanner_iot_scanner_parse_coap_response": "_parse_coap_response()" | kind=code-symbol | source=probe/scanner/iot_scanner.py:L361 | neighbors=[iot_scanner.py, _probe_coap_sync(), Extract CoAP response code and content., Extract CoAP response code and content.]
-- "scanner_iot_scanner_probe_cwmp": "_probe_cwmp()" | kind=code-symbol | source=probe/scanner/iot_scanner.py:L405 | neighbors=[iot_scanner.py, .scan_target(), HTTP GET to CWMP port — detect ACS or C…, HTTP GET to CWMP port — detect ACS or C…]
-- "scanner_iot_scanner_probe_mqtt": "_probe_mqtt()" | kind=code-symbol | source=probe/scanner/iot_scanner.py:L291 | neighbors=[iot_scanner.py, .scan_target(), _mqtt_connect(), _mqtt_subscribe_all()]
-- "scanner_ipmi_scanner_ipmiscanner_probe": "._probe()" | kind=code-symbol | source=probe/scanner/ipmi_scanner.py:L72 | neighbors=[IPMIScanner, build_open_session_request(), parse_open_session_response(), Blocking: one RMCP+ Open Session Reques…]
-- "scanner_ipv6_discovery_parse_ip_neigh6": "parse_ip_neigh6()" | kind=code-symbol | source=probe/scanner/ipv6_discovery.py:L42 | neighbors=[ipv6_discovery.py, _is_ipv6(), Parse Linux `ip -6 neigh show` into [(a…, _read_neighbor_cache()]
-- "scanner_ipv6_discovery_parse_ndp": "parse_ndp()" | kind=code-symbol | source=probe/scanner/ipv6_discovery.py:L59 | neighbors=[ipv6_discovery.py, _is_ipv6(), Parse macOS/BSD `ndp -an` into [(addres…, _read_neighbor_cache()]
-- "scanner_ipv6_discovery_ping_all_nodes": "_ping_all_nodes()" | kind=code-symbol | source=probe/scanner/ipv6_discovery.py:L102 | neighbors=[ipv6_discovery.py, discover_ipv6_hosts(), _run(), Fire an ICMPv6 echo at ff02::1 (scoped …]
-- "scanner_ja4s_selected_alpn": "_selected_alpn()" | kind=code-symbol | source=probe/scanner/ja4s.py:L69 | neighbors=[ja4s.py, ja4s_from_parsed(), The single ALPN protocol the server cho…, _walk_extensions()]
-- "scanner_ja4s_walk_extensions": "_walk_extensions()" | kind=code-symbol | source=probe/scanner/ja4s.py:L56 | neighbors=[ja4s.py, _ext_types(), Yield (type, value) for each extension …, _selected_alpn()]
-- "scanner_ja4x_ja4x_from_cert": "ja4x_from_cert()" | kind=code-symbol | source=probe/scanner/ja4x.py:L82 | neighbors=[ja4x.py, ja4x_from_oid_lists(), ja4x_from_der(), JA4X from a `cryptography` x509 Certifi…]
-- "scanner_ja4x_ja4x_from_oid_lists": "ja4x_from_oid_lists()" | kind=code-symbol | source=probe/scanner/ja4x.py:L75 | neighbors=[ja4x.py, ja4x_from_cert(), _hash_oids(), Pure JA4X from the three ordered OID li…]
-- "scanner_mass_scan_masscan_excludes": "_masscan_excludes()" | kind=code-symbol | source=probe/scanner/mass_scan.py:L307 | neighbors=[mass_scan.py, Excluded networks -> masscan --exclude …, run_mass_scan(), Excluded networks -> masscan --exclude …]
-- "scanner_mass_scan_spec_in_scope": "_spec_in_scope()" | kind=code-symbol | source=probe/scanner/mass_scan.py:L312 | neighbors=[mass_scan.py, A CIDR spec is in scope only if it is f…, run_mass_scan(), A CIDR spec is in scope only if it is f…]
-- "scanner_mcp_ai_scanner_auth_shaped_json_body": "_auth_shaped_json_body()" | kind=code-symbol | source=probe/scanner/mcp_ai_scanner.py:L174 | neighbors=[mcp_ai_scanner.py, ._probe_port(), JSON-typed body that actually talks abo…, JSON-typed body that actually talks abo…]
+- "assistant_assistantprovider_useassistant": "useAssistant()" | kind=code-symbol | source=manager/frontend/components/assistant/AssistantProvider.tsx:L22 | neighbors=[AssistantDrawer.tsx, AssistantFab.tsx, AssistantProvider.tsx, page.tsx] | lang=en
+- "assistant_factcard_factcard": "FactCard()" | kind=code-symbol | source=manager/frontend/components/assistant/FactCard.tsx:L26 | neighbors=[page.tsx, AssistantDrawer.tsx, FactCard.tsx, lifecycleSummary()] | lang=en
+- "auth_middleware_agent_jwt_path_allows": "agent_jwt_path_allows()" | kind=code-symbol | source=manager/backend/app/auth/middleware.py:L56 | neighbors=[middleware.py, Least-privilege route allowlist for leg…, .dispatch(), Routes a customer-portal token (aud=ved…] | lang=en
+- "auth_portal_scope_client_scoped": "client_scoped()" | kind=code-symbol | source=manager/backend/app/auth/portal_scope.py:L61 | neighbors=[portal_scope.py, assert_client(), The single choke point every portal SEL…, The single choke point every portal SEL…] | lang=en
+- "auth_portal_scope_require_client": "require_client()" | kind=code-symbol | source=manager/backend/app/auth/portal_scope.py:L72 | neighbors=[portal_scope.py, Role gate for portal routes — 403 unles…, assert_client(), Role gate for portal routes — 403 unles…] | lang=en
+- "auth_portal_scope_scoped_engagement": "scoped_engagement()" | kind=code-symbol | source=manager/backend/app/auth/portal_scope.py:L80 | neighbors=[portal_scope.py, Route dependency yielding the client's …, resolve_scope(), Route dependency yielding the client's …] | lang=en
+- "auth_rbac": "rbac.py" | kind=code-symbol | source=manager/backend/app/auth/rbac.py:L1 | neighbors=[dependencies.py, require_role(), d1b4dd3 trim frontend to 7 core pages; …, 298a9d4 trim frontend to 7 core pages; …] | lang=en
+- "auth_router_access_claims_for": "access_claims_for()" | kind=code-symbol | source=manager/backend/app/auth/router.py:L56 | neighbors=[router.py, login(), The audience + scoping claims an access…, refresh()] | lang=en
+- "commands_interactive_banner": "banner()" | kind=code-symbol | source=manager/frontend/cli/commands/interactive.ts:L104 | neighbors=[interactive.ts, ln(), runInteractive(), wizardScan()] | lang=en
+- "commands_interactive_choosenextphase": "chooseNextPhase()" | kind=code-symbol | source=manager/frontend/cli/commands/interactive.ts:L927 | neighbors=[interactive.ts, choose(), ln(), runIterativeEngagement()] | lang=en
+- "commands_interactive_pickmodulesbycategory": "pickModulesByCategory()" | kind=code-symbol | source=manager/frontend/cli/commands/interactive.ts:L300 | neighbors=[interactive.ts, confirm(), ln(), wizardScan()] | lang=en
+- "commands_interactive_runrulebasedvalidation": "runRuleBasedValidation()" | kind=code-symbol | source=manager/frontend/cli/commands/interactive.ts:L1355 | neighbors=[interactive.ts, confirm(), ln(), runValidationFlow()] | lang=en
+- "commands_interactive_wizardstatus": "wizardStatus()" | kind=code-symbol | source=manager/frontend/cli/commands/interactive.ts:L1938 | neighbors=[interactive.ts, mainMenu(), divider(), ln()] | lang=en
+- "commit:repo:github.com/Rutikm18/Agentic-VA-Automation@0510df3efb9374892a4822e5be4b3cdb4d0cdd4f": "0510df3 going to build prompt and connection, architecture almost done" | kind=Commit | source=git | neighbors=[agents/greeting-introduction, main, 298a9d4 trim frontend to 7 core pages; …, a388bb3 script updated, architecture de…] | lang=en
+- "commit:repo:github.com/Rutikm18/Agentic-VA-Automation@a388bb3e7f6e1db096cdb6b54966cdce98a43eed": "a388bb3 script updated, architecture design and integration with adversa repo" | kind=Commit | source=git | neighbors=[agents/greeting-introduction, main, 0510df3 going to build prompt and conne…, bd7383f scanner fine ..now integrations] | lang=en
+- "commit:repo:github.com/Rutikm18/Agentic-VA-Automation@bd7383fc2cc71d9cb245832d165562e1d2db0a25": "bd7383f scanner fine ..now integrations" | kind=Commit | source=git | neighbors=[agents/greeting-introduction, main, a388bb3 script updated, architecture de…, f5ce592 first commit] | lang=en
+- "commit:repo:github.com/Rutikm18/Agentic-VA-Automation@f5ce59287539c2bdfa5634ab9086c7c75c11bebb": "f5ce592 first commit" | kind=Commit | source=git | neighbors=[8d65c92 first commit, agents/greeting-introduction, main, bd7383f scanner fine ..now integrations] | lang=fr
+- "commit:repo:github.com/Rutikm18/Project-Vedha@06b825dad82c667ab7b8d3825d763e507783cddc": "06b825d merge: hardened-agent architecture doc into 1209 integration" | kind=Commit | source=git | neighbors=[1209_system_ui_backend_level_changes, 57751e5 merge: cross-os installer docs …, 198bae4 snapshot: uncommitted system/ui…, 4336821 Add hardened vedha-agent archit…] | lang=en
+- "commit:repo:github.com/Rutikm18/Project-Vedha@22c59d4d767725b136c026b712f7f99f73463560": "22c59d4 Add implementation plan: universal cross-OS agent installer" | kind=Commit | source=git | neighbors=[1209_system_ui_backend_level_changes, cross-os-agent-installer, 3ddc104 feat: unify customer and manage…, 5f91538 Spec: add per-OS dependency boo…] | lang=en
+- "commit:repo:github.com/Rutikm18/Project-Vedha@43368219df836c6be696892380f76c31d8568f8a": "4336821 Add hardened vedha-agent architecture + failure register + small-task p…" | kind=Commit | source=git | neighbors=[1209_system_ui_backend_level_changes, cross-os-vedha-agent-install, 06b825d merge: hardened-agent architect…, 7a87d19 docs: add Ubuntu Docker probe d…] | lang=en
+- "commit:repo:github.com/Rutikm18/Project-Vedha@4d6f251220a9d3201a591f34f2039451711f8710": "4d6f251 Add design spec: universal cross-OS vedha-agent installer + self-scan" | kind=Commit | source=git | neighbors=[1209_system_ui_backend_level_changes, cross-os-agent-installer, 5f91538 Spec: add per-OS dependency boo…, f3b7a9e feat: implement prompt caching …] | lang=en
+- "commit:repo:github.com/Rutikm18/Project-Vedha@5f915380eb80c41070f1c0d9906b57e077b35998": "5f91538 Spec: add per-OS dependency bootstrap + alternatives-considered" | kind=Commit | source=git | neighbors=[4d6f251 Add design spec: universal cros…, 1209_system_ui_backend_level_changes, cross-os-agent-installer, 22c59d4 Add implementation plan: univer…] | lang=en
+- "components_dashboardcharts_dashboardcharts": "DashboardCharts()" | kind=code-symbol | source=manager/frontend/components/DashboardCharts.tsx:L179 | neighbors=[DashboardCharts.tsx, DashboardWorkspace.tsx, page.tsx, page.tsx] | lang=en
+- "components_queryprovider": "QueryProvider.tsx" | kind=code-symbol | source=manager/frontend/components/QueryProvider.tsx:L1 | neighbors=[layout.tsx, d1b4dd3 trim frontend to 7 core pages; …, QueryProvider(), 298a9d4 trim frontend to 7 core pages; …] | lang=en
+- "components_refreshbutton_refreshbutton": "RefreshButton()" | kind=code-symbol | source=manager/frontend/components/RefreshButton.tsx:L30 | neighbors=[PageShell.tsx, RefreshButton.tsx, page.tsx, PortalShell.tsx] | lang=en
+- "components_sidebar_sidebar": "Sidebar()" | kind=code-symbol | source=manager/frontend/components/Sidebar.tsx:L82 | neighbors=[PageShell.tsx, Sidebar.tsx, page.tsx, page.tsx] | lang=en
+- "components_themeprovider_usetheme": "useTheme()" | kind=code-symbol | source=manager/frontend/components/ThemeProvider.tsx:L26 | neighbors=[PageShell.tsx, ThemeProvider.tsx, PortalShell.tsx, page.tsx] | lang=en
+- "console_primitives_meter": "Meter()" | kind=code-symbol | source=manager/frontend/components/console/Primitives.tsx:L90 | neighbors=[Primitives.tsx, ExposureCards.tsx, PatchComparisonMatrix.tsx, SlaStatus.tsx] | lang=en
+- "cve_ingest_ssl_context": "_ssl_context()" | kind=code-symbol | source=probe/cve/ingest.py:L45 | neighbors=[ingest.py, _get(), ingest_nvd(), certifi CA bundle if present, else the …] | lang=en
+- "cve_online_apply": "_apply()" | kind=code-symbol | source=probe/cve/online.py:L174 | neighbors=[online.py, _was_exposed(), enrich_findings(), Fold one CVE's live result into a findi…] | lang=en
+- "cve_online_lookup_nvd": "lookup_nvd()" | kind=code-symbol | source=probe/cve/online.py:L65 | neighbors=[online.py, enrich_findings(), OnlineResult, Query live NVD 2.0 for one CVE. Returns…] | lang=en
+- "cve_version_compare": "compare()" | kind=code-symbol | source=probe/cve/version.py:L47 | neighbors=[version.py, parse_version(), in_range(), Return -1/0/1 for version a vs b (zero-…] | lang=en
+- "cve_vulndb_norm": "_norm()" | kind=code-symbol | source=probe/cve/vulndb.py:L58 | neighbors=[vulndb.py, .add_cpe_match(), .cves_for_cpe(), .upsert_kev()] | lang=en
+- "cve_vulndb_vulndb_cves_for_cpe": ".cves_for_cpe()" | kind=code-symbol | source=probe/cve/vulndb.py:L119 | neighbors=[All vulnerable CVEs whose CPE applicabi…, VulnDB, _norm(), ._enrich()] | lang=en
+- "cve_weakness_map_correlate_weaknesses": "correlate_weaknesses()" | kind=code-symbol | source=probe/cve/weakness_map.py:L163 | neighbors=[weakness_map.py, _finding_view(), _mirror_cve(), Map observed weakness findings to their…] | lang=en
+- "dashboard_dashboardgrid_dashboardgrid": "DashboardGrid()" | kind=code-symbol | source=manager/frontend/components/dashboard/DashboardGrid.tsx:L138 | neighbors=[DashboardGrid.tsx, DashboardWorkspace.tsx, page.tsx, page.tsx] | lang=en
+- "dashboard_liveoverview_liveoverview": "LiveOverview()" | kind=code-symbol | source=manager/frontend/components/dashboard/LiveOverview.tsx:L60 | neighbors=[DashboardGrid.tsx, LiveOverview.tsx, verdict(), page.tsx] | lang=en
+- "dashboard_patchcomparisonmatrix_patchcomparisonmatrix": "PatchComparisonMatrix()" | kind=code-symbol | source=manager/frontend/components/dashboard/PatchComparisonMatrix.tsx:L70 | neighbors=[DashboardGrid.tsx, PatchComparisonMatrix.tsx, n(), page.tsx] | lang=en
+- "dashboard_posturescorecard_posturescorecard": "PostureScorecard()" | kind=code-symbol | source=manager/frontend/components/dashboard/PostureScorecard.tsx:L118 | neighbors=[DashboardGrid.tsx, PostureScorecard.tsx, usePosture(), page.tsx] | lang=en
+- "detection_edr_edrqueryengine_request": "._request()" | kind=code-symbol | source=manager/backend/app/detection/edr.py:L78 | neighbors=[.query_detections(), EDRQueryEngine, .query_detections(), .query_detections()] | lang=en
 
 ## Instructions
 

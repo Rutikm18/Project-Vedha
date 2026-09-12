@@ -1,4 +1,4 @@
-# Node Description Batch 124 of 336
+# Node Description Batch 124 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,60 +12,51 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
-For an entity node (any other kind — e.g. a person, place, event, object),
-describe what the entity is and its role, grounded in its type, its
-relations (neighbors) and the provided citations/evidence — e.g.
-"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
-Ground entity descriptions in the citations/evidence when present; do not
-speculate beyond the context, so a node with no supporting context may be
-left out of the reply.
-LANGUAGE: each entry has a `lang=` marker giving the language of its source.
-Write that entry's description in EXACTLY that language. Do not translate to
-a single common language — match each node's source language individually.
+Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "agent_cli_doctor_check": "_doctor_check()" | kind=code-symbol | source=probe/agent/cli.py:L302 | neighbors=[cli.py, cmd_doctor()] | lang=en
-- "agent_cli_main": "main()" | kind=code-symbol | source=probe/agent/cli.py:L1131 | neighbors=[cli.py, build_parser()] | lang=en
-- "agent_cli_manager_is_local": "_manager_is_local()" | kind=code-symbol | source=probe/agent/cli.py:L570 | neighbors=[cli.py, cmd_validate()] | lang=en
-- "agent_cli_managerclient_init": ".__init__()" | kind=code-symbol | source=probe/agent/cli.py:L106 | neighbors=[ManagerClient, normalize_manager_url()] | lang=en
-- "agent_cli_write_private_json": "_write_private_json()" | kind=code-symbol | source=probe/agent/cli.py:L536 | neighbors=[cli.py, cmd_validate()] | lang=en
-- "agent_device_identity_decode_key": "decode_key()" | kind=code-symbol | source=probe/agent/device_identity.py:L30 | neighbors=[device_identity.py, verify_site_policy()] | lang=en
-- "agent_engine_facts_from_cache": "_facts_from_cache()" | kind=code-symbol | source=probe/agent/engine.py:L323 | neighbors=[engine.py, run_scan()] | lang=en
-- "agent_engine_rationale_178": "syn' for wide sweeps (deep intensity / full-port audit), else 'connect'." | kind=entity | source=probe/agent/engine.py:L178 | neighbors=[_scan_method_for(), _tuning_from_params()] | lang=en
-- "agent_engine_rationale_191": "Coerce val to float and clamp to [lo, hi]; fall back to default on junk.     Def" | kind=entity | source=probe/agent/engine.py:L191 | neighbors=[_clamp(), _job_runtime_seconds()] | lang=en
-- "agent_engine_rationale_201": "Return the effective whole-job deadline; callers can only reduce it." | kind=entity | source=probe/agent/engine.py:L201 | neighbors=[_job_runtime_seconds(), _tuning_from_params()] | lang=en
-- "agent_explain_plan_main": "main()" | kind=code-symbol | source=probe/agent/explain_plan.py:L104 | neighbors=[explain_plan.py, _print_table()] | lang=en
-- "agent_license_b64d": "_b64d()" | kind=code-symbol | source=probe/agent/license.py:L45 | neighbors=[license.py, verify_license()] | lang=en
-- "agent_local_run_scope_file": "_scope_file()" | kind=code-symbol | source=probe/agent/local_run.py:L38 | neighbors=[local_run.py, _main()] | lang=en
-- "agent_result_spool_resultspool_at_capacity": ".at_capacity()" | kind=code-symbol | source=probe/agent/result_spool.py:L235 | neighbors=[Whether new jobs must pause until pendi…, ResultSpool] | lang=en
-- "agent_scope_crypt_bytes_to_pubkey_b64": "bytes_to_pubkey_b64()" | kind=code-symbol | source=probe/agent/scope_crypt.py:L165 | neighbors=[scope_crypt.py, Encode raw X25519 public key bytes to a…] | lang=en
-- "agent_scope_crypt_generate_identity": "generate_identity()" | kind=code-symbol | source=probe/agent/scope_crypt.py:L43 | neighbors=[scope_crypt.py, Generate a fresh X25519 keypair.      R…] | lang=en
-- "agent_scope_crypt_pubkey_to_bytes": "pubkey_to_bytes()" | kind=code-symbol | source=probe/agent/scope_crypt.py:L160 | neighbors=[scope_crypt.py, Decode a base64-encoded X25519 public k…] | lang=en
-- "agent_scope_validator_rationale_58": "Fetch the engagement's authoritative scope from the manager.      Args:" | kind=entity | source=probe/agent/scope_validator.py:L58 | neighbors=[fetch_engagement_scope(), validate_targets_in_scope()] | lang=en
-- "agent_task_runner_rationale_56": "Create the result archive directory at agent startup.      _archive_result() wou" | kind=entity | source=probe/agent/task_runner.py:L56 | neighbors=[prepare_result_dir(), .__init__()] | lang=en
-- "agent_tools_agentstate": "AgentState" | kind=code-symbol | source=manager/frontend/lib/agent/tools.ts:L15 | neighbors=[agent.py, tools.ts] | lang=en
-- "agent_tools_persistagentfindings": "persistAgentFindings()" | kind=code-symbol | source=manager/frontend/lib/agent/tools.ts:L313 | neighbors=[agent.py, tools.ts] | lang=en
-- "agent_tools_risk": "Risk" | kind=code-symbol | source=manager/frontend/lib/agent/tools.ts:L24 | neighbors=[agent.py, tools.ts] | lang=en
-- "agent_tools_tool_registry": "TOOL_REGISTRY" | kind=code-symbol | source=manager/frontend/lib/agent/tools.ts:L98 | neighbors=[agent.py, tools.ts] | lang=en
-- "agent_tools_tooldef": "ToolDef" | kind=code-symbol | source=manager/frontend/lib/agent/tools.ts:L26 | neighbors=[agent.py, tools.ts] | lang=en
-- "agent_transport_rationale_111": "Best-effort extraction of the manager's 409 ``detail`` message." | kind=entity | source=probe/agent/transport.py:L111 | neighbors=[_enrollment_conflict_detail(), .is_authenticated()] | lang=en
-- "agent_transport_rationale_142": "Durably replace one private JSON state file without exposing secrets." | kind=entity | source=probe/agent/transport.py:L142 | neighbors=[_atomic_write_private_state(), .register()] | lang=en
-- "agent_transport_rationale_185": "True if we have both an agent_id and a token for API calls." | kind=entity | source=probe/agent/transport.py:L185 | neighbors=[.is_authenticated(), .update_state()] | lang=en
-- "agent_transport_rationale_277": "Merge and atomically persist private state while preserving fields." | kind=entity | source=probe/agent/transport.py:L277 | neighbors=[.update_state(), .refresh_registration()] | lang=en
-- "agent_transport_rationale_32": "Recursively remove NUL (U+0000) characters from every string in a payload." | kind=entity | source=probe/agent/transport.py:L32 | neighbors=[_strip_nul(), TransportError] | lang=en
-- "agent_transport_rationale_330": "Forget everything a SPECIFIC manager issued, keeping the probe's own         key" | kind=entity | source=probe/agent/transport.py:L330 | neighbors=[.clear_manager_binding(), .connect_ws()] | lang=en
-- "agent_transport_rationale_354": "Fetch the engagement's authoritative scope.          Returns the response dict i" | kind=entity | source=probe/agent/transport.py:L354 | neighbors=[.fetch_scope(), .is_ws_connected()] | lang=en
-- "agent_transport_rationale_419": "Register using a manager-side shared bootstrap key (no user login needed)." | kind=entity | source=probe/agent/transport.py:L419 | neighbors=[.bootstrap(), .refresh_registration()] | lang=pt
-- "agent_transport_rationale_421": "Refresh a device token before expiry; legacy identities are unchanged." | kind=entity | source=probe/agent/transport.py:L421 | neighbors=[.ensure_device_access(), .http_get()] | lang=en
-- "agent_transport_rationale_514": "Refresh a device token before expiry; legacy identities are unchanged." | kind=entity | source=probe/agent/transport.py:L514 | neighbors=[.ensure_device_access(), .heartbeat()] | lang=en
-- "agent_transport_rationale_519": "Backwards-compatible bool wrapper over `refresh_device_access_ex`." | kind=entity | source=probe/agent/transport.py:L519 | neighbors=[.refresh_device_access(), .fetch_scope()] | lang=en
-- "agent_transport_rationale_538": "Refresh routing metadata using the cached agent identity.          Returns True" | kind=entity | source=probe/agent/transport.py:L538 | neighbors=[.refresh_registration(), .submit_result()] | lang=en
-- "agent_transport_rationale_564": "Refresh routing metadata using the cached agent identity.          Returns True" | kind=entity | source=probe/agent/transport.py:L564 | neighbors=[.refresh_registration(), .submit_result()] | lang=en
-- "agent_transport_rationale_627": "Generic authenticated GET, returns parsed JSON or None on failure.          Used" | kind=entity | source=probe/agent/transport.py:L627 | neighbors=[.http_get(), .connect_ws()] | lang=en
-- "agent_transport_rationale_647": "Poll for pending jobs (HTTP fallback for WebSocket).          Returns a list of" | kind=entity | source=probe/agent/transport.py:L647 | neighbors=[.poll_jobs(), .http_get()] | lang=en
-- "agent_transport_rationale_65": "A poll/activate targeted an enrollment request the manager does not have     (HT" | kind=entity | source=probe/agent/transport.py:L65 | neighbors=[EnrollmentRequestNotFound, _enrollment_conflict_detail()] | lang=en
+- "tests_test_auth_login_testauthenticatedisableduser_test_raises_disabled_user": ".test_raises_disabled_user()" | kind=code-symbol | source=manager/backend/tests/test_auth_login.py:L111 | neighbors=[TestAuthenticateDisabledUser, _make_db(), _make_user()]
+- "tests_test_auth_login_testauthenticateexpiredpassword": "TestAuthenticateExpiredPassword" | kind=code-symbol | source=manager/backend/tests/test_auth_login.py:L135 | neighbors=[test_auth_login.py, .test_not_expired_when_future(), .test_raises_expired_password()]
+- "tests_test_auth_login_testauthenticatesuccess": "TestAuthenticateSuccess" | kind=code-symbol | source=manager/backend/tests/test_auth_login.py:L193 | neighbors=[test_auth_login.py, .test_null_password_expires_at_never_ex…, .test_returns_user_on_valid_credentials…]
+- "tests_test_branch_registry_fake": "_fake()" | kind=code-symbol | source=probe/tests/test_branch_registry.py:L89 | neighbors=[test_branch_registry.py, test_host_level_branch_is_cached_under_…, test_service_specific_plan_matches_what…]
+- "tests_test_branch_registry_test_db_branch_splits_known_and_router_discovered_ports": "test_db_branch_splits_known_and_router_discovered_ports()" | kind=code-symbol | source=probe/tests/test_branch_registry.py:L184 | neighbors=[test_branch_registry.py, The database branch is the one spec tha…, _asset_with()]
+- "tests_test_branch_registry_test_host_level_branch_is_cached_under_a_null_port": "test_host_level_branch_is_cached_under_a_null_port()" | kind=code-symbol | source=probe/tests/test_branch_registry.py:L157 | neighbors=[test_branch_registry.py, smb's fact describes the host, so it mu…, _fake()]
+- "tests_test_branch_registry_test_service_specific_plan_matches_what_the_engine_runs": "test_service_specific_plan_matches_what_the_engine_runs()" | kind=code-symbol | source=probe/tests/test_branch_registry.py:L111 | neighbors=[test_branch_registry.py, Before the registry, these five planned…, _fake()]
+- "tests_test_branch_registry_test_snmp_scanner_is_constructed_without_a_ports_kwarg": "test_snmp_scanner_is_constructed_without_a_ports_kwarg()" | kind=code-symbol | source=probe/tests/test_branch_registry.py:L204 | neighbors=[test_branch_registry.py, SNMPScanner's signature has no `ports`;…, _asset_with()]
+- "tests_test_branch_rule_coverage_branch_components": "_branch_components()" | kind=code-symbol | source=manager/detection_engine/tests/test_branch_rule_coverage.py:L46 | neighbors=[test_branch_rule_coverage.py, test_every_deep_branch_has_at_least_one…, test_exemptions_name_real_branches()]
+- "tests_test_branch_rule_coverage_test_db_scan_is_assessed": "test_db_scan_is_assessed()" | kind=code-symbol | source=manager/detection_engine/tests/test_branch_rule_coverage.py:L85 | neighbors=[test_branch_rule_coverage.py, The regression this whole file exists f…, _scanners_with_rules()]
+- "tests_test_branch_rule_coverage_test_every_deep_branch_has_at_least_one_rule": "test_every_deep_branch_has_at_least_one_rule()" | kind=code-symbol | source=manager/detection_engine/tests/test_branch_rule_coverage.py:L62 | neighbors=[test_branch_rule_coverage.py, _branch_components(), _scanners_with_rules()]
+- "tests_test_branch_rule_coverage_test_exemptions_are_still_real": "test_exemptions_are_still_real()" | kind=code-symbol | source=manager/detection_engine/tests/test_branch_rule_coverage.py:L71 | neighbors=[test_branch_rule_coverage.py, An exemption that has since gained a ru…, _scanners_with_rules()]
+- "tests_test_branch_rule_coverage_test_exemptions_name_real_branches": "test_exemptions_name_real_branches()" | kind=code-symbol | source=manager/detection_engine/tests/test_branch_rule_coverage.py:L79 | neighbors=[test_branch_rule_coverage.py, A typo here would silently exempt nothi…, _branch_components()]
+- "tests_test_campaign_progress_terminal_testterminalwithoutresults_test_does_not_hijack_a_campaign_that_produced_results": ".test_does_not_hijack_a_campaign_that_produced_results()" | kind=code-symbol | source=manager/backend/tests/test_campaign_progress_terminal.py:L49 | neighbors=[The normal path must be untouched: a co…, TestTerminalWithoutResults, _status()]
+- "tests_test_campaign_progress_terminal_testterminalwithoutresults_test_partial_cancel_with_one_success_still_aggregates": ".test_partial_cancel_with_one_success_still_aggregates()" | kind=code-symbol | source=manager/backend/tests/test_campaign_progress_terminal.py:L66 | neighbors=[One good job is enough to expect a dete…, TestTerminalWithoutResults, _status()]
+- "tests_test_campaign_progress_terminal_testterminalwithoutresults_test_running_job_still_wins": ".test_running_job_still_wins()" | kind=code-symbol | source=manager/backend/tests/test_campaign_progress_terminal.py:L56 | neighbors=[Precedence: work in flight is reported …, TestTerminalWithoutResults, _status()]
+- "tests_test_campaign_progress_test_pipeline_advances_through_every_phase": "test_pipeline_advances_through_every_phase()" | kind=code-symbol | source=manager/backend/tests/test_campaign_progress.py:L154 | neighbors=[test_campaign_progress.py, _run_scenario(), _user()]
+- "tests_test_campaign_progress_test_unknown_worker_liveness_falls_back_to_patience": "test_unknown_worker_liveness_falls_back_to_patience()" | kind=code-symbol | source=manager/backend/tests/test_campaign_progress.py:L353 | neighbors=[test_campaign_progress.py, No heartbeat table (migration not yet r…, _running_run()]
+- "tests_test_connect_test_admit_job_enforces_local_scope_after_signature": "test_admit_job_enforces_local_scope_after_signature()" | kind=code-symbol | source=probe/tests/test_connect.py:L85 | neighbors=[test_connect.py, _keypair(), _signed()]
+- "tests_test_connect_test_expired_job_is_rejected": "test_expired_job_is_rejected()" | kind=code-symbol | source=probe/tests/test_connect.py:L69 | neighbors=[test_connect.py, _keypair(), _signed()]
+- "tests_test_connect_test_tampered_job_is_rejected": "test_tampered_job_is_rejected()" | kind=code-symbol | source=probe/tests/test_connect.py:L60 | neighbors=[test_connect.py, _keypair(), _signed()]
+- "tests_test_connect_test_valid_signed_job_verifies": "test_valid_signed_job_verifies()" | kind=code-symbol | source=probe/tests/test_connect.py:L53 | neighbors=[test_connect.py, _keypair(), _signed()]
+- "tests_test_connect_test_wrong_contract_version_is_rejected": "test_wrong_contract_version_is_rejected()" | kind=code-symbol | source=probe/tests/test_connect.py:L77 | neighbors=[test_connect.py, _keypair(), _signed()]
+- "tests_test_customer_access_added": "_added()" | kind=code-symbol | source=manager/backend/tests/test_customer_access.py:L48 | neighbors=[test_customer_access.py, .test_approve_dispatches_job_and_links_…, .test_creates_a_scoped_client_login()]
+- "tests_test_customer_access_testassignagent": "TestAssignAgent" | kind=code-symbol | source=manager/backend/tests/test_customer_access.py:L206 | neighbors=[test_customer_access.py, .test_assigns_agent_to_engagement(), .test_unknown_agent_is_404()]
+- "tests_test_customer_access_testassignagent_test_assigns_agent_to_engagement": ".test_assigns_agent_to_engagement()" | kind=code-symbol | source=manager/backend/tests/test_customer_access.py:L207 | neighbors=[TestAssignAgent, _mock_db(), _operator()]
+- "tests_test_customer_access_testassignagent_test_unknown_agent_is_404": ".test_unknown_agent_is_404()" | kind=code-symbol | source=manager/backend/tests/test_customer_access.py:L218 | neighbors=[TestAssignAgent, _mock_db(), _operator()]
+- "tests_test_customer_access_testprovisionclientuser_test_duplicate_is_conflict": ".test_duplicate_is_conflict()" | kind=code-symbol | source=manager/backend/tests/test_customer_access.py:L114 | neighbors=[TestProvisionClientUser, _mock_db(), _operator()]
+- "tests_test_customer_reveal_test_reveal_missing_user_is_404": "test_reveal_missing_user_is_404()" | kind=code-symbol | source=manager/backend/tests/test_customer_reveal.py:L48 | neighbors=[test_customer_reveal.py, _db(), _operator()]
+- "tests_test_customer_reveal_user": "_user()" | kind=code-symbol | source=manager/backend/tests/test_customer_reveal.py:L30 | neighbors=[test_customer_reveal.py, test_reveal_null_ciphertext_returns_non…, test_reveal_returns_decrypted_password()]
+- "tests_test_cve_correlation_testcli": "TestCli" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L350 | neighbors=[test_cve_correlation.py, .test_correlate_writes_findings(), .test_ingest_stdout_is_clean_json()]
+- "tests_test_cve_correlation_testingestpagination": "TestIngestPagination" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L265 | neighbors=[test_cve_correlation.py, ._pages(), .test_resume()]
+- "tests_test_dangling_agent_pin_testpinnedagentliveness_test_boundary_is_the_configured_window": ".test_boundary_is_the_configured_window()" | kind=code-symbol | source=manager/backend/tests/test_dangling_agent_pin.py:L67 | neighbors=[TestPinnedAgentLiveness, _ago(), _db_heartbeat()]
+- "tests_test_dangling_agent_pin_testpinnedagentliveness_test_recently_seen_agent_is_live": ".test_recently_seen_agent_is_live()" | kind=code-symbol | source=manager/backend/tests/test_dangling_agent_pin.py:L49 | neighbors=[TestPinnedAgentLiveness, _ago(), _db_heartbeat()]
+- "tests_test_db_mysql_greeting_testidentification": "TestIdentification" | kind=code-symbol | source=probe/tests/test_db_mysql_greeting.py:L33 | neighbors=[test_db_mysql_greeting.py, .test_non_mysql_is_rejected(), .test_version_and_protocol()]
+- "tests_test_db_mysql_greeting_testtlsposture_test_client_ssl_absent_means_cleartext": ".test_client_ssl_absent_means_cleartext()" | kind=code-symbol | source=probe/tests/test_db_mysql_greeting.py:L51 | neighbors=[Flags present and CLIENT_SSL clear — a …, TestTLSPosture, _greeting()]
+- "tests_test_db_mysql_greeting_testtlsposture_test_short_packet_claims_nothing": ".test_short_packet_claims_nothing()" | kind=code-symbol | source=probe/tests/test_db_mysql_greeting.py:L56 | neighbors=[Absent evidence must not become a clear…, TestTLSPosture, _greeting()]
+- "tests_test_db_posture_rules_testcleartexttransport_test_silent_when_the_probe_never_learned_it": ".test_silent_when_the_probe_never_learned_it()" | kind=code-symbol | source=manager/detection_engine/tests/test_db_posture_rules.py:L106 | neighbors=[Absent evidence is not a cleartext find…, TestCleartextTransport, _fire()]
+- "tests_test_db_posture_rules_testunauthenticatedaccess_test_fires_on_real_open_mongodb": ".test_fires_on_real_open_mongodb()" | kind=code-symbol | source=manager/detection_engine/tests/test_db_posture_rules.py:L63 | neighbors=[TestUnauthenticatedAccess, _captured(), _fire()]
+- "tests_test_db_posture_rules_testunauthenticatedaccess_test_fires_on_real_open_redis": ".test_fires_on_real_open_redis()" | kind=code-symbol | source=manager/detection_engine/tests/test_db_posture_rules.py:L57 | neighbors=[TestUnauthenticatedAccess, _captured(), _fire()]
 
 ## Instructions
 

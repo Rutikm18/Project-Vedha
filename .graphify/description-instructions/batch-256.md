@@ -1,4 +1,4 @@
-# Node Description Batch 257 of 336
+# Node Description Batch 257 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -26,46 +26,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "scanner_scanner_base_rationale_749": "Just the candidate IP strings for `target`, in RFC-6724 order, de-duplicated." | kind=entity | source=probe/scanner/scanner_base.py:L749 | neighbors=[resolve_ip_candidates()] | lang=en
-- "scanner_scanner_base_rationale_750": "Run a scanner CLI's body with consistent, operator-friendly error handling." | kind=entity | source=probe/scanner/scanner_base.py:L750 | neighbors=[main_entrypoint()] | lang=en
-- "scanner_scanner_base_rationale_778": "Wire argparse args into a scanner instance and execute it." | kind=entity | source=probe/scanner/scanner_base.py:L778 | neighbors=[run_cli()] | lang=en
-- "scanner_scanner_base_rationale_786": "One-shot datagram protocol backing `async_udp_probe`. Resolves its future     wi" | kind=entity | source=probe/scanner/scanner_base.py:L786 | neighbors=[_UDPProbeProtocol] | lang=en
-- "scanner_scanner_base_rationale_79": "A per-probe delay of `base` seconds ± up to `jitter` fraction of random     vari" | kind=entity | source=probe/scanner/scanner_base.py:L79 | neighbors=[jittered_delay()] | lang=en
-- "scanner_scanner_base_rationale_819": "Send one UDP datagram and await the first reply — fully on the event loop." | kind=entity | source=probe/scanner/scanner_base.py:L819 | neighbors=[async_udp_probe()] | lang=en
-- "scanner_scanner_base_rationale_837": "Run a scanner CLI's body with consistent, operator-friendly error handling." | kind=entity | source=probe/scanner/scanner_base.py:L837 | neighbors=[main_entrypoint()] | lang=en
-- "scanner_scanner_base_rationale_850": "`async_udp_probe` with bounded per-port retransmit.      Returns on the FIRST de" | kind=entity | source=probe/scanner/scanner_base.py:L850 | neighbors=[async_udp_probe_retry()] | lang=en
-- "scanner_scanner_base_rationale_86": "Current time as an AWARE datetime in the project timezone." | kind=entity | source=probe/scanner/scanner_base.py:L86 | neighbors=[project_now()] | lang=en
-- "scanner_scanner_base_rationale_865": "Wire argparse args into a scanner instance and execute it." | kind=entity | source=probe/scanner/scanner_base.py:L865 | neighbors=[run_cli()] | lang=en
-- "scanner_scanner_base_rationale_869": "Wrap an IPv6 literal in [] for a URL authority; leave v4/hostnames as-is.     'h" | kind=entity | source=probe/scanner/scanner_base.py:L869 | neighbors=[bracket_host()] | lang=en
-- "scanner_scanner_base_rationale_881": "Parse '22,80,443,8000-8100' into a sorted unique port list (1-65535)." | kind=entity | source=probe/scanner/scanner_base.py:L881 | neighbors=[parse_ports()] | lang=pt
-- "scanner_scanner_base_rationale_90": "Heuristic: is this host a tarpit / honeypot / ACK-everything middlebox?      Suc" | kind=entity | source=probe/scanner/scanner_base.py:L90 | neighbors=[assess_tarpit()] | lang=en
-- "scanner_scanner_base_rationale_91": "ISO-8601 instant in the project timezone: 2026-09-03T23:15:05+05:30." | kind=entity | source=probe/scanner/scanner_base.py:L91 | neighbors=[project_timestamp()] | lang=en
-- "scanner_scanner_base_rationale_917": "Writes ScanResult objects as JSONL to a file and/or stdout." | kind=entity | source=probe/scanner/scanner_base.py:L917 | neighbors=[ResultWriter] | lang=en
-- "scanner_scanner_base_rationale_947": "Subclasses implement `scan_target(self, target)` (async), returning a list     o" | kind=entity | source=probe/scanner/scanner_base.py:L947 | neighbors=[BaseScanner] | lang=pt
-- "scanner_scanner_base_rationale_96": "Compact project-local stamp for FILE and DIRECTORY names.      Deliberately carr" | kind=entity | source=probe/scanner/scanner_base.py:L96 | neighbors=[project_file_stamp()] | lang=en
-- "scanner_scanner_base_rationale_99": "Map a connect()/socket-time OSError to (state, reason).      DNS failures (``soc" | kind=entity | source=probe/scanner/scanner_base.py:L99 | neighbors=[classify_os_error()] | lang=en
-- "scanner_scanner_base_resultwriter_init": ".__init__()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L919 | neighbors=[ResultWriter] | lang=en
-- "scanner_scanner_base_scanresult_post_init": ".__post_init__()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L295 | neighbors=[ScanResult] | lang=en
-- "scanner_scanner_base_scopeguard_from_list": ".from_list()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L363 | neighbors=[ScopeGuard] | lang=en
-- "scanner_scanner_base_scopeguard_init": ".__init__()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L327 | neighbors=[ScopeGuard] | lang=en
-- "scanner_scanner_base_sendpacer_init": ".__init__()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L561 | neighbors=[SendPacer] | lang=en
-- "scanner_scanner_base_setup_logging": "setup_logging()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L1097 | neighbors=[scanner_base.py] | lang=en
-- "scanner_scanner_base_udpprobeprotocol_connection_lost": ".connection_lost()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L812 | neighbors=[_UDPProbeProtocol] | lang=en
-- "scanner_scanner_base_udpprobeprotocol_datagram_received": ".datagram_received()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L798 | neighbors=[_UDPProbeProtocol] | lang=en
-- "scanner_scanner_base_udpprobeprotocol_error_received": ".error_received()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L802 | neighbors=[_UDPProbeProtocol] | lang=en
-- "scanner_scanner_base_udpprobeprotocol_init": ".__init__()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L795 | neighbors=[_UDPProbeProtocol] | lang=en
-- "scanner_scanner_registry_info": "info()" | kind=code-symbol | source=probe/scanner/scanner_registry.py:L103 | neighbors=[scanner_registry.py] | lang=en
-- "scanner_scanner_registry_rationale_1": "scanner_registry.py — the single source of truth for WHICH scanners are trusted." | kind=entity | source=probe/scanner/scanner_registry.py:L1 | neighbors=[scanner_registry.py] | lang=en
-- "scanner_scanner_registry_rationale_108": "The scanner-module trust view: which scanners are verified vs experimental," | kind=entity | source=probe/scanner/scanner_registry.py:L108 | neighbors=[verification_report()] | lang=en
-- "scanner_scanner_registry_rationale_98": "True only for a scanner explicitly on the verified (trusted) list. Unknown     s" | kind=entity | source=probe/scanner/scanner_registry.py:L98 | neighbors=[is_verified()] | lang=en
-- "scanner_scanner_registry_scannerinfo": "ScannerInfo" | kind=code-symbol | source=probe/scanner/scanner_registry.py:L27 | neighbors=[scanner_registry.py] | lang=en
-- "scanner_service_banner_main": "main()" | kind=code-symbol | source=probe/scanner/service_banner.py:L530 | neighbors=[service_banner.py] | lang=en
-- "scanner_service_banner_rationale_1": "service_banner.py — grab service banners and identify the service behind a port." | kind=entity | source=probe/scanner/service_banner.py:L1 | neighbors=[service_banner.py] | lang=en
-- "scanner_service_banner_rationale_116": "One probe-ladder rung on its own connection. Returns banner bytes, b\"\"         (" | kind=entity | source=probe/scanner/service_banner.py:L116 | neighbors=[._rung()] | lang=en
-- "scanner_service_banner_rationale_130": "One probe-ladder rung on its own connection. Returns banner bytes, b\"\"         (" | kind=entity | source=probe/scanner/service_banner.py:L130 | neighbors=[._rung()] | lang=en
-- "scanner_service_banner_rationale_133": "One probe-ladder rung on its own connection. Returns banner bytes, b\"\"         (" | kind=entity | source=probe/scanner/service_banner.py:L133 | neighbors=[._rung()] | lang=en
-- "scanner_service_banner_rationale_236": "Soft-match collected bytes to {service, product, version}; None if unknown." | kind=entity | source=probe/scanner/service_banner.py:L236 | neighbors=[match_service()] | lang=en
-- "scanner_service_banner_rationale_268": "Pull status code, the identifying headers and the <title> out of an     HTTP/RTS" | kind=entity | source=probe/scanner/service_banner.py:L268 | neighbors=[parse_http_head()] | lang=en
+- "main_scripts_snmp_scanner_rationale_292": "GETNEXT walk of one OID subtree.  Returns [(oid, value_str), ...]." | kind=entity | source=probe/main_scripts/snmp_scanner.py:L292 | neighbors=[._walk_subtree()] | lang=en
+- "main_scripts_snmp_scanner_rationale_315": "One GETBULK request — measure response/request size ratio." | kind=entity | source=probe/main_scripts/snmp_scanner.py:L315 | neighbors=[._amplification_factor()] | lang=en
+- "main_scripts_snmp_scanner_rationale_325": "Send a SNMPv3 Discover. Any reply = v3 agent present." | kind=entity | source=probe/main_scripts/snmp_scanner.py:L325 | neighbors=[._snmpv3_present()] | lang=pt
+- "main_scripts_snmp_scanner_rationale_46": "Dotted-notation OID string → BER-encoded bytes." | kind=entity | source=probe/main_scripts/snmp_scanner.py:L46 | neighbors=[_encode_oid()] | lang=en
+- "main_scripts_snmp_scanner_rationale_64": "BER-encoded OID bytes → dotted-notation string." | kind=entity | source=probe/main_scripts/snmp_scanner.py:L64 | neighbors=[_decode_oid()] | lang=en
+- "main_scripts_snmp_scanner_rationale_79": "Human-readable SNMP value for common ASN.1/SNMP types." | kind=entity | source=probe/main_scripts/snmp_scanner.py:L79 | neighbors=[_decode_value()] | lang=en
+- "main_scripts_snmp_scanner_snmpscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/snmp_scanner.py:L252 | neighbors=[SNMPScanner] | lang=en
+- "main_scripts_snmp_scanner_snmpscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/main_scripts/snmp_scanner.py:L329 | neighbors=[SNMPScanner] | lang=en
+- "main_scripts_ssh_collector_collect_over_ssh": "_collect_over_ssh()" | kind=code-symbol | source=probe/main_scripts/ssh_collector.py:L52 | neighbors=[ssh_collector.py] | lang=en
+- "main_scripts_ssh_collector_main": "main()" | kind=code-symbol | source=probe/main_scripts/ssh_collector.py:L125 | neighbors=[ssh_collector.py] | lang=en
+- "main_scripts_ssh_collector_rationale_1": "ssh_collector.py — credentialed (authenticated) inventory collection for Linux." | kind=entity | source=probe/main_scripts/ssh_collector.py:L1 | neighbors=[ssh_collector.py] | lang=en
+- "main_scripts_ssh_collector_sshcollector_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/ssh_collector.py:L83 | neighbors=[SSHCollector] | lang=en
+- "main_scripts_ssh_kexdb_rationale_1": "ssh_kexdb.py — vendored SSH algorithm weakness database (the \"content\" half of t" | kind=entity | source=probe/main_scripts/ssh_kexdb.py:L1 | neighbors=[ssh_kexdb.py] | lang=en
+- "main_scripts_ssh_kexdb_rationale_478": "Return (failures, warnings, infos) for one offered algorithm, or None if     the" | kind=entity | source=probe/main_scripts/ssh_kexdb.py:L478 | neighbors=[lookup()] | lang=en
+- "main_scripts_ssh_scanner_cursor_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/ssh_scanner.py:L73 | neighbors=[_Cursor] | lang=en
+- "main_scripts_ssh_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/ssh_scanner.py:L336 | neighbors=[ssh_scanner.py] | lang=en
+- "main_scripts_ssh_scanner_rationale_1": "ssh_scanner.py — SSH configuration / algorithm audit (VA checklist §6).  METHOD" | kind=entity | source=probe/main_scripts/ssh_scanner.py:L1 | neighbors=[ssh_scanner.py] | lang=en
+- "main_scripts_ssh_scanner_rationale_107": "Parse a SSH_MSG_KEXINIT body into its name-lists.      Accepts the payload with" | kind=entity | source=probe/main_scripts/ssh_scanner.py:L107 | neighbors=[parse_kexinit()] | lang=en
+- "main_scripts_ssh_scanner_rationale_134": "Grade a server's offered algorithms against the vendored weakness table.      Re" | kind=entity | source=probe/main_scripts/ssh_scanner.py:L134 | neighbors=[evaluate_algorithms()] | lang=en
+- "main_scripts_ssh_scanner_rationale_196": "Read the server SSH identification line, skipping any pre-banner text     lines" | kind=entity | source=probe/main_scripts/ssh_scanner.py:L196 | neighbors=[_read_ident()] | lang=en
+- "main_scripts_ssh_scanner_rationale_226": "Read one unencrypted SSH binary packet and return its payload (RFC 4253     §6)." | kind=entity | source=probe/main_scripts/ssh_scanner.py:L226 | neighbors=[_read_packet()] | lang=en
+- "main_scripts_ssh_scanner_rationale_250": "Blocking: connect, exchange identification, read the server KEXINIT.         Ret" | kind=entity | source=probe/main_scripts/ssh_scanner.py:L250 | neighbors=[._probe()] | lang=en
+- "main_scripts_ssh_scanner_rationale_47": "Parse an SSH identification string 'SSH-<proto>-<software>[ comments]'.      Ret" | kind=entity | source=probe/main_scripts/ssh_scanner.py:L47 | neighbors=[parse_ssh_banner()] | lang=en
+- "main_scripts_ssh_scanner_sshscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/ssh_scanner.py:L245 | neighbors=[SSHScanner] | lang=en
+- "main_scripts_syn_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/syn_scanner.py:L635 | neighbors=[syn_scanner.py] | lang=en
+- "main_scripts_syn_scanner_rationale_1": "syn_scanner.py — stateless TCP SYN (half-open) scan, pure Python (Tier 1.1).  WH" | kind=entity | source=probe/main_scripts/syn_scanner.py:L1 | neighbors=[syn_scanner.py] | lang=en
+- "main_scripts_syn_scanner_rationale_104": "Build a 20-byte TCP SYN segment with a valid checksum (pseudo-header)." | kind=entity | source=probe/main_scripts/syn_scanner.py:L104 | neighbors=[build_tcp_syn()] | lang=pt
+- "main_scripts_syn_scanner_rationale_105": "Build a 20-byte TCP SYN segment with a valid checksum (pseudo-header)." | kind=entity | source=probe/main_scripts/syn_scanner.py:L105 | neighbors=[build_tcp_syn()] | lang=pt
+- "main_scripts_syn_scanner_rationale_107": "Parse a raw IPv4+TCP packet (as received on a raw IPPROTO_TCP socket)." | kind=entity | source=probe/main_scripts/syn_scanner.py:L107 | neighbors=[parse_packet()] | lang=pt
+- "main_scripts_syn_scanner_rationale_117": "Build a 20-byte TCP SYN segment with a valid checksum (pseudo-header)." | kind=entity | source=probe/main_scripts/syn_scanner.py:L117 | neighbors=[build_tcp_syn()] | lang=pt
+- "main_scripts_syn_scanner_rationale_123": "SYN/ACK -> open, RST -> closed, anything else -> None (indeterminate)." | kind=entity | source=probe/main_scripts/syn_scanner.py:L123 | neighbors=[classify()] | lang=en
+- "main_scripts_syn_scanner_rationale_125": "Walk a TCP options field for the MSS value (kind 2, len 4).      Bounds-checked" | kind=entity | source=probe/main_scripts/syn_scanner.py:L125 | neighbors=[_parse_mss()] | lang=en
+- "main_scripts_syn_scanner_rationale_126": "Walk a TCP options field for the MSS value (kind 2, len 4).      Bounds-checked" | kind=entity | source=probe/main_scripts/syn_scanner.py:L126 | neighbors=[_parse_mss()] | lang=en
+- "main_scripts_syn_scanner_rationale_134": "Keyed 32-bit ISN for (dst_ip, dst_port, src_port). Reply.ack == cookie+1." | kind=entity | source=probe/main_scripts/syn_scanner.py:L134 | neighbors=[syn_cookie()] | lang=en
+- "main_scripts_syn_scanner_rationale_138": "Walk a TCP options field into a p0f-style profile.      Returns {mss, wscale, sa" | kind=entity | source=probe/main_scripts/syn_scanner.py:L138 | neighbors=[parse_tcp_options()] | lang=pt
+- "main_scripts_syn_scanner_rationale_141": "A genuine reply to our SYN acknowledges ISN+1. The reply's own source     (ip_sr" | kind=entity | source=probe/main_scripts/syn_scanner.py:L141 | neighbors=[verify_reply_cookie()] | lang=en
+- "main_scripts_syn_scanner_rationale_151": "Parse a raw IPv4+TCP packet (as received on a raw IPPROTO_TCP socket).      Also" | kind=entity | source=probe/main_scripts/syn_scanner.py:L151 | neighbors=[parse_packet()] | lang=pt
+- "main_scripts_syn_scanner_rationale_152": "Parse a raw IPv4+TCP packet (as received on a raw IPPROTO_TCP socket).      Also" | kind=entity | source=probe/main_scripts/syn_scanner.py:L152 | neighbors=[parse_packet()] | lang=pt
+- "main_scripts_syn_scanner_rationale_154": "True only when a real SYN scan can work: Linux (BSD/macOS raw sockets can't" | kind=entity | source=probe/main_scripts/syn_scanner.py:L154 | neighbors=[syn_scan_supported()] | lang=pt
+- "main_scripts_syn_scanner_rationale_175": "Outbound-interface IP for reaching dst_ip (no packets sent — UDP connect)." | kind=entity | source=probe/main_scripts/syn_scanner.py:L175 | neighbors=[_local_source_ip()] | lang=en
 
 ## Instructions
 

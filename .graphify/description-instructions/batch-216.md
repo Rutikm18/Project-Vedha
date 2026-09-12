@@ -1,4 +1,4 @@
-# Node Description Batch 217 of 336
+# Node Description Batch 217 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -26,46 +26,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "main_scripts_findings_rationale_550": "Two or more cleartext services on one host — any sniffing position harvests" | kind=entity | source=probe/main_scripts/findings.py:L550 | neighbors=[_corr_cleartext_cluster()] | lang=en
-- "main_scripts_findings_rationale_560": "SMB signing not required => a viable NTLM relay target. If SMBv1 is also on," | kind=entity | source=probe/main_scripts/findings.py:L560 | neighbors=[_corr_ntlm_relay()] | lang=en
-- "main_scripts_findings_rationale_573": "Derive findings from collected facts. Pure; deterministic; safe.      Accepts Sc" | kind=entity | source=probe/main_scripts/findings.py:L573 | neighbors=[run_findings()] | lang=en
-- "main_scripts_findings_rationale_577": "Anonymous SMB (null-session) information disclosure. The null session is a     m" | kind=entity | source=probe/main_scripts/findings.py:L577 | neighbors=[_rule_smb_enum()] | lang=en
-- "main_scripts_findings_rationale_583": "SMBv1 (wormable) + exposed RDP (brute-force/BlueKeep) on one host — the     clas" | kind=entity | source=probe/main_scripts/findings.py:L583 | neighbors=[_corr_legacy_windows()] | lang=en
-- "main_scripts_findings_rationale_600": "Two or more cleartext services on one host — any sniffing position harvests" | kind=entity | source=probe/main_scripts/findings.py:L600 | neighbors=[_corr_cleartext_cluster()] | lang=en
-- "main_scripts_findings_rationale_623": "Derive findings from collected facts. Pure; deterministic; safe.      Accepts Sc" | kind=entity | source=probe/main_scripts/findings.py:L623 | neighbors=[run_findings()] | lang=en
-- "main_scripts_findings_rationale_628": "Anonymous LDAP exposure. An anonymous RootDSE bind is common (low), but an     a" | kind=entity | source=probe/main_scripts/findings.py:L628 | neighbors=[_rule_ldap()] | lang=en
-- "main_scripts_findings_rationale_635": "CLI: derive findings from one or more scanner JSONL files.          python -m ma" | kind=entity | source=probe/main_scripts/findings.py:L635 | neighbors=[_main()] | lang=en
-- "main_scripts_findings_rationale_64": "One vulnerability finding, always backed by an observed fact." | kind=entity | source=probe/main_scripts/findings.py:L64 | neighbors=[Finding] | lang=en
-- "main_scripts_findings_rationale_666": "DNS server hygiene: a full AXFR zone transfer is the high-value finding     (ent" | kind=entity | source=probe/main_scripts/findings.py:L666 | neighbors=[_rule_dns()] | lang=en
-- "main_scripts_findings_rationale_669": "Read a scanner's JSONL output into fact dicts (skips blank/garbage lines)." | kind=entity | source=probe/main_scripts/findings.py:L669 | neighbors=[load_facts_jsonl()] | lang=pt
-- "main_scripts_findings_rationale_670": "Anonymous LDAP exposure. An anonymous RootDSE bind is common (low), but an     a" | kind=entity | source=probe/main_scripts/findings.py:L670 | neighbors=[_rule_ldap()] | lang=en
-- "main_scripts_findings_rationale_685": "CLI: derive findings from one or more scanner JSONL files.          python -m ma" | kind=entity | source=probe/main_scripts/findings.py:L685 | neighbors=[_main()] | lang=en
-- "main_scripts_findings_rationale_708": "DNS server hygiene: a full AXFR zone transfer is the high-value finding     (ent" | kind=entity | source=probe/main_scripts/findings.py:L708 | neighbors=[_rule_dns()] | lang=en
-- "main_scripts_findings_rationale_716": "NFS anonymous export exposure. A world-readable export is the high-value     fin" | kind=entity | source=probe/main_scripts/findings.py:L716 | neighbors=[_rule_nfs()] | lang=en
-- "main_scripts_findings_rationale_753": "Confirmed FTP anonymous access (upgrades the port-based cleartext hint).     Hig" | kind=entity | source=probe/main_scripts/findings.py:L753 | neighbors=[_rule_ftp()] | lang=en
-- "main_scripts_findings_rationale_758": "NFS anonymous export exposure. A world-readable export is the high-value     fin" | kind=entity | source=probe/main_scripts/findings.py:L758 | neighbors=[_rule_nfs()] | lang=en
-- "main_scripts_findings_rationale_782": "rsync daemon exposure. Anonymously-selectable modules are the high finding     (" | kind=entity | source=probe/main_scripts/findings.py:L782 | neighbors=[_rule_rsync()] | lang=en
-- "main_scripts_findings_rationale_795": "Confirmed FTP anonymous access (upgrades the port-based cleartext hint).     Hig" | kind=entity | source=probe/main_scripts/findings.py:L795 | neighbors=[_rule_ftp()] | lang=en
-- "main_scripts_findings_rationale_820": "VNC/RFB authentication exposure. 'None' security type = unauthenticated     remo" | kind=entity | source=probe/main_scripts/findings.py:L820 | neighbors=[_rule_vnc()] | lang=en
-- "main_scripts_findings_rationale_824": "rsync daemon exposure. Anonymously-selectable modules are the high finding     (" | kind=entity | source=probe/main_scripts/findings.py:L824 | neighbors=[_rule_rsync()] | lang=en
-- "main_scripts_findings_rationale_851": "IPMI/BMC exposure. Cipher-zero is a critical auth bypass; a merely reachable" | kind=entity | source=probe/main_scripts/findings.py:L851 | neighbors=[_rule_ipmi()] | lang=pt
-- "main_scripts_findings_rationale_862": "VNC/RFB authentication exposure. 'None' security type = unauthenticated     remo" | kind=entity | source=probe/main_scripts/findings.py:L862 | neighbors=[_rule_vnc()] | lang=en
-- "main_scripts_findings_rationale_883": "SMTP hygiene: VRFY/EXPN user enumeration, and missing STARTTLS (cleartext)." | kind=entity | source=probe/main_scripts/findings.py:L883 | neighbors=[_rule_smtp()] | lang=en
-- "main_scripts_findings_rationale_893": "IPMI/BMC exposure. Cipher-zero is a critical auth bypass; a merely reachable" | kind=entity | source=probe/main_scripts/findings.py:L893 | neighbors=[_rule_ipmi()] | lang=pt
-- "main_scripts_findings_rationale_917": "Windows RPC endpoint-mapper disclosure — the internal RPC service map." | kind=entity | source=probe/main_scripts/findings.py:L917 | neighbors=[_rule_msrpc()] | lang=en
-- "main_scripts_findings_rationale_925": "SMTP hygiene: VRFY/EXPN user enumeration, and missing STARTTLS (cleartext)." | kind=entity | source=probe/main_scripts/findings.py:L925 | neighbors=[_rule_smtp()] | lang=en
-- "main_scripts_findings_rationale_944": "Exposed network printer — an information leak and an attack surface." | kind=entity | source=probe/main_scripts/findings.py:L944 | neighbors=[_rule_printer()] | lang=en
-- "main_scripts_findings_rationale_959": "Windows RPC endpoint-mapper disclosure — the internal RPC service map." | kind=entity | source=probe/main_scripts/findings.py:L959 | neighbors=[_rule_msrpc()] | lang=en
-- "main_scripts_findings_rationale_98": "Accept a raw JSONL dict or a ScanResult; return a plain dict view." | kind=entity | source=probe/main_scripts/findings.py:L98 | neighbors=[_as_dict()] | lang=pt
-- "main_scripts_findings_rationale_986": "Exposed network printer — an information leak and an attack surface." | kind=entity | source=probe/main_scripts/findings.py:L986 | neighbors=[_rule_printer()] | lang=en
-- "main_scripts_findings_rationale_990": "SMB signing not required => a viable NTLM relay target. If SMBv1 is also on," | kind=entity | source=probe/main_scripts/findings.py:L990 | neighbors=[_corr_ntlm_relay()] | lang=en
-- "main_scripts_ftp_scanner_ftpscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/ftp_scanner.py:L65 | neighbors=[FTPScanner] | lang=en
-- "main_scripts_ftp_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/ftp_scanner.py:L176 | neighbors=[ftp_scanner.py] | lang=en
-- "main_scripts_ftp_scanner_rationale_1": "ftp_scanner.py — FTP anonymous-access check (VA checklist: anonymous file exposu" | kind=entity | source=probe/main_scripts/ftp_scanner.py:L1 | neighbors=[ftp_scanner.py] | lang=en
-- "main_scripts_ftp_scanner_rationale_129": "Confirm anonymous READ via PASV + LIST, reading a bounded amount." | kind=entity | source=probe/main_scripts/ftp_scanner.py:L129 | neighbors=[._list_bounded()] | lang=pt
-- "main_scripts_ftp_scanner_rationale_45": "Extract the passive data PORT from a 227 reply. We connect to the TARGET     on" | kind=entity | source=probe/main_scripts/ftp_scanner.py:L45 | neighbors=[parse_pasv()] | lang=en
-- "main_scripts_ftp_scanner_rationale_56": "Best-effort software token from the 220 greeting (e.g. 'vsFTPd 3.0.3')." | kind=entity | source=probe/main_scripts/ftp_scanner.py:L56 | neighbors=[banner_software()] | lang=en
-- "main_scripts_ftp_scanner_rationale_70": "Read one (possibly multi-line) FTP reply; return (code, full_text)." | kind=entity | source=probe/main_scripts/ftp_scanner.py:L70 | neighbors=[._read_response()] | lang=en
+- "components_pageshell_pageshellprops": "PageShellProps" | kind=code-symbol | source=manager/frontend/components/PageShell.tsx:L10 | neighbors=[PageShell.tsx] | lang=en
+- "components_refreshbutton_refreshbuttonprops": "RefreshButtonProps" | kind=code-symbol | source=manager/frontend/components/RefreshButton.tsx:L21 | neighbors=[RefreshButton.tsx] | lang=en
+- "components_sidebar_nav_sections": "NAV_SECTIONS" | kind=code-symbol | source=manager/frontend/components/Sidebar.tsx:L21 | neighbors=[Sidebar.tsx] | lang=en
+- "components_sidebar_navitem": "NavItem" | kind=code-symbol | source=manager/frontend/components/Sidebar.tsx:L14 | neighbors=[Sidebar.tsx] | lang=en
+- "components_sidebar_portal_nav_sections": "PORTAL_NAV_SECTIONS" | kind=code-symbol | source=manager/frontend/components/Sidebar.tsx:L49 | neighbors=[Sidebar.tsx] | lang=en
+- "components_sidebar_sidebarprops": "SidebarProps" | kind=code-symbol | source=manager/frontend/components/Sidebar.tsx:L76 | neighbors=[Sidebar.tsx] | lang=en
+- "components_themeprovider_subscribetohydration": "subscribeToHydration()" | kind=code-symbol | source=manager/frontend/components/ThemeProvider.tsx:L24 | neighbors=[ThemeProvider.tsx] | lang=en
+- "components_themeprovider_theme": "Theme" | kind=code-symbol | source=manager/frontend/components/ThemeProvider.tsx:L12 | neighbors=[ThemeProvider.tsx] | lang=en
+- "components_themeprovider_themecontext": "ThemeContext" | kind=code-symbol | source=manager/frontend/components/ThemeProvider.tsx:L19 | neighbors=[ThemeProvider.tsx] | lang=en
+- "components_themeprovider_themecontextvalue": "ThemeContextValue" | kind=code-symbol | source=manager/frontend/components/ThemeProvider.tsx:L14 | neighbors=[ThemeProvider.tsx] | lang=en
+- "components_toastprovider_toast": "Toast" | kind=code-symbol | source=manager/frontend/components/ToastProvider.tsx:L8 | neighbors=[ToastProvider.tsx] | lang=en
+- "components_toastprovider_toast_styles": "TOAST_STYLES" | kind=code-symbol | source=manager/frontend/components/ToastProvider.tsx:L35 | neighbors=[ToastProvider.tsx] | lang=en
+- "components_toastprovider_toastcontextvalue": "ToastContextValue" | kind=code-symbol | source=manager/frontend/components/ToastProvider.tsx:L17 | neighbors=[ToastProvider.tsx] | lang=en
+- "components_toastprovider_toastitem": "ToastItem()" | kind=code-symbol | source=manager/frontend/components/ToastProvider.tsx:L69 | neighbors=[ToastProvider.tsx] | lang=en
+- "components_toastprovider_toasttype": "ToastType" | kind=code-symbol | source=manager/frontend/components/ToastProvider.tsx:L6 | neighbors=[ToastProvider.tsx] | lang=en
+- "customer_access_page_ca": "ca()" | kind=code-symbol | source=manager/frontend/app/engagements/[id]/customer-access/page.tsx:L10 | neighbors=[page.tsx] | lang=en
+- "customer_access_page_clientuser": "ClientUser" | kind=code-symbol | source=manager/frontend/app/engagements/[id]/customer-access/page.tsx:L25 | neighbors=[page.tsx] | lang=en
+- "customer_access_page_customeraccesspage": "CustomerAccessPage()" | kind=code-symbol | source=manager/frontend/app/engagements/[id]/customer-access/page.tsx:L27 | neighbors=[page.tsx] | lang=en
+- "customer_access_page_scanreq": "ScanReq" | kind=code-symbol | source=manager/frontend/app/engagements/[id]/customer-access/page.tsx:L21 | neighbors=[page.tsx] | lang=en
+- "customers_page_clientuserresp": "ClientUserResp" | kind=code-symbol | source=manager/frontend/app/customers/page.tsx:L20 | neighbors=[page.tsx] | lang=en
+- "customers_page_customer": "Customer" | kind=code-symbol | source=manager/frontend/app/customers/page.tsx:L10 | neighbors=[page.tsx] | lang=en
+- "customers_page_customerspage": "CustomersPage()" | kind=code-symbol | source=manager/frontend/app/customers/page.tsx:L36 | neighbors=[page.tsx] | lang=en
+- "customers_page_engagement": "Engagement" | kind=code-symbol | source=manager/frontend/app/customers/page.tsx:L19 | neighbors=[page.tsx] | lang=en
+- "customers_page_fetchjson": "fetchJson()" | kind=code-symbol | source=manager/frontend/app/customers/page.tsx:L25 | neighbors=[page.tsx] | lang=en
+- "customers_route_get": "GET" | kind=code-symbol | source=manager/frontend/app/api/customers/route.ts:L10 | neighbors=[route.ts] | lang=en
+- "cve_cli_cmd_ingest": "cmd_ingest()" | kind=code-symbol | source=probe/cve/cli.py:L44 | neighbors=[cli.py] | lang=en
+- "cve_cli_rationale_1": "cli.py — the two operator verbs for the offline CVE layer.      python -m cve.cl" | kind=entity | source=probe/cve/cli.py:L1 | neighbors=[cli.py] | lang=en
+- "cve_cli_rationale_120": "Verify the offline mirror: feed counts, freshness, and — critically — whether" | kind=entity | source=probe/cve/cli.py:L120 | neighbors=[cmd_status()] | lang=en
+- "cve_cli_rationale_27": "Yield fact dicts from a JSONL file ('-' = stdin). Blank/comment/bad lines     ar" | kind=entity | source=probe/cve/cli.py:L27 | neighbors=[_read_facts()] | lang=en
+- "cve_cli_rationale_66": "Merge CVE-finding lists, dedup by (cve_id, target, port), highest risk first." | kind=entity | source=probe/cve/cli.py:L66 | neighbors=[_merge_findings()] | lang=en
+- "cve_correlator_cvefinding_to_dict": ".to_dict()" | kind=code-symbol | source=probe/cve/correlator.py:L104 | neighbors=[CVEFinding] | lang=en
+- "cve_correlator_rationale_1": "correlator.py — map probe facts to prioritized CVE findings.  Consumes the CPE i" | kind=entity | source=probe/cve/correlator.py:L1 | neighbors=[correlator.py] | lang=en
+- "cve_correlator_rationale_124": "Correlate facts carrying a CPE identity against the vuln DB. Deduped by     (cve" | kind=entity | source=probe/cve/correlator.py:L124 | neighbors=[correlate()] | lang=en
+- "cve_correlator_rationale_31": "Human-readable note on how old the mirror is (from meta.last_ingest_utc),     pr" | kind=entity | source=probe/cve/correlator.py:L31 | neighbors=[mirror_age_note()] | lang=en
+- "cve_correlator_rationale_58": "Return the distro-backport token found in the banner, else None." | kind=entity | source=probe/cve/correlator.py:L58 | neighbors=[_backport_marker()] | lang=en
+- "cve_correlator_rationale_64": "0–100 prioritization score. CVSS is halved so it can't dominate; KEV and     int" | kind=entity | source=probe/cve/correlator.py:L64 | neighbors=[risk_score()] | lang=en
+- "cve_correlator_summarize": "summarize()" | kind=code-symbol | source=probe/cve/correlator.py:L170 | neighbors=[correlator.py] | lang=en
+- "cve_ingest_rationale_1": "ingest.py — build / refresh the offline vulnerability mirror.  Three public feed" | kind=entity | source=probe/cve/ingest.py:L1 | neighbors=[ingest.py] | lang=en
+- "cve_ingest_rationale_110": "cpe:2.3:a:vendor:product:version:... -> (part, vendor, product, version)." | kind=entity | source=probe/cve/ingest.py:L110 | neighbors=[_parse_criteria()] | lang=pt
+- "cve_ingest_rationale_118": "Upsert one NVD `cve` object + its CPE-applicability rows. Idempotent:     existi" | kind=entity | source=probe/cve/ingest.py:L118 | neighbors=[ingest_one_cve()] | lang=en
 
 ## Instructions
 

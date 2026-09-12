@@ -1,4 +1,4 @@
-# Node Description Batch 134 of 336
+# Node Description Batch 134 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,58 +12,51 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
-For an entity node (any other kind — e.g. a person, place, event, object),
-describe what the entity is and its role, grounded in its type, its
-relations (neighbors) and the provided citations/evidence — e.g.
-"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
-Ground entity descriptions in the citations/evidence when present; do not
-speculate beyond the context, so a node with no supporting context may be
-left out of the reply.
 Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "lib_tenant_rootdomain": "rootDomain()" | kind=code-symbol | source=manager/frontend/lib/tenant.ts:L17 | neighbors=[tenant.ts, subdomainFromHost()]
-- "lib_tenant_server_clientfromrequest": "clientFromRequest()" | kind=code-symbol | source=manager/frontend/lib/tenant-server.ts:L16 | neighbors=[tenant-server.ts, readTenantSubdomain()]
-- "lib_tenant_server_currentclient": "currentClient()" | kind=code-symbol | source=manager/frontend/lib/tenant-server.ts:L26 | neighbors=[tenant-server.ts, tenantSubdomain()]
-- "lib_tenant_server_readtenantsubdomain": "readTenantSubdomain()" | kind=code-symbol | source=manager/frontend/lib/tenant-server.ts:L12 | neighbors=[tenant-server.ts, clientFromRequest()]
-- "lib_tenant_server_tenantsubdomain": "tenantSubdomain()" | kind=code-symbol | source=manager/frontend/lib/tenant-server.ts:L21 | neighbors=[tenant-server.ts, currentClient()]
-- "lib_testssl_parser_parsetestssloutput": "parseTestsslOutput()" | kind=code-symbol | source=manager/frontend/lib/testssl-parser.ts:L34 | neighbors=[testssl-parser.ts, parseTestsslJson()]
-- "main_scripts_accuracy_expected_keys": "_expected_keys()" | kind=code-symbol | source=probe/main_scripts/accuracy.py:L37 | neighbors=[accuracy.py, score_findings()]
-- "main_scripts_accuracy_finding_key": "_finding_key()" | kind=code-symbol | source=probe/main_scripts/accuracy.py:L31 | neighbors=[accuracy.py, score_findings()]
-- "main_scripts_accuracy_format_report": "format_report()" | kind=code-symbol | source=probe/main_scripts/accuracy.py:L145 | neighbors=[accuracy.py, _main()]
-- "main_scripts_accuracy_gate_format_gate_report": "format_gate_report()" | kind=code-symbol | source=probe/main_scripts/accuracy_gate.py:L175 | neighbors=[accuracy_gate.py, _main()]
-- "main_scripts_adaptive_timeout_adaptivetimeout_timeout": ".timeout()" | kind=code-symbol | source=probe/main_scripts/adaptive_timeout.py:L44 | neighbors=[AdaptiveTimeout, Current timeout: base until we have a s…]
-- "main_scripts_db_scanner_dbscanner_probe_one": "._probe_one()" | kind=code-symbol | source=probe/main_scripts/db_scanner.py:L247 | neighbors=[DBScanner, ._scan_port()]
-- "main_scripts_db_scanner_dbscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/main_scripts/db_scanner.py:L281 | neighbors=[DBScanner, ._scan_port()]
-- "main_scripts_db_scanner_probe_redis": "_probe_redis()" | kind=code-symbol | source=probe/main_scripts/db_scanner.py:L114 | neighbors=[db_scanner.py, interpret_redis_info()]
-- "main_scripts_delta_scanner_delta_to_dict": ".to_dict()" | kind=code-symbol | source=probe/main_scripts/delta_scanner.py:L87 | neighbors=[Delta, main()]
-- "main_scripts_delta_scanner_deltaengine_summary": ".summary()" | kind=code-symbol | source=probe/main_scripts/delta_scanner.py:L290 | neighbors=[DeltaEngine, main()]
-- "main_scripts_dns_scanner_dnsscanner_chaos_txt": "._chaos_txt()" | kind=code-symbol | source=probe/main_scripts/dns_scanner.py:L98 | neighbors=[DNSScanner, ._probe()]
-- "main_scripts_dns_scanner_dnsscanner_dnssec_present": "._dnssec_present()" | kind=code-symbol | source=probe/main_scripts/dns_scanner.py:L161 | neighbors=[DNSScanner, ._probe()]
-- "main_scripts_dns_scanner_dnsscanner_scan_port": "._scan_port()" | kind=code-symbol | source=probe/main_scripts/dns_scanner.py:L215 | neighbors=[DNSScanner, .scan_target()]
-- "main_scripts_dns_scanner_dnsscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/main_scripts/dns_scanner.py:L237 | neighbors=[DNSScanner, ._scan_port()]
-- "main_scripts_dns_scanner_is_ip": "_is_ip()" | kind=code-symbol | source=probe/main_scripts/dns_scanner.py:L47 | neighbors=[dns_scanner.py, ._ptr_self()]
-- "main_scripts_findings_finding_to_dict": ".to_dict()" | kind=code-symbol | source=probe/main_scripts/findings.py:L78 | neighbors=[Finding, _main()]
-- "main_scripts_findings_rationale_619": "Anonymous SMB (null-session) information disclosure. The null session is a     m" | kind=entity | source=probe/main_scripts/findings.py:L619 | neighbors=[_rule_smb_enum(), load_facts_jsonl()]
-- "main_scripts_findings_tally": "_tally()" | kind=code-symbol | source=probe/main_scripts/findings.py:L1311 | neighbors=[findings.py, summarize()]
-- "main_scripts_ftp_scanner_ftpscanner_scan_port": "._scan_port()" | kind=code-symbol | source=probe/main_scripts/ftp_scanner.py:L152 | neighbors=[FTPScanner, .scan_target()]
-- "main_scripts_ftp_scanner_ftpscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/main_scripts/ftp_scanner.py:L171 | neighbors=[FTPScanner, ._scan_port()]
-- "main_scripts_host_discovery_now": "_now()" | kind=code-symbol | source=probe/main_scripts/host_discovery.py:L392 | neighbors=[host_discovery.py, fuse_liveness()]
-- "main_scripts_host_discovery_reverse_dns": "_reverse_dns()" | kind=code-symbol | source=probe/main_scripts/host_discovery.py:L162 | neighbors=[host_discovery.py, PTR lookup; None on any failure. Runs i…]
-- "main_scripts_host_discovery_state_for_confidence": "_state_for_confidence()" | kind=code-symbol | source=probe/main_scripts/host_discovery.py:L396 | neighbors=[host_discovery.py, fuse_liveness()]
-- "main_scripts_host_discovery_vendor_for_mac": "vendor_for_mac()" | kind=code-symbol | source=probe/main_scripts/host_discovery.py:L233 | neighbors=[host_discovery.py, .scan_target()]
-- "main_scripts_init": "__init__.py" | kind=code-symbol | source=probe/main_scripts/__init__.py:L1 | neighbors=[4d0377d Add unit tests for SMB scanner,…, VA scanner module — pure collection/sca…]
-- "main_scripts_iot_scanner_parse_ssdp_headers": "_parse_ssdp_headers()" | kind=code-symbol | source=probe/main_scripts/iot_scanner.py:L49 | neighbors=[iot_scanner.py, _probe_ssdp_sync()]
-- "main_scripts_iot_scanner_probe_mdns_sync": "_probe_mdns_sync()" | kind=code-symbol | source=probe/main_scripts/iot_scanner.py:L190 | neighbors=[iot_scanner.py, _parse_mdns_response()]
-- "main_scripts_iot_scanner_probe_rtsp": "_probe_rtsp()" | kind=code-symbol | source=probe/main_scripts/iot_scanner.py:L216 | neighbors=[iot_scanner.py, .scan_target()]
-- "main_scripts_ipmi_scanner_ipmiscanner_scan_port": "._scan_port()" | kind=code-symbol | source=probe/main_scripts/ipmi_scanner.py:L90 | neighbors=[IPMIScanner, .scan_target()]
-- "main_scripts_ipmi_scanner_ipmiscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/main_scripts/ipmi_scanner.py:L108 | neighbors=[IPMIScanner, ._scan_port()]
-- "main_scripts_ipv6_discovery_main": "main()" | kind=code-symbol | source=probe/main_scripts/ipv6_discovery.py:L155 | neighbors=[ipv6_discovery.py, discover_ipv6_hosts()]
-- "main_scripts_ja4s_alpn_code": "_alpn_code()" | kind=code-symbol | source=probe/main_scripts/ja4s.py:L78 | neighbors=[ja4s.py, ja4s_from_fields()]
-- "main_scripts_ja4s_version_str": "_version_str()" | kind=code-symbol | source=probe/main_scripts/ja4s.py:L52 | neighbors=[ja4s.py, ja4s_from_fields()]
-- "main_scripts_ja4x_match_suspicious": "match_suspicious()" | kind=code-symbol | source=probe/main_scripts/ja4x.py:L117 | neighbors=[ja4x.py, Return a threat-intel label if this JA4…]
+- "tests_test_syn_budget_wiring_testfallbackcarriesthebudget_test_mid_run_privilege_loss_keeps_the_budget": ".test_mid_run_privilege_loss_keeps_the_budget()" | kind=code-symbol | source=probe/tests/test_syn_budget_wiring.py:L56 | neighbors=[The second fallback — built when the ra…, TestFallbackCarriesTheBudget, _scope()]
+- "tests_test_syn_budget_wiring_testfallbackcarriesthebudget_test_retries_reach_the_fallback_connect_scanner": ".test_retries_reach_the_fallback_connect_scanner()" | kind=code-symbol | source=probe/tests/test_syn_budget_wiring.py:L50 | neighbors=[`deep` asks for 2 retries; the fallback…, TestFallbackCarriesTheBudget, _scope()]
+- "tests_test_syn_budget_wiring_testrawpathstopsatthedeadline_test_a_scan_inside_its_budget_is_untouched": ".test_a_scan_inside_its_budget_is_untouched()" | kind=code-symbol | source=probe/tests/test_syn_budget_wiring.py:L138 | neighbors=[TestRawPathStopsAtTheDeadline, _scope(), ._patch()]
+- "tests_test_syn_budget_wiring_testrawpathstopsatthedeadline_test_no_budget_scans_every_port": ".test_no_budget_scans_every_port()" | kind=code-symbol | source=probe/tests/test_syn_budget_wiring.py:L149 | neighbors=[TestRawPathStopsAtTheDeadline, _scope(), ._patch()]
+- "tests_test_syn_budget_wiring_testrawpathstopsatthedeadline_test_send_loop_stops_once_the_budget_is_spent": ".test_send_loop_stops_once_the_budget_is_spent()" | kind=code-symbol | source=probe/tests/test_syn_budget_wiring.py:L112 | neighbors=[TestRawPathStopsAtTheDeadline, _scope(), ._patch()]
+- "tests_test_syn_scanner_testadaptivetimeouttoggle": "TestAdaptiveTimeoutToggle" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L429 | neighbors=[test_syn_scanner.py, .test_adaptive_on_by_default(), .test_can_disable()]
+- "tests_test_syn_scanner_testparsepacketsignals": "TestParsePacketSignals" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L336 | neighbors=[test_syn_scanner.py, .test_no_options_gives_none_mss(), .test_window_ttl_mss_surfaced()]
+- "tests_test_syn_scanner_testsyndefaults": "TestSynDefaults" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L288 | neighbors=[test_syn_scanner.py, .test_default_ports_are_nmap_top100(), .test_default_retries_is_two()]
+- "tests_test_tarpit_testportscannertarpitflag_scanner": "._scanner()" | kind=code-symbol | source=probe/tests/test_tarpit.py:L43 | neighbors=[TestPortScannerTarpitFlag, .test_all_open_host_flagged_as_tarpit(), .test_mostly_closed_host_not_flagged()]
+- "tests_test_tarpit_testportscannertarpitflag_summary": "._summary()" | kind=code-symbol | source=probe/tests/test_tarpit.py:L48 | neighbors=[TestPortScannerTarpitFlag, .test_all_open_host_flagged_as_tarpit(), .test_mostly_closed_host_not_flagged()]
+- "tests_test_tarpit_testportscannertarpitflag_test_all_open_host_flagged_as_tarpit": ".test_all_open_host_flagged_as_tarpit()" | kind=code-symbol | source=probe/tests/test_tarpit.py:L51 | neighbors=[TestPortScannerTarpitFlag, ._scanner(), ._summary()]
+- "tests_test_tarpit_testportscannertarpitflag_test_mostly_closed_host_not_flagged": ".test_mostly_closed_host_not_flagged()" | kind=code-symbol | source=probe/tests/test_tarpit.py:L63 | neighbors=[TestPortScannerTarpitFlag, ._scanner(), ._summary()]
+- "tests_test_task_runner_testrunnerscantypes": "TestRunnerScanTypes" | kind=code-symbol | source=probe/tests/test_task_runner.py:L447 | neighbors=[test_task_runner.py, .test_ot_passive_profile(), .test_web_triage_scan_type()]
+- "tests_test_task_runner_testrunnerscopevalidation_test_rejects_out_of_scope_target": ".test_rejects_out_of_scope_target()" | kind=code-symbol | source=probe/tests/test_task_runner.py:L205 | neighbors=[When scope is fetched and targets are o…, TestRunnerScopeValidation, When scope is fetched and targets are o…]
+- "tests_test_task_runner_testrunnerscopevalidation_test_scope_fallback_when_fetch_fails": ".test_scope_fallback_when_fetch_fails()" | kind=code-symbol | source=probe/tests/test_task_runner.py:L318 | neighbors=[When scope fetch fails, manager-embedde…, TestRunnerScopeValidation, When scope fetch fails, manager-embedde…]
+- "tests_test_task_runner_testrunnersubmission": "TestRunnerSubmission" | kind=code-symbol | source=probe/tests/test_task_runner.py:L389 | neighbors=[test_task_runner.py, .test_calls_submit_with_result(), .test_uses_spool_when_available()]
+- "tests_test_task_runner_testrunnersubmission_test_calls_submit_with_result": ".test_calls_submit_with_result()" | kind=code-symbol | source=probe/tests/test_task_runner.py:L390 | neighbors=[Verify the submit callback is called wi…, TestRunnerSubmission, Verify the submit callback is called wi…]
+- "tests_test_task_runner_testrunnersubmission_test_uses_spool_when_available": ".test_uses_spool_when_available()" | kind=code-symbol | source=probe/tests/test_task_runner.py:L415 | neighbors=[When spool_submit is provided, it's use…, TestRunnerSubmission, When spool_submit is provided, it's use…]
+- "tests_test_tls_fingerprint_synthetic_server_hello": "_synthetic_server_hello()" | kind=code-symbol | source=probe/tests/test_tls_fingerprint.py:L45 | neighbors=[test_tls_fingerprint.py, .test_extracts_version_and_cipher(), .test_tls13_version_from_supported_vers…]
+- "tests_test_tls_integration_self_signed": "_self_signed()" | kind=code-symbol | source=probe/tests/test_tls_integration.py:L29 | neighbors=[test_tls_integration.py, test_tls_fingerprint_is_nonzero_and_sta…, test_tls_scanner_reports_posture_grade()]
+- "tests_test_tls_integration_test_tls_fingerprint_is_nonzero_and_stable": "test_tls_fingerprint_is_nonzero_and_stable()" | kind=code-symbol | source=probe/tests/test_tls_integration.py:L111 | neighbors=[test_tls_integration.py, _self_signed(), _TLSServer]
+- "tests_test_tls_integration_test_tls_scanner_reports_posture_grade": "test_tls_scanner_reports_posture_grade()" | kind=code-symbol | source=probe/tests/test_tls_integration.py:L87 | neighbors=[test_tls_integration.py, _self_signed(), _TLSServer]
+- "tests_test_tls_legacy_versions_self_signed": "_self_signed()" | kind=code-symbol | source=probe/tests/test_tls_legacy_versions.py:L35 | neighbors=[test_tls_legacy_versions.py, test_legacy_version_is_detected_not_mas…, test_untested_versions_are_surfaced_in_…]
+- "tests_test_tls_legacy_versions_server_supports": "_server_supports()" | kind=code-symbol | source=probe/tests/test_tls_legacy_versions.py:L97 | neighbors=[test_tls_legacy_versions.py, Skip rather than fail on a build with t…, test_legacy_version_is_detected_not_mas…]
+- "tests_test_transport_testfetchscope": "TestFetchScope" | kind=code-symbol | source=probe/tests/test_transport.py:L462 | neighbors=[test_transport.py, .test_http_error_returns_none(), .test_returns_scope()]
+- "tests_test_transport_transport": "transport()" | kind=code-symbol | source=probe/tests/test_transport.py:L17 | neighbors=[test_transport.py, Create a Transport with a real state fi…, Create a Transport with a real state fi…]
+- "tests_test_trust_alignment": "test_trust_alignment.py" | kind=code-symbol | source=manager/detection_engine/tests/test_trust_alignment.py:L1 | neighbors=[26ea68c Add comprehensive tests for OS …, test_manager_and_probe_trust_sets_match…, test_trust_alignment.py — cross-tree in…]
+- "tests_test_two_tree_parity_mirrored_py_files": "_mirrored_py_files()" | kind=code-symbol | source=probe/tests/test_two_tree_parity.py:L33 | neighbors=[test_two_tree_parity.py, Every .py present in BOTH trees (the mi…, test_mirrored_set_is_nonempty()]
+- "tests_test_va_campaign_reporter": "_reporter()" | kind=code-symbol | source=probe/tests/test_va_campaign.py:L26 | neighbors=[test_va_campaign.py, test_percent_and_current_stage_transiti…, test_progress_snapshot_shape()]
+- "tests_test_va_campaign_test_detect_stage_skipped_when_nothing_was_collected": "test_detect_stage_skipped_when_nothing_was_collected()" | kind=code-symbol | source=probe/tests/test_va_campaign.py:L274 | neighbors=[test_va_campaign.py, _detect_stage(), _run()]
+- "tests_test_va_campaign_test_detect_stage_turns_facts_into_weakness_findings": "test_detect_stage_turns_facts_into_weakness_findings()" | kind=code-symbol | source=probe/tests/test_va_campaign.py:L250 | neighbors=[test_va_campaign.py, _detect_stage(), _scope()]
+- "tests_test_validation_endpoints_test_approve_conflict_when_not_pending": "test_approve_conflict_when_not_pending()" | kind=code-symbol | source=manager/backend/tests/test_validation_endpoints.py:L116 | neighbors=[test_validation_endpoints.py, _mock_db(), _user()]
+- "tests_test_validation_endpoints_test_approve_enqueues_safe_validate_job": "test_approve_enqueues_safe_validate_job()" | kind=code-symbol | source=manager/backend/tests/test_validation_endpoints.py:L89 | neighbors=[test_validation_endpoints.py, _mock_db(), _user()]
+- "tests_test_validation_endpoints_test_create_rejected_when_roe_forbids": "test_create_rejected_when_roe_forbids()" | kind=code-symbol | source=manager/backend/tests/test_validation_endpoints.py:L74 | neighbors=[test_validation_endpoints.py, _mock_db(), _user()]
+- "tests_test_validation_endpoints_test_create_request_is_pending_and_derives_tls_check": "test_create_request_is_pending_and_derives_tls_check()" | kind=code-symbol | source=manager/backend/tests/test_validation_endpoints.py:L55 | neighbors=[test_validation_endpoints.py, _mock_db(), _user()]
+- "tests_test_validation_endpoints_test_reject_marks_rejected": "test_reject_marks_rejected()" | kind=code-symbol | source=manager/backend/tests/test_validation_endpoints.py:L126 | neighbors=[test_validation_endpoints.py, _mock_db(), _user()]
+- "tests_test_validation_gate_testrdpnlagate": "TestRdpNlaGate" | kind=code-symbol | source=probe/tests/test_validation_gate.py:L53 | neighbors=[test_validation_gate.py, .test_nla_enforced_suppresses_no_nla_fi…, .test_positive_control_nla_off_is_flagg…]
+- "tests_test_validation_gate_testudpnoreplyrejected": "TestUdpNoReplyRejected" | kind=code-symbol | source=probe/tests/test_validation_gate.py:L33 | neighbors=[test_validation_gate.py, .test_open_filtered_amplifier_not_flagg…, .test_positive_control_answered_amplifi…]
+- "tests_test_validation_ingest_exec": "_exec()" | kind=code-symbol | source=manager/backend/tests/test_validation_ingest.py:L72 | neighbors=[test_validation_ingest.py, test_ingest_confirmed_updates_request_a…, test_ingest_unknown_job_is_noop()]
+- "tests_test_validation_ingest_test_ingest_confirmed_updates_request_and_finding": "test_ingest_confirmed_updates_request_and_finding()" | kind=code-symbol | source=manager/backend/tests/test_validation_ingest.py:L88 | neighbors=[test_validation_ingest.py, _exec(), _finding()]
 
 ## Instructions
 

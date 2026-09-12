@@ -1,4 +1,4 @@
-# Node Description Batch 105 of 336
+# Node Description Batch 105 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,51 +19,51 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-Write every description in Portuguese (pt). Do not switch languages.
+Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "scanner_ipmi_scanner_build_open_session_request": "build_open_session_request()" | kind=code-symbol | source=probe/scanner/ipmi_scanner.py:L36 | neighbors=[ipmi_scanner.py, ._probe(), A fixed RMCP+ Open Session Request offe…]
-- "scanner_ipmi_scanner_parse_open_session_response": "parse_open_session_response()" | kind=code-symbol | source=probe/scanner/ipmi_scanner.py:L52 | neighbors=[ipmi_scanner.py, ._probe(), Parse an RMCP+ Open Session Response; N…]
-- "scanner_ipv6_discovery_is_ipv6": "_is_ipv6()" | kind=code-symbol | source=probe/scanner/ipv6_discovery.py:L34 | neighbors=[ipv6_discovery.py, parse_ip_neigh6(), parse_ndp()]
-- "scanner_ipv6_discovery_own_ipv6_addresses": "_own_ipv6_addresses()" | kind=code-symbol | source=probe/scanner/ipv6_discovery.py:L80 | neighbors=[ipv6_discovery.py, discover_ipv6_hosts(), Best-effort set of this host's own IPv6…]
-- "scanner_ipv6_discovery_run": "_run()" | kind=code-symbol | source=probe/scanner/ipv6_discovery.py:L94 | neighbors=[ipv6_discovery.py, _ping_all_nodes(), _read_neighbor_cache()]
-- "scanner_ja4s_compute_ja4s": "compute_ja4s()" | kind=code-symbol | source=probe/scanner/ja4s.py:L115 | neighbors=[ja4s.py, ja4s_from_parsed(), Do one standard TLS handshake and compu…]
-- "scanner_ja4s_ext_types": "_ext_types()" | kind=code-symbol | source=probe/scanner/ja4s.py:L65 | neighbors=[ja4s.py, _walk_extensions(), ja4s_from_parsed()]
-- "scanner_ja4s_ja4s_from_serverhello": "ja4s_from_serverhello()" | kind=code-symbol | source=probe/scanner/ja4s.py:L109 | neighbors=[ja4s.py, ja4s_from_parsed(), JA4S from raw ServerHello record bytes …]
-- "scanner_ja4x_hash_oids": "_hash_oids()" | kind=code-symbol | source=probe/scanner/ja4x.py:L68 | neighbors=[ja4x.py, oid_to_hex(), ja4x_from_oid_lists()]
-- "scanner_ja4x_ja4x_from_der": "ja4x_from_der()" | kind=code-symbol | source=probe/scanner/ja4x.py:L93 | neighbors=[ja4x.py, ja4x_from_cert(), JA4X from raw DER bytes. `cryptography`…]
-- "scanner_ja4x_oid_to_hex": "oid_to_hex()" | kind=code-symbol | source=probe/scanner/ja4x.py:L39 | neighbors=[ja4x.py, _hash_oids(), DER-encode an OID's content octets and …]
-- "scanner_ldap_scanner_ldapscanner_probe": "._probe()" | kind=code-symbol | source=probe/scanner/ldap_scanner.py:L54 | neighbors=[LDAPScanner, _first(), Blocking: anonymous bind + RootDSE read…]
-- "scanner_mass_scan_parse_masscan_json_detailed": "_parse_masscan_json_detailed()" | kind=code-symbol | source=probe/scanner/mass_scan.py:L154 | neighbors=[mass_scan.py, _parse_masscan_json(), _run_masscan()]
-- "scanner_mcp_ai_scanner_mcpaiscanner_result": "._result()" | kind=code-symbol | source=probe/scanner/mcp_ai_scanner.py:L212 | neighbors=[MCPAIScanner, ._probe_port(), _model_count()]
-- "scanner_mobile_scanner_build_mdns_query": "_build_mdns_query()" | kind=code-symbol | source=probe/scanner/mobile_scanner.py:L187 | neighbors=[mobile_scanner.py, _probe_mdns_mobile_sync(), Build a DNS PTR query in mDNS wire form…]
-- "scanner_mobile_scanner_mobilescanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/scanner/mobile_scanner.py:L285 | neighbors=[MobileScanner, _probe_adb(), _probe_lockdownd()]
-- "scanner_mobile_scanner_parse_adb_header": "_parse_adb_header()" | kind=code-symbol | source=probe/scanner/mobile_scanner.py:L70 | neighbors=[mobile_scanner.py, _probe_adb(), Parse a 24-byte ADB message header.  Re…]
-- "scanner_mobile_scanner_parse_mdns_ptr_names": "_parse_mdns_ptr_names()" | kind=code-symbol | source=probe/scanner/mobile_scanner.py:L198 | neighbors=[mobile_scanner.py, _probe_mdns_mobile_sync(), Extract PTR target names (service insta…]
-- "scanner_mobile_scanner_probe_lockdownd": "_probe_lockdownd()" | kind=code-symbol | source=probe/scanner/mobile_scanner.py:L150 | neighbors=[mobile_scanner.py, .scan_target(), Attempt TCP connect to lockdownd port 6…]
-- "scanner_msrpc_scanner_extract_tcp_ports": "_extract_tcp_ports()" | kind=code-symbol | source=probe/scanner/msrpc_scanner.py:L51 | neighbors=[msrpc_scanner.py, Parse ncacn_ip_tcp bindings → (all_tcp_…, _summarize()]
-- "scanner_msrpc_scanner_msrpcscanner_enumerate": "._enumerate()" | kind=code-symbol | source=probe/scanner/msrpc_scanner.py:L89 | neighbors=[MSRPCScanner, _summarize(), Blocking: EPM ept_lookup via impacket. …]
-- "scanner_nfs_scanner_is_world_readable": "is_world_readable()" | kind=code-symbol | source=probe/scanner/nfs_scanner.py:L116 | neighbors=[nfs_scanner.py, parse_mount_export(), An export with no client restriction, o…]
-- "scanner_nfs_scanner_nfsscanner_portmap_getport": "._portmap_getport()" | kind=code-symbol | source=probe/scanner/nfs_scanner.py:L212 | neighbors=[NFSScanner, ._rpc(), ._probe()]
-- "scanner_nfs_scanner_parse_rpc_reply": "_parse_rpc_reply()" | kind=code-symbol | source=probe/scanner/nfs_scanner.py:L166 | neighbors=[nfs_scanner.py, Strip the ONC-RPC reply header; return …, _rpc_call()]
-- "scanner_nfs_scanner_xdr_opaque": ".opaque()" | kind=code-symbol | source=probe/scanner/nfs_scanner.py:L70 | neighbors=[_XDR, .u32(), .string()]
-- "scanner_nfs_scanner_xdr_string": ".string()" | kind=code-symbol | source=probe/scanner/nfs_scanner.py:L78 | neighbors=[parse_mount_export(), _XDR, .opaque()]
-- "scanner_nmap_wrapper_validated_extra_args": "_validated_extra_args()" | kind=code-symbol | source=probe/scanner/nmap_wrapper.py:L75 | neighbors=[nmap_wrapper.py, Allow tuning only; target, script, and …, Allow tuning only; target, script, and …]
-- "scanner_os_fingerprint_accept_echo_reply": "accept_echo_reply()" | kind=code-symbol | source=probe/scanner/os_fingerprint.py:L137 | neighbors=[os_fingerprint.py, ._icmp_echo_ttl(), True only for an ICMP ECHO reply that a…]
-- "scanner_os_fingerprint_build_icmp_echo": "build_icmp_echo()" | kind=code-symbol | source=probe/scanner/os_fingerprint.py:L66 | neighbors=[os_fingerprint.py, _icmp(), ._icmp_echo_ttl()]
-- "scanner_os_fingerprint_build_icmp_timestamp": "build_icmp_timestamp()" | kind=code-symbol | source=probe/scanner/os_fingerprint.py:L70 | neighbors=[os_fingerprint.py, _icmp(), ._icmp_timestamp()]
-- "scanner_os_fingerprint_hop_estimate": "hop_estimate()" | kind=code-symbol | source=probe/scanner/os_fingerprint.py:L162 | neighbors=[os_fingerprint.py, fingerprint_os(), infer_initial_ttl()]
-- "scanner_os_fingerprint_osfingerprintscanner_apply_smb_build": "._apply_smb_build()" | kind=code-symbol | source=probe/scanner/os_fingerprint.py:L382 | neighbors=[OSFingerprintScanner, ._smb_build(), Fuse an SMB2 NTLM build into an OS resu…]
-- "scanner_os_fingerprint_osfingerprintscanner_smb_build": "._smb_build()" | kind=code-symbol | source=probe/scanner/os_fingerprint.py:L370 | neighbors=[OSFingerprintScanner, ._apply_smb_build(), Best-effort exact Windows build via SMB…]
-- "scanner_os_fingerprint_rationale_205": "p0f-style match on (initial TTL, option layout, window scale) → a specific     s" | kind=entity | source=probe/scanner/os_fingerprint.py:L205 | neighbors=[match_stack_signature(), _open_icmp_socket(), OSFingerprintScanner]
-- "scanner_port_scanner_harvest_tcp_stack": "_harvest_tcp_stack()" | kind=code-symbol | source=probe/scanner/port_scanner.py:L94 | neighbors=[port_scanner.py, ._attempt(), Peer TCP-stack signals readable from a …]
-- "scanner_port_scanner_portscanner_note_probe_outcome": "._note_probe_outcome()" | kind=code-symbol | source=probe/scanner/port_scanner.py:L583 | neighbors=[PortScanner, ._scan_port(), Record one probe and answer: is the PAT…]
-- "scanner_printer_scanner_parse_ipp_make_model": "parse_ipp_make_model()" | kind=code-symbol | source=probe/scanner/printer_scanner.py:L65 | neighbors=[printer_scanner.py, ._probe_ipp(), Best-effort extraction of printer-make-…]
-- "scanner_printer_scanner_parse_pjl_id": "parse_pjl_id()" | kind=code-symbol | source=probe/scanner/printer_scanner.py:L38 | neighbors=[printer_scanner.py, ._probe_pjl(), Extract the model string from a PJL INF…]
-- "scanner_printer_scanner_printerscanner_probe": "._probe()" | kind=code-symbol | source=probe/scanner/printer_scanner.py:L135 | neighbors=[PrinterScanner, ._probe_ipp(), ._probe_pjl()]
-- "scanner_printer_scanner_recv_bounded": "_recv_bounded()" | kind=code-symbol | source=probe/scanner/printer_scanner.py:L83 | neighbors=[printer_scanner.py, ._probe_ipp(), ._probe_pjl()]
+- "detection_edr_crowdstrikefalcon_parse_response": ".parse_response()" | kind=code-symbol | source=manager/backend/app/detection/edr.py:L118 | neighbors=[CrowdStrikeFalcon, EDRDetection, _parse_dt()]
+- "detection_edr_microsoftdefender_parse_response": ".parse_response()" | kind=code-symbol | source=manager/backend/app/detection/edr.py:L158 | neighbors=[MicrosoftDefender, EDRDetection, _parse_dt()]
+- "detection_edr_sentinelone_parse_response": ".parse_response()" | kind=code-symbol | source=manager/backend/app/detection/edr.py:L209 | neighbors=[SentinelOne, EDRDetection, _parse_dt()]
+- "detection_engine_ai_normalizer_ainormalizercache_key": "._key()" | kind=code-symbol | source=manager/detection_engine/ai_normalizer.py:L149 | neighbors=[AINormalizerCache, .get(), .put()]
+- "detection_engine_ai_normalizer_ainormalizercache_put": ".put()" | kind=code-symbol | source=manager/detection_engine/ai_normalizer.py:L155 | neighbors=[AINormalizerCache, ._key(), propose_candidates()]
+- "detection_engine_ai_normalizer_extract_raw_text": "extract_raw_text()" | kind=code-symbol | source=manager/detection_engine/ai_normalizer.py:L206 | neighbors=[ai_normalizer.py, .get(), The raw observable text worth sending t…]
+- "detection_engine_ai_normalizer_rationale_1": "ai_normalizer.py — Phase 2: AI normalization assist, gated by deterministic look" | kind=entity | source=manager/detection_engine/ai_normalizer.py:L1 | neighbors=[ai_normalizer.py, CPECandidate, Fact]
+- "detection_engine_ai_normalizer_rationale_124": "Test double — a fixed lookup table, no network. Used to validate the     surroun" | kind=entity | source=manager/detection_engine/ai_normalizer.py:L124 | neighbors=[FakeAIClient, CPECandidate, Fact]
+- "detection_engine_ai_normalizer_rationale_170": "True iff the real NVD CPE dictionary has at least one entry for this     vendor:" | kind=entity | source=manager/detection_engine/ai_normalizer.py:L170 | neighbors=[validate_cpe_exists(), CPECandidate, Fact]
+- "detection_engine_ai_normalizer_rationale_207": "The raw observable text worth sending to the AI normalizer for this     Fact's s" | kind=entity | source=manager/detection_engine/ai_normalizer.py:L207 | neighbors=[extract_raw_text(), CPECandidate, Fact]
+- "detection_engine_ai_normalizer_rationale_233": "The Phase 2 entry point. raw_text is whatever observed string the     rule-based" | kind=entity | source=manager/detection_engine/ai_normalizer.py:L233 | neighbors=[propose_candidates(), CPECandidate, Fact]
+- "detection_engine_ai_normalizer_rationale_90": "Returns a list of {\"vendor\", \"product\", \"version\"} dicts —         exactly the v" | kind=entity | source=manager/detection_engine/ai_normalizer.py:L90 | neighbors=[.propose_cpe(), CPECandidate, Fact]
+- "detection_engine_ai_normalizer_rationale_97": "Real implementation, gated behind the anthropic SDK + an API key.     Forces the" | kind=entity | source=manager/detection_engine/ai_normalizer.py:L97 | neighbors=[AnthropicAIClient, CPECandidate, Fact]
+- "detection_engine_bridge_load_remediated_index": "_load_remediated_index()" | kind=code-symbol | source=manager/backend/app/detection/engine_bridge.py:L312 | neighbors=[engine_bridge.py, create_findings_from_facts(), The regression candidates, in ONE query…]
+- "detection_engine_bridge_run_detection_engine": "_run_detection_engine()" | kind=code-symbol | source=manager/backend/app/detection/engine_bridge.py:L169 | neighbors=[engine_bridge.py, create_findings_from_facts(), `detect_all_from_facts_traced` on a wor…]
+- "detection_engine_consistency_wilson_ci": "wilson_ci()" | kind=code-symbol | source=manager/detection_engine/consistency.py:L32 | neighbors=[consistency.py, .ci(), Wilson score interval for a binomial pr…]
+- "detection_engine_correlate_correlate_smb_patch": "correlate_smb_patch()" | kind=code-symbol | source=manager/detection_engine/correlate.py:L177 | neighbors=[correlate.py, SMBv1 enabled + (credentialed hotfix li…, SMBv1 enabled + (credentialed hotfix li…]
+- "detection_engine_correlate_dedup_findings": "dedup_findings()" | kind=code-symbol | source=manager/detection_engine/correlate.py:L54 | neighbors=[correlate.py, Collapse by finding_id (deterministic: …, Collapse by finding_id (deterministic: …]
+- "detection_engine_cpe_normalizer_clean_debian_version": "clean_debian_version()" | kind=code-symbol | source=manager/detection_engine/cpe_normalizer.py:L77 | neighbors=[cpe_normalizer.py, normalize_credentialed_packages(), dpkg version syntax: [epoch:]upstream_v…]
+- "detection_engine_cpe_normalizer_rationale_1": "cpe_normalizer.py — observed strings -> CPE 2.3 candidates, deterministically." | kind=entity | source=manager/detection_engine/cpe_normalizer.py:L1 | neighbors=[cpe_normalizer.py, Fact, SourceConfidence]
+- "detection_engine_cpe_normalizer_rationale_150": "Every distinct OSV source-package name _PACKAGE_TO_CPE covers." | kind=entity | source=manager/detection_engine/cpe_normalizer.py:L150 | neighbors=[osv_source_packages(), Fact, SourceConfidence]
+- "detection_engine_cpe_normalizer_rationale_214": "service_banner.py's first_line/banner text -> CPE. SSH only for now —     generi" | kind=entity | source=manager/detection_engine/cpe_normalizer.py:L214 | neighbors=[normalize_banner(), Fact, SourceConfidence]
+- "detection_engine_cpe_normalizer_rationale_232": "web_scanner.py's Server header + tech_hints[] -> CPE candidates." | kind=entity | source=manager/detection_engine/cpe_normalizer.py:L232 | neighbors=[normalize_web(), Fact, SourceConfidence]
+- "detection_engine_cpe_normalizer_rationale_260": "db_scanner.py's real-protocol-handshake engine + server_version -> CPE.      \"my" | kind=entity | source=manager/detection_engine/cpe_normalizer.py:L260 | neighbors=[normalize_db(), Fact, SourceConfidence]
+- "detection_engine_cpe_normalizer_rationale_302": "Yields (package_name, raw_version, upstream_version) for each     'name version'" | kind=entity | source=manager/detection_engine/cpe_normalizer.py:L302 | neighbors=[_parse_package_lines(), Fact, SourceConfidence]
+- "detection_engine_cpe_normalizer_rationale_316": "ssh_inventory's dpkg_packages/rpm_packages -> CPE candidates. ALL high     confi" | kind=entity | source=manager/detection_engine/cpe_normalizer.py:L316 | neighbors=[normalize_credentialed_packages(), Fact, SourceConfidence]
+- "detection_engine_cpe_normalizer_rationale_351": "Dispatch a single Fact to the right parser based on which scanner     produced i" | kind=entity | source=manager/detection_engine/cpe_normalizer.py:L351 | neighbors=[normalize(), Fact, SourceConfidence]
+- "detection_engine_cpe_normalizer_rationale_360": "Every distinct OSV source-package name across ALL three tables     (credentialed" | kind=entity | source=manager/detection_engine/cpe_normalizer.py:L360 | neighbors=[all_osv_source_packages(), Fact, SourceConfidence]
+- "detection_engine_cpe_normalizer_rationale_78": "dpkg version syntax: [epoch:]upstream_version[-debian_revision].     '1:8.4p1-5+" | kind=entity | source=manager/detection_engine/cpe_normalizer.py:L78 | neighbors=[clean_debian_version(), Fact, SourceConfidence]
+- "detection_engine_cpe_normalizer_rationale_93": "rpm queried as '%{VERSION}-%{RELEASE}' (see ssh_collector.py's     rpm_packages" | kind=entity | source=manager/detection_engine/cpe_normalizer.py:L93 | neighbors=[clean_rpm_version(), Fact, SourceConfidence]
+- "detection_engine_cvss_roundup": "_roundup()" | kind=code-symbol | source=manager/detection_engine/cvss.py:L22 | neighbors=[cvss.py, base_score(), CVSS spec's exact rounding rule (avoids…]
+- "detection_engine_default_creds_catalog": "default_creds_catalog.py" | kind=code-symbol | source=manager/detection_engine/default_creds_catalog.py:L1 | neighbors=[831bdef feat(detection): default-creden…, has_known_defaults(), default_creds_catalog.py — vendors that…]
+- "detection_engine_enrichment_compute_priority": "_compute_priority()" | kind=code-symbol | source=manager/detection_engine/enrichment.py:L52 | neighbors=[enrichment.py, enrich_finding(), Returns (tier, human-readable reason). …]
+- "detection_engine_enrichment_db_cache_key": "_cache_key()" | kind=code-symbol | source=manager/detection_engine/enrichment_db.py:L50 | neighbors=[enrichment_db.py, load_epss(), load_kev()]
+- "detection_engine_enrichment_enrich_finding": "enrich_finding()" | kind=code-symbol | source=manager/detection_engine/enrichment.py:L32 | neighbors=[enrichment.py, _compute_priority(), Mutates and returns `finding` with cvss…]
+- "detection_engine_eol_catalog": "eol_catalog.py" | kind=code-symbol | source=manager/detection_engine/eol_catalog.py:L1 | neighbors=[c1c3bcc feat(detection): flag end-of-li…, lookup_eol(), eol_catalog.py — curated end-of-life / …]
+- "detection_engine_exploitability_priority_for": "priority_for()" | kind=code-symbol | source=manager/detection_engine/exploitability.py:L208 | neighbors=[exploitability.py, apply_to_findings(), The band table posture_rules.compute_ri…]
+- "detection_engine_ingest_ingest_files": "ingest_files()" | kind=code-symbol | source=manager/detection_engine/ingest.py:L186 | neighbors=[ingest.py, ingest_file(), IngestResult]
+- "detection_engine_ingest_ingestresult_get_or_create_asset": ".get_or_create_asset()" | kind=code-symbol | source=manager/detection_engine/ingest.py:L59 | neighbors=[ingest_file(), IngestResult, _is_ip()]
+- "detection_engine_matcher_match_candidate": "match_candidate()" | kind=code-symbol | source=manager/detection_engine/matcher.py:L80 | neighbors=[matcher.py, _version_in_ranges(), All Findings this single CPE candidate …]
 
 ## Instructions
 

@@ -1,4 +1,4 @@
-# Node Description Batch 255 of 336
+# Node Description Batch 255 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -9,6 +9,9 @@ your JSON answer to the answer file.
 You are documenting nodes in a knowledge graph.
 For each entry below, write ONE concise factual plain-language sentence
 describing what it is or does. Use only the provided context.
+For a code symbol (kind=code-symbol — a function, class, or constant),
+describe what the function/symbol does based on its name, source location
+and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
 For an entity node (any other kind — e.g. a person, place, event, object),
 describe what the entity is and its role, grounded in its type, its
 relations (neighbors) and the provided citations/evidence — e.g.
@@ -16,53 +19,51 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-LANGUAGE: each entry has a `lang=` marker giving the language of its source.
-Write that entry's description in EXACTLY that language. Do not translate to
-a single common language — match each node's source language individually.
+Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "scanner_scanner_base_rationale_274": "Accepts CIDRs ('10.0.0.0/24'), single IPs, hostnames, and simple ranges     ('10" | kind=entity | source=probe/scanner/scanner_base.py:L274 | neighbors=[expand_targets()] | lang=en
-- "scanner_scanner_base_rationale_281": "Wrap an IPv6 literal in [] for a URL authority; leave v4/hostnames as-is.     'h" | kind=entity | source=probe/scanner/scanner_base.py:L281 | neighbors=[bracket_host()] | lang=en
-- "scanner_scanner_base_rationale_282": "Read-only view of allowed networks (for CIDR-level engines)." | kind=entity | source=probe/scanner/scanner_base.py:L282 | neighbors=[.networks()] | lang=en
-- "scanner_scanner_base_rationale_287": "Read-only view of excluded networks (to build masscan --exclude)." | kind=entity | source=probe/scanner/scanner_base.py:L287 | neighbors=[.excludes()] | lang=en
-- "scanner_scanner_base_rationale_289": "Accepts CIDRs ('10.0.0.0/24'), single IPs, hostnames, and simple ranges     ('10" | kind=entity | source=probe/scanner/scanner_base.py:L289 | neighbors=[expand_targets()] | lang=en
-- "scanner_scanner_base_rationale_290": "One-shot datagram protocol backing `async_udp_probe`. Resolves its future     wi" | kind=entity | source=probe/scanner/scanner_base.py:L290 | neighbors=[_UDPProbeProtocol] | lang=en
-- "scanner_scanner_base_rationale_293": "Parse '22,80,443,8000-8100' into a sorted unique port list (1-65535)." | kind=entity | source=probe/scanner/scanner_base.py:L293 | neighbors=[parse_ports()] | lang=pt
-- "scanner_scanner_base_rationale_295": "Simple async rate limiter: at most `rate` operations per second." | kind=entity | source=probe/scanner/scanner_base.py:L295 | neighbors=[RateLimiter] | lang=it
-- "scanner_scanner_base_rationale_314": "Standard 16-bit one's-complement Internet checksum (RFC 1071), used for IP," | kind=entity | source=probe/scanner/scanner_base.py:L314 | neighbors=[inet_checksum()] | lang=en
-- "scanner_scanner_base_rationale_316": "Loads an allowlist of CIDRs / IPs / hostnames and decides whether a target     i" | kind=entity | source=probe/scanner/scanner_base.py:L316 | neighbors=[ScopeGuard] | lang=en
-- "scanner_scanner_base_rationale_323": "Send one UDP datagram and await the first reply — fully on the event loop." | kind=entity | source=probe/scanner/scanner_base.py:L323 | neighbors=[async_udp_probe()] | lang=en
-- "scanner_scanner_base_rationale_329": "Writes ScanResult objects as JSONL to a file and/or stdout." | kind=entity | source=probe/scanner/scanner_base.py:L329 | neighbors=[ResultWriter] | lang=en
-- "scanner_scanner_base_rationale_331": "A self-tuning concurrency window, modelled on TCP congestion control (AIMD)," | kind=entity | source=probe/scanner/scanner_base.py:L331 | neighbors=[AdaptiveRateController] | lang=pt
-- "scanner_scanner_base_rationale_335": "Resolve `target` to a concrete (family, sockaddr) covering IPv4, IPv6, and     h" | kind=entity | source=probe/scanner/scanner_base.py:L335 | neighbors=[resolve()] | lang=en
-- "scanner_scanner_base_rationale_350": "Resolve `target` to a concrete (family, sockaddr) covering IPv4, IPv6, and     h" | kind=entity | source=probe/scanner/scanner_base.py:L350 | neighbors=[resolve()] | lang=en
-- "scanner_scanner_base_rationale_358": "Read-only view of excluded networks (to build masscan --exclude)." | kind=entity | source=probe/scanner/scanner_base.py:L358 | neighbors=[.excludes()] | lang=en
-- "scanner_scanner_base_rationale_363": "Current integer window (>= min_window)." | kind=entity | source=probe/scanner/scanner_base.py:L363 | neighbors=[.window()] | lang=en
-- "scanner_scanner_base_rationale_365": "Parse '22,80,443,8000-8100' into a sorted unique port list (1-65535)." | kind=entity | source=probe/scanner/scanner_base.py:L365 | neighbors=[parse_ports()] | lang=pt
-- "scanner_scanner_base_rationale_366": "Simple async rate limiter: at most `rate` operations per second." | kind=entity | source=probe/scanner/scanner_base.py:L366 | neighbors=[RateLimiter] | lang=it
-- "scanner_scanner_base_rationale_374": "One-shot datagram protocol backing `async_udp_probe`. Resolves its future     wi" | kind=entity | source=probe/scanner/scanner_base.py:L374 | neighbors=[_UDPProbeProtocol] | lang=en
-- "scanner_scanner_base_rationale_385": "Standard 16-bit one's-complement Internet checksum (RFC 1071), used for IP," | kind=entity | source=probe/scanner/scanner_base.py:L385 | neighbors=[inet_checksum()] | lang=en
-- "scanner_scanner_base_rationale_392": "Send one UDP datagram and await the first reply — fully on the event loop." | kind=entity | source=probe/scanner/scanner_base.py:L392 | neighbors=[async_udp_probe()] | lang=en
-- "scanner_scanner_base_rationale_400": "Accepts CIDRs ('10.0.0.0/24'), single IPs, hostnames, and simple ranges     ('10" | kind=entity | source=probe/scanner/scanner_base.py:L400 | neighbors=[expand_targets()] | lang=en
-- "scanner_scanner_base_rationale_401": "Writes ScanResult objects as JSONL to a file and/or stdout." | kind=entity | source=probe/scanner/scanner_base.py:L401 | neighbors=[ResultWriter] | lang=en
-- "scanner_scanner_base_rationale_402": "A self-tuning concurrency window, modelled on TCP congestion control (AIMD)," | kind=entity | source=probe/scanner/scanner_base.py:L402 | neighbors=[AdaptiveRateController] | lang=pt
-- "scanner_scanner_base_rationale_407": "Send one UDP datagram and await the first reply — fully on the event loop." | kind=entity | source=probe/scanner/scanner_base.py:L407 | neighbors=[async_udp_probe()] | lang=en
-- "scanner_scanner_base_rationale_417": "Read-only view of allowed networks (for CIDR-level engines)." | kind=entity | source=probe/scanner/scanner_base.py:L417 | neighbors=[.networks()] | lang=en
-- "scanner_scanner_base_rationale_422": "Read-only view of excluded networks (to build masscan --exclude)." | kind=entity | source=probe/scanner/scanner_base.py:L422 | neighbors=[.excludes()] | lang=en
-- "scanner_scanner_base_rationale_423": "`async_udp_probe` with bounded per-port retransmit.      Returns on the FIRST de" | kind=entity | source=probe/scanner/scanner_base.py:L423 | neighbors=[async_udp_probe_retry()] | lang=en
-- "scanner_scanner_base_rationale_430": "Simple async rate limiter: at most `rate` operations per second." | kind=entity | source=probe/scanner/scanner_base.py:L430 | neighbors=[RateLimiter] | lang=it
-- "scanner_scanner_base_rationale_431": "Subclasses implement `scan_target(self, target)` (async), returning a list     o" | kind=entity | source=probe/scanner/scanner_base.py:L431 | neighbors=[BaseScanner] | lang=pt
-- "scanner_scanner_base_rationale_434": "Current integer window (>= min_window)." | kind=entity | source=probe/scanner/scanner_base.py:L434 | neighbors=[.window()] | lang=en
-- "scanner_scanner_base_rationale_438": "`async_udp_probe` with bounded per-port retransmit.      Returns on the FIRST de" | kind=entity | source=probe/scanner/scanner_base.py:L438 | neighbors=[async_udp_probe_retry()] | lang=en
-- "scanner_scanner_base_rationale_44": "One observation about one target. Pure fact, no interpretation." | kind=entity | source=probe/scanner/scanner_base.py:L44 | neighbors=[ScanResult] | lang=en
-- "scanner_scanner_base_rationale_442": "Wrap an IPv6 literal in [] for a URL authority; leave v4/hostnames as-is.     'h" | kind=entity | source=probe/scanner/scanner_base.py:L442 | neighbors=[bracket_host()] | lang=en
-- "scanner_scanner_base_rationale_449": "Standard 16-bit one's-complement Internet checksum (RFC 1071), used for IP," | kind=entity | source=probe/scanner/scanner_base.py:L449 | neighbors=[inet_checksum()] | lang=en
-- "scanner_scanner_base_rationale_45": "One observation about one target. Pure fact, no interpretation." | kind=entity | source=probe/scanner/scanner_base.py:L45 | neighbors=[ScanResult] | lang=en
-- "scanner_scanner_base_rationale_454": "Parse '22,80,443,8000-8100' into a sorted unique port list (1-65535)." | kind=entity | source=probe/scanner/scanner_base.py:L454 | neighbors=[parse_ports()] | lang=pt
-- "scanner_scanner_base_rationale_457": "Wrap an IPv6 literal in [] for a URL authority; leave v4/hostnames as-is.     'h" | kind=entity | source=probe/scanner/scanner_base.py:L457 | neighbors=[bracket_host()] | lang=en
-- "scanner_scanner_base_rationale_461": "Resolve `target` to a concrete (family, sockaddr) covering IPv4, IPv6, and     h" | kind=entity | source=probe/scanner/scanner_base.py:L461 | neighbors=[resolve()] | lang=en
+- "main_scripts_service_banner_main": "main()" | kind=code-symbol | source=probe/main_scripts/service_banner.py:L530 | neighbors=[service_banner.py]
+- "main_scripts_service_banner_rationale_1": "service_banner.py — grab service banners and identify the service behind a port." | kind=entity | source=probe/main_scripts/service_banner.py:L1 | neighbors=[service_banner.py]
+- "main_scripts_service_banner_rationale_116": "One probe-ladder rung on its own connection. Returns banner bytes, b\"\"         (" | kind=entity | source=probe/main_scripts/service_banner.py:L116 | neighbors=[._rung()]
+- "main_scripts_service_banner_rationale_130": "One probe-ladder rung on its own connection. Returns banner bytes, b\"\"         (" | kind=entity | source=probe/main_scripts/service_banner.py:L130 | neighbors=[._rung()]
+- "main_scripts_service_banner_rationale_133": "One probe-ladder rung on its own connection. Returns banner bytes, b\"\"         (" | kind=entity | source=probe/main_scripts/service_banner.py:L133 | neighbors=[._rung()]
+- "main_scripts_service_banner_rationale_236": "Soft-match collected bytes to {service, product, version}; None if unknown." | kind=entity | source=probe/main_scripts/service_banner.py:L236 | neighbors=[match_service()]
+- "main_scripts_service_banner_rationale_268": "Pull status code, the identifying headers and the <title> out of an     HTTP/RTS" | kind=entity | source=probe/main_scripts/service_banner.py:L268 | neighbors=[parse_http_head()]
+- "main_scripts_service_banner_rationale_349": "Read up to read_bytes: wait `first_wait` for the first segment, then         onl" | kind=entity | source=probe/main_scripts/service_banner.py:L349 | neighbors=[._read_some()]
+- "main_scripts_service_banner_rationale_368": "One probe-ladder rung on its own connection. Returns (banner, extra):         ba" | kind=entity | source=probe/main_scripts/service_banner.py:L368 | neighbors=[._rung()]
+- "main_scripts_service_banner_rationale_51": "A permissive client context for FINGERPRINTING only: no verification, any     ve" | kind=entity | source=probe/main_scripts/service_banner.py:L51 | neighbors=[_tls_context()]
+- "main_scripts_service_banner_rationale_82": "Soft-match collected bytes to {service, product, version}; None if unknown." | kind=entity | source=probe/main_scripts/service_banner.py:L82 | neighbors=[match_service()]
+- "main_scripts_service_banner_rationale_89": "Soft-match collected bytes to {service, product, version}; None if unknown." | kind=entity | source=probe/main_scripts/service_banner.py:L89 | neighbors=[match_service()]
+- "main_scripts_service_banner_rationale_92": "Soft-match collected bytes to {service, product, version}; None if unknown." | kind=entity | source=probe/main_scripts/service_banner.py:L92 | neighbors=[match_service()]
+- "main_scripts_service_banner_servicebannerscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/service_banner.py:L324 | neighbors=[ServiceBannerScanner]
+- "main_scripts_service_enum_rationale_1": "service_enum.py — enrichment / enumeration layer that runs AFTER host_discovery." | kind=entity | source=probe/main_scripts/service_enum.py:L1 | neighbors=[service_enum.py]
+- "main_scripts_service_enum_rationale_105": "Everything learned about one target beyond 'it is alive'." | kind=entity | source=probe/main_scripts/service_enum.py:L105 | neighbors=[Enrichment]
+- "main_scripts_service_enum_rationale_127": "Decode a DNS name (with 0xC0 compression) -> (name, next_offset)." | kind=entity | source=probe/main_scripts/service_enum.py:L127 | neighbors=[_dns_read_name()]
+- "main_scripts_service_enum_rationale_134": "Everything learned about one target beyond 'it is alive'." | kind=entity | source=probe/main_scripts/service_enum.py:L134 | neighbors=[Enrichment]
+- "main_scripts_service_enum_rationale_148": "Ask the host over multicast DNS (5353) for the PTR of its own address." | kind=entity | source=probe/main_scripts/service_enum.py:L148 | neighbors=[mdns_hostname()]
+- "main_scripts_service_enum_rationale_156": "Decode a DNS name (with 0xC0 compression) -> (name, next_offset)." | kind=entity | source=probe/main_scripts/service_enum.py:L156 | neighbors=[_dns_read_name()]
+- "main_scripts_service_enum_rationale_175": "NetBIOS first-level name encoding (16-byte name -> 32 nibble bytes)." | kind=entity | source=probe/main_scripts/service_enum.py:L175 | neighbors=[_nb_encode()]
+- "main_scripts_service_enum_rationale_177": "Ask the host over multicast DNS (5353) for the PTR of its own address." | kind=entity | source=probe/main_scripts/service_enum.py:L177 | neighbors=[mdns_hostname()]
+- "main_scripts_service_enum_rationale_185": "NBNS node-status (NBSTAT) query to UDP/137; return the workstation name." | kind=entity | source=probe/main_scripts/service_enum.py:L185 | neighbors=[netbios_name()]
+- "main_scripts_service_enum_rationale_204": "NetBIOS first-level name encoding (16-byte name -> 32 nibble bytes)." | kind=entity | source=probe/main_scripts/service_enum.py:L204 | neighbors=[_nb_encode()]
+- "main_scripts_service_enum_rationale_214": "NBNS node-status (NBSTAT) query to UDP/137; return the workstation name." | kind=entity | source=probe/main_scripts/service_enum.py:L214 | neighbors=[netbios_name()]
+- "main_scripts_service_enum_rationale_216": "Run the three name sources concurrently off the event loop." | kind=entity | source=probe/main_scripts/service_enum.py:L216 | neighbors=[resolve_hostnames()]
+- "main_scripts_service_enum_rationale_236": "One permissive TLS handshake: negotiated version + cert subject/issuer." | kind=entity | source=probe/main_scripts/service_enum.py:L236 | neighbors=[tls_info()]
+- "main_scripts_service_enum_rationale_245": "Run the three name sources concurrently off the event loop." | kind=entity | source=probe/main_scripts/service_enum.py:L245 | neighbors=[resolve_hostnames()]
+- "main_scripts_service_enum_rationale_259": "Which deprecated TLS/SSL versions the server still accepts (weak-config)." | kind=entity | source=probe/main_scripts/service_enum.py:L259 | neighbors=[tls_accepts_old()]
+- "main_scripts_service_enum_rationale_265": "One permissive TLS handshake: negotiated version + cert subject/issuer." | kind=entity | source=probe/main_scripts/service_enum.py:L265 | neighbors=[tls_info()]
+- "main_scripts_service_enum_rationale_288": "Which deprecated TLS/SSL versions the server still accepts (weak-config)." | kind=entity | source=probe/main_scripts/service_enum.py:L288 | neighbors=[tls_accepts_old()]
+- "main_scripts_service_enum_rationale_294": "Negotiate against 445; report whether SMBv1 is offered (defensive flag)." | kind=entity | source=probe/main_scripts/service_enum.py:L294 | neighbors=[smb_dialects()]
+- "main_scripts_service_enum_rationale_313": "Best-effort OS guess from voluntary evidence. Returns (label, confidence)." | kind=entity | source=probe/main_scripts/service_enum.py:L313 | neighbors=[guess_os()]
+- "main_scripts_service_enum_rationale_323": "Negotiate against 445; report whether SMBv1 is offered (defensive flag)." | kind=entity | source=probe/main_scripts/service_enum.py:L323 | neighbors=[smb_dialects()]
+- "main_scripts_service_enum_rationale_342": "Best-effort OS guess from voluntary evidence. Returns (label, confidence)." | kind=entity | source=probe/main_scripts/service_enum.py:L342 | neighbors=[guess_os()]
+- "main_scripts_service_enum_rationale_361": "Descriptive role tags from the open-port signature." | kind=entity | source=probe/main_scripts/service_enum.py:L361 | neighbors=[classify_roles()]
+- "main_scripts_service_enum_rationale_390": "Descriptive role tags from the open-port signature." | kind=entity | source=probe/main_scripts/service_enum.py:L390 | neighbors=[classify_roles()]
+- "main_scripts_service_enum_rationale_396": "Directly-connected subnets and default gateway(s) from the OS route table." | kind=entity | source=probe/main_scripts/service_enum.py:L396 | neighbors=[local_topology()]
+- "main_scripts_service_enum_rationale_425": "Directly-connected subnets and default gateway(s) from the OS route table." | kind=entity | source=probe/main_scripts/service_enum.py:L425 | neighbors=[local_topology()]
+- "main_scripts_service_enum_rationale_466": "Connect to one port and read whatever it voluntarily advertises." | kind=entity | source=probe/main_scripts/service_enum.py:L466 | neighbors=[._probe_port()]
 
 ## Instructions
 

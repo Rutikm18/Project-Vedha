@@ -1,4 +1,4 @@
-# Node Description Batch 210 of 336
+# Node Description Batch 210 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,51 +12,60 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
-Write every description in English (en). Do not switch languages.
+For an entity node (any other kind — e.g. a person, place, event, object),
+describe what the entity is and its role, grounded in its type, its
+relations (neighbors) and the provided citations/evidence — e.g.
+"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
+Ground entity descriptions in the citations/evidence when present; do not
+speculate beyond the context, so a node with no supporting context may be
+left out of the reply.
+LANGUAGE: each entry has a `lang=` marker giving the language of its source.
+Write that entry's description in EXACTLY that language. Do not translate to
+a single common language — match each node's source language individually.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "lib_auth_store_otpentry": "OtpEntry" | kind=code-symbol | source=manager/frontend/lib/auth-store.ts:L8 | neighbors=[auth-store.ts]
-- "lib_auth_store_otpstore": "otpStore" | kind=code-symbol | source=manager/frontend/lib/auth-store.ts:L15 | neighbors=[auth-store.ts]
-- "lib_auth_store_otpverifyresult": "OtpVerifyResult" | kind=code-symbol | source=manager/frontend/lib/auth-store.ts:L34 | neighbors=[auth-store.ts]
-- "lib_auth_store_sessionpayload": "SessionPayload" | kind=code-symbol | source=manager/frontend/lib/auth-store.ts:L17 | neighbors=[auth-store.ts]
-- "lib_backend_backenderror_constructor": ".constructor()" | kind=code-symbol | source=manager/frontend/lib/backend.ts:L18 | neighbors=[BackendError]
-- "lib_backend_backendopts": "BackendOpts" | kind=code-symbol | source=manager/frontend/lib/backend.ts:L25 | neighbors=[backend.ts]
-- "lib_backend_base": "BASE" | kind=code-symbol | source=manager/frontend/lib/backend.ts:L11 | neighbors=[backend.ts]
-- "lib_campaign_store_campaignstatus": "CampaignStatus" | kind=code-symbol | source=manager/frontend/lib/campaign-store.ts:L25 | neighbors=[campaign-store.ts]
-- "lib_campaign_store_campaignsummary": "CampaignSummary" | kind=code-symbol | source=manager/frontend/lib/campaign-store.ts:L58 | neighbors=[campaign-store.ts]
-- "lib_campaign_store_campaigntotals": "CampaignTotals" | kind=code-symbol | source=manager/frontend/lib/campaign-store.ts:L38 | neighbors=[campaign-store.ts]
-- "lib_campaign_store_default_dir": "DEFAULT_DIR" | kind=code-symbol | source=manager/frontend/lib/campaign-store.ts:L72 | neighbors=[campaign-store.ts]
-- "lib_campaign_store_normalizestage": "normalizeStage()" | kind=code-symbol | source=manager/frontend/lib/campaign-store.ts:L122 | neighbors=[campaign-store.ts]
-- "lib_campaign_store_stagesnapshot": "StageSnapshot" | kind=code-symbol | source=manager/frontend/lib/campaign-store.ts:L27 | neighbors=[campaign-store.ts]
-- "lib_campaign_store_stagestatus": "StageStatus" | kind=code-symbol | source=manager/frontend/lib/campaign-store.ts:L24 | neighbors=[campaign-store.ts]
-- "lib_cases_store_case": "Case" | kind=code-symbol | source=manager/frontend/lib/cases-store.ts:L24 | neighbors=[cases-store.ts]
-- "lib_cases_store_caseactivity": "CaseActivity" | kind=code-symbol | source=manager/frontend/lib/cases-store.ts:L14 | neighbors=[cases-store.ts]
-- "lib_cases_store_casecomment": "CaseComment" | kind=code-symbol | source=manager/frontend/lib/cases-store.ts:L7 | neighbors=[cases-store.ts]
-- "lib_cases_store_caseseverity": "CaseSeverity" | kind=code-symbol | source=manager/frontend/lib/cases-store.ts:L4 | neighbors=[cases-store.ts]
-- "lib_cases_store_casestatus": "CaseStatus" | kind=code-symbol | source=manager/frontend/lib/cases-store.ts:L5 | neighbors=[cases-store.ts]
-- "lib_cases_store_data_file": "DATA_FILE" | kind=code-symbol | source=manager/frontend/lib/cases-store.ts:L51 | neighbors=[cases-store.ts]
-- "lib_cases_store_getslainfo": "getSlaInfo()" | kind=code-symbol | source=manager/frontend/lib/cases-store.ts:L320 | neighbors=[cases-store.ts]
-- "lib_cases_store_seed_cases": "SEED_CASES" | kind=code-symbol | source=manager/frontend/lib/cases-store.ts:L61 | neighbors=[cases-store.ts]
-- "lib_cases_store_sla_hours": "SLA_HOURS" | kind=code-symbol | source=manager/frontend/lib/cases-store.ts:L53 | neighbors=[cases-store.ts]
-- "lib_clients_store_clientjiraconfig": "ClientJiraConfig" | kind=code-symbol | source=manager/frontend/lib/clients-store.ts:L8 | neighbors=[clients-store.ts]
-- "lib_clients_store_clientnotifyconfig": "ClientNotifyConfig" | kind=code-symbol | source=manager/frontend/lib/clients-store.ts:L15 | neighbors=[clients-store.ts]
-- "lib_clients_store_clientsettings": "ClientSettings" | kind=code-symbol | source=manager/frontend/lib/clients-store.ts:L21 | neighbors=[clients-store.ts]
-- "lib_clients_store_clientsfile": "ClientsFile" | kind=code-symbol | source=manager/frontend/lib/clients-store.ts:L36 | neighbors=[clients-store.ts]
-- "lib_clients_store_clientstatus": "ClientStatus" | kind=code-symbol | source=manager/frontend/lib/clients-store.ts:L6 | neighbors=[clients-store.ts]
-- "lib_clients_store_data_path": "DATA_PATH" | kind=code-symbol | source=manager/frontend/lib/clients-store.ts:L4 | neighbors=[clients-store.ts]
-- "lib_clients_store_seed": "SEED" | kind=code-symbol | source=manager/frontend/lib/clients-store.ts:L41 | neighbors=[clients-store.ts]
-- "lib_console_source_consolecapability": "ConsoleCapability" | kind=code-symbol | source=manager/frontend/lib/console-source.tsx:L48 | neighbors=[console-source.tsx]
-- "lib_console_source_consolequeryoptions": "ConsoleQueryOptions" | kind=code-symbol | source=manager/frontend/lib/console-source.tsx:L152 | neighbors=[console-source.tsx]
-- "lib_console_source_consolesource": "ConsoleSource" | kind=code-symbol | source=manager/frontend/lib/console-source.tsx:L56 | neighbors=[console-source.tsx]
-- "lib_console_source_consolesourcecontext": "ConsoleSourceContext" | kind=code-symbol | source=manager/frontend/lib/console-source.tsx:L103 | neighbors=[console-source.tsx]
-- "lib_console_source_consolesourceprovider": "ConsoleSourceProvider()" | kind=code-symbol | source=manager/frontend/lib/console-source.tsx:L105 | neighbors=[console-source.tsx]
-- "lib_console_source_operator_source": "OPERATOR_SOURCE" | kind=code-symbol | source=manager/frontend/lib/console-source.tsx:L66 | neighbors=[console-source.tsx]
-- "lib_console_source_portal_source": "PORTAL_SOURCE" | kind=code-symbol | source=manager/frontend/lib/console-source.tsx:L87 | neighbors=[console-source.tsx]
-- "lib_detection_store_attack_timeline": "ATTACK_TIMELINE" | kind=code-symbol | source=manager/frontend/lib/detection-store.ts:L22 | neighbors=[detection-store.ts]
-- "lib_detection_store_attackaction": "AttackAction" | kind=code-symbol | source=manager/frontend/lib/detection-store.ts:L8 | neighbors=[detection-store.ts]
-- "lib_detection_store_computecoverage": "computeCoverage()" | kind=code-symbol | source=manager/frontend/lib/detection-store.ts:L131 | neighbors=[detection-store.ts]
+- "agent_use_cases_rationale_240": "Coerce an int-or-numeric-string to int, else None (non-numeric)." | kind=entity | source=probe/agent/use_cases.py:L240 | neighbors=[_as_int()] | lang=en
+- "agent_use_cases_rationale_251": "Map a numeric use-case code → use_case_id (raises on an unknown code)." | kind=entity | source=probe/agent/use_cases.py:L251 | neighbors=[use_case_for_code()] | lang=en
+- "agent_use_cases_rationale_255": "Coerce an int-or-numeric-string to int, else None (non-numeric)." | kind=entity | source=probe/agent/use_cases.py:L255 | neighbors=[_as_int()] | lang=en
+- "agent_use_cases_rationale_262": "Accept an intensity as a number (1/2/3) OR a name; return the name.      None st" | kind=entity | source=probe/agent/use_cases.py:L262 | neighbors=[normalize_intensity()] | lang=en
+- "agent_use_cases_rationale_266": "Map a numeric use-case code → use_case_id (raises on an unknown code)." | kind=entity | source=probe/agent/use_cases.py:L266 | neighbors=[use_case_for_code()] | lang=en
+- "agent_use_cases_rationale_277": "Accept an intensity as a number (1/2/3) OR a name; return the name.      None st" | kind=entity | source=probe/agent/use_cases.py:L277 | neighbors=[normalize_intensity()] | lang=en
+- "agent_use_cases_rationale_281": "Return (scan_type, profile, intensity) for a job.      Resolution order:     1." | kind=entity | source=probe/agent/use_cases.py:L281 | neighbors=[resolve()] | lang=en
+- "agent_use_cases_rationale_296": "Return (scan_type, profile, intensity) for a job.      Resolution order:     1." | kind=entity | source=probe/agent/use_cases.py:L296 | neighbors=[resolve()] | lang=en
+- "agent_validation_rationale_1": "Pure helpers for controlled Probe capability and accuracy validation." | kind=entity | source=probe/agent/validation.py:L1 | neighbors=[validation.py] | lang=en
+- "agent_validation_rationale_107": "Validate the small, explicit inventory used for accuracy scoring." | kind=entity | source=probe/agent/validation.py:L107 | neighbors=[validate_ground_truth()] | lang=en
+- "agent_validation_rationale_206": "Score promoted inventory against explicit host/port/service/CVE truth." | kind=entity | source=probe/agent/validation.py:L206 | neighbors=[score_inventory()] | lang=en
+- "agent_validation_rationale_42": "Resolve suites plus explicit use-cases, preserving first-seen order." | kind=entity | source=probe/agent/validation.py:L42 | neighbors=[resolve_use_cases()] | lang=fr
+- "agent_validation_rationale_60": "Require every IP/CIDR target to be fully allowed and not excluded." | kind=entity | source=probe/agent/validation.py:L60 | neighbors=[validate_targets()] | lang=en
+- "agent_validation_rationale_94": "Return the conservative number of addresses represented by targets." | kind=entity | source=probe/agent/validation.py:L94 | neighbors=[target_address_count()] | lang=en
+- "ai_agent_agentdecisionengine_available": ".available()" | kind=code-symbol | source=manager/backend/app/ai/agent.py:L179 | neighbors=[AgentDecisionEngine] | lang=en
+- "ai_agent_agentdecisionengine_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/ai/agent.py:L163 | neighbors=[AgentDecisionEngine] | lang=en
+- "ai_agent_rationale_60": "Raised when the Anthropic SDK or API key is not configured." | kind=entity | source=manager/backend/app/ai/agent.py:L60 | neighbors=[AgentUnavailableError] | lang=en
+- "ai_hallucination_rationale_1": "HallucinationGuard — post-generation validation of LLM report text against the g" | kind=entity | source=manager/backend/app/ai/hallucination.py:L1 | neighbors=[hallucination.py] | lang=en
+- "ai_hallucination_rationale_109": "Run all relevant checks and return a combined verdict:         ``{valid, issues," | kind=entity | source=manager/backend/app/ai/hallucination.py:L109 | neighbors=[.validate()] | lang=en
+- "ai_hallucination_rationale_46": "Flag any CVE ID mentioned in ``text`` that isn't in the real finding set." | kind=entity | source=manager/backend/app/ai/hallucination.py:L46 | neighbors=[.validate_cve_claims()] | lang=en
+- "ai_hallucination_rationale_61": "Flag CVSS scores in the text that don't match any real score.          ``actual_" | kind=entity | source=manager/backend/app/ai/hallucination.py:L61 | neighbors=[.validate_cvss_scores()] | lang=en
+- "ai_hallucination_rationale_90": "Flag destructive-looking commands that shouldn't appear in a fix guide." | kind=entity | source=manager/backend/app/ai/hallucination.py:L90 | neighbors=[.validate_remediation_commands()] | lang=en
+- "ai_llm_report_llmreportgenerator_available": ".available()" | kind=code-symbol | source=manager/backend/app/ai/llm_report.py:L108 | neighbors=[LLMReportGenerator] | lang=en
+- "ai_llm_report_llmreportgenerator_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/ai/llm_report.py:L84 | neighbors=[LLMReportGenerator] | lang=en
+- "ai_llm_report_rationale_245": "Generate a STRUCTURED, OS-specific remediation plan (dict, not prose)." | kind=entity | source=manager/backend/app/ai/llm_report.py:L245 | neighbors=[.generate_remediation_plan()] | lang=pt
+- "ai_llm_report_rationale_246": "Generate a STRUCTURED, OS-specific remediation plan (dict, not prose)." | kind=entity | source=manager/backend/app/ai/llm_report.py:L246 | neighbors=[.generate_remediation_plan()] | lang=pt
+- "ai_llm_report_rationale_250": "Generate a STRUCTURED, OS-specific remediation plan (dict, not prose)." | kind=entity | source=manager/backend/app/ai/llm_report.py:L250 | neighbors=[.generate_remediation_plan()] | lang=pt
+- "ai_llm_report_rationale_356": "Build the structured-remediation prompt. Exploitation signals (EPSS,     exploit" | kind=entity | source=manager/backend/app/ai/llm_report.py:L356 | neighbors=[_remediation_plan_prompt()] | lang=en
+- "ai_llm_report_rationale_357": "Build the structured-remediation prompt. Exploitation signals (EPSS,     exploit" | kind=entity | source=manager/backend/app/ai/llm_report.py:L357 | neighbors=[_remediation_plan_prompt()] | lang=en
+- "ai_llm_report_rationale_361": "Build the structured-remediation prompt. Exploitation signals (EPSS,     exploit" | kind=entity | source=manager/backend/app/ai/llm_report.py:L361 | neighbors=[_remediation_plan_prompt()] | lang=en
+- "ai_llm_report_rationale_379": "Fault-tolerant JSON extraction from an LLM reply. Handles markdown fences     an" | kind=entity | source=manager/backend/app/ai/llm_report.py:L379 | neighbors=[_parse_json_response()] | lang=en
+- "ai_llm_report_rationale_382": "Fault-tolerant JSON extraction from an LLM reply. Handles markdown fences     an" | kind=entity | source=manager/backend/app/ai/llm_report.py:L382 | neighbors=[_parse_json_response()] | lang=en
+- "ai_llm_report_rationale_386": "Fault-tolerant JSON extraction from an LLM reply. Handles markdown fences     an" | kind=entity | source=manager/backend/app/ai/llm_report.py:L386 | neighbors=[_parse_json_response()] | lang=en
+- "ai_llm_report_rationale_406": "Extract a step's command(s) and drop any the guard flags as destructive.     Ret" | kind=entity | source=manager/backend/app/ai/llm_report.py:L406 | neighbors=[_safe_commands()] | lang=en
+- "ai_llm_report_rationale_409": "Extract a step's command(s) and drop any the guard flags as destructive.     Ret" | kind=entity | source=manager/backend/app/ai/llm_report.py:L409 | neighbors=[_safe_commands()] | lang=en
+- "ai_llm_report_rationale_413": "Extract a step's command(s) and drop any the guard flags as destructive.     Ret" | kind=entity | source=manager/backend/app/ai/llm_report.py:L413 | neighbors=[_safe_commands()] | lang=en
+- "ai_llm_report_rationale_424": "Coerce a parsed AI response into the same schema the KB emits, running every" | kind=entity | source=manager/backend/app/ai/llm_report.py:L424 | neighbors=[_normalize_ai_plan()] | lang=en
+- "ai_llm_report_rationale_427": "Coerce a parsed AI response into the same schema the KB emits, running every" | kind=entity | source=manager/backend/app/ai/llm_report.py:L427 | neighbors=[_normalize_ai_plan()] | lang=en
+- "ai_llm_report_rationale_431": "Coerce a parsed AI response into the same schema the KB emits, running every" | kind=entity | source=manager/backend/app/ai/llm_report.py:L431 | neighbors=[_normalize_ai_plan()] | lang=en
+- "ai_llm_report_rationale_48": "Raised when the Anthropic SDK or API key is not configured." | kind=entity | source=manager/backend/app/ai/llm_report.py:L48 | neighbors=[LLMUnavailableError] | lang=en
 
 ## Instructions
 

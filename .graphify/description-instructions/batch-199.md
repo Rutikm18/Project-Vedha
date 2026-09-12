@@ -1,4 +1,4 @@
-# Node Description Batch 200 of 336
+# Node Description Batch 200 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -26,46 +26,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "detection_prioritization_rationale_125": "The most-exposed value among an asset's services (external beats internal)." | kind=entity | source=manager/backend/app/detection/prioritization.py:L125 | neighbors=[_strongest_exposure()] | lang=en
-- "detection_prioritization_rationale_131": "(kev_db, epss_db) from the pinned snapshots, or (None, None) if the     detectio" | kind=entity | source=manager/backend/app/detection/prioritization.py:L131 | neighbors=[_load_offline_kev_epss()] | lang=en
-- "detection_prioritization_rationale_148": "(Re)compute risk_score for every still-relevant finding in the engagement." | kind=entity | source=manager/backend/app/detection/prioritization.py:L148 | neighbors=[prioritize_engagement_findings()] | lang=en
-- "detection_prioritization_rationale_58": "Score a posture finding with the Manager formula.      The historical name is re" | kind=entity | source=manager/backend/app/detection/prioritization.py:L58 | neighbors=[_posture_risk_on_manager_scale()] | lang=en
-- "detection_prioritization_rationale_74": "The unified 0-1000 composite (see module docstring). Pure + deterministic." | kind=entity | source=manager/backend/app/detection/prioritization.py:L74 | neighbors=[composite_risk_score()] | lang=en
-- "detection_prioritization_rationale_93": "The most-exposed value among an asset's services (external beats internal)." | kind=entity | source=manager/backend/app/detection/prioritization.py:L93 | neighbors=[_strongest_exposure()] | lang=en
-- "detection_prioritization_rationale_99": "(kev_db, epss_db) from the pinned snapshots, or (None, None) if the     detectio" | kind=entity | source=manager/backend/app/detection/prioritization.py:L99 | neighbors=[_load_offline_kev_epss()] | lang=en
-- "detection_resolution_rationale_1": "resolution.py — coverage-gated auto-resolution of findings.  Split into a PURE c" | kind=entity | source=manager/backend/app/detection/resolution.py:L1 | neighbors=[resolution.py] | lang=en
-- "detection_resolution_rationale_103": "Apply decide_resolution to every engine-managed open/confirmed finding     NOT t" | kind=entity | source=manager/backend/app/detection/resolution.py:L103 | neighbors=[evaluate_resolutions()] | lang=en
-- "detection_resolution_rationale_132": "Operator reopens an auto/'manually'-resolved finding. Mirrors the engine's     r" | kind=entity | source=manager/backend/app/detection/resolution.py:L132 | neighbors=[apply_manual_reopen()] | lang=en
-- "detection_resolution_rationale_141": "Operator reopens an auto/'manually'-resolved finding. Mirrors the engine's     r" | kind=entity | source=manager/backend/app/detection/resolution.py:L141 | neighbors=[apply_manual_reopen()] | lang=en
-- "detection_resolution_rationale_150": "Operator reopens an auto/'manually'-resolved finding. Mirrors the engine's     r" | kind=entity | source=manager/backend/app/detection/resolution.py:L150 | neighbors=[apply_manual_reopen()] | lang=en
-- "detection_resolution_rationale_28": "IP/host part of a probe target: '10.0.0.5:443' -> '10.0.0.5'.     Mirrors findin" | kind=entity | source=manager/backend/app/detection/resolution.py:L28 | neighbors=[host_of()] | lang=en
-- "detection_resolution_rationale_29": "IP/host part of a probe target: '10.0.0.5:443' -> '10.0.0.5'.     Mirrors findin" | kind=entity | source=manager/backend/app/detection/resolution.py:L29 | neighbors=[host_of()] | lang=en
-- "detection_resolution_rationale_36": "What this run PROVABLY re-observed. An asset is covered only if a     completed" | kind=entity | source=manager/backend/app/detection/resolution.py:L36 | neighbors=[build_coverage()] | lang=en
-- "detection_resolution_rationale_37": "What this run PROVABLY re-observed. An asset is covered only if a     completed" | kind=entity | source=manager/backend/app/detection/resolution.py:L37 | neighbors=[build_coverage()] | lang=en
-- "detection_resolution_rationale_58": "Consecutive coverage-proven clean runs required before auto-close.     critical/" | kind=entity | source=manager/backend/app/detection/resolution.py:L58 | neighbors=[resolution_threshold()] | lang=en
-- "detection_resolution_rationale_59": "Consecutive coverage-proven clean runs required before auto-close.     critical/" | kind=entity | source=manager/backend/app/detection/resolution.py:L59 | neighbors=[resolution_threshold()] | lang=en
-- "detection_resolution_rationale_68": "Consecutive coverage-proven clean runs required before auto-close.     critical/" | kind=entity | source=manager/backend/app/detection/resolution.py:L68 | neighbors=[resolution_threshold()] | lang=en
-- "detection_resolution_rationale_73": "Pure heart of auto-resolution. Given whether the finding's asset was     re-obse" | kind=entity | source=manager/backend/app/detection/resolution.py:L73 | neighbors=[decide_resolution()] | lang=en
-- "detection_resolution_rationale_74": "Pure heart of auto-resolution. Given whether the finding's asset was     re-obse" | kind=entity | source=manager/backend/app/detection/resolution.py:L74 | neighbors=[decide_resolution()] | lang=en
-- "detection_resolution_rationale_83": "Pure heart of auto-resolution. Given whether the finding's asset was     re-obse" | kind=entity | source=manager/backend/app/detection/resolution.py:L83 | neighbors=[decide_resolution()] | lang=en
-- "detection_resolution_rationale_93": "Apply decide_resolution to every engine-managed open/confirmed finding     NOT t" | kind=entity | source=manager/backend/app/detection/resolution.py:L93 | neighbors=[evaluate_resolutions()] | lang=en
-- "detection_resolution_rationale_94": "Apply decide_resolution to every engine-managed open/confirmed finding     NOT t" | kind=entity | source=manager/backend/app/detection/resolution.py:L94 | neighbors=[evaluate_resolutions()] | lang=en
-- "detection_siem_build_siem_engine": "build_siem_engine()" | kind=code-symbol | source=manager/backend/app/detection/siem.py:L249 | neighbors=[siem.py] | lang=en
-- "detection_siem_rationale_1": "SIEM query engines — abstract interface + Splunk / Microsoft Sentinel / Elastic" | kind=entity | source=manager/backend/app/detection/siem.py:L1 | neighbors=[siem.py] | lang=en
-- "detection_siem_rationale_135": "Microsoft Sentinel via the Azure Monitor Logs query REST API with KQL.     confi" | kind=entity | source=manager/backend/app/detection/siem.py:L135 | neighbors=[SentinelSIEM] | lang=en
-- "detection_siem_rationale_185": "Elasticsearch via the _search API (KQL/EQL-style bool query).     config: {base_" | kind=entity | source=manager/backend/app/detection/siem.py:L185 | neighbors=[ElasticSIEM] | lang=en
-- "detection_siem_rationale_51": "Abstract SIEM connector." | kind=entity | source=manager/backend/app/detection/siem.py:L51 | neighbors=[SIEMQueryEngine] | lang=en
-- "detection_siem_rationale_82": "Splunk via the REST search endpoint (``/services/search/jobs/export``) with an" | kind=entity | source=manager/backend/app/detection/siem.py:L82 | neighbors=[SplunkSIEM] | lang=en
-- "detection_siem_siemqueryengine_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/detection/siem.py:L55 | neighbors=[SIEMQueryEngine] | lang=en
-- "detection_siem_siemqueryengine_query_alerts": ".query_alerts()" | kind=code-symbol | source=manager/backend/app/detection/siem.py:L60 | neighbors=[SIEMQueryEngine] | lang=en
-- "detection_sigma_rationale_1": "SigmaRuleGenerator — produces a Sigma detection rule (YAML) for a MITRE techniqu" | kind=entity | source=manager/backend/app/detection/sigma.py:L1 | neighbors=[sigma.py] | lang=pt
-- "detection_sigma_rationale_114": "Return a Sigma rule (YAML string) for the technique, customised with the" | kind=entity | source=manager/backend/app/detection/sigma.py:L114 | neighbors=[.generate_sigma_for_technique()] | lang=en
-- "detection_vantage_fusion_rationale_1": "vantage_fusion.py — fuse the exposure_matrix results of MULTIPLE probes.  A sing" | kind=entity | source=manager/backend/app/detection/vantage_fusion.py:L1 | neighbors=[vantage_fusion.py] | lang=en
-- "detection_vantage_fusion_rationale_119": "(ip, proto, port) → fused exposure verdict, ready to stamp onto Service rows." | kind=entity | source=manager/backend/app/detection/vantage_fusion.py:L119 | neighbors=[fused_service_exposure()] | lang=en
-- "detection_vantage_fusion_rationale_38": "(ip → {(proto,port): {vantage: status}}, ip → set(vantages))." | kind=entity | source=manager/backend/app/detection/vantage_fusion.py:L38 | neighbors=[_collect()] | lang=en
-- "detection_vantage_fusion_rationale_81": "Fuse several probes' exposure_matrix results into one per-target matrix.      `r" | kind=entity | source=manager/backend/app/detection/vantage_fusion.py:L81 | neighbors=[fuse_exposure_results()] | lang=en
-- "detection_verification_rationale_1": "verification.py — normalized, dashboard-facing verification verdict.  The determ" | kind=entity | source=manager/backend/app/detection/verification.py:L1 | neighbors=[verification.py] | lang=en
-- "detection_verification_rationale_46": "Deterministic passive verdict from a detection finding's evidence dict." | kind=entity | source=manager/backend/app/detection/verification.py:L46 | neighbors=[compute_verdict()] | lang=en
+- "agent_deps_rationale_1": "deps.py — Layer-2 dependency install (Phase 7).  Create the venv and pip-install" | kind=entity | source=probe/agent/deps.py:L1 | neighbors=[deps.py] | lang=en
+- "agent_device_identity_encode_key": "encode_key()" | kind=code-symbol | source=probe/agent/device_identity.py:L26 | neighbors=[device_identity.py] | lang=en
+- "agent_device_identity_generate_signing_identity": "generate_signing_identity()" | kind=code-symbol | source=probe/agent/device_identity.py:L12 | neighbors=[device_identity.py] | lang=en
+- "agent_device_identity_rationale_38": "Verify a Manager-signed policy and return its public key for TOFU pinning." | kind=entity | source=probe/agent/device_identity.py:L38 | neighbors=[verify_site_policy()] | lang=en
+- "agent_device_identity_sign_b64": "sign_b64()" | kind=code-symbol | source=probe/agent/device_identity.py:L21 | neighbors=[device_identity.py] | lang=en
+- "agent_device_identity_signing_public_from_private": "signing_public_from_private()" | kind=code-symbol | source=probe/agent/device_identity.py:L17 | neighbors=[device_identity.py] | lang=en
+- "agent_doctor_exit_code": "exit_code()" | kind=code-symbol | source=probe/agent/doctor.py:L79 | neighbors=[doctor.py] | lang=en
+- "agent_doctor_format_report": "format_report()" | kind=code-symbol | source=probe/agent/doctor.py:L83 | neighbors=[doctor.py] | lang=en
+- "agent_doctor_rationale_1": "doctor.py — real self-diagnosis: pass / warn / fail with a remediation string." | kind=entity | source=probe/agent/doctor.py:L1 | neighbors=[doctor.py] | lang=en
+- "agent_doctor_rationale_117": "Pure: server clock offset (seconds) from an HTTP Date header vs local now." | kind=entity | source=probe/agent/doctor.py:L117 | neighbors=[_offset_from_date_header()] | lang=en
+- "agent_engine_rationale_1": "engine.py — adapt a manager scan job to scanner_module's workflow engine and ret" | kind=entity | source=probe/agent/engine.py:L1 | neighbors=[engine.py] | lang=en
+- "agent_engine_rationale_145": "Count concrete open services, not generic host-liveness observations." | kind=entity | source=probe/agent/engine.py:L145 | neighbors=[_count_open_port_facts()] | lang=en
+- "agent_engine_rationale_148": "syn' for wide sweeps (deep intensity / full-port audit), else 'connect'." | kind=entity | source=probe/agent/engine.py:L148 | neighbors=[_scan_method_for()] | lang=en
+- "agent_engine_rationale_154": "syn' for wide sweeps (deep intensity / full-port audit), else 'connect'." | kind=entity | source=probe/agent/engine.py:L154 | neighbors=[_scan_method_for()] | lang=en
+- "agent_engine_rationale_157": "Execute a scan and return the enriched result bundle.      Args:         scan_ty" | kind=entity | source=probe/agent/engine.py:L157 | neighbors=[run_scan()] | lang=en
+- "agent_engine_rationale_158": "Coerce val to float and clamp to [lo, hi]; fall back to default on junk.     Def" | kind=entity | source=probe/agent/engine.py:L158 | neighbors=[_clamp()] | lang=en
+- "agent_engine_rationale_163": "syn' for wide sweeps (deep intensity / full-port audit), else 'connect'." | kind=entity | source=probe/agent/engine.py:L163 | neighbors=[_scan_method_for()] | lang=en
+- "agent_engine_rationale_168": "Return the effective whole-job deadline; callers can only reduce it." | kind=entity | source=probe/agent/engine.py:L168 | neighbors=[_job_runtime_seconds()] | lang=en
+- "agent_engine_rationale_179": "syn' for wide sweeps (deep intensity / full-port audit), else 'connect'." | kind=entity | source=probe/agent/engine.py:L179 | neighbors=[_scan_method_for()] | lang=en
+- "agent_engine_rationale_181": "Coerce val to float and clamp to [lo, hi]; fall back to default on junk.     Def" | kind=entity | source=probe/agent/engine.py:L181 | neighbors=[_clamp()] | lang=en
+- "agent_engine_rationale_197": "Coerce val to float and clamp to [lo, hi]; fall back to default on junk.     Def" | kind=entity | source=probe/agent/engine.py:L197 | neighbors=[_clamp()] | lang=en
+- "agent_engine_rationale_206": "Coerce val to float and clamp to [lo, hi]; fall back to default on junk.     Def" | kind=entity | source=probe/agent/engine.py:L206 | neighbors=[_clamp()] | lang=en
+- "agent_engine_rationale_207": "Return the effective whole-job deadline; callers can only reduce it." | kind=entity | source=probe/agent/engine.py:L207 | neighbors=[_job_runtime_seconds()] | lang=en
+- "agent_engine_rationale_211": "Translate operator-supplied job params into run_engagement() kwargs.      This i" | kind=entity | source=probe/agent/engine.py:L211 | neighbors=[_tuning_from_params()] | lang=en
+- "agent_engine_rationale_216": "Return the effective whole-job deadline; callers can only reduce it." | kind=entity | source=probe/agent/engine.py:L216 | neighbors=[_job_runtime_seconds()] | lang=en
+- "agent_engine_rationale_217": "Translate operator-supplied job params into run_engagement() kwargs.      This i" | kind=entity | source=probe/agent/engine.py:L217 | neighbors=[_tuning_from_params()] | lang=en
+- "agent_engine_rationale_221": "Coerce val to float and clamp to [lo, hi]; fall back to default on junk.     Def" | kind=entity | source=probe/agent/engine.py:L221 | neighbors=[_clamp()] | lang=en
+- "agent_engine_rationale_222": "Coerce val to float and clamp to [lo, hi]; fall back to default on junk.     Def" | kind=entity | source=probe/agent/engine.py:L222 | neighbors=[_clamp()] | lang=en
+- "agent_engine_rationale_226": "Translate operator-supplied job params into run_engagement() kwargs.      This i" | kind=entity | source=probe/agent/engine.py:L226 | neighbors=[_tuning_from_params()] | lang=en
+- "agent_engine_rationale_231": "Return the effective whole-job deadline; callers can only reduce it." | kind=entity | source=probe/agent/engine.py:L231 | neighbors=[_job_runtime_seconds()] | lang=en
+- "agent_engine_rationale_232": "Return the effective whole-job deadline; callers can only reduce it." | kind=entity | source=probe/agent/engine.py:L232 | neighbors=[_job_runtime_seconds()] | lang=en
+- "agent_engine_rationale_236": "Count unique open network endpoints, not every confirming scanner fact." | kind=entity | source=probe/agent/engine.py:L236 | neighbors=[_count_open_port_facts()] | lang=en
+- "agent_engine_rationale_241": "Translate operator-supplied job params into run_engagement() kwargs.      This i" | kind=entity | source=probe/agent/engine.py:L241 | neighbors=[_tuning_from_params()] | lang=en
+- "agent_engine_rationale_242": "Translate operator-supplied job params into run_engagement() kwargs.      This i" | kind=entity | source=probe/agent/engine.py:L242 | neighbors=[_tuning_from_params()] | lang=en
+- "agent_engine_rationale_257": "Build promotion-ready hosts without duplicating scanner facts per port." | kind=entity | source=probe/agent/engine.py:L257 | neighbors=[_hosts_from_facts()] | lang=it
+- "agent_engine_rationale_267": "Count unique open network endpoints, not every confirming scanner fact." | kind=entity | source=probe/agent/engine.py:L267 | neighbors=[_count_open_port_facts()] | lang=en
+- "agent_engine_rationale_277": "Count unique open network endpoints, not every confirming scanner fact." | kind=entity | source=probe/agent/engine.py:L277 | neighbors=[_count_open_port_facts()] | lang=en
+- "agent_engine_rationale_283": "Count unique open network endpoints, not every confirming scanner fact." | kind=entity | source=probe/agent/engine.py:L283 | neighbors=[_count_open_port_facts()] | lang=en
+- "agent_engine_rationale_288": "Build promotion-ready hosts without duplicating scanner facts per port." | kind=entity | source=probe/agent/engine.py:L288 | neighbors=[_hosts_from_facts()] | lang=it
+- "agent_engine_rationale_29": "Single factory for error result dicts — no copy-paste." | kind=entity | source=probe/agent/engine.py:L29 | neighbors=[_error_result()] | lang=en
 
 ## Instructions
 

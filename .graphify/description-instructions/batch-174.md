@@ -1,4 +1,4 @@
-# Node Description Batch 175 of 336
+# Node Description Batch 175 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -9,60 +9,54 @@ your JSON answer to the answer file.
 You are documenting nodes in a knowledge graph.
 For each entry below, write ONE concise factual plain-language sentence
 describing what it is or does. Use only the provided context.
-For an entity node (any other kind — e.g. a person, place, event, object),
-describe what the entity is and its role, grounded in its type, its
-relations (neighbors) and the provided citations/evidence — e.g.
-"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
-Ground entity descriptions in the citations/evidence when present; do not
-speculate beyond the context, so a node with no supporting context may be
-left out of the reply.
-LANGUAGE: each entry has a `lang=` marker giving the language of its source.
-Write that entry's description in EXACTLY that language. Do not translate to
-a single common language — match each node's source language individually.
+For a code symbol (kind=code-symbol — a function, class, or constant),
+describe what the function/symbol does based on its name, source location
+and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
+Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "agent_agent_rationale_559": "Detect common debugging/tracing tools.  Informational only — does     NOT block" | kind=entity | source=probe/agent/agent.py:L559 | neighbors=[_check_anti_debug()] | lang=en
-- "agent_agent_rationale_564": "Detect common debugging/tracing tools.  Informational only — does     NOT block" | kind=entity | source=probe/agent/agent.py:L564 | neighbors=[_check_anti_debug()] | lang=en
-- "agent_agent_rationale_57": "Recognize only explicit single-host development/Compose manager names." | kind=entity | source=probe/agent/agent.py:L57 | neighbors=[_is_local_manager_url()] | lang=en
-- "agent_agent_rationale_574": "Release a staged job only after the manager confirms its claim." | kind=entity | source=probe/agent/agent.py:L574 | neighbors=[_ws_take_confirmed_job()] | lang=en
-- "agent_agent_rationale_575": "Release a staged job only after the manager confirms its claim." | kind=entity | source=probe/agent/agent.py:L575 | neighbors=[_ws_take_confirmed_job()] | lang=en
-- "agent_agent_rationale_58": "Return an integer environment setting constrained to a safe range." | kind=entity | source=probe/agent/agent.py:L58 | neighbors=[_bounded_env_int()] | lang=en
-- "agent_agent_rationale_586": "Send periodic heartbeats over WebSocket." | kind=entity | source=probe/agent/agent.py:L586 | neighbors=[_ws_heartbeat_sender()] | lang=en
-- "agent_agent_rationale_587": "Run an HTTP-claimed job while renewing its manager lease." | kind=entity | source=probe/agent/agent.py:L587 | neighbors=[_run_polled_job_with_heartbeats()] | lang=en
-- "agent_agent_rationale_59": "Return an integer environment setting constrained to a safe range." | kind=entity | source=probe/agent/agent.py:L59 | neighbors=[_bounded_env_int()] | lang=en
-- "agent_agent_rationale_593": "Send periodic heartbeats over WebSocket." | kind=entity | source=probe/agent/agent.py:L593 | neighbors=[_ws_heartbeat_sender()] | lang=en
-- "agent_agent_rationale_599": "Run an HTTP-claimed job while renewing its manager lease." | kind=entity | source=probe/agent/agent.py:L599 | neighbors=[_run_polled_job_with_heartbeats()] | lang=en
-- "agent_agent_rationale_601": "Retry durable result files using the acknowledged HTTP result path." | kind=entity | source=probe/agent/agent.py:L601 | neighbors=[_flush_spool_over_http()] | lang=en
-- "agent_agent_rationale_607": "Load the probe's X25519 identity from persistent state, or create one.      Retu" | kind=entity | source=probe/agent/agent.py:L607 | neighbors=[_load_or_create_identity()] | lang=en
-- "agent_agent_rationale_609": "Run one job while keeping WS status/result frames best-effort." | kind=entity | source=probe/agent/agent.py:L609 | neighbors=[_ws_run_job()] | lang=en
-- "agent_agent_rationale_612": "Load the probe's X25519 identity from persistent state, or create one.      Retu" | kind=entity | source=probe/agent/agent.py:L612 | neighbors=[_load_or_create_identity()] | lang=en
-- "agent_agent_rationale_614": "Run all startup security checks before any network I/O.      Order matters: HW b" | kind=entity | source=probe/agent/agent.py:L614 | neighbors=[_startup_gauntlet()] | lang=pt
-- "agent_agent_rationale_621": "Run all startup security checks before any network I/O.      Order matters: HW b" | kind=entity | source=probe/agent/agent.py:L621 | neighbors=[_startup_gauntlet()] | lang=pt
-- "agent_agent_rationale_63": "Load key=value lines from probe.env for dev convenience." | kind=entity | source=probe/agent/agent.py:L63 | neighbors=[_load_env()] | lang=en
-- "agent_agent_rationale_649": "Persistent WebSocket push loop.      Returns False if WebSocket is unavailable (" | kind=entity | source=probe/agent/agent.py:L649 | neighbors=[_run_ws_push_loop()] | lang=en
-- "agent_agent_rationale_65": "Load key=value lines from probe.env for dev convenience." | kind=entity | source=probe/agent/agent.py:L65 | neighbors=[_load_env()] | lang=en
-- "agent_agent_rationale_659": "Run an HTTP-claimed job while renewing its manager lease." | kind=entity | source=probe/agent/agent.py:L659 | neighbors=[_run_polled_job_with_heartbeats()] | lang=en
-- "agent_agent_rationale_661": "Persistent WebSocket push loop.      Returns False if WebSocket is unavailable (" | kind=entity | source=probe/agent/agent.py:L661 | neighbors=[_run_ws_push_loop()] | lang=en
-- "agent_agent_rationale_662": "Detect common debugging/tracing tools.  Informational only — does     NOT block" | kind=entity | source=probe/agent/agent.py:L662 | neighbors=[_check_anti_debug()] | lang=en
-- "agent_agent_rationale_667": "Return (agent_id, token, fresh, identity_sk, identity_pk, public_key_b64)." | kind=entity | source=probe/agent/agent.py:L667 | neighbors=[_obtain_identity()] | lang=en
-- "agent_agent_rationale_668": "Detect common debugging/tracing tools.  Informational only — does     NOT block" | kind=entity | source=probe/agent/agent.py:L668 | neighbors=[_check_anti_debug()] | lang=en
-- "agent_agent_rationale_669": "Poll pending jobs even while WS is connected.      This makes result delivery re" | kind=entity | source=probe/agent/agent.py:L669 | neighbors=[_ws_http_poll_fallback()] | lang=en
-- "agent_agent_rationale_67": "Recognize only explicit single-host development/Compose manager names." | kind=entity | source=probe/agent/agent.py:L67 | neighbors=[_is_local_manager_url()] | lang=en
-- "agent_agent_rationale_670": "Poll pending jobs even while WS is connected.      This makes result delivery re" | kind=entity | source=probe/agent/agent.py:L670 | neighbors=[_ws_http_poll_fallback()] | lang=en
-- "agent_agent_rationale_672": "Return (agent_id, token, fresh, identity_sk, identity_pk, public_key_b64)." | kind=entity | source=probe/agent/agent.py:L672 | neighbors=[_obtain_identity()] | lang=en
-- "agent_agent_rationale_68": "Recognize only explicit single-host development/Compose manager names." | kind=entity | source=probe/agent/agent.py:L68 | neighbors=[_is_local_manager_url()] | lang=en
-- "agent_agent_rationale_692": "Acknowledge an offer without executing it before claim confirmation." | kind=entity | source=probe/agent/agent.py:L692 | neighbors=[_ws_stage_job_offer()] | lang=en
-- "agent_agent_rationale_706": "Send periodic heartbeats over WebSocket." | kind=entity | source=probe/agent/agent.py:L706 | neighbors=[_ws_heartbeat_sender()] | lang=en
-- "agent_agent_rationale_707": "Send periodic heartbeats over WebSocket." | kind=entity | source=probe/agent/agent.py:L707 | neighbors=[_ws_heartbeat_sender()] | lang=en
-- "agent_agent_rationale_716": "Load the probe's X25519 identity from persistent state, or create one.      Retu" | kind=entity | source=probe/agent/agent.py:L716 | neighbors=[_load_or_create_identity()] | lang=en
-- "agent_agent_rationale_721": "Persistent WebSocket push loop.      Returns False if WebSocket is unavailable (" | kind=entity | source=probe/agent/agent.py:L721 | neighbors=[_run_ws_push_loop()] | lang=en
-- "agent_agent_rationale_723": "Retry durable result files using the acknowledged HTTP result path." | kind=entity | source=probe/agent/agent.py:L723 | neighbors=[_flush_spool_over_http()] | lang=en
-- "agent_agent_rationale_736": "Run all startup security checks before any network I/O.      Order matters: HW b" | kind=entity | source=probe/agent/agent.py:L736 | neighbors=[_startup_gauntlet()] | lang=pt
-- "agent_agent_rationale_737": "Run all startup security checks before any network I/O.      Order matters: HW b" | kind=entity | source=probe/agent/agent.py:L737 | neighbors=[_startup_gauntlet()] | lang=pt
-- "agent_agent_rationale_744": "Run one job while keeping WS status/result frames best-effort." | kind=entity | source=probe/agent/agent.py:L744 | neighbors=[_ws_run_job()] | lang=en
-- "agent_agent_rationale_75": "Load key=value lines from probe.env for dev convenience." | kind=entity | source=probe/agent/agent.py:L75 | neighbors=[_load_env()] | lang=en
+- "tests_test_instance_lock_testmutualexclusion_test_second_holder_in_another_process_is_refused": ".test_second_holder_in_another_process_is_refused()" | kind=code-symbol | source=probe/tests/test_instance_lock.py:L45 | neighbors=[Must be a REAL second process: flock is…, TestMutualExclusion]
+- "tests_test_integration_fake_run_scan": "_fake_run_scan()" | kind=code-symbol | source=probe/tests/test_integration.py:L41 | neighbors=[test_integration.py, Return a minimal valid scan result (no …]
+- "tests_test_integration_testfulljoblifecycle_test_complete_flow_with_encrypted_scope": ".test_complete_flow_with_encrypted_scope()" | kind=code-symbol | source=probe/tests/test_integration.py:L314 | neighbors=[Simulate the full probe lifecycle from …, TestFullJobLifecycle]
+- "tests_test_integration_testfulljoblifecycle_test_job_ot_passive_profile": ".test_job_ot_passive_profile()" | kind=code-symbol | source=probe/tests/test_integration.py:L408 | neighbors=[OT passive profile resolves correctly., TestFullJobLifecycle]
+- "tests_test_integration_testfulljoblifecycle_test_job_rejected_all_targets_out_of_scope": ".test_job_rejected_all_targets_out_of_scope()" | kind=code-symbol | source=probe/tests/test_integration.py:L382 | neighbors=[All targets outside scope → job is reje…, TestFullJobLifecycle]
+- "tests_test_integration_testidentityandencryption_test_different_key_cannot_decrypt": ".test_different_key_cannot_decrypt()" | kind=code-symbol | source=probe/tests/test_integration.py:L91 | neighbors=[A different probe cannot decrypt scope …, TestIdentityAndEncryption]
+- "tests_test_integration_testidentityandencryption_test_full_identity_lifecycle": ".test_full_identity_lifecycle()" | kind=code-symbol | source=probe/tests/test_integration.py:L67 | neighbors=[Generate identity → encrypt scope → dec…, TestIdentityAndEncryption]
+- "tests_test_integration_testidentityandencryption_test_scope_encryption_roundtrip": ".test_scope_encryption_roundtrip()" | kind=code-symbol | source=probe/tests/test_integration.py:L78 | neighbors=[Manager encrypts → probe decrypts., TestIdentityAndEncryption]
+- "tests_test_integration_teststartupgauntlet_test_gauntlet_hw_bind_blocks": ".test_gauntlet_hw_bind_blocks()" | kind=code-symbol | source=probe/tests/test_integration.py:L442 | neighbors=[Wrong HW fingerprint blocks startup., TestStartupGauntlet]
+- "tests_test_integration_teststartupgauntlet_test_gauntlet_skips_in_dev_mode": ".test_gauntlet_skips_in_dev_mode()" | kind=code-symbol | source=probe/tests/test_integration.py:L434 | neighbors=[With LICENSE_ENFORCED=false, gauntlet r…, TestStartupGauntlet]
+- "tests_test_integration_testtaskrunnerwithencryptedscope_test_decrypts_encrypted_scope_from_job": ".test_decrypts_encrypted_scope_from_job()" | kind=code-symbol | source=probe/tests/test_integration.py:L103 | neighbors=[Job carries encrypted_scope → TaskRunne…, TestTaskRunnerWithEncryptedScope]
+- "tests_test_integration_testtaskrunnerwithencryptedscope_test_falls_back_when_decryption_fails": ".test_falls_back_when_decryption_fails()" | kind=code-symbol | source=probe/tests/test_integration.py:L135 | neighbors=[Wrong key → decryption fails → graceful…, TestTaskRunnerWithEncryptedScope]
+- "tests_test_integration_testtransportwithidentity_test_register_without_public_key": ".test_register_without_public_key()" | kind=code-symbol | source=probe/tests/test_integration.py:L259 | neighbors=[Backward compat: registration without p…, TestTransportWithIdentity]
+- "tests_test_integrations_testlistintegrations": "TestListIntegrations" | kind=code-symbol | source=manager/backend/tests/test_integrations.py:L63 | neighbors=[test_integrations.py, .test_list_masks_secret()]
+- "tests_test_integrations_testlistintegrations_test_list_masks_secret": ".test_list_masks_secret()" | kind=code-symbol | source=manager/backend/tests/test_integrations.py:L64 | neighbors=[TestListIntegrations, _operator()]
+- "tests_test_intensity_budget_testbudgets_test_deep_budget_exceeds_a_healthy_full_sweep": ".test_deep_budget_exceeds_a_healthy_full_sweep()" | kind=code-symbol | source=probe/tests/test_intensity_budget.py:L36 | neighbors=[A full 65,535-port sweep runs ~21 min a…, TestBudgets]
+- "tests_test_intensity_budget_testbudgets_test_every_preset_declares_the_key": ".test_every_preset_declares_the_key()" | kind=code-symbol | source=probe/tests/test_intensity_budget.py:L31 | neighbors=[Absent-vs-None must not be ambiguous at…, TestBudgets]
+- "tests_test_intensity_budget_testbudgets_test_light_is_unbounded": ".test_light_is_unbounded()" | kind=code-symbol | source=probe/tests/test_intensity_budget.py:L23 | neighbors=[Already bounded by breadth — ~15 ports., TestBudgets]
+- "tests_test_intensity_budget_testbudgets_test_standard_is_unbounded": ".test_standard_is_unbounded()" | kind=code-symbol | source=probe/tests/test_intensity_budget.py:L27 | neighbors=[Already bounded by the profile's own po…, TestBudgets]
+- "tests_test_intensity_budget_testtuningtranslation_test_override_can_bound_an_otherwise_unbounded_preset": ".test_override_can_bound_an_otherwise_unbounded_preset()" | kind=code-symbol | source=probe/tests/test_intensity_budget.py:L72 | neighbors=[An operator running standard against a …, TestTuningTranslation]
+- "tests_test_intensity_budget_testtuningtranslation_test_override_is_clamped_to_a_safe_envelope": ".test_override_is_clamped_to_a_safe_envelope()" | kind=code-symbol | source=probe/tests/test_intensity_budget.py:L64 | neighbors=[Same clamping discipline as every other…, TestTuningTranslation]
+- "tests_test_intensity_budget_testtuningtranslation_test_run_engagement_accepts_the_kwarg": ".test_run_engagement_accepts_the_kwarg()" | kind=code-symbol | source=probe/tests/test_intensity_budget.py:L78 | neighbors=[Guards the seam: a tuning key run_engag…, TestTuningTranslation]
+- "tests_test_ipmi_scanner_testipmifindings_test_cipher_zero_is_critical": ".test_cipher_zero_is_critical()" | kind=code-symbol | source=probe/tests/test_ipmi_scanner.py:L67 | neighbors=[TestIPMIFindings, ._fact()]
+- "tests_test_ipmi_scanner_testipmifindings_test_reachable_bmc_is_low": ".test_reachable_bmc_is_low()" | kind=code-symbol | source=probe/tests/test_ipmi_scanner.py:L71 | neighbors=[TestIPMIFindings, ._fact()]
+- "tests_test_ipmi_scanner_testipmiscanner_test_cipher_zero_open": ".test_cipher_zero_open()" | kind=code-symbol | source=probe/tests/test_ipmi_scanner.py:L49 | neighbors=[TestIPMIScanner, ._sc()]
+- "tests_test_ipmi_scanner_testipmiscanner_test_no_ipmi_filtered": ".test_no_ipmi_filtered()" | kind=code-symbol | source=probe/tests/test_ipmi_scanner.py:L56 | neighbors=[TestIPMIScanner, ._sc()]
+- "tests_test_ipmi_scanner_testparity": "TestParity" | kind=code-symbol | source=probe/tests/test_ipmi_scanner.py:L76 | neighbors=[test_ipmi_scanner.py, .test_main_scripts()]
+- "tests_test_ipmi_scanner_testwireformat_test_parse_nonzero_status_is_safe": ".test_parse_nonzero_status_is_safe()" | kind=code-symbol | source=probe/tests/test_ipmi_scanner.py:L35 | neighbors=[TestWireFormat, _resp()]
+- "tests_test_ipmi_scanner_testwireformat_test_parse_status_zero_is_cipher_zero": ".test_parse_status_zero_is_cipher_zero()" | kind=code-symbol | source=probe/tests/test_ipmi_scanner.py:L31 | neighbors=[TestWireFormat, _resp()]
+- "tests_test_ipv6_discovery_testdiscoverfiltering_test_dedups": ".test_dedups()" | kind=code-symbol | source=probe/tests/test_ipv6_discovery.py:L64 | neighbors=[TestDiscoverFiltering, ._patch()]
+- "tests_test_ipv6_discovery_testdiscoverfiltering_test_excludes_own_addresses": ".test_excludes_own_addresses()" | kind=code-symbol | source=probe/tests/test_ipv6_discovery.py:L56 | neighbors=[TestDiscoverFiltering, ._patch()]
+- "tests_test_ipv6_discovery_testdiscoverfiltering_test_keeps_usable_drops_dead_states": ".test_keeps_usable_drops_dead_states()" | kind=code-symbol | source=probe/tests/test_ipv6_discovery.py:L44 | neighbors=[TestDiscoverFiltering, ._patch()]
+- "tests_test_ipv6_discovery_testdiscoverfiltering_test_link_local_can_be_excluded": ".test_link_local_can_be_excluded()" | kind=code-symbol | source=probe/tests/test_ipv6_discovery.py:L69 | neighbors=[TestDiscoverFiltering, ._patch()]
+- "tests_test_ipv6_discovery_testdiscoverfiltering_test_never_raises_on_empty": ".test_never_raises_on_empty()" | kind=code-symbol | source=probe/tests/test_ipv6_discovery.py:L75 | neighbors=[TestDiscoverFiltering, ._patch()]
+- "tests_test_job_cancel_probe_testheartbeatoutcomes_test_other_rejections_are_plain_failures": ".test_other_rejections_are_plain_failures()" | kind=code-symbol | source=probe/tests/test_job_cancel_probe.py:L53 | neighbors=[These may be transient/refreshable, so …, TestHeartbeatOutcomes]
+- "tests_test_job_cancel_probe_testpollingnoiseissuppressed_test_probe_debug_restores_full_tracing": ".test_probe_debug_restores_full_tracing()" | kind=code-symbol | source=probe/tests/test_job_cancel_probe.py:L103 | neighbors=[TestPollingNoiseIsSuppressed, ._configure()]
+- "tests_test_job_cancel_probe_testpollingnoiseissuppressed_test_probe_own_narration_is_unaffected_at_info": ".test_probe_own_narration_is_unaffected_at_info()" | kind=code-symbol | source=probe/tests/test_job_cancel_probe.py:L107 | neighbors=[TestPollingNoiseIsSuppressed, ._configure()]
+- "tests_test_job_cancel_probe_testpollingnoiseissuppressed_test_transport_loggers_are_quiet_by_default": ".test_transport_loggers_are_quiet_by_default()" | kind=code-symbol | source=probe/tests/test_job_cancel_probe.py:L87 | neighbors=[TestPollingNoiseIsSuppressed, ._configure()]
+- "tests_test_job_cancel_test_cancelled_is_distinct_from_failed": "test_cancelled_is_distinct_from_failed()" | kind=code-symbol | source=manager/backend/tests/test_job_cancel.py:L175 | neighbors=[test_job_cancel.py, An operator stop must never be mistaken…]
+- "tests_test_job_cancel_test_current_user_has_no_email_field": "test_current_user_has_no_email_field()" | kind=code-symbol | source=manager/backend/tests/test_job_cancel.py:L224 | neighbors=[test_job_cancel.py, Pins the reason this endpoint may not r…]
 
 ## Instructions
 

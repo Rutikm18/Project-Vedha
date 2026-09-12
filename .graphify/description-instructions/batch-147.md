@@ -1,4 +1,4 @@
-# Node Description Batch 148 of 336
+# Node Description Batch 148 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,58 +12,51 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
-For an entity node (any other kind — e.g. a person, place, event, object),
-describe what the entity is and its role, grounded in its type, its
-relations (neighbors) and the provided citations/evidence — e.g.
-"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
-Ground entity descriptions in the citations/evidence when present; do not
-speculate beyond the context, so a node with no supporting context may be
-left out of the reply.
 Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_ad_assessment_testkerberoastchecker_ldap_with_users": "._ldap_with_users()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L173 | neighbors=[TestKerberoastChecker, .test_get_spn_accounts_filters_krbtgt_a…]
-- "tests_test_ad_assessment_testkerberoastchecker_test_get_spn_accounts_filters_krbtgt_and_no_spn": ".test_get_spn_accounts_filters_krbtgt_and_no_spn()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L179 | neighbors=[TestKerberoastChecker, ._ldap_with_users()]
-- "tests_test_agent_auth_boundary_test_agent_jwt_is_blocked_before_human_route_handler": "test_agent_jwt_is_blocked_before_human_route_handler()" | kind=code-symbol | source=manager/backend/tests/test_agent_auth_boundary.py:L58 | neighbors=[test_agent_auth_boundary.py, _boundary_test_client()]
-- "tests_test_agent_auth_boundary_test_human_jwt_still_reaches_human_route_handler": "test_human_jwt_still_reaches_human_route_handler()" | kind=code-symbol | source=manager/backend/tests/test_agent_auth_boundary.py:L69 | neighbors=[test_agent_auth_boundary.py, _boundary_test_client()]
-- "tests_test_agent_dispatch_testatomicwebsocketclaim_test_claim_commits_before_confirmation": ".test_claim_commits_before_confirmation()" | kind=code-symbol | source=manager/backend/tests/test_agent_dispatch.py:L223 | neighbors=[TestAtomicWebSocketClaim, _claim_fixture()]
-- "tests_test_agent_dispatch_testatomicwebsocketclaim_test_incompatible_capability_is_never_claimed": ".test_incompatible_capability_is_never_claimed()" | kind=code-symbol | source=manager/backend/tests/test_agent_dispatch.py:L251 | neighbors=[TestAtomicWebSocketClaim, _claim_fixture()]
-- "tests_test_agent_dispatch_testatomicwebsocketclaim_test_lost_atomic_update_is_reported_as_unclaimed": ".test_lost_atomic_update_is_reported_as_unclaimed()" | kind=code-symbol | source=manager/backend/tests/test_agent_dispatch.py:L275 | neighbors=[TestAtomicWebSocketClaim, _claim_fixture()]
-- "tests_test_agent_identity_test_cached_identity_refreshes_current_capabilities": "test_cached_identity_refreshes_current_capabilities()" | kind=code-symbol | source=probe/tests/test_agent_identity.py:L46 | neighbors=[test_agent_identity.py, _cached_transport()]
-- "tests_test_agent_identity_test_cached_identity_retries_transient_refresh_failure": "test_cached_identity_retries_transient_refresh_failure()" | kind=code-symbol | source=probe/tests/test_agent_identity.py:L73 | neighbors=[test_agent_identity.py, _cached_transport()]
-- "tests_test_agent_identity_test_rejected_cached_token_falls_back_to_idempotent_registration": "test_rejected_cached_token_falls_back_to_idempotent_registration()" | kind=code-symbol | source=probe/tests/test_agent_identity.py:L96 | neighbors=[test_agent_identity.py, _cached_transport()]
-- "tests_test_agent_policy_testevaluateaction_test_decision_carries_action_and_tier": ".test_decision_carries_action_and_tier()" | kind=code-symbol | source=manager/backend/tests/test_agent_policy.py:L94 | neighbors=[TestEvaluateAction, _roe()]
-- "tests_test_agent_policy_testevaluateaction_test_denylisted_module_denied": ".test_denylisted_module_denied()" | kind=code-symbol | source=manager/backend/tests/test_agent_policy.py:L68 | neighbors=[TestEvaluateAction, _roe()]
-- "tests_test_agent_policy_testevaluateaction_test_excluded_target_denied": ".test_excluded_target_denied()" | kind=code-symbol | source=manager/backend/tests/test_agent_policy.py:L63 | neighbors=[TestEvaluateAction, _roe()]
-- "tests_test_agent_policy_testevaluateaction_test_exploit_attempt_cap_denied": ".test_exploit_attempt_cap_denied()" | kind=code-symbol | source=manager/backend/tests/test_agent_policy.py:L77 | neighbors=[TestEvaluateAction, _roe()]
-- "tests_test_agent_policy_testevaluateaction_test_halted_engagement_denies_everything": ".test_halted_engagement_denies_everything()" | kind=code-symbol | source=manager/backend/tests/test_agent_policy.py:L73 | neighbors=[TestEvaluateAction, _roe()]
-- "tests_test_agent_policy_testevaluateaction_test_host_cap_denied": ".test_host_cap_denied()" | kind=code-symbol | source=manager/backend/tests/test_agent_policy.py:L83 | neighbors=[TestEvaluateAction, _roe()]
-- "tests_test_agent_policy_testevaluateaction_test_intrusive_above_ceiling_needs_approval": ".test_intrusive_above_ceiling_needs_approval()" | kind=code-symbol | source=manager/backend/tests/test_agent_policy.py:L45 | neighbors=[TestEvaluateAction, _roe()]
-- "tests_test_agent_policy_testevaluateaction_test_intrusive_auto_when_ceiling_raised": ".test_intrusive_auto_when_ceiling_raised()" | kind=code-symbol | source=manager/backend/tests/test_agent_policy.py:L49 | neighbors=[TestEvaluateAction, _roe()]
-- "tests_test_agent_policy_testevaluateaction_test_irreversible_always_needs_approval_even_with_max_ceiling": ".test_irreversible_always_needs_approval_even_with_max_ceiling()" | kind=code-symbol | source=manager/backend/tests/test_agent_policy.py:L54 | neighbors=[TestEvaluateAction, _roe()]
-- "tests_test_agent_policy_testevaluateaction_test_no_targets_skips_scope_check": ".test_no_targets_skips_scope_check()" | kind=code-symbol | source=manager/backend/tests/test_agent_policy.py:L89 | neighbors=[TestEvaluateAction, _roe()]
-- "tests_test_agent_policy_testevaluateaction_test_passive_action_auto_authorized": ".test_passive_action_auto_authorized()" | kind=code-symbol | source=manager/backend/tests/test_agent_policy.py:L37 | neighbors=[TestEvaluateAction, _roe()]
-- "tests_test_agent_policy_testevaluateaction_test_reversible_within_default_ceiling_auto": ".test_reversible_within_default_ceiling_auto()" | kind=code-symbol | source=manager/backend/tests/test_agent_policy.py:L41 | neighbors=[TestEvaluateAction, _roe()]
-- "tests_test_agent_policy_testevaluateaction_test_target_out_of_scope_denied": ".test_target_out_of_scope_denied()" | kind=code-symbol | source=manager/backend/tests/test_agent_policy.py:L59 | neighbors=[TestEvaluateAction, _roe()]
-- "tests_test_agents_rationale_1": "Unit tests for the agent/probe protocol changes:   * agent polling is restricted" | kind=entity | source=manager/backend/tests/test_agents.py:L1 | neighbors=[test_agents.py, ScanJobType]
-- "tests_test_agents_rationale_207": "Re-registering the same-named probe must reuse the row, not create a dup." | kind=entity | source=manager/backend/tests/test_agents.py:L207 | neighbors=[ScanJobType, .test_reuses_existing_probe_by_name()]
-- "tests_test_agents_rationale_242": "Agent token must outlive the 15-min access default so it doesn't churn." | kind=entity | source=manager/backend/tests/test_agents.py:L242 | neighbors=[ScanJobType, .test_agent_token_is_long_lived()]
-- "tests_test_agents_rationale_260": "Discovery results → assets/services promotion (makes the Attack Surface populate" | kind=entity | source=manager/backend/tests/test_agents.py:L260 | neighbors=[ScanJobType, TestPromoteAssets]
-- "tests_test_agents_rationale_288": "A single web scan can emit multiple facts for the same host:port." | kind=entity | source=manager/backend/tests/test_agents.py:L288 | neighbors=[ScanJobType, .test_dedupes_duplicate_services_in_sam…]
-- "tests_test_agents_rationale_530": "Re-registering the same-named probe must reuse the row, not create a dup." | kind=entity | source=manager/backend/tests/test_agents.py:L530 | neighbors=[ScanJobType, .test_reuses_existing_probe_by_name()]
-- "tests_test_agents_rationale_565": "Agent token must outlive the 15-min access default so it doesn't churn." | kind=entity | source=manager/backend/tests/test_agents.py:L565 | neighbors=[ScanJobType, .test_agent_token_is_long_lived()]
-- "tests_test_agents_rationale_583": "Discovery results → assets/services promotion (makes the Attack Surface populate" | kind=entity | source=manager/backend/tests/test_agents.py:L583 | neighbors=[ScanJobType, TestPromoteAssets]
-- "tests_test_agents_rationale_611": "A single web scan can emit multiple facts for the same host:port." | kind=entity | source=manager/backend/tests/test_agents.py:L611 | neighbors=[ScanJobType, .test_dedupes_duplicate_services_in_sam…]
-- "tests_test_agents_testagentjobcompatibility_test_ineligibility_reason_pinpoints_each_cause": ".test_ineligibility_reason_pinpoints_each_cause()" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L468 | neighbors=[The diagnostic that turns a silent stuc…, TestAgentJobCompatibility]
-- "tests_test_agents_testheartbeat": "TestHeartbeat" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L612 | neighbors=[test_agents.py, .test_online_heartbeat_clears_completed…]
-- "tests_test_agents_testlegacybootstrap": "TestLegacyBootstrap" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L648 | neighbors=[test_agents.py, .test_shared_secret_bootstrap_is_disabl…]
-- "tests_test_agents_testlistagents_test_fresh_disconnected_agent_is_not_reported_online": ".test_fresh_disconnected_agent_is_not_reported_online()" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L589 | neighbors=[TestListAgents, _user()]
-- "tests_test_agents_testlistagents_test_lists_with_online_flag": ".test_lists_with_online_flag()" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L567 | neighbors=[TestListAgents, _user()]
-- "tests_test_agents_testregisteragent_test_creates_when_none_exists": ".test_creates_when_none_exists()" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L701 | neighbors=[TestRegisterAgent, _user()]
-- "tests_test_ai_normalizer_testextractrawtext_test_db_scan_with_engine_and_version": ".test_db_scan_with_engine_and_version()" | kind=code-symbol | source=manager/detection_engine/tests/test_ai_normalizer.py:L85 | neighbors=[TestExtractRawText, _fact()]
-- "tests_test_ai_normalizer_testextractrawtext_test_db_scan_without_engine_returns_none": ".test_db_scan_without_engine_returns_none()" | kind=code-symbol | source=manager/detection_engine/tests/test_ai_normalizer.py:L91 | neighbors=[TestExtractRawText, _fact()]
+- "id_route_put": "PUT()" | kind=code-symbol | source=manager/frontend/app/api/findings/[id]/route.ts:L30 | neighbors=[route.ts, fail()]
+- "lib_adapters_engstatustoapi": "engStatusToApi()" | kind=code-symbol | source=manager/frontend/lib/adapters.ts:L31 | neighbors=[adapters.ts, toApiEngagementPatch()]
+- "lib_adapters_engstatustoui": "engStatusToUi()" | kind=code-symbol | source=manager/frontend/lib/adapters.ts:L28 | neighbors=[adapters.ts, toUiEngagement()]
+- "lib_adapters_evidencestring": "evidenceString()" | kind=code-symbol | source=manager/frontend/lib/adapters.ts:L106 | neighbors=[adapters.ts, evidenceToUi()]
+- "lib_adapters_optionalevidencestring": "optionalEvidenceString()" | kind=code-symbol | source=manager/frontend/lib/adapters.ts:L116 | neighbors=[adapters.ts, evidenceToUi()]
+- "lib_adapters_severitytopriority": "severityToPriority()" | kind=code-symbol | source=manager/frontend/lib/adapters.ts:L102 | neighbors=[adapters.ts, toUiFinding()]
+- "lib_adapters_touiagent": "toUiAgent()" | kind=code-symbol | source=manager/frontend/lib/adapters.ts:L282 | neighbors=[adapters.ts, route.ts]
+- "lib_agents_store_genfieldagentid": "genFieldAgentId()" | kind=code-symbol | source=manager/frontend/lib/agents-store.ts:L355 | neighbors=[agents-store.ts, registerAgent()]
+- "lib_agents_store_getagent": "getAgent()" | kind=code-symbol | source=manager/frontend/lib/agents-store.ts:L398 | neighbors=[agents-store.ts, readFieldAgents()]
+- "lib_agents_store_getallagents": "getAllAgents()" | kind=code-symbol | source=manager/frontend/lib/agents-store.ts:L394 | neighbors=[agents-store.ts, readFieldAgents()]
+- "lib_ai_engine_chat": "chat()" | kind=code-symbol | source=manager/frontend/lib/ai-engine.ts:L822 | neighbors=[ai-engine.ts, getClient()]
+- "lib_ai_engine_countseverities": "countSeverities()" | kind=code-symbol | source=manager/frontend/lib/ai-engine.ts:L683 | neighbors=[ai-engine.ts, generateReportSectioned()]
+- "lib_ai_engine_hallucinationguard": "hallucinationGuard" | kind=code-symbol | source=manager/frontend/lib/ai-engine.ts:L289 | neighbors=[ai-engine.ts, route.ts]
+- "lib_ai_engine_llmreportgenerator": "llmReportGenerator" | kind=code-symbol | source=manager/frontend/lib/ai-engine.ts:L206 | neighbors=[ai-engine.ts, route.ts]
+- "lib_ai_engine_reportsection": "ReportSection" | kind=code-symbol | source=manager/frontend/lib/ai-engine.ts:L9 | neighbors=[ai-engine.ts, route.ts]
+- "lib_ai_engine_reportsession": "ReportSession" | kind=code-symbol | source=manager/frontend/lib/ai-engine.ts:L424 | neighbors=[route.ts, ai-engine.ts]
+- "lib_ai_engine_vulnprioritizer": "vulnPrioritizer" | kind=code-symbol | source=manager/frontend/lib/ai-engine.ts:L97 | neighbors=[ai-engine.ts, route.ts]
+- "lib_aibrain_workspace_api_aibrainworkspacesurface": "AIBrainWorkspaceSurface" | kind=code-symbol | source=manager/frontend/lib/aibrain-workspace-api.ts:L5 | neighbors=[page.tsx, aibrain-workspace-api.ts]
+- "lib_aibrain_workspace_api_createaibrainworkspaceapi": "createAIBrainWorkspaceApi()" | kind=code-symbol | source=manager/frontend/lib/aibrain-workspace-api.ts:L14 | neighbors=[page.tsx, aibrain-workspace-api.ts]
+- "lib_assistant_access_assistantauthstate": "AssistantAuthState" | kind=code-symbol | source=manager/frontend/lib/assistant-access.ts:L6 | neighbors=[AssistantProvider.tsx, assistant-access.ts]
+- "lib_assistant_ageindays": "ageInDays()" | kind=code-symbol | source=manager/frontend/lib/assistant.ts:L94 | neighbors=[assistant.ts, lifecycleOf()]
+- "lib_assistant_lifecyclefacts": "LifecycleFacts" | kind=code-symbol | source=manager/frontend/lib/assistant.ts:L6 | neighbors=[FactCard.tsx, assistant.ts]
+- "lib_assistant_parseadvisor": "parseAdvisor()" | kind=code-symbol | source=manager/frontend/lib/assistant.ts:L46 | neighbors=[route.ts, assistant.ts]
+- "lib_assistant_preferredtext": "preferredText()" | kind=code-symbol | source=manager/frontend/lib/assistant.ts:L168 | neighbors=[assistant.ts, cveRecordToFactCard()]
+- "lib_assistant_publicseverity": "publicSeverity()" | kind=code-symbol | source=manager/frontend/lib/assistant.ts:L174 | neighbors=[assistant.ts, cveRecordToFactCard()]
+- "lib_auth_store_generateotp": "generateOtp()" | kind=code-symbol | source=manager/frontend/lib/auth-store.ts:L24 | neighbors=[auth-store.ts, route.ts]
+- "lib_auth_store_verifyotp": "verifyOtp()" | kind=code-symbol | source=manager/frontend/lib/auth-store.ts:L38 | neighbors=[auth-store.ts, route.ts]
+- "lib_auth_store_verifytoken": "verifyToken()" | kind=code-symbol | source=manager/frontend/lib/auth-store.ts:L64 | neighbors=[auth-middleware.ts, auth-store.ts]
+- "lib_backend_safejson": "safeJson()" | kind=code-symbol | source=manager/frontend/lib/backend.ts:L84 | neighbors=[backend.ts, backend()]
+- "lib_campaign_store_campaignsnapshot": "CampaignSnapshot" | kind=code-symbol | source=manager/frontend/lib/campaign-store.ts:L44 | neighbors=[campaign-store.ts, campaign-store.test.ts]
+- "lib_campaign_store_setcampaigndir": "setCampaignDir()" | kind=code-symbol | source=manager/frontend/lib/campaign-store.ts:L76 | neighbors=[campaign-store.ts, campaign-store.test.ts]
+- "lib_campaign_workspace_api_campaignworkspacesurface": "CampaignWorkspaceSurface" | kind=code-symbol | source=manager/frontend/lib/campaign-workspace-api.ts:L5 | neighbors=[page.tsx, campaign-workspace-api.ts]
+- "lib_campaign_workspace_api_createcampaignworkspaceapi": "createCampaignWorkspaceApi()" | kind=code-symbol | source=manager/frontend/lib/campaign-workspace-api.ts:L7 | neighbors=[page.tsx, campaign-workspace-api.ts]
+- "lib_cases_store_getcasebyid": "getCaseById()" | kind=code-symbol | source=manager/frontend/lib/cases-store.ts:L231 | neighbors=[cases-store.ts, readCases()]
+- "lib_clients_store_client": "Client" | kind=code-symbol | source=manager/frontend/lib/clients-store.ts:L27 | neighbors=[clients-store.ts, tenant-server.ts]
+- "lib_clients_store_getclient": "getClient()" | kind=code-symbol | source=manager/frontend/lib/clients-store.ts:L78 | neighbors=[clients-store.ts, read()]
+- "lib_clients_store_listclients": "listClients()" | kind=code-symbol | source=manager/frontend/lib/clients-store.ts:L74 | neighbors=[clients-store.ts, read()]
+- "lib_console_source_consolekey": "ConsoleKey" | kind=code-symbol | source=manager/frontend/lib/console-source.tsx:L39 | neighbors=[DashboardGrid.tsx, console-source.tsx]
+- "lib_console_source_normalizeportaldataset": "normalizePortalDataset()" | kind=code-symbol | source=manager/frontend/lib/console-source.tsx:L190 | neighbors=[console-source.tsx, console-source.test.ts]
+- "lib_console_source_operatorconsoleprovider": "OperatorConsoleProvider()" | kind=code-symbol | source=manager/frontend/lib/console-source.tsx:L134 | neighbors=[page.tsx, console-source.tsx]
 
 ## Instructions
 

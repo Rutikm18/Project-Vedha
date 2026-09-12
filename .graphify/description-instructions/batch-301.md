@@ -1,4 +1,4 @@
-# Node Description Batch 302 of 336
+# Node Description Batch 302 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,58 +12,51 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
-For an entity node (any other kind — e.g. a person, place, event, object),
-describe what the entity is and its role, grounded in its type, its
-relations (neighbors) and the provided citations/evidence — e.g.
-"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
-Ground entity descriptions in the citations/evidence when present; do not
-speculate beyond the context, so a node with no supporting context may be
-left out of the reply.
 Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_probe_core_rationale_673": "ipv6_discovery reports on the RUN (its target is an interface name, or         t" | kind=entity | source=probe/tests/test_probe_core.py:L673 | neighbors=[.test_run_scoped_summary_does_not_becom…]
-- "tests_test_probe_core_test_explicit_local_manager_urls": "test_explicit_local_manager_urls()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L47 | neighbors=[test_probe_core.py]
-- "tests_test_probe_core_test_nonlocal_manager_urls": "test_nonlocal_manager_urls()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L57 | neighbors=[test_probe_core.py]
-- "tests_test_probe_core_testcapabilities_test_capabilities_sorted": ".test_capabilities_sorted()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L931 | neighbors=[TestCapabilities]
-- "tests_test_probe_core_testcapabilities_test_known_scan_types": ".test_known_scan_types()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L934 | neighbors=[TestCapabilities]
-- "tests_test_probe_core_testclamp_test_bad_value_uses_default": ".test_bad_value_uses_default()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L877 | neighbors=[TestClamp]
-- "tests_test_probe_core_testclamp_test_clamped_high": ".test_clamped_high()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L871 | neighbors=[TestClamp]
-- "tests_test_probe_core_testclamp_test_clamped_low": ".test_clamped_low()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L874 | neighbors=[TestClamp]
-- "tests_test_probe_core_testclamp_test_in_range": ".test_in_range()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L868 | neighbors=[TestClamp]
-- "tests_test_probe_core_testclamp_test_none_uses_default": ".test_none_uses_default()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L880 | neighbors=[TestClamp]
-- "tests_test_probe_core_testengagementmodes_test_assessment": ".test_assessment()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L451 | neighbors=[TestEngagementModes]
-- "tests_test_probe_core_testengagementmodes_test_re_scan": ".test_re_scan()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L464 | neighbors=[TestEngagementModes]
-- "tests_test_probe_core_testengagementmodes_test_service_specific_invalid_raises": ".test_service_specific_invalid_raises()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L460 | neighbors=[TestEngagementModes]
-- "tests_test_probe_core_testengagementmodes_test_service_specific_valid": ".test_service_specific_valid()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L456 | neighbors=[TestEngagementModes]
-- "tests_test_probe_core_testengagementmodes_test_triage": ".test_triage()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L445 | neighbors=[TestEngagementModes]
-- "tests_test_probe_core_testenginesummary_test_affirmative_fact_creates_one_deduplicated_host": ".test_affirmative_fact_creates_one_deduplicated_host()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L709 | neighbors=[TestEngineSummary]
-- "tests_test_probe_core_testenginesummary_test_negative_or_ambiguous_facts_do_not_create_hosts": ".test_negative_or_ambiguous_facts_do_not_create_hosts()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L646 | neighbors=[TestEngineSummary]
-- "tests_test_probe_core_testenginesummary_test_open_port_count_deduplicates_confirming_scanners": ".test_open_port_count_deduplicates_confirming_scanners()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L613 | neighbors=[TestEngineSummary]
-- "tests_test_probe_core_testenginesummary_test_open_port_count_excludes_host_liveness": ".test_open_port_count_excludes_host_liveness()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L605 | neighbors=[TestEngineSummary]
-- "tests_test_probe_core_testenginesummary_test_run_scoped_summary_with_interface_target_is_also_excluded": ".test_run_scoped_summary_with_interface_target_is_also_excluded()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L698 | neighbors=[TestEngineSummary]
-- "tests_test_probe_core_testexpandtargets_test_cidr_24": ".test_cidr_24()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L149 | neighbors=[TestExpandTargets]
-- "tests_test_probe_core_testexpandtargets_test_dedup": ".test_dedup()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L166 | neighbors=[TestExpandTargets]
-- "tests_test_probe_core_testexpandtargets_test_empty_input": ".test_empty_input()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L178 | neighbors=[TestExpandTargets]
-- "tests_test_probe_core_testexpandtargets_test_hostname_passthrough": ".test_hostname_passthrough()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L155 | neighbors=[TestExpandTargets]
-- "tests_test_probe_core_testexpandtargets_test_range": ".test_range()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L158 | neighbors=[TestExpandTargets]
-- "tests_test_probe_core_testexpandtargets_test_range_reversed_raises": ".test_range_reversed_raises()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L162 | neighbors=[TestExpandTargets]
-- "tests_test_probe_core_testexpandtargets_test_safety_cap_cidr": ".test_safety_cap_cidr()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L170 | neighbors=[TestExpandTargets]
-- "tests_test_probe_core_testexpandtargets_test_safety_cap_range": ".test_safety_cap_range()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L174 | neighbors=[TestExpandTargets]
-- "tests_test_probe_core_testexpandtargets_test_single_ip": ".test_single_ip()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L146 | neighbors=[TestExpandTargets]
-- "tests_test_probe_core_testexpandtargets_test_whitespace_entries": ".test_whitespace_entries()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L181 | neighbors=[TestExpandTargets]
-- "tests_test_probe_core_testgate0_test_iot_not_passive": ".test_iot_not_passive()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L272 | neighbors=[TestGate0]
-- "tests_test_probe_core_testgate0_test_it_not_passive": ".test_it_not_passive()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L269 | neighbors=[TestGate0]
-- "tests_test_probe_core_testgate0_test_ot_is_passive": ".test_ot_is_passive()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L266 | neighbors=[TestGate0]
-- "tests_test_probe_core_testlookslikehttp_test_empty": ".test_empty()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L400 | neighbors=[TestLooksLikeHttp]
-- "tests_test_probe_core_testlookslikehttp_test_http_1_1": ".test_http_1_1()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L391 | neighbors=[TestLooksLikeHttp]
-- "tests_test_probe_core_testlookslikehttp_test_http_2": ".test_http_2()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L394 | neighbors=[TestLooksLikeHttp]
-- "tests_test_probe_core_testlookslikehttp_test_not_http": ".test_not_http()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L397 | neighbors=[TestLooksLikeHttp]
-- "tests_test_probe_core_testlooksliketls_test_banner_present": ".test_banner_present()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L415 | neighbors=[TestLooksLikeTls]
-- "tests_test_probe_core_testlooksliketls_test_client_first_port_not_tls": ".test_client_first_port_not_tls()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L409 | neighbors=[TestLooksLikeTls]
-- "tests_test_probe_core_testlooksliketls_test_no_banner_attempt": ".test_no_banner_attempt()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L412 | neighbors=[TestLooksLikeTls]
+- "settings_page_configfield": "ConfigField" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L38 | neighbors=[page.tsx]
+- "settings_page_copybtn": "CopyBtn()" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L199 | neighbors=[page.tsx]
+- "settings_page_default_rules": "DEFAULT_RULES" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L745 | neighbors=[page.tsx]
+- "settings_page_deploymentstatus": "DeploymentStatus" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L30 | neighbors=[page.tsx]
+- "settings_page_email_fields": "EMAIL_FIELDS" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L15 | neighbors=[page.tsx]
+- "settings_page_engagementsection": "EngagementSection()" | kind=code-symbol | source=manager/frontend/app/portal/settings/page.tsx:L32 | neighbors=[page.tsx]
+- "settings_page_envsetting": "EnvSetting" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L12 | neighbors=[page.tsx]
+- "settings_page_formatdate": "formatDate()" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L223 | neighbors=[page.tsx]
+- "settings_page_formatrelative": "formatRelative()" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L211 | neighbors=[page.tsx]
+- "settings_page_integrationfields": "IntegrationFields()" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L72 | neighbors=[page.tsx]
+- "settings_page_integrationrow": "IntegrationRow" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L57 | neighbors=[page.tsx]
+- "settings_page_integrations": "INTEGRATIONS" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L106 | neighbors=[page.tsx]
+- "settings_page_jira_fields": "JIRA_FIELDS" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L28 | neighbors=[page.tsx]
+- "settings_page_nav_sections": "NAV_SECTIONS" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L147 | neighbors=[page.tsx]
+- "settings_page_notificationssection": "NotificationsSection()" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L755 | neighbors=[page.tsx]
+- "settings_page_pat": "Pat" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L74 | neighbors=[page.tsx]
+- "settings_page_portal_nav_sections": "PORTAL_NAV_SECTIONS" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L162 | neighbors=[page.tsx]
+- "settings_page_portalsettings": "PortalSettings()" | kind=code-symbol | source=manager/frontend/app/portal/settings/page.tsx:L136 | neighbors=[page.tsx]
+- "settings_page_portalsettingspage": "PortalSettingsPage()" | kind=code-symbol | source=manager/frontend/app/portal/settings/page.tsx:L5 | neighbors=[page.tsx]
+- "settings_page_probefleetsection": "ProbeFleetSection()" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L419 | neighbors=[page.tsx]
+- "settings_page_readonlynotice": "ReadOnlyNotice()" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L179 | neighbors=[page.tsx]
+- "settings_page_role_colors": "ROLE_COLORS" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L138 | neighbors=[page.tsx]
+- "settings_page_sectionheader": "SectionHeader()" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L54 | neighbors=[page.tsx]
+- "settings_page_sectiontitle": "SectionTitle()" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L167 | neighbors=[page.tsx]
+- "settings_page_settingspage": "SettingsPage()" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L924 | neighbors=[page.tsx]
+- "settings_page_settingsworkspace": "SettingsWorkspace()" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L861 | neighbors=[page.tsx]
+- "settings_page_sla_policy": "SLA_POLICY" | kind=code-symbol | source=manager/frontend/app/portal/settings/page.tsx:L13 | neighbors=[page.tsx]
+- "settings_page_sla_rows": "SLA_ROWS" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L681 | neighbors=[page.tsx]
+- "settings_page_slack_fields": "SLACK_FIELDS" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L24 | neighbors=[page.tsx]
+- "settings_page_slaform": "SlaForm" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L55 | neighbors=[page.tsx]
+- "settings_page_slapolicyresp": "SlaPolicyResp" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L47 | neighbors=[page.tsx]
+- "settings_page_slasection": "SlaSection()" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L689 | neighbors=[page.tsx]
+- "settings_page_teamsection": "TeamSection()" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L231 | neighbors=[page.tsx]
+- "settings_page_teamuser": "TeamUser" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L64 | neighbors=[page.tsx]
+- "settings_page_testbutton": "TestButton()" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L111 | neighbors=[page.tsx]
+- "settings_page_toggle": "Toggle()" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L141 | neighbors=[page.tsx]
+- "siem_config_route_get": "GET()" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/detection-validation/siem-config/route.ts:L5 | neighbors=[route.ts]
+- "siem_config_route_post": "POST()" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/detection-validation/siem-config/route.ts:L14 | neighbors=[route.ts]
+- "sla_policy_route_get": "GET" | kind=code-symbol | source=manager/frontend/app/api/sla-policy/route.ts:L10 | neighbors=[route.ts]
+- "sla_policy_route_put": "PUT" | kind=code-symbol | source=manager/frontend/app/api/sla-policy/route.ts:L14 | neighbors=[route.ts]
 
 ## Instructions
 

@@ -1,4 +1,4 @@
-# Node Description Batch 266 of 336
+# Node Description Batch 266 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,60 +12,51 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
-For an entity node (any other kind — e.g. a person, place, event, object),
-describe what the entity is and its role, grounded in its type, its
-relations (neighbors) and the provided citations/evidence — e.g.
-"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
-Ground entity descriptions in the citations/evidence when present; do not
-speculate beyond the context, so a node with no supporting context may be
-left out of the reply.
-LANGUAGE: each entry has a `lang=` marker giving the language of its source.
-Write that entry's description in EXACTLY that language. Do not translate to
-a single common language — match each node's source language individually.
+Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "services_finding_events_rationale_55": "Accept a FindingEventType/FindingStatus enum or a bare string." | kind=entity | source=manager/backend/app/services/finding_events.py:L55 | neighbors=[_val()] | lang=pt
-- "services_finding_events_rationale_82": "Best label for who first produced this finding, from its provenance.     A netwo" | kind=entity | source=manager/backend/app/services/finding_events.py:L82 | neighbors=[_detected_actor()] | lang=en
-- "services_job_attempt_service_rationale_31": "Atomically claim a pending job and create its fenced attempt ledger row." | kind=entity | source=manager/backend/app/services/job_attempt_service.py:L31 | neighbors=[claim_job_attempt()] | lang=en
-- "services_job_attempt_service_rationale_94": "Renew only the currently installed running attempt/fence." | kind=entity | source=manager/backend/app/services/job_attempt_service.py:L94 | neighbors=[renew_job_attempt()] | lang=en
-- "services_job_result_service_rationale_111": "Return result identities outside the job's authoritative IP scope.      Fail clo" | kind=entity | source=manager/backend/app/services/job_result_service.py:L111 | neighbors=[validate_result_scope()] | lang=en
-- "services_job_result_service_rationale_117": "Parse a probe identity as an IP, tolerating common host:port notation." | kind=entity | source=manager/backend/app/services/job_result_service.py:L117 | neighbors=[_identity_ip()] | lang=en
-- "services_job_result_service_rationale_136": "Return result identities outside the job's authoritative IP scope.      Fail clo" | kind=entity | source=manager/backend/app/services/job_result_service.py:L136 | neighbors=[validate_result_scope()] | lang=en
-- "services_job_result_service_rationale_137": "Process a scan job result.  Called from both HTTP and WebSocket paths.      Retu" | kind=entity | source=manager/backend/app/services/job_result_service.py:L137 | neighbors=[process_job_result()] | lang=en
-- "services_job_result_service_rationale_157": "Process a scan job result.  Called from both HTTP and WebSocket paths.      Retu" | kind=entity | source=manager/backend/app/services/job_result_service.py:L157 | neighbors=[process_job_result()] | lang=en
-- "services_job_result_service_rationale_182": "Process a scan job result.  Called from both HTTP and WebSocket paths.      Retu" | kind=entity | source=manager/backend/app/services/job_result_service.py:L182 | neighbors=[process_job_result()] | lang=en
-- "services_job_result_service_rationale_327": "Upsert discovered hosts/services into the asset inventory.      Keyed by (engage" | kind=entity | source=manager/backend/app/services/job_result_service.py:L327 | neighbors=[_promote_assets()] | lang=en
-- "services_job_result_service_rationale_356": "Stamp the probe's evidence-based device role onto an Asset (create/update)." | kind=entity | source=manager/backend/app/services/job_result_service.py:L356 | neighbors=[_apply_device_profile()] | lang=en
-- "services_job_result_service_rationale_379": "Upsert discovered hosts/services into the asset inventory.      Keyed by (engage" | kind=entity | source=manager/backend/app/services/job_result_service.py:L379 | neighbors=[_promote_assets()] | lang=en
-- "services_job_result_service_rationale_404": "Stamp the probe's evidence-based device role onto an Asset (create/update)." | kind=entity | source=manager/backend/app/services/job_result_service.py:L404 | neighbors=[_apply_device_profile()] | lang=en
-- "services_job_result_service_rationale_42": "Return network identities that could create assets or findings.      Scanner-lev" | kind=entity | source=manager/backend/app/services/job_result_service.py:L42 | neighbors=[_result_network_identities()] | lang=en
-- "services_job_result_service_rationale_427": "Upsert discovered hosts/services into the asset inventory.      Keyed by (engage" | kind=entity | source=manager/backend/app/services/job_result_service.py:L427 | neighbors=[_promote_assets()] | lang=en
-- "services_job_result_service_rationale_438": "Stamp the probe's evidence-based device role onto an Asset (create/update)." | kind=entity | source=manager/backend/app/services/job_result_service.py:L438 | neighbors=[_apply_device_profile()] | lang=en
-- "services_job_result_service_rationale_461": "Upsert discovered hosts/services into the asset inventory.      Keyed by (engage" | kind=entity | source=manager/backend/app/services/job_result_service.py:L461 | neighbors=[_promote_assets()] | lang=en
-- "services_job_result_service_rationale_50": "Stable idempotency checksum for one attempt completion payload." | kind=entity | source=manager/backend/app/services/job_result_service.py:L50 | neighbors=[result_checksum()] | lang=en
-- "services_job_result_service_rationale_62": "Return network identities that could create assets or findings.      Scanner-lev" | kind=entity | source=manager/backend/app/services/job_result_service.py:L62 | neighbors=[_result_network_identities()] | lang=en
-- "services_job_result_service_rationale_72": "Parse a probe identity as an IP, tolerating common host:port notation." | kind=entity | source=manager/backend/app/services/job_result_service.py:L72 | neighbors=[_identity_ip()] | lang=en
-- "services_job_result_service_rationale_79": "Return network identities that could create assets or findings.      Scanner-lev" | kind=entity | source=manager/backend/app/services/job_result_service.py:L79 | neighbors=[_result_network_identities()] | lang=en
-- "services_job_result_service_rationale_91": "Return result identities outside the job's authoritative IP scope.      Fail clo" | kind=entity | source=manager/backend/app/services/job_result_service.py:L91 | neighbors=[validate_result_scope()] | lang=en
-- "services_job_result_service_rationale_92": "Parse a probe identity as an IP, tolerating common host:port notation." | kind=entity | source=manager/backend/app/services/job_result_service.py:L92 | neighbors=[_identity_ip()] | lang=en
-- "services_llm_airuntimeerror_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/services/llm.py:L23 | neighbors=[AiRuntimeError] | lang=en
-- "services_llm_http_client_asyncllmhttpclient_open": ".open()" | kind=code-symbol | source=manager/backend/app/services/llm_http_client.py:L30 | neighbors=[AsyncLlmHttpClient] | lang=en
-- "services_llm_http_client_rationale_1": "Shared asynchronous HTTP transport for every Manager LLM provider.  Provider ada" | kind=entity | source=manager/backend/app/services/llm_http_client.py:L1 | neighbors=[llm_http_client.py] | lang=en
-- "services_llm_http_client_rationale_18": "Create bounded ``httpx.AsyncClient`` instances for LLM requests.      A fresh co" | kind=entity | source=manager/backend/app/services/llm_http_client.py:L18 | neighbors=[AsyncLlmHttpClient] | lang=en
-- "services_llm_managerllmservice_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/services/llm.py:L112 | neighbors=[ManagerLlmService] | lang=en
-- "services_llm_rationale_126": "First configured cloud provider, or None. Cloud-only: never Ollama." | kind=entity | source=manager/backend/app/services/llm.py:L126 | neighbors=[._auto_cloud_provider()] | lang=en
-- "services_llm_rationale_259": "Call one provider and normalize failures to AiRuntimeError.         Preserves th" | kind=entity | source=manager/backend/app/services/llm.py:L259 | neighbors=[._dispatch()] | lang=en
-- "services_llm_rationale_300": "Call one provider and normalize failures to AiRuntimeError.         Preserves th" | kind=entity | source=manager/backend/app/services/llm.py:L300 | neighbors=[._dispatch()] | lang=en
-- "services_llm_rationale_301": "Ordered runtimes to try: requested/default first, then the OpenRouter         fr" | kind=entity | source=manager/backend/app/services/llm.py:L301 | neighbors=[._fallback_candidates()] | lang=en
-- "services_llm_rationale_325": "Try each candidate until one succeeds. On ANY provider failure (credit         e" | kind=entity | source=manager/backend/app/services/llm.py:L325 | neighbors=[.generate_with_fallback()] | lang=en
-- "services_llm_rationale_342": "Ordered runtimes to try: requested/default first, then the OpenRouter         fr" | kind=entity | source=manager/backend/app/services/llm.py:L342 | neighbors=[._fallback_candidates()] | lang=en
-- "services_llm_rationale_366": "Try each candidate until one succeeds. On ANY provider failure (credit         e" | kind=entity | source=manager/backend/app/services/llm.py:L366 | neighbors=[.generate_with_fallback()] | lang=en
-- "services_llm_rationale_85": "First configured cloud provider, or None. Cloud-only: never Ollama." | kind=entity | source=manager/backend/app/services/llm.py:L85 | neighbors=[._auto_cloud_provider()] | lang=en
-- "services_notifications_rationale_1": "notifications.py — deliver a message to a tenant's configured integrations (emai" | kind=entity | source=manager/backend/app/services/notifications.py:L1 | neighbors=[notifications.py] | lang=pt
-- "services_notifications_rationale_102": "Producer API: enqueue a durable notify event (commits with the caller's txn)." | kind=entity | source=manager/backend/app/services/notifications.py:L102 | neighbors=[enqueue_notification()] | lang=en
-- "services_notifications_rationale_72": "Send via one integration. True on success; False on any handled failure     (log" | kind=entity | source=manager/backend/app/services/notifications.py:L72 | neighbors=[deliver()] | lang=en
+- "reports_page_statuscolor": "statusColor()" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L524 | neighbors=[page.tsx]
+- "reports_page_statuslabel": "statusLabel()" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L531 | neighbors=[page.tsx]
+- "reports_page_statuspill": "StatusPill()" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L85 | neighbors=[page.tsx]
+- "reports_page_tab": "Tab" | kind=code-symbol | source=manager/frontend/app/portal/reports/page.tsx:L19 | neighbors=[page.tsx]
+- "reports_page_tabs": "TABS" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L53 | neighbors=[page.tsx]
+- "reports_page_technicalreport": "TechnicalReport()" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L198 | neighbors=[page.tsx]
+- "reports_page_techtab": "TechTab()" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L970 | neighbors=[page.tsx]
+- "reports_page_topfindings": "TopFindings()" | kind=code-symbol | source=manager/frontend/app/portal/reports/page.tsx:L65 | neighbors=[page.tsx]
+- "reports_page_vm_label": "VM_LABEL" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L90 | neighbors=[page.tsx]
+- "reports_page_vm_name": "VM_NAME" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L97 | neighbors=[page.tsx]
+- "reports_page_window_style": "WINDOW_STYLE" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L155 | neighbors=[page.tsx]
+- "reportsection_finding_model_aggravating": "AGGRAVATING" | kind=code-symbol | source=reportsection/finding-model.ts:L264 | neighbors=[finding-model.ts]
+- "reportsection_finding_model_assessedfinding": "AssessedFinding" | kind=code-symbol | source=reportsection/finding-model.ts:L671 | neighbors=[finding-model.ts]
+- "reportsection_finding_model_confidence": "Confidence" | kind=code-symbol | source=reportsection/finding-model.ts:L142 | neighbors=[finding-model.ts]
+- "reportsection_finding_model_confidencelevel": "ConfidenceLevel" | kind=code-symbol | source=reportsection/finding-model.ts:L140 | neighbors=[finding-model.ts]
+- "reportsection_finding_model_detection": "DETECTION" | kind=code-symbol | source=reportsection/finding-model.ts:L151 | neighbors=[finding-model.ts]
+- "reportsection_finding_model_detectionmethod": "DetectionMethod" | kind=code-symbol | source=reportsection/finding-model.ts:L131 | neighbors=[finding-model.ts]
+- "reportsection_finding_model_gap": "Gap" | kind=code-symbol | source=reportsection/finding-model.ts:L645 | neighbors=[finding-model.ts]
+- "reportsection_finding_model_metric_name": "METRIC_NAME" | kind=code-symbol | source=reportsection/finding-model.ts:L240 | neighbors=[finding-model.ts]
+- "reportsection_finding_model_metric_value": "METRIC_VALUE" | kind=code-symbol | source=reportsection/finding-model.ts:L248 | neighbors=[finding-model.ts]
+- "reportsection_finding_model_outcome": "OUTCOME" | kind=code-symbol | source=reportsection/finding-model.ts:L281 | neighbors=[finding-model.ts]
+- "reportsection_finding_model_prereq": "PREREQ" | kind=code-symbol | source=reportsection/finding-model.ts:L266 | neighbors=[finding-model.ts]
+- "reportsection_finding_model_priority": "Priority" | kind=code-symbol | source=reportsection/finding-model.ts:L373 | neighbors=[finding-model.ts]
+- "reportsection_finding_model_priority_label": "PRIORITY_LABEL" | kind=code-symbol | source=reportsection/finding-model.ts:L382 | neighbors=[finding-model.ts]
+- "reportsection_finding_model_prioritycode": "PriorityCode" | kind=code-symbol | source=reportsection/finding-model.ts:L371 | neighbors=[finding-model.ts]
+- "reportsection_finding_model_provenance": "Provenance" | kind=code-symbol | source=reportsection/finding-model.ts:L493 | neighbors=[finding-model.ts]
+- "reportsection_finding_model_provenanceof": "provenanceOf()" | kind=code-symbol | source=reportsection/finding-model.ts:L500 | neighbors=[finding-model.ts]
+- "reportsection_finding_model_rawasset": "RawAsset" | kind=code-symbol | source=reportsection/finding-model.ts:L47 | neighbors=[finding-model.ts]
+- "reportsection_finding_model_rawevidence": "RawEvidence" | kind=code-symbol | source=reportsection/finding-model.ts:L34 | neighbors=[finding-model.ts]
+- "reportsection_finding_model_rawfinding": "RawFinding" | kind=code-symbol | source=reportsection/finding-model.ts:L79 | neighbors=[finding-model.ts]
+- "reportsection_finding_model_rawremediation": "RawRemediation" | kind=code-symbol | source=reportsection/finding-model.ts:L60 | neighbors=[finding-model.ts]
+- "reportsection_finding_model_rawverification": "RawVerification" | kind=code-symbol | source=reportsection/finding-model.ts:L72 | neighbors=[finding-model.ts]
+- "reportsection_finding_model_redact": "redact()" | kind=code-symbol | source=reportsection/finding-model.ts:L575 | neighbors=[finding-model.ts]
+- "reportsection_finding_model_redaction": "Redaction" | kind=code-symbol | source=reportsection/finding-model.ts:L573 | neighbors=[finding-model.ts]
+- "reportsection_finding_model_redactionrule": "RedactionRule" | kind=code-symbol | source=reportsection/finding-model.ts:L518 | neighbors=[finding-model.ts]
+- "reportsection_finding_model_remediationstep": "RemediationStep" | kind=code-symbol | source=reportsection/finding-model.ts:L602 | neighbors=[finding-model.ts]
+- "reportsection_finding_model_remediationtier": "RemediationTier" | kind=code-symbol | source=reportsection/finding-model.ts:L58 | neighbors=[finding-model.ts]
+- "reportsection_finding_model_rules": "RULES" | kind=code-symbol | source=reportsection/finding-model.ts:L539 | neighbors=[finding-model.ts]
+- "reportsection_finding_model_sla": "Sla" | kind=code-symbol | source=reportsection/finding-model.ts:L443 | neighbors=[finding-model.ts]
+- "reportsection_finding_model_sla_days": "SLA_DAYS" | kind=code-symbol | source=reportsection/finding-model.ts:L437 | neighbors=[finding-model.ts]
 
 ## Instructions
 

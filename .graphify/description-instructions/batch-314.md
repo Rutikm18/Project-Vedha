@@ -1,4 +1,4 @@
-# Node Description Batch 315 of 336
+# Node Description Batch 315 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,51 +19,53 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-Write every description in English (en). Do not switch languages.
+LANGUAGE: each entry has a `lang=` marker giving the language of its source.
+Write that entry's description in EXACTLY that language. Do not translate to
+a single common language — match each node's source language individually.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_smb_ldap_scanners_testldaptimeouttypes_test_receive_timeout_is_an_int": ".test_receive_timeout_is_an_int()" | kind=code-symbol | source=probe/tests/test_smb_ldap_scanners.py:L142 | neighbors=[TestLDAPTimeoutTypes]
-- "tests_test_smb_ldap_scanners_testldaptimeouttypes_test_sub_second_timeout_does_not_floor_to_zero": ".test_sub_second_timeout_does_not_floor_to_zero()" | kind=code-symbol | source=probe/tests/test_smb_ldap_scanners.py:L175 | neighbors=[TestLDAPTimeoutTypes]
-- "tests_test_smb_ldap_scanners_testmainscriptsparity_test_main_scripts_findings_derive_smb_and_ldap": ".test_main_scripts_findings_derive_smb_and_ldap()" | kind=code-symbol | source=probe/tests/test_smb_ldap_scanners.py:L258 | neighbors=[TestMainScriptsParity]
-- "tests_test_smb_ldap_scanners_testmainscriptsparity_test_scanners_import_in_both_trees": ".test_scanners_import_in_both_trees()" | kind=code-symbol | source=probe/tests/test_smb_ldap_scanners.py:L252 | neighbors=[TestMainScriptsParity]
-- "tests_test_smb_ldap_scanners_testmergeusers_test_decode_strips_nul": ".test_decode_strips_nul()" | kind=code-symbol | source=probe/tests/test_smb_ldap_scanners.py:L56 | neighbors=[TestMergeUsers]
-- "tests_test_smb_ldap_scanners_testmergeusers_test_dedup_samr_wins": ".test_dedup_samr_wins()" | kind=code-symbol | source=probe/tests/test_smb_ldap_scanners.py:L47 | neighbors=[TestMergeUsers]
-- "tests_test_smb_ldap_scanners_testridranges_test_is_bounded_no_brute_sweep": ".test_is_bounded_no_brute_sweep()" | kind=code-symbol | source=probe/tests/test_smb_ldap_scanners.py:L41 | neighbors=[TestRidRanges]
-- "tests_test_smb_ldap_scanners_testridranges_test_parses_enum4linux_default": ".test_parses_enum4linux_default()" | kind=code-symbol | source=probe/tests/test_smb_ldap_scanners.py:L29 | neighbors=[TestRidRanges]
-- "tests_test_smb_ldap_scanners_testridranges_test_reversed_range_tolerated": ".test_reversed_range_tolerated()" | kind=code-symbol | source=probe/tests/test_smb_ldap_scanners.py:L38 | neighbors=[TestRidRanges]
-- "tests_test_smb_ldap_scanners_testridranges_test_single_and_bad_tokens": ".test_single_and_bad_tokens()" | kind=code-symbol | source=probe/tests/test_smb_ldap_scanners.py:L34 | neighbors=[TestRidRanges]
-- "tests_test_smb_ldap_scanners_testsmbenumscanner_sc": "._sc()" | kind=code-symbol | source=probe/tests/test_smb_ldap_scanners.py:L63 | neighbors=[TestSMBEnumScanner]
-- "tests_test_smb_ldap_scanners_testsmbenumscanner_test_impacket_missing_is_error": ".test_impacket_missing_is_error()" | kind=code-symbol | source=probe/tests/test_smb_ldap_scanners.py:L94 | neighbors=[TestSMBEnumScanner]
-- "tests_test_smb_ldap_scanners_testsmbenumscanner_test_no_smb_is_filtered": ".test_no_smb_is_filtered()" | kind=code-symbol | source=probe/tests/test_smb_ldap_scanners.py:L88 | neighbors=[TestSMBEnumScanner]
-- "tests_test_smb_ldap_scanners_testsmbenumscanner_test_null_refused_is_open_but_secure": ".test_null_refused_is_open_but_secure()" | kind=code-symbol | source=probe/tests/test_smb_ldap_scanners.py:L78 | neighbors=[TestSMBEnumScanner]
-- "tests_test_smb_ldap_scanners_testsmbenumscanner_test_null_session_open_with_shares_and_users": ".test_null_session_open_with_shares_and_users()" | kind=code-symbol | source=probe/tests/test_smb_ldap_scanners.py:L67 | neighbors=[TestSMBEnumScanner]
-- "tests_test_smb_ldap_scanners_testsmbldapfindings_test_ldap_anon_bind_and_search": ".test_ldap_anon_bind_and_search()" | kind=code-symbol | source=probe/tests/test_smb_ldap_scanners.py:L225 | neighbors=[TestSMBLDAPFindings]
-- "tests_test_smb_ldap_scanners_testsmbldapfindings_test_ldap_anon_bind_only_no_search": ".test_ldap_anon_bind_only_no_search()" | kind=code-symbol | source=probe/tests/test_smb_ldap_scanners.py:L235 | neighbors=[TestSMBLDAPFindings]
-- "tests_test_smb_ldap_scanners_testsmbldapfindings_test_ldap_secure_is_silent": ".test_ldap_secure_is_silent()" | kind=code-symbol | source=probe/tests/test_smb_ldap_scanners.py:L243 | neighbors=[TestSMBLDAPFindings]
-- "tests_test_smb_ldap_scanners_testsmbldapfindings_test_smb_null_session_and_users": ".test_smb_null_session_and_users()" | kind=code-symbol | source=probe/tests/test_smb_ldap_scanners.py:L206 | neighbors=[TestSMBLDAPFindings]
-- "tests_test_smb_ldap_scanners_testsmbldapfindings_test_smb_secure_is_silent": ".test_smb_secure_is_silent()" | kind=code-symbol | source=probe/tests/test_smb_ldap_scanners.py:L220 | neighbors=[TestSMBLDAPFindings]
-- "tests_test_smb_ntlm_build_rationale_1": "test_smb_ntlm_build.py — Card 5: exact Windows build from the SMB2 pre-auth NTLM" | kind=entity | source=probe/tests/test_smb_ntlm_build.py:L1 | neighbors=[test_smb_ntlm_build.py]
-- "tests_test_smb_ntlm_build_rationale_18": "Synthesize an NTLMSSP CHALLENGE (Type-2). TargetName payload sits right after" | kind=entity | source=probe/tests/test_smb_ntlm_build.py:L18 | neighbors=[_challenge()]
-- "tests_test_smb_ntlm_build_rationale_80": "Regression: _recv_smb_frame STRIPS the 4-byte NBT prefix, so the SMB2 header" | kind=entity | source=probe/tests/test_smb_ntlm_build.py:L80 | neighbors=[TestNtlmFingerprintFraming]
-- "tests_test_smb_ntlm_build_testbuildmap_test_client_server_shared_build_surfaces_both": ".test_client_server_shared_build_surfaces_both()" | kind=code-symbol | source=probe/tests/test_smb_ntlm_build.py:L134 | neighbors=[TestBuildMap]
-- "tests_test_smb_ntlm_build_testbuildmap_test_confidence_high_on_exact_match": ".test_confidence_high_on_exact_match()" | kind=code-symbol | source=probe/tests/test_smb_ntlm_build.py:L139 | neighbors=[TestBuildMap]
-- "tests_test_smb_ntlm_build_testparsechallenge_test_non_challenge_returns_none": ".test_non_challenge_returns_none()" | kind=code-symbol | source=probe/tests/test_smb_ntlm_build.py:L72 | neighbors=[TestParseChallenge]
-- "tests_test_smb_ntlm_build_testtype1andspnego_test_session_setup_packet_shape": ".test_session_setup_packet_shape()" | kind=code-symbol | source=probe/tests/test_smb_ntlm_build.py:L158 | neighbors=[TestType1AndSpnego]
-- "tests_test_smb_ntlm_build_testtype1andspnego_test_spnego_wraps_and_contains_type1": ".test_spnego_wraps_and_contains_type1()" | kind=code-symbol | source=probe/tests/test_smb_ntlm_build.py:L151 | neighbors=[TestType1AndSpnego]
-- "tests_test_smb_ntlm_build_testtype1andspnego_test_type1_sets_negotiate_version": ".test_type1_sets_negotiate_version()" | kind=code-symbol | source=probe/tests/test_smb_ntlm_build.py:L144 | neighbors=[TestType1AndSpnego]
-- "tests_test_smb_scanner_rationale_15": "An SMB2 ERROR response (e.g. STATUS_INVALID_PARAMETER). Windows returns     this" | kind=entity | source=probe/tests/test_smb_scanner.py:L15 | neighbors=[_smb2_error_response()]
-- "tests_test_smb_scanner_rationale_51": "The confirmed bug: an SMB2 error response (STATUS_INVALID_PARAMETER) was     rea" | kind=entity | source=probe/tests/test_smb_scanner.py:L51 | neighbors=[test_error_response_not_parsed_as_signi…]
-- "tests_test_smb_scanner_rationale_63": "A response with the wrong body StructureSize is not a valid NEGOTIATE." | kind=entity | source=probe/tests/test_smb_scanner.py:L63 | neighbors=[test_truncated_negotiate_body_not_parse…]
-- "tests_test_smb_scanner_rationale_72": "Step 13: expose signing_supported (protocol-precise), not only the     ambiguous" | kind=entity | source=probe/tests/test_smb_scanner.py:L72 | neighbors=[test_signing_supported_field_present()]
-- "tests_test_smb_scanner_test_garbage_response": "test_garbage_response()" | kind=code-symbol | source=probe/tests/test_smb_scanner.py:L44 | neighbors=[test_smb_scanner.py]
-- "tests_test_smtp_scanner_rationale_1": "test_smtp_scanner.py — SMTP hygiene (VRFY/EXPN user-enum + STARTTLS presence)." | kind=entity | source=probe/tests/test_smtp_scanner.py:L1 | neighbors=[test_smtp_scanner.py]
-- "tests_test_smtp_scanner_testparity_test_main_scripts": ".test_main_scripts()" | kind=code-symbol | source=probe/tests/test_smtp_scanner.py:L74 | neighbors=[TestParity]
-- "tests_test_smtp_scanner_testpurelogic_test_parse_ehlo_capabilities": ".test_parse_ehlo_capabilities()" | kind=code-symbol | source=probe/tests/test_smtp_scanner.py:L18 | neighbors=[TestPureLogic]
-- "tests_test_smtp_scanner_testpurelogic_test_vrfy_leaks": ".test_vrfy_leaks()" | kind=code-symbol | source=probe/tests/test_smtp_scanner.py:L23 | neighbors=[TestPureLogic]
-- "tests_test_ssh_scanner_rationale_1": "test_ssh_scanner.py — SSH configuration audit (Tier 2.x, §6 of the VA checklist)" | kind=entity | source=probe/tests/test_ssh_scanner.py:L1 | neighbors=[test_ssh_scanner.py]
-- "tests_test_ssh_scanner_rationale_30": "Encode an SSH name-list: uint32 length + comma-joined ASCII." | kind=entity | source=probe/tests/test_ssh_scanner.py:L30 | neighbors=[_nl()]
+- "tests_test_db_mongodb_auth_rationale_30": "2013 = OP_MSG. 2004 = OP_QUERY, which modern servers reject." | kind=entity | source=probe/tests/test_db_mongodb_auth.py:L30 | neighbors=[.test_opcode_is_op_msg_not_op_query()] | lang=nl
+- "tests_test_db_mongodb_auth_rationale_41": "OP_MSG requires $db inside the command document." | kind=entity | source=probe/tests/test_db_mongodb_auth.py:L41 | neighbors=[.test_db_field_is_present()] | lang=en
+- "tests_test_db_mongodb_auth_rationale_64": "Neither exposed nor hardened — an empty dict keeps the rule honest         inste" | kind=entity | source=probe/tests/test_db_mongodb_auth.py:L64 | neighbors=[.test_silence_claims_nothing()] | lang=en
+- "tests_test_db_mongodb_auth_rationale_70": "A reply containing both must be read as enforced — the error path is         the" | kind=entity | source=probe/tests/test_db_mongodb_auth.py:L70 | neighbors=[.test_auth_marker_wins_over_ok_marker()] | lang=en
+- "tests_test_db_mongodb_auth_testauthinterpretation_test_successful_serverstatus_means_exposed": ".test_successful_serverstatus_means_exposed()" | kind=code-symbol | source=probe/tests/test_db_mongodb_auth.py:L57 | neighbors=[TestAuthInterpretation] | lang=en
+- "tests_test_db_mongodb_auth_testauthinterpretation_test_unauthorized_codename": ".test_unauthorized_codename()" | kind=code-symbol | source=probe/tests/test_db_mongodb_auth.py:L53 | neighbors=[TestAuthInterpretation] | lang=en
+- "tests_test_db_mongodb_auth_testauthinterpretation_test_unauthorized_means_auth_enforced": ".test_unauthorized_means_auth_enforced()" | kind=code-symbol | source=probe/tests/test_db_mongodb_auth.py:L47 | neighbors=[TestAuthInterpretation] | lang=en
+- "tests_test_db_mongodb_auth_testopmsgframing_test_bson_document_is_self_consistent": ".test_bson_document_is_self_consistent()" | kind=code-symbol | source=probe/tests/test_db_mongodb_auth.py:L34 | neighbors=[TestOpMsgFraming] | lang=en
+- "tests_test_db_mongodb_auth_testopmsgframing_test_declared_length_matches_actual": ".test_declared_length_matches_actual()" | kind=code-symbol | source=probe/tests/test_db_mongodb_auth.py:L25 | neighbors=[TestOpMsgFraming] | lang=en
+- "tests_test_db_mysql_greeting_rationale_1": "test_db_mysql_greeting.py — MySQL TLS posture from the server's own capability f" | kind=entity | source=probe/tests/test_db_mysql_greeting.py:L1 | neighbors=[test_db_mysql_greeting.py] | lang=en
+- "tests_test_db_mysql_greeting_rationale_52": "Flags present and CLIENT_SSL clear — a real negative, safe to report." | kind=entity | source=probe/tests/test_db_mysql_greeting.py:L52 | neighbors=[.test_client_ssl_absent_means_cleartext…] | lang=en
+- "tests_test_db_mysql_greeting_rationale_57": "Absent evidence must not become a cleartext finding." | kind=entity | source=probe/tests/test_db_mysql_greeting.py:L57 | neighbors=[.test_short_packet_claims_nothing()] | lang=pt
+- "tests_test_db_mysql_greeting_testidentification_test_non_mysql_is_rejected": ".test_non_mysql_is_rejected()" | kind=code-symbol | source=probe/tests/test_db_mysql_greeting.py:L40 | neighbors=[TestIdentification] | lang=en
+- "tests_test_db_posture_rules_rationale_1": "test_db_posture_rules.py — the database rule pack.  WHY IT EXISTS. db_scan was t" | kind=entity | source=manager/detection_engine/tests/test_db_posture_rules.py:L1 | neighbors=[test_db_posture_rules.py] | lang=en
+- "tests_test_db_posture_rules_rationale_102": "MySQL 8.4.11 advertises CLIENT_SSL — must not be reported." | kind=entity | source=manager/detection_engine/tests/test_db_posture_rules.py:L102 | neighbors=[.test_silent_on_real_tls_capable_mysql()] | lang=en
+- "tests_test_db_posture_rules_rationale_107": "Absent evidence is not a cleartext finding — a short read would         otherwis" | kind=entity | source=manager/detection_engine/tests/test_db_posture_rules.py:L107 | neighbors=[.test_silent_when_the_probe_never_learn…] | lang=pt
+- "tests_test_db_posture_rules_rationale_113": "Authentication in front does not protect a cleartext channel — it         just m" | kind=entity | source=manager/detection_engine/tests/test_db_posture_rules.py:L113 | neighbors=[.test_auth_enforced_is_not_applied()] | lang=en
+- "tests_test_db_posture_rules_rationale_123": "`requires` must name ONLY paths that EVERY db_scan fact carries.          This i" | kind=entity | source=manager/detection_engine/tests/test_db_posture_rules.py:L123 | neighbors=[.test_requires_names_only_universal_pat…] | lang=en
+- "tests_test_db_posture_rules_rationale_137": "Guards the failure no unit test catches: a rule reading a path the         probe" | kind=entity | source=manager/detection_engine/tests/test_db_posture_rules.py:L137 | neighbors=[.test_declared_inputs_exist_in_the_real…] | lang=en
+- "tests_test_db_posture_rules_rationale_147": "The marker is the one thing all engines must agree on — if a probe         refac" | kind=entity | source=manager/detection_engine/tests/test_db_posture_rules.py:L147 | neighbors=[.test_every_captured_engine_carries_the…] | lang=en
+- "tests_test_db_posture_rules_rationale_40": "The real db_scan fact for one port, straight from the probe corpus." | kind=entity | source=manager/detection_engine/tests/test_db_posture_rules.py:L40 | neighbors=[_captured()] | lang=en
+- "tests_test_db_posture_rules_rationale_73": "The trap: identification alone must never imply exposure. MongoDB         answer" | kind=entity | source=manager/detection_engine/tests/test_db_posture_rules.py:L73 | neighbors=[.test_silent_on_ismaster_only_shape()] | lang=en
+- "tests_test_db_posture_rules_rationale_83": "Without the discriminator the rule must not fire on a foreign fact." | kind=entity | source=manager/detection_engine/tests/test_db_posture_rules.py:L83 | neighbors=[.test_requires_the_db_marker()] | lang=en
+- "tests_test_db_posture_rules_testunauthenticatedaccess_test_severity_is_critical": ".test_severity_is_critical()" | kind=code-symbol | source=manager/detection_engine/tests/test_db_posture_rules.py:L86 | neighbors=[TestUnauthenticatedAccess] | lang=en
+- "tests_test_db_scanner_fakereader_init": ".__init__()" | kind=code-symbol | source=probe/tests/test_db_scanner.py:L18 | neighbors=[FakeReader] | lang=en
+- "tests_test_db_scanner_fakereader_read": ".read()" | kind=code-symbol | source=probe/tests/test_db_scanner.py:L21 | neighbors=[FakeReader] | lang=en
+- "tests_test_db_scanner_fakewriter_drain": ".drain()" | kind=code-symbol | source=probe/tests/test_db_scanner.py:L29 | neighbors=[FakeWriter] | lang=en
+- "tests_test_db_scanner_fakewriter_write": ".write()" | kind=code-symbol | source=probe/tests/test_db_scanner.py:L26 | neighbors=[FakeWriter] | lang=en
+- "tests_test_db_scanner_rationale_1": "Regression tests for db_scanner fingerprint matchers.  Focus: MySQL X Protocol (" | kind=entity | source=probe/tests/test_db_scanner.py:L1 | neighbors=[test_db_scanner.py] | lang=en
+- "tests_test_db_tds_prelogin_rationale_1": "test_db_tds_prelogin.py — MSSQL encryption posture from the TDS PRELOGIN reply." | kind=entity | source=probe/tests/test_db_tds_prelogin.py:L1 | neighbors=[test_db_tds_prelogin.py] | lang=en
+- "tests_test_db_tds_prelogin_rationale_100": "The malformed original could not elicit an ENCRYPTION option at all." | kind=entity | source=probe/tests/test_db_tds_prelogin.py:L100 | neighbors=[TestRequestIsWellFormed] | lang=en
+- "tests_test_db_tds_prelogin_rationale_27": "Build a server PRELOGIN reply the way SQL Server actually frames one." | kind=entity | source=probe/tests/test_db_tds_prelogin.py:L27 | neighbors=[_prelogin_response()] | lang=en
+- "tests_test_db_tds_prelogin_rationale_61": "ENCRYPT_OFF must NOT be read as 'cannot encrypt' — TDS still encrypts         th" | kind=entity | source=probe/tests/test_db_tds_prelogin.py:L61 | neighbors=[.test_off_still_supports_tls()] | lang=en
+- "tests_test_db_tds_prelogin_testpositiveevidenceonly_test_garbage_does_not_raise": ".test_garbage_does_not_raise()" | kind=code-symbol | source=probe/tests/test_db_tds_prelogin.py:L89 | neighbors=[TestPositiveEvidenceOnly] | lang=en
+- "tests_test_db_tds_prelogin_testrequestiswellformed_test_header_length_matches_body": ".test_header_length_matches_body()" | kind=code-symbol | source=probe/tests/test_db_tds_prelogin.py:L102 | neighbors=[TestRequestIsWellFormed] | lang=en
+- "tests_test_db_tds_prelogin_testrequestiswellformed_test_option_table_parses_and_offsets_are_in_range": ".test_option_table_parses_and_offsets_are_in_range()" | kind=code-symbol | source=probe/tests/test_db_tds_prelogin.py:L106 | neighbors=[TestRequestIsWellFormed] | lang=en
+- "tests_test_db_unauth_test_redis_authenticated": "test_redis_authenticated()" | kind=code-symbol | source=probe/tests/test_db_unauth.py:L11 | neighbors=[test_db_unauth.py] | lang=en
+- "tests_test_db_unauth_test_redis_unauthenticated": "test_redis_unauthenticated()" | kind=code-symbol | source=probe/tests/test_db_unauth.py:L4 | neighbors=[test_db_unauth.py] | lang=en
+- "tests_test_default_cred_rule_rationale_1": "Default-credential CANDIDATE detection.  The biggest real-world IoT risk, and a" | kind=entity | source=manager/detection_engine/tests/test_default_cred_rule.py:L1 | neighbors=[test_default_cred_rule.py] | lang=en
+- "tests_test_default_cred_rule_rationale_128": "Future maintainers must not mistake this for a proven login." | kind=entity | source=manager/detection_engine/tests/test_default_cred_rule.py:L128 | neighbors=[.test_fp_notes_state_it_is_unconfirmed()] | lang=en
 
 ## Instructions
 

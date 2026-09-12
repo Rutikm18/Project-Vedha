@@ -1,4 +1,4 @@
-# Node Description Batch 294 of 336
+# Node Description Batch 294 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,51 +19,53 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-Write every description in English (en). Do not switch languages.
+LANGUAGE: each entry has a `lang=` marker giving the language of its source.
+Write that entry's description in EXACTLY that language. Do not translate to
+a single common language — match each node's source language individually.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_network_va_accuracy_listener_init": ".__init__()" | kind=code-symbol | source=probe/tests/test_network_va_accuracy.py:L29 | neighbors=[_Listener]
-- "tests_test_network_va_accuracy_listener_serve": "._serve()" | kind=code-symbol | source=probe/tests/test_network_va_accuracy.py:L57 | neighbors=[_Listener]
-- "tests_test_network_va_accuracy_rationale_1": "test_network_va_accuracy.py — end-to-end accuracy of the network_va use case.  E" | kind=entity | source=probe/tests/test_network_va_accuracy.py:L1 | neighbors=[test_network_va_accuracy.py]
-- "tests_test_network_va_accuracy_rationale_120": "The regression this guards: these ports were outside the 40-port catalog,     so" | kind=entity | source=probe/tests/test_network_va_accuracy.py:L120 | neighbors=[test_every_planted_risk_port_is_found()]
-- "tests_test_network_va_accuracy_rationale_141": "Positive protocol evidence turns the botnet-C2 port guess into an     observatio" | kind=entity | source=probe/tests/test_network_va_accuracy.py:L141 | neighbors=[test_irc_is_identified_by_protocol_not_…]
-- "tests_test_network_va_accuracy_rationale_157": "4444 says nothing. The scanner must record that, not invent a service." | kind=entity | source=probe/tests/test_network_va_accuracy.py:L157 | neighbors=[test_silent_port_reports_no_banner_hone…]
-- "tests_test_network_va_accuracy_rationale_169": "Every deep branch that ran must have produced facts or have had a port to     ju" | kind=entity | source=probe/tests/test_network_va_accuracy.py:L169 | neighbors=[test_no_branch_runs_without_evidence()]
-- "tests_test_network_va_accuracy_rationale_181": "service_banner now proves non-TLS by attempting a handshake, so silent     binar" | kind=entity | source=probe/tests/test_network_va_accuracy.py:L181 | neighbors=[test_tls_branch_is_not_routed_by_silenc…]
-- "tests_test_network_va_accuracy_rationale_189": "network_va composes device classification and the exposure matrix." | kind=entity | source=probe/tests/test_network_va_accuracy.py:L189 | neighbors=[test_post_stages_ran()]
-- "tests_test_network_va_accuracy_rationale_27": "A real TCP listener that optionally speaks first." | kind=entity | source=probe/tests/test_network_va_accuracy.py:L27 | neighbors=[_Listener]
-- "tests_test_network_va_accuracy_rationale_79": "One real network_va against loopback with risk-catalog services listening." | kind=entity | source=probe/tests/test_network_va_accuracy.py:L79 | neighbors=[va_scan()]
-- "tests_test_network_va_accuracy_test_etcd_is_identified_and_cpe_mapped": "test_etcd_is_identified_and_cpe_mapped()" | kind=code-symbol | source=probe/tests/test_network_va_accuracy.py:L148 | neighbors=[test_network_va_accuracy.py]
-- "tests_test_network_va_accuracy_test_named_risk_port_in_catalog": "test_named_risk_port_in_catalog()" | kind=code-symbol | source=probe/tests/test_network_va_accuracy.py:L201 | neighbors=[test_network_va_accuracy.py]
-- "tests_test_network_va_accuracy_test_risk_ports_are_in_the_it_catalog": "test_risk_ports_are_in_the_it_catalog()" | kind=code-symbol | source=probe/tests/test_network_va_accuracy.py:L196 | neighbors=[test_network_va_accuracy.py]
-- "tests_test_network_va_accuracy_test_scan_completed_without_errors": "test_scan_completed_without_errors()" | kind=code-symbol | source=probe/tests/test_network_va_accuracy.py:L126 | neighbors=[test_network_va_accuracy.py]
-- "tests_test_network_va_accuracy_test_shell_prompt_is_identified_as_a_shell": "test_shell_prompt_is_identified_as_a_shell()" | kind=code-symbol | source=probe/tests/test_network_va_accuracy.py:L134 | neighbors=[test_network_va_accuracy.py]
-- "tests_test_new_scanners_delta_engine": "delta_engine()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L326 | neighbors=[test_new_scanners.py]
-- "tests_test_new_scanners_rationale_1": "test_new_scanners.py — unit tests for the five new/enhanced scanner modules.  Te" | kind=entity | source=probe/tests/test_new_scanners.py:L1 | neighbors=[test_new_scanners.py]
-- "tests_test_new_scanners_testdeltaengine_test_load_jsonl_missing_file": ".test_load_jsonl_missing_file()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L408 | neighbors=[TestDeltaEngine]
-- "tests_test_new_scanners_testiotscanner_test_coap_get_wellknown_header": ".test_coap_get_wellknown_header()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L281 | neighbors=[TestIoTScanner]
-- "tests_test_new_scanners_testiotscanner_test_coap_get_wellknown_path": ".test_coap_get_wellknown_path()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L287 | neighbors=[TestIoTScanner]
-- "tests_test_new_scanners_testiotscanner_test_coap_response_parse_205": ".test_coap_response_parse_205()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L293 | neighbors=[TestIoTScanner]
-- "tests_test_new_scanners_testiotscanner_test_coap_response_parse_404": ".test_coap_response_parse_404()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L300 | neighbors=[TestIoTScanner]
-- "tests_test_new_scanners_testiotscanner_test_coap_response_parse_short": ".test_coap_response_parse_short()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L306 | neighbors=[TestIoTScanner]
-- "tests_test_new_scanners_testiotscanner_test_mqtt_connect_clean_session_flag": ".test_mqtt_connect_clean_session_flag()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L275 | neighbors=[TestIoTScanner]
-- "tests_test_new_scanners_testiotscanner_test_mqtt_connect_packet_structure": ".test_mqtt_connect_packet_structure()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L265 | neighbors=[TestIoTScanner]
-- "tests_test_new_scanners_testiotscanner_test_mqtt_remaining_length_encoding": ".test_mqtt_remaining_length_encoding()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L258 | neighbors=[TestIoTScanner]
-- "tests_test_new_scanners_testiotscanner_test_ssdp_header_parsing_location": ".test_ssdp_header_parsing_location()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L248 | neighbors=[TestIoTScanner]
-- "tests_test_new_scanners_testmobilescanner_test_adb_checksum_empty": ".test_adb_checksum_empty()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L586 | neighbors=[TestMobileScanner]
-- "tests_test_new_scanners_testmobilescanner_test_adb_checksum_known_value": ".test_adb_checksum_known_value()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L590 | neighbors=[TestMobileScanner]
-- "tests_test_new_scanners_testmobilescanner_test_adb_cnxn_checksum_matches": ".test_adb_cnxn_checksum_matches()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L532 | neighbors=[TestMobileScanner]
-- "tests_test_new_scanners_testmobilescanner_test_adb_cnxn_command_field": ".test_adb_cnxn_command_field()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L520 | neighbors=[TestMobileScanner]
-- "tests_test_new_scanners_testmobilescanner_test_adb_cnxn_magic_invariant": ".test_adb_cnxn_magic_invariant()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L526 | neighbors=[TestMobileScanner]
-- "tests_test_new_scanners_testmobilescanner_test_mdns_query_contains_service_labels": ".test_mdns_query_contains_service_labels()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L574 | neighbors=[TestMobileScanner]
-- "tests_test_new_scanners_testmobilescanner_test_mdns_query_googlecast": ".test_mdns_query_googlecast()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L581 | neighbors=[TestMobileScanner]
-- "tests_test_new_scanners_testmobilescanner_test_mdns_query_one_question": ".test_mdns_query_one_question()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L569 | neighbors=[TestMobileScanner]
-- "tests_test_new_scanners_testmobilescanner_test_mdns_query_transaction_id_zero": ".test_mdns_query_transaction_id_zero()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L564 | neighbors=[TestMobileScanner]
-- "tests_test_new_scanners_testmobilescanner_test_parse_adb_header_auth": ".test_parse_adb_header_auth()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L548 | neighbors=[TestMobileScanner]
-- "tests_test_new_scanners_testmobilescanner_test_parse_adb_header_cnxn": ".test_parse_adb_header_cnxn()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L539 | neighbors=[TestMobileScanner]
-- "tests_test_new_scanners_testmobilescanner_test_parse_adb_header_invalid_magic": ".test_parse_adb_header_invalid_magic()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L555 | neighbors=[TestMobileScanner]
+- "scanner_tls_fingerprint_rationale_184": "Concatenate the ServerHello extension TYPE codes (2 bytes each). We hash types," | kind=entity | source=probe/scanner/tls_fingerprint.py:L184 | neighbors=[_server_ext_types()] | lang=en
+- "scanner_tls_fingerprint_rationale_185": "Concatenate the ServerHello extension TYPE codes (2 bytes each). We hash types," | kind=entity | source=probe/scanner/tls_fingerprint.py:L185 | neighbors=[_server_ext_types()] | lang=en
+- "scanner_tls_fingerprint_rationale_186": "Concatenate the ServerHello extension TYPE codes (2 bytes each). We hash types," | kind=entity | source=probe/scanner/tls_fingerprint.py:L186 | neighbors=[_server_ext_types()] | lang=en
+- "scanner_tls_fingerprint_rationale_200": "JARM-shaped 62-char fuzzy hash: 3 chars per probe (cipher[2] + version[1])," | kind=entity | source=probe/scanner/tls_fingerprint.py:L200 | neighbors=[jarm_style_digest()] | lang=it
+- "scanner_tls_fingerprint_rationale_201": "JARM-shaped 62-char fuzzy hash: 3 chars per probe (cipher[2] + version[1])," | kind=entity | source=probe/scanner/tls_fingerprint.py:L201 | neighbors=[jarm_style_digest()] | lang=it
+- "scanner_tls_fingerprint_rationale_202": "JARM-shaped 62-char fuzzy hash: 3 chars per probe (cipher[2] + version[1])," | kind=entity | source=probe/scanner/tls_fingerprint.py:L202 | neighbors=[jarm_style_digest()] | lang=it
+- "scanner_tls_fingerprint_rationale_241": "Read exactly the first TLS record (the ServerHello or an alert) and stop —     n" | kind=entity | source=probe/scanner/tls_fingerprint.py:L241 | neighbors=[_recv_first_record()] | lang=en
+- "scanner_tls_fingerprint_rationale_242": "Read exactly the first TLS record (the ServerHello or an alert) and stop —     n" | kind=entity | source=probe/scanner/tls_fingerprint.py:L242 | neighbors=[_recv_first_record()] | lang=en
+- "scanner_tls_fingerprint_rationale_243": "Read exactly the first TLS record (the ServerHello or an alert) and stop —     n" | kind=entity | source=probe/scanner/tls_fingerprint.py:L243 | neighbors=[_recv_first_record()] | lang=en
+- "scanner_tls_fingerprint_rationale_261": "Send one crafted ClientHello, read + parse the ServerHello. Sync." | kind=entity | source=probe/scanner/tls_fingerprint.py:L261 | neighbors=[_one_probe()] | lang=en
+- "scanner_tls_fingerprint_rationale_262": "Send one crafted ClientHello, read + parse the ServerHello. Sync." | kind=entity | source=probe/scanner/tls_fingerprint.py:L262 | neighbors=[_one_probe()] | lang=en
+- "scanner_tls_fingerprint_rationale_263": "Send one crafted ClientHello, read + parse the ServerHello. Sync." | kind=entity | source=probe/scanner/tls_fingerprint.py:L263 | neighbors=[_one_probe()] | lang=en
+- "scanner_tls_fingerprint_rationale_274": "Run all probes and return (62-char digest, per-probe results)." | kind=entity | source=probe/scanner/tls_fingerprint.py:L274 | neighbors=[fingerprint_host()] | lang=en
+- "scanner_tls_fingerprint_rationale_275": "Run all probes and return (62-char digest, per-probe results)." | kind=entity | source=probe/scanner/tls_fingerprint.py:L275 | neighbors=[fingerprint_host()] | lang=en
+- "scanner_tls_fingerprint_rationale_276": "Run all probes and return (62-char digest, per-probe results)." | kind=entity | source=probe/scanner/tls_fingerprint.py:L276 | neighbors=[fingerprint_host()] | lang=en
+- "scanner_tls_fingerprint_rationale_90": "Build a complete TLS ClientHello record (record layer + handshake)." | kind=entity | source=probe/scanner/tls_fingerprint.py:L90 | neighbors=[build_client_hello()] | lang=pt
+- "scanner_tls_fingerprint_rationale_91": "Build a complete TLS ClientHello record (record layer + handshake)." | kind=entity | source=probe/scanner/tls_fingerprint.py:L91 | neighbors=[build_client_hello()] | lang=pt
+- "scanner_tls_fingerprint_rationale_92": "Build a complete TLS ClientHello record (record layer + handshake)." | kind=entity | source=probe/scanner/tls_fingerprint.py:L92 | neighbors=[build_client_hello()] | lang=pt
+- "scanner_tls_fingerprint_tlsfingerprintscanner_init": ".__init__()" | kind=code-symbol | source=probe/scanner/tls_fingerprint.py:L286 | neighbors=[TLSFingerprintScanner] | lang=en
+- "scanner_tls_scanner_main": "main()" | kind=code-symbol | source=probe/scanner/tls_scanner.py:L345 | neighbors=[tls_scanner.py] | lang=en
+- "scanner_tls_scanner_rationale_1": "tls_scanner.py — collect TLS/SSL configuration facts.  METHOD (collection only):" | kind=entity | source=probe/scanner/tls_scanner.py:L1 | neighbors=[tls_scanner.py] | lang=en
+- "scanner_tls_scanner_rationale_104": "Grade overall TLS posture A/B/C/F from accepted protocol versions and the     cl" | kind=entity | source=probe/scanner/tls_scanner.py:L104 | neighbors=[grade_tls_posture()] | lang=en
+- "scanner_tls_scanner_rationale_105": "Grade overall TLS posture A/B/C/F from accepted protocol versions and the     cl" | kind=entity | source=probe/scanner/tls_scanner.py:L105 | neighbors=[grade_tls_posture()] | lang=en
+- "scanner_tls_scanner_rationale_146": "Never send an IP literal as SNI — non-conformant; some servers reject it." | kind=entity | source=probe/scanner/tls_scanner.py:L146 | neighbors=[_sni()] | lang=en
+- "scanner_tls_scanner_rationale_147": "Never send an IP literal as SNI — non-conformant; some servers reject it." | kind=entity | source=probe/scanner/tls_scanner.py:L147 | neighbors=[_sni()] | lang=en
+- "scanner_tls_scanner_rationale_155": "Attempt a handshake forcing one protocol version. Returns cipher dict or None." | kind=entity | source=probe/scanner/tls_scanner.py:L155 | neighbors=[_try_version()] | lang=pt
+- "scanner_tls_scanner_rationale_156": "Attempt a handshake forcing one protocol version. Returns cipher dict or None." | kind=entity | source=probe/scanner/tls_scanner.py:L156 | neighbors=[_try_version()] | lang=pt
+- "scanner_tls_scanner_rationale_166": "Attempt a handshake forcing one protocol version.      Returns a cipher dict whe" | kind=entity | source=probe/scanner/tls_scanner.py:L166 | neighbors=[_try_version()] | lang=pt
+- "scanner_tls_scanner_rationale_57": "Never send an IP literal as SNI — non-conformant; some servers reject it." | kind=entity | source=probe/scanner/tls_scanner.py:L57 | neighbors=[_sni()] | lang=en
+- "scanner_tls_scanner_rationale_60": "Flag the security-relevant properties of an OpenSSL cipher-suite name:     forwa" | kind=entity | source=probe/scanner/tls_scanner.py:L60 | neighbors=[classify_cipher()] | lang=en
+- "scanner_tls_scanner_rationale_61": "Flag the security-relevant properties of an OpenSSL cipher-suite name:     forwa" | kind=entity | source=probe/scanner/tls_scanner.py:L61 | neighbors=[classify_cipher()] | lang=en
+- "scanner_tls_scanner_rationale_66": "Attempt a handshake forcing one protocol version. Returns cipher dict or None." | kind=entity | source=probe/scanner/tls_scanner.py:L66 | neighbors=[_try_version()] | lang=pt
+- "scanner_tls_scanner_tlsscanner_init": ".__init__()" | kind=code-symbol | source=probe/scanner/tls_scanner.py:L316 | neighbors=[TLSScanner] | lang=en
+- "scanner_udp_scanner_dns_probe": "_dns_probe()" | kind=code-symbol | source=probe/scanner/udp_scanner.py:L39 | neighbors=[udp_scanner.py] | lang=en
+- "scanner_udp_scanner_main": "main()" | kind=code-symbol | source=probe/scanner/udp_scanner.py:L392 | neighbors=[udp_scanner.py] | lang=en
+- "scanner_udp_scanner_memcached_stats_probe": "_memcached_stats_probe()" | kind=code-symbol | source=probe/scanner/udp_scanner.py:L73 | neighbors=[udp_scanner.py] | lang=en
+- "scanner_udp_scanner_netbios_probe": "_netbios_probe()" | kind=code-symbol | source=probe/scanner/udp_scanner.py:L65 | neighbors=[udp_scanner.py] | lang=en
+- "scanner_udp_scanner_ntp_probe": "_ntp_probe()" | kind=code-symbol | source=probe/scanner/udp_scanner.py:L46 | neighbors=[udp_scanner.py] | lang=en
+- "scanner_udp_scanner_rationale_1": "udp_scanner.py — detect common UDP services via protocol-specific probes.  METHO" | kind=entity | source=probe/scanner/udp_scanner.py:L1 | neighbors=[udp_scanner.py] | lang=en
+- "scanner_udp_scanner_rationale_114": "SIP OPTIONS request — safe fingerprint method." | kind=entity | source=probe/scanner/udp_scanner.py:L114 | neighbors=[_sip_probe()] | lang=en
 
 ## Instructions
 

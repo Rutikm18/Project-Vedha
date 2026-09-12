@@ -1,4 +1,4 @@
-# Node Description Batch 308 of 336
+# Node Description Batch 308 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,51 +19,53 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-Write every description in English (en). Do not switch languages.
+LANGUAGE: each entry has a `lang=` marker giving the language of its source.
+Write that entry's description in EXACTLY that language. Do not translate to
+a single common language — match each node's source language individually.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_result_spool_testresultspool_test_max_retries_uses_class_default": ".test_max_retries_uses_class_default()" | kind=code-symbol | source=probe/tests/test_result_spool.py:L175 | neighbors=[TestResultSpool]
-- "tests_test_result_spool_testresultspool_test_permanent_rejection_is_quarantined_without_retry": ".test_permanent_rejection_is_quarantined_without_retry()" | kind=code-symbol | source=probe/tests/test_result_spool.py:L121 | neighbors=[TestResultSpool]
-- "tests_test_result_spool_testresultspool_test_rejects_job_id_path_traversal": ".test_rejects_job_id_path_traversal()" | kind=code-symbol | source=probe/tests/test_result_spool.py:L37 | neighbors=[TestResultSpool]
-- "tests_test_result_spool_testresultspool_test_rejects_non_positive_capacity": ".test_rejects_non_positive_capacity()" | kind=code-symbol | source=probe/tests/test_result_spool.py:L210 | neighbors=[TestResultSpool]
-- "tests_test_result_spool_testresultspool_test_remove": ".test_remove()" | kind=code-symbol | source=probe/tests/test_result_spool.py:L70 | neighbors=[TestResultSpool]
-- "tests_test_result_spool_testresultspool_test_remove_missing": ".test_remove_missing()" | kind=code-symbol | source=probe/tests/test_result_spool.py:L76 | neighbors=[TestResultSpool]
-- "tests_test_result_spool_testresultspool_test_save_and_load": ".test_save_and_load()" | kind=code-symbol | source=probe/tests/test_result_spool.py:L19 | neighbors=[TestResultSpool]
-- "tests_test_result_spool_testresultspool_test_save_is_atomic_no_temp_leftover": ".test_save_is_atomic_no_temp_leftover()" | kind=code-symbol | source=probe/tests/test_result_spool.py:L26 | neighbors=[TestResultSpool]
-- "tests_test_result_spool_testresultspool_test_spool_count": ".test_spool_count()" | kind=code-symbol | source=probe/tests/test_result_spool.py:L80 | neighbors=[TestResultSpool]
-- "tests_test_result_spool_testresultspool_test_spool_directory_and_result_are_private": ".test_spool_directory_and_result_are_private()" | kind=code-symbol | source=probe/tests/test_result_spool.py:L46 | neighbors=[TestResultSpool]
-- "tests_test_result_spool_testresultspool_test_submit_with_retry_exception": ".test_submit_with_retry_exception()" | kind=code-symbol | source=probe/tests/test_result_spool.py:L113 | neighbors=[TestResultSpool]
-- "tests_test_result_spool_testresultspool_test_submit_with_retry_failure": ".test_submit_with_retry_failure()" | kind=code-symbol | source=probe/tests/test_result_spool.py:L100 | neighbors=[TestResultSpool]
-- "tests_test_result_spool_testresultspool_test_submit_with_retry_success": ".test_submit_with_retry_success()" | kind=code-symbol | source=probe/tests/test_result_spool.py:L87 | neighbors=[TestResultSpool]
-- "tests_test_risk_port_coverage_rationale_1": "test_risk_port_coverage.py — the collection half of the exposed-service rules." | kind=entity | source=probe/tests/test_risk_port_coverage.py:L1 | neighbors=[test_risk_port_coverage.py]
-- "tests_test_risk_port_coverage_rationale_101": "A connect scan is one socket per port per host, so this list is a cost as     we" | kind=entity | source=probe/tests/test_risk_port_coverage.py:L101 | neighbors=[test_sweep_stays_within_a_sane_budget()]
-- "tests_test_risk_port_coverage_rationale_110": "The sweep is profile catalog UNION the TCP branch tables; a regression that" | kind=entity | source=probe/tests/test_risk_port_coverage.py:L110 | neighbors=[test_branch_tables_still_contribute()]
-- "tests_test_risk_port_coverage_rationale_128": "The complement of the rule above, pinned so a future edit cannot quietly     add" | kind=entity | source=probe/tests/test_risk_port_coverage.py:L128 | neighbors=[test_datagram_branch_ports_are_not_in_t…]
-- "tests_test_risk_port_coverage_rationale_54": "Exactly what a default network_va puts on the wire: the profile catalog     plus" | kind=entity | source=probe/tests/test_risk_port_coverage.py:L54 | neighbors=[_swept_by_network_va()]
-- "tests_test_risk_port_coverage_rationale_72": "Called out separately: these carry the highest severity and were 100%     unscan" | kind=entity | source=probe/tests/test_risk_port_coverage.py:L72 | neighbors=[test_every_backdoor_port_is_swept()]
-- "tests_test_risk_port_coverage_rationale_81": "Reverse direction: VA_RISK_PORTS must not accumulate ports the manager has     n" | kind=entity | source=probe/tests/test_risk_port_coverage.py:L81 | neighbors=[test_va_risk_ports_are_all_actually_in_…]
-- "tests_test_risk_port_coverage_test_it_ports_is_the_union_and_stays_sorted_unique": "test_it_ports_is_the_union_and_stays_sorted_unique()" | kind=code-symbol | source=probe/tests/test_risk_port_coverage.py:L95 | neighbors=[test_risk_port_coverage.py]
-- "tests_test_risk_port_coverage_test_va_risk_ports_has_no_duplicates_and_is_valid": "test_va_risk_ports_has_no_duplicates_and_is_valid()" | kind=code-symbol | source=probe/tests/test_risk_port_coverage.py:L90 | neighbors=[test_risk_port_coverage.py]
-- "tests_test_risk_rank_test_distinct_high_risks_do_not_collapse_at_the_ceiling": "test_distinct_high_risks_do_not_collapse_at_the_ceiling()" | kind=code-symbol | source=manager/backend/tests/test_risk_rank.py:L54 | neighbors=[test_risk_rank.py]
-- "tests_test_risk_rank_test_missing_optionals_do_not_crash": "test_missing_optionals_do_not_crash()" | kind=code-symbol | source=manager/backend/tests/test_risk_rank.py:L46 | neighbors=[test_risk_rank.py]
-- "tests_test_risk_score_contract_rationale_1": "Regression tests for posture findings entering the Manager risk contract." | kind=entity | source=manager/backend/tests/test_risk_score_contract.py:L1 | neighbors=[test_risk_score_contract.py]
-- "tests_test_risk_score_contract_test_only_detection_engine_posture_evidence_uses_the_boundary_conversion": "test_only_detection_engine_posture_evidence_uses_the_boundary_conversion()" | kind=code-symbol | source=manager/backend/tests/test_risk_score_contract.py:L30 | neighbors=[test_risk_score_contract.py]
-- "tests_test_risk_score_contract_test_posture_severity_and_evidence_drive_manager_risk": "test_posture_severity_and_evidence_drive_manager_risk()" | kind=code-symbol | source=manager/backend/tests/test_risk_score_contract.py:L18 | neighbors=[test_risk_score_contract.py]
-- "tests_test_risk_score_contract_test_upstream_posture_score_cannot_force_the_manager_ceiling": "test_upstream_posture_score_cannot_force_the_manager_ceiling()" | kind=code-symbol | source=manager/backend/tests/test_risk_score_contract.py:L6 | neighbors=[test_risk_score_contract.py]
-- "tests_test_router_db_test_mysql_greeting_on_odd_port": "test_mysql_greeting_on_odd_port()" | kind=code-symbol | source=probe/tests/test_router_db.py:L4 | neighbors=[test_router_db.py]
-- "tests_test_router_db_test_plain_http_is_not_db": "test_plain_http_is_not_db()" | kind=code-symbol | source=probe/tests/test_router_db.py:L13 | neighbors=[test_router_db.py]
-- "tests_test_router_db_test_redis_noauth_signature": "test_redis_noauth_signature()" | kind=code-symbol | source=probe/tests/test_router_db.py:L9 | neighbors=[test_router_db.py]
-- "tests_test_router_signals_rationale_1": "test_router_signals.py — router.py consumes service_banner's POSITIVE signals (t" | kind=entity | source=probe/tests/test_router_signals.py:L1 | neighbors=[test_router_signals.py]
-- "tests_test_router_signals_rationale_108": "service_banner now ATTEMPTS a TLS handshake on every unidentified port and     r" | kind=entity | source=probe/tests/test_router_signals.py:L108 | neighbors=[TestTlsProbedNegative]
-- "tests_test_router_signals_rationale_138": "The flag must actually be emitted, or the router change is inert." | kind=entity | source=probe/tests/test_router_signals.py:L138 | neighbors=[test_service_banner_records_tls_probed()]
-- "tests_test_router_signals_rationale_162": "--no-tls means no handshake was tried, so the absence guess must remain     avai" | kind=entity | source=probe/tests/test_router_signals.py:L162 | neighbors=[test_no_tls_flag_omits_the_marker()]
-- "tests_test_router_signals_rationale_71": "9000 is in the static WEB table but NOT the TLS table: only the banner's     obs" | kind=entity | source=probe/tests/test_router_signals.py:L71 | neighbors=[test_workflow_hands_observed_tls_ports_…]
-- "tests_test_router_signals_testpositivetls_test_absence_heuristic_still_works": ".test_absence_heuristic_still_works()" | kind=code-symbol | source=probe/tests/test_router_signals.py:L31 | neighbors=[TestPositiveTls]
-- "tests_test_router_signals_testpositivetls_test_alert_record_service_routes": ".test_alert_record_service_routes()" | kind=code-symbol | source=probe/tests/test_router_signals.py:L28 | neighbors=[TestPositiveTls]
-- "tests_test_router_signals_testpositivetls_test_handshake_fact_routes_even_on_client_first_port": ".test_handshake_fact_routes_even_on_client_first_port()" | kind=code-symbol | source=probe/tests/test_router_signals.py:L25 | neighbors=[TestPositiveTls]
-- "tests_test_router_signals_teststructuredservice_test_db_by_service_field": ".test_db_by_service_field()" | kind=code-symbol | source=probe/tests/test_router_signals.py:L38 | neighbors=[TestStructuredService]
+- "tests_test_agents_testagentjobcompatibility_test_empty_segments_are_fail_closed": ".test_empty_segments_are_fail_closed()" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L438 | neighbors=[TestAgentJobCompatibility] | lang=en
+- "tests_test_agents_testagentjobcompatibility_test_explicit_out_of_scope_target_is_never_dispatched": ".test_explicit_out_of_scope_target_is_never_dispatched()" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L498 | neighbors=[TestAgentJobCompatibility] | lang=en
+- "tests_test_agents_testagentjobcompatibility_test_hostname_and_explicit_empty_targets_are_not_routable": ".test_hostname_and_explicit_empty_targets_are_not_routable()" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L541 | neighbors=[TestAgentJobCompatibility] | lang=en
+- "tests_test_agents_testagentjobcompatibility_test_missing_authoritative_scope_never_uses_job_targets_as_authority": ".test_missing_authoritative_scope_never_uses_job_targets_as_authority()" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L505 | neighbors=[TestAgentJobCompatibility] | lang=en
+- "tests_test_agents_testagentjobcompatibility_test_requested_ip_range_uses_only_its_covered_networks": ".test_requested_ip_range_uses_only_its_covered_networks()" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L530 | neighbors=[TestAgentJobCompatibility] | lang=en
+- "tests_test_agents_testagentjobcompatibility_test_requested_subset_routes_to_a_subset_probe": ".test_requested_subset_routes_to_a_subset_probe()" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L450 | neighbors=[TestAgentJobCompatibility] | lang=en
+- "tests_test_agents_testagentjobcompatibility_test_use_case_resolves_to_required_capability": ".test_use_case_resolves_to_required_capability()" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L415 | neighbors=[TestAgentJobCompatibility] | lang=en
+- "tests_test_agents_testagentregistrationrefresh_test_agent_can_refresh_only_its_own_routing_metadata": ".test_agent_can_refresh_only_its_own_routing_metadata()" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L241 | neighbors=[TestAgentRegistrationRefresh] | lang=en
+- "tests_test_agents_testagentregistrationrefresh_test_agent_cannot_refresh_another_identity": ".test_agent_cannot_refresh_another_identity()" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L277 | neighbors=[TestAgentRegistrationRefresh] | lang=en
+- "tests_test_agents_testgetagentjobs_test_404_when_agent_unknown": ".test_404_when_agent_unknown()" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L405 | neighbors=[TestGetAgentJobs] | lang=en
+- "tests_test_agents_testgetagentjobs_test_jobs_include_params": ".test_jobs_include_params()" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L301 | neighbors=[TestGetAgentJobs] | lang=en
+- "tests_test_agents_testgetagentjobs_test_skips_job_outside_declared_network_segments": ".test_skips_job_outside_declared_network_segments()" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L375 | neighbors=[TestGetAgentJobs] | lang=en
+- "tests_test_agents_testgetagentjobs_test_skips_job_when_capability_is_missing": ".test_skips_job_when_capability_is_missing()" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L345 | neighbors=[TestGetAgentJobs] | lang=en
+- "tests_test_agents_testheartbeat_test_online_heartbeat_clears_completed_job": ".test_online_heartbeat_clears_completed_job()" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L615 | neighbors=[TestHeartbeat] | lang=en
+- "tests_test_agents_testlegacybootstrap_test_shared_secret_bootstrap_is_disabled_by_default": ".test_shared_secret_bootstrap_is_disabled_by_default()" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L651 | neighbors=[TestLegacyBootstrap] | lang=en
+- "tests_test_agents_testpromoteassets_test_creates_asset_and_services_with_cpe": ".test_creates_asset_and_services_with_cpe()" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L735 | neighbors=[TestPromoteAssets] | lang=en
+- "tests_test_agents_testpromoteassets_test_empty_result_is_noop": ".test_empty_result_is_noop()" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L792 | neighbors=[TestPromoteAssets] | lang=en
+- "tests_test_agents_testpromoteassets_test_skips_host_without_ip": ".test_skips_host_without_ip()" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L785 | neighbors=[TestPromoteAssets] | lang=en
+- "tests_test_ai_engine_testhallucinationguard_setup_method": ".setup_method()" | kind=code-symbol | source=manager/backend/tests/test_ai_engine.py:L106 | neighbors=[TestHallucinationGuard] | lang=en
+- "tests_test_ai_engine_testhallucinationguard_test_cve_all_known_valid": ".test_cve_all_known_valid()" | kind=code-symbol | source=manager/backend/tests/test_ai_engine.py:L117 | neighbors=[TestHallucinationGuard] | lang=en
+- "tests_test_ai_engine_testhallucinationguard_test_cve_invention_flagged": ".test_cve_invention_flagged()" | kind=code-symbol | source=manager/backend/tests/test_ai_engine.py:L109 | neighbors=[TestHallucinationGuard] | lang=en
+- "tests_test_ai_engine_testhallucinationguard_test_cvss_match_passes": ".test_cvss_match_passes()" | kind=code-symbol | source=manager/backend/tests/test_ai_engine.py:L126 | neighbors=[TestHallucinationGuard] | lang=en
+- "tests_test_ai_engine_testhallucinationguard_test_cvss_mismatch_flagged": ".test_cvss_mismatch_flagged()" | kind=code-symbol | source=manager/backend/tests/test_ai_engine.py:L121 | neighbors=[TestHallucinationGuard] | lang=en
+- "tests_test_ai_engine_testhallucinationguard_test_destructive_command_flagged": ".test_destructive_command_flagged()" | kind=code-symbol | source=manager/backend/tests/test_ai_engine.py:L130 | neighbors=[TestHallucinationGuard] | lang=en
+- "tests_test_ai_engine_testhallucinationguard_test_drop_table_flagged": ".test_drop_table_flagged()" | kind=code-symbol | source=manager/backend/tests/test_ai_engine.py:L135 | neighbors=[TestHallucinationGuard] | lang=en
+- "tests_test_ai_engine_testhallucinationguard_test_safe_remediation_passes": ".test_safe_remediation_passes()" | kind=code-symbol | source=manager/backend/tests/test_ai_engine.py:L139 | neighbors=[TestHallucinationGuard] | lang=en
+- "tests_test_ai_engine_testhallucinationguard_test_validate_aggregate_confidence": ".test_validate_aggregate_confidence()" | kind=code-symbol | source=manager/backend/tests/test_ai_engine.py:L143 | neighbors=[TestHallucinationGuard] | lang=en
+- "tests_test_ai_engine_testhallucinationguard_test_validate_clean_text": ".test_validate_clean_text()" | kind=code-symbol | source=manager/backend/tests/test_ai_engine.py:L152 | neighbors=[TestHallucinationGuard] | lang=en
+- "tests_test_ai_engine_testvulnprioritizer_setup_method": ".setup_method()" | kind=code-symbol | source=manager/backend/tests/test_ai_engine.py:L49 | neighbors=[TestVulnPrioritizer] | lang=en
+- "tests_test_ai_engine_testvulnprioritizer_test_fallback_score_capped": ".test_fallback_score_capped()" | kind=code-symbol | source=manager/backend/tests/test_ai_engine.py:L88 | neighbors=[TestVulnPrioritizer] | lang=en
+- "tests_test_ai_engine_testvulnprioritizer_test_starts_untrained": ".test_starts_untrained()" | kind=code-symbol | source=manager/backend/tests/test_ai_engine.py:L52 | neighbors=[TestVulnPrioritizer] | lang=en
+- "tests_test_ai_engine_testvulnprioritizer_test_train_without_xgboost_raises": ".test_train_without_xgboost_raises()" | kind=code-symbol | source=manager/backend/tests/test_ai_engine.py:L92 | neighbors=[TestVulnPrioritizer] | lang=en
+- "tests_test_ai_normalizer_rationale_1": "Tests for ai_normalizer.py — 0% prior coverage.  Covers:   - extract_raw_text: p" | kind=entity | source=manager/detection_engine/tests/test_ai_normalizer.py:L1 | neighbors=[test_ai_normalizer.py] | lang=en
+- "tests_test_ai_normalizer_rationale_155": "Any exception from the AI client yields [] — never raises, never         blocks" | kind=entity | source=manager/detection_engine/tests/test_ai_normalizer.py:L155 | neighbors=[.test_client_failure_returns_empty()] | lang=en
+- "tests_test_ai_normalizer_rationale_168": "When the cache already has an answer, the client must not be called." | kind=entity | source=manager/detection_engine/tests/test_ai_normalizer.py:L168 | neighbors=[.test_cache_hit_bypasses_client()] | lang=en
+- "tests_test_ai_normalizer_rationale_185": "A candidate dict without a 'product' key must be silently skipped." | kind=entity | source=manager/detection_engine/tests/test_ai_normalizer.py:L185 | neighbors=[.test_malformed_response_missing_produc…] | lang=pt
+- "tests_test_ai_normalizer_rationale_194": "If the client returns something that isn't a list, return []." | kind=entity | source=manager/detection_engine/tests/test_ai_normalizer.py:L194 | neighbors=[.test_malformed_response_not_a_list_ret…] | lang=en
+- "tests_test_ai_normalizer_rationale_206": "Every candidate produced by propose_candidates must be tagged         ai_assiste" | kind=entity | source=manager/detection_engine/tests/test_ai_normalizer.py:L206 | neighbors=[.test_ai_assisted_flag_set_on_candidate…] | lang=en
+- "tests_test_ai_normalizer_rationale_219": "source_confidence on the resulting CPECandidate must match the         originati" | kind=entity | source=manager/detection_engine/tests/test_ai_normalizer.py:L219 | neighbors=[.test_source_confidence_propagated_from…] | lang=en
+- "tests_test_ai_normalizer_rationale_231": "When the AI response includes a version, it lands on the candidate." | kind=entity | source=manager/detection_engine/tests/test_ai_normalizer.py:L231 | neighbors=[.test_version_propagated_when_present()] | lang=en
 
 ## Instructions
 

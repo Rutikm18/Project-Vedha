@@ -1,4 +1,4 @@
-# Node Description Batch 147 of 336
+# Node Description Batch 147 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,51 +12,58 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
+For an entity node (any other kind — e.g. a person, place, event, object),
+describe what the entity is and its role, grounded in its type, its
+relations (neighbors) and the provided citations/evidence — e.g.
+"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
+Ground entity descriptions in the citations/evidence when present; do not
+speculate beyond the context, so a node with no supporting context may be
+left out of the reply.
 Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "services_remediation_kb_cves": "_cves()" | kind=code-symbol | source=manager/backend/app/services/remediation_kb.py:L54 | neighbors=[remediation_kb.py, classify_finding()]
-- "services_remediation_kb_step": "_step()" | kind=code-symbol | source=manager/backend/app/services/remediation_kb.py:L94 | neighbors=[remediation_kb.py, One remediation step. `generic` is REQU…]
-- "services_remediation_kb_text": "_text()" | kind=code-symbol | source=manager/backend/app/services/remediation_kb.py:L45 | neighbors=[remediation_kb.py, classify_finding()]
-- "services_risk_rank_bounded": "_bounded()" | kind=code-symbol | source=manager/backend/app/services/risk_rank.py:L35 | neighbors=[risk_rank.py, compute_risk_rank()]
-- "services_risk_rank_compute_risk_rank": "compute_risk_rank()" | kind=code-symbol | source=manager/backend/app/services/risk_rank.py:L39 | neighbors=[risk_rank.py, _bounded()]
-- "services_scope_crypto_public_key_from_b64": "public_key_from_b64()" | kind=code-symbol | source=manager/backend/app/services/scope_crypto.py:L85 | neighbors=[scope_crypto.py, Decode a base64-encoded X25519 public k…]
-- "services_scope_targets_parse_networks": "_parse_networks()" | kind=code-symbol | source=manager/backend/app/services/scope_targets.py:L28 | neighbors=[scope_targets.py, validate_targets_in_scope()]
-- "settings_page_apikeyssection": "ApiKeysSection()" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L287 | neighbors=[page.tsx, inlineInput()]
-- "settings_page_auditlogsection": "AuditLogSection()" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L795 | neighbors=[page.tsx, inlineInput()]
-- "settings_page_integrationsection": "IntegrationSection()" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L570 | neighbors=[page.tsx, inlineInput()]
-- "status_route_get": "GET()" | kind=code-symbol | source=manager/frontend/app/api/settings/status/route.ts:L15 | neighbors=[route.ts, readiness()]
-- "status_route_readiness": "readiness()" | kind=code-symbol | source=manager/frontend/app/api/settings/status/route.ts:L10 | neighbors=[route.ts, GET()]
-- "supporting_research_evidence_store_coverage_summary": "coverage_summary()" | kind=code-symbol | source=Supporting_research/evidence_store.py:L362 | neighbors=[evidence_store.py, What a customer should actually be show…]
-- "supporting_research_evidence_store_naive_ip_identity": "naive_ip_identity()" | kind=code-symbol | source=Supporting_research/evidence_store.py:L257 | neighbors=[evidence_store.py, The industry default, for comparison. I…]
-- "supporting_research_evidence_store_record_observation": "record_observation()" | kind=code-symbol | source=Supporting_research/evidence_store.py:L113 | neighbors=[evidence_store.py, _iso()]
-- "supporting_research_test_evidence_store_smb_obs": "smb_obs()" | kind=code-symbol | source=Supporting_research/test_evidence_store.py:L45 | neighbors=[test_evidence_store.py, build_fleet()]
-- "supporting_research_test_evidence_store_testidentity_setup": ".setUp()" | kind=code-symbol | source=Supporting_research/test_evidence_store.py:L96 | neighbors=[TestIdentity, build_fleet()]
-- "supporting_research_test_evidence_store_testidentity_test_hostname_never_overrides_a_fingerprint": ".test_hostname_never_overrides_a_fingerprint()" | kind=code-symbol | source=Supporting_research/test_evidence_store.py:L119 | neighbors=[TestIdentity, ssh_obs()]
-- "supporting_research_test_evidence_store_testidentity_test_ip_identity_is_wrong_in_both_directions": ".test_ip_identity_is_wrong_in_both_directions()" | kind=code-symbol | source=Supporting_research/test_evidence_store.py:L104 | neighbors=[Not merely coarse -- wrong. It splits o…, TestIdentity]
-- "supporting_research_test_evidence_store_testretroactivedetection_setup": ".setUp()" | kind=code-symbol | source=Supporting_research/test_evidence_store.py:L141 | neighbors=[TestRetroactiveDetection, build_fleet()]
-- "supporting_research_test_evidence_store_testretroactivedetection_test_collected_but_unusable_evidence_is_distinguished_from_absent": ".test_collected_but_unusable_evidence_is_distinguished_from_absent()" | kind=code-symbol | source=Supporting_research/test_evidence_store.py:L194 | neighbors=[Drifted payload: the probe ran, the fie…, TestRetroactiveDetection]
-- "supporting_research_test_evidence_store_testretroactivedetection_test_remediation_is_verified_by_evidence_not_by_a_ticket": ".test_remediation_is_verified_by_evidence_not_by_a_ticket()" | kind=code-symbol | source=Supporting_research/test_evidence_store.py:L162 | neighbors=[TestRetroactiveDetection, openssh_below()]
-- "supporting_research_test_evidence_store_testretroactivedetection_test_third_party_conclusions_are_kept_separate_from_first_party_evidence": ".test_third_party_conclusions_are_kept_separate_from_first_party_evidence()" | kind=code-symbol | source=Supporting_research/test_evidence_store.py:L206 | neighbors=[TestRetroactiveDetection, ssh_obs()]
-- "supporting_research_test_evidence_store_testretroactivedetection_test_time_travel_recovers_the_historical_answer": ".test_time_travel_recovers_the_historical_answer()" | kind=code-symbol | source=Supporting_research/test_evidence_store.py:L151 | neighbors=[TestRetroactiveDetection, openssh_below()]
-- "tests_conftest_isolate_result_archive": "_isolate_result_archive()" | kind=code-symbol | source=probe/tests/conftest.py:L10 | neighbors=[conftest.py, Keep the local result archive out of th…]
-- "tests_init": "__init__.py" | kind=code-symbol | source=manager/backend/tests/__init__.py:L1 | neighbors=[d1b4dd3 trim frontend to 7 core pages; …, 298a9d4 trim frontend to 7 core pages; …]
-- "tests_test_accuracy_gate_testcorpusvalidation_test_corpus_without_any_labels_is_rejected": ".test_corpus_without_any_labels_is_rejected()" | kind=code-symbol | source=probe/tests/test_accuracy_gate.py:L101 | neighbors=[TestCorpusValidation, _write()]
-- "tests_test_accuracy_gate_testcorpusvalidation_test_corpus_without_facts_is_rejected": ".test_corpus_without_facts_is_rejected()" | kind=code-symbol | source=probe/tests/test_accuracy_gate.py:L107 | neighbors=[TestCorpusValidation, _write()]
-- "tests_test_accuracy_gate_testcorpusvalidation_test_unknown_provenance_is_rejected": ".test_unknown_provenance_is_rejected()" | kind=code-symbol | source=probe/tests/test_accuracy_gate.py:L95 | neighbors=[TestCorpusValidation, _write()]
-- "tests_test_accuracy_gate_testcorpusvalidation_test_unlabeled_provenance_is_rejected": ".test_unlabeled_provenance_is_rejected()" | kind=code-symbol | source=probe/tests/test_accuracy_gate.py:L90 | neighbors=[TestCorpusValidation, _write()]
-- "tests_test_accuracy_gate_testshippedcorpora_test_an_independently_labeled_corpus_is_committed": ".test_an_independently_labeled_corpus_is_committed()" | kind=code-symbol | source=probe/tests/test_accuracy_gate.py:L57 | neighbors=[Without one of these the gate proves on…, TestShippedCorpora]
-- "tests_test_accuracy_gate_testshippedcorpora_test_every_independent_corpus_scores_perfectly": ".test_every_independent_corpus_scores_perfectly()" | kind=code-symbol | source=probe/tests/test_accuracy_gate.py:L63 | neighbors=[Locks in the measured results: every po…, TestShippedCorpora]
-- "tests_test_accuracy_gate_testshippedcorpora_test_gate_passes_on_the_committed_corpora": ".test_gate_passes_on_the_committed_corpora()" | kind=code-symbol | source=probe/tests/test_accuracy_gate.py:L43 | neighbors=[CI's actual assertion: the engine still…, TestShippedCorpora]
-- "tests_test_active_validation_escalation_test_confirmed_authoritative_does_not_escalate": "test_confirmed_authoritative_does_not_escalate()" | kind=code-symbol | source=manager/backend/tests/test_active_validation_escalation.py:L21 | neighbors=[test_active_validation_escalation.py, _ev()]
-- "tests_test_active_validation_escalation_test_high_severity_suspected_escalates_when_roe_allows": "test_high_severity_suspected_escalates_when_roe_allows()" | kind=code-symbol | source=manager/backend/tests/test_active_validation_escalation.py:L13 | neighbors=[test_active_validation_escalation.py, _ev()]
-- "tests_test_active_validation_escalation_test_kev_escalates_even_if_medium": "test_kev_escalates_even_if_medium()" | kind=code-symbol | source=manager/backend/tests/test_active_validation_escalation.py:L17 | neighbors=[test_active_validation_escalation.py, _ev()]
-- "tests_test_active_validation_escalation_test_low_severity_non_kev_does_not_escalate": "test_low_severity_non_kev_does_not_escalate()" | kind=code-symbol | source=manager/backend/tests/test_active_validation_escalation.py:L34 | neighbors=[test_active_validation_escalation.py, _ev()]
-- "tests_test_active_validation_escalation_test_ot_profile_never_escalates": "test_ot_profile_never_escalates()" | kind=code-symbol | source=manager/backend/tests/test_active_validation_escalation.py:L30 | neighbors=[test_active_validation_escalation.py, _ev()]
-- "tests_test_active_validation_escalation_test_roe_forbids_blocks_escalation": "test_roe_forbids_blocks_escalation()" | kind=code-symbol | source=manager/backend/tests/test_active_validation_escalation.py:L26 | neighbors=[test_active_validation_escalation.py, _ev()]
-- "tests_test_ad_assessment_fakeentry_getitem": ".__getitem__()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L41 | neighbors=[_FakeEntry, _FakeAttr]
+- "exploit_nuclei_exploit_rationale_1": "NucleiExploitRunner — CVE PoC validation using Nuclei templates.  Enforces templ" | kind=entity | source=manager/backend/app/exploit/nuclei_exploit.py:L1 | neighbors=[nuclei_exploit.py, SafetyViolationError]
+- "exploit_nuclei_exploit_rationale_121": "Run Nuclei CVE PoC template against target.         Returns {vulnerable, evidenc" | kind=entity | source=manager/backend/app/exploit/nuclei_exploit.py:L121 | neighbors=[.run_cve_poc(), SafetyViolationError]
+- "exploit_nuclei_exploit_rationale_161": "Parse nuclei JSONL output for a single CVE PoC result." | kind=entity | source=manager/backend/app/exploit/nuclei_exploit.py:L161 | neighbors=[._parse_poc_output(), SafetyViolationError]
+- "exploit_nuclei_exploit_rationale_49": "Run Nuclei CVE PoC templates against a single target.     Every template is safe" | kind=entity | source=manager/backend/app/exploit/nuclei_exploit.py:L49 | neighbors=[NucleiExploitRunner, SafetyViolationError]
+- "exploit_nuclei_exploit_rationale_61": "Parse template YAML and validate it contains no write/delete/DoS actions." | kind=entity | source=manager/backend/app/exploit/nuclei_exploit.py:L61 | neighbors=[.safe_template_check(), SafetyViolationError]
+- "exploit_orchestrator_exploitorchestrator_audit": "._audit()" | kind=code-symbol | source=manager/backend/app/exploit/orchestrator.py:L319 | neighbors=[ExploitOrchestrator, .execute()]
+- "exploit_safety_requires_approval": "requires_approval()" | kind=code-symbol | source=manager/backend/app/exploit/safety.py:L239 | neighbors=[safety.py, True if this target requires human mana…]
+- "findings_page_decisiondrivers": "decisionDrivers()" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L1959 | neighbors=[page.tsx, urgencyReasons()]
+- "findings_page_decodecvssvector": "decodeCvssVector()" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L969 | neighbors=[page.tsx, referenceSources()]
+- "findings_page_effortcolor": "effortColor()" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L803 | neighbors=[page.tsx, RemediationPlanView()]
+- "findings_page_findingsworkspace": "FindingsWorkspace()" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L3100 | neighbors=[page.tsx, useNow()]
+- "findings_page_fixfirststrip": "FixFirstStrip()" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L1999 | neighbors=[page.tsx, useCountUp()]
+- "findings_page_historytimeline": "HistoryTimeline()" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L1512 | neighbors=[page.tsx, fmtEventDay()]
+- "findings_page_isurgent": "isUrgent()" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L1942 | neighbors=[page.tsx, getSlaColor()]
+- "findings_page_pillstyle": "pillStyle()" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L807 | neighbors=[page.tsx, RemediationPlanView()]
+- "findings_page_remriskcolor": "remRiskColor()" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L801 | neighbors=[page.tsx, RemediationPlanView()]
+- "findings_page_riskbadge": "RiskBadge()" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L368 | neighbors=[page.tsx, riskScoreColor()]
+- "findings_page_signalchips": "signalChips()" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L458 | neighbors=[page.tsx, FindingDetail()]
+- "findings_page_techniqueurl": "techniqueUrl()" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L999 | neighbors=[page.tsx, referenceSources()]
+- "findings_page_usecountup": "useCountUp()" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L1972 | neighbors=[page.tsx, FixFirstStrip()]
+- "frontend_proxy_ispublic": "isPublic()" | kind=code-symbol | source=manager/frontend/proxy.ts:L14 | neighbors=[proxy.ts, proxy()]
+- "frontend_proxy_proxy": "proxy()" | kind=code-symbol | source=manager/frontend/proxy.ts:L19 | neighbors=[proxy.ts, isPublic()]
+- "generate_route_mapstatus": "mapStatus()" | kind=code-symbol | source=manager/frontend/app/api/reports/generate/route.ts:L52 | neighbors=[route.ts, toLiveFinding()]
+- "generate_route_tolivefinding": "toLiveFinding()" | kind=code-symbol | source=manager/frontend/app/api/reports/generate/route.ts:L61 | neighbors=[route.ts, mapStatus()]
+- "graph_analyzer_priority": "_priority()" | kind=code-symbol | source=manager/backend/app/graph/analyzer.py:L285 | neighbors=[analyzer.py, .identify_chokepoints()]
+- "graph_analyzer_safe_float": "_safe_float()" | kind=code-symbol | source=manager/backend/app/graph/analyzer.py:L278 | neighbors=[analyzer.py, .score_path()]
+- "graph_builder_service_node_id": "service_node_id()" | kind=code-symbol | source=manager/backend/app/graph/builder.py:L44 | neighbors=[builder.py, .build_asset_graph()]
+- "graph_demo_demoservice": "DemoService" | kind=code-symbol | source=manager/backend/app/graph/demo.py:L37 | neighbors=[demo.py, generate_demo_dataset()]
+- "graph_init": "__init__.py" | kind=code-symbol | source=manager/backend/app/graph/__init__.py:L1 | neighbors=[d1b4dd3 trim frontend to 7 core pages; …, 298a9d4 trim frontend to 7 core pages; …]
+- "graph_neo4j_client_neo4jclient_connect": ".connect()" | kind=code-symbol | source=manager/backend/app/graph/neo4j_client.py:L61 | neighbors=[Neo4jClient, Open the driver and verify connectivity…]
+- "hooks_usecountup_usecountup": "useCountUp()" | kind=code-symbol | source=manager/frontend/hooks/useCountUp.ts:L3 | neighbors=[DashboardCharts.tsx, useCountUp.ts]
+- "hooks_usemousegradient_usemousegradient": "useMouseGradient()" | kind=code-symbol | source=manager/frontend/hooks/useMouseGradient.ts:L3 | neighbors=[useMouseGradient.ts, page.tsx]
+- "id_page_displaydate": "displayDate()" | kind=code-symbol | source=manager/frontend/app/engagements/[id]/page.tsx:L90 | neighbors=[page.tsx, OverviewTab()]
+- "id_page_engagementdetailpage": "EngagementDetailPage()" | kind=code-symbol | source=manager/frontend/app/engagements/[id]/page.tsx:L546 | neighbors=[page.tsx, statusColor()]
+- "id_page_engagementworkspace": "EngagementWorkspace()" | kind=code-symbol | source=manager/frontend/app/engagements/[id]/page.tsx:L443 | neighbors=[page.tsx, page.tsx]
+- "id_page_fmtduration": "fmtDuration()" | kind=code-symbol | source=manager/frontend/app/campaign/[id]/page.tsx:L45 | neighbors=[page.tsx, CampaignDetailPage()]
+- "id_page_fmteta": "fmtEta()" | kind=code-symbol | source=manager/frontend/app/campaign/[id]/page.tsx:L38 | neighbors=[page.tsx, CampaignDetailPage()]
+- "id_page_overviewtab": "OverviewTab()" | kind=code-symbol | source=manager/frontend/app/engagements/[id]/page.tsx:L98 | neighbors=[page.tsx, displayDate()]
+- "id_page_statuscolor": "statusColor()" | kind=code-symbol | source=manager/frontend/app/engagements/[id]/page.tsx:L34 | neighbors=[page.tsx, EngagementDetailPage()]
+- "id_route_get": "GET" | kind=code-symbol | source=manager/frontend/app/api/scan/jobs/[id]/route.ts:L7 | neighbors=[route.ts, fail()]
 
 ## Instructions
 

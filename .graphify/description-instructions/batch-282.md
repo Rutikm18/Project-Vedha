@@ -1,4 +1,4 @@
-# Node Description Batch 283 of 336
+# Node Description Batch 283 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,51 +19,53 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-Write every description in English (en). Do not switch languages.
+LANGUAGE: each entry has a `lang=` marker giving the language of its source.
+Write that entry's description in EXACTLY that language. Do not translate to
+a single common language — match each node's source language individually.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_engine_bridge_regression_test_reopen_flips_remediated_to_open_and_flags_regression": "test_reopen_flips_remediated_to_open_and_flags_regression()" | kind=code-symbol | source=manager/backend/tests/test_engine_bridge_regression.py:L10 | neighbors=[test_engine_bridge_regression.py]
-- "tests_test_engine_bridge_resolution_test_run_records_coverage_and_invokes_resolution": "test_run_records_coverage_and_invokes_resolution()" | kind=code-symbol | source=manager/backend/tests/test_engine_bridge_resolution.py:L12 | neighbors=[test_engine_bridge_resolution.py]
-- "tests_test_engine_bridge_verification_test_stamp_verification_sets_columns_when_enabled": "test_stamp_verification_sets_columns_when_enabled()" | kind=code-symbol | source=manager/backend/tests/test_engine_bridge_verification.py:L13 | neighbors=[test_engine_bridge_verification.py]
-- "tests_test_enqueue_intensity_rationale_1": "test_enqueue_intensity.py — the manager's first-class scan-intensity knob.  Oper" | kind=entity | source=manager/backend/tests/test_enqueue_intensity.py:L1 | neighbors=[test_enqueue_intensity.py]
-- "tests_test_enqueue_intensity_test_every_manager_code_maps_to_a_known_use_case": "test_every_manager_code_maps_to_a_known_use_case()" | kind=code-symbol | source=manager/backend/tests/test_enqueue_intensity.py:L76 | neighbors=[test_enqueue_intensity.py]
-- "tests_test_enqueue_intensity_test_intensity_accepts_code_or_name": "test_intensity_accepts_code_or_name()" | kind=code-symbol | source=manager/backend/tests/test_enqueue_intensity.py:L62 | neighbors=[test_enqueue_intensity.py]
-- "tests_test_enqueue_intensity_test_invalid_intensity_is_rejected_at_the_schema": "test_invalid_intensity_is_rejected_at_the_schema()" | kind=code-symbol | source=manager/backend/tests/test_enqueue_intensity.py:L35 | neighbors=[test_enqueue_intensity.py]
-- "tests_test_enqueue_intensity_test_normalize_intensity_name_maps_codes": "test_normalize_intensity_name_maps_codes()" | kind=code-symbol | source=manager/backend/tests/test_enqueue_intensity.py:L69 | neighbors=[test_enqueue_intensity.py]
-- "tests_test_enqueue_intensity_test_numeric_uc_code_accepted": "test_numeric_uc_code_accepted()" | kind=code-symbol | source=manager/backend/tests/test_enqueue_intensity.py:L52 | neighbors=[test_enqueue_intensity.py]
-- "tests_test_enqueue_intensity_test_omitted_intensity_is_none": "test_omitted_intensity_is_none()" | kind=code-symbol | source=manager/backend/tests/test_enqueue_intensity.py:L30 | neighbors=[test_enqueue_intensity.py]
-- "tests_test_enqueue_intensity_test_unknown_uc_code_rejected": "test_unknown_uc_code_rejected()" | kind=code-symbol | source=manager/backend/tests/test_enqueue_intensity.py:L57 | neighbors=[test_enqueue_intensity.py]
-- "tests_test_enqueue_intensity_test_use_case_catalog_exposes_intensity_for_new_cases": "test_use_case_catalog_exposes_intensity_for_new_cases()" | kind=code-symbol | source=manager/backend/tests/test_enqueue_intensity.py:L44 | neighbors=[test_enqueue_intensity.py]
-- "tests_test_enqueue_intensity_test_valid_intensities_mirror_the_probe_set": "test_valid_intensities_mirror_the_probe_set()" | kind=code-symbol | source=manager/backend/tests/test_enqueue_intensity.py:L40 | neighbors=[test_enqueue_intensity.py]
-- "tests_test_enqueue_intensity_test_valid_intensity_is_accepted": "test_valid_intensity_is_accepted()" | kind=code-symbol | source=manager/backend/tests/test_enqueue_intensity.py:L24 | neighbors=[test_enqueue_intensity.py]
-- "tests_test_exploit_engine_testmetasploitintegration_skip_without_flag": ".skip_without_flag()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L434 | neighbors=[TestMetasploitIntegration]
-- "tests_test_exploit_engine_testmetasploitintegration_test_connect_and_list_modules": ".test_connect_and_list_modules()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L441 | neighbors=[TestMetasploitIntegration]
-- "tests_test_exploit_engine_testmetasploitintegration_test_run_safe_scanner_smb": ".test_run_safe_scanner_smb()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L450 | neighbors=[TestMetasploitIntegration]
-- "tests_test_exploit_engine_testmetasploitrpcclient_test_call_without_connect_raises": ".test_call_without_connect_raises()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L233 | neighbors=[TestMetasploitRPCClient]
-- "tests_test_exploit_engine_testnucleiexploitrunner_setup_method": ".setup_method()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L351 | neighbors=[TestNucleiExploitRunner]
-- "tests_test_exploit_engine_testnucleiexploitrunner_test_evidence_truncated_to_max_bytes": ".test_evidence_truncated_to_max_bytes()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L405 | neighbors=[TestNucleiExploitRunner]
-- "tests_test_exploit_engine_testnucleiexploitrunner_test_extract_evidence_includes_curl": ".test_extract_evidence_includes_curl()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L395 | neighbors=[TestNucleiExploitRunner]
-- "tests_test_exploit_engine_testnucleiexploitrunner_test_nonexistent_template_not_safe": ".test_nonexistent_template_not_safe()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L369 | neighbors=[TestNucleiExploitRunner]
-- "tests_test_exploit_engine_testnucleiexploitrunner_test_parse_poc_output_hit": ".test_parse_poc_output_hit()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L374 | neighbors=[TestNucleiExploitRunner]
-- "tests_test_exploit_engine_testnucleiexploitrunner_test_parse_poc_output_malformed_json_skipped": ".test_parse_poc_output_malformed_json_skipped()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L389 | neighbors=[TestNucleiExploitRunner]
-- "tests_test_exploit_engine_testnucleiexploitrunner_test_parse_poc_output_miss": ".test_parse_poc_output_miss()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L380 | neighbors=[TestNucleiExploitRunner]
-- "tests_test_exploit_engine_testnucleiexploitrunner_test_parse_poc_output_wrong_cve": ".test_parse_poc_output_wrong_cve()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L385 | neighbors=[TestNucleiExploitRunner]
-- "tests_test_exploit_engine_testnucleiexploitrunner_test_safe_template_passes": ".test_safe_template_passes()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L354 | neighbors=[TestNucleiExploitRunner]
-- "tests_test_exploit_engine_testnucleiexploitrunner_test_unsafe_template_blocked": ".test_unsafe_template_blocked()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L362 | neighbors=[TestNucleiExploitRunner]
-- "tests_test_exploit_engine_testrequiresapproval_test_adcs_server": ".test_adcs_server()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L170 | neighbors=[TestRequiresApproval]
-- "tests_test_exploit_engine_testrequiresapproval_test_critical_asset_needs_approval": ".test_critical_asset_needs_approval()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L155 | neighbors=[TestRequiresApproval]
-- "tests_test_exploit_engine_testrequiresapproval_test_dc_hostname_needs_approval": ".test_dc_hostname_needs_approval()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L161 | neighbors=[TestRequiresApproval]
-- "tests_test_exploit_engine_testrequiresapproval_test_dc02_pattern": ".test_dc02_pattern()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L164 | neighbors=[TestRequiresApproval]
-- "tests_test_exploit_engine_testrequiresapproval_test_exchange_server": ".test_exchange_server()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L167 | neighbors=[TestRequiresApproval]
-- "tests_test_exploit_engine_testrequiresapproval_test_medium_non_dc_no_approval": ".test_medium_non_dc_no_approval()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L158 | neighbors=[TestRequiresApproval]
-- "tests_test_exploit_engine_testrequiresapproval_test_normal_workstation": ".test_normal_workstation()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L173 | neighbors=[TestRequiresApproval]
-- "tests_test_exploit_engine_testvalidatemodule_test_dos_blocked": ".test_dos_blocked()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L108 | neighbors=[TestValidateModule]
-- "tests_test_exploit_engine_testvalidatemodule_test_encoder_blocked": ".test_encoder_blocked()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L123 | neighbors=[TestValidateModule]
-- "tests_test_exploit_engine_testvalidatemodule_test_exploit_module_allowed": ".test_exploit_module_allowed()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L120 | neighbors=[TestValidateModule]
-- "tests_test_exploit_engine_testvalidatemodule_test_fuzzer_blocked": ".test_fuzzer_blocked()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L112 | neighbors=[TestValidateModule]
-- "tests_test_exploit_engine_testvalidatemodule_test_scanner_module_allowed": ".test_scanner_module_allowed()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L105 | neighbors=[TestValidateModule]
+- "scanner_os_fingerprint_rationale_80": "Parse an ICMP reply. Handles both raw-socket delivery (full IPv4 header     pres" | kind=entity | source=probe/scanner/os_fingerprint.py:L80 | neighbors=[parse_icmp_reply()] | lang=en
+- "scanner_os_fingerprint_rationale_82": "Return (ttl, icmp_bytes). Raw-socket delivery prepends the full IPv4 header" | kind=entity | source=probe/scanner/os_fingerprint.py:L82 | neighbors=[_strip_ip_header()] | lang=en
+- "scanner_os_fingerprint_rationale_95": "Parse an ICMP reply. Handles both raw-socket delivery (full IPv4 header     pres" | kind=entity | source=probe/scanner/os_fingerprint.py:L95 | neighbors=[parse_icmp_reply()] | lang=en
+- "scanner_passive_collector_main": "main()" | kind=code-symbol | source=probe/scanner/passive_collector.py:L357 | neighbors=[passive_collector.py] | lang=en
+- "scanner_passive_collector_passivecollector_init": ".__init__()" | kind=code-symbol | source=probe/scanner/passive_collector.py:L218 | neighbors=[PassiveCollector] | lang=en
+- "scanner_passive_collector_passivelistenererror_init": ".__init__()" | kind=code-symbol | source=probe/scanner/passive_collector.py:L109 | neighbors=[PassiveListenerError] | lang=en
+- "scanner_passive_collector_rationale_1": "passive_collector.py — LISTEN-ONLY host discovery for fragile networks (OT/ICS)." | kind=entity | source=probe/scanner/passive_collector.py:L1 | neighbors=[passive_collector.py] | lang=en
+- "scanner_passive_collector_rationale_107": "All passive sources failed before the listen window could start." | kind=entity | source=probe/scanner/passive_collector.py:L107 | neighbors=[PassiveListenerError] | lang=en
+- "scanner_passive_collector_rationale_120": "Open one recv-only UDP listener or raise the socket error.      Multicast groups" | kind=entity | source=probe/scanner/passive_collector.py:L120 | neighbors=[_open_listener()] | lang=en
+- "scanner_passive_collector_rationale_123": "Listen-only discovery. No active probing. Reports in-scope hosts that     announ" | kind=entity | source=probe/scanner/passive_collector.py:L123 | neighbors=[PassiveCollector] | lang=en
+- "scanner_passive_collector_rationale_205": "Await readability on any listener without blocking the event loop." | kind=entity | source=probe/scanner/passive_collector.py:L205 | neighbors=[._select()] | lang=en
+- "scanner_passive_collector_rationale_211": "Listen-only discovery. No active probing. Reports in-scope hosts that     announ" | kind=entity | source=probe/scanner/passive_collector.py:L211 | neighbors=[PassiveCollector] | lang=en
+- "scanner_passive_collector_rationale_332": "Await readability on any listener without blocking the event loop." | kind=entity | source=probe/scanner/passive_collector.py:L332 | neighbors=[._select()] | lang=en
+- "scanner_passive_collector_rationale_65": "Pull short printable ASCII runs from a payload, for human-readable evidence." | kind=entity | source=probe/scanner/passive_collector.py:L65 | neighbors=[_printable_strings()] | lang=en
+- "scanner_passive_collector_rationale_74": "Pull short printable ASCII runs from a payload, for human-readable evidence." | kind=entity | source=probe/scanner/passive_collector.py:L74 | neighbors=[_printable_strings()] | lang=en
+- "scanner_passive_collector_rationale_82": "Best-effort device label from an announcement payload (recv-only parsing)." | kind=entity | source=probe/scanner/passive_collector.py:L82 | neighbors=[_device_hint()] | lang=en
+- "scanner_passive_collector_rationale_91": "Best-effort device label from an announcement payload (recv-only parsing)." | kind=entity | source=probe/scanner/passive_collector.py:L91 | neighbors=[_device_hint()] | lang=en
+- "scanner_passive_collector_rationale_98": "Open ONE recv-only UDP listener. Returns None (with a warning) on failure." | kind=entity | source=probe/scanner/passive_collector.py:L98 | neighbors=[_open_listener()] | lang=en
+- "scanner_port_scanner_main": "main()" | kind=code-symbol | source=probe/scanner/port_scanner.py:L864 | neighbors=[port_scanner.py] | lang=en
+- "scanner_port_scanner_portscanner_init": ".__init__()" | kind=code-symbol | source=probe/scanner/port_scanner.py:L342 | neighbors=[PortScanner] | lang=en
+- "scanner_port_scanner_rationale_1": "port_scanner.py — TCP connect scan with an evidence-based state engine.  METHOD" | kind=entity | source=probe/scanner/port_scanner.py:L1 | neighbors=[port_scanner.py] | lang=en
+- "scanner_port_scanner_rationale_104": "Map a connect()-time OSError to (state, reason).      DNS failures (socket.gaier" | kind=entity | source=probe/scanner/port_scanner.py:L104 | neighbors=[classify_os_error()] | lang=en
+- "scanner_port_scanner_rationale_117": "Return 'ipv4'/'ipv6' for an IP literal, else None (unresolved hostname)." | kind=entity | source=probe/scanner/port_scanner.py:L117 | neighbors=[_family_of()] | lang=en
+- "scanner_port_scanner_rationale_127": "Map a connect()-time OSError to (state, reason).      DNS failures (socket.gaier" | kind=entity | source=probe/scanner/port_scanner.py:L127 | neighbors=[classify_os_error()] | lang=en
+- "scanner_port_scanner_rationale_128": "Resolve a named scan profile to a concrete, de-duplicated port list.      'full'" | kind=entity | source=probe/scanner/port_scanner.py:L128 | neighbors=[resolve_profile()] | lang=pt
+- "scanner_port_scanner_rationale_129": "Resolve a named scan profile to a concrete, de-duplicated port list.      'full'" | kind=entity | source=probe/scanner/port_scanner.py:L129 | neighbors=[resolve_profile()] | lang=pt
+- "scanner_port_scanner_rationale_131": "Resolve a named scan profile to a concrete, de-duplicated port list.      'full'" | kind=entity | source=probe/scanner/port_scanner.py:L131 | neighbors=[resolve_profile()] | lang=pt
+- "scanner_port_scanner_rationale_154": "Per-target scan accounting — the completeness + self-health record.      It lets" | kind=entity | source=probe/scanner/port_scanner.py:L154 | neighbors=[ScanMetrics] | lang=en
+- "scanner_port_scanner_rationale_155": "Per-target scan accounting — the completeness + self-health record.      It lets" | kind=entity | source=probe/scanner/port_scanner.py:L155 | neighbors=[ScanMetrics] | lang=en
+- "scanner_port_scanner_rationale_157": "Per-target scan accounting — the completeness + self-health record.      It lets" | kind=entity | source=probe/scanner/port_scanner.py:L157 | neighbors=[ScanMetrics] | lang=en
+- "scanner_port_scanner_rationale_176": "Return 'ipv4'/'ipv6' for an IP literal, else None (unresolved hostname)." | kind=entity | source=probe/scanner/port_scanner.py:L176 | neighbors=[_family_of()] | lang=en
+- "scanner_port_scanner_rationale_182": "Tally exactly one terminal per-port observation." | kind=entity | source=probe/scanner/port_scanner.py:L182 | neighbors=[.record()] | lang=en
+- "scanner_port_scanner_rationale_183": "Tally exactly one terminal per-port observation." | kind=entity | source=probe/scanner/port_scanner.py:L183 | neighbors=[.record()] | lang=en
+- "scanner_port_scanner_rationale_185": "Tally exactly one terminal per-port observation." | kind=entity | source=probe/scanner/port_scanner.py:L185 | neighbors=[.record()] | lang=en
+- "scanner_port_scanner_rationale_191": "One connect() and its classification. Always returns a ScanResult         (open" | kind=entity | source=probe/scanner/port_scanner.py:L191 | neighbors=[._attempt()] | lang=en
+- "scanner_port_scanner_rationale_199": "Emit a non-open result only when report_closed is on." | kind=entity | source=probe/scanner/port_scanner.py:L199 | neighbors=[._maybe()] | lang=en
+- "scanner_port_scanner_rationale_201": "Requested ports that were never recorded — the silent-skip proof." | kind=entity | source=probe/scanner/port_scanner.py:L201 | neighbors=[.missing_ports()] | lang=en
+- "scanner_port_scanner_rationale_202": "Requested ports that were never recorded — the silent-skip proof." | kind=entity | source=probe/scanner/port_scanner.py:L202 | neighbors=[.missing_ports()] | lang=en
+- "scanner_port_scanner_rationale_204": "Requested ports that were never recorded — the silent-skip proof." | kind=entity | source=probe/scanner/port_scanner.py:L204 | neighbors=[.missing_ports()] | lang=en
+- "scanner_port_scanner_rationale_208": "Ports recorded more than once (a port must get exactly one verdict)." | kind=entity | source=probe/scanner/port_scanner.py:L208 | neighbors=[.duplicate_ports()] | lang=pt
 
 ## Instructions
 

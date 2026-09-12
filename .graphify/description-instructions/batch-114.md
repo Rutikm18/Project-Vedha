@@ -1,4 +1,4 @@
-# Node Description Batch 115 of 336
+# Node Description Batch 115 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,51 +12,58 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
+For an entity node (any other kind — e.g. a person, place, event, object),
+describe what the entity is and its role, grounded in its type, its
+relations (neighbors) and the provided citations/evidence — e.g.
+"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
+Ground entity descriptions in the citations/evidence when present; do not
+speculate beyond the context, so a node with no supporting context may be
+left out of the reply.
 Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_new_scanners_testdeltaengine_test_diff_detects_state_change_to_open": ".test_diff_detects_state_change_to_open()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L444 | neighbors=[TestDeltaEngine, _make_scan_record(), ._write_jsonl()]
-- "tests_test_new_scanners_testdeltaengine_test_diff_high_severity_port_heuristic": ".test_diff_high_severity_port_heuristic()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L471 | neighbors=[TestDeltaEngine, _make_scan_record(), ._write_jsonl()]
-- "tests_test_new_scanners_testdeltaengine_test_diff_no_change_produces_no_service_delta": ".test_diff_no_change_produces_no_service_delta()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L457 | neighbors=[TestDeltaEngine, _make_scan_record(), ._write_jsonl()]
-- "tests_test_new_scanners_testdeltaengine_test_load_jsonl_basic": ".test_load_jsonl_basic()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L389 | neighbors=[TestDeltaEngine, _make_scan_record(), ._write_jsonl()]
-- "tests_test_new_scanners_testdeltaengine_test_load_jsonl_skips_error_status": ".test_load_jsonl_skips_error_status()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L397 | neighbors=[TestDeltaEngine, _make_scan_record(), ._write_jsonl()]
-- "tests_test_new_scanners_testdeltaengine_test_summary_counts": ".test_summary_counts()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L485 | neighbors=[TestDeltaEngine, _make_scan_record(), ._write_jsonl()]
-- "tests_test_nfs_scanner_testnfsfindings_fact": "._fact()" | kind=code-symbol | source=probe/tests/test_nfs_scanner.py:L118 | neighbors=[TestNFSFindings, .test_restricted_exports_no_high_findin…, .test_world_readable_and_portmapper()]
-- "tests_test_nfs_scanner_testnfsscanner_sc": "._sc()" | kind=code-symbol | source=probe/tests/test_nfs_scanner.py:L95 | neighbors=[TestNFSScanner, .test_no_rpc_is_filtered(), .test_world_readable_export_open()]
-- "tests_test_nmap_xml_safety": "test_nmap_xml_safety.py" | kind=code-symbol | source=probe/tests/test_nmap_xml_safety.py:L1 | neighbors=[37fa611 harden(scanner): XML-entity gua…, TestNmapEntityGuard, test_nmap_xml_safety.py — nmap XML pars…]
-- "tests_test_notifications_testnotifytenant": "TestNotifyTenant" | kind=code-symbol | source=manager/backend/tests/test_notifications.py:L30 | neighbors=[test_notifications.py, .test_counts_only_successful_channels(), .test_fans_to_enabled_and_decrypts_secr…]
-- "tests_test_nuclei_scanner_test_nonzero_exit_retains_and_marks_partial_findings": "test_nonzero_exit_retains_and_marks_partial_findings()" | kind=code-symbol | source=manager/backend/tests/test_nuclei_scanner.py:L128 | neighbors=[test_nuclei_scanner.py, FakeProcess, _finding_line()]
-- "tests_test_nuclei_scanner_test_run_scan_streams_jsonl_and_separates_timeouts": "test_run_scan_streams_jsonl_and_separates_timeouts()" | kind=code-symbol | source=manager/backend/tests/test_nuclei_scanner.py:L67 | neighbors=[test_nuclei_scanner.py, FakeProcess, _finding_line()]
-- "tests_test_nuclei_scanner_test_timeout_retains_findings_emitted_before_termination": "test_timeout_retains_findings_emitted_before_termination()" | kind=code-symbol | source=manager/backend/tests/test_nuclei_scanner.py:L153 | neighbors=[test_nuclei_scanner.py, FakeProcess, _finding_line()]
-- "tests_test_online_testclionlineflag_db": "._db()" | kind=code-symbol | source=probe/tests/test_online.py:L189 | neighbors=[TestCliOnlineFlag, .test_no_online_flag_skips_enrichment(), .test_online_flag_invokes_enrichment()]
-- "tests_test_online_testclionlineflag_facts": "._facts()" | kind=code-symbol | source=probe/tests/test_online.py:L181 | neighbors=[TestCliOnlineFlag, .test_no_online_flag_skips_enrichment(), .test_online_flag_invokes_enrichment()]
-- "tests_test_online_testclionlineflag_test_no_online_flag_skips_enrichment": ".test_no_online_flag_skips_enrichment()" | kind=code-symbol | source=probe/tests/test_online.py:L209 | neighbors=[TestCliOnlineFlag, ._db(), ._facts()]
-- "tests_test_online_testclionlineflag_test_online_flag_invokes_enrichment": ".test_online_flag_invokes_enrichment()" | kind=code-symbol | source=probe/tests/test_online.py:L196 | neighbors=[TestCliOnlineFlag, ._db(), ._facts()]
-- "tests_test_online_testenrichfindings_test_fail_open_leaves_offline_result_untouched": ".test_fail_open_leaves_offline_result_untouched()" | kind=code-symbol | source=probe/tests/test_online.py:L171 | neighbors=[TestEnrichFindings, _finding(), _get_raising()]
-- "tests_test_online_testlookupnvd_test_empty_result_is_none": ".test_empty_result_is_none()" | kind=code-symbol | source=probe/tests/test_online.py:L86 | neighbors=[TestLookupNvd, _get_returning(), _nvd_empty()]
-- "tests_test_online_testlookupnvd_test_parses_score_severity_refs": ".test_parses_score_severity_refs()" | kind=code-symbol | source=probe/tests/test_online.py:L78 | neighbors=[TestLookupNvd, _get_returning(), _nvd_bytes()]
-- "tests_test_online_testlookupvulners_test_exploit_present_is_true": ".test_exploit_present_is_true()" | kind=code-symbol | source=probe/tests/test_online.py:L104 | neighbors=[TestLookupVulners, _get_returning(), _vulners_bytes()]
-- "tests_test_online_testlookupvulners_test_no_exploit_is_false": ".test_no_exploit_is_false()" | kind=code-symbol | source=probe/tests/test_online.py:L108 | neighbors=[TestLookupVulners, _get_returning(), _vulners_bytes()]
-- "tests_test_online_vulners_bytes": "_vulners_bytes()" | kind=code-symbol | source=probe/tests/test_online.py:L43 | neighbors=[test_online.py, .test_exploit_present_is_true(), .test_no_exploit_is_false()]
-- "tests_test_os_fingerprint_testicmpcapability": "TestIcmpCapability" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L436 | neighbors=[test_os_fingerprint.py, .test_available_when_socket_ok(), .test_unavailable_when_socket_raises()]
-- "tests_test_os_fingerprint_testicmptimestamps_ts_reply": "._ts_reply()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L96 | neighbors=[TestIcmpTimestamps, .test_parse_datagram_delivery_has_no_tt…, .test_parse_extracts_ttl_and_transmit()]
-- "tests_test_os_fingerprint_testinetchecksum": "TestInetChecksum" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L24 | neighbors=[test_os_fingerprint.py, .test_checksum_handles_odd_length(), .test_checksum_verifies_to_zero()]
-- "tests_test_os_fingerprint_testremoteclock": "TestRemoteClock" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L123 | neighbors=[test_os_fingerprint.py, .test_high_bit_marks_nonstandard_clock(), .test_standard_value_decodes_to_wall_cl…]
-- "tests_test_os_fingerprint_testtimestampfallback_scanner": "._scanner()" | kind=code-symbol | source=probe/tests/test_os_fingerprint.py:L139 | neighbors=[TestTimestampFallback, .test_both_filtered_reports_no_reply(), .test_timestamp_reply_when_echo_is_filt…]
-- "tests_test_outbox_reclaim_test_dead_letter_and_requeue_are_mutually_exclusive": "test_dead_letter_and_requeue_are_mutually_exclusive()" | kind=code-symbol | source=manager/backend/tests/test_outbox_reclaim.py:L92 | neighbors=[test_outbox_reclaim.py, _now(), _sql()]
-- "tests_test_outbox_reclaim_test_dead_letter_stmt_targets_exhausted_stranded_rows": "test_dead_letter_stmt_targets_exhausted_stranded_rows()" | kind=code-symbol | source=manager/backend/tests/test_outbox_reclaim.py:L68 | neighbors=[test_outbox_reclaim.py, _now(), _sql()]
-- "tests_test_outbox_reclaim_test_requeue_stmt_makes_retryable_stranded_rows_due_now": "test_requeue_stmt_makes_retryable_stranded_rows_due_now()" | kind=code-symbol | source=manager/backend/tests/test_outbox_reclaim.py:L81 | neighbors=[test_outbox_reclaim.py, _now(), _sql()]
-- "tests_test_passive_collector_test_ot_udp_backend_never_joins_or_transmits": "test_ot_udp_backend_never_joins_or_transmits()" | kind=code-symbol | source=probe/tests/test_passive_collector.py:L74 | neighbors=[test_passive_collector.py, .close(), _Writer]
-- "tests_test_passive_collector_test_subset_listener_failure_reports_degraded_coverage": "test_subset_listener_failure_reports_degraded_coverage()" | kind=code-symbol | source=probe/tests/test_passive_collector.py:L35 | neighbors=[test_passive_collector.py, _Socket, _Writer]
-- "tests_test_pipeline_banner_jsonl": "_banner_jsonl()" | kind=code-symbol | source=manager/detection_engine/tests/test_pipeline.py:L105 | neighbors=[test_pipeline.py, .test_banner_finding_is_suspected_not_c…, .test_full_detection_exposes_authoritat…]
-- "tests_test_pipeline_concurrency_test_a_redelivered_submission_is_not_detected_twice": "test_a_redelivered_submission_is_not_detected_twice()" | kind=code-symbol | source=manager/backend/tests/test_pipeline_concurrency.py:L111 | neighbors=[test_pipeline_concurrency.py, _db_with(), _event()]
-- "tests_test_pipeline_testrunpipelinededup": "TestRunPipelineDedup" | kind=code-symbol | source=manager/detection_engine/tests/test_pipeline.py:L276 | neighbors=[test_pipeline.py, .test_findings_deduped_within_same_host…, .test_two_identical_hosts_each_get_thei…]
-- "tests_test_pipeline_testrunpipelineemptyinput": "TestRunPipelineEmptyInput" | kind=code-symbol | source=manager/detection_engine/tests/test_pipeline.py:L129 | neighbors=[test_pipeline.py, .test_empty_jsonl_returns_no_findings(), .test_no_paths_returns_empty()]
-- "tests_test_pipeline_testrunpipelineexposure": "TestRunPipelineExposure" | kind=code-symbol | source=manager/detection_engine/tests/test_pipeline.py:L247 | neighbors=[test_pipeline.py, .test_exposure_internet_facing_propagat…, .test_no_exposure_fields_are_none()]
-- "tests_test_port_catalog": "test_port_catalog.py" | kind=code-symbol | source=probe/tests/test_port_catalog.py:L1 | neighbors=[cdee859 feat(probe): add container/clou…, test_modern_infra_ports_present(), gates.py]
-- "tests_test_portal_read_finding": "_finding()" | kind=code-symbol | source=manager/backend/tests/test_portal_read.py:L180 | neighbors=[test_portal_read.py, .test_aggregates_posture_counts_and_que…, .test_returns_severity_and_timeline()]
+- "report_finding_model_tier_meta": "TIER_META" | kind=code-symbol | source=manager/frontend/lib/report/finding-model.ts:L616 | neighbors=[finding-model.ts, FindingReport.tsx, FindingReport.tsx]
+- "report_finding_model_triagesort": "triageSort()" | kind=code-symbol | source=manager/frontend/lib/report/finding-model.ts:L718 | neighbors=[finding-model.ts, FindingReport.tsx, FindingReport.tsx]
+- "report_findingreport_findingreport": "FindingReport()" | kind=code-symbol | source=manager/frontend/components/report/FindingReport.tsx:L225 | neighbors=[FindingReport.tsx, fmtDate(), fmtDateTime()]
+- "reports_layout": "layout.tsx" | kind=code-symbol | source=manager/frontend/app/reports/layout.tsx:L1 | neighbors=[7a12ab2 Restructure /reports into one c…, metadata, ReportsLayout()]
+- "reports_page_reportspage": "ReportsPage()" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L908 | neighbors=[page.tsx, fmtDate(), formatDate()]
+- "reportsection_finding_model_attackerstatement": "attackerStatement()" | kind=code-symbol | source=reportsection/finding-model.ts:L338 | neighbors=[finding-model.ts, assess(), joinList()]
+- "reportsection_finding_model_priorityof": "priorityOf()" | kind=code-symbol | source=reportsection/finding-model.ts:L387 | neighbors=[finding-model.ts, assess(), readVector()]
+- "reportsection_finding_model_readinessof": "readinessOf()" | kind=code-symbol | source=reportsection/finding-model.ts:L647 | neighbors=[finding-model.ts, assess(), remediationSteps()]
+- "reportsection_finding_model_readvector": "readVector()" | kind=code-symbol | source=reportsection/finding-model.ts:L291 | neighbors=[finding-model.ts, assess(), priorityOf()]
+- "reportsection_finding_model_remediationsteps": "remediationSteps()" | kind=code-symbol | source=reportsection/finding-model.ts:L617 | neighbors=[finding-model.ts, assess(), readinessOf()]
+- "reportsection_findingreport_findingreport": "FindingReport()" | kind=code-symbol | source=reportsection/FindingReport.tsx:L209 | neighbors=[FindingReport.tsx, fmtDate(), fmtDateTime()]
+- "routers_ad_run_ad_assessment_and_save": "_run_ad_assessment_and_save()" | kind=code-symbol | source=manager/backend/app/routers/ad.py:L129 | neighbors=[ad.py, Background task: run the AD assessment …, _set_job_status()]
+- "routers_agent_ws_rationale_1": "agent_ws.py — WebSocket endpoint for probe push connectivity.  Probes connect vi" | kind=entity | source=manager/backend/app/routers/agent_ws.py:L1 | neighbors=[agent_ws.py, Engagement, ScanJob]
+- "routers_agent_ws_rationale_131": "Persistent WebSocket for probe → manager push communication.      Authentication" | kind=entity | source=manager/backend/app/routers/agent_ws.py:L131 | neighbors=[Engagement, ScanJob, agent_websocket_endpoint()]
+- "routers_agent_ws_rationale_42": "Read an agent bearer token exclusively from the non-logged auth header." | kind=entity | source=manager/backend/app/routers/agent_ws.py:L42 | neighbors=[Engagement, ScanJob, _agent_token_from_websocket()]
+- "routers_agent_ws_rationale_53": "Validate eligibility and atomically claim a WebSocket job offer." | kind=entity | source=manager/backend/app/routers/agent_ws.py:L53 | neighbors=[Engagement, ScanJob, _claim_pushed_job()]
+- "routers_agents_agentbootstraprequest": "AgentBootstrapRequest" | kind=code-symbol | source=manager/backend/app/routers/agents.py:L637 | neighbors=[agents.py, BaseModel, .validate_network_segments()]
+- "routers_agents_jobresultchunkrequest": "JobResultChunkRequest" | kind=code-symbol | source=manager/backend/app/routers/agents.py:L274 | neighbors=[agents.py, BaseModel, ONE host's facts, committed while the j…]
+- "routers_agents_list_result_chunks": "list_result_chunks()" | kind=code-symbol | source=manager/backend/app/routers/agents.py:L1630 | neighbors=[agents.py, _agent_ownership_check(), What a retrying probe reads so it does …]
+- "routers_agents_refresh_agent_registration": "refresh_agent_registration()" | kind=code-symbol | source=manager/backend/app/routers/agents.py:L913 | neighbors=[agents.py, _agent_ownership_check(), _scope_is_reachable()]
+- "routers_agents_resolve_scan_type": "_resolve_scan_type()" | kind=code-symbol | source=manager/backend/app/routers/agents.py:L89 | neighbors=[agents.py, enqueue_agent_job(), _required_scan_type()]
+- "routers_agents_submit_result_chunk": "submit_result_chunk()" | kind=code-symbol | source=manager/backend/app/routers/agents.py:L1598 | neighbors=[agents.py, Buffer one host's evidence so a probe t…, _agent_ownership_check()]
+- "routers_ai_report_build_engagement_summary": "_build_engagement_summary()" | kind=code-symbol | source=manager/backend/app/routers/ai_report.py:L241 | neighbors=[ai_report.py, _run_generation(), _run_regeneration()]
+- "routers_ai_report_build_posture_report_section": "build_posture_report_section()" | kind=code-symbol | source=manager/backend/app/routers/ai_report.py:L191 | neighbors=[ai_report.py, Deterministic report section from the s…, _run_generation()]
+- "routers_ai_report_pending_outputs": "_pending_outputs()" | kind=code-symbol | source=manager/backend/app/routers/ai_report.py:L218 | neighbors=[ai_report.py, approve_report(), reject_report()]
+- "routers_analytics_posture": "posture()" | kind=code-symbol | source=manager/backend/app/routers/analytics.py:L124 | neighbors=[analytics.py, _finding_views(), _two_latest_completed_runs()]
+- "routers_attack_paths_blast_radius": "blast_radius()" | kind=code-symbol | source=manager/backend/app/routers/attack_paths.py:L136 | neighbors=[attack_paths.py, _asset_labels(), _build_analyzer()]
+- "routers_attack_paths_get_attack_path": "get_attack_path()" | kind=code-symbol | source=manager/backend/app/routers/attack_paths.py:L74 | neighbors=[attack_paths.py, _asset_labels(), _explain_hop()]
+- "routers_attack_paths_list_attack_paths": "list_attack_paths()" | kind=code-symbol | source=manager/backend/app/routers/attack_paths.py:L42 | neighbors=[attack_paths.py, _path_summary(), _recompute_and_store()]
+- "routers_customer_access_approve_scan_request": "approve_scan_request()" | kind=code-symbol | source=manager/backend/app/routers/customer_access.py:L325 | neighbors=[customer_access.py, build_scan_job(), _get_scan_request()]
+- "routers_customer_access_customerlistitem": "CustomerListItem" | kind=code-symbol | source=manager/backend/app/routers/customer_access.py:L382 | neighbors=[customer_access.py, BaseModel, list_customers()]
+- "routers_customer_access_get_client_user": "get_client_user()" | kind=code-symbol | source=manager/backend/app/routers/customer_access.py:L227 | neighbors=[customer_access.py, ClientUserOut, _existing_client_user()]
+- "routers_customer_access_get_scan_request": "_get_scan_request()" | kind=code-symbol | source=manager/backend/app/routers/customer_access.py:L292 | neighbors=[customer_access.py, approve_scan_request(), reject_scan_request()]
+- "routers_customer_access_revealout": "RevealOut" | kind=code-symbol | source=manager/backend/app/routers/customer_access.py:L417 | neighbors=[customer_access.py, reveal_customer_password(), BaseModel]
+- "routers_detection_run_correlation": "_run_correlation()" | kind=code-symbol | source=manager/backend/app/routers/detection.py:L233 | neighbors=[detection.py, Background task: pull SIEM/EDR telemetr…, _set_job()]
+- "routers_detection_runs_run_dict": "_run_dict()" | kind=code-symbol | source=manager/backend/app/routers/detection_runs.py:L56 | neighbors=[detection_runs.py, latest_run_delta(), list_detection_runs()]
+- "routers_engagements_job_phase": "_job_phase()" | kind=code-symbol | source=manager/backend/app/routers/engagements.py:L681 | neighbors=[engagements.py, campaign_progress(), Map a ScanJob status to the operator-fa…]
+- "routers_engagements_overview_cache_key": "_overview_cache_key()" | kind=code-symbol | source=manager/backend/app/routers/engagements.py:L62 | neighbors=[engagements.py, engagements_overview(), _refresh_overview_cache()]
+- "routers_engagements_reconcile_status": "_reconcile_status()" | kind=code-symbol | source=manager/backend/app/routers/engagements.py:L691 | neighbors=[engagements.py, campaign_progress(), Derive ONE authoritative campaign phase…]
+- "routers_engagements_result_summary": "_result_summary()" | kind=code-symbol | source=manager/backend/app/routers/engagements.py:L744 | neighbors=[engagements.py, campaign_progress(), A SAFE, bounded view of a job's raw res…]
 
 ## Instructions
 

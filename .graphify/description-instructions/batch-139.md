@@ -1,4 +1,4 @@
-# Node Description Batch 140 of 336
+# Node Description Batch 140 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,51 +19,53 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-Write every description in English (en). Do not switch languages.
+LANGUAGE: each entry has a `lang=` marker giving the language of its source.
+Write that entry's description in EXACTLY that language. Do not translate to
+a single common language — match each node's source language individually.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "routers_ai_report_reject_report": "reject_report()" | kind=code-symbol | source=manager/backend/app/routers/ai_report.py:L158 | neighbors=[ai_report.py, _pending_outputs()]
-- "routers_ai_report_set_job": "_set_job()" | kind=code-symbol | source=manager/backend/app/routers/ai_report.py:L420 | neighbors=[ai_report.py, _run_generation()]
-- "routers_analytics_sev_str": "_sev_str()" | kind=code-symbol | source=manager/backend/app/routers/analytics.py:L82 | neighbors=[analytics.py, _finding_views()]
-- "routers_analytics_two_latest_completed_runs": "_two_latest_completed_runs()" | kind=code-symbol | source=manager/backend/app/routers/analytics.py:L106 | neighbors=[analytics.py, posture()]
-- "routers_attack_paths_explain_hop": "_explain_hop()" | kind=code-symbol | source=manager/backend/app/routers/attack_paths.py:L245 | neighbors=[attack_paths.py, get_attack_path()]
-- "routers_attack_paths_path_summary": "_path_summary()" | kind=code-symbol | source=manager/backend/app/routers/attack_paths.py:L234 | neighbors=[attack_paths.py, list_attack_paths()]
-- "routers_customer_access_assignagentbody": "AssignAgentBody" | kind=code-symbol | source=manager/backend/app/routers/customer_access.py:L71 | neighbors=[customer_access.py, BaseModel]
-- "routers_customer_access_clientusercreate": "ClientUserCreate" | kind=code-symbol | source=manager/backend/app/routers/customer_access.py:L52 | neighbors=[customer_access.py, BaseModel]
-- "routers_customer_access_clientuserpatch": "ClientUserPatch" | kind=code-symbol | source=manager/backend/app/routers/customer_access.py:L57 | neighbors=[customer_access.py, BaseModel]
-- "routers_customer_access_reject_scan_request": "reject_scan_request()" | kind=code-symbol | source=manager/backend/app/routers/customer_access.py:L358 | neighbors=[customer_access.py, _get_scan_request()]
-- "routers_customer_access_rejectbody": "RejectBody" | kind=code-symbol | source=manager/backend/app/routers/customer_access.py:L89 | neighbors=[customer_access.py, BaseModel]
-- "routers_customer_access_scanrequestout": "ScanRequestOut" | kind=code-symbol | source=manager/backend/app/routers/customer_access.py:L75 | neighbors=[customer_access.py, BaseModel]
-- "routers_detection_get_results": "get_results()" | kind=code-symbol | source=manager/backend/app/routers/detection.py:L128 | neighbors=[detection.py, _result_out()]
-- "routers_detection_result_out": "_result_out()" | kind=code-symbol | source=manager/backend/app/routers/detection.py:L217 | neighbors=[detection.py, get_results()]
-- "routers_detection_runs_latest_run_delta": "latest_run_delta()" | kind=code-symbol | source=manager/backend/app/routers/detection_runs.py:L72 | neighbors=[detection_runs.py, _run_dict()]
-- "routers_detection_runs_list_detection_runs": "list_detection_runs()" | kind=code-symbol | source=manager/backend/app/routers/detection_runs.py:L55 | neighbors=[detection_runs.py, _run_dict()]
-- "routers_detection_set_job": "_set_job()" | kind=code-symbol | source=manager/backend/app/routers/detection.py:L322 | neighbors=[detection.py, _run_correlation()]
-- "routers_engagements_bulk_import_assets": "bulk_import_assets()" | kind=code-symbol | source=manager/backend/app/routers/engagements.py:L579 | neighbors=[engagements.py, _refresh_overview_cache()]
-- "routers_engagements_create_engagement": "create_engagement()" | kind=code-symbol | source=manager/backend/app/routers/engagements.py:L378 | neighbors=[engagements.py, _refresh_overview_cache()]
-- "routers_engagements_detection_explain": "detection_explain()" | kind=code-symbol | source=manager/backend/app/routers/engagements.py:L1109 | neighbors=[engagements.py, The machine-readable answer to "the scr…]
-- "routers_engagements_raw_facts": "raw_facts()" | kind=code-symbol | source=manager/backend/app/routers/engagements.py:L1162 | neighbors=[engagements.py, The raw ScanResult facts as the probe s…]
-- "routers_engagements_update_engagement": "update_engagement()" | kind=code-symbol | source=manager/backend/app/routers/engagements.py:L545 | neighbors=[engagements.py, _refresh_overview_cache()]
-- "routers_exploits_approve_exploit": "approve_exploit()" | kind=code-symbol | source=manager/backend/app/routers/exploits.py:L244 | neighbors=[exploits.py, _get_approval_or_404()]
-- "routers_exploits_get_result_or_404": "_get_result_or_404()" | kind=code-symbol | source=manager/backend/app/routers/exploits.py:L395 | neighbors=[exploits.py, get_exploit_result()]
-- "routers_exploits_list_approvals": "list_approvals()" | kind=code-symbol | source=manager/backend/app/routers/exploits.py:L217 | neighbors=[exploits.py, _approval_out()]
-- "routers_exploits_list_exploit_results": "list_exploit_results()" | kind=code-symbol | source=manager/backend/app/routers/exploits.py:L176 | neighbors=[exploits.py, _result_out()]
-- "routers_exploits_load_finding_and_eng": "_load_finding_and_eng()" | kind=code-symbol | source=manager/backend/app/routers/exploits.py:L368 | neighbors=[exploits.py, run_exploit()]
-- "routers_exploits_reject_exploit": "reject_exploit()" | kind=code-symbol | source=manager/backend/app/routers/exploits.py:L302 | neighbors=[exploits.py, _get_approval_or_404()]
-- "routers_exploits_run_exploit": "run_exploit()" | kind=code-symbol | source=manager/backend/app/routers/exploits.py:L110 | neighbors=[exploits.py, _load_finding_and_eng()]
-- "routers_findings_patch_finding": "patch_finding()" | kind=code-symbol | source=manager/backend/app/routers/findings.py:L281 | neighbors=[findings.py, _tenant_finding()]
-- "routers_findings_rationale_50": "Build the detail contract with bounded asset context.      Portfolio/list respon" | kind=entity | source=manager/backend/app/routers/findings.py:L50 | neighbors=[_finding_detail_out(), sla_summary()]
-- "routers_health_health_auth": "health_auth()" | kind=code-symbol | source=manager/backend/app/routers/health.py:L81 | neighbors=[health.py, Validates the authentication subsystem …]
-- "routers_init": "__init__.py" | kind=code-symbol | source=manager/backend/app/routers/__init__.py:L1 | neighbors=[d1b4dd3 trim frontend to 7 core pages; …, 298a9d4 trim frontend to 7 core pages; …]
-- "routers_integrations_delete_integration": "delete_integration()" | kind=code-symbol | source=manager/backend/app/routers/integrations.py:L93 | neighbors=[integrations.py, _row()]
-- "routers_integrations_integration_secret": "integration_secret()" | kind=code-symbol | source=manager/backend/app/routers/integrations.py:L117 | neighbors=[integrations.py, Decrypt an integration's secret for the…]
-- "routers_integrations_integrationin": "IntegrationIn" | kind=code-symbol | source=manager/backend/app/routers/integrations.py:L30 | neighbors=[integrations.py, BaseModel]
-- "routers_integrations_list_integrations": "list_integrations()" | kind=code-symbol | source=manager/backend/app/routers/integrations.py:L56 | neighbors=[integrations.py, _out()]
-- "routers_integrations_test_integrations": "test_integrations()" | kind=code-symbol | source=manager/backend/app/routers/integrations.py:L106 | neighbors=[integrations.py, Enqueue a durable test notification; th…]
-- "routers_portal_create_scan_request": "create_scan_request()" | kind=code-symbol | source=manager/backend/app/routers/portal.py:L321 | neighbors=[portal.py, _portal_use_cases()]
-- "routers_portal_portal_agents": "portal_agents()" | kind=code-symbol | source=manager/backend/app/routers/portal.py:L549 | neighbors=[portal.py, The customer's own probe fleet — normal…]
+- "agent_self_scan_primary_ipv4": "primary_ipv4()" | kind=code-symbol | source=probe/agent/self_scan.py:L70 | neighbors=[self_scan.py, run()] | lang=en
+- "agent_self_scan_read": "_read()" | kind=code-symbol | source=probe/agent/self_scan.py:L82 | neighbors=[self_scan.py, detect_host_container()] | lang=en
+- "agent_self_scan_selfscanplan": "SelfScanPlan" | kind=code-symbol | source=probe/agent/self_scan.py:L21 | neighbors=[self_scan.py, plan_self_scan()] | lang=en
+- "agent_service_commands_for": "commands_for()" | kind=code-symbol | source=probe/agent/service.py:L85 | neighbors=[service.py, install()] | lang=en
+- "agent_service_uninstall": "uninstall()" | kind=code-symbol | source=probe/agent/service.py:L123 | neighbors=[service.py, uninstall_commands()] | lang=en
+- "agent_service_uninstall_commands": "uninstall_commands()" | kind=code-symbol | source=probe/agent/service.py:L96 | neighbors=[service.py, uninstall()] | lang=en
+- "agent_setup_build_parser": "build_parser()" | kind=code-symbol | source=probe/agent/setup.py:L59 | neighbors=[setup.py, main()] | lang=en
+- "agent_setup_cmd_config": "cmd_config()" | kind=code-symbol | source=probe/agent/setup.py:L91 | neighbors=[setup.py, _resolved()] | lang=en
+- "agent_setup_cmd_self_scan": "cmd_self_scan()" | kind=code-symbol | source=probe/agent/setup.py:L98 | neighbors=[setup.py, _state_dir()] | lang=en
+- "agent_setup_main": "main()" | kind=code-symbol | source=probe/agent/setup.py:L144 | neighbors=[setup.py, build_parser()] | lang=en
+- "agent_setup_probe_env": "_probe_env()" | kind=code-symbol | source=probe/agent/setup.py:L46 | neighbors=[setup.py, _resolved()] | lang=en
+- "agent_task_runner_rationale_56": "Create the result archive directory at agent startup.      _archive_result() wou" | kind=entity | source=probe/agent/task_runner.py:L56 | neighbors=[prepare_result_dir(), .__init__()] | lang=en
+- "agent_task_runner_rationale_58": "Create the result archive directory at agent startup.      _archive_result() wou" | kind=entity | source=probe/agent/task_runner.py:L58 | neighbors=[prepare_result_dir(), .__init__()] | lang=en
+- "agent_tools_agentstate": "AgentState" | kind=code-symbol | source=manager/frontend/lib/agent/tools.ts:L15 | neighbors=[agent.py, tools.ts] | lang=en
+- "agent_tools_persistagentfindings": "persistAgentFindings()" | kind=code-symbol | source=manager/frontend/lib/agent/tools.ts:L313 | neighbors=[agent.py, tools.ts] | lang=en
+- "agent_tools_risk": "Risk" | kind=code-symbol | source=manager/frontend/lib/agent/tools.ts:L24 | neighbors=[agent.py, tools.ts] | lang=en
+- "agent_tools_tool_registry": "TOOL_REGISTRY" | kind=code-symbol | source=manager/frontend/lib/agent/tools.ts:L98 | neighbors=[agent.py, tools.ts] | lang=en
+- "agent_tools_tooldef": "ToolDef" | kind=code-symbol | source=manager/frontend/lib/agent/tools.ts:L26 | neighbors=[agent.py, tools.ts] | lang=en
+- "agent_transport_rationale_111": "Best-effort extraction of the manager's 409 ``detail`` message." | kind=entity | source=probe/agent/transport.py:L111 | neighbors=[_enrollment_conflict_detail(), .is_authenticated()] | lang=en
+- "agent_transport_rationale_142": "Durably replace one private JSON state file without exposing secrets." | kind=entity | source=probe/agent/transport.py:L142 | neighbors=[_atomic_write_private_state(), .register()] | lang=en
+- "agent_transport_rationale_185": "True if we have both an agent_id and a token for API calls." | kind=entity | source=probe/agent/transport.py:L185 | neighbors=[.is_authenticated(), .update_state()] | lang=en
+- "agent_transport_rationale_277": "Merge and atomically persist private state while preserving fields." | kind=entity | source=probe/agent/transport.py:L277 | neighbors=[.update_state(), .refresh_registration()] | lang=en
+- "agent_transport_rationale_32": "Recursively remove NUL (U+0000) characters from every string in a payload." | kind=entity | source=probe/agent/transport.py:L32 | neighbors=[_strip_nul(), TransportError] | lang=en
+- "agent_transport_rationale_330": "Forget everything a SPECIFIC manager issued, keeping the probe's own         key" | kind=entity | source=probe/agent/transport.py:L330 | neighbors=[.clear_manager_binding(), .connect_ws()] | lang=en
+- "agent_transport_rationale_354": "Fetch the engagement's authoritative scope.          Returns the response dict i" | kind=entity | source=probe/agent/transport.py:L354 | neighbors=[.fetch_scope(), .is_ws_connected()] | lang=en
+- "agent_transport_rationale_419": "Register using a manager-side shared bootstrap key (no user login needed)." | kind=entity | source=probe/agent/transport.py:L419 | neighbors=[.bootstrap(), .refresh_registration()] | lang=pt
+- "agent_transport_rationale_421": "Refresh a device token before expiry; legacy identities are unchanged." | kind=entity | source=probe/agent/transport.py:L421 | neighbors=[.ensure_device_access(), .http_get()] | lang=en
+- "agent_transport_rationale_514": "Refresh a device token before expiry; legacy identities are unchanged." | kind=entity | source=probe/agent/transport.py:L514 | neighbors=[.ensure_device_access(), .heartbeat()] | lang=en
+- "agent_transport_rationale_519": "Backwards-compatible bool wrapper over `refresh_device_access_ex`." | kind=entity | source=probe/agent/transport.py:L519 | neighbors=[.refresh_device_access(), .fetch_scope()] | lang=en
+- "agent_transport_rationale_538": "Refresh routing metadata using the cached agent identity.          Returns True" | kind=entity | source=probe/agent/transport.py:L538 | neighbors=[.refresh_registration(), .submit_result()] | lang=en
+- "agent_transport_rationale_564": "Refresh routing metadata using the cached agent identity.          Returns True" | kind=entity | source=probe/agent/transport.py:L564 | neighbors=[.refresh_registration(), .submit_result()] | lang=en
+- "agent_transport_rationale_627": "Generic authenticated GET, returns parsed JSON or None on failure.          Used" | kind=entity | source=probe/agent/transport.py:L627 | neighbors=[.http_get(), .connect_ws()] | lang=en
+- "agent_transport_rationale_647": "Poll for pending jobs (HTTP fallback for WebSocket).          Returns a list of" | kind=entity | source=probe/agent/transport.py:L647 | neighbors=[.poll_jobs(), .http_get()] | lang=en
+- "agent_transport_rationale_65": "A poll/activate targeted an enrollment request the manager does not have     (HT" | kind=entity | source=probe/agent/transport.py:L65 | neighbors=[EnrollmentRequestNotFound, _enrollment_conflict_detail()] | lang=en
+- "agent_transport_rationale_673": "Poll for pending jobs (HTTP fallback for WebSocket).          Returns a list of" | kind=entity | source=probe/agent/transport.py:L673 | neighbors=[.poll_jobs(), .connect_ws()] | lang=en
+- "agent_transport_rationale_777": "Generic authenticated GET, returns parsed JSON or None on failure.          Used" | kind=entity | source=probe/agent/transport.py:L777 | neighbors=[.http_get(), .connect_ws()] | lang=en
+- "agent_transport_transport_clear_state": ".clear_state()" | kind=code-symbol | source=probe/agent/transport.py:L322 | neighbors=[Transport, .update_state()] | lang=en
+- "agent_transport_transport_close": ".close()" | kind=code-symbol | source=probe/agent/transport.py:L984 | neighbors=[_sync_directory(), Transport] | lang=en
+- "agent_transport_transport_init": ".__init__()" | kind=code-symbol | source=probe/agent/transport.py:L189 | neighbors=[Transport, .load_state()] | lang=en
+- "agent_transport_transport_poll_enrollment": ".poll_enrollment()" | kind=code-symbol | source=probe/agent/transport.py:L463 | neighbors=[Transport, EnrollmentRequestNotFound] | lang=en
 
 ## Instructions
 

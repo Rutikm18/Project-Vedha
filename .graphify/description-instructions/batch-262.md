@@ -1,4 +1,4 @@
-# Node Description Batch 263 of 336
+# Node Description Batch 263 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,53 +19,51 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-LANGUAGE: each entry has a `lang=` marker giving the language of its source.
-Write that entry's description in EXACTLY that language. Do not translate to
-a single common language — match each node's source language individually.
+Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "scanner_udp_scanner_rationale_220": "Parse RMCP Pong; extract supported entities and IPMI capabilities." | kind=entity | source=probe/scanner/udp_scanner.py:L220 | neighbors=[interpret_ipmi()] | lang=en
-- "scanner_udp_scanner_rationale_232": "Extract Location and Server from SSDP response." | kind=entity | source=probe/scanner/udp_scanner.py:L232 | neighbors=[interpret_ssdp()] | lang=en
-- "scanner_udp_scanner_rationale_233": "Extract Location and Server from SSDP response." | kind=entity | source=probe/scanner/udp_scanner.py:L233 | neighbors=[interpret_ssdp()] | lang=en
-- "scanner_udp_scanner_rationale_247": "Return byte count and check QR bit (1 = response)." | kind=entity | source=probe/scanner/udp_scanner.py:L247 | neighbors=[interpret_mdns()] | lang=en
-- "scanner_udp_scanner_rationale_248": "Return byte count and check QR bit (1 = response)." | kind=entity | source=probe/scanner/udp_scanner.py:L248 | neighbors=[interpret_mdns()] | lang=en
-- "scanner_udp_scanner_rationale_290": "Acquire the concurrency gate (adaptive window or fixed semaphore),         run t" | kind=entity | source=probe/scanner/udp_scanner.py:L290 | neighbors=[._gated_probe()] | lang=en
-- "scanner_udp_scanner_rationale_291": "Acquire the concurrency gate (adaptive window or fixed semaphore),         run t" | kind=entity | source=probe/scanner/udp_scanner.py:L291 | neighbors=[._gated_probe()] | lang=en
-- "scanner_udp_scanner_rationale_296": "Acquire the concurrency gate (adaptive window or fixed semaphore),         run t" | kind=entity | source=probe/scanner/udp_scanner.py:L296 | neighbors=[._gated_probe()] | lang=en
-- "scanner_udp_scanner_rationale_78": "Minimal IKEv2 IKE_SA_INIT probe.  Sends a real SA payload proposing     AES-256-" | kind=entity | source=probe/scanner/udp_scanner.py:L78 | neighbors=[_ike_probe()] | lang=fr
-- "scanner_udp_scanner_snmp_probe": "_snmp_probe()" | kind=code-symbol | source=probe/scanner/udp_scanner.py:L54 | neighbors=[udp_scanner.py] | lang=en
-- "scanner_udp_scanner_udpscanner_init": ".__init__()" | kind=code-symbol | source=probe/scanner/udp_scanner.py:L285 | neighbors=[UDPScanner] | lang=en
-- "scanner_udp_scanner_udpscanner_send_recv": "._send_recv()" | kind=code-symbol | source=probe/scanner/udp_scanner.py:L157 | neighbors=[UDPScanner] | lang=en
-- "scanner_unauth_access_is_rce_capable": "is_rce_capable()" | kind=code-symbol | source=probe/scanner/unauth_access.py:L68 | neighbors=[unauth_access.py] | lang=en
-- "scanner_unauth_access_rationale_49": "Decide whether `banner` proves unauthenticated access for `service`.      True =" | kind=entity | source=probe/scanner/unauth_access.py:L49 | neighbors=[classify_unauth_access()] | lang=en
-- "scanner_va_campaign_alive": "_alive()" | kind=code-symbol | source=probe/scanner/va_campaign.py:L332 | neighbors=[va_campaign.py] | lang=en
-- "scanner_va_campaign_candidate_ports": "_candidate_ports()" | kind=code-symbol | source=probe/scanner/va_campaign.py:L336 | neighbors=[va_campaign.py] | lang=en
-- "scanner_va_campaign_cliprogressview_init": ".__init__()" | kind=code-symbol | source=probe/scanner/va_campaign.py:L657 | neighbors=[CliProgressView] | lang=en
-- "scanner_va_campaign_main": "main()" | kind=code-symbol | source=probe/scanner/va_campaign.py:L708 | neighbors=[va_campaign.py] | lang=en
-- "scanner_va_campaign_rationale_1": "va_campaign.py — the sequential Network Vulnerability-Assessment campaign.  WHY" | kind=entity | source=probe/scanner/va_campaign.py:L1 | neighbors=[va_campaign.py] | lang=en
-- "scanner_va_campaign_rationale_114": "What a stage produced. `count` is stage-specific (live hosts, open ports,     se" | kind=entity | source=probe/scanner/va_campaign.py:L114 | neighbors=[StageOutcome] | lang=en
-- "scanner_va_campaign_rationale_139": "Mutable state threaded through the stages." | kind=entity | source=probe/scanner/va_campaign.py:L139 | neighbors=[CampaignContext] | lang=en
-- "scanner_va_campaign_rationale_170": "Owns the live campaign record. Every transition recomputes percent + ETA,     wr" | kind=entity | source=probe/scanner/va_campaign.py:L170 | neighbors=[ProgressReporter] | lang=en
-- "scanner_va_campaign_rationale_291": "Runs the ordered stages sequentially, emitting progress throughout.      The eng" | kind=entity | source=probe/scanner/va_campaign.py:L291 | neighbors=[VACampaign] | lang=en
-- "scanner_va_campaign_rationale_344": "Best-effort IPv6 neighbor discovery (ND multicast, RFC 4861). Returns     {facts" | kind=entity | source=probe/scanner/va_campaign.py:L344 | neighbors=[_discover_ipv6()] | lang=en
-- "scanner_va_campaign_rationale_375": "Run coro_factory(item) over items with bounded concurrency; return the     list" | kind=entity | source=probe/scanner/va_campaign.py:L375 | neighbors=[_bounded_gather()] | lang=en
-- "scanner_va_campaign_rationale_391": "Build the real capability stages from a pre-wired ScanFunnel, reusing its     pr" | kind=entity | source=probe/scanner/va_campaign.py:L391 | neighbors=[default_stages()] | lang=en
-- "scanner_va_campaign_rationale_624": "Wire a campaign with the real scanners (or injected stages for tests)." | kind=entity | source=probe/scanner/va_campaign.py:L624 | neighbors=[build_campaign()] | lang=en
-- "scanner_va_campaign_rationale_650": "Renders campaign progress to a stream. On a TTY it re-draws one live block     i" | kind=entity | source=probe/scanner/va_campaign.py:L650 | neighbors=[CliProgressView] | lang=en
-- "scanner_va_campaign_rationale_98": "Everything that changes WHAT the campaign does (not HOW it reports)." | kind=entity | source=probe/scanner/va_campaign.py:L98 | neighbors=[CampaignOptions] | lang=en
-- "scanner_va_campaign_vacampaign_init": ".__init__()" | kind=code-symbol | source=probe/scanner/va_campaign.py:L297 | neighbors=[VACampaign] | lang=en
-- "scanner_vantage_matrix_rationale_1": "vantage_matrix.py — reconcile the SAME target scanned from MULTIPLE vantages.  E" | kind=entity | source=probe/scanner/vantage_matrix.py:L1 | neighbors=[vantage_matrix.py] | lang=en
-- "scanner_vantage_matrix_rationale_42": "(proto, port, status) from a ScanResult or a plain dict." | kind=entity | source=probe/scanner/vantage_matrix.py:L42 | neighbors=[_extract()] | lang=pt
-- "scanner_vantage_matrix_rationale_51": "Compare per-vantage observations of one target.      `observations` maps a vanta" | kind=entity | source=probe/scanner/vantage_matrix.py:L51 | neighbors=[reconcile_vantages()] | lang=en
-- "scanner_vnc_scanner_main": "main()" | kind=code-symbol | source=probe/scanner/vnc_scanner.py:L150 | neighbors=[vnc_scanner.py] | lang=en
-- "scanner_vnc_scanner_rationale_1": "vnc_scanner.py — VNC/RFB authentication exposure (VA checklist: unauthenticated" | kind=entity | source=probe/scanner/vnc_scanner.py:L1 | neighbors=[vnc_scanner.py] | lang=en
-- "scanner_vnc_scanner_rationale_109": "Blocking: RFB version handshake + read offered security types.         Monkeypat" | kind=entity | source=probe/scanner/vnc_scanner.py:L109 | neighbors=[._probe()] | lang=en
-- "scanner_vnc_scanner_rationale_47": "Parse a 'RFB 003.008' banner into (major, minor), or None if not RFB." | kind=entity | source=probe/scanner/vnc_scanner.py:L47 | neighbors=[parse_rfb_version()] | lang=pt
-- "scanner_vnc_scanner_rationale_61": "Turn a list of offered security-type ids into a verdict." | kind=entity | source=probe/scanner/vnc_scanner.py:L61 | neighbors=[classify_security_types()] | lang=pt
-- "scanner_vnc_scanner_rationale_82": "Read the offered security types, handling the RFB 3.3 (single 4-byte type)     v" | kind=entity | source=probe/scanner/vnc_scanner.py:L82 | neighbors=[_read_security_types()] | lang=en
-- "scanner_vnc_scanner_vncscanner_init": ".__init__()" | kind=code-symbol | source=probe/scanner/vnc_scanner.py:L104 | neighbors=[VNCScanner] | lang=en
+- "portal_portalshell_sessiontimer": "SessionTimer()" | kind=code-symbol | source=manager/frontend/components/portal/PortalShell.tsx:L252 | neighbors=[PortalShell.tsx]
+- "portal_timestamp_timestampprops": "TimestampProps" | kind=code-symbol | source=manager/frontend/components/portal/Timestamp.tsx:L68 | neighbors=[Timestamp.tsx]
+- "portscan_ratelimiter_init": ".__init__()" | kind=code-symbol | source=portscan.py:L96 | neighbors=[RateLimiter]
+- "portscan_rationale_74": "Map a connect()-time OSError to (state, reason). Unknown stays visible     as ('" | kind=entity | source=portscan.py:L74 | neighbors=[classify_os_error()]
+- "probes_route_get": "GET" | kind=code-symbol | source=manager/frontend/app/api/scan/probes/route.ts:L6 | neighbors=[route.ts]
+- "prompts_report_controlitem": "ControlItem" | kind=code-symbol | source=manager/frontend/lib/prompts/report.ts:L134 | neighbors=[report.ts]
+- "prompts_report_domains": "DOMAINS" | kind=code-symbol | source=manager/frontend/lib/prompts/report.ts:L195 | neighbors=[report.ts]
+- "prompts_report_effort": "Effort" | kind=code-symbol | source=manager/frontend/lib/prompts/report.ts:L31 | neighbors=[report.ts]
+- "prompts_report_reportvalidation": "ReportValidation" | kind=code-symbol | source=manager/frontend/lib/prompts/report.ts:L388 | neighbors=[report.ts]
+- "prompts_report_sections_generation_order": "GENERATION_ORDER" | kind=code-symbol | source=manager/frontend/lib/prompts/report-sections.ts:L442 | neighbors=[report-sections.ts]
+- "prompts_report_sev_rank": "SEV_RANK" | kind=code-symbol | source=manager/frontend/lib/prompts/report.ts:L199 | neighbors=[report.ts]
+- "prompts_report_severity": "Severity" | kind=code-symbol | source=manager/frontend/lib/prompts/report.ts:L29 | neighbors=[report.ts]
+- "prompts_report_severity_weight": "SEVERITY_WEIGHT" | kind=code-symbol | source=manager/frontend/lib/prompts/report.ts:L191 | neighbors=[report.ts]
+- "register_route_get": "GET" | kind=code-symbol | source=manager/frontend/app/api/agents/register/route.ts:L12 | neighbors=[route.ts]
+- "reject_route_post": "POST()" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/ai-report/reject/route.ts:L4 | neighbors=[route.ts]
+- "remediation_route_supported_os": "SUPPORTED_OS" | kind=code-symbol | source=manager/frontend/app/api/findings/[id]/remediation/route.ts:L5 | neighbors=[route.ts]
+- "report_finding_model_aggravating": "AGGRAVATING" | kind=code-symbol | source=manager/frontend/lib/report/finding-model.ts:L264 | neighbors=[finding-model.ts]
+- "report_finding_model_confidence": "Confidence" | kind=code-symbol | source=manager/frontend/lib/report/finding-model.ts:L142 | neighbors=[finding-model.ts]
+- "report_finding_model_confidencelevel": "ConfidenceLevel" | kind=code-symbol | source=manager/frontend/lib/report/finding-model.ts:L140 | neighbors=[finding-model.ts]
+- "report_finding_model_detection": "DETECTION" | kind=code-symbol | source=manager/frontend/lib/report/finding-model.ts:L151 | neighbors=[finding-model.ts]
+- "report_finding_model_gap": "Gap" | kind=code-symbol | source=manager/frontend/lib/report/finding-model.ts:L650 | neighbors=[finding-model.ts]
+- "report_finding_model_metric_name": "METRIC_NAME" | kind=code-symbol | source=manager/frontend/lib/report/finding-model.ts:L240 | neighbors=[finding-model.ts]
+- "report_finding_model_metric_value": "METRIC_VALUE" | kind=code-symbol | source=manager/frontend/lib/report/finding-model.ts:L248 | neighbors=[finding-model.ts]
+- "report_finding_model_outcome": "OUTCOME" | kind=code-symbol | source=manager/frontend/lib/report/finding-model.ts:L281 | neighbors=[finding-model.ts]
+- "report_finding_model_prereq": "PREREQ" | kind=code-symbol | source=manager/frontend/lib/report/finding-model.ts:L266 | neighbors=[finding-model.ts]
+- "report_finding_model_priority": "Priority" | kind=code-symbol | source=manager/frontend/lib/report/finding-model.ts:L373 | neighbors=[finding-model.ts]
+- "report_finding_model_priority_label": "PRIORITY_LABEL" | kind=code-symbol | source=manager/frontend/lib/report/finding-model.ts:L382 | neighbors=[finding-model.ts]
+- "report_finding_model_prioritycode": "PriorityCode" | kind=code-symbol | source=manager/frontend/lib/report/finding-model.ts:L371 | neighbors=[finding-model.ts]
+- "report_finding_model_provenance": "Provenance" | kind=code-symbol | source=manager/frontend/lib/report/finding-model.ts:L498 | neighbors=[finding-model.ts]
+- "report_finding_model_rawremediation": "RawRemediation" | kind=code-symbol | source=manager/frontend/lib/report/finding-model.ts:L60 | neighbors=[finding-model.ts]
+- "report_finding_model_rawverification": "RawVerification" | kind=code-symbol | source=manager/frontend/lib/report/finding-model.ts:L72 | neighbors=[finding-model.ts]
+- "report_finding_model_redaction": "Redaction" | kind=code-symbol | source=manager/frontend/lib/report/finding-model.ts:L578 | neighbors=[finding-model.ts]
+- "report_finding_model_redactionrule": "RedactionRule" | kind=code-symbol | source=manager/frontend/lib/report/finding-model.ts:L523 | neighbors=[finding-model.ts]
+- "report_finding_model_remediationstep": "RemediationStep" | kind=code-symbol | source=manager/frontend/lib/report/finding-model.ts:L607 | neighbors=[finding-model.ts]
+- "report_finding_model_rules": "RULES" | kind=code-symbol | source=manager/frontend/lib/report/finding-model.ts:L544 | neighbors=[finding-model.ts]
+- "report_finding_model_sla": "Sla" | kind=code-symbol | source=manager/frontend/lib/report/finding-model.ts:L448 | neighbors=[finding-model.ts]
+- "report_finding_model_sla_days": "SLA_DAYS" | kind=code-symbol | source=manager/frontend/lib/report/finding-model.ts:L442 | neighbors=[finding-model.ts]
+- "report_finding_model_slastate": "SlaState" | kind=code-symbol | source=manager/frontend/lib/report/finding-model.ts:L446 | neighbors=[finding-model.ts]
+- "report_finding_model_vectormetric": "VectorMetric" | kind=code-symbol | source=manager/frontend/lib/report/finding-model.ts:L219 | neighbors=[finding-model.ts]
+- "report_finding_model_vectorreading": "VectorReading" | kind=code-symbol | source=manager/frontend/lib/report/finding-model.ts:L228 | neighbors=[finding-model.ts]
 
 ## Instructions
 

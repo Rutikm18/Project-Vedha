@@ -1,4 +1,4 @@
-# Node Description Batch 292 of 336
+# Node Description Batch 292 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -26,46 +26,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_main_scripts_findings_rationale_1": "test_main_scripts_findings.py — the findings interpretation layer.  Pure-logic," | kind=entity | source=probe/tests/test_main_scripts_findings.py:L1 | neighbors=[test_main_scripts_findings.py] | lang=en
-- "tests_test_main_scripts_findings_test_build_service_index_extracts_confirmed_services": "test_build_service_index_extracts_confirmed_services()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L198 | neighbors=[test_main_scripts_findings.py] | lang=en
-- "tests_test_main_scripts_hardening_rationale_1": "test_main_scripts_hardening.py — verifies the Phase-1 correctness fixes applied" | kind=entity | source=probe/tests/test_main_scripts_hardening.py:L1 | neighbors=[test_main_scripts_hardening.py] | lang=en
-- "tests_test_main_scripts_hardening_rationale_101": "A 64-byte SMB2 header. Caller prepends a 4-byte NBT transport prefix, so     Pro" | kind=entity | source=probe/tests/test_main_scripts_hardening.py:L101 | neighbors=[_smb2_header()] | lang=pt
-- "tests_test_main_scripts_hardening_rationale_123": "STATUS_INVALID_PARAMETER error response: same header, body StructureSize 9," | kind=entity | source=probe/tests/test_main_scripts_hardening.py:L123 | neighbors=[make_smb2_error()] | lang=en
-- "tests_test_main_scripts_hardening_testosconfidence_test_linux_ttl_only_capped": ".test_linux_ttl_only_capped()" | kind=code-symbol | source=probe/tests/test_main_scripts_hardening.py:L92 | neighbors=[TestOsConfidence] | lang=en
-- "tests_test_main_scripts_hardening_testosconfidence_test_no_signal_is_unknown": ".test_no_signal_is_unknown()" | kind=code-symbol | source=probe/tests/test_main_scripts_hardening.py:L87 | neighbors=[TestOsConfidence] | lang=en
-- "tests_test_main_scripts_hardening_testosconfidence_test_ttl_only_is_not_absolute": ".test_ttl_only_is_not_absolute()" | kind=code-symbol | source=probe/tests/test_main_scripts_hardening.py:L74 | neighbors=[TestOsConfidence] | lang=en
-- "tests_test_main_scripts_hardening_testosconfidence_test_two_signals_beat_one": ".test_two_signals_beat_one()" | kind=code-symbol | source=probe/tests/test_main_scripts_hardening.py:L81 | neighbors=[TestOsConfidence] | lang=en
-- "tests_test_main_scripts_hardening_testsmbparsing_test_negotiate_request_excludes_smb311": ".test_negotiate_request_excludes_smb311()" | kind=code-symbol | source=probe/tests/test_main_scripts_hardening.py:L152 | neighbors=[TestSmbParsing] | lang=en
-- "tests_test_main_scripts_hardening_testsmbparsing_test_negotiate_request_offers_smb311_with_preauth_context": ".test_negotiate_request_offers_smb311_with_preauth_context()" | kind=code-symbol | source=probe/tests/test_main_scripts_hardening.py:L152 | neighbors=[TestSmbParsing] | lang=en
-- "tests_test_main_scripts_ja4s_rationale_1": "test_main_scripts_ja4s.py — JA4S TLS ServerHello fingerprint (advanced capabilit" | kind=entity | source=probe/tests/test_main_scripts_ja4s.py:L1 | neighbors=[test_main_scripts_ja4s.py] | lang=en
-- "tests_test_main_scripts_ja4s_test_empty_extensions_sentinel": "test_empty_extensions_sentinel()" | kind=code-symbol | source=probe/tests/test_main_scripts_ja4s.py:L48 | neighbors=[test_main_scripts_ja4s.py] | lang=en
-- "tests_test_main_scripts_ja4s_test_extension_hash_is_order_sensitive": "test_extension_hash_is_order_sensitive()" | kind=code-symbol | source=probe/tests/test_main_scripts_ja4s.py:L53 | neighbors=[test_main_scripts_ja4s.py] | lang=en
-- "tests_test_main_scripts_ja4s_test_ja4s_from_bad_serverhello_is_none": "test_ja4s_from_bad_serverhello_is_none()" | kind=code-symbol | source=probe/tests/test_main_scripts_ja4s.py:L73 | neighbors=[test_main_scripts_ja4s.py] | lang=en
-- "tests_test_main_scripts_ja4s_test_ja4s_from_fields_shape_and_parts": "test_ja4s_from_fields_shape_and_parts()" | kind=code-symbol | source=probe/tests/test_main_scripts_ja4s.py:L31 | neighbors=[test_main_scripts_ja4s.py] | lang=en
-- "tests_test_main_scripts_ja4s_test_suspicious_ja4s_finding_fires_only_on_match": "test_suspicious_ja4s_finding_fires_only_on_match()" | kind=code-symbol | source=probe/tests/test_main_scripts_ja4s.py:L78 | neighbors=[test_main_scripts_ja4s.py] | lang=en
-- "tests_test_main_scripts_ja4s_test_version_and_alpn_encodings": "test_version_and_alpn_encodings()" | kind=code-symbol | source=probe/tests/test_main_scripts_ja4s.py:L40 | neighbors=[test_main_scripts_ja4s.py] | lang=en
-- "tests_test_main_scripts_ja4x_rationale_1": "test_main_scripts_ja4x.py — JA4X X.509 certificate fingerprinting (advanced capa" | kind=entity | source=probe/tests/test_main_scripts_ja4x.py:L1 | neighbors=[test_main_scripts_ja4x.py] | lang=en
-- "tests_test_main_scripts_ja4x_test_empty_list_hashes_to_sentinel": "test_empty_list_hashes_to_sentinel()" | kind=code-symbol | source=probe/tests/test_main_scripts_ja4x.py:L38 | neighbors=[test_main_scripts_ja4x.py] | lang=en
-- "tests_test_main_scripts_ja4x_test_ja4x_format_is_three_12hex_fields": "test_ja4x_format_is_three_12hex_fields()" | kind=code-symbol | source=probe/tests/test_main_scripts_ja4x.py:L30 | neighbors=[test_main_scripts_ja4x.py] | lang=en
-- "tests_test_main_scripts_ja4x_test_ja4x_from_cert_handles_garbage": "test_ja4x_from_cert_handles_garbage()" | kind=code-symbol | source=probe/tests/test_main_scripts_ja4x.py:L65 | neighbors=[test_main_scripts_ja4x.py] | lang=en
-- "tests_test_main_scripts_ja4x_test_ja4x_is_deterministic_and_order_sensitive": "test_ja4x_is_deterministic_and_order_sensitive()" | kind=code-symbol | source=probe/tests/test_main_scripts_ja4x.py:L43 | neighbors=[test_main_scripts_ja4x.py] | lang=en
-- "tests_test_main_scripts_ja4x_test_match_suspicious_registry": "test_match_suspicious_registry()" | kind=code-symbol | source=probe/tests/test_main_scripts_ja4x.py:L94 | neighbors=[test_main_scripts_ja4x.py] | lang=en
-- "tests_test_main_scripts_ja4x_test_oid_to_hex_known_values": "test_oid_to_hex_known_values()" | kind=code-symbol | source=probe/tests/test_main_scripts_ja4x.py:L21 | neighbors=[test_main_scripts_ja4x.py] | lang=en
-- "tests_test_main_scripts_ja4x_test_real_self_signed_cert_round_trip": "test_real_self_signed_cert_round_trip()" | kind=code-symbol | source=probe/tests/test_main_scripts_ja4x.py:L72 | neighbors=[test_main_scripts_ja4x.py] | lang=en
-- "tests_test_main_scripts_ja4x_test_self_signed_finding_carries_ja4x_for_correlation": "test_self_signed_finding_carries_ja4x_for_correlation()" | kind=code-symbol | source=probe/tests/test_main_scripts_ja4x.py:L123 | neighbors=[test_main_scripts_ja4x.py] | lang=en
-- "tests_test_main_scripts_ja4x_test_suspicious_fingerprint_finding_fires_only_on_match": "test_suspicious_fingerprint_finding_fires_only_on_match()" | kind=code-symbol | source=probe/tests/test_main_scripts_ja4x.py:L104 | neighbors=[test_main_scripts_ja4x.py] | lang=en
-- "tests_test_main_scripts_rdp_rationale_1": "test_main_scripts_rdp.py — Phase 18: protocol-level RDP confirmation + NLA detec" | kind=entity | source=probe/tests/test_main_scripts_rdp.py:L1 | neighbors=[test_main_scripts_rdp.py] | lang=en
-- "tests_test_main_scripts_rdp_rationale_16": "A TPKT + X.224 Connection Confirm, optionally carrying an rdpNeg PDU." | kind=entity | source=probe/tests/test_main_scripts_rdp.py:L16 | neighbors=[_cc()] | lang=en
-- "tests_test_main_scripts_rdp_rationale_18": "A TPKT + X.224 Connection Confirm, optionally carrying an rdpNeg PDU." | kind=entity | source=probe/tests/test_main_scripts_rdp.py:L18 | neighbors=[_cc()] | lang=en
-- "tests_test_main_scripts_rdp_test_connection_request_is_valid_tpkt_and_requests_protocols": "test_connection_request_is_valid_tpkt_and_requests_protocols()" | kind=code-symbol | source=probe/tests/test_main_scripts_rdp.py:L25 | neighbors=[test_main_scripts_rdp.py] | lang=en
-- "tests_test_main_scripts_rdp_test_main_cli_runs_and_writes_finding": "test_main_cli_runs_and_writes_finding()" | kind=code-symbol | source=probe/tests/test_main_scripts_rdp.py:L108 | neighbors=[test_main_scripts_rdp.py] | lang=en
-- "tests_test_main_scripts_rdp_test_nla_not_required_when_rdp_only_accepted": "test_nla_not_required_when_rdp_only_accepted()" | kind=code-symbol | source=probe/tests/test_main_scripts_rdp.py:L74 | neighbors=[test_main_scripts_rdp.py] | lang=en
-- "tests_test_main_scripts_rdp_test_nla_required_when_rdp_only_probe_refused": "test_nla_required_when_rdp_only_probe_refused()" | kind=code-symbol | source=probe/tests/test_main_scripts_rdp.py:L61 | neighbors=[test_main_scripts_rdp.py] | lang=en
-- "tests_test_main_scripts_rdp_test_non_rdp_data_is_none": "test_non_rdp_data_is_none()" | kind=code-symbol | source=probe/tests/test_main_scripts_rdp.py:L100 | neighbors=[test_main_scripts_rdp.py] | lang=en
-- "tests_test_main_scripts_rdp_test_posture_map_matches_spec": "test_posture_map_matches_spec()" | kind=code-symbol | source=probe/tests/test_main_scripts_rdp.py:L53 | neighbors=[test_main_scripts_rdp.py] | lang=en
-- "tests_test_main_scripts_statemodel_rationale_1": "test_main_scripts_statemodel.py — Phase 1: the normalized ScanResult state model" | kind=entity | source=probe/tests/test_main_scripts_statemodel.py:L1 | neighbors=[test_main_scripts_statemodel.py] | lang=en
-- "tests_test_main_scripts_statemodel_test_backward_compatible_old_style_construction_still_works": "test_backward_compatible_old_style_construction_still_works()" | kind=code-symbol | source=probe/tests/test_main_scripts_statemodel.py:L57 | neighbors=[test_main_scripts_statemodel.py] | lang=en
-- "tests_test_main_scripts_statemodel_test_canonical_states_are_the_six_documented_states": "test_canonical_states_are_the_six_documented_states()" | kind=code-symbol | source=probe/tests/test_main_scripts_statemodel.py:L16 | neighbors=[test_main_scripts_statemodel.py] | lang=en
+- "scanner_snmp_scanner_rationale_127": "Extract (oid_dotted, value_tag, value_bytes) from a GET/GETNEXT/GETBULK response" | kind=entity | source=probe/scanner/snmp_scanner.py:L127 | neighbors=[_parse_varbinds()] | lang=en
+- "scanner_snmp_scanner_rationale_246": "Phase 1 (community discovery) + Phase 2 (targeted MIB walk) +     Phase 3 (ampli" | kind=entity | source=probe/scanner/snmp_scanner.py:L246 | neighbors=[SNMPScanner] | lang=en
+- "scanner_snmp_scanner_rationale_278": "Return (community, sysdescr) for the first responding community, or None." | kind=entity | source=probe/scanner/snmp_scanner.py:L278 | neighbors=[._discover_community()] | lang=en
+- "scanner_snmp_scanner_rationale_292": "GETNEXT walk of one OID subtree.  Returns [(oid, value_str), ...]." | kind=entity | source=probe/scanner/snmp_scanner.py:L292 | neighbors=[._walk_subtree()] | lang=en
+- "scanner_snmp_scanner_rationale_315": "One GETBULK request — measure response/request size ratio." | kind=entity | source=probe/scanner/snmp_scanner.py:L315 | neighbors=[._amplification_factor()] | lang=en
+- "scanner_snmp_scanner_rationale_325": "Send a SNMPv3 Discover. Any reply = v3 agent present." | kind=entity | source=probe/scanner/snmp_scanner.py:L325 | neighbors=[._snmpv3_present()] | lang=pt
+- "scanner_snmp_scanner_rationale_46": "Dotted-notation OID string → BER-encoded bytes." | kind=entity | source=probe/scanner/snmp_scanner.py:L46 | neighbors=[_encode_oid()] | lang=en
+- "scanner_snmp_scanner_rationale_64": "BER-encoded OID bytes → dotted-notation string." | kind=entity | source=probe/scanner/snmp_scanner.py:L64 | neighbors=[_decode_oid()] | lang=en
+- "scanner_snmp_scanner_rationale_79": "Human-readable SNMP value for common ASN.1/SNMP types." | kind=entity | source=probe/scanner/snmp_scanner.py:L79 | neighbors=[_decode_value()] | lang=en
+- "scanner_snmp_scanner_snmpscanner_init": ".__init__()" | kind=code-symbol | source=probe/scanner/snmp_scanner.py:L252 | neighbors=[SNMPScanner] | lang=en
+- "scanner_ssh_collector_collect_over_ssh": "_collect_over_ssh()" | kind=code-symbol | source=probe/scanner/ssh_collector.py:L52 | neighbors=[ssh_collector.py] | lang=en
+- "scanner_ssh_collector_main": "main()" | kind=code-symbol | source=probe/scanner/ssh_collector.py:L125 | neighbors=[ssh_collector.py] | lang=en
+- "scanner_ssh_collector_rationale_1": "ssh_collector.py — credentialed (authenticated) inventory collection for Linux." | kind=entity | source=probe/scanner/ssh_collector.py:L1 | neighbors=[ssh_collector.py] | lang=en
+- "scanner_ssh_collector_sshcollector_init": ".__init__()" | kind=code-symbol | source=probe/scanner/ssh_collector.py:L83 | neighbors=[SSHCollector] | lang=en
+- "scanner_ssh_kexdb_rationale_1": "ssh_kexdb.py — vendored SSH algorithm weakness database (the \"content\" half of t" | kind=entity | source=probe/scanner/ssh_kexdb.py:L1 | neighbors=[ssh_kexdb.py] | lang=en
+- "scanner_ssh_kexdb_rationale_478": "Return (failures, warnings, infos) for one offered algorithm, or None if     the" | kind=entity | source=probe/scanner/ssh_kexdb.py:L478 | neighbors=[lookup()] | lang=en
+- "scanner_ssh_scanner_cursor_init": ".__init__()" | kind=code-symbol | source=probe/scanner/ssh_scanner.py:L73 | neighbors=[_Cursor] | lang=en
+- "scanner_ssh_scanner_main": "main()" | kind=code-symbol | source=probe/scanner/ssh_scanner.py:L336 | neighbors=[ssh_scanner.py] | lang=en
+- "scanner_ssh_scanner_rationale_1": "ssh_scanner.py — SSH configuration / algorithm audit (VA checklist §6).  METHOD" | kind=entity | source=probe/scanner/ssh_scanner.py:L1 | neighbors=[ssh_scanner.py] | lang=en
+- "scanner_ssh_scanner_rationale_107": "Parse a SSH_MSG_KEXINIT body into its name-lists.      Accepts the payload with" | kind=entity | source=probe/scanner/ssh_scanner.py:L107 | neighbors=[parse_kexinit()] | lang=en
+- "scanner_ssh_scanner_rationale_134": "Grade a server's offered algorithms against the vendored weakness table.      Re" | kind=entity | source=probe/scanner/ssh_scanner.py:L134 | neighbors=[evaluate_algorithms()] | lang=en
+- "scanner_ssh_scanner_rationale_196": "Read the server SSH identification line, skipping any pre-banner text     lines" | kind=entity | source=probe/scanner/ssh_scanner.py:L196 | neighbors=[_read_ident()] | lang=en
+- "scanner_ssh_scanner_rationale_226": "Read one unencrypted SSH binary packet and return its payload (RFC 4253     §6)." | kind=entity | source=probe/scanner/ssh_scanner.py:L226 | neighbors=[_read_packet()] | lang=en
+- "scanner_ssh_scanner_rationale_250": "Blocking: connect, exchange identification, read the server KEXINIT.         Ret" | kind=entity | source=probe/scanner/ssh_scanner.py:L250 | neighbors=[._probe()] | lang=en
+- "scanner_ssh_scanner_rationale_47": "Parse an SSH identification string 'SSH-<proto>-<software>[ comments]'.      Ret" | kind=entity | source=probe/scanner/ssh_scanner.py:L47 | neighbors=[parse_ssh_banner()] | lang=en
+- "scanner_ssh_scanner_sshscanner_init": ".__init__()" | kind=code-symbol | source=probe/scanner/ssh_scanner.py:L245 | neighbors=[SSHScanner] | lang=en
+- "scanner_syn_scanner_main": "main()" | kind=code-symbol | source=probe/scanner/syn_scanner.py:L635 | neighbors=[syn_scanner.py] | lang=en
+- "scanner_syn_scanner_rationale_1": "syn_scanner.py — stateless TCP SYN (half-open) scan, pure Python (Tier 1.1).  WH" | kind=entity | source=probe/scanner/syn_scanner.py:L1 | neighbors=[syn_scanner.py] | lang=en
+- "scanner_syn_scanner_rationale_104": "Build a 20-byte TCP SYN segment with a valid checksum (pseudo-header)." | kind=entity | source=probe/scanner/syn_scanner.py:L104 | neighbors=[build_tcp_syn()] | lang=pt
+- "scanner_syn_scanner_rationale_105": "Build a 20-byte TCP SYN segment with a valid checksum (pseudo-header)." | kind=entity | source=probe/scanner/syn_scanner.py:L105 | neighbors=[build_tcp_syn()] | lang=pt
+- "scanner_syn_scanner_rationale_107": "Parse a raw IPv4+TCP packet (as received on a raw IPPROTO_TCP socket)." | kind=entity | source=probe/scanner/syn_scanner.py:L107 | neighbors=[parse_packet()] | lang=pt
+- "scanner_syn_scanner_rationale_117": "Build a 20-byte TCP SYN segment with a valid checksum (pseudo-header)." | kind=entity | source=probe/scanner/syn_scanner.py:L117 | neighbors=[build_tcp_syn()] | lang=pt
+- "scanner_syn_scanner_rationale_123": "SYN/ACK -> open, RST -> closed, anything else -> None (indeterminate)." | kind=entity | source=probe/scanner/syn_scanner.py:L123 | neighbors=[classify()] | lang=en
+- "scanner_syn_scanner_rationale_125": "Walk a TCP options field for the MSS value (kind 2, len 4).      Bounds-checked" | kind=entity | source=probe/scanner/syn_scanner.py:L125 | neighbors=[_parse_mss()] | lang=en
+- "scanner_syn_scanner_rationale_126": "Walk a TCP options field for the MSS value (kind 2, len 4).      Bounds-checked" | kind=entity | source=probe/scanner/syn_scanner.py:L126 | neighbors=[_parse_mss()] | lang=en
+- "scanner_syn_scanner_rationale_134": "Keyed 32-bit ISN for (dst_ip, dst_port, src_port). Reply.ack == cookie+1." | kind=entity | source=probe/scanner/syn_scanner.py:L134 | neighbors=[syn_cookie()] | lang=en
+- "scanner_syn_scanner_rationale_138": "Walk a TCP options field into a p0f-style profile.      Returns {mss, wscale, sa" | kind=entity | source=probe/scanner/syn_scanner.py:L138 | neighbors=[parse_tcp_options()] | lang=pt
+- "scanner_syn_scanner_rationale_141": "A genuine reply to our SYN acknowledges ISN+1. The reply's own source     (ip_sr" | kind=entity | source=probe/scanner/syn_scanner.py:L141 | neighbors=[verify_reply_cookie()] | lang=en
+- "scanner_syn_scanner_rationale_151": "Parse a raw IPv4+TCP packet (as received on a raw IPPROTO_TCP socket).      Also" | kind=entity | source=probe/scanner/syn_scanner.py:L151 | neighbors=[parse_packet()] | lang=pt
+- "scanner_syn_scanner_rationale_152": "Parse a raw IPv4+TCP packet (as received on a raw IPPROTO_TCP socket).      Also" | kind=entity | source=probe/scanner/syn_scanner.py:L152 | neighbors=[parse_packet()] | lang=pt
 
 ## Instructions
 

@@ -1,4 +1,4 @@
-# Node Description Batch 121 of 336
+# Node Description Batch 121 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,60 +12,51 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
-For an entity node (any other kind — e.g. a person, place, event, object),
-describe what the entity is and its role, grounded in its type, its
-relations (neighbors) and the provided citations/evidence — e.g.
-"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
-Ground entity descriptions in the citations/evidence when present; do not
-speculate beyond the context, so a node with no supporting context may be
-left out of the reply.
-LANGUAGE: each entry has a `lang=` marker giving the language of its source.
-Write that entry's description in EXACTLY that language. Do not translate to
-a single common language — match each node's source language individually.
+Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "ui_output_stageerror": "stageError()" | kind=code-symbol | source=manager/frontend/cli/ui/output.ts:L133 | neighbors=[output.ts, ln(), w()] | lang=en
-- "ui_output_summary": "summary()" | kind=code-symbol | source=manager/frontend/cli/ui/output.ts:L194 | neighbors=[output.ts, ln(), rule()] | lang=en
-- "ui_output_w": "w()" | kind=code-symbol | source=manager/frontend/cli/ui/output.ts:L29 | neighbors=[output.ts, stageError(), stageProgress()] | lang=en
-- "utils_csv_parser": "csv_parser.py" | kind=code-symbol | source=manager/backend/app/utils/csv_parser.py:L1 | neighbors=[d1b4dd3 trim frontend to 7 core pages; …, parse_csv_assets(), 298a9d4 trim frontend to 7 core pages; …] | lang=en
-- "utils_csv_parser_rationale_26": "Parse CSV text into a list of AssetIn models and error strings." | kind=entity | source=manager/backend/app/utils/csv_parser.py:L26 | neighbors=[parse_csv_assets(), AssetCriticality, AssetType] | lang=en
-- "utils_pagination": "pagination.py" | kind=code-symbol | source=manager/backend/app/utils/pagination.py:L1 | neighbors=[d1b4dd3 trim frontend to 7 core pages; …, paginate_query(), 298a9d4 trim frontend to 7 core pages; …] | lang=en
-- "vuln_enrichment_vulnenrichmentservice_get_kev_catalog": "._get_kev_catalog()" | kind=code-symbol | source=manager/backend/app/vuln/enrichment.py:L249 | neighbors=[VulnEnrichmentService, .check_cisa_kev(), .get()] | lang=en
-- "vuln_nessus_nessusscanner_authenticate": ".authenticate()" | kind=code-symbol | source=manager/backend/app/vuln/nessus.py:L72 | neighbors=[NessusScanner, Prefer API key auth (stateless, no sess…, Prefer API key auth (stateless, no sess…] | lang=en
-- "vuln_nessus_nessusscanner_map_finding": ".map_finding()" | kind=code-symbol | source=manager/backend/app/vuln/nessus.py:L205 | neighbors=[NessusScanner, Map a raw Nessus vulnerability dict → F…, Map a raw Nessus vulnerability dict → F…] | lang=en
-- "vuln_nessus_rationale_1": "NessusScanner — wraps the Tenable Nessus REST API v6.  Endpoints used:   POST /s" | kind=entity | source=manager/backend/app/vuln/nessus.py:L1 | neighbors=[nessus.py, FindingSeverity, FindingStatus] | lang=en
-- "vuln_nessus_rationale_101": "Returns nessus scan_id as string." | kind=entity | source=manager/backend/app/vuln/nessus.py:L101 | neighbors=[.create_scan(), FindingSeverity, FindingStatus] | lang=en
-- "vuln_nessus_rationale_102": "Returns nessus scan_id as string." | kind=entity | source=manager/backend/app/vuln/nessus.py:L102 | neighbors=[FindingSeverity, FindingStatus, .create_scan()] | lang=en
-- "vuln_nessus_rationale_140": "Returns scan_uuid (token for tracking)." | kind=entity | source=manager/backend/app/vuln/nessus.py:L140 | neighbors=[.launch_scan(), FindingSeverity, FindingStatus] | lang=en
-- "vuln_nessus_rationale_141": "Returns scan_uuid (token for tracking)." | kind=entity | source=manager/backend/app/vuln/nessus.py:L141 | neighbors=[FindingSeverity, FindingStatus, .launch_scan()] | lang=en
-- "vuln_nessus_rationale_151": "Returns {status, progress_percent, host_count}." | kind=entity | source=manager/backend/app/vuln/nessus.py:L151 | neighbors=[.poll_status(), FindingSeverity, FindingStatus] | lang=en
-- "vuln_nessus_rationale_152": "Returns {status, progress_percent, host_count}." | kind=entity | source=manager/backend/app/vuln/nessus.py:L152 | neighbors=[FindingSeverity, FindingStatus, .poll_status()] | lang=en
-- "vuln_nessus_rationale_167": "Returns list of raw finding dicts from all hosts." | kind=entity | source=manager/backend/app/vuln/nessus.py:L167 | neighbors=[.get_results(), FindingSeverity, FindingStatus] | lang=en
-- "vuln_nessus_rationale_168": "Returns list of raw finding dicts from all hosts." | kind=entity | source=manager/backend/app/vuln/nessus.py:L168 | neighbors=[FindingSeverity, FindingStatus, .get_results()] | lang=en
-- "vuln_nessus_rationale_206": "Map a raw Nessus vulnerability dict → Finding-compatible dict.         Returns a" | kind=entity | source=manager/backend/app/vuln/nessus.py:L206 | neighbors=[.map_finding(), FindingSeverity, FindingStatus] | lang=pt
-- "vuln_nessus_rationale_207": "Map a raw Nessus vulnerability dict → Finding-compatible dict.         Returns a" | kind=entity | source=manager/backend/app/vuln/nessus.py:L207 | neighbors=[FindingSeverity, FindingStatus, .map_finding()] | lang=pt
-- "vuln_nessus_rationale_257": "Request + poll + download .nessus XML for evidence storage." | kind=entity | source=manager/backend/app/vuln/nessus.py:L257 | neighbors=[.export_nessus_file(), FindingSeverity, FindingStatus] | lang=en
-- "vuln_nessus_rationale_258": "Request + poll + download .nessus XML for evidence storage." | kind=entity | source=manager/backend/app/vuln/nessus.py:L258 | neighbors=[FindingSeverity, FindingStatus, .export_nessus_file()] | lang=en
-- "vuln_nessus_rationale_38": "Async Nessus API client. One instance per engagement scan session." | kind=entity | source=manager/backend/app/vuln/nessus.py:L38 | neighbors=[NessusScanner, FindingSeverity, FindingStatus] | lang=it
-- "vuln_nessus_rationale_39": "Async Nessus API client. One instance per engagement scan session." | kind=entity | source=manager/backend/app/vuln/nessus.py:L39 | neighbors=[FindingSeverity, FindingStatus, NessusScanner] | lang=it
-- "vuln_nessus_rationale_73": "Prefer API key auth (stateless, no session expiry).         Falls back to userna" | kind=entity | source=manager/backend/app/vuln/nessus.py:L73 | neighbors=[.authenticate(), FindingSeverity, FindingStatus] | lang=en
-- "vuln_nessus_rationale_74": "Prefer API key auth (stateless, no session expiry).         Falls back to userna" | kind=entity | source=manager/backend/app/vuln/nessus.py:L74 | neighbors=[FindingSeverity, FindingStatus, .authenticate()] | lang=en
-- "vuln_nuclei_nucleiscanner_consume_stdout": "._consume_stdout()" | kind=code-symbol | source=manager/backend/app/vuln/nuclei.py:L287 | neighbors=[NucleiScanner, ._map_finding(), .run_scan()] | lang=en
-- "vuln_nuclei_nucleiscanner_map_finding": "._map_finding()" | kind=code-symbol | source=manager/backend/app/vuln/nuclei.py:L395 | neighbors=[NucleiScanner, ._consume_stdout(), .parse_output()] | lang=en
-- "vuln_nuclei_rationale_109": "Run Nuclei against targets and parse JSONL output into Finding dicts." | kind=entity | source=manager/backend/app/vuln/nuclei.py:L109 | neighbors=[NucleiScanner, FindingSeverity, FindingStatus] | lang=en
-- "vuln_nuclei_rationale_126": "Run Nuclei and stream JSONL findings from stdout.          ``request_timeout_sec" | kind=entity | source=manager/backend/app/vuln/nuclei.py:L126 | neighbors=[.run_scan(), FindingSeverity, FindingStatus] | lang=en
-- "vuln_nuclei_rationale_382": "Parse nuclei JSONL output → list of Finding-compatible dicts." | kind=entity | source=manager/backend/app/vuln/nuclei.py:L382 | neighbors=[.parse_output(), FindingSeverity, FindingStatus] | lang=en
-- "vuln_nuclei_rationale_445": "Given a list of service names on an asset, return the union         of relevant" | kind=entity | source=manager/backend/app/vuln/nuclei.py:L445 | neighbors=[.template_selector(), FindingSeverity, FindingStatus] | lang=en
-- "vuln_nuclei_rationale_79": "Machine-readable state for the most recent scanner invocation." | kind=entity | source=manager/backend/app/vuln/nuclei.py:L79 | neighbors=[NucleiRunReport, FindingSeverity, FindingStatus] | lang=en
-- "vuln_nuclei_rationale_90": "Fatal Nuclei failure, optionally carrying findings emitted before failure." | kind=entity | source=manager/backend/app/vuln/nuclei.py:L90 | neighbors=[NucleiScanError, FindingSeverity, FindingStatus] | lang=en
-- "vuln_tasks_dedup_hash": "_dedup_hash()" | kind=code-symbol | source=manager/backend/app/vuln/tasks.py:L167 | neighbors=[tasks.py, Deprecated — use app.utils.hash.dedup_h…, Deprecated — use app.utils.hash.dedup_h…] | lang=en
-- "websocket_manager_connectionmanager_get_room_clients": ".get_room_clients()" | kind=code-symbol | source=manager/backend/app/websocket/manager.py:L75 | neighbors=[ConnectionManager, Get number of connected clients in a ro…, Get number of connected clients in a ro…] | lang=en
-- "workers_outbox_rationale_1": "outbox.py (worker) — durable consumer for the transactional outbox.  Run as its" | kind=entity | source=manager/backend/app/workers/outbox.py:L1 | neighbors=[outbox.py, OutboxEvent, ScanResult] | lang=en
-- "workers_outbox_rationale_110": "Atomically claim up to `batch_size` due events. FOR UPDATE SKIP LOCKED     means" | kind=entity | source=manager/backend/app/workers/outbox.py:L110 | neighbors=[OutboxEvent, ScanResult, _claim_batch()] | lang=en
-- "workers_outbox_rationale_152": "Reschedule with exponential backoff, or dead-letter once attempts are     exhaus" | kind=entity | source=manager/backend/app/workers/outbox.py:L152 | neighbors=[OutboxEvent, ScanResult, _mark_retry_or_dead()] | lang=en
-- "workers_outbox_rationale_56": "Decorator: bind an async handler to a topic." | kind=entity | source=manager/backend/app/workers/outbox.py:L56 | neighbors=[OutboxEvent, ScanResult, register()] | lang=en
+- "scripts_startup_validator_databaseconnectivityvalidator_validate": ".validate()" | kind=code-symbol | source=manager/backend/scripts/startup_validator.py:L313 | neighbors=[DatabaseConnectivityValidator, CheckResult, .add()]
+- "scripts_startup_validator_databaseurlvalidator": "DatabaseURLValidator" | kind=code-symbol | source=manager/backend/scripts/startup_validator.py:L244 | neighbors=[startup_validator.py, .validate(), Validates DATABASE_URL format and safet…]
+- "scripts_startup_validator_databaseurlvalidator_validate": ".validate()" | kind=code-symbol | source=manager/backend/scripts/startup_validator.py:L249 | neighbors=[DatabaseURLValidator, CheckResult, .add()]
+- "scripts_startup_validator_detectionenginevalidator": "DetectionEngineValidator" | kind=code-symbol | source=manager/backend/scripts/startup_validator.py:L279 | neighbors=[startup_validator.py, .validate(), Validates the baked-in detection engine…]
+- "scripts_startup_validator_detectionenginevalidator_validate": ".validate()" | kind=code-symbol | source=manager/backend/scripts/startup_validator.py:L282 | neighbors=[DetectionEngineValidator, CheckResult, .add()]
+- "scripts_startup_validator_redisconnectivityvalidator_validate": ".validate()" | kind=code-symbol | source=manager/backend/scripts/startup_validator.py:L357 | neighbors=[RedisConnectivityValidator, CheckResult, .add()]
+- "scripts_startup_validator_secretsvalidator": "SecretsValidator" | kind=code-symbol | source=manager/backend/scripts/startup_validator.py:L120 | neighbors=[startup_validator.py, Validates secrets meet minimum strength…, .validate()]
+- "scripts_startup_validator_secretsvalidator_validate": ".validate()" | kind=code-symbol | source=manager/backend/scripts/startup_validator.py:L125 | neighbors=[SecretsValidator, CheckResult, .add()]
+- "scripts_startup_validator_validationreport_raise_if_errors": ".raise_if_errors()" | kind=code-symbol | source=manager/backend/scripts/startup_validator.py:L62 | neighbors=[run_all_validators(), ValidationReport, StartupValidationError]
+- "services_agent_policy_classify_action": "classify_action()" | kind=code-symbol | source=manager/backend/app/services/agent_policy.py:L49 | neighbors=[agent_policy.py, evaluate_action(), Map an action name to its risk tier; un…]
+- "services_agent_policy_decision": "Decision" | kind=code-symbol | source=manager/backend/app/services/agent_policy.py:L74 | neighbors=[agent_policy.py, _deny(), evaluate_action()]
+- "services_agent_policy_deny": "_deny()" | kind=code-symbol | source=manager/backend/app/services/agent_policy.py:L82 | neighbors=[agent_policy.py, Decision, evaluate_action()]
+- "services_audit": "audit.py" | kind=code-symbol | source=manager/backend/app/services/audit.py:L1 | neighbors=[22701ea Add tests for scanner parity an…, record_audit(), audit.py — the append-only audit-log wr…]
+- "services_evidence_summary_enrichment_facts": "_enrichment_facts()" | kind=code-symbol | source=manager/backend/app/services/evidence_summary.py:L106 | neighbors=[evidence_summary.py, _percentile(), summarize_evidence()]
+- "services_evidence_summary_sentence_case": "_sentence_case()" | kind=code-symbol | source=manager/backend/app/services/evidence_summary.py:L66 | neighbors=[evidence_summary.py, _format_value(), summarize_evidence()]
+- "services_finding_ai_extract_json": "_extract_json()" | kind=code-symbol | source=manager/backend/app/services/finding_ai.py:L71 | neighbors=[finding_ai.py, generate_content_overrides(), Pull the first JSON object out of a com…]
+- "services_finding_ai_validate": "_validate()" | kind=code-symbol | source=manager/backend/app/services/finding_ai.py:L96 | neighbors=[finding_ai.py, generate_content_overrides(), Keep only well-formed override fields; …]
+- "services_finding_compliance": "finding_compliance.py" | kind=code-symbol | source=manager/backend/app/services/finding_compliance.py:L1 | neighbors=[ef14810 Implement instance locking mech…, compliance_for(), finding_compliance.py — deterministic f…]
+- "services_finding_content_build_exploitation": "_build_exploitation()" | kind=code-symbol | source=manager/backend/app/services/finding_content.py:L309 | neighbors=[finding_content.py, ExploitationView, finding_content()]
+- "services_finding_content_exploit_maturity": "exploit_maturity()" | kind=code-symbol | source=manager/backend/app/services/finding_content.py:L277 | neighbors=[finding_content.py, finding_content(), Map exploitation signals to the fronten…]
+- "services_finding_content_exploitationview": "ExploitationView" | kind=code-symbol | source=manager/backend/app/services/finding_content.py:L206 | neighbors=[finding_content.py, _build_exploitation(), The honest exploitation posture of a fi…]
+- "services_finding_content_findingcontent": "FindingContent" | kind=code-symbol | source=manager/backend/app/services/finding_content.py:L223 | neighbors=[finding_content.py, finding_content(), .to_dict()]
+- "services_finding_enrichment": "finding_enrichment.py" | kind=code-symbol | source=manager/backend/app/services/finding_enrichment.py:L1 | neighbors=[ef14810 Implement instance locking mech…, detail_enrichment(), finding_enrichment.py — assemble the pe…]
+- "services_finding_events_detected_actor": "_detected_actor()" | kind=code-symbol | source=manager/backend/app/services/finding_events.py:L81 | neighbors=[finding_events.py, Best label for who first produced this …, synthesize_events()]
+- "services_finding_events_event_type_for_status": "event_type_for_status()" | kind=code-symbol | source=manager/backend/app/services/finding_events.py:L173 | neighbors=[finding_events.py, _val(), Map a target FindingStatus to its speci…]
+- "services_finding_events_record_event": "record_event()" | kind=code-symbol | source=manager/backend/app/services/finding_events.py:L160 | neighbors=[finding_events.py, Append one immutable audit row. The cal…, _val()]
+- "services_finding_metrics": "finding_metrics.py" | kind=code-symbol | source=manager/backend/app/services/finding_metrics.py:L1 | neighbors=[1727f4f feat(findings): MTTR + open-by-…, compute_mttr(), finding_metrics.py — mobilization metri…]
+- "services_finding_priority_priority_key": "priority_key()" | kind=code-symbol | source=manager/backend/app/services/finding_priority.py:L49 | neighbors=[finding_priority.py, severity_rank(), In-memory urgency key: ``(severity_tier…]
+- "services_finding_priority_severity_rank": "severity_rank()" | kind=code-symbol | source=manager/backend/app/services/finding_priority.py:L38 | neighbors=[finding_priority.py, priority_key(), Rank a severity (enum member or string,…]
+- "services_job_attempt_service_claim_job_attempt": "claim_job_attempt()" | kind=code-symbol | source=manager/backend/app/services/job_attempt_service.py:L24 | neighbors=[job_attempt_service.py, AttemptClaim, Atomically claim a pending job and crea…]
+- "services_job_result_service_sanitize_jsonb": "sanitize_jsonb()" | kind=code-symbol | source=manager/backend/app/services/job_result_service.py:L29 | neighbors=[job_result_service.py, process_job_result(), Recursively strip NUL (U+0000) from eve…]
+- "services_llm_anthropic_system_blocks": "_anthropic_system_blocks()" | kind=code-symbol | source=manager/backend/app/services/llm.py:L52 | neighbors=[llm.py, ._anthropic(), Shape the system prompt into Anthropic …]
+- "services_llm_http_client_asyncllmhttpclient": "AsyncLlmHttpClient" | kind=code-symbol | source=manager/backend/app/services/llm_http_client.py:L17 | neighbors=[llm_http_client.py, .open(), Create bounded ``httpx.AsyncClient`` in…]
+- "services_llm_is_local_ollama_model": "_is_local_ollama_model()" | kind=code-symbol | source=manager/backend/app/services/llm.py:L16 | neighbors=[llm.py, ._runtime(), .status()]
+- "services_llm_managerllmservice_build_system": "._build_system()" | kind=code-symbol | source=manager/backend/app/services/llm.py:L376 | neighbors=[ManagerLlmService, .generate(), .generate_with_fallback()]
+- "services_llm_managerllmservice_gemini": "._gemini()" | kind=code-symbol | source=manager/backend/app/services/llm.py:L633 | neighbors=[ManagerLlmService, ._dispatch(), ._client()]
+- "services_notifications_enqueue_notification": "enqueue_notification()" | kind=code-symbol | source=manager/backend/app/services/notifications.py:L132 | neighbors=[notifications.py, Producer API: enqueue a durable notify …, Producer API: enqueue a durable notify …]
+- "services_portal_metrics_is_closed": "_is_closed()" | kind=code-symbol | source=manager/backend/app/services/portal_metrics.py:L28 | neighbors=[portal_metrics.py, open_closed_counts(), severity_breakdown()]
+- "services_portal_metrics_open_closed_counts": "open_closed_counts()" | kind=code-symbol | source=manager/backend/app/services/portal_metrics.py:L44 | neighbors=[portal_metrics.py, _is_closed(), (open, closed) totals over the given fi…]
+- "services_portal_metrics_severity_breakdown": "severity_breakdown()" | kind=code-symbol | source=manager/backend/app/services/portal_metrics.py:L32 | neighbors=[portal_metrics.py, Count findings by severity (all five bu…, _is_closed()]
 
 ## Instructions
 

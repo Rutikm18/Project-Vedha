@@ -1,4 +1,4 @@
-# Node Description Batch 301 of 336
+# Node Description Batch 301 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,51 +19,53 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-Write every description in English (en). Do not switch languages.
+LANGUAGE: each entry has a `lang=` marker giving the language of its source.
+Write that entry's description in EXACTLY that language. Do not translate to
+a single common language — match each node's source language individually.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_portal_scope_testportaltokenisconfinedtoportalroutes_test_operator_routes_are_rejected": ".test_operator_routes_are_rejected()" | kind=code-symbol | source=manager/backend/tests/test_portal_scope.py:L125 | neighbors=[TestPortalTokenIsConfinedToPortalRoutes]
-- "tests_test_portal_scope_testportaltokenisconfinedtoportalroutes_test_portal_routes_are_allowed": ".test_portal_routes_are_allowed()" | kind=code-symbol | source=manager/backend/tests/test_portal_scope.py:L114 | neighbors=[TestPortalTokenIsConfinedToPortalRoutes]
-- "tests_test_posture_confidence_rationale_1": "test_posture_confidence.py — calibrated, auditable posture confidence with cross" | kind=entity | source=manager/detection_engine/tests/test_posture_confidence.py:L1 | neighbors=[test_posture_confidence.py]
-- "tests_test_posture_confidence_testassessor_test_deception_penalty": ".test_deception_penalty()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_confidence.py:L60 | neighbors=[TestAssessor]
-- "tests_test_posture_confidence_testassessor_test_final_is_clamped_and_recorded": ".test_final_is_clamped_and_recorded()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_confidence.py:L66 | neighbors=[TestAssessor]
-- "tests_test_posture_confidence_testassessor_test_lone_chain_member_gets_no_floor": ".test_lone_chain_member_gets_no_floor()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_confidence.py:L52 | neighbors=[TestAssessor]
-- "tests_test_posture_confidence_testassessor_test_unreachable_downgrades_and_is_recorded": ".test_unreachable_downgrades_and_is_recorded()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_confidence.py:L46 | neighbors=[TestAssessor]
-- "tests_test_posture_confidence_testassessor_test_validated_base_higher_than_unvalidated": ".test_validated_base_higher_than_unvalidated()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_confidence.py:L39 | neighbors=[TestAssessor]
-- "tests_test_posture_confidence_testchains_test_chain_floor_never_lowers_confidence": ".test_chain_floor_never_lowers_confidence()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_confidence.py:L82 | neighbors=[TestChains]
-- "tests_test_posture_confidence_testchains_test_ntlm_relay_chain_floors_both": ".test_ntlm_relay_chain_floors_both()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_confidence.py:L74 | neighbors=[TestChains]
-- "tests_test_posture_row_init": ".__init__()" | kind=code-symbol | source=manager/backend/tests/test_posture.py:L110 | neighbors=[_Row]
-- "tests_test_posture_rules_rationale_1": "test_posture_rules.py — the manager posture/config detection engine.  Covers: th" | kind=entity | source=manager/detection_engine/tests/test_posture_rules.py:L1 | neighbors=[test_posture_rules.py]
-- "tests_test_posture_rules_rationale_96": "The live tls_scanner labels its probe list \"TLSv1_0\"/\"TLSv1_1\" (from         ssl" | kind=entity | source=manager/detection_engine/tests/test_posture_rules.py:L96 | neighbors=[.test_deprecated_tls_version_underscore…]
-- "tests_test_posture_rules_testriskmodel_test_auth_enforced_deescalates": ".test_auth_enforced_deescalates()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_rules.py:L133 | neighbors=[TestRiskModel]
-- "tests_test_posture_rules_testriskmodel_test_internet_facing_unauth_escalates": ".test_internet_facing_unauth_escalates()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_rules.py:L138 | neighbors=[TestRiskModel]
-- "tests_test_posture_rules_testriskmodel_test_priority_buckets": ".test_priority_buckets()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_rules.py:L148 | neighbors=[TestRiskModel]
-- "tests_test_posture_rules_testriskmodel_test_suspected_scores_below_confirmed": ".test_suspected_scores_below_confirmed()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_rules.py:L143 | neighbors=[TestRiskModel]
-- "tests_test_posture_rules_testtrusttier_test_registry_contains_user_validated_set": ".test_registry_contains_user_validated_set()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_rules.py:L43 | neighbors=[TestTrustTier]
-- "tests_test_posture_test_aggregate_is_bounded_and_empty_is_zero": "test_aggregate_is_bounded_and_empty_is_zero()" | kind=code-symbol | source=manager/backend/tests/test_posture.py:L22 | neighbors=[test_posture.py]
-- "tests_test_posture_test_aggregate_is_monotonic": "test_aggregate_is_monotonic()" | kind=code-symbol | source=manager/backend/tests/test_posture.py:L31 | neighbors=[test_posture.py]
-- "tests_test_posture_test_build_posture_no_runs": "test_build_posture_no_runs()" | kind=code-symbol | source=manager/backend/tests/test_posture.py:L72 | neighbors=[test_posture.py]
-- "tests_test_posture_test_compute_scores_empty_is_perfect": "test_compute_scores_empty_is_perfect()" | kind=code-symbol | source=manager/backend/tests/test_posture.py:L48 | neighbors=[test_posture.py]
-- "tests_test_posture_test_grade_bands": "test_grade_bands()" | kind=code-symbol | source=manager/backend/tests/test_posture.py:L37 | neighbors=[test_posture.py]
-- "tests_test_posture_test_posture_report_section_omitted_without_runs": "test_posture_report_section_omitted_without_runs()" | kind=code-symbol | source=manager/backend/tests/test_posture.py:L167 | neighbors=[test_posture.py]
-- "tests_test_posture_test_posture_report_section_renders_scores_and_matrix": "test_posture_report_section_renders_scores_and_matrix()" | kind=code-symbol | source=manager/backend/tests/test_posture.py:L149 | neighbors=[test_posture.py]
-- "tests_test_posture_test_sev_str_passes_through_plain_string": "test_sev_str_passes_through_plain_string()" | kind=code-symbol | source=manager/backend/tests/test_posture.py:L143 | neighbors=[test_posture.py]
-- "tests_test_posture_trace_rationale_1": "test_posture_trace.py — the detection trace: every rule evaluation records an OU" | kind=entity | source=manager/detection_engine/tests/test_posture_trace.py:L1 | neighbors=[test_posture_trace.py]
-- "tests_test_posture_trace_rationale_63": "I10 structurally: for EVERY rule with a declared contract, feeding a fact" | kind=entity | source=manager/detection_engine/tests/test_posture_trace.py:L63 | neighbors=[.test_missing_input_invariant_across_al…]
-- "tests_test_printer_scanner_rationale_1": "test_printer_scanner.py — network printer exposure (9100 PJL / 631 IPP).  Pure P" | kind=entity | source=probe/tests/test_printer_scanner.py:L1 | neighbors=[test_printer_scanner.py]
-- "tests_test_printer_scanner_testparity_test_main_scripts": ".test_main_scripts()" | kind=code-symbol | source=probe/tests/test_printer_scanner.py:L62 | neighbors=[TestParity]
-- "tests_test_printer_scanner_testprinterfindings_test_exposed_low": ".test_exposed_low()" | kind=code-symbol | source=probe/tests/test_printer_scanner.py:L53 | neighbors=[TestPrinterFindings]
-- "tests_test_printer_scanner_testpurelogic_test_build_ipp": ".test_build_ipp()" | kind=code-symbol | source=probe/tests/test_printer_scanner.py:L23 | neighbors=[TestPureLogic]
-- "tests_test_printer_scanner_testpurelogic_test_parse_ipp_make_model": ".test_parse_ipp_make_model()" | kind=code-symbol | source=probe/tests/test_printer_scanner.py:L27 | neighbors=[TestPureLogic]
-- "tests_test_printer_scanner_testpurelogic_test_parse_pjl_id": ".test_parse_pjl_id()" | kind=code-symbol | source=probe/tests/test_printer_scanner.py:L19 | neighbors=[TestPureLogic]
-- "tests_test_probe_auto_enroll_rationale_1": "test_probe_auto_enroll.py — trust-on-first-use enrollment gate + CIDR policy.  T" | kind=entity | source=manager/backend/tests/test_probe_auto_enroll.py:L1 | neighbors=[test_probe_auto_enroll.py]
-- "tests_test_probe_auto_enroll_test_auto_enroll_cidrs_defaults_to_rfc1918": "test_auto_enroll_cidrs_defaults_to_rfc1918()" | kind=code-symbol | source=manager/backend/tests/test_probe_auto_enroll.py:L23 | neighbors=[test_probe_auto_enroll.py]
-- "tests_test_probe_auto_enroll_test_auto_enroll_cidrs_parses_and_trims_custom": "test_auto_enroll_cidrs_parses_and_trims_custom()" | kind=code-symbol | source=manager/backend/tests/test_probe_auto_enroll.py:L29 | neighbors=[test_probe_auto_enroll.py]
-- "tests_test_probe_auto_enroll_test_auto_enroll_is_off_by_default": "test_auto_enroll_is_off_by_default()" | kind=code-symbol | source=manager/backend/tests/test_probe_auto_enroll.py:L17 | neighbors=[test_probe_auto_enroll.py]
-- "tests_test_probe_auto_enroll_test_auto_enroll_site_name_is_stable": "test_auto_enroll_site_name_is_stable()" | kind=code-symbol | source=manager/backend/tests/test_probe_auto_enroll.py:L36 | neighbors=[test_probe_auto_enroll.py]
-- "tests_test_probe_core_rationale_1": "Probe test suite — unit tests for the probe's pure-logic modules. Covers: ScopeG" | kind=entity | source=probe/tests/test_probe_core.py:L1 | neighbors=[test_probe_core.py]
+- "services_project_time_rationale_85": "Compact project-local stamp for FILE and DIRECTORY names.      Carries no offset" | kind=entity | source=manager/backend/app/services/project_time.py:L85 | neighbors=[project_file_stamp()] | lang=en
+- "services_reference_rationale_1": "reference.py — human-readable references for things a customer has to talk about" | kind=entity | source=manager/backend/app/services/reference.py:L1 | neighbors=[reference.py] | lang=en
+- "services_reference_rationale_102": "Canonicalise a reference a human typed: trim, upper-case, and apply     Crockfor" | kind=entity | source=manager/backend/app/services/reference.py:L102 | neighbors=[normalize()] | lang=pt
+- "services_reference_rationale_112": "True when `text` looks like one of our references rather than a UUID, so a     l" | kind=entity | source=manager/backend/app/services/reference.py:L112 | neighbors=[is_reference()] | lang=pt
+- "services_reference_rationale_73": "The stable code for one row. Deterministic, so a backfill and a fresh     insert" | kind=entity | source=manager/backend/app/services/reference.py:L73 | neighbors=[suffix_for()] | lang=en
+- "services_reference_rationale_85": "Build a reference. `created_at` should be the row's own creation time so a     b" | kind=entity | source=manager/backend/app/services/reference.py:L85 | neighbors=[make_reference()] | lang=pt
+- "services_remediation_kb_rationale_1": "remediation_kb.py — the deterministic remediation knowledge base.  Pure (no DB," | kind=entity | source=manager/backend/app/services/remediation_kb.py:L1 | neighbors=[remediation_kb.py] | lang=en
+- "services_remediation_kb_rationale_27": "Normalize an arbitrary OS/target string to a supported KB key.      Public becau" | kind=entity | source=manager/backend/app/services/remediation_kb.py:L27 | neighbors=[os_key()] | lang=en
+- "services_remediation_kb_rationale_347": "Return a structured, OS-filtered remediation plan for `finding`.      Always ret" | kind=entity | source=manager/backend/app/services/remediation_kb.py:L347 | neighbors=[recipe_for_finding()] | lang=en
+- "services_remediation_kb_rationale_80": "Map a finding to a KB category key using title/description/CVE hints.      Deter" | kind=entity | source=manager/backend/app/services/remediation_kb.py:L80 | neighbors=[classify_finding()] | lang=pt
+- "services_remediation_kb_rationale_97": "One remediation step. `generic` is REQUIRED (the vendor-neutral fallback);     p" | kind=entity | source=manager/backend/app/services/remediation_kb.py:L97 | neighbors=[_step()] | lang=en
+- "services_risk_rank_rationale_1": "One explainable, non-saturating 0-1000 Manager risk score.  The score is additiv" | kind=entity | source=manager/backend/app/services/risk_rank.py:L1 | neighbors=[risk_rank.py] | lang=en
+- "services_scheduler_rationale_1": "scheduler.py — decide which scan schedules are due, and advance them.  Kept as p" | kind=entity | source=manager/backend/app/services/scheduler.py:L1 | neighbors=[scheduler.py] | lang=en
+- "services_scheduler_rationale_25": "Schedules that should fire at `now`: enabled, and past their due time.      Disa" | kind=entity | source=manager/backend/app/services/scheduler.py:L25 | neighbors=[due_schedules()] | lang=en
+- "services_scheduler_rationale_34": "Mark a schedule run and set its next due time.      Deliberately `now + interval" | kind=entity | source=manager/backend/app/services/scheduler.py:L34 | neighbors=[advance()] | lang=en
+- "services_scheduler_rationale_48": "Enqueue every due schedule, then advance it.      `enqueue` is injected so this" | kind=entity | source=manager/backend/app/services/scheduler.py:L48 | neighbors=[run_due()] | lang=en
+- "services_scope_crypto_rationale_1": "scope_crypto.py — manager-side: encrypt scope payloads to a probe's X25519 publi" | kind=entity | source=manager/backend/app/services/scope_crypto.py:L1 | neighbors=[scope_crypto.py] | lang=en
+- "services_scope_crypto_rationale_35": "Encrypt scope JSON to a specific probe's X25519 public key.      Args:         s" | kind=entity | source=manager/backend/app/services/scope_crypto.py:L35 | neighbors=[encrypt_scope()] | lang=en
+- "services_scope_crypto_rationale_78": "Convenience: dict → JSON → encrypt → base64 string." | kind=entity | source=manager/backend/app/services/scope_crypto.py:L78 | neighbors=[encrypt_scope_b64()] | lang=en
+- "services_scope_crypto_rationale_86": "Decode a base64-encoded X25519 public key to raw bytes.      Returns empty bytes" | kind=entity | source=manager/backend/app/services/scope_crypto.py:L86 | neighbors=[public_key_from_b64()] | lang=en
+- "services_scope_targets_rationale_1": "scope_targets.py — the single source of truth for \"is this scan target inside th" | kind=entity | source=manager/backend/app/services/scope_targets.py:L1 | neighbors=[scope_targets.py] | lang=en
+- "services_scope_targets_rationale_38": "Expand raw target tokens (IP / CIDR / ``a-b`` range) into networks.      Returns" | kind=entity | source=manager/backend/app/services/scope_targets.py:L38 | neighbors=[_expand_requested()] | lang=en
+- "services_scope_targets_rationale_71": "Return the normalized list of authorized target networks, or ``None``.      * ``" | kind=entity | source=manager/backend/app/services/scope_targets.py:L71 | neighbors=[validate_targets_in_scope()] | lang=en
+- "services_sla_rationale_109": "The env-configured SLA windows — the fallback when a tenant has no policy." | kind=entity | source=manager/backend/app/services/sla.py:L109 | neighbors=[default_windows()] | lang=en
+- "services_sla_rationale_115": "Aggregate SLA states across a set of findings.      Returns counts per state plu" | kind=entity | source=manager/backend/app/services/sla.py:L115 | neighbors=[summarize()] | lang=en
+- "services_sla_rationale_62": "Compute the SLA state for one finding. Never raises on missing data.      `windo" | kind=entity | source=manager/backend/app/services/sla.py:L62 | neighbors=[compute()] | lang=en
+- "services_sla_slaresult_is_tracked": ".is_tracked()" | kind=code-symbol | source=manager/backend/app/services/sla.py:L56 | neighbors=[SlaResult] | lang=en
+- "services_validation_ingest_rationale_1": "validation_ingest.py — turn a probe's safe active-validation result into a findi" | kind=entity | source=manager/backend/app/services/validation_ingest.py:L1 | neighbors=[validation_ingest.py] | lang=pt
+- "services_validation_ingest_rationale_33": "Apply a validation verdict to a finding object (pure — no DB/session)." | kind=entity | source=manager/backend/app/services/validation_ingest.py:L33 | neighbors=[apply_validation_outcome()] | lang=pt
+- "services_validation_ingest_rationale_45": "Cheap gate so normal scan submissions never trigger a lookup: a probe     valida" | kind=entity | source=manager/backend/app/services/validation_ingest.py:L45 | neighbors=[looks_like_validation_result()] | lang=pt
+- "services_validation_ingest_rationale_52": "If ``job_id`` belongs to a ValidationRequest, store the result, set its     outc" | kind=entity | source=manager/backend/app/services/validation_ingest.py:L52 | neighbors=[ingest_validation_result()] | lang=en
+- "services_verification_kb_rationale_1": "verification_kb.py — deterministic retest (\"how to prove the fix worked\") guidan" | kind=entity | source=manager/backend/app/services/verification_kb.py:L1 | neighbors=[verification_kb.py] | lang=en
+- "services_verification_kb_rationale_67": "Return a deterministic retest block for the finding.      Always returns a block" | kind=entity | source=manager/backend/app/services/verification_kb.py:L67 | neighbors=[verification_for_finding()] | lang=en
+- "settings_page_accesssection": "AccessSection()" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L558 | neighbors=[page.tsx] | lang=en
+- "settings_page_accountsection": "AccountSection()" | kind=code-symbol | source=manager/frontend/app/portal/settings/page.tsx:L99 | neighbors=[page.tsx] | lang=en
+- "settings_page_activityevent": "ActivityEvent" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L96 | neighbors=[page.tsx] | lang=en
+- "settings_page_agent": "Agent" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L84 | neighbors=[page.tsx] | lang=en
+- "settings_page_airuntimesection": "AiRuntimeSection()" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L488 | neighbors=[page.tsx] | lang=en
+- "settings_page_aistatus": "AiStatus" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L22 | neighbors=[page.tsx] | lang=en
+- "settings_page_appearancesection": "AppearanceSection()" | kind=code-symbol | source=manager/frontend/app/portal/settings/page.tsx:L65 | neighbors=[page.tsx] | lang=en
 
 ## Instructions
 

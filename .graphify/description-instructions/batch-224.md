@@ -1,4 +1,4 @@
-# Node Description Batch 225 of 336
+# Node Description Batch 225 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -9,6 +9,9 @@ your JSON answer to the answer file.
 You are documenting nodes in a knowledge graph.
 For each entry below, write ONE concise factual plain-language sentence
 describing what it is or does. Use only the provided context.
+For a code symbol (kind=code-symbol — a function, class, or constant),
+describe what the function/symbol does based on its name, source location
+and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
 For an entity node (any other kind — e.g. a person, place, event, object),
 describe what the entity is and its role, grounded in its type, its
 relations (neighbors) and the provided citations/evidence — e.g.
@@ -23,46 +26,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "main_scripts_scanner_base_rationale_122": "HTTP/RTSP User-Agent to send — a generic browser UA by default so it does     no" | kind=entity | source=probe/main_scripts/scanner_base.py:L122 | neighbors=[user_agent()] | lang=en
-- "main_scripts_scanner_base_rationale_128": "Benign, non-attributing payload for ICMP/UDP probes — looks like ordinary     pi" | kind=entity | source=probe/main_scripts/scanner_base.py:L128 | neighbors=[probe_payload()] | lang=en
-- "main_scripts_scanner_base_rationale_130": "One observation about one target. Pure fact, no interpretation.      Network-sta" | kind=entity | source=probe/main_scripts/scanner_base.py:L130 | neighbors=[ScanResult] | lang=en
-- "main_scripts_scanner_base_rationale_135": "The TCP source port for probes. A FIXED port (e.g. 53/88) lets a scan slip     p" | kind=entity | source=probe/main_scripts/scanner_base.py:L135 | neighbors=[choose_source_port()] | lang=en
-- "main_scripts_scanner_base_rationale_145": "A per-probe delay of `base` seconds ± up to `jitter` fraction of random     vari" | kind=entity | source=probe/main_scripts/scanner_base.py:L145 | neighbors=[jittered_delay()] | lang=en
-- "main_scripts_scanner_base_rationale_156": "Heuristic: is this host a tarpit / honeypot / ACK-everything middlebox?      Suc" | kind=entity | source=probe/main_scripts/scanner_base.py:L156 | neighbors=[assess_tarpit()] | lang=en
-- "main_scripts_scanner_base_rationale_170": "Map a connect()/socket-time OSError to (state, reason).      DNS failures (``soc" | kind=entity | source=probe/main_scripts/scanner_base.py:L170 | neighbors=[classify_os_error()] | lang=en
-- "main_scripts_scanner_base_rationale_181": "Loads an allowlist of CIDRs / IPs / hostnames and decides whether a target     i" | kind=entity | source=probe/main_scripts/scanner_base.py:L181 | neighbors=[ScopeGuard] | lang=en
-- "main_scripts_scanner_base_rationale_186": "Full, debuggable classification for attaching to a ScanResult: state,     reason" | kind=entity | source=probe/main_scripts/scanner_base.py:L186 | neighbors=[describe_os_error()] | lang=en
-- "main_scripts_scanner_base_rationale_201": "One observation about one target. Pure fact, no interpretation.      Network-sta" | kind=entity | source=probe/main_scripts/scanner_base.py:L201 | neighbors=[ScanResult] | lang=en
-- "main_scripts_scanner_base_rationale_236": "Map a connect()/socket-time OSError to (state, reason).      DNS failures (``soc" | kind=entity | source=probe/main_scripts/scanner_base.py:L236 | neighbors=[classify_os_error()] | lang=en
-- "main_scripts_scanner_base_rationale_267": "One observation about one target. Pure fact, no interpretation.      Network-sta" | kind=entity | source=probe/main_scripts/scanner_base.py:L267 | neighbors=[ScanResult] | lang=en
-- "main_scripts_scanner_base_rationale_282": "Read-only view of allowed networks (for CIDR-level engines)." | kind=entity | source=probe/main_scripts/scanner_base.py:L282 | neighbors=[.networks()] | lang=en
-- "main_scripts_scanner_base_rationale_287": "Read-only view of excluded networks (to build masscan --exclude)." | kind=entity | source=probe/main_scripts/scanner_base.py:L287 | neighbors=[.excludes()] | lang=en
-- "main_scripts_scanner_base_rationale_295": "Simple async rate limiter: at most `rate` operations per second." | kind=entity | source=probe/main_scripts/scanner_base.py:L295 | neighbors=[RateLimiter] | lang=it
-- "main_scripts_scanner_base_rationale_314": "Standard 16-bit one's-complement Internet checksum (RFC 1071), used for IP," | kind=entity | source=probe/main_scripts/scanner_base.py:L314 | neighbors=[inet_checksum()] | lang=en
-- "main_scripts_scanner_base_rationale_316": "Loads an allowlist of CIDRs / IPs / hostnames and decides whether a target     i" | kind=entity | source=probe/main_scripts/scanner_base.py:L316 | neighbors=[ScopeGuard] | lang=en
-- "main_scripts_scanner_base_rationale_331": "A self-tuning concurrency window, modelled on TCP congestion control (AIMD)," | kind=entity | source=probe/main_scripts/scanner_base.py:L331 | neighbors=[AdaptiveRateController] | lang=pt
-- "main_scripts_scanner_base_rationale_353": "Read-only view of allowed networks (for CIDR-level engines)." | kind=entity | source=probe/main_scripts/scanner_base.py:L353 | neighbors=[.networks()] | lang=en
-- "main_scripts_scanner_base_rationale_358": "Read-only view of excluded networks (to build masscan --exclude)." | kind=entity | source=probe/main_scripts/scanner_base.py:L358 | neighbors=[.excludes()] | lang=en
-- "main_scripts_scanner_base_rationale_363": "Current integer window (>= min_window)." | kind=entity | source=probe/main_scripts/scanner_base.py:L363 | neighbors=[.window()] | lang=en
-- "main_scripts_scanner_base_rationale_366": "Simple async rate limiter: at most `rate` operations per second." | kind=entity | source=probe/main_scripts/scanner_base.py:L366 | neighbors=[RateLimiter] | lang=it
-- "main_scripts_scanner_base_rationale_385": "Standard 16-bit one's-complement Internet checksum (RFC 1071), used for IP," | kind=entity | source=probe/main_scripts/scanner_base.py:L385 | neighbors=[inet_checksum()] | lang=en
-- "main_scripts_scanner_base_rationale_400": "Accepts CIDRs ('10.0.0.0/24'), single IPs, hostnames, and simple ranges     ('10" | kind=entity | source=probe/main_scripts/scanner_base.py:L400 | neighbors=[expand_targets()] | lang=en
-- "main_scripts_scanner_base_rationale_402": "A self-tuning concurrency window, modelled on TCP congestion control (AIMD)," | kind=entity | source=probe/main_scripts/scanner_base.py:L402 | neighbors=[AdaptiveRateController] | lang=pt
-- "main_scripts_scanner_base_rationale_417": "Read-only view of allowed networks (for CIDR-level engines)." | kind=entity | source=probe/main_scripts/scanner_base.py:L417 | neighbors=[.networks()] | lang=en
-- "main_scripts_scanner_base_rationale_422": "Read-only view of excluded networks (to build masscan --exclude)." | kind=entity | source=probe/main_scripts/scanner_base.py:L422 | neighbors=[.excludes()] | lang=en
-- "main_scripts_scanner_base_rationale_430": "Simple async rate limiter: at most `rate` operations per second." | kind=entity | source=probe/main_scripts/scanner_base.py:L430 | neighbors=[RateLimiter] | lang=it
-- "main_scripts_scanner_base_rationale_434": "Current integer window (>= min_window)." | kind=entity | source=probe/main_scripts/scanner_base.py:L434 | neighbors=[.window()] | lang=en
-- "main_scripts_scanner_base_rationale_449": "Standard 16-bit one's-complement Internet checksum (RFC 1071), used for IP," | kind=entity | source=probe/main_scripts/scanner_base.py:L449 | neighbors=[inet_checksum()] | lang=en
-- "main_scripts_scanner_base_rationale_461": "Resolve `target` to a concrete (family, sockaddr) covering IPv4, IPv6, and     h" | kind=entity | source=probe/main_scripts/scanner_base.py:L461 | neighbors=[resolve()] | lang=en
-- "main_scripts_scanner_base_rationale_466": "A self-tuning concurrency window, modelled on TCP congestion control (AIMD)," | kind=entity | source=probe/main_scripts/scanner_base.py:L466 | neighbors=[AdaptiveRateController] | lang=pt
-- "main_scripts_scanner_base_rationale_471": "Accepts CIDRs ('10.0.0.0/24'), single IPs, hostnames, and simple ranges     ('10" | kind=entity | source=probe/main_scripts/scanner_base.py:L471 | neighbors=[expand_targets()] | lang=en
-- "main_scripts_scanner_base_rationale_485": "One-shot datagram protocol backing `async_udp_probe`. Resolves its future     wi" | kind=entity | source=probe/main_scripts/scanner_base.py:L485 | neighbors=[_UDPProbeProtocol] | lang=en
-- "main_scripts_scanner_base_rationale_498": "Current integer window (>= min_window)." | kind=entity | source=probe/main_scripts/scanner_base.py:L498 | neighbors=[.window()] | lang=en
-- "main_scripts_scanner_base_rationale_518": "Send one UDP datagram and await the first reply — fully on the event loop." | kind=entity | source=probe/main_scripts/scanner_base.py:L518 | neighbors=[async_udp_probe()] | lang=en
-- "main_scripts_scanner_base_rationale_532": "Resolve `target` to a concrete (family, sockaddr) covering IPv4, IPv6, and     h" | kind=entity | source=probe/main_scripts/scanner_base.py:L532 | neighbors=[resolve()] | lang=en
-- "main_scripts_scanner_base_rationale_536": "Blocking packets-per-second pacer with AIMD rate adaptation, for raw-socket" | kind=entity | source=probe/main_scripts/scanner_base.py:L536 | neighbors=[SendPacer] | lang=en
-- "main_scripts_scanner_base_rationale_549": "`async_udp_probe` with bounded per-port retransmit.      Returns on the FIRST de" | kind=entity | source=probe/main_scripts/scanner_base.py:L549 | neighbors=[async_udp_probe_retry()] | lang=en
-- "main_scripts_scanner_base_rationale_56": "HTTP/RTSP User-Agent to send — a generic browser UA by default so it does     no" | kind=entity | source=probe/main_scripts/scanner_base.py:L56 | neighbors=[user_agent()] | lang=en
+- "detection_engine_version_compare_rationale_105": "1:8.4p1-5+deb11u1' -> (epoch='1', upstream='8.4p1', revision='5+deb11u1').     N" | kind=entity | source=manager/detection_engine/version_compare.py:L105 | neighbors=[_split_dpkg_version()] | lang=en
+- "detection_engine_version_compare_rationale_111": "1:8.4p1-5+deb11u1' -> (epoch='1', upstream='8.4p1', revision='5+deb11u1').     N" | kind=entity | source=manager/detection_engine/version_compare.py:L111 | neighbors=[_split_dpkg_version()] | lang=en
+- "detection_engine_version_compare_rationale_124": "True when exactly one of the two version strings carries an explicit,     non-ze" | kind=entity | source=manager/detection_engine/version_compare.py:L124 | neighbors=[has_ambiguous_epoch()] | lang=en
+- "detection_engine_version_compare_rationale_130": "True when exactly one of the two version strings carries an explicit,     non-ze" | kind=entity | source=manager/detection_engine/version_compare.py:L130 | neighbors=[has_ambiguous_epoch()] | lang=en
+- "detection_engine_version_compare_rationale_167": "-1 if a<b, 0 if a==b, 1 if a>b, per Debian version ordering. Prefers     the rea" | kind=entity | source=manager/detection_engine/version_compare.py:L167 | neighbors=[dpkg_compare()] | lang=pt
+- "detection_engine_version_compare_rationale_173": "-1 if a<b, 0 if a==b, 1 if a>b, per Debian version ordering.      Uses the pure-" | kind=entity | source=manager/detection_engine/version_compare.py:L173 | neighbors=[dpkg_compare()] | lang=pt
+- "detection_engine_version_compare_rationale_178": "Plain dotted-numeric comparison for non-distro upstream versions     (banner-der" | kind=entity | source=manager/detection_engine/version_compare.py:L178 | neighbors=[semver_compare()] | lang=en
+- "detection_engine_version_compare_rationale_190": "Plain dotted-numeric comparison for non-distro upstream versions     (banner-der" | kind=entity | source=manager/detection_engine/version_compare.py:L190 | neighbors=[semver_compare()] | lang=en
+- "detection_engine_version_compare_rationale_220": "Test hook: drop the in-memory record of which snapshots were validated." | kind=entity | source=manager/detection_engine/version_compare.py:L220 | neighbors=[_clear_validation_cache()] | lang=en
+- "detection_engine_version_compare_rationale_244": "Confirm pure-Python agrees with the real dpkg binary on the ordering of     `ver" | kind=entity | source=manager/detection_engine/version_compare.py:L244 | neighbors=[verify_pure_python_matches_dpkg()] | lang=en
+- "detection_engine_version_compare_rationale_31": "Real dpkg --compare-versions. None (not an error) if dpkg isn't     installed or" | kind=entity | source=manager/detection_engine/version_compare.py:L31 | neighbors=[_dpkg_compare_via_binary()] | lang=en
+- "detection_engine_version_compare_rationale_37": "Real dpkg --compare-versions. None (not an error) if dpkg isn't     installed or" | kind=entity | source=manager/detection_engine/version_compare.py:L37 | neighbors=[_dpkg_compare_via_binary()] | lang=en
+- "detection_engine_version_compare_rationale_53": "dpkg's non-digit character ordering: '~' sorts before EVERYTHING,     including" | kind=entity | source=manager/detection_engine/version_compare.py:L53 | neighbors=[_char_order()] | lang=en
+- "detection_engine_version_compare_rationale_59": "dpkg's non-digit character ordering: '~' sorts before EVERYTHING,     including" | kind=entity | source=manager/detection_engine/version_compare.py:L59 | neighbors=[_char_order()] | lang=en
+- "detection_engine_version_compare_rationale_86": "upstream_version or debian_revision comparison (no epoch, no '-')." | kind=entity | source=manager/detection_engine/version_compare.py:L86 | neighbors=[_compare_part()] | lang=en
+- "detection_engine_version_compare_rationale_92": "upstream_version or debian_revision comparison (no epoch, no '-')." | kind=entity | source=manager/detection_engine/version_compare.py:L92 | neighbors=[_compare_part()] | lang=en
+- "detection_engine_vuln_db_rationale_1": "vuln_db.py — offline, pinned vulnerability data store.  NO LIVE API CALLS HAPPEN" | kind=entity | source=manager/detection_engine/vuln_db.py:L1 | neighbors=[vuln_db.py] | lang=en
+- "detection_engine_vuln_db_rationale_102": "Raw OSV vulnerability records for this product, or [] if the         snapshot do" | kind=entity | source=manager/detection_engine/vuln_db.py:L102 | neighbors=[.lookup()] | lang=en
+- "detection_engine_vuln_db_rationale_106": "Raw OSV vulnerability records for this product, or [] if the         snapshot do" | kind=entity | source=manager/detection_engine/vuln_db.py:L106 | neighbors=[.lookup()] | lang=en
+- "detection_engine_vuln_db_rationale_110": "The CVSS v3 vector string OSV embedded for this CVE, if any.         Uses a pre-" | kind=entity | source=manager/detection_engine/vuln_db.py:L110 | neighbors=[.get_cvss_vector()] | lang=en
+- "detection_engine_vuln_db_rationale_113": "The CVSS v3 vector string OSV embedded for this CVE, if any.         Uses a pre-" | kind=entity | source=manager/detection_engine/vuln_db.py:L113 | neighbors=[.get_cvss_vector()] | lang=en
+- "detection_engine_vuln_db_rationale_117": "The CVSS v3 vector string OSV embedded for this CVE, if any.         Uses a pre-" | kind=entity | source=manager/detection_engine/vuln_db.py:L117 | neighbors=[.get_cvss_vector()] | lang=en
+- "detection_engine_vuln_db_rationale_134": "Test hook: drop the memoized snapshot cache so the next load re-reads." | kind=entity | source=manager/detection_engine/vuln_db.py:L134 | neighbors=[_clear_caches()] | lang=en
+- "detection_engine_vuln_db_rationale_138": "Test hook: drop the memoized snapshot cache so the next load re-reads." | kind=entity | source=manager/detection_engine/vuln_db.py:L138 | neighbors=[_clear_caches()] | lang=en
+- "detection_engine_vuln_db_rationale_140": "Every version string that appears as a range boundary in the snapshot —     the" | kind=entity | source=manager/detection_engine/vuln_db.py:L140 | neighbors=[_boundary_versions()] | lang=en
+- "detection_engine_vuln_db_rationale_144": "Every version string that appears as a range boundary in the snapshot —     the" | kind=entity | source=manager/detection_engine/vuln_db.py:L144 | neighbors=[_boundary_versions()] | lang=en
+- "detection_engine_vuln_db_rationale_157": "The actual parse + integrity-verify + build. Kept separate from     load_snapsho" | kind=entity | source=manager/detection_engine/vuln_db.py:L157 | neighbors=[_read_snapshot()] | lang=en
+- "detection_engine_vuln_db_rationale_161": "The actual parse + integrity-verify + build. Kept separate from     load_snapsho" | kind=entity | source=manager/detection_engine/vuln_db.py:L161 | neighbors=[_read_snapshot()] | lang=en
+- "detection_engine_vuln_db_rationale_185": "Merge an NVD/CPE companion snapshot into the primary VulnDB.      Records are co" | kind=entity | source=manager/detection_engine/vuln_db.py:L185 | neighbors=[_merge_companion()] | lang=en
+- "detection_engine_vuln_db_rationale_44": "Derives the synced product list from cpe_normalizer.py's tables —     the single" | kind=entity | source=manager/detection_engine/vuln_db.py:L44 | neighbors=[_default_products()] | lang=en
+- "detection_engine_vuln_db_rationale_47": "Derives the synced product list from cpe_normalizer.py's tables —     the single" | kind=entity | source=manager/detection_engine/vuln_db.py:L47 | neighbors=[_default_products()] | lang=en
+- "detection_engine_vuln_db_rationale_51": "Derives the synced product list from cpe_normalizer.py's tables —     the single" | kind=entity | source=manager/detection_engine/vuln_db.py:L51 | neighbors=[_default_products()] | lang=en
+- "detection_engine_vuln_db_rationale_60": "Stable hash of the snapshot's actual vulnerability content — recorded     in eve" | kind=entity | source=manager/detection_engine/vuln_db.py:L60 | neighbors=[_content_hash()] | lang=en
+- "detection_engine_vuln_db_rationale_63": "Stable hash of the snapshot's actual vulnerability content — recorded     in eve" | kind=entity | source=manager/detection_engine/vuln_db.py:L63 | neighbors=[_content_hash()] | lang=en
+- "detection_engine_vuln_db_rationale_67": "Stable hash of the snapshot's actual vulnerability content — recorded     in eve" | kind=entity | source=manager/detection_engine/vuln_db.py:L67 | neighbors=[_content_hash()] | lang=en
+- "detection_engine_vuln_db_rationale_79": "In-memory index over a loaded snapshot: product -> OSV vuln records.     Constru" | kind=entity | source=manager/detection_engine/vuln_db.py:L79 | neighbors=[VulnDB] | lang=pt
+- "detection_engine_vuln_db_rationale_82": "In-memory index over a loaded snapshot: product -> OSV vuln records.     Constru" | kind=entity | source=manager/detection_engine/vuln_db.py:L82 | neighbors=[VulnDB] | lang=pt
+- "detection_engine_vuln_db_rationale_86": "In-memory index over a loaded snapshot: product -> OSV vuln records.     Constru" | kind=entity | source=manager/detection_engine/vuln_db.py:L86 | neighbors=[VulnDB] | lang=pt
+- "detection_engine_vuln_db_rationale_99": "Raw OSV vulnerability records for this product, or [] if the         snapshot do" | kind=entity | source=manager/detection_engine/vuln_db.py:L99 | neighbors=[.lookup()] | lang=en
+- "detection_engine_vuln_db_vulndb_covers": ".covers()" | kind=code-symbol | source=manager/detection_engine/vuln_db.py:L113 | neighbors=[VulnDB] | lang=en
 
 ## Instructions
 

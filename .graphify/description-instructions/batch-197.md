@@ -1,4 +1,4 @@
-# Node Description Batch 198 of 336
+# Node Description Batch 198 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -9,9 +9,6 @@ your JSON answer to the answer file.
 You are documenting nodes in a knowledge graph.
 For each entry below, write ONE concise factual plain-language sentence
 describing what it is or does. Use only the provided context.
-For a code symbol (kind=code-symbol — a function, class, or constant),
-describe what the function/symbol does based on its name, source location
-and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
 For an entity node (any other kind — e.g. a person, place, event, object),
 describe what the entity is and its role, grounded in its type, its
 relations (neighbors) and the provided citations/evidence — e.g.
@@ -26,46 +23,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "detection_engine_posture_rules_posturefinding_post_init": ".__post_init__()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L204 | neighbors=[PostureFinding] | lang=en
-- "detection_engine_posture_rules_posturefinding_to_dict": ".to_dict()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L209 | neighbors=[PostureFinding] | lang=en
-- "detection_engine_posture_rules_posturerule": "PostureRule" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L214 | neighbors=[posture_rules.py] | lang=en
-- "detection_engine_posture_rules_rationale_1": "posture_rules.py — the manager's POSTURE/CONFIG detection engine (detection-as-c" | kind=entity | source=manager/detection_engine/posture_rules.py:L1 | neighbors=[posture_rules.py] | lang=en
-- "detection_engine_posture_rules_rationale_1029": "Collapse every trace for one rule into a single verdict + reason strings.     Pr" | kind=entity | source=manager/detection_engine/posture_rules.py:L1029 | neighbors=[verdict_for_rule()] | lang=en
-- "detection_engine_posture_rules_rationale_1047": "Engagement-level coverage roll-up over a set of traces. `rules_blind > 0`     is" | kind=entity | source=manager/detection_engine/posture_rules.py:L1047 | neighbors=[summarize_traces()] | lang=en
-- "detection_engine_posture_rules_rationale_1079": "Traced counterpart of `detect_all` — findings identical, plus the full trace." | kind=entity | source=manager/detection_engine/posture_rules.py:L1079 | neighbors=[detect_all_traced()] | lang=en
-- "detection_engine_posture_rules_rationale_1093": "Run posture detection across every asset. Accepts an IngestResult (uses its" | kind=entity | source=manager/detection_engine/posture_rules.py:L1093 | neighbors=[detect_all()] | lang=en
-- "detection_engine_posture_rules_rationale_112": "One rule evaluation's outcome. Purely diagnostic — never gates a finding." | kind=entity | source=manager/detection_engine/posture_rules.py:L112 | neighbors=[TraceRow] | lang=pt
-- "detection_engine_posture_rules_rationale_136": "severity × exposure × state → (risk_score 0-100, priority).      Authentication" | kind=entity | source=manager/detection_engine/posture_rules.py:L136 | neighbors=[compute_risk()] | lang=en
-- "detection_engine_posture_rules_rationale_162": "Deterministic id — same (asset, rule, port) always hashes the same, so     re-sc" | kind=entity | source=manager/detection_engine/posture_rules.py:L162 | neighbors=[make_posture_id()] | lang=en
-- "detection_engine_posture_rules_rationale_258": "Fires on EITHER of the rdp_scanner's two independent probes.      The scanner pr" | kind=entity | source=manager/detection_engine/posture_rules.py:L258 | neighbors=[_rdp_no_nla()] | lang=en
-- "detection_engine_posture_rules_rationale_299": "The server REFUSED a TLS-capable negotiation, so the session falls back to     l" | kind=entity | source=manager/detection_engine/posture_rules.py:L299 | neighbors=[_rdp_no_tls()] | lang=en
-- "detection_engine_posture_rules_rationale_466": "VNC type 2 is the legacy DES-based challenge with an 8-character password     ce" | kind=entity | source=manager/detection_engine/posture_rules.py:L466 | neighbors=[_vnc_weak_auth()] | lang=en
-- "detection_engine_posture_rules_rationale_71": "Resolve `a.b.c` inside a Fact.data dict. Returns `_MISSING` (never None)     whe" | kind=entity | source=manager/detection_engine/posture_rules.py:L71 | neighbors=[get_path()] | lang=pt
-- "detection_engine_posture_rules_rationale_768": "True when the scanner ran but the service did NOT answer — so a rule's     decla" | kind=entity | source=manager/detection_engine/posture_rules.py:L768 | neighbors=[_fact_indicates_no_service()] | lang=en
-- "detection_engine_posture_rules_rationale_781": "Evaluate ONE rule against ONE fact and record the outcome. NEVER raises —     a" | kind=entity | source=manager/detection_engine/posture_rules.py:L781 | neighbors=[evaluate_rule()] | lang=en
-- "detection_engine_posture_rules_rationale_816": "Best-effort confidence calibration (lazy import breaks the module cycle;     cal" | kind=entity | source=manager/detection_engine/posture_rules.py:L816 | neighbors=[_calibrate_host_findings()] | lang=en
-- "detection_engine_posture_rules_rationale_830": "Like `detect_posture`, but ALSO returns a per-evaluation trace. The findings" | kind=entity | source=manager/detection_engine/posture_rules.py:L830 | neighbors=[detect_posture_traced()] | lang=en
-- "detection_engine_posture_rules_rationale_910": "Apply every posture rule to one asset's facts. Deduplicates by     (rule_id, por" | kind=entity | source=manager/detection_engine/posture_rules.py:L910 | neighbors=[detect_posture()] | lang=en
-- "detection_engine_posture_rules_rationale_942": "Findings for risky OPEN ports that have no dedicated scanner: backdoor/C2     li" | kind=entity | source=manager/detection_engine/posture_rules.py:L942 | neighbors=[detect_exposed_services()] | lang=en
-- "detection_engine_posture_rules_tracerow_to_dict": ".to_dict()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L121 | neighbors=[TraceRow] | lang=en
-- "detection_engine_update_snapshot_rationale_1": "update_snapshot.py — the ONLY module in this package that talks to the network." | kind=entity | source=manager/detection_engine/update_snapshot.py:L1 | neighbors=[update_snapshot.py] | lang=en
-- "detection_engine_update_snapshot_rationale_118": "The full CISA Known Exploited Vulnerabilities catalog — a single flat     list," | kind=entity | source=manager/detection_engine/update_snapshot.py:L118 | neighbors=[sync_kev_snapshot()] | lang=en
-- "detection_engine_update_snapshot_rationale_121": "The full CISA Known Exploited Vulnerabilities catalog — a single flat     list," | kind=entity | source=manager/detection_engine/update_snapshot.py:L121 | neighbors=[sync_kev_snapshot()] | lang=en
-- "detection_engine_update_snapshot_rationale_140": "EPSS scores for exactly the CVE IDs this detection run actually cares     about" | kind=entity | source=manager/detection_engine/update_snapshot.py:L140 | neighbors=[sync_epss_snapshot()] | lang=en
-- "detection_engine_update_snapshot_rationale_143": "EPSS scores for exactly the CVE IDs this detection run actually cares     about" | kind=entity | source=manager/detection_engine/update_snapshot.py:L143 | neighbors=[sync_epss_snapshot()] | lang=en
-- "detection_engine_update_snapshot_rationale_178": "The ENTIRE EPSS catalog (every scored CVE) from FIRST.org's daily     gzipped CS" | kind=entity | source=manager/detection_engine/update_snapshot.py:L178 | neighbors=[sync_epss_full()] | lang=en
-- "detection_engine_update_snapshot_rationale_38": "Some macOS python.org installs ship expecting `Install Certificates.     command" | kind=entity | source=manager/detection_engine/update_snapshot.py:L38 | neighbors=[_ssl_context()] | lang=en
-- "detection_engine_update_snapshot_rationale_55": "All known vulnerabilities OSV has for this (product, ecosystem) pair,     with n" | kind=entity | source=manager/detection_engine/update_snapshot.py:L55 | neighbors=[_query_osv()] | lang=en
-- "detection_engine_update_snapshot_rationale_79": "Fetch real OSV records for every product, write a pinned snapshot.      rate_lim" | kind=entity | source=manager/detection_engine/update_snapshot.py:L79 | neighbors=[sync_snapshot()] | lang=en
-- "detection_engine_version_compare_rationale_1": "version_compare.py — per-scheme version comparators.  Spec calls this \"the highe" | kind=entity | source=manager/detection_engine/version_compare.py:L1 | neighbors=[version_compare.py] | lang=en
-- "detection_engine_version_compare_rationale_105": "1:8.4p1-5+deb11u1' -> (epoch='1', upstream='8.4p1', revision='5+deb11u1').     N" | kind=entity | source=manager/detection_engine/version_compare.py:L105 | neighbors=[_split_dpkg_version()] | lang=en
-- "detection_engine_version_compare_rationale_111": "1:8.4p1-5+deb11u1' -> (epoch='1', upstream='8.4p1', revision='5+deb11u1').     N" | kind=entity | source=manager/detection_engine/version_compare.py:L111 | neighbors=[_split_dpkg_version()] | lang=en
-- "detection_engine_version_compare_rationale_124": "True when exactly one of the two version strings carries an explicit,     non-ze" | kind=entity | source=manager/detection_engine/version_compare.py:L124 | neighbors=[has_ambiguous_epoch()] | lang=en
-- "detection_engine_version_compare_rationale_130": "True when exactly one of the two version strings carries an explicit,     non-ze" | kind=entity | source=manager/detection_engine/version_compare.py:L130 | neighbors=[has_ambiguous_epoch()] | lang=en
-- "detection_engine_version_compare_rationale_167": "-1 if a<b, 0 if a==b, 1 if a>b, per Debian version ordering. Prefers     the rea" | kind=entity | source=manager/detection_engine/version_compare.py:L167 | neighbors=[dpkg_compare()] | lang=pt
-- "detection_engine_version_compare_rationale_173": "-1 if a<b, 0 if a==b, 1 if a>b, per Debian version ordering.      Uses the pure-" | kind=entity | source=manager/detection_engine/version_compare.py:L173 | neighbors=[dpkg_compare()] | lang=pt
-- "detection_engine_version_compare_rationale_178": "Plain dotted-numeric comparison for non-distro upstream versions     (banner-der" | kind=entity | source=manager/detection_engine/version_compare.py:L178 | neighbors=[semver_compare()] | lang=en
-- "detection_engine_version_compare_rationale_190": "Plain dotted-numeric comparison for non-distro upstream versions     (banner-der" | kind=entity | source=manager/detection_engine/version_compare.py:L190 | neighbors=[semver_compare()] | lang=en
+- "agent_agent_rationale_670": "Poll pending jobs even while WS is connected.      This makes result delivery re" | kind=entity | source=probe/agent/agent.py:L670 | neighbors=[_ws_http_poll_fallback()] | lang=en
+- "agent_agent_rationale_672": "Return (agent_id, token, fresh, identity_sk, identity_pk, public_key_b64)." | kind=entity | source=probe/agent/agent.py:L672 | neighbors=[_obtain_identity()] | lang=en
+- "agent_agent_rationale_68": "Recognize only explicit single-host development/Compose manager names." | kind=entity | source=probe/agent/agent.py:L68 | neighbors=[_is_local_manager_url()] | lang=en
+- "agent_agent_rationale_698": "Run an HTTP-claimed job while renewing its manager lease." | kind=entity | source=probe/agent/agent.py:L698 | neighbors=[_run_polled_job_with_heartbeats()] | lang=en
+- "agent_agent_rationale_706": "Send periodic heartbeats over WebSocket." | kind=entity | source=probe/agent/agent.py:L706 | neighbors=[_ws_heartbeat_sender()] | lang=en
+- "agent_agent_rationale_707": "Send periodic heartbeats over WebSocket." | kind=entity | source=probe/agent/agent.py:L707 | neighbors=[_ws_heartbeat_sender()] | lang=en
+- "agent_agent_rationale_716": "Load the probe's X25519 identity from persistent state, or create one.      Retu" | kind=entity | source=probe/agent/agent.py:L716 | neighbors=[_load_or_create_identity()] | lang=en
+- "agent_agent_rationale_72": "Recognize only explicit single-host development/Compose manager names." | kind=entity | source=probe/agent/agent.py:L72 | neighbors=[_is_local_manager_url()] | lang=en
+- "agent_agent_rationale_721": "Persistent WebSocket push loop.      Returns False if WebSocket is unavailable (" | kind=entity | source=probe/agent/agent.py:L721 | neighbors=[_run_ws_push_loop()] | lang=en
+- "agent_agent_rationale_723": "Retry durable result files using the acknowledged HTTP result path." | kind=entity | source=probe/agent/agent.py:L723 | neighbors=[_flush_spool_over_http()] | lang=en
+- "agent_agent_rationale_736": "Run all startup security checks before any network I/O.      Order matters: HW b" | kind=entity | source=probe/agent/agent.py:L736 | neighbors=[_startup_gauntlet()] | lang=pt
+- "agent_agent_rationale_737": "Run all startup security checks before any network I/O.      Order matters: HW b" | kind=entity | source=probe/agent/agent.py:L737 | neighbors=[_startup_gauntlet()] | lang=pt
+- "agent_agent_rationale_744": "Run one job while keeping WS status/result frames best-effort." | kind=entity | source=probe/agent/agent.py:L744 | neighbors=[_ws_run_job()] | lang=en
+- "agent_agent_rationale_75": "Load key=value lines from probe.env for dev convenience." | kind=entity | source=probe/agent/agent.py:L75 | neighbors=[_load_env()] | lang=en
+- "agent_agent_rationale_757": "Persistent WebSocket push loop.      Returns False if WebSocket is unavailable (" | kind=entity | source=probe/agent/agent.py:L757 | neighbors=[_run_ws_push_loop()] | lang=en
+- "agent_agent_rationale_76": "Load key=value lines from probe.env for dev convenience." | kind=entity | source=probe/agent/agent.py:L76 | neighbors=[_load_env()] | lang=en
+- "agent_agent_rationale_769": "Return (agent_id, token, fresh, identity_sk, identity_pk, public_key_b64)." | kind=entity | source=probe/agent/agent.py:L769 | neighbors=[_obtain_identity()] | lang=en
+- "agent_agent_rationale_783": "Detect common debugging/tracing tools.  Informational only — does     NOT block" | kind=entity | source=probe/agent/agent.py:L783 | neighbors=[_check_anti_debug()] | lang=en
+- "agent_agent_rationale_796": "Acknowledge an offer without executing it before claim confirmation." | kind=entity | source=probe/agent/agent.py:L796 | neighbors=[_ws_stage_job_offer()] | lang=en
+- "agent_agent_rationale_80": "Load key=value lines from probe.env for dev convenience." | kind=entity | source=probe/agent/agent.py:L80 | neighbors=[_load_env()] | lang=en
+- "agent_agent_rationale_802": "Release a staged job only after the manager confirms its claim." | kind=entity | source=probe/agent/agent.py:L802 | neighbors=[_ws_take_confirmed_job()] | lang=en
+- "agent_agent_rationale_805": "Poll pending jobs even while WS is connected.      This makes result delivery re" | kind=entity | source=probe/agent/agent.py:L805 | neighbors=[_ws_http_poll_fallback()] | lang=en
+- "agent_agent_rationale_81": "Return no work for transient poll failures without hiding auth failures." | kind=entity | source=probe/agent/agent.py:L81 | neighbors=[_poll_jobs_or_empty()] | lang=en
+- "agent_agent_rationale_831": "Load the probe's X25519 identity from persistent state, or create one.      Retu" | kind=entity | source=probe/agent/agent.py:L831 | neighbors=[_load_or_create_identity()] | lang=en
+- "agent_agent_rationale_832": "Load the probe's X25519 identity from persistent state, or create one.      Retu" | kind=entity | source=probe/agent/agent.py:L832 | neighbors=[_load_or_create_identity()] | lang=en
+- "agent_agent_rationale_836": "Run one job while keeping WS status/result frames best-effort." | kind=entity | source=probe/agent/agent.py:L836 | neighbors=[_ws_run_job()] | lang=en
+- "agent_agent_rationale_842": "Send periodic heartbeats over WebSocket." | kind=entity | source=probe/agent/agent.py:L842 | neighbors=[_ws_heartbeat_sender()] | lang=en
+- "agent_agent_rationale_848": "Run one job while keeping WS status/result frames best-effort." | kind=entity | source=probe/agent/agent.py:L848 | neighbors=[_ws_run_job()] | lang=en
+- "agent_agent_rationale_851": "Send periodic heartbeats over WebSocket." | kind=entity | source=probe/agent/agent.py:L851 | neighbors=[_ws_heartbeat_sender()] | lang=en
+- "agent_agent_rationale_856": "Acknowledge an offer without executing it before claim confirmation." | kind=entity | source=probe/agent/agent.py:L856 | neighbors=[_ws_stage_job_offer()] | lang=en
+- "agent_agent_rationale_859": "Retry durable result files using the acknowledged HTTP result path." | kind=entity | source=probe/agent/agent.py:L859 | neighbors=[_flush_spool_over_http()] | lang=en
+- "agent_agent_rationale_868": "Retry durable result files using the acknowledged HTTP result path." | kind=entity | source=probe/agent/agent.py:L868 | neighbors=[_flush_spool_over_http()] | lang=en
+- "agent_agent_rationale_872": "Run all startup security checks before any network I/O.      Order matters: HW b" | kind=entity | source=probe/agent/agent.py:L872 | neighbors=[_startup_gauntlet()] | lang=pt
+- "agent_agent_rationale_874": "Release a staged job only after the manager confirms its claim." | kind=entity | source=probe/agent/agent.py:L874 | neighbors=[_ws_take_confirmed_job()] | lang=en
+- "agent_agent_rationale_880": "Load or atomically create the probe's Ed25519 enrollment identity." | kind=entity | source=probe/agent/agent.py:L880 | neighbors=[_load_or_create_signing_identity()] | lang=en
+- "agent_agent_rationale_888": "Acknowledge an offer without executing it before claim confirmation." | kind=entity | source=probe/agent/agent.py:L888 | neighbors=[_ws_stage_job_offer()] | lang=en
+- "agent_agent_rationale_908": "Run one job while keeping WS status/result frames best-effort." | kind=entity | source=probe/agent/agent.py:L908 | neighbors=[_ws_run_job()] | lang=en
+- "agent_agent_rationale_913": "Request UI approval, poll, prove key possession, and activate." | kind=entity | source=probe/agent/agent.py:L913 | neighbors=[_enroll_device()] | lang=en
+- "agent_agent_rationale_914": "Request UI approval, poll, prove key possession, and activate." | kind=entity | source=probe/agent/agent.py:L914 | neighbors=[_enroll_device()] | lang=en
+- "agent_agent_rationale_918": "Poll pending jobs even while WS is connected.      This makes result delivery re" | kind=entity | source=probe/agent/agent.py:L918 | neighbors=[_ws_http_poll_fallback()] | lang=en
 
 ## Instructions
 

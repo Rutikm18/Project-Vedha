@@ -1,4 +1,4 @@
-# Node Description Batch 289 of 336
+# Node Description Batch 289 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -26,46 +26,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_ipv6_discovery_testparsers_test_ignores_non_ipv6_lines": ".test_ignores_non_ipv6_lines()" | kind=code-symbol | source=probe/tests/test_ipv6_discovery.py:L33 | neighbors=[TestParsers] | lang=en
-- "tests_test_ipv6_discovery_testparsers_test_parse_ip_neigh_linux": ".test_parse_ip_neigh_linux()" | kind=code-symbol | source=probe/tests/test_ipv6_discovery.py:L24 | neighbors=[TestParsers] | lang=en
-- "tests_test_ipv6_discovery_testparsers_test_parse_ndp_macos": ".test_parse_ndp_macos()" | kind=code-symbol | source=probe/tests/test_ipv6_discovery.py:L14 | neighbors=[TestParsers] | lang=en
-- "tests_test_ipv6_wiring_rationale_1": "test_ipv6_wiring.py — IPv6 neighbour discovery inside the engagement.  An IPv4 /" | kind=entity | source=probe/tests/test_ipv6_wiring.py:L1 | neighbors=[test_ipv6_wiring.py] | lang=en
-- "tests_test_ipv6_wiring_rationale_111": "The core restraint: discovery must not widen authorization." | kind=entity | source=probe/tests/test_ipv6_wiring.py:L111 | neighbors=[test_out_of_scope_neighbour_is_reported…] | lang=en
-- "tests_test_ipv6_wiring_rationale_137": "Only the scan types that opt in pay for the multicast ping." | kind=entity | source=probe/tests/test_ipv6_wiring.py:L137 | neighbors=[test_disabled_by_default()] | lang=en
-- "tests_test_ipv6_wiring_rationale_28": "The neighbour cache is system-wide. Pinging en0 and then harvesting every     in" | kind=entity | source=probe/tests/test_ipv6_wiring.py:L28 | neighbors=[TestInterfaceScoping] | lang=en
-- "tests_test_ipv6_wiring_test_component_is_in_the_catalog": "test_component_is_in_the_catalog()" | kind=code-symbol | source=probe/tests/test_ipv6_wiring.py:L160 | neighbors=[test_ipv6_wiring.py] | lang=en
-- "tests_test_ipv6_wiring_test_network_va_opts_in": "test_network_va_opts_in()" | kind=code-symbol | source=probe/tests/test_ipv6_wiring.py:L172 | neighbors=[test_ipv6_wiring.py] | lang=en
-- "tests_test_ipv6_wiring_test_planned_only_when_enabled": "test_planned_only_when_enabled()" | kind=code-symbol | source=probe/tests/test_ipv6_wiring.py:L164 | neighbors=[test_ipv6_wiring.py] | lang=en
-- "tests_test_ipv6_wiring_testinterfacescoping_stub": "._stub()" | kind=code-symbol | source=probe/tests/test_ipv6_wiring.py:L42 | neighbors=[TestInterfaceScoping] | lang=en
-- "tests_test_ipv6_wiring_testinterfacescoping_test_globals_are_kept_they_are_not_interface_bound": ".test_globals_are_kept_they_are_not_interface_bound()" | kind=code-symbol | source=probe/tests/test_ipv6_wiring.py:L56 | neighbors=[TestInterfaceScoping] | lang=en
-- "tests_test_ipv6_wiring_testinterfacescoping_test_iface_filters_out_other_segments": ".test_iface_filters_out_other_segments()" | kind=code-symbol | source=probe/tests/test_ipv6_wiring.py:L47 | neighbors=[TestInterfaceScoping] | lang=en
-- "tests_test_ipv6_wiring_testinterfacescoping_test_iface_keeps_its_own_neighbours": ".test_iface_keeps_its_own_neighbours()" | kind=code-symbol | source=probe/tests/test_ipv6_wiring.py:L52 | neighbors=[TestInterfaceScoping] | lang=en
-- "tests_test_ipv6_wiring_testinterfacescoping_test_link_local_keeps_its_zone_so_connect_can_route": ".test_link_local_keeps_its_zone_so_connect_can_route()" | kind=code-symbol | source=probe/tests/test_ipv6_wiring.py:L66 | neighbors=[TestInterfaceScoping] | lang=en
-- "tests_test_ipv6_wiring_testinterfacescoping_test_no_iface_keeps_everything": ".test_no_iface_keeps_everything()" | kind=code-symbol | source=probe/tests/test_ipv6_wiring.py:L62 | neighbors=[TestInterfaceScoping] | lang=en
-- "tests_test_ipv6_wiring_testinterfacescoping_test_unresolved_neighbours_are_never_returned": ".test_unresolved_neighbours_are_never_returned()" | kind=code-symbol | source=probe/tests/test_ipv6_wiring.py:L59 | neighbors=[TestInterfaceScoping] | lang=en
-- "tests_test_job_attempt_service_test_claim_creates_immutable_attempt_with_returned_fence": "test_claim_creates_immutable_attempt_with_returned_fence()" | kind=code-symbol | source=manager/backend/tests/test_job_attempt_service.py:L13 | neighbors=[test_job_attempt_service.py] | lang=en
-- "tests_test_job_attempt_service_test_current_fence_renews_attempt_and_logical_job": "test_current_fence_renews_attempt_and_logical_job()" | kind=code-symbol | source=manager/backend/tests/test_job_attempt_service.py:L75 | neighbors=[test_job_attempt_service.py] | lang=en
-- "tests_test_job_attempt_service_test_lost_claim_does_not_create_attempt": "test_lost_claim_does_not_create_attempt()" | kind=code-symbol | source=manager/backend/tests/test_job_attempt_service.py:L40 | neighbors=[test_job_attempt_service.py] | lang=en
-- "tests_test_job_attempt_service_test_stale_fence_cannot_renew_attempt": "test_stale_fence_cannot_renew_attempt()" | kind=code-symbol | source=manager/backend/tests/test_job_attempt_service.py:L58 | neighbors=[test_job_attempt_service.py] | lang=en
-- "tests_test_job_cancel_probe_rationale_1": "Probe-side operator job control + polling-noise suppression.  Two independent be" | kind=entity | source=probe/tests/test_job_cancel_probe.py:L1 | neighbors=[test_job_cancel_probe.py] | lang=en
-- "tests_test_job_cancel_probe_rationale_54": "These may be transient/refreshable, so they must NOT read as a cancel         —" | kind=entity | source=probe/tests/test_job_cancel_probe.py:L54 | neighbors=[.test_other_rejections_are_plain_failur…] | lang=pt
-- "tests_test_job_cancel_probe_rationale_74": "The probe polls forever; routine transport chatter must stay out of the     term" | kind=entity | source=probe/tests/test_job_cancel_probe.py:L74 | neighbors=[TestPollingNoiseIsSuppressed] | lang=en
-- "tests_test_job_cancel_probe_rationale_92": "The actual regression: one INFO line per poll, every POLL_INTERVAL." | kind=entity | source=probe/tests/test_job_cancel_probe.py:L92 | neighbors=[.test_per_request_info_lines_are_suppre…] | lang=en
-- "tests_test_job_cancel_probe_rationale_97": "Quieting must not hide a genuinely unreachable manager." | kind=entity | source=probe/tests/test_job_cancel_probe.py:L97 | neighbors=[.test_transport_errors_still_surface()] | lang=pt
-- "tests_test_job_cancel_probe_testheartbeatoutcomes_test_200_is_ok": ".test_200_is_ok()" | kind=code-symbol | source=probe/tests/test_job_cancel_probe.py:L48 | neighbors=[TestHeartbeatOutcomes] | lang=en
-- "tests_test_job_cancel_probe_testheartbeatoutcomes_test_409_is_reported_as_a_revoked_lease": ".test_409_is_reported_as_a_revoked_lease()" | kind=code-symbol | source=probe/tests/test_job_cancel_probe.py:L44 | neighbors=[TestHeartbeatOutcomes] | lang=en
-- "tests_test_job_cancel_probe_testheartbeatoutcomes_test_bool_heartbeat_contract_is_unchanged": ".test_bool_heartbeat_contract_is_unchanged()" | kind=code-symbol | source=probe/tests/test_job_cancel_probe.py:L64 | neighbors=[TestHeartbeatOutcomes] | lang=en
-- "tests_test_job_cancel_probe_testheartbeatoutcomes_test_network_error_is_a_plain_failure": ".test_network_error_is_a_plain_failure()" | kind=code-symbol | source=probe/tests/test_job_cancel_probe.py:L59 | neighbors=[TestHeartbeatOutcomes] | lang=en
-- "tests_test_job_cancel_probe_testheartbeatoutcomes_test_revoked_lease_is_distinct_from_failure": ".test_revoked_lease_is_distinct_from_failure()" | kind=code-symbol | source=probe/tests/test_job_cancel_probe.py:L69 | neighbors=[TestHeartbeatOutcomes] | lang=en
-- "tests_test_job_cancel_probe_transport": "transport()" | kind=code-symbol | source=probe/tests/test_job_cancel_probe.py:L35 | neighbors=[test_job_cancel_probe.py] | lang=en
-- "tests_test_job_cancel_rationale_1": "Operator job control: stop a running job, remove a queued one, and cap the queue" | kind=entity | source=manager/backend/tests/test_job_cancel.py:L1 | neighbors=[test_job_cancel.py] | lang=en
-- "tests_test_job_cancel_rationale_176": "An operator stop must never be mistaken for a system fault." | kind=entity | source=manager/backend/tests/test_job_cancel.py:L176 | neighbors=[test_cancelled_is_distinct_from_failed()] | lang=en
-- "tests_test_job_cancel_rationale_208": "Two queued jobs must leave room for a third — an off-by-one here         would s" | kind=entity | source=manager/backend/tests/test_job_cancel.py:L208 | neighbors=[.test_third_queued_job_is_still_accepte…] | lang=en
-- "tests_test_job_cancel_rationale_225": "Pins the reason this endpoint may not reference `.email`.      If CurrentUser ev" | kind=entity | source=manager/backend/tests/test_job_cancel.py:L225 | neighbors=[test_current_user_has_no_email_field()] | lang=en
-- "tests_test_job_cancel_rationale_30": "The REAL CurrentUser, not a SimpleNamespace.      A hand-rolled stand-in is what" | kind=entity | source=manager/backend/tests/test_job_cancel.py:L30 | neighbors=[_user()] | lang=en
-- "tests_test_job_cancel_rationale_61": "A db.execute() result whose scalar_one_or_none() yields `value`." | kind=entity | source=manager/backend/tests/test_job_cancel.py:L61 | neighbors=[_one()] | lang=pt
-- "tests_test_job_cancel_rationale_91": "Attribution must come from a field the JWT actually carries." | kind=entity | source=manager/backend/tests/test_job_cancel.py:L91 | neighbors=[test_cancel_records_who_did_it()] | lang=en
-- "tests_test_job_cancel_testqueuelimit_test_limit_is_three": ".test_limit_is_three()" | kind=code-symbol | source=manager/backend/tests/test_job_cancel.py:L183 | neighbors=[TestQueueLimit] | lang=en
+- "scanner_scanner_base_rationale_726": "Subclasses implement `scan_target(self, target)` (async), returning a list     o" | kind=entity | source=probe/scanner/scanner_base.py:L726 | neighbors=[BaseScanner] | lang=pt
+- "scanner_scanner_base_rationale_728": "EVERY distinct (family, sockaddr) for `target`, in getaddrinfo/RFC-6724 order." | kind=entity | source=probe/scanner/scanner_base.py:L728 | neighbors=[resolve_candidates()] | lang=en
+- "scanner_scanner_base_rationale_749": "Just the candidate IP strings for `target`, in RFC-6724 order, de-duplicated." | kind=entity | source=probe/scanner/scanner_base.py:L749 | neighbors=[resolve_ip_candidates()] | lang=en
+- "scanner_scanner_base_rationale_750": "Run a scanner CLI's body with consistent, operator-friendly error handling." | kind=entity | source=probe/scanner/scanner_base.py:L750 | neighbors=[main_entrypoint()] | lang=en
+- "scanner_scanner_base_rationale_771": "Just the candidate IP strings for `target`, in RFC-6724 order, de-duplicated." | kind=entity | source=probe/scanner/scanner_base.py:L771 | neighbors=[resolve_ip_candidates()] | lang=en
+- "scanner_scanner_base_rationale_778": "Wire argparse args into a scanner instance and execute it." | kind=entity | source=probe/scanner/scanner_base.py:L778 | neighbors=[run_cli()] | lang=en
+- "scanner_scanner_base_rationale_786": "One-shot datagram protocol backing `async_udp_probe`. Resolves its future     wi" | kind=entity | source=probe/scanner/scanner_base.py:L786 | neighbors=[_UDPProbeProtocol] | lang=en
+- "scanner_scanner_base_rationale_79": "A per-probe delay of `base` seconds ± up to `jitter` fraction of random     vari" | kind=entity | source=probe/scanner/scanner_base.py:L79 | neighbors=[jittered_delay()] | lang=en
+- "scanner_scanner_base_rationale_808": "One-shot datagram protocol backing `async_udp_probe`. Resolves its future     wi" | kind=entity | source=probe/scanner/scanner_base.py:L808 | neighbors=[_UDPProbeProtocol] | lang=en
+- "scanner_scanner_base_rationale_819": "Send one UDP datagram and await the first reply — fully on the event loop." | kind=entity | source=probe/scanner/scanner_base.py:L819 | neighbors=[async_udp_probe()] | lang=en
+- "scanner_scanner_base_rationale_837": "Run a scanner CLI's body with consistent, operator-friendly error handling." | kind=entity | source=probe/scanner/scanner_base.py:L837 | neighbors=[main_entrypoint()] | lang=en
+- "scanner_scanner_base_rationale_841": "Send one UDP datagram and await the first reply — fully on the event loop." | kind=entity | source=probe/scanner/scanner_base.py:L841 | neighbors=[async_udp_probe()] | lang=en
+- "scanner_scanner_base_rationale_850": "`async_udp_probe` with bounded per-port retransmit.      Returns on the FIRST de" | kind=entity | source=probe/scanner/scanner_base.py:L850 | neighbors=[async_udp_probe_retry()] | lang=en
+- "scanner_scanner_base_rationale_86": "Current time as an AWARE datetime in the project timezone." | kind=entity | source=probe/scanner/scanner_base.py:L86 | neighbors=[project_now()] | lang=en
+- "scanner_scanner_base_rationale_865": "Wire argparse args into a scanner instance and execute it." | kind=entity | source=probe/scanner/scanner_base.py:L865 | neighbors=[run_cli()] | lang=en
+- "scanner_scanner_base_rationale_869": "Wrap an IPv6 literal in [] for a URL authority; leave v4/hostnames as-is.     'h" | kind=entity | source=probe/scanner/scanner_base.py:L869 | neighbors=[bracket_host()] | lang=en
+- "scanner_scanner_base_rationale_872": "`async_udp_probe` with bounded per-port retransmit.      Returns on the FIRST de" | kind=entity | source=probe/scanner/scanner_base.py:L872 | neighbors=[async_udp_probe_retry()] | lang=en
+- "scanner_scanner_base_rationale_881": "Parse '22,80,443,8000-8100' into a sorted unique port list (1-65535)." | kind=entity | source=probe/scanner/scanner_base.py:L881 | neighbors=[parse_ports()] | lang=pt
+- "scanner_scanner_base_rationale_891": "Wrap an IPv6 literal in [] for a URL authority; leave v4/hostnames as-is.     'h" | kind=entity | source=probe/scanner/scanner_base.py:L891 | neighbors=[bracket_host()] | lang=en
+- "scanner_scanner_base_rationale_90": "Heuristic: is this host a tarpit / honeypot / ACK-everything middlebox?      Suc" | kind=entity | source=probe/scanner/scanner_base.py:L90 | neighbors=[assess_tarpit()] | lang=en
+- "scanner_scanner_base_rationale_903": "Parse '22,80,443,8000-8100' into a sorted unique port list (1-65535)." | kind=entity | source=probe/scanner/scanner_base.py:L903 | neighbors=[parse_ports()] | lang=pt
+- "scanner_scanner_base_rationale_91": "ISO-8601 instant in the project timezone: 2026-09-03T23:15:05+05:30." | kind=entity | source=probe/scanner/scanner_base.py:L91 | neighbors=[project_timestamp()] | lang=en
+- "scanner_scanner_base_rationale_917": "Writes ScanResult objects as JSONL to a file and/or stdout." | kind=entity | source=probe/scanner/scanner_base.py:L917 | neighbors=[ResultWriter] | lang=en
+- "scanner_scanner_base_rationale_939": "Writes ScanResult objects as JSONL to a file and/or stdout." | kind=entity | source=probe/scanner/scanner_base.py:L939 | neighbors=[ResultWriter] | lang=en
+- "scanner_scanner_base_rationale_947": "Subclasses implement `scan_target(self, target)` (async), returning a list     o" | kind=entity | source=probe/scanner/scanner_base.py:L947 | neighbors=[BaseScanner] | lang=pt
+- "scanner_scanner_base_rationale_96": "Compact project-local stamp for FILE and DIRECTORY names.      Deliberately carr" | kind=entity | source=probe/scanner/scanner_base.py:L96 | neighbors=[project_file_stamp()] | lang=en
+- "scanner_scanner_base_rationale_969": "Subclasses implement `scan_target(self, target)` (async), returning a list     o" | kind=entity | source=probe/scanner/scanner_base.py:L969 | neighbors=[BaseScanner] | lang=pt
+- "scanner_scanner_base_rationale_99": "Map a connect()/socket-time OSError to (state, reason).      DNS failures (``soc" | kind=entity | source=probe/scanner/scanner_base.py:L99 | neighbors=[classify_os_error()] | lang=en
+- "scanner_scanner_base_resultwriter_init": ".__init__()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L941 | neighbors=[ResultWriter] | lang=en
+- "scanner_scanner_base_scanresult_post_init": ".__post_init__()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L295 | neighbors=[ScanResult] | lang=en
+- "scanner_scanner_base_scopeguard_from_list": ".from_list()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L363 | neighbors=[ScopeGuard] | lang=en
+- "scanner_scanner_base_scopeguard_init": ".__init__()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L327 | neighbors=[ScopeGuard] | lang=en
+- "scanner_scanner_base_sendpacer_init": ".__init__()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L583 | neighbors=[SendPacer] | lang=en
+- "scanner_scanner_base_setup_logging": "setup_logging()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L1119 | neighbors=[scanner_base.py] | lang=en
+- "scanner_scanner_base_udpprobeprotocol_connection_lost": ".connection_lost()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L834 | neighbors=[_UDPProbeProtocol] | lang=en
+- "scanner_scanner_base_udpprobeprotocol_datagram_received": ".datagram_received()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L820 | neighbors=[_UDPProbeProtocol] | lang=en
+- "scanner_scanner_base_udpprobeprotocol_error_received": ".error_received()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L824 | neighbors=[_UDPProbeProtocol] | lang=en
+- "scanner_scanner_base_udpprobeprotocol_init": ".__init__()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L817 | neighbors=[_UDPProbeProtocol] | lang=en
+- "scanner_scanner_registry_info": "info()" | kind=code-symbol | source=probe/scanner/scanner_registry.py:L103 | neighbors=[scanner_registry.py] | lang=en
+- "scanner_scanner_registry_rationale_1": "scanner_registry.py — the single source of truth for WHICH scanners are trusted." | kind=entity | source=probe/scanner/scanner_registry.py:L1 | neighbors=[scanner_registry.py] | lang=en
 
 ## Instructions
 

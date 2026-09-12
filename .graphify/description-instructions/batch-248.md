@@ -1,4 +1,4 @@
-# Node Description Batch 249 of 336
+# Node Description Batch 249 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -26,46 +26,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "scanner_mass_scan_main": "main()" | kind=code-symbol | source=probe/scanner/mass_scan.py:L341 | neighbors=[mass_scan.py] | lang=en
-- "scanner_mass_scan_rationale_1": "mass_scan.py — fast large-scale TCP port discovery.  WHY THIS EXISTS (modern con" | kind=entity | source=probe/scanner/mass_scan.py:L1 | neighbors=[mass_scan.py] | lang=en
-- "scanner_mass_scan_rationale_148": "Parse masscan -oJ output robustly: handles trailing comma, 'finished'     sentin" | kind=entity | source=probe/scanner/mass_scan.py:L148 | neighbors=[_parse_masscan_json()] | lang=en
-- "scanner_mass_scan_rationale_176": "target_specs: raw CIDRs/ranges/hosts (NOT pre-expanded) — masscan wants them." | kind=entity | source=probe/scanner/mass_scan.py:L176 | neighbors=[run_mass_scan()] | lang=en
-- "scanner_mass_scan_rationale_216": "Excluded networks -> masscan --exclude specs, so they get ZERO packets." | kind=entity | source=probe/scanner/mass_scan.py:L216 | neighbors=[_masscan_excludes()] | lang=en
-- "scanner_mass_scan_rationale_221": "A CIDR spec is in scope only if it is fully contained in an allowed network." | kind=entity | source=probe/scanner/mass_scan.py:L221 | neighbors=[_spec_in_scope()] | lang=en
-- "scanner_mass_scan_rationale_243": "target_specs: raw CIDRs/ranges/hosts (NOT pre-expanded) — masscan wants them." | kind=entity | source=probe/scanner/mass_scan.py:L243 | neighbors=[run_mass_scan()] | lang=en
-- "scanner_mass_scan_rationale_308": "Excluded networks -> masscan --exclude specs, so they get ZERO packets." | kind=entity | source=probe/scanner/mass_scan.py:L308 | neighbors=[_masscan_excludes()] | lang=en
-- "scanner_mass_scan_rationale_313": "A CIDR spec is in scope only if it is fully contained in an allowed network." | kind=entity | source=probe/scanner/mass_scan.py:L313 | neighbors=[_spec_in_scope()] | lang=en
-- "scanner_mass_scan_rationale_55": "Run masscan over the given target specs and return its parsed JSON records." | kind=entity | source=probe/scanner/mass_scan.py:L55 | neighbors=[_run_masscan()] | lang=en
-- "scanner_mass_scan_rationale_66": "Run masscan over the given target specs and return its parsed JSON records." | kind=entity | source=probe/scanner/mass_scan.py:L66 | neighbors=[_run_masscan()] | lang=en
-- "scanner_mass_scan_rationale_90": "Parse masscan -oJ output robustly: handles trailing comma, 'finished'     sentin" | kind=entity | source=probe/scanner/mass_scan.py:L90 | neighbors=[_parse_masscan_json()] | lang=en
-- "scanner_mcp_ai_scanner_main": "main()" | kind=code-symbol | source=probe/scanner/mcp_ai_scanner.py:L323 | neighbors=[mcp_ai_scanner.py] | lang=en
-- "scanner_mcp_ai_scanner_mcpaiscanner_init": ".__init__()" | kind=code-symbol | source=probe/scanner/mcp_ai_scanner.py:L202 | neighbors=[MCPAIScanner] | lang=en
-- "scanner_mcp_ai_scanner_noredirect_redirect_request": ".redirect_request()" | kind=code-symbol | source=probe/scanner/mcp_ai_scanner.py:L111 | neighbors=[_NoRedirect] | lang=en
-- "scanner_mcp_ai_scanner_rationale_1": "mcp_ai_scanner.py — discover exposed AI inference servers and MCP endpoints.  WH" | kind=entity | source=probe/scanner/mcp_ai_scanner.py:L1 | neighbors=[mcp_ai_scanner.py] | lang=en
-- "scanner_mcp_ai_scanner_rationale_152": "Server/body fingerprint match against known non-AI squatters, or None." | kind=entity | source=probe/scanner/mcp_ai_scanner.py:L152 | neighbors=[_known_false_positive()] | lang=en
-- "scanner_mcp_ai_scanner_rationale_153": "Server/body fingerprint match against known non-AI squatters, or None." | kind=entity | source=probe/scanner/mcp_ai_scanner.py:L153 | neighbors=[_known_false_positive()] | lang=en
-- "scanner_mcp_ai_scanner_rationale_161": "The strongest possible evidence for a real MCP server: a WWW-Authenticate     he" | kind=entity | source=probe/scanner/mcp_ai_scanner.py:L161 | neighbors=[_mcp_oauth_signal()] | lang=en
-- "scanner_mcp_ai_scanner_rationale_162": "The strongest possible evidence for a real MCP server: a WWW-Authenticate     he" | kind=entity | source=probe/scanner/mcp_ai_scanner.py:L162 | neighbors=[_mcp_oauth_signal()] | lang=en
-- "scanner_mcp_ai_scanner_rationale_174": "JSON-typed body that actually talks about auth, not just any error text." | kind=entity | source=probe/scanner/mcp_ai_scanner.py:L174 | neighbors=[_auth_shaped_json_body()] | lang=en
-- "scanner_mcp_ai_scanner_rationale_175": "JSON-typed body that actually talks about auth, not just any error text." | kind=entity | source=probe/scanner/mcp_ai_scanner.py:L175 | neighbors=[_auth_shaped_json_body()] | lang=en
-- "scanner_mcp_ai_scanner_request": "_request()" | kind=code-symbol | source=probe/scanner/mcp_ai_scanner.py:L128 | neighbors=[mcp_ai_scanner.py] | lang=en
-- "scanner_mobile_scanner_main": "main()" | kind=code-symbol | source=probe/scanner/mobile_scanner.py:L340 | neighbors=[mobile_scanner.py] | lang=en
-- "scanner_mobile_scanner_rationale_1": "mobile_scanner.py — mobile device exposure detection.  Covers playbook 13 (Mobil" | kind=entity | source=probe/scanner/mobile_scanner.py:L1 | neighbors=[mobile_scanner.py] | lang=en
-- "scanner_mobile_scanner_rationale_152": "Attempt TCP connect to lockdownd port 62078.     Port open = iOS device present" | kind=entity | source=probe/scanner/mobile_scanner.py:L152 | neighbors=[_probe_lockdownd()] | lang=en
-- "scanner_mobile_scanner_rationale_188": "Build a DNS PTR query in mDNS wire format with QU bit set." | kind=entity | source=probe/scanner/mobile_scanner.py:L188 | neighbors=[_build_mdns_query()] | lang=en
-- "scanner_mobile_scanner_rationale_199": "Extract PTR target names (service instance names) from mDNS reply." | kind=entity | source=probe/scanner/mobile_scanner.py:L199 | neighbors=[_parse_mdns_ptr_names()] | lang=en
-- "scanner_mobile_scanner_rationale_259": "Send one mDNS PTR query to target:5353 and return instance names." | kind=entity | source=probe/scanner/mobile_scanner.py:L259 | neighbors=[_probe_mdns_mobile_sync()] | lang=en
-- "scanner_mobile_scanner_rationale_279": "Detects mobile device exposure on the network:     ADB (Android) | lockdownd (iO" | kind=entity | source=probe/scanner/mobile_scanner.py:L279 | neighbors=[MobileScanner] | lang=en
-- "scanner_mobile_scanner_rationale_60": "Build an ADB A_CNXN (CONNECT) message — the standard handshake initiator." | kind=entity | source=probe/scanner/mobile_scanner.py:L60 | neighbors=[_build_adb_cnxn()] | lang=en
-- "scanner_mobile_scanner_rationale_71": "Parse a 24-byte ADB message header.  Returns parsed fields or None." | kind=entity | source=probe/scanner/mobile_scanner.py:L71 | neighbors=[_parse_adb_header()] | lang=pt
-- "scanner_mobile_scanner_rationale_96": "Send ADB CNXN and read the device's CNXN reply.     Returns a dict with connecti" | kind=entity | source=probe/scanner/mobile_scanner.py:L96 | neighbors=[_probe_adb()] | lang=en
-- "scanner_msrpc_scanner_main": "main()" | kind=code-symbol | source=probe/scanner/msrpc_scanner.py:L172 | neighbors=[msrpc_scanner.py] | lang=en
-- "scanner_msrpc_scanner_msrpcscanner_init": ".__init__()" | kind=code-symbol | source=probe/scanner/msrpc_scanner.py:L85 | neighbors=[MSRPCScanner] | lang=en
-- "scanner_msrpc_scanner_rationale_1": "msrpc_scanner.py — MSRPC endpoint-mapper (EPM) enumeration over port 135 (VA che" | kind=entity | source=probe/scanner/msrpc_scanner.py:L1 | neighbors=[msrpc_scanner.py] | lang=it
-- "scanner_msrpc_scanner_rationale_52": "Parse ncacn_ip_tcp bindings → (all_tcp_ports, dynamic_tcp_ports).      Pure and" | kind=entity | source=probe/scanner/msrpc_scanner.py:L52 | neighbors=[_extract_tcp_ports()] | lang=en
-- "scanner_msrpc_scanner_rationale_70": "Reduce the raw endpoint list to distinct interfaces and dynamic ports." | kind=entity | source=probe/scanner/msrpc_scanner.py:L70 | neighbors=[_summarize()] | lang=en
-- "scanner_msrpc_scanner_rationale_90": "Blocking: EPM ept_lookup via impacket. Monkeypatchable for tests." | kind=entity | source=probe/scanner/msrpc_scanner.py:L90 | neighbors=[._enumerate()] | lang=en
-- "scanner_nfs_scanner_main": "main()" | kind=code-symbol | source=probe/scanner/nfs_scanner.py:L282 | neighbors=[nfs_scanner.py] | lang=en
+- "main_scripts_os_fingerprint_rationale_371": "Best-effort exact Windows build via SMB2 NTLM (shared impl). {} on any         f" | kind=entity | source=probe/main_scripts/os_fingerprint.py:L371 | neighbors=[._smb_build()] | lang=en
+- "main_scripts_os_fingerprint_rationale_383": "Fuse an SMB2 NTLM build into an OS result: authoritative release + build," | kind=entity | source=probe/main_scripts/os_fingerprint.py:L383 | neighbors=[._apply_smb_build()] | lang=en
+- "main_scripts_os_fingerprint_rationale_406": "Send one ICMP echo; return observed TTL, None (no TTL), or \"down\"." | kind=entity | source=probe/main_scripts/os_fingerprint.py:L406 | neighbors=[._icmp_echo_ttl()] | lang=en
+- "main_scripts_os_fingerprint_rationale_437": "Send an ICMP timestamp request (type 13); return {ttl, transmit} from a" | kind=entity | source=probe/main_scripts/os_fingerprint.py:L437 | neighbors=[._icmp_timestamp()] | lang=en
+- "main_scripts_os_fingerprint_rationale_469": "FIX 3b: aliveness/TTL came from a TCP SYN-ACK, not ICMP. Label the TTL         s" | kind=entity | source=probe/main_scripts/os_fingerprint.py:L469 | neighbors=[._tcp_ttl_result()] | lang=en
+- "main_scripts_os_fingerprint_rationale_58": "Build an ICMP message (header + rest) with a valid checksum." | kind=entity | source=probe/main_scripts/os_fingerprint.py:L58 | neighbors=[_icmp()] | lang=en
+- "main_scripts_os_fingerprint_rationale_60": "Build an ICMP message (header + rest) with a valid checksum." | kind=entity | source=probe/main_scripts/os_fingerprint.py:L60 | neighbors=[_icmp()] | lang=en
+- "main_scripts_os_fingerprint_rationale_80": "Parse an ICMP reply. Handles both raw-socket delivery (full IPv4 header     pres" | kind=entity | source=probe/main_scripts/os_fingerprint.py:L80 | neighbors=[parse_icmp_reply()] | lang=en
+- "main_scripts_os_fingerprint_rationale_82": "Return (ttl, icmp_bytes). Raw-socket delivery prepends the full IPv4 header" | kind=entity | source=probe/main_scripts/os_fingerprint.py:L82 | neighbors=[_strip_ip_header()] | lang=en
+- "main_scripts_os_fingerprint_rationale_95": "Parse an ICMP reply. Handles both raw-socket delivery (full IPv4 header     pres" | kind=entity | source=probe/main_scripts/os_fingerprint.py:L95 | neighbors=[parse_icmp_reply()] | lang=en
+- "main_scripts_passive_collector_main": "main()" | kind=code-symbol | source=probe/main_scripts/passive_collector.py:L357 | neighbors=[passive_collector.py] | lang=en
+- "main_scripts_passive_collector_passivecollector_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/passive_collector.py:L218 | neighbors=[PassiveCollector] | lang=en
+- "main_scripts_passive_collector_passivelistenererror_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/passive_collector.py:L109 | neighbors=[PassiveListenerError] | lang=en
+- "main_scripts_passive_collector_rationale_1": "passive_collector.py — LISTEN-ONLY host discovery for fragile networks (OT/ICS)." | kind=entity | source=probe/main_scripts/passive_collector.py:L1 | neighbors=[passive_collector.py] | lang=en
+- "main_scripts_passive_collector_rationale_107": "All passive sources failed before the listen window could start." | kind=entity | source=probe/main_scripts/passive_collector.py:L107 | neighbors=[PassiveListenerError] | lang=en
+- "main_scripts_passive_collector_rationale_120": "Open one recv-only UDP listener or raise the socket error.      Multicast groups" | kind=entity | source=probe/main_scripts/passive_collector.py:L120 | neighbors=[_open_listener()] | lang=en
+- "main_scripts_passive_collector_rationale_211": "Listen-only discovery. No active probing. Reports in-scope hosts that     announ" | kind=entity | source=probe/main_scripts/passive_collector.py:L211 | neighbors=[PassiveCollector] | lang=en
+- "main_scripts_passive_collector_rationale_332": "Await readability on any listener without blocking the event loop." | kind=entity | source=probe/main_scripts/passive_collector.py:L332 | neighbors=[._select()] | lang=en
+- "main_scripts_passive_collector_rationale_74": "Pull short printable ASCII runs from a payload, for human-readable evidence." | kind=entity | source=probe/main_scripts/passive_collector.py:L74 | neighbors=[_printable_strings()] | lang=en
+- "main_scripts_passive_collector_rationale_91": "Best-effort device label from an announcement payload (recv-only parsing)." | kind=entity | source=probe/main_scripts/passive_collector.py:L91 | neighbors=[_device_hint()] | lang=en
+- "main_scripts_port_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/port_scanner.py:L864 | neighbors=[port_scanner.py] | lang=en
+- "main_scripts_port_scanner_portscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/port_scanner.py:L342 | neighbors=[PortScanner] | lang=en
+- "main_scripts_port_scanner_rationale_1": "port_scanner.py — TCP connect scan with an evidence-based state engine.  METHOD" | kind=entity | source=probe/main_scripts/port_scanner.py:L1 | neighbors=[port_scanner.py] | lang=en
+- "main_scripts_port_scanner_rationale_128": "Resolve a named scan profile to a concrete, de-duplicated port list.      'full'" | kind=entity | source=probe/main_scripts/port_scanner.py:L128 | neighbors=[resolve_profile()] | lang=pt
+- "main_scripts_port_scanner_rationale_129": "Resolve a named scan profile to a concrete, de-duplicated port list.      'full'" | kind=entity | source=probe/main_scripts/port_scanner.py:L129 | neighbors=[resolve_profile()] | lang=pt
+- "main_scripts_port_scanner_rationale_131": "Resolve a named scan profile to a concrete, de-duplicated port list.      'full'" | kind=entity | source=probe/main_scripts/port_scanner.py:L131 | neighbors=[resolve_profile()] | lang=pt
+- "main_scripts_port_scanner_rationale_154": "Per-target scan accounting — the completeness + self-health record.      It lets" | kind=entity | source=probe/main_scripts/port_scanner.py:L154 | neighbors=[ScanMetrics] | lang=en
+- "main_scripts_port_scanner_rationale_155": "Per-target scan accounting — the completeness + self-health record.      It lets" | kind=entity | source=probe/main_scripts/port_scanner.py:L155 | neighbors=[ScanMetrics] | lang=en
+- "main_scripts_port_scanner_rationale_157": "Per-target scan accounting — the completeness + self-health record.      It lets" | kind=entity | source=probe/main_scripts/port_scanner.py:L157 | neighbors=[ScanMetrics] | lang=en
+- "main_scripts_port_scanner_rationale_176": "Return 'ipv4'/'ipv6' for an IP literal, else None (unresolved hostname)." | kind=entity | source=probe/main_scripts/port_scanner.py:L176 | neighbors=[_family_of()] | lang=en
+- "main_scripts_port_scanner_rationale_182": "Tally exactly one terminal per-port observation." | kind=entity | source=probe/main_scripts/port_scanner.py:L182 | neighbors=[.record()] | lang=en
+- "main_scripts_port_scanner_rationale_183": "Tally exactly one terminal per-port observation." | kind=entity | source=probe/main_scripts/port_scanner.py:L183 | neighbors=[.record()] | lang=en
+- "main_scripts_port_scanner_rationale_185": "Tally exactly one terminal per-port observation." | kind=entity | source=probe/main_scripts/port_scanner.py:L185 | neighbors=[.record()] | lang=en
+- "main_scripts_port_scanner_rationale_201": "Requested ports that were never recorded — the silent-skip proof." | kind=entity | source=probe/main_scripts/port_scanner.py:L201 | neighbors=[.missing_ports()] | lang=en
+- "main_scripts_port_scanner_rationale_202": "Requested ports that were never recorded — the silent-skip proof." | kind=entity | source=probe/main_scripts/port_scanner.py:L202 | neighbors=[.missing_ports()] | lang=en
+- "main_scripts_port_scanner_rationale_204": "Requested ports that were never recorded — the silent-skip proof." | kind=entity | source=probe/main_scripts/port_scanner.py:L204 | neighbors=[.missing_ports()] | lang=en
+- "main_scripts_port_scanner_rationale_208": "Ports recorded more than once (a port must get exactly one verdict)." | kind=entity | source=probe/main_scripts/port_scanner.py:L208 | neighbors=[.duplicate_ports()] | lang=pt
+- "main_scripts_port_scanner_rationale_209": "Ports recorded more than once (a port must get exactly one verdict)." | kind=entity | source=probe/main_scripts/port_scanner.py:L209 | neighbors=[.duplicate_ports()] | lang=pt
+- "main_scripts_port_scanner_rationale_211": "Ports recorded more than once (a port must get exactly one verdict)." | kind=entity | source=probe/main_scripts/port_scanner.py:L211 | neighbors=[.duplicate_ports()] | lang=pt
+- "main_scripts_port_scanner_rationale_214": "Resolve a named scan profile to a concrete, de-duplicated port list.      'full'" | kind=entity | source=probe/main_scripts/port_scanner.py:L214 | neighbors=[resolve_profile()] | lang=pt
 
 ## Instructions
 

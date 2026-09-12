@@ -1,4 +1,4 @@
-# Node Description Batch 98 of 336
+# Node Description Batch 98 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,51 +12,58 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
+For an entity node (any other kind — e.g. a person, place, event, object),
+describe what the entity is and its role, grounded in its type, its
+relations (neighbors) and the provided citations/evidence — e.g.
+"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
+Ground entity descriptions in the citations/evidence when present; do not
+speculate beyond the context, so a node with no supporting context may be
+left out of the reply.
 Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "lib_security_context_publiccverecord": "publicCveRecord()" | kind=code-symbol | source=manager/frontend/lib/security-context.ts:L18 | neighbors=[security-context.ts, SecurityContextError, resolveSecurityReference()]
-- "lib_severity_riskscorecolor": "riskScoreColor()" | kind=code-symbol | source=manager/frontend/lib/severity.ts:L64 | neighbors=[page.tsx, severity.ts, page.tsx]
-- "lib_severity_sev_palette": "SEV_PALETTE" | kind=code-symbol | source=manager/frontend/lib/severity.ts:L79 | neighbors=[page.tsx, severity.ts, page.tsx]
-- "lib_severity_severity_order": "SEVERITY_ORDER" | kind=code-symbol | source=manager/frontend/lib/severity.ts:L115 | neighbors=[LiveOverview.tsx, severity.ts, page.tsx]
-- "lib_target_parser_isvalidtarget": "isValidTarget()" | kind=code-symbol | source=manager/frontend/lib/target-parser.ts:L19 | neighbors=[target-parser.ts, validOctets(), parseTargets()]
-- "lib_tenant_resolvetenantsubdomain": "resolveTenantSubdomain()" | kind=code-symbol | source=manager/frontend/lib/tenant.ts:L45 | neighbors=[proxy.ts, tenant.ts, subdomainFromHost()]
-- "lib_tenant_subdomainfromhost": "subdomainFromHost()" | kind=code-symbol | source=manager/frontend/lib/tenant.ts:L22 | neighbors=[tenant.ts, resolveTenantSubdomain(), rootDomain()]
-- "lib_testssl_parser_mapseverity": "mapSeverity()" | kind=code-symbol | source=manager/frontend/lib/testssl-parser.ts:L14 | neighbors=[testssl-parser.ts, parseTestsslJsonChecked(), parseTestsslJson()]
-- "lib_whatweb_parser_parsewhatweboutput": "parseWhatWebOutput()" | kind=code-symbol | source=manager/frontend/lib/whatweb-parser.ts:L12 | neighbors=[tool-runners.ts, whatweb-parser.ts, scanner-adapters.test.ts]
-- "login_route_isclienttoken": "isClientToken()" | kind=code-symbol | source=manager/frontend/app/api/portal/login/route.ts:L49 | neighbors=[route.ts, POST(), PUT()]
-- "login_route_setportalcookies": "setPortalCookies()" | kind=code-symbol | source=manager/frontend/app/api/portal/login/route.ts:L27 | neighbors=[route.ts, POST(), PUT()]
-- "login_route_setsessioncookies": "setSessionCookies()" | kind=code-symbol | source=manager/frontend/app/api/auth/login/route.ts:L12 | neighbors=[route.ts, POST(), PUT()]
-- "main_scripts_accuracy_gate_check_thresholds": "check_thresholds()" | kind=code-symbol | source=probe/main_scripts/accuracy_gate.py:L105 | neighbors=[accuracy_gate.py, Threshold violations for one scored cor…, run_gate()]
-- "main_scripts_accuracy_gate_is_independent": "is_independent()" | kind=code-symbol | source=probe/main_scripts/accuracy_gate.py:L100 | neighbors=[accuracy_gate.py, True when this corpus's labels can supp…, run_gate()]
-- "main_scripts_accuracy_gate_main": "_main()" | kind=code-symbol | source=probe/main_scripts/accuracy_gate.py:L204 | neighbors=[accuracy_gate.py, format_gate_report(), run_gate()]
-- "main_scripts_accuracy_main": "_main()" | kind=code-symbol | source=probe/main_scripts/accuracy.py:L163 | neighbors=[accuracy.py, evaluate_corpus(), format_report()]
-- "main_scripts_accuracy_observed_states": "_observed_states()" | kind=code-symbol | source=probe/main_scripts/accuracy.py:L79 | neighbors=[accuracy.py, (target, port) -> status, from port/syn…, score_port_states()]
-- "main_scripts_accuracy_ratio": "_ratio()" | kind=code-symbol | source=probe/main_scripts/accuracy.py:L26 | neighbors=[accuracy.py, score_findings(), score_port_states()]
-- "main_scripts_adaptive_timeout_adaptivetimeout_observe": ".observe()" | kind=code-symbol | source=probe/main_scripts/adaptive_timeout.py:L31 | neighbors=[AdaptiveTimeout, from_rtts(), Fold one round-trip sample (seconds) in…]
-- "main_scripts_cpe_extract_version": "_extract_version()" | kind=code-symbol | source=probe/main_scripts/cpe.py:L103 | neighbors=[cpe.py, Prefer an explicit version field; else …, to_cpe()]
-- "main_scripts_cpe_to_cpe": "to_cpe()" | kind=code-symbol | source=probe/main_scripts/cpe.py:L116 | neighbors=[cpe.py, Return {vendor, product, version, cpe23…, _extract_version()]
-- "main_scripts_db_scanner_dbscanner_scan_port": "._scan_port()" | kind=code-symbol | source=probe/main_scripts/db_scanner.py:L266 | neighbors=[DBScanner, ._probe_one(), .scan_target()]
-- "main_scripts_db_scanner_interpret_redis_info": "interpret_redis_info()" | kind=code-symbol | source=probe/main_scripts/db_scanner.py:L101 | neighbors=[db_scanner.py, _probe_redis(), Classify a Redis INFO reply. `unauthent…]
-- "main_scripts_dns_scanner_derive_zones": "derive_zones()" | kind=code-symbol | source=probe/main_scripts/dns_scanner.py:L55 | neighbors=[dns_scanner.py, ._probe(), Candidate zone names to try AXFR / DNSS…]
-- "main_scripts_dns_scanner_dnsscanner_axfr": "._axfr()" | kind=code-symbol | source=probe/main_scripts/dns_scanner.py:L139 | neighbors=[DNSScanner, ._probe(), Attempt a zone transfer, reading increm…]
-- "main_scripts_findings_finding_row": "_finding_row()" | kind=code-symbol | source=probe/main_scripts/findings.py:L1257 | neighbors=[findings.py, One finding as the finding-section show…, summarize()]
-- "main_scripts_findings_is_open": "_is_open()" | kind=code-symbol | source=probe/main_scripts/findings.py:L119 | neighbors=[findings.py, A definitively open TCP port. `open|fil…, _rule_cleartext_and_exposure()]
-- "main_scripts_ftp_scanner_banner_software": "banner_software()" | kind=code-symbol | source=probe/main_scripts/ftp_scanner.py:L55 | neighbors=[ftp_scanner.py, ._probe(), Best-effort software token from the 220…]
-- "main_scripts_ftp_scanner_parse_pasv": "parse_pasv()" | kind=code-symbol | source=probe/main_scripts/ftp_scanner.py:L44 | neighbors=[ftp_scanner.py, ._list_bounded(), Extract the passive data PORT from a 22…]
-- "main_scripts_iot_scanner_mqtt_connect": "_mqtt_connect()" | kind=code-symbol | source=probe/main_scripts/iot_scanner.py:L259 | neighbors=[iot_scanner.py, _mqtt_remaining_len(), _probe_mqtt()]
-- "main_scripts_iot_scanner_probe_coap_sync": "_probe_coap_sync()" | kind=code-symbol | source=probe/main_scripts/iot_scanner.py:L383 | neighbors=[iot_scanner.py, _coap_get_wellknown_core(), _parse_coap_response()]
-- "main_scripts_iot_scanner_probe_ssdp_sync": "_probe_ssdp_sync()" | kind=code-symbol | source=probe/main_scripts/iot_scanner.py:L90 | neighbors=[iot_scanner.py, _fetch_upnp_root_desc(), _parse_ssdp_headers()]
-- "main_scripts_ipmi_scanner_build_open_session_request": "build_open_session_request()" | kind=code-symbol | source=probe/main_scripts/ipmi_scanner.py:L36 | neighbors=[ipmi_scanner.py, ._probe(), A fixed RMCP+ Open Session Request offe…]
-- "main_scripts_ipmi_scanner_parse_open_session_response": "parse_open_session_response()" | kind=code-symbol | source=probe/main_scripts/ipmi_scanner.py:L52 | neighbors=[ipmi_scanner.py, ._probe(), Parse an RMCP+ Open Session Response; N…]
-- "main_scripts_ipv6_discovery_is_ipv6": "_is_ipv6()" | kind=code-symbol | source=probe/main_scripts/ipv6_discovery.py:L34 | neighbors=[ipv6_discovery.py, parse_ip_neigh6(), parse_ndp()]
-- "main_scripts_ipv6_discovery_own_ipv6_addresses": "_own_ipv6_addresses()" | kind=code-symbol | source=probe/main_scripts/ipv6_discovery.py:L80 | neighbors=[ipv6_discovery.py, discover_ipv6_hosts(), Best-effort set of this host's own IPv6…]
-- "main_scripts_ipv6_discovery_run": "_run()" | kind=code-symbol | source=probe/main_scripts/ipv6_discovery.py:L94 | neighbors=[ipv6_discovery.py, _ping_all_nodes(), _read_neighbor_cache()]
-- "main_scripts_ja4s_compute_ja4s": "compute_ja4s()" | kind=code-symbol | source=probe/main_scripts/ja4s.py:L115 | neighbors=[ja4s.py, ja4s_from_parsed(), Do one standard TLS handshake and compu…]
-- "main_scripts_ja4s_ext_types": "_ext_types()" | kind=code-symbol | source=probe/main_scripts/ja4s.py:L65 | neighbors=[ja4s.py, _walk_extensions(), ja4s_from_parsed()]
-- "main_scripts_ja4s_ja4s_from_serverhello": "ja4s_from_serverhello()" | kind=code-symbol | source=probe/main_scripts/ja4s.py:L109 | neighbors=[ja4s.py, ja4s_from_parsed(), JA4S from raw ServerHello record bytes …]
+- "tests_test_weakness_map_testclicorrelatemerges": "TestCliCorrelateMerges" | kind=code-symbol | source=probe/tests/test_weakness_map.py:L180 | neighbors=[test_weakness_map.py, ._disk_db(), .test_correlate_includes_weakness_findi…, .test_no_weakness_map_flag_disables_it()]
+- "tests_test_weakness_map_testfindingview": "TestFindingView" | kind=code-symbol | source=probe/tests/test_weakness_map.py:L56 | neighbors=[test_weakness_map.py, .test_non_finding_ignored(), .test_raw_shape(), .test_wrapped_shape()]
+- "tests_test_wire_identity_testmoduleconstantsunbranded": "TestModuleConstantsUnbranded" | kind=code-symbol | source=probe/tests/test_wire_identity.py:L80 | neighbors=[test_wire_identity.py, Import-time probe constants built from …, .test_iot_rtsp_options(), .test_service_banner_http_probe()]
+- "tests_test_workflow_execution_concurrencyscanner": "_ConcurrencyScanner" | kind=code-symbol | source=probe/tests/test_workflow_execution.py:L46 | neighbors=[test_workflow_execution.py, .__init__(), .scan_target(), test_host_fanout_is_bounded()]
+- "tests_test_xml_parser": "test_xml_parser.py" | kind=code-symbol | source=manager/backend/tests/test_xml_parser.py:L1 | neighbors=[d1b4dd3 trim frontend to 7 core pages; …, TestNmapXMLParser, Unit tests for NmapXMLParser., 298a9d4 trim frontend to 7 core pages; …]
+- "tools_installer_installall": "installAll()" | kind=code-symbol | source=manager/frontend/lib/tools/installer.ts:L226 | neighbors=[tools.ts, installer.ts, getInstalledRecord(), installTool()]
+- "tools_issue_license_main": "main()" | kind=code-symbol | source=probe/tools/issue_license.py:L75 | neighbors=[issue_license.py, issue(), keygen(), pubkey()]
+- "utils_db": "db.py" | kind=code-symbol | source=manager/backend/app/utils/db.py:L1 | neighbors=[d1b4dd3 trim frontend to 7 core pages; …, get_or_404(), Shared database helpers — single source…, 298a9d4 trim frontend to 7 core pages; …]
+- "utils_hash": "hash.py" | kind=code-symbol | source=manager/backend/app/utils/hash.py:L1 | neighbors=[d1b4dd3 trim frontend to 7 core pages; …, dedup_hash(), Shared hashing utilities — deduplicatio…, 298a9d4 trim frontend to 7 core pages; …]
+- "versions_0015_finding_risk_score_scale": "0015_finding_risk_score_scale.py" | kind=code-symbol | source=manager/backend/alembic/versions/0015_finding_risk_score_scale.py:L1 | neighbors=[1fe16c8 stable but some dead code, need…, downgrade(), upgrade(), Allow the documented 0-1000 finding ris…]
+- "versions_0016_user_tenant_is_active": "0016_user_tenant_is_active.py" | kind=code-symbol | source=manager/backend/alembic/versions/0016_user_tenant_is_active.py:L1 | neighbors=[65f22a7 Add comprehensive tests for aut…, downgrade(), upgrade(), Add is_active to users and tenants; add…]
+- "versions_0017_scan_job_attempts": "0017_scan_job_attempts.py" | kind=code-symbol | source=manager/backend/alembic/versions/0017_scan_job_attempts.py:L1 | neighbors=[b5ffcb0 Refactor Vedha probe installer …, downgrade(), upgrade(), Add fenced execution attempts for agent…]
+- "versions_0018_probe_enrollment": "0018_probe_enrollment.py" | kind=code-symbol | source=manager/backend/alembic/versions/0018_probe_enrollment.py:L1 | neighbors=[b5ffcb0 Refactor Vedha probe installer …, downgrade(), upgrade(), Add Manager-approved device-key probe e…]
+- "versions_0020_finding_resolution_lifecycle": "0020_finding_resolution_lifecycle.py" | kind=code-symbol | source=manager/backend/alembic/versions/0020_finding_resolution_lifecycle.py:L1 | neighbors=[ddb51f2 feat(resolution): add finding r…, downgrade(), upgrade(), Finding resolution lifecycle: coverage-…]
+- "versions_0021_finding_verification": "0021_finding_verification.py" | kind=code-symbol | source=manager/backend/alembic/versions/0021_finding_verification.py:L1 | neighbors=[0fbec7d feat(verification): add finding…, downgrade(), upgrade(), Finding verification verdict columns (P…]
+- "versions_0022_validation_requests": "0022_validation_requests.py" | kind=code-symbol | source=manager/backend/alembic/versions/0022_validation_requests.py:L1 | neighbors=[58c2d10 feat(active-validation): Valida…, downgrade(), upgrade(), Approval-gated safe active-validation r…]
+- "versions_0023_customer_portal_foundation": "0023_customer_portal_foundation.py" | kind=code-symbol | source=manager/backend/alembic/versions/0023_customer_portal_foundation.py:L1 | neighbors=[22701ea Add tests for scanner parity an…, downgrade(), upgrade(), Customer portal foundation (Part 2, Pha…]
+- "versions_0025_service_exposure": "0025_service_exposure.py" | kind=code-symbol | source=manager/backend/alembic/versions/0025_service_exposure.py:L1 | neighbors=[22701ea Add tests for scanner parity an…, downgrade(), upgrade(), Service exposure: persist the exposure_…]
+- "versions_0026_client_portal_slug": "0026_client_portal_slug.py" | kind=code-symbol | source=manager/backend/alembic/versions/0026_client_portal_slug.py:L1 | neighbors=[c4386e4 feat(customers): operator Custo…, downgrade(), upgrade(), Client portal slug — the customer's sta…]
+- "versions_0027_scan_request_targets_intensity": "0027_scan_request_targets_intensity.py" | kind=code-symbol | source=manager/backend/alembic/versions/0027_scan_request_targets_intensity.py:L1 | neighbors=[35f02a9 feat(portal): rich scan request…, downgrade(), upgrade(), Scan-request targets + intensity — the …]
+- "versions_0028_remediation_plans": "0028_remediation_plans.py" | kind=code-symbol | source=manager/backend/alembic/versions/0028_remediation_plans.py:L1 | neighbors=[fd5dc96 feat(remediation): AI + determi…, downgrade(), upgrade(), Remediation plans — cached, OS-specific…]
+- "versions_0030_sla_policies": "0030_sla_policies.py" | kind=code-symbol | source=manager/backend/alembic/versions/0030_sla_policies.py:L1 | neighbors=[c5ebd38 feat(sla): per-tenant custom SL…, downgrade(), upgrade(), SLA policies — per-tenant custom remedi…]
+- "versions_0031_integrations": "0031_integrations.py" | kind=code-symbol | source=manager/backend/alembic/versions/0031_integrations.py:L1 | neighbors=[027f4e4 feat(integrations): per-tenant …, downgrade(), upgrade(), Integrations — per-tenant notification …]
+- "versions_0032_scan_request_use_case": "0032_scan_request_use_case.py" | kind=code-symbol | source=manager/backend/alembic/versions/0032_scan_request_use_case.py:L1 | neighbors=[c7f226f chore: bundle pending working-t…, downgrade(), upgrade(), scan_requests.use_case_id — the capabil…]
+- "versions_0033_finding_events": "0033_finding_events.py" | kind=code-symbol | source=manager/backend/alembic/versions/0033_finding_events.py:L1 | neighbors=[d98f654 feat(manager): network-VA campa…, downgrade(), upgrade(), Finding lifecycle audit trail — append-…]
+- "versions_0034_run_lease_worker_heartbeat": "0034_run_lease_worker_heartbeat.py" | kind=code-symbol | source=manager/backend/alembic/versions/0034_run_lease_worker_heartbeat.py:L1 | neighbors=[6bb51ab feat: add detection-explain end…, downgrade(), upgrade(), Stage 2b: DetectionRun lease + worker h…]
+- "versions_0036_scan_job_reference": "0036_scan_job_reference.py" | kind=code-symbol | source=manager/backend/alembic/versions/0036_scan_job_reference.py:L1 | neighbors=[8f6bf49 Refactor code structure and rem…, downgrade(), upgrade(), scan jobs get a human-readable referenc…]
+- "versions_0037_scan_job_cancelled_status": "0037_scan_job_cancelled_status.py" | kind=code-symbol | source=manager/backend/alembic/versions/0037_scan_job_cancelled_status.py:L1 | neighbors=[8f6bf49 Refactor code structure and rem…, downgrade(), upgrade(), scan jobs gain a terminal `cancelled` s…]
+- "versions_0038_finding_content_overrides": "0038_finding_content_overrides.py" | kind=code-symbol | source=manager/backend/alembic/versions/0038_finding_content_overrides.py:L1 | neighbors=[ef14810 Implement instance locking mech…, downgrade(), upgrade(), findings gain a `content_overrides` JSO…]
+- "versions_0039_finding_assigned_to": "0039_finding_assigned_to.py" | kind=code-symbol | source=manager/backend/alembic/versions/0039_finding_assigned_to.py:L1 | neighbors=[9e5f980 feat(findings): add assigned_to…, downgrade(), upgrade(), finding ownership: assigned_to  A findi…]
+- "versions_0040_scan_schedules": "0040_scan_schedules.py" | kind=code-symbol | source=manager/backend/alembic/versions/0040_scan_schedules.py:L1 | neighbors=[e80b25f feat(scheduling): ScanSchedule …, downgrade(), upgrade(), recurring scan schedules  Vedha could o…]
+- "vuln_enrichment_vulnenrichmentservice_check_cisa_kev": ".check_cisa_kev()" | kind=code-symbol | source=manager/backend/app/vuln/enrichment.py:L244 | neighbors=[True if CVE is in the CISA Known Exploi…, VulnEnrichmentService, ._get_kev_catalog(), ._fetch_all()]
+- "vuln_enrichment_vulnenrichmentservice_compute_composite_risk": ".compute_composite_risk()" | kind=code-symbol | source=manager/backend/app/vuln/enrichment.py:L297 | neighbors=[Returns composite risk score on 0-1000 …, VulnEnrichmentService, .get(), .enrich()]
+- "vuln_enrichment_vulnenrichmentservice_fetch_epss": ".fetch_epss()" | kind=code-symbol | source=manager/backend/app/vuln/enrichment.py:L215 | neighbors=[Returns {epss_score: float, percentile:…, VulnEnrichmentService, ._fetch_all(), .get()]
+- "vuln_nessus_nessusscanner_export_nessus_file": ".export_nessus_file()" | kind=code-symbol | source=manager/backend/app/vuln/nessus.py:L256 | neighbors=[NessusScanner, ._get_client(), Request + poll + download .nessus XML f…, Request + poll + download .nessus XML f…]
+- "vuln_nessus_nessusscanner_launch_scan": ".launch_scan()" | kind=code-symbol | source=manager/backend/app/vuln/nessus.py:L139 | neighbors=[NessusScanner, ._get_client(), Returns scan_uuid (token for tracking)., Returns scan_uuid (token for tracking).]
+- "vuln_nessus_nessusscanner_poll_status": ".poll_status()" | kind=code-symbol | source=manager/backend/app/vuln/nessus.py:L150 | neighbors=[NessusScanner, ._get_client(), Returns {status, progress_percent, host…, Returns {status, progress_percent, host…]
+- "vuln_nuclei_nucleiscanner_partial_or_raise": "._partial_or_raise()" | kind=code-symbol | source=manager/backend/app/vuln/nuclei.py:L337 | neighbors=[NucleiScanner, NucleiRunReport, NucleiScanError, .run_scan()]
+- "vuln_nuclei_nucleiscanner_template_selector": ".template_selector()" | kind=code-symbol | source=manager/backend/app/vuln/nuclei.py:L444 | neighbors=[NucleiScanner, Given a list of service names on an ass…, Given a list of service names on an ass…, Given a list of service names on an ass…]
+- "vuln_nuclei_rationale_1": "NucleiScanner — async subprocess wrapper around the Nuclei CLI.  Nuclei outputs" | kind=entity | source=manager/backend/app/vuln/nuclei.py:L1 | neighbors=[nuclei.py, FindingSeverity, FindingStatus, ServiceFingerprint]
 
 ## Instructions
 

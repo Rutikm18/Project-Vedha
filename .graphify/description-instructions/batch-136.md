@@ -1,4 +1,4 @@
-# Node Description Batch 137 of 336
+# Node Description Batch 137 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,51 +19,53 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-Write every description in English (en). Do not switch languages.
+LANGUAGE: each entry has a `lang=` marker giving the language of its source.
+Write that entry's description in EXACTLY that language. Do not translate to
+a single common language — match each node's source language individually.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "main_scripts_syn_scanner_rationale_232": "A genuine reply to our SYN acknowledges ISN+1. The reply's own source     (ip_sr" | kind=entity | source=probe/main_scripts/syn_scanner.py:L232 | neighbors=[verify_reply_cookie(), _local_source_ip()]
-- "main_scripts_syn_scanner_synscanner_fallback_scan": "._fallback_scan()" | kind=code-symbol | source=probe/main_scripts/syn_scanner.py:L371 | neighbors=[SynScanner, .scan_target()]
-- "main_scripts_syn_scanner_synscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/syn_scanner.py:L315 | neighbors=[SynScanner, syn_scan_supported()]
-- "main_scripts_syn_scanner_synscanner_syn_scan_target": "._syn_scan_target()" | kind=code-symbol | source=probe/main_scripts/syn_scanner.py:L379 | neighbors=[SynScanner, .scan_target()]
-- "main_scripts_tls_fingerprint_probe_specs": "_probe_specs()" | kind=code-symbol | source=probe/main_scripts/tls_fingerprint.py:L221 | neighbors=[tls_fingerprint.py, fingerprint_host()]
-- "main_scripts_tls_fingerprint_tlsfingerprintscanner_scan_port": "._scan_port()" | kind=code-symbol | source=probe/main_scripts/tls_fingerprint.py:L290 | neighbors=[TLSFingerprintScanner, .scan_target()]
-- "main_scripts_tls_fingerprint_tlsfingerprintscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/main_scripts/tls_fingerprint.py:L320 | neighbors=[TLSFingerprintScanner, ._scan_port()]
-- "main_scripts_tls_fingerprint_version_code": "version_code()" | kind=code-symbol | source=probe/main_scripts/tls_fingerprint.py:L174 | neighbors=[tls_fingerprint.py, jarm_style_digest()]
-- "main_scripts_tls_scanner_parse_cert_der": "_parse_cert_der()" | kind=code-symbol | source=probe/main_scripts/tls_scanner.py:L215 | neighbors=[tls_scanner.py, _scan_tls_sync()]
-- "main_scripts_tls_scanner_tlsscanner_scan_port": "._scan_port()" | kind=code-symbol | source=probe/main_scripts/tls_scanner.py:L320 | neighbors=[TLSScanner, .scan_target()]
-- "main_scripts_tls_scanner_tlsscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/main_scripts/tls_scanner.py:L339 | neighbors=[TLSScanner, ._scan_port()]
-- "main_scripts_udp_scanner_ike_probe": "_ike_probe()" | kind=code-symbol | source=probe/main_scripts/udp_scanner.py:L77 | neighbors=[udp_scanner.py, Minimal IKEv2 IKE_SA_INIT probe.  Sends…]
-- "main_scripts_udp_scanner_interpret_dns_recursion": "interpret_dns_recursion()" | kind=code-symbol | source=probe/main_scripts/udp_scanner.py:L173 | neighbors=[udp_scanner.py, ._probe()]
-- "main_scripts_udp_scanner_interpret_memcached_stats": "interpret_memcached_stats()" | kind=code-symbol | source=probe/main_scripts/udp_scanner.py:L184 | neighbors=[udp_scanner.py, ._probe()]
-- "main_scripts_udp_scanner_interpret_ntp_monlist": "interpret_ntp_monlist()" | kind=code-symbol | source=probe/main_scripts/udp_scanner.py:L169 | neighbors=[udp_scanner.py, ._probe()]
-- "main_scripts_udp_scanner_ntp_monlist_probe": "_ntp_monlist_probe()" | kind=code-symbol | source=probe/main_scripts/udp_scanner.py:L50 | neighbors=[udp_scanner.py, ._probe()]
-- "main_scripts_udp_scanner_tftp_probe": "_tftp_probe()" | kind=code-symbol | source=probe/main_scripts/udp_scanner.py:L132 | neighbors=[udp_scanner.py, TFTP RRQ for a non-existent file.  Erro…]
-- "main_scripts_udp_scanner_udpscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/main_scripts/udp_scanner.py:L386 | neighbors=[UDPScanner, ._probe()]
-- "main_scripts_unauth_access_as_text": "_as_text()" | kind=code-symbol | source=probe/main_scripts/unauth_access.py:L40 | neighbors=[unauth_access.py, classify_unauth_access()]
-- "main_scripts_va_campaign_atomic_write_json": "_atomic_write_json()" | kind=code-symbol | source=probe/main_scripts/va_campaign.py:L282 | neighbors=[va_campaign.py, ._flush()]
-- "main_scripts_va_campaign_bounded_gather": "_bounded_gather()" | kind=code-symbol | source=probe/main_scripts/va_campaign.py:L374 | neighbors=[va_campaign.py, Run coro_factory(item) over items with …]
-- "main_scripts_va_campaign_campaignoptions": "CampaignOptions" | kind=code-symbol | source=probe/main_scripts/va_campaign.py:L97 | neighbors=[va_campaign.py, Everything that changes WHAT the campai…]
-- "main_scripts_va_campaign_cliprogressview_format": "._format()" | kind=code-symbol | source=probe/main_scripts/va_campaign.py:L690 | neighbors=[CliProgressView, ._redraw()]
-- "main_scripts_va_campaign_cliprogressview_transitions": "._transitions()" | kind=code-symbol | source=probe/main_scripts/va_campaign.py:L678 | neighbors=[CliProgressView, .__call__()]
-- "main_scripts_va_campaign_discover_ipv6": "_discover_ipv6()" | kind=code-symbol | source=probe/main_scripts/va_campaign.py:L343 | neighbors=[va_campaign.py, Best-effort IPv6 neighbor discovery (ND…]
-- "main_scripts_va_campaign_progressreporter_current": "._current()" | kind=code-symbol | source=probe/main_scripts/va_campaign.py:L230 | neighbors=[ProgressReporter, .snapshot()]
-- "main_scripts_va_campaign_progressreporter_percent": "._percent()" | kind=code-symbol | source=probe/main_scripts/va_campaign.py:L222 | neighbors=[ProgressReporter, .snapshot()]
-- "main_scripts_va_campaign_stage": "Stage" | kind=code-symbol | source=probe/main_scripts/va_campaign.py:L126 | neighbors=[va_campaign.py, default_stages()]
-- "main_scripts_va_campaign_stageoutcome": "StageOutcome" | kind=code-symbol | source=probe/main_scripts/va_campaign.py:L113 | neighbors=[va_campaign.py, What a stage produced. `count` is stage…]
-- "main_scripts_va_campaign_stagestate_to_dict": ".to_dict()" | kind=code-symbol | source=probe/main_scripts/va_campaign.py:L161 | neighbors=[.snapshot(), StageState]
-- "main_scripts_vantage_matrix_is_external": "_is_external()" | kind=code-symbol | source=probe/main_scripts/vantage_matrix.py:L34 | neighbors=[vantage_matrix.py, reconcile_vantages()]
-- "main_scripts_vnc_scanner_vncscanner_scan_port": "._scan_port()" | kind=code-symbol | source=probe/main_scripts/vnc_scanner.py:L127 | neighbors=[VNCScanner, .scan_target()]
-- "main_scripts_vnc_scanner_vncscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/main_scripts/vnc_scanner.py:L145 | neighbors=[VNCScanner, ._scan_port()]
-- "main_scripts_web_scanner_fetch": "_fetch()" | kind=code-symbol | source=probe/main_scripts/web_scanner.py:L78 | neighbors=[web_scanner.py, parse_allow_header()]
-- "main_scripts_web_scanner_noredirect": "_NoRedirect" | kind=code-symbol | source=probe/main_scripts/web_scanner.py:L55 | neighbors=[web_scanner.py, .redirect_request()]
-- "main_scripts_web_scanner_webscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/main_scripts/web_scanner.py:L176 | neighbors=[WebScanner, ._scan_port()]
-- "main_scripts_windows_collector_smb_registry_collect": "_smb_registry_collect()" | kind=code-symbol | source=probe/main_scripts/windows_collector.py:L158 | neighbors=[windows_collector.py, Connect to RemoteRegistry over SMB and …]
-- "main_scripts_windows_collector_windowscollector_full_user": "._full_user()" | kind=code-symbol | source=probe/main_scripts/windows_collector.py:L294 | neighbors=[WindowsCollector, ._collect_host()]
-- "main_scripts_windows_collector_windowscollector_run": ".run()" | kind=code-symbol | source=probe/main_scripts/windows_collector.py:L326 | neighbors=[WindowsCollector, ._collect_host()]
-- "main_scripts_windows_collector_windowscollector_smb_result": "._smb_result()" | kind=code-symbol | source=probe/main_scripts/windows_collector.py:L318 | neighbors=[WindowsCollector, ._collect_host()]
+- "workflow_execution_planned_components": "planned_components()" | kind=code-symbol | source=probe/workflow/execution.py:L104 | neighbors=[execution.py, Resolve the exact collector plan for on…, Resolve the exact collector plan for on…] | lang=en
+- "workflow_gates_gate_4b_os_fingerprint": "gate_4b_os_fingerprint()" | kind=code-symbol | source=probe/workflow/gates.py:L122 | neighbors=[gates.py, gate_0_is_passive_profile(), OS identity for a host already proven a…] | lang=en
+- "workflow_host_health_env_int": "_env_int()" | kind=code-symbol | source=probe/workflow/host_health.py:L75 | neighbors=[host_health.py, _heartbeat_misses(), _strike_threshold()] | lang=en
+- "workflow_host_health_heartbeat_interval": "_heartbeat_interval()" | kind=code-symbol | source=probe/workflow/host_health.py:L87 | neighbors=[host_health.py, .watch(), Seconds between liveness heartbeats whi…] | lang=en
+- "workflow_host_health_hosthealthmonitor_is_offline": ".is_offline()" | kind=code-symbol | source=probe/workflow/host_health.py:L186 | neighbors=[HostHealthMonitor, ._state(), .watch()] | lang=en
+- "workflow_host_health_hosthealthmonitor_is_silence": "._is_silence()" | kind=code-symbol | source=probe/workflow/host_health.py:L133 | neighbors=[HostHealthMonitor, .observe(), True when a component ran and got nothi…] | lang=en
+- "workflow_host_health_hosthealthmonitor_suspect": ".suspect()" | kind=code-symbol | source=probe/workflow/host_health.py:L182 | neighbors=[HostHealthMonitor, .confirm(), ._state()] | lang=en
+- "workflow_init": "__init__.py" | kind=code-symbol | source=probe/workflow/__init__.py:L1 | neighbors=[d1b4dd3 trim frontend to 7 core pages; …, workflow — conditional, caching, depend…, 298a9d4 trim frontend to 7 core pages; …] | lang=en
+- "workflow_intensity_intensity_first_pass": "intensity_first_pass()" | kind=code-symbol | source=probe/workflow/intensity.py:L102 | neighbors=[intensity.py, resolve_intensity(), Ports to sweep BEFORE the rest, or None…] | lang=en
+- "workflow_modes_discovery": "discovery()" | kind=code-symbol | source=probe/workflow/modes.py:L60 | neighbors=[modes.py, EngagementMode, Host discovery plus the profile's TCP p…] | lang=en
+- "workflow_modes_host_discovery": "host_discovery()" | kind=code-symbol | source=probe/workflow/modes.py:L71 | neighbors=[modes.py, EngagementMode, Liveness checks only.] | lang=en
+- "workflow_modes_port_scan": "port_scan()" | kind=code-symbol | source=probe/workflow/modes.py:L82 | neighbors=[modes.py, EngagementMode, Liveness checks plus the profile's TCP …] | lang=en
+- "workflow_modes_service_fingerprint": "service_fingerprint()" | kind=code-symbol | source=probe/workflow/modes.py:L93 | neighbors=[modes.py, Liveness, TCP ports, and service banner…, EngagementMode] | lang=en
+- "workflow_router_looks_like_http": "looks_like_http()" | kind=code-symbol | source=probe/workflow/router.py:L63 | neighbors=[router.py, looks_like_db(), route_branches()] | lang=en
+- "workflow_workflow_engine_record": "_record()" | kind=code-symbol | source=probe/workflow/workflow_engine.py:L252 | neighbors=[workflow_engine.py, _run_branch(), run_engagement()] | lang=en
+- "workflow_workflow_engine_record_reused": "_record_reused()" | kind=code-symbol | source=probe/workflow/workflow_engine.py:L296 | neighbors=[workflow_engine.py, _run_branch(), run_engagement()] | lang=en
+- "workflow_workflow_engine_run_inventory": "_run_inventory()" | kind=code-symbol | source=probe/workflow/workflow_engine.py:L225 | neighbors=[workflow_engine.py, run_engagement(), _Sink] | lang=en
+- "workflow_workflow_engine_run_passive": "_run_passive()" | kind=code-symbol | source=probe/workflow/workflow_engine.py:L208 | neighbors=[workflow_engine.py, run_engagement(), _Sink] | lang=en
+- "workflow_workflow_engine_store_results": "_store_results()" | kind=code-symbol | source=probe/workflow/workflow_engine.py:L237 | neighbors=[workflow_engine.py, _run_branch(), run_engagement()] | lang=en
+- "ad_adcs_adcschecker_has_low_priv": "._has_low_priv()" | kind=code-symbol | source=manager/backend/app/ad/adcs.py:L127 | neighbors=[ADCSChecker, .check_esc1()] | lang=en
+- "ad_asreproast_asreproastchecker_get_no_preauth_accounts": ".get_no_preauth_accounts()" | kind=code-symbol | source=manager/backend/app/ad/asreproast.py:L42 | neighbors=[ASREPRoastChecker, Usernames of enabled accounts with pre-…] | lang=en
+- "ad_bloodhound_bloodhoundcollector_generate_finding": ".generate_finding()" | kind=code-symbol | source=manager/backend/app/ad/bloodhound.py:L229 | neighbors=[BloodHoundCollector, Build a Finding summarising the shortes…] | lang=en
+- "ad_bloodhound_bloodhoundcollector_query_da_paths": ".query_da_paths()" | kind=code-symbol | source=manager/backend/app/ad/bloodhound.py:L195 | neighbors=[BloodHoundCollector, Return shortest attack paths from any n…] | lang=en
+- "ad_bloodhound_bloodhoundcollector_run_collection": ".run_collection()" | kind=code-symbol | source=manager/backend/app/ad/bloodhound.py:L52 | neighbors=[BloodHoundCollector, Run bloodhound-python and return the li…] | lang=en
+- "ad_bloodhound_rationale_1": "BloodHoundCollector — wrapper around the BloodHound.py collector + a Neo4j inges" | kind=entity | source=manager/backend/app/ad/bloodhound.py:L1 | neighbors=[bloodhound.py, FindingSeverity] | lang=en
+- "ad_bloodhound_rationale_124": "Load nodes (users/computers/groups) and MemberOf edges into Neo4j.          Retu" | kind=entity | source=manager/backend/app/ad/bloodhound.py:L124 | neighbors=[.import_to_neo4j(), FindingSeverity] | lang=en
+- "ad_bloodhound_rationale_157": "Ingest one BloodHound collector file. Returns (#nodes, #rels)." | kind=entity | source=manager/backend/app/ad/bloodhound.py:L157 | neighbors=[._ingest_collection(), FindingSeverity] | lang=en
+- "ad_bloodhound_rationale_196": "Return shortest attack paths from any non-DA principal to a Domain Admins" | kind=entity | source=manager/backend/app/ad/bloodhound.py:L196 | neighbors=[.query_da_paths(), FindingSeverity] | lang=en
+- "ad_bloodhound_rationale_230": "Build a Finding summarising the shortest paths to Domain Admins." | kind=entity | source=manager/backend/app/ad/bloodhound.py:L230 | neighbors=[.generate_finding(), FindingSeverity] | lang=en
+- "ad_bloodhound_rationale_61": "Run bloodhound-python and return the list of produced JSON file paths.         R" | kind=entity | source=manager/backend/app/ad/bloodhound.py:L61 | neighbors=[.run_collection(), FindingSeverity] | lang=en
+- "ad_findings_severity_from_str": "severity_from_str()" | kind=code-symbol | source=manager/backend/app/ad/findings.py:L96 | neighbors=[findings.py, build_ad_finding()] | lang=en
+- "ad_init": "__init__.py" | kind=code-symbol | source=manager/backend/app/ad/__init__.py:L1 | neighbors=[d1b4dd3 trim frontend to 7 core pages; …, 298a9d4 trim frontend to 7 core pages; …] | lang=en
+- "ad_kerberoast_kerberoastchecker_pwd_last_set": "._pwd_last_set()" | kind=code-symbol | source=manager/backend/app/ad/kerberoast.py:L70 | neighbors=[KerberoastChecker, .get_spn_accounts()] | lang=en
+- "ad_ldap_enum_ldapenumerator_unbind": ".unbind()" | kind=code-symbol | source=manager/backend/app/ad/ldap_enum.py:L379 | neighbors=[LDAPEnumerator, .check_anonymous_bind()] | lang=en
+- "ad_ntlm_relay_ntlmrelaychecker_check_ldap_signing": ".check_ldap_signing()" | kind=code-symbol | source=manager/backend/app/ad/ntlm_relay.py:L80 | neighbors=[NTLMRelayChecker, Returns True if the DC *enforces* LDAP …] | lang=en
+- "ad_ntlm_relay_ntlmrelaychecker_generate_finding": ".generate_finding()" | kind=code-symbol | source=manager/backend/app/ad/ntlm_relay.py:L113 | neighbors=[NTLMRelayChecker, Build a Finding for hosts missing SMB s…] | lang=en
+- "ad_ntlm_relay_ntlmrelaychecker_probe_smb_host": "._probe_smb_host()" | kind=code-symbol | source=manager/backend/app/ad/ntlm_relay.py:L60 | neighbors=[NTLMRelayChecker, .check_smb_signing()] | lang=en
+- "ad_ntlm_relay_rationale_1": "NTLMRelayChecker — detect missing SMB/LDAP signing that enables NTLM relay.  NTL" | kind=entity | source=manager/backend/app/ad/ntlm_relay.py:L1 | neighbors=[ntlm_relay.py, FindingSeverity] | lang=en
+- "ad_ntlm_relay_rationale_118": "Build a Finding for hosts missing SMB signing. The attack_narrative         incl" | kind=entity | source=manager/backend/app/ad/ntlm_relay.py:L118 | neighbors=[.generate_finding(), FindingSeverity] | lang=en
+- "ad_ntlm_relay_rationale_31": "Probe SMB/LDAP signing posture across a host list." | kind=entity | source=manager/backend/app/ad/ntlm_relay.py:L31 | neighbors=[NTLMRelayChecker, FindingSeverity] | lang=pt
 
 ## Instructions
 

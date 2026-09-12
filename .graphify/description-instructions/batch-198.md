@@ -1,4 +1,4 @@
-# Node Description Batch 199 of 336
+# Node Description Batch 199 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -26,46 +26,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "detection_engine_version_compare_rationale_220": "Test hook: drop the in-memory record of which snapshots were validated." | kind=entity | source=manager/detection_engine/version_compare.py:L220 | neighbors=[_clear_validation_cache()] | lang=en
-- "detection_engine_version_compare_rationale_244": "Confirm pure-Python agrees with the real dpkg binary on the ordering of     `ver" | kind=entity | source=manager/detection_engine/version_compare.py:L244 | neighbors=[verify_pure_python_matches_dpkg()] | lang=en
-- "detection_engine_version_compare_rationale_31": "Real dpkg --compare-versions. None (not an error) if dpkg isn't     installed or" | kind=entity | source=manager/detection_engine/version_compare.py:L31 | neighbors=[_dpkg_compare_via_binary()] | lang=en
-- "detection_engine_version_compare_rationale_37": "Real dpkg --compare-versions. None (not an error) if dpkg isn't     installed or" | kind=entity | source=manager/detection_engine/version_compare.py:L37 | neighbors=[_dpkg_compare_via_binary()] | lang=en
-- "detection_engine_version_compare_rationale_53": "dpkg's non-digit character ordering: '~' sorts before EVERYTHING,     including" | kind=entity | source=manager/detection_engine/version_compare.py:L53 | neighbors=[_char_order()] | lang=en
-- "detection_engine_version_compare_rationale_59": "dpkg's non-digit character ordering: '~' sorts before EVERYTHING,     including" | kind=entity | source=manager/detection_engine/version_compare.py:L59 | neighbors=[_char_order()] | lang=en
-- "detection_engine_version_compare_rationale_86": "upstream_version or debian_revision comparison (no epoch, no '-')." | kind=entity | source=manager/detection_engine/version_compare.py:L86 | neighbors=[_compare_part()] | lang=en
-- "detection_engine_version_compare_rationale_92": "upstream_version or debian_revision comparison (no epoch, no '-')." | kind=entity | source=manager/detection_engine/version_compare.py:L92 | neighbors=[_compare_part()] | lang=en
-- "detection_engine_vuln_db_rationale_1": "vuln_db.py — offline, pinned vulnerability data store.  NO LIVE API CALLS HAPPEN" | kind=entity | source=manager/detection_engine/vuln_db.py:L1 | neighbors=[vuln_db.py] | lang=en
-- "detection_engine_vuln_db_rationale_102": "Raw OSV vulnerability records for this product, or [] if the         snapshot do" | kind=entity | source=manager/detection_engine/vuln_db.py:L102 | neighbors=[.lookup()] | lang=en
-- "detection_engine_vuln_db_rationale_106": "Raw OSV vulnerability records for this product, or [] if the         snapshot do" | kind=entity | source=manager/detection_engine/vuln_db.py:L106 | neighbors=[.lookup()] | lang=en
-- "detection_engine_vuln_db_rationale_110": "The CVSS v3 vector string OSV embedded for this CVE, if any.         Uses a pre-" | kind=entity | source=manager/detection_engine/vuln_db.py:L110 | neighbors=[.get_cvss_vector()] | lang=en
-- "detection_engine_vuln_db_rationale_113": "The CVSS v3 vector string OSV embedded for this CVE, if any.         Uses a pre-" | kind=entity | source=manager/detection_engine/vuln_db.py:L113 | neighbors=[.get_cvss_vector()] | lang=en
-- "detection_engine_vuln_db_rationale_117": "The CVSS v3 vector string OSV embedded for this CVE, if any.         Uses a pre-" | kind=entity | source=manager/detection_engine/vuln_db.py:L117 | neighbors=[.get_cvss_vector()] | lang=en
-- "detection_engine_vuln_db_rationale_134": "Test hook: drop the memoized snapshot cache so the next load re-reads." | kind=entity | source=manager/detection_engine/vuln_db.py:L134 | neighbors=[_clear_caches()] | lang=en
-- "detection_engine_vuln_db_rationale_138": "Test hook: drop the memoized snapshot cache so the next load re-reads." | kind=entity | source=manager/detection_engine/vuln_db.py:L138 | neighbors=[_clear_caches()] | lang=en
-- "detection_engine_vuln_db_rationale_140": "Every version string that appears as a range boundary in the snapshot —     the" | kind=entity | source=manager/detection_engine/vuln_db.py:L140 | neighbors=[_boundary_versions()] | lang=en
-- "detection_engine_vuln_db_rationale_144": "Every version string that appears as a range boundary in the snapshot —     the" | kind=entity | source=manager/detection_engine/vuln_db.py:L144 | neighbors=[_boundary_versions()] | lang=en
-- "detection_engine_vuln_db_rationale_157": "The actual parse + integrity-verify + build. Kept separate from     load_snapsho" | kind=entity | source=manager/detection_engine/vuln_db.py:L157 | neighbors=[_read_snapshot()] | lang=en
-- "detection_engine_vuln_db_rationale_161": "The actual parse + integrity-verify + build. Kept separate from     load_snapsho" | kind=entity | source=manager/detection_engine/vuln_db.py:L161 | neighbors=[_read_snapshot()] | lang=en
-- "detection_engine_vuln_db_rationale_185": "Merge an NVD/CPE companion snapshot into the primary VulnDB.      Records are co" | kind=entity | source=manager/detection_engine/vuln_db.py:L185 | neighbors=[_merge_companion()] | lang=en
-- "detection_engine_vuln_db_rationale_44": "Derives the synced product list from cpe_normalizer.py's tables —     the single" | kind=entity | source=manager/detection_engine/vuln_db.py:L44 | neighbors=[_default_products()] | lang=en
-- "detection_engine_vuln_db_rationale_47": "Derives the synced product list from cpe_normalizer.py's tables —     the single" | kind=entity | source=manager/detection_engine/vuln_db.py:L47 | neighbors=[_default_products()] | lang=en
-- "detection_engine_vuln_db_rationale_51": "Derives the synced product list from cpe_normalizer.py's tables —     the single" | kind=entity | source=manager/detection_engine/vuln_db.py:L51 | neighbors=[_default_products()] | lang=en
-- "detection_engine_vuln_db_rationale_60": "Stable hash of the snapshot's actual vulnerability content — recorded     in eve" | kind=entity | source=manager/detection_engine/vuln_db.py:L60 | neighbors=[_content_hash()] | lang=en
-- "detection_engine_vuln_db_rationale_63": "Stable hash of the snapshot's actual vulnerability content — recorded     in eve" | kind=entity | source=manager/detection_engine/vuln_db.py:L63 | neighbors=[_content_hash()] | lang=en
-- "detection_engine_vuln_db_rationale_67": "Stable hash of the snapshot's actual vulnerability content — recorded     in eve" | kind=entity | source=manager/detection_engine/vuln_db.py:L67 | neighbors=[_content_hash()] | lang=en
-- "detection_engine_vuln_db_rationale_79": "In-memory index over a loaded snapshot: product -> OSV vuln records.     Constru" | kind=entity | source=manager/detection_engine/vuln_db.py:L79 | neighbors=[VulnDB] | lang=pt
-- "detection_engine_vuln_db_rationale_82": "In-memory index over a loaded snapshot: product -> OSV vuln records.     Constru" | kind=entity | source=manager/detection_engine/vuln_db.py:L82 | neighbors=[VulnDB] | lang=pt
-- "detection_engine_vuln_db_rationale_86": "In-memory index over a loaded snapshot: product -> OSV vuln records.     Constru" | kind=entity | source=manager/detection_engine/vuln_db.py:L86 | neighbors=[VulnDB] | lang=pt
-- "detection_engine_vuln_db_rationale_99": "Raw OSV vulnerability records for this product, or [] if the         snapshot do" | kind=entity | source=manager/detection_engine/vuln_db.py:L99 | neighbors=[.lookup()] | lang=en
-- "detection_engine_vuln_db_vulndb_covers": ".covers()" | kind=code-symbol | source=manager/detection_engine/vuln_db.py:L113 | neighbors=[VulnDB] | lang=en
-- "detection_engine_vuln_db_vulndb_known_products": ".known_products()" | kind=code-symbol | source=manager/detection_engine/vuln_db.py:L122 | neighbors=[VulnDB] | lang=en
-- "detection_exposure_fusion_service_rationale_1": "exposure_fusion_service.py — apply multi-probe vantage fusion to Service rows." | kind=entity | source=manager/backend/app/detection/exposure_fusion_service.py:L1 | neighbors=[exposure_fusion_service.py] | lang=en
-- "detection_exposure_fusion_service_rationale_31": "Reconstruct one {\"exposure\": [...]} dict per probe from persisted facts.      Ea" | kind=entity | source=manager/backend/app/detection/exposure_fusion_service.py:L31 | neighbors=[_results_from_scan_rows()] | lang=en
-- "detection_exposure_fusion_service_rationale_53": "Fuse all probes' exposure_matrix observations for an engagement and stamp     th" | kind=entity | source=manager/backend/app/detection/exposure_fusion_service.py:L53 | neighbors=[recompute_fused_exposure()] | lang=en
-- "detection_logger_attacklogger_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/detection/logger.py:L24 | neighbors=[AttackLogger] | lang=en
-- "detection_prioritization_rationale_1": "Persist the canonical Manager risk score for all active findings.  WHY THIS EXIS" | kind=entity | source=manager/backend/app/detection/prioritization.py:L1 | neighbors=[prioritization.py] | lang=en
-- "detection_prioritization_rationale_103": "Compatibility wrapper around the canonical 0-1000 risk function." | kind=entity | source=manager/backend/app/detection/prioritization.py:L103 | neighbors=[composite_risk_score()] | lang=en
-- "detection_prioritization_rationale_116": "(Re)compute risk_score for every still-relevant finding in the engagement." | kind=entity | source=manager/backend/app/detection/prioritization.py:L116 | neighbors=[prioritize_engagement_findings()] | lang=en
+- "agent_agent_rationale_919": "Detect common debugging/tracing tools.  Informational only — does     NOT block" | kind=entity | source=probe/agent/agent.py:L919 | neighbors=[_check_anti_debug()] | lang=en
+- "agent_agent_rationale_921": "Acknowledge an offer without executing it before claim confirmation." | kind=entity | source=probe/agent/agent.py:L921 | neighbors=[_ws_stage_job_offer()] | lang=en
+- "agent_agent_rationale_927": "Acknowledge an offer without executing it before claim confirmation." | kind=entity | source=probe/agent/agent.py:L927 | neighbors=[_ws_stage_job_offer()] | lang=en
+- "agent_agent_rationale_928": "Detect common debugging/tracing tools.  Informational only — does     NOT block" | kind=entity | source=probe/agent/agent.py:L928 | neighbors=[_check_anti_debug()] | lang=en
+- "agent_agent_rationale_93": "Human label for what a job will actually run — the use-case (real intent),     n" | kind=entity | source=probe/agent/agent.py:L93 | neighbors=[_job_intent()] | lang=en
+- "agent_agent_rationale_939": "Release a staged job only after the manager confirms its claim." | kind=entity | source=probe/agent/agent.py:L939 | neighbors=[_ws_take_confirmed_job()] | lang=en
+- "agent_agent_rationale_940": "Run one job while keeping WS status/result frames best-effort." | kind=entity | source=probe/agent/agent.py:L940 | neighbors=[_ws_run_job()] | lang=en
+- "agent_agent_rationale_943": "Send periodic heartbeats over WebSocket." | kind=entity | source=probe/agent/agent.py:L943 | neighbors=[_ws_heartbeat_sender()] | lang=en
+- "agent_agent_rationale_945": "Release a staged job only after the manager confirms its claim." | kind=entity | source=probe/agent/agent.py:L945 | neighbors=[_ws_take_confirmed_job()] | lang=en
+- "agent_agent_rationale_955": "Send periodic heartbeats over WebSocket." | kind=entity | source=probe/agent/agent.py:L955 | neighbors=[_ws_heartbeat_sender()] | lang=en
+- "agent_agent_rationale_960": "Retry durable result files using the acknowledged HTTP result path." | kind=entity | source=probe/agent/agent.py:L960 | neighbors=[_flush_spool_over_http()] | lang=en
+- "agent_agent_rationale_967": "Load the probe's X25519 identity from persistent state, or create one.      Retu" | kind=entity | source=probe/agent/agent.py:L967 | neighbors=[_load_or_create_identity()] | lang=en
+- "agent_agent_rationale_972": "Retry durable result files using the acknowledged HTTP result path." | kind=entity | source=probe/agent/agent.py:L972 | neighbors=[_flush_spool_over_http()] | lang=en
+- "agent_agent_rationale_976": "Load the probe's X25519 identity from persistent state, or create one.      Retu" | kind=entity | source=probe/agent/agent.py:L976 | neighbors=[_load_or_create_identity()] | lang=en
+- "agent_agent_rationale_978": "Poll pending jobs even while WS is connected.      This makes result delivery re" | kind=entity | source=probe/agent/agent.py:L978 | neighbors=[_ws_http_poll_fallback()] | lang=en
+- "agent_agent_rationale_979": "Run one job while keeping WS status/result frames best-effort." | kind=entity | source=probe/agent/agent.py:L979 | neighbors=[_ws_run_job()] | lang=en
+- "agent_agent_rationale_985": "Run all startup security checks before any network I/O.      Order matters: HW b" | kind=entity | source=probe/agent/agent.py:L985 | neighbors=[_startup_gauntlet()] | lang=pt
+- "agent_agent_rationale_986": "Return (agent_id, token, fresh, identity_sk, identity_pk, public_key_b64)." | kind=entity | source=probe/agent/agent.py:L986 | neighbors=[_obtain_identity()] | lang=en
+- "agent_agent_rationale_996": "Return (agent_id, token, fresh, identity_sk, identity_pk, public_key_b64)." | kind=entity | source=probe/agent/agent.py:L996 | neighbors=[_obtain_identity()] | lang=en
+- "agent_agent_rationale_997": "Return (agent_id, token, fresh, identity_sk, identity_pk, public_key_b64)." | kind=entity | source=probe/agent/agent.py:L997 | neighbors=[_obtain_identity()] | lang=en
+- "agent_agent_rung": "Rung" | kind=code-symbol | source=manager/frontend/lib/agent/agent.ts:L18 | neighbors=[agent.py] | lang=en
+- "agent_agent_rung_labels": "RUNG_LABELS" | kind=code-symbol | source=manager/frontend/lib/agent/agent.ts:L20 | neighbors=[agent.py] | lang=en
+- "agent_agent_toanthropictool": "toAnthropicTool()" | kind=code-symbol | source=manager/frontend/lib/agent/agent.ts:L67 | neighbors=[agent.py] | lang=en
+- "agent_bootstrap_rationale_1": "bootstrap.py — Layer-1 (Python runtime) install + optional installer verificatio" | kind=entity | source=probe/agent/bootstrap.py:L1 | neighbors=[bootstrap.py] | lang=en
+- "agent_bootstrap_rationale_14": "The per-OS command that installs Python 3 + the venv module. Empty list     mean" | kind=entity | source=probe/agent/bootstrap.py:L14 | neighbors=[python_install_cmd()] | lang=en
+- "agent_bootstrap_rationale_32": "strict wins a conflict (safer). Otherwise permissive — the initial-phase     def" | kind=entity | source=probe/agent/bootstrap.py:L32 | neighbors=[security_mode()] | lang=en
+- "agent_bootstrap_rationale_40": "Verify a fetched installer. strict = fail-closed; permissive = warn+continue." | kind=entity | source=probe/agent/bootstrap.py:L40 | neighbors=[verify_download()] | lang=pt
+- "agent_cli_configstore_init": ".__init__()" | kind=code-symbol | source=probe/agent/cli.py:L58 | neighbors=[ConfigStore] | lang=en
+- "agent_cli_rationale_574": "Run a bounded capability suite and optionally score known ground truth." | kind=entity | source=probe/agent/cli.py:L574 | neighbors=[cmd_validate()] | lang=en
+- "agent_cli_rationale_576": "Run a bounded capability suite and optionally score known ground truth." | kind=entity | source=probe/agent/cli.py:L576 | neighbors=[cmd_validate()] | lang=en
+- "agent_config_model_rationale_1": "config_model.py — single config precedence chain + effective source map.  Implem" | kind=entity | source=probe/agent/config_model.py:L1 | neighbors=[config_model.py] | lang=en
+- "agent_config_model_rationale_32": "Parse KEY=VALUE lines; ignore blanks and #comments." | kind=entity | source=probe/agent/config_model.py:L32 | neighbors=[parse_env_file()] | lang=en
+- "agent_config_model_rationale_45": "Return (values, sources). Precedence: cli > env > probe.env > manager > default." | kind=entity | source=probe/agent/config_model.py:L45 | neighbors=[resolve()] | lang=en
+- "agent_config_model_rationale_72": "Rows of (field, value, winning-source) for `config show --effective`." | kind=entity | source=probe/agent/config_model.py:L72 | neighbors=[render_effective()] | lang=en
+- "agent_config_model_to_bool": "_to_bool()" | kind=code-symbol | source=probe/agent/config_model.py:L12 | neighbors=[config_model.py] | lang=en
+- "agent_connect_rationale_1": "connect.py — OPTIONAL Manager mode + uplink security (Phase 6).  The agent is fu" | kind=entity | source=probe/agent/connect.py:L1 | neighbors=[connect.py] | lang=en
+- "agent_connect_rationale_36": "Deterministic bytes the Manager signs and the agent verifies (sig excluded)." | kind=entity | source=probe/agent/connect.py:L36 | neighbors=[canonical_job_bytes()] | lang=en
+- "agent_connect_rationale_42": "Verify contract version, Ed25519 signature (pinned key), and validity window." | kind=entity | source=probe/agent/connect.py:L42 | neighbors=[verify_job()] | lang=en
+- "agent_connect_rationale_67": "The independent ceiling: a job is admitted only if it is validly signed AND" | kind=entity | source=probe/agent/connect.py:L67 | neighbors=[admit_job()] | lang=en
+- "agent_connect_rationale_89": "Opt-in: enroll + run the daemon under the supervisor, honoring the kill     swit" | kind=entity | source=probe/agent/connect.py:L89 | neighbors=[run()] | lang=en
 
 ## Instructions
 

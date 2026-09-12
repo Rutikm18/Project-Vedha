@@ -1,4 +1,4 @@
-# Node Description Batch 203 of 336
+# Node Description Batch 203 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -26,46 +26,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "exploit_msf_client_rationale_89": "Execute a Metasploit module.         Returns job_id as string." | kind=entity | source=manager/backend/app/exploit/msf_client.py:L89 | neighbors=[.run_module()] | lang=pt
-- "exploit_nuclei_exploit_rationale_120": "Run Nuclei CVE PoC template against target.         Returns {vulnerable, evidenc" | kind=entity | source=manager/backend/app/exploit/nuclei_exploit.py:L120 | neighbors=[.run_cve_poc()] | lang=en
-- "exploit_nuclei_exploit_rationale_160": "Parse nuclei JSONL output for a single CVE PoC result." | kind=entity | source=manager/backend/app/exploit/nuclei_exploit.py:L160 | neighbors=[._parse_poc_output()] | lang=en
-- "exploit_nuclei_exploit_rationale_48": "Run Nuclei CVE PoC templates against a single target.     Every template is safe" | kind=entity | source=manager/backend/app/exploit/nuclei_exploit.py:L48 | neighbors=[NucleiExploitRunner] | lang=en
-- "exploit_nuclei_exploit_rationale_60": "Parse template YAML and validate it contains no write/delete/DoS actions." | kind=entity | source=manager/backend/app/exploit/nuclei_exploit.py:L60 | neighbors=[.safe_template_check()] | lang=en
-- "exploit_orchestrator_exploitorchestrator_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/exploit/orchestrator.py:L53 | neighbors=[ExploitOrchestrator] | lang=en
-- "exploit_safety_approvalrequirederror_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/exploit/safety.py:L30 | neighbors=[ApprovalRequiredError] | lang=en
-- "exploit_safety_rationale_1": "Safety constants, exceptions, and validators for the exploitation engine.  All s" | kind=entity | source=manager/backend/app/exploit/safety.py:L1 | neighbors=[safety.py] | lang=en
-- "exploit_safety_rationale_17": "Raised when a requested payload or module is not on the allowlist." | kind=entity | source=manager/backend/app/exploit/safety.py:L17 | neighbors=[SafetyViolationError] | lang=en
-- "exploit_safety_rationale_175": "Raises SafetyViolationError if payload is not on allowlist     or violates per-p" | kind=entity | source=manager/backend/app/exploit/safety.py:L175 | neighbors=[validate_payload()] | lang=en
-- "exploit_safety_rationale_203": "Raises SafetyViolationError if module is on the block list." | kind=entity | source=manager/backend/app/exploit/safety.py:L203 | neighbors=[validate_module()] | lang=en
-- "exploit_safety_rationale_21": "Raised when a target IP is outside the engagement scope CIDRs." | kind=entity | source=manager/backend/app/exploit/safety.py:L21 | neighbors=[OutOfScopeError] | lang=en
-- "exploit_safety_rationale_217": "Raises OutOfScopeError if target_ip is not in scope or is excluded." | kind=entity | source=manager/backend/app/exploit/safety.py:L217 | neighbors=[validate_scope()] | lang=en
-- "exploit_safety_rationale_240": "True if this target requires human manager approval before exploit runs." | kind=entity | source=manager/backend/app/exploit/safety.py:L240 | neighbors=[requires_approval()] | lang=en
-- "exploit_safety_rationale_25": "Raised when a job would exceed the maximum hosts per run." | kind=entity | source=manager/backend/app/exploit/safety.py:L25 | neighbors=[BlastRadiusExceededError] | lang=en
-- "exploit_safety_rationale_29": "Raised when a high-risk target requires manager approval before running." | kind=entity | source=manager/backend/app/exploit/safety.py:L29 | neighbors=[ApprovalRequiredError] | lang=pt
-- "exposure_route_exposure": "Exposure" | kind=code-symbol | source=manager/frontend/app/api/analytics/exposure/route.ts:L10 | neighbors=[route.ts] | lang=en
-- "exposure_route_get": "GET" | kind=code-symbol | source=manager/frontend/app/api/analytics/exposure/route.ts:L15 | neighbors=[route.ts] | lang=en
-- "findings_page_autoresolvedbadge": "AutoResolvedBadge()" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L401 | neighbors=[page.tsx] | lang=en
-- "findings_page_chiprow": "ChipRow()" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L451 | neighbors=[page.tsx] | lang=en
-- "findings_page_compliancepanel": "CompliancePanel()" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L1314 | neighbors=[page.tsx] | lang=en
-- "findings_page_complianceref": "ComplianceRef" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L96 | neighbors=[page.tsx] | lang=en
-- "findings_page_copybtn": "CopyBtn()" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L286 | neighbors=[page.tsx] | lang=en
-- "findings_page_coverage_color": "COVERAGE_COLOR" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L77 | neighbors=[page.tsx] | lang=en
-- "findings_page_cvechip": "CveChip()" | kind=code-symbol | source=manager/frontend/app/portal/findings/page.tsx:L42 | neighbors=[page.tsx] | lang=en
-- "findings_page_cvss_aggravating": "CVSS_AGGRAVATING" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L846 | neighbors=[page.tsx] | lang=en
-- "findings_page_cvss_metric": "CVSS_METRIC" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L834 | neighbors=[page.tsx] | lang=en
-- "findings_page_cvssmetric": "CvssMetric" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L848 | neighbors=[page.tsx] | lang=en
-- "findings_page_detailtab": "DetailTab" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L1487 | neighbors=[page.tsx] | lang=en
-- "findings_page_detectioncoverage": "DetectionCoverage" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L59 | neighbors=[page.tsx] | lang=en
-- "findings_page_detectionpill": "DetectionPill()" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L419 | neighbors=[page.tsx] | lang=en
-- "findings_page_engagementoption": "EngagementOption" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L214 | neighbors=[page.tsx] | lang=en
-- "findings_page_epssbar": "EpssBar()" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L268 | neighbors=[page.tsx] | lang=en
-- "findings_page_event_color": "EVENT_COLOR" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L1343 | neighbors=[page.tsx] | lang=en
-- "findings_page_eventactor": "eventActor()" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L1358 | neighbors=[page.tsx] | lang=en
-- "findings_page_eventdetaillabel": "eventDetailLabel()" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L1383 | neighbors=[page.tsx] | lang=en
-- "findings_page_eventnarrative": "eventNarrative()" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L1364 | neighbors=[page.tsx] | lang=en
-- "findings_page_evidencegallery": "EvidenceGallery()" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L635 | neighbors=[page.tsx] | lang=en
-- "findings_page_evidencepresentation": "evidencePresentation()" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L618 | neighbors=[page.tsx] | lang=en
-- "findings_page_exploitmaturity": "ExploitMaturity" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L58 | neighbors=[page.tsx] | lang=en
+- "agent_instance_lock_rationale_1": "instance_lock.py — one probe process per state file.  WHY THIS EXISTS (observed" | kind=entity | source=probe/agent/instance_lock.py:L1 | neighbors=[instance_lock.py] | lang=en
+- "agent_instance_lock_rationale_135": "Release explicitly. Process exit would do this anyway — this is for tests     an" | kind=entity | source=probe/agent/instance_lock.py:L135 | neighbors=[release_instance_lock()] | lang=en
+- "agent_instance_lock_rationale_52": "Another live process already owns this state file." | kind=entity | source=probe/agent/instance_lock.py:L52 | neighbors=[InstanceLockError] | lang=en
+- "agent_instance_lock_rationale_56": "Sidecar lock path for a state file. Never the state file itself — locking     th" | kind=entity | source=probe/agent/instance_lock.py:L56 | neighbors=[lock_path_for()] | lang=en
+- "agent_instance_lock_rationale_63": "Best-effort description of the current holder, for the error message only." | kind=entity | source=probe/agent/instance_lock.py:L63 | neighbors=[_holder_hint()] | lang=en
+- "agent_instance_lock_rationale_86": "Take the single-instance lock for `state_file`.      Returns the open handle, wh" | kind=entity | source=probe/agent/instance_lock.py:L86 | neighbors=[acquire_instance_lock()] | lang=en
+- "agent_job_admission_drop_denied": "drop_denied()" | kind=code-symbol | source=probe/agent/job_admission.py:L36 | neighbors=[job_admission.py] | lang=en
+- "agent_job_admission_rationale_1": "job_admission.py — the agent's independent, defense-in-depth admission gate.  Wi" | kind=entity | source=probe/agent/job_admission.py:L1 | neighbors=[job_admission.py] | lang=en
+- "agent_job_admission_rationale_22": "Resolve the Manager's IP from PLATFORM_URL so the fleet can never scan its     o" | kind=entity | source=probe/agent/job_admission.py:L22 | neighbors=[manager_ip_from_env()] | lang=en
+- "agent_job_admission_verify_signed_job": "verify_signed_job()" | kind=code-symbol | source=probe/agent/job_admission.py:L44 | neighbors=[job_admission.py] | lang=en
+- "agent_license_licenseerror_init": ".__init__()" | kind=code-symbol | source=probe/agent/license.py:L30 | neighbors=[LicenseError] | lang=en
+- "agent_license_rationale_1": "license.py — host-locked, vendor-signed anti-copy gate for the probe.  DESIGN (p" | kind=entity | source=probe/agent/license.py:L1 | neighbors=[license.py] | lang=en
+- "agent_license_rationale_102": "Combined startup gauntlet: HW bind → license check. Fails fast.      This is the" | kind=entity | source=probe/agent/license.py:L102 | neighbors=[gauntlet()] | lang=en
+- "agent_license_rationale_105": "Combined startup gauntlet: HW bind → license check. Fails fast.      This is the" | kind=entity | source=probe/agent/license.py:L105 | neighbors=[gauntlet()] | lang=en
+- "agent_license_rationale_36": "Stable per-machine ID, derived from hw_bind's hardware fingerprint." | kind=entity | source=probe/agent/license.py:L36 | neighbors=[host_fingerprint()] | lang=en
+- "agent_license_rationale_39": "Stable per-machine ID, derived from hw_bind's hardware fingerprint." | kind=entity | source=probe/agent/license.py:L39 | neighbors=[host_fingerprint()] | lang=en
+- "agent_license_rationale_51": "Returns the license payload dict if valid; raises LicenseError otherwise.     To" | kind=entity | source=probe/agent/license.py:L51 | neighbors=[verify_license()] | lang=en
+- "agent_license_rationale_54": "Returns the license payload dict if valid; raises LicenseError otherwise.     To" | kind=entity | source=probe/agent/license.py:L54 | neighbors=[verify_license()] | lang=en
+- "agent_license_rationale_85": "The gate the agent calls at startup. Honors LICENSE_ENFORCED and     reads the t" | kind=entity | source=probe/agent/license.py:L85 | neighbors=[check_license()] | lang=en
+- "agent_license_rationale_88": "The gate the agent calls at startup. Honors LICENSE_ENFORCED and     reads the t" | kind=entity | source=probe/agent/license.py:L88 | neighbors=[check_license()] | lang=en
+- "agent_local_run_rationale_1": "local_run.py — run the probe's REAL pipeline (workflow.run_engagement) directly" | kind=entity | source=probe/agent/local_run.py:L1 | neighbors=[local_run.py] | lang=en
+- "agent_local_run_rationale_110": "Actionable input error on stderr → exit code 2. No traceback: this is     operat" | kind=entity | source=probe/agent/local_run.py:L110 | neighbors=[_usage_error()] | lang=en
+- "agent_local_run_rationale_121": "Validate positional args (args[0]=target, [1]=profile, [2]=stage, [3]=filter)" | kind=entity | source=probe/agent/local_run.py:L121 | neighbors=[_parse_args()] | lang=en
+- "agent_local_run_rationale_200": "Synchronous entrypoint for the `local-run` CLI subcommand." | kind=entity | source=probe/agent/local_run.py:L200 | neighbors=[run()] | lang=en
+- "agent_local_run_rationale_43": "Resolve the port set from PROBE_LOCAL_PORTS.        unset      → [22, 80, 443]" | kind=entity | source=probe/agent/local_run.py:L43 | neighbors=[_ports_from_env()] | lang=en
+- "agent_local_run_rationale_69": "Drop internal bookkeeping keys (_collected_at, _via…) for readable output." | kind=entity | source=probe/agent/local_run.py:L69 | neighbors=[_clean()] | lang=en
+- "agent_local_run_rationale_76": "Render a port fact unambiguously: '445/tcp open', '11211/udp open|filtered     (" | kind=entity | source=probe/agent/local_run.py:L76 | neighbors=[_port_label()] | lang=pt
+- "agent_obs_rationale_1": "obs.py — observability (Phase 8): redacted structured logs, low-cardinality hear" | kind=entity | source=probe/agent/obs.py:L1 | neighbors=[obs.py] | lang=en
+- "agent_obs_rationale_38": "Mask the host octet so an own-IP never lands verbatim in a shared bundle." | kind=entity | source=probe/agent/obs.py:L38 | neighbors=[mask_ip()] | lang=en
+- "agent_obs_rationale_56": "Bounded-cardinality fleet-health signal. No IPs/hostnames/targets as keys." | kind=entity | source=probe/agent/obs.py:L56 | neighbors=[heartbeat_metrics()] | lang=en
+- "agent_obs_rationale_75": "A support bundle with secrets stripped and own-IPs masked." | kind=entity | source=probe/agent/obs.py:L75 | neighbors=[build_diagnostics()] | lang=en
+- "agent_release_rationale_1": "release.py — release integrity + SBOM (Phase 10).  The checksum manifest is the" | kind=entity | source=probe/agent/release.py:L1 | neighbors=[release.py] | lang=en
+- "agent_result_queue_rationale_1": "result_queue.py — durable, crash-safe, encrypted result spool (Phase 4).  Sits b" | kind=entity | source=probe/agent/result_queue.py:L1 | neighbors=[result_queue.py] | lang=en
+- "agent_result_queue_rationale_31": "Identity cipher — tests + explicitly-plaintext deployments only." | kind=entity | source=probe/agent/result_queue.py:L31 | neighbors=[NullCipher] | lang=en
+- "agent_result_queue_rationale_37": "Fernet cipher keyed by a per-host key file (0600) that never leaves the     host" | kind=entity | source=probe/agent/result_queue.py:L37 | neighbors=[host_sealed_cipher()] | lang=en
+- "agent_result_spool_rationale_1": "result_spool.py — local result persistence with upload retry.  When the probe co" | kind=entity | source=probe/agent/result_spool.py:L1 | neighbors=[result_spool.py] | lang=en
+- "agent_result_spool_rationale_100": "Load a previously spooled result, returning None if missing/corrupt." | kind=entity | source=probe/agent/result_spool.py:L100 | neighbors=[.load()] | lang=pt
+- "agent_result_spool_rationale_102": "Remove the spool file for a successfully uploaded result." | kind=entity | source=probe/agent/result_spool.py:L102 | neighbors=[.remove()] | lang=en
+- "agent_result_spool_rationale_111": "Remove the spool file for a successfully uploaded result." | kind=entity | source=probe/agent/result_spool.py:L111 | neighbors=[.remove()] | lang=en
+- "agent_result_spool_rationale_114": "Attempt to upload a result with retries and local spool as fallback.          Ar" | kind=entity | source=probe/agent/result_spool.py:L114 | neighbors=[.submit_with_retry()] | lang=en
 
 ## Instructions
 

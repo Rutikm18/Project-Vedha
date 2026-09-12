@@ -1,4 +1,4 @@
-# Node Description Batch 219 of 336
+# Node Description Batch 219 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,53 +19,51 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-LANGUAGE: each entry has a `lang=` marker giving the language of its source.
-Write that entry's description in EXACTLY that language. Do not translate to
-a single common language — match each node's source language individually.
+Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "main_scripts_iot_scanner_rationale_347": "CoAP Confirmable GET for /.well-known/core — resource discovery." | kind=entity | source=probe/main_scripts/iot_scanner.py:L347 | neighbors=[_coap_get_wellknown_core()] | lang=en
-- "main_scripts_iot_scanner_rationale_349": "CoAP Confirmable GET for /.well-known/core — resource discovery." | kind=entity | source=probe/main_scripts/iot_scanner.py:L349 | neighbors=[_coap_get_wellknown_core()] | lang=en
-- "main_scripts_iot_scanner_rationale_360": "Extract CoAP response code and content." | kind=entity | source=probe/main_scripts/iot_scanner.py:L360 | neighbors=[_parse_coap_response()] | lang=en
-- "main_scripts_iot_scanner_rationale_362": "Extract CoAP response code and content." | kind=entity | source=probe/main_scripts/iot_scanner.py:L362 | neighbors=[_parse_coap_response()] | lang=en
-- "main_scripts_iot_scanner_rationale_404": "HTTP GET to CWMP port — detect ACS or CPE management interface." | kind=entity | source=probe/main_scripts/iot_scanner.py:L404 | neighbors=[_probe_cwmp()] | lang=en
-- "main_scripts_iot_scanner_rationale_406": "HTTP GET to CWMP port — detect ACS or CPE management interface." | kind=entity | source=probe/main_scripts/iot_scanner.py:L406 | neighbors=[_probe_cwmp()] | lang=en
-- "main_scripts_iot_scanner_rationale_444": "Surveys a target for IoT/embedded device exposure across 6 protocol families." | kind=entity | source=probe/main_scripts/iot_scanner.py:L444 | neighbors=[IoTScanner] | lang=en
-- "main_scripts_iot_scanner_rationale_446": "Surveys a target for IoT/embedded device exposure across 6 protocol families." | kind=entity | source=probe/main_scripts/iot_scanner.py:L446 | neighbors=[IoTScanner] | lang=en
-- "main_scripts_iot_scanner_rationale_58": "HTTP GET the UPnP rootDesc.xml and extract device info." | kind=entity | source=probe/main_scripts/iot_scanner.py:L58 | neighbors=[_fetch_upnp_root_desc()] | lang=en
-- "main_scripts_iot_scanner_rationale_59": "HTTP GET the UPnP rootDesc.xml and extract device info." | kind=entity | source=probe/main_scripts/iot_scanner.py:L59 | neighbors=[_fetch_upnp_root_desc()] | lang=en
-- "main_scripts_ipmi_scanner_ipmiscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/ipmi_scanner.py:L68 | neighbors=[IPMIScanner] | lang=en
-- "main_scripts_ipmi_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/ipmi_scanner.py:L113 | neighbors=[ipmi_scanner.py] | lang=en
-- "main_scripts_ipmi_scanner_rationale_1": "ipmi_scanner.py — IPMI 2.0 cipher-zero authentication-bypass detection (VA check" | kind=entity | source=probe/main_scripts/ipmi_scanner.py:L1 | neighbors=[ipmi_scanner.py] | lang=en
-- "main_scripts_ipmi_scanner_rationale_37": "A fixed RMCP+ Open Session Request offering cipher suite 0 (auth=0,     integrit" | kind=entity | source=probe/main_scripts/ipmi_scanner.py:L37 | neighbors=[build_open_session_request()] | lang=pt
-- "main_scripts_ipmi_scanner_rationale_53": "Parse an RMCP+ Open Session Response; None if it isn't one.     resp[0]=RMCP ver" | kind=entity | source=probe/main_scripts/ipmi_scanner.py:L53 | neighbors=[parse_open_session_response()] | lang=en
-- "main_scripts_ipmi_scanner_rationale_73": "Blocking: one RMCP+ Open Session Request, parse the response.         Monkeypatc" | kind=entity | source=probe/main_scripts/ipmi_scanner.py:L73 | neighbors=[._probe()] | lang=en
-- "main_scripts_ipv6_discovery_rationale_1": "ipv6_discovery.py — link-local IPv6 host discovery via Neighbor Discovery (RFC 4" | kind=entity | source=probe/main_scripts/ipv6_discovery.py:L1 | neighbors=[ipv6_discovery.py] | lang=en
-- "main_scripts_ipv6_discovery_rationale_103": "Fire an ICMPv6 echo at ff02::1 (scoped to `iface`) to make live hosts reply," | kind=entity | source=probe/main_scripts/ipv6_discovery.py:L103 | neighbors=[_ping_all_nodes()] | lang=en
-- "main_scripts_ipv6_discovery_rationale_121": "Discover live IPv6 neighbors on the segment via ND multicast + neighbor     cach" | kind=entity | source=probe/main_scripts/ipv6_discovery.py:L121 | neighbors=[discover_ipv6_hosts()] | lang=en
-- "main_scripts_ipv6_discovery_rationale_43": "Parse Linux `ip -6 neigh show` into [(address, state)]. Lines look like:" | kind=entity | source=probe/main_scripts/ipv6_discovery.py:L43 | neighbors=[parse_ip_neigh6()] | lang=en
-- "main_scripts_ipv6_discovery_rationale_60": "Parse macOS/BSD `ndp -an` into [(address, state)]. Columns:         Neighbor  Li" | kind=entity | source=probe/main_scripts/ipv6_discovery.py:L60 | neighbors=[parse_ndp()] | lang=en
-- "main_scripts_ipv6_discovery_rationale_81": "Best-effort set of this host's own IPv6 addresses, to exclude from results     (" | kind=entity | source=probe/main_scripts/ipv6_discovery.py:L81 | neighbors=[_own_ipv6_addresses()] | lang=en
-- "main_scripts_ja4s_match_suspicious": "match_suspicious()" | kind=code-symbol | source=probe/main_scripts/ja4s.py:L131 | neighbors=[ja4s.py] | lang=en
-- "main_scripts_ja4s_rationale_100": "JA4S from `parse_server_hello`'s output ({version, cipher, extensions})." | kind=entity | source=probe/main_scripts/ja4s.py:L100 | neighbors=[ja4s_from_parsed()] | lang=en
-- "main_scripts_ja4s_rationale_110": "JA4S from raw ServerHello record bytes (reuses the JARM parser)." | kind=entity | source=probe/main_scripts/ja4s.py:L110 | neighbors=[ja4s_from_serverhello()] | lang=en
-- "main_scripts_ja4s_rationale_117": "Do one standard TLS handshake and compute the server's JA4S. Reuses the     JARM" | kind=entity | source=probe/main_scripts/ja4s.py:L117 | neighbors=[compute_ja4s()] | lang=en
-- "main_scripts_ja4s_rationale_57": "Yield (type, value) for each extension in a ServerHello extensions blob." | kind=entity | source=probe/main_scripts/ja4s.py:L57 | neighbors=[_walk_extensions()] | lang=en
-- "main_scripts_ja4s_rationale_70": "The single ALPN protocol the server chose (b'' if none)." | kind=entity | source=probe/main_scripts/ja4s.py:L70 | neighbors=[_selected_alpn()] | lang=en
-- "main_scripts_ja4s_rationale_87": "Pure JA4S from already-extracted ServerHello fields." | kind=entity | source=probe/main_scripts/ja4s.py:L87 | neighbors=[ja4s_from_fields()] | lang=en
-- "main_scripts_ja4x_rationale_118": "Return a threat-intel label if this JA4X is a known-suspicious fingerprint," | kind=entity | source=probe/main_scripts/ja4x.py:L118 | neighbors=[match_suspicious()] | lang=en
-- "main_scripts_ja4x_rationale_40": "DER-encode an OID's content octets and hex-encode them.      '2.5.4.6' -> '55040" | kind=entity | source=probe/main_scripts/ja4x.py:L40 | neighbors=[oid_to_hex()] | lang=en
-- "main_scripts_ja4x_rationale_77": "Pure JA4X from the three ordered OID lists (dotted-decimal strings)." | kind=entity | source=probe/main_scripts/ja4x.py:L77 | neighbors=[ja4x_from_oid_lists()] | lang=en
-- "main_scripts_ja4x_rationale_83": "JA4X from a `cryptography` x509 Certificate object. None if unusable." | kind=entity | source=probe/main_scripts/ja4x.py:L83 | neighbors=[ja4x_from_cert()] | lang=en
-- "main_scripts_ja4x_rationale_94": "JA4X from raw DER bytes. `cryptography` is imported lazily so this module     st" | kind=entity | source=probe/main_scripts/ja4x.py:L94 | neighbors=[ja4x_from_der()] | lang=en
-- "main_scripts_ldap_scanner_ldapscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/ldap_scanner.py:L50 | neighbors=[LDAPScanner] | lang=en
-- "main_scripts_ldap_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/ldap_scanner.py:L161 | neighbors=[ldap_scanner.py] | lang=en
-- "main_scripts_ldap_scanner_rationale_1": "ldap_scanner.py — LDAP anonymous-bind enumeration (VA checklist: anonymous direc" | kind=entity | source=probe/main_scripts/ldap_scanner.py:L1 | neighbors=[ldap_scanner.py] | lang=en
-- "main_scripts_ldap_scanner_rationale_55": "Blocking: anonymous bind + RootDSE read + bounded tree-read probe.         Retur" | kind=entity | source=probe/main_scripts/ldap_scanner.py:L55 | neighbors=[._probe()] | lang=en
-- "main_scripts_mass_scan_connectsweep_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/mass_scan.py:L209 | neighbors=[_ConnectSweep] | lang=en
-- "main_scripts_mass_scan_main": "main()" | kind=code-symbol | source=probe/main_scripts/mass_scan.py:L341 | neighbors=[mass_scan.py] | lang=en
+- "dashboard_dashboardworkspace_agentstatus": "AgentStatus" | kind=code-symbol | source=manager/frontend/components/dashboard/DashboardWorkspace.tsx:L10 | neighbors=[DashboardWorkspace.tsx]
+- "dashboard_dashboardworkspace_slapayload": "SlaPayload" | kind=code-symbol | source=manager/frontend/components/dashboard/DashboardWorkspace.tsx:L11 | neighbors=[DashboardWorkspace.tsx]
+- "dashboard_exposurecards_exposure": "Exposure" | kind=code-symbol | source=manager/frontend/components/dashboard/ExposureCards.tsx:L25 | neighbors=[ExposureCards.tsx]
+- "dashboard_exposurecards_healthband": "healthBand()" | kind=code-symbol | source=manager/frontend/components/dashboard/ExposureCards.tsx:L47 | neighbors=[ExposureCards.tsx]
+- "dashboard_exposurecards_meterrow": "MeterRow()" | kind=code-symbol | source=manager/frontend/components/dashboard/ExposureCards.tsx:L56 | neighbors=[ExposureCards.tsx]
+- "dashboard_exposurecards_riskband": "riskBand()" | kind=code-symbol | source=manager/frontend/components/dashboard/ExposureCards.tsx:L39 | neighbors=[ExposureCards.tsx]
+- "dashboard_exposurecards_scalenote": "scaleNote" | kind=code-symbol | source=manager/frontend/components/dashboard/ExposureCards.tsx:L150 | neighbors=[ExposureCards.tsx]
+- "dashboard_exposurecards_showallbutton": "ShowAllButton()" | kind=code-symbol | source=manager/frontend/components/dashboard/ExposureCards.tsx:L156 | neighbors=[ExposureCards.tsx]
+- "dashboard_liveoverview_engagement": "Engagement" | kind=code-symbol | source=manager/frontend/components/dashboard/LiveOverview.tsx:L32 | neighbors=[LiveOverview.tsx]
+- "dashboard_liveoverview_finding": "Finding" | kind=code-symbol | source=manager/frontend/components/dashboard/LiveOverview.tsx:L23 | neighbors=[LiveOverview.tsx]
+- "dashboard_liveoverview_findingsummary": "FindingSummary" | kind=code-symbol | source=manager/frontend/components/dashboard/LiveOverview.tsx:L34 | neighbors=[LiveOverview.tsx]
+- "dashboard_liveoverview_isactiveengagement": "isActiveEngagement()" | kind=code-symbol | source=manager/frontend/components/dashboard/LiveOverview.tsx:L41 | neighbors=[LiveOverview.tsx]
+- "dashboard_liveoverview_isopen": "isOpen()" | kind=code-symbol | source=manager/frontend/components/dashboard/LiveOverview.tsx:L34 | neighbors=[LiveOverview.tsx]
+- "dashboard_liveoverview_kpi": "Kpi()" | kind=code-symbol | source=manager/frontend/components/dashboard/LiveOverview.tsx:L43 | neighbors=[LiveOverview.tsx]
+- "dashboard_liveoverview_sev": "Sev" | kind=code-symbol | source=manager/frontend/components/dashboard/LiveOverview.tsx:L22 | neighbors=[LiveOverview.tsx]
+- "dashboard_patchcomparisonmatrix_cell": "cell" | kind=code-symbol | source=manager/frontend/components/dashboard/PatchComparisonMatrix.tsx:L24 | neighbors=[PatchComparisonMatrix.tsx]
+- "dashboard_patchcomparisonmatrix_head": "head" | kind=code-symbol | source=manager/frontend/components/dashboard/PatchComparisonMatrix.tsx:L33 | neighbors=[PatchComparisonMatrix.tsx]
+- "dashboard_patchcomparisonmatrix_netchip": "NetChip()" | kind=code-symbol | source=manager/frontend/components/dashboard/PatchComparisonMatrix.tsx:L49 | neighbors=[PatchComparisonMatrix.tsx]
+- "dashboard_patchcomparisonmatrix_netlabel": "netLabel()" | kind=code-symbol | source=manager/frontend/components/dashboard/PatchComparisonMatrix.tsx:L19 | neighbors=[PatchComparisonMatrix.tsx]
+- "dashboard_patchcomparisonmatrix_sev_color": "SEV_COLOR" | kind=code-symbol | source=manager/frontend/components/dashboard/PatchComparisonMatrix.tsx:L14 | neighbors=[PatchComparisonMatrix.tsx]
+- "dashboard_posturescorecard_delta": "Delta()" | kind=code-symbol | source=manager/frontend/components/dashboard/PostureScorecard.tsx:L45 | neighbors=[PostureScorecard.tsx]
+- "dashboard_posturescorecard_dial": "Dial()" | kind=code-symbol | source=manager/frontend/components/dashboard/PostureScorecard.tsx:L57 | neighbors=[PostureScorecard.tsx]
+- "dashboard_posturescorecard_grade": "GRADE" | kind=code-symbol | source=manager/frontend/components/dashboard/PostureScorecard.tsx:L44 | neighbors=[PostureScorecard.tsx]
+- "dashboard_posturescorecard_grade_color": "GRADE_COLOR" | kind=code-symbol | source=manager/frontend/components/dashboard/PostureScorecard.tsx:L39 | neighbors=[PostureScorecard.tsx]
+- "dashboard_posturescorecard_metrictile": "MetricTile()" | kind=code-symbol | source=manager/frontend/components/dashboard/PostureScorecard.tsx:L95 | neighbors=[PostureScorecard.tsx]
+- "dashboard_posturescorecard_posture": "Posture" | kind=code-symbol | source=manager/frontend/components/dashboard/PostureScorecard.tsx:L29 | neighbors=[PostureScorecard.tsx]
+- "dashboard_posturescorecard_readout": "Readout()" | kind=code-symbol | source=manager/frontend/components/dashboard/PostureScorecard.tsx:L82 | neighbors=[PostureScorecard.tsx]
+- "dashboard_posturescorecard_scores": "Scores" | kind=code-symbol | source=manager/frontend/components/dashboard/PostureScorecard.tsx:L23 | neighbors=[PostureScorecard.tsx]
+- "dashboard_posturescorecard_statcard": "StatCard()" | kind=code-symbol | source=manager/frontend/components/dashboard/PostureScorecard.tsx:L55 | neighbors=[PostureScorecard.tsx]
+- "dashboard_slastatus_sev": "Sev" | kind=code-symbol | source=manager/frontend/components/dashboard/SlaStatus.tsx:L17 | neighbors=[SlaStatus.tsx]
+- "dashboard_slastatus_sev_style": "SEV_STYLE" | kind=code-symbol | source=manager/frontend/components/dashboard/SlaStatus.tsx:L37 | neighbors=[SlaStatus.tsx]
+- "dashboard_slastatus_slaitem": "SlaItem" | kind=code-symbol | source=manager/frontend/components/dashboard/SlaStatus.tsx:L33 | neighbors=[SlaStatus.tsx]
+- "dashboard_slastatus_slastate": "SlaState" | kind=code-symbol | source=manager/frontend/components/dashboard/SlaStatus.tsx:L31 | neighbors=[SlaStatus.tsx]
+- "dashboard_slastatus_slasummary": "SlaSummary" | kind=code-symbol | source=manager/frontend/components/dashboard/SlaStatus.tsx:L38 | neighbors=[SlaStatus.tsx]
+- "dashboard_slastatus_state": "STATE" | kind=code-symbol | source=manager/frontend/components/dashboard/SlaStatus.tsx:L43 | neighbors=[SlaStatus.tsx]
+- "dashboard_slastatus_state_color": "STATE_COLOR" | kind=code-symbol | source=manager/frontend/components/dashboard/SlaStatus.tsx:L30 | neighbors=[SlaStatus.tsx]
+- "dashboard_slastatus_statecell": "StateCell()" | kind=code-symbol | source=manager/frontend/components/dashboard/SlaStatus.tsx:L83 | neighbors=[SlaStatus.tsx]
+- "dashboard_slastatus_summarycell": "SummaryCell()" | kind=code-symbol | source=manager/frontend/components/dashboard/SlaStatus.tsx:L61 | neighbors=[SlaStatus.tsx]
+- "declarativebase": "DeclarativeBase" | kind=code-symbol | neighbors=[Base]
+- "detection_active_validation_rationale_1": "active_validation.py — manager-side decision core for safe active validation.  P" | kind=entity | source=manager/backend/app/detection/active_validation.py:L1 | neighbors=[active_validation.py]
 
 ## Instructions
 

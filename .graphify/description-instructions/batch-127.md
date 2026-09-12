@@ -1,4 +1,4 @@
-# Node Description Batch 128 of 336
+# Node Description Batch 128 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,58 +12,51 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
-For an entity node (any other kind — e.g. a person, place, event, object),
-describe what the entity is and its role, grounded in its type, its
-relations (neighbors) and the provided citations/evidence — e.g.
-"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
-Ground entity descriptions in the citations/evidence when present; do not
-speculate beyond the context, so a node with no supporting context may be
-left out of the reply.
 Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "dashboard_slastatus_timelabel": "timeLabel()" | kind=code-symbol | source=manager/frontend/components/dashboard/SlaStatus.tsx:L53 | neighbors=[SlaStatus.tsx, SlaRowView()]
-- "detection_active_validation_should_escalate": "should_escalate()" | kind=code-symbol | source=manager/backend/app/detection/active_validation.py:L17 | neighbors=[active_validation.py, True iff this finding warrants an appro…]
-- "detection_active_validation_validationoutcome": "ValidationOutcome" | kind=code-symbol | source=manager/backend/app/detection/active_validation.py:L34 | neighbors=[active_validation.py, interpret_validation()]
-- "detection_attack_paths_exposed_db_unauth": "_exposed_db_unauth()" | kind=code-symbol | source=manager/backend/app/detection/attack_paths.py:L221 | neighbors=[attack_paths.py, B3: an exposed datastore with unauthent…]
-- "detection_attack_paths_hostsignals_observe": ".observe()" | kind=code-symbol | source=manager/backend/app/detection/attack_paths.py:L76 | neighbors=[_group(), _HostSignals]
-- "detection_attack_paths_is_network_device": "_is_network_device()" | kind=code-symbol | source=manager/backend/app/detection/attack_paths.py:L57 | neighbors=[attack_paths.py, _snmp_public_lateral()]
-- "detection_attack_paths_legacy_windows": "_legacy_windows()" | kind=code-symbol | source=manager/backend/app/detection/attack_paths.py:L178 | neighbors=[attack_paths.py, _is_domain_controller()]
-- "detection_attack_paths_ntlm_relay": "_ntlm_relay()" | kind=code-symbol | source=manager/backend/app/detection/attack_paths.py:L146 | neighbors=[attack_paths.py, _is_domain_controller()]
-- "detection_correlator_detectioncorrelator_generate_gap_report": ".generate_gap_report()" | kind=code-symbol | source=manager/backend/app/detection/correlator.py:L220 | neighbors=[DetectionCorrelator, DetectionGap]
-- "detection_correlator_host_identity": "_host_identity()" | kind=code-symbol | source=manager/backend/app/detection/correlator.py:L84 | neighbors=[correlator.py, _host_matches()]
-- "detection_edr_crowdstrikefalcon_query_detections": ".query_detections()" | kind=code-symbol | source=manager/backend/app/detection/edr.py:L98 | neighbors=[CrowdStrikeFalcon, ._request()]
-- "detection_edr_microsoftdefender_query_detections": ".query_detections()" | kind=code-symbol | source=manager/backend/app/detection/edr.py:L147 | neighbors=[MicrosoftDefender, ._request()]
-- "detection_edr_sentinelone_query_detections": ".query_detections()" | kind=code-symbol | source=manager/backend/app/detection/edr.py:L193 | neighbors=[SentinelOne, ._request()]
-- "detection_engine_ai_normalizer_aiclient_propose_cpe": ".propose_cpe()" | kind=code-symbol | source=manager/detection_engine/ai_normalizer.py:L89 | neighbors=[AIClient, Returns a list of {"vendor", "product",…]
-- "detection_engine_ai_normalizer_anthropicaiclient_propose_cpe": ".propose_cpe()" | kind=code-symbol | source=manager/detection_engine/ai_normalizer.py:L108 | neighbors=[AnthropicAIClient, .get()]
-- "detection_engine_ai_normalizer_fakeaiclient_propose_cpe": ".propose_cpe()" | kind=code-symbol | source=manager/detection_engine/ai_normalizer.py:L134 | neighbors=[FakeAIClient, .get()]
-- "detection_engine_bridge_lock_engagement_for_detection": "_lock_engagement_for_detection()" | kind=code-symbol | source=manager/backend/app/detection/engine_bridge.py:L481 | neighbors=[engine_bridge.py, create_findings_from_facts()]
-- "detection_engine_bridge_posture_description": "_posture_description()" | kind=code-symbol | source=manager/backend/app/detection/engine_bridge.py:L308 | neighbors=[engine_bridge.py, _persist_posture_findings()]
-- "detection_engine_build_nvd_cpe_snapshot_content_hash": "_content_hash()" | kind=code-symbol | source=manager/detection_engine/build_nvd_cpe_snapshot.py:L65 | neighbors=[build_nvd_cpe_snapshot.py, main()]
-- "detection_engine_build_nvd_cpe_snapshot_main": "main()" | kind=code-symbol | source=manager/detection_engine/build_nvd_cpe_snapshot.py:L70 | neighbors=[build_nvd_cpe_snapshot.py, _content_hash()]
-- "detection_engine_build_nvd_cpe_snapshot_rec": "_rec()" | kind=code-symbol | source=manager/detection_engine/build_nvd_cpe_snapshot.py:L32 | neighbors=[build_nvd_cpe_snapshot.py, One OSV-shaped record: affected below `…]
-- "detection_engine_consistency_findingconsistency_ci": ".ci()" | kind=code-symbol | source=manager/detection_engine/consistency.py:L63 | neighbors=[FindingConsistency, wilson_ci()]
-- "detection_engine_consistency_format_line": "format_line()" | kind=code-symbol | source=manager/detection_engine/consistency.py:L130 | neighbors=[consistency.py, The spec's reporting line, e.g.:     'H…]
-- "detection_engine_consistency_rationale_1": "consistency.py — Phase 5: N-run consistency & reporting.  \"A single scan is an a" | kind=entity | source=manager/detection_engine/consistency.py:L1 | neighbors=[consistency.py, Finding]
-- "detection_engine_consistency_rationale_102": "run_findings: one list of Findings per run (N runs). Aggregated by     the deter" | kind=entity | source=manager/detection_engine/consistency.py:L102 | neighbors=[aggregate(), Finding]
-- "detection_engine_consistency_rationale_131": "The spec's reporting line, e.g.:     'Host 10.0.0.5 — CVE-2021-41773 in 27/30 ru" | kind=entity | source=manager/detection_engine/consistency.py:L131 | neighbors=[format_line(), Finding]
-- "detection_engine_consistency_rationale_33": "Wilson score interval for a binomial proportion k/n, as percentages.     Chosen" | kind=entity | source=manager/detection_engine/consistency.py:L33 | neighbors=[wilson_ci(), Finding]
-- "detection_engine_cpe_normalizer_clean_rpm_version": "clean_rpm_version()" | kind=code-symbol | source=manager/detection_engine/cpe_normalizer.py:L92 | neighbors=[cpe_normalizer.py, rpm queried as '%{VERSION}-%{RELEASE}' …]
-- "detection_engine_cpe_normalizer_osv_source_packages": "osv_source_packages()" | kind=code-symbol | source=manager/detection_engine/cpe_normalizer.py:L149 | neighbors=[cpe_normalizer.py, Every distinct OSV source-package name …]
-- "detection_engine_cvss_parse_vector": "parse_vector()" | kind=code-symbol | source=manager/detection_engine/cvss.py:L33 | neighbors=[cvss.py, base_score()]
-- "detection_engine_enrichment_db_clear_caches": "_clear_caches()" | kind=code-symbol | source=manager/detection_engine/enrichment_db.py:L43 | neighbors=[enrichment_db.py, Test hook: drop the memoized KEV/EPSS c…]
-- "detection_engine_exploitability_kev_links_for": "kev_links_for()" | kind=code-symbol | source=manager/detection_engine/exploitability.py:L103 | neighbors=[exploitability.py, assess()]
-- "detection_engine_exploitability_kevlink": "KevLink" | kind=code-symbol | source=manager/detection_engine/exploitability.py:L57 | neighbors=[exploitability.py, One documented relationship between a p…]
-- "detection_engine_exploitability_tier": "_tier()" | kind=code-symbol | source=manager/detection_engine/exploitability.py:L107 | neighbors=[exploitability.py, assess()]
-- "detection_engine_ingest_classify_confidence": "_classify_confidence()" | kind=code-symbol | source=manager/detection_engine/ingest.py:L65 | neighbors=[ingest.py, ingest_file()]
-- "detection_engine_ingest_is_ip": "_is_ip()" | kind=code-symbol | source=manager/detection_engine/ingest.py:L93 | neighbors=[ingest.py, .get_or_create_asset()]
-- "detection_engine_init": "__init__.py" | kind=code-symbol | source=manager/detection_engine/__init__.py:L1 | neighbors=[10dfc80 Add comprehensive probe testing…, 2885afa Add comprehensive probe testing…]
-- "detection_engine_models_asset_add_fact": ".add_fact()" | kind=code-symbol | source=manager/detection_engine/models.py:L90 | neighbors=[Asset, .as_of()]
-- "detection_engine_models_fact_ref": ".ref()" | kind=code-symbol | source=manager/detection_engine/models.py:L60 | neighbors=[Fact, A stable, human-readable pointer back t…]
-- "detection_engine_models_make_finding_id": "make_finding_id()" | kind=code-symbol | source=manager/detection_engine/models.py:L125 | neighbors=[models.py, Deterministic finding ID: the SAME (ass…]
+- "tests_test_main_scripts_correlation_test_legacy_windows_surface_smbv1_plus_rdp": "test_legacy_windows_surface_smbv1_plus_rdp()" | kind=code-symbol | source=probe/tests/test_main_scripts_correlation.py:L49 | neighbors=[test_main_scripts_correlation.py, _get(), _run()]
+- "tests_test_main_scripts_correlation_test_no_legacy_surface_with_only_smbv1": "test_no_legacy_surface_with_only_smbv1()" | kind=code-symbol | source=probe/tests/test_main_scripts_correlation.py:L60 | neighbors=[test_main_scripts_correlation.py, _ids(), _run()]
+- "tests_test_main_scripts_correlation_test_no_relay_finding_when_signing_required": "test_no_relay_finding_when_signing_required()" | kind=code-symbol | source=probe/tests/test_main_scripts_correlation.py:L42 | neighbors=[test_main_scripts_correlation.py, _ids(), _run()]
+- "tests_test_main_scripts_correlation_test_ntlm_relay_is_high_when_smbv1_also_enabled": "test_ntlm_relay_is_high_when_smbv1_also_enabled()" | kind=code-symbol | source=probe/tests/test_main_scripts_correlation.py:L34 | neighbors=[test_main_scripts_correlation.py, _get(), _run()]
+- "tests_test_main_scripts_correlation_test_ntlm_relay_is_medium_when_only_signing_not_required": "test_ntlm_relay_is_medium_when_only_signing_not_required()" | kind=code-symbol | source=probe/tests/test_main_scripts_correlation.py:L26 | neighbors=[test_main_scripts_correlation.py, _get(), _run()]
+- "tests_test_main_scripts_correlation_test_single_cleartext_service_does_not_cluster": "test_single_cleartext_service_does_not_cluster()" | kind=code-symbol | source=probe/tests/test_main_scripts_correlation.py:L77 | neighbors=[test_main_scripts_correlation.py, _ids(), _run()]
+- "tests_test_main_scripts_coverage_testworkerpoolandmetrics_test_every_port_scanned_exactly_once": ".test_every_port_scanned_exactly_once()" | kind=code-symbol | source=probe/tests/test_main_scripts_coverage.py:L82 | neighbors=[TestWorkerPoolAndMetrics, _mk_scanner(), _summary()]
+- "tests_test_main_scripts_coverage_testworkerpoolandmetrics_test_local_resource_error_marks_scan_degraded": ".test_local_resource_error_marks_scan_degraded()" | kind=code-symbol | source=probe/tests/test_main_scripts_coverage.py:L150 | neighbors=[TestWorkerPoolAndMetrics, _mk_scanner(), _summary()]
+- "tests_test_main_scripts_coverage_testworkerpoolandmetrics_test_metrics_counts_every_state": ".test_metrics_counts_every_state()" | kind=code-symbol | source=probe/tests/test_main_scripts_coverage.py:L136 | neighbors=[TestWorkerPoolAndMetrics, _mk_scanner(), _summary()]
+- "tests_test_main_scripts_coverage_testworkerpoolandmetrics_test_open_only_output_still_keeps_full_metrics": ".test_open_only_output_still_keeps_full_metrics()" | kind=code-symbol | source=probe/tests/test_main_scripts_coverage.py:L165 | neighbors=[TestWorkerPoolAndMetrics, _scope(), _summary()]
+- "tests_test_main_scripts_findings_test_all_security_headers_present_no_finding": "test_all_security_headers_present_no_finding()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L272 | neighbors=[test_main_scripts_findings.py, _ids(), _run()]
+- "tests_test_main_scripts_findings_test_closed_port_no_finding": "test_closed_port_no_finding()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L192 | neighbors=[test_main_scripts_findings.py, _ids(), _run()]
+- "tests_test_main_scripts_findings_test_ntp_monlist_and_dns_open_recursion": "test_ntp_monlist_and_dns_open_recursion()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L150 | neighbors=[test_main_scripts_findings.py, _ids(), _run()]
+- "tests_test_main_scripts_findings_test_open_filtered_never_raises_exposure": "test_open_filtered_never_raises_exposure()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L185 | neighbors=[test_main_scripts_findings.py, _ids(), _run()]
+- "tests_test_main_scripts_findings_test_smb_hardened_host_no_finding": "test_smb_hardened_host_no_finding()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L117 | neighbors=[test_main_scripts_findings.py, _ids(), _run()]
+- "tests_test_main_scripts_findings_test_smb_signing_not_required_is_medium": "test_smb_signing_not_required_is_medium()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L110 | neighbors=[test_main_scripts_findings.py, _ids(), _run()]
+- "tests_test_main_scripts_findings_test_snmp_amplification": "test_snmp_amplification()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L137 | neighbors=[test_main_scripts_findings.py, _ids(), _run()]
+- "tests_test_main_scripts_findings_test_snmpv3_only_no_finding": "test_snmpv3_only_no_finding()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L143 | neighbors=[test_main_scripts_findings.py, _ids(), _run()]
+- "tests_test_main_scripts_findings_test_tls_expired_and_self_signed_cert": "test_tls_expired_and_self_signed_cert()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L55 | neighbors=[test_main_scripts_findings.py, _ids(), _run()]
+- "tests_test_main_scripts_findings_test_tls_legacy_protocol_is_medium_and_not_double_reported_with_obsolete": "test_tls_legacy_protocol_is_medium_and_not_double_reported_with_obsolete()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L33 | neighbors=[test_main_scripts_findings.py, _ids(), _run()]
+- "tests_test_main_scripts_findings_test_tls_modern_only_produces_no_crypto_finding": "test_tls_modern_only_produces_no_crypto_finding()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L41 | neighbors=[test_main_scripts_findings.py, _ids(), _run()]
+- "tests_test_main_scripts_findings_test_tls_small_ec_key_is_not_treated_as_weak": "test_tls_small_ec_key_is_not_treated_as_weak()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L94 | neighbors=[test_main_scripts_findings.py, _ids(), _run()]
+- "tests_test_main_scripts_findings_test_tls_strong_rsa_key_is_not_flagged": "test_tls_strong_rsa_key_is_not_flagged()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L87 | neighbors=[test_main_scripts_findings.py, _ids(), _run()]
+- "tests_test_main_scripts_findings_test_tls_strong_signature_hash_is_not_flagged": "test_tls_strong_signature_hash_is_not_flagged()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L71 | neighbors=[test_main_scripts_findings.py, _ids(), _run()]
+- "tests_test_main_scripts_findings_test_udp_no_amplification_when_not_reflecting": "test_udp_no_amplification_when_not_reflecting()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L160 | neighbors=[test_main_scripts_findings.py, _ids(), _run()]
+- "tests_test_main_scripts_hardening_run": "_run()" | kind=code-symbol | source=probe/tests/test_main_scripts_hardening.py:L36 | neighbors=[test_main_scripts_hardening.py, .test_icmp_port_unreachable_is_closed(), .test_silence_is_open_filtered_not_filt…]
+- "tests_test_main_scripts_hardening_testudpstatemodel_test_icmp_port_unreachable_is_closed": ".test_icmp_port_unreachable_is_closed()" | kind=code-symbol | source=probe/tests/test_main_scripts_hardening.py:L60 | neighbors=[TestUdpStateModel, _run(), ._scanner()]
+- "tests_test_main_scripts_hardening_testudpstatemodel_test_silence_is_open_filtered_not_filtered": ".test_silence_is_open_filtered_not_filtered()" | kind=code-symbol | source=probe/tests/test_main_scripts_hardening.py:L46 | neighbors=[TestUdpStateModel, _run(), ._scanner()]
+- "tests_test_main_scripts_ja4s_serverhello": "_serverhello()" | kind=code-symbol | source=probe/tests/test_main_scripts_ja4s.py:L21 | neighbors=[test_main_scripts_ja4s.py, _ext(), test_ja4s_from_serverhello_tls13()]
+- "tests_test_msrpc_scanner_testmsrpcfindings_fact": "._fact()" | kind=code-symbol | source=probe/tests/test_msrpc_scanner.py:L82 | neighbors=[TestMSRPCFindings, .test_endpoints_low(), .test_zero_endpoints_silent()]
+- "tests_test_network_va_accuracy_listener_start": ".start()" | kind=code-symbol | source=probe/tests/test_network_va_accuracy.py:L35 | neighbors=[_Listener, ._loop(), va_scan()]
+- "tests_test_new_scanners_testdeltaengine_test_diff_detects_new_service": ".test_diff_detects_new_service()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L412 | neighbors=[TestDeltaEngine, _make_scan_record(), ._write_jsonl()]
+- "tests_test_new_scanners_testdeltaengine_test_diff_detects_service_gone": ".test_diff_detects_service_gone()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L428 | neighbors=[TestDeltaEngine, _make_scan_record(), ._write_jsonl()]
+- "tests_test_new_scanners_testdeltaengine_test_diff_detects_state_change_to_open": ".test_diff_detects_state_change_to_open()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L444 | neighbors=[TestDeltaEngine, _make_scan_record(), ._write_jsonl()]
+- "tests_test_new_scanners_testdeltaengine_test_diff_high_severity_port_heuristic": ".test_diff_high_severity_port_heuristic()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L471 | neighbors=[TestDeltaEngine, _make_scan_record(), ._write_jsonl()]
+- "tests_test_new_scanners_testdeltaengine_test_diff_no_change_produces_no_service_delta": ".test_diff_no_change_produces_no_service_delta()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L457 | neighbors=[TestDeltaEngine, _make_scan_record(), ._write_jsonl()]
+- "tests_test_new_scanners_testdeltaengine_test_load_jsonl_basic": ".test_load_jsonl_basic()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L389 | neighbors=[TestDeltaEngine, _make_scan_record(), ._write_jsonl()]
+- "tests_test_new_scanners_testdeltaengine_test_load_jsonl_skips_error_status": ".test_load_jsonl_skips_error_status()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L397 | neighbors=[TestDeltaEngine, _make_scan_record(), ._write_jsonl()]
+- "tests_test_new_scanners_testdeltaengine_test_summary_counts": ".test_summary_counts()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L485 | neighbors=[TestDeltaEngine, _make_scan_record(), ._write_jsonl()]
+- "tests_test_nfs_scanner_testnfsfindings_fact": "._fact()" | kind=code-symbol | source=probe/tests/test_nfs_scanner.py:L118 | neighbors=[TestNFSFindings, .test_restricted_exports_no_high_findin…, .test_world_readable_and_portmapper()]
 
 ## Instructions
 

@@ -1,4 +1,4 @@
-# Node Description Batch 259 of 336
+# Node Description Batch 259 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -26,46 +26,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "scanner_smb_enum_scanner_rationale_201": "Merge user lists, de-duplicated by (name, rid); SAMR entries win over RID     cy" | kind=entity | source=probe/scanner/smb_enum_scanner.py:L201 | neighbors=[_merge_users()] | lang=en
-- "scanner_smb_enum_scanner_rationale_228": "Blocking: attempt a null session and enumerate what the server         volunteer" | kind=entity | source=probe/scanner/smb_enum_scanner.py:L228 | neighbors=[._enumerate()] | lang=en
-- "scanner_smb_enum_scanner_rationale_53": "Parse 'a-b,c-d,e' into a sorted, de-duplicated, bounded list of RIDs.      Bound" | kind=entity | source=probe/scanner/smb_enum_scanner.py:L53 | neighbors=[parse_rid_ranges()] | lang=en
-- "scanner_smb_enum_scanner_rationale_88": "List SMB shares over the null session. Read-only (share listing, no file     acc" | kind=entity | source=probe/scanner/smb_enum_scanner.py:L88 | neighbors=[_enum_shares()] | lang=en
-- "scanner_smb_scanner_main": "main()" | kind=code-symbol | source=probe/scanner/smb_scanner.py:L452 | neighbors=[smb_scanner.py] | lang=en
-- "scanner_smb_scanner_rationale_1": "smb_scanner.py — detect which SMB dialects a host supports.  METHOD (collection" | kind=entity | source=probe/scanner/smb_scanner.py:L1 | neighbors=[smb_scanner.py] | lang=en
-- "scanner_smb_scanner_rationale_116": "NTLMSSP NEGOTIATE (Type-1). Sets NEGOTIATE_VERSION so the server discloses     i" | kind=entity | source=probe/scanner/smb_scanner.py:L116 | neighbors=[build_ntlmssp_negotiate()] | lang=en
-- "scanner_smb_scanner_rationale_134": "Wrap an NTLMSSP Type-1 in a minimal SPNEGO NegTokenInit (GSS-API)." | kind=entity | source=probe/scanner/smb_scanner.py:L134 | neighbors=[_spnego_init()] | lang=en
-- "scanner_smb_scanner_rationale_142": "Map an NT major.minor.build to a friendly release. Client and server share     s" | kind=entity | source=probe/scanner/smb_scanner.py:L142 | neighbors=[windows_release_from_build()] | lang=en
-- "scanner_smb_scanner_rationale_177": "Parse an NTLMSSP CHALLENGE (Type-2) out of any containing buffer (SPNEGO or" | kind=entity | source=probe/scanner/smb_scanner.py:L177 | neighbors=[parse_ntlm_challenge()] | lang=en
-- "scanner_smb_scanner_rationale_204": "SMB2 SESSION_SETUP request (MessageId 1, SessionId 0) carrying `security_blob`." | kind=entity | source=probe/scanner/smb_scanner.py:L204 | neighbors=[_smb2_session_setup()] | lang=en
-- "scanner_smb_scanner_rationale_250": "Pad to the 8-byte boundary MS-SMB2 requires between negotiate contexts." | kind=entity | source=probe/scanner/smb_scanner.py:L250 | neighbors=[_align8()] | lang=en
-- "scanner_smb_scanner_rationale_255": "SMB2_PREAUTH_INTEGRITY_CAPABILITIES (MS-SMB2 2.2.3.1.1): mandatory for any     c" | kind=entity | source=probe/scanner/smb_scanner.py:L255 | neighbors=[_preauth_integrity_context()] | lang=en
-- "scanner_smb_scanner_rationale_266": "SMB2_ENCRYPTION_CAPABILITIES (MS-SMB2 2.2.3.1.2): offer AES-128-GCM/CCM so     t" | kind=entity | source=probe/scanner/smb_scanner.py:L266 | neighbors=[_encryption_context()] | lang=en
-- "scanner_smb_scanner_rationale_317": "Read one length-prefixed (Direct-TCP/NBT) SMB frame in full, STRIPPING the     4" | kind=entity | source=probe/scanner/smb_scanner.py:L317 | neighbors=[_recv_smb_frame()] | lang=en
-- "scanner_smb_scanner_rationale_338": "Pre-auth SMB2 NEGOTIATE → SESSION_SETUP → parse the NTLMSSP CHALLENGE Version" | kind=entity | source=probe/scanner/smb_scanner.py:L338 | neighbors=[ntlm_os_build()] | lang=en
-- "scanner_smb_scanner_rationale_37": "Read signing posture from a SUCCESSFUL SMB2 NEGOTIATE response.      Wire layout" | kind=entity | source=probe/scanner/smb_scanner.py:L37 | neighbors=[parse_smb2_security_mode()] | lang=en
-- "scanner_smb_scanner_rationale_370": "SMB negotiate against the first address that actually answers.          Walks ev" | kind=entity | source=probe/scanner/smb_scanner.py:L370 | neighbors=[._negotiate()] | lang=en
-- "scanner_smb_scanner_rationale_39": "Read signing posture from a SUCCESSFUL SMB2 NEGOTIATE response.      Wire layout" | kind=entity | source=probe/scanner/smb_scanner.py:L39 | neighbors=[parse_smb2_security_mode()] | lang=en
-- "scanner_smb_scanner_rationale_394": "Best-effort: SMB2 NEGOTIATE then a pre-auth SESSION_SETUP to harvest the" | kind=entity | source=probe/scanner/smb_scanner.py:L394 | neighbors=[._ntlm_fingerprint()] | lang=en
-- "scanner_smb_scanner_smbscanner_init": ".__init__()" | kind=code-symbol | source=probe/scanner/smb_scanner.py:L365 | neighbors=[SMBScanner] | lang=en
-- "scanner_smtp_scanner_main": "main()" | kind=code-symbol | source=probe/scanner/smtp_scanner.py:L147 | neighbors=[smtp_scanner.py] | lang=en
-- "scanner_smtp_scanner_rationale_1": "smtp_scanner.py — SMTP hygiene: user enumeration + transport encryption (VA chec" | kind=entity | source=probe/scanner/smtp_scanner.py:L1 | neighbors=[smtp_scanner.py] | lang=en
-- "scanner_smtp_scanner_rationale_40": "Extract EHLO capability tokens from a multi-line 250 response." | kind=entity | source=probe/scanner/smtp_scanner.py:L40 | neighbors=[parse_ehlo_capabilities()] | lang=en
-- "scanner_smtp_scanner_rationale_52": "VRFY leaks usernames when it gives DIFFERENT definitive answers for an     exist" | kind=entity | source=probe/scanner/smtp_scanner.py:L52 | neighbors=[vrfy_leaks()] | lang=en
-- "scanner_smtp_scanner_rationale_88": "Blocking: greeting → EHLO → STARTTLS/VRFY/EXPN checks. Monkeypatchable." | kind=entity | source=probe/scanner/smtp_scanner.py:L88 | neighbors=[._probe()] | lang=en
-- "scanner_smtp_scanner_smtpscanner_init": ".__init__()" | kind=code-symbol | source=probe/scanner/smtp_scanner.py:L63 | neighbors=[SMTPScanner] | lang=en
-- "scanner_snmp_scanner_main": "main()" | kind=code-symbol | source=probe/scanner/snmp_scanner.py:L401 | neighbors=[snmp_scanner.py] | lang=en
-- "scanner_snmp_scanner_rationale_1": "snmp_scanner.py — full SNMP enumeration: community discovery, targeted MIB walk," | kind=entity | source=probe/scanner/snmp_scanner.py:L1 | neighbors=[snmp_scanner.py] | lang=en
-- "scanner_snmp_scanner_rationale_105": "Shallow parse of BER TLVs starting at offset. Returns [(tag, value), ...]." | kind=entity | source=probe/scanner/snmp_scanner.py:L105 | neighbors=[_ber_parse()] | lang=en
-- "scanner_snmp_scanner_rationale_127": "Extract (oid_dotted, value_tag, value_bytes) from a GET/GETNEXT/GETBULK response" | kind=entity | source=probe/scanner/snmp_scanner.py:L127 | neighbors=[_parse_varbinds()] | lang=en
-- "scanner_snmp_scanner_rationale_246": "Phase 1 (community discovery) + Phase 2 (targeted MIB walk) +     Phase 3 (ampli" | kind=entity | source=probe/scanner/snmp_scanner.py:L246 | neighbors=[SNMPScanner] | lang=en
-- "scanner_snmp_scanner_rationale_278": "Return (community, sysdescr) for the first responding community, or None." | kind=entity | source=probe/scanner/snmp_scanner.py:L278 | neighbors=[._discover_community()] | lang=en
-- "scanner_snmp_scanner_rationale_292": "GETNEXT walk of one OID subtree.  Returns [(oid, value_str), ...]." | kind=entity | source=probe/scanner/snmp_scanner.py:L292 | neighbors=[._walk_subtree()] | lang=en
-- "scanner_snmp_scanner_rationale_315": "One GETBULK request — measure response/request size ratio." | kind=entity | source=probe/scanner/snmp_scanner.py:L315 | neighbors=[._amplification_factor()] | lang=en
-- "scanner_snmp_scanner_rationale_325": "Send a SNMPv3 Discover. Any reply = v3 agent present." | kind=entity | source=probe/scanner/snmp_scanner.py:L325 | neighbors=[._snmpv3_present()] | lang=pt
-- "scanner_snmp_scanner_rationale_46": "Dotted-notation OID string → BER-encoded bytes." | kind=entity | source=probe/scanner/snmp_scanner.py:L46 | neighbors=[_encode_oid()] | lang=en
-- "scanner_snmp_scanner_rationale_64": "BER-encoded OID bytes → dotted-notation string." | kind=entity | source=probe/scanner/snmp_scanner.py:L64 | neighbors=[_decode_oid()] | lang=en
-- "scanner_snmp_scanner_rationale_79": "Human-readable SNMP value for common ASN.1/SNMP types." | kind=entity | source=probe/scanner/snmp_scanner.py:L79 | neighbors=[_decode_value()] | lang=en
-- "scanner_snmp_scanner_snmpscanner_init": ".__init__()" | kind=code-symbol | source=probe/scanner/snmp_scanner.py:L252 | neighbors=[SNMPScanner] | lang=en
+- "main_scripts_tls_fingerprint_rationale_186": "Concatenate the ServerHello extension TYPE codes (2 bytes each). We hash types," | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L186 | neighbors=[_server_ext_types()] | lang=en
+- "main_scripts_tls_fingerprint_rationale_200": "JARM-shaped 62-char fuzzy hash: 3 chars per probe (cipher[2] + version[1])," | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L200 | neighbors=[jarm_style_digest()] | lang=it
+- "main_scripts_tls_fingerprint_rationale_201": "JARM-shaped 62-char fuzzy hash: 3 chars per probe (cipher[2] + version[1])," | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L201 | neighbors=[jarm_style_digest()] | lang=it
+- "main_scripts_tls_fingerprint_rationale_202": "JARM-shaped 62-char fuzzy hash: 3 chars per probe (cipher[2] + version[1])," | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L202 | neighbors=[jarm_style_digest()] | lang=it
+- "main_scripts_tls_fingerprint_rationale_241": "Read exactly the first TLS record (the ServerHello or an alert) and stop —     n" | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L241 | neighbors=[_recv_first_record()] | lang=en
+- "main_scripts_tls_fingerprint_rationale_242": "Read exactly the first TLS record (the ServerHello or an alert) and stop —     n" | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L242 | neighbors=[_recv_first_record()] | lang=en
+- "main_scripts_tls_fingerprint_rationale_243": "Read exactly the first TLS record (the ServerHello or an alert) and stop —     n" | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L243 | neighbors=[_recv_first_record()] | lang=en
+- "main_scripts_tls_fingerprint_rationale_261": "Send one crafted ClientHello, read + parse the ServerHello. Sync." | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L261 | neighbors=[_one_probe()] | lang=en
+- "main_scripts_tls_fingerprint_rationale_262": "Send one crafted ClientHello, read + parse the ServerHello. Sync." | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L262 | neighbors=[_one_probe()] | lang=en
+- "main_scripts_tls_fingerprint_rationale_263": "Send one crafted ClientHello, read + parse the ServerHello. Sync." | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L263 | neighbors=[_one_probe()] | lang=en
+- "main_scripts_tls_fingerprint_rationale_274": "Run all probes and return (62-char digest, per-probe results)." | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L274 | neighbors=[fingerprint_host()] | lang=en
+- "main_scripts_tls_fingerprint_rationale_275": "Run all probes and return (62-char digest, per-probe results)." | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L275 | neighbors=[fingerprint_host()] | lang=en
+- "main_scripts_tls_fingerprint_rationale_276": "Run all probes and return (62-char digest, per-probe results)." | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L276 | neighbors=[fingerprint_host()] | lang=en
+- "main_scripts_tls_fingerprint_rationale_90": "Build a complete TLS ClientHello record (record layer + handshake)." | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L90 | neighbors=[build_client_hello()] | lang=pt
+- "main_scripts_tls_fingerprint_rationale_91": "Build a complete TLS ClientHello record (record layer + handshake)." | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L91 | neighbors=[build_client_hello()] | lang=pt
+- "main_scripts_tls_fingerprint_rationale_92": "Build a complete TLS ClientHello record (record layer + handshake)." | kind=entity | source=probe/main_scripts/tls_fingerprint.py:L92 | neighbors=[build_client_hello()] | lang=pt
+- "main_scripts_tls_fingerprint_tlsfingerprintscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/tls_fingerprint.py:L286 | neighbors=[TLSFingerprintScanner] | lang=en
+- "main_scripts_tls_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/tls_scanner.py:L345 | neighbors=[tls_scanner.py] | lang=en
+- "main_scripts_tls_scanner_rationale_1": "tls_scanner.py — collect TLS/SSL configuration facts.  METHOD (collection only):" | kind=entity | source=probe/main_scripts/tls_scanner.py:L1 | neighbors=[tls_scanner.py] | lang=en
+- "main_scripts_tls_scanner_rationale_105": "Grade overall TLS posture A/B/C/F from accepted protocol versions and the     cl" | kind=entity | source=probe/main_scripts/tls_scanner.py:L105 | neighbors=[grade_tls_posture()] | lang=en
+- "main_scripts_tls_scanner_rationale_147": "Never send an IP literal as SNI — non-conformant; some servers reject it." | kind=entity | source=probe/main_scripts/tls_scanner.py:L147 | neighbors=[_sni()] | lang=en
+- "main_scripts_tls_scanner_rationale_156": "Attempt a handshake forcing one protocol version. Returns cipher dict or None." | kind=entity | source=probe/main_scripts/tls_scanner.py:L156 | neighbors=[_try_version()] | lang=pt
+- "main_scripts_tls_scanner_rationale_166": "Attempt a handshake forcing one protocol version.      Returns a cipher dict whe" | kind=entity | source=probe/main_scripts/tls_scanner.py:L166 | neighbors=[_try_version()] | lang=pt
+- "main_scripts_tls_scanner_rationale_61": "Flag the security-relevant properties of an OpenSSL cipher-suite name:     forwa" | kind=entity | source=probe/main_scripts/tls_scanner.py:L61 | neighbors=[classify_cipher()] | lang=en
+- "main_scripts_tls_scanner_tlsscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/tls_scanner.py:L316 | neighbors=[TLSScanner] | lang=en
+- "main_scripts_udp_scanner_dns_probe": "_dns_probe()" | kind=code-symbol | source=probe/main_scripts/udp_scanner.py:L39 | neighbors=[udp_scanner.py] | lang=en
+- "main_scripts_udp_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/udp_scanner.py:L392 | neighbors=[udp_scanner.py] | lang=en
+- "main_scripts_udp_scanner_memcached_stats_probe": "_memcached_stats_probe()" | kind=code-symbol | source=probe/main_scripts/udp_scanner.py:L73 | neighbors=[udp_scanner.py] | lang=en
+- "main_scripts_udp_scanner_netbios_probe": "_netbios_probe()" | kind=code-symbol | source=probe/main_scripts/udp_scanner.py:L65 | neighbors=[udp_scanner.py] | lang=en
+- "main_scripts_udp_scanner_ntp_probe": "_ntp_probe()" | kind=code-symbol | source=probe/main_scripts/udp_scanner.py:L46 | neighbors=[udp_scanner.py] | lang=en
+- "main_scripts_udp_scanner_rationale_1": "udp_scanner.py — detect common UDP services via protocol-specific probes.  METHO" | kind=entity | source=probe/main_scripts/udp_scanner.py:L1 | neighbors=[udp_scanner.py] | lang=en
+- "main_scripts_udp_scanner_rationale_114": "SIP OPTIONS request — safe fingerprint method." | kind=entity | source=probe/main_scripts/udp_scanner.py:L114 | neighbors=[_sip_probe()] | lang=en
+- "main_scripts_udp_scanner_rationale_133": "TFTP RRQ for a non-existent file.  Error reply confirms TFTP service." | kind=entity | source=probe/main_scripts/udp_scanner.py:L133 | neighbors=[_tftp_probe()] | lang=en
+- "main_scripts_udp_scanner_rationale_139": "RMCP Ping (ASF Presence Ping) to detect IPMI/BMC." | kind=entity | source=probe/main_scripts/udp_scanner.py:L139 | neighbors=[_ipmi_probe()] | lang=en
+- "main_scripts_udp_scanner_rationale_140": "RMCP Ping (ASF Presence Ping) to detect IPMI/BMC." | kind=entity | source=probe/main_scripts/udp_scanner.py:L140 | neighbors=[_ipmi_probe()] | lang=en
+- "main_scripts_udp_scanner_rationale_146": "UPnP/SSDP M-SEARCH — unicast to target:1900." | kind=entity | source=probe/main_scripts/udp_scanner.py:L146 | neighbors=[_ssdp_probe()] | lang=en
+- "main_scripts_udp_scanner_rationale_147": "UPnP/SSDP M-SEARCH — unicast to target:1900." | kind=entity | source=probe/main_scripts/udp_scanner.py:L147 | neighbors=[_ssdp_probe()] | lang=en
+- "main_scripts_udp_scanner_rationale_158": "mDNS PTR query for _services._dns-sd._udp.local (unicast to :5353)." | kind=entity | source=probe/main_scripts/udp_scanner.py:L158 | neighbors=[_mdns_probe()] | lang=en
+- "main_scripts_udp_scanner_rationale_159": "mDNS PTR query for _services._dns-sd._udp.local (unicast to :5353)." | kind=entity | source=probe/main_scripts/udp_scanner.py:L159 | neighbors=[_mdns_probe()] | lang=en
+- "main_scripts_udp_scanner_rationale_188": "Parse IKEv1 or IKEv2 response header." | kind=entity | source=probe/main_scripts/udp_scanner.py:L188 | neighbors=[interpret_ike()] | lang=en
 
 ## Instructions
 

@@ -1,4 +1,4 @@
-# Node Description Batch 274 of 336
+# Node Description Batch 274 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,53 +19,51 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-LANGUAGE: each entry has a `lang=` marker giving the language of its source.
-Write that entry's description in EXACTLY that language. Do not translate to
-a single common language — match each node's source language individually.
+Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_agents_testheartbeat_test_online_heartbeat_clears_completed_job": ".test_online_heartbeat_clears_completed_job()" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L615 | neighbors=[TestHeartbeat] | lang=en
-- "tests_test_agents_testlegacybootstrap_test_shared_secret_bootstrap_is_disabled_by_default": ".test_shared_secret_bootstrap_is_disabled_by_default()" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L651 | neighbors=[TestLegacyBootstrap] | lang=en
-- "tests_test_agents_testpromoteassets_test_creates_asset_and_services_with_cpe": ".test_creates_asset_and_services_with_cpe()" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L735 | neighbors=[TestPromoteAssets] | lang=en
-- "tests_test_agents_testpromoteassets_test_empty_result_is_noop": ".test_empty_result_is_noop()" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L792 | neighbors=[TestPromoteAssets] | lang=en
-- "tests_test_agents_testpromoteassets_test_skips_host_without_ip": ".test_skips_host_without_ip()" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L785 | neighbors=[TestPromoteAssets] | lang=en
-- "tests_test_ai_engine_testhallucinationguard_setup_method": ".setup_method()" | kind=code-symbol | source=manager/backend/tests/test_ai_engine.py:L106 | neighbors=[TestHallucinationGuard] | lang=en
-- "tests_test_ai_engine_testhallucinationguard_test_cve_all_known_valid": ".test_cve_all_known_valid()" | kind=code-symbol | source=manager/backend/tests/test_ai_engine.py:L117 | neighbors=[TestHallucinationGuard] | lang=en
-- "tests_test_ai_engine_testhallucinationguard_test_cve_invention_flagged": ".test_cve_invention_flagged()" | kind=code-symbol | source=manager/backend/tests/test_ai_engine.py:L109 | neighbors=[TestHallucinationGuard] | lang=en
-- "tests_test_ai_engine_testhallucinationguard_test_cvss_match_passes": ".test_cvss_match_passes()" | kind=code-symbol | source=manager/backend/tests/test_ai_engine.py:L126 | neighbors=[TestHallucinationGuard] | lang=en
-- "tests_test_ai_engine_testhallucinationguard_test_cvss_mismatch_flagged": ".test_cvss_mismatch_flagged()" | kind=code-symbol | source=manager/backend/tests/test_ai_engine.py:L121 | neighbors=[TestHallucinationGuard] | lang=en
-- "tests_test_ai_engine_testhallucinationguard_test_destructive_command_flagged": ".test_destructive_command_flagged()" | kind=code-symbol | source=manager/backend/tests/test_ai_engine.py:L130 | neighbors=[TestHallucinationGuard] | lang=en
-- "tests_test_ai_engine_testhallucinationguard_test_drop_table_flagged": ".test_drop_table_flagged()" | kind=code-symbol | source=manager/backend/tests/test_ai_engine.py:L135 | neighbors=[TestHallucinationGuard] | lang=en
-- "tests_test_ai_engine_testhallucinationguard_test_safe_remediation_passes": ".test_safe_remediation_passes()" | kind=code-symbol | source=manager/backend/tests/test_ai_engine.py:L139 | neighbors=[TestHallucinationGuard] | lang=en
-- "tests_test_ai_engine_testhallucinationguard_test_validate_aggregate_confidence": ".test_validate_aggregate_confidence()" | kind=code-symbol | source=manager/backend/tests/test_ai_engine.py:L143 | neighbors=[TestHallucinationGuard] | lang=en
-- "tests_test_ai_engine_testhallucinationguard_test_validate_clean_text": ".test_validate_clean_text()" | kind=code-symbol | source=manager/backend/tests/test_ai_engine.py:L152 | neighbors=[TestHallucinationGuard] | lang=en
-- "tests_test_ai_engine_testvulnprioritizer_setup_method": ".setup_method()" | kind=code-symbol | source=manager/backend/tests/test_ai_engine.py:L49 | neighbors=[TestVulnPrioritizer] | lang=en
-- "tests_test_ai_engine_testvulnprioritizer_test_fallback_score_capped": ".test_fallback_score_capped()" | kind=code-symbol | source=manager/backend/tests/test_ai_engine.py:L88 | neighbors=[TestVulnPrioritizer] | lang=en
-- "tests_test_ai_engine_testvulnprioritizer_test_starts_untrained": ".test_starts_untrained()" | kind=code-symbol | source=manager/backend/tests/test_ai_engine.py:L52 | neighbors=[TestVulnPrioritizer] | lang=en
-- "tests_test_ai_engine_testvulnprioritizer_test_train_without_xgboost_raises": ".test_train_without_xgboost_raises()" | kind=code-symbol | source=manager/backend/tests/test_ai_engine.py:L92 | neighbors=[TestVulnPrioritizer] | lang=en
-- "tests_test_ai_normalizer_rationale_1": "Tests for ai_normalizer.py — 0% prior coverage.  Covers:   - extract_raw_text: p" | kind=entity | source=manager/detection_engine/tests/test_ai_normalizer.py:L1 | neighbors=[test_ai_normalizer.py] | lang=en
-- "tests_test_ai_normalizer_rationale_155": "Any exception from the AI client yields [] — never raises, never         blocks" | kind=entity | source=manager/detection_engine/tests/test_ai_normalizer.py:L155 | neighbors=[.test_client_failure_returns_empty()] | lang=en
-- "tests_test_ai_normalizer_rationale_168": "When the cache already has an answer, the client must not be called." | kind=entity | source=manager/detection_engine/tests/test_ai_normalizer.py:L168 | neighbors=[.test_cache_hit_bypasses_client()] | lang=en
-- "tests_test_ai_normalizer_rationale_185": "A candidate dict without a 'product' key must be silently skipped." | kind=entity | source=manager/detection_engine/tests/test_ai_normalizer.py:L185 | neighbors=[.test_malformed_response_missing_produc…] | lang=pt
-- "tests_test_ai_normalizer_rationale_194": "If the client returns something that isn't a list, return []." | kind=entity | source=manager/detection_engine/tests/test_ai_normalizer.py:L194 | neighbors=[.test_malformed_response_not_a_list_ret…] | lang=en
-- "tests_test_ai_normalizer_rationale_206": "Every candidate produced by propose_candidates must be tagged         ai_assiste" | kind=entity | source=manager/detection_engine/tests/test_ai_normalizer.py:L206 | neighbors=[.test_ai_assisted_flag_set_on_candidate…] | lang=en
-- "tests_test_ai_normalizer_rationale_219": "source_confidence on the resulting CPECandidate must match the         originati" | kind=entity | source=manager/detection_engine/tests/test_ai_normalizer.py:L219 | neighbors=[.test_source_confidence_propagated_from…] | lang=en
-- "tests_test_ai_normalizer_rationale_231": "When the AI response includes a version, it lands on the candidate." | kind=entity | source=manager/detection_engine/tests/test_ai_normalizer.py:L231 | neighbors=[.test_version_propagated_when_present()] | lang=en
-- "tests_test_ai_normalizer_rationale_243": "A candidate without a version key produces version_raw=None." | kind=entity | source=manager/detection_engine/tests/test_ai_normalizer.py:L243 | neighbors=[.test_version_none_when_absent()] | lang=pt
-- "tests_test_ai_normalizer_rationale_253": "The result of a first successful client call must be stored in the         cache" | kind=entity | source=manager/detection_engine/tests/test_ai_normalizer.py:L253 | neighbors=[.test_result_is_cached_after_first_call…] | lang=en
-- "tests_test_ai_normalizer_rationale_96": "ssh_inventory facts have no banner-style text for the AI to normalise." | kind=entity | source=manager/detection_engine/tests/test_ai_normalizer.py:L96 | neighbors=[.test_ssh_inventory_returns_none()] | lang=en
-- "tests_test_ai_normalizer_testainormalizercache_test_cache_persists_across_instances": ".test_cache_persists_across_instances()" | kind=code-symbol | source=manager/detection_engine/tests/test_ai_normalizer.py:L134 | neighbors=[TestAINormalizerCache] | lang=en
-- "tests_test_ai_normalizer_testainormalizercache_test_get_returns_none_on_miss": ".test_get_returns_none_on_miss()" | kind=code-symbol | source=manager/detection_engine/tests/test_ai_normalizer.py:L124 | neighbors=[TestAINormalizerCache] | lang=en
-- "tests_test_ai_normalizer_testainormalizercache_test_key_is_content_hash_not_plaintext": ".test_key_is_content_hash_not_plaintext()" | kind=code-symbol | source=manager/detection_engine/tests/test_ai_normalizer.py:L141 | neighbors=[TestAINormalizerCache] | lang=en
-- "tests_test_ai_normalizer_testainormalizercache_test_put_and_get_roundtrip": ".test_put_and_get_roundtrip()" | kind=code-symbol | source=manager/detection_engine/tests/test_ai_normalizer.py:L128 | neighbors=[TestAINormalizerCache] | lang=en
-- "tests_test_ai_normalizer_testfakeaiclient_test_returns_empty_for_unknown_text": ".test_returns_empty_for_unknown_text()" | kind=code-symbol | source=manager/detection_engine/tests/test_ai_normalizer.py:L114 | neighbors=[TestFakeAIClient] | lang=en
-- "tests_test_ai_normalizer_testfakeaiclient_test_returns_registered_response": ".test_returns_registered_response()" | kind=code-symbol | source=manager/detection_engine/tests/test_ai_normalizer.py:L110 | neighbors=[TestFakeAIClient] | lang=en
-- "tests_test_async_udp_echoprotocol_connection_made": ".connection_made()" | kind=code-symbol | source=probe/tests/test_async_udp.py:L24 | neighbors=[_EchoProtocol] | lang=en
-- "tests_test_async_udp_echoprotocol_datagram_received": ".datagram_received()" | kind=code-symbol | source=probe/tests/test_async_udp.py:L27 | neighbors=[_EchoProtocol] | lang=en
-- "tests_test_async_udp_rationale_1": "test_async_udp.py — tests for the true-async UDP probe helper in scanner_base." | kind=entity | source=probe/tests/test_async_udp.py:L1 | neighbors=[test_async_udp.py] | lang=en
-- "tests_test_async_udp_sinkprotocol_datagram_received": ".datagram_received()" | kind=code-symbol | source=probe/tests/test_async_udp.py:L32 | neighbors=[_SinkProtocol] | lang=en
+- "routers_remediation_rationale_64": "Build the atomic INSERT … ON CONFLICT DO UPDATE for a cached plan.      Pure (no" | kind=entity | source=manager/backend/app/routers/remediation.py:L64 | neighbors=[_build_upsert_stmt()]
+- "routers_remediation_rationale_66": "Build the atomic INSERT … ON CONFLICT DO UPDATE for a cached plan.      Pure (no" | kind=entity | source=manager/backend/app/routers/remediation.py:L66 | neighbors=[_build_upsert_stmt()]
+- "routers_remediation_rationale_95": "Execute the atomic upsert and return the RETURNING row for serialization." | kind=entity | source=manager/backend/app/routers/remediation.py:L95 | neighbors=[_upsert_plan()]
+- "routers_remediation_rationale_97": "Execute the atomic upsert and return the RETURNING row for serialization." | kind=entity | source=manager/backend/app/routers/remediation.py:L97 | neighbors=[_upsert_plan()]
+- "routers_scan_schedules_rationale_1": "scan_schedules.py — operator management of recurring scans.  Vedha could only be" | kind=entity | source=manager/backend/app/routers/scan_schedules.py:L1 | neighbors=[scan_schedules.py]
+- "routers_scan_schedules_rationale_147": "Pausing is first-class: disabling during a change freeze is routine, and     del" | kind=entity | source=manager/backend/app/routers/scan_schedules.py:L147 | neighbors=[update_schedule()]
+- "routers_sla_policy_rationale_1": "sla_policy.py — operator management of the tenant's custom SLA remediation windo" | kind=entity | source=manager/backend/app/routers/sla_policy.py:L1 | neighbors=[sla_policy.py]
+- "routers_sla_policy_rationale_59": "The tenant's custom SLA windows if set, else the env defaults. Shared by any" | kind=entity | source=manager/backend/app/routers/sla_policy.py:L59 | neighbors=[resolve_windows()]
+- "routers_users_activate_user": "activate_user()" | kind=code-symbol | source=manager/backend/app/routers/users.py:L118 | neighbors=[users.py]
+- "routers_users_deactivate_user": "deactivate_user()" | kind=code-symbol | source=manager/backend/app/routers/users.py:L92 | neighbors=[users.py]
+- "routers_users_rationale_1": "Tenant user management — list and deactivate operator accounts.  Exposed endpoin" | kind=entity | source=manager/backend/app/routers/users.py:L1 | neighbors=[users.py]
+- "routers_validation_rationale_1": "Approval-gated safe active-validation API (P3).  POST /engagements/{id}/findings" | kind=entity | source=manager/backend/app/routers/validation.py:L1 | neighbors=[validation.py]
+- "routers_validation_rationale_82": "RoE gate: active validation is allowed unless the engagement's RoE     explicitl" | kind=entity | source=manager/backend/app/routers/validation.py:L82 | neighbors=[_roe_allows_active_validation()]
+- "routers_validation_rationale_89": "Pick a safe check for the finding. TLS findings → tls_handshake, else a     bann" | kind=entity | source=manager/backend/app/routers/validation.py:L89 | neighbors=[_default_check_kind()]
+- "routers_vuln_scans_import_findings": "import_findings()" | kind=code-symbol | source=manager/backend/app/routers/vuln_scans.py:L215 | neighbors=[vuln_scans.py]
+- "routers_vuln_scans_launch_nessus_scan": "launch_nessus_scan()" | kind=code-symbol | source=manager/backend/app/routers/vuln_scans.py:L66 | neighbors=[vuln_scans.py]
+- "routers_vuln_scans_launch_nuclei_scan": "launch_nuclei_scan()" | kind=code-symbol | source=manager/backend/app/routers/vuln_scans.py:L119 | neighbors=[vuln_scans.py]
+- "routers_vuln_scans_scan_status": "scan_status()" | kind=code-symbol | source=manager/backend/app/routers/vuln_scans.py:L165 | neighbors=[vuln_scans.py]
+- "routers_vuln_scans_trigger_enrichment": "trigger_enrichment()" | kind=code-symbol | source=manager/backend/app/routers/vuln_scans.py:L194 | neighbors=[vuln_scans.py]
+- "run_route_post": "POST()" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/detection-validation/run/route.ts:L5 | neighbors=[route.ts]
+- "scan_page_cat": "Cat" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L143 | neighbors=[page.tsx]
+- "scan_page_cats": "CATS" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L142 | neighbors=[page.tsx]
+- "scan_page_dispatchreceipt": "DispatchReceipt()" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L627 | neighbors=[page.tsx]
+- "scan_page_engagement": "Engagement" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L45 | neighbors=[page.tsx]
+- "scan_page_enginemanifest": "EngineManifest" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L78 | neighbors=[page.tsx]
+- "scan_page_fieldlabel": "FieldLabel()" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L172 | neighbors=[page.tsx]
+- "scan_page_fleetstrip": "FleetStrip()" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L196 | neighbors=[page.tsx]
+- "scan_page_hudframe": "HudFrame()" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L181 | neighbors=[page.tsx]
+- "scan_page_intensity": "Intensity" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L147 | neighbors=[page.tsx]
+- "scan_page_intensitydial": "IntensityDial()" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L398 | neighbors=[page.tsx]
+- "scan_page_jobpanel": "JobPanel()" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L453 | neighbors=[page.tsx]
+- "scan_page_jobstatus": "JobStatus" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L53 | neighbors=[page.tsx]
+- "scan_page_network_va_fallback": "NETWORK_VA_FALLBACK" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L103 | neighbors=[page.tsx]
+- "scan_page_networkvahero": "NetworkVaHero()" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L269 | neighbors=[page.tsx]
+- "scan_page_nva_stages": "NVA_STAGES" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L267 | neighbors=[page.tsx]
+- "scan_page_phases": "PHASES" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L444 | neighbors=[page.tsx]
+- "scan_page_probe": "Probe" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L33 | neighbors=[page.tsx]
+- "scan_page_profile_badge": "PROFILE_BADGE" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L136 | neighbors=[page.tsx]
+- "scan_page_rec_st": "REC_ST" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L446 | neighbors=[page.tsx]
+- "scan_page_risk": "RISK" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L129 | neighbors=[page.tsx]
 
 ## Instructions
 

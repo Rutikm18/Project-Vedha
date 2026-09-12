@@ -1,4 +1,4 @@
-# Node Description Batch 182 of 336
+# Node Description Batch 182 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -9,60 +9,54 @@ your JSON answer to the answer file.
 You are documenting nodes in a knowledge graph.
 For each entry below, write ONE concise factual plain-language sentence
 describing what it is or does. Use only the provided context.
-For an entity node (any other kind — e.g. a person, place, event, object),
-describe what the entity is and its role, grounded in its type, its
-relations (neighbors) and the provided citations/evidence — e.g.
-"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
-Ground entity descriptions in the citations/evidence when present; do not
-speculate beyond the context, so a node with no supporting context may be
-left out of the reply.
-LANGUAGE: each entry has a `lang=` marker giving the language of its source.
-Write that entry's description in EXACTLY that language. Do not translate to
-a single common language — match each node's source language individually.
+For a code symbol (kind=code-symbol — a function, class, or constant),
+describe what the function/symbol does based on its name, source location
+and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
+Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "agent_transport_rationale_222": "Register the probe with the manager.          Args:             name: Probe name" | kind=entity | source=probe/agent/transport.py:L222 | neighbors=[.register()] | lang=en
-- "agent_transport_rationale_223": "Merge and atomically persist private state while preserving fields." | kind=entity | source=probe/agent/transport.py:L223 | neighbors=[.update_state()] | lang=en
-- "agent_transport_rationale_224": "Register the probe with the manager.          Args:             name: Probe name" | kind=entity | source=probe/agent/transport.py:L224 | neighbors=[.register()] | lang=en
-- "agent_transport_rationale_225": "Register the probe with the manager.          Args:             name: Probe name" | kind=entity | source=probe/agent/transport.py:L225 | neighbors=[.register()] | lang=en
-- "agent_transport_rationale_233": "Fetch the engagement's authoritative scope.          Returns the response dict i" | kind=entity | source=probe/agent/transport.py:L233 | neighbors=[.fetch_scope()] | lang=en
-- "agent_transport_rationale_244": "Register the probe with the manager.          Args:             name: Probe name" | kind=entity | source=probe/agent/transport.py:L244 | neighbors=[.register()] | lang=en
-- "agent_transport_rationale_252": "Submit a scan result to the manager.          Returns True ONLY on a 2xx respons" | kind=entity | source=probe/agent/transport.py:L252 | neighbors=[.submit_result()] | lang=en
-- "agent_transport_rationale_257": "True if we have both an agent_id and a token for API calls." | kind=entity | source=probe/agent/transport.py:L257 | neighbors=[.is_authenticated()] | lang=en
-- "agent_transport_rationale_262": "Register the probe with the manager.          Args:             name: Probe name" | kind=entity | source=probe/agent/transport.py:L262 | neighbors=[.register()] | lang=en
-- "agent_transport_rationale_269": "True if we have both an agent_id and a token for API calls." | kind=entity | source=probe/agent/transport.py:L269 | neighbors=[.is_authenticated()] | lang=en
-- "agent_transport_rationale_274": "Refresh routing metadata using the cached agent identity.          Returns True" | kind=entity | source=probe/agent/transport.py:L274 | neighbors=[.refresh_registration()] | lang=en
-- "agent_transport_rationale_279": "Register using a manager-side shared bootstrap key (no user login needed)." | kind=entity | source=probe/agent/transport.py:L279 | neighbors=[.bootstrap()] | lang=pt
-- "agent_transport_rationale_289": "Merge and atomically persist private state while preserving fields." | kind=entity | source=probe/agent/transport.py:L289 | neighbors=[.update_state()] | lang=en
-- "agent_transport_rationale_299": "Register using a manager-side shared bootstrap key (no user login needed)." | kind=entity | source=probe/agent/transport.py:L299 | neighbors=[.bootstrap()] | lang=pt
-- "agent_transport_rationale_303": "Generic authenticated GET, returns parsed JSON or None on failure.          Used" | kind=entity | source=probe/agent/transport.py:L303 | neighbors=[.http_get()] | lang=en
-- "agent_transport_rationale_306": "Persist the agent identity AND the manager that issued it.          The issuer b" | kind=entity | source=probe/agent/transport.py:L306 | neighbors=[.save_state()] | lang=en
-- "agent_transport_rationale_308": "Send a heartbeat to the manager.          Returns True if the heartbeat was acce" | kind=entity | source=probe/agent/transport.py:L308 | neighbors=[.heartbeat()] | lang=en
-- "agent_transport_rationale_31": "Raised when a transport operation fails permanently (not retryable)." | kind=entity | source=probe/agent/transport.py:L31 | neighbors=[TransportError] | lang=pt
-- "agent_transport_rationale_311": "Send a heartbeat to the manager.          Returns True if the heartbeat was acce" | kind=entity | source=probe/agent/transport.py:L311 | neighbors=[.heartbeat()] | lang=en
-- "agent_transport_rationale_316": "Register the probe with the manager.          Args:             name: Probe name" | kind=entity | source=probe/agent/transport.py:L316 | neighbors=[.register()] | lang=en
-- "agent_transport_rationale_317": "Register using a manager-side shared bootstrap key (no user login needed)." | kind=entity | source=probe/agent/transport.py:L317 | neighbors=[.bootstrap()] | lang=pt
-- "agent_transport_rationale_319": "Return the WebSocket connection URL with auth token.          The token is passe" | kind=entity | source=probe/agent/transport.py:L319 | neighbors=[.ws_url()] | lang=en
-- "agent_transport_rationale_328": "Register the probe with the manager.          Args:             name: Probe name" | kind=entity | source=probe/agent/transport.py:L328 | neighbors=[.register()] | lang=en
-- "agent_transport_rationale_33": "Raised when a transport operation fails permanently (not retryable)." | kind=entity | source=probe/agent/transport.py:L33 | neighbors=[TransportError] | lang=pt
-- "agent_transport_rationale_333": "Poll for pending jobs (HTTP fallback for WebSocket).          Returns a list of" | kind=entity | source=probe/agent/transport.py:L333 | neighbors=[.poll_jobs()] | lang=en
-- "agent_transport_rationale_336": "Poll for pending jobs (HTTP fallback for WebSocket).          Returns a list of" | kind=entity | source=probe/agent/transport.py:L336 | neighbors=[.poll_jobs()] | lang=en
-- "agent_transport_rationale_34": "Raised when a transport operation fails permanently (not retryable)." | kind=entity | source=probe/agent/transport.py:L34 | neighbors=[TransportError] | lang=pt
-- "agent_transport_rationale_351": "Fetch the engagement's authoritative scope.          Returns the response dict i" | kind=entity | source=probe/agent/transport.py:L351 | neighbors=[.fetch_scope()] | lang=en
-- "agent_transport_rationale_36": "The probe's device signing key is already registered as an agent on the     mana" | kind=entity | source=probe/agent/transport.py:L36 | neighbors=[DeviceAlreadyEnrolledError] | lang=en
-- "agent_transport_rationale_364": "Register the probe with the manager.          Args:             name: Probe name" | kind=entity | source=probe/agent/transport.py:L364 | neighbors=[.register()] | lang=en
-- "agent_transport_rationale_37": "HTTP (+ future WebSocket) transport to the manager.      Thread-safe for sequent" | kind=entity | source=probe/agent/transport.py:L37 | neighbors=[Transport] | lang=en
-- "agent_transport_rationale_370": "Submit a scan result to the manager.          Returns True ONLY on a 2xx respons" | kind=entity | source=probe/agent/transport.py:L370 | neighbors=[.submit_result()] | lang=en
-- "agent_transport_rationale_371": "Register using a manager-side shared bootstrap key (no user login needed)." | kind=entity | source=probe/agent/transport.py:L371 | neighbors=[.bootstrap()] | lang=pt
-- "agent_transport_rationale_373": "Submit a scan result to the manager.          Returns True ONLY on a 2xx respons" | kind=entity | source=probe/agent/transport.py:L373 | neighbors=[.submit_result()] | lang=en
-- "agent_transport_rationale_383": "Register using a manager-side shared bootstrap key (no user login needed)." | kind=entity | source=probe/agent/transport.py:L383 | neighbors=[.bootstrap()] | lang=pt
-- "agent_transport_rationale_395": "Refresh a device token before expiry; legacy identities are unchanged." | kind=entity | source=probe/agent/transport.py:L395 | neighbors=[.ensure_device_access()] | lang=en
-- "agent_transport_rationale_424": "Generic authenticated GET, returns parsed JSON or None on failure.          Used" | kind=entity | source=probe/agent/transport.py:L424 | neighbors=[.http_get()] | lang=en
-- "agent_transport_rationale_437": "Return the WebSocket endpoint without embedding credentials.          Authentica" | kind=entity | source=probe/agent/transport.py:L437 | neighbors=[.ws_url()] | lang=en
-- "agent_transport_rationale_439": "Refresh a device token before expiry; legacy identities are unchanged." | kind=entity | source=probe/agent/transport.py:L439 | neighbors=[.ensure_device_access()] | lang=en
-- "agent_transport_rationale_440": "Return the WebSocket endpoint without embedding credentials.          Authentica" | kind=entity | source=probe/agent/transport.py:L440 | neighbors=[.ws_url()] | lang=en
+- "tests_test_probe_core_testclassifycertainty_test_error_overrides": ".test_error_overrides()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L760 | neighbors=[TestClassifyCertainty, _scan_result()]
+- "tests_test_probe_core_testclassifycertainty_test_host_discovery_uncertain": ".test_host_discovery_uncertain()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L756 | neighbors=[TestClassifyCertainty, _scan_result()]
+- "tests_test_probe_core_testclassifycertainty_test_service_banner_deterministic": ".test_service_banner_deterministic()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L752 | neighbors=[TestClassifyCertainty, _scan_result()]
+- "tests_test_probe_core_testclassifycertainty_test_tcp_port_scan_deterministic": ".test_tcp_port_scan_deterministic()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L744 | neighbors=[TestClassifyCertainty, _scan_result()]
+- "tests_test_probe_core_testclassifycertainty_test_udp_port_scan_uncertain": ".test_udp_port_scan_uncertain()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L748 | neighbors=[TestClassifyCertainty, _scan_result()]
+- "tests_test_probe_core_testclassifycertainty_test_unknown_scanner_conservative": ".test_unknown_scanner_conservative()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L764 | neighbors=[TestClassifyCertainty, _scan_result()]
+- "tests_test_probe_core_testenginesummary_test_run_scoped_summary_does_not_become_a_host": ".test_run_scoped_summary_does_not_become_a_host()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L672 | neighbors=[ipv6_discovery reports on the RUN (its …, TestEngineSummary]
+- "tests_test_probe_core_testgate2_test_never_seen_alive": ".test_never_seen_alive()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L277 | neighbors=[TestGate2, _asset()]
+- "tests_test_probe_core_testgate2_test_ot_always_false": ".test_ot_always_false()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L289 | neighbors=[TestGate2, _asset()]
+- "tests_test_probe_core_testgate2_test_recently_seen_alive": ".test_recently_seen_alive()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L281 | neighbors=[TestGate2, _asset()]
+- "tests_test_probe_core_testgate2_test_stale_seen_alive": ".test_stale_seen_alive()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L285 | neighbors=[TestGate2, _asset()]
+- "tests_test_probe_core_testgate3_test_not_alive": ".test_not_alive()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L299 | neighbors=[TestGate3, _asset()]
+- "tests_test_probe_core_testgate3_test_ot_always_false": ".test_ot_always_false()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L303 | neighbors=[TestGate3, _asset()]
+- "tests_test_probe_core_testgate3_test_requires_alive": ".test_requires_alive()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L295 | neighbors=[TestGate3, _asset()]
+- "tests_test_probe_core_testgate4_test_all_closed": ".test_all_closed()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L317 | neighbors=[TestGate4, _asset()]
+- "tests_test_probe_core_testgate4_test_no_open_ports": ".test_no_open_ports()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L313 | neighbors=[TestGate4, _asset()]
+- "tests_test_probe_core_testgate4_test_with_open_ports": ".test_with_open_ports()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L309 | neighbors=[TestGate4, _asset()]
+- "tests_test_probe_core_testgate5_test_dynamically_routed_overrides_port": ".test_dynamically_routed_overrides_port()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L343 | neighbors=[TestGate5, _asset()]
+- "tests_test_probe_core_testgate5_test_explicit_snmp_does_not_require_tcp_liveness": ".test_explicit_snmp_does_not_require_tcp_liveness()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L359 | neighbors=[TestGate5, _asset()]
+- "tests_test_probe_core_testgate5_test_iot_profile_no_smb": ".test_iot_profile_no_smb()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L327 | neighbors=[TestGate5, _asset()]
+- "tests_test_probe_core_testgate5_test_it_profile_tls_with_tls_port": ".test_it_profile_tls_with_tls_port()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L323 | neighbors=[TestGate5, _asset()]
+- "tests_test_probe_core_testgate5_test_mcp_ai_allowed_on_it_ai_port": ".test_mcp_ai_allowed_on_it_ai_port()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L351 | neighbors=[TestGate5, _asset()]
+- "tests_test_probe_core_testgate5_test_no_matching_ports": ".test_no_matching_ports()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L347 | neighbors=[TestGate5, _asset()]
+- "tests_test_probe_core_testgate5_test_ot_no_branches": ".test_ot_no_branches()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L331 | neighbors=[TestGate5, _asset()]
+- "tests_test_probe_core_testgate5_test_service_filter_allows": ".test_service_filter_allows()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L339 | neighbors=[TestGate5, _asset()]
+- "tests_test_probe_core_testgate5_test_service_filter_blocks": ".test_service_filter_blocks()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L335 | neighbors=[TestGate5, _asset()]
+- "tests_test_probe_core_testgate5_test_snmp_allowed_on_live_it_host": ".test_snmp_allowed_on_live_it_host()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L355 | neighbors=[TestGate5, _asset()]
+- "tests_test_probe_core_testgate5_test_snmp_not_allowed_on_iot_profile": ".test_snmp_not_allowed_on_iot_profile()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L363 | neighbors=[TestGate5, _asset()]
+- "tests_test_probe_core_testgate6_test_already_collected": ".test_already_collected()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L377 | neighbors=[TestGate6, _asset()]
+- "tests_test_probe_core_testgate6_test_no_creds": ".test_no_creds()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L369 | neighbors=[TestGate6, _asset()]
+- "tests_test_probe_core_testgate6_test_not_alive": ".test_not_alive()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L381 | neighbors=[TestGate6, _asset()]
+- "tests_test_probe_core_testgate6_test_ssh_creds_alive_uncollected": ".test_ssh_creds_alive_uncollected()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L373 | neighbors=[TestGate6, _asset()]
+- "tests_test_probe_core_testroutebranches_test_http_banner_routes_web": ".test_http_banner_routes_web()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L420 | neighbors=[TestRouteBranches, _asset()]
+- "tests_test_probe_core_testroutebranches_test_no_banners_no_routing": ".test_no_banners_no_routing()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L434 | neighbors=[TestRouteBranches, _asset()]
+- "tests_test_probe_core_testroutebranches_test_silent_nonstandard_port_routes_tls": ".test_silent_nonstandard_port_routes_tls()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L427 | neighbors=[TestRouteBranches, _asset()]
+- "tests_test_probe_core_testscanresult_test_to_json_roundtrip": ".test_to_json_roundtrip()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L228 | neighbors=[TestScanResult, _scan_result()]
+- "tests_test_probe_core_testworkflowcache_test_all_entries_for_host": ".test_all_entries_for_host()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L819 | neighbors=[TestWorkflowCache, _scan_result()]
+- "tests_test_probe_core_testworkflowcache_test_put_get": ".test_put_get()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L783 | neighbors=[TestWorkflowCache, _scan_result()]
+- "tests_test_probe_core_testworkflowcache_test_save_and_load_roundtrip": ".test_save_and_load_roundtrip()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L827 | neighbors=[TestWorkflowCache, _scan_result()]
+- "tests_test_probe_core_testworkflowcache_test_should_recheck_deterministic_fresh": ".test_should_recheck_deterministic_fresh()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L805 | neighbors=[TestWorkflowCache, _scan_result()]
 
 ## Instructions
 

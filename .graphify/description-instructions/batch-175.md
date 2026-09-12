@@ -1,4 +1,4 @@
-# Node Description Batch 176 of 336
+# Node Description Batch 176 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -9,60 +9,54 @@ your JSON answer to the answer file.
 You are documenting nodes in a knowledge graph.
 For each entry below, write ONE concise factual plain-language sentence
 describing what it is or does. Use only the provided context.
-For an entity node (any other kind — e.g. a person, place, event, object),
-describe what the entity is and its role, grounded in its type, its
-relations (neighbors) and the provided citations/evidence — e.g.
-"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
-Ground entity descriptions in the citations/evidence when present; do not
-speculate beyond the context, so a node with no supporting context may be
-left out of the reply.
-LANGUAGE: each entry has a `lang=` marker giving the language of its source.
-Write that entry's description in EXACTLY that language. Do not translate to
-a single common language — match each node's source language individually.
+For a code symbol (kind=code-symbol — a function, class, or constant),
+describe what the function/symbol does based on its name, source location
+and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
+Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "agent_agent_rationale_76": "Load key=value lines from probe.env for dev convenience." | kind=entity | source=probe/agent/agent.py:L76 | neighbors=[_load_env()] | lang=en
-- "agent_agent_rationale_763": "Return (agent_id, token, fresh, identity_sk, identity_pk, public_key_b64)." | kind=entity | source=probe/agent/agent.py:L763 | neighbors=[_obtain_identity()] | lang=en
-- "agent_agent_rationale_769": "Return (agent_id, token, fresh, identity_sk, identity_pk, public_key_b64)." | kind=entity | source=probe/agent/agent.py:L769 | neighbors=[_obtain_identity()] | lang=en
-- "agent_agent_rationale_783": "Detect common debugging/tracing tools.  Informational only — does     NOT block" | kind=entity | source=probe/agent/agent.py:L783 | neighbors=[_check_anti_debug()] | lang=en
-- "agent_agent_rationale_796": "Acknowledge an offer without executing it before claim confirmation." | kind=entity | source=probe/agent/agent.py:L796 | neighbors=[_ws_stage_job_offer()] | lang=en
-- "agent_agent_rationale_802": "Release a staged job only after the manager confirms its claim." | kind=entity | source=probe/agent/agent.py:L802 | neighbors=[_ws_take_confirmed_job()] | lang=en
-- "agent_agent_rationale_805": "Poll pending jobs even while WS is connected.      This makes result delivery re" | kind=entity | source=probe/agent/agent.py:L805 | neighbors=[_ws_http_poll_fallback()] | lang=en
-- "agent_agent_rationale_81": "Return no work for transient poll failures without hiding auth failures." | kind=entity | source=probe/agent/agent.py:L81 | neighbors=[_poll_jobs_or_empty()] | lang=en
-- "agent_agent_rationale_831": "Load the probe's X25519 identity from persistent state, or create one.      Retu" | kind=entity | source=probe/agent/agent.py:L831 | neighbors=[_load_or_create_identity()] | lang=en
-- "agent_agent_rationale_832": "Load the probe's X25519 identity from persistent state, or create one.      Retu" | kind=entity | source=probe/agent/agent.py:L832 | neighbors=[_load_or_create_identity()] | lang=en
-- "agent_agent_rationale_836": "Run one job while keeping WS status/result frames best-effort." | kind=entity | source=probe/agent/agent.py:L836 | neighbors=[_ws_run_job()] | lang=en
-- "agent_agent_rationale_842": "Send periodic heartbeats over WebSocket." | kind=entity | source=probe/agent/agent.py:L842 | neighbors=[_ws_heartbeat_sender()] | lang=en
-- "agent_agent_rationale_848": "Run one job while keeping WS status/result frames best-effort." | kind=entity | source=probe/agent/agent.py:L848 | neighbors=[_ws_run_job()] | lang=en
-- "agent_agent_rationale_851": "Send periodic heartbeats over WebSocket." | kind=entity | source=probe/agent/agent.py:L851 | neighbors=[_ws_heartbeat_sender()] | lang=en
-- "agent_agent_rationale_856": "Acknowledge an offer without executing it before claim confirmation." | kind=entity | source=probe/agent/agent.py:L856 | neighbors=[_ws_stage_job_offer()] | lang=en
-- "agent_agent_rationale_859": "Retry durable result files using the acknowledged HTTP result path." | kind=entity | source=probe/agent/agent.py:L859 | neighbors=[_flush_spool_over_http()] | lang=en
-- "agent_agent_rationale_868": "Retry durable result files using the acknowledged HTTP result path." | kind=entity | source=probe/agent/agent.py:L868 | neighbors=[_flush_spool_over_http()] | lang=en
-- "agent_agent_rationale_872": "Run all startup security checks before any network I/O.      Order matters: HW b" | kind=entity | source=probe/agent/agent.py:L872 | neighbors=[_startup_gauntlet()] | lang=pt
-- "agent_agent_rationale_874": "Release a staged job only after the manager confirms its claim." | kind=entity | source=probe/agent/agent.py:L874 | neighbors=[_ws_take_confirmed_job()] | lang=en
-- "agent_agent_rationale_880": "Load or atomically create the probe's Ed25519 enrollment identity." | kind=entity | source=probe/agent/agent.py:L880 | neighbors=[_load_or_create_signing_identity()] | lang=en
-- "agent_agent_rationale_888": "Acknowledge an offer without executing it before claim confirmation." | kind=entity | source=probe/agent/agent.py:L888 | neighbors=[_ws_stage_job_offer()] | lang=en
-- "agent_agent_rationale_908": "Run one job while keeping WS status/result frames best-effort." | kind=entity | source=probe/agent/agent.py:L908 | neighbors=[_ws_run_job()] | lang=en
-- "agent_agent_rationale_913": "Request UI approval, poll, prove key possession, and activate." | kind=entity | source=probe/agent/agent.py:L913 | neighbors=[_enroll_device()] | lang=en
-- "agent_agent_rationale_914": "Request UI approval, poll, prove key possession, and activate." | kind=entity | source=probe/agent/agent.py:L914 | neighbors=[_enroll_device()] | lang=en
-- "agent_agent_rationale_918": "Poll pending jobs even while WS is connected.      This makes result delivery re" | kind=entity | source=probe/agent/agent.py:L918 | neighbors=[_ws_http_poll_fallback()] | lang=en
-- "agent_agent_rationale_919": "Detect common debugging/tracing tools.  Informational only — does     NOT block" | kind=entity | source=probe/agent/agent.py:L919 | neighbors=[_check_anti_debug()] | lang=en
-- "agent_agent_rationale_928": "Detect common debugging/tracing tools.  Informational only — does     NOT block" | kind=entity | source=probe/agent/agent.py:L928 | neighbors=[_check_anti_debug()] | lang=en
-- "agent_agent_rationale_93": "Human label for what a job will actually run — the use-case (real intent),     n" | kind=entity | source=probe/agent/agent.py:L93 | neighbors=[_job_intent()] | lang=en
-- "agent_agent_rationale_940": "Run one job while keeping WS status/result frames best-effort." | kind=entity | source=probe/agent/agent.py:L940 | neighbors=[_ws_run_job()] | lang=en
-- "agent_agent_rationale_943": "Send periodic heartbeats over WebSocket." | kind=entity | source=probe/agent/agent.py:L943 | neighbors=[_ws_heartbeat_sender()] | lang=en
-- "agent_agent_rationale_955": "Send periodic heartbeats over WebSocket." | kind=entity | source=probe/agent/agent.py:L955 | neighbors=[_ws_heartbeat_sender()] | lang=en
-- "agent_agent_rationale_960": "Retry durable result files using the acknowledged HTTP result path." | kind=entity | source=probe/agent/agent.py:L960 | neighbors=[_flush_spool_over_http()] | lang=en
-- "agent_agent_rationale_967": "Load the probe's X25519 identity from persistent state, or create one.      Retu" | kind=entity | source=probe/agent/agent.py:L967 | neighbors=[_load_or_create_identity()] | lang=en
-- "agent_agent_rationale_972": "Retry durable result files using the acknowledged HTTP result path." | kind=entity | source=probe/agent/agent.py:L972 | neighbors=[_flush_spool_over_http()] | lang=en
-- "agent_agent_rationale_973": "Run all startup security checks before any network I/O.      Order matters: HW b" | kind=entity | source=probe/agent/agent.py:L973 | neighbors=[_startup_gauntlet()] | lang=pt
-- "agent_agent_rationale_976": "Load the probe's X25519 identity from persistent state, or create one.      Retu" | kind=entity | source=probe/agent/agent.py:L976 | neighbors=[_load_or_create_identity()] | lang=en
-- "agent_agent_rationale_978": "Poll pending jobs even while WS is connected.      This makes result delivery re" | kind=entity | source=probe/agent/agent.py:L978 | neighbors=[_ws_http_poll_fallback()] | lang=en
-- "agent_agent_rationale_985": "Run all startup security checks before any network I/O.      Order matters: HW b" | kind=entity | source=probe/agent/agent.py:L985 | neighbors=[_startup_gauntlet()] | lang=pt
-- "agent_agent_rationale_986": "Return (agent_id, token, fresh, identity_sk, identity_pk, public_key_b64)." | kind=entity | source=probe/agent/agent.py:L986 | neighbors=[_obtain_identity()] | lang=en
-- "agent_agent_rationale_996": "Return (agent_id, token, fresh, identity_sk, identity_pk, public_key_b64)." | kind=entity | source=probe/agent/agent.py:L996 | neighbors=[_obtain_identity()] | lang=en
+- "tests_test_loaders_testloadepsserrors_test_epss_get_returns_none_for_unknown_cve": ".test_epss_get_returns_none_for_unknown_cve()" | kind=code-symbol | source=manager/detection_engine/tests/test_loaders.py:L172 | neighbors=[TestLoadEpssErrors, _valid_epss()]
+- "tests_test_loaders_testloadepsserrors_test_valid_epss_loads": ".test_valid_epss_loads()" | kind=code-symbol | source=manager/detection_engine/tests/test_loaders.py:L164 | neighbors=[TestLoadEpssErrors, _valid_epss()]
+- "tests_test_loaders_testloadkeverrors_test_valid_kev_loads": ".test_valid_kev_loads()" | kind=code-symbol | source=manager/detection_engine/tests/test_loaders.py:L138 | neighbors=[TestLoadKevErrors, _valid_kev()]
+- "tests_test_loaders_testloadsnapshoterrors_test_error_message_mentions_re_sync": ".test_error_message_mentions_re_sync()" | kind=code-symbol | source=manager/detection_engine/tests/test_loaders.py:L101 | neighbors=[The FileNotFoundError message should me…, TestLoadSnapshotErrors]
+- "tests_test_loaders_testloadsnapshoterrors_test_malformed_json_raises": ".test_malformed_json_raises()" | kind=code-symbol | source=manager/detection_engine/tests/test_loaders.py:L77 | neighbors=[Completely broken JSON must propagate a…, TestLoadSnapshotErrors]
+- "tests_test_loaders_testloadsnapshoterrors_test_missing_file_raises_file_not_found": ".test_missing_file_raises_file_not_found()" | kind=code-symbol | source=manager/detection_engine/tests/test_loaders.py:L59 | neighbors=[A path that doesn't exist must raise Fi…, TestLoadSnapshotErrors]
+- "tests_test_loaders_testloadsnapshoterrors_test_missing_required_key_raises": ".test_missing_required_key_raises()" | kind=code-symbol | source=manager/detection_engine/tests/test_loaders.py:L85 | neighbors=[A JSON file that is valid JSON but miss…, TestLoadSnapshotErrors]
+- "tests_test_loaders_valid_kev": "_valid_kev()" | kind=code-symbol | source=manager/detection_engine/tests/test_loaders.py:L42 | neighbors=[test_loaders.py, .test_valid_kev_loads()]
+- "tests_test_main_scripts_completeness_test_fallback_count_based_when_no_requested_set": "test_fallback_count_based_when_no_requested_set()" | kind=code-symbol | source=probe/tests/test_main_scripts_completeness.py:L64 | neighbors=[test_main_scripts_completeness.py, _rec()]
+- "tests_test_main_scripts_correlation_test_correlations_are_evidence_backed": "test_correlations_are_evidence_backed()" | kind=code-symbol | source=probe/tests/test_main_scripts_correlation.py:L91 | neighbors=[test_main_scripts_correlation.py, _run()]
+- "tests_test_main_scripts_coverage_testdefaultsandadaptivetimeout_test_adaptive_estimator_is_shared_and_adapts_down_from_fast_rtts": ".test_adaptive_estimator_is_shared_and_adapts_down_from_fast_rtts()" | kind=code-symbol | source=probe/tests/test_main_scripts_coverage.py:L195 | neighbors=[TestDefaultsAndAdaptiveTimeout, _mk_scanner()]
+- "tests_test_main_scripts_coverage_testdefaultsandadaptivetimeout_test_default_ports_are_nmap_top100_not_the_35_port_set": ".test_default_ports_are_nmap_top100_not_the_35_port_set()" | kind=code-symbol | source=probe/tests/test_main_scripts_coverage.py:L187 | neighbors=[TestDefaultsAndAdaptiveTimeout, _scope()]
+- "tests_test_main_scripts_coverage_testdefaultsandadaptivetimeout_test_fixed_timeout_flag_disables_the_estimator": ".test_fixed_timeout_flag_disables_the_estimator()" | kind=code-symbol | source=probe/tests/test_main_scripts_coverage.py:L214 | neighbors=[TestDefaultsAndAdaptiveTimeout, _mk_scanner()]
+- "tests_test_main_scripts_coverage_testworkerpoolandmetrics_test_all_65535_ports_scheduled_exactly_once": ".test_all_65535_ports_scheduled_exactly_once()" | kind=code-symbol | source=probe/tests/test_main_scripts_coverage.py:L103 | neighbors=[TestWorkerPoolAndMetrics, _mk_scanner()]
+- "tests_test_main_scripts_coverage_testworkerpoolandmetrics_test_concurrency_is_bounded_by_the_pool": ".test_concurrency_is_bounded_by_the_pool()" | kind=code-symbol | source=probe/tests/test_main_scripts_coverage.py:L117 | neighbors=[TestWorkerPoolAndMetrics, _mk_scanner()]
+- "tests_test_main_scripts_datastore_probe_test_elasticsearch_and_couchdb_win_over_generic_http": "test_elasticsearch_and_couchdb_win_over_generic_http()" | kind=code-symbol | source=probe/tests/test_main_scripts_datastore_probe.py:L31 | neighbors=[test_main_scripts_datastore_probe.py, _svc()]
+- "tests_test_main_scripts_datastore_probe_test_memcached_version_and_stat_identify_as_memcached": "test_memcached_version_and_stat_identify_as_memcached()" | kind=code-symbol | source=probe/tests/test_main_scripts_datastore_probe.py:L26 | neighbors=[test_main_scripts_datastore_probe.py, _svc()]
+- "tests_test_main_scripts_datastore_probe_test_redis_info_and_noauth_identify_as_redis": "test_redis_info_and_noauth_identify_as_redis()" | kind=code-symbol | source=probe/tests/test_main_scripts_datastore_probe.py:L21 | neighbors=[test_main_scripts_datastore_probe.py, _svc()]
+- "tests_test_main_scripts_device_testclassifyfromresults": "TestClassifyFromResults" | kind=code-symbol | source=probe/tests/test_main_scripts_device.py:L71 | neighbors=[test_main_scripts_device.py, .test_extracts_signals_from_scan_result…]
+- "tests_test_main_scripts_errno_test_definitive_states": "test_definitive_states()" | kind=code-symbol | source=probe/tests/test_main_scripts_errno.py:L21 | neighbors=[test_main_scripts_errno.py, _oserr()]
+- "tests_test_main_scripts_errno_test_describe_os_error_is_fully_debuggable": "test_describe_os_error_is_fully_debuggable()" | kind=code-symbol | source=probe/tests/test_main_scripts_errno.py:L49 | neighbors=[test_main_scripts_errno.py, _oserr()]
+- "tests_test_main_scripts_errno_test_scanner_side_errors_are_error_not_filtered": "test_scanner_side_errors_are_error_not_filtered()" | kind=code-symbol | source=probe/tests/test_main_scripts_errno.py:L28 | neighbors=[test_main_scripts_errno.py, _oserr()]
+- "tests_test_main_scripts_errno_test_unknown_errno_is_self_identifying_and_never_filtered": "test_unknown_errno_is_self_identifying_and_never_filtered()" | kind=code-symbol | source=probe/tests/test_main_scripts_errno.py:L36 | neighbors=[test_main_scripts_errno.py, _oserr()]
+- "tests_test_main_scripts_findings_test_accepts_scanresult_objects_not_just_dicts": "test_accepts_scanresult_objects_not_just_dicts()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L322 | neighbors=[test_main_scripts_findings.py, _ids()]
+- "tests_test_main_scripts_findings_test_confirmed_and_port_hint_do_not_double_report": "test_confirmed_and_port_hint_do_not_double_report()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L239 | neighbors=[test_main_scripts_findings.py, _run()]
+- "tests_test_main_scripts_findings_test_confirmed_ftp_cleartext_is_high_confidence": "test_confirmed_ftp_cleartext_is_high_confidence()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L230 | neighbors=[test_main_scripts_findings.py, _run()]
+- "tests_test_main_scripts_findings_test_confirmed_redis_is_high_confidence_even_on_nonstandard_port": "test_confirmed_redis_is_high_confidence_even_on_nonstandard_port()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L212 | neighbors=[test_main_scripts_findings.py, _run()]
+- "tests_test_main_scripts_findings_test_dangerous_http_methods_medium": "test_dangerous_http_methods_medium()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L250 | neighbors=[test_main_scripts_findings.py, _run()]
+- "tests_test_main_scripts_findings_test_every_finding_is_evidence_backed": "test_every_finding_is_evidence_backed()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L305 | neighbors=[test_main_scripts_findings.py, _run()]
+- "tests_test_main_scripts_findings_test_exposed_redis_is_high_exposure_medium_confidence": "test_exposed_redis_is_high_exposure_medium_confidence()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L173 | neighbors=[test_main_scripts_findings.py, _run()]
+- "tests_test_main_scripts_findings_test_findings_are_deduped_by_rule_target_port": "test_findings_are_deduped_by_rule_target_port()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L285 | neighbors=[test_main_scripts_findings.py, _run()]
+- "tests_test_main_scripts_findings_test_findings_sorted_most_severe_first": "test_findings_sorted_most_severe_first()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L291 | neighbors=[test_main_scripts_findings.py, _run()]
+- "tests_test_main_scripts_findings_test_missing_security_headers_is_low": "test_missing_security_headers_is_low()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L262 | neighbors=[test_main_scripts_findings.py, _run()]
+- "tests_test_main_scripts_findings_test_no_finding_carries_a_cve_id": "test_no_finding_carries_a_cve_id()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L299 | neighbors=[test_main_scripts_findings.py, _run()]
+- "tests_test_main_scripts_findings_test_port_only_datastore_is_medium_confidence_and_labeled_unconfirmed": "test_port_only_datastore_is_medium_confidence_and_labeled_unconfirmed()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L223 | neighbors=[test_main_scripts_findings.py, _run()]
+- "tests_test_main_scripts_findings_test_rdp_exposed_medium": "test_rdp_exposed_medium()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L180 | neighbors=[test_main_scripts_findings.py, _run()]
+- "tests_test_main_scripts_findings_test_server_version_disclosure_is_info": "test_server_version_disclosure_is_info()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L256 | neighbors=[test_main_scripts_findings.py, _run()]
+- "tests_test_main_scripts_findings_test_smbv1_enabled_is_high": "test_smbv1_enabled_is_high()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L103 | neighbors=[test_main_scripts_findings.py, _run()]
+- "tests_test_main_scripts_findings_test_snmp_default_community_is_high": "test_snmp_default_community_is_high()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L124 | neighbors=[test_main_scripts_findings.py, _run()]
+- "tests_test_main_scripts_findings_test_snmp_nondefault_community_is_medium": "test_snmp_nondefault_community_is_medium()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L131 | neighbors=[test_main_scripts_findings.py, _run()]
 
 ## Instructions
 

@@ -1,4 +1,4 @@
-# Node Description Batch 193 of 336
+# Node Description Batch 193 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,53 +19,51 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-LANGUAGE: each entry has a `lang=` marker giving the language of its source.
-Write that entry's description in EXACTLY that language. Do not translate to
-a single common language — match each node's source language individually.
+Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "cve_init_rationale_1": "cve — vulnerability (CVE) correlation layer.  SEPARATE from the probe's collecti" | kind=entity | source=probe/cve/__init__.py:L1 | neighbors=[__init__.py] | lang=en
-- "cve_online_rationale_1": "online.py — OPT-IN live enrichment for CVE findings.  The offline mirror (vulndb" | kind=entity | source=probe/cve/online.py:L1 | neighbors=[online.py] | lang=en
-- "cve_online_rationale_134": "Enrich CVE findings in place from live sources and return the same list.      `o" | kind=entity | source=probe/cve/online.py:L134 | neighbors=[enrich_findings()] | lang=en
-- "cve_online_rationale_175": "Fold one CVE's live result into a finding. FILLS a missing CVSS (and     recompu" | kind=entity | source=probe/cve/online.py:L175 | neighbors=[_apply()] | lang=pt
-- "cve_online_rationale_215": "Recover whether the exposure boost was applied, so a re-scored (gap-filled)" | kind=entity | source=probe/cve/online.py:L215 | neighbors=[_was_exposed()] | lang=en
-- "cve_online_rationale_52": "What a live lookup could establish for one CVE (any field may be None when     t" | kind=entity | source=probe/cve/online.py:L52 | neighbors=[OnlineResult] | lang=en
-- "cve_online_rationale_68": "Query live NVD 2.0 for one CVE. Returns an OnlineResult, or None on any     netw" | kind=entity | source=probe/cve/online.py:L68 | neighbors=[lookup_nvd()] | lang=en
-- "cve_online_rationale_93": "Ask Vulners whether a public exploit is catalogued for `cve_id`. Returns     Tru" | kind=entity | source=probe/cve/online.py:L93 | neighbors=[lookup_vulners()] | lang=en
-- "cve_version_rationale_1": "version.py — loose version comparison for CVE range matching.  Real service bann" | kind=entity | source=probe/cve/version.py:L1 | neighbors=[version.py] | lang=en
-- "cve_version_rationale_29": "Normalize a version string into a comparable tuple of ints." | kind=entity | source=probe/cve/version.py:L29 | neighbors=[parse_version()] | lang=pt
-- "cve_version_rationale_48": "Return -1/0/1 for version a vs b (zero-padded tuple comparison)." | kind=entity | source=probe/cve/version.py:L48 | neighbors=[compare()] | lang=en
-- "cve_version_rationale_58": "Is `version` inside the NVD-style bound set? An `exact` match (no range     boun" | kind=entity | source=probe/cve/version.py:L58 | neighbors=[in_range()] | lang=en
-- "cve_vulndb_rationale_1": "vulndb.py — the offline vulnerability mirror (SQLite) and its query surface.  Ho" | kind=entity | source=probe/cve/vulndb.py:L1 | neighbors=[vulndb.py] | lang=en
-- "cve_vulndb_rationale_120": "All vulnerable CVEs whose CPE applicability covers (vendor, product,         ver" | kind=entity | source=probe/cve/vulndb.py:L120 | neighbors=[.cves_for_cpe()] | lang=en
-- "cve_vulndb_vulndb_close": ".close()" | kind=code-symbol | source=probe/cve/vulndb.py:L110 | neighbors=[VulnDB] | lang=en
-- "cve_vulndb_vulndb_counts": ".counts()" | kind=code-symbol | source=probe/cve/vulndb.py:L113 | neighbors=[VulnDB] | lang=en
-- "cve_vulndb_vulndb_get_meta": ".get_meta()" | kind=code-symbol | source=probe/cve/vulndb.py:L103 | neighbors=[VulnDB] | lang=en
-- "cve_vulndb_vulndb_replace_cpe_matches": ".replace_cpe_matches()" | kind=code-symbol | source=probe/cve/vulndb.py:L89 | neighbors=[VulnDB] | lang=en
-- "cve_vulndb_vulndb_set_meta": ".set_meta()" | kind=code-symbol | source=probe/cve/vulndb.py:L100 | neighbors=[VulnDB] | lang=en
-- "cve_vulndb_vulndb_upsert_cve": ".upsert_cve()" | kind=code-symbol | source=probe/cve/vulndb.py:L72 | neighbors=[VulnDB] | lang=en
-- "cve_vulndb_vulndb_upsert_epss": ".upsert_epss()" | kind=code-symbol | source=probe/cve/vulndb.py:L96 | neighbors=[VulnDB] | lang=en
-- "cve_weakness_map_has_version": "_has_version()" | kind=code-symbol | source=probe/cve/weakness_map.py:L52 | neighbors=[weakness_map.py] | lang=en
-- "cve_weakness_map_rationale_1": "weakness_map.py — bridge the probe's deterministic weakness findings to canonica" | kind=entity | source=probe/cve/weakness_map.py:L1 | neighbors=[weakness_map.py] | lang=en
-- "cve_weakness_map_rationale_121": "Return the Finding dict from a fact, or None if the fact is not a finding." | kind=entity | source=probe/cve/weakness_map.py:L121 | neighbors=[_finding_view()] | lang=en
-- "cve_weakness_map_rationale_142": "Pull CVSS/KEV/EPSS for one CVE straight from the mirror tables. Degrades to" | kind=entity | source=probe/cve/weakness_map.py:L142 | neighbors=[_mirror_cve()] | lang=en
-- "cve_weakness_map_rationale_165": "Map observed weakness findings to their canonical CVE(s), enriched with live" | kind=entity | source=probe/cve/weakness_map.py:L165 | neighbors=[correlate_weaknesses()] | lang=en
-- "cve_weakness_map_rationale_217": "Every canonical CVE referenced by the weakness map that the mirror does NOT" | kind=entity | source=probe/cve/weakness_map.py:L217 | neighbors=[missing_from_mirror()] | lang=en
-- "cve_weakness_map_rationale_38": "One canonical CVE a weakness can map to, optionally gated on the finding's     s" | kind=entity | source=probe/cve/weakness_map.py:L38 | neighbors=[_Assoc] | lang=en
-- "cve_weakness_map_weaknessmapping": "WeaknessMapping" | kind=code-symbol | source=probe/cve/weakness_map.py:L46 | neighbors=[weakness_map.py] | lang=en
-- "dashboard_dashboardgrid_agent": "Agent" | kind=code-symbol | source=manager/frontend/components/dashboard/DashboardGrid.tsx:L38 | neighbors=[DashboardGrid.tsx] | lang=en
-- "dashboard_dashboardgrid_agent_status": "AGENT_STATUS" | kind=code-symbol | source=manager/frontend/components/dashboard/DashboardGrid.tsx:L40 | neighbors=[DashboardGrid.tsx] | lang=en
-- "dashboard_dashboardgrid_agentmonitor": "AgentMonitor()" | kind=code-symbol | source=manager/frontend/components/dashboard/DashboardGrid.tsx:L75 | neighbors=[DashboardGrid.tsx] | lang=en
-- "dashboard_dashboardgrid_agentrow": "AgentRow()" | kind=code-symbol | source=manager/frontend/components/dashboard/DashboardGrid.tsx:L46 | neighbors=[DashboardGrid.tsx] | lang=en
-- "dashboard_dashboardgrid_agentstatus": "AgentStatus" | kind=code-symbol | source=manager/frontend/components/dashboard/DashboardGrid.tsx:L37 | neighbors=[DashboardGrid.tsx] | lang=en
-- "dashboard_dashboardgrid_freshnote": "FreshNote()" | kind=code-symbol | source=manager/frontend/components/dashboard/DashboardGrid.tsx:L126 | neighbors=[DashboardGrid.tsx] | lang=en
-- "dashboard_exposurecards_exposure": "Exposure" | kind=code-symbol | source=manager/frontend/components/dashboard/ExposureCards.tsx:L25 | neighbors=[ExposureCards.tsx] | lang=en
-- "dashboard_exposurecards_healthband": "healthBand()" | kind=code-symbol | source=manager/frontend/components/dashboard/ExposureCards.tsx:L47 | neighbors=[ExposureCards.tsx] | lang=en
-- "dashboard_exposurecards_meterrow": "MeterRow()" | kind=code-symbol | source=manager/frontend/components/dashboard/ExposureCards.tsx:L56 | neighbors=[ExposureCards.tsx] | lang=en
-- "dashboard_exposurecards_riskband": "riskBand()" | kind=code-symbol | source=manager/frontend/components/dashboard/ExposureCards.tsx:L39 | neighbors=[ExposureCards.tsx] | lang=en
-- "dashboard_exposurecards_scalenote": "scaleNote" | kind=code-symbol | source=manager/frontend/components/dashboard/ExposureCards.tsx:L150 | neighbors=[ExposureCards.tsx] | lang=en
+- "vuln_enrichment_vulnenrichmentservice_dedup_hash": ".dedup_hash()" | kind=code-symbol | source=manager/backend/app/vuln/enrichment.py:L351 | neighbors=[SHA-256 of (asset_id, cve_id, plugin_id…, VulnEnrichmentService]
+- "vuln_enrichment_vulnenrichmentservice_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/vuln/enrichment.py:L94 | neighbors=[VulnEnrichmentService, TTLCache]
+- "vuln_init": "__init__.py" | kind=code-symbol | source=manager/backend/app/vuln/__init__.py:L1 | neighbors=[d1b4dd3 trim frontend to 7 core pages; …, 298a9d4 trim frontend to 7 core pages; …]
+- "vuln_nessus_nessusscanner_auth_headers": "._auth_headers()" | kind=code-symbol | source=manager/backend/app/vuln/nessus.py:L59 | neighbors=[NessusScanner, ._get_client()]
+- "vuln_nessus_nessusscanner_get_plugin_detail": "._get_plugin_detail()" | kind=code-symbol | source=manager/backend/app/vuln/nessus.py:L193 | neighbors=[NessusScanner, .get_results()]
+- "vuln_nessus_nessusscanner_get_template_uuid": "._get_template_uuid()" | kind=code-symbol | source=manager/backend/app/vuln/nessus.py:L124 | neighbors=[NessusScanner, .create_scan()]
+- "vuln_nuclei_nucleiscanner_read_stderr": "._read_stderr()" | kind=code-symbol | source=manager/backend/app/vuln/nuclei.py:L313 | neighbors=[NucleiScanner, .run_scan()]
+- "vuln_nuclei_nucleiscanner_stop_process": "._stop_process()" | kind=code-symbol | source=manager/backend/app/vuln/nuclei.py:L324 | neighbors=[NucleiScanner, .run_scan()]
+- "vuln_tasks_fire_critical_webhook": "_fire_critical_webhook()" | kind=code-symbol | source=manager/backend/app/vuln/tasks.py:L135 | neighbors=[tasks.py, run_post_scan_enrichment()]
+- "websocket_manager_graphwebsocketmanager_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/websocket/manager.py:L358 | neighbors=[GraphWebSocketManager, ConnectionManager]
+- "websocket_manager_rationale_209": "Push a job to the first online agent in the requested tenant.          Returns t" | kind=entity | source=manager/backend/app/websocket/manager.py:L209 | neighbors=[.push_job_to_first_online(), .get_agent_status()]
+- "websocket_manager_rationale_213": "Push a job to the first online agent in the requested tenant.          Returns t" | kind=entity | source=manager/backend/app/websocket/manager.py:L213 | neighbors=[.push_job_to_first_online(), .agent_stale_after()]
+- "websocket_manager_rationale_243": "Deliver a job-push to an agent wherever its socket is connected.          Return" | kind=entity | source=manager/backend/app/websocket/manager.py:L243 | neighbors=[.deliver_job(), .online_agents()]
+- "websocket_manager_rationale_245": "Deliver a job-push to an agent wherever its socket is connected.          Return" | kind=entity | source=manager/backend/app/websocket/manager.py:L245 | neighbors=[.deliver_job(), .online_agents()]
+- "websocket_manager_rationale_298": "Check if a specific agent is online (connected + not busy)." | kind=entity | source=manager/backend/app/websocket/manager.py:L298 | neighbors=[.is_online(), .handle_client()]
+- "workers_init": "__init__.py" | kind=code-symbol | source=manager/backend/app/workers/__init__.py:L1 | neighbors=[10dfc80 Add comprehensive probe testing…, 2885afa Add comprehensive probe testing…]
+- "workers_outbox_main": "main()" | kind=code-symbol | source=manager/backend/app/workers/outbox.py:L446 | neighbors=[outbox.py, Event]
+- "workers_outbox_mark_done": "_mark_done()" | kind=code-symbol | source=manager/backend/app/workers/outbox.py:L358 | neighbors=[outbox.py, _process()]
+- "workers_outbox_rationale_130": "Fan a notification out to the tenant's enabled email/Slack/Jira integrations." | kind=entity | source=manager/backend/app/workers/outbox.py:L130 | neighbors=[_handle_notify(), _claim_batch()]
+- "workers_outbox_rationale_204": "Stranded events with retry budget left → make due now so a live worker     re-cl" | kind=entity | source=manager/backend/app/workers/outbox.py:L204 | neighbors=[_requeue_stale_stmt(), _reclaim_stale()]
+- "workflow_asset_utcnow": "_utcnow()" | kind=code-symbol | source=probe/workflow/asset.py:L27 | neighbors=[asset.py, .needs_recheck_live()]
+- "workflow_branches_branchspec_host_level": ".host_level()" | kind=code-symbol | source=probe/workflow/branches.py:L101 | neighbors=[BranchSpec, True when the fact describes the host r…]
+- "workflow_branches_db_kwargs": "_db_kwargs()" | kind=code-symbol | source=probe/workflow/branches.py:L68 | neighbors=[branches.py, Ports with a known database engine get …]
+- "workflow_branches_no_kwargs": "_no_kwargs()" | kind=code-symbol | source=probe/workflow/branches.py:L54 | neighbors=[branches.py, For scanners that take no `ports` argum…]
+- "workflow_branches_ports_kwargs": "_ports_kwargs()" | kind=code-symbol | source=probe/workflow/branches.py:L49 | neighbors=[branches.py, The default: hand the scanner the ports…]
+- "workflow_branches_web_kwargs": "_web_kwargs()" | kind=code-symbol | source=probe/workflow/branches.py:L60 | neighbors=[branches.py, Tell the web scanner which of these por…]
+- "workflow_cache_cacheentry_from_jsonl_dict": ".from_jsonl_dict()" | kind=code-symbol | source=probe/workflow/cache.py:L92 | neighbors=[CacheEntry, ._load()]
+- "workflow_cache_cacheentry_to_jsonl_dict": ".to_jsonl_dict()" | kind=code-symbol | source=probe/workflow/cache.py:L86 | neighbors=[CacheEntry, .save()]
+- "workflow_cache_workflowcache_init": ".__init__()" | kind=code-symbol | source=probe/workflow/cache.py:L104 | neighbors=[WorkflowCache, ._load()]
+- "workflow_cache_workflowcache_save": ".save()" | kind=code-symbol | source=probe/workflow/cache.py:L122 | neighbors=[WorkflowCache, .to_jsonl_dict()]
+- "workflow_cli_build_creds": "_build_creds()" | kind=code-symbol | source=probe/workflow/cli.py:L83 | neighbors=[cli.py, _main()]
+- "workflow_cli_build_mode": "_build_mode()" | kind=code-symbol | source=probe/workflow/cli.py:L71 | neighbors=[cli.py, _main()]
+- "workflow_cli_build_parser": "build_parser()" | kind=code-symbol | source=probe/workflow/cli.py:L43 | neighbors=[cli.py, _main()]
+- "workflow_execution_errordetail": "ErrorDetail" | kind=code-symbol | source=probe/workflow/execution.py:L159 | neighbors=[execution.py, classify_scanner_error()]
+- "workflow_execution_executiontrace_as_list": ".as_list()" | kind=code-symbol | source=probe/workflow/execution.py:L394 | neighbors=[ExecutionTrace, ._has_active_coverage()]
+- "workflow_execution_executiontrace_finalize": ".finalize()" | kind=code-symbol | source=probe/workflow/execution.py:L363 | neighbors=[ExecutionTrace, .skip()]
+- "workflow_execution_executiontrace_init": ".__init__()" | kind=code-symbol | source=probe/workflow/execution.py:L246 | neighbors=[ExecutionTrace, ._ensure()]
+- "workflow_execution_executiontrace_reused": ".reused()" | kind=code-symbol | source=probe/workflow/execution.py:L349 | neighbors=[ExecutionTrace, .record()]
+- "workflow_gates_gate_2_host_discovery": "gate_2_host_discovery()" | kind=code-symbol | source=probe/workflow/gates.py:L105 | neighbors=[gates.py, gate_0_is_passive_profile()]
+- "workflow_gates_gate_3_port_scan": "gate_3_port_scan()" | kind=code-symbol | source=probe/workflow/gates.py:L112 | neighbors=[gates.py, gate_0_is_passive_profile()]
 
 ## Instructions
 

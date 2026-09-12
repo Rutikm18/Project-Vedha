@@ -1,4 +1,4 @@
-# Node Description Batch 214 of 336
+# Node Description Batch 214 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,53 +19,51 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-LANGUAGE: each entry has a `lang=` marker giving the language of its source.
-Write that entry's description in EXACTLY that language. Do not translate to
-a single common language — match each node's source language individually.
+Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "lib_scanner_request_validation_netexecscanrequest": "NetExecScanRequest" | kind=code-symbol | source=manager/frontend/lib/scanner-request-validation.ts:L25 | neighbors=[scanner-request-validation.ts] | lang=en
-- "lib_scanner_request_validation_openvas_configs": "OPENVAS_CONFIGS" | kind=code-symbol | source=manager/frontend/lib/scanner-request-validation.ts:L4 | neighbors=[scanner-request-validation.ts] | lang=en
-- "lib_scanner_request_validation_openvasscanrequest": "OpenVASScanRequest" | kind=code-symbol | source=manager/frontend/lib/scanner-request-validation.ts:L16 | neighbors=[scanner-request-validation.ts] | lang=en
-- "lib_scanner_request_validation_validationresult": "ValidationResult" | kind=code-symbol | source=manager/frontend/lib/scanner-request-validation.ts:L12 | neighbors=[scanner-request-validation.ts] | lang=en
-- "lib_security_context_securitycontexterror_constructor": ".constructor()" | kind=code-symbol | source=manager/frontend/lib/security-context.ts:L11 | neighbors=[SecurityContextError] | lang=en
-- "lib_severity_detectioncoverage": "DetectionCoverage" | kind=code-symbol | source=manager/frontend/lib/severity.ts:L12 | neighbors=[severity.ts] | lang=en
-- "lib_severity_exploitmaturity": "ExploitMaturity" | kind=code-symbol | source=manager/frontend/lib/severity.ts:L11 | neighbors=[severity.ts] | lang=en
-- "lib_severity_findingstatus": "FindingStatus" | kind=code-symbol | source=manager/frontend/lib/severity.ts:L9 | neighbors=[severity.ts] | lang=en
-- "lib_severity_severitymeta": "SeverityMeta" | kind=code-symbol | source=manager/frontend/lib/severity.ts:L94 | neighbors=[severity.ts] | lang=en
-- "lib_target_parser_common_ranges": "COMMON_RANGES" | kind=code-symbol | source=manager/frontend/lib/target-parser.ts:L132 | neighbors=[target-parser.ts] | lang=en
-- "lib_target_parser_isprivaterange": "isPrivateRange()" | kind=code-symbol | source=manager/frontend/lib/target-parser.ts:L35 | neighbors=[target-parser.ts] | lang=en
-- "lib_target_parser_parseresult": "ParseResult" | kind=code-symbol | source=manager/frontend/lib/target-parser.ts:L59 | neighbors=[target-parser.ts] | lang=en
-- "lib_target_parser_rfc1918": "RFC1918" | kind=code-symbol | source=manager/frontend/lib/target-parser.ts:L6 | neighbors=[target-parser.ts] | lang=en
-- "lib_target_parser_toapitargets": "toApiTargets()" | kind=code-symbol | source=manager/frontend/lib/target-parser.ts:L127 | neighbors=[target-parser.ts] | lang=en
-- "lib_tenant_reserved": "RESERVED" | kind=code-symbol | source=manager/frontend/lib/tenant.ts:L15 | neighbors=[tenant.ts] | lang=en
-- "lib_testssl_parser_skip_severity": "SKIP_SEVERITY" | kind=code-symbol | source=manager/frontend/lib/testssl-parser.ts:L12 | neighbors=[testssl-parser.ts] | lang=en
-- "lib_testssl_parser_testsslissue": "TestsslIssue" | kind=code-symbol | source=manager/frontend/lib/testssl-parser.ts:L4 | neighbors=[testssl-parser.ts] | lang=en
-- "lib_testssl_parser_testssloutput": "TestsslOutput" | kind=code-symbol | source=manager/frontend/lib/testssl-parser.ts:L26 | neighbors=[testssl-parser.ts] | lang=en
-- "lib_testssl_parser_testsslparseresult": "TestsslParseResult" | kind=code-symbol | source=manager/frontend/lib/testssl-parser.ts:L28 | neighbors=[testssl-parser.ts] | lang=en
-- "lib_whatweb_parser_whatwebparseresult": "WhatWebParseResult" | kind=code-symbol | source=manager/frontend/lib/whatweb-parser.ts:L6 | neighbors=[whatweb-parser.ts] | lang=en
-- "lib_whatweb_parser_whatwebresult": "WhatWebResult" | kind=code-symbol | source=manager/frontend/lib/whatweb-parser.ts:L1 | neighbors=[whatweb-parser.ts] | lang=en
-- "lib_with_backend_backendctx": "BackendCtx" | kind=code-symbol | source=manager/frontend/lib/with-backend.ts:L12 | neighbors=[with-backend.ts] | lang=en
-- "lib_with_backend_handler": "Handler" | kind=code-symbol | source=manager/frontend/lib/with-backend.ts:L16 | neighbors=[with-backend.ts] | lang=en
-- "login_page_loginform": "LoginForm()" | kind=code-symbol | source=manager/frontend/app/login/page.tsx:L18 | neighbors=[page.tsx] | lang=en
-- "login_page_loginpage": "LoginPage()" | kind=code-symbol | source=manager/frontend/app/login/page.tsx:L10 | neighbors=[page.tsx] | lang=en
-- "login_page_portalloginpage": "PortalLoginPage()" | kind=code-symbol | source=manager/frontend/app/portal/login/page.tsx:L7 | neighbors=[page.tsx] | lang=en
-- "logout_route_post": "POST()" | kind=code-symbol | source=manager/frontend/app/api/portal/logout/route.ts:L6 | neighbors=[route.ts] | lang=en
-- "main_scripts_accuracy_gate_rationale_101": "True when this corpus's labels can support an ACCURACY claim." | kind=entity | source=probe/main_scripts/accuracy_gate.py:L101 | neighbors=[is_independent()] | lang=en
-- "main_scripts_accuracy_gate_rationale_106": "Threshold violations for one scored corpus (empty list = passed)." | kind=entity | source=probe/main_scripts/accuracy_gate.py:L106 | neighbors=[check_thresholds()] | lang=en
-- "main_scripts_accuracy_gate_rationale_143": "Score every corpus in `directory` and collect threshold violations.      Returns" | kind=entity | source=probe/main_scripts/accuracy_gate.py:L143 | neighbors=[run_gate()] | lang=en
-- "main_scripts_accuracy_gate_rationale_62": "A corpus is malformed or unlabeled — a gate failure, never a silent pass." | kind=entity | source=probe/main_scripts/accuracy_gate.py:L62 | neighbors=[CorpusError] | lang=pt
-- "main_scripts_accuracy_gate_rationale_66": "Load and structurally validate one corpus file." | kind=entity | source=probe/main_scripts/accuracy_gate.py:L66 | neighbors=[load_corpus()] | lang=en
-- "main_scripts_accuracy_gate_rationale_93": "Every *.json corpus in `directory`, sorted by name for stable reports." | kind=entity | source=probe/main_scripts/accuracy_gate.py:L93 | neighbors=[load_corpora()] | lang=en
-- "main_scripts_accuracy_rationale_125": "Run the findings engine over a labeled corpus and score it.      corpus = {name," | kind=entity | source=probe/main_scripts/accuracy.py:L125 | neighbors=[evaluate_corpus()] | lang=en
-- "main_scripts_accuracy_rationale_49": "Precision / recall / F1 of produced findings vs a labeled expected set.      Key" | kind=entity | source=probe/main_scripts/accuracy.py:L49 | neighbors=[score_findings()] | lang=en
-- "main_scripts_accuracy_rationale_80": "(target, port) -> status, from port/syn/mass scan facts (last one wins)." | kind=entity | source=probe/main_scripts/accuracy.py:L80 | neighbors=[_observed_states()] | lang=en
-- "main_scripts_accuracy_rationale_95": "OPEN precision/recall + overall state accuracy vs a remote-validated     ground" | kind=entity | source=probe/main_scripts/accuracy.py:L95 | neighbors=[score_port_states()] | lang=pt
-- "main_scripts_adaptive_timeout_adaptivetimeout_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/adaptive_timeout.py:L21 | neighbors=[AdaptiveTimeout] | lang=en
-- "main_scripts_adaptive_timeout_rationale_32": "Fold one round-trip sample (seconds) into the estimate. Ignores         missing/" | kind=entity | source=probe/main_scripts/adaptive_timeout.py:L32 | neighbors=[.observe()] | lang=en
-- "main_scripts_adaptive_timeout_rationale_45": "Current timeout: base until we have a sample, then SRTT + 4*RTTVAR         clamp" | kind=entity | source=probe/main_scripts/adaptive_timeout.py:L45 | neighbors=[.timeout()] | lang=pt
+- "auth_middleware_rationale_21": "Extracts JWT from Authorization header and injects tenant_id + user     claims i" | kind=entity | source=manager/backend/app/auth/middleware.py:L21 | neighbors=[TenantIsolationMiddleware]
+- "auth_middleware_rationale_57": "Least-privilege route allowlist for legacy probe access JWTs.      This is the i" | kind=entity | source=manager/backend/app/auth/middleware.py:L57 | neighbors=[agent_jwt_path_allows()]
+- "auth_middleware_rationale_59": "Extracts JWT from Authorization header and injects tenant_id + user     claims i" | kind=entity | source=manager/backend/app/auth/middleware.py:L59 | neighbors=[TenantIsolationMiddleware]
+- "auth_middleware_rationale_78": "Extracts JWT from Authorization header and injects tenant_id + user     claims i" | kind=entity | source=manager/backend/app/auth/middleware.py:L78 | neighbors=[TenantIsolationMiddleware]
+- "auth_pat_pat_scope_allows": "pat_scope_allows()" | kind=code-symbol | source=manager/backend/app/auth/pat.py:L80 | neighbors=[pat.py]
+- "auth_portal_scope_rationale_1": "portal_scope.py — the customer-portal authorization boundary.  Every customer-po" | kind=entity | source=manager/backend/app/auth/portal_scope.py:L1 | neighbors=[portal_scope.py]
+- "auth_portal_scope_rationale_30": "Return the client's bound engagement id, or 403.      403 (never 404) is deliber" | kind=entity | source=manager/backend/app/auth/portal_scope.py:L30 | neighbors=[assert_client()]
+- "auth_portal_scope_rationale_32": "Return the client's bound engagement id, or 403.      403 (never 404) is deliber" | kind=entity | source=manager/backend/app/auth/portal_scope.py:L32 | neighbors=[assert_client()]
+- "auth_portal_scope_rationale_47": "The safe engagement id to filter by.      A caller-supplied engagement_id is hon" | kind=entity | source=manager/backend/app/auth/portal_scope.py:L47 | neighbors=[resolve_scope()]
+- "auth_portal_scope_rationale_49": "The safe engagement id to filter by.      A caller-supplied engagement_id is hon" | kind=entity | source=manager/backend/app/auth/portal_scope.py:L49 | neighbors=[resolve_scope()]
+- "auth_portal_scope_rationale_61": "The single choke point every portal SELECT must pass through: restricts the" | kind=entity | source=manager/backend/app/auth/portal_scope.py:L61 | neighbors=[client_scoped()]
+- "auth_portal_scope_rationale_63": "The single choke point every portal SELECT must pass through: restricts the" | kind=entity | source=manager/backend/app/auth/portal_scope.py:L63 | neighbors=[client_scoped()]
+- "auth_portal_scope_rationale_73": "Role gate for portal routes — 403 unless a properly-bound client." | kind=entity | source=manager/backend/app/auth/portal_scope.py:L73 | neighbors=[require_client()]
+- "auth_portal_scope_rationale_75": "Role gate for portal routes — 403 unless a properly-bound client." | kind=entity | source=manager/backend/app/auth/portal_scope.py:L75 | neighbors=[require_client()]
+- "auth_portal_scope_rationale_82": "Route dependency yielding the client's engagement id, rejecting any     mismatch" | kind=entity | source=manager/backend/app/auth/portal_scope.py:L82 | neighbors=[scoped_engagement()]
+- "auth_portal_scope_rationale_84": "Route dependency yielding the client's engagement id, rejecting any     mismatch" | kind=entity | source=manager/backend/app/auth/portal_scope.py:L84 | neighbors=[scoped_engagement()]
+- "auth_router_list_personal_access_tokens": "list_personal_access_tokens()" | kind=code-symbol | source=manager/backend/app/auth/router.py:L319 | neighbors=[router.py]
+- "auth_router_me": "me()" | kind=code-symbol | source=manager/backend/app/auth/router.py:L233 | neighbors=[router.py]
+- "auth_router_rationale_52": "Validates credentials and returns the User on success.     Raises a typed Authen" | kind=entity | source=manager/backend/app/auth/router.py:L52 | neighbors=[_authenticate()]
+- "auth_router_rationale_57": "The audience + scoping claims an access token MUST carry for this user.      Sha" | kind=entity | source=manager/backend/app/auth/router.py:L57 | neighbors=[access_claims_for()]
+- "auth_router_rationale_59": "Validates credentials and returns the User on success.     Raises a typed Authen" | kind=entity | source=manager/backend/app/auth/router.py:L59 | neighbors=[_authenticate()]
+- "auth_router_rationale_85": "Validates credentials and returns the User on success.     Raises a typed Authen" | kind=entity | source=manager/backend/app/auth/router.py:L85 | neighbors=[_authenticate()]
+- "auth_router_revoke_personal_access_token": "revoke_personal_access_token()" | kind=code-symbol | source=manager/backend/app/auth/router.py:L353 | neighbors=[router.py]
+- "auth_startup_checkresult_fatal": ".fatal()" | kind=code-symbol | source=manager/backend/app/auth/startup.py:L60 | neighbors=[CheckResult]
+- "auth_startup_checkresult_ok": ".ok()" | kind=code-symbol | source=manager/backend/app/auth/startup.py:L56 | neighbors=[CheckResult]
+- "auth_startup_diagnosticsreport_all_ok": ".all_ok()" | kind=code-symbol | source=manager/backend/app/auth/startup.py:L75 | neighbors=[DiagnosticsReport]
+- "auth_startup_diagnosticsreport_as_dict": ".as_dict()" | kind=code-symbol | source=manager/backend/app/auth/startup.py:L78 | neighbors=[DiagnosticsReport]
+- "auth_startup_diagnosticsreport_has_fatal": ".has_fatal()" | kind=code-symbol | source=manager/backend/app/auth/startup.py:L71 | neighbors=[DiagnosticsReport]
+- "auth_startup_get_last_report": "get_last_report()" | kind=code-symbol | source=manager/backend/app/auth/startup.py:L346 | neighbors=[startup.py]
+- "auth_startup_rationale_1": "Startup diagnostics for Vedha Manager API.  Runs during FastAPI lifespan (before" | kind=entity | source=manager/backend/app/auth/startup.py:L1 | neighbors=[startup.py]
+- "auth_startup_rationale_146": "Verify the bcrypt library can round-trip a hash — catches misconfigured passlib." | kind=entity | source=manager/backend/app/auth/startup.py:L146 | neighbors=[_check_bcrypt()]
+- "auth_startup_rationale_148": "Verify the bcrypt library can round-trip a hash — catches misconfigured passlib." | kind=entity | source=manager/backend/app/auth/startup.py:L148 | neighbors=[_check_bcrypt()]
+- "auth_startup_rationale_158": "Verify the seeded admin account exists and is active." | kind=entity | source=manager/backend/app/auth/startup.py:L158 | neighbors=[_check_admin_account()]
+- "auth_startup_rationale_160": "Verify the seeded admin account exists and is active." | kind=entity | source=manager/backend/app/auth/startup.py:L160 | neighbors=[_check_admin_account()]
+- "auth_startup_rationale_196": "Verify the default tenant is active." | kind=entity | source=manager/backend/app/auth/startup.py:L196 | neighbors=[_check_tenant()]
+- "auth_startup_rationale_198": "Verify the default tenant is active." | kind=entity | source=manager/backend/app/auth/startup.py:L198 | neighbors=[_check_tenant()]
+- "auth_startup_rationale_281": "Run all startup checks concurrently.     Called from FastAPI lifespan before the" | kind=entity | source=manager/backend/app/auth/startup.py:L281 | neighbors=[run_startup_diagnostics()]
+- "auth_startup_rationale_283": "Run all startup checks concurrently.     Called from FastAPI lifespan before the" | kind=entity | source=manager/backend/app/auth/startup.py:L283 | neighbors=[run_startup_diagnostics()]
+- "auth_startup_rationale_91": "Raised when one or more fatal checks fail — aborts app startup." | kind=entity | source=manager/backend/app/auth/startup.py:L91 | neighbors=[StartupAbortError]
+- "auth_startup_rationale_93": "Raised when one or more fatal checks fail — aborts app startup." | kind=entity | source=manager/backend/app/auth/startup.py:L93 | neighbors=[StartupAbortError]
 
 ## Instructions
 

@@ -1,4 +1,4 @@
-# Node Description Batch 208 of 336
+# Node Description Batch 208 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -9,54 +9,60 @@ your JSON answer to the answer file.
 You are documenting nodes in a knowledge graph.
 For each entry below, write ONE concise factual plain-language sentence
 describing what it is or does. Use only the provided context.
-For a code symbol (kind=code-symbol — a function, class, or constant),
-describe what the function/symbol does based on its name, source location
-and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
-Write every description in English (en). Do not switch languages.
+For an entity node (any other kind — e.g. a person, place, event, object),
+describe what the entity is and its role, grounded in its type, its
+relations (neighbors) and the provided citations/evidence — e.g.
+"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
+Ground entity descriptions in the citations/evidence when present; do not
+speculate beyond the context, so a node with no supporting context may be
+left out of the reply.
+LANGUAGE: each entry has a `lang=` marker giving the language of its source.
+Write that entry's description in EXACTLY that language. Do not translate to
+a single common language — match each node's source language individually.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "id_page_status_color": "STATUS_COLOR" | kind=code-symbol | source=manager/frontend/app/engagements/[id]/page.tsx:L84 | neighbors=[page.tsx]
-- "id_page_tabkey": "TabKey" | kind=code-symbol | source=manager/frontend/app/engagements/[id]/page.tsx:L17 | neighbors=[page.tsx]
-- "id_page_totals": "Totals()" | kind=code-symbol | source=manager/frontend/app/campaign/[id]/page.tsx:L207 | neighbors=[page.tsx]
-- "id_rawfacts_chip": "Chip()" | kind=code-symbol | source=manager/frontend/app/campaign/[id]/RawFacts.tsx:L135 | neighbors=[RawFacts.tsx]
-- "id_rawfacts_fetchjson": "fetchJson()" | kind=code-symbol | source=manager/frontend/app/campaign/[id]/RawFacts.tsx:L30 | neighbors=[RawFacts.tsx]
-- "id_rawfacts_rawfacts": "RawFacts()" | kind=code-symbol | source=manager/frontend/app/campaign/[id]/RawFacts.tsx:L37 | neighbors=[RawFacts.tsx]
-- "id_rawfacts_rawfactsresp": "RawFactsResp" | kind=code-symbol | source=manager/frontend/app/campaign/[id]/RawFacts.tsx:L25 | neighbors=[RawFacts.tsx]
-- "id_rawfacts_scanresultrow": "ScanResultRow" | kind=code-symbol | source=manager/frontend/app/campaign/[id]/RawFacts.tsx:L19 | neighbors=[RawFacts.tsx]
-- "id_route_apiactivity": "ApiActivity" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/route.ts:L12 | neighbors=[route.ts]
-- "id_route_delete": "DELETE()" | kind=code-symbol | source=manager/frontend/app/api/findings/[id]/route.ts:L43 | neighbors=[route.ts]
-- "import_facts_route_base": "BASE" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/import-facts/route.ts:L11 | neighbors=[route.ts]
-- "import_facts_route_post": "POST()" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/import-facts/route.ts:L13 | neighbors=[route.ts]
-- "integrations_route_get": "GET" | kind=code-symbol | source=manager/frontend/app/api/integrations/route.ts:L9 | neighbors=[route.ts]
-- "intenum": "IntEnum" | kind=code-symbol | neighbors=[EvidenceTier]
-- "jobid_route_get": "GET()" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/ai-report/status/[jobId]/route.ts:L4 | neighbors=[route.ts]
-- "jobs_route_get": "GET" | kind=code-symbol | source=manager/frontend/app/api/scan/jobs/route.ts:L9 | neighbors=[route.ts]
-- "kind_route_delete": "DELETE()" | kind=code-symbol | source=manager/frontend/app/api/integrations/[kind]/route.ts:L22 | neighbors=[route.ts]
-- "kind_route_put": "PUT()" | kind=code-symbol | source=manager/frontend/app/api/integrations/[kind]/route.ts:L9 | neighbors=[route.ts]
-- "launch_route_intensity_presets": "INTENSITY_PRESETS" | kind=code-symbol | source=manager/frontend/app/api/scan/launch/route.ts:L21 | neighbors=[route.ts]
-- "launch_route_launchbody": "LaunchBody" | kind=code-symbol | source=manager/frontend/app/api/scan/launch/route.ts:L5 | neighbors=[route.ts]
-- "launch_route_post": "POST" | kind=code-symbol | source=manager/frontend/app/api/scan/launch/route.ts:L29 | neighbors=[route.ts]
-- "launch_route_sshcreds": "SshCreds" | kind=code-symbol | source=manager/frontend/app/api/scan/launch/route.ts:L5 | neighbors=[route.ts]
-- "launch_route_wincreds": "WinCreds" | kind=code-symbol | source=manager/frontend/app/api/scan/launch/route.ts:L6 | neighbors=[route.ts]
-- "lib_adapters_detection_to_ui": "DETECTION_TO_UI" | kind=code-symbol | source=manager/frontend/lib/adapters.ts:L90 | neighbors=[adapters.ts]
-- "lib_adapters_eng_status_to_api": "ENG_STATUS_TO_API" | kind=code-symbol | source=manager/frontend/lib/adapters.ts:L16 | neighbors=[adapters.ts]
-- "lib_adapters_eng_status_to_ui": "ENG_STATUS_TO_UI" | kind=code-symbol | source=manager/frontend/lib/adapters.ts:L8 | neighbors=[adapters.ts]
-- "lib_adapters_find_status_to_api": "FIND_STATUS_TO_API" | kind=code-symbol | source=manager/frontend/lib/adapters.ts:L231 | neighbors=[adapters.ts]
-- "lib_adapters_find_status_to_ui": "FIND_STATUS_TO_UI" | kind=code-symbol | source=manager/frontend/lib/adapters.ts:L93 | neighbors=[adapters.ts]
-- "lib_adapters_sev_to_ui": "SEV_TO_UI" | kind=code-symbol | source=manager/frontend/lib/adapters.ts:L86 | neighbors=[adapters.ts]
-- "lib_agents_store_agent": "Agent" | kind=code-symbol | source=manager/frontend/lib/agents-store.ts:L15 | neighbors=[agents-store.ts]
-- "lib_agents_store_agentcapability": "AgentCapability" | kind=code-symbol | source=manager/frontend/lib/agents-store.ts:L10 | neighbors=[agents-store.ts]
-- "lib_agents_store_agents": "AGENTS" | kind=code-symbol | source=manager/frontend/lib/agents-store.ts:L69 | neighbors=[agents-store.ts]
-- "lib_agents_store_agentsstore": "agentsStore" | kind=code-symbol | source=manager/frontend/lib/agents-store.ts:L220 | neighbors=[agents-store.ts]
-- "lib_agents_store_agentstatus": "AgentStatus" | kind=code-symbol | source=manager/frontend/lib/agents-store.ts:L5 | neighbors=[agents-store.ts]
-- "lib_agents_store_field_agents_file": "FIELD_AGENTS_FILE" | kind=code-symbol | source=manager/frontend/lib/agents-store.ts:L321 | neighbors=[agents-store.ts]
-- "lib_agents_store_fieldagent": "FieldAgent" | kind=code-symbol | source=manager/frontend/lib/agents-store.ts:L323 | neighbors=[agents-store.ts]
-- "lib_agents_store_futureiso": "futureIso()" | kind=code-symbol | source=manager/frontend/lib/agents-store.ts:L62 | neighbors=[agents-store.ts]
-- "lib_agents_store_genid": "genId()" | kind=code-symbol | source=manager/frontend/lib/agents-store.ts:L60 | neighbors=[agents-store.ts]
-- "lib_agents_store_jobs": "JOBS" | kind=code-symbol | source=manager/frontend/lib/agents-store.ts:L134 | neighbors=[agents-store.ts]
-- "lib_agents_store_jobstatus": "JobStatus" | kind=code-symbol | source=manager/frontend/lib/agents-store.ts:L6 | neighbors=[agents-store.ts]
+- "agent_transport_rationale_487": "Refresh the short-lived device access token, reporting WHY it failed.          R" | kind=entity | source=probe/agent/transport.py:L487 | neighbors=[.refresh_device_access_ex()] | lang=en
+- "agent_transport_rationale_496": "Send a heartbeat to the manager.          Returns True if the heartbeat was acce" | kind=entity | source=probe/agent/transport.py:L496 | neighbors=[.heartbeat()] | lang=en
+- "agent_transport_rationale_499": "Poll for pending jobs (HTTP fallback for WebSocket).          Returns a list of" | kind=entity | source=probe/agent/transport.py:L499 | neighbors=[.poll_jobs()] | lang=en
+- "agent_transport_rationale_50": "Raised when a transport operation fails permanently (not retryable)." | kind=entity | source=probe/agent/transport.py:L50 | neighbors=[TransportError] | lang=pt
+- "agent_transport_rationale_523": "Refresh the short-lived device access token, reporting WHY it failed.          R" | kind=entity | source=probe/agent/transport.py:L523 | neighbors=[.refresh_device_access_ex()] | lang=en
+- "agent_transport_rationale_525": "Poll for pending jobs (HTTP fallback for WebSocket).          Returns a list of" | kind=entity | source=probe/agent/transport.py:L525 | neighbors=[.poll_jobs()] | lang=en
+- "agent_transport_rationale_54": "The probe's device signing key is already registered as an agent on the     mana" | kind=entity | source=probe/agent/transport.py:L54 | neighbors=[DeviceAlreadyEnrolledError] | lang=en
+- "agent_transport_rationale_540": "Refresh a device token before expiry; legacy identities are unchanged." | kind=entity | source=probe/agent/transport.py:L540 | neighbors=[.ensure_device_access()] | lang=en
+- "agent_transport_rationale_543": "Poll for pending jobs (HTTP fallback for WebSocket).          Returns a list of" | kind=entity | source=probe/agent/transport.py:L543 | neighbors=[.poll_jobs()] | lang=en
+- "agent_transport_rationale_545": "Fetch the engagement's authoritative scope.          Returns the response dict i" | kind=entity | source=probe/agent/transport.py:L545 | neighbors=[.fetch_scope()] | lang=en
+- "agent_transport_rationale_563": "Fetch the engagement's authoritative scope.          Returns the response dict i" | kind=entity | source=probe/agent/transport.py:L563 | neighbors=[.fetch_scope()] | lang=en
+- "agent_transport_rationale_580": "Refresh a device token before expiry; legacy identities are unchanged." | kind=entity | source=probe/agent/transport.py:L580 | neighbors=[.ensure_device_access()] | lang=en
+- "agent_transport_rationale_582": "Submit a scan result to the manager.          Returns True ONLY on a 2xx respons" | kind=entity | source=probe/agent/transport.py:L582 | neighbors=[.submit_result()] | lang=en
+- "agent_transport_rationale_589": "Send a heartbeat and report WHY it failed, not just that it did.          Return" | kind=entity | source=probe/agent/transport.py:L589 | neighbors=[.heartbeat_ex()] | lang=en
+- "agent_transport_rationale_601": "Generic authenticated GET, returns parsed JSON or None on failure.          Used" | kind=entity | source=probe/agent/transport.py:L601 | neighbors=[.http_get()] | lang=en
+- "agent_transport_rationale_604": "Refresh routing metadata using the cached agent identity.          Returns True" | kind=entity | source=probe/agent/transport.py:L604 | neighbors=[.refresh_registration()] | lang=en
+- "agent_transport_rationale_615": "Send a heartbeat and report WHY it failed, not just that it did.          Return" | kind=entity | source=probe/agent/transport.py:L615 | neighbors=[.heartbeat_ex()] | lang=en
+- "agent_transport_rationale_617": "Return the WebSocket endpoint without embedding credentials.          Authentica" | kind=entity | source=probe/agent/transport.py:L617 | neighbors=[.ws_url()] | lang=en
+- "agent_transport_rationale_630": "Refresh routing metadata using the cached agent identity.          Returns True" | kind=entity | source=probe/agent/transport.py:L630 | neighbors=[.refresh_registration()] | lang=en
+- "agent_transport_rationale_635": "Backwards-compatible bool form of `heartbeat_ex`.          Returns True only whe" | kind=entity | source=probe/agent/transport.py:L635 | neighbors=[.heartbeat()] | lang=en
+- "agent_transport_rationale_643": "Return the WebSocket endpoint without embedding credentials.          Authentica" | kind=entity | source=probe/agent/transport.py:L643 | neighbors=[.ws_url()] | lang=en
+- "agent_transport_rationale_653": "Establish an authenticated WebSocket connection to the manager.          Returns" | kind=entity | source=probe/agent/transport.py:L653 | neighbors=[.connect_ws()] | lang=en
+- "agent_transport_rationale_655": "Send a heartbeat and report WHY it failed, not just that it did.          Return" | kind=entity | source=probe/agent/transport.py:L655 | neighbors=[.heartbeat_ex()] | lang=en
+- "agent_transport_rationale_659": "True if the WebSocket connection is active." | kind=entity | source=probe/agent/transport.py:L659 | neighbors=[.is_ws_connected()] | lang=en
+- "agent_transport_rationale_66": "Durably replace one private JSON state file without exposing secrets." | kind=entity | source=probe/agent/transport.py:L66 | neighbors=[_atomic_write_private_state()] | lang=en
+- "agent_transport_rationale_661": "Backwards-compatible bool form of `heartbeat_ex`.          Returns True only whe" | kind=entity | source=probe/agent/transport.py:L661 | neighbors=[.heartbeat()] | lang=en
+- "agent_transport_rationale_663": "Return the WebSocket endpoint without embedding credentials.          Authentica" | kind=entity | source=probe/agent/transport.py:L663 | neighbors=[.ws_url()] | lang=en
+- "agent_transport_rationale_667": "Fetch the engagement's authoritative scope.          Returns the response dict i" | kind=entity | source=probe/agent/transport.py:L667 | neighbors=[.fetch_scope()] | lang=en
+- "agent_transport_rationale_681": "Send a heartbeat and report WHY it failed, not just that it did.          Return" | kind=entity | source=probe/agent/transport.py:L681 | neighbors=[.heartbeat_ex()] | lang=en
+- "agent_transport_rationale_685": "True if the WebSocket connection is active." | kind=entity | source=probe/agent/transport.py:L685 | neighbors=[.is_ws_connected()] | lang=en
+- "agent_transport_rationale_686": "Submit a scan result to the manager.          Returns True ONLY on a 2xx respons" | kind=entity | source=probe/agent/transport.py:L686 | neighbors=[.submit_result()] | lang=en
+- "agent_transport_rationale_693": "Fetch the engagement's authoritative scope.          Returns the response dict i" | kind=entity | source=probe/agent/transport.py:L693 | neighbors=[.fetch_scope()] | lang=en
+- "agent_transport_rationale_701": "Backwards-compatible bool form of `heartbeat_ex`.          Returns True only whe" | kind=entity | source=probe/agent/transport.py:L701 | neighbors=[.heartbeat()] | lang=en
+- "agent_transport_rationale_705": "True if the WebSocket connection is active." | kind=entity | source=probe/agent/transport.py:L705 | neighbors=[.is_ws_connected()] | lang=en
+- "agent_transport_rationale_712": "Submit a scan result to the manager.          Returns True ONLY on a 2xx respons" | kind=entity | source=probe/agent/transport.py:L712 | neighbors=[.submit_result()] | lang=en
+- "agent_transport_rationale_713": "Poll for pending jobs (HTTP fallback for WebSocket).          Returns a list of" | kind=entity | source=probe/agent/transport.py:L713 | neighbors=[.poll_jobs()] | lang=en
+- "agent_transport_rationale_727": "Backwards-compatible bool form of `heartbeat_ex`.          Returns True only whe" | kind=entity | source=probe/agent/transport.py:L727 | neighbors=[.heartbeat()] | lang=en
+- "agent_transport_rationale_733": "Fetch the engagement's authoritative scope.          Returns the response dict i" | kind=entity | source=probe/agent/transport.py:L733 | neighbors=[.fetch_scope()] | lang=en
+- "agent_transport_rationale_739": "Poll for pending jobs (HTTP fallback for WebSocket).          Returns a list of" | kind=entity | source=probe/agent/transport.py:L739 | neighbors=[.poll_jobs()] | lang=en
+- "agent_transport_rationale_751": "Generic authenticated GET, returns parsed JSON or None on failure.          Used" | kind=entity | source=probe/agent/transport.py:L751 | neighbors=[.http_get()] | lang=en
 
 ## Instructions
 

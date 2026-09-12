@@ -1,4 +1,4 @@
-# Node Description Batch 153 of 336
+# Node Description Batch 153 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,51 +12,58 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
+For an entity node (any other kind — e.g. a person, place, event, object),
+describe what the entity is and its role, grounded in its type, its
+relations (neighbors) and the provided citations/evidence — e.g.
+"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
+Ground entity descriptions in the citations/evidence when present; do not
+speculate beyond the context, so a node with no supporting context may be
+left out of the reply.
 Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_engine_bridge_ingest_health_test_partial_drift_still_detects_but_reports_the_loss": "test_partial_drift_still_detects_but_reports_the_loss()" | kind=code-symbol | source=manager/backend/tests/test_engine_bridge_ingest_health.py:L72 | neighbors=[test_engine_bridge_ingest_health.py, A partly-bad batch must keep its good f…]
-- "tests_test_engine_bridge_ingest_health_test_total_shape_drift_is_reported_not_silently_zero": "test_total_shape_drift_is_reported_not_silently_zero()" | kind=code-symbol | source=manager/backend/tests/test_engine_bridge_ingest_health.py:L55 | neighbors=[test_engine_bridge_ingest_health.py, The regression. Drop the one field an a…]
-- "tests_test_engine_bridge_regression": "test_engine_bridge_regression.py" | kind=code-symbol | source=manager/backend/tests/test_engine_bridge_regression.py:L1 | neighbors=[937737b feat(resolution): reopen + flag…, test_reopen_flips_remediated_to_open_an…]
-- "tests_test_engine_bridge_verification": "test_engine_bridge_verification.py" | kind=code-symbol | source=manager/backend/tests/test_engine_bridge_verification.py:L1 | neighbors=[2fcec73 feat(verification): stamp verdi…, test_stamp_verification_sets_columns_wh…]
-- "tests_test_exploit_engine_engagement": "_engagement()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L49 | neighbors=[test_exploit_engine.py, .test_validate_scope_out_of_range()]
-- "tests_test_exploit_engine_pytest_addoption": "pytest_addoption()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L464 | neighbors=[test_exploit_engine.py, Register --msf-host CLI option for inte…]
-- "tests_test_exploit_engine_testexploitorchestrator_test_generate_dns_callback_token_format": ".test_generate_dns_callback_token_format()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L290 | neighbors=[TestExploitOrchestrator, ._make_orchestrator()]
-- "tests_test_exploit_engine_testexploitorchestrator_test_generate_dns_callback_token_unique": ".test_generate_dns_callback_token_unique()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L298 | neighbors=[TestExploitOrchestrator, ._make_orchestrator()]
-- "tests_test_exploit_engine_testexploitorchestrator_test_validate_safety_meterpreter_raises": ".test_validate_safety_meterpreter_raises()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L275 | neighbors=[TestExploitOrchestrator, ._make_orchestrator()]
-- "tests_test_exploit_engine_testmetasploitrpcclient_test_get_job_status_running": ".test_get_job_status_running()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L218 | neighbors=[TestMetasploitRPCClient, ._make_client()]
-- "tests_test_exploit_engine_testmetasploitrpcclient_test_kill_job": ".test_kill_job()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L227 | neighbors=[TestMetasploitRPCClient, ._make_client()]
-- "tests_test_exploit_engine_testmetasploitrpcclient_test_list_modules_exploit": ".test_list_modules_exploit()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L198 | neighbors=[TestMetasploitRPCClient, ._make_client()]
-- "tests_test_exploit_engine_testmetasploitrpcclient_test_run_module_error_raises": ".test_run_module_error_raises()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L212 | neighbors=[TestMetasploitRPCClient, ._make_client()]
-- "tests_test_exploit_engine_testmetasploitrpcclient_test_run_module_returns_job_id": ".test_run_module_returns_job_id()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L204 | neighbors=[TestMetasploitRPCClient, ._make_client()]
-- "tests_test_exploitability_fact": "_fact()" | kind=code-symbol | source=manager/detection_engine/tests/test_exploitability.py:L177 | neighbors=[test_exploitability.py, test_end_to_end_smbv1_is_ranked_by_real…]
-- "tests_test_exploitability_test_end_to_end_smbv1_is_ranked_by_real_exploitation": "test_end_to_end_smbv1_is_ranked_by_real_exploitation()" | kind=code-symbol | source=manager/detection_engine/tests/test_exploitability.py:L197 | neighbors=[test_exploitability.py, _fact()]
-- "tests_test_exploitability_test_linked_cves_are_actually_on_the_pinned_kev_list": "test_linked_cves_are_actually_on_the_pinned_kev_list()" | kind=code-symbol | source=manager/detection_engine/tests/test_exploitability.py:L190 | neighbors=[test_exploitability.py, If a curated link names a CVE the shipp…]
-- "tests_test_exploitability_testapplytofindings_test_no_databases_is_a_no_op": ".test_no_databases_is_a_no_op()" | kind=code-symbol | source=manager/detection_engine/tests/test_exploitability.py:L141 | neighbors=[TestApplyToFindings, _finding()]
-- "tests_test_exploitability_testapplytofindings_test_priority_bands_match_posture_rules": ".test_priority_bands_match_posture_rules()" | kind=code-symbol | source=manager/detection_engine/tests/test_exploitability.py:L150 | neighbors=[A re-rank here must never disagree with…, TestApplyToFindings]
-- "tests_test_exposed_services_testporthypothesiscontradiction_test_backdoor_evidence_is_never_suppressed": ".test_backdoor_evidence_is_never_suppressed()" | kind=code-symbol | source=manager/detection_engine/tests/test_exposed_services.py:L210 | neighbors=[A shell answering on a benign-listed po…, TestPortHypothesisContradiction]
-- "tests_test_fact_contract_test_corpus_is_present_and_nonempty": "test_corpus_is_present_and_nonempty()" | kind=code-symbol | source=manager/detection_engine/tests/test_fact_contract.py:L60 | neighbors=[test_fact_contract.py, _load_corpus()]
-- "tests_test_finding_events_testeventtypeforstatus": "TestEventTypeForStatus" | kind=code-symbol | source=manager/backend/tests/test_finding_events.py:L124 | neighbors=[test_finding_events.py, .test_maps_status_to_specific_event()]
-- "tests_test_finding_events_testmerge_test_labels_attached": ".test_labels_attached()" | kind=code-symbol | source=manager/backend/tests/test_finding_events.py:L118 | neighbors=[TestMerge, ._synth()]
-- "tests_test_finding_events_testpatchaudits_test_manual_remediation_sets_close_metadata_and_audits_reason": ".test_manual_remediation_sets_close_metadata_and_audits_reason()" | kind=code-symbol | source=manager/backend/tests/test_finding_events.py:L195 | neighbors=[TestPatchAudits, _finding()]
-- "tests_test_finding_events_testpatchaudits_test_status_change_records_event": ".test_status_change_records_event()" | kind=code-symbol | source=manager/backend/tests/test_finding_events.py:L160 | neighbors=[TestPatchAudits, _finding()]
-- "tests_test_finding_events_testsynthesize_test_auto_resolution_event": ".test_auto_resolution_event()" | kind=code-symbol | source=manager/backend/tests/test_finding_events.py:L66 | neighbors=[TestSynthesize, _finding()]
-- "tests_test_finding_events_testsynthesize_test_detected_actor_falls_back_to_detection_engine": ".test_detected_actor_falls_back_to_detection_engine()" | kind=code-symbol | source=manager/backend/tests/test_finding_events.py:L55 | neighbors=[TestSynthesize, _finding()]
-- "tests_test_finding_events_testsynthesize_test_detected_actor_labels_network_va_campaign": ".test_detected_actor_labels_network_va_campaign()" | kind=code-symbol | source=manager/backend/tests/test_finding_events.py:L51 | neighbors=[TestSynthesize, _finding()]
-- "tests_test_finding_events_testsynthesize_test_genesis_detected_from_first_seen": ".test_genesis_detected_from_first_seen()" | kind=code-symbol | source=manager/backend/tests/test_finding_events.py:L45 | neighbors=[TestSynthesize, _finding()]
-- "tests_test_finding_events_testsynthesize_test_reopened_inferred_from_count": ".test_reopened_inferred_from_count()" | kind=code-symbol | source=manager/backend/tests/test_finding_events.py:L78 | neighbors=[TestSynthesize, _finding()]
-- "tests_test_finding_events_testtimelineendpoint": "TestTimelineEndpoint" | kind=code-symbol | source=manager/backend/tests/test_finding_events.py:L137 | neighbors=[test_finding_events.py, .test_returns_synthesized_timeline()]
-- "tests_test_finding_events_testtimelineendpoint_test_returns_synthesized_timeline": ".test_returns_synthesized_timeline()" | kind=code-symbol | source=manager/backend/tests/test_finding_events.py:L139 | neighbors=[TestTimelineEndpoint, _finding()]
-- "tests_test_finding_out_computed_test_confirmed_exploited_outranks_contradicted": "test_confirmed_exploited_outranks_contradicted()" | kind=code-symbol | source=manager/backend/tests/test_finding_out_computed.py:L32 | neighbors=[test_finding_out_computed.py, _base()]
-- "tests_test_finding_out_computed_test_detail_asset_context_round_trips_without_changing_list_contract": "test_detail_asset_context_round_trips_without_changing_list_contract()" | kind=code-symbol | source=manager/backend/tests/test_finding_out_computed.py:L55 | neighbors=[test_finding_out_computed.py, _base()]
-- "tests_test_finding_out_computed_test_explicit_risk_rank_is_preserved": "test_explicit_risk_rank_is_preserved()" | kind=code-symbol | source=manager/backend/tests/test_finding_out_computed.py:L44 | neighbors=[test_finding_out_computed.py, _base()]
-- "tests_test_finding_out_computed_test_lifecycle_fields_round_trip": "test_lifecycle_fields_round_trip()" | kind=code-symbol | source=manager/backend/tests/test_finding_out_computed.py:L49 | neighbors=[test_finding_out_computed.py, _base()]
-- "tests_test_finding_out_computed_test_nested_enrichment_kev_is_part_of_the_rank": "test_nested_enrichment_kev_is_part_of_the_rank()" | kind=code-symbol | source=manager/backend/tests/test_finding_out_computed.py:L38 | neighbors=[test_finding_out_computed.py, _base()]
-- "tests_test_finding_out_computed_test_risk_rank_is_computed_not_none": "test_risk_rank_is_computed_not_none()" | kind=code-symbol | source=manager/backend/tests/test_finding_out_computed.py:L26 | neighbors=[test_finding_out_computed.py, _base()]
-- "tests_test_finding_reopen_endpoint_test_reopen_non_remediated_is_conflict": "test_reopen_non_remediated_is_conflict()" | kind=code-symbol | source=manager/backend/tests/test_finding_reopen_endpoint.py:L48 | neighbors=[test_finding_reopen_endpoint.py, _db_with()]
-- "tests_test_finding_reopen_endpoint_test_reopen_remediated_finding_sets_open_and_audits": "test_reopen_remediated_finding_sets_open_and_audits()" | kind=code-symbol | source=manager/backend/tests/test_finding_reopen_endpoint.py:L24 | neighbors=[test_finding_reopen_endpoint.py, _db_with()]
+- "main_scripts_scanner_registry_verification_report": "verification_report()" | kind=code-symbol | source=probe/main_scripts/scanner_registry.py:L107 | neighbors=[scanner_registry.py, The scanner-module trust view: which sc…]
+- "main_scripts_service_banner_dec": "_dec()" | kind=code-symbol | source=probe/main_scripts/service_banner.py:L229 | neighbors=[service_banner.py, match_service()]
+- "main_scripts_service_banner_servicebannerscanner_connect": "._connect()" | kind=code-symbol | source=probe/main_scripts/service_banner.py:L339 | neighbors=[ServiceBannerScanner, ._rung()]
+- "main_scripts_service_banner_servicebannerscanner_ladder_for": "._ladder_for()" | kind=code-symbol | source=probe/main_scripts/service_banner.py:L416 | neighbors=[ServiceBannerScanner, ._grab()]
+- "main_scripts_service_banner_servicebannerscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/main_scripts/service_banner.py:L524 | neighbors=[ServiceBannerScanner, ._grab()]
+- "main_scripts_service_banner_tls_context": "_tls_context()" | kind=code-symbol | source=probe/main_scripts/service_banner.py:L50 | neighbors=[service_banner.py, A permissive client context for FINGERP…]
+- "main_scripts_service_enum_main": "main()" | kind=code-symbol | source=probe/main_scripts/service_enum.py:L630 | neighbors=[service_enum.py, local_topology()]
+- "main_scripts_service_enum_serviceenumscanner_open": "._open()" | kind=code-symbol | source=probe/main_scripts/service_enum.py:L485 | neighbors=[ServiceEnumScanner, ._probe_port()]
+- "main_scripts_service_enum_tags_for": "tags_for()" | kind=code-symbol | source=probe/main_scripts/service_enum.py:L417 | neighbors=[service_enum.py, .scan_target()]
+- "main_scripts_smb_enum_scanner_smbenumscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/smb_enum_scanner.py:L221 | neighbors=[SMBEnumScanner, parse_rid_ranges()]
+- "main_scripts_smb_enum_scanner_smbenumscanner_scan_port": "._scan_port()" | kind=code-symbol | source=probe/main_scripts/smb_enum_scanner.py:L274 | neighbors=[SMBEnumScanner, .scan_target()]
+- "main_scripts_smb_enum_scanner_smbenumscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/main_scripts/smb_enum_scanner.py:L295 | neighbors=[SMBEnumScanner, ._scan_port()]
+- "main_scripts_smb_scanner_der_len": "_der_len()" | kind=code-symbol | source=probe/main_scripts/smb_scanner.py:L104 | neighbors=[smb_scanner.py, _der()]
+- "main_scripts_smb_scanner_smb1_negotiate": "_smb1_negotiate()" | kind=code-symbol | source=probe/main_scripts/smb_scanner.py:L229 | neighbors=[smb_scanner.py, .scan_target()]
+- "main_scripts_smtp_scanner_smtpscanner_scan_port": "._scan_port()" | kind=code-symbol | source=probe/main_scripts/smtp_scanner.py:L124 | neighbors=[SMTPScanner, .scan_target()]
+- "main_scripts_smtp_scanner_smtpscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/main_scripts/smtp_scanner.py:L142 | neighbors=[SMTPScanner, ._scan_port()]
+- "main_scripts_snmp_scanner_oid_in_subtree": "_oid_in_subtree()" | kind=code-symbol | source=probe/main_scripts/snmp_scanner.py:L240 | neighbors=[snmp_scanner.py, ._walk_subtree()]
+- "main_scripts_ssh_collector_sshcollector_collect": "._collect()" | kind=code-symbol | source=probe/main_scripts/ssh_collector.py:L95 | neighbors=[SSHCollector, .run()]
+- "main_scripts_ssh_collector_sshcollector_run": ".run()" | kind=code-symbol | source=probe/main_scripts/ssh_collector.py:L117 | neighbors=[SSHCollector, ._collect()]
+- "main_scripts_ssh_kexdb_lookup": "lookup()" | kind=code-symbol | source=probe/main_scripts/ssh_kexdb.py:L477 | neighbors=[ssh_kexdb.py, Return (failures, warnings, infos) for …]
+- "main_scripts_ssh_scanner_recv_exact": "_recv_exact()" | kind=code-symbol | source=probe/main_scripts/ssh_scanner.py:L215 | neighbors=[ssh_scanner.py, _read_packet()]
+- "main_scripts_ssh_scanner_sshscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/main_scripts/ssh_scanner.py:L331 | neighbors=[SSHScanner, ._scan_port()]
+- "main_scripts_syn_scanner_rationale_232": "A genuine reply to our SYN acknowledges ISN+1. The reply's own source     (ip_sr" | kind=entity | source=probe/main_scripts/syn_scanner.py:L232 | neighbors=[verify_reply_cookie(), _local_source_ip()]
+- "main_scripts_syn_scanner_synscanner_fallback_scan": "._fallback_scan()" | kind=code-symbol | source=probe/main_scripts/syn_scanner.py:L390 | neighbors=[SynScanner, .scan_target()]
+- "main_scripts_syn_scanner_synscanner_syn_scan_target": "._syn_scan_target()" | kind=code-symbol | source=probe/main_scripts/syn_scanner.py:L398 | neighbors=[SynScanner, .scan_target()]
+- "main_scripts_tls_fingerprint_probe_specs": "_probe_specs()" | kind=code-symbol | source=probe/main_scripts/tls_fingerprint.py:L221 | neighbors=[tls_fingerprint.py, fingerprint_host()]
+- "main_scripts_tls_fingerprint_tlsfingerprintscanner_scan_port": "._scan_port()" | kind=code-symbol | source=probe/main_scripts/tls_fingerprint.py:L290 | neighbors=[TLSFingerprintScanner, .scan_target()]
+- "main_scripts_tls_fingerprint_tlsfingerprintscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/main_scripts/tls_fingerprint.py:L320 | neighbors=[TLSFingerprintScanner, ._scan_port()]
+- "main_scripts_tls_fingerprint_version_code": "version_code()" | kind=code-symbol | source=probe/main_scripts/tls_fingerprint.py:L174 | neighbors=[tls_fingerprint.py, jarm_style_digest()]
+- "main_scripts_tls_scanner_parse_cert_der": "_parse_cert_der()" | kind=code-symbol | source=probe/main_scripts/tls_scanner.py:L215 | neighbors=[tls_scanner.py, _scan_tls_sync()]
+- "main_scripts_tls_scanner_tlsscanner_scan_port": "._scan_port()" | kind=code-symbol | source=probe/main_scripts/tls_scanner.py:L320 | neighbors=[TLSScanner, .scan_target()]
+- "main_scripts_tls_scanner_tlsscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/main_scripts/tls_scanner.py:L339 | neighbors=[TLSScanner, ._scan_port()]
+- "main_scripts_udp_scanner_ike_probe": "_ike_probe()" | kind=code-symbol | source=probe/main_scripts/udp_scanner.py:L77 | neighbors=[udp_scanner.py, Minimal IKEv2 IKE_SA_INIT probe.  Sends…]
+- "main_scripts_udp_scanner_interpret_dns_recursion": "interpret_dns_recursion()" | kind=code-symbol | source=probe/main_scripts/udp_scanner.py:L173 | neighbors=[udp_scanner.py, ._probe()]
+- "main_scripts_udp_scanner_interpret_memcached_stats": "interpret_memcached_stats()" | kind=code-symbol | source=probe/main_scripts/udp_scanner.py:L184 | neighbors=[udp_scanner.py, ._probe()]
+- "main_scripts_udp_scanner_interpret_ntp_monlist": "interpret_ntp_monlist()" | kind=code-symbol | source=probe/main_scripts/udp_scanner.py:L169 | neighbors=[udp_scanner.py, ._probe()]
+- "main_scripts_udp_scanner_ntp_monlist_probe": "_ntp_monlist_probe()" | kind=code-symbol | source=probe/main_scripts/udp_scanner.py:L50 | neighbors=[udp_scanner.py, ._probe()]
+- "main_scripts_udp_scanner_tftp_probe": "_tftp_probe()" | kind=code-symbol | source=probe/main_scripts/udp_scanner.py:L132 | neighbors=[udp_scanner.py, TFTP RRQ for a non-existent file.  Erro…]
+- "main_scripts_udp_scanner_udpscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/main_scripts/udp_scanner.py:L386 | neighbors=[UDPScanner, ._probe()]
+- "main_scripts_unauth_access_as_text": "_as_text()" | kind=code-symbol | source=probe/main_scripts/unauth_access.py:L40 | neighbors=[unauth_access.py, classify_unauth_access()]
 
 ## Instructions
 

@@ -1,4 +1,4 @@
-# Node Description Batch 256 of 336
+# Node Description Batch 256 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -9,6 +9,9 @@ your JSON answer to the answer file.
 You are documenting nodes in a knowledge graph.
 For each entry below, write ONE concise factual plain-language sentence
 describing what it is or does. Use only the provided context.
+For a code symbol (kind=code-symbol — a function, class, or constant),
+describe what the function/symbol does based on its name, source location
+and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
 For an entity node (any other kind — e.g. a person, place, event, object),
 describe what the entity is and its role, grounded in its type, its
 relations (neighbors) and the provided citations/evidence — e.g.
@@ -16,53 +19,51 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-LANGUAGE: each entry has a `lang=` marker giving the language of its source.
-Write that entry's description in EXACTLY that language. Do not translate to
-a single common language — match each node's source language individually.
+Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "scanner_scanner_base_rationale_463": "Run a scanner CLI's body with consistent, operator-friendly error handling." | kind=entity | source=probe/scanner/scanner_base.py:L463 | neighbors=[main_entrypoint()] | lang=en
-- "scanner_scanner_base_rationale_466": "A self-tuning concurrency window, modelled on TCP congestion control (AIMD)," | kind=entity | source=probe/scanner/scanner_base.py:L466 | neighbors=[AdaptiveRateController] | lang=pt
-- "scanner_scanner_base_rationale_469": "Parse '22,80,443,8000-8100' into a sorted unique port list (1-65535)." | kind=entity | source=probe/scanner/scanner_base.py:L469 | neighbors=[parse_ports()] | lang=pt
-- "scanner_scanner_base_rationale_471": "Accepts CIDRs ('10.0.0.0/24'), single IPs, hostnames, and simple ranges     ('10" | kind=entity | source=probe/scanner/scanner_base.py:L471 | neighbors=[expand_targets()] | lang=en
-- "scanner_scanner_base_rationale_485": "One-shot datagram protocol backing `async_udp_probe`. Resolves its future     wi" | kind=entity | source=probe/scanner/scanner_base.py:L485 | neighbors=[_UDPProbeProtocol] | lang=en
-- "scanner_scanner_base_rationale_490": "Writes ScanResult objects as JSONL to a file and/or stdout." | kind=entity | source=probe/scanner/scanner_base.py:L490 | neighbors=[ResultWriter] | lang=en
-- "scanner_scanner_base_rationale_491": "Wire argparse args into a scanner instance and execute it." | kind=entity | source=probe/scanner/scanner_base.py:L491 | neighbors=[run_cli()] | lang=en
-- "scanner_scanner_base_rationale_498": "Current integer window (>= min_window)." | kind=entity | source=probe/scanner/scanner_base.py:L498 | neighbors=[.window()] | lang=en
-- "scanner_scanner_base_rationale_505": "Writes ScanResult objects as JSONL to a file and/or stdout." | kind=entity | source=probe/scanner/scanner_base.py:L505 | neighbors=[ResultWriter] | lang=en
-- "scanner_scanner_base_rationale_518": "Send one UDP datagram and await the first reply — fully on the event loop." | kind=entity | source=probe/scanner/scanner_base.py:L518 | neighbors=[async_udp_probe()] | lang=en
-- "scanner_scanner_base_rationale_520": "Subclasses implement `scan_target(self, target)` (async), returning a list     o" | kind=entity | source=probe/scanner/scanner_base.py:L520 | neighbors=[BaseScanner] | lang=pt
-- "scanner_scanner_base_rationale_532": "Resolve `target` to a concrete (family, sockaddr) covering IPv4, IPv6, and     h" | kind=entity | source=probe/scanner/scanner_base.py:L532 | neighbors=[resolve()] | lang=en
-- "scanner_scanner_base_rationale_536": "Blocking packets-per-second pacer with AIMD rate adaptation, for raw-socket" | kind=entity | source=probe/scanner/scanner_base.py:L536 | neighbors=[SendPacer] | lang=en
-- "scanner_scanner_base_rationale_549": "`async_udp_probe` with bounded per-port retransmit.      Returns on the FIRST de" | kind=entity | source=probe/scanner/scanner_base.py:L549 | neighbors=[async_udp_probe_retry()] | lang=en
-- "scanner_scanner_base_rationale_56": "HTTP/RTSP User-Agent to send — a generic browser UA by default so it does     no" | kind=entity | source=probe/scanner/scanner_base.py:L56 | neighbors=[user_agent()] | lang=en
-- "scanner_scanner_base_rationale_563": "Wire argparse args into a scanner instance and execute it." | kind=entity | source=probe/scanner/scanner_base.py:L563 | neighbors=[run_cli()] | lang=en
-- "scanner_scanner_base_rationale_565": "One-shot datagram protocol backing `async_udp_probe`. Resolves its future     wi" | kind=entity | source=probe/scanner/scanner_base.py:L565 | neighbors=[_UDPProbeProtocol] | lang=en
-- "scanner_scanner_base_rationale_568": "Wrap an IPv6 literal in [] for a URL authority; leave v4/hostnames as-is.     'h" | kind=entity | source=probe/scanner/scanner_base.py:L568 | neighbors=[bracket_host()] | lang=en
-- "scanner_scanner_base_rationale_578": "Block just long enough to hold `rate` packets/sec. No-op at rate <= 0." | kind=entity | source=probe/scanner/scanner_base.py:L578 | neighbors=[.pace()] | lang=en
-- "scanner_scanner_base_rationale_580": "Parse '22,80,443,8000-8100' into a sorted unique port list (1-65535)." | kind=entity | source=probe/scanner/scanner_base.py:L580 | neighbors=[parse_ports()] | lang=pt
-- "scanner_scanner_base_rationale_591": "Fold one send/collect round's reply ratio into the rate (AIMD).          Returns" | kind=entity | source=probe/scanner/scanner_base.py:L591 | neighbors=[.observe_round()] | lang=en
-- "scanner_scanner_base_rationale_598": "Send one UDP datagram and await the first reply — fully on the event loop." | kind=entity | source=probe/scanner/scanner_base.py:L598 | neighbors=[async_udp_probe()] | lang=en
-- "scanner_scanner_base_rationale_607": "Pacing telemetry for the scan summary (so a throttled scan is visible)." | kind=entity | source=probe/scanner/scanner_base.py:L607 | neighbors=[.stats()] | lang=en
-- "scanner_scanner_base_rationale_616": "Writes ScanResult objects as JSONL to a file and/or stdout." | kind=entity | source=probe/scanner/scanner_base.py:L616 | neighbors=[ResultWriter] | lang=en
-- "scanner_scanner_base_rationale_62": "Benign, non-attributing payload for ICMP/UDP probes — looks like ordinary     pi" | kind=entity | source=probe/scanner/scanner_base.py:L62 | neighbors=[probe_payload()] | lang=en
-- "scanner_scanner_base_rationale_620": "Accepts CIDRs ('10.0.0.0/24'), single IPs, hostnames, and simple ranges     ('10" | kind=entity | source=probe/scanner/scanner_base.py:L620 | neighbors=[expand_targets()] | lang=en
-- "scanner_scanner_base_rationale_624": "Run a scanner CLI's body with consistent, operator-friendly error handling." | kind=entity | source=probe/scanner/scanner_base.py:L624 | neighbors=[main_entrypoint()] | lang=en
-- "scanner_scanner_base_rationale_629": "`async_udp_probe` with bounded per-port retransmit.      Returns on the FIRST de" | kind=entity | source=probe/scanner/scanner_base.py:L629 | neighbors=[async_udp_probe_retry()] | lang=en
-- "scanner_scanner_base_rationale_639": "Run a scanner CLI's body with consistent, operator-friendly error handling." | kind=entity | source=probe/scanner/scanner_base.py:L639 | neighbors=[main_entrypoint()] | lang=en
-- "scanner_scanner_base_rationale_646": "Subclasses implement `scan_target(self, target)` (async), returning a list     o" | kind=entity | source=probe/scanner/scanner_base.py:L646 | neighbors=[BaseScanner] | lang=pt
-- "scanner_scanner_base_rationale_648": "Wrap an IPv6 literal in [] for a URL authority; leave v4/hostnames as-is.     'h" | kind=entity | source=probe/scanner/scanner_base.py:L648 | neighbors=[bracket_host()] | lang=en
-- "scanner_scanner_base_rationale_652": "Wire argparse args into a scanner instance and execute it." | kind=entity | source=probe/scanner/scanner_base.py:L652 | neighbors=[run_cli()] | lang=en
-- "scanner_scanner_base_rationale_660": "Parse '22,80,443,8000-8100' into a sorted unique port list (1-65535)." | kind=entity | source=probe/scanner/scanner_base.py:L660 | neighbors=[parse_ports()] | lang=pt
-- "scanner_scanner_base_rationale_667": "Wire argparse args into a scanner instance and execute it." | kind=entity | source=probe/scanner/scanner_base.py:L667 | neighbors=[run_cli()] | lang=en
-- "scanner_scanner_base_rationale_67": "The project timezone, degrading safely when tzdata is unavailable." | kind=entity | source=probe/scanner/scanner_base.py:L67 | neighbors=[_resolve_project_tz()] | lang=en
-- "scanner_scanner_base_rationale_681": "Resolve `target` to a concrete (family, sockaddr) covering IPv4, IPv6, and     h" | kind=entity | source=probe/scanner/scanner_base.py:L681 | neighbors=[resolve()] | lang=en
-- "scanner_scanner_base_rationale_696": "Writes ScanResult objects as JSONL to a file and/or stdout." | kind=entity | source=probe/scanner/scanner_base.py:L696 | neighbors=[ResultWriter] | lang=en
-- "scanner_scanner_base_rationale_70": "Loads an allowlist of CIDRs / IPs / hostnames and decides whether a target     i" | kind=entity | source=probe/scanner/scanner_base.py:L70 | neighbors=[ScopeGuard] | lang=en
-- "scanner_scanner_base_rationale_706": "EVERY distinct (family, sockaddr) for `target`, in getaddrinfo/RFC-6724 order." | kind=entity | source=probe/scanner/scanner_base.py:L706 | neighbors=[resolve_candidates()] | lang=en
-- "scanner_scanner_base_rationale_726": "Subclasses implement `scan_target(self, target)` (async), returning a list     o" | kind=entity | source=probe/scanner/scanner_base.py:L726 | neighbors=[BaseScanner] | lang=pt
+- "main_scripts_service_enum_rationale_495": "Connect to one port and read whatever it voluntarily advertises." | kind=entity | source=probe/main_scripts/service_enum.py:L495 | neighbors=[._probe_port()]
+- "main_scripts_service_enum_reverse_dns": "reverse_dns()" | kind=code-symbol | source=probe/main_scripts/service_enum.py:L148 | neighbors=[service_enum.py]
+- "main_scripts_service_enum_serviceenumscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/service_enum.py:L481 | neighbors=[ServiceEnumScanner]
+- "main_scripts_smb_enum_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/smb_enum_scanner.py:L307 | neighbors=[smb_enum_scanner.py]
+- "main_scripts_smb_enum_scanner_rationale_1": "smb_enum_scanner.py — SMB null-session enumeration (VA checklist: anonymous info" | kind=entity | source=probe/main_scripts/smb_enum_scanner.py:L1 | neighbors=[smb_enum_scanner.py]
+- "main_scripts_smb_enum_scanner_rationale_103": "Enumerate domain/local users via the SAMR named pipe, reusing the null     sessi" | kind=entity | source=probe/main_scripts/smb_enum_scanner.py:L103 | neighbors=[_enum_users_samr()]
+- "main_scripts_smb_enum_scanner_rationale_149": "RID-cycling fallback via LSAT: resolve <DomainSID>-<rid> for each rid to a     n" | kind=entity | source=probe/main_scripts/smb_enum_scanner.py:L149 | neighbors=[_enum_users_ridcycle()]
+- "main_scripts_smb_enum_scanner_rationale_201": "Merge user lists, de-duplicated by (name, rid); SAMR entries win over RID     cy" | kind=entity | source=probe/main_scripts/smb_enum_scanner.py:L201 | neighbors=[_merge_users()]
+- "main_scripts_smb_enum_scanner_rationale_228": "Blocking: attempt a null session and enumerate what the server         volunteer" | kind=entity | source=probe/main_scripts/smb_enum_scanner.py:L228 | neighbors=[._enumerate()]
+- "main_scripts_smb_enum_scanner_rationale_53": "Parse 'a-b,c-d,e' into a sorted, de-duplicated, bounded list of RIDs.      Bound" | kind=entity | source=probe/main_scripts/smb_enum_scanner.py:L53 | neighbors=[parse_rid_ranges()]
+- "main_scripts_smb_enum_scanner_rationale_88": "List SMB shares over the null session. Read-only (share listing, no file     acc" | kind=entity | source=probe/main_scripts/smb_enum_scanner.py:L88 | neighbors=[_enum_shares()]
+- "main_scripts_smb_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/smb_scanner.py:L452 | neighbors=[smb_scanner.py]
+- "main_scripts_smb_scanner_rationale_1": "smb_scanner.py — detect which SMB dialects a host supports.  METHOD (collection" | kind=entity | source=probe/main_scripts/smb_scanner.py:L1 | neighbors=[smb_scanner.py]
+- "main_scripts_smb_scanner_rationale_116": "NTLMSSP NEGOTIATE (Type-1). Sets NEGOTIATE_VERSION so the server discloses     i" | kind=entity | source=probe/main_scripts/smb_scanner.py:L116 | neighbors=[build_ntlmssp_negotiate()]
+- "main_scripts_smb_scanner_rationale_134": "Wrap an NTLMSSP Type-1 in a minimal SPNEGO NegTokenInit (GSS-API)." | kind=entity | source=probe/main_scripts/smb_scanner.py:L134 | neighbors=[_spnego_init()]
+- "main_scripts_smb_scanner_rationale_142": "Map an NT major.minor.build to a friendly release. Client and server share     s" | kind=entity | source=probe/main_scripts/smb_scanner.py:L142 | neighbors=[windows_release_from_build()]
+- "main_scripts_smb_scanner_rationale_177": "Parse an NTLMSSP CHALLENGE (Type-2) out of any containing buffer (SPNEGO or" | kind=entity | source=probe/main_scripts/smb_scanner.py:L177 | neighbors=[parse_ntlm_challenge()]
+- "main_scripts_smb_scanner_rationale_204": "SMB2 SESSION_SETUP request (MessageId 1, SessionId 0) carrying `security_blob`." | kind=entity | source=probe/main_scripts/smb_scanner.py:L204 | neighbors=[_smb2_session_setup()]
+- "main_scripts_smb_scanner_rationale_250": "Pad to the 8-byte boundary MS-SMB2 requires between negotiate contexts." | kind=entity | source=probe/main_scripts/smb_scanner.py:L250 | neighbors=[_align8()]
+- "main_scripts_smb_scanner_rationale_255": "SMB2_PREAUTH_INTEGRITY_CAPABILITIES (MS-SMB2 2.2.3.1.1): mandatory for any     c" | kind=entity | source=probe/main_scripts/smb_scanner.py:L255 | neighbors=[_preauth_integrity_context()]
+- "main_scripts_smb_scanner_rationale_266": "SMB2_ENCRYPTION_CAPABILITIES (MS-SMB2 2.2.3.1.2): offer AES-128-GCM/CCM so     t" | kind=entity | source=probe/main_scripts/smb_scanner.py:L266 | neighbors=[_encryption_context()]
+- "main_scripts_smb_scanner_rationale_317": "Read one length-prefixed (Direct-TCP/NBT) SMB frame in full, STRIPPING the     4" | kind=entity | source=probe/main_scripts/smb_scanner.py:L317 | neighbors=[_recv_smb_frame()]
+- "main_scripts_smb_scanner_rationale_338": "Pre-auth SMB2 NEGOTIATE → SESSION_SETUP → parse the NTLMSSP CHALLENGE Version" | kind=entity | source=probe/main_scripts/smb_scanner.py:L338 | neighbors=[ntlm_os_build()]
+- "main_scripts_smb_scanner_rationale_37": "Read signing posture from a SUCCESSFUL SMB2 NEGOTIATE response.      Wire layout" | kind=entity | source=probe/main_scripts/smb_scanner.py:L37 | neighbors=[parse_smb2_security_mode()]
+- "main_scripts_smb_scanner_rationale_370": "SMB negotiate against the first address that actually answers.          Walks ev" | kind=entity | source=probe/main_scripts/smb_scanner.py:L370 | neighbors=[._negotiate()]
+- "main_scripts_smb_scanner_rationale_39": "Read signing posture from a SUCCESSFUL SMB2 NEGOTIATE response.      Wire layout" | kind=entity | source=probe/main_scripts/smb_scanner.py:L39 | neighbors=[parse_smb2_security_mode()]
+- "main_scripts_smb_scanner_rationale_394": "Best-effort: SMB2 NEGOTIATE then a pre-auth SESSION_SETUP to harvest the" | kind=entity | source=probe/main_scripts/smb_scanner.py:L394 | neighbors=[._ntlm_fingerprint()]
+- "main_scripts_smb_scanner_smbscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/smb_scanner.py:L365 | neighbors=[SMBScanner]
+- "main_scripts_smtp_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/smtp_scanner.py:L147 | neighbors=[smtp_scanner.py]
+- "main_scripts_smtp_scanner_rationale_1": "smtp_scanner.py — SMTP hygiene: user enumeration + transport encryption (VA chec" | kind=entity | source=probe/main_scripts/smtp_scanner.py:L1 | neighbors=[smtp_scanner.py]
+- "main_scripts_smtp_scanner_rationale_40": "Extract EHLO capability tokens from a multi-line 250 response." | kind=entity | source=probe/main_scripts/smtp_scanner.py:L40 | neighbors=[parse_ehlo_capabilities()]
+- "main_scripts_smtp_scanner_rationale_52": "VRFY leaks usernames when it gives DIFFERENT definitive answers for an     exist" | kind=entity | source=probe/main_scripts/smtp_scanner.py:L52 | neighbors=[vrfy_leaks()]
+- "main_scripts_smtp_scanner_rationale_88": "Blocking: greeting → EHLO → STARTTLS/VRFY/EXPN checks. Monkeypatchable." | kind=entity | source=probe/main_scripts/smtp_scanner.py:L88 | neighbors=[._probe()]
+- "main_scripts_smtp_scanner_smtpscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/smtp_scanner.py:L63 | neighbors=[SMTPScanner]
+- "main_scripts_snmp_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/snmp_scanner.py:L401 | neighbors=[snmp_scanner.py]
+- "main_scripts_snmp_scanner_rationale_1": "snmp_scanner.py — full SNMP enumeration: community discovery, targeted MIB walk," | kind=entity | source=probe/main_scripts/snmp_scanner.py:L1 | neighbors=[snmp_scanner.py]
+- "main_scripts_snmp_scanner_rationale_105": "Shallow parse of BER TLVs starting at offset. Returns [(tag, value), ...]." | kind=entity | source=probe/main_scripts/snmp_scanner.py:L105 | neighbors=[_ber_parse()]
+- "main_scripts_snmp_scanner_rationale_127": "Extract (oid_dotted, value_tag, value_bytes) from a GET/GETNEXT/GETBULK response" | kind=entity | source=probe/main_scripts/snmp_scanner.py:L127 | neighbors=[_parse_varbinds()]
+- "main_scripts_snmp_scanner_rationale_246": "Phase 1 (community discovery) + Phase 2 (targeted MIB walk) +     Phase 3 (ampli" | kind=entity | source=probe/main_scripts/snmp_scanner.py:L246 | neighbors=[SNMPScanner]
+- "main_scripts_snmp_scanner_rationale_278": "Return (community, sysdescr) for the first responding community, or None." | kind=entity | source=probe/main_scripts/snmp_scanner.py:L278 | neighbors=[._discover_community()]
 
 ## Instructions
 

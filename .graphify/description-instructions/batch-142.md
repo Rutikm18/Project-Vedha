@@ -1,4 +1,4 @@
-# Node Description Batch 143 of 336
+# Node Description Batch 143 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,60 +12,51 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
-For an entity node (any other kind — e.g. a person, place, event, object),
-describe what the entity is and its role, grounded in its type, its
-relations (neighbors) and the provided citations/evidence — e.g.
-"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
-Ground entity descriptions in the citations/evidence when present; do not
-speculate beyond the context, so a node with no supporting context may be
-left out of the reply.
-LANGUAGE: each entry has a `lang=` marker giving the language of its source.
-Write that entry's description in EXACTLY that language. Do not translate to
-a single common language — match each node's source language individually.
+Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "scanner_passive_collector_coverage": "_coverage()" | kind=code-symbol | source=probe/scanner/passive_collector.py:L158 | neighbors=[passive_collector.py, .run()] | lang=en
-- "scanner_passive_collector_is_readable": "_is_readable()" | kind=code-symbol | source=probe/scanner/passive_collector.py:L351 | neighbors=[passive_collector.py, ._select()] | lang=en
-- "scanner_passive_collector_listener_error_code": "_listener_error_code()" | kind=code-symbol | source=probe/scanner/passive_collector.py:L150 | neighbors=[passive_collector.py, .run()] | lang=en
-- "scanner_port_scanner_scanmetrics_summary": ".summary()" | kind=code-symbol | source=probe/scanner/port_scanner.py:L315 | neighbors=[.scan_target(), ScanMetrics] | lang=en
-- "scanner_printer_scanner_ipp_attr": "_ipp_attr()" | kind=code-symbol | source=probe/scanner/printer_scanner.py:L49 | neighbors=[printer_scanner.py, build_ipp_get_printer_attributes()] | lang=en
-- "scanner_printer_scanner_printerscanner_scan_port": "._scan_port()" | kind=code-symbol | source=probe/scanner/printer_scanner.py:L138 | neighbors=[PrinterScanner, .scan_target()] | lang=en
-- "scanner_printer_scanner_printerscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/scanner/printer_scanner.py:L155 | neighbors=[PrinterScanner, ._scan_port()] | lang=en
-- "scanner_rdp_scanner_main": "main()" | kind=code-symbol | source=probe/scanner/rdp_scanner.py:L173 | neighbors=[rdp_scanner.py, RDPScanner] | lang=en
-- "scanner_rdp_scanner_rdpscanner_scan_port": "._scan_port()" | kind=code-symbol | source=probe/scanner/rdp_scanner.py:L142 | neighbors=[RDPScanner, .scan_target()] | lang=en
-- "scanner_rdp_scanner_rdpscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/scanner/rdp_scanner.py:L168 | neighbors=[RDPScanner, ._scan_port()] | lang=en
-- "scanner_rsync_scanner_rsyncscanner_scan_port": "._scan_port()" | kind=code-symbol | source=probe/scanner/rsync_scanner.py:L144 | neighbors=[RsyncScanner, .scan_target()] | lang=en
-- "scanner_rsync_scanner_rsyncscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/scanner/rsync_scanner.py:L162 | neighbors=[RsyncScanner, ._scan_port()] | lang=en
-- "scanner_run_all_open_tcp_ports": "_open_tcp_ports()" | kind=code-symbol | source=probe/scanner/run_all.py:L92 | neighbors=[run_all.py, main()] | lang=en
-- "scanner_run_all_ports_arg": "_ports_arg()" | kind=code-symbol | source=probe/scanner/run_all.py:L106 | neighbors=[run_all.py, main()] | lang=en
-- "scanner_run_all_read_jsonl": "_read_jsonl()" | kind=code-symbol | source=probe/scanner/run_all.py:L78 | neighbors=[run_all.py, main()] | lang=en
-- "scanner_scan_funnel_is_alive": "_is_alive()" | kind=code-symbol | source=probe/scanner/scan_funnel.py:L125 | neighbors=[scan_funnel.py, .run_host()] | lang=en
-- "scanner_scan_funnel_rationale_73": "Canonical open-TCP set for a host = deduped, sorted union of every source." | kind=entity | source=probe/scanner/scan_funnel.py:L73 | neighbors=[reconcile_ports(), FunnelResult] | lang=en
-- "scanner_scan_funnel_rationale_87": "Map a host's open ports onto the deep-scanner routes that handle them.     Retur" | kind=entity | source=probe/scanner/scan_funnel.py:L87 | neighbors=[route_ports(), _candidate_ports()] | lang=en
-- "scanner_scan_funnel_scanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/scanner/scan_funnel.py:L114 | neighbors=[.run_host(), _Scanner] | lang=en
-- "scanner_scanner_base_adaptiveratecontroller_acquire": ".acquire()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L512 | neighbors=[AdaptiveRateController, .wait()] | lang=en
-- "scanner_scanner_base_adaptiveratecontroller_on_loss": "._on_loss()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L508 | neighbors=[AdaptiveRateController, .report_loss()] | lang=en
-- "scanner_scanner_base_adaptiveratecontroller_on_success": "._on_success()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L501 | neighbors=[AdaptiveRateController, .report_success()] | lang=en
-- "scanner_scanner_base_adaptiveratecontroller_report_loss": ".report_loss()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L524 | neighbors=[AdaptiveRateController, ._on_loss()] | lang=en
-- "scanner_scanner_base_adaptiveratecontroller_report_success": ".report_success()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L518 | neighbors=[AdaptiveRateController, ._on_success()] | lang=en
-- "scanner_scanner_base_basescanner_init": ".__init__()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L966 | neighbors=[BaseScanner, RateLimiter] | lang=en
-- "scanner_scanner_base_basescanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L974 | neighbors=[BaseScanner, ._guarded()] | lang=en
-- "scanner_scanner_base_rationale_170": "Map a connect()/socket-time OSError to (state, reason).      DNS failures (``soc" | kind=entity | source=probe/scanner/scanner_base.py:L170 | neighbors=[classify_os_error(), .networks()] | lang=en
-- "scanner_scanner_base_rationale_205": "A self-tuning concurrency window, modelled on TCP congestion control (AIMD)," | kind=entity | source=probe/scanner/scanner_base.py:L205 | neighbors=[AdaptiveRateController, expand_targets()] | lang=pt
-- "scanner_scanner_base_rationale_353": "Read-only view of allowed networks (for CIDR-level engines)." | kind=entity | source=probe/scanner/scanner_base.py:L353 | neighbors=[.networks(), bracket_host()] | lang=en
-- "scanner_scanner_base_rationale_359": "One-shot datagram protocol backing `async_udp_probe`. Resolves its future     wi" | kind=entity | source=probe/scanner/scanner_base.py:L359 | neighbors=[_UDPProbeProtocol, BaseScanner] | lang=en
-- "scanner_scanner_base_rationale_535": "Subclasses implement `scan_target(self, target)` (async), returning a list     o" | kind=entity | source=probe/scanner/scanner_base.py:L535 | neighbors=[BaseScanner, main_entrypoint()] | lang=pt
-- "scanner_scanner_base_rationale_69": "The TCP source port for probes. A FIXED port (e.g. 53/88) lets a scan slip     p" | kind=entity | source=probe/scanner/scanner_base.py:L69 | neighbors=[choose_source_port(), ScopeGuard] | lang=en
-- "scanner_scanner_base_resolve_project_tz": "_resolve_project_tz()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L66 | neighbors=[scanner_base.py, The project timezone, degrading safely …] | lang=en
-- "scanner_scanner_base_scanresult_to_json": ".to_json()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L304 | neighbors=[.write(), ScanResult] | lang=en
-- "scanner_scanner_base_scopeguard_filter": ".filter()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L408 | neighbors=[ScopeGuard, .in_scope()] | lang=en
-- "scanner_scanner_base_sendpacer_observe_round": ".observe_round()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L590 | neighbors=[Fold one send/collect round's reply rat…, SendPacer] | lang=en
-- "scanner_scanner_base_sendpacer_pace": ".pace()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L577 | neighbors=[Block just long enough to hold `rate` p…, SendPacer] | lang=en
-- "scanner_scanner_base_sendpacer_stats": ".stats()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L606 | neighbors=[Pacing telemetry for the scan summary (…, SendPacer] | lang=en
-- "scanner_scanner_registry_is_verified": "is_verified()" | kind=code-symbol | source=probe/scanner/scanner_registry.py:L97 | neighbors=[scanner_registry.py, True only for a scanner explicitly on t…] | lang=en
-- "scanner_scanner_registry_verification_report": "verification_report()" | kind=code-symbol | source=probe/scanner/scanner_registry.py:L107 | neighbors=[scanner_registry.py, The scanner-module trust view: which sc…] | lang=en
+- "commands_whoami_buildwhoamicommand": "buildWhoamiCommand()" | kind=code-symbol | source=manager/frontend/cli/commands/whoami.ts:L4 | neighbors=[index.ts, whoami.ts]
+- "components_engagementstatuscontrol_engagementstatuscontrol": "EngagementStatusControl()" | kind=code-symbol | source=manager/frontend/components/EngagementStatusControl.tsx:L61 | neighbors=[EngagementStatusControl.tsx, page.tsx]
+- "components_engagementstatuscontrol_status_color": "STATUS_COLOR" | kind=code-symbol | source=manager/frontend/components/EngagementStatusControl.tsx:L39 | neighbors=[EngagementStatusControl.tsx, page.tsx]
+- "components_queryprovider_queryprovider": "QueryProvider()" | kind=code-symbol | source=manager/frontend/components/QueryProvider.tsx:L6 | neighbors=[layout.tsx, QueryProvider.tsx]
+- "components_themeprovider_themeprovider": "ThemeProvider()" | kind=code-symbol | source=manager/frontend/components/ThemeProvider.tsx:L30 | neighbors=[layout.tsx, ThemeProvider.tsx]
+- "components_toastprovider_toastcontext": "ToastContext" | kind=code-symbol | source=manager/frontend/components/ToastProvider.tsx:L26 | neighbors=[ToastProvider.tsx, useToast.ts]
+- "components_toastprovider_toastprovider": "ToastProvider()" | kind=code-symbol | source=manager/frontend/components/ToastProvider.tsx:L158 | neighbors=[layout.tsx, ToastProvider.tsx]
+- "console_freshness_freshness": "Freshness()" | kind=code-symbol | source=manager/frontend/components/console/Freshness.tsx:L6 | neighbors=[Freshness.tsx, DashboardGrid.tsx]
+- "console_primitives_delta": "Delta()" | kind=code-symbol | source=manager/frontend/components/console/Primitives.tsx:L123 | neighbors=[Primitives.tsx, PostureScorecard.tsx]
+- "console_primitives_panel": "Panel()" | kind=code-symbol | source=manager/frontend/components/console/Primitives.tsx:L15 | neighbors=[Primitives.tsx, DashboardGrid.tsx]
+- "console_primitives_readout": "Readout()" | kind=code-symbol | source=manager/frontend/components/console/Primitives.tsx:L161 | neighbors=[Primitives.tsx, LiveOverview.tsx]
+- "console_primitives_severitychip": "SeverityChip()" | kind=code-symbol | source=manager/frontend/components/console/Primitives.tsx:L78 | neighbors=[Primitives.tsx, SlaStatus.tsx]
+- "cve_cli_build_parser": "build_parser()" | kind=code-symbol | source=probe/cve/cli.py:L151 | neighbors=[cli.py, main()]
+- "cve_cli_cmd_status": "cmd_status()" | kind=code-symbol | source=probe/cve/cli.py:L119 | neighbors=[cli.py, Verify the offline mirror: feed counts,…]
+- "cve_cli_main": "main()" | kind=code-symbol | source=probe/cve/cli.py:L192 | neighbors=[cli.py, build_parser()]
+- "cve_correlator_as_dict": "_as_dict()" | kind=code-symbol | source=probe/cve/correlator.py:L114 | neighbors=[correlator.py, correlate()]
+- "cve_correlator_mirror_age_note": "mirror_age_note()" | kind=code-symbol | source=probe/cve/correlator.py:L30 | neighbors=[correlator.py, Human-readable note on how old the mirr…]
+- "cve_correlator_risk_band": "risk_band()" | kind=code-symbol | source=probe/cve/correlator.py:L73 | neighbors=[correlator.py, correlate()]
+- "cve_ingest_iter_cpe_matches": "_iter_cpe_matches()" | kind=code-symbol | source=probe/cve/ingest.py:L102 | neighbors=[ingest.py, ingest_one_cve()]
+- "cve_init": "__init__.py" | kind=code-symbol | source=probe/cve/__init__.py:L1 | neighbors=[6e2818f Add support for additional serv…, cve — vulnerability (CVE) correlation l…]
+- "cve_vulndb_vulndb_add_cpe_match": ".add_cpe_match()" | kind=code-symbol | source=probe/cve/vulndb.py:L79 | neighbors=[VulnDB, _norm()]
+- "cve_vulndb_vulndb_commit": ".commit()" | kind=code-symbol | source=probe/cve/vulndb.py:L107 | neighbors=[VulnDB, .__init__()]
+- "cve_vulndb_vulndb_enrich": "._enrich()" | kind=code-symbol | source=probe/cve/vulndb.py:L141 | neighbors=[VulnDB, .cves_for_cpe()]
+- "cve_vulndb_vulndb_init": ".__init__()" | kind=code-symbol | source=probe/cve/vulndb.py:L63 | neighbors=[VulnDB, .commit()]
+- "cve_vulndb_vulndb_upsert_kev": ".upsert_kev()" | kind=code-symbol | source=probe/cve/vulndb.py:L92 | neighbors=[VulnDB, _norm()]
+- "cve_weakness_map_assoc": "_Assoc" | kind=code-symbol | source=probe/cve/weakness_map.py:L37 | neighbors=[weakness_map.py, One canonical CVE a weakness can map to…]
+- "cve_weakness_map_missing_from_mirror": "missing_from_mirror()" | kind=code-symbol | source=probe/cve/weakness_map.py:L216 | neighbors=[weakness_map.py, Every canonical CVE referenced by the w…]
+- "dashboard_liveoverview_verdict": "verdict()" | kind=code-symbol | source=manager/frontend/components/dashboard/LiveOverview.tsx:L46 | neighbors=[LiveOverview.tsx, LiveOverview()]
+- "dashboard_patchcomparisonmatrix_n": "n()" | kind=code-symbol | source=manager/frontend/components/dashboard/PatchComparisonMatrix.tsx:L45 | neighbors=[PatchComparisonMatrix.tsx, PatchComparisonMatrix()]
+- "dashboard_posturescorecard_matrixrow": "MatrixRow" | kind=code-symbol | source=manager/frontend/components/dashboard/PostureScorecard.tsx:L26 | neighbors=[PatchComparisonMatrix.tsx, PostureScorecard.tsx]
+- "dashboard_slastatus_deadlinetitle": "deadlineTitle()" | kind=code-symbol | source=manager/frontend/components/dashboard/SlaStatus.tsx:L75 | neighbors=[SlaStatus.tsx, SlaRowView()]
+- "dashboard_slastatus_elapsedpct": "elapsedPct()" | kind=code-symbol | source=manager/frontend/components/dashboard/SlaStatus.tsx:L69 | neighbors=[SlaStatus.tsx, SlaRowView()]
+- "dashboard_slastatus_pct": "pct()" | kind=code-symbol | source=manager/frontend/components/dashboard/SlaStatus.tsx:L54 | neighbors=[SlaStatus.tsx, SlaRowView()]
+- "dashboard_slastatus_timelabel": "timeLabel()" | kind=code-symbol | source=manager/frontend/components/dashboard/SlaStatus.tsx:L53 | neighbors=[SlaStatus.tsx, SlaRowView()]
+- "detection_active_validation_should_escalate": "should_escalate()" | kind=code-symbol | source=manager/backend/app/detection/active_validation.py:L17 | neighbors=[active_validation.py, True iff this finding warrants an appro…]
+- "detection_active_validation_validationoutcome": "ValidationOutcome" | kind=code-symbol | source=manager/backend/app/detection/active_validation.py:L34 | neighbors=[active_validation.py, interpret_validation()]
+- "detection_attack_paths_exposed_db_unauth": "_exposed_db_unauth()" | kind=code-symbol | source=manager/backend/app/detection/attack_paths.py:L221 | neighbors=[attack_paths.py, B3: an exposed datastore with unauthent…]
+- "detection_attack_paths_hostsignals_observe": ".observe()" | kind=code-symbol | source=manager/backend/app/detection/attack_paths.py:L76 | neighbors=[_group(), _HostSignals]
+- "detection_attack_paths_is_network_device": "_is_network_device()" | kind=code-symbol | source=manager/backend/app/detection/attack_paths.py:L57 | neighbors=[attack_paths.py, _snmp_public_lateral()]
+- "detection_attack_paths_legacy_windows": "_legacy_windows()" | kind=code-symbol | source=manager/backend/app/detection/attack_paths.py:L178 | neighbors=[attack_paths.py, _is_domain_controller()]
 
 ## Instructions
 

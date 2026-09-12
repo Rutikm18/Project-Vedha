@@ -1,4 +1,4 @@
-# Node Description Batch 325 of 336
+# Node Description Batch 325 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,51 +19,53 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-Write every description in English (en). Do not switch languages.
+LANGUAGE: each entry has a `lang=` marker giving the language of its source.
+Write that entry's description in EXACTLY that language. Do not translate to
+a single common language — match each node's source language individually.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_ws_claim_protocol_test_staged_job_is_not_released_without_positive_confirmation": "test_staged_job_is_not_released_without_positive_confirmation()" | kind=code-symbol | source=probe/tests/test_ws_claim_protocol.py:L34 | neighbors=[test_ws_claim_protocol.py]
-- "tests_test_ws_claim_protocol_test_ws_job_does_not_duplicate_task_runner_result_submission": "test_ws_job_does_not_duplicate_task_runner_result_submission()" | kind=code-symbol | source=probe/tests/test_ws_claim_protocol.py:L96 | neighbors=[test_ws_claim_protocol.py]
-- "tests_test_xml_parser_testnmapxmlparser_setup_method": ".setup_method()" | kind=code-symbol | source=manager/backend/tests/test_xml_parser.py:L43 | neighbors=[TestNmapXMLParser]
-- "tests_test_xml_parser_testnmapxmlparser_test_cpe_extraction": ".test_cpe_extraction()" | kind=code-symbol | source=manager/backend/tests/test_xml_parser.py:L71 | neighbors=[TestNmapXMLParser]
-- "tests_test_xml_parser_testnmapxmlparser_test_empty_scan": ".test_empty_scan()" | kind=code-symbol | source=manager/backend/tests/test_xml_parser.py:L76 | neighbors=[TestNmapXMLParser]
-- "tests_test_xml_parser_testnmapxmlparser_test_empty_string": ".test_empty_string()" | kind=code-symbol | source=manager/backend/tests/test_xml_parser.py:L84 | neighbors=[TestNmapXMLParser]
-- "tests_test_xml_parser_testnmapxmlparser_test_malformed_xml_returns_empty": ".test_malformed_xml_returns_empty()" | kind=code-symbol | source=manager/backend/tests/test_xml_parser.py:L80 | neighbors=[TestNmapXMLParser]
-- "tests_test_xml_parser_testnmapxmlparser_test_multiple_hosts": ".test_multiple_hosts()" | kind=code-symbol | source=manager/backend/tests/test_xml_parser.py:L90 | neighbors=[TestNmapXMLParser]
-- "tests_test_xml_parser_testnmapxmlparser_test_none_safe": ".test_none_safe()" | kind=code-symbol | source=manager/backend/tests/test_xml_parser.py:L87 | neighbors=[TestNmapXMLParser]
-- "tests_test_xml_parser_testnmapxmlparser_test_open_ports_only": ".test_open_ports_only()" | kind=code-symbol | source=manager/backend/tests/test_xml_parser.py:L59 | neighbors=[TestNmapXMLParser]
-- "tests_test_xml_parser_testnmapxmlparser_test_parse_full_host": ".test_parse_full_host()" | kind=code-symbol | source=manager/backend/tests/test_xml_parser.py:L46 | neighbors=[TestNmapXMLParser]
-- "tests_test_xml_parser_testnmapxmlparser_test_port_details": ".test_port_details()" | kind=code-symbol | source=manager/backend/tests/test_xml_parser.py:L65 | neighbors=[TestNmapXMLParser]
-- "tools_installer_installedmanifest": "InstalledManifest" | kind=code-symbol | source=manager/frontend/lib/tools/installer.ts:L29 | neighbors=[installer.ts]
-- "tools_installer_installedrecord": "InstalledRecord" | kind=code-symbol | source=manager/frontend/lib/tools/installer.ts:L20 | neighbors=[installer.ts]
-- "tools_installer_installprogress": "InstallProgress" | kind=code-symbol | source=manager/frontend/lib/tools/installer.ts:L149 | neighbors=[installer.ts]
-- "tools_installer_toolstatus": "ToolStatus" | kind=code-symbol | source=manager/frontend/lib/tools/installer.ts:L254 | neighbors=[installer.ts]
-- "tools_issue_license_rationale_49": "Print the vendor PUBLIC key (hex) derived from the private key.      build/seal-" | kind=entity | source=probe/tools/issue_license.py:L49 | neighbors=[pubkey()]
-- "tools_manifest_platform": "Platform" | kind=code-symbol | source=manager/frontend/lib/tools/manifest.ts:L24 | neighbors=[manifest.ts]
-- "ui_output_a": "A" | kind=code-symbol | source=manager/frontend/cli/ui/output.ts:L5 | neighbors=[output.ts]
-- "ui_output_error": "error()" | kind=code-symbol | source=manager/frontend/cli/ui/output.ts:L269 | neighbors=[output.ts]
-- "ui_output_line": "LINE" | kind=code-symbol | source=manager/frontend/cli/ui/output.ts:L49 | neighbors=[output.ts]
-- "ui_output_sev_color": "SEV_COLOR" | kind=code-symbol | source=manager/frontend/cli/ui/output.ts:L33 | neighbors=[output.ts]
-- "ui_output_stage_col": "STAGE_COL" | kind=code-symbol | source=manager/frontend/cli/ui/output.ts:L103 | neighbors=[output.ts]
-- "ui_output_stage_label": "STAGE_LABEL" | kind=code-symbol | source=manager/frontend/cli/ui/output.ts:L78 | neighbors=[output.ts]
-- "use_cases_route_get": "GET" | kind=code-symbol | source=manager/frontend/app/api/scan/use-cases/route.ts:L6 | neighbors=[route.ts]
-- "users_route_get": "GET" | kind=code-symbol | source=manager/frontend/app/api/users/route.ts:L5 | neighbors=[route.ts]
-- "utils_db_rationale_1": "Shared database helpers — single source of truth for patterns duplicated across" | kind=entity | source=manager/backend/app/utils/db.py:L1 | neighbors=[db.py]
-- "utils_db_rationale_24": "Fetch a row by primary key, optionally scoped to a tenant.     Raises 404 if mis" | kind=entity | source=manager/backend/app/utils/db.py:L24 | neighbors=[get_or_404()]
-- "utils_hash_rationale_1": "Shared hashing utilities — deduplication keys, fingerprinting." | kind=entity | source=manager/backend/app/utils/hash.py:L1 | neighbors=[hash.py]
-- "utils_hash_rationale_11": "SHA-256 of (asset_id, cve_id, plugin_id) for finding deduplication.      Used by" | kind=entity | source=manager/backend/app/utils/hash.py:L11 | neighbors=[dedup_hash()]
-- "utils_pagination_rationale_12": "Returns (items, total). Applies OFFSET/LIMIT to `query`." | kind=entity | source=manager/backend/app/utils/pagination.py:L12 | neighbors=[paginate_query()]
-- "verify_route_post": "POST()" | kind=code-symbol | source=manager/frontend/app/api/auth/verify/route.ts:L6 | neighbors=[route.ts]
-- "versions_0001_initial_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0001_initial.py:L174 | neighbors=[0001_initial.py]
-- "versions_0001_initial_rationale_1": "Initial schema — all tables  Revision ID: 0001 Revises: Create Date: 2026-05-19" | kind=entity | source=manager/backend/alembic/versions/0001_initial.py:L1 | neighbors=[0001_initial.py]
-- "versions_0001_initial_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0001_initial.py:L19 | neighbors=[0001_initial.py]
-- "versions_0002_services_agents_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0002_services_agents.py:L59 | neighbors=[0002_services_agents.py]
-- "versions_0002_services_agents_rationale_1": "Add services and agents tables  Revision ID: 0002 Revises: 0001 Create Date: 202" | kind=entity | source=manager/backend/alembic/versions/0002_services_agents.py:L1 | neighbors=[0002_services_agents.py]
-- "versions_0002_services_agents_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0002_services_agents.py:L19 | neighbors=[0002_services_agents.py]
-- "versions_0003_vuln_scan_fields_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0003_vuln_scan_fields.py:L43 | neighbors=[0003_vuln_scan_fields.py]
-- "versions_0003_vuln_scan_fields_rationale_1": "Add enrichment fields index + webhook column to engagements  Revision ID: 0003 R" | kind=entity | source=manager/backend/alembic/versions/0003_vuln_scan_fields.py:L1 | neighbors=[0003_vuln_scan_fields.py]
+- "tests_test_finding_section_testscannerregistry_test_user_validated_scanners_are_verified": ".test_user_validated_scanners_are_verified()" | kind=code-symbol | source=probe/tests/test_finding_section.py:L18 | neighbors=[TestScannerRegistry] | lang=en
+- "tests_test_finding_section_testscannerregistry_test_verification_report_shape": ".test_verification_report_shape()" | kind=code-symbol | source=probe/tests/test_finding_section.py:L32 | neighbors=[TestScannerRegistry] | lang=en
+- "tests_test_finding_verification_api_test_finding_schema_exposes_verification_fields": "test_finding_schema_exposes_verification_fields()" | kind=code-symbol | source=manager/backend/tests/test_finding_verification_api.py:L6 | neighbors=[test_finding_verification_api.py] | lang=en
+- "tests_test_finding_verification_schema_test_finding_has_verification_columns": "test_finding_has_verification_columns()" | kind=code-symbol | source=manager/backend/tests/test_finding_verification_schema.py:L6 | neighbors=[test_finding_verification_schema.py] | lang=en
+- "tests_test_fleet_jobs_rationale_1": "Fleet: tenant-wide job feed with probe + engagement name resolution and filters." | kind=entity | source=manager/backend/tests/test_fleet_jobs.py:L1 | neighbors=[test_fleet_jobs.py] | lang=en
+- "tests_test_ftp_scanner_rationale_1": "test_ftp_scanner.py — FTP anonymous-access check.  Pure control-protocol logic +" | kind=entity | source=probe/tests/test_ftp_scanner.py:L1 | neighbors=[test_ftp_scanner.py] | lang=en
+- "tests_test_ftp_scanner_testparity_test_main_scripts": ".test_main_scripts()" | kind=code-symbol | source=probe/tests/test_ftp_scanner.py:L76 | neighbors=[TestParity] | lang=en
+- "tests_test_ftp_scanner_testpurelogic_test_banner_software": ".test_banner_software()" | kind=code-symbol | source=probe/tests/test_ftp_scanner.py:L23 | neighbors=[TestPureLogic] | lang=en
+- "tests_test_ftp_scanner_testpurelogic_test_parse_pasv": ".test_parse_pasv()" | kind=code-symbol | source=probe/tests/test_ftp_scanner.py:L19 | neighbors=[TestPureLogic] | lang=en
+- "tests_test_host_discovery_mobile_rationale_1": "Pure-logic tests for the ARP/MAC/mobile-detection helpers in host_discovery. No" | kind=entity | source=probe/tests/test_host_discovery_mobile.py:L1 | neighbors=[test_host_discovery_mobile.py] | lang=en
+- "tests_test_host_discovery_mobile_testdevicehint_test_iphone_lockdownd_port": ".test_iphone_lockdownd_port()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L53 | neighbors=[TestDeviceHint] | lang=en
+- "tests_test_host_discovery_mobile_testdevicehint_test_mobile_vendor": ".test_mobile_vendor()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L59 | neighbors=[TestDeviceHint] | lang=en
+- "tests_test_host_discovery_mobile_testdevicehint_test_no_signal": ".test_no_signal()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L65 | neighbors=[TestDeviceHint] | lang=en
+- "tests_test_host_discovery_mobile_testdevicehint_test_plain_vendor_passthrough": ".test_plain_vendor_passthrough()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L62 | neighbors=[TestDeviceHint] | lang=en
+- "tests_test_host_discovery_mobile_testdevicehint_test_randomized_mac_is_mobile": ".test_randomized_mac_is_mobile()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L56 | neighbors=[TestDeviceHint] | lang=en
+- "tests_test_host_discovery_mobile_testlocallyadministered_test_globally_unique_macs": ".test_globally_unique_macs()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L39 | neighbors=[TestLocallyAdministered] | lang=en
+- "tests_test_host_discovery_mobile_testlocallyadministered_test_randomized_phone_macs": ".test_randomized_phone_macs()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L33 | neighbors=[TestLocallyAdministered] | lang=en
+- "tests_test_host_discovery_mobile_testnormalizemac_test_extracts_from_arp_line": ".test_extracts_from_arp_line()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L17 | neighbors=[TestNormalizeMac] | lang=en
+- "tests_test_host_discovery_mobile_testnormalizemac_test_lowercases": ".test_lowercases()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L14 | neighbors=[TestNormalizeMac] | lang=en
+- "tests_test_host_discovery_mobile_testnormalizemac_test_rejects_broadcast": ".test_rejects_broadcast()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L21 | neighbors=[TestNormalizeMac] | lang=en
+- "tests_test_host_discovery_mobile_testnormalizemac_test_rejects_garbage": ".test_rejects_garbage()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L27 | neighbors=[TestNormalizeMac] | lang=en
+- "tests_test_host_discovery_mobile_testnormalizemac_test_rejects_multicast": ".test_rejects_multicast()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L24 | neighbors=[TestNormalizeMac] | lang=en
+- "tests_test_host_discovery_mobile_testnormalizemac_test_zero_pads_octets": ".test_zero_pads_octets()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L10 | neighbors=[TestNormalizeMac] | lang=en
+- "tests_test_host_discovery_mobile_testvendorlookup_test_known_oui": ".test_known_oui()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L45 | neighbors=[TestVendorLookup] | lang=en
+- "tests_test_host_discovery_mobile_testvendorlookup_test_unknown_oui": ".test_unknown_oui()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L48 | neighbors=[TestVendorLookup] | lang=en
+- "tests_test_host_discovery_udp_closed_udp_port": "_closed_udp_port()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L110 | neighbors=[test_host_discovery_udp.py] | lang=en
+- "tests_test_host_discovery_udp_no_neighbor": "no_neighbor()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L120 | neighbors=[test_host_discovery_udp.py] | lang=en
+- "tests_test_host_discovery_udp_rationale_1": "test_host_discovery_udp.py — the unprivileged UDP liveness tier + name facts.  C" | kind=entity | source=probe/tests/test_host_discovery_udp.py:L1 | neighbors=[test_host_discovery_udp.py] | lang=en
+- "tests_test_host_discovery_udp_rationale_233": "A RST mid-handshake (ConnectionResetError) is the target's stack talking." | kind=entity | source=probe/tests/test_host_discovery_udp.py:L233 | neighbors=[test_tcp_reset_counts_as_proof_of_life()] | lang=en
+- "tests_test_host_discovery_udp_rationale_25": "Build a NetBIOS node-status response (RFC 1002 §4.2.18)." | kind=entity | source=probe/tests/test_host_discovery_udp.py:L25 | neighbors=[_nbstat_reply()] | lang=pt
+- "tests_test_host_discovery_udp_rationale_252": "On-LAN INCOMPLETE/FAILED = nobody owns the address right now; spending     datag" | kind=entity | source=probe/tests/test_host_discovery_udp.py:L252 | neighbors=[test_udp_tier_skipped_when_arp_definiti…] | lang=en
+- "tests_test_host_discovery_udp_responder_connection_made": ".connection_made()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L95 | neighbors=[_Responder] | lang=en
+- "tests_test_host_discovery_udp_responder_datagram_received": ".datagram_received()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L98 | neighbors=[_Responder] | lang=en
+- "tests_test_host_discovery_udp_responder_init": ".__init__()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L91 | neighbors=[_Responder] | lang=en
+- "tests_test_host_discovery_udp_scanner": "_scanner()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L124 | neighbors=[test_host_discovery_udp.py] | lang=en
+- "tests_test_host_discovery_udp_test_icmp_unreachable_from_closed_port_proves_stack_is_up": "test_icmp_unreachable_from_closed_port_proves_stack_is_up()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L155 | neighbors=[test_host_discovery_udp.py] | lang=en
+- "tests_test_host_discovery_udp_test_reverse_dns_name_recorded_and_becomes_alias": "test_reverse_dns_name_recorded_and_becomes_alias()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L206 | neighbors=[test_host_discovery_udp.py] | lang=en
+- "tests_test_host_discovery_udp_test_udp_tier_skipped_when_neighbor_vouches": "test_udp_tier_skipped_when_neighbor_vouches()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L187 | neighbors=[test_host_discovery_udp.py] | lang=en
+- "tests_test_host_discovery_udp_test_udp_tier_skipped_when_tcp_proves_life": "test_udp_tier_skipped_when_tcp_proves_life()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L166 | neighbors=[test_host_discovery_udp.py] | lang=en
+- "tests_test_host_discovery_udp_testfusewithudp_test_icmp_unreachable_alone": ".test_icmp_unreachable_alone()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L68 | neighbors=[TestFuseWithUdp] | lang=en
 
 ## Instructions
 

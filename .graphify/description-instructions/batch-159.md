@@ -1,4 +1,4 @@
-# Node Description Batch 160 of 336
+# Node Description Batch 160 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,51 +12,58 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
+For an entity node (any other kind — e.g. a person, place, event, object),
+describe what the entity is and its role, grounded in its type, its
+relations (neighbors) and the provided citations/evidence — e.g.
+"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
+Ground entity descriptions in the citations/evidence when present; do not
+speculate beyond the context, so a node with no supporting context may be
+left out of the reply.
 Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_perf_optimization_test_dpkg_compare_does_not_call_the_binary": "test_dpkg_compare_does_not_call_the_binary()" | kind=code-symbol | source=manager/detection_engine/tests/test_perf_optimization.py:L26 | neighbors=[test_perf_optimization.py, dpkg_compare must use the pure-Python c…]
-- "tests_test_perf_optimization_test_guard_is_noop_without_dpkg": "test_guard_is_noop_without_dpkg()" | kind=code-symbol | source=manager/detection_engine/tests/test_perf_optimization.py:L57 | neighbors=[test_perf_optimization.py, No dpkg binary → nothing to cross-check…]
-- "tests_test_perf_optimization_test_guard_reports_divergence_and_warns": "test_guard_reports_divergence_and_warns()" | kind=code-symbol | source=manager/detection_engine/tests/test_perf_optimization.py:L75 | neighbors=[test_perf_optimization.py, When the binary disagrees with pure-Pyt…]
-- "tests_test_perf_optimization_test_load_snapshot_memoized_returns_same_instance": "test_load_snapshot_memoized_returns_same_instance()" | kind=code-symbol | source=manager/detection_engine/tests/test_perf_optimization.py:L114 | neighbors=[test_perf_optimization.py, _write_snapshot()]
-- "tests_test_perf_optimization_test_load_snapshot_reloads_after_file_change": "test_load_snapshot_reloads_after_file_change()" | kind=code-symbol | source=manager/detection_engine/tests/test_perf_optimization.py:L121 | neighbors=[test_perf_optimization.py, _write_snapshot()]
-- "tests_test_perf_optimization_test_load_snapshot_runs_dpkg_guard_once_keyed_by_content_hash": "test_load_snapshot_runs_dpkg_guard_once_keyed_by_content_hash()" | kind=code-symbol | source=manager/detection_engine/tests/test_perf_optimization.py:L154 | neighbors=[test_perf_optimization.py, _write_snapshot()]
-- "tests_test_pipeline_concurrency_test_detection_locks_the_engagement_before_reading_anything": "test_detection_locks_the_engagement_before_reading_anything()" | kind=code-symbol | source=manager/backend/tests/test_pipeline_concurrency.py:L30 | neighbors=[test_pipeline_concurrency.py, The lock must be taken BEFORE the first…]
-- "tests_test_pipeline_concurrency_test_different_engagements_generally_do_not_contend": "test_different_engagements_generally_do_not_contend()" | kind=code-symbol | source=manager/backend/tests/test_pipeline_concurrency.py:L70 | neighbors=[test_pipeline_concurrency.py, Collisions are harmless (two unrelated …]
-- "tests_test_pipeline_concurrency_test_the_key_fits_a_postgres_bigint": "test_the_key_fits_a_postgres_bigint()" | kind=code-symbol | source=manager/backend/tests/test_pipeline_concurrency.py:L82 | neighbors=[test_pipeline_concurrency.py, pg_advisory_xact_lock takes a signed bi…]
-- "tests_test_pipeline_concurrency_test_the_lock_is_transaction_scoped_not_session_scoped": "test_the_lock_is_transaction_scoped_not_session_scoped()" | kind=code-symbol | source=manager/backend/tests/test_pipeline_concurrency.py:L44 | neighbors=[test_pipeline_concurrency.py, pg_advisory_lock (session) would leak o…]
-- "tests_test_pipeline_concurrency_test_the_same_engagement_always_maps_to_the_same_key": "test_the_same_engagement_always_maps_to_the_same_key()" | kind=code-symbol | source=manager/backend/tests/test_pipeline_concurrency.py:L57 | neighbors=[test_pipeline_concurrency.py, Two concurrent handlers must contend, s…]
-- "tests_test_pipeline_empty_jsonl": "_empty_jsonl()" | kind=code-symbol | source=manager/detection_engine/tests/test_pipeline.py:L119 | neighbors=[test_pipeline.py, .test_empty_jsonl_returns_no_findings()]
-- "tests_test_pipeline_testrunpipelinereturnvalue": "TestRunPipelineReturnValue" | kind=code-symbol | source=manager/detection_engine/tests/test_pipeline.py:L306 | neighbors=[test_pipeline.py, .test_returns_tuple_of_findings_and_ing…]
-- "tests_test_portal_assistant_test_a_non_client_user_is_refused": "test_a_non_client_user_is_refused()" | kind=code-symbol | source=manager/backend/tests/test_portal_assistant.py:L158 | neighbors=[test_portal_assistant.py, _ask()]
-- "tests_test_portal_assistant_test_request_body_cannot_carry_context": "test_request_body_cannot_carry_context()" | kind=code-symbol | source=manager/backend/tests/test_portal_assistant.py:L113 | neighbors=[test_portal_assistant.py, The schema has no context field, so a c…]
-- "tests_test_portal_metrics_testopenclosed": "TestOpenClosed" | kind=code-symbol | source=manager/backend/tests/test_portal_metrics.py:L34 | neighbors=[test_portal_metrics.py, .test_counts_by_status_and_resolved_at()]
-- "tests_test_portal_metrics_testopenclosed_test_counts_by_status_and_resolved_at": ".test_counts_by_status_and_resolved_at()" | kind=code-symbol | source=manager/backend/tests/test_portal_metrics.py:L35 | neighbors=[TestOpenClosed, _f()]
-- "tests_test_portal_metrics_testseveritybreakdown_test_open_only_excludes_closed": ".test_open_only_excludes_closed()" | kind=code-symbol | source=manager/backend/tests/test_portal_metrics.py:L24 | neighbors=[TestSeverityBreakdown, _f()]
-- "tests_test_portal_metrics_testseveritybreakdown_test_unknown_severity_falls_into_info": ".test_unknown_severity_falls_into_info()" | kind=code-symbol | source=manager/backend/tests/test_portal_metrics.py:L30 | neighbors=[TestSeverityBreakdown, _f()]
-- "tests_test_portal_metrics_teststatustimeline_test_activity_outside_window_is_ignored": ".test_activity_outside_window_is_ignored()" | kind=code-symbol | source=manager/backend/tests/test_portal_metrics.py:L60 | neighbors=[TestStatusTimeline, _f()]
-- "tests_test_portal_metrics_teststatustimeline_test_buckets_opened_and_closed": ".test_buckets_opened_and_closed()" | kind=code-symbol | source=manager/backend/tests/test_portal_metrics.py:L49 | neighbors=[TestStatusTimeline, _f()]
-- "tests_test_portal_read_testclientfindingwhitelist_test_serialization_drops_internal_fields": ".test_serialization_drops_internal_fields()" | kind=code-symbol | source=manager/backend/tests/test_portal_read.py:L89 | neighbors=[TestClientFindingWhitelist, _finding_with_internal()]
-- "tests_test_portal_read_testsummary": "TestSummary" | kind=code-symbol | source=manager/backend/tests/test_portal_read.py:L189 | neighbors=[test_portal_read.py, .test_aggregates_posture_counts_and_que…]
-- "tests_test_portal_read_testtrends": "TestTrends" | kind=code-symbol | source=manager/backend/tests/test_portal_read.py:L208 | neighbors=[test_portal_read.py, .test_returns_severity_and_timeline()]
-- "tests_test_portal_scope_testassertclient_test_bound_client_returns_engagement": ".test_bound_client_returns_engagement()" | kind=code-symbol | source=manager/backend/tests/test_portal_scope.py:L42 | neighbors=[TestAssertClient, _client()]
-- "tests_test_portal_scope_testassertclient_test_operator_is_forbidden": ".test_operator_is_forbidden()" | kind=code-symbol | source=manager/backend/tests/test_portal_scope.py:L46 | neighbors=[TestAssertClient, _operator()]
-- "tests_test_portal_scope_testclientscoped_test_applies_engagement_filter_for_bound_id": ".test_applies_engagement_filter_for_bound_id()" | kind=code-symbol | source=manager/backend/tests/test_portal_scope.py:L75 | neighbors=[TestClientScoped, _client()]
-- "tests_test_portal_scope_testclientscoped_test_operator_cannot_scope": ".test_operator_cannot_scope()" | kind=code-symbol | source=manager/backend/tests/test_portal_scope.py:L83 | neighbors=[TestClientScoped, _operator()]
-- "tests_test_portal_scope_testportaltokenisconfinedtoportalroutes_test_prefix_lookalikes_do_not_slip_through": ".test_prefix_lookalikes_do_not_slip_through()" | kind=code-symbol | source=manager/backend/tests/test_portal_scope.py:L133 | neighbors=[`/portal` must not authorize `/portalso…, TestPortalTokenIsConfinedToPortalRoutes]
-- "tests_test_portal_scope_testrefreshpreservesaudienceandscope_test_client_refresh_keeps_portal_aud_and_engagement": ".test_client_refresh_keeps_portal_aud_and_engagement()" | kind=code-symbol | source=manager/backend/tests/test_portal_scope.py:L160 | neighbors=[TestRefreshPreservesAudienceAndScope, ._db_returning()]
-- "tests_test_portal_scope_testrefreshpreservesaudienceandscope_test_operator_refresh_keeps_manager_aud": ".test_operator_refresh_keeps_manager_aud()" | kind=code-symbol | source=manager/backend/tests/test_portal_scope.py:L173 | neighbors=[TestRefreshPreservesAudienceAndScope, ._db_returning()]
-- "tests_test_portal_scope_testresolvescope_test_matching_request_ok": ".test_matching_request_ok()" | kind=code-symbol | source=manager/backend/tests/test_portal_scope.py:L64 | neighbors=[TestResolveScope, _client()]
-- "tests_test_portal_scope_testresolvescope_test_mismatched_request_is_403_idor_defense": ".test_mismatched_request_is_403_idor_defense()" | kind=code-symbol | source=manager/backend/tests/test_portal_scope.py:L68 | neighbors=[TestResolveScope, _client()]
-- "tests_test_portal_scope_testresolvescope_test_no_request_returns_bound": ".test_no_request_returns_bound()" | kind=code-symbol | source=manager/backend/tests/test_portal_scope.py:L60 | neighbors=[TestResolveScope, _client()]
-- "tests_test_posture_rules_testhardenedgroundtruth_test_hardened_smb_and_rdp_raise_no_misconfig": ".test_hardened_smb_and_rdp_raise_no_misconfig()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_rules.py:L67 | neighbors=[TestHardenedGroundTruth, ._host()]
-- "tests_test_posture_rules_testhardenedgroundtruth_test_no_critical_or_high_findings": ".test_no_critical_or_high_findings()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_rules.py:L59 | neighbors=[TestHardenedGroundTruth, ._host()]
-- "tests_test_posture_rules_testhardenedgroundtruth_test_rdp_exposed_is_low_because_nla_required": ".test_rdp_exposed_is_low_because_nla_required()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_rules.py:L63 | neighbors=[TestHardenedGroundTruth, ._host()]
-- "tests_test_posture_test_build_posture_buckets_resolved_new_persisting": "test_build_posture_buckets_resolved_new_persisting()" | kind=code-symbol | source=manager/backend/tests/test_posture.py:L89 | neighbors=[test_posture.py, _fv()]
-- "tests_test_posture_test_build_posture_single_run_has_no_prev": "test_build_posture_single_run_has_no_prev()" | kind=code-symbol | source=manager/backend/tests/test_posture.py:L76 | neighbors=[test_posture.py, _fv()]
-- "tests_test_posture_test_compute_scores_uses_risk_epss_exploit_and_asset_criticality": "test_compute_scores_uses_risk_epss_exploit_and_asset_criticality()" | kind=code-symbol | source=manager/backend/tests/test_posture.py:L53 | neighbors=[test_posture.py, _fv()]
+- "scanner_mass_scan_masscan_records_to_results": "_masscan_records_to_results()" | kind=code-symbol | source=probe/scanner/mass_scan.py:L184 | neighbors=[mass_scan.py, run_mass_scan()]
+- "scanner_mass_scan_masscanrun": "MasscanRun" | kind=code-symbol | source=probe/scanner/mass_scan.py:L51 | neighbors=[mass_scan.py, _run_masscan()]
+- "scanner_mcp_ai_scanner_mcpaiscanner_fetch": "._fetch()" | kind=code-symbol | source=probe/scanner/mcp_ai_scanner.py:L206 | neighbors=[MCPAIScanner, ._probe_port()]
+- "scanner_mcp_ai_scanner_mcpaiscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/scanner/mcp_ai_scanner.py:L316 | neighbors=[MCPAIScanner, ._probe_port()]
+- "scanner_mcp_ai_scanner_model_count": "_model_count()" | kind=code-symbol | source=probe/scanner/mcp_ai_scanner.py:L183 | neighbors=[mcp_ai_scanner.py, ._result()]
+- "scanner_mcp_ai_scanner_noredirect": "_NoRedirect" | kind=code-symbol | source=probe/scanner/mcp_ai_scanner.py:L110 | neighbors=[mcp_ai_scanner.py, .redirect_request()]
+- "scanner_mobile_scanner_adb_checksum": "_adb_checksum()" | kind=code-symbol | source=probe/scanner/mobile_scanner.py:L55 | neighbors=[mobile_scanner.py, _build_adb_cnxn()]
+- "scanner_msrpc_scanner_msrpcscanner_scan_port": "._scan_port()" | kind=code-symbol | source=probe/scanner/msrpc_scanner.py:L144 | neighbors=[MSRPCScanner, .scan_target()]
+- "scanner_msrpc_scanner_msrpcscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/scanner/msrpc_scanner.py:L167 | neighbors=[MSRPCScanner, ._scan_port()]
+- "scanner_nfs_scanner_nfsscanner_scan_port": "._scan_port()" | kind=code-symbol | source=probe/scanner/nfs_scanner.py:L259 | neighbors=[NFSScanner, .scan_target()]
+- "scanner_nfs_scanner_nfsscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/scanner/nfs_scanner.py:L277 | neighbors=[NFSScanner, ._scan_port()]
+- "scanner_nfs_scanner_recv_exact": "_recv_exact()" | kind=code-symbol | source=probe/scanner/nfs_scanner.py:L156 | neighbors=[nfs_scanner.py, _recv_record()]
+- "scanner_nmap_wrapper_parse_nmap_xml": "_parse_nmap_xml()" | kind=code-symbol | source=probe/scanner/nmap_wrapper.py:L160 | neighbors=[nmap_wrapper.py, NmapExecutionError]
+- "scanner_nmap_wrapper_run_nmap": "_run_nmap()" | kind=code-symbol | source=probe/scanner/nmap_wrapper.py:L121 | neighbors=[nmap_wrapper.py, NmapExecutionError]
+- "scanner_os_fingerprint_build_icmp_addrmask": "build_icmp_addrmask()" | kind=code-symbol | source=probe/scanner/os_fingerprint.py:L76 | neighbors=[os_fingerprint.py, _icmp()]
+- "scanner_os_fingerprint_os_family_from_ttl": "os_family_from_ttl()" | kind=code-symbol | source=probe/scanner/os_fingerprint.py:L169 | neighbors=[os_fingerprint.py, infer_initial_ttl()]
+- "scanner_passive_collector_coverage": "_coverage()" | kind=code-symbol | source=probe/scanner/passive_collector.py:L158 | neighbors=[passive_collector.py, .run()]
+- "scanner_passive_collector_is_readable": "_is_readable()" | kind=code-symbol | source=probe/scanner/passive_collector.py:L351 | neighbors=[passive_collector.py, ._select()]
+- "scanner_passive_collector_listener_error_code": "_listener_error_code()" | kind=code-symbol | source=probe/scanner/passive_collector.py:L150 | neighbors=[passive_collector.py, .run()]
+- "scanner_port_scanner_portscanner_retain_result": "._retain_result()" | kind=code-symbol | source=probe/scanner/port_scanner.py:L642 | neighbors=[PortScanner, Must this result OBJECT outlive the por…]
+- "scanner_port_scanner_scanmetrics_summary": ".summary()" | kind=code-symbol | source=probe/scanner/port_scanner.py:L315 | neighbors=[.scan_target(), ScanMetrics]
+- "scanner_printer_scanner_ipp_attr": "_ipp_attr()" | kind=code-symbol | source=probe/scanner/printer_scanner.py:L49 | neighbors=[printer_scanner.py, build_ipp_get_printer_attributes()]
+- "scanner_printer_scanner_printerscanner_scan_port": "._scan_port()" | kind=code-symbol | source=probe/scanner/printer_scanner.py:L138 | neighbors=[PrinterScanner, .scan_target()]
+- "scanner_printer_scanner_printerscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/scanner/printer_scanner.py:L155 | neighbors=[PrinterScanner, ._scan_port()]
+- "scanner_rdp_scanner_main": "main()" | kind=code-symbol | source=probe/scanner/rdp_scanner.py:L173 | neighbors=[rdp_scanner.py, RDPScanner]
+- "scanner_rdp_scanner_rdpscanner_scan_port": "._scan_port()" | kind=code-symbol | source=probe/scanner/rdp_scanner.py:L142 | neighbors=[RDPScanner, .scan_target()]
+- "scanner_rdp_scanner_rdpscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/scanner/rdp_scanner.py:L168 | neighbors=[RDPScanner, ._scan_port()]
+- "scanner_rsync_scanner_rsyncscanner_scan_port": "._scan_port()" | kind=code-symbol | source=probe/scanner/rsync_scanner.py:L144 | neighbors=[RsyncScanner, .scan_target()]
+- "scanner_rsync_scanner_rsyncscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/scanner/rsync_scanner.py:L162 | neighbors=[RsyncScanner, ._scan_port()]
+- "scanner_run_all_open_tcp_ports": "_open_tcp_ports()" | kind=code-symbol | source=probe/scanner/run_all.py:L92 | neighbors=[run_all.py, main()]
+- "scanner_run_all_ports_arg": "_ports_arg()" | kind=code-symbol | source=probe/scanner/run_all.py:L106 | neighbors=[run_all.py, main()]
+- "scanner_run_all_read_jsonl": "_read_jsonl()" | kind=code-symbol | source=probe/scanner/run_all.py:L78 | neighbors=[run_all.py, main()]
+- "scanner_scan_funnel_is_alive": "_is_alive()" | kind=code-symbol | source=probe/scanner/scan_funnel.py:L125 | neighbors=[scan_funnel.py, .run_host()]
+- "scanner_scan_funnel_rationale_73": "Canonical open-TCP set for a host = deduped, sorted union of every source." | kind=entity | source=probe/scanner/scan_funnel.py:L73 | neighbors=[reconcile_ports(), FunnelResult]
+- "scanner_scan_funnel_rationale_87": "Map a host's open ports onto the deep-scanner routes that handle them.     Retur" | kind=entity | source=probe/scanner/scan_funnel.py:L87 | neighbors=[route_ports(), _candidate_ports()]
+- "scanner_scan_funnel_scanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/scanner/scan_funnel.py:L114 | neighbors=[.run_host(), _Scanner]
+- "scanner_scanner_base_adaptiveratecontroller_acquire": ".acquire()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L534 | neighbors=[AdaptiveRateController, .wait()]
+- "scanner_scanner_base_adaptiveratecontroller_on_loss": "._on_loss()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L528 | neighbors=[AdaptiveRateController, .report_loss()]
+- "scanner_scanner_base_adaptiveratecontroller_on_success": "._on_success()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L521 | neighbors=[AdaptiveRateController, .report_success()]
+- "scanner_scanner_base_adaptiveratecontroller_report_loss": ".report_loss()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L546 | neighbors=[AdaptiveRateController, ._on_loss()]
 
 ## Instructions
 

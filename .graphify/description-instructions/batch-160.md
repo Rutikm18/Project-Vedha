@@ -1,4 +1,4 @@
-# Node Description Batch 161 of 336
+# Node Description Batch 161 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,51 +12,60 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
-Write every description in English (en). Do not switch languages.
+For an entity node (any other kind — e.g. a person, place, event, object),
+describe what the entity is and its role, grounded in its type, its
+relations (neighbors) and the provided citations/evidence — e.g.
+"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
+Ground entity descriptions in the citations/evidence when present; do not
+speculate beyond the context, so a node with no supporting context may be
+left out of the reply.
+LANGUAGE: each entry has a `lang=` marker giving the language of its source.
+Write that entry's description in EXACTLY that language. Do not translate to
+a single common language — match each node's source language individually.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_posture_test_finding_views_handles_null_asset_and_scores": "test_finding_views_handles_null_asset_and_scores()" | kind=code-symbol | source=manager/backend/tests/test_posture.py:L128 | neighbors=[test_posture.py, _Row]
-- "tests_test_posture_test_finding_views_maps_columns_and_asset_criticality": "test_finding_views_maps_columns_and_asset_criticality()" | kind=code-symbol | source=manager/backend/tests/test_posture.py:L114 | neighbors=[test_posture.py, _Row]
-- "tests_test_posture_trace_testbehaviourpreserved_test_detect_posture_matches_traced_findings": ".test_detect_posture_matches_traced_findings()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_trace.py:L119 | neighbors=[TestBehaviourPreserved, ._mixed()]
-- "tests_test_posture_trace_testruleisolation": "TestRuleIsolation" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_trace.py:L95 | neighbors=[test_posture_trace.py, .test_raising_rule_is_error_and_others_…]
-- "tests_test_printer_scanner_testparity": "TestParity" | kind=code-symbol | source=probe/tests/test_printer_scanner.py:L61 | neighbors=[test_printer_scanner.py, .test_main_scripts()]
-- "tests_test_printer_scanner_testprinterfindings": "TestPrinterFindings" | kind=code-symbol | source=probe/tests/test_printer_scanner.py:L52 | neighbors=[test_printer_scanner.py, .test_exposed_low()]
-- "tests_test_printer_scanner_testprinterscanner_test_no_printer_filtered": ".test_no_printer_filtered()" | kind=code-symbol | source=probe/tests/test_printer_scanner.py:L46 | neighbors=[TestPrinterScanner, ._sc()]
-- "tests_test_printer_scanner_testprinterscanner_test_open": ".test_open()" | kind=code-symbol | source=probe/tests/test_printer_scanner.py:L39 | neighbors=[TestPrinterScanner, ._sc()]
-- "tests_test_probe_core_testassetmergepassivecollect": "TestAssetMergePassiveCollect" | kind=code-symbol | source=probe/tests/test_probe_core.py:L583 | neighbors=[test_probe_core.py, .test_passive_facts_appended()]
-- "tests_test_probe_core_testassetmergeservicebanner": "TestAssetMergeServiceBanner" | kind=code-symbol | source=probe/tests/test_probe_core.py:L534 | neighbors=[test_probe_core.py, .test_banner_stored()]
-- "tests_test_probe_core_testassetmergesmbscan": "TestAssetMergeSmbScan" | kind=code-symbol | source=probe/tests/test_probe_core.py:L559 | neighbors=[test_probe_core.py, .test_smb_state_host_level()]
-- "tests_test_probe_core_testassetmergetlsscan": "TestAssetMergeTlsScan" | kind=code-symbol | source=probe/tests/test_probe_core.py:L543 | neighbors=[test_probe_core.py, .test_tls_facts_stored()]
-- "tests_test_probe_core_testassetmergeunknownscanner": "TestAssetMergeUnknownScanner" | kind=code-symbol | source=probe/tests/test_probe_core.py:L592 | neighbors=[test_probe_core.py, .test_unknown_scanner_ignored()]
-- "tests_test_probe_core_testassetmergewebscan": "TestAssetMergeWebScan" | kind=code-symbol | source=probe/tests/test_probe_core.py:L551 | neighbors=[test_probe_core.py, .test_web_facts_stored()]
-- "tests_test_probe_core_testassetneedsrechecklive_test_never_seen": ".test_never_seen()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L476 | neighbors=[TestAssetNeedsRecheckLive, _asset()]
-- "tests_test_probe_core_testassetneedsrechecklive_test_recently_seen": ".test_recently_seen()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L480 | neighbors=[TestAssetNeedsRecheckLive, _asset()]
-- "tests_test_probe_core_testassetneedsrechecklive_test_stale": ".test_stale()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L484 | neighbors=[TestAssetNeedsRecheckLive, _asset()]
-- "tests_test_probe_core_testassetopenportsfordeepscan_test_empty": ".test_empty()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L497 | neighbors=[TestAssetOpenPortsForDeepScan, _asset()]
-- "tests_test_probe_core_testassetopenportsfordeepscan_test_only_open": ".test_only_open()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L490 | neighbors=[TestAssetOpenPortsForDeepScan, _asset()]
-- "tests_test_probe_core_testcacheentry": "TestCacheEntry" | kind=code-symbol | source=probe/tests/test_probe_core.py:L769 | neighbors=[test_probe_core.py, .test_roundtrip()]
-- "tests_test_probe_core_testcacheentry_test_roundtrip": ".test_roundtrip()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L770 | neighbors=[TestCacheEntry, _scan_result()]
-- "tests_test_probe_core_testclassifycertainty_test_error_overrides": ".test_error_overrides()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L760 | neighbors=[TestClassifyCertainty, _scan_result()]
-- "tests_test_probe_core_testclassifycertainty_test_host_discovery_uncertain": ".test_host_discovery_uncertain()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L756 | neighbors=[TestClassifyCertainty, _scan_result()]
-- "tests_test_probe_core_testclassifycertainty_test_service_banner_deterministic": ".test_service_banner_deterministic()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L752 | neighbors=[TestClassifyCertainty, _scan_result()]
-- "tests_test_probe_core_testclassifycertainty_test_tcp_port_scan_deterministic": ".test_tcp_port_scan_deterministic()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L744 | neighbors=[TestClassifyCertainty, _scan_result()]
-- "tests_test_probe_core_testclassifycertainty_test_udp_port_scan_uncertain": ".test_udp_port_scan_uncertain()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L748 | neighbors=[TestClassifyCertainty, _scan_result()]
-- "tests_test_probe_core_testclassifycertainty_test_unknown_scanner_conservative": ".test_unknown_scanner_conservative()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L764 | neighbors=[TestClassifyCertainty, _scan_result()]
-- "tests_test_probe_core_testenginesummary_test_run_scoped_summary_does_not_become_a_host": ".test_run_scoped_summary_does_not_become_a_host()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L672 | neighbors=[ipv6_discovery reports on the RUN (its …, TestEngineSummary]
-- "tests_test_probe_core_testgate2_test_never_seen_alive": ".test_never_seen_alive()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L277 | neighbors=[TestGate2, _asset()]
-- "tests_test_probe_core_testgate2_test_ot_always_false": ".test_ot_always_false()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L289 | neighbors=[TestGate2, _asset()]
-- "tests_test_probe_core_testgate2_test_recently_seen_alive": ".test_recently_seen_alive()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L281 | neighbors=[TestGate2, _asset()]
-- "tests_test_probe_core_testgate2_test_stale_seen_alive": ".test_stale_seen_alive()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L285 | neighbors=[TestGate2, _asset()]
-- "tests_test_probe_core_testgate3_test_not_alive": ".test_not_alive()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L299 | neighbors=[TestGate3, _asset()]
-- "tests_test_probe_core_testgate3_test_ot_always_false": ".test_ot_always_false()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L303 | neighbors=[TestGate3, _asset()]
-- "tests_test_probe_core_testgate3_test_requires_alive": ".test_requires_alive()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L295 | neighbors=[TestGate3, _asset()]
-- "tests_test_probe_core_testgate4_test_all_closed": ".test_all_closed()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L317 | neighbors=[TestGate4, _asset()]
-- "tests_test_probe_core_testgate4_test_no_open_ports": ".test_no_open_ports()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L313 | neighbors=[TestGate4, _asset()]
-- "tests_test_probe_core_testgate4_test_with_open_ports": ".test_with_open_ports()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L309 | neighbors=[TestGate4, _asset()]
-- "tests_test_probe_core_testgate5_test_dynamically_routed_overrides_port": ".test_dynamically_routed_overrides_port()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L343 | neighbors=[TestGate5, _asset()]
-- "tests_test_probe_core_testgate5_test_explicit_snmp_does_not_require_tcp_liveness": ".test_explicit_snmp_does_not_require_tcp_liveness()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L359 | neighbors=[TestGate5, _asset()]
+- "scanner_scanner_base_adaptiveratecontroller_report_success": ".report_success()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L540 | neighbors=[AdaptiveRateController, ._on_success()] | lang=en
+- "scanner_scanner_base_basescanner_init": ".__init__()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L988 | neighbors=[BaseScanner, RateLimiter] | lang=en
+- "scanner_scanner_base_basescanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L996 | neighbors=[BaseScanner, ._guarded()] | lang=en
+- "scanner_scanner_base_rationale_170": "Map a connect()/socket-time OSError to (state, reason).      DNS failures (``soc" | kind=entity | source=probe/scanner/scanner_base.py:L170 | neighbors=[classify_os_error(), .networks()] | lang=en
+- "scanner_scanner_base_rationale_205": "A self-tuning concurrency window, modelled on TCP congestion control (AIMD)," | kind=entity | source=probe/scanner/scanner_base.py:L205 | neighbors=[AdaptiveRateController, expand_targets()] | lang=pt
+- "scanner_scanner_base_rationale_353": "Read-only view of allowed networks (for CIDR-level engines)." | kind=entity | source=probe/scanner/scanner_base.py:L353 | neighbors=[.networks(), bracket_host()] | lang=en
+- "scanner_scanner_base_rationale_359": "One-shot datagram protocol backing `async_udp_probe`. Resolves its future     wi" | kind=entity | source=probe/scanner/scanner_base.py:L359 | neighbors=[_UDPProbeProtocol, BaseScanner] | lang=en
+- "scanner_scanner_base_rationale_518": "Current integer window (>= min_window)." | kind=entity | source=probe/scanner/scanner_base.py:L518 | neighbors=[.window(), async_udp_probe()] | lang=en
+- "scanner_scanner_base_rationale_535": "Subclasses implement `scan_target(self, target)` (async), returning a list     o" | kind=entity | source=probe/scanner/scanner_base.py:L535 | neighbors=[BaseScanner, main_entrypoint()] | lang=pt
+- "scanner_scanner_base_rationale_629": "Pacing telemetry for the scan summary (so a throttled scan is visible)." | kind=entity | source=probe/scanner/scanner_base.py:L629 | neighbors=[.stats(), async_udp_probe_retry()] | lang=en
+- "scanner_scanner_base_rationale_69": "The TCP source port for probes. A FIXED port (e.g. 53/88) lets a scan slip     p" | kind=entity | source=probe/scanner/scanner_base.py:L69 | neighbors=[choose_source_port(), ScopeGuard] | lang=en
+- "scanner_scanner_base_resolve_project_tz": "_resolve_project_tz()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L66 | neighbors=[scanner_base.py, The project timezone, degrading safely …] | lang=en
+- "scanner_scanner_base_scanresult_to_json": ".to_json()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L304 | neighbors=[.write(), ScanResult] | lang=en
+- "scanner_scanner_base_scopeguard_filter": ".filter()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L408 | neighbors=[ScopeGuard, .in_scope()] | lang=en
+- "scanner_scanner_registry_is_verified": "is_verified()" | kind=code-symbol | source=probe/scanner/scanner_registry.py:L97 | neighbors=[scanner_registry.py, True only for a scanner explicitly on t…] | lang=en
+- "scanner_scanner_registry_verification_report": "verification_report()" | kind=code-symbol | source=probe/scanner/scanner_registry.py:L107 | neighbors=[scanner_registry.py, The scanner-module trust view: which sc…] | lang=en
+- "scanner_service_banner_dec": "_dec()" | kind=code-symbol | source=probe/scanner/service_banner.py:L229 | neighbors=[service_banner.py, match_service()] | lang=en
+- "scanner_service_banner_servicebannerscanner_connect": "._connect()" | kind=code-symbol | source=probe/scanner/service_banner.py:L339 | neighbors=[ServiceBannerScanner, ._rung()] | lang=en
+- "scanner_service_banner_servicebannerscanner_ladder_for": "._ladder_for()" | kind=code-symbol | source=probe/scanner/service_banner.py:L416 | neighbors=[ServiceBannerScanner, ._grab()] | lang=en
+- "scanner_service_banner_servicebannerscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/scanner/service_banner.py:L524 | neighbors=[ServiceBannerScanner, ._grab()] | lang=en
+- "scanner_service_banner_tls_context": "_tls_context()" | kind=code-symbol | source=probe/scanner/service_banner.py:L50 | neighbors=[service_banner.py, A permissive client context for FINGERP…] | lang=en
+- "scanner_service_enum_main": "main()" | kind=code-symbol | source=probe/scanner/service_enum.py:L630 | neighbors=[service_enum.py, local_topology()] | lang=en
+- "scanner_service_enum_serviceenumscanner_open": "._open()" | kind=code-symbol | source=probe/scanner/service_enum.py:L485 | neighbors=[ServiceEnumScanner, ._probe_port()] | lang=en
+- "scanner_service_enum_tags_for": "tags_for()" | kind=code-symbol | source=probe/scanner/service_enum.py:L417 | neighbors=[service_enum.py, .scan_target()] | lang=en
+- "scanner_smb_enum_scanner_smbenumscanner_init": ".__init__()" | kind=code-symbol | source=probe/scanner/smb_enum_scanner.py:L221 | neighbors=[SMBEnumScanner, parse_rid_ranges()] | lang=en
+- "scanner_smb_enum_scanner_smbenumscanner_scan_port": "._scan_port()" | kind=code-symbol | source=probe/scanner/smb_enum_scanner.py:L274 | neighbors=[SMBEnumScanner, .scan_target()] | lang=en
+- "scanner_smb_enum_scanner_smbenumscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/scanner/smb_enum_scanner.py:L295 | neighbors=[SMBEnumScanner, ._scan_port()] | lang=en
+- "scanner_smb_scanner_der_len": "_der_len()" | kind=code-symbol | source=probe/scanner/smb_scanner.py:L104 | neighbors=[smb_scanner.py, _der()] | lang=en
+- "scanner_smb_scanner_smb1_negotiate": "_smb1_negotiate()" | kind=code-symbol | source=probe/scanner/smb_scanner.py:L229 | neighbors=[smb_scanner.py, .scan_target()] | lang=en
+- "scanner_smtp_scanner_smtpscanner_scan_port": "._scan_port()" | kind=code-symbol | source=probe/scanner/smtp_scanner.py:L124 | neighbors=[SMTPScanner, .scan_target()] | lang=en
+- "scanner_smtp_scanner_smtpscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/scanner/smtp_scanner.py:L142 | neighbors=[SMTPScanner, ._scan_port()] | lang=en
+- "scanner_snmp_scanner_extract_sysdescr": "_extract_sysdescr()" | kind=code-symbol | source=probe/scanner/snmp_scanner.py:L44 | neighbors=[snmp_scanner.py, .scan_target()] | lang=en
+- "scanner_snmp_scanner_oid_in_subtree": "_oid_in_subtree()" | kind=code-symbol | source=probe/scanner/snmp_scanner.py:L240 | neighbors=[snmp_scanner.py, ._walk_subtree()] | lang=en
+- "scanner_snmp_scanner_snmpscanner_query": "._query()" | kind=code-symbol | source=probe/scanner/snmp_scanner.py:L84 | neighbors=[SNMPScanner, _build_get()] | lang=en
+- "scanner_snmp_scanner_snmpscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/scanner/snmp_scanner.py:L329 | neighbors=[SNMPScanner, _extract_sysdescr()] | lang=en
+- "scanner_ssh_collector_sshcollector_collect": "._collect()" | kind=code-symbol | source=probe/scanner/ssh_collector.py:L95 | neighbors=[SSHCollector, .run()] | lang=en
+- "scanner_ssh_collector_sshcollector_run": ".run()" | kind=code-symbol | source=probe/scanner/ssh_collector.py:L117 | neighbors=[SSHCollector, ._collect()] | lang=en
+- "scanner_ssh_kexdb_lookup": "lookup()" | kind=code-symbol | source=probe/scanner/ssh_kexdb.py:L477 | neighbors=[ssh_kexdb.py, Return (failures, warnings, infos) for …] | lang=en
+- "scanner_ssh_scanner_recv_exact": "_recv_exact()" | kind=code-symbol | source=probe/scanner/ssh_scanner.py:L215 | neighbors=[ssh_scanner.py, _read_packet()] | lang=en
+- "scanner_ssh_scanner_sshscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/scanner/ssh_scanner.py:L331 | neighbors=[SSHScanner, ._scan_port()] | lang=en
 
 ## Instructions
 

@@ -1,4 +1,4 @@
-# Node Description Batch 157 of 336
+# Node Description Batch 157 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,51 +12,58 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
+For an entity node (any other kind — e.g. a person, place, event, object),
+describe what the entity is and its role, grounded in its type, its
+relations (neighbors) and the provided citations/evidence — e.g.
+"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
+Ground entity descriptions in the citations/evidence when present; do not
+speculate beyond the context, so a node with no supporting context may be
+left out of the reply.
 Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_main_scripts_hardening_testsmbparsing_test_success_signing_supported_not_required": ".test_success_signing_supported_not_required()" | kind=code-symbol | source=probe/tests/test_main_scripts_hardening.py:L147 | neighbors=[TestSmbParsing, make_smb2_success()]
-- "tests_test_main_scripts_ja4s_ext": "_ext()" | kind=code-symbol | source=probe/tests/test_main_scripts_ja4s.py:L17 | neighbors=[test_main_scripts_ja4s.py, _serverhello()]
-- "tests_test_main_scripts_ja4s_test_ja4s_from_serverhello_tls13": "test_ja4s_from_serverhello_tls13()" | kind=code-symbol | source=probe/tests/test_main_scripts_ja4s.py:L62 | neighbors=[test_main_scripts_ja4s.py, _serverhello()]
-- "tests_test_main_scripts_ja4x_fake_cert": "_fake_cert()" | kind=code-symbol | source=probe/tests/test_main_scripts_ja4x.py:L52 | neighbors=[test_main_scripts_ja4x.py, test_ja4x_from_cert_matches_pure_core()]
-- "tests_test_main_scripts_ja4x_test_ja4x_from_cert_matches_pure_core": "test_ja4x_from_cert_matches_pure_core()" | kind=code-symbol | source=probe/tests/test_main_scripts_ja4x.py:L59 | neighbors=[test_main_scripts_ja4x.py, _fake_cert()]
-- "tests_test_main_scripts_rdp_test_cc_without_negotiation_is_standard_rdp": "test_cc_without_negotiation_is_standard_rdp()" | kind=code-symbol | source=probe/tests/test_main_scripts_rdp.py:L95 | neighbors=[test_main_scripts_rdp.py, _cc()]
-- "tests_test_main_scripts_rdp_test_confirmed_rdp_wins_dedup_over_port_hint": "test_confirmed_rdp_wins_dedup_over_port_hint()" | kind=code-symbol | source=probe/tests/test_main_scripts_rdp.py:L170 | neighbors=[test_main_scripts_rdp.py, _run()]
-- "tests_test_main_scripts_rdp_test_confirmed_rdp_with_nla_has_no_nla_finding": "test_confirmed_rdp_with_nla_has_no_nla_finding()" | kind=code-symbol | source=probe/tests/test_main_scripts_rdp.py:L150 | neighbors=[test_main_scripts_rdp.py, _run()]
-- "tests_test_main_scripts_rdp_test_confirmed_rdp_without_nla_is_high_finding": "test_confirmed_rdp_without_nla_is_high_finding()" | kind=code-symbol | source=probe/tests/test_main_scripts_rdp.py:L141 | neighbors=[test_main_scripts_rdp.py, _run()]
-- "tests_test_main_scripts_rdp_test_hybrid_ex_0x08_is_nla_over_tls": "test_hybrid_ex_0x08_is_nla_over_tls()" | kind=code-symbol | source=probe/tests/test_main_scripts_rdp.py:L45 | neighbors=[test_main_scripts_rdp.py, _cc()]
-- "tests_test_main_scripts_rdp_test_negotiation_failure": "test_negotiation_failure()" | kind=code-symbol | source=probe/tests/test_main_scripts_rdp.py:L90 | neighbors=[test_main_scripts_rdp.py, _cc()]
-- "tests_test_main_scripts_rdp_test_nla_required_rdp_is_low_severity_no_bluekeep_language": "test_nla_required_rdp_is_low_severity_no_bluekeep_language()" | kind=code-symbol | source=probe/tests/test_main_scripts_rdp.py:L157 | neighbors=[test_main_scripts_rdp.py, _run()]
-- "tests_test_main_scripts_rdp_test_nla_when_hybrid_selected": "test_nla_when_hybrid_selected()" | kind=code-symbol | source=probe/tests/test_main_scripts_rdp.py:L34 | neighbors=[test_main_scripts_rdp.py, _cc()]
-- "tests_test_main_scripts_rdp_test_standard_rdp_security_no_nla": "test_standard_rdp_security_no_nla()" | kind=code-symbol | source=probe/tests/test_main_scripts_rdp.py:L85 | neighbors=[test_main_scripts_rdp.py, _cc()]
-- "tests_test_main_scripts_rdp_test_tls_only_is_not_nla": "test_tls_only_is_not_nla()" | kind=code-symbol | source=probe/tests/test_main_scripts_rdp.py:L40 | neighbors=[test_main_scripts_rdp.py, _cc()]
-- "tests_test_main_scripts_unauth_test_protected_redis_raises_no_unauth_finding": "test_protected_redis_raises_no_unauth_finding()" | kind=code-symbol | source=probe/tests/test_main_scripts_unauth.py:L71 | neighbors=[test_main_scripts_unauth.py, _run()]
-- "tests_test_main_scripts_unauth_test_unauth_elasticsearch_is_high": "test_unauth_elasticsearch_is_high()" | kind=code-symbol | source=probe/tests/test_main_scripts_unauth.py:L63 | neighbors=[test_main_scripts_unauth.py, _run()]
-- "tests_test_main_scripts_unauth_test_unauth_redis_is_critical_and_rce_flagged": "test_unauth_redis_is_critical_and_rce_flagged()" | kind=code-symbol | source=probe/tests/test_main_scripts_unauth.py:L55 | neighbors=[test_main_scripts_unauth.py, _run()]
-- "tests_test_main_scripts_vantage_testreconcilevantages_test_ambiguous_when_only_open_filtered": ".test_ambiguous_when_only_open_filtered()" | kind=code-symbol | source=probe/tests/test_main_scripts_vantage.py:L44 | neighbors=[TestReconcileVantages, _r()]
-- "tests_test_main_scripts_vantage_testreconcilevantages_test_auto_detects_external_by_name": ".test_auto_detects_external_by_name()" | kind=code-symbol | source=probe/tests/test_main_scripts_vantage.py:L63 | neighbors=[TestReconcileVantages, _r()]
-- "tests_test_main_scripts_vantage_testreconcilevantages_test_explicit_external_vantage_by_name_override": ".test_explicit_external_vantage_by_name_override()" | kind=code-symbol | source=probe/tests/test_main_scripts_vantage.py:L56 | neighbors=[TestReconcileVantages, _r()]
-- "tests_test_main_scripts_vantage_testreconcilevantages_test_external_exposure_is_flagged": ".test_external_exposure_is_flagged()" | kind=code-symbol | source=probe/tests/test_main_scripts_vantage.py:L17 | neighbors=[TestReconcileVantages, _r()]
-- "tests_test_main_scripts_vantage_testreconcilevantages_test_internal_only_not_called_external": ".test_internal_only_not_called_external()" | kind=code-symbol | source=probe/tests/test_main_scripts_vantage.py:L26 | neighbors=[TestReconcileVantages, _r()]
-- "tests_test_main_scripts_vantage_testreconcilevantages_test_not_exposed_everywhere": ".test_not_exposed_everywhere()" | kind=code-symbol | source=probe/tests/test_main_scripts_vantage.py:L39 | neighbors=[TestReconcileVantages, _r()]
-- "tests_test_main_scripts_vantage_testreconcilevantages_test_vantages_are_not_collapsed": ".test_vantages_are_not_collapsed()" | kind=code-symbol | source=probe/tests/test_main_scripts_vantage.py:L49 | neighbors=[TestReconcileVantages, _r()]
-- "tests_test_manager_ai_test_advisor_flow_prompt_grounds_lifecycle_facts": "test_advisor_flow_prompt_grounds_lifecycle_facts()" | kind=code-symbol | source=manager/backend/tests/test_manager_ai.py:L231 | neighbors=[test_manager_ai.py, The advisor_flow rules instruct the mod…]
-- "tests_test_manager_ai_test_default_auto_detect_prefers_openai_then_anthropic_then_openrouter": "test_default_auto_detect_prefers_openai_then_anthropic_then_openrouter()" | kind=code-symbol | source=manager/backend/tests/test_manager_ai.py:L313 | neighbors=[test_manager_ai.py, _cloud()]
-- "tests_test_manager_ai_test_default_auto_detects_the_configured_cloud_provider": "test_default_auto_detects_the_configured_cloud_provider()" | kind=code-symbol | source=manager/backend/tests/test_manager_ai.py:L306 | neighbors=[test_manager_ai.py, _cloud()]
-- "tests_test_manager_ai_test_default_runtime_fails_closed_without_any_cloud_key": "test_default_runtime_fails_closed_without_any_cloud_key()" | kind=code-symbol | source=manager/backend/tests/test_manager_ai.py:L320 | neighbors=[test_manager_ai.py, _cloud()]
-- "tests_test_manager_ai_test_fallback_never_includes_local_ollama": "test_fallback_never_includes_local_ollama()" | kind=code-symbol | source=manager/backend/tests/test_manager_ai.py:L337 | neighbors=[test_manager_ai.py, _cloud()]
-- "tests_test_manager_ai_test_generate_fails_closed_when_no_cloud_provider_configured": "test_generate_fails_closed_when_no_cloud_provider_configured()" | kind=code-symbol | source=manager/backend/tests/test_manager_ai.py:L328 | neighbors=[test_manager_ai.py, _cloud()]
-- "tests_test_manager_ai_test_status_fails_safe_without_cloud_key": "test_status_fails_safe_without_cloud_key()" | kind=code-symbol | source=manager/backend/tests/test_manager_ai.py:L349 | neighbors=[test_manager_ai.py, _cloud()]
-- "tests_test_manual_reopen": "test_manual_reopen.py" | kind=code-symbol | source=manager/backend/tests/test_manual_reopen.py:L1 | neighbors=[3c7740e feat(lifecycle): pure manual-re…, test_manual_reopen_restores_open_and_au…]
-- "tests_test_msrpc_scanner_testmsrpcfindings_test_endpoints_low": ".test_endpoints_low()" | kind=code-symbol | source=probe/tests/test_msrpc_scanner.py:L86 | neighbors=[TestMSRPCFindings, ._fact()]
-- "tests_test_msrpc_scanner_testmsrpcfindings_test_zero_endpoints_silent": ".test_zero_endpoints_silent()" | kind=code-symbol | source=probe/tests/test_msrpc_scanner.py:L92 | neighbors=[TestMSRPCFindings, ._fact()]
-- "tests_test_msrpc_scanner_testmsrpcscanner_test_impacket_missing_is_error": ".test_impacket_missing_is_error()" | kind=code-symbol | source=probe/tests/test_msrpc_scanner.py:L74 | neighbors=[TestMSRPCScanner, ._sc()]
-- "tests_test_msrpc_scanner_testmsrpcscanner_test_no_msrpc_filtered": ".test_no_msrpc_filtered()" | kind=code-symbol | source=probe/tests/test_msrpc_scanner.py:L69 | neighbors=[TestMSRPCScanner, ._sc()]
-- "tests_test_msrpc_scanner_testmsrpcscanner_test_open": ".test_open()" | kind=code-symbol | source=probe/tests/test_msrpc_scanner.py:L61 | neighbors=[TestMSRPCScanner, ._sc()]
-- "tests_test_msrpc_scanner_testparity": "TestParity" | kind=code-symbol | source=probe/tests/test_msrpc_scanner.py:L97 | neighbors=[test_msrpc_scanner.py, .test_main_scripts()]
-- "tests_test_msrpc_scanner_testsummarize": "TestSummarize" | kind=code-symbol | source=probe/tests/test_msrpc_scanner.py:L18 | neighbors=[test_msrpc_scanner.py, .test_distinct_interfaces_and_named()]
+- "routers_ai_report_reject_report": "reject_report()" | kind=code-symbol | source=manager/backend/app/routers/ai_report.py:L158 | neighbors=[ai_report.py, _pending_outputs()]
+- "routers_ai_report_set_job": "_set_job()" | kind=code-symbol | source=manager/backend/app/routers/ai_report.py:L420 | neighbors=[ai_report.py, _run_generation()]
+- "routers_analytics_sev_str": "_sev_str()" | kind=code-symbol | source=manager/backend/app/routers/analytics.py:L82 | neighbors=[analytics.py, _finding_views()]
+- "routers_analytics_two_latest_completed_runs": "_two_latest_completed_runs()" | kind=code-symbol | source=manager/backend/app/routers/analytics.py:L106 | neighbors=[analytics.py, posture()]
+- "routers_attack_paths_explain_hop": "_explain_hop()" | kind=code-symbol | source=manager/backend/app/routers/attack_paths.py:L245 | neighbors=[attack_paths.py, get_attack_path()]
+- "routers_attack_paths_path_summary": "_path_summary()" | kind=code-symbol | source=manager/backend/app/routers/attack_paths.py:L234 | neighbors=[attack_paths.py, list_attack_paths()]
+- "routers_customer_access_assignagentbody": "AssignAgentBody" | kind=code-symbol | source=manager/backend/app/routers/customer_access.py:L71 | neighbors=[customer_access.py, BaseModel]
+- "routers_customer_access_clientusercreate": "ClientUserCreate" | kind=code-symbol | source=manager/backend/app/routers/customer_access.py:L52 | neighbors=[customer_access.py, BaseModel]
+- "routers_customer_access_clientuserpatch": "ClientUserPatch" | kind=code-symbol | source=manager/backend/app/routers/customer_access.py:L57 | neighbors=[customer_access.py, BaseModel]
+- "routers_customer_access_reject_scan_request": "reject_scan_request()" | kind=code-symbol | source=manager/backend/app/routers/customer_access.py:L358 | neighbors=[customer_access.py, _get_scan_request()]
+- "routers_customer_access_rejectbody": "RejectBody" | kind=code-symbol | source=manager/backend/app/routers/customer_access.py:L89 | neighbors=[customer_access.py, BaseModel]
+- "routers_customer_access_scanrequestout": "ScanRequestOut" | kind=code-symbol | source=manager/backend/app/routers/customer_access.py:L75 | neighbors=[customer_access.py, BaseModel]
+- "routers_detection_get_results": "get_results()" | kind=code-symbol | source=manager/backend/app/routers/detection.py:L128 | neighbors=[detection.py, _result_out()]
+- "routers_detection_result_out": "_result_out()" | kind=code-symbol | source=manager/backend/app/routers/detection.py:L217 | neighbors=[detection.py, get_results()]
+- "routers_detection_runs_latest_run_delta": "latest_run_delta()" | kind=code-symbol | source=manager/backend/app/routers/detection_runs.py:L92 | neighbors=[detection_runs.py, _run_dict()]
+- "routers_detection_runs_list_detection_runs": "list_detection_runs()" | kind=code-symbol | source=manager/backend/app/routers/detection_runs.py:L75 | neighbors=[detection_runs.py, _run_dict()]
+- "routers_detection_runs_select_new_since": "_select_new_since()" | kind=code-symbol | source=manager/backend/app/routers/detection_runs.py:L36 | neighbors=[detection_runs.py, Findings FIRST produced by this run — t…]
+- "routers_detection_set_job": "_set_job()" | kind=code-symbol | source=manager/backend/app/routers/detection.py:L322 | neighbors=[detection.py, _run_correlation()]
+- "routers_engagements_bulk_import_assets": "bulk_import_assets()" | kind=code-symbol | source=manager/backend/app/routers/engagements.py:L579 | neighbors=[engagements.py, _refresh_overview_cache()]
+- "routers_engagements_create_engagement": "create_engagement()" | kind=code-symbol | source=manager/backend/app/routers/engagements.py:L378 | neighbors=[engagements.py, _refresh_overview_cache()]
+- "routers_engagements_detection_explain": "detection_explain()" | kind=code-symbol | source=manager/backend/app/routers/engagements.py:L1109 | neighbors=[engagements.py, The machine-readable answer to "the scr…]
+- "routers_engagements_raw_facts": "raw_facts()" | kind=code-symbol | source=manager/backend/app/routers/engagements.py:L1162 | neighbors=[engagements.py, The raw ScanResult facts as the probe s…]
+- "routers_engagements_update_engagement": "update_engagement()" | kind=code-symbol | source=manager/backend/app/routers/engagements.py:L545 | neighbors=[engagements.py, _refresh_overview_cache()]
+- "routers_exploits_approve_exploit": "approve_exploit()" | kind=code-symbol | source=manager/backend/app/routers/exploits.py:L244 | neighbors=[exploits.py, _get_approval_or_404()]
+- "routers_exploits_get_result_or_404": "_get_result_or_404()" | kind=code-symbol | source=manager/backend/app/routers/exploits.py:L395 | neighbors=[exploits.py, get_exploit_result()]
+- "routers_exploits_list_approvals": "list_approvals()" | kind=code-symbol | source=manager/backend/app/routers/exploits.py:L217 | neighbors=[exploits.py, _approval_out()]
+- "routers_exploits_list_exploit_results": "list_exploit_results()" | kind=code-symbol | source=manager/backend/app/routers/exploits.py:L176 | neighbors=[exploits.py, _result_out()]
+- "routers_exploits_load_finding_and_eng": "_load_finding_and_eng()" | kind=code-symbol | source=manager/backend/app/routers/exploits.py:L368 | neighbors=[exploits.py, run_exploit()]
+- "routers_exploits_reject_exploit": "reject_exploit()" | kind=code-symbol | source=manager/backend/app/routers/exploits.py:L302 | neighbors=[exploits.py, _get_approval_or_404()]
+- "routers_exploits_run_exploit": "run_exploit()" | kind=code-symbol | source=manager/backend/app/routers/exploits.py:L110 | neighbors=[exploits.py, _load_finding_and_eng()]
+- "routers_findings_finding_metrics": "finding_metrics()" | kind=code-symbol | source=manager/backend/app/routers/findings.py:L139 | neighbors=[findings.py, Mobilization metrics: how fast findings…]
+- "routers_findings_patch_finding": "patch_finding()" | kind=code-symbol | source=manager/backend/app/routers/findings.py:L362 | neighbors=[findings.py, _tenant_finding()]
+- "routers_findings_rationale_50": "Build the detail contract with bounded asset context.      Portfolio/list respon" | kind=entity | source=manager/backend/app/routers/findings.py:L50 | neighbors=[_finding_detail_out(), sla_summary()]
+- "routers_health_health_auth": "health_auth()" | kind=code-symbol | source=manager/backend/app/routers/health.py:L81 | neighbors=[health.py, Validates the authentication subsystem …]
+- "routers_init": "__init__.py" | kind=code-symbol | source=manager/backend/app/routers/__init__.py:L1 | neighbors=[d1b4dd3 trim frontend to 7 core pages; …, 298a9d4 trim frontend to 7 core pages; …]
+- "routers_integrations_delete_integration": "delete_integration()" | kind=code-symbol | source=manager/backend/app/routers/integrations.py:L93 | neighbors=[integrations.py, _row()]
+- "routers_integrations_integration_secret": "integration_secret()" | kind=code-symbol | source=manager/backend/app/routers/integrations.py:L117 | neighbors=[integrations.py, Decrypt an integration's secret for the…]
+- "routers_integrations_integrationin": "IntegrationIn" | kind=code-symbol | source=manager/backend/app/routers/integrations.py:L30 | neighbors=[integrations.py, BaseModel]
+- "routers_integrations_list_integrations": "list_integrations()" | kind=code-symbol | source=manager/backend/app/routers/integrations.py:L56 | neighbors=[integrations.py, _out()]
+- "routers_integrations_test_integrations": "test_integrations()" | kind=code-symbol | source=manager/backend/app/routers/integrations.py:L106 | neighbors=[integrations.py, Enqueue a durable test notification; th…]
 
 ## Instructions
 

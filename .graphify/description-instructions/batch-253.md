@@ -1,4 +1,4 @@
-# Node Description Batch 254 of 336
+# Node Description Batch 254 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -26,46 +26,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "scanner_scan_funnel_rationale_208": "Wire the funnel with the package's real scanners. Imported lazily so the     fun" | kind=entity | source=probe/scanner/scan_funnel.py:L208 | neighbors=[build_default_funnel()] | lang=en
-- "scanner_scan_funnel_rationale_219": "Wire the funnel with the package's real scanners. Imported lazily so the     fun" | kind=entity | source=probe/scanner/scan_funnel.py:L219 | neighbors=[build_default_funnel()] | lang=en
-- "scanner_scan_funnel_rationale_245": "Funnel many hosts with bounded concurrency, writing every result." | kind=entity | source=probe/scanner/scan_funnel.py:L245 | neighbors=[.run()] | lang=en
-- "scanner_scan_funnel_rationale_272": "Wire the funnel with the package's real scanners. Imported lazily so the     fun" | kind=entity | source=probe/scanner/scan_funnel.py:L272 | neighbors=[build_default_funnel()] | lang=en
-- "scanner_scan_funnel_rationale_56": "Map a host's open ports onto the deep-scanner routes that handle them.     Retur" | kind=entity | source=probe/scanner/scan_funnel.py:L56 | neighbors=[route_ports()] | lang=en
-- "scanner_scan_funnel_rationale_67": "Map a host's open ports onto the deep-scanner routes that handle them.     Retur" | kind=entity | source=probe/scanner/scan_funnel.py:L67 | neighbors=[route_ports()] | lang=en
-- "scanner_scan_funnel_rationale_84": "The full outcome of funnelling one host." | kind=entity | source=probe/scanner/scan_funnel.py:L84 | neighbors=[FunnelResult] | lang=en
-- "scanner_scan_funnel_rationale_98": "The port set worth scanning = union of every route's ports (deduped)." | kind=entity | source=probe/scanner/scan_funnel.py:L98 | neighbors=[_candidate_ports()] | lang=en
-- "scanner_scan_funnel_rationale_99": "Orchestrates discovery → port scan → routed deep scanners for each host.      Pa" | kind=entity | source=probe/scanner/scan_funnel.py:L99 | neighbors=[ScanFunnel] | lang=en
-- "scanner_scan_funnel_scanfunnel_init": ".__init__()" | kind=code-symbol | source=probe/scanner/scan_funnel.py:L145 | neighbors=[ScanFunnel] | lang=en
-- "scanner_scanner_base_adaptiveratecontroller_init": ".__init__()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L485 | neighbors=[AdaptiveRateController] | lang=en
-- "scanner_scanner_base_base_argparser": "base_argparser()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L1073 | neighbors=[scanner_base.py] | lang=en
-- "scanner_scanner_base_ratelimiter_init": ".__init__()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L432 | neighbors=[RateLimiter] | lang=en
-- "scanner_scanner_base_rationale_1": "scanner_base.py — shared foundation for every scanner module.  SCOPE OF THIS MOD" | kind=entity | source=probe/scanner/scanner_base.py:L1 | neighbors=[scanner_base.py] | lang=en
-- "scanner_scanner_base_rationale_1033": "Return (soft, hard) open-file-descriptor limits, or (0, 0) if unavailable." | kind=entity | source=probe/scanner/scanner_base.py:L1033 | neighbors=[get_fd_limit()] | lang=en
-- "scanner_scanner_base_rationale_1045": "Raise the soft fd limit toward the hard limit when there is headroom.     Return" | kind=entity | source=probe/scanner/scanner_base.py:L1045 | neighbors=[raise_fd_limit()] | lang=en
-- "scanner_scanner_base_rationale_1063": "Cap concurrent connections comfortably BELOW the fd ceiling (after raising     i" | kind=entity | source=probe/scanner/scanner_base.py:L1063 | neighbors=[safe_connect_concurrency()] | lang=en
-- "scanner_scanner_base_rationale_1106": "Run a scanner CLI's body with consistent, operator-friendly error handling." | kind=entity | source=probe/scanner/scanner_base.py:L1106 | neighbors=[main_entrypoint()] | lang=en
-- "scanner_scanner_base_rationale_1134": "Wire argparse args into a scanner instance and execute it." | kind=entity | source=probe/scanner/scanner_base.py:L1134 | neighbors=[run_cli()] | lang=en
-- "scanner_scanner_base_rationale_115": "Full, debuggable classification for attaching to a ScanResult: state,     reason" | kind=entity | source=probe/scanner/scanner_base.py:L115 | neighbors=[describe_os_error()] | lang=en
-- "scanner_scanner_base_rationale_122": "HTTP/RTSP User-Agent to send — a generic browser UA by default so it does     no" | kind=entity | source=probe/scanner/scanner_base.py:L122 | neighbors=[user_agent()] | lang=en
-- "scanner_scanner_base_rationale_128": "Benign, non-attributing payload for ICMP/UDP probes — looks like ordinary     pi" | kind=entity | source=probe/scanner/scanner_base.py:L128 | neighbors=[probe_payload()] | lang=en
-- "scanner_scanner_base_rationale_130": "One observation about one target. Pure fact, no interpretation.      Network-sta" | kind=entity | source=probe/scanner/scanner_base.py:L130 | neighbors=[ScanResult] | lang=en
-- "scanner_scanner_base_rationale_135": "The TCP source port for probes. A FIXED port (e.g. 53/88) lets a scan slip     p" | kind=entity | source=probe/scanner/scanner_base.py:L135 | neighbors=[choose_source_port()] | lang=en
-- "scanner_scanner_base_rationale_145": "A per-probe delay of `base` seconds ± up to `jitter` fraction of random     vari" | kind=entity | source=probe/scanner/scanner_base.py:L145 | neighbors=[jittered_delay()] | lang=en
-- "scanner_scanner_base_rationale_156": "Heuristic: is this host a tarpit / honeypot / ACK-everything middlebox?      Suc" | kind=entity | source=probe/scanner/scanner_base.py:L156 | neighbors=[assess_tarpit()] | lang=en
-- "scanner_scanner_base_rationale_171": "Read-only view of allowed networks (for CIDR-level engines)." | kind=entity | source=probe/scanner/scanner_base.py:L171 | neighbors=[.networks()] | lang=en
-- "scanner_scanner_base_rationale_175": "Read-only view of excluded networks (to build masscan --exclude)." | kind=entity | source=probe/scanner/scanner_base.py:L175 | neighbors=[.excludes()] | lang=en
-- "scanner_scanner_base_rationale_176": "Read-only view of excluded networks (to build masscan --exclude)." | kind=entity | source=probe/scanner/scanner_base.py:L176 | neighbors=[.excludes()] | lang=en
-- "scanner_scanner_base_rationale_181": "Loads an allowlist of CIDRs / IPs / hostnames and decides whether a target     i" | kind=entity | source=probe/scanner/scanner_base.py:L181 | neighbors=[ScopeGuard] | lang=en
-- "scanner_scanner_base_rationale_183": "Simple async rate limiter: at most `rate` operations per second." | kind=entity | source=probe/scanner/scanner_base.py:L183 | neighbors=[RateLimiter] | lang=it
-- "scanner_scanner_base_rationale_184": "Simple async rate limiter: at most `rate` operations per second." | kind=entity | source=probe/scanner/scanner_base.py:L184 | neighbors=[RateLimiter] | lang=it
-- "scanner_scanner_base_rationale_186": "Full, debuggable classification for attaching to a ScanResult: state,     reason" | kind=entity | source=probe/scanner/scanner_base.py:L186 | neighbors=[describe_os_error()] | lang=en
-- "scanner_scanner_base_rationale_201": "One observation about one target. Pure fact, no interpretation.      Network-sta" | kind=entity | source=probe/scanner/scanner_base.py:L201 | neighbors=[ScanResult] | lang=en
-- "scanner_scanner_base_rationale_203": "Standard 16-bit one's-complement Internet checksum (RFC 1071), used for IP," | kind=entity | source=probe/scanner/scanner_base.py:L203 | neighbors=[inet_checksum()] | lang=en
-- "scanner_scanner_base_rationale_220": "A self-tuning concurrency window, modelled on TCP congestion control (AIMD)," | kind=entity | source=probe/scanner/scanner_base.py:L220 | neighbors=[AdaptiveRateController] | lang=pt
-- "scanner_scanner_base_rationale_236": "Map a connect()/socket-time OSError to (state, reason).      DNS failures (``soc" | kind=entity | source=probe/scanner/scanner_base.py:L236 | neighbors=[classify_os_error()] | lang=en
-- "scanner_scanner_base_rationale_237": "Current integer window (>= min_window)." | kind=entity | source=probe/scanner/scanner_base.py:L237 | neighbors=[.window()] | lang=en
-- "scanner_scanner_base_rationale_266": "Resolve `target` to a concrete (family, sockaddr) covering IPv4, IPv6, and     h" | kind=entity | source=probe/scanner/scanner_base.py:L266 | neighbors=[resolve()] | lang=en
-- "scanner_scanner_base_rationale_267": "One observation about one target. Pure fact, no interpretation.      Network-sta" | kind=entity | source=probe/scanner/scanner_base.py:L267 | neighbors=[ScanResult] | lang=en
+- "main_scripts_scanner_base_rationale_750": "Run a scanner CLI's body with consistent, operator-friendly error handling." | kind=entity | source=probe/main_scripts/scanner_base.py:L750 | neighbors=[main_entrypoint()] | lang=en
+- "main_scripts_scanner_base_rationale_771": "Just the candidate IP strings for `target`, in RFC-6724 order, de-duplicated." | kind=entity | source=probe/main_scripts/scanner_base.py:L771 | neighbors=[resolve_ip_candidates()] | lang=en
+- "main_scripts_scanner_base_rationale_778": "Wire argparse args into a scanner instance and execute it." | kind=entity | source=probe/main_scripts/scanner_base.py:L778 | neighbors=[run_cli()] | lang=en
+- "main_scripts_scanner_base_rationale_786": "One-shot datagram protocol backing `async_udp_probe`. Resolves its future     wi" | kind=entity | source=probe/main_scripts/scanner_base.py:L786 | neighbors=[_UDPProbeProtocol] | lang=en
+- "main_scripts_scanner_base_rationale_79": "A per-probe delay of `base` seconds ± up to `jitter` fraction of random     vari" | kind=entity | source=probe/main_scripts/scanner_base.py:L79 | neighbors=[jittered_delay()] | lang=en
+- "main_scripts_scanner_base_rationale_808": "One-shot datagram protocol backing `async_udp_probe`. Resolves its future     wi" | kind=entity | source=probe/main_scripts/scanner_base.py:L808 | neighbors=[_UDPProbeProtocol] | lang=en
+- "main_scripts_scanner_base_rationale_819": "Send one UDP datagram and await the first reply — fully on the event loop." | kind=entity | source=probe/main_scripts/scanner_base.py:L819 | neighbors=[async_udp_probe()] | lang=en
+- "main_scripts_scanner_base_rationale_837": "Run a scanner CLI's body with consistent, operator-friendly error handling." | kind=entity | source=probe/main_scripts/scanner_base.py:L837 | neighbors=[main_entrypoint()] | lang=en
+- "main_scripts_scanner_base_rationale_841": "Send one UDP datagram and await the first reply — fully on the event loop." | kind=entity | source=probe/main_scripts/scanner_base.py:L841 | neighbors=[async_udp_probe()] | lang=en
+- "main_scripts_scanner_base_rationale_850": "`async_udp_probe` with bounded per-port retransmit.      Returns on the FIRST de" | kind=entity | source=probe/main_scripts/scanner_base.py:L850 | neighbors=[async_udp_probe_retry()] | lang=en
+- "main_scripts_scanner_base_rationale_86": "Current time as an AWARE datetime in the project timezone." | kind=entity | source=probe/main_scripts/scanner_base.py:L86 | neighbors=[project_now()] | lang=en
+- "main_scripts_scanner_base_rationale_865": "Wire argparse args into a scanner instance and execute it." | kind=entity | source=probe/main_scripts/scanner_base.py:L865 | neighbors=[run_cli()] | lang=en
+- "main_scripts_scanner_base_rationale_869": "Wrap an IPv6 literal in [] for a URL authority; leave v4/hostnames as-is.     'h" | kind=entity | source=probe/main_scripts/scanner_base.py:L869 | neighbors=[bracket_host()] | lang=en
+- "main_scripts_scanner_base_rationale_872": "`async_udp_probe` with bounded per-port retransmit.      Returns on the FIRST de" | kind=entity | source=probe/main_scripts/scanner_base.py:L872 | neighbors=[async_udp_probe_retry()] | lang=en
+- "main_scripts_scanner_base_rationale_881": "Parse '22,80,443,8000-8100' into a sorted unique port list (1-65535)." | kind=entity | source=probe/main_scripts/scanner_base.py:L881 | neighbors=[parse_ports()] | lang=pt
+- "main_scripts_scanner_base_rationale_891": "Wrap an IPv6 literal in [] for a URL authority; leave v4/hostnames as-is.     'h" | kind=entity | source=probe/main_scripts/scanner_base.py:L891 | neighbors=[bracket_host()] | lang=en
+- "main_scripts_scanner_base_rationale_90": "Heuristic: is this host a tarpit / honeypot / ACK-everything middlebox?      Suc" | kind=entity | source=probe/main_scripts/scanner_base.py:L90 | neighbors=[assess_tarpit()] | lang=en
+- "main_scripts_scanner_base_rationale_903": "Parse '22,80,443,8000-8100' into a sorted unique port list (1-65535)." | kind=entity | source=probe/main_scripts/scanner_base.py:L903 | neighbors=[parse_ports()] | lang=pt
+- "main_scripts_scanner_base_rationale_91": "ISO-8601 instant in the project timezone: 2026-09-03T23:15:05+05:30." | kind=entity | source=probe/main_scripts/scanner_base.py:L91 | neighbors=[project_timestamp()] | lang=en
+- "main_scripts_scanner_base_rationale_917": "Writes ScanResult objects as JSONL to a file and/or stdout." | kind=entity | source=probe/main_scripts/scanner_base.py:L917 | neighbors=[ResultWriter] | lang=en
+- "main_scripts_scanner_base_rationale_939": "Writes ScanResult objects as JSONL to a file and/or stdout." | kind=entity | source=probe/main_scripts/scanner_base.py:L939 | neighbors=[ResultWriter] | lang=en
+- "main_scripts_scanner_base_rationale_947": "Subclasses implement `scan_target(self, target)` (async), returning a list     o" | kind=entity | source=probe/main_scripts/scanner_base.py:L947 | neighbors=[BaseScanner] | lang=pt
+- "main_scripts_scanner_base_rationale_96": "Compact project-local stamp for FILE and DIRECTORY names.      Deliberately carr" | kind=entity | source=probe/main_scripts/scanner_base.py:L96 | neighbors=[project_file_stamp()] | lang=en
+- "main_scripts_scanner_base_rationale_969": "Subclasses implement `scan_target(self, target)` (async), returning a list     o" | kind=entity | source=probe/main_scripts/scanner_base.py:L969 | neighbors=[BaseScanner] | lang=pt
+- "main_scripts_scanner_base_rationale_99": "Map a connect()/socket-time OSError to (state, reason).      DNS failures (``soc" | kind=entity | source=probe/main_scripts/scanner_base.py:L99 | neighbors=[classify_os_error()] | lang=en
+- "main_scripts_scanner_base_resultwriter_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/scanner_base.py:L941 | neighbors=[ResultWriter] | lang=en
+- "main_scripts_scanner_base_scanresult_post_init": ".__post_init__()" | kind=code-symbol | source=probe/main_scripts/scanner_base.py:L295 | neighbors=[ScanResult] | lang=en
+- "main_scripts_scanner_base_scopeguard_from_list": ".from_list()" | kind=code-symbol | source=probe/main_scripts/scanner_base.py:L363 | neighbors=[ScopeGuard] | lang=en
+- "main_scripts_scanner_base_scopeguard_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/scanner_base.py:L327 | neighbors=[ScopeGuard] | lang=en
+- "main_scripts_scanner_base_sendpacer_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/scanner_base.py:L583 | neighbors=[SendPacer] | lang=en
+- "main_scripts_scanner_base_setup_logging": "setup_logging()" | kind=code-symbol | source=probe/main_scripts/scanner_base.py:L1119 | neighbors=[scanner_base.py] | lang=en
+- "main_scripts_scanner_base_udpprobeprotocol_connection_lost": ".connection_lost()" | kind=code-symbol | source=probe/main_scripts/scanner_base.py:L834 | neighbors=[_UDPProbeProtocol] | lang=en
+- "main_scripts_scanner_base_udpprobeprotocol_datagram_received": ".datagram_received()" | kind=code-symbol | source=probe/main_scripts/scanner_base.py:L820 | neighbors=[_UDPProbeProtocol] | lang=en
+- "main_scripts_scanner_base_udpprobeprotocol_error_received": ".error_received()" | kind=code-symbol | source=probe/main_scripts/scanner_base.py:L824 | neighbors=[_UDPProbeProtocol] | lang=en
+- "main_scripts_scanner_base_udpprobeprotocol_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/scanner_base.py:L817 | neighbors=[_UDPProbeProtocol] | lang=en
+- "main_scripts_scanner_registry_info": "info()" | kind=code-symbol | source=probe/main_scripts/scanner_registry.py:L103 | neighbors=[scanner_registry.py] | lang=en
+- "main_scripts_scanner_registry_rationale_1": "scanner_registry.py — the single source of truth for WHICH scanners are trusted." | kind=entity | source=probe/main_scripts/scanner_registry.py:L1 | neighbors=[scanner_registry.py] | lang=en
+- "main_scripts_scanner_registry_rationale_108": "The scanner-module trust view: which scanners are verified vs experimental," | kind=entity | source=probe/main_scripts/scanner_registry.py:L108 | neighbors=[verification_report()] | lang=en
+- "main_scripts_scanner_registry_rationale_98": "True only for a scanner explicitly on the verified (trusted) list. Unknown     s" | kind=entity | source=probe/main_scripts/scanner_registry.py:L98 | neighbors=[is_verified()] | lang=en
+- "main_scripts_scanner_registry_scannerinfo": "ScannerInfo" | kind=code-symbol | source=probe/main_scripts/scanner_registry.py:L27 | neighbors=[scanner_registry.py] | lang=en
 
 ## Instructions
 

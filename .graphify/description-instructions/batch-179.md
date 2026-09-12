@@ -1,4 +1,4 @@
-# Node Description Batch 180 of 336
+# Node Description Batch 180 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,60 +12,51 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
-For an entity node (any other kind — e.g. a person, place, event, object),
-describe what the entity is and its role, grounded in its type, its
-relations (neighbors) and the provided citations/evidence — e.g.
-"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
-Ground entity descriptions in the citations/evidence when present; do not
-speculate beyond the context, so a node with no supporting context may be
-left out of the reply.
-LANGUAGE: each entry has a `lang=` marker giving the language of its source.
-Write that entry's description in EXACTLY that language. Do not translate to
-a single common language — match each node's source language individually.
+Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "agent_result_spool_rationale_116": "Move a terminally rejected result out of the retry queue." | kind=entity | source=probe/agent/result_spool.py:L116 | neighbors=[.quarantine()] | lang=en
-- "agent_result_spool_rationale_130": "Re-attempt upload of all previously spooled results.          Called once at pro" | kind=entity | source=probe/agent/result_spool.py:L130 | neighbors=[.flush_spool()] | lang=en
-- "agent_result_spool_rationale_135": "Attempt to upload a result with retries and local spool as fallback.          Ar" | kind=entity | source=probe/agent/result_spool.py:L135 | neighbors=[.submit_with_retry()] | lang=en
-- "agent_result_spool_rationale_153": "Number of pending (unsubmitted) results in the spool." | kind=entity | source=probe/agent/result_spool.py:L153 | neighbors=[.spool_count()] | lang=en
-- "agent_result_spool_rationale_156": "Re-attempt upload of all previously spooled results.          Called once at pro" | kind=entity | source=probe/agent/result_spool.py:L156 | neighbors=[.flush_spool()] | lang=en
-- "agent_result_spool_rationale_180": "Number of pending (unsubmitted) results in the spool." | kind=entity | source=probe/agent/result_spool.py:L180 | neighbors=[.spool_count()] | lang=en
-- "agent_result_spool_rationale_185": "Re-attempt upload of all previously spooled results.          Called once at pro" | kind=entity | source=probe/agent/result_spool.py:L185 | neighbors=[.flush_spool()] | lang=en
-- "agent_result_spool_rationale_216": "Number of pending (unsubmitted) results in the spool." | kind=entity | source=probe/agent/result_spool.py:L216 | neighbors=[.spool_count()] | lang=en
-- "agent_result_spool_rationale_223": "Total bytes held by pending result files, ignoring vanished files." | kind=entity | source=probe/agent/result_spool.py:L223 | neighbors=[.spool_bytes()] | lang=en
-- "agent_result_spool_rationale_236": "Whether new jobs must pause until pending results are uploaded.          These a" | kind=entity | source=probe/agent/result_spool.py:L236 | neighbors=[.at_capacity()] | lang=en
-- "agent_result_spool_rationale_25": "Persists scan results locally and retries failed uploads." | kind=entity | source=probe/agent/result_spool.py:L25 | neighbors=[ResultSpool] | lang=en
-- "agent_result_spool_rationale_27": "Persists scan results locally and retries failed uploads." | kind=entity | source=probe/agent/result_spool.py:L27 | neighbors=[ResultSpool] | lang=en
-- "agent_result_spool_rationale_28": "Persists scan results locally and retries failed uploads." | kind=entity | source=probe/agent/result_spool.py:L28 | neighbors=[ResultSpool] | lang=en
-- "agent_result_spool_rationale_40": "Atomically write a result payload to the spool directory.          Returns the s" | kind=entity | source=probe/agent/result_spool.py:L40 | neighbors=[.save()] | lang=en
-- "agent_result_spool_rationale_60": "Atomically write a result payload to the spool directory.          Returns the s" | kind=entity | source=probe/agent/result_spool.py:L60 | neighbors=[.save()] | lang=en
-- "agent_result_spool_rationale_62": "Check if a spooled result exists for this job." | kind=entity | source=probe/agent/result_spool.py:L62 | neighbors=[.exists()] | lang=en
-- "agent_result_spool_rationale_66": "Load a previously spooled result, returning None if missing/corrupt." | kind=entity | source=probe/agent/result_spool.py:L66 | neighbors=[.load()] | lang=pt
-- "agent_result_spool_rationale_69": "Atomically write a result payload to the spool directory.          Returns the s" | kind=entity | source=probe/agent/result_spool.py:L69 | neighbors=[.save()] | lang=en
-- "agent_result_spool_rationale_77": "Remove the spool file for a successfully uploaded result." | kind=entity | source=probe/agent/result_spool.py:L77 | neighbors=[.remove()] | lang=en
-- "agent_result_spool_rationale_87": "Check if a spooled result exists for this job." | kind=entity | source=probe/agent/result_spool.py:L87 | neighbors=[.exists()] | lang=en
-- "agent_result_spool_rationale_88": "Attempt to upload a result with retries and local spool as fallback.          Ar" | kind=entity | source=probe/agent/result_spool.py:L88 | neighbors=[.submit_with_retry()] | lang=en
-- "agent_result_spool_rationale_91": "Load a previously spooled result, returning None if missing/corrupt." | kind=entity | source=probe/agent/result_spool.py:L91 | neighbors=[.load()] | lang=pt
-- "agent_result_spool_rationale_96": "Check if a spooled result exists for this job." | kind=entity | source=probe/agent/result_spool.py:L96 | neighbors=[.exists()] | lang=en
-- "agent_result_spool_resultspool_init": ".__init__()" | kind=code-symbol | source=probe/agent/result_spool.py:L30 | neighbors=[ResultSpool] | lang=en
-- "agent_scope_crypt_rationale_1": "scope_crypt.py — asymmetric scope encryption via X25519 + HKDF + AES-256-GCM.  T" | kind=entity | source=probe/agent/scope_crypt.py:L1 | neighbors=[scope_crypt.py] | lang=en
-- "agent_scope_crypt_rationale_151": "encrypt_scope() returning a base64 string suitable for JSON transport." | kind=entity | source=probe/agent/scope_crypt.py:L151 | neighbors=[encrypt_scope_b64()] | lang=en
-- "agent_scope_crypt_rationale_156": "decrypt_scope() accepting a base64 string from JSON transport." | kind=entity | source=probe/agent/scope_crypt.py:L156 | neighbors=[decrypt_scope_b64()] | lang=en
-- "agent_scope_crypt_rationale_161": "Decode a base64-encoded X25519 public key to raw bytes." | kind=entity | source=probe/agent/scope_crypt.py:L161 | neighbors=[pubkey_to_bytes()] | lang=en
-- "agent_scope_crypt_rationale_166": "Encode raw X25519 public key bytes to a base64 string." | kind=entity | source=probe/agent/scope_crypt.py:L166 | neighbors=[bytes_to_pubkey_b64()] | lang=en
-- "agent_scope_crypt_rationale_44": "Generate a fresh X25519 keypair.      Returns (private_key_bytes, public_key_byt" | kind=entity | source=probe/agent/scope_crypt.py:L44 | neighbors=[generate_identity()] | lang=pt
-- "agent_scope_crypt_rationale_56": "Encrypt scope JSON to a specific probe's public key.      Args:         scope_js" | kind=entity | source=probe/agent/scope_crypt.py:L56 | neighbors=[encrypt_scope()] | lang=en
-- "agent_scope_crypt_rationale_98": "Decrypt a scope blob using the probe's private key.      Args:         blob: Wir" | kind=entity | source=probe/agent/scope_crypt.py:L98 | neighbors=[decrypt_scope()] | lang=en
-- "agent_scope_validator_rationale_1": "scope_validator.py — defense-in-depth scope re-validation for the probe.  The pr" | kind=entity | source=probe/agent/scope_validator.py:L1 | neighbors=[scope_validator.py] | lang=en
-- "agent_scope_validator_rationale_121": "Merge engagement-level exclusions with per-job exclusions.      Returns a dedupl" | kind=entity | source=probe/agent/scope_validator.py:L121 | neighbors=[merge_exclusions()] | lang=en
-- "agent_scope_validator_rationale_124": "Remove targets that fall inside any excluded CIDR.      Returns (kept, dropped)." | kind=entity | source=probe/agent/scope_validator.py:L124 | neighbors=[targets_in_excludes()] | lang=en
-- "agent_scope_validator_rationale_158": "Merge engagement-level exclusions with per-job exclusions.      Returns a dedupl" | kind=entity | source=probe/agent/scope_validator.py:L158 | neighbors=[merge_exclusions()] | lang=en
-- "agent_scope_validator_rationale_28": "Parse one IP, CIDR, or inclusive IP range into covering networks.      ``None``" | kind=entity | source=probe/agent/scope_validator.py:L28 | neighbors=[_networks_for_target()] | lang=en
-- "agent_scope_validator_rationale_31": "Fetch the engagement's authoritative scope from the manager.      Args:" | kind=entity | source=probe/agent/scope_validator.py:L31 | neighbors=[fetch_engagement_scope()] | lang=en
-- "agent_scope_validator_rationale_85": "Check targets against the authoritative scope CIDRs.      Returns (allowed, reje" | kind=entity | source=probe/agent/scope_validator.py:L85 | neighbors=[validate_targets_in_scope()] | lang=en
-- "agent_scope_validator_rationale_88": "Remove targets that fall inside any excluded CIDR.      Returns (kept, dropped)." | kind=entity | source=probe/agent/scope_validator.py:L88 | neighbors=[targets_in_excludes()] | lang=en
+- "tests_test_outbox_reclaim_test_missing_locked_at_is_not_reclaimed": "test_missing_locked_at_is_not_reclaimed()" | kind=code-symbol | source=manager/backend/tests/test_outbox_reclaim.py:L55 | neighbors=[test_outbox_reclaim.py, _now()]
+- "tests_test_outbox_reclaim_test_pending_and_done_rows_are_never_reclaimed": "test_pending_and_done_rows_are_never_reclaimed()" | kind=code-symbol | source=manager/backend/tests/test_outbox_reclaim.py:L47 | neighbors=[test_outbox_reclaim.py, _now()]
+- "tests_test_outbox_reclaim_test_reclaim_handles_none_rowcount_from_driver": "test_reclaim_handles_none_rowcount_from_driver()" | kind=code-symbol | source=manager/backend/tests/test_outbox_reclaim.py:L136 | neighbors=[test_outbox_reclaim.py, _mock_session()]
+- "tests_test_outbox_reclaim_test_reclaim_is_noop_when_nothing_is_stranded": "test_reclaim_is_noop_when_nothing_is_stranded()" | kind=code-symbol | source=manager/backend/tests/test_outbox_reclaim.py:L127 | neighbors=[test_outbox_reclaim.py, _mock_session()]
+- "tests_test_outbox_reclaim_test_reclaim_runs_both_sweeps_commits_and_sums_rowcounts": "test_reclaim_runs_both_sweeps_commits_and_sums_rowcounts()" | kind=code-symbol | source=manager/backend/tests/test_outbox_reclaim.py:L115 | neighbors=[test_outbox_reclaim.py, _mock_session()]
+- "tests_test_outbox_reclaim_test_stale_cutoff_is_now_minus_lease": "test_stale_cutoff_is_now_minus_lease()" | kind=code-symbol | source=manager/backend/tests/test_outbox_reclaim.py:L60 | neighbors=[test_outbox_reclaim.py, _now()]
+- "tests_test_passive_collector_socket_close": ".close()" | kind=code-symbol | source=probe/tests/test_passive_collector.py:L31 | neighbors=[_Socket, test_ot_udp_backend_never_joins_or_tran…]
+- "tests_test_passive_collector_test_collector_raises_when_no_listener_binds": "test_collector_raises_when_no_listener_binds()" | kind=code-symbol | source=probe/tests/test_passive_collector.py:L165 | neighbors=[test_passive_collector.py, _Writer]
+- "tests_test_perf_optimization_clean_guard_cache": "clean_guard_cache()" | kind=code-symbol | source=manager/detection_engine/tests/test_perf_optimization.py:L49 | neighbors=[test_perf_optimization.py, Isolate the guard's in-memory + on-disk…]
+- "tests_test_perf_optimization_test_clear_caches_forces_reload": "test_clear_caches_forces_reload()" | kind=code-symbol | source=manager/detection_engine/tests/test_perf_optimization.py:L133 | neighbors=[test_perf_optimization.py, _write_snapshot()]
+- "tests_test_perf_optimization_test_dpkg_compare_does_not_call_the_binary": "test_dpkg_compare_does_not_call_the_binary()" | kind=code-symbol | source=manager/detection_engine/tests/test_perf_optimization.py:L26 | neighbors=[test_perf_optimization.py, dpkg_compare must use the pure-Python c…]
+- "tests_test_perf_optimization_test_guard_is_noop_without_dpkg": "test_guard_is_noop_without_dpkg()" | kind=code-symbol | source=manager/detection_engine/tests/test_perf_optimization.py:L57 | neighbors=[test_perf_optimization.py, No dpkg binary → nothing to cross-check…]
+- "tests_test_perf_optimization_test_guard_reports_divergence_and_warns": "test_guard_reports_divergence_and_warns()" | kind=code-symbol | source=manager/detection_engine/tests/test_perf_optimization.py:L75 | neighbors=[test_perf_optimization.py, When the binary disagrees with pure-Pyt…]
+- "tests_test_perf_optimization_test_load_snapshot_memoized_returns_same_instance": "test_load_snapshot_memoized_returns_same_instance()" | kind=code-symbol | source=manager/detection_engine/tests/test_perf_optimization.py:L114 | neighbors=[test_perf_optimization.py, _write_snapshot()]
+- "tests_test_perf_optimization_test_load_snapshot_reloads_after_file_change": "test_load_snapshot_reloads_after_file_change()" | kind=code-symbol | source=manager/detection_engine/tests/test_perf_optimization.py:L121 | neighbors=[test_perf_optimization.py, _write_snapshot()]
+- "tests_test_perf_optimization_test_load_snapshot_runs_dpkg_guard_once_keyed_by_content_hash": "test_load_snapshot_runs_dpkg_guard_once_keyed_by_content_hash()" | kind=code-symbol | source=manager/detection_engine/tests/test_perf_optimization.py:L154 | neighbors=[test_perf_optimization.py, _write_snapshot()]
+- "tests_test_pipeline_concurrency_test_detection_locks_the_engagement_before_reading_anything": "test_detection_locks_the_engagement_before_reading_anything()" | kind=code-symbol | source=manager/backend/tests/test_pipeline_concurrency.py:L30 | neighbors=[test_pipeline_concurrency.py, The lock must be taken BEFORE the first…]
+- "tests_test_pipeline_concurrency_test_different_engagements_generally_do_not_contend": "test_different_engagements_generally_do_not_contend()" | kind=code-symbol | source=manager/backend/tests/test_pipeline_concurrency.py:L70 | neighbors=[test_pipeline_concurrency.py, Collisions are harmless (two unrelated …]
+- "tests_test_pipeline_concurrency_test_the_key_fits_a_postgres_bigint": "test_the_key_fits_a_postgres_bigint()" | kind=code-symbol | source=manager/backend/tests/test_pipeline_concurrency.py:L82 | neighbors=[test_pipeline_concurrency.py, pg_advisory_xact_lock takes a signed bi…]
+- "tests_test_pipeline_concurrency_test_the_lock_is_transaction_scoped_not_session_scoped": "test_the_lock_is_transaction_scoped_not_session_scoped()" | kind=code-symbol | source=manager/backend/tests/test_pipeline_concurrency.py:L44 | neighbors=[test_pipeline_concurrency.py, pg_advisory_lock (session) would leak o…]
+- "tests_test_pipeline_concurrency_test_the_same_engagement_always_maps_to_the_same_key": "test_the_same_engagement_always_maps_to_the_same_key()" | kind=code-symbol | source=manager/backend/tests/test_pipeline_concurrency.py:L57 | neighbors=[test_pipeline_concurrency.py, Two concurrent handlers must contend, s…]
+- "tests_test_pipeline_empty_jsonl": "_empty_jsonl()" | kind=code-symbol | source=manager/detection_engine/tests/test_pipeline.py:L119 | neighbors=[test_pipeline.py, .test_empty_jsonl_returns_no_findings()]
+- "tests_test_pipeline_testrunpipelinereturnvalue": "TestRunPipelineReturnValue" | kind=code-symbol | source=manager/detection_engine/tests/test_pipeline.py:L306 | neighbors=[test_pipeline.py, .test_returns_tuple_of_findings_and_ing…]
+- "tests_test_portal_assistant_test_a_non_client_user_is_refused": "test_a_non_client_user_is_refused()" | kind=code-symbol | source=manager/backend/tests/test_portal_assistant.py:L158 | neighbors=[test_portal_assistant.py, _ask()]
+- "tests_test_portal_assistant_test_request_body_cannot_carry_context": "test_request_body_cannot_carry_context()" | kind=code-symbol | source=manager/backend/tests/test_portal_assistant.py:L113 | neighbors=[test_portal_assistant.py, The schema has no context field, so a c…]
+- "tests_test_portal_finding_actions_finding": "_finding()" | kind=code-symbol | source=manager/backend/tests/test_portal_finding_actions.py:L43 | neighbors=[test_portal_finding_actions.py, test_customer_transition_mutates_shared…]
+- "tests_test_portal_finding_actions_test_customer_cannot_mutate_a_finding_outside_bound_engagement": "test_customer_cannot_mutate_a_finding_outside_bound_engagement()" | kind=code-symbol | source=manager/backend/tests/test_portal_finding_actions.py:L100 | neighbors=[test_portal_finding_actions.py, _client()]
+- "tests_test_portal_finding_actions_test_portal_assets_use_session_engagement": "test_portal_assets_use_session_engagement()" | kind=code-symbol | source=manager/backend/tests/test_portal_finding_actions.py:L184 | neighbors=[test_portal_finding_actions.py, _client()]
+- "tests_test_portal_finding_actions_test_portal_engagement_update_pins_session_identity": "test_portal_engagement_update_pins_session_identity()" | kind=code-symbol | source=manager/backend/tests/test_portal_finding_actions.py:L160 | neighbors=[test_portal_finding_actions.py, _client()]
+- "tests_test_portal_finding_actions_test_portal_enrollment_binds_device_to_session_engagement_scope": "test_portal_enrollment_binds_device_to_session_engagement_scope()" | kind=code-symbol | source=manager/backend/tests/test_portal_finding_actions.py:L256 | neighbors=[test_portal_finding_actions.py, _client()]
+- "tests_test_portal_finding_actions_test_portal_probe_history_is_filtered_by_engagement": "test_portal_probe_history_is_filtered_by_engagement()" | kind=code-symbol | source=manager/backend/tests/test_portal_finding_actions.py:L235 | neighbors=[test_portal_finding_actions.py, _client()]
+- "tests_test_portal_finding_actions_test_portal_scan_launch_pins_session_engagement_and_assigned_probe": "test_portal_scan_launch_pins_session_engagement_and_assigned_probe()" | kind=code-symbol | source=manager/backend/tests/test_portal_finding_actions.py:L202 | neighbors=[test_portal_finding_actions.py, _client()]
+- "tests_test_portal_finding_actions_test_workspace_engagement_uses_session_binding": "test_workspace_engagement_uses_session_binding()" | kind=code-symbol | source=manager/backend/tests/test_portal_finding_actions.py:L142 | neighbors=[test_portal_finding_actions.py, _client()]
+- "tests_test_portal_finding_actions_test_workspace_queries_pin_engagement_and_forward_agent_filter": "test_workspace_queries_pin_engagement_and_forward_agent_filter()" | kind=code-symbol | source=manager/backend/tests/test_portal_finding_actions.py:L118 | neighbors=[test_portal_finding_actions.py, _client()]
+- "tests_test_portal_metrics_testopenclosed": "TestOpenClosed" | kind=code-symbol | source=manager/backend/tests/test_portal_metrics.py:L34 | neighbors=[test_portal_metrics.py, .test_counts_by_status_and_resolved_at()]
+- "tests_test_portal_metrics_testopenclosed_test_counts_by_status_and_resolved_at": ".test_counts_by_status_and_resolved_at()" | kind=code-symbol | source=manager/backend/tests/test_portal_metrics.py:L35 | neighbors=[TestOpenClosed, _f()]
+- "tests_test_portal_metrics_testseveritybreakdown_test_open_only_excludes_closed": ".test_open_only_excludes_closed()" | kind=code-symbol | source=manager/backend/tests/test_portal_metrics.py:L24 | neighbors=[TestSeverityBreakdown, _f()]
+- "tests_test_portal_metrics_testseveritybreakdown_test_unknown_severity_falls_into_info": ".test_unknown_severity_falls_into_info()" | kind=code-symbol | source=manager/backend/tests/test_portal_metrics.py:L30 | neighbors=[TestSeverityBreakdown, _f()]
+- "tests_test_portal_metrics_teststatustimeline_test_activity_outside_window_is_ignored": ".test_activity_outside_window_is_ignored()" | kind=code-symbol | source=manager/backend/tests/test_portal_metrics.py:L60 | neighbors=[TestStatusTimeline, _f()]
+- "tests_test_portal_metrics_teststatustimeline_test_buckets_opened_and_closed": ".test_buckets_opened_and_closed()" | kind=code-symbol | source=manager/backend/tests/test_portal_metrics.py:L49 | neighbors=[TestStatusTimeline, _f()]
 
 ## Instructions
 

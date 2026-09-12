@@ -1,4 +1,4 @@
-# Node Description Batch 125 of 336
+# Node Description Batch 125 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,58 +12,51 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
-For an entity node (any other kind — e.g. a person, place, event, object),
-describe what the entity is and its role, grounded in its type, its
-relations (neighbors) and the provided citations/evidence — e.g.
-"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
-Ground entity descriptions in the citations/evidence when present; do not
-speculate beyond the context, so a node with no supporting context may be
-left out of the reply.
 Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "agent_transport_rationale_673": "Poll for pending jobs (HTTP fallback for WebSocket).          Returns a list of" | kind=entity | source=probe/agent/transport.py:L673 | neighbors=[.poll_jobs(), .connect_ws()]
-- "agent_transport_rationale_777": "Generic authenticated GET, returns parsed JSON or None on failure.          Used" | kind=entity | source=probe/agent/transport.py:L777 | neighbors=[.http_get(), .connect_ws()]
-- "agent_transport_transport_clear_state": ".clear_state()" | kind=code-symbol | source=probe/agent/transport.py:L322 | neighbors=[Transport, .update_state()]
-- "agent_transport_transport_close": ".close()" | kind=code-symbol | source=probe/agent/transport.py:L921 | neighbors=[_sync_directory(), Transport]
-- "agent_transport_transport_init": ".__init__()" | kind=code-symbol | source=probe/agent/transport.py:L189 | neighbors=[Transport, .load_state()]
-- "agent_transport_transport_poll_enrollment": ".poll_enrollment()" | kind=code-symbol | source=probe/agent/transport.py:L463 | neighbors=[Transport, EnrollmentRequestNotFound]
-- "agent_validation_metric": "_metric()" | kind=code-symbol | source=probe/agent/validation.py:L173 | neighbors=[validation.py, score_inventory()]
-- "agent_validation_not_scored": "_not_scored()" | kind=code-symbol | source=probe/agent/validation.py:L197 | neighbors=[validation.py, score_inventory()]
-- "agent_validation_resolve_use_cases": "resolve_use_cases()" | kind=code-symbol | source=probe/agent/validation.py:L38 | neighbors=[validation.py, Resolve suites plus explicit use-cases,…]
-- "agent_validation_target_address_count": "target_address_count()" | kind=code-symbol | source=probe/agent/validation.py:L93 | neighbors=[validation.py, Return the conservative number of addre…]
-- "agent_validation_validate_targets": "validate_targets()" | kind=code-symbol | source=probe/agent/validation.py:L55 | neighbors=[validation.py, Require every IP/CIDR target to be full…]
-- "ai_agent_agentdecisionengine_count": "._count()" | kind=code-symbol | source=manager/backend/app/ai/agent.py:L340 | neighbors=[AgentDecisionEngine, ._overview()]
-- "ai_agent_agentdecisionengine_create": "._create()" | kind=code-symbol | source=manager/backend/app/ai/agent.py:L235 | neighbors=[AgentDecisionEngine, .run()]
-- "ai_agent_agentdecisionengine_list_assets": "._list_assets()" | kind=code-symbol | source=manager/backend/app/ai/agent.py:L296 | neighbors=[AgentDecisionEngine, ._exec_read_tool()]
-- "ai_agent_agentdecisionengine_list_attack_paths": "._list_attack_paths()" | kind=code-symbol | source=manager/backend/app/ai/agent.py:L328 | neighbors=[AgentDecisionEngine, ._exec_read_tool()]
-- "ai_agent_maybe_decimal": "_maybe_decimal()" | kind=code-symbol | source=manager/backend/app/ai/agent.py:L406 | neighbors=[agent.py, ._persist()]
-- "ai_agent_maybe_uuid": "_maybe_uuid()" | kind=code-symbol | source=manager/backend/app/ai/agent.py:L397 | neighbors=[agent.py, ._persist()]
-- "ai_agent_tool_result": "_tool_result()" | kind=code-symbol | source=manager/backend/app/ai/agent.py:L388 | neighbors=[agent.py, .run()]
-- "ai_init": "__init__.py" | kind=code-symbol | source=manager/backend/app/ai/__init__.py:L1 | neighbors=[d1b4dd3 trim frontend to 7 core pages; …, 298a9d4 trim frontend to 7 core pages; …]
-- "ai_llm_report_collect_cves_scores": "_collect_cves_scores()" | kind=code-symbol | source=manager/backend/app/ai/llm_report.py:L484 | neighbors=[llm_report.py, .generate_executive_summary()]
-- "ai_llm_report_llmreportgenerator_generate_detection_rule_explanation": ".generate_detection_rule_explanation()" | kind=code-symbol | source=manager/backend/app/ai/llm_report.py:L267 | neighbors=[LLMReportGenerator, ._generate_and_store()]
-- "ai_llm_report_uuid": "_uuid()" | kind=code-symbol | source=manager/backend/app/ai/llm_report.py:L466 | neighbors=[llm_report.py, ._generate_and_store()]
-- "ai_prioritizer_to_float": "_to_float()" | kind=code-symbol | source=manager/backend/app/ai/prioritizer.py:L61 | neighbors=[prioritizer.py, extract_features()]
-- "ai_prioritizer_vulnprioritizer_train": ".train()" | kind=code-symbol | source=manager/backend/app/ai/prioritizer.py:L110 | neighbors=[Fit an XGBoost regressor on historical …, VulnPrioritizer]
-- "ai_verification_graph_run_verification": "run_verification()" | kind=code-symbol | source=manager/backend/app/ai/verification_graph.py:L28 | neighbors=[verification_graph.py, Run passive verification. Uses the Lang…]
-- "aibrain_page_aibrainpage": "AIBrainPage()" | kind=code-symbol | source=manager/frontend/app/aibrain/page.tsx:L80 | neighbors=[page.tsx, providerLabel()]
-- "aibrain_page_providerlabel": "providerLabel()" | kind=code-symbol | source=manager/frontend/app/aibrain/page.tsx:L73 | neighbors=[page.tsx, AIBrainPage()]
-- "app_config_get_settings": "get_settings()" | kind=code-symbol | source=manager/backend/app/config.py:L137 | neighbors=[config.py, Settings]
-- "app_dependencies_close_redis": "close_redis()" | kind=code-symbol | source=manager/backend/app/dependencies.py:L26 | neighbors=[dependencies.py, Close the global Redis connection pool.…]
-- "app_dependencies_get_current_user": "get_current_user()" | kind=code-symbol | source=manager/backend/app/dependencies.py:L35 | neighbors=[dependencies.py, Reads user claims injected by TenantIso…]
-- "app_dependencies_rationale_27": "Close the global Redis connection pool. Call during app shutdown." | kind=entity | source=manager/backend/app/dependencies.py:L27 | neighbors=[close_redis(), CurrentUser]
-- "app_dependencies_rationale_36": "Reads user claims injected by TenantIsolationMiddleware.     Raises 401 if middl" | kind=entity | source=manager/backend/app/dependencies.py:L36 | neighbors=[get_current_user(), CurrentUser]
-- "app_init": "__init__.py" | kind=code-symbol | source=manager/backend/app/__init__.py:L1 | neighbors=[d1b4dd3 trim frontend to 7 core pages; …, 298a9d4 trim frontend to 7 core pages; …]
-- "app_main_rationale_198": "Identify the Manager API without exposing a second dashboard." | kind=entity | source=manager/backend/app/main.py:L198 | neighbors=[_service_root(), TenantIsolationMiddleware]
-- "app_ratelimit_client_ip": "client_ip()" | kind=code-symbol | source=manager/backend/app/ratelimit.py:L16 | neighbors=[ratelimit.py, Best-effort client IP. Honors X-Forward…]
-- "app_ratelimit_rate_limit": "rate_limit()" | kind=code-symbol | source=manager/backend/app/ratelimit.py:L43 | neighbors=[ratelimit.py, FastAPI dependency factory. Keys the wi…]
-- "assistant_advisorflow_advisorflow": "AdvisorFlow()" | kind=code-symbol | source=manager/frontend/components/assistant/AdvisorFlow.tsx:L73 | neighbors=[AdvisorFlow.tsx, AssistantDrawer.tsx]
-- "assistant_assistantdrawer_assistantdrawer": "AssistantDrawer()" | kind=code-symbol | source=manager/frontend/components/assistant/AssistantDrawer.tsx:L21 | neighbors=[AssistantDrawer.tsx, AssistantProvider.tsx]
-- "assistant_assistantfab_assistantfab": "AssistantFab()" | kind=code-symbol | source=manager/frontend/components/assistant/AssistantFab.tsx:L6 | neighbors=[AssistantFab.tsx, AssistantProvider.tsx]
-- "assistant_assistantprovider_assistantprovider": "AssistantProvider()" | kind=code-symbol | source=manager/frontend/components/assistant/AssistantProvider.tsx:L28 | neighbors=[layout.tsx, AssistantProvider.tsx]
+- "tests_test_db_posture_rules_testunauthenticatedaccess_test_requires_the_db_marker": ".test_requires_the_db_marker()" | kind=code-symbol | source=manager/detection_engine/tests/test_db_posture_rules.py:L82 | neighbors=[Without the discriminator the rule must…, TestUnauthenticatedAccess, _fire()]
+- "tests_test_db_posture_rules_testunauthenticatedaccess_test_silent_on_ismaster_only_shape": ".test_silent_on_ismaster_only_shape()" | kind=code-symbol | source=manager/detection_engine/tests/test_db_posture_rules.py:L72 | neighbors=[The trap: identification alone must nev…, TestUnauthenticatedAccess, _fire()]
+- "tests_test_db_posture_rules_testunauthenticatedaccess_test_silent_on_mysql_which_never_reports_unauth_read": ".test_silent_on_mysql_which_never_reports_unauth_read()" | kind=code-symbol | source=manager/detection_engine/tests/test_db_posture_rules.py:L79 | neighbors=[TestUnauthenticatedAccess, _captured(), _fire()]
+- "tests_test_db_posture_rules_testunauthenticatedaccess_test_silent_when_auth_is_enforced": ".test_silent_when_auth_is_enforced()" | kind=code-symbol | source=manager/detection_engine/tests/test_db_posture_rules.py:L68 | neighbors=[TestUnauthenticatedAccess, _captured(), _fire()]
+- "tests_test_db_scanner_testmysqlxvsoracle_test_mysqlx_identified": ".test_mysqlx_identified()" | kind=code-symbol | source=probe/tests/test_db_scanner.py:L54 | neighbors=[TestMysqlxVsOracle, _probe(), _xproto_frame()]
+- "tests_test_db_scanner_testmysqlxvsoracle_test_mysqlx_not_misread_as_oracle": ".test_mysqlx_not_misread_as_oracle()" | kind=code-symbol | source=probe/tests/test_db_scanner.py:L59 | neighbors=[TestMysqlxVsOracle, _probe(), _xproto_frame()]
+- "tests_test_db_scanner_testmysqlxvsoracle_test_oracle_reply_not_misread_as_mysqlx": ".test_oracle_reply_not_misread_as_mysqlx()" | kind=code-symbol | source=probe/tests/test_db_scanner.py:L70 | neighbors=[TestMysqlxVsOracle, _probe(), _tns_packet()]
+- "tests_test_db_scanner_testmysqlxvsoracle_test_oracle_still_identified": ".test_oracle_still_identified()" | kind=code-symbol | source=probe/tests/test_db_scanner.py:L64 | neighbors=[TestMysqlxVsOracle, _probe(), _tns_packet()]
+- "tests_test_db_scanner_tns_packet": "_tns_packet()" | kind=code-symbol | source=probe/tests/test_db_scanner.py:L44 | neighbors=[test_db_scanner.py, .test_oracle_reply_not_misread_as_mysql…, .test_oracle_still_identified()]
+- "tests_test_db_scanner_xproto_frame": "_xproto_frame()" | kind=code-symbol | source=probe/tests/test_db_scanner.py:L39 | neighbors=[test_db_scanner.py, .test_mysqlx_identified(), .test_mysqlx_not_misread_as_oracle()]
+- "tests_test_db_tds_prelogin_testencryptionposture_test_off_still_supports_tls": ".test_off_still_supports_tls()" | kind=code-symbol | source=probe/tests/test_db_tds_prelogin.py:L60 | neighbors=[ENCRYPT_OFF must NOT be read as 'cannot…, TestEncryptionPosture, _prelogin_response()]
+- "tests_test_default_cred_rule_testrulefires_test_known_vendor_with_basic_auth": ".test_known_vendor_with_basic_auth()" | kind=code-symbol | source=manager/detection_engine/tests/test_default_cred_rule.py:L64 | neighbors=[TestRuleFires, _fact(), _rule()]
+- "tests_test_default_cred_rule_testrulefires_test_known_vendor_with_login_form": ".test_known_vendor_with_login_form()" | kind=code-symbol | source=manager/detection_engine/tests/test_default_cred_rule.py:L72 | neighbors=[TestRuleFires, _fact(), _rule()]
+- "tests_test_default_cred_rule_testrulemetadata_test_fp_notes_state_it_is_unconfirmed": ".test_fp_notes_state_it_is_unconfirmed()" | kind=code-symbol | source=manager/detection_engine/tests/test_default_cred_rule.py:L127 | neighbors=[Future maintainers must not mistake thi…, TestRuleMetadata, _rule()]
+- "tests_test_default_cred_rule_testrulestayssilent_test_malformed_auth_surface_is_survivable": ".test_malformed_auth_surface_is_survivable()" | kind=code-symbol | source=manager/detection_engine/tests/test_default_cred_rule.py:L107 | neighbors=[TestRuleStaysSilent, _fact(), _rule()]
+- "tests_test_default_cred_rule_testrulestayssilent_test_unknown_vendor_never_fires": ".test_unknown_vendor_never_fires()" | kind=code-symbol | source=manager/detection_engine/tests/test_default_cred_rule.py:L103 | neighbors=[TestRuleStaysSilent, _fact(), _rule()]
+- "tests_test_detection_core_testmatchcandidate_test_ai_assisted_carried_through": ".test_ai_assisted_carried_through()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L505 | neighbors=[TestMatchCandidate, _candidate(), _mock_vuln_db()]
+- "tests_test_detection_core_testmatchcandidate_test_authoritative_source_confirms": ".test_authoritative_source_confirms()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L462 | neighbors=[TestMatchCandidate, _candidate(), _mock_vuln_db()]
+- "tests_test_detection_core_testmatchcandidate_test_inferred_match_has_backport_note": ".test_inferred_match_has_backport_note()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L477 | neighbors=[TestMatchCandidate, _candidate(), _mock_vuln_db()]
+- "tests_test_detection_core_testmatchcandidate_test_match_produces_finding": ".test_match_produces_finding()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L446 | neighbors=[TestMatchCandidate, _candidate(), _mock_vuln_db()]
+- "tests_test_detection_core_testmatchcandidate_test_no_match_returns_empty": ".test_no_match_returns_empty()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L491 | neighbors=[TestMatchCandidate, _candidate(), _mock_vuln_db()]
+- "tests_test_detection_core_testmatchcandidate_test_no_version_returns_empty": ".test_no_version_returns_empty()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L434 | neighbors=[TestMatchCandidate, _candidate(), _mock_vuln_db()]
+- "tests_test_detection_core_testmatchcandidate_test_unknown_product_returns_empty": ".test_unknown_product_returns_empty()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L441 | neighbors=[TestMatchCandidate, _candidate(), _mock_vuln_db()]
+- "tests_test_detection_core_testsuppressnegated_test_keeps_inferred_when_auth_version_lower": ".test_keeps_inferred_when_auth_version_lower()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L610 | neighbors=[TestSuppressNegated, _candidate(), _finding()]
+- "tests_test_detection_core_testsuppressnegated_test_suppresses_inferred_when_authoritative_contradicts": ".test_suppresses_inferred_when_authoritative_contradicts()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L559 | neighbors=[TestSuppressNegated, _candidate(), _finding()]
+- "tests_test_detection_core_testsuppressnegated_test_suppression_produces_an_evidence_preserving_audit_record": ".test_suppression_produces_an_evidence_preserving_audit_record()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L569 | neighbors=[TestSuppressNegated, _candidate(), _finding()]
+- "tests_test_detection_coverage_test_explain_all_rules_sorts_gaps_first": "test_explain_all_rules_sorts_gaps_first()" | kind=code-symbol | source=manager/backend/tests/test_detection_coverage.py:L126 | neighbors=[test_detection_coverage.py, _run(), _user()]
+- "tests_test_detection_coverage_test_explain_single_rule_reports_schema_drift": "test_explain_single_rule_reports_schema_drift()" | kind=code-symbol | source=manager/backend/tests/test_detection_coverage.py:L110 | neighbors=[test_detection_coverage.py, _run(), _user()]
+- "tests_test_detection_pipeline_gaps_test_a_non_dict_data_payload_is_quarantined_not_fatal": "test_a_non_dict_data_payload_is_quarantined_not_fatal()" | kind=code-symbol | source=manager/backend/tests/test_detection_pipeline_gaps.py:L45 | neighbors=[test_detection_pipeline_gaps.py, `data` is read with .get() by every rul…, _fact()]
+- "tests_test_detection_pipeline_gaps_test_accepted_facts_excludes_what_ingest_rejected": "test_accepted_facts_excludes_what_ingest_rejected()" | kind=code-symbol | source=manager/backend/tests/test_detection_pipeline_gaps.py:L64 | neighbors=[test_detection_pipeline_gaps.py, attack_path_findings runs on meta['acce…, _fact()]
+- "tests_test_detection_pipeline_gaps_test_accepted_facts_falls_back_to_raw_when_there_is_no_verdict": "test_accepted_facts_falls_back_to_raw_when_there_is_no_verdict()" | kind=code-symbol | source=manager/backend/tests/test_detection_pipeline_gaps.py:L84 | neighbors=[test_detection_pipeline_gaps.py, No engine means no ingest verdict. With…, _fact()]
+- "tests_test_dns_scanner_testaxfrbounded": "TestAxfrBounded" | kind=code-symbol | source=probe/tests/test_dns_scanner.py:L49 | neighbors=[test_dns_scanner.py, .test_axfr_refused_reports_not_transfer…, .test_axfr_stops_at_cap()]
+- "tests_test_dualstack_fallback_testresolveipcandidates": "TestResolveIpCandidates" | kind=code-symbol | source=probe/tests/test_dualstack_fallback.py:L31 | neighbors=[test_dualstack_fallback.py, .test_returns_ips_in_order(), .test_unresolvable_returns_empty_not_ra…]
+- "tests_test_dualstack_fallback_testsmbnegotiatefallback_fake_socket": "._fake_socket()" | kind=code-symbol | source=probe/tests/test_dualstack_fallback.py:L51 | neighbors=[A socket whose connect() fails for `dea…, TestSmbNegotiateFallback, .test_falls_back_to_ipv4_when_ipv6_is_b…]
+- "tests_test_dualstack_fallback_testsmbnegotiatefallback_patch_candidates": "._patch_candidates()" | kind=code-symbol | source=probe/tests/test_dualstack_fallback.py:L47 | neighbors=[TestSmbNegotiateFallback, .test_falls_back_to_ipv4_when_ipv6_is_b…, .test_returns_none_only_when_every_fami…]
+- "tests_test_dualstack_fallback_testsmbnegotiatefallback_test_falls_back_to_ipv4_when_ipv6_is_blackholed": ".test_falls_back_to_ipv4_when_ipv6_is_blackholed()" | kind=code-symbol | source=probe/tests/test_dualstack_fallback.py:L70 | neighbors=[TestSmbNegotiateFallback, ._fake_socket(), ._patch_candidates()]
+- "tests_test_dualstack_fallback_testsmbntlmfallback": "TestSmbNtlmFallback" | kind=code-symbol | source=probe/tests/test_dualstack_fallback.py:L96 | neighbors=[test_dualstack_fallback.py, .test_empty_when_no_address_answers(), .test_first_answering_address_wins()]
+- "tests_test_e2e_engagement_to_findings_test_real_scan_of_open_datastore_yields_manager_finding": "test_real_scan_of_open_datastore_yields_manager_finding()" | kind=code-symbol | source=probe/tests/test_e2e_engagement_to_findings.py:L109 | neighbors=[test_e2e_engagement_to_findings.py, _manager(), _plant()]
+- "tests_test_engagement_lists_scalars": "_scalars()" | kind=code-symbol | source=manager/backend/tests/test_engagement_lists.py:L17 | neighbors=[test_engagement_lists.py, test_list_assets_groups_services(), test_list_jobs_returns_results()]
+- "tests_test_engagement_lists_test_list_assets_groups_services": "test_list_assets_groups_services()" | kind=code-symbol | source=manager/backend/tests/test_engagement_lists.py:L39 | neighbors=[test_engagement_lists.py, _scalars(), _user()]
 
 ## Instructions
 

@@ -1,4 +1,4 @@
-# Node Description Batch 252 of 336
+# Node Description Batch 252 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -9,6 +9,9 @@ your JSON answer to the answer file.
 You are documenting nodes in a knowledge graph.
 For each entry below, write ONE concise factual plain-language sentence
 describing what it is or does. Use only the provided context.
+For a code symbol (kind=code-symbol — a function, class, or constant),
+describe what the function/symbol does based on its name, source location
+and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
 For an entity node (any other kind — e.g. a person, place, event, object),
 describe what the entity is and its role, grounded in its type, its
 relations (neighbors) and the provided citations/evidence — e.g.
@@ -23,46 +26,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "scanner_port_scanner_rationale_129": "Resolve a named scan profile to a concrete, de-duplicated port list.      'full'" | kind=entity | source=probe/scanner/port_scanner.py:L129 | neighbors=[resolve_profile()] | lang=pt
-- "scanner_port_scanner_rationale_131": "Resolve a named scan profile to a concrete, de-duplicated port list.      'full'" | kind=entity | source=probe/scanner/port_scanner.py:L131 | neighbors=[resolve_profile()] | lang=pt
-- "scanner_port_scanner_rationale_154": "Per-target scan accounting — the completeness + self-health record.      It lets" | kind=entity | source=probe/scanner/port_scanner.py:L154 | neighbors=[ScanMetrics] | lang=en
-- "scanner_port_scanner_rationale_155": "Per-target scan accounting — the completeness + self-health record.      It lets" | kind=entity | source=probe/scanner/port_scanner.py:L155 | neighbors=[ScanMetrics] | lang=en
-- "scanner_port_scanner_rationale_157": "Per-target scan accounting — the completeness + self-health record.      It lets" | kind=entity | source=probe/scanner/port_scanner.py:L157 | neighbors=[ScanMetrics] | lang=en
-- "scanner_port_scanner_rationale_176": "Return 'ipv4'/'ipv6' for an IP literal, else None (unresolved hostname)." | kind=entity | source=probe/scanner/port_scanner.py:L176 | neighbors=[_family_of()] | lang=en
-- "scanner_port_scanner_rationale_182": "Tally exactly one terminal per-port observation." | kind=entity | source=probe/scanner/port_scanner.py:L182 | neighbors=[.record()] | lang=en
-- "scanner_port_scanner_rationale_183": "Tally exactly one terminal per-port observation." | kind=entity | source=probe/scanner/port_scanner.py:L183 | neighbors=[.record()] | lang=en
-- "scanner_port_scanner_rationale_185": "Tally exactly one terminal per-port observation." | kind=entity | source=probe/scanner/port_scanner.py:L185 | neighbors=[.record()] | lang=en
-- "scanner_port_scanner_rationale_191": "One connect() and its classification. Always returns a ScanResult         (open" | kind=entity | source=probe/scanner/port_scanner.py:L191 | neighbors=[._attempt()] | lang=en
-- "scanner_port_scanner_rationale_199": "Emit a non-open result only when report_closed is on." | kind=entity | source=probe/scanner/port_scanner.py:L199 | neighbors=[._maybe()] | lang=en
-- "scanner_port_scanner_rationale_201": "Requested ports that were never recorded — the silent-skip proof." | kind=entity | source=probe/scanner/port_scanner.py:L201 | neighbors=[.missing_ports()] | lang=en
-- "scanner_port_scanner_rationale_202": "Requested ports that were never recorded — the silent-skip proof." | kind=entity | source=probe/scanner/port_scanner.py:L202 | neighbors=[.missing_ports()] | lang=en
-- "scanner_port_scanner_rationale_204": "Requested ports that were never recorded — the silent-skip proof." | kind=entity | source=probe/scanner/port_scanner.py:L204 | neighbors=[.missing_ports()] | lang=en
-- "scanner_port_scanner_rationale_208": "Ports recorded more than once (a port must get exactly one verdict)." | kind=entity | source=probe/scanner/port_scanner.py:L208 | neighbors=[.duplicate_ports()] | lang=pt
-- "scanner_port_scanner_rationale_209": "Ports recorded more than once (a port must get exactly one verdict)." | kind=entity | source=probe/scanner/port_scanner.py:L209 | neighbors=[.duplicate_ports()] | lang=pt
-- "scanner_port_scanner_rationale_211": "Ports recorded more than once (a port must get exactly one verdict)." | kind=entity | source=probe/scanner/port_scanner.py:L211 | neighbors=[.duplicate_ports()] | lang=pt
-- "scanner_port_scanner_rationale_214": "Resolve a named scan profile to a concrete, de-duplicated port list.      'full'" | kind=entity | source=probe/scanner/port_scanner.py:L214 | neighbors=[resolve_profile()] | lang=pt
-- "scanner_port_scanner_rationale_240": "Per-target scan accounting — the completeness + self-health record.      It lets" | kind=entity | source=probe/scanner/port_scanner.py:L240 | neighbors=[ScanMetrics] | lang=en
-- "scanner_port_scanner_rationale_268": "Tally exactly one terminal per-port observation." | kind=entity | source=probe/scanner/port_scanner.py:L268 | neighbors=[.record()] | lang=en
-- "scanner_port_scanner_rationale_287": "Requested ports that were never recorded — the silent-skip proof." | kind=entity | source=probe/scanner/port_scanner.py:L287 | neighbors=[.missing_ports()] | lang=en
-- "scanner_port_scanner_rationale_294": "Ports recorded more than once (a port must get exactly one verdict)." | kind=entity | source=probe/scanner/port_scanner.py:L294 | neighbors=[.duplicate_ports()] | lang=pt
-- "scanner_port_scanner_rationale_301": "One connect() and its classification. Always returns a ScanResult         (open" | kind=entity | source=probe/scanner/port_scanner.py:L301 | neighbors=[._attempt()] | lang=en
-- "scanner_port_scanner_rationale_313": "One connect() and its classification. Always returns a ScanResult         (open" | kind=entity | source=probe/scanner/port_scanner.py:L313 | neighbors=[._attempt()] | lang=en
-- "scanner_port_scanner_rationale_326": "One connect() and its classification. Always returns a ScanResult         (open" | kind=entity | source=probe/scanner/port_scanner.py:L326 | neighbors=[._attempt()] | lang=en
-- "scanner_port_scanner_rationale_367": "Bounded worker-pool scan of every requested port.          A fixed pool of `conc" | kind=entity | source=probe/scanner/port_scanner.py:L367 | neighbors=[.scan_target()] | lang=en
-- "scanner_port_scanner_rationale_391": "Bounded worker-pool scan of every requested port.          A fixed pool of `conc" | kind=entity | source=probe/scanner/port_scanner.py:L391 | neighbors=[.scan_target()] | lang=en
-- "scanner_port_scanner_rationale_405": "Bounded worker-pool scan of every requested port.          A fixed pool of `conc" | kind=entity | source=probe/scanner/port_scanner.py:L405 | neighbors=[.scan_target()] | lang=en
-- "scanner_port_scanner_rationale_451": "One connect() and its classification. Always returns a ScanResult         (open" | kind=entity | source=probe/scanner/port_scanner.py:L451 | neighbors=[._attempt()] | lang=en
-- "scanner_port_scanner_rationale_462": "One connect() and its classification. Always returns a ScanResult         (open" | kind=entity | source=probe/scanner/port_scanner.py:L462 | neighbors=[._attempt()] | lang=en
-- "scanner_port_scanner_rationale_522": "One port's terminal result, gated by the rate limiter and (when         enabled)" | kind=entity | source=probe/scanner/port_scanner.py:L522 | neighbors=[._scan_port()] | lang=en
-- "scanner_port_scanner_rationale_533": "One port's terminal result, gated by the rate limiter and (when         enabled)" | kind=entity | source=probe/scanner/port_scanner.py:L533 | neighbors=[._scan_port()] | lang=en
-- "scanner_port_scanner_rationale_570": "True for the one state a retry can legitimately change: silence." | kind=entity | source=probe/scanner/port_scanner.py:L570 | neighbors=[._is_ambiguous()] | lang=en
-- "scanner_port_scanner_rationale_576": "Gentle second look at ports that stayed silent through the main sweep." | kind=entity | source=probe/scanner/port_scanner.py:L576 | neighbors=[._reprobe_ambiguous()] | lang=en
-- "scanner_port_scanner_rationale_584": "Record one probe and answer: is the PATH still delivering?          WHY THIS EXI" | kind=entity | source=probe/scanner/port_scanner.py:L584 | neighbors=[._note_probe_outcome()] | lang=en
-- "scanner_port_scanner_rationale_603": "Bounded worker-pool scan of every requested port.          A fixed pool of `conc" | kind=entity | source=probe/scanner/port_scanner.py:L603 | neighbors=[.scan_target()] | lang=en
-- "scanner_port_scanner_rationale_615": "True for the one state a retry can legitimately change: silence." | kind=entity | source=probe/scanner/port_scanner.py:L615 | neighbors=[._is_ambiguous()] | lang=en
-- "scanner_port_scanner_rationale_621": "Gentle second look at ports that stayed silent through the main sweep." | kind=entity | source=probe/scanner/port_scanner.py:L621 | neighbors=[._reprobe_ambiguous()] | lang=en
-- "scanner_port_scanner_rationale_648": "Bounded worker-pool scan of every requested port.          A fixed pool of `conc" | kind=entity | source=probe/scanner/port_scanner.py:L648 | neighbors=[.scan_target()] | lang=en
-- "scanner_port_scanner_rationale_90": "Return 'ipv4'/'ipv6' for an IP literal, else None (unresolved hostname)." | kind=entity | source=probe/scanner/port_scanner.py:L90 | neighbors=[_family_of()] | lang=en
+- "main_scripts_scanner_base_adaptiveratecontroller_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/scanner_base.py:L485 | neighbors=[AdaptiveRateController] | lang=en
+- "main_scripts_scanner_base_base_argparser": "base_argparser()" | kind=code-symbol | source=probe/main_scripts/scanner_base.py:L1095 | neighbors=[scanner_base.py] | lang=en
+- "main_scripts_scanner_base_ratelimiter_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/scanner_base.py:L432 | neighbors=[RateLimiter] | lang=en
+- "main_scripts_scanner_base_rationale_1": "scanner_base.py — shared foundation for every scanner module.  SCOPE OF THIS MOD" | kind=entity | source=probe/main_scripts/scanner_base.py:L1 | neighbors=[scanner_base.py] | lang=en
+- "main_scripts_scanner_base_rationale_1033": "Return (soft, hard) open-file-descriptor limits, or (0, 0) if unavailable." | kind=entity | source=probe/main_scripts/scanner_base.py:L1033 | neighbors=[get_fd_limit()] | lang=en
+- "main_scripts_scanner_base_rationale_1045": "Raise the soft fd limit toward the hard limit when there is headroom.     Return" | kind=entity | source=probe/main_scripts/scanner_base.py:L1045 | neighbors=[raise_fd_limit()] | lang=en
+- "main_scripts_scanner_base_rationale_1055": "Return (soft, hard) open-file-descriptor limits, or (0, 0) if unavailable." | kind=entity | source=probe/main_scripts/scanner_base.py:L1055 | neighbors=[get_fd_limit()] | lang=en
+- "main_scripts_scanner_base_rationale_1063": "Cap concurrent connections comfortably BELOW the fd ceiling (after raising     i" | kind=entity | source=probe/main_scripts/scanner_base.py:L1063 | neighbors=[safe_connect_concurrency()] | lang=en
+- "main_scripts_scanner_base_rationale_1067": "Raise the soft fd limit toward the hard limit when there is headroom.     Return" | kind=entity | source=probe/main_scripts/scanner_base.py:L1067 | neighbors=[raise_fd_limit()] | lang=en
+- "main_scripts_scanner_base_rationale_1085": "Cap concurrent connections comfortably BELOW the fd ceiling (after raising     i" | kind=entity | source=probe/main_scripts/scanner_base.py:L1085 | neighbors=[safe_connect_concurrency()] | lang=en
+- "main_scripts_scanner_base_rationale_1106": "Run a scanner CLI's body with consistent, operator-friendly error handling." | kind=entity | source=probe/main_scripts/scanner_base.py:L1106 | neighbors=[main_entrypoint()] | lang=en
+- "main_scripts_scanner_base_rationale_1128": "Run a scanner CLI's body with consistent, operator-friendly error handling." | kind=entity | source=probe/main_scripts/scanner_base.py:L1128 | neighbors=[main_entrypoint()] | lang=en
+- "main_scripts_scanner_base_rationale_1134": "Wire argparse args into a scanner instance and execute it." | kind=entity | source=probe/main_scripts/scanner_base.py:L1134 | neighbors=[run_cli()] | lang=en
+- "main_scripts_scanner_base_rationale_115": "Full, debuggable classification for attaching to a ScanResult: state,     reason" | kind=entity | source=probe/main_scripts/scanner_base.py:L115 | neighbors=[describe_os_error()] | lang=en
+- "main_scripts_scanner_base_rationale_1156": "Wire argparse args into a scanner instance and execute it." | kind=entity | source=probe/main_scripts/scanner_base.py:L1156 | neighbors=[run_cli()] | lang=en
+- "main_scripts_scanner_base_rationale_122": "HTTP/RTSP User-Agent to send — a generic browser UA by default so it does     no" | kind=entity | source=probe/main_scripts/scanner_base.py:L122 | neighbors=[user_agent()] | lang=en
+- "main_scripts_scanner_base_rationale_128": "Benign, non-attributing payload for ICMP/UDP probes — looks like ordinary     pi" | kind=entity | source=probe/main_scripts/scanner_base.py:L128 | neighbors=[probe_payload()] | lang=en
+- "main_scripts_scanner_base_rationale_130": "One observation about one target. Pure fact, no interpretation.      Network-sta" | kind=entity | source=probe/main_scripts/scanner_base.py:L130 | neighbors=[ScanResult] | lang=en
+- "main_scripts_scanner_base_rationale_135": "The TCP source port for probes. A FIXED port (e.g. 53/88) lets a scan slip     p" | kind=entity | source=probe/main_scripts/scanner_base.py:L135 | neighbors=[choose_source_port()] | lang=en
+- "main_scripts_scanner_base_rationale_145": "A per-probe delay of `base` seconds ± up to `jitter` fraction of random     vari" | kind=entity | source=probe/main_scripts/scanner_base.py:L145 | neighbors=[jittered_delay()] | lang=en
+- "main_scripts_scanner_base_rationale_156": "Heuristic: is this host a tarpit / honeypot / ACK-everything middlebox?      Suc" | kind=entity | source=probe/main_scripts/scanner_base.py:L156 | neighbors=[assess_tarpit()] | lang=en
+- "main_scripts_scanner_base_rationale_170": "Map a connect()/socket-time OSError to (state, reason).      DNS failures (``soc" | kind=entity | source=probe/main_scripts/scanner_base.py:L170 | neighbors=[classify_os_error()] | lang=en
+- "main_scripts_scanner_base_rationale_181": "Loads an allowlist of CIDRs / IPs / hostnames and decides whether a target     i" | kind=entity | source=probe/main_scripts/scanner_base.py:L181 | neighbors=[ScopeGuard] | lang=en
+- "main_scripts_scanner_base_rationale_186": "Full, debuggable classification for attaching to a ScanResult: state,     reason" | kind=entity | source=probe/main_scripts/scanner_base.py:L186 | neighbors=[describe_os_error()] | lang=en
+- "main_scripts_scanner_base_rationale_201": "One observation about one target. Pure fact, no interpretation.      Network-sta" | kind=entity | source=probe/main_scripts/scanner_base.py:L201 | neighbors=[ScanResult] | lang=en
+- "main_scripts_scanner_base_rationale_236": "Map a connect()/socket-time OSError to (state, reason).      DNS failures (``soc" | kind=entity | source=probe/main_scripts/scanner_base.py:L236 | neighbors=[classify_os_error()] | lang=en
+- "main_scripts_scanner_base_rationale_267": "One observation about one target. Pure fact, no interpretation.      Network-sta" | kind=entity | source=probe/main_scripts/scanner_base.py:L267 | neighbors=[ScanResult] | lang=en
+- "main_scripts_scanner_base_rationale_282": "Read-only view of allowed networks (for CIDR-level engines)." | kind=entity | source=probe/main_scripts/scanner_base.py:L282 | neighbors=[.networks()] | lang=en
+- "main_scripts_scanner_base_rationale_287": "Read-only view of excluded networks (to build masscan --exclude)." | kind=entity | source=probe/main_scripts/scanner_base.py:L287 | neighbors=[.excludes()] | lang=en
+- "main_scripts_scanner_base_rationale_295": "Simple async rate limiter: at most `rate` operations per second." | kind=entity | source=probe/main_scripts/scanner_base.py:L295 | neighbors=[RateLimiter] | lang=it
+- "main_scripts_scanner_base_rationale_314": "Standard 16-bit one's-complement Internet checksum (RFC 1071), used for IP," | kind=entity | source=probe/main_scripts/scanner_base.py:L314 | neighbors=[inet_checksum()] | lang=en
+- "main_scripts_scanner_base_rationale_316": "Loads an allowlist of CIDRs / IPs / hostnames and decides whether a target     i" | kind=entity | source=probe/main_scripts/scanner_base.py:L316 | neighbors=[ScopeGuard] | lang=en
+- "main_scripts_scanner_base_rationale_331": "A self-tuning concurrency window, modelled on TCP congestion control (AIMD)," | kind=entity | source=probe/main_scripts/scanner_base.py:L331 | neighbors=[AdaptiveRateController] | lang=pt
+- "main_scripts_scanner_base_rationale_353": "Read-only view of allowed networks (for CIDR-level engines)." | kind=entity | source=probe/main_scripts/scanner_base.py:L353 | neighbors=[.networks()] | lang=en
+- "main_scripts_scanner_base_rationale_358": "Read-only view of excluded networks (to build masscan --exclude)." | kind=entity | source=probe/main_scripts/scanner_base.py:L358 | neighbors=[.excludes()] | lang=en
+- "main_scripts_scanner_base_rationale_363": "Current integer window (>= min_window)." | kind=entity | source=probe/main_scripts/scanner_base.py:L363 | neighbors=[.window()] | lang=en
+- "main_scripts_scanner_base_rationale_366": "Simple async rate limiter: at most `rate` operations per second." | kind=entity | source=probe/main_scripts/scanner_base.py:L366 | neighbors=[RateLimiter] | lang=it
+- "main_scripts_scanner_base_rationale_385": "Standard 16-bit one's-complement Internet checksum (RFC 1071), used for IP," | kind=entity | source=probe/main_scripts/scanner_base.py:L385 | neighbors=[inet_checksum()] | lang=en
+- "main_scripts_scanner_base_rationale_400": "Accepts CIDRs ('10.0.0.0/24'), single IPs, hostnames, and simple ranges     ('10" | kind=entity | source=probe/main_scripts/scanner_base.py:L400 | neighbors=[expand_targets()] | lang=en
+- "main_scripts_scanner_base_rationale_402": "A self-tuning concurrency window, modelled on TCP congestion control (AIMD)," | kind=entity | source=probe/main_scripts/scanner_base.py:L402 | neighbors=[AdaptiveRateController] | lang=pt
 
 ## Instructions
 

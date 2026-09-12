@@ -1,4 +1,4 @@
-# Node Description Batch 286 of 336
+# Node Description Batch 286 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -26,46 +26,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_finding_schema_test_finding_summary_exposes_full_open_severity_breakdown": "test_finding_summary_exposes_full_open_severity_breakdown()" | kind=code-symbol | source=manager/backend/tests/test_finding_schema.py:L20 | neighbors=[test_finding_schema.py] | lang=en
-- "tests_test_finding_section_rationale_1": "test_finding_section.py — the scanner-module trust view + the finding section." | kind=entity | source=probe/tests/test_finding_section.py:L1 | neighbors=[test_finding_section.py] | lang=en
-- "tests_test_finding_section_testscannerregistry_test_registry_aligns_with_manager_validated_set": ".test_registry_aligns_with_manager_validated_set()" | kind=code-symbol | source=probe/tests/test_finding_section.py:L38 | neighbors=[TestScannerRegistry] | lang=en
-- "tests_test_finding_section_testscannerregistry_test_unknown_scanner_is_not_trusted": ".test_unknown_scanner_is_not_trusted()" | kind=code-symbol | source=probe/tests/test_finding_section.py:L28 | neighbors=[TestScannerRegistry] | lang=en
-- "tests_test_finding_section_testscannerregistry_test_unvalidated_scanners_are_not_verified": ".test_unvalidated_scanners_are_not_verified()" | kind=code-symbol | source=probe/tests/test_finding_section.py:L24 | neighbors=[TestScannerRegistry] | lang=en
-- "tests_test_finding_section_testscannerregistry_test_user_validated_scanners_are_verified": ".test_user_validated_scanners_are_verified()" | kind=code-symbol | source=probe/tests/test_finding_section.py:L18 | neighbors=[TestScannerRegistry] | lang=en
-- "tests_test_finding_section_testscannerregistry_test_verification_report_shape": ".test_verification_report_shape()" | kind=code-symbol | source=probe/tests/test_finding_section.py:L32 | neighbors=[TestScannerRegistry] | lang=en
-- "tests_test_finding_verification_api_test_finding_schema_exposes_verification_fields": "test_finding_schema_exposes_verification_fields()" | kind=code-symbol | source=manager/backend/tests/test_finding_verification_api.py:L6 | neighbors=[test_finding_verification_api.py] | lang=en
-- "tests_test_finding_verification_schema_test_finding_has_verification_columns": "test_finding_has_verification_columns()" | kind=code-symbol | source=manager/backend/tests/test_finding_verification_schema.py:L6 | neighbors=[test_finding_verification_schema.py] | lang=en
-- "tests_test_fleet_jobs_rationale_1": "Fleet: tenant-wide job feed with probe + engagement name resolution and filters." | kind=entity | source=manager/backend/tests/test_fleet_jobs.py:L1 | neighbors=[test_fleet_jobs.py] | lang=en
-- "tests_test_ftp_scanner_rationale_1": "test_ftp_scanner.py — FTP anonymous-access check.  Pure control-protocol logic +" | kind=entity | source=probe/tests/test_ftp_scanner.py:L1 | neighbors=[test_ftp_scanner.py] | lang=en
-- "tests_test_ftp_scanner_testparity_test_main_scripts": ".test_main_scripts()" | kind=code-symbol | source=probe/tests/test_ftp_scanner.py:L76 | neighbors=[TestParity] | lang=en
-- "tests_test_ftp_scanner_testpurelogic_test_banner_software": ".test_banner_software()" | kind=code-symbol | source=probe/tests/test_ftp_scanner.py:L23 | neighbors=[TestPureLogic] | lang=en
-- "tests_test_ftp_scanner_testpurelogic_test_parse_pasv": ".test_parse_pasv()" | kind=code-symbol | source=probe/tests/test_ftp_scanner.py:L19 | neighbors=[TestPureLogic] | lang=en
-- "tests_test_host_discovery_mobile_rationale_1": "Pure-logic tests for the ARP/MAC/mobile-detection helpers in host_discovery. No" | kind=entity | source=probe/tests/test_host_discovery_mobile.py:L1 | neighbors=[test_host_discovery_mobile.py] | lang=en
-- "tests_test_host_discovery_mobile_testdevicehint_test_iphone_lockdownd_port": ".test_iphone_lockdownd_port()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L53 | neighbors=[TestDeviceHint] | lang=en
-- "tests_test_host_discovery_mobile_testdevicehint_test_mobile_vendor": ".test_mobile_vendor()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L59 | neighbors=[TestDeviceHint] | lang=en
-- "tests_test_host_discovery_mobile_testdevicehint_test_no_signal": ".test_no_signal()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L65 | neighbors=[TestDeviceHint] | lang=en
-- "tests_test_host_discovery_mobile_testdevicehint_test_plain_vendor_passthrough": ".test_plain_vendor_passthrough()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L62 | neighbors=[TestDeviceHint] | lang=en
-- "tests_test_host_discovery_mobile_testdevicehint_test_randomized_mac_is_mobile": ".test_randomized_mac_is_mobile()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L56 | neighbors=[TestDeviceHint] | lang=en
-- "tests_test_host_discovery_mobile_testlocallyadministered_test_globally_unique_macs": ".test_globally_unique_macs()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L39 | neighbors=[TestLocallyAdministered] | lang=en
-- "tests_test_host_discovery_mobile_testlocallyadministered_test_randomized_phone_macs": ".test_randomized_phone_macs()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L33 | neighbors=[TestLocallyAdministered] | lang=en
-- "tests_test_host_discovery_mobile_testnormalizemac_test_extracts_from_arp_line": ".test_extracts_from_arp_line()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L17 | neighbors=[TestNormalizeMac] | lang=en
-- "tests_test_host_discovery_mobile_testnormalizemac_test_lowercases": ".test_lowercases()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L14 | neighbors=[TestNormalizeMac] | lang=en
-- "tests_test_host_discovery_mobile_testnormalizemac_test_rejects_broadcast": ".test_rejects_broadcast()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L21 | neighbors=[TestNormalizeMac] | lang=en
-- "tests_test_host_discovery_mobile_testnormalizemac_test_rejects_garbage": ".test_rejects_garbage()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L27 | neighbors=[TestNormalizeMac] | lang=en
-- "tests_test_host_discovery_mobile_testnormalizemac_test_rejects_multicast": ".test_rejects_multicast()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L24 | neighbors=[TestNormalizeMac] | lang=en
-- "tests_test_host_discovery_mobile_testnormalizemac_test_zero_pads_octets": ".test_zero_pads_octets()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L10 | neighbors=[TestNormalizeMac] | lang=en
-- "tests_test_host_discovery_mobile_testvendorlookup_test_known_oui": ".test_known_oui()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L45 | neighbors=[TestVendorLookup] | lang=en
-- "tests_test_host_discovery_mobile_testvendorlookup_test_unknown_oui": ".test_unknown_oui()" | kind=code-symbol | source=probe/tests/test_host_discovery_mobile.py:L48 | neighbors=[TestVendorLookup] | lang=en
-- "tests_test_host_discovery_udp_closed_udp_port": "_closed_udp_port()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L110 | neighbors=[test_host_discovery_udp.py] | lang=en
-- "tests_test_host_discovery_udp_no_neighbor": "no_neighbor()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L120 | neighbors=[test_host_discovery_udp.py] | lang=en
-- "tests_test_host_discovery_udp_rationale_1": "test_host_discovery_udp.py — the unprivileged UDP liveness tier + name facts.  C" | kind=entity | source=probe/tests/test_host_discovery_udp.py:L1 | neighbors=[test_host_discovery_udp.py] | lang=en
-- "tests_test_host_discovery_udp_rationale_233": "A RST mid-handshake (ConnectionResetError) is the target's stack talking." | kind=entity | source=probe/tests/test_host_discovery_udp.py:L233 | neighbors=[test_tcp_reset_counts_as_proof_of_life()] | lang=en
-- "tests_test_host_discovery_udp_rationale_25": "Build a NetBIOS node-status response (RFC 1002 §4.2.18)." | kind=entity | source=probe/tests/test_host_discovery_udp.py:L25 | neighbors=[_nbstat_reply()] | lang=pt
-- "tests_test_host_discovery_udp_rationale_252": "On-LAN INCOMPLETE/FAILED = nobody owns the address right now; spending     datag" | kind=entity | source=probe/tests/test_host_discovery_udp.py:L252 | neighbors=[test_udp_tier_skipped_when_arp_definiti…] | lang=en
-- "tests_test_host_discovery_udp_responder_connection_made": ".connection_made()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L95 | neighbors=[_Responder] | lang=en
-- "tests_test_host_discovery_udp_responder_datagram_received": ".datagram_received()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L98 | neighbors=[_Responder] | lang=en
-- "tests_test_host_discovery_udp_responder_init": ".__init__()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L91 | neighbors=[_Responder] | lang=en
-- "tests_test_host_discovery_udp_scanner": "_scanner()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L124 | neighbors=[test_host_discovery_udp.py] | lang=en
+- "scanner_scan_funnel_rationale_98": "The port set worth scanning = union of every route's ports (deduped)." | kind=entity | source=probe/scanner/scan_funnel.py:L98 | neighbors=[_candidate_ports()] | lang=en
+- "scanner_scan_funnel_rationale_99": "Orchestrates discovery → port scan → routed deep scanners for each host.      Pa" | kind=entity | source=probe/scanner/scan_funnel.py:L99 | neighbors=[ScanFunnel] | lang=en
+- "scanner_scan_funnel_scanfunnel_init": ".__init__()" | kind=code-symbol | source=probe/scanner/scan_funnel.py:L145 | neighbors=[ScanFunnel] | lang=en
+- "scanner_scanner_base_adaptiveratecontroller_init": ".__init__()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L485 | neighbors=[AdaptiveRateController] | lang=en
+- "scanner_scanner_base_base_argparser": "base_argparser()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L1095 | neighbors=[scanner_base.py] | lang=en
+- "scanner_scanner_base_ratelimiter_init": ".__init__()" | kind=code-symbol | source=probe/scanner/scanner_base.py:L432 | neighbors=[RateLimiter] | lang=en
+- "scanner_scanner_base_rationale_1": "scanner_base.py — shared foundation for every scanner module.  SCOPE OF THIS MOD" | kind=entity | source=probe/scanner/scanner_base.py:L1 | neighbors=[scanner_base.py] | lang=en
+- "scanner_scanner_base_rationale_1033": "Return (soft, hard) open-file-descriptor limits, or (0, 0) if unavailable." | kind=entity | source=probe/scanner/scanner_base.py:L1033 | neighbors=[get_fd_limit()] | lang=en
+- "scanner_scanner_base_rationale_1045": "Raise the soft fd limit toward the hard limit when there is headroom.     Return" | kind=entity | source=probe/scanner/scanner_base.py:L1045 | neighbors=[raise_fd_limit()] | lang=en
+- "scanner_scanner_base_rationale_1055": "Return (soft, hard) open-file-descriptor limits, or (0, 0) if unavailable." | kind=entity | source=probe/scanner/scanner_base.py:L1055 | neighbors=[get_fd_limit()] | lang=en
+- "scanner_scanner_base_rationale_1063": "Cap concurrent connections comfortably BELOW the fd ceiling (after raising     i" | kind=entity | source=probe/scanner/scanner_base.py:L1063 | neighbors=[safe_connect_concurrency()] | lang=en
+- "scanner_scanner_base_rationale_1067": "Raise the soft fd limit toward the hard limit when there is headroom.     Return" | kind=entity | source=probe/scanner/scanner_base.py:L1067 | neighbors=[raise_fd_limit()] | lang=en
+- "scanner_scanner_base_rationale_1085": "Cap concurrent connections comfortably BELOW the fd ceiling (after raising     i" | kind=entity | source=probe/scanner/scanner_base.py:L1085 | neighbors=[safe_connect_concurrency()] | lang=en
+- "scanner_scanner_base_rationale_1106": "Run a scanner CLI's body with consistent, operator-friendly error handling." | kind=entity | source=probe/scanner/scanner_base.py:L1106 | neighbors=[main_entrypoint()] | lang=en
+- "scanner_scanner_base_rationale_1128": "Run a scanner CLI's body with consistent, operator-friendly error handling." | kind=entity | source=probe/scanner/scanner_base.py:L1128 | neighbors=[main_entrypoint()] | lang=en
+- "scanner_scanner_base_rationale_1134": "Wire argparse args into a scanner instance and execute it." | kind=entity | source=probe/scanner/scanner_base.py:L1134 | neighbors=[run_cli()] | lang=en
+- "scanner_scanner_base_rationale_115": "Full, debuggable classification for attaching to a ScanResult: state,     reason" | kind=entity | source=probe/scanner/scanner_base.py:L115 | neighbors=[describe_os_error()] | lang=en
+- "scanner_scanner_base_rationale_1156": "Wire argparse args into a scanner instance and execute it." | kind=entity | source=probe/scanner/scanner_base.py:L1156 | neighbors=[run_cli()] | lang=en
+- "scanner_scanner_base_rationale_122": "HTTP/RTSP User-Agent to send — a generic browser UA by default so it does     no" | kind=entity | source=probe/scanner/scanner_base.py:L122 | neighbors=[user_agent()] | lang=en
+- "scanner_scanner_base_rationale_128": "Benign, non-attributing payload for ICMP/UDP probes — looks like ordinary     pi" | kind=entity | source=probe/scanner/scanner_base.py:L128 | neighbors=[probe_payload()] | lang=en
+- "scanner_scanner_base_rationale_130": "One observation about one target. Pure fact, no interpretation.      Network-sta" | kind=entity | source=probe/scanner/scanner_base.py:L130 | neighbors=[ScanResult] | lang=en
+- "scanner_scanner_base_rationale_135": "The TCP source port for probes. A FIXED port (e.g. 53/88) lets a scan slip     p" | kind=entity | source=probe/scanner/scanner_base.py:L135 | neighbors=[choose_source_port()] | lang=en
+- "scanner_scanner_base_rationale_145": "A per-probe delay of `base` seconds ± up to `jitter` fraction of random     vari" | kind=entity | source=probe/scanner/scanner_base.py:L145 | neighbors=[jittered_delay()] | lang=en
+- "scanner_scanner_base_rationale_156": "Heuristic: is this host a tarpit / honeypot / ACK-everything middlebox?      Suc" | kind=entity | source=probe/scanner/scanner_base.py:L156 | neighbors=[assess_tarpit()] | lang=en
+- "scanner_scanner_base_rationale_171": "Read-only view of allowed networks (for CIDR-level engines)." | kind=entity | source=probe/scanner/scanner_base.py:L171 | neighbors=[.networks()] | lang=en
+- "scanner_scanner_base_rationale_175": "Read-only view of excluded networks (to build masscan --exclude)." | kind=entity | source=probe/scanner/scanner_base.py:L175 | neighbors=[.excludes()] | lang=en
+- "scanner_scanner_base_rationale_176": "Read-only view of excluded networks (to build masscan --exclude)." | kind=entity | source=probe/scanner/scanner_base.py:L176 | neighbors=[.excludes()] | lang=en
+- "scanner_scanner_base_rationale_181": "Loads an allowlist of CIDRs / IPs / hostnames and decides whether a target     i" | kind=entity | source=probe/scanner/scanner_base.py:L181 | neighbors=[ScopeGuard] | lang=en
+- "scanner_scanner_base_rationale_183": "Simple async rate limiter: at most `rate` operations per second." | kind=entity | source=probe/scanner/scanner_base.py:L183 | neighbors=[RateLimiter] | lang=it
+- "scanner_scanner_base_rationale_184": "Simple async rate limiter: at most `rate` operations per second." | kind=entity | source=probe/scanner/scanner_base.py:L184 | neighbors=[RateLimiter] | lang=it
+- "scanner_scanner_base_rationale_186": "Full, debuggable classification for attaching to a ScanResult: state,     reason" | kind=entity | source=probe/scanner/scanner_base.py:L186 | neighbors=[describe_os_error()] | lang=en
+- "scanner_scanner_base_rationale_201": "One observation about one target. Pure fact, no interpretation.      Network-sta" | kind=entity | source=probe/scanner/scanner_base.py:L201 | neighbors=[ScanResult] | lang=en
+- "scanner_scanner_base_rationale_203": "Standard 16-bit one's-complement Internet checksum (RFC 1071), used for IP," | kind=entity | source=probe/scanner/scanner_base.py:L203 | neighbors=[inet_checksum()] | lang=en
+- "scanner_scanner_base_rationale_220": "A self-tuning concurrency window, modelled on TCP congestion control (AIMD)," | kind=entity | source=probe/scanner/scanner_base.py:L220 | neighbors=[AdaptiveRateController] | lang=pt
+- "scanner_scanner_base_rationale_236": "Map a connect()/socket-time OSError to (state, reason).      DNS failures (``soc" | kind=entity | source=probe/scanner/scanner_base.py:L236 | neighbors=[classify_os_error()] | lang=en
+- "scanner_scanner_base_rationale_237": "Current integer window (>= min_window)." | kind=entity | source=probe/scanner/scanner_base.py:L237 | neighbors=[.window()] | lang=en
+- "scanner_scanner_base_rationale_266": "Resolve `target` to a concrete (family, sockaddr) covering IPv4, IPv6, and     h" | kind=entity | source=probe/scanner/scanner_base.py:L266 | neighbors=[resolve()] | lang=en
+- "scanner_scanner_base_rationale_267": "One observation about one target. Pure fact, no interpretation.      Network-sta" | kind=entity | source=probe/scanner/scanner_base.py:L267 | neighbors=[ScanResult] | lang=en
+- "scanner_scanner_base_rationale_274": "Accepts CIDRs ('10.0.0.0/24'), single IPs, hostnames, and simple ranges     ('10" | kind=entity | source=probe/scanner/scanner_base.py:L274 | neighbors=[expand_targets()] | lang=en
+- "scanner_scanner_base_rationale_281": "Wrap an IPv6 literal in [] for a URL authority; leave v4/hostnames as-is.     'h" | kind=entity | source=probe/scanner/scanner_base.py:L281 | neighbors=[bracket_host()] | lang=en
 
 ## Instructions
 

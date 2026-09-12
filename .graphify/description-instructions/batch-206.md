@@ -1,4 +1,4 @@
-# Node Description Batch 207 of 336
+# Node Description Batch 207 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -9,9 +9,6 @@ your JSON answer to the answer file.
 You are documenting nodes in a knowledge graph.
 For each entry below, write ONE concise factual plain-language sentence
 describing what it is or does. Use only the provided context.
-For a code symbol (kind=code-symbol — a function, class, or constant),
-describe what the function/symbol does based on its name, source location
-and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
 For an entity node (any other kind — e.g. a person, place, event, object),
 describe what the entity is and its role, grounded in its type, its
 relations (neighbors) and the provided citations/evidence — e.g.
@@ -19,51 +16,53 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-Write every description in English (en). Do not switch languages.
+LANGUAGE: each entry has a `lang=` marker giving the language of its source.
+Write that entry's description in EXACTLY that language. Do not translate to
+a single common language — match each node's source language individually.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "graph_visualizer_graphvisualizer_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/graph/visualizer.py:L44 | neighbors=[GraphVisualizer]
-- "graph_visualizer_rationale_1": "GraphVisualizer — serialise the attack graph into D3-compatible JSON for the fro" | kind=entity | source=manager/backend/app/graph/visualizer.py:L1 | neighbors=[visualizer.py]
-- "graph_visualizer_rationale_19": "Numpy-free seed layout: place nodes on concentric rings by type so the     front" | kind=entity | source=manager/backend/app/graph/visualizer.py:L19 | neighbors=[_deterministic_layout()]
-- "graph_visualizer_rationale_53": "Build the D3 payload. ``compromised`` is a set of asset entity_ids to flag" | kind=entity | source=manager/backend/app/graph/visualizer.py:L53 | neighbors=[.to_d3()]
-- "id_campaignprogress_campaignprogress": "CampaignProgress()" | kind=code-symbol | source=manager/frontend/app/campaign/[id]/CampaignProgress.tsx:L127 | neighbors=[CampaignProgress.tsx]
-- "id_campaignprogress_coverage": "Coverage" | kind=code-symbol | source=manager/frontend/app/campaign/[id]/CampaignProgress.tsx:L43 | neighbors=[CampaignProgress.tsx]
-- "id_campaignprogress_fetchjson": "fetchJson()" | kind=code-symbol | source=manager/frontend/app/campaign/[id]/CampaignProgress.tsx:L110 | neighbors=[CampaignProgress.tsx]
-- "id_campaignprogress_finding": "Finding" | kind=code-symbol | source=manager/frontend/app/campaign/[id]/CampaignProgress.tsx:L37 | neighbors=[CampaignProgress.tsx]
-- "id_campaignprogress_findingsempty": "FindingsEmpty()" | kind=code-symbol | source=manager/frontend/app/campaign/[id]/CampaignProgress.tsx:L469 | neighbors=[CampaignProgress.tsx]
-- "id_campaignprogress_job": "Job" | kind=code-symbol | source=manager/frontend/app/campaign/[id]/CampaignProgress.tsx:L31 | neighbors=[CampaignProgress.tsx]
-- "id_campaignprogress_jobbar": "jobBar()" | kind=code-symbol | source=manager/frontend/app/campaign/[id]/CampaignProgress.tsx:L84 | neighbors=[CampaignProgress.tsx]
-- "id_campaignprogress_jobsummary": "JobSummary" | kind=code-symbol | source=manager/frontend/app/campaign/[id]/CampaignProgress.tsx:L27 | neighbors=[CampaignProgress.tsx]
-- "id_campaignprogress_phase": "Phase" | kind=code-symbol | source=manager/frontend/app/campaign/[id]/CampaignProgress.tsx:L26 | neighbors=[CampaignProgress.tsx]
-- "id_campaignprogress_phase_label": "PHASE_LABEL" | kind=code-symbol | source=manager/frontend/app/campaign/[id]/CampaignProgress.tsx:L100 | neighbors=[CampaignProgress.tsx]
-- "id_campaignprogress_phasestate": "PhaseState" | kind=code-symbol | source=manager/frontend/app/campaign/[id]/CampaignProgress.tsx:L25 | neighbors=[CampaignProgress.tsx]
-- "id_campaignprogress_progress": "Progress" | kind=code-symbol | source=manager/frontend/app/campaign/[id]/CampaignProgress.tsx:L47 | neighbors=[CampaignProgress.tsx]
-- "id_campaignprogress_remediationsteps": "remediationSteps()" | kind=code-symbol | source=manager/frontend/app/campaign/[id]/CampaignProgress.tsx:L120 | neighbors=[CampaignProgress.tsx]
-- "id_campaignprogress_sev_color": "SEV_COLOR" | kind=code-symbol | source=manager/frontend/app/campaign/[id]/CampaignProgress.tsx:L104 | neighbors=[CampaignProgress.tsx]
-- "id_campaignprogress_status_label": "STATUS_LABEL" | kind=code-symbol | source=manager/frontend/app/campaign/[id]/CampaignProgress.tsx:L68 | neighbors=[CampaignProgress.tsx]
-- "id_page_activityitem": "ActivityItem" | kind=code-symbol | source=manager/frontend/app/engagements/[id]/page.tsx:L38 | neighbors=[page.tsx]
-- "id_page_activitytab": "ActivityTab()" | kind=code-symbol | source=manager/frontend/app/engagements/[id]/page.tsx:L318 | neighbors=[page.tsx]
-- "id_page_assetrow": "AssetRow" | kind=code-symbol | source=manager/frontend/app/engagements/[id]/page.tsx:L46 | neighbors=[page.tsx]
-- "id_page_assetstab": "AssetsTab()" | kind=code-symbol | source=manager/frontend/app/engagements/[id]/page.tsx:L276 | neighbors=[page.tsx]
-- "id_page_campaignsnapshot": "CampaignSnapshot" | kind=code-symbol | source=manager/frontend/app/campaign/[id]/page.tsx:L18 | neighbors=[page.tsx]
-- "id_page_cardskeleton": "CardSkeleton()" | kind=code-symbol | source=manager/frontend/app/engagements/[id]/page.tsx:L43 | neighbors=[page.tsx]
-- "id_page_edit_statuses": "EDIT_STATUSES" | kind=code-symbol | source=manager/frontend/app/engagements/[id]/page.tsx:L378 | neighbors=[page.tsx]
-- "id_page_editengagementmodal": "EditEngagementModal()" | kind=code-symbol | source=manager/frontend/app/engagements/[id]/page.tsx:L380 | neighbors=[page.tsx]
-- "id_page_engagement": "Engagement" | kind=code-symbol | source=manager/frontend/app/engagements/[id]/page.tsx:L20 | neighbors=[page.tsx]
-- "id_page_fetchjson": "fetchJson()" | kind=code-symbol | source=manager/frontend/app/campaign/[id]/page.tsx:L55 | neighbors=[page.tsx]
-- "id_page_findingpage": "FindingPage" | kind=code-symbol | source=manager/frontend/app/engagements/[id]/page.tsx:L70 | neighbors=[page.tsx]
-- "id_page_findingrow": "FindingRow" | kind=code-symbol | source=manager/frontend/app/engagements/[id]/page.tsx:L62 | neighbors=[page.tsx]
-- "id_page_findingstab": "FindingsTab()" | kind=code-symbol | source=manager/frontend/app/engagements/[id]/page.tsx:L225 | neighbors=[page.tsx]
-- "id_page_importscanbutton": "ImportScanButton()" | kind=code-symbol | source=manager/frontend/app/engagements/[id]/page.tsx:L335 | neighbors=[page.tsx]
-- "id_page_linkedtab": "LinkedTab()" | kind=code-symbol | source=manager/frontend/app/engagements/[id]/page.tsx:L139 | neighbors=[page.tsx]
-- "id_page_sevcolor": "sevColor()" | kind=code-symbol | source=manager/frontend/app/engagements/[id]/page.tsx:L27 | neighbors=[page.tsx]
-- "id_page_severity": "Severity" | kind=code-symbol | source=manager/frontend/app/engagements/[id]/page.tsx:L18 | neighbors=[page.tsx]
-- "id_page_severity_color": "SEVERITY_COLOR" | kind=code-symbol | source=manager/frontend/app/engagements/[id]/page.tsx:L78 | neighbors=[page.tsx]
-- "id_page_stagebadge": "stageBadge()" | kind=code-symbol | source=manager/frontend/app/campaign/[id]/page.tsx:L28 | neighbors=[page.tsx]
-- "id_page_stagesnapshot": "StageSnapshot" | kind=code-symbol | source=manager/frontend/app/campaign/[id]/page.tsx:L14 | neighbors=[page.tsx]
-- "id_page_stagestatus": "StageStatus" | kind=code-symbol | source=manager/frontend/app/campaign/[id]/page.tsx:L13 | neighbors=[page.tsx]
+- "agent_transport_rationale_303": "Generic authenticated GET, returns parsed JSON or None on failure.          Used" | kind=entity | source=probe/agent/transport.py:L303 | neighbors=[.http_get()] | lang=en
+- "agent_transport_rationale_306": "Persist the agent identity AND the manager that issued it.          The issuer b" | kind=entity | source=probe/agent/transport.py:L306 | neighbors=[.save_state()] | lang=en
+- "agent_transport_rationale_308": "Send a heartbeat to the manager.          Returns True if the heartbeat was acce" | kind=entity | source=probe/agent/transport.py:L308 | neighbors=[.heartbeat()] | lang=en
+- "agent_transport_rationale_31": "Raised when a transport operation fails permanently (not retryable)." | kind=entity | source=probe/agent/transport.py:L31 | neighbors=[TransportError] | lang=pt
+- "agent_transport_rationale_311": "Send a heartbeat to the manager.          Returns True if the heartbeat was acce" | kind=entity | source=probe/agent/transport.py:L311 | neighbors=[.heartbeat()] | lang=en
+- "agent_transport_rationale_316": "Register the probe with the manager.          Args:             name: Probe name" | kind=entity | source=probe/agent/transport.py:L316 | neighbors=[.register()] | lang=en
+- "agent_transport_rationale_317": "Register using a manager-side shared bootstrap key (no user login needed)." | kind=entity | source=probe/agent/transport.py:L317 | neighbors=[.bootstrap()] | lang=pt
+- "agent_transport_rationale_319": "Return the WebSocket connection URL with auth token.          The token is passe" | kind=entity | source=probe/agent/transport.py:L319 | neighbors=[.ws_url()] | lang=en
+- "agent_transport_rationale_328": "Register the probe with the manager.          Args:             name: Probe name" | kind=entity | source=probe/agent/transport.py:L328 | neighbors=[.register()] | lang=en
+- "agent_transport_rationale_33": "Raised when a transport operation fails permanently (not retryable)." | kind=entity | source=probe/agent/transport.py:L33 | neighbors=[TransportError] | lang=pt
+- "agent_transport_rationale_333": "Poll for pending jobs (HTTP fallback for WebSocket).          Returns a list of" | kind=entity | source=probe/agent/transport.py:L333 | neighbors=[.poll_jobs()] | lang=en
+- "agent_transport_rationale_336": "Poll for pending jobs (HTTP fallback for WebSocket).          Returns a list of" | kind=entity | source=probe/agent/transport.py:L336 | neighbors=[.poll_jobs()] | lang=en
+- "agent_transport_rationale_34": "Raised when a transport operation fails permanently (not retryable)." | kind=entity | source=probe/agent/transport.py:L34 | neighbors=[TransportError] | lang=pt
+- "agent_transport_rationale_351": "Fetch the engagement's authoritative scope.          Returns the response dict i" | kind=entity | source=probe/agent/transport.py:L351 | neighbors=[.fetch_scope()] | lang=en
+- "agent_transport_rationale_36": "The probe's device signing key is already registered as an agent on the     mana" | kind=entity | source=probe/agent/transport.py:L36 | neighbors=[DeviceAlreadyEnrolledError] | lang=en
+- "agent_transport_rationale_364": "Register the probe with the manager.          Args:             name: Probe name" | kind=entity | source=probe/agent/transport.py:L364 | neighbors=[.register()] | lang=en
+- "agent_transport_rationale_37": "HTTP (+ future WebSocket) transport to the manager.      Thread-safe for sequent" | kind=entity | source=probe/agent/transport.py:L37 | neighbors=[Transport] | lang=en
+- "agent_transport_rationale_370": "Submit a scan result to the manager.          Returns True ONLY on a 2xx respons" | kind=entity | source=probe/agent/transport.py:L370 | neighbors=[.submit_result()] | lang=en
+- "agent_transport_rationale_371": "Register using a manager-side shared bootstrap key (no user login needed)." | kind=entity | source=probe/agent/transport.py:L371 | neighbors=[.bootstrap()] | lang=pt
+- "agent_transport_rationale_373": "Submit a scan result to the manager.          Returns True ONLY on a 2xx respons" | kind=entity | source=probe/agent/transport.py:L373 | neighbors=[.submit_result()] | lang=en
+- "agent_transport_rationale_383": "Register using a manager-side shared bootstrap key (no user login needed)." | kind=entity | source=probe/agent/transport.py:L383 | neighbors=[.bootstrap()] | lang=pt
+- "agent_transport_rationale_395": "Refresh a device token before expiry; legacy identities are unchanged." | kind=entity | source=probe/agent/transport.py:L395 | neighbors=[.ensure_device_access()] | lang=en
+- "agent_transport_rationale_424": "Generic authenticated GET, returns parsed JSON or None on failure.          Used" | kind=entity | source=probe/agent/transport.py:L424 | neighbors=[.http_get()] | lang=en
+- "agent_transport_rationale_437": "Return the WebSocket endpoint without embedding credentials.          Authentica" | kind=entity | source=probe/agent/transport.py:L437 | neighbors=[.ws_url()] | lang=en
+- "agent_transport_rationale_439": "Refresh a device token before expiry; legacy identities are unchanged." | kind=entity | source=probe/agent/transport.py:L439 | neighbors=[.ensure_device_access()] | lang=en
+- "agent_transport_rationale_440": "Return the WebSocket endpoint without embedding credentials.          Authentica" | kind=entity | source=probe/agent/transport.py:L440 | neighbors=[.ws_url()] | lang=en
+- "agent_transport_rationale_445": "Refresh routing metadata using the cached agent identity.          Returns True" | kind=entity | source=probe/agent/transport.py:L445 | neighbors=[.refresh_registration()] | lang=en
+- "agent_transport_rationale_447": "Establish an authenticated WebSocket connection to the manager.          Returns" | kind=entity | source=probe/agent/transport.py:L447 | neighbors=[.connect_ws()] | lang=en
+- "agent_transport_rationale_45": "Durably replace one private JSON state file without exposing secrets." | kind=entity | source=probe/agent/transport.py:L45 | neighbors=[_atomic_write_private_state()] | lang=en
+- "agent_transport_rationale_450": "Establish an authenticated WebSocket connection to the manager.          Returns" | kind=entity | source=probe/agent/transport.py:L450 | neighbors=[.connect_ws()] | lang=en
+- "agent_transport_rationale_457": "Backwards-compatible bool wrapper over `refresh_device_access_ex`." | kind=entity | source=probe/agent/transport.py:L457 | neighbors=[.refresh_device_access()] | lang=en
+- "agent_transport_rationale_46": "Durably replace one private JSON state file without exposing secrets." | kind=entity | source=probe/agent/transport.py:L46 | neighbors=[_atomic_write_private_state()] | lang=en
+- "agent_transport_rationale_461": "Refresh the short-lived device access token, reporting WHY it failed.          R" | kind=entity | source=probe/agent/transport.py:L461 | neighbors=[.refresh_device_access_ex()] | lang=en
+- "agent_transport_rationale_463": "Refresh routing metadata using the cached agent identity.          Returns True" | kind=entity | source=probe/agent/transport.py:L463 | neighbors=[.refresh_registration()] | lang=en
+- "agent_transport_rationale_47": "Best-effort extraction of the manager's 409 ``detail`` message." | kind=entity | source=probe/agent/transport.py:L47 | neighbors=[_enrollment_conflict_detail()] | lang=en
+- "agent_transport_rationale_470": "Send a heartbeat to the manager.          Returns True if the heartbeat was acce" | kind=entity | source=probe/agent/transport.py:L470 | neighbors=[.heartbeat()] | lang=en
+- "agent_transport_rationale_477": "True if the WebSocket connection is active." | kind=entity | source=probe/agent/transport.py:L477 | neighbors=[.is_ws_connected()] | lang=en
+- "agent_transport_rationale_48": "Durably replace one private JSON state file without exposing secrets." | kind=entity | source=probe/agent/transport.py:L48 | neighbors=[_atomic_write_private_state()] | lang=en
+- "agent_transport_rationale_480": "True if the WebSocket connection is active." | kind=entity | source=probe/agent/transport.py:L480 | neighbors=[.is_ws_connected()] | lang=en
+- "agent_transport_rationale_483": "Backwards-compatible bool wrapper over `refresh_device_access_ex`." | kind=entity | source=probe/agent/transport.py:L483 | neighbors=[.refresh_device_access()] | lang=en
 
 ## Instructions
 

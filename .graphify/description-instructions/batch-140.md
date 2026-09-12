@@ -1,4 +1,4 @@
-# Node Description Batch 141 of 336
+# Node Description Batch 141 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,51 +12,58 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
+For an entity node (any other kind — e.g. a person, place, event, object),
+describe what the entity is and its role, grounded in its type, its
+relations (neighbors) and the provided citations/evidence — e.g.
+"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
+Ground entity descriptions in the citations/evidence when present; do not
+speculate beyond the context, so a node with no supporting context may be
+left out of the reply.
 Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "routers_portal_portal_assistant_chat": "portal_assistant_chat()" | kind=code-symbol | source=manager/backend/app/routers/portal.py:L435 | neighbors=[portal.py, _assistant_finding_view()]
-- "routers_portal_portal_engagement": "portal_engagement()" | kind=code-symbol | source=manager/backend/app/routers/portal.py:L88 | neighbors=[portal.py, _enum_val()]
-- "routers_portal_portal_scans": "portal_scans()" | kind=code-symbol | source=manager/backend/app/routers/portal.py:L275 | neighbors=[portal.py, _enum_val()]
-- "routers_portal_portal_trends": "portal_trends()" | kind=code-symbol | source=manager/backend/app/routers/portal.py:L235 | neighbors=[portal.py, _metric_finding()]
-- "routers_probe_enrollment_create_enroll_token": "create_enroll_token()" | kind=code-symbol | source=manager/backend/app/routers/probe_enrollment.py:L770 | neighbors=[probe_enrollment.py, generate_enroll_token()]
-- "routers_probe_enrollment_derive_refresh_secret": "_derive_refresh_secret()" | kind=code-symbol | source=manager/backend/app/routers/probe_enrollment.py:L49 | neighbors=[probe_enrollment.py, activate_enrollment()]
-- "routers_probe_enrollment_enrollmentactivate": "EnrollmentActivate" | kind=code-symbol | source=manager/backend/app/routers/probe_enrollment.py:L144 | neighbors=[probe_enrollment.py, EnrollmentSecret]
-- "routers_probe_enrollment_enrollmentcreate_validate_key": ".validate_key()" | kind=code-symbol | source=manager/backend/app/routers/probe_enrollment.py:L128 | neighbors=[EnrollmentCreate, _decode_public_key()]
-- "routers_probe_enrollment_enrolltokencreate": "EnrollTokenCreate" | kind=code-symbol | source=manager/backend/app/routers/probe_enrollment.py:L133 | neighbors=[probe_enrollment.py, BaseModel]
-- "routers_probe_enrollment_list_enroll_tokens": "list_enroll_tokens()" | kind=code-symbol | source=manager/backend/app/routers/probe_enrollment.py:L818 | neighbors=[probe_enrollment.py, enroll_token_is_usable()]
-- "routers_probe_enrollment_policy": "_policy()" | kind=code-symbol | source=manager/backend/app/routers/probe_enrollment.py:L194 | neighbors=[probe_enrollment.py, activate_enrollment()]
-- "routers_probe_enrollment_tokenrefresh": "TokenRefresh" | kind=code-symbol | source=manager/backend/app/routers/probe_enrollment.py:L186 | neighbors=[probe_enrollment.py, BaseModel]
-- "routers_sla_policy_slapolicyin": "SlaPolicyIn" | kind=code-symbol | source=manager/backend/app/routers/sla_policy.py:L39 | neighbors=[sla_policy.py, BaseModel]
-- "routers_sla_policy_windows_of": "_windows_of()" | kind=code-symbol | source=manager/backend/app/routers/sla_policy.py:L53 | neighbors=[sla_policy.py, resolve_windows()]
-- "routers_sla_policy_windows_of_named": "_windows_of_named()" | kind=code-symbol | source=manager/backend/app/routers/sla_policy.py:L74 | neighbors=[sla_policy.py, _out()]
-- "routers_users_get_user": "get_user()" | kind=code-symbol | source=manager/backend/app/routers/users.py:L73 | neighbors=[users.py, _out()]
-- "routers_users_list_users": "list_users()" | kind=code-symbol | source=manager/backend/app/routers/users.py:L55 | neighbors=[users.py, _out()]
-- "routers_validation_list_validation_requests": "list_validation_requests()" | kind=code-symbol | source=manager/backend/app/routers/validation.py:L186 | neighbors=[validation.py, _request_out()]
-- "routers_validation_load_finding_and_eng": "_load_finding_and_eng()" | kind=code-symbol | source=manager/backend/app/routers/validation.py:L99 | neighbors=[validation.py, create_validation_request()]
-- "routers_validation_reject_validation": "reject_validation()" | kind=code-symbol | source=manager/backend/app/routers/validation.py:L271 | neighbors=[validation.py, _get_request_or_404()]
-- "routers_validation_rejectbody": "RejectBody" | kind=code-symbol | source=manager/backend/app/routers/validation.py:L59 | neighbors=[validation.py, BaseModel]
-- "routers_validation_validaterequest": "ValidateRequest" | kind=code-symbol | source=manager/backend/app/routers/validation.py:L53 | neighbors=[validation.py, BaseModel]
-- "routers_vuln_scans_nuclei_finding": "_nuclei_finding()" | kind=code-symbol | source=manager/backend/app/routers/vuln_scans.py:L407 | neighbors=[vuln_scans.py, _run_nuclei_and_save()]
-- "routers_vuln_scans_nuclei_terminal_result": "_nuclei_terminal_result()" | kind=code-symbol | source=manager/backend/app/routers/vuln_scans.py:L430 | neighbors=[vuln_scans.py, _run_nuclei_and_save()]
-- "scan_page_apifetch": "apiFetch()" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L154 | neighbors=[page.tsx, getToken()]
-- "scan_page_gettoken": "getToken()" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L110 | neighbors=[page.tsx, apiFetch()]
-- "scanner_accuracy_expected_keys": "_expected_keys()" | kind=code-symbol | source=probe/scanner/accuracy.py:L37 | neighbors=[accuracy.py, score_findings()]
-- "scanner_accuracy_finding_key": "_finding_key()" | kind=code-symbol | source=probe/scanner/accuracy.py:L31 | neighbors=[accuracy.py, score_findings()]
-- "scanner_accuracy_format_report": "format_report()" | kind=code-symbol | source=probe/scanner/accuracy.py:L145 | neighbors=[accuracy.py, _main()]
-- "scanner_accuracy_gate_format_gate_report": "format_gate_report()" | kind=code-symbol | source=probe/scanner/accuracy_gate.py:L175 | neighbors=[accuracy_gate.py, _main()]
-- "scanner_adaptive_timeout_adaptivetimeout_timeout": ".timeout()" | kind=code-symbol | source=probe/scanner/adaptive_timeout.py:L44 | neighbors=[AdaptiveTimeout, Current timeout: base until we have a s…]
-- "scanner_db_scanner_dbscanner_probe_one": "._probe_one()" | kind=code-symbol | source=probe/scanner/db_scanner.py:L247 | neighbors=[DBScanner, ._scan_port()]
-- "scanner_db_scanner_dbscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/scanner/db_scanner.py:L281 | neighbors=[DBScanner, ._scan_port()]
-- "scanner_db_scanner_probe_redis": "_probe_redis()" | kind=code-symbol | source=probe/scanner/db_scanner.py:L114 | neighbors=[db_scanner.py, interpret_redis_info()]
-- "scanner_delta_scanner_delta_to_dict": ".to_dict()" | kind=code-symbol | source=probe/scanner/delta_scanner.py:L87 | neighbors=[Delta, main()]
-- "scanner_delta_scanner_deltaengine_summary": ".summary()" | kind=code-symbol | source=probe/scanner/delta_scanner.py:L290 | neighbors=[DeltaEngine, main()]
-- "scanner_dns_scanner_dnsscanner_chaos_txt": "._chaos_txt()" | kind=code-symbol | source=probe/scanner/dns_scanner.py:L98 | neighbors=[DNSScanner, ._probe()]
-- "scanner_dns_scanner_dnsscanner_dnssec_present": "._dnssec_present()" | kind=code-symbol | source=probe/scanner/dns_scanner.py:L161 | neighbors=[DNSScanner, ._probe()]
-- "scanner_dns_scanner_dnsscanner_scan_port": "._scan_port()" | kind=code-symbol | source=probe/scanner/dns_scanner.py:L215 | neighbors=[DNSScanner, .scan_target()]
-- "scanner_dns_scanner_dnsscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/scanner/dns_scanner.py:L237 | neighbors=[DNSScanner, ._scan_port()]
+- "agent_validation_metric": "_metric()" | kind=code-symbol | source=probe/agent/validation.py:L173 | neighbors=[validation.py, score_inventory()]
+- "agent_validation_not_scored": "_not_scored()" | kind=code-symbol | source=probe/agent/validation.py:L197 | neighbors=[validation.py, score_inventory()]
+- "agent_validation_resolve_use_cases": "resolve_use_cases()" | kind=code-symbol | source=probe/agent/validation.py:L38 | neighbors=[validation.py, Resolve suites plus explicit use-cases,…]
+- "agent_validation_target_address_count": "target_address_count()" | kind=code-symbol | source=probe/agent/validation.py:L93 | neighbors=[validation.py, Return the conservative number of addre…]
+- "agent_validation_validate_targets": "validate_targets()" | kind=code-symbol | source=probe/agent/validation.py:L55 | neighbors=[validation.py, Require every IP/CIDR target to be full…]
+- "ai_agent_agentdecisionengine_count": "._count()" | kind=code-symbol | source=manager/backend/app/ai/agent.py:L345 | neighbors=[AgentDecisionEngine, ._overview()]
+- "ai_agent_agentdecisionengine_create": "._create()" | kind=code-symbol | source=manager/backend/app/ai/agent.py:L236 | neighbors=[AgentDecisionEngine, .run()]
+- "ai_agent_agentdecisionengine_list_assets": "._list_assets()" | kind=code-symbol | source=manager/backend/app/ai/agent.py:L301 | neighbors=[AgentDecisionEngine, ._exec_read_tool()]
+- "ai_agent_agentdecisionengine_list_attack_paths": "._list_attack_paths()" | kind=code-symbol | source=manager/backend/app/ai/agent.py:L333 | neighbors=[AgentDecisionEngine, ._exec_read_tool()]
+- "ai_agent_maybe_decimal": "_maybe_decimal()" | kind=code-symbol | source=manager/backend/app/ai/agent.py:L411 | neighbors=[agent.py, ._persist()]
+- "ai_agent_maybe_uuid": "_maybe_uuid()" | kind=code-symbol | source=manager/backend/app/ai/agent.py:L402 | neighbors=[agent.py, ._persist()]
+- "ai_agent_tool_result": "_tool_result()" | kind=code-symbol | source=manager/backend/app/ai/agent.py:L393 | neighbors=[agent.py, .run()]
+- "ai_init": "__init__.py" | kind=code-symbol | source=manager/backend/app/ai/__init__.py:L1 | neighbors=[d1b4dd3 trim frontend to 7 core pages; …, 298a9d4 trim frontend to 7 core pages; …]
+- "ai_llm_report_collect_cves_scores": "_collect_cves_scores()" | kind=code-symbol | source=manager/backend/app/ai/llm_report.py:L488 | neighbors=[llm_report.py, .generate_executive_summary()]
+- "ai_llm_report_llmreportgenerator_generate_detection_rule_explanation": ".generate_detection_rule_explanation()" | kind=code-symbol | source=manager/backend/app/ai/llm_report.py:L271 | neighbors=[LLMReportGenerator, ._generate_and_store()]
+- "ai_llm_report_uuid": "_uuid()" | kind=code-symbol | source=manager/backend/app/ai/llm_report.py:L470 | neighbors=[llm_report.py, ._generate_and_store()]
+- "ai_prioritizer_to_float": "_to_float()" | kind=code-symbol | source=manager/backend/app/ai/prioritizer.py:L61 | neighbors=[prioritizer.py, extract_features()]
+- "ai_prioritizer_vulnprioritizer_train": ".train()" | kind=code-symbol | source=manager/backend/app/ai/prioritizer.py:L110 | neighbors=[Fit an XGBoost regressor on historical …, VulnPrioritizer]
+- "ai_verification_graph_run_verification": "run_verification()" | kind=code-symbol | source=manager/backend/app/ai/verification_graph.py:L28 | neighbors=[verification_graph.py, Run passive verification. Uses the Lang…]
+- "aibrain_page_aibrainpage": "AIBrainPage()" | kind=code-symbol | source=manager/frontend/app/aibrain/page.tsx:L347 | neighbors=[page.tsx, providerLabel()]
+- "app_config_get_settings": "get_settings()" | kind=code-symbol | source=manager/backend/app/config.py:L144 | neighbors=[config.py, Settings]
+- "app_dependencies_close_redis": "close_redis()" | kind=code-symbol | source=manager/backend/app/dependencies.py:L26 | neighbors=[dependencies.py, Close the global Redis connection pool.…]
+- "app_dependencies_get_current_user": "get_current_user()" | kind=code-symbol | source=manager/backend/app/dependencies.py:L35 | neighbors=[dependencies.py, Reads user claims injected by TenantIso…]
+- "app_dependencies_rationale_27": "Close the global Redis connection pool. Call during app shutdown." | kind=entity | source=manager/backend/app/dependencies.py:L27 | neighbors=[close_redis(), CurrentUser]
+- "app_dependencies_rationale_36": "Reads user claims injected by TenantIsolationMiddleware.     Raises 401 if middl" | kind=entity | source=manager/backend/app/dependencies.py:L36 | neighbors=[get_current_user(), CurrentUser]
+- "app_init": "__init__.py" | kind=code-symbol | source=manager/backend/app/__init__.py:L1 | neighbors=[d1b4dd3 trim frontend to 7 core pages; …, 298a9d4 trim frontend to 7 core pages; …]
+- "app_main_rationale_198": "Identify the Manager API without exposing a second dashboard." | kind=entity | source=manager/backend/app/main.py:L198 | neighbors=[_service_root(), TenantIsolationMiddleware]
+- "app_ratelimit_client_ip": "client_ip()" | kind=code-symbol | source=manager/backend/app/ratelimit.py:L16 | neighbors=[ratelimit.py, Best-effort client IP. Honors X-Forward…]
+- "app_ratelimit_rate_limit": "rate_limit()" | kind=code-symbol | source=manager/backend/app/ratelimit.py:L43 | neighbors=[ratelimit.py, FastAPI dependency factory. Keys the wi…]
+- "assistant_advisorflow_advisorflow": "AdvisorFlow()" | kind=code-symbol | source=manager/frontend/components/assistant/AdvisorFlow.tsx:L73 | neighbors=[AdvisorFlow.tsx, AssistantDrawer.tsx]
+- "assistant_assistantdrawer_assistantdrawer": "AssistantDrawer()" | kind=code-symbol | source=manager/frontend/components/assistant/AssistantDrawer.tsx:L21 | neighbors=[AssistantDrawer.tsx, AssistantProvider.tsx]
+- "assistant_assistantfab_assistantfab": "AssistantFab()" | kind=code-symbol | source=manager/frontend/components/assistant/AssistantFab.tsx:L6 | neighbors=[AssistantFab.tsx, AssistantProvider.tsx]
+- "assistant_assistantprovider_assistantprovider": "AssistantProvider()" | kind=code-symbol | source=manager/frontend/components/assistant/AssistantProvider.tsx:L28 | neighbors=[layout.tsx, AssistantProvider.tsx]
+- "assistant_factcard_lifecyclesummary": "lifecycleSummary()" | kind=code-symbol | source=manager/frontend/components/assistant/FactCard.tsx:L16 | neighbors=[FactCard.tsx, FactCard()]
+- "assistant_modelswitcher_modelselection": "ModelSelection" | kind=code-symbol | source=manager/frontend/components/assistant/ModelSwitcher.tsx:L5 | neighbors=[AssistantDrawer.tsx, ModelSwitcher.tsx]
+- "assistant_modelswitcher_modelswitcher": "ModelSwitcher()" | kind=code-symbol | source=manager/frontend/components/assistant/ModelSwitcher.tsx:L34 | neighbors=[AssistantDrawer.tsx, ModelSwitcher.tsx]
+- "auth_init": "__init__.py" | kind=code-symbol | source=manager/backend/app/auth/__init__.py:L1 | neighbors=[d1b4dd3 trim frontend to 7 core pages; …, 298a9d4 trim frontend to 7 core pages; …]
+- "auth_jwt_create_device_access_token": "create_device_access_token()" | kind=code-symbol | source=manager/backend/app/auth/jwt.py:L47 | neighbors=[jwt.py, create_access_token()]
+- "auth_middleware_is_public_enrollment_request": "_is_public_enrollment_request()" | kind=code-symbol | source=manager/backend/app/auth/middleware.py:L33 | neighbors=[middleware.py, .dispatch()]
+- "auth_middleware_rationale_38": "Routes a customer-portal token (aud=vedha-portal) may reach.      The audience s" | kind=entity | source=manager/backend/app/auth/middleware.py:L38 | neighbors=[portal_jwt_path_allows(), agent_jwt_path_allows()]
 
 ## Instructions
 

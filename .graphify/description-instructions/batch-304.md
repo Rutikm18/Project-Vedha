@@ -1,4 +1,4 @@
-# Node Description Batch 305 of 336
+# Node Description Batch 305 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,60 +12,51 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
-For an entity node (any other kind — e.g. a person, place, event, object),
-describe what the entity is and its role, grounded in its type, its
-relations (neighbors) and the provided citations/evidence — e.g.
-"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
-Ground entity descriptions in the citations/evidence when present; do not
-speculate beyond the context, so a node with no supporting context may be
-left out of the reply.
-LANGUAGE: each entry has a `lang=` marker giving the language of its source.
-Write that entry's description in EXACTLY that language. Do not translate to
-a single common language — match each node's source language individually.
+Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_probe_simple_approve_rationale_1": "test_probe_simple_approve.py — one-click probe approval helpers (item 5)." | kind=entity | source=manager/backend/tests/test_probe_simple_approve.py:L1 | neighbors=[test_probe_simple_approve.py] | lang=en
-- "tests_test_probe_simple_approve_rationale_12": "db.execute(...).scalars().all() → the given agent-name list." | kind=entity | source=manager/backend/tests/test_probe_simple_approve.py:L12 | neighbors=[_db_names()] | lang=en
-- "tests_test_probe_simple_approve_testsimpleapproveinput_test_defaults_are_all_optional": ".test_defaults_are_all_optional()" | kind=code-symbol | source=manager/backend/tests/test_probe_simple_approve.py:L39 | neighbors=[TestSimpleApproveInput] | lang=en
-- "tests_test_probe_simple_approve_testsimpleapproveinput_test_overrides_accepted": ".test_overrides_accepted()" | kind=code-symbol | source=manager/backend/tests/test_probe_simple_approve.py:L46 | neighbors=[TestSimpleApproveInput] | lang=en
-- "tests_test_project_time_rationale_1": "Manager-side project time: render in IST, stay timezone-AWARE.  The manager stor" | kind=entity | source=manager/backend/tests/test_project_time.py:L1 | neighbors=[test_project_time.py] | lang=en
-- "tests_test_project_time_rationale_38": "The property that makes this safe next to existing UTC data." | kind=entity | source=manager/backend/tests/test_project_time.py:L38 | neighbors=[.test_still_orders_against_utc_rows()] | lang=en
-- "tests_test_project_time_rationale_46": "Every naive datetime in this codebase's history came from utcnow().         Assu" | kind=entity | source=manager/backend/tests/test_project_time.py:L46 | neighbors=[.test_naive_is_assumed_utc()] | lang=en
-- "tests_test_project_time_rationale_87": "Guards the actual bug: utcnow() strings carried no offset." | kind=entity | source=manager/backend/tests/test_project_time.py:L87 | neighbors=[test_websocket_no_longer_emits_naive_ti…] | lang=en
-- "tests_test_project_time_testfilestamp_test_filename_safe": ".test_filename_safe()" | kind=code-symbol | source=manager/backend/tests/test_project_time.py:L64 | neighbors=[TestFileStamp] | lang=en
-- "tests_test_project_time_testfilestamp_test_no_z_suffix_on_local_time": ".test_no_z_suffix_on_local_time()" | kind=code-symbol | source=manager/backend/tests/test_project_time.py:L61 | neighbors=[TestFileStamp] | lang=en
-- "tests_test_project_time_testoverrideandfallback_test_bad_zone_does_not_crash_the_api": ".test_bad_zone_does_not_crash_the_api()" | kind=code-symbol | source=manager/backend/tests/test_project_time.py:L75 | neighbors=[TestOverrideAndFallback] | lang=en
-- "tests_test_project_time_testoverrideandfallback_test_ist_survives_missing_tzdata": ".test_ist_survives_missing_tzdata()" | kind=code-symbol | source=manager/backend/tests/test_project_time.py:L81 | neighbors=[TestOverrideAndFallback] | lang=en
-- "tests_test_project_time_testoverrideandfallback_test_vedha_tz_override": ".test_vedha_tz_override()" | kind=code-symbol | source=manager/backend/tests/test_project_time.py:L69 | neighbors=[TestOverrideAndFallback] | lang=en
-- "tests_test_project_time_testrendering_test_default_is_ist": ".test_default_is_ist()" | kind=code-symbol | source=manager/backend/tests/test_project_time.py:L24 | neighbors=[TestRendering] | lang=en
-- "tests_test_project_time_testrendering_test_same_instant_as_utc": ".test_same_instant_as_utc()" | kind=code-symbol | source=manager/backend/tests/test_project_time.py:L32 | neighbors=[TestRendering] | lang=en
-- "tests_test_project_time_testrendering_test_timestamp_carries_an_offset": ".test_timestamp_carries_an_offset()" | kind=code-symbol | source=manager/backend/tests/test_project_time.py:L27 | neighbors=[TestRendering] | lang=en
-- "tests_test_project_time_testtoprojecttz_test_aware_input_keeps_its_instant": ".test_aware_input_keeps_its_instant()" | kind=code-symbol | source=manager/backend/tests/test_project_time.py:L51 | neighbors=[TestToProjectTz] | lang=en
-- "tests_test_project_time_testtoprojecttz_test_none_passes_through": ".test_none_passes_through()" | kind=code-symbol | source=manager/backend/tests/test_project_time.py:L56 | neighbors=[TestToProjectTz] | lang=en
-- "tests_test_project_timezone_rationale_1": "Project timestamps render in IST, and stay timezone-AWARE while doing it.  Opera" | kind=entity | source=probe/tests/test_project_timezone.py:L1 | neighbors=[test_project_timezone.py] | lang=en
-- "tests_test_project_timezone_rationale_36": "Rendering moved; the instant did not." | kind=entity | source=probe/tests/test_project_timezone.py:L36 | neighbors=[.test_timestamp_is_the_same_instant_as_…] | lang=en
-- "tests_test_project_timezone_rationale_42": "The ordering guarantee that makes this change safe." | kind=entity | source=probe/tests/test_project_timezone.py:L42 | neighbors=[.test_aware_timestamps_still_compare_ag…] | lang=en
-- "tests_test_project_timezone_rationale_51": "A `Z` on a local-time stamp is an outright lie." | kind=entity | source=probe/tests/test_project_timezone.py:L51 | neighbors=[.test_file_stamp_has_no_z_suffix()] | lang=en
-- "tests_test_project_timezone_rationale_72": "The timestamp that ends up inside every result file." | kind=entity | source=probe/tests/test_project_timezone.py:L72 | neighbors=[.test_scan_result_timestamp_is_ist()] | lang=en
-- "tests_test_project_timezone_rationale_86": "A bad VEDHA_TZ must never take a scan down mid-engagement." | kind=entity | source=probe/tests/test_project_timezone.py:L86 | neighbors=[.test_unknown_zone_falls_back_without_c…] | lang=pt
-- "tests_test_project_timezone_rationale_93": "Sealed/slim images may ship no tzdata. IST has no DST, so the fixed         +05:" | kind=entity | source=probe/tests/test_project_timezone.py:L93 | neighbors=[.test_ist_survives_a_missing_tzdata()] | lang=en
-- "tests_test_project_timezone_testfilestamps_test_custom_format_is_honoured": ".test_custom_format_is_honoured()" | kind=code-symbol | source=probe/tests/test_project_timezone.py:L66 | neighbors=[TestFileStamps] | lang=en
-- "tests_test_project_timezone_testfilestamps_test_file_stamp_is_filename_safe": ".test_file_stamp_is_filename_safe()" | kind=code-symbol | source=probe/tests/test_project_timezone.py:L57 | neighbors=[TestFileStamps] | lang=en
-- "tests_test_project_timezone_testfilestamps_test_file_stamp_is_local_wall_clock": ".test_file_stamp_is_local_wall_clock()" | kind=code-symbol | source=probe/tests/test_project_timezone.py:L54 | neighbors=[TestFileStamps] | lang=en
-- "tests_test_project_timezone_testfilestamps_test_file_stamp_sorts_chronologically": ".test_file_stamp_sorts_chronologically()" | kind=code-symbol | source=probe/tests/test_project_timezone.py:L61 | neighbors=[TestFileStamps] | lang=en
-- "tests_test_project_timezone_testoverrideandfallback_test_vedha_tz_overrides_the_default": ".test_vedha_tz_overrides_the_default()" | kind=code-symbol | source=probe/tests/test_project_timezone.py:L79 | neighbors=[TestOverrideAndFallback] | lang=en
-- "tests_test_project_timezone_testprojecttimezone_test_default_is_ist": ".test_default_is_ist()" | kind=code-symbol | source=probe/tests/test_project_timezone.py:L27 | neighbors=[TestProjectTimezone] | lang=en
-- "tests_test_project_timezone_testprojecttimezone_test_timestamp_is_iso_with_offset_not_naive": ".test_timestamp_is_iso_with_offset_not_naive()" | kind=code-symbol | source=probe/tests/test_project_timezone.py:L30 | neighbors=[TestProjectTimezone] | lang=en
-- "tests_test_raw_facts_rationale_1": "Raw scanner facts endpoint — inspect exactly what the vedha-agent collected." | kind=entity | source=manager/backend/tests/test_raw_facts.py:L1 | neighbors=[test_raw_facts.py] | lang=en
-- "tests_test_reference_rationale_1": "test_reference.py — the human-readable reference scheme.  A scan job could only" | kind=entity | source=manager/backend/tests/test_reference.py:L1 | neighbors=[test_reference.py] | lang=en
-- "tests_test_reference_rationale_118": "Migration 0036 backfills in SQL so it needs no application layer. If the     two" | kind=entity | source=manager/backend/tests/test_reference.py:L118 | neighbors=[test_the_migration_backfill_agrees_with…] | lang=en
-- "tests_test_reference_rationale_36": "A backfilled reference must match what the row would have been given         whe" | kind=entity | source=manager/backend/tests/test_reference.py:L36 | neighbors=[.test_uses_the_rows_own_date_not_today()] | lang=en
-- "tests_test_reference_rationale_50": "The whole point of the scheme: a human relays it." | kind=entity | source=manager/backend/tests/test_reference.py:L50 | neighbors=[TestSurvivesBeingReadAloud] | lang=en
-- "tests_test_reference_rationale_70": "The prefix and date are literal — folding them would corrupt a date." | kind=entity | source=manager/backend/tests/test_reference.py:L70 | neighbors=[.test_only_the_suffix_is_alias_folded()] | lang=en
-- "tests_test_reference_rationale_88": "It is quoted in tickets — it must not move." | kind=entity | source=manager/backend/tests/test_reference.py:L88 | neighbors=[.test_the_same_row_always_gets_the_same…] | lang=en
-- "tests_test_reference_testshape_test_an_unknown_prefix_is_refused": ".test_an_unknown_prefix_is_refused()" | kind=code-symbol | source=manager/backend/tests/test_reference.py:L44 | neighbors=[TestShape] | lang=en
+- "tests_test_accuracy_gate_testcorpusvalidation_test_missing_directory_is_rejected": ".test_missing_directory_is_rejected()" | kind=code-symbol | source=probe/tests/test_accuracy_gate.py:L118 | neighbors=[TestCorpusValidation]
+- "tests_test_accuracy_gate_testprovenance_test_nmap_labels_count_as_accuracy_evidence": ".test_nmap_labels_count_as_accuracy_evidence()" | kind=code-symbol | source=probe/tests/test_accuracy_gate.py:L130 | neighbors=[TestProvenance]
+- "tests_test_accuracy_gate_testprovenance_test_self_regression_labels_do_not": ".test_self_regression_labels_do_not()" | kind=code-symbol | source=probe/tests/test_accuracy_gate.py:L133 | neighbors=[TestProvenance]
+- "tests_test_accuracy_gate_testshippedcorpora_test_every_shipped_corpus_declares_provenance": ".test_every_shipped_corpus_declares_provenance()" | kind=code-symbol | source=probe/tests/test_accuracy_gate.py:L48 | neighbors=[TestShippedCorpora]
+- "tests_test_accuracy_gate_testshippedcorpora_test_report_marks_regression_corpora_as_not_accuracy_evidence": ".test_report_marks_regression_corpora_as_not_accuracy_evidence()" | kind=code-symbol | source=probe/tests/test_accuracy_gate.py:L53 | neighbors=[TestShippedCorpora]
+- "tests_test_accuracy_gate_testshippedcorpora_test_unlabeled_findings_dimension_is_marked_in_the_report": ".test_unlabeled_findings_dimension_is_marked_in_the_report()" | kind=code-symbol | source=probe/tests/test_accuracy_gate.py:L77 | neighbors=[TestShippedCorpora]
+- "tests_test_accuracy_gate_testthresholds_test_clean_result_produces_no_violations": ".test_clean_result_produces_no_violations()" | kind=code-symbol | source=probe/tests/test_accuracy_gate.py:L178 | neighbors=[TestThresholds]
+- "tests_test_accuracy_gate_testthresholds_test_false_positive_finding_trips_precision": ".test_false_positive_finding_trips_precision()" | kind=code-symbol | source=probe/tests/test_accuracy_gate.py:L165 | neighbors=[TestThresholds]
+- "tests_test_accuracy_gate_testthresholds_test_missed_open_port_trips_open_recall": ".test_missed_open_port_trips_open_recall()" | kind=code-symbol | source=probe/tests/test_accuracy_gate.py:L157 | neighbors=[TestThresholds]
+- "tests_test_accuracy_gate_testthresholds_test_phantom_open_port_trips_open_precision": ".test_phantom_open_port_trips_open_precision()" | kind=code-symbol | source=probe/tests/test_accuracy_gate.py:L149 | neighbors=[TestThresholds]
+- "tests_test_accuracy_gate_testthresholds_test_unlabeled_dimension_is_skipped_not_scored_as_perfect": ".test_unlabeled_dimension_is_skipped_not_scored_as_perfect()" | kind=code-symbol | source=probe/tests/test_accuracy_gate.py:L172 | neighbors=[TestThresholds]
+- "tests_test_active_validation_interpret_test_confirmed_upgrades_and_sets_exploit_validated": "test_confirmed_upgrades_and_sets_exploit_validated()" | kind=code-symbol | source=manager/backend/tests/test_active_validation_interpret.py:L6 | neighbors=[test_active_validation_interpret.py]
+- "tests_test_active_validation_interpret_test_contradicted_marks_false_positive": "test_contradicted_marks_false_positive()" | kind=code-symbol | source=manager/backend/tests/test_active_validation_interpret.py:L13 | neighbors=[test_active_validation_interpret.py]
+- "tests_test_active_validation_interpret_test_inconclusive_keeps_state_unchanged": "test_inconclusive_keeps_state_unchanged()" | kind=code-symbol | source=manager/backend/tests/test_active_validation_interpret.py:L20 | neighbors=[test_active_validation_interpret.py]
+- "tests_test_active_validation_interpret_test_missing_or_garbage_result_is_inconclusive": "test_missing_or_garbage_result_is_inconclusive()" | kind=code-symbol | source=manager/backend/tests/test_active_validation_interpret.py:L27 | neighbors=[test_active_validation_interpret.py]
+- "tests_test_ad_assessment_fakeattr_init": ".__init__()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L32 | neighbors=[_FakeAttr]
+- "tests_test_ad_assessment_fakeentry_init": ".__init__()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L37 | neighbors=[_FakeEntry]
+- "tests_test_ad_assessment_testadcschecker_setup_method": ".setup_method()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L280 | neighbors=[TestADCSChecker]
+- "tests_test_ad_assessment_testadcschecker_test_esc1_negative_when_manager_approval": ".test_esc1_negative_when_manager_approval()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L292 | neighbors=[TestADCSChecker]
+- "tests_test_ad_assessment_testadcschecker_test_esc1_negative_without_low_priv_enrollment": ".test_esc1_negative_without_low_priv_enrollment()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L299 | neighbors=[TestADCSChecker]
+- "tests_test_ad_assessment_testadcschecker_test_esc1_positive": ".test_esc1_positive()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L283 | neighbors=[TestADCSChecker]
+- "tests_test_ad_assessment_testadcschecker_test_esc4_negative_when_deny_ace": ".test_esc4_negative_when_deny_ace()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L313 | neighbors=[TestADCSChecker]
+- "tests_test_ad_assessment_testadcschecker_test_esc4_positive": ".test_esc4_positive()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L306 | neighbors=[TestADCSChecker]
+- "tests_test_ad_assessment_testadcschecker_test_esc8_negative_no_web_enrollment": ".test_esc8_negative_no_web_enrollment()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L332 | neighbors=[TestADCSChecker]
+- "tests_test_ad_assessment_testadcschecker_test_esc8_negative_with_epa_and_https": ".test_esc8_negative_with_epa_and_https()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L326 | neighbors=[TestADCSChecker]
+- "tests_test_ad_assessment_testadcschecker_test_esc8_positive": ".test_esc8_positive()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L320 | neighbors=[TestADCSChecker]
+- "tests_test_ad_assessment_testadcschecker_test_generate_findings_produces_esc1_and_esc8": ".test_generate_findings_produces_esc1_and_esc8()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L335 | neighbors=[TestADCSChecker]
+- "tests_test_ad_assessment_testasreproastchecker_setup_method": ".setup_method()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L217 | neighbors=[TestASREPRoastChecker]
+- "tests_test_ad_assessment_testasreproastchecker_test_finding_shape": ".test_finding_shape()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L229 | neighbors=[TestASREPRoastChecker]
+- "tests_test_ad_assessment_testasreproastchecker_test_get_no_preauth_accounts": ".test_get_no_preauth_accounts()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L220 | neighbors=[TestASREPRoastChecker]
+- "tests_test_ad_assessment_testasreproastchecker_test_no_finding_when_empty": ".test_no_finding_when_empty()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L235 | neighbors=[TestASREPRoastChecker]
+- "tests_test_ad_assessment_testasreproastchecker_test_request_asrep_without_impacket": ".test_request_asrep_without_impacket()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L238 | neighbors=[TestASREPRoastChecker]
+- "tests_test_ad_assessment_testbloodhoundcollector_setup_method": ".setup_method()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L358 | neighbors=[TestBloodHoundCollector]
+- "tests_test_ad_assessment_testbloodhoundcollector_test_da_path_finding_critical_when_short": ".test_da_path_finding_critical_when_short()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L361 | neighbors=[TestBloodHoundCollector]
+- "tests_test_ad_assessment_testbloodhoundcollector_test_da_path_finding_high_when_long": ".test_da_path_finding_high_when_long()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L368 | neighbors=[TestBloodHoundCollector]
+- "tests_test_ad_assessment_testbloodhoundcollector_test_import_without_neo4j": ".test_import_without_neo4j()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L379 | neighbors=[TestBloodHoundCollector]
+- "tests_test_ad_assessment_testbloodhoundcollector_test_no_finding_without_paths": ".test_no_finding_without_paths()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L373 | neighbors=[TestBloodHoundCollector]
+- "tests_test_ad_assessment_testbloodhoundcollector_test_query_da_paths_without_driver": ".test_query_da_paths_without_driver()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L376 | neighbors=[TestBloodHoundCollector]
+- "tests_test_ad_assessment_testbuildadfinding_test_attack_narrative_carried_in_evidence": ".test_attack_narrative_carried_in_evidence()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L84 | neighbors=[TestBuildADFinding]
+- "tests_test_ad_assessment_testbuildadfinding_test_invalid_severity_falls_back_to_info": ".test_invalid_severity_falls_back_to_info()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L76 | neighbors=[TestBuildADFinding]
 
 ## Instructions
 

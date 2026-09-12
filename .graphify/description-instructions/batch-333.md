@@ -1,4 +1,4 @@
-# Node Description Batch 334 of 336
+# Node Description Batch 334 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,53 +19,51 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-LANGUAGE: each entry has a `lang=` marker giving the language of its source.
-Write that entry's description in EXACTLY that language. Do not translate to
-a single common language — match each node's source language individually.
+Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "workflow_execution_rationale_67": "Return the runtime engine inventory without claiming optional tools ran." | kind=entity | source=probe/workflow/execution.py:L67 | neighbors=[engine_manifest()] | lang=en
-- "workflow_gates_gate_4_service_banner": "gate_4_service_banner()" | kind=code-symbol | source=probe/workflow/gates.py:L118 | neighbors=[gates.py] | lang=en
-- "workflow_gates_gate_6_credentialed_collection": "gate_6_credentialed_collection()" | kind=code-symbol | source=probe/workflow/gates.py:L163 | neighbors=[gates.py] | lang=en
-- "workflow_gates_rationale_1": "gates.py — precondition functions deciding whether each stage of the workflow ru" | kind=entity | source=probe/workflow/gates.py:L1 | neighbors=[gates.py] | lang=en
-- "workflow_gates_rationale_123": "OS identity for a host already proven alive. Runs on the SAME evidence the     p" | kind=entity | source=probe/workflow/gates.py:L123 | neighbors=[gate_4b_os_fingerprint()] | lang=en
-- "workflow_gates_rationale_136": "Does `branch` apply to this host?       - Must be in this profile's allowed deep" | kind=entity | source=probe/workflow/gates.py:L136 | neighbors=[gate_5_branch_eligible()] | lang=en
-- "workflow_gates_rationale_46": "True means OT/ICS passive-only mode — a hard stop, never reached by     any acti" | kind=entity | source=probe/workflow/gates.py:L46 | neighbors=[gate_0_is_passive_profile()] | lang=en
-- "workflow_gates_rationale_48": "True means OT/ICS passive-only mode — a hard stop, never reached by     any acti" | kind=entity | source=probe/workflow/gates.py:L48 | neighbors=[gate_0_is_passive_profile()] | lang=en
-- "workflow_gates_rationale_64": "True means OT/ICS passive-only mode — a hard stop, never reached by     any acti" | kind=entity | source=probe/workflow/gates.py:L64 | neighbors=[gate_0_is_passive_profile()] | lang=en
-- "workflow_gates_rationale_72": "Does `branch` apply to this host?       - Must be in this profile's allowed deep" | kind=entity | source=probe/workflow/gates.py:L72 | neighbors=[gate_5_branch_eligible()] | lang=en
-- "workflow_gates_rationale_74": "Does `branch` apply to this host?       - Must be in this profile's allowed deep" | kind=entity | source=probe/workflow/gates.py:L74 | neighbors=[gate_5_branch_eligible()] | lang=en
-- "workflow_gates_rationale_90": "Does `branch` apply to this host?       - Must be in this profile's allowed deep" | kind=entity | source=probe/workflow/gates.py:L90 | neighbors=[gate_5_branch_eligible()] | lang=en
-- "workflow_gates_rationale_99": "True means OT/ICS passive-only mode — a hard stop, never reached by     any acti" | kind=entity | source=probe/workflow/gates.py:L99 | neighbors=[gate_0_is_passive_profile()] | lang=en
-- "workflow_host_health_hosthealthmonitor_offline_hosts": ".offline_hosts()" | kind=code-symbol | source=probe/workflow/host_health.py:L345 | neighbors=[HostHealthMonitor] | lang=en
-- "workflow_host_health_rationale_1": "host_health.py — detect a target that was proven alive and has since gone away," | kind=entity | source=probe/workflow/host_health.py:L1 | neighbors=[host_health.py] | lang=en
-- "workflow_host_health_rationale_114": "Tracks per-host reachability across the deep-scan stages.      `liveness_probe`" | kind=entity | source=probe/workflow/host_health.py:L114 | neighbors=[HostHealthMonitor] | lang=en
-- "workflow_host_health_rationale_134": "True when a component ran and got nothing back that proves life.          An emp" | kind=entity | source=probe/workflow/host_health.py:L134 | neighbors=[._is_silence()] | lang=en
-- "workflow_host_health_rationale_153": "Feed one component's results in.          Only pass components that had POSITIVE" | kind=entity | source=probe/workflow/host_health.py:L153 | neighbors=[.observe()] | lang=en
-- "workflow_host_health_rationale_195": "Re-probe a suspected host and record the verdict.          Returns VERDICT_OFFLI" | kind=entity | source=probe/workflow/host_health.py:L195 | neighbors=[.confirm()] | lang=en
-- "workflow_host_health_rationale_257": "Heartbeat a host for as long as it is being scanned.          This, not the stri" | kind=entity | source=probe/workflow/host_health.py:L257 | neighbors=[.watch()] | lang=en
-- "workflow_host_health_rationale_302": "Emit one fact per offline host, plus any flaky notes gathered." | kind=entity | source=probe/workflow/host_health.py:L302 | neighbors=[.finalize()] | lang=en
-- "workflow_host_health_rationale_83": "Consecutive silent components before we spend a re-check on this host." | kind=entity | source=probe/workflow/host_health.py:L83 | neighbors=[_strike_threshold()] | lang=en
-- "workflow_host_health_rationale_88": "Seconds between liveness heartbeats while a host is being scanned." | kind=entity | source=probe/workflow/host_health.py:L88 | neighbors=[_heartbeat_interval()] | lang=en
-- "workflow_host_health_rationale_96": "Consecutive missed heartbeats before a host is declared offline." | kind=entity | source=probe/workflow/host_health.py:L96 | neighbors=[_heartbeat_misses()] | lang=en
-- "workflow_init_rationale_1": "workflow — conditional, caching, dependency-aware orchestrator that replaces pip" | kind=entity | source=probe/workflow/__init__.py:L1 | neighbors=[__init__.py] | lang=en
-- "workflow_intensity_rationale_1": "intensity.py — the third, orthogonal scan knob.  Two knobs already compose in th" | kind=entity | source=probe/workflow/intensity.py:L1 | neighbors=[intensity.py] | lang=en
-- "workflow_intensity_rationale_65": "Return a COPY of the preset for `name` (falling back to the default).      Raise" | kind=entity | source=probe/workflow/intensity.py:L65 | neighbors=[resolve_intensity()] | lang=en
-- "workflow_intensity_rationale_84": "Concrete TCP port list for this intensity, or None to defer to the     profile c" | kind=entity | source=probe/workflow/intensity.py:L84 | neighbors=[intensity_port_override()] | lang=en
-- "workflow_modes_rationale_1": "modes.py — engagement mode configurations. Each mode is a thin config that tunes" | kind=entity | source=probe/workflow/modes.py:L1 | neighbors=[modes.py] | lang=en
-- "workflow_modes_rationale_105": "Discovery + ports + banner only — no deep dives, no credentials." | kind=entity | source=probe/workflow/modes.py:L105 | neighbors=[triage()] | lang=en
-- "workflow_modes_rationale_112": "Full funnel, every branch the profile allows." | kind=entity | source=probe/workflow/modes.py:L112 | neighbors=[assessment()] | lang=en
-- "workflow_modes_rationale_127": "Loads a prior engagement's cache; only facts older than     recheck_older_than g" | kind=entity | source=probe/workflow/modes.py:L127 | neighbors=[re_scan()] | lang=pt
-- "workflow_modes_rationale_25": "Discovery + ports + banner only — no deep dives, no credentials." | kind=entity | source=probe/workflow/modes.py:L25 | neighbors=[triage()] | lang=en
-- "workflow_modes_rationale_30": "Resolve the explicit ceiling while preserving the legacy triage knob." | kind=entity | source=probe/workflow/modes.py:L30 | neighbors=[resolve_stage_ceiling()] | lang=en
-- "workflow_modes_rationale_31": "Full funnel, every branch the profile allows." | kind=entity | source=probe/workflow/modes.py:L31 | neighbors=[assessment()] | lang=en
-- "workflow_modes_rationale_44": "Loads a prior engagement's cache; only facts older than     recheck_older_than g" | kind=entity | source=probe/workflow/modes.py:L44 | neighbors=[re_scan()] | lang=pt
-- "workflow_modes_rationale_46": "Return whether a bounded plan includes `stage`." | kind=entity | source=probe/workflow/modes.py:L46 | neighbors=[includes_stage()] | lang=pt
-- "workflow_modes_rationale_61": "Host discovery plus the profile's TCP port catalog." | kind=entity | source=probe/workflow/modes.py:L61 | neighbors=[discovery()] | lang=en
-- "workflow_modes_rationale_72": "Liveness checks only." | kind=entity | source=probe/workflow/modes.py:L72 | neighbors=[host_discovery()] | lang=en
-- "workflow_modes_rationale_83": "Liveness checks plus the profile's TCP port catalog." | kind=entity | source=probe/workflow/modes.py:L83 | neighbors=[port_scan()] | lang=en
+- "tests_test_network_va_accuracy_rationale_1": "test_network_va_accuracy.py — end-to-end accuracy of the network_va use case.  E" | kind=entity | source=probe/tests/test_network_va_accuracy.py:L1 | neighbors=[test_network_va_accuracy.py]
+- "tests_test_network_va_accuracy_rationale_120": "The regression this guards: these ports were outside the 40-port catalog,     so" | kind=entity | source=probe/tests/test_network_va_accuracy.py:L120 | neighbors=[test_every_planted_risk_port_is_found()]
+- "tests_test_network_va_accuracy_rationale_141": "Positive protocol evidence turns the botnet-C2 port guess into an     observatio" | kind=entity | source=probe/tests/test_network_va_accuracy.py:L141 | neighbors=[test_irc_is_identified_by_protocol_not_…]
+- "tests_test_network_va_accuracy_rationale_157": "4444 says nothing. The scanner must record that, not invent a service." | kind=entity | source=probe/tests/test_network_va_accuracy.py:L157 | neighbors=[test_silent_port_reports_no_banner_hone…]
+- "tests_test_network_va_accuracy_rationale_169": "Every deep branch that ran must have produced facts or have had a port to     ju" | kind=entity | source=probe/tests/test_network_va_accuracy.py:L169 | neighbors=[test_no_branch_runs_without_evidence()]
+- "tests_test_network_va_accuracy_rationale_181": "service_banner now proves non-TLS by attempting a handshake, so silent     binar" | kind=entity | source=probe/tests/test_network_va_accuracy.py:L181 | neighbors=[test_tls_branch_is_not_routed_by_silenc…]
+- "tests_test_network_va_accuracy_rationale_189": "network_va composes device classification and the exposure matrix." | kind=entity | source=probe/tests/test_network_va_accuracy.py:L189 | neighbors=[test_post_stages_ran()]
+- "tests_test_network_va_accuracy_rationale_27": "A real TCP listener that optionally speaks first." | kind=entity | source=probe/tests/test_network_va_accuracy.py:L27 | neighbors=[_Listener]
+- "tests_test_network_va_accuracy_rationale_79": "One real network_va against loopback with risk-catalog services listening." | kind=entity | source=probe/tests/test_network_va_accuracy.py:L79 | neighbors=[va_scan()]
+- "tests_test_network_va_accuracy_test_etcd_is_identified_and_cpe_mapped": "test_etcd_is_identified_and_cpe_mapped()" | kind=code-symbol | source=probe/tests/test_network_va_accuracy.py:L148 | neighbors=[test_network_va_accuracy.py]
+- "tests_test_network_va_accuracy_test_named_risk_port_in_catalog": "test_named_risk_port_in_catalog()" | kind=code-symbol | source=probe/tests/test_network_va_accuracy.py:L201 | neighbors=[test_network_va_accuracy.py]
+- "tests_test_network_va_accuracy_test_risk_ports_are_in_the_it_catalog": "test_risk_ports_are_in_the_it_catalog()" | kind=code-symbol | source=probe/tests/test_network_va_accuracy.py:L196 | neighbors=[test_network_va_accuracy.py]
+- "tests_test_network_va_accuracy_test_scan_completed_without_errors": "test_scan_completed_without_errors()" | kind=code-symbol | source=probe/tests/test_network_va_accuracy.py:L126 | neighbors=[test_network_va_accuracy.py]
+- "tests_test_network_va_accuracy_test_shell_prompt_is_identified_as_a_shell": "test_shell_prompt_is_identified_as_a_shell()" | kind=code-symbol | source=probe/tests/test_network_va_accuracy.py:L134 | neighbors=[test_network_va_accuracy.py]
+- "tests_test_new_scanners_delta_engine": "delta_engine()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L326 | neighbors=[test_new_scanners.py]
+- "tests_test_new_scanners_rationale_1": "test_new_scanners.py — unit tests for the five new/enhanced scanner modules.  Te" | kind=entity | source=probe/tests/test_new_scanners.py:L1 | neighbors=[test_new_scanners.py]
+- "tests_test_new_scanners_testdeltaengine_test_load_jsonl_missing_file": ".test_load_jsonl_missing_file()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L408 | neighbors=[TestDeltaEngine]
+- "tests_test_new_scanners_testiotscanner_test_coap_get_wellknown_header": ".test_coap_get_wellknown_header()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L281 | neighbors=[TestIoTScanner]
+- "tests_test_new_scanners_testiotscanner_test_coap_get_wellknown_path": ".test_coap_get_wellknown_path()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L287 | neighbors=[TestIoTScanner]
+- "tests_test_new_scanners_testiotscanner_test_coap_response_parse_205": ".test_coap_response_parse_205()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L293 | neighbors=[TestIoTScanner]
+- "tests_test_new_scanners_testiotscanner_test_coap_response_parse_404": ".test_coap_response_parse_404()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L300 | neighbors=[TestIoTScanner]
+- "tests_test_new_scanners_testiotscanner_test_coap_response_parse_short": ".test_coap_response_parse_short()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L306 | neighbors=[TestIoTScanner]
+- "tests_test_new_scanners_testiotscanner_test_mqtt_connect_clean_session_flag": ".test_mqtt_connect_clean_session_flag()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L275 | neighbors=[TestIoTScanner]
+- "tests_test_new_scanners_testiotscanner_test_mqtt_connect_packet_structure": ".test_mqtt_connect_packet_structure()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L265 | neighbors=[TestIoTScanner]
+- "tests_test_new_scanners_testiotscanner_test_mqtt_remaining_length_encoding": ".test_mqtt_remaining_length_encoding()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L258 | neighbors=[TestIoTScanner]
+- "tests_test_new_scanners_testiotscanner_test_ssdp_header_parsing_location": ".test_ssdp_header_parsing_location()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L248 | neighbors=[TestIoTScanner]
+- "tests_test_new_scanners_testmobilescanner_test_adb_checksum_empty": ".test_adb_checksum_empty()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L586 | neighbors=[TestMobileScanner]
+- "tests_test_new_scanners_testmobilescanner_test_adb_checksum_known_value": ".test_adb_checksum_known_value()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L590 | neighbors=[TestMobileScanner]
+- "tests_test_new_scanners_testmobilescanner_test_adb_cnxn_checksum_matches": ".test_adb_cnxn_checksum_matches()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L532 | neighbors=[TestMobileScanner]
+- "tests_test_new_scanners_testmobilescanner_test_adb_cnxn_command_field": ".test_adb_cnxn_command_field()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L520 | neighbors=[TestMobileScanner]
+- "tests_test_new_scanners_testmobilescanner_test_adb_cnxn_magic_invariant": ".test_adb_cnxn_magic_invariant()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L526 | neighbors=[TestMobileScanner]
+- "tests_test_new_scanners_testmobilescanner_test_mdns_query_contains_service_labels": ".test_mdns_query_contains_service_labels()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L574 | neighbors=[TestMobileScanner]
+- "tests_test_new_scanners_testmobilescanner_test_mdns_query_googlecast": ".test_mdns_query_googlecast()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L581 | neighbors=[TestMobileScanner]
+- "tests_test_new_scanners_testmobilescanner_test_mdns_query_one_question": ".test_mdns_query_one_question()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L569 | neighbors=[TestMobileScanner]
+- "tests_test_new_scanners_testmobilescanner_test_mdns_query_transaction_id_zero": ".test_mdns_query_transaction_id_zero()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L564 | neighbors=[TestMobileScanner]
+- "tests_test_new_scanners_testmobilescanner_test_parse_adb_header_auth": ".test_parse_adb_header_auth()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L548 | neighbors=[TestMobileScanner]
+- "tests_test_new_scanners_testmobilescanner_test_parse_adb_header_cnxn": ".test_parse_adb_header_cnxn()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L539 | neighbors=[TestMobileScanner]
+- "tests_test_new_scanners_testmobilescanner_test_parse_adb_header_invalid_magic": ".test_parse_adb_header_invalid_magic()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L555 | neighbors=[TestMobileScanner]
+- "tests_test_new_scanners_testmobilescanner_test_parse_adb_header_too_short": ".test_parse_adb_header_too_short()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L560 | neighbors=[TestMobileScanner]
+- "tests_test_new_scanners_testsnmpberutilities_test_ber_len_long_form_one_byte": ".test_ber_len_long_form_one_byte()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L47 | neighbors=[TestSNMPBerUtilities]
 
 ## Instructions
 

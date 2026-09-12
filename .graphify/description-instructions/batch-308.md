@@ -1,4 +1,4 @@
-# Node Description Batch 309 of 336
+# Node Description Batch 309 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,51 +19,53 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-Write every description in English (en). Do not switch languages.
+LANGUAGE: each entry has a `lang=` marker giving the language of its source.
+Write that entry's description in EXACTLY that language. Do not translate to
+a single common language — match each node's source language individually.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_router_signals_teststructuredservice_test_http_by_service_field": ".test_http_by_service_field()" | kind=code-symbol | source=probe/tests/test_router_signals.py:L43 | neighbors=[TestStructuredService]
-- "tests_test_router_signals_teststructuredservice_test_ssh_by_service_field": ".test_ssh_by_service_field()" | kind=code-symbol | source=probe/tests/test_router_signals.py:L48 | neighbors=[TestStructuredService]
-- "tests_test_router_signals_testtlsprobednegative_test_absence_guess_kept_for_facts_without_the_flag": ".test_absence_guess_kept_for_facts_without_the_flag()" | kind=code-symbol | source=probe/tests/test_router_signals.py:L125 | neighbors=[TestTlsProbedNegative]
-- "tests_test_router_signals_testtlsprobednegative_test_probed_and_failed_is_not_tls": ".test_probed_and_failed_is_not_tls()" | kind=code-symbol | source=probe/tests/test_router_signals.py:L117 | neighbors=[TestTlsProbedNegative]
-- "tests_test_router_signals_testtlsprobednegative_test_probed_and_succeeded_still_routes": ".test_probed_and_succeeded_still_routes()" | kind=code-symbol | source=probe/tests/test_router_signals.py:L122 | neighbors=[TestTlsProbedNegative]
-- "tests_test_router_signals_testwebschemes_test_observed_tls_prefers_https": ".test_observed_tls_prefers_https()" | kind=code-symbol | source=probe/tests/test_router_signals.py:L60 | neighbors=[TestWebSchemes]
-- "tests_test_router_signals_testwebschemes_test_static_table_still_applies": ".test_static_table_still_applies()" | kind=code-symbol | source=probe/tests/test_router_signals.py:L65 | neighbors=[TestWebSchemes]
-- "tests_test_rsync_scanner_fakesock_init": ".__init__()" | kind=code-symbol | source=probe/tests/test_rsync_scanner.py:L38 | neighbors=[_FakeSock]
-- "tests_test_rsync_scanner_fakesock_recv": ".recv()" | kind=code-symbol | source=probe/tests/test_rsync_scanner.py:L42 | neighbors=[_FakeSock]
-- "tests_test_rsync_scanner_fakesock_sendall": ".sendall()" | kind=code-symbol | source=probe/tests/test_rsync_scanner.py:L46 | neighbors=[_FakeSock]
-- "tests_test_rsync_scanner_rationale_1": "test_rsync_scanner.py — rsync daemon anonymous-module exposure.  Pure protocol p" | kind=entity | source=probe/tests/test_rsync_scanner.py:L1 | neighbors=[test_rsync_scanner.py]
-- "tests_test_rsync_scanner_rationale_35": "Minimal socket stand-in: replays the daemon greeting, records what the     scann" | kind=entity | source=probe/tests/test_rsync_scanner.py:L35 | neighbors=[_FakeSock]
-- "tests_test_rsync_scanner_rationale_51": "Protocol >= 32 daemons append their digest-name list to the greeting and     rej" | kind=entity | source=probe/tests/test_rsync_scanner.py:L51 | neighbors=[TestHandshake]
-- "tests_test_rsync_scanner_testparity_test_main_scripts": ".test_main_scripts()" | kind=code-symbol | source=probe/tests/test_rsync_scanner.py:L121 | neighbors=[TestParity]
-- "tests_test_rsync_scanner_testparsemodules_test_bounded": ".test_bounded()" | kind=code-symbol | source=probe/tests/test_rsync_scanner.py:L29 | neighbors=[TestParseModules]
-- "tests_test_rsync_scanner_testparsemodules_test_protocol_lines_ignored": ".test_protocol_lines_ignored()" | kind=code-symbol | source=probe/tests/test_rsync_scanner.py:L25 | neighbors=[TestParseModules]
-- "tests_test_rsync_scanner_testparsemodules_test_tab_and_space_separated": ".test_tab_and_space_separated()" | kind=code-symbol | source=probe/tests/test_rsync_scanner.py:L19 | neighbors=[TestParseModules]
-- "tests_test_run_all_reconcile_rationale_1": "test_run_all_reconcile.py — cross-cutting: run_all and scan_funnel must derive t" | kind=entity | source=probe/tests/test_run_all_reconcile.py:L1 | neighbors=[test_run_all_reconcile.py]
-- "tests_test_run_all_reconcile_test_advertised_dynamic_ports_extraction": "test_advertised_dynamic_ports_extraction()" | kind=code-symbol | source=probe/tests/test_run_all_reconcile.py:L34 | neighbors=[test_run_all_reconcile.py]
-- "tests_test_run_all_reconcile_test_open_tcp_ports_ignores_non_open_and_udp": "test_open_tcp_ports_ignores_non_open_and_udp()" | kind=code-symbol | source=probe/tests/test_run_all_reconcile.py:L57 | neighbors=[test_run_all_reconcile.py]
-- "tests_test_run_all_reconcile_test_reconcile_folds_in_only_reachable_dynamic_ports": "test_reconcile_folds_in_only_reachable_dynamic_ports()" | kind=code-symbol | source=probe/tests/test_run_all_reconcile.py:L51 | neighbors=[test_run_all_reconcile.py]
-- "tests_test_run_all_reconcile_test_reconcile_matches_between_pipelines_when_epm_unreachable": "test_reconcile_matches_between_pipelines_when_epm_unreachable()" | kind=code-symbol | source=probe/tests/test_run_all_reconcile.py:L41 | neighbors=[test_run_all_reconcile.py]
-- "tests_test_run_all_reconcile_test_run_all_imports_the_shared_reconciler_not_a_copy": "test_run_all_imports_the_shared_reconciler_not_a_copy()" | kind=code-symbol | source=probe/tests/test_run_all_reconcile.py:L26 | neighbors=[test_run_all_reconcile.py]
-- "tests_test_run_all_reconcile_test_run_all_runs_rdp_scanner_stage": "test_run_all_runs_rdp_scanner_stage()" | kind=code-symbol | source=probe/tests/test_run_all_reconcile.py:L18 | neighbors=[test_run_all_reconcile.py]
-- "tests_test_run_scoped_fact_scope_rationale_1": "Run-scoped facts must not be scope-checked as if they were hosts.  THE BUG THIS" | kind=entity | source=manager/backend/tests/test_run_scoped_fact_scope.py:L1 | neighbors=[test_run_scoped_fact_scope.py]
-- "tests_test_run_scoped_fact_scope_rationale_103": "Authorization is IP/CIDR-only; a hostname must not pass." | kind=entity | source=manager/backend/tests/test_run_scoped_fact_scope.py:L103 | neighbors=[.test_hostname_target_is_still_refused()]
-- "tests_test_run_scoped_fact_scope_rationale_112": "The pre-existing <nmap-run> exemption this fix is modelled on." | kind=entity | source=manager/backend/tests/test_run_scoped_fact_scope.py:L112 | neighbors=[.test_scanner_control_record_exemption_…]
-- "tests_test_run_scoped_fact_scope_rationale_45": "The exact payload that caused the 422." | kind=entity | source=manager/backend/tests/test_run_scoped_fact_scope.py:L45 | neighbors=[.test_ipv6_discovery_auto_target_is_not…]
-- "tests_test_run_scoped_fact_scope_rationale_50": "Same record, but an interface actually resolved — still not a host." | kind=entity | source=manager/backend/tests/test_run_scoped_fact_scope.py:L50 | neighbors=[.test_ipv6_discovery_interface_name_is_…]
-- "tests_test_run_scoped_fact_scope_rationale_59": "The damage was collateral: one non-host descriptor discarded every         legit" | kind=entity | source=manager/backend/tests/test_run_scoped_fact_scope.py:L59 | neighbors=[.test_a_real_result_with_one_run_scoped…]
-- "tests_test_run_scoped_fact_scope_rationale_73": "The exemption must be narrow. These are the security assertions." | kind=entity | source=manager/backend/tests/test_run_scoped_fact_scope.py:L73 | neighbors=[TestTheScopeGateStillWorks]
-- "tests_test_run_scoped_fact_scope_rationale_89": "Only the documented run-scoped scanners are exempt — a scanner name         the" | kind=entity | source=manager/backend/tests/test_run_scoped_fact_scope.py:L89 | neighbors=[.test_an_unknown_scanner_gets_no_exempt…]
-- "tests_test_run_scoped_fact_scope_rationale_95": "The exemption skips the record entirely rather than trusting its         target," | kind=entity | source=manager/backend/tests/test_run_scoped_fact_scope.py:L95 | neighbors=[.test_run_scoped_name_does_not_launder_…]
-- "tests_test_run_scoped_fact_scope_testthescopegatestillworks_test_out_of_scope_finding_is_still_rejected": ".test_out_of_scope_finding_is_still_rejected()" | kind=code-symbol | source=manager/backend/tests/test_run_scoped_fact_scope.py:L84 | neighbors=[TestTheScopeGateStillWorks]
-- "tests_test_run_scoped_fact_scope_testthescopegatestillworks_test_out_of_scope_host_row_is_still_rejected": ".test_out_of_scope_host_row_is_still_rejected()" | kind=code-symbol | source=manager/backend/tests/test_run_scoped_fact_scope.py:L80 | neighbors=[TestTheScopeGateStillWorks]
-- "tests_test_runtime_requirements_coverage_rationale_1": "test_runtime_requirements_coverage.py — the probe IMAGE must be able to run ever" | kind=entity | source=probe/tests/test_runtime_requirements_coverage.py:L1 | neighbors=[test_runtime_requirements_coverage.py]
-- "tests_test_runtime_requirements_coverage_rationale_43": "Package names declared in a requirements file, normalised and lowercased." | kind=entity | source=probe/tests/test_runtime_requirements_coverage.py:L43 | neighbors=[_declared()]
-- "tests_test_runtime_requirements_coverage_rationale_67": "A package shipped in the image but absent from requirements.txt is a     depende" | kind=entity | source=probe/tests/test_runtime_requirements_coverage.py:L67 | neighbors=[test_runtime_is_a_subset_of_the_develop…]
-- "tests_test_runtime_topology_rationale_1": "Product-boundary tests for the single-dashboard Manager API." | kind=entity | source=manager/backend/tests/test_runtime_topology.py:L1 | neighbors=[test_runtime_topology.py]
-- "tests_test_runtime_topology_test_manager_does_not_mount_a_static_dashboard": "test_manager_does_not_mount_a_static_dashboard()" | kind=code-symbol | source=manager/backend/tests/test_runtime_topology.py:L6 | neighbors=[test_runtime_topology.py]
+- "tests_test_ai_normalizer_rationale_243": "A candidate without a version key produces version_raw=None." | kind=entity | source=manager/detection_engine/tests/test_ai_normalizer.py:L243 | neighbors=[.test_version_none_when_absent()] | lang=pt
+- "tests_test_ai_normalizer_rationale_253": "The result of a first successful client call must be stored in the         cache" | kind=entity | source=manager/detection_engine/tests/test_ai_normalizer.py:L253 | neighbors=[.test_result_is_cached_after_first_call…] | lang=en
+- "tests_test_ai_normalizer_rationale_96": "ssh_inventory facts have no banner-style text for the AI to normalise." | kind=entity | source=manager/detection_engine/tests/test_ai_normalizer.py:L96 | neighbors=[.test_ssh_inventory_returns_none()] | lang=en
+- "tests_test_ai_normalizer_testainormalizercache_test_cache_persists_across_instances": ".test_cache_persists_across_instances()" | kind=code-symbol | source=manager/detection_engine/tests/test_ai_normalizer.py:L134 | neighbors=[TestAINormalizerCache] | lang=en
+- "tests_test_ai_normalizer_testainormalizercache_test_get_returns_none_on_miss": ".test_get_returns_none_on_miss()" | kind=code-symbol | source=manager/detection_engine/tests/test_ai_normalizer.py:L124 | neighbors=[TestAINormalizerCache] | lang=en
+- "tests_test_ai_normalizer_testainormalizercache_test_key_is_content_hash_not_plaintext": ".test_key_is_content_hash_not_plaintext()" | kind=code-symbol | source=manager/detection_engine/tests/test_ai_normalizer.py:L141 | neighbors=[TestAINormalizerCache] | lang=en
+- "tests_test_ai_normalizer_testainormalizercache_test_put_and_get_roundtrip": ".test_put_and_get_roundtrip()" | kind=code-symbol | source=manager/detection_engine/tests/test_ai_normalizer.py:L128 | neighbors=[TestAINormalizerCache] | lang=en
+- "tests_test_ai_normalizer_testfakeaiclient_test_returns_empty_for_unknown_text": ".test_returns_empty_for_unknown_text()" | kind=code-symbol | source=manager/detection_engine/tests/test_ai_normalizer.py:L114 | neighbors=[TestFakeAIClient] | lang=en
+- "tests_test_ai_normalizer_testfakeaiclient_test_returns_registered_response": ".test_returns_registered_response()" | kind=code-symbol | source=manager/detection_engine/tests/test_ai_normalizer.py:L110 | neighbors=[TestFakeAIClient] | lang=en
+- "tests_test_async_udp_echoprotocol_connection_made": ".connection_made()" | kind=code-symbol | source=probe/tests/test_async_udp.py:L24 | neighbors=[_EchoProtocol] | lang=en
+- "tests_test_async_udp_echoprotocol_datagram_received": ".datagram_received()" | kind=code-symbol | source=probe/tests/test_async_udp.py:L27 | neighbors=[_EchoProtocol] | lang=en
+- "tests_test_async_udp_rationale_1": "test_async_udp.py — tests for the true-async UDP probe helper in scanner_base." | kind=entity | source=probe/tests/test_async_udp.py:L1 | neighbors=[test_async_udp.py] | lang=en
+- "tests_test_async_udp_sinkprotocol_datagram_received": ".datagram_received()" | kind=code-symbol | source=probe/tests/test_async_udp.py:L32 | neighbors=[_SinkProtocol] | lang=en
+- "tests_test_async_udp_start_server": "_start_server()" | kind=code-symbol | source=probe/tests/test_async_udp.py:L36 | neighbors=[test_async_udp.py] | lang=en
+- "tests_test_async_udp_test_datagram_received_resolves_future_with_bytes": "test_datagram_received_resolves_future_with_bytes()" | kind=code-symbol | source=probe/tests/test_async_udp.py:L77 | neighbors=[test_async_udp.py] | lang=en
+- "tests_test_async_udp_test_error_received_connection_refused_maps_to_closed": "test_error_received_connection_refused_maps_to_closed()" | kind=code-symbol | source=probe/tests/test_async_udp.py:L86 | neighbors=[test_async_udp.py] | lang=en
+- "tests_test_async_udp_test_probe_concurrency_all_complete": "test_probe_concurrency_all_complete()" | kind=code-symbol | source=probe/tests/test_async_udp.py:L106 | neighbors=[test_async_udp.py] | lang=en
+- "tests_test_async_udp_test_probe_no_reply_returns_none_on_timeout": "test_probe_no_reply_returns_none_on_timeout()" | kind=code-symbol | source=probe/tests/test_async_udp.py:L67 | neighbors=[test_async_udp.py] | lang=en
+- "tests_test_async_udp_test_probe_open_returns_exact_payload": "test_probe_open_returns_exact_payload()" | kind=code-symbol | source=probe/tests/test_async_udp.py:L56 | neighbors=[test_async_udp.py] | lang=en
+- "tests_test_async_udp_test_probe_open_returns_reply_bytes": "test_probe_open_returns_reply_bytes()" | kind=code-symbol | source=probe/tests/test_async_udp.py:L46 | neighbors=[test_async_udp.py] | lang=en
+- "tests_test_async_udp_test_probe_unbound_loopback_port_is_not_open": "test_probe_unbound_loopback_port_is_not_open()" | kind=code-symbol | source=probe/tests/test_async_udp.py:L95 | neighbors=[test_async_udp.py] | lang=en
+- "tests_test_async_udp_test_probe_unresolvable_host_returns_none": "test_probe_unresolvable_host_returns_none()" | kind=code-symbol | source=probe/tests/test_async_udp.py:L126 | neighbors=[test_async_udp.py] | lang=en
+- "tests_test_async_udp_test_udp_scanner_generic_probe_detects_unknown_responder": "test_udp_scanner_generic_probe_detects_unknown_responder()" | kind=code-symbol | source=probe/tests/test_async_udp.py:L183 | neighbors=[test_async_udp.py] | lang=en
+- "tests_test_async_udp_test_udp_scanner_generic_probe_unknown_port_silence_is_open_filtered": "test_udp_scanner_generic_probe_unknown_port_silence_is_open_filtered()" | kind=code-symbol | source=probe/tests/test_async_udp.py:L208 | neighbors=[test_async_udp.py] | lang=en
+- "tests_test_async_udp_test_udp_scanner_maps_closed_sentinel_to_closed_status": "test_udp_scanner_maps_closed_sentinel_to_closed_status()" | kind=code-symbol | source=probe/tests/test_async_udp.py:L138 | neighbors=[test_async_udp.py] | lang=en
+- "tests_test_async_udp_test_udp_scanner_probe_filtered_on_timeout": "test_udp_scanner_probe_filtered_on_timeout()" | kind=code-symbol | source=probe/tests/test_async_udp.py:L183 | neighbors=[test_async_udp.py] | lang=en
+- "tests_test_async_udp_test_udp_scanner_probe_open_filtered_on_timeout": "test_udp_scanner_probe_open_filtered_on_timeout()" | kind=code-symbol | source=probe/tests/test_async_udp.py:L229 | neighbors=[test_async_udp.py] | lang=en
+- "tests_test_async_udp_test_udp_scanner_probe_open_status_via_event_loop": "test_udp_scanner_probe_open_status_via_event_loop()" | kind=code-symbol | source=probe/tests/test_async_udp.py:L160 | neighbors=[test_async_udp.py] | lang=en
+- "tests_test_attack_path_correlation_rationale_1": "test_attack_path_correlation.py — manager-native composite correlation over prob" | kind=entity | source=manager/backend/tests/test_attack_path_correlation.py:L1 | neighbors=[test_attack_path_correlation.py] | lang=en
+- "tests_test_attack_path_correlation_test_every_composite_cites_and_tags": "test_every_composite_cites_and_tags()" | kind=code-symbol | source=manager/backend/tests/test_attack_path_correlation.py:L139 | neighbors=[test_attack_path_correlation.py] | lang=en
+- "tests_test_attack_path_correlation_test_results_are_sorted_most_severe_first": "test_results_are_sorted_most_severe_first()" | kind=code-symbol | source=manager/backend/tests/test_attack_path_correlation.py:L153 | neighbors=[test_attack_path_correlation.py] | lang=en
+- "tests_test_attack_paths_built_graph": "built_graph()" | kind=code-symbol | source=manager/backend/tests/test_attack_paths.py:L39 | neighbors=[test_attack_paths.py] | lang=en
+- "tests_test_attack_paths_demo": "demo()" | kind=code-symbol | source=manager/backend/tests/test_attack_paths.py:L34 | neighbors=[test_attack_paths.py] | lang=en
+- "tests_test_attack_paths_testgraphbuilder_test_asset_node_attributes": ".test_asset_node_attributes()" | kind=code-symbol | source=manager/backend/tests/test_attack_paths.py:L59 | neighbors=[TestGraphBuilder] | lang=en
+- "tests_test_attack_paths_testgraphbuilder_test_connects_to_and_same_segment_edges": ".test_connects_to_and_same_segment_edges()" | kind=code-symbol | source=manager/backend/tests/test_attack_paths.py:L77 | neighbors=[TestGraphBuilder] | lang=en
+- "tests_test_attack_paths_testgraphbuilder_test_credential_reuse_edges": ".test_credential_reuse_edges()" | kind=code-symbol | source=manager/backend/tests/test_attack_paths.py:L82 | neighbors=[TestGraphBuilder] | lang=en
+- "tests_test_attack_paths_testgraphbuilder_test_exploit_complexity_falls_back_to_severity": ".test_exploit_complexity_falls_back_to_severity()" | kind=code-symbol | source=manager/backend/tests/test_attack_paths.py:L102 | neighbors=[TestGraphBuilder] | lang=en
+- "tests_test_attack_paths_testgraphbuilder_test_exploit_complexity_from_vector": ".test_exploit_complexity_from_vector()" | kind=code-symbol | source=manager/backend/tests/test_attack_paths.py:L95 | neighbors=[TestGraphBuilder] | lang=en
+- "tests_test_attack_paths_testgraphbuilder_test_exploit_edges_only_for_exploitable": ".test_exploit_edges_only_for_exploitable()" | kind=code-symbol | source=manager/backend/tests/test_attack_paths.py:L70 | neighbors=[TestGraphBuilder] | lang=en
+- "tests_test_attack_paths_testgraphbuilder_test_has_service_and_has_finding_edges": ".test_has_service_and_has_finding_edges()" | kind=code-symbol | source=manager/backend/tests/test_attack_paths.py:L65 | neighbors=[TestGraphBuilder] | lang=en
 
 ## Instructions
 

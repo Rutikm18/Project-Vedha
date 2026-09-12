@@ -1,4 +1,4 @@
-# Node Description Batch 271 of 336
+# Node Description Batch 271 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,51 +12,58 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
+For an entity node (any other kind — e.g. a person, place, event, object),
+describe what the entity is and its role, grounded in its type, its
+relations (neighbors) and the provided citations/evidence — e.g.
+"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
+Ground entity descriptions in the citations/evidence when present; do not
+speculate beyond the context, so a node with no supporting context may be
+left out of the reply.
 Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_active_validation_interpret_test_contradicted_marks_false_positive": "test_contradicted_marks_false_positive()" | kind=code-symbol | source=manager/backend/tests/test_active_validation_interpret.py:L13 | neighbors=[test_active_validation_interpret.py]
-- "tests_test_active_validation_interpret_test_inconclusive_keeps_state_unchanged": "test_inconclusive_keeps_state_unchanged()" | kind=code-symbol | source=manager/backend/tests/test_active_validation_interpret.py:L20 | neighbors=[test_active_validation_interpret.py]
-- "tests_test_active_validation_interpret_test_missing_or_garbage_result_is_inconclusive": "test_missing_or_garbage_result_is_inconclusive()" | kind=code-symbol | source=manager/backend/tests/test_active_validation_interpret.py:L27 | neighbors=[test_active_validation_interpret.py]
-- "tests_test_ad_assessment_fakeattr_init": ".__init__()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L32 | neighbors=[_FakeAttr]
-- "tests_test_ad_assessment_fakeentry_init": ".__init__()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L37 | neighbors=[_FakeEntry]
-- "tests_test_ad_assessment_testadcschecker_setup_method": ".setup_method()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L280 | neighbors=[TestADCSChecker]
-- "tests_test_ad_assessment_testadcschecker_test_esc1_negative_when_manager_approval": ".test_esc1_negative_when_manager_approval()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L292 | neighbors=[TestADCSChecker]
-- "tests_test_ad_assessment_testadcschecker_test_esc1_negative_without_low_priv_enrollment": ".test_esc1_negative_without_low_priv_enrollment()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L299 | neighbors=[TestADCSChecker]
-- "tests_test_ad_assessment_testadcschecker_test_esc1_positive": ".test_esc1_positive()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L283 | neighbors=[TestADCSChecker]
-- "tests_test_ad_assessment_testadcschecker_test_esc4_negative_when_deny_ace": ".test_esc4_negative_when_deny_ace()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L313 | neighbors=[TestADCSChecker]
-- "tests_test_ad_assessment_testadcschecker_test_esc4_positive": ".test_esc4_positive()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L306 | neighbors=[TestADCSChecker]
-- "tests_test_ad_assessment_testadcschecker_test_esc8_negative_no_web_enrollment": ".test_esc8_negative_no_web_enrollment()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L332 | neighbors=[TestADCSChecker]
-- "tests_test_ad_assessment_testadcschecker_test_esc8_negative_with_epa_and_https": ".test_esc8_negative_with_epa_and_https()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L326 | neighbors=[TestADCSChecker]
-- "tests_test_ad_assessment_testadcschecker_test_esc8_positive": ".test_esc8_positive()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L320 | neighbors=[TestADCSChecker]
-- "tests_test_ad_assessment_testadcschecker_test_generate_findings_produces_esc1_and_esc8": ".test_generate_findings_produces_esc1_and_esc8()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L335 | neighbors=[TestADCSChecker]
-- "tests_test_ad_assessment_testasreproastchecker_setup_method": ".setup_method()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L217 | neighbors=[TestASREPRoastChecker]
-- "tests_test_ad_assessment_testasreproastchecker_test_finding_shape": ".test_finding_shape()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L229 | neighbors=[TestASREPRoastChecker]
-- "tests_test_ad_assessment_testasreproastchecker_test_get_no_preauth_accounts": ".test_get_no_preauth_accounts()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L220 | neighbors=[TestASREPRoastChecker]
-- "tests_test_ad_assessment_testasreproastchecker_test_no_finding_when_empty": ".test_no_finding_when_empty()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L235 | neighbors=[TestASREPRoastChecker]
-- "tests_test_ad_assessment_testasreproastchecker_test_request_asrep_without_impacket": ".test_request_asrep_without_impacket()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L238 | neighbors=[TestASREPRoastChecker]
-- "tests_test_ad_assessment_testbloodhoundcollector_setup_method": ".setup_method()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L358 | neighbors=[TestBloodHoundCollector]
-- "tests_test_ad_assessment_testbloodhoundcollector_test_da_path_finding_critical_when_short": ".test_da_path_finding_critical_when_short()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L361 | neighbors=[TestBloodHoundCollector]
-- "tests_test_ad_assessment_testbloodhoundcollector_test_da_path_finding_high_when_long": ".test_da_path_finding_high_when_long()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L368 | neighbors=[TestBloodHoundCollector]
-- "tests_test_ad_assessment_testbloodhoundcollector_test_import_without_neo4j": ".test_import_without_neo4j()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L379 | neighbors=[TestBloodHoundCollector]
-- "tests_test_ad_assessment_testbloodhoundcollector_test_no_finding_without_paths": ".test_no_finding_without_paths()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L373 | neighbors=[TestBloodHoundCollector]
-- "tests_test_ad_assessment_testbloodhoundcollector_test_query_da_paths_without_driver": ".test_query_da_paths_without_driver()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L376 | neighbors=[TestBloodHoundCollector]
-- "tests_test_ad_assessment_testbuildadfinding_test_attack_narrative_carried_in_evidence": ".test_attack_narrative_carried_in_evidence()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L84 | neighbors=[TestBuildADFinding]
-- "tests_test_ad_assessment_testbuildadfinding_test_invalid_severity_falls_back_to_info": ".test_invalid_severity_falls_back_to_info()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L76 | neighbors=[TestBuildADFinding]
-- "tests_test_ad_assessment_testbuildadfinding_test_required_fields_present": ".test_required_fields_present()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L60 | neighbors=[TestBuildADFinding]
-- "tests_test_ad_assessment_testkerberoastchecker_setup_method": ".setup_method()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L170 | neighbors=[TestKerberoastChecker]
-- "tests_test_ad_assessment_testkerberoastchecker_test_finding_critical_when_privileged": ".test_finding_critical_when_privileged()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L189 | neighbors=[TestKerberoastChecker]
-- "tests_test_ad_assessment_testkerberoastchecker_test_finding_high_when_not_privileged": ".test_finding_high_when_not_privileged()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L197 | neighbors=[TestKerberoastChecker]
-- "tests_test_ad_assessment_testkerberoastchecker_test_no_finding_when_empty": ".test_no_finding_when_empty()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L202 | neighbors=[TestKerberoastChecker]
-- "tests_test_ad_assessment_testkerberoastchecker_test_request_tgs_without_impacket_returns_none": ".test_request_tgs_without_impacket_returns_none()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L205 | neighbors=[TestKerberoastChecker]
-- "tests_test_ad_assessment_testldapenumeratorparsing_test_domain_to_base_dn": ".test_domain_to_base_dn()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L99 | neighbors=[TestLDAPEnumeratorParsing]
-- "tests_test_ad_assessment_testldapenumeratorparsing_test_search_without_connection_raises": ".test_search_without_connection_raises()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L158 | neighbors=[TestLDAPEnumeratorParsing]
-- "tests_test_ad_assessment_testntlmrelaychecker_setup_method": ".setup_method()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L249 | neighbors=[TestNTLMRelayChecker]
-- "tests_test_ad_assessment_testntlmrelaychecker_test_finding_for_ldap_signing_only": ".test_finding_for_ldap_signing_only()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L265 | neighbors=[TestNTLMRelayChecker]
-- "tests_test_ad_assessment_testntlmrelaychecker_test_finding_includes_ntlmrelayx_command": ".test_finding_includes_ntlmrelayx_command()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L258 | neighbors=[TestNTLMRelayChecker]
-- "tests_test_ad_assessment_testntlmrelaychecker_test_no_finding_when_all_secure": ".test_no_finding_when_all_secure()" | kind=code-symbol | source=manager/backend/tests/test_ad_assessment.py:L270 | neighbors=[TestNTLMRelayChecker]
+- "routers_detection_get_gaps": "get_gaps()" | kind=code-symbol | source=manager/backend/app/routers/detection.py:L187 | neighbors=[detection.py]
+- "routers_detection_run_validation": "run_validation()" | kind=code-symbol | source=manager/backend/app/routers/detection.py:L96 | neighbors=[detection.py]
+- "routers_detection_runs_rationale_37": "Findings FIRST produced by this run — the \"what appeared\" half of a delta." | kind=entity | source=manager/backend/app/routers/detection_runs.py:L37 | neighbors=[_select_new_since()]
+- "routers_engagements_engagementupdate_normalize_name": ".normalize_name()" | kind=code-symbol | source=manager/backend/app/routers/engagements.py:L523 | neighbors=[EngagementUpdate]
+- "routers_engagements_engagementupdate_validate_dates": ".validate_dates()" | kind=code-symbol | source=manager/backend/app/routers/engagements.py:L539 | neighbors=[EngagementUpdate]
+- "routers_engagements_engagementupdate_validate_scopes": ".validate_scopes()" | kind=code-symbol | source=manager/backend/app/routers/engagements.py:L533 | neighbors=[EngagementUpdate]
+- "routers_engagements_get_engagement": "get_engagement()" | kind=code-symbol | source=manager/backend/app/routers/engagements.py:L459 | neighbors=[engagements.py]
+- "routers_engagements_list_engagement_assets": "list_engagement_assets()" | kind=code-symbol | source=manager/backend/app/routers/engagements.py:L1250 | neighbors=[engagements.py]
+- "routers_engagements_list_engagement_jobs": "list_engagement_jobs()" | kind=code-symbol | source=manager/backend/app/routers/engagements.py:L625 | neighbors=[engagements.py]
+- "routers_engagements_list_engagements": "list_engagements()" | kind=code-symbol | source=manager/backend/app/routers/engagements.py:L398 | neighbors=[engagements.py]
+- "routers_engagements_rationale_1115": "The machine-readable answer to \"the scripts catch it but the manager doesn't\"." | kind=entity | source=manager/backend/app/routers/engagements.py:L1115 | neighbors=[detection_explain()]
+- "routers_engagements_rationale_1171": "The raw ScanResult facts as the probe submitted them, straight from the     appe" | kind=entity | source=manager/backend/app/routers/engagements.py:L1171 | neighbors=[raw_facts()]
+- "routers_engagements_rationale_125": "Write-through cache refresh on the WRITE session, right after flush.      Replac" | kind=entity | source=manager/backend/app/routers/engagements.py:L125 | neighbors=[_refresh_overview_cache()]
+- "routers_engagements_rationale_1264": "Probe-facing: the probe calls this independently before scanning a job to     re" | kind=entity | source=manager/backend/app/routers/engagements.py:L1264 | neighbors=[get_engagement_scope()]
+- "routers_engagements_rationale_1292": "Probe-facing: the probe calls this independently before scanning a job to     re" | kind=entity | source=manager/backend/app/routers/engagements.py:L1292 | neighbors=[get_engagement_scope()]
+- "routers_engagements_rationale_130": "Re-runs the detection pipeline against the CURRENT pinned vuln DB using     the" | kind=entity | source=manager/backend/app/routers/engagements.py:L130 | neighbors=[re_detect()]
+- "routers_engagements_rationale_156": "Re-runs the detection pipeline against the CURRENT pinned vuln DB using     the" | kind=entity | source=manager/backend/app/routers/engagements.py:L156 | neighbors=[re_detect()]
+- "routers_engagements_rationale_163": "Read an UploadFile in chunks, aborting with 413 once `limit` is exceeded     — s" | kind=entity | source=manager/backend/app/routers/engagements.py:L163 | neighbors=[_read_capped()]
+- "routers_engagements_rationale_181": "Parse a probe export into (facts, scan_type).      Accepts two shapes the probe" | kind=entity | source=manager/backend/app/routers/engagements.py:L181 | neighbors=[_parse_probe_file()]
+- "routers_engagements_rationale_189": "Read an UploadFile in chunks, aborting with 413 once `limit` is exceeded     — s" | kind=entity | source=manager/backend/app/routers/engagements.py:L189 | neighbors=[_read_capped()]
+- "routers_engagements_rationale_207": "Parse a probe export into (facts, scan_type).      Accepts two shapes the probe" | kind=entity | source=manager/backend/app/routers/engagements.py:L207 | neighbors=[_parse_probe_file()]
+- "routers_engagements_rationale_228": "Upsert assets (and their services) from raw ScanResult facts.      Mirrors `agen" | kind=entity | source=manager/backend/app/routers/engagements.py:L228 | neighbors=[_promote_from_facts()]
+- "routers_engagements_rationale_254": "Upsert assets (and their services) from raw ScanResult facts.      Mirrors `agen" | kind=entity | source=manager/backend/app/routers/engagements.py:L254 | neighbors=[_promote_from_facts()]
+- "routers_engagements_rationale_302": "Offline ingest path: upload a probe's scan export and run it through the     SAM" | kind=entity | source=manager/backend/app/routers/engagements.py:L302 | neighbors=[import_facts()]
+- "routers_engagements_rationale_328": "Offline ingest path: upload a probe's scan export and run it through the     SAM" | kind=entity | source=manager/backend/app/routers/engagements.py:L328 | neighbors=[import_facts()]
+- "routers_engagements_rationale_400": "P1: kills the BFF N+1 (was list + one detail call per engagement).     Computes" | kind=entity | source=manager/backend/app/routers/engagements.py:L400 | neighbors=[engagements_overview()]
+- "routers_engagements_rationale_42": "Shared aggregation — used by both the cached read path (ReadDB) and the     writ" | kind=entity | source=manager/backend/app/routers/engagements.py:L42 | neighbors=[_compute_overview()]
+- "routers_engagements_rationale_426": "P1: kills the BFF N+1 (was list + one detail call per engagement).     Computes" | kind=entity | source=manager/backend/app/routers/engagements.py:L426 | neighbors=[engagements_overview()]
+- "routers_engagements_rationale_68": "Shared aggregation — used by both the cached read path (ReadDB) and the     writ" | kind=entity | source=manager/backend/app/routers/engagements.py:L68 | neighbors=[_compute_overview()]
+- "routers_engagements_rationale_682": "Map a ScanJob status to the operator-facing scan phase shown on the card." | kind=entity | source=manager/backend/app/routers/engagements.py:L682 | neighbors=[_job_phase()]
+- "routers_engagements_rationale_685": "Probe-facing: the probe calls this independently before scanning a job to     re" | kind=entity | source=manager/backend/app/routers/engagements.py:L685 | neighbors=[get_engagement_scope()]
+- "routers_engagements_rationale_699": "Derive ONE authoritative campaign phase from reconciled evidence, not from a" | kind=entity | source=manager/backend/app/routers/engagements.py:L699 | neighbors=[_reconcile_status()]
+- "routers_engagements_rationale_745": "A SAFE, bounded view of a job's raw result — the counts an operator needs to" | kind=entity | source=manager/backend/app/routers/engagements.py:L745 | neighbors=[_result_summary()]
+- "routers_engagements_rationale_767": "One call powers the VA Campaigns page: every probe's job (status + a safe raw" | kind=entity | source=manager/backend/app/routers/engagements.py:L767 | neighbors=[campaign_progress()]
+- "routers_engagements_rationale_99": "Write-through cache refresh on the WRITE session, right after flush.      Replac" | kind=entity | source=manager/backend/app/routers/engagements.py:L99 | neighbors=[_refresh_overview_cache()]
+- "routers_exploits_list_audit_logs": "list_audit_logs()" | kind=code-symbol | source=manager/backend/app/routers/exploits.py:L337 | neighbors=[exploits.py]
+- "routers_findings_finding_summary": "finding_summary()" | kind=code-symbol | source=manager/backend/app/routers/findings.py:L284 | neighbors=[findings.py]
+- "routers_findings_list_findings": "list_findings()" | kind=code-symbol | source=manager/backend/app/routers/findings.py:L184 | neighbors=[findings.py]
+- "routers_findings_rationale_118": "Compute SLA state across the tenant's tracked findings (open/confirmed).     Opt" | kind=entity | source=manager/backend/app/routers/findings.py:L118 | neighbors=[sla_summary()]
+- "routers_findings_rationale_144": "Mobilization metrics: how fast findings actually close, and who owns the     ope" | kind=entity | source=manager/backend/app/routers/findings.py:L144 | neighbors=[finding_metrics()]
 
 ## Instructions
 

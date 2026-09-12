@@ -1,4 +1,4 @@
-# Node Description Batch 212 of 336
+# Node Description Batch 212 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,51 +12,60 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
-Write every description in English (en). Do not switch languages.
+For an entity node (any other kind — e.g. a person, place, event, object),
+describe what the entity is and its role, grounded in its type, its
+relations (neighbors) and the provided citations/evidence — e.g.
+"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
+Ground entity descriptions in the citations/evidence when present; do not
+speculate beyond the context, so a node with no supporting context may be
+left out of the reply.
+LANGUAGE: each entry has a `lang=` marker giving the language of its source.
+Write that entry's description in EXACTLY that language. Do not translate to
+a single common language — match each node's source language individually.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "lib_exploit_store_exploitresult": "ExploitResult" | kind=code-symbol | source=manager/frontend/lib/exploit-store.ts:L13 | neighbors=[exploit-store.ts]
-- "lib_exploit_store_exploitstore": "exploitStore" | kind=code-symbol | source=manager/frontend/lib/exploit-store.ts:L81 | neighbors=[exploit-store.ts]
-- "lib_exploit_store_genid": "genId()" | kind=code-symbol | source=manager/frontend/lib/exploit-store.ts:L68 | neighbors=[exploit-store.ts]
-- "lib_exploit_store_jobs": "jobs" | kind=code-symbol | source=manager/frontend/lib/exploit-store.ts:L77 | neighbors=[exploit-store.ts]
-- "lib_exploit_store_jobstatus": "JobStatus" | kind=code-symbol | source=manager/frontend/lib/exploit-store.ts:L2 | neighbors=[exploit-store.ts]
-- "lib_exploit_store_nowiso": "nowIso()" | kind=code-symbol | source=manager/frontend/lib/exploit-store.ts:L72 | neighbors=[exploit-store.ts]
-- "lib_exploit_store_payloadtype": "PayloadType" | kind=code-symbol | source=manager/frontend/lib/exploit-store.ts:L1 | neighbors=[exploit-store.ts]
-- "lib_fetcher_apierror_constructor": ".constructor()" | kind=code-symbol | source=manager/frontend/lib/fetcher.ts:L10 | neighbors=[ApiError]
-- "lib_finding_id_counters": "counters" | kind=code-symbol | source=manager/frontend/lib/finding-id.ts:L11 | neighbors=[finding-id.ts]
-- "lib_finding_id_sev_prefix": "SEV_PREFIX" | kind=code-symbol | source=manager/frontend/lib/finding-id.ts:L3 | neighbors=[finding-id.ts]
-- "lib_findings_store_default_data_path": "DEFAULT_DATA_PATH" | kind=code-symbol | source=manager/frontend/lib/findings-store.ts:L9 | neighbors=[findings-store.ts]
-- "lib_findings_store_isduplicate": "isDuplicate()" | kind=code-symbol | source=manager/frontend/lib/findings-store.ts:L43 | neighbors=[findings-store.ts]
-- "lib_findings_store_sla_hours": "SLA_HOURS" | kind=code-symbol | source=manager/frontend/lib/findings-store.ts:L15 | neighbors=[findings-store.ts]
-- "lib_graph_store_adj": "ADJ" | kind=code-symbol | source=manager/frontend/lib/graph-store.ts:L238 | neighbors=[graph-store.ts]
-- "lib_graph_store_adjacency": "adjacency()" | kind=code-symbol | source=manager/frontend/lib/graph-store.ts:L182 | neighbors=[graph-store.ts]
-- "lib_graph_store_attack_paths": "ATTACK_PATHS" | kind=code-symbol | source=manager/frontend/lib/graph-store.ts:L301 | neighbors=[graph-store.ts]
-- "lib_graph_store_attackpath": "AttackPath" | kind=code-symbol | source=manager/frontend/lib/graph-store.ts:L39 | neighbors=[graph-store.ts]
-- "lib_graph_store_bfspath": "bfsPath()" | kind=code-symbol | source=manager/frontend/lib/graph-store.ts:L194 | neighbors=[graph-store.ts]
-- "lib_graph_store_bfsreach": "bfsReach()" | kind=code-symbol | source=manager/frontend/lib/graph-store.ts:L194 | neighbors=[graph-store.ts]
-- "lib_graph_store_blastradiusresult": "BlastRadiusResult" | kind=code-symbol | source=manager/frontend/lib/graph-store.ts:L64 | neighbors=[graph-store.ts]
-- "lib_graph_store_buildchokepoints": "buildChokepoints()" | kind=code-symbol | source=manager/frontend/lib/graph-store.ts:L304 | neighbors=[graph-store.ts]
-- "lib_graph_store_builddemograph": "buildDemoGraph()" | kind=code-symbol | source=manager/frontend/lib/graph-store.ts:L73 | neighbors=[graph-store.ts]
-- "lib_graph_store_chokepoint": "Chokepoint" | kind=code-symbol | source=manager/frontend/lib/graph-store.ts:L53 | neighbors=[graph-store.ts]
-- "lib_graph_store_chokepoints": "CHOKEPOINTS" | kind=code-symbol | source=manager/frontend/lib/graph-store.ts:L327 | neighbors=[graph-store.ts]
-- "lib_graph_store_gedge": "GEdge" | kind=code-symbol | source=manager/frontend/lib/graph-store.ts:L27 | neighbors=[graph-store.ts]
-- "lib_graph_store_gnode": "GNode" | kind=code-symbol | source=manager/frontend/lib/graph-store.ts:L11 | neighbors=[graph-store.ts]
-- "lib_graph_store_internet_exposed_ids": "INTERNET_EXPOSED_IDS" | kind=code-symbol | source=manager/frontend/lib/graph-store.ts:L257 | neighbors=[graph-store.ts]
-- "lib_graph_store_nodes_nodes_edges_edges": "{ nodes: NODES, edges: EDGES }" | kind=code-symbol | source=manager/frontend/lib/graph-store.ts:L237 | neighbors=[graph-store.ts]
-- "lib_graph_store_nodetype": "NodeType" | kind=code-symbol | source=manager/frontend/lib/graph-store.ts:L4 | neighbors=[graph-store.ts]
-- "lib_graph_store_pathstatus": "PathStatus" | kind=code-symbol | source=manager/frontend/lib/graph-store.ts:L9 | neighbors=[graph-store.ts]
-- "lib_graph_store_relationtype": "RelationType" | kind=code-symbol | source=manager/frontend/lib/graph-store.ts:L5 | neighbors=[graph-store.ts]
-- "lib_graph_store_severity": "Severity" | kind=code-symbol | source=manager/frontend/lib/graph-store.ts:L8 | neighbors=[graph-store.ts]
-- "lib_graph_store_target_ids": "TARGET_IDS" | kind=code-symbol | source=manager/frontend/lib/graph-store.ts:L258 | neighbors=[graph-store.ts]
-- "lib_httpx_parser_httpxjsonldecoder_malformedlines": ".malformedLines()" | kind=code-symbol | source=manager/frontend/lib/httpx-parser.ts:L112 | neighbors=[HttpxJsonlDecoder]
-- "lib_httpx_parser_httpxlineparseresult": "HttpxLineParseResult" | kind=code-symbol | source=manager/frontend/lib/httpx-parser.ts:L12 | neighbors=[httpx-parser.ts]
-- "lib_job_store_job": "Job" | kind=code-symbol | source=manager/frontend/lib/job-store.ts:L8 | neighbors=[job-store.ts]
-- "lib_job_store_jobs_file": "JOBS_FILE" | kind=code-symbol | source=manager/frontend/lib/job-store.ts:L4 | neighbors=[job-store.ts]
-- "lib_job_store_jobstatus": "JobStatus" | kind=code-symbol | source=manager/frontend/lib/job-store.ts:L6 | neighbors=[job-store.ts]
-- "lib_naabu_parser_naaburaw": "NaabuRaw" | kind=code-symbol | source=manager/frontend/lib/naabu-parser.ts:L9 | neighbors=[naabu-parser.ts]
-- "lib_naabu_parser_naaburesult": "NaabuResult" | kind=code-symbol | source=manager/frontend/lib/naabu-parser.ts:L3 | neighbors=[naabu-parser.ts]
+- "app_layout_rootlayout": "RootLayout()" | kind=code-symbol | source=manager/frontend/app/layout.tsx:L14 | neighbors=[layout.tsx] | lang=en
+- "app_main_gziprequestmiddleware_call": ".__call__()" | kind=code-symbol | source=manager/backend/app/main.py:L137 | neighbors=[GzipRequestMiddleware] | lang=en
+- "app_main_gziprequestmiddleware_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/main.py:L134 | neighbors=[GzipRequestMiddleware] | lang=en
+- "app_main_lifespan": "lifespan()" | kind=code-symbol | source=manager/backend/app/main.py:L76 | neighbors=[main.py] | lang=en
+- "app_main_rationale_234": "Identify the Manager API without exposing a second dashboard." | kind=entity | source=manager/backend/app/main.py:L234 | neighbors=[_service_root()] | lang=en
+- "app_main_rationale_236": "Identify the Manager API without exposing a second dashboard." | kind=entity | source=manager/backend/app/main.py:L236 | neighbors=[_service_root()] | lang=en
+- "app_main_rationale_240": "Identify the Manager API without exposing a second dashboard." | kind=entity | source=manager/backend/app/main.py:L240 | neighbors=[_service_root()] | lang=en
+- "app_main_rationale_244": "Identify the Manager API without exposing a second dashboard." | kind=entity | source=manager/backend/app/main.py:L244 | neighbors=[_service_root()] | lang=en
+- "app_main_rationale_246": "Identify the Manager API without exposing a second dashboard." | kind=entity | source=manager/backend/app/main.py:L246 | neighbors=[_service_root()] | lang=en
+- "app_main_rationale_250": "Identify the Manager API without exposing a second dashboard." | kind=entity | source=manager/backend/app/main.py:L250 | neighbors=[_service_root()] | lang=en
+- "app_main_rationale_261": "Identify the Manager API without exposing a second dashboard." | kind=entity | source=manager/backend/app/main.py:L261 | neighbors=[_service_root()] | lang=en
+- "app_main_rationale_263": "Identify the Manager API without exposing a second dashboard." | kind=entity | source=manager/backend/app/main.py:L263 | neighbors=[_service_root()] | lang=en
+- "app_main_rationale_265": "Identify the Manager API without exposing a second dashboard." | kind=entity | source=manager/backend/app/main.py:L265 | neighbors=[_service_root()] | lang=en
+- "app_main_root_redirect": "_root_redirect()" | kind=code-symbol | source=manager/backend/app/main.py:L205 | neighbors=[main.py] | lang=en
+- "app_main_unhandled_exception_handler": "unhandled_exception_handler()" | kind=code-symbol | source=manager/backend/app/main.py:L213 | neighbors=[main.py] | lang=en
+- "app_page_agent": "Agent" | kind=code-symbol | source=manager/frontend/app/page.tsx:L27 | neighbors=[page.tsx] | lang=en
+- "app_page_agent_status": "AGENT_STATUS" | kind=code-symbol | source=manager/frontend/app/page.tsx:L29 | neighbors=[page.tsx] | lang=en
+- "app_page_agentrow": "AgentRow()" | kind=code-symbol | source=manager/frontend/app/page.tsx:L117 | neighbors=[page.tsx] | lang=en
+- "app_page_agentstatus": "AgentStatus" | kind=code-symbol | source=manager/frontend/app/page.tsx:L24 | neighbors=[page.tsx] | lang=en
+- "app_page_confidencebar": "ConfidenceBar()" | kind=code-symbol | source=manager/frontend/app/page.tsx:L64 | neighbors=[page.tsx] | lang=en
+- "app_page_dashboard": "Dashboard()" | kind=code-symbol | source=manager/frontend/app/page.tsx:L5 | neighbors=[page.tsx] | lang=en
+- "app_page_decisioncenter": "DecisionCenter()" | kind=code-symbol | source=manager/frontend/app/page.tsx:L55 | neighbors=[page.tsx] | lang=en
+- "app_page_glowcard": "GlowCard()" | kind=code-symbol | source=manager/frontend/app/page.tsx:L75 | neighbors=[page.tsx] | lang=en
+- "app_page_path_status": "PATH_STATUS" | kind=code-symbol | source=manager/frontend/app/page.tsx:L26 | neighbors=[page.tsx] | lang=en
+- "app_page_sectionheader": "SectionHeader()" | kind=code-symbol | source=manager/frontend/app/page.tsx:L36 | neighbors=[page.tsx] | lang=en
+- "app_page_sev_label": "SEV_LABEL" | kind=code-symbol | source=manager/frontend/app/page.tsx:L32 | neighbors=[page.tsx] | lang=en
+- "app_page_widgetplaceholder": "WidgetPlaceholder()" | kind=code-symbol | source=manager/frontend/app/page.tsx:L55 | neighbors=[page.tsx] | lang=en
+- "app_ratelimit_check": "_check()" | kind=code-symbol | source=manager/backend/app/ratelimit.py:L26 | neighbors=[ratelimit.py] | lang=en
+- "app_ratelimit_rationale_1": "ratelimit.py — P2: Redis-backed rate limiting (no new dependency; reuses the exi" | kind=entity | source=manager/backend/app/ratelimit.py:L1 | neighbors=[ratelimit.py] | lang=en
+- "app_ratelimit_rationale_17": "Best-effort client IP. Honors X-Forwarded-For (first hop) when behind a     prox" | kind=entity | source=manager/backend/app/ratelimit.py:L17 | neighbors=[client_ip()] | lang=pt
+- "app_ratelimit_rationale_44": "FastAPI dependency factory. Keys the window by (scope, client-IP)." | kind=entity | source=manager/backend/app/ratelimit.py:L44 | neighbors=[rate_limit()] | lang=en
+- "app_version_get_version": "get_version()" | kind=code-symbol | source=manager/backend/app/version.py:L17 | neighbors=[version.py] | lang=en
+- "app_version_rationale_1": "Single source of truth for the deployed application version.  The value is injec" | kind=entity | source=manager/backend/app/version.py:L1 | neighbors=[version.py] | lang=en
+- "approve_route_post": "POST()" | kind=code-symbol | source=manager/frontend/app/api/fleet/enrollment/[id]/approve/route.ts:L10 | neighbors=[route.ts] | lang=en
+- "assetid_route_get": "GET()" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/blast-radius/[assetId]/route.ts:L5 | neighbors=[route.ts] | lang=en
+- "assets_route_get": "GET()" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/assets/route.ts:L8 | neighbors=[route.ts] | lang=en
+- "assistant_advisorflow_commandrow": "CommandRow()" | kind=code-symbol | source=manager/frontend/components/assistant/AdvisorFlow.tsx:L46 | neighbors=[AdvisorFlow.tsx] | lang=en
+- "assistant_advisorflow_copybutton": "CopyButton()" | kind=code-symbol | source=manager/frontend/components/assistant/AdvisorFlow.tsx:L27 | neighbors=[AdvisorFlow.tsx] | lang=en
+- "assistant_advisorflow_patch_pill": "PATCH_PILL" | kind=code-symbol | source=manager/frontend/components/assistant/AdvisorFlow.tsx:L67 | neighbors=[AdvisorFlow.tsx] | lang=en
+- "assistant_advisorflow_richtext": "RichText()" | kind=code-symbol | source=manager/frontend/components/assistant/AdvisorFlow.tsx:L10 | neighbors=[AdvisorFlow.tsx] | lang=en
 
 ## Instructions
 

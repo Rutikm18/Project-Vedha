@@ -1,4 +1,4 @@
-# Node Description Batch 120 of 336
+# Node Description Batch 120 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,51 +12,58 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
+For an entity node (any other kind — e.g. a person, place, event, object),
+describe what the entity is and its role, grounded in its type, its
+relations (neighbors) and the provided citations/evidence — e.g.
+"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
+Ground entity descriptions in the citations/evidence when present; do not
+speculate beyond the context, so a node with no supporting context may be
+left out of the reply.
 Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_tls_fingerprint_synthetic_server_hello": "_synthetic_server_hello()" | kind=code-symbol | source=probe/tests/test_tls_fingerprint.py:L45 | neighbors=[test_tls_fingerprint.py, .test_extracts_version_and_cipher(), .test_tls13_version_from_supported_vers…]
-- "tests_test_tls_integration_self_signed": "_self_signed()" | kind=code-symbol | source=probe/tests/test_tls_integration.py:L29 | neighbors=[test_tls_integration.py, test_tls_fingerprint_is_nonzero_and_sta…, test_tls_scanner_reports_posture_grade()]
-- "tests_test_tls_integration_test_tls_fingerprint_is_nonzero_and_stable": "test_tls_fingerprint_is_nonzero_and_stable()" | kind=code-symbol | source=probe/tests/test_tls_integration.py:L111 | neighbors=[test_tls_integration.py, _self_signed(), _TLSServer]
-- "tests_test_tls_integration_test_tls_scanner_reports_posture_grade": "test_tls_scanner_reports_posture_grade()" | kind=code-symbol | source=probe/tests/test_tls_integration.py:L87 | neighbors=[test_tls_integration.py, _self_signed(), _TLSServer]
-- "tests_test_tls_legacy_versions_self_signed": "_self_signed()" | kind=code-symbol | source=probe/tests/test_tls_legacy_versions.py:L35 | neighbors=[test_tls_legacy_versions.py, test_legacy_version_is_detected_not_mas…, test_untested_versions_are_surfaced_in_…]
-- "tests_test_tls_legacy_versions_server_supports": "_server_supports()" | kind=code-symbol | source=probe/tests/test_tls_legacy_versions.py:L97 | neighbors=[test_tls_legacy_versions.py, Skip rather than fail on a build with t…, test_legacy_version_is_detected_not_mas…]
-- "tests_test_transport_testfetchscope": "TestFetchScope" | kind=code-symbol | source=probe/tests/test_transport.py:L462 | neighbors=[test_transport.py, .test_http_error_returns_none(), .test_returns_scope()]
-- "tests_test_transport_transport": "transport()" | kind=code-symbol | source=probe/tests/test_transport.py:L17 | neighbors=[test_transport.py, Create a Transport with a real state fi…, Create a Transport with a real state fi…]
-- "tests_test_trust_alignment": "test_trust_alignment.py" | kind=code-symbol | source=manager/detection_engine/tests/test_trust_alignment.py:L1 | neighbors=[26ea68c Add comprehensive tests for OS …, test_manager_and_probe_trust_sets_match…, test_trust_alignment.py — cross-tree in…]
-- "tests_test_two_tree_parity_mirrored_py_files": "_mirrored_py_files()" | kind=code-symbol | source=probe/tests/test_two_tree_parity.py:L33 | neighbors=[test_two_tree_parity.py, Every .py present in BOTH trees (the mi…, test_mirrored_set_is_nonempty()]
-- "tests_test_va_campaign_reporter": "_reporter()" | kind=code-symbol | source=probe/tests/test_va_campaign.py:L26 | neighbors=[test_va_campaign.py, test_percent_and_current_stage_transiti…, test_progress_snapshot_shape()]
-- "tests_test_va_campaign_test_detect_stage_skipped_when_nothing_was_collected": "test_detect_stage_skipped_when_nothing_was_collected()" | kind=code-symbol | source=probe/tests/test_va_campaign.py:L274 | neighbors=[test_va_campaign.py, _detect_stage(), _run()]
-- "tests_test_va_campaign_test_detect_stage_turns_facts_into_weakness_findings": "test_detect_stage_turns_facts_into_weakness_findings()" | kind=code-symbol | source=probe/tests/test_va_campaign.py:L250 | neighbors=[test_va_campaign.py, _detect_stage(), _scope()]
-- "tests_test_validation_endpoints_test_approve_conflict_when_not_pending": "test_approve_conflict_when_not_pending()" | kind=code-symbol | source=manager/backend/tests/test_validation_endpoints.py:L116 | neighbors=[test_validation_endpoints.py, _mock_db(), _user()]
-- "tests_test_validation_endpoints_test_approve_enqueues_safe_validate_job": "test_approve_enqueues_safe_validate_job()" | kind=code-symbol | source=manager/backend/tests/test_validation_endpoints.py:L89 | neighbors=[test_validation_endpoints.py, _mock_db(), _user()]
-- "tests_test_validation_endpoints_test_create_rejected_when_roe_forbids": "test_create_rejected_when_roe_forbids()" | kind=code-symbol | source=manager/backend/tests/test_validation_endpoints.py:L74 | neighbors=[test_validation_endpoints.py, _mock_db(), _user()]
-- "tests_test_validation_endpoints_test_create_request_is_pending_and_derives_tls_check": "test_create_request_is_pending_and_derives_tls_check()" | kind=code-symbol | source=manager/backend/tests/test_validation_endpoints.py:L55 | neighbors=[test_validation_endpoints.py, _mock_db(), _user()]
-- "tests_test_validation_endpoints_test_reject_marks_rejected": "test_reject_marks_rejected()" | kind=code-symbol | source=manager/backend/tests/test_validation_endpoints.py:L126 | neighbors=[test_validation_endpoints.py, _mock_db(), _user()]
-- "tests_test_validation_gate_testrdpnlagate": "TestRdpNlaGate" | kind=code-symbol | source=probe/tests/test_validation_gate.py:L53 | neighbors=[test_validation_gate.py, .test_nla_enforced_suppresses_no_nla_fi…, .test_positive_control_nla_off_is_flagg…]
-- "tests_test_validation_gate_testudpnoreplyrejected": "TestUdpNoReplyRejected" | kind=code-symbol | source=probe/tests/test_validation_gate.py:L33 | neighbors=[test_validation_gate.py, .test_open_filtered_amplifier_not_flagg…, .test_positive_control_answered_amplifi…]
-- "tests_test_validation_ingest_exec": "_exec()" | kind=code-symbol | source=manager/backend/tests/test_validation_ingest.py:L72 | neighbors=[test_validation_ingest.py, test_ingest_confirmed_updates_request_a…, test_ingest_unknown_job_is_noop()]
-- "tests_test_validation_ingest_test_ingest_confirmed_updates_request_and_finding": "test_ingest_confirmed_updates_request_and_finding()" | kind=code-symbol | source=manager/backend/tests/test_validation_ingest.py:L88 | neighbors=[test_validation_ingest.py, _exec(), _finding()]
-- "tests_test_verification_graph": "test_verification_graph.py" | kind=code-symbol | source=manager/backend/tests/test_verification_graph.py:L1 | neighbors=[c02c465 feat(verification): optional La…, test_graph_available_is_boolean(), test_run_verification_matches_core_with…]
-- "tests_test_vnc_scanner_testpurelogic": "TestPureLogic" | kind=code-symbol | source=probe/tests/test_vnc_scanner.py:L18 | neighbors=[test_vnc_scanner.py, .test_classify(), .test_parse_version()]
-- "tests_test_vnc_scanner_testvncscanner_sc": "._sc()" | kind=code-symbol | source=probe/tests/test_vnc_scanner.py:L34 | neighbors=[TestVNCScanner, .test_no_auth_open(), .test_no_vnc_filtered()]
-- "tests_test_weakness_map_testclistatus": "TestCliStatus" | kind=code-symbol | source=probe/tests/test_weakness_map.py:L156 | neighbors=[test_weakness_map.py, ._disk_db(), .test_status_reports_counts_and_gaps()]
-- "tests_test_weakness_map_testcorrelateweaknesses_test_dedup_by_cve_target_port": ".test_dedup_by_cve_target_port()" | kind=code-symbol | source=probe/tests/test_weakness_map.py:L124 | neighbors=[TestCorrelateWeaknesses, _raw(), _wrapped()]
-- "tests_test_weakness_map_testmirrorgap": "TestMirrorGap" | kind=code-symbol | source=probe/tests/test_weakness_map.py:L142 | neighbors=[test_weakness_map.py, .test_every_mapping_has_at_least_one_cv…, .test_missing_from_mirror_lists_absent_…]
-- "tests_test_wire_identity_testprobepayload": "TestProbePayload" | kind=code-symbol | source=probe/tests/test_wire_identity.py:L28 | neighbors=[test_wire_identity.py, .test_default_carries_no_brand(), .test_env_override()]
-- "tests_test_wire_identity_testuseragent": "TestUserAgent" | kind=code-symbol | source=probe/tests/test_wire_identity.py:L17 | neighbors=[test_wire_identity.py, .test_default_is_generic_browser_no_bra…, .test_env_override()]
-- "tests_test_workflow_execution_explodingscanner": "_ExplodingScanner" | kind=code-symbol | source=probe/tests/test_workflow_execution.py:L29 | neighbors=[test_workflow_execution.py, .scan_target(), test_per_target_exception_preserves_oth…]
-- "tools_gen_ssh_kexdb": "gen_ssh_kexdb.py" | kind=code-symbol | source=probe/tools/gen_ssh_kexdb.py:L1 | neighbors=[6e2818f Add support for additional serv…, build(), main()]
-- "tools_installer_liststatus": "listStatus()" | kind=code-symbol | source=manager/frontend/lib/tools/installer.ts:L264 | neighbors=[tools.ts, installer.ts, readInstalled()]
-- "tools_installer_writeinstalled": "writeInstalled()" | kind=code-symbol | source=manager/frontend/lib/tools/installer.ts:L42 | neighbors=[installer.ts, installTool(), removeTool()]
-- "tools_issue_license_issue": "issue()" | kind=code-symbol | source=probe/tools/issue_license.py:L62 | neighbors=[issue_license.py, _b64(), main()]
-- "tools_issue_license_pubkey": "pubkey()" | kind=code-symbol | source=probe/tools/issue_license.py:L48 | neighbors=[issue_license.py, main(), Print the vendor PUBLIC key (hex) deriv…]
-- "tools_manifest_tool_manifest": "TOOL_MANIFEST" | kind=code-symbol | source=manager/frontend/lib/tools/manifest.ts:L74 | neighbors=[tools.ts, installer.ts, manifest.ts]
-- "ui_output_findingdetail": "findingDetail()" | kind=code-symbol | source=manager/frontend/cli/ui/output.ts:L238 | neighbors=[output.ts, ln(), rule()]
-- "ui_output_findingline": "findingLine()" | kind=code-symbol | source=manager/frontend/cli/ui/output.ts:L184 | neighbors=[output.ts, ln(), sevBadge()]
-- "ui_output_scanheader": "scanHeader()" | kind=code-symbol | source=manager/frontend/cli/ui/output.ts:L63 | neighbors=[output.ts, ln(), rule()]
+- "scanner_udp_scanner_mdns_probe": "_mdns_probe()" | kind=code-symbol | source=probe/scanner/udp_scanner.py:L158 | neighbors=[udp_scanner.py, mDNS PTR query for _services._dns-sd._u…, mDNS PTR query for _services._dns-sd._u…]
+- "scanner_udp_scanner_sip_probe": "_sip_probe()" | kind=code-symbol | source=probe/scanner/udp_scanner.py:L113 | neighbors=[udp_scanner.py, SIP OPTIONS request — safe fingerprint …, ._probe()]
+- "scanner_udp_scanner_ssdp_probe": "_ssdp_probe()" | kind=code-symbol | source=probe/scanner/udp_scanner.py:L146 | neighbors=[udp_scanner.py, UPnP/SSDP M-SEARCH — unicast to target:…, UPnP/SSDP M-SEARCH — unicast to target:…]
+- "scanner_unauth_access_classify_unauth_access": "classify_unauth_access()" | kind=code-symbol | source=probe/scanner/unauth_access.py:L48 | neighbors=[unauth_access.py, _as_text(), Decide whether `banner` proves unauthen…]
+- "scanner_va_campaign_campaigncontext": "CampaignContext" | kind=code-symbol | source=probe/scanner/va_campaign.py:L138 | neighbors=[va_campaign.py, build_campaign(), Mutable state threaded through the stag…]
+- "scanner_va_campaign_cliprogressview_call": ".__call__()" | kind=code-symbol | source=probe/scanner/va_campaign.py:L663 | neighbors=[CliProgressView, ._redraw(), ._transitions()]
+- "scanner_va_campaign_cliprogressview_redraw": "._redraw()" | kind=code-symbol | source=probe/scanner/va_campaign.py:L669 | neighbors=[CliProgressView, .__call__(), ._format()]
+- "scanner_va_campaign_monotonic": "_monotonic()" | kind=code-symbol | source=probe/scanner/va_campaign.py:L276 | neighbors=[va_campaign.py, ._eta_seconds(), .__init__()]
+- "scanner_va_campaign_progressreporter_eta_seconds": "._eta_seconds()" | kind=code-symbol | source=probe/scanner/va_campaign.py:L236 | neighbors=[ProgressReporter, _monotonic(), .snapshot()]
+- "scanner_va_campaign_progressreporter_finish": ".finish()" | kind=code-symbol | source=probe/scanner/va_campaign.py:L217 | neighbors=[ProgressReporter, ._flush(), .run()]
+- "scanner_va_campaign_progressreporter_set_totals": ".set_totals()" | kind=code-symbol | source=probe/scanner/va_campaign.py:L213 | neighbors=[ProgressReporter, ._flush(), ._refresh_totals()]
+- "scanner_va_campaign_run_campaign": "run_campaign()" | kind=code-symbol | source=probe/scanner/va_campaign.py:L639 | neighbors=[va_campaign.py, build_campaign(), .run()]
+- "scanner_va_campaign_stagestate": "StageState" | kind=code-symbol | source=probe/scanner/va_campaign.py:L151 | neighbors=[va_campaign.py, .__init__(), .to_dict()]
+- "scanner_va_campaign_vacampaign_refresh_totals": "._refresh_totals()" | kind=code-symbol | source=probe/scanner/va_campaign.py:L322 | neighbors=[VACampaign, .set_totals(), .run()]
+- "scanner_vantage_matrix_extract": "_extract()" | kind=code-symbol | source=probe/scanner/vantage_matrix.py:L41 | neighbors=[vantage_matrix.py, (proto, port, status) from a ScanResult…, reconcile_vantages()]
+- "scanner_vnc_scanner_classify_security_types": "classify_security_types()" | kind=code-symbol | source=probe/scanner/vnc_scanner.py:L60 | neighbors=[vnc_scanner.py, Turn a list of offered security-type id…, ._probe()]
+- "scanner_vnc_scanner_parse_rfb_version": "parse_rfb_version()" | kind=code-symbol | source=probe/scanner/vnc_scanner.py:L46 | neighbors=[vnc_scanner.py, Parse a 'RFB 003.008' banner into (majo…, ._probe()]
+- "scanner_vnc_scanner_recv_exact": "_recv_exact()" | kind=code-symbol | source=probe/scanner/vnc_scanner.py:L71 | neighbors=[vnc_scanner.py, _read_security_types(), ._probe()]
+- "scanner_web_scanner_fetch": "_fetch()" | kind=code-symbol | source=probe/scanner/web_scanner.py:L137 | neighbors=[web_scanner.py, parse_allow_header(), parse_auth_surface()]
+- "scanner_web_scanner_parse_auth_surface": "parse_auth_surface()" | kind=code-symbol | source=probe/scanner/web_scanner.py:L92 | neighbors=[web_scanner.py, _fetch(), Classify the login a web service ASKS f…]
+- "scanner_web_scanner_webscanner_scan_port": "._scan_port()" | kind=code-symbol | source=probe/scanner/web_scanner.py:L219 | neighbors=[WebScanner, ._schemes_for(), .scan_target()]
+- "scans_page_jobcard": "JobCard()" | kind=code-symbol | source=manager/frontend/app/portal/scans/page.tsx:L125 | neighbors=[page.tsx, prettyType(), relTime()]
+- "schemas_engagement_rationale_14": "Validate and de-duplicate exact IP/CIDR authorization boundaries." | kind=entity | source=manager/backend/app/schemas/engagement.py:L14 | neighbors=[EngagementStatus, FindingSeverity, validate_scope_entries()]
+- "schemas_finding_findingreopen": "FindingReopen" | kind=code-symbol | source=manager/backend/app/schemas/finding.py:L48 | neighbors=[finding.py, BaseModel, .normalize_reason()]
+- "schemas_portal_clientassistantask": "ClientAssistantAsk" | kind=code-symbol | source=manager/backend/app/schemas/portal.py:L135 | neighbors=[portal.py, BaseModel, ._bounded()]
+- "schemas_portal_clientassistantmessage": "ClientAssistantMessage" | kind=code-symbol | source=manager/backend/app/schemas/portal.py:L128 | neighbors=[portal.py, BaseModel, One turn of the customer's conversation…]
+- "schemas_portal_clientfindingout": "ClientFindingOut" | kind=code-symbol | source=manager/backend/app/schemas/portal.py:L22 | neighbors=[portal.py, BaseModel, A finding as a CUSTOMER may see it. mod…]
+- "schemas_portal_clientreportout": "ClientReportOut" | kind=code-symbol | source=manager/backend/app/schemas/portal.py:L80 | neighbors=[portal.py, ClientReportContent, BaseModel]
+- "schemas_portal_clientsummaryout": "ClientSummaryOut" | kind=code-symbol | source=manager/backend/app/schemas/portal.py:L59 | neighbors=[portal.py, BaseModel, One call powering the dashboard header:…]
+- "schemas_portal_scanrequestcreate": "ScanRequestCreate" | kind=code-symbol | source=manager/backend/app/schemas/portal.py:L100 | neighbors=[portal.py, A customer's rich scan request. The cus…, BaseModel]
+- "schemas_remediation_remediationplandetailout": "RemediationPlanDetailOut" | kind=code-symbol | source=manager/backend/app/schemas/remediation.py:L28 | neighbors=[remediation.py, BaseModel, .normalize_risk_levels()]
+- "schemas_remediation_remediationstepout": "RemediationStepOut" | kind=code-symbol | source=manager/backend/app/schemas/remediation.py:L11 | neighbors=[remediation.py, BaseModel, .normalize_risk()]
+- "scripts_startup_validator_appenvironmentvalidator": "AppEnvironmentValidator" | kind=code-symbol | source=manager/backend/scripts/startup_validator.py:L151 | neighbors=[startup_validator.py, .validate(), Validates APP_ENV and related productio…]
+- "scripts_startup_validator_appenvironmentvalidator_validate": ".validate()" | kind=code-symbol | source=manager/backend/scripts/startup_validator.py:L154 | neighbors=[AppEnvironmentValidator, CheckResult, .add()]
+- "scripts_startup_validator_configvalidator": "ConfigValidator" | kind=code-symbol | source=manager/backend/scripts/startup_validator.py:L72 | neighbors=[startup_validator.py, .validate(), Validates required env vars are present…]
+- "scripts_startup_validator_configvalidator_validate": ".validate()" | kind=code-symbol | source=manager/backend/scripts/startup_validator.py:L93 | neighbors=[ConfigValidator, CheckResult, .add()]
+- "scripts_startup_validator_cookievalidator": "CookieValidator" | kind=code-symbol | source=manager/backend/scripts/startup_validator.py:L214 | neighbors=[startup_validator.py, .validate(), Validates secure cookie configuration.]
+- "scripts_startup_validator_cookievalidator_validate": ".validate()" | kind=code-symbol | source=manager/backend/scripts/startup_validator.py:L217 | neighbors=[CookieValidator, CheckResult, .add()]
+- "scripts_startup_validator_corsvalidator": "CorsValidator" | kind=code-symbol | source=manager/backend/scripts/startup_validator.py:L174 | neighbors=[startup_validator.py, .validate(), Validates CORS_ORIGINS is production-sa…]
+- "scripts_startup_validator_corsvalidator_validate": ".validate()" | kind=code-symbol | source=manager/backend/scripts/startup_validator.py:L179 | neighbors=[CorsValidator, CheckResult, .add()]
 
 ## Instructions
 

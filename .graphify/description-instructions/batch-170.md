@@ -1,4 +1,4 @@
-# Node Description Batch 171 of 336
+# Node Description Batch 171 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,58 +12,51 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
-For an entity node (any other kind — e.g. a person, place, event, object),
-describe what the entity is and its role, grounded in its type, its
-relations (neighbors) and the provided citations/evidence — e.g.
-"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
-Ground entity descriptions in the citations/evidence when present; do not
-speculate beyond the context, so a node with no supporting context may be
-left out of the reply.
 Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "vuln_enrichment_rationale_110": "Add NVD CVSS, EPSS, KEV flag, MITRE techniques, and composite risk.         Muta" | kind=entity | source=manager/backend/app/vuln/enrichment.py:L110 | neighbors=[.enrich(), AssetCriticality]
-- "vuln_enrichment_rationale_164": "Returns {cvss_v3, cvss_vector, description, references, published_date}." | kind=entity | source=manager/backend/app/vuln/enrichment.py:L164 | neighbors=[.fetch_nvd(), AssetCriticality]
-- "vuln_enrichment_rationale_216": "Returns {epss_score: float, percentile: float} or {}." | kind=entity | source=manager/backend/app/vuln/enrichment.py:L216 | neighbors=[.fetch_epss(), AssetCriticality]
-- "vuln_enrichment_rationale_245": "True if CVE is in the CISA Known Exploited Vulnerabilities catalog." | kind=entity | source=manager/backend/app/vuln/enrichment.py:L245 | neighbors=[.check_cisa_kev(), AssetCriticality]
-- "vuln_enrichment_rationale_271": "Returns MITRE ATT&CK technique IDs linked to this CVE.         Uses hardcoded hi" | kind=entity | source=manager/backend/app/vuln/enrichment.py:L271 | neighbors=[.fetch_mitre_techniques(), AssetCriticality]
-- "vuln_enrichment_rationale_28": "LRU + TTL eviction. Expired keys are purged on access; when ``maxsize``     is e" | kind=entity | source=manager/backend/app/vuln/enrichment.py:L28 | neighbors=[TTLCache, AssetCriticality]
-- "vuln_enrichment_rationale_307": "Returns composite risk score on 0-1000 scale.          Formula:           (cvss*" | kind=entity | source=manager/backend/app/vuln/enrichment.py:L307 | neighbors=[.compute_composite_risk(), AssetCriticality]
-- "vuln_enrichment_rationale_342": "Fetch NVD, EPSS, KEV and MITRE concurrently." | kind=entity | source=manager/backend/app/vuln/enrichment.py:L342 | neighbors=[._fetch_all(), AssetCriticality]
-- "vuln_enrichment_rationale_352": "SHA-256 of (asset_id, cve_id, plugin_id) for deduplication." | kind=entity | source=manager/backend/app/vuln/enrichment.py:L352 | neighbors=[.dedup_hash(), AssetCriticality]
-- "vuln_enrichment_rationale_92": "Enriches Finding objects with NVD, EPSS, CISA KEV, and MITRE data." | kind=entity | source=manager/backend/app/vuln/enrichment.py:L92 | neighbors=[VulnEnrichmentService, AssetCriticality]
-- "vuln_enrichment_vulnenrichmentservice_dedup_hash": ".dedup_hash()" | kind=code-symbol | source=manager/backend/app/vuln/enrichment.py:L351 | neighbors=[SHA-256 of (asset_id, cve_id, plugin_id…, VulnEnrichmentService]
-- "vuln_enrichment_vulnenrichmentservice_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/vuln/enrichment.py:L94 | neighbors=[VulnEnrichmentService, TTLCache]
-- "vuln_init": "__init__.py" | kind=code-symbol | source=manager/backend/app/vuln/__init__.py:L1 | neighbors=[d1b4dd3 trim frontend to 7 core pages; …, 298a9d4 trim frontend to 7 core pages; …]
-- "vuln_nessus_nessusscanner_auth_headers": "._auth_headers()" | kind=code-symbol | source=manager/backend/app/vuln/nessus.py:L59 | neighbors=[NessusScanner, ._get_client()]
-- "vuln_nessus_nessusscanner_get_plugin_detail": "._get_plugin_detail()" | kind=code-symbol | source=manager/backend/app/vuln/nessus.py:L193 | neighbors=[NessusScanner, .get_results()]
-- "vuln_nessus_nessusscanner_get_template_uuid": "._get_template_uuid()" | kind=code-symbol | source=manager/backend/app/vuln/nessus.py:L124 | neighbors=[NessusScanner, .create_scan()]
-- "vuln_nuclei_nucleiscanner_read_stderr": "._read_stderr()" | kind=code-symbol | source=manager/backend/app/vuln/nuclei.py:L313 | neighbors=[NucleiScanner, .run_scan()]
-- "vuln_nuclei_nucleiscanner_stop_process": "._stop_process()" | kind=code-symbol | source=manager/backend/app/vuln/nuclei.py:L324 | neighbors=[NucleiScanner, .run_scan()]
-- "vuln_tasks_fire_critical_webhook": "_fire_critical_webhook()" | kind=code-symbol | source=manager/backend/app/vuln/tasks.py:L135 | neighbors=[tasks.py, run_post_scan_enrichment()]
-- "websocket_manager_graphwebsocketmanager_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/websocket/manager.py:L358 | neighbors=[GraphWebSocketManager, ConnectionManager]
-- "websocket_manager_rationale_209": "Push a job to the first online agent in the requested tenant.          Returns t" | kind=entity | source=manager/backend/app/websocket/manager.py:L209 | neighbors=[.push_job_to_first_online(), .get_agent_status()]
-- "websocket_manager_rationale_213": "Push a job to the first online agent in the requested tenant.          Returns t" | kind=entity | source=manager/backend/app/websocket/manager.py:L213 | neighbors=[.push_job_to_first_online(), .agent_stale_after()]
-- "websocket_manager_rationale_243": "Deliver a job-push to an agent wherever its socket is connected.          Return" | kind=entity | source=manager/backend/app/websocket/manager.py:L243 | neighbors=[.deliver_job(), .online_agents()]
-- "websocket_manager_rationale_245": "Deliver a job-push to an agent wherever its socket is connected.          Return" | kind=entity | source=manager/backend/app/websocket/manager.py:L245 | neighbors=[.deliver_job(), .online_agents()]
-- "websocket_manager_rationale_298": "Check if a specific agent is online (connected + not busy)." | kind=entity | source=manager/backend/app/websocket/manager.py:L298 | neighbors=[.is_online(), .handle_client()]
-- "workers_init": "__init__.py" | kind=code-symbol | source=manager/backend/app/workers/__init__.py:L1 | neighbors=[10dfc80 Add comprehensive probe testing…, 2885afa Add comprehensive probe testing…]
-- "workers_outbox_main": "main()" | kind=code-symbol | source=manager/backend/app/workers/outbox.py:L446 | neighbors=[outbox.py, Event]
-- "workers_outbox_mark_done": "_mark_done()" | kind=code-symbol | source=manager/backend/app/workers/outbox.py:L358 | neighbors=[outbox.py, _process()]
-- "workers_outbox_rationale_130": "Fan a notification out to the tenant's enabled email/Slack/Jira integrations." | kind=entity | source=manager/backend/app/workers/outbox.py:L130 | neighbors=[_handle_notify(), _claim_batch()]
-- "workers_outbox_rationale_204": "Stranded events with retry budget left → make due now so a live worker     re-cl" | kind=entity | source=manager/backend/app/workers/outbox.py:L204 | neighbors=[_requeue_stale_stmt(), _reclaim_stale()]
-- "workflow_asset_utcnow": "_utcnow()" | kind=code-symbol | source=probe/workflow/asset.py:L27 | neighbors=[asset.py, .needs_recheck_live()]
-- "workflow_branches_branchspec_host_level": ".host_level()" | kind=code-symbol | source=probe/workflow/branches.py:L101 | neighbors=[BranchSpec, True when the fact describes the host r…]
-- "workflow_branches_db_kwargs": "_db_kwargs()" | kind=code-symbol | source=probe/workflow/branches.py:L68 | neighbors=[branches.py, Ports with a known database engine get …]
-- "workflow_branches_no_kwargs": "_no_kwargs()" | kind=code-symbol | source=probe/workflow/branches.py:L54 | neighbors=[branches.py, For scanners that take no `ports` argum…]
-- "workflow_branches_ports_kwargs": "_ports_kwargs()" | kind=code-symbol | source=probe/workflow/branches.py:L49 | neighbors=[branches.py, The default: hand the scanner the ports…]
-- "workflow_branches_web_kwargs": "_web_kwargs()" | kind=code-symbol | source=probe/workflow/branches.py:L60 | neighbors=[branches.py, Tell the web scanner which of these por…]
-- "workflow_cache_cacheentry_from_jsonl_dict": ".from_jsonl_dict()" | kind=code-symbol | source=probe/workflow/cache.py:L92 | neighbors=[CacheEntry, ._load()]
-- "workflow_cache_cacheentry_to_jsonl_dict": ".to_jsonl_dict()" | kind=code-symbol | source=probe/workflow/cache.py:L86 | neighbors=[CacheEntry, .save()]
-- "workflow_cache_workflowcache_init": ".__init__()" | kind=code-symbol | source=probe/workflow/cache.py:L104 | neighbors=[WorkflowCache, ._load()]
-- "workflow_cache_workflowcache_save": ".save()" | kind=code-symbol | source=probe/workflow/cache.py:L122 | neighbors=[WorkflowCache, .to_jsonl_dict()]
+- "tests_test_detection_validation_testdetectioncorrelator_test_host_match_by_ip": ".test_host_match_by_ip()" | kind=code-symbol | source=manager/backend/tests/test_detection_validation.py:L107 | neighbors=[TestDetectionCorrelator, _action()]
+- "tests_test_detection_validation_testdetectioncorrelator_test_hostname_substring_collision_is_not_correlated": ".test_hostname_substring_collision_is_not_correlated()" | kind=code-symbol | source=manager/backend/tests/test_detection_validation.py:L92 | neighbors=[TestDetectionCorrelator, _action()]
+- "tests_test_detection_validation_testdetectioncorrelator_test_ip_prefix_collision_is_not_correlated": ".test_ip_prefix_collision_is_not_correlated()" | kind=code-symbol | source=manager/backend/tests/test_detection_validation.py:L97 | neighbors=[TestDetectionCorrelator, _action()]
+- "tests_test_detection_validation_testdetectioncorrelator_test_missed_when_nothing": ".test_missed_when_nothing()" | kind=code-symbol | source=manager/backend/tests/test_detection_validation.py:L75 | neighbors=[TestDetectionCorrelator, _action()]
+- "tests_test_detection_validation_testdetectioncorrelator_test_mixed_results_are_partial_not_covered": ".test_mixed_results_are_partial_not_covered()" | kind=code-symbol | source=manager/backend/tests/test_detection_validation.py:L136 | neighbors=[TestDetectionCorrelator, _action()]
+- "tests_test_detection_validation_testdetectioncorrelator_test_out_of_window_is_missed": ".test_out_of_window_is_missed()" | kind=code-symbol | source=manager/backend/tests/test_detection_validation.py:L80 | neighbors=[TestDetectionCorrelator, _action()]
+- "tests_test_detection_validation_testdetectioncorrelator_test_prevented_by_edr": ".test_prevented_by_edr()" | kind=code-symbol | source=manager/backend/tests/test_detection_validation.py:L62 | neighbors=[TestDetectionCorrelator, _action()]
+- "tests_test_detection_validation_testdetectioncorrelator_test_short_hostname_matches_its_fqdn": ".test_short_hostname_matches_its_fqdn()" | kind=code-symbol | source=manager/backend/tests/test_detection_validation.py:L102 | neighbors=[TestDetectionCorrelator, _action()]
+- "tests_test_detection_validation_testdetectioncorrelator_test_wrong_host_is_missed": ".test_wrong_host_is_missed()" | kind=code-symbol | source=manager/backend/tests/test_detection_validation.py:L86 | neighbors=[TestDetectionCorrelator, _action()]
+- "tests_test_dns_scanner_testdnsfindings_test_dnssec_absent_only_for_confirmed_zone": ".test_dnssec_absent_only_for_confirmed_zone()" | kind=code-symbol | source=probe/tests/test_dns_scanner.py:L143 | neighbors=[TestDNSFindings, ._fact()]
+- "tests_test_dns_scanner_testdnsfindings_test_secure_server_silent": ".test_secure_server_silent()" | kind=code-symbol | source=probe/tests/test_dns_scanner.py:L151 | neighbors=[TestDNSFindings, ._fact()]
+- "tests_test_dns_scanner_testdnsfindings_test_zone_transfer_version_and_unsigned": ".test_zone_transfer_version_and_unsigned()" | kind=code-symbol | source=probe/tests/test_dns_scanner.py:L130 | neighbors=[TestDNSFindings, ._fact()]
+- "tests_test_dns_scanner_testdnsscanner_test_dnspython_missing_is_error": ".test_dnspython_missing_is_error()" | kind=code-symbol | source=probe/tests/test_dns_scanner.py:L116 | neighbors=[TestDNSScanner, ._sc()]
+- "tests_test_dns_scanner_testdnsscanner_test_no_dns_is_filtered": ".test_no_dns_is_filtered()" | kind=code-symbol | source=probe/tests/test_dns_scanner.py:L111 | neighbors=[TestDNSScanner, ._sc()]
+- "tests_test_dns_scanner_testdnsscanner_test_zone_transfer_open": ".test_zone_transfer_open()" | kind=code-symbol | source=probe/tests/test_dns_scanner.py:L102 | neighbors=[TestDNSScanner, ._sc()]
+- "tests_test_dns_scanner_testparity": "TestParity" | kind=code-symbol | source=probe/tests/test_dns_scanner.py:L158 | neighbors=[test_dns_scanner.py, .test_scanner_and_findings_in_main_scri…]
+- "tests_test_dualstack_fallback_testosfingerprintsmbbuildfallback": "TestOsFingerprintSmbBuildFallback" | kind=code-symbol | source=probe/tests/test_dualstack_fallback.py:L118 | neighbors=[test_dualstack_fallback.py, .test_falls_back_across_families()]
+- "tests_test_dualstack_fallback_testsmbnegotiatefallback_test_returns_none_only_when_every_family_fails": ".test_returns_none_only_when_every_family_fails()" | kind=code-symbol | source=probe/tests/test_dualstack_fallback.py:L78 | neighbors=[TestSmbNegotiateFallback, ._patch_candidates()]
+- "tests_test_dualstack_fallback_testsynscannerrequestsipv4": "TestSynScannerRequestsIPv4" | kind=code-symbol | source=probe/tests/test_dualstack_fallback.py:L201 | neighbors=[test_dualstack_fallback.py, .test_resolve_is_asked_for_ipv4()]
+- "tests_test_e2e_engagement_to_findings_plant": "_plant()" | kind=code-symbol | source=probe/tests/test_e2e_engagement_to_findings.py:L36 | neighbors=[test_e2e_engagement_to_findings.py, test_real_scan_of_open_datastore_yields…]
+- "tests_test_e2e_engagement_to_findings_test_correlated_findings_cite_their_base_findings": "test_correlated_findings_cite_their_base_findings()" | kind=code-symbol | source=probe/tests/test_e2e_engagement_to_findings.py:L161 | neighbors=[test_e2e_engagement_to_findings.py, _vulnerable_host_facts()]
+- "tests_test_e2e_engagement_to_findings_test_engagement_dispatch_reaches_probe_and_enforces_scope": "test_engagement_dispatch_reaches_probe_and_enforces_scope()" | kind=code-symbol | source=probe/tests/test_e2e_engagement_to_findings.py:L67 | neighbors=[test_e2e_engagement_to_findings.py, _manager()]
+- "tests_test_e2e_engagement_to_findings_test_manager_correlation_finds_all_three_attack_paths": "test_manager_correlation_finds_all_three_attack_paths()" | kind=code-symbol | source=probe/tests/test_e2e_engagement_to_findings.py:L148 | neighbors=[test_e2e_engagement_to_findings.py, _vulnerable_host_facts()]
+- "tests_test_e2e_engagement_to_findings_test_ntlm_relay_is_high_when_smbv1_present_medium_otherwise": "test_ntlm_relay_is_high_when_smbv1_present_medium_otherwise()" | kind=code-symbol | source=probe/tests/test_e2e_engagement_to_findings.py:L169 | neighbors=[test_e2e_engagement_to_findings.py, _vulnerable_host_facts()]
+- "tests_test_e2e_engagement_to_findings_test_out_of_scope_target_is_refused_end_to_end": "test_out_of_scope_target_is_refused_end_to_end()" | kind=code-symbol | source=probe/tests/test_e2e_engagement_to_findings.py:L88 | neighbors=[test_e2e_engagement_to_findings.py, _manager()]
+- "tests_test_engine_bridge_ingest_health_test_census_survives_an_engine_that_returns_no_ingest_result": "test_census_survives_an_engine_that_returns_no_ingest_result()" | kind=code-symbol | source=manager/backend/tests/test_engine_bridge_ingest_health.py:L84 | neighbors=[test_engine_bridge_ingest_health.py, The census is best-effort by contract: …]
+- "tests_test_engine_bridge_ingest_health_test_healthy_facts_ingest_completely_and_detect": "test_healthy_facts_ingest_completely_and_detect()" | kind=code-symbol | source=manager/backend/tests/test_engine_bridge_ingest_health.py:L43 | neighbors=[test_engine_bridge_ingest_health.py, Baseline: the shape the agent actually …]
+- "tests_test_engine_bridge_ingest_health_test_partial_drift_still_detects_but_reports_the_loss": "test_partial_drift_still_detects_but_reports_the_loss()" | kind=code-symbol | source=manager/backend/tests/test_engine_bridge_ingest_health.py:L72 | neighbors=[test_engine_bridge_ingest_health.py, A partly-bad batch must keep its good f…]
+- "tests_test_engine_bridge_ingest_health_test_total_shape_drift_is_reported_not_silently_zero": "test_total_shape_drift_is_reported_not_silently_zero()" | kind=code-symbol | source=manager/backend/tests/test_engine_bridge_ingest_health.py:L55 | neighbors=[test_engine_bridge_ingest_health.py, The regression. Drop the one field an a…]
+- "tests_test_engine_bridge_regression": "test_engine_bridge_regression.py" | kind=code-symbol | source=manager/backend/tests/test_engine_bridge_regression.py:L1 | neighbors=[937737b feat(resolution): reopen + flag…, test_reopen_flips_remediated_to_open_an…]
+- "tests_test_engine_bridge_verification": "test_engine_bridge_verification.py" | kind=code-symbol | source=manager/backend/tests/test_engine_bridge_verification.py:L1 | neighbors=[2fcec73 feat(verification): stamp verdi…, test_stamp_verification_sets_columns_wh…]
+- "tests_test_eol_detection_testcataloglookup_test_days_past_eol_is_positive_for_long_dead_os": ".test_days_past_eol_is_positive_for_long_dead_os()" | kind=code-symbol | source=manager/detection_engine/tests/test_eol_detection.py:L49 | neighbors=[Windows 7 died in 2020; the number must…, TestCatalogLookup]
+- "tests_test_eol_detection_testcataloglookup_test_longest_match_wins": ".test_longest_match_wins()" | kind=code-symbol | source=manager/detection_engine/tests/test_eol_detection.py:L40 | neighbors=[windows server 2012 r2' must not be sha…, TestCatalogLookup]
+- "tests_test_eol_detection_testcataloglookup_test_missing_os_release_returns_none": ".test_missing_os_release_returns_none()" | kind=code-symbol | source=manager/detection_engine/tests/test_eol_detection.py:L35 | neighbors=[Evidence invariant: no input, no verdic…, TestCatalogLookup]
+- "tests_test_eol_detection_testeolrule_test_is_high_severity_with_attack_surface_mapping": ".test_is_high_severity_with_attack_surface_mapping()" | kind=code-symbol | source=manager/detection_engine/tests/test_eol_detection.py:L104 | neighbors=[TestEolRule, _rule()]
+- "tests_test_eol_detection_testeolrule_test_reads_os_fingerprint_facts": ".test_reads_os_fingerprint_facts()" | kind=code-symbol | source=manager/detection_engine/tests/test_eol_detection.py:L101 | neighbors=[TestEolRule, _rule()]
+- "tests_test_eol_detection_testeolrule_test_rule_is_registered": ".test_rule_is_registered()" | kind=code-symbol | source=manager/detection_engine/tests/test_eol_detection.py:L77 | neighbors=[TestEolRule, _rule()]
+- "tests_test_exploit_engine_engagement": "_engagement()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L49 | neighbors=[test_exploit_engine.py, .test_validate_scope_out_of_range()]
+- "tests_test_exploit_engine_pytest_addoption": "pytest_addoption()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L464 | neighbors=[test_exploit_engine.py, Register --msf-host CLI option for inte…]
+- "tests_test_exploit_engine_testexploitorchestrator_test_generate_dns_callback_token_format": ".test_generate_dns_callback_token_format()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L290 | neighbors=[TestExploitOrchestrator, ._make_orchestrator()]
 
 ## Instructions
 

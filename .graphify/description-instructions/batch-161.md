@@ -1,4 +1,4 @@
-# Node Description Batch 162 of 336
+# Node Description Batch 162 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,51 +12,58 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
+For an entity node (any other kind — e.g. a person, place, event, object),
+describe what the entity is and its role, grounded in its type, its
+relations (neighbors) and the provided citations/evidence — e.g.
+"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
+Ground entity descriptions in the citations/evidence when present; do not
+speculate beyond the context, so a node with no supporting context may be
+left out of the reply.
 Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_probe_core_testgate5_test_iot_profile_no_smb": ".test_iot_profile_no_smb()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L327 | neighbors=[TestGate5, _asset()]
-- "tests_test_probe_core_testgate5_test_it_profile_tls_with_tls_port": ".test_it_profile_tls_with_tls_port()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L323 | neighbors=[TestGate5, _asset()]
-- "tests_test_probe_core_testgate5_test_mcp_ai_allowed_on_it_ai_port": ".test_mcp_ai_allowed_on_it_ai_port()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L351 | neighbors=[TestGate5, _asset()]
-- "tests_test_probe_core_testgate5_test_no_matching_ports": ".test_no_matching_ports()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L347 | neighbors=[TestGate5, _asset()]
-- "tests_test_probe_core_testgate5_test_ot_no_branches": ".test_ot_no_branches()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L331 | neighbors=[TestGate5, _asset()]
-- "tests_test_probe_core_testgate5_test_service_filter_allows": ".test_service_filter_allows()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L339 | neighbors=[TestGate5, _asset()]
-- "tests_test_probe_core_testgate5_test_service_filter_blocks": ".test_service_filter_blocks()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L335 | neighbors=[TestGate5, _asset()]
-- "tests_test_probe_core_testgate5_test_snmp_allowed_on_live_it_host": ".test_snmp_allowed_on_live_it_host()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L355 | neighbors=[TestGate5, _asset()]
-- "tests_test_probe_core_testgate5_test_snmp_not_allowed_on_iot_profile": ".test_snmp_not_allowed_on_iot_profile()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L363 | neighbors=[TestGate5, _asset()]
-- "tests_test_probe_core_testgate6_test_already_collected": ".test_already_collected()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L377 | neighbors=[TestGate6, _asset()]
-- "tests_test_probe_core_testgate6_test_no_creds": ".test_no_creds()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L369 | neighbors=[TestGate6, _asset()]
-- "tests_test_probe_core_testgate6_test_not_alive": ".test_not_alive()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L381 | neighbors=[TestGate6, _asset()]
-- "tests_test_probe_core_testgate6_test_ssh_creds_alive_uncollected": ".test_ssh_creds_alive_uncollected()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L373 | neighbors=[TestGate6, _asset()]
-- "tests_test_probe_core_testroutebranches_test_http_banner_routes_web": ".test_http_banner_routes_web()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L420 | neighbors=[TestRouteBranches, _asset()]
-- "tests_test_probe_core_testroutebranches_test_no_banners_no_routing": ".test_no_banners_no_routing()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L434 | neighbors=[TestRouteBranches, _asset()]
-- "tests_test_probe_core_testroutebranches_test_silent_nonstandard_port_routes_tls": ".test_silent_nonstandard_port_routes_tls()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L427 | neighbors=[TestRouteBranches, _asset()]
-- "tests_test_probe_core_testscanresult_test_to_json_roundtrip": ".test_to_json_roundtrip()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L228 | neighbors=[TestScanResult, _scan_result()]
-- "tests_test_probe_core_testworkflowcache_test_all_entries_for_host": ".test_all_entries_for_host()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L819 | neighbors=[TestWorkflowCache, _scan_result()]
-- "tests_test_probe_core_testworkflowcache_test_put_get": ".test_put_get()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L783 | neighbors=[TestWorkflowCache, _scan_result()]
-- "tests_test_probe_core_testworkflowcache_test_save_and_load_roundtrip": ".test_save_and_load_roundtrip()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L827 | neighbors=[TestWorkflowCache, _scan_result()]
-- "tests_test_probe_core_testworkflowcache_test_should_recheck_deterministic_fresh": ".test_should_recheck_deterministic_fresh()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L805 | neighbors=[TestWorkflowCache, _scan_result()]
-- "tests_test_probe_core_testworkflowcache_test_should_recheck_force_expired": ".test_should_recheck_force_expired()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L811 | neighbors=[TestWorkflowCache, _scan_result()]
-- "tests_test_probe_core_testworkflowcache_test_should_recheck_uncertain_always": ".test_should_recheck_uncertain_always()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L799 | neighbors=[TestWorkflowCache, _scan_result()]
-- "tests_test_probe_enrollment_test_enroll_token_usable_only_while_live_unrevoked_and_under_max_uses": "test_enroll_token_usable_only_while_live_unrevoked_and_under_max_uses()" | kind=code-symbol | source=manager/backend/tests/test_probe_enrollment.py:L102 | neighbors=[test_probe_enrollment.py, _token()]
-- "tests_test_probe_enrollment_token": "_token()" | kind=code-symbol | source=manager/backend/tests/test_probe_enrollment.py:L85 | neighbors=[test_probe_enrollment.py, test_enroll_token_usable_only_while_liv…]
-- "tests_test_probe_manifest_test_manifest_is_clean_parseable_json": "test_manifest_is_clean_parseable_json()" | kind=code-symbol | source=probe/tests/test_probe_manifest.py:L30 | neighbors=[test_probe_manifest.py, _manifest()]
-- "tests_test_probe_manifest_test_manifest_is_deterministic": "test_manifest_is_deterministic()" | kind=code-symbol | source=probe/tests/test_probe_manifest.py:L47 | neighbors=[test_probe_manifest.py, _manifest()]
-- "tests_test_probe_manifest_test_manifest_surfaces_the_capability_contract": "test_manifest_surfaces_the_capability_contract()" | kind=code-symbol | source=probe/tests/test_probe_manifest.py:L37 | neighbors=[test_probe_manifest.py, _manifest()]
-- "tests_test_probe_next_features_test_device_inventory_post_stage_classifies_from_open_ports": "test_device_inventory_post_stage_classifies_from_open_ports()" | kind=code-symbol | source=probe/tests/test_probe_next_features.py:L110 | neighbors=[test_probe_next_features.py, _cache_with()]
-- "tests_test_probe_next_features_test_device_inventory_skips_hosts_without_evidence": "test_device_inventory_skips_hosts_without_evidence()" | kind=code-symbol | source=probe/tests/test_probe_next_features.py:L124 | neighbors=[test_probe_next_features.py, _cache_with()]
-- "tests_test_probe_next_features_test_exposure_matrix_flags_internet_reachable_ports": "test_exposure_matrix_flags_internet_reachable_ports()" | kind=code-symbol | source=probe/tests/test_probe_next_features.py:L135 | neighbors=[test_probe_next_features.py, _cache_with()]
-- "tests_test_probe_next_features_test_exposure_matrix_internal_only_from_lan_vantage": "test_exposure_matrix_internal_only_from_lan_vantage()" | kind=code-symbol | source=probe/tests/test_probe_next_features.py:L150 | neighbors=[test_probe_next_features.py, _cache_with()]
-- "tests_test_probe_next_features_test_no_post_stage_for_ordinary_scan_types": "test_no_post_stage_for_ordinary_scan_types()" | kind=code-symbol | source=probe/tests/test_probe_next_features.py:L161 | neighbors=[test_probe_next_features.py, _cache_with()]
-- "tests_test_probe_simple_approve_testnextprobename_test_first_is_01": ".test_first_is_01()" | kind=code-symbol | source=manager/backend/tests/test_probe_simple_approve.py:L21 | neighbors=[TestNextProbeName, _db_names()]
-- "tests_test_probe_simple_approve_testnextprobename_test_ignores_non_matching_and_non_numeric": ".test_ignores_non_matching_and_non_numeric()" | kind=code-symbol | source=manager/backend/tests/test_probe_simple_approve.py:L33 | neighbors=[TestNextProbeName, _db_names()]
-- "tests_test_probe_simple_approve_testnextprobename_test_increments_past_highest_with_gaps": ".test_increments_past_highest_with_gaps()" | kind=code-symbol | source=manager/backend/tests/test_probe_simple_approve.py:L24 | neighbors=[TestNextProbeName, _db_names()]
-- "tests_test_probe_simple_approve_testnextprobename_test_legacy_probe_names_still_advance_the_counter": ".test_legacy_probe_names_still_advance_the_counter()" | kind=code-symbol | source=manager/backend/tests/test_probe_simple_approve.py:L28 | neighbors=[TestNextProbeName, _db_names()]
-- "tests_test_project_time_test_websocket_no_longer_emits_naive_timestamps": "test_websocket_no_longer_emits_naive_timestamps()" | kind=code-symbol | source=manager/backend/tests/test_project_time.py:L86 | neighbors=[test_project_time.py, Guards the actual bug: utcnow() strings…]
-- "tests_test_project_time_testrendering_test_still_orders_against_utc_rows": ".test_still_orders_against_utc_rows()" | kind=code-symbol | source=manager/backend/tests/test_project_time.py:L37 | neighbors=[The property that makes this safe next …, TestRendering]
-- "tests_test_project_time_testtoprojecttz_test_naive_is_assumed_utc": ".test_naive_is_assumed_utc()" | kind=code-symbol | source=manager/backend/tests/test_project_time.py:L45 | neighbors=[Every naive datetime in this codebase's…, TestToProjectTz]
+- "scanner_syn_scanner_rationale_232": "A genuine reply to our SYN acknowledges ISN+1. The reply's own source     (ip_sr" | kind=entity | source=probe/scanner/syn_scanner.py:L232 | neighbors=[verify_reply_cookie(), _local_source_ip()]
+- "scanner_syn_scanner_synscanner_fallback_scan": "._fallback_scan()" | kind=code-symbol | source=probe/scanner/syn_scanner.py:L390 | neighbors=[SynScanner, .scan_target()]
+- "scanner_syn_scanner_synscanner_syn_scan_target": "._syn_scan_target()" | kind=code-symbol | source=probe/scanner/syn_scanner.py:L398 | neighbors=[SynScanner, .scan_target()]
+- "scanner_tls_fingerprint_probe_specs": "_probe_specs()" | kind=code-symbol | source=probe/scanner/tls_fingerprint.py:L221 | neighbors=[tls_fingerprint.py, fingerprint_host()]
+- "scanner_tls_fingerprint_tlsfingerprintscanner_scan_port": "._scan_port()" | kind=code-symbol | source=probe/scanner/tls_fingerprint.py:L290 | neighbors=[TLSFingerprintScanner, .scan_target()]
+- "scanner_tls_fingerprint_tlsfingerprintscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/scanner/tls_fingerprint.py:L320 | neighbors=[TLSFingerprintScanner, ._scan_port()]
+- "scanner_tls_fingerprint_version_code": "version_code()" | kind=code-symbol | source=probe/scanner/tls_fingerprint.py:L174 | neighbors=[tls_fingerprint.py, jarm_style_digest()]
+- "scanner_tls_scanner_parse_cert_der": "_parse_cert_der()" | kind=code-symbol | source=probe/scanner/tls_scanner.py:L215 | neighbors=[tls_scanner.py, _scan_tls_sync()]
+- "scanner_tls_scanner_tlsscanner_scan_port": "._scan_port()" | kind=code-symbol | source=probe/scanner/tls_scanner.py:L320 | neighbors=[TLSScanner, .scan_target()]
+- "scanner_tls_scanner_tlsscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/scanner/tls_scanner.py:L339 | neighbors=[TLSScanner, ._scan_port()]
+- "scanner_udp_scanner_ike_probe": "_ike_probe()" | kind=code-symbol | source=probe/scanner/udp_scanner.py:L77 | neighbors=[udp_scanner.py, Minimal IKEv2 IKE_SA_INIT probe.  Sends…]
+- "scanner_udp_scanner_interpret_dns_recursion": "interpret_dns_recursion()" | kind=code-symbol | source=probe/scanner/udp_scanner.py:L173 | neighbors=[udp_scanner.py, ._probe()]
+- "scanner_udp_scanner_interpret_memcached_stats": "interpret_memcached_stats()" | kind=code-symbol | source=probe/scanner/udp_scanner.py:L184 | neighbors=[udp_scanner.py, ._probe()]
+- "scanner_udp_scanner_interpret_ntp_monlist": "interpret_ntp_monlist()" | kind=code-symbol | source=probe/scanner/udp_scanner.py:L169 | neighbors=[udp_scanner.py, ._probe()]
+- "scanner_udp_scanner_ntp_monlist_probe": "_ntp_monlist_probe()" | kind=code-symbol | source=probe/scanner/udp_scanner.py:L50 | neighbors=[udp_scanner.py, ._probe()]
+- "scanner_udp_scanner_tftp_probe": "_tftp_probe()" | kind=code-symbol | source=probe/scanner/udp_scanner.py:L132 | neighbors=[udp_scanner.py, TFTP RRQ for a non-existent file.  Erro…]
+- "scanner_udp_scanner_udpscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/scanner/udp_scanner.py:L386 | neighbors=[UDPScanner, ._probe()]
+- "scanner_unauth_access_as_text": "_as_text()" | kind=code-symbol | source=probe/scanner/unauth_access.py:L40 | neighbors=[unauth_access.py, classify_unauth_access()]
+- "scanner_va_campaign_atomic_write_json": "_atomic_write_json()" | kind=code-symbol | source=probe/scanner/va_campaign.py:L282 | neighbors=[va_campaign.py, ._flush()]
+- "scanner_va_campaign_bounded_gather": "_bounded_gather()" | kind=code-symbol | source=probe/scanner/va_campaign.py:L374 | neighbors=[va_campaign.py, Run coro_factory(item) over items with …]
+- "scanner_va_campaign_campaignoptions": "CampaignOptions" | kind=code-symbol | source=probe/scanner/va_campaign.py:L97 | neighbors=[va_campaign.py, Everything that changes WHAT the campai…]
+- "scanner_va_campaign_cliprogressview_format": "._format()" | kind=code-symbol | source=probe/scanner/va_campaign.py:L690 | neighbors=[CliProgressView, ._redraw()]
+- "scanner_va_campaign_cliprogressview_transitions": "._transitions()" | kind=code-symbol | source=probe/scanner/va_campaign.py:L678 | neighbors=[CliProgressView, .__call__()]
+- "scanner_va_campaign_discover_ipv6": "_discover_ipv6()" | kind=code-symbol | source=probe/scanner/va_campaign.py:L343 | neighbors=[va_campaign.py, Best-effort IPv6 neighbor discovery (ND…]
+- "scanner_va_campaign_progressreporter_current": "._current()" | kind=code-symbol | source=probe/scanner/va_campaign.py:L230 | neighbors=[ProgressReporter, .snapshot()]
+- "scanner_va_campaign_progressreporter_percent": "._percent()" | kind=code-symbol | source=probe/scanner/va_campaign.py:L222 | neighbors=[ProgressReporter, .snapshot()]
+- "scanner_va_campaign_stage": "Stage" | kind=code-symbol | source=probe/scanner/va_campaign.py:L126 | neighbors=[va_campaign.py, default_stages()]
+- "scanner_va_campaign_stageoutcome": "StageOutcome" | kind=code-symbol | source=probe/scanner/va_campaign.py:L113 | neighbors=[va_campaign.py, What a stage produced. `count` is stage…]
+- "scanner_va_campaign_stagestate_to_dict": ".to_dict()" | kind=code-symbol | source=probe/scanner/va_campaign.py:L161 | neighbors=[.snapshot(), StageState]
+- "scanner_vantage_matrix_is_external": "_is_external()" | kind=code-symbol | source=probe/scanner/vantage_matrix.py:L34 | neighbors=[vantage_matrix.py, reconcile_vantages()]
+- "scanner_vnc_scanner_vncscanner_scan_port": "._scan_port()" | kind=code-symbol | source=probe/scanner/vnc_scanner.py:L127 | neighbors=[VNCScanner, .scan_target()]
+- "scanner_vnc_scanner_vncscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/scanner/vnc_scanner.py:L145 | neighbors=[VNCScanner, ._scan_port()]
+- "scanner_web_scanner_noredirect": "_NoRedirect" | kind=code-symbol | source=probe/scanner/web_scanner.py:L55 | neighbors=[web_scanner.py, .redirect_request()]
+- "scanner_web_scanner_webscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/scanner/web_scanner.py:L240 | neighbors=[WebScanner, ._scan_port()]
+- "scanner_windows_collector_smb_registry_collect": "_smb_registry_collect()" | kind=code-symbol | source=probe/scanner/windows_collector.py:L158 | neighbors=[windows_collector.py, Connect to RemoteRegistry over SMB and …]
+- "scanner_windows_collector_windowscollector_full_user": "._full_user()" | kind=code-symbol | source=probe/scanner/windows_collector.py:L294 | neighbors=[WindowsCollector, ._collect_host()]
+- "scanner_windows_collector_windowscollector_run": ".run()" | kind=code-symbol | source=probe/scanner/windows_collector.py:L326 | neighbors=[WindowsCollector, ._collect_host()]
+- "scanner_windows_collector_windowscollector_smb_result": "._smb_result()" | kind=code-symbol | source=probe/scanner/windows_collector.py:L318 | neighbors=[WindowsCollector, ._collect_host()]
+- "scanner_windows_collector_windowscollector_transport_order": "._transport_order()" | kind=code-symbol | source=probe/scanner/windows_collector.py:L299 | neighbors=[WindowsCollector, ._collect_host()]
+- "scanner_windows_collector_windowscollector_winrm_result": "._winrm_result()" | kind=code-symbol | source=probe/scanner/windows_collector.py:L306 | neighbors=[WindowsCollector, ._collect_host()]
 
 ## Instructions
 

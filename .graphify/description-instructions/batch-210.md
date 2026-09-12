@@ -1,4 +1,4 @@
-# Node Description Batch 211 of 336
+# Node Description Batch 211 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,51 +12,58 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
+For an entity node (any other kind — e.g. a person, place, event, object),
+describe what the entity is and its role, grounded in its type, its
+relations (neighbors) and the provided citations/evidence — e.g.
+"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
+Ground entity descriptions in the citations/evidence when present; do not
+speculate beyond the context, so a node with no supporting context may be
+left out of the reply.
 Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "lib_detection_store_correlate": "correlate()" | kind=code-symbol | source=manager/frontend/lib/detection-store.ts:L97 | neighbors=[detection-store.ts]
-- "lib_detection_store_correlationruns": "correlationRuns" | kind=code-symbol | source=manager/frontend/lib/detection-store.ts:L413 | neighbors=[detection-store.ts]
-- "lib_detection_store_coveragestats": "CoverageStats" | kind=code-symbol | source=manager/frontend/lib/detection-store.ts:L78 | neighbors=[detection-store.ts]
-- "lib_detection_store_detectionoutcome": "DetectionOutcome" | kind=code-symbol | source=manager/frontend/lib/detection-store.ts:L4 | neighbors=[detection-store.ts]
-- "lib_detection_store_detectionresult": "DetectionResult" | kind=code-symbol | source=manager/frontend/lib/detection-store.ts:L65 | neighbors=[detection-store.ts]
-- "lib_detection_store_edr_detections": "EDR_DETECTIONS" | kind=code-symbol | source=manager/frontend/lib/detection-store.ts:L56 | neighbors=[detection-store.ts]
-- "lib_detection_store_edrdetection": "EDRDetection" | kind=code-symbol | source=manager/frontend/lib/detection-store.ts:L41 | neighbors=[detection-store.ts]
-- "lib_detection_store_generatesigma": "generateSigma()" | kind=code-symbol | source=manager/frontend/lib/detection-store.ts:L359 | neighbors=[detection-store.ts]
-- "lib_detection_store_isinwindow": "isInWindow()" | kind=code-symbol | source=manager/frontend/lib/detection-store.ts:L88 | neighbors=[detection-store.ts]
-- "lib_detection_store_issamehost": "isSameHost()" | kind=code-symbol | source=manager/frontend/lib/detection-store.ts:L92 | neighbors=[detection-store.ts]
-- "lib_detection_store_siem_alerts": "SIEM_ALERTS" | kind=code-symbol | source=manager/frontend/lib/detection-store.ts:L48 | neighbors=[detection-store.ts]
-- "lib_detection_store_siemalert": "SIEMAlert" | kind=code-symbol | source=manager/frontend/lib/detection-store.ts:L35 | neighbors=[detection-store.ts]
-- "lib_detection_store_siemconfigs": "siemConfigs" | kind=code-symbol | source=manager/frontend/lib/detection-store.ts:L410 | neighbors=[detection-store.ts]
-- "lib_detection_store_sigma_templates": "SIGMA_TEMPLATES" | kind=code-symbol | source=manager/frontend/lib/detection-store.ts:L153 | neighbors=[detection-store.ts]
-- "lib_detection_store_sigmarule": "SigmaRule" | kind=code-symbol | source=manager/frontend/lib/detection-store.ts:L145 | neighbors=[detection-store.ts]
-- "lib_engagements_store_activity": "ACTIVITY" | kind=code-symbol | source=manager/frontend/lib/engagements-store.ts:L98 | neighbors=[engagements-store.ts]
-- "lib_engagements_store_credential": "Credential" | kind=code-symbol | source=manager/frontend/lib/engagements-store.ts:L3 | neighbors=[engagements-store.ts]
-- "lib_engagements_store_engagement": "Engagement" | kind=code-symbol | source=manager/frontend/lib/engagements-store.ts:L10 | neighbors=[engagements-store.ts]
-- "lib_engagements_store_engagementsstore": "engagementsStore" | kind=code-symbol | source=manager/frontend/lib/engagements-store.ts:L122 | neighbors=[engagements-store.ts]
-- "lib_engagements_store_engagementstatus": "EngagementStatus" | kind=code-symbol | source=manager/frontend/lib/engagements-store.ts:L1 | neighbors=[engagements-store.ts]
-- "lib_engagements_store_findings_timeline": "FINDINGS_TIMELINE" | kind=code-symbol | source=manager/frontend/lib/engagements-store.ts:L109 | neighbors=[engagements-store.ts]
-- "lib_engagements_store_genid": "genId()" | kind=code-symbol | source=manager/frontend/lib/engagements-store.ts:L32 | neighbors=[engagements-store.ts]
-- "lib_engagements_store_now": "now" | kind=code-symbol | source=manager/frontend/lib/engagements-store.ts:L108 | neighbors=[engagements-store.ts]
-- "lib_engagements_store_store": "STORE" | kind=code-symbol | source=manager/frontend/lib/engagements-store.ts:L34 | neighbors=[engagements-store.ts]
-- "lib_errors_adversaerror_constructor": ".constructor()" | kind=code-symbol | source=manager/frontend/lib/errors.ts:L65 | neighbors=[AdversaError]
-- "lib_errors_adversaerror_render": ".render()" | kind=code-symbol | source=manager/frontend/lib/errors.ts:L94 | neighbors=[AdversaError]
-- "lib_errors_adversaerror_tojson": ".toJSON()" | kind=code-symbol | source=manager/frontend/lib/errors.ts:L76 | neighbors=[AdversaError]
-- "lib_errors_adversaerroropts": "AdversaErrorOpts" | kind=code-symbol | source=manager/frontend/lib/errors.ts:L48 | neighbors=[errors.ts]
-- "lib_errors_errorcode": "ErrorCode" | kind=code-symbol | source=manager/frontend/lib/errors.ts:L14 | neighbors=[errors.ts]
-- "lib_errors_vedhaerror_constructor": ".constructor()" | kind=code-symbol | source=manager/frontend/lib/errors.ts:L65 | neighbors=[VedhaError]
-- "lib_errors_vedhaerror_render": ".render()" | kind=code-symbol | source=manager/frontend/lib/errors.ts:L94 | neighbors=[VedhaError]
-- "lib_errors_vedhaerror_tojson": ".toJSON()" | kind=code-symbol | source=manager/frontend/lib/errors.ts:L76 | neighbors=[VedhaError]
-- "lib_errors_vedhaerroropts": "VedhaErrorOpts" | kind=code-symbol | source=manager/frontend/lib/errors.ts:L48 | neighbors=[errors.ts]
-- "lib_exploit_store_approvals": "approvals" | kind=code-symbol | source=manager/frontend/lib/exploit-store.ts:L78 | neighbors=[exploit-store.ts]
-- "lib_exploit_store_approvalstatus": "ApprovalStatus" | kind=code-symbol | source=manager/frontend/lib/exploit-store.ts:L3 | neighbors=[exploit-store.ts]
-- "lib_exploit_store_auditentry": "AuditEntry" | kind=code-symbol | source=manager/frontend/lib/exploit-store.ts:L54 | neighbors=[exploit-store.ts]
-- "lib_exploit_store_auditlog": "auditLog" | kind=code-symbol | source=manager/frontend/lib/exploit-store.ts:L79 | neighbors=[exploit-store.ts]
-- "lib_exploit_store_exploitapprovalrequest": "ExploitApprovalRequest" | kind=code-symbol | source=manager/frontend/lib/exploit-store.ts:L36 | neighbors=[exploit-store.ts]
-- "lib_exploit_store_exploitevidence": "ExploitEvidence" | kind=code-symbol | source=manager/frontend/lib/exploit-store.ts:L5 | neighbors=[exploit-store.ts]
-- "lib_exploit_store_exploitjob": "ExploitJob" | kind=code-symbol | source=manager/frontend/lib/exploit-store.ts:L20 | neighbors=[exploit-store.ts]
+- "ai_llm_report_rationale_49": "Raised when the Anthropic SDK or API key is not configured." | kind=entity | source=manager/backend/app/ai/llm_report.py:L49 | neighbors=[LLMUnavailableError]
+- "ai_prioritizer_rationale_1": "VulnPrioritizer — ML-based vulnerability prioritisation with a deterministic fal" | kind=entity | source=manager/backend/app/ai/prioritizer.py:L1 | neighbors=[prioritizer.py]
+- "ai_prioritizer_rationale_111": "Fit an XGBoost regressor on historical findings. ``historical_findings_df``" | kind=entity | source=manager/backend/app/ai/prioritizer.py:L111 | neighbors=[.train()]
+- "ai_prioritizer_rationale_149": "Return a 0–1000 priority score. Uses the model if trained, else the formula." | kind=entity | source=manager/backend/app/ai/prioritizer.py:L149 | neighbors=[.predict_priority()]
+- "ai_prioritizer_rationale_159": "Per-feature contribution to this prediction. Uses SHAP when available;         o" | kind=entity | source=manager/backend/app/ai/prioritizer.py:L159 | neighbors=[.explain_prediction()]
+- "ai_prioritizer_rationale_205": "Weighted composite 0–1000 (same shape as the Prompt-3 enrichment formula)." | kind=entity | source=manager/backend/app/ai/prioritizer.py:L205 | neighbors=[.fallback_score()]
+- "ai_prioritizer_rationale_73": "Build the model's feature vector from a Finding (+ optional Asset + extra     co" | kind=entity | source=manager/backend/app/ai/prioritizer.py:L73 | neighbors=[extract_features()]
+- "ai_prioritizer_vulnprioritizer_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/ai/prioritizer.py:L100 | neighbors=[VulnPrioritizer]
+- "ai_prioritizer_vulnprioritizer_is_trained": ".is_trained()" | kind=code-symbol | source=manager/backend/app/ai/prioritizer.py:L105 | neighbors=[VulnPrioritizer]
+- "ai_verification_graph_graph_available": "graph_available()" | kind=code-symbol | source=manager/backend/app/ai/verification_graph.py:L24 | neighbors=[verification_graph.py]
+- "ai_verification_graph_rationale_1": "verification_graph.py — optional LangGraph orchestration for passive verificatio" | kind=entity | source=manager/backend/app/ai/verification_graph.py:L1 | neighbors=[verification_graph.py]
+- "ai_verification_graph_rationale_29": "Run passive verification. Uses the LangGraph StateGraph when available;     othe" | kind=entity | source=manager/backend/app/ai/verification_graph.py:L29 | neighbors=[run_verification()]
+- "aibrain_page_agent": "Agent" | kind=code-symbol | source=manager/frontend/app/aibrain/page.tsx:L15 | neighbors=[page.tsx]
+- "aibrain_page_aistatus": "AiStatus" | kind=code-symbol | source=manager/frontend/app/aibrain/page.tsx:L28 | neighbors=[page.tsx]
+- "aibrain_page_animatedmessage": "AnimatedMessage()" | kind=code-symbol | source=manager/frontend/app/aibrain/page.tsx:L126 | neighbors=[page.tsx]
+- "aibrain_page_barcolor": "barColor()" | kind=code-symbol | source=manager/frontend/app/aibrain/page.tsx:L100 | neighbors=[page.tsx]
+- "aibrain_page_criticalchain": "criticalChain" | kind=code-symbol | source=manager/frontend/app/aibrain/page.tsx:L74 | neighbors=[page.tsx]
+- "aibrain_page_defaultagents": "defaultAgents" | kind=code-symbol | source=manager/frontend/app/aibrain/page.tsx:L49 | neighbors=[page.tsx]
+- "aibrain_page_engagement": "Engagement" | kind=code-symbol | source=manager/frontend/app/aibrain/page.tsx:L45 | neighbors=[page.tsx]
+- "aibrain_page_finding": "Finding" | kind=code-symbol | source=manager/frontend/app/aibrain/page.tsx:L21 | neighbors=[page.tsx]
+- "aibrain_page_findings": "findings" | kind=code-symbol | source=manager/frontend/app/aibrain/page.tsx:L57 | neighbors=[page.tsx]
+- "aibrain_page_formattime": "formatTime()" | kind=code-symbol | source=manager/frontend/app/aibrain/page.tsx:L82 | neighbors=[page.tsx]
+- "aibrain_page_graphstats": "graphStats" | kind=code-symbol | source=manager/frontend/app/aibrain/page.tsx:L65 | neighbors=[page.tsx]
+- "aibrain_page_initialmessage": "initialMessage" | kind=code-symbol | source=manager/frontend/app/aibrain/page.tsx:L38 | neighbors=[page.tsx]
+- "aibrain_page_message": "Message" | kind=code-symbol | source=manager/frontend/app/aibrain/page.tsx:L19 | neighbors=[page.tsx]
+- "aibrain_page_quickprompts": "quickPrompts" | kind=code-symbol | source=manager/frontend/app/aibrain/page.tsx:L30 | neighbors=[page.tsx]
+- "aibrain_page_severitycolor": "severityColor()" | kind=code-symbol | source=manager/frontend/app/aibrain/page.tsx:L87 | neighbors=[page.tsx]
+- "aibrain_page_starter_prompts": "STARTER_PROMPTS" | kind=code-symbol | source=manager/frontend/app/aibrain/page.tsx:L52 | neighbors=[page.tsx]
+- "aibrain_page_statusdot": "StatusDot()" | kind=code-symbol | source=manager/frontend/app/aibrain/page.tsx:L109 | neighbors=[page.tsx]
+- "aibrain_page_welcome": "WELCOME" | kind=code-symbol | source=manager/frontend/app/aibrain/page.tsx:L71 | neighbors=[page.tsx]
+- "alembic_env_do_run_migrations": "do_run_migrations()" | kind=code-symbol | source=manager/backend/alembic/env.py:L37 | neighbors=[env.py]
+- "alembic_env_run_migrations_offline": "run_migrations_offline()" | kind=code-symbol | source=manager/backend/alembic/env.py:L24 | neighbors=[env.py]
+- "alembic_env_run_migrations_online": "run_migrations_online()" | kind=code-symbol | source=manager/backend/alembic/env.py:L47 | neighbors=[env.py]
+- "app_config_settings_cors_origins": ".cors_origins()" | kind=code-symbol | source=manager/backend/app/config.py:L135 | neighbors=[Settings]
+- "app_config_settings_is_production": ".is_production()" | kind=code-symbol | source=manager/backend/app/config.py:L139 | neighbors=[Settings]
+- "app_database_get_db": "get_db()" | kind=code-symbol | source=manager/backend/app/database.py:L51 | neighbors=[database.py]
+- "app_database_rationale_57": "Read-only session (no commit) routed to the replica when configured.     For SEL" | kind=entity | source=manager/backend/app/database.py:L57 | neighbors=[get_read_db()]
+- "app_database_rationale_64": "Read-only session (no commit) routed to the replica when configured.     For SEL" | kind=entity | source=manager/backend/app/database.py:L64 | neighbors=[get_read_db()]
+- "app_dependencies_get_redis": "get_redis()" | kind=code-symbol | source=manager/backend/app/dependencies.py:L19 | neighbors=[dependencies.py]
+- "app_layout_metadata": "metadata" | kind=code-symbol | source=manager/frontend/app/layout.tsx:L9 | neighbors=[layout.tsx]
 
 ## Instructions
 

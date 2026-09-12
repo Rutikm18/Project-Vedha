@@ -1,4 +1,4 @@
-# Node Description Batch 100 of 336
+# Node Description Batch 100 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,51 +12,58 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
+For an entity node (any other kind — e.g. a person, place, event, object),
+describe what the entity is and its role, grounded in its type, its
+relations (neighbors) and the provided citations/evidence — e.g.
+"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
+Ground entity descriptions in the citations/evidence when present; do not
+speculate beyond the context, so a node with no supporting context may be
+left out of the reply.
 Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "main_scripts_run_all_log": "_log()" | kind=code-symbol | source=probe/main_scripts/run_all.py:L50 | neighbors=[run_all.py, main(), _run_stage()]
-- "main_scripts_scan_funnel_reconcile_ports": "reconcile_ports()" | kind=code-symbol | source=probe/main_scripts/scan_funnel.py:L72 | neighbors=[scan_funnel.py, Canonical open-TCP set for a host = ded…, .run_host()]
-- "main_scripts_scan_funnel_scanner": "_Scanner" | kind=code-symbol | source=probe/main_scripts/scan_funnel.py:L113 | neighbors=[scan_funnel.py, .scan_target(), Protocol]
-- "main_scripts_scanner_base_assess_tarpit": "assess_tarpit()" | kind=code-symbol | source=probe/main_scripts/scanner_base.py:L154 | neighbors=[scanner_base.py, Heuristic: is this host a tarpit / hone…, Heuristic: is this host a tarpit / hone…]
-- "main_scripts_scanner_base_choose_source_port": "choose_source_port()" | kind=code-symbol | source=probe/main_scripts/scanner_base.py:L134 | neighbors=[scanner_base.py, The TCP source port for probes. A FIXED…, The TCP source port for probes. A FIXED…]
-- "main_scripts_scanner_base_get_fd_limit": "get_fd_limit()" | kind=code-symbol | source=probe/main_scripts/scanner_base.py:L1032 | neighbors=[scanner_base.py, raise_fd_limit(), Return (soft, hard) open-file-descripto…]
-- "main_scripts_scanner_base_jittered_delay": "jittered_delay()" | kind=code-symbol | source=probe/main_scripts/scanner_base.py:L144 | neighbors=[scanner_base.py, A per-probe delay of `base` seconds ± u…, A per-probe delay of `base` seconds ± u…]
-- "main_scripts_scanner_base_probe_payload": "probe_payload()" | kind=code-symbol | source=probe/main_scripts/scanner_base.py:L127 | neighbors=[scanner_base.py, Benign, non-attributing payload for ICM…, Benign, non-attributing payload for ICM…]
-- "main_scripts_scanner_base_project_file_stamp": "project_file_stamp()" | kind=code-symbol | source=probe/main_scripts/scanner_base.py:L95 | neighbors=[scanner_base.py, project_now(), Compact project-local stamp for FILE an…]
-- "main_scripts_scanner_base_project_timestamp": "project_timestamp()" | kind=code-symbol | source=probe/main_scripts/scanner_base.py:L90 | neighbors=[scanner_base.py, project_now(), ISO-8601 instant in the project timezon…]
-- "main_scripts_scanner_base_ratelimiter_wait": ".wait()" | kind=code-symbol | source=probe/main_scripts/scanner_base.py:L437 | neighbors=[.acquire(), .run(), RateLimiter]
-- "main_scripts_scanner_base_resolve_candidates": "resolve_candidates()" | kind=code-symbol | source=probe/main_scripts/scanner_base.py:L704 | neighbors=[scanner_base.py, EVERY distinct (family, sockaddr) for `…, resolve_ip_candidates()]
-- "main_scripts_scanner_base_resolve_ip_candidates": "resolve_ip_candidates()" | kind=code-symbol | source=probe/main_scripts/scanner_base.py:L747 | neighbors=[scanner_base.py, Just the candidate IP strings for `targ…, resolve_candidates()]
-- "main_scripts_scanner_base_resultwriter_close": ".close()" | kind=code-symbol | source=probe/main_scripts/scanner_base.py:L938 | neighbors=[async_udp_probe(), ResultWriter, run_cli()]
-- "main_scripts_scanner_base_resultwriter_write": ".write()" | kind=code-symbol | source=probe/main_scripts/scanner_base.py:L929 | neighbors=[.run(), ResultWriter, .to_json()]
-- "main_scripts_scanner_base_safe_connect_concurrency": "safe_connect_concurrency()" | kind=code-symbol | source=probe/main_scripts/scanner_base.py:L1061 | neighbors=[scanner_base.py, Cap concurrent connections comfortably …, raise_fd_limit()]
-- "main_scripts_scanner_base_scopeguard_from_file": ".from_file()" | kind=code-symbol | source=probe/main_scripts/scanner_base.py:L340 | neighbors=[run_cli(), ScopeGuard, ScopeError]
-- "main_scripts_scanner_base_scopeguard_in_scope": ".in_scope()" | kind=code-symbol | source=probe/main_scripts/scanner_base.py:L388 | neighbors=[ScopeGuard, .assert_in_scope(), .filter()]
-- "main_scripts_scanner_base_user_agent": "user_agent()" | kind=code-symbol | source=probe/main_scripts/scanner_base.py:L121 | neighbors=[scanner_base.py, HTTP/RTSP User-Agent to send — a generi…, HTTP/RTSP User-Agent to send — a generi…]
-- "main_scripts_service_banner_parse_http_head": "parse_http_head()" | kind=code-symbol | source=probe/main_scripts/service_banner.py:L267 | neighbors=[service_banner.py, Pull status code, the identifying heade…, ._grab()]
-- "main_scripts_service_banner_servicebannerscanner_read_some": "._read_some()" | kind=code-symbol | source=probe/main_scripts/service_banner.py:L348 | neighbors=[Read up to read_bytes: wait `first_wait…, ServiceBannerScanner, ._rung()]
-- "main_scripts_service_enum_smb_dialects": "smb_dialects()" | kind=code-symbol | source=probe/main_scripts/service_enum.py:L322 | neighbors=[service_enum.py, Negotiate against 445; report whether S…, Negotiate against 445; report whether S…]
-- "main_scripts_service_enum_tls_accepts_old": "tls_accepts_old()" | kind=code-symbol | source=probe/main_scripts/service_enum.py:L287 | neighbors=[service_enum.py, Which deprecated TLS/SSL versions the s…, Which deprecated TLS/SSL versions the s…]
-- "main_scripts_service_enum_tls_info": "tls_info()" | kind=code-symbol | source=probe/main_scripts/service_enum.py:L264 | neighbors=[service_enum.py, One permissive TLS handshake: negotiate…, One permissive TLS handshake: negotiate…]
-- "main_scripts_smb_enum_scanner_merge_users": "_merge_users()" | kind=code-symbol | source=probe/main_scripts/smb_enum_scanner.py:L200 | neighbors=[smb_enum_scanner.py, Merge user lists, de-duplicated by (nam…, ._enumerate()]
-- "main_scripts_smb_enum_scanner_parse_rid_ranges": "parse_rid_ranges()" | kind=code-symbol | source=probe/main_scripts/smb_enum_scanner.py:L52 | neighbors=[smb_enum_scanner.py, Parse 'a-b,c-d,e' into a sorted, de-dup…, .__init__()]
-- "main_scripts_smb_enum_scanner_safe": "_safe()" | kind=code-symbol | source=probe/main_scripts/smb_enum_scanner.py:L300 | neighbors=[smb_enum_scanner.py, _decode(), ._enumerate()]
-- "main_scripts_smb_scanner_align8": "_align8()" | kind=code-symbol | source=probe/main_scripts/smb_scanner.py:L249 | neighbors=[smb_scanner.py, Pad to the 8-byte boundary MS-SMB2 requ…, _smb2_negotiate()]
-- "main_scripts_smb_scanner_build_ntlmssp_negotiate": "build_ntlmssp_negotiate()" | kind=code-symbol | source=probe/main_scripts/smb_scanner.py:L115 | neighbors=[smb_scanner.py, ntlm_os_build(), NTLMSSP NEGOTIATE (Type-1). Sets NEGOTI…]
-- "main_scripts_smb_scanner_der": "_der()" | kind=code-symbol | source=probe/main_scripts/smb_scanner.py:L111 | neighbors=[smb_scanner.py, _der_len(), _spnego_init()]
-- "main_scripts_smb_scanner_encryption_context": "_encryption_context()" | kind=code-symbol | source=probe/main_scripts/smb_scanner.py:L265 | neighbors=[smb_scanner.py, SMB2_ENCRYPTION_CAPABILITIES (MS-SMB2 2…, _smb2_negotiate()]
-- "main_scripts_smb_scanner_netbios_session": "_netbios_session()" | kind=code-symbol | source=probe/main_scripts/smb_scanner.py:L33 | neighbors=[smb_scanner.py, ntlm_os_build(), ._negotiate()]
-- "main_scripts_smb_scanner_preauth_integrity_context": "_preauth_integrity_context()" | kind=code-symbol | source=probe/main_scripts/smb_scanner.py:L254 | neighbors=[smb_scanner.py, SMB2_PREAUTH_INTEGRITY_CAPABILITIES (MS…, _smb2_negotiate()]
-- "main_scripts_smb_scanner_recv_smb_frame": "_recv_smb_frame()" | kind=code-symbol | source=probe/main_scripts/smb_scanner.py:L316 | neighbors=[smb_scanner.py, ntlm_os_build(), Read one length-prefixed (Direct-TCP/NB…]
-- "main_scripts_smb_scanner_smb2_session_setup": "_smb2_session_setup()" | kind=code-symbol | source=probe/main_scripts/smb_scanner.py:L203 | neighbors=[smb_scanner.py, ntlm_os_build(), SMB2 SESSION_SETUP request (MessageId 1…]
-- "main_scripts_smb_scanner_smbscanner_negotiate": "._negotiate()" | kind=code-symbol | source=probe/main_scripts/smb_scanner.py:L369 | neighbors=[SMB negotiate against the first address…, SMBScanner, _netbios_session()]
-- "main_scripts_smb_scanner_smbscanner_ntlm_fingerprint": "._ntlm_fingerprint()" | kind=code-symbol | source=probe/main_scripts/smb_scanner.py:L393 | neighbors=[Best-effort: SMB2 NEGOTIATE then a pre-…, SMBScanner, ntlm_os_build()]
-- "main_scripts_smb_scanner_windows_release_from_build": "windows_release_from_build()" | kind=code-symbol | source=probe/main_scripts/smb_scanner.py:L141 | neighbors=[smb_scanner.py, parse_ntlm_challenge(), Map an NT major.minor.build to a friend…]
-- "main_scripts_smtp_scanner_parse_ehlo_capabilities": "parse_ehlo_capabilities()" | kind=code-symbol | source=probe/main_scripts/smtp_scanner.py:L39 | neighbors=[smtp_scanner.py, Extract EHLO capability tokens from a m…, ._probe()]
-- "main_scripts_smtp_scanner_smtpscanner_cmd": "._cmd()" | kind=code-symbol | source=probe/main_scripts/smtp_scanner.py:L83 | neighbors=[SMTPScanner, ._read_response(), ._probe()]
+- "ad_asreproast_rationale_1": "ASREPRoastChecker — find accounts with Kerberos pre-authentication disabled and" | kind=entity | source=manager/backend/app/ad/asreproast.py:L1 | neighbors=[asreproast.py, LDAPEnumerator, FindingSeverity]
+- "ad_asreproast_rationale_35": "Enumerate AS-REP roastable accounts and capture AS-REP evidence." | kind=entity | source=manager/backend/app/ad/asreproast.py:L35 | neighbors=[ASREPRoastChecker, LDAPEnumerator, FindingSeverity]
+- "ad_asreproast_rationale_43": "Usernames of enabled accounts with pre-authentication not required." | kind=entity | source=manager/backend/app/ad/asreproast.py:L43 | neighbors=[.get_no_preauth_accounts(), LDAPEnumerator, FindingSeverity]
+- "ad_asreproast_rationale_55": "Request an AS-REP for ``username`` with no credentials and return the         $k" | kind=entity | source=manager/backend/app/ad/asreproast.py:L55 | neighbors=[.request_asrep(), LDAPEnumerator, FindingSeverity]
+- "ad_asreproast_rationale_91": "Render an AS-REP as a hashcat $krb5asrep$ string (no decryption)." | kind=entity | source=manager/backend/app/ad/asreproast.py:L91 | neighbors=[._format_asrep_hash(), LDAPEnumerator, FindingSeverity]
+- "ad_bloodhound_bloodhoundcollector_import_to_neo4j": ".import_to_neo4j()" | kind=code-symbol | source=manager/backend/app/ad/bloodhound.py:L117 | neighbors=[BloodHoundCollector, ._ingest_collection(), Load nodes (users/computers/groups) and…]
+- "ad_bloodhound_bloodhoundcollector_ingest_collection": "._ingest_collection()" | kind=code-symbol | source=manager/backend/app/ad/bloodhound.py:L156 | neighbors=[BloodHoundCollector, .import_to_neo4j(), Ingest one BloodHound collector file. R…]
+- "ad_findings_build_ad_finding": "build_ad_finding()" | kind=code-symbol | source=manager/backend/app/ad/findings.py:L103 | neighbors=[findings.py, severity_from_str(), Assemble a Finding-compatible dict.    …]
+- "ad_findings_rationale_1": "Shared building blocks for the Active Directory assessment module.  Every AD che" | kind=entity | source=manager/backend/app/ad/findings.py:L1 | neighbors=[findings.py, FindingSeverity, FindingStatus]
+- "ad_findings_rationale_119": "Assemble a Finding-compatible dict.      All findings carry — as required by the" | kind=entity | source=manager/backend/app/ad/findings.py:L119 | neighbors=[build_ad_finding(), FindingSeverity, FindingStatus]
+- "ad_findings_rationale_23": "Base class for Active Directory assessment errors." | kind=entity | source=manager/backend/app/ad/findings.py:L23 | neighbors=[ADError, FindingSeverity, FindingStatus]
+- "ad_findings_rationale_27": "Raised when an LDAP/Kerberos/SMB connection to the DC fails." | kind=entity | source=manager/backend/app/ad/findings.py:L27 | neighbors=[ADConnectionError, FindingSeverity, FindingStatus]
+- "ad_findings_rationale_31": "Raised when an optional offensive dependency (ldap3/impacket) is absent." | kind=entity | source=manager/backend/app/ad/findings.py:L31 | neighbors=[DependencyMissingError, FindingSeverity, FindingStatus]
+- "ad_kerberoast_kerberoastchecker_generate_finding": ".generate_finding()" | kind=code-symbol | source=manager/backend/app/ad/kerberoast.py:L144 | neighbors=[KerberoastChecker, One aggregate Finding for all kerberoas…, One aggregate Finding for all kerberoas…]
+- "ad_kerberoast_rationale_1": "KerberoastChecker — find SPN-bearing accounts and capture TGS hashes as *offline" | kind=entity | source=manager/backend/app/ad/kerberoast.py:L1 | neighbors=[kerberoast.py, LDAPEnumerator, FindingSeverity]
+- "ad_kerberoast_rationale_131": "Render the TGS as a hashcat $krb5tgs$ string (etype 23/RC4 layout)." | kind=entity | source=manager/backend/app/ad/kerberoast.py:L131 | neighbors=[._encode_tgs_rep(), LDAPEnumerator, FindingSeverity]
+- "ad_kerberoast_rationale_132": "Render the TGS as a hashcat $krb5tgs$ string (etype 23/RC4 layout)." | kind=entity | source=manager/backend/app/ad/kerberoast.py:L132 | neighbors=[._encode_tgs_rep(), LDAPEnumerator, FindingSeverity]
+- "ad_kerberoast_rationale_145": "One aggregate Finding for all kerberoastable accounts.         Severity is Criti" | kind=entity | source=manager/backend/app/ad/kerberoast.py:L145 | neighbors=[.generate_finding(), LDAPEnumerator, FindingSeverity]
+- "ad_kerberoast_rationale_146": "One aggregate Finding for all kerberoastable accounts.         Severity is Criti" | kind=entity | source=manager/backend/app/ad/kerberoast.py:L146 | neighbors=[.generate_finding(), LDAPEnumerator, FindingSeverity]
+- "ad_kerberoast_rationale_40": "Enumerate kerberoastable accounts and capture TGS evidence." | kind=entity | source=manager/backend/app/ad/kerberoast.py:L40 | neighbors=[KerberoastChecker, LDAPEnumerator, FindingSeverity]
+- "ad_kerberoast_rationale_41": "Enumerate kerberoastable accounts and capture TGS evidence." | kind=entity | source=manager/backend/app/ad/kerberoast.py:L41 | neighbors=[KerberoastChecker, LDAPEnumerator, FindingSeverity]
+- "ad_kerberoast_rationale_48": "Returns user accounts that have a servicePrincipalName set (and are not" | kind=entity | source=manager/backend/app/ad/kerberoast.py:L48 | neighbors=[.get_spn_accounts(), LDAPEnumerator, FindingSeverity]
+- "ad_kerberoast_rationale_49": "Returns user accounts that have a servicePrincipalName set (and are not" | kind=entity | source=manager/backend/app/ad/kerberoast.py:L49 | neighbors=[.get_spn_accounts(), LDAPEnumerator, FindingSeverity]
+- "ad_kerberoast_rationale_93": "Request a TGS for ``spn`` and return the $krb5tgs$ hash string for offline" | kind=entity | source=manager/backend/app/ad/kerberoast.py:L93 | neighbors=[.request_tgs(), LDAPEnumerator, FindingSeverity]
+- "ad_kerberoast_rationale_94": "Request a TGS for ``spn`` and return the $krb5tgs$ hash string for offline" | kind=entity | source=manager/backend/app/ad/kerberoast.py:L94 | neighbors=[.request_tgs(), LDAPEnumerator, FindingSeverity]
+- "ad_ldap_enum_as_list": "_as_list()" | kind=code-symbol | source=manager/backend/app/ad/ldap_enum.py:L109 | neighbors=[ldap_enum.py, .get_groups(), .get_users()]
+- "ad_ldap_enum_ldapenumerator_parse_security_descriptor": "._parse_security_descriptor()" | kind=code-symbol | source=manager/backend/app/ad/ldap_enum.py:L343 | neighbors=[LDAPEnumerator, .get_aces(), ACE]
+- "ad_ldap_enum_ldapenumerator_require_conn": "._require_conn()" | kind=code-symbol | source=manager/backend/app/ad/ldap_enum.py:L188 | neighbors=[LDAPEnumerator, .get_aces(), ._search()]
+- "ad_ldap_enum_rationale_1": "LDAPEnumerator — read-only Active Directory enumeration over LDAP/LDAPS.  Uses l" | kind=entity | source=manager/backend/app/ad/ldap_enum.py:L1 | neighbors=[ldap_enum.py, ADConnectionError, DependencyMissingError]
+- "ad_ldap_enum_rationale_105": "corp.local -> DC=corp,DC=local" | kind=entity | source=manager/backend/app/ad/ldap_enum.py:L105 | neighbors=[_domain_to_base_dn(), ADConnectionError, DependencyMissingError]
+- "ad_ldap_enum_rationale_106": "corp.local -> DC=corp,DC=local" | kind=entity | source=manager/backend/app/ad/ldap_enum.py:L106 | neighbors=[ADConnectionError, DependencyMissingError, _domain_to_base_dn()]
+- "ad_ldap_enum_rationale_118": "Read-only AD enumeration. One instance == one bound connection." | kind=entity | source=manager/backend/app/ad/ldap_enum.py:L118 | neighbors=[LDAPEnumerator, ADConnectionError, DependencyMissingError]
+- "ad_ldap_enum_rationale_119": "Read-only AD enumeration. One instance == one bound connection." | kind=entity | source=manager/backend/app/ad/ldap_enum.py:L119 | neighbors=[ADConnectionError, DependencyMissingError, LDAPEnumerator]
+- "ad_ldap_enum_rationale_137": "Bind to the domain controller. Returns self for chaining.          Raises Depend" | kind=entity | source=manager/backend/app/ad/ldap_enum.py:L137 | neighbors=[.connect(), ADConnectionError, DependencyMissingError]
+- "ad_ldap_enum_rationale_138": "Bind to the domain controller. Returns self for chaining.          Raises Depend" | kind=entity | source=manager/backend/app/ad/ldap_enum.py:L138 | neighbors=[ADConnectionError, DependencyMissingError, .connect()]
+- "ad_ldap_enum_rationale_214": "All user accounts (excludes computer accounts)." | kind=entity | source=manager/backend/app/ad/ldap_enum.py:L214 | neighbors=[.get_users(), ADConnectionError, DependencyMissingError]
+- "ad_ldap_enum_rationale_215": "All user accounts (excludes computer accounts)." | kind=entity | source=manager/backend/app/ad/ldap_enum.py:L215 | neighbors=[ADConnectionError, DependencyMissingError, .get_users()]
+- "ad_ldap_enum_rationale_286": "True if the DC accepts an anonymous bind that can read directory data         (a" | kind=entity | source=manager/backend/app/ad/ldap_enum.py:L286 | neighbors=[.check_anonymous_bind(), ADConnectionError, DependencyMissingError]
+- "ad_ldap_enum_rationale_287": "True if the DC accepts an anonymous bind that can read directory data         (a" | kind=entity | source=manager/backend/app/ad/ldap_enum.py:L287 | neighbors=[ADConnectionError, DependencyMissingError, .check_anonymous_bind()]
+- "ad_ldap_enum_rationale_311": "Parse the nTSecurityDescriptor of an object into a list of ACEs for ACL" | kind=entity | source=manager/backend/app/ad/ldap_enum.py:L311 | neighbors=[.get_aces(), ADConnectionError, DependencyMissingError]
 
 ## Instructions
 

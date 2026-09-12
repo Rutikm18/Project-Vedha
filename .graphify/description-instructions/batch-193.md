@@ -1,4 +1,4 @@
-# Node Description Batch 194 of 336
+# Node Description Batch 194 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -26,46 +26,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "dashboard_exposurecards_showallbutton": "ShowAllButton()" | kind=code-symbol | source=manager/frontend/components/dashboard/ExposureCards.tsx:L156 | neighbors=[ExposureCards.tsx] | lang=en
-- "dashboard_liveoverview_engagement": "Engagement" | kind=code-symbol | source=manager/frontend/components/dashboard/LiveOverview.tsx:L32 | neighbors=[LiveOverview.tsx] | lang=en
-- "dashboard_liveoverview_finding": "Finding" | kind=code-symbol | source=manager/frontend/components/dashboard/LiveOverview.tsx:L23 | neighbors=[LiveOverview.tsx] | lang=en
-- "dashboard_liveoverview_findingsummary": "FindingSummary" | kind=code-symbol | source=manager/frontend/components/dashboard/LiveOverview.tsx:L34 | neighbors=[LiveOverview.tsx] | lang=en
-- "dashboard_liveoverview_isactiveengagement": "isActiveEngagement()" | kind=code-symbol | source=manager/frontend/components/dashboard/LiveOverview.tsx:L41 | neighbors=[LiveOverview.tsx] | lang=en
-- "dashboard_liveoverview_isopen": "isOpen()" | kind=code-symbol | source=manager/frontend/components/dashboard/LiveOverview.tsx:L34 | neighbors=[LiveOverview.tsx] | lang=en
-- "dashboard_liveoverview_kpi": "Kpi()" | kind=code-symbol | source=manager/frontend/components/dashboard/LiveOverview.tsx:L43 | neighbors=[LiveOverview.tsx] | lang=en
-- "dashboard_liveoverview_sev": "Sev" | kind=code-symbol | source=manager/frontend/components/dashboard/LiveOverview.tsx:L22 | neighbors=[LiveOverview.tsx] | lang=en
-- "dashboard_patchcomparisonmatrix_cell": "cell" | kind=code-symbol | source=manager/frontend/components/dashboard/PatchComparisonMatrix.tsx:L24 | neighbors=[PatchComparisonMatrix.tsx] | lang=en
-- "dashboard_patchcomparisonmatrix_head": "head" | kind=code-symbol | source=manager/frontend/components/dashboard/PatchComparisonMatrix.tsx:L33 | neighbors=[PatchComparisonMatrix.tsx] | lang=en
-- "dashboard_patchcomparisonmatrix_netchip": "NetChip()" | kind=code-symbol | source=manager/frontend/components/dashboard/PatchComparisonMatrix.tsx:L49 | neighbors=[PatchComparisonMatrix.tsx] | lang=en
-- "dashboard_patchcomparisonmatrix_netlabel": "netLabel()" | kind=code-symbol | source=manager/frontend/components/dashboard/PatchComparisonMatrix.tsx:L19 | neighbors=[PatchComparisonMatrix.tsx] | lang=en
-- "dashboard_patchcomparisonmatrix_sev_color": "SEV_COLOR" | kind=code-symbol | source=manager/frontend/components/dashboard/PatchComparisonMatrix.tsx:L14 | neighbors=[PatchComparisonMatrix.tsx] | lang=en
-- "dashboard_posturescorecard_delta": "Delta()" | kind=code-symbol | source=manager/frontend/components/dashboard/PostureScorecard.tsx:L45 | neighbors=[PostureScorecard.tsx] | lang=en
-- "dashboard_posturescorecard_dial": "Dial()" | kind=code-symbol | source=manager/frontend/components/dashboard/PostureScorecard.tsx:L57 | neighbors=[PostureScorecard.tsx] | lang=en
-- "dashboard_posturescorecard_grade": "GRADE" | kind=code-symbol | source=manager/frontend/components/dashboard/PostureScorecard.tsx:L44 | neighbors=[PostureScorecard.tsx] | lang=en
-- "dashboard_posturescorecard_grade_color": "GRADE_COLOR" | kind=code-symbol | source=manager/frontend/components/dashboard/PostureScorecard.tsx:L39 | neighbors=[PostureScorecard.tsx] | lang=en
-- "dashboard_posturescorecard_metrictile": "MetricTile()" | kind=code-symbol | source=manager/frontend/components/dashboard/PostureScorecard.tsx:L95 | neighbors=[PostureScorecard.tsx] | lang=en
-- "dashboard_posturescorecard_posture": "Posture" | kind=code-symbol | source=manager/frontend/components/dashboard/PostureScorecard.tsx:L29 | neighbors=[PostureScorecard.tsx] | lang=en
-- "dashboard_posturescorecard_readout": "Readout()" | kind=code-symbol | source=manager/frontend/components/dashboard/PostureScorecard.tsx:L82 | neighbors=[PostureScorecard.tsx] | lang=en
-- "dashboard_posturescorecard_scores": "Scores" | kind=code-symbol | source=manager/frontend/components/dashboard/PostureScorecard.tsx:L23 | neighbors=[PostureScorecard.tsx] | lang=en
-- "dashboard_posturescorecard_statcard": "StatCard()" | kind=code-symbol | source=manager/frontend/components/dashboard/PostureScorecard.tsx:L55 | neighbors=[PostureScorecard.tsx] | lang=en
-- "dashboard_slastatus_sev": "Sev" | kind=code-symbol | source=manager/frontend/components/dashboard/SlaStatus.tsx:L17 | neighbors=[SlaStatus.tsx] | lang=en
-- "dashboard_slastatus_sev_style": "SEV_STYLE" | kind=code-symbol | source=manager/frontend/components/dashboard/SlaStatus.tsx:L37 | neighbors=[SlaStatus.tsx] | lang=en
-- "dashboard_slastatus_slaitem": "SlaItem" | kind=code-symbol | source=manager/frontend/components/dashboard/SlaStatus.tsx:L33 | neighbors=[SlaStatus.tsx] | lang=en
-- "dashboard_slastatus_slastate": "SlaState" | kind=code-symbol | source=manager/frontend/components/dashboard/SlaStatus.tsx:L31 | neighbors=[SlaStatus.tsx] | lang=en
-- "dashboard_slastatus_slasummary": "SlaSummary" | kind=code-symbol | source=manager/frontend/components/dashboard/SlaStatus.tsx:L38 | neighbors=[SlaStatus.tsx] | lang=en
-- "dashboard_slastatus_state": "STATE" | kind=code-symbol | source=manager/frontend/components/dashboard/SlaStatus.tsx:L43 | neighbors=[SlaStatus.tsx] | lang=en
-- "dashboard_slastatus_state_color": "STATE_COLOR" | kind=code-symbol | source=manager/frontend/components/dashboard/SlaStatus.tsx:L30 | neighbors=[SlaStatus.tsx] | lang=en
-- "dashboard_slastatus_statecell": "StateCell()" | kind=code-symbol | source=manager/frontend/components/dashboard/SlaStatus.tsx:L83 | neighbors=[SlaStatus.tsx] | lang=en
-- "dashboard_slastatus_summarycell": "SummaryCell()" | kind=code-symbol | source=manager/frontend/components/dashboard/SlaStatus.tsx:L61 | neighbors=[SlaStatus.tsx] | lang=en
-- "declarativebase": "DeclarativeBase" | kind=code-symbol | neighbors=[Base] | lang=en
-- "detection_active_validation_rationale_1": "active_validation.py — manager-side decision core for safe active validation.  P" | kind=entity | source=manager/backend/app/detection/active_validation.py:L1 | neighbors=[active_validation.py] | lang=en
-- "detection_active_validation_rationale_18": "True iff this finding warrants an approval-gated active re-check.     Escalate o" | kind=entity | source=manager/backend/app/detection/active_validation.py:L18 | neighbors=[should_escalate()] | lang=en
-- "detection_active_validation_rationale_41": "Map a probe safe-check result to a verdict transition. Anything that isn't     a" | kind=entity | source=manager/backend/app/detection/active_validation.py:L41 | neighbors=[interpret_validation()] | lang=pt
-- "detection_attack_paths_bump": "_bump()" | kind=code-symbol | source=manager/backend/app/detection/attack_paths.py:L45 | neighbors=[attack_paths.py] | lang=en
-- "detection_attack_paths_cleartext_cluster": "_cleartext_cluster()" | kind=code-symbol | source=manager/backend/app/detection/attack_paths.py:L202 | neighbors=[attack_paths.py] | lang=en
-- "detection_attack_paths_hostsignals_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/detection/attack_paths.py:L65 | neighbors=[_HostSignals] | lang=en
-- "detection_attack_paths_rationale_1": "attack_paths.py — manager-native composite correlation over raw probe facts.  Th" | kind=entity | source=manager/backend/app/detection/attack_paths.py:L1 | neighbors=[attack_paths.py] | lang=en
-- "detection_attack_paths_rationale_125": "Fold in a persisted device role (from a prior device_inventory scan)." | kind=entity | source=manager/backend/app/detection/attack_paths.py:L125 | neighbors=[.finalize()] | lang=en
+- "workflow_host_health_hosthealthmonitor_finalize": ".finalize()" | kind=code-symbol | source=probe/workflow/host_health.py:L301 | neighbors=[HostHealthMonitor, Emit one fact per offline host, plus an…] | lang=en
+- "workflow_host_health_hosthealthmonitor_init": ".__init__()" | kind=code-symbol | source=probe/workflow/host_health.py:L121 | neighbors=[HostHealthMonitor, _strike_threshold()] | lang=en
+- "workflow_host_health_hosthealthmonitor_note_skipped": ".note_skipped()" | kind=code-symbol | source=probe/workflow/host_health.py:L189 | neighbors=[HostHealthMonitor, ._state()] | lang=en
+- "workflow_host_health_hoststate": "_HostState" | kind=code-symbol | source=probe/workflow/host_health.py:L101 | neighbors=[host_health.py, ._state()] | lang=en
+- "workflow_modes_includes_stage": "includes_stage()" | kind=code-symbol | source=probe/workflow/modes.py:L45 | neighbors=[modes.py, Return whether a bounded plan includes …] | lang=en
+- "workflow_modes_resolve_stage_ceiling": "resolve_stage_ceiling()" | kind=code-symbol | source=probe/workflow/modes.py:L25 | neighbors=[modes.py, Resolve the explicit ceiling while pres…] | lang=en
+- "workflow_modes_service_specific": "service_specific()" | kind=code-symbol | source=probe/workflow/modes.py:L118 | neighbors=[modes.py, EngagementMode] | lang=en
+- "workflow_report_diff_assets": "diff_assets()" | kind=code-symbol | source=probe/workflow/report.py:L42 | neighbors=[report.py, re-scan mode's delta report: what chang…] | lang=en
+- "workflow_router_rationale_72": "True when the port was OBSERVED speaking TLS (a completed handshake, or a     TL" | kind=entity | source=probe/workflow/router.py:L72 | neighbors=[looks_like_tls(), looks_like_ssh()] | lang=en
+- "workflow_workflow_engine_finalize_trace": "_finalize_trace()" | kind=code-symbol | source=probe/workflow/workflow_engine.py:L305 | neighbors=[workflow_engine.py, run_engagement()] | lang=en
+- "workflow_workflow_engine_rationale_112": "Run per-host probes with bounded fan-out and failure isolation." | kind=entity | source=probe/workflow/workflow_engine.py:L112 | neighbors=[_gather_per_host(), _port_candidates()] | lang=en
+- "workflow_workflow_engine_rationale_145": "Splits candidate_ports into (ports that actually need a fresh probe,     ScanRes" | kind=entity | source=probe/workflow/workflow_engine.py:L145 | neighbors=[_split_cached(), _Sink] | lang=en
+- "workflow_workflow_engine_rationale_147": "Splits candidate_ports into (ports that actually need a fresh probe,     ScanRes" | kind=entity | source=probe/workflow/workflow_engine.py:L147 | neighbors=[_split_cached(), _Sink] | lang=en
+- "workflow_workflow_engine_rationale_270": "Hosts scanned in parallel during the deep-branch stage.      Env override: PROBE" | kind=entity | source=probe/workflow/workflow_engine.py:L270 | neighbors=[_default_host_concurrency(), _timed()] | lang=en
+- "workflow_workflow_engine_rationale_80": "Run per-host probes with bounded fan-out and failure isolation." | kind=entity | source=probe/workflow/workflow_engine.py:L80 | neighbors=[_gather_per_host(), _port_candidates()] | lang=en
+- "workflow_workflow_engine_rationale_94": "Run one component without allowing a target-specific bug to abort peers." | kind=entity | source=probe/workflow/workflow_engine.py:L94 | neighbors=[_scan_one(), _split_cached()] | lang=en
+- "activity_route_apiactivity": "ApiActivity" | kind=code-symbol | source=manager/frontend/app/api/activity/route.ts:L9 | neighbors=[route.ts] | lang=en
+- "activity_route_get": "GET" | kind=code-symbol | source=manager/frontend/app/api/activity/route.ts:L14 | neighbors=[route.ts] | lang=en
+- "ad_asreproast_asreproastchecker_generate_finding": ".generate_finding()" | kind=code-symbol | source=manager/backend/app/ad/asreproast.py:L106 | neighbors=[ASREPRoastChecker] | lang=en
+- "ad_bloodhound_bloodhoundcollector_close": ".close()" | kind=code-symbol | source=manager/backend/app/ad/bloodhound.py:L267 | neighbors=[BloodHoundCollector] | lang=en
+- "ad_bloodhound_bloodhoundcollector_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/ad/bloodhound.py:L46 | neighbors=[BloodHoundCollector] | lang=en
+- "ad_ldap_enum_ldapenumerator_connection": ".connection()" | kind=code-symbol | source=manager/backend/app/ad/ldap_enum.py:L185 | neighbors=[LDAPEnumerator] | lang=en
+- "ad_ldap_enum_ldapenumerator_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/ad/ldap_enum.py:L120 | neighbors=[LDAPEnumerator] | lang=en
+- "ad_orchestrator_adassessmentrunner_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/ad/orchestrator.py:L42 | neighbors=[ADAssessmentRunner] | lang=en
+- "agent_agent_agentdeps": "AgentDeps" | kind=code-symbol | source=manager/frontend/lib/agent/agent.ts:L39 | neighbors=[agent.py] | lang=en
+- "agent_agent_agentopts": "AgentOpts" | kind=code-symbol | source=manager/frontend/lib/agent/agent.ts:L26 | neighbors=[agent.py] | lang=en
+- "agent_agent_rationale_1010": "Poll pending jobs even while WS is connected.      This makes result delivery re" | kind=entity | source=probe/agent/agent.py:L1010 | neighbors=[_ws_http_poll_fallback()] | lang=en
+- "agent_agent_rationale_1015": "Send periodic heartbeats over WebSocket." | kind=entity | source=probe/agent/agent.py:L1015 | neighbors=[_ws_heartbeat_sender()] | lang=en
+- "agent_agent_rationale_1016": "Load or atomically create the probe's Ed25519 enrollment identity." | kind=entity | source=probe/agent/agent.py:L1016 | neighbors=[_load_or_create_signing_identity()] | lang=en
+- "agent_agent_rationale_1020": "Detect common debugging/tracing tools.  Informational only — does     NOT block" | kind=entity | source=probe/agent/agent.py:L1020 | neighbors=[_check_anti_debug()] | lang=en
+- "agent_agent_rationale_1025": "Load or atomically create the probe's Ed25519 enrollment identity." | kind=entity | source=probe/agent/agent.py:L1025 | neighbors=[_load_or_create_signing_identity()] | lang=en
+- "agent_agent_rationale_103": "Human label for what a job will actually run — the use-case (real intent),     n" | kind=entity | source=probe/agent/agent.py:L103 | neighbors=[_job_intent()] | lang=en
+- "agent_agent_rationale_104": "Human label for what a job will actually run — the use-case (real intent),     n" | kind=entity | source=probe/agent/agent.py:L104 | neighbors=[_job_intent()] | lang=en
+- "agent_agent_rationale_1043": "Poll pending jobs even while WS is connected.      This makes result delivery re" | kind=entity | source=probe/agent/agent.py:L1043 | neighbors=[_ws_http_poll_fallback()] | lang=en
+- "agent_agent_rationale_1045": "Run all startup security checks before any network I/O.      Order matters: HW b" | kind=entity | source=probe/agent/agent.py:L1045 | neighbors=[_startup_gauntlet()] | lang=pt
+- "agent_agent_rationale_1047": "Send periodic heartbeats over WebSocket." | kind=entity | source=probe/agent/agent.py:L1047 | neighbors=[_ws_heartbeat_sender()] | lang=en
+- "agent_agent_rationale_1058": "Request UI approval, poll, prove key possession, and activate." | kind=entity | source=probe/agent/agent.py:L1058 | neighbors=[_enroll_device()] | lang=en
+- "agent_agent_rationale_1064": "Retry durable result files using the acknowledged HTTP result path." | kind=entity | source=probe/agent/agent.py:L1064 | neighbors=[_flush_spool_over_http()] | lang=en
+- "agent_agent_rationale_1068": "Load the probe's X25519 identity from persistent state, or create one.      Retu" | kind=entity | source=probe/agent/agent.py:L1068 | neighbors=[_load_or_create_identity()] | lang=en
+- "agent_agent_rationale_107": "One-line, transparent summary of what a scan actually found so the operator" | kind=entity | source=probe/agent/agent.py:L107 | neighbors=[_result_summary()] | lang=en
 
 ## Instructions
 

@@ -1,4 +1,4 @@
-# Node Description Batch 229 of 336
+# Node Description Batch 229 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -26,46 +26,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "main_scripts_smb_scanner_smbscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/smb_scanner.py:L365 | neighbors=[SMBScanner] | lang=en
-- "main_scripts_smtp_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/smtp_scanner.py:L147 | neighbors=[smtp_scanner.py] | lang=en
-- "main_scripts_smtp_scanner_rationale_1": "smtp_scanner.py — SMTP hygiene: user enumeration + transport encryption (VA chec" | kind=entity | source=probe/main_scripts/smtp_scanner.py:L1 | neighbors=[smtp_scanner.py] | lang=en
-- "main_scripts_smtp_scanner_rationale_40": "Extract EHLO capability tokens from a multi-line 250 response." | kind=entity | source=probe/main_scripts/smtp_scanner.py:L40 | neighbors=[parse_ehlo_capabilities()] | lang=en
-- "main_scripts_smtp_scanner_rationale_52": "VRFY leaks usernames when it gives DIFFERENT definitive answers for an     exist" | kind=entity | source=probe/main_scripts/smtp_scanner.py:L52 | neighbors=[vrfy_leaks()] | lang=en
-- "main_scripts_smtp_scanner_rationale_88": "Blocking: greeting → EHLO → STARTTLS/VRFY/EXPN checks. Monkeypatchable." | kind=entity | source=probe/main_scripts/smtp_scanner.py:L88 | neighbors=[._probe()] | lang=en
-- "main_scripts_smtp_scanner_smtpscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/smtp_scanner.py:L63 | neighbors=[SMTPScanner] | lang=en
-- "main_scripts_snmp_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/snmp_scanner.py:L401 | neighbors=[snmp_scanner.py] | lang=en
-- "main_scripts_snmp_scanner_rationale_1": "snmp_scanner.py — full SNMP enumeration: community discovery, targeted MIB walk," | kind=entity | source=probe/main_scripts/snmp_scanner.py:L1 | neighbors=[snmp_scanner.py] | lang=en
-- "main_scripts_snmp_scanner_rationale_105": "Shallow parse of BER TLVs starting at offset. Returns [(tag, value), ...]." | kind=entity | source=probe/main_scripts/snmp_scanner.py:L105 | neighbors=[_ber_parse()] | lang=en
-- "main_scripts_snmp_scanner_rationale_127": "Extract (oid_dotted, value_tag, value_bytes) from a GET/GETNEXT/GETBULK response" | kind=entity | source=probe/main_scripts/snmp_scanner.py:L127 | neighbors=[_parse_varbinds()] | lang=en
-- "main_scripts_snmp_scanner_rationale_246": "Phase 1 (community discovery) + Phase 2 (targeted MIB walk) +     Phase 3 (ampli" | kind=entity | source=probe/main_scripts/snmp_scanner.py:L246 | neighbors=[SNMPScanner] | lang=en
-- "main_scripts_snmp_scanner_rationale_278": "Return (community, sysdescr) for the first responding community, or None." | kind=entity | source=probe/main_scripts/snmp_scanner.py:L278 | neighbors=[._discover_community()] | lang=en
-- "main_scripts_snmp_scanner_rationale_292": "GETNEXT walk of one OID subtree.  Returns [(oid, value_str), ...]." | kind=entity | source=probe/main_scripts/snmp_scanner.py:L292 | neighbors=[._walk_subtree()] | lang=en
-- "main_scripts_snmp_scanner_rationale_315": "One GETBULK request — measure response/request size ratio." | kind=entity | source=probe/main_scripts/snmp_scanner.py:L315 | neighbors=[._amplification_factor()] | lang=en
-- "main_scripts_snmp_scanner_rationale_325": "Send a SNMPv3 Discover. Any reply = v3 agent present." | kind=entity | source=probe/main_scripts/snmp_scanner.py:L325 | neighbors=[._snmpv3_present()] | lang=pt
-- "main_scripts_snmp_scanner_rationale_46": "Dotted-notation OID string → BER-encoded bytes." | kind=entity | source=probe/main_scripts/snmp_scanner.py:L46 | neighbors=[_encode_oid()] | lang=en
-- "main_scripts_snmp_scanner_rationale_64": "BER-encoded OID bytes → dotted-notation string." | kind=entity | source=probe/main_scripts/snmp_scanner.py:L64 | neighbors=[_decode_oid()] | lang=en
-- "main_scripts_snmp_scanner_rationale_79": "Human-readable SNMP value for common ASN.1/SNMP types." | kind=entity | source=probe/main_scripts/snmp_scanner.py:L79 | neighbors=[_decode_value()] | lang=en
-- "main_scripts_snmp_scanner_snmpscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/snmp_scanner.py:L252 | neighbors=[SNMPScanner] | lang=en
-- "main_scripts_snmp_scanner_snmpscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/main_scripts/snmp_scanner.py:L329 | neighbors=[SNMPScanner] | lang=en
-- "main_scripts_ssh_collector_collect_over_ssh": "_collect_over_ssh()" | kind=code-symbol | source=probe/main_scripts/ssh_collector.py:L52 | neighbors=[ssh_collector.py] | lang=en
-- "main_scripts_ssh_collector_main": "main()" | kind=code-symbol | source=probe/main_scripts/ssh_collector.py:L125 | neighbors=[ssh_collector.py] | lang=en
-- "main_scripts_ssh_collector_rationale_1": "ssh_collector.py — credentialed (authenticated) inventory collection for Linux." | kind=entity | source=probe/main_scripts/ssh_collector.py:L1 | neighbors=[ssh_collector.py] | lang=en
-- "main_scripts_ssh_collector_sshcollector_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/ssh_collector.py:L83 | neighbors=[SSHCollector] | lang=en
-- "main_scripts_ssh_kexdb_rationale_1": "ssh_kexdb.py — vendored SSH algorithm weakness database (the \"content\" half of t" | kind=entity | source=probe/main_scripts/ssh_kexdb.py:L1 | neighbors=[ssh_kexdb.py] | lang=en
-- "main_scripts_ssh_kexdb_rationale_478": "Return (failures, warnings, infos) for one offered algorithm, or None if     the" | kind=entity | source=probe/main_scripts/ssh_kexdb.py:L478 | neighbors=[lookup()] | lang=en
-- "main_scripts_ssh_scanner_cursor_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/ssh_scanner.py:L73 | neighbors=[_Cursor] | lang=en
-- "main_scripts_ssh_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/ssh_scanner.py:L336 | neighbors=[ssh_scanner.py] | lang=en
-- "main_scripts_ssh_scanner_rationale_1": "ssh_scanner.py — SSH configuration / algorithm audit (VA checklist §6).  METHOD" | kind=entity | source=probe/main_scripts/ssh_scanner.py:L1 | neighbors=[ssh_scanner.py] | lang=en
-- "main_scripts_ssh_scanner_rationale_107": "Parse a SSH_MSG_KEXINIT body into its name-lists.      Accepts the payload with" | kind=entity | source=probe/main_scripts/ssh_scanner.py:L107 | neighbors=[parse_kexinit()] | lang=en
-- "main_scripts_ssh_scanner_rationale_134": "Grade a server's offered algorithms against the vendored weakness table.      Re" | kind=entity | source=probe/main_scripts/ssh_scanner.py:L134 | neighbors=[evaluate_algorithms()] | lang=en
-- "main_scripts_ssh_scanner_rationale_196": "Read the server SSH identification line, skipping any pre-banner text     lines" | kind=entity | source=probe/main_scripts/ssh_scanner.py:L196 | neighbors=[_read_ident()] | lang=en
-- "main_scripts_ssh_scanner_rationale_226": "Read one unencrypted SSH binary packet and return its payload (RFC 4253     §6)." | kind=entity | source=probe/main_scripts/ssh_scanner.py:L226 | neighbors=[_read_packet()] | lang=en
-- "main_scripts_ssh_scanner_rationale_250": "Blocking: connect, exchange identification, read the server KEXINIT.         Ret" | kind=entity | source=probe/main_scripts/ssh_scanner.py:L250 | neighbors=[._probe()] | lang=en
-- "main_scripts_ssh_scanner_rationale_47": "Parse an SSH identification string 'SSH-<proto>-<software>[ comments]'.      Ret" | kind=entity | source=probe/main_scripts/ssh_scanner.py:L47 | neighbors=[parse_ssh_banner()] | lang=en
-- "main_scripts_ssh_scanner_sshscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/ssh_scanner.py:L245 | neighbors=[SSHScanner] | lang=en
-- "main_scripts_syn_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/syn_scanner.py:L595 | neighbors=[syn_scanner.py] | lang=en
-- "main_scripts_syn_scanner_rationale_1": "syn_scanner.py — stateless TCP SYN (half-open) scan, pure Python (Tier 1.1).  WH" | kind=entity | source=probe/main_scripts/syn_scanner.py:L1 | neighbors=[syn_scanner.py] | lang=en
-- "main_scripts_syn_scanner_rationale_104": "Build a 20-byte TCP SYN segment with a valid checksum (pseudo-header)." | kind=entity | source=probe/main_scripts/syn_scanner.py:L104 | neighbors=[build_tcp_syn()] | lang=pt
+- "explain_route_managerairesponse": "ManagerAiResponse" | kind=code-symbol | source=manager/frontend/app/api/assistant/explain/route.ts:L14 | neighbors=[route.ts] | lang=en
+- "explain_route_post": "POST()" | kind=code-symbol | source=manager/frontend/app/api/assistant/explain/route.ts:L21 | neighbors=[route.ts] | lang=en
+- "exploit_msf_client_metasploitrpcclient_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/exploit/msf_client.py:L30 | neighbors=[MetasploitRPCClient] | lang=en
+- "exploit_msf_client_rationale_1": "MetasploitRPCClient — async client for msfrpcd.  Protocol: MessagePack RPC over" | kind=entity | source=manager/backend/app/exploit/msf_client.py:L1 | neighbors=[msf_client.py] | lang=en
+- "exploit_msf_client_rationale_103": "Returns {status, output, uuid}." | kind=entity | source=manager/backend/app/exploit/msf_client.py:L103 | neighbors=[.get_job_status()] | lang=en
+- "exploit_msf_client_rationale_119": "Returns True if job was successfully killed." | kind=entity | source=manager/backend/app/exploit/msf_client.py:L119 | neighbors=[.kill_job()] | lang=en
+- "exploit_msf_client_rationale_138": "Poll until job completes or max_wait exceeded." | kind=entity | source=manager/backend/app/exploit/msf_client.py:L138 | neighbors=[.wait_for_job()] | lang=en
+- "exploit_msf_client_rationale_152": "Authenticated RPC call — prepends token." | kind=entity | source=manager/backend/app/exploit/msf_client.py:L152 | neighbors=[._call()] | lang=en
+- "exploit_msf_client_rationale_28": "Async Metasploit RPC client using msgpack-over-HTTPS." | kind=entity | source=manager/backend/app/exploit/msf_client.py:L28 | neighbors=[MetasploitRPCClient] | lang=en
+- "exploit_msf_client_rationale_39": "Authenticate with msfrpcd and store the session token." | kind=entity | source=manager/backend/app/exploit/msf_client.py:L39 | neighbors=[.connect()] | lang=en
+- "exploit_msf_client_rationale_66": "module_type: exploit | auxiliary | payload | post | encoder         Returns list" | kind=entity | source=manager/backend/app/exploit/msf_client.py:L66 | neighbors=[.list_modules()] | lang=en
+- "exploit_msf_client_rationale_89": "Execute a Metasploit module.         Returns job_id as string." | kind=entity | source=manager/backend/app/exploit/msf_client.py:L89 | neighbors=[.run_module()] | lang=pt
+- "exploit_nuclei_exploit_rationale_120": "Run Nuclei CVE PoC template against target.         Returns {vulnerable, evidenc" | kind=entity | source=manager/backend/app/exploit/nuclei_exploit.py:L120 | neighbors=[.run_cve_poc()] | lang=en
+- "exploit_nuclei_exploit_rationale_160": "Parse nuclei JSONL output for a single CVE PoC result." | kind=entity | source=manager/backend/app/exploit/nuclei_exploit.py:L160 | neighbors=[._parse_poc_output()] | lang=en
+- "exploit_nuclei_exploit_rationale_48": "Run Nuclei CVE PoC templates against a single target.     Every template is safe" | kind=entity | source=manager/backend/app/exploit/nuclei_exploit.py:L48 | neighbors=[NucleiExploitRunner] | lang=en
+- "exploit_nuclei_exploit_rationale_60": "Parse template YAML and validate it contains no write/delete/DoS actions." | kind=entity | source=manager/backend/app/exploit/nuclei_exploit.py:L60 | neighbors=[.safe_template_check()] | lang=en
+- "exploit_orchestrator_exploitorchestrator_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/exploit/orchestrator.py:L53 | neighbors=[ExploitOrchestrator] | lang=en
+- "exploit_safety_approvalrequirederror_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/exploit/safety.py:L30 | neighbors=[ApprovalRequiredError] | lang=en
+- "exploit_safety_rationale_1": "Safety constants, exceptions, and validators for the exploitation engine.  All s" | kind=entity | source=manager/backend/app/exploit/safety.py:L1 | neighbors=[safety.py] | lang=en
+- "exploit_safety_rationale_17": "Raised when a requested payload or module is not on the allowlist." | kind=entity | source=manager/backend/app/exploit/safety.py:L17 | neighbors=[SafetyViolationError] | lang=en
+- "exploit_safety_rationale_175": "Raises SafetyViolationError if payload is not on allowlist     or violates per-p" | kind=entity | source=manager/backend/app/exploit/safety.py:L175 | neighbors=[validate_payload()] | lang=en
+- "exploit_safety_rationale_203": "Raises SafetyViolationError if module is on the block list." | kind=entity | source=manager/backend/app/exploit/safety.py:L203 | neighbors=[validate_module()] | lang=en
+- "exploit_safety_rationale_21": "Raised when a target IP is outside the engagement scope CIDRs." | kind=entity | source=manager/backend/app/exploit/safety.py:L21 | neighbors=[OutOfScopeError] | lang=en
+- "exploit_safety_rationale_217": "Raises OutOfScopeError if target_ip is not in scope or is excluded." | kind=entity | source=manager/backend/app/exploit/safety.py:L217 | neighbors=[validate_scope()] | lang=en
+- "exploit_safety_rationale_240": "True if this target requires human manager approval before exploit runs." | kind=entity | source=manager/backend/app/exploit/safety.py:L240 | neighbors=[requires_approval()] | lang=en
+- "exploit_safety_rationale_25": "Raised when a job would exceed the maximum hosts per run." | kind=entity | source=manager/backend/app/exploit/safety.py:L25 | neighbors=[BlastRadiusExceededError] | lang=en
+- "exploit_safety_rationale_29": "Raised when a high-risk target requires manager approval before running." | kind=entity | source=manager/backend/app/exploit/safety.py:L29 | neighbors=[ApprovalRequiredError] | lang=pt
+- "exposure_route_exposure": "Exposure" | kind=code-symbol | source=manager/frontend/app/api/analytics/exposure/route.ts:L10 | neighbors=[route.ts] | lang=en
+- "exposure_route_get": "GET" | kind=code-symbol | source=manager/frontend/app/api/analytics/exposure/route.ts:L15 | neighbors=[route.ts] | lang=en
+- "findings_page_autoresolvedbadge": "AutoResolvedBadge()" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L423 | neighbors=[page.tsx] | lang=en
+- "findings_page_chiprow": "ChipRow()" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L473 | neighbors=[page.tsx] | lang=en
+- "findings_page_compliancepanel": "CompliancePanel()" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L1435 | neighbors=[page.tsx] | lang=en
+- "findings_page_complianceref": "ComplianceRef" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L106 | neighbors=[page.tsx] | lang=en
+- "findings_page_copybtn": "CopyBtn()" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L307 | neighbors=[page.tsx] | lang=en
+- "findings_page_coverage_color": "COVERAGE_COLOR" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L77 | neighbors=[page.tsx] | lang=en
+- "findings_page_cvechip": "CveChip()" | kind=code-symbol | source=manager/frontend/app/portal/findings/page.tsx:L42 | neighbors=[page.tsx] | lang=en
+- "findings_page_cvss_aggravating": "CVSS_AGGRAVATING" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L965 | neighbors=[page.tsx] | lang=en
+- "findings_page_cvss_metric": "CVSS_METRIC" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L953 | neighbors=[page.tsx] | lang=en
+- "findings_page_cvssmetric": "CvssMetric" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L967 | neighbors=[page.tsx] | lang=en
+- "findings_page_detailtab": "DetailTab" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L1622 | neighbors=[page.tsx] | lang=en
 
 ## Instructions
 

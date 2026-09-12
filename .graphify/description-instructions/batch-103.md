@@ -1,4 +1,4 @@
-# Node Description Batch 104 of 336
+# Node Description Batch 104 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,51 +12,58 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
+For an entity node (any other kind — e.g. a person, place, event, object),
+describe what the entity is and its role, grounded in its type, its
+relations (neighbors) and the provided citations/evidence — e.g.
+"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
+Ground entity descriptions in the citations/evidence when present; do not
+speculate beyond the context, so a node with no supporting context may be
+left out of the reply.
 Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "routers_probe_enrollment_approve_enrollment": "approve_enrollment()" | kind=code-symbol | source=manager/backend/app/routers/probe_enrollment.py:L615 | neighbors=[probe_enrollment.py, _keyed_hash(), _provision_agent_for_site()]
-- "routers_probe_enrollment_enrollmentcreate": "EnrollmentCreate" | kind=code-symbol | source=manager/backend/app/routers/probe_enrollment.py:L113 | neighbors=[probe_enrollment.py, BaseModel, .validate_key()]
-- "routers_probe_enrollment_enrollmentsecret": "EnrollmentSecret" | kind=code-symbol | source=manager/backend/app/routers/probe_enrollment.py:L140 | neighbors=[probe_enrollment.py, EnrollmentActivate, BaseModel]
-- "routers_probe_enrollment_keyed_hash": "_keyed_hash()" | kind=code-symbol | source=manager/backend/app/routers/probe_enrollment.py:L41 | neighbors=[probe_enrollment.py, approve_enrollment(), create_enrollment_request()]
-- "routers_probe_enrollment_next_probe_name": "_next_probe_name()" | kind=code-symbol | source=manager/backend/app/routers/probe_enrollment.py:L546 | neighbors=[probe_enrollment.py, approve_request_simple(), Auto-assign the next sequential vedha-a…]
-- "routers_probe_enrollment_poll_enrollment": "poll_enrollment()" | kind=code-symbol | source=manager/backend/app/routers/probe_enrollment.py:L491 | neighbors=[probe_enrollment.py, _authenticated_request(), _rate_limit()]
-- "routers_remediation_cached_plan": "_cached_plan()" | kind=code-symbol | source=manager/backend/app/routers/remediation.py:L54 | neighbors=[remediation.py, generate_remediation(), get_remediation()]
-- "routers_remediation_serialize": "_serialize()" | kind=code-symbol | source=manager/backend/app/routers/remediation.py:L105 | neighbors=[remediation.py, generate_remediation(), get_remediation()]
-- "routers_sla_policy_get_sla_policy": "get_sla_policy()" | kind=code-symbol | source=manager/backend/app/routers/sla_policy.py:L81 | neighbors=[sla_policy.py, _out(), _row()]
-- "routers_sla_policy_put_sla_policy": "put_sla_policy()" | kind=code-symbol | source=manager/backend/app/routers/sla_policy.py:L86 | neighbors=[sla_policy.py, _out(), _row()]
-- "routers_sla_policy_slapolicyout": "SlaPolicyOut" | kind=code-symbol | source=manager/backend/app/routers/sla_policy.py:L30 | neighbors=[sla_policy.py, _out(), BaseModel]
-- "routers_users_userout": "UserOut" | kind=code-symbol | source=manager/backend/app/routers/users.py:L30 | neighbors=[users.py, _out(), BaseModel]
-- "routers_validation_approve_validation": "approve_validation()" | kind=code-symbol | source=manager/backend/app/routers/validation.py:L214 | neighbors=[validation.py, _get_request_or_404(), _roe_allows_active_validation()]
-- "routers_validation_default_check_kind": "_default_check_kind()" | kind=code-symbol | source=manager/backend/app/routers/validation.py:L88 | neighbors=[validation.py, create_validation_request(), Pick a safe check for the finding. TLS …]
-- "routers_validation_get_request_or_404": "_get_request_or_404()" | kind=code-symbol | source=manager/backend/app/routers/validation.py:L115 | neighbors=[validation.py, approve_validation(), reject_validation()]
-- "routers_validation_validationrequestout": "ValidationRequestOut" | kind=code-symbol | source=manager/backend/app/routers/validation.py:L63 | neighbors=[validation.py, _request_out(), BaseModel]
-- "routers_vuln_scans_finish_cancelled_nuclei_job": "_finish_cancelled_nuclei_job()" | kind=code-symbol | source=manager/backend/app/routers/vuln_scans.py:L516 | neighbors=[vuln_scans.py, _finish_failed_nuclei_job(), _run_nuclei_and_save()]
-- "routers_vuln_scans_set_nuclei_job_state": "_set_nuclei_job_state()" | kind=code-symbol | source=manager/backend/app/routers/vuln_scans.py:L493 | neighbors=[vuln_scans.py, _finish_failed_nuclei_job(), _run_nuclei_and_save()]
-- "scanner_accuracy_gate_check_thresholds": "check_thresholds()" | kind=code-symbol | source=probe/scanner/accuracy_gate.py:L105 | neighbors=[accuracy_gate.py, Threshold violations for one scored cor…, run_gate()]
-- "scanner_accuracy_gate_is_independent": "is_independent()" | kind=code-symbol | source=probe/scanner/accuracy_gate.py:L100 | neighbors=[accuracy_gate.py, True when this corpus's labels can supp…, run_gate()]
-- "scanner_accuracy_gate_main": "_main()" | kind=code-symbol | source=probe/scanner/accuracy_gate.py:L204 | neighbors=[accuracy_gate.py, format_gate_report(), run_gate()]
-- "scanner_accuracy_main": "_main()" | kind=code-symbol | source=probe/scanner/accuracy.py:L163 | neighbors=[accuracy.py, evaluate_corpus(), format_report()]
-- "scanner_accuracy_observed_states": "_observed_states()" | kind=code-symbol | source=probe/scanner/accuracy.py:L79 | neighbors=[accuracy.py, (target, port) -> status, from port/syn…, score_port_states()]
-- "scanner_accuracy_ratio": "_ratio()" | kind=code-symbol | source=probe/scanner/accuracy.py:L26 | neighbors=[accuracy.py, score_findings(), score_port_states()]
-- "scanner_adaptive_timeout": "adaptive_timeout.py" | kind=code-symbol | source=probe/scanner/adaptive_timeout.py:L1 | neighbors=[22701ea Add tests for scanner parity an…, AdaptiveTimeout, from_rtts()]
-- "scanner_adaptive_timeout_adaptivetimeout_observe": ".observe()" | kind=code-symbol | source=probe/scanner/adaptive_timeout.py:L31 | neighbors=[AdaptiveTimeout, from_rtts(), Fold one round-trip sample (seconds) in…]
-- "scanner_cpe_extract_version": "_extract_version()" | kind=code-symbol | source=probe/scanner/cpe.py:L103 | neighbors=[cpe.py, Prefer an explicit version field; else …, to_cpe()]
-- "scanner_cpe_to_cpe": "to_cpe()" | kind=code-symbol | source=probe/scanner/cpe.py:L116 | neighbors=[cpe.py, Return {vendor, product, version, cpe23…, _extract_version()]
-- "scanner_db_scanner_dbscanner_scan_port": "._scan_port()" | kind=code-symbol | source=probe/scanner/db_scanner.py:L266 | neighbors=[DBScanner, ._probe_one(), .scan_target()]
-- "scanner_db_scanner_interpret_redis_info": "interpret_redis_info()" | kind=code-symbol | source=probe/scanner/db_scanner.py:L101 | neighbors=[db_scanner.py, _probe_redis(), Classify a Redis INFO reply. `unauthent…]
-- "scanner_dns_scanner_derive_zones": "derive_zones()" | kind=code-symbol | source=probe/scanner/dns_scanner.py:L55 | neighbors=[dns_scanner.py, ._probe(), Candidate zone names to try AXFR / DNSS…]
-- "scanner_dns_scanner_dnsscanner_axfr": "._axfr()" | kind=code-symbol | source=probe/scanner/dns_scanner.py:L139 | neighbors=[DNSScanner, ._probe(), Attempt a zone transfer, reading increm…]
-- "scanner_findings_finding_row": "_finding_row()" | kind=code-symbol | source=probe/scanner/findings.py:L1257 | neighbors=[findings.py, One finding as the finding-section show…, summarize()]
-- "scanner_findings_is_open": "_is_open()" | kind=code-symbol | source=probe/scanner/findings.py:L119 | neighbors=[findings.py, A definitively open TCP port. `open|fil…, _rule_cleartext_and_exposure()]
-- "scanner_ftp_scanner_banner_software": "banner_software()" | kind=code-symbol | source=probe/scanner/ftp_scanner.py:L55 | neighbors=[ftp_scanner.py, ._probe(), Best-effort software token from the 220…]
-- "scanner_ftp_scanner_parse_pasv": "parse_pasv()" | kind=code-symbol | source=probe/scanner/ftp_scanner.py:L44 | neighbors=[ftp_scanner.py, ._list_bounded(), Extract the passive data PORT from a 22…]
-- "scanner_host_discovery_hostdiscoveryscanner_arp_table": "._arp_table()" | kind=code-symbol | source=probe/scanner/host_discovery.py:L177 | neighbors=[HostDiscoveryScanner, read_arp_table(), .scan_target()]
-- "scanner_iot_scanner_mqtt_connect": "_mqtt_connect()" | kind=code-symbol | source=probe/scanner/iot_scanner.py:L259 | neighbors=[iot_scanner.py, _mqtt_remaining_len(), _probe_mqtt()]
-- "scanner_iot_scanner_probe_coap_sync": "_probe_coap_sync()" | kind=code-symbol | source=probe/scanner/iot_scanner.py:L383 | neighbors=[iot_scanner.py, _coap_get_wellknown_core(), _parse_coap_response()]
-- "scanner_iot_scanner_probe_ssdp_sync": "_probe_ssdp_sync()" | kind=code-symbol | source=probe/scanner/iot_scanner.py:L90 | neighbors=[iot_scanner.py, _fetch_upnp_root_desc(), _parse_ssdp_headers()]
+- "commands_interactive_mergehosts": "mergeHosts()" | kind=code-symbol | source=manager/frontend/cli/commands/interactive.ts:L1165 | neighbors=[interactive.ts, runPhasePortScan(), runPhaseServiceDetect()]
+- "commands_interactive_printhostdiscoverydiagnostic": "printHostDiscoveryDiagnostic()" | kind=code-symbol | source=manager/frontend/cli/commands/interactive.ts:L917 | neighbors=[interactive.ts, ln(), runIterativeEngagement()]
+- "commands_interactive_printhostsummary": "printHostSummary()" | kind=code-symbol | source=manager/frontend/cli/commands/interactive.ts:L905 | neighbors=[interactive.ts, ln(), runIterativeEngagement()]
+- "commands_interactive_printstatesummary": "printStateSummary()" | kind=code-symbol | source=manager/frontend/cli/commands/interactive.ts:L895 | neighbors=[interactive.ts, ln(), runIterativeEngagement()]
+- "commands_interactive_runphaseenumeration": "runPhaseEnumeration()" | kind=code-symbol | source=manager/frontend/cli/commands/interactive.ts:L1044 | neighbors=[interactive.ts, runIterativeEngagement(), runPhaseWithTools()]
+- "commands_interactive_runphasehostdiscovery": "runPhaseHostDiscovery()" | kind=code-symbol | source=manager/frontend/cli/commands/interactive.ts:L1023 | neighbors=[interactive.ts, runIterativeEngagement(), runPhaseWithTools()]
+- "commit:repo:github.com/Rutikm18/Agentic-VA-Automation@8d65c9264d0935e030c458e4b761dd1587b0a2d1": "8d65c92 first commit" | kind=Commit | source=git | neighbors=[agents/greeting-introduction, main, f5ce592 first commit]
+- "commit:repo:github.com/Rutikm18/Project-Vedha@57751e570a64ba6ea82c02bfba10da0ad60e6fd3": "57751e5 merge: cross-os installer docs + unify findings workflows into 1209 int…" | kind=Commit | source=git | neighbors=[06b825d merge: hardened-agent architect…, 3ddc104 feat: unify customer and manage…, 1209_system_ui_backend_level_changes]
+- "cve_cli_cmd_correlate": "cmd_correlate()" | kind=code-symbol | source=probe/cve/cli.py:L81 | neighbors=[cli.py, _merge_findings(), _read_facts()]
+- "cve_cli_merge_findings": "_merge_findings()" | kind=code-symbol | source=probe/cve/cli.py:L65 | neighbors=[cli.py, cmd_correlate(), Merge CVE-finding lists, dedup by (cve_…]
+- "cve_cli_read_facts": "_read_facts()" | kind=code-symbol | source=probe/cve/cli.py:L26 | neighbors=[cli.py, cmd_correlate(), Yield fact dicts from a JSONL file ('-'…]
+- "cve_correlator_backport_marker": "_backport_marker()" | kind=code-symbol | source=probe/cve/correlator.py:L57 | neighbors=[correlator.py, correlate(), Return the distro-backport token found …]
+- "cve_correlator_cvefinding": "CVEFinding" | kind=code-symbol | source=probe/cve/correlator.py:L84 | neighbors=[correlator.py, correlate(), .to_dict()]
+- "cve_correlator_risk_score": "risk_score()" | kind=code-symbol | source=probe/cve/correlator.py:L63 | neighbors=[correlator.py, correlate(), 0–100 prioritization score. CVSS is hal…]
+- "cve_ingest_cvss": "_cvss()" | kind=code-symbol | source=probe/cve/ingest.py:L88 | neighbors=[ingest.py, ingest_one_cve(), Best available CVSS: prefer v3.1 > v3.0…]
+- "cve_ingest_ingest_epss": "ingest_epss()" | kind=code-symbol | source=probe/cve/ingest.py:L211 | neighbors=[ingest.py, ingest_all(), _get()]
+- "cve_ingest_ingest_kev": "ingest_kev()" | kind=code-symbol | source=probe/cve/ingest.py:L193 | neighbors=[ingest.py, ingest_all(), _get()]
+- "cve_ingest_parse_criteria": "_parse_criteria()" | kind=code-symbol | source=probe/cve/ingest.py:L109 | neighbors=[ingest.py, ingest_one_cve(), cpe:2.3:a:vendor:product:version:... ->…]
+- "cve_online_lookup_vulners": "lookup_vulners()" | kind=code-symbol | source=probe/cve/online.py:L90 | neighbors=[online.py, enrich_findings(), Ask Vulners whether a public exploit is…]
+- "cve_online_onlineresult": "OnlineResult" | kind=code-symbol | source=probe/cve/online.py:L51 | neighbors=[online.py, lookup_nvd(), What a live lookup could establish for …]
+- "cve_online_was_exposed": "_was_exposed()" | kind=code-symbol | source=probe/cve/online.py:L214 | neighbors=[online.py, _apply(), Recover whether the exposure boost was …]
+- "cve_version_in_range": "in_range()" | kind=code-symbol | source=probe/cve/version.py:L56 | neighbors=[version.py, compare(), Is `version` inside the NVD-style bound…]
+- "cve_version_parse_version": "parse_version()" | kind=code-symbol | source=probe/cve/version.py:L28 | neighbors=[version.py, compare(), Normalize a version string into a compa…]
+- "cve_weakness_map_finding_view": "_finding_view()" | kind=code-symbol | source=probe/cve/weakness_map.py:L120 | neighbors=[weakness_map.py, correlate_weaknesses(), Return the Finding dict from a fact, or…]
+- "cve_weakness_map_mirror_cve": "_mirror_cve()" | kind=code-symbol | source=probe/cve/weakness_map.py:L141 | neighbors=[weakness_map.py, correlate_weaknesses(), Pull CVSS/KEV/EPSS for one CVE straight…]
+- "dashboard_dashboardworkspace_dashboardworkspace": "DashboardWorkspace()" | kind=code-symbol | source=manager/frontend/components/dashboard/DashboardWorkspace.tsx:L15 | neighbors=[page.tsx, DashboardWorkspace.tsx, page.tsx]
+- "dashboard_exposurecards_protocolriskcard": "ProtocolRiskCard()" | kind=code-symbol | source=manager/frontend/components/dashboard/ExposureCards.tsx:L89 | neighbors=[DashboardGrid.tsx, ExposureCards.tsx, useExposure()]
+- "dashboard_exposurecards_useexposure": "useExposure()" | kind=code-symbol | source=manager/frontend/components/dashboard/ExposureCards.tsx:L30 | neighbors=[ExposureCards.tsx, ProtocolRiskCard(), ZoneHealthCard()]
+- "dashboard_exposurecards_zonehealthcard": "ZoneHealthCard()" | kind=code-symbol | source=manager/frontend/components/dashboard/ExposureCards.tsx:L123 | neighbors=[DashboardGrid.tsx, ExposureCards.tsx, useExposure()]
+- "dashboard_posturescorecard_useposture": "usePosture()" | kind=code-symbol | source=manager/frontend/components/dashboard/PostureScorecard.tsx:L38 | neighbors=[PatchComparisonMatrix.tsx, PostureScorecard.tsx, PostureScorecard()]
+- "dashboard_slastatus_slastatus": "SlaStatus()" | kind=code-symbol | source=manager/frontend/components/dashboard/SlaStatus.tsx:L182 | neighbors=[DashboardGrid.tsx, SlaStatus.tsx, page.tsx]
+- "detection_active_validation_interpret_validation": "interpret_validation()" | kind=code-symbol | source=manager/backend/app/detection/active_validation.py:L40 | neighbors=[active_validation.py, ValidationOutcome, Map a probe safe-check result to a verd…]
+- "detection_attack_paths_attack_path_findings": "attack_path_findings()" | kind=code-symbol | source=manager/backend/app/detection/attack_paths.py:L273 | neighbors=[attack_paths.py, _group(), Correlate composite attack paths from r…]
+- "detection_attack_paths_hostsignals_finalize": ".finalize()" | kind=code-symbol | source=manager/backend/app/detection/attack_paths.py:L124 | neighbors=[_group(), _HostSignals, Fold in a persisted device role (from a…]
+- "detection_attack_paths_is_domain_controller": "_is_domain_controller()" | kind=code-symbol | source=manager/backend/app/detection/attack_paths.py:L53 | neighbors=[attack_paths.py, _legacy_windows(), _ntlm_relay()]
+- "detection_attack_paths_snmp_public_lateral": "_snmp_public_lateral()" | kind=code-symbol | source=manager/backend/app/detection/attack_paths.py:L242 | neighbors=[attack_paths.py, B3: a default SNMP community on network…, _is_network_device()]
+- "detection_correlator_detectioncorrelator_host_for": "._host_for()" | kind=code-symbol | source=manager/backend/app/detection/correlator.py:L164 | neighbors=[DetectionCorrelator, .correlate(), _host_matches()]
+- "detection_correlator_detectioncorrelator_in_window": "._in_window()" | kind=code-symbol | source=manager/backend/app/detection/correlator.py:L157 | neighbors=[DetectionCorrelator, .correlate(), _aware()]
+- "detection_correlator_detectioncorrelator_min_latency": "._min_latency()" | kind=code-symbol | source=manager/backend/app/detection/correlator.py:L169 | neighbors=[DetectionCorrelator, .correlate(), _aware()]
+- "detection_correlator_host_matches": "_host_matches()" | kind=code-symbol | source=manager/backend/app/detection/correlator.py:L69 | neighbors=[correlator.py, ._host_for(), _host_identity()]
 
 ## Instructions
 

@@ -1,4 +1,4 @@
-# Node Description Batch 101 of 336
+# Node Description Batch 101 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,51 +12,58 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
+For an entity node (any other kind — e.g. a person, place, event, object),
+describe what the entity is and its role, grounded in its type, its
+relations (neighbors) and the provided citations/evidence — e.g.
+"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
+Ground entity descriptions in the citations/evidence when present; do not
+speculate beyond the context, so a node with no supporting context may be
+left out of the reply.
 Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "main_scripts_smtp_scanner_smtpscanner_read_response": "._read_response()" | kind=code-symbol | source=probe/main_scripts/smtp_scanner.py:L67 | neighbors=[SMTPScanner, ._cmd(), ._probe()]
-- "main_scripts_smtp_scanner_vrfy_leaks": "vrfy_leaks()" | kind=code-symbol | source=probe/main_scripts/smtp_scanner.py:L51 | neighbors=[smtp_scanner.py, VRFY leaks usernames when it gives DIFF…, ._probe()]
-- "main_scripts_snmp_scanner_ber_parse": "_ber_parse()" | kind=code-symbol | source=probe/main_scripts/snmp_scanner.py:L104 | neighbors=[snmp_scanner.py, _parse_varbinds(), Shallow parse of BER TLVs starting at o…]
-- "main_scripts_snmp_scanner_oid_tlv": "_oid_tlv()" | kind=code-symbol | source=probe/main_scripts/snmp_scanner.py:L155 | neighbors=[snmp_scanner.py, _ber_len(), _varbind()]
-- "main_scripts_snmp_scanner_snmpscanner_snmpv3_present": "._snmpv3_present()" | kind=code-symbol | source=probe/main_scripts/snmp_scanner.py:L324 | neighbors=[Send a SNMPv3 Discover. Any reply = v3 …, SNMPScanner, ._udp()]
-- "main_scripts_ssh_kexdb": "ssh_kexdb.py" | kind=code-symbol | source=probe/main_scripts/ssh_kexdb.py:L1 | neighbors=[6e2818f Add support for additional serv…, lookup(), ssh_kexdb.py — vendored SSH algorithm w…]
-- "main_scripts_ssh_scanner_cursor_read": ".read()" | kind=code-symbol | source=probe/main_scripts/ssh_scanner.py:L77 | neighbors=[_Cursor, .read_name_list(), parse_kexinit()]
-- "main_scripts_ssh_scanner_cursor_read_name_list": ".read_name_list()" | kind=code-symbol | source=probe/main_scripts/ssh_scanner.py:L84 | neighbors=[_Cursor, .read(), parse_kexinit()]
-- "main_scripts_ssh_scanner_dedup": "_dedup()" | kind=code-symbol | source=probe/main_scripts/ssh_scanner.py:L124 | neighbors=[ssh_scanner.py, evaluate_algorithms(), ._scan_port()]
-- "main_scripts_ssh_scanner_parse_ssh_banner": "parse_ssh_banner()" | kind=code-symbol | source=probe/main_scripts/ssh_scanner.py:L46 | neighbors=[ssh_scanner.py, Parse an SSH identification string 'SSH…, ._scan_port()]
-- "main_scripts_ssh_scanner_read_ident": "_read_ident()" | kind=code-symbol | source=probe/main_scripts/ssh_scanner.py:L194 | neighbors=[ssh_scanner.py, Read the server SSH identification line…, ._probe()]
-- "main_scripts_syn_scanner_synscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/main_scripts/syn_scanner.py:L356 | neighbors=[SynScanner, ._fallback_scan(), ._syn_scan_target()]
-- "main_scripts_syn_scanner_wait_readable": "_wait_readable()" | kind=code-symbol | source=probe/main_scripts/syn_scanner.py:L243 | neighbors=[syn_scanner.py, Block until `sock` has a packet waiting…, ._syn_scan_blocking()]
-- "main_scripts_tls_fingerprint_key_share_ext": "_key_share_ext()" | kind=code-symbol | source=probe/main_scripts/tls_fingerprint.py:L79 | neighbors=[tls_fingerprint.py, build_client_hello(), _ext()]
-- "main_scripts_tls_fingerprint_sni_extension": "_sni_extension()" | kind=code-symbol | source=probe/main_scripts/tls_fingerprint.py:L67 | neighbors=[tls_fingerprint.py, build_client_hello(), _ext()]
-- "main_scripts_tls_fingerprint_supported_versions_ext": "_supported_versions_ext()" | kind=code-symbol | source=probe/main_scripts/tls_fingerprint.py:L74 | neighbors=[tls_fingerprint.py, build_client_hello(), _ext()]
-- "main_scripts_tls_scanner_classify_cipher": "classify_cipher()" | kind=code-symbol | source=probe/main_scripts/tls_scanner.py:L60 | neighbors=[tls_scanner.py, Flag the security-relevant properties o…, _scan_tls_sync()]
-- "main_scripts_tls_scanner_get_cert_der": "_get_cert_der()" | kind=code-symbol | source=probe/main_scripts/tls_scanner.py:L203 | neighbors=[tls_scanner.py, _sni(), _scan_tls_sync()]
-- "main_scripts_tls_scanner_grade_tls_posture": "grade_tls_posture()" | kind=code-symbol | source=probe/main_scripts/tls_scanner.py:L104 | neighbors=[tls_scanner.py, Grade overall TLS posture A/B/C/F from …, _scan_tls_sync()]
-- "main_scripts_udp_scanner_ipmi_probe": "_ipmi_probe()" | kind=code-symbol | source=probe/main_scripts/udp_scanner.py:L139 | neighbors=[udp_scanner.py, RMCP Ping (ASF Presence Ping) to detect…, RMCP Ping (ASF Presence Ping) to detect…]
-- "main_scripts_udp_scanner_mdns_probe": "_mdns_probe()" | kind=code-symbol | source=probe/main_scripts/udp_scanner.py:L158 | neighbors=[udp_scanner.py, mDNS PTR query for _services._dns-sd._u…, mDNS PTR query for _services._dns-sd._u…]
-- "main_scripts_udp_scanner_sip_probe": "_sip_probe()" | kind=code-symbol | source=probe/main_scripts/udp_scanner.py:L113 | neighbors=[udp_scanner.py, SIP OPTIONS request — safe fingerprint …, ._probe()]
-- "main_scripts_udp_scanner_ssdp_probe": "_ssdp_probe()" | kind=code-symbol | source=probe/main_scripts/udp_scanner.py:L146 | neighbors=[udp_scanner.py, UPnP/SSDP M-SEARCH — unicast to target:…, UPnP/SSDP M-SEARCH — unicast to target:…]
-- "main_scripts_unauth_access_classify_unauth_access": "classify_unauth_access()" | kind=code-symbol | source=probe/main_scripts/unauth_access.py:L48 | neighbors=[unauth_access.py, _as_text(), Decide whether `banner` proves unauthen…]
-- "main_scripts_va_campaign_campaigncontext": "CampaignContext" | kind=code-symbol | source=probe/main_scripts/va_campaign.py:L138 | neighbors=[va_campaign.py, build_campaign(), Mutable state threaded through the stag…]
-- "main_scripts_va_campaign_cliprogressview_call": ".__call__()" | kind=code-symbol | source=probe/main_scripts/va_campaign.py:L663 | neighbors=[CliProgressView, ._redraw(), ._transitions()]
-- "main_scripts_va_campaign_cliprogressview_redraw": "._redraw()" | kind=code-symbol | source=probe/main_scripts/va_campaign.py:L669 | neighbors=[CliProgressView, .__call__(), ._format()]
-- "main_scripts_va_campaign_monotonic": "_monotonic()" | kind=code-symbol | source=probe/main_scripts/va_campaign.py:L276 | neighbors=[va_campaign.py, ._eta_seconds(), .__init__()]
-- "main_scripts_va_campaign_progressreporter_eta_seconds": "._eta_seconds()" | kind=code-symbol | source=probe/main_scripts/va_campaign.py:L236 | neighbors=[ProgressReporter, _monotonic(), .snapshot()]
-- "main_scripts_va_campaign_progressreporter_finish": ".finish()" | kind=code-symbol | source=probe/main_scripts/va_campaign.py:L217 | neighbors=[ProgressReporter, ._flush(), .run()]
-- "main_scripts_va_campaign_progressreporter_set_totals": ".set_totals()" | kind=code-symbol | source=probe/main_scripts/va_campaign.py:L213 | neighbors=[ProgressReporter, ._flush(), ._refresh_totals()]
-- "main_scripts_va_campaign_run_campaign": "run_campaign()" | kind=code-symbol | source=probe/main_scripts/va_campaign.py:L639 | neighbors=[va_campaign.py, build_campaign(), .run()]
-- "main_scripts_va_campaign_stagestate": "StageState" | kind=code-symbol | source=probe/main_scripts/va_campaign.py:L151 | neighbors=[va_campaign.py, .__init__(), .to_dict()]
-- "main_scripts_va_campaign_vacampaign_refresh_totals": "._refresh_totals()" | kind=code-symbol | source=probe/main_scripts/va_campaign.py:L322 | neighbors=[VACampaign, .set_totals(), .run()]
-- "main_scripts_vantage_matrix_extract": "_extract()" | kind=code-symbol | source=probe/main_scripts/vantage_matrix.py:L41 | neighbors=[vantage_matrix.py, (proto, port, status) from a ScanResult…, reconcile_vantages()]
-- "main_scripts_vnc_scanner_classify_security_types": "classify_security_types()" | kind=code-symbol | source=probe/main_scripts/vnc_scanner.py:L60 | neighbors=[vnc_scanner.py, Turn a list of offered security-type id…, ._probe()]
-- "main_scripts_vnc_scanner_parse_rfb_version": "parse_rfb_version()" | kind=code-symbol | source=probe/main_scripts/vnc_scanner.py:L46 | neighbors=[vnc_scanner.py, Parse a 'RFB 003.008' banner into (majo…, ._probe()]
-- "main_scripts_vnc_scanner_recv_exact": "_recv_exact()" | kind=code-symbol | source=probe/main_scripts/vnc_scanner.py:L71 | neighbors=[vnc_scanner.py, _read_security_types(), ._probe()]
-- "main_scripts_web_scanner_webscanner_scan_port": "._scan_port()" | kind=code-symbol | source=probe/main_scripts/web_scanner.py:L155 | neighbors=[WebScanner, ._schemes_for(), .scan_target()]
-- "main_scripts_web_scanner_webscanner_schemes_for": "._schemes_for()" | kind=code-symbol | source=probe/main_scripts/web_scanner.py:L148 | neighbors=[Preferred scheme first, the other as a …, WebScanner, ._scan_port()]
+- "ad_ldap_enum_rationale_312": "Parse the nTSecurityDescriptor of an object into a list of ACEs for ACL" | kind=entity | source=manager/backend/app/ad/ldap_enum.py:L312 | neighbors=[ADConnectionError, DependencyMissingError, .get_aces()]
+- "ad_ldap_enum_rationale_85": "A simplified access-control entry parsed from nTSecurityDescriptor." | kind=entity | source=manager/backend/app/ad/ldap_enum.py:L85 | neighbors=[ACE, ADConnectionError, DependencyMissingError]
+- "ad_ldap_enum_rationale_86": "A simplified access-control entry parsed from nTSecurityDescriptor." | kind=entity | source=manager/backend/app/ad/ldap_enum.py:L86 | neighbors=[ADConnectionError, DependencyMissingError, ACE]
+- "ad_ntlm_relay_ntlmrelaychecker_check_smb_signing": ".check_smb_signing()" | kind=code-symbol | source=manager/backend/app/ad/ntlm_relay.py:L38 | neighbors=[NTLMRelayChecker, ._probe_smb_host(), For each IP, returns {signing_enabled, …]
+- "ad_orchestrator_adassessmentrunner_run": ".run()" | kind=code-symbol | source=manager/backend/app/ad/orchestrator.py:L50 | neighbors=[ADAssessmentRunner, ._anonymous_bind_finding(), Returns {findings: [...], stats: {...},…]
+- "agent_agent_rationale_557": "Persistent WebSocket push loop.      Returns False if WebSocket is unavailable (" | kind=entity | source=probe/agent/agent.py:L557 | neighbors=[_run_ws_push_loop(), _ws_stage_job_offer(), _ws_http_poll_fallback()]
+- "agent_agent_runautonomousengagement": "runAutonomousEngagement()" | kind=code-symbol | source=manager/frontend/lib/agent/agent.ts:L95 | neighbors=[agent.py, isBlocked(), requiresApproval()]
+- "agent_cli_cmd_auth_logout": "cmd_auth_logout()" | kind=code-symbol | source=probe/agent/cli.py:L292 | neighbors=[cli.py, ConfigStore, .remove_profile()]
+- "agent_cli_cmd_daemon_run": "cmd_daemon_run()" | kind=code-symbol | source=probe/agent/cli.py:L913 | neighbors=[cli.py, resolve_profile(), split_values()]
+- "agent_cli_configstore_get_profile": ".get_profile()" | kind=code-symbol | source=probe/agent/cli.py:L87 | neighbors=[ConfigStore, .load(), resolve_profile()]
+- "agent_cli_configstore_save": ".save()" | kind=code-symbol | source=probe/agent/cli.py:L75 | neighbors=[ConfigStore, .remove_profile(), .set_profile()]
+- "agent_cli_default_config_path": "default_config_path()" | kind=code-symbol | source=probe/agent/cli.py:L40 | neighbors=[cli.py, build_parser(), _env()]
+- "agent_cli_fetch_all_findings": "_fetch_all_findings()" | kind=code-symbol | source=probe/agent/cli.py:L549 | neighbors=[cli.py, cmd_validate(), .request()]
+- "agent_cli_parse_param_pairs": "parse_param_pairs()" | kind=code-symbol | source=probe/agent/cli.py:L165 | neighbors=[cli.py, cmd_scan_run(), CliError]
+- "agent_connect_admit_job": "admit_job()" | kind=code-symbol | source=probe/agent/connect.py:L65 | neighbors=[connect.py, verify_job(), The independent ceiling: a job is admit…]
+- "agent_connect_canonical_job_bytes": "canonical_job_bytes()" | kind=code-symbol | source=probe/agent/connect.py:L35 | neighbors=[connect.py, Deterministic bytes the Manager signs a…, verify_job()]
+- "agent_deps_venv_python": "venv_python()" | kind=code-symbol | source=probe/agent/deps.py:L20 | neighbors=[deps.py, ensure_venv(), venv_dir()]
+- "agent_device_identity_verify_site_policy": "verify_site_policy()" | kind=code-symbol | source=probe/agent/device_identity.py:L37 | neighbors=[device_identity.py, Verify a Manager-signed policy and retu…, decode_key()]
+- "agent_doctor_check_clock": "check_clock()" | kind=code-symbol | source=probe/agent/doctor.py:L37 | neighbors=[doctor.py, Check, run()]
+- "agent_doctor_check_disk": "check_disk()" | kind=code-symbol | source=probe/agent/doctor.py:L48 | neighbors=[doctor.py, Check, run()]
+- "agent_doctor_check_privilege": "check_privilege()" | kind=code-symbol | source=probe/agent/doctor.py:L71 | neighbors=[doctor.py, Check, run()]
+- "agent_doctor_check_python": "check_python()" | kind=code-symbol | source=probe/agent/doctor.py:L30 | neighbors=[doctor.py, Check, run()]
+- "agent_doctor_classify_connectivity": "classify_connectivity()" | kind=code-symbol | source=probe/agent/doctor.py:L55 | neighbors=[doctor.py, Check, run()]
+- "agent_doctor_offset_from_date_header": "_offset_from_date_header()" | kind=code-symbol | source=probe/agent/doctor.py:L116 | neighbors=[doctor.py, Pure: server clock offset (seconds) fro…, _server_date_offset()]
+- "agent_doctor_server_date_offset": "_server_date_offset()" | kind=code-symbol | source=probe/agent/doctor.py:L128 | neighbors=[doctor.py, run(), _offset_from_date_header()]
+- "agent_engine_run_with_cancellation": "_run_with_cancellation()" | kind=code-symbol | source=probe/agent/engine.py:L572 | neighbors=[engine.py, run_scan(), LeaseLostError]
+- "agent_engine_runtime_manifest": "_runtime_manifest()" | kind=code-symbol | source=probe/agent/engine.py:L68 | neighbors=[engine.py, _error_result(), run_scan()]
+- "agent_engine_string_list": "_string_list()" | kind=code-symbol | source=probe/agent/engine.py:L196 | neighbors=[engine.py, run_scan(), _targets()]
+- "agent_engine_targets": "_targets()" | kind=code-symbol | source=probe/agent/engine.py:L212 | neighbors=[engine.py, run_scan(), _string_list()]
+- "agent_exit_state_class_for_reason": "class_for_reason()" | kind=code-symbol | source=probe/agent/exit_state.py:L44 | neighbors=[exit_state.py, code_for_reason(), make()]
+- "agent_exit_state_code_for_class": "code_for_class()" | kind=code-symbol | source=probe/agent/exit_state.py:L50 | neighbors=[exit_state.py, code_for_reason(), make()]
+- "agent_exit_state_code_for_reason": "code_for_reason()" | kind=code-symbol | source=probe/agent/exit_state.py:L54 | neighbors=[exit_state.py, class_for_reason(), code_for_class()]
+- "agent_exit_state_exitstate": "ExitState" | kind=code-symbol | source=probe/agent/exit_state.py:L63 | neighbors=[exit_state.py, from_json(), make()]
+- "agent_exit_state_from_json": "from_json()" | kind=code-symbol | source=probe/agent/exit_state.py:L89 | neighbors=[exit_state.py, ExitState, read()]
+- "agent_explain_plan_print_table": "_print_table()" | kind=code-symbol | source=probe/agent/explain_plan.py:L78 | neighbors=[explain_plan.py, main(), _why()]
+- "agent_explain_plan_why": "_why()" | kind=code-symbol | source=probe/agent/explain_plan.py:L43 | neighbors=[explain_plan.py, _print_table(), Recreate this branch's decision and say…]
+- "agent_hw_bind_get_hw_id": "get_hw_id()" | kind=code-symbol | source=probe/agent/hw_bind.py:L23 | neighbors=[hw_bind.py, check_hw_bind(), Deterministic per-machine fingerprint b…]
+- "agent_instance_lock_holder_hint": "_holder_hint()" | kind=code-symbol | source=probe/agent/instance_lock.py:L62 | neighbors=[instance_lock.py, acquire_instance_lock(), Best-effort description of the current …]
+- "agent_instance_lock_lock_path_for": "lock_path_for()" | kind=code-symbol | source=probe/agent/instance_lock.py:L55 | neighbors=[instance_lock.py, acquire_instance_lock(), Sidecar lock path for a state file. Nev…]
+- "agent_local_run_clean": "_clean()" | kind=code-symbol | source=probe/agent/local_run.py:L68 | neighbors=[local_run.py, Drop internal bookkeeping keys (_collec…, summarize()]
 
 ## Instructions
 

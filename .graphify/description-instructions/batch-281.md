@@ -1,4 +1,4 @@
-# Node Description Batch 282 of 336
+# Node Description Batch 282 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,51 +19,53 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-Write every description in English (en). Do not switch languages.
+LANGUAGE: each entry has a `lang=` marker giving the language of its source.
+Write that entry's description in EXACTLY that language. Do not translate to
+a single common language — match each node's source language individually.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_dns_scanner_rationale_1": "test_dns_scanner.py — DNS AXFR / DNSSEC / version.bind audit.  The live dnspytho" | kind=entity | source=probe/tests/test_dns_scanner.py:L1 | neighbors=[test_dns_scanner.py]
-- "tests_test_dns_scanner_testaxfrbounded_test_axfr_refused_reports_not_transferred": ".test_axfr_refused_reports_not_transferred()" | kind=code-symbol | source=probe/tests/test_dns_scanner.py:L78 | neighbors=[TestAxfrBounded]
-- "tests_test_dns_scanner_testaxfrbounded_test_axfr_stops_at_cap": ".test_axfr_stops_at_cap()" | kind=code-symbol | source=probe/tests/test_dns_scanner.py:L50 | neighbors=[TestAxfrBounded]
-- "tests_test_dns_scanner_testderivezones_test_bounded": ".test_bounded()" | kind=code-symbol | source=probe/tests/test_dns_scanner.py:L41 | neighbors=[TestDeriveZones]
-- "tests_test_dns_scanner_testderivezones_test_explicit_zone_used_as_is": ".test_explicit_zone_used_as_is()" | kind=code-symbol | source=probe/tests/test_dns_scanner.py:L33 | neighbors=[TestDeriveZones]
-- "tests_test_dns_scanner_testderivezones_test_extra_before_target_derived": ".test_extra_before_target_derived()" | kind=code-symbol | source=probe/tests/test_dns_scanner.py:L36 | neighbors=[TestDeriveZones]
-- "tests_test_dns_scanner_testderivezones_test_hostname_target_reduces_to_registrable_and_parent": ".test_hostname_target_reduces_to_registrable_and_parent()" | kind=code-symbol | source=probe/tests/test_dns_scanner.py:L26 | neighbors=[TestDeriveZones]
-- "tests_test_dns_scanner_testderivezones_test_ip_target_derives_nothing": ".test_ip_target_derives_nothing()" | kind=code-symbol | source=probe/tests/test_dns_scanner.py:L29 | neighbors=[TestDeriveZones]
-- "tests_test_dns_scanner_testparity_test_scanner_and_findings_in_main_scripts": ".test_scanner_and_findings_in_main_scripts()" | kind=code-symbol | source=probe/tests/test_dns_scanner.py:L159 | neighbors=[TestParity]
-- "tests_test_dualstack_fallback_rationale_1": "test_dualstack_fallback.py — roadmap #9 / #4.1, the CALL-SITE migration.  `resol" | kind=entity | source=probe/tests/test_dualstack_fallback.py:L1 | neighbors=[test_dualstack_fallback.py]
-- "tests_test_dualstack_fallback_rationale_52": "A socket whose connect() fails for `dead_family`, succeeds otherwise." | kind=entity | source=probe/tests/test_dualstack_fallback.py:L52 | neighbors=[._fake_socket()]
-- "tests_test_dualstack_fallback_testosfingerprintsmbbuildfallback_test_falls_back_across_families": ".test_falls_back_across_families()" | kind=code-symbol | source=probe/tests/test_dualstack_fallback.py:L119 | neighbors=[TestOsFingerprintSmbBuildFallback]
-- "tests_test_dualstack_fallback_testrdpfallback_test_none_when_no_family_speaks_rdp": ".test_none_when_no_family_speaks_rdp()" | kind=code-symbol | source=probe/tests/test_dualstack_fallback.py:L150 | neighbors=[TestRdpFallback]
-- "tests_test_dualstack_fallback_testrdpfallback_test_probes_next_family_when_first_is_silent": ".test_probes_next_family_when_first_is_silent()" | kind=code-symbol | source=probe/tests/test_dualstack_fallback.py:L136 | neighbors=[TestRdpFallback]
-- "tests_test_dualstack_fallback_testrdpfallback_test_unresolvable_host_is_survivable": ".test_unresolvable_host_is_survivable()" | kind=code-symbol | source=probe/tests/test_dualstack_fallback.py:L158 | neighbors=[TestRdpFallback]
-- "tests_test_dualstack_fallback_testresolveipcandidates_test_returns_ips_in_order": ".test_returns_ips_in_order()" | kind=code-symbol | source=probe/tests/test_dualstack_fallback.py:L32 | neighbors=[TestResolveIpCandidates]
-- "tests_test_dualstack_fallback_testresolveipcandidates_test_unresolvable_returns_empty_not_raises": ".test_unresolvable_returns_empty_not_raises()" | kind=code-symbol | source=probe/tests/test_dualstack_fallback.py:L38 | neighbors=[TestResolveIpCandidates]
-- "tests_test_dualstack_fallback_testsmbntlmfallback_test_empty_when_no_address_answers": ".test_empty_when_no_address_answers()" | kind=code-symbol | source=probe/tests/test_dualstack_fallback.py:L110 | neighbors=[TestSmbNtlmFallback]
-- "tests_test_dualstack_fallback_testsmbntlmfallback_test_first_answering_address_wins": ".test_first_answering_address_wins()" | kind=code-symbol | source=probe/tests/test_dualstack_fallback.py:L97 | neighbors=[TestSmbNtlmFallback]
-- "tests_test_dualstack_fallback_testsynscannerrequestsipv4_test_resolve_is_asked_for_ipv4": ".test_resolve_is_asked_for_ipv4()" | kind=code-symbol | source=probe/tests/test_dualstack_fallback.py:L202 | neighbors=[TestSynScannerRequestsIPv4]
-- "tests_test_dualstack_fallback_testtlsfingerprintfallback_test_none_when_no_family_speaks_tls": ".test_none_when_no_family_speaks_tls()" | kind=code-symbol | source=probe/tests/test_dualstack_fallback.py:L185 | neighbors=[TestTlsFingerprintFallback]
-- "tests_test_dualstack_fallback_testtlsfingerprintfallback_test_unresolvable_host_is_survivable": ".test_unresolvable_host_is_survivable()" | kind=code-symbol | source=probe/tests/test_dualstack_fallback.py:L193 | neighbors=[TestTlsFingerprintFallback]
-- "tests_test_dualstack_fallback_testtlsfingerprintfallback_test_uses_the_family_that_actually_speaks_tls": ".test_uses_the_family_that_actually_speaks_tls()" | kind=code-symbol | source=probe/tests/test_dualstack_fallback.py:L170 | neighbors=[TestTlsFingerprintFallback]
-- "tests_test_e2e_engagement_to_findings_accept_loop": "_accept_loop()" | kind=code-symbol | source=probe/tests/test_e2e_engagement_to_findings.py:L27 | neighbors=[test_e2e_engagement_to_findings.py]
-- "tests_test_e2e_engagement_to_findings_rationale_1": "test_e2e_engagement_to_findings.py — the whole pipeline in one place.      manag" | kind=entity | source=probe/tests/test_e2e_engagement_to_findings.py:L1 | neighbors=[test_e2e_engagement_to_findings.py]
-- "tests_test_e2e_engagement_to_findings_rationale_138": "Exactly what the probe's smb/port scanners emit for a vulnerable host." | kind=entity | source=probe/tests/test_e2e_engagement_to_findings.py:L138 | neighbors=[_vulnerable_host_facts()]
-- "tests_test_e2e_engagement_to_findings_rationale_52": "Return (http_get, submit_result, captured) simulating the manager side." | kind=entity | source=probe/tests/test_e2e_engagement_to_findings.py:L52 | neighbors=[_manager()]
-- "tests_test_engagement_lists_rationale_1": "Unit tests for the dashboard list endpoints (jobs + assets)." | kind=entity | source=manager/backend/tests/test_engagement_lists.py:L1 | neighbors=[test_engagement_lists.py]
-- "tests_test_engagement_validation_test_create_normalizes_name_scopes_and_duplicates": "test_create_normalizes_name_scopes_and_duplicates()" | kind=code-symbol | source=manager/backend/tests/test_engagement_validation.py:L10 | neighbors=[test_engagement_validation.py]
-- "tests_test_engagement_validation_test_create_rejects_invalid_scope_entries": "test_create_rejects_invalid_scope_entries()" | kind=code-symbol | source=manager/backend/tests/test_engagement_validation.py:L31 | neighbors=[test_engagement_validation.py]
-- "tests_test_engagement_validation_test_create_rejects_reversed_date_range": "test_create_rejects_reversed_date_range()" | kind=code-symbol | source=manager/backend/tests/test_engagement_validation.py:L36 | neighbors=[test_engagement_validation.py]
-- "tests_test_engagement_validation_test_update_rejects_blank_name_invalid_scope_and_reversed_dates": "test_update_rejects_blank_name_invalid_scope_and_reversed_dates()" | kind=code-symbol | source=manager/backend/tests/test_engagement_validation.py:L46 | neighbors=[test_engagement_validation.py]
-- "tests_test_engine_bridge_ingest_health_rationale_1": "test_engine_bridge_ingest_health.py — a zero-finding run must never be able to L" | kind=entity | source=manager/backend/tests/test_engine_bridge_ingest_health.py:L1 | neighbors=[test_engine_bridge_ingest_health.py]
-- "tests_test_engine_bridge_ingest_health_rationale_44": "Baseline: the shape the agent actually sends survives ingest and fires rules." | kind=entity | source=manager/backend/tests/test_engine_bridge_ingest_health.py:L44 | neighbors=[test_healthy_facts_ingest_completely_an…]
-- "tests_test_engine_bridge_ingest_health_rationale_56": "The regression. Drop the one field an agent rename could plausibly drop and" | kind=entity | source=manager/backend/tests/test_engine_bridge_ingest_health.py:L56 | neighbors=[test_total_shape_drift_is_reported_not_…]
-- "tests_test_engine_bridge_ingest_health_rationale_73": "A partly-bad batch must keep its good findings AND still admit what it lost." | kind=entity | source=manager/backend/tests/test_engine_bridge_ingest_health.py:L73 | neighbors=[test_partial_drift_still_detects_but_re…]
-- "tests_test_engine_bridge_ingest_health_rationale_85": "The census is best-effort by contract: an older engine returning no     IngestRe" | kind=entity | source=manager/backend/tests/test_engine_bridge_ingest_health.py:L85 | neighbors=[test_census_survives_an_engine_that_ret…]
-- "tests_test_engine_bridge_posture_rationale_1": "test_engine_bridge_posture.py — the posture/config-exposure track reaches Findin" | kind=entity | source=manager/backend/tests/test_engine_bridge_posture.py:L1 | neighbors=[test_engine_bridge_posture.py]
-- "tests_test_engine_bridge_posture_test_no_posture_no_finding": "test_no_posture_no_finding()" | kind=code-symbol | source=manager/backend/tests/test_engine_bridge_posture.py:L69 | neighbors=[test_engine_bridge_posture.py]
-- "tests_test_engine_bridge_posture_test_posture_finding_becomes_a_finding_row": "test_posture_finding_becomes_a_finding_row()" | kind=code-symbol | source=manager/backend/tests/test_engine_bridge_posture.py:L33 | neighbors=[test_engine_bridge_posture.py]
+- "scanner_nmap_wrapper_rationale_183": "# NOTE: `Element.find(...) or Element.find(...)` is a classic ElementTree" | kind=entity | source=probe/scanner/nmap_wrapper.py:L183 | neighbors=[nmap_wrapper.py] | lang=en
+- "scanner_nmap_wrapper_rationale_191": "# NOTE: `Element.find(...) or Element.find(...)` is a classic ElementTree" | kind=entity | source=probe/scanner/nmap_wrapper.py:L191 | neighbors=[nmap_wrapper.py] | lang=en
+- "scanner_nmap_wrapper_rationale_197": "# NOTE: `Element.find(...) or Element.find(...)` is a classic ElementTree" | kind=entity | source=probe/scanner/nmap_wrapper.py:L197 | neighbors=[nmap_wrapper.py] | lang=en
+- "scanner_nmap_wrapper_rationale_43": "Actionable subprocess failure; never reinterpret it as zero findings." | kind=entity | source=probe/scanner/nmap_wrapper.py:L43 | neighbors=[NmapExecutionError] | lang=en
+- "scanner_nmap_wrapper_rationale_49": "Actionable subprocess failure; never reinterpret it as zero findings." | kind=entity | source=probe/scanner/nmap_wrapper.py:L49 | neighbors=[NmapExecutionError] | lang=en
+- "scanner_nmap_wrapper_rationale_70": "Allow tuning only; target, script, and output controls stay owned here." | kind=entity | source=probe/scanner/nmap_wrapper.py:L70 | neighbors=[_validated_extra_args()] | lang=en
+- "scanner_nmap_wrapper_rationale_72": "# NOTE: `Element.find(...) or Element.find(...)` is a classic ElementTree" | kind=entity | source=probe/scanner/nmap_wrapper.py:L72 | neighbors=[nmap_wrapper.py] | lang=en
+- "scanner_nmap_wrapper_rationale_76": "Allow tuning only; target, script, and output controls stay owned here." | kind=entity | source=probe/scanner/nmap_wrapper.py:L76 | neighbors=[_validated_extra_args()] | lang=en
+- "scanner_os_fingerprint_main": "main()" | kind=code-symbol | source=probe/scanner/os_fingerprint.py:L571 | neighbors=[os_fingerprint.py] | lang=en
+- "scanner_os_fingerprint_osfingerprintscanner_init": ".__init__()" | kind=code-symbol | source=probe/scanner/os_fingerprint.py:L360 | neighbors=[OSFingerprintScanner] | lang=en
+- "scanner_os_fingerprint_rationale_1": "os_fingerprint.py — OS/stack fingerprinting via ICMP + TTL (Tier 2.1 + 2.2).  TW" | kind=entity | source=probe/scanner/os_fingerprint.py:L1 | neighbors=[os_fingerprint.py] | lang=pt
+- "scanner_os_fingerprint_rationale_102": "Round the observed TTL up to the nearest standard initial TTL." | kind=entity | source=probe/scanner/os_fingerprint.py:L102 | neighbors=[infer_initial_ttl()] | lang=en
+- "scanner_os_fingerprint_rationale_109": "Parse an ICMP timestamp reply (type 14): id/seq/ttl plus the three 32-bit     ti" | kind=entity | source=probe/scanner/os_fingerprint.py:L109 | neighbors=[parse_icmp_timestamps()] | lang=en
+- "scanner_os_fingerprint_rationale_122": "Interpret a timestamp reply's transmit value. Per RFC 792 a *standard* value" | kind=entity | source=probe/scanner/os_fingerprint.py:L122 | neighbors=[remote_clock()] | lang=pt
+- "scanner_os_fingerprint_rationale_129": "Combine available stack signals into a best-guess OS family with a calibrated" | kind=entity | source=probe/scanner/os_fingerprint.py:L129 | neighbors=[fingerprint_os()] | lang=pt
+- "scanner_os_fingerprint_rationale_138": "True only for an ICMP ECHO reply that actually came FROM the probed host.      A" | kind=entity | source=probe/scanner/os_fingerprint.py:L138 | neighbors=[accept_echo_reply()] | lang=en
+- "scanner_os_fingerprint_rationale_153": "Round the observed TTL up to the nearest standard initial TTL." | kind=entity | source=probe/scanner/os_fingerprint.py:L153 | neighbors=[infer_initial_ttl()] | lang=en
+- "scanner_os_fingerprint_rationale_172": "True if we can open an ICMP socket (datagram-ICMP or raw)." | kind=entity | source=probe/scanner/os_fingerprint.py:L172 | neighbors=[icmp_supported()] | lang=en
+- "scanner_os_fingerprint_rationale_180": "Combine available stack signals into a best-guess OS family with a calibrated" | kind=entity | source=probe/scanner/os_fingerprint.py:L180 | neighbors=[fingerprint_os()] | lang=pt
+- "scanner_os_fingerprint_rationale_188": "True if we can open an ICMP socket (datagram-ICMP or raw)." | kind=entity | source=probe/scanner/os_fingerprint.py:L188 | neighbors=[icmp_supported()] | lang=en
+- "scanner_os_fingerprint_rationale_189": "Return (socket, is_raw). Prefer datagram-ICMP (unprivileged), then raw." | kind=entity | source=probe/scanner/os_fingerprint.py:L189 | neighbors=[_open_icmp_socket()] | lang=en
+- "scanner_os_fingerprint_rationale_217": "Send one ICMP echo; return observed TTL, None (no TTL), or \"down\"." | kind=entity | source=probe/scanner/os_fingerprint.py:L217 | neighbors=[._icmp_echo_ttl()] | lang=en
+- "scanner_os_fingerprint_rationale_221": "ICMP-echo liveness + TTL harvest -> OS-family guess. Optionally accepts TCP" | kind=entity | source=probe/scanner/os_fingerprint.py:L221 | neighbors=[OSFingerprintScanner] | lang=en
+- "scanner_os_fingerprint_rationale_227": "Combine available stack signals into a best-guess OS family with a calibrated" | kind=entity | source=probe/scanner/os_fingerprint.py:L227 | neighbors=[fingerprint_os()] | lang=pt
+- "scanner_os_fingerprint_rationale_233": "Send one ICMP echo; return observed TTL, None (no TTL), or \"down\"." | kind=entity | source=probe/scanner/os_fingerprint.py:L233 | neighbors=[._icmp_echo_ttl()] | lang=en
+- "scanner_os_fingerprint_rationale_254": "True if we can open an ICMP socket (datagram-ICMP or raw)." | kind=entity | source=probe/scanner/os_fingerprint.py:L254 | neighbors=[icmp_supported()] | lang=en
+- "scanner_os_fingerprint_rationale_271": "Return (socket, is_raw). Prefer datagram-ICMP (unprivileged), then raw." | kind=entity | source=probe/scanner/os_fingerprint.py:L271 | neighbors=[_open_icmp_socket()] | lang=en
+- "scanner_os_fingerprint_rationale_287": "ICMP-echo liveness + TTL harvest -> OS-family guess. Optionally accepts TCP" | kind=entity | source=probe/scanner/os_fingerprint.py:L287 | neighbors=[OSFingerprintScanner] | lang=en
+- "scanner_os_fingerprint_rationale_299": "Send one ICMP echo; return observed TTL, None (no TTL), or \"down\"." | kind=entity | source=probe/scanner/os_fingerprint.py:L299 | neighbors=[._icmp_echo_ttl()] | lang=en
+- "scanner_os_fingerprint_rationale_321": "True if we can open an ICMP socket (datagram-ICMP or raw)." | kind=entity | source=probe/scanner/os_fingerprint.py:L321 | neighbors=[icmp_supported()] | lang=en
+- "scanner_os_fingerprint_rationale_330": "Send an ICMP timestamp request (type 13); return {ttl, transmit} from a" | kind=entity | source=probe/scanner/os_fingerprint.py:L330 | neighbors=[._icmp_timestamp()] | lang=en
+- "scanner_os_fingerprint_rationale_338": "Return (socket, is_raw). Prefer datagram-ICMP (unprivileged), then raw." | kind=entity | source=probe/scanner/os_fingerprint.py:L338 | neighbors=[_open_icmp_socket()] | lang=en
+- "scanner_os_fingerprint_rationale_354": "ICMP-echo liveness + TTL harvest -> OS-family guess. Optionally accepts TCP" | kind=entity | source=probe/scanner/os_fingerprint.py:L354 | neighbors=[OSFingerprintScanner] | lang=en
+- "scanner_os_fingerprint_rationale_371": "Best-effort exact Windows build via SMB2 NTLM (shared impl). {} on any         f" | kind=entity | source=probe/scanner/os_fingerprint.py:L371 | neighbors=[._smb_build()] | lang=en
+- "scanner_os_fingerprint_rationale_383": "Fuse an SMB2 NTLM build into an OS result: authoritative release + build," | kind=entity | source=probe/scanner/os_fingerprint.py:L383 | neighbors=[._apply_smb_build()] | lang=en
+- "scanner_os_fingerprint_rationale_406": "Send one ICMP echo; return observed TTL, None (no TTL), or \"down\"." | kind=entity | source=probe/scanner/os_fingerprint.py:L406 | neighbors=[._icmp_echo_ttl()] | lang=en
+- "scanner_os_fingerprint_rationale_437": "Send an ICMP timestamp request (type 13); return {ttl, transmit} from a" | kind=entity | source=probe/scanner/os_fingerprint.py:L437 | neighbors=[._icmp_timestamp()] | lang=en
+- "scanner_os_fingerprint_rationale_469": "FIX 3b: aliveness/TTL came from a TCP SYN-ACK, not ICMP. Label the TTL         s" | kind=entity | source=probe/scanner/os_fingerprint.py:L469 | neighbors=[._tcp_ttl_result()] | lang=en
+- "scanner_os_fingerprint_rationale_58": "Build an ICMP message (header + rest) with a valid checksum." | kind=entity | source=probe/scanner/os_fingerprint.py:L58 | neighbors=[_icmp()] | lang=en
+- "scanner_os_fingerprint_rationale_60": "Build an ICMP message (header + rest) with a valid checksum." | kind=entity | source=probe/scanner/os_fingerprint.py:L60 | neighbors=[_icmp()] | lang=en
 
 ## Instructions
 

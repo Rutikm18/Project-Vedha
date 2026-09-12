@@ -1,4 +1,4 @@
-# Node Description Batch 326 of 336
+# Node Description Batch 326 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,51 +19,53 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-Write every description in English (en). Do not switch languages.
+LANGUAGE: each entry has a `lang=` marker giving the language of its source.
+Write that entry's description in EXACTLY that language. Do not translate to
+a single common language — match each node's source language individually.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "versions_0003_vuln_scan_fields_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0003_vuln_scan_fields.py:L18 | neighbors=[0003_vuln_scan_fields.py]
-- "versions_0004_exploit_tables_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0004_exploit_tables.py:L93 | neighbors=[0004_exploit_tables.py]
-- "versions_0004_exploit_tables_rationale_1": "Exploit results, approvals, and audit log tables  Revision ID: 0004 Revises: 000" | kind=entity | source=manager/backend/alembic/versions/0004_exploit_tables.py:L1 | neighbors=[0004_exploit_tables.py]
-- "versions_0004_exploit_tables_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0004_exploit_tables.py:L19 | neighbors=[0004_exploit_tables.py]
-- "versions_0005_detection_validation_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0005_detection_validation.py:L80 | neighbors=[0005_detection_validation.py]
-- "versions_0005_detection_validation_rationale_1": "Detection validation: attack_timeline, detection_configs, extend detection_resul" | kind=entity | source=manager/backend/alembic/versions/0005_detection_validation.py:L1 | neighbors=[0005_detection_validation.py]
-- "versions_0005_detection_validation_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0005_detection_validation.py:L19 | neighbors=[0005_detection_validation.py]
-- "versions_0006_llm_outputs_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0006_llm_outputs.py:L48 | neighbors=[0006_llm_outputs.py]
-- "versions_0006_llm_outputs_rationale_1": "AI engine: llm_outputs table + reviewstatus enum  Revision ID: 0006 Revises: 000" | kind=entity | source=manager/backend/alembic/versions/0006_llm_outputs.py:L1 | neighbors=[0006_llm_outputs.py]
-- "versions_0006_llm_outputs_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0006_llm_outputs.py:L19 | neighbors=[0006_llm_outputs.py]
-- "versions_0007_scale_indexes_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0007_scale_indexes.py:L35 | neighbors=[0007_scale_indexes.py]
-- "versions_0007_scale_indexes_rationale_1": "P3: composite indexes for the hot aggregate + poll query paths.  The dashboard's" | kind=entity | source=manager/backend/alembic/versions/0007_scale_indexes.py:L1 | neighbors=[0007_scale_indexes.py]
-- "versions_0007_scale_indexes_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0007_scale_indexes.py:L22 | neighbors=[0007_scale_indexes.py]
-- "versions_0008_scan_results_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0008_scan_results.py:L39 | neighbors=[0008_scan_results.py]
-- "versions_0008_scan_results_rationale_1": "P3-#10: append-only scan_results table (raw facts).  Decouples the (large) raw f" | kind=entity | source=manager/backend/alembic/versions/0008_scan_results.py:L1 | neighbors=[0008_scan_results.py]
-- "versions_0008_scan_results_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0008_scan_results.py:L21 | neighbors=[0008_scan_results.py]
-- "versions_0009_outbox_events_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0009_outbox_events.py:L45 | neighbors=[0009_outbox_events.py]
-- "versions_0009_outbox_events_rationale_1": "Transactional outbox for durable background work (detection, etc.).  Producers i" | kind=entity | source=manager/backend/alembic/versions/0009_outbox_events.py:L1 | neighbors=[0009_outbox_events.py]
-- "versions_0009_outbox_events_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0009_outbox_events.py:L23 | neighbors=[0009_outbox_events.py]
-- "versions_0010_detection_runs_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0010_detection_runs.py:L63 | neighbors=[0010_detection_runs.py]
-- "versions_0010_detection_runs_rationale_1": "Temporal detection: detection_runs table + finding provenance columns.  Records" | kind=entity | source=manager/backend/alembic/versions/0010_detection_runs.py:L1 | neighbors=[0010_detection_runs.py]
-- "versions_0010_detection_runs_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0010_detection_runs.py:L23 | neighbors=[0010_detection_runs.py]
-- "versions_0011_job_lease_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0011_job_lease.py:L33 | neighbors=[0011_job_lease.py]
-- "versions_0011_job_lease_rationale_1": "Job leasing: scan_jobs.lease_expires_at for the dead-probe reaper.  A claimed (r" | kind=entity | source=manager/backend/alembic/versions/0011_job_lease.py:L1 | neighbors=[0011_job_lease.py]
-- "versions_0011_job_lease_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0011_job_lease.py:L21 | neighbors=[0011_job_lease.py]
-- "versions_0012_agent_recommendations_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0012_agent_recommendations.py:L48 | neighbors=[0012_agent_recommendations.py]
-- "versions_0012_agent_recommendations_rationale_1": "Agentic AI advisor: agent_recommendations (recommend-only, human-approved).  Sto" | kind=entity | source=manager/backend/alembic/versions/0012_agent_recommendations.py:L1 | neighbors=[0012_agent_recommendations.py]
-- "versions_0012_agent_recommendations_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0012_agent_recommendations.py:L22 | neighbors=[0012_agent_recommendations.py]
-- "versions_0013_agent_public_key_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0013_agent_public_key.py:L26 | neighbors=[0013_agent_public_key.py]
-- "versions_0013_agent_public_key_rationale_1": "Add agents.public_key (Phase-4 X25519 identity for scope encryption).  The probe" | kind=entity | source=manager/backend/alembic/versions/0013_agent_public_key.py:L1 | neighbors=[0013_agent_public_key.py]
-- "versions_0013_agent_public_key_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0013_agent_public_key.py:L22 | neighbors=[0013_agent_public_key.py]
-- "versions_0015_finding_risk_score_scale_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0015_finding_risk_score_scale.py:L27 | neighbors=[0015_finding_risk_score_scale.py]
-- "versions_0015_finding_risk_score_scale_rationale_1": "Allow the documented 0-1000 finding risk score range.  Revision ID: 0015 Revises" | kind=entity | source=manager/backend/alembic/versions/0015_finding_risk_score_scale.py:L1 | neighbors=[0015_finding_risk_score_scale.py]
-- "versions_0015_finding_risk_score_scale_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0015_finding_risk_score_scale.py:L17 | neighbors=[0015_finding_risk_score_scale.py]
-- "versions_0016_user_tenant_is_active_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0016_user_tenant_is_active.py:L53 | neighbors=[0016_user_tenant_is_active.py]
-- "versions_0016_user_tenant_is_active_rationale_1": "Add is_active to users and tenants; add password_expires_at to users.  All exist" | kind=entity | source=manager/backend/alembic/versions/0016_user_tenant_is_active.py:L1 | neighbors=[0016_user_tenant_is_active.py]
-- "versions_0016_user_tenant_is_active_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0016_user_tenant_is_active.py:L21 | neighbors=[0016_user_tenant_is_active.py]
-- "versions_0017_scan_job_attempts_downgrade": "downgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0017_scan_job_attempts.py:L105 | neighbors=[0017_scan_job_attempts.py]
-- "versions_0017_scan_job_attempts_rationale_1": "Add fenced execution attempts for agent-dispatched scan jobs.  Revision ID: 0017" | kind=entity | source=manager/backend/alembic/versions/0017_scan_job_attempts.py:L1 | neighbors=[0017_scan_job_attempts.py]
-- "versions_0017_scan_job_attempts_upgrade": "upgrade()" | kind=code-symbol | source=manager/backend/alembic/versions/0017_scan_job_attempts.py:L18 | neighbors=[0017_scan_job_attempts.py]
+- "tests_test_host_discovery_udp_testfusewithudp_test_no_signals_unchanged": ".test_no_signals_unchanged()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L82 | neighbors=[TestFuseWithUdp] | lang=en
+- "tests_test_host_discovery_udp_testfusewithudp_test_tcp_plus_udp_corroborate": ".test_tcp_plus_udp_corroborate()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L74 | neighbors=[TestFuseWithUdp] | lang=en
+- "tests_test_host_discovery_udp_testfusewithudp_test_udp_reply_alone_is_confirmed_alive": ".test_udp_reply_alone_is_confirmed_alive()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L60 | neighbors=[TestFuseWithUdp] | lang=en
+- "tests_test_host_discovery_udp_testparsenbstat_test_not_a_response": ".test_not_a_response()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L48 | neighbors=[TestParseNbstat] | lang=en
+- "tests_test_host_health_rationale_1": "test_host_health.py — mid-scan target-offline detection.  The interesting cases" | kind=entity | source=probe/tests/test_host_health.py:L1 | neighbors=[test_host_health.py] | lang=en
+- "tests_test_host_health_rationale_122": "One false alarm must not disable the check for the rest of the scan." | kind=entity | source=probe/tests/test_host_health.py:L122 | neighbors=[.test_flaky_host_can_be_suspected_again…] | lang=en
+- "tests_test_host_health_rationale_132": "The whole point: 'we stopped early' must never read as 'nothing found'." | kind=entity | source=probe/tests/test_host_health.py:L132 | neighbors=[.test_offline_fact_marks_the_scan_incom…] | lang=en
+- "tests_test_host_health_rationale_186": "Regression: \"open|filtered\" is the UDP no-reply verdict, not an open port.     R" | kind=entity | source=probe/tests/test_host_health.py:L186 | neighbors=[TestUdpNoReplyIsNotContact] | lang=en
+- "tests_test_host_health_rationale_203": "The primary detector. Branch-failure evidence covers only the milliseconds     t" | kind=entity | source=probe/tests/test_host_health.py:L203 | neighbors=[TestHeartbeat] | lang=en
+- "tests_test_host_health_rationale_281": "An offline host must reach the operator's screen, not just the fact list.     Ex" | kind=entity | source=probe/tests/test_host_health.py:L281 | neighbors=[TestOperatorVisibility] | lang=en
+- "tests_test_host_health_rationale_295": "A host that is merely filtered is not a problem with the run." | kind=entity | source=probe/tests/test_host_health.py:L295 | neighbors=[.test_flaky_note_is_not_an_error()] | lang=en
+- "tests_test_host_health_rationale_38": "A closed port is the host's own stack answering — positive proof of         life" | kind=entity | source=probe/tests/test_host_health.py:L38 | neighbors=[.test_rst_is_contact_not_silence()] | lang=en
+- "tests_test_host_health_rationale_57": "A branch that declined to run says nothing about the host." | kind=entity | source=probe/tests/test_host_health.py:L57 | neighbors=[.test_no_results_is_not_silence()] | lang=en
+- "tests_test_host_health_rationale_67": "A healthy host with many inapplicable branches must never accumulate         its" | kind=entity | source=probe/tests/test_host_health.py:L67 | neighbors=[.test_strikes_must_be_consecutive()] | lang=en
+- "tests_test_host_health_rationale_85": "The headline false positive: silence from every branch, but the host         is" | kind=entity | source=probe/tests/test_host_health.py:L85 | neighbors=[.test_firewalled_host_that_still_answer…] | lang=en
+- "tests_test_host_health_testconfiguration_test_bad_threshold_falls_back_to_a_sane_value": ".test_bad_threshold_falls_back_to_a_sane_value()" | kind=code-symbol | source=probe/tests/test_host_health.py:L179 | neighbors=[TestConfiguration] | lang=en
+- "tests_test_host_health_testconfiguration_test_threshold_is_tunable_by_env": ".test_threshold_is_tunable_by_env()" | kind=code-symbol | source=probe/tests/test_host_health.py:L173 | neighbors=[TestConfiguration] | lang=en
+- "tests_test_host_health_testheartbeat_test_a_broken_probe_never_condemns_a_host": ".test_a_broken_probe_never_condemns_a_host()" | kind=code-symbol | source=probe/tests/test_host_health.py:L262 | neighbors=[TestHeartbeat] | lang=en
+- "tests_test_host_health_testheartbeat_test_a_single_miss_is_not_enough": ".test_a_single_miss_is_not_enough()" | kind=code-symbol | source=probe/tests/test_host_health.py:L215 | neighbors=[TestHeartbeat] | lang=en
+- "tests_test_http_lease_rationale_121": "An operator cancel (409) is DEFINITIVE, unlike a flaky network.      The grace b" | kind=entity | source=probe/tests/test_http_lease.py:L121 | neighbors=[test_revoked_lease_cancels_the_attempt_…] | lang=en
+- "tests_test_http_lease_test_engine_cancellation_stops_async_scan_work": "test_engine_cancellation_stops_async_scan_work()" | kind=code-symbol | source=probe/tests/test_http_lease.py:L101 | neighbors=[test_http_lease.py] | lang=en
+- "tests_test_http_lease_test_poll_auth_failure_is_not_hidden": "test_poll_auth_failure_is_not_hidden()" | kind=code-symbol | source=probe/tests/test_http_lease.py:L33 | neighbors=[test_http_lease.py] | lang=en
+- "tests_test_http_lease_test_polled_job_renews_lease_until_runner_finishes": "test_polled_job_renews_lease_until_runner_finishes()" | kind=code-symbol | source=probe/tests/test_http_lease.py:L42 | neighbors=[test_http_lease.py] | lang=en
+- "tests_test_http_lease_test_repeated_lease_rejection_cancels_running_attempt": "test_repeated_lease_rejection_cancels_running_attempt()" | kind=code-symbol | source=probe/tests/test_http_lease.py:L74 | neighbors=[test_http_lease.py] | lang=en
+- "tests_test_http_lease_test_transient_poll_failure_propagates_to_loop_handler": "test_transient_poll_failure_propagates_to_loop_handler()" | kind=code-symbol | source=probe/tests/test_http_lease.py:L20 | neighbors=[test_http_lease.py] | lang=en
+- "tests_test_http_lease_test_transient_poll_failure_returns_no_jobs": "test_transient_poll_failure_returns_no_jobs()" | kind=code-symbol | source=probe/tests/test_http_lease.py:L15 | neighbors=[test_http_lease.py] | lang=en
+- "tests_test_hw_bind_rationale_1": "Tests for agent/hw_bind.py" | kind=entity | source=probe/tests/test_hw_bind.py:L1 | neighbors=[test_hw_bind.py] | lang=en
+- "tests_test_hw_bind_testcheckhwbind_test_passes_when_match": ".test_passes_when_match()" | kind=code-symbol | source=probe/tests/test_hw_bind.py:L22 | neighbors=[TestCheckHwBind] | lang=en
+- "tests_test_hw_bind_testcheckhwbind_test_raises_on_mismatch": ".test_raises_on_mismatch()" | kind=code-symbol | source=probe/tests/test_hw_bind.py:L28 | neighbors=[TestCheckHwBind] | lang=en
+- "tests_test_hw_bind_testcheckhwbind_test_raises_when_unset_and_enforced": ".test_raises_when_unset_and_enforced()" | kind=code-symbol | source=probe/tests/test_hw_bind.py:L39 | neighbors=[TestCheckHwBind] | lang=en
+- "tests_test_hw_bind_testcheckhwbind_test_skips_when_unset_and_dev_mode": ".test_skips_when_unset_and_dev_mode()" | kind=code-symbol | source=probe/tests/test_hw_bind.py:L34 | neighbors=[TestCheckHwBind] | lang=en
+- "tests_test_hw_bind_testgethwid_test_deterministic_within_session": ".test_deterministic_within_session()" | kind=code-symbol | source=probe/tests/test_hw_bind.py:L17 | neighbors=[TestGetHwId] | lang=en
+- "tests_test_hw_bind_testgethwid_test_returns_32_hex_chars": ".test_returns_32_hex_chars()" | kind=code-symbol | source=probe/tests/test_hw_bind.py:L12 | neighbors=[TestGetHwId] | lang=en
+- "tests_test_installer_contract_test_installer_rejects_missing_or_unknown_arguments": "test_installer_rejects_missing_or_unknown_arguments()" | kind=code-symbol | source=probe/tests/test_installer_contract.py:L31 | neighbors=[test_installer_contract.py] | lang=en
+- "tests_test_installer_contract_test_installer_requires_only_manager_endpoint_in_dry_run": "test_installer_requires_only_manager_endpoint_in_dry_run()" | kind=code-symbol | source=probe/tests/test_installer_contract.py:L11 | neighbors=[test_installer_contract.py] | lang=en
+- "tests_test_installer_contract_test_installer_source_has_no_human_or_job_credentials": "test_installer_source_has_no_human_or_job_credentials()" | kind=code-symbol | source=probe/tests/test_installer_contract.py:L49 | neighbors=[test_installer_contract.py] | lang=en
+- "tests_test_instance_lock_rationale_1": "One probe process per state file.  OBSERVED TWICE IN ONE SESSION (2026-09-05): t" | kind=entity | source=probe/tests/test_instance_lock.py:L1 | neighbors=[test_instance_lock.py] | lang=en
+- "tests_test_instance_lock_rationale_135": "A guard that cannot run must not become an outage." | kind=entity | source=probe/tests/test_instance_lock.py:L135 | neighbors=[.test_unwritable_directory_does_not_blo…] | lang=en
+- "tests_test_instance_lock_rationale_143": "A garbled hint must never be able to STEAL a held lock." | kind=entity | source=probe/tests/test_instance_lock.py:L143 | neighbors=[.test_corrupt_lockfile_still_refuses_a_…] | lang=pt
+- "tests_test_instance_lock_rationale_46": "Must be a REAL second process: flock is per-open-file-description, so         a" | kind=entity | source=probe/tests/test_instance_lock.py:L46 | neighbors=[.test_second_holder_in_another_process_…] | lang=pt
 
 ## Instructions
 

@@ -1,4 +1,4 @@
-# Node Description Batch 164 of 336
+# Node Description Batch 164 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,51 +12,58 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
+For an entity node (any other kind — e.g. a person, place, event, object),
+describe what the entity is and its role, grounded in its type, its
+relations (neighbors) and the provided citations/evidence — e.g.
+"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
+Ground entity descriptions in the citations/evidence when present; do not
+speculate beyond the context, so a node with no supporting context may be
+left out of the reply.
 Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_result_archive_testprepareatstartup_test_existing_but_unwritable_directory_is_caught_at_startup": ".test_existing_but_unwritable_directory_is_caught_at_startup()" | kind=code-symbol | source=probe/tests/test_result_archive.py:L184 | neighbors=[The Linux bind-mount case: Docker creat…, TestPrepareAtStartup]
-- "tests_test_risk_port_coverage_test_named_high_value_ports_are_scanned": "test_named_high_value_ports_are_scanned()" | kind=code-symbol | source=probe/tests/test_risk_port_coverage.py:L151 | neighbors=[test_risk_port_coverage.py, _swept_by_network_va()]
-- "tests_test_risk_rank_test_bounds": "test_bounds()" | kind=code-symbol | source=manager/backend/tests/test_risk_rank.py:L15 | neighbors=[test_risk_rank.py, _rank()]
-- "tests_test_risk_rank_test_confirmed_exploitable_outranks_contradicted": "test_confirmed_exploitable_outranks_contradicted()" | kind=code-symbol | source=manager/backend/tests/test_risk_rank.py:L23 | neighbors=[test_risk_rank.py, _rank()]
-- "tests_test_risk_rank_test_contradicted_sinks_below_inferred": "test_contradicted_sinks_below_inferred()" | kind=code-symbol | source=manager/backend/tests/test_risk_rank.py:L29 | neighbors=[test_risk_rank.py, _rank()]
-- "tests_test_risk_rank_test_internet_facing_raises_and_auth_lowers": "test_internet_facing_raises_and_auth_lowers()" | kind=code-symbol | source=manager/backend/tests/test_risk_rank.py:L37 | neighbors=[test_risk_rank.py, _rank()]
-- "tests_test_risk_rank_test_kev_raises_rank": "test_kev_raises_rank()" | kind=code-symbol | source=manager/backend/tests/test_risk_rank.py:L33 | neighbors=[test_risk_rank.py, _rank()]
-- "tests_test_risk_rank_test_low_confidence_lowers_rank": "test_low_confidence_lowers_rank()" | kind=code-symbol | source=manager/backend/tests/test_risk_rank.py:L42 | neighbors=[test_risk_rank.py, _rank()]
-- "tests_test_risk_rank_test_severity_remains_an_impact_signal_without_cvss": "test_severity_remains_an_impact_signal_without_cvss()" | kind=code-symbol | source=manager/backend/tests/test_risk_rank.py:L72 | neighbors=[test_risk_rank.py, _rank()]
-- "tests_test_router_signals_test_https_on_odd_port_routes_tls_and_web": "test_https_on_odd_port_routes_tls_and_web()" | kind=code-symbol | source=probe/tests/test_router_signals.py:L52 | neighbors=[test_router_signals.py, _open()]
-- "tests_test_router_signals_test_no_tls_flag_omits_the_marker": "test_no_tls_flag_omits_the_marker()" | kind=code-symbol | source=probe/tests/test_router_signals.py:L161 | neighbors=[test_router_signals.py, --no-tls means no handshake was tried, …]
-- "tests_test_router_signals_test_service_banner_records_tls_probed": "test_service_banner_records_tls_probed()" | kind=code-symbol | source=probe/tests/test_router_signals.py:L137 | neighbors=[test_router_signals.py, The flag must actually be emitted, or t…]
-- "tests_test_router_signals_test_workflow_hands_observed_tls_ports_to_web_scanner": "test_workflow_hands_observed_tls_ports_to_web_scanner()" | kind=code-symbol | source=probe/tests/test_router_signals.py:L70 | neighbors=[test_router_signals.py, 9000 is in the static WEB table but NOT…]
-- "tests_test_router_signals_testtlsprobednegative_test_binary_protocol_ports_route_nowhere": ".test_binary_protocol_ports_route_nowhere()" | kind=code-symbol | source=probe/tests/test_router_signals.py:L129 | neighbors=[TestTlsProbedNegative, _open()]
-- "tests_test_rsync_scanner_testhandshake_test_echo_stops_at_the_first_line": ".test_echo_stops_at_the_first_line()" | kind=code-symbol | source=probe/tests/test_rsync_scanner.py:L68 | neighbors=[TestHandshake, _FakeSock]
-- "tests_test_rsync_scanner_testhandshake_test_greeting_is_echoed_verbatim_including_digest_list": ".test_greeting_is_echoed_verbatim_including_digest_list()" | kind=code-symbol | source=probe/tests/test_rsync_scanner.py:L57 | neighbors=[TestHandshake, _FakeSock]
-- "tests_test_rsync_scanner_testhandshake_test_legacy_greeting_without_digest_list_still_works": ".test_legacy_greeting_without_digest_list_still_works()" | kind=code-symbol | source=probe/tests/test_rsync_scanner.py:L63 | neighbors=[TestHandshake, _FakeSock]
-- "tests_test_rsync_scanner_testhandshake_test_non_rsync_greeting_returns_none_and_sends_nothing": ".test_non_rsync_greeting_returns_none_and_sends_nothing()" | kind=code-symbol | source=probe/tests/test_rsync_scanner.py:L73 | neighbors=[TestHandshake, _FakeSock]
-- "tests_test_rsync_scanner_testparity": "TestParity" | kind=code-symbol | source=probe/tests/test_rsync_scanner.py:L120 | neighbors=[test_rsync_scanner.py, .test_main_scripts()]
-- "tests_test_rsync_scanner_testrsyncfindings_test_anon_modules_high": ".test_anon_modules_high()" | kind=code-symbol | source=probe/tests/test_rsync_scanner.py:L104 | neighbors=[TestRsyncFindings, ._fact()]
-- "tests_test_rsync_scanner_testrsyncfindings_test_auth_only_is_low_disclosure": ".test_auth_only_is_low_disclosure()" | kind=code-symbol | source=probe/tests/test_rsync_scanner.py:L109 | neighbors=[TestRsyncFindings, ._fact()]
-- "tests_test_rsync_scanner_testrsyncfindings_test_no_modules_silent": ".test_no_modules_silent()" | kind=code-symbol | source=probe/tests/test_rsync_scanner.py:L115 | neighbors=[TestRsyncFindings, ._fact()]
-- "tests_test_rsync_scanner_testrsyncscanner_test_anon_modules_open": ".test_anon_modules_open()" | kind=code-symbol | source=probe/tests/test_rsync_scanner.py:L84 | neighbors=[TestRsyncScanner, ._sc()]
-- "tests_test_rsync_scanner_testrsyncscanner_test_no_rsync_filtered": ".test_no_rsync_filtered()" | kind=code-symbol | source=probe/tests/test_rsync_scanner.py:L93 | neighbors=[TestRsyncScanner, ._sc()]
-- "tests_test_run_scoped_fact_scope_testrunscopedfactsareexempt_test_run_scoped_fact_is_not_collected_as_an_identity": ".test_run_scoped_fact_is_not_collected_as_an_identity()" | kind=code-symbol | source=manager/backend/tests/test_run_scoped_fact_scope.py:L54 | neighbors=[TestRunScopedFactsAreExempt, _fact()]
-- "tests_test_run_scoped_fact_scope_testthescopegatestillworks_test_excluded_cidr_still_wins": ".test_excluded_cidr_still_wins()" | kind=code-symbol | source=manager/backend/tests/test_run_scoped_fact_scope.py:L107 | neighbors=[TestTheScopeGateStillWorks, _fact()]
-- "tests_test_run_scoped_fact_scope_testthescopegatestillworks_test_out_of_scope_host_fact_is_still_rejected": ".test_out_of_scope_host_fact_is_still_rejected()" | kind=code-symbol | source=manager/backend/tests/test_run_scoped_fact_scope.py:L75 | neighbors=[TestTheScopeGateStillWorks, _fact()]
-- "tests_test_runtime_requirements_coverage_test_runtime_image_installs_every_wired_branch_dependency": "test_runtime_image_installs_every_wired_branch_dependency()" | kind=code-symbol | source=probe/tests/test_runtime_requirements_coverage.py:L56 | neighbors=[test_runtime_requirements_coverage.py, _declared()]
-- "tests_test_scan_funnel_testbuilddefaultfunnel_test_constructs_and_wires_real_scanners": ".test_constructs_and_wires_real_scanners()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L193 | neighbors=[TestBuildDefaultFunnel, _scope()]
-- "tests_test_scan_funnel_testbuilddefaultfunnel_test_port_scanner_is_syn_scanner": ".test_port_scanner_is_syn_scanner()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L203 | neighbors=[TestBuildDefaultFunnel, _scope()]
-- "tests_test_scan_funnel_testrpcreconcile_test_advertised_ports_are_scanned_and_only_reachable_confirmed": ".test_advertised_ports_are_scanned_and_only_reachable_confirmed()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L278 | neighbors=[TestRpcReconcile, ._funnel()]
-- "tests_test_scan_funnel_testrpcreconcile_test_no_dynamic_ports_no_reconcile_stage": ".test_no_dynamic_ports_no_reconcile_stage()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L297 | neighbors=[TestRpcReconcile, ._funnel()]
-- "tests_test_scan_funnel_testscanfunnel_test_db_scanner_invoked_with_db_port": ".test_db_scanner_invoked_with_db_port()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L156 | neighbors=[TestScanFunnel, _make_funnel()]
-- "tests_test_scan_funnel_testscanfunnel_test_db_scanner_not_invoked_without_db_port": ".test_db_scanner_not_invoked_without_db_port()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L151 | neighbors=[TestScanFunnel, _make_funnel()]
-- "tests_test_scan_funnel_testscanfunnel_test_dead_host_forced_runs_full": ".test_dead_host_forced_runs_full()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L132 | neighbors=[TestScanFunnel, _make_funnel()]
-- "tests_test_scan_funnel_testscanfunnel_test_dead_host_skips_port_scan": ".test_dead_host_skips_port_scan()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L122 | neighbors=[TestScanFunnel, _make_funnel()]
-- "tests_test_scan_funnel_testscanfunnel_test_deep_scanner_receives_only_open_ports": ".test_deep_scanner_receives_only_open_ports()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L144 | neighbors=[TestScanFunnel, _make_funnel()]
-- "tests_test_scan_funnel_testscanfunnel_test_no_open_ports_runs_no_deep_scanners": ".test_no_open_ports_runs_no_deep_scanners()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L162 | neighbors=[TestScanFunnel, _make_funnel()]
-- "tests_test_scan_funnel_testscanfunnel_test_open_ports_extracted": ".test_open_ports_extracted()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L139 | neighbors=[TestScanFunnel, _make_funnel()]
-- "tests_test_scan_funnel_testscanfunnel_test_out_of_scope_target": ".test_out_of_scope_target()" | kind=code-symbol | source=probe/tests/test_scan_funnel.py:L177 | neighbors=[TestScanFunnel, _make_funnel()]
+- "services_finding_content_detection_method": "detection_method()" | kind=code-symbol | source=manager/backend/app/services/finding_content.py:L292 | neighbors=[finding_content.py, How the finding was ESTABLISHED, as the…]
+- "services_finding_content_evidence": "_evidence()" | kind=code-symbol | source=manager/backend/app/services/finding_content.py:L244 | neighbors=[finding_content.py, exploitation_signals()]
+- "services_finding_content_float_or_none": "_float_or_none()" | kind=code-symbol | source=manager/backend/app/services/finding_content.py:L249 | neighbors=[finding_content.py, exploitation_signals()]
+- "services_finding_content_scale_business_impact": "_scale_business_impact()" | kind=code-symbol | source=manager/backend/app/services/finding_content.py:L352 | neighbors=[finding_content.py, finding_content()]
+- "services_finding_content_technical_with_cves": "_technical_with_cves()" | kind=code-symbol | source=manager/backend/app/services/finding_content.py:L368 | neighbors=[finding_content.py, finding_content()]
+- "services_finding_enrichment_detail_enrichment": "detail_enrichment()" | kind=code-symbol | source=manager/backend/app/services/finding_enrichment.py:L19 | neighbors=[finding_enrichment.py, Return the heavy detail-only enrichment…]
+- "services_finding_events_decorate": "_decorate()" | kind=code-symbol | source=manager/backend/app/services/finding_events.py:L201 | neighbors=[finding_events.py, merge_timeline()]
+- "services_finding_events_detected_detail": "_detected_detail()" | kind=code-symbol | source=manager/backend/app/services/finding_events.py:L96 | neighbors=[finding_events.py, synthesize_events()]
+- "services_finding_events_ev": "_ev()" | kind=code-symbol | source=manager/backend/app/services/finding_events.py:L61 | neighbors=[finding_events.py, synthesize_events()]
+- "services_finding_events_row_to_dict": "_row_to_dict()" | kind=code-symbol | source=manager/backend/app/services/finding_events.py:L187 | neighbors=[finding_events.py, build_timeline()]
+- "services_finding_metrics_compute_mttr": "compute_mttr()" | kind=code-symbol | source=manager/backend/app/services/finding_metrics.py:L20 | neighbors=[finding_metrics.py, Mean time to remediate, over findings t…]
+- "services_finding_priority_severity_order_case": "severity_order_case()" | kind=code-symbol | source=manager/backend/app/services/finding_priority.py:L59 | neighbors=[finding_priority.py, A SQLAlchemy CASE mapping a severity co…]
+- "services_finding_workflow_patch_finding": "patch_finding()" | kind=code-symbol | source=manager/backend/app/services/finding_workflow.py:L48 | neighbors=[finding_workflow.py, _event_detail()]
+- "services_finding_workflow_reopen_finding": "reopen_finding()" | kind=code-symbol | source=manager/backend/app/services/finding_workflow.py:L147 | neighbors=[finding_workflow.py, _event_detail()]
+- "services_init": "__init__.py" | kind=code-symbol | source=manager/backend/app/services/__init__.py:L1 | neighbors=[10dfc80 Add comprehensive probe testing…, 2885afa Add comprehensive probe testing…]
+- "services_job_attempt_service_attemptclaim": "AttemptClaim" | kind=code-symbol | source=manager/backend/app/services/job_attempt_service.py:L17 | neighbors=[job_attempt_service.py, claim_job_attempt()]
+- "services_job_attempt_service_renew_job_attempt": "renew_job_attempt()" | kind=code-symbol | source=manager/backend/app/services/job_attempt_service.py:L86 | neighbors=[job_attempt_service.py, Renew only the currently installed runn…]
+- "services_job_result_service_rationale_30": "Recursively strip NUL (U+0000) from every string in a result payload.      Defen" | kind=entity | source=manager/backend/app/services/job_result_service.py:L30 | neighbors=[sanitize_jsonb(), result_checksum()]
+- "services_llm_cached_system_prompt": "cached_system_prompt()" | kind=code-symbol | source=manager/backend/app/services/llm.py:L80 | neighbors=[llm.py, Wrap a plain system prompt as a single …]
+- "services_notifications_send_servicenow": "_send_servicenow()" | kind=code-symbol | source=manager/backend/app/services/notifications.py:L67 | neighbors=[notifications.py, Create a ServiceNow incident via the Ta…]
+- "services_portal_metrics_period": "_period()" | kind=code-symbol | source=manager/backend/app/services/portal_metrics.py:L50 | neighbors=[portal_metrics.py, status_timeline()]
+- "services_posture_findingview": "FindingView" | kind=code-symbol | source=manager/backend/app/services/posture.py:L22 | neighbors=[posture.py, Duck-typed projection of a Finding + it…]
+- "services_posture_grade_for": "grade_for()" | kind=code-symbol | source=manager/backend/app/services/posture.py:L55 | neighbors=[posture.py, compute_scores()]
+- "services_posture_risk_prob": "_risk_prob()" | kind=code-symbol | source=manager/backend/app/services/posture.py:L62 | neighbors=[posture.py, compute_scores()]
+- "services_posture_scores": "Scores" | kind=code-symbol | source=manager/backend/app/services/posture.py:L36 | neighbors=[posture.py, compute_scores()]
+- "services_posture_severity": "_severity()" | kind=code-symbol | source=manager/backend/app/services/posture.py:L116 | neighbors=[posture.py, compare()]
+- "services_project_time_resolve_project_tz": "_resolve_project_tz()" | kind=code-symbol | source=manager/backend/app/services/project_time.py:L41 | neighbors=[project_time.py, The project timezone, degrading safely …]
+- "services_project_time_to_project_tz": "to_project_tz()" | kind=code-symbol | source=manager/backend/app/services/project_time.py:L70 | neighbors=[project_time.py, Re-render an existing datetime in the p…]
+- "services_reference_encode": "_encode()" | kind=code-symbol | source=manager/backend/app/services/reference.py:L64 | neighbors=[reference.py, suffix_for()]
+- "services_reference_scan_job_reference": "scan_job_reference()" | kind=code-symbol | source=manager/backend/app/services/reference.py:L96 | neighbors=[reference.py, make_reference()]
+- "services_remediation_kb_cves": "_cves()" | kind=code-symbol | source=manager/backend/app/services/remediation_kb.py:L54 | neighbors=[remediation_kb.py, classify_finding()]
+- "services_remediation_kb_step": "_step()" | kind=code-symbol | source=manager/backend/app/services/remediation_kb.py:L94 | neighbors=[remediation_kb.py, One remediation step. `generic` is REQU…]
+- "services_remediation_kb_text": "_text()" | kind=code-symbol | source=manager/backend/app/services/remediation_kb.py:L45 | neighbors=[remediation_kb.py, classify_finding()]
+- "services_risk_rank_bounded": "_bounded()" | kind=code-symbol | source=manager/backend/app/services/risk_rank.py:L35 | neighbors=[risk_rank.py, compute_risk_rank()]
+- "services_risk_rank_compute_risk_rank": "compute_risk_rank()" | kind=code-symbol | source=manager/backend/app/services/risk_rank.py:L39 | neighbors=[risk_rank.py, _bounded()]
+- "services_scope_crypto_public_key_from_b64": "public_key_from_b64()" | kind=code-symbol | source=manager/backend/app/services/scope_crypto.py:L85 | neighbors=[scope_crypto.py, Decode a base64-encoded X25519 public k…]
+- "services_scope_targets_parse_networks": "_parse_networks()" | kind=code-symbol | source=manager/backend/app/services/scope_targets.py:L28 | neighbors=[scope_targets.py, validate_targets_in_scope()]
+- "services_verification_kb_verification_for_finding": "verification_for_finding()" | kind=code-symbol | source=manager/backend/app/services/verification_kb.py:L66 | neighbors=[verification_kb.py, Return a deterministic retest block for…]
+- "settings_page_apikeyssection": "ApiKeysSection()" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L295 | neighbors=[page.tsx, inlineInput()]
+- "settings_page_auditlogsection": "AuditLogSection()" | kind=code-symbol | source=manager/frontend/app/settings/page.tsx:L816 | neighbors=[page.tsx, inlineInput()]
 
 ## Instructions
 

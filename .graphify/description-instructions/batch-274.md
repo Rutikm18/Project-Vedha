@@ -1,4 +1,4 @@
-# Node Description Batch 275 of 336
+# Node Description Batch 275 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,51 +19,53 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-Write every description in English (en). Do not switch languages.
+LANGUAGE: each entry has a `lang=` marker giving the language of its source.
+Write that entry's description in EXACTLY that language. Do not translate to
+a single common language — match each node's source language individually.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_async_udp_start_server": "_start_server()" | kind=code-symbol | source=probe/tests/test_async_udp.py:L36 | neighbors=[test_async_udp.py]
-- "tests_test_async_udp_test_datagram_received_resolves_future_with_bytes": "test_datagram_received_resolves_future_with_bytes()" | kind=code-symbol | source=probe/tests/test_async_udp.py:L77 | neighbors=[test_async_udp.py]
-- "tests_test_async_udp_test_error_received_connection_refused_maps_to_closed": "test_error_received_connection_refused_maps_to_closed()" | kind=code-symbol | source=probe/tests/test_async_udp.py:L86 | neighbors=[test_async_udp.py]
-- "tests_test_async_udp_test_probe_concurrency_all_complete": "test_probe_concurrency_all_complete()" | kind=code-symbol | source=probe/tests/test_async_udp.py:L106 | neighbors=[test_async_udp.py]
-- "tests_test_async_udp_test_probe_no_reply_returns_none_on_timeout": "test_probe_no_reply_returns_none_on_timeout()" | kind=code-symbol | source=probe/tests/test_async_udp.py:L67 | neighbors=[test_async_udp.py]
-- "tests_test_async_udp_test_probe_open_returns_exact_payload": "test_probe_open_returns_exact_payload()" | kind=code-symbol | source=probe/tests/test_async_udp.py:L56 | neighbors=[test_async_udp.py]
-- "tests_test_async_udp_test_probe_open_returns_reply_bytes": "test_probe_open_returns_reply_bytes()" | kind=code-symbol | source=probe/tests/test_async_udp.py:L46 | neighbors=[test_async_udp.py]
-- "tests_test_async_udp_test_probe_unbound_loopback_port_is_not_open": "test_probe_unbound_loopback_port_is_not_open()" | kind=code-symbol | source=probe/tests/test_async_udp.py:L95 | neighbors=[test_async_udp.py]
-- "tests_test_async_udp_test_probe_unresolvable_host_returns_none": "test_probe_unresolvable_host_returns_none()" | kind=code-symbol | source=probe/tests/test_async_udp.py:L126 | neighbors=[test_async_udp.py]
-- "tests_test_async_udp_test_udp_scanner_generic_probe_detects_unknown_responder": "test_udp_scanner_generic_probe_detects_unknown_responder()" | kind=code-symbol | source=probe/tests/test_async_udp.py:L183 | neighbors=[test_async_udp.py]
-- "tests_test_async_udp_test_udp_scanner_generic_probe_unknown_port_silence_is_open_filtered": "test_udp_scanner_generic_probe_unknown_port_silence_is_open_filtered()" | kind=code-symbol | source=probe/tests/test_async_udp.py:L208 | neighbors=[test_async_udp.py]
-- "tests_test_async_udp_test_udp_scanner_maps_closed_sentinel_to_closed_status": "test_udp_scanner_maps_closed_sentinel_to_closed_status()" | kind=code-symbol | source=probe/tests/test_async_udp.py:L138 | neighbors=[test_async_udp.py]
-- "tests_test_async_udp_test_udp_scanner_probe_filtered_on_timeout": "test_udp_scanner_probe_filtered_on_timeout()" | kind=code-symbol | source=probe/tests/test_async_udp.py:L183 | neighbors=[test_async_udp.py]
-- "tests_test_async_udp_test_udp_scanner_probe_open_filtered_on_timeout": "test_udp_scanner_probe_open_filtered_on_timeout()" | kind=code-symbol | source=probe/tests/test_async_udp.py:L229 | neighbors=[test_async_udp.py]
-- "tests_test_async_udp_test_udp_scanner_probe_open_status_via_event_loop": "test_udp_scanner_probe_open_status_via_event_loop()" | kind=code-symbol | source=probe/tests/test_async_udp.py:L160 | neighbors=[test_async_udp.py]
-- "tests_test_attack_path_correlation_rationale_1": "test_attack_path_correlation.py — manager-native composite correlation over prob" | kind=entity | source=manager/backend/tests/test_attack_path_correlation.py:L1 | neighbors=[test_attack_path_correlation.py]
-- "tests_test_attack_path_correlation_test_every_composite_cites_and_tags": "test_every_composite_cites_and_tags()" | kind=code-symbol | source=manager/backend/tests/test_attack_path_correlation.py:L139 | neighbors=[test_attack_path_correlation.py]
-- "tests_test_attack_path_correlation_test_results_are_sorted_most_severe_first": "test_results_are_sorted_most_severe_first()" | kind=code-symbol | source=manager/backend/tests/test_attack_path_correlation.py:L153 | neighbors=[test_attack_path_correlation.py]
-- "tests_test_attack_paths_built_graph": "built_graph()" | kind=code-symbol | source=manager/backend/tests/test_attack_paths.py:L39 | neighbors=[test_attack_paths.py]
-- "tests_test_attack_paths_demo": "demo()" | kind=code-symbol | source=manager/backend/tests/test_attack_paths.py:L34 | neighbors=[test_attack_paths.py]
-- "tests_test_attack_paths_testgraphbuilder_test_asset_node_attributes": ".test_asset_node_attributes()" | kind=code-symbol | source=manager/backend/tests/test_attack_paths.py:L59 | neighbors=[TestGraphBuilder]
-- "tests_test_attack_paths_testgraphbuilder_test_connects_to_and_same_segment_edges": ".test_connects_to_and_same_segment_edges()" | kind=code-symbol | source=manager/backend/tests/test_attack_paths.py:L77 | neighbors=[TestGraphBuilder]
-- "tests_test_attack_paths_testgraphbuilder_test_credential_reuse_edges": ".test_credential_reuse_edges()" | kind=code-symbol | source=manager/backend/tests/test_attack_paths.py:L82 | neighbors=[TestGraphBuilder]
-- "tests_test_attack_paths_testgraphbuilder_test_exploit_complexity_falls_back_to_severity": ".test_exploit_complexity_falls_back_to_severity()" | kind=code-symbol | source=manager/backend/tests/test_attack_paths.py:L102 | neighbors=[TestGraphBuilder]
-- "tests_test_attack_paths_testgraphbuilder_test_exploit_complexity_from_vector": ".test_exploit_complexity_from_vector()" | kind=code-symbol | source=manager/backend/tests/test_attack_paths.py:L95 | neighbors=[TestGraphBuilder]
-- "tests_test_attack_paths_testgraphbuilder_test_exploit_edges_only_for_exploitable": ".test_exploit_edges_only_for_exploitable()" | kind=code-symbol | source=manager/backend/tests/test_attack_paths.py:L70 | neighbors=[TestGraphBuilder]
-- "tests_test_attack_paths_testgraphbuilder_test_has_service_and_has_finding_edges": ".test_has_service_and_has_finding_edges()" | kind=code-symbol | source=manager/backend/tests/test_attack_paths.py:L65 | neighbors=[TestGraphBuilder]
-- "tests_test_attack_paths_testgraphbuilder_test_is_internet_exposed": ".test_is_internet_exposed()" | kind=code-symbol | source=manager/backend/tests/test_attack_paths.py:L87 | neighbors=[TestGraphBuilder]
-- "tests_test_attack_paths_testgraphbuilder_test_nodes_and_edges_created": ".test_nodes_and_edges_created()" | kind=code-symbol | source=manager/backend/tests/test_attack_paths.py:L54 | neighbors=[TestGraphBuilder]
-- "tests_test_attack_paths_testgraphvisualizer_test_d3_highlights_top_path": ".test_d3_highlights_top_path()" | kind=code-symbol | source=manager/backend/tests/test_attack_paths.py:L202 | neighbors=[TestGraphVisualizer]
-- "tests_test_attack_paths_testgraphvisualizer_test_d3_marks_compromised": ".test_d3_marks_compromised()" | kind=code-symbol | source=manager/backend/tests/test_attack_paths.py:L197 | neighbors=[TestGraphVisualizer]
-- "tests_test_attack_paths_testgraphvisualizer_test_d3_shape": ".test_d3_shape()" | kind=code-symbol | source=manager/backend/tests/test_attack_paths.py:L187 | neighbors=[TestGraphVisualizer]
-- "tests_test_attack_paths_testgraphvisualizer_test_layout_is_deterministic": ".test_layout_is_deterministic()" | kind=code-symbol | source=manager/backend/tests/test_attack_paths.py:L210 | neighbors=[TestGraphVisualizer]
-- "tests_test_attack_paths_testneo4jclient_test_run_without_connection_returns_empty": ".test_run_without_connection_returns_empty()" | kind=code-symbol | source=manager/backend/tests/test_attack_paths.py:L222 | neighbors=[TestNeo4jClient]
-- "tests_test_attack_paths_testneo4jclient_test_run_write_noop_without_connection": ".test_run_write_noop_without_connection()" | kind=code-symbol | source=manager/backend/tests/test_attack_paths.py:L226 | neighbors=[TestNeo4jClient]
-- "tests_test_attack_paths_testneo4jclient_test_sync_to_neo4j_noop_without_client": ".test_sync_to_neo4j_noop_without_client()" | kind=code-symbol | source=manager/backend/tests/test_attack_paths.py:L230 | neighbors=[TestNeo4jClient]
-- "tests_test_attack_paths_testpathanalyzer_test_blast_radius_unknown_asset": ".test_blast_radius_unknown_asset()" | kind=code-symbol | source=manager/backend/tests/test_attack_paths.py:L170 | neighbors=[TestPathAnalyzer]
-- "tests_test_attack_paths_testpathanalyzer_test_chokepoints_empty_without_paths": ".test_chokepoints_empty_without_paths()" | kind=code-symbol | source=manager/backend/tests/test_attack_paths.py:L159 | neighbors=[TestPathAnalyzer]
-- "tests_test_attack_paths_testpathanalyzer_test_cypher_constants_present": ".test_cypher_constants_present()" | kind=code-symbol | source=manager/backend/tests/test_attack_paths.py:L175 | neighbors=[TestPathAnalyzer]
-- "tests_test_attack_paths_testpathanalyzer_test_find_blast_radius": ".test_find_blast_radius()" | kind=code-symbol | source=manager/backend/tests/test_attack_paths.py:L163 | neighbors=[TestPathAnalyzer]
+- "scan_page_scannerrun": "ScannerRun" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L66 | neighbors=[page.tsx] | lang=en
+- "scan_page_scanpage": "ScanPage()" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L1220 | neighbors=[page.tsx] | lang=en
+- "scan_page_sectionlabel": "SectionLabel()" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L161 | neighbors=[page.tsx] | lang=en
+- "scan_page_uc_meta": "UC_META" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L113 | neighbors=[page.tsx] | lang=en
+- "scan_page_usecase": "UseCase" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L23 | neighbors=[page.tsx] | lang=en
+- "scan_page_usecasecard": "UseCaseCard()" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L328 | neighbors=[page.tsx] | lang=en
+- "scanner_accuracy_gate_rationale_101": "True when this corpus's labels can support an ACCURACY claim." | kind=entity | source=probe/scanner/accuracy_gate.py:L101 | neighbors=[is_independent()] | lang=en
+- "scanner_accuracy_gate_rationale_106": "Threshold violations for one scored corpus (empty list = passed)." | kind=entity | source=probe/scanner/accuracy_gate.py:L106 | neighbors=[check_thresholds()] | lang=en
+- "scanner_accuracy_gate_rationale_143": "Score every corpus in `directory` and collect threshold violations.      Returns" | kind=entity | source=probe/scanner/accuracy_gate.py:L143 | neighbors=[run_gate()] | lang=en
+- "scanner_accuracy_gate_rationale_62": "A corpus is malformed or unlabeled — a gate failure, never a silent pass." | kind=entity | source=probe/scanner/accuracy_gate.py:L62 | neighbors=[CorpusError] | lang=pt
+- "scanner_accuracy_gate_rationale_66": "Load and structurally validate one corpus file." | kind=entity | source=probe/scanner/accuracy_gate.py:L66 | neighbors=[load_corpus()] | lang=en
+- "scanner_accuracy_gate_rationale_93": "Every *.json corpus in `directory`, sorted by name for stable reports." | kind=entity | source=probe/scanner/accuracy_gate.py:L93 | neighbors=[load_corpora()] | lang=en
+- "scanner_accuracy_rationale_125": "Run the findings engine over a labeled corpus and score it.      corpus = {name," | kind=entity | source=probe/scanner/accuracy.py:L125 | neighbors=[evaluate_corpus()] | lang=en
+- "scanner_accuracy_rationale_49": "Precision / recall / F1 of produced findings vs a labeled expected set.      Key" | kind=entity | source=probe/scanner/accuracy.py:L49 | neighbors=[score_findings()] | lang=en
+- "scanner_accuracy_rationale_80": "(target, port) -> status, from port/syn/mass scan facts (last one wins)." | kind=entity | source=probe/scanner/accuracy.py:L80 | neighbors=[_observed_states()] | lang=en
+- "scanner_accuracy_rationale_95": "OPEN precision/recall + overall state accuracy vs a remote-validated     ground" | kind=entity | source=probe/scanner/accuracy.py:L95 | neighbors=[score_port_states()] | lang=pt
+- "scanner_adaptive_timeout_adaptivetimeout_init": ".__init__()" | kind=code-symbol | source=probe/scanner/adaptive_timeout.py:L21 | neighbors=[AdaptiveTimeout] | lang=en
+- "scanner_adaptive_timeout_rationale_32": "Fold one round-trip sample (seconds) into the estimate. Ignores         missing/" | kind=entity | source=probe/scanner/adaptive_timeout.py:L32 | neighbors=[.observe()] | lang=en
+- "scanner_adaptive_timeout_rationale_45": "Current timeout: base until we have a sample, then SRTT + 4*RTTVAR         clamp" | kind=entity | source=probe/scanner/adaptive_timeout.py:L45 | neighbors=[.timeout()] | lang=pt
+- "scanner_adaptive_timeout_rationale_55": "Convenience: build an estimator and fold in a sequence of RTT samples." | kind=entity | source=probe/scanner/adaptive_timeout.py:L55 | neighbors=[from_rtts()] | lang=en
+- "scanner_cpe_rationale_1": "cpe.py — derive a CPE 2.3 identity from an observed (service, product, version)." | kind=entity | source=probe/scanner/cpe.py:L1 | neighbors=[cpe.py] | lang=en
+- "scanner_cpe_rationale_104": "Prefer an explicit version field; else pull a version-like token out of the" | kind=entity | source=probe/scanner/cpe.py:L104 | neighbors=[_extract_version()] | lang=en
+- "scanner_cpe_rationale_117": "Return {vendor, product, version, cpe23} for a recognized product, else None." | kind=entity | source=probe/scanner/cpe.py:L117 | neighbors=[to_cpe()] | lang=en
+- "scanner_db_scanner_dbscanner_init": ".__init__()" | kind=code-symbol | source=probe/scanner/db_scanner.py:L456 | neighbors=[DBScanner] | lang=en
+- "scanner_db_scanner_main": "main()" | kind=code-symbol | source=probe/scanner/db_scanner.py:L504 | neighbors=[db_scanner.py] | lang=en
+- "scanner_db_scanner_probe_mysqlx": "_probe_mysqlx()" | kind=code-symbol | source=probe/scanner/db_scanner.py:L363 | neighbors=[db_scanner.py] | lang=en
+- "scanner_db_scanner_probe_oracle": "_probe_oracle()" | kind=code-symbol | source=probe/scanner/db_scanner.py:L392 | neighbors=[db_scanner.py] | lang=en
+- "scanner_db_scanner_probe_postgres": "_probe_postgres()" | kind=code-symbol | source=probe/scanner/db_scanner.py:L98 | neighbors=[db_scanner.py] | lang=en
+- "scanner_db_scanner_rationale_1": "db_scanner.py — fingerprint database services.  WHY: databases are everywhere on" | kind=entity | source=probe/scanner/db_scanner.py:L1 | neighbors=[db_scanner.py] | lang=en
+- "scanner_db_scanner_rationale_102": "Classify a Redis INFO reply. `unauthenticated_read` is True only when we     act" | kind=entity | source=probe/scanner/db_scanner.py:L102 | neighbors=[interpret_redis_info()] | lang=en
+- "scanner_db_scanner_rationale_131": "A well-formed PRELOGIN request (MS-TDS 2.2.6.5).      The previous request's opt" | kind=entity | source=probe/scanner/db_scanner.py:L131 | neighbors=[_build_tds_prelogin()] | lang=en
+- "scanner_db_scanner_rationale_165": "Read server version and encryption posture out of a TDS PRELOGIN reply.      Pos" | kind=entity | source=probe/scanner/db_scanner.py:L165 | neighbors=[parse_tds_prelogin()] | lang=en
+- "scanner_db_scanner_rationale_229": "Classify a Redis INFO reply. `unauthenticated_read` is True only when we     act" | kind=entity | source=probe/scanner/db_scanner.py:L229 | neighbors=[interpret_redis_info()] | lang=en
+- "scanner_db_scanner_rationale_259": "Frame a single-field admin command as OP_MSG (opcode 2013).      MongoDB 5.1 REM" | kind=entity | source=probe/scanner/db_scanner.py:L259 | neighbors=[build_op_msg_command()] | lang=pt
+- "scanner_db_scanner_rationale_289": "Pull a MongoDB server version out of a wire reply, or None.      The isMaster ha" | kind=entity | source=probe/scanner/db_scanner.py:L289 | neighbors=[extract_mongo_version()] | lang=en
+- "scanner_db_scanner_rationale_301": "Classify a serverStatus reply into auth posture.      Returns {} when the reply" | kind=entity | source=probe/scanner/db_scanner.py:L301 | neighbors=[interpret_mongodb_auth()] | lang=en
+- "scanner_db_scanner_rationale_435": "Stamp the `db: True` discriminator onto every db_scan fact.      Every sibling d" | kind=entity | source=probe/scanner/db_scanner.py:L435 | neighbors=[stamp_db_fact()] | lang=en
+- "scanner_db_scanner_rationale_54": "Parse a MySQL/MariaDB initial handshake packet.      Returns None when this is n" | kind=entity | source=probe/scanner/db_scanner.py:L54 | neighbors=[parse_mysql_greeting()] | lang=en
+- "scanner_delta_scanner_rationale_1": "delta_scanner.py — scan-state comparison and continuous attack-surface monitorin" | kind=entity | source=probe/scanner/delta_scanner.py:L1 | neighbors=[delta_scanner.py] | lang=en
+- "scanner_delta_scanner_rationale_122": "Best-effort service name from data dict or scanner name." | kind=entity | source=probe/scanner/delta_scanner.py:L122 | neighbors=[_extract_service()] | lang=en
 
 ## Instructions
 

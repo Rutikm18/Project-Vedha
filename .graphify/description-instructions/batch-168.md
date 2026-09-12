@@ -1,4 +1,4 @@
-# Node Description Batch 169 of 336
+# Node Description Batch 169 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,58 +12,51 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
-For an entity node (any other kind — e.g. a person, place, event, object),
-describe what the entity is and its role, grounded in its type, its
-relations (neighbors) and the provided citations/evidence — e.g.
-"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
-Ground entity descriptions in the citations/evidence when present; do not
-speculate beyond the context, so a node with no supporting context may be
-left out of the reply.
 Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_validation_ingest_test_confirmed_raises_certainty": "test_confirmed_raises_certainty()" | kind=code-symbol | source=manager/backend/tests/test_validation_ingest.py:L32 | neighbors=[test_validation_ingest.py, _finding()]
-- "tests_test_validation_ingest_test_contradicted_marks_false_positive_without_touching_status": "test_contradicted_marks_false_positive_without_touching_status()" | kind=code-symbol | source=manager/backend/tests/test_validation_ingest.py:L40 | neighbors=[test_validation_ingest.py, _finding()]
-- "tests_test_validation_ingest_test_inconclusive_leaves_finding_unchanged": "test_inconclusive_leaves_finding_unchanged()" | kind=code-symbol | source=manager/backend/tests/test_validation_ingest.py:L48 | neighbors=[test_validation_ingest.py, _finding()]
-- "tests_test_validation_ingest_test_ingest_unknown_job_is_noop": "test_ingest_unknown_job_is_noop()" | kind=code-symbol | source=manager/backend/tests/test_validation_ingest.py:L107 | neighbors=[test_validation_ingest.py, _exec()]
-- "tests_test_validation_request_schema": "test_validation_request_schema.py" | kind=code-symbol | source=manager/backend/tests/test_validation_request_schema.py:L1 | neighbors=[58c2d10 feat(active-validation): Valida…, test_validation_request_columns_and_def…]
-- "tests_test_vantage_fusion_test_ambiguous_when_only_open_filtered": "test_ambiguous_when_only_open_filtered()" | kind=code-symbol | source=manager/backend/tests/test_vantage_fusion.py:L51 | neighbors=[test_vantage_fusion.py, _probe()]
-- "tests_test_vantage_fusion_test_declared_external_vantage_without_hint_name": "test_declared_external_vantage_without_hint_name()" | kind=code-symbol | source=manager/backend/tests/test_vantage_fusion.py:L64 | neighbors=[test_vantage_fusion.py, _probe()]
-- "tests_test_vantage_fusion_test_external_vantage_open_makes_port_external": "test_external_vantage_open_makes_port_external()" | kind=code-symbol | source=manager/backend/tests/test_vantage_fusion.py:L24 | neighbors=[test_vantage_fusion.py, _probe()]
-- "tests_test_vantage_fusion_test_fused_service_exposure_is_keyed_for_service_rows": "test_fused_service_exposure_is_keyed_for_service_rows()" | kind=code-symbol | source=manager/backend/tests/test_vantage_fusion.py:L79 | neighbors=[test_vantage_fusion.py, _probe()]
-- "tests_test_vantage_fusion_test_internal_only_when_no_external_probe_sees_open": "test_internal_only_when_no_external_probe_sees_open()" | kind=code-symbol | source=manager/backend/tests/test_vantage_fusion.py:L35 | neighbors=[test_vantage_fusion.py, _probe()]
-- "tests_test_vantage_fusion_test_internal_open_does_not_imply_external": "test_internal_open_does_not_imply_external()" | kind=code-symbol | source=manager/backend/tests/test_vantage_fusion.py:L43 | neighbors=[test_vantage_fusion.py, _probe()]
-- "tests_test_vantage_fusion_test_not_exposed_when_closed_everywhere": "test_not_exposed_when_closed_everywhere()" | kind=code-symbol | source=manager/backend/tests/test_vantage_fusion.py:L57 | neighbors=[test_vantage_fusion.py, _probe()]
-- "tests_test_vantage_fusion_test_single_probe_matches_its_own_verdict": "test_single_probe_matches_its_own_verdict()" | kind=code-symbol | source=manager/backend/tests/test_vantage_fusion.py:L72 | neighbors=[test_vantage_fusion.py, _probe()]
-- "tests_test_vnc_scanner_testparity": "TestParity" | kind=code-symbol | source=probe/tests/test_vnc_scanner.py:L76 | neighbors=[test_vnc_scanner.py, .test_main_scripts()]
-- "tests_test_vnc_scanner_testvncfindings_test_no_auth_is_critical": ".test_no_auth_is_critical()" | kind=code-symbol | source=probe/tests/test_vnc_scanner.py:L57 | neighbors=[TestVNCFindings, ._fact()]
-- "tests_test_vnc_scanner_testvncfindings_test_strong_auth_silent": ".test_strong_auth_silent()" | kind=code-symbol | source=probe/tests/test_vnc_scanner.py:L69 | neighbors=[TestVNCFindings, ._fact()]
-- "tests_test_vnc_scanner_testvncfindings_test_weak_only_is_medium": ".test_weak_only_is_medium()" | kind=code-symbol | source=probe/tests/test_vnc_scanner.py:L63 | neighbors=[TestVNCFindings, ._fact()]
-- "tests_test_vnc_scanner_testvncscanner_test_no_auth_open": ".test_no_auth_open()" | kind=code-symbol | source=probe/tests/test_vnc_scanner.py:L38 | neighbors=[TestVNCScanner, ._sc()]
-- "tests_test_vnc_scanner_testvncscanner_test_no_vnc_filtered": ".test_no_vnc_filtered()" | kind=code-symbol | source=probe/tests/test_vnc_scanner.py:L46 | neighbors=[TestVNCScanner, ._sc()]
-- "tests_test_vuln_enrichment_rationale_1": "Unit tests for VulnEnrichmentService — all external HTTP calls mocked." | kind=entity | source=manager/backend/tests/test_vuln_enrichment.py:L1 | neighbors=[test_vuln_enrichment.py, VulnEnrichmentService]
-- "tests_test_vuln_enrichment_rationale_53": "Create a mock httpx.AsyncClient that returns different responses per URL." | kind=entity | source=manager/backend/tests/test_vuln_enrichment.py:L53 | neighbors=[_make_http_mock(), VulnEnrichmentService]
-- "tests_test_vuln_enrichment_test_check_cisa_kev_absent": "test_check_cisa_kev_absent()" | kind=code-symbol | source=manager/backend/tests/test_vuln_enrichment.py:L134 | neighbors=[test_vuln_enrichment.py, _make_http_mock()]
-- "tests_test_vuln_enrichment_test_check_cisa_kev_case_insensitive": "test_check_cisa_kev_case_insensitive()" | kind=code-symbol | source=manager/backend/tests/test_vuln_enrichment.py:L140 | neighbors=[test_vuln_enrichment.py, _make_http_mock()]
-- "tests_test_vuln_enrichment_test_check_cisa_kev_present": "test_check_cisa_kev_present()" | kind=code-symbol | source=manager/backend/tests/test_vuln_enrichment.py:L128 | neighbors=[test_vuln_enrichment.py, _make_http_mock()]
-- "tests_test_vuln_enrichment_test_enrich_full": "test_enrich_full()" | kind=code-symbol | source=manager/backend/tests/test_vuln_enrichment.py:L205 | neighbors=[test_vuln_enrichment.py, _make_http_mock()]
-- "tests_test_vuln_enrichment_test_fetch_epss_success": "test_fetch_epss_success()" | kind=code-symbol | source=manager/backend/tests/test_vuln_enrichment.py:L106 | neighbors=[test_vuln_enrichment.py, _make_http_mock()]
-- "tests_test_vuln_enrichment_test_fetch_mitre_from_nvd_references": "test_fetch_mitre_from_nvd_references()" | kind=code-symbol | source=manager/backend/tests/test_vuln_enrichment.py:L155 | neighbors=[test_vuln_enrichment.py, _make_http_mock()]
-- "tests_test_vuln_enrichment_test_fetch_nvd_caches_result": "test_fetch_nvd_caches_result()" | kind=code-symbol | source=manager/backend/tests/test_vuln_enrichment.py:L94 | neighbors=[test_vuln_enrichment.py, _make_http_mock()]
-- "tests_test_vuln_enrichment_test_fetch_nvd_success": "test_fetch_nvd_success()" | kind=code-symbol | source=manager/backend/tests/test_vuln_enrichment.py:L72 | neighbors=[test_vuln_enrichment.py, _make_http_mock()]
-- "tests_test_weakness_map_testclicorrelatemerges_test_correlate_includes_weakness_findings": ".test_correlate_includes_weakness_findings()" | kind=code-symbol | source=probe/tests/test_weakness_map.py:L189 | neighbors=[TestCliCorrelateMerges, _wrapped()]
-- "tests_test_weakness_map_testclicorrelatemerges_test_no_weakness_map_flag_disables_it": ".test_no_weakness_map_flag_disables_it()" | kind=code-symbol | source=probe/tests/test_weakness_map.py:L200 | neighbors=[TestCliCorrelateMerges, _wrapped()]
-- "tests_test_weakness_map_testcorrelateweaknesses_test_cve_absent_from_mirror_still_emitted_with_note": ".test_cve_absent_from_mirror_still_emitted_with_note()" | kind=code-symbol | source=probe/tests/test_weakness_map.py:L113 | neighbors=[TestCorrelateWeaknesses, _raw()]
-- "tests_test_weakness_map_testcorrelateweaknesses_test_exposure_boosts_risk": ".test_exposure_boosts_risk()" | kind=code-symbol | source=probe/tests/test_weakness_map.py:L82 | neighbors=[TestCorrelateWeaknesses, _raw()]
-- "tests_test_weakness_map_testcorrelateweaknesses_test_no_db_degrades_gracefully": ".test_no_db_degrades_gracefully()" | kind=code-symbol | source=probe/tests/test_weakness_map.py:L120 | neighbors=[TestCorrelateWeaknesses, _raw()]
-- "tests_test_weakness_map_testcorrelateweaknesses_test_obsolete_tls_both_when_both_offered": ".test_obsolete_tls_both_when_both_offered()" | kind=code-symbol | source=probe/tests/test_weakness_map.py:L104 | neighbors=[TestCorrelateWeaknesses, _raw()]
-- "tests_test_weakness_map_testcorrelateweaknesses_test_obsolete_tls_sslv2_only_drown": ".test_obsolete_tls_sslv2_only_drown()" | kind=code-symbol | source=probe/tests/test_weakness_map.py:L98 | neighbors=[TestCorrelateWeaknesses, _raw()]
-- "tests_test_weakness_map_testcorrelateweaknesses_test_obsolete_tls_sslv3_only_poodle": ".test_obsolete_tls_sslv3_only_poodle()" | kind=code-symbol | source=probe/tests/test_weakness_map.py:L92 | neighbors=[TestCorrelateWeaknesses, _raw()]
-- "tests_test_weakness_map_testcorrelateweaknesses_test_smbv1_maps_to_eternalblue_with_live_enrichment": ".test_smbv1_maps_to_eternalblue_with_live_enrichment()" | kind=code-symbol | source=probe/tests/test_weakness_map.py:L70 | neighbors=[TestCorrelateWeaknesses, _wrapped()]
-- "tests_test_weakness_map_testcorrelateweaknesses_test_sorted_by_risk_desc": ".test_sorted_by_risk_desc()" | kind=code-symbol | source=probe/tests/test_weakness_map.py:L130 | neighbors=[TestCorrelateWeaknesses, _raw()]
-- "tests_test_weakness_map_testcorrelateweaknesses_test_terrapin_high_confidence": ".test_terrapin_high_confidence()" | kind=code-symbol | source=probe/tests/test_weakness_map.py:L88 | neighbors=[TestCorrelateWeaknesses, _raw()]
+- "tests_test_detection_core_testaggregate_test_multi_run_intermittent": ".test_multi_run_intermittent()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L1137 | neighbors=[TestAggregate, _finding()]
+- "tests_test_detection_core_testaggregate_test_multi_run_stable": ".test_multi_run_stable()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L1130 | neighbors=[TestAggregate, _finding()]
+- "tests_test_detection_core_testaggregate_test_single_run": ".test_single_run()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L1123 | neighbors=[TestAggregate, _finding()]
+- "tests_test_detection_core_testasset_test_add_fact_updates_first_last_seen": ".test_add_fact_updates_first_last_seen()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L135 | neighbors=[TestAsset, _fact()]
+- "tests_test_detection_core_testasset_test_as_of_cutoff": ".test_as_of_cutoff()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L156 | neighbors=[TestAsset, _fact()]
+- "tests_test_detection_core_testasset_test_facts_by_scanner": ".test_facts_by_scanner()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L142 | neighbors=[TestAsset, _fact()]
+- "tests_test_detection_core_testasset_test_open_ports": ".test_open_ports()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L149 | neighbors=[TestAsset, _fact()]
+- "tests_test_detection_core_testclassifytier_test_authoritative_tier4": ".test_authoritative_tier4()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L665 | neighbors=[TestClassifyTier, _finding()]
+- "tests_test_detection_core_testclassifytier_test_multi_signal_tier2": ".test_multi_signal_tier2()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L674 | neighbors=[TestClassifyTier, _finding()]
+- "tests_test_detection_core_testclassifytier_test_protocol_scanner_tier3": ".test_protocol_scanner_tier3()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L669 | neighbors=[TestClassifyTier, _finding()]
+- "tests_test_detection_core_testclassifytier_test_single_banner_tier1": ".test_single_banner_tier1()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L679 | neighbors=[TestClassifyTier, _finding()]
+- "tests_test_detection_core_testcomputepriority_test_cvss_critical": ".test_cvss_critical()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L825 | neighbors=[TestComputePriority, _finding()]
+- "tests_test_detection_core_testcomputepriority_test_cvss_high": ".test_cvss_high()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L831 | neighbors=[TestComputePriority, _finding()]
+- "tests_test_detection_core_testcomputepriority_test_cvss_low": ".test_cvss_low()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L843 | neighbors=[TestComputePriority, _finding()]
+- "tests_test_detection_core_testcomputepriority_test_cvss_medium": ".test_cvss_medium()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L837 | neighbors=[TestComputePriority, _finding()]
+- "tests_test_detection_core_testcomputepriority_test_elevated_epss_high": ".test_elevated_epss_high()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L818 | neighbors=[TestComputePriority, _finding()]
+- "tests_test_detection_core_testcomputepriority_test_high_epss_critical": ".test_high_epss_critical()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L811 | neighbors=[TestComputePriority, _finding()]
+- "tests_test_detection_core_testcomputepriority_test_kev_alone_critical": ".test_kev_alone_critical()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L805 | neighbors=[TestComputePriority, _finding()]
+- "tests_test_detection_core_testcomputepriority_test_kev_unauth_reachable_critical": ".test_kev_unauth_reachable_critical()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L796 | neighbors=[TestComputePriority, _finding()]
+- "tests_test_detection_core_testcomputepriority_test_unknown_tier": ".test_unknown_tier()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L849 | neighbors=[TestComputePriority, _finding()]
+- "tests_test_detection_core_testcorrelatesmbpatch_test_smbv1_with_missing_hotfixes_returns_finding": ".test_smbv1_with_missing_hotfixes_returns_finding()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L639 | neighbors=[TestCorrelateSmbPatch, _fact()]
+- "tests_test_detection_core_testcorrelatesmbpatch_test_smbv1_with_patched_host_returns_none": ".test_smbv1_with_patched_host_returns_none()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L651 | neighbors=[TestCorrelateSmbPatch, _fact()]
+- "tests_test_detection_core_testcorrelatesmbpatch_test_smbv1_without_hotfix_data_returns_none": ".test_smbv1_without_hotfix_data_returns_none()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L634 | neighbors=[TestCorrelateSmbPatch, _fact()]
+- "tests_test_detection_core_testcpecandidatecpe23_test_cpe23_format": ".test_cpe23_format()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L977 | neighbors=[TestCPECandidateCpe23, _candidate()]
+- "tests_test_detection_core_testdedupfindings_test_authoritative_upgrades_state": ".test_authoritative_upgrades_state()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L535 | neighbors=[TestDedupFindings, _finding()]
+- "tests_test_detection_core_testdedupfindings_test_different_ids_preserved": ".test_different_ids_preserved()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L545 | neighbors=[TestDedupFindings, _finding()]
+- "tests_test_detection_core_testdedupfindings_test_evidence_refs_dedup_preserving_order": ".test_evidence_refs_dedup_preserving_order()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L550 | neighbors=[TestDedupFindings, _finding()]
+- "tests_test_detection_core_testdedupfindings_test_merges_same_id": ".test_merges_same_id()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L526 | neighbors=[TestDedupFindings, _finding()]
+- "tests_test_detection_core_testepssdb_test_case_insensitive": ".test_case_insensitive()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L927 | neighbors=[TestEpssDb, _mock_epss_db()]
+- "tests_test_detection_core_testepssdb_test_get_existing": ".test_get_existing()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L919 | neighbors=[TestEpssDb, _mock_epss_db()]
+- "tests_test_detection_core_testepssdb_test_get_missing": ".test_get_missing()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L923 | neighbors=[TestEpssDb, _mock_epss_db()]
+- "tests_test_detection_core_testfactref_test_ref_format": ".test_ref_format()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L181 | neighbors=[TestFactRef, _fact()]
+- "tests_test_detection_core_testfindingconsistency_test_classification_intermittent": ".test_classification_intermittent()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L1115 | neighbors=[TestFindingConsistency, _finding()]
+- "tests_test_detection_core_testfindingconsistency_test_classification_mostly_stable": ".test_classification_mostly_stable()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L1109 | neighbors=[TestFindingConsistency, _finding()]
+- "tests_test_detection_core_testfindingconsistency_test_classification_stable": ".test_classification_stable()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L1103 | neighbors=[TestFindingConsistency, _finding()]
+- "tests_test_detection_core_testfindingconsistency_test_rate": ".test_rate()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L1097 | neighbors=[TestFindingConsistency, _finding()]
+- "tests_test_detection_core_testfindingpostinit_test_accepts_nonempty_evidence_refs": ".test_accepts_nonempty_evidence_refs()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L129 | neighbors=[TestFindingPostInit, _finding()]
+- "tests_test_detection_core_testfindingtodict_test_enums_serialized_to_values": ".test_enums_serialized_to_values()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L173 | neighbors=[TestFindingToDict, _finding()]
+- "tests_test_detection_core_testingestfile_test_run_scoped_fact_is_ingested_but_creates_no_asset": ".test_run_scoped_fact_is_ingested_but_creates_no_asset()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L237 | neighbors=[ipv6_discovery reports on the RUN, not …, TestIngestFile]
+- "tests_test_detection_core_testkevdb_test_case_insensitive": ".test_case_insensitive()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L913 | neighbors=[TestKevDb, _mock_kev_db()]
 
 ## Instructions
 

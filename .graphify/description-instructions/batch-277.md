@@ -1,4 +1,4 @@
-# Node Description Batch 278 of 336
+# Node Description Batch 278 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,51 +19,53 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-Write every description in English (en). Do not switch languages.
+LANGUAGE: each entry has a `lang=` marker giving the language of its source.
+Write that entry's description in EXACTLY that language. Do not translate to
+a single common language — match each node's source language individually.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_customer_access_rationale_28": "db.execute yields the given scalar_one_or_none values in order." | kind=entity | source=manager/backend/tests/test_customer_access.py:L28 | neighbors=[_mock_db()]
-- "tests_test_customer_access_test_generate_password_is_unique_and_nonempty": "test_generate_password_is_unique_and_nonempty()" | kind=code-symbol | source=manager/backend/tests/test_customer_access.py:L82 | neighbors=[test_customer_access.py]
-- "tests_test_customer_access_testbuildscanjob_test_dispatches_on_the_assigned_agent": ".test_dispatches_on_the_assigned_agent()" | kind=code-symbol | source=manager/backend/tests/test_customer_access.py:L59 | neighbors=[TestBuildScanJob]
-- "tests_test_customer_access_testbuildscanjob_test_no_assigned_agent_raises": ".test_no_assigned_agent_raises()" | kind=code-symbol | source=manager/backend/tests/test_customer_access.py:L75 | neighbors=[TestBuildScanJob]
-- "tests_test_customer_access_testbuildscanjob_test_unknown_scan_type_falls_back_to_vuln_scan": ".test_unknown_scan_type_falls_back_to_vuln_scan()" | kind=code-symbol | source=manager/backend/tests/test_customer_access.py:L70 | neighbors=[TestBuildScanJob]
-- "tests_test_customer_reveal_rationale_1": "test_customer_reveal.py — operator reveal of a customer login password (item 1)." | kind=entity | source=manager/backend/tests/test_customer_reveal.py:L1 | neighbors=[test_customer_reveal.py]
-- "tests_test_cve_correlation_db": "db()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L107 | neighbors=[test_cve_correlation.py]
-- "tests_test_cve_correlation_rationale_1": "test_cve_correlation.py — the offline CVE-correlation layer (cve/ package).  Thi" | kind=entity | source=probe/tests/test_cve_correlation.py:L1 | neighbors=[test_cve_correlation.py]
-- "tests_test_cve_correlation_testcli_test_correlate_writes_findings": ".test_correlate_writes_findings()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L351 | neighbors=[TestCli]
-- "tests_test_cve_correlation_testcli_test_ingest_stdout_is_clean_json": ".test_ingest_stdout_is_clean_json()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L371 | neighbors=[TestCli]
-- "tests_test_cve_correlation_testcorrelate_test_backport_banner_downgrades_confidence": ".test_backport_banner_downgrades_confidence()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L203 | neighbors=[TestCorrelate]
-- "tests_test_cve_correlation_testcorrelate_test_clean_banner_stays_medium": ".test_clean_banner_stays_medium()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L212 | neighbors=[TestCorrelate]
-- "tests_test_cve_correlation_testcorrelate_test_dedup_by_cve_target_port": ".test_dedup_by_cve_target_port()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L190 | neighbors=[TestCorrelate]
-- "tests_test_cve_correlation_testcorrelate_test_exposed_top_finding": ".test_exposed_top_finding()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L168 | neighbors=[TestCorrelate]
-- "tests_test_cve_correlation_testcorrelate_test_facts_without_cpe_ignored": ".test_facts_without_cpe_ignored()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L186 | neighbors=[TestCorrelate]
-- "tests_test_cve_correlation_testcorrelate_test_never_asserts_confidence_is_medium": ".test_never_asserts_confidence_is_medium()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L176 | neighbors=[TestCorrelate]
-- "tests_test_cve_correlation_testcorrelate_test_sorted_by_risk_desc": ".test_sorted_by_risk_desc()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L181 | neighbors=[TestCorrelate]
-- "tests_test_cve_correlation_testcorrelate_test_summarize": ".test_summarize()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L199 | neighbors=[TestCorrelate]
-- "tests_test_cve_correlation_testcorrelate_test_to_dict_tags_type": ".test_to_dict_tags_type()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L195 | neighbors=[TestCorrelate]
-- "tests_test_cve_correlation_testcpe_test_datastore_map_entries": ".test_datastore_map_entries()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L95 | neighbors=[TestCpe]
-- "tests_test_cve_correlation_testcpe_test_mysql_vs_mariadb_vendor": ".test_mysql_vs_mariadb_vendor()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L85 | neighbors=[TestCpe]
-- "tests_test_cve_correlation_testcpe_test_no_version_returns_none": ".test_no_version_returns_none()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L92 | neighbors=[TestCpe]
-- "tests_test_cve_correlation_testcpe_test_openssh": ".test_openssh()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L76 | neighbors=[TestCpe]
-- "tests_test_cve_correlation_testcpe_test_unknown_product_returns_none": ".test_unknown_product_returns_none()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L89 | neighbors=[TestCpe]
-- "tests_test_cve_correlation_testcpe_test_version_pulled_from_product_string": ".test_version_pulled_from_product_string()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L81 | neighbors=[TestCpe]
-- "tests_test_cve_correlation_testingestfeeds_test_epss_tolerates_plain_csv": ".test_epss_tolerates_plain_csv()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L313 | neighbors=[TestIngestFeeds]
-- "tests_test_cve_correlation_testingestfeeds_test_ingest_all_stamps_last_ingest": ".test_ingest_all_stamps_last_ingest()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L318 | neighbors=[TestIngestFeeds]
-- "tests_test_cve_correlation_testingestfeeds_test_kev_and_epss": ".test_kev_and_epss()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L295 | neighbors=[TestIngestFeeds]
-- "tests_test_cve_correlation_testingestparse_test_cvss_fallback": ".test_cvss_fallback()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L253 | neighbors=[TestIngestParse]
-- "tests_test_cve_correlation_testingestparse_test_ingest_idempotent": ".test_ingest_idempotent()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L245 | neighbors=[TestIngestParse]
-- "tests_test_cve_correlation_testingestparse_test_ingest_one_cve": ".test_ingest_one_cve()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L234 | neighbors=[TestIngestParse]
-- "tests_test_cve_correlation_testingestparse_test_parse_criteria": ".test_parse_criteria()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L260 | neighbors=[TestIngestParse]
-- "tests_test_cve_correlation_testmirrorage_test_fresh_has_no_warning": ".test_fresh_has_no_warning()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L333 | neighbors=[TestMirrorAge]
-- "tests_test_cve_correlation_testmirrorage_test_stale_warns": ".test_stale_warns()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L340 | neighbors=[TestMirrorAge]
-- "tests_test_cve_correlation_testmirrorage_test_unknown_when_no_stamp": ".test_unknown_when_no_stamp()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L330 | neighbors=[TestMirrorAge]
-- "tests_test_cve_correlation_testmirrorage_test_unparseable_stamp_is_graceful": ".test_unparseable_stamp_is_graceful()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L344 | neighbors=[TestMirrorAge]
-- "tests_test_cve_correlation_testriskscore_test_bands": ".test_bands()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L151 | neighbors=[TestRiskScore]
-- "tests_test_cve_correlation_testriskscore_test_capped_at_100": ".test_capped_at_100()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L163 | neighbors=[TestRiskScore]
-- "tests_test_cve_correlation_testriskscore_test_kev_and_exposure_weight": ".test_kev_and_exposure_weight()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L157 | neighbors=[TestRiskScore]
-- "tests_test_cve_correlation_testversion_test_compare": ".test_compare()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L51 | neighbors=[TestVersion]
+- "scanner_findings_rationale_824": "rsync daemon exposure. Anonymously-selectable modules are the high finding     (" | kind=entity | source=probe/scanner/findings.py:L824 | neighbors=[_rule_rsync()] | lang=en
+- "scanner_findings_rationale_851": "IPMI/BMC exposure. Cipher-zero is a critical auth bypass; a merely reachable" | kind=entity | source=probe/scanner/findings.py:L851 | neighbors=[_rule_ipmi()] | lang=pt
+- "scanner_findings_rationale_862": "VNC/RFB authentication exposure. 'None' security type = unauthenticated     remo" | kind=entity | source=probe/scanner/findings.py:L862 | neighbors=[_rule_vnc()] | lang=en
+- "scanner_findings_rationale_883": "SMTP hygiene: VRFY/EXPN user enumeration, and missing STARTTLS (cleartext)." | kind=entity | source=probe/scanner/findings.py:L883 | neighbors=[_rule_smtp()] | lang=en
+- "scanner_findings_rationale_893": "IPMI/BMC exposure. Cipher-zero is a critical auth bypass; a merely reachable" | kind=entity | source=probe/scanner/findings.py:L893 | neighbors=[_rule_ipmi()] | lang=pt
+- "scanner_findings_rationale_917": "Windows RPC endpoint-mapper disclosure — the internal RPC service map." | kind=entity | source=probe/scanner/findings.py:L917 | neighbors=[_rule_msrpc()] | lang=en
+- "scanner_findings_rationale_925": "SMTP hygiene: VRFY/EXPN user enumeration, and missing STARTTLS (cleartext)." | kind=entity | source=probe/scanner/findings.py:L925 | neighbors=[_rule_smtp()] | lang=en
+- "scanner_findings_rationale_944": "Exposed network printer — an information leak and an attack surface." | kind=entity | source=probe/scanner/findings.py:L944 | neighbors=[_rule_printer()] | lang=en
+- "scanner_findings_rationale_959": "Windows RPC endpoint-mapper disclosure — the internal RPC service map." | kind=entity | source=probe/scanner/findings.py:L959 | neighbors=[_rule_msrpc()] | lang=en
+- "scanner_findings_rationale_98": "Accept a raw JSONL dict or a ScanResult; return a plain dict view." | kind=entity | source=probe/scanner/findings.py:L98 | neighbors=[_as_dict()] | lang=pt
+- "scanner_findings_rationale_986": "Exposed network printer — an information leak and an attack surface." | kind=entity | source=probe/scanner/findings.py:L986 | neighbors=[_rule_printer()] | lang=en
+- "scanner_findings_rationale_990": "SMB signing not required => a viable NTLM relay target. If SMBv1 is also on," | kind=entity | source=probe/scanner/findings.py:L990 | neighbors=[_corr_ntlm_relay()] | lang=en
+- "scanner_ftp_scanner_ftpscanner_init": ".__init__()" | kind=code-symbol | source=probe/scanner/ftp_scanner.py:L65 | neighbors=[FTPScanner] | lang=en
+- "scanner_ftp_scanner_main": "main()" | kind=code-symbol | source=probe/scanner/ftp_scanner.py:L176 | neighbors=[ftp_scanner.py] | lang=en
+- "scanner_ftp_scanner_rationale_1": "ftp_scanner.py — FTP anonymous-access check (VA checklist: anonymous file exposu" | kind=entity | source=probe/scanner/ftp_scanner.py:L1 | neighbors=[ftp_scanner.py] | lang=en
+- "scanner_ftp_scanner_rationale_129": "Confirm anonymous READ via PASV + LIST, reading a bounded amount." | kind=entity | source=probe/scanner/ftp_scanner.py:L129 | neighbors=[._list_bounded()] | lang=pt
+- "scanner_ftp_scanner_rationale_45": "Extract the passive data PORT from a 227 reply. We connect to the TARGET     on" | kind=entity | source=probe/scanner/ftp_scanner.py:L45 | neighbors=[parse_pasv()] | lang=en
+- "scanner_ftp_scanner_rationale_56": "Best-effort software token from the 220 greeting (e.g. 'vsFTPd 3.0.3')." | kind=entity | source=probe/scanner/ftp_scanner.py:L56 | neighbors=[banner_software()] | lang=en
+- "scanner_ftp_scanner_rationale_70": "Read one (possibly multi-line) FTP reply; return (code, full_text)." | kind=entity | source=probe/scanner/ftp_scanner.py:L70 | neighbors=[._read_response()] | lang=en
+- "scanner_ftp_scanner_rationale_96": "Blocking: greeting → anonymous login → bounded read confirmation.         Monkey" | kind=entity | source=probe/scanner/ftp_scanner.py:L96 | neighbors=[._probe()] | lang=en
+- "scanner_host_discovery_hostdiscoveryscanner_init": ".__init__()" | kind=code-symbol | source=probe/scanner/host_discovery.py:L501 | neighbors=[HostDiscoveryScanner] | lang=en
+- "scanner_host_discovery_main": "main()" | kind=code-symbol | source=probe/scanner/host_discovery.py:L696 | neighbors=[host_discovery.py] | lang=en
+- "scanner_host_discovery_rationale_1": "host_discovery.py — determine which hosts are alive, with graded confidence.  ME" | kind=entity | source=probe/scanner/host_discovery.py:L1 | neighbors=[host_discovery.py] | lang=en
+- "scanner_host_discovery_rationale_101": "True if the 2nd-least-significant bit of the first octet is set —     i.e. a loc" | kind=entity | source=probe/scanner/host_discovery.py:L101 | neighbors=[is_locally_administered()] | lang=en
+- "scanner_host_discovery_rationale_104": "Parse a NetBIOS NBSTAT (node status) response (RFC 1002 §4.2.18).      Returns {" | kind=entity | source=probe/scanner/host_discovery.py:L104 | neighbors=[parse_nbstat()] | lang=pt
+- "scanner_host_discovery_rationale_112": "Zero-pad each octet ('d2:58:2b:ff:cb:4' -> 'd2:58:2b:ff:cb:04'); lower." | kind=entity | source=probe/scanner/host_discovery.py:L112 | neighbors=[normalize_mac()] | lang=en
+- "scanner_host_discovery_rationale_118": "Best-effort device classification from the L2/L3 evidence." | kind=entity | source=probe/scanner/host_discovery.py:L118 | neighbors=[device_hint()] | lang=en
+- "scanner_host_discovery_rationale_126": "True if the 2nd-least-significant bit of the first octet is set —     i.e. a loc" | kind=entity | source=probe/scanner/host_discovery.py:L126 | neighbors=[is_locally_administered()] | lang=en
+- "scanner_host_discovery_rationale_134": "Return {ip: normalized_mac} from the OS neighbor cache.      Tries `ip neigh` (L" | kind=entity | source=probe/scanner/host_discovery.py:L134 | neighbors=[read_arp_table()] | lang=en
+- "scanner_host_discovery_rationale_143": "Best-effort device classification from the L2/L3 evidence." | kind=entity | source=probe/scanner/host_discovery.py:L143 | neighbors=[device_hint()] | lang=en
+- "scanner_host_discovery_rationale_163": "PTR lookup; None on any failure. Runs in _RDNS_POOL, never on the loop." | kind=entity | source=probe/scanner/host_discovery.py:L163 | neighbors=[_reverse_dns()] | lang=en
+- "scanner_host_discovery_rationale_185": "Return 'open', 'refused', or None (no response)." | kind=entity | source=probe/scanner/host_discovery.py:L185 | neighbors=[._probe()] | lang=en
+- "scanner_host_discovery_rationale_196": "One OS neighbor-cache observation about a target, with graded freshness." | kind=entity | source=probe/scanner/host_discovery.py:L196 | neighbors=[Neighbor] | lang=pt
+- "scanner_host_discovery_rationale_203": "Parse one `ip neigh` / `arp -n` / `ndp -n` line into a Neighbor.      Handles bo" | kind=entity | source=probe/scanner/host_discovery.py:L203 | neighbors=[parse_neighbor_line()] | lang=pt
+- "scanner_host_discovery_rationale_209": "Zero-pad each octet ('d2:58:2b:ff:cb:4' -> 'd2:58:2b:ff:cb:04'); lower." | kind=entity | source=probe/scanner/host_discovery.py:L209 | neighbors=[normalize_mac()] | lang=en
+- "scanner_host_discovery_rationale_223": "True if the 2nd-least-significant bit of the first octet is set —     i.e. a loc" | kind=entity | source=probe/scanner/host_discovery.py:L223 | neighbors=[is_locally_administered()] | lang=en
+- "scanner_host_discovery_rationale_233": "Targeted, POST-probe neighbor lookup for a single IP (unprivileged).      Reads" | kind=entity | source=probe/scanner/host_discovery.py:L233 | neighbors=[read_neighbor()] | lang=en
+- "scanner_host_discovery_rationale_240": "Best-effort device classification from the L2/L3 evidence." | kind=entity | source=probe/scanner/host_discovery.py:L240 | neighbors=[device_hint()] | lang=en
+- "scanner_host_discovery_rationale_261": "Bulk {ip: normalized_mac} snapshot of the neighbor cache (fallback path).      R" | kind=entity | source=probe/scanner/host_discovery.py:L261 | neighbors=[read_arp_table()] | lang=en
+- "scanner_host_discovery_rationale_264": "Bulk {ip: normalized_mac} snapshot of the neighbor cache (fallback path).      R" | kind=entity | source=probe/scanner/host_discovery.py:L264 | neighbors=[read_arp_table()] | lang=en
 
 ## Instructions
 

@@ -1,4 +1,4 @@
-# Node Description Batch 329 of 336
+# Node Description Batch 329 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -9,6 +9,9 @@ your JSON answer to the answer file.
 You are documenting nodes in a knowledge graph.
 For each entry below, write ONE concise factual plain-language sentence
 describing what it is or does. Use only the provided context.
+For a code symbol (kind=code-symbol — a function, class, or constant),
+describe what the function/symbol does based on its name, source location
+and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
 For an entity node (any other kind — e.g. a person, place, event, object),
 describe what the entity is and its role, grounded in its type, its
 relations (neighbors) and the provided citations/evidence — e.g.
@@ -23,46 +26,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "websocket_manager_rationale_168": "Record transport features explicitly advertised by a connected probe." | kind=entity | source=manager/backend/app/websocket/manager.py:L168 | neighbors=[.record_features()] | lang=en
-- "websocket_manager_rationale_170": "Record transport features explicitly advertised by a connected probe." | kind=entity | source=manager/backend/app/websocket/manager.py:L170 | neighbors=[.record_features()] | lang=en
-- "websocket_manager_rationale_181": "Push a job to a specific agent over WebSocket.          Returns True if the job" | kind=entity | source=manager/backend/app/websocket/manager.py:L181 | neighbors=[.push_job()] | lang=en
-- "websocket_manager_rationale_183": "Push a job to a specific agent over WebSocket.          Returns True if the job" | kind=entity | source=manager/backend/app/websocket/manager.py:L183 | neighbors=[.push_job()] | lang=en
-- "websocket_manager_rationale_185": "Push a job to a specific agent over WebSocket.          Returns True if the job" | kind=entity | source=manager/backend/app/websocket/manager.py:L185 | neighbors=[.push_job()] | lang=en
-- "websocket_manager_rationale_187": "Check if a specific agent is connected." | kind=entity | source=manager/backend/app/websocket/manager.py:L187 | neighbors=[.is_connected()] | lang=en
-- "websocket_manager_rationale_191": "Check if a specific agent is online (connected + not busy)." | kind=entity | source=manager/backend/app/websocket/manager.py:L191 | neighbors=[.is_online()] | lang=en
-- "websocket_manager_rationale_196": "Return a snapshot of all connected agent IDs." | kind=entity | source=manager/backend/app/websocket/manager.py:L196 | neighbors=[.connected_agents()] | lang=en
-- "websocket_manager_rationale_201": "Return agent IDs whose status is 'online' (idle, ready for job)." | kind=entity | source=manager/backend/app/websocket/manager.py:L201 | neighbors=[.online_agents()] | lang=en
-- "websocket_manager_rationale_211": "Push a job to the first online agent in the requested tenant.          Returns t" | kind=entity | source=manager/backend/app/websocket/manager.py:L211 | neighbors=[.push_job_to_first_online()] | lang=en
-- "websocket_manager_rationale_229": "Check if a specific agent is connected." | kind=entity | source=manager/backend/app/websocket/manager.py:L229 | neighbors=[.is_connected()] | lang=en
-- "websocket_manager_rationale_230": "High-level manager for graph-specific WebSocket operations." | kind=entity | source=manager/backend/app/websocket/manager.py:L230 | neighbors=[GraphWebSocketManager] | lang=en
-- "websocket_manager_rationale_231": "Check if a specific agent is connected." | kind=entity | source=manager/backend/app/websocket/manager.py:L231 | neighbors=[.is_connected()] | lang=en
-- "websocket_manager_rationale_233": "Check if a specific agent is online (connected + not busy)." | kind=entity | source=manager/backend/app/websocket/manager.py:L233 | neighbors=[.is_online()] | lang=en
-- "websocket_manager_rationale_235": "Check if a specific agent is online (connected + not busy)." | kind=entity | source=manager/backend/app/websocket/manager.py:L235 | neighbors=[.is_online()] | lang=en
-- "websocket_manager_rationale_237": "Handle a new WebSocket client connection." | kind=entity | source=manager/backend/app/websocket/manager.py:L237 | neighbors=[.handle_client()] | lang=pt
-- "websocket_manager_rationale_238": "Return a snapshot of all connected agent IDs." | kind=entity | source=manager/backend/app/websocket/manager.py:L238 | neighbors=[.connected_agents()] | lang=en
-- "websocket_manager_rationale_240": "Return a snapshot of all connected agent IDs." | kind=entity | source=manager/backend/app/websocket/manager.py:L240 | neighbors=[.connected_agents()] | lang=en
-- "websocket_manager_rationale_251": "Return idle connected agents belonging to exactly one tenant." | kind=entity | source=manager/backend/app/websocket/manager.py:L251 | neighbors=[.online_agents_for_tenant()] | lang=en
-- "websocket_manager_rationale_253": "Return idle connected agents belonging to exactly one tenant." | kind=entity | source=manager/backend/app/websocket/manager.py:L253 | neighbors=[.online_agents_for_tenant()] | lang=en
-- "websocket_manager_rationale_257": "Handle incoming WebSocket messages." | kind=entity | source=manager/backend/app/websocket/manager.py:L257 | neighbors=[._handle_message()] | lang=en
-- "websocket_manager_rationale_26": "Manages WebSocket connections with room-based broadcasting." | kind=entity | source=manager/backend/app/websocket/manager.py:L26 | neighbors=[ConnectionManager] | lang=en
-- "websocket_manager_rationale_261": "Subscribe to the push backplane and forward any job whose target agent         i" | kind=entity | source=manager/backend/app/websocket/manager.py:L261 | neighbors=[.run_backplane()] | lang=en
-- "websocket_manager_rationale_263": "Subscribe to the push backplane and forward any job whose target agent         i" | kind=entity | source=manager/backend/app/websocket/manager.py:L263 | neighbors=[.run_backplane()] | lang=en
-- "websocket_manager_rationale_270": "Return 'online', 'busy', or 'offline'." | kind=entity | source=manager/backend/app/websocket/manager.py:L270 | neighbors=[.get_agent_status()] | lang=en
-- "websocket_manager_rationale_272": "Return 'online', 'busy', or 'offline'." | kind=entity | source=manager/backend/app/websocket/manager.py:L272 | neighbors=[.get_agent_status()] | lang=en
-- "websocket_manager_rationale_274": "Return agent_ids whose last heartbeat is older than `seconds`.          These ag" | kind=entity | source=manager/backend/app/websocket/manager.py:L274 | neighbors=[.agent_stale_after()] | lang=en
-- "websocket_manager_rationale_276": "Return agent_ids whose last heartbeat is older than `seconds`.          These ag" | kind=entity | source=manager/backend/app/websocket/manager.py:L276 | neighbors=[.agent_stale_after()] | lang=en
-- "websocket_manager_rationale_28": "Manages WebSocket connections with room-based broadcasting." | kind=entity | source=manager/backend/app/websocket/manager.py:L28 | neighbors=[ConnectionManager] | lang=en
-- "websocket_manager_rationale_280": "Broadcast graph data update to all subscribers." | kind=entity | source=manager/backend/app/websocket/manager.py:L280 | neighbors=[.broadcast_graph_update()] | lang=en
-- "websocket_manager_rationale_289": "Broadcast a single node update." | kind=entity | source=manager/backend/app/websocket/manager.py:L289 | neighbors=[.broadcast_node_update()] | lang=pt
-- "websocket_manager_rationale_291": "High-level manager for graph-specific WebSocket operations." | kind=entity | source=manager/backend/app/websocket/manager.py:L291 | neighbors=[GraphWebSocketManager] | lang=en
-- "websocket_manager_rationale_292": "Check if a specific agent is connected." | kind=entity | source=manager/backend/app/websocket/manager.py:L292 | neighbors=[.is_connected()] | lang=en
-- "websocket_manager_rationale_293": "High-level manager for graph-specific WebSocket operations." | kind=entity | source=manager/backend/app/websocket/manager.py:L293 | neighbors=[GraphWebSocketManager] | lang=en
-- "websocket_manager_rationale_294": "Check if a specific agent is connected." | kind=entity | source=manager/backend/app/websocket/manager.py:L294 | neighbors=[.is_connected()] | lang=en
-- "websocket_manager_rationale_296": "Check if a specific agent is online (connected + not busy)." | kind=entity | source=manager/backend/app/websocket/manager.py:L296 | neighbors=[.is_online()] | lang=en
-- "websocket_manager_rationale_299": "Broadcast layout change to all subscribers." | kind=entity | source=manager/backend/app/websocket/manager.py:L299 | neighbors=[.broadcast_layout_update()] | lang=en
-- "websocket_manager_rationale_300": "Handle a new WebSocket client connection." | kind=entity | source=manager/backend/app/websocket/manager.py:L300 | neighbors=[.handle_client()] | lang=pt
-- "websocket_manager_rationale_301": "Return a snapshot of all connected agent IDs." | kind=entity | source=manager/backend/app/websocket/manager.py:L301 | neighbors=[.connected_agents()] | lang=en
-- "websocket_manager_rationale_303": "Return a snapshot of all connected agent IDs." | kind=entity | source=manager/backend/app/websocket/manager.py:L303 | neighbors=[.connected_agents()] | lang=en
+- "tests_test_job_admission_test_drop_denied_keeps_clean_targets": "test_drop_denied_keeps_clean_targets()" | kind=code-symbol | source=probe/tests/test_job_admission.py:L19 | neighbors=[test_job_admission.py] | lang=en
+- "tests_test_job_admission_test_drop_denied_removes_manager_ip": "test_drop_denied_removes_manager_ip()" | kind=code-symbol | source=probe/tests/test_job_admission.py:L52 | neighbors=[test_job_admission.py] | lang=en
+- "tests_test_job_admission_test_drop_denied_removes_never_scan_targets": "test_drop_denied_removes_never_scan_targets()" | kind=code-symbol | source=probe/tests/test_job_admission.py:L13 | neighbors=[test_job_admission.py] | lang=en
+- "tests_test_job_admission_test_manager_ip_from_env_none_without_platform_url": "test_manager_ip_from_env_none_without_platform_url()" | kind=code-symbol | source=probe/tests/test_job_admission.py:L57 | neighbors=[test_job_admission.py] | lang=en
+- "tests_test_job_admission_test_signed_job_accepts_valid_and_rejects_tampered": "test_signed_job_accepts_valid_and_rejects_tampered()" | kind=code-symbol | source=probe/tests/test_job_admission.py:L34 | neighbors=[test_job_admission.py] | lang=en
+- "tests_test_job_admission_test_signed_job_check_skipped_without_pinned_key": "test_signed_job_check_skipped_without_pinned_key()" | kind=code-symbol | source=probe/tests/test_job_admission.py:L24 | neighbors=[test_job_admission.py] | lang=en
+- "tests_test_job_admission_test_signed_job_required_when_key_set_but_unsigned": "test_signed_job_required_when_key_set_but_unsigned()" | kind=code-symbol | source=probe/tests/test_job_admission.py:L29 | neighbors=[test_job_admission.py] | lang=en
+- "tests_test_job_attempt_service_test_claim_creates_immutable_attempt_with_returned_fence": "test_claim_creates_immutable_attempt_with_returned_fence()" | kind=code-symbol | source=manager/backend/tests/test_job_attempt_service.py:L13 | neighbors=[test_job_attempt_service.py] | lang=en
+- "tests_test_job_attempt_service_test_current_fence_renews_attempt_and_logical_job": "test_current_fence_renews_attempt_and_logical_job()" | kind=code-symbol | source=manager/backend/tests/test_job_attempt_service.py:L75 | neighbors=[test_job_attempt_service.py] | lang=en
+- "tests_test_job_attempt_service_test_lost_claim_does_not_create_attempt": "test_lost_claim_does_not_create_attempt()" | kind=code-symbol | source=manager/backend/tests/test_job_attempt_service.py:L40 | neighbors=[test_job_attempt_service.py] | lang=en
+- "tests_test_job_attempt_service_test_stale_fence_cannot_renew_attempt": "test_stale_fence_cannot_renew_attempt()" | kind=code-symbol | source=manager/backend/tests/test_job_attempt_service.py:L58 | neighbors=[test_job_attempt_service.py] | lang=en
+- "tests_test_job_cancel_probe_rationale_1": "Probe-side operator job control + polling-noise suppression.  Two independent be" | kind=entity | source=probe/tests/test_job_cancel_probe.py:L1 | neighbors=[test_job_cancel_probe.py] | lang=en
+- "tests_test_job_cancel_probe_rationale_54": "These may be transient/refreshable, so they must NOT read as a cancel         —" | kind=entity | source=probe/tests/test_job_cancel_probe.py:L54 | neighbors=[.test_other_rejections_are_plain_failur…] | lang=pt
+- "tests_test_job_cancel_probe_rationale_74": "The probe polls forever; routine transport chatter must stay out of the     term" | kind=entity | source=probe/tests/test_job_cancel_probe.py:L74 | neighbors=[TestPollingNoiseIsSuppressed] | lang=en
+- "tests_test_job_cancel_probe_rationale_92": "The actual regression: one INFO line per poll, every POLL_INTERVAL." | kind=entity | source=probe/tests/test_job_cancel_probe.py:L92 | neighbors=[.test_per_request_info_lines_are_suppre…] | lang=en
+- "tests_test_job_cancel_probe_rationale_97": "Quieting must not hide a genuinely unreachable manager." | kind=entity | source=probe/tests/test_job_cancel_probe.py:L97 | neighbors=[.test_transport_errors_still_surface()] | lang=pt
+- "tests_test_job_cancel_probe_testheartbeatoutcomes_test_200_is_ok": ".test_200_is_ok()" | kind=code-symbol | source=probe/tests/test_job_cancel_probe.py:L48 | neighbors=[TestHeartbeatOutcomes] | lang=en
+- "tests_test_job_cancel_probe_testheartbeatoutcomes_test_409_is_reported_as_a_revoked_lease": ".test_409_is_reported_as_a_revoked_lease()" | kind=code-symbol | source=probe/tests/test_job_cancel_probe.py:L44 | neighbors=[TestHeartbeatOutcomes] | lang=en
+- "tests_test_job_cancel_probe_testheartbeatoutcomes_test_bool_heartbeat_contract_is_unchanged": ".test_bool_heartbeat_contract_is_unchanged()" | kind=code-symbol | source=probe/tests/test_job_cancel_probe.py:L64 | neighbors=[TestHeartbeatOutcomes] | lang=en
+- "tests_test_job_cancel_probe_testheartbeatoutcomes_test_network_error_is_a_plain_failure": ".test_network_error_is_a_plain_failure()" | kind=code-symbol | source=probe/tests/test_job_cancel_probe.py:L59 | neighbors=[TestHeartbeatOutcomes] | lang=en
+- "tests_test_job_cancel_probe_testheartbeatoutcomes_test_revoked_lease_is_distinct_from_failure": ".test_revoked_lease_is_distinct_from_failure()" | kind=code-symbol | source=probe/tests/test_job_cancel_probe.py:L69 | neighbors=[TestHeartbeatOutcomes] | lang=en
+- "tests_test_job_cancel_probe_transport": "transport()" | kind=code-symbol | source=probe/tests/test_job_cancel_probe.py:L35 | neighbors=[test_job_cancel_probe.py] | lang=en
+- "tests_test_job_cancel_rationale_1": "Operator job control: stop a running job, remove a queued one, and cap the queue" | kind=entity | source=manager/backend/tests/test_job_cancel.py:L1 | neighbors=[test_job_cancel.py] | lang=en
+- "tests_test_job_cancel_rationale_176": "An operator stop must never be mistaken for a system fault." | kind=entity | source=manager/backend/tests/test_job_cancel.py:L176 | neighbors=[test_cancelled_is_distinct_from_failed()] | lang=en
+- "tests_test_job_cancel_rationale_208": "Two queued jobs must leave room for a third — an off-by-one here         would s" | kind=entity | source=manager/backend/tests/test_job_cancel.py:L208 | neighbors=[.test_third_queued_job_is_still_accepte…] | lang=en
+- "tests_test_job_cancel_rationale_225": "Pins the reason this endpoint may not reference `.email`.      If CurrentUser ev" | kind=entity | source=manager/backend/tests/test_job_cancel.py:L225 | neighbors=[test_current_user_has_no_email_field()] | lang=en
+- "tests_test_job_cancel_rationale_30": "The REAL CurrentUser, not a SimpleNamespace.      A hand-rolled stand-in is what" | kind=entity | source=manager/backend/tests/test_job_cancel.py:L30 | neighbors=[_user()] | lang=en
+- "tests_test_job_cancel_rationale_61": "A db.execute() result whose scalar_one_or_none() yields `value`." | kind=entity | source=manager/backend/tests/test_job_cancel.py:L61 | neighbors=[_one()] | lang=pt
+- "tests_test_job_cancel_rationale_91": "Attribution must come from a field the JWT actually carries." | kind=entity | source=manager/backend/tests/test_job_cancel.py:L91 | neighbors=[test_cancel_records_who_did_it()] | lang=en
+- "tests_test_job_cancel_testqueuelimit_test_limit_is_three": ".test_limit_is_three()" | kind=code-symbol | source=manager/backend/tests/test_job_cancel.py:L183 | neighbors=[TestQueueLimit] | lang=en
+- "tests_test_job_result_service_test_out_of_scope_result_is_rejected_before_database_mutation": "test_out_of_scope_result_is_rejected_before_database_mutation()" | kind=code-symbol | source=manager/backend/tests/test_job_result_service.py:L98 | neighbors=[test_job_result_service.py] | lang=en
+- "tests_test_job_result_service_test_result_scope_accepts_authorized_targets_and_control_records": "test_result_scope_accepts_authorized_targets_and_control_records()" | kind=code-symbol | source=manager/backend/tests/test_job_result_service.py:L13 | neighbors=[test_job_result_service.py] | lang=en
+- "tests_test_job_result_service_test_result_scope_fails_closed": "test_result_scope_fails_closed()" | kind=code-symbol | source=manager/backend/tests/test_job_result_service.py:L36 | neighbors=[test_job_result_service.py] | lang=en
+- "tests_test_job_result_service_test_stale_attempt_gets_terminal_receipt_without_mutation": "test_stale_attempt_gets_terminal_receipt_without_mutation()" | kind=code-symbol | source=manager/backend/tests/test_job_result_service.py:L136 | neighbors=[test_job_result_service.py] | lang=en
+- "tests_test_job_result_service_test_terminal_result_retry_is_idempotent": "test_terminal_result_retry_is_idempotent()" | kind=code-symbol | source=manager/backend/tests/test_job_result_service.py:L51 | neighbors=[test_job_result_service.py] | lang=en
+- "tests_test_loaders_rationale_1": "Tests for loader error paths in vuln_db.py and enrichment_db.py.  These are the" | kind=entity | source=manager/detection_engine/tests/test_loaders.py:L1 | neighbors=[test_loaders.py] | lang=en
+- "tests_test_loaders_rationale_102": "The FileNotFoundError message should mention re-syncing, so         operators kn" | kind=entity | source=manager/detection_engine/tests/test_loaders.py:L102 | neighbors=[.test_error_message_mentions_re_sync()] | lang=en
+- "tests_test_loaders_rationale_108": "The ValueError for a hash mismatch must include truncated hashes         in the" | kind=entity | source=manager/detection_engine/tests/test_loaders.py:L108 | neighbors=[.test_hash_mismatch_message_truncates_h…] | lang=en
+- "tests_test_loaders_rationale_60": "A path that doesn't exist must raise FileNotFoundError with a         helpful me" | kind=entity | source=manager/detection_engine/tests/test_loaders.py:L60 | neighbors=[.test_missing_file_raises_file_not_foun…] | lang=en
+- "tests_test_loaders_rationale_66": "A snapshot whose records don't match the stored content_hash must         raise" | kind=entity | source=manager/detection_engine/tests/test_loaders.py:L66 | neighbors=[.test_content_hash_mismatch_raises_valu…] | lang=en
 
 ## Instructions
 

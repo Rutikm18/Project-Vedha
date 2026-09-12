@@ -1,4 +1,4 @@
-# Node Description Batch 108 of 336
+# Node Description Batch 108 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,58 +12,51 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
-For an entity node (any other kind — e.g. a person, place, event, object),
-describe what the entity is and its role, grounded in its type, its
-relations (neighbors) and the provided citations/evidence — e.g.
-"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
-Ground entity descriptions in the citations/evidence when present; do not
-speculate beyond the context, so a node with no supporting context may be
-left out of the reply.
 Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "scanner_vnc_scanner_recv_exact": "_recv_exact()" | kind=code-symbol | source=probe/scanner/vnc_scanner.py:L71 | neighbors=[vnc_scanner.py, _read_security_types(), ._probe()]
-- "scanner_web_scanner_webscanner_scan_port": "._scan_port()" | kind=code-symbol | source=probe/scanner/web_scanner.py:L155 | neighbors=[WebScanner, ._schemes_for(), .scan_target()]
-- "scanner_web_scanner_webscanner_schemes_for": "._schemes_for()" | kind=code-symbol | source=probe/scanner/web_scanner.py:L148 | neighbors=[Preferred scheme first, the other as a …, WebScanner, ._scan_port()]
-- "scans_page_jobcard": "JobCard()" | kind=code-symbol | source=manager/frontend/app/portal/scans/page.tsx:L125 | neighbors=[page.tsx, prettyType(), relTime()]
-- "schemas_engagement_rationale_14": "Validate and de-duplicate exact IP/CIDR authorization boundaries." | kind=entity | source=manager/backend/app/schemas/engagement.py:L14 | neighbors=[EngagementStatus, FindingSeverity, validate_scope_entries()]
-- "schemas_finding_findingeventout": "FindingEventOut" | kind=code-symbol | source=manager/backend/app/schemas/finding.py:L68 | neighbors=[finding.py, BaseModel, One entry in a finding's lifecycle time…]
-- "schemas_finding_findingout_populate_risk_rank": "._populate_risk_rank()" | kind=code-symbol | source=manager/backend/app/schemas/finding.py:L160 | neighbors=[FindingOut, Compute the explainable 0-1000 unified …, Compute the explainable 0-1000 unified …]
-- "schemas_finding_findingreopen": "FindingReopen" | kind=code-symbol | source=manager/backend/app/schemas/finding.py:L44 | neighbors=[finding.py, BaseModel, .normalize_reason()]
-- "schemas_portal_clientassistantask": "ClientAssistantAsk" | kind=code-symbol | source=manager/backend/app/schemas/portal.py:L135 | neighbors=[portal.py, BaseModel, ._bounded()]
-- "schemas_portal_clientassistantmessage": "ClientAssistantMessage" | kind=code-symbol | source=manager/backend/app/schemas/portal.py:L128 | neighbors=[portal.py, BaseModel, One turn of the customer's conversation…]
-- "schemas_portal_clientfindingout": "ClientFindingOut" | kind=code-symbol | source=manager/backend/app/schemas/portal.py:L22 | neighbors=[portal.py, BaseModel, A finding as a CUSTOMER may see it. mod…]
-- "schemas_portal_clientreportout": "ClientReportOut" | kind=code-symbol | source=manager/backend/app/schemas/portal.py:L80 | neighbors=[portal.py, ClientReportContent, BaseModel]
-- "schemas_portal_clientsummaryout": "ClientSummaryOut" | kind=code-symbol | source=manager/backend/app/schemas/portal.py:L59 | neighbors=[portal.py, BaseModel, One call powering the dashboard header:…]
-- "schemas_portal_scanrequestcreate": "ScanRequestCreate" | kind=code-symbol | source=manager/backend/app/schemas/portal.py:L100 | neighbors=[portal.py, A customer's rich scan request. The cus…, BaseModel]
-- "schemas_remediation_remediationplandetailout": "RemediationPlanDetailOut" | kind=code-symbol | source=manager/backend/app/schemas/remediation.py:L28 | neighbors=[remediation.py, BaseModel, .normalize_risk_levels()]
-- "schemas_remediation_remediationstepout": "RemediationStepOut" | kind=code-symbol | source=manager/backend/app/schemas/remediation.py:L11 | neighbors=[remediation.py, BaseModel, .normalize_risk()]
-- "scripts_startup_validator_appenvironmentvalidator": "AppEnvironmentValidator" | kind=code-symbol | source=manager/backend/scripts/startup_validator.py:L151 | neighbors=[startup_validator.py, .validate(), Validates APP_ENV and related productio…]
-- "scripts_startup_validator_appenvironmentvalidator_validate": ".validate()" | kind=code-symbol | source=manager/backend/scripts/startup_validator.py:L154 | neighbors=[AppEnvironmentValidator, CheckResult, .add()]
-- "scripts_startup_validator_configvalidator": "ConfigValidator" | kind=code-symbol | source=manager/backend/scripts/startup_validator.py:L72 | neighbors=[startup_validator.py, .validate(), Validates required env vars are present…]
-- "scripts_startup_validator_configvalidator_validate": ".validate()" | kind=code-symbol | source=manager/backend/scripts/startup_validator.py:L93 | neighbors=[ConfigValidator, CheckResult, .add()]
-- "scripts_startup_validator_cookievalidator": "CookieValidator" | kind=code-symbol | source=manager/backend/scripts/startup_validator.py:L214 | neighbors=[startup_validator.py, .validate(), Validates secure cookie configuration.]
-- "scripts_startup_validator_cookievalidator_validate": ".validate()" | kind=code-symbol | source=manager/backend/scripts/startup_validator.py:L217 | neighbors=[CookieValidator, CheckResult, .add()]
-- "scripts_startup_validator_corsvalidator": "CorsValidator" | kind=code-symbol | source=manager/backend/scripts/startup_validator.py:L174 | neighbors=[startup_validator.py, .validate(), Validates CORS_ORIGINS is production-sa…]
-- "scripts_startup_validator_corsvalidator_validate": ".validate()" | kind=code-symbol | source=manager/backend/scripts/startup_validator.py:L179 | neighbors=[CorsValidator, CheckResult, .add()]
-- "scripts_startup_validator_databaseconnectivityvalidator_validate": ".validate()" | kind=code-symbol | source=manager/backend/scripts/startup_validator.py:L313 | neighbors=[DatabaseConnectivityValidator, CheckResult, .add()]
-- "scripts_startup_validator_databaseurlvalidator": "DatabaseURLValidator" | kind=code-symbol | source=manager/backend/scripts/startup_validator.py:L244 | neighbors=[startup_validator.py, .validate(), Validates DATABASE_URL format and safet…]
-- "scripts_startup_validator_databaseurlvalidator_validate": ".validate()" | kind=code-symbol | source=manager/backend/scripts/startup_validator.py:L249 | neighbors=[DatabaseURLValidator, CheckResult, .add()]
-- "scripts_startup_validator_detectionenginevalidator": "DetectionEngineValidator" | kind=code-symbol | source=manager/backend/scripts/startup_validator.py:L279 | neighbors=[startup_validator.py, .validate(), Validates the baked-in detection engine…]
-- "scripts_startup_validator_detectionenginevalidator_validate": ".validate()" | kind=code-symbol | source=manager/backend/scripts/startup_validator.py:L282 | neighbors=[DetectionEngineValidator, CheckResult, .add()]
-- "scripts_startup_validator_redisconnectivityvalidator_validate": ".validate()" | kind=code-symbol | source=manager/backend/scripts/startup_validator.py:L357 | neighbors=[RedisConnectivityValidator, CheckResult, .add()]
-- "scripts_startup_validator_secretsvalidator": "SecretsValidator" | kind=code-symbol | source=manager/backend/scripts/startup_validator.py:L120 | neighbors=[startup_validator.py, Validates secrets meet minimum strength…, .validate()]
-- "scripts_startup_validator_secretsvalidator_validate": ".validate()" | kind=code-symbol | source=manager/backend/scripts/startup_validator.py:L125 | neighbors=[SecretsValidator, CheckResult, .add()]
-- "scripts_startup_validator_validationreport_raise_if_errors": ".raise_if_errors()" | kind=code-symbol | source=manager/backend/scripts/startup_validator.py:L62 | neighbors=[run_all_validators(), ValidationReport, StartupValidationError]
-- "services_agent_policy_classify_action": "classify_action()" | kind=code-symbol | source=manager/backend/app/services/agent_policy.py:L49 | neighbors=[agent_policy.py, evaluate_action(), Map an action name to its risk tier; un…]
-- "services_agent_policy_decision": "Decision" | kind=code-symbol | source=manager/backend/app/services/agent_policy.py:L74 | neighbors=[agent_policy.py, _deny(), evaluate_action()]
-- "services_agent_policy_deny": "_deny()" | kind=code-symbol | source=manager/backend/app/services/agent_policy.py:L82 | neighbors=[agent_policy.py, Decision, evaluate_action()]
-- "services_audit": "audit.py" | kind=code-symbol | source=manager/backend/app/services/audit.py:L1 | neighbors=[22701ea Add tests for scanner parity an…, record_audit(), audit.py — the append-only audit-log wr…]
-- "services_finding_events_detected_actor": "_detected_actor()" | kind=code-symbol | source=manager/backend/app/services/finding_events.py:L81 | neighbors=[finding_events.py, Best label for who first produced this …, synthesize_events()]
-- "services_finding_events_event_type_for_status": "event_type_for_status()" | kind=code-symbol | source=manager/backend/app/services/finding_events.py:L173 | neighbors=[finding_events.py, _val(), Map a target FindingStatus to its speci…]
-- "services_finding_events_record_event": "record_event()" | kind=code-symbol | source=manager/backend/app/services/finding_events.py:L160 | neighbors=[finding_events.py, Append one immutable audit row. The cal…, _val()]
+- "graph_neo4j_client_neo4jclient_ensure_schema": ".ensure_schema()" | kind=code-symbol | source=manager/backend/app/graph/neo4j_client.py:L76 | neighbors=[Neo4jClient, .run(), Apply constraints + indexes (idempotent…]
+- "graph_neo4j_client_neo4jclient_run_write": ".run_write()" | kind=code-symbol | source=manager/backend/app/graph/neo4j_client.py:L95 | neighbors=[Neo4jClient, .run(), Run a parametrised write with UNWIND ba…]
+- "graph_visualizer_deterministic_layout": "_deterministic_layout()" | kind=code-symbol | source=manager/backend/app/graph/visualizer.py:L18 | neighbors=[visualizer.py, .to_d3(), Numpy-free seed layout: place nodes on …]
+- "graph_visualizer_graphvisualizer_to_d3": ".to_d3()" | kind=code-symbol | source=manager/backend/app/graph/visualizer.py:L47 | neighbors=[GraphVisualizer, _deterministic_layout(), Build the D3 payload. ``compromised`` i…]
+- "id_page_campaigndetailpage": "CampaignDetailPage()" | kind=code-symbol | source=manager/frontend/app/campaign/[id]/page.tsx:L62 | neighbors=[page.tsx, fmtDuration(), fmtEta()]
+- "id_route_fail": "fail()" | kind=code-symbol | source=manager/frontend/app/api/findings/[id]/route.ts:L13 | neighbors=[route.ts, GET, PUT()]
+- "lib_adapters_normalizelist": "normalizeList()" | kind=code-symbol | source=manager/frontend/lib/adapters.ts:L335 | neighbors=[adapters.ts, toApiEngagementCreate(), toApiEngagementPatch()]
+- "lib_agents_store_ensuredatadir": "ensureDataDir()" | kind=code-symbol | source=manager/frontend/lib/agents-store.ts:L338 | neighbors=[agents-store.ts, readFieldAgents(), writeFieldAgents()]
+- "lib_agents_store_updateagentlastseen": "updateAgentLastSeen()" | kind=code-symbol | source=manager/frontend/lib/agents-store.ts:L385 | neighbors=[agents-store.ts, readFieldAgents(), writeFieldAgents()]
+- "lib_ai_engine_assetinput": "AssetInput" | kind=code-symbol | source=manager/frontend/lib/ai-engine.ts:L18 | neighbors=[ai-engine.ts, route.ts, route.ts]
+- "lib_ai_engine_findinginput": "FindingInput" | kind=code-symbol | source=manager/frontend/lib/ai-engine.ts:L11 | neighbors=[ai-engine.ts, route.ts, route.ts]
+- "lib_ai_engine_runsection": "runSection()" | kind=code-symbol | source=manager/frontend/lib/ai-engine.ts:L598 | neighbors=[ai-engine.ts, generateReportSectioned(), stripFences()]
+- "lib_ai_engine_triagefindings": "triageFindings()" | kind=code-symbol | source=manager/frontend/lib/ai-engine.ts:L448 | neighbors=[ai-engine.ts, getClient(), stripFences()]
+- "lib_assistant_advisorvm": "AdvisorVM" | kind=code-symbol | source=manager/frontend/lib/assistant.ts:L34 | neighbors=[AdvisorFlow.tsx, AssistantDrawer.tsx, assistant.ts]
+- "lib_assistant_isexploited": "isExploited()" | kind=code-symbol | source=manager/frontend/lib/assistant.ts:L89 | neighbors=[assistant.ts, plainWhyItMatters(), toFactCard()]
+- "lib_assistant_lifecycleof": "lifecycleOf()" | kind=code-symbol | source=manager/frontend/lib/assistant.ts:L102 | neighbors=[assistant.ts, ageInDays(), toFactCard()]
+- "lib_assistant_plainwhyitmatters": "plainWhyItMatters()" | kind=code-symbol | source=manager/frontend/lib/assistant.ts:L116 | neighbors=[assistant.ts, isExploited(), toFactCard()]
+- "lib_backend_backendresponse": "backendResponse()" | kind=code-symbol | source=manager/frontend/lib/backend.ts:L35 | neighbors=[backend.ts, backend(), route.ts]
+- "lib_campaign_store_ensuredir": "ensureDir()" | kind=code-symbol | source=manager/frontend/lib/campaign-store.ts:L78 | neighbors=[campaign-store.ts, listCampaigns(), saveCampaign()]
+- "lib_campaign_store_filefor": "fileFor()" | kind=code-symbol | source=manager/frontend/lib/campaign-store.ts:L91 | neighbors=[campaign-store.ts, getCampaign(), saveCampaign()]
+- "lib_cases_store_addcomment": "addComment()" | kind=code-symbol | source=manager/frontend/lib/cases-store.ts:L296 | neighbors=[cases-store.ts, readCases(), writeCases()]
+- "lib_cases_store_createcase": "createCase()" | kind=code-symbol | source=manager/frontend/lib/cases-store.ts:L235 | neighbors=[cases-store.ts, readCases(), writeCases()]
+- "lib_cases_store_ensuredatadir": "ensureDataDir()" | kind=code-symbol | source=manager/frontend/lib/cases-store.ts:L208 | neighbors=[cases-store.ts, readCases(), writeCases()]
+- "lib_cases_store_updatecase": "updateCase()" | kind=code-symbol | source=manager/frontend/lib/cases-store.ts:L258 | neighbors=[cases-store.ts, readCases(), writeCases()]
+- "lib_clients_store_ensuredir": "ensureDir()" | kind=code-symbol | source=manager/frontend/lib/clients-store.ts:L47 | neighbors=[clients-store.ts, read(), write()]
+- "lib_clients_store_getclientbysubdomain": "getClientBySubdomain()" | kind=code-symbol | source=manager/frontend/lib/clients-store.ts:L82 | neighbors=[clients-store.ts, read(), tenant-server.ts]
+- "lib_clients_store_slugify": "slugify()" | kind=code-symbol | source=manager/frontend/lib/clients-store.ts:L71 | neighbors=[clients-store.ts, createClient(), updateClient()]
+- "lib_clients_store_updateclientsettings": "updateClientSettings()" | kind=code-symbol | source=manager/frontend/lib/clients-store.ts:L116 | neighbors=[clients-store.ts, read(), write()]
+- "lib_console_source_consolepathfor": "consolePathFor()" | kind=code-symbol | source=manager/frontend/lib/console-source.tsx:L173 | neighbors=[console-source.tsx, useConsolePath(), console-source.test.ts]
+- "lib_evidence_presentation_evidenceartifact": "EvidenceArtifact" | kind=code-symbol | source=manager/frontend/lib/evidence-presentation.ts:L3 | neighbors=[page.tsx, adapters.ts, evidence-presentation.ts]
+- "lib_evidence_presentation_provenanceof": "provenanceOf()" | kind=code-symbol | source=manager/frontend/lib/evidence-presentation.ts:L42 | neighbors=[evidence-presentation.ts, presentEvidence(), stableTimestamp()]
+- "lib_fetcher_apierror": "ApiError" | kind=code-symbol | source=manager/frontend/lib/fetcher.ts:L7 | neighbors=[fetcher.ts, .constructor(), fetchJson()]
+- "lib_fetcher_clearauth": "clearAuth()" | kind=code-symbol | source=manager/frontend/lib/fetcher.ts:L19 | neighbors=[PageShell.tsx, fetcher.ts, fetchJson()]
+- "lib_fetcher_getstoredtoken": "getStoredToken()" | kind=code-symbol | source=manager/frontend/lib/fetcher.ts:L20 | neighbors=[page.tsx, fetcher.ts, fetchJson()]
+- "lib_fetcher_storetoken": "storeToken()" | kind=code-symbol | source=manager/frontend/lib/fetcher.ts:L30 | neighbors=[fetcher.ts, fetchJson(), page.tsx]
+- "lib_finding_id_resetcounters": "resetCounters()" | kind=code-symbol | source=manager/frontend/lib/finding-id.ts:L20 | neighbors=[finding-id.ts, findings-store.test.ts, parsers.test.ts]
+- "lib_findings_store_deletefinding": "deleteFinding()" | kind=code-symbol | source=manager/frontend/lib/findings-store.ts:L142 | neighbors=[findings-store.ts, ensureDir(), getAllFindings()]
+- "lib_findings_store_getfindingstats": "getFindingStats()" | kind=code-symbol | source=manager/frontend/lib/findings-store.ts:L94 | neighbors=[findings-store.ts, getAllFindings(), findings-store.test.ts]
+- "lib_fleet_workspace_api_createfleetworkspaceapi": "createFleetWorkspaceApi()" | kind=code-symbol | source=manager/frontend/lib/fleet-workspace-api.ts:L6 | neighbors=[FleetJobs.tsx, page.tsx, fleet-workspace-api.ts]
+- "lib_fleet_workspace_api_fleetworkspacesurface": "FleetWorkspaceSurface" | kind=code-symbol | source=manager/frontend/lib/fleet-workspace-api.ts:L4 | neighbors=[FleetJobs.tsx, page.tsx, fleet-workspace-api.ts]
 
 ## Instructions
 

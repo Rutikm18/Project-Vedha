@@ -1,4 +1,4 @@
-# Node Description Batch 250 of 336
+# Node Description Batch 250 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -26,46 +26,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "scanner_nfs_scanner_nfsscanner_init": ".__init__()" | kind=code-symbol | source=probe/scanner/nfs_scanner.py:L190 | neighbors=[NFSScanner] | lang=en
-- "scanner_nfs_scanner_rationale_1": "nfs_scanner.py — NFS export exposure over ONC RPC (VA checklist: anonymous netwo" | kind=entity | source=probe/scanner/nfs_scanner.py:L1 | neighbors=[nfs_scanner.py] | lang=en
-- "scanner_nfs_scanner_rationale_117": "An export with no client restriction, or one shared to a wildcard group,     is" | kind=entity | source=probe/scanner/nfs_scanner.py:L117 | neighbors=[is_world_readable()] | lang=en
-- "scanner_nfs_scanner_rationale_126": "Send one ONC-RPC CALL (AUTH_NULL) over a TCP record-marked stream and     return" | kind=entity | source=probe/scanner/nfs_scanner.py:L126 | neighbors=[_rpc_call()] | lang=en
-- "scanner_nfs_scanner_rationale_137": "Read RPC record-marking fragments (RFC 1057 §10) until the last fragment." | kind=entity | source=probe/scanner/nfs_scanner.py:L137 | neighbors=[_recv_record()] | lang=en
-- "scanner_nfs_scanner_rationale_167": "Strip the ONC-RPC reply header; return the accepted-SUCCESS result bytes." | kind=entity | source=probe/scanner/nfs_scanner.py:L167 | neighbors=[_parse_rpc_reply()] | lang=en
-- "scanner_nfs_scanner_rationale_233": "Blocking: portmap DUMP + mountd EXPORT. Monkeypatchable for tests." | kind=entity | source=probe/scanner/nfs_scanner.py:L233 | neighbors=[._probe()] | lang=en
-- "scanner_nfs_scanner_rationale_57": "Minimal, BOUNDED big-endian XDR reader (RFC 4506)." | kind=entity | source=probe/scanner/nfs_scanner.py:L57 | neighbors=[_XDR] | lang=en
-- "scanner_nfs_scanner_rationale_83": "Parse a PMAPPROC_DUMP reply — the list of registered RPC programs." | kind=entity | source=probe/scanner/nfs_scanner.py:L83 | neighbors=[parse_portmap_dump()] | lang=en
-- "scanner_nfs_scanner_rationale_97": "Parse a MOUNTPROC_EXPORT reply — exports + their allowed client groups." | kind=entity | source=probe/scanner/nfs_scanner.py:L97 | neighbors=[parse_mount_export()] | lang=pt
-- "scanner_nfs_scanner_xdr_init": ".__init__()" | kind=code-symbol | source=probe/scanner/nfs_scanner.py:L59 | neighbors=[_XDR] | lang=en
-- "scanner_nmap_wrapper_have_nmap": "_have_nmap()" | kind=code-symbol | source=probe/scanner/nmap_wrapper.py:L117 | neighbors=[nmap_wrapper.py] | lang=en
-- "scanner_nmap_wrapper_main": "main()" | kind=code-symbol | source=probe/scanner/nmap_wrapper.py:L253 | neighbors=[nmap_wrapper.py] | lang=en
-- "scanner_nmap_wrapper_nmapexecutionerror_init": ".__init__()" | kind=code-symbol | source=probe/scanner/nmap_wrapper.py:L51 | neighbors=[NmapExecutionError] | lang=en
-- "scanner_nmap_wrapper_rationale_1": "nmap_wrapper.py — orchestrate nmap and normalize its XML into ScanResult.  WHY:" | kind=entity | source=probe/scanner/nmap_wrapper.py:L1 | neighbors=[nmap_wrapper.py] | lang=en
-- "scanner_nmap_wrapper_rationale_183": "# NOTE: `Element.find(...) or Element.find(...)` is a classic ElementTree" | kind=entity | source=probe/scanner/nmap_wrapper.py:L183 | neighbors=[nmap_wrapper.py] | lang=en
-- "scanner_nmap_wrapper_rationale_191": "# NOTE: `Element.find(...) or Element.find(...)` is a classic ElementTree" | kind=entity | source=probe/scanner/nmap_wrapper.py:L191 | neighbors=[nmap_wrapper.py] | lang=en
-- "scanner_nmap_wrapper_rationale_197": "# NOTE: `Element.find(...) or Element.find(...)` is a classic ElementTree" | kind=entity | source=probe/scanner/nmap_wrapper.py:L197 | neighbors=[nmap_wrapper.py] | lang=en
-- "scanner_nmap_wrapper_rationale_43": "Actionable subprocess failure; never reinterpret it as zero findings." | kind=entity | source=probe/scanner/nmap_wrapper.py:L43 | neighbors=[NmapExecutionError] | lang=en
-- "scanner_nmap_wrapper_rationale_49": "Actionable subprocess failure; never reinterpret it as zero findings." | kind=entity | source=probe/scanner/nmap_wrapper.py:L49 | neighbors=[NmapExecutionError] | lang=en
-- "scanner_nmap_wrapper_rationale_70": "Allow tuning only; target, script, and output controls stay owned here." | kind=entity | source=probe/scanner/nmap_wrapper.py:L70 | neighbors=[_validated_extra_args()] | lang=en
-- "scanner_nmap_wrapper_rationale_72": "# NOTE: `Element.find(...) or Element.find(...)` is a classic ElementTree" | kind=entity | source=probe/scanner/nmap_wrapper.py:L72 | neighbors=[nmap_wrapper.py] | lang=en
-- "scanner_nmap_wrapper_rationale_76": "Allow tuning only; target, script, and output controls stay owned here." | kind=entity | source=probe/scanner/nmap_wrapper.py:L76 | neighbors=[_validated_extra_args()] | lang=en
-- "scanner_os_fingerprint_main": "main()" | kind=code-symbol | source=probe/scanner/os_fingerprint.py:L571 | neighbors=[os_fingerprint.py] | lang=en
-- "scanner_os_fingerprint_osfingerprintscanner_init": ".__init__()" | kind=code-symbol | source=probe/scanner/os_fingerprint.py:L360 | neighbors=[OSFingerprintScanner] | lang=en
-- "scanner_os_fingerprint_rationale_1": "os_fingerprint.py — OS/stack fingerprinting via ICMP + TTL (Tier 2.1 + 2.2).  TW" | kind=entity | source=probe/scanner/os_fingerprint.py:L1 | neighbors=[os_fingerprint.py] | lang=pt
-- "scanner_os_fingerprint_rationale_102": "Round the observed TTL up to the nearest standard initial TTL." | kind=entity | source=probe/scanner/os_fingerprint.py:L102 | neighbors=[infer_initial_ttl()] | lang=en
-- "scanner_os_fingerprint_rationale_109": "Parse an ICMP timestamp reply (type 14): id/seq/ttl plus the three 32-bit     ti" | kind=entity | source=probe/scanner/os_fingerprint.py:L109 | neighbors=[parse_icmp_timestamps()] | lang=en
-- "scanner_os_fingerprint_rationale_122": "Interpret a timestamp reply's transmit value. Per RFC 792 a *standard* value" | kind=entity | source=probe/scanner/os_fingerprint.py:L122 | neighbors=[remote_clock()] | lang=pt
-- "scanner_os_fingerprint_rationale_129": "Combine available stack signals into a best-guess OS family with a calibrated" | kind=entity | source=probe/scanner/os_fingerprint.py:L129 | neighbors=[fingerprint_os()] | lang=pt
-- "scanner_os_fingerprint_rationale_138": "True only for an ICMP ECHO reply that actually came FROM the probed host.      A" | kind=entity | source=probe/scanner/os_fingerprint.py:L138 | neighbors=[accept_echo_reply()] | lang=en
-- "scanner_os_fingerprint_rationale_153": "Round the observed TTL up to the nearest standard initial TTL." | kind=entity | source=probe/scanner/os_fingerprint.py:L153 | neighbors=[infer_initial_ttl()] | lang=en
-- "scanner_os_fingerprint_rationale_172": "True if we can open an ICMP socket (datagram-ICMP or raw)." | kind=entity | source=probe/scanner/os_fingerprint.py:L172 | neighbors=[icmp_supported()] | lang=en
-- "scanner_os_fingerprint_rationale_180": "Combine available stack signals into a best-guess OS family with a calibrated" | kind=entity | source=probe/scanner/os_fingerprint.py:L180 | neighbors=[fingerprint_os()] | lang=pt
-- "scanner_os_fingerprint_rationale_188": "True if we can open an ICMP socket (datagram-ICMP or raw)." | kind=entity | source=probe/scanner/os_fingerprint.py:L188 | neighbors=[icmp_supported()] | lang=en
-- "scanner_os_fingerprint_rationale_189": "Return (socket, is_raw). Prefer datagram-ICMP (unprivileged), then raw." | kind=entity | source=probe/scanner/os_fingerprint.py:L189 | neighbors=[_open_icmp_socket()] | lang=en
-- "scanner_os_fingerprint_rationale_217": "Send one ICMP echo; return observed TTL, None (no TTL), or \"down\"." | kind=entity | source=probe/scanner/os_fingerprint.py:L217 | neighbors=[._icmp_echo_ttl()] | lang=en
-- "scanner_os_fingerprint_rationale_221": "ICMP-echo liveness + TTL harvest -> OS-family guess. Optionally accepts TCP" | kind=entity | source=probe/scanner/os_fingerprint.py:L221 | neighbors=[OSFingerprintScanner] | lang=en
-- "scanner_os_fingerprint_rationale_227": "Combine available stack signals into a best-guess OS family with a calibrated" | kind=entity | source=probe/scanner/os_fingerprint.py:L227 | neighbors=[fingerprint_os()] | lang=pt
-- "scanner_os_fingerprint_rationale_233": "Send one ICMP echo; return observed TTL, None (no TTL), or \"down\"." | kind=entity | source=probe/scanner/os_fingerprint.py:L233 | neighbors=[._icmp_echo_ttl()] | lang=en
+- "main_scripts_port_scanner_rationale_240": "Per-target scan accounting — the completeness + self-health record.      It lets" | kind=entity | source=probe/main_scripts/port_scanner.py:L240 | neighbors=[ScanMetrics] | lang=en
+- "main_scripts_port_scanner_rationale_268": "Tally exactly one terminal per-port observation." | kind=entity | source=probe/main_scripts/port_scanner.py:L268 | neighbors=[.record()] | lang=en
+- "main_scripts_port_scanner_rationale_287": "Requested ports that were never recorded — the silent-skip proof." | kind=entity | source=probe/main_scripts/port_scanner.py:L287 | neighbors=[.missing_ports()] | lang=en
+- "main_scripts_port_scanner_rationale_294": "Ports recorded more than once (a port must get exactly one verdict)." | kind=entity | source=probe/main_scripts/port_scanner.py:L294 | neighbors=[.duplicate_ports()] | lang=pt
+- "main_scripts_port_scanner_rationale_301": "One connect() and its classification. Always returns a ScanResult         (open" | kind=entity | source=probe/main_scripts/port_scanner.py:L301 | neighbors=[._attempt()] | lang=en
+- "main_scripts_port_scanner_rationale_313": "One connect() and its classification. Always returns a ScanResult         (open" | kind=entity | source=probe/main_scripts/port_scanner.py:L313 | neighbors=[._attempt()] | lang=en
+- "main_scripts_port_scanner_rationale_326": "One connect() and its classification. Always returns a ScanResult         (open" | kind=entity | source=probe/main_scripts/port_scanner.py:L326 | neighbors=[._attempt()] | lang=en
+- "main_scripts_port_scanner_rationale_367": "Bounded worker-pool scan of every requested port.          A fixed pool of `conc" | kind=entity | source=probe/main_scripts/port_scanner.py:L367 | neighbors=[.scan_target()] | lang=en
+- "main_scripts_port_scanner_rationale_391": "Bounded worker-pool scan of every requested port.          A fixed pool of `conc" | kind=entity | source=probe/main_scripts/port_scanner.py:L391 | neighbors=[.scan_target()] | lang=en
+- "main_scripts_port_scanner_rationale_405": "Bounded worker-pool scan of every requested port.          A fixed pool of `conc" | kind=entity | source=probe/main_scripts/port_scanner.py:L405 | neighbors=[.scan_target()] | lang=en
+- "main_scripts_port_scanner_rationale_451": "One connect() and its classification. Always returns a ScanResult         (open" | kind=entity | source=probe/main_scripts/port_scanner.py:L451 | neighbors=[._attempt()] | lang=en
+- "main_scripts_port_scanner_rationale_462": "One connect() and its classification. Always returns a ScanResult         (open" | kind=entity | source=probe/main_scripts/port_scanner.py:L462 | neighbors=[._attempt()] | lang=en
+- "main_scripts_port_scanner_rationale_476": "One connect() and its classification. Always returns a ScanResult         (open" | kind=entity | source=probe/main_scripts/port_scanner.py:L476 | neighbors=[._attempt()] | lang=en
+- "main_scripts_port_scanner_rationale_522": "One port's terminal result, gated by the rate limiter and (when         enabled)" | kind=entity | source=probe/main_scripts/port_scanner.py:L522 | neighbors=[._scan_port()] | lang=en
+- "main_scripts_port_scanner_rationale_533": "One port's terminal result, gated by the rate limiter and (when         enabled)" | kind=entity | source=probe/main_scripts/port_scanner.py:L533 | neighbors=[._scan_port()] | lang=en
+- "main_scripts_port_scanner_rationale_548": "One port's terminal result, gated by the rate limiter and (when         enabled)" | kind=entity | source=probe/main_scripts/port_scanner.py:L548 | neighbors=[._scan_port()] | lang=en
+- "main_scripts_port_scanner_rationale_570": "True for the one state a retry can legitimately change: silence." | kind=entity | source=probe/main_scripts/port_scanner.py:L570 | neighbors=[._is_ambiguous()] | lang=en
+- "main_scripts_port_scanner_rationale_576": "Gentle second look at ports that stayed silent through the main sweep." | kind=entity | source=probe/main_scripts/port_scanner.py:L576 | neighbors=[._reprobe_ambiguous()] | lang=en
+- "main_scripts_port_scanner_rationale_584": "Record one probe and answer: is the PATH still delivering?          WHY THIS EXI" | kind=entity | source=probe/main_scripts/port_scanner.py:L584 | neighbors=[._note_probe_outcome()] | lang=en
+- "main_scripts_port_scanner_rationale_601": "Record one probe in THIS HOST's window and answer: is the PATH still         del" | kind=entity | source=probe/main_scripts/port_scanner.py:L601 | neighbors=[._note_probe_outcome()] | lang=en
+- "main_scripts_port_scanner_rationale_603": "Bounded worker-pool scan of every requested port.          A fixed pool of `conc" | kind=entity | source=probe/main_scripts/port_scanner.py:L603 | neighbors=[.scan_target()] | lang=en
+- "main_scripts_port_scanner_rationale_615": "True for the one state a retry can legitimately change: silence." | kind=entity | source=probe/main_scripts/port_scanner.py:L615 | neighbors=[._is_ambiguous()] | lang=en
+- "main_scripts_port_scanner_rationale_621": "Gentle second look at ports that stayed silent through the main sweep." | kind=entity | source=probe/main_scripts/port_scanner.py:L621 | neighbors=[._reprobe_ambiguous()] | lang=en
+- "main_scripts_port_scanner_rationale_638": "True for the one state a retry can legitimately change: silence." | kind=entity | source=probe/main_scripts/port_scanner.py:L638 | neighbors=[._is_ambiguous()] | lang=en
+- "main_scripts_port_scanner_rationale_643": "Must this result OBJECT outlive the port that produced it?          Only if some" | kind=entity | source=probe/main_scripts/port_scanner.py:L643 | neighbors=[._retain_result()] | lang=en
+- "main_scripts_port_scanner_rationale_648": "Bounded worker-pool scan of every requested port.          A fixed pool of `conc" | kind=entity | source=probe/main_scripts/port_scanner.py:L648 | neighbors=[.scan_target()] | lang=en
+- "main_scripts_port_scanner_rationale_656": "Reconstruct the tally-only verdict for a port that stayed silent.          Ambig" | kind=entity | source=probe/main_scripts/port_scanner.py:L656 | neighbors=[._silence_result()] | lang=en
+- "main_scripts_port_scanner_rationale_671": "Gentle second look at ports that stayed silent through the main sweep." | kind=entity | source=probe/main_scripts/port_scanner.py:L671 | neighbors=[._reprobe_ambiguous()] | lang=en
+- "main_scripts_port_scanner_rationale_698": "Bounded worker-pool scan of every requested port.          A fixed pool of `conc" | kind=entity | source=probe/main_scripts/port_scanner.py:L698 | neighbors=[.scan_target()] | lang=en
+- "main_scripts_port_scanner_rationale_90": "Return 'ipv4'/'ipv6' for an IP literal, else None (unresolved hostname)." | kind=entity | source=probe/main_scripts/port_scanner.py:L90 | neighbors=[_family_of()] | lang=en
+- "main_scripts_port_scanner_rationale_91": "Return 'ipv4'/'ipv6' for an IP literal, else None (unresolved hostname)." | kind=entity | source=probe/main_scripts/port_scanner.py:L91 | neighbors=[_family_of()] | lang=en
+- "main_scripts_port_scanner_rationale_93": "Return 'ipv4'/'ipv6' for an IP literal, else None (unresolved hostname)." | kind=entity | source=probe/main_scripts/port_scanner.py:L93 | neighbors=[_family_of()] | lang=en
+- "main_scripts_port_scanner_rationale_95": "Peer TCP-stack signals readable from a COMPLETED connect(), for OS/link     fing" | kind=entity | source=probe/main_scripts/port_scanner.py:L95 | neighbors=[_harvest_tcp_stack()] | lang=en
+- "main_scripts_port_scanner_scanmetrics_classified": ".classified()" | kind=code-symbol | source=probe/main_scripts/port_scanner.py:L282 | neighbors=[ScanMetrics] | lang=en
+- "main_scripts_port_scanner_scanmetrics_complete": ".complete()" | kind=code-symbol | source=probe/main_scripts/port_scanner.py:L298 | neighbors=[ScanMetrics] | lang=en
+- "main_scripts_port_scanner_scanmetrics_degraded": ".degraded()" | kind=code-symbol | source=probe/main_scripts/port_scanner.py:L310 | neighbors=[ScanMetrics] | lang=en
+- "main_scripts_printer_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/printer_scanner.py:L160 | neighbors=[printer_scanner.py] | lang=en
+- "main_scripts_printer_scanner_printerscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/printer_scanner.py:L99 | neighbors=[PrinterScanner] | lang=en
+- "main_scripts_printer_scanner_rationale_1": "printer_scanner.py — network printer exposure (VA checklist: exposed print servi" | kind=entity | source=probe/main_scripts/printer_scanner.py:L1 | neighbors=[printer_scanner.py] | lang=en
+- "main_scripts_printer_scanner_rationale_39": "Extract the model string from a PJL INFO ID response." | kind=entity | source=probe/main_scripts/printer_scanner.py:L39 | neighbors=[parse_pjl_id()] | lang=en
 
 ## Instructions
 

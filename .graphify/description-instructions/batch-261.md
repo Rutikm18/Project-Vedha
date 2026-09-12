@@ -1,4 +1,4 @@
-# Node Description Batch 262 of 336
+# Node Description Batch 262 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,60 +12,51 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
-For an entity node (any other kind — e.g. a person, place, event, object),
-describe what the entity is and its role, grounded in its type, its
-relations (neighbors) and the provided citations/evidence — e.g.
-"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
-Ground entity descriptions in the citations/evidence when present; do not
-speculate beyond the context, so a node with no supporting context may be
-left out of the reply.
-LANGUAGE: each entry has a `lang=` marker giving the language of its source.
-Write that entry's description in EXACTLY that language. Do not translate to
-a single common language — match each node's source language individually.
+Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "scanner_tls_fingerprint_rationale_274": "Run all probes and return (62-char digest, per-probe results)." | kind=entity | source=probe/scanner/tls_fingerprint.py:L274 | neighbors=[fingerprint_host()] | lang=en
-- "scanner_tls_fingerprint_rationale_275": "Run all probes and return (62-char digest, per-probe results)." | kind=entity | source=probe/scanner/tls_fingerprint.py:L275 | neighbors=[fingerprint_host()] | lang=en
-- "scanner_tls_fingerprint_rationale_276": "Run all probes and return (62-char digest, per-probe results)." | kind=entity | source=probe/scanner/tls_fingerprint.py:L276 | neighbors=[fingerprint_host()] | lang=en
-- "scanner_tls_fingerprint_rationale_90": "Build a complete TLS ClientHello record (record layer + handshake)." | kind=entity | source=probe/scanner/tls_fingerprint.py:L90 | neighbors=[build_client_hello()] | lang=pt
-- "scanner_tls_fingerprint_rationale_91": "Build a complete TLS ClientHello record (record layer + handshake)." | kind=entity | source=probe/scanner/tls_fingerprint.py:L91 | neighbors=[build_client_hello()] | lang=pt
-- "scanner_tls_fingerprint_rationale_92": "Build a complete TLS ClientHello record (record layer + handshake)." | kind=entity | source=probe/scanner/tls_fingerprint.py:L92 | neighbors=[build_client_hello()] | lang=pt
-- "scanner_tls_fingerprint_tlsfingerprintscanner_init": ".__init__()" | kind=code-symbol | source=probe/scanner/tls_fingerprint.py:L286 | neighbors=[TLSFingerprintScanner] | lang=en
-- "scanner_tls_scanner_main": "main()" | kind=code-symbol | source=probe/scanner/tls_scanner.py:L345 | neighbors=[tls_scanner.py] | lang=en
-- "scanner_tls_scanner_rationale_1": "tls_scanner.py — collect TLS/SSL configuration facts.  METHOD (collection only):" | kind=entity | source=probe/scanner/tls_scanner.py:L1 | neighbors=[tls_scanner.py] | lang=en
-- "scanner_tls_scanner_rationale_104": "Grade overall TLS posture A/B/C/F from accepted protocol versions and the     cl" | kind=entity | source=probe/scanner/tls_scanner.py:L104 | neighbors=[grade_tls_posture()] | lang=en
-- "scanner_tls_scanner_rationale_105": "Grade overall TLS posture A/B/C/F from accepted protocol versions and the     cl" | kind=entity | source=probe/scanner/tls_scanner.py:L105 | neighbors=[grade_tls_posture()] | lang=en
-- "scanner_tls_scanner_rationale_146": "Never send an IP literal as SNI — non-conformant; some servers reject it." | kind=entity | source=probe/scanner/tls_scanner.py:L146 | neighbors=[_sni()] | lang=en
-- "scanner_tls_scanner_rationale_147": "Never send an IP literal as SNI — non-conformant; some servers reject it." | kind=entity | source=probe/scanner/tls_scanner.py:L147 | neighbors=[_sni()] | lang=en
-- "scanner_tls_scanner_rationale_155": "Attempt a handshake forcing one protocol version. Returns cipher dict or None." | kind=entity | source=probe/scanner/tls_scanner.py:L155 | neighbors=[_try_version()] | lang=pt
-- "scanner_tls_scanner_rationale_156": "Attempt a handshake forcing one protocol version. Returns cipher dict or None." | kind=entity | source=probe/scanner/tls_scanner.py:L156 | neighbors=[_try_version()] | lang=pt
-- "scanner_tls_scanner_rationale_166": "Attempt a handshake forcing one protocol version.      Returns a cipher dict whe" | kind=entity | source=probe/scanner/tls_scanner.py:L166 | neighbors=[_try_version()] | lang=pt
-- "scanner_tls_scanner_rationale_57": "Never send an IP literal as SNI — non-conformant; some servers reject it." | kind=entity | source=probe/scanner/tls_scanner.py:L57 | neighbors=[_sni()] | lang=en
-- "scanner_tls_scanner_rationale_60": "Flag the security-relevant properties of an OpenSSL cipher-suite name:     forwa" | kind=entity | source=probe/scanner/tls_scanner.py:L60 | neighbors=[classify_cipher()] | lang=en
-- "scanner_tls_scanner_rationale_61": "Flag the security-relevant properties of an OpenSSL cipher-suite name:     forwa" | kind=entity | source=probe/scanner/tls_scanner.py:L61 | neighbors=[classify_cipher()] | lang=en
-- "scanner_tls_scanner_rationale_66": "Attempt a handshake forcing one protocol version. Returns cipher dict or None." | kind=entity | source=probe/scanner/tls_scanner.py:L66 | neighbors=[_try_version()] | lang=pt
-- "scanner_tls_scanner_tlsscanner_init": ".__init__()" | kind=code-symbol | source=probe/scanner/tls_scanner.py:L316 | neighbors=[TLSScanner] | lang=en
-- "scanner_udp_scanner_dns_probe": "_dns_probe()" | kind=code-symbol | source=probe/scanner/udp_scanner.py:L39 | neighbors=[udp_scanner.py] | lang=en
-- "scanner_udp_scanner_main": "main()" | kind=code-symbol | source=probe/scanner/udp_scanner.py:L392 | neighbors=[udp_scanner.py] | lang=en
-- "scanner_udp_scanner_memcached_stats_probe": "_memcached_stats_probe()" | kind=code-symbol | source=probe/scanner/udp_scanner.py:L73 | neighbors=[udp_scanner.py] | lang=en
-- "scanner_udp_scanner_netbios_probe": "_netbios_probe()" | kind=code-symbol | source=probe/scanner/udp_scanner.py:L65 | neighbors=[udp_scanner.py] | lang=en
-- "scanner_udp_scanner_ntp_probe": "_ntp_probe()" | kind=code-symbol | source=probe/scanner/udp_scanner.py:L46 | neighbors=[udp_scanner.py] | lang=en
-- "scanner_udp_scanner_rationale_1": "udp_scanner.py — detect common UDP services via protocol-specific probes.  METHO" | kind=entity | source=probe/scanner/udp_scanner.py:L1 | neighbors=[udp_scanner.py] | lang=en
-- "scanner_udp_scanner_rationale_114": "SIP OPTIONS request — safe fingerprint method." | kind=entity | source=probe/scanner/udp_scanner.py:L114 | neighbors=[_sip_probe()] | lang=en
-- "scanner_udp_scanner_rationale_133": "TFTP RRQ for a non-existent file.  Error reply confirms TFTP service." | kind=entity | source=probe/scanner/udp_scanner.py:L133 | neighbors=[_tftp_probe()] | lang=en
-- "scanner_udp_scanner_rationale_139": "RMCP Ping (ASF Presence Ping) to detect IPMI/BMC." | kind=entity | source=probe/scanner/udp_scanner.py:L139 | neighbors=[_ipmi_probe()] | lang=en
-- "scanner_udp_scanner_rationale_140": "RMCP Ping (ASF Presence Ping) to detect IPMI/BMC." | kind=entity | source=probe/scanner/udp_scanner.py:L140 | neighbors=[_ipmi_probe()] | lang=en
-- "scanner_udp_scanner_rationale_146": "UPnP/SSDP M-SEARCH — unicast to target:1900." | kind=entity | source=probe/scanner/udp_scanner.py:L146 | neighbors=[_ssdp_probe()] | lang=en
-- "scanner_udp_scanner_rationale_147": "UPnP/SSDP M-SEARCH — unicast to target:1900." | kind=entity | source=probe/scanner/udp_scanner.py:L147 | neighbors=[_ssdp_probe()] | lang=en
-- "scanner_udp_scanner_rationale_158": "mDNS PTR query for _services._dns-sd._udp.local (unicast to :5353)." | kind=entity | source=probe/scanner/udp_scanner.py:L158 | neighbors=[_mdns_probe()] | lang=en
-- "scanner_udp_scanner_rationale_159": "mDNS PTR query for _services._dns-sd._udp.local (unicast to :5353)." | kind=entity | source=probe/scanner/udp_scanner.py:L159 | neighbors=[_mdns_probe()] | lang=en
-- "scanner_udp_scanner_rationale_188": "Parse IKEv1 or IKEv2 response header." | kind=entity | source=probe/scanner/udp_scanner.py:L188 | neighbors=[interpret_ike()] | lang=en
-- "scanner_udp_scanner_rationale_189": "Parse IKEv1 or IKEv2 response header." | kind=entity | source=probe/scanner/udp_scanner.py:L189 | neighbors=[interpret_ike()] | lang=en
-- "scanner_udp_scanner_rationale_204": "Extract SIP version + server header from a SIP response." | kind=entity | source=probe/scanner/udp_scanner.py:L204 | neighbors=[interpret_sip()] | lang=en
-- "scanner_udp_scanner_rationale_205": "Extract SIP version + server header from a SIP response." | kind=entity | source=probe/scanner/udp_scanner.py:L205 | neighbors=[interpret_sip()] | lang=en
-- "scanner_udp_scanner_rationale_219": "Parse RMCP Pong; extract supported entities and IPMI capabilities." | kind=entity | source=probe/scanner/udp_scanner.py:L219 | neighbors=[interpret_ipmi()] | lang=en
+- "native_http_probe_fingerprint": "fingerprint()" | kind=code-symbol | source=manager/frontend/lib/engine/native/http-probe.ts:L108 | neighbors=[http-probe.ts]
+- "native_http_probe_httpproberesult": "HttpProbeResult" | kind=code-symbol | source=manager/frontend/lib/engine/native/http-probe.ts:L79 | neighbors=[http-probe.ts]
+- "native_http_probe_nativehttpopts": "NativeHttpOpts" | kind=code-symbol | source=manager/frontend/lib/engine/native/http-probe.ts:L239 | neighbors=[http-probe.ts]
+- "native_http_probe_probeone": "probeOne()" | kind=code-symbol | source=manager/frontend/lib/engine/native/http-probe.ts:L143 | neighbors=[http-probe.ts]
+- "native_http_probe_tech_rules": "TECH_RULES" | kind=code-symbol | source=manager/frontend/lib/engine/native/http-probe.ts:L38 | neighbors=[http-probe.ts]
+- "native_http_probe_techrule": "TechRule" | kind=code-symbol | source=manager/frontend/lib/engine/native/http-probe.ts:L30 | neighbors=[http-probe.ts]
+- "native_http_probe_web_port_proto": "WEB_PORT_PROTO" | kind=code-symbol | source=manager/frontend/lib/engine/native/http-probe.ts:L21 | neighbors=[http-probe.ts]
+- "native_port_scan_checkopts": "CheckOpts" | kind=code-symbol | source=manager/frontend/lib/engine/native/port-scan.ts:L159 | neighbors=[port-scan.ts]
+- "native_port_scan_checkport": "checkPort()" | kind=code-symbol | source=manager/frontend/lib/engine/native/port-scan.ts:L165 | neighbors=[port-scan.ts]
+- "native_port_scan_expandtarget": "expandTarget()" | kind=code-symbol | source=manager/frontend/lib/engine/native/port-scan.ts:L140 | neighbors=[port-scan.ts]
+- "native_port_scan_nativeportresult": "NativePortResult" | kind=code-symbol | source=manager/frontend/lib/engine/native/port-scan.ts:L122 | neighbors=[port-scan.ts]
+- "native_port_scan_nativescanopts": "NativeScanOpts" | kind=code-symbol | source=manager/frontend/lib/engine/native/port-scan.ts:L209 | neighbors=[port-scan.ts]
+- "native_port_scan_port_names": "PORT_NAMES" | kind=code-symbol | source=manager/frontend/lib/engine/native/port-scan.ts:L111 | neighbors=[port-scan.ts]
+- "native_port_scan_portrange": "PortRange" | kind=code-symbol | source=manager/frontend/lib/engine/native/port-scan.ts:L129 | neighbors=[port-scan.ts]
+- "native_port_scan_top_1000_tcp": "TOP_1000_TCP" | kind=code-symbol | source=manager/frontend/lib/engine/native/port-scan.ts:L23 | neighbors=[port-scan.ts]
+- "native_tls_info_tlsinforesult": "TlsInfoResult" | kind=code-symbol | source=manager/frontend/lib/engine/native/tls-info.ts:L14 | neighbors=[tls-info.ts]
+- "native_tls_info_weak_protocols": "WEAK_PROTOCOLS" | kind=code-symbol | source=manager/frontend/lib/engine/native/tls-info.ts:L36 | neighbors=[tls-info.ts]
+- "native_tls_info_weak_signatures": "WEAK_SIGNATURES" | kind=code-symbol | source=manager/frontend/lib/engine/native/tls-info.ts:L35 | neighbors=[tls-info.ts]
+- "ordereddict": "OrderedDict" | kind=code-symbol | neighbors=[TTLCache]
+- "path_route_request_headers": "REQUEST_HEADERS" | kind=code-symbol | source=manager/frontend/app/api/portal/[...path]/route.ts:L9 | neighbors=[route.ts]
+- "path_route_response_headers": "RESPONSE_HEADERS" | kind=code-symbol | source=manager/frontend/app/api/portal/[...path]/route.ts:L10 | neighbors=[route.ts]
+- "path_route_routecontext": "RouteContext" | kind=code-symbol | source=manager/frontend/app/api/portal/[...path]/route.ts:L7 | neighbors=[route.ts]
+- "pathid_route_get": "GET()" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/attack-paths/[pathId]/route.ts:L5 | neighbors=[route.ts]
+- "pats_route_get": "GET" | kind=code-symbol | source=manager/frontend/app/api/auth/pats/route.ts:L5 | neighbors=[route.ts]
+- "pats_route_post": "POST" | kind=code-symbol | source=manager/frontend/app/api/auth/pats/route.ts:L10 | neighbors=[route.ts]
+- "portal_layout_nav": "NAV" | kind=code-symbol | source=manager/frontend/app/portal/layout.tsx:L7 | neighbors=[layout.tsx]
+- "portal_layout_portallayout": "PortalLayout()" | kind=code-symbol | source=manager/frontend/app/portal/layout.tsx:L7 | neighbors=[layout.tsx]
+- "portal_page_dashboardskeleton": "DashboardSkeleton()" | kind=code-symbol | source=manager/frontend/app/portal/page.tsx:L189 | neighbors=[page.tsx]
+- "portal_page_kpi": "Kpi()" | kind=code-symbol | source=manager/frontend/app/portal/page.tsx:L16 | neighbors=[page.tsx]
+- "portal_page_legend": "Legend()" | kind=code-symbol | source=manager/frontend/app/portal/page.tsx:L209 | neighbors=[page.tsx]
+- "portal_page_metric": "Metric()" | kind=code-symbol | source=manager/frontend/app/portal/page.tsx:L13 | neighbors=[page.tsx]
+- "portal_page_panel": "Panel()" | kind=code-symbol | source=manager/frontend/app/portal/page.tsx:L27 | neighbors=[page.tsx]
+- "portal_page_portaloverview": "PortalOverview()" | kind=code-symbol | source=manager/frontend/app/portal/page.tsx:L8 | neighbors=[page.tsx]
+- "portal_page_queuestat": "QueueStat()" | kind=code-symbol | source=manager/frontend/app/portal/page.tsx:L218 | neighbors=[page.tsx]
+- "portal_page_sev_order": "SEV_ORDER" | kind=code-symbol | source=manager/frontend/app/portal/page.tsx:L14 | neighbors=[page.tsx]
+- "portal_page_sevs": "SEVS" | kind=code-symbol | source=manager/frontend/app/portal/page.tsx:L13 | neighbors=[page.tsx]
+- "portal_portalshell_footerclock": "FooterClock()" | kind=code-symbol | source=manager/frontend/components/portal/PortalShell.tsx:L299 | neighbors=[PortalShell.tsx]
+- "portal_portalshell_nav": "NAV" | kind=code-symbol | source=manager/frontend/components/portal/PortalShell.tsx:L23 | neighbors=[PortalShell.tsx]
+- "portal_portalshell_portalshellprops": "PortalShellProps" | kind=code-symbol | source=manager/frontend/components/portal/PortalShell.tsx:L36 | neighbors=[PortalShell.tsx]
+- "portal_portalshell_portalsidebar": "PortalSidebar()" | kind=code-symbol | source=manager/frontend/components/portal/PortalShell.tsx:L46 | neighbors=[PortalShell.tsx]
 
 ## Instructions
 

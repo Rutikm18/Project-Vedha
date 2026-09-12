@@ -1,4 +1,4 @@
-# Node Description Batch 264 of 336
+# Node Description Batch 264 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,60 +12,51 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
-For an entity node (any other kind — e.g. a person, place, event, object),
-describe what the entity is and its role, grounded in its type, its
-relations (neighbors) and the provided citations/evidence — e.g.
-"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
-Ground entity descriptions in the citations/evidence when present; do not
-speculate beyond the context, so a node with no supporting context may be
-left out of the reply.
-LANGUAGE: each entry has a `lang=` marker giving the language of its source.
-Write that entry's description in EXACTLY that language. Do not translate to
-a single common language — match each node's source language individually.
+Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "scanner_web_scanner_main": "main()" | kind=code-symbol | source=probe/scanner/web_scanner.py:L182 | neighbors=[web_scanner.py] | lang=en
-- "scanner_web_scanner_noredirect_redirect_request": ".redirect_request()" | kind=code-symbol | source=probe/scanner/web_scanner.py:L56 | neighbors=[_NoRedirect] | lang=en
-- "scanner_web_scanner_rationale_1": "web_scanner.py — passive HTTP(S) service fingerprinting.  METHOD (collection onl" | kind=entity | source=probe/scanner/web_scanner.py:L1 | neighbors=[web_scanner.py] | lang=en
-- "scanner_web_scanner_rationale_149": "Preferred scheme first, the other as a fallback: a scheme guess must         nev" | kind=entity | source=probe/scanner/web_scanner.py:L149 | neighbors=[._schemes_for()] | lang=pt
-- "scanner_web_scanner_rationale_45": "Read the Allow header from an OPTIONS response. Read-only." | kind=entity | source=probe/scanner/web_scanner.py:L45 | neighbors=[parse_allow_header()] | lang=en
-- "scanner_web_scanner_rationale_46": "Read the Allow header from an OPTIONS response. Read-only." | kind=entity | source=probe/scanner/web_scanner.py:L46 | neighbors=[parse_allow_header()] | lang=en
-- "scanner_web_scanner_webscanner_init": ".__init__()" | kind=code-symbol | source=probe/scanner/web_scanner.py:L139 | neighbors=[WebScanner] | lang=en
-- "scanner_windows_collector_main": "main()" | kind=code-symbol | source=probe/scanner/windows_collector.py:L335 | neighbors=[windows_collector.py] | lang=en
-- "scanner_windows_collector_rationale_1": "windows_collector.py — credentialed (authenticated) inventory for Windows hosts." | kind=entity | source=probe/scanner/windows_collector.py:L1 | neighbors=[windows_collector.py] | lang=en
-- "scanner_windows_collector_rationale_160": "Connect to RemoteRegistry over SMB and enumerate installed-software keys plus" | kind=entity | source=probe/scanner/windows_collector.py:L160 | neighbors=[_smb_registry_collect()] | lang=en
-- "scanner_windows_collector_windowscollector_init": ".__init__()" | kind=code-symbol | source=probe/scanner/windows_collector.py:L239 | neighbors=[WindowsCollector] | lang=en
-- "scanner_windows_collector_winrm_collect": "_winrm_collect()" | kind=code-symbol | source=probe/scanner/windows_collector.py:L114 | neighbors=[windows_collector.py] | lang=en
-- "scans_page_field": "Field()" | kind=code-symbol | source=manager/frontend/app/portal/scans/page.tsx:L114 | neighbors=[page.tsx] | lang=en
-- "scans_page_group": "Group()" | kind=code-symbol | source=manager/frontend/app/portal/scans/page.tsx:L172 | neighbors=[page.tsx] | lang=en
-- "scans_page_intensities": "INTENSITIES" | kind=code-symbol | source=manager/frontend/app/portal/scans/page.tsx:L18 | neighbors=[page.tsx] | lang=en
-- "scans_page_jobmeta": "JobMeta" | kind=code-symbol | source=manager/frontend/app/portal/scans/page.tsx:L38 | neighbors=[page.tsx] | lang=en
-- "scans_page_looksliketarget": "looksLikeTarget()" | kind=code-symbol | source=manager/frontend/app/portal/scans/page.tsx:L26 | neighbors=[page.tsx] | lang=en
-- "scans_page_phases": "PHASES" | kind=code-symbol | source=manager/frontend/app/portal/scans/page.tsx:L36 | neighbors=[page.tsx] | lang=en
-- "scans_page_phaseticker": "PhaseTicker()" | kind=code-symbol | source=manager/frontend/app/portal/scans/page.tsx:L85 | neighbors=[page.tsx] | lang=en
-- "scans_page_portalscans": "PortalScans()" | kind=code-symbol | source=manager/frontend/app/portal/scans/page.tsx:L184 | neighbors=[page.tsx] | lang=en
-- "scans_page_scan_types": "SCAN_TYPES" | kind=code-symbol | source=manager/frontend/app/portal/scans/page.tsx:L11 | neighbors=[page.tsx] | lang=en
-- "scans_page_status_style": "STATUS_STYLE" | kind=code-symbol | source=manager/frontend/app/portal/scans/page.tsx:L8 | neighbors=[page.tsx] | lang=en
-- "scans_page_status_var": "STATUS_VAR" | kind=code-symbol | source=manager/frontend/app/portal/scans/page.tsx:L28 | neighbors=[page.tsx] | lang=en
-- "scans_page_statusicon": "StatusIcon()" | kind=code-symbol | source=manager/frontend/app/portal/scans/page.tsx:L77 | neighbors=[page.tsx] | lang=en
-- "schemas_ai_aigeneraterequest_validate_bounded_input": ".validate_bounded_input()" | kind=code-symbol | source=manager/backend/app/schemas/ai.py:L28 | neighbors=[AiGenerateRequest] | lang=en
-- "schemas_asset_assetin_validate_ip": ".validate_ip()" | kind=code-symbol | source=manager/backend/app/schemas/asset.py:L23 | neighbors=[AssetIn] | lang=en
-- "schemas_auth_rationale_18": "Parsed from JWT claims — attached to request.state and injected as dependency." | kind=entity | source=manager/backend/app/schemas/auth.py:L18 | neighbors=[CurrentUser] | lang=en
-- "schemas_auth_rationale_21": "Parsed from JWT claims — attached to request.state and injected as dependency." | kind=entity | source=manager/backend/app/schemas/auth.py:L21 | neighbors=[CurrentUser] | lang=en
-- "schemas_engagement_engagementcreate_normalize_name": ".normalize_name()" | kind=code-symbol | source=manager/backend/app/schemas/engagement.py:L54 | neighbors=[EngagementCreate] | lang=en
-- "schemas_finding_findingpatch_normalize_action_reason": ".normalize_action_reason()" | kind=code-symbol | source=manager/backend/app/schemas/finding.py:L38 | neighbors=[FindingPatch] | lang=en
-- "schemas_finding_findingreopen_normalize_reason": ".normalize_reason()" | kind=code-symbol | source=manager/backend/app/schemas/finding.py:L49 | neighbors=[FindingReopen] | lang=en
-- "schemas_finding_rationale_105": "Compute the explainable 0-1000 unified rank at serialization time so         eve" | kind=entity | source=manager/backend/app/schemas/finding.py:L105 | neighbors=[._populate_risk_rank()] | lang=en
-- "schemas_finding_rationale_161": "Compute the explainable 0-1000 unified rank at serialization time so         eve" | kind=entity | source=manager/backend/app/schemas/finding.py:L161 | neighbors=[._populate_risk_rank()] | lang=en
-- "schemas_finding_rationale_22": "All fields optional — PATCH semantics." | kind=entity | source=manager/backend/app/schemas/finding.py:L22 | neighbors=[FindingPatch] | lang=en
-- "schemas_finding_rationale_69": "One entry in a finding's lifecycle timeline. `id` is null for synthesized     ev" | kind=entity | source=manager/backend/app/schemas/finding.py:L69 | neighbors=[FindingEventOut] | lang=en
-- "schemas_portal_clientassistantask_bounded": "._bounded()" | kind=code-symbol | source=manager/backend/app/schemas/portal.py:L142 | neighbors=[ClientAssistantAsk] | lang=en
-- "schemas_portal_rationale_1": "schemas/portal.py — customer-safe response shapes.  CRITICAL: these are WHITELIS" | kind=entity | source=manager/backend/app/schemas/portal.py:L1 | neighbors=[portal.py] | lang=en
-- "schemas_portal_rationale_101": "A customer's rich scan request. The customer may ask for any active scan     typ" | kind=entity | source=manager/backend/app/schemas/portal.py:L101 | neighbors=[ScanRequestCreate] | lang=en
-- "schemas_portal_rationale_129": "One turn of the customer's conversation. Bounded so a crafted client can't     p" | kind=entity | source=manager/backend/app/schemas/portal.py:L129 | neighbors=[ClientAssistantMessage] | lang=en
-- "schemas_portal_rationale_23": "A finding as a CUSTOMER may see it. model_validate(from_attributes=True)     rea" | kind=entity | source=manager/backend/app/schemas/portal.py:L23 | neighbors=[ClientFindingOut] | lang=en
+- "report_findingreport_copybutton": "CopyButton()" | kind=code-symbol | source=manager/frontend/components/report/FindingReport.tsx:L70 | neighbors=[FindingReport.tsx]
+- "report_findingreport_evidenceartifact": "EvidenceArtifact()" | kind=code-symbol | source=manager/frontend/components/report/FindingReport.tsx:L133 | neighbors=[FindingReport.tsx]
+- "report_findingreport_findingreportprops": "FindingReportProps" | kind=code-symbol | source=manager/frontend/components/report/FindingReport.tsx:L217 | neighbors=[FindingReport.tsx]
+- "report_findingreport_gap": "Gap()" | kind=code-symbol | source=manager/frontend/components/report/FindingReport.tsx:L107 | neighbors=[FindingReport.tsx]
+- "report_findingreport_prose": "Prose()" | kind=code-symbol | source=manager/frontend/components/report/FindingReport.tsx:L118 | neighbors=[FindingReport.tsx]
+- "report_findingreport_reportmode": "ReportMode" | kind=code-symbol | source=manager/frontend/components/report/FindingReport.tsx:L40 | neighbors=[FindingReport.tsx]
+- "report_findingreport_reportmodecontext": "ReportModeContext" | kind=code-symbol | source=manager/frontend/components/report/FindingReport.tsx:L41 | neighbors=[FindingReport.tsx]
+- "report_findingreport_section": "Section()" | kind=code-symbol | source=manager/frontend/components/report/FindingReport.tsx:L85 | neighbors=[FindingReport.tsx]
+- "report_findingreport_sevfilter": "SevFilter" | kind=code-symbol | source=manager/frontend/components/report/FindingReport.tsx:L570 | neighbors=[FindingReport.tsx]
+- "report_findingreport_sevtag": "SevTag()" | kind=code-symbol | source=manager/frontend/components/report/FindingReport.tsx:L57 | neighbors=[FindingReport.tsx]
+- "reports_layout_metadata": "metadata" | kind=code-symbol | source=manager/frontend/app/reports/layout.tsx:L8 | neighbors=[layout.tsx]
+- "reports_layout_reportslayout": "ReportsLayout()" | kind=code-symbol | source=manager/frontend/app/reports/layout.tsx:L13 | neighbors=[layout.tsx]
+- "reports_page_activityitem": "ActivityItem" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L49 | neighbors=[page.tsx]
+- "reports_page_aidraft": "AiDraft" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L46 | neighbors=[page.tsx]
+- "reports_page_aijobstatus": "AiJobStatus" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L45 | neighbors=[page.tsx]
+- "reports_page_aipanel": "AiPanel()" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L415 | neighbors=[page.tsx]
+- "reports_page_aireportpanel": "AiReportPanel()" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L403 | neighbors=[page.tsx]
+- "reports_page_compliancecontrol": "ComplianceControl" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L12 | neighbors=[page.tsx]
+- "reports_page_complianceframework": "ComplianceFramework" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L10 | neighbors=[page.tsx]
+- "reports_page_complianceframeworkdata": "ComplianceFrameworkData" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L22 | neighbors=[page.tsx]
+- "reports_page_compliancereport": "ComplianceReport()" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L267 | neighbors=[page.tsx]
+- "reports_page_conf_style": "CONF_STYLE" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L149 | neighbors=[page.tsx]
+- "reports_page_copybtn": "CopyBtn()" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L126 | neighbors=[page.tsx]
+- "reports_page_coveragetab": "CoverageTab()" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L744 | neighbors=[page.tsx]
+- "reports_page_cvetab": "CveTab()" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L683 | neighbors=[page.tsx]
+- "reports_page_decisionbox": "DecisionBox()" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L382 | neighbors=[page.tsx]
+- "reports_page_documentstab": "DocumentsTab()" | kind=code-symbol | source=manager/frontend/app/portal/reports/page.tsx:L586 | neighbors=[page.tsx]
+- "reports_page_domain_label": "DOMAIN_LABEL" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L133 | neighbors=[page.tsx]
+- "reports_page_effortdot": "EffortDot()" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L161 | neighbors=[page.tsx]
+- "reports_page_engagement": "Engagement" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L32 | neighbors=[page.tsx]
+- "reports_page_evidblock": "EvidBlock()" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L201 | neighbors=[page.tsx]
+- "reports_page_evidenceitem": "EvidenceItem" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L39 | neighbors=[page.tsx]
+- "reports_page_evidencereport": "EvidenceReport()" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L230 | neighbors=[page.tsx]
+- "reports_page_evidencestats": "evidenceStats" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L35 | neighbors=[page.tsx]
+- "reports_page_evidencesummary": "EvidenceSummary()" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L717 | neighbors=[page.tsx]
+- "reports_page_evidtab": "EvidTab()" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L998 | neighbors=[page.tsx]
+- "reports_page_exectab": "ExecTab()" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L588 | neighbors=[page.tsx]
+- "reports_page_executivedoc": "ExecutiveDoc()" | kind=code-symbol | source=manager/frontend/app/portal/reports/page.tsx:L86 | neighbors=[page.tsx]
+- "reports_page_executivereport": "ExecutiveReport()" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L155 | neighbors=[page.tsx]
+- "reports_page_executivesummary": "ExecutiveSummary()" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L546 | neighbors=[page.tsx]
 
 ## Instructions
 

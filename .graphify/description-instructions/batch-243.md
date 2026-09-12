@@ -1,4 +1,4 @@
-# Node Description Batch 244 of 336
+# Node Description Batch 244 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -26,46 +26,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "scanner_cpe_rationale_1": "cpe.py — derive a CPE 2.3 identity from an observed (service, product, version)." | kind=entity | source=probe/scanner/cpe.py:L1 | neighbors=[cpe.py] | lang=en
-- "scanner_cpe_rationale_104": "Prefer an explicit version field; else pull a version-like token out of the" | kind=entity | source=probe/scanner/cpe.py:L104 | neighbors=[_extract_version()] | lang=en
-- "scanner_cpe_rationale_117": "Return {vendor, product, version, cpe23} for a recognized product, else None." | kind=entity | source=probe/scanner/cpe.py:L117 | neighbors=[to_cpe()] | lang=en
-- "scanner_db_scanner_dbscanner_init": ".__init__()" | kind=code-symbol | source=probe/scanner/db_scanner.py:L240 | neighbors=[DBScanner] | lang=en
-- "scanner_db_scanner_main": "main()" | kind=code-symbol | source=probe/scanner/db_scanner.py:L287 | neighbors=[db_scanner.py] | lang=en
-- "scanner_db_scanner_probe_mongodb": "_probe_mongodb()" | kind=code-symbol | source=probe/scanner/db_scanner.py:L131 | neighbors=[db_scanner.py] | lang=en
-- "scanner_db_scanner_probe_mssql": "_probe_mssql()" | kind=code-symbol | source=probe/scanner/db_scanner.py:L82 | neighbors=[db_scanner.py] | lang=en
-- "scanner_db_scanner_probe_mysql": "_probe_mysql()" | kind=code-symbol | source=probe/scanner/db_scanner.py:L47 | neighbors=[db_scanner.py] | lang=en
-- "scanner_db_scanner_probe_mysqlx": "_probe_mysqlx()" | kind=code-symbol | source=probe/scanner/db_scanner.py:L166 | neighbors=[db_scanner.py] | lang=en
-- "scanner_db_scanner_probe_oracle": "_probe_oracle()" | kind=code-symbol | source=probe/scanner/db_scanner.py:L195 | neighbors=[db_scanner.py] | lang=en
-- "scanner_db_scanner_probe_postgres": "_probe_postgres()" | kind=code-symbol | source=probe/scanner/db_scanner.py:L67 | neighbors=[db_scanner.py] | lang=en
-- "scanner_db_scanner_rationale_1": "db_scanner.py — fingerprint database services.  WHY: databases are everywhere on" | kind=entity | source=probe/scanner/db_scanner.py:L1 | neighbors=[db_scanner.py] | lang=en
-- "scanner_db_scanner_rationale_102": "Classify a Redis INFO reply. `unauthenticated_read` is True only when we     act" | kind=entity | source=probe/scanner/db_scanner.py:L102 | neighbors=[interpret_redis_info()] | lang=en
-- "scanner_delta_scanner_rationale_1": "delta_scanner.py — scan-state comparison and continuous attack-surface monitorin" | kind=entity | source=probe/scanner/delta_scanner.py:L1 | neighbors=[delta_scanner.py] | lang=en
-- "scanner_delta_scanner_rationale_122": "Best-effort service name from data dict or scanner name." | kind=entity | source=probe/scanner/delta_scanner.py:L122 | neighbors=[_extract_service()] | lang=en
-- "scanner_delta_scanner_rationale_124": "Best-effort service name from data dict or scanner name." | kind=entity | source=probe/scanner/delta_scanner.py:L124 | neighbors=[_extract_service()] | lang=en
-- "scanner_delta_scanner_rationale_139": "Best-effort version string." | kind=entity | source=probe/scanner/delta_scanner.py:L139 | neighbors=[_extract_version()] | lang=en
-- "scanner_delta_scanner_rationale_141": "Best-effort version string." | kind=entity | source=probe/scanner/delta_scanner.py:L141 | neighbors=[_extract_version()] | lang=en
-- "scanner_delta_scanner_rationale_158": "Load JSONL scan snapshots and compute security-relevant diffs." | kind=entity | source=probe/scanner/delta_scanner.py:L158 | neighbors=[DeltaEngine] | lang=en
-- "scanner_delta_scanner_rationale_160": "Load JSONL scan snapshots and compute security-relevant diffs." | kind=entity | source=probe/scanner/delta_scanner.py:L160 | neighbors=[DeltaEngine] | lang=en
-- "scanner_delta_scanner_rationale_161": "Parse a JSONL file of ScanResult records and return a SnapshotIndex.         Lin" | kind=entity | source=probe/scanner/delta_scanner.py:L161 | neighbors=[.load_jsonl()] | lang=en
-- "scanner_delta_scanner_rationale_163": "Parse a JSONL file of ScanResult records and return a SnapshotIndex.         Lin" | kind=entity | source=probe/scanner/delta_scanner.py:L163 | neighbors=[.load_jsonl()] | lang=en
-- "scanner_delta_scanner_rationale_206": "Compute security-relevant deltas between baseline and current snapshots." | kind=entity | source=probe/scanner/delta_scanner.py:L206 | neighbors=[.diff()] | lang=en
-- "scanner_delta_scanner_rationale_208": "Compute security-relevant deltas between baseline and current snapshots." | kind=entity | source=probe/scanner/delta_scanner.py:L208 | neighbors=[.diff()] | lang=en
-- "scanner_delta_scanner_rationale_297": "Heuristic priority for a newly-detected service." | kind=entity | source=probe/scanner/delta_scanner.py:L297 | neighbors=[_new_service_severity()] | lang=en
-- "scanner_delta_scanner_rationale_299": "Heuristic priority for a newly-detected service." | kind=entity | source=probe/scanner/delta_scanner.py:L299 | neighbors=[_new_service_severity()] | lang=en
-- "scanner_delta_scanner_rationale_309": "True if version changed in a security-relevant way (not just whitespace)." | kind=entity | source=probe/scanner/delta_scanner.py:L309 | neighbors=[_significant_version_change()] | lang=en
-- "scanner_delta_scanner_rationale_311": "True if version changed in a security-relevant way (not just whitespace)." | kind=entity | source=probe/scanner/delta_scanner.py:L311 | neighbors=[_significant_version_change()] | lang=en
-- "scanner_delta_scanner_rationale_54": "Normalised representation of one ScanResult JSONL line." | kind=entity | source=probe/scanner/delta_scanner.py:L54 | neighbors=[ScanRecord] | lang=en
-- "scanner_delta_scanner_rationale_56": "Normalised representation of one ScanResult JSONL line." | kind=entity | source=probe/scanner/delta_scanner.py:L56 | neighbors=[ScanRecord] | lang=en
-- "scanner_delta_scanner_rationale_70": "One security-relevant change between two scans." | kind=entity | source=probe/scanner/delta_scanner.py:L70 | neighbors=[Delta] | lang=en
-- "scanner_delta_scanner_rationale_72": "One security-relevant change between two scans." | kind=entity | source=probe/scanner/delta_scanner.py:L72 | neighbors=[Delta] | lang=en
-- "scanner_delta_scanner_rationale_92": "Derive a stable host identity from a raw scan record in priority order:       1." | kind=entity | source=probe/scanner/delta_scanner.py:L92 | neighbors=[_stable_host_id()] | lang=en
-- "scanner_delta_scanner_rationale_94": "Derive a stable host identity from a raw scan record in priority order:       1." | kind=entity | source=probe/scanner/delta_scanner.py:L94 | neighbors=[_stable_host_id()] | lang=en
-- "scanner_device_classifier_rationale_1": "device_classifier.py — infer a device's ROLE from collection-layer facts.  This" | kind=entity | source=probe/scanner/device_classifier.py:L1 | neighbors=[device_classifier.py] | lang=en
-- "scanner_device_classifier_rationale_102": "Fuse OS family + open ports + service products into a device-role guess.      Re" | kind=entity | source=probe/scanner/device_classifier.py:L102 | neighbors=[classify_device()] | lang=pt
-- "scanner_device_classifier_rationale_116": "Fuse OS family + open ports + service products into a device-role guess.      Re" | kind=entity | source=probe/scanner/device_classifier.py:L116 | neighbors=[classify_device()] | lang=pt
-- "scanner_device_classifier_rationale_202": "Convenience adapter: extract classifier inputs from a list of ScanResult     obj" | kind=entity | source=probe/scanner/device_classifier.py:L202 | neighbors=[classify_from_results()] | lang=en
-- "scanner_device_classifier_rationale_238": "Convenience adapter: extract classifier inputs from a list of ScanResult     obj" | kind=entity | source=probe/scanner/device_classifier.py:L238 | neighbors=[classify_from_results()] | lang=en
-- "scanner_dns_scanner_dnsscanner_init": ".__init__()" | kind=code-symbol | source=probe/scanner/dns_scanner.py:L91 | neighbors=[DNSScanner] | lang=en
+- "main_scripts_findings_rationale_533": "SMBv1 (wormable) + exposed RDP (brute-force/BlueKeep) on one host — the     clas" | kind=entity | source=probe/main_scripts/findings.py:L533 | neighbors=[_corr_legacy_windows()] | lang=en
+- "main_scripts_findings_rationale_536": "Confirmed RDP (X.224 handshake) + NLA detection. Runs before the port-hint     e" | kind=entity | source=probe/main_scripts/findings.py:L536 | neighbors=[_rule_rdp()] | lang=en
+- "main_scripts_findings_rationale_550": "Two or more cleartext services on one host — any sniffing position harvests" | kind=entity | source=probe/main_scripts/findings.py:L550 | neighbors=[_corr_cleartext_cluster()] | lang=en
+- "main_scripts_findings_rationale_560": "SMB signing not required => a viable NTLM relay target. If SMBv1 is also on," | kind=entity | source=probe/main_scripts/findings.py:L560 | neighbors=[_corr_ntlm_relay()] | lang=en
+- "main_scripts_findings_rationale_573": "Derive findings from collected facts. Pure; deterministic; safe.      Accepts Sc" | kind=entity | source=probe/main_scripts/findings.py:L573 | neighbors=[run_findings()] | lang=en
+- "main_scripts_findings_rationale_577": "Anonymous SMB (null-session) information disclosure. The null session is a     m" | kind=entity | source=probe/main_scripts/findings.py:L577 | neighbors=[_rule_smb_enum()] | lang=en
+- "main_scripts_findings_rationale_583": "SMBv1 (wormable) + exposed RDP (brute-force/BlueKeep) on one host — the     clas" | kind=entity | source=probe/main_scripts/findings.py:L583 | neighbors=[_corr_legacy_windows()] | lang=en
+- "main_scripts_findings_rationale_600": "Two or more cleartext services on one host — any sniffing position harvests" | kind=entity | source=probe/main_scripts/findings.py:L600 | neighbors=[_corr_cleartext_cluster()] | lang=en
+- "main_scripts_findings_rationale_623": "Derive findings from collected facts. Pure; deterministic; safe.      Accepts Sc" | kind=entity | source=probe/main_scripts/findings.py:L623 | neighbors=[run_findings()] | lang=en
+- "main_scripts_findings_rationale_628": "Anonymous LDAP exposure. An anonymous RootDSE bind is common (low), but an     a" | kind=entity | source=probe/main_scripts/findings.py:L628 | neighbors=[_rule_ldap()] | lang=en
+- "main_scripts_findings_rationale_635": "CLI: derive findings from one or more scanner JSONL files.          python -m ma" | kind=entity | source=probe/main_scripts/findings.py:L635 | neighbors=[_main()] | lang=en
+- "main_scripts_findings_rationale_64": "One vulnerability finding, always backed by an observed fact." | kind=entity | source=probe/main_scripts/findings.py:L64 | neighbors=[Finding] | lang=en
+- "main_scripts_findings_rationale_666": "DNS server hygiene: a full AXFR zone transfer is the high-value finding     (ent" | kind=entity | source=probe/main_scripts/findings.py:L666 | neighbors=[_rule_dns()] | lang=en
+- "main_scripts_findings_rationale_669": "Read a scanner's JSONL output into fact dicts (skips blank/garbage lines)." | kind=entity | source=probe/main_scripts/findings.py:L669 | neighbors=[load_facts_jsonl()] | lang=pt
+- "main_scripts_findings_rationale_670": "Anonymous LDAP exposure. An anonymous RootDSE bind is common (low), but an     a" | kind=entity | source=probe/main_scripts/findings.py:L670 | neighbors=[_rule_ldap()] | lang=en
+- "main_scripts_findings_rationale_685": "CLI: derive findings from one or more scanner JSONL files.          python -m ma" | kind=entity | source=probe/main_scripts/findings.py:L685 | neighbors=[_main()] | lang=en
+- "main_scripts_findings_rationale_708": "DNS server hygiene: a full AXFR zone transfer is the high-value finding     (ent" | kind=entity | source=probe/main_scripts/findings.py:L708 | neighbors=[_rule_dns()] | lang=en
+- "main_scripts_findings_rationale_716": "NFS anonymous export exposure. A world-readable export is the high-value     fin" | kind=entity | source=probe/main_scripts/findings.py:L716 | neighbors=[_rule_nfs()] | lang=en
+- "main_scripts_findings_rationale_753": "Confirmed FTP anonymous access (upgrades the port-based cleartext hint).     Hig" | kind=entity | source=probe/main_scripts/findings.py:L753 | neighbors=[_rule_ftp()] | lang=en
+- "main_scripts_findings_rationale_758": "NFS anonymous export exposure. A world-readable export is the high-value     fin" | kind=entity | source=probe/main_scripts/findings.py:L758 | neighbors=[_rule_nfs()] | lang=en
+- "main_scripts_findings_rationale_782": "rsync daemon exposure. Anonymously-selectable modules are the high finding     (" | kind=entity | source=probe/main_scripts/findings.py:L782 | neighbors=[_rule_rsync()] | lang=en
+- "main_scripts_findings_rationale_795": "Confirmed FTP anonymous access (upgrades the port-based cleartext hint).     Hig" | kind=entity | source=probe/main_scripts/findings.py:L795 | neighbors=[_rule_ftp()] | lang=en
+- "main_scripts_findings_rationale_820": "VNC/RFB authentication exposure. 'None' security type = unauthenticated     remo" | kind=entity | source=probe/main_scripts/findings.py:L820 | neighbors=[_rule_vnc()] | lang=en
+- "main_scripts_findings_rationale_824": "rsync daemon exposure. Anonymously-selectable modules are the high finding     (" | kind=entity | source=probe/main_scripts/findings.py:L824 | neighbors=[_rule_rsync()] | lang=en
+- "main_scripts_findings_rationale_851": "IPMI/BMC exposure. Cipher-zero is a critical auth bypass; a merely reachable" | kind=entity | source=probe/main_scripts/findings.py:L851 | neighbors=[_rule_ipmi()] | lang=pt
+- "main_scripts_findings_rationale_862": "VNC/RFB authentication exposure. 'None' security type = unauthenticated     remo" | kind=entity | source=probe/main_scripts/findings.py:L862 | neighbors=[_rule_vnc()] | lang=en
+- "main_scripts_findings_rationale_883": "SMTP hygiene: VRFY/EXPN user enumeration, and missing STARTTLS (cleartext)." | kind=entity | source=probe/main_scripts/findings.py:L883 | neighbors=[_rule_smtp()] | lang=en
+- "main_scripts_findings_rationale_893": "IPMI/BMC exposure. Cipher-zero is a critical auth bypass; a merely reachable" | kind=entity | source=probe/main_scripts/findings.py:L893 | neighbors=[_rule_ipmi()] | lang=pt
+- "main_scripts_findings_rationale_917": "Windows RPC endpoint-mapper disclosure — the internal RPC service map." | kind=entity | source=probe/main_scripts/findings.py:L917 | neighbors=[_rule_msrpc()] | lang=en
+- "main_scripts_findings_rationale_925": "SMTP hygiene: VRFY/EXPN user enumeration, and missing STARTTLS (cleartext)." | kind=entity | source=probe/main_scripts/findings.py:L925 | neighbors=[_rule_smtp()] | lang=en
+- "main_scripts_findings_rationale_944": "Exposed network printer — an information leak and an attack surface." | kind=entity | source=probe/main_scripts/findings.py:L944 | neighbors=[_rule_printer()] | lang=en
+- "main_scripts_findings_rationale_959": "Windows RPC endpoint-mapper disclosure — the internal RPC service map." | kind=entity | source=probe/main_scripts/findings.py:L959 | neighbors=[_rule_msrpc()] | lang=en
+- "main_scripts_findings_rationale_98": "Accept a raw JSONL dict or a ScanResult; return a plain dict view." | kind=entity | source=probe/main_scripts/findings.py:L98 | neighbors=[_as_dict()] | lang=pt
+- "main_scripts_findings_rationale_986": "Exposed network printer — an information leak and an attack surface." | kind=entity | source=probe/main_scripts/findings.py:L986 | neighbors=[_rule_printer()] | lang=en
+- "main_scripts_findings_rationale_990": "SMB signing not required => a viable NTLM relay target. If SMBv1 is also on," | kind=entity | source=probe/main_scripts/findings.py:L990 | neighbors=[_corr_ntlm_relay()] | lang=en
+- "main_scripts_ftp_scanner_ftpscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/ftp_scanner.py:L65 | neighbors=[FTPScanner] | lang=en
+- "main_scripts_ftp_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/ftp_scanner.py:L176 | neighbors=[ftp_scanner.py] | lang=en
+- "main_scripts_ftp_scanner_rationale_1": "ftp_scanner.py — FTP anonymous-access check (VA checklist: anonymous file exposu" | kind=entity | source=probe/main_scripts/ftp_scanner.py:L1 | neighbors=[ftp_scanner.py] | lang=en
+- "main_scripts_ftp_scanner_rationale_129": "Confirm anonymous READ via PASV + LIST, reading a bounded amount." | kind=entity | source=probe/main_scripts/ftp_scanner.py:L129 | neighbors=[._list_bounded()] | lang=pt
+- "main_scripts_ftp_scanner_rationale_45": "Extract the passive data PORT from a 227 reply. We connect to the TARGET     on" | kind=entity | source=probe/main_scripts/ftp_scanner.py:L45 | neighbors=[parse_pasv()] | lang=en
 
 ## Instructions
 

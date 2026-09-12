@@ -1,4 +1,4 @@
-# Node Description Batch 303 of 336
+# Node Description Batch 303 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,51 +12,60 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
-Write every description in English (en). Do not switch languages.
+For an entity node (any other kind — e.g. a person, place, event, object),
+describe what the entity is and its role, grounded in its type, its
+relations (neighbors) and the provided citations/evidence — e.g.
+"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
+Ground entity descriptions in the citations/evidence when present; do not
+speculate beyond the context, so a node with no supporting context may be
+left out of the reply.
+LANGUAGE: each entry has a `lang=` marker giving the language of its source.
+Write that entry's description in EXACTLY that language. Do not translate to
+a single common language — match each node's source language individually.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_probe_core_testlooksliketls_test_silent_non_client_first_port": ".test_silent_non_client_first_port()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L406 | neighbors=[TestLooksLikeTls]
-- "tests_test_probe_core_testparseports_test_bad_token_raises": ".test_bad_token_raises()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L214 | neighbors=[TestParsePorts]
-- "tests_test_probe_core_testparseports_test_comma_separated": ".test_comma_separated()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L193 | neighbors=[TestParsePorts]
-- "tests_test_probe_core_testparseports_test_duplicates_removed": ".test_duplicates_removed()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L202 | neighbors=[TestParsePorts]
-- "tests_test_probe_core_testparseports_test_mixed": ".test_mixed()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L199 | neighbors=[TestParsePorts]
-- "tests_test_probe_core_testparseports_test_out_of_range_raises": ".test_out_of_range_raises()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L208 | neighbors=[TestParsePorts]
-- "tests_test_probe_core_testparseports_test_range": ".test_range()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L196 | neighbors=[TestParsePorts]
-- "tests_test_probe_core_testparseports_test_reversed_range_raises": ".test_reversed_range_raises()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L218 | neighbors=[TestParsePorts]
-- "tests_test_probe_core_testparseports_test_single_port": ".test_single_port()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L190 | neighbors=[TestParsePorts]
-- "tests_test_probe_core_testparseports_test_sorted": ".test_sorted()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L205 | neighbors=[TestParsePorts]
-- "tests_test_probe_core_testratelimiter_test_min_interval": ".test_min_interval()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L248 | neighbors=[TestRateLimiter]
-- "tests_test_probe_core_testratelimiter_test_wait_returns_immediately_at_zero_rate": ".test_wait_returns_immediately_at_zero_rate()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L256 | neighbors=[TestRateLimiter]
-- "tests_test_probe_core_testratelimiter_test_zero_rate": ".test_zero_rate()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L252 | neighbors=[TestRateLimiter]
-- "tests_test_probe_core_testresolvescantype_test_default": ".test_default()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L860 | neighbors=[TestResolveScanType]
-- "tests_test_probe_core_testresolvescantype_test_from_job_type": ".test_from_job_type()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L857 | neighbors=[TestResolveScanType]
-- "tests_test_probe_core_testresolvescantype_test_from_params": ".test_from_params()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L854 | neighbors=[TestResolveScanType]
-- "tests_test_probe_core_testresolvescantype_test_params_override_job_type": ".test_params_override_job_type()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L863 | neighbors=[TestResolveScanType]
-- "tests_test_probe_core_testscanresult_test_default_status_observed": ".test_default_status_observed()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L238 | neighbors=[TestScanResult]
-- "tests_test_probe_core_testscanresult_test_default_timestamp_present": ".test_default_timestamp_present()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L234 | neighbors=[TestScanResult]
-- "tests_test_probe_core_testscopeguard_test_assert_in_scope_passes": ".test_assert_in_scope_passes()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L114 | neighbors=[TestScopeGuard]
-- "tests_test_probe_core_testscopeguard_test_assert_in_scope_raises": ".test_assert_in_scope_raises()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L109 | neighbors=[TestScopeGuard]
-- "tests_test_probe_core_testscopeguard_test_excludes_larger_subnet": ".test_excludes_larger_subnet()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L104 | neighbors=[TestScopeGuard]
-- "tests_test_probe_core_testscopeguard_test_excludes_override_allowlist": ".test_excludes_override_allowlist()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L99 | neighbors=[TestScopeGuard]
-- "tests_test_probe_core_testscopeguard_test_filter_yields_only_in_scope": ".test_filter_yields_only_in_scope()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L118 | neighbors=[TestScopeGuard]
-- "tests_test_probe_core_testscopeguard_test_from_file": ".test_from_file()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L123 | neighbors=[TestScopeGuard]
-- "tests_test_probe_core_testscopeguard_test_from_file_empty_raises": ".test_from_file_empty_raises()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L130 | neighbors=[TestScopeGuard]
-- "tests_test_probe_core_testscopeguard_test_from_file_missing_raises": ".test_from_file_missing_raises()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L136 | neighbors=[TestScopeGuard]
-- "tests_test_probe_core_testscopeguard_test_from_list_hostname": ".test_from_list_hostname()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L90 | neighbors=[TestScopeGuard]
-- "tests_test_probe_core_testscopeguard_test_from_list_ip_in_cidr": ".test_from_list_ip_in_cidr()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L80 | neighbors=[TestScopeGuard]
-- "tests_test_probe_core_testscopeguard_test_from_list_single_ip": ".test_from_list_single_ip()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L85 | neighbors=[TestScopeGuard]
-- "tests_test_probe_core_testscopeguard_test_hostname_case_insensitive": ".test_hostname_case_insensitive()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L95 | neighbors=[TestScopeGuard]
-- "tests_test_probe_core_testtargets_test_empty": ".test_empty()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L894 | neighbors=[TestTargets]
-- "tests_test_probe_core_testtargets_test_list": ".test_list()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L885 | neighbors=[TestTargets]
-- "tests_test_probe_core_testtargets_test_scope_cidrs": ".test_scope_cidrs()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L891 | neighbors=[TestTargets]
-- "tests_test_probe_core_testtargets_test_single_string": ".test_single_string()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L888 | neighbors=[TestTargets]
-- "tests_test_probe_core_testtuningfromparams_test_clamped_rate": ".test_clamped_rate()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L905 | neighbors=[TestTuningFromParams]
-- "tests_test_probe_core_testtuningfromparams_test_defaults": ".test_defaults()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L899 | neighbors=[TestTuningFromParams]
-- "tests_test_probe_core_testtuningfromparams_test_no_ssh_creds_without_user": ".test_no_ssh_creds_without_user()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L913 | neighbors=[TestTuningFromParams]
-- "tests_test_probe_core_testtuningfromparams_test_passive_listen_seconds": ".test_passive_listen_seconds()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L925 | neighbors=[TestTuningFromParams]
-- "tests_test_probe_core_testtuningfromparams_test_recheck_hours": ".test_recheck_hours()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L921 | neighbors=[TestTuningFromParams]
+- "sla_summary_route_apislaitem": "ApiSlaItem" | kind=code-symbol | source=manager/frontend/app/api/findings/sla-summary/route.ts:L17 | neighbors=[route.ts] | lang=en
+- "sla_summary_route_apislasummary": "ApiSlaSummary" | kind=code-symbol | source=manager/frontend/app/api/findings/sla-summary/route.ts:L22 | neighbors=[route.ts] | lang=en
+- "sla_summary_route_get": "GET" | kind=code-symbol | source=manager/frontend/app/api/findings/sla-summary/route.ts:L27 | neighbors=[route.ts] | lang=en
+- "sla_summary_route_sev_to_ui": "SEV_TO_UI" | kind=code-symbol | source=manager/frontend/app/api/findings/sla-summary/route.ts:L13 | neighbors=[route.ts] | lang=en
+- "states_datastate_btn": "btn" | kind=code-symbol | source=manager/frontend/components/states/DataState.tsx:L135 | neighbors=[DataState.tsx] | lang=en
+- "states_datastate_center": "center" | kind=code-symbol | source=manager/frontend/components/states/DataState.tsx:L130 | neighbors=[DataState.tsx] | lang=en
+- "states_datastate_datastateprops": "DataStateProps" | kind=code-symbol | source=manager/frontend/components/states/DataState.tsx:L96 | neighbors=[DataState.tsx] | lang=en
+- "states_datastate_offlinebanner": "OfflineBanner()" | kind=code-symbol | source=manager/frontend/components/states/DataState.tsx:L83 | neighbors=[DataState.tsx] | lang=en
+- "states_datastate_unauthorized": "Unauthorized()" | kind=code-symbol | source=manager/frontend/components/states/DataState.tsx:L70 | neighbors=[DataState.tsx] | lang=en
+- "status_route_required": "required" | kind=code-symbol | source=manager/frontend/app/api/settings/status/route.ts:L4 | neighbors=[route.ts] | lang=en
+- "summary_route_apisummary": "ApiSummary" | kind=code-symbol | source=manager/frontend/app/api/findings/summary/route.ts:L5 | neighbors=[route.ts] | lang=en
+- "summary_route_get": "GET" | kind=code-symbol | source=manager/frontend/app/api/findings/summary/route.ts:L18 | neighbors=[route.ts] | lang=en
+- "supporting_research_evidence_store_connect": "connect()" | kind=code-symbol | source=Supporting_research/evidence_store.py:L89 | neighbors=[evidence_store.py] | lang=en
+- "supporting_research_evidence_store_identityresult_asset_count": ".asset_count()" | kind=code-symbol | source=Supporting_research/evidence_store.py:L139 | neighbors=[IdentityResult] | lang=en
+- "supporting_research_evidence_store_identityresult_observations_for": ".observations_for()" | kind=code-symbol | source=Supporting_research/evidence_store.py:L142 | neighbors=[IdentityResult] | lang=en
+- "supporting_research_evidence_store_rationale_1": "vedha_ref.evidence_store -- the layer the whole strategy rests on.  Thesis under" | kind=entity | source=Supporting_research/evidence_store.py:L1 | neighbors=[evidence_store.py] | lang=en
+- "supporting_research_evidence_store_rationale_175": "Cluster observations into assets using fingerprint keys.      Strong keys merge" | kind=entity | source=Supporting_research/evidence_store.py:L175 | neighbors=[resolve_identity()] | lang=en
+- "supporting_research_evidence_store_rationale_258": "The industry default, for comparison. Included so the cost is measurable." | kind=entity | source=Supporting_research/evidence_store.py:L258 | neighbors=[naive_ip_identity()] | lang=en
+- "supporting_research_evidence_store_rationale_300": "Answer a brand-new rule against evidence already on disk.      No network traffi" | kind=entity | source=Supporting_research/evidence_store.py:L300 | neighbors=[retroactive_detect()] | lang=pt
+- "supporting_research_evidence_store_rationale_363": "What a customer should actually be shown: three numbers, not one." | kind=entity | source=Supporting_research/evidence_store.py:L363 | neighbors=[coverage_summary()] | lang=pt
+- "supporting_research_evidence_store_rationale_382": "Audit-grade: what did the evidence support on a specific date?" | kind=entity | source=Supporting_research/evidence_store.py:L382 | neighbors=[time_travel()] | lang=en
+- "supporting_research_evidence_store_rationale_391": "(observed_at, answer) transitions -- the real remediation-verification signal." | kind=entity | source=Supporting_research/evidence_store.py:L391 | neighbors=[exposure_timeline()] | lang=en
+- "supporting_research_evidence_store_rule": "Rule" | kind=code-symbol | source=Supporting_research/evidence_store.py:L271 | neighbors=[evidence_store.py] | lang=en
+- "supporting_research_evidence_store_unionfind_init": ".__init__()" | kind=code-symbol | source=Supporting_research/evidence_store.py:L147 | neighbors=[_UnionFind] | lang=en
+- "supporting_research_evidence_store_utcnow": "utcnow()" | kind=code-symbol | source=Supporting_research/evidence_store.py:L81 | neighbors=[evidence_store.py] | lang=en
+- "supporting_research_test_evidence_store_rationale_1": "Tests for the evidence store, and a demo that puts numbers on the strategic clai" | kind=entity | source=Supporting_research/test_evidence_store.py:L1 | neighbors=[test_evidence_store.py] | lang=en
+- "supporting_research_test_evidence_store_rationale_105": "Not merely coarse -- wrong. It splits one machine and merges two." | kind=entity | source=Supporting_research/test_evidence_store.py:L105 | neighbors=[.test_ip_identity_is_wrong_in_both_dire…] | lang=en
+- "supporting_research_test_evidence_store_rationale_146": "No rescan. The whole point." | kind=entity | source=Supporting_research/test_evidence_store.py:L146 | neighbors=[.test_a_brand_new_rule_answers_against_…] | lang=en
+- "supporting_research_test_evidence_store_rationale_169": "Regression guard. An OR over history means a patched host stays vulnerable" | kind=entity | source=Supporting_research/test_evidence_store.py:L169 | neighbors=[.test_current_state_comes_from_latest_e…] | lang=en
+- "supporting_research_test_evidence_store_rationale_195": "Drifted payload: the probe ran, the field moved." | kind=entity | source=Supporting_research/test_evidence_store.py:L195 | neighbors=[.test_collected_but_unusable_evidence_i…] | lang=en
+- "supporting_research_test_evidence_store_rationale_73": "30 days of history. HOST_A is patched on day 10." | kind=entity | source=Supporting_research/test_evidence_store.py:L73 | neighbors=[build_fleet()] | lang=en
+- "supporting_research_test_evidence_store_testidentity_test_fingerprint_identity_finds_exactly_three_machines": ".test_fingerprint_identity_finds_exactly_three_machines()" | kind=code-symbol | source=Supporting_research/test_evidence_store.py:L100 | neighbors=[TestIdentity] | lang=en
+- "supporting_research_test_evidence_store_testidentity_test_observations_without_any_fingerprint_fall_back_to_hostname": ".test_observations_without_any_fingerprint_fall_back_to_hostname()" | kind=code-symbol | source=Supporting_research/test_evidence_store.py:L127 | neighbors=[TestIdentity] | lang=en
+- "supporting_research_test_evidence_store_testretroactivedetection_test_cannot_answer_is_reported_rather_than_assumed_clean": ".test_cannot_answer_is_reported_rather_than_assumed_clean()" | kind=code-symbol | source=Supporting_research/test_evidence_store.py:L178 | neighbors=[TestRetroactiveDetection] | lang=en
+- "test_route_post": "POST" | kind=code-symbol | source=manager/frontend/app/api/integrations/test/route.ts:L9 | neighbors=[route.ts] | lang=en
+- "tests_aibrain_workspace_test": "aibrain-workspace.test.ts" | kind=code-symbol | source=manager/frontend/tests/aibrain-workspace.test.ts:L1 | neighbors=[198bae4 snapshot: uncommitted system/ui…] | lang=en
+- "tests_assistant_test_cansubmit": "canSubmit()" | kind=code-symbol | source=manager/frontend/tests/assistant.test.ts:L108 | neighbors=[assistant.test.ts] | lang=en
+- "tests_assistant_test_sendbtnlabel": "sendBtnLabel()" | kind=code-symbol | source=manager/frontend/tests/assistant.test.ts:L112 | neighbors=[assistant.test.ts] | lang=en
+- "tests_assistant_test_textareaplaceholder": "textareaPlaceholder()" | kind=code-symbol | source=manager/frontend/tests/assistant.test.ts:L116 | neighbors=[assistant.test.ts] | lang=en
+- "tests_campaign_store_test_makesnapshot": "makeSnapshot()" | kind=code-symbol | source=manager/frontend/tests/campaign-store.test.ts:L18 | neighbors=[campaign-store.test.ts] | lang=en
 
 ## Instructions
 

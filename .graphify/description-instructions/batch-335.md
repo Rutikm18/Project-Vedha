@@ -1,4 +1,4 @@
-# Node Description Batch 336 of 336
+# Node Description Batch 336 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,45 +19,53 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-Write every description in English (en). Do not switch languages.
+LANGUAGE: each entry has a `lang=` marker giving the language of its source.
+Write that entry's description in EXACTLY that language. Do not translate to
+a single common language — match each node's source language individually.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "workflow_workflow_engine_rationale_51": "Runs scanner.scan_target(host) across hosts concurrently; the     scanner's own" | kind=entity | source=probe/workflow/workflow_engine.py:L51 | neighbors=[_gather_per_host()]
-- "workflow_workflow_engine_rationale_59": "Run one component without allowing a target-specific bug to abort peers." | kind=entity | source=probe/workflow/workflow_engine.py:L59 | neighbors=[_scan_one()]
-- "workflow_workflow_engine_rationale_60": "Run one component without allowing a target-specific bug to abort peers." | kind=entity | source=probe/workflow/workflow_engine.py:L60 | neighbors=[_scan_one()]
-- "workflow_workflow_engine_rationale_62": "Run one component without allowing a target-specific bug to abort peers." | kind=entity | source=probe/workflow/workflow_engine.py:L62 | neighbors=[_scan_one()]
-- "workflow_workflow_engine_rationale_64": "Splits candidate_ports into (ports that actually need a fresh probe,     ScanRes" | kind=entity | source=probe/workflow/workflow_engine.py:L64 | neighbors=[_split_cached()]
-- "workflow_workflow_engine_rationale_72": "Run one component without allowing a target-specific bug to abort peers." | kind=entity | source=probe/workflow/workflow_engine.py:L72 | neighbors=[_scan_one()]
-- "workflow_workflow_engine_rationale_77": "Run per-host probes with bounded fan-out and failure isolation." | kind=entity | source=probe/workflow/workflow_engine.py:L77 | neighbors=[_gather_per_host()]
-- "workflow_workflow_engine_rationale_78": "Run per-host probes with bounded fan-out and failure isolation." | kind=entity | source=probe/workflow/workflow_engine.py:L78 | neighbors=[_gather_per_host()]
-- "workflow_workflow_engine_rationale_90": "Run per-host probes with bounded fan-out and failure isolation." | kind=entity | source=probe/workflow/workflow_engine.py:L90 | neighbors=[_gather_per_host()]
-- "workflow_workflow_engine_rationale_95": "Splits candidate_ports into (ports that actually need a fresh probe,     ScanRes" | kind=entity | source=probe/workflow/workflow_engine.py:L95 | neighbors=[_split_cached()]
-- "workflow_workflow_engine_rationale_97": "Splits candidate_ports into (ports that actually need a fresh probe,     ScanRes" | kind=entity | source=probe/workflow/workflow_engine.py:L97 | neighbors=[_split_cached()]
-- "workflow_workflow_engine_sink_close": ".close()" | kind=code-symbol | source=probe/workflow/workflow_engine.py:L186 | neighbors=[_Sink]
-- "workflow_workflow_engine_sink_init": ".__init__()" | kind=code-symbol | source=probe/workflow/workflow_engine.py:L182 | neighbors=[_Sink]
-- "workflow_workflow_engine_sink_write": ".write()" | kind=code-symbol | source=probe/workflow/workflow_engine.py:L184 | neighbors=[_Sink]
-- "agent_agent_rationale_138": "Fast port discovery with naabu. Feeds port list to Nmap." | kind=entity | source=manager/frontend/infrastructure/agent/agent.py:L138
-- "agent_agent_rationale_202": "Nmap service enumeration. Accepts port list from Naabu." | kind=entity | source=manager/frontend/infrastructure/agent/agent.py:L202
-- "agent_agent_rationale_239": "Nuclei vulnerability scan — production-ready." | kind=entity | source=manager/frontend/infrastructure/agent/agent.py:L239
-- "agent_agent_rationale_304": "Impacket-based AD enumeration: Kerberoast, AS-REP roast, LDAP anonymous bind." | kind=entity | source=manager/frontend/infrastructure/agent/agent.py:L304
-- "agent_agent_rationale_374": "NetExec SMB validation: signing, null sessions, SMBv1." | kind=entity | source=manager/frontend/infrastructure/agent/agent.py:L374
-- "agent_agent_rationale_454": "testssl.sh TLS/SSL analysis." | kind=entity | source=manager/frontend/infrastructure/agent/agent.py:L454
-- "agent_agent_rationale_500": "Extract HTTP/HTTPS URLs from nmap XML output." | kind=entity | source=manager/frontend/infrastructure/agent/agent.py:L500
-- "agent_agent_rationale_528": "EyeWitness screenshot evidence collection." | kind=entity | source=manager/frontend/infrastructure/agent/agent.py:L528
-- "agent_agent_rationale_597": "Safe lateral movement checks — no actual exploitation." | kind=entity | source=manager/frontend/infrastructure/agent/agent.py:L597
-- "agent_agent_rationale_606": "Cloud infrastructure scan (AWS/Azure/GCP)." | kind=entity | source=manager/frontend/infrastructure/agent/agent.py:L606
-- "agent_agent_rationale_82": "Read a KV-v2 secret from Vault." | kind=entity | source=manager/frontend/infrastructure/agent/agent.py:L82
-- "e2e_interop_verify_rationale_1": "Verify the Python probe can open what the TypeScript manager sealed (T14 interop" | kind=entity | source=manager/frontend/tests/e2e/interop_verify.py:L1
-- "e2e_mock_manager_rationale_1": "Reference mock manager for end-to-end probe testing.  Implements the PROBE_PROTO" | kind=entity | source=manager/frontend/tests/e2e/mock_manager.py:L1
-- "e2e_mock_manager_rationale_235": "Start the HTTPS server in a thread. Returns (httpd, base_url, pin_b64)." | kind=entity | source=manager/frontend/tests/e2e/mock_manager.py:L235
-- "e2e_run_rationale_1": "End-to-end probe test: real probe process ↔ reference mock manager over HTTPS." | kind=entity | source=manager/frontend/tests/e2e/run.py:L1
-- "e2e_run_rationale_30": "Deterministic stand-ins emitting realistic output for 127.0.0.1." | kind=entity | source=manager/frontend/tests/e2e/run.py:L30
-- "probe_pipeline_rationale_133": "Make a per-host scanner instance share ONE rate limiter + semaphore with all" | kind=entity | source=probe/pipeline.py:L133
-- "probe_pipeline_rationale_252": "Make a raw banner safe and readable for the summary line.      Many services ans" | kind=entity | source=probe/pipeline.py:L252
-- "probe_run_scan_rationale_42": "# NOTE: credentialed collectors (ssh_collector, windows_collector) are run" | kind=entity | source=probe/run_scan.py:L42
-- "threadinghttpserver": "ThreadingHTTPServer" | kind=code-symbol
+- "tests_test_new_scanners_testversionchange_test_empty_old_version": ".test_empty_old_version()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L371 | neighbors=[TestVersionChange] | lang=en
+- "tests_test_new_scanners_testversionchange_test_same_version": ".test_same_version()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L367 | neighbors=[TestVersionChange] | lang=en
+- "tests_test_new_scanners_testversionchange_test_whitespace_normalised": ".test_whitespace_normalised()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L375 | neighbors=[TestVersionChange] | lang=en
+- "tests_test_nfs_scanner_rationale_1": "test_nfs_scanner.py — NFS export enumeration over ONC RPC.  The live RPC path ne" | kind=entity | source=probe/tests/test_nfs_scanner.py:L1 | neighbors=[test_nfs_scanner.py] | lang=en
+- "tests_test_nfs_scanner_testxdrparsers_test_parser_is_bounded": ".test_parser_is_bounded()" | kind=code-symbol | source=probe/tests/test_nfs_scanner.py:L84 | neighbors=[TestXdrParsers] | lang=en
+- "tests_test_nfs_scanner_testxdrparsers_test_world_readable_logic": ".test_world_readable_logic()" | kind=code-symbol | source=probe/tests/test_nfs_scanner.py:L77 | neighbors=[TestXdrParsers] | lang=en
+- "tests_test_nmap_wrapper_rationale_1": "test_nmap_wrapper.py — the \"nmap returned 0 while native scanners saw ports\" bug" | kind=entity | source=probe/tests/test_nmap_wrapper.py:L1 | neighbors=[test_nmap_wrapper.py] | lang=en
+- "tests_test_nmap_wrapper_test_filtered_ports_not_emitted_as_open": "test_filtered_ports_not_emitted_as_open()" | kind=code-symbol | source=probe/tests/test_nmap_wrapper.py:L36 | neighbors=[test_nmap_wrapper.py] | lang=en
+- "tests_test_nmap_wrapper_test_open_ports_are_emitted": "test_open_ports_are_emitted()" | kind=code-symbol | source=probe/tests/test_nmap_wrapper.py:L31 | neighbors=[test_nmap_wrapper.py] | lang=en
+- "tests_test_nmap_wrapper_test_port_scan_profiles_carry_pn": "test_port_scan_profiles_carry_pn()" | kind=code-symbol | source=probe/tests/test_nmap_wrapper.py:L24 | neighbors=[test_nmap_wrapper.py] | lang=en
+- "tests_test_nmap_xml_safety_rationale_1": "test_nmap_xml_safety.py — nmap XML parsing must resist XML-bomb / entity injecti" | kind=entity | source=probe/tests/test_nmap_xml_safety.py:L1 | neighbors=[test_nmap_xml_safety.py] | lang=en
+- "tests_test_nmap_xml_safety_testnmapentityguard_test_entity_declaration_is_refused": ".test_entity_declaration_is_refused()" | kind=code-symbol | source=probe/tests/test_nmap_xml_safety.py:L28 | neighbors=[TestNmapEntityGuard] | lang=en
+- "tests_test_nmap_xml_safety_testnmapentityguard_test_entity_guard_is_case_insensitive": ".test_entity_guard_is_case_insensitive()" | kind=code-symbol | source=probe/tests/test_nmap_xml_safety.py:L33 | neighbors=[TestNmapEntityGuard] | lang=en
+- "tests_test_nmap_xml_safety_testnmapentityguard_test_legitimate_doctype_output_still_parses": ".test_legitimate_doctype_output_still_parses()" | kind=code-symbol | source=probe/tests/test_nmap_xml_safety.py:L38 | neighbors=[TestNmapEntityGuard] | lang=en
+- "tests_test_notifications_rationale_1": "test_notifications.py — integration delivery fan-out (item 3 delivery worker)." | kind=entity | source=manager/backend/tests/test_notifications.py:L1 | neighbors=[test_notifications.py] | lang=en
+- "tests_test_notifications_testdeliver_test_dispatches_to_the_kind": ".test_dispatches_to_the_kind()" | kind=code-symbol | source=manager/backend/tests/test_notifications.py:L14 | neighbors=[TestDeliver] | lang=en
+- "tests_test_notifications_testdeliver_test_sender_error_is_swallowed": ".test_sender_error_is_swallowed()" | kind=code-symbol | source=manager/backend/tests/test_notifications.py:L24 | neighbors=[TestDeliver] | lang=en
+- "tests_test_notifications_testdeliver_test_unknown_kind_returns_false": ".test_unknown_kind_returns_false()" | kind=code-symbol | source=manager/backend/tests/test_notifications.py:L21 | neighbors=[TestDeliver] | lang=en
+- "tests_test_notifications_testnotifytenant_test_counts_only_successful_channels": ".test_counts_only_successful_channels()" | kind=code-symbol | source=manager/backend/tests/test_notifications.py:L52 | neighbors=[TestNotifyTenant] | lang=en
+- "tests_test_notifications_testnotifytenant_test_fans_to_enabled_and_decrypts_secret": ".test_fans_to_enabled_and_decrypts_secret()" | kind=code-symbol | source=manager/backend/tests/test_notifications.py:L31 | neighbors=[TestNotifyTenant] | lang=en
+- "tests_test_nuclei_background_fakesession_add": ".add()" | kind=code-symbol | source=manager/backend/tests/test_nuclei_background.py:L46 | neighbors=[_FakeSession] | lang=en
+- "tests_test_nuclei_background_fakesession_aenter": ".__aenter__()" | kind=code-symbol | source=manager/backend/tests/test_nuclei_background.py:L34 | neighbors=[_FakeSession] | lang=en
+- "tests_test_nuclei_background_fakesession_aexit": ".__aexit__()" | kind=code-symbol | source=manager/backend/tests/test_nuclei_background.py:L37 | neighbors=[_FakeSession] | lang=en
+- "tests_test_nuclei_background_fakesession_commit": ".commit()" | kind=code-symbol | source=manager/backend/tests/test_nuclei_background.py:L52 | neighbors=[_FakeSession] | lang=en
+- "tests_test_nuclei_background_fakesession_flush": ".flush()" | kind=code-symbol | source=manager/backend/tests/test_nuclei_background.py:L49 | neighbors=[_FakeSession] | lang=en
+- "tests_test_nuclei_background_fakesession_init": ".__init__()" | kind=code-symbol | source=manager/backend/tests/test_nuclei_background.py:L31 | neighbors=[_FakeSession] | lang=en
+- "tests_test_nuclei_background_fakesession_rollback": ".rollback()" | kind=code-symbol | source=manager/backend/tests/test_nuclei_background.py:L55 | neighbors=[_FakeSession] | lang=en
+- "tests_test_nuclei_background_nestedtransaction_aenter": ".__aenter__()" | kind=code-symbol | source=manager/backend/tests/test_nuclei_background.py:L23 | neighbors=[_NestedTransaction] | lang=en
+- "tests_test_nuclei_background_nestedtransaction_aexit": ".__aexit__()" | kind=code-symbol | source=manager/backend/tests/test_nuclei_background.py:L26 | neighbors=[_NestedTransaction] | lang=en
+- "tests_test_nuclei_background_scalarresult_init": ".__init__()" | kind=code-symbol | source=manager/backend/tests/test_nuclei_background.py:L15 | neighbors=[_ScalarResult] | lang=en
+- "tests_test_nuclei_background_scalarresult_scalar_one_or_none": ".scalar_one_or_none()" | kind=code-symbol | source=manager/backend/tests/test_nuclei_background.py:L18 | neighbors=[_ScalarResult] | lang=en
+- "tests_test_nuclei_background_sessionfactory_init": ".__init__()" | kind=code-symbol | source=manager/backend/tests/test_nuclei_background.py:L60 | neighbors=[_SessionFactory] | lang=en
+- "tests_test_nuclei_scanner_fakeprocess_init": ".__init__()" | kind=code-symbol | source=manager/backend/tests/test_nuclei_scanner.py:L31 | neighbors=[FakeProcess] | lang=en
+- "tests_test_nuclei_scanner_fakeprocess_kill": ".kill()" | kind=code-symbol | source=manager/backend/tests/test_nuclei_scanner.py:L61 | neighbors=[FakeProcess] | lang=en
+- "tests_test_nuclei_scanner_fakeprocess_terminate": ".terminate()" | kind=code-symbol | source=manager/backend/tests/test_nuclei_scanner.py:L57 | neighbors=[FakeProcess] | lang=en
+- "tests_test_nuclei_scanner_fakeprocess_wait": ".wait()" | kind=code-symbol | source=manager/backend/tests/test_nuclei_scanner.py:L50 | neighbors=[FakeProcess] | lang=en
+- "tests_test_nuclei_scanner_test_missing_binary_is_a_reported_failure": "test_missing_binary_is_a_reported_failure()" | kind=code-symbol | source=manager/backend/tests/test_nuclei_scanner.py:L95 | neighbors=[test_nuclei_scanner.py] | lang=en
+- "tests_test_obs_rationale_1": "Phase 8 — observability: redacted structured logs, low-cardinality heartbeat met" | kind=entity | source=probe/tests/test_obs.py:L1 | neighbors=[test_obs.py] | lang=nl
+- "tests_test_obs_test_diagnostics_bundle_is_redacted": "test_diagnostics_bundle_is_redacted()" | kind=code-symbol | source=probe/tests/test_obs.py:L45 | neighbors=[test_obs.py] | lang=en
+- "tests_test_obs_test_heartbeat_metrics_are_low_cardinality": "test_heartbeat_metrics_are_low_cardinality()" | kind=code-symbol | source=probe/tests/test_obs.py:L32 | neighbors=[test_obs.py] | lang=en
 
 ## Instructions
 

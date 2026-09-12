@@ -1,4 +1,4 @@
-# Node Description Batch 331 of 336
+# Node Description Batch 331 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -9,6 +9,9 @@ your JSON answer to the answer file.
 You are documenting nodes in a knowledge graph.
 For each entry below, write ONE concise factual plain-language sentence
 describing what it is or does. Use only the provided context.
+For a code symbol (kind=code-symbol — a function, class, or constant),
+describe what the function/symbol does based on its name, source location
+and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
 For an entity node (any other kind — e.g. a person, place, event, object),
 describe what the entity is and its role, grounded in its type, its
 relations (neighbors) and the provided citations/evidence — e.g.
@@ -23,46 +26,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "websocket_manager_rationale_98": "Register an agent's WebSocket connection.          If the agent already has a co" | kind=entity | source=manager/backend/app/websocket/manager.py:L98 | neighbors=[.register()] | lang=en
-- "websocket_manager_rationale_99": "Register an agent's WebSocket connection.          If the agent already has a co" | kind=entity | source=manager/backend/app/websocket/manager.py:L99 | neighbors=[.register()] | lang=en
-- "workers_outbox_rationale_100": "Add an outbox event to the caller's session. Does NOT commit — it commits     at" | kind=entity | source=manager/backend/app/workers/outbox.py:L100 | neighbors=[enqueue()] | lang=en
-- "workers_outbox_rationale_103": "Run the deterministic detection pipeline on a submitted facts payload.     Re-re" | kind=entity | source=manager/backend/app/workers/outbox.py:L103 | neighbors=[_handle_facts_ready()] | lang=en
-- "workers_outbox_rationale_104": "Run the deterministic detection pipeline on a submitted facts payload.     Re-re" | kind=entity | source=manager/backend/app/workers/outbox.py:L104 | neighbors=[_handle_facts_ready()] | lang=en
-- "workers_outbox_rationale_116": "Run the deterministic detection pipeline on a submitted facts payload.     Re-re" | kind=entity | source=manager/backend/app/workers/outbox.py:L116 | neighbors=[_handle_facts_ready()] | lang=en
-- "workers_outbox_rationale_131": "Atomically claim up to `batch_size` due events. FOR UPDATE SKIP LOCKED     means" | kind=entity | source=manager/backend/app/workers/outbox.py:L131 | neighbors=[_claim_batch()] | lang=en
-- "workers_outbox_rationale_139": "Fan a notification out to the tenant's enabled email/Slack/Jira integrations." | kind=entity | source=manager/backend/app/workers/outbox.py:L139 | neighbors=[_handle_notify()] | lang=en
-- "workers_outbox_rationale_149": "Atomically claim up to `batch_size` due events. FOR UPDATE SKIP LOCKED     means" | kind=entity | source=manager/backend/app/workers/outbox.py:L149 | neighbors=[_claim_batch()] | lang=en
-- "workers_outbox_rationale_158": "Atomically claim up to `batch_size` due events. FOR UPDATE SKIP LOCKED     means" | kind=entity | source=manager/backend/app/workers/outbox.py:L158 | neighbors=[_claim_batch()] | lang=en
-- "workers_outbox_rationale_163": "Requeue events a dead worker left in PROCESSING past the lease.      `attempts`" | kind=entity | source=manager/backend/app/workers/outbox.py:L163 | neighbors=[_reclaim_stale()] | lang=en
-- "workers_outbox_rationale_164": "The `locked_at` boundary before which a PROCESSING row is considered dead." | kind=entity | source=manager/backend/app/workers/outbox.py:L164 | neighbors=[_stale_cutoff()] | lang=en
-- "workers_outbox_rationale_169": "Stranded events that already exhausted their retry budget → dead-letter.     Bou" | kind=entity | source=manager/backend/app/workers/outbox.py:L169 | neighbors=[_dead_letter_stale_stmt()] | lang=en
-- "workers_outbox_rationale_182": "The `locked_at` boundary before which a PROCESSING row is considered dead." | kind=entity | source=manager/backend/app/workers/outbox.py:L182 | neighbors=[_stale_cutoff()] | lang=en
-- "workers_outbox_rationale_187": "Stranded events that already exhausted their retry budget → dead-letter.     Bou" | kind=entity | source=manager/backend/app/workers/outbox.py:L187 | neighbors=[_dead_letter_stale_stmt()] | lang=en
-- "workers_outbox_rationale_191": "The `locked_at` boundary before which a PROCESSING row is considered dead." | kind=entity | source=manager/backend/app/workers/outbox.py:L191 | neighbors=[_stale_cutoff()] | lang=en
-- "workers_outbox_rationale_195": "Fan a notification out to the tenant's enabled email/Slack/Jira integrations." | kind=entity | source=manager/backend/app/workers/outbox.py:L195 | neighbors=[_handle_notify()] | lang=en
-- "workers_outbox_rationale_196": "Stranded events that already exhausted their retry budget → dead-letter.     Bou" | kind=entity | source=manager/backend/app/workers/outbox.py:L196 | neighbors=[_dead_letter_stale_stmt()] | lang=en
-- "workers_outbox_rationale_213": "Stranded events with retry budget left → make due now so a live worker     re-cl" | kind=entity | source=manager/backend/app/workers/outbox.py:L213 | neighbors=[_requeue_stale_stmt()] | lang=en
-- "workers_outbox_rationale_214": "Atomically claim up to `batch_size` due events. FOR UPDATE SKIP LOCKED     means" | kind=entity | source=manager/backend/app/workers/outbox.py:L214 | neighbors=[_claim_batch()] | lang=en
-- "workers_outbox_rationale_216": "Reschedule with exponential backoff, or dead-letter once attempts are     exhaus" | kind=entity | source=manager/backend/app/workers/outbox.py:L216 | neighbors=[_mark_retry_or_dead()] | lang=en
-- "workers_outbox_rationale_222": "Requeue events a dead worker left in PROCESSING past the lease.      `_claim_bat" | kind=entity | source=manager/backend/app/workers/outbox.py:L222 | neighbors=[_reclaim_stale()] | lang=en
-- "workers_outbox_rationale_231": "Requeue events a dead worker left in PROCESSING past the lease.      `_claim_bat" | kind=entity | source=manager/backend/app/workers/outbox.py:L231 | neighbors=[_reclaim_stale()] | lang=en
-- "workers_outbox_rationale_233": "Reschedule with exponential backoff, or dead-letter once attempts are     exhaus" | kind=entity | source=manager/backend/app/workers/outbox.py:L233 | neighbors=[_mark_retry_or_dead()] | lang=en
-- "workers_outbox_rationale_247": "The `locked_at` boundary before which a PROCESSING row is considered dead." | kind=entity | source=manager/backend/app/workers/outbox.py:L247 | neighbors=[_stale_cutoff()] | lang=en
-- "workers_outbox_rationale_250": "Main loop: claim → process → repeat. Sleeps only when the queue is idle,     so" | kind=entity | source=manager/backend/app/workers/outbox.py:L250 | neighbors=[run_worker()] | lang=en
-- "workers_outbox_rationale_251": "Reschedule with exponential backoff, or dead-letter once attempts are     exhaus" | kind=entity | source=manager/backend/app/workers/outbox.py:L251 | neighbors=[_mark_retry_or_dead()] | lang=en
-- "workers_outbox_rationale_252": "Stranded events that already exhausted their retry budget → dead-letter.     Bou" | kind=entity | source=manager/backend/app/workers/outbox.py:L252 | neighbors=[_dead_letter_stale_stmt()] | lang=en
-- "workers_outbox_rationale_260": "Reschedule with exponential backoff, or dead-letter once attempts are     exhaus" | kind=entity | source=manager/backend/app/workers/outbox.py:L260 | neighbors=[_mark_retry_or_dead()] | lang=en
-- "workers_outbox_rationale_267": "Main loop: claim → process → repeat. Sleeps only when the queue is idle,     so" | kind=entity | source=manager/backend/app/workers/outbox.py:L267 | neighbors=[run_worker()] | lang=en
-- "workers_outbox_rationale_269": "Stranded events with retry budget left → make due now so a live worker     re-cl" | kind=entity | source=manager/backend/app/workers/outbox.py:L269 | neighbors=[_requeue_stale_stmt()] | lang=en
-- "workers_outbox_rationale_285": "Main loop: claim → process → repeat. Sleeps only when the queue is idle,     so" | kind=entity | source=manager/backend/app/workers/outbox.py:L285 | neighbors=[run_worker()] | lang=en
-- "workers_outbox_rationale_287": "DetectionRuns stuck RUNNING → mark FAILED. Prefer the per-run LEASE     (`lease_" | kind=entity | source=manager/backend/app/workers/outbox.py:L287 | neighbors=[_reap_runs_stmt()] | lang=en
-- "workers_outbox_rationale_294": "Main loop: claim → process → repeat. Sleeps only when the queue is idle,     so" | kind=entity | source=manager/backend/app/workers/outbox.py:L294 | neighbors=[run_worker()] | lang=en
-- "workers_outbox_rationale_308": "Fail DetectionRuns a crashed worker left RUNNING. Without this a campaign whose" | kind=entity | source=manager/backend/app/workers/outbox.py:L308 | neighbors=[_reap_stale_runs()] | lang=pt
-- "workers_outbox_rationale_323": "Upsert this worker's heartbeat. A stale row tells campaign-progress the     dete" | kind=entity | source=manager/backend/app/workers/outbox.py:L323 | neighbors=[_write_heartbeat()] | lang=en
-- "workers_outbox_rationale_339": "Requeue events a dead worker left in PROCESSING past the lease.      `_claim_bat" | kind=entity | source=manager/backend/app/workers/outbox.py:L339 | neighbors=[_reclaim_stale()] | lang=en
-- "workers_outbox_rationale_368": "Reschedule with exponential backoff, or dead-letter once attempts are     exhaus" | kind=entity | source=manager/backend/app/workers/outbox.py:L368 | neighbors=[_mark_retry_or_dead()] | lang=en
-- "workers_outbox_rationale_402": "Main loop: claim → process → repeat. Sleeps only when the queue is idle,     so" | kind=entity | source=manager/backend/app/workers/outbox.py:L402 | neighbors=[run_worker()] | lang=en
-- "workers_outbox_rationale_47": "Return whether a claimed event was stranded by a dead worker.      `_claim_batch" | kind=entity | source=manager/backend/app/workers/outbox.py:L47 | neighbors=[is_stale_processing()] | lang=en
+- "tests_test_main_scripts_coverage_testprofiles_test_unknown_profile_raises": ".test_unknown_profile_raises()" | kind=code-symbol | source=probe/tests/test_main_scripts_coverage.py:L69 | neighbors=[TestProfiles] | lang=en
+- "tests_test_main_scripts_datastore_probe_rationale_1": "test_main_scripts_datastore_probe.py — safe read-only datastore probes make the" | kind=entity | source=probe/tests/test_main_scripts_datastore_probe.py:L1 | neighbors=[test_main_scripts_datastore_probe.py] | lang=en
+- "tests_test_main_scripts_datastore_probe_test_ladder_includes_safe_datastore_probes": "test_ladder_includes_safe_datastore_probes()" | kind=code-symbol | source=probe/tests/test_main_scripts_datastore_probe.py:L40 | neighbors=[test_main_scripts_datastore_probe.py] | lang=en
+- "tests_test_main_scripts_datastore_probe_test_memcached_probe_response_yields_unauth_finding": "test_memcached_probe_response_yields_unauth_finding()" | kind=code-symbol | source=probe/tests/test_main_scripts_datastore_probe.py:L51 | neighbors=[test_main_scripts_datastore_probe.py] | lang=en
+- "tests_test_main_scripts_device_rationale_1": "test_main_scripts_device.py — device-role classification (P0 \"Device classificat" | kind=entity | source=probe/tests/test_main_scripts_device.py:L1 | neighbors=[test_main_scripts_device.py] | lang=en
+- "tests_test_main_scripts_device_rationale_94": "FIX 5(b): don't tie an obvious workstation; require role ports/DomainRole     fo" | kind=entity | source=probe/tests/test_main_scripts_device.py:L94 | neighbors=[TestWorkstationVsServer] | lang=en
+- "tests_test_main_scripts_device_testclassifydevice_test_domain_controller": ".test_domain_controller()" | kind=code-symbol | source=probe/tests/test_main_scripts_device.py:L25 | neighbors=[TestClassifyDevice] | lang=en
+- "tests_test_main_scripts_device_testclassifydevice_test_iot_camera": ".test_iot_camera()" | kind=code-symbol | source=probe/tests/test_main_scripts_device.py:L48 | neighbors=[TestClassifyDevice] | lang=en
+- "tests_test_main_scripts_device_testclassifydevice_test_network_device_router": ".test_network_device_router()" | kind=code-symbol | source=probe/tests/test_main_scripts_device.py:L37 | neighbors=[TestClassifyDevice] | lang=en
+- "tests_test_main_scripts_device_testclassifydevice_test_printer": ".test_printer()" | kind=code-symbol | source=probe/tests/test_main_scripts_device.py:L31 | neighbors=[TestClassifyDevice] | lang=en
+- "tests_test_main_scripts_device_testclassifydevice_test_service_product_reinforces_server": ".test_service_product_reinforces_server()" | kind=code-symbol | source=probe/tests/test_main_scripts_device.py:L64 | neighbors=[TestClassifyDevice] | lang=en
+- "tests_test_main_scripts_device_testclassifydevice_test_single_signal_confidence_capped": ".test_single_signal_confidence_capped()" | kind=code-symbol | source=probe/tests/test_main_scripts_device.py:L58 | neighbors=[TestClassifyDevice] | lang=en
+- "tests_test_main_scripts_device_testclassifydevice_test_unknown_when_no_evidence": ".test_unknown_when_no_evidence()" | kind=code-symbol | source=probe/tests/test_main_scripts_device.py:L53 | neighbors=[TestClassifyDevice] | lang=en
+- "tests_test_main_scripts_device_testclassifydevice_test_vmware_hypervisor": ".test_vmware_hypervisor()" | kind=code-symbol | source=probe/tests/test_main_scripts_device.py:L43 | neighbors=[TestClassifyDevice] | lang=en
+- "tests_test_main_scripts_device_testclassifydevice_test_windows_workstation": ".test_windows_workstation()" | kind=code-symbol | source=probe/tests/test_main_scripts_device.py:L18 | neighbors=[TestClassifyDevice] | lang=en
+- "tests_test_main_scripts_device_testclassifyfromresults_test_extracts_signals_from_scan_results": ".test_extracts_signals_from_scan_results()" | kind=code-symbol | source=probe/tests/test_main_scripts_device.py:L72 | neighbors=[TestClassifyFromResults] | lang=en
+- "tests_test_main_scripts_device_testworkstationvsserver_test_baseline_windows_services_are_not_a_server_signal": ".test_baseline_windows_services_are_not_a_server_signal()" | kind=code-symbol | source=probe/tests/test_main_scripts_device.py:L110 | neighbors=[TestWorkstationVsServer] | lang=en
+- "tests_test_main_scripts_device_testworkstationvsserver_test_real_domain_controller_still_server": ".test_real_domain_controller_still_server()" | kind=code-symbol | source=probe/tests/test_main_scripts_device.py:L115 | neighbors=[TestWorkstationVsServer] | lang=en
+- "tests_test_main_scripts_device_testworkstationvsserver_test_reference_workstation_unauthenticated": ".test_reference_workstation_unauthenticated()" | kind=code-symbol | source=probe/tests/test_main_scripts_device.py:L99 | neighbors=[TestWorkstationVsServer] | lang=en
+- "tests_test_main_scripts_device_testworkstationvsserver_test_reference_workstation_with_domain_role_0": ".test_reference_workstation_with_domain_role_0()" | kind=code-symbol | source=probe/tests/test_main_scripts_device.py:L105 | neighbors=[TestWorkstationVsServer] | lang=en
+- "tests_test_main_scripts_device_testworkstationvsserver_test_role_service_makes_server": ".test_role_service_makes_server()" | kind=code-symbol | source=probe/tests/test_main_scripts_device.py:L122 | neighbors=[TestWorkstationVsServer] | lang=en
+- "tests_test_main_scripts_device_ties_rationale_1": "test_main_scripts_device_ties.py — Phase 23: device classification never resolve" | kind=entity | source=probe/tests/test_main_scripts_device_ties.py:L1 | neighbors=[test_main_scripts_device_ties.py] | lang=en
+- "tests_test_main_scripts_device_ties_test_clear_winner_is_not_ambiguous": "test_clear_winner_is_not_ambiguous()" | kind=code-symbol | source=probe/tests/test_main_scripts_device_ties.py:L21 | neighbors=[test_main_scripts_device_ties.py] | lang=en
+- "tests_test_main_scripts_device_ties_test_domain_controller_breaks_the_tie": "test_domain_controller_breaks_the_tie()" | kind=code-symbol | source=probe/tests/test_main_scripts_device_ties.py:L27 | neighbors=[test_main_scripts_device_ties.py] | lang=en
+- "tests_test_main_scripts_device_ties_test_empty_is_unknown_not_ambiguous": "test_empty_is_unknown_not_ambiguous()" | kind=code-symbol | source=probe/tests/test_main_scripts_device_ties.py:L33 | neighbors=[test_main_scripts_device_ties.py] | lang=en
+- "tests_test_main_scripts_device_ties_test_workstation_server_tie_is_ambiguous": "test_workstation_server_tie_is_ambiguous()" | kind=code-symbol | source=probe/tests/test_main_scripts_device_ties.py:L10 | neighbors=[test_main_scripts_device_ties.py] | lang=en
+- "tests_test_main_scripts_errno_rationale_1": "test_main_scripts_errno.py — Phase 2: shared TCP/UDP errno classification.  Veri" | kind=entity | source=probe/tests/test_main_scripts_errno.py:L1 | neighbors=[test_main_scripts_errno.py] | lang=en
+- "tests_test_main_scripts_errno_test_dns_failure_is_error_not_filtered": "test_dns_failure_is_error_not_filtered()" | kind=code-symbol | source=probe/tests/test_main_scripts_errno.py:L45 | neighbors=[test_main_scripts_errno.py] | lang=en
+- "tests_test_main_scripts_errno_test_errno_none_falls_back_to_os_error": "test_errno_none_falls_back_to_os_error()" | kind=code-symbol | source=probe/tests/test_main_scripts_errno.py:L41 | neighbors=[test_main_scripts_errno.py] | lang=en
+- "tests_test_main_scripts_errno_test_port_scanner_uses_the_same_shared_classifier": "test_port_scanner_uses_the_same_shared_classifier()" | kind=code-symbol | source=probe/tests/test_main_scripts_errno.py:L58 | neighbors=[test_main_scripts_errno.py] | lang=en
+- "tests_test_main_scripts_findings_rationale_1": "test_main_scripts_findings.py — the findings interpretation layer.  Pure-logic," | kind=entity | source=probe/tests/test_main_scripts_findings.py:L1 | neighbors=[test_main_scripts_findings.py] | lang=en
+- "tests_test_main_scripts_findings_test_build_service_index_extracts_confirmed_services": "test_build_service_index_extracts_confirmed_services()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L198 | neighbors=[test_main_scripts_findings.py] | lang=en
+- "tests_test_main_scripts_hardening_rationale_1": "test_main_scripts_hardening.py — verifies the Phase-1 correctness fixes applied" | kind=entity | source=probe/tests/test_main_scripts_hardening.py:L1 | neighbors=[test_main_scripts_hardening.py] | lang=en
+- "tests_test_main_scripts_hardening_rationale_101": "A 64-byte SMB2 header. Caller prepends a 4-byte NBT transport prefix, so     Pro" | kind=entity | source=probe/tests/test_main_scripts_hardening.py:L101 | neighbors=[_smb2_header()] | lang=pt
+- "tests_test_main_scripts_hardening_rationale_123": "STATUS_INVALID_PARAMETER error response: same header, body StructureSize 9," | kind=entity | source=probe/tests/test_main_scripts_hardening.py:L123 | neighbors=[make_smb2_error()] | lang=en
+- "tests_test_main_scripts_hardening_testosconfidence_test_linux_ttl_only_capped": ".test_linux_ttl_only_capped()" | kind=code-symbol | source=probe/tests/test_main_scripts_hardening.py:L92 | neighbors=[TestOsConfidence] | lang=en
+- "tests_test_main_scripts_hardening_testosconfidence_test_no_signal_is_unknown": ".test_no_signal_is_unknown()" | kind=code-symbol | source=probe/tests/test_main_scripts_hardening.py:L87 | neighbors=[TestOsConfidence] | lang=en
+- "tests_test_main_scripts_hardening_testosconfidence_test_ttl_only_is_not_absolute": ".test_ttl_only_is_not_absolute()" | kind=code-symbol | source=probe/tests/test_main_scripts_hardening.py:L74 | neighbors=[TestOsConfidence] | lang=en
+- "tests_test_main_scripts_hardening_testosconfidence_test_two_signals_beat_one": ".test_two_signals_beat_one()" | kind=code-symbol | source=probe/tests/test_main_scripts_hardening.py:L81 | neighbors=[TestOsConfidence] | lang=en
+- "tests_test_main_scripts_hardening_testsmbparsing_test_negotiate_request_excludes_smb311": ".test_negotiate_request_excludes_smb311()" | kind=code-symbol | source=probe/tests/test_main_scripts_hardening.py:L152 | neighbors=[TestSmbParsing] | lang=en
 
 ## Instructions
 

@@ -1,4 +1,4 @@
-# Node Description Batch 189 of 336
+# Node Description Batch 189 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,58 +12,51 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
-For an entity node (any other kind — e.g. a person, place, event, object),
-describe what the entity is and its role, grounded in its type, its
-relations (neighbors) and the provided citations/evidence — e.g.
-"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
-Ground entity descriptions in the citations/evidence when present; do not
-speculate beyond the context, so a node with no supporting context may be
-left out of the reply.
 Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "auth_middleware_rationale_59": "Extracts JWT from Authorization header and injects tenant_id + user     claims i" | kind=entity | source=manager/backend/app/auth/middleware.py:L59 | neighbors=[TenantIsolationMiddleware]
-- "auth_middleware_rationale_78": "Extracts JWT from Authorization header and injects tenant_id + user     claims i" | kind=entity | source=manager/backend/app/auth/middleware.py:L78 | neighbors=[TenantIsolationMiddleware]
-- "auth_pat_pat_scope_allows": "pat_scope_allows()" | kind=code-symbol | source=manager/backend/app/auth/pat.py:L80 | neighbors=[pat.py]
-- "auth_portal_scope_rationale_1": "portal_scope.py — the customer-portal authorization boundary.  Every customer-po" | kind=entity | source=manager/backend/app/auth/portal_scope.py:L1 | neighbors=[portal_scope.py]
-- "auth_portal_scope_rationale_30": "Return the client's bound engagement id, or 403.      403 (never 404) is deliber" | kind=entity | source=manager/backend/app/auth/portal_scope.py:L30 | neighbors=[assert_client()]
-- "auth_portal_scope_rationale_32": "Return the client's bound engagement id, or 403.      403 (never 404) is deliber" | kind=entity | source=manager/backend/app/auth/portal_scope.py:L32 | neighbors=[assert_client()]
-- "auth_portal_scope_rationale_47": "The safe engagement id to filter by.      A caller-supplied engagement_id is hon" | kind=entity | source=manager/backend/app/auth/portal_scope.py:L47 | neighbors=[resolve_scope()]
-- "auth_portal_scope_rationale_49": "The safe engagement id to filter by.      A caller-supplied engagement_id is hon" | kind=entity | source=manager/backend/app/auth/portal_scope.py:L49 | neighbors=[resolve_scope()]
-- "auth_portal_scope_rationale_61": "The single choke point every portal SELECT must pass through: restricts the" | kind=entity | source=manager/backend/app/auth/portal_scope.py:L61 | neighbors=[client_scoped()]
-- "auth_portal_scope_rationale_63": "The single choke point every portal SELECT must pass through: restricts the" | kind=entity | source=manager/backend/app/auth/portal_scope.py:L63 | neighbors=[client_scoped()]
-- "auth_portal_scope_rationale_73": "Role gate for portal routes — 403 unless a properly-bound client." | kind=entity | source=manager/backend/app/auth/portal_scope.py:L73 | neighbors=[require_client()]
-- "auth_portal_scope_rationale_75": "Role gate for portal routes — 403 unless a properly-bound client." | kind=entity | source=manager/backend/app/auth/portal_scope.py:L75 | neighbors=[require_client()]
-- "auth_portal_scope_rationale_82": "Route dependency yielding the client's engagement id, rejecting any     mismatch" | kind=entity | source=manager/backend/app/auth/portal_scope.py:L82 | neighbors=[scoped_engagement()]
-- "auth_portal_scope_rationale_84": "Route dependency yielding the client's engagement id, rejecting any     mismatch" | kind=entity | source=manager/backend/app/auth/portal_scope.py:L84 | neighbors=[scoped_engagement()]
-- "auth_router_list_personal_access_tokens": "list_personal_access_tokens()" | kind=code-symbol | source=manager/backend/app/auth/router.py:L319 | neighbors=[router.py]
-- "auth_router_me": "me()" | kind=code-symbol | source=manager/backend/app/auth/router.py:L233 | neighbors=[router.py]
-- "auth_router_rationale_52": "Validates credentials and returns the User on success.     Raises a typed Authen" | kind=entity | source=manager/backend/app/auth/router.py:L52 | neighbors=[_authenticate()]
-- "auth_router_rationale_57": "The audience + scoping claims an access token MUST carry for this user.      Sha" | kind=entity | source=manager/backend/app/auth/router.py:L57 | neighbors=[access_claims_for()]
-- "auth_router_rationale_59": "Validates credentials and returns the User on success.     Raises a typed Authen" | kind=entity | source=manager/backend/app/auth/router.py:L59 | neighbors=[_authenticate()]
-- "auth_router_rationale_85": "Validates credentials and returns the User on success.     Raises a typed Authen" | kind=entity | source=manager/backend/app/auth/router.py:L85 | neighbors=[_authenticate()]
-- "auth_router_revoke_personal_access_token": "revoke_personal_access_token()" | kind=code-symbol | source=manager/backend/app/auth/router.py:L353 | neighbors=[router.py]
-- "auth_startup_checkresult_fatal": ".fatal()" | kind=code-symbol | source=manager/backend/app/auth/startup.py:L60 | neighbors=[CheckResult]
-- "auth_startup_checkresult_ok": ".ok()" | kind=code-symbol | source=manager/backend/app/auth/startup.py:L56 | neighbors=[CheckResult]
-- "auth_startup_diagnosticsreport_all_ok": ".all_ok()" | kind=code-symbol | source=manager/backend/app/auth/startup.py:L75 | neighbors=[DiagnosticsReport]
-- "auth_startup_diagnosticsreport_as_dict": ".as_dict()" | kind=code-symbol | source=manager/backend/app/auth/startup.py:L78 | neighbors=[DiagnosticsReport]
-- "auth_startup_diagnosticsreport_has_fatal": ".has_fatal()" | kind=code-symbol | source=manager/backend/app/auth/startup.py:L71 | neighbors=[DiagnosticsReport]
-- "auth_startup_get_last_report": "get_last_report()" | kind=code-symbol | source=manager/backend/app/auth/startup.py:L346 | neighbors=[startup.py]
-- "auth_startup_rationale_1": "Startup diagnostics for Vedha Manager API.  Runs during FastAPI lifespan (before" | kind=entity | source=manager/backend/app/auth/startup.py:L1 | neighbors=[startup.py]
-- "auth_startup_rationale_146": "Verify the bcrypt library can round-trip a hash — catches misconfigured passlib." | kind=entity | source=manager/backend/app/auth/startup.py:L146 | neighbors=[_check_bcrypt()]
-- "auth_startup_rationale_148": "Verify the bcrypt library can round-trip a hash — catches misconfigured passlib." | kind=entity | source=manager/backend/app/auth/startup.py:L148 | neighbors=[_check_bcrypt()]
-- "auth_startup_rationale_158": "Verify the seeded admin account exists and is active." | kind=entity | source=manager/backend/app/auth/startup.py:L158 | neighbors=[_check_admin_account()]
-- "auth_startup_rationale_160": "Verify the seeded admin account exists and is active." | kind=entity | source=manager/backend/app/auth/startup.py:L160 | neighbors=[_check_admin_account()]
-- "auth_startup_rationale_196": "Verify the default tenant is active." | kind=entity | source=manager/backend/app/auth/startup.py:L196 | neighbors=[_check_tenant()]
-- "auth_startup_rationale_198": "Verify the default tenant is active." | kind=entity | source=manager/backend/app/auth/startup.py:L198 | neighbors=[_check_tenant()]
-- "auth_startup_rationale_281": "Run all startup checks concurrently.     Called from FastAPI lifespan before the" | kind=entity | source=manager/backend/app/auth/startup.py:L281 | neighbors=[run_startup_diagnostics()]
-- "auth_startup_rationale_283": "Run all startup checks concurrently.     Called from FastAPI lifespan before the" | kind=entity | source=manager/backend/app/auth/startup.py:L283 | neighbors=[run_startup_diagnostics()]
-- "auth_startup_rationale_91": "Raised when one or more fatal checks fail — aborts app startup." | kind=entity | source=manager/backend/app/auth/startup.py:L91 | neighbors=[StartupAbortError]
-- "auth_startup_rationale_93": "Raised when one or more fatal checks fail — aborts app startup." | kind=entity | source=manager/backend/app/auth/startup.py:L93 | neighbors=[StartupAbortError]
-- "basehttpmiddleware": "BaseHTTPMiddleware" | kind=code-symbol | neighbors=[TenantIsolationMiddleware]
-- "basesettings": "BaseSettings" | kind=code-symbol | neighbors=[Settings]
+- "tests_test_supervisor_test_kill_switch_returns_zero_without_spawning": "test_kill_switch_returns_zero_without_spawning()" | kind=code-symbol | source=probe/tests/test_supervisor.py:L52 | neighbors=[test_supervisor.py, _recorder()]
+- "tests_test_supervisor_test_retryable_backs_off_and_gives_up_after_cap": "test_retryable_backs_off_and_gives_up_after_cap()" | kind=code-symbol | source=probe/tests/test_supervisor.py:L27 | neighbors=[test_supervisor.py, _recorder()]
+- "tests_test_supervisor_test_success_stops_after_one_spawn": "test_success_stops_after_one_spawn()" | kind=code-symbol | source=probe/tests/test_supervisor.py:L13 | neighbors=[test_supervisor.py, _recorder()]
+- "tests_test_syn_budget_wiring_testenginewiresthebudgetintothesynscanner_test_deep_envelope_reaches_the_syn_scanner": ".test_deep_envelope_reaches_the_syn_scanner()" | kind=code-symbol | source=probe/tests/test_syn_budget_wiring.py:L189 | neighbors=[TestEngineWiresTheBudgetIntoTheSynScann…, ._wire()]
+- "tests_test_syn_budget_wiring_testenginewiresthebudgetintothesynscanner_wire": "._wire()" | kind=code-symbol | source=probe/tests/test_syn_budget_wiring.py:L165 | neighbors=[TestEngineWiresTheBudgetIntoTheSynScann…, .test_deep_envelope_reaches_the_syn_sca…]
+- "tests_test_syn_budget_wiring_testfallbackcarriesthebudget_test_deadline_reaches_the_fallback_connect_scanner": ".test_deadline_reaches_the_fallback_connect_scanner()" | kind=code-symbol | source=probe/tests/test_syn_budget_wiring.py:L41 | neighbors=[TestFallbackCarriesTheBudget, _scope()]
+- "tests_test_syn_budget_wiring_testfallbackcarriesthebudget_test_no_deadline_stays_unbounded": ".test_no_deadline_stays_unbounded()" | kind=code-symbol | source=probe/tests/test_syn_budget_wiring.py:L46 | neighbors=[TestFallbackCarriesTheBudget, _scope()]
+- "tests_test_syn_scanner_testbuildresultsenrichment_test_closed_and_filtered_suppressed_by_default": ".test_closed_and_filtered_suppressed_by_default()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L396 | neighbors=[TestBuildResultsEnrichment, ._scanner()]
+- "tests_test_syn_scanner_testbuildresultsenrichment_test_open_result_carries_signals_and_os_guess": ".test_open_result_carries_signals_and_os_guess()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L354 | neighbors=[TestBuildResultsEnrichment, ._scanner()]
+- "tests_test_syn_scanner_testbuildresultsenrichment_test_open_without_signals_has_no_os_guess": ".test_open_without_signals_has_no_os_guess()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L391 | neighbors=[TestBuildResultsEnrichment, ._scanner()]
+- "tests_test_syn_scanner_testbuildresultsenrichment_test_os_guess_is_tagged_tcp_derived_not_icmp": ".test_os_guess_is_tagged_tcp_derived_not_icmp()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L370 | neighbors=[TestBuildResultsEnrichment, ._scanner()]
+- "tests_test_syn_scanner_testbuildresultsenrichment_test_p0f_stack_label_from_harvested_option_layout": ".test_p0f_stack_label_from_harvested_option_layout()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L380 | neighbors=[TestBuildResultsEnrichment, ._scanner()]
+- "tests_test_syn_scanner_testbuildresultsenrichment_test_windows_ttl_maps_to_windows": ".test_windows_ttl_maps_to_windows()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L364 | neighbors=[TestBuildResultsEnrichment, ._scanner()]
+- "tests_test_syn_scanner_testparsepacketsignals_test_window_ttl_mss_surfaced": ".test_window_ttl_mss_surfaced()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L337 | neighbors=[TestParsePacketSignals, _synack_with_options()]
+- "tests_test_syn_scanner_testsynretransmit_test_answered_ports_are_not_retransmitted": ".test_answered_ports_are_not_retransmitted()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L248 | neighbors=[TestSynRetransmit, ._patch()]
+- "tests_test_syn_scanner_testsynretransmit_test_retries_zero_sends_one_syn_per_port": ".test_retries_zero_sends_one_syn_per_port()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L278 | neighbors=[TestSynRetransmit, ._patch()]
+- "tests_test_syn_scanner_testsynretransmit_test_silent_ports_are_retried_retries_plus_one_times": ".test_silent_ports_are_retried_retries_plus_one_times()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L233 | neighbors=[TestSynRetransmit, ._patch()]
+- "tests_test_syn_scanner_testverifyreplycookie_test_reply_from_other_host_fails": ".test_reply_from_other_host_fails()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L129 | neighbors=[TestVerifyReplyCookie, ._make_synack_reply()]
+- "tests_test_syn_scanner_testverifyreplycookie_test_valid_cookie_verifies": ".test_valid_cookie_verifies()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L119 | neighbors=[TestVerifyReplyCookie, ._make_synack_reply()]
+- "tests_test_syn_scanner_testverifyreplycookie_test_wrong_ack_fails": ".test_wrong_ack_fails()" | kind=code-symbol | source=probe/tests/test_syn_scanner.py:L124 | neighbors=[TestVerifyReplyCookie, ._make_synack_reply()]
+- "tests_test_task_runner_fake_run_scan": "_fake_run_scan()" | kind=code-symbol | source=probe/tests/test_task_runner.py:L12 | neighbors=[test_task_runner.py, Return a minimal successful result with…]
+- "tests_test_task_runner_runner": "runner()" | kind=code-symbol | source=probe/tests/test_task_runner.py:L37 | neighbors=[test_task_runner.py, TaskRunner with no-op dependencies (no …]
+- "tests_test_tier1_correlations_test_anon_data_exposure_cluster": "test_anon_data_exposure_cluster()" | kind=code-symbol | source=probe/tests/test_tier1_correlations.py:L17 | neighbors=[test_tier1_correlations.py, _run()]
+- "tests_test_tier1_correlations_test_mgmt_plane_exposed_on_cipher_zero_alone": "test_mgmt_plane_exposed_on_cipher_zero_alone()" | kind=code-symbol | source=probe/tests/test_tier1_correlations.py:L49 | neighbors=[test_tier1_correlations.py, _run()]
+- "tests_test_tier1_correlations_test_mgmt_plane_needs_two_when_no_cipher_zero": "test_mgmt_plane_needs_two_when_no_cipher_zero()" | kind=code-symbol | source=probe/tests/test_tier1_correlations.py:L56 | neighbors=[test_tier1_correlations.py, _run()]
+- "tests_test_tier1_correlations_test_single_anon_finding_does_not_correlate": "test_single_anon_finding_does_not_correlate()" | kind=code-symbol | source=probe/tests/test_tier1_correlations.py:L30 | neighbors=[test_tier1_correlations.py, _run()]
+- "tests_test_tier1_correlations_test_user_enum_plus_weak_auth": "test_user_enum_plus_weak_auth()" | kind=code-symbol | source=probe/tests/test_tier1_correlations.py:L36 | neighbors=[test_tier1_correlations.py, _run()]
+- "tests_test_tier1_wiring_gate_funnel": "_funnel()" | kind=code-symbol | source=probe/tests/test_tier1_wiring_gate.py:L35 | neighbors=[test_tier1_wiring_gate.py, test_tcp_branches_are_fully_wired()]
+- "tests_test_tier1_wiring_gate_test_tcp_branches_are_fully_wired": "test_tcp_branches_are_fully_wired()" | kind=code-symbol | source=probe/tests/test_tier1_wiring_gate.py:L44 | neighbors=[test_tier1_wiring_gate.py, _funnel()]
+- "tests_test_tls_fingerprint_testparseserverhello_test_extracts_version_and_cipher": ".test_extracts_version_and_cipher()" | kind=code-symbol | source=probe/tests/test_tls_fingerprint.py:L59 | neighbors=[TestParseServerHello, _synthetic_server_hello()]
+- "tests_test_tls_fingerprint_testparseserverhello_test_tls13_version_from_supported_versions_ext": ".test_tls13_version_from_supported_versions_ext()" | kind=code-symbol | source=probe/tests/test_tls_fingerprint.py:L65 | neighbors=[TestParseServerHello, _synthetic_server_hello()]
+- "tests_test_tls_legacy_versions_test_try_version_reports_client_side_refusal_separately": "test_try_version_reports_client_side_refusal_separately()" | kind=code-symbol | source=probe/tests/test_tls_legacy_versions.py:L125 | neighbors=[test_tls_legacy_versions.py, A version the probe cannot OFFER is 'no…]
+- "tests_test_tls_port_coverage_test_refused_handshake_is_an_error_not_a_false_negative": "test_refused_handshake_is_an_error_not_a_false_negative()" | kind=code-symbol | source=probe/tests/test_tls_port_coverage.py:L87 | neighbors=[test_tls_port_coverage.py, Why widening is safe.      A port that …]
+- "tests_test_tls_port_coverage_testdeliberateexclusions_test_rdp_is_excluded": ".test_rdp_is_excluded()" | kind=code-symbol | source=probe/tests/test_tls_port_coverage.py:L69 | neighbors=[3389 reaches TLS only after the X.224 r…, TestDeliberateExclusions]
+- "tests_test_tls_port_coverage_testdeliberateexclusions_test_starttls_upgrade_ports_excluded": ".test_starttls_upgrade_ports_excluded()" | kind=code-symbol | source=probe/tests/test_tls_port_coverage.py:L82 | neighbors=[STARTTLS negotiates in-band; implicit T…, TestDeliberateExclusions]
+- "tests_test_tls_port_coverage_testdeliberateexclusions_test_winrm_plaintext_listeners_excluded": ".test_winrm_plaintext_listeners_excluded()" | kind=code-symbol | source=probe/tests/test_tls_port_coverage.py:L76 | neighbors=[5986 is WinRM's TLS listener and IS inc…, TestDeliberateExclusions]
+- "tests_test_tls_port_coverage_testsinglesourceoftruth_test_branch_spec_matches_the_gate": ".test_branch_spec_matches_the_gate()" | kind=code-symbol | source=probe/tests/test_tls_port_coverage.py:L38 | neighbors=[The drift that used to exist: spec allo…, TestSingleSourceOfTruth]
+- "tests_test_tls_posture_testgradetlsposture_test_grade_a_modern": ".test_grade_a_modern()" | kind=code-symbol | source=probe/tests/test_tls_posture.py:L73 | neighbors=[TestGradeTlsPosture, _modern()]
+- "tests_test_tls_posture_testgradetlsposture_test_grade_b_no_tls13": ".test_grade_b_no_tls13()" | kind=code-symbol | source=probe/tests/test_tls_posture.py:L78 | neighbors=[TestGradeTlsPosture, _modern()]
+- "tests_test_tls_posture_testgradetlsposture_test_grade_c_tls11": ".test_grade_c_tls11()" | kind=code-symbol | source=probe/tests/test_tls_posture.py:L83 | neighbors=[TestGradeTlsPosture, _modern()]
 
 ## Instructions
 

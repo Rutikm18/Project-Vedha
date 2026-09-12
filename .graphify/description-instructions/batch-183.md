@@ -1,4 +1,4 @@
-# Node Description Batch 184 of 336
+# Node Description Batch 184 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,58 +12,51 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
-For an entity node (any other kind — e.g. a person, place, event, object),
-describe what the entity is and its role, grounded in its type, its
-relations (neighbors) and the provided citations/evidence — e.g.
-"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
-Ground entity descriptions in the citations/evidence when present; do not
-speculate beyond the context, so a node with no supporting context may be
-left out of the reply.
 Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "agent_transport_rationale_663": "Return the WebSocket endpoint without embedding credentials.          Authentica" | kind=entity | source=probe/agent/transport.py:L663 | neighbors=[.ws_url()]
-- "agent_transport_rationale_667": "Fetch the engagement's authoritative scope.          Returns the response dict i" | kind=entity | source=probe/agent/transport.py:L667 | neighbors=[.fetch_scope()]
-- "agent_transport_rationale_681": "Send a heartbeat and report WHY it failed, not just that it did.          Return" | kind=entity | source=probe/agent/transport.py:L681 | neighbors=[.heartbeat_ex()]
-- "agent_transport_rationale_685": "True if the WebSocket connection is active." | kind=entity | source=probe/agent/transport.py:L685 | neighbors=[.is_ws_connected()]
-- "agent_transport_rationale_686": "Submit a scan result to the manager.          Returns True ONLY on a 2xx respons" | kind=entity | source=probe/agent/transport.py:L686 | neighbors=[.submit_result()]
-- "agent_transport_rationale_693": "Fetch the engagement's authoritative scope.          Returns the response dict i" | kind=entity | source=probe/agent/transport.py:L693 | neighbors=[.fetch_scope()]
-- "agent_transport_rationale_701": "Backwards-compatible bool form of `heartbeat_ex`.          Returns True only whe" | kind=entity | source=probe/agent/transport.py:L701 | neighbors=[.heartbeat()]
-- "agent_transport_rationale_705": "True if the WebSocket connection is active." | kind=entity | source=probe/agent/transport.py:L705 | neighbors=[.is_ws_connected()]
-- "agent_transport_rationale_712": "Submit a scan result to the manager.          Returns True ONLY on a 2xx respons" | kind=entity | source=probe/agent/transport.py:L712 | neighbors=[.submit_result()]
-- "agent_transport_rationale_713": "Poll for pending jobs (HTTP fallback for WebSocket).          Returns a list of" | kind=entity | source=probe/agent/transport.py:L713 | neighbors=[.poll_jobs()]
-- "agent_transport_rationale_727": "Backwards-compatible bool form of `heartbeat_ex`.          Returns True only whe" | kind=entity | source=probe/agent/transport.py:L727 | neighbors=[.heartbeat()]
-- "agent_transport_rationale_733": "Fetch the engagement's authoritative scope.          Returns the response dict i" | kind=entity | source=probe/agent/transport.py:L733 | neighbors=[.fetch_scope()]
-- "agent_transport_rationale_739": "Poll for pending jobs (HTTP fallback for WebSocket).          Returns a list of" | kind=entity | source=probe/agent/transport.py:L739 | neighbors=[.poll_jobs()]
-- "agent_transport_rationale_751": "Generic authenticated GET, returns parsed JSON or None on failure.          Used" | kind=entity | source=probe/agent/transport.py:L751 | neighbors=[.http_get()]
-- "agent_transport_rationale_752": "Submit a scan result to the manager.          Returns True ONLY on a 2xx respons" | kind=entity | source=probe/agent/transport.py:L752 | neighbors=[.submit_result()]
-- "agent_transport_rationale_767": "Return the WebSocket endpoint without embedding credentials.          Authentica" | kind=entity | source=probe/agent/transport.py:L767 | neighbors=[.ws_url()]
-- "agent_transport_rationale_77": "HTTP (+ future WebSocket) transport to the manager.      Thread-safe for sequent" | kind=entity | source=probe/agent/transport.py:L77 | neighbors=[Transport]
-- "agent_transport_rationale_771": "Fetch the engagement's authoritative scope.          Returns the response dict i" | kind=entity | source=probe/agent/transport.py:L771 | neighbors=[.fetch_scope()]
-- "agent_transport_rationale_78": "HTTP (+ future WebSocket) transport to the manager.      Thread-safe for sequent" | kind=entity | source=probe/agent/transport.py:L78 | neighbors=[Transport]
-- "agent_transport_rationale_790": "Submit a scan result to the manager.          Returns True ONLY on a 2xx respons" | kind=entity | source=probe/agent/transport.py:L790 | neighbors=[.submit_result()]
-- "agent_transport_rationale_793": "Return the WebSocket endpoint without embedding credentials.          Authentica" | kind=entity | source=probe/agent/transport.py:L793 | neighbors=[.ws_url()]
-- "agent_transport_rationale_80": "HTTP (+ future WebSocket) transport to the manager.      Thread-safe for sequent" | kind=entity | source=probe/agent/transport.py:L80 | neighbors=[Transport]
-- "agent_transport_rationale_803": "Establish an authenticated WebSocket connection to the manager.          Returns" | kind=entity | source=probe/agent/transport.py:L803 | neighbors=[.connect_ws()]
-- "agent_transport_rationale_809": "True if the WebSocket connection is active." | kind=entity | source=probe/agent/transport.py:L809 | neighbors=[.is_ws_connected()]
-- "agent_transport_rationale_817": "Generic authenticated GET, returns parsed JSON or None on failure.          Used" | kind=entity | source=probe/agent/transport.py:L817 | neighbors=[.http_get()]
-- "agent_transport_rationale_833": "Return the WebSocket endpoint without embedding credentials.          Authentica" | kind=entity | source=probe/agent/transport.py:L833 | neighbors=[.ws_url()]
-- "agent_transport_rationale_835": "True if the WebSocket connection is active." | kind=entity | source=probe/agent/transport.py:L835 | neighbors=[.is_ws_connected()]
-- "agent_transport_rationale_84": "Durably replace one private JSON state file without exposing secrets." | kind=entity | source=probe/agent/transport.py:L84 | neighbors=[_atomic_write_private_state()]
-- "agent_transport_rationale_843": "Establish an authenticated WebSocket connection to the manager.          Returns" | kind=entity | source=probe/agent/transport.py:L843 | neighbors=[.connect_ws()]
-- "agent_transport_rationale_855": "Generic authenticated GET, returns parsed JSON or None on failure.          Used" | kind=entity | source=probe/agent/transport.py:L855 | neighbors=[.http_get()]
-- "agent_transport_rationale_871": "Return the WebSocket endpoint without embedding credentials.          Authentica" | kind=entity | source=probe/agent/transport.py:L871 | neighbors=[.ws_url()]
-- "agent_transport_rationale_875": "True if the WebSocket connection is active." | kind=entity | source=probe/agent/transport.py:L875 | neighbors=[.is_ws_connected()]
-- "agent_transport_rationale_881": "Establish an authenticated WebSocket connection to the manager.          Returns" | kind=entity | source=probe/agent/transport.py:L881 | neighbors=[.connect_ws()]
-- "agent_transport_rationale_913": "True if the WebSocket connection is active." | kind=entity | source=probe/agent/transport.py:L913 | neighbors=[.is_ws_connected()]
-- "agent_transport_rationale_93": "Stable identity for the manager a credential belongs to.      Device credentials" | kind=entity | source=probe/agent/transport.py:L93 | neighbors=[manager_fingerprint()]
-- "agent_transport_rationale_98": "HTTP (+ future WebSocket) transport to the manager.      Thread-safe for sequent" | kind=entity | source=probe/agent/transport.py:L98 | neighbors=[Transport]
-- "agent_transport_transport_agent_id": ".agent_id()" | kind=code-symbol | source=probe/agent/transport.py:L249 | neighbors=[Transport]
-- "agent_transport_transport_agent_token": ".agent_token()" | kind=code-symbol | source=probe/agent/transport.py:L257 | neighbors=[Transport]
-- "agent_transport_transport_auth_header": ".auth_header()" | kind=code-symbol | source=probe/agent/transport.py:L265 | neighbors=[Transport]
-- "agent_use_cases_rationale_1": "use_cases.py — the finite, pre-defined library of scan scenarios the manager can" | kind=entity | source=probe/agent/use_cases.py:L1 | neighbors=[use_cases.py]
+- "tests_test_remediation_kb_testrecipeforfinding_test_missing_os_defaults_to_generic": ".test_missing_os_defaults_to_generic()" | kind=code-symbol | source=manager/backend/tests/test_remediation_kb.py:L84 | neighbors=[TestRecipeForFinding, _f()]
+- "tests_test_remediation_kb_testrecipeforfinding_test_network_os_falls_back_to_generic_guidance": ".test_network_os_falls_back_to_generic_guidance()" | kind=code-symbol | source=manager/backend/tests/test_remediation_kb.py:L72 | neighbors=[TestRecipeForFinding, _f()]
+- "tests_test_remediation_kb_testrecipeforfinding_test_returns_kb_source_and_category": ".test_returns_kb_source_and_category()" | kind=code-symbol | source=manager/backend/tests/test_remediation_kb.py:L60 | neighbors=[TestRecipeForFinding, _f()]
+- "tests_test_remediation_kb_testrecipeforfinding_test_steps_are_numbered_and_os_filtered": ".test_steps_are_numbered_and_os_filtered()" | kind=code-symbol | source=manager/backend/tests/test_remediation_kb.py:L66 | neighbors=[TestRecipeForFinding, _f()]
+- "tests_test_remediation_kb_testrecipeforfinding_test_unknown_finding_yields_generic_plan": ".test_unknown_finding_yields_generic_plan()" | kind=code-symbol | source=manager/backend/tests/test_remediation_kb.py:L79 | neighbors=[TestRecipeForFinding, _f()]
+- "tests_test_remediation_routes_fakedb_execute": ".execute()" | kind=code-symbol | source=manager/backend/tests/test_remediation_routes.py:L72 | neighbors=[_FakeDB, _scalar_result()]
+- "tests_test_remediation_routes_genunavailable": "_GenUnavailable" | kind=code-symbol | source=manager/backend/tests/test_remediation_routes.py:L80 | neighbors=[test_remediation_routes.py, .__init__()]
+- "tests_test_remediation_routes_testupsertstatement_test_refreshes_generated_at_on_conflict": ".test_refreshes_generated_at_on_conflict()" | kind=code-symbol | source=manager/backend/tests/test_remediation_routes.py:L210 | neighbors=[TestUpsertStatement, ._sql()]
+- "tests_test_remediation_routes_testupsertstatement_test_regeneration_resets_review_gate_not_inherits_prior_approval": ".test_regeneration_resets_review_gate_not_inherits_prior_approval()" | kind=code-symbol | source=manager/backend/tests/test_remediation_routes.py:L201 | neighbors=[TestUpsertStatement, ._sql()]
+- "tests_test_remediation_routes_testupsertstatement_test_targets_the_unique_constraint": ".test_targets_the_unique_constraint()" | kind=code-symbol | source=manager/backend/tests/test_remediation_routes.py:L198 | neighbors=[TestUpsertStatement, ._sql()]
+- "tests_test_remediation_upsert_integration_stmt": "_stmt()" | kind=code-symbol | source=manager/backend/tests/test_remediation_upsert_integration.py:L49 | neighbors=[test_remediation_upsert_integration.py, _run()]
+- "tests_test_remediation_upsert_integration_test_upsert_resets_gate_and_is_race_safe": "test_upsert_resets_gate_and_is_race_safe()" | kind=code-symbol | source=manager/backend/tests/test_remediation_upsert_integration.py:L103 | neighbors=[test_remediation_upsert_integration.py, _run()]
+- "tests_test_resolution_coverage_test_skipped_scanner_is_not_reported_as_degraded": "test_skipped_scanner_is_not_reported_as_degraded()" | kind=code-symbol | source=manager/backend/tests/test_resolution_coverage.py:L33 | neighbors=[test_resolution_coverage.py, A scanner that stood down because the s…]
+- "tests_test_resolution_coverage_test_skipped_scanner_still_proves_nothing_about_coverage": "test_skipped_scanner_still_proves_nothing_about_coverage()" | kind=code-symbol | source=manager/backend/tests/test_resolution_coverage.py:L54 | neighbors=[test_resolution_coverage.py, Splitting the label must NOT loosen aut…]
+- "tests_test_resolve_testresolvefamily_test_default_no_family_is_backward_compatible": ".test_default_no_family_is_backward_compatible()" | kind=code-symbol | source=probe/tests/test_resolve.py:L34 | neighbors=[TestResolveFamily, _infos()]
+- "tests_test_resolve_testresolvefamily_test_requested_family_absent_falls_back_to_first": ".test_requested_family_absent_falls_back_to_first()" | kind=code-symbol | source=probe/tests/test_resolve.py:L28 | neighbors=[TestResolveFamily, _infos()]
+- "tests_test_resolve_testresolvefamily_test_requested_ipv4_selected_over_v6_first": ".test_requested_ipv4_selected_over_v6_first()" | kind=code-symbol | source=probe/tests/test_resolve.py:L21 | neighbors=[TestResolveFamily, _infos()]
+- "tests_test_result_archive_reset_archive_latch": "_reset_archive_latch()" | kind=code-symbol | source=probe/tests/test_result_archive.py:L26 | neighbors=[test_result_archive.py, The disable latch is module state; keep…]
+- "tests_test_result_archive_testarchiveisbesteffort_test_default_location_is_the_probe_root": ".test_default_location_is_the_probe_root()" | kind=code-symbol | source=probe/tests/test_result_archive.py:L151 | neighbors=[Unset env => alongside agent/ scanner/ …, TestArchiveIsBestEffort]
+- "tests_test_result_archive_testprepareatstartup_test_existing_but_unwritable_directory_is_caught_at_startup": ".test_existing_but_unwritable_directory_is_caught_at_startup()" | kind=code-symbol | source=probe/tests/test_result_archive.py:L184 | neighbors=[The Linux bind-mount case: Docker creat…, TestPrepareAtStartup]
+- "tests_test_result_queue_test_ack_removes_the_record": "test_ack_removes_the_record()" | kind=code-symbol | source=probe/tests/test_result_queue.py:L37 | neighbors=[test_result_queue.py, _q()]
+- "tests_test_result_queue_test_backpressure_at_high_water": "test_backpressure_at_high_water()" | kind=code-symbol | source=probe/tests/test_result_queue.py:L70 | neighbors=[test_result_queue.py, _q()]
+- "tests_test_result_queue_test_enqueue_is_idempotent_by_job_id": "test_enqueue_is_idempotent_by_job_id()" | kind=code-symbol | source=probe/tests/test_result_queue.py:L30 | neighbors=[test_result_queue.py, _q()]
+- "tests_test_result_queue_test_enqueue_then_pending_roundtrips_payload": "test_enqueue_then_pending_roundtrips_payload()" | kind=code-symbol | source=probe/tests/test_result_queue.py:L21 | neighbors=[test_result_queue.py, _q()]
+- "tests_test_result_queue_test_overflow_drops_oldest": "test_overflow_drops_oldest()" | kind=code-symbol | source=probe/tests/test_result_queue.py:L51 | neighbors=[test_result_queue.py, _q()]
+- "tests_test_result_queue_test_pending_is_oldest_first": "test_pending_is_oldest_first()" | kind=code-symbol | source=probe/tests/test_result_queue.py:L44 | neighbors=[test_result_queue.py, _q()]
+- "tests_test_result_queue_test_records_survive_a_reopen_until_acked": "test_records_survive_a_reopen_until_acked()" | kind=code-symbol | source=probe/tests/test_result_queue.py:L78 | neighbors=[test_result_queue.py, _q()]
+- "tests_test_risk_port_coverage_test_named_high_value_ports_are_scanned": "test_named_high_value_ports_are_scanned()" | kind=code-symbol | source=probe/tests/test_risk_port_coverage.py:L151 | neighbors=[test_risk_port_coverage.py, _swept_by_network_va()]
+- "tests_test_risk_rank_test_bounds": "test_bounds()" | kind=code-symbol | source=manager/backend/tests/test_risk_rank.py:L15 | neighbors=[test_risk_rank.py, _rank()]
+- "tests_test_risk_rank_test_confirmed_exploitable_outranks_contradicted": "test_confirmed_exploitable_outranks_contradicted()" | kind=code-symbol | source=manager/backend/tests/test_risk_rank.py:L23 | neighbors=[test_risk_rank.py, _rank()]
+- "tests_test_risk_rank_test_contradicted_sinks_below_inferred": "test_contradicted_sinks_below_inferred()" | kind=code-symbol | source=manager/backend/tests/test_risk_rank.py:L29 | neighbors=[test_risk_rank.py, _rank()]
+- "tests_test_risk_rank_test_internet_facing_raises_and_auth_lowers": "test_internet_facing_raises_and_auth_lowers()" | kind=code-symbol | source=manager/backend/tests/test_risk_rank.py:L37 | neighbors=[test_risk_rank.py, _rank()]
+- "tests_test_risk_rank_test_kev_raises_rank": "test_kev_raises_rank()" | kind=code-symbol | source=manager/backend/tests/test_risk_rank.py:L33 | neighbors=[test_risk_rank.py, _rank()]
+- "tests_test_risk_rank_test_low_confidence_lowers_rank": "test_low_confidence_lowers_rank()" | kind=code-symbol | source=manager/backend/tests/test_risk_rank.py:L42 | neighbors=[test_risk_rank.py, _rank()]
+- "tests_test_risk_rank_test_severity_remains_an_impact_signal_without_cvss": "test_severity_remains_an_impact_signal_without_cvss()" | kind=code-symbol | source=manager/backend/tests/test_risk_rank.py:L72 | neighbors=[test_risk_rank.py, _rank()]
+- "tests_test_router_signals_test_https_on_odd_port_routes_tls_and_web": "test_https_on_odd_port_routes_tls_and_web()" | kind=code-symbol | source=probe/tests/test_router_signals.py:L52 | neighbors=[test_router_signals.py, _open()]
+- "tests_test_router_signals_test_no_tls_flag_omits_the_marker": "test_no_tls_flag_omits_the_marker()" | kind=code-symbol | source=probe/tests/test_router_signals.py:L161 | neighbors=[test_router_signals.py, --no-tls means no handshake was tried, …]
+- "tests_test_router_signals_test_service_banner_records_tls_probed": "test_service_banner_records_tls_probed()" | kind=code-symbol | source=probe/tests/test_router_signals.py:L137 | neighbors=[test_router_signals.py, The flag must actually be emitted, or t…]
+- "tests_test_router_signals_test_workflow_hands_observed_tls_ports_to_web_scanner": "test_workflow_hands_observed_tls_ports_to_web_scanner()" | kind=code-symbol | source=probe/tests/test_router_signals.py:L70 | neighbors=[test_router_signals.py, 9000 is in the static WEB table but NOT…]
+- "tests_test_router_signals_testtlsprobednegative_test_binary_protocol_ports_route_nowhere": ".test_binary_protocol_ports_route_nowhere()" | kind=code-symbol | source=probe/tests/test_router_signals.py:L129 | neighbors=[TestTlsProbedNegative, _open()]
 
 ## Instructions
 

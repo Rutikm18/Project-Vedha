@@ -1,4 +1,4 @@
-# Node Description Batch 281 of 336
+# Node Description Batch 281 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -26,46 +26,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_detection_pipeline_gaps_ctx_init": ".__init__()" | kind=code-symbol | source=manager/backend/tests/test_detection_pipeline_gaps.py:L170 | neighbors=[_ctx] | lang=en
-- "tests_test_detection_pipeline_gaps_rationale_1": "test_detection_pipeline_gaps.py — four ways facts reached the manager and then f" | kind=entity | source=manager/backend/tests/test_detection_pipeline_gaps.py:L1 | neighbors=[test_detection_pipeline_gaps.py] | lang=en
-- "tests_test_detection_pipeline_gaps_rationale_126": "An older probe reports none. Coverage stays empty and nothing auto-resolves —" | kind=entity | source=manager/backend/tests/test_detection_pipeline_gaps.py:L126 | neighbors=[test_missing_scanner_runs_degrades_to_e…] | lang=en
-- "tests_test_detection_pipeline_gaps_rationale_150": "Facts are persisted whenever they are present, but the outbox enqueue used to" | kind=entity | source=manager/backend/tests/test_detection_pipeline_gaps.py:L150 | neighbors=[test_enqueue_is_not_gated_on_success()] | lang=en
-- "tests_test_detection_pipeline_gaps_rationale_169": "Minimal async-context-manager wrapper around a mock session." | kind=entity | source=manager/backend/tests/test_detection_pipeline_gaps.py:L169 | neighbors=[_ctx] | lang=pt
-- "tests_test_detection_pipeline_gaps_rationale_46": "`data` is read with .get() by every rule. A string there used to raise mid-run" | kind=entity | source=manager/backend/tests/test_detection_pipeline_gaps.py:L46 | neighbors=[test_a_non_dict_data_payload_is_quarant…] | lang=en
-- "tests_test_detection_pipeline_gaps_rationale_65": "attack_path_findings runs on meta['accepted_facts']. If that still contained" | kind=entity | source=manager/backend/tests/test_detection_pipeline_gaps.py:L65 | neighbors=[test_accepted_facts_excludes_what_inges…] | lang=en
-- "tests_test_detection_pipeline_gaps_rationale_85": "No engine means no ingest verdict. Without a verdict we cannot call any fact" | kind=entity | source=manager/backend/tests/test_detection_pipeline_gaps.py:L85 | neighbors=[test_accepted_facts_falls_back_to_raw_w…] | lang=pt
-- "tests_test_detection_pipeline_gaps_rationale_97": "scan_results has no scanner_runs column; the job's result blob does. Passing" | kind=entity | source=manager/backend/tests/test_detection_pipeline_gaps.py:L97 | neighbors=[test_facts_ready_reads_scanner_runs_fro…] | lang=en
-- "tests_test_detection_validation_pytest_addoption": "pytest_addoption()" | kind=code-symbol | source=manager/backend/tests/test_detection_validation.py:L339 | neighbors=[test_detection_validation.py] | lang=en
-- "tests_test_detection_validation_testdetectioncorrelator_setup_method": ".setup_method()" | kind=code-symbol | source=manager/backend/tests/test_detection_validation.py:L51 | neighbors=[TestDetectionCorrelator] | lang=en
-- "tests_test_detection_validation_testdetectioncorrelator_test_coverage_empty": ".test_coverage_empty()" | kind=code-symbol | source=manager/backend/tests/test_detection_validation.py:L148 | neighbors=[TestDetectionCorrelator] | lang=en
-- "tests_test_detection_validation_testdetectioncorrelator_test_naive_timestamp_does_not_crash": ".test_naive_timestamp_does_not_crash()" | kind=code-symbol | source=manager/backend/tests/test_detection_validation.py:L113 | neighbors=[TestDetectionCorrelator] | lang=en
-- "tests_test_detection_validation_testedrparsing_test_crowdstrike_parse": ".test_crowdstrike_parse()" | kind=code-symbol | source=manager/backend/tests/test_detection_validation.py:L270 | neighbors=[TestEDRParsing] | lang=en
-- "tests_test_detection_validation_testedrparsing_test_defender_parse_and_host_filter": ".test_defender_parse_and_host_filter()" | kind=code-symbol | source=manager/backend/tests/test_detection_validation.py:L284 | neighbors=[TestEDRParsing] | lang=en
-- "tests_test_detection_validation_testedrparsing_test_factory": ".test_factory()" | kind=code-symbol | source=manager/backend/tests/test_detection_validation.py:L312 | neighbors=[TestEDRParsing] | lang=en
-- "tests_test_detection_validation_testedrparsing_test_sentinelone_parse": ".test_sentinelone_parse()" | kind=code-symbol | source=manager/backend/tests/test_detection_validation.py:L300 | neighbors=[TestEDRParsing] | lang=en
-- "tests_test_detection_validation_testsiemparsing_test_elastic_parse": ".test_elastic_parse()" | kind=code-symbol | source=manager/backend/tests/test_detection_validation.py:L243 | neighbors=[TestSIEMParsing] | lang=en
-- "tests_test_detection_validation_testsiemparsing_test_factory": ".test_factory()" | kind=code-symbol | source=manager/backend/tests/test_detection_validation.py:L258 | neighbors=[TestSIEMParsing] | lang=en
-- "tests_test_detection_validation_testsiemparsing_test_sentinel_parse": ".test_sentinel_parse()" | kind=code-symbol | source=manager/backend/tests/test_detection_validation.py:L232 | neighbors=[TestSIEMParsing] | lang=en
-- "tests_test_detection_validation_testsiemparsing_test_splunk_parse": ".test_splunk_parse()" | kind=code-symbol | source=manager/backend/tests/test_detection_validation.py:L215 | neighbors=[TestSIEMParsing] | lang=en
-- "tests_test_detection_validation_testsiemparsing_test_splunk_spl_includes_host_and_time": ".test_splunk_spl_includes_host_and_time()" | kind=code-symbol | source=manager/backend/tests/test_detection_validation.py:L227 | neighbors=[TestSIEMParsing] | lang=en
-- "tests_test_detection_validation_testsigmarulegenerator_setup_method": ".setup_method()" | kind=code-symbol | source=manager/backend/tests/test_detection_validation.py:L175 | neighbors=[TestSigmaRuleGenerator] | lang=en
-- "tests_test_detection_validation_testsigmarulegenerator_test_evidence_customises_rule": ".test_evidence_customises_rule()" | kind=code-symbol | source=manager/backend/tests/test_detection_validation.py:L196 | neighbors=[TestSigmaRuleGenerator] | lang=en
-- "tests_test_detection_validation_testsigmarulegenerator_test_known_technique_template": ".test_known_technique_template()" | kind=code-symbol | source=manager/backend/tests/test_detection_validation.py:L178 | neighbors=[TestSigmaRuleGenerator] | lang=en
-- "tests_test_detection_validation_testsigmarulegenerator_test_output_is_valid_yaml_and_stable_id": ".test_output_is_valid_yaml_and_stable_id()" | kind=code-symbol | source=manager/backend/tests/test_detection_validation.py:L203 | neighbors=[TestSigmaRuleGenerator] | lang=en
-- "tests_test_detection_validation_testsigmarulegenerator_test_subtechnique_falls_back_to_parent": ".test_subtechnique_falls_back_to_parent()" | kind=code-symbol | source=manager/backend/tests/test_detection_validation.py:L185 | neighbors=[TestSigmaRuleGenerator] | lang=en
-- "tests_test_detection_validation_testsigmarulegenerator_test_unknown_technique_uses_generic": ".test_unknown_technique_uses_generic()" | kind=code-symbol | source=manager/backend/tests/test_detection_validation.py:L191 | neighbors=[TestSigmaRuleGenerator] | lang=en
-- "tests_test_detection_validation_testsplunkintegration_skip_without_flag": ".skip_without_flag()" | kind=code-symbol | source=manager/backend/tests/test_detection_validation.py:L326 | neighbors=[TestSplunkIntegration] | lang=en
-- "tests_test_detection_validation_testsplunkintegration_test_live_query": ".test_live_query()" | kind=code-symbol | source=manager/backend/tests/test_detection_validation.py:L333 | neighbors=[TestSplunkIntegration] | lang=en
-- "tests_test_device_identity_test_device_identity_rejects_invalid_private_key_encoding": "test_device_identity_rejects_invalid_private_key_encoding()" | kind=code-symbol | source=probe/tests/test_device_identity.py:L36 | neighbors=[test_device_identity.py] | lang=en
-- "tests_test_device_identity_test_device_identity_round_trip_and_signature_proof": "test_device_identity_round_trip_and_signature_proof()" | kind=code-symbol | source=probe/tests/test_device_identity.py:L21 | neighbors=[test_device_identity.py] | lang=en
-- "tests_test_device_identity_test_site_policy_signature_and_tofu_pin_are_enforced": "test_site_policy_signature_and_tofu_pin_are_enforced()" | kind=code-symbol | source=probe/tests/test_device_identity.py:L41 | neighbors=[test_device_identity.py] | lang=en
-- "tests_test_device_profile_rationale_1": "test_device_profile.py — the probe device_inventory → Asset role mapping.  Pure" | kind=entity | source=manager/backend/tests/test_device_profile.py:L1 | neighbors=[test_device_profile.py] | lang=en
-- "tests_test_device_profile_test_ambiguous_keeps_asset_type_none_but_records_role": "test_ambiguous_keeps_asset_type_none_but_records_role()" | kind=code-symbol | source=manager/backend/tests/test_device_profile.py:L53 | neighbors=[test_device_profile.py] | lang=en
-- "tests_test_device_profile_test_device_profiles_extracts_role_detail_and_confidence": "test_device_profiles_extracts_role_detail_and_confidence()" | kind=code-symbol | source=manager/backend/tests/test_device_profile.py:L30 | neighbors=[test_device_profile.py] | lang=en
-- "tests_test_device_profile_test_every_device_type_maps_to_the_right_asset_type": "test_every_device_type_maps_to_the_right_asset_type()" | kind=code-symbol | source=manager/backend/tests/test_device_profile.py:L14 | neighbors=[test_device_profile.py] | lang=en
-- "tests_test_device_profile_test_malformed_entries_are_skipped": "test_malformed_entries_are_skipped()" | kind=code-symbol | source=manager/backend/tests/test_device_profile.py:L70 | neighbors=[test_device_profile.py] | lang=en
-- "tests_test_device_profile_test_non_device_inventory_result_yields_no_profiles": "test_non_device_inventory_result_yields_no_profiles()" | kind=code-symbol | source=manager/backend/tests/test_device_profile.py:L64 | neighbors=[test_device_profile.py] | lang=en
-- "tests_test_device_profile_test_unmappable_roles_leave_asset_type_untouched": "test_unmappable_roles_leave_asset_type_untouched()" | kind=code-symbol | source=manager/backend/tests/test_device_profile.py:L23 | neighbors=[test_device_profile.py] | lang=en
+- "scanner_mcp_ai_scanner_rationale_1": "mcp_ai_scanner.py — discover exposed AI inference servers and MCP endpoints.  WH" | kind=entity | source=probe/scanner/mcp_ai_scanner.py:L1 | neighbors=[mcp_ai_scanner.py] | lang=en
+- "scanner_mcp_ai_scanner_rationale_152": "Server/body fingerprint match against known non-AI squatters, or None." | kind=entity | source=probe/scanner/mcp_ai_scanner.py:L152 | neighbors=[_known_false_positive()] | lang=en
+- "scanner_mcp_ai_scanner_rationale_153": "Server/body fingerprint match against known non-AI squatters, or None." | kind=entity | source=probe/scanner/mcp_ai_scanner.py:L153 | neighbors=[_known_false_positive()] | lang=en
+- "scanner_mcp_ai_scanner_rationale_161": "The strongest possible evidence for a real MCP server: a WWW-Authenticate     he" | kind=entity | source=probe/scanner/mcp_ai_scanner.py:L161 | neighbors=[_mcp_oauth_signal()] | lang=en
+- "scanner_mcp_ai_scanner_rationale_162": "The strongest possible evidence for a real MCP server: a WWW-Authenticate     he" | kind=entity | source=probe/scanner/mcp_ai_scanner.py:L162 | neighbors=[_mcp_oauth_signal()] | lang=en
+- "scanner_mcp_ai_scanner_rationale_174": "JSON-typed body that actually talks about auth, not just any error text." | kind=entity | source=probe/scanner/mcp_ai_scanner.py:L174 | neighbors=[_auth_shaped_json_body()] | lang=en
+- "scanner_mcp_ai_scanner_rationale_175": "JSON-typed body that actually talks about auth, not just any error text." | kind=entity | source=probe/scanner/mcp_ai_scanner.py:L175 | neighbors=[_auth_shaped_json_body()] | lang=en
+- "scanner_mcp_ai_scanner_request": "_request()" | kind=code-symbol | source=probe/scanner/mcp_ai_scanner.py:L128 | neighbors=[mcp_ai_scanner.py] | lang=en
+- "scanner_mobile_scanner_main": "main()" | kind=code-symbol | source=probe/scanner/mobile_scanner.py:L340 | neighbors=[mobile_scanner.py] | lang=en
+- "scanner_mobile_scanner_rationale_1": "mobile_scanner.py — mobile device exposure detection.  Covers playbook 13 (Mobil" | kind=entity | source=probe/scanner/mobile_scanner.py:L1 | neighbors=[mobile_scanner.py] | lang=en
+- "scanner_mobile_scanner_rationale_152": "Attempt TCP connect to lockdownd port 62078.     Port open = iOS device present" | kind=entity | source=probe/scanner/mobile_scanner.py:L152 | neighbors=[_probe_lockdownd()] | lang=en
+- "scanner_mobile_scanner_rationale_188": "Build a DNS PTR query in mDNS wire format with QU bit set." | kind=entity | source=probe/scanner/mobile_scanner.py:L188 | neighbors=[_build_mdns_query()] | lang=en
+- "scanner_mobile_scanner_rationale_199": "Extract PTR target names (service instance names) from mDNS reply." | kind=entity | source=probe/scanner/mobile_scanner.py:L199 | neighbors=[_parse_mdns_ptr_names()] | lang=en
+- "scanner_mobile_scanner_rationale_259": "Send one mDNS PTR query to target:5353 and return instance names." | kind=entity | source=probe/scanner/mobile_scanner.py:L259 | neighbors=[_probe_mdns_mobile_sync()] | lang=en
+- "scanner_mobile_scanner_rationale_279": "Detects mobile device exposure on the network:     ADB (Android) | lockdownd (iO" | kind=entity | source=probe/scanner/mobile_scanner.py:L279 | neighbors=[MobileScanner] | lang=en
+- "scanner_mobile_scanner_rationale_60": "Build an ADB A_CNXN (CONNECT) message — the standard handshake initiator." | kind=entity | source=probe/scanner/mobile_scanner.py:L60 | neighbors=[_build_adb_cnxn()] | lang=en
+- "scanner_mobile_scanner_rationale_71": "Parse a 24-byte ADB message header.  Returns parsed fields or None." | kind=entity | source=probe/scanner/mobile_scanner.py:L71 | neighbors=[_parse_adb_header()] | lang=pt
+- "scanner_mobile_scanner_rationale_96": "Send ADB CNXN and read the device's CNXN reply.     Returns a dict with connecti" | kind=entity | source=probe/scanner/mobile_scanner.py:L96 | neighbors=[_probe_adb()] | lang=en
+- "scanner_msrpc_scanner_main": "main()" | kind=code-symbol | source=probe/scanner/msrpc_scanner.py:L172 | neighbors=[msrpc_scanner.py] | lang=en
+- "scanner_msrpc_scanner_msrpcscanner_init": ".__init__()" | kind=code-symbol | source=probe/scanner/msrpc_scanner.py:L85 | neighbors=[MSRPCScanner] | lang=en
+- "scanner_msrpc_scanner_rationale_1": "msrpc_scanner.py — MSRPC endpoint-mapper (EPM) enumeration over port 135 (VA che" | kind=entity | source=probe/scanner/msrpc_scanner.py:L1 | neighbors=[msrpc_scanner.py] | lang=it
+- "scanner_msrpc_scanner_rationale_52": "Parse ncacn_ip_tcp bindings → (all_tcp_ports, dynamic_tcp_ports).      Pure and" | kind=entity | source=probe/scanner/msrpc_scanner.py:L52 | neighbors=[_extract_tcp_ports()] | lang=en
+- "scanner_msrpc_scanner_rationale_70": "Reduce the raw endpoint list to distinct interfaces and dynamic ports." | kind=entity | source=probe/scanner/msrpc_scanner.py:L70 | neighbors=[_summarize()] | lang=en
+- "scanner_msrpc_scanner_rationale_90": "Blocking: EPM ept_lookup via impacket. Monkeypatchable for tests." | kind=entity | source=probe/scanner/msrpc_scanner.py:L90 | neighbors=[._enumerate()] | lang=en
+- "scanner_nfs_scanner_main": "main()" | kind=code-symbol | source=probe/scanner/nfs_scanner.py:L282 | neighbors=[nfs_scanner.py] | lang=en
+- "scanner_nfs_scanner_nfsscanner_init": ".__init__()" | kind=code-symbol | source=probe/scanner/nfs_scanner.py:L190 | neighbors=[NFSScanner] | lang=en
+- "scanner_nfs_scanner_rationale_1": "nfs_scanner.py — NFS export exposure over ONC RPC (VA checklist: anonymous netwo" | kind=entity | source=probe/scanner/nfs_scanner.py:L1 | neighbors=[nfs_scanner.py] | lang=en
+- "scanner_nfs_scanner_rationale_117": "An export with no client restriction, or one shared to a wildcard group,     is" | kind=entity | source=probe/scanner/nfs_scanner.py:L117 | neighbors=[is_world_readable()] | lang=en
+- "scanner_nfs_scanner_rationale_126": "Send one ONC-RPC CALL (AUTH_NULL) over a TCP record-marked stream and     return" | kind=entity | source=probe/scanner/nfs_scanner.py:L126 | neighbors=[_rpc_call()] | lang=en
+- "scanner_nfs_scanner_rationale_137": "Read RPC record-marking fragments (RFC 1057 §10) until the last fragment." | kind=entity | source=probe/scanner/nfs_scanner.py:L137 | neighbors=[_recv_record()] | lang=en
+- "scanner_nfs_scanner_rationale_167": "Strip the ONC-RPC reply header; return the accepted-SUCCESS result bytes." | kind=entity | source=probe/scanner/nfs_scanner.py:L167 | neighbors=[_parse_rpc_reply()] | lang=en
+- "scanner_nfs_scanner_rationale_233": "Blocking: portmap DUMP + mountd EXPORT. Monkeypatchable for tests." | kind=entity | source=probe/scanner/nfs_scanner.py:L233 | neighbors=[._probe()] | lang=en
+- "scanner_nfs_scanner_rationale_57": "Minimal, BOUNDED big-endian XDR reader (RFC 4506)." | kind=entity | source=probe/scanner/nfs_scanner.py:L57 | neighbors=[_XDR] | lang=en
+- "scanner_nfs_scanner_rationale_83": "Parse a PMAPPROC_DUMP reply — the list of registered RPC programs." | kind=entity | source=probe/scanner/nfs_scanner.py:L83 | neighbors=[parse_portmap_dump()] | lang=en
+- "scanner_nfs_scanner_rationale_97": "Parse a MOUNTPROC_EXPORT reply — exports + their allowed client groups." | kind=entity | source=probe/scanner/nfs_scanner.py:L97 | neighbors=[parse_mount_export()] | lang=pt
+- "scanner_nfs_scanner_xdr_init": ".__init__()" | kind=code-symbol | source=probe/scanner/nfs_scanner.py:L59 | neighbors=[_XDR] | lang=en
+- "scanner_nmap_wrapper_have_nmap": "_have_nmap()" | kind=code-symbol | source=probe/scanner/nmap_wrapper.py:L117 | neighbors=[nmap_wrapper.py] | lang=en
+- "scanner_nmap_wrapper_main": "main()" | kind=code-symbol | source=probe/scanner/nmap_wrapper.py:L253 | neighbors=[nmap_wrapper.py] | lang=en
+- "scanner_nmap_wrapper_nmapexecutionerror_init": ".__init__()" | kind=code-symbol | source=probe/scanner/nmap_wrapper.py:L51 | neighbors=[NmapExecutionError] | lang=en
+- "scanner_nmap_wrapper_rationale_1": "nmap_wrapper.py — orchestrate nmap and normalize its XML into ScanResult.  WHY:" | kind=entity | source=probe/scanner/nmap_wrapper.py:L1 | neighbors=[nmap_wrapper.py] | lang=en
 
 ## Instructions
 

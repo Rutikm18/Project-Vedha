@@ -1,4 +1,4 @@
-# Node Description Batch 220 of 336
+# Node Description Batch 220 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -26,46 +26,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "main_scripts_mass_scan_rationale_1": "mass_scan.py — fast large-scale TCP port discovery.  WHY THIS EXISTS (modern con" | kind=entity | source=probe/main_scripts/mass_scan.py:L1 | neighbors=[mass_scan.py] | lang=en
-- "main_scripts_mass_scan_rationale_148": "Parse masscan -oJ output robustly: handles trailing comma, 'finished'     sentin" | kind=entity | source=probe/main_scripts/mass_scan.py:L148 | neighbors=[_parse_masscan_json()] | lang=en
-- "main_scripts_mass_scan_rationale_243": "target_specs: raw CIDRs/ranges/hosts (NOT pre-expanded) — masscan wants them." | kind=entity | source=probe/main_scripts/mass_scan.py:L243 | neighbors=[run_mass_scan()] | lang=en
-- "main_scripts_mass_scan_rationale_308": "Excluded networks -> masscan --exclude specs, so they get ZERO packets." | kind=entity | source=probe/main_scripts/mass_scan.py:L308 | neighbors=[_masscan_excludes()] | lang=en
-- "main_scripts_mass_scan_rationale_313": "A CIDR spec is in scope only if it is fully contained in an allowed network." | kind=entity | source=probe/main_scripts/mass_scan.py:L313 | neighbors=[_spec_in_scope()] | lang=en
-- "main_scripts_mass_scan_rationale_66": "Run masscan over the given target specs and return its parsed JSON records." | kind=entity | source=probe/main_scripts/mass_scan.py:L66 | neighbors=[_run_masscan()] | lang=en
-- "main_scripts_mcp_ai_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/mcp_ai_scanner.py:L323 | neighbors=[mcp_ai_scanner.py] | lang=en
-- "main_scripts_mcp_ai_scanner_mcpaiscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/mcp_ai_scanner.py:L202 | neighbors=[MCPAIScanner] | lang=en
-- "main_scripts_mcp_ai_scanner_noredirect_redirect_request": ".redirect_request()" | kind=code-symbol | source=probe/main_scripts/mcp_ai_scanner.py:L111 | neighbors=[_NoRedirect] | lang=en
-- "main_scripts_mcp_ai_scanner_rationale_1": "mcp_ai_scanner.py — discover exposed AI inference servers and MCP endpoints.  WH" | kind=entity | source=probe/main_scripts/mcp_ai_scanner.py:L1 | neighbors=[mcp_ai_scanner.py] | lang=en
-- "main_scripts_mcp_ai_scanner_rationale_152": "Server/body fingerprint match against known non-AI squatters, or None." | kind=entity | source=probe/main_scripts/mcp_ai_scanner.py:L152 | neighbors=[_known_false_positive()] | lang=en
-- "main_scripts_mcp_ai_scanner_rationale_153": "Server/body fingerprint match against known non-AI squatters, or None." | kind=entity | source=probe/main_scripts/mcp_ai_scanner.py:L153 | neighbors=[_known_false_positive()] | lang=en
-- "main_scripts_mcp_ai_scanner_rationale_161": "The strongest possible evidence for a real MCP server: a WWW-Authenticate     he" | kind=entity | source=probe/main_scripts/mcp_ai_scanner.py:L161 | neighbors=[_mcp_oauth_signal()] | lang=en
-- "main_scripts_mcp_ai_scanner_rationale_162": "The strongest possible evidence for a real MCP server: a WWW-Authenticate     he" | kind=entity | source=probe/main_scripts/mcp_ai_scanner.py:L162 | neighbors=[_mcp_oauth_signal()] | lang=en
-- "main_scripts_mcp_ai_scanner_rationale_174": "JSON-typed body that actually talks about auth, not just any error text." | kind=entity | source=probe/main_scripts/mcp_ai_scanner.py:L174 | neighbors=[_auth_shaped_json_body()] | lang=en
-- "main_scripts_mcp_ai_scanner_rationale_175": "JSON-typed body that actually talks about auth, not just any error text." | kind=entity | source=probe/main_scripts/mcp_ai_scanner.py:L175 | neighbors=[_auth_shaped_json_body()] | lang=en
-- "main_scripts_mcp_ai_scanner_request": "_request()" | kind=code-symbol | source=probe/main_scripts/mcp_ai_scanner.py:L128 | neighbors=[mcp_ai_scanner.py] | lang=en
-- "main_scripts_mobile_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/mobile_scanner.py:L340 | neighbors=[mobile_scanner.py] | lang=en
-- "main_scripts_mobile_scanner_rationale_1": "mobile_scanner.py — mobile device exposure detection.  Covers playbook 13 (Mobil" | kind=entity | source=probe/main_scripts/mobile_scanner.py:L1 | neighbors=[mobile_scanner.py] | lang=en
-- "main_scripts_mobile_scanner_rationale_152": "Attempt TCP connect to lockdownd port 62078.     Port open = iOS device present" | kind=entity | source=probe/main_scripts/mobile_scanner.py:L152 | neighbors=[_probe_lockdownd()] | lang=en
-- "main_scripts_mobile_scanner_rationale_188": "Build a DNS PTR query in mDNS wire format with QU bit set." | kind=entity | source=probe/main_scripts/mobile_scanner.py:L188 | neighbors=[_build_mdns_query()] | lang=en
-- "main_scripts_mobile_scanner_rationale_199": "Extract PTR target names (service instance names) from mDNS reply." | kind=entity | source=probe/main_scripts/mobile_scanner.py:L199 | neighbors=[_parse_mdns_ptr_names()] | lang=en
-- "main_scripts_mobile_scanner_rationale_259": "Send one mDNS PTR query to target:5353 and return instance names." | kind=entity | source=probe/main_scripts/mobile_scanner.py:L259 | neighbors=[_probe_mdns_mobile_sync()] | lang=en
-- "main_scripts_mobile_scanner_rationale_279": "Detects mobile device exposure on the network:     ADB (Android) | lockdownd (iO" | kind=entity | source=probe/main_scripts/mobile_scanner.py:L279 | neighbors=[MobileScanner] | lang=en
-- "main_scripts_mobile_scanner_rationale_60": "Build an ADB A_CNXN (CONNECT) message — the standard handshake initiator." | kind=entity | source=probe/main_scripts/mobile_scanner.py:L60 | neighbors=[_build_adb_cnxn()] | lang=en
-- "main_scripts_mobile_scanner_rationale_71": "Parse a 24-byte ADB message header.  Returns parsed fields or None." | kind=entity | source=probe/main_scripts/mobile_scanner.py:L71 | neighbors=[_parse_adb_header()] | lang=pt
-- "main_scripts_mobile_scanner_rationale_96": "Send ADB CNXN and read the device's CNXN reply.     Returns a dict with connecti" | kind=entity | source=probe/main_scripts/mobile_scanner.py:L96 | neighbors=[_probe_adb()] | lang=en
-- "main_scripts_msrpc_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/msrpc_scanner.py:L172 | neighbors=[msrpc_scanner.py] | lang=en
-- "main_scripts_msrpc_scanner_msrpcscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/msrpc_scanner.py:L85 | neighbors=[MSRPCScanner] | lang=en
-- "main_scripts_msrpc_scanner_rationale_1": "msrpc_scanner.py — MSRPC endpoint-mapper (EPM) enumeration over port 135 (VA che" | kind=entity | source=probe/main_scripts/msrpc_scanner.py:L1 | neighbors=[msrpc_scanner.py] | lang=it
-- "main_scripts_msrpc_scanner_rationale_52": "Parse ncacn_ip_tcp bindings → (all_tcp_ports, dynamic_tcp_ports).      Pure and" | kind=entity | source=probe/main_scripts/msrpc_scanner.py:L52 | neighbors=[_extract_tcp_ports()] | lang=en
-- "main_scripts_msrpc_scanner_rationale_70": "Reduce the raw endpoint list to distinct interfaces and dynamic ports." | kind=entity | source=probe/main_scripts/msrpc_scanner.py:L70 | neighbors=[_summarize()] | lang=en
-- "main_scripts_msrpc_scanner_rationale_90": "Blocking: EPM ept_lookup via impacket. Monkeypatchable for tests." | kind=entity | source=probe/main_scripts/msrpc_scanner.py:L90 | neighbors=[._enumerate()] | lang=en
-- "main_scripts_nfs_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/nfs_scanner.py:L282 | neighbors=[nfs_scanner.py] | lang=en
-- "main_scripts_nfs_scanner_nfsscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/nfs_scanner.py:L190 | neighbors=[NFSScanner] | lang=en
-- "main_scripts_nfs_scanner_rationale_1": "nfs_scanner.py — NFS export exposure over ONC RPC (VA checklist: anonymous netwo" | kind=entity | source=probe/main_scripts/nfs_scanner.py:L1 | neighbors=[nfs_scanner.py] | lang=en
-- "main_scripts_nfs_scanner_rationale_117": "An export with no client restriction, or one shared to a wildcard group,     is" | kind=entity | source=probe/main_scripts/nfs_scanner.py:L117 | neighbors=[is_world_readable()] | lang=en
-- "main_scripts_nfs_scanner_rationale_126": "Send one ONC-RPC CALL (AUTH_NULL) over a TCP record-marked stream and     return" | kind=entity | source=probe/main_scripts/nfs_scanner.py:L126 | neighbors=[_rpc_call()] | lang=en
-- "main_scripts_nfs_scanner_rationale_137": "Read RPC record-marking fragments (RFC 1057 §10) until the last fragment." | kind=entity | source=probe/main_scripts/nfs_scanner.py:L137 | neighbors=[_recv_record()] | lang=en
-- "main_scripts_nfs_scanner_rationale_167": "Strip the ONC-RPC reply header; return the accepted-SUCCESS result bytes." | kind=entity | source=probe/main_scripts/nfs_scanner.py:L167 | neighbors=[_parse_rpc_reply()] | lang=en
+- "detection_active_validation_rationale_18": "True iff this finding warrants an approval-gated active re-check.     Escalate o" | kind=entity | source=manager/backend/app/detection/active_validation.py:L18 | neighbors=[should_escalate()] | lang=en
+- "detection_active_validation_rationale_41": "Map a probe safe-check result to a verdict transition. Anything that isn't     a" | kind=entity | source=manager/backend/app/detection/active_validation.py:L41 | neighbors=[interpret_validation()] | lang=pt
+- "detection_attack_paths_bump": "_bump()" | kind=code-symbol | source=manager/backend/app/detection/attack_paths.py:L45 | neighbors=[attack_paths.py] | lang=en
+- "detection_attack_paths_cleartext_cluster": "_cleartext_cluster()" | kind=code-symbol | source=manager/backend/app/detection/attack_paths.py:L202 | neighbors=[attack_paths.py] | lang=en
+- "detection_attack_paths_hostsignals_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/detection/attack_paths.py:L65 | neighbors=[_HostSignals] | lang=en
+- "detection_attack_paths_rationale_1": "attack_paths.py — manager-native composite correlation over raw probe facts.  Th" | kind=entity | source=manager/backend/app/detection/attack_paths.py:L1 | neighbors=[attack_paths.py] | lang=en
+- "detection_attack_paths_rationale_125": "Fold in a persisted device role (from a prior device_inventory scan)." | kind=entity | source=manager/backend/app/detection/attack_paths.py:L125 | neighbors=[.finalize()] | lang=en
+- "detection_attack_paths_rationale_222": "B3: an exposed datastore with unauthenticated access = direct data breach." | kind=entity | source=manager/backend/app/detection/attack_paths.py:L222 | neighbors=[_exposed_db_unauth()] | lang=en
+- "detection_attack_paths_rationale_243": "B3: a default SNMP community on network gear = topology/creds for lateral moveme" | kind=entity | source=manager/backend/app/detection/attack_paths.py:L243 | neighbors=[_snmp_public_lateral()] | lang=en
+- "detection_attack_paths_rationale_276": "Correlate composite attack paths from raw probe facts.      `device_roles` maps" | kind=entity | source=manager/backend/app/detection/attack_paths.py:L276 | neighbors=[attack_path_findings()] | lang=en
+- "detection_attack_paths_rationale_63": "The weaknesses observed on ONE host, distilled from its facts." | kind=entity | source=manager/backend/app/detection/attack_paths.py:L63 | neighbors=[_HostSignals] | lang=en
+- "detection_correlator_detectioncorrelator_compute_coverage": ".compute_coverage()" | kind=code-symbol | source=manager/backend/app/detection/correlator.py:L181 | neighbors=[DetectionCorrelator] | lang=en
+- "detection_correlator_detectioncorrelator_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/detection/correlator.py:L96 | neighbors=[DetectionCorrelator] | lang=en
+- "detection_correlator_rationale_238": "Normalise naive datetimes to UTC so comparisons never raise." | kind=entity | source=manager/backend/app/detection/correlator.py:L238 | neighbors=[_aware()] | lang=en
+- "detection_edr_build_edr_engine": "build_edr_engine()" | kind=code-symbol | source=manager/backend/app/detection/edr.py:L235 | neighbors=[edr.py] | lang=en
+- "detection_edr_edrdetection_is_prevented": ".is_prevented()" | kind=code-symbol | source=manager/backend/app/detection/edr.py:L43 | neighbors=[EDRDetection] | lang=en
+- "detection_edr_edrqueryengine_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/detection/edr.py:L65 | neighbors=[EDRQueryEngine] | lang=en
+- "detection_edr_edrqueryengine_query_detections": ".query_detections()" | kind=code-symbol | source=manager/backend/app/detection/edr.py:L70 | neighbors=[EDRQueryEngine] | lang=en
+- "detection_edr_rationale_1": "EDR query engines — abstract interface + CrowdStrike Falcon / Microsoft Defender" | kind=entity | source=manager/backend/app/detection/edr.py:L1 | neighbors=[edr.py] | lang=en
+- "detection_edr_rationale_141": "Microsoft Defender via the Graph Security API ``/security/alerts_v2``.     confi" | kind=entity | source=manager/backend/app/detection/edr.py:L141 | neighbors=[MicrosoftDefender] | lang=en
+- "detection_edr_rationale_187": "SentinelOne via the REST ``/web/api/v2.1/threats`` endpoint.     config: {base_u" | kind=entity | source=manager/backend/app/detection/edr.py:L187 | neighbors=[SentinelOne] | lang=en
+- "detection_edr_rationale_92": "Falcon: query detection IDs then fetch their summaries.     config: {base_url, t" | kind=entity | source=manager/backend/app/detection/edr.py:L92 | neighbors=[CrowdStrikeFalcon] | lang=en
+- "detection_engine_ai_normalizer_ainormalizercache_post_init": ".__post_init__()" | kind=code-symbol | source=manager/detection_engine/ai_normalizer.py:L142 | neighbors=[AINormalizerCache] | lang=en
+- "detection_engine_ai_normalizer_anthropicaiclient_init": ".__init__()" | kind=code-symbol | source=manager/detection_engine/ai_normalizer.py:L103 | neighbors=[AnthropicAIClient] | lang=en
+- "detection_engine_ai_normalizer_fakeaiclient_init": ".__init__()" | kind=code-symbol | source=manager/detection_engine/ai_normalizer.py:L131 | neighbors=[FakeAIClient] | lang=en
+- "detection_engine_bridge_rationale_105": "(census, rejected_line_numbers) from the engine's IngestResult.      The census" | kind=entity | source=manager/backend/app/detection/engine_bridge.py:L105 | neighbors=[_ingest_census()] | lang=en
+- "detection_engine_bridge_rationale_106": "(census, rejected_line_numbers) from the engine's IngestResult.      The census" | kind=entity | source=manager/backend/app/detection/engine_bridge.py:L106 | neighbors=[_ingest_census()] | lang=en
+- "detection_engine_bridge_rationale_114": "A previously-remediated finding whose issue reappeared this run: reopen     the" | kind=entity | source=manager/backend/app/detection/engine_bridge.py:L114 | neighbors=[_apply_regression_reopen()] | lang=en
+- "detection_engine_bridge_rationale_128": "A remediated finding with the same (engagement, asset, title) — the     regressi" | kind=entity | source=manager/backend/app/detection/engine_bridge.py:L128 | neighbors=[_find_remediated_match()] | lang=en
+- "detection_engine_bridge_rationale_130": "A remediated finding with the same (engagement, asset, title) — the     regressi" | kind=entity | source=manager/backend/app/detection/engine_bridge.py:L130 | neighbors=[_find_remediated_match()] | lang=en
+- "detection_engine_bridge_rationale_139": "The subset of `facts` ingest accepted. We wrote one fact per line in order," | kind=entity | source=manager/backend/app/detection/engine_bridge.py:L139 | neighbors=[_accepted()] | lang=en
+- "detection_engine_bridge_rationale_142": "Best-effort: compute + stamp each finding's verification verdict. A failure" | kind=entity | source=manager/backend/app/detection/engine_bridge.py:L142 | neighbors=[_stamp_verification()] | lang=pt
+- "detection_engine_bridge_rationale_149": "Escalate by severity of loss. A TOTAL wipeout with facts submitted is the     ag" | kind=entity | source=manager/backend/app/detection/engine_bridge.py:L149 | neighbors=[_log_ingest_health()] | lang=en
+- "detection_engine_bridge_rationale_150": "Escalate by severity of loss. A TOTAL wipeout with facts submitted is the     ag" | kind=entity | source=manager/backend/app/detection/engine_bridge.py:L150 | neighbors=[_log_ingest_health()] | lang=en
+- "detection_engine_bridge_rationale_157": "ip → {device_role, role_detail} from already-promoted assets, so a prior     dev" | kind=entity | source=manager/backend/app/detection/engine_bridge.py:L157 | neighbors=[_engagement_device_roles()] | lang=en
+- "detection_engine_bridge_rationale_158": "New raw-facts path: detect CVE findings from result['facts'] and persist     the" | kind=entity | source=manager/backend/app/detection/engine_bridge.py:L158 | neighbors=[create_findings_from_facts()] | lang=en
+- "detection_engine_bridge_rationale_171": "Raw scanner facts -> (cve_finding_dicts, posture_finding_dicts, meta), running" | kind=entity | source=manager/backend/app/detection/engine_bridge.py:L171 | neighbors=[detect_all_from_facts_traced()] | lang=en
+- "detection_engine_bridge_rationale_172": "`detect_all_from_facts_traced` on a worker thread.      The engine is synchronou" | kind=entity | source=manager/backend/app/detection/engine_bridge.py:L172 | neighbors=[_run_detection_engine()] | lang=en
+- "detection_engine_bridge_rationale_174": "Correlate composite attack paths from the run's facts and persist them as     Fi" | kind=entity | source=manager/backend/app/detection/engine_bridge.py:L174 | neighbors=[_persist_attack_paths()] | lang=en
+- "detection_engine_bridge_rationale_187": "Raw scanner facts -> (cve_finding_dicts, posture_finding_dicts, meta), running" | kind=entity | source=manager/backend/app/detection/engine_bridge.py:L187 | neighbors=[detect_all_from_facts_traced()] | lang=en
 
 ## Instructions
 

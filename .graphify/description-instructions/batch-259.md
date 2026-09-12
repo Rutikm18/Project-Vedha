@@ -1,4 +1,4 @@
-# Node Description Batch 260 of 336
+# Node Description Batch 260 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -26,46 +26,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "scanner_ssh_collector_collect_over_ssh": "_collect_over_ssh()" | kind=code-symbol | source=probe/scanner/ssh_collector.py:L52 | neighbors=[ssh_collector.py] | lang=en
-- "scanner_ssh_collector_main": "main()" | kind=code-symbol | source=probe/scanner/ssh_collector.py:L125 | neighbors=[ssh_collector.py] | lang=en
-- "scanner_ssh_collector_rationale_1": "ssh_collector.py — credentialed (authenticated) inventory collection for Linux." | kind=entity | source=probe/scanner/ssh_collector.py:L1 | neighbors=[ssh_collector.py] | lang=en
-- "scanner_ssh_collector_sshcollector_init": ".__init__()" | kind=code-symbol | source=probe/scanner/ssh_collector.py:L83 | neighbors=[SSHCollector] | lang=en
-- "scanner_ssh_kexdb_rationale_1": "ssh_kexdb.py — vendored SSH algorithm weakness database (the \"content\" half of t" | kind=entity | source=probe/scanner/ssh_kexdb.py:L1 | neighbors=[ssh_kexdb.py] | lang=en
-- "scanner_ssh_kexdb_rationale_478": "Return (failures, warnings, infos) for one offered algorithm, or None if     the" | kind=entity | source=probe/scanner/ssh_kexdb.py:L478 | neighbors=[lookup()] | lang=en
-- "scanner_ssh_scanner_cursor_init": ".__init__()" | kind=code-symbol | source=probe/scanner/ssh_scanner.py:L73 | neighbors=[_Cursor] | lang=en
-- "scanner_ssh_scanner_main": "main()" | kind=code-symbol | source=probe/scanner/ssh_scanner.py:L336 | neighbors=[ssh_scanner.py] | lang=en
-- "scanner_ssh_scanner_rationale_1": "ssh_scanner.py — SSH configuration / algorithm audit (VA checklist §6).  METHOD" | kind=entity | source=probe/scanner/ssh_scanner.py:L1 | neighbors=[ssh_scanner.py] | lang=en
-- "scanner_ssh_scanner_rationale_107": "Parse a SSH_MSG_KEXINIT body into its name-lists.      Accepts the payload with" | kind=entity | source=probe/scanner/ssh_scanner.py:L107 | neighbors=[parse_kexinit()] | lang=en
-- "scanner_ssh_scanner_rationale_134": "Grade a server's offered algorithms against the vendored weakness table.      Re" | kind=entity | source=probe/scanner/ssh_scanner.py:L134 | neighbors=[evaluate_algorithms()] | lang=en
-- "scanner_ssh_scanner_rationale_196": "Read the server SSH identification line, skipping any pre-banner text     lines" | kind=entity | source=probe/scanner/ssh_scanner.py:L196 | neighbors=[_read_ident()] | lang=en
-- "scanner_ssh_scanner_rationale_226": "Read one unencrypted SSH binary packet and return its payload (RFC 4253     §6)." | kind=entity | source=probe/scanner/ssh_scanner.py:L226 | neighbors=[_read_packet()] | lang=en
-- "scanner_ssh_scanner_rationale_250": "Blocking: connect, exchange identification, read the server KEXINIT.         Ret" | kind=entity | source=probe/scanner/ssh_scanner.py:L250 | neighbors=[._probe()] | lang=en
-- "scanner_ssh_scanner_rationale_47": "Parse an SSH identification string 'SSH-<proto>-<software>[ comments]'.      Ret" | kind=entity | source=probe/scanner/ssh_scanner.py:L47 | neighbors=[parse_ssh_banner()] | lang=en
-- "scanner_ssh_scanner_sshscanner_init": ".__init__()" | kind=code-symbol | source=probe/scanner/ssh_scanner.py:L245 | neighbors=[SSHScanner] | lang=en
-- "scanner_syn_scanner_main": "main()" | kind=code-symbol | source=probe/scanner/syn_scanner.py:L595 | neighbors=[syn_scanner.py] | lang=en
-- "scanner_syn_scanner_rationale_1": "syn_scanner.py — stateless TCP SYN (half-open) scan, pure Python (Tier 1.1).  WH" | kind=entity | source=probe/scanner/syn_scanner.py:L1 | neighbors=[syn_scanner.py] | lang=en
-- "scanner_syn_scanner_rationale_104": "Build a 20-byte TCP SYN segment with a valid checksum (pseudo-header)." | kind=entity | source=probe/scanner/syn_scanner.py:L104 | neighbors=[build_tcp_syn()] | lang=pt
-- "scanner_syn_scanner_rationale_105": "Build a 20-byte TCP SYN segment with a valid checksum (pseudo-header)." | kind=entity | source=probe/scanner/syn_scanner.py:L105 | neighbors=[build_tcp_syn()] | lang=pt
-- "scanner_syn_scanner_rationale_107": "Parse a raw IPv4+TCP packet (as received on a raw IPPROTO_TCP socket)." | kind=entity | source=probe/scanner/syn_scanner.py:L107 | neighbors=[parse_packet()] | lang=pt
-- "scanner_syn_scanner_rationale_117": "Build a 20-byte TCP SYN segment with a valid checksum (pseudo-header)." | kind=entity | source=probe/scanner/syn_scanner.py:L117 | neighbors=[build_tcp_syn()] | lang=pt
-- "scanner_syn_scanner_rationale_123": "SYN/ACK -> open, RST -> closed, anything else -> None (indeterminate)." | kind=entity | source=probe/scanner/syn_scanner.py:L123 | neighbors=[classify()] | lang=en
-- "scanner_syn_scanner_rationale_125": "Walk a TCP options field for the MSS value (kind 2, len 4).      Bounds-checked" | kind=entity | source=probe/scanner/syn_scanner.py:L125 | neighbors=[_parse_mss()] | lang=en
-- "scanner_syn_scanner_rationale_126": "Walk a TCP options field for the MSS value (kind 2, len 4).      Bounds-checked" | kind=entity | source=probe/scanner/syn_scanner.py:L126 | neighbors=[_parse_mss()] | lang=en
-- "scanner_syn_scanner_rationale_134": "Keyed 32-bit ISN for (dst_ip, dst_port, src_port). Reply.ack == cookie+1." | kind=entity | source=probe/scanner/syn_scanner.py:L134 | neighbors=[syn_cookie()] | lang=en
-- "scanner_syn_scanner_rationale_138": "Walk a TCP options field into a p0f-style profile.      Returns {mss, wscale, sa" | kind=entity | source=probe/scanner/syn_scanner.py:L138 | neighbors=[parse_tcp_options()] | lang=pt
-- "scanner_syn_scanner_rationale_141": "A genuine reply to our SYN acknowledges ISN+1. The reply's own source     (ip_sr" | kind=entity | source=probe/scanner/syn_scanner.py:L141 | neighbors=[verify_reply_cookie()] | lang=en
-- "scanner_syn_scanner_rationale_151": "Parse a raw IPv4+TCP packet (as received on a raw IPPROTO_TCP socket).      Also" | kind=entity | source=probe/scanner/syn_scanner.py:L151 | neighbors=[parse_packet()] | lang=pt
-- "scanner_syn_scanner_rationale_152": "Parse a raw IPv4+TCP packet (as received on a raw IPPROTO_TCP socket).      Also" | kind=entity | source=probe/scanner/syn_scanner.py:L152 | neighbors=[parse_packet()] | lang=pt
-- "scanner_syn_scanner_rationale_154": "True only when a real SYN scan can work: Linux (BSD/macOS raw sockets can't" | kind=entity | source=probe/scanner/syn_scanner.py:L154 | neighbors=[syn_scan_supported()] | lang=pt
-- "scanner_syn_scanner_rationale_175": "Outbound-interface IP for reaching dst_ip (no packets sent — UDP connect)." | kind=entity | source=probe/scanner/syn_scanner.py:L175 | neighbors=[_local_source_ip()] | lang=en
-- "scanner_syn_scanner_rationale_177": "Back-compat shim: MSS only. New code uses parse_tcp_options()." | kind=entity | source=probe/scanner/syn_scanner.py:L177 | neighbors=[_parse_mss()] | lang=en
-- "scanner_syn_scanner_rationale_179": "SYN/ACK -> open, RST -> closed, anything else -> None (indeterminate)." | kind=entity | source=probe/scanner/syn_scanner.py:L179 | neighbors=[classify()] | lang=en
-- "scanner_syn_scanner_rationale_180": "SYN/ACK -> open, RST -> closed, anything else -> None (indeterminate)." | kind=entity | source=probe/scanner/syn_scanner.py:L180 | neighbors=[classify()] | lang=en
-- "scanner_syn_scanner_rationale_182": "Parse a raw IPv4+TCP packet (as received on a raw IPPROTO_TCP socket).      Also" | kind=entity | source=probe/scanner/syn_scanner.py:L182 | neighbors=[parse_packet()] | lang=pt
-- "scanner_syn_scanner_rationale_189": "SYN scan on privileged Linux; transparent connect-scan fallback elsewhere." | kind=entity | source=probe/scanner/syn_scanner.py:L189 | neighbors=[SynScanner] | lang=en
-- "scanner_syn_scanner_rationale_190": "Keyed 32-bit ISN for (dst_ip, dst_port, src_port). Reply.ack == cookie+1." | kind=entity | source=probe/scanner/syn_scanner.py:L190 | neighbors=[syn_cookie()] | lang=en
-- "scanner_syn_scanner_rationale_191": "Keyed 32-bit ISN for (dst_ip, dst_port, src_port). Reply.ack == cookie+1." | kind=entity | source=probe/scanner/syn_scanner.py:L191 | neighbors=[syn_cookie()] | lang=en
-- "scanner_syn_scanner_rationale_197": "A genuine reply to our SYN acknowledges ISN+1. The reply's own source     (ip_sr" | kind=entity | source=probe/scanner/syn_scanner.py:L197 | neighbors=[verify_reply_cookie()] | lang=en
+- "main_scripts_udp_scanner_rationale_189": "Parse IKEv1 or IKEv2 response header." | kind=entity | source=probe/main_scripts/udp_scanner.py:L189 | neighbors=[interpret_ike()] | lang=en
+- "main_scripts_udp_scanner_rationale_204": "Extract SIP version + server header from a SIP response." | kind=entity | source=probe/main_scripts/udp_scanner.py:L204 | neighbors=[interpret_sip()] | lang=en
+- "main_scripts_udp_scanner_rationale_205": "Extract SIP version + server header from a SIP response." | kind=entity | source=probe/main_scripts/udp_scanner.py:L205 | neighbors=[interpret_sip()] | lang=en
+- "main_scripts_udp_scanner_rationale_219": "Parse RMCP Pong; extract supported entities and IPMI capabilities." | kind=entity | source=probe/main_scripts/udp_scanner.py:L219 | neighbors=[interpret_ipmi()] | lang=en
+- "main_scripts_udp_scanner_rationale_220": "Parse RMCP Pong; extract supported entities and IPMI capabilities." | kind=entity | source=probe/main_scripts/udp_scanner.py:L220 | neighbors=[interpret_ipmi()] | lang=en
+- "main_scripts_udp_scanner_rationale_232": "Extract Location and Server from SSDP response." | kind=entity | source=probe/main_scripts/udp_scanner.py:L232 | neighbors=[interpret_ssdp()] | lang=en
+- "main_scripts_udp_scanner_rationale_233": "Extract Location and Server from SSDP response." | kind=entity | source=probe/main_scripts/udp_scanner.py:L233 | neighbors=[interpret_ssdp()] | lang=en
+- "main_scripts_udp_scanner_rationale_247": "Return byte count and check QR bit (1 = response)." | kind=entity | source=probe/main_scripts/udp_scanner.py:L247 | neighbors=[interpret_mdns()] | lang=en
+- "main_scripts_udp_scanner_rationale_248": "Return byte count and check QR bit (1 = response)." | kind=entity | source=probe/main_scripts/udp_scanner.py:L248 | neighbors=[interpret_mdns()] | lang=en
+- "main_scripts_udp_scanner_rationale_290": "Acquire the concurrency gate (adaptive window or fixed semaphore),         run t" | kind=entity | source=probe/main_scripts/udp_scanner.py:L290 | neighbors=[._gated_probe()] | lang=en
+- "main_scripts_udp_scanner_rationale_291": "Acquire the concurrency gate (adaptive window or fixed semaphore),         run t" | kind=entity | source=probe/main_scripts/udp_scanner.py:L291 | neighbors=[._gated_probe()] | lang=en
+- "main_scripts_udp_scanner_rationale_296": "Acquire the concurrency gate (adaptive window or fixed semaphore),         run t" | kind=entity | source=probe/main_scripts/udp_scanner.py:L296 | neighbors=[._gated_probe()] | lang=en
+- "main_scripts_udp_scanner_rationale_78": "Minimal IKEv2 IKE_SA_INIT probe.  Sends a real SA payload proposing     AES-256-" | kind=entity | source=probe/main_scripts/udp_scanner.py:L78 | neighbors=[_ike_probe()] | lang=fr
+- "main_scripts_udp_scanner_snmp_probe": "_snmp_probe()" | kind=code-symbol | source=probe/main_scripts/udp_scanner.py:L54 | neighbors=[udp_scanner.py] | lang=en
+- "main_scripts_udp_scanner_udpscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/udp_scanner.py:L285 | neighbors=[UDPScanner] | lang=en
+- "main_scripts_unauth_access_is_rce_capable": "is_rce_capable()" | kind=code-symbol | source=probe/main_scripts/unauth_access.py:L68 | neighbors=[unauth_access.py] | lang=en
+- "main_scripts_unauth_access_rationale_49": "Decide whether `banner` proves unauthenticated access for `service`.      True =" | kind=entity | source=probe/main_scripts/unauth_access.py:L49 | neighbors=[classify_unauth_access()] | lang=en
+- "main_scripts_va_campaign_alive": "_alive()" | kind=code-symbol | source=probe/main_scripts/va_campaign.py:L332 | neighbors=[va_campaign.py] | lang=en
+- "main_scripts_va_campaign_candidate_ports": "_candidate_ports()" | kind=code-symbol | source=probe/main_scripts/va_campaign.py:L336 | neighbors=[va_campaign.py] | lang=en
+- "main_scripts_va_campaign_cliprogressview_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/va_campaign.py:L657 | neighbors=[CliProgressView] | lang=en
+- "main_scripts_va_campaign_main": "main()" | kind=code-symbol | source=probe/main_scripts/va_campaign.py:L708 | neighbors=[va_campaign.py] | lang=en
+- "main_scripts_va_campaign_rationale_1": "va_campaign.py — the sequential Network Vulnerability-Assessment campaign.  WHY" | kind=entity | source=probe/main_scripts/va_campaign.py:L1 | neighbors=[va_campaign.py] | lang=en
+- "main_scripts_va_campaign_rationale_114": "What a stage produced. `count` is stage-specific (live hosts, open ports,     se" | kind=entity | source=probe/main_scripts/va_campaign.py:L114 | neighbors=[StageOutcome] | lang=en
+- "main_scripts_va_campaign_rationale_139": "Mutable state threaded through the stages." | kind=entity | source=probe/main_scripts/va_campaign.py:L139 | neighbors=[CampaignContext] | lang=en
+- "main_scripts_va_campaign_rationale_170": "Owns the live campaign record. Every transition recomputes percent + ETA,     wr" | kind=entity | source=probe/main_scripts/va_campaign.py:L170 | neighbors=[ProgressReporter] | lang=en
+- "main_scripts_va_campaign_rationale_291": "Runs the ordered stages sequentially, emitting progress throughout.      The eng" | kind=entity | source=probe/main_scripts/va_campaign.py:L291 | neighbors=[VACampaign] | lang=en
+- "main_scripts_va_campaign_rationale_344": "Best-effort IPv6 neighbor discovery (ND multicast, RFC 4861). Returns     {facts" | kind=entity | source=probe/main_scripts/va_campaign.py:L344 | neighbors=[_discover_ipv6()] | lang=en
+- "main_scripts_va_campaign_rationale_375": "Run coro_factory(item) over items with bounded concurrency; return the     list" | kind=entity | source=probe/main_scripts/va_campaign.py:L375 | neighbors=[_bounded_gather()] | lang=en
+- "main_scripts_va_campaign_rationale_391": "Build the real capability stages from a pre-wired ScanFunnel, reusing its     pr" | kind=entity | source=probe/main_scripts/va_campaign.py:L391 | neighbors=[default_stages()] | lang=en
+- "main_scripts_va_campaign_rationale_624": "Wire a campaign with the real scanners (or injected stages for tests)." | kind=entity | source=probe/main_scripts/va_campaign.py:L624 | neighbors=[build_campaign()] | lang=en
+- "main_scripts_va_campaign_rationale_650": "Renders campaign progress to a stream. On a TTY it re-draws one live block     i" | kind=entity | source=probe/main_scripts/va_campaign.py:L650 | neighbors=[CliProgressView] | lang=en
+- "main_scripts_va_campaign_rationale_98": "Everything that changes WHAT the campaign does (not HOW it reports)." | kind=entity | source=probe/main_scripts/va_campaign.py:L98 | neighbors=[CampaignOptions] | lang=en
+- "main_scripts_va_campaign_vacampaign_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/va_campaign.py:L297 | neighbors=[VACampaign] | lang=en
+- "main_scripts_vantage_matrix_rationale_1": "vantage_matrix.py — reconcile the SAME target scanned from MULTIPLE vantages.  E" | kind=entity | source=probe/main_scripts/vantage_matrix.py:L1 | neighbors=[vantage_matrix.py] | lang=en
+- "main_scripts_vantage_matrix_rationale_42": "(proto, port, status) from a ScanResult or a plain dict." | kind=entity | source=probe/main_scripts/vantage_matrix.py:L42 | neighbors=[_extract()] | lang=pt
+- "main_scripts_vantage_matrix_rationale_51": "Compare per-vantage observations of one target.      `observations` maps a vanta" | kind=entity | source=probe/main_scripts/vantage_matrix.py:L51 | neighbors=[reconcile_vantages()] | lang=en
+- "main_scripts_vnc_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/vnc_scanner.py:L150 | neighbors=[vnc_scanner.py] | lang=en
+- "main_scripts_vnc_scanner_rationale_1": "vnc_scanner.py — VNC/RFB authentication exposure (VA checklist: unauthenticated" | kind=entity | source=probe/main_scripts/vnc_scanner.py:L1 | neighbors=[vnc_scanner.py] | lang=en
+- "main_scripts_vnc_scanner_rationale_109": "Blocking: RFB version handshake + read offered security types.         Monkeypat" | kind=entity | source=probe/main_scripts/vnc_scanner.py:L109 | neighbors=[._probe()] | lang=en
+- "main_scripts_vnc_scanner_rationale_47": "Parse a 'RFB 003.008' banner into (major, minor), or None if not RFB." | kind=entity | source=probe/main_scripts/vnc_scanner.py:L47 | neighbors=[parse_rfb_version()] | lang=pt
 
 ## Instructions
 

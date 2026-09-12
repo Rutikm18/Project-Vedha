@@ -1,4 +1,4 @@
-# Node Description Batch 312 of 336
+# Node Description Batch 312 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,51 +19,53 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-Write every description in English (en). Do not switch languages.
+LANGUAGE: each entry has a `lang=` marker giving the language of its source.
+Write that entry's description in EXACTLY that language. Do not translate to
+a single common language — match each node's source language individually.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_scope_targets_rationale_99": "Whatever the validator accepts must be provably inside the scope." | kind=entity | source=manager/backend/tests/test_scope_targets.py:L99 | neighbors=[test_property_every_accepted_target_is_…]
-- "tests_test_scope_targets_testexclusions_test_target_clear_of_exclusions_is_allowed": ".test_target_clear_of_exclusions_is_allowed()" | kind=code-symbol | source=manager/backend/tests/test_scope_targets.py:L82 | neighbors=[TestExclusions]
-- "tests_test_scope_targets_testexclusions_test_target_inside_an_exclusion_is_rejected": ".test_target_inside_an_exclusion_is_rejected()" | kind=code-symbol | source=manager/backend/tests/test_scope_targets.py:L71 | neighbors=[TestExclusions]
-- "tests_test_scope_targets_testexclusions_test_target_overlapping_an_exclusion_is_rejected": ".test_target_overlapping_an_exclusion_is_rejected()" | kind=code-symbol | source=manager/backend/tests/test_scope_targets.py:L76 | neighbors=[TestExclusions]
-- "tests_test_scope_targets_testipversionsafety_test_v6_in_v6_scope": ".test_v6_in_v6_scope()" | kind=code-symbol | source=manager/backend/tests/test_scope_targets.py:L92 | neighbors=[TestIpVersionSafety]
-- "tests_test_scope_targets_testipversionsafety_test_v6_target_against_v4_scope_is_rejected": ".test_v6_target_against_v4_scope_is_rejected()" | kind=code-symbol | source=manager/backend/tests/test_scope_targets.py:L89 | neighbors=[TestIpVersionSafety]
-- "tests_test_scope_targets_testnoscopeauthorizesnothing_test_empty_scope_denies_all": ".test_empty_scope_denies_all()" | kind=code-symbol | source=manager/backend/tests/test_scope_targets.py:L17 | neighbors=[TestNoScopeAuthorizesNothing]
-- "tests_test_scope_targets_testoutofscopeisrejected_test_blank_token_is_rejected": ".test_blank_token_is_rejected()" | kind=code-symbol | source=manager/backend/tests/test_scope_targets.py:L63 | neighbors=[TestOutOfScopeIsRejected]
-- "tests_test_scope_targets_testoutofscopeisrejected_test_cidr_broader_than_scope": ".test_cidr_broader_than_scope()" | kind=code-symbol | source=manager/backend/tests/test_scope_targets.py:L48 | neighbors=[TestOutOfScopeIsRejected]
-- "tests_test_scope_targets_testoutofscopeisrejected_test_explicit_empty_list_is_rejected": ".test_explicit_empty_list_is_rejected()" | kind=code-symbol | source=manager/backend/tests/test_scope_targets.py:L57 | neighbors=[TestOutOfScopeIsRejected]
-- "tests_test_scope_targets_testoutofscopeisrejected_test_hostname_is_not_routable": ".test_hostname_is_not_routable()" | kind=code-symbol | source=manager/backend/tests/test_scope_targets.py:L60 | neighbors=[TestOutOfScopeIsRejected]
-- "tests_test_scope_targets_testoutofscopeisrejected_test_ip_outside_scope": ".test_ip_outside_scope()" | kind=code-symbol | source=manager/backend/tests/test_scope_targets.py:L45 | neighbors=[TestOutOfScopeIsRejected]
-- "tests_test_scope_targets_testoutofscopeisrejected_test_one_bad_target_rejects_the_whole_request": ".test_one_bad_target_rejects_the_whole_request()" | kind=code-symbol | source=manager/backend/tests/test_scope_targets.py:L52 | neighbors=[TestOutOfScopeIsRejected]
-- "tests_test_scope_targets_testoutofscopeisrejected_test_reversed_range_is_rejected": ".test_reversed_range_is_rejected()" | kind=code-symbol | source=manager/backend/tests/test_scope_targets.py:L66 | neighbors=[TestOutOfScopeIsRejected]
-- "tests_test_scope_targets_testtargetswithinscope_test_cidr_subset_in_scope": ".test_cidr_subset_in_scope()" | kind=code-symbol | source=manager/backend/tests/test_scope_targets.py:L30 | neighbors=[TestTargetsWithinScope]
-- "tests_test_scope_targets_testtargetswithinscope_test_no_targets_returns_whole_scope": ".test_no_targets_returns_whole_scope()" | kind=code-symbol | source=manager/backend/tests/test_scope_targets.py:L38 | neighbors=[TestTargetsWithinScope]
-- "tests_test_scope_targets_testtargetswithinscope_test_range_expands_to_covered_networks": ".test_range_expands_to_covered_networks()" | kind=code-symbol | source=manager/backend/tests/test_scope_targets.py:L33 | neighbors=[TestTargetsWithinScope]
-- "tests_test_scope_targets_testtargetswithinscope_test_single_ip_in_scope": ".test_single_ip_in_scope()" | kind=code-symbol | source=manager/backend/tests/test_scope_targets.py:L24 | neighbors=[TestTargetsWithinScope]
-- "tests_test_scope_targets_testtargetswithinscope_test_string_target_is_accepted": ".test_string_target_is_accepted()" | kind=code-symbol | source=manager/backend/tests/test_scope_targets.py:L27 | neighbors=[TestTargetsWithinScope]
-- "tests_test_scope_validator_rationale_1": "Tests for agent/scope_validator.py" | kind=entity | source=probe/tests/test_scope_validator.py:L1 | neighbors=[test_scope_validator.py]
-- "tests_test_scope_validator_testfetchengagementscope_test_http_get_raises": ".test_http_get_raises()" | kind=code-symbol | source=probe/tests/test_scope_validator.py:L195 | neighbors=[TestFetchEngagementScope]
-- "tests_test_scope_validator_testfetchengagementscope_test_http_get_returns_incomplete": ".test_http_get_returns_incomplete()" | kind=code-symbol | source=probe/tests/test_scope_validator.py:L203 | neighbors=[TestFetchEngagementScope]
-- "tests_test_scope_validator_testfetchengagementscope_test_http_get_returns_none": ".test_http_get_returns_none()" | kind=code-symbol | source=probe/tests/test_scope_validator.py:L187 | neighbors=[TestFetchEngagementScope]
-- "tests_test_scope_validator_testfetchengagementscope_test_returns_excludes": ".test_returns_excludes()" | kind=code-symbol | source=probe/tests/test_scope_validator.py:L180 | neighbors=[TestFetchEngagementScope]
-- "tests_test_scope_validator_testfetchengagementscope_test_returns_scope_from_http_get": ".test_returns_scope_from_http_get()" | kind=code-symbol | source=probe/tests/test_scope_validator.py:L171 | neighbors=[TestFetchEngagementScope]
-- "tests_test_scope_validator_testmergeexclusions_test_both_empty": ".test_both_empty()" | kind=code-symbol | source=probe/tests/test_scope_validator.py:L161 | neighbors=[TestMergeExclusions]
-- "tests_test_scope_validator_testmergeexclusions_test_empty_engagement_excludes": ".test_empty_engagement_excludes()" | kind=code-symbol | source=probe/tests/test_scope_validator.py:L157 | neighbors=[TestMergeExclusions]
-- "tests_test_scope_validator_testmergeexclusions_test_empty_job_excludes": ".test_empty_job_excludes()" | kind=code-symbol | source=probe/tests/test_scope_validator.py:L149 | neighbors=[TestMergeExclusions]
-- "tests_test_scope_validator_testmergeexclusions_test_merges_no_duplicates": ".test_merges_no_duplicates()" | kind=code-symbol | source=probe/tests/test_scope_validator.py:L145 | neighbors=[TestMergeExclusions]
-- "tests_test_scope_validator_testmergeexclusions_test_none_job_excludes": ".test_none_job_excludes()" | kind=code-symbol | source=probe/tests/test_scope_validator.py:L153 | neighbors=[TestMergeExclusions]
-- "tests_test_scope_validator_testmergeexclusions_test_strips_whitespace": ".test_strips_whitespace()" | kind=code-symbol | source=probe/tests/test_scope_validator.py:L165 | neighbors=[TestMergeExclusions]
-- "tests_test_scope_validator_testtargetsinexcludes_test_all_excluded_returns_empty": ".test_all_excluded_returns_empty()" | kind=code-symbol | source=probe/tests/test_scope_validator.py:L136 | neighbors=[TestTargetsInExcludes]
-- "tests_test_scope_validator_testtargetsinexcludes_test_drops_excluded_ip": ".test_drops_excluded_ip()" | kind=code-symbol | source=probe/tests/test_scope_validator.py:L94 | neighbors=[TestTargetsInExcludes]
-- "tests_test_scope_validator_testtargetsinexcludes_test_drops_excluded_subnet": ".test_drops_excluded_subnet()" | kind=code-symbol | source=probe/tests/test_scope_validator.py:L101 | neighbors=[TestTargetsInExcludes]
-- "tests_test_scope_validator_testtargetsinexcludes_test_fully_excluded_cidr_is_dropped": ".test_fully_excluded_cidr_is_dropped()" | kind=code-symbol | source=probe/tests/test_scope_validator.py:L129 | neighbors=[TestTargetsInExcludes]
-- "tests_test_scope_validator_testtargetsinexcludes_test_hostname_passes_through": ".test_hostname_passes_through()" | kind=code-symbol | source=probe/tests/test_scope_validator.py:L115 | neighbors=[TestTargetsInExcludes]
-- "tests_test_scope_validator_testtargetsinexcludes_test_no_excludes_returns_all": ".test_no_excludes_returns_all()" | kind=code-symbol | source=probe/tests/test_scope_validator.py:L108 | neighbors=[TestTargetsInExcludes]
-- "tests_test_scope_validator_testtargetsinexcludes_test_port_suffix_is_not_treated_as_an_ip": ".test_port_suffix_is_not_treated_as_an_ip()" | kind=code-symbol | source=probe/tests/test_scope_validator.py:L122 | neighbors=[TestTargetsInExcludes]
-- "tests_test_scope_validator_testtargetsinexcludes_test_port_suffix_stripped": ".test_port_suffix_stripped()" | kind=code-symbol | source=probe/tests/test_scope_validator.py:L91 | neighbors=[TestTargetsInExcludes]
-- "tests_test_scope_validator_testvalidatetargetsinscope_test_cidr_must_be_fully_contained": ".test_cidr_must_be_fully_contained()" | kind=code-symbol | source=probe/tests/test_scope_validator.py:L62 | neighbors=[TestValidateTargetsInScope]
+- "tests_test_branch_rule_coverage_rationale_72": "An exemption that has since gained a rule must be removed, or the list     quiet" | kind=entity | source=manager/detection_engine/tests/test_branch_rule_coverage.py:L72 | neighbors=[test_exemptions_are_still_real()] | lang=en
+- "tests_test_branch_rule_coverage_rationale_80": "A typo here would silently exempt nothing and mask a real gap." | kind=entity | source=manager/detection_engine/tests/test_branch_rule_coverage.py:L80 | neighbors=[test_exemptions_name_real_branches()] | lang=pt
+- "tests_test_branch_rule_coverage_rationale_86": "The regression this whole file exists for." | kind=entity | source=manager/detection_engine/tests/test_branch_rule_coverage.py:L86 | neighbors=[test_db_scan_is_assessed()] | lang=en
+- "tests_test_campaign_progress_rationale_1": "VA Campaigns live view: per-probe jobs + pipeline phases + findings+remediation." | kind=entity | source=manager/backend/tests/test_campaign_progress.py:L1 | neighbors=[test_campaign_progress.py] | lang=en
+- "tests_test_campaign_progress_rationale_118": "Build a campaign_progress scenario with a given job + detection-run state." | kind=entity | source=manager/backend/tests/test_campaign_progress.py:L118 | neighbors=[_run_scenario()] | lang=pt
+- "tests_test_campaign_progress_rationale_168": "Regression: RUN_COMPLETED is 'completed', not 'done' — the endpoint must not" | kind=entity | source=manager/backend/tests/test_campaign_progress.py:L168 | neighbors=[test_completed_run_is_not_stuck_at_dete…] | lang=en
+- "tests_test_campaign_progress_rationale_218": "The invariant. Checked across the states a real campaign passes through." | kind=entity | source=manager/backend/tests/test_campaign_progress.py:L218 | neighbors=[test_percent_reaches_100_exactly_when_t…] | lang=en
+- "tests_test_campaign_progress_rationale_22": "A result whose .all() returns raw rows (used for the queue-state query)." | kind=entity | source=manager/backend/tests/test_campaign_progress.py:L22 | neighbors=[_rows()] | lang=en
+- "tests_test_campaign_progress_rationale_239": "The exact regression: the newest submission was detected, an earlier one was" | kind=entity | source=manager/backend/tests/test_campaign_progress.py:L239 | neighbors=[test_uncovered_submission_holds_progres…] | lang=en
+- "tests_test_campaign_progress_rationale_268": "The other way a campaign never finishes: a run that starts and never     complet" | kind=entity | source=manager/backend/tests/test_campaign_progress.py:L268 | neighbors=[test_a_wedged_detection_run_explains_it…] | lang=en
+- "tests_test_campaign_progress_rationale_284": "A run that started seconds ago is busy, not wedged — no alarming reason." | kind=entity | source=manager/backend/tests/test_campaign_progress.py:L284 | neighbors=[test_a_briefly_running_run_is_not_calle…] | lang=en
+- "tests_test_campaign_progress_rationale_295": "started_at can come back tz-naive depending on the driver; subtracting it     fr" | kind=entity | source=manager/backend/tests/test_campaign_progress.py:L295 | neighbors=[test_naive_started_at_does_not_crash_th…] | lang=en
+- "tests_test_campaign_progress_rationale_327": "THE CRY-WOLF CASE. 90 minutes in, worker heartbeating — this is a large     scop" | kind=entity | source=manager/backend/tests/test_campaign_progress.py:L327 | neighbors=[test_a_long_run_with_a_live_worker_is_n…] | lang=en
+- "tests_test_campaign_progress_rationale_337": "No patience needed when the thing that would finish the run has stopped     hear" | kind=entity | source=manager/backend/tests/test_campaign_progress.py:L337 | neighbors=[test_a_dead_worker_is_called_out_quickl…] | lang=en
+- "tests_test_campaign_progress_rationale_346": "Under the floor: a heartbeat gap of a few seconds around a restart must not" | kind=entity | source=manager/backend/tests/test_campaign_progress.py:L346 | neighbors=[test_a_briefly_running_run_with_a_dead_…] | lang=pt
+- "tests_test_campaign_progress_rationale_354": "No heartbeat table (migration not yet run) — duration is all we have, so the" | kind=entity | source=manager/backend/tests/test_campaign_progress.py:L354 | neighbors=[test_unknown_worker_liveness_falls_back…] | lang=en
+- "tests_test_campaign_progress_rationale_367": "Whatever the verdict, a stalled run must not flip the campaign complete." | kind=entity | source=manager/backend/tests/test_campaign_progress.py:L367 | neighbors=[test_stall_never_claims_completion_eith…] | lang=en
+- "tests_test_campaign_progress_terminal_rationale_1": "A campaign whose jobs all ended without producing results must reach a TERMINAL" | kind=entity | source=manager/backend/tests/test_campaign_progress_terminal.py:L1 | neighbors=[test_campaign_progress_terminal.py] | lang=pt
+- "tests_test_campaign_progress_terminal_rationale_50": "The normal path must be untouched: a completed job with no run yet is         ge" | kind=entity | source=manager/backend/tests/test_campaign_progress_terminal.py:L50 | neighbors=[.test_does_not_hijack_a_campaign_that_p…] | lang=en
+- "tests_test_campaign_progress_terminal_rationale_57": "Precedence: work in flight is reported before any terminal verdict." | kind=entity | source=manager/backend/tests/test_campaign_progress_terminal.py:L57 | neighbors=[.test_running_job_still_wins()] | lang=en
+- "tests_test_campaign_progress_terminal_rationale_67": "One good job is enough to expect a detection run." | kind=entity | source=manager/backend/tests/test_campaign_progress_terminal.py:L67 | neighbors=[.test_partial_cancel_with_one_success_s…] | lang=en
+- "tests_test_campaign_progress_terminal_rationale_73": "Regression guard: the happy path and its known edge cases still hold." | kind=entity | source=manager/backend/tests/test_campaign_progress_terminal.py:L73 | neighbors=[TestNormalPipelineUnaffected] | lang=en
+- "tests_test_campaign_progress_terminal_rationale_94": "Callers that don't pass the new inputs must behave as before." | kind=entity | source=manager/backend/tests/test_campaign_progress_terminal.py:L94 | neighbors=[.test_defaults_keep_backwards_compatibi…] | lang=en
+- "tests_test_cli_fakeclient_init": ".__init__()" | kind=code-symbol | source=probe/tests/test_cli.py:L153 | neighbors=[FakeClient] | lang=en
+- "tests_test_cli_fakeclient_request": ".request()" | kind=code-symbol | source=probe/tests/test_cli.py:L157 | neighbors=[FakeClient] | lang=en
+- "tests_test_cli_test_cmd_daemon_run_overrides_stale_env_and_sets_probe_identity": "test_cmd_daemon_run_overrides_stale_env_and_sets_probe_identity()" | kind=code-symbol | source=probe/tests/test_cli.py:L318 | neighbors=[test_cli.py] | lang=en
+- "tests_test_cli_test_cmd_doctor_fails_when_no_agent_unless_allowed": "test_cmd_doctor_fails_when_no_agent_unless_allowed()" | kind=code-symbol | source=probe/tests/test_cli.py:L248 | neighbors=[test_cli.py] | lang=en
+- "tests_test_cli_test_config_store_rejects_malformed_json": "test_config_store_rejects_malformed_json()" | kind=code-symbol | source=probe/tests/test_cli.py:L31 | neighbors=[test_cli.py] | lang=en
+- "tests_test_cli_test_config_store_rejects_non_object_profiles": "test_config_store_rejects_non_object_profiles()" | kind=code-symbol | source=probe/tests/test_cli.py:L38 | neighbors=[test_cli.py] | lang=en
+- "tests_test_cli_test_config_store_writes_private_file": "test_config_store_writes_private_file()" | kind=code-symbol | source=probe/tests/test_cli.py:L13 | neighbors=[test_cli.py] | lang=en
+- "tests_test_cli_test_normalize_manager_url_trims_and_validates": "test_normalize_manager_url_trims_and_validates()" | kind=code-symbol | source=probe/tests/test_cli.py:L72 | neighbors=[test_cli.py] | lang=en
+- "tests_test_cli_test_parse_param_pairs_rejects_missing_equals": "test_parse_param_pairs_rejects_missing_equals()" | kind=code-symbol | source=probe/tests/test_cli.py:L59 | neighbors=[test_cli.py] | lang=en
+- "tests_test_cli_test_parse_param_pairs_supports_json_values": "test_parse_param_pairs_supports_json_values()" | kind=code-symbol | source=probe/tests/test_cli.py:L45 | neighbors=[test_cli.py] | lang=en
+- "tests_test_cli_test_parser_accepts_json_after_concrete_commands": "test_parser_accepts_json_after_concrete_commands()" | kind=code-symbol | source=probe/tests/test_cli.py:L80 | neighbors=[test_cli.py] | lang=en
+- "tests_test_cli_test_resolve_profile_env_overrides_config": "test_resolve_profile_env_overrides_config()" | kind=code-symbol | source=probe/tests/test_cli.py:L106 | neighbors=[test_cli.py] | lang=en
+- "tests_test_cli_test_resolve_profile_reports_missing_manager_or_token": "test_resolve_profile_reports_missing_manager_or_token()" | kind=code-symbol | source=probe/tests/test_cli.py:L134 | neighbors=[test_cli.py] | lang=en
+- "tests_test_cli_test_split_values_accepts_repeated_and_csv_values": "test_split_values_accepts_repeated_and_csv_values()" | kind=code-symbol | source=probe/tests/test_cli.py:L64 | neighbors=[test_cli.py] | lang=en
+- "tests_test_config_model_rationale_1": "Phase 2 — config loader: single precedence chain + effective source map. Pure lo" | kind=entity | source=probe/tests/test_config_model.py:L1 | neighbors=[test_config_model.py] | lang=it
+- "tests_test_config_model_test_int_fields_are_coerced": "test_int_fields_are_coerced()" | kind=code-symbol | source=probe/tests/test_config_model.py:L38 | neighbors=[test_config_model.py] | lang=en
+- "tests_test_config_model_test_parse_env_file_ignores_comments_and_blanks": "test_parse_env_file_ignores_comments_and_blanks()" | kind=code-symbol | source=probe/tests/test_config_model.py:L8 | neighbors=[test_config_model.py] | lang=en
 
 ## Instructions
 

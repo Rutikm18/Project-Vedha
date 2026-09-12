@@ -1,4 +1,4 @@
-# Node Description Batch 307 of 336
+# Node Description Batch 307 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,53 +19,51 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-LANGUAGE: each entry has a `lang=` marker giving the language of its source.
-Write that entry's description in EXACTLY that language. Do not translate to
-a single common language — match each node's source language individually.
+Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_resolution_coverage_test_coverage_counts_only_completed_scanner_observations": "test_coverage_counts_only_completed_scanner_observations()" | kind=code-symbol | source=manager/backend/tests/test_resolution_coverage.py:L12 | neighbors=[test_resolution_coverage.py] | lang=en
-- "tests_test_resolution_coverage_test_coverage_empty_when_no_scanner_runs": "test_coverage_empty_when_no_scanner_runs()" | kind=code-symbol | source=manager/backend/tests/test_resolution_coverage.py:L27 | neighbors=[test_resolution_coverage.py] | lang=en
-- "tests_test_resolution_coverage_test_host_of_strips_single_port": "test_host_of_strips_single_port()" | kind=code-symbol | source=manager/backend/tests/test_resolution_coverage.py:L6 | neighbors=[test_resolution_coverage.py] | lang=en
-- "tests_test_resolution_decision_test_db_change_blocks_resolution": "test_db_change_blocks_resolution()" | kind=code-symbol | source=manager/backend/tests/test_resolution_decision.py:L22 | neighbors=[test_resolution_decision.py] | lang=en
-- "tests_test_resolution_decision_test_high_needs_two_covered_clean_runs": "test_high_needs_two_covered_clean_runs()" | kind=code-symbol | source=manager/backend/tests/test_resolution_decision.py:L36 | neighbors=[test_resolution_decision.py] | lang=en
-- "tests_test_resolution_decision_test_medium_resolves_on_first_covered_clean_run": "test_medium_resolves_on_first_covered_clean_run()" | kind=code-symbol | source=manager/backend/tests/test_resolution_decision.py:L29 | neighbors=[test_resolution_decision.py] | lang=en
-- "tests_test_resolution_decision_test_not_covered_is_skipped_and_counter_untouched": "test_not_covered_is_skipped_and_counter_untouched()" | kind=code-symbol | source=manager/backend/tests/test_resolution_decision.py:L15 | neighbors=[test_resolution_decision.py] | lang=en
-- "tests_test_resolution_decision_test_threshold_is_stricter_for_critical_and_high": "test_threshold_is_stricter_for_critical_and_high()" | kind=code-symbol | source=manager/backend/tests/test_resolution_decision.py:L7 | neighbors=[test_resolution_decision.py] | lang=en
-- "tests_test_resolve_asset_cache_rationale_1": "Perf/N+1: _resolve_asset memoizes per-run so a host with many findings is resolv" | kind=entity | source=manager/backend/tests/test_resolve_asset_cache.py:L1 | neighbors=[test_resolve_asset_cache.py] | lang=en
-- "tests_test_resolve_asset_cache_test_cache_resolves_each_host_once": "test_cache_resolves_each_host_once()" | kind=code-symbol | source=manager/backend/tests/test_resolve_asset_cache.py:L15 | neighbors=[test_resolve_asset_cache.py] | lang=en
-- "tests_test_resolve_asset_cache_test_host_port_target_normalized": "test_host_port_target_normalized()" | kind=code-symbol | source=manager/backend/tests/test_resolve_asset_cache.py:L42 | neighbors=[test_resolve_asset_cache.py] | lang=en
-- "tests_test_resolve_asset_cache_test_no_cache_keeps_old_behavior": "test_no_cache_keeps_old_behavior()" | kind=code-symbol | source=manager/backend/tests/test_resolve_asset_cache.py:L31 | neighbors=[test_resolve_asset_cache.py] | lang=en
-- "tests_test_resolve_rationale_1": "test_resolve.py — resolve() address-family selection (task A9)." | kind=entity | source=probe/tests/test_resolve.py:L1 | neighbors=[test_resolve.py] | lang=pt
-- "tests_test_resolve_rationale_12": "Fake getaddrinfo results: (family, socktype, proto, canonname, sockaddr)." | kind=entity | source=probe/tests/test_resolve.py:L12 | neighbors=[_infos()] | lang=en
-- "tests_test_resolve_testresolvefamily_test_unresolvable_raises": ".test_unresolvable_raises()" | kind=code-symbol | source=probe/tests/test_resolve.py:L40 | neighbors=[TestResolveFamily] | lang=en
-- "tests_test_result_archive_rationale_1": "test_result_archive.py — the local result archive written before submission.  Th" | kind=entity | source=probe/tests/test_result_archive.py:L1 | neighbors=[test_result_archive.py] | lang=en
-- "tests_test_result_archive_rationale_130": "A read-only filesystem must cost a warning, never a scan result." | kind=entity | source=probe/tests/test_result_archive.py:L130 | neighbors=[.test_unwritable_directory_does_not_fai…] | lang=pt
-- "tests_test_result_archive_rationale_152": "Unset env => alongside agent/ scanner/ workflow/ (in the image, /app/result)." | kind=entity | source=probe/tests/test_result_archive.py:L152 | neighbors=[.test_default_location_is_the_probe_roo…] | lang=en
-- "tests_test_result_archive_rationale_163": "The agent creates the archive directory at boot so the operator sees the     pat" | kind=entity | source=probe/tests/test_result_archive.py:L163 | neighbors=[TestPrepareAtStartup] | lang=en
-- "tests_test_result_archive_rationale_186": "The Linux bind-mount case: Docker creates the source as root, so the         dir" | kind=entity | source=probe/tests/test_result_archive.py:L186 | neighbors=[.test_existing_but_unwritable_directory…] | lang=en
-- "tests_test_result_archive_rationale_27": "The disable latch is module state; keep tests independent." | kind=entity | source=probe/tests/test_result_archive.py:L27 | neighbors=[_reset_archive_latch()] | lang=en
-- "tests_test_result_archive_rationale_99": "A rejected job is exactly the case an operator wants to inspect." | kind=entity | source=probe/tests/test_result_archive.py:L99 | neighbors=[.test_failure_envelopes_are_archived_to…] | lang=en
-- "tests_test_result_archive_testprepareatstartup_test_creates_the_directory_including_parents": ".test_creates_the_directory_including_parents()" | kind=code-symbol | source=probe/tests/test_result_archive.py:L167 | neighbors=[TestPrepareAtStartup] | lang=en
-- "tests_test_result_archive_testprepareatstartup_test_disabled_when_env_is_empty": ".test_disabled_when_env_is_empty()" | kind=code-symbol | source=probe/tests/test_result_archive.py:L199 | neighbors=[TestPrepareAtStartup] | lang=en
-- "tests_test_result_archive_testprepareatstartup_test_is_idempotent_across_restarts": ".test_is_idempotent_across_restarts()" | kind=code-symbol | source=probe/tests/test_result_archive.py:L179 | neighbors=[TestPrepareAtStartup] | lang=en
-- "tests_test_result_archive_testprepareatstartup_test_leaves_no_canary_file_behind": ".test_leaves_no_canary_file_behind()" | kind=code-symbol | source=probe/tests/test_result_archive.py:L174 | neighbors=[TestPrepareAtStartup] | lang=en
-- "tests_test_result_archive_testprepareatstartup_test_startup_failure_does_not_raise": ".test_startup_failure_does_not_raise()" | kind=code-symbol | source=probe/tests/test_result_archive.py:L204 | neighbors=[TestPrepareAtStartup] | lang=en
-- "tests_test_result_spool_rationale_1": "Tests for agent/result_spool.py" | kind=entity | source=probe/tests/test_result_spool.py:L1 | neighbors=[test_result_spool.py] | lang=en
-- "tests_test_result_spool_rationale_13": "ResultSpool with tiny retry delay for fast tests." | kind=entity | source=probe/tests/test_result_spool.py:L13 | neighbors=[spool()] | lang=en
-- "tests_test_result_spool_rationale_14": "ResultSpool with tiny retry delay for fast tests." | kind=entity | source=probe/tests/test_result_spool.py:L14 | neighbors=[spool()] | lang=en
-- "tests_test_result_spool_testresultspool_test_byte_high_water_mark_pauses_new_work_without_eviction": ".test_byte_high_water_mark_pauses_new_work_without_eviction()" | kind=code-symbol | source=probe/tests/test_result_spool.py:L194 | neighbors=[TestResultSpool] | lang=en
-- "tests_test_result_spool_testresultspool_test_custom_retry_config": ".test_custom_retry_config()" | kind=code-symbol | source=probe/tests/test_result_spool.py:L179 | neighbors=[TestResultSpool] | lang=en
-- "tests_test_result_spool_testresultspool_test_exists": ".test_exists()" | kind=code-symbol | source=probe/tests/test_result_spool.py:L64 | neighbors=[TestResultSpool] | lang=en
-- "tests_test_result_spool_testresultspool_test_file_high_water_mark_pauses_new_work": ".test_file_high_water_mark_pauses_new_work()" | kind=code-symbol | source=probe/tests/test_result_spool.py:L183 | neighbors=[TestResultSpool] | lang=en
-- "tests_test_result_spool_testresultspool_test_flush_quarantines_permanent_rejection": ".test_flush_quarantines_permanent_rejection()" | kind=code-symbol | source=probe/tests/test_result_spool.py:L166 | neighbors=[TestResultSpool] | lang=en
-- "tests_test_result_spool_testresultspool_test_flush_spool_empty": ".test_flush_spool_empty()" | kind=code-symbol | source=probe/tests/test_result_spool.py:L135 | neighbors=[TestResultSpool] | lang=en
-- "tests_test_result_spool_testresultspool_test_flush_spool_partial": ".test_flush_spool_partial()" | kind=code-symbol | source=probe/tests/test_result_spool.py:L154 | neighbors=[TestResultSpool] | lang=en
-- "tests_test_result_spool_testresultspool_test_flush_spool_with_pending": ".test_flush_spool_with_pending()" | kind=code-symbol | source=probe/tests/test_result_spool.py:L139 | neighbors=[TestResultSpool] | lang=en
-- "tests_test_result_spool_testresultspool_test_load_corrupt": ".test_load_corrupt()" | kind=code-symbol | source=probe/tests/test_result_spool.py:L57 | neighbors=[TestResultSpool] | lang=en
-- "tests_test_result_spool_testresultspool_test_load_missing": ".test_load_missing()" | kind=code-symbol | source=probe/tests/test_result_spool.py:L53 | neighbors=[TestResultSpool] | lang=en
+- "tests_test_agent_dispatch_testjobsecretboundary_test_allows_non_secret_scan_tuning": ".test_allows_non_secret_scan_tuning()" | kind=code-symbol | source=manager/backend/tests/test_agent_dispatch.py:L84 | neighbors=[TestJobSecretBoundary]
+- "tests_test_agent_dispatch_testjobsecretboundary_test_detects_persisted_secret_material": ".test_detects_persisted_secret_material()" | kind=code-symbol | source=manager/backend/tests/test_agent_dispatch.py:L79 | neighbors=[TestJobSecretBoundary]
+- "tests_test_agent_dispatch_testtenantwebsocketselection_test_displaced_socket_cannot_unregister_reconnect": ".test_displaced_socket_cannot_unregister_reconnect()" | kind=code-symbol | source=manager/backend/tests/test_agent_dispatch.py:L111 | neighbors=[TestTenantWebSocketSelection]
+- "tests_test_agent_dispatch_testtenantwebsocketselection_test_first_online_push_cannot_cross_tenants": ".test_first_online_push_cannot_cross_tenants()" | kind=code-symbol | source=manager/backend/tests/test_agent_dispatch.py:L165 | neighbors=[TestTenantWebSocketSelection]
+- "tests_test_agent_dispatch_testtenantwebsocketselection_test_online_heartbeat_clears_finished_job": ".test_online_heartbeat_clears_finished_job()" | kind=code-symbol | source=manager/backend/tests/test_agent_dispatch.py:L98 | neighbors=[TestTenantWebSocketSelection]
+- "tests_test_agent_dispatch_testtenantwebsocketselection_test_only_returns_online_agents_in_requested_tenant": ".test_only_returns_online_agents_in_requested_tenant()" | kind=code-symbol | source=manager/backend/tests/test_agent_dispatch.py:L138 | neighbors=[TestTenantWebSocketSelection]
+- "tests_test_agent_dispatch_testusecasecatalogparity_test_manager_and_probe_route_use_cases_identically": ".test_manager_and_probe_route_use_cases_identically()" | kind=code-symbol | source=manager/backend/tests/test_agent_dispatch.py:L37 | neighbors=[TestUseCaseCatalogParity]
+- "tests_test_agent_identity_test_generated_scope_identity_preserves_agent_credentials": "test_generated_scope_identity_preserves_agent_credentials()" | kind=code-symbol | source=probe/tests/test_agent_identity.py:L23 | neighbors=[test_agent_identity.py]
+- "tests_test_agent_policy_rationale_1": "test_agent_policy.py — the pure deterministic agent policy engine." | kind=entity | source=manager/backend/tests/test_agent_policy.py:L1 | neighbors=[test_agent_policy.py]
+- "tests_test_agent_policy_testclassifyaction_test_known_actions_map_to_expected_tier": ".test_known_actions_map_to_expected_tier()" | kind=code-symbol | source=manager/backend/tests/test_agent_policy.py:L23 | neighbors=[TestClassifyAction]
+- "tests_test_agent_policy_testclassifyaction_test_unknown_action_fails_closed_to_highest_tier": ".test_unknown_action_fails_closed_to_highest_tier()" | kind=code-symbol | source=manager/backend/tests/test_agent_policy.py:L26 | neighbors=[TestClassifyAction]
+- "tests_test_agent_read_tools_fakesession_execute": ".execute()" | kind=code-symbol | source=manager/backend/tests/test_agent_read_tools.py:L39 | neighbors=[_FakeSession]
+- "tests_test_agent_read_tools_fakesession_init": ".__init__()" | kind=code-symbol | source=manager/backend/tests/test_agent_read_tools.py:L35 | neighbors=[_FakeSession]
+- "tests_test_agent_read_tools_rationale_1": "Regression tests for AgentDecisionEngine._list_assets service batching.  The rea" | kind=entity | source=manager/backend/tests/test_agent_read_tools.py:L1 | neighbors=[test_agent_read_tools.py]
+- "tests_test_agent_read_tools_rationale_105": "AgentDecisionEngine._create must send the system prompt as an Anthropic     cach" | kind=entity | source=manager/backend/tests/test_agent_read_tools.py:L105 | neighbors=[test_create_caches_system_and_tools()]
+- "tests_test_agent_read_tools_rationale_20": "Mimics the subset of a SQLAlchemy Result the read tools use." | kind=entity | source=manager/backend/tests/test_agent_read_tools.py:L20 | neighbors=[_Result]
+- "tests_test_agent_read_tools_rationale_33": "Returns queued results in call order and counts execute() calls." | kind=entity | source=manager/backend/tests/test_agent_read_tools.py:L33 | neighbors=[_FakeSession]
+- "tests_test_agent_read_tools_result_all": ".all()" | kind=code-symbol | source=manager/backend/tests/test_agent_read_tools.py:L28 | neighbors=[_Result]
+- "tests_test_agent_read_tools_result_init": ".__init__()" | kind=code-symbol | source=manager/backend/tests/test_agent_read_tools.py:L22 | neighbors=[_Result]
+- "tests_test_agent_read_tools_result_scalars": ".scalars()" | kind=code-symbol | source=manager/backend/tests/test_agent_read_tools.py:L25 | neighbors=[_Result]
+- "tests_test_agents_rationale_469": "The diagnostic that turns a silent stuck-pending job into a fixable         one:" | kind=entity | source=manager/backend/tests/test_agents.py:L469 | neighbors=[.test_ineligibility_reason_pinpoints_ea…]
+- "tests_test_agents_rationale_641": "Re-registering the same-named probe must reuse the row, not create a dup." | kind=entity | source=manager/backend/tests/test_agents.py:L641 | neighbors=[.test_reuses_existing_probe_by_name()]
+- "tests_test_agents_rationale_649": "Re-registering the same-named probe must reuse the row, not create a dup." | kind=entity | source=manager/backend/tests/test_agents.py:L649 | neighbors=[.test_reuses_existing_probe_by_name()]
+- "tests_test_agents_rationale_676": "Agent token must outlive the 15-min access default so it doesn't churn." | kind=entity | source=manager/backend/tests/test_agents.py:L676 | neighbors=[.test_agent_token_is_long_lived()]
+- "tests_test_agents_rationale_679": "Re-registering the same-named probe must reuse the row, not create a dup." | kind=entity | source=manager/backend/tests/test_agents.py:L679 | neighbors=[.test_reuses_existing_probe_by_name()]
+- "tests_test_agents_rationale_684": "Agent token must outlive the 15-min access default so it doesn't churn." | kind=entity | source=manager/backend/tests/test_agents.py:L684 | neighbors=[.test_agent_token_is_long_lived()]
+- "tests_test_agents_rationale_694": "Discovery results → assets/services promotion (makes the Attack Surface populate" | kind=entity | source=manager/backend/tests/test_agents.py:L694 | neighbors=[TestPromoteAssets]
+- "tests_test_agents_rationale_702": "Discovery results → assets/services promotion (makes the Attack Surface populate" | kind=entity | source=manager/backend/tests/test_agents.py:L702 | neighbors=[TestPromoteAssets]
+- "tests_test_agents_rationale_714": "Agent token must outlive the 15-min access default so it doesn't churn." | kind=entity | source=manager/backend/tests/test_agents.py:L714 | neighbors=[.test_agent_token_is_long_lived()]
+- "tests_test_agents_rationale_722": "A single web scan can emit multiple facts for the same host:port." | kind=entity | source=manager/backend/tests/test_agents.py:L722 | neighbors=[.test_dedupes_duplicate_services_in_sam…]
+- "tests_test_agents_rationale_730": "A single web scan can emit multiple facts for the same host:port." | kind=entity | source=manager/backend/tests/test_agents.py:L730 | neighbors=[.test_dedupes_duplicate_services_in_sam…]
+- "tests_test_agents_rationale_732": "Discovery results → assets/services promotion (makes the Attack Surface populate" | kind=entity | source=manager/backend/tests/test_agents.py:L732 | neighbors=[TestPromoteAssets]
+- "tests_test_agents_rationale_760": "A single web scan can emit multiple facts for the same host:port." | kind=entity | source=manager/backend/tests/test_agents.py:L760 | neighbors=[.test_dedupes_duplicate_services_in_sam…]
+- "tests_test_agents_testaccesstokenexpiry_test_custom_expiry_overrides_default": ".test_custom_expiry_overrides_default()" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L799 | neighbors=[TestAccessTokenExpiry]
+- "tests_test_agents_testagentexecutabletypes_test_network_types_included": ".test_network_types_included()" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L36 | neighbors=[TestAgentExecutableTypes]
+- "tests_test_agents_testagentexecutabletypes_test_server_side_types_excluded": ".test_server_side_types_excluded()" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L41 | neighbors=[TestAgentExecutableTypes]
+- "tests_test_agents_testagentjobcompatibility_test_agent_network_segments_are_normalized_and_validated": ".test_agent_network_segments_are_normalized_and_validated()" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L551 | neighbors=[TestAgentJobCompatibility]
+- "tests_test_agents_testagentjobcompatibility_test_declared_segment_must_cover_entire_scope": ".test_declared_segment_must_cover_entire_scope()" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L421 | neighbors=[TestAgentJobCompatibility]
+- "tests_test_agents_testagentjobcompatibility_test_declared_segment_rejects_missing_or_invalid_scope": ".test_declared_segment_rejects_missing_or_invalid_scope()" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L431 | neighbors=[TestAgentJobCompatibility]
+- "tests_test_agents_testagentjobcompatibility_test_empty_capabilities_receive_no_jobs": ".test_empty_capabilities_receive_no_jobs()" | kind=code-symbol | source=manager/backend/tests/test_agents.py:L441 | neighbors=[TestAgentJobCompatibility]
 
 ## Instructions
 

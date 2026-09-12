@@ -1,4 +1,4 @@
-# Node Description Batch 324 of 336
+# Node Description Batch 324 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,51 +12,58 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
+For an entity node (any other kind — e.g. a person, place, event, object),
+describe what the entity is and its role, grounded in its type, its
+relations (neighbors) and the provided citations/evidence — e.g.
+"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
+Ground entity descriptions in the citations/evidence when present; do not
+speculate beyond the context, so a node with no supporting context may be
+left out of the reply.
 Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_wire_identity_testchoosesourceport_test_uses_configured_valid_port": ".test_uses_configured_valid_port()" | kind=code-symbol | source=probe/tests/test_wire_identity.py:L41 | neighbors=[TestChooseSourcePort]
-- "tests_test_wire_identity_testevasionflags_test_randomize_and_scan_delay_flags_present": ".test_randomize_and_scan_delay_flags_present()" | kind=code-symbol | source=probe/tests/test_wire_identity.py:L74 | neighbors=[TestEvasionFlags]
-- "tests_test_wire_identity_testjittereddelay_test_never_negative_even_at_full_jitter": ".test_never_negative_even_at_full_jitter()" | kind=code-symbol | source=probe/tests/test_wire_identity.py:L68 | neighbors=[TestJitteredDelay]
-- "tests_test_wire_identity_testjittereddelay_test_stays_within_jitter_band": ".test_stays_within_jitter_band()" | kind=code-symbol | source=probe/tests/test_wire_identity.py:L64 | neighbors=[TestJitteredDelay]
-- "tests_test_wire_identity_testjittereddelay_test_zero_or_negative_base_is_zero": ".test_zero_or_negative_base_is_zero()" | kind=code-symbol | source=probe/tests/test_wire_identity.py:L60 | neighbors=[TestJitteredDelay]
-- "tests_test_wire_identity_testmoduleconstantsunbranded_test_iot_rtsp_options": ".test_iot_rtsp_options()" | kind=code-symbol | source=probe/tests/test_wire_identity.py:L87 | neighbors=[TestModuleConstantsUnbranded]
-- "tests_test_wire_identity_testmoduleconstantsunbranded_test_service_banner_http_probe": ".test_service_banner_http_probe()" | kind=code-symbol | source=probe/tests/test_wire_identity.py:L83 | neighbors=[TestModuleConstantsUnbranded]
-- "tests_test_wire_identity_testprobepayload_test_default_carries_no_brand": ".test_default_carries_no_brand()" | kind=code-symbol | source=probe/tests/test_wire_identity.py:L29 | neighbors=[TestProbePayload]
-- "tests_test_wire_identity_testprobepayload_test_env_override": ".test_env_override()" | kind=code-symbol | source=probe/tests/test_wire_identity.py:L33 | neighbors=[TestProbePayload]
-- "tests_test_wire_identity_testuseragent_test_default_is_generic_browser_no_brand": ".test_default_is_generic_browser_no_brand()" | kind=code-symbol | source=probe/tests/test_wire_identity.py:L18 | neighbors=[TestUserAgent]
-- "tests_test_wire_identity_testuseragent_test_env_override": ".test_env_override()" | kind=code-symbol | source=probe/tests/test_wire_identity.py:L23 | neighbors=[TestUserAgent]
-- "tests_test_workflow_execution_concurrencyscanner_init": ".__init__()" | kind=code-symbol | source=probe/tests/test_workflow_execution.py:L49 | neighbors=[_ConcurrencyScanner]
-- "tests_test_workflow_execution_concurrencyscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/tests/test_workflow_execution.py:L53 | neighbors=[_ConcurrencyScanner]
-- "tests_test_workflow_execution_explodingscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/tests/test_workflow_execution.py:L32 | neighbors=[_ExplodingScanner]
-- "tests_test_workflow_execution_test_agent_scan_types_have_distinct_stage_ceilings": "test_agent_scan_types_have_distinct_stage_ceilings()" | kind=code-symbol | source=probe/tests/test_workflow_execution.py:L422 | neighbors=[test_workflow_execution.py]
-- "tests_test_workflow_execution_test_database_gate_uses_scanner_port_catalog": "test_database_gate_uses_scanner_port_catalog()" | kind=code-symbol | source=probe/tests/test_workflow_execution.py:L132 | neighbors=[test_workflow_execution.py]
-- "tests_test_workflow_execution_test_empty_authoritative_scope_never_falls_back_to_job_targets": "test_empty_authoritative_scope_never_falls_back_to_job_targets()" | kind=code-symbol | source=probe/tests/test_workflow_execution.py:L522 | neighbors=[test_workflow_execution.py]
-- "tests_test_workflow_execution_test_engine_applies_configured_target_ceiling": "test_engine_applies_configured_target_ceiling()" | kind=code-symbol | source=probe/tests/test_workflow_execution.py:L449 | neighbors=[test_workflow_execution.py]
-- "tests_test_workflow_execution_test_engine_deadline_fails_when_no_evidence_exists": "test_engine_deadline_fails_when_no_evidence_exists()" | kind=code-symbol | source=probe/tests/test_workflow_execution.py:L470 | neighbors=[test_workflow_execution.py]
-- "tests_test_workflow_execution_test_engine_deadline_preserves_verified_partial_evidence": "test_engine_deadline_preserves_verified_partial_evidence()" | kind=code-symbol | source=probe/tests/test_workflow_execution.py:L489 | neighbors=[test_workflow_execution.py]
-- "tests_test_workflow_execution_test_engine_enforces_local_scope_after_engagement_scope": "test_engine_enforces_local_scope_after_engagement_scope()" | kind=code-symbol | source=probe/tests/test_workflow_execution.py:L458 | neighbors=[test_workflow_execution.py]
-- "tests_test_workflow_execution_test_engine_exposes_component_manifest_and_run_states": "test_engine_exposes_component_manifest_and_run_states()" | kind=code-symbol | source=probe/tests/test_workflow_execution.py:L533 | neighbors=[test_workflow_execution.py]
-- "tests_test_workflow_execution_test_engine_fails_when_every_observation_is_an_error": "test_engine_fails_when_every_observation_is_an_error()" | kind=code-symbol | source=probe/tests/test_workflow_execution.py:L569 | neighbors=[test_workflow_execution.py]
-- "tests_test_workflow_execution_test_engine_rejects_non_string_targets": "test_engine_rejects_non_string_targets()" | kind=code-symbol | source=probe/tests/test_workflow_execution.py:L434 | neighbors=[test_workflow_execution.py]
-- "tests_test_workflow_execution_test_engine_rejects_oversized_cidr_instead_of_false_success": "test_engine_rejects_oversized_cidr_instead_of_false_success()" | kind=code-symbol | source=probe/tests/test_workflow_execution.py:L441 | neighbors=[test_workflow_execution.py]
-- "tests_test_workflow_execution_test_error_result_does_not_mutate_asset_state": "test_error_result_does_not_mutate_asset_state()" | kind=code-symbol | source=probe/tests/test_workflow_execution.py:L87 | neighbors=[test_workflow_execution.py]
-- "tests_test_workflow_execution_test_execution_trace_reports_partial_component": "test_execution_trace_reports_partial_component()" | kind=code-symbol | source=probe/tests/test_workflow_execution.py:L99 | neighbors=[test_workflow_execution.py]
-- "tests_test_workflow_execution_test_explicit_empty_port_catalog_never_falls_back_to_top_ports": "test_explicit_empty_port_catalog_never_falls_back_to_top_ports()" | kind=code-symbol | source=probe/tests/test_workflow_execution.py:L143 | neighbors=[test_workflow_execution.py]
-- "tests_test_workflow_execution_test_filtered_jobs_use_only_requested_tcp_catalogs": "test_filtered_jobs_use_only_requested_tcp_catalogs()" | kind=code-symbol | source=probe/tests/test_workflow_execution.py:L136 | neighbors=[test_workflow_execution.py]
-- "tests_test_workflow_execution_test_manifest_does_not_claim_external_engine_executed": "test_manifest_does_not_claim_external_engine_executed()" | kind=code-symbol | source=probe/tests/test_workflow_execution.py:L119 | neighbors=[test_workflow_execution.py]
-- "tests_test_workflow_execution_test_planned_components_respect_stage_ceiling_and_udp_only_branches": "test_planned_components_respect_stage_ceiling_and_udp_only_branches()" | kind=code-symbol | source=probe/tests/test_workflow_execution.py:L148 | neighbors=[test_workflow_execution.py]
-- "tests_test_workflow_execution_test_snmp_only_workflow_never_falls_back_to_tcp": "test_snmp_only_workflow_never_falls_back_to_tcp()" | kind=code-symbol | source=probe/tests/test_workflow_execution.py:L344 | neighbors=[test_workflow_execution.py]
-- "tests_test_workflow_execution_test_udp_only_workflow_never_falls_back_to_tcp_or_banner": "test_udp_only_workflow_never_falls_back_to_tcp_or_banner()" | kind=code-symbol | source=probe/tests/test_workflow_execution.py:L312 | neighbors=[test_workflow_execution.py]
-- "tests_test_workflow_execution_test_web_job_constrains_discovery_and_port_scan_to_web_catalog": "test_web_job_constrains_discovery_and_port_scan_to_web_catalog()" | kind=code-symbol | source=probe/tests/test_workflow_execution.py:L376 | neighbors=[test_workflow_execution.py]
-- "tests_test_workflow_execution_test_workflow_advances_only_live_host_and_routes_observed_http": "test_workflow_advances_only_live_host_and_routes_observed_http()" | kind=code-symbol | source=probe/tests/test_workflow_execution.py:L241 | neighbors=[test_workflow_execution.py]
-- "tests_test_workflow_execution_test_workflow_stops_at_port_stage_before_banner": "test_workflow_stops_at_port_stage_before_banner()" | kind=code-symbol | source=probe/tests/test_workflow_execution.py:L180 | neighbors=[test_workflow_execution.py]
-- "tests_test_ws_claim_protocol_test_busy_probe_declines_additional_offer": "test_busy_probe_declines_additional_offer()" | kind=code-symbol | source=probe/tests/test_ws_claim_protocol.py:L76 | neighbors=[test_ws_claim_protocol.py]
-- "tests_test_ws_claim_protocol_test_http_spool_flush_removes_only_manager_acknowledged_result": "test_http_spool_flush_removes_only_manager_acknowledged_result()" | kind=code-symbol | source=probe/tests/test_ws_claim_protocol.py:L120 | neighbors=[test_ws_claim_protocol.py]
-- "tests_test_ws_claim_protocol_test_offer_is_staged_and_only_sends_ack": "test_offer_is_staged_and_only_sends_ack()" | kind=code-symbol | source=probe/tests/test_ws_claim_protocol.py:L17 | neighbors=[test_ws_claim_protocol.py]
-- "tests_test_ws_claim_protocol_test_positive_confirmation_releases_exactly_the_staged_job": "test_positive_confirmation_releases_exactly_the_staged_job()" | kind=code-symbol | source=probe/tests/test_ws_claim_protocol.py:L45 | neighbors=[test_ws_claim_protocol.py]
+- "tests_test_finding_grouping_testgroupkey_test_key_is_short_and_stable": ".test_key_is_short_and_stable()" | kind=code-symbol | source=manager/detection_engine/tests/test_finding_grouping.py:L56 | neighbors=[TestGroupKey]
+- "tests_test_finding_grouping_testgroupkey_test_missing_evidence_is_survivable": ".test_missing_evidence_is_survivable()" | kind=code-symbol | source=manager/detection_engine/tests/test_finding_grouping.py:L53 | neighbors=[TestGroupKey]
+- "tests_test_finding_metrics_rationale_1": "Mobilization metrics: MTTR and ownership distribution.  \"No trend metrics — noth" | kind=entity | source=manager/backend/tests/test_finding_metrics.py:L1 | neighbors=[test_finding_metrics.py]
+- "tests_test_finding_metrics_rationale_122": "A large unassigned pile is itself the thing a manager needs to see —         it" | kind=entity | source=manager/backend/tests/test_finding_metrics.py:L122 | neighbors=[.test_unassigned_is_a_first_class_bucke…]
+- "tests_test_finding_metrics_rationale_44": "An engagement with nothing closed yet must render, not 500." | kind=entity | source=manager/backend/tests/test_finding_metrics.py:L44 | neighbors=[.test_empty_is_zero_not_a_crash()]
+- "tests_test_finding_metrics_rationale_49": "Clamping to zero would quietly pull the mean down and make         remediation l" | kind=entity | source=manager/backend/tests/test_finding_metrics.py:L49 | neighbors=[.test_negative_durations_are_dropped_no…]
+- "tests_test_finding_metrics_rationale_56": "A finding closed before first_seen was recorded has no measurable         durati" | kind=entity | source=manager/backend/tests/test_finding_metrics.py:L56 | neighbors=[.test_none_values_are_dropped()]
+- "tests_test_finding_metrics_rationale_66": "Resolved in the same instant is legitimate (a duplicate closed at         creati" | kind=entity | source=manager/backend/tests/test_finding_metrics.py:L66 | neighbors=[.test_zero_duration_is_counted()]
+- "tests_test_finding_metrics_rationale_87": "The REAL CurrentUser — a SimpleNamespace stand-in once let an endpoint     ship" | kind=entity | source=manager/backend/tests/test_finding_metrics.py:L87 | neighbors=[_user()]
+- "tests_test_finding_metrics_testcomputemttr_test_all_dirty_is_zero_count": ".test_all_dirty_is_zero_count()" | kind=code-symbol | source=manager/backend/tests/test_finding_metrics.py:L61 | neighbors=[TestComputeMttr]
+- "tests_test_finding_out_computed_rationale_1": "FindingOut computes the explainable risk_rank at serialization (P4 Task 5 wiring" | kind=entity | source=manager/backend/tests/test_finding_out_computed.py:L1 | neighbors=[test_finding_out_computed.py]
+- "tests_test_finding_out_enrichment_phase3_rationale_1": "Phase 3: FindingOut exposes report enrichment (detection_method, verification re" | kind=entity | source=manager/backend/tests/test_finding_out_enrichment_phase3.py:L1 | neighbors=[test_finding_out_enrichment_phase3.py]
+- "tests_test_finding_owner_schema_rationale_1": "Finding ownership + explicit close time.  The mobilization gap: SLA windows exis" | kind=entity | source=manager/backend/tests/test_finding_owner_schema.py:L1 | neighbors=[test_finding_owner_schema.py]
+- "tests_test_finding_owner_schema_rationale_30": "Unassigned is the normal state — most findings never get an owner." | kind=entity | source=manager/backend/tests/test_finding_owner_schema.py:L30 | neighbors=[.test_assigned_to_is_nullable()]
+- "tests_test_finding_owner_schema_rationale_34": "Null means still open; it is the presence of a value that means closed." | kind=entity | source=manager/backend/tests/test_finding_owner_schema.py:L34 | neighbors=[.test_resolved_at_is_nullable()]
+- "tests_test_finding_owner_schema_rationale_38": "What is on my plate' is a per-owner query and must not table-scan." | kind=entity | source=manager/backend/tests/test_finding_owner_schema.py:L38 | neighbors=[.test_assigned_to_is_indexed()]
+- "tests_test_finding_owner_schema_rationale_44": "Naive timestamps would make MTTR wrong by the UTC offset." | kind=entity | source=manager/backend/tests/test_finding_owner_schema.py:L44 | neighbors=[.test_resolved_at_is_timezone_aware()]
+- "tests_test_finding_owner_schema_rationale_49": "Guards the assumption the metrics service is built on — if these ever go     awa" | kind=entity | source=manager/backend/tests/test_finding_owner_schema.py:L49 | neighbors=[TestMttrInputsAlreadyExist]
+- "tests_test_finding_owner_schema_testmttrinputsalreadyexist_test_first_seen_exists": ".test_first_seen_exists()" | kind=code-symbol | source=manager/backend/tests/test_finding_owner_schema.py:L52 | neighbors=[TestMttrInputsAlreadyExist]
+- "tests_test_finding_owner_schema_testmttrinputsalreadyexist_test_last_seen_exists": ".test_last_seen_exists()" | kind=code-symbol | source=manager/backend/tests/test_finding_owner_schema.py:L55 | neighbors=[TestMttrInputsAlreadyExist]
+- "tests_test_finding_owner_schema_testownershipcolumns_test_assigned_to_exists": ".test_assigned_to_exists()" | kind=code-symbol | source=manager/backend/tests/test_finding_owner_schema.py:L23 | neighbors=[TestOwnershipColumns]
+- "tests_test_finding_owner_schema_testownershipcolumns_test_resolved_at_exists": ".test_resolved_at_exists()" | kind=code-symbol | source=manager/backend/tests/test_finding_owner_schema.py:L26 | neighbors=[TestOwnershipColumns]
+- "tests_test_finding_priority_rationale_1": "finding_priority — the 'critical always on top' ordering contract.  The product" | kind=entity | source=manager/backend/tests/test_finding_priority.py:L1 | neighbors=[test_finding_priority.py]
+- "tests_test_finding_priority_test_critical_outranks_high_regardless_of_risk": "test_critical_outranks_high_regardless_of_risk()" | kind=code-symbol | source=manager/backend/tests/test_finding_priority.py:L39 | neighbors=[test_finding_priority.py]
+- "tests_test_finding_priority_test_none_risk_is_treated_as_zero_not_a_crash": "test_none_risk_is_treated_as_zero_not_a_crash()" | kind=code-symbol | source=manager/backend/tests/test_finding_priority.py:L48 | neighbors=[test_finding_priority.py]
+- "tests_test_finding_priority_test_severity_order_case_has_a_branch_for_every_tier": "test_severity_order_case_has_a_branch_for_every_tier()" | kind=code-symbol | source=manager/backend/tests/test_finding_priority.py:L66 | neighbors=[test_finding_priority.py]
+- "tests_test_finding_priority_test_severity_rank_accepts_plain_and_mixed_case_strings": "test_severity_rank_accepts_plain_and_mixed_case_strings()" | kind=code-symbol | source=manager/backend/tests/test_finding_priority.py:L29 | neighbors=[test_finding_priority.py]
+- "tests_test_finding_priority_test_severity_rank_orders_all_five_tiers": "test_severity_rank_orders_all_five_tiers()" | kind=code-symbol | source=manager/backend/tests/test_finding_priority.py:L19 | neighbors=[test_finding_priority.py]
+- "tests_test_finding_priority_test_severity_rank_unknown_or_none_sorts_last": "test_severity_rank_unknown_or_none_sorts_last()" | kind=code-symbol | source=manager/backend/tests/test_finding_priority.py:L34 | neighbors=[test_finding_priority.py]
+- "tests_test_finding_priority_test_sorting_a_mixed_list_puts_criticals_first_then_risk": "test_sorting_a_mixed_list_puts_criticals_first_then_risk()" | kind=code-symbol | source=manager/backend/tests/test_finding_priority.py:L52 | neighbors=[test_finding_priority.py]
+- "tests_test_finding_priority_test_within_a_tier_higher_risk_wins": "test_within_a_tier_higher_risk_wins()" | kind=code-symbol | source=manager/backend/tests/test_finding_priority.py:L44 | neighbors=[test_finding_priority.py]
+- "tests_test_finding_resolution_schema_test_finding_has_resolution_lifecycle_columns": "test_finding_has_resolution_lifecycle_columns()" | kind=code-symbol | source=manager/backend/tests/test_finding_resolution_schema.py:L6 | neighbors=[test_finding_resolution_schema.py]
+- "tests_test_finding_risk_rank_api_test_finding_schema_exposes_risk_rank": "test_finding_schema_exposes_risk_rank()" | kind=code-symbol | source=manager/backend/tests/test_finding_risk_rank_api.py:L6 | neighbors=[test_finding_risk_rank_api.py]
+- "tests_test_finding_schema_test_finding_patch_accepts_documented_maximum_risk_score": "test_finding_patch_accepts_documented_maximum_risk_score()" | kind=code-symbol | source=manager/backend/tests/test_finding_schema.py:L9 | neighbors=[test_finding_schema.py]
+- "tests_test_finding_schema_test_finding_patch_rejects_risk_score_above_scale": "test_finding_patch_rejects_risk_score_above_scale()" | kind=code-symbol | source=manager/backend/tests/test_finding_schema.py:L15 | neighbors=[test_finding_schema.py]
+- "tests_test_finding_schema_test_finding_summary_exposes_full_open_severity_breakdown": "test_finding_summary_exposes_full_open_severity_breakdown()" | kind=code-symbol | source=manager/backend/tests/test_finding_schema.py:L20 | neighbors=[test_finding_schema.py]
+- "tests_test_finding_section_rationale_1": "test_finding_section.py — the scanner-module trust view + the finding section." | kind=entity | source=probe/tests/test_finding_section.py:L1 | neighbors=[test_finding_section.py]
+- "tests_test_finding_section_testscannerregistry_test_registry_aligns_with_manager_validated_set": ".test_registry_aligns_with_manager_validated_set()" | kind=code-symbol | source=probe/tests/test_finding_section.py:L38 | neighbors=[TestScannerRegistry]
+- "tests_test_finding_section_testscannerregistry_test_unknown_scanner_is_not_trusted": ".test_unknown_scanner_is_not_trusted()" | kind=code-symbol | source=probe/tests/test_finding_section.py:L28 | neighbors=[TestScannerRegistry]
+- "tests_test_finding_section_testscannerregistry_test_unvalidated_scanners_are_not_verified": ".test_unvalidated_scanners_are_not_verified()" | kind=code-symbol | source=probe/tests/test_finding_section.py:L24 | neighbors=[TestScannerRegistry]
 
 ## Instructions
 

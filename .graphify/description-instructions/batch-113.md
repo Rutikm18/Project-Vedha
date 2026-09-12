@@ -1,4 +1,4 @@
-# Node Description Batch 114 of 336
+# Node Description Batch 114 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,51 +12,58 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
+For an entity node (any other kind — e.g. a person, place, event, object),
+describe what the entity is and its role, grounded in its type, its
+relations (neighbors) and the provided citations/evidence — e.g.
+"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
+Ground entity descriptions in the citations/evidence when present; do not
+speculate beyond the context, so a node with no supporting context may be
+left out of the reply.
 Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_main_scripts_completeness_test_duplicate_port_is_detected": "test_duplicate_port_is_detected()" | kind=code-symbol | source=probe/tests/test_main_scripts_completeness.py:L39 | neighbors=[test_main_scripts_completeness.py, _metrics(), _rec()]
-- "tests_test_main_scripts_completeness_test_full_scan_is_complete": "test_full_scan_is_complete()" | kind=code-symbol | source=probe/tests/test_main_scripts_completeness.py:L24 | neighbors=[test_main_scripts_completeness.py, _metrics(), _rec()]
-- "tests_test_main_scripts_completeness_test_missing_port_is_detected": "test_missing_port_is_detected()" | kind=code-symbol | source=probe/tests/test_main_scripts_completeness.py:L32 | neighbors=[test_main_scripts_completeness.py, _metrics(), _rec()]
-- "tests_test_main_scripts_completeness_test_skip_plus_duplicate_is_not_falsely_complete": "test_skip_plus_duplicate_is_not_falsely_complete()" | kind=code-symbol | source=probe/tests/test_main_scripts_completeness.py:L46 | neighbors=[test_main_scripts_completeness.py, _metrics(), _rec()]
-- "tests_test_main_scripts_completeness_test_summary_exposes_missing_and_duplicates": "test_summary_exposes_missing_and_duplicates()" | kind=code-symbol | source=probe/tests/test_main_scripts_completeness.py:L55 | neighbors=[test_main_scripts_completeness.py, _metrics(), _rec()]
-- "tests_test_main_scripts_correlation_test_cleartext_cluster_fires_on_two_cleartext_services": "test_cleartext_cluster_fires_on_two_cleartext_services()" | kind=code-symbol | source=probe/tests/test_main_scripts_correlation.py:L67 | neighbors=[test_main_scripts_correlation.py, _get(), _run()]
-- "tests_test_main_scripts_correlation_test_correlation_does_not_cross_hosts": "test_correlation_does_not_cross_hosts()" | kind=code-symbol | source=probe/tests/test_main_scripts_correlation.py:L83 | neighbors=[test_main_scripts_correlation.py, _ids(), _run()]
-- "tests_test_main_scripts_correlation_test_legacy_windows_surface_smbv1_plus_rdp": "test_legacy_windows_surface_smbv1_plus_rdp()" | kind=code-symbol | source=probe/tests/test_main_scripts_correlation.py:L49 | neighbors=[test_main_scripts_correlation.py, _get(), _run()]
-- "tests_test_main_scripts_correlation_test_no_legacy_surface_with_only_smbv1": "test_no_legacy_surface_with_only_smbv1()" | kind=code-symbol | source=probe/tests/test_main_scripts_correlation.py:L60 | neighbors=[test_main_scripts_correlation.py, _ids(), _run()]
-- "tests_test_main_scripts_correlation_test_no_relay_finding_when_signing_required": "test_no_relay_finding_when_signing_required()" | kind=code-symbol | source=probe/tests/test_main_scripts_correlation.py:L42 | neighbors=[test_main_scripts_correlation.py, _ids(), _run()]
-- "tests_test_main_scripts_correlation_test_ntlm_relay_is_high_when_smbv1_also_enabled": "test_ntlm_relay_is_high_when_smbv1_also_enabled()" | kind=code-symbol | source=probe/tests/test_main_scripts_correlation.py:L34 | neighbors=[test_main_scripts_correlation.py, _get(), _run()]
-- "tests_test_main_scripts_correlation_test_ntlm_relay_is_medium_when_only_signing_not_required": "test_ntlm_relay_is_medium_when_only_signing_not_required()" | kind=code-symbol | source=probe/tests/test_main_scripts_correlation.py:L26 | neighbors=[test_main_scripts_correlation.py, _get(), _run()]
-- "tests_test_main_scripts_correlation_test_single_cleartext_service_does_not_cluster": "test_single_cleartext_service_does_not_cluster()" | kind=code-symbol | source=probe/tests/test_main_scripts_correlation.py:L77 | neighbors=[test_main_scripts_correlation.py, _ids(), _run()]
-- "tests_test_main_scripts_coverage_testworkerpoolandmetrics_test_every_port_scanned_exactly_once": ".test_every_port_scanned_exactly_once()" | kind=code-symbol | source=probe/tests/test_main_scripts_coverage.py:L82 | neighbors=[TestWorkerPoolAndMetrics, _mk_scanner(), _summary()]
-- "tests_test_main_scripts_coverage_testworkerpoolandmetrics_test_local_resource_error_marks_scan_degraded": ".test_local_resource_error_marks_scan_degraded()" | kind=code-symbol | source=probe/tests/test_main_scripts_coverage.py:L150 | neighbors=[TestWorkerPoolAndMetrics, _mk_scanner(), _summary()]
-- "tests_test_main_scripts_coverage_testworkerpoolandmetrics_test_metrics_counts_every_state": ".test_metrics_counts_every_state()" | kind=code-symbol | source=probe/tests/test_main_scripts_coverage.py:L136 | neighbors=[TestWorkerPoolAndMetrics, _mk_scanner(), _summary()]
-- "tests_test_main_scripts_coverage_testworkerpoolandmetrics_test_open_only_output_still_keeps_full_metrics": ".test_open_only_output_still_keeps_full_metrics()" | kind=code-symbol | source=probe/tests/test_main_scripts_coverage.py:L165 | neighbors=[TestWorkerPoolAndMetrics, _scope(), _summary()]
-- "tests_test_main_scripts_findings_test_all_security_headers_present_no_finding": "test_all_security_headers_present_no_finding()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L272 | neighbors=[test_main_scripts_findings.py, _ids(), _run()]
-- "tests_test_main_scripts_findings_test_closed_port_no_finding": "test_closed_port_no_finding()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L192 | neighbors=[test_main_scripts_findings.py, _ids(), _run()]
-- "tests_test_main_scripts_findings_test_ntp_monlist_and_dns_open_recursion": "test_ntp_monlist_and_dns_open_recursion()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L150 | neighbors=[test_main_scripts_findings.py, _ids(), _run()]
-- "tests_test_main_scripts_findings_test_open_filtered_never_raises_exposure": "test_open_filtered_never_raises_exposure()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L185 | neighbors=[test_main_scripts_findings.py, _ids(), _run()]
-- "tests_test_main_scripts_findings_test_smb_hardened_host_no_finding": "test_smb_hardened_host_no_finding()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L117 | neighbors=[test_main_scripts_findings.py, _ids(), _run()]
-- "tests_test_main_scripts_findings_test_smb_signing_not_required_is_medium": "test_smb_signing_not_required_is_medium()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L110 | neighbors=[test_main_scripts_findings.py, _ids(), _run()]
-- "tests_test_main_scripts_findings_test_snmp_amplification": "test_snmp_amplification()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L137 | neighbors=[test_main_scripts_findings.py, _ids(), _run()]
-- "tests_test_main_scripts_findings_test_snmpv3_only_no_finding": "test_snmpv3_only_no_finding()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L143 | neighbors=[test_main_scripts_findings.py, _ids(), _run()]
-- "tests_test_main_scripts_findings_test_tls_expired_and_self_signed_cert": "test_tls_expired_and_self_signed_cert()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L55 | neighbors=[test_main_scripts_findings.py, _ids(), _run()]
-- "tests_test_main_scripts_findings_test_tls_legacy_protocol_is_medium_and_not_double_reported_with_obsolete": "test_tls_legacy_protocol_is_medium_and_not_double_reported_with_obsolete()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L33 | neighbors=[test_main_scripts_findings.py, _ids(), _run()]
-- "tests_test_main_scripts_findings_test_tls_modern_only_produces_no_crypto_finding": "test_tls_modern_only_produces_no_crypto_finding()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L41 | neighbors=[test_main_scripts_findings.py, _ids(), _run()]
-- "tests_test_main_scripts_findings_test_tls_small_ec_key_is_not_treated_as_weak": "test_tls_small_ec_key_is_not_treated_as_weak()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L94 | neighbors=[test_main_scripts_findings.py, _ids(), _run()]
-- "tests_test_main_scripts_findings_test_tls_strong_rsa_key_is_not_flagged": "test_tls_strong_rsa_key_is_not_flagged()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L87 | neighbors=[test_main_scripts_findings.py, _ids(), _run()]
-- "tests_test_main_scripts_findings_test_tls_strong_signature_hash_is_not_flagged": "test_tls_strong_signature_hash_is_not_flagged()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L71 | neighbors=[test_main_scripts_findings.py, _ids(), _run()]
-- "tests_test_main_scripts_findings_test_udp_no_amplification_when_not_reflecting": "test_udp_no_amplification_when_not_reflecting()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L160 | neighbors=[test_main_scripts_findings.py, _ids(), _run()]
-- "tests_test_main_scripts_hardening_run": "_run()" | kind=code-symbol | source=probe/tests/test_main_scripts_hardening.py:L36 | neighbors=[test_main_scripts_hardening.py, .test_icmp_port_unreachable_is_closed(), .test_silence_is_open_filtered_not_filt…]
-- "tests_test_main_scripts_hardening_testudpstatemodel_test_icmp_port_unreachable_is_closed": ".test_icmp_port_unreachable_is_closed()" | kind=code-symbol | source=probe/tests/test_main_scripts_hardening.py:L60 | neighbors=[TestUdpStateModel, _run(), ._scanner()]
-- "tests_test_main_scripts_hardening_testudpstatemodel_test_silence_is_open_filtered_not_filtered": ".test_silence_is_open_filtered_not_filtered()" | kind=code-symbol | source=probe/tests/test_main_scripts_hardening.py:L46 | neighbors=[TestUdpStateModel, _run(), ._scanner()]
-- "tests_test_main_scripts_ja4s_serverhello": "_serverhello()" | kind=code-symbol | source=probe/tests/test_main_scripts_ja4s.py:L21 | neighbors=[test_main_scripts_ja4s.py, _ext(), test_ja4s_from_serverhello_tls13()]
-- "tests_test_msrpc_scanner_testmsrpcfindings_fact": "._fact()" | kind=code-symbol | source=probe/tests/test_msrpc_scanner.py:L82 | neighbors=[TestMSRPCFindings, .test_endpoints_low(), .test_zero_endpoints_silent()]
-- "tests_test_network_va_accuracy_listener_start": ".start()" | kind=code-symbol | source=probe/tests/test_network_va_accuracy.py:L35 | neighbors=[_Listener, ._loop(), va_scan()]
-- "tests_test_new_scanners_testdeltaengine_test_diff_detects_new_service": ".test_diff_detects_new_service()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L412 | neighbors=[TestDeltaEngine, _make_scan_record(), ._write_jsonl()]
-- "tests_test_new_scanners_testdeltaengine_test_diff_detects_service_gone": ".test_diff_detects_service_gone()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L428 | neighbors=[TestDeltaEngine, _make_scan_record(), ._write_jsonl()]
+- "models_exploit_approval_rationale_20": "Created when a high-risk target requires manager sign-off.     Auto-queues the e" | kind=entity | source=manager/backend/app/models/exploit_approval.py:L20 | neighbors=[ExploitApprovalRequest, Base, TimestampMixin]
+- "models_exploit_result_rationale_12": "Immutable record of every exploit attempt.     Never updated after creation — ap" | kind=entity | source=manager/backend/app/models/exploit_result.py:L12 | neighbors=[ExploitResult, Base, TimestampMixin]
+- "models_finding_event_findingevent": "FindingEvent" | kind=code-symbol | source=manager/backend/app/models/finding_event.py:L11 | neighbors=[finding_event.py, Base, Append-only lifecycle audit trail for a…]
+- "models_integration": "integration.py" | kind=code-symbol | source=manager/backend/app/models/integration.py:L1 | neighbors=[027f4e4 feat(integrations): per-tenant …, Integration, integration.py — a tenant's notificatio…]
+- "models_integration_integration": "Integration" | kind=code-symbol | source=manager/backend/app/models/integration.py:L21 | neighbors=[integration.py, Base, TimestampMixin]
+- "models_llm_output": "llm_output.py" | kind=code-symbol | source=manager/backend/app/models/llm_output.py:L1 | neighbors=[d1b4dd3 trim frontend to 7 core pages; …, LLMOutput, 298a9d4 trim frontend to 7 core pages; …]
+- "models_outbox_rationale_1": "outbox.py — transactional outbox for durable, exactly-once background work.  THE" | kind=entity | source=manager/backend/app/models/outbox.py:L1 | neighbors=[outbox.py, Base, TimestampMixin]
+- "models_probe_enrollment_agentcredential": "AgentCredential" | kind=code-symbol | source=manager/backend/app/models/probe_enrollment.py:L51 | neighbors=[probe_enrollment.py, Base, TimestampMixin]
+- "models_probe_enrollment_probeenrollmentrequest": "ProbeEnrollmentRequest" | kind=code-symbol | source=manager/backend/app/models/probe_enrollment.py:L11 | neighbors=[probe_enrollment.py, Base, TimestampMixin]
+- "models_probe_site_probesite": "ProbeSite" | kind=code-symbol | source=manager/backend/app/models/probe_site.py:L10 | neighbors=[probe_site.py, Base, TimestampMixin]
+- "models_remediation_plan": "remediation_plan.py" | kind=code-symbol | source=manager/backend/app/models/remediation_plan.py:L1 | neighbors=[fd5dc96 feat(remediation): AI + determi…, RemediationPlan, remediation_plan.py — a generated, OS-s…]
+- "models_remediation_plan_remediationplan": "RemediationPlan" | kind=code-symbol | source=manager/backend/app/models/remediation_plan.py:L24 | neighbors=[remediation_plan.py, Base, TimestampMixin]
+- "models_scan_request_scanrequest": "ScanRequest" | kind=code-symbol | source=manager/backend/app/models/scan_request.py:L26 | neighbors=[scan_request.py, Base, TimestampMixin]
+- "models_scan_result_rationale_11": "Append-only raw probe facts (P3-#10).      Decoupled from scan_jobs so:       (a" | kind=entity | source=manager/backend/app/models/scan_result.py:L11 | neighbors=[ScanResult, Base, TimestampMixin]
+- "models_sla_policy": "sla_policy.py" | kind=code-symbol | source=manager/backend/app/models/sla_policy.py:L1 | neighbors=[c5ebd38 feat(sla): per-tenant custom SL…, SlaPolicy, sla_policy.py — a tenant's custom SLA r…]
+- "models_sla_policy_slapolicy": "SlaPolicy" | kind=code-symbol | source=manager/backend/app/models/sla_policy.py:L20 | neighbors=[sla_policy.py, Base, TimestampMixin]
+- "models_validation_request": "validation_request.py" | kind=code-symbol | source=manager/backend/app/models/validation_request.py:L1 | neighbors=[58c2d10 feat(active-validation): Valida…, ValidationRequest, validation_request.py — an approval-gat…]
+- "models_validation_request_validationrequest": "ValidationRequest" | kind=code-symbol | source=manager/backend/app/models/validation_request.py:L28 | neighbors=[validation_request.py, Base, TimestampMixin]
+- "models_worker_heartbeat": "worker_heartbeat.py" | kind=code-symbol | source=manager/backend/app/models/worker_heartbeat.py:L1 | neighbors=[6bb51ab feat: add detection-explain end…, WorkerHeartbeat, worker_heartbeat.py — one row per backg…]
+- "models_worker_heartbeat_workerheartbeat": "WorkerHeartbeat" | kind=code-symbol | source=manager/backend/app/models/worker_heartbeat.py:L21 | neighbors=[worker_heartbeat.py, Base, TimestampMixin]
+- "native_port_scan_nativeportscan": "nativePortScan()" | kind=code-symbol | source=manager/frontend/lib/engine/native/port-scan.ts:L221 | neighbors=[tool-runners.ts, port-scan.ts, resolvePorts()]
+- "path_route_get": "GET()" | kind=code-symbol | source=manager/frontend/app/api/portal/[...path]/route.ts:L53 | neighbors=[route.ts, proxy(), proxyPortal()]
+- "path_route_patch": "PATCH()" | kind=code-symbol | source=manager/frontend/app/api/portal/[...path]/route.ts:L57 | neighbors=[route.ts, proxy(), proxyPortal()]
+- "path_route_portaltoken": "portalToken()" | kind=code-symbol | source=manager/frontend/app/api/portal/[...path]/route.ts:L12 | neighbors=[route.ts, proxyPortal(), proxy()]
+- "path_route_post": "POST()" | kind=code-symbol | source=manager/frontend/app/api/portal/[...path]/route.ts:L55 | neighbors=[route.ts, proxy(), proxyPortal()]
+- "portscan_classify_os_error": "classify_os_error()" | kind=code-symbol | source=portscan.py:L73 | neighbors=[portscan.py, ._attempt(), Map a connect()-time OSError to (state,…]
+- "portscan_portscanner_run": ".run()" | kind=code-symbol | source=portscan.py:L195 | neighbors=[main(), PortScanner, .scan_port()]
+- "prompts_report_confidence": "Confidence" | kind=code-symbol | source=manager/frontend/lib/prompts/report.ts:L30 | neighbors=[ai-engine.ts, report.ts, page.tsx]
+- "prompts_report_reportfinding": "ReportFinding" | kind=code-symbol | source=manager/frontend/lib/prompts/report.ts:L76 | neighbors=[ai-engine.ts, report.ts, page.tsx]
+- "prompts_report_scoredomain": "ScoreDomain" | kind=code-symbol | source=manager/frontend/lib/prompts/report.ts:L56 | neighbors=[ai-engine.ts, report.ts, page.tsx]
+- "prompts_triage": "triage.ts" | kind=code-symbol | source=manager/frontend/lib/prompts/triage.ts:L1 | neighbors=[d1b4dd3 trim frontend to 7 core pages; …, ai-engine.ts, 298a9d4 trim frontend to 7 core pages; …]
+- "protocol": "Protocol" | kind=code-symbol | neighbors=[AIClient, _Scanner, _Scanner]
+- "report_adapt_derivedetectionmethod": "deriveDetectionMethod()" | kind=code-symbol | source=manager/frontend/lib/report/adapt.ts:L30 | neighbors=[adapt.ts, toRawFinding(), report-adapt.test.ts]
+- "report_adapt_deriveinternetreachable": "deriveInternetReachable()" | kind=code-symbol | source=manager/frontend/lib/report/adapt.ts:L12 | neighbors=[adapt.ts, toRawFinding(), toReportAssets()]
+- "report_finding_model_assessedfinding": "AssessedFinding" | kind=code-symbol | source=manager/frontend/lib/report/finding-model.ts:L676 | neighbors=[finding-model.ts, FindingReport.tsx, FindingReport.tsx]
+- "report_finding_model_attackerstatement": "attackerStatement()" | kind=code-symbol | source=manager/frontend/lib/report/finding-model.ts:L338 | neighbors=[finding-model.ts, assess(), joinList()]
+- "report_finding_model_provenanceof": "provenanceOf()" | kind=code-symbol | source=manager/frontend/lib/report/finding-model.ts:L505 | neighbors=[finding-model.ts, FindingReport.tsx, FindingReport.tsx]
+- "report_finding_model_rawevidence": "RawEvidence" | kind=code-symbol | source=manager/frontend/lib/report/finding-model.ts:L34 | neighbors=[finding-model.ts, FindingReport.tsx, FindingReport.tsx]
+- "report_finding_model_remediationsteps": "remediationSteps()" | kind=code-symbol | source=manager/frontend/lib/report/finding-model.ts:L622 | neighbors=[finding-model.ts, assess(), readinessOf()]
+- "report_finding_model_remediationtier": "RemediationTier" | kind=code-symbol | source=manager/frontend/lib/report/finding-model.ts:L58 | neighbors=[finding-model.ts, FindingReport.tsx, FindingReport.tsx]
 
 ## Instructions
 

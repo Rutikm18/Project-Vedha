@@ -1,4 +1,4 @@
-# Node Description Batch 311 of 336
+# Node Description Batch 311 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,51 +19,53 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-Write every description in English (en). Do not switch languages.
+LANGUAGE: each entry has a `lang=` marker giving the language of its source.
+Write that entry's description in EXACTLY that language. Do not translate to
+a single common language — match each node's source language individually.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_scanner_congestion_rationale_452": "A genuinely lossy path (verified separately with 60% netem loss) must         st" | kind=entity | source=probe/tests/test_scanner_congestion.py:L452 | neighbors=[.test_collapsed_delivery_still_backs_of…]
-- "tests_test_scanner_congestion_rationale_460": "Never throttle on a handful of early probes." | kind=entity | source=probe/tests/test_scanner_congestion.py:L460 | neighbors=[.test_no_opinion_before_the_sample_floo…]
-- "tests_test_scanner_congestion_rationale_472": "Delivery returning must clear the loss condition — the ratchet that         made" | kind=entity | source=probe/tests/test_scanner_congestion.py:L472 | neighbors=[.test_recovery_after_a_bad_patch()]
-- "tests_test_scanner_congestion_rationale_490": "One quiet host must not throttle the next." | kind=entity | source=probe/tests/test_scanner_congestion.py:L490 | neighbors=[.test_window_resets_between_hosts()]
-- "tests_test_scanner_congestion_testconnectcongestionwindow_test_window_never_falls_below_one": ".test_window_never_falls_below_one()" | kind=code-symbol | source=probe/tests/test_scanner_congestion.py:L192 | neighbors=[TestConnectCongestionWindow]
-- "tests_test_scanner_congestion_testharvesttcpstack_test_none_socket_yields_nothing": ".test_none_socket_yields_nothing()" | kind=code-symbol | source=probe/tests/test_scanner_congestion.py:L225 | neighbors=[TestHarvestTcpStack]
-- "tests_test_scanner_congestion_testharvesttcpstack_test_object_without_getsockopt_is_survivable": ".test_object_without_getsockopt_is_survivable()" | kind=code-symbol | source=probe/tests/test_scanner_congestion.py:L228 | neighbors=[TestHarvestTcpStack]
-- "tests_test_scanner_congestion_testresolvecandidates_test_absent_requested_family_falls_back_rather_than_failing": ".test_absent_requested_family_falls_back_rather_than_failing()" | kind=code-symbol | source=probe/tests/test_scanner_congestion.py:L317 | neighbors=[TestResolveCandidates]
-- "tests_test_scanner_congestion_testresolvecandidates_test_literal_ip_resolves_to_itself": ".test_literal_ip_resolves_to_itself()" | kind=code-symbol | source=probe/tests/test_scanner_congestion.py:L330 | neighbors=[TestResolveCandidates]
-- "tests_test_scanner_congestion_testresolvecandidates_test_unresolvable_name_raises": ".test_unresolvable_name_raises()" | kind=code-symbol | source=probe/tests/test_scanner_congestion.py:L324 | neighbors=[TestResolveCandidates]
-- "tests_test_scanner_congestion_testsendpacer_test_backoff_is_bounded_by_min_rate": ".test_backoff_is_bounded_by_min_rate()" | kind=code-symbol | source=probe/tests/test_scanner_congestion.py:L51 | neighbors=[TestSendPacer]
-- "tests_test_scanner_congestion_testsendpacer_test_clean_round_increases_rate_additively": ".test_clean_round_increases_rate_additively()" | kind=code-symbol | source=probe/tests/test_scanner_congestion.py:L39 | neighbors=[TestSendPacer]
-- "tests_test_scanner_congestion_testsendpacer_test_empty_round_is_ignored_not_treated_as_total_loss": ".test_empty_round_is_ignored_not_treated_as_total_loss()" | kind=code-symbol | source=probe/tests/test_scanner_congestion.py:L70 | neighbors=[TestSendPacer]
-- "tests_test_scanner_congestion_testsendpacer_test_first_pace_does_not_block": ".test_first_pace_does_not_block()" | kind=code-symbol | source=probe/tests/test_scanner_congestion.py:L84 | neighbors=[TestSendPacer]
-- "tests_test_scanner_congestion_testsendpacer_test_growth_is_bounded_by_max_rate": ".test_growth_is_bounded_by_max_rate()" | kind=code-symbol | source=probe/tests/test_scanner_congestion.py:L57 | neighbors=[TestSendPacer]
-- "tests_test_scanner_congestion_testsendpacer_test_loss_just_under_threshold_does_not_back_off": ".test_loss_just_under_threshold_does_not_back_off()" | kind=code-symbol | source=probe/tests/test_scanner_congestion.py:L64 | neighbors=[TestSendPacer]
-- "tests_test_scanner_congestion_testsendpacer_test_lossy_round_halves_the_rate": ".test_lossy_round_halves_the_rate()" | kind=code-symbol | source=probe/tests/test_scanner_congestion.py:L45 | neighbors=[TestSendPacer]
-- "tests_test_scanner_congestion_testsendpacer_test_pace_actually_spends_wall_time_at_a_low_rate": ".test_pace_actually_spends_wall_time_at_a_low_rate()" | kind=code-symbol | source=probe/tests/test_scanner_congestion.py:L75 | neighbors=[TestSendPacer]
-- "tests_test_scanner_congestion_testsendpacer_test_rate_zero_disables_pacing": ".test_rate_zero_disables_pacing()" | kind=code-symbol | source=probe/tests/test_scanner_congestion.py:L90 | neighbors=[TestSendPacer]
-- "tests_test_scanner_congestion_testsendpacer_test_stats_expose_throttling": ".test_stats_expose_throttling()" | kind=code-symbol | source=probe/tests/test_scanner_congestion.py:L97 | neighbors=[TestSendPacer]
-- "tests_test_scanner_congestion_testwaitreadable_test_returns_false_when_nothing_arrives_before_deadline": ".test_returns_false_when_nothing_arrives_before_deadline()" | kind=code-symbol | source=probe/tests/test_scanner_congestion.py:L107 | neighbors=[TestWaitReadable]
-- "tests_test_scanner_congestion_testwaitreadable_test_returns_true_as_soon_as_data_is_waiting": ".test_returns_true_as_soon_as_data_is_waiting()" | kind=code-symbol | source=probe/tests/test_scanner_congestion.py:L114 | neighbors=[TestWaitReadable]
-- "tests_test_scanner_congestion_testwaitreadable_test_unselectable_object_degrades_to_assume_readable": ".test_unselectable_object_degrades_to_assume_readable()" | kind=code-symbol | source=probe/tests/test_scanner_congestion.py:L129 | neighbors=[TestWaitReadable]
-- "tests_test_scanner_congestion_testwaitreadable_test_zero_timeout_never_blocks": ".test_zero_timeout_never_blocks()" | kind=code-symbol | source=probe/tests/test_scanner_congestion.py:L122 | neighbors=[TestWaitReadable]
-- "tests_test_scanner_parity_rationale_1": "test_scanner_parity.py — the no-drift guard.  Decision (probe_next plan, Phase 1" | kind=entity | source=probe/tests/test_scanner_parity.py:L1 | neighbors=[test_scanner_parity.py]
-- "tests_test_scanner_parity_rationale_30": "Every scanner module authored in main_scripts must exist in scanner/." | kind=entity | source=probe/tests/test_scanner_parity.py:L30 | neighbors=[test_scanner_is_superset_of_no_missing_…]
-- "tests_test_scanner_parity_rationale_39": "scanner/ must not carry modules that main_scripts/ does not — otherwise the" | kind=entity | source=probe/tests/test_scanner_parity.py:L39 | neighbors=[test_no_extra_scanner_files()]
-- "tests_test_scanner_parity_rationale_49": "Each scanner/<mod>.py is byte-identical to main_scripts/<mod>.py." | kind=entity | source=probe/tests/test_scanner_parity.py:L49 | neighbors=[test_scanner_module_matches_main_script…]
-- "tests_test_scope_crypt_rationale_1": "Tests for agent/scope_crypt.py" | kind=entity | source=probe/tests/test_scope_crypt.py:L1 | neighbors=[test_scope_crypt.py]
-- "tests_test_scope_crypt_rationale_79": "Each encryption uses a fresh ephemeral key, so blobs are different." | kind=entity | source=probe/tests/test_scope_crypt.py:L79 | neighbors=[.test_multiple_encrypts_different()]
-- "tests_test_scope_crypt_testencryptdecryptroundtrip_test_b64_roundtrip": ".test_b64_roundtrip()" | kind=code-symbol | source=probe/tests/test_scope_crypt.py:L70 | neighbors=[TestEncryptDecryptRoundtrip]
-- "tests_test_scope_crypt_testencryptdecryptroundtrip_test_different_plaintexts_are_distinct": ".test_different_plaintexts_are_distinct()" | kind=code-symbol | source=probe/tests/test_scope_crypt.py:L64 | neighbors=[TestEncryptDecryptRoundtrip]
-- "tests_test_scope_crypt_testencryptdecryptroundtrip_test_different_recipient_cannot_decrypt": ".test_different_recipient_cannot_decrypt()" | kind=code-symbol | source=probe/tests/test_scope_crypt.py:L43 | neighbors=[TestEncryptDecryptRoundtrip]
-- "tests_test_scope_crypt_testencryptdecryptroundtrip_test_roundtrip_empty_scope": ".test_roundtrip_empty_scope()" | kind=code-symbol | source=probe/tests/test_scope_crypt.py:L36 | neighbors=[TestEncryptDecryptRoundtrip]
-- "tests_test_scope_crypt_testencryptdecryptroundtrip_test_roundtrip_plaintext": ".test_roundtrip_plaintext()" | kind=code-symbol | source=probe/tests/test_scope_crypt.py:L29 | neighbors=[TestEncryptDecryptRoundtrip]
-- "tests_test_scope_crypt_testencryptdecryptroundtrip_test_tampered_blob": ".test_tampered_blob()" | kind=code-symbol | source=probe/tests/test_scope_crypt.py:L51 | neighbors=[TestEncryptDecryptRoundtrip]
-- "tests_test_scope_crypt_testencryptdecryptroundtrip_test_too_short_blob": ".test_too_short_blob()" | kind=code-symbol | source=probe/tests/test_scope_crypt.py:L59 | neighbors=[TestEncryptDecryptRoundtrip]
-- "tests_test_scope_crypt_testkeygeneration_test_generates_32_byte_keys": ".test_generates_32_byte_keys()" | kind=code-symbol | source=probe/tests/test_scope_crypt.py:L16 | neighbors=[TestKeyGeneration]
-- "tests_test_scope_crypt_testkeygeneration_test_generates_different_keys_each_call": ".test_generates_different_keys_each_call()" | kind=code-symbol | source=probe/tests/test_scope_crypt.py:L21 | neighbors=[TestKeyGeneration]
-- "tests_test_scope_targets_rationale_1": "test_scope_targets.py — the pure scope-authorization core shared by the dispatch" | kind=entity | source=manager/backend/tests/test_scope_targets.py:L1 | neighbors=[test_scope_targets.py]
+- "tests_test_auth_surface_rationale_1": "Auth-surface observation — what login a web service ASKS for.  This is the probe" | kind=entity | source=probe/tests/test_auth_surface.py:L1 | neighbors=[test_auth_surface.py] | lang=en
+- "tests_test_auth_surface_rationale_38": "web_scanner lowercases header keys; other callers may not." | kind=entity | source=probe/tests/test_auth_surface.py:L38 | neighbors=[.test_header_lookup_is_case_insensitive…] | lang=en
+- "tests_test_auth_surface_rationale_68": "An explicit challenge is stronger evidence than a heuristic form match." | kind=entity | source=probe/tests/test_auth_surface.py:L68 | neighbors=[.test_challenge_wins_over_form()] | lang=en
+- "tests_test_auth_surface_rationale_94": "A scanner must never crash on a response it didn't get." | kind=entity | source=probe/tests/test_auth_surface.py:L94 | neighbors=[.test_none_inputs_are_survivable()] | lang=pt
+- "tests_test_auth_surface_rationale_99": "A huge body must not make vendor-hunting expensive." | kind=entity | source=probe/tests/test_auth_surface.py:L99 | neighbors=[.test_body_scan_is_bounded()] | lang=pt
+- "tests_test_auth_surface_testauthchallenge_test_basic_realm_is_parsed": ".test_basic_realm_is_parsed()" | kind=code-symbol | source=probe/tests/test_auth_surface.py:L24 | neighbors=[TestAuthChallenge] | lang=en
+- "tests_test_auth_surface_testauthchallenge_test_digest_realm_is_parsed": ".test_digest_realm_is_parsed()" | kind=code-symbol | source=probe/tests/test_auth_surface.py:L30 | neighbors=[TestAuthChallenge] | lang=en
+- "tests_test_auth_surface_testauthchallenge_test_realm_absent_from_challenge": ".test_realm_absent_from_challenge()" | kind=code-symbol | source=probe/tests/test_auth_surface.py:L48 | neighbors=[TestAuthChallenge] | lang=en
+- "tests_test_auth_surface_testauthchallenge_test_unknown_challenge_scheme_is_other_not_a_guess": ".test_unknown_challenge_scheme_is_other_not_a_guess()" | kind=code-symbol | source=probe/tests/test_auth_surface.py:L43 | neighbors=[TestAuthChallenge] | lang=en
+- "tests_test_auth_surface_testloginform_test_ordinary_page_has_no_auth_surface": ".test_ordinary_page_has_no_auth_surface()" | kind=code-symbol | source=probe/tests/test_auth_surface.py:L62 | neighbors=[TestLoginForm] | lang=en
+- "tests_test_auth_surface_testloginform_test_password_input_is_detected_as_a_form": ".test_password_input_is_detected_as_a_form()" | kind=code-symbol | source=probe/tests/test_auth_surface.py:L54 | neighbors=[TestLoginForm] | lang=en
+- "tests_test_auth_surface_testloginform_test_single_quoted_password_input_is_detected": ".test_single_quoted_password_input_is_detected()" | kind=code-symbol | source=probe/tests/test_auth_surface.py:L58 | neighbors=[TestLoginForm] | lang=en
+- "tests_test_auth_surface_testrobustness_test_empty_inputs_are_survivable": ".test_empty_inputs_are_survivable()" | kind=code-symbol | source=probe/tests/test_auth_surface.py:L89 | neighbors=[TestRobustness] | lang=en
+- "tests_test_auth_surface_testvendorhint_test_unknown_vendor_is_none_not_a_guess": ".test_unknown_vendor_is_none_not_a_guess()" | kind=code-symbol | source=probe/tests/test_auth_surface.py:L83 | neighbors=[TestVendorHint] | lang=en
+- "tests_test_auth_surface_testvendorhint_test_vendor_found_in_body": ".test_vendor_found_in_body()" | kind=code-symbol | source=probe/tests/test_auth_surface.py:L79 | neighbors=[TestVendorHint] | lang=en
+- "tests_test_auth_surface_testvendorhint_test_vendor_found_in_realm": ".test_vendor_found_in_realm()" | kind=code-symbol | source=probe/tests/test_auth_surface.py:L75 | neighbors=[TestVendorHint] | lang=en
+- "tests_test_bootstrap_rationale_1": "Phase 7 — bootstrap logic: per-OS Python install command, and the optional stric" | kind=entity | source=probe/tests/test_bootstrap.py:L1 | neighbors=[test_bootstrap.py] | lang=en
+- "tests_test_bootstrap_test_python_install_cmd_per_pm": "test_python_install_cmd_per_pm()" | kind=code-symbol | source=probe/tests/test_bootstrap.py:L11 | neighbors=[test_bootstrap.py] | lang=en
+- "tests_test_bootstrap_test_security_mode_defaults_permissive_but_strict_available": "test_security_mode_defaults_permissive_but_strict_available()" | kind=code-symbol | source=probe/tests/test_bootstrap.py:L20 | neighbors=[test_bootstrap.py] | lang=en
+- "tests_test_bootstrap_test_verify_download_match_is_ok_in_both_modes": "test_verify_download_match_is_ok_in_both_modes()" | kind=code-symbol | source=probe/tests/test_bootstrap.py:L28 | neighbors=[test_bootstrap.py] | lang=en
+- "tests_test_bootstrap_test_verify_download_mismatch_fails_strict_but_warns_permissive": "test_verify_download_mismatch_fails_strict_but_warns_permissive()" | kind=code-symbol | source=probe/tests/test_bootstrap.py:L37 | neighbors=[test_bootstrap.py] | lang=en
+- "tests_test_bootstrap_test_verify_download_missing_checksum_fails_strict_only": "test_verify_download_missing_checksum_fails_strict_only()" | kind=code-symbol | source=probe/tests/test_bootstrap.py:L45 | neighbors=[test_bootstrap.py] | lang=en
+- "tests_test_branch_registry_rationale_1": "test_branch_registry.py — the deep-scan branch registry and the invariants it ex" | kind=entity | source=probe/tests/test_branch_registry.py:L1 | neighbors=[test_branch_registry.py] | lang=en
+- "tests_test_branch_registry_rationale_113": "Before the registry, these five planned NOTHING while the engine ran five     co" | kind=entity | source=probe/tests/test_branch_registry.py:L113 | neighbors=[test_service_specific_plan_matches_what…] | lang=en
+- "tests_test_branch_registry_rationale_143": "An SNMP-only job must not fall back to a broad TCP sweep." | kind=entity | source=probe/tests/test_branch_registry.py:L143 | neighbors=[test_datagram_branches_need_no_tcp_stag…] | lang=en
+- "tests_test_branch_registry_rationale_158": "smb's fact describes the host, so it must be keyed by (host, None) — not     by" | kind=entity | source=probe/tests/test_branch_registry.py:L158 | neighbors=[test_host_level_branch_is_cached_under_…] | lang=en
+- "tests_test_branch_registry_rationale_185": "The database branch is the one spec that runs its scanner twice: known     engin" | kind=entity | source=probe/tests/test_branch_registry.py:L185 | neighbors=[test_db_branch_splits_known_and_router_…] | lang=en
+- "tests_test_branch_registry_rationale_205": "SNMPScanner's signature has no `ports`; passing one would TypeError." | kind=entity | source=probe/tests/test_branch_registry.py:L205 | neighbors=[test_snmp_scanner_is_constructed_withou…] | lang=en
+- "tests_test_branch_registry_rationale_36": "A spec the profile tables don't know about could never run." | kind=entity | source=probe/tests/test_branch_registry.py:L36 | neighbors=[.test_every_branch_is_gateable()] | lang=en
+- "tests_test_branch_registry_rationale_41": "gate_5 intersects open ports with its own table; the engine uses the         spe" | kind=entity | source=probe/tests/test_branch_registry.py:L41 | neighbors=[.test_port_tables_match_gates()] | lang=en
+- "tests_test_branch_registry_rationale_66": "A fact whose scanner name has no merge handler is collected, cached,         shi" | kind=entity | source=probe/tests/test_branch_registry.py:L66 | neighbors=[.test_every_component_can_be_merged_int…] | lang=en
+- "tests_test_branch_registry_rationale_72": "An unlisted scanner falls back to 'uncertain' (re-probed every pass).         Th" | kind=entity | source=probe/tests/test_branch_registry.py:L72 | neighbors=[.test_every_component_has_a_cache_certa…] | lang=en
+- "tests_test_branch_registry_test_full_assessment_plans_every_branch": "test_full_assessment_plans_every_branch()" | kind=code-symbol | source=probe/tests/test_branch_registry.py:L132 | neighbors=[test_branch_registry.py] | lang=en
+- "tests_test_branch_registry_testregistryconsistency_test_branch_component_map_is_derived": ".test_branch_component_map_is_derived()" | kind=code-symbol | source=probe/tests/test_branch_registry.py:L62 | neighbors=[TestRegistryConsistency] | lang=en
+- "tests_test_branch_registry_testregistryconsistency_test_catalog_entries_are_labelled": ".test_catalog_entries_are_labelled()" | kind=code-symbol | source=probe/tests/test_branch_registry.py:L58 | neighbors=[TestRegistryConsistency] | lang=en
+- "tests_test_branch_registry_testregistryconsistency_test_components_are_unique": ".test_components_are_unique()" | kind=code-symbol | source=probe/tests/test_branch_registry.py:L77 | neighbors=[TestRegistryConsistency] | lang=en
+- "tests_test_branch_registry_testregistryconsistency_test_every_branch_has_a_scanner_the_engine_can_resolve": ".test_every_branch_has_a_scanner_the_engine_can_resolve()" | kind=code-symbol | source=probe/tests/test_branch_registry.py:L49 | neighbors=[TestRegistryConsistency] | lang=en
+- "tests_test_branch_registry_testregistryconsistency_test_every_component_is_in_the_plan_catalog": ".test_every_component_is_in_the_plan_catalog()" | kind=code-symbol | source=probe/tests/test_branch_registry.py:L53 | neighbors=[TestRegistryConsistency] | lang=en
+- "tests_test_branch_registry_testregistryconsistency_test_kwargs_builders_have_the_expected_signature": ".test_kwargs_builders_have_the_expected_signature()" | kind=code-symbol | source=probe/tests/test_branch_registry.py:L81 | neighbors=[TestRegistryConsistency] | lang=en
+- "tests_test_branch_rule_coverage_rationale_1": "test_branch_rule_coverage.py — every deep branch must be ASSESSED, not just coll" | kind=entity | source=manager/detection_engine/tests/test_branch_rule_coverage.py:L1 | neighbors=[test_branch_rule_coverage.py] | lang=en
 
 ## Instructions
 

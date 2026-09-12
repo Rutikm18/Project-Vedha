@@ -1,4 +1,4 @@
-# Node Description Batch 330 of 336
+# Node Description Batch 330 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -9,6 +9,9 @@ your JSON answer to the answer file.
 You are documenting nodes in a knowledge graph.
 For each entry below, write ONE concise factual plain-language sentence
 describing what it is or does. Use only the provided context.
+For a code symbol (kind=code-symbol — a function, class, or constant),
+describe what the function/symbol does based on its name, source location
+and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
 For an entity node (any other kind — e.g. a person, place, event, object),
 describe what the entity is and its role, grounded in its type, its
 relations (neighbors) and the provided citations/evidence — e.g.
@@ -16,53 +19,51 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-LANGUAGE: each entry has a `lang=` marker giving the language of its source.
-Write that entry's description in EXACTLY that language. Do not translate to
-a single common language — match each node's source language individually.
+Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "websocket_manager_rationale_306": "Return agent IDs whose status is 'online' (idle, ready for job)." | kind=entity | source=manager/backend/app/websocket/manager.py:L306 | neighbors=[.online_agents()] | lang=en
-- "websocket_manager_rationale_308": "Return agent IDs whose status is 'online' (idle, ready for job)." | kind=entity | source=manager/backend/app/websocket/manager.py:L308 | neighbors=[.online_agents()] | lang=en
-- "websocket_manager_rationale_314": "Return idle connected agents belonging to exactly one tenant." | kind=entity | source=manager/backend/app/websocket/manager.py:L314 | neighbors=[.online_agents_for_tenant()] | lang=en
-- "websocket_manager_rationale_316": "Return idle connected agents belonging to exactly one tenant." | kind=entity | source=manager/backend/app/websocket/manager.py:L316 | neighbors=[.online_agents_for_tenant()] | lang=en
-- "websocket_manager_rationale_318": "Handle incoming WebSocket messages." | kind=entity | source=manager/backend/app/websocket/manager.py:L318 | neighbors=[._handle_message()] | lang=en
-- "websocket_manager_rationale_320": "Handle incoming WebSocket messages." | kind=entity | source=manager/backend/app/websocket/manager.py:L320 | neighbors=[._handle_message()] | lang=en
-- "websocket_manager_rationale_333": "Return 'online', 'busy', or 'offline'." | kind=entity | source=manager/backend/app/websocket/manager.py:L333 | neighbors=[.get_agent_status()] | lang=en
-- "websocket_manager_rationale_335": "Return 'online', 'busy', or 'offline'." | kind=entity | source=manager/backend/app/websocket/manager.py:L335 | neighbors=[.get_agent_status()] | lang=en
-- "websocket_manager_rationale_337": "Return agent_ids whose last heartbeat is older than `seconds`.          These ag" | kind=entity | source=manager/backend/app/websocket/manager.py:L337 | neighbors=[.agent_stale_after()] | lang=en
-- "websocket_manager_rationale_339": "Return agent_ids whose last heartbeat is older than `seconds`.          These ag" | kind=entity | source=manager/backend/app/websocket/manager.py:L339 | neighbors=[.agent_stale_after()] | lang=en
-- "websocket_manager_rationale_34": "Accept connection and add to room." | kind=entity | source=manager/backend/app/websocket/manager.py:L34 | neighbors=[.connect()] | lang=en
-- "websocket_manager_rationale_341": "Broadcast graph data update to all subscribers." | kind=entity | source=manager/backend/app/websocket/manager.py:L341 | neighbors=[.broadcast_graph_update()] | lang=en
-- "websocket_manager_rationale_343": "Broadcast graph data update to all subscribers." | kind=entity | source=manager/backend/app/websocket/manager.py:L343 | neighbors=[.broadcast_graph_update()] | lang=en
-- "websocket_manager_rationale_350": "Broadcast a single node update." | kind=entity | source=manager/backend/app/websocket/manager.py:L350 | neighbors=[.broadcast_node_update()] | lang=pt
-- "websocket_manager_rationale_352": "Broadcast a single node update." | kind=entity | source=manager/backend/app/websocket/manager.py:L352 | neighbors=[.broadcast_node_update()] | lang=pt
-- "websocket_manager_rationale_354": "High-level manager for graph-specific WebSocket operations." | kind=entity | source=manager/backend/app/websocket/manager.py:L354 | neighbors=[GraphWebSocketManager] | lang=en
-- "websocket_manager_rationale_356": "High-level manager for graph-specific WebSocket operations." | kind=entity | source=manager/backend/app/websocket/manager.py:L356 | neighbors=[GraphWebSocketManager] | lang=en
-- "websocket_manager_rationale_36": "Accept connection and add to room." | kind=entity | source=manager/backend/app/websocket/manager.py:L36 | neighbors=[.connect()] | lang=en
-- "websocket_manager_rationale_360": "Broadcast layout change to all subscribers." | kind=entity | source=manager/backend/app/websocket/manager.py:L360 | neighbors=[.broadcast_layout_update()] | lang=en
-- "websocket_manager_rationale_361": "Handle a new WebSocket client connection." | kind=entity | source=manager/backend/app/websocket/manager.py:L361 | neighbors=[.handle_client()] | lang=pt
-- "websocket_manager_rationale_362": "Broadcast layout change to all subscribers." | kind=entity | source=manager/backend/app/websocket/manager.py:L362 | neighbors=[.broadcast_layout_update()] | lang=en
-- "websocket_manager_rationale_363": "Handle a new WebSocket client connection." | kind=entity | source=manager/backend/app/websocket/manager.py:L363 | neighbors=[.handle_client()] | lang=pt
-- "websocket_manager_rationale_381": "Handle incoming WebSocket messages." | kind=entity | source=manager/backend/app/websocket/manager.py:L381 | neighbors=[._handle_message()] | lang=en
-- "websocket_manager_rationale_383": "Handle incoming WebSocket messages." | kind=entity | source=manager/backend/app/websocket/manager.py:L383 | neighbors=[._handle_message()] | lang=en
-- "websocket_manager_rationale_404": "Broadcast graph data update to all subscribers." | kind=entity | source=manager/backend/app/websocket/manager.py:L404 | neighbors=[.broadcast_graph_update()] | lang=en
-- "websocket_manager_rationale_406": "Broadcast graph data update to all subscribers." | kind=entity | source=manager/backend/app/websocket/manager.py:L406 | neighbors=[.broadcast_graph_update()] | lang=en
-- "websocket_manager_rationale_413": "Broadcast a single node update." | kind=entity | source=manager/backend/app/websocket/manager.py:L413 | neighbors=[.broadcast_node_update()] | lang=pt
-- "websocket_manager_rationale_415": "Broadcast a single node update." | kind=entity | source=manager/backend/app/websocket/manager.py:L415 | neighbors=[.broadcast_node_update()] | lang=pt
-- "websocket_manager_rationale_42": "Remove connection from room." | kind=entity | source=manager/backend/app/websocket/manager.py:L42 | neighbors=[.disconnect()] | lang=en
-- "websocket_manager_rationale_423": "Broadcast layout change to all subscribers." | kind=entity | source=manager/backend/app/websocket/manager.py:L423 | neighbors=[.broadcast_layout_update()] | lang=en
-- "websocket_manager_rationale_425": "Broadcast layout change to all subscribers." | kind=entity | source=manager/backend/app/websocket/manager.py:L425 | neighbors=[.broadcast_layout_update()] | lang=en
-- "websocket_manager_rationale_44": "Remove connection from room." | kind=entity | source=manager/backend/app/websocket/manager.py:L44 | neighbors=[.disconnect()] | lang=en
-- "websocket_manager_rationale_50": "Broadcast message to all connections in a room." | kind=entity | source=manager/backend/app/websocket/manager.py:L50 | neighbors=[.broadcast()] | lang=en
-- "websocket_manager_rationale_52": "Broadcast message to all connections in a room." | kind=entity | source=manager/backend/app/websocket/manager.py:L52 | neighbors=[.broadcast()] | lang=en
-- "websocket_manager_rationale_67": "Send message to a specific connection." | kind=entity | source=manager/backend/app/websocket/manager.py:L67 | neighbors=[.send_personal()] | lang=en
-- "websocket_manager_rationale_69": "Send message to a specific connection." | kind=entity | source=manager/backend/app/websocket/manager.py:L69 | neighbors=[.send_personal()] | lang=en
-- "websocket_manager_rationale_74": "Get number of connected clients in a room." | kind=entity | source=manager/backend/app/websocket/manager.py:L74 | neighbors=[.get_room_clients()] | lang=en
-- "websocket_manager_rationale_76": "Get number of connected clients in a room." | kind=entity | source=manager/backend/app/websocket/manager.py:L76 | neighbors=[.get_room_clients()] | lang=en
-- "websocket_manager_rationale_79": "Tracks WebSocket connections from probes/agents for direct job push.      Each c" | kind=entity | source=manager/backend/app/websocket/manager.py:L79 | neighbors=[AgentConnectionManager] | lang=en
-- "websocket_manager_rationale_81": "Tracks WebSocket connections from probes/agents for direct job push.      Each c" | kind=entity | source=manager/backend/app/websocket/manager.py:L81 | neighbors=[AgentConnectionManager] | lang=en
+- "tests_test_loaders_rationale_78": "Completely broken JSON must propagate as an exception — never         silently y" | kind=entity | source=manager/detection_engine/tests/test_loaders.py:L78 | neighbors=[.test_malformed_json_raises()]
+- "tests_test_loaders_rationale_86": "A JSON file that is valid JSON but missing the 'records' key         must raise" | kind=entity | source=manager/detection_engine/tests/test_loaders.py:L86 | neighbors=[.test_missing_required_key_raises()]
+- "tests_test_loaders_rationale_94": "A well-formed snapshot must load without error and return a VulnDB         that" | kind=entity | source=manager/detection_engine/tests/test_loaders.py:L94 | neighbors=[.test_valid_snapshot_loads_cleanly()]
+- "tests_test_loaders_testloadepsserrors_setup_method": ".setup_method()" | kind=code-symbol | source=manager/detection_engine/tests/test_loaders.py:L151 | neighbors=[TestLoadEpssErrors]
+- "tests_test_loaders_testloadepsserrors_test_malformed_epss_json_raises": ".test_malformed_epss_json_raises()" | kind=code-symbol | source=manager/detection_engine/tests/test_loaders.py:L158 | neighbors=[TestLoadEpssErrors]
+- "tests_test_loaders_testloadepsserrors_test_missing_epss_file_raises": ".test_missing_epss_file_raises()" | kind=code-symbol | source=manager/detection_engine/tests/test_loaders.py:L154 | neighbors=[TestLoadEpssErrors]
+- "tests_test_loaders_testloadkeverrors_setup_method": ".setup_method()" | kind=code-symbol | source=manager/detection_engine/tests/test_loaders.py:L125 | neighbors=[TestLoadKevErrors]
+- "tests_test_loaders_testloadkeverrors_test_malformed_kev_json_raises": ".test_malformed_kev_json_raises()" | kind=code-symbol | source=manager/detection_engine/tests/test_loaders.py:L132 | neighbors=[TestLoadKevErrors]
+- "tests_test_loaders_testloadkeverrors_test_missing_kev_file_raises": ".test_missing_kev_file_raises()" | kind=code-symbol | source=manager/detection_engine/tests/test_loaders.py:L128 | neighbors=[TestLoadKevErrors]
+- "tests_test_loaders_testloadsnapshoterrors_setup_method": ".setup_method()" | kind=code-symbol | source=manager/detection_engine/tests/test_loaders.py:L56 | neighbors=[TestLoadSnapshotErrors]
+- "tests_test_main_scripts_accuracy_rationale_1": "test_main_scripts_accuracy.py — Epic 6: the ground-truth accuracy harness.  Scor" | kind=entity | source=probe/tests/test_main_scripts_accuracy.py:L1 | neighbors=[test_main_scripts_accuracy.py]
+- "tests_test_main_scripts_accuracy_test_by_rule_breakdown": "test_by_rule_breakdown()" | kind=code-symbol | source=probe/tests/test_main_scripts_accuracy.py:L37 | neighbors=[test_main_scripts_accuracy.py]
+- "tests_test_main_scripts_accuracy_test_clean_host_has_zero_false_positives": "test_clean_host_has_zero_false_positives()" | kind=code-symbol | source=probe/tests/test_main_scripts_accuracy.py:L103 | neighbors=[test_main_scripts_accuracy.py]
+- "tests_test_main_scripts_accuracy_test_corpus_flags_a_missed_expected_finding": "test_corpus_flags_a_missed_expected_finding()" | kind=code-symbol | source=probe/tests/test_main_scripts_accuracy.py:L91 | neighbors=[test_main_scripts_accuracy.py]
+- "tests_test_main_scripts_accuracy_test_corpus_matches_real_engine_output": "test_corpus_matches_real_engine_output()" | kind=code-symbol | source=probe/tests/test_main_scripts_accuracy.py:L73 | neighbors=[test_main_scripts_accuracy.py]
+- "tests_test_main_scripts_accuracy_test_corpus_scores_port_states_when_ground_truth_given": "test_corpus_scores_port_states_when_ground_truth_given()" | kind=code-symbol | source=probe/tests/test_main_scripts_accuracy.py:L119 | neighbors=[test_main_scripts_accuracy.py]
+- "tests_test_main_scripts_accuracy_test_empty_expected_and_produced_is_perfect": "test_empty_expected_and_produced_is_perfect()" | kind=code-symbol | source=probe/tests/test_main_scripts_accuracy.py:L45 | neighbors=[test_main_scripts_accuracy.py]
+- "tests_test_main_scripts_accuracy_test_false_negative_lowers_recall": "test_false_negative_lowers_recall()" | kind=code-symbol | source=probe/tests/test_main_scripts_accuracy.py:L30 | neighbors=[test_main_scripts_accuracy.py]
+- "tests_test_main_scripts_accuracy_test_false_positive_lowers_precision": "test_false_positive_lowers_precision()" | kind=code-symbol | source=probe/tests/test_main_scripts_accuracy.py:L22 | neighbors=[test_main_scripts_accuracy.py]
+- "tests_test_main_scripts_accuracy_test_open_precision_recall_and_accuracy": "test_open_precision_recall_and_accuracy()" | kind=code-symbol | source=probe/tests/test_main_scripts_accuracy.py:L51 | neighbors=[test_main_scripts_accuracy.py]
+- "tests_test_main_scripts_accuracy_test_perfect_findings_score": "test_perfect_findings_score()" | kind=code-symbol | source=probe/tests/test_main_scripts_accuracy.py:L15 | neighbors=[test_main_scripts_accuracy.py]
+- "tests_test_main_scripts_accuracy_test_unscanned_open_port_is_false_negative": "test_unscanned_open_port_is_false_negative()" | kind=code-symbol | source=probe/tests/test_main_scripts_accuracy.py:L65 | neighbors=[test_main_scripts_accuracy.py]
+- "tests_test_main_scripts_adaptive_timeout_rationale_1": "test_main_scripts_adaptive_timeout.py — Phase 7: per-host adaptive probe timeout" | kind=entity | source=probe/tests/test_main_scripts_adaptive_timeout.py:L1 | neighbors=[test_main_scripts_adaptive_timeout.py]
+- "tests_test_main_scripts_adaptive_timeout_test_estimate_converges_on_stable_rtt": "test_estimate_converges_on_stable_rtt()" | kind=code-symbol | source=probe/tests/test_main_scripts_adaptive_timeout.py:L44 | neighbors=[test_main_scripts_adaptive_timeout.py]
+- "tests_test_main_scripts_adaptive_timeout_test_fast_lan_gets_short_timeout_slow_wan_gets_long": "test_fast_lan_gets_short_timeout_slow_wan_gets_long()" | kind=code-symbol | source=probe/tests/test_main_scripts_adaptive_timeout.py:L25 | neighbors=[test_main_scripts_adaptive_timeout.py]
+- "tests_test_main_scripts_adaptive_timeout_test_first_sample_sets_srtt_and_timeout": "test_first_sample_sets_srtt_and_timeout()" | kind=code-symbol | source=probe/tests/test_main_scripts_adaptive_timeout.py:L18 | neighbors=[test_main_scripts_adaptive_timeout.py]
+- "tests_test_main_scripts_adaptive_timeout_test_invalid_band_rejected": "test_invalid_band_rejected()" | kind=code-symbol | source=probe/tests/test_main_scripts_adaptive_timeout.py:L67 | neighbors=[test_main_scripts_adaptive_timeout.py]
+- "tests_test_main_scripts_adaptive_timeout_test_narrows_then_widens_after_outlier": "test_narrows_then_widens_after_outlier()" | kind=code-symbol | source=probe/tests/test_main_scripts_adaptive_timeout.py:L50 | neighbors=[test_main_scripts_adaptive_timeout.py]
+- "tests_test_main_scripts_adaptive_timeout_test_no_samples_returns_base": "test_no_samples_returns_base()" | kind=code-symbol | source=probe/tests/test_main_scripts_adaptive_timeout.py:L14 | neighbors=[test_main_scripts_adaptive_timeout.py]
+- "tests_test_main_scripts_adaptive_timeout_test_observe_ignores_bad_samples": "test_observe_ignores_bad_samples()" | kind=code-symbol | source=probe/tests/test_main_scripts_adaptive_timeout.py:L38 | neighbors=[test_main_scripts_adaptive_timeout.py]
+- "tests_test_main_scripts_adaptive_timeout_test_timeout_is_clamped_to_max": "test_timeout_is_clamped_to_max()" | kind=code-symbol | source=probe/tests/test_main_scripts_adaptive_timeout.py:L33 | neighbors=[test_main_scripts_adaptive_timeout.py]
+- "tests_test_main_scripts_completeness_rationale_1": "test_main_scripts_completeness.py — Epic 4: set-based scan-completeness invarian" | kind=entity | source=probe/tests/test_main_scripts_completeness.py:L1 | neighbors=[test_main_scripts_completeness.py]
+- "tests_test_main_scripts_correlation_rationale_1": "test_main_scripts_correlation.py — Epic 2: correlation findings.  Composite, hig" | kind=entity | source=probe/tests/test_main_scripts_correlation.py:L1 | neighbors=[test_main_scripts_correlation.py]
+- "tests_test_main_scripts_coverage_closed": "_closed()" | kind=code-symbol | source=probe/tests/test_main_scripts_coverage.py:L76 | neighbors=[test_main_scripts_coverage.py]
+- "tests_test_main_scripts_coverage_rationale_1": "test_main_scripts_coverage.py — P0 coverage + self-health capabilities added to" | kind=entity | source=probe/tests/test_main_scripts_coverage.py:L1 | neighbors=[test_main_scripts_coverage.py]
+- "tests_test_main_scripts_coverage_testprofiles_test_custom_dedups_and_requires_ports": ".test_custom_dedups_and_requires_ports()" | kind=code-symbol | source=probe/tests/test_main_scripts_coverage.py:L64 | neighbors=[TestProfiles]
+- "tests_test_main_scripts_coverage_testprofiles_test_full_is_entire_tcp_space": ".test_full_is_entire_tcp_space()" | kind=code-symbol | source=probe/tests/test_main_scripts_coverage.py:L42 | neighbors=[TestProfiles]
+- "tests_test_main_scripts_coverage_testprofiles_test_quick_is_small_and_contains_smb": ".test_quick_is_small_and_contains_smb()" | kind=code-symbol | source=probe/tests/test_main_scripts_coverage.py:L54 | neighbors=[TestProfiles]
+- "tests_test_main_scripts_coverage_testprofiles_test_top100_is_100_unique": ".test_top100_is_100_unique()" | kind=code-symbol | source=probe/tests/test_main_scripts_coverage.py:L49 | neighbors=[TestProfiles]
+- "tests_test_main_scripts_coverage_testprofiles_test_top1000_covers_windows_ground_truth_extras": ".test_top1000_covers_windows_ground_truth_extras()" | kind=code-symbol | source=probe/tests/test_main_scripts_coverage.py:L58 | neighbors=[TestProfiles]
 
 ## Instructions
 

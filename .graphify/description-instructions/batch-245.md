@@ -1,4 +1,4 @@
-# Node Description Batch 246 of 336
+# Node Description Batch 246 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -26,46 +26,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "scanner_findings_rationale_619": "Anonymous SMB (null-session) information disclosure. The null session is a     m" | kind=entity | source=probe/scanner/findings.py:L619 | neighbors=[_rule_smb_enum()] | lang=en
-- "scanner_findings_rationale_623": "Derive findings from collected facts. Pure; deterministic; safe.      Accepts Sc" | kind=entity | source=probe/scanner/findings.py:L623 | neighbors=[run_findings()] | lang=en
-- "scanner_findings_rationale_628": "Anonymous LDAP exposure. An anonymous RootDSE bind is common (low), but an     a" | kind=entity | source=probe/scanner/findings.py:L628 | neighbors=[_rule_ldap()] | lang=en
-- "scanner_findings_rationale_64": "One vulnerability finding, always backed by an observed fact." | kind=entity | source=probe/scanner/findings.py:L64 | neighbors=[Finding] | lang=en
-- "scanner_findings_rationale_666": "DNS server hygiene: a full AXFR zone transfer is the high-value finding     (ent" | kind=entity | source=probe/scanner/findings.py:L666 | neighbors=[_rule_dns()] | lang=en
-- "scanner_findings_rationale_669": "Read a scanner's JSONL output into fact dicts (skips blank/garbage lines)." | kind=entity | source=probe/scanner/findings.py:L669 | neighbors=[load_facts_jsonl()] | lang=pt
-- "scanner_findings_rationale_670": "Anonymous LDAP exposure. An anonymous RootDSE bind is common (low), but an     a" | kind=entity | source=probe/scanner/findings.py:L670 | neighbors=[_rule_ldap()] | lang=en
-- "scanner_findings_rationale_685": "CLI: derive findings from one or more scanner JSONL files.          python -m ma" | kind=entity | source=probe/scanner/findings.py:L685 | neighbors=[_main()] | lang=en
-- "scanner_findings_rationale_708": "DNS server hygiene: a full AXFR zone transfer is the high-value finding     (ent" | kind=entity | source=probe/scanner/findings.py:L708 | neighbors=[_rule_dns()] | lang=en
-- "scanner_findings_rationale_716": "NFS anonymous export exposure. A world-readable export is the high-value     fin" | kind=entity | source=probe/scanner/findings.py:L716 | neighbors=[_rule_nfs()] | lang=en
-- "scanner_findings_rationale_753": "Confirmed FTP anonymous access (upgrades the port-based cleartext hint).     Hig" | kind=entity | source=probe/scanner/findings.py:L753 | neighbors=[_rule_ftp()] | lang=en
-- "scanner_findings_rationale_758": "NFS anonymous export exposure. A world-readable export is the high-value     fin" | kind=entity | source=probe/scanner/findings.py:L758 | neighbors=[_rule_nfs()] | lang=en
-- "scanner_findings_rationale_782": "rsync daemon exposure. Anonymously-selectable modules are the high finding     (" | kind=entity | source=probe/scanner/findings.py:L782 | neighbors=[_rule_rsync()] | lang=en
-- "scanner_findings_rationale_795": "Confirmed FTP anonymous access (upgrades the port-based cleartext hint).     Hig" | kind=entity | source=probe/scanner/findings.py:L795 | neighbors=[_rule_ftp()] | lang=en
-- "scanner_findings_rationale_820": "VNC/RFB authentication exposure. 'None' security type = unauthenticated     remo" | kind=entity | source=probe/scanner/findings.py:L820 | neighbors=[_rule_vnc()] | lang=en
-- "scanner_findings_rationale_824": "rsync daemon exposure. Anonymously-selectable modules are the high finding     (" | kind=entity | source=probe/scanner/findings.py:L824 | neighbors=[_rule_rsync()] | lang=en
-- "scanner_findings_rationale_851": "IPMI/BMC exposure. Cipher-zero is a critical auth bypass; a merely reachable" | kind=entity | source=probe/scanner/findings.py:L851 | neighbors=[_rule_ipmi()] | lang=pt
-- "scanner_findings_rationale_862": "VNC/RFB authentication exposure. 'None' security type = unauthenticated     remo" | kind=entity | source=probe/scanner/findings.py:L862 | neighbors=[_rule_vnc()] | lang=en
-- "scanner_findings_rationale_883": "SMTP hygiene: VRFY/EXPN user enumeration, and missing STARTTLS (cleartext)." | kind=entity | source=probe/scanner/findings.py:L883 | neighbors=[_rule_smtp()] | lang=en
-- "scanner_findings_rationale_893": "IPMI/BMC exposure. Cipher-zero is a critical auth bypass; a merely reachable" | kind=entity | source=probe/scanner/findings.py:L893 | neighbors=[_rule_ipmi()] | lang=pt
-- "scanner_findings_rationale_917": "Windows RPC endpoint-mapper disclosure — the internal RPC service map." | kind=entity | source=probe/scanner/findings.py:L917 | neighbors=[_rule_msrpc()] | lang=en
-- "scanner_findings_rationale_925": "SMTP hygiene: VRFY/EXPN user enumeration, and missing STARTTLS (cleartext)." | kind=entity | source=probe/scanner/findings.py:L925 | neighbors=[_rule_smtp()] | lang=en
-- "scanner_findings_rationale_944": "Exposed network printer — an information leak and an attack surface." | kind=entity | source=probe/scanner/findings.py:L944 | neighbors=[_rule_printer()] | lang=en
-- "scanner_findings_rationale_959": "Windows RPC endpoint-mapper disclosure — the internal RPC service map." | kind=entity | source=probe/scanner/findings.py:L959 | neighbors=[_rule_msrpc()] | lang=en
-- "scanner_findings_rationale_98": "Accept a raw JSONL dict or a ScanResult; return a plain dict view." | kind=entity | source=probe/scanner/findings.py:L98 | neighbors=[_as_dict()] | lang=pt
-- "scanner_findings_rationale_986": "Exposed network printer — an information leak and an attack surface." | kind=entity | source=probe/scanner/findings.py:L986 | neighbors=[_rule_printer()] | lang=en
-- "scanner_findings_rationale_990": "SMB signing not required => a viable NTLM relay target. If SMBv1 is also on," | kind=entity | source=probe/scanner/findings.py:L990 | neighbors=[_corr_ntlm_relay()] | lang=en
-- "scanner_ftp_scanner_ftpscanner_init": ".__init__()" | kind=code-symbol | source=probe/scanner/ftp_scanner.py:L65 | neighbors=[FTPScanner] | lang=en
-- "scanner_ftp_scanner_main": "main()" | kind=code-symbol | source=probe/scanner/ftp_scanner.py:L176 | neighbors=[ftp_scanner.py] | lang=en
-- "scanner_ftp_scanner_rationale_1": "ftp_scanner.py — FTP anonymous-access check (VA checklist: anonymous file exposu" | kind=entity | source=probe/scanner/ftp_scanner.py:L1 | neighbors=[ftp_scanner.py] | lang=en
-- "scanner_ftp_scanner_rationale_129": "Confirm anonymous READ via PASV + LIST, reading a bounded amount." | kind=entity | source=probe/scanner/ftp_scanner.py:L129 | neighbors=[._list_bounded()] | lang=pt
-- "scanner_ftp_scanner_rationale_45": "Extract the passive data PORT from a 227 reply. We connect to the TARGET     on" | kind=entity | source=probe/scanner/ftp_scanner.py:L45 | neighbors=[parse_pasv()] | lang=en
-- "scanner_ftp_scanner_rationale_56": "Best-effort software token from the 220 greeting (e.g. 'vsFTPd 3.0.3')." | kind=entity | source=probe/scanner/ftp_scanner.py:L56 | neighbors=[banner_software()] | lang=en
-- "scanner_ftp_scanner_rationale_70": "Read one (possibly multi-line) FTP reply; return (code, full_text)." | kind=entity | source=probe/scanner/ftp_scanner.py:L70 | neighbors=[._read_response()] | lang=en
-- "scanner_ftp_scanner_rationale_96": "Blocking: greeting → anonymous login → bounded read confirmation.         Monkey" | kind=entity | source=probe/scanner/ftp_scanner.py:L96 | neighbors=[._probe()] | lang=en
-- "scanner_host_discovery_hostdiscoveryscanner_init": ".__init__()" | kind=code-symbol | source=probe/scanner/host_discovery.py:L501 | neighbors=[HostDiscoveryScanner] | lang=en
-- "scanner_host_discovery_main": "main()" | kind=code-symbol | source=probe/scanner/host_discovery.py:L696 | neighbors=[host_discovery.py] | lang=en
-- "scanner_host_discovery_rationale_1": "host_discovery.py — determine which hosts are alive, with graded confidence.  ME" | kind=entity | source=probe/scanner/host_discovery.py:L1 | neighbors=[host_discovery.py] | lang=en
-- "scanner_host_discovery_rationale_101": "True if the 2nd-least-significant bit of the first octet is set —     i.e. a loc" | kind=entity | source=probe/scanner/host_discovery.py:L101 | neighbors=[is_locally_administered()] | lang=en
-- "scanner_host_discovery_rationale_104": "Parse a NetBIOS NBSTAT (node status) response (RFC 1002 §4.2.18).      Returns {" | kind=entity | source=probe/scanner/host_discovery.py:L104 | neighbors=[parse_nbstat()] | lang=pt
+- "main_scripts_iot_scanner_rationale_282": "MQTT SUBSCRIBE to '#' (all topics), QoS 0." | kind=entity | source=probe/main_scripts/iot_scanner.py:L282 | neighbors=[_mqtt_subscribe_all()] | lang=en
+- "main_scripts_iot_scanner_rationale_284": "MQTT SUBSCRIBE to '#' (all topics), QoS 0." | kind=entity | source=probe/main_scripts/iot_scanner.py:L284 | neighbors=[_mqtt_subscribe_all()] | lang=en
+- "main_scripts_iot_scanner_rationale_347": "CoAP Confirmable GET for /.well-known/core — resource discovery." | kind=entity | source=probe/main_scripts/iot_scanner.py:L347 | neighbors=[_coap_get_wellknown_core()] | lang=en
+- "main_scripts_iot_scanner_rationale_349": "CoAP Confirmable GET for /.well-known/core — resource discovery." | kind=entity | source=probe/main_scripts/iot_scanner.py:L349 | neighbors=[_coap_get_wellknown_core()] | lang=en
+- "main_scripts_iot_scanner_rationale_360": "Extract CoAP response code and content." | kind=entity | source=probe/main_scripts/iot_scanner.py:L360 | neighbors=[_parse_coap_response()] | lang=en
+- "main_scripts_iot_scanner_rationale_362": "Extract CoAP response code and content." | kind=entity | source=probe/main_scripts/iot_scanner.py:L362 | neighbors=[_parse_coap_response()] | lang=en
+- "main_scripts_iot_scanner_rationale_404": "HTTP GET to CWMP port — detect ACS or CPE management interface." | kind=entity | source=probe/main_scripts/iot_scanner.py:L404 | neighbors=[_probe_cwmp()] | lang=en
+- "main_scripts_iot_scanner_rationale_406": "HTTP GET to CWMP port — detect ACS or CPE management interface." | kind=entity | source=probe/main_scripts/iot_scanner.py:L406 | neighbors=[_probe_cwmp()] | lang=en
+- "main_scripts_iot_scanner_rationale_444": "Surveys a target for IoT/embedded device exposure across 6 protocol families." | kind=entity | source=probe/main_scripts/iot_scanner.py:L444 | neighbors=[IoTScanner] | lang=en
+- "main_scripts_iot_scanner_rationale_446": "Surveys a target for IoT/embedded device exposure across 6 protocol families." | kind=entity | source=probe/main_scripts/iot_scanner.py:L446 | neighbors=[IoTScanner] | lang=en
+- "main_scripts_iot_scanner_rationale_58": "HTTP GET the UPnP rootDesc.xml and extract device info." | kind=entity | source=probe/main_scripts/iot_scanner.py:L58 | neighbors=[_fetch_upnp_root_desc()] | lang=en
+- "main_scripts_iot_scanner_rationale_59": "HTTP GET the UPnP rootDesc.xml and extract device info." | kind=entity | source=probe/main_scripts/iot_scanner.py:L59 | neighbors=[_fetch_upnp_root_desc()] | lang=en
+- "main_scripts_ipmi_scanner_ipmiscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/ipmi_scanner.py:L68 | neighbors=[IPMIScanner] | lang=en
+- "main_scripts_ipmi_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/ipmi_scanner.py:L113 | neighbors=[ipmi_scanner.py] | lang=en
+- "main_scripts_ipmi_scanner_rationale_1": "ipmi_scanner.py — IPMI 2.0 cipher-zero authentication-bypass detection (VA check" | kind=entity | source=probe/main_scripts/ipmi_scanner.py:L1 | neighbors=[ipmi_scanner.py] | lang=en
+- "main_scripts_ipmi_scanner_rationale_37": "A fixed RMCP+ Open Session Request offering cipher suite 0 (auth=0,     integrit" | kind=entity | source=probe/main_scripts/ipmi_scanner.py:L37 | neighbors=[build_open_session_request()] | lang=pt
+- "main_scripts_ipmi_scanner_rationale_53": "Parse an RMCP+ Open Session Response; None if it isn't one.     resp[0]=RMCP ver" | kind=entity | source=probe/main_scripts/ipmi_scanner.py:L53 | neighbors=[parse_open_session_response()] | lang=en
+- "main_scripts_ipmi_scanner_rationale_73": "Blocking: one RMCP+ Open Session Request, parse the response.         Monkeypatc" | kind=entity | source=probe/main_scripts/ipmi_scanner.py:L73 | neighbors=[._probe()] | lang=en
+- "main_scripts_ipv6_discovery_rationale_1": "ipv6_discovery.py — link-local IPv6 host discovery via Neighbor Discovery (RFC 4" | kind=entity | source=probe/main_scripts/ipv6_discovery.py:L1 | neighbors=[ipv6_discovery.py] | lang=en
+- "main_scripts_ipv6_discovery_rationale_103": "Fire an ICMPv6 echo at ff02::1 (scoped to `iface`) to make live hosts reply," | kind=entity | source=probe/main_scripts/ipv6_discovery.py:L103 | neighbors=[_ping_all_nodes()] | lang=en
+- "main_scripts_ipv6_discovery_rationale_121": "Discover live IPv6 neighbors on the segment via ND multicast + neighbor     cach" | kind=entity | source=probe/main_scripts/ipv6_discovery.py:L121 | neighbors=[discover_ipv6_hosts()] | lang=en
+- "main_scripts_ipv6_discovery_rationale_43": "Parse Linux `ip -6 neigh show` into [(address, state)]. Lines look like:" | kind=entity | source=probe/main_scripts/ipv6_discovery.py:L43 | neighbors=[parse_ip_neigh6()] | lang=en
+- "main_scripts_ipv6_discovery_rationale_60": "Parse macOS/BSD `ndp -an` into [(address, state)]. Columns:         Neighbor  Li" | kind=entity | source=probe/main_scripts/ipv6_discovery.py:L60 | neighbors=[parse_ndp()] | lang=en
+- "main_scripts_ipv6_discovery_rationale_81": "Best-effort set of this host's own IPv6 addresses, to exclude from results     (" | kind=entity | source=probe/main_scripts/ipv6_discovery.py:L81 | neighbors=[_own_ipv6_addresses()] | lang=en
+- "main_scripts_ja4s_match_suspicious": "match_suspicious()" | kind=code-symbol | source=probe/main_scripts/ja4s.py:L131 | neighbors=[ja4s.py] | lang=en
+- "main_scripts_ja4s_rationale_100": "JA4S from `parse_server_hello`'s output ({version, cipher, extensions})." | kind=entity | source=probe/main_scripts/ja4s.py:L100 | neighbors=[ja4s_from_parsed()] | lang=en
+- "main_scripts_ja4s_rationale_110": "JA4S from raw ServerHello record bytes (reuses the JARM parser)." | kind=entity | source=probe/main_scripts/ja4s.py:L110 | neighbors=[ja4s_from_serverhello()] | lang=en
+- "main_scripts_ja4s_rationale_117": "Do one standard TLS handshake and compute the server's JA4S. Reuses the     JARM" | kind=entity | source=probe/main_scripts/ja4s.py:L117 | neighbors=[compute_ja4s()] | lang=en
+- "main_scripts_ja4s_rationale_57": "Yield (type, value) for each extension in a ServerHello extensions blob." | kind=entity | source=probe/main_scripts/ja4s.py:L57 | neighbors=[_walk_extensions()] | lang=en
+- "main_scripts_ja4s_rationale_70": "The single ALPN protocol the server chose (b'' if none)." | kind=entity | source=probe/main_scripts/ja4s.py:L70 | neighbors=[_selected_alpn()] | lang=en
+- "main_scripts_ja4s_rationale_87": "Pure JA4S from already-extracted ServerHello fields." | kind=entity | source=probe/main_scripts/ja4s.py:L87 | neighbors=[ja4s_from_fields()] | lang=en
+- "main_scripts_ja4x_rationale_118": "Return a threat-intel label if this JA4X is a known-suspicious fingerprint," | kind=entity | source=probe/main_scripts/ja4x.py:L118 | neighbors=[match_suspicious()] | lang=en
+- "main_scripts_ja4x_rationale_40": "DER-encode an OID's content octets and hex-encode them.      '2.5.4.6' -> '55040" | kind=entity | source=probe/main_scripts/ja4x.py:L40 | neighbors=[oid_to_hex()] | lang=en
+- "main_scripts_ja4x_rationale_77": "Pure JA4X from the three ordered OID lists (dotted-decimal strings)." | kind=entity | source=probe/main_scripts/ja4x.py:L77 | neighbors=[ja4x_from_oid_lists()] | lang=en
+- "main_scripts_ja4x_rationale_83": "JA4X from a `cryptography` x509 Certificate object. None if unusable." | kind=entity | source=probe/main_scripts/ja4x.py:L83 | neighbors=[ja4x_from_cert()] | lang=en
+- "main_scripts_ja4x_rationale_94": "JA4X from raw DER bytes. `cryptography` is imported lazily so this module     st" | kind=entity | source=probe/main_scripts/ja4x.py:L94 | neighbors=[ja4x_from_der()] | lang=en
+- "main_scripts_ldap_scanner_ldapscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/ldap_scanner.py:L50 | neighbors=[LDAPScanner] | lang=en
+- "main_scripts_ldap_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/ldap_scanner.py:L161 | neighbors=[ldap_scanner.py] | lang=en
+- "main_scripts_ldap_scanner_rationale_1": "ldap_scanner.py — LDAP anonymous-bind enumeration (VA checklist: anonymous direc" | kind=entity | source=probe/main_scripts/ldap_scanner.py:L1 | neighbors=[ldap_scanner.py] | lang=en
+- "main_scripts_ldap_scanner_rationale_55": "Blocking: anonymous bind + RootDSE read + bounded tree-read probe.         Retur" | kind=entity | source=probe/main_scripts/ldap_scanner.py:L55 | neighbors=[._probe()] | lang=en
 
 ## Instructions
 

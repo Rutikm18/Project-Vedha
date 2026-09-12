@@ -1,4 +1,4 @@
-# Node Description Batch 285 of 336
+# Node Description Batch 285 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,51 +19,53 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-Write every description in English (en). Do not switch languages.
+LANGUAGE: each entry has a `lang=` marker giving the language of its source.
+Write that entry's description in EXACTLY that language. Do not translate to
+a single common language — match each node's source language individually.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_exposed_services_testobservedservicesignals_test_telnet_label_off_port_23_is_cleartext": ".test_telnet_label_off_port_23_is_cleartext()" | kind=code-symbol | source=manager/detection_engine/tests/test_exposed_services.py:L140 | neighbors=[TestObservedServiceSignals]
-- "tests_test_exposed_services_testporthypothesiscontradiction_test_airplay_suppresses_the_cassandra_guess": ".test_airplay_suppresses_the_cassandra_guess()" | kind=code-symbol | source=manager/detection_engine/tests/test_exposed_services.py:L202 | neighbors=[TestPortHypothesisContradiction]
-- "tests_test_exposed_services_testporthypothesiscontradiction_test_airplay_suppresses_the_docker_registry_guess": ".test_airplay_suppresses_the_docker_registry_guess()" | kind=code-symbol | source=manager/detection_engine/tests/test_exposed_services.py:L198 | neighbors=[TestPortHypothesisContradiction]
-- "tests_test_exposed_services_testporthypothesiscontradiction_test_an_unrelated_product_does_not_suppress": ".test_an_unrelated_product_does_not_suppress()" | kind=code-symbol | source=manager/detection_engine/tests/test_exposed_services.py:L206 | neighbors=[TestPortHypothesisContradiction]
-- "tests_test_exposed_services_testporthypothesiscontradiction_test_contradiction_helper_is_case_and_format_insensitive": ".test_contradiction_helper_is_case_and_format_insensitive()" | kind=code-symbol | source=manager/detection_engine/tests/test_exposed_services.py:L217 | neighbors=[TestPortHypothesisContradiction]
-- "tests_test_exposure_rationale_1": "test_exposure.py — the probe exposure_matrix → Service verdict + severity bump." | kind=entity | source=manager/backend/tests/test_exposure.py:L1 | neighbors=[test_exposure.py]
-- "tests_test_exposure_test_critical_stays_critical": "test_critical_stays_critical()" | kind=code-symbol | source=manager/backend/tests/test_exposure.py:L43 | neighbors=[test_exposure.py]
-- "tests_test_exposure_test_external_escalates_one_rung": "test_external_escalates_one_rung()" | kind=code-symbol | source=manager/backend/tests/test_exposure.py:L37 | neighbors=[test_exposure.py]
-- "tests_test_exposure_test_non_external_never_escalates": "test_non_external_never_escalates()" | kind=code-symbol | source=manager/backend/tests/test_exposure.py:L47 | neighbors=[test_exposure.py]
-- "tests_test_exposure_test_service_exposure_flattens_per_port_verdicts": "test_service_exposure_flattens_per_port_verdicts()" | kind=code-symbol | source=manager/backend/tests/test_exposure.py:L13 | neighbors=[test_exposure.py]
-- "tests_test_exposure_test_service_exposure_ignores_malformed_and_non_exposure": "test_service_exposure_ignores_malformed_and_non_exposure()" | kind=code-symbol | source=manager/backend/tests/test_exposure.py:L30 | neighbors=[test_exposure.py]
-- "tests_test_external_engine_wrappers_test_masscan_nonzero_with_valid_output_is_degraded": "test_masscan_nonzero_with_valid_output_is_degraded()" | kind=code-symbol | source=probe/tests/test_external_engine_wrappers.py:L103 | neighbors=[test_external_engine_wrappers.py]
-- "tests_test_external_engine_wrappers_test_masscan_range_must_be_fully_in_scope": "test_masscan_range_must_be_fully_in_scope()" | kind=code-symbol | source=probe/tests/test_external_engine_wrappers.py:L123 | neighbors=[test_external_engine_wrappers.py]
-- "tests_test_external_engine_wrappers_test_masscan_timeout_is_not_zero_findings": "test_masscan_timeout_is_not_zero_findings()" | kind=code-symbol | source=probe/tests/test_external_engine_wrappers.py:L91 | neighbors=[test_external_engine_wrappers.py]
-- "tests_test_external_engine_wrappers_test_masscan_tolerates_partial_json_and_counts_bad_records": "test_masscan_tolerates_partial_json_and_counts_bad_records()" | kind=code-symbol | source=probe/tests/test_external_engine_wrappers.py:L82 | neighbors=[test_external_engine_wrappers.py]
-- "tests_test_external_engine_wrappers_test_nmap_empty_failure_is_not_zero_findings": "test_nmap_empty_failure_is_not_zero_findings()" | kind=code-symbol | source=probe/tests/test_external_engine_wrappers.py:L42 | neighbors=[test_external_engine_wrappers.py]
-- "tests_test_external_engine_wrappers_test_nmap_extra_args_accept_bounded_tuning": "test_nmap_extra_args_accept_bounded_tuning()" | kind=code-symbol | source=probe/tests/test_external_engine_wrappers.py:L29 | neighbors=[test_external_engine_wrappers.py]
-- "tests_test_external_engine_wrappers_test_nmap_extra_args_cannot_replace_validated_targets": "test_nmap_extra_args_cannot_replace_validated_targets()" | kind=code-symbol | source=probe/tests/test_external_engine_wrappers.py:L21 | neighbors=[test_external_engine_wrappers.py]
-- "tests_test_external_engine_wrappers_test_nmap_malformed_xml_is_an_explicit_parse_error": "test_nmap_malformed_xml_is_an_explicit_parse_error()" | kind=code-symbol | source=probe/tests/test_external_engine_wrappers.py:L60 | neighbors=[test_external_engine_wrappers.py]
-- "tests_test_external_engine_wrappers_test_nmap_xml_error_state_is_preserved_as_result": "test_nmap_xml_error_state_is_preserved_as_result()" | kind=code-symbol | source=probe/tests/test_external_engine_wrappers.py:L67 | neighbors=[test_external_engine_wrappers.py]
-- "tests_test_fact_contract_rationale_1": "test_fact_contract.py — the machine-checkable contract between the probe's emitt" | kind=entity | source=manager/detection_engine/tests/test_fact_contract.py:L1 | neighbors=[test_fact_contract.py]
-- "tests_test_fact_contract_rationale_103": "Reverse direction, informational: data the probe collects that NO rule reads." | kind=entity | source=manager/detection_engine/tests/test_fact_contract.py:L103 | neighbors=[test_report_unconsumed_evidence()]
-- "tests_test_fact_contract_rationale_35": "Map scanner -> set of top-level data keys it has been observed to emit." | kind=entity | source=manager/detection_engine/tests/test_fact_contract.py:L35 | neighbors=[_emitted_paths_by_scanner()]
-- "tests_test_fact_contract_rationale_47": "Run the corpus through the REAL ingester, exactly as engine_bridge does:     one" | kind=entity | source=manager/detection_engine/tests/test_fact_contract.py:L47 | neighbors=[_ingest_corpus()]
-- "tests_test_fact_contract_rationale_66": "The gate the name-level check above cannot provide: a corpus whose field NAMES" | kind=entity | source=manager/detection_engine/tests/test_fact_contract.py:L66 | neighbors=[test_corpus_survives_ingestion()]
-- "tests_test_fact_contract_rationale_83": "The gate: for every rule, every declared `requires` path must be emitted by at" | kind=entity | source=manager/detection_engine/tests/test_fact_contract.py:L83 | neighbors=[test_every_rule_input_is_emitted_by_its…]
-- "tests_test_fd_limit_rationale_1": "test_fd_limit.py — FIX 1: ulimit-aware concurrency for full-range scans.  A full" | kind=entity | source=probe/tests/test_fd_limit.py:L1 | neighbors=[test_fd_limit.py]
-- "tests_test_fd_limit_test_caps_below_soft_limit": "test_caps_below_soft_limit()" | kind=code-symbol | source=probe/tests/test_fd_limit.py:L14 | neighbors=[test_fd_limit.py]
-- "tests_test_fd_limit_test_floor_when_limit_tiny": "test_floor_when_limit_tiny()" | kind=code-symbol | source=probe/tests/test_fd_limit.py:L27 | neighbors=[test_fd_limit.py]
-- "tests_test_fd_limit_test_full_profile_covers_the_whole_tcp_space": "test_full_profile_covers_the_whole_tcp_space()" | kind=code-symbol | source=probe/tests/test_fd_limit.py:L37 | neighbors=[test_fd_limit.py]
-- "tests_test_fd_limit_test_get_fd_limit_returns_pair": "test_get_fd_limit_returns_pair()" | kind=code-symbol | source=probe/tests/test_fd_limit.py:L32 | neighbors=[test_fd_limit.py]
-- "tests_test_fd_limit_test_no_rlimit_caps_modestly": "test_no_rlimit_caps_modestly()" | kind=code-symbol | source=probe/tests/test_fd_limit.py:L20 | neighbors=[test_fd_limit.py]
-- "tests_test_fd_limit_test_top1000_misses_arbitrary_high_ports_full_does_not": "test_top1000_misses_arbitrary_high_ports_full_does_not()" | kind=code-symbol | source=probe/tests/test_fd_limit.py:L45 | neighbors=[test_fd_limit.py]
-- "tests_test_finding_events_rationale_1": "test_finding_events.py — the finding lifecycle audit trail.  The synthesis half" | kind=entity | source=manager/backend/tests/test_finding_events.py:L1 | neighbors=[test_finding_events.py]
-- "tests_test_finding_events_testeventtypeforstatus_test_maps_status_to_specific_event": ".test_maps_status_to_specific_event()" | kind=code-symbol | source=manager/backend/tests/test_finding_events.py:L132 | neighbors=[TestEventTypeForStatus]
-- "tests_test_finding_out_computed_rationale_1": "FindingOut computes the explainable risk_rank at serialization (P4 Task 5 wiring" | kind=entity | source=manager/backend/tests/test_finding_out_computed.py:L1 | neighbors=[test_finding_out_computed.py]
-- "tests_test_finding_resolution_schema_test_finding_has_resolution_lifecycle_columns": "test_finding_has_resolution_lifecycle_columns()" | kind=code-symbol | source=manager/backend/tests/test_finding_resolution_schema.py:L6 | neighbors=[test_finding_resolution_schema.py]
-- "tests_test_finding_risk_rank_api_test_finding_schema_exposes_risk_rank": "test_finding_schema_exposes_risk_rank()" | kind=code-symbol | source=manager/backend/tests/test_finding_risk_rank_api.py:L6 | neighbors=[test_finding_risk_rank_api.py]
-- "tests_test_finding_schema_test_finding_patch_accepts_documented_maximum_risk_score": "test_finding_patch_accepts_documented_maximum_risk_score()" | kind=code-symbol | source=manager/backend/tests/test_finding_schema.py:L9 | neighbors=[test_finding_schema.py]
-- "tests_test_finding_schema_test_finding_patch_rejects_risk_score_above_scale": "test_finding_patch_rejects_risk_score_above_scale()" | kind=code-symbol | source=manager/backend/tests/test_finding_schema.py:L15 | neighbors=[test_finding_schema.py]
+- "scanner_printer_scanner_printerscanner_init": ".__init__()" | kind=code-symbol | source=probe/scanner/printer_scanner.py:L99 | neighbors=[PrinterScanner] | lang=en
+- "scanner_printer_scanner_rationale_1": "printer_scanner.py — network printer exposure (VA checklist: exposed print servi" | kind=entity | source=probe/scanner/printer_scanner.py:L1 | neighbors=[printer_scanner.py] | lang=en
+- "scanner_printer_scanner_rationale_39": "Extract the model string from a PJL INFO ID response." | kind=entity | source=probe/scanner/printer_scanner.py:L39 | neighbors=[parse_pjl_id()] | lang=en
+- "scanner_printer_scanner_rationale_55": "A minimal IPP/1.1 Get-Printer-Attributes request body (RFC 8010)." | kind=entity | source=probe/scanner/printer_scanner.py:L55 | neighbors=[build_ipp_get_printer_attributes()] | lang=pt
+- "scanner_printer_scanner_rationale_66": "Best-effort extraction of printer-make-and-model / printer-name from an IPP" | kind=entity | source=probe/scanner/printer_scanner.py:L66 | neighbors=[parse_ipp_make_model()] | lang=en
+- "scanner_rdp_scanner_rationale_111": "Two-probe RDP posture (MS-RDPBCGR 2.2.1.1.1 / 2.2.1.2.1).      Probe A offers SS" | kind=entity | source=probe/scanner/rdp_scanner.py:L111 | neighbors=[probe_rdp_posture()] | lang=pt
+- "scanner_rdp_scanner_rationale_44": "TPKT + X.224 Connection Request carrying an RDP Negotiation Request." | kind=entity | source=probe/scanner/rdp_scanner.py:L44 | neighbors=[build_connection_request()] | lang=en
+- "scanner_rdp_scanner_rationale_45": "TPKT + X.224 Connection Request carrying an RDP Negotiation Request." | kind=entity | source=probe/scanner/rdp_scanner.py:L45 | neighbors=[build_connection_request()] | lang=en
+- "scanner_rdp_scanner_rationale_56": "Parse a Connection Confirm. Returns None if this isn't an X.224 CC (i.e.     the" | kind=entity | source=probe/scanner/rdp_scanner.py:L56 | neighbors=[parse_connection_confirm()] | lang=en
+- "scanner_rdp_scanner_rationale_57": "Parse a Connection Confirm. Returns None if this isn't an X.224 CC (i.e.     the" | kind=entity | source=probe/scanner/rdp_scanner.py:L57 | neighbors=[parse_connection_confirm()] | lang=en
+- "scanner_rdp_scanner_rationale_77": "Map an RDP selectedProtocol bitmask to (nla, tls) posture.      MS-RDPBCGR 5.4.5" | kind=entity | source=probe/scanner/rdp_scanner.py:L77 | neighbors=[_posture_from_selected()] | lang=en
+- "scanner_rdp_scanner_rationale_84": "One synchronous RDP handshake. Best-effort; None on any failure." | kind=entity | source=probe/scanner/rdp_scanner.py:L84 | neighbors=[probe_rdp()] | lang=en
+- "scanner_rdp_scanner_rationale_98": "One synchronous RDP handshake offering `requested_protocols`. Best-effort;     N" | kind=entity | source=probe/scanner/rdp_scanner.py:L98 | neighbors=[probe_rdp()] | lang=en
+- "scanner_rdp_scanner_rdpscanner_init": ".__init__()" | kind=code-symbol | source=probe/scanner/rdp_scanner.py:L138 | neighbors=[RDPScanner] | lang=en
+- "scanner_rsync_scanner_main": "main()" | kind=code-symbol | source=probe/scanner/rsync_scanner.py:L167 | neighbors=[rsync_scanner.py] | lang=en
+- "scanner_rsync_scanner_rationale_1": "rsync_scanner.py — rsync daemon anonymous-module exposure (VA checklist: anonymo" | kind=entity | source=probe/scanner/rsync_scanner.py:L1 | neighbors=[rsync_scanner.py] | lang=en
+- "scanner_rsync_scanner_rationale_114": "Select a module without a secret: OK => anonymous, AUTHREQD => auth." | kind=entity | source=probe/scanner/rsync_scanner.py:L114 | neighbors=[._test_anon()] | lang=pt
+- "scanner_rsync_scanner_rationale_131": "Blocking: list modules, then anon-test each. Monkeypatchable for tests." | kind=entity | source=probe/scanner/rsync_scanner.py:L131 | neighbors=[._probe()] | lang=en
+- "scanner_rsync_scanner_rationale_38": "Parse the daemon's module listing into [{name, comment}]. Lines are     'name<wh" | kind=entity | source=probe/scanner/rsync_scanner.py:L38 | neighbors=[parse_modules()] | lang=en
+- "scanner_rsync_scanner_rationale_74": "Read the @RSYNCD greeting and echo it back VERBATIM. Returns the negotiated" | kind=entity | source=probe/scanner/rsync_scanner.py:L74 | neighbors=[_handshake()] | lang=en
+- "scanner_rsync_scanner_rsyncscanner_init": ".__init__()" | kind=code-symbol | source=probe/scanner/rsync_scanner.py:L96 | neighbors=[RsyncScanner] | lang=en
+- "scanner_run_all_rationale_46": "Run one scanner module as a subprocess, tee its JSONL to <name>.jsonl." | kind=entity | source=probe/scanner/run_all.py:L46 | neighbors=[_run_stage()] | lang=en
+- "scanner_run_all_rationale_56": "Run one scanner module as a subprocess, tee its JSONL to <name>.jsonl." | kind=entity | source=probe/scanner/run_all.py:L56 | neighbors=[_run_stage()] | lang=en
+- "scanner_run_all_rationale_60": "Run one scanner module as a subprocess, tee its JSONL to <name>.jsonl." | kind=entity | source=probe/scanner/run_all.py:L60 | neighbors=[_run_stage()] | lang=en
+- "scanner_run_all_rationale_99": "EPM-advertised dynamic RPC ports from the msrpc stage (same field the funnel" | kind=entity | source=probe/scanner/run_all.py:L99 | neighbors=[_advertised_dynamic_ports()] | lang=en
+- "scanner_scan_funnel_main": "main()" | kind=code-symbol | source=probe/scanner/scan_funnel.py:L386 | neighbors=[scan_funnel.py] | lang=en
+- "scanner_scan_funnel_rationale_1": "scan_funnel.py — per-host scan orchestrator (the assessment pipeline, Playbook 0" | kind=entity | source=probe/scanner/scan_funnel.py:L1 | neighbors=[scan_funnel.py] | lang=en
+- "scanner_scan_funnel_rationale_104": "The full outcome of funnelling one host." | kind=entity | source=probe/scanner/scan_funnel.py:L104 | neighbors=[FunnelResult] | lang=en
+- "scanner_scan_funnel_rationale_110": "Orchestrates discovery → port scan → routed deep scanners for each host.      Pa" | kind=entity | source=probe/scanner/scan_funnel.py:L110 | neighbors=[ScanFunnel] | lang=en
+- "scanner_scan_funnel_rationale_118": "The port set worth scanning = union of every route's ports (deduped)." | kind=entity | source=probe/scanner/scan_funnel.py:L118 | neighbors=[_candidate_ports()] | lang=en
+- "scanner_scan_funnel_rationale_130": "Orchestrates discovery → port scan → routed deep scanners for each host.      Pa" | kind=entity | source=probe/scanner/scan_funnel.py:L130 | neighbors=[ScanFunnel] | lang=en
+- "scanner_scan_funnel_rationale_181": "Funnel many hosts with bounded concurrency, writing every result." | kind=entity | source=probe/scanner/scan_funnel.py:L181 | neighbors=[.run()] | lang=en
+- "scanner_scan_funnel_rationale_192": "Funnel many hosts with bounded concurrency, writing every result." | kind=entity | source=probe/scanner/scan_funnel.py:L192 | neighbors=[.run()] | lang=en
+- "scanner_scan_funnel_rationale_208": "Wire the funnel with the package's real scanners. Imported lazily so the     fun" | kind=entity | source=probe/scanner/scan_funnel.py:L208 | neighbors=[build_default_funnel()] | lang=en
+- "scanner_scan_funnel_rationale_219": "Wire the funnel with the package's real scanners. Imported lazily so the     fun" | kind=entity | source=probe/scanner/scan_funnel.py:L219 | neighbors=[build_default_funnel()] | lang=en
+- "scanner_scan_funnel_rationale_245": "Funnel many hosts with bounded concurrency, writing every result." | kind=entity | source=probe/scanner/scan_funnel.py:L245 | neighbors=[.run()] | lang=en
+- "scanner_scan_funnel_rationale_272": "Wire the funnel with the package's real scanners. Imported lazily so the     fun" | kind=entity | source=probe/scanner/scan_funnel.py:L272 | neighbors=[build_default_funnel()] | lang=en
+- "scanner_scan_funnel_rationale_56": "Map a host's open ports onto the deep-scanner routes that handle them.     Retur" | kind=entity | source=probe/scanner/scan_funnel.py:L56 | neighbors=[route_ports()] | lang=en
+- "scanner_scan_funnel_rationale_67": "Map a host's open ports onto the deep-scanner routes that handle them.     Retur" | kind=entity | source=probe/scanner/scan_funnel.py:L67 | neighbors=[route_ports()] | lang=en
+- "scanner_scan_funnel_rationale_84": "The full outcome of funnelling one host." | kind=entity | source=probe/scanner/scan_funnel.py:L84 | neighbors=[FunnelResult] | lang=en
 
 ## Instructions
 

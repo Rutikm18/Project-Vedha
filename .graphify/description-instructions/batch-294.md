@@ -1,4 +1,4 @@
-# Node Description Batch 295 of 336
+# Node Description Batch 295 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,51 +12,60 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
-Write every description in English (en). Do not switch languages.
+For an entity node (any other kind — e.g. a person, place, event, object),
+describe what the entity is and its role, grounded in its type, its
+relations (neighbors) and the provided citations/evidence — e.g.
+"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
+Ground entity descriptions in the citations/evidence when present; do not
+speculate beyond the context, so a node with no supporting context may be
+left out of the reply.
+LANGUAGE: each entry has a `lang=` marker giving the language of its source.
+Write that entry's description in EXACTLY that language. Do not translate to
+a single common language — match each node's source language individually.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_new_scanners_testmobilescanner_test_parse_adb_header_too_short": ".test_parse_adb_header_too_short()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L560 | neighbors=[TestMobileScanner]
-- "tests_test_new_scanners_testsnmpberutilities_test_ber_len_long_form_one_byte": ".test_ber_len_long_form_one_byte()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L47 | neighbors=[TestSNMPBerUtilities]
-- "tests_test_new_scanners_testsnmpberutilities_test_ber_len_long_form_two_bytes": ".test_ber_len_long_form_two_bytes()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L52 | neighbors=[TestSNMPBerUtilities]
-- "tests_test_new_scanners_testsnmpberutilities_test_ber_len_short_form": ".test_ber_len_short_form()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L41 | neighbors=[TestSNMPBerUtilities]
-- "tests_test_new_scanners_testsnmpberutilities_test_ber_parse_empty": ".test_ber_parse_empty()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L65 | neighbors=[TestSNMPBerUtilities]
-- "tests_test_new_scanners_testsnmpberutilities_test_ber_parse_two_tlvs": ".test_ber_parse_two_tlvs()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L57 | neighbors=[TestSNMPBerUtilities]
-- "tests_test_new_scanners_testsnmpberutilities_test_decode_value_counter32": ".test_decode_value_counter32()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L74 | neighbors=[TestSNMPBerUtilities]
-- "tests_test_new_scanners_testsnmpberutilities_test_decode_value_end_of_mib_view": ".test_decode_value_end_of_mib_view()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L82 | neighbors=[TestSNMPBerUtilities]
-- "tests_test_new_scanners_testsnmpberutilities_test_decode_value_ip_address": ".test_decode_value_ip_address()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L69 | neighbors=[TestSNMPBerUtilities]
-- "tests_test_new_scanners_testsnmpberutilities_test_decode_value_octet_string": ".test_decode_value_octet_string()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L88 | neighbors=[TestSNMPBerUtilities]
-- "tests_test_new_scanners_testsnmpberutilities_test_decode_value_timeticks": ".test_decode_value_timeticks()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L78 | neighbors=[TestSNMPBerUtilities]
-- "tests_test_new_scanners_testsnmpberutilities_test_encode_sysdescr_oid": ".test_encode_sysdescr_oid()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L30 | neighbors=[TestSNMPBerUtilities]
-- "tests_test_new_scanners_testsnmpberutilities_test_get_pdu_outer_tag": ".test_get_pdu_outer_tag()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L92 | neighbors=[TestSNMPBerUtilities]
-- "tests_test_new_scanners_testsnmpberutilities_test_getbulk_pdu_tag_and_version": ".test_getbulk_pdu_tag_and_version()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L103 | neighbors=[TestSNMPBerUtilities]
-- "tests_test_new_scanners_testsnmpberutilities_test_getnext_pdu_tag": ".test_getnext_pdu_tag()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L98 | neighbors=[TestSNMPBerUtilities]
-- "tests_test_new_scanners_testsnmpberutilities_test_oid_in_subtree": ".test_oid_in_subtree()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L109 | neighbors=[TestSNMPBerUtilities]
-- "tests_test_new_scanners_testsnmpberutilities_test_oid_roundtrip_sysdescr": ".test_oid_roundtrip_sysdescr()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L35 | neighbors=[TestSNMPBerUtilities]
-- "tests_test_new_scanners_teststablehostid_test_hostname_second_priority": ".test_hostname_second_priority()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L343 | neighbors=[TestStableHostId]
-- "tests_test_new_scanners_teststablehostid_test_ip_fallback": ".test_ip_fallback()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L348 | neighbors=[TestStableHostId]
-- "tests_test_new_scanners_teststablehostid_test_mac_normalises_dashes": ".test_mac_normalises_dashes()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L338 | neighbors=[TestStableHostId]
-- "tests_test_new_scanners_teststablehostid_test_mac_takes_priority": ".test_mac_takes_priority()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L333 | neighbors=[TestStableHostId]
-- "tests_test_new_scanners_teststablehostid_test_zero_mac_skipped": ".test_zero_mac_skipped()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L353 | neighbors=[TestStableHostId]
-- "tests_test_new_scanners_testudpprobeconstruction_test_ike_probe_header_fields": ".test_ike_probe_header_fields()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L129 | neighbors=[TestUDPProbeConstruction]
-- "tests_test_new_scanners_testudpprobeconstruction_test_ike_probe_init_spi_not_zero": ".test_ike_probe_init_spi_not_zero()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L137 | neighbors=[TestUDPProbeConstruction]
-- "tests_test_new_scanners_testudpprobeconstruction_test_ike_probe_length_field_matches_actual": ".test_ike_probe_length_field_matches_actual()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L123 | neighbors=[TestUDPProbeConstruction]
-- "tests_test_new_scanners_testudpprobeconstruction_test_ike_probe_resp_spi_zero": ".test_ike_probe_resp_spi_zero()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L142 | neighbors=[TestUDPProbeConstruction]
-- "tests_test_new_scanners_testudpprobeconstruction_test_interpret_ike_short_data": ".test_interpret_ike_short_data()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L162 | neighbors=[TestUDPProbeConstruction]
-- "tests_test_new_scanners_testudpprobeconstruction_test_interpret_ike_v1": ".test_interpret_ike_v1()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L155 | neighbors=[TestUDPProbeConstruction]
-- "tests_test_new_scanners_testudpprobeconstruction_test_interpret_ike_v2": ".test_interpret_ike_v2()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L147 | neighbors=[TestUDPProbeConstruction]
-- "tests_test_new_scanners_testudpprobeconstruction_test_interpret_ipmi_not_supported": ".test_interpret_ipmi_not_supported()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L217 | neighbors=[TestUDPProbeConstruction]
-- "tests_test_new_scanners_testudpprobeconstruction_test_interpret_ipmi_supported_flag": ".test_interpret_ipmi_supported_flag()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L209 | neighbors=[TestUDPProbeConstruction]
-- "tests_test_new_scanners_testudpprobeconstruction_test_interpret_sip_parses_server": ".test_interpret_sip_parses_server()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L179 | neighbors=[TestUDPProbeConstruction]
-- "tests_test_new_scanners_testudpprobeconstruction_test_ipmi_probe_iana_enterprise": ".test_ipmi_probe_iana_enterprise()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L199 | neighbors=[TestUDPProbeConstruction]
-- "tests_test_new_scanners_testudpprobeconstruction_test_ipmi_probe_length_and_version": ".test_ipmi_probe_length_and_version()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L192 | neighbors=[TestUDPProbeConstruction]
-- "tests_test_new_scanners_testudpprobeconstruction_test_ipmi_probe_presence_ping_type": ".test_ipmi_probe_presence_ping_type()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L205 | neighbors=[TestUDPProbeConstruction]
-- "tests_test_new_scanners_testudpprobeconstruction_test_memcached_unauth_stat": ".test_memcached_unauth_stat()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L230 | neighbors=[TestUDPProbeConstruction]
-- "tests_test_new_scanners_testudpprobeconstruction_test_ntp_monlist_mode7_detection": ".test_ntp_monlist_mode7_detection()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L224 | neighbors=[TestUDPProbeConstruction]
-- "tests_test_new_scanners_testudpprobeconstruction_test_sip_probe_starts_with_options": ".test_sip_probe_starts_with_options()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L166 | neighbors=[TestUDPProbeConstruction]
-- "tests_test_new_scanners_testudpprobeconstruction_test_sip_probe_target_in_headers": ".test_sip_probe_target_in_headers()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L174 | neighbors=[TestUDPProbeConstruction]
-- "tests_test_new_scanners_testudpprobeconstruction_test_tftp_probe_opcode_rrq": ".test_tftp_probe_opcode_rrq()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L186 | neighbors=[TestUDPProbeConstruction]
+- "scanner_udp_scanner_rationale_133": "TFTP RRQ for a non-existent file.  Error reply confirms TFTP service." | kind=entity | source=probe/scanner/udp_scanner.py:L133 | neighbors=[_tftp_probe()] | lang=en
+- "scanner_udp_scanner_rationale_139": "RMCP Ping (ASF Presence Ping) to detect IPMI/BMC." | kind=entity | source=probe/scanner/udp_scanner.py:L139 | neighbors=[_ipmi_probe()] | lang=en
+- "scanner_udp_scanner_rationale_140": "RMCP Ping (ASF Presence Ping) to detect IPMI/BMC." | kind=entity | source=probe/scanner/udp_scanner.py:L140 | neighbors=[_ipmi_probe()] | lang=en
+- "scanner_udp_scanner_rationale_146": "UPnP/SSDP M-SEARCH — unicast to target:1900." | kind=entity | source=probe/scanner/udp_scanner.py:L146 | neighbors=[_ssdp_probe()] | lang=en
+- "scanner_udp_scanner_rationale_147": "UPnP/SSDP M-SEARCH — unicast to target:1900." | kind=entity | source=probe/scanner/udp_scanner.py:L147 | neighbors=[_ssdp_probe()] | lang=en
+- "scanner_udp_scanner_rationale_158": "mDNS PTR query for _services._dns-sd._udp.local (unicast to :5353)." | kind=entity | source=probe/scanner/udp_scanner.py:L158 | neighbors=[_mdns_probe()] | lang=en
+- "scanner_udp_scanner_rationale_159": "mDNS PTR query for _services._dns-sd._udp.local (unicast to :5353)." | kind=entity | source=probe/scanner/udp_scanner.py:L159 | neighbors=[_mdns_probe()] | lang=en
+- "scanner_udp_scanner_rationale_188": "Parse IKEv1 or IKEv2 response header." | kind=entity | source=probe/scanner/udp_scanner.py:L188 | neighbors=[interpret_ike()] | lang=en
+- "scanner_udp_scanner_rationale_189": "Parse IKEv1 or IKEv2 response header." | kind=entity | source=probe/scanner/udp_scanner.py:L189 | neighbors=[interpret_ike()] | lang=en
+- "scanner_udp_scanner_rationale_204": "Extract SIP version + server header from a SIP response." | kind=entity | source=probe/scanner/udp_scanner.py:L204 | neighbors=[interpret_sip()] | lang=en
+- "scanner_udp_scanner_rationale_205": "Extract SIP version + server header from a SIP response." | kind=entity | source=probe/scanner/udp_scanner.py:L205 | neighbors=[interpret_sip()] | lang=en
+- "scanner_udp_scanner_rationale_219": "Parse RMCP Pong; extract supported entities and IPMI capabilities." | kind=entity | source=probe/scanner/udp_scanner.py:L219 | neighbors=[interpret_ipmi()] | lang=en
+- "scanner_udp_scanner_rationale_220": "Parse RMCP Pong; extract supported entities and IPMI capabilities." | kind=entity | source=probe/scanner/udp_scanner.py:L220 | neighbors=[interpret_ipmi()] | lang=en
+- "scanner_udp_scanner_rationale_232": "Extract Location and Server from SSDP response." | kind=entity | source=probe/scanner/udp_scanner.py:L232 | neighbors=[interpret_ssdp()] | lang=en
+- "scanner_udp_scanner_rationale_233": "Extract Location and Server from SSDP response." | kind=entity | source=probe/scanner/udp_scanner.py:L233 | neighbors=[interpret_ssdp()] | lang=en
+- "scanner_udp_scanner_rationale_247": "Return byte count and check QR bit (1 = response)." | kind=entity | source=probe/scanner/udp_scanner.py:L247 | neighbors=[interpret_mdns()] | lang=en
+- "scanner_udp_scanner_rationale_248": "Return byte count and check QR bit (1 = response)." | kind=entity | source=probe/scanner/udp_scanner.py:L248 | neighbors=[interpret_mdns()] | lang=en
+- "scanner_udp_scanner_rationale_290": "Acquire the concurrency gate (adaptive window or fixed semaphore),         run t" | kind=entity | source=probe/scanner/udp_scanner.py:L290 | neighbors=[._gated_probe()] | lang=en
+- "scanner_udp_scanner_rationale_291": "Acquire the concurrency gate (adaptive window or fixed semaphore),         run t" | kind=entity | source=probe/scanner/udp_scanner.py:L291 | neighbors=[._gated_probe()] | lang=en
+- "scanner_udp_scanner_rationale_296": "Acquire the concurrency gate (adaptive window or fixed semaphore),         run t" | kind=entity | source=probe/scanner/udp_scanner.py:L296 | neighbors=[._gated_probe()] | lang=en
+- "scanner_udp_scanner_rationale_78": "Minimal IKEv2 IKE_SA_INIT probe.  Sends a real SA payload proposing     AES-256-" | kind=entity | source=probe/scanner/udp_scanner.py:L78 | neighbors=[_ike_probe()] | lang=fr
+- "scanner_udp_scanner_snmp_probe": "_snmp_probe()" | kind=code-symbol | source=probe/scanner/udp_scanner.py:L54 | neighbors=[udp_scanner.py] | lang=en
+- "scanner_udp_scanner_udpscanner_init": ".__init__()" | kind=code-symbol | source=probe/scanner/udp_scanner.py:L285 | neighbors=[UDPScanner] | lang=en
+- "scanner_udp_scanner_udpscanner_send_recv": "._send_recv()" | kind=code-symbol | source=probe/scanner/udp_scanner.py:L157 | neighbors=[UDPScanner] | lang=en
+- "scanner_unauth_access_is_rce_capable": "is_rce_capable()" | kind=code-symbol | source=probe/scanner/unauth_access.py:L68 | neighbors=[unauth_access.py] | lang=en
+- "scanner_unauth_access_rationale_49": "Decide whether `banner` proves unauthenticated access for `service`.      True =" | kind=entity | source=probe/scanner/unauth_access.py:L49 | neighbors=[classify_unauth_access()] | lang=en
+- "scanner_va_campaign_alive": "_alive()" | kind=code-symbol | source=probe/scanner/va_campaign.py:L332 | neighbors=[va_campaign.py] | lang=en
+- "scanner_va_campaign_candidate_ports": "_candidate_ports()" | kind=code-symbol | source=probe/scanner/va_campaign.py:L336 | neighbors=[va_campaign.py] | lang=en
+- "scanner_va_campaign_cliprogressview_init": ".__init__()" | kind=code-symbol | source=probe/scanner/va_campaign.py:L657 | neighbors=[CliProgressView] | lang=en
+- "scanner_va_campaign_main": "main()" | kind=code-symbol | source=probe/scanner/va_campaign.py:L708 | neighbors=[va_campaign.py] | lang=en
+- "scanner_va_campaign_rationale_1": "va_campaign.py — the sequential Network Vulnerability-Assessment campaign.  WHY" | kind=entity | source=probe/scanner/va_campaign.py:L1 | neighbors=[va_campaign.py] | lang=en
+- "scanner_va_campaign_rationale_114": "What a stage produced. `count` is stage-specific (live hosts, open ports,     se" | kind=entity | source=probe/scanner/va_campaign.py:L114 | neighbors=[StageOutcome] | lang=en
+- "scanner_va_campaign_rationale_139": "Mutable state threaded through the stages." | kind=entity | source=probe/scanner/va_campaign.py:L139 | neighbors=[CampaignContext] | lang=en
+- "scanner_va_campaign_rationale_170": "Owns the live campaign record. Every transition recomputes percent + ETA,     wr" | kind=entity | source=probe/scanner/va_campaign.py:L170 | neighbors=[ProgressReporter] | lang=en
+- "scanner_va_campaign_rationale_291": "Runs the ordered stages sequentially, emitting progress throughout.      The eng" | kind=entity | source=probe/scanner/va_campaign.py:L291 | neighbors=[VACampaign] | lang=en
+- "scanner_va_campaign_rationale_344": "Best-effort IPv6 neighbor discovery (ND multicast, RFC 4861). Returns     {facts" | kind=entity | source=probe/scanner/va_campaign.py:L344 | neighbors=[_discover_ipv6()] | lang=en
+- "scanner_va_campaign_rationale_375": "Run coro_factory(item) over items with bounded concurrency; return the     list" | kind=entity | source=probe/scanner/va_campaign.py:L375 | neighbors=[_bounded_gather()] | lang=en
+- "scanner_va_campaign_rationale_391": "Build the real capability stages from a pre-wired ScanFunnel, reusing its     pr" | kind=entity | source=probe/scanner/va_campaign.py:L391 | neighbors=[default_stages()] | lang=en
+- "scanner_va_campaign_rationale_624": "Wire a campaign with the real scanners (or injected stages for tests)." | kind=entity | source=probe/scanner/va_campaign.py:L624 | neighbors=[build_campaign()] | lang=en
+- "scanner_va_campaign_rationale_650": "Renders campaign progress to a stream. On a TTY it re-draws one live block     i" | kind=entity | source=probe/scanner/va_campaign.py:L650 | neighbors=[CliProgressView] | lang=en
 
 ## Instructions
 

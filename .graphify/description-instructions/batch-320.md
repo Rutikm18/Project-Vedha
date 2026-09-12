@@ -1,4 +1,4 @@
-# Node Description Batch 321 of 336
+# Node Description Batch 321 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,60 +12,51 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
-For an entity node (any other kind — e.g. a person, place, event, object),
-describe what the entity is and its role, grounded in its type, its
-relations (neighbors) and the provided citations/evidence — e.g.
-"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
-Ground entity descriptions in the citations/evidence when present; do not
-speculate beyond the context, so a node with no supporting context may be
-left out of the reply.
-LANGUAGE: each entry has a `lang=` marker giving the language of its source.
-Write that entry's description in EXACTLY that language. Do not translate to
-a single common language — match each node's source language individually.
+Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_transport_testregister_test_registration_401_raises": ".test_registration_401_raises()" | kind=code-symbol | source=probe/tests/test_transport.py:L182 | neighbors=[TestRegister] | lang=en
-- "tests_test_transport_testregister_test_registration_sends_public_key": ".test_registration_sends_public_key()" | kind=code-symbol | source=probe/tests/test_transport.py:L189 | neighbors=[TestRegister] | lang=en
-- "tests_test_transport_testregister_test_successful_registration": ".test_successful_registration()" | kind=code-symbol | source=probe/tests/test_transport.py:L158 | neighbors=[TestRegister] | lang=en
-- "tests_test_transport_testsubmitresult_test_2xx_variants_return_true": ".test_2xx_variants_return_true()" | kind=code-symbol | source=probe/tests/test_transport.py:L531 | neighbors=[TestSubmitResult] | lang=en
-- "tests_test_transport_testsubmitresult_test_client_errors_return_false_no_data_loss": ".test_client_errors_return_false_no_data_loss()" | kind=code-symbol | source=probe/tests/test_transport.py:L327 | neighbors=[TestSubmitResult] | lang=en
-- "tests_test_transport_testsubmitresult_test_large_payload_is_gzipped": ".test_large_payload_is_gzipped()" | kind=code-symbol | source=probe/tests/test_transport.py:L538 | neighbors=[TestSubmitResult] | lang=en
-- "tests_test_transport_testsubmitresult_test_network_error_returns_false": ".test_network_error_returns_false()" | kind=code-symbol | source=probe/tests/test_transport.py:L501 | neighbors=[TestSubmitResult] | lang=en
-- "tests_test_transport_testsubmitresult_test_permanent_client_errors_are_marked_for_quarantine": ".test_permanent_client_errors_are_marked_for_quarantine()" | kind=code-symbol | source=probe/tests/test_transport.py:L519 | neighbors=[TestSubmitResult] | lang=en
-- "tests_test_transport_testsubmitresult_test_retryable_client_errors_return_false_no_data_loss": ".test_retryable_client_errors_return_false_no_data_loss()" | kind=code-symbol | source=probe/tests/test_transport.py:L509 | neighbors=[TestSubmitResult] | lang=en
-- "tests_test_transport_testsubmitresult_test_server_error_returns_false": ".test_server_error_returns_false()" | kind=code-symbol | source=probe/tests/test_transport.py:L492 | neighbors=[TestSubmitResult] | lang=en
-- "tests_test_transport_testsubmitresult_test_small_payload_not_gzipped": ".test_small_payload_not_gzipped()" | kind=code-symbol | source=probe/tests/test_transport.py:L549 | neighbors=[TestSubmitResult] | lang=en
-- "tests_test_transport_testsubmitresult_test_successful_submit": ".test_successful_submit()" | kind=code-symbol | source=probe/tests/test_transport.py:L483 | neighbors=[TestSubmitResult] | lang=en
-- "tests_test_transport_testwebsocket_test_is_ws_connected_false_by_default": ".test_is_ws_connected_false_by_default()" | kind=code-symbol | source=probe/tests/test_transport.py:L588 | neighbors=[TestWebSocket] | lang=en
-- "tests_test_transport_testwebsocket_test_ws_requires_token": ".test_ws_requires_token()" | kind=code-symbol | source=probe/tests/test_transport.py:L606 | neighbors=[TestWebSocket] | lang=en
-- "tests_test_transport_testwebsocket_test_ws_url_http": ".test_ws_url_http()" | kind=code-symbol | source=probe/tests/test_transport.py:L592 | neighbors=[TestWebSocket] | lang=en
-- "tests_test_transport_testwebsocket_test_ws_url_https": ".test_ws_url_https()" | kind=code-symbol | source=probe/tests/test_transport.py:L599 | neighbors=[TestWebSocket] | lang=en
-- "tests_test_trust_alignment_rationale_1": "test_trust_alignment.py — cross-tree invariant: the manager's VALIDATED_SCANNERS" | kind=entity | source=manager/detection_engine/tests/test_trust_alignment.py:L1 | neighbors=[test_trust_alignment.py] | lang=en
-- "tests_test_trust_alignment_test_manager_and_probe_trust_sets_match": "test_manager_and_probe_trust_sets_match()" | kind=code-symbol | source=manager/detection_engine/tests/test_trust_alignment.py:L22 | neighbors=[test_trust_alignment.py] | lang=en
-- "tests_test_two_tree_parity_rationale_1": "test_two_tree_parity.py — the guard the architecture review (#4) demanded.  `sca" | kind=entity | source=probe/tests/test_two_tree_parity.py:L1 | neighbors=[test_two_tree_parity.py] | lang=en
-- "tests_test_two_tree_parity_rationale_34": "Every .py present in BOTH trees (the mirrored set), excluding caches." | kind=entity | source=probe/tests/test_two_tree_parity.py:L34 | neighbors=[_mirrored_py_files()] | lang=en
-- "tests_test_two_tree_parity_rationale_57": "A scanner that exists in only one tree is a wiring bug: one orchestrator     fam" | kind=entity | source=probe/tests/test_two_tree_parity.py:L57 | neighbors=[test_no_unmirrored_scanner_files()] | lang=en
-- "tests_test_two_tree_parity_test_scanner_and_main_scripts_are_byte_identical": "test_scanner_and_main_scripts_are_byte_identical()" | kind=code-symbol | source=probe/tests/test_two_tree_parity.py:L46 | neighbors=[test_two_tree_parity.py] | lang=en
-- "tests_test_udp_amplifiers_test_dns_open_recursion": "test_dns_open_recursion()" | kind=code-symbol | source=probe/tests/test_udp_amplifiers.py:L18 | neighbors=[test_udp_amplifiers.py] | lang=en
-- "tests_test_udp_amplifiers_test_memcached_exposed": "test_memcached_exposed()" | kind=code-symbol | source=probe/tests/test_udp_amplifiers.py:L26 | neighbors=[test_udp_amplifiers.py] | lang=en
-- "tests_test_udp_amplifiers_test_ntp_monlist_absent": "test_ntp_monlist_absent()" | kind=code-symbol | source=probe/tests/test_udp_amplifiers.py:L13 | neighbors=[test_udp_amplifiers.py] | lang=en
-- "tests_test_udp_amplifiers_test_ntp_monlist_enabled": "test_ntp_monlist_enabled()" | kind=code-symbol | source=probe/tests/test_udp_amplifiers.py:L8 | neighbors=[test_udp_amplifiers.py] | lang=en
-- "tests_test_udp_amplifiers_test_probe_builders_are_bytes": "test_probe_builders_are_bytes()" | kind=code-symbol | source=probe/tests/test_udp_amplifiers.py:L31 | neighbors=[test_udp_amplifiers.py] | lang=en
-- "tests_test_use_cases_rationale_1": "Use-case library guards.  FORBIDDEN is a *living* set: a phrase stays here only" | kind=entity | source=probe/tests/test_use_cases.py:L1 | neighbors=[test_use_cases.py] | lang=pt
-- "tests_test_use_cases_test_codes_are_unique_and_stable": "test_codes_are_unique_and_stable()" | kind=code-symbol | source=probe/tests/test_use_cases.py:L82 | neighbors=[test_use_cases.py] | lang=en
-- "tests_test_use_cases_test_descriptions_do_not_overclaim": "test_descriptions_do_not_overclaim()" | kind=code-symbol | source=probe/tests/test_use_cases.py:L25 | neighbors=[test_use_cases.py] | lang=en
-- "tests_test_use_cases_test_every_code_maps_to_a_real_use_case": "test_every_code_maps_to_a_real_use_case()" | kind=code-symbol | source=probe/tests/test_use_cases.py:L77 | neighbors=[test_use_cases.py] | lang=en
-- "tests_test_use_cases_test_full_port_audit_is_deep": "test_full_port_audit_is_deep()" | kind=code-symbol | source=probe/tests/test_use_cases.py:L64 | neighbors=[test_use_cases.py] | lang=en
-- "tests_test_use_cases_test_intensity_code_and_name_equivalent": "test_intensity_code_and_name_equivalent()" | kind=code-symbol | source=probe/tests/test_use_cases.py:L100 | neighbors=[test_use_cases.py] | lang=en
-- "tests_test_use_cases_test_iot_survey_collects_banners": "test_iot_survey_collects_banners()" | kind=code-symbol | source=probe/tests/test_use_cases.py:L45 | neighbors=[test_use_cases.py] | lang=en
-- "tests_test_use_cases_test_new_use_cases_resolve": "test_new_use_cases_resolve()" | kind=code-symbol | source=probe/tests/test_use_cases.py:L52 | neighbors=[test_use_cases.py] | lang=en
-- "tests_test_use_cases_test_params_intensity_overrides_use_case": "test_params_intensity_overrides_use_case()" | kind=code-symbol | source=probe/tests/test_use_cases.py:L69 | neighbors=[test_use_cases.py] | lang=en
-- "tests_test_use_cases_test_resolve_accepts_string_digits_too": "test_resolve_accepts_string_digits_too()" | kind=code-symbol | source=probe/tests/test_use_cases.py:L95 | neighbors=[test_use_cases.py] | lang=en
-- "tests_test_use_cases_test_resolve_by_numeric_code": "test_resolve_by_numeric_code()" | kind=code-symbol | source=probe/tests/test_use_cases.py:L90 | neighbors=[test_use_cases.py] | lang=en
-- "tests_test_use_cases_test_string_use_case_id_still_wins_over_code": "test_string_use_case_id_still_wins_over_code()" | kind=code-symbol | source=probe/tests/test_use_cases.py:L113 | neighbors=[test_use_cases.py] | lang=en
-- "tests_test_use_cases_test_udp_claims_amplification": "test_udp_claims_amplification()" | kind=code-symbol | source=probe/tests/test_use_cases.py:L36 | neighbors=[test_use_cases.py] | lang=en
+- "tests_test_exit_state_test_class_for_code_roundtrip": "test_class_for_code_roundtrip()" | kind=code-symbol | source=probe/tests/test_exit_state.py:L22 | neighbors=[test_exit_state.py]
+- "tests_test_exit_state_test_json_roundtrip": "test_json_roundtrip()" | kind=code-symbol | source=probe/tests/test_exit_state.py:L28 | neighbors=[test_exit_state.py]
+- "tests_test_exit_state_test_parse_stderr_line_ignores_noise": "test_parse_stderr_line_ignores_noise()" | kind=code-symbol | source=probe/tests/test_exit_state.py:L49 | neighbors=[test_exit_state.py]
+- "tests_test_exit_state_test_reason_maps_to_class_and_code": "test_reason_maps_to_class_and_code()" | kind=code-symbol | source=probe/tests/test_exit_state.py:L8 | neighbors=[test_exit_state.py]
+- "tests_test_exit_state_test_stderr_line_emit_and_parse": "test_stderr_line_emit_and_parse()" | kind=code-symbol | source=probe/tests/test_exit_state.py:L41 | neighbors=[test_exit_state.py]
+- "tests_test_exit_state_test_unknown_reason_defaults_to_retryable": "test_unknown_reason_defaults_to_retryable()" | kind=code-symbol | source=probe/tests/test_exit_state.py:L17 | neighbors=[test_exit_state.py]
+- "tests_test_exploit_engine_testmetasploitintegration_skip_without_flag": ".skip_without_flag()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L434 | neighbors=[TestMetasploitIntegration]
+- "tests_test_exploit_engine_testmetasploitintegration_test_connect_and_list_modules": ".test_connect_and_list_modules()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L441 | neighbors=[TestMetasploitIntegration]
+- "tests_test_exploit_engine_testmetasploitintegration_test_run_safe_scanner_smb": ".test_run_safe_scanner_smb()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L450 | neighbors=[TestMetasploitIntegration]
+- "tests_test_exploit_engine_testmetasploitrpcclient_test_call_without_connect_raises": ".test_call_without_connect_raises()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L233 | neighbors=[TestMetasploitRPCClient]
+- "tests_test_exploit_engine_testnucleiexploitrunner_setup_method": ".setup_method()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L351 | neighbors=[TestNucleiExploitRunner]
+- "tests_test_exploit_engine_testnucleiexploitrunner_test_evidence_truncated_to_max_bytes": ".test_evidence_truncated_to_max_bytes()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L405 | neighbors=[TestNucleiExploitRunner]
+- "tests_test_exploit_engine_testnucleiexploitrunner_test_extract_evidence_includes_curl": ".test_extract_evidence_includes_curl()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L395 | neighbors=[TestNucleiExploitRunner]
+- "tests_test_exploit_engine_testnucleiexploitrunner_test_nonexistent_template_not_safe": ".test_nonexistent_template_not_safe()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L369 | neighbors=[TestNucleiExploitRunner]
+- "tests_test_exploit_engine_testnucleiexploitrunner_test_parse_poc_output_hit": ".test_parse_poc_output_hit()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L374 | neighbors=[TestNucleiExploitRunner]
+- "tests_test_exploit_engine_testnucleiexploitrunner_test_parse_poc_output_malformed_json_skipped": ".test_parse_poc_output_malformed_json_skipped()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L389 | neighbors=[TestNucleiExploitRunner]
+- "tests_test_exploit_engine_testnucleiexploitrunner_test_parse_poc_output_miss": ".test_parse_poc_output_miss()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L380 | neighbors=[TestNucleiExploitRunner]
+- "tests_test_exploit_engine_testnucleiexploitrunner_test_parse_poc_output_wrong_cve": ".test_parse_poc_output_wrong_cve()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L385 | neighbors=[TestNucleiExploitRunner]
+- "tests_test_exploit_engine_testnucleiexploitrunner_test_safe_template_passes": ".test_safe_template_passes()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L354 | neighbors=[TestNucleiExploitRunner]
+- "tests_test_exploit_engine_testnucleiexploitrunner_test_unsafe_template_blocked": ".test_unsafe_template_blocked()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L362 | neighbors=[TestNucleiExploitRunner]
+- "tests_test_exploit_engine_testrequiresapproval_test_adcs_server": ".test_adcs_server()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L170 | neighbors=[TestRequiresApproval]
+- "tests_test_exploit_engine_testrequiresapproval_test_critical_asset_needs_approval": ".test_critical_asset_needs_approval()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L155 | neighbors=[TestRequiresApproval]
+- "tests_test_exploit_engine_testrequiresapproval_test_dc_hostname_needs_approval": ".test_dc_hostname_needs_approval()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L161 | neighbors=[TestRequiresApproval]
+- "tests_test_exploit_engine_testrequiresapproval_test_dc02_pattern": ".test_dc02_pattern()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L164 | neighbors=[TestRequiresApproval]
+- "tests_test_exploit_engine_testrequiresapproval_test_exchange_server": ".test_exchange_server()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L167 | neighbors=[TestRequiresApproval]
+- "tests_test_exploit_engine_testrequiresapproval_test_medium_non_dc_no_approval": ".test_medium_non_dc_no_approval()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L158 | neighbors=[TestRequiresApproval]
+- "tests_test_exploit_engine_testrequiresapproval_test_normal_workstation": ".test_normal_workstation()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L173 | neighbors=[TestRequiresApproval]
+- "tests_test_exploit_engine_testvalidatemodule_test_dos_blocked": ".test_dos_blocked()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L108 | neighbors=[TestValidateModule]
+- "tests_test_exploit_engine_testvalidatemodule_test_encoder_blocked": ".test_encoder_blocked()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L123 | neighbors=[TestValidateModule]
+- "tests_test_exploit_engine_testvalidatemodule_test_exploit_module_allowed": ".test_exploit_module_allowed()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L120 | neighbors=[TestValidateModule]
+- "tests_test_exploit_engine_testvalidatemodule_test_fuzzer_blocked": ".test_fuzzer_blocked()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L112 | neighbors=[TestValidateModule]
+- "tests_test_exploit_engine_testvalidatemodule_test_scanner_module_allowed": ".test_scanner_module_allowed()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L105 | neighbors=[TestValidateModule]
+- "tests_test_exploit_engine_testvalidatemodule_test_shell_to_meterpreter_blocked": ".test_shell_to_meterpreter_blocked()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L116 | neighbors=[TestValidateModule]
+- "tests_test_exploit_engine_testvalidatepayload_test_allowed_payload_passes": ".test_allowed_payload_passes()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L64 | neighbors=[TestValidatePayload]
+- "tests_test_exploit_engine_testvalidatepayload_test_bind_shell_blocked": ".test_bind_shell_blocked()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L76 | neighbors=[TestValidatePayload]
+- "tests_test_exploit_engine_testvalidatepayload_test_encrypt_payload_blocked": ".test_encrypt_payload_blocked()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L98 | neighbors=[TestValidatePayload]
+- "tests_test_exploit_engine_testvalidatepayload_test_generic_none_always_allowed": ".test_generic_none_always_allowed()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L95 | neighbors=[TestValidatePayload]
+- "tests_test_exploit_engine_testvalidatepayload_test_meterpreter_blocked": ".test_meterpreter_blocked()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L68 | neighbors=[TestValidatePayload]
+- "tests_test_exploit_engine_testvalidatepayload_test_reverse_tcp_blocked": ".test_reverse_tcp_blocked()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L72 | neighbors=[TestValidatePayload]
+- "tests_test_exploit_engine_testvalidatepayload_test_unknown_payload_blocked": ".test_unknown_payload_blocked()" | kind=code-symbol | source=manager/backend/tests/test_exploit_engine.py:L80 | neighbors=[TestValidatePayload]
 
 ## Instructions
 

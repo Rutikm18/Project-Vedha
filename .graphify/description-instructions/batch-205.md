@@ -1,4 +1,4 @@
-# Node Description Batch 206 of 336
+# Node Description Batch 206 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,51 +19,53 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-Write every description in English (en). Do not switch languages.
+LANGUAGE: each entry has a `lang=` marker giving the language of its source.
+Write that entry's description in EXACTLY that language. Do not translate to
+a single common language — match each node's source language individually.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "fleet_page_probe": "Probe" | kind=code-symbol | source=manager/frontend/app/fleet/page.tsx:L43 | neighbors=[page.tsx]
-- "fleet_page_probejob": "ProbeJob" | kind=code-symbol | source=manager/frontend/app/fleet/page.tsx:L56 | neighbors=[page.tsx]
-- "fleet_page_statebadge": "stateBadge()" | kind=code-symbol | source=manager/frontend/app/fleet/page.tsx:L31 | neighbors=[page.tsx]
-- "fleet_page_status": "STATUS" | kind=code-symbol | source=manager/frontend/app/portal/fleet/page.tsx:L35 | neighbors=[page.tsx]
-- "frontend_eslint_config_eslintconfig": "eslintConfig" | kind=code-symbol | source=manager/frontend/eslint.config.mjs:L5 | neighbors=[eslint.config.mjs]
-- "frontend_next_config_app_version": "APP_VERSION" | kind=code-symbol | source=manager/frontend/next.config.mjs:L22 | neighbors=[next.config.mjs]
-- "frontend_next_config_dirname": "__dirname" | kind=code-symbol | source=manager/frontend/next.config.mjs:L5 | neighbors=[next.config.mjs]
-- "frontend_next_config_frontendroot": "frontendRoot" | kind=code-symbol | source=manager/frontend/next.config.mjs:L6 | neighbors=[next.config.mjs]
-- "frontend_next_config_nextconfig": "nextConfig" | kind=code-symbol | source=manager/frontend/next.config.mjs:L36 | neighbors=[next.config.mjs]
-- "frontend_next_config_resolveappversion": "resolveAppVersion()" | kind=code-symbol | source=manager/frontend/next.config.mjs:L12 | neighbors=[next.config.mjs]
-- "frontend_next_config_securityheaders": "securityHeaders" | kind=code-symbol | source=manager/frontend/next.config.mjs:L24 | neighbors=[next.config.mjs]
-- "frontend_postcss_config_config": "config" | kind=code-symbol | source=manager/frontend/postcss.config.mjs:L1 | neighbors=[postcss.config.mjs]
-- "frontend_proxy_config": "config" | kind=code-symbol | source=manager/frontend/proxy.ts:L57 | neighbors=[proxy.ts]
-- "frontend_proxy_public_paths": "PUBLIC_PATHS" | kind=code-symbol | source=manager/frontend/proxy.ts:L5 | neighbors=[proxy.ts]
-- "frontend_proxy_public_prefixes": "PUBLIC_PREFIXES" | kind=code-symbol | source=manager/frontend/proxy.ts:L8 | neighbors=[proxy.ts]
-- "gaps_route_get": "GET()" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/detection-validation/gaps/route.ts:L5 | neighbors=[route.ts]
-- "generate_route_demo_asset": "DEMO_ASSET" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/ai-report/generate/route.ts:L28 | neighbors=[route.ts]
-- "generate_route_demo_engagement": "DEMO_ENGAGEMENT" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/ai-report/generate/route.ts:L7 | neighbors=[route.ts]
-- "generate_route_demo_finding": "DEMO_FINDING" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/ai-report/generate/route.ts:L19 | neighbors=[route.ts]
-- "generate_route_post": "POST()" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/ai-report/generate/route.ts:L5 | neighbors=[route.ts]
-- "graph_analyzer_pathanalyzer_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/graph/analyzer.py:L61 | neighbors=[PathAnalyzer]
-- "graph_analyzer_rationale_1": "PathAnalyzer — attack-path discovery, scoring, chokepoint and blast-radius analy" | kind=entity | source=manager/backend/app/graph/analyzer.py:L1 | neighbors=[analyzer.py]
-- "graph_analyzer_rationale_147": "Return scored attack paths from every source asset to the target.         Each p" | kind=entity | source=manager/backend/app/graph/analyzer.py:L147 | neighbors=[.find_paths_to_target()]
-- "graph_analyzer_rationale_200": "Risk score 0–100 from: sum of exploit CVSS along the path, a penalty for" | kind=entity | source=manager/backend/app/graph/analyzer.py:L200 | neighbors=[.score_path()]
-- "graph_analyzer_rationale_221": "Assets that appear in more than ``threshold`` (default 50%) of all paths —" | kind=entity | source=manager/backend/app/graph/analyzer.py:L221 | neighbors=[.identify_chokepoints()]
-- "graph_analyzer_rationale_251": "Assets reachable (and thus at risk) if ``compromised_asset_id`` is owned." | kind=entity | source=manager/backend/app/graph/analyzer.py:L251 | neighbors=[.find_blast_radius()]
-- "graph_analyzer_rationale_68": "Best (easiest) exploitable finding on an asset: {cvss, weight, finding}." | kind=entity | source=manager/backend/app/graph/analyzer.py:L68 | neighbors=[._exploit_info()]
-- "graph_analyzer_rationale_88": "Build (and cache) the Asset→Asset movement projection. Edge weight is the" | kind=entity | source=manager/backend/app/graph/analyzer.py:L88 | neighbors=[.movement_graph()]
-- "graph_builder_graphbuilder_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/graph/builder.py:L91 | neighbors=[GraphBuilder]
-- "graph_demo_rationale_1": "Demo dataset generator for the attack-path engine.  Produces a small but realist" | kind=entity | source=manager/backend/app/graph/demo.py:L1 | neighbors=[demo.py]
-- "graph_demo_rationale_58": "Returns {engagement_id, assets, services, findings, credentials,     network_top" | kind=entity | source=manager/backend/app/graph/demo.py:L58 | neighbors=[generate_demo_dataset()]
-- "graph_neo4j_client_neo4jclient_available": ".available()" | kind=code-symbol | source=manager/backend/app/graph/neo4j_client.py:L58 | neighbors=[Neo4jClient]
-- "graph_neo4j_client_neo4jclient_close": ".close()" | kind=code-symbol | source=manager/backend/app/graph/neo4j_client.py:L102 | neighbors=[Neo4jClient]
-- "graph_neo4j_client_neo4jclient_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/graph/neo4j_client.py:L51 | neighbors=[Neo4jClient]
-- "graph_neo4j_client_rationale_1": "Neo4jClient — thin, optional wrapper around the neo4j Python driver.  Neo4j is *" | kind=entity | source=manager/backend/app/graph/neo4j_client.py:L1 | neighbors=[neo4j_client.py]
-- "graph_neo4j_client_rationale_49": "Connection holder + query helper. No-ops cleanly when the driver is absent." | kind=entity | source=manager/backend/app/graph/neo4j_client.py:L49 | neighbors=[Neo4jClient]
-- "graph_neo4j_client_rationale_62": "Open the driver and verify connectivity. Returns False on any failure." | kind=entity | source=manager/backend/app/graph/neo4j_client.py:L62 | neighbors=[.connect()]
-- "graph_neo4j_client_rationale_77": "Apply constraints + indexes (idempotent)." | kind=entity | source=manager/backend/app/graph/neo4j_client.py:L77 | neighbors=[.ensure_schema()]
-- "graph_neo4j_client_rationale_88": "Run a Cypher statement and return records as dicts. [] if not connected." | kind=entity | source=manager/backend/app/graph/neo4j_client.py:L88 | neighbors=[.run()]
-- "graph_neo4j_client_rationale_96": "Run a parametrised write with UNWIND batching for bulk node/edge loads." | kind=entity | source=manager/backend/app/graph/neo4j_client.py:L96 | neighbors=[.run_write()]
+- "agent_task_runner_rationale_594": "Write the outbound payload to the local result archive.          Called on the s" | kind=entity | source=probe/agent/task_runner.py:L594 | neighbors=[._archive_result()] | lang=en
+- "agent_task_runner_rationale_634": "Submit the result, with spool-and-retry if available.          Every outbound pa" | kind=entity | source=probe/agent/task_runner.py:L634 | neighbors=[._submit_or_spool()] | lang=en
+- "agent_task_runner_rationale_80": "Execute a complete scan job lifecycle.          Args:             job: Job dict" | kind=entity | source=probe/agent/task_runner.py:L80 | neighbors=[.run_job()] | lang=pt
+- "agent_task_runner_rationale_87": "Execute a complete scan job lifecycle.          Args:             job: Job dict" | kind=entity | source=probe/agent/task_runner.py:L87 | neighbors=[.run_job()] | lang=pt
+- "agent_task_runner_rationale_89": "Execute a complete scan job lifecycle.          Args:             job: Job dict" | kind=entity | source=probe/agent/task_runner.py:L89 | neighbors=[.run_job()] | lang=pt
+- "agent_task_runner_rationale_93": "Structured result from running one scan job." | kind=entity | source=probe/agent/task_runner.py:L93 | neighbors=[JobResult] | lang=en
+- "agent_task_runner_rationale_94": "Execute a complete scan job lifecycle.          Args:             job: Job dict" | kind=entity | source=probe/agent/task_runner.py:L94 | neighbors=[.run_job()] | lang=pt
+- "agent_task_runner_rationale_95": "Structured result from running one scan job." | kind=entity | source=probe/agent/task_runner.py:L95 | neighbors=[JobResult] | lang=en
+- "agent_tools_mergehosts": "mergeHosts()" | kind=code-symbol | source=manager/frontend/lib/agent/tools.ts:L81 | neighbors=[tools.ts] | lang=en
+- "agent_tools_runonephase": "runOnePhase()" | kind=code-symbol | source=manager/frontend/lib/agent/tools.ts:L40 | neighbors=[tools.ts] | lang=en
+- "agent_transport_rationale_1": "transport.py — all manager communication (HTTP + WebSocket) in one place.  Encap" | kind=entity | source=probe/agent/transport.py:L1 | neighbors=[transport.py] | lang=en
+- "agent_transport_rationale_105": "Stable identity for the manager a credential belongs to.      Device credentials" | kind=entity | source=probe/agent/transport.py:L105 | neighbors=[manager_fingerprint()] | lang=en
+- "agent_transport_rationale_116": "HTTP (+ future WebSocket) transport to the manager.      Thread-safe for sequent" | kind=entity | source=probe/agent/transport.py:L116 | neighbors=[Transport] | lang=en
+- "agent_transport_rationale_123": "Best-effort extraction of the manager's 409 ``detail`` message." | kind=entity | source=probe/agent/transport.py:L123 | neighbors=[_enrollment_conflict_detail()] | lang=en
+- "agent_transport_rationale_130": "Durably replace one private JSON state file without exposing secrets." | kind=entity | source=probe/agent/transport.py:L130 | neighbors=[_atomic_write_private_state()] | lang=en
+- "agent_transport_rationale_163": "True if we have both an agent_id and a token for API calls." | kind=entity | source=probe/agent/transport.py:L163 | neighbors=[.is_authenticated()] | lang=en
+- "agent_transport_rationale_165": "True if we have both an agent_id and a token for API calls." | kind=entity | source=probe/agent/transport.py:L165 | neighbors=[.is_authenticated()] | lang=en
+- "agent_transport_rationale_166": "True if we have both an agent_id and a token for API calls." | kind=entity | source=probe/agent/transport.py:L166 | neighbors=[.is_authenticated()] | lang=en
+- "agent_transport_rationale_170": "HTTP (+ future WebSocket) transport to the manager.      Thread-safe for sequent" | kind=entity | source=probe/agent/transport.py:L170 | neighbors=[Transport] | lang=en
+- "agent_transport_rationale_182": "HTTP (+ future WebSocket) transport to the manager.      Thread-safe for sequent" | kind=entity | source=probe/agent/transport.py:L182 | neighbors=[Transport] | lang=en
+- "agent_transport_rationale_183": "Merge and atomically persist private state while preserving fields." | kind=entity | source=probe/agent/transport.py:L183 | neighbors=[.update_state()] | lang=en
+- "agent_transport_rationale_186": "Merge and atomically persist private state while preserving fields." | kind=entity | source=probe/agent/transport.py:L186 | neighbors=[.update_state()] | lang=en
+- "agent_transport_rationale_190": "Send a heartbeat to the manager.          Returns True if the heartbeat was acce" | kind=entity | source=probe/agent/transport.py:L190 | neighbors=[.heartbeat()] | lang=en
+- "agent_transport_rationale_203": "True if we have both an agent_id and a token for API calls." | kind=entity | source=probe/agent/transport.py:L203 | neighbors=[.is_authenticated()] | lang=en
+- "agent_transport_rationale_205": "Merge and atomically persist private state while preserving fields." | kind=entity | source=probe/agent/transport.py:L205 | neighbors=[.update_state()] | lang=en
+- "agent_transport_rationale_215": "Poll for pending jobs (HTTP fallback for WebSocket).          Returns a list of" | kind=entity | source=probe/agent/transport.py:L215 | neighbors=[.poll_jobs()] | lang=en
+- "agent_transport_rationale_222": "Register the probe with the manager.          Args:             name: Probe name" | kind=entity | source=probe/agent/transport.py:L222 | neighbors=[.register()] | lang=en
+- "agent_transport_rationale_223": "Merge and atomically persist private state while preserving fields." | kind=entity | source=probe/agent/transport.py:L223 | neighbors=[.update_state()] | lang=en
+- "agent_transport_rationale_224": "Register the probe with the manager.          Args:             name: Probe name" | kind=entity | source=probe/agent/transport.py:L224 | neighbors=[.register()] | lang=en
+- "agent_transport_rationale_225": "Register the probe with the manager.          Args:             name: Probe name" | kind=entity | source=probe/agent/transport.py:L225 | neighbors=[.register()] | lang=en
+- "agent_transport_rationale_233": "Fetch the engagement's authoritative scope.          Returns the response dict i" | kind=entity | source=probe/agent/transport.py:L233 | neighbors=[.fetch_scope()] | lang=en
+- "agent_transport_rationale_244": "Register the probe with the manager.          Args:             name: Probe name" | kind=entity | source=probe/agent/transport.py:L244 | neighbors=[.register()] | lang=en
+- "agent_transport_rationale_252": "Submit a scan result to the manager.          Returns True ONLY on a 2xx respons" | kind=entity | source=probe/agent/transport.py:L252 | neighbors=[.submit_result()] | lang=en
+- "agent_transport_rationale_257": "True if we have both an agent_id and a token for API calls." | kind=entity | source=probe/agent/transport.py:L257 | neighbors=[.is_authenticated()] | lang=en
+- "agent_transport_rationale_262": "Register the probe with the manager.          Args:             name: Probe name" | kind=entity | source=probe/agent/transport.py:L262 | neighbors=[.register()] | lang=en
+- "agent_transport_rationale_269": "True if we have both an agent_id and a token for API calls." | kind=entity | source=probe/agent/transport.py:L269 | neighbors=[.is_authenticated()] | lang=en
+- "agent_transport_rationale_274": "Refresh routing metadata using the cached agent identity.          Returns True" | kind=entity | source=probe/agent/transport.py:L274 | neighbors=[.refresh_registration()] | lang=en
+- "agent_transport_rationale_279": "Register using a manager-side shared bootstrap key (no user login needed)." | kind=entity | source=probe/agent/transport.py:L279 | neighbors=[.bootstrap()] | lang=pt
+- "agent_transport_rationale_289": "Merge and atomically persist private state while preserving fields." | kind=entity | source=probe/agent/transport.py:L289 | neighbors=[.update_state()] | lang=en
+- "agent_transport_rationale_299": "Register using a manager-side shared bootstrap key (no user login needed)." | kind=entity | source=probe/agent/transport.py:L299 | neighbors=[.bootstrap()] | lang=pt
 
 ## Instructions
 

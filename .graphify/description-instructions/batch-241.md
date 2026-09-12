@@ -1,4 +1,4 @@
-# Node Description Batch 242 of 336
+# Node Description Batch 242 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -26,46 +26,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "routers_portal_rationale_550": "The customer's own probe fleet — normally one. Deliberately a NARROW     project" | kind=entity | source=manager/backend/app/routers/portal.py:L550 | neighbors=[portal_agents()] | lang=en
-- "routers_portal_rationale_71": "The operator use-case catalog (single source of truth), curated to what a     cu" | kind=entity | source=manager/backend/app/routers/portal.py:L71 | neighbors=[_portal_use_cases()] | lang=en
-- "routers_portal_rationale_76": "The operator use-case catalog (single source of truth), curated to what a     cu" | kind=entity | source=manager/backend/app/routers/portal.py:L76 | neighbors=[_portal_use_cases()] | lang=en
-- "routers_probe_enrollment_list_enrollment_requests": "list_enrollment_requests()" | kind=code-symbol | source=manager/backend/app/routers/probe_enrollment.py:L504 | neighbors=[probe_enrollment.py] | lang=en
-- "routers_probe_enrollment_rationale_1": "Device-code enrollment for probes; no human credential is installed on a probe." | kind=entity | source=manager/backend/app/routers/probe_enrollment.py:L1 | neighbors=[probe_enrollment.py] | lang=en
-- "routers_probe_enrollment_rationale_246": "Bind a request to a Site policy and create the provisioning Agent.      Shared b" | kind=entity | source=manager/backend/app/routers/probe_enrollment.py:L246 | neighbors=[_provision_agent_for_site()] | lang=en
-- "routers_probe_enrollment_rationale_247": "Bind a request to a Site policy and create the provisioning Agent.      Shared b" | kind=entity | source=manager/backend/app/routers/probe_enrollment.py:L247 | neighbors=[_provision_agent_for_site()] | lang=en
-- "routers_probe_enrollment_rationale_314": "Parse settings.probe_auto_enroll_cidrs → a non-empty CIDR list (RFC1918     defa" | kind=entity | source=manager/backend/app/routers/probe_enrollment.py:L314 | neighbors=[auto_enroll_cidrs()] | lang=pt
-- "routers_probe_enrollment_rationale_322": "The singleton per-tenant Site that trust-on-first-use enrollment binds to." | kind=entity | source=manager/backend/app/routers/probe_enrollment.py:L322 | neighbors=[_get_or_create_auto_enroll_site()] | lang=en
-- "routers_probe_enrollment_rationale_531": "One-click \"Approve Site\": every field is an OPTIONAL override — left blank," | kind=entity | source=manager/backend/app/routers/probe_enrollment.py:L531 | neighbors=[SimpleApproveInput] | lang=en
-- "routers_probe_enrollment_rationale_547": "Auto-assign the next sequential vedha-agent name (vedha_agent_01, _02, …) so" | kind=entity | source=manager/backend/app/routers/probe_enrollment.py:L547 | neighbors=[_next_probe_name()] | lang=en
-- "routers_probe_enrollment_rationale_62": "Return (raw_token, token_hash, token_prefix). Raw is shown once." | kind=entity | source=manager/backend/app/routers/probe_enrollment.py:L62 | neighbors=[generate_enroll_token()] | lang=en
-- "routers_probe_enrollment_rationale_63": "Return (raw_token, token_hash, token_prefix). Raw is shown once." | kind=entity | source=manager/backend/app/routers/probe_enrollment.py:L63 | neighbors=[generate_enroll_token()] | lang=en
-- "routers_probe_enrollment_rationale_68": "A token can auto-approve only while live, unrevoked, and under max_uses." | kind=entity | source=manager/backend/app/routers/probe_enrollment.py:L68 | neighbors=[enroll_token_is_usable()] | lang=en
-- "routers_probe_enrollment_rationale_69": "A token can auto-approve only while live, unrevoked, and under max_uses." | kind=entity | source=manager/backend/app/routers/probe_enrollment.py:L69 | neighbors=[enroll_token_is_usable()] | lang=en
-- "routers_probe_enrollment_revoke_enroll_token": "revoke_enroll_token()" | kind=code-symbol | source=manager/backend/app/routers/probe_enrollment.py:L842 | neighbors=[probe_enrollment.py] | lang=en
-- "routers_probe_enrollment_simpleapproveinput_validate_networks": "._validate_networks()" | kind=code-symbol | source=manager/backend/app/routers/probe_enrollment.py:L542 | neighbors=[SimpleApproveInput] | lang=en
-- "routers_probe_enrollment_sitepolicyinput_require_site_reference": ".require_site_reference()" | kind=code-symbol | source=manager/backend/app/routers/probe_enrollment.py:L168 | neighbors=[SitePolicyInput] | lang=en
-- "routers_probe_enrollment_sitepolicyinput_validate_networks": ".validate_networks()" | kind=code-symbol | source=manager/backend/app/routers/probe_enrollment.py:L164 | neighbors=[SitePolicyInput] | lang=en
-- "routers_remediation_rationale_1": "remediation.py — per-finding remediation plans (operator-facing).  Two routes on" | kind=entity | source=manager/backend/app/routers/remediation.py:L1 | neighbors=[remediation.py] | lang=en
-- "routers_remediation_rationale_41": "Fetch a finding scoped to the caller's tenant via its engagement." | kind=entity | source=manager/backend/app/routers/remediation.py:L41 | neighbors=[_tenant_finding()] | lang=en
-- "routers_remediation_rationale_43": "Fetch a finding scoped to the caller's tenant via its engagement." | kind=entity | source=manager/backend/app/routers/remediation.py:L43 | neighbors=[_tenant_finding()] | lang=en
-- "routers_remediation_rationale_64": "Build the atomic INSERT … ON CONFLICT DO UPDATE for a cached plan.      Pure (no" | kind=entity | source=manager/backend/app/routers/remediation.py:L64 | neighbors=[_build_upsert_stmt()] | lang=en
-- "routers_remediation_rationale_66": "Build the atomic INSERT … ON CONFLICT DO UPDATE for a cached plan.      Pure (no" | kind=entity | source=manager/backend/app/routers/remediation.py:L66 | neighbors=[_build_upsert_stmt()] | lang=en
-- "routers_remediation_rationale_95": "Execute the atomic upsert and return the RETURNING row for serialization." | kind=entity | source=manager/backend/app/routers/remediation.py:L95 | neighbors=[_upsert_plan()] | lang=en
-- "routers_remediation_rationale_97": "Execute the atomic upsert and return the RETURNING row for serialization." | kind=entity | source=manager/backend/app/routers/remediation.py:L97 | neighbors=[_upsert_plan()] | lang=en
-- "routers_sla_policy_rationale_1": "sla_policy.py — operator management of the tenant's custom SLA remediation windo" | kind=entity | source=manager/backend/app/routers/sla_policy.py:L1 | neighbors=[sla_policy.py] | lang=en
-- "routers_sla_policy_rationale_59": "The tenant's custom SLA windows if set, else the env defaults. Shared by any" | kind=entity | source=manager/backend/app/routers/sla_policy.py:L59 | neighbors=[resolve_windows()] | lang=en
-- "routers_users_activate_user": "activate_user()" | kind=code-symbol | source=manager/backend/app/routers/users.py:L118 | neighbors=[users.py] | lang=en
-- "routers_users_deactivate_user": "deactivate_user()" | kind=code-symbol | source=manager/backend/app/routers/users.py:L92 | neighbors=[users.py] | lang=en
-- "routers_users_rationale_1": "Tenant user management — list and deactivate operator accounts.  Exposed endpoin" | kind=entity | source=manager/backend/app/routers/users.py:L1 | neighbors=[users.py] | lang=en
-- "routers_validation_rationale_1": "Approval-gated safe active-validation API (P3).  POST /engagements/{id}/findings" | kind=entity | source=manager/backend/app/routers/validation.py:L1 | neighbors=[validation.py] | lang=en
-- "routers_validation_rationale_82": "RoE gate: active validation is allowed unless the engagement's RoE     explicitl" | kind=entity | source=manager/backend/app/routers/validation.py:L82 | neighbors=[_roe_allows_active_validation()] | lang=en
-- "routers_validation_rationale_89": "Pick a safe check for the finding. TLS findings → tls_handshake, else a     bann" | kind=entity | source=manager/backend/app/routers/validation.py:L89 | neighbors=[_default_check_kind()] | lang=en
-- "routers_vuln_scans_import_findings": "import_findings()" | kind=code-symbol | source=manager/backend/app/routers/vuln_scans.py:L215 | neighbors=[vuln_scans.py] | lang=en
-- "routers_vuln_scans_launch_nessus_scan": "launch_nessus_scan()" | kind=code-symbol | source=manager/backend/app/routers/vuln_scans.py:L66 | neighbors=[vuln_scans.py] | lang=en
-- "routers_vuln_scans_launch_nuclei_scan": "launch_nuclei_scan()" | kind=code-symbol | source=manager/backend/app/routers/vuln_scans.py:L119 | neighbors=[vuln_scans.py] | lang=en
-- "routers_vuln_scans_scan_status": "scan_status()" | kind=code-symbol | source=manager/backend/app/routers/vuln_scans.py:L165 | neighbors=[vuln_scans.py] | lang=en
-- "routers_vuln_scans_trigger_enrichment": "trigger_enrichment()" | kind=code-symbol | source=manager/backend/app/routers/vuln_scans.py:L194 | neighbors=[vuln_scans.py] | lang=en
-- "run_route_post": "POST()" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/detection-validation/run/route.ts:L5 | neighbors=[route.ts] | lang=en
+- "main_scripts_cpe_rationale_117": "Return {vendor, product, version, cpe23} for a recognized product, else None." | kind=entity | source=probe/main_scripts/cpe.py:L117 | neighbors=[to_cpe()] | lang=en
+- "main_scripts_db_scanner_dbscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/db_scanner.py:L456 | neighbors=[DBScanner] | lang=en
+- "main_scripts_db_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/db_scanner.py:L504 | neighbors=[db_scanner.py] | lang=en
+- "main_scripts_db_scanner_probe_mysqlx": "_probe_mysqlx()" | kind=code-symbol | source=probe/main_scripts/db_scanner.py:L363 | neighbors=[db_scanner.py] | lang=en
+- "main_scripts_db_scanner_probe_oracle": "_probe_oracle()" | kind=code-symbol | source=probe/main_scripts/db_scanner.py:L392 | neighbors=[db_scanner.py] | lang=en
+- "main_scripts_db_scanner_probe_postgres": "_probe_postgres()" | kind=code-symbol | source=probe/main_scripts/db_scanner.py:L98 | neighbors=[db_scanner.py] | lang=en
+- "main_scripts_db_scanner_rationale_1": "db_scanner.py — fingerprint database services.  WHY: databases are everywhere on" | kind=entity | source=probe/main_scripts/db_scanner.py:L1 | neighbors=[db_scanner.py] | lang=en
+- "main_scripts_db_scanner_rationale_102": "Classify a Redis INFO reply. `unauthenticated_read` is True only when we     act" | kind=entity | source=probe/main_scripts/db_scanner.py:L102 | neighbors=[interpret_redis_info()] | lang=en
+- "main_scripts_db_scanner_rationale_131": "A well-formed PRELOGIN request (MS-TDS 2.2.6.5).      The previous request's opt" | kind=entity | source=probe/main_scripts/db_scanner.py:L131 | neighbors=[_build_tds_prelogin()] | lang=en
+- "main_scripts_db_scanner_rationale_165": "Read server version and encryption posture out of a TDS PRELOGIN reply.      Pos" | kind=entity | source=probe/main_scripts/db_scanner.py:L165 | neighbors=[parse_tds_prelogin()] | lang=en
+- "main_scripts_db_scanner_rationale_229": "Classify a Redis INFO reply. `unauthenticated_read` is True only when we     act" | kind=entity | source=probe/main_scripts/db_scanner.py:L229 | neighbors=[interpret_redis_info()] | lang=en
+- "main_scripts_db_scanner_rationale_259": "Frame a single-field admin command as OP_MSG (opcode 2013).      MongoDB 5.1 REM" | kind=entity | source=probe/main_scripts/db_scanner.py:L259 | neighbors=[build_op_msg_command()] | lang=pt
+- "main_scripts_db_scanner_rationale_289": "Pull a MongoDB server version out of a wire reply, or None.      The isMaster ha" | kind=entity | source=probe/main_scripts/db_scanner.py:L289 | neighbors=[extract_mongo_version()] | lang=en
+- "main_scripts_db_scanner_rationale_301": "Classify a serverStatus reply into auth posture.      Returns {} when the reply" | kind=entity | source=probe/main_scripts/db_scanner.py:L301 | neighbors=[interpret_mongodb_auth()] | lang=en
+- "main_scripts_db_scanner_rationale_435": "Stamp the `db: True` discriminator onto every db_scan fact.      Every sibling d" | kind=entity | source=probe/main_scripts/db_scanner.py:L435 | neighbors=[stamp_db_fact()] | lang=en
+- "main_scripts_db_scanner_rationale_54": "Parse a MySQL/MariaDB initial handshake packet.      Returns None when this is n" | kind=entity | source=probe/main_scripts/db_scanner.py:L54 | neighbors=[parse_mysql_greeting()] | lang=en
+- "main_scripts_delta_scanner_rationale_1": "delta_scanner.py — scan-state comparison and continuous attack-surface monitorin" | kind=entity | source=probe/main_scripts/delta_scanner.py:L1 | neighbors=[delta_scanner.py] | lang=en
+- "main_scripts_delta_scanner_rationale_122": "Best-effort service name from data dict or scanner name." | kind=entity | source=probe/main_scripts/delta_scanner.py:L122 | neighbors=[_extract_service()] | lang=en
+- "main_scripts_delta_scanner_rationale_124": "Best-effort service name from data dict or scanner name." | kind=entity | source=probe/main_scripts/delta_scanner.py:L124 | neighbors=[_extract_service()] | lang=en
+- "main_scripts_delta_scanner_rationale_139": "Best-effort version string." | kind=entity | source=probe/main_scripts/delta_scanner.py:L139 | neighbors=[_extract_version()] | lang=en
+- "main_scripts_delta_scanner_rationale_141": "Best-effort version string." | kind=entity | source=probe/main_scripts/delta_scanner.py:L141 | neighbors=[_extract_version()] | lang=en
+- "main_scripts_delta_scanner_rationale_158": "Load JSONL scan snapshots and compute security-relevant diffs." | kind=entity | source=probe/main_scripts/delta_scanner.py:L158 | neighbors=[DeltaEngine] | lang=en
+- "main_scripts_delta_scanner_rationale_160": "Load JSONL scan snapshots and compute security-relevant diffs." | kind=entity | source=probe/main_scripts/delta_scanner.py:L160 | neighbors=[DeltaEngine] | lang=en
+- "main_scripts_delta_scanner_rationale_161": "Parse a JSONL file of ScanResult records and return a SnapshotIndex.         Lin" | kind=entity | source=probe/main_scripts/delta_scanner.py:L161 | neighbors=[.load_jsonl()] | lang=en
+- "main_scripts_delta_scanner_rationale_163": "Parse a JSONL file of ScanResult records and return a SnapshotIndex.         Lin" | kind=entity | source=probe/main_scripts/delta_scanner.py:L163 | neighbors=[.load_jsonl()] | lang=en
+- "main_scripts_delta_scanner_rationale_206": "Compute security-relevant deltas between baseline and current snapshots." | kind=entity | source=probe/main_scripts/delta_scanner.py:L206 | neighbors=[.diff()] | lang=en
+- "main_scripts_delta_scanner_rationale_208": "Compute security-relevant deltas between baseline and current snapshots." | kind=entity | source=probe/main_scripts/delta_scanner.py:L208 | neighbors=[.diff()] | lang=en
+- "main_scripts_delta_scanner_rationale_297": "Heuristic priority for a newly-detected service." | kind=entity | source=probe/main_scripts/delta_scanner.py:L297 | neighbors=[_new_service_severity()] | lang=en
+- "main_scripts_delta_scanner_rationale_299": "Heuristic priority for a newly-detected service." | kind=entity | source=probe/main_scripts/delta_scanner.py:L299 | neighbors=[_new_service_severity()] | lang=en
+- "main_scripts_delta_scanner_rationale_309": "True if version changed in a security-relevant way (not just whitespace)." | kind=entity | source=probe/main_scripts/delta_scanner.py:L309 | neighbors=[_significant_version_change()] | lang=en
+- "main_scripts_delta_scanner_rationale_311": "True if version changed in a security-relevant way (not just whitespace)." | kind=entity | source=probe/main_scripts/delta_scanner.py:L311 | neighbors=[_significant_version_change()] | lang=en
+- "main_scripts_delta_scanner_rationale_54": "Normalised representation of one ScanResult JSONL line." | kind=entity | source=probe/main_scripts/delta_scanner.py:L54 | neighbors=[ScanRecord] | lang=en
+- "main_scripts_delta_scanner_rationale_56": "Normalised representation of one ScanResult JSONL line." | kind=entity | source=probe/main_scripts/delta_scanner.py:L56 | neighbors=[ScanRecord] | lang=en
+- "main_scripts_delta_scanner_rationale_70": "One security-relevant change between two scans." | kind=entity | source=probe/main_scripts/delta_scanner.py:L70 | neighbors=[Delta] | lang=en
+- "main_scripts_delta_scanner_rationale_72": "One security-relevant change between two scans." | kind=entity | source=probe/main_scripts/delta_scanner.py:L72 | neighbors=[Delta] | lang=en
+- "main_scripts_delta_scanner_rationale_92": "Derive a stable host identity from a raw scan record in priority order:       1." | kind=entity | source=probe/main_scripts/delta_scanner.py:L92 | neighbors=[_stable_host_id()] | lang=en
+- "main_scripts_delta_scanner_rationale_94": "Derive a stable host identity from a raw scan record in priority order:       1." | kind=entity | source=probe/main_scripts/delta_scanner.py:L94 | neighbors=[_stable_host_id()] | lang=en
+- "main_scripts_device_classifier_rationale_1": "device_classifier.py — infer a device's ROLE from collection-layer facts.  This" | kind=entity | source=probe/main_scripts/device_classifier.py:L1 | neighbors=[device_classifier.py] | lang=en
+- "main_scripts_device_classifier_rationale_102": "Fuse OS family + open ports + service products into a device-role guess.      Re" | kind=entity | source=probe/main_scripts/device_classifier.py:L102 | neighbors=[classify_device()] | lang=pt
+- "main_scripts_device_classifier_rationale_116": "Fuse OS family + open ports + service products into a device-role guess.      Re" | kind=entity | source=probe/main_scripts/device_classifier.py:L116 | neighbors=[classify_device()] | lang=pt
 
 ## Instructions
 

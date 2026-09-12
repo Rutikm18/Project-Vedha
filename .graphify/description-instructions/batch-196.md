@@ -1,4 +1,4 @@
-# Node Description Batch 197 of 336
+# Node Description Batch 197 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -9,9 +9,6 @@ your JSON answer to the answer file.
 You are documenting nodes in a knowledge graph.
 For each entry below, write ONE concise factual plain-language sentence
 describing what it is or does. Use only the provided context.
-For a code symbol (kind=code-symbol — a function, class, or constant),
-describe what the function/symbol does based on its name, source location
-and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
 For an entity node (any other kind — e.g. a person, place, event, object),
 describe what the entity is and its role, grounded in its type, its
 relations (neighbors) and the provided citations/evidence — e.g.
@@ -26,46 +23,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "detection_engine_cvss_rationale_44": "Returns the CVSS v3.1 base score (0.0-10.0), or None if the vector     is missin" | kind=entity | source=manager/detection_engine/cvss.py:L44 | neighbors=[base_score()] | lang=en
-- "detection_engine_enrichment_db_epssdb_init": ".__init__()" | kind=code-symbol | source=manager/detection_engine/enrichment_db.py:L25 | neighbors=[EpssDB] | lang=en
-- "detection_engine_enrichment_db_kevdb_init": ".__init__()" | kind=code-symbol | source=manager/detection_engine/enrichment_db.py:L16 | neighbors=[KevDB] | lang=en
-- "detection_engine_enrichment_db_kevdb_is_kev": ".is_kev()" | kind=code-symbol | source=manager/detection_engine/enrichment_db.py:L20 | neighbors=[KevDB] | lang=en
-- "detection_engine_enrichment_db_rationale_1": "enrichment_db.py — load the pinned KEV/EPSS snapshots. Same discipline as vuln_d" | kind=entity | source=manager/detection_engine/enrichment_db.py:L1 | neighbors=[enrichment_db.py] | lang=en
-- "detection_engine_enrichment_db_rationale_29": "{'epss': float, 'percentile': float} or None if not covered." | kind=entity | source=manager/detection_engine/enrichment_db.py:L29 | neighbors=[.get()] | lang=en
-- "detection_engine_enrichment_db_rationale_30": "{'epss': float, 'percentile': float} or None if not covered." | kind=entity | source=manager/detection_engine/enrichment_db.py:L30 | neighbors=[.get()] | lang=en
-- "detection_engine_enrichment_db_rationale_44": "Test hook: drop the memoized KEV/EPSS caches so the next load re-reads." | kind=entity | source=manager/detection_engine/enrichment_db.py:L44 | neighbors=[_clear_caches()] | lang=en
-- "detection_engine_exploitability_rationale_1": "exploitability.py — join real-world exploitation evidence (CISA KEV + FIRST EPSS" | kind=entity | source=manager/detection_engine/exploitability.py:L1 | neighbors=[exploitability.py] | lang=en
-- "detection_engine_exploitability_rationale_131": "Exploitability evidence for one posture rule.      Returns {kev_refs, epss_max," | kind=entity | source=manager/detection_engine/exploitability.py:L131 | neighbors=[assess()] | lang=en
-- "detection_engine_exploitability_rationale_174": "Enrich posture findings in place with exploitation evidence and re-rank.      Th" | kind=entity | source=manager/detection_engine/exploitability.py:L174 | neighbors=[apply_to_findings()] | lang=en
-- "detection_engine_exploitability_rationale_209": "The band table posture_rules.compute_risk uses, shared so a re-rank here     can" | kind=entity | source=manager/detection_engine/exploitability.py:L209 | neighbors=[priority_for()] | lang=en
-- "detection_engine_exploitability_rationale_58": "One documented relationship between a posture weakness and a CVE." | kind=entity | source=manager/detection_engine/exploitability.py:L58 | neighbors=[KevLink] | lang=pt
-- "detection_engine_ingest_ingestresult_init": ".__init__()" | kind=code-symbol | source=manager/detection_engine/ingest.py:L50 | neighbors=[IngestResult] | lang=en
-- "detection_engine_ingest_rationale_102": "Real, verified hostname-alias sources in scanner_module's output —     deliberat" | kind=entity | source=manager/detection_engine/ingest.py:L102 | neighbors=[_extract_aliases()] | lang=en
-- "detection_engine_ingest_rationale_126": "Stream-read one JSONL file, validating and assembling Assets as it goes.      Pa" | kind=entity | source=manager/detection_engine/ingest.py:L126 | neighbors=[ingest_file()] | lang=en
-- "detection_engine_ingest_rationale_71": "Returns an error reason string if invalid, else None." | kind=entity | source=manager/detection_engine/ingest.py:L71 | neighbors=[_validate()] | lang=en
-- "detection_engine_models_asset_add_alias": ".add_alias()" | kind=code-symbol | source=manager/detection_engine/models.py:L97 | neighbors=[Asset] | lang=en
-- "detection_engine_models_asset_facts_by_scanner": ".facts_by_scanner()" | kind=code-symbol | source=manager/detection_engine/models.py:L101 | neighbors=[Asset] | lang=en
-- "detection_engine_models_asset_open_ports": ".open_ports()" | kind=code-symbol | source=manager/detection_engine/models.py:L104 | neighbors=[Asset] | lang=en
-- "detection_engine_models_finding_post_init": ".__post_init__()" | kind=code-symbol | source=manager/detection_engine/models.py:L179 | neighbors=[Finding] | lang=en
-- "detection_engine_models_finding_to_dict": ".to_dict()" | kind=code-symbol | source=manager/detection_engine/models.py:L187 | neighbors=[Finding] | lang=en
-- "detection_engine_models_rationale_1": "models.py — shared schema for the detection/correlation layer.  Two core objects" | kind=entity | source=manager/detection_engine/models.py:L1 | neighbors=[models.py] | lang=en
-- "detection_engine_models_rationale_108": "Reconstruct this asset using only facts observed at or before         cutoff_ts" | kind=entity | source=manager/detection_engine/models.py:L108 | neighbors=[.as_of()] | lang=en
-- "detection_engine_models_rationale_126": "Deterministic finding ID: the SAME (asset, CVE, CPE) triple always     hashes to" | kind=entity | source=manager/detection_engine/models.py:L126 | neighbors=[make_finding_id()] | lang=en
-- "detection_engine_models_rationale_25": "How was this fact obtained? Drives every downstream confidence decision     (CPE" | kind=entity | source=manager/detection_engine/models.py:L25 | neighbors=[SourceConfidence] | lang=en
-- "detection_engine_models_rationale_45": "One ScanResult line, carried forward with its ingestion-time     confidence tag" | kind=entity | source=manager/detection_engine/models.py:L45 | neighbors=[Fact] | lang=en
-- "detection_engine_models_rationale_61": "A stable, human-readable pointer back to this exact observation —         what a" | kind=entity | source=manager/detection_engine/models.py:L61 | neighbors=[.ref()] | lang=en
-- "detection_engine_models_rationale_71": "Every fact known about one host, merged across all scanners/runs.      IP is the" | kind=entity | source=manager/detection_engine/models.py:L71 | neighbors=[Asset] | lang=en
-- "detection_engine_pipeline_rationale_127": "Unified detection over one set of ingested facts: the CVE track     (version→CVE" | kind=entity | source=manager/detection_engine/pipeline.py:L127 | neighbors=[run_full_detection()] | lang=en
-- "detection_engine_pipeline_rationale_180": "Phase 2 exit criteria: recall gain from AI assist, with zero precision     regre" | kind=entity | source=manager/detection_engine/pipeline.py:L180 | neighbors=[ab_evaluate()] | lang=en
-- "detection_engine_pipeline_rationale_52": "exposure: optional {asset_ip: {\"internet_facing\": bool, \"auth_enforced\":     boo" | kind=entity | source=manager/detection_engine/pipeline.py:L52 | neighbors=[run_pipeline()] | lang=en
-- "detection_engine_port_intel_escalate": "escalate()" | kind=code-symbol | source=manager/detection_engine/port_intel.py:L25 | neighbors=[port_intel.py] | lang=en
-- "detection_engine_port_intel_rationale_1": "port_intel.py — port-intelligence catalog for the exposed-service detector.  The" | kind=entity | source=manager/detection_engine/port_intel.py:L1 | neighbors=[port_intel.py] | lang=en
-- "detection_engine_port_intel_rationale_203": "True when an identified product proves the catalog's port guess wrong." | kind=entity | source=manager/detection_engine/port_intel.py:L203 | neighbors=[contradicts_port_hypothesis()] | lang=en
-- "detection_engine_port_intel_rationale_215": "Map an open TCP port (+ optional banner, the probe's soft-matched service     la" | kind=entity | source=manager/detection_engine/port_intel.py:L215 | neighbors=[classify_port()] | lang=en
-- "detection_engine_posture_confidence_rationale_1": "posture_confidence.py — calibrated, auditable confidence for posture findings." | kind=entity | source=manager/detection_engine/posture_confidence.py:L1 | neighbors=[posture_confidence.py] | lang=en
-- "detection_engine_posture_confidence_rationale_121": "Second pass over ONE host's posture findings: now that every rule that fired on" | kind=entity | source=manager/detection_engine/posture_confidence.py:L121 | neighbors=[calibrate_host_findings()] | lang=en
-- "detection_engine_posture_confidence_rationale_69": "Chains this rule belongs to where ≥1 OTHER member also fired on the host.     A" | kind=entity | source=manager/detection_engine/posture_confidence.py:L69 | neighbors=[corroborating_chains()] | lang=en
-- "detection_engine_posture_confidence_rationale_81": "Return (confidence 0-100, precision_factors). Pure and deterministic:     same i" | kind=entity | source=manager/detection_engine/posture_confidence.py:L81 | neighbors=[assess_confidence()] | lang=en
+- "agent_agent_rationale_48": "Return an integer environment setting constrained to a safe range." | kind=entity | source=probe/agent/agent.py:L48 | neighbors=[_bounded_env_int()] | lang=en
+- "agent_agent_rationale_481": "Release a staged job only after the manager confirms its claim." | kind=entity | source=probe/agent/agent.py:L481 | neighbors=[_ws_take_confirmed_job()] | lang=en
+- "agent_agent_rationale_485": "Re-submit previously spooled results over WebSocket." | kind=entity | source=probe/agent/agent.py:L485 | neighbors=[_ws_flush_spool()] | lang=en
+- "agent_agent_rationale_488": "Release a staged job only after the manager confirms its claim." | kind=entity | source=probe/agent/agent.py:L488 | neighbors=[_ws_take_confirmed_job()] | lang=en
+- "agent_agent_rationale_490": "Re-submit previously spooled results over WebSocket." | kind=entity | source=probe/agent/agent.py:L490 | neighbors=[_ws_flush_spool()] | lang=en
+- "agent_agent_rationale_507": "Run one job while keeping WS status/result frames best-effort." | kind=entity | source=probe/agent/agent.py:L507 | neighbors=[_ws_run_job()] | lang=en
+- "agent_agent_rationale_508": "Run an HTTP-claimed job while renewing its manager lease." | kind=entity | source=probe/agent/agent.py:L508 | neighbors=[_run_polled_job_with_heartbeats()] | lang=en
+- "agent_agent_rationale_511": "Run all startup security checks before any network I/O.      Order matters: HW b" | kind=entity | source=probe/agent/agent.py:L511 | neighbors=[_startup_gauntlet()] | lang=pt
+- "agent_agent_rationale_514": "Run one job while keeping WS status/result frames best-effort." | kind=entity | source=probe/agent/agent.py:L514 | neighbors=[_ws_run_job()] | lang=en
+- "agent_agent_rationale_516": "Run all startup security checks before any network I/O.      Order matters: HW b" | kind=entity | source=probe/agent/agent.py:L516 | neighbors=[_startup_gauntlet()] | lang=pt
+- "agent_agent_rationale_54": "Load key=value lines from probe.env for dev convenience." | kind=entity | source=probe/agent/agent.py:L54 | neighbors=[_load_env()] | lang=en
+- "agent_agent_rationale_55": "Recognize only explicit single-host development/Compose manager names." | kind=entity | source=probe/agent/agent.py:L55 | neighbors=[_is_local_manager_url()] | lang=en
+- "agent_agent_rationale_550": "Poll pending jobs even while WS is connected.      This makes result delivery re" | kind=entity | source=probe/agent/agent.py:L550 | neighbors=[_ws_http_poll_fallback()] | lang=en
+- "agent_agent_rationale_556": "Acknowledge an offer without executing it before claim confirmation." | kind=entity | source=probe/agent/agent.py:L556 | neighbors=[_ws_stage_job_offer()] | lang=en
+- "agent_agent_rationale_559": "Detect common debugging/tracing tools.  Informational only — does     NOT block" | kind=entity | source=probe/agent/agent.py:L559 | neighbors=[_check_anti_debug()] | lang=en
+- "agent_agent_rationale_564": "Detect common debugging/tracing tools.  Informational only — does     NOT block" | kind=entity | source=probe/agent/agent.py:L564 | neighbors=[_check_anti_debug()] | lang=en
+- "agent_agent_rationale_57": "Recognize only explicit single-host development/Compose manager names." | kind=entity | source=probe/agent/agent.py:L57 | neighbors=[_is_local_manager_url()] | lang=en
+- "agent_agent_rationale_574": "Release a staged job only after the manager confirms its claim." | kind=entity | source=probe/agent/agent.py:L574 | neighbors=[_ws_take_confirmed_job()] | lang=en
+- "agent_agent_rationale_575": "Release a staged job only after the manager confirms its claim." | kind=entity | source=probe/agent/agent.py:L575 | neighbors=[_ws_take_confirmed_job()] | lang=en
+- "agent_agent_rationale_58": "Return an integer environment setting constrained to a safe range." | kind=entity | source=probe/agent/agent.py:L58 | neighbors=[_bounded_env_int()] | lang=en
+- "agent_agent_rationale_586": "Send periodic heartbeats over WebSocket." | kind=entity | source=probe/agent/agent.py:L586 | neighbors=[_ws_heartbeat_sender()] | lang=en
+- "agent_agent_rationale_587": "Run an HTTP-claimed job while renewing its manager lease." | kind=entity | source=probe/agent/agent.py:L587 | neighbors=[_run_polled_job_with_heartbeats()] | lang=en
+- "agent_agent_rationale_59": "Return an integer environment setting constrained to a safe range." | kind=entity | source=probe/agent/agent.py:L59 | neighbors=[_bounded_env_int()] | lang=en
+- "agent_agent_rationale_593": "Send periodic heartbeats over WebSocket." | kind=entity | source=probe/agent/agent.py:L593 | neighbors=[_ws_heartbeat_sender()] | lang=en
+- "agent_agent_rationale_599": "Run an HTTP-claimed job while renewing its manager lease." | kind=entity | source=probe/agent/agent.py:L599 | neighbors=[_run_polled_job_with_heartbeats()] | lang=en
+- "agent_agent_rationale_601": "Retry durable result files using the acknowledged HTTP result path." | kind=entity | source=probe/agent/agent.py:L601 | neighbors=[_flush_spool_over_http()] | lang=en
+- "agent_agent_rationale_607": "Load the probe's X25519 identity from persistent state, or create one.      Retu" | kind=entity | source=probe/agent/agent.py:L607 | neighbors=[_load_or_create_identity()] | lang=en
+- "agent_agent_rationale_609": "Run one job while keeping WS status/result frames best-effort." | kind=entity | source=probe/agent/agent.py:L609 | neighbors=[_ws_run_job()] | lang=en
+- "agent_agent_rationale_612": "Load the probe's X25519 identity from persistent state, or create one.      Retu" | kind=entity | source=probe/agent/agent.py:L612 | neighbors=[_load_or_create_identity()] | lang=en
+- "agent_agent_rationale_614": "Run all startup security checks before any network I/O.      Order matters: HW b" | kind=entity | source=probe/agent/agent.py:L614 | neighbors=[_startup_gauntlet()] | lang=pt
+- "agent_agent_rationale_621": "Run all startup security checks before any network I/O.      Order matters: HW b" | kind=entity | source=probe/agent/agent.py:L621 | neighbors=[_startup_gauntlet()] | lang=pt
+- "agent_agent_rationale_649": "Persistent WebSocket push loop.      Returns False if WebSocket is unavailable (" | kind=entity | source=probe/agent/agent.py:L649 | neighbors=[_run_ws_push_loop()] | lang=en
+- "agent_agent_rationale_65": "Load key=value lines from probe.env for dev convenience." | kind=entity | source=probe/agent/agent.py:L65 | neighbors=[_load_env()] | lang=en
+- "agent_agent_rationale_659": "Run an HTTP-claimed job while renewing its manager lease." | kind=entity | source=probe/agent/agent.py:L659 | neighbors=[_run_polled_job_with_heartbeats()] | lang=en
+- "agent_agent_rationale_661": "Persistent WebSocket push loop.      Returns False if WebSocket is unavailable (" | kind=entity | source=probe/agent/agent.py:L661 | neighbors=[_run_ws_push_loop()] | lang=en
+- "agent_agent_rationale_662": "Detect common debugging/tracing tools.  Informational only — does     NOT block" | kind=entity | source=probe/agent/agent.py:L662 | neighbors=[_check_anti_debug()] | lang=en
+- "agent_agent_rationale_667": "Return (agent_id, token, fresh, identity_sk, identity_pk, public_key_b64)." | kind=entity | source=probe/agent/agent.py:L667 | neighbors=[_obtain_identity()] | lang=en
+- "agent_agent_rationale_668": "Detect common debugging/tracing tools.  Informational only — does     NOT block" | kind=entity | source=probe/agent/agent.py:L668 | neighbors=[_check_anti_debug()] | lang=en
+- "agent_agent_rationale_669": "Poll pending jobs even while WS is connected.      This makes result delivery re" | kind=entity | source=probe/agent/agent.py:L669 | neighbors=[_ws_http_poll_fallback()] | lang=en
+- "agent_agent_rationale_67": "Recognize only explicit single-host development/Compose manager names." | kind=entity | source=probe/agent/agent.py:L67 | neighbors=[_is_local_manager_url()] | lang=en
 
 ## Instructions
 

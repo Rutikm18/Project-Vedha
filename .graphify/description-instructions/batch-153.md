@@ -1,4 +1,4 @@
-# Node Description Batch 154 of 336
+# Node Description Batch 154 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,51 +12,58 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
+For an entity node (any other kind — e.g. a person, place, event, object),
+describe what the entity is and its role, grounded in its type, its
+relations (neighbors) and the provided citations/evidence — e.g.
+"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
+Ground entity descriptions in the citations/evidence when present; do not
+speculate beyond the context, so a node with no supporting context may be
+left out of the reply.
 Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_finding_resolution_schema": "test_finding_resolution_schema.py" | kind=code-symbol | source=manager/backend/tests/test_finding_resolution_schema.py:L1 | neighbors=[ddb51f2 feat(resolution): add finding r…, test_finding_has_resolution_lifecycle_c…]
-- "tests_test_finding_risk_rank_api": "test_finding_risk_rank_api.py" | kind=code-symbol | source=manager/backend/tests/test_finding_risk_rank_api.py:L1 | neighbors=[85e4537 feat(risk-rank): expose risk_ra…, test_finding_schema_exposes_risk_rank()]
-- "tests_test_finding_section_testfindingsection_test_backward_compatible_keys_kept": ".test_backward_compatible_keys_kept()" | kind=code-symbol | source=probe/tests/test_finding_section.py:L95 | neighbors=[TestFindingSection, ._sum()]
-- "tests_test_finding_section_testfindingsection_test_clean_host_shows_no_findings_honestly": ".test_clean_host_shows_no_findings_honestly()" | kind=code-symbol | source=probe/tests/test_finding_section.py:L51 | neighbors=[TestFindingSection, ._sum()]
-- "tests_test_finding_section_testfindingsection_test_each_finding_tagged_with_verified_provenance": ".test_each_finding_tagged_with_verified_provenance()" | kind=code-symbol | source=probe/tests/test_finding_section.py:L88 | neighbors=[TestFindingSection, ._sum()]
-- "tests_test_finding_section_testfindingsection_test_findings_are_ranked_worst_first": ".test_findings_are_ranked_worst_first()" | kind=code-symbol | source=probe/tests/test_finding_section.py:L76 | neighbors=[TestFindingSection, ._sum()]
-- "tests_test_finding_section_testfindingsection_test_vulnerable_host_shows_ranked_vulnerabilities": ".test_vulnerable_host_shows_ranked_vulnerabilities()" | kind=code-symbol | source=probe/tests/test_finding_section.py:L61 | neighbors=[TestFindingSection, ._sum()]
-- "tests_test_finding_verification_api": "test_finding_verification_api.py" | kind=code-symbol | source=manager/backend/tests/test_finding_verification_api.py:L1 | neighbors=[72f68af feat(verification): expose veri…, test_finding_schema_exposes_verificatio…]
-- "tests_test_finding_verification_schema": "test_finding_verification_schema.py" | kind=code-symbol | source=manager/backend/tests/test_finding_verification_schema.py:L1 | neighbors=[0fbec7d feat(verification): add finding…, test_finding_has_verification_columns()]
-- "tests_test_ftp_scanner_testftpfindings_test_anon_denied_is_silent": ".test_anon_denied_is_silent()" | kind=code-symbol | source=probe/tests/test_ftp_scanner.py:L70 | neighbors=[TestFTPFindings, ._fact()]
-- "tests_test_ftp_scanner_testftpfindings_test_anon_login_only_is_medium": ".test_anon_login_only_is_medium()" | kind=code-symbol | source=probe/tests/test_ftp_scanner.py:L65 | neighbors=[TestFTPFindings, ._fact()]
-- "tests_test_ftp_scanner_testftpfindings_test_anon_read_is_high": ".test_anon_read_is_high()" | kind=code-symbol | source=probe/tests/test_ftp_scanner.py:L58 | neighbors=[TestFTPFindings, ._fact()]
-- "tests_test_ftp_scanner_testftpscanner_test_anon_login_and_read_open": ".test_anon_login_and_read_open()" | kind=code-symbol | source=probe/tests/test_ftp_scanner.py:L33 | neighbors=[TestFTPScanner, ._sc()]
-- "tests_test_ftp_scanner_testftpscanner_test_ftp_present_anon_denied_open_but_secure": ".test_ftp_present_anon_denied_open_but_secure()" | kind=code-symbol | source=probe/tests/test_ftp_scanner.py:L46 | neighbors=[TestFTPScanner, ._sc()]
-- "tests_test_ftp_scanner_testftpscanner_test_no_ftp_filtered": ".test_no_ftp_filtered()" | kind=code-symbol | source=probe/tests/test_ftp_scanner.py:L41 | neighbors=[TestFTPScanner, ._sc()]
-- "tests_test_ftp_scanner_testparity": "TestParity" | kind=code-symbol | source=probe/tests/test_ftp_scanner.py:L75 | neighbors=[test_ftp_scanner.py, .test_main_scripts()]
-- "tests_test_host_discovery_udp_test_netbios_reply_proves_life_and_names_host": "test_netbios_reply_proves_life_and_names_host()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L129 | neighbors=[test_host_discovery_udp.py, _nbstat_reply()]
-- "tests_test_host_discovery_udp_test_tcp_reset_counts_as_proof_of_life": "test_tcp_reset_counts_as_proof_of_life()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L232 | neighbors=[test_host_discovery_udp.py, A RST mid-handshake (ConnectionResetErr…]
-- "tests_test_host_discovery_udp_test_udp_tier_skipped_when_arp_definitively_failed": "test_udp_tier_skipped_when_arp_definitively_failed()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L251 | neighbors=[test_host_discovery_udp.py, On-LAN INCOMPLETE/FAILED = nobody owns …]
-- "tests_test_host_discovery_udp_testparsenbstat_test_msbrowse_control_chars_dropped": ".test_msbrowse_control_chars_dropped()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L52 | neighbors=[TestParseNbstat, _nbstat_reply()]
-- "tests_test_host_discovery_udp_testparsenbstat_test_names_hostname_domain_mac": ".test_names_hostname_domain_mac()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L38 | neighbors=[TestParseNbstat, _nbstat_reply()]
-- "tests_test_host_discovery_udp_udp_server": "_udp_server()" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L103 | neighbors=[test_host_discovery_udp.py, _Responder]
-- "tests_test_host_health_testheartbeat_test_cancellation_is_clean": ".test_cancellation_is_clean()" | kind=code-symbol | source=probe/tests/test_host_health.py:L251 | neighbors=[TestHeartbeat, _monitor()]
-- "tests_test_host_health_testheartbeat_test_declares_offline_after_consecutive_misses": ".test_declares_offline_after_consecutive_misses()" | kind=code-symbol | source=probe/tests/test_host_health.py:L207 | neighbors=[TestHeartbeat, _monitor()]
-- "tests_test_host_health_testheartbeat_test_healthy_host_is_never_marked": ".test_healthy_host_is_never_marked()" | kind=code-symbol | source=probe/tests/test_host_health.py:L235 | neighbors=[TestHeartbeat, _monitor()]
-- "tests_test_host_health_testsilencedetection_test_any_contact_beats_many_failures": ".test_any_contact_beats_many_failures()" | kind=code-symbol | source=probe/tests/test_host_health.py:L60 | neighbors=[TestSilenceDetection, _r()]
-- "tests_test_host_health_testsilencedetection_test_filtered_is_silence_but_only_suspicion": ".test_filtered_is_silence_but_only_suspicion()" | kind=code-symbol | source=probe/tests/test_host_health.py:L49 | neighbors=[TestSilenceDetection, _r()]
-- "tests_test_host_health_testsilencedetection_test_no_results_is_not_silence": ".test_no_results_is_not_silence()" | kind=code-symbol | source=probe/tests/test_host_health.py:L56 | neighbors=[A branch that declined to run says noth…, TestSilenceDetection]
-- "tests_test_host_health_testsilencedetection_test_open_and_observed_are_contact": ".test_open_and_observed_are_contact()" | kind=code-symbol | source=probe/tests/test_host_health.py:L42 | neighbors=[TestSilenceDetection, _r()]
-- "tests_test_host_health_testsilencedetection_test_transport_error_code_is_silence": ".test_transport_error_code_is_silence()" | kind=code-symbol | source=probe/tests/test_host_health.py:L52 | neighbors=[TestSilenceDetection, _r()]
-- "tests_test_host_health_testsilencedetection_test_unreachable_is_silence": ".test_unreachable_is_silence()" | kind=code-symbol | source=probe/tests/test_host_health.py:L46 | neighbors=[TestSilenceDetection, _r()]
-- "tests_test_host_health_testudpnoreplyisnotcontact_test_a_real_open_port_still_counts_as_contact": ".test_a_real_open_port_still_counts_as_contact()" | kind=code-symbol | source=probe/tests/test_host_health.py:L195 | neighbors=[TestUdpNoReplyIsNotContact, _r()]
-- "tests_test_host_health_testudpnoreplyisnotcontact_test_mixed_udp_silence_and_a_real_open_port_is_contact": ".test_mixed_udp_silence_and_a_real_open_port_is_contact()" | kind=code-symbol | source=probe/tests/test_host_health.py:L198 | neighbors=[TestUdpNoReplyIsNotContact, _r()]
-- "tests_test_host_health_testudpnoreplyisnotcontact_test_udp_no_reply_counts_as_silence": ".test_udp_no_reply_counts_as_silence()" | kind=code-symbol | source=probe/tests/test_host_health.py:L192 | neighbors=[TestUdpNoReplyIsNotContact, _r()]
-- "tests_test_host_health_testverdict_test_a_broken_liveness_probe_never_aborts_the_scan": ".test_a_broken_liveness_probe_never_aborts_the_scan()" | kind=code-symbol | source=probe/tests/test_host_health.py:L113 | neighbors=[TestVerdict, _r()]
-- "tests_test_http_lease_test_revoked_lease_cancels_the_attempt_immediately": "test_revoked_lease_cancels_the_attempt_immediately()" | kind=code-symbol | source=probe/tests/test_http_lease.py:L120 | neighbors=[test_http_lease.py, An operator cancel (409) is DEFINITIVE,…]
-- "tests_test_installer_contract_test_installer_accepts_enroll_token_and_insecure_for_http_manager": "test_installer_accepts_enroll_token_and_insecure_for_http_manager()" | kind=code-symbol | source=probe/tests/test_installer_contract.py:L62 | neighbors=[test_installer_contract.py, _dry_run()]
-- "tests_test_installer_contract_test_installer_without_token_still_shows_manual_approval": "test_installer_without_token_still_shows_manual_approval()" | kind=code-symbol | source=probe/tests/test_installer_contract.py:L76 | neighbors=[test_installer_contract.py, _dry_run()]
-- "tests_test_integration_fake_run_scan": "_fake_run_scan()" | kind=code-symbol | source=probe/tests/test_integration.py:L41 | neighbors=[test_integration.py, Return a minimal valid scan result (no …]
-- "tests_test_integration_testfulljoblifecycle_test_complete_flow_with_encrypted_scope": ".test_complete_flow_with_encrypted_scope()" | kind=code-symbol | source=probe/tests/test_integration.py:L314 | neighbors=[Simulate the full probe lifecycle from …, TestFullJobLifecycle]
+- "main_scripts_va_campaign_atomic_write_json": "_atomic_write_json()" | kind=code-symbol | source=probe/main_scripts/va_campaign.py:L282 | neighbors=[va_campaign.py, ._flush()]
+- "main_scripts_va_campaign_bounded_gather": "_bounded_gather()" | kind=code-symbol | source=probe/main_scripts/va_campaign.py:L374 | neighbors=[va_campaign.py, Run coro_factory(item) over items with …]
+- "main_scripts_va_campaign_campaignoptions": "CampaignOptions" | kind=code-symbol | source=probe/main_scripts/va_campaign.py:L97 | neighbors=[va_campaign.py, Everything that changes WHAT the campai…]
+- "main_scripts_va_campaign_cliprogressview_format": "._format()" | kind=code-symbol | source=probe/main_scripts/va_campaign.py:L690 | neighbors=[CliProgressView, ._redraw()]
+- "main_scripts_va_campaign_cliprogressview_transitions": "._transitions()" | kind=code-symbol | source=probe/main_scripts/va_campaign.py:L678 | neighbors=[CliProgressView, .__call__()]
+- "main_scripts_va_campaign_discover_ipv6": "_discover_ipv6()" | kind=code-symbol | source=probe/main_scripts/va_campaign.py:L343 | neighbors=[va_campaign.py, Best-effort IPv6 neighbor discovery (ND…]
+- "main_scripts_va_campaign_progressreporter_current": "._current()" | kind=code-symbol | source=probe/main_scripts/va_campaign.py:L230 | neighbors=[ProgressReporter, .snapshot()]
+- "main_scripts_va_campaign_progressreporter_percent": "._percent()" | kind=code-symbol | source=probe/main_scripts/va_campaign.py:L222 | neighbors=[ProgressReporter, .snapshot()]
+- "main_scripts_va_campaign_stage": "Stage" | kind=code-symbol | source=probe/main_scripts/va_campaign.py:L126 | neighbors=[va_campaign.py, default_stages()]
+- "main_scripts_va_campaign_stageoutcome": "StageOutcome" | kind=code-symbol | source=probe/main_scripts/va_campaign.py:L113 | neighbors=[va_campaign.py, What a stage produced. `count` is stage…]
+- "main_scripts_va_campaign_stagestate_to_dict": ".to_dict()" | kind=code-symbol | source=probe/main_scripts/va_campaign.py:L161 | neighbors=[.snapshot(), StageState]
+- "main_scripts_vantage_matrix_is_external": "_is_external()" | kind=code-symbol | source=probe/main_scripts/vantage_matrix.py:L34 | neighbors=[vantage_matrix.py, reconcile_vantages()]
+- "main_scripts_vnc_scanner_vncscanner_scan_port": "._scan_port()" | kind=code-symbol | source=probe/main_scripts/vnc_scanner.py:L127 | neighbors=[VNCScanner, .scan_target()]
+- "main_scripts_vnc_scanner_vncscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/main_scripts/vnc_scanner.py:L145 | neighbors=[VNCScanner, ._scan_port()]
+- "main_scripts_web_scanner_noredirect": "_NoRedirect" | kind=code-symbol | source=probe/main_scripts/web_scanner.py:L55 | neighbors=[web_scanner.py, .redirect_request()]
+- "main_scripts_web_scanner_webscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/main_scripts/web_scanner.py:L240 | neighbors=[WebScanner, ._scan_port()]
+- "main_scripts_windows_collector_smb_registry_collect": "_smb_registry_collect()" | kind=code-symbol | source=probe/main_scripts/windows_collector.py:L158 | neighbors=[windows_collector.py, Connect to RemoteRegistry over SMB and …]
+- "main_scripts_windows_collector_windowscollector_full_user": "._full_user()" | kind=code-symbol | source=probe/main_scripts/windows_collector.py:L294 | neighbors=[WindowsCollector, ._collect_host()]
+- "main_scripts_windows_collector_windowscollector_run": ".run()" | kind=code-symbol | source=probe/main_scripts/windows_collector.py:L326 | neighbors=[WindowsCollector, ._collect_host()]
+- "main_scripts_windows_collector_windowscollector_smb_result": "._smb_result()" | kind=code-symbol | source=probe/main_scripts/windows_collector.py:L318 | neighbors=[WindowsCollector, ._collect_host()]
+- "main_scripts_windows_collector_windowscollector_transport_order": "._transport_order()" | kind=code-symbol | source=probe/main_scripts/windows_collector.py:L299 | neighbors=[WindowsCollector, ._collect_host()]
+- "main_scripts_windows_collector_windowscollector_winrm_result": "._winrm_result()" | kind=code-symbol | source=probe/main_scripts/windows_collector.py:L306 | neighbors=[WindowsCollector, ._collect_host()]
+- "models_audit_log_rationale_12": "Immutable, append-only audit trail for all exploit actions.     No TimestampMixi" | kind=entity | source=manager/backend/app/models/audit_log.py:L12 | neighbors=[AuditLog, Base]
+- "models_finding_event": "finding_event.py" | kind=code-symbol | source=manager/backend/app/models/finding_event.py:L1 | neighbors=[d98f654 feat(manager): network-VA campa…, FindingEvent]
+- "models_probe_site": "probe_site.py" | kind=code-symbol | source=manager/backend/app/models/probe_site.py:L1 | neighbors=[b5ffcb0 Refactor Vedha probe installer …, ProbeSite]
+- "models_scan_job_attempt": "scan_job_attempt.py" | kind=code-symbol | source=manager/backend/app/models/scan_job_attempt.py:L1 | neighbors=[b5ffcb0 Refactor Vedha probe installer …, ScanJobAttempt]
+- "models_scan_schedule": "scan_schedule.py" | kind=code-symbol | source=manager/backend/app/models/scan_schedule.py:L1 | neighbors=[e80b25f feat(scheduling): ScanSchedule …, ScanSchedule]
+- "native_dir_bust_loadwordlist": "loadWordlist()" | kind=code-symbol | source=manager/frontend/lib/engine/native/dir-bust.ts:L97 | neighbors=[dir-bust.ts, nativeDirBust()]
+- "native_dir_bust_probe": "probe()" | kind=code-symbol | source=manager/frontend/lib/engine/native/dir-bust.ts:L71 | neighbors=[dir-bust.ts, nativeDirBust()]
+- "native_dns_recon_attemptzonetransfer": "attemptZoneTransfer()" | kind=code-symbol | source=manager/frontend/lib/engine/native/dns-recon.ts:L96 | neighbors=[dns-recon.ts, nativeDnsRecon()]
+- "native_dns_recon_nativeptrsweep": "nativePtrSweep()" | kind=code-symbol | source=manager/frontend/lib/engine/native/dns-recon.ts:L147 | neighbors=[dns-recon.ts, tool-runners.ts]
+- "native_dns_recon_safe": "safe()" | kind=code-symbol | source=manager/frontend/lib/engine/native/dns-recon.ts:L49 | neighbors=[dns-recon.ts, nativeDnsRecon()]
+- "native_http_probe_nativehttpprobe": "nativeHttpProbe()" | kind=code-symbol | source=manager/frontend/lib/engine/native/http-probe.ts:L248 | neighbors=[tool-runners.ts, http-probe.ts]
+- "native_port_scan_groupresults": "groupResults()" | kind=code-symbol | source=manager/frontend/lib/engine/native/port-scan.ts:L261 | neighbors=[tool-runners.ts, port-scan.ts]
+- "native_port_scan_resolveports": "resolvePorts()" | kind=code-symbol | source=manager/frontend/lib/engine/native/port-scan.ts:L131 | neighbors=[port-scan.ts, nativePortScan()]
+- "native_tls_info_nativetlsinfo": "nativeTlsInfo()" | kind=code-symbol | source=manager/frontend/lib/engine/native/tls-info.ts:L38 | neighbors=[tls-info.ts, tool-runners.ts]
+- "oserror": "OSError" | kind=code-symbol | neighbors=[NmapExecutionError, NmapExecutionError]
+- "path_route_delete": "DELETE()" | kind=code-symbol | source=manager/frontend/app/api/portal/[...path]/route.ts:L58 | neighbors=[route.ts, proxyPortal()]
+- "path_route_head": "HEAD()" | kind=code-symbol | source=manager/frontend/app/api/portal/[...path]/route.ts:L54 | neighbors=[route.ts, proxyPortal()]
+- "path_route_pickheaders": "pickHeaders()" | kind=code-symbol | source=manager/frontend/app/api/portal/[...path]/route.ts:L18 | neighbors=[route.ts, proxyPortal()]
 
 ## Instructions
 

@@ -1,4 +1,4 @@
-# Node Description Batch 222 of 336
+# Node Description Batch 222 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -26,46 +26,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "main_scripts_os_fingerprint_rationale_406": "Send one ICMP echo; return observed TTL, None (no TTL), or \"down\"." | kind=entity | source=probe/main_scripts/os_fingerprint.py:L406 | neighbors=[._icmp_echo_ttl()] | lang=en
-- "main_scripts_os_fingerprint_rationale_437": "Send an ICMP timestamp request (type 13); return {ttl, transmit} from a" | kind=entity | source=probe/main_scripts/os_fingerprint.py:L437 | neighbors=[._icmp_timestamp()] | lang=en
-- "main_scripts_os_fingerprint_rationale_469": "FIX 3b: aliveness/TTL came from a TCP SYN-ACK, not ICMP. Label the TTL         s" | kind=entity | source=probe/main_scripts/os_fingerprint.py:L469 | neighbors=[._tcp_ttl_result()] | lang=en
-- "main_scripts_os_fingerprint_rationale_58": "Build an ICMP message (header + rest) with a valid checksum." | kind=entity | source=probe/main_scripts/os_fingerprint.py:L58 | neighbors=[_icmp()] | lang=en
-- "main_scripts_os_fingerprint_rationale_60": "Build an ICMP message (header + rest) with a valid checksum." | kind=entity | source=probe/main_scripts/os_fingerprint.py:L60 | neighbors=[_icmp()] | lang=en
-- "main_scripts_os_fingerprint_rationale_80": "Parse an ICMP reply. Handles both raw-socket delivery (full IPv4 header     pres" | kind=entity | source=probe/main_scripts/os_fingerprint.py:L80 | neighbors=[parse_icmp_reply()] | lang=en
-- "main_scripts_os_fingerprint_rationale_82": "Return (ttl, icmp_bytes). Raw-socket delivery prepends the full IPv4 header" | kind=entity | source=probe/main_scripts/os_fingerprint.py:L82 | neighbors=[_strip_ip_header()] | lang=en
-- "main_scripts_os_fingerprint_rationale_95": "Parse an ICMP reply. Handles both raw-socket delivery (full IPv4 header     pres" | kind=entity | source=probe/main_scripts/os_fingerprint.py:L95 | neighbors=[parse_icmp_reply()] | lang=en
-- "main_scripts_passive_collector_main": "main()" | kind=code-symbol | source=probe/main_scripts/passive_collector.py:L357 | neighbors=[passive_collector.py] | lang=en
-- "main_scripts_passive_collector_passivecollector_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/passive_collector.py:L218 | neighbors=[PassiveCollector] | lang=en
-- "main_scripts_passive_collector_passivelistenererror_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/passive_collector.py:L109 | neighbors=[PassiveListenerError] | lang=en
-- "main_scripts_passive_collector_rationale_1": "passive_collector.py — LISTEN-ONLY host discovery for fragile networks (OT/ICS)." | kind=entity | source=probe/main_scripts/passive_collector.py:L1 | neighbors=[passive_collector.py] | lang=en
-- "main_scripts_passive_collector_rationale_107": "All passive sources failed before the listen window could start." | kind=entity | source=probe/main_scripts/passive_collector.py:L107 | neighbors=[PassiveListenerError] | lang=en
-- "main_scripts_passive_collector_rationale_120": "Open one recv-only UDP listener or raise the socket error.      Multicast groups" | kind=entity | source=probe/main_scripts/passive_collector.py:L120 | neighbors=[_open_listener()] | lang=en
-- "main_scripts_passive_collector_rationale_211": "Listen-only discovery. No active probing. Reports in-scope hosts that     announ" | kind=entity | source=probe/main_scripts/passive_collector.py:L211 | neighbors=[PassiveCollector] | lang=en
-- "main_scripts_passive_collector_rationale_332": "Await readability on any listener without blocking the event loop." | kind=entity | source=probe/main_scripts/passive_collector.py:L332 | neighbors=[._select()] | lang=en
-- "main_scripts_passive_collector_rationale_74": "Pull short printable ASCII runs from a payload, for human-readable evidence." | kind=entity | source=probe/main_scripts/passive_collector.py:L74 | neighbors=[_printable_strings()] | lang=en
-- "main_scripts_passive_collector_rationale_91": "Best-effort device label from an announcement payload (recv-only parsing)." | kind=entity | source=probe/main_scripts/passive_collector.py:L91 | neighbors=[_device_hint()] | lang=en
-- "main_scripts_port_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/port_scanner.py:L771 | neighbors=[port_scanner.py] | lang=en
-- "main_scripts_port_scanner_portscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/port_scanner.py:L342 | neighbors=[PortScanner] | lang=en
-- "main_scripts_port_scanner_rationale_1": "port_scanner.py — TCP connect scan with an evidence-based state engine.  METHOD" | kind=entity | source=probe/main_scripts/port_scanner.py:L1 | neighbors=[port_scanner.py] | lang=en
-- "main_scripts_port_scanner_rationale_128": "Resolve a named scan profile to a concrete, de-duplicated port list.      'full'" | kind=entity | source=probe/main_scripts/port_scanner.py:L128 | neighbors=[resolve_profile()] | lang=pt
-- "main_scripts_port_scanner_rationale_129": "Resolve a named scan profile to a concrete, de-duplicated port list.      'full'" | kind=entity | source=probe/main_scripts/port_scanner.py:L129 | neighbors=[resolve_profile()] | lang=pt
-- "main_scripts_port_scanner_rationale_131": "Resolve a named scan profile to a concrete, de-duplicated port list.      'full'" | kind=entity | source=probe/main_scripts/port_scanner.py:L131 | neighbors=[resolve_profile()] | lang=pt
-- "main_scripts_port_scanner_rationale_154": "Per-target scan accounting — the completeness + self-health record.      It lets" | kind=entity | source=probe/main_scripts/port_scanner.py:L154 | neighbors=[ScanMetrics] | lang=en
-- "main_scripts_port_scanner_rationale_155": "Per-target scan accounting — the completeness + self-health record.      It lets" | kind=entity | source=probe/main_scripts/port_scanner.py:L155 | neighbors=[ScanMetrics] | lang=en
-- "main_scripts_port_scanner_rationale_157": "Per-target scan accounting — the completeness + self-health record.      It lets" | kind=entity | source=probe/main_scripts/port_scanner.py:L157 | neighbors=[ScanMetrics] | lang=en
-- "main_scripts_port_scanner_rationale_176": "Return 'ipv4'/'ipv6' for an IP literal, else None (unresolved hostname)." | kind=entity | source=probe/main_scripts/port_scanner.py:L176 | neighbors=[_family_of()] | lang=en
-- "main_scripts_port_scanner_rationale_182": "Tally exactly one terminal per-port observation." | kind=entity | source=probe/main_scripts/port_scanner.py:L182 | neighbors=[.record()] | lang=en
-- "main_scripts_port_scanner_rationale_183": "Tally exactly one terminal per-port observation." | kind=entity | source=probe/main_scripts/port_scanner.py:L183 | neighbors=[.record()] | lang=en
-- "main_scripts_port_scanner_rationale_185": "Tally exactly one terminal per-port observation." | kind=entity | source=probe/main_scripts/port_scanner.py:L185 | neighbors=[.record()] | lang=en
-- "main_scripts_port_scanner_rationale_201": "Requested ports that were never recorded — the silent-skip proof." | kind=entity | source=probe/main_scripts/port_scanner.py:L201 | neighbors=[.missing_ports()] | lang=en
-- "main_scripts_port_scanner_rationale_202": "Requested ports that were never recorded — the silent-skip proof." | kind=entity | source=probe/main_scripts/port_scanner.py:L202 | neighbors=[.missing_ports()] | lang=en
-- "main_scripts_port_scanner_rationale_204": "Requested ports that were never recorded — the silent-skip proof." | kind=entity | source=probe/main_scripts/port_scanner.py:L204 | neighbors=[.missing_ports()] | lang=en
-- "main_scripts_port_scanner_rationale_208": "Ports recorded more than once (a port must get exactly one verdict)." | kind=entity | source=probe/main_scripts/port_scanner.py:L208 | neighbors=[.duplicate_ports()] | lang=pt
-- "main_scripts_port_scanner_rationale_209": "Ports recorded more than once (a port must get exactly one verdict)." | kind=entity | source=probe/main_scripts/port_scanner.py:L209 | neighbors=[.duplicate_ports()] | lang=pt
-- "main_scripts_port_scanner_rationale_211": "Ports recorded more than once (a port must get exactly one verdict)." | kind=entity | source=probe/main_scripts/port_scanner.py:L211 | neighbors=[.duplicate_ports()] | lang=pt
-- "main_scripts_port_scanner_rationale_214": "Resolve a named scan profile to a concrete, de-duplicated port list.      'full'" | kind=entity | source=probe/main_scripts/port_scanner.py:L214 | neighbors=[resolve_profile()] | lang=pt
-- "main_scripts_port_scanner_rationale_240": "Per-target scan accounting — the completeness + self-health record.      It lets" | kind=entity | source=probe/main_scripts/port_scanner.py:L240 | neighbors=[ScanMetrics] | lang=en
-- "main_scripts_port_scanner_rationale_268": "Tally exactly one terminal per-port observation." | kind=entity | source=probe/main_scripts/port_scanner.py:L268 | neighbors=[.record()] | lang=en
+- "detection_engine_correlate_rationale_38": "Why a candidate finding was omitted from the active result set." | kind=entity | source=manager/detection_engine/correlate.py:L38 | neighbors=[SuppressionRecord] | lang=en
+- "detection_engine_correlate_rationale_55": "Collapse by finding_id (deterministic: same asset+cve+cpe always     hashes the" | kind=entity | source=manager/detection_engine/correlate.py:L55 | neighbors=[dedup_findings()] | lang=en
+- "detection_engine_correlate_rationale_82": "Suppress a suspected/potential (inferred-source) finding when the     SAME host" | kind=entity | source=manager/detection_engine/correlate.py:L82 | neighbors=[suppress_negated()] | lang=en
+- "detection_engine_correlate_suppressionrecord_to_dict": ".to_dict()" | kind=code-symbol | source=manager/detection_engine/correlate.py:L50 | neighbors=[SuppressionRecord] | lang=en
+- "detection_engine_cpe_normalizer_cpecandidate_cpe23": ".cpe23()" | kind=code-symbol | source=manager/detection_engine/cpe_normalizer.py:L72 | neighbors=[CPECandidate] | lang=en
+- "detection_engine_cpe_normalizer_rationale_220": "service_banner.py's parsed product/version (or raw banner) -> CPE.      Prefers" | kind=entity | source=manager/detection_engine/cpe_normalizer.py:L220 | neighbors=[normalize_banner()] | lang=en
+- "detection_engine_cpe_normalizer_rationale_251": "service_banner.py's parsed product/version (or raw banner) -> CPE.      Prefers" | kind=entity | source=manager/detection_engine/cpe_normalizer.py:L251 | neighbors=[normalize_banner()] | lang=en
+- "detection_engine_cpe_normalizer_rationale_255": "web_scanner.py's Server header + tech_hints[] -> CPE candidates." | kind=entity | source=manager/detection_engine/cpe_normalizer.py:L255 | neighbors=[normalize_web()] | lang=en
+- "detection_engine_cpe_normalizer_rationale_283": "db_scanner.py's real-protocol-handshake engine + server_version -> CPE.      \"my" | kind=entity | source=manager/detection_engine/cpe_normalizer.py:L283 | neighbors=[normalize_db()] | lang=en
+- "detection_engine_cpe_normalizer_rationale_286": "web_scanner.py's Server header + tech_hints[] -> CPE candidates." | kind=entity | source=manager/detection_engine/cpe_normalizer.py:L286 | neighbors=[normalize_web()] | lang=en
+- "detection_engine_cpe_normalizer_rationale_314": "db_scanner.py's real-protocol-handshake engine + server_version -> CPE.      \"my" | kind=entity | source=manager/detection_engine/cpe_normalizer.py:L314 | neighbors=[normalize_db()] | lang=en
+- "detection_engine_cpe_normalizer_rationale_325": "Yields (package_name, raw_version, upstream_version) for each     'name version'" | kind=entity | source=manager/detection_engine/cpe_normalizer.py:L325 | neighbors=[_parse_package_lines()] | lang=en
+- "detection_engine_cpe_normalizer_rationale_339": "ssh_inventory's dpkg_packages/rpm_packages -> CPE candidates. ALL high     confi" | kind=entity | source=manager/detection_engine/cpe_normalizer.py:L339 | neighbors=[normalize_credentialed_packages()] | lang=en
+- "detection_engine_cpe_normalizer_rationale_356": "Yields (package_name, raw_version, upstream_version) for each     'name version'" | kind=entity | source=manager/detection_engine/cpe_normalizer.py:L356 | neighbors=[_parse_package_lines()] | lang=en
+- "detection_engine_cpe_normalizer_rationale_370": "ssh_inventory's dpkg_packages/rpm_packages -> CPE candidates. ALL high     confi" | kind=entity | source=manager/detection_engine/cpe_normalizer.py:L370 | neighbors=[normalize_credentialed_packages()] | lang=en
+- "detection_engine_cpe_normalizer_rationale_374": "Dispatch a single Fact to the right parser based on which scanner     produced i" | kind=entity | source=manager/detection_engine/cpe_normalizer.py:L374 | neighbors=[normalize()] | lang=en
+- "detection_engine_cpe_normalizer_rationale_383": "Every distinct OSV source-package name across ALL three tables     (credentialed" | kind=entity | source=manager/detection_engine/cpe_normalizer.py:L383 | neighbors=[all_osv_source_packages()] | lang=en
+- "detection_engine_cpe_normalizer_rationale_405": "Dispatch a single Fact to the right parser based on which scanner     produced i" | kind=entity | source=manager/detection_engine/cpe_normalizer.py:L405 | neighbors=[normalize()] | lang=en
+- "detection_engine_cpe_normalizer_rationale_414": "Every distinct OSV source-package name across ALL three tables     (credentialed" | kind=entity | source=manager/detection_engine/cpe_normalizer.py:L414 | neighbors=[all_osv_source_packages()] | lang=en
+- "detection_engine_cvss_rationale_1": "cvss.py — CVSS v3.1 base score from a vector string. Pure arithmetic, no network" | kind=entity | source=manager/detection_engine/cvss.py:L1 | neighbors=[cvss.py] | lang=en
+- "detection_engine_cvss_rationale_23": "CVSS spec's exact rounding rule (avoids float-precision drift from a     naive r" | kind=entity | source=manager/detection_engine/cvss.py:L23 | neighbors=[_roundup()] | lang=en
+- "detection_engine_cvss_rationale_44": "Returns the CVSS v3.1 base score (0.0-10.0), or None if the vector     is missin" | kind=entity | source=manager/detection_engine/cvss.py:L44 | neighbors=[base_score()] | lang=en
+- "detection_engine_default_creds_catalog_rationale_1": "default_creds_catalog.py — vendors that ship WIDELY-DOCUMENTED default credentia" | kind=entity | source=manager/detection_engine/default_creds_catalog.py:L1 | neighbors=[default_creds_catalog.py] | lang=en
+- "detection_engine_default_creds_catalog_rationale_54": "Published default credentials for `vendor`, or None if not catalogued.      Not-" | kind=entity | source=manager/detection_engine/default_creds_catalog.py:L54 | neighbors=[has_known_defaults()] | lang=en
+- "detection_engine_enrichment_db_epssdb_init": ".__init__()" | kind=code-symbol | source=manager/detection_engine/enrichment_db.py:L25 | neighbors=[EpssDB] | lang=en
+- "detection_engine_enrichment_db_kevdb_init": ".__init__()" | kind=code-symbol | source=manager/detection_engine/enrichment_db.py:L16 | neighbors=[KevDB] | lang=en
+- "detection_engine_enrichment_db_kevdb_is_kev": ".is_kev()" | kind=code-symbol | source=manager/detection_engine/enrichment_db.py:L20 | neighbors=[KevDB] | lang=en
+- "detection_engine_enrichment_db_rationale_1": "enrichment_db.py — load the pinned KEV/EPSS snapshots. Same discipline as vuln_d" | kind=entity | source=manager/detection_engine/enrichment_db.py:L1 | neighbors=[enrichment_db.py] | lang=en
+- "detection_engine_enrichment_db_rationale_29": "{'epss': float, 'percentile': float} or None if not covered." | kind=entity | source=manager/detection_engine/enrichment_db.py:L29 | neighbors=[.get()] | lang=en
+- "detection_engine_enrichment_db_rationale_30": "{'epss': float, 'percentile': float} or None if not covered." | kind=entity | source=manager/detection_engine/enrichment_db.py:L30 | neighbors=[.get()] | lang=en
+- "detection_engine_enrichment_db_rationale_44": "Test hook: drop the memoized KEV/EPSS caches so the next load re-reads." | kind=entity | source=manager/detection_engine/enrichment_db.py:L44 | neighbors=[_clear_caches()] | lang=en
+- "detection_engine_eol_catalog_rationale_1": "eol_catalog.py — curated end-of-life / end-of-support dates for fingerprinted OS" | kind=entity | source=manager/detection_engine/eol_catalog.py:L1 | neighbors=[eol_catalog.py] | lang=en
+- "detection_engine_eol_catalog_rationale_79": "EOL info for a fingerprinted OS, or None when supported/unknown.      `os_versio" | kind=entity | source=manager/detection_engine/eol_catalog.py:L79 | neighbors=[lookup_eol()] | lang=pt
+- "detection_engine_exploitability_rationale_1": "exploitability.py — join real-world exploitation evidence (CISA KEV + FIRST EPSS" | kind=entity | source=manager/detection_engine/exploitability.py:L1 | neighbors=[exploitability.py] | lang=en
+- "detection_engine_exploitability_rationale_131": "Exploitability evidence for one posture rule.      Returns {kev_refs, epss_max," | kind=entity | source=manager/detection_engine/exploitability.py:L131 | neighbors=[assess()] | lang=en
+- "detection_engine_exploitability_rationale_174": "Enrich posture findings in place with exploitation evidence and re-rank.      Th" | kind=entity | source=manager/detection_engine/exploitability.py:L174 | neighbors=[apply_to_findings()] | lang=en
+- "detection_engine_exploitability_rationale_209": "The band table posture_rules.compute_risk uses, shared so a re-rank here     can" | kind=entity | source=manager/detection_engine/exploitability.py:L209 | neighbors=[priority_for()] | lang=en
+- "detection_engine_exploitability_rationale_58": "One documented relationship between a posture weakness and a CVE." | kind=entity | source=manager/detection_engine/exploitability.py:L58 | neighbors=[KevLink] | lang=pt
+- "detection_engine_ingest_ingestresult_init": ".__init__()" | kind=code-symbol | source=manager/detection_engine/ingest.py:L50 | neighbors=[IngestResult] | lang=en
+- "detection_engine_ingest_rationale_102": "Real, verified hostname-alias sources in scanner_module's output —     deliberat" | kind=entity | source=manager/detection_engine/ingest.py:L102 | neighbors=[_extract_aliases()] | lang=en
 
 ## Instructions
 

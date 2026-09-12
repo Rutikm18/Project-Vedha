@@ -1,4 +1,4 @@
-# Node Description Batch 92 of 336
+# Node Description Batch 92 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,58 +12,51 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
-For an entity node (any other kind — e.g. a person, place, event, object),
-describe what the entity is and its role, grounded in its type, its
-relations (neighbors) and the provided citations/evidence — e.g.
-"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
-Ground entity descriptions in the citations/evidence when present; do not
-speculate beyond the context, so a node with no supporting context may be
-left out of the reply.
 Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "auth_exceptions_usernotfounderror": "UserNotFoundError" | kind=code-symbol | source=manager/backend/app/auth/exceptions.py:L33 | neighbors=[exceptions.py, No user record for the supplied email., AuthenticationError]
-- "auth_jwt_create_access_token": "create_access_token()" | kind=code-symbol | source=manager/backend/app/auth/jwt.py:L27 | neighbors=[jwt.py, _now(), create_device_access_token()]
-- "auth_jwt_now": "_now()" | kind=code-symbol | source=manager/backend/app/auth/jwt.py:L23 | neighbors=[jwt.py, create_access_token(), create_refresh_token()]
-- "auth_middleware_portal_jwt_path_allows": "portal_jwt_path_allows()" | kind=code-symbol | source=manager/backend/app/auth/middleware.py:L37 | neighbors=[middleware.py, Routes a customer-portal token (aud=ved…, .dispatch()]
-- "auth_router_login": "login()" | kind=code-symbol | source=manager/backend/app/auth/router.py:L153 | neighbors=[router.py, access_claims_for(), _authenticate()]
-- "auth_router_refresh": "refresh()" | kind=code-symbol | source=manager/backend/app/auth/router.py:L247 | neighbors=[router.py, create_personal_access_token(), access_claims_for()]
-- "auth_startup_check_cookie_config": "_check_cookie_config()" | kind=code-symbol | source=manager/backend/app/auth/startup.py:L228 | neighbors=[startup.py, CheckResult, run_startup_diagnostics()]
-- "auth_startup_check_cors": "_check_cors()" | kind=code-symbol | source=manager/backend/app/auth/startup.py:L243 | neighbors=[startup.py, CheckResult, run_startup_diagnostics()]
-- "auth_startup_check_database": "_check_database()" | kind=code-symbol | source=manager/backend/app/auth/startup.py:L96 | neighbors=[startup.py, CheckResult, run_startup_diagnostics()]
-- "auth_startup_check_jwt_secret": "_check_jwt_secret()" | kind=code-symbol | source=manager/backend/app/auth/startup.py:L128 | neighbors=[startup.py, CheckResult, run_startup_diagnostics()]
-- "auth_startup_check_redis": "_check_redis()" | kind=code-symbol | source=manager/backend/app/auth/startup.py:L115 | neighbors=[startup.py, CheckResult, run_startup_diagnostics()]
-- "auth_startup_check_required_env_vars": "_check_required_env_vars()" | kind=code-symbol | source=manager/backend/app/auth/startup.py:L257 | neighbors=[startup.py, CheckResult, run_startup_diagnostics()]
-- "brain_route_post": "POST()" | kind=code-symbol | source=manager/frontend/app/api/brain/route.ts:L48 | neighbors=[route.ts, validMessages(), assistant.test.ts]
-- "cli_auth_clearsession": "clearSession()" | kind=code-symbol | source=manager/frontend/cli/auth.ts:L29 | neighbors=[auth.ts, interactive.ts, logout.ts]
-- "cli_auth_savesession": "saveSession()" | kind=code-symbol | source=manager/frontend/cli/auth.ts:L24 | neighbors=[auth.ts, interactive.ts, login.ts]
-- "cli_llm_streamask": "streamAsk()" | kind=code-symbol | source=manager/frontend/cli/llm.ts:L340 | neighbors=[llm.ts, client(), ask.ts]
-- "commands_doctor_render": "render()" | kind=code-symbol | source=manager/frontend/cli/commands/doctor.ts:L41 | neighbors=[doctor.ts, ln(), symbol()]
-- "commands_interactive_fetchengagements": "fetchEngagements()" | kind=code-symbol | source=manager/frontend/cli/commands/interactive.ts:L1746 | neighbors=[interactive.ts, pickEngagementId(), wizardEngagement()]
-- "commands_interactive_inferhostsfromfindings": "inferHostsFromFindings()" | kind=code-symbol | source=manager/frontend/cli/commands/interactive.ts:L1418 | neighbors=[interactive.ts, pickTargets(), wizardScan()]
-- "commands_interactive_mergehosts": "mergeHosts()" | kind=code-symbol | source=manager/frontend/cli/commands/interactive.ts:L1165 | neighbors=[interactive.ts, runPhasePortScan(), runPhaseServiceDetect()]
-- "commands_interactive_printhostdiscoverydiagnostic": "printHostDiscoveryDiagnostic()" | kind=code-symbol | source=manager/frontend/cli/commands/interactive.ts:L917 | neighbors=[interactive.ts, ln(), runIterativeEngagement()]
-- "commands_interactive_printhostsummary": "printHostSummary()" | kind=code-symbol | source=manager/frontend/cli/commands/interactive.ts:L905 | neighbors=[interactive.ts, ln(), runIterativeEngagement()]
-- "commands_interactive_printstatesummary": "printStateSummary()" | kind=code-symbol | source=manager/frontend/cli/commands/interactive.ts:L895 | neighbors=[interactive.ts, ln(), runIterativeEngagement()]
-- "commands_interactive_runphaseenumeration": "runPhaseEnumeration()" | kind=code-symbol | source=manager/frontend/cli/commands/interactive.ts:L1044 | neighbors=[interactive.ts, runIterativeEngagement(), runPhaseWithTools()]
-- "commands_interactive_runphasehostdiscovery": "runPhaseHostDiscovery()" | kind=code-symbol | source=manager/frontend/cli/commands/interactive.ts:L1023 | neighbors=[interactive.ts, runIterativeEngagement(), runPhaseWithTools()]
-- "commit:repo:github.com/Rutikm18/Agentic-VA-Automation@8d65c9264d0935e030c458e4b761dd1587b0a2d1": "8d65c92 first commit" | kind=Commit | source=git | neighbors=[agents/greeting-introduction, main, f5ce592 first commit]
-- "commit:repo:github.com/Rutikm18/Project-Vedha@2c38782317674ba6a0323a1ea1539a68587a356d": "2c38782 docs: spec CVE-breadth phase — snapshot must answer for every recognize…" | kind=Commit | source=git | neighbors=[main, 8f6bf49 Refactor code structure and rem…, f473173 merge: network VA accuracy, KEV…]
-- "components_dashboardcharts_dashboardcharts": "DashboardCharts()" | kind=code-symbol | source=manager/frontend/components/DashboardCharts.tsx:L180 | neighbors=[page.tsx, DashboardCharts.tsx, page.tsx]
-- "cve_cli_cmd_correlate": "cmd_correlate()" | kind=code-symbol | source=probe/cve/cli.py:L81 | neighbors=[cli.py, _merge_findings(), _read_facts()]
-- "cve_cli_merge_findings": "_merge_findings()" | kind=code-symbol | source=probe/cve/cli.py:L65 | neighbors=[cli.py, cmd_correlate(), Merge CVE-finding lists, dedup by (cve_…]
-- "cve_cli_read_facts": "_read_facts()" | kind=code-symbol | source=probe/cve/cli.py:L26 | neighbors=[cli.py, cmd_correlate(), Yield fact dicts from a JSONL file ('-'…]
-- "cve_correlator_backport_marker": "_backport_marker()" | kind=code-symbol | source=probe/cve/correlator.py:L57 | neighbors=[correlator.py, correlate(), Return the distro-backport token found …]
-- "cve_correlator_cvefinding": "CVEFinding" | kind=code-symbol | source=probe/cve/correlator.py:L84 | neighbors=[correlator.py, correlate(), .to_dict()]
-- "cve_correlator_risk_score": "risk_score()" | kind=code-symbol | source=probe/cve/correlator.py:L63 | neighbors=[correlator.py, correlate(), 0–100 prioritization score. CVSS is hal…]
-- "cve_ingest_cvss": "_cvss()" | kind=code-symbol | source=probe/cve/ingest.py:L88 | neighbors=[ingest.py, ingest_one_cve(), Best available CVSS: prefer v3.1 > v3.0…]
-- "cve_ingest_ingest_epss": "ingest_epss()" | kind=code-symbol | source=probe/cve/ingest.py:L211 | neighbors=[ingest.py, ingest_all(), _get()]
-- "cve_ingest_ingest_kev": "ingest_kev()" | kind=code-symbol | source=probe/cve/ingest.py:L193 | neighbors=[ingest.py, ingest_all(), _get()]
-- "cve_ingest_parse_criteria": "_parse_criteria()" | kind=code-symbol | source=probe/cve/ingest.py:L109 | neighbors=[ingest.py, ingest_one_cve(), cpe:2.3:a:vendor:product:version:... ->…]
-- "cve_online_lookup_vulners": "lookup_vulners()" | kind=code-symbol | source=probe/cve/online.py:L90 | neighbors=[online.py, enrich_findings(), Ask Vulners whether a public exploit is…]
-- "cve_online_onlineresult": "OnlineResult" | kind=code-symbol | source=probe/cve/online.py:L51 | neighbors=[online.py, lookup_nvd(), What a live lookup could establish for …]
+- "tests_test_finding_events_testmerge_synth": "._synth()" | kind=code-symbol | source=manager/backend/tests/test_finding_events.py:L93 | neighbors=[TestMerge, .test_labels_attached(), .test_sorted_oldest_first(), .test_stored_supersedes_synthesized_sam…]
+- "tests_test_finding_events_testmerge_test_sorted_oldest_first": ".test_sorted_oldest_first()" | kind=code-symbol | source=manager/backend/tests/test_finding_events.py:L111 | neighbors=[TestMerge, ._stored(), ._synth(), _types()]
+- "tests_test_finding_metrics_db": "_db()" | kind=code-symbol | source=manager/backend/tests/test_finding_metrics.py:L92 | neighbors=[test_finding_metrics.py, .test_aggregates_mttr_and_owners(), .test_shape_is_stable_when_empty(), .test_unassigned_is_a_first_class_bucke…]
+- "tests_test_finding_metrics_testmetricsendpoint": "TestMetricsEndpoint" | kind=code-symbol | source=manager/backend/tests/test_finding_metrics.py:L101 | neighbors=[test_finding_metrics.py, .test_aggregates_mttr_and_owners(), .test_shape_is_stable_when_empty(), .test_unassigned_is_a_first_class_bucke…]
+- "tests_test_finding_metrics_testmetricsendpoint_test_aggregates_mttr_and_owners": ".test_aggregates_mttr_and_owners()" | kind=code-symbol | source=manager/backend/tests/test_finding_metrics.py:L110 | neighbors=[TestMetricsEndpoint, _db(), _pair(), _user()]
+- "tests_test_finding_metrics_testmetricsendpoint_test_unassigned_is_a_first_class_bucket": ".test_unassigned_is_a_first_class_bucket()" | kind=code-symbol | source=manager/backend/tests/test_finding_metrics.py:L121 | neighbors=[A large unassigned pile is itself the t…, TestMetricsEndpoint, _db(), _user()]
+- "tests_test_finding_owner_schema": "test_finding_owner_schema.py" | kind=code-symbol | source=manager/backend/tests/test_finding_owner_schema.py:L1 | neighbors=[9e5f980 feat(findings): add assigned_to…, TestMttrInputsAlreadyExist, TestOwnershipColumns, Finding ownership + explicit close time…]
+- "tests_test_finding_owner_schema_testmttrinputsalreadyexist": "TestMttrInputsAlreadyExist" | kind=code-symbol | source=manager/backend/tests/test_finding_owner_schema.py:L48 | neighbors=[test_finding_owner_schema.py, Guards the assumption the metrics servi…, .test_first_seen_exists(), .test_last_seen_exists()]
+- "tests_test_finding_schema": "test_finding_schema.py" | kind=code-symbol | source=manager/backend/tests/test_finding_schema.py:L1 | neighbors=[1fe16c8 stable but some dead code, need…, test_finding_patch_accepts_documented_m…, test_finding_patch_rejects_risk_score_a…, test_finding_summary_exposes_full_open_…]
+- "tests_test_fleet_jobs_scalars": "_scalars()" | kind=code-symbol | source=manager/backend/tests/test_fleet_jobs.py:L17 | neighbors=[test_fleet_jobs.py, test_filter_by_probe_and_engagement_run…, test_lists_jobs_with_probe_and_engageme…, test_running_filter_is_accepted()]
+- "tests_test_fleet_jobs_user": "_user()" | kind=code-symbol | source=manager/backend/tests/test_fleet_jobs.py:L13 | neighbors=[test_fleet_jobs.py, test_filter_by_probe_and_engagement_run…, test_lists_jobs_with_probe_and_engageme…, test_running_filter_is_accepted()]
+- "tests_test_ftp_scanner_testftpfindings_fact": "._fact()" | kind=code-symbol | source=probe/tests/test_ftp_scanner.py:L54 | neighbors=[TestFTPFindings, .test_anon_denied_is_silent(), .test_anon_login_only_is_medium(), .test_anon_read_is_high()]
+- "tests_test_ftp_scanner_testftpscanner_sc": "._sc()" | kind=code-symbol | source=probe/tests/test_ftp_scanner.py:L29 | neighbors=[TestFTPScanner, .test_anon_login_and_read_open(), .test_ftp_present_anon_denied_open_but_…, .test_no_ftp_filtered()]
+- "tests_test_host_discovery_udp_testparsenbstat": "TestParseNbstat" | kind=code-symbol | source=probe/tests/test_host_discovery_udp.py:L37 | neighbors=[test_host_discovery_udp.py, .test_msbrowse_control_chars_dropped(), .test_names_hostname_domain_mac(), .test_not_a_response()]
+- "tests_test_host_health_testoperatorvisibility": "TestOperatorVisibility" | kind=code-symbol | source=probe/tests/test_host_health.py:L280 | neighbors=[test_host_health.py, An offline host must reach the operator…, .test_flaky_note_is_not_an_error(), .test_offline_fact_carries_an_error_so_…]
+- "tests_test_host_health_testoperatorvisibility_test_flaky_note_is_not_an_error": ".test_flaky_note_is_not_an_error()" | kind=code-symbol | source=probe/tests/test_host_health.py:L294 | neighbors=[A host that is merely filtered is not a…, TestOperatorVisibility, _monitor(), _r()]
+- "tests_test_host_health_testsafetyproperty_test_offline_fact_marks_the_scan_incomplete_and_names_what_was_skipped": ".test_offline_fact_marks_the_scan_incomplete_and_names_what_was_skipped()" | kind=code-symbol | source=probe/tests/test_host_health.py:L131 | neighbors=[The whole point: 'we stopped early' mus…, TestSafetyProperty, _monitor(), _r()]
+- "tests_test_host_health_teststrikeaccounting_test_strikes_must_be_consecutive": ".test_strikes_must_be_consecutive()" | kind=code-symbol | source=probe/tests/test_host_health.py:L66 | neighbors=[A healthy host with many inapplicable b…, TestStrikeAccounting, _monitor(), _r()]
+- "tests_test_host_health_testverdict_test_firewalled_host_that_still_answers_is_flaky_not_offline": ".test_firewalled_host_that_still_answers_is_flaky_not_offline()" | kind=code-symbol | source=probe/tests/test_host_health.py:L84 | neighbors=[The headline false positive: silence fr…, TestVerdict, _monitor(), _r()]
+- "tests_test_host_health_testverdict_test_flaky_host_can_be_suspected_again_later": ".test_flaky_host_can_be_suspected_again_later()" | kind=code-symbol | source=probe/tests/test_host_health.py:L121 | neighbors=[One false alarm must not disable the ch…, TestVerdict, _monitor(), _r()]
+- "tests_test_instance_lock_testdegradessafely": "TestDegradesSafely" | kind=code-symbol | source=probe/tests/test_instance_lock.py:L133 | neighbors=[test_instance_lock.py, .test_corrupt_lockfile_still_refuses_a_…, .test_release_of_none_is_a_noop(), .test_unwritable_directory_does_not_blo…]
+- "tests_test_integration_teststartupgauntlet": "TestStartupGauntlet" | kind=code-symbol | source=probe/tests/test_integration.py:L431 | neighbors=[test_integration.py, Phase 5: startup gauntlet checks., .test_gauntlet_hw_bind_blocks(), .test_gauntlet_skips_in_dev_mode()]
+- "tests_test_integration_testtaskrunnerwithencryptedscope": "TestTaskRunnerWithEncryptedScope" | kind=code-symbol | source=probe/tests/test_integration.py:L100 | neighbors=[test_integration.py, Phase 4 + Phase 1: TaskRunner receives …, .test_decrypts_encrypted_scope_from_job…, .test_falls_back_when_decryption_fails()]
+- "tests_test_integration_testtransportwithidentity": "TestTransportWithIdentity" | kind=code-symbol | source=probe/tests/test_integration.py:L238 | neighbors=[test_integration.py, Phase 4 + Phase 1: Transport sends publ…, .test_register_sends_public_key(), .test_register_without_public_key()]
+- "tests_test_integrations_db": "_db()" | kind=code-symbol | source=manager/backend/tests/test_integrations.py:L21 | neighbors=[test_integrations.py, .test_create_encrypts_secret_and_masks_…, .test_rejects_unknown_kind(), .test_update_without_secret_keeps_exist…]
+- "tests_test_integrations_testputintegration": "TestPutIntegration" | kind=code-symbol | source=manager/backend/tests/test_integrations.py:L31 | neighbors=[test_integrations.py, .test_create_encrypts_secret_and_masks_…, .test_rejects_unknown_kind(), .test_update_without_secret_keeps_exist…]
+- "tests_test_ipmi_scanner_testipmifindings": "TestIPMIFindings" | kind=code-symbol | source=probe/tests/test_ipmi_scanner.py:L62 | neighbors=[test_ipmi_scanner.py, ._fact(), .test_cipher_zero_is_critical(), .test_reachable_bmc_is_low()]
+- "tests_test_ipmi_scanner_testipmiscanner": "TestIPMIScanner" | kind=code-symbol | source=probe/tests/test_ipmi_scanner.py:L44 | neighbors=[test_ipmi_scanner.py, ._sc(), .test_cipher_zero_open(), .test_no_ipmi_filtered()]
+- "tests_test_ipv6_discovery_testparsers": "TestParsers" | kind=code-symbol | source=probe/tests/test_ipv6_discovery.py:L13 | neighbors=[test_ipv6_discovery.py, .test_ignores_non_ipv6_lines(), .test_parse_ip_neigh_linux(), .test_parse_ndp_macos()]
+- "tests_test_ipv6_wiring_test_out_of_scope_neighbour_is_reported_but_never_probed": "test_out_of_scope_neighbour_is_reported_but_never_probed()" | kind=code-symbol | source=probe/tests/test_ipv6_wiring.py:L110 | neighbors=[test_ipv6_wiring.py, The core restraint: discovery must not …, _run(), _wire()]
+- "tests_test_job_cancel_test_job_outside_the_tenant_is_not_found": "test_job_outside_the_tenant_is_not_found()" | kind=code-symbol | source=manager/backend/tests/test_job_cancel.py:L166 | neighbors=[test_job_cancel.py, _db(), _one(), _user()]
+- "tests_test_loaders_valid_snapshot": "_valid_snapshot()" | kind=code-symbol | source=manager/detection_engine/tests/test_loaders.py:L28 | neighbors=[test_loaders.py, .test_content_hash_mismatch_raises_valu…, .test_hash_mismatch_message_truncates_h…, _write_snapshot()]
+- "tests_test_main_scripts_coverage_scope": "_scope()" | kind=code-symbol | source=probe/tests/test_main_scripts_coverage.py:L23 | neighbors=[test_main_scripts_coverage.py, _mk_scanner(), .test_default_ports_are_nmap_top100_not…, .test_open_only_output_still_keeps_full…]
+- "tests_test_main_scripts_coverage_testdefaultsandadaptivetimeout": "TestDefaultsAndAdaptiveTimeout" | kind=code-symbol | source=probe/tests/test_main_scripts_coverage.py:L186 | neighbors=[test_main_scripts_coverage.py, .test_adaptive_estimator_is_shared_and_…, .test_default_ports_are_nmap_top100_not…, .test_fixed_timeout_flag_disables_the_e…]
+- "tests_test_main_scripts_datastore_probe_svc": "_svc()" | kind=code-symbol | source=probe/tests/test_main_scripts_datastore_probe.py:L15 | neighbors=[test_main_scripts_datastore_probe.py, test_elasticsearch_and_couchdb_win_over…, test_memcached_version_and_stat_identif…, test_redis_info_and_noauth_identify_as_…]
+- "tests_test_main_scripts_hardening_make_smb2_error": "make_smb2_error()" | kind=code-symbol | source=probe/tests/test_main_scripts_hardening.py:L122 | neighbors=[test_main_scripts_hardening.py, _smb2_header(), STATUS_INVALID_PARAMETER error response…, .test_error_response_not_trusted()]
+- "tests_test_main_scripts_hardening_make_smb2_success": "make_smb2_success()" | kind=code-symbol | source=probe/tests/test_main_scripts_hardening.py:L113 | neighbors=[test_main_scripts_hardening.py, _smb2_header(), .test_success_response_signing_and_dial…, .test_success_signing_supported_not_req…]
+- "tests_test_main_scripts_hardening_smb2_header": "_smb2_header()" | kind=code-symbol | source=probe/tests/test_main_scripts_hardening.py:L100 | neighbors=[test_main_scripts_hardening.py, make_smb2_error(), make_smb2_success(), A 64-byte SMB2 header. Caller prepends …]
+- "tests_test_main_scripts_hardening_testudpstatemodel": "TestUdpStateModel" | kind=code-symbol | source=probe/tests/test_main_scripts_hardening.py:L42 | neighbors=[test_main_scripts_hardening.py, ._scanner(), .test_icmp_port_unreachable_is_closed(), .test_silence_is_open_filtered_not_filt…]
+- "tests_test_main_scripts_hardening_testudpstatemodel_scanner": "._scanner()" | kind=code-symbol | source=probe/tests/test_main_scripts_hardening.py:L43 | neighbors=[TestUdpStateModel, _scope(), .test_icmp_port_unreachable_is_closed(), .test_silence_is_open_filtered_not_filt…]
 
 ## Instructions
 

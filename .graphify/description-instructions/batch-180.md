@@ -1,4 +1,4 @@
-# Node Description Batch 181 of 336
+# Node Description Batch 181 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,60 +12,51 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
-For an entity node (any other kind — e.g. a person, place, event, object),
-describe what the entity is and its role, grounded in its type, its
-relations (neighbors) and the provided citations/evidence — e.g.
-"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
-Ground entity descriptions in the citations/evidence when present; do not
-speculate beyond the context, so a node with no supporting context may be
-left out of the reply.
-LANGUAGE: each entry has a `lang=` marker giving the language of its source.
-Write that entry's description in EXACTLY that language. Do not translate to
-a single common language — match each node's source language individually.
+Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "agent_task_runner_rationale_1": "task_runner.py — orchestrates the full lifecycle of a single scan job.  Given a" | kind=entity | source=probe/agent/task_runner.py:L1 | neighbors=[task_runner.py] | lang=en
-- "agent_task_runner_rationale_105": "Orchestrates one scan job's lifecycle.      The runner holds injected dependenci" | kind=entity | source=probe/agent/task_runner.py:L105 | neighbors=[TaskRunner] | lang=en
-- "agent_task_runner_rationale_122": "Args:             http_get:       Callback for authenticated GET (from Transport" | kind=entity | source=probe/agent/task_runner.py:L122 | neighbors=[.__init__()] | lang=en
-- "agent_task_runner_rationale_159": "Execute a complete scan job lifecycle.          Args:             job: Job dict" | kind=entity | source=probe/agent/task_runner.py:L159 | neighbors=[.run_job()] | lang=pt
-- "agent_task_runner_rationale_28": "Structured result from running one scan job." | kind=entity | source=probe/agent/task_runner.py:L28 | neighbors=[JobResult] | lang=en
-- "agent_task_runner_rationale_283": "Submit the result, with spool-and-retry if available." | kind=entity | source=probe/agent/task_runner.py:L283 | neighbors=[._submit_or_spool()] | lang=en
-- "agent_task_runner_rationale_30": "Structured result from running one scan job." | kind=entity | source=probe/agent/task_runner.py:L30 | neighbors=[JobResult] | lang=en
-- "agent_task_runner_rationale_397": "Submit the result, with spool-and-retry if available." | kind=entity | source=probe/agent/task_runner.py:L397 | neighbors=[._submit_or_spool()] | lang=en
-- "agent_task_runner_rationale_399": "Submit the result, with spool-and-retry if available." | kind=entity | source=probe/agent/task_runner.py:L399 | neighbors=[._submit_or_spool()] | lang=en
-- "agent_task_runner_rationale_40": "Orchestrates one scan job's lifecycle.      The runner holds injected dependenci" | kind=entity | source=probe/agent/task_runner.py:L40 | neighbors=[TaskRunner] | lang=en
-- "agent_task_runner_rationale_42": "Orchestrates one scan job's lifecycle.      The runner holds injected dependenci" | kind=entity | source=probe/agent/task_runner.py:L42 | neighbors=[TaskRunner] | lang=en
-- "agent_task_runner_rationale_436": "Submit the result, with spool-and-retry if available." | kind=entity | source=probe/agent/task_runner.py:L436 | neighbors=[._submit_or_spool()] | lang=en
-- "agent_task_runner_rationale_443": "Submit the result, with spool-and-retry if available." | kind=entity | source=probe/agent/task_runner.py:L443 | neighbors=[._submit_or_spool()] | lang=en
-- "agent_task_runner_rationale_508": "Write the outbound payload to the local result archive.          Called on the s" | kind=entity | source=probe/agent/task_runner.py:L508 | neighbors=[._archive_result()] | lang=en
-- "agent_task_runner_rationale_548": "Submit the result, with spool-and-retry if available.          Every outbound pa" | kind=entity | source=probe/agent/task_runner.py:L548 | neighbors=[._submit_or_spool()] | lang=en
-- "agent_task_runner_rationale_57": "Args:             http_get:       Callback for authenticated GET (from Transport" | kind=entity | source=probe/agent/task_runner.py:L57 | neighbors=[.__init__()] | lang=en
-- "agent_task_runner_rationale_58": "Args:             http_get:       Callback for authenticated GET (from Transport" | kind=entity | source=probe/agent/task_runner.py:L58 | neighbors=[.__init__()] | lang=en
-- "agent_task_runner_rationale_80": "Execute a complete scan job lifecycle.          Args:             job: Job dict" | kind=entity | source=probe/agent/task_runner.py:L80 | neighbors=[.run_job()] | lang=pt
-- "agent_task_runner_rationale_87": "Execute a complete scan job lifecycle.          Args:             job: Job dict" | kind=entity | source=probe/agent/task_runner.py:L87 | neighbors=[.run_job()] | lang=pt
-- "agent_task_runner_rationale_89": "Execute a complete scan job lifecycle.          Args:             job: Job dict" | kind=entity | source=probe/agent/task_runner.py:L89 | neighbors=[.run_job()] | lang=pt
-- "agent_task_runner_rationale_93": "Structured result from running one scan job." | kind=entity | source=probe/agent/task_runner.py:L93 | neighbors=[JobResult] | lang=en
-- "agent_task_runner_rationale_94": "Execute a complete scan job lifecycle.          Args:             job: Job dict" | kind=entity | source=probe/agent/task_runner.py:L94 | neighbors=[.run_job()] | lang=pt
-- "agent_tools_mergehosts": "mergeHosts()" | kind=code-symbol | source=manager/frontend/lib/agent/tools.ts:L81 | neighbors=[tools.ts] | lang=en
-- "agent_tools_runonephase": "runOnePhase()" | kind=code-symbol | source=manager/frontend/lib/agent/tools.ts:L40 | neighbors=[tools.ts] | lang=en
-- "agent_transport_rationale_1": "transport.py — all manager communication (HTTP + WebSocket) in one place.  Encap" | kind=entity | source=probe/agent/transport.py:L1 | neighbors=[transport.py] | lang=en
-- "agent_transport_rationale_105": "Stable identity for the manager a credential belongs to.      Device credentials" | kind=entity | source=probe/agent/transport.py:L105 | neighbors=[manager_fingerprint()] | lang=en
-- "agent_transport_rationale_116": "HTTP (+ future WebSocket) transport to the manager.      Thread-safe for sequent" | kind=entity | source=probe/agent/transport.py:L116 | neighbors=[Transport] | lang=en
-- "agent_transport_rationale_123": "Best-effort extraction of the manager's 409 ``detail`` message." | kind=entity | source=probe/agent/transport.py:L123 | neighbors=[_enrollment_conflict_detail()] | lang=en
-- "agent_transport_rationale_130": "Durably replace one private JSON state file without exposing secrets." | kind=entity | source=probe/agent/transport.py:L130 | neighbors=[_atomic_write_private_state()] | lang=en
-- "agent_transport_rationale_163": "True if we have both an agent_id and a token for API calls." | kind=entity | source=probe/agent/transport.py:L163 | neighbors=[.is_authenticated()] | lang=en
-- "agent_transport_rationale_165": "True if we have both an agent_id and a token for API calls." | kind=entity | source=probe/agent/transport.py:L165 | neighbors=[.is_authenticated()] | lang=en
-- "agent_transport_rationale_166": "True if we have both an agent_id and a token for API calls." | kind=entity | source=probe/agent/transport.py:L166 | neighbors=[.is_authenticated()] | lang=en
-- "agent_transport_rationale_170": "HTTP (+ future WebSocket) transport to the manager.      Thread-safe for sequent" | kind=entity | source=probe/agent/transport.py:L170 | neighbors=[Transport] | lang=en
-- "agent_transport_rationale_182": "HTTP (+ future WebSocket) transport to the manager.      Thread-safe for sequent" | kind=entity | source=probe/agent/transport.py:L182 | neighbors=[Transport] | lang=en
-- "agent_transport_rationale_183": "Merge and atomically persist private state while preserving fields." | kind=entity | source=probe/agent/transport.py:L183 | neighbors=[.update_state()] | lang=en
-- "agent_transport_rationale_186": "Merge and atomically persist private state while preserving fields." | kind=entity | source=probe/agent/transport.py:L186 | neighbors=[.update_state()] | lang=en
-- "agent_transport_rationale_190": "Send a heartbeat to the manager.          Returns True if the heartbeat was acce" | kind=entity | source=probe/agent/transport.py:L190 | neighbors=[.heartbeat()] | lang=en
-- "agent_transport_rationale_203": "True if we have both an agent_id and a token for API calls." | kind=entity | source=probe/agent/transport.py:L203 | neighbors=[.is_authenticated()] | lang=en
-- "agent_transport_rationale_205": "Merge and atomically persist private state while preserving fields." | kind=entity | source=probe/agent/transport.py:L205 | neighbors=[.update_state()] | lang=en
-- "agent_transport_rationale_215": "Poll for pending jobs (HTTP fallback for WebSocket).          Returns a list of" | kind=entity | source=probe/agent/transport.py:L215 | neighbors=[.poll_jobs()] | lang=en
+- "tests_test_portal_read_testclientfindingwhitelist_test_serialization_drops_internal_fields": ".test_serialization_drops_internal_fields()" | kind=code-symbol | source=manager/backend/tests/test_portal_read.py:L89 | neighbors=[TestClientFindingWhitelist, _finding_with_internal()]
+- "tests_test_portal_read_testsummary": "TestSummary" | kind=code-symbol | source=manager/backend/tests/test_portal_read.py:L189 | neighbors=[test_portal_read.py, .test_aggregates_posture_counts_and_que…]
+- "tests_test_portal_read_testtrends": "TestTrends" | kind=code-symbol | source=manager/backend/tests/test_portal_read.py:L208 | neighbors=[test_portal_read.py, .test_returns_severity_and_timeline()]
+- "tests_test_portal_scope_testassertclient_test_bound_client_returns_engagement": ".test_bound_client_returns_engagement()" | kind=code-symbol | source=manager/backend/tests/test_portal_scope.py:L42 | neighbors=[TestAssertClient, _client()]
+- "tests_test_portal_scope_testassertclient_test_operator_is_forbidden": ".test_operator_is_forbidden()" | kind=code-symbol | source=manager/backend/tests/test_portal_scope.py:L46 | neighbors=[TestAssertClient, _operator()]
+- "tests_test_portal_scope_testclientscoped_test_applies_engagement_filter_for_bound_id": ".test_applies_engagement_filter_for_bound_id()" | kind=code-symbol | source=manager/backend/tests/test_portal_scope.py:L75 | neighbors=[TestClientScoped, _client()]
+- "tests_test_portal_scope_testclientscoped_test_operator_cannot_scope": ".test_operator_cannot_scope()" | kind=code-symbol | source=manager/backend/tests/test_portal_scope.py:L83 | neighbors=[TestClientScoped, _operator()]
+- "tests_test_portal_scope_testportaltokenisconfinedtoportalroutes_test_prefix_lookalikes_do_not_slip_through": ".test_prefix_lookalikes_do_not_slip_through()" | kind=code-symbol | source=manager/backend/tests/test_portal_scope.py:L133 | neighbors=[`/portal` must not authorize `/portalso…, TestPortalTokenIsConfinedToPortalRoutes]
+- "tests_test_portal_scope_testrefreshpreservesaudienceandscope_test_client_refresh_keeps_portal_aud_and_engagement": ".test_client_refresh_keeps_portal_aud_and_engagement()" | kind=code-symbol | source=manager/backend/tests/test_portal_scope.py:L160 | neighbors=[TestRefreshPreservesAudienceAndScope, ._db_returning()]
+- "tests_test_portal_scope_testrefreshpreservesaudienceandscope_test_operator_refresh_keeps_manager_aud": ".test_operator_refresh_keeps_manager_aud()" | kind=code-symbol | source=manager/backend/tests/test_portal_scope.py:L173 | neighbors=[TestRefreshPreservesAudienceAndScope, ._db_returning()]
+- "tests_test_portal_scope_testresolvescope_test_matching_request_ok": ".test_matching_request_ok()" | kind=code-symbol | source=manager/backend/tests/test_portal_scope.py:L64 | neighbors=[TestResolveScope, _client()]
+- "tests_test_portal_scope_testresolvescope_test_mismatched_request_is_403_idor_defense": ".test_mismatched_request_is_403_idor_defense()" | kind=code-symbol | source=manager/backend/tests/test_portal_scope.py:L68 | neighbors=[TestResolveScope, _client()]
+- "tests_test_portal_scope_testresolvescope_test_no_request_returns_bound": ".test_no_request_returns_bound()" | kind=code-symbol | source=manager/backend/tests/test_portal_scope.py:L60 | neighbors=[TestResolveScope, _client()]
+- "tests_test_posture_rules_testhardenedgroundtruth_test_hardened_smb_and_rdp_raise_no_misconfig": ".test_hardened_smb_and_rdp_raise_no_misconfig()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_rules.py:L67 | neighbors=[TestHardenedGroundTruth, ._host()]
+- "tests_test_posture_rules_testhardenedgroundtruth_test_no_critical_or_high_findings": ".test_no_critical_or_high_findings()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_rules.py:L59 | neighbors=[TestHardenedGroundTruth, ._host()]
+- "tests_test_posture_rules_testhardenedgroundtruth_test_rdp_exposed_is_low_because_nla_required": ".test_rdp_exposed_is_low_because_nla_required()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_rules.py:L63 | neighbors=[TestHardenedGroundTruth, ._host()]
+- "tests_test_posture_test_build_posture_buckets_resolved_new_persisting": "test_build_posture_buckets_resolved_new_persisting()" | kind=code-symbol | source=manager/backend/tests/test_posture.py:L89 | neighbors=[test_posture.py, _fv()]
+- "tests_test_posture_test_build_posture_single_run_has_no_prev": "test_build_posture_single_run_has_no_prev()" | kind=code-symbol | source=manager/backend/tests/test_posture.py:L76 | neighbors=[test_posture.py, _fv()]
+- "tests_test_posture_test_compute_scores_uses_risk_epss_exploit_and_asset_criticality": "test_compute_scores_uses_risk_epss_exploit_and_asset_criticality()" | kind=code-symbol | source=manager/backend/tests/test_posture.py:L53 | neighbors=[test_posture.py, _fv()]
+- "tests_test_posture_test_finding_views_handles_null_asset_and_scores": "test_finding_views_handles_null_asset_and_scores()" | kind=code-symbol | source=manager/backend/tests/test_posture.py:L128 | neighbors=[test_posture.py, _Row]
+- "tests_test_posture_test_finding_views_maps_columns_and_asset_criticality": "test_finding_views_maps_columns_and_asset_criticality()" | kind=code-symbol | source=manager/backend/tests/test_posture.py:L114 | neighbors=[test_posture.py, _Row]
+- "tests_test_posture_trace_testbehaviourpreserved_test_detect_posture_matches_traced_findings": ".test_detect_posture_matches_traced_findings()" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_trace.py:L119 | neighbors=[TestBehaviourPreserved, ._mixed()]
+- "tests_test_posture_trace_testruleisolation": "TestRuleIsolation" | kind=code-symbol | source=manager/detection_engine/tests/test_posture_trace.py:L95 | neighbors=[test_posture_trace.py, .test_raising_rule_is_error_and_others_…]
+- "tests_test_printer_scanner_testparity": "TestParity" | kind=code-symbol | source=probe/tests/test_printer_scanner.py:L61 | neighbors=[test_printer_scanner.py, .test_main_scripts()]
+- "tests_test_printer_scanner_testprinterfindings": "TestPrinterFindings" | kind=code-symbol | source=probe/tests/test_printer_scanner.py:L52 | neighbors=[test_printer_scanner.py, .test_exposed_low()]
+- "tests_test_printer_scanner_testprinterscanner_test_no_printer_filtered": ".test_no_printer_filtered()" | kind=code-symbol | source=probe/tests/test_printer_scanner.py:L46 | neighbors=[TestPrinterScanner, ._sc()]
+- "tests_test_printer_scanner_testprinterscanner_test_open": ".test_open()" | kind=code-symbol | source=probe/tests/test_printer_scanner.py:L39 | neighbors=[TestPrinterScanner, ._sc()]
+- "tests_test_probe_core_testassetmergepassivecollect": "TestAssetMergePassiveCollect" | kind=code-symbol | source=probe/tests/test_probe_core.py:L583 | neighbors=[test_probe_core.py, .test_passive_facts_appended()]
+- "tests_test_probe_core_testassetmergeservicebanner": "TestAssetMergeServiceBanner" | kind=code-symbol | source=probe/tests/test_probe_core.py:L534 | neighbors=[test_probe_core.py, .test_banner_stored()]
+- "tests_test_probe_core_testassetmergesmbscan": "TestAssetMergeSmbScan" | kind=code-symbol | source=probe/tests/test_probe_core.py:L559 | neighbors=[test_probe_core.py, .test_smb_state_host_level()]
+- "tests_test_probe_core_testassetmergetlsscan": "TestAssetMergeTlsScan" | kind=code-symbol | source=probe/tests/test_probe_core.py:L543 | neighbors=[test_probe_core.py, .test_tls_facts_stored()]
+- "tests_test_probe_core_testassetmergeunknownscanner": "TestAssetMergeUnknownScanner" | kind=code-symbol | source=probe/tests/test_probe_core.py:L592 | neighbors=[test_probe_core.py, .test_unknown_scanner_ignored()]
+- "tests_test_probe_core_testassetmergewebscan": "TestAssetMergeWebScan" | kind=code-symbol | source=probe/tests/test_probe_core.py:L551 | neighbors=[test_probe_core.py, .test_web_facts_stored()]
+- "tests_test_probe_core_testassetneedsrechecklive_test_never_seen": ".test_never_seen()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L476 | neighbors=[TestAssetNeedsRecheckLive, _asset()]
+- "tests_test_probe_core_testassetneedsrechecklive_test_recently_seen": ".test_recently_seen()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L480 | neighbors=[TestAssetNeedsRecheckLive, _asset()]
+- "tests_test_probe_core_testassetneedsrechecklive_test_stale": ".test_stale()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L484 | neighbors=[TestAssetNeedsRecheckLive, _asset()]
+- "tests_test_probe_core_testassetopenportsfordeepscan_test_empty": ".test_empty()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L497 | neighbors=[TestAssetOpenPortsForDeepScan, _asset()]
+- "tests_test_probe_core_testassetopenportsfordeepscan_test_only_open": ".test_only_open()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L490 | neighbors=[TestAssetOpenPortsForDeepScan, _asset()]
+- "tests_test_probe_core_testcacheentry": "TestCacheEntry" | kind=code-symbol | source=probe/tests/test_probe_core.py:L769 | neighbors=[test_probe_core.py, .test_roundtrip()]
+- "tests_test_probe_core_testcacheentry_test_roundtrip": ".test_roundtrip()" | kind=code-symbol | source=probe/tests/test_probe_core.py:L770 | neighbors=[TestCacheEntry, _scan_result()]
 
 ## Instructions
 

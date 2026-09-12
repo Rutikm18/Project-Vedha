@@ -1,4 +1,4 @@
-# Node Description Batch 279 of 336
+# Node Description Batch 279 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,51 +19,53 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-Write every description in English (en). Do not switch languages.
+LANGUAGE: each entry has a `lang=` marker giving the language of its source.
+Write that entry's description in EXACTLY that language. Do not translate to
+a single common language — match each node's source language individually.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_cve_correlation_testversion_test_in_range_end_exclusive": ".test_in_range_end_exclusive()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L56 | neighbors=[TestVersion]
-- "tests_test_cve_correlation_testversion_test_in_range_exact": ".test_in_range_exact()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L65 | neighbors=[TestVersion]
-- "tests_test_cve_correlation_testversion_test_in_range_start_inclusive": ".test_in_range_start_inclusive()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L61 | neighbors=[TestVersion]
-- "tests_test_cve_correlation_testversion_test_in_range_unconstrained_is_false": ".test_in_range_unconstrained_is_false()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L69 | neighbors=[TestVersion]
-- "tests_test_cve_correlation_testversion_test_parse_debian_epoch_and_distro_suffix": ".test_parse_debian_epoch_and_distro_suffix()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L41 | neighbors=[TestVersion]
-- "tests_test_cve_correlation_testversion_test_parse_leading_v_and_empty": ".test_parse_leading_v_and_empty()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L46 | neighbors=[TestVersion]
-- "tests_test_cve_correlation_testversion_test_parse_openssh_portable": ".test_parse_openssh_portable()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L35 | neighbors=[TestVersion]
-- "tests_test_cve_correlation_testversion_test_parse_openssl_letter_suffix": ".test_parse_openssl_letter_suffix()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L38 | neighbors=[TestVersion]
-- "tests_test_cve_correlation_testvulndb_test_counts": ".test_counts()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L137 | neighbors=[TestVulnDB]
-- "tests_test_cve_correlation_testvulndb_test_cves_for_cpe_in_range": ".test_cves_for_cpe_in_range()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L120 | neighbors=[TestVulnDB]
-- "tests_test_cve_correlation_testvulndb_test_kev_sorts_first": ".test_kev_sorts_first()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L125 | neighbors=[TestVulnDB]
-- "tests_test_cve_correlation_testvulndb_test_out_of_range_excluded": ".test_out_of_range_excluded()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L130 | neighbors=[TestVulnDB]
-- "tests_test_cve_correlation_testvulndb_test_vendor_norm": ".test_vendor_norm()" | kind=code-symbol | source=probe/tests/test_cve_correlation.py:L134 | neighbors=[TestVulnDB]
-- "tests_test_db_scanner_fakereader_init": ".__init__()" | kind=code-symbol | source=probe/tests/test_db_scanner.py:L18 | neighbors=[FakeReader]
-- "tests_test_db_scanner_fakereader_read": ".read()" | kind=code-symbol | source=probe/tests/test_db_scanner.py:L21 | neighbors=[FakeReader]
-- "tests_test_db_scanner_fakewriter_drain": ".drain()" | kind=code-symbol | source=probe/tests/test_db_scanner.py:L29 | neighbors=[FakeWriter]
-- "tests_test_db_scanner_fakewriter_write": ".write()" | kind=code-symbol | source=probe/tests/test_db_scanner.py:L26 | neighbors=[FakeWriter]
-- "tests_test_db_scanner_rationale_1": "Regression tests for db_scanner fingerprint matchers.  Focus: MySQL X Protocol (" | kind=entity | source=probe/tests/test_db_scanner.py:L1 | neighbors=[test_db_scanner.py]
-- "tests_test_db_unauth_test_redis_authenticated": "test_redis_authenticated()" | kind=code-symbol | source=probe/tests/test_db_unauth.py:L11 | neighbors=[test_db_unauth.py]
-- "tests_test_db_unauth_test_redis_unauthenticated": "test_redis_unauthenticated()" | kind=code-symbol | source=probe/tests/test_db_unauth.py:L4 | neighbors=[test_db_unauth.py]
-- "tests_test_detection_core_rationale_238": "ipv6_discovery reports on the RUN, not a host: its target is the local         i" | kind=entity | source=manager/detection_engine/tests/test_detection_core.py:L238 | neighbors=[.test_run_scoped_fact_is_ingested_but_c…]
-- "tests_test_detection_core_testallosvsourcepackages_test_returns_list": ".test_returns_list()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L1063 | neighbors=[TestAllOsvSourcePackages]
-- "tests_test_detection_core_testallosvsourcepackages_test_sorted": ".test_sorted()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L1068 | neighbors=[TestAllOsvSourcePackages]
-- "tests_test_detection_core_testasset_test_add_alias": ".test_add_alias()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L163 | neighbors=[TestAsset]
-- "tests_test_detection_core_testclassifyconfidence_test_authoritative_scanners": ".test_authoritative_scanners()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L209 | neighbors=[TestClassifyConfidence]
-- "tests_test_detection_core_testclassifyconfidence_test_inferred_scanners": ".test_inferred_scanners()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L213 | neighbors=[TestClassifyConfidence]
-- "tests_test_detection_core_testcleandebianversion_test_no_revision": ".test_no_revision()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L1051 | neighbors=[TestCleanDebianVersion]
-- "tests_test_detection_core_testcleandebianversion_test_strips_epoch": ".test_strips_epoch()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L1046 | neighbors=[TestCleanDebianVersion]
-- "tests_test_detection_core_testcleandebianversion_test_strips_revision": ".test_strips_revision()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L1041 | neighbors=[TestCleanDebianVersion]
-- "tests_test_detection_core_testcleanrpmversion_test_strips_release": ".test_strips_release()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L1058 | neighbors=[TestCleanRpmVersion]
-- "tests_test_detection_core_testcorrelatesmbpatch_test_no_smb_facts_returns_none": ".test_no_smb_facts_returns_none()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L630 | neighbors=[TestCorrelateSmbPatch]
-- "tests_test_detection_core_testcvss_test_known_vectors": ".test_known_vectors()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L328 | neighbors=[TestCvss]
-- "tests_test_detection_core_testcvss_test_parse_vector": ".test_parse_vector()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L340 | neighbors=[TestCvss]
-- "tests_test_detection_core_testcvss_test_returns_none_for_malformed": ".test_returns_none_for_malformed()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L336 | neighbors=[TestCvss]
-- "tests_test_detection_core_testcvss_test_returns_none_for_v2_vector": ".test_returns_none_for_v2_vector()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L333 | neighbors=[TestCvss]
-- "tests_test_detection_core_testcvss_test_roundup_exact_boundary": ".test_roundup_exact_boundary()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L345 | neighbors=[TestCvss]
-- "tests_test_detection_core_testdeceptionscore_test_capped_at_1": ".test_capped_at_1()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L702 | neighbors=[TestDeceptionScore]
-- "tests_test_detection_core_testdeceptionscore_test_combined_high": ".test_combined_high()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L699 | neighbors=[TestDeceptionScore]
-- "tests_test_detection_core_testdeceptionscore_test_contradictory_os": ".test_contradictory_os()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L695 | neighbors=[TestDeceptionScore]
-- "tests_test_detection_core_testdeceptionscore_test_high_product_count": ".test_high_product_count()" | kind=code-symbol | source=manager/detection_engine/tests/test_detection_core.py:L692 | neighbors=[TestDeceptionScore]
+- "scanner_host_discovery_rationale_295": "One OS neighbor-cache observation about a target, with graded freshness." | kind=entity | source=probe/scanner/host_discovery.py:L295 | neighbors=[Neighbor] | lang=pt
+- "scanner_host_discovery_rationale_302": "Parse one `ip neigh` / `arp -n` / `ndp -n` line into a Neighbor.      Handles bo" | kind=entity | source=probe/scanner/host_discovery.py:L302 | neighbors=[parse_neighbor_line()] | lang=pt
+- "scanner_host_discovery_rationale_308": "Combine TCP + neighbor signals into a confidence-scored verdict.      Returns a" | kind=entity | source=probe/scanner/host_discovery.py:L308 | neighbors=[fuse_liveness()] | lang=pt
+- "scanner_host_discovery_rationale_311": "Combine TCP + neighbor signals into a confidence-scored verdict.      Returns a" | kind=entity | source=probe/scanner/host_discovery.py:L311 | neighbors=[fuse_liveness()] | lang=pt
+- "scanner_host_discovery_rationale_33": "Return 'open', 'refused', or None (no response)." | kind=entity | source=probe/scanner/host_discovery.py:L33 | neighbors=[._probe()] | lang=en
+- "scanner_host_discovery_rationale_332": "Targeted, POST-probe neighbor lookup for a single IP (unprivileged).      Reads" | kind=entity | source=probe/scanner/host_discovery.py:L332 | neighbors=[read_neighbor()] | lang=en
+- "scanner_host_discovery_rationale_363": "Bulk {ip: normalized_mac} snapshot of the neighbor cache (fallback path).      R" | kind=entity | source=probe/scanner/host_discovery.py:L363 | neighbors=[read_arp_table()] | lang=en
+- "scanner_host_discovery_rationale_37": "Return 'open', 'refused', or None (no response)." | kind=entity | source=probe/scanner/host_discovery.py:L37 | neighbors=[._probe()] | lang=en
+- "scanner_host_discovery_rationale_396": "Return 'open', 'refused', or None (no response)." | kind=entity | source=probe/scanner/host_discovery.py:L396 | neighbors=[._probe()] | lang=en
+- "scanner_host_discovery_rationale_399": "Return 'open', 'refused', or None (no response)." | kind=entity | source=probe/scanner/host_discovery.py:L399 | neighbors=[._probe()] | lang=en
+- "scanner_host_discovery_rationale_411": "Combine TCP + UDP + neighbor signals into a confidence-scored verdict.      `udp" | kind=entity | source=probe/scanner/host_discovery.py:L411 | neighbors=[fuse_liveness()] | lang=pt
+- "scanner_host_discovery_rationale_517": "Return 'open', 'refused', or None (no response)." | kind=entity | source=probe/scanner/host_discovery.py:L517 | neighbors=[._probe()] | lang=en
+- "scanner_host_discovery_rationale_536": "One UDP liveness probe -> structured signal, or None on silence." | kind=entity | source=probe/scanner/host_discovery.py:L536 | neighbors=[._udp_one()] | lang=en
+- "scanner_host_discovery_rationale_561": "Run the UDP tier concurrently; return every positive signal." | kind=entity | source=probe/scanner/host_discovery.py:L561 | neighbors=[._udp_liveness()] | lang=en
+- "scanner_host_discovery_rationale_87": "Zero-pad each octet ('d2:58:2b:ff:cb:4' -> 'd2:58:2b:ff:cb:04'); lower." | kind=entity | source=probe/scanner/host_discovery.py:L87 | neighbors=[normalize_mac()] | lang=en
+- "scanner_init_rationale_1": "VA scanner module — pure collection/scanning layer.  Each submodule is an indepe" | kind=entity | source=probe/scanner/__init__.py:L1 | neighbors=[__init__.py] | lang=en
+- "scanner_iot_scanner_main": "main()" | kind=code-symbol | source=probe/scanner/iot_scanner.py:L559 | neighbors=[iot_scanner.py] | lang=en
+- "scanner_iot_scanner_rationale_1": "iot_scanner.py — IoT / embedded device fingerprint and exposure scanner.  Covers" | kind=entity | source=probe/scanner/iot_scanner.py:L1 | neighbors=[iot_scanner.py] | lang=en
+- "scanner_iot_scanner_rationale_130": "Decode a DNS wire-format name, following pointers.  Returns (name, end_offset)." | kind=entity | source=probe/scanner/iot_scanner.py:L130 | neighbors=[_decode_mdns_name()] | lang=pt
+- "scanner_iot_scanner_rationale_131": "Decode a DNS wire-format name, following pointers.  Returns (name, end_offset)." | kind=entity | source=probe/scanner/iot_scanner.py:L131 | neighbors=[_decode_mdns_name()] | lang=pt
+- "scanner_iot_scanner_rationale_156": "Extract PTR target names from mDNS response (services discovered)." | kind=entity | source=probe/scanner/iot_scanner.py:L156 | neighbors=[_parse_mdns_response()] | lang=en
+- "scanner_iot_scanner_rationale_157": "Extract PTR target names from mDNS response (services discovered)." | kind=entity | source=probe/scanner/iot_scanner.py:L157 | neighbors=[_parse_mdns_response()] | lang=en
+- "scanner_iot_scanner_rationale_270": "MQTT variable-length encoding." | kind=entity | source=probe/scanner/iot_scanner.py:L270 | neighbors=[_mqtt_remaining_len()] | lang=en
+- "scanner_iot_scanner_rationale_272": "MQTT variable-length encoding." | kind=entity | source=probe/scanner/iot_scanner.py:L272 | neighbors=[_mqtt_remaining_len()] | lang=en
+- "scanner_iot_scanner_rationale_282": "MQTT SUBSCRIBE to '#' (all topics), QoS 0." | kind=entity | source=probe/scanner/iot_scanner.py:L282 | neighbors=[_mqtt_subscribe_all()] | lang=en
+- "scanner_iot_scanner_rationale_284": "MQTT SUBSCRIBE to '#' (all topics), QoS 0." | kind=entity | source=probe/scanner/iot_scanner.py:L284 | neighbors=[_mqtt_subscribe_all()] | lang=en
+- "scanner_iot_scanner_rationale_347": "CoAP Confirmable GET for /.well-known/core — resource discovery." | kind=entity | source=probe/scanner/iot_scanner.py:L347 | neighbors=[_coap_get_wellknown_core()] | lang=en
+- "scanner_iot_scanner_rationale_349": "CoAP Confirmable GET for /.well-known/core — resource discovery." | kind=entity | source=probe/scanner/iot_scanner.py:L349 | neighbors=[_coap_get_wellknown_core()] | lang=en
+- "scanner_iot_scanner_rationale_360": "Extract CoAP response code and content." | kind=entity | source=probe/scanner/iot_scanner.py:L360 | neighbors=[_parse_coap_response()] | lang=en
+- "scanner_iot_scanner_rationale_362": "Extract CoAP response code and content." | kind=entity | source=probe/scanner/iot_scanner.py:L362 | neighbors=[_parse_coap_response()] | lang=en
+- "scanner_iot_scanner_rationale_404": "HTTP GET to CWMP port — detect ACS or CPE management interface." | kind=entity | source=probe/scanner/iot_scanner.py:L404 | neighbors=[_probe_cwmp()] | lang=en
+- "scanner_iot_scanner_rationale_406": "HTTP GET to CWMP port — detect ACS or CPE management interface." | kind=entity | source=probe/scanner/iot_scanner.py:L406 | neighbors=[_probe_cwmp()] | lang=en
+- "scanner_iot_scanner_rationale_444": "Surveys a target for IoT/embedded device exposure across 6 protocol families." | kind=entity | source=probe/scanner/iot_scanner.py:L444 | neighbors=[IoTScanner] | lang=en
+- "scanner_iot_scanner_rationale_446": "Surveys a target for IoT/embedded device exposure across 6 protocol families." | kind=entity | source=probe/scanner/iot_scanner.py:L446 | neighbors=[IoTScanner] | lang=en
+- "scanner_iot_scanner_rationale_58": "HTTP GET the UPnP rootDesc.xml and extract device info." | kind=entity | source=probe/scanner/iot_scanner.py:L58 | neighbors=[_fetch_upnp_root_desc()] | lang=en
+- "scanner_iot_scanner_rationale_59": "HTTP GET the UPnP rootDesc.xml and extract device info." | kind=entity | source=probe/scanner/iot_scanner.py:L59 | neighbors=[_fetch_upnp_root_desc()] | lang=en
+- "scanner_ipmi_scanner_ipmiscanner_init": ".__init__()" | kind=code-symbol | source=probe/scanner/ipmi_scanner.py:L68 | neighbors=[IPMIScanner] | lang=en
+- "scanner_ipmi_scanner_main": "main()" | kind=code-symbol | source=probe/scanner/ipmi_scanner.py:L113 | neighbors=[ipmi_scanner.py] | lang=en
+- "scanner_ipmi_scanner_rationale_1": "ipmi_scanner.py — IPMI 2.0 cipher-zero authentication-bypass detection (VA check" | kind=entity | source=probe/scanner/ipmi_scanner.py:L1 | neighbors=[ipmi_scanner.py] | lang=en
+- "scanner_ipmi_scanner_rationale_37": "A fixed RMCP+ Open Session Request offering cipher suite 0 (auth=0,     integrit" | kind=entity | source=probe/scanner/ipmi_scanner.py:L37 | neighbors=[build_open_session_request()] | lang=pt
 
 ## Instructions
 

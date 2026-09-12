@@ -1,4 +1,4 @@
-# Node Description Batch 201 of 336
+# Node Description Batch 201 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -9,9 +9,6 @@ your JSON answer to the answer file.
 You are documenting nodes in a knowledge graph.
 For each entry below, write ONE concise factual plain-language sentence
 describing what it is or does. Use only the provided context.
-For a code symbol (kind=code-symbol — a function, class, or constant),
-describe what the function/symbol does based on its name, source location
-and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
 For an entity node (any other kind — e.g. a person, place, event, object),
 describe what the entity is and its role, grounded in its type, its
 relations (neighbors) and the provided citations/evidence — e.g.
@@ -26,46 +23,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "detection_verification_rationale_76": "Only spend an LLM call where a rationale / FP-triage is worth it:     uncertain" | kind=entity | source=manager/backend/app/detection/verification.py:L76 | neighbors=[_qualifies_for_llm()] | lang=en
-- "detection_verification_rationale_83": "Deterministic verdict, optionally enriched by an LLM rationale. The LLM     (duc" | kind=entity | source=manager/backend/app/detection/verification.py:L83 | neighbors=[verify_finding()] | lang=en
-- "dev_hint_route_get": "GET()" | kind=code-symbol | source=manager/frontend/app/api/auth/dev-hint/route.ts:L17 | neighbors=[route.ts] | lang=en
-- "discovery_device_profile_rationale_1": "device_profile.py — map a probe device_inventory result onto asset fields.  The" | kind=entity | source=manager/backend/app/discovery/device_profile.py:L1 | neighbors=[device_profile.py] | lang=en
-- "discovery_device_profile_rationale_30": "The AssetType for a classifier device_type, or None to keep the existing." | kind=entity | source=manager/backend/app/discovery/device_profile.py:L30 | neighbors=[asset_type_for()] | lang=en
-- "discovery_device_profile_rationale_37": "ip → {asset_type, device_role, role_detail, role_confidence} from a probe     de" | kind=entity | source=manager/backend/app/discovery/device_profile.py:L37 | neighbors=[device_profiles()] | lang=en
-- "discovery_exposure_rationale_1": "exposure.py — reachability-aware risk from the probe's exposure_matrix use-case." | kind=entity | source=manager/backend/app/discovery/exposure.py:L1 | neighbors=[exposure.py] | lang=en
-- "discovery_exposure_rationale_38": "(ip, proto, port) → exposure verdict, from a probe exposure_matrix result." | kind=entity | source=manager/backend/app/discovery/exposure.py:L38 | neighbors=[service_exposure()] | lang=en
-- "discovery_exposure_rationale_69": "Bump a finding one severity rung when its service is internet-reachable.      On" | kind=entity | source=manager/backend/app/discovery/exposure.py:L69 | neighbors=[escalate_for_exposure()] | lang=en
-- "discovery_finding_translator_rationale_109": "Bump severity one rung when the finding's service is internet-reachable     (Ser" | kind=entity | source=manager/backend/app/discovery/finding_translator.py:L109 | neighbors=[_escalate_by_exposure()] | lang=en
-- "discovery_finding_translator_rationale_124": "A still-relevant Finding with the same (engagement, asset, title), if any." | kind=entity | source=manager/backend/app/discovery/finding_translator.py:L124 | neighbors=[_find_open_duplicate()] | lang=en
-- "discovery_finding_translator_rationale_135": "A still-relevant Finding with the same (engagement, asset, title), if any." | kind=entity | source=manager/backend/app/discovery/finding_translator.py:L135 | neighbors=[_find_open_duplicate()] | lang=en
-- "discovery_finding_translator_rationale_144": "Convert a probe's self-assessed `findings` list into persisted Finding rows." | kind=entity | source=manager/backend/app/discovery/finding_translator.py:L144 | neighbors=[create_findings_from_probe_result()] | lang=pt
-- "discovery_finding_translator_rationale_155": "Convert a probe's self-assessed `findings` list into persisted Finding rows." | kind=entity | source=manager/backend/app/discovery/finding_translator.py:L155 | neighbors=[create_findings_from_probe_result()] | lang=pt
-- "discovery_finding_translator_rationale_210": "Raise ONE engagement-level finding when the probe's own metrics say the     scan" | kind=entity | source=manager/backend/app/discovery/finding_translator.py:L210 | neighbors=[create_scan_health_finding()] | lang=en
-- "discovery_finding_translator_rationale_221": "Raise ONE engagement-level finding when the probe's own metrics say the     scan" | kind=entity | source=manager/backend/app/discovery/finding_translator.py:L221 | neighbors=[create_scan_health_finding()] | lang=en
-- "discovery_finding_translator_rationale_55": "Find the Asset for a probe-reported target IP, creating a minimal one if needed." | kind=entity | source=manager/backend/app/discovery/finding_translator.py:L55 | neighbors=[_resolve_asset()] | lang=en
-- "discovery_finding_translator_rationale_56": "Find the Asset for a probe-reported target IP, creating a minimal one if needed." | kind=entity | source=manager/backend/app/discovery/finding_translator.py:L56 | neighbors=[_resolve_asset()] | lang=en
-- "discovery_finding_translator_rationale_77": "Best-effort port for a probe finding: explicit `port`, else the ':NNN'     suffi" | kind=entity | source=manager/backend/app/discovery/finding_translator.py:L77 | neighbors=[_finding_port()] | lang=en
-- "discovery_finding_translator_rationale_88": "Best-effort port for a probe finding: explicit `port`, else the ':NNN'     suffi" | kind=entity | source=manager/backend/app/discovery/finding_translator.py:L88 | neighbors=[_finding_port()] | lang=en
-- "discovery_rate_limiter_ratelimiter_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/discovery/rate_limiter.py:L30 | neighbors=[RateLimiter] | lang=en
-- "discovery_rate_limiter_rationale_1": "RateLimiter — enforces PPS limits per CIDR and business-hour windows from the en" | kind=entity | source=manager/backend/app/discovery/rate_limiter.py:L1 | neighbors=[rate_limiter.py] | lang=en
-- "discovery_rate_limiter_rationale_44": "True if current time is inside the allowed scan window." | kind=entity | source=manager/backend/app/discovery/rate_limiter.py:L44 | neighbors=[.is_within_window()] | lang=en
-- "discovery_rate_limiter_rationale_61": "Blocks until a token is available for the given target IP.         Raises Runtim" | kind=entity | source=manager/backend/app/discovery/rate_limiter.py:L61 | neighbors=[.acquire()] | lang=en
-- "discovery_scan_health_rationale_1": "scan_health.py — turn the probe's per-host scan completeness/health metrics into" | kind=entity | source=manager/backend/app/discovery/scan_health.py:L1 | neighbors=[scan_health.py] | lang=en
-- "discovery_scan_health_rationale_18": "Aggregate result['scan_metrics'] into a coverage/health verdict.        degraded" | kind=entity | source=manager/backend/app/discovery/scan_health.py:L18 | neighbors=[scan_health_summary()] | lang=pt
-- "discovery_service_id_rationale_1": "ServiceIdentifier — banner + port → structured service fingerprint. Handles: HTT" | kind=entity | source=manager/backend/app/discovery/service_id.py:L1 | neighbors=[service_id.py] | lang=en
-- "discovery_service_vuln_rationale_1": "service_vuln.py — turn network-service banner facts into Finding rows.  WHY THIS" | kind=entity | source=manager/backend/app/discovery/service_vuln.py:L1 | neighbors=[service_vuln.py] | lang=en
-- "discovery_service_vuln_rationale_143": "Scan the result's `facts` for weak/outdated network services and persist     Fin" | kind=entity | source=manager/backend/app/discovery/service_vuln.py:L143 | neighbors=[create_service_vuln_findings()] | lang=en
-- "discovery_service_vuln_rationale_65": "SSH hygiene findings the CVE engine does NOT cover.      Outdated-version → CVE" | kind=entity | source=manager/backend/app/discovery/service_vuln.py:L65 | neighbors=[_ssh_rules()] | lang=en
-- "discovery_service_vuln_rationale_96": "Findings for an HTTP service, from its Server header / banner." | kind=entity | source=manager/backend/app/discovery/service_vuln.py:L96 | neighbors=[_http_rules()] | lang=en
-- "discovery_worker_discoveryjobpayload_post_init": ".__post_init__()" | kind=code-symbol | source=manager/backend/app/discovery/worker.py:L50 | neighbors=[DiscoveryJobPayload] | lang=en
-- "discovery_worker_discoveryworker_init": ".__init__()" | kind=code-symbol | source=manager/backend/app/discovery/worker.py:L61 | neighbors=[DiscoveryWorker] | lang=en
-- "discovery_xml_parser_parsedhost_open_ports": ".open_ports()" | kind=code-symbol | source=manager/backend/app/discovery/xml_parser.py:L36 | neighbors=[ParsedHost] | lang=en
-- "discovery_xml_parser_rationale_1": "Nmap XML output parser. Converts -oX output into structured ParsedHost / ParsedP" | kind=entity | source=manager/backend/app/discovery/xml_parser.py:L1 | neighbors=[xml_parser.py] | lang=en
-- "discovery_xml_parser_rationale_41": "Parse nmap -oX XML into a list of ParsedHost objects." | kind=entity | source=manager/backend/app/discovery/xml_parser.py:L41 | neighbors=[NmapXMLParser] | lang=en
-- "discovery_xml_parser_rationale_42": "Parse nmap -oX XML into a list of ParsedHost objects." | kind=entity | source=manager/backend/app/discovery/xml_parser.py:L42 | neighbors=[NmapXMLParser] | lang=en
-- "draft_route_get": "GET()" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/ai-report/draft/route.ts:L4 | neighbors=[route.ts] | lang=en
-- "engagements_page_empty_form": "EMPTY_FORM" | kind=code-symbol | source=manager/frontend/app/engagements/page.tsx:L41 | neighbors=[page.tsx] | lang=en
-- "engagements_page_engagement": "Engagement" | kind=code-symbol | source=manager/frontend/app/engagements/page.tsx:L17 | neighbors=[page.tsx] | lang=en
+- "agent_engine_rationale_292": "Count unique open network endpoints, not every confirming scanner fact." | kind=entity | source=probe/agent/engine.py:L292 | neighbors=[_count_open_port_facts()] | lang=en
+- "agent_engine_rationale_298": "Build promotion-ready hosts without duplicating scanner facts per port." | kind=entity | source=probe/agent/engine.py:L298 | neighbors=[_hosts_from_facts()] | lang=it
+- "agent_engine_rationale_304": "Build promotion-ready hosts without duplicating scanner facts per port." | kind=entity | source=probe/agent/engine.py:L304 | neighbors=[_hosts_from_facts()] | lang=it
+- "agent_engine_rationale_305": "Serialize effective limits without ever echoing credential values." | kind=entity | source=probe/agent/engine.py:L305 | neighbors=[_applied_tuning()] | lang=en
+- "agent_engine_rationale_307": "Count unique open network endpoints, not every confirming scanner fact." | kind=entity | source=probe/agent/engine.py:L307 | neighbors=[_count_open_port_facts()] | lang=en
+- "agent_engine_rationale_317": "Count unique open network endpoints, not every confirming scanner fact." | kind=entity | source=probe/agent/engine.py:L317 | neighbors=[_count_open_port_facts()] | lang=en
+- "agent_engine_rationale_318": "Count unique open network endpoints, not every confirming scanner fact." | kind=entity | source=probe/agent/engine.py:L318 | neighbors=[_count_open_port_facts()] | lang=en
+- "agent_engine_rationale_319": "Build promotion-ready hosts without duplicating scanner facts per port." | kind=entity | source=probe/agent/engine.py:L319 | neighbors=[_hosts_from_facts()] | lang=it
+- "agent_engine_rationale_334": "Build promotion-ready hosts without duplicating scanner facts per port." | kind=entity | source=probe/agent/engine.py:L334 | neighbors=[_hosts_from_facts()] | lang=it
+- "agent_engine_rationale_336": "Build one consistent result summary for complete and interrupted runs." | kind=entity | source=probe/agent/engine.py:L336 | neighbors=[_build_run_stats()] | lang=en
+- "agent_engine_rationale_338": "Serialize effective limits without ever echoing credential values." | kind=entity | source=probe/agent/engine.py:L338 | neighbors=[_applied_tuning()] | lang=en
+- "agent_engine_rationale_344": "Build promotion-ready hosts without duplicating scanner facts per port." | kind=entity | source=probe/agent/engine.py:L344 | neighbors=[_hosts_from_facts()] | lang=it
+- "agent_engine_rationale_345": "Build promotion-ready hosts without duplicating scanner facts per port." | kind=entity | source=probe/agent/engine.py:L345 | neighbors=[_hosts_from_facts()] | lang=it
+- "agent_engine_rationale_348": "Serialize effective limits without ever echoing credential values." | kind=entity | source=probe/agent/engine.py:L348 | neighbors=[_applied_tuning()] | lang=en
+- "agent_engine_rationale_354": "Serialize effective limits without ever echoing credential values." | kind=entity | source=probe/agent/engine.py:L354 | neighbors=[_applied_tuning()] | lang=en
+- "agent_engine_rationale_367": "Raised when Manager fencing revokes the running attempt." | kind=entity | source=probe/agent/engine.py:L367 | neighbors=[LeaseLostError] | lang=en
+- "agent_engine_rationale_372": "Execute a scan and return the enriched result bundle.      Args:         scan_ty" | kind=entity | source=probe/agent/engine.py:L372 | neighbors=[run_scan()] | lang=en
+- "agent_engine_rationale_374": "Build one consistent result summary for complete and interrupted runs." | kind=entity | source=probe/agent/engine.py:L374 | neighbors=[_build_run_stats()] | lang=en
+- "agent_engine_rationale_375": "Serialize effective limits without ever echoing credential values." | kind=entity | source=probe/agent/engine.py:L375 | neighbors=[_applied_tuning()] | lang=en
+- "agent_engine_rationale_385": "Build one consistent result summary for complete and interrupted runs." | kind=entity | source=probe/agent/engine.py:L385 | neighbors=[_build_run_stats()] | lang=en
+- "agent_engine_rationale_390": "Serialize effective limits without ever echoing credential values." | kind=entity | source=probe/agent/engine.py:L390 | neighbors=[_applied_tuning()] | lang=en
+- "agent_engine_rationale_391": "Build one consistent result summary for complete and interrupted runs." | kind=entity | source=probe/agent/engine.py:L391 | neighbors=[_build_run_stats()] | lang=en
+- "agent_engine_rationale_393": "Execute a scan and return the enriched result bundle.      Args:         scan_ty" | kind=entity | source=probe/agent/engine.py:L393 | neighbors=[run_scan()] | lang=en
+- "agent_engine_rationale_400": "Serialize effective limits without ever echoing credential values." | kind=entity | source=probe/agent/engine.py:L400 | neighbors=[_applied_tuning()] | lang=en
+- "agent_engine_rationale_402": "Serialize effective limits without ever echoing credential values." | kind=entity | source=probe/agent/engine.py:L402 | neighbors=[_applied_tuning()] | lang=en
+- "agent_engine_rationale_412": "Build one consistent result summary for complete and interrupted runs." | kind=entity | source=probe/agent/engine.py:L412 | neighbors=[_build_run_stats()] | lang=en
+- "agent_engine_rationale_426": "Return (extra ScanResults to append as facts, a top-level rollup dict).      Pur" | kind=entity | source=probe/agent/engine.py:L426 | neighbors=[_derive_post_stage()] | lang=en
+- "agent_engine_rationale_427": "Build one consistent result summary for complete and interrupted runs." | kind=entity | source=probe/agent/engine.py:L427 | neighbors=[_build_run_stats()] | lang=en
+- "agent_engine_rationale_443": "Return (extra ScanResults to append as facts, a top-level rollup dict).      Pur" | kind=entity | source=probe/agent/engine.py:L443 | neighbors=[_derive_post_stage()] | lang=en
+- "agent_engine_rationale_444": "Build one consistent result summary for complete and interrupted runs." | kind=entity | source=probe/agent/engine.py:L444 | neighbors=[_build_run_stats()] | lang=en
+- "agent_engine_rationale_46": "Read a bounded numeric safety setting without trusting the environment." | kind=entity | source=probe/agent/engine.py:L46 | neighbors=[_env_number()] | lang=en
+- "agent_engine_rationale_464": "Return (extra ScanResults to append as facts, a top-level rollup dict).      Pur" | kind=entity | source=probe/agent/engine.py:L464 | neighbors=[_derive_post_stage()] | lang=en
+- "agent_engine_rationale_470": "Classify each target's device role from its collected facts (no I/O).     Return" | kind=entity | source=probe/agent/engine.py:L470 | neighbors=[_derive_devices()] | lang=en
+- "agent_engine_rationale_475": "Raised when Manager fencing revokes the running attempt." | kind=entity | source=probe/agent/engine.py:L475 | neighbors=[LeaseLostError] | lang=en
+- "agent_engine_rationale_479": "Return (extra ScanResults to append as facts, a top-level rollup dict).      Pur" | kind=entity | source=probe/agent/engine.py:L479 | neighbors=[_derive_post_stage()] | lang=en
+- "agent_engine_rationale_486": "Raised when Manager fencing revokes the running attempt." | kind=entity | source=probe/agent/engine.py:L486 | neighbors=[LeaseLostError] | lang=en
+- "agent_engine_rationale_489": "Return (extra ScanResults to append as facts, a top-level rollup dict).      Pur" | kind=entity | source=probe/agent/engine.py:L489 | neighbors=[_derive_post_stage()] | lang=en
+- "agent_engine_rationale_490": "Reconcile each target's per-vantage reachability into an exposure matrix     (no" | kind=entity | source=probe/agent/engine.py:L490 | neighbors=[_derive_exposure()] | lang=en
+- "agent_engine_rationale_491": "Classify each target's device role from its collected facts (no I/O).     Return" | kind=entity | source=probe/agent/engine.py:L491 | neighbors=[_derive_devices()] | lang=en
+- "agent_engine_rationale_497": "Return (extra ScanResults to append as facts, a top-level rollup dict).      Pur" | kind=entity | source=probe/agent/engine.py:L497 | neighbors=[_derive_post_stage()] | lang=en
 
 ## Instructions
 

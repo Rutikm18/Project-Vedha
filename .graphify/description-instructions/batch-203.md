@@ -1,4 +1,4 @@
-# Node Description Batch 204 of 336
+# Node Description Batch 204 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,51 +12,60 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
-Write every description in English (en). Do not switch languages.
+For an entity node (any other kind — e.g. a person, place, event, object),
+describe what the entity is and its role, grounded in its type, its
+relations (neighbors) and the provided citations/evidence — e.g.
+"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
+Ground entity descriptions in the citations/evidence when present; do not
+speculate beyond the context, so a node with no supporting context may be
+left out of the reply.
+LANGUAGE: each entry has a `lang=` marker giving the language of its source.
+Write that entry's description in EXACTLY that language. Do not translate to
+a single common language — match each node's source language individually.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "findings_page_finding": "Finding" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L136 | neighbors=[page.tsx]
-- "findings_page_findingoverview": "FindingOverview()" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L962 | neighbors=[page.tsx]
-- "findings_page_findingpage": "FindingPage" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L193 | neighbors=[page.tsx]
-- "findings_page_findingrow": "FindingRow" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L2041 | neighbors=[page.tsx]
-- "findings_page_findingstatus": "FindingStatus" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L57 | neighbors=[page.tsx]
-- "findings_page_findingsummary": "FindingSummary" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L201 | neighbors=[page.tsx]
-- "findings_page_findingtimeline": "FindingTimeline" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L76 | neighbors=[page.tsx]
-- "findings_page_fmteventts": "fmtEventTs()" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L470 | neighbors=[page.tsx]
-- "findings_page_fmtrelativets": "fmtRelativeTs()" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L477 | neighbors=[page.tsx]
-- "findings_page_getlocationsearch": "getLocationSearch()" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L83 | neighbors=[page.tsx]
-- "findings_page_getserverlocationsearch": "getServerLocationSearch()" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L87 | neighbors=[page.tsx]
-- "findings_page_intelpanel": "IntelPanel()" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L1188 | neighbors=[page.tsx]
-- "findings_page_kevbadge": "KevBadge()" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L355 | neighbors=[page.tsx]
-- "findings_page_kill_chain_phase_color": "KILL_CHAIN_PHASE_COLOR" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L83 | neighbors=[page.tsx]
-- "findings_page_killchainstep": "KillChainStep" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L133 | neighbors=[page.tsx]
-- "findings_page_killchainviz": "KillChainViz()" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L548 | neighbors=[page.tsx]
-- "findings_page_maturity_color": "MATURITY_COLOR" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L74 | neighbors=[page.tsx]
-- "findings_page_needsreviewchip": "NeedsReviewChip()" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L383 | neighbors=[page.tsx]
-- "findings_page_portalfindings": "PortalFindings()" | kind=code-symbol | source=manager/frontend/app/portal/findings/page.tsx:L161 | neighbors=[page.tsx]
-- "findings_page_prefersreducedmotion": "prefersReducedMotion()" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L277 | neighbors=[page.tsx]
-- "findings_page_priority": "Priority" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L60 | neighbors=[page.tsx]
-- "findings_page_priority_color": "PRIORITY_COLOR" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L80 | neighbors=[page.tsx]
-- "findings_page_prioritybadge": "PriorityBadge()" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L330 | neighbors=[page.tsx]
-- "findings_page_reason_templates": "REASON_TEMPLATES" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L1500 | neighbors=[page.tsx]
-- "findings_page_regressionbadge": "RegressionBadge()" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L392 | neighbors=[page.tsx]
-- "findings_page_remediationchecklist": "RemediationChecklist()" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L367 | neighbors=[page.tsx]
-- "findings_page_remediationos": "RemediationOs" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L97 | neighbors=[page.tsx]
-- "findings_page_remediationosfor": "remediationOsFor()" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L691 | neighbors=[page.tsx]
-- "findings_page_remediationplanresponse": "RemediationPlanResponse" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L108 | neighbors=[page.tsx]
-- "findings_page_remediationplanstep": "RemediationPlanStep" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L98 | neighbors=[page.tsx]
-- "findings_page_remstep": "RemStep" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L91 | neighbors=[page.tsx]
-- "findings_page_riskbreakdown": "RiskBreakdown" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L129 | neighbors=[page.tsx]
-- "findings_page_riskbreakdownbar": "RiskBreakdownBar()" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L506 | neighbors=[page.tsx]
-- "findings_page_sev_color": "SEV_COLOR" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L63 | neighbors=[page.tsx]
-- "findings_page_sev_order": "SEV_ORDER" | kind=code-symbol | source=manager/frontend/app/portal/findings/page.tsx:L15 | neighbors=[page.tsx]
-- "findings_page_sevbadge": "SevBadge()" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L316 | neighbors=[page.tsx]
-- "findings_page_severity": "Severity" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L56 | neighbors=[page.tsx]
-- "findings_page_sevs": "SEVS" | kind=code-symbol | source=manager/frontend/app/portal/findings/page.tsx:L14 | neighbors=[page.tsx]
-- "findings_page_signalchip": "SignalChip" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L434 | neighbors=[page.tsx]
-- "findings_page_sla": "Sla" | kind=code-symbol | source=manager/frontend/app/findings/page.tsx:L249 | neighbors=[page.tsx]
+- "agent_result_spool_rationale_116": "Move a terminally rejected result out of the retry queue." | kind=entity | source=probe/agent/result_spool.py:L116 | neighbors=[.quarantine()] | lang=en
+- "agent_result_spool_rationale_130": "Re-attempt upload of all previously spooled results.          Called once at pro" | kind=entity | source=probe/agent/result_spool.py:L130 | neighbors=[.flush_spool()] | lang=en
+- "agent_result_spool_rationale_135": "Attempt to upload a result with retries and local spool as fallback.          Ar" | kind=entity | source=probe/agent/result_spool.py:L135 | neighbors=[.submit_with_retry()] | lang=en
+- "agent_result_spool_rationale_153": "Number of pending (unsubmitted) results in the spool." | kind=entity | source=probe/agent/result_spool.py:L153 | neighbors=[.spool_count()] | lang=en
+- "agent_result_spool_rationale_156": "Re-attempt upload of all previously spooled results.          Called once at pro" | kind=entity | source=probe/agent/result_spool.py:L156 | neighbors=[.flush_spool()] | lang=en
+- "agent_result_spool_rationale_180": "Number of pending (unsubmitted) results in the spool." | kind=entity | source=probe/agent/result_spool.py:L180 | neighbors=[.spool_count()] | lang=en
+- "agent_result_spool_rationale_185": "Re-attempt upload of all previously spooled results.          Called once at pro" | kind=entity | source=probe/agent/result_spool.py:L185 | neighbors=[.flush_spool()] | lang=en
+- "agent_result_spool_rationale_216": "Number of pending (unsubmitted) results in the spool." | kind=entity | source=probe/agent/result_spool.py:L216 | neighbors=[.spool_count()] | lang=en
+- "agent_result_spool_rationale_223": "Total bytes held by pending result files, ignoring vanished files." | kind=entity | source=probe/agent/result_spool.py:L223 | neighbors=[.spool_bytes()] | lang=en
+- "agent_result_spool_rationale_236": "Whether new jobs must pause until pending results are uploaded.          These a" | kind=entity | source=probe/agent/result_spool.py:L236 | neighbors=[.at_capacity()] | lang=en
+- "agent_result_spool_rationale_25": "Persists scan results locally and retries failed uploads." | kind=entity | source=probe/agent/result_spool.py:L25 | neighbors=[ResultSpool] | lang=en
+- "agent_result_spool_rationale_27": "Persists scan results locally and retries failed uploads." | kind=entity | source=probe/agent/result_spool.py:L27 | neighbors=[ResultSpool] | lang=en
+- "agent_result_spool_rationale_28": "Persists scan results locally and retries failed uploads." | kind=entity | source=probe/agent/result_spool.py:L28 | neighbors=[ResultSpool] | lang=en
+- "agent_result_spool_rationale_40": "Atomically write a result payload to the spool directory.          Returns the s" | kind=entity | source=probe/agent/result_spool.py:L40 | neighbors=[.save()] | lang=en
+- "agent_result_spool_rationale_60": "Atomically write a result payload to the spool directory.          Returns the s" | kind=entity | source=probe/agent/result_spool.py:L60 | neighbors=[.save()] | lang=en
+- "agent_result_spool_rationale_62": "Check if a spooled result exists for this job." | kind=entity | source=probe/agent/result_spool.py:L62 | neighbors=[.exists()] | lang=en
+- "agent_result_spool_rationale_66": "Load a previously spooled result, returning None if missing/corrupt." | kind=entity | source=probe/agent/result_spool.py:L66 | neighbors=[.load()] | lang=pt
+- "agent_result_spool_rationale_69": "Atomically write a result payload to the spool directory.          Returns the s" | kind=entity | source=probe/agent/result_spool.py:L69 | neighbors=[.save()] | lang=en
+- "agent_result_spool_rationale_77": "Remove the spool file for a successfully uploaded result." | kind=entity | source=probe/agent/result_spool.py:L77 | neighbors=[.remove()] | lang=en
+- "agent_result_spool_rationale_87": "Check if a spooled result exists for this job." | kind=entity | source=probe/agent/result_spool.py:L87 | neighbors=[.exists()] | lang=en
+- "agent_result_spool_rationale_88": "Attempt to upload a result with retries and local spool as fallback.          Ar" | kind=entity | source=probe/agent/result_spool.py:L88 | neighbors=[.submit_with_retry()] | lang=en
+- "agent_result_spool_rationale_91": "Load a previously spooled result, returning None if missing/corrupt." | kind=entity | source=probe/agent/result_spool.py:L91 | neighbors=[.load()] | lang=pt
+- "agent_result_spool_rationale_96": "Check if a spooled result exists for this job." | kind=entity | source=probe/agent/result_spool.py:L96 | neighbors=[.exists()] | lang=en
+- "agent_result_spool_resultspool_init": ".__init__()" | kind=code-symbol | source=probe/agent/result_spool.py:L30 | neighbors=[ResultSpool] | lang=en
+- "agent_scope_crypt_rationale_1": "scope_crypt.py — asymmetric scope encryption via X25519 + HKDF + AES-256-GCM.  T" | kind=entity | source=probe/agent/scope_crypt.py:L1 | neighbors=[scope_crypt.py] | lang=en
+- "agent_scope_crypt_rationale_151": "encrypt_scope() returning a base64 string suitable for JSON transport." | kind=entity | source=probe/agent/scope_crypt.py:L151 | neighbors=[encrypt_scope_b64()] | lang=en
+- "agent_scope_crypt_rationale_156": "decrypt_scope() accepting a base64 string from JSON transport." | kind=entity | source=probe/agent/scope_crypt.py:L156 | neighbors=[decrypt_scope_b64()] | lang=en
+- "agent_scope_crypt_rationale_161": "Decode a base64-encoded X25519 public key to raw bytes." | kind=entity | source=probe/agent/scope_crypt.py:L161 | neighbors=[pubkey_to_bytes()] | lang=en
+- "agent_scope_crypt_rationale_166": "Encode raw X25519 public key bytes to a base64 string." | kind=entity | source=probe/agent/scope_crypt.py:L166 | neighbors=[bytes_to_pubkey_b64()] | lang=en
+- "agent_scope_crypt_rationale_44": "Generate a fresh X25519 keypair.      Returns (private_key_bytes, public_key_byt" | kind=entity | source=probe/agent/scope_crypt.py:L44 | neighbors=[generate_identity()] | lang=pt
+- "agent_scope_crypt_rationale_56": "Encrypt scope JSON to a specific probe's public key.      Args:         scope_js" | kind=entity | source=probe/agent/scope_crypt.py:L56 | neighbors=[encrypt_scope()] | lang=en
+- "agent_scope_crypt_rationale_98": "Decrypt a scope blob using the probe's private key.      Args:         blob: Wir" | kind=entity | source=probe/agent/scope_crypt.py:L98 | neighbors=[decrypt_scope()] | lang=en
+- "agent_scope_model_detect_container": "detect_container()" | kind=code-symbol | source=probe/agent/scope_model.py:L134 | neighbors=[scope_model.py] | lang=en
+- "agent_scope_model_ipv6_scope_note": "ipv6_scope_note()" | kind=code-symbol | source=probe/agent/scope_model.py:L157 | neighbors=[scope_model.py] | lang=en
+- "agent_scope_model_rationale_1": "scope_model.py — the typed-scope model (Phase 1 of the hardened agent).  Pure, d" | kind=entity | source=probe/agent/scope_model.py:L1 | neighbors=[scope_model.py] | lang=en
+- "agent_scope_model_rationale_114": "Independent of the Manager: a target is allowed only if it is not on the     den" | kind=entity | source=probe/agent/scope_model.py:L114 | neighbors=[target_allowed()] | lang=en
+- "agent_scope_model_rationale_147": "Refuse LAN scanning from inside a container/WSL2 namespace — it would scan     t" | kind=entity | source=probe/agent/scope_model.py:L147 | neighbors=[refusal_reason()] | lang=en
+- "agent_scope_model_rationale_63": "True if `target` (an IP or CIDR) must NEVER be scanned. Fail-closed." | kind=entity | source=probe/agent/scope_model.py:L63 | neighbors=[is_denied()] | lang=en
+- "agent_scope_model_segment": "Segment" | kind=code-symbol | source=probe/agent/scope_model.py:L31 | neighbors=[scope_model.py] | lang=en
+- "agent_scope_validator_rationale_1": "scope_validator.py — defense-in-depth scope re-validation for the probe.  The pr" | kind=entity | source=probe/agent/scope_validator.py:L1 | neighbors=[scope_validator.py] | lang=en
 
 ## Instructions
 

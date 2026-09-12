@@ -1,4 +1,4 @@
-# Node Description Batch 216 of 336
+# Node Description Batch 216 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,60 +12,51 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
-For an entity node (any other kind — e.g. a person, place, event, object),
-describe what the entity is and its role, grounded in its type, its
-relations (neighbors) and the provided citations/evidence — e.g.
-"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
-Ground entity descriptions in the citations/evidence when present; do not
-speculate beyond the context, so a node with no supporting context may be
-left out of the reply.
-LANGUAGE: each entry has a `lang=` marker giving the language of its source.
-Write that entry's description in EXACTLY that language. Do not translate to
-a single common language — match each node's source language individually.
+Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "main_scripts_device_classifier_rationale_238": "Convenience adapter: extract classifier inputs from a list of ScanResult     obj" | kind=entity | source=probe/main_scripts/device_classifier.py:L238 | neighbors=[classify_from_results()] | lang=en
-- "main_scripts_dns_scanner_dnsscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/dns_scanner.py:L91 | neighbors=[DNSScanner] | lang=en
-- "main_scripts_dns_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/dns_scanner.py:L242 | neighbors=[dns_scanner.py] | lang=en
-- "main_scripts_dns_scanner_rationale_1": "dns_scanner.py — DNS server hygiene: zone transfer (AXFR), DNSSEC presence, and" | kind=entity | source=probe/main_scripts/dns_scanner.py:L1 | neighbors=[dns_scanner.py] | lang=en
-- "main_scripts_dns_scanner_rationale_120": "Ask the target (as a resolver) for the PTR of its own IP — a common way" | kind=entity | source=probe/main_scripts/dns_scanner.py:L120 | neighbors=[._ptr_self()] | lang=en
-- "main_scripts_dns_scanner_rationale_140": "Attempt a zone transfer, reading incrementally and stopping at         MAX_AXFR_" | kind=entity | source=probe/main_scripts/dns_scanner.py:L140 | neighbors=[._axfr()] | lang=en
-- "main_scripts_dns_scanner_rationale_179": "Blocking orchestration of the DNS checks. Monkeypatchable for tests." | kind=entity | source=probe/main_scripts/dns_scanner.py:L179 | neighbors=[._probe()] | lang=en
-- "main_scripts_dns_scanner_rationale_56": "Candidate zone names to try AXFR / DNSSEC against, most-confident first.      Ex" | kind=entity | source=probe/main_scripts/dns_scanner.py:L56 | neighbors=[derive_zones()] | lang=en
-- "main_scripts_findings_rationale_1011": "Fuse OS signals across scanners into ONE identification with calibrated     conf" | kind=entity | source=probe/main_scripts/findings.py:L1011 | neighbors=[_rule_os_identification()] | lang=en
-- "main_scripts_findings_rationale_1013": "SMBv1 (wormable) + exposed RDP (brute-force/BlueKeep) on one host — the     clas" | kind=entity | source=probe/main_scripts/findings.py:L1013 | neighbors=[_corr_legacy_windows()] | lang=en
-- "main_scripts_findings_rationale_1030": "Two or more cleartext services on one host — any sniffing position harvests" | kind=entity | source=probe/main_scripts/findings.py:L1030 | neighbors=[_corr_cleartext_cluster()] | lang=en
-- "main_scripts_findings_rationale_1057": "Two or more INDEPENDENT anonymous data-exposure channels on one host — the     h" | kind=entity | source=probe/main_scripts/findings.py:L1057 | neighbors=[_corr_anon_data_exposure()] | lang=en
-- "main_scripts_findings_rationale_1076": "A disclosed user list (SMB null session) plus a weak/exposed login surface on" | kind=entity | source=probe/main_scripts/findings.py:L1076 | neighbors=[_corr_user_enum_plus_weak_auth()] | lang=pt
-- "main_scripts_findings_rationale_1090": "SMB signing not required => a viable NTLM relay target. If SMBv1 is also on," | kind=entity | source=probe/main_scripts/findings.py:L1090 | neighbors=[_corr_ntlm_relay()] | lang=en
-- "main_scripts_findings_rationale_1099": "Out-of-band / console management surfaces reachable on one host — these grant" | kind=entity | source=probe/main_scripts/findings.py:L1099 | neighbors=[_corr_mgmt_plane_exposed()] | lang=en
-- "main_scripts_findings_rationale_1113": "SMBv1 (wormable) + exposed RDP (brute-force/BlueKeep) on one host — the     clas" | kind=entity | source=probe/main_scripts/findings.py:L1113 | neighbors=[_corr_legacy_windows()] | lang=en
-- "main_scripts_findings_rationale_1126": "Derive findings from collected facts. Pure; deterministic; safe.      Accepts Sc" | kind=entity | source=probe/main_scripts/findings.py:L1126 | neighbors=[run_findings()] | lang=en
-- "main_scripts_findings_rationale_1130": "Two or more cleartext services on one host — any sniffing position harvests" | kind=entity | source=probe/main_scripts/findings.py:L1130 | neighbors=[_corr_cleartext_cluster()] | lang=en
-- "main_scripts_findings_rationale_1157": "Two or more INDEPENDENT anonymous data-exposure channels on one host — the     h" | kind=entity | source=probe/main_scripts/findings.py:L1157 | neighbors=[_corr_anon_data_exposure()] | lang=en
-- "main_scripts_findings_rationale_1172": "Read a scanner's JSONL output into fact dicts (skips blank/garbage lines)." | kind=entity | source=probe/main_scripts/findings.py:L1172 | neighbors=[load_facts_jsonl()] | lang=pt
-- "main_scripts_findings_rationale_1176": "A disclosed user list (SMB null session) plus a weak/exposed login surface on" | kind=entity | source=probe/main_scripts/findings.py:L1176 | neighbors=[_corr_user_enum_plus_weak_auth()] | lang=pt
-- "main_scripts_findings_rationale_1188": "CLI: derive findings from one or more scanner JSONL files.          python -m ma" | kind=entity | source=probe/main_scripts/findings.py:L1188 | neighbors=[_main()] | lang=en
-- "main_scripts_findings_rationale_1199": "Out-of-band / console management surfaces reachable on one host — these grant" | kind=entity | source=probe/main_scripts/findings.py:L1199 | neighbors=[_corr_mgmt_plane_exposed()] | lang=en
-- "main_scripts_findings_rationale_120": "A definitively open TCP port. `open|filtered` is NOT open — we never     raise a" | kind=entity | source=probe/main_scripts/findings.py:L120 | neighbors=[_is_open()] | lang=pt
-- "main_scripts_findings_rationale_1226": "Derive findings from collected facts. Pure; deterministic; safe.      Accepts Sc" | kind=entity | source=probe/main_scripts/findings.py:L1226 | neighbors=[run_findings()] | lang=en
-- "main_scripts_findings_rationale_1258": "One finding as the finding-section shows it — the ACTUAL vulnerability, with" | kind=entity | source=probe/main_scripts/findings.py:L1258 | neighbors=[_finding_row()] | lang=en
-- "main_scripts_findings_rationale_1280": "Roll up findings for the finding section.      Beyond counts, this returns the A" | kind=entity | source=probe/main_scripts/findings.py:L1280 | neighbors=[summarize()] | lang=en
-- "main_scripts_findings_rationale_1320": "Read a scanner's JSONL output into fact dicts (skips blank/garbage lines)." | kind=entity | source=probe/main_scripts/findings.py:L1320 | neighbors=[load_facts_jsonl()] | lang=pt
-- "main_scripts_findings_rationale_1336": "CLI: derive findings from one or more scanner JSONL files.          python -m ma" | kind=entity | source=probe/main_scripts/findings.py:L1336 | neighbors=[_main()] | lang=en
-- "main_scripts_findings_rationale_154": "Map (target, port) -> confirmed-service info from service_banner facts.      Onl" | kind=entity | source=probe/main_scripts/findings.py:L154 | neighbors=[build_service_index()] | lang=en
-- "main_scripts_findings_rationale_444": "JA4X-based threat-intel match. Fires only when a certificate's structural     fi" | kind=entity | source=probe/main_scripts/findings.py:L444 | neighbors=[_rule_tls_fingerprint()] | lang=pt
-- "main_scripts_findings_rationale_466": "Proven UNAUTHENTICATED access to a datastore (from the collected banner) —     a" | kind=entity | source=probe/main_scripts/findings.py:L466 | neighbors=[_rule_unauth_access()] | lang=en
-- "main_scripts_findings_rationale_468": "JA4X-based threat-intel match. Fires only when a certificate's structural     fi" | kind=entity | source=probe/main_scripts/findings.py:L468 | neighbors=[_rule_tls_fingerprint()] | lang=pt
-- "main_scripts_findings_rationale_490": "Proven UNAUTHENTICATED access to a datastore (from the collected banner) —     a" | kind=entity | source=probe/main_scripts/findings.py:L490 | neighbors=[_rule_unauth_access()] | lang=en
-- "main_scripts_findings_rationale_492": "JA4S-based threat-intel match on the TLS ServerHello fingerprint. Fires only" | kind=entity | source=probe/main_scripts/findings.py:L492 | neighbors=[_rule_tls_server_fingerprint()] | lang=en
-- "main_scripts_findings_rationale_510": "SMB signing not required => a viable NTLM relay target. If SMBv1 is also on," | kind=entity | source=probe/main_scripts/findings.py:L510 | neighbors=[_corr_ntlm_relay()] | lang=en
-- "main_scripts_findings_rationale_512": "Confirmed RDP (X.224 handshake) + NLA detection. Runs before the port-hint     e" | kind=entity | source=probe/main_scripts/findings.py:L512 | neighbors=[_rule_rdp()] | lang=en
-- "main_scripts_findings_rationale_516": "JA4S-based threat-intel match on the TLS ServerHello fingerprint. Fires only" | kind=entity | source=probe/main_scripts/findings.py:L516 | neighbors=[_rule_tls_server_fingerprint()] | lang=en
-- "main_scripts_findings_rationale_533": "SMBv1 (wormable) + exposed RDP (brute-force/BlueKeep) on one host — the     clas" | kind=entity | source=probe/main_scripts/findings.py:L533 | neighbors=[_corr_legacy_windows()] | lang=en
-- "main_scripts_findings_rationale_536": "Confirmed RDP (X.224 handshake) + NLA detection. Runs before the port-hint     e" | kind=entity | source=probe/main_scripts/findings.py:L536 | neighbors=[_rule_rdp()] | lang=en
+- "commands_engagement_engagement": "Engagement" | kind=code-symbol | source=manager/frontend/cli/commands/engagement.ts:L4 | neighbors=[engagement.ts]
+- "commands_engagement_errexit": "errExit()" | kind=code-symbol | source=manager/frontend/cli/commands/engagement.ts:L31 | neighbors=[engagement.ts]
+- "commands_engagement_status_color": "STATUS_COLOR" | kind=code-symbol | source=manager/frontend/cli/commands/engagement.ts:L23 | neighbors=[engagement.ts]
+- "commands_interactive_a": "A" | kind=code-symbol | source=manager/frontend/cli/commands/interactive.ts:L26 | neighbors=[interactive.ts]
+- "commands_interactive_engagementrow": "EngagementRow" | kind=code-symbol | source=manager/frontend/cli/commands/interactive.ts:L1738 | neighbors=[interactive.ts]
+- "commands_interactive_issinglehost": "isSingleHost()" | kind=code-symbol | source=manager/frontend/cli/commands/interactive.ts:L189 | neighbors=[interactive.ts]
+- "commands_interactive_makerl": "makeRl()" | kind=code-symbol | source=manager/frontend/cli/commands/interactive.ts:L35 | neighbors=[interactive.ts]
+- "commands_interactive_phasestate": "PhaseState" | kind=code-symbol | source=manager/frontend/cli/commands/interactive.ts:L809 | neighbors=[interactive.ts]
+- "commands_interactive_targetspec": "TargetSpec" | kind=code-symbol | source=manager/frontend/cli/commands/interactive.ts:L182 | neighbors=[interactive.ts]
+- "commands_interactive_tool": "Tool" | kind=code-symbol | source=manager/frontend/cli/commands/interactive.ts:L293 | neighbors=[interactive.ts]
+- "commands_login_prompt": "prompt()" | kind=code-symbol | source=manager/frontend/cli/commands/login.ts:L5 | neighbors=[login.ts]
+- "commands_login_promptsilent": "promptSilent()" | kind=code-symbol | source=manager/frontend/cli/commands/login.ts:L15 | neighbors=[login.ts]
+- "commands_report_aireport": "AiReport" | kind=code-symbol | source=manager/frontend/cli/commands/report.ts:L14 | neighbors=[report.ts]
+- "commands_report_engagement": "Engagement" | kind=code-symbol | source=manager/frontend/cli/commands/report.ts:L6 | neighbors=[report.ts]
+- "commands_report_errexit": "errExit()" | kind=code-symbol | source=manager/frontend/cli/commands/report.ts:L40 | neighbors=[report.ts]
+- "commands_report_renderreport": "renderReport()" | kind=code-symbol | source=manager/frontend/cli/commands/report.ts:L45 | neighbors=[report.ts]
+- "commands_scan_printaicomment": "printAiComment()" | kind=code-symbol | source=manager/frontend/cli/commands/scan.ts:L30 | neighbors=[scan.ts]
+- "commands_scan_profile_tools": "PROFILE_TOOLS" | kind=code-symbol | source=manager/frontend/cli/commands/scan.ts:L9 | neighbors=[scan.ts]
+- "commands_scan_resolvetargets": "resolveTargets()" | kind=code-symbol | source=manager/frontend/cli/commands/scan.ts:L17 | neighbors=[scan.ts]
+- "commands_scan_scancommand": "scanCommand()" | kind=code-symbol | source=manager/frontend/cli/commands/scan.ts:L37 | neighbors=[scan.ts]
+- "commands_status_scanrow": "ScanRow" | kind=code-symbol | source=manager/frontend/cli/commands/status.ts:L4 | neighbors=[status.ts]
+- "commands_status_status_color": "STATUS_COLOR" | kind=code-symbol | source=manager/frontend/cli/commands/status.ts:L13 | neighbors=[status.ts]
+- "commands_tools_c": "C" | kind=code-symbol | source=manager/frontend/cli/commands/tools.ts:L8 | neighbors=[tools.ts]
+- "commands_tools_w": "w()" | kind=code-symbol | source=manager/frontend/cli/commands/tools.ts:L13 | neighbors=[tools.ts]
+- "components_dashboardcharts_activityitem": "ActivityItem" | kind=code-symbol | source=manager/frontend/components/DashboardCharts.tsx:L19 | neighbors=[DashboardCharts.tsx]
+- "components_dashboardcharts_bone": "Bone()" | kind=code-symbol | source=manager/frontend/components/DashboardCharts.tsx:L35 | neighbors=[DashboardCharts.tsx]
+- "components_dashboardcharts_charttooltip": "ChartTooltip()" | kind=code-symbol | source=manager/frontend/components/DashboardCharts.tsx:L40 | neighbors=[DashboardCharts.tsx]
+- "components_dashboardcharts_engagement": "Engagement" | kind=code-symbol | source=manager/frontend/components/DashboardCharts.tsx:L14 | neighbors=[DashboardCharts.tsx]
+- "components_dashboardcharts_finding": "Finding" | kind=code-symbol | source=manager/frontend/components/DashboardCharts.tsx:L20 | neighbors=[DashboardCharts.tsx]
+- "components_dashboardcharts_findingpage": "FindingPage" | kind=code-symbol | source=manager/frontend/components/DashboardCharts.tsx:L24 | neighbors=[DashboardCharts.tsx]
+- "components_dashboardcharts_findingsummary": "FindingSummary" | kind=code-symbol | source=manager/frontend/components/DashboardCharts.tsx:L25 | neighbors=[DashboardCharts.tsx]
+- "components_dashboardcharts_kpicard": "KpiCard()" | kind=code-symbol | source=manager/frontend/components/DashboardCharts.tsx:L60 | neighbors=[DashboardCharts.tsx]
+- "components_dashboardcharts_scorebar": "ScoreBar()" | kind=code-symbol | source=manager/frontend/components/DashboardCharts.tsx:L155 | neighbors=[DashboardCharts.tsx]
+- "components_dashboardcharts_sev": "SEV" | kind=code-symbol | source=manager/frontend/components/DashboardCharts.tsx:L27 | neighbors=[DashboardCharts.tsx]
+- "components_dashboardcharts_sevbadge": "SevBadge()" | kind=code-symbol | source=manager/frontend/components/DashboardCharts.tsx:L140 | neighbors=[DashboardCharts.tsx]
+- "components_dashboardcharts_status_style": "STATUS_STYLE" | kind=code-symbol | source=manager/frontend/components/DashboardCharts.tsx:L170 | neighbors=[DashboardCharts.tsx]
+- "components_dashboardcharts_timelinepoint": "TimelinePoint" | kind=code-symbol | source=manager/frontend/components/DashboardCharts.tsx:L13 | neighbors=[DashboardCharts.tsx]
+- "components_dashboardcharts_top_findings": "TOP_FINDINGS" | kind=code-symbol | source=manager/frontend/components/DashboardCharts.tsx:L203 | neighbors=[DashboardCharts.tsx]
+- "components_engagementstatuscontrol_engagement_states": "ENGAGEMENT_STATES" | kind=code-symbol | source=manager/frontend/components/EngagementStatusControl.tsx:L31 | neighbors=[EngagementStatusControl.tsx]
+- "components_engagementstatuscontrol_engagementstatuscontrolprops": "EngagementStatusControlProps" | kind=code-symbol | source=manager/frontend/components/EngagementStatusControl.tsx:L51 | neighbors=[EngagementStatusControl.tsx]
 
 ## Instructions
 

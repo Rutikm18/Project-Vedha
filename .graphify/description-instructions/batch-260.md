@@ -1,4 +1,4 @@
-# Node Description Batch 261 of 336
+# Node Description Batch 261 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -26,46 +26,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "scanner_syn_scanner_rationale_198": "A genuine reply to our SYN acknowledges ISN+1. The reply's own source     (ip_sr" | kind=entity | source=probe/scanner/syn_scanner.py:L198 | neighbors=[verify_reply_cookie()] | lang=en
-- "scanner_syn_scanner_rationale_210": "True only when a real SYN scan can work: Linux (BSD/macOS raw sockets can't" | kind=entity | source=probe/scanner/syn_scanner.py:L210 | neighbors=[syn_scan_supported()] | lang=pt
-- "scanner_syn_scanner_rationale_211": "True only when a real SYN scan can work: Linux (BSD/macOS raw sockets can't" | kind=entity | source=probe/scanner/syn_scanner.py:L211 | neighbors=[syn_scan_supported()] | lang=pt
-- "scanner_syn_scanner_rationale_214": "SYN/ACK -> open, RST -> closed, anything else -> None (indeterminate)." | kind=entity | source=probe/scanner/syn_scanner.py:L214 | neighbors=[classify()] | lang=en
-- "scanner_syn_scanner_rationale_225": "Keyed 32-bit ISN for (dst_ip, dst_port, src_port). Reply.ack == cookie+1." | kind=entity | source=probe/scanner/syn_scanner.py:L225 | neighbors=[syn_cookie()] | lang=en
-- "scanner_syn_scanner_rationale_231": "Outbound-interface IP for reaching dst_ip (no packets sent — UDP connect)." | kind=entity | source=probe/scanner/syn_scanner.py:L231 | neighbors=[_local_source_ip()] | lang=en
-- "scanner_syn_scanner_rationale_244": "Block until `sock` has a packet waiting, or `timeout` seconds elapse.     Return" | kind=entity | source=probe/scanner/syn_scanner.py:L244 | neighbors=[_wait_readable()] | lang=pt
-- "scanner_syn_scanner_rationale_245": "SYN scan on privileged Linux; transparent connect-scan fallback elsewhere." | kind=entity | source=probe/scanner/syn_scanner.py:L245 | neighbors=[SynScanner] | lang=en
-- "scanner_syn_scanner_rationale_246": "SYN scan on privileged Linux; transparent connect-scan fallback elsewhere." | kind=entity | source=probe/scanner/syn_scanner.py:L246 | neighbors=[SynScanner] | lang=en
-- "scanner_syn_scanner_rationale_275": "True only when a real SYN scan can work: Linux (BSD/macOS raw sockets can't" | kind=entity | source=probe/scanner/syn_scanner.py:L275 | neighbors=[syn_scan_supported()] | lang=pt
-- "scanner_syn_scanner_rationale_296": "Outbound-interface IP for reaching dst_ip (no packets sent — UDP connect)." | kind=entity | source=probe/scanner/syn_scanner.py:L296 | neighbors=[_local_source_ip()] | lang=en
-- "scanner_syn_scanner_rationale_310": "SYN scan on privileged Linux; transparent connect-scan fallback elsewhere." | kind=entity | source=probe/scanner/syn_scanner.py:L310 | neighbors=[SynScanner] | lang=en
-- "scanner_syn_scanner_rationale_414": "Turn resolved port states + harvested intel into ScanResults. Pure —         no" | kind=entity | source=probe/scanner/syn_scanner.py:L414 | neighbors=[._build_results()] | lang=en
-- "scanner_syn_scanner_rationale_418": "Turn resolved port states + harvested intel into ScanResults. Pure —         no" | kind=entity | source=probe/scanner/syn_scanner.py:L418 | neighbors=[._build_results()] | lang=en
-- "scanner_syn_scanner_rationale_531": "Turn resolved port states + harvested intel into ScanResults. Pure —         no" | kind=entity | source=probe/scanner/syn_scanner.py:L531 | neighbors=[._build_results()] | lang=en
-- "scanner_syn_scanner_rationale_63": "Build a 20-byte IPv4 header with a valid checksum.      NOTE (BSD caveat): on ma" | kind=entity | source=probe/scanner/syn_scanner.py:L63 | neighbors=[build_ip_header()] | lang=pt
-- "scanner_syn_scanner_rationale_81": "Build a 20-byte IPv4 header with a valid checksum.      NOTE (BSD caveat): on ma" | kind=entity | source=probe/scanner/syn_scanner.py:L81 | neighbors=[build_ip_header()] | lang=pt
-- "scanner_syn_scanner_rationale_82": "Build a 20-byte IPv4 header with a valid checksum.      NOTE (BSD caveat): on ma" | kind=entity | source=probe/scanner/syn_scanner.py:L82 | neighbors=[build_ip_header()] | lang=pt
-- "scanner_syn_scanner_rationale_86": "Build a 20-byte TCP SYN segment with a valid checksum (pseudo-header)." | kind=entity | source=probe/scanner/syn_scanner.py:L86 | neighbors=[build_tcp_syn()] | lang=pt
-- "scanner_syn_scanner_rationale_94": "Build a 20-byte IPv4 header with a valid checksum.      NOTE (BSD caveat): on ma" | kind=entity | source=probe/scanner/syn_scanner.py:L94 | neighbors=[build_ip_header()] | lang=pt
-- "scanner_tls_fingerprint_main": "main()" | kind=code-symbol | source=probe/scanner/tls_fingerprint.py:L325 | neighbors=[tls_fingerprint.py] | lang=en
-- "scanner_tls_fingerprint_rationale_1": "tls_fingerprint.py — active TLS server fingerprint (Tier 2.3, JARM methodology)." | kind=entity | source=probe/scanner/tls_fingerprint.py:L1 | neighbors=[tls_fingerprint.py] | lang=en
-- "scanner_tls_fingerprint_rationale_136": "Parse the negotiated version + cipher + extensions from a ServerHello." | kind=entity | source=probe/scanner/tls_fingerprint.py:L136 | neighbors=[parse_server_hello()] | lang=en
-- "scanner_tls_fingerprint_rationale_137": "Parse the negotiated version + cipher + extensions from a ServerHello." | kind=entity | source=probe/scanner/tls_fingerprint.py:L137 | neighbors=[parse_server_hello()] | lang=en
-- "scanner_tls_fingerprint_rationale_138": "Parse the negotiated version + cipher + extensions from a ServerHello." | kind=entity | source=probe/scanner/tls_fingerprint.py:L138 | neighbors=[parse_server_hello()] | lang=en
-- "scanner_tls_fingerprint_rationale_177": "2-char code from the cipher's position in CIPHER_LIST ('00' if unknown)." | kind=entity | source=probe/scanner/tls_fingerprint.py:L177 | neighbors=[cipher_code()] | lang=en
-- "scanner_tls_fingerprint_rationale_178": "2-char code from the cipher's position in CIPHER_LIST ('00' if unknown)." | kind=entity | source=probe/scanner/tls_fingerprint.py:L178 | neighbors=[cipher_code()] | lang=en
-- "scanner_tls_fingerprint_rationale_179": "2-char code from the cipher's position in CIPHER_LIST ('00' if unknown)." | kind=entity | source=probe/scanner/tls_fingerprint.py:L179 | neighbors=[cipher_code()] | lang=en
-- "scanner_tls_fingerprint_rationale_184": "Concatenate the ServerHello extension TYPE codes (2 bytes each). We hash types," | kind=entity | source=probe/scanner/tls_fingerprint.py:L184 | neighbors=[_server_ext_types()] | lang=en
-- "scanner_tls_fingerprint_rationale_185": "Concatenate the ServerHello extension TYPE codes (2 bytes each). We hash types," | kind=entity | source=probe/scanner/tls_fingerprint.py:L185 | neighbors=[_server_ext_types()] | lang=en
-- "scanner_tls_fingerprint_rationale_186": "Concatenate the ServerHello extension TYPE codes (2 bytes each). We hash types," | kind=entity | source=probe/scanner/tls_fingerprint.py:L186 | neighbors=[_server_ext_types()] | lang=en
-- "scanner_tls_fingerprint_rationale_200": "JARM-shaped 62-char fuzzy hash: 3 chars per probe (cipher[2] + version[1])," | kind=entity | source=probe/scanner/tls_fingerprint.py:L200 | neighbors=[jarm_style_digest()] | lang=it
-- "scanner_tls_fingerprint_rationale_201": "JARM-shaped 62-char fuzzy hash: 3 chars per probe (cipher[2] + version[1])," | kind=entity | source=probe/scanner/tls_fingerprint.py:L201 | neighbors=[jarm_style_digest()] | lang=it
-- "scanner_tls_fingerprint_rationale_202": "JARM-shaped 62-char fuzzy hash: 3 chars per probe (cipher[2] + version[1])," | kind=entity | source=probe/scanner/tls_fingerprint.py:L202 | neighbors=[jarm_style_digest()] | lang=it
-- "scanner_tls_fingerprint_rationale_241": "Read exactly the first TLS record (the ServerHello or an alert) and stop —     n" | kind=entity | source=probe/scanner/tls_fingerprint.py:L241 | neighbors=[_recv_first_record()] | lang=en
-- "scanner_tls_fingerprint_rationale_242": "Read exactly the first TLS record (the ServerHello or an alert) and stop —     n" | kind=entity | source=probe/scanner/tls_fingerprint.py:L242 | neighbors=[_recv_first_record()] | lang=en
-- "scanner_tls_fingerprint_rationale_243": "Read exactly the first TLS record (the ServerHello or an alert) and stop —     n" | kind=entity | source=probe/scanner/tls_fingerprint.py:L243 | neighbors=[_recv_first_record()] | lang=en
-- "scanner_tls_fingerprint_rationale_261": "Send one crafted ClientHello, read + parse the ServerHello. Sync." | kind=entity | source=probe/scanner/tls_fingerprint.py:L261 | neighbors=[_one_probe()] | lang=en
-- "scanner_tls_fingerprint_rationale_262": "Send one crafted ClientHello, read + parse the ServerHello. Sync." | kind=entity | source=probe/scanner/tls_fingerprint.py:L262 | neighbors=[_one_probe()] | lang=en
-- "scanner_tls_fingerprint_rationale_263": "Send one crafted ClientHello, read + parse the ServerHello. Sync." | kind=entity | source=probe/scanner/tls_fingerprint.py:L263 | neighbors=[_one_probe()] | lang=en
+- "main_scripts_vnc_scanner_rationale_61": "Turn a list of offered security-type ids into a verdict." | kind=entity | source=probe/main_scripts/vnc_scanner.py:L61 | neighbors=[classify_security_types()] | lang=pt
+- "main_scripts_vnc_scanner_rationale_82": "Read the offered security types, handling the RFB 3.3 (single 4-byte type)     v" | kind=entity | source=probe/main_scripts/vnc_scanner.py:L82 | neighbors=[_read_security_types()] | lang=en
+- "main_scripts_vnc_scanner_vncscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/vnc_scanner.py:L104 | neighbors=[VNCScanner] | lang=en
+- "main_scripts_web_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/web_scanner.py:L246 | neighbors=[web_scanner.py] | lang=en
+- "main_scripts_web_scanner_noredirect_redirect_request": ".redirect_request()" | kind=code-symbol | source=probe/main_scripts/web_scanner.py:L56 | neighbors=[_NoRedirect] | lang=en
+- "main_scripts_web_scanner_rationale_1": "web_scanner.py — passive HTTP(S) service fingerprinting.  METHOD (collection onl" | kind=entity | source=probe/main_scripts/web_scanner.py:L1 | neighbors=[web_scanner.py] | lang=en
+- "main_scripts_web_scanner_rationale_149": "Preferred scheme first, the other as a fallback: a scheme guess must         nev" | kind=entity | source=probe/main_scripts/web_scanner.py:L149 | neighbors=[._schemes_for()] | lang=pt
+- "main_scripts_web_scanner_rationale_213": "Preferred scheme first, the other as a fallback: a scheme guess must         nev" | kind=entity | source=probe/main_scripts/web_scanner.py:L213 | neighbors=[._schemes_for()] | lang=pt
+- "main_scripts_web_scanner_rationale_45": "Read the Allow header from an OPTIONS response. Read-only." | kind=entity | source=probe/main_scripts/web_scanner.py:L45 | neighbors=[parse_allow_header()] | lang=en
+- "main_scripts_web_scanner_rationale_46": "Read the Allow header from an OPTIONS response. Read-only." | kind=entity | source=probe/main_scripts/web_scanner.py:L46 | neighbors=[parse_allow_header()] | lang=en
+- "main_scripts_web_scanner_rationale_93": "Classify the login a web service ASKS for. Pure observation.      The probe reco" | kind=entity | source=probe/main_scripts/web_scanner.py:L93 | neighbors=[parse_auth_surface()] | lang=en
+- "main_scripts_web_scanner_webscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/web_scanner.py:L203 | neighbors=[WebScanner] | lang=en
+- "main_scripts_windows_collector_main": "main()" | kind=code-symbol | source=probe/main_scripts/windows_collector.py:L335 | neighbors=[windows_collector.py] | lang=en
+- "main_scripts_windows_collector_rationale_1": "windows_collector.py — credentialed (authenticated) inventory for Windows hosts." | kind=entity | source=probe/main_scripts/windows_collector.py:L1 | neighbors=[windows_collector.py] | lang=en
+- "main_scripts_windows_collector_rationale_160": "Connect to RemoteRegistry over SMB and enumerate installed-software keys plus" | kind=entity | source=probe/main_scripts/windows_collector.py:L160 | neighbors=[_smb_registry_collect()] | lang=en
+- "main_scripts_windows_collector_windowscollector_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/windows_collector.py:L239 | neighbors=[WindowsCollector] | lang=en
+- "main_scripts_windows_collector_winrm_collect": "_winrm_collect()" | kind=code-symbol | source=probe/main_scripts/windows_collector.py:L114 | neighbors=[windows_collector.py] | lang=en
+- "me_route_get": "GET" | kind=code-symbol | source=manager/frontend/app/api/auth/me/route.ts:L10 | neighbors=[route.ts] | lang=en
+- "models_base_uuidmixin": "UUIDMixin" | kind=code-symbol | source=manager/backend/app/models/base.py:L25 | neighbors=[base.py] | lang=en
+- "models_enums_rationale_16": "Operator-set lifecycle. `ongoing` (assessment underway) and `running`     (activ" | kind=entity | source=manager/backend/app/models/enums.py:L16 | neighbors=[EngagementStatus] | lang=en
+- "models_enums_rationale_71": "A single entry in a finding's lifecycle audit trail. Stored as a plain     strin" | kind=entity | source=manager/backend/app/models/enums.py:L71 | neighbors=[FindingEventType] | lang=pt
+- "models_finding_event_rationale_12": "Append-only lifecycle audit trail for a single finding — one row per     transit" | kind=entity | source=manager/backend/app/models/finding_event.py:L12 | neighbors=[FindingEvent] | lang=en
+- "models_integration_rationale_1": "integration.py — a tenant's notification integration config (email / Slack / Jir" | kind=entity | source=manager/backend/app/models/integration.py:L1 | neighbors=[integration.py] | lang=pt
+- "models_probe_enrollment_rationale_73": "Pre-authorized, Site-bound enrollment token.      Lets a probe auto-enroll (no o" | kind=entity | source=manager/backend/app/models/probe_enrollment.py:L73 | neighbors=[ProbeEnrollmentToken] | lang=pt
+- "models_remediation_plan_rationale_1": "remediation_plan.py — a generated, OS-specific remediation plan for a finding." | kind=entity | source=manager/backend/app/models/remediation_plan.py:L1 | neighbors=[remediation_plan.py] | lang=pt
+- "models_scan_job_attempt_rationale_12": "One immutable, fenced execution claim for a logical scan job." | kind=entity | source=manager/backend/app/models/scan_job_attempt.py:L12 | neighbors=[ScanJobAttempt] | lang=en
+- "models_scan_job_stamp_reference": "_stamp_reference()" | kind=code-symbol | source=manager/backend/app/models/scan_job.py:L80 | neighbors=[scan_job.py] | lang=en
+- "models_scan_request_rationale_1": "scan_request.py — a customer-initiated, operator-approved request to run a scan" | kind=entity | source=manager/backend/app/models/scan_request.py:L1 | neighbors=[scan_request.py] | lang=pt
+- "models_scan_schedule_rationale_12": "A recurring scan.      Vedha could only ever be told \"scan now\". Every run there" | kind=entity | source=manager/backend/app/models/scan_schedule.py:L12 | neighbors=[ScanSchedule] | lang=pt
+- "models_sla_policy_rationale_1": "sla_policy.py — a tenant's custom SLA remediation windows (hours per severity)." | kind=entity | source=manager/backend/app/models/sla_policy.py:L1 | neighbors=[sla_policy.py] | lang=en
+- "models_validation_request_rationale_1": "validation_request.py — an approval-gated request to safely re-check a finding l" | kind=entity | source=manager/backend/app/models/validation_request.py:L1 | neighbors=[validation_request.py] | lang=en
+- "models_worker_heartbeat_rationale_1": "worker_heartbeat.py — one row per background worker process, refreshed every tic" | kind=entity | source=manager/backend/app/models/worker_heartbeat.py:L1 | neighbors=[worker_heartbeat.py] | lang=it
+- "native_dir_bust_builtin_paths": "BUILTIN_PATHS" | kind=code-symbol | source=manager/frontend/lib/engine/native/dir-bust.ts:L16 | neighbors=[dir-bust.ts] | lang=en
+- "native_dir_bust_dirbustresult": "DirBustResult" | kind=code-symbol | source=manager/frontend/lib/engine/native/dir-bust.ts:L57 | neighbors=[dir-bust.ts] | lang=en
+- "native_dir_bust_nativediropts": "NativeDirOpts" | kind=code-symbol | source=manager/frontend/lib/engine/native/dir-bust.ts:L90 | neighbors=[dir-bust.ts] | lang=en
+- "native_dir_bust_proberesp": "ProbeResp" | kind=code-symbol | source=manager/frontend/lib/engine/native/dir-bust.ts:L66 | neighbors=[dir-bust.ts] | lang=en
+- "native_dns_recon_common_subdomains": "COMMON_SUBDOMAINS" | kind=code-symbol | source=manager/frontend/lib/engine/native/dns-recon.ts:L33 | neighbors=[dns-recon.ts] | lang=en
+- "native_dns_recon_dnsreconresult": "DnsReconResult" | kind=code-symbol | source=manager/frontend/lib/engine/native/dns-recon.ts:L15 | neighbors=[dns-recon.ts] | lang=en
+- "native_dns_recon_ptrsweepresult": "PtrSweepResult" | kind=code-symbol | source=manager/frontend/lib/engine/native/dns-recon.ts:L28 | neighbors=[dns-recon.ts] | lang=en
+- "native_http_probe_extracttitle": "extractTitle()" | kind=code-symbol | source=manager/frontend/lib/engine/native/http-probe.ts:L103 | neighbors=[http-probe.ts] | lang=en
 
 ## Instructions
 

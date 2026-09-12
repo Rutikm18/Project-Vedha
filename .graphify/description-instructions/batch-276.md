@@ -1,4 +1,4 @@
-# Node Description Batch 277 of 336
+# Node Description Batch 277 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -9,9 +9,6 @@ your JSON answer to the answer file.
 You are documenting nodes in a knowledge graph.
 For each entry below, write ONE concise factual plain-language sentence
 describing what it is or does. Use only the provided context.
-For a code symbol (kind=code-symbol — a function, class, or constant),
-describe what the function/symbol does based on its name, source location
-and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
 For an entity node (any other kind — e.g. a person, place, event, object),
 describe what the entity is and its role, grounded in its type, its
 relations (neighbors) and the provided citations/evidence — e.g.
@@ -26,46 +23,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_branch_registry_testregistryconsistency_test_components_are_unique": ".test_components_are_unique()" | kind=code-symbol | source=probe/tests/test_branch_registry.py:L77 | neighbors=[TestRegistryConsistency] | lang=en
-- "tests_test_branch_registry_testregistryconsistency_test_every_branch_has_a_scanner_the_engine_can_resolve": ".test_every_branch_has_a_scanner_the_engine_can_resolve()" | kind=code-symbol | source=probe/tests/test_branch_registry.py:L49 | neighbors=[TestRegistryConsistency] | lang=en
-- "tests_test_branch_registry_testregistryconsistency_test_every_component_is_in_the_plan_catalog": ".test_every_component_is_in_the_plan_catalog()" | kind=code-symbol | source=probe/tests/test_branch_registry.py:L53 | neighbors=[TestRegistryConsistency] | lang=en
-- "tests_test_branch_registry_testregistryconsistency_test_kwargs_builders_have_the_expected_signature": ".test_kwargs_builders_have_the_expected_signature()" | kind=code-symbol | source=probe/tests/test_branch_registry.py:L81 | neighbors=[TestRegistryConsistency] | lang=en
-- "tests_test_campaign_progress_rationale_1": "VA Campaigns live view: per-probe jobs + pipeline phases + findings+remediation." | kind=entity | source=manager/backend/tests/test_campaign_progress.py:L1 | neighbors=[test_campaign_progress.py] | lang=en
-- "tests_test_campaign_progress_rationale_118": "Build a campaign_progress scenario with a given job + detection-run state." | kind=entity | source=manager/backend/tests/test_campaign_progress.py:L118 | neighbors=[_run_scenario()] | lang=pt
-- "tests_test_campaign_progress_rationale_168": "Regression: RUN_COMPLETED is 'completed', not 'done' — the endpoint must not" | kind=entity | source=manager/backend/tests/test_campaign_progress.py:L168 | neighbors=[test_completed_run_is_not_stuck_at_dete…] | lang=en
-- "tests_test_campaign_progress_rationale_218": "The invariant. Checked across the states a real campaign passes through." | kind=entity | source=manager/backend/tests/test_campaign_progress.py:L218 | neighbors=[test_percent_reaches_100_exactly_when_t…] | lang=en
-- "tests_test_campaign_progress_rationale_22": "A result whose .all() returns raw rows (used for the queue-state query)." | kind=entity | source=manager/backend/tests/test_campaign_progress.py:L22 | neighbors=[_rows()] | lang=en
-- "tests_test_campaign_progress_rationale_239": "The exact regression: the newest submission was detected, an earlier one was" | kind=entity | source=manager/backend/tests/test_campaign_progress.py:L239 | neighbors=[test_uncovered_submission_holds_progres…] | lang=en
-- "tests_test_campaign_progress_rationale_268": "The other way a campaign never finishes: a run that starts and never     complet" | kind=entity | source=manager/backend/tests/test_campaign_progress.py:L268 | neighbors=[test_a_wedged_detection_run_explains_it…] | lang=en
-- "tests_test_campaign_progress_rationale_284": "A run that started seconds ago is busy, not wedged — no alarming reason." | kind=entity | source=manager/backend/tests/test_campaign_progress.py:L284 | neighbors=[test_a_briefly_running_run_is_not_calle…] | lang=en
-- "tests_test_campaign_progress_rationale_295": "started_at can come back tz-naive depending on the driver; subtracting it     fr" | kind=entity | source=manager/backend/tests/test_campaign_progress.py:L295 | neighbors=[test_naive_started_at_does_not_crash_th…] | lang=en
-- "tests_test_campaign_progress_rationale_327": "THE CRY-WOLF CASE. 90 minutes in, worker heartbeating — this is a large     scop" | kind=entity | source=manager/backend/tests/test_campaign_progress.py:L327 | neighbors=[test_a_long_run_with_a_live_worker_is_n…] | lang=en
-- "tests_test_campaign_progress_rationale_337": "No patience needed when the thing that would finish the run has stopped     hear" | kind=entity | source=manager/backend/tests/test_campaign_progress.py:L337 | neighbors=[test_a_dead_worker_is_called_out_quickl…] | lang=en
-- "tests_test_campaign_progress_rationale_346": "Under the floor: a heartbeat gap of a few seconds around a restart must not" | kind=entity | source=manager/backend/tests/test_campaign_progress.py:L346 | neighbors=[test_a_briefly_running_run_with_a_dead_…] | lang=pt
-- "tests_test_campaign_progress_rationale_354": "No heartbeat table (migration not yet run) — duration is all we have, so the" | kind=entity | source=manager/backend/tests/test_campaign_progress.py:L354 | neighbors=[test_unknown_worker_liveness_falls_back…] | lang=en
-- "tests_test_campaign_progress_rationale_367": "Whatever the verdict, a stalled run must not flip the campaign complete." | kind=entity | source=manager/backend/tests/test_campaign_progress.py:L367 | neighbors=[test_stall_never_claims_completion_eith…] | lang=en
-- "tests_test_campaign_progress_terminal_rationale_1": "A campaign whose jobs all ended without producing results must reach a TERMINAL" | kind=entity | source=manager/backend/tests/test_campaign_progress_terminal.py:L1 | neighbors=[test_campaign_progress_terminal.py] | lang=pt
-- "tests_test_campaign_progress_terminal_rationale_50": "The normal path must be untouched: a completed job with no run yet is         ge" | kind=entity | source=manager/backend/tests/test_campaign_progress_terminal.py:L50 | neighbors=[.test_does_not_hijack_a_campaign_that_p…] | lang=en
-- "tests_test_campaign_progress_terminal_rationale_57": "Precedence: work in flight is reported before any terminal verdict." | kind=entity | source=manager/backend/tests/test_campaign_progress_terminal.py:L57 | neighbors=[.test_running_job_still_wins()] | lang=en
-- "tests_test_campaign_progress_terminal_rationale_67": "One good job is enough to expect a detection run." | kind=entity | source=manager/backend/tests/test_campaign_progress_terminal.py:L67 | neighbors=[.test_partial_cancel_with_one_success_s…] | lang=en
-- "tests_test_campaign_progress_terminal_rationale_73": "Regression guard: the happy path and its known edge cases still hold." | kind=entity | source=manager/backend/tests/test_campaign_progress_terminal.py:L73 | neighbors=[TestNormalPipelineUnaffected] | lang=en
-- "tests_test_campaign_progress_terminal_rationale_94": "Callers that don't pass the new inputs must behave as before." | kind=entity | source=manager/backend/tests/test_campaign_progress_terminal.py:L94 | neighbors=[.test_defaults_keep_backwards_compatibi…] | lang=en
-- "tests_test_cli_fakeclient_init": ".__init__()" | kind=code-symbol | source=probe/tests/test_cli.py:L153 | neighbors=[FakeClient] | lang=en
-- "tests_test_cli_fakeclient_request": ".request()" | kind=code-symbol | source=probe/tests/test_cli.py:L157 | neighbors=[FakeClient] | lang=en
-- "tests_test_cli_test_cmd_daemon_run_overrides_stale_env_and_sets_probe_identity": "test_cmd_daemon_run_overrides_stale_env_and_sets_probe_identity()" | kind=code-symbol | source=probe/tests/test_cli.py:L318 | neighbors=[test_cli.py] | lang=en
-- "tests_test_cli_test_cmd_doctor_fails_when_no_agent_unless_allowed": "test_cmd_doctor_fails_when_no_agent_unless_allowed()" | kind=code-symbol | source=probe/tests/test_cli.py:L248 | neighbors=[test_cli.py] | lang=en
-- "tests_test_cli_test_config_store_rejects_malformed_json": "test_config_store_rejects_malformed_json()" | kind=code-symbol | source=probe/tests/test_cli.py:L31 | neighbors=[test_cli.py] | lang=en
-- "tests_test_cli_test_config_store_rejects_non_object_profiles": "test_config_store_rejects_non_object_profiles()" | kind=code-symbol | source=probe/tests/test_cli.py:L38 | neighbors=[test_cli.py] | lang=en
-- "tests_test_cli_test_config_store_writes_private_file": "test_config_store_writes_private_file()" | kind=code-symbol | source=probe/tests/test_cli.py:L13 | neighbors=[test_cli.py] | lang=en
-- "tests_test_cli_test_normalize_manager_url_trims_and_validates": "test_normalize_manager_url_trims_and_validates()" | kind=code-symbol | source=probe/tests/test_cli.py:L72 | neighbors=[test_cli.py] | lang=en
-- "tests_test_cli_test_parse_param_pairs_rejects_missing_equals": "test_parse_param_pairs_rejects_missing_equals()" | kind=code-symbol | source=probe/tests/test_cli.py:L59 | neighbors=[test_cli.py] | lang=en
-- "tests_test_cli_test_parse_param_pairs_supports_json_values": "test_parse_param_pairs_supports_json_values()" | kind=code-symbol | source=probe/tests/test_cli.py:L45 | neighbors=[test_cli.py] | lang=en
-- "tests_test_cli_test_parser_accepts_json_after_concrete_commands": "test_parser_accepts_json_after_concrete_commands()" | kind=code-symbol | source=probe/tests/test_cli.py:L80 | neighbors=[test_cli.py] | lang=en
-- "tests_test_cli_test_resolve_profile_env_overrides_config": "test_resolve_profile_env_overrides_config()" | kind=code-symbol | source=probe/tests/test_cli.py:L106 | neighbors=[test_cli.py] | lang=en
-- "tests_test_cli_test_resolve_profile_reports_missing_manager_or_token": "test_resolve_profile_reports_missing_manager_or_token()" | kind=code-symbol | source=probe/tests/test_cli.py:L134 | neighbors=[test_cli.py] | lang=en
-- "tests_test_cli_test_split_values_accepts_repeated_and_csv_values": "test_split_values_accepts_repeated_and_csv_values()" | kind=code-symbol | source=probe/tests/test_cli.py:L64 | neighbors=[test_cli.py] | lang=en
-- "tests_test_customer_access_rationale_1": "test_customer_access.py — Phase 1: operator provisioning + scan-request inbox. H" | kind=entity | source=manager/backend/tests/test_customer_access.py:L1 | neighbors=[test_customer_access.py] | lang=en
-- "tests_test_customer_access_rationale_125": "An email already used elsewhere in the tenant (the operator's own login," | kind=entity | source=manager/backend/tests/test_customer_access.py:L125 | neighbors=[.test_duplicate_email_in_tenant_is_conf…] | lang=en
+- "scanner_findings_rationale_1130": "Two or more cleartext services on one host — any sniffing position harvests" | kind=entity | source=probe/scanner/findings.py:L1130 | neighbors=[_corr_cleartext_cluster()] | lang=en
+- "scanner_findings_rationale_1157": "Two or more INDEPENDENT anonymous data-exposure channels on one host — the     h" | kind=entity | source=probe/scanner/findings.py:L1157 | neighbors=[_corr_anon_data_exposure()] | lang=en
+- "scanner_findings_rationale_1172": "Read a scanner's JSONL output into fact dicts (skips blank/garbage lines)." | kind=entity | source=probe/scanner/findings.py:L1172 | neighbors=[load_facts_jsonl()] | lang=pt
+- "scanner_findings_rationale_1176": "A disclosed user list (SMB null session) plus a weak/exposed login surface on" | kind=entity | source=probe/scanner/findings.py:L1176 | neighbors=[_corr_user_enum_plus_weak_auth()] | lang=pt
+- "scanner_findings_rationale_1188": "CLI: derive findings from one or more scanner JSONL files.          python -m ma" | kind=entity | source=probe/scanner/findings.py:L1188 | neighbors=[_main()] | lang=en
+- "scanner_findings_rationale_1199": "Out-of-band / console management surfaces reachable on one host — these grant" | kind=entity | source=probe/scanner/findings.py:L1199 | neighbors=[_corr_mgmt_plane_exposed()] | lang=en
+- "scanner_findings_rationale_120": "A definitively open TCP port. `open|filtered` is NOT open — we never     raise a" | kind=entity | source=probe/scanner/findings.py:L120 | neighbors=[_is_open()] | lang=pt
+- "scanner_findings_rationale_1226": "Derive findings from collected facts. Pure; deterministic; safe.      Accepts Sc" | kind=entity | source=probe/scanner/findings.py:L1226 | neighbors=[run_findings()] | lang=en
+- "scanner_findings_rationale_1258": "One finding as the finding-section shows it — the ACTUAL vulnerability, with" | kind=entity | source=probe/scanner/findings.py:L1258 | neighbors=[_finding_row()] | lang=en
+- "scanner_findings_rationale_1280": "Roll up findings for the finding section.      Beyond counts, this returns the A" | kind=entity | source=probe/scanner/findings.py:L1280 | neighbors=[summarize()] | lang=en
+- "scanner_findings_rationale_1320": "Read a scanner's JSONL output into fact dicts (skips blank/garbage lines)." | kind=entity | source=probe/scanner/findings.py:L1320 | neighbors=[load_facts_jsonl()] | lang=pt
+- "scanner_findings_rationale_1336": "CLI: derive findings from one or more scanner JSONL files.          python -m ma" | kind=entity | source=probe/scanner/findings.py:L1336 | neighbors=[_main()] | lang=en
+- "scanner_findings_rationale_154": "Map (target, port) -> confirmed-service info from service_banner facts.      Onl" | kind=entity | source=probe/scanner/findings.py:L154 | neighbors=[build_service_index()] | lang=en
+- "scanner_findings_rationale_444": "JA4X-based threat-intel match. Fires only when a certificate's structural     fi" | kind=entity | source=probe/scanner/findings.py:L444 | neighbors=[_rule_tls_fingerprint()] | lang=pt
+- "scanner_findings_rationale_466": "Proven UNAUTHENTICATED access to a datastore (from the collected banner) —     a" | kind=entity | source=probe/scanner/findings.py:L466 | neighbors=[_rule_unauth_access()] | lang=en
+- "scanner_findings_rationale_468": "JA4X-based threat-intel match. Fires only when a certificate's structural     fi" | kind=entity | source=probe/scanner/findings.py:L468 | neighbors=[_rule_tls_fingerprint()] | lang=pt
+- "scanner_findings_rationale_490": "Proven UNAUTHENTICATED access to a datastore (from the collected banner) —     a" | kind=entity | source=probe/scanner/findings.py:L490 | neighbors=[_rule_unauth_access()] | lang=en
+- "scanner_findings_rationale_492": "JA4S-based threat-intel match on the TLS ServerHello fingerprint. Fires only" | kind=entity | source=probe/scanner/findings.py:L492 | neighbors=[_rule_tls_server_fingerprint()] | lang=en
+- "scanner_findings_rationale_512": "Confirmed RDP (X.224 handshake) + NLA detection. Runs before the port-hint     e" | kind=entity | source=probe/scanner/findings.py:L512 | neighbors=[_rule_rdp()] | lang=en
+- "scanner_findings_rationale_516": "JA4S-based threat-intel match on the TLS ServerHello fingerprint. Fires only" | kind=entity | source=probe/scanner/findings.py:L516 | neighbors=[_rule_tls_server_fingerprint()] | lang=en
+- "scanner_findings_rationale_536": "Confirmed RDP (X.224 handshake) + NLA detection. Runs before the port-hint     e" | kind=entity | source=probe/scanner/findings.py:L536 | neighbors=[_rule_rdp()] | lang=en
+- "scanner_findings_rationale_560": "SMB signing not required => a viable NTLM relay target. If SMBv1 is also on," | kind=entity | source=probe/scanner/findings.py:L560 | neighbors=[_corr_ntlm_relay()] | lang=en
+- "scanner_findings_rationale_577": "Anonymous SMB (null-session) information disclosure. The null session is a     m" | kind=entity | source=probe/scanner/findings.py:L577 | neighbors=[_rule_smb_enum()] | lang=en
+- "scanner_findings_rationale_583": "SMBv1 (wormable) + exposed RDP (brute-force/BlueKeep) on one host — the     clas" | kind=entity | source=probe/scanner/findings.py:L583 | neighbors=[_corr_legacy_windows()] | lang=en
+- "scanner_findings_rationale_600": "Two or more cleartext services on one host — any sniffing position harvests" | kind=entity | source=probe/scanner/findings.py:L600 | neighbors=[_corr_cleartext_cluster()] | lang=en
+- "scanner_findings_rationale_619": "Anonymous SMB (null-session) information disclosure. The null session is a     m" | kind=entity | source=probe/scanner/findings.py:L619 | neighbors=[_rule_smb_enum()] | lang=en
+- "scanner_findings_rationale_623": "Derive findings from collected facts. Pure; deterministic; safe.      Accepts Sc" | kind=entity | source=probe/scanner/findings.py:L623 | neighbors=[run_findings()] | lang=en
+- "scanner_findings_rationale_628": "Anonymous LDAP exposure. An anonymous RootDSE bind is common (low), but an     a" | kind=entity | source=probe/scanner/findings.py:L628 | neighbors=[_rule_ldap()] | lang=en
+- "scanner_findings_rationale_64": "One vulnerability finding, always backed by an observed fact." | kind=entity | source=probe/scanner/findings.py:L64 | neighbors=[Finding] | lang=en
+- "scanner_findings_rationale_666": "DNS server hygiene: a full AXFR zone transfer is the high-value finding     (ent" | kind=entity | source=probe/scanner/findings.py:L666 | neighbors=[_rule_dns()] | lang=en
+- "scanner_findings_rationale_669": "Read a scanner's JSONL output into fact dicts (skips blank/garbage lines)." | kind=entity | source=probe/scanner/findings.py:L669 | neighbors=[load_facts_jsonl()] | lang=pt
+- "scanner_findings_rationale_670": "Anonymous LDAP exposure. An anonymous RootDSE bind is common (low), but an     a" | kind=entity | source=probe/scanner/findings.py:L670 | neighbors=[_rule_ldap()] | lang=en
+- "scanner_findings_rationale_685": "CLI: derive findings from one or more scanner JSONL files.          python -m ma" | kind=entity | source=probe/scanner/findings.py:L685 | neighbors=[_main()] | lang=en
+- "scanner_findings_rationale_708": "DNS server hygiene: a full AXFR zone transfer is the high-value finding     (ent" | kind=entity | source=probe/scanner/findings.py:L708 | neighbors=[_rule_dns()] | lang=en
+- "scanner_findings_rationale_716": "NFS anonymous export exposure. A world-readable export is the high-value     fin" | kind=entity | source=probe/scanner/findings.py:L716 | neighbors=[_rule_nfs()] | lang=en
+- "scanner_findings_rationale_753": "Confirmed FTP anonymous access (upgrades the port-based cleartext hint).     Hig" | kind=entity | source=probe/scanner/findings.py:L753 | neighbors=[_rule_ftp()] | lang=en
+- "scanner_findings_rationale_758": "NFS anonymous export exposure. A world-readable export is the high-value     fin" | kind=entity | source=probe/scanner/findings.py:L758 | neighbors=[_rule_nfs()] | lang=en
+- "scanner_findings_rationale_782": "rsync daemon exposure. Anonymously-selectable modules are the high finding     (" | kind=entity | source=probe/scanner/findings.py:L782 | neighbors=[_rule_rsync()] | lang=en
+- "scanner_findings_rationale_795": "Confirmed FTP anonymous access (upgrades the port-based cleartext hint).     Hig" | kind=entity | source=probe/scanner/findings.py:L795 | neighbors=[_rule_ftp()] | lang=en
+- "scanner_findings_rationale_820": "VNC/RFB authentication exposure. 'None' security type = unauthenticated     remo" | kind=entity | source=probe/scanner/findings.py:L820 | neighbors=[_rule_vnc()] | lang=en
 
 ## Instructions
 

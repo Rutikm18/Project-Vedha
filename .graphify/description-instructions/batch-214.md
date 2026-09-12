@@ -1,4 +1,4 @@
-# Node Description Batch 215 of 336
+# Node Description Batch 215 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,60 +12,51 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
-For an entity node (any other kind — e.g. a person, place, event, object),
-describe what the entity is and its role, grounded in its type, its
-relations (neighbors) and the provided citations/evidence — e.g.
-"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
-Ground entity descriptions in the citations/evidence when present; do not
-speculate beyond the context, so a node with no supporting context may be
-left out of the reply.
-LANGUAGE: each entry has a `lang=` marker giving the language of its source.
-Write that entry's description in EXACTLY that language. Do not translate to
-a single common language — match each node's source language individually.
+Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "main_scripts_adaptive_timeout_rationale_55": "Convenience: build an estimator and fold in a sequence of RTT samples." | kind=entity | source=probe/main_scripts/adaptive_timeout.py:L55 | neighbors=[from_rtts()] | lang=en
-- "main_scripts_cpe_rationale_1": "cpe.py — derive a CPE 2.3 identity from an observed (service, product, version)." | kind=entity | source=probe/main_scripts/cpe.py:L1 | neighbors=[cpe.py] | lang=en
-- "main_scripts_cpe_rationale_104": "Prefer an explicit version field; else pull a version-like token out of the" | kind=entity | source=probe/main_scripts/cpe.py:L104 | neighbors=[_extract_version()] | lang=en
-- "main_scripts_cpe_rationale_117": "Return {vendor, product, version, cpe23} for a recognized product, else None." | kind=entity | source=probe/main_scripts/cpe.py:L117 | neighbors=[to_cpe()] | lang=en
-- "main_scripts_db_scanner_dbscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/db_scanner.py:L240 | neighbors=[DBScanner] | lang=en
-- "main_scripts_db_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/db_scanner.py:L287 | neighbors=[db_scanner.py] | lang=en
-- "main_scripts_db_scanner_probe_mongodb": "_probe_mongodb()" | kind=code-symbol | source=probe/main_scripts/db_scanner.py:L131 | neighbors=[db_scanner.py] | lang=en
-- "main_scripts_db_scanner_probe_mssql": "_probe_mssql()" | kind=code-symbol | source=probe/main_scripts/db_scanner.py:L82 | neighbors=[db_scanner.py] | lang=en
-- "main_scripts_db_scanner_probe_mysql": "_probe_mysql()" | kind=code-symbol | source=probe/main_scripts/db_scanner.py:L47 | neighbors=[db_scanner.py] | lang=en
-- "main_scripts_db_scanner_probe_mysqlx": "_probe_mysqlx()" | kind=code-symbol | source=probe/main_scripts/db_scanner.py:L166 | neighbors=[db_scanner.py] | lang=en
-- "main_scripts_db_scanner_probe_oracle": "_probe_oracle()" | kind=code-symbol | source=probe/main_scripts/db_scanner.py:L195 | neighbors=[db_scanner.py] | lang=en
-- "main_scripts_db_scanner_probe_postgres": "_probe_postgres()" | kind=code-symbol | source=probe/main_scripts/db_scanner.py:L67 | neighbors=[db_scanner.py] | lang=en
-- "main_scripts_db_scanner_rationale_1": "db_scanner.py — fingerprint database services.  WHY: databases are everywhere on" | kind=entity | source=probe/main_scripts/db_scanner.py:L1 | neighbors=[db_scanner.py] | lang=en
-- "main_scripts_db_scanner_rationale_102": "Classify a Redis INFO reply. `unauthenticated_read` is True only when we     act" | kind=entity | source=probe/main_scripts/db_scanner.py:L102 | neighbors=[interpret_redis_info()] | lang=en
-- "main_scripts_delta_scanner_rationale_1": "delta_scanner.py — scan-state comparison and continuous attack-surface monitorin" | kind=entity | source=probe/main_scripts/delta_scanner.py:L1 | neighbors=[delta_scanner.py] | lang=en
-- "main_scripts_delta_scanner_rationale_122": "Best-effort service name from data dict or scanner name." | kind=entity | source=probe/main_scripts/delta_scanner.py:L122 | neighbors=[_extract_service()] | lang=en
-- "main_scripts_delta_scanner_rationale_124": "Best-effort service name from data dict or scanner name." | kind=entity | source=probe/main_scripts/delta_scanner.py:L124 | neighbors=[_extract_service()] | lang=en
-- "main_scripts_delta_scanner_rationale_139": "Best-effort version string." | kind=entity | source=probe/main_scripts/delta_scanner.py:L139 | neighbors=[_extract_version()] | lang=en
-- "main_scripts_delta_scanner_rationale_141": "Best-effort version string." | kind=entity | source=probe/main_scripts/delta_scanner.py:L141 | neighbors=[_extract_version()] | lang=en
-- "main_scripts_delta_scanner_rationale_158": "Load JSONL scan snapshots and compute security-relevant diffs." | kind=entity | source=probe/main_scripts/delta_scanner.py:L158 | neighbors=[DeltaEngine] | lang=en
-- "main_scripts_delta_scanner_rationale_160": "Load JSONL scan snapshots and compute security-relevant diffs." | kind=entity | source=probe/main_scripts/delta_scanner.py:L160 | neighbors=[DeltaEngine] | lang=en
-- "main_scripts_delta_scanner_rationale_161": "Parse a JSONL file of ScanResult records and return a SnapshotIndex.         Lin" | kind=entity | source=probe/main_scripts/delta_scanner.py:L161 | neighbors=[.load_jsonl()] | lang=en
-- "main_scripts_delta_scanner_rationale_163": "Parse a JSONL file of ScanResult records and return a SnapshotIndex.         Lin" | kind=entity | source=probe/main_scripts/delta_scanner.py:L163 | neighbors=[.load_jsonl()] | lang=en
-- "main_scripts_delta_scanner_rationale_206": "Compute security-relevant deltas between baseline and current snapshots." | kind=entity | source=probe/main_scripts/delta_scanner.py:L206 | neighbors=[.diff()] | lang=en
-- "main_scripts_delta_scanner_rationale_208": "Compute security-relevant deltas between baseline and current snapshots." | kind=entity | source=probe/main_scripts/delta_scanner.py:L208 | neighbors=[.diff()] | lang=en
-- "main_scripts_delta_scanner_rationale_297": "Heuristic priority for a newly-detected service." | kind=entity | source=probe/main_scripts/delta_scanner.py:L297 | neighbors=[_new_service_severity()] | lang=en
-- "main_scripts_delta_scanner_rationale_299": "Heuristic priority for a newly-detected service." | kind=entity | source=probe/main_scripts/delta_scanner.py:L299 | neighbors=[_new_service_severity()] | lang=en
-- "main_scripts_delta_scanner_rationale_309": "True if version changed in a security-relevant way (not just whitespace)." | kind=entity | source=probe/main_scripts/delta_scanner.py:L309 | neighbors=[_significant_version_change()] | lang=en
-- "main_scripts_delta_scanner_rationale_311": "True if version changed in a security-relevant way (not just whitespace)." | kind=entity | source=probe/main_scripts/delta_scanner.py:L311 | neighbors=[_significant_version_change()] | lang=en
-- "main_scripts_delta_scanner_rationale_54": "Normalised representation of one ScanResult JSONL line." | kind=entity | source=probe/main_scripts/delta_scanner.py:L54 | neighbors=[ScanRecord] | lang=en
-- "main_scripts_delta_scanner_rationale_56": "Normalised representation of one ScanResult JSONL line." | kind=entity | source=probe/main_scripts/delta_scanner.py:L56 | neighbors=[ScanRecord] | lang=en
-- "main_scripts_delta_scanner_rationale_70": "One security-relevant change between two scans." | kind=entity | source=probe/main_scripts/delta_scanner.py:L70 | neighbors=[Delta] | lang=en
-- "main_scripts_delta_scanner_rationale_72": "One security-relevant change between two scans." | kind=entity | source=probe/main_scripts/delta_scanner.py:L72 | neighbors=[Delta] | lang=en
-- "main_scripts_delta_scanner_rationale_92": "Derive a stable host identity from a raw scan record in priority order:       1." | kind=entity | source=probe/main_scripts/delta_scanner.py:L92 | neighbors=[_stable_host_id()] | lang=en
-- "main_scripts_delta_scanner_rationale_94": "Derive a stable host identity from a raw scan record in priority order:       1." | kind=entity | source=probe/main_scripts/delta_scanner.py:L94 | neighbors=[_stable_host_id()] | lang=en
-- "main_scripts_device_classifier_rationale_1": "device_classifier.py — infer a device's ROLE from collection-layer facts.  This" | kind=entity | source=probe/main_scripts/device_classifier.py:L1 | neighbors=[device_classifier.py] | lang=en
-- "main_scripts_device_classifier_rationale_102": "Fuse OS family + open ports + service products into a device-role guess.      Re" | kind=entity | source=probe/main_scripts/device_classifier.py:L102 | neighbors=[classify_device()] | lang=pt
-- "main_scripts_device_classifier_rationale_116": "Fuse OS family + open ports + service products into a device-role guess.      Re" | kind=entity | source=probe/main_scripts/device_classifier.py:L116 | neighbors=[classify_device()] | lang=pt
-- "main_scripts_device_classifier_rationale_182": "Convenience adapter: extract classifier inputs from a list of ScanResult     obj" | kind=entity | source=probe/main_scripts/device_classifier.py:L182 | neighbors=[classify_from_results()] | lang=en
-- "main_scripts_device_classifier_rationale_202": "Convenience adapter: extract classifier inputs from a list of ScanResult     obj" | kind=entity | source=probe/main_scripts/device_classifier.py:L202 | neighbors=[classify_from_results()] | lang=en
+- "basehttpmiddleware": "BaseHTTPMiddleware" | kind=code-symbol | neighbors=[TenantIsolationMiddleware]
+- "basesettings": "BaseSettings" | kind=code-symbol | neighbors=[Settings]
+- "brain_route_aimessage": "AiMessage" | kind=code-symbol | source=manager/frontend/app/api/brain/route.ts:L6 | neighbors=[route.ts]
+- "brain_route_evidencetext": "evidenceText()" | kind=code-symbol | source=manager/frontend/app/api/brain/route.ts:L40 | neighbors=[route.ts]
+- "brain_route_managerairesponse": "ManagerAiResponse" | kind=code-symbol | source=manager/frontend/app/api/brain/route.ts:L11 | neighbors=[route.ts]
+- "campaign_page_ago": "ago()" | kind=code-symbol | source=manager/frontend/app/campaign/page.tsx:L30 | neighbors=[page.tsx]
+- "campaign_page_campaignlistpage": "CampaignListPage()" | kind=code-symbol | source=manager/frontend/app/campaign/page.tsx:L163 | neighbors=[page.tsx]
+- "campaign_page_campaignsummary": "CampaignSummary" | kind=code-symbol | source=manager/frontend/app/campaign/page.tsx:L15 | neighbors=[page.tsx]
+- "campaign_page_campaignworkspace": "CampaignWorkspace()" | kind=code-symbol | source=manager/frontend/app/campaign/page.tsx:L39 | neighbors=[page.tsx]
+- "campaign_page_engagementsummary": "EngagementSummary" | kind=code-symbol | source=manager/frontend/app/campaign/page.tsx:L21 | neighbors=[page.tsx]
+- "campaign_page_fetchjson": "fetchJson()" | kind=code-symbol | source=manager/frontend/app/campaign/page.tsx:L25 | neighbors=[page.tsx]
+- "campaign_page_portalcampaignpage": "PortalCampaignPage()" | kind=code-symbol | source=manager/frontend/app/portal/campaign/page.tsx:L5 | neighbors=[page.tsx]
+- "campaigns_route_get": "GET()" | kind=code-symbol | source=manager/frontend/app/api/scan/campaigns/route.ts:L17 | neighbors=[route.ts]
+- "campaigns_route_post": "POST()" | kind=code-symbol | source=manager/frontend/app/api/scan/campaigns/route.ts:L21 | neighbors=[route.ts]
+- "cancel_route_post": "POST" | kind=code-symbol | source=manager/frontend/app/api/fleet/jobs/[jobId]/cancel/route.ts:L17 | neighbors=[route.ts]
+- "chat_route_managerairesponse": "ManagerAiResponse" | kind=code-symbol | source=manager/frontend/app/api/assistant/chat/route.ts:L11 | neighbors=[route.ts]
+- "chat_route_post": "POST()" | kind=code-symbol | source=manager/frontend/app/api/assistant/chat/route.ts:L20 | neighbors=[route.ts]
+- "chokepoints_route_get": "GET()" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/chokepoints/route.ts:L5 | neighbors=[route.ts]
+- "cli_auth_session": "Session" | kind=code-symbol | source=manager/frontend/cli/auth.ts:L8 | neighbors=[auth.ts]
+- "cli_auth_session_dir": "SESSION_DIR" | kind=code-symbol | source=manager/frontend/cli/auth.ts:L5 | neighbors=[auth.ts]
+- "cli_auth_session_file": "SESSION_FILE" | kind=code-symbol | source=manager/frontend/cli/auth.ts:L6 | neighbors=[auth.ts]
+- "cli_index_program": "program" | kind=code-symbol | source=manager/frontend/cli/index.ts:L32 | neighbors=[index.ts]
+- "cli_llm_exploitplan": "ExploitPlan" | kind=code-symbol | source=manager/frontend/cli/llm.ts:L265 | neighbors=[llm.ts]
+- "cli_llm_phase_labels": "PHASE_LABELS" | kind=code-symbol | source=manager/frontend/cli/llm.ts:L211 | neighbors=[llm.ts]
+- "cli_llm_phaseid": "PhaseId" | kind=code-symbol | source=manager/frontend/cli/llm.ts:L203 | neighbors=[llm.ts]
+- "cli_llm_phaserecommendation": "PhaseRecommendation" | kind=code-symbol | source=manager/frontend/cli/llm.ts:L205 | neighbors=[llm.ts]
+- "cli_llm_validationverdict": "ValidationVerdict" | kind=code-symbol | source=manager/frontend/cli/llm.ts:L127 | neighbors=[llm.ts]
+- "commands_admin_c": "c" | kind=code-symbol | source=manager/frontend/cli/commands/admin.ts:L5 | neighbors=[admin.ts]
+- "commands_ask_convmessage": "ConvMessage" | kind=code-symbol | source=manager/frontend/cli/commands/ask.ts:L8 | neighbors=[ask.ts]
+- "commands_ask_runinteractive": "runInteractive()" | kind=code-symbol | source=manager/frontend/cli/commands/ask.ts:L10 | neighbors=[ask.ts]
+- "commands_doctor_c": "C" | kind=code-symbol | source=manager/frontend/cli/commands/doctor.ts:L22 | neighbors=[doctor.ts]
+- "commands_doctor_checkdatadir": "checkDataDir()" | kind=code-symbol | source=manager/frontend/cli/commands/doctor.ts:L158 | neighbors=[doctor.ts]
+- "commands_doctor_checkenvfile": "checkEnvFile()" | kind=code-symbol | source=manager/frontend/cli/commands/doctor.ts:L115 | neighbors=[doctor.ts]
+- "commands_doctor_checkenvkey": "checkEnvKey()" | kind=code-symbol | source=manager/frontend/cli/commands/doctor.ts:L128 | neighbors=[doctor.ts]
+- "commands_doctor_checknode": "checkNode()" | kind=code-symbol | source=manager/frontend/cli/commands/doctor.ts:L79 | neighbors=[doctor.ts]
+- "commands_doctor_checknodemodules": "checkNodeModules()" | kind=code-symbol | source=manager/frontend/cli/commands/doctor.ts:L147 | neighbors=[doctor.ts]
+- "commands_doctor_checkresult": "CheckResult" | kind=code-symbol | source=manager/frontend/cli/commands/doctor.ts:L14 | neighbors=[doctor.ts]
+- "commands_doctor_checkserver": "checkServer()" | kind=code-symbol | source=manager/frontend/cli/commands/doctor.ts:L187 | neighbors=[doctor.ts]
+- "commands_doctor_checksession": "checkSession()" | kind=code-symbol | source=manager/frontend/cli/commands/doctor.ts:L169 | neighbors=[doctor.ts]
+- "commands_doctor_w": "w()" | kind=code-symbol | source=manager/frontend/cli/commands/doctor.ts:L33 | neighbors=[doctor.ts]
 
 ## Instructions
 

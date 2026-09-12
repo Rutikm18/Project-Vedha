@@ -1,4 +1,4 @@
-# Node Description Batch 248 of 336
+# Node Description Batch 248 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -26,46 +26,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "scanner_iot_scanner_rationale_284": "MQTT SUBSCRIBE to '#' (all topics), QoS 0." | kind=entity | source=probe/scanner/iot_scanner.py:L284 | neighbors=[_mqtt_subscribe_all()] | lang=en
-- "scanner_iot_scanner_rationale_347": "CoAP Confirmable GET for /.well-known/core — resource discovery." | kind=entity | source=probe/scanner/iot_scanner.py:L347 | neighbors=[_coap_get_wellknown_core()] | lang=en
-- "scanner_iot_scanner_rationale_349": "CoAP Confirmable GET for /.well-known/core — resource discovery." | kind=entity | source=probe/scanner/iot_scanner.py:L349 | neighbors=[_coap_get_wellknown_core()] | lang=en
-- "scanner_iot_scanner_rationale_360": "Extract CoAP response code and content." | kind=entity | source=probe/scanner/iot_scanner.py:L360 | neighbors=[_parse_coap_response()] | lang=en
-- "scanner_iot_scanner_rationale_362": "Extract CoAP response code and content." | kind=entity | source=probe/scanner/iot_scanner.py:L362 | neighbors=[_parse_coap_response()] | lang=en
-- "scanner_iot_scanner_rationale_404": "HTTP GET to CWMP port — detect ACS or CPE management interface." | kind=entity | source=probe/scanner/iot_scanner.py:L404 | neighbors=[_probe_cwmp()] | lang=en
-- "scanner_iot_scanner_rationale_406": "HTTP GET to CWMP port — detect ACS or CPE management interface." | kind=entity | source=probe/scanner/iot_scanner.py:L406 | neighbors=[_probe_cwmp()] | lang=en
-- "scanner_iot_scanner_rationale_444": "Surveys a target for IoT/embedded device exposure across 6 protocol families." | kind=entity | source=probe/scanner/iot_scanner.py:L444 | neighbors=[IoTScanner] | lang=en
-- "scanner_iot_scanner_rationale_446": "Surveys a target for IoT/embedded device exposure across 6 protocol families." | kind=entity | source=probe/scanner/iot_scanner.py:L446 | neighbors=[IoTScanner] | lang=en
-- "scanner_iot_scanner_rationale_58": "HTTP GET the UPnP rootDesc.xml and extract device info." | kind=entity | source=probe/scanner/iot_scanner.py:L58 | neighbors=[_fetch_upnp_root_desc()] | lang=en
-- "scanner_iot_scanner_rationale_59": "HTTP GET the UPnP rootDesc.xml and extract device info." | kind=entity | source=probe/scanner/iot_scanner.py:L59 | neighbors=[_fetch_upnp_root_desc()] | lang=en
-- "scanner_ipmi_scanner_ipmiscanner_init": ".__init__()" | kind=code-symbol | source=probe/scanner/ipmi_scanner.py:L68 | neighbors=[IPMIScanner] | lang=en
-- "scanner_ipmi_scanner_main": "main()" | kind=code-symbol | source=probe/scanner/ipmi_scanner.py:L113 | neighbors=[ipmi_scanner.py] | lang=en
-- "scanner_ipmi_scanner_rationale_1": "ipmi_scanner.py — IPMI 2.0 cipher-zero authentication-bypass detection (VA check" | kind=entity | source=probe/scanner/ipmi_scanner.py:L1 | neighbors=[ipmi_scanner.py] | lang=en
-- "scanner_ipmi_scanner_rationale_37": "A fixed RMCP+ Open Session Request offering cipher suite 0 (auth=0,     integrit" | kind=entity | source=probe/scanner/ipmi_scanner.py:L37 | neighbors=[build_open_session_request()] | lang=pt
-- "scanner_ipmi_scanner_rationale_53": "Parse an RMCP+ Open Session Response; None if it isn't one.     resp[0]=RMCP ver" | kind=entity | source=probe/scanner/ipmi_scanner.py:L53 | neighbors=[parse_open_session_response()] | lang=en
-- "scanner_ipmi_scanner_rationale_73": "Blocking: one RMCP+ Open Session Request, parse the response.         Monkeypatc" | kind=entity | source=probe/scanner/ipmi_scanner.py:L73 | neighbors=[._probe()] | lang=en
-- "scanner_ipv6_discovery_rationale_1": "ipv6_discovery.py — link-local IPv6 host discovery via Neighbor Discovery (RFC 4" | kind=entity | source=probe/scanner/ipv6_discovery.py:L1 | neighbors=[ipv6_discovery.py] | lang=en
-- "scanner_ipv6_discovery_rationale_103": "Fire an ICMPv6 echo at ff02::1 (scoped to `iface`) to make live hosts reply," | kind=entity | source=probe/scanner/ipv6_discovery.py:L103 | neighbors=[_ping_all_nodes()] | lang=en
-- "scanner_ipv6_discovery_rationale_121": "Discover live IPv6 neighbors on the segment via ND multicast + neighbor     cach" | kind=entity | source=probe/scanner/ipv6_discovery.py:L121 | neighbors=[discover_ipv6_hosts()] | lang=en
-- "scanner_ipv6_discovery_rationale_43": "Parse Linux `ip -6 neigh show` into [(address, state)]. Lines look like:" | kind=entity | source=probe/scanner/ipv6_discovery.py:L43 | neighbors=[parse_ip_neigh6()] | lang=en
-- "scanner_ipv6_discovery_rationale_60": "Parse macOS/BSD `ndp -an` into [(address, state)]. Columns:         Neighbor  Li" | kind=entity | source=probe/scanner/ipv6_discovery.py:L60 | neighbors=[parse_ndp()] | lang=en
-- "scanner_ipv6_discovery_rationale_81": "Best-effort set of this host's own IPv6 addresses, to exclude from results     (" | kind=entity | source=probe/scanner/ipv6_discovery.py:L81 | neighbors=[_own_ipv6_addresses()] | lang=en
-- "scanner_ja4s_match_suspicious": "match_suspicious()" | kind=code-symbol | source=probe/scanner/ja4s.py:L131 | neighbors=[ja4s.py] | lang=en
-- "scanner_ja4s_rationale_100": "JA4S from `parse_server_hello`'s output ({version, cipher, extensions})." | kind=entity | source=probe/scanner/ja4s.py:L100 | neighbors=[ja4s_from_parsed()] | lang=en
-- "scanner_ja4s_rationale_110": "JA4S from raw ServerHello record bytes (reuses the JARM parser)." | kind=entity | source=probe/scanner/ja4s.py:L110 | neighbors=[ja4s_from_serverhello()] | lang=en
-- "scanner_ja4s_rationale_117": "Do one standard TLS handshake and compute the server's JA4S. Reuses the     JARM" | kind=entity | source=probe/scanner/ja4s.py:L117 | neighbors=[compute_ja4s()] | lang=en
-- "scanner_ja4s_rationale_57": "Yield (type, value) for each extension in a ServerHello extensions blob." | kind=entity | source=probe/scanner/ja4s.py:L57 | neighbors=[_walk_extensions()] | lang=en
-- "scanner_ja4s_rationale_70": "The single ALPN protocol the server chose (b'' if none)." | kind=entity | source=probe/scanner/ja4s.py:L70 | neighbors=[_selected_alpn()] | lang=en
-- "scanner_ja4s_rationale_87": "Pure JA4S from already-extracted ServerHello fields." | kind=entity | source=probe/scanner/ja4s.py:L87 | neighbors=[ja4s_from_fields()] | lang=en
-- "scanner_ja4x_rationale_118": "Return a threat-intel label if this JA4X is a known-suspicious fingerprint," | kind=entity | source=probe/scanner/ja4x.py:L118 | neighbors=[match_suspicious()] | lang=en
-- "scanner_ja4x_rationale_40": "DER-encode an OID's content octets and hex-encode them.      '2.5.4.6' -> '55040" | kind=entity | source=probe/scanner/ja4x.py:L40 | neighbors=[oid_to_hex()] | lang=en
-- "scanner_ja4x_rationale_77": "Pure JA4X from the three ordered OID lists (dotted-decimal strings)." | kind=entity | source=probe/scanner/ja4x.py:L77 | neighbors=[ja4x_from_oid_lists()] | lang=en
-- "scanner_ja4x_rationale_83": "JA4X from a `cryptography` x509 Certificate object. None if unusable." | kind=entity | source=probe/scanner/ja4x.py:L83 | neighbors=[ja4x_from_cert()] | lang=en
-- "scanner_ja4x_rationale_94": "JA4X from raw DER bytes. `cryptography` is imported lazily so this module     st" | kind=entity | source=probe/scanner/ja4x.py:L94 | neighbors=[ja4x_from_der()] | lang=en
-- "scanner_ldap_scanner_ldapscanner_init": ".__init__()" | kind=code-symbol | source=probe/scanner/ldap_scanner.py:L50 | neighbors=[LDAPScanner] | lang=en
-- "scanner_ldap_scanner_main": "main()" | kind=code-symbol | source=probe/scanner/ldap_scanner.py:L161 | neighbors=[ldap_scanner.py] | lang=en
-- "scanner_ldap_scanner_rationale_1": "ldap_scanner.py — LDAP anonymous-bind enumeration (VA checklist: anonymous direc" | kind=entity | source=probe/scanner/ldap_scanner.py:L1 | neighbors=[ldap_scanner.py] | lang=en
-- "scanner_ldap_scanner_rationale_55": "Blocking: anonymous bind + RootDSE read + bounded tree-read probe.         Retur" | kind=entity | source=probe/scanner/ldap_scanner.py:L55 | neighbors=[._probe()] | lang=en
-- "scanner_mass_scan_connectsweep_init": ".__init__()" | kind=code-symbol | source=probe/scanner/mass_scan.py:L209 | neighbors=[_ConnectSweep] | lang=en
+- "main_scripts_nfs_scanner_rationale_137": "Read RPC record-marking fragments (RFC 1057 §10) until the last fragment." | kind=entity | source=probe/main_scripts/nfs_scanner.py:L137 | neighbors=[_recv_record()] | lang=en
+- "main_scripts_nfs_scanner_rationale_167": "Strip the ONC-RPC reply header; return the accepted-SUCCESS result bytes." | kind=entity | source=probe/main_scripts/nfs_scanner.py:L167 | neighbors=[_parse_rpc_reply()] | lang=en
+- "main_scripts_nfs_scanner_rationale_233": "Blocking: portmap DUMP + mountd EXPORT. Monkeypatchable for tests." | kind=entity | source=probe/main_scripts/nfs_scanner.py:L233 | neighbors=[._probe()] | lang=en
+- "main_scripts_nfs_scanner_rationale_57": "Minimal, BOUNDED big-endian XDR reader (RFC 4506)." | kind=entity | source=probe/main_scripts/nfs_scanner.py:L57 | neighbors=[_XDR] | lang=en
+- "main_scripts_nfs_scanner_rationale_83": "Parse a PMAPPROC_DUMP reply — the list of registered RPC programs." | kind=entity | source=probe/main_scripts/nfs_scanner.py:L83 | neighbors=[parse_portmap_dump()] | lang=en
+- "main_scripts_nfs_scanner_rationale_97": "Parse a MOUNTPROC_EXPORT reply — exports + their allowed client groups." | kind=entity | source=probe/main_scripts/nfs_scanner.py:L97 | neighbors=[parse_mount_export()] | lang=pt
+- "main_scripts_nfs_scanner_xdr_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/nfs_scanner.py:L59 | neighbors=[_XDR] | lang=en
+- "main_scripts_nmap_wrapper_have_nmap": "_have_nmap()" | kind=code-symbol | source=probe/main_scripts/nmap_wrapper.py:L117 | neighbors=[nmap_wrapper.py] | lang=en
+- "main_scripts_nmap_wrapper_main": "main()" | kind=code-symbol | source=probe/main_scripts/nmap_wrapper.py:L253 | neighbors=[nmap_wrapper.py] | lang=en
+- "main_scripts_nmap_wrapper_nmapexecutionerror_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/nmap_wrapper.py:L51 | neighbors=[NmapExecutionError] | lang=en
+- "main_scripts_nmap_wrapper_rationale_1": "nmap_wrapper.py — orchestrate nmap and normalize its XML into ScanResult.  WHY:" | kind=entity | source=probe/main_scripts/nmap_wrapper.py:L1 | neighbors=[nmap_wrapper.py] | lang=en
+- "main_scripts_nmap_wrapper_rationale_183": "# NOTE: `Element.find(...) or Element.find(...)` is a classic ElementTree" | kind=entity | source=probe/main_scripts/nmap_wrapper.py:L183 | neighbors=[nmap_wrapper.py] | lang=en
+- "main_scripts_nmap_wrapper_rationale_191": "# NOTE: `Element.find(...) or Element.find(...)` is a classic ElementTree" | kind=entity | source=probe/main_scripts/nmap_wrapper.py:L191 | neighbors=[nmap_wrapper.py] | lang=en
+- "main_scripts_nmap_wrapper_rationale_197": "# NOTE: `Element.find(...) or Element.find(...)` is a classic ElementTree" | kind=entity | source=probe/main_scripts/nmap_wrapper.py:L197 | neighbors=[nmap_wrapper.py] | lang=en
+- "main_scripts_nmap_wrapper_rationale_43": "Actionable subprocess failure; never reinterpret it as zero findings." | kind=entity | source=probe/main_scripts/nmap_wrapper.py:L43 | neighbors=[NmapExecutionError] | lang=en
+- "main_scripts_nmap_wrapper_rationale_49": "Actionable subprocess failure; never reinterpret it as zero findings." | kind=entity | source=probe/main_scripts/nmap_wrapper.py:L49 | neighbors=[NmapExecutionError] | lang=en
+- "main_scripts_nmap_wrapper_rationale_70": "Allow tuning only; target, script, and output controls stay owned here." | kind=entity | source=probe/main_scripts/nmap_wrapper.py:L70 | neighbors=[_validated_extra_args()] | lang=en
+- "main_scripts_nmap_wrapper_rationale_76": "Allow tuning only; target, script, and output controls stay owned here." | kind=entity | source=probe/main_scripts/nmap_wrapper.py:L76 | neighbors=[_validated_extra_args()] | lang=en
+- "main_scripts_os_fingerprint_main": "main()" | kind=code-symbol | source=probe/main_scripts/os_fingerprint.py:L571 | neighbors=[os_fingerprint.py] | lang=en
+- "main_scripts_os_fingerprint_osfingerprintscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/os_fingerprint.py:L360 | neighbors=[OSFingerprintScanner] | lang=en
+- "main_scripts_os_fingerprint_rationale_1": "os_fingerprint.py — OS/stack fingerprinting via ICMP + TTL (Tier 2.1 + 2.2).  TW" | kind=entity | source=probe/main_scripts/os_fingerprint.py:L1 | neighbors=[os_fingerprint.py] | lang=pt
+- "main_scripts_os_fingerprint_rationale_102": "Round the observed TTL up to the nearest standard initial TTL." | kind=entity | source=probe/main_scripts/os_fingerprint.py:L102 | neighbors=[infer_initial_ttl()] | lang=en
+- "main_scripts_os_fingerprint_rationale_109": "Parse an ICMP timestamp reply (type 14): id/seq/ttl plus the three 32-bit     ti" | kind=entity | source=probe/main_scripts/os_fingerprint.py:L109 | neighbors=[parse_icmp_timestamps()] | lang=en
+- "main_scripts_os_fingerprint_rationale_122": "Interpret a timestamp reply's transmit value. Per RFC 792 a *standard* value" | kind=entity | source=probe/main_scripts/os_fingerprint.py:L122 | neighbors=[remote_clock()] | lang=pt
+- "main_scripts_os_fingerprint_rationale_129": "Combine available stack signals into a best-guess OS family with a calibrated" | kind=entity | source=probe/main_scripts/os_fingerprint.py:L129 | neighbors=[fingerprint_os()] | lang=pt
+- "main_scripts_os_fingerprint_rationale_138": "True only for an ICMP ECHO reply that actually came FROM the probed host.      A" | kind=entity | source=probe/main_scripts/os_fingerprint.py:L138 | neighbors=[accept_echo_reply()] | lang=en
+- "main_scripts_os_fingerprint_rationale_153": "Round the observed TTL up to the nearest standard initial TTL." | kind=entity | source=probe/main_scripts/os_fingerprint.py:L153 | neighbors=[infer_initial_ttl()] | lang=en
+- "main_scripts_os_fingerprint_rationale_180": "Combine available stack signals into a best-guess OS family with a calibrated" | kind=entity | source=probe/main_scripts/os_fingerprint.py:L180 | neighbors=[fingerprint_os()] | lang=pt
+- "main_scripts_os_fingerprint_rationale_188": "True if we can open an ICMP socket (datagram-ICMP or raw)." | kind=entity | source=probe/main_scripts/os_fingerprint.py:L188 | neighbors=[icmp_supported()] | lang=en
+- "main_scripts_os_fingerprint_rationale_221": "ICMP-echo liveness + TTL harvest -> OS-family guess. Optionally accepts TCP" | kind=entity | source=probe/main_scripts/os_fingerprint.py:L221 | neighbors=[OSFingerprintScanner] | lang=en
+- "main_scripts_os_fingerprint_rationale_227": "Combine available stack signals into a best-guess OS family with a calibrated" | kind=entity | source=probe/main_scripts/os_fingerprint.py:L227 | neighbors=[fingerprint_os()] | lang=pt
+- "main_scripts_os_fingerprint_rationale_233": "Send one ICMP echo; return observed TTL, None (no TTL), or \"down\"." | kind=entity | source=probe/main_scripts/os_fingerprint.py:L233 | neighbors=[._icmp_echo_ttl()] | lang=en
+- "main_scripts_os_fingerprint_rationale_254": "True if we can open an ICMP socket (datagram-ICMP or raw)." | kind=entity | source=probe/main_scripts/os_fingerprint.py:L254 | neighbors=[icmp_supported()] | lang=en
+- "main_scripts_os_fingerprint_rationale_271": "Return (socket, is_raw). Prefer datagram-ICMP (unprivileged), then raw." | kind=entity | source=probe/main_scripts/os_fingerprint.py:L271 | neighbors=[_open_icmp_socket()] | lang=en
+- "main_scripts_os_fingerprint_rationale_287": "ICMP-echo liveness + TTL harvest -> OS-family guess. Optionally accepts TCP" | kind=entity | source=probe/main_scripts/os_fingerprint.py:L287 | neighbors=[OSFingerprintScanner] | lang=en
+- "main_scripts_os_fingerprint_rationale_299": "Send one ICMP echo; return observed TTL, None (no TTL), or \"down\"." | kind=entity | source=probe/main_scripts/os_fingerprint.py:L299 | neighbors=[._icmp_echo_ttl()] | lang=en
+- "main_scripts_os_fingerprint_rationale_321": "True if we can open an ICMP socket (datagram-ICMP or raw)." | kind=entity | source=probe/main_scripts/os_fingerprint.py:L321 | neighbors=[icmp_supported()] | lang=en
+- "main_scripts_os_fingerprint_rationale_330": "Send an ICMP timestamp request (type 13); return {ttl, transmit} from a" | kind=entity | source=probe/main_scripts/os_fingerprint.py:L330 | neighbors=[._icmp_timestamp()] | lang=en
+- "main_scripts_os_fingerprint_rationale_338": "Return (socket, is_raw). Prefer datagram-ICMP (unprivileged), then raw." | kind=entity | source=probe/main_scripts/os_fingerprint.py:L338 | neighbors=[_open_icmp_socket()] | lang=en
+- "main_scripts_os_fingerprint_rationale_354": "ICMP-echo liveness + TTL harvest -> OS-family guess. Optionally accepts TCP" | kind=entity | source=probe/main_scripts/os_fingerprint.py:L354 | neighbors=[OSFingerprintScanner] | lang=en
 
 ## Instructions
 

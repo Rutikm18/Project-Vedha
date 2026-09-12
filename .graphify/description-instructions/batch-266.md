@@ -1,4 +1,4 @@
-# Node Description Batch 267 of 336
+# Node Description Batch 267 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,53 +19,51 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-LANGUAGE: each entry has a `lang=` marker giving the language of its source.
-Write that entry's description in EXACTLY that language. Do not translate to
-a single common language — match each node's source language individually.
+Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "services_notifications_rationale_88": "Deliver to every ENABLED integration for the tenant. Returns the count sent." | kind=entity | source=manager/backend/app/services/notifications.py:L88 | neighbors=[notify_tenant()] | lang=en
-- "services_notifications_send_email": "_send_email()" | kind=code-symbol | source=manager/backend/app/services/notifications.py:L28 | neighbors=[notifications.py] | lang=en
-- "services_notifications_send_jira": "_send_jira()" | kind=code-symbol | source=manager/backend/app/services/notifications.py:L52 | neighbors=[notifications.py] | lang=en
-- "services_notifications_send_slack": "_send_slack()" | kind=code-symbol | source=manager/backend/app/services/notifications.py:L45 | neighbors=[notifications.py] | lang=en
-- "services_portal_metrics_metricfinding": "MetricFinding" | kind=code-symbol | source=manager/backend/app/services/portal_metrics.py:L21 | neighbors=[portal_metrics.py] | lang=en
-- "services_portal_metrics_rationale_1": "portal_metrics.py — pure aggregations for the customer dashboard.  Kept pure (no" | kind=entity | source=manager/backend/app/services/portal_metrics.py:L1 | neighbors=[portal_metrics.py] | lang=en
-- "services_portal_metrics_rationale_33": "Count findings by severity (all five buckets always present, zero-filled).     o" | kind=entity | source=manager/backend/app/services/portal_metrics.py:L33 | neighbors=[severity_breakdown()] | lang=en
-- "services_portal_metrics_rationale_45": "(open, closed) totals over the given findings." | kind=entity | source=manager/backend/app/services/portal_metrics.py:L45 | neighbors=[open_closed_counts()] | lang=en
-- "services_portal_metrics_rationale_56": "Per-month {period, opened, closed} for the last `months` months.      opened = f" | kind=entity | source=manager/backend/app/services/portal_metrics.py:L56 | neighbors=[status_timeline()] | lang=en
-- "services_posture_rationale_1": "Posture scoring & patch-comparison — the single source of truth behind the dashb" | kind=entity | source=manager/backend/app/services/posture.py:L1 | neighbors=[posture.py] | lang=en
-- "services_posture_rationale_105": "True when the finding was live as of run_at (first_seen ≤ run_at ≤ last_seen)." | kind=entity | source=manager/backend/app/services/posture.py:L105 | neighbors=[_present_in_run()] | lang=en
-- "services_posture_rationale_121": "Bucket findings across the previous→latest run transition." | kind=entity | source=manager/backend/app/services/posture.py:L121 | neighbors=[compare()] | lang=en
-- "services_posture_rationale_164": "Full dashboard/report payload. Degrades gracefully with 0 or 1 run." | kind=entity | source=manager/backend/app/services/posture.py:L164 | neighbors=[build_posture()] | lang=en
-- "services_posture_rationale_23": "Duck-typed projection of a Finding + its asset's criticality." | kind=entity | source=manager/backend/app/services/posture.py:L23 | neighbors=[FindingView] | lang=en
-- "services_posture_rationale_48": "Noisy-OR: 100·(1 − ∏(1 − clamp(p))). Empty → 0.0. Always in [0, 100]." | kind=entity | source=manager/backend/app/services/posture.py:L48 | neighbors=[aggregate()] | lang=en
-- "services_project_time_rationale_1": "project_time — one place that decides what \"now\" looks like to a human.  The man" | kind=entity | source=manager/backend/app/services/project_time.py:L1 | neighbors=[project_time.py] | lang=en
-- "services_project_time_rationale_42": "The project timezone, degrading safely when tzdata is unavailable." | kind=entity | source=manager/backend/app/services/project_time.py:L42 | neighbors=[_resolve_project_tz()] | lang=en
-- "services_project_time_rationale_61": "Current time as an AWARE datetime in the project timezone." | kind=entity | source=manager/backend/app/services/project_time.py:L61 | neighbors=[project_now()] | lang=en
-- "services_project_time_rationale_66": "ISO-8601 instant in the project timezone: 2026-09-03T23:15:05+05:30." | kind=entity | source=manager/backend/app/services/project_time.py:L66 | neighbors=[project_timestamp()] | lang=en
-- "services_project_time_rationale_71": "Re-render an existing datetime in the project timezone.      The instant is pres" | kind=entity | source=manager/backend/app/services/project_time.py:L71 | neighbors=[to_project_tz()] | lang=en
-- "services_project_time_rationale_85": "Compact project-local stamp for FILE and DIRECTORY names.      Carries no offset" | kind=entity | source=manager/backend/app/services/project_time.py:L85 | neighbors=[project_file_stamp()] | lang=en
-- "services_reference_rationale_1": "reference.py — human-readable references for things a customer has to talk about" | kind=entity | source=manager/backend/app/services/reference.py:L1 | neighbors=[reference.py] | lang=en
-- "services_reference_rationale_102": "Canonicalise a reference a human typed: trim, upper-case, and apply     Crockfor" | kind=entity | source=manager/backend/app/services/reference.py:L102 | neighbors=[normalize()] | lang=pt
-- "services_reference_rationale_112": "True when `text` looks like one of our references rather than a UUID, so a     l" | kind=entity | source=manager/backend/app/services/reference.py:L112 | neighbors=[is_reference()] | lang=pt
-- "services_reference_rationale_73": "The stable code for one row. Deterministic, so a backfill and a fresh     insert" | kind=entity | source=manager/backend/app/services/reference.py:L73 | neighbors=[suffix_for()] | lang=en
-- "services_reference_rationale_85": "Build a reference. `created_at` should be the row's own creation time so a     b" | kind=entity | source=manager/backend/app/services/reference.py:L85 | neighbors=[make_reference()] | lang=pt
-- "services_remediation_kb_rationale_1": "remediation_kb.py — the deterministic remediation knowledge base.  Pure (no DB," | kind=entity | source=manager/backend/app/services/remediation_kb.py:L1 | neighbors=[remediation_kb.py] | lang=en
-- "services_remediation_kb_rationale_27": "Normalize an arbitrary OS/target string to a supported KB key.      Public becau" | kind=entity | source=manager/backend/app/services/remediation_kb.py:L27 | neighbors=[os_key()] | lang=en
-- "services_remediation_kb_rationale_347": "Return a structured, OS-filtered remediation plan for `finding`.      Always ret" | kind=entity | source=manager/backend/app/services/remediation_kb.py:L347 | neighbors=[recipe_for_finding()] | lang=en
-- "services_remediation_kb_rationale_80": "Map a finding to a KB category key using title/description/CVE hints.      Deter" | kind=entity | source=manager/backend/app/services/remediation_kb.py:L80 | neighbors=[classify_finding()] | lang=pt
-- "services_remediation_kb_rationale_97": "One remediation step. `generic` is REQUIRED (the vendor-neutral fallback);     p" | kind=entity | source=manager/backend/app/services/remediation_kb.py:L97 | neighbors=[_step()] | lang=en
-- "services_risk_rank_rationale_1": "One explainable, non-saturating 0-1000 Manager risk score.  The score is additiv" | kind=entity | source=manager/backend/app/services/risk_rank.py:L1 | neighbors=[risk_rank.py] | lang=en
-- "services_scope_crypto_rationale_1": "scope_crypto.py — manager-side: encrypt scope payloads to a probe's X25519 publi" | kind=entity | source=manager/backend/app/services/scope_crypto.py:L1 | neighbors=[scope_crypto.py] | lang=en
-- "services_scope_crypto_rationale_35": "Encrypt scope JSON to a specific probe's X25519 public key.      Args:         s" | kind=entity | source=manager/backend/app/services/scope_crypto.py:L35 | neighbors=[encrypt_scope()] | lang=en
-- "services_scope_crypto_rationale_78": "Convenience: dict → JSON → encrypt → base64 string." | kind=entity | source=manager/backend/app/services/scope_crypto.py:L78 | neighbors=[encrypt_scope_b64()] | lang=en
-- "services_scope_crypto_rationale_86": "Decode a base64-encoded X25519 public key to raw bytes.      Returns empty bytes" | kind=entity | source=manager/backend/app/services/scope_crypto.py:L86 | neighbors=[public_key_from_b64()] | lang=en
-- "services_scope_targets_rationale_1": "scope_targets.py — the single source of truth for \"is this scan target inside th" | kind=entity | source=manager/backend/app/services/scope_targets.py:L1 | neighbors=[scope_targets.py] | lang=en
-- "services_scope_targets_rationale_38": "Expand raw target tokens (IP / CIDR / ``a-b`` range) into networks.      Returns" | kind=entity | source=manager/backend/app/services/scope_targets.py:L38 | neighbors=[_expand_requested()] | lang=en
-- "services_scope_targets_rationale_71": "Return the normalized list of authorized target networks, or ``None``.      * ``" | kind=entity | source=manager/backend/app/services/scope_targets.py:L71 | neighbors=[validate_targets_in_scope()] | lang=en
-- "services_sla_rationale_109": "The env-configured SLA windows — the fallback when a tenant has no policy." | kind=entity | source=manager/backend/app/services/sla.py:L109 | neighbors=[default_windows()] | lang=en
+- "reportsection_finding_model_slastate": "SlaState" | kind=code-symbol | source=reportsection/finding-model.ts:L441 | neighbors=[finding-model.ts]
+- "reportsection_finding_model_tier_meta": "TIER_META" | kind=code-symbol | source=reportsection/finding-model.ts:L611 | neighbors=[finding-model.ts]
+- "reportsection_finding_model_triagesort": "triageSort()" | kind=code-symbol | source=reportsection/finding-model.ts:L713 | neighbors=[finding-model.ts]
+- "reportsection_finding_model_vectormetric": "VectorMetric" | kind=code-symbol | source=reportsection/finding-model.ts:L219 | neighbors=[finding-model.ts]
+- "reportsection_finding_model_vectorreading": "VectorReading" | kind=code-symbol | source=reportsection/finding-model.ts:L228 | neighbors=[finding-model.ts]
+- "reportsection_findingreport_copybutton": "CopyButton()" | kind=code-symbol | source=reportsection/FindingReport.tsx:L61 | neighbors=[FindingReport.tsx]
+- "reportsection_findingreport_evidenceartifact": "EvidenceArtifact()" | kind=code-symbol | source=reportsection/FindingReport.tsx:L118 | neighbors=[FindingReport.tsx]
+- "reportsection_findingreport_findingreportprops": "FindingReportProps" | kind=code-symbol | source=reportsection/FindingReport.tsx:L202 | neighbors=[FindingReport.tsx]
+- "reportsection_findingreport_findingssection": "FindingsSection()" | kind=code-symbol | source=reportsection/FindingReport.tsx:L545 | neighbors=[FindingReport.tsx]
+- "reportsection_findingreport_gap": "Gap()" | kind=code-symbol | source=reportsection/FindingReport.tsx:L94 | neighbors=[FindingReport.tsx]
+- "reportsection_findingreport_prose": "Prose()" | kind=code-symbol | source=reportsection/FindingReport.tsx:L103 | neighbors=[FindingReport.tsx]
+- "reportsection_findingreport_section": "Section()" | kind=code-symbol | source=reportsection/FindingReport.tsx:L76 | neighbors=[FindingReport.tsx]
+- "reportsection_findingreport_sevfilter": "SevFilter" | kind=code-symbol | source=reportsection/FindingReport.tsx:L543 | neighbors=[FindingReport.tsx]
+- "reportsection_findingreport_sevtag": "SevTag()" | kind=code-symbol | source=reportsection/FindingReport.tsx:L48 | neighbors=[FindingReport.tsx]
+- "reportsection_spec_a": "a" | kind=code-symbol | source=reportsection/spec.ts:L148 | neighbors=[spec.ts]
+- "reportsection_spec_bare": "bare" | kind=code-symbol | source=reportsection/spec.ts:L144 | neighbors=[spec.ts]
+- "reportsection_spec_base": "base" | kind=code-symbol | source=reportsection/spec.ts:L15 | neighbors=[spec.ts]
+- "reportsection_spec_dirty": "dirty" | kind=code-symbol | source=reportsection/spec.ts:L105 | neighbors=[spec.ts]
+- "reportsection_spec_f": "F()" | kind=code-symbol | source=reportsection/spec.ts:L25 | neighbors=[spec.ts]
+- "reportsection_spec_group": "group()" | kind=code-symbol | source=reportsection/spec.ts:L13 | neighbors=[spec.ts]
+- "reportsection_spec_lowkev": "lowKev" | kind=code-symbol | source=reportsection/spec.ts:L45 | neighbors=[spec.ts]
+- "reportsection_spec_now": "NOW" | kind=code-symbol | source=reportsection/spec.ts:L24 | neighbors=[spec.ts]
+- "reportsection_spec_ok": "ok()" | kind=code-symbol | source=reportsection/spec.ts:L9 | neighbors=[spec.ts]
+- "reportsection_spec_p0sla": "p0sla" | kind=code-symbol | source=reportsection/spec.ts:L57 | neighbors=[spec.ts]
+- "reportsection_spec_r": "r" | kind=code-symbol | source=reportsection/spec.ts:L115 | neighbors=[spec.ts]
+- "request_route_post": "POST()" | kind=code-symbol | source=manager/frontend/app/api/auth/request/route.ts:L7 | neighbors=[route.ts]
+- "results_route_get": "GET()" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/detection-validation/results/route.ts:L5 | neighbors=[route.ts]
+- "reveal_route_get": "GET()" | kind=code-symbol | source=manager/frontend/app/api/customers/[id]/reveal/route.ts:L8 | neighbors=[route.ts]
+- "routers_ad_ad_assessment_status": "ad_assessment_status()" | kind=code-symbol | source=manager/backend/app/routers/ad.py:L99 | neighbors=[ad.py]
+- "routers_ad_launch_ad_assessment": "launch_ad_assessment()" | kind=code-symbol | source=manager/backend/app/routers/ad.py:L64 | neighbors=[ad.py]
+- "routers_agent_advisor_run_advisor": "run_advisor()" | kind=code-symbol | source=manager/backend/app/routers/agent_advisor.py:L50 | neighbors=[agent_advisor.py]
+- "routers_agent_ws_rationale_115": "Persistent WebSocket for probe → manager push communication.      Authentication" | kind=entity | source=manager/backend/app/routers/agent_ws.py:L115 | neighbors=[agent_websocket_endpoint()]
+- "routers_agent_ws_rationale_41": "Read an agent bearer token exclusively from the non-logged auth header." | kind=entity | source=manager/backend/app/routers/agent_ws.py:L41 | neighbors=[_agent_token_from_websocket()]
+- "routers_agent_ws_rationale_52": "Validate eligibility and atomically claim a WebSocket job offer." | kind=entity | source=manager/backend/app/routers/agent_ws.py:L52 | neighbors=[_claim_pushed_job()]
+- "routers_agents_agentbootstraprequest_validate_network_segments": ".validate_network_segments()" | kind=code-symbol | source=manager/backend/app/routers/agents.py:L647 | neighbors=[AgentBootstrapRequest]
+- "routers_agents_agentregisterrequest_validate_network_segments": ".validate_network_segments()" | kind=code-symbol | source=manager/backend/app/routers/agents.py:L223 | neighbors=[AgentRegisterRequest]
+- "routers_agents_enqueuejobrequest_validate_uc": "._validate_uc()" | kind=code-symbol | source=manager/backend/app/routers/agents.py:L362 | neighbors=[EnqueueJobRequest]
+- "routers_agents_heartbeatrequest_require_fence_for_running_job": ".require_fence_for_running_job()" | kind=code-symbol | source=manager/backend/app/routers/agents.py:L248 | neighbors=[HeartbeatRequest]
+- "routers_agents_list_agents": "list_agents()" | kind=code-symbol | source=manager/backend/app/routers/agents.py:L827 | neighbors=[agents.py]
+- "routers_agents_rationale_1003": "Lets the frontend poll a specific job's status without knowing which agent has i" | kind=entity | source=manager/backend/app/routers/agents.py:L1003 | neighbors=[get_job_status()]
 
 ## Instructions
 

@@ -1,4 +1,4 @@
-# Node Description Batch 235 of 336
+# Node Description Batch 235 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,58 +12,51 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
-For an entity node (any other kind — e.g. a person, place, event, object),
-describe what the entity is and its role, grounded in its type, its
-relations (neighbors) and the provided citations/evidence — e.g.
-"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
-Ground entity descriptions in the citations/evidence when present; do not
-speculate beyond the context, so a node with no supporting context may be
-left out of the reply.
 Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "portal_page_sevs": "SEVS" | kind=code-symbol | source=manager/frontend/app/portal/page.tsx:L13 | neighbors=[page.tsx]
-- "portal_portalshell_footerclock": "FooterClock()" | kind=code-symbol | source=manager/frontend/components/portal/PortalShell.tsx:L299 | neighbors=[PortalShell.tsx]
-- "portal_portalshell_nav": "NAV" | kind=code-symbol | source=manager/frontend/components/portal/PortalShell.tsx:L23 | neighbors=[PortalShell.tsx]
-- "portal_portalshell_portalshellprops": "PortalShellProps" | kind=code-symbol | source=manager/frontend/components/portal/PortalShell.tsx:L36 | neighbors=[PortalShell.tsx]
-- "portal_portalshell_portalsidebar": "PortalSidebar()" | kind=code-symbol | source=manager/frontend/components/portal/PortalShell.tsx:L46 | neighbors=[PortalShell.tsx]
-- "portal_portalshell_sessiontimer": "SessionTimer()" | kind=code-symbol | source=manager/frontend/components/portal/PortalShell.tsx:L252 | neighbors=[PortalShell.tsx]
-- "portal_timestamp_timestampprops": "TimestampProps" | kind=code-symbol | source=manager/frontend/components/portal/Timestamp.tsx:L68 | neighbors=[Timestamp.tsx]
-- "portscan_ratelimiter_init": ".__init__()" | kind=code-symbol | source=portscan.py:L96 | neighbors=[RateLimiter]
-- "portscan_rationale_74": "Map a connect()-time OSError to (state, reason). Unknown stays visible     as ('" | kind=entity | source=portscan.py:L74 | neighbors=[classify_os_error()]
-- "probes_route_get": "GET" | kind=code-symbol | source=manager/frontend/app/api/scan/probes/route.ts:L6 | neighbors=[route.ts]
-- "prompts_report_controlitem": "ControlItem" | kind=code-symbol | source=manager/frontend/lib/prompts/report.ts:L134 | neighbors=[report.ts]
-- "prompts_report_domains": "DOMAINS" | kind=code-symbol | source=manager/frontend/lib/prompts/report.ts:L195 | neighbors=[report.ts]
-- "prompts_report_effort": "Effort" | kind=code-symbol | source=manager/frontend/lib/prompts/report.ts:L31 | neighbors=[report.ts]
-- "prompts_report_reportvalidation": "ReportValidation" | kind=code-symbol | source=manager/frontend/lib/prompts/report.ts:L388 | neighbors=[report.ts]
-- "prompts_report_sev_rank": "SEV_RANK" | kind=code-symbol | source=manager/frontend/lib/prompts/report.ts:L199 | neighbors=[report.ts]
-- "prompts_report_severity": "Severity" | kind=code-symbol | source=manager/frontend/lib/prompts/report.ts:L29 | neighbors=[report.ts]
-- "prompts_report_severity_weight": "SEVERITY_WEIGHT" | kind=code-symbol | source=manager/frontend/lib/prompts/report.ts:L191 | neighbors=[report.ts]
-- "register_route_get": "GET" | kind=code-symbol | source=manager/frontend/app/api/agents/register/route.ts:L12 | neighbors=[route.ts]
-- "reject_route_post": "POST()" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/ai-report/reject/route.ts:L4 | neighbors=[route.ts]
-- "remediation_route_supported_os": "SUPPORTED_OS" | kind=code-symbol | source=manager/frontend/app/api/findings/[id]/remediation/route.ts:L5 | neighbors=[route.ts]
-- "reports_page_activityitem": "ActivityItem" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L49 | neighbors=[page.tsx]
-- "reports_page_aidraft": "AiDraft" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L46 | neighbors=[page.tsx]
-- "reports_page_aijobstatus": "AiJobStatus" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L45 | neighbors=[page.tsx]
-- "reports_page_aipanel": "AiPanel()" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L415 | neighbors=[page.tsx]
-- "reports_page_aireportpanel": "AiReportPanel()" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L688 | neighbors=[page.tsx]
-- "reports_page_compliancecontrol": "ComplianceControl" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L12 | neighbors=[page.tsx]
-- "reports_page_complianceframework": "ComplianceFramework" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L10 | neighbors=[page.tsx]
-- "reports_page_complianceframeworkdata": "ComplianceFrameworkData" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L22 | neighbors=[page.tsx]
-- "reports_page_compliancereport": "ComplianceReport()" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L267 | neighbors=[page.tsx]
-- "reports_page_conf_style": "CONF_STYLE" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L434 | neighbors=[page.tsx]
-- "reports_page_copybtn": "CopyBtn()" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L126 | neighbors=[page.tsx]
-- "reports_page_coveragetab": "CoverageTab()" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L1106 | neighbors=[page.tsx]
-- "reports_page_cvetab": "CveTab()" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L1045 | neighbors=[page.tsx]
-- "reports_page_decisionbox": "DecisionBox()" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L667 | neighbors=[page.tsx]
-- "reports_page_documentstab": "DocumentsTab()" | kind=code-symbol | source=manager/frontend/app/portal/reports/page.tsx:L586 | neighbors=[page.tsx]
-- "reports_page_domain_label": "DOMAIN_LABEL" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L418 | neighbors=[page.tsx]
-- "reports_page_effortdot": "EffortDot()" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L446 | neighbors=[page.tsx]
-- "reports_page_engagement": "Engagement" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L28 | neighbors=[page.tsx]
-- "reports_page_evidblock": "EvidBlock()" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L201 | neighbors=[page.tsx]
-- "reports_page_evidenceitem": "EvidenceItem" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L35 | neighbors=[page.tsx]
+- "launch_route_intensity_presets": "INTENSITY_PRESETS" | kind=code-symbol | source=manager/frontend/app/api/scan/launch/route.ts:L21 | neighbors=[route.ts]
+- "launch_route_launchbody": "LaunchBody" | kind=code-symbol | source=manager/frontend/app/api/scan/launch/route.ts:L5 | neighbors=[route.ts]
+- "launch_route_post": "POST" | kind=code-symbol | source=manager/frontend/app/api/scan/launch/route.ts:L8 | neighbors=[route.ts]
+- "launch_route_sshcreds": "SshCreds" | kind=code-symbol | source=manager/frontend/app/api/scan/launch/route.ts:L5 | neighbors=[route.ts]
+- "launch_route_wincreds": "WinCreds" | kind=code-symbol | source=manager/frontend/app/api/scan/launch/route.ts:L6 | neighbors=[route.ts]
+- "lib_adapters_detection_to_ui": "DETECTION_TO_UI" | kind=code-symbol | source=manager/frontend/lib/adapters.ts:L92 | neighbors=[adapters.ts]
+- "lib_adapters_eng_status_to_api": "ENG_STATUS_TO_API" | kind=code-symbol | source=manager/frontend/lib/adapters.ts:L18 | neighbors=[adapters.ts]
+- "lib_adapters_eng_status_to_ui": "ENG_STATUS_TO_UI" | kind=code-symbol | source=manager/frontend/lib/adapters.ts:L10 | neighbors=[adapters.ts]
+- "lib_adapters_find_status_to_api": "FIND_STATUS_TO_API" | kind=code-symbol | source=manager/frontend/lib/adapters.ts:L298 | neighbors=[adapters.ts]
+- "lib_adapters_find_status_to_ui": "FIND_STATUS_TO_UI" | kind=code-symbol | source=manager/frontend/lib/adapters.ts:L95 | neighbors=[adapters.ts]
+- "lib_adapters_sev_to_ui": "SEV_TO_UI" | kind=code-symbol | source=manager/frontend/lib/adapters.ts:L88 | neighbors=[adapters.ts]
+- "lib_agents_store_agent": "Agent" | kind=code-symbol | source=manager/frontend/lib/agents-store.ts:L15 | neighbors=[agents-store.ts]
+- "lib_agents_store_agentcapability": "AgentCapability" | kind=code-symbol | source=manager/frontend/lib/agents-store.ts:L10 | neighbors=[agents-store.ts]
+- "lib_agents_store_agents": "AGENTS" | kind=code-symbol | source=manager/frontend/lib/agents-store.ts:L69 | neighbors=[agents-store.ts]
+- "lib_agents_store_agentsstore": "agentsStore" | kind=code-symbol | source=manager/frontend/lib/agents-store.ts:L220 | neighbors=[agents-store.ts]
+- "lib_agents_store_agentstatus": "AgentStatus" | kind=code-symbol | source=manager/frontend/lib/agents-store.ts:L5 | neighbors=[agents-store.ts]
+- "lib_agents_store_field_agents_file": "FIELD_AGENTS_FILE" | kind=code-symbol | source=manager/frontend/lib/agents-store.ts:L321 | neighbors=[agents-store.ts]
+- "lib_agents_store_fieldagent": "FieldAgent" | kind=code-symbol | source=manager/frontend/lib/agents-store.ts:L323 | neighbors=[agents-store.ts]
+- "lib_agents_store_futureiso": "futureIso()" | kind=code-symbol | source=manager/frontend/lib/agents-store.ts:L62 | neighbors=[agents-store.ts]
+- "lib_agents_store_genid": "genId()" | kind=code-symbol | source=manager/frontend/lib/agents-store.ts:L60 | neighbors=[agents-store.ts]
+- "lib_agents_store_jobs": "JOBS" | kind=code-symbol | source=manager/frontend/lib/agents-store.ts:L134 | neighbors=[agents-store.ts]
+- "lib_agents_store_jobstatus": "JobStatus" | kind=code-symbol | source=manager/frontend/lib/agents-store.ts:L6 | neighbors=[agents-store.ts]
+- "lib_agents_store_jobtype": "JobType" | kind=code-symbol | source=manager/frontend/lib/agents-store.ts:L7 | neighbors=[agents-store.ts]
+- "lib_agents_store_kafka_topics": "KAFKA_TOPICS" | kind=code-symbol | source=manager/frontend/lib/agents-store.ts:L177 | neighbors=[agents-store.ts]
+- "lib_agents_store_kafkatopic": "KafkaTopic" | kind=code-symbol | source=manager/frontend/lib/agents-store.ts:L8 | neighbors=[agents-store.ts]
+- "lib_agents_store_kafkatopicinfo": "KafkaTopicInfo" | kind=code-symbol | source=manager/frontend/lib/agents-store.ts:L48 | neighbors=[agents-store.ts]
+- "lib_agents_store_nowiso": "nowIso()" | kind=code-symbol | source=manager/frontend/lib/agents-store.ts:L61 | neighbors=[agents-store.ts]
+- "lib_agents_store_scanjob": "ScanJob" | kind=code-symbol | source=manager/frontend/lib/agents-store.ts:L31 | neighbors=[agents-store.ts]
+- "lib_ai_engine_assemblefinding": "assembleFinding()" | kind=code-symbol | source=manager/frontend/lib/ai-engine.ts:L646 | neighbors=[ai-engine.ts]
+- "lib_ai_engine_callanthropicwithretry": "callAnthropicWithRetry()" | kind=code-symbol | source=manager/frontend/lib/ai-engine.ts:L163 | neighbors=[ai-engine.ts]
+- "lib_ai_engine_classifydomain": "classifyDomain()" | kind=code-symbol | source=manager/frontend/lib/ai-engine.ts:L501 | neighbors=[ai-engine.ts]
+- "lib_ai_engine_compactfinding": "compactFinding()" | kind=code-symbol | source=manager/frontend/lib/ai-engine.ts:L662 | neighbors=[ai-engine.ts]
+- "lib_ai_engine_criticality_score": "CRITICALITY_SCORE" | kind=code-symbol | source=manager/frontend/lib/ai-engine.ts:L68 | neighbors=[ai-engine.ts]
+- "lib_ai_engine_deriveconfidence": "deriveConfidence()" | kind=code-symbol | source=manager/frontend/lib/ai-engine.ts:L526 | neighbors=[ai-engine.ts]
+- "lib_ai_engine_destructive_patterns": "DESTRUCTIVE_PATTERNS" | kind=code-symbol | source=manager/frontend/lib/ai-engine.ts:L283 | neighbors=[ai-engine.ts]
+- "lib_ai_engine_epss_mock": "EPSS_MOCK" | kind=code-symbol | source=manager/frontend/lib/ai-engine.ts:L84 | neighbors=[ai-engine.ts]
+- "lib_ai_engine_fallbackwriteup": "fallbackWriteup()" | kind=code-symbol | source=manager/frontend/lib/ai-engine.ts:L629 | neighbors=[ai-engine.ts]
+- "lib_ai_engine_genid": "genId()" | kind=code-symbol | source=manager/frontend/lib/ai-engine.ts:L339 | neighbors=[ai-engine.ts]
+- "lib_ai_engine_groupinginput": "groupingInput()" | kind=code-symbol | source=manager/frontend/lib/ai-engine.ts:L675 | neighbors=[ai-engine.ts]
+- "lib_ai_engine_hallucinationresult": "HallucinationResult" | kind=code-symbol | source=manager/frontend/lib/ai-engine.ts:L52 | neighbors=[ai-engine.ts]
 
 ## Instructions
 

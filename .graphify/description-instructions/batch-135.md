@@ -1,4 +1,4 @@
-# Node Description Batch 136 of 336
+# Node Description Batch 136 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,51 +19,53 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-Write every description in English (en). Do not switch languages.
+LANGUAGE: each entry has a `lang=` marker giving the language of its source.
+Write that entry's description in EXACTLY that language. Do not translate to
+a single common language — match each node's source language individually.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "main_scripts_scan_funnel_rationale_73": "Canonical open-TCP set for a host = deduped, sorted union of every source." | kind=entity | source=probe/main_scripts/scan_funnel.py:L73 | neighbors=[reconcile_ports(), FunnelResult]
-- "main_scripts_scan_funnel_rationale_87": "Map a host's open ports onto the deep-scanner routes that handle them.     Retur" | kind=entity | source=probe/main_scripts/scan_funnel.py:L87 | neighbors=[route_ports(), _candidate_ports()]
-- "main_scripts_scan_funnel_scanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/main_scripts/scan_funnel.py:L114 | neighbors=[.run_host(), _Scanner]
-- "main_scripts_scanner_base_adaptiveratecontroller_acquire": ".acquire()" | kind=code-symbol | source=probe/main_scripts/scanner_base.py:L512 | neighbors=[AdaptiveRateController, .wait()]
-- "main_scripts_scanner_base_adaptiveratecontroller_on_loss": "._on_loss()" | kind=code-symbol | source=probe/main_scripts/scanner_base.py:L508 | neighbors=[AdaptiveRateController, .report_loss()]
-- "main_scripts_scanner_base_adaptiveratecontroller_on_success": "._on_success()" | kind=code-symbol | source=probe/main_scripts/scanner_base.py:L501 | neighbors=[AdaptiveRateController, .report_success()]
-- "main_scripts_scanner_base_adaptiveratecontroller_report_loss": ".report_loss()" | kind=code-symbol | source=probe/main_scripts/scanner_base.py:L524 | neighbors=[AdaptiveRateController, ._on_loss()]
-- "main_scripts_scanner_base_adaptiveratecontroller_report_success": ".report_success()" | kind=code-symbol | source=probe/main_scripts/scanner_base.py:L518 | neighbors=[AdaptiveRateController, ._on_success()]
-- "main_scripts_scanner_base_basescanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/scanner_base.py:L966 | neighbors=[BaseScanner, RateLimiter]
-- "main_scripts_scanner_base_basescanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/main_scripts/scanner_base.py:L974 | neighbors=[BaseScanner, ._guarded()]
-- "main_scripts_scanner_base_rationale_252": "Full, debuggable classification for attaching to a ScanResult: state,     reason" | kind=entity | source=probe/main_scripts/scanner_base.py:L252 | neighbors=[describe_os_error(), ScopeGuard]
-- "main_scripts_scanner_base_resolve_project_tz": "_resolve_project_tz()" | kind=code-symbol | source=probe/main_scripts/scanner_base.py:L66 | neighbors=[scanner_base.py, The project timezone, degrading safely …]
-- "main_scripts_scanner_base_scanresult_to_json": ".to_json()" | kind=code-symbol | source=probe/main_scripts/scanner_base.py:L304 | neighbors=[.write(), ScanResult]
-- "main_scripts_scanner_base_scopeguard_filter": ".filter()" | kind=code-symbol | source=probe/main_scripts/scanner_base.py:L408 | neighbors=[ScopeGuard, .in_scope()]
-- "main_scripts_scanner_base_sendpacer_observe_round": ".observe_round()" | kind=code-symbol | source=probe/main_scripts/scanner_base.py:L590 | neighbors=[Fold one send/collect round's reply rat…, SendPacer]
-- "main_scripts_scanner_base_sendpacer_pace": ".pace()" | kind=code-symbol | source=probe/main_scripts/scanner_base.py:L577 | neighbors=[Block just long enough to hold `rate` p…, SendPacer]
-- "main_scripts_scanner_base_sendpacer_stats": ".stats()" | kind=code-symbol | source=probe/main_scripts/scanner_base.py:L606 | neighbors=[Pacing telemetry for the scan summary (…, SendPacer]
-- "main_scripts_scanner_registry_is_verified": "is_verified()" | kind=code-symbol | source=probe/main_scripts/scanner_registry.py:L97 | neighbors=[scanner_registry.py, True only for a scanner explicitly on t…]
-- "main_scripts_scanner_registry_verification_report": "verification_report()" | kind=code-symbol | source=probe/main_scripts/scanner_registry.py:L107 | neighbors=[scanner_registry.py, The scanner-module trust view: which sc…]
-- "main_scripts_service_banner_dec": "_dec()" | kind=code-symbol | source=probe/main_scripts/service_banner.py:L229 | neighbors=[service_banner.py, match_service()]
-- "main_scripts_service_banner_servicebannerscanner_connect": "._connect()" | kind=code-symbol | source=probe/main_scripts/service_banner.py:L339 | neighbors=[ServiceBannerScanner, ._rung()]
-- "main_scripts_service_banner_servicebannerscanner_ladder_for": "._ladder_for()" | kind=code-symbol | source=probe/main_scripts/service_banner.py:L416 | neighbors=[ServiceBannerScanner, ._grab()]
-- "main_scripts_service_banner_servicebannerscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/main_scripts/service_banner.py:L524 | neighbors=[ServiceBannerScanner, ._grab()]
-- "main_scripts_service_banner_tls_context": "_tls_context()" | kind=code-symbol | source=probe/main_scripts/service_banner.py:L50 | neighbors=[service_banner.py, A permissive client context for FINGERP…]
-- "main_scripts_service_enum_main": "main()" | kind=code-symbol | source=probe/main_scripts/service_enum.py:L630 | neighbors=[service_enum.py, local_topology()]
-- "main_scripts_service_enum_serviceenumscanner_open": "._open()" | kind=code-symbol | source=probe/main_scripts/service_enum.py:L485 | neighbors=[ServiceEnumScanner, ._probe_port()]
-- "main_scripts_service_enum_tags_for": "tags_for()" | kind=code-symbol | source=probe/main_scripts/service_enum.py:L417 | neighbors=[service_enum.py, .scan_target()]
-- "main_scripts_smb_enum_scanner_smbenumscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/smb_enum_scanner.py:L221 | neighbors=[SMBEnumScanner, parse_rid_ranges()]
-- "main_scripts_smb_enum_scanner_smbenumscanner_scan_port": "._scan_port()" | kind=code-symbol | source=probe/main_scripts/smb_enum_scanner.py:L274 | neighbors=[SMBEnumScanner, .scan_target()]
-- "main_scripts_smb_enum_scanner_smbenumscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/main_scripts/smb_enum_scanner.py:L295 | neighbors=[SMBEnumScanner, ._scan_port()]
-- "main_scripts_smb_scanner_der_len": "_der_len()" | kind=code-symbol | source=probe/main_scripts/smb_scanner.py:L104 | neighbors=[smb_scanner.py, _der()]
-- "main_scripts_smb_scanner_smb1_negotiate": "_smb1_negotiate()" | kind=code-symbol | source=probe/main_scripts/smb_scanner.py:L229 | neighbors=[smb_scanner.py, .scan_target()]
-- "main_scripts_smtp_scanner_smtpscanner_scan_port": "._scan_port()" | kind=code-symbol | source=probe/main_scripts/smtp_scanner.py:L124 | neighbors=[SMTPScanner, .scan_target()]
-- "main_scripts_smtp_scanner_smtpscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/main_scripts/smtp_scanner.py:L142 | neighbors=[SMTPScanner, ._scan_port()]
-- "main_scripts_snmp_scanner_oid_in_subtree": "_oid_in_subtree()" | kind=code-symbol | source=probe/main_scripts/snmp_scanner.py:L240 | neighbors=[snmp_scanner.py, ._walk_subtree()]
-- "main_scripts_ssh_collector_sshcollector_collect": "._collect()" | kind=code-symbol | source=probe/main_scripts/ssh_collector.py:L95 | neighbors=[SSHCollector, .run()]
-- "main_scripts_ssh_collector_sshcollector_run": ".run()" | kind=code-symbol | source=probe/main_scripts/ssh_collector.py:L117 | neighbors=[SSHCollector, ._collect()]
-- "main_scripts_ssh_kexdb_lookup": "lookup()" | kind=code-symbol | source=probe/main_scripts/ssh_kexdb.py:L477 | neighbors=[ssh_kexdb.py, Return (failures, warnings, infos) for …]
-- "main_scripts_ssh_scanner_recv_exact": "_recv_exact()" | kind=code-symbol | source=probe/main_scripts/ssh_scanner.py:L215 | neighbors=[ssh_scanner.py, _read_packet()]
-- "main_scripts_ssh_scanner_sshscanner_scan_target": ".scan_target()" | kind=code-symbol | source=probe/main_scripts/ssh_scanner.py:L331 | neighbors=[SSHScanner, ._scan_port()]
+- "vuln_nessus_rationale_38": "Async Nessus API client. One instance per engagement scan session." | kind=entity | source=manager/backend/app/vuln/nessus.py:L38 | neighbors=[NessusScanner, FindingSeverity, FindingStatus] | lang=it
+- "vuln_nessus_rationale_39": "Async Nessus API client. One instance per engagement scan session." | kind=entity | source=manager/backend/app/vuln/nessus.py:L39 | neighbors=[FindingSeverity, FindingStatus, NessusScanner] | lang=it
+- "vuln_nessus_rationale_73": "Prefer API key auth (stateless, no session expiry).         Falls back to userna" | kind=entity | source=manager/backend/app/vuln/nessus.py:L73 | neighbors=[.authenticate(), FindingSeverity, FindingStatus] | lang=en
+- "vuln_nessus_rationale_74": "Prefer API key auth (stateless, no session expiry).         Falls back to userna" | kind=entity | source=manager/backend/app/vuln/nessus.py:L74 | neighbors=[FindingSeverity, FindingStatus, .authenticate()] | lang=en
+- "vuln_nuclei_nucleiscanner_consume_stdout": "._consume_stdout()" | kind=code-symbol | source=manager/backend/app/vuln/nuclei.py:L287 | neighbors=[NucleiScanner, ._map_finding(), .run_scan()] | lang=en
+- "vuln_nuclei_nucleiscanner_map_finding": "._map_finding()" | kind=code-symbol | source=manager/backend/app/vuln/nuclei.py:L395 | neighbors=[NucleiScanner, ._consume_stdout(), .parse_output()] | lang=en
+- "vuln_nuclei_rationale_109": "Run Nuclei against targets and parse JSONL output into Finding dicts." | kind=entity | source=manager/backend/app/vuln/nuclei.py:L109 | neighbors=[NucleiScanner, FindingSeverity, FindingStatus] | lang=en
+- "vuln_nuclei_rationale_126": "Run Nuclei and stream JSONL findings from stdout.          ``request_timeout_sec" | kind=entity | source=manager/backend/app/vuln/nuclei.py:L126 | neighbors=[.run_scan(), FindingSeverity, FindingStatus] | lang=en
+- "vuln_nuclei_rationale_382": "Parse nuclei JSONL output → list of Finding-compatible dicts." | kind=entity | source=manager/backend/app/vuln/nuclei.py:L382 | neighbors=[.parse_output(), FindingSeverity, FindingStatus] | lang=en
+- "vuln_nuclei_rationale_445": "Given a list of service names on an asset, return the union         of relevant" | kind=entity | source=manager/backend/app/vuln/nuclei.py:L445 | neighbors=[.template_selector(), FindingSeverity, FindingStatus] | lang=en
+- "vuln_nuclei_rationale_79": "Machine-readable state for the most recent scanner invocation." | kind=entity | source=manager/backend/app/vuln/nuclei.py:L79 | neighbors=[NucleiRunReport, FindingSeverity, FindingStatus] | lang=en
+- "vuln_nuclei_rationale_90": "Fatal Nuclei failure, optionally carrying findings emitted before failure." | kind=entity | source=manager/backend/app/vuln/nuclei.py:L90 | neighbors=[NucleiScanError, FindingSeverity, FindingStatus] | lang=en
+- "vuln_tasks_dedup_hash": "_dedup_hash()" | kind=code-symbol | source=manager/backend/app/vuln/tasks.py:L167 | neighbors=[tasks.py, Deprecated — use app.utils.hash.dedup_h…, Deprecated — use app.utils.hash.dedup_h…] | lang=en
+- "websocket_manager_connectionmanager_get_room_clients": ".get_room_clients()" | kind=code-symbol | source=manager/backend/app/websocket/manager.py:L75 | neighbors=[ConnectionManager, Get number of connected clients in a ro…, Get number of connected clients in a ro…] | lang=en
+- "workers_outbox_rationale_1": "outbox.py (worker) — durable consumer for the transactional outbox.  Run as its" | kind=entity | source=manager/backend/app/workers/outbox.py:L1 | neighbors=[outbox.py, OutboxEvent, ScanResult] | lang=en
+- "workers_outbox_rationale_110": "Atomically claim up to `batch_size` due events. FOR UPDATE SKIP LOCKED     means" | kind=entity | source=manager/backend/app/workers/outbox.py:L110 | neighbors=[OutboxEvent, ScanResult, _claim_batch()] | lang=en
+- "workers_outbox_rationale_152": "Reschedule with exponential backoff, or dead-letter once attempts are     exhaus" | kind=entity | source=manager/backend/app/workers/outbox.py:L152 | neighbors=[OutboxEvent, ScanResult, _mark_retry_or_dead()] | lang=en
+- "workers_outbox_rationale_56": "Decorator: bind an async handler to a topic." | kind=entity | source=manager/backend/app/workers/outbox.py:L56 | neighbors=[OutboxEvent, ScanResult, register()] | lang=en
+- "workers_outbox_rationale_67": "Add an outbox event to the caller's session. Does NOT commit — it commits     at" | kind=entity | source=manager/backend/app/workers/outbox.py:L67 | neighbors=[OutboxEvent, ScanResult, enqueue()] | lang=en
+- "workers_outbox_rationale_83": "Run the deterministic detection pipeline on a submitted facts payload.     Re-re" | kind=entity | source=manager/backend/app/workers/outbox.py:L83 | neighbors=[OutboxEvent, ScanResult, _handle_facts_ready()] | lang=en
+- "workers_outbox_reap_runs_stmt": "_reap_runs_stmt()" | kind=code-symbol | source=manager/backend/app/workers/outbox.py:L286 | neighbors=[outbox.py, DetectionRuns stuck RUNNING → mark FAIL…, _reap_stale_runs()] | lang=en
+- "workers_outbox_write_heartbeat": "_write_heartbeat()" | kind=code-symbol | source=manager/backend/app/workers/outbox.py:L322 | neighbors=[outbox.py, Upsert this worker's heartbeat. A stale…, run_worker()] | lang=en
+- "workers_reaper_expire_attempt": "expire_attempt()" | kind=code-symbol | source=manager/backend/app/workers/reaper.py:L33 | neighbors=[reaper.py, Expire one fenced attempt; return True …, reap_once()] | lang=en
+- "workers_reaper_rationale_1": "reaper.py — requeue jobs abandoned by a dead probe.  A job is claimed with a lea" | kind=entity | source=manager/backend/app/workers/reaper.py:L1 | neighbors=[reaper.py, ScanJobStatus, ScanJob] | lang=en
+- "workers_reaper_rationale_32": "Requeue every running job whose lease has expired. Returns the job ids." | kind=entity | source=manager/backend/app/workers/reaper.py:L32 | neighbors=[ScanJobStatus, ScanJob, reap_once()] | lang=en
+- "workers_reaper_rationale_55": "Poll loop: requeue expired jobs every reaper_interval_seconds until stopped." | kind=entity | source=manager/backend/app/workers/reaper.py:L55 | neighbors=[ScanJobStatus, ScanJob, run_reaper()] | lang=en
+- "workflow_asset_asset_merge_host_discovery": "._merge_host_discovery()" | kind=code-symbol | source=probe/workflow/asset.py:L118 | neighbors=[Asset, _parse_ts(), PortFact] | lang=en
+- "workflow_asset_asset_merge_port_scan": "._merge_port_scan()" | kind=code-symbol | source=probe/workflow/asset.py:L134 | neighbors=[Asset, _parse_ts(), PortFact] | lang=en
+- "workflow_asset_asset_merge_udp_scan": "._merge_udp_scan()" | kind=code-symbol | source=probe/workflow/asset.py:L240 | neighbors=[Asset, _parse_ts(), PortFact] | lang=en
+- "workflow_branches_branchspec": "BranchSpec" | kind=code-symbol | source=probe/workflow/branches.py:L85 | neighbors=[branches.py, .host_level(), One deep-scan branch. `branch` is the g…] | lang=en
+- "workflow_cache_classify_certainty": "classify_certainty()" | kind=code-symbol | source=probe/workflow/cache.py:L67 | neighbors=[cache.py, .get(), .put()] | lang=en
+- "workflow_cache_workflowcache_get": ".get()" | kind=code-symbol | source=probe/workflow/cache.py:L130 | neighbors=[classify_certainty(), WorkflowCache, .should_recheck()] | lang=en
+- "workflow_cache_workflowcache_load": "._load()" | kind=code-symbol | source=probe/workflow/cache.py:L110 | neighbors=[WorkflowCache, .__init__(), .from_jsonl_dict()] | lang=en
+- "workflow_cache_workflowcache_put": ".put()" | kind=code-symbol | source=probe/workflow/cache.py:L133 | neighbors=[WorkflowCache, CacheEntry, classify_certainty()] | lang=en
+- "workflow_cli_parse_duration": "_parse_duration()" | kind=code-symbol | source=probe/workflow/cli.py:L28 | neighbors=[cli.py, 7d' / '12h' / '30m' -> timedelta. Simpl…, 7d' / '12h' / '30m' -> timedelta. Simpl…] | lang=en
+- "workflow_execution_engine_manifest": "engine_manifest()" | kind=code-symbol | source=probe/workflow/execution.py:L66 | neighbors=[execution.py, Return the runtime engine inventory wit…, Return the runtime engine inventory wit…] | lang=en
+- "workflow_execution_executiontrace_has_active_coverage": "._has_active_coverage()" | kind=code-symbol | source=probe/workflow/execution.py:L390 | neighbors=[ExecutionTrace, .as_list(), .failed()] | lang=en
+- "workflow_execution_executiontrace_record": ".record()" | kind=code-symbol | source=probe/workflow/execution.py:L289 | neighbors=[ExecutionTrace, ._ensure(), .reused()] | lang=en
+- "workflow_execution_executiontrace_skip": ".skip()" | kind=code-symbol | source=probe/workflow/execution.py:L358 | neighbors=[ExecutionTrace, .finalize(), ._ensure()] | lang=en
+- "workflow_execution_executiontrace_timing": ".timing()" | kind=code-symbol | source=probe/workflow/execution.py:L273 | neighbors=[ExecutionTrace, ._ensure(), Accumulate wall time for one component.…] | lang=en
 
 ## Instructions
 

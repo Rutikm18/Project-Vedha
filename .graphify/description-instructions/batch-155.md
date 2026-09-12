@@ -1,4 +1,4 @@
-# Node Description Batch 156 of 336
+# Node Description Batch 156 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -12,51 +12,58 @@ describing what it is or does. Use only the provided context.
 For a code symbol (kind=code-symbol — a function, class, or constant),
 describe what the function/symbol does based on its name, source location
 and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
+For an entity node (any other kind — e.g. a person, place, event, object),
+describe what the entity is and its role, grounded in its type, its
+relations (neighbors) and the provided citations/evidence — e.g.
+"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
+Ground entity descriptions in the citations/evidence when present; do not
+speculate beyond the context, so a node with no supporting context may be
+left out of the reply.
 Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "tests_test_main_scripts_coverage_testdefaultsandadaptivetimeout_test_adaptive_estimator_is_shared_and_adapts_down_from_fast_rtts": ".test_adaptive_estimator_is_shared_and_adapts_down_from_fast_rtts()" | kind=code-symbol | source=probe/tests/test_main_scripts_coverage.py:L195 | neighbors=[TestDefaultsAndAdaptiveTimeout, _mk_scanner()]
-- "tests_test_main_scripts_coverage_testdefaultsandadaptivetimeout_test_default_ports_are_nmap_top100_not_the_35_port_set": ".test_default_ports_are_nmap_top100_not_the_35_port_set()" | kind=code-symbol | source=probe/tests/test_main_scripts_coverage.py:L187 | neighbors=[TestDefaultsAndAdaptiveTimeout, _scope()]
-- "tests_test_main_scripts_coverage_testdefaultsandadaptivetimeout_test_fixed_timeout_flag_disables_the_estimator": ".test_fixed_timeout_flag_disables_the_estimator()" | kind=code-symbol | source=probe/tests/test_main_scripts_coverage.py:L214 | neighbors=[TestDefaultsAndAdaptiveTimeout, _mk_scanner()]
-- "tests_test_main_scripts_coverage_testworkerpoolandmetrics_test_all_65535_ports_scheduled_exactly_once": ".test_all_65535_ports_scheduled_exactly_once()" | kind=code-symbol | source=probe/tests/test_main_scripts_coverage.py:L103 | neighbors=[TestWorkerPoolAndMetrics, _mk_scanner()]
-- "tests_test_main_scripts_coverage_testworkerpoolandmetrics_test_concurrency_is_bounded_by_the_pool": ".test_concurrency_is_bounded_by_the_pool()" | kind=code-symbol | source=probe/tests/test_main_scripts_coverage.py:L117 | neighbors=[TestWorkerPoolAndMetrics, _mk_scanner()]
-- "tests_test_main_scripts_datastore_probe_test_elasticsearch_and_couchdb_win_over_generic_http": "test_elasticsearch_and_couchdb_win_over_generic_http()" | kind=code-symbol | source=probe/tests/test_main_scripts_datastore_probe.py:L31 | neighbors=[test_main_scripts_datastore_probe.py, _svc()]
-- "tests_test_main_scripts_datastore_probe_test_memcached_version_and_stat_identify_as_memcached": "test_memcached_version_and_stat_identify_as_memcached()" | kind=code-symbol | source=probe/tests/test_main_scripts_datastore_probe.py:L26 | neighbors=[test_main_scripts_datastore_probe.py, _svc()]
-- "tests_test_main_scripts_datastore_probe_test_redis_info_and_noauth_identify_as_redis": "test_redis_info_and_noauth_identify_as_redis()" | kind=code-symbol | source=probe/tests/test_main_scripts_datastore_probe.py:L21 | neighbors=[test_main_scripts_datastore_probe.py, _svc()]
-- "tests_test_main_scripts_device_testclassifyfromresults": "TestClassifyFromResults" | kind=code-symbol | source=probe/tests/test_main_scripts_device.py:L71 | neighbors=[test_main_scripts_device.py, .test_extracts_signals_from_scan_result…]
-- "tests_test_main_scripts_errno_test_definitive_states": "test_definitive_states()" | kind=code-symbol | source=probe/tests/test_main_scripts_errno.py:L21 | neighbors=[test_main_scripts_errno.py, _oserr()]
-- "tests_test_main_scripts_errno_test_describe_os_error_is_fully_debuggable": "test_describe_os_error_is_fully_debuggable()" | kind=code-symbol | source=probe/tests/test_main_scripts_errno.py:L49 | neighbors=[test_main_scripts_errno.py, _oserr()]
-- "tests_test_main_scripts_errno_test_scanner_side_errors_are_error_not_filtered": "test_scanner_side_errors_are_error_not_filtered()" | kind=code-symbol | source=probe/tests/test_main_scripts_errno.py:L28 | neighbors=[test_main_scripts_errno.py, _oserr()]
-- "tests_test_main_scripts_errno_test_unknown_errno_is_self_identifying_and_never_filtered": "test_unknown_errno_is_self_identifying_and_never_filtered()" | kind=code-symbol | source=probe/tests/test_main_scripts_errno.py:L36 | neighbors=[test_main_scripts_errno.py, _oserr()]
-- "tests_test_main_scripts_findings_test_accepts_scanresult_objects_not_just_dicts": "test_accepts_scanresult_objects_not_just_dicts()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L322 | neighbors=[test_main_scripts_findings.py, _ids()]
-- "tests_test_main_scripts_findings_test_confirmed_and_port_hint_do_not_double_report": "test_confirmed_and_port_hint_do_not_double_report()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L239 | neighbors=[test_main_scripts_findings.py, _run()]
-- "tests_test_main_scripts_findings_test_confirmed_ftp_cleartext_is_high_confidence": "test_confirmed_ftp_cleartext_is_high_confidence()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L230 | neighbors=[test_main_scripts_findings.py, _run()]
-- "tests_test_main_scripts_findings_test_confirmed_redis_is_high_confidence_even_on_nonstandard_port": "test_confirmed_redis_is_high_confidence_even_on_nonstandard_port()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L212 | neighbors=[test_main_scripts_findings.py, _run()]
-- "tests_test_main_scripts_findings_test_dangerous_http_methods_medium": "test_dangerous_http_methods_medium()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L250 | neighbors=[test_main_scripts_findings.py, _run()]
-- "tests_test_main_scripts_findings_test_every_finding_is_evidence_backed": "test_every_finding_is_evidence_backed()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L305 | neighbors=[test_main_scripts_findings.py, _run()]
-- "tests_test_main_scripts_findings_test_exposed_redis_is_high_exposure_medium_confidence": "test_exposed_redis_is_high_exposure_medium_confidence()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L173 | neighbors=[test_main_scripts_findings.py, _run()]
-- "tests_test_main_scripts_findings_test_findings_are_deduped_by_rule_target_port": "test_findings_are_deduped_by_rule_target_port()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L285 | neighbors=[test_main_scripts_findings.py, _run()]
-- "tests_test_main_scripts_findings_test_findings_sorted_most_severe_first": "test_findings_sorted_most_severe_first()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L291 | neighbors=[test_main_scripts_findings.py, _run()]
-- "tests_test_main_scripts_findings_test_missing_security_headers_is_low": "test_missing_security_headers_is_low()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L262 | neighbors=[test_main_scripts_findings.py, _run()]
-- "tests_test_main_scripts_findings_test_no_finding_carries_a_cve_id": "test_no_finding_carries_a_cve_id()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L299 | neighbors=[test_main_scripts_findings.py, _run()]
-- "tests_test_main_scripts_findings_test_port_only_datastore_is_medium_confidence_and_labeled_unconfirmed": "test_port_only_datastore_is_medium_confidence_and_labeled_unconfirmed()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L223 | neighbors=[test_main_scripts_findings.py, _run()]
-- "tests_test_main_scripts_findings_test_rdp_exposed_medium": "test_rdp_exposed_medium()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L180 | neighbors=[test_main_scripts_findings.py, _run()]
-- "tests_test_main_scripts_findings_test_server_version_disclosure_is_info": "test_server_version_disclosure_is_info()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L256 | neighbors=[test_main_scripts_findings.py, _run()]
-- "tests_test_main_scripts_findings_test_smbv1_enabled_is_high": "test_smbv1_enabled_is_high()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L103 | neighbors=[test_main_scripts_findings.py, _run()]
-- "tests_test_main_scripts_findings_test_snmp_default_community_is_high": "test_snmp_default_community_is_high()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L124 | neighbors=[test_main_scripts_findings.py, _run()]
-- "tests_test_main_scripts_findings_test_snmp_nondefault_community_is_medium": "test_snmp_nondefault_community_is_medium()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L131 | neighbors=[test_main_scripts_findings.py, _run()]
-- "tests_test_main_scripts_findings_test_summarize_counts_by_severity_and_actionable": "test_summarize_counts_by_severity_and_actionable()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L313 | neighbors=[test_main_scripts_findings.py, _run()]
-- "tests_test_main_scripts_findings_test_telnet_is_high_cleartext": "test_telnet_is_high_cleartext()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L167 | neighbors=[test_main_scripts_findings.py, _run()]
-- "tests_test_main_scripts_findings_test_tls_obsolete_protocol_is_high": "test_tls_obsolete_protocol_is_high()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L24 | neighbors=[test_main_scripts_findings.py, _run()]
-- "tests_test_main_scripts_findings_test_tls_under_strength_rsa_key_is_flagged": "test_tls_under_strength_rsa_key_is_flagged()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L78 | neighbors=[test_main_scripts_findings.py, _run()]
-- "tests_test_main_scripts_findings_test_tls_weak_cipher_is_high_with_reasons": "test_tls_weak_cipher_is_high_with_reasons()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L47 | neighbors=[test_main_scripts_findings.py, _run()]
-- "tests_test_main_scripts_findings_test_tls_weak_signature_hash_is_flagged": "test_tls_weak_signature_hash_is_flagged()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L62 | neighbors=[test_main_scripts_findings.py, _run()]
-- "tests_test_main_scripts_findings_test_x_powered_by_disclosure_is_info": "test_x_powered_by_disclosure_is_info()" | kind=code-symbol | source=probe/tests/test_main_scripts_findings.py:L278 | neighbors=[test_main_scripts_findings.py, _run()]
-- "tests_test_main_scripts_hardening_scope": "_scope()" | kind=code-symbol | source=probe/tests/test_main_scripts_hardening.py:L32 | neighbors=[test_main_scripts_hardening.py, ._scanner()]
-- "tests_test_main_scripts_hardening_testsmbparsing_test_error_response_not_trusted": ".test_error_response_not_trusted()" | kind=code-symbol | source=probe/tests/test_main_scripts_hardening.py:L132 | neighbors=[TestSmbParsing, make_smb2_error()]
-- "tests_test_main_scripts_hardening_testsmbparsing_test_success_response_signing_and_dialect": ".test_success_response_signing_and_dialect()" | kind=code-symbol | source=probe/tests/test_main_scripts_hardening.py:L139 | neighbors=[TestSmbParsing, make_smb2_success()]
+- "report_finding_model_rawasset": "RawAsset" | kind=code-symbol | source=manager/frontend/lib/report/finding-model.ts:L47 | neighbors=[adapt.ts, finding-model.ts]
+- "report_findingreport_findingssection": "FindingsSection()" | kind=code-symbol | source=manager/frontend/components/report/FindingReport.tsx:L572 | neighbors=[FindingReport.tsx, page.tsx]
+- "report_findingreport_fmtdate": "fmtDate()" | kind=code-symbol | source=manager/frontend/components/report/FindingReport.tsx:L45 | neighbors=[FindingReport.tsx, FindingReport()]
+- "report_findingreport_fmtdatetime": "fmtDateTime()" | kind=code-symbol | source=manager/frontend/components/report/FindingReport.tsx:L51 | neighbors=[FindingReport.tsx, FindingReport()]
+- "reports_page_cvsscolor": "cvssColor()" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L63 | neighbors=[page.tsx, FindingCard()]
+- "reports_page_cvssvector": "CvssVector()" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L180 | neighbors=[page.tsx, parseCvssVector()]
+- "reports_page_exploitcol": "exploitCol()" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L329 | neighbors=[page.tsx, ExposureMatrix()]
+- "reports_page_exposurematrix": "ExposureMatrix()" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L335 | neighbors=[page.tsx, exploitCol()]
+- "reports_page_formatdate": "formatDate()" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L84 | neighbors=[page.tsx, ReportsPage()]
+- "reports_page_parsecvss": "parseCvss()" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L60 | neighbors=[page.tsx, FindingCard()]
+- "reports_page_parsecvssvector": "parseCvssVector()" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L86 | neighbors=[page.tsx, CvssVector()]
+- "reports_page_portalreports": "PortalReports()" | kind=code-symbol | source=manager/frontend/app/portal/reports/page.tsx:L705 | neighbors=[page.tsx, fmtDate()]
+- "reports_page_reportcontent": "ReportContent" | kind=code-symbol | source=manager/frontend/app/portal/reports/page.tsx:L17 | neighbors=[page.tsx, PortalReport]
+- "reports_page_reportsworkspace": "ReportsWorkspace()" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L802 | neighbors=[page.tsx, fmtDate()]
+- "reports_page_scorecardcard": "ScorecardCard()" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L170 | neighbors=[page.tsx, scoreColor()]
+- "reports_page_scorecolor": "scoreColor()" | kind=code-symbol | source=manager/frontend/app/reports/page.tsx:L142 | neighbors=[page.tsx, ScorecardCard()]
+- "reportsection_finding_model_confidenceof": "confidenceOf()" | kind=code-symbol | source=reportsection/finding-model.ts:L198 | neighbors=[finding-model.ts, assess()]
+- "reportsection_finding_model_joinlist": "joinList()" | kind=code-symbol | source=reportsection/finding-model.ts:L360 | neighbors=[finding-model.ts, attackerStatement()]
+- "reportsection_finding_model_parsecvss": "parseCvss()" | kind=code-symbol | source=reportsection/finding-model.ts:L685 | neighbors=[finding-model.ts, assess()]
+- "reportsection_finding_model_slaof": "slaOf()" | kind=code-symbol | source=reportsection/finding-model.ts:L450 | neighbors=[finding-model.ts, assess()]
+- "reportsection_findingreport_fmtdate": "fmtDate()" | kind=code-symbol | source=reportsection/FindingReport.tsx:L36 | neighbors=[FindingReport.tsx, FindingReport()]
+- "reportsection_findingreport_fmtdatetime": "fmtDateTime()" | kind=code-symbol | source=reportsection/FindingReport.tsx:L42 | neighbors=[FindingReport.tsx, FindingReport()]
+- "routers_activity_recent_activity": "recent_activity()" | kind=code-symbol | source=manager/backend/app/routers/activity.py:L41 | neighbors=[activity.py, ActivityItem]
+- "routers_ad_set_job_status": "_set_job_status()" | kind=code-symbol | source=manager/backend/app/routers/ad.py:L201 | neighbors=[ad.py, _run_ad_assessment_and_save()]
+- "routers_agent_advisor_list_recommendations": "list_recommendations()" | kind=code-symbol | source=manager/backend/app/routers/agent_advisor.py:L72 | neighbors=[agent_advisor.py, _rec_dict()]
+- "routers_agent_advisor_rec_dict": "_rec_dict()" | kind=code-symbol | source=manager/backend/app/routers/agent_advisor.py:L31 | neighbors=[agent_advisor.py, list_recommendations()]
+- "routers_agent_ws_rationale_44": "Persistent WebSocket for probe → manager push communication.      Query params:" | kind=entity | source=manager/backend/app/routers/agent_ws.py:L44 | neighbors=[ScanJob, agent_websocket_endpoint()]
+- "routers_agents_enqueuejobrequest_validate_intensity": "._validate_intensity()" | kind=code-symbol | source=manager/backend/app/routers/agents.py:L369 | neighbors=[EnqueueJobRequest, _normalize_intensity_name()]
+- "routers_agents_heartbeat": "heartbeat()" | kind=code-symbol | source=manager/backend/app/routers/agents.py:L868 | neighbors=[agents.py, _agent_ownership_check()]
+- "routers_agents_job_params_contain_secret": "_job_params_contain_secret()" | kind=code-symbol | source=manager/backend/app/routers/agents.py:L75 | neighbors=[agents.py, enqueue_agent_job()]
+- "routers_agents_rationale_275": "ONE host's facts, committed while the job is still running.      Same fencing fi" | kind=entity | source=manager/backend/app/routers/agents.py:L275 | neighbors=[JobResultChunkRequest, _normalize_intensity_name()]
+- "routers_agents_rationale_548": "Returns the finite library of scan use-cases operators can dispatch to probes." | kind=entity | source=manager/backend/app/routers/agents.py:L548 | neighbors=[list_use_cases(), bootstrap_agent()]
+- "routers_agents_rationale_571": "Encrypt the engagement scope for a specific agent's public key.      Reads agent" | kind=entity | source=manager/backend/app/routers/agents.py:L571 | neighbors=[_encrypt_scope_for_agent(), bootstrap_agent()]
+- "routers_agents_rationale_609": "Verify that the JWT token bearer IS the agent they claim to be.      Every heart" | kind=entity | source=manager/backend/app/routers/agents.py:L609 | neighbors=[_agent_ownership_check(), list_intensities()]
+- "routers_agents_rationale_620": "The numeric scan-hardness scale: 1 light, 2 standard, 3 deep." | kind=entity | source=manager/backend/app/routers/agents.py:L620 | neighbors=[list_intensities(), bootstrap_agent()]
+- "routers_agents_register_agent": "register_agent()" | kind=code-symbol | source=manager/backend/app/routers/agents.py:L772 | neighbors=[agents.py, AgentRegisterResponse]
+- "routers_agents_submit_job_result": "submit_job_result()" | kind=code-symbol | source=manager/backend/app/routers/agents.py:L1645 | neighbors=[agents.py, _agent_ownership_check()]
+- "routers_ai_report_approve_report": "approve_report()" | kind=code-symbol | source=manager/backend/app/routers/ai_report.py:L136 | neighbors=[ai_report.py, _pending_outputs()]
+- "routers_ai_report_get_draft": "get_draft()" | kind=code-symbol | source=manager/backend/app/routers/ai_report.py:L119 | neighbors=[ai_report.py, _output_out()]
+- "routers_ai_report_output_out": "_output_out()" | kind=code-symbol | source=manager/backend/app/routers/ai_report.py:L228 | neighbors=[ai_report.py, get_draft()]
 
 ## Instructions
 

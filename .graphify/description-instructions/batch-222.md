@@ -1,4 +1,4 @@
-# Node Description Batch 223 of 336
+# Node Description Batch 223 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -26,46 +26,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "main_scripts_port_scanner_rationale_287": "Requested ports that were never recorded — the silent-skip proof." | kind=entity | source=probe/main_scripts/port_scanner.py:L287 | neighbors=[.missing_ports()] | lang=en
-- "main_scripts_port_scanner_rationale_294": "Ports recorded more than once (a port must get exactly one verdict)." | kind=entity | source=probe/main_scripts/port_scanner.py:L294 | neighbors=[.duplicate_ports()] | lang=pt
-- "main_scripts_port_scanner_rationale_301": "One connect() and its classification. Always returns a ScanResult         (open" | kind=entity | source=probe/main_scripts/port_scanner.py:L301 | neighbors=[._attempt()] | lang=en
-- "main_scripts_port_scanner_rationale_313": "One connect() and its classification. Always returns a ScanResult         (open" | kind=entity | source=probe/main_scripts/port_scanner.py:L313 | neighbors=[._attempt()] | lang=en
-- "main_scripts_port_scanner_rationale_326": "One connect() and its classification. Always returns a ScanResult         (open" | kind=entity | source=probe/main_scripts/port_scanner.py:L326 | neighbors=[._attempt()] | lang=en
-- "main_scripts_port_scanner_rationale_367": "Bounded worker-pool scan of every requested port.          A fixed pool of `conc" | kind=entity | source=probe/main_scripts/port_scanner.py:L367 | neighbors=[.scan_target()] | lang=en
-- "main_scripts_port_scanner_rationale_391": "Bounded worker-pool scan of every requested port.          A fixed pool of `conc" | kind=entity | source=probe/main_scripts/port_scanner.py:L391 | neighbors=[.scan_target()] | lang=en
-- "main_scripts_port_scanner_rationale_405": "Bounded worker-pool scan of every requested port.          A fixed pool of `conc" | kind=entity | source=probe/main_scripts/port_scanner.py:L405 | neighbors=[.scan_target()] | lang=en
-- "main_scripts_port_scanner_rationale_451": "One connect() and its classification. Always returns a ScanResult         (open" | kind=entity | source=probe/main_scripts/port_scanner.py:L451 | neighbors=[._attempt()] | lang=en
-- "main_scripts_port_scanner_rationale_462": "One connect() and its classification. Always returns a ScanResult         (open" | kind=entity | source=probe/main_scripts/port_scanner.py:L462 | neighbors=[._attempt()] | lang=en
-- "main_scripts_port_scanner_rationale_522": "One port's terminal result, gated by the rate limiter and (when         enabled)" | kind=entity | source=probe/main_scripts/port_scanner.py:L522 | neighbors=[._scan_port()] | lang=en
-- "main_scripts_port_scanner_rationale_533": "One port's terminal result, gated by the rate limiter and (when         enabled)" | kind=entity | source=probe/main_scripts/port_scanner.py:L533 | neighbors=[._scan_port()] | lang=en
-- "main_scripts_port_scanner_rationale_570": "True for the one state a retry can legitimately change: silence." | kind=entity | source=probe/main_scripts/port_scanner.py:L570 | neighbors=[._is_ambiguous()] | lang=en
-- "main_scripts_port_scanner_rationale_576": "Gentle second look at ports that stayed silent through the main sweep." | kind=entity | source=probe/main_scripts/port_scanner.py:L576 | neighbors=[._reprobe_ambiguous()] | lang=en
-- "main_scripts_port_scanner_rationale_584": "Record one probe and answer: is the PATH still delivering?          WHY THIS EXI" | kind=entity | source=probe/main_scripts/port_scanner.py:L584 | neighbors=[._note_probe_outcome()] | lang=en
-- "main_scripts_port_scanner_rationale_603": "Bounded worker-pool scan of every requested port.          A fixed pool of `conc" | kind=entity | source=probe/main_scripts/port_scanner.py:L603 | neighbors=[.scan_target()] | lang=en
-- "main_scripts_port_scanner_rationale_615": "True for the one state a retry can legitimately change: silence." | kind=entity | source=probe/main_scripts/port_scanner.py:L615 | neighbors=[._is_ambiguous()] | lang=en
-- "main_scripts_port_scanner_rationale_621": "Gentle second look at ports that stayed silent through the main sweep." | kind=entity | source=probe/main_scripts/port_scanner.py:L621 | neighbors=[._reprobe_ambiguous()] | lang=en
-- "main_scripts_port_scanner_rationale_648": "Bounded worker-pool scan of every requested port.          A fixed pool of `conc" | kind=entity | source=probe/main_scripts/port_scanner.py:L648 | neighbors=[.scan_target()] | lang=en
-- "main_scripts_port_scanner_rationale_90": "Return 'ipv4'/'ipv6' for an IP literal, else None (unresolved hostname)." | kind=entity | source=probe/main_scripts/port_scanner.py:L90 | neighbors=[_family_of()] | lang=en
-- "main_scripts_port_scanner_rationale_91": "Return 'ipv4'/'ipv6' for an IP literal, else None (unresolved hostname)." | kind=entity | source=probe/main_scripts/port_scanner.py:L91 | neighbors=[_family_of()] | lang=en
-- "main_scripts_port_scanner_rationale_93": "Return 'ipv4'/'ipv6' for an IP literal, else None (unresolved hostname)." | kind=entity | source=probe/main_scripts/port_scanner.py:L93 | neighbors=[_family_of()] | lang=en
-- "main_scripts_port_scanner_rationale_95": "Peer TCP-stack signals readable from a COMPLETED connect(), for OS/link     fing" | kind=entity | source=probe/main_scripts/port_scanner.py:L95 | neighbors=[_harvest_tcp_stack()] | lang=en
-- "main_scripts_port_scanner_scanmetrics_classified": ".classified()" | kind=code-symbol | source=probe/main_scripts/port_scanner.py:L282 | neighbors=[ScanMetrics] | lang=en
-- "main_scripts_port_scanner_scanmetrics_complete": ".complete()" | kind=code-symbol | source=probe/main_scripts/port_scanner.py:L298 | neighbors=[ScanMetrics] | lang=en
-- "main_scripts_port_scanner_scanmetrics_degraded": ".degraded()" | kind=code-symbol | source=probe/main_scripts/port_scanner.py:L310 | neighbors=[ScanMetrics] | lang=en
-- "main_scripts_printer_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/printer_scanner.py:L160 | neighbors=[printer_scanner.py] | lang=en
-- "main_scripts_printer_scanner_printerscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/printer_scanner.py:L99 | neighbors=[PrinterScanner] | lang=en
-- "main_scripts_printer_scanner_rationale_1": "printer_scanner.py — network printer exposure (VA checklist: exposed print servi" | kind=entity | source=probe/main_scripts/printer_scanner.py:L1 | neighbors=[printer_scanner.py] | lang=en
-- "main_scripts_printer_scanner_rationale_39": "Extract the model string from a PJL INFO ID response." | kind=entity | source=probe/main_scripts/printer_scanner.py:L39 | neighbors=[parse_pjl_id()] | lang=en
-- "main_scripts_printer_scanner_rationale_55": "A minimal IPP/1.1 Get-Printer-Attributes request body (RFC 8010)." | kind=entity | source=probe/main_scripts/printer_scanner.py:L55 | neighbors=[build_ipp_get_printer_attributes()] | lang=pt
-- "main_scripts_printer_scanner_rationale_66": "Best-effort extraction of printer-make-and-model / printer-name from an IPP" | kind=entity | source=probe/main_scripts/printer_scanner.py:L66 | neighbors=[parse_ipp_make_model()] | lang=en
-- "main_scripts_rdp_scanner_rationale_111": "Two-probe RDP posture (MS-RDPBCGR 2.2.1.1.1 / 2.2.1.2.1).      Probe A offers SS" | kind=entity | source=probe/main_scripts/rdp_scanner.py:L111 | neighbors=[probe_rdp_posture()] | lang=pt
-- "main_scripts_rdp_scanner_rationale_44": "TPKT + X.224 Connection Request carrying an RDP Negotiation Request." | kind=entity | source=probe/main_scripts/rdp_scanner.py:L44 | neighbors=[build_connection_request()] | lang=en
-- "main_scripts_rdp_scanner_rationale_45": "TPKT + X.224 Connection Request carrying an RDP Negotiation Request." | kind=entity | source=probe/main_scripts/rdp_scanner.py:L45 | neighbors=[build_connection_request()] | lang=en
-- "main_scripts_rdp_scanner_rationale_56": "Parse a Connection Confirm. Returns None if this isn't an X.224 CC (i.e.     the" | kind=entity | source=probe/main_scripts/rdp_scanner.py:L56 | neighbors=[parse_connection_confirm()] | lang=en
-- "main_scripts_rdp_scanner_rationale_57": "Parse a Connection Confirm. Returns None if this isn't an X.224 CC (i.e.     the" | kind=entity | source=probe/main_scripts/rdp_scanner.py:L57 | neighbors=[parse_connection_confirm()] | lang=en
-- "main_scripts_rdp_scanner_rationale_77": "Map an RDP selectedProtocol bitmask to (nla, tls) posture.      MS-RDPBCGR 5.4.5" | kind=entity | source=probe/main_scripts/rdp_scanner.py:L77 | neighbors=[_posture_from_selected()] | lang=en
-- "main_scripts_rdp_scanner_rationale_84": "One synchronous RDP handshake. Best-effort; None on any failure." | kind=entity | source=probe/main_scripts/rdp_scanner.py:L84 | neighbors=[probe_rdp()] | lang=en
-- "main_scripts_rdp_scanner_rationale_98": "One synchronous RDP handshake offering `requested_protocols`. Best-effort;     N" | kind=entity | source=probe/main_scripts/rdp_scanner.py:L98 | neighbors=[probe_rdp()] | lang=en
+- "detection_engine_ingest_rationale_126": "Stream-read one JSONL file, validating and assembling Assets as it goes.      Pa" | kind=entity | source=manager/detection_engine/ingest.py:L126 | neighbors=[ingest_file()] | lang=en
+- "detection_engine_ingest_rationale_71": "Returns an error reason string if invalid, else None." | kind=entity | source=manager/detection_engine/ingest.py:L71 | neighbors=[_validate()] | lang=en
+- "detection_engine_models_asset_add_alias": ".add_alias()" | kind=code-symbol | source=manager/detection_engine/models.py:L97 | neighbors=[Asset] | lang=en
+- "detection_engine_models_asset_facts_by_scanner": ".facts_by_scanner()" | kind=code-symbol | source=manager/detection_engine/models.py:L101 | neighbors=[Asset] | lang=en
+- "detection_engine_models_asset_open_ports": ".open_ports()" | kind=code-symbol | source=manager/detection_engine/models.py:L104 | neighbors=[Asset] | lang=en
+- "detection_engine_models_finding_post_init": ".__post_init__()" | kind=code-symbol | source=manager/detection_engine/models.py:L179 | neighbors=[Finding] | lang=en
+- "detection_engine_models_finding_to_dict": ".to_dict()" | kind=code-symbol | source=manager/detection_engine/models.py:L187 | neighbors=[Finding] | lang=en
+- "detection_engine_models_rationale_1": "models.py — shared schema for the detection/correlation layer.  Two core objects" | kind=entity | source=manager/detection_engine/models.py:L1 | neighbors=[models.py] | lang=en
+- "detection_engine_models_rationale_108": "Reconstruct this asset using only facts observed at or before         cutoff_ts" | kind=entity | source=manager/detection_engine/models.py:L108 | neighbors=[.as_of()] | lang=en
+- "detection_engine_models_rationale_126": "Deterministic finding ID: the SAME (asset, CVE, CPE) triple always     hashes to" | kind=entity | source=manager/detection_engine/models.py:L126 | neighbors=[make_finding_id()] | lang=en
+- "detection_engine_models_rationale_25": "How was this fact obtained? Drives every downstream confidence decision     (CPE" | kind=entity | source=manager/detection_engine/models.py:L25 | neighbors=[SourceConfidence] | lang=en
+- "detection_engine_models_rationale_45": "One ScanResult line, carried forward with its ingestion-time     confidence tag" | kind=entity | source=manager/detection_engine/models.py:L45 | neighbors=[Fact] | lang=en
+- "detection_engine_models_rationale_61": "A stable, human-readable pointer back to this exact observation —         what a" | kind=entity | source=manager/detection_engine/models.py:L61 | neighbors=[.ref()] | lang=en
+- "detection_engine_models_rationale_71": "Every fact known about one host, merged across all scanners/runs.      IP is the" | kind=entity | source=manager/detection_engine/models.py:L71 | neighbors=[Asset] | lang=en
+- "detection_engine_pipeline_rationale_127": "Unified detection over one set of ingested facts: the CVE track     (version→CVE" | kind=entity | source=manager/detection_engine/pipeline.py:L127 | neighbors=[run_full_detection()] | lang=en
+- "detection_engine_pipeline_rationale_180": "Phase 2 exit criteria: recall gain from AI assist, with zero precision     regre" | kind=entity | source=manager/detection_engine/pipeline.py:L180 | neighbors=[ab_evaluate()] | lang=en
+- "detection_engine_pipeline_rationale_52": "exposure: optional {asset_ip: {\"internet_facing\": bool, \"auth_enforced\":     boo" | kind=entity | source=manager/detection_engine/pipeline.py:L52 | neighbors=[run_pipeline()] | lang=en
+- "detection_engine_port_intel_escalate": "escalate()" | kind=code-symbol | source=manager/detection_engine/port_intel.py:L25 | neighbors=[port_intel.py] | lang=en
+- "detection_engine_port_intel_rationale_1": "port_intel.py — port-intelligence catalog for the exposed-service detector.  The" | kind=entity | source=manager/detection_engine/port_intel.py:L1 | neighbors=[port_intel.py] | lang=en
+- "detection_engine_port_intel_rationale_203": "True when an identified product proves the catalog's port guess wrong." | kind=entity | source=manager/detection_engine/port_intel.py:L203 | neighbors=[contradicts_port_hypothesis()] | lang=en
+- "detection_engine_port_intel_rationale_215": "Map an open TCP port (+ optional banner, the probe's soft-matched service     la" | kind=entity | source=manager/detection_engine/port_intel.py:L215 | neighbors=[classify_port()] | lang=en
+- "detection_engine_posture_confidence_rationale_1": "posture_confidence.py — calibrated, auditable confidence for posture findings." | kind=entity | source=manager/detection_engine/posture_confidence.py:L1 | neighbors=[posture_confidence.py] | lang=en
+- "detection_engine_posture_confidence_rationale_121": "Second pass over ONE host's posture findings: now that every rule that fired on" | kind=entity | source=manager/detection_engine/posture_confidence.py:L121 | neighbors=[calibrate_host_findings()] | lang=en
+- "detection_engine_posture_confidence_rationale_69": "Chains this rule belongs to where ≥1 OTHER member also fired on the host.     A" | kind=entity | source=manager/detection_engine/posture_confidence.py:L69 | neighbors=[corroborating_chains()] | lang=en
+- "detection_engine_posture_confidence_rationale_81": "Return (confidence 0-100, precision_factors). Pure and deterministic:     same i" | kind=entity | source=manager/detection_engine/posture_confidence.py:L81 | neighbors=[assess_confidence()] | lang=en
+- "detection_engine_posture_rules_posturefinding_post_init": ".__post_init__()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L206 | neighbors=[PostureFinding] | lang=en
+- "detection_engine_posture_rules_posturefinding_to_dict": ".to_dict()" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L211 | neighbors=[PostureFinding] | lang=en
+- "detection_engine_posture_rules_posturerule": "PostureRule" | kind=code-symbol | source=manager/detection_engine/posture_rules.py:L216 | neighbors=[posture_rules.py] | lang=en
+- "detection_engine_posture_rules_rationale_1": "posture_rules.py — the manager's POSTURE/CONFIG detection engine (detection-as-c" | kind=entity | source=manager/detection_engine/posture_rules.py:L1 | neighbors=[posture_rules.py] | lang=en
+- "detection_engine_posture_rules_rationale_1021": "Best-effort confidence calibration (lazy import breaks the module cycle;     cal" | kind=entity | source=manager/detection_engine/posture_rules.py:L1021 | neighbors=[_calibrate_host_findings()] | lang=en
+- "detection_engine_posture_rules_rationale_1029": "Collapse every trace for one rule into a single verdict + reason strings.     Pr" | kind=entity | source=manager/detection_engine/posture_rules.py:L1029 | neighbors=[verdict_for_rule()] | lang=en
+- "detection_engine_posture_rules_rationale_1035": "Like `detect_posture`, but ALSO returns a per-evaluation trace. The findings" | kind=entity | source=manager/detection_engine/posture_rules.py:L1035 | neighbors=[detect_posture_traced()] | lang=en
+- "detection_engine_posture_rules_rationale_1047": "Engagement-level coverage roll-up over a set of traces. `rules_blind > 0`     is" | kind=entity | source=manager/detection_engine/posture_rules.py:L1047 | neighbors=[summarize_traces()] | lang=en
+- "detection_engine_posture_rules_rationale_1079": "Traced counterpart of `detect_all` — findings identical, plus the full trace." | kind=entity | source=manager/detection_engine/posture_rules.py:L1079 | neighbors=[detect_all_traced()] | lang=en
+- "detection_engine_posture_rules_rationale_1093": "Run posture detection across every asset. Accepts an IngestResult (uses its" | kind=entity | source=manager/detection_engine/posture_rules.py:L1093 | neighbors=[detect_all()] | lang=en
+- "detection_engine_posture_rules_rationale_1115": "Apply every posture rule to one asset's facts. Deduplicates by     (rule_id, por" | kind=entity | source=manager/detection_engine/posture_rules.py:L1115 | neighbors=[detect_posture()] | lang=en
+- "detection_engine_posture_rules_rationale_112": "One rule evaluation's outcome. Purely diagnostic — never gates a finding." | kind=entity | source=manager/detection_engine/posture_rules.py:L112 | neighbors=[TraceRow] | lang=pt
+- "detection_engine_posture_rules_rationale_114": "One rule evaluation's outcome. Purely diagnostic — never gates a finding." | kind=entity | source=manager/detection_engine/posture_rules.py:L114 | neighbors=[TraceRow] | lang=pt
+- "detection_engine_posture_rules_rationale_1147": "Findings for risky OPEN ports that have no dedicated scanner: backdoor/C2     li" | kind=entity | source=manager/detection_engine/posture_rules.py:L1147 | neighbors=[detect_exposed_services()] | lang=en
+- "detection_engine_posture_rules_rationale_1234": "Collapse every trace for one rule into a single verdict + reason strings.     Pr" | kind=entity | source=manager/detection_engine/posture_rules.py:L1234 | neighbors=[verdict_for_rule()] | lang=en
 
 ## Instructions
 

@@ -1,4 +1,4 @@
-# Node Description Batch 138 of 336
+# Node Description Batch 138 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -19,51 +19,53 @@ relations (neighbors) and the provided citations/evidence — e.g.
 Ground entity descriptions in the citations/evidence when present; do not
 speculate beyond the context, so a node with no supporting context may be
 left out of the reply.
-Write every description in English (en). Do not switch languages.
+LANGUAGE: each entry has a `lang=` marker giving the language of its source.
+Write that entry's description in EXACTLY that language. Do not translate to
+a single common language — match each node's source language individually.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "main_scripts_windows_collector_windowscollector_transport_order": "._transport_order()" | kind=code-symbol | source=probe/main_scripts/windows_collector.py:L299 | neighbors=[WindowsCollector, ._collect_host()]
-- "main_scripts_windows_collector_windowscollector_winrm_result": "._winrm_result()" | kind=code-symbol | source=probe/main_scripts/windows_collector.py:L306 | neighbors=[WindowsCollector, ._collect_host()]
-- "models_audit_log_rationale_12": "Immutable, append-only audit trail for all exploit actions.     No TimestampMixi" | kind=entity | source=manager/backend/app/models/audit_log.py:L12 | neighbors=[AuditLog, Base]
-- "models_finding_event": "finding_event.py" | kind=code-symbol | source=manager/backend/app/models/finding_event.py:L1 | neighbors=[d98f654 feat(manager): network-VA campa…, FindingEvent]
-- "models_probe_site": "probe_site.py" | kind=code-symbol | source=manager/backend/app/models/probe_site.py:L1 | neighbors=[b5ffcb0 Refactor Vedha probe installer …, ProbeSite]
-- "models_scan_job_attempt": "scan_job_attempt.py" | kind=code-symbol | source=manager/backend/app/models/scan_job_attempt.py:L1 | neighbors=[b5ffcb0 Refactor Vedha probe installer …, ScanJobAttempt]
-- "native_dir_bust_loadwordlist": "loadWordlist()" | kind=code-symbol | source=manager/frontend/lib/engine/native/dir-bust.ts:L97 | neighbors=[dir-bust.ts, nativeDirBust()]
-- "native_dir_bust_probe": "probe()" | kind=code-symbol | source=manager/frontend/lib/engine/native/dir-bust.ts:L71 | neighbors=[dir-bust.ts, nativeDirBust()]
-- "native_dns_recon_attemptzonetransfer": "attemptZoneTransfer()" | kind=code-symbol | source=manager/frontend/lib/engine/native/dns-recon.ts:L96 | neighbors=[dns-recon.ts, nativeDnsRecon()]
-- "native_dns_recon_nativeptrsweep": "nativePtrSweep()" | kind=code-symbol | source=manager/frontend/lib/engine/native/dns-recon.ts:L147 | neighbors=[dns-recon.ts, tool-runners.ts]
-- "native_dns_recon_safe": "safe()" | kind=code-symbol | source=manager/frontend/lib/engine/native/dns-recon.ts:L49 | neighbors=[dns-recon.ts, nativeDnsRecon()]
-- "native_http_probe_nativehttpprobe": "nativeHttpProbe()" | kind=code-symbol | source=manager/frontend/lib/engine/native/http-probe.ts:L248 | neighbors=[tool-runners.ts, http-probe.ts]
-- "native_port_scan_groupresults": "groupResults()" | kind=code-symbol | source=manager/frontend/lib/engine/native/port-scan.ts:L261 | neighbors=[tool-runners.ts, port-scan.ts]
-- "native_port_scan_resolveports": "resolvePorts()" | kind=code-symbol | source=manager/frontend/lib/engine/native/port-scan.ts:L131 | neighbors=[port-scan.ts, nativePortScan()]
-- "native_tls_info_nativetlsinfo": "nativeTlsInfo()" | kind=code-symbol | source=manager/frontend/lib/engine/native/tls-info.ts:L38 | neighbors=[tls-info.ts, tool-runners.ts]
-- "oserror": "OSError" | kind=code-symbol | neighbors=[NmapExecutionError, NmapExecutionError]
-- "path_route_get": "GET()" | kind=code-symbol | source=manager/frontend/app/api/portal/[...path]/route.ts:L45 | neighbors=[route.ts, proxy()]
-- "path_route_patch": "PATCH()" | kind=code-symbol | source=manager/frontend/app/api/engagements/[id]/customer-access/[...path]/route.ts:L40 | neighbors=[route.ts, proxy()]
-- "path_route_portaltoken": "portalToken()" | kind=code-symbol | source=manager/frontend/app/api/portal/[...path]/route.ts:L11 | neighbors=[route.ts, proxy()]
-- "path_route_post": "POST()" | kind=code-symbol | source=manager/frontend/app/api/portal/[...path]/route.ts:L50 | neighbors=[route.ts, proxy()]
-- "portal_timestamp_formatcompact": "formatCompact()" | kind=code-symbol | source=manager/frontend/components/portal/Timestamp.tsx:L35 | neighbors=[Timestamp.tsx, Timestamp()]
-- "portal_timestamp_formatexact": "formatExact()" | kind=code-symbol | source=manager/frontend/components/portal/Timestamp.tsx:L23 | neighbors=[Timestamp.tsx, Timestamp()]
-- "portal_timestamp_formatrelative": "formatRelative()" | kind=code-symbol | source=manager/frontend/components/portal/Timestamp.tsx:L47 | neighbors=[Timestamp.tsx, Timestamp()]
-- "portal_timestamp_isoutc": "isoUtc()" | kind=code-symbol | source=manager/frontend/components/portal/Timestamp.tsx:L62 | neighbors=[Timestamp.tsx, Timestamp()]
-- "portscan_family_of": "family_of()" | kind=code-symbol | source=portscan.py:L83 | neighbors=[portscan.py, ._attempt()]
-- "portscan_parse_ports": "parse_ports()" | kind=code-symbol | source=portscan.py:L199 | neighbors=[portscan.py, main()]
-- "portscan_portscanner_init": ".__init__()" | kind=code-symbol | source=portscan.py:L113 | neighbors=[PortScanner, RateLimiter]
-- "portscan_portscanner_record": "._record()" | kind=code-symbol | source=portscan.py:L124 | neighbors=[PortScanner, ._attempt()]
-- "portscan_ratelimiter_wait": ".wait()" | kind=code-symbol | source=portscan.py:L101 | neighbors=[.scan_port(), RateLimiter]
-- "posture_route_get": "GET" | kind=code-symbol | source=manager/frontend/app/api/analytics/posture/route.ts:L10 | neighbors=[route.ts, operator-routes.test.ts]
-- "prompts_exploit_builder": "exploit-builder.ts" | kind=code-symbol | source=manager/frontend/lib/prompts/exploit-builder.ts:L1 | neighbors=[d1b4dd3 trim frontend to 7 core pages; …, 298a9d4 trim frontend to 7 core pages; …]
-- "prompts_report_attacknarrativeout": "AttackNarrativeOut" | kind=code-symbol | source=manager/frontend/lib/prompts/report.ts:L172 | neighbors=[ai-engine.ts, report.ts]
-- "prompts_report_buildreportusermessage": "buildReportUserMessage()" | kind=code-symbol | source=manager/frontend/lib/prompts/report.ts:L346 | neighbors=[ai-engine.ts, report.ts]
-- "prompts_report_buildscorecard": "buildScorecard()" | kind=code-symbol | source=manager/frontend/lib/prompts/report.ts:L209 | neighbors=[ai-engine.ts, report.ts]
-- "prompts_report_controlsobservedout": "ControlsObservedOut" | kind=code-symbol | source=manager/frontend/lib/prompts/report.ts:L184 | neighbors=[ai-engine.ts, report.ts]
-- "prompts_report_findingwriteupout": "FindingWriteupOut" | kind=code-symbol | source=manager/frontend/lib/prompts/report.ts:L179 | neighbors=[ai-engine.ts, report.ts]
-- "prompts_report_limitationsout": "LimitationsOut" | kind=code-symbol | source=manager/frontend/lib/prompts/report.ts:L185 | neighbors=[ai-engine.ts, report.ts]
-- "prompts_report_normaliseseverity": "normaliseSeverity()" | kind=code-symbol | source=manager/frontend/lib/prompts/report.ts:L36 | neighbors=[ai-engine.ts, report.ts]
-- "prompts_report_remediationgroup": "RemediationGroup" | kind=code-symbol | source=manager/frontend/lib/prompts/report.ts:L110 | neighbors=[report.ts, page.tsx]
-- "prompts_report_remediationgroupingout": "RemediationGroupingOut" | kind=code-symbol | source=manager/frontend/lib/prompts/report.ts:L176 | neighbors=[ai-engine.ts, report.ts]
+- "ad_ntlm_relay_rationale_39": "For each IP, returns {signing_enabled, signing_required}.          A host is rel" | kind=entity | source=manager/backend/app/ad/ntlm_relay.py:L39 | neighbors=[.check_smb_signing(), FindingSeverity] | lang=en
+- "ad_ntlm_relay_rationale_81": "Returns True if the DC *enforces* LDAP signing / channel binding.          We at" | kind=entity | source=manager/backend/app/ad/ntlm_relay.py:L81 | neighbors=[.check_ldap_signing(), FindingSeverity] | lang=en
+- "ad_orchestrator_adassessmentrunner_anonymous_bind_finding": "._anonymous_bind_finding()" | kind=code-symbol | source=manager/backend/app/ad/orchestrator.py:L186 | neighbors=[ADAssessmentRunner, .run()] | lang=en
+- "agent_agent_isblocked": "isBlocked()" | kind=code-symbol | source=manager/frontend/lib/agent/agent.ts:L62 | neighbors=[agent.py, runAutonomousEngagement()] | lang=en
+- "agent_agent_rationale_1032": "Retry durable result files using the acknowledged HTTP result path." | kind=entity | source=probe/agent/agent.py:L1032 | neighbors=[_flush_spool_over_http(), _check_anti_debug()] | lang=en
+- "agent_agent_rationale_1049": "Poll pending jobs even while WS is connected.      This makes result delivery re" | kind=entity | source=probe/agent/agent.py:L1049 | neighbors=[_ws_http_poll_fallback(), _enroll_device()] | lang=en
+- "agent_agent_rationale_1080": "Send periodic heartbeats over WebSocket." | kind=entity | source=probe/agent/agent.py:L1080 | neighbors=[_ws_heartbeat_sender(), _load_or_create_identity()] | lang=en
+- "agent_agent_rationale_1163": "Detect common debugging/tracing tools.  Informational only — does     NOT block" | kind=entity | source=probe/agent/agent.py:L1163 | neighbors=[_check_anti_debug(), _enroll_device()] | lang=en
+- "agent_agent_rationale_194": "Best-effort primary IPv4 of this host — the address a scan sources from.     Use" | kind=entity | source=probe/agent/agent.py:L194 | neighbors=[_detect_primary_ipv4(), _wait_for_manager()] | lang=en
+- "agent_agent_rationale_470": "Acknowledge an offer without executing it before claim confirmation." | kind=entity | source=probe/agent/agent.py:L470 | neighbors=[_ws_stage_job_offer(), _ws_heartbeat_sender()] | lang=en
+- "agent_agent_rationale_608": "Run one job while keeping WS status/result frames best-effort." | kind=entity | source=probe/agent/agent.py:L608 | neighbors=[_ws_run_job(), _flush_spool_over_http()] | lang=en
+- "agent_agent_rationale_63": "Return an integer environment setting constrained to a safe range." | kind=entity | source=probe/agent/agent.py:L63 | neighbors=[_bounded_env_int(), _load_env()] | lang=en
+- "agent_agent_rationale_692": "Run an HTTP-claimed job while renewing its manager lease." | kind=entity | source=probe/agent/agent.py:L692 | neighbors=[_run_polled_job_with_heartbeats(), _ws_stage_job_offer()] | lang=en
+- "agent_agent_rationale_710": "Release a staged job only after the manager confirms its claim." | kind=entity | source=probe/agent/agent.py:L710 | neighbors=[_ws_take_confirmed_job(), _load_or_create_identity()] | lang=en
+- "agent_agent_rationale_724": "Persistent WebSocket push loop.      Returns False if WebSocket is unavailable (" | kind=entity | source=probe/agent/agent.py:L724 | neighbors=[_run_ws_push_loop(), _flush_spool_over_http()] | lang=en
+- "agent_agent_rationale_763": "Persistent WebSocket push loop.      Returns False if WebSocket is unavailable (" | kind=entity | source=probe/agent/agent.py:L763 | neighbors=[_run_ws_push_loop(), _obtain_identity()] | lang=en
+- "agent_agent_rationale_784": "Acknowledge an offer without executing it before claim confirmation." | kind=entity | source=probe/agent/agent.py:L784 | neighbors=[_ws_stage_job_offer(), _check_anti_debug()] | lang=en
+- "agent_agent_rationale_814": "Release a staged job only after the manager confirms its claim." | kind=entity | source=probe/agent/agent.py:L814 | neighbors=[_ws_take_confirmed_job(), _ws_http_poll_fallback()] | lang=en
+- "agent_agent_rationale_881": "Run all startup security checks before any network I/O.      Order matters: HW b" | kind=entity | source=probe/agent/agent.py:L881 | neighbors=[_startup_gauntlet(), _load_or_create_signing_identity()] | lang=pt
+- "agent_agent_rationale_906": "Release a staged job only after the manager confirms its claim." | kind=entity | source=probe/agent/agent.py:L906 | neighbors=[_ws_take_confirmed_job(), _ws_http_poll_fallback()] | lang=en
+- "agent_agent_rationale_973": "Run one job while keeping WS status/result frames best-effort." | kind=entity | source=probe/agent/agent.py:L973 | neighbors=[_ws_run_job(), _startup_gauntlet()] | lang=en
+- "agent_agent_requiresapproval": "requiresApproval()" | kind=code-symbol | source=manager/frontend/lib/agent/agent.ts:L54 | neighbors=[agent.py, runAutonomousEngagement()] | lang=en
+- "agent_bootstrap_python_install_cmd": "python_install_cmd()" | kind=code-symbol | source=probe/agent/bootstrap.py:L13 | neighbors=[bootstrap.py, The per-OS command that installs Python…] | lang=en
+- "agent_bootstrap_security_mode": "security_mode()" | kind=code-symbol | source=probe/agent/bootstrap.py:L31 | neighbors=[bootstrap.py, strict wins a conflict (safer). Otherwi…] | lang=en
+- "agent_bootstrap_verify_download": "verify_download()" | kind=code-symbol | source=probe/agent/bootstrap.py:L39 | neighbors=[bootstrap.py, Verify a fetched installer. strict = fa…] | lang=en
+- "agent_cli_cmd_whoami": "cmd_whoami()" | kind=code-symbol | source=probe/agent/cli.py:L298 | neighbors=[cli.py, cmd_auth_status()] | lang=en
+- "agent_cli_doctor_check": "_doctor_check()" | kind=code-symbol | source=probe/agent/cli.py:L302 | neighbors=[cli.py, cmd_doctor()] | lang=en
+- "agent_cli_main": "main()" | kind=code-symbol | source=probe/agent/cli.py:L1131 | neighbors=[cli.py, build_parser()] | lang=en
+- "agent_cli_manager_is_local": "_manager_is_local()" | kind=code-symbol | source=probe/agent/cli.py:L570 | neighbors=[cli.py, cmd_validate()] | lang=en
+- "agent_cli_managerclient_init": ".__init__()" | kind=code-symbol | source=probe/agent/cli.py:L106 | neighbors=[ManagerClient, normalize_manager_url()] | lang=en
+- "agent_cli_write_private_json": "_write_private_json()" | kind=code-symbol | source=probe/agent/cli.py:L536 | neighbors=[cli.py, cmd_validate()] | lang=en
+- "agent_config_model_parse_env_file": "parse_env_file()" | kind=code-symbol | source=probe/agent/config_model.py:L31 | neighbors=[config_model.py, Parse KEY=VALUE lines; ignore blanks an…] | lang=en
+- "agent_config_model_render_effective": "render_effective()" | kind=code-symbol | source=probe/agent/config_model.py:L71 | neighbors=[config_model.py, Rows of (field, value, winning-source) …] | lang=en
+- "agent_config_model_resolve": "resolve()" | kind=code-symbol | source=probe/agent/config_model.py:L43 | neighbors=[config_model.py, Return (values, sources). Precedence: c…] | lang=en
+- "agent_connect_connect_env": "connect_env()" | kind=code-symbol | source=probe/agent/connect.py:L25 | neighbors=[connect.py, run()] | lang=en
+- "agent_connect_kill_switch_active": "kill_switch_active()" | kind=code-symbol | source=probe/agent/connect.py:L82 | neighbors=[connect.py, run()] | lang=en
+- "agent_deps_pip_install_argsets": "pip_install_argsets()" | kind=code-symbol | source=probe/agent/deps.py:L32 | neighbors=[deps.py, install_requirements()] | lang=en
+- "agent_deps_reqs_hash": "reqs_hash()" | kind=code-symbol | source=probe/agent/deps.py:L27 | neighbors=[deps.py, install_requirements()] | lang=en
+- "agent_device_identity_decode_key": "decode_key()" | kind=code-symbol | source=probe/agent/device_identity.py:L30 | neighbors=[device_identity.py, verify_site_policy()] | lang=en
+- "agent_doctor_measure_manager": "_measure_manager()" | kind=code-symbol | source=probe/agent/doctor.py:L95 | neighbors=[doctor.py, run()] | lang=en
 
 ## Instructions
 

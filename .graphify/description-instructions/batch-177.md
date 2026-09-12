@@ -1,4 +1,4 @@
-# Node Description Batch 178 of 336
+# Node Description Batch 178 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -9,60 +9,54 @@ your JSON answer to the answer file.
 You are documenting nodes in a knowledge graph.
 For each entry below, write ONE concise factual plain-language sentence
 describing what it is or does. Use only the provided context.
-For an entity node (any other kind — e.g. a person, place, event, object),
-describe what the entity is and its role, grounded in its type, its
-relations (neighbors) and the provided citations/evidence — e.g.
-"Lady Carfax, a wealthy heiress who disappears en route to Lausanne.".
-Ground entity descriptions in the citations/evidence when present; do not
-speculate beyond the context, so a node with no supporting context may be
-left out of the reply.
-LANGUAGE: each entry has a `lang=` marker giving the language of its source.
-Write that entry's description in EXACTLY that language. Do not translate to
-a single common language — match each node's source language individually.
+For a code symbol (kind=code-symbol — a function, class, or constant),
+describe what the function/symbol does based on its name, source location
+and neighbors — e.g. "Resolves the configured ontology profile from graphify.yaml.".
+Write every description in English (en). Do not switch languages.
 No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "agent_engine_rationale_304": "Build promotion-ready hosts without duplicating scanner facts per port." | kind=entity | source=probe/agent/engine.py:L304 | neighbors=[_hosts_from_facts()] | lang=it
-- "agent_engine_rationale_305": "Serialize effective limits without ever echoing credential values." | kind=entity | source=probe/agent/engine.py:L305 | neighbors=[_applied_tuning()] | lang=en
-- "agent_engine_rationale_307": "Count unique open network endpoints, not every confirming scanner fact." | kind=entity | source=probe/agent/engine.py:L307 | neighbors=[_count_open_port_facts()] | lang=en
-- "agent_engine_rationale_319": "Build promotion-ready hosts without duplicating scanner facts per port." | kind=entity | source=probe/agent/engine.py:L319 | neighbors=[_hosts_from_facts()] | lang=it
-- "agent_engine_rationale_334": "Build promotion-ready hosts without duplicating scanner facts per port." | kind=entity | source=probe/agent/engine.py:L334 | neighbors=[_hosts_from_facts()] | lang=it
-- "agent_engine_rationale_336": "Build one consistent result summary for complete and interrupted runs." | kind=entity | source=probe/agent/engine.py:L336 | neighbors=[_build_run_stats()] | lang=en
-- "agent_engine_rationale_338": "Serialize effective limits without ever echoing credential values." | kind=entity | source=probe/agent/engine.py:L338 | neighbors=[_applied_tuning()] | lang=en
-- "agent_engine_rationale_348": "Serialize effective limits without ever echoing credential values." | kind=entity | source=probe/agent/engine.py:L348 | neighbors=[_applied_tuning()] | lang=en
-- "agent_engine_rationale_354": "Serialize effective limits without ever echoing credential values." | kind=entity | source=probe/agent/engine.py:L354 | neighbors=[_applied_tuning()] | lang=en
-- "agent_engine_rationale_367": "Raised when Manager fencing revokes the running attempt." | kind=entity | source=probe/agent/engine.py:L367 | neighbors=[LeaseLostError] | lang=en
-- "agent_engine_rationale_372": "Execute a scan and return the enriched result bundle.      Args:         scan_ty" | kind=entity | source=probe/agent/engine.py:L372 | neighbors=[run_scan()] | lang=en
-- "agent_engine_rationale_374": "Build one consistent result summary for complete and interrupted runs." | kind=entity | source=probe/agent/engine.py:L374 | neighbors=[_build_run_stats()] | lang=en
-- "agent_engine_rationale_375": "Serialize effective limits without ever echoing credential values." | kind=entity | source=probe/agent/engine.py:L375 | neighbors=[_applied_tuning()] | lang=en
-- "agent_engine_rationale_385": "Build one consistent result summary for complete and interrupted runs." | kind=entity | source=probe/agent/engine.py:L385 | neighbors=[_build_run_stats()] | lang=en
-- "agent_engine_rationale_390": "Serialize effective limits without ever echoing credential values." | kind=entity | source=probe/agent/engine.py:L390 | neighbors=[_applied_tuning()] | lang=en
-- "agent_engine_rationale_391": "Build one consistent result summary for complete and interrupted runs." | kind=entity | source=probe/agent/engine.py:L391 | neighbors=[_build_run_stats()] | lang=en
-- "agent_engine_rationale_393": "Execute a scan and return the enriched result bundle.      Args:         scan_ty" | kind=entity | source=probe/agent/engine.py:L393 | neighbors=[run_scan()] | lang=en
-- "agent_engine_rationale_412": "Build one consistent result summary for complete and interrupted runs." | kind=entity | source=probe/agent/engine.py:L412 | neighbors=[_build_run_stats()] | lang=en
-- "agent_engine_rationale_426": "Return (extra ScanResults to append as facts, a top-level rollup dict).      Pur" | kind=entity | source=probe/agent/engine.py:L426 | neighbors=[_derive_post_stage()] | lang=en
-- "agent_engine_rationale_427": "Build one consistent result summary for complete and interrupted runs." | kind=entity | source=probe/agent/engine.py:L427 | neighbors=[_build_run_stats()] | lang=en
-- "agent_engine_rationale_437": "Return (extra ScanResults to append as facts, a top-level rollup dict).      Pur" | kind=entity | source=probe/agent/engine.py:L437 | neighbors=[_derive_post_stage()] | lang=en
-- "agent_engine_rationale_443": "Return (extra ScanResults to append as facts, a top-level rollup dict).      Pur" | kind=entity | source=probe/agent/engine.py:L443 | neighbors=[_derive_post_stage()] | lang=en
-- "agent_engine_rationale_46": "Read a bounded numeric safety setting without trusting the environment." | kind=entity | source=probe/agent/engine.py:L46 | neighbors=[_env_number()] | lang=en
-- "agent_engine_rationale_464": "Return (extra ScanResults to append as facts, a top-level rollup dict).      Pur" | kind=entity | source=probe/agent/engine.py:L464 | neighbors=[_derive_post_stage()] | lang=en
-- "agent_engine_rationale_470": "Classify each target's device role from its collected facts (no I/O).     Return" | kind=entity | source=probe/agent/engine.py:L470 | neighbors=[_derive_devices()] | lang=en
-- "agent_engine_rationale_475": "Raised when Manager fencing revokes the running attempt." | kind=entity | source=probe/agent/engine.py:L475 | neighbors=[LeaseLostError] | lang=en
-- "agent_engine_rationale_479": "Return (extra ScanResults to append as facts, a top-level rollup dict).      Pur" | kind=entity | source=probe/agent/engine.py:L479 | neighbors=[_derive_post_stage()] | lang=en
-- "agent_engine_rationale_486": "Raised when Manager fencing revokes the running attempt." | kind=entity | source=probe/agent/engine.py:L486 | neighbors=[LeaseLostError] | lang=en
-- "agent_engine_rationale_490": "Reconcile each target's per-vantage reachability into an exposure matrix     (no" | kind=entity | source=probe/agent/engine.py:L490 | neighbors=[_derive_exposure()] | lang=en
-- "agent_engine_rationale_491": "Classify each target's device role from its collected facts (no I/O).     Return" | kind=entity | source=probe/agent/engine.py:L491 | neighbors=[_derive_devices()] | lang=en
-- "agent_engine_rationale_501": "Execute a scan and return the enriched result bundle.      Args:         scan_ty" | kind=entity | source=probe/agent/engine.py:L501 | neighbors=[run_scan()] | lang=en
-- "agent_engine_rationale_506": "Classify each target's device role from its collected facts (no I/O).     Return" | kind=entity | source=probe/agent/engine.py:L506 | neighbors=[_derive_devices()] | lang=en
-- "agent_engine_rationale_51": "Read a bounded numeric safety setting without trusting the environment." | kind=entity | source=probe/agent/engine.py:L51 | neighbors=[_env_number()] | lang=en
-- "agent_engine_rationale_511": "Reconcile each target's per-vantage reachability into an exposure matrix     (no" | kind=entity | source=probe/agent/engine.py:L511 | neighbors=[_derive_exposure()] | lang=en
-- "agent_engine_rationale_512": "Execute a scan and return the enriched result bundle.      Args:         scan_ty" | kind=entity | source=probe/agent/engine.py:L512 | neighbors=[run_scan()] | lang=en
-- "agent_engine_rationale_515": "Raised when Manager fencing revokes the running attempt." | kind=entity | source=probe/agent/engine.py:L515 | neighbors=[LeaseLostError] | lang=en
-- "agent_engine_rationale_52": "Read a bounded numeric safety setting without trusting the environment." | kind=entity | source=probe/agent/engine.py:L52 | neighbors=[_env_number()] | lang=en
-- "agent_engine_rationale_526": "Reconcile each target's per-vantage reachability into an exposure matrix     (no" | kind=entity | source=probe/agent/engine.py:L526 | neighbors=[_derive_exposure()] | lang=en
-- "agent_engine_rationale_53": "Read a bounded numeric safety setting without trusting the environment." | kind=entity | source=probe/agent/engine.py:L53 | neighbors=[_env_number()] | lang=en
-- "agent_engine_rationale_536": "Raised when Manager fencing revokes the running attempt." | kind=entity | source=probe/agent/engine.py:L536 | neighbors=[LeaseLostError] | lang=en
+- "tests_test_manager_ai_test_generate_fails_closed_when_no_cloud_provider_configured": "test_generate_fails_closed_when_no_cloud_provider_configured()" | kind=code-symbol | source=manager/backend/tests/test_manager_ai.py:L328 | neighbors=[test_manager_ai.py, _cloud()]
+- "tests_test_manager_ai_test_status_fails_safe_without_cloud_key": "test_status_fails_safe_without_cloud_key()" | kind=code-symbol | source=manager/backend/tests/test_manager_ai.py:L349 | neighbors=[test_manager_ai.py, _cloud()]
+- "tests_test_manual_reopen": "test_manual_reopen.py" | kind=code-symbol | source=manager/backend/tests/test_manual_reopen.py:L1 | neighbors=[3c7740e feat(lifecycle): pure manual-re…, test_manual_reopen_restores_open_and_au…]
+- "tests_test_msrpc_scanner_testmsrpcfindings_test_endpoints_low": ".test_endpoints_low()" | kind=code-symbol | source=probe/tests/test_msrpc_scanner.py:L86 | neighbors=[TestMSRPCFindings, ._fact()]
+- "tests_test_msrpc_scanner_testmsrpcfindings_test_zero_endpoints_silent": ".test_zero_endpoints_silent()" | kind=code-symbol | source=probe/tests/test_msrpc_scanner.py:L92 | neighbors=[TestMSRPCFindings, ._fact()]
+- "tests_test_msrpc_scanner_testmsrpcscanner_test_impacket_missing_is_error": ".test_impacket_missing_is_error()" | kind=code-symbol | source=probe/tests/test_msrpc_scanner.py:L74 | neighbors=[TestMSRPCScanner, ._sc()]
+- "tests_test_msrpc_scanner_testmsrpcscanner_test_no_msrpc_filtered": ".test_no_msrpc_filtered()" | kind=code-symbol | source=probe/tests/test_msrpc_scanner.py:L69 | neighbors=[TestMSRPCScanner, ._sc()]
+- "tests_test_msrpc_scanner_testmsrpcscanner_test_open": ".test_open()" | kind=code-symbol | source=probe/tests/test_msrpc_scanner.py:L61 | neighbors=[TestMSRPCScanner, ._sc()]
+- "tests_test_msrpc_scanner_testparity": "TestParity" | kind=code-symbol | source=probe/tests/test_msrpc_scanner.py:L97 | neighbors=[test_msrpc_scanner.py, .test_main_scripts()]
+- "tests_test_msrpc_scanner_testsummarize": "TestSummarize" | kind=code-symbol | source=probe/tests/test_msrpc_scanner.py:L18 | neighbors=[test_msrpc_scanner.py, .test_distinct_interfaces_and_named()]
+- "tests_test_nessus_scanner_test_create_scan": "test_create_scan()" | kind=code-symbol | source=manager/backend/tests/test_nessus_scanner.py:L48 | neighbors=[test_nessus_scanner.py, _mock_response()]
+- "tests_test_nessus_scanner_test_create_scan_with_credentials": "test_create_scan_with_credentials()" | kind=code-symbol | source=manager/backend/tests/test_nessus_scanner.py:L65 | neighbors=[test_nessus_scanner.py, _mock_response()]
+- "tests_test_nessus_scanner_test_launch_scan": "test_launch_scan()" | kind=code-symbol | source=manager/backend/tests/test_nessus_scanner.py:L85 | neighbors=[test_nessus_scanner.py, _mock_response()]
+- "tests_test_nessus_scanner_test_poll_status_completed": "test_poll_status_completed()" | kind=code-symbol | source=manager/backend/tests/test_nessus_scanner.py:L114 | neighbors=[test_nessus_scanner.py, _mock_response()]
+- "tests_test_nessus_scanner_test_poll_status_running": "test_poll_status_running()" | kind=code-symbol | source=manager/backend/tests/test_nessus_scanner.py:L99 | neighbors=[test_nessus_scanner.py, _mock_response()]
+- "tests_test_network_va_accuracy_listener_loop": "._loop()" | kind=code-symbol | source=probe/tests/test_network_va_accuracy.py:L48 | neighbors=[_Listener, .start()]
+- "tests_test_network_va_accuracy_listener_stop": ".stop()" | kind=code-symbol | source=probe/tests/test_network_va_accuracy.py:L72 | neighbors=[_Listener, va_scan()]
+- "tests_test_network_va_accuracy_test_every_planted_risk_port_is_found": "test_every_planted_risk_port_is_found()" | kind=code-symbol | source=probe/tests/test_network_va_accuracy.py:L119 | neighbors=[test_network_va_accuracy.py, The regression this guards: these ports…]
+- "tests_test_network_va_accuracy_test_irc_is_identified_by_protocol_not_port": "test_irc_is_identified_by_protocol_not_port()" | kind=code-symbol | source=probe/tests/test_network_va_accuracy.py:L140 | neighbors=[test_network_va_accuracy.py, Positive protocol evidence turns the bo…]
+- "tests_test_network_va_accuracy_test_no_branch_runs_without_evidence": "test_no_branch_runs_without_evidence()" | kind=code-symbol | source=probe/tests/test_network_va_accuracy.py:L168 | neighbors=[test_network_va_accuracy.py, Every deep branch that ran must have pr…]
+- "tests_test_network_va_accuracy_test_post_stages_ran": "test_post_stages_ran()" | kind=code-symbol | source=probe/tests/test_network_va_accuracy.py:L188 | neighbors=[test_network_va_accuracy.py, network_va composes device classificati…]
+- "tests_test_network_va_accuracy_test_silent_port_reports_no_banner_honestly": "test_silent_port_reports_no_banner_honestly()" | kind=code-symbol | source=probe/tests/test_network_va_accuracy.py:L156 | neighbors=[test_network_va_accuracy.py, 4444 says nothing. The scanner must rec…]
+- "tests_test_network_va_accuracy_test_tls_branch_is_not_routed_by_silence": "test_tls_branch_is_not_routed_by_silence()" | kind=code-symbol | source=probe/tests/test_network_va_accuracy.py:L180 | neighbors=[test_network_va_accuracy.py, service_banner now proves non-TLS by at…]
+- "tests_test_new_scanners_testdeltaengine_test_load_jsonl_skips_invalid_json": ".test_load_jsonl_skips_invalid_json()" | kind=code-symbol | source=probe/tests/test_new_scanners.py:L502 | neighbors=[TestDeltaEngine, _make_scan_record()]
+- "tests_test_nfs_scanner_portmap_dump_reply": "_portmap_dump_reply()" | kind=code-symbol | source=probe/tests/test_nfs_scanner.py:L41 | neighbors=[test_nfs_scanner.py, .test_portmap_dump_parse()]
+- "tests_test_nfs_scanner_testnfsfindings_test_restricted_exports_no_high_finding": ".test_restricted_exports_no_high_finding()" | kind=code-symbol | source=probe/tests/test_nfs_scanner.py:L133 | neighbors=[TestNFSFindings, ._fact()]
+- "tests_test_nfs_scanner_testnfsfindings_test_world_readable_and_portmapper": ".test_world_readable_and_portmapper()" | kind=code-symbol | source=probe/tests/test_nfs_scanner.py:L122 | neighbors=[TestNFSFindings, ._fact()]
+- "tests_test_nfs_scanner_testnfsscanner_test_no_rpc_is_filtered": ".test_no_rpc_is_filtered()" | kind=code-symbol | source=probe/tests/test_nfs_scanner.py:L109 | neighbors=[TestNFSScanner, ._sc()]
+- "tests_test_nfs_scanner_testnfsscanner_test_world_readable_export_open": ".test_world_readable_export_open()" | kind=code-symbol | source=probe/tests/test_nfs_scanner.py:L99 | neighbors=[TestNFSScanner, ._sc()]
+- "tests_test_nfs_scanner_testparity": "TestParity" | kind=code-symbol | source=probe/tests/test_nfs_scanner.py:L142 | neighbors=[test_nfs_scanner.py, .test_main_scripts()]
+- "tests_test_nfs_scanner_testparity_test_main_scripts": ".test_main_scripts()" | kind=code-symbol | source=probe/tests/test_nfs_scanner.py:L143 | neighbors=[TestParity, _mount_export_reply()]
+- "tests_test_nfs_scanner_testxdrparsers_test_mount_export_parse_and_world_flag": ".test_mount_export_parse_and_world_flag()" | kind=code-symbol | source=probe/tests/test_nfs_scanner.py:L52 | neighbors=[TestXdrParsers, _mount_export_reply()]
+- "tests_test_nfs_scanner_testxdrparsers_test_portmap_dump_parse": ".test_portmap_dump_parse()" | kind=code-symbol | source=probe/tests/test_nfs_scanner.py:L62 | neighbors=[TestXdrParsers, _portmap_dump_reply()]
+- "tests_test_nfs_scanner_testxdrparsers_test_rpc_reply_header_stripping": ".test_rpc_reply_header_stripping()" | kind=code-symbol | source=probe/tests/test_nfs_scanner.py:L68 | neighbors=[TestXdrParsers, _mount_export_reply()]
+- "tests_test_nfs_scanner_xstr": "_xstr()" | kind=code-symbol | source=probe/tests/test_nfs_scanner.py:L25 | neighbors=[test_nfs_scanner.py, _mount_export_reply()]
+- "tests_test_nuclei_background_fakesession_begin_nested": ".begin_nested()" | kind=code-symbol | source=manager/backend/tests/test_nuclei_background.py:L43 | neighbors=[_FakeSession, _NestedTransaction]
+- "tests_test_nuclei_background_fakesession_execute": ".execute()" | kind=code-symbol | source=manager/backend/tests/test_nuclei_background.py:L40 | neighbors=[_FakeSession, _ScalarResult]
+- "tests_test_nuclei_background_sessionfactory_call": ".__call__()" | kind=code-symbol | source=manager/backend/tests/test_nuclei_background.py:L71 | neighbors=[_SessionFactory, _FakeSession]
+- "tests_test_nuclei_background_test_fatal_nuclei_error_marks_background_job_failed": "test_fatal_nuclei_error_marks_background_job_failed()" | kind=code-symbol | source=manager/backend/tests/test_nuclei_background.py:L76 | neighbors=[test_nuclei_background.py, _SessionFactory]
+- "tests_test_nuclei_background_test_partial_nuclei_run_preserves_findings_and_diagnostics": "test_partial_nuclei_run_preserves_findings_and_diagnostics()" | kind=code-symbol | source=manager/backend/tests/test_nuclei_background.py:L117 | neighbors=[test_nuclei_background.py, _SessionFactory]
 
 ## Instructions
 

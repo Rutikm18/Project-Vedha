@@ -1,4 +1,4 @@
-# Node Description Batch 243 of 336
+# Node Description Batch 243 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -26,46 +26,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "scan_page_cat": "Cat" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L140 | neighbors=[page.tsx] | lang=en
-- "scan_page_cats": "CATS" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L139 | neighbors=[page.tsx] | lang=en
-- "scan_page_dispatchreceipt": "DispatchReceipt()" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L639 | neighbors=[page.tsx] | lang=en
-- "scan_page_engagement": "Engagement" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L42 | neighbors=[page.tsx] | lang=en
-- "scan_page_enginemanifest": "EngineManifest" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L75 | neighbors=[page.tsx] | lang=en
-- "scan_page_fieldlabel": "FieldLabel()" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L185 | neighbors=[page.tsx] | lang=en
-- "scan_page_fleetstrip": "FleetStrip()" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L209 | neighbors=[page.tsx] | lang=en
-- "scan_page_hudframe": "HudFrame()" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L194 | neighbors=[page.tsx] | lang=en
-- "scan_page_intensity": "Intensity" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L144 | neighbors=[page.tsx] | lang=en
-- "scan_page_intensitydial": "IntensityDial()" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L410 | neighbors=[page.tsx] | lang=en
-- "scan_page_jobpanel": "JobPanel()" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L465 | neighbors=[page.tsx] | lang=en
-- "scan_page_jobstatus": "JobStatus" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L50 | neighbors=[page.tsx] | lang=en
-- "scan_page_network_va_fallback": "NETWORK_VA_FALLBACK" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L100 | neighbors=[page.tsx] | lang=en
-- "scan_page_networkvahero": "NetworkVaHero()" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L282 | neighbors=[page.tsx] | lang=en
-- "scan_page_nva_stages": "NVA_STAGES" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L280 | neighbors=[page.tsx] | lang=en
-- "scan_page_phases": "PHASES" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L456 | neighbors=[page.tsx] | lang=en
-- "scan_page_probe": "Probe" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L30 | neighbors=[page.tsx] | lang=en
-- "scan_page_profile_badge": "PROFILE_BADGE" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L133 | neighbors=[page.tsx] | lang=en
-- "scan_page_rec_st": "REC_ST" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L458 | neighbors=[page.tsx] | lang=en
-- "scan_page_risk": "RISK" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L126 | neighbors=[page.tsx] | lang=en
-- "scan_page_scannerrun": "ScannerRun" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L63 | neighbors=[page.tsx] | lang=en
-- "scan_page_scanpage": "ScanPage()" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L684 | neighbors=[page.tsx] | lang=en
-- "scan_page_sectionlabel": "SectionLabel()" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L174 | neighbors=[page.tsx] | lang=en
-- "scan_page_uc_meta": "UC_META" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L110 | neighbors=[page.tsx] | lang=en
-- "scan_page_usecase": "UseCase" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L20 | neighbors=[page.tsx] | lang=en
-- "scan_page_usecasecard": "UseCaseCard()" | kind=code-symbol | source=manager/frontend/app/scan/page.tsx:L340 | neighbors=[page.tsx] | lang=en
-- "scanner_accuracy_gate_rationale_101": "True when this corpus's labels can support an ACCURACY claim." | kind=entity | source=probe/scanner/accuracy_gate.py:L101 | neighbors=[is_independent()] | lang=en
-- "scanner_accuracy_gate_rationale_106": "Threshold violations for one scored corpus (empty list = passed)." | kind=entity | source=probe/scanner/accuracy_gate.py:L106 | neighbors=[check_thresholds()] | lang=en
-- "scanner_accuracy_gate_rationale_143": "Score every corpus in `directory` and collect threshold violations.      Returns" | kind=entity | source=probe/scanner/accuracy_gate.py:L143 | neighbors=[run_gate()] | lang=en
-- "scanner_accuracy_gate_rationale_62": "A corpus is malformed or unlabeled — a gate failure, never a silent pass." | kind=entity | source=probe/scanner/accuracy_gate.py:L62 | neighbors=[CorpusError] | lang=pt
-- "scanner_accuracy_gate_rationale_66": "Load and structurally validate one corpus file." | kind=entity | source=probe/scanner/accuracy_gate.py:L66 | neighbors=[load_corpus()] | lang=en
-- "scanner_accuracy_gate_rationale_93": "Every *.json corpus in `directory`, sorted by name for stable reports." | kind=entity | source=probe/scanner/accuracy_gate.py:L93 | neighbors=[load_corpora()] | lang=en
-- "scanner_accuracy_rationale_125": "Run the findings engine over a labeled corpus and score it.      corpus = {name," | kind=entity | source=probe/scanner/accuracy.py:L125 | neighbors=[evaluate_corpus()] | lang=en
-- "scanner_accuracy_rationale_49": "Precision / recall / F1 of produced findings vs a labeled expected set.      Key" | kind=entity | source=probe/scanner/accuracy.py:L49 | neighbors=[score_findings()] | lang=en
-- "scanner_accuracy_rationale_80": "(target, port) -> status, from port/syn/mass scan facts (last one wins)." | kind=entity | source=probe/scanner/accuracy.py:L80 | neighbors=[_observed_states()] | lang=en
-- "scanner_accuracy_rationale_95": "OPEN precision/recall + overall state accuracy vs a remote-validated     ground" | kind=entity | source=probe/scanner/accuracy.py:L95 | neighbors=[score_port_states()] | lang=pt
-- "scanner_adaptive_timeout_adaptivetimeout_init": ".__init__()" | kind=code-symbol | source=probe/scanner/adaptive_timeout.py:L21 | neighbors=[AdaptiveTimeout] | lang=en
-- "scanner_adaptive_timeout_rationale_32": "Fold one round-trip sample (seconds) into the estimate. Ignores         missing/" | kind=entity | source=probe/scanner/adaptive_timeout.py:L32 | neighbors=[.observe()] | lang=en
-- "scanner_adaptive_timeout_rationale_45": "Current timeout: base until we have a sample, then SRTT + 4*RTTVAR         clamp" | kind=entity | source=probe/scanner/adaptive_timeout.py:L45 | neighbors=[.timeout()] | lang=pt
-- "scanner_adaptive_timeout_rationale_55": "Convenience: build an estimator and fold in a sequence of RTT samples." | kind=entity | source=probe/scanner/adaptive_timeout.py:L55 | neighbors=[from_rtts()] | lang=en
+- "main_scripts_device_classifier_rationale_182": "Convenience adapter: extract classifier inputs from a list of ScanResult     obj" | kind=entity | source=probe/main_scripts/device_classifier.py:L182 | neighbors=[classify_from_results()] | lang=en
+- "main_scripts_device_classifier_rationale_202": "Convenience adapter: extract classifier inputs from a list of ScanResult     obj" | kind=entity | source=probe/main_scripts/device_classifier.py:L202 | neighbors=[classify_from_results()] | lang=en
+- "main_scripts_device_classifier_rationale_238": "Convenience adapter: extract classifier inputs from a list of ScanResult     obj" | kind=entity | source=probe/main_scripts/device_classifier.py:L238 | neighbors=[classify_from_results()] | lang=en
+- "main_scripts_dns_scanner_dnsscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/dns_scanner.py:L91 | neighbors=[DNSScanner] | lang=en
+- "main_scripts_dns_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/dns_scanner.py:L242 | neighbors=[dns_scanner.py] | lang=en
+- "main_scripts_dns_scanner_rationale_1": "dns_scanner.py — DNS server hygiene: zone transfer (AXFR), DNSSEC presence, and" | kind=entity | source=probe/main_scripts/dns_scanner.py:L1 | neighbors=[dns_scanner.py] | lang=en
+- "main_scripts_dns_scanner_rationale_120": "Ask the target (as a resolver) for the PTR of its own IP — a common way" | kind=entity | source=probe/main_scripts/dns_scanner.py:L120 | neighbors=[._ptr_self()] | lang=en
+- "main_scripts_dns_scanner_rationale_140": "Attempt a zone transfer, reading incrementally and stopping at         MAX_AXFR_" | kind=entity | source=probe/main_scripts/dns_scanner.py:L140 | neighbors=[._axfr()] | lang=en
+- "main_scripts_dns_scanner_rationale_179": "Blocking orchestration of the DNS checks. Monkeypatchable for tests." | kind=entity | source=probe/main_scripts/dns_scanner.py:L179 | neighbors=[._probe()] | lang=en
+- "main_scripts_dns_scanner_rationale_56": "Candidate zone names to try AXFR / DNSSEC against, most-confident first.      Ex" | kind=entity | source=probe/main_scripts/dns_scanner.py:L56 | neighbors=[derive_zones()] | lang=en
+- "main_scripts_findings_rationale_1011": "Fuse OS signals across scanners into ONE identification with calibrated     conf" | kind=entity | source=probe/main_scripts/findings.py:L1011 | neighbors=[_rule_os_identification()] | lang=en
+- "main_scripts_findings_rationale_1013": "SMBv1 (wormable) + exposed RDP (brute-force/BlueKeep) on one host — the     clas" | kind=entity | source=probe/main_scripts/findings.py:L1013 | neighbors=[_corr_legacy_windows()] | lang=en
+- "main_scripts_findings_rationale_1030": "Two or more cleartext services on one host — any sniffing position harvests" | kind=entity | source=probe/main_scripts/findings.py:L1030 | neighbors=[_corr_cleartext_cluster()] | lang=en
+- "main_scripts_findings_rationale_1057": "Two or more INDEPENDENT anonymous data-exposure channels on one host — the     h" | kind=entity | source=probe/main_scripts/findings.py:L1057 | neighbors=[_corr_anon_data_exposure()] | lang=en
+- "main_scripts_findings_rationale_1076": "A disclosed user list (SMB null session) plus a weak/exposed login surface on" | kind=entity | source=probe/main_scripts/findings.py:L1076 | neighbors=[_corr_user_enum_plus_weak_auth()] | lang=pt
+- "main_scripts_findings_rationale_1090": "SMB signing not required => a viable NTLM relay target. If SMBv1 is also on," | kind=entity | source=probe/main_scripts/findings.py:L1090 | neighbors=[_corr_ntlm_relay()] | lang=en
+- "main_scripts_findings_rationale_1099": "Out-of-band / console management surfaces reachable on one host — these grant" | kind=entity | source=probe/main_scripts/findings.py:L1099 | neighbors=[_corr_mgmt_plane_exposed()] | lang=en
+- "main_scripts_findings_rationale_1113": "SMBv1 (wormable) + exposed RDP (brute-force/BlueKeep) on one host — the     clas" | kind=entity | source=probe/main_scripts/findings.py:L1113 | neighbors=[_corr_legacy_windows()] | lang=en
+- "main_scripts_findings_rationale_1126": "Derive findings from collected facts. Pure; deterministic; safe.      Accepts Sc" | kind=entity | source=probe/main_scripts/findings.py:L1126 | neighbors=[run_findings()] | lang=en
+- "main_scripts_findings_rationale_1130": "Two or more cleartext services on one host — any sniffing position harvests" | kind=entity | source=probe/main_scripts/findings.py:L1130 | neighbors=[_corr_cleartext_cluster()] | lang=en
+- "main_scripts_findings_rationale_1157": "Two or more INDEPENDENT anonymous data-exposure channels on one host — the     h" | kind=entity | source=probe/main_scripts/findings.py:L1157 | neighbors=[_corr_anon_data_exposure()] | lang=en
+- "main_scripts_findings_rationale_1172": "Read a scanner's JSONL output into fact dicts (skips blank/garbage lines)." | kind=entity | source=probe/main_scripts/findings.py:L1172 | neighbors=[load_facts_jsonl()] | lang=pt
+- "main_scripts_findings_rationale_1176": "A disclosed user list (SMB null session) plus a weak/exposed login surface on" | kind=entity | source=probe/main_scripts/findings.py:L1176 | neighbors=[_corr_user_enum_plus_weak_auth()] | lang=pt
+- "main_scripts_findings_rationale_1188": "CLI: derive findings from one or more scanner JSONL files.          python -m ma" | kind=entity | source=probe/main_scripts/findings.py:L1188 | neighbors=[_main()] | lang=en
+- "main_scripts_findings_rationale_1199": "Out-of-band / console management surfaces reachable on one host — these grant" | kind=entity | source=probe/main_scripts/findings.py:L1199 | neighbors=[_corr_mgmt_plane_exposed()] | lang=en
+- "main_scripts_findings_rationale_120": "A definitively open TCP port. `open|filtered` is NOT open — we never     raise a" | kind=entity | source=probe/main_scripts/findings.py:L120 | neighbors=[_is_open()] | lang=pt
+- "main_scripts_findings_rationale_1226": "Derive findings from collected facts. Pure; deterministic; safe.      Accepts Sc" | kind=entity | source=probe/main_scripts/findings.py:L1226 | neighbors=[run_findings()] | lang=en
+- "main_scripts_findings_rationale_1258": "One finding as the finding-section shows it — the ACTUAL vulnerability, with" | kind=entity | source=probe/main_scripts/findings.py:L1258 | neighbors=[_finding_row()] | lang=en
+- "main_scripts_findings_rationale_1280": "Roll up findings for the finding section.      Beyond counts, this returns the A" | kind=entity | source=probe/main_scripts/findings.py:L1280 | neighbors=[summarize()] | lang=en
+- "main_scripts_findings_rationale_1320": "Read a scanner's JSONL output into fact dicts (skips blank/garbage lines)." | kind=entity | source=probe/main_scripts/findings.py:L1320 | neighbors=[load_facts_jsonl()] | lang=pt
+- "main_scripts_findings_rationale_1336": "CLI: derive findings from one or more scanner JSONL files.          python -m ma" | kind=entity | source=probe/main_scripts/findings.py:L1336 | neighbors=[_main()] | lang=en
+- "main_scripts_findings_rationale_154": "Map (target, port) -> confirmed-service info from service_banner facts.      Onl" | kind=entity | source=probe/main_scripts/findings.py:L154 | neighbors=[build_service_index()] | lang=en
+- "main_scripts_findings_rationale_444": "JA4X-based threat-intel match. Fires only when a certificate's structural     fi" | kind=entity | source=probe/main_scripts/findings.py:L444 | neighbors=[_rule_tls_fingerprint()] | lang=pt
+- "main_scripts_findings_rationale_466": "Proven UNAUTHENTICATED access to a datastore (from the collected banner) —     a" | kind=entity | source=probe/main_scripts/findings.py:L466 | neighbors=[_rule_unauth_access()] | lang=en
+- "main_scripts_findings_rationale_468": "JA4X-based threat-intel match. Fires only when a certificate's structural     fi" | kind=entity | source=probe/main_scripts/findings.py:L468 | neighbors=[_rule_tls_fingerprint()] | lang=pt
+- "main_scripts_findings_rationale_490": "Proven UNAUTHENTICATED access to a datastore (from the collected banner) —     a" | kind=entity | source=probe/main_scripts/findings.py:L490 | neighbors=[_rule_unauth_access()] | lang=en
+- "main_scripts_findings_rationale_492": "JA4S-based threat-intel match on the TLS ServerHello fingerprint. Fires only" | kind=entity | source=probe/main_scripts/findings.py:L492 | neighbors=[_rule_tls_server_fingerprint()] | lang=en
+- "main_scripts_findings_rationale_510": "SMB signing not required => a viable NTLM relay target. If SMBv1 is also on," | kind=entity | source=probe/main_scripts/findings.py:L510 | neighbors=[_corr_ntlm_relay()] | lang=en
+- "main_scripts_findings_rationale_512": "Confirmed RDP (X.224 handshake) + NLA detection. Runs before the port-hint     e" | kind=entity | source=probe/main_scripts/findings.py:L512 | neighbors=[_rule_rdp()] | lang=en
+- "main_scripts_findings_rationale_516": "JA4S-based threat-intel match on the TLS ServerHello fingerprint. Fires only" | kind=entity | source=probe/main_scripts/findings.py:L516 | neighbors=[_rule_tls_server_fingerprint()] | lang=en
 
 ## Instructions
 

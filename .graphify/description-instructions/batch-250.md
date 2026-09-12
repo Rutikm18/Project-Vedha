@@ -1,4 +1,4 @@
-# Node Description Batch 251 of 336
+# Node Description Batch 251 of 380
 
 Graphify is running in assistant/skill mode (no API key). You are the host
 assistant (Claude Code / Codex / Gemini CLI). Read the prompt below and write
@@ -26,46 +26,46 @@ No marketing language.
 Respond ONLY with a JSON object mapping each node id (as a string) to its
 one-sentence description — no prose, no markdown fences.
 
-- "scanner_os_fingerprint_rationale_254": "True if we can open an ICMP socket (datagram-ICMP or raw)." | kind=entity | source=probe/scanner/os_fingerprint.py:L254 | neighbors=[icmp_supported()] | lang=en
-- "scanner_os_fingerprint_rationale_271": "Return (socket, is_raw). Prefer datagram-ICMP (unprivileged), then raw." | kind=entity | source=probe/scanner/os_fingerprint.py:L271 | neighbors=[_open_icmp_socket()] | lang=en
-- "scanner_os_fingerprint_rationale_287": "ICMP-echo liveness + TTL harvest -> OS-family guess. Optionally accepts TCP" | kind=entity | source=probe/scanner/os_fingerprint.py:L287 | neighbors=[OSFingerprintScanner] | lang=en
-- "scanner_os_fingerprint_rationale_299": "Send one ICMP echo; return observed TTL, None (no TTL), or \"down\"." | kind=entity | source=probe/scanner/os_fingerprint.py:L299 | neighbors=[._icmp_echo_ttl()] | lang=en
-- "scanner_os_fingerprint_rationale_321": "True if we can open an ICMP socket (datagram-ICMP or raw)." | kind=entity | source=probe/scanner/os_fingerprint.py:L321 | neighbors=[icmp_supported()] | lang=en
-- "scanner_os_fingerprint_rationale_330": "Send an ICMP timestamp request (type 13); return {ttl, transmit} from a" | kind=entity | source=probe/scanner/os_fingerprint.py:L330 | neighbors=[._icmp_timestamp()] | lang=en
-- "scanner_os_fingerprint_rationale_338": "Return (socket, is_raw). Prefer datagram-ICMP (unprivileged), then raw." | kind=entity | source=probe/scanner/os_fingerprint.py:L338 | neighbors=[_open_icmp_socket()] | lang=en
-- "scanner_os_fingerprint_rationale_354": "ICMP-echo liveness + TTL harvest -> OS-family guess. Optionally accepts TCP" | kind=entity | source=probe/scanner/os_fingerprint.py:L354 | neighbors=[OSFingerprintScanner] | lang=en
-- "scanner_os_fingerprint_rationale_371": "Best-effort exact Windows build via SMB2 NTLM (shared impl). {} on any         f" | kind=entity | source=probe/scanner/os_fingerprint.py:L371 | neighbors=[._smb_build()] | lang=en
-- "scanner_os_fingerprint_rationale_383": "Fuse an SMB2 NTLM build into an OS result: authoritative release + build," | kind=entity | source=probe/scanner/os_fingerprint.py:L383 | neighbors=[._apply_smb_build()] | lang=en
-- "scanner_os_fingerprint_rationale_406": "Send one ICMP echo; return observed TTL, None (no TTL), or \"down\"." | kind=entity | source=probe/scanner/os_fingerprint.py:L406 | neighbors=[._icmp_echo_ttl()] | lang=en
-- "scanner_os_fingerprint_rationale_437": "Send an ICMP timestamp request (type 13); return {ttl, transmit} from a" | kind=entity | source=probe/scanner/os_fingerprint.py:L437 | neighbors=[._icmp_timestamp()] | lang=en
-- "scanner_os_fingerprint_rationale_469": "FIX 3b: aliveness/TTL came from a TCP SYN-ACK, not ICMP. Label the TTL         s" | kind=entity | source=probe/scanner/os_fingerprint.py:L469 | neighbors=[._tcp_ttl_result()] | lang=en
-- "scanner_os_fingerprint_rationale_58": "Build an ICMP message (header + rest) with a valid checksum." | kind=entity | source=probe/scanner/os_fingerprint.py:L58 | neighbors=[_icmp()] | lang=en
-- "scanner_os_fingerprint_rationale_60": "Build an ICMP message (header + rest) with a valid checksum." | kind=entity | source=probe/scanner/os_fingerprint.py:L60 | neighbors=[_icmp()] | lang=en
-- "scanner_os_fingerprint_rationale_80": "Parse an ICMP reply. Handles both raw-socket delivery (full IPv4 header     pres" | kind=entity | source=probe/scanner/os_fingerprint.py:L80 | neighbors=[parse_icmp_reply()] | lang=en
-- "scanner_os_fingerprint_rationale_82": "Return (ttl, icmp_bytes). Raw-socket delivery prepends the full IPv4 header" | kind=entity | source=probe/scanner/os_fingerprint.py:L82 | neighbors=[_strip_ip_header()] | lang=en
-- "scanner_os_fingerprint_rationale_95": "Parse an ICMP reply. Handles both raw-socket delivery (full IPv4 header     pres" | kind=entity | source=probe/scanner/os_fingerprint.py:L95 | neighbors=[parse_icmp_reply()] | lang=en
-- "scanner_passive_collector_main": "main()" | kind=code-symbol | source=probe/scanner/passive_collector.py:L357 | neighbors=[passive_collector.py] | lang=en
-- "scanner_passive_collector_passivecollector_init": ".__init__()" | kind=code-symbol | source=probe/scanner/passive_collector.py:L218 | neighbors=[PassiveCollector] | lang=en
-- "scanner_passive_collector_passivelistenererror_init": ".__init__()" | kind=code-symbol | source=probe/scanner/passive_collector.py:L109 | neighbors=[PassiveListenerError] | lang=en
-- "scanner_passive_collector_rationale_1": "passive_collector.py — LISTEN-ONLY host discovery for fragile networks (OT/ICS)." | kind=entity | source=probe/scanner/passive_collector.py:L1 | neighbors=[passive_collector.py] | lang=en
-- "scanner_passive_collector_rationale_107": "All passive sources failed before the listen window could start." | kind=entity | source=probe/scanner/passive_collector.py:L107 | neighbors=[PassiveListenerError] | lang=en
-- "scanner_passive_collector_rationale_120": "Open one recv-only UDP listener or raise the socket error.      Multicast groups" | kind=entity | source=probe/scanner/passive_collector.py:L120 | neighbors=[_open_listener()] | lang=en
-- "scanner_passive_collector_rationale_123": "Listen-only discovery. No active probing. Reports in-scope hosts that     announ" | kind=entity | source=probe/scanner/passive_collector.py:L123 | neighbors=[PassiveCollector] | lang=en
-- "scanner_passive_collector_rationale_205": "Await readability on any listener without blocking the event loop." | kind=entity | source=probe/scanner/passive_collector.py:L205 | neighbors=[._select()] | lang=en
-- "scanner_passive_collector_rationale_211": "Listen-only discovery. No active probing. Reports in-scope hosts that     announ" | kind=entity | source=probe/scanner/passive_collector.py:L211 | neighbors=[PassiveCollector] | lang=en
-- "scanner_passive_collector_rationale_332": "Await readability on any listener without blocking the event loop." | kind=entity | source=probe/scanner/passive_collector.py:L332 | neighbors=[._select()] | lang=en
-- "scanner_passive_collector_rationale_65": "Pull short printable ASCII runs from a payload, for human-readable evidence." | kind=entity | source=probe/scanner/passive_collector.py:L65 | neighbors=[_printable_strings()] | lang=en
-- "scanner_passive_collector_rationale_74": "Pull short printable ASCII runs from a payload, for human-readable evidence." | kind=entity | source=probe/scanner/passive_collector.py:L74 | neighbors=[_printable_strings()] | lang=en
-- "scanner_passive_collector_rationale_82": "Best-effort device label from an announcement payload (recv-only parsing)." | kind=entity | source=probe/scanner/passive_collector.py:L82 | neighbors=[_device_hint()] | lang=en
-- "scanner_passive_collector_rationale_91": "Best-effort device label from an announcement payload (recv-only parsing)." | kind=entity | source=probe/scanner/passive_collector.py:L91 | neighbors=[_device_hint()] | lang=en
-- "scanner_passive_collector_rationale_98": "Open ONE recv-only UDP listener. Returns None (with a warning) on failure." | kind=entity | source=probe/scanner/passive_collector.py:L98 | neighbors=[_open_listener()] | lang=en
-- "scanner_port_scanner_main": "main()" | kind=code-symbol | source=probe/scanner/port_scanner.py:L771 | neighbors=[port_scanner.py] | lang=en
-- "scanner_port_scanner_portscanner_init": ".__init__()" | kind=code-symbol | source=probe/scanner/port_scanner.py:L342 | neighbors=[PortScanner] | lang=en
-- "scanner_port_scanner_rationale_1": "port_scanner.py — TCP connect scan with an evidence-based state engine.  METHOD" | kind=entity | source=probe/scanner/port_scanner.py:L1 | neighbors=[port_scanner.py] | lang=en
-- "scanner_port_scanner_rationale_104": "Map a connect()-time OSError to (state, reason).      DNS failures (socket.gaier" | kind=entity | source=probe/scanner/port_scanner.py:L104 | neighbors=[classify_os_error()] | lang=en
-- "scanner_port_scanner_rationale_117": "Return 'ipv4'/'ipv6' for an IP literal, else None (unresolved hostname)." | kind=entity | source=probe/scanner/port_scanner.py:L117 | neighbors=[_family_of()] | lang=en
-- "scanner_port_scanner_rationale_127": "Map a connect()-time OSError to (state, reason).      DNS failures (socket.gaier" | kind=entity | source=probe/scanner/port_scanner.py:L127 | neighbors=[classify_os_error()] | lang=en
-- "scanner_port_scanner_rationale_128": "Resolve a named scan profile to a concrete, de-duplicated port list.      'full'" | kind=entity | source=probe/scanner/port_scanner.py:L128 | neighbors=[resolve_profile()] | lang=pt
+- "main_scripts_printer_scanner_rationale_55": "A minimal IPP/1.1 Get-Printer-Attributes request body (RFC 8010)." | kind=entity | source=probe/main_scripts/printer_scanner.py:L55 | neighbors=[build_ipp_get_printer_attributes()] | lang=pt
+- "main_scripts_printer_scanner_rationale_66": "Best-effort extraction of printer-make-and-model / printer-name from an IPP" | kind=entity | source=probe/main_scripts/printer_scanner.py:L66 | neighbors=[parse_ipp_make_model()] | lang=en
+- "main_scripts_rdp_scanner_rationale_111": "Two-probe RDP posture (MS-RDPBCGR 2.2.1.1.1 / 2.2.1.2.1).      Probe A offers SS" | kind=entity | source=probe/main_scripts/rdp_scanner.py:L111 | neighbors=[probe_rdp_posture()] | lang=pt
+- "main_scripts_rdp_scanner_rationale_44": "TPKT + X.224 Connection Request carrying an RDP Negotiation Request." | kind=entity | source=probe/main_scripts/rdp_scanner.py:L44 | neighbors=[build_connection_request()] | lang=en
+- "main_scripts_rdp_scanner_rationale_45": "TPKT + X.224 Connection Request carrying an RDP Negotiation Request." | kind=entity | source=probe/main_scripts/rdp_scanner.py:L45 | neighbors=[build_connection_request()] | lang=en
+- "main_scripts_rdp_scanner_rationale_56": "Parse a Connection Confirm. Returns None if this isn't an X.224 CC (i.e.     the" | kind=entity | source=probe/main_scripts/rdp_scanner.py:L56 | neighbors=[parse_connection_confirm()] | lang=en
+- "main_scripts_rdp_scanner_rationale_57": "Parse a Connection Confirm. Returns None if this isn't an X.224 CC (i.e.     the" | kind=entity | source=probe/main_scripts/rdp_scanner.py:L57 | neighbors=[parse_connection_confirm()] | lang=en
+- "main_scripts_rdp_scanner_rationale_77": "Map an RDP selectedProtocol bitmask to (nla, tls) posture.      MS-RDPBCGR 5.4.5" | kind=entity | source=probe/main_scripts/rdp_scanner.py:L77 | neighbors=[_posture_from_selected()] | lang=en
+- "main_scripts_rdp_scanner_rationale_84": "One synchronous RDP handshake. Best-effort; None on any failure." | kind=entity | source=probe/main_scripts/rdp_scanner.py:L84 | neighbors=[probe_rdp()] | lang=en
+- "main_scripts_rdp_scanner_rationale_98": "One synchronous RDP handshake offering `requested_protocols`. Best-effort;     N" | kind=entity | source=probe/main_scripts/rdp_scanner.py:L98 | neighbors=[probe_rdp()] | lang=en
+- "main_scripts_rdp_scanner_rdpscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/rdp_scanner.py:L138 | neighbors=[RDPScanner] | lang=en
+- "main_scripts_rsync_scanner_main": "main()" | kind=code-symbol | source=probe/main_scripts/rsync_scanner.py:L167 | neighbors=[rsync_scanner.py] | lang=en
+- "main_scripts_rsync_scanner_rationale_1": "rsync_scanner.py — rsync daemon anonymous-module exposure (VA checklist: anonymo" | kind=entity | source=probe/main_scripts/rsync_scanner.py:L1 | neighbors=[rsync_scanner.py] | lang=en
+- "main_scripts_rsync_scanner_rationale_114": "Select a module without a secret: OK => anonymous, AUTHREQD => auth." | kind=entity | source=probe/main_scripts/rsync_scanner.py:L114 | neighbors=[._test_anon()] | lang=pt
+- "main_scripts_rsync_scanner_rationale_131": "Blocking: list modules, then anon-test each. Monkeypatchable for tests." | kind=entity | source=probe/main_scripts/rsync_scanner.py:L131 | neighbors=[._probe()] | lang=en
+- "main_scripts_rsync_scanner_rationale_38": "Parse the daemon's module listing into [{name, comment}]. Lines are     'name<wh" | kind=entity | source=probe/main_scripts/rsync_scanner.py:L38 | neighbors=[parse_modules()] | lang=en
+- "main_scripts_rsync_scanner_rationale_74": "Read the @RSYNCD greeting and echo it back VERBATIM. Returns the negotiated" | kind=entity | source=probe/main_scripts/rsync_scanner.py:L74 | neighbors=[_handshake()] | lang=en
+- "main_scripts_rsync_scanner_rsyncscanner_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/rsync_scanner.py:L96 | neighbors=[RsyncScanner] | lang=en
+- "main_scripts_run_all_rationale_46": "Run one scanner module as a subprocess, tee its JSONL to <name>.jsonl." | kind=entity | source=probe/main_scripts/run_all.py:L46 | neighbors=[_run_stage()] | lang=en
+- "main_scripts_run_all_rationale_56": "Run one scanner module as a subprocess, tee its JSONL to <name>.jsonl." | kind=entity | source=probe/main_scripts/run_all.py:L56 | neighbors=[_run_stage()] | lang=en
+- "main_scripts_run_all_rationale_60": "Run one scanner module as a subprocess, tee its JSONL to <name>.jsonl." | kind=entity | source=probe/main_scripts/run_all.py:L60 | neighbors=[_run_stage()] | lang=en
+- "main_scripts_run_all_rationale_99": "EPM-advertised dynamic RPC ports from the msrpc stage (same field the funnel" | kind=entity | source=probe/main_scripts/run_all.py:L99 | neighbors=[_advertised_dynamic_ports()] | lang=en
+- "main_scripts_scan_funnel_main": "main()" | kind=code-symbol | source=probe/main_scripts/scan_funnel.py:L386 | neighbors=[scan_funnel.py] | lang=en
+- "main_scripts_scan_funnel_rationale_1": "scan_funnel.py — per-host scan orchestrator (the assessment pipeline, Playbook 0" | kind=entity | source=probe/main_scripts/scan_funnel.py:L1 | neighbors=[scan_funnel.py] | lang=en
+- "main_scripts_scan_funnel_rationale_104": "The full outcome of funnelling one host." | kind=entity | source=probe/main_scripts/scan_funnel.py:L104 | neighbors=[FunnelResult] | lang=en
+- "main_scripts_scan_funnel_rationale_110": "Orchestrates discovery → port scan → routed deep scanners for each host.      Pa" | kind=entity | source=probe/main_scripts/scan_funnel.py:L110 | neighbors=[ScanFunnel] | lang=en
+- "main_scripts_scan_funnel_rationale_118": "The port set worth scanning = union of every route's ports (deduped)." | kind=entity | source=probe/main_scripts/scan_funnel.py:L118 | neighbors=[_candidate_ports()] | lang=en
+- "main_scripts_scan_funnel_rationale_130": "Orchestrates discovery → port scan → routed deep scanners for each host.      Pa" | kind=entity | source=probe/main_scripts/scan_funnel.py:L130 | neighbors=[ScanFunnel] | lang=en
+- "main_scripts_scan_funnel_rationale_181": "Funnel many hosts with bounded concurrency, writing every result." | kind=entity | source=probe/main_scripts/scan_funnel.py:L181 | neighbors=[.run()] | lang=en
+- "main_scripts_scan_funnel_rationale_192": "Funnel many hosts with bounded concurrency, writing every result." | kind=entity | source=probe/main_scripts/scan_funnel.py:L192 | neighbors=[.run()] | lang=en
+- "main_scripts_scan_funnel_rationale_208": "Wire the funnel with the package's real scanners. Imported lazily so the     fun" | kind=entity | source=probe/main_scripts/scan_funnel.py:L208 | neighbors=[build_default_funnel()] | lang=en
+- "main_scripts_scan_funnel_rationale_219": "Wire the funnel with the package's real scanners. Imported lazily so the     fun" | kind=entity | source=probe/main_scripts/scan_funnel.py:L219 | neighbors=[build_default_funnel()] | lang=en
+- "main_scripts_scan_funnel_rationale_245": "Funnel many hosts with bounded concurrency, writing every result." | kind=entity | source=probe/main_scripts/scan_funnel.py:L245 | neighbors=[.run()] | lang=en
+- "main_scripts_scan_funnel_rationale_272": "Wire the funnel with the package's real scanners. Imported lazily so the     fun" | kind=entity | source=probe/main_scripts/scan_funnel.py:L272 | neighbors=[build_default_funnel()] | lang=en
+- "main_scripts_scan_funnel_rationale_56": "Map a host's open ports onto the deep-scanner routes that handle them.     Retur" | kind=entity | source=probe/main_scripts/scan_funnel.py:L56 | neighbors=[route_ports()] | lang=en
+- "main_scripts_scan_funnel_rationale_67": "Map a host's open ports onto the deep-scanner routes that handle them.     Retur" | kind=entity | source=probe/main_scripts/scan_funnel.py:L67 | neighbors=[route_ports()] | lang=en
+- "main_scripts_scan_funnel_rationale_84": "The full outcome of funnelling one host." | kind=entity | source=probe/main_scripts/scan_funnel.py:L84 | neighbors=[FunnelResult] | lang=en
+- "main_scripts_scan_funnel_rationale_98": "The port set worth scanning = union of every route's ports (deduped)." | kind=entity | source=probe/main_scripts/scan_funnel.py:L98 | neighbors=[_candidate_ports()] | lang=en
+- "main_scripts_scan_funnel_rationale_99": "Orchestrates discovery → port scan → routed deep scanners for each host.      Pa" | kind=entity | source=probe/main_scripts/scan_funnel.py:L99 | neighbors=[ScanFunnel] | lang=en
+- "main_scripts_scan_funnel_scanfunnel_init": ".__init__()" | kind=code-symbol | source=probe/main_scripts/scan_funnel.py:L145 | neighbors=[ScanFunnel] | lang=en
 
 ## Instructions
 
