@@ -426,6 +426,43 @@ class TaskRunner:
                 )
             params["targets"] = kept
 
+        # ── Step 3b: Independent admission gate (permanent denylist + gated
+        #    signed-job verification). Defense-in-depth AFTER engagement scope,
+        #    local ceiling and exclusions — the agent enforces its own ceiling. ──
+        import os as _os
+
+        from agent import job_admission
+        sig_ok, sig_reason = job_admission.verify_signed_job(
+            params, _os.environ.get("PROBE_JOB_SIGNING_KEY"))
+        if not sig_ok:
+            LOG.error("Job %s rejected by signature gate: %s", job_id, sig_reason)
+            self._submit_or_spool(job_id, {
+                **submission_identity, "success": False, "result": {}, "error": sig_reason,
+            })
+            return JobResult(
+                success=False, job_id=job_id, engagement_id=engagement_id,
+                scan_type=scan_type, profile=profile, error=sig_reason,
+                use_case_id=use_case_id,
+            )
+        if params.get("targets"):
+            kept_ok, denied = job_admission.drop_denied(params["targets"])
+            if denied:
+                LOG.warning("denylist guard: dropped %d never-scan target(s): %s",
+                            len(denied), denied[:5])
+            if not kept_ok:
+                error = ("All targets are on the permanent denylist "
+                         "(loopback/link-local/multicast/broadcast/manager)")
+                LOG.error("Job %s: %s", job_id, error)
+                self._submit_or_spool(job_id, {
+                    **submission_identity, "success": False, "result": {}, "error": error,
+                })
+                return JobResult(
+                    success=False, job_id=job_id, engagement_id=engagement_id,
+                    scan_type=scan_type, profile=profile, error=error,
+                    use_case_id=use_case_id,
+                )
+            params["targets"] = kept_ok
+
         # ── Step 4: Log the resolved task ───────────────────────────────────
         uc_label = f"use-case={use_case_id}" if use_case_id else f"scan_type={scan_type}"
         LOG.info("▶ Executing %s", uc_label)
