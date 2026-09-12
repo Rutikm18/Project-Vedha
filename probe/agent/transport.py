@@ -786,6 +786,69 @@ class Transport:
 
     # ── Result submission ──────────────────────────────────────────────────────
 
+    def submit_chunk(self, job_id: str, *, attempt_id: str, fence: int,
+                     host: str, facts: list, scan_type: str | None = None) -> bool:
+        """Commit ONE finished host while the job is still running.
+
+        Best-effort by design. The chunk is a buffer that protects evidence if
+        this process dies; a manager that is unreachable, slow, or refusing
+        chunks must never fail the scan, so every failure is a False and the
+        scan carries on. The final result submission is still the authoritative
+        delivery, and the manager merges anything it already holds.
+        """
+        try:
+            if not self.ensure_device_access():
+                return False
+        except Exception as exc:  # noqa: BLE001 — never fail a scan on the buffer
+            LOG.debug("submit_chunk: no device access (%s)", exc)
+            return False
+
+        body = {
+            "attempt_id": str(attempt_id),
+            "fence": int(fence),
+            "host": host,
+            # jsonb-safe for the same reason the result path scrubs: a banner
+            # carrying a NUL byte would 500 the manager's insert.
+            "facts": _strip_nul(facts),
+            "scan_type": scan_type,
+        }
+        try:
+            r = self._client.post(
+                f"/agents/{self._agent_id}/jobs/{job_id}/chunks",
+                headers=self.auth_header,
+                json=body,
+            )
+        except Exception as exc:  # noqa: BLE001 — includes every httpx error
+            LOG.debug("submit_chunk failed for %s on job %s: %s", host, job_id, exc)
+            return False
+        if 200 <= r.status_code < 300:
+            return True
+        LOG.debug("submit_chunk for %s on job %s refused (HTTP %d)",
+                  host, job_id, r.status_code)
+        return False
+
+    def committed_hosts(self, job_id: str) -> list[str]:
+        """Hosts the manager already holds for this job, so a retry can skip them.
+
+        Fails OPEN: if the list cannot be read, return nothing so the probe
+        rescans everything. The opposite failure — reading "skip" when we cannot
+        confirm it — would silently narrow a scan.
+        """
+        try:
+            if not self.ensure_device_access():
+                return []
+            r = self._client.get(
+                f"/agents/{self._agent_id}/jobs/{job_id}/chunks",
+                headers=self.auth_header,
+            )
+            if r.status_code != 200:
+                return []
+            hosts = (r.json() or {}).get("hosts") or []
+        except Exception as exc:  # noqa: BLE001 — resume is an optimisation
+            LOG.debug("committed_hosts unavailable for job %s: %s", job_id, exc)
+            return []
+        return [h for h in hosts if isinstance(h, str)]
+
     def submit_result(self, job_id: str, payload: dict[str, Any]) -> bool | str:
         """Submit a scan result to the manager.
 

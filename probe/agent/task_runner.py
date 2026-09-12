@@ -13,6 +13,8 @@ All I/O dependencies are injected so the runner is fully testable with mocks.
 """
 from __future__ import annotations
 
+import asyncio
+
 from scanner.scanner_base import project_file_stamp
 
 import json
@@ -118,6 +120,8 @@ class TaskRunner:
         identity_sk: bytes | None = None,
         local_allowed_networks: list[str] | None = None,
         local_excluded_networks: list[str] | None = None,
+        submit_chunk: Callable[..., bool] | None = None,
+        committed_hosts: Callable[[str], list[str]] | None = None,
     ):
         """Args:
             http_get:       Callback for authenticated GET (from Transport).
@@ -144,9 +148,50 @@ class TaskRunner:
             else list(local_allowed_networks)
         )
         self._local_excluded_networks = list(local_excluded_networks or [])
+        # Per-host evidence buffer (both optional: a manager without the chunk
+        # endpoints, or a standalone runner, simply does not use it).
+        self._submit_chunk = submit_chunk
+        self._committed_hosts = committed_hosts
         if self._run_scan is None:
             from agent.engine import run_scan
             self._run_scan = run_scan
+
+    # ── Per-host evidence buffer ─────────────────────────────────────────────
+
+    def _chunk_sink(self, job_id, attempt_id, fence, scan_type):
+        """A callback the scan engine invokes when ONE host is finished.
+
+        Commits that host to the manager so a process that dies mid-scan does not
+        take the work with it. Runs on a worker thread: the engine calls this
+        from its event loop, and a blocking POST there would stall every other
+        host's scan. Returns None when the buffer is not wired (standalone runs,
+        or a manager without the endpoint), which the engine treats as "no hook".
+        """
+        if self._submit_chunk is None or attempt_id is None or fence is None:
+            return None
+
+        async def _sink(host: str, facts: list) -> None:
+            await asyncio.to_thread(
+                self._submit_chunk, str(job_id),
+                attempt_id=str(attempt_id), fence=int(fence),
+                host=host, facts=facts, scan_type=scan_type,
+            )
+
+        return _sink
+
+    def _already_committed(self, job_id) -> set[str]:
+        """Hosts the manager already holds for this job — a retry skips them.
+
+        Fails OPEN (empty set = scan everything): a resume list we cannot read
+        must never be mistaken for "there is nothing left to do".
+        """
+        if self._committed_hosts is None:
+            return set()
+        try:
+            return set(self._committed_hosts(str(job_id)) or [])
+        except Exception as exc:  # noqa: BLE001 — resume is an optimisation
+            LOG.debug("resume list unavailable for job %s: %s", job_id, exc)
+            return set()
 
     # ── Main entry point ─────────────────────────────────────────────────────
 
@@ -484,6 +529,9 @@ class TaskRunner:
                 validated_excludes=all_excludes,
                 local_allowed_scope=self._local_allowed_networks,
                 cancellation_event=cancellation_event,
+                on_host_complete=self._chunk_sink(job_id, attempt_id, fence,
+                                                  scan_type),
+                skip_hosts=self._already_committed(job_id),
             )
             if not isinstance(result, dict):
                 raise TypeError("scan engine returned a non-object result")

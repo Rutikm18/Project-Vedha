@@ -36,6 +36,7 @@ from workflow.modes import (
 from workflow.workflow_engine import PROFILE_PORTS, run_engagement
 from workflow.intensity import (
     DEFAULT_INTENSITY,
+    intensity_first_pass,
     intensity_port_override,
     resolve_intensity,
 )
@@ -396,7 +397,8 @@ def _hosts_from_facts(facts: list[dict]) -> list[dict]:
 
 def _applied_tuning(tuning: dict, job_runtime_seconds: float,
                     *, intensity: str = DEFAULT_INTENSITY,
-                    port_override: list[int] | None = None) -> dict:
+                    port_override: list[int] | None = None,
+                    first_pass_ports: list[int] | None = None) -> dict:
     """Serialize effective limits without ever echoing credential values."""
     return {
         "intensity": intensity,
@@ -406,6 +408,10 @@ def _applied_tuning(tuning: dict, job_runtime_seconds: float,
         "disc_timeout": tuning.get("disc_timeout"),
         "retries": tuning.get("retries"),
         "tcp_ports_scanned": (len(port_override) if port_override is not None else None),
+        # Non-null means the sweep was PHASED: this many high-signal ports were
+        # assessed first, the rest ran as a tail (see workflow/intensity.py).
+        "tcp_first_pass_ports": (len(first_pass_ports)
+                                 if first_pass_ports is not None else None),
         "scan_method": _scan_method_for(port_override),
         "passive_listen_seconds": tuning.get("passive_listen_seconds"),
         "recheck_hours": (
@@ -433,6 +439,7 @@ def _build_run_stats(
     authorized_targets: list[str],
     intensity: str = DEFAULT_INTENSITY,
     port_override: list[int] | None = None,
+    first_pass_ports: list[int] | None = None,
 ) -> tuple[dict, list[dict]]:
     """Build one consistent result summary for complete and interrupted runs."""
     successful_facts = [
@@ -455,6 +462,7 @@ def _build_run_stats(
         "applied_tuning": _applied_tuning(
             tuning, job_runtime_seconds,
             intensity=intensity, port_override=port_override,
+            first_pass_ports=first_pass_ports,
         ),
         "scope_enforced": {
             "allow": scope_src,
@@ -583,7 +591,9 @@ def run_scan(scan_type: str, params: dict,
              validated_scope: list[str] | None = None,
              validated_excludes: list[str] | None = None,
              local_allowed_scope: list[str] | None = None,
-             cancellation_event=None) -> dict:
+             cancellation_event=None,
+             on_host_complete=None,
+             skip_hosts: set[str] | None = None) -> dict:
     """Execute a scan and return the enriched result bundle.
 
     Args:
@@ -659,6 +669,11 @@ def run_scan(scan_type: str, params: dict,
         # (full_port_audit is always the whole TCP space); otherwise the
         # intensity preset decides, and `standard` defers to the profile catalog.
         port_override = intensity_port_override(
+            intensity, force_profile=_FORCE_PORT_PROFILE.get(scan_type),
+        )
+        # The high-signal ports to sweep FIRST, so banner/OS/deep branches do not
+        # wait on all 65,535. None = sweep once (see workflow/intensity.py).
+        first_pass_ports = intensity_first_pass(
             intensity, force_profile=_FORCE_PORT_PROFILE.get(scan_type),
         )
         # Widen ONLY the standard baseline for broad assessments to the CLI's
@@ -865,7 +880,13 @@ def run_scan(scan_type: str, params: dict,
                     stop_after_banner=mode.stop_after_banner,
                     stage_ceiling=mode.stage_ceiling,
                     port_override=port_override,
+                    first_pass_ports=first_pass_ports,
                     scan_method=scan_method,
+                    # Per-host commit + resume: a host finished by an attempt
+                    # that later dies is still delivered, and a retry does not
+                    # rescan what the manager already holds.
+                    on_host_complete=on_host_complete,
+                    skip_hosts=skip_hosts,
                     cache=cache,
                     trace=trace,
                     discover_ipv6=discover_ipv6,
@@ -918,6 +939,7 @@ def run_scan(scan_type: str, params: dict,
             authorized_targets=targets,
             intensity=intensity,
             port_override=port_override,
+            first_pass_ports=first_pass_ports,
         )
         has_evidence = bool(run_stats["fact_count"])
         return _error_result(
@@ -968,6 +990,7 @@ def run_scan(scan_type: str, params: dict,
             authorized_targets=targets,
             intensity=intensity,
             port_override=port_override,
+            first_pass_ports=first_pass_ports,
         )
         has_evidence = bool(run_stats["fact_count"])
         return _error_result(
@@ -1019,6 +1042,7 @@ def run_scan(scan_type: str, params: dict,
         authorized_targets=targets,
         intensity=intensity,
         port_override=port_override,
+        first_pass_ports=first_pass_ports,
     )
     open_ports = run_stats["open_ports"]
     host_count = run_stats["host_count"]

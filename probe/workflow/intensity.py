@@ -42,6 +42,8 @@ INTENSITY_PRESETS: dict[str, dict] = {
         # Already bounded by BREADTH (~15 ports); a time ceiling here could only
         # ever cut short a scan that was going to finish anyway.
         "max_host_seconds": None,
+        # Nothing to bring forward: the whole sweep IS the fast set.
+        "first_pass_profile": None,
     },
     "standard": {
         "port_profile": None,        # defer to the profile's own catalog
@@ -51,6 +53,7 @@ INTENSITY_PRESETS: dict[str, dict] = {
         "disc_timeout": 1.5,
         "retries": 1,
         "max_host_seconds": None,      # bounded by the profile's port catalog
+        "first_pass_profile": None,    # the catalog is already the high-signal set
     },
     "deep": {
         "port_profile": "full",      # the entire 1–65535 TCP space
@@ -67,6 +70,14 @@ INTENSITY_PRESETS: dict[str, dict] = {
         # pathological case without touching a scan that is working. Ports not
         # reached are reported not_scanned, never "filtered".
         "max_host_seconds": 1800,
+        # PHASE THE SWEEP. Banner, OS and the deep branches all wait on the port
+        # stage, so a single 65,535-port pass meant no host was ASSESSED for
+        # hours (109s/host of pure sending at best; 280-2,728s measured). This
+        # names the high-signal ports to sweep FIRST; the engine unions it with
+        # the branch catalogs, assesses that, then takes the rest as a budgeted
+        # tail. Same coverage, and an interrupted job loses the tail rather than
+        # the assessment.
+        "first_pass_profile": "top1000",
     },
 }
 
@@ -86,6 +97,26 @@ def resolve_intensity(name: str | None) -> dict:
             f"unknown intensity {name!r}; valid: {', '.join(sorted(VALID_INTENSITIES))}"
         )
     return dict(preset)
+
+
+def intensity_first_pass(
+    name: str | None,
+    *,
+    force_profile: str | None = None,
+) -> list[int] | None:
+    """Ports to sweep BEFORE the rest, or None to sweep once.
+
+    None for every breadth-bounded preset (their whole sweep is already the fast
+    set) and for a scan_type that pins its own coverage — a full-port audit stops
+    at the port stage, so there is no assessment to bring forward and phasing
+    would only add a second scanner setup.
+    """
+    if force_profile:
+        return None
+    profile_name = resolve_intensity(name).get("first_pass_profile")
+    if profile_name is None:
+        return None
+    return resolve_profile(profile_name)
 
 
 def intensity_port_override(

@@ -545,6 +545,12 @@ def main() -> None:
         identity_sk=identity_sk,   # Phase 4: X25519 private key for scope decryption
         local_allowed_networks=NETWORK_SEGMENTS,
         local_excluded_networks=SITE_EXCLUDED_SEGMENTS,
+        # Per-host evidence buffer: commit each finished host while the job runs,
+        # and skip on retry whatever the manager already holds. Both are
+        # best-effort inside Transport, so an older manager without the chunk
+        # endpoints changes nothing.
+        submit_chunk=transport.submit_chunk,
+        committed_hosts=transport.committed_hosts,
     )
 
     # ── Step 5: Try WebSocket push mode first ────────────────────────────────

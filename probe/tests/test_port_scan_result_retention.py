@@ -28,7 +28,7 @@ from scanner.port_scanner import PortScanner
 from scanner.scanner_base import ScopeGuard
 
 PORTS = 5000
-OPEN_PORTS = {22, 80, 443, 3389, 8080}
+OPEN_PORTS = {22, 80, 443, 3389, 4444}
 CONCURRENCY = 64
 
 
@@ -63,11 +63,11 @@ def _live_probe(scanner, *, silent_ports=frozenset()):
                                None, rtt_ms=0.4, error="[Errno 61] Connect call "
                                f"failed ('127.0.0.1', {port})", errno_val=61,
                                family="ipv4")
-        alive.add(r)
+        refs.append(weakref.ref(r))
         probed["n"] += 1
         if probed["n"] == PORTS:
             gc.collect()
-            live_at_end["count"] = len(alive)
+            live_at_end["count"] = sum(1 for w in refs if w() is not None)
         return r
 
     return _attempt, live_at_end

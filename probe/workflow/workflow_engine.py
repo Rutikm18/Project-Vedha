@@ -21,9 +21,11 @@ from __future__ import annotations
 from contextlib import contextmanager
 
 import asyncio
+import inspect
 import logging
 import os
 import time
+from dataclasses import asdict
 from datetime import timedelta
 
 from scanner.scanner_base import ScanResult, ScopeGuard
@@ -108,19 +110,35 @@ async def _gather_per_host(
     hosts: list[str],
     *,
     max_in_flight: int = 100,
+    on_results=None,
 ) -> list[ScanResult]:
-    """Run per-host probes with bounded fan-out and failure isolation."""
+    """Run per-host probes with bounded fan-out and failure isolation.
+
+    `on_results` receives ONE host's results the moment that host finishes. A job
+    cut short — runtime ceiling reached, lease revoked — cancels this gather, and
+    everything it was still holding died with it, so a scan that had genuinely
+    finished twenty hosts reported none of them. Handing each host over as it
+    completes is what makes the partial-result paths in agent/engine.py real.
+
+    Slots are a semaphore rather than fixed batches for the same reason: a batch
+    could not release a finished host until its slowest peer was done.
+    """
     if not hosts:
         return []
-    results: list[ScanResult] = []
-    batch_size = max(1, int(max_in_flight))
-    for offset in range(0, len(hosts), batch_size):
-        batches = await asyncio.gather(*(
-            _scan_one(scanner, host)
-            for host in hosts[offset:offset + batch_size]
-        ))
-        results.extend(result for batch in batches for result in batch)
-    return results
+    slots = asyncio.Semaphore(max(1, int(max_in_flight)))
+    per_host: list[list[ScanResult]] = [[] for _ in hosts]
+
+    async def _one(index: int, host: str) -> None:
+        async with slots:
+            out = await _scan_one(scanner, host)
+        per_host[index] = out
+        if on_results is not None:
+            on_results(out)
+
+    await asyncio.gather(*(_one(i, h) for i, h in enumerate(hosts)))
+    # Returned in HOST order, not completion order: callers (and their tests)
+    # read this list positionally against the target list.
+    return [result for batch in per_host for result in batch]
 
 
 def _split_cached(cache: WorkflowCache, host: str, candidate_ports: list[int],
@@ -363,6 +381,9 @@ async def run_engagement(targets: list[str], scope: ScopeGuard, *, profile: str 
                          disc_timeout: float = 1.5, retries: int = 1,
                          max_host_seconds: float | None = None,
                          port_override: list[int] | None = None,
+                         first_pass_ports: list[int] | None = None,
+                         on_host_complete=None,
+                         skip_hosts: set[str] | None = None,
                          scan_method: str = "connect",
                          cache: WorkflowCache | None = None,
                          assets: dict[str, Asset] | None = None,
@@ -397,9 +418,70 @@ async def run_engagement(targets: list[str], scope: ScopeGuard, *, profile: str 
     # normally lives), so scope MUST be enforced here at the single entry
     # point or out-of-scope hosts would be scanned. Found via testing.
     targets = list(scope.filter(targets))
+    # RESUME. Hosts the manager already holds evidence for (see the probe's
+    # committed_hosts) are not rescanned: a retry after a crashed attempt should
+    # cost only the hosts that were still outstanding. Their facts are not lost —
+    # the manager merges what it buffered into this job's final result.
+    if skip_hosts:
+        already = [t for t in targets if t in skip_hosts]
+        if already:
+            LOG.info("resume: %d host(s) already committed — not rescanning",
+                     len(already))
+            targets = [t for t in targets if t not in skip_hosts]
     assets = assets if assets is not None else {t: Asset(host=t, profile=profile) for t in targets}
     for t in targets:
         assets.setdefault(t, Asset(host=t, profile=profile))
+
+    async def _commit_host(host: str) -> None:
+        """Hand ONE finished host's evidence to the caller (the probe commits it
+        to the manager) so work already done survives a process that never
+        returns. Best-effort: the buffer is an optimisation and must never be
+        able to fail a scan that is working.
+        """
+        if on_host_complete is None:
+            return
+        try:
+            # Serialisable fact dicts, the same shape agent/engine.py submits —
+            # the caller puts these straight on the wire.
+            facts = [asdict(entry.result) for entry in cache._store.values()
+                     if getattr(entry.result, "target", None) == host]
+            outcome = on_host_complete(host, facts)
+            if inspect.isawaitable(outcome):
+                await outcome
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:  # noqa: BLE001
+            LOG.debug("per-host commit for %s failed: %s", host, exc)
+
+    def _port_scanner_for(port_list: list[int], *, method: str):
+        """The port scanner for ONE phase.
+
+        Wide sweeps go through the stateless SYN scanner — far cheaper than 65k
+        connect() calls per host — and it falls back to a connect scan off
+        privileged Linux, so port states and completeness metrics are identical
+        everywhere; only the method (syn vs connect_fallback) differs.
+
+        Both paths carry `retries` and the per-host budget: max_host_seconds
+        bounds ONE host's sweep, and ports it does not reach are reported
+        not_scanned, never "filtered", so a truncated sweep stays honest.
+        """
+        if method == "syn":
+            return SynScanner(scope, ports=port_list, rate=rate,
+                              concurrency=concurrency, timeout=timeout,
+                              retries=retries, deadline_seconds=max_host_seconds)
+        return PortScanner(scope, ports=port_list, rate=rate,
+                           concurrency=concurrency, timeout=timeout,
+                           retries=retries, deadline_seconds=max_host_seconds)
+
+    def _deliver(results: list[ScanResult]) -> None:
+        """Store ONE host's results the moment that host finishes.
+
+        The per-host stages below used to store everything after the whole stage
+        returned, so a job cut short mid-stage lost every completed host with it.
+        agent/engine.py builds its partial result from this cache, so delivering
+        here is what an interrupted scan actually reports.
+        """
+        _store_results(results, assets=assets, cache=cache, profile=profile)
 
     # --- Gate 0: OT passive-only hard stop ------------------------------
     if gate_0_is_passive_profile(profile):
@@ -451,6 +533,31 @@ async def run_engagement(targets: list[str], scope: ScopeGuard, *, profile: str 
         cache.put(result)
 
     ports = _port_candidates(profile, service_filter, port_override=port_override)
+    # TWO-PHASE COVERAGE. The same ports, in an order that pays out early.
+    #
+    # A deep run asks for all 65,535 ports, and every stage that turns a port
+    # into an ASSESSMENT — banner, OS, the deep branches — waited for the whole
+    # sweep. At the aggressive envelope that is 109s per host at best (280-2,728s
+    # measured), so on a /24 nothing was assessed for hours, and a job cut short
+    # had port states with nothing behind them.
+    #
+    # So sweep the high-signal set first (the caller's fast list UNION the branch
+    # catalogs — a fast pass without the branch ports could not assess anything),
+    # let the rest of the pipeline run on it, then take the remainder as a
+    # budgeted tail. Coverage is unchanged; only the order is.
+    #
+    # Skipped when nothing runs after the port stage (a full-port audit): there
+    # is no assessment to bring forward, so phasing would only add a second
+    # scanner setup.
+    requested_ports = list(ports)
+    tail_ports: list[int] = []
+    if first_pass_ports and includes_stage(stage_ceiling, STAGE_DEEP_SCAN):
+        fast = set(_port_candidates(profile, service_filter,
+                                    port_override=list(first_pass_ports)))
+        first = sorted(fast & set(ports))
+        if first and len(first) < len(ports):
+            tail_ports = sorted(set(ports) - set(first))
+            ports = first
     allowed_branches = PROFILE_DEEP_BRANCHES.get(profile, set())
     direct_datagram = (
         service_filter is not None
@@ -480,6 +587,7 @@ async def run_engagement(targets: list[str], scope: ScopeGuard, *, profile: str 
                 disc,
                 disc_targets,
                 max_in_flight=concurrency,
+                on_results=_deliver,
             )
         _record(
             trace,
@@ -487,7 +595,6 @@ async def run_engagement(targets: list[str], scope: ScopeGuard, *, profile: str 
             target_count=len(disc_targets),
             results=results,
         )
-        _store_results(results, assets=assets, cache=cache, profile=profile)
 
     live_hosts = [t for t in targets if assets[t].last_seen_alive is not None]
 
@@ -500,33 +607,23 @@ async def run_engagement(targets: list[str], scope: ScopeGuard, *, profile: str 
     LOG.info("stage host_discovery: %d of %d target(s) alive", len(live_hosts), len(targets))
     if port_targets and ports:
         LOG.info("stage port_scan: %d host(s) x %d port(s)", len(port_targets), len(ports))
-        # Wide sweeps (full-port audit / deep intensity) go through the stateless
-        # SYN scanner — far cheaper than 65k connect() calls per host. It
-        # transparently falls back to a connect scan off privileged Linux, so the
-        # port state + completeness metrics are identical everywhere; only the
-        # method (syn vs connect_fallback) differs. Narrow scans stay on connect.
-        if scan_method == "syn":
-            # The SYN path is the one the deep envelope actually takes (65,535
-            # ports is above the connect/SYN threshold), so it needs the SAME
-            # retries and per-host budget the preset promises. Passing them only
-            # to PortScanner below applied the ceiling to every scan except the
-            # one that needed it.
-            scanner = SynScanner(scope, ports=ports, rate=rate,
-                                 concurrency=concurrency, timeout=timeout,
-                                 retries=retries,
-                                 deadline_seconds=max_host_seconds)
-        else:
-            # max_host_seconds bounds ONE host's port sweep. Only `deep` sets it
-            # (all 65,535 ports); ports not reached are reported not_scanned,
-            # never "filtered", so a truncated sweep stays honest.
-            scanner = PortScanner(scope, ports=ports, rate=rate, concurrency=concurrency,
-                                  timeout=timeout, retries=retries,
-                                  deadline_seconds=max_host_seconds)
+        # A phased run's first pass is the small high-signal set, so it takes the
+        # proven connect path; `scan_method` describes the WIDE sweep, which in a
+        # phased run is the tail below.
+        scanner = _port_scanner_for(
+            ports, method="connect" if tail_ports else scan_method)
         with _timed(trace, "port_scan"):
             results = await _gather_per_host(
                 scanner,
                 port_targets,
-                max_in_flight=concurrency,
+                # HOST slots, not the socket budget. `concurrency` bounds sockets
+                # WITHIN a scanner; using it here also started that many hosts at
+                # once, so on a /24 every live host swept in lockstep and none
+                # finished early. The shared semaphore still caps total sockets,
+                # so throughput is unchanged — but memory is bounded, hosts
+                # complete progressively, and a per-host budget means something.
+                max_in_flight=host_concurrency,
+                on_results=_deliver,
             )
         _record(
             trace,
@@ -534,7 +631,6 @@ async def run_engagement(targets: list[str], scope: ScopeGuard, *, profile: str 
             target_count=len(port_targets),
             results=results,
         )
-        _store_results(results, assets=assets, cache=cache, profile=profile)
 
     # --- Gate 4b: OS identification --------------------------------------
     # Runs at the PORT stage, not the deep stage: the OS is an inventory fact
@@ -575,25 +671,36 @@ async def run_engagement(targets: list[str], scope: ScopeGuard, *, profile: str 
         return assets
 
     # --- Gate 4: service banner ------------------------------------------
+    async def _banner_pass(hosts: list[str]) -> None:
+        """Fingerprint the OPEN ports of each host.
+
+        Cache-guarded per (host, port), so running it a second time after the
+        port tail probes ONLY the ports the tail newly opened — which is what
+        stops a tail-discovered service from reaching the manager as a bare port
+        number with no product behind it.
+        """
+        for host in hosts:
+            asset = assets[host]
+            if not gate_4_service_banner(asset):
+                continue
+            candidate_ports = asset.open_ports_for_deep_scan()
+            if service_filter is not None:
+                # The REQUESTED coverage, not the current phase's slice.
+                candidate_ports &= set(requested_ports)
+            candidate_ports = sorted(candidate_ports)
+            to_scan, reused = _split_cached(cache, host, candidate_ports, "service_banner", force_recheck_after)
+            for r in reused:
+                asset.merge_result(r)
+            _record_reused(trace, "service_banner", reused)
+            if to_scan:
+                banner = ServiceBannerScanner(scope, ports=to_scan, rate=rate, concurrency=concurrency, timeout=timeout)
+                with _timed(trace, "service_banner"):
+                    results = await _scan_one(banner, host)
+                _record(trace, "service_banner", target_count=1, results=results)
+                _store_results(results, assets=assets, cache=cache, profile=profile)
+
     LOG.info("stage service_banner: %d host(s)", len(live_hosts))
-    for host in live_hosts:
-        asset = assets[host]
-        if not gate_4_service_banner(asset):
-            continue
-        candidate_ports = asset.open_ports_for_deep_scan()
-        if service_filter is not None:
-            candidate_ports &= set(ports)
-        candidate_ports = sorted(candidate_ports)
-        to_scan, reused = _split_cached(cache, host, candidate_ports, "service_banner", force_recheck_after)
-        for r in reused:
-            asset.merge_result(r)
-        _record_reused(trace, "service_banner", reused)
-        if to_scan:
-            banner = ServiceBannerScanner(scope, ports=to_scan, rate=rate, concurrency=concurrency, timeout=timeout)
-            with _timed(trace, "service_banner"):
-                results = await _scan_one(banner, host)
-            _record(trace, "service_banner", target_count=1, results=results)
-            _store_results(results, assets=assets, cache=cache, profile=profile)
+    await _banner_pass(live_hosts)
 
     if not includes_stage(stage_ceiling, STAGE_DEEP_SCAN):
         _finalize_trace(trace)
@@ -650,6 +757,7 @@ async def run_engagement(targets: list[str], scope: ScopeGuard, *, profile: str 
 
     health = HostHealthMonitor(_recheck_alive)
     _deep_done = [0]            # list so the closure can mutate it
+    _deep_total = [len(branch_hosts)]   # reset for the tail's follow-up pass
 
     async def _scan_one_host(host: str) -> None:
         asset = assets[host]
@@ -706,8 +814,9 @@ async def run_engagement(targets: list[str], scope: ScopeGuard, *, profile: str 
             except asyncio.CancelledError:
                 pass
             _deep_done[0] += 1
+            await _commit_host(host)
             LOG.info("  deep_scan %d/%d  %s  (%.1fs)%s",
-                     _deep_done[0], len(branch_hosts), host,
+                     _deep_done[0], _deep_total[0], host,
                      time.monotonic() - started,
                      "  OFFLINE" if health.is_offline(host) else "")
 
@@ -728,6 +837,44 @@ async def run_engagement(targets: list[str], scope: ScopeGuard, *, profile: str 
                  len(branch_hosts), len(BRANCHES), host_concurrency)
         await asyncio.gather(*(_guarded(h) for h in branch_hosts))
         LOG.info("stage deep_scan: complete (%d/%d host(s))", _deep_done[0], len(branch_hosts))
+
+    # --- Port tail: the rest of the requested range ----------------------
+    # Every host now has a real assessment of the high-signal ports. Only now do
+    # we spend the hours the wide sweep costs — and because each host's results
+    # are delivered as it finishes (see _deliver), losing the tail to a runtime
+    # ceiling costs the tail, not the assessment.
+    if tail_ports and branch_hosts:
+        before = {h: set(assets[h].open_ports_for_deep_scan()) for h in branch_hosts}
+        LOG.info("stage port_scan: tail of %d port(s) across %d host(s)",
+                 len(tail_ports), len(branch_hosts))
+        tail_scanner = _port_scanner_for(tail_ports, method=scan_method)
+        with _timed(trace, "port_scan"):
+            tail_results = await _gather_per_host(
+                tail_scanner,
+                branch_hosts,
+                max_in_flight=host_concurrency,
+                on_results=_deliver,
+            )
+        _record(trace, "port_scan", target_count=len(branch_hosts),
+                results=tail_results)
+        # A port the tail opened has had no banner and no branch. Both passes are
+        # cache-guarded, so re-running them touches only what the tail added.
+        grew = [h for h in branch_hosts
+                if assets[h].open_ports_for_deep_scan() - before[h]]
+        if grew:
+            LOG.info("stage port_scan: tail opened new port(s) on %d host(s) — "
+                     "assessing them", len(grew))
+            await _banner_pass(grew)
+            _deep_done[0] = 0
+            _deep_total[0] = len(grew)
+            await asyncio.gather(*(_guarded(h) for h in grew))
+        # Refresh the per-host buffer for the hosts the tail did NOT change: they
+        # were committed before it ran, so their chunk still says the scan
+        # stopped at the fast set. If the job dies now, the manager would promote
+        # a result that understates the coverage actually achieved.
+        for host in branch_hosts:
+            if host not in grew:
+                await _commit_host(host)
 
     # Offline/flaky verdicts are facts like any other: they reach the manager,
     # and they carry scan_complete=false so an incomplete host can never be read

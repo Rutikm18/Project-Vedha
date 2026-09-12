@@ -639,6 +639,33 @@ class PortScanner(BaseScanner):
         return (result.status == "filtered"
                 and (result.data or {}).get("reason") == "no_response")
 
+    def _retain_result(self, result: ScanResult) -> bool:
+        """Must this result OBJECT outlive the port that produced it?
+
+        Only if something downstream still reads it: an open port is emitted, and
+        --report-closed asks for every observation verbatim. Everything else is a
+        final verdict the moment it arrives — it is tallied into ScanMetrics and
+        released. Holding all of them cost 47 MB per host on a full sweep, and the
+        port stage scans every live host at once (measured: 4.7 GB at 100 hosts,
+        which the OS answers with a kill and no traceback).
+        """
+        return self.report_closed or result.status == "open"
+
+    def _silence_result(self, target: str, port: int,
+                        attempts: int) -> ScanResult:
+        """Reconstruct the tally-only verdict for a port that stayed silent.
+
+        Ambiguous ports are kept as a port -> attempts map rather than as result
+        objects: the cleanup pass needs their NUMBERS, and an unresolved one is
+        never emitted (only --report-closed emits non-open states, and that mode
+        keeps the original objects). So this feeds the counters and nothing else.
+        """
+        result = self._build(target, port, "filtered", "no_response",
+                             f"no response within {self.timeout:g}s")
+        if attempts > 1:
+            result.data["attempts"] = attempts
+        return result
+
     async def _reprobe_ambiguous(self, target: str, ports: list[int],
                                  est: AdaptiveTimeout | None) -> dict[int, ScanResult]:
         """Gentle second look at ports that stayed silent through the main sweep.
@@ -718,10 +745,15 @@ class PortScanner(BaseScanner):
         for p in _order:
             queue.put_nowait(p)
         emitted: list[ScanResult] = []
-        # Collected first, recorded after the cleanup pass, so ScanMetrics sees
-        # each port exactly once carrying its FINAL state (re-recording a
-        # corrected port would register as a duplicate and fail completeness).
+        # Results that must outlive their port (see _retain_result), recorded
+        # after the cleanup pass so ScanMetrics sees each port exactly once
+        # carrying its FINAL state (re-recording a corrected port would register
+        # as a duplicate and fail completeness).
         collected: dict[int, ScanResult] = {}
+        # Ambiguous ports kept as port -> attempts, not as objects: the cleanup
+        # pass re-probes by NUMBER, and an unresolved silent port is only ever
+        # tallied. This is what keeps a fully-filtered host flat in memory.
+        ambiguous_attempts: dict[int, int] = {}
         _deadline = (t0 + self.deadline_seconds) if self.deadline_seconds else None
 
         async def _worker() -> None:
@@ -737,7 +769,14 @@ class PortScanner(BaseScanner):
                 try:
                     result = await self._scan_port(target, port, est, cwnd,
                                                    window)
-                    collected[port] = result
+                    if self._retain_result(result):
+                        collected[port] = result
+                    elif self._is_ambiguous(result):
+                        ambiguous_attempts[port] = (
+                            (result.data or {}).get("attempts", 1))
+                    else:
+                        # Definitive and never emitted: tally it and let it go.
+                        metrics.record(result)
                 finally:
                     queue.task_done()
                     if self.scan_delay:              # jittered per-probe pause (evasion)
@@ -752,7 +791,11 @@ class PortScanner(BaseScanner):
                 w.cancel()
             raise
         # --- cleanup pass -------------------------------------------------
-        ambiguous = sorted(p for p, r in collected.items() if self._is_ambiguous(r))
+        # Both sources: the ports kept only as a count, plus any ambiguous result
+        # retained as an object (--report-closed keeps every observation).
+        ambiguous = sorted(set(ambiguous_attempts)
+                           | {p for p, r in collected.items()
+                              if self._is_ambiguous(r)})
         reprobe_stats: dict | None = None
         if self.reprobe and ambiguous:
             recovered = await self._reprobe_ambiguous(target, ambiguous, est)
@@ -774,6 +817,13 @@ class PortScanner(BaseScanner):
             metrics.record(result)
             if result.status == "open" or self.report_closed:
                 emitted.append(result)
+        # Silent ports the cleanup pass did not resolve. They were never retained
+        # (nothing emits them), so the counters get a reconstructed verdict —
+        # one tally per port, exactly as if it had been held all along.
+        for port, attempts in sorted(ambiguous_attempts.items()):
+            if port in collected:          # recovered by the cleanup pass above
+                continue
+            metrics.record(self._silence_result(target, port, attempts))
 
         # Anything still queued was never probed. The count comes from the
         # existing accounting; this flag only records WHY, so a partial result
