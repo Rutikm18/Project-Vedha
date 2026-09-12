@@ -30,6 +30,12 @@ def _is_privileged() -> bool:
         return False
 
 
+def _os_name() -> str:
+    import platform
+    s = platform.system().lower()
+    return {"linux": "linux", "darwin": "macos", "windows": "windows"}.get(s, s)
+
+
 def _state_dir() -> str:
     sf = os.environ.get("STATE_FILE")
     if sf:
@@ -67,8 +73,11 @@ def build_parser() -> argparse.ArgumentParser:
     g = cn.add_mutually_exclusive_group()
     g.add_argument("--pat")
     g.add_argument("--token")
+    cn.add_argument("--service", action="store_true",
+                    help="install a reboot-surviving OS service instead of running in foreground")
     cd = sub.add_parser("collect-diagnostics")
     cd.add_argument("--out")
+    sub.add_parser("uninstall")
     return p
 
 
@@ -98,8 +107,20 @@ def cmd_connect(args) -> int:
     reqs = os.path.join(PROBE_DIR, "requirements-runtime.txt")
     if os.path.exists(reqs):
         deps.install_requirements(PROBE_DIR, reqs, strict=(mode == "strict"))
+    if getattr(args, "service", False):
+        from agent import service
+        vpy = deps.venv_python(PROBE_DIR)
+        svc_values = {**values, "scope": os.environ.get("PROBE_NETWORK_SEGMENTS", "")}
+        return service.install(_os_name(), svc_values, vpy, PROBE_DIR, _state_dir())
     enroll = "pat" if args.pat else "token" if args.token else "pairing"
     return connect.run(values, mode=enroll, pat=args.pat, token=args.token, state_dir=_state_dir())
+
+
+def cmd_uninstall(_args) -> int:
+    from agent import service
+    os_name = _os_name()
+    path, _ = service.render_unit(os_name, {}, "", PROBE_DIR, _state_dir())
+    return service.uninstall(os_name, path)
 
 
 def cmd_collect_diagnostics(args) -> int:
@@ -129,6 +150,7 @@ def main(argv: list[str] | None = None) -> int:
         "self-scan": cmd_self_scan,
         "connect": cmd_connect,
         "collect-diagnostics": cmd_collect_diagnostics,
+        "uninstall": cmd_uninstall,
     }[args.cmd](args)
 
 
