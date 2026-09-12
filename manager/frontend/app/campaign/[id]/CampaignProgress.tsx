@@ -12,10 +12,11 @@
  *   • findings with step-by-step remediation guidance
  * Polls every 4s while anything is still running; stops when detection is done.
  */
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { ArrowUpRight, Clock3, CircleSlash, Trash2 } from "lucide-react";
 import RawFacts from "./RawFacts";
+import { createScannerWorkspaceApi, type ScannerWorkspaceSurface } from "../../../lib/scanner-workspace-api";
 
 // Mirrors MAX_PENDING_JOBS_PER_ENGAGEMENT in the manager (agents router). The
 // backend is authoritative and rejects the 4th queued job with 409; this copy
@@ -107,15 +108,6 @@ const SEV_COLOR: Record<string, string> = {
   info: "var(--text-muted)",
 };
 
-async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
-  const res = await fetch(path, { credentials: "same-origin", ...init });
-  const body = await res.json().catch(() => ({}));
-  // The backend's message is the useful one here — a cancel that lost a race
-  // returns 409 with "Job is already completed", which the UI shows verbatim.
-  if (!res.ok) throw new Error(body.error ?? res.statusText);
-  return body as T;
-}
-
 /** Split a remediation string into ordered, human steps (numbered / sentence-based). */
 function remediationSteps(text: string | null): string[] {
   if (!text) return [];
@@ -124,7 +116,11 @@ function remediationSteps(text: string | null): string[] {
   return text.split(/(?<=[.;])\s+(?=[A-Z(])/).map((s) => s.trim()).filter(Boolean);
 }
 
-export default function CampaignProgress({ engagementId }: { engagementId: string }) {
+export default function CampaignProgress({ engagementId, surface = "manager" }: {
+  engagementId: string;
+  surface?: ScannerWorkspaceSurface;
+}) {
+  const api = useMemo(() => createScannerWorkspaceApi(surface), [surface]);
   const [data, setData] = useState<Progress | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [open, setOpen] = useState<Record<string, boolean>>({});
@@ -135,9 +131,9 @@ export default function CampaignProgress({ engagementId }: { engagementId: strin
 
   const load = useCallback(async () => {
     try {
-      setData(await fetchJson<Progress>(`/api/engagements/${engagementId}/campaign-progress`));
+      setData(await api.campaignProgress<Progress>(engagementId));
     } catch (e) { setErr((e as Error).message); }
-  }, [engagementId]);
+  }, [api, engagementId]);
 
   // Stop a running job or drop a queued one. Both go to the same endpoint: the
   // manager decides which case applies. On success we reload immediately rather
@@ -148,7 +144,7 @@ export default function CampaignProgress({ engagementId }: { engagementId: strin
     setCancelling((c) => ({ ...c, [jobId]: true }));
     setCancelErr((e) => ({ ...e, [jobId]: "" }));
     try {
-      await fetchJson(`/api/fleet/jobs/${jobId}/cancel`, { method: "POST" });
+      await api.cancelJob(jobId);
       await load();
     } catch (e) {
       // A 409 means it finished on its own between render and click — reload so
@@ -158,7 +154,7 @@ export default function CampaignProgress({ engagementId }: { engagementId: strin
     } finally {
       setCancelling((c) => ({ ...c, [jobId]: false }));
     }
-  }, [load]);
+  }, [api, load]);
 
   useEffect(() => {
     const initial = window.setTimeout(() => void load(), 0);
@@ -210,10 +206,10 @@ export default function CampaignProgress({ engagementId }: { engagementId: strin
           </span>
         )}
         <span style={{ display: "flex", gap: 8, marginLeft: s ? 0 : "auto" }}>
-          <Link href={`/engagements/${engagementId}`} className="campaign-result-link">
+          <Link href={surface === "portal" ? "/portal/scope" : `/engagements/${engagementId}`} className="campaign-result-link">
             Engagement view <ArrowUpRight size={12} />
           </Link>
-          <Link href={`/findings?engagement=${engagementId}`} className="campaign-result-link">
+          <Link href={surface === "portal" ? "/portal/findings" : `/findings?engagement=${engagementId}`} className="campaign-result-link">
             All results <ArrowUpRight size={12} />
           </Link>
         </span>
@@ -274,7 +270,7 @@ export default function CampaignProgress({ engagementId }: { engagementId: strin
         </div>
         {/* 0–100% bar */}
         <div style={{ height: 4, background: "var(--border-subtle)" }}>
-          <div style={{ height: "100%", width: `${data.percent}%`, background: "var(--accent)", transition: "width var(--dur-slow,.6s)" }} />
+          <div style={{ height: "100%", width: "100%", transform: `scaleX(${Math.min(100, Math.max(0, data.percent)) / 100})`, transformOrigin: "left center", background: "var(--accent)", transition: "transform var(--dur-slow,.6s)" }} />
         </div>
         {/* phase ticker */}
         <div style={{ display: "flex", alignItems: "center", padding: "12px 16px", gap: 4, flexWrap: "wrap" }}>
@@ -388,11 +384,13 @@ export default function CampaignProgress({ engagementId }: { engagementId: strin
                   : { "aria-valuenow": bar.pct, "aria-valuemin": 0, "aria-valuemax": 100 })}
                 style={{ height: 4, marginTop: 10, overflow: "hidden", borderRadius: 999, background: "var(--track-bg)" }}>
                 <div style={{
-                  width: bar.indeterminate ? "40%" : `${bar.pct}%`,
+                  width: bar.indeterminate ? "40%" : "100%",
+                  transform: bar.indeterminate ? undefined : `scaleX(${Math.min(100, Math.max(0, bar.pct)) / 100})`,
+                  transformOrigin: "left center",
                   height: "100%", background: bar.color,
                   borderRadius: 999,
                   animation: bar.indeterminate ? "vedhaIndeterminate 1.4s ease-in-out infinite" : undefined,
-                  transition: bar.indeterminate ? undefined : "width var(--dur-base) var(--ease-out)",
+                  transition: bar.indeterminate ? undefined : "transform var(--dur-base) var(--ease-out)",
                 }} />
               </div>
               {cancelErr[j.id] && (
@@ -442,7 +440,7 @@ export default function CampaignProgress({ engagementId }: { engagementId: strin
                       </ol>
                     ) : <span style={{ fontSize: 11.5, color: "var(--text-muted)" }}>No remediation guidance recorded.</span>}
                     {f.cve_ids?.length ? <div style={{ marginTop: 8, fontSize: 10.5, fontFamily: "var(--font-mono)", color: "var(--text-faint)" }}>{f.cve_ids.join(", ")}</div> : null}
-                    <Link href={`/findings?engagement=${engagementId}&finding=${f.id}`} className="campaign-result-link" style={{ marginTop: 10 }}>
+                    <Link href={surface === "portal" ? `/portal/findings?finding=${f.id}` : `/findings?engagement=${engagementId}&finding=${f.id}`} className="campaign-result-link" style={{ marginTop: 10 }}>
                       Open finding result <ArrowUpRight size={12} />
                     </Link>
                   </div>
@@ -454,7 +452,7 @@ export default function CampaignProgress({ engagementId }: { engagementId: strin
       </div>
 
       {/* ── raw scanner evidence (the facts the vedha-agent actually collected) ── */}
-      <RawFacts engagementId={engagementId} />
+      <RawFacts engagementId={engagementId} surface={surface} />
     </section>
   );
 }

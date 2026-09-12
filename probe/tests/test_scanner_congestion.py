@@ -21,6 +21,7 @@ import asyncio
 import socket
 import struct
 import time
+from collections import deque
 
 import pytest
 
@@ -444,39 +445,45 @@ class TestDeliveryAwareBackoff:
     def test_mostly_answering_host_is_not_treated_as_congested(self):
         """~97% definitive (the measured RST-suppressing host) must NOT throttle."""
         sc = self._sc()
+        w: deque[bool] = deque()
         for i in range(200):
-            healthy = sc._note_probe_outcome(definitive=(i % 32 != 0))   # ~97%
+            healthy = sc._note_probe_outcome(definitive=(i % 32 != 0),
+                                             window=w)   # ~97%
         assert healthy is True
 
     def test_collapsed_delivery_still_backs_off(self):
         """A genuinely lossy path (verified separately with 60% netem loss) must
         still trip the backoff — this is the behaviour worth keeping."""
         sc = self._sc()
+        w: deque[bool] = deque()
         for _ in range(200):
-            healthy = sc._note_probe_outcome(definitive=False)
+            healthy = sc._note_probe_outcome(definitive=False, window=w)
         assert healthy is False
 
     def test_no_opinion_before_the_sample_floor(self):
         """Never throttle on a handful of early probes."""
         sc = self._sc()
+        w: deque[bool] = deque()
         for _ in range(5):
-            assert sc._note_probe_outcome(definitive=False) is True
+            assert sc._note_probe_outcome(definitive=False, window=w) is True
 
     def test_window_is_bounded(self):
         sc = self._sc()
+        w: deque[bool] = deque()
         for _ in range(5000):
-            sc._note_probe_outcome(definitive=True)
-        assert len(sc._probe_window) <= sc._probe_window_size
+            sc._note_probe_outcome(definitive=True, window=w)
+        assert len(w) <= sc._probe_window_size
 
     def test_recovery_after_a_bad_patch(self):
         """Delivery returning must clear the loss condition — the ratchet that
         made the long scan unrecoverable."""
         sc = self._sc()
+        w: deque[bool] = deque()
         for _ in range(100):
-            sc._note_probe_outcome(definitive=False)
-        assert sc._note_probe_outcome(definitive=False) is False
+            sc._note_probe_outcome(definitive=False, window=w)
+        assert sc._note_probe_outcome(definitive=False, window=w) is False
         for _ in range(300):
-            healthy = sc._note_probe_outcome(definitive=True)
+            healthy = sc._note_probe_outcome(definitive=True, window=w)
         assert healthy is True
 
     def test_floor_is_configurable(self):
@@ -486,17 +493,32 @@ class TestDeliveryAwareBackoff:
         assert self._sc(delivery_floor=5.0).delivery_floor == 1.0
         assert self._sc(delivery_floor=-1.0).delivery_floor == 0.0
 
-    def test_window_resets_between_hosts(self):
-        """One quiet host must not throttle the next."""
+    def test_each_scan_owns_its_delivery_window(self):
+        """One quiet host must not throttle the next — nor one scanned beside it.
+
+        This used to be achieved by CLEARING a shared deque at the start of every
+        scan_target(), which only worked for hosts scanned one after another. The
+        port stage runs them concurrently through a single scanner, so the window
+        is now a local of each call and no shared deque exists to poison.
+        See tests/test_port_scan_host_isolation.py for the concurrent case.
+        """
         sc = _scanner([80], retries=0)
 
         async def _closed(target, port, est=None, min_timeout=None):
             return sc._build(target, port, "closed", "connection_refused", "rst")
         sc._attempt = _closed
+
+        poison: deque[bool] = deque()
         for _ in range(100):
-            sc._note_probe_outcome(definitive=False)      # poison from "host A"
-        asyncio.run(asyncio.wait_for(sc.scan_target("127.0.0.1"), 30))
-        assert len(sc._probe_window) <= 1 + 1              # cleared, then this host
+            sc._note_probe_outcome(definitive=False, window=poison)  # "host A"
+
+        out = asyncio.run(asyncio.wait_for(sc.scan_target("127.0.0.1"), 30))
+
+        congestion = [r for r in out
+                      if r.status == "scan_summary"][0].data["congestion"]
+        assert congestion["throttled"] is False
+        assert not hasattr(sc, "_probe_window"), (
+            "delivery history must not live on the shared scanner object")
 
 
 # ── recovery after collapse (measured regression, 2026-09-05) ────────────────

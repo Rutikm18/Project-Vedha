@@ -13,11 +13,19 @@ from app.models.enums import FindingSeverity, FindingStatus
 from app.models.finding_event import FindingEvent
 from app.routers import findings as finding_routes
 from app.routers.portal import (
+    PortalEnrollmentApprove,
     patch_portal_finding,
     router as portal_router,
     portal_workspace_finding_summary,
     portal_workspace_findings,
+    portal_workspace_engagement,
+    portal_workspace_engagement_assets,
+    portal_workspace_update_engagement,
+    portal_workspace_scan_launch,
+    portal_workspace_fleet_agent_jobs,
+    portal_workspace_fleet_approve,
 )
+from app.routers.agents import EnqueueJobRequest
 from app.schemas.auth import CurrentUser
 from app.schemas.common import PaginatedResponse
 from app.schemas.finding import FindingOut, FindingPatch
@@ -128,3 +136,164 @@ async def test_workspace_queries_pin_engagement_and_forward_agent_filter(monkeyp
         "engagement_id": engagement_id,
         "agent_id": agent_id,
     }
+
+
+@pytest.mark.asyncio
+async def test_workspace_engagement_uses_session_binding(monkeypatch):
+    engagement_id = uuid.uuid4()
+    user = _client(engagement_id)
+    db = MagicMock()
+    from app.routers import engagements as engagement_routes
+    get_engagement = AsyncMock(return_value=object())
+    monkeypatch.setattr(engagement_routes, "get_engagement", get_engagement)
+
+    await portal_workspace_engagement(user=user, db=db)
+
+    assert get_engagement.await_args.kwargs == {
+        "engagement_id": engagement_id,
+        "db": db,
+        "current_user": user,
+    }
+
+
+@pytest.mark.asyncio
+async def test_portal_engagement_update_pins_session_identity(monkeypatch):
+    engagement_id = uuid.uuid4()
+    user = _client(engagement_id)
+    db = MagicMock()
+    db.flush = AsyncMock()
+    db.add = MagicMock()
+    from app.routers import engagements as engagement_routes
+    updated = object()
+    update_engagement = AsyncMock(return_value=updated)
+    monkeypatch.setattr(engagement_routes, "update_engagement", update_engagement)
+
+    result = await portal_workspace_update_engagement(
+        body={"name": "Customer-updated name", "scope_cidrs": ["192.0.2.0/24"]},
+        user=user,
+        db=db,
+    )
+
+    assert result is updated
+    assert update_engagement.await_args.kwargs["engagement_id"] == engagement_id
+    assert update_engagement.await_args.kwargs["current_user"] is user
+    assert update_engagement.await_args.kwargs["body"].scope_cidrs == ["192.0.2.0/24"]
+
+
+@pytest.mark.asyncio
+async def test_portal_assets_use_session_engagement(monkeypatch):
+    engagement_id = uuid.uuid4()
+    user = _client(engagement_id)
+    db = MagicMock()
+    from app.routers import engagements as engagement_routes
+    list_assets = AsyncMock(return_value=[])
+    monkeypatch.setattr(engagement_routes, "list_engagement_assets", list_assets)
+
+    await portal_workspace_engagement_assets(user=user, db=db)
+
+    assert list_assets.await_args.kwargs == {
+        "engagement_id": engagement_id,
+        "db": db,
+        "current_user": user,
+    }
+
+
+@pytest.mark.asyncio
+async def test_portal_scan_launch_pins_session_engagement_and_assigned_probe(monkeypatch):
+    engagement_id = uuid.uuid4()
+    assigned_agent_id = uuid.uuid4()
+    user = _client(engagement_id)
+    engagement = SimpleNamespace(
+        id=engagement_id,
+        tenant_id=user.tenant_id,
+        assigned_agent_id=assigned_agent_id,
+    )
+    db = MagicMock()
+    db.execute = AsyncMock(return_value=MagicMock(scalar_one_or_none=lambda: engagement))
+    db.flush = AsyncMock()
+    db.add = MagicMock()
+
+    from app.routers import agents as agent_routes
+    enqueue = AsyncMock(return_value={"job_id": str(uuid.uuid4()), "status": "pending"})
+    monkeypatch.setattr(agent_routes, "enqueue_agent_job", enqueue)
+
+    body = EnqueueJobRequest(
+        engagement_id=uuid.uuid4(),
+        use_case_id="uc_network_va",
+        params={"intensity": "normal"},
+    )
+    await portal_workspace_scan_launch(
+        body=body, user=user, db=db, redis=MagicMock(),
+    )
+
+    pinned = enqueue.await_args.kwargs["body"]
+    assert pinned.engagement_id == engagement_id
+    assert pinned.params["preferred_agent_id"] == str(assigned_agent_id)
+
+
+@pytest.mark.asyncio
+async def test_portal_probe_history_is_filtered_by_engagement(monkeypatch):
+    engagement_id = uuid.uuid4()
+    assigned_agent_id = uuid.uuid4()
+    user = _client(engagement_id)
+    engagement = SimpleNamespace(id=engagement_id, assigned_agent_id=assigned_agent_id)
+    db = MagicMock()
+    db.execute = AsyncMock(return_value=MagicMock(scalar_one_or_none=lambda: engagement))
+
+    from app.routers import agents as agent_routes
+    history = AsyncMock(return_value=[])
+    monkeypatch.setattr(agent_routes, "get_agent_job_history", history)
+
+    await portal_workspace_fleet_agent_jobs(
+        agent_id=assigned_agent_id, user=user, db=db, limit=10,
+    )
+
+    assert history.await_args.kwargs["agent_id"] == assigned_agent_id
+    assert history.await_args.kwargs["engagement_id"] == engagement_id
+
+
+@pytest.mark.asyncio
+async def test_portal_enrollment_binds_device_to_session_engagement_scope(monkeypatch):
+    engagement_id = uuid.uuid4()
+    user = _client(engagement_id)
+    engagement = SimpleNamespace(
+        id=engagement_id,
+        tenant_id=user.tenant_id,
+        assigned_agent_id=None,
+        scope_cidrs=["192.0.2.0/24"],
+        excluded_cidrs=["192.0.2.128/25"],
+    )
+    request_row = SimpleNamespace(
+        id=uuid.uuid4(),
+        tenant_id=None,
+        expires_at=datetime.now(timezone.utc).replace(year=2099),
+        state="awaiting_approval",
+        reported_capabilities=["network_va"],
+    )
+    db = MagicMock()
+    db.execute = AsyncMock(side_effect=[
+        MagicMock(scalar_one_or_none=lambda: engagement),
+        MagicMock(scalar_one_or_none=lambda: request_row),
+    ])
+    db.flush = AsyncMock()
+    db.add = MagicMock()
+
+    from app.routers import probe_enrollment
+    monkeypatch.setattr(probe_enrollment, "_keyed_hash", lambda _value: "hash")
+    provisioned = SimpleNamespace(id=uuid.uuid4())
+    provision = AsyncMock(return_value=provisioned)
+    monkeypatch.setattr(probe_enrollment, "_provision_agent_for_site", provision)
+
+    result = await portal_workspace_fleet_approve(
+        body=PortalEnrollmentApprove(user_code="ABCD-EFGH", probe_name="edge-agent"),
+        user=user,
+        db=db,
+    )
+
+    assert engagement.assigned_agent_id == provisioned.id
+    assert result["agent_id"] == str(provisioned.id)
+    site = provision.await_args.kwargs["site"]
+    assert site.tenant_id == user.tenant_id
+    assert site.authorized_cidrs == ["192.0.2.0/24"]
+    assert site.excluded_cidrs == ["192.0.2.128/25"]
+    assert provision.await_args.kwargs["probe_name"] == "edge-agent"

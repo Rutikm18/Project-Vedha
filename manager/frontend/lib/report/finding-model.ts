@@ -410,12 +410,17 @@ export function priorityOf(f: RawFinding): Priority {
   if (v?.needsUserAction) dampeners.push("Requires a user to act");
 
   const weaponised = kev || validated;
-  let code: PriorityCode;
-  if (rank <= 1 && weaponised && (exposed || noAuth)) code = "P0";
-  else if (rank === 0 || (rank === 1 && (weaponised || epssHigh))) code = "P1";
-  else if (rank === 1 || (rank === 2 && (weaponised || epssHigh))) code = "P2";
-  else if (rank === 2) code = "P3";
-  else code = "P4";
+  // The response priority starts from the product-wide severity mapping used
+  // by Findings (Critical=P0, High=P1, Medium=P2, Low=P3, Info=P4). Context
+  // may raise urgency, but a report must never silently downgrade the priority
+  // the analyst and customer already saw on the finding.
+  let code: PriorityCode = rank === 0 ? "P0"
+    : rank === 1 ? "P1"
+      : rank === 2 ? "P2"
+        : rank === 3 ? "P3"
+          : "P4";
+  if (rank === 1 && weaponised && (exposed || noAuth)) code = "P0";
+  else if (rank === 2 && (weaponised || epssHigh)) code = "P1";
 
   // Floor for anything with a live exploitation signal. A low-severity flaw that
   // is being exploited in the wild still has to be scheduled — CISA BOD 22-01

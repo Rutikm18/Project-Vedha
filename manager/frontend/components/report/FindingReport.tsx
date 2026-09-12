@@ -360,7 +360,7 @@ export function FindingReport({ finding, ordinal, open, onToggle, mode = "assess
               </>
             )}
             <p className="vf-note">
-              CVSS rates the flaw; priority rates the situation. {a.sla.note} Targets follow the engagement's
+              CVSS rates the flaw; priority rates the situation. {a.sla.note} Targets follow the engagement&apos;s
               default policy and can be reset per finding.
             </p>
             {f.severityRationale && <Prose text={f.severityRationale} />}
@@ -569,7 +569,7 @@ export function FindingReport({ finding, ordinal, open, onToggle, mode = "assess
 
 type SevFilter = Severity | "ALL";
 
-export function FindingsSection({ findings, total, mode = "assessor" }: { findings: RawFinding[]; total: number; mode?: ReportMode }) {
+export function FindingsSection({ findings, total, mode = "assessor", overdueTotal }: { findings: RawFinding[]; total: number; mode?: ReportMode; overdueTotal?: number }) {
   const assessed = useMemo(() => findings.map(f => assess(f)).sort(triageSort), [findings]);
 
   const [sev, setSev] = useState<SevFilter>("ALL");
@@ -613,7 +613,7 @@ export function FindingsSection({ findings, total, mode = "assessor" }: { findin
 
   const blocked = assessed.filter(a => !a.readiness.ready).length;
   const p0 = assessed.filter(a => a.priority.code === "P0").length;
-  const overdue = assessed.filter(a => a.sla.state === "breached").length;
+  const overdue = overdueTotal ?? assessed.filter(a => a.sla.state === "breached").length;
   const allOpen = shown.length > 0 && shown.every(a => open.has(a.raw.id));
 
   const toggle = useCallback((id: string) => {

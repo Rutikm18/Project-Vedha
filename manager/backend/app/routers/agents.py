@@ -1312,20 +1312,24 @@ async def get_agent_job_history(
     db: DB,
     current_user: AuthUser,
     limit: int = 25,
+    engagement_id: uuid.UUID | None = None,
 ):
     """Read-only per-probe job list — the probe's running job (its serial queue head)
     plus recent completed/failed jobs, newest first. Distinct from GET /{agent_id}/jobs,
     which atomically CLAIMS a pending job for the probe to execute."""
     limit = max(1, min(int(limit), 100))
-    rows = (await db.execute(
+    q = (
         select(ScanJob)
         .join(Engagement, ScanJob.engagement_id == Engagement.id)
         .where(
             ScanJob.agent_id == str(agent_id),
             Engagement.tenant_id == current_user.tenant_id,
         )
-        .order_by(ScanJob.created_at.desc())
-        .limit(limit)
+    )
+    if engagement_id is not None:
+        q = q.where(ScanJob.engagement_id == engagement_id)
+    rows = (await db.execute(
+        q.order_by(ScanJob.created_at.desc()).limit(limit)
     )).scalars().all()
 
     def _summ(r: ScanJob) -> dict:

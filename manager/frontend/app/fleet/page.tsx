@@ -6,7 +6,9 @@ import {
   MapPin, Network, RadioTower, RefreshCw, Server, ShieldCheck, XCircle,
 } from "lucide-react";
 import { PageShell } from "../../components/PageShell";
+import { PortalShell } from "../../components/portal/PortalShell";
 import { useToast } from "../../hooks/useToast";
+import { createFleetWorkspaceApi, type FleetWorkspaceSurface } from "../../lib/fleet-workspace-api";
 import FleetJobs from "./FleetJobs";
 
 interface EnrollmentRequest {
@@ -93,19 +95,9 @@ function ago(iso: string | null): string {
   return `${Math.floor(s / 86400)}d ago`;
 }
 
-async function fetchJson<T>(path: string, init?: RequestInit): Promise<T> {
-  const response = await fetch(path, {
-    ...init,
-    credentials: "same-origin",
-    headers: { "Content-Type": "application/json", ...(init?.headers ?? {}) },
-  });
-  const body = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(body.error ?? response.statusText);
-  return body as T;
-}
-
-export default function FleetPage() {
+export function FleetWorkspace({ surface = "manager" }: { surface?: FleetWorkspaceSurface }) {
   const toast = useToast();
+  const api = useMemo(() => createFleetWorkspaceApi(surface), [surface]);
   const [data, setData] = useState<FleetResponse>({ requests: [], manager_url: "" });
   const [agents, setAgents] = useState<Probe[]>([]);
   const [loading, setLoading] = useState(true);
@@ -120,10 +112,10 @@ export default function FleetPage() {
 
   const loadJobs = useCallback(async (agentId: string) => {
     try {
-      const jobs = await fetchJson<ProbeJob[]>(`/api/fleet/agents/${agentId}/jobs`);
+      const jobs = await api.agentJobs<ProbeJob[]>(agentId);
       setJobsByAgent((m) => ({ ...m, [agentId]: jobs ?? [] }));
     } catch { /* keep prior jobs on a transient failure */ }
-  }, []);
+  }, [api]);
 
   const toggleProbe = useCallback((agentId: string) => {
     setExpanded((prev) => {
@@ -139,8 +131,8 @@ export default function FleetPage() {
       // Enrollment (onboarding queue) + live probes, in parallel. A probe-list
       // failure must not blank the enrollment view, so it degrades to [].
       const [next, probes] = await Promise.all([
-        fetchJson<FleetResponse>("/api/fleet/enrollment"),
-        fetchJson<Probe[]>("/api/scan/probes").catch(() => [] as Probe[]),
+        api.enrollment<FleetResponse>(),
+        api.probes<Probe[]>().catch(() => [] as Probe[]),
       ]);
       setData(next);
       setAgents(probes ?? []);
@@ -151,7 +143,7 @@ export default function FleetPage() {
     } finally {
       setLoading(false);
     }
-  }, [toast]);
+  }, [api, toast]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- mount fetch + 5s poll; setState happens after an await, not synchronously
@@ -181,16 +173,19 @@ export default function FleetPage() {
 
   async function approve(event: React.FormEvent) {
     event.preventDefault();
-    if (!request) return;
+    if (surface === "manager" && !request) return;
+    if (surface === "portal" && !form.user_code.trim()) {
+      toast.error("Enter the verification code shown by the vedha-agent installer");
+      return;
+    }
     setSubmitting(true);
     try {
       // One-click approve: name is optional (blank → auto vedha_agent_NN); the
       // backend auto-fills capabilities + scope from what the vedha-agent reported.
-      await fetchJson(`/api/fleet/enrollment/${request.request_id}/approve`, {
-        method: "POST",
-        body: JSON.stringify({ probe_name: form.probe_name.trim() || null }),
-      });
-      toast.success("Probe approved; waiting for key-bound activation");
+      await api.approve(request?.request_id ?? "", form.probe_name.trim() || null, form.user_code.trim());
+      toast.success(surface === "portal"
+        ? "vedha-agent approved and bound to this engagement"
+        : "Probe approved; waiting for key-bound activation");
       setForm({ user_code: "", probe_name: "", site_name: "", location: "", authorized_cidrs: "", excluded_cidrs: "" });
       await load();
     } catch (error) {
@@ -200,14 +195,15 @@ export default function FleetPage() {
     }
   }
 
+  const Shell = surface === "portal" ? PortalShell : PageShell;
   return (
-    <PageShell title="Fleet" subtitle="Enroll and govern vedha-agent devices">
+    <Shell title="Fleet" subtitle="Enroll and govern vedha-agent devices">
       <style>{STYLES}</style>
       <div className="flt-page">
 
         {/* ── All jobs across every probe (filter by probe + engagement) ── */}
         <section className="flt-card">
-          <FleetJobs />
+          <FleetJobs surface={surface} />
         </section>
 
         {/* ── Add a probe ── */}
@@ -272,7 +268,7 @@ export default function FleetPage() {
             <div className="flt-empty-block">
               <Server size={22} color="var(--text-faint)" />
               <div className="flt-empty-title">No vedha-agents connected yet</div>
-              <div className="flt-empty-hint">Approve a pending request below. Once a vedha-agent activates and sends its first heartbeat, it appears here with live status.</div>
+              <div className="flt-empty-hint">{surface === "portal" ? "Run the installer, then enter its verification code below. The agent will inherit this engagement's authorized scope." : "Approve a pending request below. Once a vedha-agent activates and sends its first heartbeat, it appears here with live status."}</div>
             </div>
           ) : (
             <div className="flt-agents">
@@ -354,7 +350,7 @@ export default function FleetPage() {
               <div className="flt-empty-block">
                 <RadioTower size={22} color="var(--text-faint)" />
                 <div className="flt-empty-title">No devices waiting</div>
-                <div className="flt-empty-hint">Run the install command on a host — its key fingerprint will appear here for approval.</div>
+                <div className="flt-empty-hint">{surface === "portal" ? "Pending devices are private until you enter their short-lived installer code in the approval panel." : "Run the install command on a host — its key fingerprint will appear here for approval."}</div>
               </div>
             ) : data.requests.map((row) => {
               const badge = stateBadge(row.state);
@@ -392,12 +388,12 @@ export default function FleetPage() {
             <div className="flt-card-head">
               <span className="flt-head-icon"><Network size={16} /></span>
               <div>
-                <strong className="flt-head-title">Approve Site policy</strong>
-                <div className="flt-head-sub">One click to authorize — name auto-assigns and scope/capabilities fill in from the device. Tune later in Site settings.</div>
+                <strong className="flt-head-title">{surface === "portal" ? "Approve agent for this engagement" : "Approve Site policy"}</strong>
+                <div className="flt-head-sub">{surface === "portal" ? "The installer code identifies the device. Scope and exclusions come only from this engagement." : "One click to authorize — name auto-assigns and scope/capabilities fill in from the device. Tune later in Site settings."}</div>
               </div>
             </div>
 
-            {!request ? (
+            {!request && surface === "manager" ? (
               <div className="flt-empty-block">
                 <ShieldCheck size={22} color="var(--text-faint)" />
                 <div className="flt-empty-title">Select a pending request</div>
@@ -405,22 +401,43 @@ export default function FleetPage() {
               </div>
             ) : (
               <form onSubmit={approve} className="flt-form">
+                {surface === "portal" && (
+                  <label className="flt-field flt-full">
+                    <span className="flt-label">Installer verification code</span>
+                    <input
+                      className="flt-input"
+                      inputMode="text"
+                      autoComplete="one-time-code"
+                      placeholder="ABCD-EFGH"
+                      required
+                      maxLength={9}
+                      value={form.user_code}
+                      onChange={(event) => setForm({ ...form, user_code: event.target.value.toUpperCase() })}
+                      aria-describedby="portal-enrollment-code-hint"
+                    />
+                    <span id="portal-enrollment-code-hint" className="flt-hint">Shown once by the installer and valid for 15 minutes. It is never used as a long-lived credential.</span>
+                  </label>
+                )}
                 <label className="flt-field flt-full">
                   <span className="flt-label">vedha-agent name <span className="flt-optional">(optional)</span></span>
                   <input className="flt-input" placeholder="auto: vedha_agent_01" value={form.probe_name} onChange={(e) => setForm({ ...form, probe_name: e.target.value })} />
                   <span className="flt-hint">Leave blank to auto-assign the next name. Capabilities and scope are taken from what the vedha-agent reported — adjust later in Site settings if needed.</span>
                 </label>
-                <div className="flt-caps">Capabilities (auto): <strong>{capabilities.join(", ") || "none"}</strong></div>
+                <div className="flt-caps">{surface === "portal" ? "Scope source: " : "Capabilities (auto): "}<strong>{surface === "portal" ? "assigned engagement" : capabilities.join(", ") || "none"}</strong></div>
                 <button disabled={submitting} className="flt-submit" type="submit">
-                  {submitting ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle2 size={15} />} Approve Site
+                  {submitting ? <Loader2 size={15} className="animate-spin" /> : <CheckCircle2 size={15} />} {surface === "portal" ? "Approve and assign agent" : "Approve Site"}
                 </button>
               </form>
             )}
           </section>
         </div>
       </div>
-    </PageShell>
+    </Shell>
   );
+}
+
+export default function FleetPage() {
+  return <FleetWorkspace surface="manager" />;
 }
 
 const STYLES = `
@@ -500,7 +517,7 @@ const STYLES = `
 .flt-input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-ghost); }
 .flt-caps { grid-column: 1 / -1; color: var(--text-muted); font-size: 11px; }
 .flt-caps strong { color: var(--text-secondary); font-weight: 600; }
-.flt-submit { grid-column: 1 / -1; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: none; border-radius: 10px; cursor: pointer; font-size: 13px; font-weight: 700; color: #fff; background: linear-gradient(180deg, var(--accent-hover, var(--accent)), var(--accent)); box-shadow: 0 3px 16px var(--accent-glow); transition: transform var(--dur-fast) ease, box-shadow var(--dur-fast) ease, filter var(--dur-fast) ease; }
+.flt-submit { grid-column: 1 / -1; min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: 8px; border: none; border-radius: 10px; cursor: pointer; font-size: 13px; font-weight: 700; color: var(--accent-contrast); background: linear-gradient(180deg, var(--accent-hover, var(--accent)), var(--accent)); box-shadow: 0 3px 16px var(--accent-glow); transition: transform var(--dur-fast) ease, box-shadow var(--dur-fast) ease, filter var(--dur-fast) ease; }
 .flt-submit:hover:not(:disabled) { transform: translateY(-1px); filter: brightness(1.05); }
 .flt-submit:active:not(:disabled) { transform: translateY(0); }
 .flt-submit:disabled { opacity: 0.4; cursor: not-allowed; box-shadow: none; }

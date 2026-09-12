@@ -44,24 +44,55 @@ DEFAULT_DB_PORTS = {
 # --------------------------------------------------------------------------- #
 # Per-engine probes. Each returns a dict of facts or None.
 # --------------------------------------------------------------------------- #
-async def _probe_mysql(reader, writer, timeout) -> dict | None:
-    # MySQL/MariaDB server speaks first: initial handshake packet contains the
-    # server version as a null-terminated string after a few header bytes.
-    try:
-        data = await asyncio.wait_for(reader.read(256), timeout=timeout)
-    except asyncio.TimeoutError:
-        return None
+# MySQL Protocol::CapabilityFlags. CLIENT_SSL is bit 11, which lives in the
+# LOWER 16 bits — the half the initial handshake always carries, before any
+# authentication happens.
+_MYSQL_CLIENT_SSL = 0x0800
+
+
+def parse_mysql_greeting(data: bytes) -> dict | None:
+    """Parse a MySQL/MariaDB initial handshake packet.
+
+    Returns None when this is not a v9/v10 handshake: identification is by
+    protocol structure, never by port number.
+
+    `ssl_supported` comes from the server's OWN advertised capability flags, so
+    it is a statement the server made rather than an inference. It is reported
+    only when the packet actually reached the flags — treating a short read as
+    "TLS not offered" would invert the finding and manufacture a cleartext
+    report against a correctly configured server.
+    """
     if len(data) < 6:
         return None
-    # packet: 3-byte len + 1-byte seq + 1-byte protocol + version\0
     proto = data[4]
-    if proto not in (10, 9):  # handshake protocol versions
+    if proto not in (10, 9):
         return None
     rest = data[5:]
     end = rest.find(b"\x00")
     version = rest[:end].decode("latin-1", "replace") if end > 0 else None
-    return {"engine": "mysql/mariadb", "protocol_version": proto,
-            "server_version": version}
+    out: dict = {"engine": "mysql/mariadb", "protocol_version": proto,
+                 "server_version": version}
+    if end < 0:
+        return out
+    # Layout after version\0: connection id (4) + auth-plugin-data-part-1 (8) +
+    # filler (1) = 13 bytes, then capability_flags_1 (2, little-endian).
+    # Protocol 9 predates the flags entirely, so it is never parsed for them.
+    tail = rest[end + 1:]
+    if proto == 10 and len(tail) >= 15:
+        caps_low = int.from_bytes(tail[13:15], "little")
+        out["capability_flags"] = caps_low
+        out["ssl_supported"] = bool(caps_low & _MYSQL_CLIENT_SSL)
+    return out
+
+
+async def _probe_mysql(reader, writer, timeout) -> dict | None:
+    # MySQL/MariaDB server speaks first: the initial handshake packet carries the
+    # server version and the server's advertised capability flags.
+    try:
+        data = await asyncio.wait_for(reader.read(256), timeout=timeout)
+    except asyncio.TimeoutError:
+        return None
+    return parse_mysql_greeting(data)
 
 
 async def _probe_postgres(reader, writer, timeout) -> dict | None:
@@ -79,22 +110,118 @@ async def _probe_postgres(reader, writer, timeout) -> dict | None:
     return None
 
 
+# TDS PRELOGIN option tokens (MS-TDS 2.2.6.5).
+_TDS_VERSION_TOKEN = 0x00
+_TDS_ENCRYPTION_TOKEN = 0x01
+_TDS_TERMINATOR = 0xFF
+
+# PL_OPTION ENCRYPTION values. The distinction matters for posture: under
+# ENCRYPT_OFF the LOGIN packet itself is STILL encrypted by TDS, so credentials
+# are not exposed — only session data is. ENCRYPT_NOT_SUP is the one value that
+# means the server cannot protect anything, credentials included.
+_TDS_ENCRYPTION_MODES = {
+    0x00: "off",             # available, not requested (login packet still encrypted)
+    0x01: "on",              # available and negotiated
+    0x02: "not_supported",   # server cannot encrypt AT ALL
+    0x03: "required",        # server refuses cleartext
+}
+
+
+def _build_tds_prelogin() -> bytes:
+    """A well-formed PRELOGIN request (MS-TDS 2.2.6.5).
+
+    The previous request's option table was malformed — it decoded to a repeated
+    VERSION token with a 256-byte offset and a 512-byte length. Servers answer it
+    anyway, which is why identification worked, but a server only returns its own
+    ENCRYPTION option when the CLIENT offers one. Encryption posture was therefore
+    unobtainable, not merely unparsed.
+
+    Offsets are computed from the table size rather than hardcoded, so adding an
+    option cannot silently corrupt the ones after it.
+    """
+    opts = [
+        (0x00, b"\x00" * 6),   # VERSION   — client version; zeros are accepted
+        (0x01, b"\x00"),       # ENCRYPTION = ENCRYPT_OFF: we support it, don't demand it
+        (0x02, b"\x00"),       # INSTOPT   — empty instance name
+        (0x03, b"\x00" * 4),   # THREADID
+        (0x04, b"\x00"),       # MARS off
+    ]
+    table_len = len(opts) * 5 + 1              # 5 bytes per option + terminator
+    table, blob, off = b"", b"", table_len
+    for token, payload in opts:
+        table += struct.pack(">BHH", token, off, len(payload))
+        blob += payload
+        off += len(payload)
+    table += bytes([_TDS_TERMINATOR])
+    body = table + blob
+    header = struct.pack(">BBHHBB", 0x12, 0x01, 8 + len(body), 0, 0, 0)
+    return header + body
+
+
+_TDS_PRELOGIN_REQUEST = _build_tds_prelogin()
+
+
+def parse_tds_prelogin(data: bytes) -> dict:
+    """Read server version and encryption posture out of a TDS PRELOGIN reply.
+
+    Positive evidence only: fields appear ONLY when the server actually stated
+    them. A truncated or unparseable option table yields the identification facts
+    alone — never a guessed encryption stance, which would be a false negative
+    dressed up as a clean result.
+    """
+    out: dict = {"engine": "microsoft sql server", "tds_response": True}
+    if len(data) < 9 or data[0] != 0x04:
+        return out
+    payload = data[8:]                          # strip the 8-byte TDS header
+
+    options: dict[int, tuple[int, int]] = {}
+    i = 0
+    while i < len(payload):
+        token = payload[i]
+        if token == _TDS_TERMINATOR:
+            break
+        if i + 5 > len(payload):
+            return out                          # truncated table — claim nothing
+        options[token] = (
+            int.from_bytes(payload[i + 1:i + 3], "big"),
+            int.from_bytes(payload[i + 3:i + 5], "big"),
+        )
+        i += 5
+
+    def _blob(token: int) -> bytes | None:
+        if token not in options:
+            return None
+        off, length = options[token]
+        if length <= 0 or off + length > len(payload):
+            return None
+        return payload[off:off + length]
+
+    ver = _blob(_TDS_VERSION_TOKEN)
+    if ver and len(ver) >= 4:
+        out["server_version"] = (
+            f"{ver[0]}.{ver[1]}.{int.from_bytes(ver[2:4], 'big')}")
+
+    enc = _blob(_TDS_ENCRYPTION_TOKEN)
+    if enc:
+        mode = _TDS_ENCRYPTION_MODES.get(enc[0])
+        if mode is not None:
+            out["encryption_mode"] = mode
+            out["ssl_supported"] = mode != "not_supported"
+            out["encryption_required"] = mode == "required"
+    return out
+
+
 async def _probe_mssql(reader, writer, timeout) -> dict | None:
-    # TDS pre-login packet. A TDS response (type 0x04) confirms SQL Server.
-    prelogin = bytes.fromhex(
-        "12010000000000000000")  # minimal TDS pre-login header-ish
+    # TDS pre-login. A TDS response (type 0x04) confirms SQL Server; the reply's
+    # option table also carries the server version and its encryption stance.
     try:
-        # Build a minimal valid TDS pre-login.
-        body = bytes.fromhex("00001a000600010002000300"
-                             "00040000ff")
-        header = struct.pack(">BBHHBB", 0x12, 0x01, 8 + len(body), 0, 0, 0)
-        writer.write(header + body)
+        writer.write(_TDS_PRELOGIN_REQUEST)
         await writer.drain()
-        data = await asyncio.wait_for(reader.read(256), timeout=timeout)
+        data = await asyncio.wait_for(reader.read(512), timeout=timeout)
     except (asyncio.TimeoutError, OSError):
         return None
     if data and data[0] == 0x04:
-        return {"engine": "microsoft sql server", "tds_response": True}
+        return parse_tds_prelogin(data)
     return None
 
 
@@ -128,35 +255,105 @@ async def _probe_redis(reader, writer, timeout) -> dict | None:
     return None
 
 
+def build_op_msg_command(command: str, db: str = "admin") -> bytes:
+    """Frame a single-field admin command as OP_MSG (opcode 2013).
+
+    MongoDB 5.1 REMOVED OP_QUERY for everything except the hello/isMaster
+    handshake. Sending an OP_QUERY command to a modern server fails at the wire
+    level, and reading that failure as "authentication is enforced" would be a
+    false negative on precisely the exposed instances that matter most. So the
+    identification probe keeps OP_QUERY isMaster (universally supported) and the
+    auth probe uses OP_MSG.
+    """
+    cmd = (b"\x10" + command.encode() + b"\x00" + struct.pack("<i", 1))
+    dbf = (b"\x02" + b"$db\x00"
+           + struct.pack("<i", len(db) + 1) + db.encode() + b"\x00")
+    doc_len = 4 + len(cmd) + len(dbf) + 1
+    doc = struct.pack("<i", doc_len) + cmd + dbf + b"\x00"
+    body = struct.pack("<I", 0) + b"\x00" + doc      # flagBits + section kind 0
+    return struct.pack("<iiii", 16 + len(body), 2, 0, 2013) + body
+
+
+# Markers in a serverStatus reply. BSON is not fully decoded — the existing
+# version extraction already reads raw bytes — but every claim below rests on
+# something the server actually said.
+_MONGO_AUTH_MARKERS = (b"Unauthorized", b"not authorized", b"requires authentication")
+_MONGO_OK_MARKERS = (b"uptime", b"localTime", b"connections")
+
+# BSON string field: name\0 + int32 length + value. Tolerant of the length bytes
+# so the same pattern reads a version out of either reply.
+_MONGO_VERSION_RE = re.compile(rb"version\x00.{0,4}([0-9]+\.[0-9]+\.[0-9]+)")
+
+
+def extract_mongo_version(blob: bytes) -> str | None:
+    """Pull a MongoDB server version out of a wire reply, or None.
+
+    The isMaster handshake does NOT carry a version on modern servers, which left
+    every MongoDB in the estate with server_version=None — and a null version
+    means the CVE track has nothing to match on, so a years-out-of-date MongoDB
+    correlated to no CVEs at all. serverStatus does carry it.
+    """
+    m = _MONGO_VERSION_RE.search(blob or b"")
+    return m.group(1).decode("latin-1", "replace") if m else None
+
+
+def interpret_mongodb_auth(reply: bytes) -> dict:
+    """Classify a serverStatus reply into auth posture.
+
+    Returns {} when the reply says neither thing. Silence is NOT evidence of
+    exposure, and it is not evidence of hardening either — an empty dict keeps
+    the fact honest and leaves the manager's rule correctly unable to fire.
+    """
+    if not reply:
+        return {}
+    if any(m in reply for m in _MONGO_AUTH_MARKERS):
+        return {"auth_required": True, "unauthenticated_read": False}
+    if any(m in reply for m in _MONGO_OK_MARKERS):
+        return {"auth_required": False, "unauthenticated_read": True}
+    return {}
+
+
 async def _probe_mongodb(reader, writer, timeout) -> dict | None:
-    # MongoDB wire protocol: send an OP_QUERY for {isMaster:1} on admin.$cmd.
-    # A valid BSON reply confirms MongoDB.
+    # Step 1 — identification. OP_QUERY {isMaster:1} on admin.$cmd is the one
+    # command every server version still answers over OP_QUERY.
     try:
-        doc = bytes.fromhex(
-            "13000000")  # bson length placeholder; build a real isMaster below
-        bson = (b"\x10ismaster\x00\x01\x00\x00\x00\x00")  # int32 field ismaster=1
+        bson = (b"\x10ismaster\x00\x01\x00\x00\x00\x00")
         bson = struct.pack("<i", len(bson) + 5) + bson + b"\x00"
         full_collection = b"admin.$cmd\x00"
         query = (struct.pack("<i", 0) + full_collection +
                  struct.pack("<i", 0) + struct.pack("<i", -1) + bson)
-        # msg header: messageLength, requestID, responseTo, opCode(2004=OP_QUERY)
-        body = struct.pack("<i", 0) + query  # flags + query
+        body = struct.pack("<i", 0) + query
         header = struct.pack("<iiii", 16 + len(body), 1, 0, 2004)
         writer.write(header + body)
         await writer.drain()
         data = await asyncio.wait_for(reader.read(512), timeout=timeout)
     except (asyncio.TimeoutError, OSError):
         return None
-    if len(data) >= 16:
-        opcode = struct.unpack("<i", data[12:16])[0]
-        if opcode in (1, 2004, 2013):  # OP_REPLY / OP_MSG family
-            ver = None
-            m = re.search(rb"version\x00.{0,4}([0-9]+\.[0-9]+\.[0-9]+)", data)
-            if m:
-                ver = m.group(1).decode("latin-1", "replace")
-            return {"engine": "mongodb", "wire_reply_opcode": opcode,
-                    "server_version": ver}
-    return None
+    if len(data) < 16:
+        return None
+    opcode = struct.unpack("<i", data[12:16])[0]
+    if opcode not in (1, 2004, 2013):
+        return None
+    facts: dict = {"engine": "mongodb", "wire_reply_opcode": opcode,
+                   "server_version": extract_mongo_version(data)}
+
+    # Step 2 — auth posture. isMaster is answered WITHOUT credentials even on a
+    # fully hardened server, so it proves nothing about access control. Only a
+    # command the server actually gates can. serverStatus is server metadata,
+    # not user data — the same class of public INFO ping this module already
+    # sends to Redis, so it stays inside the read-only contract.
+    try:
+        writer.write(build_op_msg_command("serverStatus"))
+        await writer.drain()
+        reply = await asyncio.wait_for(reader.read(2048), timeout=timeout)
+        facts.update(interpret_mongodb_auth(reply))
+        # The handshake rarely volunteers a version; serverStatus does. Without
+        # this the CVE track has nothing to match a MongoDB against.
+        if facts.get("server_version") is None:
+            facts["server_version"] = extract_mongo_version(reply)
+    except (asyncio.TimeoutError, OSError):
+        pass                 # identification stands; auth posture stays unstated
+    return facts
 
 
 # Mysqlx.ServerMessages.Type values (0..13) — used to validate an X-protocol reply.
@@ -234,6 +431,25 @@ _PROBES = {
 }
 
 
+def stamp_db_fact(facts: dict) -> dict:
+    """Stamp the `db: True` discriminator onto every db_scan fact.
+
+    Every sibling deep-branch scanner emits a boolean marker (`ftp`, `dns`,
+    `nfs`, `ldap`, `vnc`) and the manager's detectors all gate on it — the house
+    pattern is `d.get("ftp") is True`. db_scanner emitted no such marker, so a
+    posture rule could not follow the pattern and none was ever written.
+
+    Stamped CENTRALLY here rather than inside each of the seven probes: a
+    per-probe copy is exactly the drift that leaves one engine unassessable
+    while the other six work.
+
+    The marker is written LAST so probe payload cannot override it. It is an
+    assertion by the scanner ("this fact came from db_scan"), not a field a
+    protocol reply is allowed to contradict.
+    """
+    return {**facts, "db": True}
+
+
 class DBScanner(BaseScanner):
     name = "db_scan"
 
@@ -271,6 +487,7 @@ class DBScanner(BaseScanner):
                 continue
             facts = await self._probe_one(target, port, kind)
             if facts:
+                facts = stamp_db_fact(facts)
                 return ScanResult(
                     self.name, target, port=port, proto="tcp", status="open",
                     data=facts,

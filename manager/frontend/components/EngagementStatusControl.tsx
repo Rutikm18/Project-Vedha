@@ -54,10 +54,12 @@ export interface EngagementStatusControlProps {
   /** Live, observed state shown beside the control — e.g. "1 scan running".
    *  Never conflated with the stored status. */
   liveHint?: string | null;
+  updateStatus?: (next: string) => Promise<unknown>;
+  queryScope?: string;
 }
 
 export function EngagementStatusControl({
-  engagementId, status, liveHint,
+  engagementId, status, liveHint, updateStatus, queryScope = "manager",
 }: EngagementStatusControlProps) {
   const [open, setOpen] = useState(false);
   const queryClient = useQueryClient();
@@ -75,12 +77,15 @@ export function EngagementStatusControl({
     // PATCH only the status. Sending the whole form here would let a stale copy
     // of scope or dates overwrite a change someone else just made.
     mutationFn: (next: string) =>
-      fetchJson(`/api/engagements/${engagementId}`, {
-        method: "PUT",
-        body: JSON.stringify({ status: next }),
-      }),
+      updateStatus
+        ? updateStatus(next)
+        : fetchJson(`/api/engagements/${engagementId}`, {
+            method: "PUT",
+            body: JSON.stringify({ status: next }),
+          }),
     onSuccess: (_d, next) => {
-      void queryClient.invalidateQueries({ queryKey: ["engagement", engagementId] });
+      void queryClient.invalidateQueries({ queryKey: ["engagement", queryScope, engagementId] });
+      void queryClient.invalidateQueries({ queryKey: ["engagement", queryScope, engagementId] });
       void queryClient.invalidateQueries({ queryKey: ["engagements"] });
       const label = ENGAGEMENT_STATES.find((s) => s.value === next)?.label ?? next;
       toast.success("Status updated", `Engagement is now ${label}.`);

@@ -4,13 +4,18 @@ import React, { useState } from "react";
 import Link from "next/link";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import {
-  Activity, AlertCircle, Bell, Bot, CheckCircle2, ChevronDown, Cloud,
+  Activity, AlertCircle, Bell, Bot, CheckCircle2, Cloud,
   Copy, Database, ExternalLink, FileKey2, Globe2, KeyRound, LockKeyhole,
   Mail, MessageCircle, Monitor, Plus, RefreshCw, Server, Settings2,
   Shield, ShieldCheck, SlidersHorizontal, Terminal, Trash2, TriangleAlert, Users, Wifi, X,
 } from "lucide-react";
 import { PageShell } from "../../components/PageShell";
+import { PortalShell } from "../../components/portal/PortalShell";
 import { fetchJson } from "../../lib/fetcher";
+import {
+  createSettingsWorkspaceApi,
+  type SettingsWorkspaceSurface,
+} from "../../lib/settings-workspace-api";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -153,6 +158,9 @@ const NAV_SECTIONS = [
   { key: "notifications", label: "Notifications",       icon: Bell },
   { key: "audit-log",     label: "Audit Log",           icon: Activity },
 ];
+
+const PORTAL_NAV_SECTIONS = NAV_SECTIONS.filter(({ key }) =>
+  ["workspace", "probe-fleet", "ai", "audit-log"].includes(key));
 
 // ─── Shared UI atoms ──────────────────────────────────────────────────────────
 
@@ -408,16 +416,17 @@ function ApiKeysSection() {
 
 // ─── Section: Probe Fleet ─────────────────────────────────────────────────────
 
-function ProbeFleetSection() {
-  const { data: agents, isLoading, refetch } = useQuery({
-    queryKey: ["probe-fleet"],
-    queryFn: () => fetchJson<Agent[]>("/api/agents"),
+function ProbeFleetSection({ surface }: { surface: SettingsWorkspaceSurface }) {
+  const api = React.useMemo(() => createSettingsWorkspaceApi(surface), [surface]);
+  const { data: agents, isLoading, refetch, dataUpdatedAt } = useQuery({
+    queryKey: ["settings", surface, "probe-fleet"],
+    queryFn: () => api.probes<Agent[]>(),
     refetchInterval: 15_000,
   });
 
   const online = (agents ?? []).filter((a) => {
     if (!a.last_seen_at) return false;
-    return Date.now() - new Date(a.last_seen_at).getTime() < 120_000;
+    return dataUpdatedAt - new Date(a.last_seen_at).getTime() < 120_000;
   });
 
   return (
@@ -431,7 +440,9 @@ function ProbeFleetSection() {
       {isLoading && <p className="settings-loading-msg">Loading agents…</p>}
       <div className="settings-probe-grid">
         {(agents ?? []).map((agent) => {
-          const isOnline = agent.last_seen_at ? Date.now() - new Date(agent.last_seen_at).getTime() < 120_000 : false;
+          const isOnline = agent.last_seen_at
+            ? dataUpdatedAt - new Date(agent.last_seen_at).getTime() < 120_000
+            : false;
           return (
             <article key={agent.id} className={`settings-probe-card ${isOnline ? "settings-probe-card--online" : "settings-probe-card--offline"}`}>
               <div className="settings-probe-status">
@@ -474,10 +485,11 @@ function ProbeFleetSection() {
 
 // ─── Section: AI Runtime ──────────────────────────────────────────────────────
 
-function AiRuntimeSection() {
+function AiRuntimeSection({ surface }: { surface: SettingsWorkspaceSurface }) {
+  const api = React.useMemo(() => createSettingsWorkspaceApi(surface), [surface]);
   const query = useQuery({
-    queryKey: ["ai-status"],
-    queryFn: () => fetchJson<AiStatus>("/api/ai/status"),
+    queryKey: ["settings", surface, "ai-status"],
+    queryFn: () => api.aiStatus<AiStatus>(),
     refetchInterval: 30_000,
   });
   const runtime = query.data;
@@ -658,7 +670,7 @@ function IntegrationSection({ kind }: { kind: keyof typeof INTEGRATIONS }) {
         </div>
       </div>
       <div className="settings-warning" style={{ marginTop: 14 }}>
-        <TriangleAlert size={14} /> Secrets are encrypted at rest. Use "Send test" to confirm channel delivery.
+        <TriangleAlert size={14} /> Secrets are encrypted at rest. Use &ldquo;Send test&rdquo; to confirm channel delivery.
       </div>
     </div>
   );
@@ -801,10 +813,11 @@ function NotificationsSection() {
 
 // ─── Section: Audit Log ───────────────────────────────────────────────────────
 
-function AuditLogSection() {
+function AuditLogSection({ surface }: { surface: SettingsWorkspaceSurface }) {
+  const api = React.useMemo(() => createSettingsWorkspaceApi(surface), [surface]);
   const { data: events, isLoading, refetch } = useQuery({
-    queryKey: ["audit-log"],
-    queryFn: () => fetchJson<ActivityEvent[]>("/api/activity?limit=100"),
+    queryKey: ["settings", surface, "audit-log"],
+    queryFn: () => api.audit<ActivityEvent[]>(),
     refetchInterval: 30_000,
   });
 
@@ -845,21 +858,25 @@ function AuditLogSection() {
 
 // ─── Page root ────────────────────────────────────────────────────────────────
 
-export default function SettingsPage() {
-  const [section, setSection] = useState("team");
+export function SettingsWorkspace({ surface = "manager" }: { surface?: SettingsWorkspaceSurface }) {
+  const [section, setSection] = useState(surface === "portal" ? "workspace" : "team");
+  const api = React.useMemo(() => createSettingsWorkspaceApi(surface), [surface]);
   const statusQuery = useQuery({
-    queryKey: ["settings-status"],
-    queryFn: () => fetchJson<DeploymentStatus>("/api/settings/status"),
+    queryKey: ["settings-status", surface],
+    queryFn: () => api.status<DeploymentStatus>(),
     refetchInterval: 30_000,
   });
   const deployment = statusQuery.data;
 
+  const navSections = surface === "portal" ? PORTAL_NAV_SECTIONS : NAV_SECTIONS;
+  const Shell = surface === "portal" ? PortalShell : PageShell;
+
   return (
-    <PageShell title="Settings" subtitle="Team management, probe fleet, credentials, integrations, and policy configuration">
+    <Shell title="Settings" subtitle={surface === "portal" ? "Engagement workspace, assigned probe, AI runtime, and activity" : "Team management, probe fleet, credentials, integrations, and policy configuration"}>
       <div className="settings-layout">
         <aside className="settings-nav">
           <div className="settings-nav-heading"><Settings2 size={14} /> Configuration</div>
-          {NAV_SECTIONS.map(({ key, label, icon: Icon }) => (
+          {navSections.map(({ key, label, icon: Icon }) => (
             <button key={key} className="settings-nav-button" data-active={section === key} onClick={() => setSection(key)}>
               <Icon size={14} /><span>{label}</span>
             </button>
@@ -876,26 +893,34 @@ export default function SettingsPage() {
                   <strong>Configuration belongs with each engagement</strong>
                   <p>Client identity, authorized targets, exclusions, assessment dates, owner, and tags are edited inside the engagement workspace.</p>
                 </div>
-                <Link href="/engagements" className="btn btn-primary">Open engagements</Link>
+                <Link href={surface === "portal" ? "/portal/scope" : "/engagements"} className="btn btn-primary">Open engagement</Link>
               </div>
               <div className="settings-readiness-grid">
                 <article data-ready={deployment?.apiReachable ?? false}><Server size={16} /><div><small>Manager API</small><strong>{deployment?.apiReachable ? "Reachable" : "Unavailable"}</strong></div></article>
-                <article data-ready={deployment?.cookieSecure ?? false}><LockKeyhole size={16} /><div><small>Secure cookie</small><strong>{deployment?.cookieSecure ? "Enforced" : "Local only"}</strong></div></article>
-                <article data-ready={Boolean(deployment)}><CheckCircle2 size={16} /><div><small>Last verified</small><strong>{deployment ? new Date(deployment.checkedAt).toLocaleTimeString() : "Checking…"}</strong></div></article>
+                {surface === "portal" ? (
+                  <article data-ready={deployment?.apiReachable ?? false}><LockKeyhole size={16} /><div><small>Engagement scope</small><strong>{deployment?.apiReachable ? "Enforced" : "Unverified"}</strong></div></article>
+                ) : (
+                  <article data-ready={deployment?.cookieSecure ?? false}><LockKeyhole size={16} /><div><small>Secure cookie</small><strong>{deployment?.cookieSecure ? "Enforced" : "Local only"}</strong></div></article>
+                )}
+                <article data-ready={Boolean(deployment)}><CheckCircle2 size={16} /><div><small>Last verified</small><strong>{deployment ? new Date(deployment.checkedAt).toLocaleTimeString() : statusQuery.isError ? "Verification failed" : "Checking…"}</strong></div></article>
               </div>
             </div>
           )}
           {section === "team"          && <TeamSection />}
           {section === "api-keys"      && <ApiKeysSection />}
-          {section === "probe-fleet"   && <ProbeFleetSection />}
-          {section === "ai"            && <AiRuntimeSection />}
+          {section === "probe-fleet"   && <ProbeFleetSection surface={surface} />}
+          {section === "ai"            && <AiRuntimeSection surface={surface} />}
           {section === "access"        && <AccessSection status={deployment} />}
           {(section === "email" || section === "slack" || section === "jira") && <IntegrationSection kind={section} />}
           {section === "sla"           && <SlaSection />}
           {section === "notifications" && <NotificationsSection />}
-          {section === "audit-log"     && <AuditLogSection />}
+          {section === "audit-log"     && <AuditLogSection surface={surface} />}
         </div>
       </div>
-    </PageShell>
+    </Shell>
   );
+}
+
+export default function SettingsPage() {
+  return <SettingsWorkspace />;
 }

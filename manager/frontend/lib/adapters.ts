@@ -186,7 +186,7 @@ export function toUiFinding(api: any): any {
     category: api.category ?? api.finding_type ?? "General",
     status: FIND_STATUS_TO_UI[String(api.status ?? "open").toLowerCase()] ?? "OPEN",
     affectedHost: api.affected_host ?? api.asset_ip ?? api.asset_id ?? "—",
-    discoveredAt: api.created_at ?? api.discovered_at ?? new Date().toISOString(),
+    discoveredAt: api.first_seen ?? api.created_at ?? api.discovered_at ?? "",
     description: api.description ?? "",
     technicalDetails: api.technical_details ?? "",
     attackPath: api.attack_path ?? "",
@@ -203,6 +203,7 @@ export function toUiFinding(api: any): any {
     compliance: Array.isArray(api.compliance) ? api.compliance : [],
     mitre: (api.mitre_techniques ?? []).map((m: any) =>
       typeof m === "string" ? { id: m, name: m } : m),
+    cve: api.cve_ids ?? [],
     cves: api.cve_ids ?? [],
     riskScore: Math.round(risk),
     riskBreakdown: api.risk_breakdown ?? {

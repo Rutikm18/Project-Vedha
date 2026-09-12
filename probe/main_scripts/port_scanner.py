@@ -403,7 +403,11 @@ class PortScanner(BaseScanner):
         # RST-suppressing Windows host still answers ~97% of probes definitively,
         # while a path under 60% induced packet loss falls far below it.
         self.delivery_floor = max(0.0, min(1.0, delivery_floor))
-        self._probe_window: deque[bool] = deque()
+        # Sizing only. The window ITSELF belongs to one scan_target() call: the
+        # engine shares one PortScanner across every host in the port stage, so
+        # instance-level delivery history let a firewalled host throttle the
+        # healthy hosts scanned beside it (measured: window 256 -> 101 on a host
+        # that answered every probe).
         self._probe_window_size = 256
         self._probe_window_min = 32
         # Cleanup pass over ports still ambiguous after the main sweep.
@@ -539,7 +543,8 @@ class PortScanner(BaseScanner):
 
     async def _scan_port(self, target: str, port: int,
                          est: AdaptiveTimeout | None = None,
-                         cwnd: AdaptiveRateController | None = None) -> ScanResult:
+                         cwnd: AdaptiveRateController | None = None,
+                         window: "deque[bool] | None" = None) -> ScanResult:
         """One port's terminal result, gated by the rate limiter and (when
         enabled) the per-host AIMD congestion window.
 
@@ -582,7 +587,8 @@ class PortScanner(BaseScanner):
                                   or (result.status == "filtered"
                                       and (result.data or {}).get("reason")
                                       == "no_response"))
-                lost = not self._note_probe_outcome(definitive)
+                lost = not self._note_probe_outcome(
+                    definitive, window if window is not None else deque())
                 try:
                     await (cwnd.report_loss() if lost else cwnd.report_success())
                 except asyncio.CancelledError:
@@ -590,8 +596,15 @@ class PortScanner(BaseScanner):
                 except Exception:      # never let telemetry break a scan
                     LOG.debug("congestion window report failed", exc_info=True)
 
-    def _note_probe_outcome(self, definitive: bool) -> bool:
-        """Record one probe and answer: is the PATH still delivering?
+    def _note_probe_outcome(self, definitive: bool,
+                            window: "deque[bool]") -> bool:
+        """Record one probe in THIS HOST's window and answer: is the PATH still
+        delivering?
+
+        `window` is owned by the caller's scan_target() run. It is a parameter
+        rather than instance state because one PortScanner serves every host in
+        the port stage concurrently, and delivery is a property of the path to
+        one target — see the sizing comment in __init__.
 
         WHY THIS EXISTS (measured regression, 2026-09-05). The congestion window
         originally treated every silent port as a loss signal. On a host that
@@ -611,13 +624,13 @@ class PortScanner(BaseScanner):
         whatever its RST policy; a genuinely lossy path stops answering at all
         and still trips the backoff (verified with 60% netem loss).
         """
-        self._probe_window.append(definitive)
-        if len(self._probe_window) > self._probe_window_size:
-            self._probe_window.popleft()
+        window.append(definitive)
+        if len(window) > self._probe_window_size:
+            window.popleft()
         # Below the sample floor we have no opinion yet — never throttle on noise.
-        if len(self._probe_window) < self._probe_window_min:
+        if len(window) < self._probe_window_min:
             return True
-        delivered = sum(self._probe_window) / len(self._probe_window)
+        delivered = sum(window) / len(window)
         return delivered >= self.delivery_floor
 
     @staticmethod
@@ -682,9 +695,11 @@ class PortScanner(BaseScanner):
         # full concurrency (so a healthy scan runs at today's speed) and only
         # shrinks if this host starts swallowing probes.
         # Delivery history is a property of the path to THIS host, exactly like
-        # the congestion window and the RTT estimator. Carrying it across targets
-        # would let one quiet host throttle the next.
-        self._probe_window.clear()
+        # the congestion window and the RTT estimator. It is a LOCAL here, not an
+        # instance field: clearing shared state at the start of each call only
+        # isolated hosts scanned one after another, and the port stage scans them
+        # CONCURRENTLY through one scanner object.
+        window: deque[bool] = deque()
         cwnd = None
         if self.congestion:
             cwnd = AdaptiveRateController(
@@ -720,7 +735,8 @@ class PortScanner(BaseScanner):
                 except asyncio.QueueEmpty:
                     return
                 try:
-                    result = await self._scan_port(target, port, est, cwnd)
+                    result = await self._scan_port(target, port, est, cwnd,
+                                                   window)
                     collected[port] = result
                 finally:
                     queue.task_done()

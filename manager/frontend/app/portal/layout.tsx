@@ -1,7 +1,8 @@
 /**
- * Portal segment layout — a passthrough. Each portal page renders its own
- * <PortalShell title=…> (mirroring how operator pages use <PageShell>), so the
- * shell can carry a per-page title/subtitle. The login screen renders standalone.
+ * Portal segment layout — a passthrough. Each portal page renders the canonical
+ * <PageShell> through <PortalShell>, so manager and customer
+ * surfaces share one renderer while retaining surface-specific navigation and
+ * authentication. The login screen renders standalone.
  */
 export default function PortalLayout({ children }: { children: React.ReactNode }) {
   return <>{children}</>;

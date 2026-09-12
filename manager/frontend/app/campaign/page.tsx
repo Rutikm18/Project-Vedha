@@ -1,11 +1,16 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { Activity, CheckCircle2, ChevronRight, Loader2, Radar, Target } from "lucide-react";
 import { PageShell } from "../../components/PageShell";
+import { PortalShell } from "../../components/portal/PortalShell";
 import FleetJobs from "../fleet/FleetJobs";
 import CampaignProgress from "./[id]/CampaignProgress";
+import {
+  createCampaignWorkspaceApi,
+  type CampaignWorkspaceSurface,
+} from "../../lib/campaign-workspace-api";
 
 interface CampaignSummary {
   campaign_id: string; targets: string[]; status: "running" | "completed";
@@ -22,13 +27,6 @@ interface EngagementSummary {
   findingCount?: number;
 }
 
-async function fetchJson<T>(path: string): Promise<T> {
-  const res = await fetch(path, { credentials: "same-origin", headers: { "Content-Type": "application/json" } });
-  const body = await res.json().catch(() => ([]));
-  if (!res.ok) throw new Error((body as { error?: string }).error ?? res.statusText);
-  return body as T;
-}
-
 function ago(iso: string): string {
   if (!iso) return "—";
   const s = Math.max(0, Math.floor((Date.now() - new Date(iso).getTime()) / 1000));
@@ -38,17 +36,18 @@ function ago(iso: string): string {
   return `${Math.floor(s / 86400)}d ago`;
 }
 
-export default function CampaignListPage() {
+export function CampaignWorkspace({ surface = "manager" }: { surface?: CampaignWorkspaceSurface }) {
   const [rows, setRows] = useState<CampaignSummary[]>([]);
   const [engagements, setEngagements] = useState<EngagementSummary[]>([]);
   const [selectedEngagement, setSelectedEngagement] = useState("");
   const [loading, setLoading] = useState(true);
+  const api = useMemo(() => createCampaignWorkspaceApi(surface), [surface]);
 
   const load = useCallback(async () => {
     try {
       const [campaignRows, engagementData] = await Promise.all([
-        fetchJson<CampaignSummary[]>("/api/scan/campaigns"),
-        fetchJson<{ engagements?: EngagementSummary[] }>("/api/engagements"),
+        api.campaigns<CampaignSummary[]>(),
+        api.engagements<{ engagements?: EngagementSummary[] }>(),
       ]);
       const nextEngagements = engagementData.engagements ?? [];
       setRows(campaignRows);
@@ -56,7 +55,7 @@ export default function CampaignListPage() {
       setSelectedEngagement((current) => current || nextEngagements.find((item) => item.status === "ACTIVE")?.id || nextEngagements[0]?.id || "");
     } catch { /* keep prior rows on a transient failure */ }
     finally { setLoading(false); }
-  }, []);
+  }, [api]);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- mount fetch + 5s poll; setState runs after an await
@@ -67,8 +66,10 @@ export default function CampaignListPage() {
 
   const running = rows.filter((r) => r.status === "running").length;
 
+  const Shell = surface === "portal" ? PortalShell : PageShell;
+
   return (
-    <PageShell
+    <Shell
       title="VA Campaigns"
       subtitle="Sequential, full-network vulnerability-assessment runs"
       statusItems={[
@@ -77,7 +78,7 @@ export default function CampaignListPage() {
       ]}
       headerActions={
         <div style={{ display: "flex", gap: 8 }}>
-          <Link href="/scan" className="cmpl-primary"><Radar size={14} /> Launch campaign</Link>
+          <Link href={surface === "portal" ? "/portal/scans" : "/scan"} className="cmpl-primary"><Radar size={14} /> Launch campaign</Link>
         </div>
       }
     >
@@ -94,7 +95,7 @@ export default function CampaignListPage() {
             </select>
           </header>
           {selectedEngagement ? (
-            <CampaignProgress engagementId={selectedEngagement} />
+            <CampaignProgress engagementId={selectedEngagement} surface={surface} />
           ) : (
             <div className="cmpl-inline-empty">Create or select an engagement to inspect its vulnerability pipeline.</div>
           )}
@@ -102,9 +103,9 @@ export default function CampaignListPage() {
 
         <section className="cmpl-section cmpl-job-section">
           <header className="cmpl-section-head">
-            <div><Target size={15} /><div><strong>Tenant job queue</strong><span>Every probe job, resolved to its engagement</span></div></div>
+            <div><Target size={15} /><div><strong>{surface === "portal" ? "Engagement job queue" : "Tenant job queue"}</strong><span>{surface === "portal" ? "Every job in your assigned engagement" : "Every probe job, resolved to its engagement"}</span></div></div>
           </header>
-          <FleetJobs />
+          <FleetJobs surface={surface} />
         </section>
 
         <div className="cmpl-subhead"><Radar size={14} /><div><strong>Collector stage snapshots</strong><span>Low-level progress reported directly by vedha-agent campaigns</span></div></div>
@@ -115,9 +116,9 @@ export default function CampaignListPage() {
             <Radar size={24} color="var(--text-faint)" />
             <div className="cmpl-empty-title">No campaigns yet</div>
             <div className="cmpl-empty-hint">
-              Launch one from a vedha-agent — <code>python -m scanner.va_campaign 10.0.0.0/24</code> — or dispatch the{" "}
-              <strong>Network Vulnerability Assessment</strong> use-case from Fleet. Live progress lands here as
-              the vedha-agent reports each stage.
+              Launch the <strong>Network Vulnerability Assessment</strong> from the{" "}
+              <Link href={surface === "portal" ? "/portal/scans" : "/scan"}>Scanner</Link>. Vedha uses the engagement&apos;s
+              authorized scope and shows each reported stage here.
             </div>
           </div>
         ) : (
@@ -125,7 +126,7 @@ export default function CampaignListPage() {
             {rows.map((r) => {
               const isRun = r.status === "running";
               return (
-                <Link key={r.campaign_id} href={`/campaign/${r.campaign_id}`} className="cmpl-row">
+                <Link key={r.campaign_id} href={`${surface === "portal" ? "/portal/campaign" : "/campaign"}/${r.campaign_id}`} className="cmpl-row">
                   <span className="cmpl-status" aria-label={r.status}>
                     {isRun
                       ? <Loader2 size={16} className="cmpl-spin" color="var(--accent)" />
@@ -143,9 +144,9 @@ export default function CampaignListPage() {
                       {" · "}updated {ago(r.updated_at)}
                     </div>
                   </div>
-                  <div className="cmpl-progress">
-                    <div className="cmpl-bar"><div className="cmpl-bar-fill" data-running={isRun}
-                      style={{ width: `${Math.min(100, Math.max(0, r.percent))}%` }} /></div>
+                    <div className="cmpl-progress">
+                      <div className="cmpl-bar"><div className="cmpl-bar-fill" data-running={isRun}
+                      style={{ transform: `scaleX(${Math.min(100, Math.max(0, r.percent)) / 100})` }} /></div>
                     <span className="cmpl-pct">{Math.round(r.percent)}%</span>
                   </div>
                   <ChevronRight size={16} color="var(--text-faint)" />
@@ -155,15 +156,19 @@ export default function CampaignListPage() {
           </div>
         )}
       </div>
-    </PageShell>
+    </Shell>
   );
+}
+
+export default function CampaignListPage() {
+  return <CampaignWorkspace />;
 }
 
 const STYLES = `
 /* Width and centring now come from .vedha-page-container in the shell, so this
    page grows with the viewport instead of stopping at 1180px. */
 .cmpl-page { display: flex; flex-direction: column; gap: 20px; width: 100%; }
-.cmpl-primary { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 650; color: #fff;
+.cmpl-primary { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; font-weight: 650; color: var(--accent-contrast);
   padding: 7px 12px; border: 1px solid var(--accent); border-radius: var(--radius-md); background: var(--accent); text-decoration: none; }
 .cmpl-primary:hover { background: var(--accent-dim); }
 .cmpl-section { display: flex; flex-direction: column; gap: 14px; }
@@ -198,7 +203,7 @@ const STYLES = `
 .cmpl-sub strong { color: var(--text-secondary); font-weight: 600; }
 .cmpl-progress { display: flex; align-items: center; gap: 9px; width: 160px; flex-shrink: 0; }
 .cmpl-bar { flex: 1; height: 6px; background: var(--bg-elevated); border-radius: 99px; overflow: hidden; }
-.cmpl-bar-fill { height: 100%; background: var(--nominal-color); border-radius: 99px; transition: width .5s var(--ease-out); }
+.cmpl-bar-fill { width: 100%; height: 100%; transform-origin: left center; background: var(--nominal-color); border-radius: 99px; transition: transform .5s var(--ease-out); }
 .cmpl-bar-fill[data-running="true"] { background: var(--accent); }
 .cmpl-pct { font-family: var(--font-mono); font-size: 12px; color: var(--text-secondary); font-variant-numeric: tabular-nums; width: 34px; text-align: right; }
 

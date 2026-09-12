@@ -52,6 +52,8 @@ export function toReportAssets(f: any): RawAsset[] {
 export function toRawFinding(f: any): RawFinding {
   return {
     ...f,
+    cve: f?.cve ?? f?.cves ?? undefined,
+    dueAt: f?.slaDeadline ?? f?.dueAt ?? undefined,
     epss: f?.epssRecorded && typeof f.epssScore === "number" ? f.epssScore : undefined,
     epssPercentile: f?.epssPercentile || undefined,
     assets: toReportAssets(f),

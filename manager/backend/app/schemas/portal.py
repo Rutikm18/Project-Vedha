@@ -1,11 +1,11 @@
 """
 schemas/portal.py — customer-safe response shapes.
 
-CRITICAL: these are WHITELISTS. The operator `FindingOut` and the `Finding` model
-expose internal red/blue-team judgment (exploit_validated, detection_status, the
-verification_* triage, resolution mechanics, raw evidence). A customer must never
-see those, so the portal has its own serializers that only ever carry customer-
-appropriate fields. Never widen these to reuse an operator schema.
+These legacy summary contracts remain deliberate whitelists. The authenticated
+workspace endpoints use the canonical manager contracts where product parity is
+required, but only after the route has derived and enforced the customer's
+engagement from the portal session. Do not widen a legacy response implicitly;
+new shared-workspace fields belong behind an engagement-scoped route.
 """
 from __future__ import annotations
 
@@ -134,6 +134,9 @@ class ClientAssistantMessage(BaseModel):
 
 class ClientAssistantAsk(BaseModel):
     messages: list[ClientAssistantMessage] = Field(min_length=1, max_length=16)
+    provider: Literal["ollama", "openrouter", "anthropic", "openai", "gemini"] | None = None
+    model: str | None = Field(default=None, min_length=1, max_length=160,
+                              pattern=r"^[A-Za-z0-9][A-Za-z0-9._:/-]{0,159}$")
     # Optional finding the customer is asking about — validated against their own
     # engagement server-side before any of it reaches the model.
     finding_id: uuid.UUID | None = None

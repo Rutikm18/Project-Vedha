@@ -14,7 +14,8 @@
  * A scanner filter narrows to one scanner (e.g. smb_scan, rdp_scan) and each
  * submission's facts are shown verbatim as pretty JSON.
  */
-import { useCallback, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
+import { createScannerWorkspaceApi, type ScannerWorkspaceSurface } from "../../../lib/scanner-workspace-api";
 
 interface ScanResultRow {
   id: string; job_id: string | null; agent_id: string | null;
@@ -27,14 +28,11 @@ interface RawFactsResp {
   by_scanner: Record<string, number>; scan_results: ScanResultRow[];
 }
 
-async function fetchJson<T>(path: string): Promise<T> {
-  const res = await fetch(path, { credentials: "same-origin" });
-  const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error((body as { error?: string }).error ?? res.statusText);
-  return body as T;
-}
-
-export default function RawFacts({ engagementId }: { engagementId: string }) {
+export default function RawFacts({ engagementId, surface = "manager" }: {
+  engagementId: string;
+  surface?: ScannerWorkspaceSurface;
+}) {
+  const api = useMemo(() => createScannerWorkspaceApi(surface), [surface]);
   const [open, setOpen] = useState(false);
   const [data, setData] = useState<RawFactsResp | null>(null);
   const [err, setErr] = useState<string | null>(null);
@@ -46,10 +44,10 @@ export default function RawFacts({ engagementId }: { engagementId: string }) {
     setLoading(true); setErr(null);
     try {
       const q = scannerFilter ? `?scanner=${encodeURIComponent(scannerFilter)}` : "";
-      setData(await fetchJson<RawFactsResp>(`/api/engagements/${engagementId}/raw-facts${q}`));
+      setData(await api.rawFacts<RawFactsResp>(engagementId, q));
     } catch (e) { setErr((e as Error).message); }
     finally { setLoading(false); }
-  }, [engagementId]);
+  }, [api, engagementId]);
 
   const toggle = () => {
     const next = !open;

@@ -139,7 +139,7 @@ export default function CampaignDetailPage() {
                   <span className="cmp-pct">{Math.round(snap.percent)}%</span>
                 </div>
                 <div className="cmp-bar" role="progressbar" aria-valuenow={Math.round(snap.percent)} aria-valuemin={0} aria-valuemax={100}>
-                  <div className="cmp-bar-fill" data-running={isRunning} style={{ width: `${Math.min(100, Math.max(0, snap.percent))}%` }} />
+                  <div className="cmp-bar-fill" data-running={isRunning} style={{ transform: `scaleX(${Math.min(100, Math.max(0, snap.percent)) / 100})` }} />
                 </div>
                 <div className="cmp-overall-foot">
                   <span>{isRunning
@@ -235,7 +235,7 @@ const STYLES = `
 .cmp-scope { display: inline-flex; align-items: center; gap: 7px; font-family: var(--font-mono); font-size: 13px; color: var(--text-primary); }
 .cmp-pct { font-family: var(--font-display); font-size: 26px; font-weight: 700; color: var(--text-primary); font-variant-numeric: tabular-nums; }
 .cmp-bar { height: 8px; background: var(--bg-elevated); border-radius: 99px; overflow: hidden; }
-.cmp-bar-fill { height: 100%; background: var(--nominal-color); border-radius: 99px; transition: width .5s var(--ease-out); }
+.cmp-bar-fill { width: 100%; height: 100%; transform-origin: left center; background: var(--nominal-color); border-radius: 99px; transition: transform .5s var(--ease-out); }
 .cmp-bar-fill[data-running="true"] { background: var(--accent); }
 .cmp-overall-foot { display: flex; justify-content: space-between; margin-top: 8px; font-size: 12px; color: var(--text-muted); }
 .cmp-overall-foot strong { color: var(--text-secondary); font-weight: 600; }

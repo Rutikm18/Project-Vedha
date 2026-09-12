@@ -13,7 +13,8 @@ export default function PortalLoginPage() {
   const [loading, setLoading] = useState(false);
   const [autoSigning, setAutoSigning] = useState(false);
 
-  const doLogin = useCallback(async (em: string, pw: string) => {
+  const doLogin = useCallback(async (em: string, pw: string, fromAccessLink = false) => {
+    if (fromAccessLink) setAutoSigning(true);
     setLoading(true);
     setError(null);
     try {
@@ -58,10 +59,8 @@ export default function PortalLoginPage() {
     if (!e || !p) return;
     // Erase fragment before anything async happens
     window.history.replaceState(null, "", window.location.pathname + window.location.search);
-    setEmail(e);
-    setPassword(p);
-    setAutoSigning(true);
-    void doLogin(e, p);
+    const loginTask = window.setTimeout(() => void doLogin(e, p, true), 0);
+    return () => window.clearTimeout(loginTask);
   }, [doLogin]);
 
   async function submit(ev: React.FormEvent) {

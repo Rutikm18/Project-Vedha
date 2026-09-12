@@ -17,17 +17,23 @@ interface PageShellProps {
   /** Hide the header refresh control. For pages that already poll themselves —
    *  a manual refresh there is redundant and invites a reload mid-update. */
   hideRefresh?: boolean;
+  surface?: "manager" | "portal";
+  live?: boolean;
 }
 
 export function PageShell({
   title, subtitle, headerActions, statusItems, children, noPadding, hideRefresh,
+  surface = "manager", live = true,
 }: PageShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [utcTime, setUtcTime]         = useState("");
-  const [userEmail, setUserEmail]     = useState<string | null>(null);
+  const [userEmail, setUserEmail]     = useState<string | null>(
+    surface === "portal" ? "Customer" : null,
+  );
 
   // Read current user
   useEffect(() => {
+    if (surface === "portal") return;
     // One-time migration from builds that stored JWTs in browser storage.
     // End that legacy session so the next login receives HttpOnly cookies.
     if (localStorage.getItem("vedha_token") || localStorage.getItem("vedha_refresh_token")) {
@@ -41,12 +47,17 @@ export function PageShell({
       .then((r) => (r.ok ? r.json() : null))
       .then((d: { email?: string } | null) => { if (d?.email) setUserEmail(d.email); })
       .catch(() => {});
-  }, []);
+  }, [surface]);
 
   const handleLogout = useCallback(async () => {
+    if (surface === "portal") {
+      await fetch("/api/portal/logout", { method: "POST" }).catch(() => {});
+      window.location.href = "/portal/login";
+      return;
+    }
     await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
     clearAuth(true);
-  }, []);
+  }, [surface]);
 
   const { theme, toggleTheme } = useTheme();
 
@@ -83,7 +94,7 @@ export function PageShell({
         />
       )}
 
-      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
+      <Sidebar open={sidebarOpen} onClose={() => setSidebarOpen(false)} surface={surface} />
 
       <div style={{
         flex: 1,
@@ -134,16 +145,17 @@ export function PageShell({
             </button>
 
             <div className="vedha-page-title-meta" style={{ display: "flex", alignItems: "center", gap: 7, minWidth: 0 }}>
-              <span style={{
+              <h1 style={{
                 fontFamily: "var(--font-display)",
                 fontSize: 14,
                 fontWeight: 650,
                 color: "var(--text-primary)",
                 flexShrink: 0,
                 letterSpacing: "-0.01em",
+                margin: 0,
               }}>
                 {title}
-              </span>
+              </h1>
               {subtitle && (
                 <>
                   <span className="vedha-page-title-divider" style={{ color: "var(--border-strong)", flexShrink: 0, fontSize: 13, fontWeight: 400 }}>/</span>
@@ -168,10 +180,10 @@ export function PageShell({
                 width: 5,
                 height: 5,
                 borderRadius: "50%",
-                background: "var(--accent)",
+                background: live ? "var(--accent)" : "var(--text-faint)",
                 flexShrink: 0,
-                animation: "pulse 2s ease-in-out infinite",
-                boxShadow: "0 0 6px var(--accent-glow)",
+                animation: live ? "pulse 2s ease-in-out infinite" : "none",
+                boxShadow: live ? "0 0 6px var(--accent-glow)" : "none",
               }}
             />
           </div>
@@ -383,7 +395,7 @@ export function PageShell({
             fontSize: 9,
             color: "var(--text-muted)",
           }}>
-            {utcTime} · VEDHA v1.0
+            {utcTime} · VEDHA v1.0{surface === "portal" ? " · Customer workspace" : ""}
           </div>
         </footer>
       </div>
@@ -429,5 +441,8 @@ const SHELL_RESPONSIVE_STYLES = `
   .vedha-page-main { padding: 16px !important; }
   .vedha-page-footer { padding: 0 12px !important; }
   .vedha-page-footer-time { display: none; }
+}
+@media (pointer: coarse) {
+  .vedha-page-header button { min-width: 44px !important; min-height: 44px !important; }
 }
 `;

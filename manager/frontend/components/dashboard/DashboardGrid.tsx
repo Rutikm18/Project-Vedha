@@ -23,7 +23,7 @@ import { Gauge, Timer, Activity, Shield, GitCompareArrows, Cpu } from "lucide-re
 import { Panel } from "../console/Primitives";
 import { Freshness } from "../console/Freshness";
 import { DataState, SkeletonRows, EmptyState } from "../states/DataState";
-import { useConsoleQuery, useConsoleQueryKey, type ConsoleKey } from "../../lib/console-source";
+import { useConsolePath, useConsoleQuery, useConsoleQueryKey, type ConsoleKey } from "../../lib/console-source";
 import { LiveOverview } from "./LiveOverview";
 import { PostureScorecard } from "./PostureScorecard";
 import { SlaStatus } from "./SlaStatus";
@@ -137,6 +137,7 @@ function FreshNote({ dataset, staleAfterMs }: { dataset: ConsoleKey; staleAfterM
 
 export function DashboardGrid() {
   const router = useRouter();
+  const findingsPath = useConsolePath("findings");
   return (
     <>
       <style>{`
@@ -176,7 +177,7 @@ export function DashboardGrid() {
 
       <div className="console-band band-1">
         <LiveOverview
-          onSelectSeverity={(s) => router.push(`/findings?severity=${s}&status=open`)}
+          onSelectSeverity={(s) => router.push(`${findingsPath}?severity=${s}&status=open`)}
         />
       </div>
 

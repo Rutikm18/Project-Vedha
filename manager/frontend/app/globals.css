@@ -130,7 +130,7 @@
   --text-primary:   #0F172A;
   --text-secondary: #475569;
   --text-muted:     #607086;
-  --text-faint:     #A7B3C4;
+  --text-faint:     #64748B;
 
   /* Severity. Green is intentionally absent: it always means healthy/remediated. */
   --sev-critical-color: #B91C1C;
@@ -247,7 +247,7 @@
   --text-primary:   #F1F5F9;
   --text-secondary: #94A3B8;
   --text-muted:     #7D8CA1;
-  --text-faint:     #334155;
+  --text-faint:     #7D8CA1;
 
   --sev-critical-color: #F87171;
   --sev-critical-dim:   #EF4444;
@@ -350,16 +350,9 @@ html, body {
   text-underline-offset: 3px;
 }
 
-html, body, div, header, footer, aside, main, section,
-nav, article, button, input, select, textarea,
-table, thead, tbody, tr, th, td,
-span, p, h1, h2, h3, h4, h5, h6,
-form, label, fieldset, legend {
-  transition: background var(--dur-theme) ease,
-              border-color var(--dur-theme) ease,
-              color var(--dur-theme) ease,
-              box-shadow var(--dur-theme) ease;
-}
+/* Theme interpolation stays on the document surfaces. Individual controls own
+   their interaction transitions, avoiding a transition on every dense table cell. */
+html, body { transition: var(--theme-transition); }
 
 code, pre, .terminal, kbd, [class*="mono"], .font-mono {
   font-family: var(--font-mono);
@@ -393,13 +386,23 @@ code, pre, .terminal, kbd, [class*="mono"], .font-mono {
 
 /* ─── Accessibility: reduced motion ─── */
 @media (prefers-reduced-motion: reduce) {
-  *, *::before, *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-    scroll-behavior: auto !important;
-  }
-  .shimmer { animation: none !important; }
+  html:focus-within { scroll-behavior: auto; }
+  .animate-pulse-dot, .animate-ping, .animate-blink, .animate-slide-in,
+  .animate-slide-in-right, .animate-slide-out-right, .animate-scale-in,
+  .animate-fade-up, .animate-fade-in, .animate-float, .shimmer,
+  .stagger-item { animation: none !important; }
+}
+
+/* The mobile navigation is visually and semantically absent until opened.
+   Desktop media rules restore the permanently visible navigation. */
+.vedha-sidebar { visibility: hidden; pointer-events: none; }
+.vedha-sidebar[data-open="true"] { visibility: visible; pointer-events: auto; }
+@media (min-width: 768px) {
+  .vedha-sidebar { visibility: visible; pointer-events: auto; }
+}
+@media (pointer: coarse) {
+  .vedha-sidebar a, .vedha-sidebar button { min-height: 44px; }
+  .vedha-sidebar-close { min-width: 44px; }
 }
 
 /* E1: crisp hairlines. 0.5px rounds to 0 on 1× displays (dividers vanish); only
@@ -2823,7 +2826,7 @@ code, pre, .terminal, kbd, [class*="mono"], .font-mono {
   display: flex; flex-direction: column; gap: 6px;
   padding: 12px 14px; border-radius: var(--radius-md);
   border: 0.5px solid var(--border-subtle);
-  border-left: 3px solid var(--sev-edge, var(--border-subtle));
+  border-left-color: var(--sev-edge, var(--border-subtle));
   background: var(--bg-panel); text-decoration: none;
   transition: background 0.1s, border-color 0.1s;
 }
@@ -2855,7 +2858,7 @@ code, pre, .terminal, kbd, [class*="mono"], .font-mono {
 }
 .ai-progress-bar {
   height: 100%; border-radius: 2px;
-  background: var(--accent); transition: width 0.5s ease;
+  background: var(--accent);
 }
 .ai-progress-bar--animated { background: linear-gradient(90deg, var(--accent), var(--accent-hover)); }
 .ai-progress-bar--done { background: var(--nominal-color); }

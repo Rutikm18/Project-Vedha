@@ -1,0 +1,66 @@
+[
+  {
+    "scanner": "db_scan",
+    "target": "127.0.0.1",
+    "timestamp": "2026-09-12T10:41:19.288160+05:30",
+    "port": 3306,
+    "proto": "tcp",
+    "status": "open",
+    "data": {
+      "engine": "mysql/mariadb",
+      "protocol_version": 10,
+      "server_version": "8.4.11",
+      "capability_flags": 65535,
+      "ssl_supported": true,
+      "db": true
+    },
+    "evidence": "mysql/mariadb 8.4.11"
+  },
+  {
+    "scanner": "db_scan",
+    "target": "127.0.0.1",
+    "timestamp": "2026-09-12T10:55:23.533047+05:30",
+    "port": 5432,
+    "proto": "tcp",
+    "status": "open",
+    "data": {
+      "engine": "postgresql",
+      "ssl_supported": false,
+      "db": true
+    },
+    "evidence": "postgresql"
+  },
+  {
+    "scanner": "db_scan",
+    "target": "127.0.0.1",
+    "timestamp": "2026-09-12T10:41:19.230061+05:30",
+    "port": 6379,
+    "proto": "tcp",
+    "status": "open",
+    "data": {
+      "engine": "redis",
+      "auth_required": false,
+      "unauthenticated_read": true,
+      "server_version": "7.4.10",
+      "db": true
+    },
+    "evidence": "redis 7.4.10"
+  },
+  {
+    "scanner": "db_scan",
+    "target": "127.0.0.1",
+    "timestamp": "2026-09-12T10:41:19.267397+05:30",
+    "port": 27017,
+    "proto": "tcp",
+    "status": "open",
+    "data": {
+      "engine": "mongodb",
+      "wire_reply_opcode": 1,
+      "server_version": "7.0.40",
+      "auth_required": false,
+      "unauthenticated_read": true,
+      "db": true
+    },
+    "evidence": "mongodb 7.0.40"
+  }
+]

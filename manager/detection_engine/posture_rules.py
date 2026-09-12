@@ -612,6 +612,47 @@ def _ipmi_cipher_zero(f: Fact) -> Optional[dict]:
 
 
 # ── the rule pack ─────────────────────────────────────────────────────────────
+def _db_unauthenticated(f: Fact) -> Optional[dict]:
+    """A database that served data to an UNAUTHENTICATED probe.
+
+    The strongest statement db_scan can make, and it rests on a command the
+    server actually executed for an anonymous client — Redis INFO returning
+    server data, or MongoDB serverStatus succeeding. It is never inferred from a
+    banner, a port number, or a handshake that would have succeeded anyway:
+    MongoDB's isMaster answers without credentials even on a fully hardened
+    server, which is precisely why it is not the signal used here.
+    """
+    d = _d(f)
+    if d.get("db") is True and d.get("unauthenticated_read") is True:
+        return {"engine": d.get("engine"),
+                "server_version": d.get("server_version"),
+                "auth_required": d.get("auth_required")}
+    return None
+
+
+def _db_cleartext_transport(f: Fact) -> Optional[dict]:
+    """A database listener that cannot negotiate TLS at all.
+
+    `ssl_supported is False` is a POSITIVE negative — the server stated its own
+    capability (MySQL omitting CLIENT_SSL from its flags, a TDS PRELOGIN reply of
+    ENCRYPT_NOT_SUP). A MISSING key means the probe never learned it, and the
+    rule stays silent: absent evidence must not become a cleartext finding
+    against a server that may well be hardened.
+    """
+    d = _d(f)
+    if d.get("db") is True and d.get("ssl_supported") is False:
+        return {"engine": d.get("engine"),
+                "server_version": d.get("server_version"),
+                "encryption_mode": d.get("encryption_mode")}
+    return None
+
+
+def _db_auth(f: Fact) -> Optional[bool]:
+    """Auth posture for risk shaping — only when the server stated it."""
+    v = _d(f).get("auth_required")
+    return v if isinstance(v, bool) else None
+
+
 RULES: list[PostureRule] = [
     PostureRule(
         "POSTURE-SMB-V1-ENABLED", "SMBv1 enabled (wormable, deprecated)",
@@ -871,6 +912,48 @@ RULES: list[PostureRule] = [
         fp_notes="Read from the RMCP+ Open Session Response, which states the accepted "
                  "cipher suite; no authentication is attempted.",
         requires=("ipmi", "cipher_zero")),
+    # ── database (db_scan) ────────────────────────────────────────────────────
+    # db_scan ran on every network_va, shipped facts, and had ZERO rules: its
+    # evidence was collected and never assessed, so an open Redis looked exactly
+    # like a hardened one. These two read only what the server itself stated.
+    PostureRule(
+        "POSTURE-DB-UNAUTHENTICATED-ACCESS",
+        "Database served data without authentication",
+        "critical", "CWE-306", "T1213", "misconfiguration", ("db_scan",),
+        _db_unauthenticated,
+        "Require authentication and restrict the listener to the application "
+        "tier. Redis: set requirepass or enable ACLs and bind to the app network "
+        "only. MongoDB: enable authorization and create an admin user. Treat "
+        "data held here as disclosed until the exposure window is established.",
+        fp_notes="Raised only when an anonymous command actually RETURNED server "
+                 "data (Redis INFO, MongoDB serverStatus). MongoDB isMaster is "
+                 "deliberately not used: it answers without credentials even when "
+                 "authorization is enforced, so it would flag hardened servers.",
+        auth_enforced=_db_auth,
+        # ONLY the universal marker. `unauthenticated_read` is emitted by the
+        # engines whose protocol offers a public INFO ping (Redis, MongoDB) and
+        # not by MySQL/Postgres/MSSQL — declaring it would make every MySQL host
+        # report schema_drift, turning the drift signal that exists to catch real
+        # probe regressions into noise nobody reads.
+        requires=("db",)),
+    PostureRule(
+        "POSTURE-DB-CLEARTEXT-TRANSPORT",
+        "Database listener cannot negotiate TLS",
+        "medium", "CWE-319", "T1040", "weak_crypto", ("db_scan",),
+        _db_cleartext_transport,
+        "Enable TLS on the listener and require encrypted connections "
+        "(MySQL require_secure_transport=ON, PostgreSQL ssl=on with hostssl-only "
+        "rules, SQL Server ForceEncryption). Until then every credential and "
+        "every row crosses the network in plaintext.",
+        fp_notes="Fires only on the server's OWN statement that it cannot "
+                 "encrypt. A probe that never reached the capability flags emits "
+                 "no ssl_supported key at all, and this rule stays silent rather "
+                 "than reading silence as cleartext. auth_enforced is NOT set: "
+                 "authentication in front does not protect a cleartext channel, "
+                 "it just means credentials are what crosses it.",
+        # Same reasoning as above, mirrored: `ssl_supported` comes from MySQL,
+        # Postgres and MSSQL, never from Redis or MongoDB.
+        requires=("db",)),
 ]
 
 

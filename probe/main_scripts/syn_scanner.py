@@ -317,7 +317,8 @@ class SynScanner(BaseScanner):
                  force_fallback: bool = False, retries: int = 2,
                  adaptive_timeout: bool = True, source_port: int | None = None,
                  randomize: bool = False, scan_delay: float = 0.0,
-                 pace_sends: bool = True, **kwargs):
+                 pace_sends: bool = True, deadline_seconds: float | None = None,
+                 **kwargs):
         super().__init__(*args, **kwargs)
         # Default to nmap top-100 (not the 35-port TOP_TCP_PORTS): a no-arg scan
         # shouldn't silently miss common services.
@@ -334,7 +335,16 @@ class SynScanner(BaseScanner):
         # Default 2 (higher than the connect scan's 1, which rides on kernel
         # retransmits) to match connect-scan reliability.
         self.retries = max(0, retries)
+        # Wall-clock budget for ONE host, mirroring PortScanner.deadline_seconds.
+        # The deep intensity resolves 65,535 ports, which routes the port stage
+        # HERE rather than to the connect scanner, so a budget that stopped at
+        # PortScanner applied to every scan except the one that needed it.
+        # Enforced by not SENDING past the deadline; ports never sent are never
+        # reported, because a clock running out is not evidence of a firewall.
+        self.deadline_seconds = deadline_seconds
         self.source_port = source_port          # fixed TCP src port, or None = random
+        self.randomize = randomize
+        self.scan_delay = scan_delay
         self._key = key or os.urandom(16)
         self._rate = kwargs.get("rate", 200.0)
         # Pace the raw SYN send loop and adapt it to observed loss (AIMD).
@@ -347,11 +357,23 @@ class SynScanner(BaseScanner):
         self._supported = (not force_fallback) and syn_scan_supported()
         self._fallback: PortScanner | None = None
         if not self._supported:
-            self._fallback = PortScanner(
-                self.scope, rate=self._rate, concurrency=self._concurrency,
-                timeout=self.timeout, ports=self.ports,
-                report_closed=self.report_closed, source_port=source_port,
-                randomize=randomize, scan_delay=scan_delay)
+            self._fallback = self._make_fallback()
+
+    def _make_fallback(self) -> PortScanner:
+        """The connect scanner this SYN scan degrades to.
+
+        ONE construction site on purpose: there are two moments we fall back
+        (unprivileged at construction, privileges lost mid-run) and they had
+        drifted — the second dropped source_port/randomize/scan_delay, and both
+        dropped `retries` and the host budget. Off privileged Linux this object
+        IS the scan, so anything missing here is missing from the whole scan.
+        """
+        return PortScanner(
+            self.scope, rate=self._rate, concurrency=self._concurrency,
+            timeout=self.timeout, ports=self.ports,
+            report_closed=self.report_closed, source_port=self.source_port,
+            randomize=self.randomize, scan_delay=self.scan_delay,
+            retries=self.retries, deadline_seconds=self.deadline_seconds)
 
     async def scan_target(self, target: str) -> list[ScanResult]:
         if self._supported:
@@ -362,10 +384,7 @@ class SynScanner(BaseScanner):
                 # to a connect scan rather than failing the target.
                 LOG.warning("syn scan unavailable (%s); falling back to connect", exc)
                 self._supported = False
-                self._fallback = PortScanner(
-                    self.scope, rate=self._rate, concurrency=self._concurrency,
-                    timeout=self.timeout, ports=self.ports,
-                    report_closed=self.report_closed)
+                self._fallback = self._make_fallback()
         return await self._fallback_scan(target)
 
     async def _fallback_scan(self, target: str) -> list[ScanResult]:
@@ -434,13 +453,25 @@ class SynScanner(BaseScanner):
             # sequential-scan detection — masscan/nmap do the same.
             pending = random.sample(self.ports, len(self.ports))
             rounds = self.retries + 1
+            # Wall-clock budget for this host. Checked before each round and
+            # before each SEND — never mid-flight — so a port is either fully
+            # probed or never touched, and the results stay unambiguous.
+            budget_end = (time.monotonic() + self.deadline_seconds
+                          if self.deadline_seconds else None)
             for _round in range(rounds):
                 if not pending:
+                    break
+                if budget_end is not None and time.monotonic() >= budget_end:
+                    LOG.info("[syn_scan] host budget spent on %s — %d port(s) "
+                             "not scanned (reported as absent, never filtered)",
+                             dst_ip, len(pending))
                     break
                 # Send a SYN per pending port (stateless — ISN carries the cookie).
                 # Record the send instant so a reply yields a real round-trip time.
                 send_at: dict[int, float] = {}
                 for port in pending:
+                    if budget_end is not None and time.monotonic() >= budget_end:
+                        break
                     attempts_by_port[port] = attempts_by_port.get(port, 0) + 1
                     seq = syn_cookie(dst_ip, port, src_port, self._key)
                     pkt = build_syn_packet(src_ip, dst_ip, src_port, port, seq)
@@ -457,8 +488,11 @@ class SynScanner(BaseScanner):
                         LOG.debug("send SYN %s:%d failed: %s", dst_ip, port, exc)
 
                 # Collect replies for this round within the adaptive window.
-                pending_set = set(pending)
+                # Only ports we actually SENT can answer: a budget-truncated
+                # round (or a failed sendto) must not hold the window open
+                # waiting on packets that never left.
                 sent_ports = set(send_at)
+                pending_set = set(sent_ports)
                 window = est.timeout() if est is not None else self.timeout
                 deadline = time.monotonic() + max(window, 1.0)
                 while pending_set:
@@ -534,7 +568,13 @@ class SynScanner(BaseScanner):
         results: list[ScanResult] = []
         for port in self.ports:
             state = states.get(port)
-            attempts = attempts_by_port.get(port, 1)
+            attempts = attempts_by_port.get(port)
+            if state is None and attempts is None:
+                # Never probed (the host budget ran out before this port was
+                # sent). Silence we never listened for is not evidence: emitting
+                # it as `filtered` would manufacture a firewall out of a clock.
+                continue
+            attempts = attempts or 1
             m = meta.get(port, {})
             if state == "open":
                 data: dict = {"method": "syn"}

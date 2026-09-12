@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { generateReport, type ReportSession, type ReportResult } from "../../../../lib/ai-engine";
 import type { LiveFinding } from "../../../../lib/engine/types";
 import { toSeverity } from "../../../../lib/severity";
+import { backend, bearerFrom, cookieFrom, BackendError } from "../../../../lib/backend";
 
 // The report is generated section by section (several sequential + parallel LLM
 // calls), so it needs a longer budget than the default serverless timeout.
@@ -36,7 +37,7 @@ interface PageFinding {
 }
 
 interface GenerateBody {
-  engagement?: { name?: string; client?: string; scopeCidrs?: string[] };
+  engagement?: { id?: string; name?: string; client?: string; scopeCidrs?: string[] };
   findings?: PageFinding[];
 }
 
@@ -84,18 +85,52 @@ function toLiveFinding(f: PageFinding): LiveFinding {
 }
 
 export async function POST(req: Request): Promise<Response> {
-  if (!process.env.ANTHROPIC_API_KEY) {
-    return NextResponse.json(
-      { error: "AI report generation is not configured (set ANTHROPIC_API_KEY)." },
-      { status: 503 },
-    );
-  }
-
   let body: GenerateBody;
   try {
     body = (await req.json()) as GenerateBody;
   } catch {
     return NextResponse.json({ error: "Request body must be valid JSON." }, { status: 400 });
+  }
+
+  const surface = req.headers.get("x-vedha-surface") === "portal" ? "portal" : "manager";
+  const authorization = req.headers.get("authorization") ?? "";
+  const portalToken = authorization.startsWith("Bearer ")
+    ? authorization.slice(7)
+    : cookieFrom(req, "vedha_portal_token");
+  const token = surface === "portal" ? portalToken : bearerFrom(req);
+  if (!token) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+  if (!body.engagement?.id) {
+    return NextResponse.json({ error: "engagement.id is required" }, { status: 400 });
+  }
+  if (!Array.isArray(body.findings) || body.findings.length > 100) {
+    return NextResponse.json({ error: "findings must contain at most 100 records" }, { status: 400 });
+  }
+
+  // Resolve the workspace with the credential that owns it. The portal route
+  // ignores browser scope and returns only the engagement pinned in the JWT.
+  try {
+    const canonical = await backend<Record<string, unknown>>(
+      surface === "portal"
+        ? "/portal/workspace/engagement"
+        : `/engagements/${encodeURIComponent(body.engagement.id)}`,
+      { token },
+    );
+    if (String(canonical.id ?? "") !== body.engagement.id) {
+      return NextResponse.json({ error: "Engagement scope mismatch" }, { status: 403 });
+    }
+  } catch (error) {
+    const code = error instanceof BackendError ? error.status : 502;
+    return NextResponse.json(
+      { error: error instanceof Error ? error.message : "Engagement validation failed" },
+      { status: code },
+    );
+  }
+
+  if (!process.env.ANTHROPIC_API_KEY) {
+    return NextResponse.json(
+      { error: "AI report generation is not configured (set ANTHROPIC_API_KEY)." },
+      { status: 503 },
+    );
   }
 
   const findings = (body.findings ?? []).map(toLiveFinding);

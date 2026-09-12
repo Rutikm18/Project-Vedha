@@ -3,7 +3,9 @@ portal.py — the CUSTOMER-facing engagement API (Part 2, Phase 2). Every route 
 to the client's one bound engagement via `client_scoped` / `assert_client` (the
 Phase-0 choke point), so a route physically cannot return another engagement's
 data. Customers can perform finding lifecycle actions and submit scoped scan
-requests; they cannot change engagement scope or access another engagement.
+requests and update their assigned engagement; every write is pinned to the
+engagement in the authenticated portal session, so they cannot select or access
+another engagement.
 
 Data-exposure controls:
   * legacy summary findings use ClientFindingOut; the authenticated workspace
@@ -16,17 +18,21 @@ import uuid
 from datetime import datetime, timezone
 from typing import Annotated, Literal
 
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, BackgroundTasks, File, HTTPException, Query, UploadFile, status
+from pydantic import BaseModel, Field
 from sqlalchemy import func, select
 
 from app.auth.portal_scope import ClientUser, assert_client, client_scoped
-from app.dependencies import DB
+from app.dependencies import DB, RedisConn
+from app.models.agent import Agent, AgentStatus
 from app.models.engagement import Engagement
 from app.models.enums import (
     DetectionStatus, FindingSeverity, FindingStatus, ReviewStatus, ScanJobStatus, ScanJobType,
 )
 from app.models.finding import Finding
 from app.models.llm_output import LLMOutput
+from app.models.probe_enrollment import ProbeEnrollmentRequest
+from app.models.probe_site import ProbeSite
 from app.models.remediation_plan import RemediationPlan
 from app.models.scan_job import ScanJob
 from app.models.scan_request import ScanRequest, SR_PENDING
@@ -53,6 +59,7 @@ from app.services import posture as posture_service
 from app.services.audit import record_audit
 from app.services.remediation_kb import os_key, recipe_for_finding
 from app.services.scope_targets import validate_targets_in_scope
+from app.routers.agents import EnqueueJobRequest
 
 router = APIRouter(prefix="/portal", tags=["portal"])
 
@@ -73,6 +80,18 @@ _PORTAL_USE_CASE_IDS = (
     "uc_iot_device_survey", "uc_ai_endpoint_sweep", "uc_full_port_audit",
     "uc_ot_passive",
 )
+
+
+class PortalEnrollmentApprove(BaseModel):
+    """Bind a device-code enrollment to the session's engagement.
+
+    The browser supplies only the short-lived verification code and an optional
+    display name. Tenant, Site policy, authorized CIDRs and the final engagement
+    assignment are all derived server-side.
+    """
+
+    user_code: str = Field(min_length=8, max_length=9, pattern=r"^[A-Za-z0-9]{4}-?[A-Za-z0-9]{4}$")
+    probe_name: str | None = Field(default=None, min_length=1, max_length=255)
 
 
 def _portal_use_cases() -> dict:
@@ -546,6 +565,8 @@ async def portal_assistant_chat(body: ClientAssistantAsk, user: ClientUser, db: 
         messages=[AiMessage(role=m.role, content=m.content) for m in body.messages],
         context=context,
         max_tokens=900,
+        provider=body.provider,
+        model=body.model,
     )
     try:
         content, runtime, _fallback = await ManagerLlmService().generate_with_fallback(request)
@@ -564,6 +585,14 @@ async def portal_assistant_chat(body: ClientAssistantAsk, user: ClientUser, db: 
         grounded=bool(open_rows or focus),
         generated_at=datetime.now(timezone.utc),
     )
+
+
+@router.get("/workspace/ai/status", summary="Manager AI runtime options")
+async def portal_workspace_ai_status(user: ClientUser):
+    """Expose the same non-secret runtime catalog used by the manager UI."""
+    assert_client(user)
+    from app.routers.ai import ai_status
+    return await ai_status(current_user=user)
 
 
 @router.get(
@@ -639,6 +668,358 @@ async def portal_workspace_finding_detail(finding_id: uuid.UUID, user: ClientUse
     return await _finding_detail_out(db, finding)
 
 
+@router.get("/workspace/engagement",
+            summary="Manager-parity engagement detail for the assigned engagement")
+async def portal_workspace_engagement(user: ClientUser, db: DB):
+    """Return the canonical engagement-detail contract, pinned by the session.
+
+    The customer never supplies an engagement id. Reusing the operator handler
+    keeps counts and future contract changes identical on both dashboards while
+    the server-side binding remains the authorization boundary.
+    """
+    from app.routers.engagements import get_engagement as operator_engagement
+    return await operator_engagement(
+        engagement_id=assert_client(user),
+        db=db,
+        current_user=user,
+    )
+
+
+@router.patch("/workspace/engagement", summary="Update the assigned engagement")
+async def portal_workspace_update_engagement(body: dict, user: ClientUser, db: DB):
+    """Use the manager's canonical update workflow with session-pinned identity."""
+    from app.routers.engagements import EngagementUpdate, update_engagement
+    parsed = EngagementUpdate.model_validate(body)
+    updated = await update_engagement(
+        engagement_id=assert_client(user), body=parsed, db=db, current_user=user,
+    )
+    record_audit(
+        db, actor_id=user.user_id, action="portal.engagement.updated",
+        engagement_id=assert_client(user), resource_type="engagement",
+        resource_id=assert_client(user), detail={"origin": "portal", "fields": sorted(body)},
+    )
+    await db.flush()
+    return updated
+
+
+@router.get("/workspace/engagement/assets", summary="Assets in the assigned engagement")
+async def portal_workspace_engagement_assets(user: ClientUser, db: DB):
+    from app.routers.engagements import list_engagement_assets
+    return await list_engagement_assets(
+        engagement_id=assert_client(user), db=db, current_user=user,
+    )
+
+
+@router.post("/workspace/engagement/import-facts", status_code=status.HTTP_202_ACCEPTED,
+             summary="Import evidence into the assigned engagement")
+async def portal_workspace_import_facts(
+    user: ClientUser,
+    db: DB,
+    background_tasks: BackgroundTasks,
+    file: UploadFile = File(...),
+):
+    from app.routers.engagements import import_facts
+    result = await import_facts(
+        engagement_id=assert_client(user), db=db, current_user=user,
+        background_tasks=background_tasks, file=file,
+    )
+    record_audit(
+        db, actor_id=user.user_id, action="portal.engagement.evidence_imported",
+        engagement_id=assert_client(user), resource_type="engagement",
+        resource_id=assert_client(user), detail={"origin": "portal", "file": file.filename},
+    )
+    await db.flush()
+    return result
+
+
+# ── scanner parity: canonical jobs, session-pinned engagement and probe ──────
+
+@router.get("/workspace/scan/use-cases",
+            summary="Manager scanner capability catalog")
+async def portal_workspace_scan_use_cases(user: ClientUser):
+    assert_client(user)
+    from app.routers.agents import list_use_cases
+    return await list_use_cases(current_user=user)
+
+
+@router.get("/workspace/scan/jobs",
+            summary="Manager-parity jobs for the assigned engagement")
+async def portal_workspace_scan_jobs(user: ClientUser, db: DB):
+    from app.routers.engagements import list_engagement_jobs
+    return await list_engagement_jobs(
+        engagement_id=assert_client(user), db=db, current_user=user,
+    )
+
+
+@router.get("/workspace/scan/jobs/{job_id}",
+            summary="Manager-parity job status in the assigned engagement")
+async def portal_workspace_scan_job(job_id: uuid.UUID, user: ClientUser, db: DB):
+    row = (await db.execute(select(ScanJob.id).where(
+        ScanJob.id == job_id,
+        ScanJob.engagement_id == assert_client(user),
+    ))).scalar_one_or_none()
+    if row is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Job not found")
+    from app.routers.agents import get_job_status
+    return await get_job_status(job_id=job_id, db=db, current_user=user)
+
+
+@router.post("/workspace/scan/jobs", status_code=status.HTTP_201_CREATED,
+             summary="Launch a scan in the assigned engagement")
+async def portal_workspace_scan_launch(
+    body: EnqueueJobRequest,
+    user: ClientUser,
+    db: DB,
+    redis: RedisConn,
+):
+    eng_id = assert_client(user)
+    eng = (await db.execute(select(Engagement).where(
+        Engagement.id == eng_id,
+        Engagement.tenant_id == user.tenant_id,
+    ))).scalar_one_or_none()
+    if eng is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Engagement not found")
+    if eng.assigned_agent_id is None:
+        raise HTTPException(status.HTTP_409_CONFLICT,
+                            "No vedha-agent is assigned to this engagement")
+
+    params = dict(body.params)
+    requested_agent = params.get("preferred_agent_id")
+    if requested_agent and str(requested_agent) != str(eng.assigned_agent_id):
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
+                            "The selected vedha-agent is not assigned to this engagement")
+    # A crafted client cannot route work to another tenant probe. The session's
+    # engagement binding is authoritative for both fields.
+    params["preferred_agent_id"] = str(eng.assigned_agent_id)
+    pinned = body.model_copy(update={"engagement_id": eng_id, "params": params})
+
+    from app.routers.agents import enqueue_agent_job
+    result = await enqueue_agent_job(
+        body=pinned, db=db, redis=redis, current_user=user,
+    )
+    record_audit(
+        db, actor_id=user.user_id, action="scan_job.created",
+        engagement_id=eng_id, resource_type="scan_job",
+        resource_id=uuid.UUID(result["job_id"]),
+        detail={"origin": "portal", "use_case_id": body.use_case_id},
+    )
+    await db.flush()
+    return result
+
+
+async def _assert_portal_job(job_id: uuid.UUID, user: ClientUser, db: DB) -> None:
+    exists = (await db.execute(select(ScanJob.id).where(
+        ScanJob.id == job_id,
+        ScanJob.engagement_id == assert_client(user),
+    ))).scalar_one_or_none()
+    if exists is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Job not found")
+
+
+@router.post("/workspace/scan/jobs/{job_id}/cancel",
+             summary="Cancel an assigned-engagement scan job")
+async def portal_workspace_scan_cancel(job_id: uuid.UUID, user: ClientUser, db: DB):
+    await _assert_portal_job(job_id, user, db)
+    from app.routers.agents import cancel_agent_job
+    result = await cancel_agent_job(job_id=job_id, db=db, current_user=user)
+    record_audit(
+        db, actor_id=user.user_id, action="scan_job.cancelled",
+        engagement_id=assert_client(user), resource_type="scan_job",
+        resource_id=job_id, detail={"origin": "portal"},
+    )
+    await db.flush()
+    return result
+
+
+@router.get("/workspace/scan/campaign-progress",
+            summary="VA campaign progress for the assigned engagement")
+async def portal_workspace_campaign_progress(user: ClientUser, db: DB):
+    from app.routers.engagements import campaign_progress
+    return await campaign_progress(
+        engagement_id=assert_client(user), db=db, current_user=user,
+    )
+
+
+@router.get("/workspace/scan/raw-facts",
+            summary="Raw scanner facts for the assigned engagement")
+async def portal_workspace_raw_facts(
+    user: ClientUser,
+    db: DB,
+    job_id: uuid.UUID | None = None,
+    scanner: str | None = None,
+    limit: int = 5,
+    max_facts: int = 2000,
+):
+    from app.routers.engagements import raw_facts
+    return await raw_facts(
+        engagement_id=assert_client(user), db=db, current_user=user,
+        job_id=job_id, scanner=scanner, limit=limit, max_facts=max_facts,
+    )
+
+
+@router.get("/workspace/fleet/jobs",
+            summary="Manager Fleet job feed for the assigned engagement")
+async def portal_workspace_fleet_jobs(
+    user: ClientUser,
+    db: DB,
+    agent_id: uuid.UUID | None = None,
+    status_filter: ScanJobStatus | None = Query(default=None, alias="status"),
+    running: bool = False,
+    limit: int = 100,
+):
+    eng_id = assert_client(user)
+    eng = (await db.execute(select(Engagement).where(
+        Engagement.id == eng_id,
+        Engagement.tenant_id == user.tenant_id,
+    ))).scalar_one_or_none()
+    if eng is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Engagement not found")
+    if agent_id is not None and str(agent_id) != str(eng.assigned_agent_id):
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "vedha-agent not found")
+    from app.routers.agents import list_all_jobs
+    return await list_all_jobs(
+        db=db, current_user=user, agent_id=agent_id,
+        engagement_id=eng_id, status=status_filter,
+        running=running, limit=limit,
+    )
+
+
+@router.post("/workspace/fleet/enrollment/approve",
+             summary="Approve and bind a vedha-agent to the assigned engagement")
+async def portal_workspace_fleet_approve(
+    body: PortalEnrollmentApprove,
+    user: ClientUser,
+    db: DB,
+):
+    """Complete device-code enrollment without trusting browser scope fields.
+
+    Possession of the short-lived installer code identifies the pending device.
+    The Site policy comes from the authenticated engagement, so a crafted portal
+    request cannot widen scope, select another tenant, or bind a different job.
+    """
+    from app.routers.probe_enrollment import (
+        _keyed_hash,
+        _next_probe_name,
+        _provision_agent_for_site,
+    )
+
+    engagement_id = assert_client(user)
+    engagement = (await db.execute(
+        select(Engagement).where(
+            Engagement.id == engagement_id,
+            Engagement.tenant_id == user.tenant_id,
+        ).with_for_update()
+    )).scalar_one_or_none()
+    if engagement is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Engagement not found")
+    if engagement.assigned_agent_id is not None:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "This engagement already has an assigned vedha-agent",
+        )
+
+    code = body.user_code.replace("-", "").upper()
+    request_row = (await db.execute(
+        select(ProbeEnrollmentRequest)
+        .where(ProbeEnrollmentRequest.user_code_hash == _keyed_hash(code))
+        .with_for_update()
+    )).scalar_one_or_none()
+    now = datetime.now(timezone.utc)
+    if request_row is None or (
+        request_row.tenant_id is not None and request_row.tenant_id != user.tenant_id
+    ):
+        # 404 avoids disclosing whether a code belongs to another tenant.
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Enrollment code not found")
+    if request_row.expires_at <= now:
+        request_row.state = "expired"
+        raise HTTPException(status.HTTP_410_GONE, "Enrollment code expired; restart the installer")
+    if request_row.state != "awaiting_approval":
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            f"Enrollment request is already {request_row.state}",
+        )
+
+    authorized_cidrs = list(engagement.scope_cidrs or [])
+    if not authorized_cidrs:
+        raise HTTPException(
+            status.HTTP_409_CONFLICT,
+            "Add an authorized engagement scope before enrolling a vedha-agent",
+        )
+    capabilities = list(dict.fromkeys(request_row.reported_capabilities or []))
+    if not capabilities:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "The vedha-agent did not report any supported capabilities",
+        )
+
+    probe_name = (body.probe_name or "").strip()
+    if not probe_name:
+        probe_name = await _next_probe_name(db, user.tenant_id)
+    site = ProbeSite(
+        tenant_id=user.tenant_id,
+        name=f"engagement-{str(engagement_id)[:8]}-{str(request_row.id)[:8]}",
+        status="active",
+        authorized_cidrs=authorized_cidrs,
+        excluded_cidrs=list(engagement.excluded_cidrs or []),
+        approved_capabilities=capabilities,
+    )
+    db.add(site)
+    await db.flush()
+
+    agent = await _provision_agent_for_site(
+        db,
+        row=request_row,
+        site=site,
+        tenant_id=user.tenant_id,
+        probe_name=probe_name,
+        location=None,
+        approved_by=str(user.user_id),
+        now=now,
+        auto=False,
+    )
+    engagement.assigned_agent_id = agent.id
+    record_audit(
+        db,
+        actor_id=user.user_id,
+        action="portal.agent.assigned",
+        engagement_id=engagement_id,
+        resource_type="agent",
+        resource_id=agent.id,
+        detail={"origin": "portal", "site_id": str(site.id)},
+    )
+    await db.flush()
+    return {
+        "request_id": str(request_row.id),
+        "agent_id": str(agent.id),
+        "site_id": str(site.id),
+        "state": request_row.state,
+        "probe_name": probe_name,
+    }
+
+
+@router.get("/workspace/fleet/agents/{agent_id}/jobs",
+            summary="Assigned vedha-agent job history in this engagement")
+async def portal_workspace_fleet_agent_jobs(
+    agent_id: uuid.UUID,
+    user: ClientUser,
+    db: DB,
+    limit: int = 25,
+):
+    eng_id = assert_client(user)
+    eng = (await db.execute(select(Engagement).where(
+        Engagement.id == eng_id,
+        Engagement.tenant_id == user.tenant_id,
+        Engagement.assigned_agent_id == agent_id,
+    ))).scalar_one_or_none()
+    if eng is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "vedha-agent not found")
+    from app.routers.agents import get_agent_job_history
+    return await get_agent_job_history(
+        agent_id=agent_id, db=db, current_user=user, limit=limit,
+        engagement_id=eng_id,
+    )
+
+
 # ── console parity: the same analytics the operator dashboard renders ─────────
 # The customer console shows the SAME components as the operator console
 # (components/dashboard/*), so it needs the SAME response shapes. Rather than
@@ -702,14 +1083,20 @@ async def portal_agents(user: ClientUser, db: DB):
     if agent_id is None:
         return []
 
-    from app.models.agent import Agent
     agent = (await db.execute(
         select(Agent).where(Agent.id == agent_id, Agent.tenant_id == user.tenant_id)
     )).scalar_one_or_none()
     if agent is None:
         return []
 
-    status_value = str(getattr(agent.status, "value", agent.status)).upper()
+    persisted_status = str(getattr(agent.status, "value", agent.status))
+    status_value = persisted_status.upper()
+    now = datetime.now(timezone.utc)
+    online = bool(
+        agent.last_heartbeat
+        and (now - agent.last_heartbeat).total_seconds() < 90
+        and persisted_status in {AgentStatus.online.value, AgentStatus.busy.value}
+    )
     # `activity` is the one-line state the shared AgentMonitor panel renders. The
     # operator fleet view derives it the same way; a customer sees only whether
     # their own probe is working, never which job or whose.
@@ -726,4 +1113,8 @@ async def portal_agents(user: ClientUser, db: DB):
         "activity": activity,
         "location": agent.location,
         "last_heartbeat": agent.last_heartbeat.isoformat() if agent.last_heartbeat else None,
+        "capabilities": list(agent.capabilities or []),
+        "network_segments": list(agent.network_segments or []),
+        "current_job_id": str(agent.current_job_id) if agent.current_job_id else None,
+        "online": online,
     }]

@@ -10,6 +10,7 @@
  * toggle. Polls every 5s so the live queue stays current.
  */
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { createFleetWorkspaceApi, type FleetWorkspaceSurface } from "../../lib/fleet-workspace-api";
 
 interface Job {
   job_id: string; agent_id: string | null; agent_name: string | null;
@@ -23,14 +24,8 @@ const STATUS_COLOR: Record<string, string> = {
   completed: "var(--sev-low,#3b82f6)", failed: "var(--sev-high,#f97316)",
 };
 
-async function fetchJson<T>(path: string): Promise<T> {
-  const res = await fetch(path, { credentials: "same-origin" });
-  const body = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(body.error ?? res.statusText);
-  return body as T;
-}
-
-export default function FleetJobs() {
+export default function FleetJobs({ surface = "manager" }: { surface?: FleetWorkspaceSurface }) {
+  const api = useMemo(() => createFleetWorkspaceApi(surface), [surface]);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [err, setErr] = useState<string | null>(null);
   const [probe, setProbe] = useState<string>("");        // agent_id filter
@@ -43,9 +38,9 @@ export default function FleetJobs() {
       if (probe) q.set("agent_id", probe);
       if (engagement) q.set("engagement_id", engagement);
       if (runningOnly) q.set("running", "true");
-      setJobs(await fetchJson<Job[]>(`/api/fleet/jobs?${q.toString()}`));
+      setJobs(await api.jobs<Job[]>(q.toString()));
     } catch (e) { setErr((e as Error).message); }
-  }, [probe, engagement, runningOnly]);
+  }, [api, probe, engagement, runningOnly]);
 
   useEffect(() => {
     const initial = window.setTimeout(() => void load(), 0);
@@ -81,10 +76,14 @@ export default function FleetJobs() {
           <option value="">All probes</option>
           {probes.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
         </select>
-        <select value={engagement} onChange={(e) => setEngagement(e.target.value)} style={selectStyle}>
-          <option value="">All engagements</option>
-          {engagements.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
-        </select>
+        {surface === "manager" ? (
+          <select value={engagement} onChange={(e) => setEngagement(e.target.value)} style={selectStyle}>
+            <option value="">All engagements</option>
+            {engagements.map(([id, name]) => <option key={id} value={id}>{name}</option>)}
+          </select>
+        ) : (
+          <span style={{ ...selectStyle, cursor: "default" }}>Assigned engagement</span>
+        )}
         <label style={{ fontSize: 11, color: "var(--text-muted)", display: "flex", alignItems: "center", gap: 5, cursor: "pointer" }}>
           <input type="checkbox" checked={runningOnly} onChange={(e) => setRunningOnly(e.target.checked)} /> running only
         </label>

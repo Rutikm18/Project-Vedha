@@ -7,7 +7,7 @@ import {
 import { Users, ShieldAlert, ArrowUpRight, ArrowDownRight, Minus } from "lucide-react";
 import Link from "next/link";
 import { useCountUp } from "../hooks/useCountUp";
-import { useConsoleQuery } from "../lib/console-source";
+import { useConsolePath, useConsoleQuery } from "../lib/console-source";
 
 /* ─── Types ─── */
 interface TimelinePoint { date: string; CRITICAL: number; HIGH: number; MEDIUM: number; LOW: number; }
@@ -177,6 +177,8 @@ const STATUS_STYLE: Record<string, { color: string; bg: string }> = {
 
 /* ─── Main component ─── */
 export function DashboardCharts() {
+  const findingsPath = useConsolePath("findings");
+  const activityPath = useConsolePath("activity");
   // Operator-only (a customer console has exactly one engagement): resolves to
   // `unavailable` in the portal, where the engagement-derived KPIs are omitted
   // rather than erroring.
@@ -303,7 +305,7 @@ export function DashboardCharts() {
             <span style={{ fontFamily: "var(--font-body)", fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
               Critical findings
             </span>
-            <Link href="/findings" style={{
+            <Link href={findingsPath} style={{
               display: "flex", alignItems: "center", gap: 4,
               fontFamily: "var(--font-body)", fontSize: 12, fontWeight: 500,
               color: "var(--accent)", textDecoration: "none",
@@ -405,7 +407,7 @@ export function DashboardCharts() {
             <span style={{ fontFamily: "var(--font-body)", fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
               Recent activity
             </span>
-            <Link href="/engagements" style={{ display: "flex", alignItems: "center", gap: 4, fontFamily: "var(--font-body)", fontSize: 12, fontWeight: 500, color: "var(--accent)", textDecoration: "none" }}>
+            <Link href={activityPath} style={{ display: "flex", alignItems: "center", gap: 4, fontFamily: "var(--font-body)", fontSize: 12, fontWeight: 500, color: "var(--accent)", textDecoration: "none" }}>
               All <ArrowUpRight size={12} />
             </Link>
           </div>

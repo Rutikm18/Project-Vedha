@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect, useCallback, useRef } from "react";
+import React, { useState, useEffect, useCallback, useMemo, useRef } from "react";
 import Link from "next/link";
 import {
   Play, Shield, Globe, Database, Server, Wifi,
@@ -10,7 +10,10 @@ import {
   Timer, ShieldAlert, Crosshair, Send, Radar,
 } from "lucide-react";
 import { PageShell } from "../../components/PageShell";
+import { PortalShell } from "../../components/portal/PortalShell";
 import { useToast } from "../../hooks/useToast";
+import { createScannerWorkspaceApi, type ScannerWorkspaceSurface } from "../../lib/scanner-workspace-api";
+import type { ScanLaunchBody } from "../../lib/scan-launch";
 import CampaignProgress from "../campaign/[id]/CampaignProgress";
 
 /* ══════════════════════════════════════════════════════
@@ -151,22 +154,6 @@ const INTENSITY: { id: Intensity; label: string; pps: string; why: string; color
     why: "Fast and loud. Large scopes under time pressure — expect alerts and noticeable traffic." },
 ];
 
-async function apiFetch<T>(path: string, opts?: RequestInit): Promise<T> {
-  const res = await fetch(path, {
-    ...opts,
-    credentials: "same-origin",
-    headers: {
-      "Content-Type": "application/json",
-      ...(opts?.headers ?? {}),
-    },
-  });
-  if (!res.ok) {
-    const err = await res.json().catch(() => ({ error: res.statusText })) as { error?: string };
-    throw new Error(err.error ?? res.statusText);
-  }
-  return res.json() as Promise<T>;
-}
-
 /* ══════════════════════════════════════════════════════
    SMALL PRIMITIVES
 ══════════════════════════════════════════════════════ */
@@ -279,10 +266,11 @@ function FleetStrip({ probes, loading }: { probes: Probe[]; loading: boolean }) 
 
 const NVA_STAGES = ["Discovery", "Port map", "Assessment", "Exposure", "Inventory", "Detection"];
 
-function NetworkVaHero({ uc, selected, onConfigure }: {
+function NetworkVaHero({ uc, selected, onConfigure, campaignHref }: {
   uc: UseCase | undefined;
   selected: boolean;
   onConfigure: () => void;
+  campaignHref: string;
 }) {
   // Only render once the backend has served the flagship use-case.
   if (!uc) return null;
@@ -320,7 +308,7 @@ function NetworkVaHero({ uc, selected, onConfigure }: {
                 <Target size={16} /> Configure campaign
               </button>
             )}
-            <Link className="scn-nva-link" href="/campaign">
+            <Link className="scn-nva-link" href={campaignHref}>
               <Activity size={13} /> View live campaigns
             </Link>
             <span className="scn-nva-meta">
@@ -681,8 +669,9 @@ function DispatchReceipt({ payload }: { payload: Record<string, unknown> }) {
    PAGE
 ══════════════════════════════════════════════════════ */
 
-export default function ScanPage() {
+export function ScannerWorkspace({ surface = "manager" }: { surface?: ScannerWorkspaceSurface }) {
   const { success: toastOk, error: toastErr } = useToast();
+  const api = useMemo(() => createScannerWorkspaceApi(surface), [surface]);
 
   const [useCases,    setUseCases]    = useState<UseCase[]>([NETWORK_VA_FALLBACK]);
   const [probes,      setProbes]      = useState<Probe[]>([]);
@@ -711,9 +700,9 @@ export default function ScanPage() {
       setLoadingData(true);
       try {
         const [uc, pr, engRaw] = await Promise.all([
-          apiFetch<UseCase[]>("/api/scan/use-cases"),
-          apiFetch<Probe[]>("/api/scan/probes"),
-          apiFetch<{ engagements?: Engagement[] } | Engagement[]>("/api/engagements"),
+          api.useCases<UseCase[]>(),
+          api.probes<Probe[]>(),
+          api.engagements<{ engagements?: Engagement[] } | Engagement[]>(),
         ]);
         if (!alive) return;
         setUseCases(uc);
@@ -738,7 +727,7 @@ export default function ScanPage() {
     if (pollRef.current) clearInterval(pollRef.current);
     pollRef.current = setInterval(async () => {
       try {
-        const j = await apiFetch<JobStatus>(`/api/scan/jobs/${jobId}`);
+        const j = await api.job<JobStatus>(jobId);
         // Don't clobber the panel if the operator switched to viewing another job.
         setJob((cur) => (cur && cur.job_id !== j.job_id ? cur : j));
         // Keep the recent-scans list live as the job progresses.
@@ -751,19 +740,19 @@ export default function ScanPage() {
         }
       } catch { /* network blip */ }
     }, 4000);
-  }, [toastOk, toastErr]);
+  }, [api, toastOk, toastErr]);
 
   // Rehydrate this engagement's jobs from the DB so a launched job survives a
   // page refresh or navigation (root-cause fix: the queue lived only in memory).
   const loadJobs = useCallback(async (engagementId: string) => {
     if (!engagementId) { setRecentJobs([]); return; }
     try {
-      const rows = await apiFetch<Array<{
+      const rows = await api.jobs<Array<{
         id: string; status: JobStatus["status"]; agent_id: string | null;
         agent_name: string | null; use_case_id: string | null;
         result: Record<string, unknown> | null;
         created_at: string | null; started_at: string | null; completed_at: string | null;
-      }>>(`/api/scan/jobs?engagement_id=${encodeURIComponent(engagementId)}`);
+      }>>(engagementId);
       const jobs: JobStatus[] = rows.map((r) => ({
         job_id: r.id, engagement_id: engagementId, status: r.status,
         created_at: r.created_at, started_at: r.started_at, completed_at: r.completed_at,
@@ -777,7 +766,7 @@ export default function ScanPage() {
       setJob((cur) => cur ?? active ?? null);
       if (active && !pollRef.current) startPolling(active.job_id);
     } catch { /* history is non-critical; leave the launcher usable */ }
-  }, [startPolling]);
+  }, [api, startPolling]);
 
   useEffect(() => () => { if (pollRef.current) clearInterval(pollRef.current); }, []);
 
@@ -824,10 +813,10 @@ export default function ScanPage() {
     setExcluded((engagement?.excludedCidrs ?? []).join("\n"));
   }
 
-  function buildLaunchBody() {
+  function buildLaunchBody(): ScanLaunchBody {
     const targetList  = parseList(targets);
     const excludeList = parseList(excluded);
-    const b: Record<string, unknown> = {
+    const b: ScanLaunchBody = {
       engagement_id: selectedEng, use_case_id: selectedUc,
       // Only send an explicit list when the operator narrowed it beyond what the
       // engagement declares; otherwise send nothing and let the backend apply the
@@ -849,9 +838,7 @@ export default function ScanPage() {
     }
     setLaunching(true); setJob(null); setDispatched(null);
     try {
-      const res = await apiFetch<{ job_id: string; status: string; dispatched?: Record<string, unknown> }>("/api/scan/launch", {
-        method: "POST", body: JSON.stringify(buildLaunchBody()),
-      });
+      const res = await api.launch<{ job_id: string; status: string; dispatched?: Record<string, unknown> }>(buildLaunchBody());
       if (res.dispatched) setDispatched(res.dispatched);
       const launched: JobStatus = {
         job_id: res.job_id, engagement_id: selectedEng, status: "pending",
@@ -908,8 +895,9 @@ export default function ScanPage() {
     else if (pollRef.current) { clearInterval(pollRef.current); pollRef.current = null; }
   }
 
+  const Shell = surface === "portal" ? PortalShell : PageShell;
   return (
-    <PageShell title="Scanner" subtitle="Compose and dispatch a scan to a field-deployed vedha-agent">
+    <Shell title="Scanner" subtitle="Compose and dispatch a scan to a field-deployed vedha-agent">
       <style>{STYLES}</style>
 
       {/* Width and centring come from .vedha-page-container in the shell. */}
@@ -921,6 +909,7 @@ export default function ScanPage() {
           uc={useCases.find((u) => u.use_case_id === NETWORK_VA_ID)}
           selected={selectedUc === NETWORK_VA_ID}
           onConfigure={() => setSelectedUc(NETWORK_VA_ID)}
+          campaignHref={surface === "portal" ? "/portal/scans#campaign" : "/campaign"}
         />
 
         <div
@@ -1122,9 +1111,9 @@ export default function ScanPage() {
                           ))}
                         </div>
                       </div>
-                      <div style={{ display: "flex", gap: 7, marginTop: 9, padding: "8px 10px", borderRadius: 8, background: "rgba(16,185,129,0.07)", border: "0.5px solid rgba(16,185,129,0.25)" }}>
-                        <ShieldAlert size={15} color="#10b981" style={{ flexShrink: 0, marginTop: 1 }} />
-                        <span style={{ fontSize: 10.5, color: "#34d399", lineHeight: 1.5 }}><strong>OT Safe Mode</strong> — zero active packets. The vedha-agent only listens. Safe for SCADA / ICS / PLC.</span>
+                      <div style={{ display: "flex", gap: 7, marginTop: 9, padding: "8px 10px", borderRadius: 8, background: "var(--nominal-bg)", border: "1px solid color-mix(in srgb, var(--nominal-color) 30%, transparent)" }}>
+                        <ShieldAlert size={15} color="var(--nominal-color)" style={{ flexShrink: 0, marginTop: 1 }} />
+                        <span style={{ fontSize: 10.5, color: "var(--nominal-color)", lineHeight: 1.5 }}><strong>OT Safe Mode</strong> — zero active packets. The vedha-agent only listens. Safe for SCADA / ICS / PLC.</span>
                       </div>
                       </div>
                     )}
@@ -1190,7 +1179,7 @@ export default function ScanPage() {
         {selectedEng && (job || recentJobs.length > 0) && (
           <section>
             <SectionLabel>Vulnerability Assessment</SectionLabel>
-            <CampaignProgress engagementId={selectedEng} />
+            <CampaignProgress engagementId={selectedEng} surface={surface} />
           </section>
         )}
 
@@ -1224,8 +1213,12 @@ export default function ScanPage() {
           </section>
         )}
       </div>
-    </PageShell>
+    </Shell>
   );
+}
+
+export default function ScanPage() {
+  return <ScannerWorkspace surface="manager" />;
 }
 
 /* ══════════════════════════════════════════════════════
@@ -1259,13 +1252,13 @@ const STYLES = `
 .scn-nva-profile { font-size:9.5px; font-weight:700; letter-spacing:0.6px; color:var(--text-faint); font-family:var(--font-mono); }
 .scn-nva-title { margin:0; font-size:18px; font-weight:750; letter-spacing:-0.2px; color:var(--text-primary); font-family:var(--font-display); }
 .scn-nva-desc { margin:4px 0 0; font-size:12px; line-height:1.5; color:var(--text-muted); max-width:72ch; }
-.scn-nva-stages { display:flex; align-items:center; flex-wrap:nowrap; gap:6px; overflow-x:auto; overscroll-behavior-x:contain; scrollbar-width:none; padding:1px 0; }
+.scn-nva-stages { display:flex; align-items:center; flex-wrap:nowrap; gap:6px; overflow-x:auto; overscroll-behavior-x:contain; scrollbar-width:thin; padding:1px 0 7px; }
 .scn-nva-stages::-webkit-scrollbar { display:none; }
 .scn-nva-step { display:inline-flex; align-items:center; gap:6px; flex-shrink:0; }
 .scn-nva-stage { font-size:10.5px; font-weight:600; color:var(--text-secondary); background:var(--bg-surface); border:0.5px solid var(--border-subtle); border-radius:6px; padding:4px 9px; }
 .scn-nva-arrow { color:var(--text-faint); font-size:12px; font-family:var(--font-mono); }
 .scn-nva-actions { display:flex; align-items:center; gap:14px; flex-wrap:wrap; }
-.scn-nva-cta { display:inline-flex; align-items:center; gap:8px; padding:11px 20px; border-radius:11px; border:none; font-weight:700; font-size:13.5px; cursor:pointer; color:#fff; background:linear-gradient(180deg, var(--accent-hover), var(--accent)); box-shadow:0 4px 20px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.15); transition: transform var(--dur-fast), box-shadow var(--dur-fast), filter var(--dur-fast); }
+.scn-nva-cta { display:inline-flex; align-items:center; gap:8px; padding:11px 20px; border-radius:11px; border:none; font-weight:700; font-size:13.5px; cursor:pointer; color:var(--accent-contrast); background:linear-gradient(180deg, var(--accent-hover), var(--accent)); box-shadow:0 4px 20px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.15); transition: transform var(--dur-fast), box-shadow var(--dur-fast), filter var(--dur-fast); }
 .scn-nva-cta:hover { transform:translateY(-1px); filter:brightness(1.05); box-shadow:0 6px 28px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.2); }
 .scn-nva-cta:active { transform:translateY(0); }
 .scn-nva-selected { display:inline-flex; align-items:center; gap:7px; min-height:32px; padding:0 11px; border-radius:8px; background:var(--accent-ghost); border:0.5px solid var(--border-accent); color:var(--accent); font-size:11.5px; font-weight:700; }
@@ -1344,7 +1337,7 @@ const STYLES = `
 .scn-cred-h { font-size:9.5px; font-weight:700; color:var(--text-faint); text-transform:uppercase; letter-spacing:0.8px; margin-bottom:6px; display:flex; align-items:center; gap:5px; }
 
 /* Launch button */
-.scn-launch { width:100%; padding:13px 0; border-radius:11px; border:none; font-weight:700; font-size:14px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; color:#fff; background:linear-gradient(180deg, var(--accent-hover), var(--accent)); box-shadow:0 4px 20px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.15); transition: transform var(--dur-fast), box-shadow var(--dur-fast), filter var(--dur-fast); }
+.scn-launch { width:100%; padding:13px 0; border-radius:11px; border:none; font-weight:700; font-size:14px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; color:var(--accent-contrast); background:linear-gradient(180deg, var(--accent-hover), var(--accent)); box-shadow:0 4px 20px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.15); transition: transform var(--dur-fast), box-shadow var(--dur-fast), filter var(--dur-fast); }
 .scn-launch:hover:not(:disabled) { transform:translateY(-1px); box-shadow:0 6px 28px var(--accent-glow), inset 0 1px 0 rgba(255,255,255,0.2); filter:brightness(1.05); }
 .scn-launch:active:not(:disabled) { transform:translateY(0); }
 .scn-launch:disabled { background:var(--bg-surface); color:var(--text-faint); box-shadow:none; cursor:not-allowed; }

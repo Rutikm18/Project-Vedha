@@ -1714,10 +1714,8 @@ function FindingDetail({
 
   const tabs: { id: DetailTab; label: string; badge?: string }[] = [
     { id: "overview", label: "Overview" },
-    { id: "intel", label: "Threat intel" },
     { id: "evidence", label: "Evidence", badge: (f.evidenceSummary?.length || f.evidence.length) ? String(f.evidenceSummary?.length || f.evidence.length) : undefined },
     { id: "remediation", label: "Fix plan" },
-    { id: "compliance", label: "Compliance", badge: f.compliance.length ? String(f.compliance.length) : undefined },
     { id: "history", label: "History" },
   ];
 
@@ -2572,7 +2570,7 @@ button.findings-triage-metric:hover { background: var(--bg-hover); }
    parsing a single word. It replaces nothing — the badge stays for the
    colour-blind and screen-reader path — it just makes the column skimmable. */
 .finding-card {
-  position: relative; border: var(--hairline) solid var(--border-subtle); border-left: 3px solid var(--rail);
+  position: relative; border: var(--hairline) solid var(--border-subtle); border-left-color: var(--rail);
   border-radius: 10px; padding: 13px 14px; background: var(--bg-panel); cursor: pointer;
   transition: border-color 140ms var(--ease-out), background 140ms var(--ease-out);
 }
@@ -2803,7 +2801,7 @@ button.findings-triage-metric:hover { background: var(--bg-hover); }
 }
 .finding-source {
   display: grid; gap: 3px; margin-bottom: 5px;
-  border: var(--hairline) solid var(--border-subtle); border-left: 3px solid var(--border-accent);
+  border: var(--hairline) solid var(--border-subtle); border-left-color: var(--border-accent);
   border-radius: 8px; padding: 9px 12px; background: var(--bg-surface); text-decoration: none;
   transition: border-color 140ms var(--ease-out), background 140ms var(--ease-out);
 }
@@ -3034,7 +3032,8 @@ button.findings-triage-metric:hover { background: var(--bg-hover); }
 }
 @media (max-width: 920px) {
   .findings-workspace[data-detail="true"] { grid-template-columns: minmax(0, 1fr); }
-  .finding-detail-column { position: static; max-height: none; overflow: visible; overscroll-behavior: auto; scrollbar-gutter: auto; }
+  .findings-workspace[data-detail="true"] .findings-queue { display: none; }
+  .finding-detail-column { order: -1; position: static; max-height: none; overflow: visible; overscroll-behavior: auto; scrollbar-gutter: auto; }
   .findings-triage-key-body { grid-template-columns: minmax(0, 1fr); gap: var(--space-4); }
   .findings-priority-key { grid-column: auto; }
   .findings-workspace[data-detail="true"] .finding-card-metrics { grid-template-columns: repeat(4, minmax(0, 1fr)); }
@@ -3089,6 +3088,11 @@ button.findings-triage-metric:hover { background: var(--bg-hover); }
   .finding-detail-panel { animation: none; }
   .finding-card, .findings-urgent-item { transition: none; }
   .findings-urgent-item:hover { transform: none; }
+}
+@media (pointer: coarse) {
+  .finding-detail-close, .finding-detail-explain,
+  .findings-search button, .findings-pagination-controls button,
+  .findings-inline-action { min-width: 44px; min-height: 44px; }
 }
 `;
 

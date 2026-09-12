@@ -1,7 +1,7 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
 
-import { portalToRawFinding } from "../lib/report/adapt";
+import { portalToRawFinding, toRawFinding } from "../lib/report/adapt";
 import { assess } from "../lib/report/finding-model";
 
 const pf = (o: Record<string, unknown> = {}) => ({
@@ -40,6 +40,17 @@ test("portal: null-ish fields degrade safely", () => {
 test("portal: assess() runs clean and prioritises by severity alone", () => {
   const a = assess(portalToRawFinding(pf({ severity: "critical", cvss_score: 9.8 }) as any));
   assert.equal(a.severity, "CRITICAL");
-  assert.equal(a.priority.code, "P1"); // critical, no exploitation signal
+  assert.equal(a.priority.code, "P0"); // same product-wide priority as Findings
   assert.equal(a.readiness.gaps.length > 0, true); // gaps exist internally…
+});
+
+test("shared report adapter keeps canonical CVEs and SLA deadlines", () => {
+  const finding = toRawFinding({
+    ...portalToRawFinding(pf() as any),
+    cve: undefined,
+    cves: ["CVE-2024-1"],
+    slaDeadline: "2026-08-02T00:00:00Z",
+  });
+  assert.deepEqual(finding.cve, ["CVE-2024-1"]);
+  assert.equal(finding.dueAt, "2026-08-02T00:00:00Z");
 });

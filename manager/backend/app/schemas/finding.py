@@ -152,6 +152,7 @@ class FindingOut(BaseModel):
     resolution_method: str | None = None
     reopened_count: int = 0
     resolved_at: datetime | None = None
+    first_seen: datetime | None = None
     # P4 unified priority (computed; see services/risk_rank.py).
     risk_rank: int | None = None
     # Populated on the detail endpoint. List responses intentionally leave this

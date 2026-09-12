@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useCallback } from "react";
+import React, { useState, useCallback, useEffect, useRef } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
@@ -46,23 +46,93 @@ const NAV_SECTIONS: { label: string; items: NavItem[] }[] = [
   },
 ];
 
+const PORTAL_NAV_SECTIONS: { label: string; items: NavItem[] }[] = [
+  {
+    label: "OPERATIONS",
+    items: [
+      { icon: Shield,     label: "Dashboard",    href: "/portal" },
+      { icon: Briefcase,  label: "Engagement",   href: "/portal/scope" },
+      { icon: Terminal,   label: "Scanner",      href: "/portal/scans" },
+      { icon: Radar,      label: "VA Campaigns", href: "/portal/campaign" },
+      { icon: RadioTower, label: "Fleet",        href: "/portal/fleet" },
+    ],
+  },
+  {
+    label: "ANALYSIS",
+    items: [
+      { icon: Brain,         label: "AI Brain", href: "/portal/assistant" },
+      { icon: AlertTriangle, label: "Findings", href: "/portal/findings" },
+    ],
+  },
+  {
+    label: "MANAGEMENT",
+    items: [
+      { icon: FileText, label: "Reports",  href: "/portal/reports", badge: "BETA" },
+      { icon: Settings, label: "Settings", href: "/portal/settings" },
+    ],
+  },
+];
+
 interface SidebarProps {
   open: boolean;
   onClose: () => void;
+  surface?: "manager" | "portal";
 }
 
-export function Sidebar({ open, onClose }: SidebarProps) {
+export function Sidebar({ open, onClose, surface = "manager" }: SidebarProps) {
   const pathname = usePathname();
   const [hoveredHref, setHoveredHref] = useState<string | null>(null);
+  const sidebarRef = useRef<HTMLElement>(null);
+  const sections = surface === "portal" ? PORTAL_NAV_SECTIONS : NAV_SECTIONS;
 
   const handleHover = useCallback((href: string | null) => {
     setHoveredHref(href);
   }, []);
 
+  useEffect(() => {
+    if (!open || window.matchMedia("(min-width: 768px)").matches) return;
+    const sidebar = sidebarRef.current;
+    if (!sidebar) return;
+    const priorFocus = document.activeElement instanceof HTMLElement ? document.activeElement : null;
+    const focusable = () => Array.from(sidebar.querySelectorAll<HTMLElement>(
+      'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+    )).filter((element) => element.offsetParent !== null);
+    focusable()[0]?.focus();
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") {
+        event.preventDefault();
+        onClose();
+        return;
+      }
+      if (event.key !== "Tab") return;
+      const items = focusable();
+      if (!items.length) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("keydown", handleKeyDown);
+      priorFocus?.focus();
+    };
+  }, [onClose, open]);
+
   return (
     <aside
+      ref={sidebarRef}
+      data-open={open}
+      role={open ? "dialog" : undefined}
+      aria-modal={open ? true : undefined}
+      aria-label={open ? "Primary navigation" : undefined}
       className={[
-        "fixed md:static z-50",
+        "vedha-sidebar fixed md:static z-50",
         "transition-transform duration-200 ease-in-out",
         open ? "translate-x-0" : "-translate-x-full md:translate-x-0",
       ].join(" ")}
@@ -149,7 +219,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
 
         {/* Close button — mobile only */}
         <button
-          className="md:hidden"
+          className="vedha-sidebar-close md:hidden"
           onClick={onClose}
           aria-label="Close sidebar"
           style={{
@@ -176,7 +246,7 @@ export function Sidebar({ open, onClose }: SidebarProps) {
 
       {/* ── Navigation ─── */}
       <nav style={{ paddingTop: 10, flex: 1 }}>
-        {NAV_SECTIONS.map((section, si) => (
+        {sections.map((section, si) => (
           <div key={section.label} style={{ marginBottom: 6 }}>
             {/* Section label */}
             <div style={{

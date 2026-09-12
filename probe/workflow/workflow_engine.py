@@ -506,8 +506,15 @@ async def run_engagement(targets: list[str], scope: ScopeGuard, *, profile: str 
         # port state + completeness metrics are identical everywhere; only the
         # method (syn vs connect_fallback) differs. Narrow scans stay on connect.
         if scan_method == "syn":
+            # The SYN path is the one the deep envelope actually takes (65,535
+            # ports is above the connect/SYN threshold), so it needs the SAME
+            # retries and per-host budget the preset promises. Passing them only
+            # to PortScanner below applied the ceiling to every scan except the
+            # one that needed it.
             scanner = SynScanner(scope, ports=ports, rate=rate,
-                                 concurrency=concurrency, timeout=timeout)
+                                 concurrency=concurrency, timeout=timeout,
+                                 retries=retries,
+                                 deadline_seconds=max_host_seconds)
         else:
             # max_host_seconds bounds ONE host's port sweep. Only `deep` sets it
             # (all 65,535 ports); ports not reached are reported not_scanned,

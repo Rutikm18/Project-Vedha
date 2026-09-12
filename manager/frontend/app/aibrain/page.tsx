@@ -7,7 +7,11 @@ import {
   LockKeyhole, Send, Server, ShieldCheck, Sparkles, TriangleAlert,
 } from "lucide-react";
 import { PageShell } from "../../components/PageShell";
-import { fetchJson } from "../../lib/fetcher";
+import { PortalShell } from "../../components/portal/PortalShell";
+import {
+  createAIBrainWorkspaceApi,
+  type AIBrainWorkspaceSurface,
+} from "../../lib/aibrain-workspace-api";
 import { FactCard } from "../../components/assistant/FactCard";
 import { AssistantText } from "../../components/assistant/AssistantText";
 import type { FactCardVM } from "../../lib/assistant";
@@ -78,7 +82,7 @@ function providerLabel(provider?: string | null) {
   return "Ollama";
 }
 
-export default function AIBrainPage() {
+export function AIBrainWorkspace({ surface = "manager" }: { surface?: AIBrainWorkspaceSurface }) {
   const [messages, setMessages] = useState<Message[]>([WELCOME]);
   const [input, setInput] = useState("");
   const [engagementId, setEngagementId] = useState("");
@@ -88,18 +92,20 @@ export default function AIBrainPage() {
   const [error, setError] = useState<string | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const endRef = useRef<HTMLDivElement>(null);
+  const api = React.useMemo(() => createAIBrainWorkspaceApi(surface), [surface]);
 
   const statusQuery = useQuery({
-    queryKey: ["ai-status"],
-    queryFn: () => fetchJson<AiStatus>("/api/ai/status"),
+    queryKey: ["ai-brain", surface, "status"],
+    queryFn: () => api.status<AiStatus>(),
     refetchInterval: 30_000,
   });
   const engagementsQuery = useQuery({
-    queryKey: ["engagements"],
-    queryFn: () => fetchJson<{ engagements?: Engagement[] }>("/api/engagements"),
+    queryKey: ["ai-brain", surface, "engagements"],
+    queryFn: () => api.engagements<{ engagements?: Engagement[] }>(),
   });
   const status = statusQuery.data;
   const engagements = engagementsQuery.data?.engagements ?? [];
+  const effectiveEngagementId = engagementId || (surface === "portal" ? engagements[0]?.id ?? "" : "");
   const selectedProvider = status?.providers.find((item) => item.id === (provider ?? status.provider));
   const selectedModel = model || selectedProvider?.default_model || status?.model || "";
 
@@ -123,15 +129,12 @@ export default function AIBrainPage() {
     setSending(true);
     setError(null);
     try {
-      const response = await fetchJson<{ content?: string; error?: string; provider?: string; model?: string; factCard?: FactCardVM }>("/api/brain", {
-        method: "POST",
-        body: JSON.stringify({
+      const response = await api.send<{ content?: string; error?: string; provider?: string; model?: string; factCard?: FactCardVM }>({
           messages: conversation.map(({ role, content: messageContent }) => ({ role, content: messageContent })),
-          engagementId: engagementId || undefined,
+          engagementId: effectiveEngagementId || undefined,
           provider: selectedProvider?.id,
           model: selectedModel || undefined,
-        }),
-      });
+        });
       setMessages((current) => [...current, {
         id: crypto.randomUUID(),
         role: "assistant",
@@ -148,12 +151,14 @@ export default function AIBrainPage() {
     }
   }
 
-  const selectedEngagement = engagements.find((engagement) => engagement.id === engagementId);
+  const selectedEngagement = engagements.find((engagement) => engagement.id === effectiveEngagementId);
   const ready = selectedProvider?.configured ?? false;
   const selectedPrivacy = selectedProvider?.privacy ?? status?.privacy;
 
+  const Shell = surface === "portal" ? PortalShell : PageShell;
+
   return (
-    <PageShell
+    <Shell
       title="AI Brain"
       subtitle="Evidence-grounded security advisor"
       statusItems={[
@@ -176,8 +181,8 @@ export default function AIBrainPage() {
               <span className="brain-context-icon"><Database size={15} /></span>
               <label htmlFor="brain-engagement">
                 <span>Ground with engagement evidence</span>
-                <select id="brain-engagement" value={engagementId} onChange={(event) => setEngagementId(event.target.value)}>
-                  <option value="">No engagement selected</option>
+                <select id="brain-engagement" value={effectiveEngagementId} onChange={(event) => setEngagementId(event.target.value)} disabled={surface === "portal"}>
+                  {surface === "manager" && <option value="">No engagement selected</option>}
                   {engagements.map((engagement) => (
                     <option value={engagement.id} key={engagement.id}>{engagement.name} · {engagement.client || "No client"}</option>
                   ))}
@@ -335,6 +340,10 @@ export default function AIBrainPage() {
           </section>
         </aside>
       </div>
-    </PageShell>
+    </Shell>
   );
+}
+
+export default function AIBrainPage() {
+  return <AIBrainWorkspace />;
 }

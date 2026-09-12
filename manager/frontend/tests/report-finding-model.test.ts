@@ -9,9 +9,10 @@ import {
 } from "../lib/report/finding-model";
 
 function ok(name: string, cond: boolean, _got?: unknown) {
+  void _got;
   test(name, () => assert.ok(cond));
 }
-function group(_n: string) { /* section marker only */ }
+function group(_n: string) { void _n; /* section marker only */ }
 
 const base: RawFinding = {
   id: "VDH-001", title: "t", severity: "critical", status: "OPEN",
@@ -31,16 +32,16 @@ ok("critical + KEV + internet-facing ⇒ P0",
   priorityOf(F({ activelyExploited: true, internetReachable: true })).code === "P0",
   priorityOf(F({ activelyExploited: true, internetReachable: true })).code);
 
-ok("critical with no exploitation signal ⇒ P1",
-  priorityOf(F({})).code === "P1", priorityOf(F({})).code);
+ok("critical with no exploitation signal stays P0 across Findings and Reports",
+  priorityOf(F({})).code === "P0", priorityOf(F({})).code);
 
 ok("high + EPSS 0.7 ⇒ P1",
   priorityOf(F({ severity: "high", epss: 0.7 })).code === "P1",
   priorityOf(F({ severity: "high", epss: 0.7 })).code);
 
-ok("high, quiet ⇒ P2", priorityOf(F({ severity: "high" })).code === "P2");
-ok("medium, quiet ⇒ P3", priorityOf(F({ severity: "medium" })).code === "P3");
-ok("low, quiet ⇒ P4", priorityOf(F({ severity: "low" })).code === "P4");
+ok("high, quiet ⇒ P1", priorityOf(F({ severity: "high" })).code === "P1");
+ok("medium, quiet ⇒ P2", priorityOf(F({ severity: "medium" })).code === "P2");
+ok("low, quiet ⇒ P3", priorityOf(F({ severity: "low" })).code === "P3");
 
 // The regression this run fixed.
 const lowKev = priorityOf(F({ severity: "low", activelyExploited: true }));

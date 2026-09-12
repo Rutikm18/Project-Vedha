@@ -1,18 +1,22 @@
 "use client";
 
-import React, { useCallback, useMemo, useState } from "react";
+import React, { useMemo, useState } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import {
-  Activity, AlertTriangle, ArrowDownRight, ArrowUpRight, BarChart3, CheckCircle2, ChevronDown,
-  ChevronRight, Copy, FileSearch, FileText, Fingerprint, Flame,
-  Globe, Lock, Minus, Printer, RefreshCw, Shield, ShieldAlert, ShieldCheck,
-  Sparkles, Target, Terminal, Zap,
+  AlertTriangle, ArrowDownRight, ArrowUpRight, CheckCircle2,
+  FileText, Flame, Globe, Lock, Minus, Printer, RefreshCw, ShieldAlert,
+  ShieldCheck, Sparkles, Target, Zap,
 } from "lucide-react";
 import { PageShell } from "../../components/PageShell";
+import { PortalShell } from "../../components/portal/PortalShell";
 import { DataState, EmptyState, SkeletonRows } from "../../components/states/DataState";
-import { fetchJson, isUnauthorized } from "../../lib/fetcher";
+import { isUnauthorized } from "../../lib/fetcher";
 import {
-  SEV_COLOR, SEV_PALETTE, SEVERITY_ORDER, toSeverity, riskScoreColor,
+  createReportsWorkspaceApi,
+  type ReportsWorkspaceSurface,
+} from "../../lib/reports-workspace-api";
+import {
+  SEV_COLOR, SEV_PALETTE, SEVERITY_ORDER, toSeverity,
   type Severity,
 } from "../../lib/severity";
 import {
@@ -20,12 +24,10 @@ import {
   type Scorecard, type ReportFinding, type ReportDecision,
 } from "../../lib/prompts/report";
 import { type ReportResult } from "../../lib/ai-engine";
-import { FindingsSection, EvidenceArtifact } from "../../components/report/FindingReport";
+import { FindingsSection } from "../../components/report/FindingReport";
 import { toRawFinding } from "../../lib/report/adapt";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-
-type ReportTab = "executive" | "technical" | "evidence" | "cve" | "coverage";
 
 interface Engagement {
   id: string; name: string; client: string; status: string;
@@ -47,33 +49,13 @@ interface Finding {
 }
 
 interface FindingPage { items: Finding[]; total: number; page: number; pageSize: number; pages: number; }
-interface FindingSummary { total: number; criticalOpen: number; validated: number; blind: number; averageRisk: number; }
-interface ActivityItem { id: string; timestamp: string; actor: string; action: string; detail: string; }
-
-// ─── Constants ────────────────────────────────────────────────────────────────
-
-const TABS: Array<{ id: ReportTab; label: string; icon: React.ElementType }> = [
-  { id: "executive",  label: "Executive",          icon: BarChart3 },
-  { id: "technical",  label: "Technical Findings", icon: FileSearch },
-  { id: "evidence",   label: "Evidence Vault",     icon: Fingerprint },
-  { id: "cve",        label: "CVE Intelligence",   icon: Globe },
-  { id: "coverage",   label: "MITRE Coverage",     icon: ShieldCheck },
-];
-
+interface FindingSummary { total: number; criticalOpen: number; validated: number; blind: number; averageRisk: number; slaBreached: number; }
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function fmtDate(v?: string) {
   if (!v) return "Not recorded";
   const d = new Date(v);
   return isNaN(d.getTime()) ? "Not recorded" : new Intl.DateTimeFormat("en", { dateStyle: "medium" }).format(d);
-}
-function fmtDatetime(v?: string) {
-  if (!v) return "—";
-  const d = new Date(v);
-  return isNaN(d.getTime()) ? "—" : new Intl.DateTimeFormat("en", { dateStyle: "short", timeStyle: "short" }).format(d);
-}
-function remText(s: Finding["remediation"][number]) {
-  return typeof s === "string" ? s : s.description || s.step || s.title || "";
 }
 function parseCvss(v: string): number | null {
   const m = v?.match(/(\d+\.\d+)/); return m ? parseFloat(m[1]) : null;
@@ -107,22 +89,6 @@ function StatusPill({ status }: { status: string }) {
       borderRadius: 4, background: "var(--bg-surface)", border: "1px solid var(--border-subtle)",
       color: "var(--text-muted)", fontSize: 10, fontWeight: 700, letterSpacing: "0.04em",
     }}>{status.toUpperCase().replace(/_/g, " ")}</span>
-  );
-}
-
-function CopyBtn({ text }: { text: string }) {
-  const [done, setDone] = useState(false);
-  const click = useCallback(() => {
-    void navigator.clipboard.writeText(text).then(() => { setDone(true); setTimeout(() => setDone(false), 1400); });
-  }, [text]);
-  return (
-    <button onClick={click} title="Copy" style={{
-      display: "inline-flex", alignItems: "center", justifyContent: "center",
-      width: 24, height: 24, borderRadius: 5, border: "1px solid var(--border-subtle)",
-      background: "transparent", color: "var(--text-muted)", cursor: "pointer",
-    }}>
-      {done ? <CheckCircle2 size={11} style={{ color: "var(--nominal-color)" }} /> : <Copy size={11} />}
-    </button>
   );
 }
 
@@ -293,7 +259,7 @@ function ReportFindingCard({ f }: { f: ReportFinding }) {
   const sevColor = SEV_COLOR[sev];
   const conf = CONF_STYLE[f.confidence] ?? CONF_STYLE.potential;
   return (
-    <div style={{ border: "1px solid var(--border-subtle)", borderLeft: `3px solid ${sevColor}`, borderRadius: 8, background: "var(--bg-panel)", padding: "14px 16px" }}>
+    <div style={{ border: "1px solid var(--border-subtle)", borderLeftColor: sevColor, borderRadius: 8, background: "var(--bg-panel)", padding: "14px 16px" }}>
       <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap", marginBottom: 8 }}>
         <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 800, color: "var(--text-faint)" }}>{f.ref}</span>
         <SevBadge sev={sev} />
@@ -434,16 +400,14 @@ function DecisionBox({ decisions }: { decisions: ReportDecision[] }) {
   );
 }
 
-function AiReportPanel({ eng, findings }: { eng: Engagement; findings: Finding[] }) {
+function AiReportPanel({ eng, findings, surface }: { eng: Engagement; findings: Finding[]; surface: ReportsWorkspaceSurface }) {
   const [report, setReport] = useState<ReportResult | null>(null);
+  const api = useMemo(() => createReportsWorkspaceApi(surface), [surface]);
   const genMut = useMutation({
-    mutationFn: () => fetchJson<ReportResult>("/api/reports/generate", {
-      method: "POST",
-      body: JSON.stringify({
-        engagement: { name: eng.name, client: eng.client, scopeCidrs: eng.scopeCidrs },
+    mutationFn: () => api.generate<ReportResult>({
+        engagement: { id: eng.id, name: eng.name, client: eng.client, scopeCidrs: eng.scopeCidrs },
         findings,
       }),
-    }),
     onSuccess: setReport,
   });
   const err = genMut.error instanceof Error ? genMut.error.message : genMut.error ? String(genMut.error) : null;
@@ -621,7 +585,7 @@ function AiReportPanel({ eng, findings }: { eng: Engagement; findings: Finding[]
 
 // ─── Tab: Executive ───────────────────────────────────────────────────────────
 
-function ExecTab({ eng, findings, summary }: { eng: Engagement; findings: Finding[]; summary: FindingSummary }) {
+function ExecTab({ eng, findings, summary, surface }: { eng: Engagement; findings: Finding[]; summary: FindingSummary; surface: ReportsWorkspaceSurface }) {
   const crit = eng.findingsBySeverity.CRITICAL ?? 0;
   const high = eng.findingsBySeverity.HIGH ?? 0;
   const posture = crit > 0 ? "Critical risk — immediate action required"
@@ -639,7 +603,7 @@ function ExecTab({ eng, findings, summary }: { eng: Engagement; findings: Findin
 
   return (
     <>
-      <AiReportPanel eng={eng} findings={findings} />
+      <AiReportPanel eng={eng} findings={findings} surface={surface} />
 
       {/* Risk position hero */}
       <div style={{
@@ -708,56 +672,6 @@ function ExecTab({ eng, findings, summary }: { eng: Engagement; findings: Findin
               })}
             </tbody>
           </table>
-        </div>
-      </div>
-    </>
-  );
-}
-
-// ─── Tab: Technical Findings ──────────────────────────────────────────────────
-
-
-// ─── Tab: Evidence Vault ──────────────────────────────────────────────────────
-
-function EvidTab({ findings, activity, total }: { findings: Finding[]; activity: ActivityItem[]; total: number }) {
-  const all = findings.flatMap(f => f.evidence.map(e => ({ ...e, finding: f })));
-  const withEvid = findings.filter(f => f.evidence.length > 0).length;
-
-  return (
-    <>
-      <div className="rpt-metrics">
-        <Metric label="Evidence artifacts" value={all.length} note={`Across ${findings.length} findings`} />
-        <Metric label="With evidence" value={withEvid} note={`${findings.length - withEvid} without`} />
-        <Metric label="Activity events" value={activity.length} note="Latest recorded" />
-        <Metric label="Loaded / total" value={`${findings.length}/${total}`} note="Finding coverage" />
-      </div>
-
-      <div className="rpt-section">
-        <div className="rpt-section-head"><small>EVIDENCE INVENTORY</small><h3>Scanner artifacts — verbatim output</h3></div>
-        {all.length === 0 && <p className="report-missing">No evidence artifacts in the loaded findings.</p>}
-        <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-          {all.map((item, i) => (
-            <div key={`${item.finding.id}-${i}`} style={{ border: "1px solid var(--border-subtle)", borderRadius: 8, overflow: "hidden" }}>
-              <div style={{ display: "flex", alignItems: "center", gap: 8, padding: "8px 12px", background: "var(--bg-surface)", borderBottom: "1px solid var(--border-subtle)" }}>
-                <SevBadge sev={toSeverity(item.finding.severity)} />
-                <span style={{ fontSize: 11, fontFamily: "var(--font-mono)", color: "var(--text-muted)" }}>{item.finding.id}</span>
-                <span style={{ fontSize: 11, color: "var(--text-muted)" }}>·</span>
-                <span style={{ fontSize: 11, color: "var(--text-secondary)" }}>{item.finding.affectedHost}</span>
-                <span style={{ fontSize: 11, fontWeight: 600, color: "var(--text-secondary)", marginLeft: "auto" }}>{item.finding.title}</span>
-              </div>
-              <EvidenceArtifact item={item} refId={`${item.finding.id}/E${String(i + 1).padStart(2, "0")}`} />
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="rpt-section">
-        <div className="rpt-section-head"><small>AUDIT TRAIL</small><h3>Assessment activity log</h3></div>
-        {activity.length === 0 && <p className="report-missing">No activity recorded for this engagement.</p>}
-        <div className="report-activity">
-          {activity.map(e => (
-            <article key={e.id}><Activity size={13} /><div><strong>{e.action}</strong><p>{e.detail}</p></div><time>{fmtDatetime(e.timestamp)}</time></article>
-          ))}
         </div>
       </div>
     </>
@@ -866,7 +780,7 @@ function CoverageTab({ findings, total }: { findings: Finding[]; total: number }
               <a key={id} href={`https://attack.mitre.org/techniques/${id.replace(".", "/")}/`}
                  target="_blank" rel="noopener noreferrer"
                  style={{ display: "flex", flexDirection: "column", gap: 5, padding: "10px 12px", borderRadius: 7, textDecoration: "none",
-                   border: `1px solid var(--border-subtle)`, borderLeft: `3px solid ${SEV_COLOR[worst]}`,
+                   border: `1px solid var(--border-subtle)`, borderLeftColor: SEV_COLOR[worst],
                    background: "var(--bg-panel)", transition: "background 0.1s" }}>
                 <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
                   <code style={{ fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 700, color: "var(--accent)" }}>{id}</code>
@@ -885,26 +799,27 @@ function CoverageTab({ findings, total }: { findings: Finding[]; total: number }
 
 // ─── Page root ────────────────────────────────────────────────────────────────
 
-export default function ReportsPage() {
+export function ReportsWorkspace({ surface = "manager" }: { surface?: ReportsWorkspaceSurface }) {
   const [selId, setSelId] = useState("");
+  const api = useMemo(() => createReportsWorkspaceApi(surface), [surface]);
 
-  const engQ = useQuery({ queryKey: ["engagements"], queryFn: () => fetchJson<{ engagements: Engagement[] }>("/api/engagements"), retry: (c, e) => !isUnauthorized(e) && c < 2 });
+  const engQ = useQuery({ queryKey: ["reports", surface, "engagements"], queryFn: () => api.engagements<{ engagements: Engagement[] }>(), retry: (c, e) => !isUnauthorized(e) && c < 2 });
   const engs = engQ.data?.engagements ?? [];
   const engId = selId || engs[0]?.id || "";
   const eng = engs.find(e => e.id === engId);
 
-  const findQ = useQuery({ queryKey: ["rpt-findings", engId], queryFn: () => fetchJson<FindingPage>(`/api/findings?paginated=true&engagement_id=${encodeURIComponent(engId)}&page=1&page_size=100&sort=risk`), enabled: Boolean(engId), retry: (c, e) => !isUnauthorized(e) && c < 2 });
-  const sumQ  = useQuery({ queryKey: ["rpt-summary",  engId], queryFn: () => fetchJson<FindingSummary>(`/api/findings/summary?engagement_id=${encodeURIComponent(engId)}`), enabled: Boolean(engId), retry: (c, e) => !isUnauthorized(e) && c < 2 });
-  const actQ  = useQuery({ queryKey: ["rpt-activity", engId], queryFn: () => fetchJson<ActivityItem[]>(`/api/activity?engagement_id=${encodeURIComponent(engId)}&limit=50`), enabled: Boolean(engId), retry: (c, e) => !isUnauthorized(e) && c < 2 });
-
-  const findings = findQ.data?.items ?? [];
+  const findQ = useQuery({ queryKey: ["reports", surface, "findings", engId], queryFn: () => api.findings<FindingPage>(engId), enabled: Boolean(engId), retry: (c, e) => !isUnauthorized(e) && c < 2 });
+  const sumQ  = useQuery({ queryKey: ["reports", surface, "summary",  engId], queryFn: () => api.summary<FindingSummary>(engId), enabled: Boolean(engId), retry: (c, e) => !isUnauthorized(e) && c < 2 });
+  const findings = useMemo(() => findQ.data?.items ?? [], [findQ.data?.items]);
   const reportFindings = useMemo(() => findings.map(toRawFinding), [findings]);
-  const summary: FindingSummary = sumQ.data ?? { total: eng?.findingCount ?? 0, criticalOpen: 0, validated: 0, blind: 0, averageRisk: 0 };
+  const summary: FindingSummary = sumQ.data ?? { total: eng?.findingCount ?? 0, criticalOpen: 0, validated: 0, blind: 0, averageRisk: 0, slaBreached: 0 };
   const loading  = engQ.isLoading || (Boolean(engId) && (findQ.isLoading || sumQ.isLoading));
   const loadErr  = engQ.error || findQ.error || sumQ.error;
 
+  const Shell = surface === "portal" ? PortalShell : PageShell;
+
   return (
-    <PageShell
+    <Shell
       title="Reports"
       subtitle="Professional VAPT deliverables — grounded in verified scanner evidence"
       headerActions={
@@ -968,11 +883,11 @@ export default function ReportsPage() {
 
             {/* Report body — one continuous deliverable, ordered like a real report */}
             <div style={{ padding: "20px 24px 24px", display: "flex", flexDirection: "column", gap: 32 }}>
-              <ExecTab eng={eng} findings={findings} summary={summary} />
+              <ExecTab eng={eng} findings={findings} summary={summary} surface={surface} />
 
               <section>
                 <div className="rpt-section-head"><small>TECHNICAL FINDINGS</small><h3>Detailed findings register</h3></div>
-                <FindingsSection findings={reportFindings} total={summary.total} />
+                <FindingsSection findings={reportFindings} total={summary.total} overdueTotal={summary.slaBreached} />
               </section>
 
               <CveTab findings={findings} total={summary.total} />
@@ -986,6 +901,10 @@ export default function ReportsPage() {
           </main>
         )}
       </DataState>
-    </PageShell>
+    </Shell>
   );
+}
+
+export default function ReportsPage() {
+  return <ReportsWorkspace />;
 }

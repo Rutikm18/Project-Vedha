@@ -23,7 +23,7 @@ import React, { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { Clock } from "lucide-react";
-import { useConsoleQuery } from "../../lib/console-source";
+import { useConsolePath, useConsoleQuery } from "../../lib/console-source";
 import { SkeletonRows, ErrorState, EmptyState } from "../states/DataState";
 import { SEVERITY, Severity, toSeverity } from "../../lib/severity";
 import { SeverityChip, Meter } from "../console/Primitives";
@@ -132,10 +132,11 @@ function SlaRowView({ item }: { item: SlaItem }) {
   const st = STATE[item.state];
   const pct = elapsedPct(item);
   const sevKey = toSeverity(item.severity);
+  const findingPath = useConsolePath("finding", item.id);
 
   return (
     <Link
-      href={`/findings/${item.id}`}
+      href={findingPath}
       className="console-row focusable"
       style={{
         "--rail": st.color,
