@@ -22,7 +22,8 @@ def _db_with(finding):
 
 @pytest.mark.asyncio
 async def test_reopen_remediated_finding_sets_open_and_audits():
-    finding = SimpleNamespace(id=uuid.uuid4(), status=FindingStatus.remediated,
+    finding = SimpleNamespace(id=uuid.uuid4(), engagement_id=uuid.uuid4(),
+                              status=FindingStatus.remediated,
                               reopened_count=0, resolution_miss_count=1,
                               resolved_at="t", resolution_method="auto",
                               resolution_run_id="r", evidence={})
