@@ -37,6 +37,46 @@ export const STATUS_LABEL: Record<FindingStatus, string> = {
   ACCEPTED: "ACCEPTED", FALSE_POSITIVE: "FALSE POS.",
 };
 
+/** Chip backgrounds paired with STATUS_COLOR. Theme-aware, so a status chip
+ *  reads the same in light and dark. */
+export const STATUS_BG: Record<FindingStatus, string> = {
+  OPEN: "var(--sev-critical-bg)",
+  CONFIRMED: "var(--sev-high-bg)",
+  REMEDIATED: "var(--nominal-bg)",
+  ACCEPTED: "var(--sev-medium-bg)",
+  FALSE_POSITIVE: "var(--bg-surface)",
+};
+
+const FINDING_STATUSES: FindingStatus[] = [
+  "OPEN", "CONFIRMED", "REMEDIATED", "ACCEPTED", "FALSE_POSITIVE",
+];
+
+/** Normalise a status from any casing to the union the adapters emit. */
+export function toFindingStatus(raw: string | null | undefined): FindingStatus {
+  const k = (raw ?? "").toUpperCase().trim().replace(/[\s-]/g, "_");
+  if ((FINDING_STATUSES as string[]).includes(k)) return k as FindingStatus;
+  return k === "FP" || k === "FALSE_POS" ? "FALSE_POSITIVE" : "OPEN";
+}
+
+/**
+ * Colour + background + label for a finding status, in one lookup that cannot
+ * miss.
+ *
+ * Why this exists: the dashboard used to key a local style map on
+ * OPEN/IN_REVIEW/IN_REMEDIATION/VERIFIED/CLOSED — a vocabulary the backend has
+ * never emitted. Four of the five real statuses fell through to the `OPEN`
+ * entry, so a REMEDIATED finding was painted in the same critical red as an
+ * open one. On a console where colour carries state, that reads as a live
+ * alarm. Normalising here means a new status can only ever be a compile error,
+ * never a silent red chip.
+ */
+export function findingStatusStyle(raw: string | null | undefined): {
+  color: string; bg: string; label: string;
+} {
+  const s = toFindingStatus(raw);
+  return { color: STATUS_COLOR[s], bg: STATUS_BG[s], label: STATUS_LABEL[s] };
+}
+
 export const MATURITY_COLOR: Record<ExploitMaturity, string> = {
   WEAPONIZED: RED, POC: ORANGE, THEORETICAL: SLATE,
 };

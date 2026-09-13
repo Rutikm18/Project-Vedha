@@ -233,6 +233,14 @@ export function SlaStatus() {
   const counts: Record<SlaState, number> = {
     breached: s.breached, at_risk: s.atRisk, due_soon: s.dueSoon, on_track: s.onTrack,
   };
+  // The four numbers above are TOTALS over every tracked finding, but the server
+  // caps the row list (services/sla.py `item_limit`). So clicking "60 breached"
+  // and landing on 25 rows read as 35 findings that had silently gone away.
+  // Compare the two and name the gap — the server orders breached-first then by
+  // soonest deadline, so the rows you do get are the right ones, and saying that
+  // is what makes the truncation safe rather than alarming.
+  const filteredTotal = filter ? counts[filter] : s.totalTracked;
+  const notListed = Math.max(0, filteredTotal - shown.length);
   const visible = expanded ? shown : shown.slice(0, VISIBLE_ROWS);
   const hidden = shown.length - visible.length;
 
@@ -256,7 +264,7 @@ export function SlaStatus() {
         ))}
       </div>
 
-      {filter && (
+      {(filter || notListed > 0) && (
         <div
           style={{
             display: "flex", alignItems: "center", gap: "var(--space-3)", padding: "var(--space-2) var(--space-5)",
@@ -264,15 +272,21 @@ export function SlaStatus() {
             fontFamily: "var(--font-ui)", fontSize: "var(--fs-body-s)", color: "var(--text-muted)",
           }}
         >
-          <span role="status" aria-live="polite">Showing {shown.length} {STATE[filter].label.toLowerCase()}</span>
-          <button
-            type="button"
-            className="focusable"
-            onClick={() => setFilter(null)}
-            style={{ marginLeft: "auto", background: "none", border: "none", padding: "var(--space-1) var(--space-0-5)", color: "var(--accent)", cursor: "pointer", font: "inherit" }}
-          >
-            Clear filter
-          </button>
+          <span role="status" aria-live="polite">
+            Showing {shown.length} of {filteredTotal}{" "}
+            {filter ? STATE[filter].label.toLowerCase() : "tracked"}
+            {notListed > 0 && " — most urgent first"}
+          </span>
+          {filter && (
+            <button
+              type="button"
+              className="focusable"
+              onClick={() => setFilter(null)}
+              style={{ marginLeft: "auto", background: "none", border: "none", padding: "var(--space-1) var(--space-0-5)", color: "var(--accent)", cursor: "pointer", font: "inherit" }}
+            >
+              Clear filter
+            </button>
+          )}
         </div>
       )}
 

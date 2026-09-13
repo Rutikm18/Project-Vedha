@@ -62,6 +62,10 @@ export const GET = withBackend(async (req, { token }) => {
         agent_id: agentId,
         severity,
         status,
+        // "still an active exposure" (open|confirmed) — the same tracked set the
+        // summary/SLA/analytics endpoints count. Sent only when asked for, so
+        // the findings page's own "all statuses" view is unaffected.
+        active_only: url.searchParams.get("active_only") === "true" ? true : undefined,
         search,
         detection_status: url.searchParams.get("blind") === "true" ? "missed" : undefined,
         exploit_validated: url.searchParams.get("validated") === "true" ? true : undefined,

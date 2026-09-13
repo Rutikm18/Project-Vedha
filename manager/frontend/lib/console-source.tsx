@@ -77,7 +77,11 @@ const OPERATOR_SOURCE: ConsoleSource = {
     posture: "/api/analytics/posture",
     exposure: "/api/analytics/exposure",
     activity: "/api/activity?limit=20",
-    topFindings: "/api/findings?paginated=true&page=1&page_size=5&sort=risk",
+    topFindings:
+      // active_only: the panel is a work queue, so it must not surface
+      // remediated / accepted / false-positive rows. Without it, list_findings
+      // applies no status filter at all.
+      "/api/findings?paginated=true&page=1&page_size=5&sort=risk&active_only=true",
     engagements: "/api/engagements",
   },
   capabilities: new Set<ConsoleCapability>([
@@ -105,7 +109,7 @@ const PORTAL_SOURCE: ConsoleSource = {
     posture: "/analytics/posture",
     exposure: "/analytics/exposure",
     activity: "/activity?limit=20",
-    topFindings: "/workspace/findings?paginated=true&page=1&page_size=5&sort=risk",
+    topFindings: "/workspace/findings?paginated=true&page=1&page_size=5&sort=risk&active_only=true",
     engagements: "/workspace/engagement",
   },
   capabilities: new Set<ConsoleCapability>(["mutateFindings"]),
@@ -225,6 +229,17 @@ export function normalizePortalDataset(key: ConsoleKey, data: unknown): unknown 
       validated: value.validated ?? 0,
       blind: value.blind ?? 0,
       averageRisk: value.average_risk ?? 0,
+    };
+  }
+  if (key === "exposure") {
+    // FastAPI answers in snake_case; the operator BFF already camelCases this
+    // field, so without a branch here the two consoles would disagree about
+    // whether the protocol panel is showing a partial view.
+    const value = (data ?? {}) as Record<string, any>;
+    return {
+      protocols: value.protocols ?? [],
+      zones: value.zones ?? [],
+      unattributedFindings: value.unattributed_findings ?? 0,
     };
   }
   if (key === "topFindings") {

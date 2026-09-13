@@ -25,7 +25,7 @@ import { Freshness } from "../console/Freshness";
 import { DataState, SkeletonRows, EmptyState } from "../states/DataState";
 import { useConsolePath, useConsoleQuery, useConsoleQueryKey, type ConsoleKey } from "../../lib/console-source";
 import { LiveOverview } from "./LiveOverview";
-import { PostureScorecard } from "./PostureScorecard";
+import { PostureScorecard, usePostureScope } from "./PostureScorecard";
 import { SlaStatus } from "./SlaStatus";
 import { PatchComparisonMatrix } from "./PatchComparisonMatrix";
 import { ProtocolRiskCard, ZoneHealthCard } from "./ExposureCards";
@@ -138,6 +138,15 @@ function FreshNote({ dataset, staleAfterMs }: { dataset: ConsoleKey; staleAfterM
 export function DashboardGrid() {
   const router = useRouter();
   const findingsPath = useConsolePath("findings");
+  // Posture + patch comparison are the only per-engagement panels here; on a
+  // multi-engagement console they must say which engagement, or an unlabelled
+  // grade reads as the tenant's. Null on the customer console (one engagement,
+  // already named in the header).
+  const postureScope = usePostureScope();
+  const postureEyebrow = postureScope ? `Latest scan · ${postureScope}` : "Latest scan";
+  const matrixEyebrow = postureScope
+    ? `Previous vs latest · ${postureScope}`
+    : "Previous vs latest";
   return (
     <>
       <style>{`
@@ -182,7 +191,7 @@ export function DashboardGrid() {
       </div>
 
       <div className="console-band band-2">
-        <Panel title="Security posture" eyebrow="Latest scan" icon={<Gauge size={13} />} headingLevel={3} note={<FreshNote dataset="posture" />}>
+        <Panel title="Security posture" eyebrow={postureEyebrow} icon={<Gauge size={13} />} headingLevel={3} note={<FreshNote dataset="posture" />}>
           <PostureScorecard />
         </Panel>
         <Panel title="Remediation SLA" eyebrow="Clock running" icon={<Timer size={13} />} headingLevel={3} note={<FreshNote dataset="sla" />}>
@@ -195,10 +204,10 @@ export function DashboardGrid() {
       </div>
 
       <div className="console-band band-3">
-        <Panel title="Scan-to-scan change" eyebrow="Previous vs latest" icon={<GitCompareArrows size={13} />} headingLevel={3} note={<FreshNote dataset="posture" />}>
+        <Panel title="Scan-to-scan change" eyebrow={matrixEyebrow} icon={<GitCompareArrows size={13} />} headingLevel={3} note={<FreshNote dataset="posture" />}>
           <PatchComparisonMatrix />
         </Panel>
-        <Panel title="Protocol risk" eyebrow="Worst finding per service · higher is worse" icon={<Activity size={13} />} headingLevel={3} note={<FreshNote dataset="exposure" />}>
+        <Panel title="Protocol risk" eyebrow="Worst finding on each exposed service" icon={<Activity size={13} />} headingLevel={3} note={<FreshNote dataset="exposure" />}>
           <ProtocolRiskCard />
         </Panel>
         <Panel title="Zone health" eyebrow="Headroom per zone · higher is better · weakest first" icon={<Shield size={13} />} headingLevel={3} note={<FreshNote dataset="exposure" />}>

@@ -30,11 +30,11 @@ from app.models.attack_path import AttackPath
 from app.models.detection import DetectionResult
 from app.models.engagement import Engagement
 from app.utils.db import get_or_404
-from app.models.enums import FindingStatus, ReviewStatus, ScanJobStatus, ScanJobType
+from app.models.enums import ReviewStatus, ScanJobStatus, ScanJobType
 from app.models.finding import Finding
 from app.models.llm_output import LLMOutput
 from app.models.scan_job import ScanJob
-from app.routers.analytics import _finding_views, _two_latest_completed_runs
+from app.routers.analytics import _two_latest_completed_runs, load_posture_views
 from app.services import posture as posture_service
 
 router = APIRouter(prefix="/engagements/{engagement_id}/ai-report", tags=["ai-report"])
@@ -194,8 +194,11 @@ def build_posture_report_section(posture: dict) -> dict | None:
         return None
     s = posture["scores"]
     lines = [
-        f"**Posture Score: {s['posture_score']} ({s['grade']})** — "
-        f"Risk Index {s['risk_index']}, Exploitable Score {s['exploitable_score']}.",
+        # Name the scale. These go to a customer, who otherwise has no way to
+        # know whether "Risk Index 26" is good, bad, or out of what.
+        f"**Posture Score: {s['posture_score']}/100 ({s['grade']})** — "
+        f"Risk Index {s['risk_index']}, Exploitable Score {s['exploitable_score']} "
+        f"(both 0–100, lower is better).",
         "",
         "| Severity | Prev open | New | Patched | Now open | Net |",
         "|---|---|---|---|---|---|",
@@ -317,17 +320,11 @@ async def _run_generation(engagement_id: str, job_id: str, opts: dict) -> None:
 
         try:
             prev_run, latest_run = await _two_latest_completed_runs(db, eng_uuid, eng.tenant_id)
-            posture_rows = (await db.execute(
-                select(
-                    Finding.id, Finding.severity, Finding.risk_score, Finding.epss_score,
-                    Finding.exploitable, Finding.exploit_validated,
-                    Finding.first_seen, Finding.last_seen,
-                    Asset.criticality.label("asset_criticality"),
-                ).outerjoin(Asset, Finding.asset_id == Asset.id)
-                 .where(Finding.engagement_id == eng_uuid,
-                        Finding.status.in_([FindingStatus.open, FindingStatus.confirmed]))
-            )).all()
-            posture_payload = posture_service.build_posture(_finding_views(posture_rows), prev_run, latest_run)
+            # Shared with the dashboard's /analytics/posture — this used to be a
+            # hand-copied query here, and both copies filtered out `remediated`,
+            # so the customer's own report told them nothing had been patched.
+            posture_views = await load_posture_views(db, eng_uuid)
+            posture_payload = posture_service.build_posture(posture_views, prev_run, latest_run)
             posture_section = build_posture_report_section(posture_payload)
             if posture_section is not None:
                 content = posture_section["content"]

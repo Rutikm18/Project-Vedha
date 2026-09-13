@@ -44,6 +44,23 @@ def _db_list(*lists):
     return db
 
 
+def _db_rows(*lists):
+    """Each db.execute(...) → result whose .all() is the next list of ROWS.
+
+    The posture queries select (Finding, Asset.criticality) rather than bare
+    Finding entities, so they read `.all()` and unpack a tuple — mocking
+    `.scalars().all()` would silently hand back zero rows.
+    """
+    db = MagicMock()
+    results = []
+    for lst in lists:
+        r = MagicMock()
+        r.all = MagicMock(return_value=lst)
+        results.append(r)
+    db.execute = AsyncMock(side_effect=results)
+    return db
+
+
 def _db_scalar(*vals):
     db = MagicMock()
     results = []
@@ -131,14 +148,60 @@ class TestPortalReports:
 
 
 class TestPortalPostureAndEngagement:
+    def _open_finding(self):
+        return SimpleNamespace(
+            id=uuid.uuid4(), severity=FindingSeverity.critical, risk_score=900,
+            epss_score=0.9, exploitable=True, exploit_validated=False,
+            status=FindingStatus.open, first_seen=None, last_seen=None,
+        )
+
     def test_posture_scores_open_findings(self):
-        f = SimpleNamespace(id=uuid.uuid4(), severity=FindingSeverity.critical, risk_score=900,
-                            epss_score=0.9, exploitable=True, exploit_validated=False,
-                            first_seen=None, last_seen=None)
-        res = asyncio.run(portal.portal_posture(_client(), _db_list([f])))
+        f = self._open_finding()
+        res = asyncio.run(portal.portal_posture(_client(), _db_rows([(f, "critical")])))
         assert 0 <= res.risk_index <= 100
         assert res.open_findings == 1
         assert res.grade in ("A", "B", "C", "D", "F")
+
+    def test_posture_uses_the_real_asset_criticality(self):
+        """Parity with the operator console.
+
+        `_posture_view` used to hard-code asset_criticality=None, so posture's
+        _CRIT_WEIGHT fell back to the neutral 0.5 for every asset while
+        /analytics/posture joined the real column — the same engagement scored
+        differently on the two consoles. Criticality must reach the score.
+        """
+        f = self._open_finding()
+        on_critical = asyncio.run(portal.portal_posture(_client(), _db_rows([(f, "critical")])))
+        on_low = asyncio.run(portal.portal_posture(_client(), _db_rows([(f, "low")])))
+        assert on_critical.exploitable_score > on_low.exploitable_score
+        assert on_critical.posture_score < on_low.posture_score
+
+    def test_posture_matches_the_operator_scorer_exactly(self):
+        """Both consoles must land on the identical number, not merely a similar
+        one — a customer and an operator quote this grade to each other."""
+        from app.routers.analytics import _finding_views
+        from app.services.posture import compute_scores
+
+        f = self._open_finding()
+        portal_out = asyncio.run(portal.portal_posture(_client(), _db_rows([(f, "critical")])))
+        operator_row = SimpleNamespace(
+            id=f.id, severity=f.severity, risk_score=f.risk_score, epss_score=f.epss_score,
+            exploitable=f.exploitable, exploit_validated=f.exploit_validated,
+            first_seen=None, last_seen=None, status=f.status,
+            asset_criticality="critical",
+        )
+        operator = compute_scores(_finding_views([operator_row]))
+        assert portal_out.posture_score == operator.posture_score
+        assert portal_out.risk_index == operator.risk_index
+        assert portal_out.exploitable_score == operator.exploitable_score
+        assert portal_out.grade == operator.grade
+
+    def test_posture_tolerates_a_finding_with_no_asset(self):
+        """OUTER join: a null criticality must score as neutral, not crash or
+        drop the finding out of the total."""
+        f = self._open_finding()
+        res = asyncio.run(portal.portal_posture(_client(), _db_rows([(f, None)])))
+        assert res.open_findings == 1
 
     def test_engagement_summary(self):
         eng = SimpleNamespace(id=uuid.uuid4(), name="Acme Q3", status=EngagementStatus.active,
@@ -194,7 +257,8 @@ class TestSummary:
                              resolved_at=datetime.now(timezone.utc))]
         db = MagicMock()
         f_res = MagicMock()
-        f_res.scalars = MagicMock(return_value=MagicMock(all=MagicMock(return_value=findings)))
+        # (Finding, Asset.criticality) rows — the summary shares the posture join.
+        f_res.all = MagicMock(return_value=[(f, "medium") for f in findings])
         pending_res = MagicMock(); pending_res.scalar_one = MagicMock(return_value=2)
         running_res = MagicMock(); running_res.scalar_one = MagicMock(return_value=1)
         db.execute = AsyncMock(side_effect=[f_res, pending_res, running_res])

@@ -8,6 +8,7 @@ import { Users, ShieldAlert, ArrowUpRight, ArrowDownRight, Minus } from "lucide-
 import Link from "next/link";
 import { useCountUp } from "../hooks/useCountUp";
 import { useConsolePath, useConsoleQuery } from "../lib/console-source";
+import { findingStatusStyle } from "../lib/severity";
 
 /* ─── Types ─── */
 interface TimelinePoint { date: string; CRITICAL: number; HIGH: number; MEDIUM: number; LOW: number; }
@@ -167,13 +168,9 @@ function ScoreBar({ score }: { score: number }) {
   );
 }
 
-const STATUS_STYLE: Record<string, { color: string; bg: string }> = {
-  OPEN:           { color: "var(--sev-critical-color)", bg: "var(--sev-critical-bg)" },
-  IN_REVIEW:      { color: "var(--sev-high-color)",     bg: "var(--sev-high-bg)"     },
-  IN_REMEDIATION: { color: "var(--accent)",             bg: "var(--accent-ghost)"    },
-  VERIFIED:       { color: "var(--nominal-color)",     bg: "var(--nominal-bg)"      },
-  CLOSED:         { color: "var(--text-muted)",         bg: "var(--bg-surface)"      },
-};
+/* Status chip styling lives in lib/severity.ts — `findingStatusStyle` is keyed
+   on the statuses the backend actually emits, so an unknown value can no longer
+   fall through to the critical-red "open" entry. */
 
 /* ─── Main component ─── */
 export function DashboardCharts() {
@@ -303,7 +300,10 @@ export function DashboardCharts() {
         >
           <div className="dashboard-card-header">
             <span style={{ fontFamily: "var(--font-body)", fontSize: 13, fontWeight: 600, color: "var(--text-primary)" }}>
-              Critical findings
+              {/* Not "Critical findings": the query is severity-tier-then-risk
+                  ordered, so with no criticals open this list is highs. Naming it
+                  for what it is stops the panel implying criticals exist. */}
+              Highest-risk open findings
             </span>
             <Link href={findingsPath} style={{
               display: "flex", alignItems: "center", gap: 4,
@@ -348,7 +348,7 @@ export function DashboardCharts() {
                 </tr>
               ) : (
                 topFindings.map((f, i) => {
-                  const ss = STATUS_STYLE[f.status] ?? STATUS_STYLE.OPEN;
+                  const ss = findingStatusStyle(f.status);
                   const sev = (f.severity in SEV ? f.severity : "LOW") as keyof typeof SEV;
                   return (
                     <tr key={f.id} className="table-row-hover stagger-item" style={{
@@ -381,7 +381,7 @@ export function DashboardCharts() {
                           fontFamily: "var(--font-body)", fontSize: 11, fontWeight: 600,
                           color: ss.color, background: ss.bg, borderRadius: 5, padding: "3px 8px",
                         }}>
-                          {f.status.replace(/_/g, " ")}
+                          {ss.label}
                         </span>
                       </td>
                     </tr>

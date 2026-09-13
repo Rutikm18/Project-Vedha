@@ -25,6 +25,7 @@ from sqlalchemy import func, select
 from app.auth.portal_scope import ClientUser, assert_client, client_scoped
 from app.dependencies import DB, RedisConn
 from app.models.agent import Agent, AgentStatus
+from app.models.asset import Asset
 from app.models.engagement import Engagement
 from app.models.enums import (
     DetectionStatus, FindingSeverity, FindingStatus, ReviewStatus, ScanJobStatus, ScanJobType,
@@ -251,14 +252,27 @@ async def portal_finding_remediation(
     return {"finding_id": str(finding_id), "os": key, "source": source, "plan": plan}
 
 
+def _posture_select():
+    """Findings joined to the criticality of the asset underneath them.
+
+    OUTER join, matching analytics.load_posture_views: a finding with no asset
+    keeps a null criticality and posture.py treats that as the neutral 0.5,
+    rather than being dropped from the score entirely.
+    """
+    return (
+        select(Finding, Asset.criticality.label("asset_criticality"))
+        .outerjoin(Asset, Finding.asset_id == Asset.id)
+    )
+
+
 @router.get("/posture", response_model=ClientPostureOut,
             summary="Posture scorecard for the customer's engagement")
 async def portal_posture(user: ClientUser, db: DB):
     rows = (await db.execute(
-        client_scoped(select(Finding), user, Finding.engagement_id)
+        client_scoped(_posture_select(), user, Finding.engagement_id)
         .where(Finding.status.in_(_OPEN_STATES))
-    )).scalars().all()
-    views = [_posture_view(f) for f in rows]
+    )).all()
+    views = [_posture_view(f, crit) for f, crit in rows]
     s = posture_service.compute_scores(views)
     return ClientPostureOut(
         risk_index=s.risk_index, exploitable_score=s.exploitable_score,
@@ -273,26 +287,39 @@ def _metric_finding(f: Finding) -> portal_metrics.MetricFinding:
     )
 
 
-def _posture_view(f: Finding) -> posture_service.FindingView:
+def _posture_view(f: Finding, asset_criticality=None) -> posture_service.FindingView:
+    """Map a joined (Finding, Asset.criticality) row to a scoring view.
+
+    `asset_criticality` MUST come from the join — it used to be hard-coded None
+    here, which made posture's _CRIT_WEIGHT fall back to the neutral 0.5 for
+    every asset. The operator's /analytics/posture joins the real column, so the
+    SAME engagement scored differently depending on which console you looked at,
+    and the customer had no way to know theirs was the approximation. A posture
+    grade the two parties can't both quote is worse than no grade.
+    """
     return posture_service.FindingView(
         id=str(f.id), severity=_enum_val(f.severity),
         risk_score=float(f.risk_score) if f.risk_score is not None else None,
         epss_score=float(f.epss_score) if f.epss_score is not None else None,
         exploitable=bool(f.exploitable), exploit_validated=bool(f.exploit_validated),
-        asset_criticality=None, first_seen=f.first_seen, last_seen=f.last_seen,
+        asset_criticality=(
+            _enum_val(asset_criticality) if asset_criticality is not None else None
+        ),
+        first_seen=f.first_seen, last_seen=f.last_seen,
+        status=_enum_val(f.status),
     )
 
 
 @router.get("/summary", response_model=ClientSummaryOut,
             summary="Dashboard summary: posture + KPI counts + queue state")
 async def portal_summary(user: ClientUser, db: DB):
-    findings = (await db.execute(
-        client_scoped(select(Finding), user, Finding.engagement_id)
-    )).scalars().all()
-    open_views = [_posture_view(f) for f in findings
+    rows = (await db.execute(
+        client_scoped(_posture_select(), user, Finding.engagement_id)
+    )).all()
+    open_views = [_posture_view(f, crit) for f, crit in rows
                   if f.status in _OPEN_STATES]
     s = posture_service.compute_scores(open_views)
-    metrics = [_metric_finding(f) for f in findings]
+    metrics = [_metric_finding(f) for f, _ in rows]
     open_count, closed_count = portal_metrics.open_closed_counts(metrics)
 
     pending = (await db.execute(
@@ -605,6 +632,7 @@ async def portal_workspace_findings(
     db: DB,
     severity: FindingSeverity | None = Query(default=None),
     status_filter: FindingStatus | None = Query(default=None, alias="status"),
+    active_only: bool = Query(default=False),
     asset_id: uuid.UUID | None = Query(default=None),
     agent_id: uuid.UUID | None = Query(default=None),
     mitre_technique: str | None = Query(default=None),
@@ -624,6 +652,7 @@ async def portal_workspace_findings(
         current_user=user,
         severity=severity,
         status_filter=status_filter,
+        active_only=active_only,
         asset_id=asset_id,
         mitre_technique=mitre_technique,
         engagement_id=assert_client(user),
@@ -1090,17 +1119,28 @@ async def portal_agents(user: ClientUser, db: DB):
         return []
 
     persisted_status = str(getattr(agent.status, "value", agent.status))
-    status_value = persisted_status.upper()
     now = datetime.now(timezone.utc)
     online = bool(
         agent.last_heartbeat
         and (now - agent.last_heartbeat).total_seconds() < 90
         and persisted_status in {AgentStatus.online.value, AgentStatus.busy.value}
     )
+    # `status` MUST be derived from `online`, not from the persisted column.
+    # A probe that dies without a clean WebSocket disconnect leaves status="online"
+    # in the database with a stale heartbeat; the operator fleet view already
+    # ignores that (routers/agents.py), so returning the raw column here told the
+    # CUSTOMER their probe was connected while the operator saw it offline. The
+    # customer would believe they were being scanned when they were not.
+    if not online:
+        status_value = "OFFLINE"
+    elif persisted_status == AgentStatus.busy.value or agent.current_job_id is not None:
+        status_value = "BUSY"
+    else:
+        status_value = "ONLINE"
     # `activity` is the one-line state the shared AgentMonitor panel renders. The
     # operator fleet view derives it the same way; a customer sees only whether
     # their own probe is working, never which job or whose.
-    if agent.current_job_id is not None:
+    if status_value == "BUSY":
         activity = "Running a scan"
     elif status_value == "ONLINE":
         activity = "Idle — ready to scan"

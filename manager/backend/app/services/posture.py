@@ -3,12 +3,12 @@ Posture scoring & patch-comparison — the single source of truth behind the
 dashboard scorecard and the report's "Posture & Remediation Progress" section.
 
 Pure and DB-free (mirrors services/sla.py and services/analytics.py): callers
-build lightweight FindingView rows and pass them in. Scores use a noisy-OR
-aggregate so each open finding adds diminishing marginal risk, every score is
-bounded to 0-100, and adding a finding can never lower risk.
+build lightweight FindingView rows and pass them in. Every score is bounded to
+0-100 and adding a finding can never lower risk.
 """
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
@@ -16,6 +16,11 @@ from app.vuln.enrichment import _CRIT_WEIGHT  # asset-criticality → 0-1 weight
 
 # Posture Score → letter grade. Ordered high-to-low; first threshold met wins.
 _GRADE_BANDS = ((90, "A"), (75, "B"), (55, "C"), (35, "D"), (0, "F"))
+
+
+# Statuses that still represent a live exposure. Everything else has left the
+# queue; `remediated` is the only exit that counts as a FIX (see compare()).
+_ACTIVE_STATUSES = frozenset({"open", "confirmed"})
 
 
 @dataclass
@@ -30,6 +35,14 @@ class FindingView:
     asset_criticality: str | None
     first_seen: datetime | None
     last_seen: datetime | None
+    # Current lifecycle status. Defaults to "open" so the many call sites that
+    # only ever pass still-open findings keep working unchanged; compare() needs
+    # it to tell "still open" from "fixed since the previous run".
+    status: str = "open"
+
+    @property
+    def is_active(self) -> bool:
+        return self.status in _ACTIVE_STATUSES
 
 
 @dataclass
@@ -44,12 +57,48 @@ def _clamp01(x: float) -> float:
     return min(max(x, 0.0), 1.0)
 
 
-def aggregate(probs: list[float]) -> float:
-    """Noisy-OR: 100·(1 − ∏(1 − clamp(p))). Empty → 0.0. Always in [0, 100]."""
-    prod = 1.0
-    for p in probs:
-        prod *= (1.0 - _clamp01(float(p)))
-    return round(100.0 * (1.0 - prod), 2)
+# ── The aggregation curve ────────────────────────────────────────────────────
+# `mass` is the additive weight of everything still open — one unit is one
+# finding at maximum risk. The index is a LOG of that mass:
+#
+#     index = _DECADE · log10(1 + mass / _KNEE)      clamped to [0, 100]
+#
+# WHY NOT NOISY-OR. The previous aggregate was 100·(1 − ∏(1 − p)), which answers
+# "what is the chance at least one of these is a real problem?". For three open
+# criticals the answer is "essentially certain", and it stays essentially
+# certain whether you have three or three hundred. So the score pinned at ~100
+# (grade F) in any real environment and then stopped moving: the dial showed a
+# fixed needle, the scan-over-scan delta read "no change" forever, and fixing
+# half your criticals earned about one point. A posture grade that cannot go up
+# when you do the work is worse than no grade at all.
+#
+# WHAT THE LOG BUYS. Every 10× change in open risk mass is worth exactly
+# _DECADE points, at any point on the scale. That holds at 5 findings and at
+# 500, so remediation is always visible, and it is a property you can say out
+# loud to a customer: cut your open risk by 10× and you gain 25 points.
+#
+# _KNEE keeps the curve steep near zero so one serious finding registers
+# immediately rather than being lost in rounding; _DECADE spreads four decades
+# of mass (0.1 → 1000) across the full 0-100 range. Severity still dominates
+# per finding, because the mass each one contributes is its own 0-1000 risk
+# score — a critical brings ~10× what a low does.
+_KNEE = 0.1
+_DECADE = 25.0
+
+
+def aggregate(weights: list[float]) -> float:
+    """Log-compressed risk mass → 0-100. Empty → 0.0.
+
+    Monotonic by construction: `mass` is a sum of non-negative clamped weights
+    and log10 is increasing, so adding a finding can never improve the score.
+    """
+    mass = 0.0
+    for w in weights:
+        mass += _clamp01(float(w))
+    if mass <= 0.0:
+        return 0.0
+    index = _DECADE * math.log10(1.0 + mass / _KNEE)
+    return round(min(100.0, index), 2)
 
 
 def grade_for(posture_score: int) -> str:
@@ -59,12 +108,16 @@ def grade_for(posture_score: int) -> str:
     return "F"
 
 
-def _risk_prob(f: FindingView) -> float:
+def _risk_weight(f: FindingView) -> float:
+    """This finding's share of risk mass: its 0-1000 composite risk, normalised.
+    A critical therefore contributes roughly 10x what a low does."""
     rs = float(f.risk_score) if f.risk_score is not None else 0.0
     return rs / 1000.0
 
 
-def _exploit_prob(f: FindingView) -> float:
+def _exploit_weight(f: FindingView) -> float:
+    """Risk mass that is actually reachable: how exploitable the finding is,
+    scaled by how much the asset underneath it matters."""
     epss_n = _clamp01(float(f.epss_score) if f.epss_score is not None else 0.0)
     candidates = [epss_n]
     if f.exploitable:
@@ -77,8 +130,8 @@ def _exploit_prob(f: FindingView) -> float:
 
 
 def compute_scores(open_findings: list[FindingView]) -> Scores:
-    risk_index = aggregate([_risk_prob(f) for f in open_findings])
-    exploitable_score = aggregate([_exploit_prob(f) for f in open_findings])
+    risk_index = aggregate([_risk_weight(f) for f in open_findings])
+    exploitable_score = aggregate([_exploit_weight(f) for f in open_findings])
     blend = 0.6 * risk_index + 0.4 * exploitable_score
     posture_score = round(100 - blend)
     return Scores(
@@ -118,8 +171,26 @@ def _severity(f: FindingView) -> str:
 
 
 def compare(views: list[FindingView], prev_at: datetime | None, latest_at: datetime) -> dict:
-    """Bucket findings across the previous→latest run transition."""
-    latest_open = [f for f in views if _present_in_run(f, latest_at)]
+    """Bucket findings across the previous→latest run transition.
+
+    `views` must carry both the still-open findings AND the ones remediated since
+    the previous run — callers should NOT pre-filter to open/confirmed. That
+    filter is why "Patched" used to read zero: a finding that was actually fixed
+    has status=remediated (the auto-resolver writes it, and so does an operator
+    closing one by hand), so a query restricted to open/confirmed dropped it
+    before it could ever reach `resolved`. What survived was only "still open but
+    not re-observed", which evaporates the moment auto-resolution confirms it —
+    so a customer who fixed everything saw nothing patched and no risk burned
+    down. Risk-accepted and false-positive findings are a different matter and
+    stay out of `views`: neither is a fix, so neither belongs in a patch ledger.
+
+    Two filters do different jobs here, deliberately:
+      * `prev_open` is a pure TIME window — what was live at the previous run,
+        whatever its status is today. That is what "Before" means.
+      * `latest_open` also requires the finding to be active NOW, so something
+        closed after the latest run is not still counted as open.
+    """
+    latest_open = [f for f in views if f.is_active and _present_in_run(f, latest_at)]
     prev_open = [f for f in views if _present_in_run(f, prev_at)]
 
     latest_ids = {f.id for f in latest_open}

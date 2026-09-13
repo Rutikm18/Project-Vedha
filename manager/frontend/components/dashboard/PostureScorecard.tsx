@@ -8,15 +8,16 @@
  * position on a bounded 0–100 scale, and a dial is the only shape that shows
  * position and headroom at once — "72 · C" as flat text tells you the score
  * but never how far off an A it is. Risk Index and Exploitable stay as plain
- * readouts beside it, because they are unbounded and a gauge would lie about
- * their ceiling.
+ * readouts beside it: they share the same 0–100 scale but are inputs to the
+ * grade rather than the grade itself, and three dials would flatten that
+ * hierarchy into a row of equal-weight numbers.
  *
  * Backend services/posture.py is authoritative. This component formats only —
  * it never derives a grade or a delta the server didn't send.
  */
 import React from "react";
 import { ShieldCheck } from "lucide-react";
-import { useConsoleQuery } from "../../lib/console-source";
+import { useConsoleCapability, useConsoleQuery } from "../../lib/console-source";
 import { SkeletonRows, ErrorState, EmptyState } from "../states/DataState";
 import { Delta } from "../console/Primitives";
 
@@ -33,12 +34,34 @@ export interface Posture {
   matrix?: MatrixRow[];
   risk_burned_down?: number;
   resolved_count?: number; new_count?: number; persisting_count?: number;
+  /** Which engagement these numbers describe — see the note on usePostureScope. */
+  engagement?: { id: string; name: string };
 }
 
 export function usePosture() {
   return useConsoleQuery<Posture>("posture", {
     refetchInterval: 60_000,
   });
+}
+
+/**
+ * The engagement name to append to a posture panel's eyebrow, or null.
+ *
+ * Posture and patch-comparison are the only PER-ENGAGEMENT panels on an
+ * otherwise tenant-wide operator dashboard: unscoped, the analytics endpoint
+ * reports on whichever engagement scanned most recently. Unlabelled, that grade
+ * reads as the whole tenant's and changes customer without warning.
+ *
+ * Gated on the `switchEngagement` capability rather than `mode === "portal"`: a
+ * console that can move between engagements is precisely the one that needs
+ * telling which it is on. The customer console has exactly one and already names
+ * it in the page header, so repeating it there would be noise.
+ */
+export function usePostureScope(): string | null {
+  const multiEngagement = useConsoleCapability("switchEngagement");
+  const { data } = usePosture();
+  if (!multiEngagement) return null;
+  return data?.engagement?.name ?? null;
 }
 
 const GRADE: Record<string, { color: string; bg: string; edge: string; read: string }> = {
@@ -190,17 +213,21 @@ export function PostureScorecard() {
         </div>
 
         <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
+          {/* Both are 0–100 indices on the same log scale as the grade, NOT
+              percentages — a 10x change in open risk moves either by ~25.
+              "Exploitable" used to carry a "%" and read "share of risk", which
+              it has never been: it is exploit-weighted risk, not a ratio. */}
           <MetricTile
             label="Risk index"
-            value={Number(s.risk_index ?? 0).toFixed(2)}
+            value={Number(s.risk_index ?? 0).toFixed(1)}
             delta={<Delta now={s.risk_index} prev={p?.risk_index} improvedWhenLower />}
-            hint="Weighted open risk. Lower is better."
+            hint="Weighted open risk, 0–100. Lower is better."
           />
           <MetricTile
             label="Exploitable"
-            value={`${Number(s.exploitable_score ?? 0).toFixed(1)}%`}
+            value={Number(s.exploitable_score ?? 0).toFixed(1)}
             delta={<Delta now={s.exploitable_score} prev={p?.exploitable_score} improvedWhenLower />}
-            hint="Share of risk with known exploits. Lower is better."
+            hint="Open risk carrying a known exploit, 0–100. Lower is better."
           />
         </div>
       </div>

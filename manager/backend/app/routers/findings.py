@@ -186,6 +186,15 @@ async def list_findings(
     current_user: AuthUser,
     severity: FindingSeverity | None = Query(default=None),
     status_filter: FindingStatus | None = Query(default=None, alias="status"),
+    active_only: bool = Query(
+        default=False,
+        description=(
+            "Restrict to findings that are still an active exposure "
+            "(status open or confirmed) — the same 'tracked' set /summary, "
+            "/sla-summary and the analytics endpoints count. Use this instead "
+            "of status=open, which drops confirmed findings."
+        ),
+    ),
     asset_id: uuid.UUID | None = Query(default=None),
     mitre_technique: str | None = Query(default=None),
     engagement_id: uuid.UUID | None = Query(default=None),
@@ -211,6 +220,8 @@ async def list_findings(
         q = q.where(Finding.severity == severity)
     if status_filter:
         q = q.where(Finding.status == status_filter)
+    if active_only:
+        q = q.where(Finding.status.in_([FindingStatus.open, FindingStatus.confirmed]))
     if asset_id:
         q = q.where(Finding.asset_id == asset_id)
     if engagement_id:
