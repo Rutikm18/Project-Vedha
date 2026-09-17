@@ -55,7 +55,7 @@ powershell -ExecutionPolicy Bypass -File setup.ps1 -Manager https://manager.exam
 | Python | 3.10+ | `setup.ps1` builds a private venv from it |
 | Deps | auto-installed | `httpx websockets cryptography impacket ldap3 dnspython` (from `requirements-runtime.txt`) |
 | Env | auto-set by the script | `PLATFORM_URL`, `PROBE_NAME`, `PROBE_NETWORK_SEGMENTS`, `STATE_FILE`, `RESULT_SPOOL_DIR` |
-| Firewall | outbound only | allow this PC → `13.127.147.205:18080` (no inbound) |
+| Firewall | outbound only | allow this PC → `13.127.147.205:80` (Caddy edge; no inbound) |
 
 State/identity/logs live under `C:\ProgramData\vedha-agent\`.
 

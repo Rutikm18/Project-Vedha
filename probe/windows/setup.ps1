@@ -8,13 +8,13 @@
     powershell -ExecutionPolicy Bypass -File setup.ps1 -Foreground   # run now, no admin (test)
     powershell -ExecutionPolicy Bypass -File setup.ps1               # install background task (admin)
   Options:
-    -Manager <url>   default http://13.127.147.205:18080
+    -Manager <url>   default http://13.127.147.205
     -Scope <cidr>    default = auto-detect this host's /24
     -Update          git pull before setting up
 #>
 [CmdletBinding()]
 param(
-  [string]$Manager = 'http://13.127.147.205:18080',
+  [string]$Manager = 'http://13.127.147.205',
   [string]$Scope   = '',
   [switch]$Foreground,
   [switch]$Update
