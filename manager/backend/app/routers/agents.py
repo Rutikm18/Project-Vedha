@@ -983,6 +983,25 @@ async def get_agent_jobs(
     if not agent:
         raise HTTPException(404, "Agent not found")
 
+    # One job per probe, enforced where the queue lives. A probe keeps its own
+    # one-at-a-time state, but one that loses track of it — a poller left over
+    # from a dropped connection, an older build, two processes sharing one
+    # identity — must still be handed nothing while it holds a live lease.
+    # The lease, not the probe's reported status, is the authority: a probe
+    # that has lost track of a running scan reports itself idle.
+    busy = await db.execute(
+        select(ScanJob.id)
+        .where(
+            ScanJob.agent_id == str(agent_id),
+            ScanJob.status == ScanJobStatus.running,
+            ScanJob.lease_expires_at > func.now(),
+        )
+        .limit(1)
+    )
+    if busy.first() is not None:
+        logger.info("agent.job.poll_while_busy", agent_id=str(agent_id))
+        return []
+
     # Tenant filtering happens in SQL so a probe can never observe another
     # tenant's job. Capability and reachability depend on JSON/ARRAY metadata and
     # are evaluated below before an atomic conditional UPDATE claims each row.

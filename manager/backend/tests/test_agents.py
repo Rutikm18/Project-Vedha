@@ -320,6 +320,7 @@ class TestGetAgentJobs:
         db = MagicMock()
         db.execute = AsyncMock(side_effect=[
             MagicMock(scalar_one_or_none=lambda: agent),
+            MagicMock(first=lambda: None),
             MagicMock(all=lambda: [(job, engagement)]),
             MagicMock(first=lambda: (1, 1)),
         ])
@@ -336,8 +337,8 @@ class TestGetAgentJobs:
         db.add.assert_called_once()
         db.flush.assert_awaited_once()
 
-        candidate_query = db.execute.await_args_list[1].args[0]
-        claim_query = db.execute.await_args_list[2].args[0]
+        candidate_query = db.execute.await_args_list[2].args[0]
+        claim_query = db.execute.await_args_list[3].args[0]
         assert "engagements.tenant_id" in str(candidate_query)
         assert "engagements.tenant_id" in str(claim_query)
 
@@ -365,11 +366,12 @@ class TestGetAgentJobs:
         db = MagicMock()
         db.execute = AsyncMock(side_effect=[
             MagicMock(scalar_one_or_none=lambda: agent),
+            MagicMock(first=lambda: None),
             MagicMock(all=lambda: [(job, engagement)]),
         ])
 
         assert await ag.get_agent_jobs(agent.id, db, limit=1) == []
-        assert db.execute.await_count == 2
+        assert db.execute.await_count == 3
 
     @pytest.mark.asyncio
     async def test_skips_job_outside_declared_network_segments(self):
@@ -395,11 +397,12 @@ class TestGetAgentJobs:
         db = MagicMock()
         db.execute = AsyncMock(side_effect=[
             MagicMock(scalar_one_or_none=lambda: agent),
+            MagicMock(first=lambda: None),
             MagicMock(all=lambda: [(job, engagement)]),
         ])
 
         assert await ag.get_agent_jobs(agent.id, db, limit=1) == []
-        assert db.execute.await_count == 2
+        assert db.execute.await_count == 3
 
     @pytest.mark.asyncio
     async def test_404_when_agent_unknown(self):
@@ -408,6 +411,30 @@ class TestGetAgentJobs:
         with pytest.raises(HTTPException) as ei:
             await ag.get_agent_jobs(uuid.uuid4(), db, limit=1)
         assert ei.value.status_code == 404
+
+    @pytest.mark.asyncio
+    async def test_a_probe_holding_a_live_job_is_handed_nothing(self):
+        """One scan per probe, enforced at the queue: a probe that still holds
+        a running job with an unexpired lease gets no second job, whatever it
+        believes about itself."""
+        agent = SimpleNamespace(
+            id=uuid.uuid4(),
+            tenant_id=uuid.uuid4(),
+            capabilities=["discovery"],
+            network_segments=["10.0.0.0/16"],
+        )
+        db = MagicMock()
+        db.execute = AsyncMock(side_effect=[
+            MagicMock(scalar_one_or_none=lambda: agent),
+            MagicMock(first=lambda: (uuid.uuid4(),)),     # a running job it holds
+        ])
+
+        assert await ag.get_agent_jobs(agent.id, db, limit=1) == []
+        assert db.execute.await_count == 2, "went on to look for pending work"
+        busy_query = str(db.execute.await_args_list[1].args[0])
+        assert "scan_jobs.agent_id" in busy_query
+        assert "scan_jobs.status" in busy_query
+        assert "scan_jobs.lease_expires_at >" in busy_query
 
 
 class TestAgentJobCompatibility:
