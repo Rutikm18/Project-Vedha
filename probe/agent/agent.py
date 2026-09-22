@@ -919,11 +919,11 @@ async def _run_ws_push_loop(
     heartbeat_interval: int,
     poll_interval: int,
 ) -> bool:
-    """Persistent WebSocket push loop.
+    """Run WebSocket push mode until it becomes unusable, then return False so
+    the caller falls back to HTTP polling.
 
-    Returns False if WebSocket is unavailable (caller should fall back to
-    HTTP polling). Returns True only on clean shutdown or unrecoverable error
-    (caller should exit).
+    Before returning it waits for any job a poll task is still running, which
+    can take as long as that scan: the HTTP poll loop must not start beside it.
     """
     pollers: set = set()
     result = await _ws_connection_loop(
@@ -946,12 +946,9 @@ async def _ws_connection_loop(
     poll_interval: int,
     pollers: set,
 ) -> bool:
-    """Persistent WebSocket push loop.
-
-    Returns False if WebSocket is unavailable (caller should fall back to
-    HTTP polling). Returns True only on clean shutdown or unrecoverable error
-    (caller should exit).
-    """
+    """Connect, serve pushed jobs with HTTP polling as a fallback, and reconnect
+    with backoff. Returns False when push mode is unavailable. Registers every
+    poll task it starts in `pollers` so the caller can wait for them."""
     import websockets.exceptions
 
     backoff = WS_RECONNECT_BACKOFF_MIN
@@ -1134,10 +1131,9 @@ async def _end_ws_session(hb_task, stop_polling: asyncio.Event) -> None:
     if hb_task is None:
         return
     hb_task.cancel()
-    try:
-        await hb_task
-    except asyncio.CancelledError:
-        pass
+    # wait() does not re-raise the task's own CancelledError, so a cancel aimed
+    # at this coroutine still propagates.
+    await asyncio.wait({hb_task})
 
 
 def _ws_expire_stale_offer(job_state: dict, now: float | None = None) -> bool:

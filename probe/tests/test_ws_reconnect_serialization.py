@@ -1,17 +1,15 @@
 """
 A dropped WebSocket must not leave a second job-claiming loop behind.
 
-The probe runs one job at a time. The push loop kept that promise per
-CONNECTION: each connection had its own busy-state, lock, heartbeat task and
-HTTP poll task, and the tasks were cleaned up only when the connection ended
-normally. A connection that died with an exception — an API restart does
-exactly that — left its poll task running with state nothing updated. That
-task kept polling, believed the probe was idle, and ran the next job alongside
-whatever the new connection was running.
+The probe runs one job at a time, and that promise has to hold across
+reconnects. A connection can die with an exception — an API restart does
+exactly that — and anything it started must stop with it: a poll task that
+outlives its connection, holding busy-state nothing else updates, believes the
+probe is idle and runs the next job beside whatever the new connection runs.
 
-A poll task that is mid-job must be told to stop, not cancelled: cancelling
-the coroutine awaiting the scan's worker thread would mark the probe idle
-while the scan kept going.
+A poll task that is mid-job is told to stop, not cancelled: cancelling the
+coroutine that awaits the scan's worker thread would mark the probe idle while
+the scan kept going.
 """
 from __future__ import annotations
 
@@ -101,8 +99,9 @@ class _Transport:
 
 
 class _Runner:
-    def __init__(self, clock):
+    def __init__(self, clock, seconds=JOB_SECONDS):
         self.clock = clock
+        self.seconds = seconds
         self.live = 0
         self.peak = 0
         self._lock = threading.Lock()
@@ -112,7 +111,7 @@ class _Runner:
             self.live += 1
             self.peak = max(self.peak, self.live)
         self.clock.log(f"start {job['job_id']}")
-        time.sleep(JOB_SECONDS)
+        time.sleep(self.seconds)
         with self._lock:
             self.live -= 1
         self.clock.log(f"end {job['job_id']}")
@@ -134,6 +133,14 @@ async def _stop(loop_task):
         await loop_task
     except asyncio.CancelledError:
         pass
+
+
+async def _until(predicate, timeout=10.0):
+    deadline = time.monotonic() + timeout
+    while not predicate():
+        if time.monotonic() > deadline:
+            raise AssertionError("condition was never reached")
+        await asyncio.sleep(0.02)
 
 
 def test_a_reconnect_does_not_leave_a_second_claimer(monkeypatch):
@@ -169,7 +176,7 @@ def test_a_job_running_when_the_socket_drops_still_makes_the_probe_busy(monkeypa
     connection must see a busy probe and decline a push for A."""
     _quiet(monkeypatch)
     clock = _Clock()
-    runner = _Runner(clock)
+    runner = _Runner(clock, seconds=3.0)
     live_ws = _WS()
     transport = _Transport([_WS(die_after=1.6), live_ws])
     transport.pollable.append({"job_id": "B", "params": {}})
@@ -177,10 +184,12 @@ def test_a_job_running_when_the_socket_drops_still_makes_the_probe_busy(monkeypa
     async def scenario():
         loop = asyncio.create_task(ag._run_ws_push_loop(
             transport, runner, "agent-1", _Spool(), 30, 1))
-        await asyncio.sleep(2.0)       # B taken at ~1s, socket died at ~1.6s
+        await _until(lambda: runner.live == 1)           # B running on connection 1
+        await _until(lambda: not transport.connections)  # connection 2 is up
         await live_ws.inbox.put(json.dumps(
             {"type": "job_push", "job": {"job_id": "A", "params": {}}}))
-        await asyncio.sleep(JOB_SECONDS + 1.5)
+        await _until(lambda: live_ws.acks)
+        await _until(lambda: runner.live == 0)
         await _stop(loop)
 
     asyncio.run(scenario())
@@ -191,8 +200,8 @@ def test_a_job_running_when_the_socket_drops_still_makes_the_probe_busy(monkeypa
 
 
 def test_reconnects_do_not_multiply_the_pollers(monkeypatch):
-    """Every leaked poll task added another claimer — and another request
-    against the manager every interval."""
+    """A poll task outliving its connection is one more claimer — and one
+    more request against the manager every interval."""
     _quiet(monkeypatch)
     clock = _Clock()
     transport = _Transport([_WS(die_after=0.05) for _ in range(3)] + [_WS()])
@@ -209,3 +218,31 @@ def test_reconnects_do_not_multiply_the_pollers(monkeypatch):
 
     window = asyncio.run(scenario())
     assert window <= 4, f"{window} polls in 3s at a 1s interval — pollers are piling up"
+
+
+def test_falling_back_to_http_waits_for_a_job_still_running(monkeypatch):
+    """When push mode gives up, the caller starts the HTTP poll loop, which
+    must not begin while a poll task is still scanning."""
+    _quiet(monkeypatch)
+    clock = _Clock()
+    runner = _Runner(clock)
+    transport = _Transport([_WS(die_after=1.6)])
+    transport.pollable.append({"job_id": "B", "params": {}})
+    connect_first = transport.connect_ws
+
+    async def connect_then_refuse():
+        if transport.connections:
+            return await connect_first()
+        raise ag.TransportError("credential rejected")
+
+    transport.connect_ws = connect_then_refuse
+
+    async def scenario():
+        result = await ag._run_ws_push_loop(
+            transport, runner, "agent-1", _Spool(), 30, 1)
+        clock.log("push loop returned")
+        return result
+
+    assert asyncio.run(scenario()) is False
+    order = [m for _, m in clock.events]
+    assert order.index("push loop returned") > order.index("end B"), clock.events
