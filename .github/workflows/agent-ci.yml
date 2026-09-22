@@ -25,7 +25,7 @@ jobs:
         with:
           python-version: "3.12"
       - name: Install runtime deps + pytest
-        run: python -m pip install -r requirements-runtime.txt pytest
+        run: python -m pip install -r requirements-runtime.txt pytest 'pytest-asyncio>=1,<2'
       - name: Unit tests (hardened-agent modules)
         run: >-
           python -m pytest -q
