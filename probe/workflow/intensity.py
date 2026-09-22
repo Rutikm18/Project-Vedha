@@ -34,18 +34,11 @@ DEFAULT_INTENSITY = "standard"
 INTENSITY_PRESETS: dict[str, dict] = {
     "light": {
         "port_profile": "quick",     # ~15 highest-signal TCP ports
-        # Light TOUCH, not light latency. This preset is what an operator picks
-        # for a monitored, production or fragile segment, so it is the quietest
-        # envelope in the table, not the fastest.
-        #
-        # It previously declared 800 pps / concurrency 200 / timeout 1.0. That
-        # envelope never actually ran: the launcher overrode all four values on
-        # every job, and nothing else selects `light`. It was also the least
-        # accurate setting here — port_scanner.py:474 measured rate 300 /
-        # concurrency 200 reporting 69 FALSE `filtered` on a real LAN host, all
-        # 69 of which resolved `closed` when re-probed at 40 / 10. These are the
-        # numbers the launcher had been forcing, i.e. the ones with field use
-        # behind them.
+        # Light TOUCH, not light latency: the preset an operator picks for a
+        # monitored, production or fragile segment, so the quietest envelope in
+        # the table. It stays well below the point where the reprobe comment in
+        # PortScanner.__init__ records a fast sweep (300 pps / concurrency 200)
+        # reporting closed ports as `filtered`.
         "rate": 50.0,
         "concurrency": 20,
         "timeout": 4.0,

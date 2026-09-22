@@ -991,8 +991,7 @@ async def run_engagement(targets: list[str], scope: ScopeGuard, *, profile: str 
         _store_results(health_facts, assets=assets, cache=cache, profile=profile)
 
     # --- Gate 6: credentialed collection -----------------------------------
-    # Hosts run CONCURRENTLY — the last stage in the pipeline that did not, and
-    # the one where it cost the most. A credentialed collection is a key
+    # Hosts run CONCURRENTLY. A credentialed collection is a key
     # exchange, an auth and a series of command round trips (or an SMB session
     # setup plus DCE/RPC binds): almost entirely latency, none of it this host's
     # CPU, so it overlaps nearly perfectly. Serially, 200 Windows hosts at ~4 s

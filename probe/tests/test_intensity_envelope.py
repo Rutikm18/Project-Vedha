@@ -1,22 +1,10 @@
 """
 The intensity preset is the ONLY source of a scan's probe envelope.
 
-The launcher used to send rate/concurrency/timeout/disc_timeout with every
-named intensity, so the preset's own tuning was always discarded while its port
-BREADTH survived. Two consequences, in opposite directions:
-
-  * `deep` ran its 65,535 ports at 600 pps / 2.0 s instead of the 150 pps /
-    4.0 s that breadth was tuned for.
-  * `light` never once ran its declared 800 pps / 1.0 s / retries 0 — the UI
-    always forced 50 pps / 20 / 4.0 s over it.
-
-`light`'s declared envelope is also the least accurate in the table, and by a
-margin this repo measured rather than assumed: port_scanner.py:474 records rate
-300 / concurrency 200 producing 69 FALSE `filtered` on a real LAN host, every
-one of which resolved `closed` when re-probed at 40 / 10. 800 / 200 with
-timeout 1.0 and no retries sits well past that point. So `light` now carries
-the envelope its only caller had always forced, which is both the validated one
-and the one its name describes: light TOUCH, not light latency.
+The launcher sends nothing but the intensity name, so each preset's rate,
+concurrency and timeouts are what actually reach the scanner. Breadth and rate
+move in opposite directions: a wide sweep at a quick-sweep rate reports closed
+ports as `filtered`, as the reprobe comment in PortScanner.__init__ records.
 """
 from __future__ import annotations
 
@@ -58,13 +46,13 @@ class TestPresetEnvelope:
                 < INTENSITY_PRESETS["standard"]["concurrency"])
 
     def test_no_preset_exceeds_the_measured_false_filtered_threshold(self):
-        """rate 300 / concurrency 200 measured 69 false `filtered`
-        (port_scanner.py:474). No preset may ship at or above that point."""
+        """rate 300 / concurrency 200 measured 69 false `filtered` (the reprobe
+        comment in PortScanner.__init__). No preset may ship at or above it."""
         for name, preset in INTENSITY_PRESETS.items():
             assert preset["rate"] < 300, name
             assert preset["concurrency"] < 200, name
 
-    def test_breadth_and_rate_move_together(self):
+    def test_wider_sweeps_probe_more_gently(self):
         """The wider the sweep, the gentler the probe has to be: a 65,535-port
         pass at a quick-sweep rate is what made `deep` a lower-ACCURACY mode."""
         assert INTENSITY_PRESETS["deep"]["rate"] < INTENSITY_PRESETS["standard"]["rate"]
