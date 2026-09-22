@@ -13,6 +13,13 @@ class AgentStatus(str, enum.Enum):
     online = "online"
     offline = "offline"
     busy = "busy"
+    #: Connected and healthy, but REFUSING work — its result spool is at the
+    #: high-water mark, so taking another job would only produce more
+    #: undeliverable results. Deliberately not `online`: both dispatch paths
+    #: select on that, so a paused probe stops being offered jobs, and the
+    #: fleet view can say "paused" instead of showing a healthy idle probe
+    #: that silently declines everything.
+    paused = "paused"
 
 
 class Agent(Base, TimestampMixin):

@@ -787,7 +787,8 @@ class Transport:
     # ── Result submission ──────────────────────────────────────────────────────
 
     def submit_chunk(self, job_id: str, *, attempt_id: str, fence: int,
-                     host: str, facts: list, scan_type: str | None = None) -> bool:
+                     host: str, facts: list, scan_type: str | None = None,
+                     complete: bool = True) -> bool:
         """Commit ONE finished host while the job is still running.
 
         Best-effort by design. The chunk is a buffer that protects evidence if
@@ -811,6 +812,9 @@ class Transport:
             # carrying a NUL byte would 500 the manager's insert.
             "facts": _strip_nul(facts),
             "scan_type": scan_type,
+            # False for mid-pipeline evidence: the manager keeps it, but
+            # never lets a retry skip a host that was not actually scanned.
+            "complete": bool(complete),
         }
         try:
             r = self._client.post(
@@ -875,9 +879,29 @@ class Transport:
             return False
 
         headers = {**self.auth_header, "Content-Type": "application/json"}
+        raw_bytes = len(body)
         if self._compress_over and len(body) >= self._compress_over:
             body = gzip.compress(body)
             headers["Content-Encoding"] = "gzip"
+
+        # Payload size is measured HERE, not in run_stats, for two reasons: this
+        # is the only place the result is already serialized (so it costs
+        # nothing, on a path that otherwise holds four copies of a large
+        # payload), and it is the only place the TRUE wire size — gzip included —
+        # is known. The manager rejects bodies over 32 MB compressed / 128 MB
+        # inflated, so a job trending toward those ceilings is visible before it
+        # starts failing.
+        # Defensive about its own shape: this runs on the result-delivery path,
+        # and an accounting line must never be why a scan's evidence is lost.
+        _inner = payload.get("result")
+        _facts = (_inner if isinstance(_inner, dict) else payload).get("facts")
+        LOG.info(
+            "submit_result payload for job %s: %d bytes raw, %d bytes on the "
+            "wire%s, %s fact(s)",
+            job_id, raw_bytes, len(body),
+            " (gzip)" if "Content-Encoding" in headers else "",
+            len(_facts) if isinstance(_facts, list) else "?",
+        )
 
         try:
             logical_job_id = str(payload.get("job_id") or job_id.split("--", 1)[0])
@@ -887,6 +911,21 @@ class Transport:
                 content=body,
             )
             if 200 <= r.status_code < 300:
+                # The manager now ingests the authorized part of a mixed payload
+                # instead of refusing all of it. That is right for the evidence,
+                # but a partial acceptance the probe never mentions is how a
+                # scope divergence stays invisible on this side too.
+                try:
+                    dropped = (r.json() or {}).get("scope_rejected_count")
+                except Exception:  # noqa: BLE001 — a 2xx body is not load-bearing
+                    dropped = None
+                if dropped:
+                    LOG.warning(
+                        "submit_result for job %s: manager dropped %s target "
+                        "identity(ies) as outside the authorized scope — check "
+                        "that the engagement scope and this probe's segments agree",
+                        logical_job_id, dropped,
+                    )
                 return True
             if r.status_code in (400, 404, 409, 422):
                 from agent.result_spool import PERMANENT_REJECTION
@@ -897,14 +936,37 @@ class Transport:
                     logical_job_id,
                 )
                 return PERMANENT_REJECTION
+            if r.status_code == 413:
+                # PERMANENT, not retryable. Nothing about a retry changes: the
+                # payload is the same size and the manager's ceiling is the same
+                # ceiling, so this looped on every poll until the spool hit its
+                # high-water mark — at which point at_capacity stopped the probe
+                # claiming ANY new job, permanently, while it still heartbeated
+                # and looked healthy.
+                #
+                # Quarantining keeps the "no data loss" property the retryable
+                # classification was protecting: the payload is moved to
+                # <spool>/rejected/ intact, and an operator can resubmit it after
+                # raising the limit. It just stops blocking the queue.
+                from agent.result_spool import PERMANENT_REJECTION
+                # BOTH sizes: the manager enforces a compressed ceiling (32 MB)
+                # and an inflated one (128 MB) separately, so a payload that
+                # gzips well can pass the first and fail the second. Reporting
+                # only the wire size would look like it fit comfortably.
+                LOG.error(
+                    "submit_result payload too large (HTTP 413) for job %s: "
+                    "%d bytes raw / %d bytes on the wire exceeds the manager's "
+                    "limit. The result is NOT lost — it is quarantined under "
+                    "the spool's rejected/ directory. Raise the manager body "
+                    "limit (GzipRequestMiddleware) and resubmit it, or narrow "
+                    "the scan so the result fits.",
+                    logical_job_id, raw_bytes, len(body),
+                )
+                return PERMANENT_REJECTION
             if r.status_code in (401, 403):
                 LOG.warning(
                     "submit_result auth-rejected (HTTP %d) for job %s — result kept "
                     "for retry after re-register", r.status_code, job_id)
-            elif r.status_code == 413:
-                LOG.error(
-                    "submit_result payload too large (HTTP 413) for job %s — result "
-                    "kept spooled (raise the manager body limit)", job_id)
             else:
                 LOG.warning("submit_result HTTP %d for job %s — result kept for retry",
                             r.status_code, job_id)

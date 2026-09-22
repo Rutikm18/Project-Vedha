@@ -476,7 +476,15 @@ def test_engine_deadline_fails_when_no_evidence_exists(monkeypatch) -> None:
 
     result = engine.run_scan(
         "discovery",
-        {"target": "10.0.0.1"},
+        {
+            "target": "10.0.0.1",
+        # allow_infeasible: a 0.01 s ceiling is by definition unachievable, so
+        # admission control (engine._refuse_if_infeasible) would refuse this job
+        # before it ever reached the deadline handler. That handler is a real and
+        # separate path — it fires whenever a FEASIBLE job overruns — so these
+        # tests opt out of admission to exercise it.
+        "allow_infeasible": True,
+        },
         validated_scope=["10.0.0.0/24"],
     )
 
@@ -503,7 +511,15 @@ def test_engine_deadline_preserves_verified_partial_evidence(monkeypatch) -> Non
 
     result = engine.run_scan(
         "assessment",
-        {"target": "10.0.0.1"},
+        {
+            "target": "10.0.0.1",
+        # allow_infeasible: a 0.01 s ceiling is by definition unachievable, so
+        # admission control (engine._refuse_if_infeasible) would refuse this job
+        # before it ever reached the deadline handler. That handler is a real and
+        # separate path — it fires whenever a FEASIBLE job overruns — so these
+        # tests opt out of admission to exercise it.
+        "allow_infeasible": True,
+        },
         validated_scope=["10.0.0.0/24"],
     )
 

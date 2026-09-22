@@ -52,6 +52,7 @@ from app.schemas.engagement import (
     validate_engagement_dates, validate_scope_entries,
 )
 from app.utils.csv_parser import parse_csv_assets
+from app.services.port_coverage import port_state_at, summarize_coverage
 from app.utils.db import get_or_404
 from app.utils.pagination import paginate_query
 
@@ -1245,6 +1246,77 @@ async def raw_facts(
 
 
 # ── GET /{engagement_id}/assets — attack surface (hosts + services) ───────────
+
+@router.get("/{engagement_id}/port-coverage",
+            summary="What state was each port in on a host (open/closed/filtered/not_scanned)")
+async def port_coverage(
+    engagement_id: uuid.UUID,
+    db: DB,
+    current_user: Annotated[AuthUser, require_role(["admin", "manager", "tester"])],
+    host: str,
+    port: int | None = None,
+):
+    """Answer "what was port 8443 on 10.0.0.5?" from evidence already stored.
+
+    The probe records EVERY requested port's state on the per-host scan_summary
+    fact, run-length encoded, so this needs no new storage — only a read. Pass
+    `port` for a single verdict, or omit it for the whole host's ranges plus a
+    coverage rollup.
+
+    The four answers are deliberately distinct. `filtered` means probed and
+    silent (a fact about the TARGET); `not_scanned` means never probed — host
+    budget, cleanup cap, truncated sweep — which is a fact about the SCAN. A
+    port covered by no range is `unknown`: the scan never spoke about it, which
+    is not the same as closed.
+
+    Operator-gated like raw-facts: coverage reveals scanned topology.
+
+    The scan_summary fact is extracted IN THE DATABASE. A deep submission
+    stores ~107 KB of facts per host, and loading a whole submission to read
+    one object is what the raw-facts endpoint had to be rewritten to stop doing.
+    """
+    await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
+
+    row = (await db.execute(
+        text("""
+            SELECT f->'data'->'port_states' AS states,
+                   sr.scan_type, sr.created_at
+              FROM scan_results sr,
+                   LATERAL jsonb_array_elements(sr.facts) f
+             WHERE sr.engagement_id = :engagement_id
+               AND f->>'status' = 'scan_summary'
+               AND f->>'target'  = :host
+               AND f->'data' ? 'port_states'
+             ORDER BY sr.created_at DESC
+             LIMIT 1
+        """),
+        {"engagement_id": str(engagement_id), "host": host},
+    )).first()
+
+    if row is None or row.states is None:
+        raise HTTPException(
+            404,
+            f"no port-state evidence for {host} in this engagement — the host "
+            f"may not have been scanned, or was scanned by a probe older than "
+            f"port-state reporting",
+        )
+
+    ranges = row.states
+    payload = {
+        "engagement_id": str(engagement_id),
+        "host": host,
+        "scan_type": row.scan_type,
+        "observed_at": row.created_at.isoformat() if row.created_at else None,
+    }
+    if port is not None:
+        payload["port"] = port
+        payload["state"] = port_state_at(ranges, port)
+        return payload
+
+    payload["port_states"] = ranges
+    payload["coverage"] = summarize_coverage(ranges)
+    return payload
+
 
 @router.get("/{engagement_id}/assets", summary="List assets (hosts) and their services")
 async def list_engagement_assets(

@@ -142,16 +142,20 @@ const PROFILE_BADGE: Record<string, { label: string; color: string }> = {
 const CATS = ["All", "Discovery", "Assessment", "Targeted", "Specialized"] as const;
 type Cat = typeof CATS[number];
 
-/* Scan-intensity presets — the one offensive-security knob operators reason about
-   (nmap-style timing). The BFF resolves each to a rate/concurrency/timeout tuple. */
+/* Scan-intensity presets — the one offensive-security knob operators reason about.
+   The dial measures HARDNESS (how deep the sweep goes), which is not the same as
+   speed: breadth and rate move in opposite directions, because probing all 65,535
+   ports at a quick-sweep rate is what turns `filtered` into a false negative.
+   These strings are display only — the probe owns the real envelope
+   (probe/workflow/intensity.py) and the launcher sends nothing but the name. */
 type Intensity = "stealth" | "normal" | "aggressive";
 const INTENSITY: { id: Intensity; label: string; pps: string; why: string; color: string; angle: number; sweep: string }[] = [
   { id: "stealth",    label: "Stealth",    pps: "50 pps",  color: "#6ee7b7",             angle: -60, sweep: "6.2s",
-    why: "Low and slow. Minimizes IDS/IPS triggers and link load — for monitored, production, or fragile segments." },
+    why: "Low and slow, ~15 high-signal ports. Minimizes IDS/IPS triggers and link load — for monitored, production, or fragile segments." },
   { id: "normal",     label: "Normal",     pps: "200 pps", color: "var(--accent)",        angle: 0,   sweep: "3.4s",
-    why: "Balanced default. Right for most internal engagements with no special constraints." },
-  { id: "aggressive", label: "Aggressive", pps: "600 pps", color: "var(--sev-high-color)", angle: 60,  sweep: "1.3s",
-    why: "Fast and loud. Large scopes under time pressure — expect alerts and noticeable traffic." },
+    why: "Balanced default. The profile's own port catalog. Right for most internal engagements with no special constraints." },
+  { id: "aggressive", label: "Aggressive", pps: "150 pps", color: "var(--sev-high-color)", angle: 60,  sweep: "4.2s",
+    why: "Exhaustive, not fast: all 65,535 ports, probed patiently so silence means a firewall rather than a rushed probe. Expect hours per host." },
 ];
 
 /* ══════════════════════════════════════════════════════

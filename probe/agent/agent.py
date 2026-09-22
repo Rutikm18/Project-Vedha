@@ -35,6 +35,7 @@ import socket
 import sys
 import threading
 import time
+from datetime import datetime, timezone
 from pathlib import Path
 from urllib.parse import urlparse
 
@@ -88,8 +89,38 @@ def _load_env(path: Path) -> None:
         pass
 
 
+def _force_utf8_streams() -> None:
+    """Make stdout/stderr encode-proof so non-ASCII output can never crash the agent.
+
+    On Windows the default console encoding is cp1252, which can't encode common
+    UI glyphs the agent prints (warnings ``⚠``, checks ``✓``, arrows ``→``). Any
+    such print used to raise UnicodeEncodeError and kill the process mid-startup —
+    a cosmetic line taking down the whole agent. Reconfiguring the streams to UTF-8
+    with ``errors="replace"`` fixes the entire class at once: unencodable glyphs
+    degrade to a placeholder instead of raising. Best-effort and idempotent; if a
+    stream can't be reconfigured (redirected/wrapped), say() still guards below.
+    """
+    for stream in (sys.stdout, sys.stderr):
+        reconfigure = getattr(stream, "reconfigure", None)
+        if reconfigure is not None:
+            try:
+                reconfigure(encoding="utf-8", errors="replace")
+            except (ValueError, OSError):
+                pass
+
+
+_force_utf8_streams()
+
+
 def say(msg: str = "", indent: int = 0) -> None:
-    print(("  " * indent) + msg, flush=True)
+    line = ("  " * indent) + msg
+    try:
+        print(line, flush=True)
+    except UnicodeEncodeError:
+        # Belt-and-braces: a stream we couldn't reconfigure (older Python, an
+        # exotic wrapper) must still never crash the agent over an output glyph.
+        enc = getattr(sys.stdout, "encoding", None) or "ascii"
+        print(line.encode(enc, "replace").decode(enc, "replace"), flush=True)
 
 
 # ── DEBUG (temporary) — set PROBE_DEBUG=1 to trace the connection handshake ────
@@ -536,6 +567,17 @@ def main() -> None:
     say(f"Capabilities: {', '.join(CAPABILITIES)}")
     say(f"Use-case library: {', '.join(sorted(USE_CASES))}")
 
+    # What this HOST can sustain, stated once at startup. Conntrack overflow and
+    # neighbour-table eviction drop packets with no error returned to userspace,
+    # so the scanner records them as `filtered` and cannot tell they were its own
+    # limits. Printing the ceilings is the only way that failure is ever
+    # diagnosable. Advisory: nothing here blocks a job.
+    try:
+        from agent.kernel_limits import describe_capability, probe_limits
+        say(describe_capability(probe_limits()))
+    except Exception as exc:  # noqa: BLE001 — diagnostics must never stop startup
+        _dbg(f"kernel-limit preflight skipped: {exc!r}")
+
     # ── Step 4: Create TaskRunner (with identity for scope decryption) ────────
     from agent.task_runner import TaskRunner
     runner = TaskRunner(
@@ -601,7 +643,9 @@ def main() -> None:
         jobs: list[dict] = []
         try:
             if now - last_hb >= HEARTBEAT_INTERVAL:
-                if not transport.heartbeat("online", None if not hasattr(runner, '_current_job') else None):
+                if not transport.heartbeat(
+                    _heartbeat_status(spool, None), None,
+                ):
                     say("Heartbeat rejected (stale token).")
                 last_hb = now
 
@@ -687,6 +731,60 @@ def main() -> None:
         time.sleep(POLL_INTERVAL + random.uniform(0, POLL_INTERVAL * 0.5))
 
 
+def _lease_deadline(job: dict) -> float | None:
+    """The claim's `lease_expires_at`, as a monotonic deadline.
+
+    Monotonic on purpose: wall-clock arithmetic would misjudge the lease if NTP
+    stepped the clock mid-scan, which is exactly the kind of host event that
+    also causes the heartbeat failures this is deciding about.
+
+    Returns None when the manager sent nothing usable (an older manager), which
+    tells the caller to fall back to counting failures.
+    """
+    raw = job.get("lease_expires_at")
+    if not raw:
+        return None
+    try:
+        parsed = datetime.fromisoformat(str(raw))
+    except (TypeError, ValueError):
+        return None
+    if parsed.tzinfo is None:
+        # The manager sends UTC. Reading a naive stamp as LOCAL time would look
+        # hours expired on any host that is not on UTC.
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    remaining = (parsed - datetime.now(timezone.utc)).total_seconds()
+    return time.monotonic() + remaining
+
+
+def _renewed_deadline(current: float, *, lease_duration: float | None,
+                      now: float | None = None) -> float:
+    """Push the local deadline out after a heartbeat the manager accepted.
+
+    The duration is the one OBSERVED at claim time, so an operator who changes
+    job_lease_seconds is followed automatically.
+    """
+    if not lease_duration:
+        return current
+    return (now if now is not None else time.monotonic()) + lease_duration
+
+
+def _should_abandon_lease(*, failures: int, failure_limit: int,
+                          lease_deadline: float | None) -> bool:
+    """Has this probe genuinely lost its claim?
+
+    When the lease expiry is known it is the ONLY thing that matters: counting
+    failed heartbeats conflates "the manager took my job" with "the network
+    hiccupped", and the count means different wall-clock times on different
+    paths — three misses was 90s on the push path and 30s on the poll fallback,
+    against a 300s lease either way.
+
+    Without an expiry (an older manager) the count is all there is.
+    """
+    if lease_deadline is None:
+        return failures >= failure_limit
+    return time.monotonic() >= lease_deadline
+
+
 def _run_polled_job_with_heartbeats(
     transport: "Transport",
     runner,
@@ -703,6 +801,13 @@ def _run_polled_job_with_heartbeats(
     consecutive_failures = 0
     failure_limit = _bounded_env_int("LEASE_LOSS_GRACE_HEARTBEATS", 3, 1, 10)
     interval = max(0.05, float(heartbeat_interval))
+    # Be exactly as patient as the manager. The claim already told us when the
+    # lease runs out; abandoning earlier throws away work nobody has taken.
+    lease_deadline = _lease_deadline(job)
+    lease_duration = (
+        max(0.0, lease_deadline - time.monotonic())
+        if lease_deadline is not None else None
+    )
     with concurrent.futures.ThreadPoolExecutor(
         max_workers=1,
         thread_name_prefix="probe-job",
@@ -732,15 +837,31 @@ def _run_polled_job_with_heartbeats(
                     cancellation_event.set()
                 elif outcome != HEARTBEAT_OK:
                     consecutive_failures += 1
-                    say(
-                        f"Lease heartbeat failed for running job {job_id}; "
-                        f"failure {consecutive_failures}/{failure_limit}.",
-                        1,
-                    )
-                    if consecutive_failures >= failure_limit:
+                    if lease_deadline is not None:
+                        left = max(0.0, lease_deadline - time.monotonic())
+                        say(
+                            f"Lease heartbeat failed for running job {job_id}; "
+                            f"{left:.0f}s of lease remain — still scanning.",
+                            1,
+                        )
+                    else:
+                        say(
+                            f"Lease heartbeat failed for running job {job_id}; "
+                            f"failure {consecutive_failures}/{failure_limit}.",
+                            1,
+                        )
+                    if _should_abandon_lease(
+                        failures=consecutive_failures,
+                        failure_limit=failure_limit,
+                        lease_deadline=lease_deadline,
+                    ):
+                        say(f"Job {job_id}: lease lost — abandoning it.", 1)
                         cancellation_event.set()
                 else:
                     consecutive_failures = 0
+                    lease_deadline = _renewed_deadline(
+                        lease_deadline, lease_duration=lease_duration,
+                    ) if lease_deadline is not None else None
 
 
 # ── P2: WebSocket push loop ────────────────────────────────────────────────
@@ -750,6 +871,44 @@ WS_RECONNECT_BACKOFF_MAX = 60.0
 # Consecutive WS auth rejections (403/401) tolerated — each triggers a forced
 # device-token refresh — before falling back to HTTP poll / re-registration.
 WS_AUTH_FAIL_LIMIT = 3
+# How long a job offer may sit staged, acked but unconfirmed, before the
+# probe drops it. `pending_job` used to be cleared ONLY by a matching
+# job_claim frame, so a confirmation that never arrived (multi-worker
+# manager, Redis backplane miss, socket displaced between ack and claim)
+# left the field set forever — and the poll fallback's own guard then
+# skipped every cycle, so the probe kept heartbeating and never took
+# another job. Far below the 300 s manager lease: the recovery has to be
+# quicker than the failure it prevents.
+WS_OFFER_TTL_SECONDS = 30.0
+
+# Reported when the probe is refusing work because its result spool is at
+# the high-water mark. Not a synonym for idle: an `online` probe is ready
+# for a job, a `paused` one will decline every offer until uploads recover.
+# The manager stops dispatching to it (push_job and the enqueue eligibility
+# query both select on `online`), which is the correct behaviour AND makes
+# the state visible instead of looking like a healthy idle probe.
+PAUSED_STATUS = "paused"
+
+
+def _spool_saturated(spool) -> bool:
+    """Is the result spool refusing new work? Absent spool = no pressure."""
+    try:
+        return bool(spool is not None and spool.at_capacity)
+    except Exception:  # noqa: BLE001 — back-pressure must never crash the loop
+        return False
+
+
+def _heartbeat_status(spool, current_job_id) -> str:
+    """What this probe should tell the manager it is doing.
+
+    A running job outranks spool pressure: `busy` is what carries
+    current_job_id, and the manager renews that attempt's lease from it.
+    """
+    if current_job_id:
+        return "busy"
+    if _spool_saturated(spool):
+        return PAUSED_STATUS
+    return "online"
 
 
 async def _run_ws_push_loop(
@@ -824,10 +983,18 @@ async def _run_ws_push_loop(
             # WebSocket pushes are process-local on the manager. With multiple
             # API workers a launch request can land on a different worker than
             # the probe's WS connection, so keep polling as a safety net.
-            job_state = {"current_job_id": None, "pending_job": None}
+            # The probe's one-job-at-a-time state, shared by the receive loop
+            # and the poll fallback:
+            #   current_job_id — a job is RUNNING
+            #   pending_job    — an offer is acked, awaiting the manager's claim
+            #   pending_since  — when it was staged, so it can expire
+            #   claiming       — the fallback is mid-claim and must not be raced
+            job_state = {"current_job_id": None, "pending_job": None,
+                         "pending_since": None, "claiming": False}
             job_lock = asyncio.Lock()
             hb_task = asyncio.create_task(
-                _ws_heartbeat_sender(ws, agent_id, heartbeat_interval, job_state),
+                _ws_heartbeat_sender(ws, agent_id, heartbeat_interval,
+                                     job_state, spool),
             )
             poll_task = asyncio.create_task(
                 _ws_http_poll_fallback(
@@ -851,7 +1018,7 @@ async def _run_ws_push_loop(
 
                 if msg_type == "job_push":
                     await _ws_stage_job_offer(
-                        ws, msg.get("job", {}), job_state,
+                        ws, msg.get("job", {}), job_state, spool,
                     )
 
                 elif msg_type == "job_claim":
@@ -923,16 +1090,62 @@ async def _run_ws_push_loop(
         backoff = min(backoff * 2, WS_RECONNECT_BACKOFF_MAX)
 
 
-async def _ws_stage_job_offer(ws, job: dict, job_state: dict) -> bool:
-    """Acknowledge an offer without executing it before claim confirmation."""
+def _ws_expire_stale_offer(job_state: dict, now: float | None = None) -> bool:
+    """Drop a staged offer the manager never confirmed. True if dropped.
+
+    Recovery, not policy: the job itself is already claimed manager-side,
+    so its lease expires and the reaper requeues it. What this prevents is
+    the PROBE being stranded behind a confirmation that is never coming.
+    """
+    staged_at = job_state.get("pending_since")
+    if staged_at is None:
+        return False
+    if (now if now is not None else time.monotonic()) - staged_at < WS_OFFER_TTL_SECONDS:
+        return False
+    stranded = (job_state.get("pending_job") or {}).get("job_id", "?")
+    say(f"Push offer {stranded} was never confirmed within "
+        f"{WS_OFFER_TTL_SECONDS:.0f}s — dropping it and resuming polling.", 1)
+    job_state["pending_job"] = None
+    job_state["pending_since"] = None
+    return True
+
+
+def _ws_probe_is_free(job_state: dict) -> bool:
+    """Can this probe take on a job right now?
+
+    `claiming` is the reservation the HTTP poll fallback takes BEFORE it
+    awaits. Without it the fallback checked its state, yielded, and a
+    job_push arriving during that window was staged against state that was
+    already stale — so the probe held two claims. job_lock then serialised
+    execution, but the second job's lease had already started ticking and
+    nothing renews a job that is not running.
+    """
+    return (
+        job_state.get("current_job_id") is None
+        and job_state.get("pending_job") is None
+        and not job_state.get("claiming")
+    )
+
+
+async def _ws_stage_job_offer(ws, job: dict, job_state: dict,
+                              spool=None) -> bool:
+    """Acknowledge an offer without executing it before claim confirmation.
+
+    Declines while the result spool is saturated. The HTTP-only poll loop
+    has always applied that back-pressure; this path — the DEFAULT one —
+    did not, so a probe that could not deliver its results kept taking on
+    work that produced more of them.
+    """
     job_id = job.get("job_id")
+    _ws_expire_stale_offer(job_state)
     can_accept = bool(
         job_id
-        and job_state.get("current_job_id") is None
-        and job_state.get("pending_job") is None
+        and _ws_probe_is_free(job_state)
+        and not _spool_saturated(spool)
     )
     if can_accept:
         job_state["pending_job"] = job
+        job_state["pending_since"] = time.monotonic()
     await ws.send(json.dumps({
         "type": "job_ack",
         "job_id": job_id or "",
@@ -949,6 +1162,9 @@ def _ws_take_confirmed_job(message: dict, job_state: dict) -> dict | None:
         return None
 
     job_state["pending_job"] = None
+    # Clear the clock with the offer — a leftover timestamp would expire
+    # the NEXT offer the moment it is staged.
+    job_state["pending_since"] = None
     if not message.get("claimed", False):
         say(
             f"Push offer {job_id} was not claimed "
@@ -1053,13 +1269,25 @@ async def _ws_http_poll_fallback(
     """
     while True:
         await asyncio.sleep(max(1, interval))
-        if (
-            job_state.get("current_job_id")
-            or job_state.get("pending_job") is not None
-        ):
+        # An offer the manager never confirmed must not strand this loop.
+        _ws_expire_stale_offer(job_state)
+        if not _ws_probe_is_free(job_state) or _spool_saturated(spool):
             continue
+        # RESERVE BEFORE YIELDING. Everything below awaits, and a job_push
+        # arriving mid-await would otherwise be staged against state that says
+        # this probe is idle — two claims, one probe. The reservation is held
+        # across the poll AND the run, and released in exactly one place.
+        job_state["claiming"] = True
         try:
             jobs = await asyncio.to_thread(transport.poll_jobs, 1)
+            if not jobs:
+                continue
+            async with job_lock:
+                for job in jobs:
+                    await _ws_run_job(ws, runner, agent_id, job, job_state,
+                                      pushed=False, transport=transport,
+                                      heartbeat_interval=max(5, interval))
+                    await _flush_spool_over_http(transport, spool)
         except TransportError as exc:
             say(f"HTTP poll fallback auth error: {exc} — reconnecting.")
             await ws.close()
@@ -1067,14 +1295,8 @@ async def _ws_http_poll_fallback(
         except Exception as exc:
             say(f"HTTP poll fallback failed ({exc})", 1)
             continue
-        if not jobs:
-            continue
-        async with job_lock:
-            for job in jobs:
-                await _ws_run_job(ws, runner, agent_id, job, job_state,
-                                  pushed=False, transport=transport,
-                                  heartbeat_interval=max(5, interval))
-                await _flush_spool_over_http(transport, spool)
+        finally:
+            job_state["claiming"] = False
 
 
 async def _ws_heartbeat_sender(
@@ -1082,6 +1304,7 @@ async def _ws_heartbeat_sender(
     agent_id: str,
     interval: int,
     job_state: dict | None = None,
+    spool=None,
 ) -> None:
     """Send periodic heartbeats over WebSocket."""
     try:
@@ -1090,7 +1313,7 @@ async def _ws_heartbeat_sender(
             current_job_id = (job_state or {}).get("current_job_id")
             await ws.send(json.dumps({
                 "type": "heartbeat",
-                "status": "busy" if current_job_id else "online",
+                "status": _heartbeat_status(spool, current_job_id),
                 "current_job_id": current_job_id,
                 "attempt_id": (job_state or {}).get("attempt_id"),
                 "fence": (job_state or {}).get("fence"),

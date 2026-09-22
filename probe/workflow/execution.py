@@ -414,3 +414,29 @@ class ExecutionTrace:
                 if key != "issues" and value is not None
             })
         return serialized
+
+
+def stage_timings(runs: list[dict] | None) -> list[dict]:
+    """Per-stage wall time, slowest first — the "where did the job go?" rollup.
+
+    ExecutionTrace.timing() has always accumulated `duration_s` per component,
+    but reading it meant scanning every entry of `scanner_runs` and sorting by
+    eye. A wide sweep has ~25 components of which two or three cost all the
+    time; this puts those first.
+
+    Operates on as_list() output rather than on the trace itself so it works
+    just as well on a result read back from the manager. Stages that never ran
+    are omitted: a rollup whose job is to point at the expensive stage must not
+    bury it under twenty zeroes.
+    """
+    rows = []
+    for run in runs or []:
+        component = run.get("id")
+        seconds = run.get("duration_s")
+        if not component or not isinstance(seconds, (int, float)):
+            continue                       # as_list() drops None; tolerate both
+        if isinstance(seconds, bool) or seconds <= 0:
+            continue
+        rows.append({"component": component, "seconds": float(seconds)})
+    rows.sort(key=lambda row: row["seconds"], reverse=True)
+    return rows

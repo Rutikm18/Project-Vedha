@@ -10,12 +10,6 @@ export interface ScanLaunchBody {
   params?: Record<string, unknown>;
 }
 
-const INTENSITY_PRESETS: Record<string, { rate: number; concurrency: number; timeout: number; disc_timeout: number }> = {
-  stealth: { rate: 50, concurrency: 20, timeout: 4.0, disc_timeout: 2.0 },
-  normal: { rate: 200, concurrency: 100, timeout: 3.0, disc_timeout: 1.5 },
-  aggressive: { rate: 600, concurrency: 300, timeout: 2.0, disc_timeout: 1.0 },
-};
-
 const JOB_TYPE_MAP: Record<string, string> = {
   uc_discovery_only: "discovery",
   uc_device_inventory: "discovery",
@@ -46,12 +40,11 @@ export function buildScanLaunchRequest(body: ScanLaunchBody) {
   }
   if (body.excluded_cidrs?.length) params.excluded_cidrs = body.excluded_cidrs;
 
-  const preset = INTENSITY_PRESETS[body.intensity ?? "normal"] ?? INTENSITY_PRESETS.normal;
+  // Name the intent and stop there. The probe owns the envelope
+  // (probe/workflow/intensity.py): it resolves the preset, then lets any
+  // explicit param above still win and clamps the result. Sending a rate here
+  // would discard the preset's tuning while keeping its port breadth.
   params.intensity = body.intensity ?? "normal";
-  params.rate = preset.rate;
-  params.concurrency = preset.concurrency;
-  params.timeout = preset.timeout;
-  params.disc_timeout = preset.disc_timeout;
 
   if (typeof body.passive_listen_seconds === "number" && body.passive_listen_seconds > 0) {
     params.passive_listen_seconds = body.passive_listen_seconds;

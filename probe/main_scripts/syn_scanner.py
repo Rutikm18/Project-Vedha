@@ -400,6 +400,72 @@ class SynScanner(BaseScanner):
         await self.limiter.wait()
         return await loop.run_in_executor(None, self._syn_scan_blocking, target)
 
+    def _accept_reply(self, raw: bytes, *, dst_ip: str, src_port: int,
+                      send_at: dict, states: dict, pending_set: set,
+                      meta: dict, est) -> bool:
+        """Validate one raw packet and, if it is ours, resolve its port.
+
+        Three independent filters before anything is believed: the source
+        address, our source port, and the keyed cookie recomputed FROM THE
+        REPLY. The cookie covers ip_src, so a reply meant for another host
+        scanned concurrently fails it even if the source port collided — that
+        is why a shared source port is a performance concern here, not a
+        correctness one.
+        """
+        parsed = parse_packet(raw)
+        if not parsed or parsed["ip_src"] != dst_ip:
+            return False
+        if parsed["dst_port"] != src_port:
+            return False
+        if not verify_reply_cookie(parsed, src_port, self._key):
+            return False
+        verdict = classify(parsed["flags"])
+        if not verdict:
+            return False
+        rport = parsed["src_port"]
+        states.setdefault(rport, verdict)
+        pending_set.discard(rport)
+        # Fold the real round-trip into the adaptive timer + record it. Absent
+        # for a late reply from an earlier round, which is still worth keeping.
+        sent = send_at.get(rport)
+        if sent is not None:
+            rtt_ms = round((time.monotonic() - sent) * 1000, 2)
+            if est is not None:
+                est.observe(rtt_ms / 1000.0)
+            meta.setdefault(rport, {})["rtt_ms"] = rtt_ms
+        # Harvest the SYN/ACK's stack signals — free OS-fingerprint
+        # data (window/TTL/MSS) that was previously parsed & discarded.
+        if verdict == "open":
+            m = meta.setdefault(rport, {})
+            m["tcp_window"] = parsed.get("window")
+            m["ip_ttl"] = parsed.get("ttl")
+            if parsed.get("mss") is not None:
+                m["mss"] = parsed["mss"]
+            if parsed.get("wscale") is not None:
+                m["wscale"] = parsed["wscale"]
+            if parsed.get("olayout"):
+                m["olayout"] = parsed["olayout"]
+        return True
+
+    def _drain_ready(self, recv_sock, *, max_packets: int = 64, **ctx) -> int:
+        """Consume replies already queued, without blocking. Returns the count.
+
+        `max_packets` bounds one call so a host answering faster than we send
+        cannot hold the send loop indefinitely: the cap turns a starvation risk
+        into a bounded amount of catch-up per packet sent.
+        """
+        harvested = 0
+        while harvested < max_packets:
+            try:
+                raw = recv_sock.recv(65535)
+            except BlockingIOError:
+                break                       # nothing queued — the common case
+            except OSError:
+                break
+            self._accept_reply(raw, **ctx)
+            harvested += 1
+        return harvested
+
     def _syn_scan_blocking(self, target: str) -> list[ScanResult]:
         # REQUEST IPv4 explicitly: this raw path is v4-only, so taking whatever
         # getaddrinfo sorts first meant a dual-stack host whose AAAA leads was
@@ -469,6 +535,10 @@ class SynScanner(BaseScanner):
                 # Send a SYN per pending port (stateless — ISN carries the cookie).
                 # Record the send instant so a reply yields a real round-trip time.
                 send_at: dict[int, float] = {}
+                pending_set: set[int] = set()
+                ctx = dict(dst_ip=dst_ip, src_port=src_port, send_at=send_at,
+                           states=states, pending_set=pending_set, meta=meta,
+                           est=est)
                 for port in pending:
                     if budget_end is not None and time.monotonic() >= budget_end:
                         break
@@ -484,15 +554,28 @@ class SynScanner(BaseScanner):
                     try:
                         send_sock.sendto(pkt, (dst_ip, 0))
                         send_at[port] = time.monotonic()
+                        pending_set.add(port)
                     except OSError as exc:
                         LOG.debug("send SYN %s:%d failed: %s", dst_ip, port, exc)
+                    # DRAIN AS WE SEND. Every SYN provokes its reply about one
+                    # RTT later, i.e. while this loop is still running, and the
+                    # socket is the only thing holding them. SO_RCVBUF is 4 MB
+                    # but Linux charges skb->truesize (~768 B for a 40-byte
+                    # segment, not 40), so it holds on the order of 5,000
+                    # packets — and a 65,535-port sweep of a mostly-closed host
+                    # answers with 65,535 RSTs. The overflow is dropped with no
+                    # error, and those ports end up reported `filtered`.
+                    #
+                    # Rate does NOT save this: the overflow is set by how many
+                    # ports are in the round, not how fast they leave. Bounded
+                    # per call so a reply flood cannot starve the send loop.
+                    self._drain_ready(recv_sock, **ctx)
 
                 # Collect replies for this round within the adaptive window.
                 # Only ports we actually SENT can answer: a budget-truncated
                 # round (or a failed sendto) must not hold the window open
                 # waiting on packets that never left.
                 sent_ports = set(send_at)
-                pending_set = set(sent_ports)
                 window = est.timeout() if est is not None else self.timeout
                 deadline = time.monotonic() + max(window, 1.0)
                 while pending_set:
@@ -511,38 +594,7 @@ class SynScanner(BaseScanner):
                         continue
                     except OSError:
                         break
-                    parsed = parse_packet(raw)
-                    if not parsed or parsed["ip_src"] != dst_ip:
-                        continue
-                    if parsed["dst_port"] != src_port:
-                        continue
-                    if not verify_reply_cookie(parsed, src_port, self._key):
-                        continue
-                    verdict = classify(parsed["flags"])
-                    if not verdict:
-                        continue
-                    rport = parsed["src_port"]
-                    states.setdefault(rport, verdict)
-                    pending_set.discard(rport)
-                    # Fold the real round-trip into the adaptive timer + record it.
-                    sent = send_at.get(rport)
-                    if sent is not None:
-                        rtt_ms = round((time.monotonic() - sent) * 1000, 2)
-                        if est is not None:
-                            est.observe(rtt_ms / 1000.0)
-                        meta.setdefault(rport, {})["rtt_ms"] = rtt_ms
-                    # Harvest the SYN/ACK's stack signals — free OS-fingerprint
-                    # data (window/TTL/MSS) that was previously parsed & discarded.
-                    if verdict == "open":
-                        m = meta.setdefault(rport, {})
-                        m["tcp_window"] = parsed.get("window")
-                        m["ip_ttl"] = parsed.get("ttl")
-                        if parsed.get("mss") is not None:
-                            m["mss"] = parsed["mss"]
-                        if parsed.get("wscale") is not None:
-                            m["wscale"] = parsed["wscale"]
-                        if parsed.get("olayout"):
-                            m["olayout"] = parsed["olayout"]
+                    self._accept_reply(raw, **ctx)
                 # AIMD: the per-round reply ratio IS the loss signal. A round
                 # that loses most of its probes halves the send rate before the
                 # next retransmit round; a clean round accelerates again. This is

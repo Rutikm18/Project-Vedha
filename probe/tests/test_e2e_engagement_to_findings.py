@@ -23,7 +23,37 @@ from agent.task_runner import TaskRunner
 from main_scripts import findings as F
 
 
-# ── loopback service helper ──────────────────────────────────────────────────
+# ── scannable-address helper ─────────────────────────────────────────────────
+# NOT loopback. agent/job_admission.drop_denied puts 127/8 on the probe's
+# PERMANENT denylist (loopback / link-local / multicast / reserved / broadcast /
+# the manager itself), and TaskRunner applies it as the last gate before a
+# packet leaves. These tests predate that control (written 2026-08-15, denylist
+# landed 2026-09-12) and have been failing ever since — they asked the probe to
+# scan a target it is designed to refuse.
+#
+# The fix is to test against an address the probe may legitimately scan, not to
+# weaken the gate. This host's own primary interface address is not denied, so
+# the full path — real sockets, real scan, real correlation — still runs.
+# tests/test_job_admission.py covers the denylist itself.
+
+
+def _scannable_local_ip() -> str | None:
+    """This host's primary non-loopback IPv4, or None if it has none.
+
+    No packet is sent: connecting a UDP socket only asks the kernel which
+    source address it WOULD use for that route.
+    """
+    probe = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        probe.connect(("198.51.100.1", 9))     # TEST-NET-2, never routed
+        return probe.getsockname()[0]
+    except OSError:
+        return None
+    finally:
+        probe.close()
+
+
+# ── service helper ───────────────────────────────────────────────────────────
 def _accept_loop(s: socket.socket) -> None:
     while True:
         try:
@@ -33,13 +63,13 @@ def _accept_loop(s: socket.socket) -> None:
             break
 
 
-def _plant(ports: list[int]) -> list[socket.socket]:
+def _plant(ports: list[int], host: str) -> list[socket.socket]:
     servers: list[socket.socket] = []
     for p in ports:
         s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         try:
-            s.bind(("127.0.0.1", p))
+            s.bind((host, p))
             s.listen(16)
             servers.append(s)
             threading.Thread(target=_accept_loop, args=(s,), daemon=True).start()
@@ -64,22 +94,30 @@ def _manager(scope_cidrs: list[str]):
 
 
 # ── the pipeline: engagement → probe scan → manager ingest ───────────────────
-def test_engagement_dispatch_reaches_probe_and_enforces_scope():
-    http_get, submit_result, captured = _manager(["127.0.0.1/32"])
+@pytest.fixture
+def target() -> str:
+    ip = _scannable_local_ip()
+    if ip is None:
+        pytest.skip("host has no non-loopback IPv4 to scan")
+    return ip
+
+
+def test_engagement_dispatch_reaches_probe_and_enforces_scope(target):
+    http_get, submit_result, captured = _manager([f"{target}/32"])
     runner = TaskRunner(http_get=http_get, submit_result=submit_result)
 
     job = {
         "job_id": "job-scope",
         "engagement_id": "eng-1",
-        "params": {"use_case_id": "uc_device_inventory", "targets": ["127.0.0.1"]},
+        "params": {"use_case_id": "uc_device_inventory", "targets": [target]},
     }
     result = runner.run_job(job, agent_id="probe-1")
 
     assert result.success is True
     res = captured["payload"]["result"]
     enforced = res["run_stats"]["scope_enforced"]
-    assert enforced["allow"] == ["127.0.0.1/32"]
-    assert enforced["targets_authorized"] == ["127.0.0.1"]
+    assert enforced["allow"] == [f"{target}/32"]
+    assert enforced["targets_authorized"] == [target]
     assert res["scan_type"] == "device_inventory"
     assert res["run_stats"]["applied_tuning"]["intensity"] == "standard"
     assert isinstance(res["facts"], list)
@@ -106,17 +144,17 @@ def test_out_of_scope_target_is_refused_end_to_end():
     assert "outside engagement scope" in (payload["error"] or "")
 
 
-def test_real_scan_of_open_datastore_yields_manager_finding():
-    servers = _plant([3306])   # MySQL — in the IT port catalog + a findings rule
+def test_real_scan_of_open_datastore_yields_manager_finding(target):
+    servers = _plant([3306], target)   # MySQL — in the IT port catalog + a findings rule
     if not servers:
-        pytest.skip("could not bind loopback :3306 (in use / restricted)")
+        pytest.skip("could not bind :3306 on this host (in use / restricted)")
     try:
-        http_get, submit_result, captured = _manager(["127.0.0.1/32"])
+        http_get, submit_result, captured = _manager([f"{target}/32"])
         runner = TaskRunner(http_get=http_get, submit_result=submit_result)
         job = {
             "job_id": "job-ds",
             "engagement_id": "eng-3",
-            "params": {"use_case_id": "uc_device_inventory", "targets": ["127.0.0.1"]},
+            "params": {"use_case_id": "uc_device_inventory", "targets": [target]},
         }
         result = runner.run_job(job, agent_id="probe-1")
     finally:

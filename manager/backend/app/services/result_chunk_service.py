@@ -48,8 +48,13 @@ async def process_result_chunk(
     host: str,
     facts: list,
     scan_type: str | None = None,
+    complete: bool = True,
 ) -> dict:
-    """Commit ONE host's facts for a running job."""
+    """Commit ONE host's facts for a running job.
+
+    `complete` says whether this is the host's final word. It defaults to
+    True so an older probe — which only ever committed finished hosts —
+    behaves identically against this manager."""
     if attempt_id is None or fence is None:
         return {"ok": False, "status_code": 422, "permanent_rejection": True,
                 "error": "attempt_id and fence are required"}
@@ -115,6 +120,9 @@ async def process_result_chunk(
         existing.attempt_id = attempt_id
         existing.agent_id = agent_id
         existing.scan_type = scan_type or existing.scan_type
+        # Completion only ever moves forward: a later partial commit must
+        # not un-finish a host an earlier one already completed.
+        existing.complete = bool(existing.complete or complete)
         await db.flush()
         return {"ok": True, "stored": True, "replaced": True}
 
@@ -128,16 +136,26 @@ async def process_result_chunk(
         content_checksum=checksum,
         fact_count=len(facts),
         facts=facts,
+        complete=complete,
     ))
     await db.flush()
     return {"ok": True, "stored": True}
 
 
 async def committed_hosts(db: AsyncSession, job_id: uuid.UUID) -> list[str]:
-    """Hosts this job has already committed — what a retrying probe skips."""
+    """Hosts this job has FINISHED — what a retrying probe skips.
+
+    Complete chunks only. Mid-pipeline evidence is committed for durability
+    (a probe killed during the port sweep must not lose hours of work), but a
+    host that was merely discovered has not been scanned, and skipping it on
+    retry would deliver a liveness fact and call the host done.
+    """
     rows = (await db.execute(
         select(ScanResultChunk)
-        .where(ScanResultChunk.job_id == job_id)
+        .where(
+            ScanResultChunk.job_id == job_id,
+            ScanResultChunk.complete.is_(True),
+        )
         .order_by(ScanResultChunk.host)
     )).scalars().all()
     return [r.host for r in rows]

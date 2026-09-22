@@ -508,11 +508,17 @@ class TestSubmitResult:
 
     def test_retryable_client_errors_return_false_no_data_loss(self, transport):
         # 4xx must NOT be treated as success — otherwise the caller deletes the
-        # spooled result and scan data is lost (401=expired token, 413=too large,
-        # 422=validation). Regression guard for the <500 == success bug.
+        # spooled result and scan data is lost. Regression guard for the
+        # <500 == success bug.
+        #
+        # 413 USED to be in this list and was moved to the permanent set. The
+        # "no data loss" property it was protecting is preserved by quarantine
+        # (the payload is kept under <spool>/rejected/), whereas retrying it
+        # could never succeed and eventually wedged the probe — see
+        # tests/test_oversized_result.py.
         transport.agent_id = "abc"
         transport.agent_token = "tok"
-        for code in (401, 403, 413):
+        for code in (401, 403):
             transport._client.post.return_value = MagicMock(status_code=code)
             assert transport.submit_result("job-1", {"success": True}) is False, code
 
@@ -521,7 +527,7 @@ class TestSubmitResult:
 
         transport.agent_id = "abc"
         transport.agent_token = "tok"
-        for code in (400, 404, 409, 422):
+        for code in (400, 404, 409, 413, 422):
             transport._client.post.return_value = MagicMock(status_code=code)
             assert (
                 transport.submit_result("job-1", {"success": True})

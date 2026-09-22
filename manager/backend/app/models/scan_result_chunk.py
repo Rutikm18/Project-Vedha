@@ -1,6 +1,6 @@
 import uuid
 
-from sqlalchemy import ForeignKey, Integer, String, UniqueConstraint
+from sqlalchemy import Boolean, ForeignKey, Integer, String, UniqueConstraint
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
 
@@ -52,5 +52,20 @@ class ScanResultChunk(Base, TimestampMixin):
     host: Mapped[str] = mapped_column(String(255), nullable=False)
     scan_type: Mapped[str | None] = mapped_column(String(64), nullable=True)
     content_checksum: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    # Did this host finish the job's whole pipeline, or is this mid-scan
+    # evidence?
+    #
+    # committed_hosts() feeds the probe's RESUME list, and that only works
+    # because a chunk used to mean "this host is DONE". Once evidence is also
+    # committed at stage boundaries — so a probe killed during the port sweep
+    # does not lose hours of work — a chunk stops implying completion, and a
+    # retry that skipped merely-DISCOVERED hosts would deliver a liveness fact
+    # and call them scanned.
+    #
+    # Defaults TRUE: an older probe omits the field and only ever commits
+    # finished hosts, so its behaviour against a newer manager is unchanged.
+    complete: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default="true", default=True,
+    )
     fact_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
     facts: Mapped[list] = mapped_column(JSONB, nullable=False)

@@ -308,8 +308,20 @@ class ScanResult:
 # --------------------------------------------------------------------------- #
 # ScopeGuard — the authorization allowlist. Nothing is scanned unless allowed.
 # --------------------------------------------------------------------------- #
-class ScopeError(Exception):
-    pass
+class ScopeError(ValueError):
+    """Raised when a target or boundary is outside the authorized scope.
+
+    ValueError, not Exception, and deliberately so. `importlib.reload()` rebinds
+    every class in this module to a NEW object, so a handler holding a name
+    bound at import time silently stops catching — it has escaped run_scan once
+    already. A builtin base class is never reloaded, so `except ValueError`
+    keeps working however often this module is rebuilt. It is also honest about
+    what happened: a boundary that is not an IP or CIDR is a bad value, and
+    ipaddress raises ValueError for the very same input.
+
+    Widening the catch does not widen the SCOPE. Every handler on every raise
+    path is fail-closed, so this changes which branch reports a refusal, never
+    whether the target gets scanned (tests/test_scope_error_identity.py)."""
 
 
 class ScopeGuard:
@@ -361,7 +373,29 @@ class ScopeGuard:
 
     @classmethod
     def from_list(cls, entries: Iterable[str],
-                  excludes: Iterable[str] | None = None) -> "ScopeGuard":
+                  excludes: Iterable[str] | None = None,
+                  *, strict: bool = False) -> "ScopeGuard":
+        """Build a guard from in-memory entries.
+
+        `strict=True` makes the acceptance rule byte-identical to the Manager's
+        (schemas/engagement.validate_scope_entries): every entry must parse as
+        an IP/CIDR or this raises. The agent path uses it so a scope the probe
+        accepts is exactly a scope the Manager accepts.
+
+        The lenient default is NOT an oversight — a standalone operator really
+        can authorize `scanme.example.com` in a scope file, and from_file
+        documents that format. But lenient parsing is fail-OPEN in two ways
+        that only matter on the manager-driven path:
+
+          * a malformed CIDR ("10.0.0.0/244") becomes an inert HOSTNAME entry,
+            so a typo in an authorization boundary is silently accepted;
+          * a malformed EXCLUDE is silently DROPPED, so the host an operator
+            explicitly carved out gets scanned. That one fails open in the
+            dangerous direction.
+
+        Neither is detectable from the outside, which is why strict mode raises
+        instead of logging.
+        """
         nets, hosts = [], set()
         for line in entries:
             line = line.strip()
@@ -369,7 +403,12 @@ class ScopeGuard:
                 continue
             try:
                 nets.append(ipaddress.ip_network(line, strict=False))
-            except ValueError:
+            except ValueError as exc:
+                if strict:
+                    raise ScopeError(
+                        f"invalid scope entry {line!r}: authorization boundaries "
+                        f"must be an IP or CIDR ({exc})"
+                    ) from exc
                 hosts.add(line.lower())
         exc_nets: list[ipaddress._BaseNetwork] = []
         for line in (excludes or []):
@@ -378,7 +417,13 @@ class ScopeGuard:
                 continue
             try:
                 exc_nets.append(ipaddress.ip_network(line, strict=False))
-            except ValueError:
+            except ValueError as exc:
+                if strict:
+                    raise ScopeError(
+                        f"invalid exclusion entry {line!r}: an exclusion that "
+                        f"cannot be parsed is silently ignored, which would "
+                        f"scan the host it was meant to protect ({exc})"
+                    ) from exc
                 # a bare excluded hostname can't be range-matched; skip it
                 pass
         if exc_nets:
@@ -427,7 +472,21 @@ class ScopeGuard:
 # RateLimiter — global pacing across all concurrent tasks.
 # --------------------------------------------------------------------------- #
 class RateLimiter:
-    """Simple async rate limiter: at most `rate` operations per second."""
+    """Simple async rate limiter: at most `rate` operations per second.
+
+    Claims a slot under the lock, then sleeps OUTSIDE it. Sleeping while
+    holding the lock made every waiter queue on the mutex instead of on its own
+    deadline, and one scanner instance paces every host in the port stage — so
+    thousands of coroutines shared one serialised pacer.
+
+    It also drifted. Recomputing `now` after the sleep scheduled each slot from
+    a moment already past its target, so the error accumulated and the achieved
+    rate sat measurably below the configured one — 435/s at a configured 500,
+    3,972/s at a configured 5,000 (measured, 400 waiters). Claiming
+    max(now, self._next) puts the slots on a fixed grid, which matters beyond
+    speed: every runtime estimate is computed FROM the configured rate, so a
+    limiter that quietly under-delivers makes those projections wrong.
+    """
 
     def __init__(self, rate: float = 200.0):
         self.min_interval = 1.0 / rate if rate > 0 else 0.0
@@ -438,11 +497,14 @@ class RateLimiter:
         if self.min_interval <= 0:
             return
         async with self._lock:
+            # No await in here: the critical section is a few microseconds of
+            # arithmetic, so waiters serialise on the CLAIM, never on the wait.
             now = time.monotonic()
-            if now < self._next:
-                await asyncio.sleep(self._next - now)
-                now = time.monotonic()
-            self._next = now + self.min_interval
+            slot = max(now, self._next)
+            self._next = slot + self.min_interval
+        delay = slot - time.monotonic()
+        if delay > 0:
+            await asyncio.sleep(delay)
 
 
 def inet_checksum(data: bytes) -> int:

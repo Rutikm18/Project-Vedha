@@ -82,6 +82,7 @@ from .gates import (
 from .execution import ExecutionTrace, scanner_failure_result
 from .modes import (
     STAGE_DEEP_SCAN,
+    STAGE_HOST_DISCOVERY,
     STAGE_PORT_SCAN,
     STAGE_SERVICE_BANNER,
     includes_stage,
@@ -90,6 +91,11 @@ from .modes import (
 from .router import route_branches
 
 LOG = logging.getLogger("workflow")
+
+# Hosts whose stage-boundary chunks upload at once. Small on purpose: this
+# is network I/O between scan stages, not scanning, and a wide fan-out here
+# would compete with the very scan it is protecting.
+_COMMIT_CONCURRENCY = 8
 
 
 async def _scan_one(scanner, host: str) -> list[ScanResult]:
@@ -432,26 +438,86 @@ async def run_engagement(targets: list[str], scope: ScopeGuard, *, profile: str 
     for t in targets:
         assets.setdefault(t, Asset(host=t, profile=profile))
 
-    async def _commit_host(host: str) -> None:
-        """Hand ONE finished host's evidence to the caller (the probe commits it
-        to the manager) so work already done survives a process that never
-        returns. Best-effort: the buffer is an optimisation and must never be
-        able to fail a scan that is working.
+    # Does the caller's sink understand partial commits? Inspected once so an
+    # older two-argument sink keeps working unchanged.
+    _sink_wants_complete = False
+    if on_host_complete is not None:
+        try:
+            _sink_wants_complete = "complete" in inspect.signature(
+                on_host_complete).parameters
+        except (TypeError, ValueError):
+            _sink_wants_complete = False
+
+    # host -> fact count at its last PARTIAL commit, so a stage that added
+    # nothing for a host does not re-POST identical evidence. At 1000 hosts x
+    # four stage boundaries that is the difference between 4,000 requests and
+    # only the ones carrying something new.
+    _committed_sig: dict[str, int] = {}
+
+    def _at_ceiling(stage: str) -> bool:
+        """Is this stage where THIS job stops? Then its commit is the host's
+        final word, and the manager may skip that host on a retry."""
+        return stage == stage_ceiling
+
+    async def _commit_host(host: str, *, complete: bool = True) -> None:
+        """Hand ONE host's evidence to the caller (the probe commits it to the
+        manager) so work already done survives a process that never returns.
+
+        `complete` says whether this is the host's final word. Mid-pipeline
+        commits are partial: they protect the evidence but must never let a
+        retry skip a host that was only discovered, not scanned.
+
+        Best-effort: the buffer is an optimisation and must never be able to
+        fail a scan that is working.
         """
         if on_host_complete is None:
             return
         try:
             # Serialisable fact dicts, the same shape agent/engine.py submits —
             # the caller puts these straight on the wire.
-            facts = [asdict(entry.result) for entry in cache._store.values()
-                     if getattr(entry.result, "target", None) == host]
-            outcome = on_host_complete(host, facts)
+            #
+            # Via the cache's host index, NOT a scan of every entry. This runs
+            # once per host over a cache that grows with every host, so the
+            # inline scan it replaces was O(hosts x entries) across a job —
+            # 5.0 ms/host at 1000 hosts, awaited on the event loop, stalling
+            # every other host's scan behind it.
+            facts = [asdict(entry.result)
+                     for entry in cache.all_entries_for_host(host)]
+            if not facts:
+                return
+            # A partial commit that would repeat the last one is pure cost.
+            # A COMPLETE one always goes through: it flips the host's state
+            # from "evidence held" to "finished", which is what resume reads.
+            if not complete and _committed_sig.get(host) == len(facts):
+                return
+            outcome = (on_host_complete(host, facts, complete=complete)
+                       if _sink_wants_complete else on_host_complete(host, facts))
             if inspect.isawaitable(outcome):
                 await outcome
+            _committed_sig[host] = len(facts)
         except asyncio.CancelledError:
             raise
         except Exception as exc:  # noqa: BLE001
             LOG.debug("per-host commit for %s failed: %s", host, exc)
+
+    async def _commit_stage(hosts: list[str], *, complete: bool) -> None:
+        """Deliver one stage's evidence for many hosts, with bounded fan-out.
+
+        Every stage before the deep branches used to reach the manager ONLY via
+        the job's final submission, so a probe killed during the port sweep —
+        where a wide scan spends its hours — lost all of it. Worse, a job whose
+        ceiling stops before deep_scan returned early and committed nothing at
+        all, ever.
+        """
+        if on_host_complete is None or not hosts:
+            return
+        slots = asyncio.Semaphore(max(1, _COMMIT_CONCURRENCY))
+
+        async def _one(host: str) -> None:
+            async with slots:
+                await _commit_host(host, complete=complete)
+
+        await asyncio.gather(*(_one(host) for host in hosts))
 
     def _port_scanner_for(port_list: list[int], *, method: str):
         """The port scanner for ONE phase.
@@ -598,6 +664,10 @@ async def run_engagement(targets: list[str], scope: ScopeGuard, *, profile: str 
 
     live_hosts = [t for t in targets if assets[t].last_seen_alive is not None]
 
+    # Every target, not just the live ones: "this host did not answer" is
+    # evidence the operator needs, and a discovery-only job has nothing else.
+    await _commit_stage(targets, complete=_at_ceiling(STAGE_HOST_DISCOVERY))
+
     if not includes_stage(stage_ceiling, STAGE_PORT_SCAN):
         _finalize_trace(trace)
         return assets
@@ -662,9 +732,24 @@ async def run_engagement(targets: list[str], scope: ScopeGuard, *, profile: str 
                 # nothing. Enabled when ANY target showed 445 open.
                 smb_build=any(445 in assets[t].open_ports_for_deep_scan() for t in to_scan))
             with _timed(trace, "os_fingerprint"):
-                results = await _gather_per_host(osfp, to_scan, max_in_flight=concurrency)
+                # HOST slots, not the socket budget — the same correction the
+                # port and deep stages already carry. It matters most here:
+                # scan_target makes THREE run_in_executor(None, ...) calls per
+                # host (SMB2 negotiate, ICMP echo TTL, ICMP timestamp) on the
+                # DEFAULT thread pool, which is min(32, cpu+4). At the
+                # aggressive envelope `concurrency` is up to 500, so this
+                # queued ~1,500 blocking tasks against ~14 workers — the
+                # saturation _recheck_alive below documents from the field:
+                # the heartbeat it needs cannot get a worker either.
+                results = await _gather_per_host(
+                    osfp, to_scan, max_in_flight=host_concurrency)
             _record(trace, "os_fingerprint", target_count=len(to_scan), results=results)
             _store_results(results, assets=assets, cache=cache, profile=profile)
+
+    # The port sweep is where a wide scan spends its HOURS. Committing here is
+    # the single most valuable point in the pipeline: before this, a probe
+    # killed mid-sweep delivered nothing at all.
+    await _commit_stage(live_hosts, complete=_at_ceiling(STAGE_PORT_SCAN))
 
     if not includes_stage(stage_ceiling, STAGE_SERVICE_BANNER):
         _finalize_trace(trace)
@@ -679,10 +764,24 @@ async def run_engagement(targets: list[str], scope: ScopeGuard, *, profile: str 
         stops a tail-discovered service from reaching the manager as a bare port
         number with no product behind it.
         """
-        for host in hosts:
+        # Hosts run CONCURRENTLY. Every other per-host stage already fans out
+        # (host_discovery and os_fingerprint via _gather_per_host, the deep
+        # branches via host_slots); this one was a plain loop, so the stage cost
+        # the SUM of every host's banner grabs while the other slots sat idle.
+        # A banner grab is mostly waiting for a remote service to speak first,
+        # which is exactly the shape that overlaps well.
+        #
+        # Bounded by the same host_concurrency the deep stage uses, for the
+        # reason its docstring gives: `concurrency` bounds sockets WITHIN one
+        # scanner, so using it here too would multiply total in-flight work —
+        # and a banner grab opens a socket per OPEN port, which would make this
+        # the widest burst in the pipeline.
+        slots = asyncio.Semaphore(max(1, host_concurrency))
+
+        async def _banner_one(host: str) -> None:
             asset = assets[host]
             if not gate_4_service_banner(asset):
-                continue
+                return
             candidate_ports = asset.open_ports_for_deep_scan()
             if service_filter is not None:
                 # The REQUESTED coverage, not the current phase's slice.
@@ -692,15 +791,21 @@ async def run_engagement(targets: list[str], scope: ScopeGuard, *, profile: str 
             for r in reused:
                 asset.merge_result(r)
             _record_reused(trace, "service_banner", reused)
-            if to_scan:
-                banner = ServiceBannerScanner(scope, ports=to_scan, rate=rate, concurrency=concurrency, timeout=timeout)
+            if not to_scan:
+                return
+            banner = ServiceBannerScanner(scope, ports=to_scan, rate=rate, concurrency=concurrency, timeout=timeout)
+            async with slots:
                 with _timed(trace, "service_banner"):
                     results = await _scan_one(banner, host)
-                _record(trace, "service_banner", target_count=1, results=results)
-                _store_results(results, assets=assets, cache=cache, profile=profile)
+            _record(trace, "service_banner", target_count=1, results=results)
+            _store_results(results, assets=assets, cache=cache, profile=profile)
+
+        await asyncio.gather(*(_banner_one(host) for host in hosts))
 
     LOG.info("stage service_banner: %d host(s)", len(live_hosts))
     await _banner_pass(live_hosts)
+
+    await _commit_stage(live_hosts, complete=_at_ceiling(STAGE_SERVICE_BANNER))
 
     if not includes_stage(stage_ceiling, STAGE_DEEP_SCAN):
         _finalize_trace(trace)
@@ -886,27 +991,46 @@ async def run_engagement(targets: list[str], scope: ScopeGuard, *, profile: str 
         _store_results(health_facts, assets=assets, cache=cache, profile=profile)
 
     # --- Gate 6: credentialed collection -----------------------------------
-    for host in live_hosts:
+    # Hosts run CONCURRENTLY — the last stage in the pipeline that did not, and
+    # the one where it cost the most. A credentialed collection is a key
+    # exchange, an auth and a series of command round trips (or an SMB session
+    # setup plus DCE/RPC binds): almost entirely latency, none of it this host's
+    # CPU, so it overlaps nearly perfectly. Serially, 200 Windows hosts at ~4 s
+    # was 13 minutes of waiting with every other host slot idle.
+    #
+    # Bounded by host_concurrency like every other per-host stage, and here the
+    # bound earns its keep rather than just matching a convention: these
+    # collectors are BLOCKING clients (paramiko, impacket) driven through the
+    # default executor of min(32, cpu+4) threads — the same pool os_fingerprint
+    # was found saturating, and one collection holds a thread far longer than an
+    # ICMP echo does.
+    cred_slots = asyncio.Semaphore(max(1, host_concurrency))
+
+    async def _collect_one(host: str) -> None:
         asset = assets[host]
-        if gate_6_credentialed_collection(asset, bool(ssh_creds), bool(win_creds)):
-            if ssh_creds:
-                with _timed(trace, "ssh_inventory"):
-                    results = await _run_inventory(
-                        "ssh_inventory",
-                        host,
-                        lambda: SSHCollector(scope, **ssh_creds),
-                    )
-                _record(trace, "ssh_inventory", target_count=1, results=results)
-                _store_results(results, assets=assets, cache=cache, profile=profile)
-            if win_creds:
-                with _timed(trace, "windows_inventory"):
-                    results = await _run_inventory(
-                        "windows_inventory",
-                        host,
-                        lambda: WindowsCollector(scope, **win_creds),
-                    )
-                _record(trace, "windows_inventory", target_count=1, results=results)
-                _store_results(results, assets=assets, cache=cache, profile=profile)
+        if not gate_6_credentialed_collection(asset, bool(ssh_creds), bool(win_creds)):
+            return
+        # SSH and Windows stay sequential WITHIN a host: they are two protocols
+        # against the same box, and overlapping them would double the load on
+        # one target to save time the fan-out above already recovers.
+        for creds, component, factory in (
+            (ssh_creds, "ssh_inventory", lambda: SSHCollector(scope, **ssh_creds)),
+            (win_creds, "windows_inventory", lambda: WindowsCollector(scope, **win_creds)),
+        ):
+            if not creds:
+                continue
+            # Slot acquired OUTSIDE the timer so queueing never reads as
+            # collection time — `timing` accumulates, and under fan-out the
+            # figure is total work, not wall clock.
+            async with cred_slots:
+                with _timed(trace, component):
+                    results = await _run_inventory(component, host, factory)
+            _record(trace, component, target_count=1, results=results)
+            _store_results(results, assets=assets, cache=cache, profile=profile)
+
+    # _run_inventory converts a collector failure into a result, so one
+    # unreachable host cannot cancel its peers mid-gather.
+    await asyncio.gather(*(_collect_one(host) for host in live_hosts))
 
     _finalize_trace(trace)
     return assets

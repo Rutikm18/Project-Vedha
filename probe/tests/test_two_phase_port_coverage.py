@@ -259,25 +259,30 @@ class TestUnphasedRunsAreUnchanged:
 class TestTailRefreshesTheBuffer:
     """A host committed BEFORE the tail holds pre-tail evidence. If the job then
     dies, the manager promotes a result that understates what was scanned — so
-    every host is re-committed once the tail has run."""
+    every host is re-committed once the tail has run.
+
+    Counted by COMPLETE commits, not by calls. Evidence is now also committed at
+    every stage boundary (see test_stage_boundary_commits.py), so raw call
+    counts no longer isolate this behaviour — but those are partial, and only a
+    complete commit says "this host is finished", which is the thing the tail
+    has to refresh.
+    """
+
+    def _complete_commits(self, monkeypatch, **kw) -> int:
+        log = _Log()
+        _wire(monkeypatch, log)
+        commits: list[tuple[str, bool]] = []
+
+        def _sink(host, facts, *, complete=True):
+            commits.append((host, complete))
+
+        _run(on_host_complete=_sink, **kw)
+        return sum(1 for host, done in commits if host == HOST and done)
 
     def test_every_host_is_committed_again_after_the_tail(self, monkeypatch):
-        log = _Log()
-        _wire(monkeypatch, log)
-        commits: list[str] = []
-
-        _run(first_pass_ports=FAST,
-             on_host_complete=lambda host, facts: commits.append(host))
-
-        assert commits.count(HOST) == 2, (
-            f"expected a commit after the assessment and after the tail, got "
-            f"{commits}")
+        assert self._complete_commits(monkeypatch, first_pass_ports=FAST) == 2, (
+            "expected a final commit after the assessment AND after the tail")
 
     def test_an_unphased_run_commits_once_per_host(self, monkeypatch):
-        log = _Log()
-        _wire(monkeypatch, log)
-        commits: list[str] = []
-
-        _run(on_host_complete=lambda host, facts: commits.append(host))
-
-        assert commits.count(HOST) == 1
+        """No tail, so no second pass to refresh."""
+        assert self._complete_commits(monkeypatch) == 1

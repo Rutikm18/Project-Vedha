@@ -128,21 +128,20 @@ def _identity_ip(value: str):
         return None
 
 
-def validate_result_scope(
-    result: dict,
+def _authorizer(
     scope_cidrs: list[str] | None,
     excluded_cidrs: list[str] | None = None,
-) -> list[dict[str, str]]:
-    """Return result identities outside the job's authoritative IP scope.
+):
+    """Build the ONE predicate that decides whether an identity is authorized.
 
-    Fail closed on a missing/malformed scope and on non-IP target identities.
-    Engagement authorization is IP/CIDR-only, so accepting a hostname here
-    would allow Manager DNS resolution to disagree with what the probe scanned.
+    Extracted so validate_result_scope() (which reports) and
+    partition_result_scope() (which enforces) cannot drift apart. Two
+    implementations of one security rule is how a gate silently opens.
+
+    Fails closed on a missing/malformed scope and on non-IP identities:
+    engagement authorization is IP/CIDR-only, so accepting a hostname would let
+    Manager DNS resolution disagree with what the probe actually scanned.
     """
-    identities = _result_network_identities(result)
-    if not identities:
-        return []
-
     try:
         allowed = [
             ipaddress.ip_network(str(value).strip(), strict=False)
@@ -156,17 +155,167 @@ def validate_result_scope(
         allowed = []
         excluded = []
 
-    rejected: list[dict[str, str]] = []
-    for path, value in identities:
+    def authorized(value: str) -> bool:
         address = _identity_ip(value)
-        authorized = bool(
+        return bool(
             address is not None
             and any(address.version == net.version and address in net for net in allowed)
             and not any(address.version == net.version and address in net for net in excluded)
         )
-        if not authorized:
-            rejected.append({"path": path, "value": value})
-    return rejected
+
+    return authorized
+
+
+def validate_result_scope(
+    result: dict,
+    scope_cidrs: list[str] | None,
+    excluded_cidrs: list[str] | None = None,
+) -> list[dict[str, str]]:
+    """Return result identities outside the job's authoritative IP scope.
+
+    Detection only — the caller decides what to do about it. Semantics are
+    unchanged and pinned by tests/test_run_scoped_fact_scope.py.
+    """
+    identities = _result_network_identities(result)
+    if not identities:
+        return []
+    authorized = _authorizer(scope_cidrs, excluded_cidrs)
+    return [{"path": path, "value": value}
+            for path, value in identities if not authorized(value)]
+
+
+def _drop_orphaned_metrics(result: dict, filtered: dict, dropped_facts: set[int]) -> None:
+    """Take a dropped host's coverage metrics with its facts.
+
+    `scan_metrics` is a top-level copy the probe pre-computes from the `data` of
+    every fact whose status is `scan_summary`, so the manager need not filter
+    facts to find them. The identity traversal never sees it — a summary
+    describes the sweep and carries `vantage`, not a target — so a host's
+    metrics row used to survive the partition that discarded its evidence, and
+    scan_health_summary() then aggregated a host absent from the result.
+
+    Matched by VALUE, removing one occurrence per dropped fact, rather than
+    re-deriving the list: the manager does not get to recompute a field the
+    probe declared, only to remove what it just dropped. Two hosts with
+    identical summaries are interchangeable, so which one goes does not matter —
+    the count is what the aggregate reads.
+    """
+    metrics = result.get("scan_metrics")
+    facts = result.get("facts")
+    if not dropped_facts or not isinstance(metrics, list) or not isinstance(facts, list):
+        return
+    survivors = list(metrics)
+    for index in sorted(dropped_facts):
+        if not (0 <= index < len(facts)):
+            continue
+        fact = facts[index]
+        if not isinstance(fact, dict) or fact.get("status") != "scan_summary":
+            continue
+        try:
+            survivors.remove(fact.get("data"))
+        except ValueError:      # this summary was never surfaced at top level
+            continue
+    filtered["scan_metrics"] = survivors
+
+
+def partition_result_scope(
+    result: dict,
+    scope_cidrs: list[str] | None,
+    excluded_cidrs: list[str] | None = None,
+) -> tuple[dict, list[dict[str, str]]]:
+    """Split a result into (authorized evidence, rejected identities).
+
+    WHY THIS EXISTS. The all-or-nothing gate meant one unparseable row
+    discarded an entire scan, permanently — the probe maps 422 to a terminal
+    rejection and quarantines the payload. That probability scales with host
+    count, so the widest and most expensive scans were the likeliest to lose
+    everything.
+
+    THIS IS NOT A WEAKENING. Every rejected identity is still dropped; the same
+    rows never reach the database. What changes is that authorized evidence
+    beside them stops being collateral damage. The caller still fails closed
+    when NOTHING survives.
+
+    An entry that contributes no identity is KEPT, never filtered: run-scoped
+    facts (ipv6_discovery), scanner control records, and rows without the key
+    are exempt by design, and dropping them would re-create the same data loss
+    more quietly.
+    """
+    rejected = validate_result_scope(result, scope_cidrs, excluded_cidrs)
+    if not rejected:
+        return result, []
+
+    # Rebuild the identity list the SAME way the detector did, so indices line
+    # up with what was judged rather than with a second, re-derived traversal.
+    authorized = _authorizer(scope_cidrs, excluded_cidrs)
+    drop: dict[str, set[int]] = {}
+    for path, value in _result_network_identities(result):
+        if authorized(value):
+            continue
+        collection, _, rest = path.partition("[")
+        index, _, _ = rest.partition("]")
+        try:
+            drop.setdefault(collection, set()).add(int(index))
+        except ValueError:                      # unparseable path — never keep it
+            drop.setdefault(collection, set())
+
+    filtered = dict(result)
+    for collection, indices in drop.items():
+        rows = result.get(collection)
+        if not isinstance(rows, list):
+            continue
+        filtered[collection] = [row for i, row in enumerate(rows)
+                                if i not in indices]
+    _drop_orphaned_metrics(result, filtered, drop.get("facts", set()))
+    return filtered, rejected
+
+
+def surviving_entry_count(result: dict) -> int:
+    """How much evidence is left after a partition."""
+    return sum(len(result.get(name) or [])
+               for name in ("hosts", "facts", "findings"))
+
+
+def apply_scope_gate(
+    result: dict,
+    scope_cidrs: list[str] | None,
+    excluded_cidrs: list[str] | None = None,
+) -> tuple[dict, list[dict[str, str]], dict | None]:
+    """Partition a result and decide what to do about it.
+
+    Returns (filtered_result, rejected_identities, refusal). `refusal` is a
+    ready-to-return error dict when the whole payload must be refused, else
+    None.
+
+    Kept pure and DB-free so the POLICY — which is a security decision — is
+    testable without mocking the entire ingest pipeline behind it.
+    """
+    result, rejected = partition_result_scope(result, scope_cidrs, excluded_cidrs)
+    if not rejected:
+        return result, [], None
+
+    # FAIL CLOSED when nothing survives. Accepting an empty result would record
+    # "we scanned and found nothing", which is a worse lie than a rejection —
+    # and it is the pre-existing verdict for a wholly out-of-scope payload,
+    # which must not change.
+    survivors = surviving_entry_count(result)
+    if survivors == 0:
+        return result, rejected, {
+            "ok": False,
+            "error": "Result contains target identities outside the authorized job scope",
+            "status_code": 422,
+            "permanent_rejection": True,
+            "rejected_targets": rejected[:10],
+        }
+
+    # Ride along in the payload so the evidence is persisted and a finding can
+    # be raised from it (the same route scan_metrics takes).
+    result["scope_rejected"] = {
+        "count": len(rejected),
+        "surviving_entries": survivors,
+        "sample": rejected[:10],
+    }
+    return result, rejected, None
 
 
 async def process_job_result(
@@ -265,7 +414,11 @@ async def process_job_result(
                 "assets_promoted": 0, "findings_created": 0}
 
     job_params = row.result if isinstance(row.result, dict) else {}
-    rejected_identities = validate_result_scope(
+    # PARTITION, don't reject wholesale. Out-of-scope rows are still dropped —
+    # they never reach the database — but authorized evidence beside them is no
+    # longer collateral damage. See partition_result_scope() for why this is not
+    # a weakening of the control.
+    result, rejected_identities, refusal = apply_scope_gate(
         result,
         job_params.get("_scope_cidrs") or job_params.get("scope_cidrs"),
         job_params.get("_excluded_cidrs") or job_params.get("excluded_cidrs"),
@@ -276,15 +429,12 @@ async def process_job_result(
             agent_id=str(agent_id),
             job_id=str(job_id),
             rejected_count=len(rejected_identities),
+            surviving_entries=surviving_entry_count(result),
+            refused=refusal is not None,
             rejected=rejected_identities[:10],
         )
-        return {
-            "ok": False,
-            "error": "Result contains target identities outside the authorized job scope",
-            "status_code": 422,
-            "permanent_rejection": True,
-            "rejected_targets": rejected_identities[:10],
-        }
+    if refusal is not None:
+        return refusal
 
     # ── Fold in the per-host evidence this job buffered while it ran ───────
     # Chunks are a buffer, not a second result path: everything downstream still
@@ -438,6 +588,23 @@ async def process_job_result(
         except Exception as exc:  # noqa: BLE001
             logger.warning("job.scan_health_failed", job_id=str(job_id), error=str(exc))
 
+        # ── Scope divergence (authorization-boundary guard) ───────────────
+        # A partially-accepted result means the probe reported hosts this
+        # engagement did not authorize. Ingesting the rest is right; letting
+        # that fact go unseen is not.
+        if result.get("scope_rejected"):
+            try:
+                from app.discovery.finding_translator import (
+                    create_scope_rejection_finding,
+                )
+                async with db.begin_nested():
+                    findings_created += await create_scope_rejection_finding(
+                        db, row.engagement_id, result,
+                    )
+            except Exception as exc:  # noqa: BLE001
+                logger.warning("job.scope_rejection_finding_failed",
+                               job_id=str(job_id), error=str(exc))
+
     logger.info(
         "job.result_processed",
         agent_id=str(agent_id),
@@ -446,7 +613,14 @@ async def process_job_result(
         assets_promoted=promoted,
         findings_created=findings_created,
     )
-    return {"ok": True, "assets_promoted": promoted, "findings_created": findings_created}
+    summary = {"ok": True, "assets_promoted": promoted,
+               "findings_created": findings_created}
+    if rejected_identities:
+        # Tell the probe what was dropped. It submitted in good faith, and a
+        # silent partial acceptance is how a scope divergence stays invisible.
+        summary["scope_rejected_count"] = len(rejected_identities)
+        summary["rejected_targets"] = rejected_identities[:10]
+    return summary
 
 
 # ── Private helpers ─────────────────────────────────────────────────────────

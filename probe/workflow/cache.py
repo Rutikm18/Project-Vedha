@@ -104,8 +104,24 @@ class WorkflowCache:
     def __init__(self, path: str | Path | None = None):
         self.path = Path(path) if path else None
         self._store: dict[tuple, CacheEntry] = {}
+        # Secondary index: host -> its keys in _store.
+        #
+        # The cache is already keyed (host, port, scanner), so the host is right
+        # there — but every per-host lookup still walked the whole store. That
+        # runs once per host over a store that grows with every host, i.e.
+        # O(hosts x entries) across a job, and _commit_host awaits it on the
+        # event loop. Measured at 51 facts/host: 0.4 ms/host at 50 hosts,
+        # 5.0 ms/host at 1000 (4.98 s total, all of it stalling other hosts).
+        self._by_host: dict[str, set[tuple]] = {}
         if self.path and self.path.exists():
             self._load()
+
+    def _index(self, key: tuple, entry: CacheEntry) -> None:
+        """Insert into BOTH the store and the host index. Every write goes
+        through here so the two can never drift — _load() bypassing it was the
+        obvious way for a reloaded cache to have an empty index."""
+        self._store[key] = entry
+        self._by_host.setdefault(entry.host, set()).add(key)
 
     def _load(self) -> None:
         with self.path.open() as fh:
@@ -115,7 +131,8 @@ class WorkflowCache:
                     continue
                 try:
                     entry = CacheEntry.from_jsonl_dict(json.loads(line))
-                    self._store[(entry.host, entry.port, entry.scanner)] = entry
+                    self._index(
+                        (entry.host, entry.port, entry.scanner), entry)
                 except (json.JSONDecodeError, TypeError, KeyError):
                     pass
 
@@ -135,7 +152,7 @@ class WorkflowCache:
             host=result.target, port=result.port, proto=result.proto,
             scanner=result.scanner, result=result,
             collected_at=result.timestamp, fact_certainty=classify_certainty(result))
-        self._store[(entry.host, entry.port, entry.scanner)] = entry
+        self._index((entry.host, entry.port, entry.scanner), entry)
         return entry
 
     def should_recheck(self, host: str, port: int | None, scanner: str, *,
@@ -158,4 +175,5 @@ class WorkflowCache:
         return False
 
     def all_entries_for_host(self, host: str) -> list[CacheEntry]:
-        return [e for (h, _, _), e in self._store.items() if h == host]
+        """One host's entries, via the index — O(that host), not O(cache)."""
+        return [self._store[key] for key in self._by_host.get(host, ())]

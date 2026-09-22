@@ -34,10 +34,26 @@ DEFAULT_INTENSITY = "standard"
 INTENSITY_PRESETS: dict[str, dict] = {
     "light": {
         "port_profile": "quick",     # ~15 highest-signal TCP ports
-        "rate": 800.0,
-        "concurrency": 200,
-        "timeout": 1.0,
-        "disc_timeout": 1.0,
+        # Light TOUCH, not light latency. This preset is what an operator picks
+        # for a monitored, production or fragile segment, so it is the quietest
+        # envelope in the table, not the fastest.
+        #
+        # It previously declared 800 pps / concurrency 200 / timeout 1.0. That
+        # envelope never actually ran: the launcher overrode all four values on
+        # every job, and nothing else selects `light`. It was also the least
+        # accurate setting here — port_scanner.py:474 measured rate 300 /
+        # concurrency 200 reporting 69 FALSE `filtered` on a real LAN host, all
+        # 69 of which resolved `closed` when re-probed at 40 / 10. These are the
+        # numbers the launcher had been forcing, i.e. the ones with field use
+        # behind them.
+        "rate": 50.0,
+        "concurrency": 20,
+        "timeout": 4.0,
+        "disc_timeout": 2.0,
+        # A patient 4.0s timeout at 50 pps already gives a slow responder room
+        # to answer, and the reprobe cleanup pass (rate 40 / concurrency 10) is
+        # the real second look. Retrying here would only add packets to the one
+        # preset whose whole purpose is to emit as few as possible.
         "retries": 0,
         # Already bounded by BREADTH (~15 ports); a time ceiling here could only
         # ever cut short a scan that was going to finish anyway.

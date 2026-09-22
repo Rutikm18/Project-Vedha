@@ -170,11 +170,16 @@ class TaskRunner:
         if self._submit_chunk is None or attempt_id is None or fence is None:
             return None
 
-        async def _sink(host: str, facts: list) -> None:
+        async def _sink(host: str, facts: list, *, complete: bool = True) -> None:
+            # `complete` distinguishes a host that FINISHED this job's
+            # pipeline from mid-stage evidence. The manager skips only
+            # complete hosts on a retry, so a partial commit protects the
+            # work without ever suppressing a rescan.
             await asyncio.to_thread(
                 self._submit_chunk, str(job_id),
                 attempt_id=str(attempt_id), fence=int(fence),
                 host=host, facts=facts, scan_type=scan_type,
+                complete=complete,
             )
 
         return _sink

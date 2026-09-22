@@ -10,11 +10,14 @@ result schema (v1.1) — matches techprompt.md Part A §A4:
 from __future__ import annotations
 
 import asyncio
+import logging
 import os
 import socket
+import time
 from dataclasses import asdict
 from datetime import datetime, timedelta, timezone
 
+from scanner import scanner_base as _scanner_base
 from scanner.scanner_base import ScopeGuard, expand_targets
 from scanner.scanner_base import project_timestamp
 
@@ -23,6 +26,7 @@ from workflow.execution import (
     ExecutionTrace,
     engine_manifest,
     planned_components,
+    stage_timings,
 )
 from workflow.modes import (
     assessment,
@@ -41,6 +45,11 @@ from workflow.intensity import (
     resolve_intensity,
 )
 from scanner.port_scanner import resolve_profile
+
+from agent import feasibility as _feasibility
+from agent import kernel_limits as _kernel_limits
+
+LOG = logging.getLogger("engine")
 
 RESULT_SCHEMA_VERSION = "1.1"
 PROBE_ID = os.environ.get("PROBE_NAME") or socket.gethostname()
@@ -236,6 +245,89 @@ def _job_runtime_seconds(params: dict) -> float:
         MAX_JOB_SECONDS,
         MAX_JOB_SECONDS,
     )
+
+
+def _truthy(value) -> bool:
+    """Accept the spellings a JSON job payload actually arrives with."""
+    if isinstance(value, str):
+        return value.strip().lower() in ("1", "true", "yes", "on")
+    return bool(value)
+
+
+def _refuse_if_infeasible(estimate, params: dict) -> dict | None:
+    """Reason to refuse this job outright, or None to let it run.
+
+    Fires ONLY on `cannot_finish` — the FLOOR (one probe per port, ignoring
+    retries, the cleanup pass and every stage after the port sweep) already
+    exceeds the runtime ceiling. A `tight` job still runs: it might finish, and
+    a partial from it is genuinely useful.
+
+    Refusing rather than quietly narrowing the sweep is deliberate. Silently
+    scanning 1.7% of what was asked and reporting success is the same class of
+    deception as a `filtered` port that was never probed — and the operator
+    cannot act on a number nobody showed them.
+
+    `allow_infeasible` is the escape hatch for someone who wants the partial
+    anyway; they just have to ask for it.
+    """
+    if estimate is None or estimate.verdict != "cannot_finish":
+        return None
+    if _truthy(params.get("allow_infeasible")):
+        return None
+    return {
+        "error": (
+            f"job cannot finish: {estimate.hosts} host(s) x {estimate.ports} "
+            f"port(s) = {estimate.probes:,} probes at {estimate.rate:g} pps "
+            f"needs at least {_feasibility._hms(estimate.floor_seconds)}, "
+            f"against a {_feasibility._hms(estimate.ceiling_seconds)} ceiling"
+        ),
+        "remediation": (
+            f"Reduce one side of the envelope: ~{estimate.reachable_hosts} "
+            f"host(s) fit at this port breadth, or keep every host and narrow "
+            f"the port profile. Finishing as configured needs "
+            f"~{estimate.required_rate:,.0f} pps (raise the rate only if the "
+            f"network and the probe's kernel limits allow it), or raise "
+            f"PROBE_MAX_JOB_SECONDS after capacity review. Set "
+            f"allow_infeasible=true to run it anyway and accept a partial."
+        ),
+    }
+
+
+def _refuse_if_kernel_unsafe(checks: list, params: dict) -> dict | None:
+    """Reason to refuse this job on the probe host's own ceilings, or None.
+
+    Fires only on the checks whose overflow the kernel drops SILENTLY
+    (kernel_limits.BLOCKING_CHECKS). Those do not degrade a scan, they FALSIFY
+    it: the packet never leaves, the scanner hears nothing, and the port is
+    recorded `filtered` — a statement about the target produced entirely by a
+    limit on the scanner, and one the result gives no way to detect.
+
+    A ceiling that reports itself is deliberately not here. EADDRNOTAVAIL and
+    EMFILE already reach the result as local_resource_error and mark the scan
+    degraded, so refusing would remove a scan that was telling the truth.
+
+    Same shape as _refuse_if_infeasible, including the escape hatch: someone who
+    wants the partial can have it, they just have to ask for it.
+    """
+    from agent import kernel_limits
+
+    blocking = kernel_limits.blocking_checks(checks or [])
+    if not blocking or _truthy(params.get("allow_degraded_kernel")):
+        return None
+    return {
+        "error": (
+            "probe host cannot scan this envelope without manufacturing false "
+            "results: " + "; ".join(f"{c.name} — {c.detail}" for c in blocking)
+            + ". The kernel drops the excess with no error, so ports it never "
+            "probed are reported 'filtered'."
+        ),
+        "remediation": (
+            "; ".join(c.remediation for c in blocking if c.remediation)
+            + ". Or lower the rate so demand fits the table. Set "
+            "allow_degraded_kernel=true to run it anyway and accept that "
+            "'filtered' cannot be trusted in this result."
+        ),
+    }
 
 
 def _tuning_from_params(params: dict, preset: dict | None = None) -> dict:
@@ -440,6 +532,10 @@ def _build_run_stats(
     intensity: str = DEFAULT_INTENSITY,
     port_override: list[int] | None = None,
     first_pass_ports: list[int] | None = None,
+    elapsed_seconds: float | None = None,
+    scanner_runs: list[dict] | None = None,
+    estimate=None,
+    kernel_checks: list | None = None,
 ) -> tuple[dict, list[dict]]:
     """Build one consistent result summary for complete and interrupted runs."""
     successful_facts = [
@@ -471,6 +567,21 @@ def _build_run_stats(
             "targets_requested": requested_targets,
             "targets_authorized": authorized_targets,
         },
+        # Predicted vs actual, side by side. Built on EVERY path (success,
+        # deadline, crash) because an interrupted job is precisely when you
+        # need to know which stage consumed the ceiling.
+        "timing": {
+            "elapsed_seconds": (round(elapsed_seconds, 1)
+                                if elapsed_seconds is not None else 0.0),
+            "stages": stage_timings(scanner_runs),
+            "estimate": _feasibility.as_run_stats(estimate),
+        },
+        # The probe host's ceilings, recorded on every path for the same reason
+        # the timing is: a scan that ran under a violated one can report
+        # `filtered` for ports it never reached, and nothing else in the result
+        # would ever say so. Measuring these and keeping them in a log line is
+        # what made them advice nobody could act on.
+        "kernel": _kernel_limits.as_run_stats(kernel_checks or []),
     }
     return stats, hosts
 
@@ -612,6 +723,9 @@ def run_scan(scan_type: str, params: dict,
             targets must pass this guard in addition to the engagement allowlist.
     """
     started_at = project_timestamp()
+    # Monotonic companion to started_at: the ISO pair tells you WHEN the job
+    # ran, this tells you how LONG it took without diffing two strings.
+    started_monotonic = time.monotonic()
     errors: list[str] = []
 
     if not isinstance(params, dict):
@@ -796,7 +910,32 @@ def run_scan(scan_type: str, params: dict,
     exclude_src = list(dict.fromkeys(
         [*authoritative_excludes, *manager_excludes]
     ))
-    scope = ScopeGuard.from_list(scope_src, excludes=exclude_src)
+    # STRICT: the Manager refuses anything that is not an IP/CIDR on every
+    # engagement write path, so the probe must too. Lenient parsing turned a
+    # malformed boundary into an inert "hostname" and a malformed EXCLUSION into
+    # no exclusion at all — the second of which scans the host the operator
+    # carved out.
+    try:
+        scope = ScopeGuard.from_list(scope_src, excludes=exclude_src, strict=True)
+    # Named through the MODULE so the lookup is live. ScopeError subclasses
+    # ValueError precisely so a reload of scanner_base cannot make this stop
+    # catching, but resolving it late costs nothing and keeps the handler
+    # specific — this branch reports invalid_scope, and no other ValueError
+    # from that call should borrow the label.
+    except _scanner_base.ScopeError as exc:
+        return _error_result(
+            scan_type,
+            str(exc),
+            error_code="invalid_scope",
+            remediation=(
+                "Authorization boundaries must be IP or CIDR values — the same "
+                "rule the Manager enforces on the engagement."
+            ),
+            engagement_uuid=engagement_uuid,
+            use_case_id=use_case_id,
+            profile=profile,
+            requested_targets=requested_targets,
+        )
     targets = list(scope.filter(targets))
     if not targets:
         return _error_result(
@@ -861,6 +1000,87 @@ def run_scan(scan_type: str, params: dict,
     # back to a connect scan off privileged Linux, so behavior is identical here.
     scan_method = _scan_method_for(port_override)
     discover_ipv6 = scan_type in _DISCOVER_IPV6_SCAN_TYPES
+
+    # ── Runtime + kernel preflight (advisory) ────────────────────────────────
+    # A job whose port stage cannot finish inside job_runtime_seconds looks,
+    # for the whole ceiling, exactly like one that can — then returns `partial`
+    # with no statement of what was impossible from the first second. Say it
+    # now, in the job log, while the operator can still act on it.
+    #
+    # The kernel checks run here too rather than only at startup: conntrack and
+    # neighbour-table headroom are judged against THIS job's rate and host
+    # count, and those are the limits whose overflow is reported as `filtered`.
+    #
+    # Nothing here blocks the job. Refusing work is admission control's call.
+    _estimate = None
+    _kernel_checks: list = []
+    try:
+        from agent import kernel_limits
+
+        feasibility = _feasibility
+        _sweep_ports = feasibility.port_count_for(
+            profile, mode.service_filter, port_override)
+        _estimate = feasibility.estimate(
+            hosts=len(targets),
+            ports=_sweep_ports,
+            rate=float(tuning["rate"]),
+            ceiling_seconds=job_runtime_seconds,
+            retries=int(tuning["retries"]),
+        )
+        LOG.info("%s", feasibility.describe(_estimate))
+        _kernel_checks = kernel_limits.assess(
+            kernel_limits.probe_limits(),
+            rate=float(tuning["rate"]),
+            concurrency=int(tuning["concurrency"]),
+            host_count=len(targets),
+            port_count=_sweep_ports,
+        )
+        _checks = [feasibility.as_check(_estimate), *_kernel_checks]
+        for _check in _checks:
+            if _check.status != "pass":
+                LOG.warning("preflight[%s] %s — %s",
+                            _check.name, _check.detail, _check.remediation)
+    except Exception as exc:  # noqa: BLE001 — diagnostics never fail a scan
+        LOG.debug("job preflight skipped: %r", exc)
+
+    # ADMISSION. The estimate is advisory everywhere else; here it decides.
+    # A job whose floor already exceeds its ceiling will spend the whole
+    # ceiling proving it, then return a partial that explains nothing.
+    _refusal = _refuse_if_infeasible(_estimate, params)
+    if _refusal is not None:
+        LOG.warning("job refused: %s", _refusal["error"])
+        return _error_result(
+            scan_type,
+            _refusal["error"],
+            error_code="job_cannot_finish",
+            remediation=_refusal["remediation"],
+            engagement_uuid=engagement_uuid,
+            use_case_id=use_case_id,
+            profile=profile,
+            requested_targets=requested_targets,
+            run_stats={"timing": {"estimate":
+                                  _feasibility.as_run_stats(_estimate)}},
+        )
+
+    # The probe host's own ceilings. Unlike the estimate above, a violated one
+    # here does not make the job slow — it makes its `filtered` verdicts false,
+    # with nothing in the result to show for it.
+    _refusal = _refuse_if_kernel_unsafe(_kernel_checks, params)
+    if _refusal is not None:
+        LOG.warning("job refused: %s", _refusal["error"])
+        from agent import kernel_limits as _kl
+        return _error_result(
+            scan_type,
+            _refusal["error"],
+            error_code="kernel_limits_unsafe",
+            remediation=_refusal["remediation"],
+            engagement_uuid=engagement_uuid,
+            use_case_id=use_case_id,
+            profile=profile,
+            requested_targets=requested_targets,
+            run_stats={"kernel": _kl.as_run_stats(_kernel_checks)},
+        )
+
     trace = ExecutionTrace(planned_components(
         profile,
         service_filter=mode.service_filter,
@@ -940,6 +1160,10 @@ def run_scan(scan_type: str, params: dict,
             intensity=intensity,
             port_override=port_override,
             first_pass_ports=first_pass_ports,
+            elapsed_seconds=time.monotonic() - started_monotonic,
+            scanner_runs=trace.as_list(),
+            estimate=_estimate,
+            kernel_checks=_kernel_checks,
         )
         has_evidence = bool(run_stats["fact_count"])
         return _error_result(
@@ -991,6 +1215,10 @@ def run_scan(scan_type: str, params: dict,
             intensity=intensity,
             port_override=port_override,
             first_pass_ports=first_pass_ports,
+            elapsed_seconds=time.monotonic() - started_monotonic,
+            scanner_runs=trace.as_list(),
+            estimate=_estimate,
+            kernel_checks=_kernel_checks,
         )
         has_evidence = bool(run_stats["fact_count"])
         return _error_result(
@@ -1043,6 +1271,10 @@ def run_scan(scan_type: str, params: dict,
         intensity=intensity,
         port_override=port_override,
         first_pass_ports=first_pass_ports,
+        elapsed_seconds=time.monotonic() - started_monotonic,
+        scanner_runs=trace.as_list(),
+        estimate=_estimate,
+        kernel_checks=_kernel_checks,
     )
     open_ports = run_stats["open_ports"]
     host_count = run_stats["host_count"]

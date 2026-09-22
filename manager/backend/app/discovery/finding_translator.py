@@ -251,6 +251,71 @@ async def create_findings_from_probe_result(
     return created
 
 
+_SCOPE_REJECTED_TITLE = "Scan evidence dropped — targets outside authorized scope"
+
+
+async def create_scope_rejection_finding(
+    db: AsyncSession, engagement_id: uuid.UUID, result: dict,
+) -> int:
+    """Raise ONE finding when a submission carried out-of-scope identities.
+
+    The manager now ingests the authorized part of a mixed payload instead of
+    refusing all of it (see job_result_service.apply_scope_gate). That is the
+    right call for the evidence, but it must not make the divergence silent:
+    something asked this probe to report a host the engagement did not
+    authorize, and a human needs to decide whether that is a misconfigured
+    scope, a probe/manager scope-model disagreement, or a probe that should not
+    be trusted.
+
+    `medium`, not `low` like scan coverage: this is an authorization-boundary
+    event, not a quality one.
+
+    Deduped by title so a chronic divergence refreshes one finding instead of
+    piling up. Best-effort — never sinks the result submission.
+    """
+    rejected = (result or {}).get("scope_rejected")
+    if not isinstance(rejected, dict) or not rejected.get("count"):
+        return 0
+    count = int(rejected["count"])
+    samples = ", ".join(
+        str(entry.get("value")) for entry in (rejected.get("sample") or [])[:5]
+    )
+    description = (
+        f"{count} target identity(ies) in this scan result fell outside the "
+        f"engagement's authorized scope and were dropped before ingest; "
+        f"{rejected.get('surviving_entries', 0)} authorized entry(ies) were "
+        f"kept. Sample: {samples or 'n/a'}. Confirm the engagement scope and "
+        f"the probe's configured segments agree."
+    )
+    now = datetime.now(timezone.utc)
+    try:
+        dup = await _find_open_duplicate(db, engagement_id, None, _SCOPE_REJECTED_TITLE)
+        evidence = {"scope_rejected": rejected,
+                    "scan_type": result.get("scan_type"),
+                    "engine": result.get("engine")}
+        if dup is not None:
+            dup.evidence = evidence
+            dup.description = description
+            dup.last_seen = now
+            return 0
+        db.add(Finding(
+            engagement_id=engagement_id,
+            asset_id=None,
+            title=_SCOPE_REJECTED_TITLE,
+            description=description,
+            severity=FindingSeverity.medium,
+            status=FindingStatus.open,
+            evidence=evidence,
+            first_seen=now,
+            last_seen=now,
+        ))
+        await db.flush()
+        return 1
+    except Exception as exc:  # noqa: BLE001 — a scope note must not sink the batch
+        logger.warning("scope_rejection.finding_failed", error=str(exc))
+        return 0
+
+
 _SCAN_HEALTH_TITLE = "Scan coverage degraded — results may under-report exposure"
 
 

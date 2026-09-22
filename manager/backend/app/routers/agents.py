@@ -282,6 +282,11 @@ class JobResultChunkRequest(BaseModel):
     host: str = Field(min_length=1, max_length=255)
     facts: list = Field(default_factory=list)
     scan_type: str | None = None
+    # Is this the host's FINAL word, or mid-pipeline evidence?
+    # Defaults True so an older probe — which only ever commits finished
+    # hosts — keeps its exact behaviour. Only a probe that explicitly says
+    # 'partial' is excluded from the resume list.
+    complete: bool = True
 
 
 # The probe's scan-hardness knob (probe/workflow/intensity.py). Duplicated here
@@ -1616,6 +1621,7 @@ async def submit_result_chunk(
         db, agent_id, job_id,
         attempt_id=body.attempt_id, fence=body.fence, host=body.host,
         facts=body.facts, scan_type=body.scan_type,
+        complete=body.complete,
     )
     if not summary.get("ok"):
         raise HTTPException(

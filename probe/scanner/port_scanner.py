@@ -261,14 +261,67 @@ class ScanMetrics:
     # pair (attempted still == requested); the SET cannot.
     requested_ports: set = field(default_factory=set)
     port_hits: Counter = field(default_factory=Counter)
+    #: port -> state, as ONE BYTE per port (see _STATE_CODES).
+    #:
+    #: Keeping the ScanResult objects instead cost 47 MB per host, and the
+    #: port stage scans every live host at once (measured 4.7 GB at 100
+    #: hosts, which the OS answers with a kill and no traceback). But the
+    #: thing an operator actually needs is the STATE PER PORT, not the
+    #: object — and that is 64 KB for the entire TCP space, then a handful
+    #: of ranges once run-length encoded.
+    _port_state: bytearray = field(
+        default_factory=lambda: bytearray(65536), repr=False)
 
     _STATES = ("open", "closed", "filtered", "unreachable", "error")
+    #: 0 is reserved for "no observation", which is what makes an
+    #: unreached port distinguishable from a filtered one.
+    _STATE_CODES = {"open": 1, "closed": 2, "filtered": 3,
+                    "unreachable": 4, "error": 5, "open|filtered": 6}
+    _CODE_STATES = {code: name for name, code in _STATE_CODES.items()}
+
+    def note_state(self, port: int, state: str) -> None:
+        """Remember one port's final state in the compact map."""
+        code = self._STATE_CODES.get(state)
+        if code is not None and 0 < port < 65536:
+            self._port_state[port] = code
+
+    def state_ranges(self) -> dict:
+        """Every port's state, run-length encoded as {state: [[lo, hi], ...]}.
+
+        Ports that were REQUESTED but never observed come back as
+        `not_scanned` rather than being silently absent or folded into
+        `filtered`. That distinction is the whole point: a clock running out is
+        not evidence of a firewall.
+        """
+        candidates = sorted(
+            {port for port in range(1, 65536) if self._port_state[port]}
+            | {port for port in self.requested_ports
+               if isinstance(port, int) and 0 < port < 65536}
+        )
+        spans: dict = {}
+        run_state: str | None = None
+        run_start = run_end = 0
+
+        for port in candidates:
+            state = self._CODE_STATES.get(
+                self._port_state[port], "not_scanned")
+            if state == run_state and port == run_end + 1:
+                run_end = port                      # the run continues
+                continue
+            if run_state is not None:               # a different state, or a gap
+                spans.setdefault(run_state, []).append([run_start, run_end])
+            run_state, run_start, run_end = state, port, port
+
+        if run_state is not None:
+            spans.setdefault(run_state, []).append([run_start, run_end])
+        return spans
 
     def record(self, result: "ScanResult") -> None:
         """Tally exactly one terminal per-port observation."""
         self.ports_attempted += 1
         if result.port is not None:
             self.port_hits[result.port] += 1
+            self.note_state(result.port, result.status)
         if result.status in self._STATES:
             setattr(self, result.status, getattr(self, result.status) + 1)
         data = result.data or {}
@@ -333,6 +386,10 @@ class ScanMetrics:
             # Flag hosts that answer on an implausible share of ports: their "open"
             # results are phantom (tarpit/honeypot/middlebox), not real services.
             "tarpit": assess_tarpit(self.open, self.ports_attempted),
+            # Every requested port's state, run-length encoded. This is what
+            # makes "which ports were closed?" answerable without keeping an
+            # observation object per port.
+            "port_states": self.state_ranges(),
         }
 
 
@@ -348,6 +405,7 @@ class PortScanner(BaseScanner):
                  deadline_seconds: float | None = None, reprobe: bool = True,
                  reprobe_rate: float = 40.0, reprobe_concurrency: int = 10,
                  reprobe_retries: int = 3,
+                 reprobe_max_candidates: int = 2048,
                  scan_meta: dict | None = None, **kwargs):
         super().__init__(*args, **kwargs)
         # Audit context (profile, fd ulimit, concurrency actually used) folded into
@@ -428,6 +486,16 @@ class PortScanner(BaseScanner):
         self.reprobe_rate = max(1.0, reprobe_rate)
         self.reprobe_concurrency = max(1, reprobe_concurrency)
         self.reprobe_retries = max(0, reprobe_retries)
+        # Upper bound on how many ambiguous ports get a second look.
+        #
+        # The cleanup is documented as a "deliberately slow and NARROW"
+        # pass, and the win it was built for was 69 ambiguous ports on a
+        # host that answered everything else. On a wholly-silent host EVERY
+        # port is a candidate, and 65,535 of them at reprobe_rate is not a
+        # second look, it is a second full scan — one that would consume the
+        # entire host budget on a host with no contrasting evidence to
+        # correct against. 0 disables the cap.
+        self.reprobe_max_candidates = max(0, reprobe_max_candidates)
         # off by default: only emit OPEN. When on, every non-open state
         # (closed/filtered/unreachable/error) is preserved with its reason so
         # you can answer "why wasn't 902 reported open?" — a UI can still hide
@@ -666,33 +734,117 @@ class PortScanner(BaseScanner):
             result.data["attempts"] = attempts
         return result
 
-    async def _reprobe_ambiguous(self, target: str, ports: list[int],
-                                 est: AdaptiveTimeout | None) -> dict[int, ScanResult]:
+    def _select_reprobe_candidates(
+        self, ports: list[int],
+    ) -> tuple[list[int], int]:
+        """Bound the candidate set, dropping the least valuable ports first.
+
+        A false `filtered` matters most on a SERVICE port, so top1000 (the
+        curated high-signal set) is kept in preference to arbitrary high ports.
+        Returns (chosen, dropped).
+        """
+        cap = self.reprobe_max_candidates
+        if not cap or len(ports) <= cap:
+            return list(ports), 0
+        top = set(resolve_profile("top1000"))
+        preferred = [p for p in ports if p in top]
+        rest = [p for p in ports if p not in top]
+        chosen = sorted((preferred + rest)[:cap])
+        return chosen, len(ports) - len(chosen)
+
+    async def _reprobe_ambiguous(
+        self, target: str, ports: list[int],
+        est: AdaptiveTimeout | None,
+        *, deadline: float | None = None,
+    ) -> tuple[dict[int, ScanResult], dict]:
         """Gentle second look at ports that stayed silent through the main sweep.
 
         Deliberately slow and narrow — low rate, small window, extra retries and
         a raised timeout floor. Silence under load is ambiguous; silence when we
         are barely touching the host is real evidence. Only ports that resolve
         DEFINITIVELY are returned, so this can correct a false `filtered` but can
-        never invent one."""
+        never invent one.
+
+        BOUNDED BY THE HOST BUDGET. `deadline` is scan_target's per-host clock
+        (max_host_seconds). Without it this pass was unbounded: on a host that
+        answers nothing, EVERY port is a candidate, and 65,535 ports x
+        (reprobe_retries + 1) attempts at reprobe_rate is 6,554 s — 1.8 hours
+        for one host, against a 1,800 s budget it never consulted.
+
+        Drains a QUEUE rather than gathering one coroutine per port, matching
+        scan_target's own worker pool and for the same two reasons: bounded
+        memory on a 65,535-candidate host, and a deadline that can be checked
+        before each dequeue so a port is either fully re-probed or never
+        touched.
+
+        Returns (resolved, stats). Ports the budget did not reach keep the
+        main sweep's `filtered` verdict — they WERE probed, they just never got
+        their second look — so `skipped` records a lost confidence upgrade, not
+        a lost observation.
+        """
         resolved: dict[int, ScanResult] = {}
         limiter = RateLimiter(self.reprobe_rate)
-        sem = asyncio.Semaphore(min(self.reprobe_concurrency, max(1, len(ports))))
         floor = max(self.timeout, 3.0)
+        candidates, capped = self._select_reprobe_candidates(ports)
 
-        async def _one(port: int) -> None:
-            async with sem:
-                for attempt in range(1, self.reprobe_retries + 2):
-                    await limiter.wait()
-                    r = await self._attempt(target, port, est, min_timeout=floor)
-                    if not self._is_ambiguous(r):
-                        r.data["reprobe"] = {"attempts": attempt,
-                                             "rate": self.reprobe_rate}
-                        resolved[port] = r
-                        return
+        queue: asyncio.Queue[int] = asyncio.Queue()
+        for port in candidates:
+            queue.put_nowait(port)
 
-        await asyncio.gather(*(_one(p) for p in ports))
-        return resolved
+        def _spent() -> bool:
+            return deadline is not None and time.monotonic() >= deadline
+
+        async def _worker() -> None:
+            while True:
+                # Before the dequeue, exactly as the main sweep does: a port
+                # left in the queue was never touched and stays accountable.
+                if _spent():
+                    return
+                try:
+                    port = queue.get_nowait()
+                except asyncio.QueueEmpty:
+                    return
+                try:
+                    for attempt in range(1, self.reprobe_retries + 2):
+                        await limiter.wait()
+                        result = await self._attempt(
+                            target, port, est, min_timeout=floor)
+                        if not self._is_ambiguous(result):
+                            result.data["reprobe"] = {
+                                "attempts": attempt, "rate": self.reprobe_rate}
+                            resolved[port] = result
+                            break
+                        if _spent():
+                            break        # stop retrying, but this port was tried
+                finally:
+                    queue.task_done()
+
+        n_workers = max(1, min(self.reprobe_concurrency, len(candidates) or 1))
+        workers = [asyncio.create_task(_worker()) for _ in range(n_workers)]
+        try:
+            await asyncio.gather(*workers)
+        except asyncio.CancelledError:
+            for worker in workers:
+                worker.cancel()
+            raise
+
+        skipped = queue.qsize()
+        stats = {
+            "candidates": len(ports),
+            "resolved": len(resolved),
+            # Probed again and STILL ambiguous — the cleanup's honest negative.
+            "remaining": len(candidates) - len(resolved) - skipped,
+            # Never re-probed because the CLOCK ran out.
+            "skipped": skipped,
+            # Never re-probed because the CAP excluded them. Reported apart
+            # from `skipped`: the two have different fixes (raise the cap vs
+            # raise the host budget), and collapsing them would hide which one
+            # an operator needs.
+            "capped": capped,
+            "rate": self.reprobe_rate,
+            "budget_exhausted": bool(deadline is not None and skipped > 0),
+        }
+        return resolved, stats
 
     async def scan_target(self, target: str) -> list[ScanResult]:
         """Bounded worker-pool scan of every requested port.
@@ -798,18 +950,19 @@ class PortScanner(BaseScanner):
                               if self._is_ambiguous(r)})
         reprobe_stats: dict | None = None
         if self.reprobe and ambiguous:
-            recovered = await self._reprobe_ambiguous(target, ambiguous, est)
+            # Same clock as the main sweep — the host budget covers the WHOLE
+            # host, and this pass used to be the part that ignored it.
+            recovered, reprobe_stats = await self._reprobe_ambiguous(
+                target, ambiguous, est, deadline=_deadline)
             collected.update(recovered)
-            reprobe_stats = {
-                "candidates": len(ambiguous),
-                "resolved": len(recovered),
-                "remaining": len(ambiguous) - len(recovered),
-                "rate": self.reprobe_rate,
-            }
             if recovered:
                 LOG.info("[port_scan] cleanup pass resolved %d/%d ambiguous ports "
                          "on %s (were reported filtered)",
                          len(recovered), len(ambiguous), target)
+            if reprobe_stats["skipped"]:
+                LOG.info("[port_scan] host budget spent on %s — %d ambiguous "
+                         "port(s) keep their 'filtered' verdict without a "
+                         "second look", target, reprobe_stats["skipped"])
 
         # Record FINAL states, then apply output filtering.
         for port in sorted(collected):

@@ -20,12 +20,14 @@ on:
     paths:
       - 'probe/main_scripts/**'
       - 'probe/scanner/**'
+      - 'probe/workflow/**'
       - 'probe/tests/fixtures/accuracy_corpus/**'
       - '.github/workflows/scanner-accuracy.yml'
   pull_request:
     paths:
       - 'probe/main_scripts/**'
       - 'probe/scanner/**'
+      - 'probe/workflow/**'
       - 'probe/tests/fixtures/accuracy_corpus/**'
       - '.github/workflows/scanner-accuracy.yml'
   workflow_dispatch: {}
@@ -71,4 +73,8 @@ jobs:
             tests/test_dualstack_fallback.py \
             tests/test_syn_scanner.py \
             tests/test_tarpit.py \
-            tests/test_two_tree_parity.py
+            tests/test_two_tree_parity.py \
+            tests/test_scope_parity.py \
+            tests/test_reprobe_budget.py \
+            tests/test_port_state_ranges.py \
+            tests/test_rate_limiter_throughput.py

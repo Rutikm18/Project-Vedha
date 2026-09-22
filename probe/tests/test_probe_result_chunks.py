@@ -81,7 +81,10 @@ class TestPerHostCommit:
 
         _run(on_host_complete=lambda host, facts: seen.append((host, facts)))
 
-        assert sorted(h for h, _ in seen) == HOSTS
+        # A host is committed at each stage boundary it reaches, so assert
+        # the SET — the invariant is that every host is delivered and that
+        # no chunk ever mixes hosts, not how many times each is sent.
+        assert sorted({h for h, _ in seen}) == HOSTS
         for host, facts in seen:
             assert facts, f"{host} was committed with no evidence"
             assert {f["target"] for f in facts} == {host}, (
@@ -98,7 +101,7 @@ class TestPerHostCommit:
 
         _run(on_host_complete=_sink)
 
-        assert sorted(seen) == HOSTS
+        assert sorted(set(seen)) == HOSTS
 
     def test_a_failing_hook_does_not_take_the_scan_down(self, monkeypatch):
         """The buffer is an optimisation. An unreachable manager must not turn a
@@ -122,7 +125,7 @@ class TestResume:
         assets = _run(skip_hosts={"10.0.0.1"},
                       on_host_complete=lambda h, f: seen.append(h))
 
-        assert seen == ["10.0.0.2"]
+        assert set(seen) == {"10.0.0.2"}
         assert "10.0.0.1" not in assets or not assets["10.0.0.1"].open_ports_for_deep_scan()
 
     def test_skipping_every_host_is_not_an_error(self, monkeypatch):

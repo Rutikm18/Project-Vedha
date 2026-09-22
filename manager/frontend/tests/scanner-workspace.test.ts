@@ -23,14 +23,11 @@ test("both scanner transports share one canonical launch builder", () => {
     engagement_id: "eng-1",
     job_type: "discovery",
     use_case_id: "uc_network_va",
+    // No rate/concurrency/timeout here on purpose — see scan-intensity.test.ts.
     params: {
       targets: ["10.0.0.1"],
       scope_cidrs: ["10.0.0.1"],
       intensity: "normal",
-      rate: 200,
-      concurrency: 100,
-      timeout: 3,
-      disc_timeout: 1.5,
       preferred_agent_id: "agent-1",
     },
   });
