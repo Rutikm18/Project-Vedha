@@ -16,6 +16,7 @@ from app.routers.agents import (
     _USE_CASES,
     _USE_CASE_CODES,
     _INTENSITY_CODES,
+    _INTENSITY_NAME_TO_CODE,
     _VALID_INTENSITIES,
     _normalize_intensity_name,
 )
@@ -77,3 +78,15 @@ def test_every_manager_code_maps_to_a_known_use_case():
     for code, uc_id in _USE_CASE_CODES.items():
         assert uc_id in _USE_CASES
     assert _INTENSITY_CODES == {1: "light", 2: "standard", 3: "deep"}
+
+
+@pytest.mark.parametrize("ui_name, preset, code", [
+    ("stealth", "light", 1),
+    ("normal", "standard", 2),
+    ("aggressive", "deep", 3),
+])
+def test_ui_intensity_names_reach_the_probe_as_the_right_preset_code(ui_name, preset, code):
+    """The Scanner UI sends stealth/normal/aggressive and no envelope, so this
+    mapping alone decides which probe envelope runs."""
+    assert _normalize_intensity_name(ui_name) == preset
+    assert _INTENSITY_NAME_TO_CODE[preset] == code
