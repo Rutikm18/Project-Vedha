@@ -99,7 +99,7 @@ class _SendSock:
         self.sent: list[int] = []
 
     def sendto(self, pkt: bytes, _addr):
-        port = struct.unpack("!H", pkt[22:24])[1 - 1]   # TCP dst_port
+        port = struct.unpack("!H", pkt[22:24])[0]       # TCP dst_port
         self.sent.append(port)
         flags = (ss.TCP_SYN | ss.TCP_ACK) if port in self.open_ports else ss.TCP_RST
         self.kernel.deliver(_reply(port, flags=flags))
@@ -217,12 +217,16 @@ class TestUnchangedContract:
         states = _states(_scanner(ports)._syn_scan_blocking(TARGET))
         assert set(states.values()) == {"filtered"}
 
-    def test_a_foreign_reply_is_ignored(self, fake_net):
-        """Cross-host leakage: a reply whose cookie does not recompute must
-        never resolve a port."""
+    def test_a_reply_with_a_bad_cookie_is_ignored(self, fake_net):
+        """A spoofed or cross-host SYN-ACK must never mark a port open.
+
+        Port 9000 genuinely answers RST. A forged SYN-ACK with the wrong ack is
+        queued BEFORE any send, so it is the first packet drained: without the
+        cookie check it would win (`states.setdefault` keeps the first verdict)
+        and 9000 would read `open`."""
         net = fake_net(capacity=100)
-        bad = bytearray(_reply(9000, flags=ss.TCP_RST))
-        bad[36:40] = (0).to_bytes(4, "big")           # wrong ack -> bad cookie
-        net["kernel"].deliver(bytes(bad))
+        forged = bytearray(_reply(9000, flags=ss.TCP_SYN | ss.TCP_ACK))
+        forged[28:32] = (0).to_bytes(4, "big")        # the TCP ack field
+        net["kernel"].deliver(bytes(forged))
         states = _states(_scanner([9000, 9001])._syn_scan_blocking(TARGET))
-        assert states[9000] in ("closed", "filtered")
+        assert states[9000] == "closed"
