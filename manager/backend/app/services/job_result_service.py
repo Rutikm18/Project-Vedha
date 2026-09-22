@@ -190,9 +190,9 @@ def _drop_orphaned_metrics(result: dict, filtered: dict, dropped_facts: set[int]
     `scan_metrics` is a top-level copy the probe pre-computes from the `data` of
     every fact whose status is `scan_summary`, so the manager need not filter
     facts to find them. The identity traversal never sees it — a summary
-    describes the sweep and carries `vantage`, not a target — so a host's
-    metrics row used to survive the partition that discarded its evidence, and
-    scan_health_summary() then aggregated a host absent from the result.
+    describes the sweep and carries `vantage`, not a target — so without this
+    a host's metrics row would outlive the evidence the partition discarded,
+    and scan_health_summary() would aggregate a host absent from the result.
 
     Matched by VALUE, removing one occurrence per dropped fact, rather than
     re-deriving the list: the manager does not get to recompute a field the
@@ -206,13 +206,12 @@ def _drop_orphaned_metrics(result: dict, filtered: dict, dropped_facts: set[int]
         return
     survivors = list(metrics)
     for index in sorted(dropped_facts):
-        if not (0 <= index < len(facts)):
-            continue
         fact = facts[index]
-        if not isinstance(fact, dict) or fact.get("status") != "scan_summary":
+        if fact.get("status") != "scan_summary":
             continue
         try:
-            survivors.remove(fact.get("data"))
+            # The same default the probe used when it built scan_metrics.
+            survivors.remove(fact.get("data", {}))
         except ValueError:      # this summary was never surfaced at top level
             continue
     filtered["scan_metrics"] = survivors

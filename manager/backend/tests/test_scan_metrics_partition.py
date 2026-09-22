@@ -100,6 +100,23 @@ class TestTheMetricsFollowTheFacts:
 
         assert filtered["scan_metrics"] == [same]
 
+    def test_a_summary_without_data_is_matched_as_the_probe_emitted_it(self):
+        """The probe surfaces `f.get("data", {})`, so a summary fact with no
+        `data` key appears in scan_metrics as {}. The partition must remove
+        that same {}."""
+        result = {
+            "hosts": [{"ip": "10.0.0.5"}, {"ip": "192.168.99.9"}],
+            "facts": [
+                {"target": "10.0.0.5", "scanner": "port_scan",
+                 "status": "scan_summary", "data": _summary()},
+                {"target": "192.168.99.9", "scanner": "port_scan",
+                 "status": "scan_summary"},
+            ],
+            "scan_metrics": [_summary(), {}],
+        }
+        filtered, _ = partition_result_scope(result, SCOPE)
+        assert filtered["scan_metrics"] == [_summary()]
+
 
 class TestNothingElseMoves:
     def test_an_all_authorized_result_is_untouched(self):
