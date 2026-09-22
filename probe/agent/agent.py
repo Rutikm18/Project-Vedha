@@ -925,12 +925,51 @@ async def _run_ws_push_loop(
     HTTP polling). Returns True only on clean shutdown or unrecoverable error
     (caller should exit).
     """
-    import websockets
+    pollers: set = set()
+    result = await _ws_connection_loop(
+        transport, runner, agent_id, spool,
+        heartbeat_interval, poll_interval, pollers,
+    )
+    # A poll task may still be finishing a job it claimed. Handing the caller
+    # (the HTTP poll loop) a probe that looks idle mid-scan would start a
+    # second job beside it.
+    await asyncio.gather(*pollers, return_exceptions=True)
+    return result
+
+
+async def _ws_connection_loop(
+    transport: "Transport",
+    runner,
+    agent_id: str,
+    spool,
+    heartbeat_interval: int,
+    poll_interval: int,
+    pollers: set,
+) -> bool:
+    """Persistent WebSocket push loop.
+
+    Returns False if WebSocket is unavailable (caller should fall back to
+    HTTP polling). Returns True only on clean shutdown or unrecoverable error
+    (caller should exit).
+    """
+    import websockets.exceptions
 
     backoff = WS_RECONNECT_BACKOFF_MIN
     auth_failures = 0
+    # The probe's one-job-at-a-time state belongs to the PROCESS, not to a
+    # connection: a poll task outliving its socket must still see — and
+    # update — the same busy flag and lock as every later connection.
+    #   current_job_id — a job is RUNNING
+    #   pending_job    — an offer is acked, awaiting the manager's claim
+    #   pending_since  — when it was staged, so it can expire
+    #   claiming       — the fallback is mid-claim and must not be raced
+    job_state = {"current_job_id": None, "pending_job": None,
+                 "pending_since": None, "claiming": False}
+    job_lock = asyncio.Lock()
 
     while True:
+        hb_task = None
+        stop_polling = asyncio.Event()
         try:
             say("Connecting via WebSocket (push mode)...")
             ws = await transport.connect_ws()
@@ -983,25 +1022,23 @@ async def _run_ws_push_loop(
             # WebSocket pushes are process-local on the manager. With multiple
             # API workers a launch request can land on a different worker than
             # the probe's WS connection, so keep polling as a safety net.
-            # The probe's one-job-at-a-time state, shared by the receive loop
-            # and the poll fallback:
-            #   current_job_id — a job is RUNNING
-            #   pending_job    — an offer is acked, awaiting the manager's claim
-            #   pending_since  — when it was staged, so it can expire
-            #   claiming       — the fallback is mid-claim and must not be raced
-            job_state = {"current_job_id": None, "pending_job": None,
-                         "pending_since": None, "claiming": False}
-            job_lock = asyncio.Lock()
+            #
+            # An offer staged on an earlier connection can never be confirmed:
+            # its claim frame would have arrived on the socket that died.
+            job_state["pending_job"] = None
+            job_state["pending_since"] = None
             hb_task = asyncio.create_task(
                 _ws_heartbeat_sender(ws, agent_id, heartbeat_interval,
                                      job_state, spool),
             )
-            poll_task = asyncio.create_task(
+            poller = asyncio.create_task(
                 _ws_http_poll_fallback(
                     ws, transport, runner, agent_id, spool,
-                    poll_interval, job_lock, job_state,
+                    poll_interval, job_lock, job_state, stop=stop_polling,
                 ),
             )
+            pollers.add(poller)
+            poller.add_done_callback(pollers.discard)
 
             # Auth succeeded (hello_ok received above) — clear the auth-failure
             # streak so a later expiry gets its own full refresh budget.
@@ -1043,14 +1080,6 @@ async def _run_ws_push_loop(
                     say(f"WebSocket displaced: {msg.get('message', '?')}")
                     break
 
-            # Loop exited (ws closed by manager)
-            for task in (hb_task, poll_task):
-                task.cancel()
-                try:
-                    await task
-                except asyncio.CancelledError:
-                    pass
-
         except websockets.exceptions.ConnectionClosed as exc:
             say(f"WebSocket closed (code={exc.code}) — reconnecting in {backoff:.0f}s...")
         except (OSError, asyncio.TimeoutError) as exc:
@@ -1084,10 +1113,31 @@ async def _run_ws_push_loop(
                 # Retry immediately with the fresh token — don't sit on the backoff.
                 continue
             say(f"WebSocket error: {type(exc).__name__}: {exc} — reconnecting in {backoff:.0f}s...", 1)
+        finally:
+            await _end_ws_session(hb_task, stop_polling)
 
         # Exponential backoff
         await asyncio.sleep(backoff)
         backoff = min(backoff * 2, WS_RECONNECT_BACKOFF_MAX)
+
+
+async def _end_ws_session(hb_task, stop_polling: asyncio.Event) -> None:
+    """Stop one connection's background work, on every exit path.
+
+    The heartbeat sender only writes to this connection, so it is cancelled.
+    The poll fallback is only told to stop: it may be running a job in a
+    worker thread, and cancelling the coroutine that awaits that thread would
+    clear current_job_id while the scan kept going. It exits once any job it
+    holds has finished.
+    """
+    stop_polling.set()
+    if hb_task is None:
+        return
+    hb_task.cancel()
+    try:
+        await hb_task
+    except asyncio.CancelledError:
+        pass
 
 
 def _ws_expire_stale_offer(job_state: dict, now: float | None = None) -> bool:
@@ -1261,14 +1311,20 @@ async def _ws_http_poll_fallback(
     interval: int,
     job_lock: asyncio.Lock,
     job_state: dict,
+    stop: asyncio.Event | None = None,
 ) -> None:
     """Poll pending jobs even while WS is connected.
 
     This makes result delivery reliable when manager WS pushes are missed, for
     example under multi-worker API deployments with process-local WS state.
     """
-    while True:
-        await asyncio.sleep(max(1, interval))
+    stop = stop or asyncio.Event()
+    while not stop.is_set():
+        try:
+            await asyncio.wait_for(stop.wait(), timeout=max(1, interval))
+            return                  # the connection ended while this was idle
+        except asyncio.TimeoutError:
+            pass
         # An offer the manager never confirmed must not strand this loop.
         _ws_expire_stale_offer(job_state)
         if not _ws_probe_is_free(job_state) or _spool_saturated(spool):
