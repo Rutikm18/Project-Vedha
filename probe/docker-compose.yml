@@ -57,7 +57,7 @@ services:
       - no-new-privileges:true
     # Sized for the SCANNERS, not just the agent. The blocking collectors
     # (paramiko SSH, impacket SMB) and os_fingerprint run on the default thread
-    # pool — min(32, cpu+4) — and Gate 6 now fans out across hosts, so a busy
+    # pool — min(32, cpu+4) — and Gate 6 fans out across hosts, so a busy
     # deep scan holds a few dozen threads plus their sockets. 256 clears that
     # with room; raise it before raising PROBE_HOST_CONCURRENCY much past 8.
     pids_limit: 256
@@ -88,8 +88,9 @@ services:
     # dropped with NO error to userspace, so those ports get reported
     # `filtered` when they are not — which is why the probe REFUSES a job whose
     # demand exceeds the free table (agent/kernel_limits.py, override with the
-    # job param allow_degraded_kernel=true). `network_mode: host` without NAT
-    # avoids conntrack entirely.
+    # job param allow_degraded_kernel=true). `network_mode: host` removes the
+    # NAT hop, but conntrack still tracks the probe's traffic whenever the
+    # module is loaded (Docker loads it), so the same check applies there.
     #
     # Two more the probe measures and WARNS about at job start, on the host
     # (not here) — `sysctl -w`, or /etc/sysctl.d for persistence:

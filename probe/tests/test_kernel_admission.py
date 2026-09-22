@@ -1,13 +1,10 @@
 """
-T2.4 — the kernel ceilings stop being advice nobody acts on.
+The probe host's kernel ceilings are enforced at admission and recorded.
 
-A1 measures them and logs them. Nothing read the result, so a probe whose
-conntrack table cannot hold the job's probe rate ran the job anyway, and the
-kernel dropped the overflow with NO error to userspace. The scanner saw
-silence, waited out its timeout, and recorded `filtered` — a claim about the
-TARGET manufactured entirely by a limit on the SCANNER. The scan then looks
-complete. That is the same deception `_refuse_if_infeasible` exists to prevent,
-and it is invisible from inside the result.
+A conntrack table that cannot hold the job's probe rate drops the overflow
+with NO error to userspace. The scanner hears silence and records `filtered` —
+a claim about the TARGET produced entirely by a limit on the SCANNER, which
+the result cannot reveal on its own.
 
 WHY ONLY SOME CHECKS BLOCK
 --------------------------
@@ -45,6 +42,14 @@ WARN_EPHEMERAL = Check("ephemeral", "warn", "range sustains ~470 connect/sec",
                        "lower the rate")
 WARN_FD = Check("fd", "warn", "soft limit 256, concurrency 300", "raise ulimit -n")
 WARN_RAW = Check("raw_socket", "warn", "no CAP_NET_RAW", "grant NET_RAW")
+
+
+def _limits(**overrides):
+    base = dict(fd_soft=1_048_576, fd_hard=1_048_576, conntrack_max=65_536,
+                conntrack_count=0, ephemeral_lo=32_768, ephemeral_hi=60_999,
+                gc_thresh3=1024, syn_capable=False)
+    base.update(overrides)
+    return kl.KernelLimits(**base)
 
 
 class TestWhichChecksBlock:
@@ -129,8 +134,19 @@ class TestTheCeilingsReachTheResult:
         assert stats["warnings"] == 0
         assert stats["blocking"] == []
 
-    def test_unmeasurable_is_not_reported_as_clean(self):
-        """None of the limits could be read. That is a different statement from
-        'the ceilings are fine', and the result must not conflate them."""
-        assert kl.as_run_stats([])["measured"] is False
-        assert kl.as_run_stats([PASS_CONNTRACK])["measured"] is True
+    def test_a_host_that_cannot_read_conntrack_reports_a_blind_gate(self):
+        """Realistic input. macOS or a container without /proc still yields
+        fd and raw_socket checks, so a non-empty list proves nothing."""
+        checks = kl.assess(_limits(conntrack_max=None, conntrack_count=None),
+                           rate=150, concurrency=80, host_count=8, port_count=65535)
+        assert checks, "assess() always returns something — that is the trap"
+        assert kl.as_run_stats(checks)["gate_measured"] is False
+
+    def test_a_readable_conntrack_table_measures_the_gate(self):
+        checks = kl.assess(_limits(), rate=150, concurrency=80,
+                           host_count=8, port_count=65535)
+        assert kl.as_run_stats(checks)["gate_measured"] is True
+
+    def test_a_skipped_preflight_is_a_blind_gate(self):
+        """run_scan passes [] when the preflight itself raised."""
+        assert kl.as_run_stats([])["gate_measured"] is False

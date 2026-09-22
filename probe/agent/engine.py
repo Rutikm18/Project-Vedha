@@ -309,9 +309,7 @@ def _refuse_if_kernel_unsafe(checks: list, params: dict) -> dict | None:
     Same shape as _refuse_if_infeasible, including the escape hatch: someone who
     wants the partial can have it, they just have to ask for it.
     """
-    from agent import kernel_limits
-
-    blocking = kernel_limits.blocking_checks(checks or [])
+    blocking = _kernel_limits.blocking_checks(checks or [])
     if not blocking or _truthy(params.get("allow_degraded_kernel")):
         return None
     return {
@@ -1015,8 +1013,6 @@ def run_scan(scan_type: str, params: dict,
     _estimate = None
     _kernel_checks: list = []
     try:
-        from agent import kernel_limits
-
         feasibility = _feasibility
         _sweep_ports = feasibility.port_count_for(
             profile, mode.service_filter, port_override)
@@ -1028,8 +1024,8 @@ def run_scan(scan_type: str, params: dict,
             retries=int(tuning["retries"]),
         )
         LOG.info("%s", feasibility.describe(_estimate))
-        _kernel_checks = kernel_limits.assess(
-            kernel_limits.probe_limits(),
+        _kernel_checks = _kernel_limits.assess(
+            _kernel_limits.probe_limits(),
             rate=float(tuning["rate"]),
             concurrency=int(tuning["concurrency"]),
             host_count=len(targets),
@@ -1041,7 +1037,7 @@ def run_scan(scan_type: str, params: dict,
                 LOG.warning("preflight[%s] %s — %s",
                             _check.name, _check.detail, _check.remediation)
     except Exception as exc:  # noqa: BLE001 — diagnostics never fail a scan
-        LOG.debug("job preflight skipped: %r", exc)
+        LOG.warning("job preflight skipped; kernel gate not evaluated: %r", exc)
 
     # ADMISSION. The estimate is advisory everywhere else; here it decides.
     # A job whose floor already exceeds its ceiling will spend the whole
@@ -1068,7 +1064,6 @@ def run_scan(scan_type: str, params: dict,
     _refusal = _refuse_if_kernel_unsafe(_kernel_checks, params)
     if _refusal is not None:
         LOG.warning("job refused: %s", _refusal["error"])
-        from agent import kernel_limits as _kl
         return _error_result(
             scan_type,
             _refusal["error"],
@@ -1078,7 +1073,7 @@ def run_scan(scan_type: str, params: dict,
             use_case_id=use_case_id,
             profile=profile,
             requested_targets=requested_targets,
-            run_stats={"kernel": _kl.as_run_stats(_kernel_checks)},
+            run_stats={"kernel": _kernel_limits.as_run_stats(_kernel_checks)},
         )
 
     trace = ExecutionTrace(planned_components(

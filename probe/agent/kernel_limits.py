@@ -255,17 +255,13 @@ def blocking_checks(checks: list[Check]) -> list[Check]:
 def as_run_stats(checks: list[Check]) -> dict:
     """The ceilings this scan ran under, as JSON for the job result.
 
-    A1 measured these and logged them, which meant the manager — and so the
-    report, and so the operator reading it — never learned that a `filtered`
-    port might be an artefact of the probe host. A scan carries its own
-    conditions or nobody can audit it later.
-
-    `measured` distinguishes "the ceilings are fine" from "nothing here could be
-    read" (macOS, no /proc, no netfilter). Reporting the second as the first
-    would be exactly the false confidence this module exists to remove.
+    `gate_measured` is False when a blocking ceiling could not be read (no /proc,
+    no netfilter): the refusal gate then ran blind, which is a different
+    statement from "the ceilings are fine".
     """
+    present = {c.name for c in checks}
     return {
-        "measured": bool(checks),
+        "gate_measured": all(name in present for name in BLOCKING_CHECKS),
         "warnings": sum(1 for c in checks if c.status != "pass"),
         "blocking": [c.name for c in blocking_checks(checks)],
         "checks": [{"name": c.name, "status": c.status, "detail": c.detail}
