@@ -14,6 +14,7 @@ import { PortalShell } from "../../components/portal/PortalShell";
 import { useToast } from "../../hooks/useToast";
 import { createScannerWorkspaceApi, type ScannerWorkspaceSurface } from "../../lib/scanner-workspace-api";
 import type { ScanLaunchBody } from "../../lib/scan-launch";
+import { INTENSITY, type Intensity } from "../../lib/scan-intensity";
 import CampaignProgress from "../campaign/[id]/CampaignProgress";
 
 /* ══════════════════════════════════════════════════════
@@ -141,22 +142,6 @@ const PROFILE_BADGE: Record<string, { label: string; color: string }> = {
 
 const CATS = ["All", "Discovery", "Assessment", "Targeted", "Specialized"] as const;
 type Cat = typeof CATS[number];
-
-/* Scan-intensity presets — the one offensive-security knob operators reason about.
-   The dial measures HARDNESS (how deep the sweep goes), which is not the same as
-   speed: breadth and rate move in opposite directions, because probing all 65,535
-   ports at a quick-sweep rate is what turns `filtered` into a false negative.
-   These strings are display only — the probe owns the real envelope
-   (probe/workflow/intensity.py) and the launcher sends nothing but the name. */
-type Intensity = "stealth" | "normal" | "aggressive";
-const INTENSITY: { id: Intensity; label: string; pps: string; why: string; color: string; angle: number; sweep: string }[] = [
-  { id: "stealth",    label: "Stealth",    pps: "50 pps",  color: "#6ee7b7",             angle: -60, sweep: "6.2s",
-    why: "Low and slow, ~15 high-signal ports. Minimizes IDS/IPS triggers and link load — for monitored, production, or fragile segments." },
-  { id: "normal",     label: "Normal",     pps: "200 pps", color: "var(--accent)",        angle: 0,   sweep: "3.4s",
-    why: "Balanced default. The profile's own port catalog. Right for most internal engagements with no special constraints." },
-  { id: "aggressive", label: "Aggressive", pps: "150 pps", color: "var(--sev-high-color)", angle: 60,  sweep: "4.2s",
-    why: "Exhaustive, not fast: all 65,535 ports, probed patiently so silence means a firewall rather than a rushed probe. Expect hours per host." },
-];
 
 /* ══════════════════════════════════════════════════════
    SMALL PRIMITIVES
@@ -423,7 +408,7 @@ function IntensityDial({ value, onChange }: { value: Intensity; onChange: (v: In
           <circle cx="100" cy="96" r="5.5" fill="var(--bg-panel)" stroke={active.color} strokeWidth="2" />
         </svg>
         <div className="scn-dial-readout">
-          <span style={{ fontFamily: "var(--font-mono)", fontSize: 21, fontWeight: 700, color: active.color, lineHeight: 1 }}>{active.pps}</span>
+          <span style={{ fontFamily: "var(--font-mono)", fontSize: 21, fontWeight: 700, color: active.color, lineHeight: 1 }}>{active.rate} pps</span>
           <span style={{ fontSize: 9.5, color: "var(--text-faint)", letterSpacing: 1.2, textTransform: "uppercase", marginTop: 3 }}>{active.label}</span>
         </div>
       </div>
@@ -1127,7 +1112,7 @@ export function ScannerWorkspace({ surface = "manager" }: { surface?: ScannerWor
                   {/* Pre-flight summary */}
                     <div className="scn-preflight" style={{ borderRadius: 10, background: "var(--bg-card)", border: "0.5px solid var(--border-subtle)", padding: "11px 13px", display: "flex", flexDirection: "column", gap: 7 }}>
                     {([
-                      ["Mode", isOt ? `Passive · ${passiveSecs}s` : `${intensityObj.label} · ${intensityObj.pps}`],
+                      ["Mode", isOt ? `Passive · ${passiveSecs}s` : `${intensityObj.label} · ${intensityObj.rate} pps`],
                       ["Scope", scopeIsInherited ? `Engagement scope · ${targetCount}` : targetCount ? `${targetCount} explicit target${targetCount > 1 ? "s" : ""}` : "Full engagement scope"],
                       ...(excludeCount ? [["Exclude", `${excludeCount} carve-out${excludeCount > 1 ? "s" : ""}`]] as [string, string][] : []),
                       ["Auth", "Unauthenticated collection"],
