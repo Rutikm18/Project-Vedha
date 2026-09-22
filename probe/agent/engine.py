@@ -29,9 +29,11 @@ from workflow.execution import (
     stage_timings,
 )
 from workflow.modes import (
+    STAGE_DEEP_SCAN,
     assessment,
     discovery as discovery_mode,
     host_discovery as host_discovery_mode,
+    includes_stage,
     port_scan as port_scan_mode,
     service_fingerprint as service_fingerprint_mode,
     service_specific,
@@ -1013,9 +1015,22 @@ def run_scan(scan_type: str, params: dict,
         feasibility = _feasibility
         _sweep_ports = feasibility.port_count_for(
             profile, mode.service_filter, port_override)
+        # Admission sizes a two-phase sweep by its first pass: the tail is
+        # budgeted and truncates to not_scanned by design, so measuring the
+        # full breadth would refuse a /24 aggressive scan whose assessment
+        # finishes in half an hour. The kernel checks below still see the
+        # full sweep.
+        _must_finish = feasibility.admission_port_count(
+            profile, mode.service_filter, port_override, first_pass_ports,
+            phased=includes_stage(mode.stage_ceiling, STAGE_DEEP_SCAN),
+        )
+        if _must_finish < _sweep_ports:
+            LOG.info("two-phase sweep: admission sized by the %d-port first "
+                     "pass; %d further ports are a budgeted tail",
+                     _must_finish, _sweep_ports - _must_finish)
         _estimate = feasibility.estimate(
             hosts=len(targets),
-            ports=_sweep_ports,
+            ports=_must_finish,
             rate=float(tuning["rate"]),
             ceiling_seconds=job_runtime_seconds,
             retries=int(tuning["retries"]),

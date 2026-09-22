@@ -196,3 +196,27 @@ def port_count_for(
     from workflow.workflow_engine import _port_candidates
     return len(_port_candidates(profile, service_filter,
                                 port_override=port_override))
+
+
+def admission_port_count(
+    profile: str,
+    service_filter: set[str] | None,
+    port_override: list[int] | None,
+    first_pass_ports: list[int] | None,
+    *,
+    phased: bool,
+) -> int:
+    """Ports a job MUST sweep to finish — what admission sizes it by.
+
+    A phased sweep (a first pass exists and stages run after the port scan)
+    must finish only that first pass; the remaining ports are a tail budgeted
+    per host that truncates to not_scanned by design. Computes the same split
+    run_engagement makes, so admission and execution agree on the port set.
+    """
+    from workflow.workflow_engine import _port_candidates
+    ports = set(_port_candidates(profile, service_filter, port_override=port_override))
+    if not (phased and first_pass_ports):
+        return len(ports)
+    first = set(_port_candidates(profile, service_filter,
+                                 port_override=list(first_pass_ports))) & ports
+    return len(first) if first and len(first) < len(ports) else len(ports)
