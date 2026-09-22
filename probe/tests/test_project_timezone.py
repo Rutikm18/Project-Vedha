@@ -15,7 +15,6 @@ readability one being fixed.
 """
 from __future__ import annotations
 
-import importlib
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -78,16 +77,14 @@ class TestScanResultUsesProjectTime:
 class TestOverrideAndFallback:
     def test_vedha_tz_overrides_the_default(self, monkeypatch):
         monkeypatch.setenv("VEDHA_TZ", "UTC")
-        assert importlib.reload(sb).project_now().utcoffset() == timedelta(0)
-        monkeypatch.delenv("VEDHA_TZ")
-        importlib.reload(sb)            # restore for the rest of the session
+        monkeypatch.setattr(sb, "PROJECT_TZ", sb._resolve_project_tz())
+        assert sb.project_now().utcoffset() == timedelta(0)
 
     def test_unknown_zone_falls_back_without_crashing(self, monkeypatch):
         """A bad VEDHA_TZ must never take a scan down mid-engagement."""
         monkeypatch.setenv("VEDHA_TZ", "Not/AZone")
-        assert importlib.reload(sb).project_now().tzinfo is not None
-        monkeypatch.delenv("VEDHA_TZ")
-        importlib.reload(sb)
+        monkeypatch.setattr(sb, "PROJECT_TZ", sb._resolve_project_tz())
+        assert sb.project_now().tzinfo is not None
 
     def test_ist_survives_a_missing_tzdata(self, monkeypatch):
         """Sealed/slim images may ship no tzdata. IST has no DST, so the fixed

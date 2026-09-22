@@ -309,19 +309,8 @@ class ScanResult:
 # ScopeGuard — the authorization allowlist. Nothing is scanned unless allowed.
 # --------------------------------------------------------------------------- #
 class ScopeError(ValueError):
-    """Raised when a target or boundary is outside the authorized scope.
-
-    ValueError, not Exception, and deliberately so. `importlib.reload()` rebinds
-    every class in this module to a NEW object, so a handler holding a name
-    bound at import time silently stops catching — it has escaped run_scan once
-    already. A builtin base class is never reloaded, so `except ValueError`
-    keeps working however often this module is rebuilt. It is also honest about
-    what happened: a boundary that is not an IP or CIDR is a bad value, and
-    ipaddress raises ValueError for the very same input.
-
-    Widening the catch does not widen the SCOPE. Every handler on every raise
-    path is fail-closed, so this changes which branch reports a refusal, never
-    whether the target gets scanned (tests/test_scope_error_identity.py)."""
+    """A target or boundary outside the authorized scope. A ValueError because a
+    boundary that is not an IP or CIDR is a bad value, as ipaddress reports."""
 
 
 class ScopeGuard:

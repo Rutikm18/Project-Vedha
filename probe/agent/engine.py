@@ -915,11 +915,8 @@ def run_scan(scan_type: str, params: dict,
     # carved out.
     try:
         scope = ScopeGuard.from_list(scope_src, excludes=exclude_src, strict=True)
-    # Named through the MODULE so the lookup is live. ScopeError subclasses
-    # ValueError precisely so a reload of scanner_base cannot make this stop
-    # catching, but resolving it late costs nothing and keeps the handler
-    # specific — this branch reports invalid_scope, and no other ValueError
-    # from that call should borrow the label.
+    # Specific on purpose: this branch reports invalid_scope, and no other
+    # ValueError from that call should borrow the label.
     except _scanner_base.ScopeError as exc:
         return _error_result(
             scan_type,

@@ -1,66 +1,47 @@
 """
-ScopeError must stay catchable across a module reload.
+ScopeError is a ValueError, and nothing in the suite may reload a module.
 
-`importlib.reload(scanner_base)` — which tests/test_project_timezone.py does —
-rebinds every class in the module to a NEW object. Code holding a name bound at
-import time then catches a class that nothing raises any more, and the exception
-escapes. This already bit twice: once in a test, once in agent/engine.py's
-run_scan, whose docstring promises it never raises.
+`importlib.reload()` rebinds every class in a module to a NEW object. A handler
+or `pytest.raises` holding a name bound before the reload then matches a class
+nothing raises any more — the fresh class is not a subclass of the stale one,
+so no choice of base class can fix it. The hazard is removed at its source:
+the suite does not reload, and the guard below keeps it that way.
 
-The standing mitigation is a convention — "always reference it through the
-module" — enforced only by comments, in a codebase where the natural spelling is
-`from scanner.scanner_base import ScopeError`. Conventions that must be
-remembered at every call site are not controls.
-
-Making ScopeError a ValueError removes the hazard instead of documenting it: a
-builtin is never reloaded, so `except ValueError` keeps working no matter how
-many times the module is rebuilt. It is also true to the meaning — a scope entry
-that is not an IP or CIDR is a bad value, and ipaddress raises ValueError for the
-same input.
-
-This does NOT soften the control. Every handler on every raise path is
-fail-closed (error ScanResult / error result / exit 1), so a widened catch
-changes which branch reports the refusal, never whether the target gets scanned.
-TestTheGateStillRefuses pins that.
+The ValueError base stays for what it says: a boundary that is not an IP or
+CIDR is a bad value, as ipaddress itself reports. Every handler around a scope
+call fails closed, so a wider catch changes which branch reports a refusal,
+never whether a target gets scanned — TestTheGateStillRefuses pins that.
 """
 from __future__ import annotations
 
-import importlib
+import ast
+from pathlib import Path
 
 import pytest
 
 from scanner import scanner_base as sb
 
+TESTS_DIR = Path(__file__).resolve().parent
 
-class TestReloadSafety:
+
+class TestNoReload:
     def test_scope_error_is_a_value_error(self):
-        """The whole point: a builtin base class survives any reload."""
         assert issubclass(sb.ScopeError, ValueError)
 
-    def test_a_reload_really_does_rebind_the_class(self):
-        """Guards the PREMISE. If reload ever stopped rebinding, this suite
-        would be testing a hazard that no longer exists."""
-        stale = sb.ScopeError
-        try:
-            importlib.reload(sb)
-            assert sb.ScopeError is not stale
-        finally:
-            importlib.reload(sb)
-
-    def test_a_handler_bound_before_a_reload_still_catches(self):
-        """The actual failure mode, reproduced: bind the name, reload, raise
-        the fresh class. `except ValueError` catches it; the stale name cannot."""
-        stale = sb.ScopeError
-        try:
-            importlib.reload(sb)
-            fresh = sb.ScopeError
-
-            with pytest.raises(ValueError):
-                raise fresh("target '10.0.0.1' is NOT in authorized scope")
-
-            assert not issubclass(fresh, stale)
-        finally:
-            importlib.reload(sb)
+    def test_no_test_reloads_a_module(self):
+        offenders = []
+        for path in sorted(TESTS_DIR.glob("test_*.py")):
+            tree = ast.parse(path.read_text(encoding="utf-8"))
+            for node in ast.walk(tree):
+                if not isinstance(node, ast.Call):
+                    continue
+                fn = node.func
+                name = fn.attr if isinstance(fn, ast.Attribute) else getattr(fn, "id", "")
+                if name == "reload":
+                    offenders.append(f"{path.name}:{node.lineno}")
+        assert offenders == [], (
+            "reload rebinds classes and breaks every name bound before it; "
+            f"patch the module attribute instead: {offenders}")
 
 
 class TestTheGateStillRefuses:

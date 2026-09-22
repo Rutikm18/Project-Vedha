@@ -41,13 +41,7 @@ import ipaddress
 
 import pytest
 
-# Referenced through the MODULE, never bound at import time.
-# tests/test_project_timezone.py calls importlib.reload(scanner_base), which
-# rebinds ScopeGuard and ScopeError to NEW class objects. A name bound here at
-# collection time would then be a different class from the one the reloaded
-# from_list() raises, and pytest.raises() would stop matching — a failure that
-# only appears when the suite runs in alphabetical order. Module-qualified
-# lookups always resolve to the live classes.
+# Referenced through the module, like every scope test.
 from scanner import scanner_base as sb
 
 # The manager's rule, stated once (schemas/engagement.validate_scope_entries).
