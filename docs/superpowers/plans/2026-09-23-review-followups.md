@@ -1614,6 +1614,800 @@ Open `https://github.com/Rutikm18/Project-Vedha/compare/main...fix/review-follow
 
 ---
 
+## Added during execution (2026-09-23): user-reported issues
+
+Two issues reported mid-execution, both root-caused from last night's run (jobs `7a3af813` A, `4f70f4c1` B, `b1db9b08` C on probe `scanner-probe-01`):
+
+- **"Scans launched together run at the same time."** A (pushed over the WebSocket) and B (claimed by the HTTP poll) executed concurrently on one probe. Root cause: `_run_ws_push_loop` created the busy-state, lock, heartbeat task and poll task **per connection**, and cancelled the tasks only when the connection ended normally. The API restart at 01:03:23 killed the socket with an exception, so the old poll task survived with state nothing updated. It claimed and ran B while the new connection ran A. Reproduced: `repro_reconnect_orphan.py` gives peak concurrency 2, and the unmodified flow gives 1. The manager's poll endpoint also hands a job to a probe that already holds a running one (the push path is correctly gated).
+- **"Aggressive scan throws an error."** `job cannot finish: 254 host(s) x 65535 port(s) ... 30.8h, against a 2.0h ceiling`. Root cause: `_refuse_if_infeasible` sizes `deep` by its full 65,535 ports, but `deep` is two-phase — only the first pass (1,145 ports on `it`) must finish, and the tail is budgeted per host and truncates to `not_scanned` by design. For a /24 the first pass takes 32 minutes and fits. Restoring `deep`'s real 150 pps in P4 cut the aggressive host limit from 65 to 16.
+
+**Execution order from here:** 8 → 9 → 13 → 14 → 15 → 10 → 11 → 12. Task 10 must also wire the new test files; Task 11 must also record these root causes.
+
+### Task 13: Probe — a dropped WebSocket must not leave a second job-claiming loop
+
+**Files:**
+- Modify: `probe/agent/agent.py` (`_run_ws_push_loop`, `_ws_http_poll_fallback`; add `_end_ws_session`)
+- Create: `probe/tests/test_ws_reconnect_serialization.py`
+
+**Interfaces:**
+- Consumes: `_ws_heartbeat_sender`, `_ws_run_job`, `_ws_stage_job_offer`, `_ws_probe_is_free` (unchanged).
+- Produces: `_ws_http_poll_fallback(ws, transport, runner, agent_id, spool, interval, job_lock, job_state, stop: asyncio.Event | None = None)` (new optional kwarg, positional args unchanged); `_end_ws_session(hb_task, stop_polling) -> None`; `_ws_connection_loop(...)` (the old body of `_run_ws_push_loop`, plus a `pollers` parameter). The `_run_ws_push_loop` signature is unchanged.
+
+- [ ] **Step 1: Write the failing tests**
+
+Create `probe/tests/test_ws_reconnect_serialization.py`:
+
+```python
+"""
+A dropped WebSocket must not leave a second job-claiming loop behind.
+
+The probe runs one job at a time. The push loop kept that promise per
+CONNECTION: each connection had its own busy-state, lock, heartbeat task and
+HTTP poll task, and the tasks were cleaned up only when the connection ended
+normally. A connection that died with an exception — an API restart does
+exactly that — left its poll task running with state nothing updated. That
+task kept polling, believed the probe was idle, and ran the next job alongside
+whatever the new connection was running.
+
+A poll task that is mid-job must be told to stop, not cancelled: cancelling
+the coroutine awaiting the scan's worker thread would mark the probe idle
+while the scan kept going.
+"""
+from __future__ import annotations
+
+import asyncio
+import json
+import threading
+import time
+
+import websockets.exceptions
+
+from agent import agent as ag
+
+JOB_SECONDS = 1.2
+
+
+class _Clock:
+    def __init__(self):
+        self.t0 = time.monotonic()
+        self.events: list[tuple[float, str]] = []
+
+    def log(self, msg):
+        self.events.append((round(time.monotonic() - self.t0, 2), msg))
+
+
+class _WS:
+    """A fake connection. With `die_after`, iterating it raises the error a
+    server that went away produces."""
+
+    def __init__(self, *, die_after=None):
+        self.inbox: asyncio.Queue = asyncio.Queue()
+        self.acks: list[dict] = []
+        self.die_after = die_after
+
+    async def send(self, raw):
+        msg = json.loads(raw)
+        if msg.get("type") == "job_ack":
+            self.acks.append(msg)
+            if msg["accepted"]:
+                await self.inbox.put(json.dumps({
+                    "type": "job_claim", "job_id": msg["job_id"], "claimed": True,
+                    "attempt_id": "att-" + msg["job_id"], "fence": 1}))
+
+    async def recv(self):
+        return await self.inbox.get()
+
+    def __aiter__(self):
+        return self
+
+    async def __anext__(self):
+        if self.die_after is not None:
+            await asyncio.sleep(self.die_after)
+            raise websockets.exceptions.ConnectionClosedError(None, None)
+        return await self.inbox.get()
+
+    async def close(self):
+        pass
+
+
+class _Spool:
+    spool_count = 0
+    at_capacity = False
+
+
+class _Transport:
+    agent_token = "t"
+
+    def __init__(self, connections):
+        self.connections = list(connections)
+        self.pollable: list[dict] = []
+        self.poll_times: list[float] = []
+
+    async def connect_ws(self):
+        ws = self.connections.pop(0)
+        await ws.inbox.put(json.dumps(
+            {"type": "hello_ok", "features": ["atomic_job_claim_v1"]}))
+        return ws
+
+    def poll_jobs(self, limit=1):
+        self.poll_times.append(time.monotonic())
+        return [self.pollable.pop(0)] if self.pollable else []
+
+    def heartbeat_ex(self, *a, **k):
+        return ag.HEARTBEAT_OK
+
+    def submit_result(self, *a, **k):
+        return True
+
+
+class _Runner:
+    def __init__(self, clock):
+        self.clock = clock
+        self.live = 0
+        self.peak = 0
+        self._lock = threading.Lock()
+
+    def run_job(self, job, agent_id, cancellation_event=None):
+        with self._lock:
+            self.live += 1
+            self.peak = max(self.peak, self.live)
+        self.clock.log(f"start {job['job_id']}")
+        time.sleep(JOB_SECONDS)
+        with self._lock:
+            self.live -= 1
+        self.clock.log(f"end {job['job_id']}")
+
+        class _Result:
+            error = None
+        return _Result()
+
+
+def _quiet(monkeypatch):
+    monkeypatch.setattr(ag, "say", lambda *a, **k: None)
+    monkeypatch.setattr(ag, "_result_summary", lambda r: "ok")
+    monkeypatch.setattr(ag, "WS_RECONNECT_BACKOFF_MIN", 0.1)
+
+
+async def _stop(loop_task):
+    loop_task.cancel()
+    try:
+        await loop_task
+    except asyncio.CancelledError:
+        pass
+
+
+def test_a_reconnect_does_not_leave_a_second_claimer(monkeypatch):
+    """The field sequence: the socket drops, the probe reconnects, job A is
+    pushed, and job B becomes pollable while A runs. B must wait for A."""
+    _quiet(monkeypatch)
+    clock = _Clock()
+    runner = _Runner(clock)
+    live_ws = _WS()
+    transport = _Transport([_WS(die_after=0.05), live_ws])
+
+    async def scenario():
+        loop = asyncio.create_task(ag._run_ws_push_loop(
+            transport, runner, "agent-1", _Spool(), 30, 1))
+        await asyncio.sleep(1.5)
+        await live_ws.inbox.put(json.dumps(
+            {"type": "job_push", "job": {"job_id": "A", "params": {}}}))
+        await asyncio.sleep(0.3)
+        transport.pollable.append({"job_id": "B", "params": {}})
+        await asyncio.sleep(JOB_SECONDS * 2 + 2.5)
+        await _stop(loop)
+
+    asyncio.run(scenario())
+    assert runner.peak == 1, clock.events
+    starts = {m.split()[1]: t for t, m in clock.events if m.startswith("start")}
+    ends = {m.split()[1]: t for t, m in clock.events if m.startswith("end")}
+    assert set(starts) == {"A", "B"}, clock.events
+    assert starts["B"] >= ends["A"], clock.events
+
+
+def test_a_job_running_when_the_socket_drops_still_makes_the_probe_busy(monkeypatch):
+    """The poll fallback is running B when the socket dies. The next
+    connection must see a busy probe and decline a push for A."""
+    _quiet(monkeypatch)
+    clock = _Clock()
+    runner = _Runner(clock)
+    live_ws = _WS()
+    transport = _Transport([_WS(die_after=1.6), live_ws])
+    transport.pollable.append({"job_id": "B", "params": {}})
+
+    async def scenario():
+        loop = asyncio.create_task(ag._run_ws_push_loop(
+            transport, runner, "agent-1", _Spool(), 30, 1))
+        await asyncio.sleep(2.0)       # B taken at ~1s, socket died at ~1.6s
+        await live_ws.inbox.put(json.dumps(
+            {"type": "job_push", "job": {"job_id": "A", "params": {}}}))
+        await asyncio.sleep(JOB_SECONDS + 1.5)
+        await _stop(loop)
+
+    asyncio.run(scenario())
+    assert runner.peak == 1, clock.events
+    assert live_ws.acks, "the push for A was never answered"
+    assert live_ws.acks[0]["job_id"] == "A"
+    assert live_ws.acks[0]["accepted"] is False, live_ws.acks
+
+
+def test_reconnects_do_not_multiply_the_pollers(monkeypatch):
+    """Every leaked poll task added another claimer — and another request
+    against the manager every interval."""
+    _quiet(monkeypatch)
+    clock = _Clock()
+    transport = _Transport([_WS(die_after=0.05) for _ in range(3)] + [_WS()])
+
+    async def scenario():
+        loop = asyncio.create_task(ag._run_ws_push_loop(
+            transport, _Runner(clock), "agent-1", _Spool(), 30, 1))
+        await asyncio.sleep(1.5)
+        before = len(transport.poll_times)
+        await asyncio.sleep(3.0)
+        window = len(transport.poll_times) - before
+        await _stop(loop)
+        return window
+
+    window = asyncio.run(scenario())
+    assert window <= 4, f"{window} polls in 3s at a 1s interval — pollers are piling up"
+```
+
+- [ ] **Step 2: Run them to verify they fail**
+
+```bash
+cd "$REPO/probe" && ./.venv/bin/python -m pytest tests/test_ws_reconnect_serialization.py -q 2>&1 | tail -6
+```
+
+Expected: 3 failed. The first shows `peak == 2`, the second `accepted` is `True`, and the third reports roughly 12 polls in 3s.
+
+- [ ] **Step 3: Split `_run_ws_push_loop` so leftover pollers are awaited before falling back**
+
+Rename the existing `async def _run_ws_push_loop(` definition line to `async def _ws_connection_loop(` and give it one more parameter, so its signature reads:
+
+```python
+async def _ws_connection_loop(
+    transport: "Transport",
+    runner,
+    agent_id: str,
+    spool,
+    heartbeat_interval: int,
+    poll_interval: int,
+    pollers: set,
+) -> bool:
+```
+
+Keep its docstring. Then insert this new function immediately **above** it:
+
+```python
+async def _run_ws_push_loop(
+    transport: "Transport",
+    runner,
+    agent_id: str,
+    spool,
+    heartbeat_interval: int,
+    poll_interval: int,
+) -> bool:
+    """Persistent WebSocket push loop.
+
+    Returns False if WebSocket is unavailable (caller should fall back to
+    HTTP polling). Returns True only on clean shutdown or unrecoverable error
+    (caller should exit).
+    """
+    pollers: set = set()
+    result = await _ws_connection_loop(
+        transport, runner, agent_id, spool,
+        heartbeat_interval, poll_interval, pollers,
+    )
+    # A poll task may still be finishing a job it claimed. Handing the caller
+    # (the HTTP poll loop) a probe that looks idle mid-scan would start a
+    # second job beside it.
+    await asyncio.gather(*pollers, return_exceptions=True)
+    return result
+```
+
+- [ ] **Step 4: Make the busy-state process-wide and stop tasks on every exit path**
+
+Inside `_ws_connection_loop`, replace:
+
+```python
+    backoff = WS_RECONNECT_BACKOFF_MIN
+    auth_failures = 0
+
+    while True:
+        try:
+            say("Connecting via WebSocket (push mode)...")
+```
+
+with:
+
+```python
+    backoff = WS_RECONNECT_BACKOFF_MIN
+    auth_failures = 0
+    # The probe's one-job-at-a-time state belongs to the PROCESS, not to a
+    # connection: a poll task outliving its socket must still see — and
+    # update — the same busy flag and lock as every later connection.
+    #   current_job_id — a job is RUNNING
+    #   pending_job    — an offer is acked, awaiting the manager's claim
+    #   pending_since  — when it was staged, so it can expire
+    #   claiming       — the fallback is mid-claim and must not be raced
+    job_state = {"current_job_id": None, "pending_job": None,
+                 "pending_since": None, "claiming": False}
+    job_lock = asyncio.Lock()
+
+    while True:
+        hb_task = None
+        stop_polling = asyncio.Event()
+        try:
+            say("Connecting via WebSocket (push mode)...")
+```
+
+Replace:
+
+```python
+            # ── Start heartbeat + HTTP poll fallback tasks ────────────────
+            # WebSocket pushes are process-local on the manager. With multiple
+            # API workers a launch request can land on a different worker than
+            # the probe's WS connection, so keep polling as a safety net.
+            # The probe's one-job-at-a-time state, shared by the receive loop
+            # and the poll fallback:
+            #   current_job_id — a job is RUNNING
+            #   pending_job    — an offer is acked, awaiting the manager's claim
+            #   pending_since  — when it was staged, so it can expire
+            #   claiming       — the fallback is mid-claim and must not be raced
+            job_state = {"current_job_id": None, "pending_job": None,
+                         "pending_since": None, "claiming": False}
+            job_lock = asyncio.Lock()
+            hb_task = asyncio.create_task(
+                _ws_heartbeat_sender(ws, agent_id, heartbeat_interval,
+                                     job_state, spool),
+            )
+            poll_task = asyncio.create_task(
+                _ws_http_poll_fallback(
+                    ws, transport, runner, agent_id, spool,
+                    poll_interval, job_lock, job_state,
+                ),
+            )
+```
+
+with:
+
+```python
+            # ── Start heartbeat + HTTP poll fallback tasks ────────────────
+            # WebSocket pushes are process-local on the manager. With multiple
+            # API workers a launch request can land on a different worker than
+            # the probe's WS connection, so keep polling as a safety net.
+            #
+            # An offer staged on an earlier connection can never be confirmed:
+            # its claim frame would have arrived on the socket that died.
+            job_state["pending_job"] = None
+            job_state["pending_since"] = None
+            hb_task = asyncio.create_task(
+                _ws_heartbeat_sender(ws, agent_id, heartbeat_interval,
+                                     job_state, spool),
+            )
+            poller = asyncio.create_task(
+                _ws_http_poll_fallback(
+                    ws, transport, runner, agent_id, spool,
+                    poll_interval, job_lock, job_state, stop=stop_polling,
+                ),
+            )
+            pollers.add(poller)
+            poller.add_done_callback(pollers.discard)
+```
+
+Delete the normal-exit cleanup block (the `finally` below replaces it on every path):
+
+```python
+            # Loop exited (ws closed by manager)
+            for task in (hb_task, poll_task):
+                task.cancel()
+                try:
+                    await task
+                except asyncio.CancelledError:
+                    pass
+```
+
+Then add a `finally:` to the same `try`. It goes directly after the last `except` branch's final line and before `# Exponential backoff`, at the `try`'s indentation:
+
+```python
+            say(f"WebSocket error: {type(exc).__name__}: {exc} — reconnecting in {backoff:.0f}s...", 1)
+        finally:
+            await _end_ws_session(hb_task, stop_polling)
+
+        # Exponential backoff
+```
+
+- [ ] **Step 5: Add `_end_ws_session` and make the poll loop stoppable**
+
+Add this function directly above `def _ws_expire_stale_offer`:
+
+```python
+async def _end_ws_session(hb_task, stop_polling: asyncio.Event) -> None:
+    """Stop one connection's background work, on every exit path.
+
+    The heartbeat sender only writes to this connection, so it is cancelled.
+    The poll fallback is only told to stop: it may be running a job in a
+    worker thread, and cancelling the coroutine that awaits that thread would
+    clear current_job_id while the scan kept going. It exits once any job it
+    holds has finished.
+    """
+    stop_polling.set()
+    if hb_task is None:
+        return
+    hb_task.cancel()
+    try:
+        await hb_task
+    except asyncio.CancelledError:
+        pass
+```
+
+In `_ws_http_poll_fallback`, add the parameter `stop: asyncio.Event | None = None,` after `job_state: dict,`. Then replace:
+
+```python
+    while True:
+        await asyncio.sleep(max(1, interval))
+        # An offer the manager never confirmed must not strand this loop.
+```
+
+with:
+
+```python
+    stop = stop or asyncio.Event()
+    while not stop.is_set():
+        try:
+            await asyncio.wait_for(stop.wait(), timeout=max(1, interval))
+            return                  # the connection ended while this was idle
+        except asyncio.TimeoutError:
+            pass
+        # An offer the manager never confirmed must not strand this loop.
+```
+
+- [ ] **Step 6: Run the new tests and every test that drives these loops**
+
+```bash
+cd "$REPO/probe" && ./.venv/bin/python -m pytest tests/test_ws_reconnect_serialization.py tests/test_ws_claim_race.py tests/test_spool_backpressure.py tests/test_lease_patience.py -q 2>&1 | tail -2
+```
+
+Expected: all passed.
+
+- [ ] **Step 7: Run the full probe suite once**
+
+```bash
+cd "$REPO/probe" && ./.venv/bin/python -m pytest tests/ -q 2>&1 | tail -1
+```
+
+Expected: 0 failed.
+
+- [ ] **Step 8: Commit**
+
+```bash
+cd "$REPO" && git add probe/agent/agent.py probe/tests/test_ws_reconnect_serialization.py && git commit -F- <<'MSG'
+fix(probe): a dropped WebSocket no longer leaves a second job claimer
+
+The busy-state, lock and poll task were per connection and cleaned up
+only on a normal close. An API restart killed the socket with an
+exception, so the old poll task kept claiming work against a lock nobody
+else held and ran a second scan beside the first. The state is now
+process-wide, and every exit path stops the connection's tasks; a poll
+task mid-job is told to stop instead of cancelled, so the probe cannot
+look idle while a scan is still running.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+MSG
+```
+
+---
+
+### Task 14: Manager — never hand a second job to a probe that holds a running one
+
+**Why:** The queue should hold even when a probe misbehaves: a leaked poller like Task 13's, a probe build that predates that fix, or two processes sharing one identity. The push path already skips busy probes. The poll endpoint claims any pending job for whoever asks. The authority here is the job's lease, not the probe's self-reported status, because the status can be wrong: in the field, the new connection reported "online" while the leaked poller was scanning.
+
+**Files:**
+- Modify: `manager/backend/app/routers/agents.py` (`get_agent_jobs`)
+- Modify: `manager/backend/tests/test_agents.py` (`TestGetAgentJobs`)
+
+**Interfaces:**
+- Consumes: `ScanJob.agent_id` (String column, so compare with `str(agent_id)`), `ScanJob.status`, `ScanJob.lease_expires_at`, `ScanJobStatus.running`, `func` (already imported from sqlalchemy).
+- Produces: `get_agent_jobs` returns `[]` for an agent holding a running job with an unexpired lease. It issues one extra query, immediately after the agent lookup.
+
+- [ ] **Step 1: Write the failing test**
+
+Add to `class TestGetAgentJobs` in `manager/backend/tests/test_agents.py`:
+
+```python
+    @pytest.mark.asyncio
+    async def test_a_probe_holding_a_live_job_is_handed_nothing(self):
+        """One scan per probe, enforced at the queue: a probe that still holds
+        a running job with an unexpired lease gets no second job, whatever it
+        believes about itself."""
+        agent = SimpleNamespace(
+            id=uuid.uuid4(),
+            tenant_id=uuid.uuid4(),
+            capabilities=["discovery"],
+            network_segments=["10.0.0.0/16"],
+        )
+        db = MagicMock()
+        db.execute = AsyncMock(side_effect=[
+            MagicMock(scalar_one_or_none=lambda: agent),
+            MagicMock(first=lambda: (uuid.uuid4(),)),     # a running job it holds
+        ])
+
+        assert await ag.get_agent_jobs(agent.id, db, limit=1) == []
+        assert db.execute.await_count == 2, "went on to look for pending work"
+        busy_query = str(db.execute.await_args_list[1].args[0])
+        assert "scan_jobs.agent_id" in busy_query
+        assert "scan_jobs.status" in busy_query
+        assert "scan_jobs.lease_expires_at >" in busy_query
+```
+
+- [ ] **Step 2: Run it to verify it fails**
+
+```bash
+cd "$REPO/manager/backend" && ./.venv/bin/python -m pytest tests/test_agents.py -q -k live_job 2>&1 | tail -3
+```
+
+Expected: FAIL. The second mocked result is consumed as the candidate query, so the function fails or returns the wrong shape.
+
+- [ ] **Step 3: Implement**
+
+In `get_agent_jobs`, directly after:
+
+```python
+    agent = result.scalar_one_or_none()
+    if not agent:
+        raise HTTPException(404, "Agent not found")
+```
+
+insert:
+
+```python
+    # One job per probe, enforced where the queue lives. A probe keeps its own
+    # one-at-a-time state, but one that loses track of it — a poller left over
+    # from a dropped connection, an older build, two processes sharing one
+    # identity — must still be handed nothing while it holds a live lease.
+    # The lease, not the probe's reported status, is the authority: a probe
+    # that has lost track of a running scan reports itself idle.
+    busy = await db.execute(
+        select(ScanJob.id)
+        .where(
+            ScanJob.agent_id == str(agent_id),
+            ScanJob.status == ScanJobStatus.running,
+            ScanJob.lease_expires_at > func.now(),
+        )
+        .limit(1)
+    )
+    if busy.first() is not None:
+        logger.info("agent.job.poll_while_busy", agent_id=str(agent_id))
+        return []
+```
+
+- [ ] **Step 4: Update the existing tests for the extra query**
+
+Every other test in `TestGetAgentJobs` that calls `get_agent_jobs` feeds `db.execute` an ordered `side_effect` list. In each one, insert `MagicMock(first=lambda: None),` as the **second** element (directly after the `scalar_one_or_none=lambda: agent` entry), meaning "holds no running job". In the same tests, shift every positional index into `db.execute.await_args_list` by +1 (for example `await_args_list[1]` → `[2]`, `[2]` → `[3]`), and increase every `await_count == N` assertion by 1. Find them all with:
+
+```bash
+cd "$REPO/manager/backend" && grep -n "get_agent_jobs\|await_args_list\|await_count" tests/test_agents.py
+```
+
+- [ ] **Step 5: Run the agent tests, then the full manager suite**
+
+```bash
+cd "$REPO/manager/backend" && ./.venv/bin/python -m pytest tests/test_agents.py -q 2>&1 | tail -1 && ./.venv/bin/python -m pytest -q 2>&1 | tail -1
+```
+
+Expected: all passed, then the full suite with 0 failed.
+
+- [ ] **Step 6: Commit**
+
+```bash
+cd "$REPO" && git add manager/backend/app/routers/agents.py manager/backend/tests/test_agents.py && git commit -F- <<'MSG'
+fix(manager): do not hand a second job to a probe holding a live lease
+
+The push path skipped busy probes, but the poll endpoint claimed pending
+work for any caller. A probe that lost track of a running scan was
+handed another and ran both at once. The lease is the authority, since
+such a probe reports itself idle.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+MSG
+```
+
+---
+
+### Task 15: Probe — size the infeasibility refusal by what a two-phase sweep must finish
+
+**Why:** `deep` sweeps all 65,535 ports in two phases. The first pass covers the high-signal ports, and everything after the port stage runs on it. The rest is a tail, budgeted per host, that truncates to `not_scanned` by design. The admission gate sizes the job by the full breadth, so it refuses any aggressive scan wider than about 16 hosts at 150 pps. Your /24 needed 30.8 h by that measure, yet its first pass finishes in about 32 minutes.
+
+**Files:**
+- Modify: `probe/agent/feasibility.py` (add `admission_port_count`)
+- Modify: `probe/agent/engine.py` (preflight sizing; `workflow.modes` import)
+- Create: `probe/tests/test_phased_admission.py`
+
+**Interfaces:**
+- Consumes: `workflow.workflow_engine._port_candidates(profile, service_filter, port_override=...)`, `workflow.modes.includes_stage`, `workflow.modes.STAGE_DEEP_SCAN`, `first_pass_ports` (already computed in `run_scan` before the preflight).
+- Produces: `feasibility.admission_port_count(profile, service_filter, port_override, first_pass_ports, *, phased: bool) -> int`.
+
+- [ ] **Step 1: Write the failing tests**
+
+Create `probe/tests/test_phased_admission.py`:
+
+```python
+"""
+Admission must size a two-phase sweep by the part that has to finish.
+
+`deep` intensity sweeps all 65,535 ports in two phases: a first pass over the
+high-signal ports, with every later stage running on it, then the rest as a
+tail budgeted per host that truncates to not_scanned by design. Sizing the
+refusal by the full breadth refuses any aggressive scan wider than about 16
+hosts at 150 pps, though a /24's first pass finishes in about half an hour.
+"""
+from __future__ import annotations
+
+from agent import engine
+from agent import feasibility as fz
+from workflow.intensity import INTENSITY_PRESETS, intensity_first_pass, intensity_port_override
+from workflow.workflow_engine import _port_candidates
+
+FULL = intensity_port_override("deep")
+FIRST = intensity_first_pass("deep")
+
+
+class TestAdmissionPortCount:
+    def test_a_phased_deep_sweep_is_sized_by_its_first_pass(self):
+        """Mirrors run_engagement's own split, so admission and execution
+        agree on the port set."""
+        expected = len(set(_port_candidates("it", None, port_override=FIRST))
+                       & set(_port_candidates("it", None, port_override=FULL)))
+        n = fz.admission_port_count("it", None, FULL, FIRST, phased=True)
+        assert n == expected
+        assert n < 65535
+
+    def test_an_unphased_sweep_is_sized_by_everything_it_sweeps(self):
+        """A full-port audit stops at the port stage: nothing to bring
+        forward, so every port must finish."""
+        assert fz.admission_port_count("it", None, FULL, FIRST, phased=False) == 65535
+
+    def test_a_job_without_a_first_pass_is_unchanged(self):
+        assert fz.admission_port_count("it", None, None, None, phased=True) \
+            == fz.port_count_for("it", None, None)
+
+
+class TestTheReportedCase:
+    def test_an_aggressive_slash_24_is_admitted(self):
+        preset = INTENSITY_PRESETS["deep"]
+        estimate = fz.estimate(
+            hosts=254,
+            ports=fz.admission_port_count("it", None, FULL, FIRST, phased=True),
+            rate=preset["rate"], ceiling_seconds=7200, retries=preset["retries"])
+        assert estimate.verdict != "cannot_finish"
+
+
+class TestTheGateStillRefuses:
+    def test_a_first_pass_that_cannot_finish_is_still_refused(self):
+        """One host, but a 1 s ceiling: the ~1,145-port first pass at 150 pps
+        needs ~7.6 s. Refused before a packet leaves, and the message states
+        the first-pass arithmetic, not 65,535."""
+        result = engine.run_scan("network_va", {
+            "targets": ["10.77.0.1"],
+            "scope_cidrs": ["10.77.0.0/24"],
+            "intensity": "deep",
+            "max_runtime_seconds": 1,
+        })
+        assert result["error_code"] == "job_cannot_finish"
+        assert "65535" not in result["error"].replace(",", "")
+        assert result["facts"] == []
+```
+
+- [ ] **Step 2: Run them to verify they fail**
+
+```bash
+cd "$REPO/probe" && ./.venv/bin/python -m pytest tests/test_phased_admission.py -q 2>&1 | tail -4
+```
+
+Expected: FAIL with `AttributeError: module 'agent.feasibility' has no attribute 'admission_port_count'`.
+
+- [ ] **Step 3: Add `admission_port_count`**
+
+In `probe/agent/feasibility.py`, directly after `port_count_for`, add:
+
+```python
+def admission_port_count(
+    profile: str,
+    service_filter: set[str] | None,
+    port_override: list[int] | None,
+    first_pass_ports: list[int] | None,
+    *,
+    phased: bool,
+) -> int:
+    """Ports a job MUST sweep to finish — what admission sizes it by.
+
+    A phased sweep (a first pass exists and stages run after the port scan)
+    must finish only that first pass; the remaining ports are a tail budgeted
+    per host that truncates to not_scanned by design. Computes the same split
+    run_engagement makes, so admission and execution agree on the port set.
+    """
+    from workflow.workflow_engine import _port_candidates
+    ports = set(_port_candidates(profile, service_filter, port_override=port_override))
+    if not (phased and first_pass_ports):
+        return len(ports)
+    first = set(_port_candidates(profile, service_filter,
+                                 port_override=list(first_pass_ports))) & ports
+    return len(first) if first and len(first) < len(ports) else len(ports)
+```
+
+- [ ] **Step 4: Use it in the preflight**
+
+In `probe/agent/engine.py`, add two names to the `from workflow.modes import (` block, so it reads:
+
+```python
+from workflow.modes import (
+    STAGE_DEEP_SCAN,
+    assessment,
+    discovery as discovery_mode,
+    host_discovery as host_discovery_mode,
+    includes_stage,
+    port_scan as port_scan_mode,
+    service_fingerprint as service_fingerprint_mode,
+    service_specific,
+    triage,
+)
+```
+
+Then in the preflight, replace:
+
+```python
+        _estimate = feasibility.estimate(
+            hosts=len(targets),
+            ports=_sweep_ports,
+```
+
+with:
+
+```python
+        # Admission sizes a two-phase sweep by its first pass: the tail is
+        # budgeted and truncates to not_scanned by design, so measuring the
+        # full breadth would refuse a /24 aggressive scan whose assessment
+        # finishes in half an hour. The kernel checks below still see the
+        # full sweep.
+        _must_finish = feasibility.admission_port_count(
+            profile, mode.service_filter, port_override, first_pass_ports,
+            phased=includes_stage(mode.stage_ceiling, STAGE_DEEP_SCAN),
+        )
+        if _must_finish < _sweep_ports:
+            LOG.info("two-phase sweep: admission sized by the %d-port first "
+                     "pass; %d further ports are a budgeted tail",
+                     _must_finish, _sweep_ports - _must_finish)
+        _estimate = feasibility.estimate(
+            hosts=len(targets),
+            ports=_must_finish,
+```
+
+Leave `port_count=_sweep_ports` in the `kernel_limits.assess(...)` call unchanged.
+
+- [ ] **Step 5: Run the admission tests and the feasibility/timing suites**
+
+```bash
+cd "$REPO/probe" && ./.venv/bin/python -m pytest tests/test_phased_admission.py tests/test_infeasible_job_admission.py tests/test_feasibility.py tests/test_run_timing.py tests/test_kernel_admission.py -q 2>&1 | tail -1
+```
+
+Expected: all passed. If a test in `test_run_timing.py` or `test_feasibility.py` asserts that a `deep` network_va estimate covers 65,535 ports, it was pinning the old sizing. Report it as a concern with the assertion quoted; do not change its expectation without saying so.
+
+- [ ] **Step 6: Commit**
+
+```bash
+cd "$REPO" && git add probe/agent/feasibility.py probe/agent/engine.py probe/tests/test_phased_admission.py && git commit -F- <<'MSG'
+fix(probe): size admission by what a two-phase sweep must finish
+
+deep is two-phase: a first pass the assessment runs on, then a budgeted
+tail that truncates to not_scanned. Admission sized it by all 65,535
+ports, so any aggressive scan wider than ~16 hosts was refused; a /24
+was rejected as needing 30.8 h though its first pass takes ~32 min.
+
+Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
+MSG
+```
+
+---
+
 ## Deliberately not in this plan
 
 | Finding | Why not now |
