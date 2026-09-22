@@ -1,37 +1,16 @@
 """
-P2/D1 — the SYN scanner must drain replies WHILE it is still sending.
+The SYN scanner must drain replies WHILE it is still sending.
 
-THE DEFECT
-----------
-Each retransmit round was two serial phases:
+A round that sends its whole cohort before reading the socket leaves every
+reply waiting in the receive buffer. Plain SO_RCVBUF is clamped to
+net.core.rmem_max (~208 KB by default, doubled by the kernel) and charged per
+skb->truesize, so a few hundred replies fill it; the rest are dropped with no
+error and the ports read as `filtered`. The overflow depends on how many ports
+are in the round, not on the send rate.
 
-    for port in pending:  sendto(SYN)      # nothing reads the socket here
-    while pending_set:    recv(reply)      # ...only now
-
-Every reply provoked by the send phase therefore waits in SO_RCVBUF until the
-whole cohort has gone out. The buffer is 4 MB, but Linux charges `skb->truesize`
-— roughly 768 B for a 40-byte TCP segment, not 40 — so it holds on the order of
-5,000 packets, NOT the ~40,000 a payload-bytes estimate suggests.
-
-A 65,535-port sweep of a mostly-closed host answers with up to 65,535 RSTs. The
-buffer saturates about 5,000 in; the kernel discards the rest **silently**.
-Those ports stay unresolved, burn their retransmit rounds hitting the same wall,
-and are finally reported `filtered` — ports that answered, reported as
-firewalled, with nothing anywhere in the result to say so.
-
-This is rate-independent: the overflow is set by how many ports are in the
-round, not how fast they go out. Pacing the sends does not help, and `deep`
-intensity resolves all 65,535 ports, which is precisely the configuration that
-routes the port stage to THIS scanner.
-
-WHAT THESE TESTS CAN AND CANNOT PROVE
--------------------------------------
-Raw sockets do not work on macOS, so the packet path itself is still only
-verifiable on Linux with NET_RAW. What is verified here is the part that was
-actually wrong: the LOOP STRUCTURE. A fake kernel with a bounded, silently
-dropping receive queue reproduces the false `filtered` exactly, and the same
-fixture proves the interleaved drain removes it. Byte-level correctness is
-unchanged by this fix — build_syn_packet and parse_packet are untouched.
+These tests replace the KERNEL, not the scanner: a bounded receive queue that
+drops silently, driving the real _syn_scan_blocking. They prove the loop
+structure. The packet bytes still need Linux with NET_RAW to verify.
 """
 from __future__ import annotations
 
@@ -230,3 +209,25 @@ class TestUnchangedContract:
         net["kernel"].deliver(bytes(forged))
         states = _states(_scanner([9000, 9001])._syn_scan_blocking(TARGET))
         assert states[9000] == "closed"
+
+
+class _Flood:
+    """A socket that always has another packet queued."""
+
+    def __init__(self):
+        self.recv_calls = 0
+
+    def recv(self, _n):
+        self.recv_calls += 1
+        return b"\x00" * 40            # unparseable, so ignored — but consumed
+
+
+class TestTheDrainIsBounded:
+    def test_one_call_consumes_at_most_one_batch(self):
+        """Without the cap, a host answering faster than we send would hold
+        the send loop forever."""
+        sock = _Flood()
+        _scanner([9000])._drain_ready(
+            sock, dst_ip=TARGET, src_port=SRC_PORT, send_at={}, states={},
+            pending_set=set(), meta={}, est=None)
+        assert sock.recv_calls == ss._DRAIN_BATCH

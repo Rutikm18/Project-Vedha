@@ -85,6 +85,10 @@ TCP_RST = 0x04
 TCP_PSH = 0x08
 TCP_ACK = 0x10
 
+# Replies consumed per drain call: bounds catch-up so a reply flood cannot
+# starve the send loop.
+_DRAIN_BATCH = 64
+
 
 # ── packet crafting ───────────────────────────────────────────────────────────
 
@@ -402,7 +406,7 @@ class SynScanner(BaseScanner):
 
     def _accept_reply(self, raw: bytes, *, dst_ip: str, src_port: int,
                       send_at: dict, states: dict, pending_set: set,
-                      meta: dict, est) -> bool:
+                      meta: dict, est) -> None:
         """Validate one raw packet and, if it is ours, resolve its port.
 
         Three independent filters before anything is believed: the source
@@ -414,14 +418,14 @@ class SynScanner(BaseScanner):
         """
         parsed = parse_packet(raw)
         if not parsed or parsed["ip_src"] != dst_ip:
-            return False
+            return
         if parsed["dst_port"] != src_port:
-            return False
+            return
         if not verify_reply_cookie(parsed, src_port, self._key):
-            return False
+            return
         verdict = classify(parsed["flags"])
         if not verdict:
-            return False
+            return
         rport = parsed["src_port"]
         states.setdefault(rport, verdict)
         pending_set.discard(rport)
@@ -445,26 +449,15 @@ class SynScanner(BaseScanner):
                 m["wscale"] = parsed["wscale"]
             if parsed.get("olayout"):
                 m["olayout"] = parsed["olayout"]
-        return True
 
-    def _drain_ready(self, recv_sock, *, max_packets: int = 64, **ctx) -> int:
-        """Consume replies already queued, without blocking. Returns the count.
-
-        `max_packets` bounds one call so a host answering faster than we send
-        cannot hold the send loop indefinitely: the cap turns a starvation risk
-        into a bounded amount of catch-up per packet sent.
-        """
-        harvested = 0
-        while harvested < max_packets:
+    def _drain_ready(self, recv_sock, **ctx) -> None:
+        """Consume up to _DRAIN_BATCH replies already queued, without blocking."""
+        for _ in range(_DRAIN_BATCH):
             try:
                 raw = recv_sock.recv(65535)
-            except BlockingIOError:
-                break                       # nothing queued — the common case
-            except OSError:
-                break
+            except OSError:        # includes BlockingIOError: nothing queued
+                return
             self._accept_reply(raw, **ctx)
-            harvested += 1
-        return harvested
 
     def _syn_scan_blocking(self, target: str) -> list[ScanResult]:
         # REQUEST IPv4 explicitly: this raw path is v4-only, so taking whatever
@@ -557,18 +550,12 @@ class SynScanner(BaseScanner):
                         pending_set.add(port)
                     except OSError as exc:
                         LOG.debug("send SYN %s:%d failed: %s", dst_ip, port, exc)
-                    # DRAIN AS WE SEND. Every SYN provokes its reply about one
-                    # RTT later, i.e. while this loop is still running, and the
-                    # socket is the only thing holding them. SO_RCVBUF is 4 MB
-                    # but Linux charges skb->truesize (~768 B for a 40-byte
-                    # segment, not 40), so it holds on the order of 5,000
-                    # packets — and a 65,535-port sweep of a mostly-closed host
-                    # answers with 65,535 RSTs. The overflow is dropped with no
-                    # error, and those ports end up reported `filtered`.
-                    #
-                    # Rate does NOT save this: the overflow is set by how many
-                    # ports are in the round, not how fast they leave. Bounded
-                    # per call so a reply flood cannot starve the send loop.
+                    # Drain as we send: each SYN's reply arrives about one RTT
+                    # later, while this loop is still running. Plain SO_RCVBUF
+                    # is clamped to net.core.rmem_max (~208 KB by default, which
+                    # the kernel doubles) and charged per skb->truesize, so a few
+                    # hundred replies fill it. Overflow is dropped with no error
+                    # and reads as `filtered`, however slowly we send.
                     self._drain_ready(recv_sock, **ctx)
 
                 # Collect replies for this round within the adaptive window.
