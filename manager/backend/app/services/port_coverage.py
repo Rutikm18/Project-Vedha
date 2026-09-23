@@ -105,20 +105,67 @@ def summarize_coverage(ranges: dict | None) -> dict:
     return summary
 
 
-def ranges_from_facts(facts, host: str) -> dict:
-    """The port-state ranges one host's scan_summary carries.
-
-    A host can have more than one summary in a job: the two-phase sweep emits
-    one after the fast pass and another after the port tail. The LAST wins —
-    it is the one that describes the widest coverage.
+def encode_port_states(states: dict[int, str]) -> dict:
+    """Run-length encode a {port: state} map into the {state: [[lo, hi], ...]}
+    shape scan_summary carries. The inverse of decode_port_states(), and the
+    other half of the round trip ranges_from_facts() needs to MERGE more than
+    one summary's ranges back into that same canonical shape.
     """
-    found: dict = {}
+    spans: dict[str, list[list[int]]] = {}
+    run_state: str | None = None
+    run_start = run_end = 0
+    for port in sorted(states):
+        state = states[port]
+        if state == run_state and port == run_end + 1:
+            run_end = port                      # the run continues
+            continue
+        if run_state is not None:               # a different state, or a gap
+            spans.setdefault(run_state, []).append([run_start, run_end])
+        run_state, run_start, run_end = state, port, port
+    if run_state is not None:
+        spans.setdefault(run_state, []).append([run_start, run_end])
+    return spans
+
+
+def ranges_from_facts(facts, host: str) -> dict:
+    """The port-state ranges every scan_summary for one host MERGE into.
+
+    A host can carry more than one scan_summary in a job: a two-phase deep
+    scan emits one after the fast first pass (the high-signal ports) and
+    another after the port tail (the rest of the requested range), and their
+    requested port sets are disjoint. Neither summary alone describes the
+    host's full coverage, so every summary for the host is combined into one
+    port -> state map instead of picking one:
+
+      * a definitive state (open/closed/filtered/unreachable/error/
+        open|filtered) from ANY summary beats `not_scanned` for that port —
+        a summary that never touched a port (because a different phase
+        covered it) must not blank out a verdict another summary already
+        gave it;
+      * when two summaries disagree with a different DEFINITIVE state for
+        the SAME port, the summary that appears later in `facts` wins.
+
+    The merged map is re-encoded into the same run-length {state: [[lo, hi],
+    ...]} shape every other reader of this module expects.
+    """
+    merged: dict[int, str] = {}
     for fact in facts or []:
         if not isinstance(fact, dict):
             continue
         if fact.get("status") != "scan_summary" or fact.get("target") != host:
             continue
         states = (fact.get("data") or {}).get("port_states")
-        if isinstance(states, dict):
-            found = states
-    return found
+        if not isinstance(states, dict):
+            continue
+        for port, state in decode_port_states(states).items():
+            if state == "not_scanned":
+                # Never overwrites an existing verdict, from an earlier OR a
+                # later-processed summary — not_scanned is the absence of an
+                # opinion, not one.
+                merged.setdefault(port, state)
+            else:
+                # A definitive state always wins, including over an earlier
+                # definitive state: this is what makes the LATER summary win
+                # a same-port disagreement.
+                merged[port] = state
+    return encode_port_states(merged)

@@ -149,8 +149,12 @@ class TestExtraction:
         only_open = [f for f in _facts() if f["status"] == "open"]
         assert ranges_from_facts(only_open, "10.0.0.5") == {}
 
-    def test_a_later_summary_wins(self):
-        """The port tail re-emits a host's summary with wider coverage."""
+    def test_a_later_definitive_state_wins_and_extends_coverage(self):
+        """A second summary for the same host (e.g. the port tail re-scanning
+        a port the first pass also covered) must MERGE with, not replace,
+        the earlier one: its new port (8443, previously not_scanned) is
+        added, and its re-affirmed port (22) keeps agreeing, while every
+        port the second summary never mentions keeps its first verdict."""
         from app.services.port_coverage import ranges_from_facts
 
         facts = _facts() + [
@@ -158,8 +162,57 @@ class TestExtraction:
              "status": "scan_summary",
              "data": {"port_states": {"open": [[22, 22], [8443, 8443]]}}},
         ]
+        result = ranges_from_facts(facts, "10.0.0.5")
+        assert result == {
+            "open": [[22, 22], [443, 443], [8443, 8443]],
+            "closed": [[1, 21], [23, 442]],
+            "filtered": [[500, 510]],
+            # 8443 sat inside RANGES' [1000, 65535] not_scanned span; the
+            # later definitive "open" for it splits that span around it.
+            "not_scanned": [[1000, 8442], [8444, 65535]],
+        }
+
+    def test_two_summaries_with_disjoint_ports_both_survive_the_merge(self):
+        """The realistic two-phase shape: a first-pass summary over the
+        high-signal ports and a tail summary over the rest, with NO overlap
+        in what each one even mentions."""
+        from app.services.port_coverage import ranges_from_facts
+
+        first_pass = {"open": [[22, 22]], "closed": [[80, 80]]}
+        tail = {"closed": [[443, 443]], "not_scanned": [[8000, 8000]]}
+        facts = [
+            {"scanner": "port_scan", "target": "10.0.0.5",
+             "status": "scan_summary", "data": {"port_states": first_pass}},
+            {"scanner": "syn_scan", "target": "10.0.0.5",
+             "status": "scan_summary", "data": {"port_states": tail}},
+        ]
+
         assert ranges_from_facts(facts, "10.0.0.5") == {
-            "open": [[22, 22], [8443, 8443]]}
+            "open": [[22, 22]],
+            "closed": [[80, 80], [443, 443]],
+            "not_scanned": [[8000, 8000]],
+        }
+
+    def test_a_definitive_state_beats_not_scanned_regardless_of_fact_order(self):
+        """A port the tail budget never reached (not_scanned) must not erase
+        a definitive verdict the first pass already gave it — and the
+        reverse must never invent not_scanned over a definitive answer."""
+        from app.services.port_coverage import ranges_from_facts
+
+        definitive_first = [
+            {"scanner": "port_scan", "target": "10.0.0.5",
+             "status": "scan_summary",
+             "data": {"port_states": {"closed": [[443, 443]]}}},
+            {"scanner": "syn_scan", "target": "10.0.0.5",
+             "status": "scan_summary",
+             "data": {"port_states": {"not_scanned": [[443, 443]]}}},
+        ]
+        assert ranges_from_facts(definitive_first, "10.0.0.5") == {
+            "closed": [[443, 443]]}
+
+        not_scanned_first = list(reversed(definitive_first))
+        assert ranges_from_facts(not_scanned_first, "10.0.0.5") == {
+            "closed": [[443, 443]]}
 
 
 # ── the endpoint is wired and gated ─────────────────────────────────────────
