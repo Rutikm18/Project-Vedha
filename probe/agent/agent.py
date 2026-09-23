@@ -926,14 +926,17 @@ async def _run_ws_push_loop(
     can take as long as that scan: the HTTP poll loop must not start beside it.
     """
     pollers: set = set()
-    result = await _ws_connection_loop(
-        transport, runner, agent_id, spool,
-        heartbeat_interval, poll_interval, pollers,
-    )
-    # A poll task may still be finishing a job it claimed. Handing the caller
-    # (the HTTP poll loop) a probe that looks idle mid-scan would start a
-    # second job beside it.
-    await asyncio.gather(*pollers, return_exceptions=True)
+    try:
+        result = await _ws_connection_loop(
+            transport, runner, agent_id, spool,
+            heartbeat_interval, poll_interval, pollers,
+        )
+    finally:
+        # A poll task may still be finishing a job it claimed. Handing the
+        # caller (the HTTP poll loop) a probe that looks idle mid-scan would
+        # start a second job beside it. This runs even when the connection
+        # loop raises, so a crash cannot leave a claimed job orphaned.
+        await asyncio.gather(*pollers, return_exceptions=True)
     return result
 
 
@@ -1078,7 +1081,8 @@ async def _ws_connection_loop(
                     break
 
         except websockets.exceptions.ConnectionClosed as exc:
-            say(f"WebSocket closed (code={exc.code}) — reconnecting in {backoff:.0f}s...")
+            close_code = exc.rcvd.code if exc.rcvd is not None else None
+            say(f"WebSocket closed (code={close_code}) — reconnecting in {backoff:.0f}s...")
         except (OSError, asyncio.TimeoutError) as exc:
             say(f"WebSocket unavailable ({exc}) — reconnecting in {backoff:.0f}s...")
         except TransportError as exc:

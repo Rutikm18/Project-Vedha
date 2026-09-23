@@ -1091,7 +1091,9 @@ def run_scan(scan_type: str, params: dict,
                 LOG.warning("preflight[%s] %s — %s",
                             _check.name, _check.detail, _check.remediation)
     except Exception as exc:  # noqa: BLE001 — diagnostics never fail a scan
-        LOG.warning("job preflight skipped; kernel gate not evaluated: %r", exc)
+        # Only the advisory preflight logging is skipped here; the binding
+        # admission decision below still runs.
+        LOG.warning("job preflight diagnostics skipped (advisory only): %r", exc)
 
     # ADMISSION. The estimate is advisory everywhere else; here it decides.
     # A job whose floor already exceeds its ceiling will spend the whole
