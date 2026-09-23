@@ -10,6 +10,7 @@ result schema (v1.1) — matches techprompt.md Part A §A4:
 from __future__ import annotations
 
 import asyncio
+import dataclasses
 import logging
 import os
 import socket
@@ -247,6 +248,18 @@ def _job_runtime_seconds(params: dict) -> float:
         MAX_JOB_SECONDS,
         MAX_JOB_SECONDS,
     )
+
+
+def _tail_deadline(now: float, job_runtime_seconds: float) -> float:
+    """Monotonic time by which the port tail must stop starting work.
+
+    Leaves a reserve inside the job ceiling for everything after the tail —
+    re-assessing ports it opened, liveness verdicts, credentialed collection,
+    and building the result — so a wide sweep ends as a completed scan with
+    its unreached ports reported not_scanned, not as a deadline failure.
+    """
+    reserve = max(300.0, 0.15 * job_runtime_seconds)
+    return now + max(0.0, job_runtime_seconds - reserve)
 
 
 def _truthy(value) -> bool:
@@ -1035,6 +1048,10 @@ def run_scan(scan_type: str, params: dict,
             ceiling_seconds=job_runtime_seconds,
             retries=int(tuning["retries"]),
         )
+        if _estimate is not None and _must_finish < _sweep_ports:
+            # Said in the result, beside the outcome: a `fits` verdict here is
+            # about the first pass, not a promise that every port gets swept.
+            _estimate = dataclasses.replace(_estimate, scope="first_pass")
         LOG.info("%s", feasibility.describe(_estimate))
         _kernel_checks = _kernel_limits.assess(
             _kernel_limits.probe_limits(),
@@ -1098,6 +1115,10 @@ def run_scan(scan_type: str, params: dict,
         discover_ipv6=discover_ipv6,
     ))
 
+    # The port tail's stop line, inside the ceiling that wait_for below still
+    # enforces as the hard backstop. Taken immediately before wait_for starts
+    # its own clock, so both measure the same ceiling from the same moment.
+    tail_deadline = _tail_deadline(time.monotonic(), job_runtime_seconds)
     try:
         asyncio.run(asyncio.wait_for(
             _run_with_cancellation(
@@ -1108,6 +1129,7 @@ def run_scan(scan_type: str, params: dict,
                     stage_ceiling=mode.stage_ceiling,
                     port_override=port_override,
                     first_pass_ports=first_pass_ports,
+                    tail_deadline=tail_deadline,
                     scan_method=scan_method,
                     # Per-host commit + resume: a host finished by an attempt
                     # that later dies is still delivered, and a retry does not

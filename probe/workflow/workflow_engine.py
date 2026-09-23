@@ -147,6 +147,39 @@ async def _gather_per_host(
     return [result for batch in per_host for result in batch]
 
 
+# The smallest tail budget a host is ever given. Both port scanners read a
+# falsy budget (0 or None) as UNBOUNDED, so a host that starts after the job's
+# tail deadline must get a tiny POSITIVE one: the scanner then probes nothing
+# and its scan_summary reports those ports not_scanned.
+_MIN_TAIL_BUDGET = 0.001
+
+
+class _BudgetedScan:
+    """ONE shared scanner, driven with a budget chosen as each host starts.
+
+    The port tail's hosts share one scanner because its rate limiter, socket
+    semaphore and SYN send pacer are what hold the stage to the envelope the
+    job was admitted under; a scanner per host would multiply all three by the
+    hosts in flight. Only the budget differs per host, so it travels per call.
+
+    Exposes what _scan_one uses — `name` and `scan_target(host)` — and calls
+    the shared scanner's scan_target for exactly the host it was given, which
+    is the call every per-host stage makes. Scope is enforced where
+    run_engagement filters its targets, so the path is unchanged.
+    """
+
+    def __init__(self, scanner, budget_for):
+        self._scanner = scanner
+        self._budget_for = budget_for
+        self.name = scanner.name
+
+    async def scan_target(self, host: str) -> list[ScanResult]:
+        # Evaluated HERE, after _gather_per_host has granted this host a slot,
+        # so the budget reflects when the host's sweep actually starts.
+        return await self._scanner.scan_target(
+            host, deadline_seconds=self._budget_for())
+
+
 def _split_cached(cache: WorkflowCache, host: str, candidate_ports: list[int],
                   scanner_name: str, force_recheck_after: timedelta | None = None
                   ) -> tuple[list[int], list[ScanResult]]:
@@ -386,6 +419,7 @@ async def run_engagement(targets: list[str], scope: ScopeGuard, *, profile: str 
                          rate: float = 200.0, concurrency: int = 100, timeout: float = 3.0,
                          disc_timeout: float = 1.5, retries: int = 1,
                          max_host_seconds: float | None = None,
+                         tail_deadline: float | None = None,
                          port_override: list[int] | None = None,
                          first_pass_ports: list[int] | None = None,
                          on_host_complete=None,
@@ -407,6 +441,10 @@ async def run_engagement(targets: list[str], scope: ScopeGuard, *, profile: str 
     the Asset dict. Pass a pre-loaded `assets`/`cache` (e.g. from a prior
     engagement's JSONL) to get re-scan/delta behavior for free — gates and
     cache.should_recheck() naturally skip work that's still fresh.
+
+    `tail_deadline` (a time.monotonic() value) bounds a phased sweep's port
+    tail by the job's time budget: each host's tail budget is capped at the
+    time left when that host starts. None bounds it by max_host_seconds alone.
     """
     cache = cache or WorkflowCache()
     # How many hosts run their deep-branch sequence at once. Deliberately far
@@ -945,17 +983,36 @@ async def run_engagement(targets: list[str], scope: ScopeGuard, *, profile: str 
 
     # --- Port tail: the rest of the requested range ----------------------
     # Every host now has a real assessment of the high-signal ports. Only now do
-    # we spend the hours the wide sweep costs — and because each host's results
-    # are delivered as it finishes (see _deliver), losing the tail to a runtime
-    # ceiling costs the tail, not the assessment.
+    # we spend the hours the wide sweep costs, and only as many as the job has:
+    # with a tail_deadline, each host's budget is the smaller of
+    # max_host_seconds and the time left when that host starts, so a wide job
+    # goes on to the liveness verdicts and credentialed collection below
+    # instead of running into its runtime ceiling. Ports a budget does not
+    # reach are reported not_scanned.
+    #
+    # Nothing is cancelled. The SYN sweep runs in a worker thread that
+    # cancellation cannot stop — it would keep sending after the job ended —
+    # so the budget is cooperative: the scanners stop SENDING when it is spent.
+    # Each host's results are still delivered as it finishes (see _deliver).
     if tail_ports and branch_hosts:
         before = {h: set(assets[h].open_ports_for_deep_scan()) for h in branch_hosts}
-        LOG.info("stage port_scan: tail of %d port(s) across %d host(s)",
-                 len(tail_ports), len(branch_hosts))
+        LOG.info("stage port_scan: tail of %d port(s) across %d host(s)%s",
+                 len(tail_ports), len(branch_hosts),
+                 "" if tail_deadline is None else
+                 f", {max(0.0, tail_deadline - time.monotonic()):.0f}s of the "
+                 f"job's tail budget left")
+
+        def _tail_budget() -> float | None:
+            if tail_deadline is None:
+                return max_host_seconds
+            left = tail_deadline - time.monotonic()
+            budget = min(max_host_seconds, left) if max_host_seconds else left
+            return max(_MIN_TAIL_BUDGET, budget)
+
         tail_scanner = _port_scanner_for(tail_ports, method=scan_method)
         with _timed(trace, "port_scan"):
             tail_results = await _gather_per_host(
-                tail_scanner,
+                _BudgetedScan(tail_scanner, _tail_budget),
                 branch_hosts,
                 max_in_flight=host_concurrency,
                 on_results=_deliver,

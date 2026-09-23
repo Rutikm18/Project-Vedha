@@ -43,7 +43,7 @@ import time
 
 from .adaptive_timeout import AdaptiveTimeout
 from .os_fingerprint import fingerprint_os
-from .port_scanner import _NMAP_TOP_100, PortScanner
+from .port_scanner import _NMAP_TOP_100, _UNSET, PortScanner
 from .scanner_base import (
     LOG,
     BaseScanner,
@@ -379,30 +379,43 @@ class SynScanner(BaseScanner):
             randomize=self.randomize, scan_delay=self.scan_delay,
             retries=self.retries, deadline_seconds=self.deadline_seconds)
 
-    async def scan_target(self, target: str) -> list[ScanResult]:
+    async def scan_target(self, target: str, *,
+                          deadline_seconds=_UNSET) -> list[ScanResult]:
+        """SYN-scan one host, or connect-scan it where raw sockets are refused.
+
+        `deadline_seconds`, when given, is this host's budget for this call
+        only, exactly as in PortScanner.scan_target: the instance is shared
+        across hosts, and so are its send pacer and rate limiter. It is handed
+        to BOTH paths. The connect fallback was built with the instance budget,
+        so an attribute written here afterwards would never reach it.
+        """
         if self._supported:
             try:
-                return await self._syn_scan_target(target)
+                return await self._syn_scan_target(target, deadline_seconds)
             except (PermissionError, OSError) as exc:
                 # Lost the capability mid-run (e.g. dropped privileges) — degrade
                 # to a connect scan rather than failing the target.
                 LOG.warning("syn scan unavailable (%s); falling back to connect", exc)
                 self._supported = False
                 self._fallback = self._make_fallback()
-        return await self._fallback_scan(target)
+        return await self._fallback_scan(target, deadline_seconds)
 
-    async def _fallback_scan(self, target: str) -> list[ScanResult]:
-        results = await self._fallback.scan_target(target)
+    async def _fallback_scan(self, target: str,
+                             deadline_seconds=_UNSET) -> list[ScanResult]:
+        results = await self._fallback.scan_target(
+            target, deadline_seconds=deadline_seconds)
         for r in results:
             r.scanner = self.name
             r.data = {**(r.data or {}), "method": "connect_fallback"}
         return results
 
     # -- SYN path (Linux, privileged; not exercised in the macOS/dev test env) --
-    async def _syn_scan_target(self, target: str) -> list[ScanResult]:
+    async def _syn_scan_target(self, target: str,
+                               deadline_seconds=_UNSET) -> list[ScanResult]:
         loop = asyncio.get_running_loop()
         await self.limiter.wait()
-        return await loop.run_in_executor(None, self._syn_scan_blocking, target)
+        return await loop.run_in_executor(None, self._syn_scan_blocking, target,
+                                          deadline_seconds)
 
     def _accept_reply(self, raw: bytes, *, dst_ip: str, src_port: int,
                       send_at: dict, states: dict, pending_set: set,
@@ -459,7 +472,8 @@ class SynScanner(BaseScanner):
                 return
             self._accept_reply(raw, **ctx)
 
-    def _syn_scan_blocking(self, target: str) -> list[ScanResult]:
+    def _syn_scan_blocking(self, target: str,
+                           deadline_seconds=_UNSET) -> list[ScanResult]:
         # REQUEST IPv4 explicitly: this raw path is v4-only, so taking whatever
         # getaddrinfo sorts first meant a dual-stack host whose AAAA leads was
         # kicked to the slower connect fallback even though its A record was
@@ -515,8 +529,9 @@ class SynScanner(BaseScanner):
             # Wall-clock budget for this host. Checked before each round and
             # before each SEND — never mid-flight — so a port is either fully
             # probed or never touched, and the results stay unambiguous.
-            budget_end = (time.monotonic() + self.deadline_seconds
-                          if self.deadline_seconds else None)
+            budget = (self.deadline_seconds if deadline_seconds is _UNSET
+                      else deadline_seconds)
+            budget_end = (time.monotonic() + budget if budget else None)
             for _round in range(rounds):
                 if not pending:
                     break

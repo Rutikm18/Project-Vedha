@@ -66,6 +66,11 @@ class Estimate:
     #: The rate that would make the whole scope fit. Often above the clamp.
     required_rate: float
     verdict: str                      # "fits" | "tight" | "cannot_finish"
+    #: What `ports` covers. "full_sweep": every port the job sweeps.
+    #: "first_pass": only a phased sweep's first pass. Its tail runs inside
+    #: whatever time budget is left, so a `fits` here promises nothing about
+    #: the remaining ports, which may end up reported not_scanned.
+    scope: str = "full_sweep"
 
 
 def estimate(
@@ -178,6 +183,7 @@ def as_run_stats(est: Estimate | None) -> dict | None:
         "reachable_hosts": est.reachable_hosts,
         "required_rate": round(est.required_rate, 1),
         "verdict": est.verdict,
+        "scope": est.scope,
     }
 
 

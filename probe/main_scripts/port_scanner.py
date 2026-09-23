@@ -90,6 +90,12 @@ _CONFIDENCE = STATE_CONFIDENCE
 # _ERRNO_MAP, STATE_CONFIDENCE and classify_os_error moved to scanner_base
 # (Phase 2 — one shared errno→state classifier for TCP, UDP and deeper scanners).
 
+# "No per-call budget given: use the instance's." A sentinel rather than None
+# because None is itself a budget (unbounded) that a caller may pass on purpose.
+# SynScanner imports this one object so a value it forwards to its connect
+# fallback is read the same way there.
+_UNSET = object()
+
 
 def _harvest_tcp_stack(sock) -> dict:
     """
@@ -846,7 +852,8 @@ class PortScanner(BaseScanner):
         }
         return resolved, stats
 
-    async def scan_target(self, target: str) -> list[ScanResult]:
+    async def scan_target(self, target: str, *,
+                          deadline_seconds=_UNSET) -> list[ScanResult]:
         """Bounded worker-pool scan of every requested port.
 
         A fixed pool of `concurrency` workers drains a queue of ports, so a full
@@ -855,7 +862,15 @@ class PortScanner(BaseScanner):
         natural backpressure). Every port is dequeued exactly once and produces
         exactly one terminal result, tallied in ScanMetrics before any output
         filtering — so the engine can prove requested == attempted == classified.
+
+        `deadline_seconds`, when given, is this host's budget for this call
+        only, in place of `self.deadline_seconds`. One instance scans many hosts
+        at once — its rate limiter and socket semaphore are what bound the
+        stage — so a budget that differs per host has to travel with the call;
+        writing the attribute would change it for every host that starts after.
         """
+        budget = (self.deadline_seconds if deadline_seconds is _UNSET
+                  else deadline_seconds)
         t0 = time.monotonic()
         metrics = ScanMetrics(target=target, vantage=self.vantage,
                               ports_requested=len(self.ports),
@@ -906,7 +921,7 @@ class PortScanner(BaseScanner):
         # pass re-probes by NUMBER, and an unresolved silent port is only ever
         # tallied. This is what keeps a fully-filtered host flat in memory.
         ambiguous_attempts: dict[int, int] = {}
-        _deadline = (t0 + self.deadline_seconds) if self.deadline_seconds else None
+        _deadline = (t0 + budget) if budget else None
 
         async def _worker() -> None:
             while True:

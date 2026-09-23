@@ -20,5 +20,5 @@ export const INTENSITY: IntensityOption[] = [
   { id: "normal",     label: "Normal",     rate: 200, color: "var(--accent)",        angle: 0,   sweep: "3.4s",
     why: "Balanced default. Right for most internal engagements with no special constraints." },
   { id: "aggressive", label: "Aggressive", rate: 150, color: "var(--sev-high-color)", angle: 60,  sweep: "4.2s",
-    why: "Exhaustive, not fast: all 65,535 ports, probed patiently so silence means a firewall rather than a rushed probe. Each host runs on a time budget; a large estate takes hours." },
+    why: "Exhaustive where time allows: high-signal ports first on every host, then as much of all 65,535 ports as the job's time budget allows — the rest is reported as not scanned." },
 ];

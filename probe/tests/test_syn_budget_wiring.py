@@ -60,7 +60,7 @@ class TestFallbackCarriesTheBudget:
         sc._supported = True
         sc._fallback = None
 
-        async def _boom(target):
+        async def _boom(target, *_):
             raise OSError("privileges dropped")
         sc._syn_scan_target = _boom
 

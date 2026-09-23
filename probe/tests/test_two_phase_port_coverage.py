@@ -65,7 +65,9 @@ def _wire(monkeypatch, log, *, open_in_first=(22,), open_in_tail=()):
                 self.ports = sorted(ports or [])
                 self.kwargs = kwargs
 
-            async def scan_target(self, host):
+            # The tail passes each host's budget per call, as the real port
+            # scanners accept it.
+            async def scan_target(self, host, *, deadline_seconds=None):
                 log.add(f"{kind}:construct", tuple(self.ports))
                 opens = [p for p in self.ports
                          if p in (open_in_tail if TAIL_ONLY_OPEN in self.ports
