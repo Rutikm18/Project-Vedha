@@ -34,6 +34,8 @@ import time
 
 import pytest
 
+from main_scripts import scanner_base as msb_scanner_base
+from scanner import scanner_base as scanner_scanner_base
 from scanner import syn_scanner as ss
 from scanner.scanner_base import ScopeGuard, SendPacer
 
@@ -247,34 +249,111 @@ class TestSendPacerHardCeiling:
 
 # ── R3: SendPacer.pace() is thread-safe ──────────────────────────────────────
 
+class _FrozenClockWithRendezvous:
+    """A `time` stand-in for `scanner_base`: `monotonic()` never advances, and
+    `sleep(d)` records the wake instant the caller asked for and then blocks
+    on a `threading.Barrier` until every expected caller has also asked to
+    sleep, instead of actually waiting.
+
+    This is what turns the thread-safety check deterministic. With a real
+    clock, two threads racing to read the same stale `_next` only collide if
+    the OS happens to schedule them within a few microseconds of each other —
+    a reviewer measured that wall-clock approach passing 0/20 times against
+    an implementation that reads, sleeps, then writes `_next` with no lock
+    around the three steps, because a real `time.sleep()` desynchronises
+    "simultaneous" callers before either one's write is observable. Freezing
+    the clock removes that timing dependency entirely, and the barrier forces
+    every racing thread to reach its "about to sleep" point before any of
+    them can proceed — so a stale read collides on every run instead of by
+    chance.
+    """
+
+    def __init__(self, parties: int, timeout: float = 5.0):
+        self._barrier = threading.Barrier(parties, timeout=timeout)
+        self._lock = threading.Lock()
+        self.wake_instants: list[float] = []
+
+    def monotonic(self) -> float:
+        return 0.0
+
+    def sleep(self, duration: float) -> None:
+        with self._lock:
+            self.wake_instants.append(self.monotonic() + duration)
+        self._barrier.wait()
+
+
 class TestPaceIsThreadSafe:
-    def test_k_threads_sharing_one_pacer_hold_the_schedule(self):
-        """8 threads call pace() 15 times each on ONE shared pacer.
+    @pytest.mark.parametrize("module", [msb_scanner_base, scanner_scanner_base],
+                            ids=["main_scripts", "scanner"])
+    def test_k_concurrent_callers_each_reserve_a_distinct_slot(self, monkeypatch, module):
+        """K threads call pace() once each on one shared, already-primed
+        pacer, with `scanner_base.time` replaced by a frozen clock + barrier
+        (see `_FrozenClockWithRendezvous`).
 
-        Lower bounds only (a slower CI only widens these, never narrows
-        them): elapsed >= (M-1)/rate — the schedule was actually held, not
-        skipped — via wall-clock timing.
+        Locked: each thread reserves `max(now, self._next) + interval` under
+        the lock BEFORE sleeping, so by the time any of them asks to sleep
+        the schedule has already moved — the K recorded wake instants are K
+        DISTINCT values, one interval apart.
 
-        The no-burst half is checked as an EQUIVALENT deterministic
-        invariant on the schedule itself rather than by sampling wake-up
-        instants: sub-millisecond OS thread-wake jitter is the same order of
-        magnitude as a short interval, which made a wall-clock "were any two
-        wake-ups suspiciously close together" check flaky by construction,
-        independent of whether pacing was correct. `_next` is reserved
-        under the lock as `max(now, self._next) + interval`, so M calls with
-        no lost update must advance it by at least `M * interval` beyond
-        wherever it started — a race that let two threads read the SAME
-        `_next` before either wrote it (the exact bug: two threads compute
-        the same slot and fire together) collapses two reservations into
-        one and the schedule falls short of that bound.
+        Unlocked: every thread reads the same stale `_next` and computes the
+        same sleep duration before any of them writes it back, so all K
+        recorded wake instants collide on one value. Either way — a
+        collision, or fewer than K threads ever reaching the barrier —
+        fails this test.
+        """
+        rate = 100.0
+        interval = 1.0 / rate
+        k = 6
+
+        fake_time = _FrozenClockWithRendezvous(parties=k, timeout=5.0)
+        monkeypatch.setattr(module, "time", fake_time)
+
+        pacer = module.SendPacer(rate)
+        pacer.pace()                              # prime: _next > now afterwards
+        assert pacer._next > fake_time.monotonic()
+
+        errors: list[BaseException] = []
+
+        def _worker():
+            try:
+                pacer.pace()
+            except BaseException as exc:          # noqa: BLE001 — surfaced below
+                errors.append(exc)
+
+        threads = [threading.Thread(target=_worker) for _ in range(k)]
+        for t in threads:
+            t.start()
+        for t in threads:
+            t.join(timeout=10)
+
+        assert not any(t.is_alive() for t in threads), "a worker never returned"
+        assert not errors, f"pace() raised under concurrency: {errors!r}"
+
+        woken = sorted(fake_time.wake_instants)
+        assert len(woken) == k
+        assert len(set(woken)) == k, (
+            f"only {len(set(woken))} distinct wake instant(s) among {k} "
+            f"callers — two or more threads read the same stale slot before "
+            f"either one reserved it: {woken}")
+        for earlier, later in zip(woken, woken[1:]):
+            assert later - earlier == pytest.approx(interval, abs=1e-9)
+
+    def test_the_schedule_is_held_over_wall_clock_time(self):
+        """A real-time smoke check, kept alongside the deterministic proof
+        above rather than in place of it: with a real clock and real
+        threads, M calls across many threads must still take at least
+        (M-1)/rate wall-clock seconds — i.e. pace() is not a no-op and is
+        not simply skipping the sleep under contention. It does NOT pin the
+        lost-update race itself (that needs the frozen clock + barrier;
+        see the class docstring for why a wall-clock burst/gap check on
+        this property was flaky by construction), so it is a narrower,
+        wall-clock-only complement, not a replacement.
         """
         rate = 400.0                      # 2.5 ms interval
         interval = 1.0 / rate
         pacer = SendPacer(rate)
         n_threads, calls_per_thread = 8, 15
         total_calls = n_threads * calls_per_thread
-
-        now_before = time.monotonic()
 
         def _worker():
             for _ in range(calls_per_thread):
@@ -289,10 +368,6 @@ class TestPaceIsThreadSafe:
         elapsed = time.monotonic() - t0
 
         assert elapsed >= (total_calls - 1) * interval - 0.05
-
-        assert pacer._next >= now_before + total_calls * interval - 1e-3, (
-            "the reserved schedule fell short of M whole intervals — some "
-            "reservation was lost to a race")
 
     def test_observe_round_is_also_safe_under_concurrent_pace_calls(self):
         """No crash / no lost update under contention: run pace() and
