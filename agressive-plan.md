@@ -2,7 +2,8 @@
 
 **Status as of 2026-09-22.** Probe suite **2372 passed / 0 failed**. Manager suite
 **1272 passed / 4 skipped / 0 failed**. Frontend **221 passed**, `tsc` clean.
-Nothing committed — all work is uncommitted on `main`.
+Committed to `main` as 13f1170 (2026-09-22). A review on 2026-09-23 found
+errors in this document — see §6 "Review corrections (2026-09-23)".
 
 **Second pass (2026-09-22, later). Everything that can be done without
 hardware is done.** P4, P7 and P2/D1 shipped; P3, P5 and P6 are closed with
@@ -19,10 +20,11 @@ Two findings that change how the rest of this document should be read:
    untuned host. **Every capacity figure in §4.1 assumed 600 pps — re-derive
    before using.**
 
-2. **D1 (the SYN scanner's serialized send/recv) is real, was measured at ~92%
-   reply loss on a wide sweep, and is fixed.** It alone explains *"aggressive
-   returns no results."* It also turned out to be verifiable after all — by
-   faking the kernel rather than the scanner. See §7 P2.
+2. **D1 (the SYN scanner's serialized send/recv) is real and fixed**, proven
+   against a simulated kernel but not yet on Linux. It is **not** established
+   as the cause of *"aggressive returns no results"*: both Docker deployments
+   ship `cap_drop: ALL`, so the SYN scanner is unused by default. P1's
+   `SYN scan: yes|no` answer decides that. See §7 P2.
 
 §6 carries the corrections; several first-pass numbers did not survive a second
 reading.
@@ -152,16 +154,14 @@ was chosen *because* of the 65k breadth.
 > **FIXED — see P4 below.** The launcher now sends `intensity` and nothing
 > else. Two corrections to the analysis above: the override also clobbered an
 > *explicit* operator `params.rate` (the preset was applied after the spread),
-> and the collision ran in **both** directions — `light` never once ran its
-> declared 800 pps either.
+> and the collision ran in **both** directions — Stealth's copy promised
+> 50 pps while `light` declared 800.
 
 **This also inverts recall.** Zippier ZMap measured hit rate falling to 68% of
 the gigabit baseline at line rate. The codebase records the same effect locally
 (`port_scanner.py` comment): 69 ports read `filtered` at rate 300/conc 200, all
 69 resolved `closed` when re-probed at rate 40. **Aggressive was a
 lower-accuracy mode, not just a faster one.**
-
-> **Still open.** This collision is NOT fixed. See pending task **P4**.
 
 ---
 
@@ -600,16 +600,43 @@ Added by the second pass:
 |---|---|
 | "The launcher discards the preset; explicit params survive" | It discarded **both** — the preset was applied after the params spread |
 | "The collision only hurts aggressive" | `light` was the worse end: 800 pps / timeout 1.0 / retries 0, past the measured false-`filtered` point |
-| "`light` is the fast triage preset" | Its envelope **never ran once.** The UI, its only caller, always overrode all four values |
+| "`light` is the fast triage preset" | The UI always overrode it, but approved portal scan requests and API intensity code 1 ran it at 800 pps — the retune slowed those jobs 16× |
 | "`scan_metrics` orphaning is cosmetic" | It can flip `scan_health_summary` to `degraded` and raise a coverage finding from discarded evidence |
 | "Refuse deep below the sysctl floor" | Too broad. `gc_thresh3` is **flat-L2-only**, so refusing a routed sweep would be a false refusal — conntrack is the only unconditional one |
 | "Aggressive needs 72,000 conntrack entries" | 72,000 was the *override's* 600 pps. At the preset's 150 pps it is **18,000** — it fits |
-| "`SO_RCVBUF` 4 MB ≈ 40,000 packets" | **~5,000.** Linux charges `skb->truesize` (~768 B/segment), not payload bytes |
+| "`SO_RCVBUF` 4 MB ≈ 40,000 packets" | **A few hundred.** Plain `SO_RCVBUF` is clamped to `net.core.rmem_max` (~208 KB default, doubled), and the kernel charges `skb->truesize` per packet |
 | "The SYN engine is unverifiable on macOS" | Only the packet BYTES are. The loop structure is testable by faking the *kernel*, which is where D1 lived |
 | "D3: colliding source ports read each other's replies" | **Already defended twice** — `ip_src` filter plus a cookie keyed on `dst_ip` |
 | "D4: no cooldown after the last send" | **There is one.** The recv deadline is set after the send loop, adaptive to 8 s |
 
 ---
+
+### Review corrections (2026-09-23)
+
+A two-axis review of 13f1170 found, and follow-up commits fixed:
+
+- **CI:** neither probe workflow installed `pytest-asyncio`, so `scanner-accuracy`
+  (push to main) failed 15 tests and `agent-ci` would fail 27. Five new test files
+  were never named in a workflow. The frontend suite ran nowhere.
+- **Tests that could not fail:** the SYN bad-cookie test wrote the checksum field
+  instead of the ack and forged an RST equal to the genuine answer.
+- **`run_stats.kernel.measured`** was always true; replaced by `gate_measured`,
+  true only when every blocking ceiling was read.
+- **UI copy:** Stealth claimed ~15 ports (65 swept); Aggressive claimed hours per
+  host (30 min cap).
+- **Kernel gate behaviour worth knowing:** it compares demand to *live* free
+  conntrack headroom, so a refusal can come and go with host load, and `standard`
+  (200 pps) is refused before `deep` (150 pps).
+- **Still unverified:** D1 on real packets, and whether any probe reporting the
+  symptom had `NET_RAW` at all — both P1.
+### Root causes found 2026-09-23 (user-reported)
+
+- **Scans launched together ran at the same time.** The one-job-at-a-time queue existed; a bug defeated it. An API restart killed the probe's WebSocket with an exception, and `_run_ws_push_loop` stopped its per-connection poll task only on a normal close. The surviving task kept its own busy-state and lock, claimed the next job over HTTP, and ran it beside the job on the new connection. Fixed in the probe (process-wide state; every exit path stops its tasks; a mid-job poller is told to stop, never cancelled) and defended in the manager (`GET /agents/{id}/jobs` hands nothing to a probe holding a live lease).
+- **"Aggressive scan throws an error."** The error was the infeasibility refusal. It sized `deep` by all 65,535 ports, but `deep` must finish only its ~1,145-port first pass; the tail is budgeted and truncates to `not_scanned`. A /24 needs about 32 minutes, not 30.8 hours. Admission now sizes a phased sweep by its first pass, split exactly as `run_engagement` splits it. Restoring `deep`'s 150 pps in P4 had cut the aggressive host limit from 65 to 16, which is why this surfaced now.
+- **Per-host result chunks were rejected with 403.** The manager's route allowlist for probe tokens omitted `/agents/{id}/jobs/{job}/chunks`, so mid-scan durability never worked for any probe. Fixed on `security/p0-fixes` (a separate workstream), together with a latent cross-tenant read on the GET route.
+- **The SYN path (D1) played no part in last night's incident.** That probe ran natively on macOS, where raw sockets are unavailable, so every port stage used `connect()`.
+- **CI:** both probe workflows now install `pytest-asyncio`. Without it, `scanner-accuracy` failed 15 tests on `main` (confirmed red on 13f1170).
+
 
 ## 7. Pending work
 
@@ -657,31 +684,33 @@ the five entries below changed.
 | D4 | No cooldown after last send | **Already present.** The claim was wrong |
 | D5 | Window-level pacer | **Dies with P3** (see below) |
 
-**D1 — fixed, and it is almost certainly the reported symptom.**
+**D1 — fixed. Whether it is the reported symptom is unknown until P1.**
 
 Each round sent the whole cohort before reading the socket even once, so every
 reply the send phase provoked had to wait in `SO_RCVBUF`.
 
-The original estimate of the ceiling was too generous. `SO_RCVBUF` is 4 MB, but
-Linux charges **`skb->truesize`** — roughly 768 B for a 40-byte TCP segment,
-not 40 — so the buffer holds on the order of **5,000 packets, not 40,000**. A
-65,535-port sweep of a mostly-closed host answers with 65,535 RSTs. About 92%
-of them are discarded by the kernel **with no error**, leaving ports that
-answered reported as `filtered`.
+The buffer is far smaller than the 4 MB the code requests: plain `SO_RCVBUF`
+is clamped to `net.core.rmem_max` (~208 KB by default, which the kernel
+doubles), and the kernel charges **`skb->truesize`** per packet rather than
+payload bytes, so it holds a few hundred replies. A 65,535-port sweep of a
+mostly-closed host answers with 65,535 RSTs; nearly all would be discarded
+**with no error**, leaving ports that answered reported as `filtered`. (This is
+arithmetic, not a measurement.)
 
 It is also **rate-independent**: the overflow is set by how many ports are in
 the round, not how fast they leave, so neither pacing nor P4's slower envelope
-helps. And `deep` is exactly the configuration that routes the port stage here
-(65,535 ports > the 1,024 connect/SYN threshold). *"Aggressive returns no
-results"* is fully explained by this alone.
+helps. `deep` routes the port stage here when SYN is available (65,535 ports >
+the 4,096 `_SYN_PORT_THRESHOLD` in `engine.py`). But both Docker deployments
+ship `cap_drop: ALL`, so by default the SYN scanner is not used at all and this
+defect cannot be the reported symptom there.
 
 Fix: `_drain_ready()` consumes whatever is queued after each send, bounded at
 64 packets per call so a fast responder cannot starve the send loop. The reply
 handling moved into `_accept_reply()` and is now shared by the interleaved
 drain and the existing post-send window.
 
-**It IS verified, contrary to the earlier assessment.** What was blocked was
-never the loop — it was the packet bytes. `tests/test_syn_recv_interleave.py`
+**The loop is verified; the packets are not.** What was blocked was never the
+loop — it was the packet bytes. `tests/test_syn_recv_interleave.py`
 replaces the *kernel* rather than the scanner: a fake receive queue with a
 bounded, silently-dropping capacity, driving the real `_syn_scan_blocking`.
 Before the fix it reproduced the defect precisely (**3,850 replies dropped, and
@@ -759,13 +788,14 @@ bundles. Dropping the override naively would have made "Stealth" — chosen
 explicitly for "monitored, production, or fragile segments" — run at
 **800 pps** instead of 50.
 
-Rather than add a fourth preset, `light` was retuned to the envelope its only
-caller had always forced (50 / 20 / 4.0 / 2.0). The evidence for that:
+Rather than add a fourth preset, `light` was retuned to the envelope the UI had
+always forced (50 / 20 / 4.0 / 2.0). The evidence for that:
 
-- `light`'s declared 800 pps / concurrency 200 / timeout 1.0 / `retries: 0`
-  **never ran a single scan.** The launcher overrode all four on every job,
-  nothing in `use_cases.py` defaults to `light`, and no test pinned its
-  envelope — only its breadth, budget and first-pass profile.
+- **Correction (review, 2026-09-23):** an earlier version said `light`'s 800 pps
+  envelope had no callers. Wrong: approved portal scan requests
+  (`customer_access.build_scan_job`) and API intensity code 1 dispatch `light`
+  with no rate, so those jobs ran at 800 pps and are now 16× slower in the port
+  stage. A behaviour change, not a no-op.
 - It was also the least accurate setting in the table, by a margin this repo
   *measured*: `port_scanner.py:474` records rate 300 / concurrency 200
   producing **69 false `filtered`** on a real LAN host, all 69 of which
@@ -834,8 +864,10 @@ genuine security regression. There is none: `_guarded` returns an error
 `ScanResult` *before* `scan_target`, the CLI wrapper exits 1 on both branches,
 and `run_scan`'s handler is the only one in its try. So the widened catch
 changes which branch reports a refusal, never whether a target gets scanned —
-and `TestTheGateStillRefuses` pins exactly that. The "always reference it
-through the module" convention is no longer load-bearing.
+and `TestTheGateStillRefuses` pins exactly that. **Correction (review):** the
+`ValueError` base did not defuse the reload hazard — a fresh class is never a
+subclass of the stale one. The fix was removing `importlib.reload` from the
+suite, now enforced by a guard test.
 
 **`scan_metrics` accounting.** `partition_result_scope` now drops a host's
 metrics row with its facts (`_drop_orphaned_metrics`). Matched **by value**,
@@ -917,7 +949,10 @@ chasing the absolute count.
   `probe/scanner/**`, and now `probe/workflow/**` (that path previously
   triggered **no** CI at all)
 
-All 21 new test files are wired into one of the two.
+A test file runs in CI only if **named** in a workflow's pytest list — the
+`paths:` trigger alone does not run it. Both workflows install
+`pytest-asyncio`; without it every `@pytest.mark.asyncio` test fails under
+pytest 9. `frontend-ci.yml` runs the frontend suite and `tsc`.
 
 ### Useful one-liners
 
