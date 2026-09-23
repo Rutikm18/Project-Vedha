@@ -31,7 +31,8 @@ from workflow.asset import Asset, PortFact
 from workflow.cache import WorkflowCache, CacheEntry, classify_certainty, FACT_CERTAINTY
 from agent.engine import (
     resolve_scan_type, _clamp, _targets, _tuning_from_params,
-    _count_open_port_facts, _hosts_from_facts, CAPABILITIES,
+    _count_open_port_facts, _hosts_from_facts, _scan_metrics_from_facts,
+    CAPABILITIES,
 )
 from agent.use_cases import resolve, USE_CASES
 from agent.agent import _is_local_manager_url
@@ -609,6 +610,23 @@ class TestEngineSummary:
             {"scanner": "port_scan", "target": "127.0.0.1", "port": 443, "status": "open"},
         ]
         assert _count_open_port_facts(facts) == 1
+
+    def test_scan_metrics_carry_the_hosts_target(self):
+        """F3: the manager groups scan_metrics by host to avoid double-counting
+        a two-phase host's two scan_summary facts (first pass + tail) as two
+        separate hosts — that grouping needs a target on every entry."""
+        facts = [
+            {"scanner": "port_scan", "target": "10.0.0.5", "status": "scan_summary",
+             "data": {"vantage": "probe-1", "complete": True}},
+            {"scanner": "syn_scan", "target": "10.0.0.5", "status": "scan_summary",
+             "data": {"vantage": "probe-1", "complete": False, "missing": 3}},
+            {"scanner": "port_scan", "target": "127.0.0.1", "port": 22, "status": "open"},
+        ]
+        metrics = _scan_metrics_from_facts(facts)
+        assert [m["target"] for m in metrics] == ["10.0.0.5", "10.0.0.5"]
+        # additive: every other key the probe already computed survives untouched
+        assert metrics[0]["complete"] is True
+        assert metrics[1]["missing"] == 3
 
     def test_open_port_count_deduplicates_confirming_scanners(self):
         facts = [

@@ -448,6 +448,23 @@ def _facts_from_cache(cache: WorkflowCache) -> list[dict]:
     return [asdict(entry.result) for entry in cache._store.values()]
 
 
+def _scan_metrics_from_facts(facts: list[dict]) -> list[dict]:
+    """Pull every scan_summary fact's data out to the top level, stamped with
+    the host it describes.
+
+    A two-phase deep scan emits two scan_summary facts per host (the first
+    pass and the tail cover disjoint port ranges), so a consumer that wants
+    one verdict per host — not one per summary — needs a key to group on.
+    `summary()` never carries `target` (only `vantage`, the probe's own
+    identity), so it is added here from the fact itself.
+    """
+    return [
+        {**f.get("data", {}), "target": f.get("target")}
+        for f in facts
+        if f.get("status") == "scan_summary"
+    ]
+
+
 # Scanners whose facts are keyed by something other than a host address (an
 # interface, a segment, the run itself). Their evidence is real and is still
 # submitted; it just must never be read as "a host exists at this target".
@@ -1292,9 +1309,7 @@ def run_scan(scan_type: str, params: dict,
     # port scanner emits — PortScanner on the connect path, SynScanner on the
     # raw path) — surfaced at top level so the manager need not filter facts
     # to find them.
-    scan_metrics = [
-        f.get("data", {}) for f in facts if f.get("status") == "scan_summary"
-    ]
+    scan_metrics = _scan_metrics_from_facts(facts)
     issues = trace.issues
     errors.extend(issue["message"] for issue in issues)
     run_stats, hosts_list = _build_run_stats(

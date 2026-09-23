@@ -395,7 +395,8 @@ class SynScanner(BaseScanner):
             timeout=self.timeout, ports=self.ports,
             report_closed=self.report_closed, source_port=self.source_port,
             randomize=self.randomize, scan_delay=self.scan_delay,
-            retries=self.retries, deadline_seconds=self.deadline_seconds)
+            retries=self.retries, deadline_seconds=self.deadline_seconds,
+            vantage=self.vantage, emit_summary=self.emit_summary)
 
     async def scan_target(self, target: str, *,
                           deadline_seconds=_UNSET) -> list[ScanResult]:

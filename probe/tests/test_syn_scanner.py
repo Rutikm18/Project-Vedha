@@ -198,6 +198,31 @@ class TestSynScannerFallback:
         results = asyncio.run(_run())
         assert all(r.scanner == "syn_scan" for r in results)
 
+    def test_fallback_passes_emit_summary_through_to_the_connect_scanner(self):
+        """_make_fallback must forward emit_summary (and vantage) to the
+        PortScanner it builds — one construction site, so a kwarg SynScanner
+        itself accepts must not silently drop out of the object that actually
+        runs the scan on an unprivileged/fallback host."""
+        async def _run(emit_summary):
+            server = await asyncio.start_server(
+                lambda r, w: w.close(), "127.0.0.1", 0)
+            port = server.sockets[0].getsockname()[1]
+            scope = ScopeGuard.from_list(["127.0.0.0/8"])
+            scanner = ss.SynScanner(scope, ports=[port], timeout=2.0,
+                                    force_fallback=True,
+                                    emit_summary=emit_summary)
+            try:
+                return await scanner.scan_target("127.0.0.1")
+            finally:
+                server.close()
+                await server.wait_closed()
+
+        with_summary = asyncio.run(_run(True))
+        assert any(r.status == "scan_summary" for r in with_summary)
+
+        without_summary = asyncio.run(_run(False))
+        assert not any(r.status == "scan_summary" for r in without_summary)
+
 
 # ── SYN retransmit on silence (roadmap item 2) ────────────────────────────────
 
