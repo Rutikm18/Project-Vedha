@@ -59,8 +59,15 @@ def classify_interface(name: str) -> str:
 
 
 # ── permanent denylist ───────────────────────────────────────────────────────
-def is_denied(target: str, manager_ip: str | None = None) -> bool:
-    """True if `target` (an IP or CIDR) must NEVER be scanned. Fail-closed."""
+def is_reserved_range(target: str) -> bool:
+    """True if `target` is a permanently un-scannable range: loopback,
+    link-local, multicast, reserved, unspecified, limited broadcast, an IPv6
+    network (out of scope for v1), or unparseable. Fail-closed.
+
+    These are dropped WHOLE and never carved — there is nothing legitimate to
+    scan inside them. The manager-IP check is deliberately NOT here, because a
+    real CIDR that merely contains the control plane still has hosts worth
+    scanning around it."""
     try:
         net = ipaddress.ip_network(target, strict=False)
     except ValueError:
@@ -72,9 +79,16 @@ def is_denied(target: str, manager_ip: str | None = None) -> bool:
         return True  # 127/8, 169.254/16 (incl. 169.254.169.254), 224/4, 240/4, 0.0.0.0
     if net.num_addresses == 1 and net.network_address == ipaddress.ip_address("255.255.255.255"):
         return True  # limited broadcast
+    return False
+
+
+def is_denied(target: str, manager_ip: str | None = None) -> bool:
+    """True if `target` (an IP or CIDR) must NEVER be scanned. Fail-closed."""
+    if is_reserved_range(target):
+        return True
     if manager_ip:
         try:
-            if ipaddress.ip_address(manager_ip) in net:
+            if ipaddress.ip_address(manager_ip) in ipaddress.ip_network(target, strict=False):
                 return True
         except ValueError:
             pass

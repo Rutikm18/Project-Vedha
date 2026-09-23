@@ -13,6 +13,7 @@ exclusion checks, so it is the last gate before a packet leaves:
 """
 from __future__ import annotations
 
+import ipaddress
 import time
 
 from agent import scope_model as sm
@@ -34,10 +35,42 @@ def manager_ip_from_env() -> str | None:
 
 
 def drop_denied(targets: list[str], manager_ip: str | None = None) -> tuple[list[str], list[str]]:
+    """Split targets against the permanent denylist.
+
+    A reserved range (loopback/link-local/multicast/reserved/IPv6/unparseable)
+    is dropped whole — nothing in it is legitimately scannable. But a real CIDR
+    that merely CONTAINS the manager's own address is NOT dropped wholesale: the
+    manager address is carved out and the rest of the range is kept, so scanning
+    a /24 that happens to include the control plane still reaches the other
+    hosts instead of failing with "all targets denied". `denied` lists the
+    manager address for the carve so the drop stays visible to the operator."""
     kept: list[str] = []
     denied: list[str] = []
+    mgr = None
+    if manager_ip:
+        try:
+            mgr = ipaddress.ip_address(manager_ip)
+        except ValueError:
+            mgr = None
     for t in targets:
-        (denied if sm.is_denied(t, manager_ip) else kept).append(t)
+        if sm.is_reserved_range(t):
+            denied.append(t)
+            continue
+        net = None
+        if mgr is not None:
+            try:
+                net = ipaddress.ip_network(t, strict=False)
+            except ValueError:
+                net = None
+        if net is not None and mgr.version == net.version and mgr in net:
+            if net.num_addresses == 1:
+                denied.append(t)                       # the target IS the manager
+            else:
+                mgr_net = ipaddress.ip_network((mgr, net.max_prefixlen))
+                kept.extend(str(s) for s in net.address_exclude(mgr_net))
+                denied.append(str(mgr))                # carved out, kept visible
+        else:
+            kept.append(t)
     return kept, denied
 
 

@@ -54,6 +54,26 @@ def test_drop_denied_removes_manager_ip():
     assert kept == ["10.0.0.5"] and denied == ["10.0.0.9"]
 
 
+def test_drop_denied_carves_manager_out_of_a_cidr_instead_of_dropping_it():
+    import ipaddress
+    kept, denied = ja.drop_denied(["10.0.0.0/24"], manager_ip="10.0.0.9")
+    # The manager is carved out and reported, but the range is NOT dropped whole.
+    assert denied == ["10.0.0.9"]
+    assert kept, "a /24 containing the manager must still yield scannable hosts"
+    covered = set()
+    for cidr in kept:
+        covered.update(ipaddress.ip_network(cidr))
+    assert ipaddress.ip_address("10.0.0.9") not in covered   # manager excluded
+    assert ipaddress.ip_address("10.0.0.5") in covered       # a normal host kept
+    assert ipaddress.ip_address("10.0.0.200") in covered
+    assert len(covered) == 255                               # 256 addrs − manager
+
+
+def test_drop_denied_reserved_range_still_dropped_whole_even_with_manager():
+    kept, denied = ja.drop_denied(["127.0.0.0/8"], manager_ip="10.0.0.9")
+    assert kept == [] and denied == ["127.0.0.0/8"]
+
+
 def test_manager_ip_from_env_none_without_platform_url(monkeypatch):
     monkeypatch.delenv("PLATFORM_URL", raising=False)
     assert ja.manager_ip_from_env() is None
