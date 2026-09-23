@@ -1,7 +1,8 @@
 """
 resolution.py — coverage-gated auto-resolution of findings.
 
-Split into a PURE core (host_of / build_coverage / decide_resolution) that is
+Split into a PURE core (host_of / build_coverage / finding_coverage /
+decide_resolution) that is
 fully unit-testable without a database, and a thin async applier
 (evaluate_resolutions) that walks the engagement's still-open findings and
 applies the pure decision. Wired into engine_bridge.create_findings_from_facts.
@@ -9,6 +10,12 @@ applies the pure decision. Wired into engine_bridge.create_findings_from_facts.
 Safety rule: absence of a finding is only meaningful if we PROVED we looked.
 A host counts as covered this run only if a *completed* scanner produced a fact
 about it; a degraded/failed/skipped scanner is not proof.
+
+Host coverage is necessary but not sufficient. A host a light scan covered may
+never have had the finding's port or product re-checked, so each finding must
+also be covered along its own dimension (finding_coverage): a posture finding
+needs its rule re-evaluated on its port, a CVE finding needs its product
+re-identified. Anything this run cannot prove is a skip, never a clean miss.
 """
 from __future__ import annotations
 
@@ -64,6 +71,80 @@ def build_coverage(scanner_runs: list[dict] | None, facts: list[dict] | None) ->
     }
 
 
+def normalize_port(value) -> int | None:
+    """A port as the coverage key compares it: int, or None for a host-level
+    check. Digit strings and integral floats are accepted because JSON round
+    trips can produce them; anything else raises ValueError so the caller can
+    refuse to treat it as evidence rather than guess."""
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        raise ValueError(f"not a port: {value!r}")
+    if isinstance(value, int):
+        return value
+    if isinstance(value, float) and value.is_integer():
+        return int(value)
+    if isinstance(value, str) and value.strip().isdigit():
+        return int(value.strip())
+    raise ValueError(f"not a port: {value!r}")
+
+
+def product_key(cpe) -> str | None:
+    """'cpe:2.3:a:apache:http_server:2.4.49:...' -> 'apache:http_server' (CPE 2.3
+    fields 3 and 4, lower-cased). None when the string is not a CPE 2.3 name or
+    either field is empty or a wildcard."""
+    if not isinstance(cpe, str):
+        return None
+    parts = cpe.split(":")
+    if len(parts) < 5 or parts[0] != "cpe" or parts[1] != "2.3":
+        return None
+    vendor, product = parts[3].lower(), parts[4].lower()
+    if not vendor or not product or "*" in (vendor, product):
+        return None
+    return f"{vendor}:{product}"
+
+
+COVERAGE_NOT_OBSERVED = "asset not re-observed"
+COVERAGE_DERIVED = "derived finding; no direct re-check"
+COVERAGE_RULE_NOT_EVALUATED = "rule not re-evaluated on this port"
+COVERAGE_PRODUCT_NOT_IDENTIFIED = "product not re-identified"
+COVERAGE_NO_DIMENSION = "no coverage dimension for this finding"
+
+
+def finding_coverage(
+    *, ip: str, evidence, cve_ids, host_covered: bool,
+    evaluated_checks: set[tuple[str, str, int | None]],
+    identified_products: dict[str, set[str]],
+) -> tuple[bool, str]:
+    """(covered, reason) for ONE finding: did this run re-run the check that
+    produced it, against the same asset? `ip` is the finding's Asset.ip_address.
+
+    evaluated_checks: (rule_id, ip, port) for every posture rule evaluation this
+    run that reached a verdict (match / no_match).
+    identified_products: ip -> {"vendor:product"} the CVE track identified.
+    """
+    if not host_covered:
+        return False, COVERAGE_NOT_OBSERVED
+    ev = evidence if isinstance(evidence, dict) else {}
+    if ev.get("correlation") is True:
+        return False, COVERAGE_DERIVED
+    rule_id = ev.get("rule_id")
+    if rule_id:
+        try:
+            port = normalize_port(ev.get("port"))
+        except ValueError:
+            return False, COVERAGE_RULE_NOT_EVALUATED
+        if (rule_id, ip, port) in evaluated_checks:
+            return True, "rule re-evaluated on this port"
+        return False, COVERAGE_RULE_NOT_EVALUATED
+    if cve_ids and ev.get("cpe"):
+        key = product_key(ev.get("cpe"))
+        if key is not None and key in identified_products.get(ip, set()):
+            return True, "product re-identified"
+        return False, COVERAGE_PRODUCT_NOT_IDENTIFIED
+    return False, COVERAGE_NO_DIMENSION
+
+
 def resolution_threshold(severity: FindingSeverity) -> int:
     """Consecutive coverage-proven clean runs required before auto-close.
     critical/high demand a SECOND confirmation — a premature 'you're safe' on a
@@ -99,12 +180,22 @@ def decide_resolution(*, covered: bool, db_changed: bool,
 
 async def evaluate_resolutions(
     db: AsyncSession, engagement_id: uuid.UUID, run, coverage: dict, now: datetime,
+    *, evaluated_checks: set[tuple[str, str, int | None]] | None = None,
+    identified_products: dict[str, set[str]] | None = None,
+    skips: dict[str, int] | None = None,
 ) -> int:
     """Apply decide_resolution to every engine-managed open/confirmed finding
     NOT touched by `run` (i.e. detection_run_id != run.id). Returns the number
     auto-resolved. Findings with no detection_run_id (probe self-assessed path,
-    legacy) are intentionally NOT governed here."""
+    legacy) are intentionally NOT governed here.
+
+    A finding counts as covered only when its host is in `coverage` AND
+    finding_coverage finds this run's evidence for it. Omitted evidence sets are
+    empty, so nothing resolves. `skips`, when given, is filled with a count per
+    skip reason."""
     covered = set(coverage.get("assets") or [])
+    evaluated_checks = evaluated_checks or set()
+    identified_products = identified_products or {}
     rows = (await db.execute(
         select(Finding, Asset.ip_address)
         .join(Asset, Finding.asset_id == Asset.id)
@@ -123,10 +214,18 @@ async def evaluate_resolutions(
             and finding.detected_db_version is not None
             and finding.detected_db_version != run.vuln_db_version
         )
+        is_covered, coverage_reason = finding_coverage(
+            ip=ip, evidence=finding.evidence, cve_ids=finding.cve_ids,
+            host_covered=ip in covered, evaluated_checks=evaluated_checks,
+            identified_products=identified_products,
+        )
         outcome = decide_resolution(
-            covered=ip in covered, db_changed=db_changed,
+            covered=is_covered, db_changed=db_changed,
             miss_count=finding.resolution_miss_count, severity=finding.severity,
         )
+        if outcome.action == "skip" and skips is not None:
+            reason = outcome.reason if is_covered else coverage_reason
+            skips[reason] = skips.get(reason, 0) + 1
         finding.resolution_miss_count = outcome.miss_count
         if outcome.action == "resolve":
             finding.status = FindingStatus.remediated

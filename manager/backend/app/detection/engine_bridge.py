@@ -38,7 +38,9 @@ from app.models.detection_run import (
 from app.discovery.finding_translator import _resolve_asset, _find_open_duplicate
 from app.detection.attack_paths import attack_path_findings
 from app.detection.prioritization import _posture_risk_on_manager_scale
-from app.detection.resolution import build_coverage, evaluate_resolutions
+from app.detection.resolution import (
+    build_coverage, evaluate_resolutions, host_of, normalize_port,
+)
 from app.ai.verification_graph import run_verification
 from app.config import get_settings
 
@@ -146,6 +148,56 @@ def _accepted(facts: list[dict], rejected_lines: set[int]) -> list[dict]:
     return [f for i, f in enumerate(facts, start=1) if i not in rejected_lines]
 
 
+# ── evaluation evidence for auto-resolution ───────────────────────────────────
+# A finding may only accrue a clean miss when this run re-ran the SAME check on
+# the SAME asset. These two helpers turn the engine's output into the evidence
+# resolution.finding_coverage reads. Both are in-memory only; neither set is
+# persisted, since a large engagement makes them large.
+
+# The engine's OUTCOME_MATCH / OUTCOME_NO_MATCH: the only trace outcomes where a
+# rule actually reached a verdict. Every other outcome is blind or unassessed and
+# proves nothing about whether the weakness is still there.
+_EVALUATED_OUTCOMES = frozenset({"match", "no_match"})
+
+
+def _evaluated_checks(traces) -> set[tuple[str, str, int | None]]:
+    """(rule_id, host, port) for every posture trace row that reached a verdict.
+    The host is host_of(asset_ip), the form _resolve_asset stores on the Asset
+    row the finding is joined to. A row with no rule id, no host or an
+    unreadable port is dropped: it cannot prove anything."""
+    out: set[tuple[str, str, int | None]] = set()
+    for t in traces or []:
+        if not isinstance(t, dict) or t.get("outcome") not in _EVALUATED_OUTCOMES:
+            continue
+        rule_id = t.get("rule_id")
+        host = host_of(str(t.get("asset_ip") or ""))
+        if not rule_id or not host:
+            continue
+        try:
+            port = normalize_port(t.get("port"))
+        except ValueError:
+            continue
+        out.add((str(rule_id), host, port))
+    return out
+
+
+def _identified_products(raw) -> dict[str, set[str]]:
+    """The engine's {ip: ["vendor:product", ...]} as {host: {"vendor:product"}},
+    keyed the way _resolve_asset keys the Asset row. Anything malformed is
+    dropped rather than guessed at."""
+    out: dict[str, set[str]] = {}
+    if not isinstance(raw, dict):
+        return out
+    for ip, products in raw.items():
+        host = host_of(str(ip or ""))
+        if not host or not isinstance(products, (list, tuple, set)):
+            continue
+        keys = {p.lower() for p in products if isinstance(p, str) and p}
+        if keys:
+            out.setdefault(host, set()).update(keys)
+    return out
+
+
 def _log_ingest_health(census: dict, findings: int) -> None:
     """Escalate by severity of loss. A TOTAL wipeout with facts submitted is the
     agent/manager contract breaking — the one case that must never be quiet."""
@@ -196,13 +248,20 @@ def detect_all_from_facts_traced(
     became assets and how many the ingester rejected. Without it, a fact shape the
     ingester refuses is indistinguishable from a clean network: every rule reads
     ingest's Assets, so zero assets means zero findings, silently. See
-    _log_ingest_health."""
+    _log_ingest_health.
+
+    `meta["evaluated_checks"]` and `meta["identified_products"]` are the in-memory
+    evidence auto-resolution needs per finding (see _evaluated_checks and
+    _identified_products). Empty on every path that did not run that track."""
     # accepted_facts falls back to the raw list on every path where no ingest
     # verdict exists (engine missing, older engine, hard failure). Without a
     # verdict we cannot say a fact is bad, and silently disabling attack-path
     # correlation would trade one blind spot for another.
+    # Every path without a full engine run carries EMPTY evaluation evidence, so
+    # auto-resolution can prove nothing and resolves nothing.
     empty_meta: dict = {"coverage": {}, "verdicts": {}, "ingest": {},
-                        "accepted_facts": list(facts or [])}
+                        "accepted_facts": list(facts or []),
+                        "evaluated_checks": set(), "identified_products": {}}
     if not facts or not _ensure_importable():
         return [], [], empty_meta
     tmp = None
@@ -222,7 +281,11 @@ def detect_all_from_facts_traced(
                     "ingest": census,
                     # NOT persisted — an in-memory view for this run's other
                     # consumers (attack paths). Same list objects, not a copy.
-                    "accepted_facts": _accepted(facts, rejected)}
+                    "accepted_facts": _accepted(facts, rejected),
+                    # NOT persisted — what auto-resolution may count as re-checked.
+                    "evaluated_checks": _evaluated_checks(res.get("posture_traces")),
+                    "identified_products": _identified_products(
+                        res.get("identified_products"))}
             _log_ingest_health(census, len(cve) + len(posture))
             return cve, posture, meta
         except ImportError:                          # older engine: CVE-only
@@ -247,9 +310,14 @@ def detect_all_from_facts_traced(
                 verdicts[rid] = {"verdict": v, "reasons": reasons}
             census, rejected = _ingest_census(ing, len(facts))
             _log_ingest_health(census, len(posture))
+            # The posture rules did run, so their verdicts are evidence; the CVE
+            # track did not, so no product counts as re-identified.
             meta = {"coverage": summarize_traces(traces), "verdicts": verdicts,
                     "ingest": census,
-                    "accepted_facts": _accepted(facts, rejected)}
+                    "accepted_facts": _accepted(facts, rejected),
+                    "evaluated_checks": _evaluated_checks(
+                        [t.to_dict() for t in traces]),
+                    "identified_products": {}}
             if posture:
                 logger.info("detection_engine.posture_only_fallback", count=len(posture))
             return [], posture, meta
@@ -694,10 +762,19 @@ async def create_findings_from_facts(
 
         # Coverage ledger + coverage-gated auto-resolution (Phase 0/1). Best-effort:
         # never let resolution failure sink an otherwise-good detection run.
+        # Host coverage alone never closes a finding: each one also needs this
+        # run's evidence that its own check was re-run (see finding_coverage).
         resolved = 0
         try:
             coverage = build_coverage(result.get("scanner_runs"), facts)
-            resolved = await evaluate_resolutions(db, engagement_id, run, coverage, now)
+            skips: dict[str, int] = {}
+            resolved = await evaluate_resolutions(
+                db, engagement_id, run, coverage, now,
+                evaluated_checks=detect_meta.get("evaluated_checks") or set(),
+                identified_products=detect_meta.get("identified_products") or {},
+                skips=skips)
+            # Counts only: why nothing auto-closed, readable by an operator.
+            coverage["resolution_skips"] = dict(sorted(skips.items()))
             run.stats = {"coverage": coverage, "auto_resolved": resolved,
                          "posture_coverage": detect_meta.get("coverage") or {},
                          "posture_verdicts": detect_meta.get("verdicts") or {},
