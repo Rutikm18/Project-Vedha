@@ -246,3 +246,47 @@ def test_falling_back_to_http_waits_for_a_job_still_running(monkeypatch):
     assert asyncio.run(scenario()) is False
     order = [m for _, m in clock.events]
     assert order.index("push loop returned") > order.index("end B"), clock.events
+
+
+def test_a_crash_in_the_connection_loop_still_awaits_a_running_poll_job(monkeypatch):
+    """If the connection loop raises while a poll task is mid-job, the push
+    loop must still wait for that job before the exception propagates — a
+    crash cannot leave a claimed job running orphaned behind the HTTP
+    fallback."""
+    _quiet(monkeypatch)
+    clock = _Clock()
+    runner = _Runner(clock, seconds=0.5)
+
+    async def _fake_connection_loop(transport, runner_, agent_id, spool,
+                                    hb, poll, pollers, **_):
+        # Start a real poll job, register it exactly as the true loop does,
+        # then die the way a dropped socket does.
+        async def _poll_job():
+            await asyncio.to_thread(
+                runner_.run_job, {"job_id": "P"}, agent_id)
+        task = asyncio.ensure_future(_poll_job())
+        pollers.add(task)
+        task.add_done_callback(pollers.discard)
+        await asyncio.sleep(0.05)          # let the job get going
+        raise websockets.exceptions.ConnectionClosedError(None, None)
+
+    monkeypatch.setattr(ag, "_ws_connection_loop", _fake_connection_loop)
+
+    async def scenario():
+        with_error = False
+        try:
+            await ag._run_ws_push_loop(
+                _Transport([]), runner, "agent-1", _Spool(), 30, 1)
+        except websockets.exceptions.ConnectionClosedError:
+            with_error = True
+        clock.log("push loop returned")
+        return with_error
+
+    raised = asyncio.run(scenario())
+    assert raised, "the connection-loop exception should propagate"
+    order = [m for _, m in clock.events]
+    # The job ran to completion (end logged) BEFORE the loop returned, i.e. it
+    # was awaited, not orphaned.
+    assert "end P" in order, clock.events
+    assert order.index("push loop returned") > order.index("end P"), clock.events
+    assert runner.live == 0
