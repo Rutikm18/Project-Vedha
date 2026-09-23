@@ -48,6 +48,7 @@ def run_pipeline(jsonl_paths: list[str | Path], vuln_db: VulnDB | None = None,
                  use_ai_assist: bool = False, ai_client: AIClient | None = None,
                  ai_cache: AINormalizerCache | None = None,
                  suppression_audit: list[SuppressionRecord] | None = None,
+                 candidates_out: dict[str, list[CPECandidate]] | None = None,
                  ) -> tuple[list[Finding], IngestResult]:
     """exposure: optional {asset_ip: {"internet_facing": bool, "auth_enforced":
     bool}} — exposure context this pipeline cannot derive from scan facts
@@ -59,6 +60,12 @@ def run_pipeline(jsonl_paths: list[str | Path], vuln_db: VulnDB | None = None,
     through ai_normalizer.py before being given up on; a missing ai_client
     or any AI-side failure silently yields the same result as
     use_ai_assist=False for that fact (see ai_normalizer.py's hard rules).
+
+    candidates_out: optional caller-supplied dict this fills with the SAME
+    per-asset CPE candidates computed internally (asset_ip -> list[CPECandidate]),
+    so a caller that needs them (run_full_detection's identified_products) does
+    not have to re-derive or re-normalize anything. Additive-only: the return
+    tuple is unchanged.
     """
     vuln_db = vuln_db or load_snapshot()
     kev_db = kev_db or load_kev()
@@ -83,6 +90,9 @@ def run_pipeline(jsonl_paths: list[str | Path], vuln_db: VulnDB | None = None,
         candidates_by_asset[ip] = candidates
         for c in candidates:
             all_findings.extend(match_candidate(ip, c, vuln_db))
+
+    if candidates_out is not None:
+        candidates_out.update(candidates_by_asset)
 
     all_findings = dedup_findings(all_findings)
     all_findings, suppressed = suppress_negated_with_audit(all_findings, candidates_by_asset)
@@ -120,6 +130,29 @@ def run_pipeline(jsonl_paths: list[str | Path], vuln_db: VulnDB | None = None,
     return all_findings, ingest_result
 
 
+def identified_products_from(
+    candidates_by_asset: dict[str, list[CPECandidate]],
+) -> dict[str, list[str]]:
+    """{asset_ip: sorted distinct "vendor:product"} — every product the CVE track
+    identified on each asset, read from CPE 2.3 fields 3 and 4 of the candidate's
+    own cpe23() (the same string matcher.py stamps on a CVE finding's `cpe`), so a
+    finding and this map always agree on naming. Lower-cased. An asset with no
+    identified product gets no entry."""
+    out: dict[str, list[str]] = {}
+    for ip, cands in candidates_by_asset.items():
+        products: set[str] = set()
+        for c in cands:
+            parts = c.cpe23().split(":")
+            if len(parts) < 5:
+                continue
+            vendor, product = parts[3].lower(), parts[4].lower()
+            if vendor and product and "*" not in (vendor, product):
+                products.add(f"{vendor}:{product}")
+        if products:
+            out[ip] = sorted(products)
+    return out
+
+
 def run_full_detection(jsonl_paths: list[str | Path], vuln_db: VulnDB | None = None,
                        kev_db: KevDB | None = None, epss_db: EpssDB | None = None,
                        exposure: dict[str, dict] | None = None,
@@ -139,9 +172,14 @@ def run_full_detection(jsonl_paths: list[str | Path], vuln_db: VulnDB | None = N
     # finding silently skipped enrichment while the CVE track was enriched fine.
     kev_db = kev_db or load_kev()
     epss_db = epss_db or load_epss()
+    # Filled by run_pipeline with the SAME CPE candidates it computed internally —
+    # the raw material for identified_products below, so nothing here re-normalizes
+    # a fact that normalize() already turned into vendor/product once.
+    candidates_by_asset: dict[str, list[CPECandidate]] = {}
     cve_findings, ingest_result = run_pipeline(
         jsonl_paths, vuln_db=vuln_db, kev_db=kev_db, epss_db=epss_db,
-        exposure=exposure, suppression_audit=suppression_audit, **kwargs)
+        exposure=exposure, suppression_audit=suppression_audit,
+        candidates_out=candidates_by_asset, **kwargs)
     # Traced posture run: findings identical to detect_posture_all, PLUS a per-rule
     # evaluation trace so a non-finding can explain itself (drift vs clean vs
     # not-assessed). This is what makes "checked and clean" distinguishable from
@@ -164,6 +202,9 @@ def run_full_detection(jsonl_paths: list[str | Path], vuln_db: VulnDB | None = N
         "posture_coverage": posture_coverage,
         "posture_verdicts": posture_verdicts,
         "suppression_audit": [record.to_dict() for record in suppression_audit],
+        # What was re-identified, per asset: the evidence a CVE finding needs
+        # before its absence from this run can count as clean.
+        "identified_products": identified_products_from(candidates_by_asset),
         "ingest": ingest_result,
         "counts": {
             "cve": len(cve_findings),

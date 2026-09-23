@@ -21,7 +21,9 @@ import ai_normalizer as ai_mod
 import vuln_db as vdb_mod
 from enrichment_db import EpssDB, KevDB
 from models import FindingState, SourceConfidence
-from pipeline import ab_evaluate, run_full_detection, run_pipeline
+from cpe_normalizer import CPECandidate
+from pipeline import (ab_evaluate, identified_products_from, run_full_detection,
+                      run_pipeline)
 from vuln_db import SnapshotMeta, VulnDB, _content_hash
 
 
@@ -354,3 +356,92 @@ class TestRunPipelineAiAssist:
                               kev_db=_empty_kev(), epss_db=_empty_epss())
         assert report["lost_findings"] == 0
         assert report["precision_regression"] is False
+
+
+# ---------------------------------------------------------------------------
+# C1-7: identified_products — what the CVE track re-identified, per asset
+# ---------------------------------------------------------------------------
+
+def _smb_jsonl(tmp_path, target="10.0.0.4", filename="smb.jsonl") -> str:
+    """A host that yields posture facts but no product identification at all."""
+    record = {
+        "scanner": "smb_scan", "target": target,
+        "timestamp": "2026-01-01T00:00:00Z", "port": 445, "proto": "tcp",
+        "status": "open", "evidence": None, "error": None,
+        "data": {"smbv1_enabled": True},
+    }
+    p = tmp_path / filename
+    p.write_text(json.dumps(record) + "\n")
+    return str(p)
+
+
+class TestIdentifiedProducts:
+    """run_full_detection reports, per asset, every vendor:product the CVE track
+    identified this run. Auto-resolution reads it to tell "product re-identified
+    and no longer vulnerable" apart from "product never looked at"."""
+
+    def test_full_detection_reports_vendor_product_per_asset(self, tmp_path):
+        inventory = _ssh_inventory_jsonl(
+            tmp_path, target="10.0.0.1",
+            packages="openssh-server 1:8.4p1-5+deb11u1\napache2 2.4.49-1\n",
+            filename="inventory.jsonl")
+        banner = _banner_jsonl(tmp_path, target="10.0.0.3",
+                               first_line="SSH-2.0-OpenSSH_8.4p1 Debian-5",
+                               filename="banner.jsonl")
+        smb = _smb_jsonl(tmp_path)
+
+        result = run_full_detection(
+            [inventory, banner, smb], vuln_db=_mock_vuln_db({}),
+            kev_db=_empty_kev(), epss_db=_empty_epss())
+
+        # CPE 2.3 fields 3 and 4, sorted, one entry per distinct product. A host
+        # with no identified product has no entry: nothing was re-identified there.
+        assert result["identified_products"] == {
+            "10.0.0.1": ["apache:http_server", "openbsd:openssh"],
+            "10.0.0.3": ["openbsd:openssh"],
+        }
+
+    def test_identified_products_matches_the_cve_finding_cpe(self, tmp_path):
+        """The key a CVE finding is covered by is derived from the SAME cpe string
+        the finding carries, so the two can never disagree on naming."""
+        path = _ssh_inventory_jsonl(tmp_path)
+        result = run_full_detection(
+            [path], vuln_db=_openssh_vuln_db(),
+            kev_db=_empty_kev(), epss_db=_empty_epss())
+        cve = [f for f in result["cve"] if f.cve_id == "CVE-2023-12345"]
+        assert cve
+        parts = cve[0].cpe.split(":")
+        assert f"{parts[3]}:{parts[4]}" in result["identified_products"]["10.0.0.1"]
+
+    def test_empty_input_reports_no_products(self, tmp_path):
+        result = run_full_detection(
+            [_empty_jsonl(tmp_path)], vuln_db=_mock_vuln_db({}),
+            kev_db=_empty_kev(), epss_db=_empty_epss())
+        assert result["identified_products"] == {}
+
+    def test_vendor_and_product_are_lower_cased_and_deduplicated(self):
+        cands = {
+            "10.0.0.7": [
+                CPECandidate(vendor="Apache", product="HTTP_Server",
+                             version_raw="2.4.49", version_normalized="2.4.49",
+                             confidence="high",
+                             source_confidence=SourceConfidence.inferred,
+                             basis="banner", source_ref="f:1"),
+                CPECandidate(vendor="apache", product="http_server",
+                             version_raw=None, version_normalized=None,
+                             confidence="low",
+                             source_confidence=SourceConfidence.inferred,
+                             basis="hint", source_ref="f:2"),
+            ],
+            "10.0.0.8": [],
+        }
+        assert identified_products_from(cands) == {"10.0.0.7": ["apache:http_server"]}
+
+    def test_candidates_out_leaves_run_pipeline_return_unchanged(self, tmp_path):
+        path = _ssh_inventory_jsonl(tmp_path)
+        out: dict = {}
+        result = run_pipeline(
+            [path], vuln_db=_openssh_vuln_db(),
+            kev_db=_empty_kev(), epss_db=_empty_epss(), candidates_out=out)
+        assert isinstance(result, tuple) and len(result) == 2
+        assert [c.product for c in out["10.0.0.1"]] == ["openssh"]
