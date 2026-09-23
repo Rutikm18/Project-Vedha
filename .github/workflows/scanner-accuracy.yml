@@ -81,4 +81,5 @@ jobs:
             tests/test_syn_recv_interleave.py \
             tests/test_scope_error_identity.py \
             tests/test_intensity_envelope.py \
-            tests/test_gate6_concurrency.py
+            tests/test_gate6_concurrency.py \
+            tests/test_phased_admission.py
