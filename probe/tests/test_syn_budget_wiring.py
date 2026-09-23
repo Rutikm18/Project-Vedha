@@ -131,7 +131,9 @@ class TestRawPathStopsAtTheDeadline:
 
         results = sc._syn_scan_blocking("10.0.0.5")
 
-        reported = {r.port for r in results}
+        # Exclude the per-host scan_summary (port=None, covers the whole
+        # host) — this check is about PER-PORT results only.
+        reported = {r.port for r in results if r.port is not None}
         assert reported <= set(sent), (
             "ports that were never sent must not appear in the results")
 

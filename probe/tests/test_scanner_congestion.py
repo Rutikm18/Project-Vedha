@@ -38,7 +38,13 @@ from scanner.scanner_base import (
 # ── SendPacer: AIMD on the send loop (#5 / #2.2) ─────────────────────────────
 class TestSendPacer:
     def test_clean_round_increases_rate_additively(self):
-        p = SendPacer(100.0)
+        # max_rate given explicitly, above the starting rate, so there is
+        # room to observe the +10% arithmetic in isolation. The DEFAULT
+        # ceiling is the starting rate itself (see test_max_rate_defaults_to_
+        # the_requested_rate in test_syn_coverage_and_pacing.py), so a clean
+        # round from a default-constructed pacer has nowhere to grow — that
+        # is the hard-ceiling contract, not a bug in additive increase.
+        p = SendPacer(100.0, max_rate=200.0)
         p.observe_round(sent=100, answered=100)
         assert p.rate == pytest.approx(110.0)      # +10% additive increase
         assert p.backoffs == 0
@@ -60,10 +66,16 @@ class TestSendPacer:
         for _ in range(100):
             p.observe_round(sent=10, answered=10)
         assert p.rate <= p.max_rate
-        assert p.max_rate == pytest.approx(400.0)  # 4x the operator's --rate
+        # The hard ceiling defaults to the REQUESTED rate (R3): admission
+        # approved 100 pps, and additive increase must never climb past what
+        # was approved, clean rounds or not.
+        assert p.max_rate == pytest.approx(100.0)
 
     def test_loss_just_under_threshold_does_not_back_off(self):
-        p = SendPacer(100.0, loss_threshold=0.15)
+        # Explicit headroom (see test_clean_round_increases_rate_additively)
+        # so a lack of backoff is distinguishable from "already at the
+        # default ceiling".
+        p = SendPacer(100.0, max_rate=200.0, loss_threshold=0.15)
         p.observe_round(sent=100, answered=90)     # 10% loss < 15%
         assert p.backoffs == 0
         assert p.rate > 100.0

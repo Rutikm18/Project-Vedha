@@ -70,6 +70,8 @@ jobs:
             tests/test_accuracy_gate.py \
             tests/test_main_scripts_accuracy.py \
             tests/test_scanner_congestion.py \
+            tests/test_syn_coverage_and_pacing.py \
+            tests/test_tail_budget.py \
             tests/test_dualstack_fallback.py \
             tests/test_syn_scanner.py \
             tests/test_tarpit.py \

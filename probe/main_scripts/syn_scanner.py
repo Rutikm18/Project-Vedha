@@ -43,7 +43,7 @@ import time
 
 from .adaptive_timeout import AdaptiveTimeout
 from .os_fingerprint import fingerprint_os
-from .port_scanner import _NMAP_TOP_100, _UNSET, PortScanner
+from .port_scanner import _NMAP_TOP_100, _UNSET, PortScanner, ScanMetrics
 from .scanner_base import (
     LOG,
     BaseScanner,
@@ -322,8 +322,17 @@ class SynScanner(BaseScanner):
                  adaptive_timeout: bool = True, source_port: int | None = None,
                  randomize: bool = False, scan_delay: float = 0.0,
                  pace_sends: bool = True, deadline_seconds: float | None = None,
+                 vantage: str | None = None, emit_summary: bool = True,
                  **kwargs):
         super().__init__(*args, **kwargs)
+        # Which scanner/host produced this observation — same source PortScanner
+        # uses, so a coverage summary reads identically regardless of which
+        # port scanner actually ran.
+        self.vantage = vantage or socket.gethostname()
+        # Emit a terminal scan_summary fact per host, exactly like PortScanner's
+        # (same ScanMetrics contract, same consumers). On by default so a
+        # truncated raw-SYN sweep is as visible as a truncated connect one.
+        self.emit_summary = emit_summary
         # Default to nmap top-100 (not the 35-port TOP_TCP_PORTS): a no-arg scan
         # shouldn't silently miss common services.
         self.ports = list(_NMAP_TOP_100 if ports is None else ports)
@@ -351,13 +360,22 @@ class SynScanner(BaseScanner):
         self.scan_delay = scan_delay
         self._key = key or os.urandom(16)
         self._rate = kwargs.get("rate", 200.0)
-        # Pace the raw SYN send loop and adapt it to observed loss (AIMD).
-        # Previously `limiter.wait()` was awaited ONCE per target and the inner
-        # loop then blasted every SYN back-to-back, so the configured --rate was
-        # effectively ignored for the packets that matter. An unpaced burst
-        # causes its own drops, which the scanner then reports as `filtered`.
+        # Pace the raw SYN send loop. Previously `limiter.wait()` was awaited
+        # ONCE per target and the inner loop then blasted every SYN
+        # back-to-back, so the configured --rate was effectively ignored for
+        # the packets that matter. An unpaced burst causes its own drops,
+        # which the scanner then reports as `filtered`.
+        #
+        # This instance-wide pacer is the AGGREGATE hard cap: many hosts are
+        # swept concurrently by worker threads sharing this one scanner
+        # (_gather_per_host, up to 100 in flight — the tail deliberately keeps
+        # one shared scanner for exactly this reason), and their combined send
+        # rate must never exceed what was admitted. It is never fed
+        # `observe_round` — AIMD runs per host instead (see
+        # _syn_scan_blocking) — so one host's silence backs off only that
+        # host, not the rate every other host shares.
         self.pace_sends = pace_sends
-        self._pacer = SendPacer(self._rate) if pace_sends else None
+        self._pacer = SendPacer(self._rate, max_rate=self._rate) if pace_sends else None
         self._supported = (not force_fallback) and syn_scan_supported()
         self._fallback: PortScanner | None = None
         if not self._supported:
@@ -474,6 +492,7 @@ class SynScanner(BaseScanner):
 
     def _syn_scan_blocking(self, target: str,
                            deadline_seconds=_UNSET) -> list[ScanResult]:
+        t0 = time.monotonic()
         # REQUEST IPv4 explicitly: this raw path is v4-only, so taking whatever
         # getaddrinfo sorts first meant a dual-stack host whose AAAA leads was
         # kicked to the slower connect fallback even though its A record was
@@ -511,9 +530,22 @@ class SynScanner(BaseScanner):
                if self.adaptive_timeout else None)
 
         states: dict[int, str] = {}
+        # Successful sends only (R2): a port must never be judged `filtered`
+        # on the strength of a send that never left this host.
         attempts_by_port: dict[int, int] = {}
+        # Local sendto() failures, tracked apart from attempts_by_port: this is
+        # scanner-side noise (fd/buffer exhaustion, a routing error), not a
+        # target verdict, and must never be reported as the target's `filtered`.
+        send_failed: dict[int, int] = {}
         # Per-port harvested intel: rtt_ms + the SYN/ACK's stack signals.
         meta: dict[int, dict] = {}
+        # Host-local AIMD pacer: loss on THIS host's path backs off only this
+        # host's rate. Capped at the requested rate, same as the shared
+        # aggregate pacer — AIMD recovers a host toward its own admitted share,
+        # never past it. A NEW instance per call on purpose: the scanner object
+        # is shared across every host in flight (one aggregate cap), but each
+        # host's congestion state is its own.
+        host_pacer = SendPacer(self._rate, max_rate=self._rate) if self.pace_sends else None
         try:
             # Retransmit loop: each round SYNs only the still-silent ports, then
             # collects replies. A definitive SYN-ACK/RST resolves a port and drops
@@ -550,21 +582,31 @@ class SynScanner(BaseScanner):
                 for port in pending:
                     if budget_end is not None and time.monotonic() >= budget_end:
                         break
-                    attempts_by_port[port] = attempts_by_port.get(port, 0) + 1
                     seq = syn_cookie(dst_ip, port, src_port, self._key)
                     pkt = build_syn_packet(src_ip, dst_ip, src_port, port, seq)
-                    # Pace EVERY packet. `limiter.wait()` is awaited once per
-                    # target, which left this inner loop free to emit the whole
-                    # cohort at CPU speed -- the burst that causes the drops the
+                    # Pace EVERY packet: this host's own pacer first (its AIMD
+                    # is what backs THIS host off on loss), then the shared
+                    # aggregate pacer (the hard cap across every host in
+                    # flight). `limiter.wait()` is awaited once per target,
+                    # which left this inner loop free to emit the whole cohort
+                    # at CPU speed -- the burst that causes the drops the
                     # scanner then misreports as `filtered`.
+                    if host_pacer is not None:
+                        host_pacer.pace()
                     if self._pacer is not None:
                         self._pacer.pace()
                     try:
                         send_sock.sendto(pkt, (dst_ip, 0))
+                        # Counted only on a successful send (R2): a sendto()
+                        # that raised never put a packet on the wire, so it
+                        # must not count as an attempt a silent target could
+                        # be judged by.
+                        attempts_by_port[port] = attempts_by_port.get(port, 0) + 1
                         send_at[port] = time.monotonic()
                         pending_set.add(port)
                     except OSError as exc:
                         LOG.debug("send SYN %s:%d failed: %s", dst_ip, port, exc)
+                        send_failed[port] = send_failed.get(port, 0) + 1
                     # Drain as we send: each SYN's reply arrives about one RTT
                     # later, while this loop is still running. Plain SO_RCVBUF
                     # is clamped to net.core.rmem_max (~208 KB by default, which
@@ -602,28 +644,75 @@ class SynScanner(BaseScanner):
                 # next retransmit round; a clean round accelerates again. This is
                 # what keeps a fast scan from manufacturing its own false
                 # negatives on a fragile path or a rate-limiting target.
-                if self._pacer is not None and sent_ports:
+                #
+                # Runs on the HOST-LOCAL pacer only. One firewalled host that
+                # silently drops closed-port SYNs reports ~100% loss every
+                # round; feeding that into the SHARED pacer used to halve
+                # every other host's rate too. The shared pacer is never fed
+                # observe_round, so it stays at the requested rate and this
+                # host's silence throttles only itself.
+                if host_pacer is not None and sent_ports:
                     answered = len(sent_ports - pending_set)
-                    self._pacer.observe_round(len(sent_ports), answered)
+                    host_pacer.observe_round(len(sent_ports), answered)
                 # Only ports still unresolved go to the next round.
                 pending = [p for p in pending if p not in states]
         finally:
             send_sock.close()
             recv_sock.close()
 
-        return self._build_results(target, states, attempts_by_port, meta)
+        return self._build_results(
+            target, states, attempts_by_port, meta,
+            send_failed=send_failed,
+            budget_active=budget_end is not None,
+            duration_s=time.monotonic() - t0,
+            pacer_stats=host_pacer.stats() if host_pacer is not None else None)
 
     def _build_results(self, target: str, states: dict[int, str],
                        attempts_by_port: dict[int, int],
-                       meta: dict[int, dict]) -> list[ScanResult]:
-        """Turn resolved port states + harvested intel into ScanResults. Pure —
-        no sockets — so the emit logic (incl. the OS-fingerprint enrichment) is
-        unit-testable without a raw socket."""
+                       meta: dict[int, dict], *,
+                       send_failed: dict[int, int] | None = None,
+                       budget_active: bool = False,
+                       duration_s: float = 0.0,
+                       pacer_stats: dict | None = None) -> list[ScanResult]:
+        """Turn resolved port states + harvested intel into ScanResults, plus
+        (when `emit_summary`) ONE terminal `scan_summary` covering the whole
+        host. Pure — no sockets — so the emit logic (incl. the OS-fingerprint
+        enrichment and the coverage summary) is unit-testable without a raw
+        socket.
+
+        `send_failed` counts local sendto() failures per port, tracked apart
+        from `attempts_by_port` (successful sends only — R2): a port that was
+        never successfully sent is scanner-side noise, not a target verdict,
+        so it must never read as the target's `filtered`.
+        """
+        send_failed = send_failed or {}
         results: list[ScanResult] = []
+        metrics = ScanMetrics(target=target, vantage=self.vantage,
+                              ports_requested=len(self.ports),
+                              requested_ports=set(self.ports))
         for port in self.ports:
             state = states.get(port)
             attempts = attempts_by_port.get(port)
+            failed = send_failed.get(port, 0)
             if state is None and attempts is None:
+                if failed:
+                    # Every send for this port failed locally (fd/buffer
+                    # exhaustion, a routing error, ...) — it never reached the
+                    # wire, so it is scanner-side noise, not a target verdict.
+                    # Recorded into the summary (drives `health=degraded`) but
+                    # only emitted per-port under --report-closed, matching
+                    # every other non-open state.
+                    result = ScanResult(
+                        self.name, target, port=port, proto="tcp",
+                        status="error",
+                        data={"method": "syn", "reason": "local_resource_error"},
+                        evidence=f"{failed} SYN send(s) failed locally; "
+                                 "none reached the wire")
+                    if self.emit_summary:
+                        metrics.record(result)
+                    if self.report_closed:
+                        results.append(result)
+                    continue
                 # Never probed (the host budget ran out before this port was
                 # sent). Silence we never listened for is not evidence: emitting
                 # it as `filtered` would manufacture a firewall out of a clock.
@@ -666,23 +755,56 @@ class SynScanner(BaseScanner):
                     if fp.get("stack_guess"):
                         data["os_stack"] = fp["stack_guess"]
                         data["os_stack_confidence"] = fp["signals"].get("stack_confidence")
-                results.append(ScanResult(
+                result = ScanResult(
                     self.name, target, port=port, proto="tcp", status="open",
-                    data=data, evidence="syn/ack received"))
-            elif state == "closed" and self.report_closed:
+                    data=data, evidence="syn/ack received")
+                if self.emit_summary:
+                    metrics.record(result)
+                results.append(result)
+            elif state == "closed":
                 data = {"method": "syn"}
                 if attempts > 1:
                     data["attempts"] = attempts
                 if "rtt_ms" in m:
                     data["rtt_ms"] = m["rtt_ms"]
-                results.append(ScanResult(
+                result = ScanResult(
                     self.name, target, port=port, proto="tcp", status="closed",
-                    data=data, evidence="rst received"))
-            elif state is None and self.report_closed:
-                results.append(ScanResult(
+                    data=data, evidence="rst received")
+                if self.emit_summary:
+                    metrics.record(result)
+                if self.report_closed:
+                    results.append(result)
+            elif state is None:
+                # Silence, but with at least one SUCCESSFUL send (attempts_by_port
+                # had an entry): genuinely open|filtered, not scanner noise.
+                result = ScanResult(
                     self.name, target, port=port, proto="tcp", status="filtered",
                     data={"method": "syn", "attempts": attempts},
-                    evidence=f"no reply after {attempts} SYN(s) (open|filtered)"))
+                    evidence=f"no reply after {attempts} SYN(s) (open|filtered)")
+                if self.emit_summary:
+                    metrics.record(result)
+                if self.report_closed:
+                    results.append(result)
+
+        if self.emit_summary:
+            metrics.duration_s = round(duration_s, 3)
+            summ = metrics.summary()
+            # Ports requested but never observed at all (skipped by the host
+            # budget) — the same accounting PortScanner's own summary uses.
+            unreached = metrics.ports_requested - metrics.ports_attempted
+            summ["budget_exhausted"] = bool(budget_active and unreached > 0)
+            summ["method"] = "syn"
+            if pacer_stats is not None:
+                # A pacer that never left its starting rate means this host's
+                # path was never throttled; a lower final_rate means AIMD
+                # backed it off, which changes how much to trust `filtered`.
+                summ["pacing"] = pacer_stats
+            ev = (f"{metrics.ports_attempted}/{metrics.ports_requested} "
+                  f"ports scanned, {metrics.open} open, "
+                  f"health={'degraded' if metrics.degraded else 'ok'}")
+            results.append(ScanResult(
+                self.name, target, proto="tcp", status="scan_summary",
+                data=summ, evidence=ev))
         return results
 
 

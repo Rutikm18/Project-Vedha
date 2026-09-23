@@ -31,6 +31,7 @@ import random
 import socket
 import struct
 import sys
+import threading
 import time
 from dataclasses import dataclass, field, asdict
 from datetime import datetime, timedelta, timezone
@@ -623,12 +624,17 @@ class SendPacer:
     Two independent controls:
       * `pace()` — a monotonic token schedule enforcing `rate` packets/sec. It
         sleeps only when actually ahead of schedule, so a rate the machine
-        cannot reach costs nothing (no per-packet sleep syscall).
+        cannot reach costs nothing (no per-packet sleep syscall). Thread-safe:
+        many worker threads can share one instance (the aggregate cap across
+        hosts scanned concurrently), and each caller must get its own slot
+        instead of racing to read/sleep/write the same schedule.
       * `observe_round()` — AIMD on the observed per-round reply ratio: a round
         that loses more than `loss_threshold` of its probes HALVES the rate
         (multiplicative decrease); a clean round adds `increment` (additive
-        increase), capped at `max_rate`. That is the classic congestion-control
-        response to the loss signal.
+        increase), capped at `max_rate` — which never exceeds the requested
+        rate, so recovery climbs back toward what was asked for and no
+        higher. That is the classic congestion-control response to the loss
+        signal.
     """
 
     def __init__(self, rate: float, *, min_rate: float = 20.0,
@@ -637,28 +643,43 @@ class SendPacer:
         self.initial_rate = float(rate)
         self.rate = float(rate)
         self.min_rate = float(min_rate)
-        # Never let the controller grow past 4x its starting budget: the operator's
-        # --rate stays a meaningful ceiling on scan aggressiveness.
-        self.max_rate = float(max_rate) if max_rate is not None else max(float(rate) * 4.0, float(rate))
+        # The hard ceiling defaults to the REQUESTED rate itself: admission
+        # approved `rate` packets/sec, and additive increase recovering from a
+        # backoff must never climb past what was actually approved. Pass
+        # max_rate= explicitly to raise it.
+        self.max_rate = float(max_rate) if max_rate is not None else float(rate)
         self.loss_threshold = loss_threshold
         # Additive increase step; default to 10% of the starting rate per clean round.
         self.increment = float(increment) if increment is not None else max(1.0, float(rate) * 0.1)
         self._next = 0.0
         self.rounds = 0
         self.backoffs = 0
+        # Guards `_next` (pace) and rate/rounds/backoffs (observe_round): one
+        # instance is shared by every worker thread scanning a host at once
+        # (SynScanner._syn_scan_blocking runs in a thread pool), so an
+        # unguarded read-sleep-write let threads compute the SAME slot and
+        # fire together — the exact burst pacing exists to prevent.
+        self._lock = threading.Lock()
 
     def pace(self) -> None:
-        """Block just long enough to hold `rate` packets/sec. No-op at rate <= 0."""
+        """Block just long enough to hold `rate` packets/sec. No-op at rate <= 0.
+
+        The slot is reserved under the lock, then released before sleeping —
+        sleeping while holding it would serialise every other thread behind
+        the sleeper instead of letting each claim its own, earlier slot.
+        """
         if self.rate <= 0:
             return
         interval = 1.0 / self.rate
         now = time.monotonic()
-        if now < self._next:
-            time.sleep(self._next - now)
-            now = time.monotonic()
-        # max(now, ...) re-bases the schedule after a stall instead of trying to
-        # "catch up" with a burst, which would defeat the point of pacing.
-        self._next = max(now, self._next) + interval
+        with self._lock:
+            slot = max(now, self._next)
+            # max(now, ...) re-bases the schedule after a stall instead of
+            # trying to "catch up" with a burst, which would defeat the point
+            # of pacing.
+            self._next = slot + interval
+        if slot > now:
+            time.sleep(slot - now)
 
     def observe_round(self, sent: int, answered: int) -> float:
         """Fold one send/collect round's reply ratio into the rate (AIMD).
@@ -667,14 +688,15 @@ class SendPacer:
         looks like total loss."""
         if sent <= 0:
             return self.rate
-        self.rounds += 1
-        loss = 1.0 - (answered / sent)
-        if loss > self.loss_threshold:
-            self.rate = max(self.min_rate, self.rate / 2.0)   # multiplicative decrease
-            self.backoffs += 1
-        else:
-            self.rate = min(self.max_rate, self.rate + self.increment)   # additive increase
-        return self.rate
+        with self._lock:
+            self.rounds += 1
+            loss = 1.0 - (answered / sent)
+            if loss > self.loss_threshold:
+                self.rate = max(self.min_rate, self.rate / 2.0)   # multiplicative decrease
+                self.backoffs += 1
+            else:
+                self.rate = min(self.max_rate, self.rate + self.increment)   # additive increase
+            return self.rate
 
     def stats(self) -> dict:
         """Pacing telemetry for the scan summary (so a throttled scan is visible)."""

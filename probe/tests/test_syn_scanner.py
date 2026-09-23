@@ -397,7 +397,8 @@ class TestBuildResultsEnrichment:
         sc = self._scanner([80, 443, 22])
         out = sc._build_results("10.0.0.5", {80: "open", 443: "closed"},
                                 {80: 1, 443: 1, 22: 3}, {})
-        assert {r.port for r in out} == {80}                 # only open emitted
+        per_port = [r for r in out if r.status != "scan_summary"]
+        assert {r.port for r in per_port} == {80}            # only open emitted
 
 
 class TestTcpOptionProfile:
