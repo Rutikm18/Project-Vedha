@@ -38,7 +38,8 @@ jobs:
           tests/test_oversized_result.py tests/test_cache_host_index.py
           tests/test_ws_claim_race.py tests/test_stage_boundary_commits.py
           tests/test_lease_patience.py tests/test_spool_backpressure.py
-          tests/test_infeasible_job_admission.py
+          tests/test_infeasible_job_admission.py tests/test_kernel_admission.py
+          tests/test_ws_reconnect_serialization.py tests/test_phased_admission.py
           tests/test_banner_pass_concurrency.py tests/test_stage_fanout_policy.py
       - name: doctor smoke (exits 0 on a healthy host)
         run: python -m agent.setup doctor

@@ -1,0 +1,41 @@
+name: frontend-ci
+
+# The dial parity test reads probe/workflow/intensity.py and the manager's
+# alias table, so changes to either also run it.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'manager/frontend/**'
+      - 'probe/workflow/intensity.py'
+      - 'manager/backend/app/routers/agents.py'
+      - '.github/workflows/frontend-ci.yml'
+  pull_request:
+    paths:
+      - 'manager/frontend/**'
+      - 'probe/workflow/intensity.py'
+      - 'manager/backend/app/routers/agents.py'
+      - '.github/workflows/frontend-ci.yml'
+  workflow_dispatch: {}
+
+concurrency:
+  group: frontend-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: manager/frontend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 'lts/*'
+          cache: npm
+          cache-dependency-path: manager/frontend/package-lock.json
+      - run: npm ci
+      - run: npm test
+      - run: npx tsc --noEmit
