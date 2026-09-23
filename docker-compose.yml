@@ -223,9 +223,12 @@ services:
       PROBE_NETWORK_SEGMENTS: ${PROBE_NETWORK_SEGMENTS:-}
       PROBE_MAX_TARGETS: ${PROBE_MAX_TARGETS:-4096}
       PROBE_MAX_JOB_SECONDS: ${PROBE_MAX_JOB_SECONDS:-7200}
+      # Keep the optional local result archive on the writable state volume; the
+      # image default (/app/result) sits on the read-only root filesystem.
+      PROBE_RESULT_DIR: ${PROBE_RESULT_DIR:-/var/lib/vedha-agent/result}
       LICENSE_ENFORCED: "false"   # container host-ID changes each restart; skip host-lock check
     volumes:
-      - probestate:/var/lib/vedha-probe   # persist identity so restarts reuse the same agent
+      - probestate:/var/lib/vedha-agent   # persist identity so restarts reuse the same agent (matches STATE_FILE in the image)
     read_only: true
     tmpfs:
       - /tmp:size=64m,mode=1777
