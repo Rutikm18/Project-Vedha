@@ -15,16 +15,19 @@ matches. It can push a scan to `degraded` — raising a coverage finding about a
 host the operator never authorized — or dilute a real problem. Either way the
 verdict cites evidence that was deliberately discarded.
 
-This is NOT a scope leak. A summary carries `vantage` and no target (which is
-exactly why the identity traversal never saw it), so nothing out-of-scope was
-ever laundered into the inventory. What was wrong is the ACCOUNTING, and this
-codebase's standing rule is that a number nobody can trace is worse than no
-number.
+This is NOT a scope leak. The scan_summary fact's `data` blob itself carries
+`vantage` and no target (which is exactly why the identity traversal never
+saw it), so nothing out-of-scope was ever laundered into the inventory. What
+was wrong is the ACCOUNTING, and this codebase's standing rule is that a
+number nobody can trace is worse than no number.
 
 Matching is by VALUE, not by recomputation: the manager does not re-derive a
 list the probe declared, it only removes the entries whose fact it just
-dropped. Two hosts with byte-identical summaries are interchangeable, so
-removing either is correct — the count is what the aggregate reads.
+dropped. `scan_metrics` entries are stamped with the host they describe
+(`{**data, "target": target}` — see `agent/engine.py::_scan_metrics_from_facts`),
+which also means two hosts that happen to report byte-identical `data` are
+unambiguous to remove: the target makes each host's own entry the only one
+that matches.
 """
 from __future__ import annotations
 
@@ -47,6 +50,12 @@ def _summary(missing: int = 0, health: str = "ok") -> dict:
     }
 
 
+def _metric(target: str, data: dict) -> dict:
+    """What `result["scan_metrics"]` actually holds: the fact's `data`,
+    stamped with its `target`, exactly as the probe builds it."""
+    return {**data, "target": target}
+
+
 def _result(*, in_scope_summary: dict, out_of_scope_summary: dict) -> dict:
     return {
         "hosts": [{"ip": "10.0.0.5"}, {"ip": "192.168.99.9"}],
@@ -56,7 +65,10 @@ def _result(*, in_scope_summary: dict, out_of_scope_summary: dict) -> dict:
             {"target": "192.168.99.9", "scanner": "port_scan",
              "status": "scan_summary", "data": out_of_scope_summary},
         ],
-        "scan_metrics": [in_scope_summary, out_of_scope_summary],
+        "scan_metrics": [
+            _metric("10.0.0.5", in_scope_summary),
+            _metric("192.168.99.9", out_of_scope_summary),
+        ],
     }
 
 
@@ -67,14 +79,14 @@ class TestTheMetricsFollowTheFacts:
             _result(in_scope_summary=clean, out_of_scope_summary=dirty), SCOPE)
 
         assert len(rejected) == 2            # the host row and the fact row
-        assert filtered["scan_metrics"] == [clean]
+        assert filtered["scan_metrics"] == [_metric("10.0.0.5", clean)]
 
     def test_the_authorized_host_keeps_its_metrics(self):
         clean, dirty = _summary(missing=7), _summary(missing=400)
         filtered, _ = partition_result_scope(
             _result(in_scope_summary=clean, out_of_scope_summary=dirty), SCOPE)
 
-        assert filtered["scan_metrics"] == [clean]
+        assert filtered["scan_metrics"] == [_metric("10.0.0.5", clean)]
         assert [f["target"] for f in filtered["facts"]] == ["10.0.0.5"]
 
     def test_the_health_verdict_stops_citing_discarded_evidence(self):
@@ -91,19 +103,20 @@ class TestTheMetricsFollowTheFacts:
         assert verdict["local_resource_errors_total"] == 0
 
     def test_identical_summaries_drop_exactly_one(self):
-        """Two hosts can report byte-identical coverage. Removing either is
-        correct, but removing BOTH would under-count the survivor."""
+        """Two hosts can report byte-identical coverage `data`. The target
+        stamp disambiguates them, so dropping one host removes exactly that
+        host's entry — never the survivor's, and never both."""
         same = _summary(missing=5)
         filtered, _ = partition_result_scope(
             _result(in_scope_summary=dict(same), out_of_scope_summary=dict(same)),
             SCOPE)
 
-        assert filtered["scan_metrics"] == [same]
+        assert filtered["scan_metrics"] == [_metric("10.0.0.5", same)]
 
     def test_a_summary_without_data_is_matched_as_the_probe_emitted_it(self):
-        """The probe surfaces `f.get("data", {})`, so a summary fact with no
-        `data` key appears in scan_metrics as {}. The partition must remove
-        that same {}."""
+        """The probe surfaces `{**f.get("data", {}), "target": f.get("target")}`,
+        so a summary fact with no `data` key appears in scan_metrics as just
+        `{"target": ...}`. The partition must remove that same entry."""
         result = {
             "hosts": [{"ip": "10.0.0.5"}, {"ip": "192.168.99.9"}],
             "facts": [
@@ -112,10 +125,11 @@ class TestTheMetricsFollowTheFacts:
                 {"target": "192.168.99.9", "scanner": "port_scan",
                  "status": "scan_summary"},
             ],
-            "scan_metrics": [_summary(), {}],
+            "scan_metrics": [_metric("10.0.0.5", _summary()),
+                              {"target": "192.168.99.9"}],
         }
         filtered, _ = partition_result_scope(result, SCOPE)
-        assert filtered["scan_metrics"] == [_summary()]
+        assert filtered["scan_metrics"] == [_metric("10.0.0.5", _summary())]
 
 
 class TestNothingElseMoves:

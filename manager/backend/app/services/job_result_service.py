@@ -187,18 +187,22 @@ def validate_result_scope(
 def _drop_orphaned_metrics(result: dict, filtered: dict, dropped_facts: set[int]) -> None:
     """Take a dropped host's coverage metrics with its facts.
 
-    `scan_metrics` is a top-level copy the probe pre-computes from the `data` of
-    every fact whose status is `scan_summary`, so the manager need not filter
-    facts to find them. The identity traversal never sees it — a summary
-    describes the sweep and carries `vantage`, not a target — so without this
-    a host's metrics row would outlive the evidence the partition discarded,
-    and scan_health_summary() would aggregate a host absent from the result.
+    `scan_metrics` is a top-level copy the probe pre-computes from every fact
+    whose status is `scan_summary`: that fact's `data`, stamped with the
+    fact's own `target` (`agent/engine.py::_scan_metrics_from_facts`), so the
+    manager need not filter facts to find them and scan_health_summary() can
+    group a host's several summaries (first pass + tail) together. The
+    identity traversal never sees `scan_metrics` itself — it walks `facts`,
+    and a summary's `data` blob carries `vantage`, not a target — so without
+    this a host's metrics row would outlive the evidence the partition
+    discarded, and scan_health_summary() would aggregate a host absent from
+    the result.
 
     Matched by VALUE, removing one occurrence per dropped fact, rather than
     re-deriving the list: the manager does not get to recompute a field the
-    probe declared, only to remove what it just dropped. Two hosts with
-    identical summaries are interchangeable, so which one goes does not matter —
-    the count is what the aggregate reads.
+    probe declared, only to remove what it just dropped. The target stamp
+    means two hosts that happen to report byte-identical `data` are
+    unambiguous to remove — only the dropped host's own entry matches.
     """
     metrics = result.get("scan_metrics")
     facts = result.get("facts")
@@ -210,8 +214,9 @@ def _drop_orphaned_metrics(result: dict, filtered: dict, dropped_facts: set[int]
         if fact.get("status") != "scan_summary":
             continue
         try:
-            # The same default the probe used when it built scan_metrics.
-            survivors.remove(fact.get("data", {}))
+            # The same construction the probe used when it built
+            # scan_metrics: this fact's data, stamped with this fact's target.
+            survivors.remove({**fact.get("data", {}), "target": fact.get("target")})
         except ValueError:      # this summary was never surfaced at top level
             continue
     filtered["scan_metrics"] = survivors
