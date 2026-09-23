@@ -28,6 +28,11 @@ port absent from every range is `unknown` — not `closed`.
 """
 from __future__ import annotations
 
+import uuid
+from datetime import datetime, timezone
+from types import SimpleNamespace
+from unittest.mock import AsyncMock, MagicMock
+
 import pytest
 
 from app.services.port_coverage import (
@@ -256,3 +261,151 @@ class TestTheEndpoint:
 
         src = inspect.getsource(engagements.port_coverage)
         assert "raise HTTPException(\n            404," in src
+
+
+# ── F1: the endpoint must MERGE every scan_summary for the host, not pick one ─
+#
+# A two-phase deep scan emits two per-host scan_summary facts (first pass +
+# tail, disjoint port ranges), routinely landing in the SAME scan_results row
+# (one job, one submission, two facts for the host). A query that picks only
+# one scan_summary fact-row silently drops whichever summary loses the
+# ordering, even when both live in that one row.
+
+def _user():
+    return SimpleNamespace(tenant_id=uuid.uuid4(), user_id=uuid.uuid4(), role="admin")
+
+
+class TestTheEndpointMergesEverySummaryForTheHost:
+    @pytest.mark.asyncio
+    async def test_two_disjoint_summaries_in_one_job_are_merged(self):
+        """The realistic shape: one job, one scan_results row, two
+        scan_summary facts for the same host (first pass + tail)."""
+        from app.routers import engagements as eng
+
+        engagement_id = uuid.uuid4()
+        job_id = uuid.uuid4()
+        t0 = datetime(2026, 1, 1, tzinfo=timezone.utc)
+        facts = [
+            {"scanner": "port_scan", "target": "10.0.0.5", "status": "scan_summary",
+             "data": {"port_states": {"open": [[22, 22]], "closed": [[80, 80]]}}},
+            {"scanner": "syn_scan", "target": "10.0.0.5", "status": "scan_summary",
+             "data": {"port_states": {"closed": [[443, 443]],
+                                      "not_scanned": [[8000, 8000]]}}},
+        ]
+
+        db = MagicMock()
+        db.execute = AsyncMock(side_effect=[
+            MagicMock(scalar_one_or_none=lambda: SimpleNamespace(id=engagement_id)),  # get_or_404
+            MagicMock(first=lambda: SimpleNamespace(
+                id=uuid.uuid4(), job_id=job_id, scan_type="vuln_scan",
+                created_at=t0)),                                       # latest
+            MagicMock(all=lambda: [SimpleNamespace(facts=facts, created_at=t0)]),  # job rows
+        ])
+
+        out = await eng.port_coverage(engagement_id, db, _user(), "10.0.0.5", None)
+
+        assert out["port_states"] == {
+            "open": [[22, 22]],
+            "closed": [[80, 80], [443, 443]],
+            "not_scanned": [[8000, 8000]],
+        }
+        assert out["coverage"]["open"] == 1
+
+    @pytest.mark.asyncio
+    async def test_summaries_split_across_the_jobs_rows_still_merge(self):
+        """A job whose evidence was rescued from its chunk buffer (or
+        resubmitted after a lease expiry) can land in more than one
+        scan_results row under the SAME job_id — every row for that job must
+        still be gathered, not just the row that happens to sort last."""
+        from app.routers import engagements as eng
+
+        engagement_id = uuid.uuid4()
+        job_id = uuid.uuid4()
+        t0 = datetime(2026, 1, 1, tzinfo=timezone.utc)
+        t1 = datetime(2026, 1, 1, 0, 5, tzinfo=timezone.utc)
+        first_pass_row = [
+            {"scanner": "port_scan", "target": "10.0.0.5", "status": "scan_summary",
+             "data": {"port_states": {"open": [[22, 22]], "closed": [[80, 80]]}}},
+        ]
+        tail_row = [
+            {"scanner": "syn_scan", "target": "10.0.0.5", "status": "scan_summary",
+             "data": {"port_states": {"closed": [[443, 443]],
+                                      "not_scanned": [[8000, 8000]]}}},
+        ]
+
+        db = MagicMock()
+        db.execute = AsyncMock(side_effect=[
+            MagicMock(scalar_one_or_none=lambda: SimpleNamespace(id=engagement_id)),
+            MagicMock(first=lambda: SimpleNamespace(
+                id=uuid.uuid4(), job_id=job_id, scan_type="vuln_scan",
+                created_at=t1)),
+            MagicMock(all=lambda: [
+                SimpleNamespace(facts=first_pass_row, created_at=t0),
+                SimpleNamespace(facts=tail_row, created_at=t1),
+            ]),
+        ])
+
+        out = await eng.port_coverage(engagement_id, db, _user(), "10.0.0.5", None)
+
+        assert out["port_states"] == {
+            "open": [[22, 22]],
+            "closed": [[80, 80], [443, 443]],
+            "not_scanned": [[8000, 8000]],
+        }
+
+    @pytest.mark.asyncio
+    async def test_a_row_with_no_job_id_falls_back_to_that_row_alone(self):
+        """Older submissions (or ones with no job_id) merge just their own
+        row's summaries — there is no job to widen the lookup to."""
+        from app.routers import engagements as eng
+
+        engagement_id = uuid.uuid4()
+        scan_result_id = uuid.uuid4()
+        t0 = datetime(2026, 1, 1, tzinfo=timezone.utc)
+        facts = [
+            {"scanner": "port_scan", "target": "10.0.0.5", "status": "scan_summary",
+             "data": {"port_states": {"open": [[22, 22]]}}},
+        ]
+
+        db = MagicMock()
+        db.execute = AsyncMock(side_effect=[
+            MagicMock(scalar_one_or_none=lambda: SimpleNamespace(id=engagement_id)),
+            MagicMock(first=lambda: SimpleNamespace(
+                id=scan_result_id, job_id=None, scan_type="vuln_scan",
+                created_at=t0)),
+            MagicMock(all=lambda: [SimpleNamespace(facts=facts, created_at=t0)]),
+        ])
+
+        out = await eng.port_coverage(engagement_id, db, _user(), "10.0.0.5", None)
+
+        assert out["port_states"] == {"open": [[22, 22]]}
+
+    @pytest.mark.asyncio
+    async def test_an_older_scans_states_do_not_leak_into_the_current_view(self):
+        """Only the most recent job's summaries are used — a single port
+        query asks for one port and gets the merged map, not the union of
+        every scan this engagement has ever run against the host."""
+        from app.routers import engagements as eng
+
+        engagement_id = uuid.uuid4()
+        job_id = uuid.uuid4()
+        t1 = datetime(2026, 1, 1, tzinfo=timezone.utc)
+        current_row_facts = [
+            {"scanner": "port_scan", "target": "10.0.0.5", "status": "scan_summary",
+             "data": {"port_states": {"closed": [[22, 22]]}}},
+        ]
+
+        db = MagicMock()
+        db.execute = AsyncMock(side_effect=[
+            MagicMock(scalar_one_or_none=lambda: SimpleNamespace(id=engagement_id)),
+            MagicMock(first=lambda: SimpleNamespace(
+                id=uuid.uuid4(), job_id=job_id, scan_type="vuln_scan",
+                created_at=t1)),
+            # Only the CURRENT job's row(s) come back — an older scan's own
+            # row, with port 22 reported `open`, is never queried at all.
+            MagicMock(all=lambda: [SimpleNamespace(facts=current_row_facts, created_at=t1)]),
+        ])
+
+        out = await eng.port_coverage(engagement_id, db, _user(), "10.0.0.5", 22)
+
+        assert out["state"] == "closed"

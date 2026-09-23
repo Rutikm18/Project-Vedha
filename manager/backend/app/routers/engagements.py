@@ -52,7 +52,7 @@ from app.schemas.engagement import (
     validate_engagement_dates, validate_scope_entries,
 )
 from app.utils.csv_parser import parse_csv_assets
-from app.services.port_coverage import port_state_at, summarize_coverage
+from app.services.port_coverage import port_state_at, ranges_from_facts, summarize_coverage
 from app.utils.db import get_or_404
 from app.utils.pagination import paginate_query
 
@@ -1271,29 +1271,41 @@ async def port_coverage(
 
     Operator-gated like raw-facts: coverage reveals scanned topology.
 
-    The scan_summary fact is extracted IN THE DATABASE. A deep submission
-    stores ~107 KB of facts per host, and loading a whole submission to read
-    one object is what the raw-facts endpoint had to be rewritten to stop doing.
+    The scan_summary fact is found IN THE DATABASE, via an EXISTS check rather
+    than pulling every fact into Python. A deep submission stores ~107 KB of
+    facts per host, and loading a whole submission to read one object is what
+    the raw-facts endpoint had to be rewritten to stop doing.
+
+    A two-phase deep scan gives one host TWO scan_summary facts — a fast first
+    pass, then a port tail over the rest of the range, disjoint port sets — so
+    a query that picks a single fact-row silently drops whichever summary
+    loses the ordering. Every scan_summary for the host is gathered from the
+    most recent job that has one (never from the engagement's whole history,
+    so an older scan's states can't leak into the current view) and merged
+    with ranges_from_facts, the same merge the two-phase connect path already
+    relies on.
     """
     await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
 
-    row = (await db.execute(
+    latest = (await db.execute(
         text("""
-            SELECT f->'data'->'port_states' AS states,
-                   sr.scan_type, sr.created_at
-              FROM scan_results sr,
-                   LATERAL jsonb_array_elements(sr.facts) f
+            SELECT sr.id, sr.job_id, sr.scan_type, sr.created_at
+              FROM scan_results sr
              WHERE sr.engagement_id = :engagement_id
-               AND f->>'status' = 'scan_summary'
-               AND f->>'target'  = :host
-               AND f->'data' ? 'port_states'
+               AND EXISTS (
+                    SELECT 1
+                      FROM jsonb_array_elements(sr.facts) f
+                     WHERE f->>'status' = 'scan_summary'
+                       AND f->>'target'  = :host
+                       AND f->'data' ? 'port_states'
+               )
              ORDER BY sr.created_at DESC
              LIMIT 1
         """),
         {"engagement_id": str(engagement_id), "host": host},
     )).first()
 
-    if row is None or row.states is None:
+    if latest is None:
         raise HTTPException(
             404,
             f"no port-state evidence for {host} in this engagement — the host "
@@ -1301,12 +1313,41 @@ async def port_coverage(
             f"port-state reporting",
         )
 
-    ranges = row.states
+    # Rescued (chunk-buffer) or resubmitted evidence for the SAME job can land
+    # in more than one scan_results row, so every row sharing the latest
+    # job_id is gathered — not only the row that happened to sort last. A row
+    # with no job_id (older submissions) has nothing else to widen the lookup
+    # to, so it merges against just itself.
+    if latest.job_id is not None:
+        rows = (await db.execute(
+            text("""
+                SELECT sr.facts
+                  FROM scan_results sr
+                 WHERE sr.engagement_id = :engagement_id
+                   AND sr.job_id = :job_id
+                 ORDER BY sr.created_at ASC
+            """),
+            {"engagement_id": str(engagement_id), "job_id": str(latest.job_id)},
+        )).all()
+    else:
+        rows = (await db.execute(
+            text("SELECT sr.facts FROM scan_results sr WHERE sr.id = :scan_result_id"),
+            {"scan_result_id": str(latest.id)},
+        )).all()
+
+    all_facts: list = []
+    for scan_result_row in rows:
+        all_facts.extend(scan_result_row.facts or [])
+
+    # Facts are gathered in submission order (created_at ASC above), matching
+    # the later-summary-wins rule ranges_from_facts documents.
+    ranges = ranges_from_facts(all_facts, host)
+
     payload = {
         "engagement_id": str(engagement_id),
         "host": host,
-        "scan_type": row.scan_type,
-        "observed_at": row.created_at.isoformat() if row.created_at else None,
+        "scan_type": latest.scan_type,
+        "observed_at": latest.created_at.isoformat() if latest.created_at else None,
     }
     if port is not None:
         payload["port"] = port
