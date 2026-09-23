@@ -95,6 +95,12 @@ async def _claim_pushed_job(
     ):
         return False, "not_eligible", None
 
+    # One job per probe, on the push path too: an older probe build can report
+    # itself online while a scan it lost track of is still running.
+    from app.services.job_attempt_service import agent_holds_live_lease
+    if await agent_holds_live_lease(db, agent_uuid):
+        return False, "agent_busy", None
+
     from app.services.job_attempt_service import claim_job_attempt
     claim = await claim_job_attempt(
         db,

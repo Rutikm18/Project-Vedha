@@ -987,18 +987,8 @@ async def get_agent_jobs(
     # one-at-a-time state, but one that loses track of it — a poller left over
     # from a dropped connection, an older build, two processes sharing one
     # identity — must still be handed nothing while it holds a live lease.
-    # The lease, not the probe's reported status, is the authority: a probe
-    # that has lost track of a running scan reports itself idle.
-    busy = await db.execute(
-        select(ScanJob.id)
-        .where(
-            ScanJob.agent_id == str(agent_id),
-            ScanJob.status == ScanJobStatus.running,
-            ScanJob.lease_expires_at > func.now(),
-        )
-        .limit(1)
-    )
-    if busy.first() is not None:
+    from app.services.job_attempt_service import agent_holds_live_lease
+    if await agent_holds_live_lease(db, agent_id):
         logger.info("agent.job.poll_while_busy", agent_id=str(agent_id))
         return []
 
@@ -1020,7 +1010,8 @@ async def get_agent_jobs(
 
     # A shared atomic claim primitive creates a separate immutable attempt row
     # and installs its monotonically increasing fence on the logical job.
-    claim_limit = max(0, min(int(limit), 100))
+    # One job per probe: a probe asking for more would hold leases it cannot run.
+    claim_limit = max(0, min(int(limit), 1))
     jobs: list[tuple[ScanJob, object]] = []
     for job, engagement in candidates:
         if len(jobs) >= claim_limit:

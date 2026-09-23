@@ -4,7 +4,7 @@ import uuid
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 
 from app.config import get_settings
 from app.models.engagement import Engagement
@@ -19,6 +19,24 @@ class AttemptClaim:
     attempt_number: int
     fence: int
     lease_expires_at: datetime
+
+
+async def agent_holds_live_lease(db, agent_id) -> bool:
+    """True while `agent_id` holds a running job whose lease has not expired.
+
+    The lease, not the probe's reported status, is the authority: a probe that
+    has lost track of a running scan still reports itself idle.
+    """
+    busy = await db.execute(
+        select(ScanJob.id)
+        .where(
+            ScanJob.agent_id == str(agent_id),
+            ScanJob.status == ScanJobStatus.running,
+            ScanJob.lease_expires_at > func.now(),
+        )
+        .limit(1)
+    )
+    return busy.first() is not None
 
 
 async def claim_job_attempt(

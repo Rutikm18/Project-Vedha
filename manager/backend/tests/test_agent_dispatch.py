@@ -10,6 +10,7 @@ import pytest
 
 from app.models.enums import ScanJobStatus, ScanJobType
 from app.routers import agent_ws
+from app.routers import agents as ag
 from app.websocket.manager import AgentConnectionManager
 
 
@@ -226,6 +227,7 @@ class TestAtomicWebSocketClaim:
         db.execute = AsyncMock(side_effect=[
             MagicMock(scalar_one_or_none=lambda: agent),
             MagicMock(one_or_none=lambda: (job, engagement)),
+            MagicMock(first=lambda: None),        # busy check: not busy
             MagicMock(first=lambda: (1, 1)),
         ])
         db.commit = AsyncMock()
@@ -245,7 +247,7 @@ class TestAtomicWebSocketClaim:
         db.commit.assert_awaited_once()
         assert "agents.tenant_id" in str(db.execute.await_args_list[0].args[0])
         assert "engagements.tenant_id" in str(db.execute.await_args_list[1].args[0])
-        assert "engagements.tenant_id" in str(db.execute.await_args_list[2].args[0])
+        assert "engagements.tenant_id" in str(db.execute.await_args_list[3].args[0])
 
     @pytest.mark.asyncio
     async def test_incompatible_capability_is_never_claimed(self):
@@ -278,7 +280,8 @@ class TestAtomicWebSocketClaim:
         db.execute = AsyncMock(side_effect=[
             MagicMock(scalar_one_or_none=lambda: agent),
             MagicMock(one_or_none=lambda: (job, engagement)),
-            MagicMock(first=lambda: None),
+            MagicMock(first=lambda: None),        # busy check: not busy
+            MagicMock(first=lambda: None),        # claim atomic update: lost
         ])
         db.commit = AsyncMock()
 
@@ -293,3 +296,79 @@ class TestAtomicWebSocketClaim:
         assert reason == "claim_lost"
         assert claim is None
         db.commit.assert_awaited_once()
+
+    @pytest.mark.asyncio
+    async def test_push_claim_refuses_when_agent_holds_live_lease(self, monkeypatch):
+        """One job per probe on the push path too: a live lease refuses the
+        claim before the atomic claim primitive is ever touched."""
+        tenant_id, agent_id, job_id, agent, job, engagement = _claim_fixture()
+        db = MagicMock()
+        db.execute = AsyncMock(side_effect=[
+            MagicMock(scalar_one_or_none=lambda: agent),
+            MagicMock(one_or_none=lambda: (job, engagement)),
+            MagicMock(first=lambda: (uuid.uuid4(),)),   # busy check: live lease held
+        ])
+        db.commit = AsyncMock()
+
+        claim_primitive = AsyncMock()
+        monkeypatch.setattr(
+            "app.services.job_attempt_service.claim_job_attempt", claim_primitive,
+        )
+
+        claimed, reason, claim = await agent_ws._claim_pushed_job(
+            db,
+            str(agent_id),
+            str(tenant_id),
+            job_id,
+        )
+
+        assert claimed is False
+        assert reason == "agent_busy"
+        assert claim is None
+        claim_primitive.assert_not_awaited()
+        db.commit.assert_not_awaited()
+        assert db.execute.await_count == 3
+
+
+class TestPollClampsToOneJob:
+
+    @pytest.mark.asyncio
+    async def test_poll_claims_at_most_one_job_even_when_limit_is_higher(self):
+        """A poll asking for several jobs still only claims one: a probe would
+        hold leases on the rest that it cannot run in parallel."""
+        tenant_id = uuid.uuid4()
+        agent = SimpleNamespace(
+            id=uuid.uuid4(),
+            tenant_id=tenant_id,
+            capabilities=["discovery"],
+            network_segments=["10.0.0.0/16"],
+        )
+        engagement = SimpleNamespace(
+            tenant_id=tenant_id,
+            scope_cidrs=["10.0.0.0/24"],
+        )
+
+        def _pending_job():
+            return SimpleNamespace(
+                id=uuid.uuid4(), engagement_id=uuid.uuid4(),
+                job_type=SimpleNamespace(value="discovery"),
+                status=SimpleNamespace(value="pending"),
+                result={"targets": ["10.0.0.0/24"]},
+                agent_id=None, started_at=None,
+            )
+
+        job_a, job_b = _pending_job(), _pending_job()
+        db = MagicMock()
+        db.execute = AsyncMock(side_effect=[
+            MagicMock(scalar_one_or_none=lambda: agent),
+            MagicMock(first=lambda: None),        # busy check: not busy
+            MagicMock(all=lambda: [(job_a, engagement), (job_b, engagement)]),
+            MagicMock(first=lambda: (1, 1)),       # claim job_a
+        ])
+        db.flush = AsyncMock()
+
+        out = await ag.get_agent_jobs(agent.id, db, limit=5)
+
+        assert len(out) == 1
+        assert out[0]["job_id"] == str(job_a.id)
+        db.add.assert_called_once()
