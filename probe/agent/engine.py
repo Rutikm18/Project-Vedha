@@ -253,10 +253,18 @@ def _job_runtime_seconds(params: dict) -> float:
 def _tail_deadline(now: float, job_runtime_seconds: float) -> float:
     """Monotonic time by which the port tail must stop starting work.
 
-    Leaves a reserve inside the job ceiling for everything after the tail —
-    re-assessing ports it opened, liveness verdicts, credentialed collection,
-    and building the result — so a wide sweep ends as a completed scan with
-    its unreached ports reported not_scanned, not as a deadline failure.
+    MEANT to leave a reserve inside the job ceiling for everything after the
+    tail — re-assessing ports it opened, liveness verdicts, credentialed
+    collection, and building the result — so a wide sweep ends as a completed
+    scan with its unreached ports reported not_scanned, not as a deadline
+    failure.
+
+    It is not a guarantee. A tail that opens many new ports hands the stages
+    after it more work than the reserve sized for (each newly-open port gets
+    re-assessed), so a sweep that opens a lot late can still push those
+    stages past the reserve and into the job's runtime ceiling; the
+    wait_for() backstop around the whole engagement is what ends the run at
+    that point.
     """
     reserve = max(300.0, 0.15 * job_runtime_seconds)
     return now + max(0.0, job_runtime_seconds - reserve)
@@ -1280,8 +1288,10 @@ def run_scan(scan_type: str, params: dict,
     # as ordinary facts so they flow through run_stats and the result payload.
     derived_results, derived_rollup = _derive_post_stage(scan_type, cache)
     facts.extend(asdict(r) for r in derived_results)
-    # Per-host completeness/health summaries (PortScanner's scan_summary facts) —
-    # surfaced at top level so the manager need not filter facts to find them.
+    # Per-host completeness/health summaries (the scan_summary facts either
+    # port scanner emits — PortScanner on the connect path, SynScanner on the
+    # raw path) — surfaced at top level so the manager need not filter facts
+    # to find them.
     scan_metrics = [
         f.get("data", {}) for f in facts if f.get("status") == "scan_summary"
     ]
