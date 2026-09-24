@@ -17,9 +17,9 @@
     "fast-xml-parser": "^5.8.0",
     "jsonwebtoken": "^9.0.3",
     "lucide-react": "^1",
-    "next": "latest",
-    "react": "latest",
-    "react-dom": "latest",
+    "next": "16.3.6",
+    "react": "19.3.0",
+    "react-dom": "19.3.0",
     "recharts": "^3.8.1",
     "resend": "^6.12.4",
     "tweetnacl": "^1.0.3"
@@ -30,7 +30,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "eslint": "^9",
-    "eslint-config-next": "latest",
+    "eslint-config-next": "16.3.6",
     "tailwindcss": "^4",
     "tsx": "^4.22.3",
     "typescript": "^5"

@@ -67,6 +67,21 @@ def compute_verdict(evidence: dict) -> VerificationVerdict:
                                needs_review=needs_review, rationale=reason)
 
 
+def stamp_passive_verdict(finding) -> None:
+    """Stamp the deterministic verdict onto a finding that has none yet. Never
+    overwrites an existing verdict (an LLM/active/validation tier may have set
+    it). Pure: no DB, no LLM — safe to call from a mapper event."""
+    if getattr(finding, "verification_state", None) is not None:
+        return
+    ev = finding.evidence if isinstance(finding.evidence, dict) else {}
+    verdict = compute_verdict(ev)
+    finding.verification_state = verdict.state
+    finding.verification_confidence = verdict.confidence
+    finding.verification_rationale = verdict.rationale
+    finding.needs_review = verdict.needs_review
+    finding.verification_method = verdict.method
+
+
 import structlog  # noqa: E402  (grouped with the LLM entrypoint below)
 
 logger = structlog.get_logger()

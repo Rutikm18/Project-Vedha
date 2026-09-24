@@ -21,7 +21,10 @@ from app.auth.jwt import (
 )
 from app.auth.middleware import portal_jwt_path_allows
 from app.auth.portal_scope import assert_client, client_scoped, require_client, resolve_scope
+from app.auth import refresh_store
 from app.auth.router import refresh
+from app.schemas.auth import RefreshRequest
+from tests.test_refresh_security import FakeRedis
 from app.models.enums import UserRole
 from app.models.finding import Finding
 from app.schemas.auth import CurrentUser
@@ -198,10 +201,13 @@ class TestRefreshPreservesAudienceAndScope:
     async def test_client_refresh_keeps_portal_aud_and_engagement(self):
         eng, uid, tid = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
         user = MagicMock(id=uid, tenant_id=tid, role=UserRole.client,
-                         client_engagement_id=eng)
-        token, _ = create_refresh_token(subject=str(uid), tenant_id=str(tid))
+                         client_engagement_id=eng,
+                         is_active=True, password_expires_at=None)
+        token, jti = create_refresh_token(subject=str(uid), tenant_id=str(tid))
+        redis = FakeRedis()
+        await refresh_store.issue(redis, jti, str(uid))
 
-        resp = await refresh(token, db=self._db_returning(user))
+        resp = await refresh(RefreshRequest(refresh_token=token), db=self._db_returning(user), redis=redis)
 
         claims = decode_token(resp.access_token)
         assert claims["aud"] == PORTAL_AUDIENCE
@@ -211,10 +217,13 @@ class TestRefreshPreservesAudienceAndScope:
     async def test_operator_refresh_keeps_manager_aud(self):
         uid, tid = uuid.uuid4(), uuid.uuid4()
         user = MagicMock(id=uid, tenant_id=tid, role=UserRole.manager,
-                         client_engagement_id=None)
-        token, _ = create_refresh_token(subject=str(uid), tenant_id=str(tid))
+                         client_engagement_id=None,
+                         is_active=True, password_expires_at=None)
+        token, jti = create_refresh_token(subject=str(uid), tenant_id=str(tid))
+        redis = FakeRedis()
+        await refresh_store.issue(redis, jti, str(uid))
 
-        resp = await refresh(token, db=self._db_returning(user))
+        resp = await refresh(RefreshRequest(refresh_token=token), db=self._db_returning(user), redis=redis)
 
         claims = decode_token(resp.access_token)
         assert claims["aud"] == MANAGER_AUDIENCE
@@ -225,9 +234,12 @@ class TestRefreshPreservesAudienceAndScope:
         """Same rule as login: never mint an unscoped client token."""
         uid, tid = uuid.uuid4(), uuid.uuid4()
         user = MagicMock(id=uid, tenant_id=tid, role=UserRole.client,
-                         client_engagement_id=None)
-        token, _ = create_refresh_token(subject=str(uid), tenant_id=str(tid))
+                         client_engagement_id=None,
+                         is_active=True, password_expires_at=None)
+        token, jti = create_refresh_token(subject=str(uid), tenant_id=str(tid))
+        redis = FakeRedis()
+        await refresh_store.issue(redis, jti, str(uid))
 
         with pytest.raises(HTTPException) as exc:
-            await refresh(token, db=self._db_returning(user))
+            await refresh(RefreshRequest(refresh_token=token), db=self._db_returning(user), redis=redis)
         assert exc.value.status_code == 403

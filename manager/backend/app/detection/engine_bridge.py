@@ -465,6 +465,7 @@ async def _engagement_device_roles(db: AsyncSession, engagement_id: uuid.UUID) -
 async def _persist_attack_paths(
     db: AsyncSession, engagement_id: uuid.UUID, run, facts: list[dict], now,
     cache: dict | None = None, open_index: dict | None = None,
+    touched: list | None = None,
 ) -> int:
     """Correlate composite attack paths from the run's facts and persist them as
     Finding rows (deduped by title, reaffirmed across runs). Returns NEW count."""
@@ -489,6 +490,8 @@ async def _persist_attack_paths(
                 dup.last_seen = now
                 dup.detection_run_id = run.id
                 dup.resolution_miss_count = 0
+                if touched is not None:
+                    touched.append(dup)
                 continue
             path_finding = Finding(
                 engagement_id=engagement_id,
@@ -506,6 +509,8 @@ async def _persist_attack_paths(
                 detection_run_id=run.id,
             )
             db.add(path_finding)
+            if touched is not None:
+                touched.append(path_finding)
             if open_index is not None:
                 open_index[(asset_id, title)] = path_finding
             created += 1
@@ -687,7 +692,7 @@ async def create_findings_from_facts(
         try:
             corr_new = await _persist_attack_paths(
                 db, engagement_id, run, detect_meta.get("accepted_facts") or [], now,
-                cache=asset_cache, open_index=open_index)
+                cache=asset_cache, open_index=open_index, touched=touched)
             created += corr_new
         except Exception as exc:  # noqa: BLE001 — correlation must not sink the run
             logger.warning("detection_run.correlation_failed", error=str(exc))

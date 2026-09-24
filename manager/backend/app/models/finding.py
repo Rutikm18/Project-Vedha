@@ -2,10 +2,11 @@ import uuid
 from datetime import datetime
 from decimal import Decimal
 
-from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, Numeric, String, Text
+from sqlalchemy import Boolean, DateTime, Enum, ForeignKey, Integer, Numeric, String, Text, event
 from sqlalchemy.dialects.postgresql import ARRAY, JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
+from app.detection.verification import stamp_passive_verdict
 from app.models.base import Base, TimestampMixin
 from app.models.enums import DetectionStatus, FindingSeverity, FindingStatus
 
@@ -107,3 +108,12 @@ class Finding(Base, TimestampMixin):
     detection_results: Mapped[list["DetectionResult"]] = relationship(
         back_populates="finding", lazy="noload"
     )
+
+
+@event.listens_for(Finding, "before_insert")
+def _stamp_verdict_before_insert(mapper, connection, target: Finding) -> None:
+    """Every finding is born with a passive verdict, whichever path created it
+    (detection run, service_vuln, import, AD). Rows the engine later re-verifies
+    (LLM rationale, reaffirmed evidence) are overwritten by _stamp_verification;
+    rows a validation tier already stamped are left alone."""
+    stamp_passive_verdict(target)

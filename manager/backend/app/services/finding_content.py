@@ -303,6 +303,16 @@ def detection_method(finding: Any) -> str | None:
         return "behavioural"
     if state == "corroborated":
         return "inference"
+    if state == "inferred":
+        # Assessed but weak: say WHICH weak signal, so the report reads
+        # "Likely — version match" instead of "detection method not recorded".
+        ev = getattr(finding, "evidence", None)
+        ev = ev if isinstance(ev, dict) else {}
+        if ev.get("matched_version") or ev.get("match_basis"):
+            return "version"
+        if ev.get("banner_first_line") or ev.get("banner"):
+            return "banner"
+        return "inference"
     return None
 
 

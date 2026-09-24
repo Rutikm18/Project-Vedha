@@ -98,7 +98,7 @@ class TestResumeIgnoresPartialEvidence:
         from app.services.result_chunk_service import committed_hosts
 
         db = _FakeSession(chunks=[_chunk("10.0.0.1", complete=True)])
-        assert await committed_hosts(db, uuid.uuid4()) == ["10.0.0.1"]
+        assert await committed_hosts(db, uuid.uuid4(), agent_id=uuid.uuid4()) == ["10.0.0.1"]
 
     @pytest.mark.asyncio
     async def test_a_partially_scanned_host_is_rescanned(self):
@@ -106,7 +106,7 @@ class TestResumeIgnoresPartialEvidence:
         from app.services.result_chunk_service import committed_hosts
 
         db = _FakeSession(chunks=[_chunk("10.0.0.1", complete=False)])
-        assert await committed_hosts(db, uuid.uuid4()) == []
+        assert await committed_hosts(db, uuid.uuid4(), agent_id=uuid.uuid4()) == []
 
     @pytest.mark.asyncio
     async def test_a_mixed_job_resumes_only_the_unfinished_hosts(self):
@@ -117,7 +117,7 @@ class TestResumeIgnoresPartialEvidence:
             _chunk("10.0.0.2", complete=False),
             _chunk("10.0.0.3", complete=True),
         ])
-        assert await committed_hosts(db, uuid.uuid4()) == ["10.0.0.1", "10.0.0.3"]
+        assert await committed_hosts(db, uuid.uuid4(), agent_id=uuid.uuid4()) == ["10.0.0.1", "10.0.0.3"]
 
 
 # ── partial evidence is still real evidence ─────────────────────────────────

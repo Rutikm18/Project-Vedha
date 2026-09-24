@@ -68,7 +68,7 @@ async def launch_ad_assessment(
     background_tasks: BackgroundTasks,
     current_user: Annotated[AuthUser, require_role(["admin", "manager", "tester"])],
 ):
-    await get_or_404(db, Engagement, db, engagement_id, current_user.tenant_id)
+    await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
 
     job = ScanJob(
         engagement_id=engagement_id,
@@ -102,7 +102,7 @@ async def ad_assessment_status(
     db: DB,
     current_user: AuthUser,
 ):
-    await get_or_404(db, Engagement, db, engagement_id, current_user.tenant_id)
+    await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
     job = (await db.execute(
         select(ScanJob).where(
             ScanJob.id == job_id,

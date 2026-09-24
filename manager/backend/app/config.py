@@ -39,7 +39,7 @@ class Settings(BaseSettings):
     neo4j_enabled: bool = False
 
     # P2 — passive verification (deterministic verdict always; LLM/LangGraph optional)
-    verification_enabled: bool = False
+    verification_enabled: bool = True
 
     # JWT
     jwt_secret: str = "change-me-at-least-32-chars-long!!"
@@ -116,6 +116,11 @@ class Settings(BaseSettings):
     # Coarse authorized scope stamped on the auto-enroll Site policy (the probe
     # still enforces its own local ceiling, and jobs carry per-engagement scope).
     probe_auto_enroll_cidrs: str = "10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
+
+    # Peers whose X-Forwarded-For is believed (Caddy + the Next BFF on the private
+    # docker network). A request from any other peer is keyed on its socket IP,
+    # so a direct caller cannot spoof its way past the rate limiter.
+    trusted_proxy_cidrs: str = "127.0.0.0/8,::1/128,10.0.0.0/8,172.16.0.0/12,192.168.0.0/16"
 
     # App
     app_env: str = "development"
