@@ -1,0 +1,66 @@
+"""United States — NYDFS Part 500, GLBA."""
+from __future__ import annotations
+
+from app.compliance.registry import FINANCIAL, C, Framework, Reporting, register
+
+register(
+    Framework(
+        id="nydfs_500", name="NYDFS Cybersecurity Regulation (23 NYCRR Part 500)",
+        authority="New York State Department of Financial Services",
+        source="23 NYCRR Part 500 (as amended Nov 2023)",
+        jurisdictions=("US",), sectors=FINANCIAL, granularity="section",
+        themes={
+            "asset_inventory": C("§500.13(a) — asset inventory", why="A complete asset inventory is required."),
+            "secure_configuration": C("§500.3 — cybersecurity policy (systems and network security)",
+                                      why="Policies must cover secure configuration."),
+            "patch_vulnerability_mgmt": C("§500.5 — vulnerability management (scans, penetration testing, timely remediation)",
+                                          why="Vulnerabilities must be found and remediated timely, prioritised by risk."),
+            "access_control": C("§500.7 — access privileges and management", why="Least-privilege access is required."),
+            "authentication": C("§500.12 — multi-factor authentication", "§500.7",
+                                why="MFA is required for remote and privileged access."),
+            "remote_access": C("§500.12 — multi-factor authentication", why="Remote access requires MFA."),
+            "network_security": C("§500.3 — cybersecurity policy (systems and network security)",
+                                  why="Network security must be addressed by policy and controls."),
+            "crypto_in_transit": C("§500.15 — encryption of nonpublic information",
+                                   why="NPI must be encrypted in transit over external networks."),
+            "data_protection": C("§500.15 — encryption of nonpublic information", "§500.13(b) — data retention",
+                                 why="NPI must be protected and disposed of securely."),
+            "logging_monitoring": C("§500.14(a) — monitoring", "§500.6 — audit trail",
+                                    why="Activity must be monitored and audit trails kept."),
+            "incident_response": C("§500.16 — incident response and business continuity", "§500.17 — notices to superintendent",
+                                   why="Cybersecurity events must be handled and notified."),
+        },
+        baseline=C("§500.2 — cybersecurity program", why="The program must address this risk."),
+        reporting=(Reporting("NYDFS Superintendent", 72, "cybersecurity incident", "§500.17(a)"),),
+    ),
+    Framework(
+        id="glba_safeguards", name="GLBA Safeguards (FTC Safeguards Rule / Interagency Guidelines)",
+        authority="FTC (non-bank) / federal banking agencies (banks)",
+        source="16 CFR Part 314; Interagency Guidelines Establishing Information Security Standards",
+        jurisdictions=("US",), sectors=FINANCIAL, granularity="section",
+        themes={
+            "asset_inventory": C("16 CFR 314.4(c)(2) — identify and manage data, personnel, devices and systems",
+                                 why="Systems holding customer information must be inventoried."),
+            "patch_vulnerability_mgmt": C("16 CFR 314.4(d)(2) — continuous monitoring or annual penetration test and semi-annual vulnerability assessment",
+                                          why="Vulnerabilities must be regularly assessed."),
+            "access_control": C("16 CFR 314.4(c)(1) — access controls", why="Access must be limited to authorised users."),
+            "authentication": C("16 CFR 314.4(c)(5) — multi-factor authentication", why="MFA is required."),
+            "remote_access": C("16 CFR 314.4(c)(5)", "16 CFR 314.4(c)(1)", why="Remote access needs MFA."),
+            "crypto_in_transit": C("16 CFR 314.4(c)(3) — encrypt customer information in transit and at rest",
+                                   why="Customer information must be encrypted."),
+            "data_protection": C("16 CFR 314.4(c)(3)", "16 CFR 314.4(c)(6) — secure disposal",
+                                 why="Customer information must be protected."),
+            "logging_monitoring": C("16 CFR 314.4(c)(8) — monitor and log authorised user activity",
+                                    why="User activity must be logged."),
+            "incident_response": C("16 CFR 314.4(h) — incident response plan", why="An incident response plan is required."),
+        },
+        baseline=C("16 CFR 314.4 — elements of the information security program",
+                   why="The information security program must address this risk."),
+        reporting=(
+            Reporting("Primary federal banking regulator", 36, "notification incident (banks)",
+                      "Computer-Security Incident Notification Rule (2021)"),
+            Reporting("FTC", 720, "unencrypted customer information of ≥500 consumers (non-banks)",
+                      "16 CFR 314.4(j)"),
+        ),
+    ),
+)
