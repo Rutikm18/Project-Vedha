@@ -162,6 +162,7 @@ _TOOLS = _READ_TOOLS + [_SUBMIT_TOOL]
 class AgentDecisionEngine:
     def __init__(self, db: AsyncSession, *, client: Any = None):
         settings = get_settings()
+        self._settings = settings
         self._db = db
         self._model = settings.llm_model
         self._effort = settings.llm_effort
@@ -186,6 +187,15 @@ class AgentDecisionEngine:
             raise AgentUnavailableError(
                 "Anthropic SDK or ANTHROPIC_API_KEY not configured — advisor unavailable"
             )
+
+        # AI gateway: always cloud egress. Under hybrid, tool results are
+        # pseudonymized before they reach the model and the model's tool inputs /
+        # final submission are rehydrated before we act on or persist them.
+        from app.ai.gateway import GatewayDenied, rehydrate_obj, sdk_pseudonymizer
+        try:
+            pseudo = sdk_pseudonymizer(self._settings)
+        except GatewayDenied as exc:
+            raise AgentUnavailableError(str(exc)) from exc
 
         run_id = uuid.uuid4()
         messages: list[dict] = [{
@@ -213,13 +223,17 @@ class AgentDecisionEngine:
             tool_results: list[dict] = []
             submit_input: dict | None = None
             for tu in tool_uses:
+                tool_input = rehydrate_obj(pseudo, tu.input or {})
                 if tu.name == "submit_recommendations":
-                    submit_input = tu.input or {}
+                    submit_input = tool_input
                     n = len((submit_input.get("recommendations") or []))
                     tool_results.append(_tool_result(tu.id, {"ok": True, "received": n}))
                 else:
-                    out = await self._exec_read_tool(tu.name, tu.input or {}, engagement_id)
-                    tool_results.append(_tool_result(tu.id, out))
+                    out = await self._exec_read_tool(tu.name, tool_input, engagement_id)
+                    result = _tool_result(tu.id, out)
+                    if pseudo is not None:
+                        result["content"] = pseudo.pseudonymize(result["content"])
+                    tool_results.append(result)
             messages.append({"role": "user", "content": tool_results})
 
             if submit_input is not None:

@@ -89,6 +89,7 @@ class LLMReportGenerator:
         guard: HallucinationGuard | None = None,
     ):
         settings = get_settings()
+        self._settings = settings
         self._db = db
         self._model = settings.llm_model
         self._max_tokens = settings.llm_max_tokens
@@ -115,6 +116,16 @@ class LLMReportGenerator:
             raise LLMUnavailableError(
                 "Anthropic SDK or ANTHROPIC_API_KEY not configured — cannot generate report"
             )
+
+        # AI gateway: this SDK path is always cloud egress, so the deployment
+        # profile decides raw / pseudonymized / refused (see app/ai/gateway.py).
+        from app.ai.gateway import GatewayDenied, sdk_pseudonymizer
+        try:
+            pseudo = sdk_pseudonymizer(self._settings)
+        except GatewayDenied as exc:
+            raise LLMUnavailableError(str(exc)) from exc
+        if pseudo is not None:
+            user_prompt = pseudo.pseudonymize(user_prompt)
 
         last_exc: Exception | None = None
         for attempt in range(self._max_retries):
@@ -153,7 +164,8 @@ class LLMReportGenerator:
                         hint="output hit the token cap; raise llm_max_tokens if reports look cut off",
                     )
 
-                return "".join(b.text for b in resp.content if getattr(b, "type", None) == "text")
+                text = "".join(b.text for b in resp.content if getattr(b, "type", None) == "text")
+                return pseudo.rehydrate(text) if pseudo is not None else text
             except LLMUnavailableError:
                 # Refusal (above) — surface immediately, never retry. Listed first
                 # because when the anthropic SDK isn't installed the exception aliases

@@ -483,7 +483,24 @@ class ManagerLlmService:
         """Call one provider and normalize failures to AiRuntimeError.
         Preserves the 429/504/502 status mapping used by the single-shot path.
         json_mode forces structured JSON output (advisor_flow) so reasoning-prone
-        free models can't wrap the payload in chain-of-thought prose."""
+        free models can't wrap the payload in chain-of-thought prose.
+
+        This is the single egress choke point, so the AI gateway lives here: the
+        deployment profile decides raw / pseudonymized / refused before anything
+        leaves the manager, and pseudonyms are swapped back in the answer."""
+        from app.ai.gateway import GatewayDenied, Pseudonymizer, egress_decision
+        try:
+            decision = egress_decision(self.settings.deployment_profile, runtime.privacy,
+                                       force_pseudonymize=self.settings.ai_pseudonymize)
+        except GatewayDenied as exc:
+            raise AiRuntimeError(str(exc), 503) from exc
+        pseudo: Pseudonymizer | None = None
+        if decision == "pseudonymize":
+            pseudo = Pseudonymizer()
+            system = pseudo.pseudonymize(system)
+            messages = [{**m, "content": pseudo.pseudonymize(m["content"])} for m in messages]
+            logger.info("ai.gateway.pseudonymized", provider=runtime.provider,
+                        profile=self.settings.deployment_profile, replaced=pseudo.replaced)
         try:
             if runtime.provider == "ollama":
                 content = await self._ollama(runtime, system, messages, max_tokens, json_mode)
@@ -516,7 +533,7 @@ class ManagerLlmService:
         text = content.strip()
         if not text:
             raise AiRuntimeError(f"{runtime.provider} returned no content", 502)
-        return text
+        return pseudo.rehydrate(text) if pseudo else text
 
     async def generate(self, request: AiGenerateRequest, *,
                        domain_brief: str | None = None) -> tuple[str, Runtime]:

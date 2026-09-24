@@ -53,6 +53,12 @@ class Settings(BaseSettings):
     # and fails closed if none is set. "ollama" is an explicit local-dev opt-in and
     # is never selected automatically or used as an implicit fallback.
     llm_provider: str = ""
+    # AI egress policy (app/ai/gateway.py). cloud = raw to cloud providers;
+    # hybrid = cloud only with network identifiers pseudonymized (BFSI default);
+    # sovereign = local models only, cloud refused. AI_PSEUDONYMIZE=true opts a
+    # cloud deployment into pseudonymization too.
+    deployment_profile: str = "cloud"
+    ai_pseudonymize: bool = False
     llm_request_timeout_seconds: float = 180.0
     ollama_base_url: str = "http://host.docker.internal:11434"
     ollama_model: str = "llama3.2:3b"
