@@ -66,3 +66,14 @@ async def test_foreign_engagement_is_404():
         with pytest.raises(HTTPException) as exc:
             await ai_router.ai_generate(_req(uuid.uuid4()), _user(), db)
     assert exc.value.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_answer_with_invented_regulation_is_flagged():
+    async def _gen(request, domain_brief=None):
+        return "Per DORA Art. 99 and RBI Annex 1 §7, patch now.", _Runtime(), False
+    svc = MagicMock()
+    svc.generate_with_fallback = AsyncMock(side_effect=_gen)
+    with patch.object(ai_router, "ManagerLlmService", return_value=svc):
+        out = await ai_router.ai_generate(_req(), _user(), MagicMock(execute=AsyncMock()))
+    assert out.unverified_citations == ["art. 99"]

@@ -72,3 +72,5 @@ class AiGenerateResponse(BaseModel):
     skill: str | None = None
     skill_label: str | None = None
     jurisdictions: list[str] = Field(default_factory=list)
+    # Regulatory citations in the answer that are NOT in Vedha's compliance packs.
+    unverified_citations: list[str] = Field(default_factory=list)

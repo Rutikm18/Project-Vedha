@@ -16,6 +16,7 @@ interface ManagerAiResponse {
   skill?: string | null;
   skill_label?: string | null;
   jurisdictions?: string[];
+  unverified_citations?: string[];
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -135,6 +136,7 @@ export async function POST(req: Request) {
       skill: result.skill ?? null,
       skillLabel: result.skill_label ?? null,
       jurisdictions: result.jurisdictions ?? [],
+      unverifiedCitations: result.unverified_citations ?? [],
     });
   } catch (error) {
     const status = error instanceof BackendError || error instanceof SecurityContextError

@@ -3,6 +3,7 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException
 
 from app.dependencies import DB, AuthUser
+from app.compliance.citations import check_citations
 from app.models.engagement import Engagement
 from app.schemas.ai import AiGenerateRequest, AiGenerateResponse, AiStatusResponse
 from app.services.domain_context import domain_brief_for
@@ -39,4 +40,5 @@ async def ai_generate(request: AiGenerateRequest, current_user: AuthUser, db: DB
         skill=brief.skill_id if brief else None,
         skill_label=brief.skill_label if brief else None,
         jurisdictions=brief.jurisdictions if brief else [],
+        unverified_citations=check_citations(content)["unverified"],
     )

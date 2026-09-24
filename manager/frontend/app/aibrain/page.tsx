@@ -26,6 +26,8 @@ interface Message {
   /** Sector domain expert the answer was written as (null = general advisor). */
   skillLabel?: string | null;
   jurisdictions?: string[];
+  /** Regulatory citations the Manager could not find in its compliance packs. */
+  unverifiedCitations?: string[];
 }
 
 interface AiStatus {
@@ -135,6 +137,7 @@ export function AIBrainWorkspace({ surface = "manager" }: { surface?: AIBrainWor
       const response = await api.send<{
         content?: string; error?: string; provider?: string; model?: string; factCard?: FactCardVM;
         skillLabel?: string | null; skill_label?: string | null; jurisdictions?: string[];
+        unverifiedCitations?: string[]; unverified_citations?: string[];
       }>({
           messages: conversation.map(({ role, content: messageContent }) => ({ role, content: messageContent })),
           engagementId: effectiveEngagementId || undefined,
@@ -151,6 +154,7 @@ export function AIBrainWorkspace({ surface = "manager" }: { surface?: AIBrainWor
         // Manager BFF returns camelCase; the portal backend returns snake_case.
         skillLabel: response.skillLabel ?? response.skill_label ?? null,
         jurisdictions: response.jurisdictions ?? [],
+        unverifiedCitations: response.unverifiedCitations ?? response.unverified_citations ?? [],
       }]);
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "The AI runtime could not complete this request.");
@@ -243,6 +247,12 @@ export function AIBrainWorkspace({ surface = "manager" }: { surface?: AIBrainWor
                   {message.role === "assistant"
                     ? <AssistantText content={message.content} />
                     : <p>{message.content}</p>}
+                  {message.unverifiedCitations && message.unverifiedCitations.length > 0 && (
+                    <p className="intel-citation-warning" role="note">
+                      Not found in Vedha&apos;s compliance library — verify before relying on:{" "}
+                      {message.unverifiedCitations.join(", ")}
+                    </p>
+                  )}
                 </div>
               </article>
             ))}

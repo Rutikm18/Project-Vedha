@@ -607,12 +607,15 @@ async def portal_assistant_chat(body: ClientAssistantAsk, user: ClientUser, db: 
     except AiRuntimeError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
 
+    from app.compliance.citations import check_citations
+    unverified = check_citations(content)["unverified"]
     record_audit(
         db, actor_id=user.user_id, action="portal.assistant.chat",
         engagement_id=eng_id, resource_type="engagement", resource_id=eng_id,
         detail={"turns": len(body.messages), "finding_id": str(body.finding_id)
                 if body.finding_id else None, "model": runtime.model,
-                "skill": brief.skill_id if brief else None},
+                "skill": brief.skill_id if brief else None,
+                "unverified_citations": unverified},
     )
     await db.flush()
     return ClientAssistantReply(
@@ -621,6 +624,7 @@ async def portal_assistant_chat(body: ClientAssistantAsk, user: ClientUser, db: 
         skill=brief.skill_id if brief else None,
         skill_label=brief.skill_label if brief else None,
         jurisdictions=brief.jurisdictions if brief else [],
+        unverified_citations=unverified,
         generated_at=datetime.now(timezone.utc),
     )
 

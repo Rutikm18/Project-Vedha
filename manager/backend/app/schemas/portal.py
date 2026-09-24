@@ -163,3 +163,5 @@ class ClientAssistantReply(BaseModel):
     skill: str | None = None
     skill_label: str | None = None
     jurisdictions: list[str] = []
+    # Regulatory citations in the answer that are NOT in Vedha's compliance packs.
+    unverified_citations: list[str] = []

@@ -289,3 +289,11 @@ def test_brief_failure_degrades_to_plain_assistant():
          patch.object(portal, "record_audit", MagicMock()):
         reply = asyncio.run(portal.portal_assistant_chat(_ask(), _client(eng.id), db))
     assert captured["domain_brief"] is None and reply.skill is None
+
+
+def test_invented_citation_is_flagged_to_the_customer():
+    eng = _engagement()
+    with patch.object(portal, "ManagerLlmService", return_value=_llm({}, reply="See NYDFS §500.99.")), \
+         patch.object(portal, "record_audit", MagicMock()):
+        reply = asyncio.run(portal.portal_assistant_chat(_ask(), _client(eng.id), _db(eng, [])))
+    assert reply.unverified_citations == ["§500.99"]
