@@ -28,21 +28,10 @@ from app.models.asset import Asset
 from app.models.engagement import Engagement
 from app.models.finding import Finding
 from app.services.audit import record_audit
+from app.services.domain_context import engagement_tag_set
 from app.utils.db import get_or_404
 
 router = APIRouter(prefix="/engagements/{engagement_id}", tags=["compliance"])
-
-
-async def engagement_tag_set(db, engagement_id: uuid.UUID) -> set[str]:
-    """Union of every asset's tags in the engagement (one query) — lets a
-    tag-triggered framework such as SWIFT CSCF switch on for the engagement."""
-    rows = (await db.execute(
-        select(Asset.tags).where(Asset.engagement_id == engagement_id, Asset.tags.isnot(None))
-    )).scalars().all()
-    out: set[str] = set()
-    for tags in rows:
-        out.update(tag_strings(tags))
-    return out
 
 
 def _framework_summary(fw) -> dict:

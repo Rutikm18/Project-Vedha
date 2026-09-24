@@ -159,3 +159,7 @@ class ClientAssistantReply(BaseModel):
     # True when the answer was grounded in this engagement's recorded data.
     grounded: bool
     generated_at: datetime
+    # Domain-expert skill the answer was written with (None = plain assistant).
+    skill: str | None = None
+    skill_label: str | None = None
+    jurisdictions: list[str] = []

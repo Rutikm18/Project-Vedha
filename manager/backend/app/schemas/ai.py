@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+import uuid
 from typing import Any, Literal
 
 from pydantic import BaseModel, Field, model_validator
@@ -23,6 +24,10 @@ class AiGenerateRequest(BaseModel):
     provider: Literal["ollama", "openrouter", "anthropic", "openai", "gemini"] | None = None
     model: str | None = Field(default=None, min_length=1, max_length=160)
     max_tokens: int = Field(default=900, ge=128, le=2_048)
+    # Optional: answer as the engagement's sector domain expert. The server loads
+    # the profile/tags itself (tenant-scoped); nothing from the caller reaches the
+    # trusted system prompt.
+    engagement_id: uuid.UUID | None = None
 
     @model_validator(mode="after")
     def validate_bounded_input(self):
@@ -64,3 +69,6 @@ class AiGenerateResponse(BaseModel):
     # True when the requested/default provider failed (e.g. out of credit) and a
     # free fallback model served the response instead.
     fallback: bool = False
+    skill: str | None = None
+    skill_label: str | None = None
+    jurisdictions: list[str] = Field(default_factory=list)

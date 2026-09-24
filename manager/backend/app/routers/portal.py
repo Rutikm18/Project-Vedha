@@ -55,6 +55,7 @@ from app.schemas.portal import (
     ScanRequestCreate,
 )
 from app.services import finding_events, finding_workflow, portal_metrics
+from app.services.domain_context import domain_brief_for
 from app.services.llm import AiRuntimeError, ManagerLlmService
 from app.services import posture as posture_service
 from app.services.audit import record_audit
@@ -564,6 +565,7 @@ async def portal_assistant_chat(body: ClientAssistantAsk, user: ClientUser, db: 
     )).scalars().all()
 
     focus = None
+    focus_row = None
     if body.finding_id is not None:
         row = (await db.execute(
             client_scoped(select(Finding).where(Finding.id == body.finding_id),
@@ -574,6 +576,7 @@ async def portal_assistant_chat(body: ClientAssistantAsk, user: ClientUser, db: 
             # finding id exists in someone else's engagement.
             raise HTTPException(status.HTTP_404_NOT_FOUND, "Finding not found")
         focus = _assistant_finding_view(row)
+        focus_row = row
 
     context = {
         "engagement": {
@@ -595,8 +598,12 @@ async def portal_assistant_chat(body: ClientAssistantAsk, user: ClientUser, db: 
         provider=body.provider,
         model=body.model,
     )
+    # Sector/jurisdiction expertise, built server-side from trusted data only.
+    # A focused finding shapes which control themes the brief carries.
+    brief = await domain_brief_for(db, eng, [focus_row] if focus_row is not None else open_rows)
     try:
-        content, runtime, _fallback = await ManagerLlmService().generate_with_fallback(request)
+        content, runtime, _fallback = await ManagerLlmService().generate_with_fallback(
+            request, domain_brief=brief.text if brief else None)
     except AiRuntimeError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
 
@@ -604,12 +611,16 @@ async def portal_assistant_chat(body: ClientAssistantAsk, user: ClientUser, db: 
         db, actor_id=user.user_id, action="portal.assistant.chat",
         engagement_id=eng_id, resource_type="engagement", resource_id=eng_id,
         detail={"turns": len(body.messages), "finding_id": str(body.finding_id)
-                if body.finding_id else None, "model": runtime.model},
+                if body.finding_id else None, "model": runtime.model,
+                "skill": brief.skill_id if brief else None},
     )
     await db.flush()
     return ClientAssistantReply(
         content=content, provider=runtime.provider, model=runtime.model,
         grounded=bool(open_rows or focus),
+        skill=brief.skill_id if brief else None,
+        skill_label=brief.skill_label if brief else None,
+        jurisdictions=brief.jurisdictions if brief else [],
         generated_at=datetime.now(timezone.utc),
     )
 

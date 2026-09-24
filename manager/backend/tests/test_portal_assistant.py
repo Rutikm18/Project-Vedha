@@ -52,19 +52,23 @@ def _finding(**kw):
     return SimpleNamespace(**base)
 
 
-def _engagement(name="Acme", scope=("192.168.1.0/24",)):
-    return SimpleNamespace(id=uuid.uuid4(), name=name,
+def _engagement(name="Acme", scope=("192.168.1.0/24",), roe=None):
+    return SimpleNamespace(id=uuid.uuid4(), name=name, rules_of_engagement=roe,
                            status=EngagementStatus.active, scope_cidrs=list(scope))
 
 
-def _db(engagement, findings, focus="__unset__"):
-    """execute() → engagement, then findings, then (optionally) the focus finding."""
+def _db(engagement, findings, focus="__unset__", asset_tags=()):
+    """execute() → engagement, then findings, then (optionally) the focus finding,
+    then the engagement's asset tags (domain-expert brief)."""
     eng_res = MagicMock(scalar_one_or_none=MagicMock(return_value=engagement))
     find_res = MagicMock()
     find_res.scalars = MagicMock(return_value=MagicMock(all=MagicMock(return_value=findings)))
     results = [eng_res, find_res]
     if focus != "__unset__":
         results.append(MagicMock(scalar_one_or_none=MagicMock(return_value=focus)))
+    tags_res = MagicMock()
+    tags_res.scalars = MagicMock(return_value=MagicMock(all=MagicMock(return_value=list(asset_tags))))
+    results.append(tags_res)
     db = MagicMock()
     db.execute = AsyncMock(side_effect=results)
     db.add = MagicMock()
@@ -84,8 +88,9 @@ class _Runtime:
 
 
 def _llm(captured: dict, reply="Fix SMBv1 first."):
-    async def _gen(request):
+    async def _gen(request, domain_brief=None):
         captured["request"] = request
+        captured["domain_brief"] = domain_brief
         return reply, _Runtime(), False
     service = MagicMock()
     service.generate_with_fallback = AsyncMock(side_effect=_gen)
@@ -247,3 +252,40 @@ def test_the_exchange_is_audited():
     assert audit.call_count == 1
     assert audit.call_args.kwargs["action"] == "portal.assistant.chat"
     assert audit.call_args.kwargs["actor_id"] is not None
+
+
+# ── domain-expert brief ──────────────────────────────────────────────────────
+
+def test_banking_profile_speaks_as_a_banking_expert_with_regional_controls():
+    eng = _engagement(roe={"profile": {"sector": "banking", "jurisdictions": ["IN"]}})
+    captured: dict = {}
+    with patch.object(portal, "ManagerLlmService", return_value=_llm(captured)), \
+         patch.object(portal, "record_audit", MagicMock()):
+        reply = asyncio.run(portal.portal_assistant_chat(
+            _ask(), _client(eng.id), _db(eng, [_finding(title="SMB signing not required")])))
+    brief = captured["domain_brief"]
+    assert '<domain_expertise skill="banking">' in brief
+    assert "Annex 1 §5 Secure Configuration" in brief     # smb_signing theme
+    assert reply.skill == "banking" and reply.jurisdictions == ["IN"]
+
+
+def test_unprofiled_engagement_uses_sector_tags_from_the_estate():
+    eng = _engagement()
+    captured: dict = {}
+    tags = [{"auto": [{"key": "sector_fn", "value": "swift"}]}]
+    with patch.object(portal, "ManagerLlmService", return_value=_llm(captured)), \
+         patch.object(portal, "record_audit", MagicMock()):
+        reply = asyncio.run(portal.portal_assistant_chat(
+            _ask(), _client(eng.id), _db(eng, [], asset_tags=tags)))
+    assert reply.skill == "banking"
+
+
+def test_brief_failure_degrades_to_plain_assistant():
+    eng = _engagement()
+    db = _db(eng, [])
+    db.execute.side_effect = list(db.execute.side_effect)[:2] + [RuntimeError("db down")]
+    captured: dict = {}
+    with patch.object(portal, "ManagerLlmService", return_value=_llm(captured)), \
+         patch.object(portal, "record_audit", MagicMock()):
+        reply = asyncio.run(portal.portal_assistant_chat(_ask(), _client(eng.id), db))
+    assert captured["domain_brief"] is None and reply.skill is None
