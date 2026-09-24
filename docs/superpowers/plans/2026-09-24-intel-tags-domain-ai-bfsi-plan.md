@@ -22,11 +22,11 @@ others depend on; P1 = customer-visible value; P2 = hardening/scale.
 | A1 ✅ | P0 | Engagement profile (sector, jurisdictions) in ROE JSONB + schema validation + API | tests |
 | A2 ✅ | P0 | Compliance pack registry (`app/compliance/packs`): framework metadata, jurisdictions, reporting clocks | schema test |
 | A3 ✅ | P0 | Region packs: India (RBI, SEBI CSCRF, CERT-In, DPDP, IRDAI) | category→control tests |
-| A4 ✅ | P1 | Region packs: EU/UK (GDPR, DORA, NIS2, FCA/PRA), ME/APAC (SAMA, CBUAE, MAS TRM, HKMA), US (NYDFS, GLBA, FFIEC), SWIFT CSCF | tests |
+| A4 ✅ | P1 | Region packs: EU/UK (GDPR, DORA, NIS2, FCA/PRA), ME/APAC (SAMA, CBUAE, MAS TRM, HKMA), US (NYDFS, GLBA — FFIEC CAT dropped: sunset 2025), SWIFT CSCF | tests |
 | A5 ✅ | P0 | `applicable_frameworks(profile, tags)` + `finding_obligations(finding, profile)` | tests |
 | A6 ✅ | P0 | Domain skills (`app/ai/skills`): banking, payments_fintech, insurance, capital_markets, nbfc, healthcare, government, generic | schema test |
 | A7 ✅ | P0 | Skill router + prompt composer (persona + vocabulary + pack excerpt) into `ManagerLlmService._build_system` | tests; existing AI tests still green |
-| A8 ✅ | P1 | `compliance_brief` task + endpoint; sector-aware `client_assistant`/`advisor` | router tests |
+| A8 ◐ | P1 | Sector-aware `client_assistant` + `/ai/generate` ✅; deterministic `/findings/{id}/obligations` ✅; LLM `compliance_brief` task — open | router tests |
 | A9 | P1 | Grounding check: unknown control IDs flagged/stripped | tests |
 | A10 | P1 | Frontend: profile editor, compliance-by-framework view, assistant shows skill + jurisdiction | UI check |
 
