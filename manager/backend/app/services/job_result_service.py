@@ -783,5 +783,22 @@ async def _promote_assets(
             if isinstance(extra, dict):
                 svc.extra_info = {**(svc.extra_info or {}), **extra}
 
+    # Re-derive evidence-based tags for every touched asset from the service
+    # cache already in memory (it holds each asset's full service set) — no
+    # extra queries. Tagging is advisory: a bad rule must never fail ingest.
+    _retag_assets(assets_by_ip.values(), service_cache.values())
+
     await db.flush()
     return promoted
+
+
+def _retag_assets(assets, services) -> None:
+    from app.intel.tagging import retag
+    by_asset: dict = {}
+    for svc in services:
+        by_asset.setdefault(svc.asset_id, []).append(svc)
+    for asset in assets:
+        try:
+            retag(asset, by_asset.get(asset.id, ()))
+        except Exception as exc:  # noqa: BLE001
+            logger.warning("asset.retag_failed", asset_ip=asset.ip_address, error=str(exc))

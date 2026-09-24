@@ -168,3 +168,31 @@ async def test_no_hosts_issues_no_queries():
 
     assert promoted == 0
     assert db.executed == []
+
+
+@pytest.mark.asyncio
+async def test_promotion_tags_assets_without_extra_queries():
+    db = _FakeSession()
+    result = {"hosts": [{"ip": "10.9.0.5", "hostname": "cbs-db-01",
+                         "ports": [{"port": 1521, "protocol": "tcp", "service": "oracle-tns"}]}]}
+
+    await _promote_assets(db, ENGAGEMENT, result)
+
+    asset = next(o for o in db.added if isinstance(o, Asset))
+    from app.intel.tagging import tag_strings
+    tags = set(tag_strings(asset.tags))
+    assert {"role:database", "sector_fn:core_banking", "zone:10.9.0.0/24"} <= tags
+    assert len(db.executed) <= 4
+
+
+@pytest.mark.asyncio
+async def test_retag_preserves_manual_tags_on_existing_asset():
+    asset = Asset(engagement_id=ENGAGEMENT, ip_address="10.0.0.0",
+                  tags={"v": 1, "auto": [], "manual": [{"key": "owner_team", "value": "cards"}]})
+    asset.id = uuid.uuid4()
+    db = _FakeSession(existing=[asset])
+
+    await _promote_assets(db, ENGAGEMENT, _result(hosts=1, ports=1))
+
+    assert asset.tags["manual"] == [{"key": "owner_team", "value": "cards"}]
+    assert any(t["key"] == "role" and t["value"] == "web" for t in asset.tags["auto"])
