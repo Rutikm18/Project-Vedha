@@ -154,6 +154,37 @@ def build_scan_job(scan_request: ScanRequest, engagement: Engagement) -> ScanJob
     )
 
 
+async def _apply_fragile_guard(db, engagement: Engagement, job: ScanJob) -> None:
+    """Customer-requested scans never touch fragile assets (HSM / ATM / SWIFT / ICS)
+    intrusively — there is no override on this path; an operator who needs it
+    launches a separate, audited override job."""
+    from app.routers.agents import _USE_CASES, _normalize_intensity_name
+    from app.services.fragile_guard import merge_excluded, plan_for_job
+
+    params = job.result or {}
+    use_case = _USE_CASES.get(params.get("use_case_id") or "", {})
+    scan_type = use_case.get("scan_type") or getattr(job.job_type, "value", job.job_type)
+    try:
+        intensity = _normalize_intensity_name(params.get("intensity")) or use_case.get("intensity")
+    except ValueError:
+        intensity = None
+    job_scope = list(params.get("targets") or engagement.scope_cidrs or [])
+    plan = await plan_for_job(db, engagement.id, scan_type=scan_type, intensity=intensity,
+                              job_scope=job_scope)
+    if plan is None:
+        return
+    if plan.fully_blocked:
+        raise HTTPException(
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            "Every requested target is a fragile asset (HSM / ATM / SWIFT / ICS); this scan "
+            "would do nothing. Reject it, or launch an audited operator override instead.")
+    job.result = {**params,
+                  "_excluded_cidrs": merge_excluded(
+                      params.get("_excluded_cidrs") or list(engagement.excluded_cidrs or []),
+                      plan.cidrs),
+                  "_fragile_excluded": plan.hosts}
+
+
 async def _existing_client_user(db, engagement_id: uuid.UUID) -> User | None:
     return (await db.execute(
         select(User).where(
@@ -337,6 +368,7 @@ async def approve_scan_request(
     except ValueError:
         raise HTTPException(status.HTTP_409_CONFLICT,
                             "Assign an agent to this engagement before approving scans")
+    await _apply_fragile_guard(db, eng, job)
     db.add(job)
     await db.flush()
     await db.refresh(job)

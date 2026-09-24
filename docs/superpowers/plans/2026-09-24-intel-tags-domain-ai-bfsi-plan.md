@@ -12,9 +12,9 @@ others depend on; P1 = customer-visible value; P2 = hardening/scale.
 | T3 ✅ | P0 | BFSI `sector_fn` signatures + `compliance_scope` + `data_sensitivity` derivation | tests incl. "no evidence → no tag" |
 | T4 ✅ | P0 | `merge_tags(existing, auto)` keeps manual tags; hook into `_promote_assets` (zero extra queries) | promote test asserts tags |
 | T5 ✅ | P1 | Asset API: tags in response, `?tag=` filter, `PUT /assets/{id}/tags` (audited), `POST /engagements/{id}/assets/retag` | router tests |
-| T6 | P1 | Frontend: tag chips on assets/findings, tag filter | UI check |
+| T6 ✅ | P1 | Frontend: tag chips on assets/findings, tag filter | UI check |
 | T7 | P2 | Migration: GIN index on `assets.tags` | alembic up/down |
-| T8 | P1 | Fragile-asset guard: `sector_fn:hsm/atm/swift`, `role:ics` → non-intrusive only unless approved | policy tests |
+| T8 ✅ | P1 | Fragile-asset guard: `sector_fn:hsm/atm/swift`, `role:ics` → non-intrusive only unless approved | policy tests |
 
 ## Phase 2 — Domain-expert AI + compliance
 | # | Pri | Task | Done when |
@@ -28,7 +28,7 @@ others depend on; P1 = customer-visible value; P2 = hardening/scale.
 | A7 ✅ | P0 | Skill router + prompt composer (persona + vocabulary + pack excerpt) into `ManagerLlmService._build_system` | tests; existing AI tests still green |
 | A8 ◐ | P1 | Sector-aware `client_assistant` + `/ai/generate` ✅; deterministic `/findings/{id}/obligations` ✅; LLM `compliance_brief` task — open | router tests |
 | A9 | P1 | Grounding check: unknown control IDs flagged/stripped | tests |
-| A10 | P1 | Frontend: profile editor, compliance-by-framework view, assistant shows skill + jurisdiction | UI check |
+| A10 ✅ | P1 | Frontend: profile editor, compliance-by-framework view, assistant shows skill + jurisdiction | UI check |
 
 ## Phase 3 — AI Gateway + BFSI deployment
 | # | Pri | Task | Done when |
@@ -45,4 +45,5 @@ T1→T2→T3→T4 → A1→A2→A3→A5→A6→A7 → G1→G2 → T5 → A8→A9
 
 ## Status (2026-09-24)
 Done ✅: backend for tags, compliance packs (all 4 regions), domain skills + brief, AI gateway, ADR-0003.
-Next: T6/A10 frontend, A9 citation grounding check, T8 fragile-asset guard, G3 AI audit chain.
+Frontend (T6/A10) ✅ and fragile-asset guard (T8) ✅ — enforced at operator enqueue (incl. schedules), portal-approved scans (no override), Nuclei and Nessus; admin/manager override needs a reason and is audited.
+Next: A9 citation grounding check, G3 AI audit chain, findings-drawer obligations UI, LLM compliance_brief task.

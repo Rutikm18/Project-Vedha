@@ -144,6 +144,15 @@ export function filterAssetsByTags<T extends TaggedAsset>(assets: T[], selected:
   });
 }
 
+// Mirrors app/intel/fragile.py — hosts limited to gentle scans unless overridden.
+const FRAGILE_TAGS = ["sector_fn:hsm", "sector_fn:atm", "sector_fn:swift", "role:ics", "scan_policy:fragile"];
+
+export function fragileReasons(asset: TaggedAsset): string[] {
+  const have = new Set(assetTags(asset).map(tagString));
+  if (have.has("scan_policy:standard")) return [];
+  return FRAGILE_TAGS.filter((tag) => have.has(tag));
+}
+
 const MANUAL_KEY = /^[a-z][a-z0-9_]{0,39}$/;
 
 /** Parse the manual-tag editor ("key: value" per line) with the backend's rules. */

@@ -32,7 +32,14 @@ logger = structlog.get_logger()
 
 # ── Schemas ───────────────────────────────────────────────────────────────────
 
-class NessusScanRequest(BaseModel):
+class FragileOverride(BaseModel):
+    """Fragile-asset guard override (admin/manager only, audited). By default the
+    manager-side scanners skip hosts tagged HSM / ATM / SWIFT / ICS."""
+    allow_fragile: bool = False
+    fragile_override_reason: str | None = Field(default=None, max_length=500)
+
+
+class NessusScanRequest(FragileOverride):
     nessus_url: str = Field(..., description="https://nessus-host:8834")
     access_key: str
     secret_key: str
@@ -40,7 +47,7 @@ class NessusScanRequest(BaseModel):
     credentials: dict | None = None
 
 
-class NucleiScanRequest(BaseModel):
+class NucleiScanRequest(FragileOverride):
     rate_limit: int = Field(default=150, ge=1, le=500)
     templates: list[str] = Field(default_factory=list)
     timeout_sec: int = Field(default=300, ge=30, le=3600)
@@ -54,6 +61,36 @@ class FindingImport(BaseModel):
     cvss_score: float | None = None
     evidence: dict | None = None
     asset_id: str | None = None
+
+
+def _fragile_filter(db, engagement_id, targets: list[str], hosts, body: FragileOverride,
+                    current_user, *, scanner: str) -> tuple[list[str], list[dict]]:
+    """Drop fragile hosts from a manager-side scanner's target list, or honour an
+    audited admin/manager override. Returns (targets, skipped)."""
+    from app.services.audit import record_audit
+    from app.services.fragile_guard import MIN_REASON_CHARS, OVERRIDE_ROLES, filter_targets
+
+    kept, skipped = filter_targets(targets, hosts)
+    if not skipped:
+        return targets, []
+    if not body.allow_fragile:
+        if not kept:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                "Every target is a fragile asset (HSM / ATM / SWIFT / ICS); an admin/manager "
+                "override with a reason is required to scan them with this scanner.")
+        return kept, skipped
+    if getattr(current_user, "role", None) not in OVERRIDE_ROLES:
+        raise HTTPException(status.HTTP_403_FORBIDDEN,
+                            "Only an admin or manager may scan fragile assets intrusively")
+    reason = (body.fragile_override_reason or "").strip()
+    if len(reason) < MIN_REASON_CHARS:
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
+                            f"fragile_override_reason must explain the approval (at least {MIN_REASON_CHARS} characters)")
+    record_audit(db, actor_id=current_user.user_id, action="scan.fragile_override",
+                 engagement_id=engagement_id, resource_type="engagement", resource_id=engagement_id,
+                 detail={"scanner": scanner, "hosts": skipped, "reason": reason})
+    return targets, []
 
 
 # ── POST /nessus — create + launch Nessus scan ────────────────────────────────
@@ -80,9 +117,26 @@ async def launch_nessus_scan(
         )
     )
     target_ips = [row[0] for row in assets_result.all()]
-    if not target_ips:
-        # Fall back to scope CIDRs
+    from app.services.fragile_guard import load_fragile_hosts
+    fragile = await load_fragile_hosts(db, engagement_id)
+    skipped: list[dict] = []
+    if target_ips:
+        target_ips, skipped = _fragile_filter(db, engagement_id, target_ips, fragile, body,
+                                              current_user, scanner="nessus")
+    else:
+        # Fall back to scope CIDRs. A CIDR cannot have individual fragile hosts
+        # carved out of it here, so fragile hosts inside it need an explicit override.
         target_ips = eng.scope_cidrs or []
+        if fragile and target_ips:
+            if not body.allow_fragile:
+                raise HTTPException(
+                    status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    "This engagement has fragile assets (HSM / ATM / SWIFT / ICS) inside its scope; "
+                    "scanning the whole scope CIDR would hit them. Scan discovered assets instead, "
+                    "or use an audited admin/manager override.")
+            # Override path: validates role + reason and records the audit row.
+            _fragile_filter(db, engagement_id, [h.ip for h in fragile], fragile, body,
+                            current_user, scanner="nessus")
     if not target_ips:
         raise HTTPException(400, "No targets found — import assets or set scope_cidrs first")
 
@@ -106,7 +160,8 @@ async def launch_nessus_scan(
     await db.refresh(job)
 
     logger.info("nessus.scan.launched_via_api", scan_id=scan_id, job_id=str(job.id))
-    return {"job_id": str(job.id), "nessus_scan_id": scan_id, "targets": len(target_ips)}
+    return {"job_id": str(job.id), "nessus_scan_id": scan_id, "targets": len(target_ips),
+            "fragile_excluded": skipped}
 
 
 # ── POST /nuclei — run Nuclei scan ────────────────────────────────────────────
@@ -136,6 +191,11 @@ async def launch_nuclei_scan(
             400,
             "No concrete asset targets found - import or discover assets before running Nuclei",
         )
+    from app.intel.fragile import fragile_hosts
+    targets, skipped = _fragile_filter(
+        db, engagement_id, targets,
+        fragile_hosts((a.ip_address, getattr(a, "tags", None)) for a in assets),
+        body, current_user, scanner="nuclei")
 
     # Auto-select templates if none provided
     templates = body.templates or ["cves", "misconfigs"]
@@ -156,7 +216,8 @@ async def launch_nuclei_scan(
         str(engagement_id), str(job.id), targets, templates, body.rate_limit, body.timeout_sec,
     )
 
-    return {"job_id": str(job.id), "targets": len(targets), "templates": templates}
+    return {"job_id": str(job.id), "targets": len(targets), "templates": templates,
+            "fragile_excluded": skipped}
 
 
 # ── GET /{job_id}/status ──────────────────────────────────────────────────────

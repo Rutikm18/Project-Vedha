@@ -361,6 +361,10 @@ class EnqueueJobRequest(BaseModel):
     # Optional scan-hardness override: a code (1/2/3) or a name (light/standard/deep).
     # When omitted the probe applies the use-case's own default intensity.
     intensity: int | str | None = None
+    # Fragile-asset guard override (admin/manager only, audited). By default a
+    # non-gentle job never touches hosts tagged HSM / ATM / SWIFT / ICS.
+    allow_fragile: bool = False
+    fragile_override_reason: str | None = Field(default=None, max_length=500)
 
     @field_validator("uc")
     @classmethod
@@ -1516,6 +1520,39 @@ async def enqueue_agent_job(
     if excluded_cidrs:
         job_params["_excluded_cidrs"] = list(excluded_cidrs)
 
+    # Fragile-asset guard: HSM / ATM / SWIFT / ICS hosts get only gentle scans.
+    # Excluded hosts ride in _excluded_cidrs, which the probe's ScopeGuard enforces.
+    from app.services.fragile_guard import (
+        MIN_REASON_CHARS, OVERRIDE_ROLES, merge_excluded, plan_for_job,
+    )
+    effective_intensity = intensity_name or (
+        _USE_CASES[resolved_use_case_id].get("intensity") if resolved_use_case_id else None)
+    fragile_plan = await plan_for_job(
+        db, eng.id, scan_type=resolved_scan_type, intensity=effective_intensity,
+        job_scope=requested_scope)
+    fragile_override = None
+    if fragile_plan is not None:
+        if body.allow_fragile:
+            if getattr(current_user, "role", None) not in OVERRIDE_ROLES:
+                raise HTTPException(status.HTTP_403_FORBIDDEN,
+                                    "Only an admin or manager may scan fragile assets intrusively")
+            reason = (body.fragile_override_reason or "").strip()
+            if len(reason) < MIN_REASON_CHARS:
+                raise HTTPException(
+                    status.HTTP_422_UNPROCESSABLE_ENTITY,
+                    f"fragile_override_reason must explain the approval (at least {MIN_REASON_CHARS} characters)")
+            fragile_override = {"hosts": fragile_plan.hosts, "reason": reason,
+                                "approved_by": str(current_user.user_id)}
+        elif fragile_plan.fully_blocked:
+            raise HTTPException(
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                "Every requested target is a fragile asset (HSM / ATM / SWIFT / ICS). Run passive "
+                "discovery or light discovery instead, or have an admin/manager override with a reason.")
+        else:
+            job_params["_excluded_cidrs"] = merge_excluded(job_params.get("_excluded_cidrs"),
+                                                           fragile_plan.cidrs)
+            job_params["_fragile_excluded"] = fragile_plan.hosts
+
     job = ScanJob(
         engagement_id=body.engagement_id,
         job_type=body.job_type,
@@ -1525,6 +1562,15 @@ async def enqueue_agent_job(
     db.add(job)
     await db.flush()
     await db.refresh(job)
+    if fragile_override is not None:
+        from app.services.audit import record_audit
+        record_audit(db, actor_id=current_user.user_id, action="scan.fragile_override",
+                     engagement_id=eng.id, resource_type="scan_job", resource_id=job.id,
+                     detail={**fragile_override, "scan_type": resolved_scan_type,
+                             "intensity": effective_intensity})
+    elif fragile_plan is not None:
+        logger.info("agent.job.fragile_excluded", job_id=str(job.id),
+                    hosts=[h["ip"] for h in fragile_plan.hosts])
     logger.info("agent.job.enqueued", job_id=str(job.id), job_type=body.job_type.value,
                 use_case_id=resolved_use_case_id, uc=uc_code)
 
@@ -1605,6 +1651,9 @@ async def enqueue_agent_job(
         "uc": uc_code,
         "intensity": intensity_name,
         "status": job.status.value,
+        # Hosts the fragile-asset guard kept out of this job (empty when none).
+        "fragile_excluded": job_params.get("_fragile_excluded", []),
+        "fragile_override": fragile_override is not None,
     }
 
 

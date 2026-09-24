@@ -5,6 +5,7 @@ import {
   assetTags,
   filterAssetsByTags,
   formatDeadline,
+  fragileReasons,
   parseManualTags,
   tagCounts,
   tagLabel,
@@ -74,4 +75,12 @@ test("formatDeadline", () => {
   assert.equal(formatDeadline(6), "6 hours");
   assert.equal(formatDeadline(72), "72 hours");
   assert.equal(formatDeadline(720), "30 days");
+});
+
+test("fragileReasons mirrors the backend guard", () => {
+  const hsm = { id: "h", tags: { auto: [{ key: "sector_fn", value: "hsm" }], manual: [] } };
+  assert.deepEqual(fragileReasons(hsm), ["sector_fn:hsm"]);
+  const cleared = { id: "c", tags: { auto: [{ key: "sector_fn", value: "swift" }], manual: [{ key: "scan_policy", value: "standard" }] } };
+  assert.deepEqual(fragileReasons(cleared), []);
+  assert.deepEqual(fragileReasons(web), []);
 });

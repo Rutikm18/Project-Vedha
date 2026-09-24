@@ -155,7 +155,7 @@ class TestApproveScanRequest:
         eng = SimpleNamespace(id=eng_id, tenant_id=op.tenant_id,
                               assigned_agent_id=agent, scope_cidrs=["10.0.0.0/24"])
         sr = _pending_request(eng_id, op.tenant_id)
-        db = _mock_db([eng, sr])
+        db = _mock_db([eng, sr, None])   # 3rd: fragile-asset lookup (no tagged assets)
 
         out = asyncio.run(ca.approve_scan_request(eng_id, sr.id, db, op))
 
@@ -223,3 +223,21 @@ class TestAssignAgent:
         with pytest.raises(HTTPException) as e:
             asyncio.run(ca.assign_agent(eng_id, ca.AssignAgentBody(agent_id=uuid.uuid4()), db, op))
         assert e.value.status_code == 404
+
+
+class TestApproveScanRequestFragileGuard:
+    def test_customer_scan_never_touches_fragile_hosts(self, monkeypatch):
+        from unittest.mock import AsyncMock as _AM
+        from app.intel.fragile import FragileHost
+        monkeypatch.setattr("app.services.fragile_guard.load_fragile_hosts",
+                            _AM(return_value=[FragileHost("10.0.0.20", ["sector_fn:swift"])]))
+        op = _operator()
+        eng_id = uuid.uuid4()
+        eng = SimpleNamespace(id=eng_id, tenant_id=op.tenant_id, assigned_agent_id=uuid.uuid4(),
+                              scope_cidrs=["10.0.0.0/24"], excluded_cidrs=["10.0.0.99/32"])
+        sr = _pending_request(eng_id, op.tenant_id)
+        db = _mock_db([eng, sr])
+        asyncio.run(ca.approve_scan_request(eng_id, sr.id, db, op))
+        job = _added(db, ScanJob)
+        assert job.result["_excluded_cidrs"] == ["10.0.0.99/32", "10.0.0.20/32"]
+        assert job.result["_fragile_excluded"] == [{"ip": "10.0.0.20", "reasons": ["sector_fn:swift"]}]

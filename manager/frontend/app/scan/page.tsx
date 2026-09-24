@@ -827,7 +827,10 @@ export function ScannerWorkspace({ surface = "manager" }: { surface?: ScannerWor
     }
     setLaunching(true); setJob(null); setDispatched(null);
     try {
-      const res = await api.launch<{ job_id: string; status: string; dispatched?: Record<string, unknown> }>(buildLaunchBody());
+      const res = await api.launch<{
+        job_id: string; status: string; dispatched?: Record<string, unknown>;
+        fragile_excluded?: Array<{ ip: string; reasons: string[] }>;
+      }>(buildLaunchBody());
       if (res.dispatched) setDispatched(res.dispatched);
       const launched: JobStatus = {
         job_id: res.job_id, engagement_id: selectedEng, status: "pending",
@@ -838,7 +841,10 @@ export function ScannerWorkspace({ surface = "manager" }: { surface?: ScannerWor
       // Reflect it in the DB-backed history immediately (the poll keeps it fresh).
       setRecentJobs((prev) => [launched, ...prev.filter((rj) => rj.job_id !== launched.job_id)]);
       startPolling(res.job_id);
-      toastOk("Job queued", "Probe picks up on next poll (~10s)");
+      const protectedHosts = res.fragile_excluded ?? [];
+      toastOk("Job queued", protectedHosts.length
+        ? `Probe picks up on next poll (~10s). ${protectedHosts.length} fragile host${protectedHosts.length === 1 ? "" : "s"} (HSM / ATM / SWIFT / ICS) kept out of this scan: ${protectedHosts.map((h) => h.ip).join(", ")}`
+        : "Probe picks up on next poll (~10s)");
     } catch (e) {
       toastErr("Launch failed", (e as Error).message);
     } finally {

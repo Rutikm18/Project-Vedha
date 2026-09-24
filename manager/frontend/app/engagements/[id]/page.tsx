@@ -20,7 +20,7 @@ import {
 } from "../../../lib/engagement-workspace-api";
 import { AssetTagList, ManualTagEditor, TagFilterBar } from "../../../components/intel/AssetTags";
 import { RegulatoryProfilePanel } from "../../../components/intel/RegulatoryProfilePanel";
-import { filterAssetsByTags, tagCounts, type TagsDoc } from "../../../lib/intel";
+import { filterAssetsByTags, fragileReasons, tagCounts, type TagsDoc } from "../../../lib/intel";
 
 type TabKey = "overview" | "findings" | "assets" | "activity";
 type Severity = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
@@ -347,6 +347,11 @@ function AssetsTab({ engagementId, surface }: { engagementId: string; surface: E
               <span className="badge badge-info">{asset.criticality}</span>
             </header>
             <div className="engagement-asset-meta">{asset.hostname || "Unknown host"} · {asset.os || "OS not identified"}</div>
+            {fragileReasons(asset).length > 0 && (
+              <div className="intel-fragile" title={`Fragile: ${fragileReasons(asset).join(", ")}. Intrusive scans skip this host unless an admin/manager overrides with a reason.`}>
+                <Shield size={12} /> Fragile · gentle scans only
+              </div>
+            )}
             <AssetTagList asset={asset} selected={selectedTags} onToggle={toggle} />
             {api.canEditIntel && (
               <ManualTagEditor

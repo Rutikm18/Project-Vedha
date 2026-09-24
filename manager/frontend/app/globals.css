@@ -3402,3 +3402,9 @@ button.intel-tag:focus-visible { outline: 2px solid var(--accent); outline-offse
   .intel-assets-toolbar { flex-direction: column; }
   .intel-clock-list li { grid-template-columns: 1fr; gap: 4px; }
 }
+.intel-fragile {
+  display: inline-flex; align-items: center; gap: 6px; margin: -6px 0 10px; padding: 4px 9px;
+  border-radius: 6px; color: var(--sev-medium-color); background: var(--sev-medium-bg);
+  border: 1px solid color-mix(in srgb, var(--sev-medium-color) 28%, transparent);
+  font-size: 11px; font-weight: 650;
+}
