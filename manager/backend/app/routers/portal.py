@@ -591,7 +591,11 @@ async def portal_assistant_chat(body: ClientAssistantAsk, user: ClientUser, db: 
         task="client_assistant",
         messages=[AiMessage(role=m.role, content=m.content) for m in body.messages],
         context=context,
-        max_tokens=900,
+        # Adaptive-depth answers: simple questions stay short, but a full
+        # structured finding brief (impact / what-we-found / what-to-do / verify)
+        # needs headroom so it is never truncated mid-remediation. Ceiling only —
+        # short answers still cost only what they generate.
+        max_tokens=1600,
         provider=body.provider,
         model=body.model,
     )

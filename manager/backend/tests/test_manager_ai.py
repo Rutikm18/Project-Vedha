@@ -507,6 +507,41 @@ async def test_anthropic_body_is_model_agnostic_no_temperature_uses_effort():
     assert "output_config" not in captured["body"]
 
 
+@pytest.mark.asyncio
+async def test_anthropic_retries_without_output_config_on_400():
+    # A model/deployment that rejects `effort` (Sonnet 4.5 / Haiku 4.5) or an
+    # effort value it won't take (`xhigh` outside Opus 4.7+) makes Anthropic 400 the
+    # whole request. The assistant must not hard-fail on that operator choice: it
+    # drops output_config and retries ONCE as a plain request every model accepts.
+    bodies: list[dict] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        body = __import__("json").loads(request.content)
+        bodies.append(body)
+        if "output_config" in body:
+            return httpx.Response(
+                400,
+                json={"error": {"message": "output_config.effort: unsupported for this model"}},
+            )
+        return httpx.Response(200, json={"content": [{"type": "text", "text": "recovered"}]})
+
+    service = ManagerLlmService(
+        Settings(llm_provider="anthropic", anthropic_api_key="ak",
+                 llm_model="claude-sonnet-4-5", llm_effort="low"),
+        transport=httpx.MockTransport(handler),
+    )
+    content, runtime = await service.generate(AiGenerateRequest(
+        task="client_assistant", provider="anthropic", model="claude-sonnet-4-5",
+        messages=[{"role": "user", "content": "what's my top risk"}],
+    ))
+
+    assert content == "recovered"
+    assert runtime.provider == "anthropic"
+    assert len(bodies) == 2                 # first attempt 400s, then the retry
+    assert "output_config" in bodies[0]     # first carried effort
+    assert "output_config" not in bodies[1]  # retry dropped it
+
+
 def test_fence_untrusted_boundary_is_deterministic_and_content_bound():
     # Determinism keeps the prompt-cache hit for multi-turn follow-ups about the
     # SAME finding; content-binding means a different finding gets a different token.

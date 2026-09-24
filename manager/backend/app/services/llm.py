@@ -14,6 +14,30 @@ from app.services.llm_http_client import AsyncLlmHttpClient
 
 logger = structlog.get_logger()
 
+_ANTHROPIC_URL = "https://api.anthropic.com/v1/messages"
+
+
+def _provider_error_reason(response: httpx.Response) -> str:
+    """Best-effort, truncated reason from a provider's error body — for OPERATOR
+    logs, never the customer. A 4xx from Anthropic/OpenAI/Gemini carries the exact
+    cause (e.g. "output_config.effort: unsupported value 'xhigh' for this model")
+    in {"error":{"message":...}}; the old handler discarded it and surfaced only
+    the status code, which made every 400 look identical and undiagnosable. Never
+    raises, and caps length so a huge body can't bloat a single log line."""
+    try:
+        data = response.json()
+    except Exception:
+        return response.text[:300].strip()
+    if isinstance(data, dict):
+        err = data.get("error")
+        if isinstance(err, dict) and err.get("message"):
+            return str(err["message"])[:300]
+        if isinstance(err, str) and err:
+            return err[:300]
+        if data.get("message"):
+            return str(data["message"])[:300]
+    return str(data)[:300]
+
 
 def _is_local_ollama_model(model: str) -> bool:
     # Ollama also exposes proxy-backed cloud models with a :cloud suffix. They
@@ -165,17 +189,39 @@ not write code, essays, translations, business advice or general knowledge answe
 when asked directly and even if the request seems harmless.
 
 GROUNDING — <security_context> holds THIS customer's recorded assessment data. Prefer it
-over general knowledge for anything about their environment, and say plainly when the
-context does not contain the answer rather than filling the gap. Never speculate about
-hosts, findings, or services that are not in the context; never mention other customers,
-operators, internal tooling, or how the platform works internally.
+over general knowledge for anything about their environment, and cite their real values —
+finding titles, affected hosts, severity, CVSS and Vedha risk score, when first seen —
+exactly as supplied. Say plainly when the context does not contain the answer rather than
+filling the gap. Never speculate about hosts, findings, or services that are not in the
+context; never invent a CVE, score, version, or affected asset; never mention other
+customers, operators, internal tooling, or how the platform works internally.
 
 DEFENSIVE ONLY — explain how to verify and fix. Never provide exploit code, payloads, or
 step-by-step intrusion instructions, even for a finding in their own environment.
 
-TONE — the reader owns the risk but may not be a security specialist. Lead with the
-answer, keep it short, define jargon on first use, and be explicit about what is
-confirmed versus what still needs checking."""
+ANSWER SHAPE — match the depth to the question; never pad.
+- Lead with a one- or two-sentence direct answer to exactly what was asked.
+- Simple/factual questions (a count, a status, a definition) end there: 1-3 sentences, no
+  headings.
+- Questions about a specific finding, "what should I fix first", or "explain X and what do
+  I do" get a structured brief using these Markdown headings, in this order, OMITTING any
+  that do not apply:
+  ## Why it matters   2-4 bullets: the concrete impact in plain terms, worst case first.
+  ## What we found    the grounded specifics from the context — affected host(s), severity,
+                      CVSS and Vedha risk score, when first seen.
+  ## What to do       numbered, ordered, non-destructive remediation the customer's own team
+                      can run; prefer vendor-supported actions; end by asking them to re-scan
+                      to confirm.
+  ## How to verify    one safe check that confirms the fix — distinct from proof of exploit.
+
+FORMATTING — use `##` for headings, `-` for bullets, and `1.` for ordered steps. Bold the
+single most important phrase of the answer with **double asterisks** (the host, the severity,
+or the key action). Define any acronym on first use. Keep the whole reply under ~400 words
+and concrete enough to act on without a follow-up.
+
+TONE — the reader owns the risk but may not be a security specialist. Be direct, calm, and
+practical. Be explicit about what their scan has CONFIRMED versus what still needs their
+verification."""
 
 _TASK_RULES["security_followup"] += "\n" + _VULNERABILITY_BRIEF_CONTRACT
 _TASK_RULES["advisor"] += "\n" + _VULNERABILITY_BRIEF_CONTRACT
@@ -497,6 +543,16 @@ class ManagerLlmService:
             raise AiRuntimeError(f"{runtime.provider} timed out", 504) from exc
         except httpx.HTTPStatusError as exc:
             status = 429 if exc.response.status_code == 429 else 502
+            # Log the provider's own error message so a 400/422 is diagnosable
+            # instead of an opaque status code. Kept out of the raised message so
+            # provider internals never reach a customer-facing response.
+            logger.warning(
+                "ai.provider.http_error",
+                provider=runtime.provider,
+                model=runtime.model,
+                status_code=exc.response.status_code,
+                reason=_provider_error_reason(exc.response),
+            )
             raise AiRuntimeError(f"{runtime.provider} returned HTTP {exc.response.status_code}", status) from exc
         except UnicodeEncodeError as exc:
             # A non-ASCII API key (or header value) can't be encoded into the HTTP
@@ -695,7 +751,7 @@ class ManagerLlmService:
         # output_config.effort, which Sonnet 4.6 / Opus 4.6+ / Fable 5 accept. This
         # lets an operator set LLM_MODEL to an Opus/Fable model without the assistant
         # path 400ing while report/agent generation keep working.
-        body: dict = {
+        base_body: dict = {
             "model": runtime.model,
             # System as prompt-cache blocks: the stable rules prefix is
             # cached across requests (see _anthropic_system_blocks).
@@ -712,17 +768,28 @@ class ManagerLlmService:
             output_config["effort"] = self.settings.llm_effort
         if json_mode:
             output_config["format"] = {"type": "json_schema", "schema": _ADVISOR_FLOW_SCHEMA}
-        if output_config:
-            body["output_config"] = output_config
+        headers = {
+            "x-api-key": self.settings.anthropic_api_key,
+            "anthropic-version": "2023-06-01",
+        }
         async with self._client() as client:
-            response = await client.post(
-                "https://api.anthropic.com/v1/messages",
-                headers={
-                    "x-api-key": self.settings.anthropic_api_key,
-                    "anthropic-version": "2023-06-01",
-                },
-                json=body,
-            )
+            body = {**base_body, "output_config": output_config} if output_config else dict(base_body)
+            response = await client.post(_ANTHROPIC_URL, headers=headers, json=body)
+            # output_config (effort / structured-output format) is the one part of
+            # the body a given model or deployment can reject with a 400 — `effort`
+            # on Sonnet 4.5 / Haiku 4.5, or a value the pinned model won't take
+            # (`xhigh` outside Opus 4.7+). Rather than hard-fail the assistant on an
+            # operator's model/effort choice, log the real reason and retry ONCE as a
+            # plain request every supported model accepts. The assistant then works
+            # even when effort/format is misconfigured; we only lose the tuning knob.
+            if response.status_code == 400 and output_config:
+                logger.warning(
+                    "ai.anthropic.output_config_rejected",
+                    model=runtime.model,
+                    dropped=sorted(output_config),
+                    reason=_provider_error_reason(response),
+                )
+                response = await client.post(_ANTHROPIC_URL, headers=headers, json=base_body)
             response.raise_for_status()
             blocks = response.json().get("content", [])
             return "\n".join(
