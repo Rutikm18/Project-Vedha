@@ -48,6 +48,20 @@ export function createEngagementWorkspaceApi(surface: EngagementWorkspaceSurface
         if (!response.ok) throw new Error(value?.error ?? value?.detail ?? `Import failed (${response.status})`);
         return value as T;
       },
+      // Asset intelligence + regulatory profile. Operators can edit; the portal is read-only.
+      canEditIntel: true,
+      compliance: <T>(engagementId: string) => fetchJson<T>(`/api/engagements/${encodeURIComponent(engagementId)}/compliance`),
+      profile: <T>(engagementId: string) => fetchJson<T>(`/api/engagements/${encodeURIComponent(engagementId)}/profile`),
+      setProfile: <T>(engagementId: string, body: { sector: string; jurisdictions: string[] }) => fetchJson<T>(
+        `/api/engagements/${encodeURIComponent(engagementId)}/profile`, { method: "PUT", body: JSON.stringify(body) },
+      ),
+      setAssetTags: <T>(engagementId: string, assetId: string, tags: Array<{ key: string; value: string }>) => fetchJson<T>(
+        `/api/engagements/${encodeURIComponent(engagementId)}/assets/${encodeURIComponent(assetId)}/tags`,
+        { method: "PUT", body: JSON.stringify({ tags }) },
+      ),
+      retag: <T>(engagementId: string) => fetchJson<T>(
+        `/api/engagements/${encodeURIComponent(engagementId)}/assets/retag`, { method: "POST" },
+      ),
     };
   }
 
@@ -91,5 +105,11 @@ export function createEngagementWorkspaceApi(surface: EngagementWorkspaceSurface
     },
     importFacts: <T>(_engagementId: string, form: FormData) =>
       portalMultipart<T>("/workspace/engagement/import-facts", form),
+    canEditIntel: false,
+    compliance: <T>() => portalApi<T>("/workspace/compliance"),
+    profile: async <T>(): Promise<T> => { throw new Error("The regulatory profile is managed by your assessor."); },
+    setProfile: async <T>(): Promise<T> => { throw new Error("The regulatory profile is managed by your assessor."); },
+    setAssetTags: async <T>(): Promise<T> => { throw new Error("Asset tags are managed by your assessor."); },
+    retag: async <T>(): Promise<T> => { throw new Error("Asset tags are managed by your assessor."); },
   };
 }

@@ -750,6 +750,13 @@ async def portal_workspace_engagement_assets(user: ClientUser, db: DB):
     )
 
 
+@router.get("/workspace/compliance", summary="Regulatory profile, applicable frameworks and reporting clocks")
+async def portal_workspace_compliance(user: ClientUser, db: DB):
+    """Read-only for the customer: the operator sets the profile."""
+    from app.routers.compliance import engagement_compliance
+    return await engagement_compliance(engagement_id=assert_client(user), db=db, current_user=user)
+
+
 @router.post("/workspace/engagement/import-facts", status_code=status.HTTP_202_ACCEPTED,
              summary="Import evidence into the assigned engagement")
 async def portal_workspace_import_facts(

@@ -13,6 +13,9 @@ interface ManagerAiResponse {
   provider: string;
   model: string;
   privacy: "local" | "cloud";
+  skill?: string | null;
+  skill_label?: string | null;
+  jurisdictions?: string[];
 }
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
@@ -119,6 +122,9 @@ export async function POST(req: Request) {
         // The Manager prompt caps single-vulnerability briefs at 250 words.
         // 500 tokens leaves enough room for headings without inviting sprawl.
         max_tokens: 500,
+        // The Manager loads this engagement's sector/jurisdiction profile itself
+        // (tenant-scoped) and answers as that sector's domain expert.
+        engagement_id: body.engagementId || undefined,
       },
     });
     return NextResponse.json({
@@ -126,6 +132,9 @@ export async function POST(req: Request) {
       factCard,
       provider: result.provider,
       model: result.model,
+      skill: result.skill ?? null,
+      skillLabel: result.skill_label ?? null,
+      jurisdictions: result.jurisdictions ?? [],
     });
   } catch (error) {
     const status = error instanceof BackendError || error instanceof SecurityContextError

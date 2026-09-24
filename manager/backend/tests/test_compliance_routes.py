@@ -85,3 +85,17 @@ async def test_finding_obligations_404():
     with pytest.raises(HTTPException) as exc:
         await routes.finding_obligations_route(uuid.uuid4(), uuid.uuid4(), db, _user())
     assert exc.value.status_code == 404
+
+
+@pytest.mark.asyncio
+async def test_portal_compliance_is_pinned_to_the_clients_engagement():
+    from app.routers import portal
+    from app.schemas.auth import CurrentUser
+    eid = uuid.uuid4()
+    user = CurrentUser(user_id=uuid.uuid4(), tenant_id=uuid.uuid4(), role="client", client_engagement_id=eid)
+    eng = _eng({"profile": {"sector": "insurance", "jurisdictions": ["IN"]}})
+    db = _db(_one(eng), _scalars([]))
+    out = await portal.portal_workspace_compliance(user, db)
+    assert {f["id"] for f in out["frameworks"]} >= {"irdai_isg", "certin_2022"}
+    stmt = db.execute.await_args_list[0].args[0]
+    assert eid.hex in str(stmt.compile(compile_kwargs={"literal_binds": True}))

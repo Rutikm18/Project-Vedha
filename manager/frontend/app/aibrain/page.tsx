@@ -23,6 +23,9 @@ interface Message {
   provider?: string;
   model?: string;
   factCard?: FactCardVM;
+  /** Sector domain expert the answer was written as (null = general advisor). */
+  skillLabel?: string | null;
+  jurisdictions?: string[];
 }
 
 interface AiStatus {
@@ -129,7 +132,10 @@ export function AIBrainWorkspace({ surface = "manager" }: { surface?: AIBrainWor
     setSending(true);
     setError(null);
     try {
-      const response = await api.send<{ content?: string; error?: string; provider?: string; model?: string; factCard?: FactCardVM }>({
+      const response = await api.send<{
+        content?: string; error?: string; provider?: string; model?: string; factCard?: FactCardVM;
+        skillLabel?: string | null; skill_label?: string | null; jurisdictions?: string[];
+      }>({
           messages: conversation.map(({ role, content: messageContent }) => ({ role, content: messageContent })),
           engagementId: effectiveEngagementId || undefined,
           provider: selectedProvider?.id,
@@ -142,6 +148,9 @@ export function AIBrainWorkspace({ surface = "manager" }: { surface?: AIBrainWor
         provider: response.provider,
         model: response.model,
         factCard: response.factCard,
+        // Manager BFF returns camelCase; the portal backend returns snake_case.
+        skillLabel: response.skillLabel ?? response.skill_label ?? null,
+        jurisdictions: response.jurisdictions ?? [],
       }]);
     } catch (requestError) {
       setError(requestError instanceof Error ? requestError.message : "The AI runtime could not complete this request.");
@@ -223,6 +232,11 @@ export function AIBrainWorkspace({ surface = "manager" }: { surface?: AIBrainWor
                 <div>
                   <header>
                     <strong>{message.role === "assistant" ? "Vedha AI" : "You"}</strong>
+                    {message.skillLabel && (
+                      <span className="intel-skill" title="Answer framed by this sector's domain-expert skill">
+                        {message.skillLabel}{message.jurisdictions?.length ? ` · ${message.jurisdictions.join(", ")}` : ""}
+                      </span>
+                    )}
                     {message.model && <span>{providerLabel(message.provider)} · {message.model}</span>}
                   </header>
                   {message.factCard && <FactCard vm={message.factCard} />}

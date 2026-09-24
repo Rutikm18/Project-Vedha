@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Activity, AlertTriangle, ArrowLeft, CalendarDays, Check, ChevronLeft, ChevronRight,
-  CircleDot, Clock3, FileText, Loader2, Network, Pencil, Play, Target,
+  CircleDot, Clock3, FileText, Loader2, Network, Pencil, Play, RefreshCw, Target,
   Shield, Tags, Upload, UserRound, Users, X,
 } from "lucide-react";
 import { PageShell } from "../../../components/PageShell";
@@ -18,6 +18,9 @@ import {
   createEngagementWorkspaceApi,
   type EngagementWorkspaceSurface,
 } from "../../../lib/engagement-workspace-api";
+import { AssetTagList, ManualTagEditor, TagFilterBar } from "../../../components/intel/AssetTags";
+import { RegulatoryProfilePanel } from "../../../components/intel/RegulatoryProfilePanel";
+import { filterAssetsByTags, tagCounts, type TagsDoc } from "../../../lib/intel";
 
 type TabKey = "overview" | "findings" | "assets" | "activity";
 type Severity = "CRITICAL" | "HIGH" | "MEDIUM" | "LOW";
@@ -55,6 +58,7 @@ interface AssetRow {
   os: string | null;
   asset_type: string;
   criticality: string;
+  tags?: TagsDoc | null;
   services: Array<{
     port: number;
     protocol: string;
@@ -189,6 +193,8 @@ function OverviewTab({ engagement, surface }: { engagement: Engagement; surface:
         </article>
       </section>
 
+      <RegulatoryProfilePanel engagementId={engagement.id} surface={surface} />
+
       <article className="engagement-panel engagement-severity-panel">
         <header>
           <div><AlertTriangle size={16} /><span>Finding distribution</span></div>
@@ -279,13 +285,31 @@ function FindingsTab({ engagementId, surface }: { engagementId: string; surface:
 
 function AssetsTab({ engagementId, surface }: { engagementId: string; surface: EngagementWorkspaceSurface }) {
   const api = useMemo(() => createEngagementWorkspaceApi(surface), [surface]);
+  const queryClient = useQueryClient();
+  const toast = useToast();
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
   const query = useQuery({
     queryKey: ["assets", surface, engagementId],
     queryFn: () => api.assets<AssetRow[]>(engagementId),
     refetchInterval: 20_000,
     retry: (count, error) => !isUnauthorized(error) && count < 2,
   });
-  const assets = query.data ?? [];
+  const assets = useMemo(() => query.data ?? [], [query.data]);
+  const counts = useMemo(() => tagCounts(assets), [assets]);
+  const visible = useMemo(() => filterAssetsByTags(assets, selectedTags), [assets, selectedTags]);
+  const toggle = (tag: string) => setSelectedTags((current) =>
+    current.includes(tag) ? current.filter((item) => item !== tag) : [...current, tag]);
+  const refresh = () => queryClient.invalidateQueries({ queryKey: ["assets", surface, engagementId] });
+
+  const retag = useMutation({
+    mutationFn: () => api.retag<{ retagged: number }>(engagementId),
+    onSuccess: (data) => {
+      void refresh();
+      void queryClient.invalidateQueries({ queryKey: ["compliance", surface, engagementId] });
+      toast.success("Tags recomputed", `${data.retagged} hosts re-evaluated from recorded evidence.`);
+    },
+    onError: (error) => toast.error("Re-tag failed", error instanceof Error ? error.message : "Unknown error"),
+  });
 
   return (
     <DataState
@@ -296,14 +320,44 @@ function AssetsTab({ engagementId, surface }: { engagementId: string; surface: E
       skeleton={<SkeletonRows rows={5} height={72} />}
       empty={<EmptyState icon={Network} title="No hosts discovered yet" hint="Run discovery from this engagement to build the attack surface." />}
     >
+      <div className="intel-assets-toolbar">
+        <TagFilterBar
+          counts={counts}
+          selected={selectedTags}
+          onToggle={toggle}
+          onClear={() => setSelectedTags([])}
+          total={assets.length}
+          shown={visible.length}
+        />
+        {api.canEditIntel && (
+          <button type="button" className="btn btn-secondary" disabled={retag.isPending} onClick={() => retag.mutate()}
+            title="Re-derive tags for every host from the evidence already recorded">
+            {retag.isPending ? <Loader2 size={13} className="animate-spin" /> : <RefreshCw size={13} />} Re-tag hosts
+          </button>
+        )}
+      </div>
+      {visible.length === 0 && (
+        <EmptyState icon={Tags} title="No host carries every selected tag" hint="Remove a tag from the filter to widen the view." />
+      )}
       <div className="engagement-asset-grid">
-        {assets.map((asset) => (
+        {visible.map((asset) => (
           <article className="engagement-asset-card" key={asset.id}>
             <header>
               <span><Network size={15} /> <code>{asset.ip_address || "Address unavailable"}</code></span>
               <span className="badge badge-info">{asset.criticality}</span>
             </header>
             <div className="engagement-asset-meta">{asset.hostname || "Unknown host"} · {asset.os || "OS not identified"}</div>
+            <AssetTagList asset={asset} selected={selectedTags} onToggle={toggle} />
+            {api.canEditIntel && (
+              <ManualTagEditor
+                asset={asset}
+                onSave={async (tags) => {
+                  await api.setAssetTags(engagementId, asset.id, tags);
+                  toast.success("Tags saved", asset.ip_address ?? asset.hostname ?? "Host updated");
+                  await refresh();
+                }}
+              />
+            )}
             <div className="engagement-service-list">
               {asset.services.length ? asset.services.map((service, index) => (
                 <div key={`${service.port}-${index}`}>
