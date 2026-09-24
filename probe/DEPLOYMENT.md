@@ -207,7 +207,85 @@ still works for backward compatibility; the number is the compact interface.)
 > cancelled or hits its runtime ceiling during the port tail keeps the hosts it
 > already finished.
 
-## 5. TLS notes
+## 5. Scan intensity, limits, and partial results
+
+`intensity` is a single knob that sets **both** port breadth and pace — they are
+not independent, so "Aggressive" means *broader coverage*, not faster packets.
+The Manager sends a code (`1/2/3`) or a name; the probe owns the envelope.
+
+| Dashboard | Probe preset | Ports swept | Rate (pps) | Concurrency | Timeout | Retries | Per-host ceiling |
+|-----------|--------------|-------------|-----------:|------------:|--------:|--------:|-----------------|
+| Stealth    | `1` light    | ~15 high-signal        | 50  | 20  | 4.0 s | 0 | — |
+| Normal     | `2` standard | profile catalog (~1.2k) | 200 | 100 | 3.0 s | 1 | — |
+| Aggressive | `3` deep     | all 65,535 (two-phase)  | 150 | 80  | 4.0 s | 2 | 30 min |
+
+- **Aggressive is two-phase.** It assesses a high-signal first pass (~1,145 ports)
+  on every host — the set banner / OS / deep-service checks run on — then sweeps
+  the rest of the range as a **budgeted tail**. Ports the tail does not reach are
+  reported `not_scanned` (a fact about the *scan*), never `filtered` (a fact about
+  the *host*), so coverage stays honest.
+- **Rate is a hard ceiling.** The send pacer adapts *down* on measured loss and
+  never climbs above the configured rate.
+
+### Job admission — why a scan is admitted or refused
+
+Two probe-side ceilings bound every job (override with env vars on the probe):
+
+| Env var | Default | Meaning |
+|---------|---------|---------|
+| `PROBE_MAX_JOB_SECONDS` | `7200` (2 h) | Hard runtime ceiling for one job |
+| `PROBE_MAX_TARGETS`     | `4096`       | Max hosts one job may address |
+
+Before scanning, the probe estimates the work and **refuses a job it cannot finish
+in time** rather than starting one that will die at the ceiling:
+
+```
+job cannot finish: <hosts> host(s) x <ports> port(s) = <N> probes at <rate> pps
+needs at least <T>, against a <ceiling> ceiling
+```
+
+An **Aggressive /24 is admitted**: admission is sized by the first pass
+(~1,145 ports ≈ 32 min at 150 pps), not the full 65,535-port range, and the tail
+runs in whatever time is left. The refusal names the fix — scan fewer hosts, or
+narrow the breadth — and `allow_infeasible=true` in the job params runs it anyway
+and accepts a partial. Note: without raw SYN (connect fallback, see §4), a
+full-range deep job realistically fits only a few live hosts per job; the
+first-pass assessment still completes on all of them.
+
+### Partial results survive interruption
+
+Each host is committed to the Manager **the moment its scan finishes** (over the
+per-host chunk channel), so a job that is cancelled, loses its lease, or hits the
+runtime ceiling **keeps every host it already assessed** — a wide scan no longer
+loses hours of work to one interruption. This uses the Manager's chunk endpoint,
+which JWT-authenticated probes reach out of the box.
+
+### One job per probe
+
+A probe runs **one job at a time**. Launch a second scan while one is running and
+it waits in the Manager's queue until the first finishes — the probe will not run
+two scans against the network at once (double traffic from one source manufactures
+false negatives). To scan in parallel, enroll more probes.
+
+### Scope safety
+
+Loopback, link-local (incl. `169.254.169.254`), multicast, reserved ranges, the
+broadcast address, and the **Manager's own IP** are never scanned. A target CIDR
+that merely *contains* the Manager is not dropped wholesale — only the Manager
+address is carved out and the rest of the range is scanned.
+
+### Useful probe-side tuning
+
+| Env var | Purpose |
+|---------|---------|
+| `PROBE_NETWORK_SEGMENTS` | **Required.** CIDRs this probe may scan (empty = refuse every job) |
+| `PROBE_MAX_TARGETS` / `PROBE_MAX_JOB_SECONDS` | The admission ceilings above |
+| `PROBE_HOST_CONCURRENCY` | Live hosts swept in parallel (raise `pids_limit` alongside it) |
+| `PROBE_RESULT_DIR` | Local result-archive path (empty = archiving off) |
+| `PROBE_WS_ENABLED` | `false` forces HTTP long-poll (for proxies that block WebSockets) |
+| `PROBE_JOB_SIGNING_KEY` | Pin a key to require Manager-signed jobs |
+
+## 6. TLS notes
 
 - **Public CA (default):** Caddy auto-provisions a Let's Encrypt cert for your
   domain. Probes trust it out of the box (`VERIFY_TLS=true`).
