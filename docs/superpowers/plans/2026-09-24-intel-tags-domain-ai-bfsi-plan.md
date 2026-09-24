@@ -26,8 +26,8 @@ others depend on; P1 = customer-visible value; P2 = hardening/scale.
 | A5 ✅ | P0 | `applicable_frameworks(profile, tags)` + `finding_obligations(finding, profile)` | tests |
 | A6 ✅ | P0 | Domain skills (`app/ai/skills`): banking, payments_fintech, insurance, capital_markets, nbfc, healthcare, government, generic | schema test |
 | A7 ✅ | P0 | Skill router + prompt composer (persona + vocabulary + pack excerpt) into `ManagerLlmService._build_system` | tests; existing AI tests still green |
-| A8 ◐ | P1 | Sector-aware `client_assistant` + `/ai/generate` ✅; deterministic `/findings/{id}/obligations` ✅; LLM `compliance_brief` task — open | router tests |
-| A9 | P1 | Grounding check: unknown control IDs flagged/stripped | tests |
+| A8 ✅ | P1 | Sector-aware `client_assistant` + `/ai/generate`; `/findings/{id}/obligations`; grounded LLM `compliance_brief` (operator + portal) | router tests |
+| A9 ✅ | P1 | Grounding check: unknown control IDs flagged/stripped | tests |
 | A10 ✅ | P1 | Frontend: profile editor, compliance-by-framework view, assistant shows skill + jurisdiction | UI check |
 
 ## Phase 3 — AI Gateway + BFSI deployment
@@ -35,9 +35,9 @@ others depend on; P1 = customer-visible value; P2 = hardening/scale.
 |---|---|---|---|
 | G1 ✅ | P0 | `app/ai/gateway.py` pseudonymizer (IP/host/FQDN/email/user/domain) + rehydrate | round-trip tests |
 | G2 ✅ | P0 | `VEDHA_DEPLOYMENT_PROFILE` (sovereign/hybrid/cloud) + route policy; wire into `_dispatch` | "no raw IP reaches transport" test |
-| G3 | P1 | Hash-chained AI audit record | tests |
+| G3 ✅ | P1 | Hash-chained AI audit record | tests |
 | G4 ✅ | P1 | ADR-0003 BFSI deployment + deployment guide (agent zoning, mTLS, CMK, retention, change windows) | doc review |
-| G5 | P2 | Offline signed intel bundle (export/import, Ed25519) for sovereign | tests |
+| G5 ✅ | P2 | Offline signed intel bundle (export/import, Ed25519) for sovereign | tests |
 | G6 | P2 | Sovereign local-model profile hardening (vLLM/Ollama, no cloud fallback) | tests |
 
 ## Build order
@@ -46,4 +46,5 @@ T1→T2→T3→T4 → A1→A2→A3→A5→A6→A7 → G1→G2 → T5 → A8→A9
 ## Status (2026-09-24)
 Done ✅: backend for tags, compliance packs (all 4 regions), domain skills + brief, AI gateway, ADR-0003.
 Frontend (T6/A10) ✅ and fragile-asset guard (T8) ✅ — enforced at operator enqueue (incl. schedules), portal-approved scans (no override), Nuclei and Nessus; admin/manager override needs a reason and is audited.
-Next: A9 citation grounding check, G3 AI audit chain, findings-drawer obligations UI, LLM compliance_brief task.
+A9 citation grounding ✅, G3 AI audit chain ✅, findings Compliance tab + compliance_brief ✅, G5 signed offline intel bundles ✅.
+Remaining (P2, not started): T7 GIN index on assets.tags, G6 sovereign local-model hardening (vLLM profile).

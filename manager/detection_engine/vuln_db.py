@@ -38,6 +38,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from intel_paths import resolve
 from version_compare import verify_pure_python_matches_dpkg
 
 DEFAULT_SNAPSHOT_PATH = Path(__file__).parent / "snapshots" / "osv_debian_snapshot.json"
@@ -205,8 +206,12 @@ def _merge_companion(primary: VulnDB, companion_path: Path) -> VulnDB:
     return VulnDB(merged, meta)
 
 
-def load_snapshot(path: str | Path = DEFAULT_SNAPSHOT_PATH) -> VulnDB:
-    path = Path(path)
+def load_snapshot(path: str | Path | None = None) -> VulnDB:
+    # None → an installed offline bundle's snapshot if present, else the packaged
+    # one; the NVD/CPE companion is resolved the same way. An explicit path keeps
+    # the historical "companion sits next to it" behaviour.
+    explicit = path is not None
+    path = Path(path) if explicit else resolve(DEFAULT_SNAPSHOT_PATH.name)
     if not path.exists():
         raise FileNotFoundError(
             f"no vulnerability snapshot at {path} — run "
@@ -215,7 +220,7 @@ def load_snapshot(path: str | Path = DEFAULT_SNAPSHOT_PATH) -> VulnDB:
     st = path.stat()
     # Include the optional companion in the cache key so refreshing EITHER file
     # invalidates the memoized merged DB — pinning semantics preserved.
-    companion = path.parent / COMPANION_SNAPSHOT_NAME
+    companion = path.parent / COMPANION_SNAPSHOT_NAME if explicit else resolve(COMPANION_SNAPSHOT_NAME)
     comp_st = companion.stat() if companion.exists() else None
     key = (str(path.resolve()), st.st_mtime_ns, st.st_size,
            comp_st.st_mtime_ns if comp_st else 0, comp_st.st_size if comp_st else 0)

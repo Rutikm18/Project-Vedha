@@ -59,6 +59,11 @@ class Settings(BaseSettings):
     # cloud deployment into pseudonymization too.
     deployment_profile: str = "cloud"
     ai_pseudonymize: bool = False
+    # Offline intel bundles (app/intel/bundle.py) for air-gapped managers:
+    # comma-separated base64 Ed25519 public keys trusted to sign bundles, and the
+    # writable directory the detection engine prefers over its packaged snapshots.
+    intel_bundle_public_keys: str = ""
+    vedha_intel_dir: str = ""
     llm_request_timeout_seconds: float = 180.0
     ollama_base_url: str = "http://host.docker.internal:11434"
     ollama_model: str = "llama3.2:3b"

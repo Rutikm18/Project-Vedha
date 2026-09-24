@@ -9,6 +9,7 @@ import json
 import threading
 from pathlib import Path
 
+from intel_paths import resolve
 from update_snapshot import DEFAULT_EPSS_PATH, DEFAULT_KEV_PATH
 
 
@@ -52,8 +53,9 @@ def _cache_key(path: Path) -> tuple[str, int, int]:
     return (str(path.resolve()), st.st_mtime_ns, st.st_size)
 
 
-def load_kev(path: str | Path = DEFAULT_KEV_PATH) -> KevDB:
-    path = Path(path)
+def load_kev(path: str | Path | None = None) -> KevDB:
+    # None → an installed offline bundle's snapshot if present, else the packaged one.
+    path = Path(path) if path is not None else resolve(DEFAULT_KEV_PATH.name)
     key = _cache_key(path)
     with _cache_lock:
         cached = _kev_cache.get(key)
@@ -66,8 +68,8 @@ def load_kev(path: str | Path = DEFAULT_KEV_PATH) -> KevDB:
         return _kev_cache.setdefault(key, db)
 
 
-def load_epss(path: str | Path = DEFAULT_EPSS_PATH) -> EpssDB:
-    path = Path(path)
+def load_epss(path: str | Path | None = None) -> EpssDB:
+    path = Path(path) if path is not None else resolve(DEFAULT_EPSS_PATH.name)
     key = _cache_key(path)
     with _cache_lock:
         cached = _epss_cache.get(key)

@@ -30,7 +30,7 @@ in the two direct-SDK callers (report generator, advisor agent).
 
 | Profile | Typical buyer | Manager and data | AI | Threat-intel / updates |
 |---|---|---|---|---|
-| `sovereign` | Tier-1 banks, central-bank-regulated entities, air-gapped sites | Bank data centre, no internet egress | Open-weight model on bank GPUs (`LLM_PROVIDER=ollama`, or vLLM behind the same API). **Cloud providers are refused (fail closed).** | Signed offline bundles carried in one way (*planned*, G5) |
+| `sovereign` | Tier-1 banks, central-bank-regulated entities, air-gapped sites | Bank data centre, no internet egress | Open-weight model on bank GPUs (`LLM_PROVIDER=ollama`, or vLLM behind the same API). **Cloud providers are refused (fail closed).** | Signed offline bundles carried in one way (`python -m app.intel.bundle`, `POST /admin/intel-bundle`) |
 | `hybrid` (BFSI default) | Most banks, NBFCs, insurers, brokers | Bank data centre or the bank's private cloud tenancy | Cloud model in the bank's region, **after pseudonymization**. Local models receive raw data. | Outbound-only pull from an allow-listed endpoint |
 | `cloud` | Fintechs and startups | Vedha single-tenant, in-region, customer-managed keys | Cloud, raw (or `AI_PSEUDONYMIZE=true`) | Automatic |
 
@@ -103,7 +103,7 @@ keeps the same expertise; only the model changes.
 * **Change control:** scan schedules sit inside approved windows. Intensity presets cap the
   packet rate. Intrusive or exploit validation needs maker-checker approval (the existing
   `exploit_approval` flow).
-* **Fragile-asset guard** (*planned*, T8): assets tagged `sector_fn:hsm`, `sector_fn:atm`,
+* **Fragile-asset guard** (implemented): assets tagged `sector_fn:hsm`, `sector_fn:atm`,
   `sector_fn:swift` or `role:ics` are automatically limited to non-intrusive checks, and
   intrusive scans of them need explicit approval. Aggressive scanning of HSMs, ATMs and SWIFT
   gateways is how a VA tool gets thrown out of a bank.
@@ -118,8 +118,8 @@ keeps the same expertise; only the model changes.
 * **Audit:**
   - append-only `audit_logs` (tag changes, profile changes, assistant use);
   - forwarding to the bank's SIEM (*planned*);
-  - hash-chained record of every AI call (*planned*, G3): request hash, provider, model,
-    profile, redaction counts, never the raw prompt.
+  - hash-chained record of every AI call (`ai.call` audit rows, `GET /ai/audit/verify`):
+    request/response SHA-256, provider, model, profile, redaction counts, never the raw prompt.
 * **Retention:** 180-day log retention inside the country (CERT-In) is a deployment setting
   for the bank's logging stack.
 
@@ -137,3 +137,14 @@ language.
 * Pseudonymization is regex- and key-based. A new identifier shape (e.g. a bank-specific
   asset-ID format) needs a pattern added to `gateway.py`. Tests pin that no raw IP or
   hostname reaches the wire.
+
+## 6. Offline intel bundles (sovereign)
+Build host (connected): `python -m app.intel.bundle keygen --out signing.key` once (keep the
+private key in the vendor's HSM/vault; give the bank the printed public key), then per release
+`python -m app.intel.bundle export --key signing.key --snapshots manager/detection_engine/snapshots
+--version <date> --out intel-<date>.vib`. Bank side: carry the `.vib` through the one-way
+transfer, then upload it at `POST /admin/intel-bundle` (admin) or run `python -m app.intel.bundle
+import`. The manager checks the Ed25519 signature against `INTEL_BUNDLE_PUBLIC_KEYS`, exact member
+set, per-file size + SHA-256, and refuses bundles older than the installed one; files are replaced
+atomically in `VEDHA_INTEL_DIR` and picked up by the next detection run (no restart). Accepted and
+rejected imports are both audited.
