@@ -83,6 +83,36 @@ creates the state dir, and launches the agent. Run detached with
 `nohup ./install.sh <ip> --enroll &`. Docker alternative: comment the host
 `STATE_FILE`/`RESULT_SPOOL_DIR` in probe.env, then `docker compose up -d`.
 
+**Verify the probe came online** (any install path):
+```bash
+docker compose logs -f probe        # containerized install
+#   ↳ look for:  "Registered as '<name>'."
+#                "WebSocket connected. Push mode active — waiting for jobs."
+```
+The startup banner also prints the resolved scan ceilings and, importantly,
+**`SYN scan: yes|no`** — `no` means the probe will connect-scan wide sweeps (see
+§4). In the dashboard, **Settings → Probe Fleet** shows the probe online within
+~30s. If it exits immediately, the two usual causes are an empty
+`PROBE_NETWORK_SEGMENTS` (fail-closed — it refuses every job) or an unreachable
+`PLATFORM_URL`.
+
+### Local all-in-one (one host, for testing only)
+
+To try the whole platform plus a probe on a single machine, use the repo-root
+compose targets instead of the split deployment above:
+
+```bash
+cp .env.docker.example .env          # set JWT_SECRET + SEED_ADMIN_PASSWORD
+make run                             # api + worker + a self-registering probe (no dashboard)
+#   or: make dev                     # + the Next.js dashboard on :3000
+docker compose -p vedha logs -f probe    # watch it register
+```
+(`make full` and `make up` are **probe-free** — they run only the platform.)
+
+The in-stack probe registers with the seed operator credentials automatically —
+no PAT or enrollment needed. This path shares the customer network's routing, so
+it is for validation, never a production deployment.
+
 ---
 
 ## 3. Firewall / ports the organization must open
@@ -159,6 +189,23 @@ pushes `{ "uc": 80, "intensity": 3, "scope_cidrs": […], "targets": […] }` to
 probe over the existing WebSocket. The probe resolves `80 → full_port_audit`,
 `3 → deep`, runs it inside the scope, and streams facts back. (String `use_case_id`
 still works for backward compatibility; the number is the compact interface.)
+
+> **Deep / aggressive full-port scans need raw SYN.** `intensity: 3` (deep, the
+> dashboard's "Aggressive") and the full-port audit sweep all 65,535 TCP ports.
+> The probe uses a stateless raw-SYN scanner for that, which requires
+> `network_mode: host` **and** `cap_add: [NET_RAW, NET_ADMIN]` (the commented
+> block in `probe/docker-compose.yml`). The default hardened container drops all
+> capabilities, so it falls back to a `connect()` scan — which cannot finish
+> 65,535 ports per host inside the job's time budget. When that happens the
+> unreached ports are reported **`not_scanned`** (never `filtered`, so coverage
+> stays honest) and the scan is admitted and completed on its high-signal first
+> pass. Grant the raw-socket profile on any probe expected to run deep or
+> full-port scans; the startup banner's `SYN scan: yes` confirms it is active.
+>
+> A deep scan is also two-phase and partial-safe: each host's first-pass
+> assessment is committed to the Manager as the scan runs, so a job that is
+> cancelled or hits its runtime ceiling during the port tail keeps the hosts it
+> already finished.
 
 ## 5. TLS notes
 

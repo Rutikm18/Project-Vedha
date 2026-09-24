@@ -32,8 +32,16 @@ Agentic VA Scanner/
 
 ```bash
 cp .env.docker.example .env     # set JWT_SECRET + SEED_ADMIN_PASSWORD
-make full                       # postgres + redis + api + probe + dashboard
+make dev                        # api + worker + a self-registering probe + dashboard (one host)
+docker compose -p vedha logs -f probe   # verify: "Registered as …" → "WebSocket connected"
 ```
+
+`make dev` is the only single-host target that also starts a probe (`make run`
+does the same without the dashboard). `make full` and `make up` run the platform
+**probe-free** — connect a probe separately (see below). The bundled probe
+self-registers with the seed operator credentials. For a real client-network
+probe and the deep/full-port raw-SYN requirement, see
+[`probe/DEPLOYMENT.md`](probe/DEPLOYMENT.md).
 
 | Service | URL | |
 |---|---|---|
@@ -75,8 +83,9 @@ frontend environment.
 ### Make targets
 
 ```
-make run      # api + local probe (no dashboard) — fast
-make full     # everything incl. the Next.js dashboard
+make run      # api + worker + local probe (no dashboard) — fast
+make dev      # api + worker + probe + dashboard (single-host e2e)
+make full     # full manager stack + dashboard, PROBE-FREE (the server deploy)
 make api-only # platform only (no probe, no dashboard)
 make ui       # just the dashboard (api must be up)
 make up-ai    # manager + deployment-managed Ollama; pulls OLLAMA_MODEL
