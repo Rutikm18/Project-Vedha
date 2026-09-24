@@ -21,6 +21,7 @@ _PUBLIC_PREFIXES = ("/docs", "/redoc")
 _AGENT_REFRESH_PATH = re.compile(r"^/agents/[^/]+/refresh$")
 _AGENT_JOBS_PATH = re.compile(r"^/agents/[^/]+/jobs$")
 _AGENT_RESULT_PATH = re.compile(r"^/agents/[^/]+/jobs/[^/]+/result$")
+_AGENT_CHUNKS_PATH = re.compile(r"^/agents/[^/]+/jobs/[^/]+/chunks$")
 _AGENT_SCOPE_PATH = re.compile(r"^/engagements/[^/]+/scope$")
 _PUBLIC_ENROLLMENT_PATHS = (
     re.compile(r"^/probe-enrollment/requests$"),
@@ -69,6 +70,11 @@ def agent_jwt_path_allows(path: str, method: str) -> bool:
         return method == "GET"
     if _AGENT_RESULT_PATH.fullmatch(path):
         return method == "POST"
+    if _AGENT_CHUNKS_PATH.fullmatch(path):
+        # POST commits one finished host mid-job; GET is the resume list. Without
+        # these a probe can only deliver at the end, so a job cut short (deadline,
+        # operator cancel, lease loss) loses every completed host.
+        return method in ("POST", "GET")
     if _AGENT_SCOPE_PATH.fullmatch(path):
         return method == "GET"
     return False

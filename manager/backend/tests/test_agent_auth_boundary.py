@@ -17,6 +17,10 @@ from app.auth.middleware import TenantIsolationMiddleware
         ("/agents/agent-1/refresh", "POST"),
         ("/agents/agent-1/jobs", "GET"),
         ("/agents/agent-1/jobs/job-1/result", "POST"),
+        # Per-host durable commit while a job runs, and its resume list — without
+        # these the whole partial-evidence path is dead for a JWT probe.
+        ("/agents/agent-1/jobs/job-1/chunks", "POST"),
+        ("/agents/agent-1/jobs/job-1/chunks", "GET"),
         ("/engagements/eng-1/scope", "GET"),
     ],
 )
@@ -37,6 +41,7 @@ def test_legacy_agent_jwt_allows_only_workload_operations(path, method):
         ("/ai/generate", "POST"),
         ("/agents/heartbeat", "GET"),
         ("/agents/agent-1/jobs", "POST"),
+        ("/agents/agent-1/jobs/job-1/chunks", "DELETE"),
         ("/engagements/eng-1/scope", "POST"),
     ],
 )
