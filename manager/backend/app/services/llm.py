@@ -177,6 +177,21 @@ TONE — the reader owns the risk but may not be a security specialist. Lead wit
 answer, keep it short, define jargon on first use, and be explicit about what is
 confirmed versus what still needs checking."""
 
+_TASK_RULES["compliance_brief"] = """Write a compliance impact brief about ONE finding for the customer's compliance, risk and audit team.
+<security_context> holds the finding (whitelisted fields) and the regional obligations Vedha's compliance packs map to it.
+Use these exact headings, at most 300 words in total:
+## Why this matters to your regulator
+One short paragraph in the sector's language, framed through business and supervisory impact.
+## Obligations implicated
+One bullet per framework: the framework name, then its control pointers EXACTLY as supplied in the obligations, then one clause on why.
+## If it is exploited: reporting clocks
+List only the supplied reporting deadlines, shortest first. If none were supplied, say none apply from the configured profile.
+## What closes it
+The remediation plus the evidence an auditor would accept (config export, re-scan result, change ticket).
+## Caveats
+State that mappings are pointers for the compliance team, not legal advice, and name anything that needs confirmation.
+Rules: never invent a framework, control, article, deadline or regulator; if the obligations list is empty, say that no regional profile applies and suggest configuring the engagement's jurisdictions."""
+
 _TASK_RULES["security_followup"] += "\n" + _VULNERABILITY_BRIEF_CONTRACT
 _TASK_RULES["advisor"] += "\n" + _VULNERABILITY_BRIEF_CONTRACT
 

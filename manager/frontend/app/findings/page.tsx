@@ -54,6 +54,7 @@ import {
   type FindingsWorkspaceSurface,
 } from "../../lib/findings-workspace-api";
 import { DataState, SkeletonRows, EmptyState } from "../../components/states/DataState";
+import { FindingObligations } from "../../components/intel/FindingObligations";
 import { presentEvidence, type EvidenceArtifact } from "../../lib/evidence-presentation";
 import {
   SEV_COLOR, STATUS_COLOR, STATUS_LABEL, MATURITY_COLOR, COVERAGE_COLOR,
@@ -1430,8 +1431,9 @@ function IntelPanel({ finding }: { finding: Finding }) {
 }
 
 /* ─── Compliance ──────────────────────────────────────────────────────────
- * Also unreachable in the original. Kept deliberately plain: a control
- * mapping is a citation, and citations should look like citations. */
+ * Regional obligations (components/intel/FindingObligations) sit above the
+ * global control mapping. Kept deliberately plain: a control mapping is a
+ * citation, and citations should look like citations. */
 function CompliancePanel({ compliance }: { compliance: ComplianceRef[] }) {
   if (!compliance.length) {
     return (
@@ -1716,6 +1718,7 @@ function FindingDetail({
     { id: "overview", label: "Overview" },
     { id: "evidence", label: "Evidence", badge: (f.evidenceSummary?.length || f.evidence.length) ? String(f.evidenceSummary?.length || f.evidence.length) : undefined },
     { id: "remediation", label: "Fix plan" },
+    { id: "compliance", label: "Compliance" },
     { id: "history", label: "History" },
   ];
 
@@ -1929,7 +1932,12 @@ function FindingDetail({
         {tab === "intel" && <IntelPanel finding={f} />}
         {tab === "evidence" && <EvidenceView finding={f} />}
         {tab === "remediation" && <RemediationPlanView finding={f} api={api} surface={surface} />}
-        {tab === "compliance" && <CompliancePanel compliance={f.compliance} />}
+        {tab === "compliance" && (
+          <>
+            <FindingObligations findingId={f.id} api={api} surface={surface} />
+            <CompliancePanel compliance={f.compliance} />
+          </>
+        )}
         {tab === "history" && <HistoryTimeline findingId={f.id} now={now} api={api} surface={surface} />}
       </div>
     </div>

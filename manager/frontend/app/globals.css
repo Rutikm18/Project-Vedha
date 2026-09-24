@@ -3413,3 +3413,11 @@ button.intel-tag:focus-visible { outline: 2px solid var(--accent); outline-offse
   color: var(--sev-medium-color); background: var(--sev-medium-bg);
   border: 1px solid color-mix(in srgb, var(--sev-medium-color) 28%, transparent);
 }
+.intel-obligations { margin-bottom: 18px; }
+.intel-muted { color: var(--text-muted); font-weight: 500; }
+.intel-brief { display: grid; gap: 10px; justify-items: start; }
+.intel-brief-body {
+  width: 100%; padding: 14px 16px; border-radius: 10px;
+  background: var(--bg-surface); border: 1px solid var(--border-accent);
+}
+.intel-brief-body > header { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-bottom: 8px; }

@@ -92,3 +92,39 @@ async def finding_obligations_route(
     out = finding_obligations(finding, profile_from_roe(eng.rules_of_engagement), tags)
     out["asset_tags"] = sorted(tags)
     return out
+
+
+# ── finding-scoped (the findings drawer has a finding id, not an engagement id) ─
+
+finding_router = APIRouter(prefix="/findings", tags=["compliance"])
+
+
+async def _tenant_finding_and_engagement(db, finding_id: uuid.UUID, tenant_id: uuid.UUID):
+    row = (await db.execute(
+        select(Finding, Engagement).join(Engagement, Finding.engagement_id == Engagement.id)
+        .where(Finding.id == finding_id, Engagement.tenant_id == tenant_id)
+    )).one_or_none()
+    if not row:
+        raise HTTPException(404, "Finding not found")
+    return row[0], row[1]
+
+
+@finding_router.get("/{finding_id}/obligations", summary="Regional obligations for a finding")
+async def finding_obligations_by_id(finding_id: uuid.UUID, db: DB, current_user: AuthUser):
+    from app.services.compliance_brief import finding_compliance_view
+    finding, eng = await _tenant_finding_and_engagement(db, finding_id, current_user.tenant_id)
+    return await finding_compliance_view(db, finding, eng)
+
+
+@finding_router.post("/{finding_id}/compliance-brief",
+                     summary="Sector-expert compliance impact brief for a finding (AI, grounded)")
+async def finding_compliance_brief(finding_id: uuid.UUID, db: DB, current_user: AuthUser):
+    from app.services.compliance_brief import generate_compliance_brief
+    finding, eng = await _tenant_finding_and_engagement(db, finding_id, current_user.tenant_id)
+    out = await generate_compliance_brief(db, finding, eng, actor_id=current_user.user_id)
+    record_audit(db, actor_id=current_user.user_id, action="finding.compliance_brief",
+                 engagement_id=eng.id, resource_type="finding", resource_id=finding.id,
+                 detail={"skill": out["skill"], "generated": out["content"] is not None,
+                         "unverified_citations": out["unverified_citations"]})
+    await db.flush()
+    return out

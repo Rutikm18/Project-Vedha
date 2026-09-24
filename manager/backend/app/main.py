@@ -32,6 +32,7 @@ from app.routers.customer_access import (
 from app.routers.portal import router as portal_router
 from app.routers.engagements import router as eng_router
 from app.routers.asset_tags import router as asset_tags_router
+from app.routers.compliance import finding_router as finding_compliance_router
 from app.routers.compliance import router as compliance_router
 from app.routers.exploits import router as exploits_router
 from app.routers.findings import router as findings_router
@@ -227,6 +228,7 @@ app.include_router(auth_router)
 app.include_router(eng_router)
 app.include_router(asset_tags_router)
 app.include_router(compliance_router)
+app.include_router(finding_compliance_router)
 app.include_router(customer_access_router)
 app.include_router(customers_router)
 app.include_router(portal_router)

@@ -226,3 +226,37 @@ export const SECTOR_LABEL: Record<string, string> = {
   nbfc: "NBFC / lending", insurance: "Insurance", capital_markets: "Capital markets",
   healthcare: "Healthcare", government: "Government",
 };
+
+export interface FindingObligation {
+  framework_id: string;
+  framework: string;
+  authority: string;
+  jurisdictions: string[];
+  source: string;
+  granularity: string;
+  controls: string[];
+  rationale: string;
+  note: string | null;
+}
+
+export interface FindingObligationsResponse {
+  category: string;
+  themes: string[];
+  profile: EngagementProfile;
+  frameworks: FindingObligation[];
+  reporting: ReportingClock[];
+  disclaimer: string;
+  asset_tags: string[];
+}
+
+export interface ComplianceBriefResponse {
+  obligations: FindingObligationsResponse;
+  content: string | null;
+  error: string | null;
+  skill: string | null;
+  skill_label: string | null;
+  jurisdictions: string[];
+  unverified_citations: string[];
+  provider: string | null;
+  model: string | null;
+}

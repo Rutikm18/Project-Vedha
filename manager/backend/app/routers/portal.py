@@ -716,6 +716,35 @@ async def portal_workspace_finding_detail(finding_id: uuid.UUID, user: ClientUse
     return await _finding_detail_out(db, finding)
 
 
+@router.get("/workspace/findings/{finding_id}/obligations",
+            summary="Regional obligations for a finding in the assigned engagement")
+async def portal_finding_obligations(finding_id: uuid.UUID, user: ClientUser, db: DB):
+    from app.services.compliance_brief import finding_compliance_view
+    finding, eng = await _portal_finding_and_engagement(db, finding_id, user)
+    return await finding_compliance_view(db, finding, eng)
+
+
+@router.post("/workspace/findings/{finding_id}/compliance-brief",
+             summary="Sector-expert compliance impact brief (AI-generated, unverified)")
+async def portal_finding_compliance_brief(finding_id: uuid.UUID, user: ClientUser, db: DB):
+    from app.services.compliance_brief import generate_compliance_brief
+    finding, eng = await _portal_finding_and_engagement(db, finding_id, user)
+    out = await generate_compliance_brief(db, finding, eng, actor_id=user.user_id)
+    record_audit(db, actor_id=user.user_id, action="portal.finding.compliance_brief",
+                 engagement_id=eng.id, resource_type="finding", resource_id=finding.id,
+                 detail={"skill": out["skill"], "generated": out["content"] is not None})
+    await db.flush()
+    return out
+
+
+async def _portal_finding_and_engagement(db, finding_id: uuid.UUID, user):
+    """Pinned to the client's own engagement; another engagement's id is a 404."""
+    finding = await finding_workflow.get_finding_for_action(
+        db, finding_id, tenant_id=user.tenant_id, engagement_id=assert_client(user))
+    eng = (await db.execute(select(Engagement).where(Engagement.id == finding.engagement_id))).scalar_one()
+    return finding, eng
+
+
 @router.get("/workspace/engagement",
             summary="Manager-parity engagement detail for the assigned engagement")
 async def portal_workspace_engagement(user: ClientUser, db: DB):
