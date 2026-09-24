@@ -128,3 +128,9 @@ def test_reporting_clocks_shortest_first():
     hours = [c["deadline_hours"] for c in clocks]
     assert hours == sorted(hours)
     assert clocks[0]["deadline_hours"] <= 6
+
+
+def test_shared_reporting_obligation_is_listed_once():
+    prof = EngagementProfile(sector="banking", jurisdictions=["IN"])
+    certin = [c for c in reporting_clocks(applicable_frameworks(prof)) if c["authority"] == "CERT-In"]
+    assert len(certin) == 1

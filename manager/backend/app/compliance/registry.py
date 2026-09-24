@@ -113,11 +113,16 @@ def applicable_frameworks(profile: EngagementProfile, tags: Iterable[str] = ()) 
 def reporting_clocks(frameworks: Iterable[Framework]) -> list[dict[str, Any]]:
     """Every incident-reporting obligation, shortest deadline first — the clock
     that starts when a finding turns out to have been exploited."""
-    clocks = [
-        {"framework_id": fw.id, "framework": fw.name, "authority": r.authority,
-         "deadline_hours": r.deadline_hours, "trigger": r.trigger, "reference": r.reference}
-        for fw in frameworks for r in fw.reporting
-    ]
+    clocks: list[dict[str, Any]] = []
+    seen: set[Reporting] = set()
+    for fw in frameworks:
+        for r in fw.reporting:
+            if r in seen:  # one obligation shared by several frameworks (e.g. CERT-In)
+                continue
+            seen.add(r)
+            clocks.append({"framework_id": fw.id, "framework": fw.name, "authority": r.authority,
+                           "deadline_hours": r.deadline_hours, "trigger": r.trigger,
+                           "reference": r.reference})
     return sorted(clocks, key=lambda c: c["deadline_hours"])
 
 

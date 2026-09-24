@@ -458,8 +458,12 @@ class ManagerLlmService:
             f"END {token}"
         )
 
-    def _build_system(self, request: AiGenerateRequest) -> str:
+    def _build_system(self, request: AiGenerateRequest, domain_brief: str | None = None) -> str:
         system = f"{_BASE_RULES}\n\n{_TASK_RULES[request.task]}"
+        # Server-built domain-expert block (app/ai/domain_brief.py): trusted text
+        # only, and placed BEFORE the context marker so it rides the cached prefix.
+        if domain_brief:
+            system += "\n\n" + domain_brief
         if request.context:
             system += (
                 "\n\n<security_context>\n"
@@ -514,14 +518,15 @@ class ManagerLlmService:
             raise AiRuntimeError(f"{runtime.provider} returned no content", 502)
         return text
 
-    async def generate(self, request: AiGenerateRequest) -> tuple[str, Runtime]:
+    async def generate(self, request: AiGenerateRequest, *,
+                       domain_brief: str | None = None) -> tuple[str, Runtime]:
         provider = request.provider or self._default_runtime().provider
         runtime = self._runtime(provider, request.model)
         if runtime.provider == "ollama":
             await self._ensure_installed_ollama_model(runtime.model)
         messages = [{"role": item.role, "content": item.content} for item in request.messages]
         text = await self._dispatch(
-            runtime, self._build_system(request), messages, request.max_tokens,
+            runtime, self._build_system(request, domain_brief), messages, request.max_tokens,
             json_mode=request.task == "advisor_flow",
         )
         logger.info("ai.generate.complete", provider=runtime.provider, model=runtime.model, task=request.task)
@@ -550,7 +555,7 @@ class ManagerLlmService:
         return candidates
 
     async def generate_with_fallback(
-        self, request: AiGenerateRequest,
+        self, request: AiGenerateRequest, *, domain_brief: str | None = None,
     ) -> tuple[str, Runtime, bool]:
         """Try each candidate until one succeeds. On ANY provider failure (credit
         exhausted, rate limited, unreachable) cascade to the next free model.
@@ -559,7 +564,7 @@ class ManagerLlmService:
         candidates = self._fallback_candidates(request)
         if not candidates:
             raise AiRuntimeError("no AI provider is configured", 503)
-        system = self._build_system(request)
+        system = self._build_system(request, domain_brief)
         messages = [{"role": item.role, "content": item.content} for item in request.messages]
         last: AiRuntimeError | None = None
         for index, runtime in enumerate(candidates):
