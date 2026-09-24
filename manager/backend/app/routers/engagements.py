@@ -198,7 +198,7 @@ async def _read_capped(file: UploadFile, limit: int) -> bytes:
         total += len(chunk)
         if total > limit:
             raise HTTPException(
-                status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                status.HTTP_413_CONTENT_TOO_LARGE,
                 f"Scan file exceeds the {limit // (1024 * 1024)} MB import limit.")
         chunks.append(chunk)
     return b"".join(chunks)

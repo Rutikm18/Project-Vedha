@@ -4,7 +4,7 @@
  * sends on every subsequent /api/* call (which the BFF forwards to FastAPI).
  */
 import { NextResponse } from "next/server";
-import { backend, BackendError, cookieFrom } from "../../../../lib/backend";
+import { backend, BackendError, cookieFrom, forwardedFor } from "../../../../lib/backend";
 
 const secureCookie = process.env.AUTH_COOKIE_SECURE === "true"
   || (process.env.AUTH_COOKIE_SECURE !== "false" && process.env.NODE_ENV === "production");
@@ -45,6 +45,7 @@ export async function POST(req: Request) {
     const d = await backend<{ access_token: string; refresh_token: string }>("/auth/login", {
       method: "POST",
       body: { email, password },
+      headers: forwardedFor(req),
     });
     const res = NextResponse.json({ ok: true, email });
     setSessionCookies(res, d.access_token, d.refresh_token);
@@ -79,7 +80,7 @@ export async function PUT(req: Request) {
   try {
     const d = await backend<{ access_token: string; refresh_token: string }>(
       "/auth/refresh",
-      { method: "POST", query: { refresh_token: refreshToken } },
+      { method: "POST", body: { refresh_token: refreshToken } },
     );
     const response = NextResponse.json({ ok: true });
     setSessionCookies(response, d.access_token, d.refresh_token);
@@ -88,4 +89,26 @@ export async function PUT(req: Request) {
     const status = e instanceof BackendError ? e.status : 401;
     return NextResponse.json({ error: (e as Error).message }, { status });
   }
+}
+
+/**
+ * Sign-out — revokes the refresh token server-side, then clears both cookies.
+ * Lives HERE (not /api/auth/logout) because the refresh cookie is path-scoped to
+ * this route: it is the only place the browser sends it. Revocation is
+ * best-effort; the cookies are cleared regardless.
+ */
+export async function DELETE(req: Request) {
+  const refreshToken = cookieFrom(req, "vedha_refresh_token");
+  if (refreshToken) {
+    await backend("/auth/logout", { method: "POST", body: { refresh_token: refreshToken } })
+      .catch(() => {});
+  }
+  const res = NextResponse.json({ ok: true });
+  res.cookies.set("vedha_token", "", {
+    httpOnly: true, secure: secureCookie, sameSite: "strict", path: "/", maxAge: 0,
+  });
+  res.cookies.set("vedha_refresh_token", "", {
+    httpOnly: true, secure: secureCookie, sameSite: "strict", path: "/api/auth/login", maxAge: 0,
+  });
+  return res;
 }

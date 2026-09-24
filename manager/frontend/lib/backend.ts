@@ -89,6 +89,17 @@ function safeJson(t: string): any {
   }
 }
 
+/**
+ * Forward the browser's X-Forwarded-For (set by the Caddy edge) on a
+ * server-to-server call. Without it FastAPI sees only this container's IP, so a
+ * per-IP limit becomes ONE bucket shared by every user. The backend believes the
+ * header only because this BFF is a trusted proxy on the private network.
+ */
+export function forwardedFor(req: Request): HeadersInit {
+  const xff = req.headers.get("x-forwarded-for");
+  return xff ? { "X-Forwarded-For": xff } : {};
+}
+
 /** Read one cookie without depending on framework-specific request types. */
 export function cookieFrom(req: Request, name: string): string | null {
   const cookie = req.headers.get("cookie");

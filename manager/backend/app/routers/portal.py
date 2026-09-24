@@ -441,18 +441,18 @@ async def create_scan_request(body: ScanRequestCreate, user: ClientUser, db: DB)
     if body.use_case_id:
         uc = _portal_use_cases().get(body.use_case_id)
         if uc is None:
-            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
                                 f"Unknown use_case_id '{body.use_case_id}'")
         # Backend gate: a "coming soon" capability is disabled in the UI, but the
         # API must refuse it too so it can't be dispatched by a crafted request.
         if uc.get("status") == "coming_soon":
-            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
                                 f"Use case '{body.use_case_id}' is coming soon and not yet available")
         scan_type = uc["scan_type"]
         use_case_id = body.use_case_id
     else:
         if body.scan_type not in _VALID_SCAN_TYPES:
-            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
                                 f"Unknown scan_type '{body.scan_type}'")
         scan_type = body.scan_type
         use_case_id = None
@@ -472,7 +472,7 @@ async def create_scan_request(body: ScanRequestCreate, user: ClientUser, db: DB)
             body.targets, eng.scope_cidrs, eng.excluded_cidrs)
         if normalized_targets is None:
             raise HTTPException(
-                status.HTTP_422_UNPROCESSABLE_ENTITY,
+                status.HTTP_422_UNPROCESSABLE_CONTENT,
                 "One or more targets are outside the engagement scope "
                 "(or overlap an excluded range). Only in-scope IP/CIDR/range "
                 "values are allowed.")
@@ -634,6 +634,7 @@ async def portal_workspace_findings(
     status_filter: FindingStatus | None = Query(default=None, alias="status"),
     active_only: bool = Query(default=False),
     asset_id: uuid.UUID | None = Query(default=None),
+    asset_ip: str | None = Query(default=None, min_length=1, max_length=45),
     agent_id: uuid.UUID | None = Query(default=None),
     mitre_technique: str | None = Query(default=None),
     search: str | None = Query(default=None, min_length=1, max_length=200),
@@ -654,6 +655,7 @@ async def portal_workspace_findings(
         status_filter=status_filter,
         active_only=active_only,
         asset_id=asset_id,
+        asset_ip=asset_ip,
         mitre_technique=mitre_technique,
         engagement_id=assert_client(user),
         agent_id=agent_id,
@@ -666,6 +668,19 @@ async def portal_workspace_findings(
         sort=sort,
         page=page,
         page_size=page_size,
+    )
+
+
+@router.get("/workspace/findings/assets",
+            summary="Affected assets (IP filter options) for the assigned engagement")
+async def portal_workspace_finding_assets(
+    user: ClientUser,
+    db: DB,
+    active_only: bool = Query(default=False),
+):
+    from app.routers.findings import finding_assets as operator_finding_assets
+    return await operator_finding_assets(
+        db=db, current_user=user, engagement_id=assert_client(user), active_only=active_only,
     )
 
 
@@ -815,7 +830,7 @@ async def portal_workspace_scan_launch(
     params = dict(body.params)
     requested_agent = params.get("preferred_agent_id")
     if requested_agent and str(requested_agent) != str(eng.assigned_agent_id):
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
                             "The selected vedha-agent is not assigned to this engagement")
     # A crafted client cannot route work to another tenant probe. The session's
     # engagement binding is authoritative for both fields.
@@ -977,7 +992,7 @@ async def portal_workspace_fleet_approve(
     capabilities = list(dict.fromkeys(request_row.reported_capabilities or []))
     if not capabilities:
         raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
             "The vedha-agent did not report any supported capabilities",
         )
 

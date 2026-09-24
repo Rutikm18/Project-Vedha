@@ -6,6 +6,7 @@ from typing import Annotated
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Request, status
+from redis.exceptions import RedisError
 from sqlalchemy import select
 from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -28,21 +29,29 @@ from app.auth.jwt import (
     MANAGER_AUDIENCE,
     PORTAL_AUDIENCE,
 )
+from app.auth import refresh_store
 from app.auth.password import pwd_context as _pwd
 from app.auth.pat import build_personal_access_token
 from app.auth.rbac import require_role
 from app.database import get_db
-from app.dependencies import AuthUser
+from app.dependencies import AuthUser, get_redis
 from app.models.enums import UserRole
 from app.models.personal_access_token import PersonalAccessToken
 from app.models.tenant import Tenant
 from app.models.user import User
-from app.ratelimit import client_ip, login_rate_limit
+from app.ratelimit import (
+    check_login_failures,
+    clear_login_failures,
+    client_ip,
+    login_rate_limit,
+    record_login_failure,
+)
 from app.schemas.auth import (
     LoginRequest,
     PersonalAccessTokenCreate,
     PersonalAccessTokenCreated,
     PersonalAccessTokenOut,
+    RefreshRequest,
     TokenResponse,
 )
 
@@ -51,6 +60,9 @@ logger = structlog.get_logger()
 
 # Generic client message — never changes regardless of internal reason.
 _GENERIC_401 = "Invalid credentials"
+
+# Session-store (Redis) outages; builtin ConnectionError/TimeoutError are OSError.
+_STORE_ERRORS = (RedisError, OSError)
 
 
 def access_claims_for(user: User) -> dict:
@@ -81,6 +93,32 @@ def access_claims_for(user: User) -> dict:
 
 # ── Private authentication service ───────────────────────────────────────────
 
+async def _assert_account_usable(user: User, db: AsyncSession) -> None:
+    """Account-state rules every credential issuance must pass — login AND
+    refresh. Refresh used to skip these, so a disabled user (or a user in a
+    disabled tenant, or with an expired password) kept a rolling session."""
+    if not user.is_active:
+        raise DisabledUserError(f"user {user.id} is_active=False")
+
+    try:
+        tenant = (
+            await db.execute(select(Tenant).where(Tenant.id == user.tenant_id))
+        ).scalar_one_or_none()
+    except SQLAlchemyError as exc:
+        raise DatabaseFailureError(f"DB error during tenant lookup: {exc}") from exc
+
+    if tenant and not tenant.is_active:
+        raise DisabledTenantError(
+            f"tenant {user.tenant_id} is_active=False (user={user.id})"
+        )
+
+    if user.password_expires_at is not None:
+        if user.password_expires_at < datetime.now(timezone.utc):
+            raise ExpiredPasswordError(
+                f"password expired at {user.password_expires_at.isoformat()} for user {user.id}"
+            )
+
+
 async def _authenticate(email: str, password: str, db: AsyncSession) -> User:
     """
     Validates credentials and returns the User on success.
@@ -100,32 +138,11 @@ async def _authenticate(email: str, password: str, db: AsyncSession) -> User:
         await asyncio.to_thread(_pwd.dummy_verify)
         raise UserNotFoundError(f"no user with email={email!r}")
 
-    # ── Account state ─────────────────────────────────────────────────────
-    if not user.is_active:
-        await asyncio.to_thread(_pwd.dummy_verify)   # maintain constant-time behaviour
-        raise DisabledUserError(f"user {user.id} is_active=False")
-
-    # ── Tenant state ──────────────────────────────────────────────────────
     try:
-        tenant = (
-            await db.execute(select(Tenant).where(Tenant.id == user.tenant_id))
-        ).scalar_one_or_none()
-    except SQLAlchemyError as exc:
-        raise DatabaseFailureError(f"DB error during tenant lookup: {exc}") from exc
-
-    if tenant and not tenant.is_active:
-        await asyncio.to_thread(_pwd.dummy_verify)
-        raise DisabledTenantError(
-            f"tenant {user.tenant_id} is_active=False (user={user.id})"
-        )
-
-    # ── Password expiry ───────────────────────────────────────────────────
-    if user.password_expires_at is not None:
-        if user.password_expires_at < datetime.now(timezone.utc):
-            await asyncio.to_thread(_pwd.dummy_verify)
-            raise ExpiredPasswordError(
-                f"password expired at {user.password_expires_at.isoformat()} for user {user.id}"
-            )
+        await _assert_account_usable(user, db)
+    except (DisabledUserError, DisabledTenantError, ExpiredPasswordError):
+        await asyncio.to_thread(_pwd.dummy_verify)   # maintain constant-time behaviour
+        raise
 
     # ── bcrypt verify ─────────────────────────────────────────────────────
     try:
@@ -150,7 +167,12 @@ async def _authenticate(email: str, password: str, db: AsyncSession) -> User:
     summary="Obtain JWT access + refresh tokens",
     dependencies=[Depends(login_rate_limit)],
 )
-async def login(body: LoginRequest, request: Request, db: AsyncSession = Depends(get_db)):
+async def login(
+    body: LoginRequest,
+    request: Request,
+    db: AsyncSession = Depends(get_db),
+    redis=Depends(get_redis),
+):
     request_id = str(uuid.uuid4())
     t0 = time.monotonic()
 
@@ -162,9 +184,14 @@ async def login(body: LoginRequest, request: Request, db: AsyncSession = Depends
         user_agent=request.headers.get("user-agent", "")[:200],
     )
 
+    # Per-account backstop: an IP limit alone cannot slow a spray spread across
+    # many sources against one user. Checked before any password work.
+    await check_login_failures(redis, body.email)
+
     try:
         user = await _authenticate(body.email, body.password, db)
     except AuthenticationError as exc:
+        await record_login_failure(redis, body.email)
         latency = round((time.monotonic() - t0) * 1000, 1)
         bound.warning(
             "auth.login.failed",
@@ -201,7 +228,7 @@ async def login(body: LoginRequest, request: Request, db: AsyncSession = Depends
             role=user.role.value,
             extra_claims=extra_claims,
         )
-        refresh, _ = create_refresh_token(
+        refresh, refresh_jti = create_refresh_token(
             subject=str(user.id),
             tenant_id=str(user.tenant_id),
         )
@@ -217,6 +244,19 @@ async def login(body: LoginRequest, request: Request, db: AsyncSession = Depends
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=_GENERIC_401,
         ) from None
+
+    # A refresh token is honoured only while registered, so an unregistered one
+    # would silently fail at the first rotation — refuse the login instead.
+    try:
+        await refresh_store.issue(redis, refresh_jti, str(user.id))
+    except _STORE_ERRORS as exc:
+        bound.error("auth.login.session_store_failed", error=str(exc))
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Session store unavailable",
+        ) from None
+
+    await clear_login_failures(redis, body.email)
 
     latency = round((time.monotonic() - t0) * 1000, 1)
     bound.info(
@@ -243,17 +283,55 @@ async def me(current_user: AuthUser, db: AsyncSession = Depends(get_db)):
     }
 
 
+_SESSION_EXPIRED = "Session expired — sign in again"
+
+
+def _session_store_unavailable(exc: Exception) -> HTTPException:
+    logger.error("auth.session_store_unavailable", error=str(exc))
+    return HTTPException(
+        status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+        detail="Session store unavailable",
+    )
+
+
 @router.post("/refresh", response_model=TokenResponse, summary="Rotate access token using refresh token")
-async def refresh(refresh_token: str, db: AsyncSession = Depends(get_db)):
-    payload = decode_token(refresh_token)
+async def refresh(
+    body: RefreshRequest,
+    db: AsyncSession = Depends(get_db),
+    redis=Depends(get_redis),
+):
+    payload = decode_token(body.refresh_token)
     if payload.get("type") != "refresh":
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not a refresh token")
+    user_id, jti = payload["sub"], payload.get("jti", "")
 
-    user_id = uuid.UUID(payload["sub"])
-    result = await db.execute(select(User).where(User.id == user_id))
-    user = result.scalar_one_or_none()
+    # Single use: consume before anything else, so a failure below still burns it.
+    try:
+        owner = await refresh_store.consume(redis, jti)
+    except _STORE_ERRORS as exc:
+        raise _session_store_unavailable(exc) from None
+
+    if owner != user_id:
+        # Validly signed but not live: already rotated, revoked, or never issued.
+        # Replay of a rotated token is the stolen-token signal, so end every
+        # session the user holds — the thief's and the victim's alike.
+        logger.warning("auth.refresh.reuse_detected", user_id=user_id, jti=jti)
+        try:
+            await refresh_store.revoke_all(redis, user_id)
+        except _STORE_ERRORS as exc:
+            raise _session_store_unavailable(exc) from None
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=_SESSION_EXPIRED)
+
+    user = (
+        await db.execute(select(User).where(User.id == uuid.UUID(user_id)))
+    ).scalar_one_or_none()
     if not user:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=_SESSION_EXPIRED)
+    try:
+        await _assert_account_usable(user, db)
+    except AuthenticationError as exc:
+        logger.warning("auth.refresh.rejected", user_id=user_id, reason_code=exc.reason_code)
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail=_SESSION_EXPIRED) from None
 
     access = create_access_token(
         subject=str(user.id),
@@ -261,11 +339,32 @@ async def refresh(refresh_token: str, db: AsyncSession = Depends(get_db)):
         role=user.role.value,
         extra_claims=access_claims_for(user),
     )
-    new_refresh, _ = create_refresh_token(
+    new_refresh, new_jti = create_refresh_token(
         subject=str(user.id),
         tenant_id=str(user.tenant_id),
     )
+    try:
+        await refresh_store.issue(redis, new_jti, str(user.id))
+    except _STORE_ERRORS as exc:
+        raise _session_store_unavailable(exc) from None
     return TokenResponse(access_token=access, refresh_token=new_refresh)
+
+
+@router.post("/logout", summary="Revoke a refresh token (server-side sign-out)")
+async def logout(body: RefreshRequest, redis=Depends(get_redis)):
+    """Public on purpose: the access token may already be expired at sign-out.
+    Presenting a refresh token only ever revokes THAT token, so no auth is
+    needed; an invalid token is a silent no-op (never an oracle)."""
+    try:
+        payload = decode_token(body.refresh_token)
+    except HTTPException:
+        return {"ok": True}
+    if payload.get("type") == "refresh" and payload.get("jti"):
+        try:
+            await refresh_store.consume(redis, payload["jti"])
+        except _STORE_ERRORS as exc:
+            raise _session_store_unavailable(exc) from None
+    return {"ok": True}
 
 
 @router.post(

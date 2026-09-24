@@ -1396,7 +1396,7 @@ async def enqueue_agent_job(
         )
     if _job_params_contain_secret(body.params):
         raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
             "Credential or secret material is not accepted in scan job params. "
             "Vedha does not persist target credentials; use unauthenticated "
             "collection until an ephemeral credential broker is configured.",
@@ -1429,7 +1429,7 @@ async def enqueue_agent_job(
     )
     if requested_scope is None:
         raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
             "targets must be non-empty IP/CIDR/range values fully contained "
             "inside the engagement scope",
         )
@@ -1653,7 +1653,7 @@ async def list_result_chunks(
     _agent_ownership_check(request, str(agent_id))
 
     from app.services import result_chunk_service
-    hosts = await result_chunk_service.committed_hosts(db, job_id)
+    hosts = await result_chunk_service.committed_hosts(db, job_id, agent_id=agent_id)
     return {"job_id": str(job_id), "hosts": hosts, "count": len(hosts)}
 
 

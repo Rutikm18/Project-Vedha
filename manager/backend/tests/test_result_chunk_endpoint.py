@@ -87,7 +87,7 @@ async def test_the_probe_can_ask_which_hosts_are_already_committed(monkeypatch):
     """What a retrying probe uses to skip hosts it already finished."""
     monkeypatch.setattr(ag, "_agent_ownership_check", lambda *a, **k: None)
 
-    async def _hosts(db, job_id):
+    async def _hosts(db, job_id, *, agent_id):
         return ["10.20.0.8", "10.20.0.9"]
 
     monkeypatch.setattr("app.services.result_chunk_service.committed_hosts",

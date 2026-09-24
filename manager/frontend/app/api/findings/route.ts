@@ -18,6 +18,8 @@ const STATUS_TO_API: Record<string, string> = {
 };
 const VALID_SORTS = new Set(["risk", "cvss", "epss", "date"]);
 const VALID_VERIFICATION = new Set(["confirmed", "corroborated", "inferred", "contradicted"]);
+// Exact IP or an IP prefix ("192.168.1."). Same charset the backend accepts.
+const IP_FILTER = /^[0-9A-Fa-f:.]{1,45}$/;
 
 function positiveInt(value: string | null, fallback: number, max: number): number {
   const parsed = Number(value);
@@ -67,6 +69,10 @@ export const GET = withBackend(async (req, { token }) => {
         // the findings page's own "all statuses" view is unaffected.
         active_only: url.searchParams.get("active_only") === "true" ? true : undefined,
         search,
+        asset_ip: (() => {
+          const ip = url.searchParams.get("asset_ip")?.trim();
+          return ip && IP_FILTER.test(ip) ? ip : undefined;
+        })(),
         detection_status: url.searchParams.get("blind") === "true" ? "missed" : undefined,
         exploit_validated: url.searchParams.get("validated") === "true" ? true : undefined,
         needs_review: url.searchParams.get("needs_review") === "true" ? true : undefined,

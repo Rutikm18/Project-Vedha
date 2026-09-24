@@ -7,7 +7,7 @@
 minio==7.2.11
 # Prompt 5 — Active Directory assessment
 ldap3==2.9.1
-impacket==0.12.0
+impacket==0.13.1
 neo4j==5.27.0
 bloodhound==1.7.2
 # Prompt 8 — AI engine (LLM reporting + ML risk scoring)
@@ -18,4 +18,8 @@ shap==0.46.0
 pandas==2.2.3
 numpy==2.2.1
 # P2 — verification orchestration (optional; falls back to the deterministic core)
-langgraph==0.2.60
+langgraph==1.2.12
+# Security floors for transitive deps of impacket/ldap3 (they pin loosely, so a
+# stale environment keeps the vulnerable build unless floored here).
+pyopenssl>=26.0.0
+pyasn1>=0.6.4

@@ -15,12 +15,14 @@ from app.models.agent import Agent
 
 logger = structlog.get_logger()
 
-_PUBLIC_PATHS = {"/", "/health", "/metrics", "/auth/login", "/auth/refresh", "/docs", "/openapi.json", "/redoc"}
+_PUBLIC_PATHS = {"/", "/health", "/metrics", "/auth/login", "/auth/refresh", "/auth/logout", "/docs", "/openapi.json", "/redoc"}
 _PUBLIC_PREFIXES = ("/docs", "/redoc")
 
 _AGENT_REFRESH_PATH = re.compile(r"^/agents/[^/]+/refresh$")
 _AGENT_JOBS_PATH = re.compile(r"^/agents/[^/]+/jobs$")
 _AGENT_RESULT_PATH = re.compile(r"^/agents/[^/]+/jobs/[^/]+/result$")
+# Per-host durability: POST commits a finished host mid-scan, GET is the resume
+# list. Both handlers bind the job to the token's agent (ownership + fence).
 _AGENT_CHUNKS_PATH = re.compile(r"^/agents/[^/]+/jobs/[^/]+/chunks$")
 _AGENT_SCOPE_PATH = re.compile(r"^/engagements/[^/]+/scope$")
 _PUBLIC_ENROLLMENT_PATHS = (
