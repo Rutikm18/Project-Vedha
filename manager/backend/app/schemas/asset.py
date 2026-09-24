@@ -55,3 +55,14 @@ class BulkAssetImportResult(BaseModel):
     created: int
     failed: int
     errors: list[str] = Field(default_factory=list)
+
+
+class ManualTag(BaseModel):
+    """An operator-assigned tag. Keys are lower_snake_case namespaces (the same
+    shape auto tags use) so manual and auto tags filter identically."""
+    key: str = Field(pattern=r"^[a-z][a-z0-9_]{0,39}$")
+    value: str = Field(min_length=1, max_length=80)
+
+
+class ManualTagsIn(BaseModel):
+    tags: list[ManualTag] = Field(default_factory=list, max_length=50)

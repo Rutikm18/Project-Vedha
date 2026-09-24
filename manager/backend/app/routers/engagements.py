@@ -1364,11 +1364,16 @@ async def list_engagement_assets(
     engagement_id: uuid.UUID,
     db: DB,
     current_user: AuthUser,
+    tag: Annotated[list[str] | None, Query(description="key:value; repeat to AND")] = None,
 ):
+    from app.intel.tagging import tag_strings
     await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
     assets = (await db.execute(
         select(Asset).where(Asset.engagement_id == engagement_id).order_by(Asset.ip_address)
     )).scalars().all()
+    if tag:
+        wanted = set(tag)
+        assets = [a for a in assets if wanted <= set(tag_strings(getattr(a, "tags", None)))]
     asset_ids = [a.id for a in assets]
 
     svc_by_asset: dict = {}
@@ -1390,6 +1395,8 @@ async def list_engagement_assets(
             "os": a.os,
             "asset_type": a.asset_type.value if hasattr(a.asset_type, "value") else str(a.asset_type),
             "criticality": a.criticality.value if hasattr(a.criticality, "value") else str(a.criticality),
+            "tags": getattr(a, "tags", None),
+            "tag_strings": tag_strings(getattr(a, "tags", None)),
             "services": sorted(svc_by_asset.get(a.id, []), key=lambda x: x["port"] or 0),
         }
         for a in assets
