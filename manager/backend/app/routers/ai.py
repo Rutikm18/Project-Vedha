@@ -1,9 +1,15 @@
 from __future__ import annotations
 
+from typing import Annotated
+
 from fastapi import APIRouter, HTTPException
+from sqlalchemy import select
 
 from app.dependencies import DB, AuthUser
+from app.ai.audit_chain import ACTION as AI_AUDIT_ACTION, persist_ai_calls, verify_chain
+from app.auth.rbac import require_role
 from app.compliance.citations import check_citations
+from app.models.audit_log import AuditLog
 from app.models.engagement import Engagement
 from app.schemas.ai import AiGenerateRequest, AiGenerateResponse, AiStatusResponse
 from app.services.domain_context import domain_brief_for
@@ -26,11 +32,14 @@ async def ai_generate(request: AiGenerateRequest, current_user: AuthUser, db: DB
         # Tenant-scoped: another tenant's engagement id is a 404, never a brief.
         eng = await get_or_404(db, Engagement, request.engagement_id, current_user.tenant_id)
         brief = await domain_brief_for(db, eng)
+    svc = ManagerLlmService()
     try:
-        content, runtime, fallback = await ManagerLlmService().generate_with_fallback(
+        content, runtime, fallback = await svc.generate_with_fallback(
             request, domain_brief=brief.text if brief else None)
     except AiRuntimeError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+    await persist_ai_calls(db, list(svc.audit_records or []), actor_id=current_user.user_id,
+                           engagement_id=request.engagement_id)
     return AiGenerateResponse(
         content=content,
         provider=runtime.provider,
@@ -42,3 +51,14 @@ async def ai_generate(request: AiGenerateRequest, current_user: AuthUser, db: DB
         jurisdictions=brief.jurisdictions if brief else [],
         unverified_citations=check_citations(content)["unverified"],
     )
+
+
+@router.get("/audit/verify", summary="Verify the tamper-evident AI call audit chain")
+async def ai_audit_verify(db: DB, current_user: Annotated[AuthUser, require_role(["admin"])]):
+    """Walks every ai.call record oldest-first and recomputes the hash chain.
+    ``broken_at`` is the first record that was edited, inserted or follows a deletion."""
+    del current_user
+    rows = (await db.execute(
+        select(AuditLog).where(AuditLog.action == AI_AUDIT_ACTION).order_by(AuditLog.timestamp.asc())
+    )).scalars().all()
+    return verify_chain(rows)

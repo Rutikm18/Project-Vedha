@@ -207,8 +207,13 @@ class AgentDecisionEngine:
         }]
 
         stored = 0
+        from app.ai.llm_report import _audit_sdk_call
         for iteration in range(self._max_iters):
             resp = await self._create(messages)
+            await _audit_sdk_call(
+                self._db, self._settings, task="advisor_agent", model=self._model, pseudo=pseudo,
+                system=SYSTEM_PROMPT, messages=messages,
+                response=repr(getattr(resp, "content", "")), engagement_id=engagement_id)
 
             if getattr(resp, "stop_reason", None) == "refusal":
                 detail = getattr(getattr(resp, "stop_details", None), "explanation", "") or ""

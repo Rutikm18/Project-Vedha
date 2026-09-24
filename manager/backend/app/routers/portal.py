@@ -601,11 +601,15 @@ async def portal_assistant_chat(body: ClientAssistantAsk, user: ClientUser, db: 
     # Sector/jurisdiction expertise, built server-side from trusted data only.
     # A focused finding shapes which control themes the brief carries.
     brief = await domain_brief_for(db, eng, [focus_row] if focus_row is not None else open_rows)
+    llm = ManagerLlmService()
     try:
-        content, runtime, _fallback = await ManagerLlmService().generate_with_fallback(
+        content, runtime, _fallback = await llm.generate_with_fallback(
             request, domain_brief=brief.text if brief else None)
     except AiRuntimeError as exc:
         raise HTTPException(status_code=exc.status_code, detail=str(exc)) from exc
+    from app.ai.audit_chain import persist_ai_calls
+    await persist_ai_calls(db, list(getattr(llm, "audit_records", None) or []),
+                           actor_id=user.user_id, engagement_id=eng_id)
 
     from app.compliance.citations import check_citations
     unverified = check_citations(content)["unverified"]

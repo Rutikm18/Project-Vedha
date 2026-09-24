@@ -245,6 +245,9 @@ class ManagerLlmService:
             timeout_seconds=self.settings.llm_request_timeout_seconds,
             transport=transport,
         )
+        # One hash-only record per egress decision (app/ai/audit_chain.py). The
+        # caller persists them in its own transaction via persist_ai_calls.
+        self.audit_records: list[dict] = []
 
     def _auto_cloud_provider(self) -> str | None:
         """First configured cloud provider, or None. Cloud-only: never Ollama."""
@@ -488,11 +491,16 @@ class ManagerLlmService:
         This is the single egress choke point, so the AI gateway lives here: the
         deployment profile decides raw / pseudonymized / refused before anything
         leaves the manager, and pseudonyms are swapped back in the answer."""
+        from app.ai.audit_chain import ai_call_record
         from app.ai.gateway import GatewayDenied, Pseudonymizer, egress_decision
         try:
             decision = egress_decision(self.settings.deployment_profile, runtime.privacy,
                                        force_pseudonymize=self.settings.ai_pseudonymize)
         except GatewayDenied as exc:
+            self.audit_records.append(ai_call_record(
+                task=None, provider=runtime.provider, model=runtime.model,
+                profile=self.settings.deployment_profile, decision="denied",
+                system=system, messages=messages, response=None, replaced=None))
             raise AiRuntimeError(str(exc), 503) from exc
         pseudo: Pseudonymizer | None = None
         if decision == "pseudonymize":
@@ -533,6 +541,13 @@ class ManagerLlmService:
         text = content.strip()
         if not text:
             raise AiRuntimeError(f"{runtime.provider} returned no content", 502)
+        # Hash exactly what crossed the boundary: the (pseudonymized) request and
+        # the provider's raw answer, before rehydration.
+        self.audit_records.append(ai_call_record(
+            task=None, provider=runtime.provider, model=runtime.model,
+            profile=self.settings.deployment_profile, decision=decision,
+            system=system, messages=messages, response=text,
+            replaced=pseudo.replaced if pseudo else None))
         return pseudo.rehydrate(text) if pseudo else text
 
     async def generate(self, request: AiGenerateRequest, *,
@@ -547,7 +562,13 @@ class ManagerLlmService:
             json_mode=request.task == "advisor_flow",
         )
         logger.info("ai.generate.complete", provider=runtime.provider, model=runtime.model, task=request.task)
+        self._stamp_task(request.task)
         return text, runtime
+
+    def _stamp_task(self, task: str) -> None:
+        for record in self.audit_records:
+            if record.get("task") is None:
+                record["task"] = task
 
     def _fallback_candidates(self, request: AiGenerateRequest) -> list[Runtime]:
         """Ordered runtimes to try: requested/default first, then the OpenRouter
@@ -578,6 +599,14 @@ class ManagerLlmService:
         exhausted, rate limited, unreachable) cascade to the next free model.
         Returns (text, served_runtime, fallback_used). Raises the last error only
         when every candidate failed — callers then degrade to the grounded card."""
+        try:
+            return await self._generate_with_fallback(request, domain_brief)
+        finally:
+            self._stamp_task(request.task)
+
+    async def _generate_with_fallback(
+        self, request: AiGenerateRequest, domain_brief: str | None,
+    ) -> tuple[str, Runtime, bool]:
         candidates = self._fallback_candidates(request)
         if not candidates:
             raise AiRuntimeError("no AI provider is configured", 503)

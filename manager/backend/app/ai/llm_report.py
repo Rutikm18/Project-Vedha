@@ -165,6 +165,9 @@ class LLMReportGenerator:
                     )
 
                 text = "".join(b.text for b in resp.content if getattr(b, "type", None) == "text")
+                await _audit_sdk_call(self._db, self._settings, task="report", model=self._model,
+                                      pseudo=pseudo, system=SYSTEM_PROMPT,
+                                      messages=kwargs["messages"], response=text, engagement_id=None)
                 return pseudo.rehydrate(text) if pseudo is not None else text
             except LLMUnavailableError:
                 # Refusal (above) — surface immediately, never retry. Listed first
@@ -510,3 +513,20 @@ def _collect_cves_scores(top_critical: list[dict]) -> tuple[list[str], dict[str,
             except (TypeError, ValueError):
                 pass
     return cves, scores
+
+
+async def _audit_sdk_call(db, settings, *, task, model, pseudo, system, messages, response,
+                          engagement_id) -> None:
+    """Append this SDK egress to the AI audit chain (app/ai/audit_chain.py).
+    Logged loudly but never fatal: a report must not be lost to an audit write."""
+    from app.ai.audit_chain import ai_call_record, persist_ai_calls
+    try:
+        record = ai_call_record(
+            task=task, provider="anthropic", model=model,
+            profile=getattr(settings, "deployment_profile", "cloud"),
+            decision="pseudonymize" if pseudo is not None else "raw",
+            system=system, messages=messages, response=response,
+            replaced=pseudo.replaced if pseudo is not None else None)
+        await persist_ai_calls(db, [record], actor_id="system", engagement_id=engagement_id)
+    except Exception as exc:  # noqa: BLE001
+        logger.error("ai.audit_chain.write_failed", task=task, error=str(exc))
