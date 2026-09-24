@@ -525,3 +525,31 @@ async def test_create_findings_with_meta_lacking_evidence_passes_empty_sets():
     kwargs = mock_eval.await_args.kwargs
     assert kwargs["evaluated_checks"] == set()
     assert kwargs["identified_products"] == {}
+
+
+# ── exposed-service findings (the Wave E follow-up) ───────────────────────────
+_EXPOSED = "POSTURE-EXPOSED-BACKDOOR"
+
+
+@pytest.mark.asyncio
+async def test_exposed_service_finding_resolves_when_its_port_is_rechecked_clean():
+    """A POSTURE-EXPOSED-* finding now carries a trace, so a re-scan that shows its
+    port clean (no_match on that exact port) auto-resolves it — before this it
+    could never satisfy finding_coverage and stayed open forever."""
+    f = _posture(4444, rule_id=_EXPOSED)          # medium → one proven-clean run closes it
+    resolved = await _evaluate([f], checks={(_EXPOSED, X, 4444)})
+    assert resolved == 1
+    assert f.status == FindingStatus.remediated
+    assert f.resolution_method == "auto"
+
+
+@pytest.mark.asyncio
+async def test_exposed_service_finding_stays_open_without_its_own_port_recheck():
+    """A trace for the same category on a DIFFERENT port proves nothing about 4444."""
+    f = _posture(4444, rule_id=_EXPOSED)
+    skips: dict = {}
+    resolved = await _evaluate([f], checks={(_EXPOSED, X, 9999)}, skips=skips)
+    assert resolved == 0
+    assert f.status == FindingStatus.open
+    assert f.resolution_miss_count == 0
+    assert skips == {"rule not re-evaluated on this port": 1}

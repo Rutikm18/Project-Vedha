@@ -232,3 +232,58 @@ class TestPortHypothesisContradiction:
         by = _by_port(P.detect_exposed_services(a))
         assert by[2379].evidence["observed_product"] == "etcd"
         assert 7000 not in by            # AirPlay, not Cassandra
+
+
+# ── traces: what lets an exposed-service finding auto-resolve ──────────────────
+class TestExposedServiceTraces:
+    """detect_exposed_services_traced emits a TraceRow per (asset, catalog port)
+    it evaluates — MATCH when the port is a live exposed service, NO_MATCH when a
+    re-scan proves it clean — so resolution.finding_coverage can prove the same
+    (rule_id, ip, port) was re-checked. Fail-closed: a port that was NOT re-scanned
+    gets no trace, so its finding stays open."""
+
+    def test_open_backdoor_emits_a_match_trace(self):
+        a = _asset(_fact("port_scan", 4444, {}, status="open"))
+        findings, traces = P.detect_exposed_services_traced(a)
+        assert any(f.rule_id == "POSTURE-EXPOSED-BACKDOOR" and f.port == 4444 for f in findings)
+        m = [t for t in traces if t.rule_id == "POSTURE-EXPOSED-BACKDOOR" and t.port == 4444]
+        assert m and m[0].outcome == P.OUTCOME_MATCH and m[0].asset_ip == "10.0.0.5"
+
+    def test_closed_catalog_port_emits_a_no_match_trace(self):
+        # 4444 was scanned and is now CLOSED (only the scan_summary carries it).
+        summ = _fact("port_scan", None,
+                     {"port_states": {"closed": [[4444, 4444]]}}, status="scan_summary")
+        a = _asset(summ)
+        findings, traces = P.detect_exposed_services_traced(a)
+        assert not findings
+        nm = [t for t in traces if t.rule_id == "POSTURE-EXPOSED-BACKDOOR" and t.port == 4444]
+        assert nm and nm[0].outcome == P.OUTCOME_NO_MATCH
+
+    def test_not_scanned_catalog_port_emits_no_trace(self):
+        summ = _fact("port_scan", None,
+                     {"port_states": {"not_scanned": [[4444, 4444]]}}, status="scan_summary")
+        findings, traces = P.detect_exposed_services_traced(_asset(summ))
+        assert not findings
+        assert not any(t.port == 4444 for t in traces)      # fail-closed
+
+    def test_open_but_benign_catalog_port_is_no_match(self):
+        # 8080 is an admin-UI catalog port, but the identified product (CUPS print
+        # server) proves a benign occupant → no finding, yet it WAS evaluated.
+        f = _fact("port_scan", 8080, {}, status="open")
+        b = _fact("service_banner", 8080, {"product": "CUPS"}, status="open")
+        findings, traces = P.detect_exposed_services_traced(_asset(f, b))
+        assert not any(x.port == 8080 for x in findings)
+        nm = [t for t in traces if t.rule_id == "POSTURE-EXPOSED-ADMIN_UI" and t.port == 8080]
+        assert nm and nm[0].outcome == P.OUTCOME_NO_MATCH
+
+    def test_traces_reach_detect_posture_traced(self):
+        summ = _fact("port_scan", None,
+                     {"port_states": {"closed": [[2375, 2375]]}}, status="scan_summary")
+        _f, traces = P.detect_posture_traced(_asset(summ))
+        assert any(t.rule_id == "POSTURE-EXPOSED-CONTAINER" and t.port == 2375
+                   and t.outcome == P.OUTCOME_NO_MATCH for t in traces)
+
+    def test_backwards_compatible_wrapper_returns_only_findings(self):
+        a = _asset(_fact("port_scan", 4444, {}, status="open"))
+        findings = P.detect_exposed_services(a)
+        assert [f.port for f in findings] == [4444]

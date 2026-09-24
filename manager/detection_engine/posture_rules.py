@@ -1088,7 +1088,9 @@ def detect_posture_traced(
     #     that have no dedicated scanner but ARE findable from the open port + banner
     #     + exposure the validated scanners already collected. Best-effort.
     try:
-        out.extend(detect_exposed_services(asset, exposure))
+        ex_findings, ex_traces = detect_exposed_services_traced(asset, exposure)
+        out.extend(ex_findings)
+        traces.extend(ex_traces)
     except Exception:  # noqa: BLE001 — must never sink core detection
         pass
 
@@ -1142,15 +1144,69 @@ def _exposed_title(category: str, service: str, port: int, internet: bool) -> st
     return base + (" — internet-facing" if internet else "")
 
 
-def detect_exposed_services(asset: Asset,
-                            exposure: dict[str, dict] | None = None) -> list[PostureFinding]:
-    """Findings for risky OPEN ports that have no dedicated scanner: backdoor/C2
+def _scan_summary_spans(asset: Asset):
+    """Yield (state, lo, hi) from every scan_summary fact's run-length-encoded
+    port_states. This is the only place a definitively CLOSED port survives —
+    the port scanners emit open ports as facts but fold closed ones into the
+    summary, so proving a formerly-exposed port is gone means reading it here."""
+    for f in asset.facts:
+        if f.status != "scan_summary":
+            continue
+        d = f.data if isinstance(f.data, dict) else {}
+        ps = d.get("port_states")
+        if not isinstance(ps, dict):
+            continue
+        for state, spans in ps.items():
+            if not isinstance(spans, (list, tuple)):
+                continue
+            for span in spans:
+                if (isinstance(span, (list, tuple)) and len(span) == 2
+                        and isinstance(span[0], int) and isinstance(span[1], int)
+                        and not isinstance(span[0], bool)
+                        and not isinstance(span[1], bool) and span[1] >= span[0]):
+                    yield state, span[0], span[1]
+
+
+def _scan_summary_scanner(asset: Asset) -> str:
+    for f in asset.facts:
+        if f.status == "scan_summary" and f.scanner:
+            return f.scanner
+    return "port_scan"
+
+
+def _summary_closed_ports(asset: Asset, ports: set[int]) -> set[int]:
+    """Of `ports`, those a scan_summary marks CLOSED with none marking open —
+    definitively re-checked this run and not a live exposed service."""
+    closed: set[int] = set()
+    openish: set[int] = set()
+    for state, lo, hi in _scan_summary_spans(asset):
+        bucket = closed if state == "closed" else (openish if state == "open" else None)
+        if bucket is None:
+            continue
+        for p in ports:
+            if lo <= p <= hi:
+                bucket.add(p)
+    return closed - openish
+
+
+def detect_exposed_services_traced(
+    asset: Asset, exposure: dict[str, dict] | None = None,
+) -> tuple[list[PostureFinding], list[TraceRow]]:
+    """Findings for risky OPEN ports that have no dedicated scanner (backdoor/C2
     listeners, unauthenticated-prone data stores, container APIs, cleartext
-    protocols, exposed admin UIs. Reads only what the validated scanners already
-    emit — open TCP ports (port/syn/mass scan), banners (service_banner), and the
-    exposure classification (exposure_matrix). Severity escalates one level when the
-    port is internet-facing (the asset-exposure risk variable)."""
-    from port_intel import classify_port, escalate   # standalone module, no cycle
+    protocols, exposed admin UIs), PLUS a per-(asset, catalog port) evaluation
+    trace. Reads only what the validated scanners already emit — open TCP ports
+    (port/syn/mass scan), banners (service_banner), the exposure classification
+    (exposure_matrix), and the port-state summary. Severity escalates one level
+    when the port is internet-facing.
+
+    The trace is what lets an exposed-service finding auto-resolve: MATCH when a
+    catalog port is a live exposed service, NO_MATCH when a re-scan proves it
+    clean (closed, or an open port re-identified as a benign occupant). A catalog
+    port that was NOT re-scanned gets no trace, so its finding stays open —
+    absence of evidence is never a clean miss."""
+    from port_intel import (catalog_categories, classify_port,  # standalone, no cycle
+                            escalate)
 
     exposure = exposure or {}
     exp = exposure.get(asset.ip, {})
@@ -1188,17 +1244,29 @@ def detect_exposed_services(asset: Asset,
                 if isinstance(p, int):
                     externally.add(p)
 
+    catalog = catalog_categories()          # port -> category (port-number hypothesis)
     now = datetime.now(timezone.utc).isoformat()
     out: list[PostureFinding] = []
+    traces: list[TraceRow] = []
+    evaluated: set[int] = set()             # catalog ports we reached a verdict on
     for port in sorted(open_tcp):
         if port in _EXPOSED_SVC_DEDICATED_PORTS:
             continue
+        f = open_tcp[port]
         risk = classify_port(port, banners.get(port), service=svc_labels.get(port),
                              basic_auth_cleartext=port in basic_cleartext,
                              product=products.get(port))
         if risk is None:
+            # The port was probed but is not (or no longer) an exposed service —
+            # a benign occupant on a catalog port re-checks clean.
+            cat = catalog.get(port)
+            if cat is not None:
+                evaluated.add(port)
+                traces.append(TraceRow(
+                    f"POSTURE-EXPOSED-{cat.upper()}", f.scanner, OUTCOME_NO_MATCH,
+                    asset.ip, port=port,
+                    reason="open port re-identified as a benign occupant"))
             continue
-        f = open_tcp[port]
         internet = (port in externally) or bool(exp_internet)
         severity = escalate(risk.severity) if internet else risk.severity
         state = _state_for(f.scanner)                 # validated port scan → confirmed
@@ -1226,7 +1294,28 @@ def detect_exposed_services(asset: Asset,
                      "service can share these ports — confirm the owning process/scope.",
             internet_facing=internet, auth_enforced=default_auth,
             risk_score=risk_score, priority=priority, created_at=now, scanner=f.scanner))
-    return out
+        evaluated.add(port)
+        traces.append(TraceRow(rule_id, f.scanner, OUTCOME_MATCH, asset.ip, port=port,
+                               reason="exposed service confirmed on this port"))
+
+    # Catalog ports the summary shows CLOSED (and never open) were re-checked and
+    # are definitively gone — the clean re-scan that resolves a stale finding.
+    candidates = (set(catalog) - _EXPOSED_SVC_DEDICATED_PORTS) - evaluated
+    if candidates:
+        scanner_name = _scan_summary_scanner(asset)
+        for port in sorted(_summary_closed_ports(asset, candidates)):
+            traces.append(TraceRow(
+                f"POSTURE-EXPOSED-{catalog[port].upper()}", scanner_name,
+                OUTCOME_NO_MATCH, asset.ip, port=port, reason="port closed on re-scan"))
+    return out, traces
+
+
+def detect_exposed_services(asset: Asset,
+                            exposure: dict[str, dict] | None = None) -> list[PostureFinding]:
+    """Findings-only wrapper over detect_exposed_services_traced, for callers that
+    do not consume the evaluation trace."""
+    findings, _traces = detect_exposed_services_traced(asset, exposure)
+    return findings
 
 
 # ── verdict roll-up: the machine-readable answer to "why no finding?" ──────────

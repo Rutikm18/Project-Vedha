@@ -269,3 +269,22 @@ def classify_port(port: int, banner: str | None = None,
                         "Admin/dev web interface exposed — confirm authentication "
                         "and that it should be reachable from this segment.")
     return None
+
+
+def catalog_categories() -> dict[int, str]:
+    """port -> exposed-service category for the port-NUMBER hypothesis (no banner).
+
+    The ports the exposed-service layer can recognise from the number alone, each
+    mapped through classify_port so the category matches what a finding on that
+    port would carry (same precedence, no drift). This is what lets a
+    formerly-exposed port prove itself clean on a re-scan: only a catalog port can
+    be shown "no longer an exposed service" from its state, so only these findings
+    auto-resolve without fresh banner evidence."""
+    ports = set().union(_BACKDOOR, _CONTAINER, _DATASTORE, _DATABASE,
+                        _CLEARTEXT, _REMOTE, _ADMIN_UI)
+    out: dict[int, str] = {}
+    for p in ports:
+        risk = classify_port(p, None)
+        if risk is not None:
+            out[p] = risk.category
+    return out
