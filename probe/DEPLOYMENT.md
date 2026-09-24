@@ -158,17 +158,21 @@ runs only that. Two knobs:
 
 | `uc` | Use-case | | `uc` | Use-case |
 |------|----------|-|------|----------|
-| `1`  | Host discovery | | `50` | SNMP exposure |
-| `2`  | Device inventory | | `51` | UDP service exposure |
-| `10` | Full assessment | | `60` | IoT / embedded survey |
-| `11` | Re-scan (delta) | | `61` | AI / MCP endpoints |
+| `1`  | Network discovery | | `40` | Database exposure |
+| `2`  | Device inventory | | `50` | SNMP exposure |
+| `10` | Full assessment | | `51` | UDP service exposure |
+| `11` | Re-scan (delta) | | `60` | IoT / embedded survey |
+| `12` | Network VA (full campaign) | | `61` | AI / MCP endpoints |
 | `20` | Web + TLS triage | | `70` | OT / ICS passive |
 | `21` | Web-app triage | | `80` | Full-port audit |
 | `30` | Windows / SMB estate | | `81` | Multi-vantage exposure |
-| `40` | Database exposure | | | |
 
-Discover them live: `GET /agents/use-cases` (each entry carries its `code`) and
-`GET /agents/intensities`.
+Discover them live: `GET /agents/use-cases` (each entry carries its `code` and a
+`status` — several ship as **coming-soon** and only the live endpoint is
+authoritative on which are active) and `GET /agents/intensities`. Codes are
+stable and banded (1–9 discovery · 10–19 assessment · 20–29 web/tls · 30–39
+windows/smb · 40–49 database · 50–59 network services · 60–69 iot/ai · 70–79 ot ·
+80–99 deep) and must match the Manager side; a parity test enforces it.
 
 **Dispatch a scan** (Manager governs scope from the engagement — you send targets):
 
