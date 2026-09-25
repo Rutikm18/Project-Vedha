@@ -75,6 +75,12 @@ class Pseudonymizer:
         self._fwd: dict[str, str] = {}      # value → token
         self._rev: dict[str, str] = {}      # "IP-1" → value
         self._counts: dict[str, int] = {}
+        # Identifiers learned from structured keys persist for this Pseudonymizer's
+        # lifetime (one request / one agent run): the system prompt and each message
+        # are pseudonymized in separate calls, and a hostname seen only as
+        # {"hostname": ...} in the context must still be masked when a later
+        # message mentions it as bare text.
+        self._literals: set[str] = set()
 
     @property
     def replaced(self) -> dict[str, int]:
@@ -101,12 +107,11 @@ class Pseudonymizer:
         if not text:
             return text
         # 1) register identifiers named by structured keys, in order of appearance
-        literals: list[str] = []
         for m in _KEYED.finditer(text):
             value = m.group(2)
             kind = self._classify(value, _KEY_KIND.get(m.group(1), "HOST"))
             self._token(kind, value)
-            literals.append(value)
+            self._literals.add(value)
         # 2) shape-based identifiers
         text = _EMAIL.sub(lambda m: self._token("EMAIL", m.group(0)), text)
         text = _MAC.sub(lambda m: self._token("MAC", m.group(0)), text)
@@ -115,8 +120,9 @@ class Pseudonymizer:
         text = _IPV4.sub(lambda m: self._token("IP", m.group(0)), text)
         text = _FQDN.sub(lambda m: self._token("HOST", m.group(0).rstrip(".")), text)
         text = _INTERNAL_2LABEL.sub(lambda m: self._token("HOST", m.group(0)), text)
-        # 3) keyed literals wherever else they appear (e.g. a bare hostname in prose)
-        for value in sorted(set(literals), key=len, reverse=True):
+        # 3) keyed literals — from this OR any earlier call — wherever else they
+        #    appear (e.g. a bare hostname in prose)
+        for value in sorted(self._literals, key=len, reverse=True):
             if value in text:
                 pat = re.compile(rf"(?<![\w.-]){re.escape(value)}(?![\w-])")
                 text = pat.sub(self._fwd[value], text)

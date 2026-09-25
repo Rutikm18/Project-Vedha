@@ -53,10 +53,15 @@ def extract_citations(text: str) -> list[str]:
 
 @lru_cache(maxsize=1)
 def known_citations() -> frozenset[str]:
-    from app.compliance.registry import known_control_ids
+    from app.compliance.registry import FRAMEWORKS, known_control_ids
     from app.services import finding_compliance
 
     strings = set(known_control_ids())
+    # Framework metadata is ours too: a model quoting "CERT-In Directions under
+    # Section 70B(6)" or a reporting reference such as "NIS2 Art. 23(4)(a)" is grounded.
+    for fw in FRAMEWORKS.values():
+        strings.update([fw.name, fw.source, fw.note or ""])
+        strings.update(r.reference for r in fw.reporting)
     for per_framework in finding_compliance._MAP.values():
         for entry in per_framework.values():
             strings.update(entry.get("controls", []))

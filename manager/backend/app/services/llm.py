@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import hmac
+import re
 import json
 from dataclasses import dataclass
 
@@ -148,6 +149,17 @@ def is_internal_endpoint(url: str) -> bool:
 
 
 _LOCAL_PROVIDERS = {"ollama", "local_openai"}
+
+# Prompt scaffolding a (small) model may echo back: the fence tags and the
+# BOUNDARY/END spotlight lines from _fence_untrusted. Never shown to a reader.
+_SCAFFOLD_LINE = re.compile(
+    r"^\s*(?:</?security_context>|</?domain_expertise[^>]*>|</?compliance_reference>"
+    r"|BOUNDARY [0-9a-f]{16}:.*|END [0-9a-f]{16})\s*$", re.IGNORECASE)
+
+
+def strip_prompt_scaffolding(text: str) -> str:
+    kept = [line for line in text.splitlines() if not _SCAFFOLD_LINE.match(line)]
+    return "\n".join(kept).strip()
 
 
 @dataclass(frozen=True)
@@ -685,7 +697,7 @@ class ManagerLlmService:
         except (httpx.HTTPError, ValueError, KeyError, TypeError) as exc:
             raise AiRuntimeError(f"{runtime.provider} response was unavailable", 502) from exc
 
-        text = content.strip()
+        text = strip_prompt_scaffolding(content)
         if not text:
             raise AiRuntimeError(f"{runtime.provider} returned no content", 502)
         # Hash exactly what crossed the boundary: the (pseudonymized) request and

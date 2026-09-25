@@ -36,3 +36,13 @@ def test_non_citation_text_is_ignored():
 def test_parent_article_of_known_subclause_is_accepted():
     # The packs cite Art. 32(1)(a); a model citing plain "Art. 32" is still grounded.
     assert check_citations("GDPR Art. 32")["unverified"] == []
+
+
+def test_citations_in_framework_names_and_sources_are_grounded():
+    # Regression (found by the real-LLM e2e): "CERT-In Directions under Section
+    # 70B(6), IT Act 2000" is a framework NAME, and a model quoting it is grounded.
+    assert check_citations("Report under Section 70B(6) of the IT Act")["unverified"] == []
+    # Control strings still count, as before.
+    assert check_citations("See Section 8(6) of the DPDP Act")["unverified"] == []
+    # Reporting references are pack metadata too ("NIS2 Art. 23(4)(a)").
+    assert check_citations("Early warning per Art. 23(4)(a)")["unverified"] == []
