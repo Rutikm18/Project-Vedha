@@ -660,6 +660,7 @@ async def portal_workspace_findings(
     asset_ip: str | None = Query(default=None, min_length=1, max_length=45),
     agent_id: uuid.UUID | None = Query(default=None),
     mitre_technique: str | None = Query(default=None),
+    scan: str | None = Query(default=None, min_length=1, max_length=64),
     search: str | None = Query(default=None, min_length=1, max_length=200),
     detection_status: DetectionStatus | None = Query(default=None),
     exploit_validated: bool | None = Query(default=None),
@@ -682,6 +683,7 @@ async def portal_workspace_findings(
         mitre_technique=mitre_technique,
         engagement_id=assert_client(user),
         agent_id=agent_id,
+        scan=scan,
         search=search,
         detection_status=detection_status,
         exploit_validated=exploit_validated,
@@ -720,6 +722,30 @@ async def portal_workspace_finding_summary(
         engagement_id=assert_client(user),
         agent_id=agent_id,
     )
+
+
+@router.get("/workspace/findings/scans",
+            summary="Scans that produced findings in the assigned engagement")
+async def portal_workspace_finding_scans(user: ClientUser, db: DB):
+    from app.routers.findings import finding_scans as operator_finding_scans
+    return await operator_finding_scans(
+        db=db, current_user=user, engagement_id=assert_client(user))
+
+
+@router.get("/workspace/findings/compare",
+            summary="Diff two scans (new / fixed / still present) in the assigned engagement")
+async def portal_workspace_finding_compare(
+    user: ClientUser,
+    db: DB,
+    a: str = Query(..., min_length=1, max_length=64),
+    b: str = Query(..., min_length=1, max_length=64),
+):
+    # Pinned to the client's own engagement — the operator handler scopes both scan
+    # resolution and the finding load to it, so a sibling engagement in the same
+    # tenant is unreachable.
+    from app.routers.findings import compare_scans as operator_compare
+    return await operator_compare(
+        db=db, current_user=user, a=a, b=b, engagement_id=assert_client(user))
 
 
 @router.get("/workspace/findings/{finding_id}", response_model=FindingOut,

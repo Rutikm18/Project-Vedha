@@ -73,6 +73,8 @@ export const GET = withBackend(async (req, { token }) => {
           const ip = url.searchParams.get("asset_ip")?.trim();
           return ip && IP_FILTER.test(ip) ? ip : undefined;
         })(),
+        // Filter to findings a single scan touched (SCN ref, job id, or run id).
+        scan: url.searchParams.get("scan")?.trim().slice(0, 64) || undefined,
         detection_status: url.searchParams.get("blind") === "true" ? "missed" : undefined,
         exploit_validated: url.searchParams.get("validated") === "true" ? true : undefined,
         needs_review: url.searchParams.get("needs_review") === "true" ? true : undefined,

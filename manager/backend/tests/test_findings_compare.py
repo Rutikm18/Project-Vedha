@@ -67,7 +67,8 @@ async def test_compare_buckets_new_fixed_still_present():
                           FindingScanRef(reference="SCN-260301-AAAAAA"),
                           FindingScanRef(reference="SCN-260302-BBBBBB")])):
         out = await findings_router.compare_scans(
-            db=db, current_user=_user(), a="SCN-260301-AAAAAA", b="SCN-260302-BBBBBB")
+            db=db, current_user=_user(), a="SCN-260301-AAAAAA", b="SCN-260302-BBBBBB",
+            engagement_id=None)
 
     assert (out.counts.new, out.counts.fixed, out.counts.still_present) == (1, 1, 1)
     assert {f.id for f in out.new} == {n_id}
@@ -93,7 +94,7 @@ async def test_identical_scans_are_all_still_present():
          patch.object(findings_router, "_scan_meta",
                       new=AsyncMock(side_effect=[FindingScanRef(), FindingScanRef()])):
         out = await findings_router.compare_scans(
-            db=db, current_user=_user(), a="A", b="B")
+            db=db, current_user=_user(), a="A", b="B", engagement_id=None)
     assert (out.counts.new, out.counts.fixed) == (0, 0)
     assert out.counts.still_present == 2
 
@@ -105,5 +106,5 @@ async def test_unknown_scan_is_404(a_runs, b_runs):
                       new=AsyncMock(side_effect=[a_runs, b_runs])):
         with pytest.raises(HTTPException) as e:
             await findings_router.compare_scans(
-                db=MagicMock(), current_user=_user(), a="A", b="B")
+                db=MagicMock(), current_user=_user(), a="A", b="B", engagement_id=None)
     assert e.value.status_code == 404

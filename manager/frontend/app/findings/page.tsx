@@ -39,8 +39,8 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Activity, AlertTriangle, ArrowLeft, BadgeCheck, Brain, Check, CheckCircle,
   ChevronDown, ChevronLeft, ChevronRight, Copy, ExternalLink, EyeOff, FileText, Flag,
-  Keyboard, Link2, ListChecks, LoaderCircle, RefreshCw, RotateCcw, Search, Server,
-  Shield, SlidersHorizontal, Tag, Terminal, Wrench, X,
+  GitCompare, Keyboard, Link2, ListChecks, LoaderCircle, Radar, RefreshCw, RotateCcw,
+  Search, Server, Shield, SlidersHorizontal, Tag, Terminal, Wrench, X,
 } from "lucide-react";
 import { PageShell } from "../../components/PageShell";
 import { PortalShell } from "../../components/portal/PortalShell";
@@ -51,6 +51,7 @@ import { errorMessage, isUnauthorized } from "../../lib/fetcher";
 import {
   createFindingsWorkspaceApi,
   type FindingAssetOption,
+  type ScanOption,
   portalFindingAssistantHref,
   type FindingsWorkspaceSurface,
 } from "../../lib/findings-workspace-api";
@@ -214,6 +215,15 @@ interface Finding {
     owner: string | null;
     environment: string | null;
   } | null;
+  // The scan that most recently produced/confirmed this finding (per-scan-findings).
+  scan?: {
+    reference: string | null;
+    useCaseId: string | null;
+    intensity: string | null;
+    scannedAt: string | null;
+    jobId: string | null;
+    runId: string | null;
+  } | null;
 }
 
 interface FindingPage {
@@ -222,6 +232,19 @@ interface FindingPage {
   page: number;
   pageSize: number;
   pages: number;
+}
+
+interface ScanCompareRef {
+  reference: string | null; useCaseId: string | null; intensity: string | null;
+  scannedAt: string | null; jobId: string | null; runId: string | null;
+}
+interface ScanCompareResult {
+  a: ScanCompareRef | null;
+  b: ScanCompareRef | null;
+  counts: { new: number; fixed: number; stillPresent: number };
+  new: Finding[];
+  fixed: Finding[];
+  stillPresent: Finding[];
 }
 
 interface FindingSummary {
@@ -273,6 +296,13 @@ const tint = (color: string, strength: number) =>
 const SLA_HOURS: Partial<Record<Severity, number>> = { CRITICAL: 24, HIGH: 72, MEDIUM: 168, LOW: 720 };
 
 interface Sla { color: string; label: string; pct: number; breached: boolean; tracked: boolean; }
+
+/** "uc_deep_port_sweep" → "Deep Port Sweep". Falls back to the raw id. */
+function prettyUseCase(id: string): string {
+  const pretty = id.replace(/^uc_/, "").split("_").filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1)).join(" ");
+  return pretty || id;
+}
 
 function getSlaColor(discoveredAt: string, severity: Severity, now: number = Date.now()): Sla {
   const slaH = SLA_HOURS[severity];
@@ -2243,6 +2273,16 @@ const FindingRow = React.memo(function FindingRow({
           {f.exploitMaturityRecorded && (
             <span style={{ color: MATURITY_COLOR[f.exploitMaturity] }}>{f.exploitMaturity}</span>
           )}
+          {f.scan?.reference && (
+            <span
+              className="finding-card-scan"
+              title={`Scan ${f.scan.reference}${f.scan.intensity ? ` · ${f.scan.intensity}` : ""}${f.scan.useCaseId ? ` · ${prettyUseCase(f.scan.useCaseId)}` : ""}${f.scan.scannedAt ? ` · ${new Date(f.scan.scannedAt).toLocaleString()}` : ""}`}
+            >
+              <Radar size={11} aria-hidden />
+              <code>{f.scan.reference}</code>
+              {f.scan.intensity ? <span className="finding-card-scan-int">{f.scan.intensity}</span> : null}
+            </span>
+          )}
         </div>
       </div>
 
@@ -2545,6 +2585,32 @@ button.findings-triage-metric:hover { background: var(--bg-hover); }
   margin-top: var(--space-3); padding-top: var(--space-3); border-top: var(--hairline) solid var(--border-subtle);
 }
 .findings-signal-filters > span:first-child { margin-right: 2px; color: var(--text-muted); font: 650 10.5px/1 var(--font-ui); }
+.findings-compare-toggle { margin-left: auto; }
+
+/* ── Compare two scans ───────────────────────────────────────────────── */
+.findings-compare {
+  display: flex; flex-direction: column; gap: 12px;
+  margin-bottom: var(--space-4); padding: 14px;
+  border: var(--hairline) solid var(--border-subtle); border-radius: 10px; background: var(--bg-surface);
+}
+.findings-compare-pick { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+.findings-compare-hint { margin: 0; color: var(--text-muted); font: 500 12px/1.5 var(--font-ui); }
+.findings-compare-counts { display: flex; flex-wrap: wrap; gap: 8px; }
+.findings-compare-count {
+  display: inline-flex; align-items: baseline; gap: 5px; padding: 4px 10px; border-radius: 999px;
+  border: var(--hairline) solid var(--border-subtle); color: var(--text-secondary); font: 600 11px/1 var(--font-ui);
+}
+.findings-compare-count b { font: 700 13px/1 var(--font-mono); }
+.findings-compare-count[data-kind="new"] { color: var(--sev-high-color); border-color: var(--sev-high-color); }
+.findings-compare-count[data-kind="fixed"] { color: var(--nominal-color); border-color: var(--nominal-color); }
+.findings-compare-cols { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; align-items: start; }
+.findings-compare-col { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+.findings-compare-col h4 {
+  margin: 0 0 2px; display: flex; align-items: center; justify-content: space-between; gap: 6px;
+  color: var(--text-secondary); font: 700 10.5px/1 var(--font-ui); text-transform: uppercase; letter-spacing: .04em;
+}
+.findings-compare-col h4 span { color: var(--text-muted); font-family: var(--font-mono); }
+.findings-compare-empty { margin: 0; color: var(--text-muted); font: 500 11px/1.4 var(--font-ui); }
 
 /* ── 6. Queue ────────────────────────────────────────────────────────── */
 /* Centred page column. The PageShell main element is full-bleed, so without this
@@ -2609,6 +2675,13 @@ button.findings-triage-metric:hover { background: var(--bg-hover); }
 .finding-card-context { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .finding-card-host { min-width: 0; overflow: hidden; color: var(--text-muted); font: 500 11px/1.3 var(--font-mono); text-overflow: ellipsis; white-space: nowrap; }
 .finding-card-signals { display: flex; flex: 0 0 auto; align-items: center; gap: 6px; font: 650 9.5px/1 var(--font-mono); }
+.finding-card-scan {
+  display: inline-flex; align-items: center; gap: 4px; max-width: 100%;
+  padding: 2px 6px; border: var(--hairline) solid var(--border-subtle); border-radius: 5px;
+  color: var(--text-secondary); background: var(--bg-app); overflow: hidden;
+}
+.finding-card-scan code { font: 700 9.5px/1 var(--font-mono); letter-spacing: .02em; color: var(--text-secondary); }
+.finding-card-scan-int { text-transform: capitalize; color: var(--text-muted); }
 .finding-card-drivers { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
 .finding-card-drivers > span:first-child { color: var(--text-muted); font: 650 10px/1 var(--font-ui); }
 .finding-driver {
@@ -3073,6 +3146,7 @@ button.findings-triage-metric:hover { background: var(--bg-hover); }
   .findings-strip-metrics { width: 100%; justify-content: space-between; }
   .findings-strip-mix { width: 100%; padding-left: 0; }
   .findings-filter-grid, .findings-scope-grid { grid-template-columns: minmax(0, 1fr); }
+  .findings-compare-pick, .findings-compare-cols { grid-template-columns: minmax(0, 1fr); }
   .findings-filter-header { align-items: center; }
   .finding-card-header, .finding-card-context { align-items: flex-start; }
   .finding-card-context { flex-direction: column; gap: 8px; }
@@ -3144,6 +3218,11 @@ export function FindingsWorkspace({ surface = "manager" }: { surface?: FindingsW
   const [filterAgentId, setFilterAgentId] = useState<string>("");
   const [filterIp, setFilterIp] = useState<string>("");
   const deferredIp = useDeferredValue(filterIp.trim());
+  // Per-scan-findings: filter to one scan, and the two-scan compare panel.
+  const [filterScan, setFilterScan] = useState<string>("");   // SCN ref | job id
+  const [compareOpen, setCompareOpen] = useState(false);
+  const [compareA, setCompareA] = useState<string>("");
+  const [compareB, setCompareB] = useState<string>("");
   const [agentsRefreshing, setAgentsRefreshing] = useState(false);
   const [agentRefreshFeedback, setAgentRefreshFeedback] = useState<string | null>(null);
   const [page, setPage] = useState(1);
@@ -3172,12 +3251,13 @@ export function FindingsWorkspace({ surface = "manager" }: { surface?: FindingsW
   if (engagementId) queryString.set("engagement_id", engagementId);
   if (filterAgentId) queryString.set("agent_id", filterAgentId);
   if (deferredIp) queryString.set("asset_ip", deferredIp);
+  if (filterScan) queryString.set("scan", filterScan);
 
   const { data, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: [
       "findings-page", surface, page, deferredSearch, filterSev, filterStatus,
       filterBlind, filterExploited, filterSlaBreached, sortBy, engagementId,
-      filterNeedsReview, filterVerification, filterAgentId, deferredIp,
+      filterNeedsReview, filterVerification, filterAgentId, deferredIp, filterScan,
     ],
     queryFn: () => api.list<FindingPage>(queryString.toString()),
     refetchInterval: 30_000,
@@ -3201,6 +3281,34 @@ export function FindingsWorkspace({ surface = "manager" }: { surface?: FindingsW
       engagementId ? new URLSearchParams({ engagement_id: engagementId }).toString() : "",
     ),
     refetchInterval: 60_000,
+    retry: (count, err) => !isUnauthorized(err) && count < 2,
+  });
+
+  // Scans that produced findings — feeds the "filter by scan" control and the
+  // compare picker. Engagement-scoped on the operator surface; pinned on the portal.
+  const scanOptionsQuery = useQuery({
+    queryKey: ["finding-scans", surface, engagementId],
+    queryFn: () => api.scans<ScanOption[]>(
+      engagementId ? new URLSearchParams({ engagement_id: engagementId }).toString() : "",
+    ),
+    refetchInterval: 60_000,
+    retry: (count, err) => !isUnauthorized(err) && count < 2,
+  });
+  const scanOptions = useMemo(() => scanOptionsQuery.data ?? [], [scanOptionsQuery.data]);
+  const scanLabel = useCallback((s: ScanOption) => {
+    const when = s.scannedAt ? new Date(s.scannedAt).toLocaleDateString() : "";
+    const bits = [s.reference ?? s.jobId.slice(0, 8), s.intensity, when].filter(Boolean);
+    return `${bits.join(" · ")} — ${s.findings} finding${s.findings === 1 ? "" : "s"}`;
+  }, []);
+
+  const compareParams = new URLSearchParams();
+  if (compareA) compareParams.set("a", compareA);
+  if (compareB) compareParams.set("b", compareB);
+  const compareReady = compareOpen && Boolean(compareA) && Boolean(compareB) && compareA !== compareB;
+  const compareQuery = useQuery({
+    queryKey: ["finding-compare", surface, engagementId, compareA, compareB],
+    queryFn: () => api.compare<ScanCompareResult>(compareParams.toString()),
+    enabled: compareReady,
     retry: (count, err) => !isUnauthorized(err) && count < 2,
   });
 
@@ -3402,7 +3510,7 @@ export function FindingsWorkspace({ surface = "manager" }: { surface?: FindingsW
   const hasActiveFilters = Boolean(
     search.trim() || filterSev !== "ALL" || filterStatus !== "ALL" || filterBlind || filterExploited
     || filterSlaBreached || filterNeedsReview || filterVerification !== "ALL"
-    || (surface === "manager" && Boolean(engagementId)) || filterAgentId || filterIp.trim(),
+    || (surface === "manager" && Boolean(engagementId)) || filterAgentId || filterIp.trim() || filterScan,
   );
   const summaryUnavailable = summaryQuery.isLoading || Boolean(summaryQuery.error);
   const summaryValue = (value: number) => summaryUnavailable ? "—" : value.toLocaleString();
@@ -3418,6 +3526,7 @@ export function FindingsWorkspace({ surface = "manager" }: { surface?: FindingsW
     setFilterVerification("ALL");
     setFilterAgentId("");
     setFilterIp("");
+    setFilterScan("");
     if (surface === "manager") setEngagementId(null);
     setSortBy("risk");
     setPage(1);
@@ -3635,6 +3744,22 @@ export function FindingsWorkspace({ surface = "manager" }: { surface?: FindingsW
                   ))}
                 </datalist>
               </label>
+
+              <label className="findings-filter-group">
+                <span className="findings-filter-label">Scan</span>
+                <select
+                  className="findings-filter-control"
+                  value={filterScan}
+                  onChange={(event) => applyFilter(() => setFilterScan(event.target.value))}
+                  disabled={scanOptionsQuery.isLoading}
+                  aria-label="Filter to findings a single scan touched"
+                >
+                  <option value="">All scans</option>
+                  {scanOptions.map((s) => (
+                    <option key={s.jobId} value={s.reference ?? s.jobId}>{scanLabel(s)}</option>
+                  ))}
+                </select>
+              </label>
             </div>
 
             <div className="findings-filter-grid">
@@ -3723,8 +3848,100 @@ export function FindingsWorkspace({ surface = "manager" }: { surface?: FindingsW
                   }}
                 >{signal.icon} {signal.label}</button>
               ))}
+              <button
+                type="button"
+                className="findings-signal-filter findings-compare-toggle"
+                aria-pressed={compareOpen}
+                aria-expanded={compareOpen}
+                onClick={() => setCompareOpen((p) => !p)}
+                style={{
+                  border: `var(--hairline) solid ${compareOpen ? "var(--border-accent)" : "var(--border-subtle)"}`,
+                  background: compareOpen ? "var(--accent-ghost)" : "transparent",
+                  color: compareOpen ? "var(--accent)" : "var(--text-secondary)",
+                }}
+              ><GitCompare size={13} aria-hidden /> Compare scans</button>
             </div>
           </section>
+
+          {compareOpen && (
+            <section className="findings-compare" aria-label="Compare two scans">
+              <div className="findings-compare-pick">
+                <label className="findings-filter-group">
+                  <span className="findings-filter-label">Baseline (A)</span>
+                  <select
+                    className="findings-filter-control"
+                    value={compareA}
+                    onChange={(e) => setCompareA(e.target.value)}
+                    disabled={scanOptionsQuery.isLoading}
+                  >
+                    <option value="">Select a scan…</option>
+                    {scanOptions.map((s) => (
+                      <option key={s.jobId} value={s.reference ?? s.jobId}>{scanLabel(s)}</option>
+                    ))}
+                  </select>
+                </label>
+                <label className="findings-filter-group">
+                  <span className="findings-filter-label">Target (B)</span>
+                  <select
+                    className="findings-filter-control"
+                    value={compareB}
+                    onChange={(e) => setCompareB(e.target.value)}
+                    disabled={scanOptionsQuery.isLoading}
+                  >
+                    <option value="">Select a scan…</option>
+                    {scanOptions.map((s) => (
+                      <option key={s.jobId} value={s.reference ?? s.jobId}>{scanLabel(s)}</option>
+                    ))}
+                  </select>
+                </label>
+              </div>
+
+              {!compareReady ? (
+                <p className="findings-compare-hint">
+                  {compareA && compareB && compareA === compareB
+                    ? "Pick two different scans to compare."
+                    : "Pick a baseline and a target scan to see what changed — new, fixed, and still present."}
+                </p>
+              ) : compareQuery.isLoading ? (
+                <SkeletonRows rows={3} height={72} />
+              ) : compareQuery.error ? (
+                <p className="findings-compare-hint" role="alert">{errorMessage(compareQuery.error)}</p>
+              ) : compareQuery.data ? (
+                <>
+                  <div className="findings-compare-counts">
+                    <span className="findings-compare-count" data-kind="new"><b>{compareQuery.data.counts.new}</b> new</span>
+                    <span className="findings-compare-count" data-kind="fixed"><b>{compareQuery.data.counts.fixed}</b> fixed</span>
+                    <span className="findings-compare-count" data-kind="still"><b>{compareQuery.data.counts.stillPresent}</b> still present</span>
+                  </div>
+                  <div className="findings-compare-cols">
+                    {([
+                      { key: "new", title: "New in B", items: compareQuery.data.new },
+                      { key: "fixed", title: "Fixed since A", items: compareQuery.data.fixed },
+                      { key: "still", title: "Still present", items: compareQuery.data.stillPresent },
+                    ] as const).map((col) => (
+                      <div className="findings-compare-col" key={col.key} data-kind={col.key}>
+                        <h4>{col.title} <span>{col.items.length}</span></h4>
+                        {col.items.length === 0
+                          ? <p className="findings-compare-empty">None</p>
+                          : col.items.slice(0, 50).map((f) => (
+                              <FindingRow
+                                key={f.id}
+                                f={f}
+                                sla={slaFor(f)}
+                                selected={selectedId === f.id}
+                                onSelect={toggleFinding}
+                              />
+                            ))}
+                        {col.items.length > 50 && (
+                          <p className="findings-compare-empty">+{col.items.length - 50} more</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </>
+              ) : null}
+            </section>
+          )}
 
           <div className="findings-list" data-refreshing={isFetching && !isLoading ? "true" : undefined}>
             <DataState

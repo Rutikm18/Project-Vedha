@@ -106,12 +106,15 @@ async def _scan_refs(db: AsyncSession, findings: list[Finding]) -> dict[uuid.UUI
 
 
 async def _resolve_scan_run_ids(
-    db: AsyncSession, scan: str, tenant_id: uuid.UUID) -> set[uuid.UUID]:
+    db: AsyncSession, scan: str, tenant_id: uuid.UUID,
+    *, engagement_id: uuid.UUID | None = None) -> set[uuid.UUID]:
     """Map a scan selector — an SCN-YYMMDD-XXXXXX reference, a scan-job id, or a
-    detection-run id — to the detection-run ids it covers, tenant-scoped. One scan
-    (job) can have more than one run (e.g. chunked submissions), so the membership
-    filter must union them. Unknown selector → empty set (caller shows an empty
-    page rather than erroring, matching every other findings filter)."""
+    detection-run id — to the detection-run ids it covers, tenant-scoped (and, when
+    ``engagement_id`` is given, pinned to that engagement so a portal client can
+    never reach a sibling engagement's scans in the same tenant). One scan (job) can
+    have more than one run (e.g. chunked submissions), so the filter unions them.
+    Unknown selector → empty set (caller shows an empty page rather than erroring,
+    matching every other findings filter)."""
     scan = scan.strip()
     try:
         as_uuid: uuid.UUID | None = uuid.UUID(scan)
@@ -120,22 +123,26 @@ async def _resolve_scan_run_ids(
     if as_uuid is not None:
         # A UUID is either a run id or a job id; the two spaces don't collide, so
         # accept whichever matches without asking the caller which they meant.
-        rows = (await db.execute(
+        q = (
             select(DetectionRun.id)
             .join(Engagement, DetectionRun.engagement_id == Engagement.id)
             .where(Engagement.tenant_id == tenant_id,
                    or_(DetectionRun.id == as_uuid, DetectionRun.job_id == as_uuid))
-        )).scalars().all()
-        return set(rows)
+        )
+        if engagement_id is not None:
+            q = q.where(DetectionRun.engagement_id == engagement_id)
+        return set((await db.execute(q)).scalars().all())
     # Otherwise a human reference (SCN-…). References are stored upper-case; fold
     # so the filter is case-insensitive.
-    rows = (await db.execute(
+    q = (
         select(DetectionRun.id)
         .join(ScanJob, ScanJob.id == DetectionRun.job_id)
         .join(Engagement, ScanJob.engagement_id == Engagement.id)
         .where(Engagement.tenant_id == tenant_id, ScanJob.reference == scan.upper())
-    )).scalars().all()
-    return set(rows)
+    )
+    if engagement_id is not None:
+        q = q.where(ScanJob.engagement_id == engagement_id)
+    return set((await db.execute(q)).scalars().all())
 
 
 async def _scan_meta(db: AsyncSession, run_ids: set[uuid.UUID]) -> FindingScanRef | None:
@@ -392,7 +399,8 @@ async def list_findings(
     if agent_id:
         q = q.where(Engagement.assigned_agent_id == agent_id)
     if scan:
-        run_ids = await _resolve_scan_run_ids(db, scan, current_user.tenant_id)
+        run_ids = await _resolve_scan_run_ids(
+            db, scan, current_user.tenant_id, engagement_id=engagement_id)
         if not run_ids:
             return paginate([], 0, page, page_size)
         q = q.where(Finding.id.in_(
@@ -545,6 +553,10 @@ async def compare_scans(
     b: str = Query(
         ..., min_length=1, max_length=64,
         description="Target scan — same accepted forms as `a`."),
+    engagement_id: uuid.UUID | None = Query(
+        default=None,
+        description="Pin both scans and the finding load to one engagement "
+                    "(the portal always sets this)."),
 ):
     """Diff two scans through the per-run membership table. A finding is 'present' in
     a scan when that scan saw it new or reaffirmed; then
@@ -553,8 +565,10 @@ async def compare_scans(
       still_present = present in both.
     `counts` are the true totals; each finding list is capped at 500, most-severe
     first. An unknown scan (no detection runs) is a 404."""
-    a_runs = await _resolve_scan_run_ids(db, a, current_user.tenant_id)
-    b_runs = await _resolve_scan_run_ids(db, b, current_user.tenant_id)
+    a_runs = await _resolve_scan_run_ids(
+        db, a, current_user.tenant_id, engagement_id=engagement_id)
+    b_runs = await _resolve_scan_run_ids(
+        db, b, current_user.tenant_id, engagement_id=engagement_id)
     if not a_runs:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
                             detail=f"Scan not found: {a}")
@@ -573,12 +587,15 @@ async def compare_scans(
     all_ids = new_ids | fixed_ids | still_ids
     serialized: dict[uuid.UUID, FindingOut] = {}
     if all_ids:
-        rows = (await db.execute(
+        load = (
             select(Finding)
             .join(Engagement, Finding.engagement_id == Engagement.id)
             .where(Engagement.tenant_id == current_user.tenant_id,
                    Finding.id.in_(all_ids))
-        )).scalars().all()
+        )
+        if engagement_id is not None:
+            load = load.where(Finding.engagement_id == engagement_id)
+        rows = (await db.execute(load)).scalars().all()
         serialized = {fo.id: fo for fo in await _with_asset_identity(db, rows)}
 
     def bucket(ids: set[uuid.UUID]) -> list[FindingOut]:

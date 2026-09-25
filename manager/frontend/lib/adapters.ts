@@ -274,6 +274,80 @@ export function toUiFinding(api: any): any {
       owner: api.asset_context.owner ?? null,
       environment: api.asset_context.environment ?? null,
     } : null,
+    // The scan that most recently produced/confirmed this finding (per-scan-findings).
+    // Lets the UI label each finding with its SCN reference / intensity / use-case.
+    scan: api.scan ? {
+      reference: api.scan.reference ?? null,
+      useCaseId: api.scan.use_case_id ?? null,
+      intensity: api.scan.intensity ?? null,
+      scannedAt: api.scan.scanned_at ?? null,
+      jobId: api.scan.job_id ?? null,
+      runId: api.scan.run_id ?? null,
+    } : null,
+  };
+}
+
+/** One scan option for the findings "filter by scan" control + compare picker
+ *  (backend /findings/scans). */
+export interface ApiScanOption {
+  job_id: string;
+  reference: string | null;
+  use_case_id: string | null;
+  intensity: string | null;
+  scanned_at: string | null;
+  status: string | null;
+  findings: number;
+}
+
+export interface ScanOption {
+  jobId: string;
+  reference: string | null;
+  useCaseId: string | null;
+  intensity: string | null;
+  scannedAt: string | null;
+  status: string | null;
+  findings: number;
+}
+
+export function mapScanOption(s: ApiScanOption): ScanOption {
+  return {
+    jobId: s.job_id,
+    reference: s.reference ?? null,
+    useCaseId: s.use_case_id ?? null,
+    intensity: s.intensity ?? null,
+    scannedAt: s.scanned_at ?? null,
+    status: s.status ?? null,
+    findings: s.findings ?? 0,
+  };
+}
+
+/** Backend FindingScanRef (snake_case) → the UI scan block. */
+export function mapScanRef(ref: any) {
+  if (!ref) return null;
+  return {
+    reference: ref.reference ?? null,
+    useCaseId: ref.use_case_id ?? null,
+    intensity: ref.intensity ?? null,
+    scannedAt: ref.scanned_at ?? null,
+    jobId: ref.job_id ?? null,
+    runId: ref.run_id ?? null,
+  };
+}
+
+/** Backend /findings/compare result → the UI compare shape. Shared by the BFF
+ *  proxy (manager surface) and the portal transport so both map identically. */
+export function mapCompareResult(data: any) {
+  return {
+    a: mapScanRef(data?.a),
+    b: mapScanRef(data?.b),
+    counts: {
+      new: data?.counts?.new ?? 0,
+      fixed: data?.counts?.fixed ?? 0,
+      stillPresent: data?.counts?.still_present ?? 0,
+    },
+    new: (data?.new ?? []).map(toUiFinding),
+    fixed: (data?.fixed ?? []).map(toUiFinding),
+    stillPresent: (data?.still_present ?? []).map(toUiFinding),
   };
 }
 
