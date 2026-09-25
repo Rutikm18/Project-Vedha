@@ -7,7 +7,7 @@ from typing import Annotated
 import structlog
 from fastapi import APIRouter, BackgroundTasks, File, HTTPException, Query, UploadFile, status
 from pydantic import BaseModel, Field, field_validator, model_validator
-from sqlalchemy import func, select, text
+from sqlalchemy import func, or_, select, text
 
 from app.auth.rbac import require_role
 from app.dependencies import DB, ReadDB, AuthUser
@@ -1368,10 +1368,18 @@ async def list_engagement_assets(
 ):
     from app.intel.tagging import tag_strings
     await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
-    assets = (await db.execute(
-        select(Asset).where(Asset.engagement_id == engagement_id).order_by(Asset.ip_address)
-    )).scalars().all()
+    stmt = select(Asset).where(Asset.engagement_id == engagement_id)
+    for wanted_tag in tag or []:
+        key, sep, value = wanted_tag.partition(":")
+        if not sep:
+            raise HTTPException(422, f"tag filter must be key:value, got {wanted_tag!r}")
+        # JSONB containment — served by ix_assets_tags_gin (migration 0045).
+        needle = [{"key": key, "value": value}]
+        stmt = stmt.where(or_(Asset.tags.contains({"auto": needle}),
+                              Asset.tags.contains({"manual": needle})))
+    assets = (await db.execute(stmt.order_by(Asset.ip_address))).scalars().all()
     if tag:
+        # Exact re-check on the loaded rows (also keeps the contract DB-agnostic).
         wanted = set(tag)
         assets = [a for a in assets if wanted <= set(tag_strings(getattr(a, "tags", None)))]
     asset_ids = [a.id for a in assets]
