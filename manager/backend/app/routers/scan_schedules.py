@@ -99,7 +99,7 @@ async def create_schedule(
 ):
     if body.use_case_id not in _USE_CASES:
         raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
             f"Unknown use_case_id '{body.use_case_id}'. A schedule fires "
             f"unattended, so an unknown use-case is rejected here rather than "
             f"failing silently at every run. See GET /agents/use-cases.",

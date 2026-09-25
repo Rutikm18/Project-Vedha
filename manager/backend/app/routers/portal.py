@@ -441,18 +441,18 @@ async def create_scan_request(body: ScanRequestCreate, user: ClientUser, db: DB)
     if body.use_case_id:
         uc = _portal_use_cases().get(body.use_case_id)
         if uc is None:
-            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
                                 f"Unknown use_case_id '{body.use_case_id}'")
         # Backend gate: a "coming soon" capability is disabled in the UI, but the
         # API must refuse it too so it can't be dispatched by a crafted request.
         if uc.get("status") == "coming_soon":
-            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
                                 f"Use case '{body.use_case_id}' is coming soon and not yet available")
         scan_type = uc["scan_type"]
         use_case_id = body.use_case_id
     else:
         if body.scan_type not in _VALID_SCAN_TYPES:
-            raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
+            raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
                                 f"Unknown scan_type '{body.scan_type}'")
         scan_type = body.scan_type
         use_case_id = None
@@ -472,7 +472,7 @@ async def create_scan_request(body: ScanRequestCreate, user: ClientUser, db: DB)
             body.targets, eng.scope_cidrs, eng.excluded_cidrs)
         if normalized_targets is None:
             raise HTTPException(
-                status.HTTP_422_UNPROCESSABLE_CONTENT,
+                status.HTTP_422_UNPROCESSABLE_ENTITY,
                 "One or more targets are outside the engagement scope "
                 "(or overlap an excluded range). Only in-scope IP/CIDR/range "
                 "values are allowed.")
@@ -834,7 +834,7 @@ async def portal_workspace_scan_launch(
     params = dict(body.params)
     requested_agent = params.get("preferred_agent_id")
     if requested_agent and str(requested_agent) != str(eng.assigned_agent_id):
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
                             "The selected vedha-agent is not assigned to this engagement")
     # A crafted client cannot route work to another tenant probe. The session's
     # engagement binding is authoritative for both fields.
@@ -996,7 +996,7 @@ async def portal_workspace_fleet_approve(
     capabilities = list(dict.fromkeys(request_row.reported_capabilities or []))
     if not capabilities:
         raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
             "The vedha-agent did not report any supported capabilities",
         )
 

@@ -65,7 +65,7 @@ async def list_integrations(db: DB, current_user: Annotated[AuthUser, _OPERATOR]
 async def put_integration(kind: str, body: IntegrationIn, db: DB,
                           current_user: Annotated[AuthUser, _OPERATOR]):
     if kind not in _KINDS:
-        raise HTTPException(status.HTTP_422_UNPROCESSABLE_CONTENT,
+        raise HTTPException(status.HTTP_422_UNPROCESSABLE_ENTITY,
                             f"Unknown integration kind '{kind}'")
     row = await _row(db, current_user.tenant_id, kind)
     if row is None:

@@ -66,7 +66,7 @@ def asset_ip_clause(value: str):
     except ValueError:
         pass
     if not _IP_PREFIX.match(value):
-        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
                             detail="asset_ip must be an IP address or an IP prefix")
     return Asset.ip_address.startswith(value)
 

@@ -1410,7 +1410,7 @@ async def enqueue_agent_job(
         )
     if _job_params_contain_secret(body.params):
         raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
             "Credential or secret material is not accepted in scan job params. "
             "Vedha does not persist target credentials; use unauthenticated "
             "collection until an ephemeral credential broker is configured.",
@@ -1443,7 +1443,7 @@ async def enqueue_agent_job(
     )
     if requested_scope is None:
         raise HTTPException(
-            status.HTTP_422_UNPROCESSABLE_CONTENT,
+            status.HTTP_422_UNPROCESSABLE_ENTITY,
             "targets must be non-empty IP/CIDR/range values fully contained "
             "inside the engagement scope",
         )
