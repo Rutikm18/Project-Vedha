@@ -36,7 +36,9 @@ def test_standard_intensity_is_a_noop_baseline():
 
 def test_light_and_deep_change_port_breadth():
     assert len(intensity_port_override("light")) == 15          # quick set
-    assert len(intensity_port_override("deep")) == 65535         # whole TCP space
+    # Aggressive is the bounded enterprise set (~2,500), not the whole 65,535
+    # space — that is the deep_port_sweep use-case now.
+    assert 2000 <= len(intensity_port_override("deep")) <= 2700
 
 
 def test_none_intensity_defaults_to_standard():
@@ -190,10 +192,14 @@ def test_new_use_cases_are_rejected_if_not_in_library():
 # ── Track C1: wide sweeps route through the SYN scanner ───────────────────────
 def test_scan_method_selection_rule():
     from workflow.intensity import intensity_port_override
-    # Narrow catalogs stay on connect; a full/deep sweep switches to SYN.
+    from scanner.port_scanner import resolve_profile
+    # Bounded catalogs stay on connect; only a full 65,535 sweep switches to SYN.
     assert engine._scan_method_for(None) == "connect"                       # profile catalog
     assert engine._scan_method_for(intensity_port_override("light")) == "connect"   # 15 ports
-    assert engine._scan_method_for(intensity_port_override("deep")) == "syn"         # 65535 ports
+    # Aggressive is ~2,500 enterprise ports — under the SYN threshold, so connect.
+    assert engine._scan_method_for(intensity_port_override("deep")) == "connect"
+    # The full-range sweep (deep_port_sweep / full profile) switches to SYN.
+    assert engine._scan_method_for(resolve_profile("full")) == "syn"
     assert engine._scan_method_for(list(range(1, 66))) == "connect"         # 65 ports, under threshold
 
 

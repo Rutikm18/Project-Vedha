@@ -17,8 +17,15 @@ from workflow.intensity import INTENSITY_PRESETS
 
 
 class TestBudgets:
-    def test_deep_has_a_finite_host_budget(self):
-        assert INTENSITY_PRESETS["deep"]["max_host_seconds"] == 1800
+    def test_deep_has_no_host_budget_now_that_breadth_is_bounded(self):
+        # Deep is the ~2,500-port enterprise set, not the whole 65,535 space, so
+        # it is bounded by breadth like standard and needs no per-host clock. The
+        # per-host budget belongs to the deep_port_sweep use-case instead.
+        assert INTENSITY_PRESETS["deep"]["max_host_seconds"] is None
+
+    def test_deep_uses_the_enterprise_profile_not_full(self):
+        assert INTENSITY_PRESETS["deep"]["port_profile"] == "enterprise"
+        assert INTENSITY_PRESETS["deep"]["first_pass_profile"] is None
 
     def test_light_is_unbounded(self):
         """Already bounded by breadth — ~15 ports."""
@@ -33,11 +40,12 @@ class TestBudgets:
         for name, preset in INTENSITY_PRESETS.items():
             assert "max_host_seconds" in preset, name
 
-    def test_deep_budget_exceeds_a_healthy_full_sweep(self):
-        """A full 65,535-port sweep runs ~21 min at healthy throughput (~51
-        ports/sec measured). The ceiling must not cut off a scan that is
-        working — it exists to stop the pathological case, not the normal one."""
-        assert INTENSITY_PRESETS["deep"]["max_host_seconds"] > 21 * 60
+    def test_deep_enterprise_breadth_fits_a_slash24_in_the_ceiling(self):
+        """The point of the redesign: aggressive breadth must admit a /24 at the
+        deep rate (150 pps) inside the 2 h ceiling, unlike the 65,535 sweep."""
+        from workflow.intensity import intensity_port_override
+        ports = len(intensity_port_override("deep"))
+        assert 254 * ports / 150.0 < 7200
 
 
 # ── the budget must survive the params -> run_engagement translation ─────────
@@ -51,7 +59,7 @@ class TestTuningTranslation:
 
     def test_deep_preset_reaches_the_tuning_dict(self):
         t = _tuning_from_params({}, resolve_intensity("deep"))
-        assert t["max_host_seconds"] == 1800
+        assert t["max_host_seconds"] is None
 
     def test_standard_stays_unbounded(self):
         t = _tuning_from_params({}, resolve_intensity("standard"))

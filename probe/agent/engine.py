@@ -45,6 +45,7 @@ from workflow.intensity import (
     DEFAULT_INTENSITY,
     intensity_first_pass,
     intensity_port_override,
+    intensity_udp_ports,
     resolve_intensity,
 )
 from scanner.port_scanner import resolve_profile
@@ -153,6 +154,13 @@ _SCAN_MAP = {
     "device_inventory":     ("it",  service_fingerprint_mode,  None),
     "full_port_audit":      ("it",  port_scan_mode,            None),
     "exposure_matrix":      ("it",  port_scan_mode,            None),
+    # Deep full-port sweep of a FEW critical hosts: the entire 65,535-port space
+    # AND the full assessment funnel (banner/OS/deep branches) — the thorough
+    # "tell me everything about these boxes" scan. Host count is capped (see
+    # _MAX_HOSTS_BY_SCAN_TYPE) so full-port coverage never fans out across a
+    # subnet; that is what `network_va` aggressive (bounded enterprise breadth)
+    # is for.
+    "deep_port_sweep":      ("it",  assessment,                None),
 }
 
 # scan_types that also run IPv6 neighbour discovery. A /24 names IPv4 addresses
@@ -166,15 +174,27 @@ _DISCOVER_IPV6_SCAN_TYPES = {"network_va", "assessment", "vuln_scan", "discovery
 # scan_type → a pinned port-coverage profile that overrides the intensity's own
 # choice (see workflow/intensity.py). A full-port audit is the whole TCP space no
 # matter how light/deep the operator set the intensity.
-_FORCE_PORT_PROFILE = {"full_port_audit": "full"}
+_FORCE_PORT_PROFILE = {"full_port_audit": "full", "deep_port_sweep": "full"}
+
+# scan_types that PHASE a forced full sweep: assess the high-signal first pass,
+# then take the rest of the 65,535 space as a budgeted tail. Reserved for the
+# host-capped deep_port_sweep, so the phased machinery never re-admits a
+# full-port sweep across a whole subnet.
+_PHASED_FULL_SCAN_TYPES = {"deep_port_sweep"}
+
+# scan_type → the most hosts one job may target. Full-port coverage is only safe
+# on a handful of hosts inside the time ceiling, so deep_port_sweep is capped;
+# a wider scope is refused with guidance (with the allow_infeasible escape hatch).
+DEEP_PORT_SWEEP_MAX_HOSTS = int(_env_number("PROBE_DEEP_PORT_SWEEP_MAX_HOSTS", 3, 1, 4096))
+_MAX_HOSTS_BY_SCAN_TYPE = {"deep_port_sweep": DEEP_PORT_SWEEP_MAX_HOSTS}
 
 # Broad assessments run a wider baseline at STANDARD intensity so a manager
 # "Full Assessment" matches the CLI's `run_all` default (top1000 ≈ 1121 ports)
 # instead of the narrow 95-port `it` catalog. Only the standard baseline widens:
-# `light` stays light (~65 ports) and `deep` stays the full 65,535 range — both
-# resolve a non-None port_override and so bypass this. Without it, a manager
-# assessment quietly scanned ~9× fewer ports than the same standalone scan,
-# which read as "manager results are inaccurate".
+# `light` stays light (~65 ports) and `deep` resolves the ~2,500-port enterprise
+# set — both resolve a non-None port_override and so bypass this. Without it, a
+# manager assessment quietly scanned ~9× fewer ports than the same standalone
+# scan, which read as "manager results are inaccurate".
 _STANDARD_ASSESSMENT_SCAN_TYPES = {"assessment", "network_va", "vuln_scan"}
 _STANDARD_ASSESSMENT_PORT_PROFILE = "top1000"
 
@@ -196,7 +216,7 @@ def _scan_method_for(port_override: list[int] | None) -> str:
 # params["intensity"] nor the originating use-case supplied one (e.g. a direct
 # scan_type dispatch). A full-port audit runs the deep envelope (retries +
 # completeness) even when reached without a use-case.
-_DEFAULT_INTENSITY_BY_SCAN_TYPE = {"full_port_audit": "deep"}
+_DEFAULT_INTENSITY_BY_SCAN_TYPE = {"full_port_audit": "deep", "deep_port_sweep": "deep"}
 
 CAPABILITIES = sorted(_SCAN_MAP)
 
@@ -312,6 +332,35 @@ def _refuse_if_infeasible(estimate, params: dict) -> dict | None:
             f"network and the probe's kernel limits allow it), or raise "
             f"PROBE_MAX_JOB_SECONDS after capacity review. Set "
             f"allow_infeasible=true to run it anyway and accept a partial."
+        ),
+    }
+
+
+def _refuse_if_host_cap_exceeded(scan_type: str, host_count: int,
+                                 params: dict) -> dict | None:
+    """Reason to refuse a use-case that caps its host count, or None.
+
+    A full-port sweep (all 65,535 ports) is only feasible inside the time
+    ceiling on a handful of hosts, so deep_port_sweep caps the count and refuses
+    a wider scope rather than silently truncating it. Same escape hatch as the
+    feasibility gate: `allow_infeasible=true` runs it anyway.
+    """
+    cap = _MAX_HOSTS_BY_SCAN_TYPE.get(scan_type)
+    if cap is None or host_count <= cap:
+        return None
+    if _truthy(params.get("allow_infeasible")):
+        return None
+    return {
+        "error": (
+            f"{scan_type} scans the full 65,535-port range and is limited to "
+            f"{cap} host(s); this job resolved {host_count}. Full-port coverage "
+            f"across a wider scope cannot finish in the time ceiling."
+        ),
+        "remediation": (
+            f"Target at most {cap} host(s) for a full-port sweep, or use the "
+            f"aggressive intensity on network_va for a bounded enterprise sweep "
+            f"across the whole scope. Set allow_infeasible=true to run it anyway "
+            f"and accept a partial."
         ),
     }
 
@@ -828,6 +877,10 @@ def run_scan(scan_type: str, params: dict,
         first_pass_ports = intensity_first_pass(
             intensity, force_profile=_FORCE_PORT_PROFILE.get(scan_type),
         )
+        # A host-capped full-port sweep still phases: assess the high-signal set
+        # first, then take the rest of the range as a budgeted tail.
+        if first_pass_ports is None and scan_type in _PHASED_FULL_SCAN_TYPES:
+            first_pass_ports = resolve_profile("top1000")
         # Widen ONLY the standard baseline for broad assessments to the CLI's
         # top1000 default. port_override is None exactly when intensity resolved
         # to `standard` (light→quick, deep→full both return a concrete list), so
@@ -1098,7 +1151,8 @@ def run_scan(scan_type: str, params: dict,
     # ADMISSION. The estimate is advisory everywhere else; here it decides.
     # A job whose floor already exceeds its ceiling will spend the whole
     # ceiling proving it, then return a partial that explains nothing.
-    _refusal = _refuse_if_infeasible(_estimate, params)
+    _refusal = (_refuse_if_host_cap_exceeded(scan_type, len(targets), params)
+                or _refuse_if_infeasible(_estimate, params))
     if _refusal is not None:
         LOG.warning("job refused: %s", _refusal["error"])
         return _error_result(
@@ -1156,6 +1210,7 @@ def run_scan(scan_type: str, params: dict,
                     stage_ceiling=mode.stage_ceiling,
                     port_override=port_override,
                     first_pass_ports=first_pass_ports,
+                    udp_port_set=intensity_udp_ports(intensity),
                     tail_deadline=tail_deadline,
                     scan_method=scan_method,
                     # Per-host commit + resume: a host finished by an attempt

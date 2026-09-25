@@ -422,6 +422,7 @@ async def run_engagement(targets: list[str], scope: ScopeGuard, *, profile: str 
                          tail_deadline: float | None = None,
                          port_override: list[int] | None = None,
                          first_pass_ports: list[int] | None = None,
+                         udp_port_set: list[int] | None = None,
                          on_host_complete=None,
                          skip_hosts: set[str] | None = None,
                          scan_method: str = "connect",
@@ -928,7 +929,9 @@ async def run_engagement(targets: list[str], scope: ScopeGuard, *, profile: str 
             if health.is_offline(host):
                 health.note_skipped(host, "udp_scan")
                 return
-            udp_ports = sorted(UDP_PORTS)
+            # Aggressive intensity widens the UDP set to every catalogued
+            # service; standard/stealth keep the common few (the engine default).
+            udp_ports = sorted(udp_port_set) if udp_port_set is not None else sorted(UDP_PORTS)
             to_scan, reused = _split_cached(cache, host, udp_ports, "udp_scan", force_recheck_after)
             for r in reused:
                 asset.merge_result(r)
