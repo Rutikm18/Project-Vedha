@@ -299,3 +299,22 @@ class FindingOut(BaseModel):
                 reach = ev.get("internet_facing")
             self.internet_reachable = bool(reach) if reach is not None else None
         return self
+
+
+class ScanCompareCounts(BaseModel):
+    new: int
+    fixed: int
+    still_present: int
+
+
+class ScanCompareOut(BaseModel):
+    """Diff between two scans (a = baseline, b = target). A finding is 'present' in a
+    scan when that scan saw it new or reaffirmed. new = present in b but not a; fixed
+    = present in a but not b; still_present = present in both. `counts` are the true
+    totals; the finding lists are capped, most-severe first."""
+    a: FindingScanRef | None = None
+    b: FindingScanRef | None = None
+    counts: ScanCompareCounts
+    new: list[FindingOut]
+    fixed: list[FindingOut]
+    still_present: list[FindingOut]

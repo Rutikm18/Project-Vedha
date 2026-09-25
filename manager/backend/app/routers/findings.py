@@ -15,13 +15,16 @@ from app.models.asset import Asset
 from app.models.engagement import Engagement
 from app.models.finding import Finding
 from app.models.detection_run import DetectionRun
-from app.models.detection_run_finding import DetectionRunFinding
+from app.models.detection_run_finding import (
+    DetectionRunFinding, RUN_FINDING_NEW, RUN_FINDING_REAFFIRMED,
+)
 from app.models.scan_job import ScanJob
 from app.models.enums import DetectionStatus, FindingSeverity, FindingStatus
 from app.schemas.common import PaginatedResponse, paginate
 from app.schemas.finding import (
     FindingAssetContext, FindingAssetOption, FindingEventOut, FindingOut, FindingPatch, FindingReopen,
-    FindingScanRef, FindingSummary, FindingTimeline, ScanOption, SlaSummary,
+    FindingScanRef, FindingSummary, FindingTimeline, ScanCompareCounts, ScanCompareOut,
+    ScanOption, SlaSummary,
 )
 from app.services import finding_events as events_service
 from app.services.finding_metrics import compute_mttr
@@ -133,6 +136,40 @@ async def _resolve_scan_run_ids(
         .where(Engagement.tenant_id == tenant_id, ScanJob.reference == scan.upper())
     )).scalars().all()
     return set(rows)
+
+
+async def _scan_meta(db: AsyncSession, run_ids: set[uuid.UUID]) -> FindingScanRef | None:
+    """The scan (job) identity behind a set of detection runs, for labelling a
+    compare side. One selector resolves to one job, so a single row suffices."""
+    if not run_ids:
+        return None
+    row = (await db.execute(
+        select(
+            ScanJob.id, ScanJob.reference, ScanJob.use_case_id, ScanJob.intensity,
+            ScanJob.completed_at, ScanJob.started_at, func.min(DetectionRun.started_at),
+        )
+        .join(DetectionRun, DetectionRun.job_id == ScanJob.id)
+        .where(DetectionRun.id.in_(run_ids))
+        .group_by(ScanJob.id)
+        .limit(1)
+    )).first()
+    if row is None:
+        return None
+    jid, reference, use_case_id, intensity, job_done, job_started, run_started = row
+    return FindingScanRef(
+        job_id=jid, reference=reference, use_case_id=use_case_id, intensity=intensity,
+        scanned_at=job_done or job_started or run_started)
+
+
+def _present_finding_ids(run_ids: set[uuid.UUID]):
+    """Subquery of finding ids a scan's runs saw as still-present (new or
+    reaffirmed). Resolved findings are deliberately excluded — a scan that closed
+    a finding did not 'have' it."""
+    return (
+        select(DetectionRunFinding.finding_id)
+        .where(DetectionRunFinding.run_id.in_(run_ids),
+               DetectionRunFinding.outcome.in_((RUN_FINDING_NEW, RUN_FINDING_REAFFIRMED)))
+    )
 
 
 async def _with_asset_identity(db: AsyncSession, findings: list[Finding]) -> list[FindingOut]:
@@ -492,6 +529,70 @@ async def finding_scans(
         )
         for jid, ref, uc, inten, at, st, n in rows
     ]
+
+
+_COMPARE_BUCKET_CAP = 500
+
+
+@router.get("/compare", response_model=ScanCompareOut,
+            summary="Diff two scans — what's new, fixed, and still present")
+async def compare_scans(
+    db: ReadDB,
+    current_user: AuthUser,
+    a: str = Query(
+        ..., min_length=1, max_length=64,
+        description="Baseline scan — SCN-YYMMDD-XXXXXX reference, job id, or run id."),
+    b: str = Query(
+        ..., min_length=1, max_length=64,
+        description="Target scan — same accepted forms as `a`."),
+):
+    """Diff two scans through the per-run membership table. A finding is 'present' in
+    a scan when that scan saw it new or reaffirmed; then
+      new           = present in b but not a,
+      fixed         = present in a but not b,
+      still_present = present in both.
+    `counts` are the true totals; each finding list is capped at 500, most-severe
+    first. An unknown scan (no detection runs) is a 404."""
+    a_runs = await _resolve_scan_run_ids(db, a, current_user.tenant_id)
+    b_runs = await _resolve_scan_run_ids(db, b, current_user.tenant_id)
+    if not a_runs:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f"Scan not found: {a}")
+    if not b_runs:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND,
+                            detail=f"Scan not found: {b}")
+
+    present_a = set((await db.execute(_present_finding_ids(a_runs))).scalars().all())
+    present_b = set((await db.execute(_present_finding_ids(b_runs))).scalars().all())
+    new_ids = present_b - present_a
+    fixed_ids = present_a - present_b
+    still_ids = present_a & present_b
+
+    # Load the union ONCE, tenant-scoped, and serialise with asset + scan identity;
+    # then bucket. (The tenant join also drops any id that isn't the caller's.)
+    all_ids = new_ids | fixed_ids | still_ids
+    serialized: dict[uuid.UUID, FindingOut] = {}
+    if all_ids:
+        rows = (await db.execute(
+            select(Finding)
+            .join(Engagement, Finding.engagement_id == Engagement.id)
+            .where(Engagement.tenant_id == current_user.tenant_id,
+                   Finding.id.in_(all_ids))
+        )).scalars().all()
+        serialized = {fo.id: fo for fo in await _with_asset_identity(db, rows)}
+
+    def bucket(ids: set[uuid.UUID]) -> list[FindingOut]:
+        items = [serialized[i] for i in ids if i in serialized]
+        items.sort(key=lambda f: (f.risk_rank or 0), reverse=True)
+        return items[:_COMPARE_BUCKET_CAP]
+
+    return ScanCompareOut(
+        a=await _scan_meta(db, a_runs),
+        b=await _scan_meta(db, b_runs),
+        counts=ScanCompareCounts(
+            new=len(new_ids), fixed=len(fixed_ids), still_present=len(still_ids)),
+        new=bucket(new_ids), fixed=bucket(fixed_ids), still_present=bucket(still_ids),
+    )
 
 
 @router.get("/summary", response_model=FindingSummary, summary="Tenant finding aggregates")
