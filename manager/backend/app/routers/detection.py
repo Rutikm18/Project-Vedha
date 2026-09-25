@@ -64,7 +64,7 @@ async def configure_siem(
     db: DB,
     current_user: Annotated[AuthUser, require_role(["admin", "manager"])],
 ):
-    await get_or_404(db, Engagement, db, engagement_id, current_user.tenant_id)
+    await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
 
     cfg = (await db.execute(
         select(DetectionConfig).where(DetectionConfig.engagement_id == engagement_id)
@@ -100,7 +100,7 @@ async def run_validation(
     background_tasks: BackgroundTasks,
     current_user: Annotated[AuthUser, require_role(["admin", "manager", "analyst"])],
 ):
-    await get_or_404(db, Engagement, db, engagement_id, current_user.tenant_id)
+    await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
 
     job = ScanJob(
         engagement_id=engagement_id,
@@ -133,7 +133,7 @@ async def get_results(
     page: int = Query(default=1, ge=1),
     page_size: int = Query(default=50, ge=1, le=200),
 ):
-    await get_or_404(db, Engagement, db, engagement_id, current_user.tenant_id)
+    await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
     q = select(DetectionResult).where(DetectionResult.engagement_id == engagement_id)
     if status_filter:
         q = q.where(DetectionResult.detection_status == status_filter)
@@ -150,7 +150,7 @@ async def get_coverage(
     db: DB,
     current_user: AuthUser,
 ):
-    await get_or_404(db, Engagement, db, engagement_id, current_user.tenant_id)
+    await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
     rows = (await db.execute(
         select(DetectionResult).where(DetectionResult.engagement_id == engagement_id)
     )).scalars().all()
@@ -189,7 +189,7 @@ async def get_gaps(
     db: DB,
     current_user: AuthUser,
 ):
-    await get_or_404(db, Engagement, db, engagement_id, current_user.tenant_id)
+    await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
     rows = (await db.execute(
         select(DetectionResult).where(
             DetectionResult.engagement_id == engagement_id,

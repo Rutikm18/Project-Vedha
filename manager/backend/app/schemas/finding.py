@@ -56,6 +56,14 @@ class FindingReopen(BaseModel):
         return value.strip() or None
 
 
+class FindingAssetOption(BaseModel):
+    """One affected asset for the findings IP filter."""
+    asset_id: uuid.UUID
+    ip_address: str
+    hostname: str | None = None
+    findings: int
+
+
 class FindingAssetContext(BaseModel):
     id: uuid.UUID
     ip_address: str | None = None
@@ -158,6 +166,10 @@ class FindingOut(BaseModel):
     # Populated on the detail endpoint. List responses intentionally leave this
     # null to keep portfolio reads bounded and avoid an asset N+1 query.
     asset_context: FindingAssetContext | None = None
+    # Affected asset identity on EVERY response (list + detail): the list resolves
+    # the whole page in one query, so the UI never has to show an asset UUID.
+    asset_ip: str | None = None
+    asset_hostname: str | None = None
 
     # ── Enrichment content (services/finding_content, _compliance, evidence_summary) ──
     # LIGHT fields — computed on EVERY response by the validator below; cheap,

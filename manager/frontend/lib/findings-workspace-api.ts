@@ -1,4 +1,5 @@
-import { toApiFindingPatch, toUiFinding } from "./adapters";
+import { mapAsset, toApiFindingPatch, toUiFinding, type ApiFindingAsset } from "./adapters";
+export type { FindingAssetOption } from "./adapters";
 import { fetchJson } from "./fetcher";
 import { portalApi } from "./portal-client";
 
@@ -50,6 +51,7 @@ export function createFindingsWorkspaceApi(surface: FindingsWorkspaceSurface) {
     return {
       list: <T>(query: string) => fetchJson<T>(`/api/findings?${query}`),
       summary: <T>(query: string) => fetchJson<T>(`/api/findings/summary${query ? `?${query}` : ""}`),
+      assets: <T>(query: string) => fetchJson<T>(`/api/findings/assets${query ? `?${query}` : ""}`),
       engagements: <T>() => fetchJson<T>("/api/engagements"),
       agents: <T>() => fetchJson<T>("/api/agents/register"),
       engagement: <T>(id: string) => fetchJson<T>(`/api/engagements/${id}`),
@@ -78,6 +80,9 @@ export function createFindingsWorkspaceApi(surface: FindingsWorkspaceSurface) {
     },
     summary: async <T>(query: string) => mapSummary(
       await portalApi<ApiFindingSummary>(`/workspace/findings/summary${query ? `?${query}` : ""}`),
+    ) as T,
+    assets: async <T>() => (
+      (await portalApi<ApiFindingAsset[]>("/workspace/findings/assets")).map(mapAsset)
     ) as T,
     engagements: async <T>() => {
       const engagement = await portalApi<{ id: string; name: string }>("/engagement");

@@ -417,3 +417,29 @@
 ### `Fernet` symmetric encryption
 **What:** `cryptography.fernet.Fernet` provides authenticated symmetric encryption. `Fernet(key).encrypt(plaintext)` returns a URL-safe base64 token; `decrypt` reverses it. The key must be kept secret.
 **Why:** Vedha uses Fernet to store the client portal's temporary password encrypted at rest (`portal_password_enc`) so operators can re-reveal it without storing it in plaintext.
+
+## 2026-09-24
+
+### `git fetch . <src>:<dst>` fast-forward
+**What:** Running `git fetch` against the local repo (`.`) with a `src:dst` refspec updates the `dst` branch to `src` as a fast-forward only — it refuses a non-ff update instead of force-moving, and never touches the working tree or current branch.
+**Why:** Used to fast-forward `main` onto the already-merged `updatedvedha2409` without checking `main` out — the repo is a shared checkout with live uncommitted WIP on another branch, so switching branches or `git branch -f` was unsafe.
+
+### Isolated `git worktree` for editing a non-current branch
+**What:** `git worktree add <path> <branch>` checks out a branch into a separate directory that shares the same `.git`; edits/commits there move the shared branch ref without disturbing the primary checkout. Remove with `git worktree remove`.
+**Why:** Several Vedha sessions share one working tree (on `security/p0-fixes`) with uncommitted WIP; changes destined for `main` (doc + AI fixes) were made in a throwaway `main` worktree so the shared tree stayed untouched.
+
+### Anthropic `output_config` (`effort` + structured-output `format`)
+**What:** On the Anthropic Messages API, `output_config` carries `effort` (thinking-depth knob: low/medium/high/xhigh/max) and `format` (a JSON-schema that constrains the response). Support is model-gated — `effort` 400s on Sonnet 4.5 / Haiku 4.5, and `xhigh` is Opus 4.7+ only.
+**Why:** The manager AI seam builds a raw httpx body and set `output_config` unconditionally; an operator pinning a model that rejects the chosen `effort` value made every assistant request 400 — the root of the "anthropic returned HTTP 400" report.
+
+### Graceful degradation of provider request params (retry-on-400)
+**What:** When an optional request parameter can be rejected by some backends, capture the provider's real error body for logs, then retry once with the offending param dropped rather than hard-failing.
+**Why:** The Anthropic path now logs the provider's actual 400 message (operator logs only) and retries without `output_config` — so a misconfigured `effort`/`format` degrades to a plain answer instead of breaking the customer assistant, regardless of the exact model/effort mismatch.
+
+### Adaptive-depth assistant prompt design
+**What:** A system prompt that instructs the model to match answer length to the question — a 1-3 sentence direct answer for simple/factual asks, expanding to fixed structured sections (Why-it-matters / What-we-found / What-to-do / How-to-verify) only for finding-level questions.
+**Why:** The customer portal assistant previously told the model to "keep it short," yielding thin answers; the rewrite makes it produce grounded, valuable, well-structured briefs without over-explaining simple questions.
+
+### Dependency-free inline markdown rendering (React)
+**What:** Splitting a string on a capture-group regex that matches `**bold**` and backtick-code spans, then mapping the tokens to `<strong>` / `<code>` / plain React fragments, renders inline emphasis without a markdown library.
+**Why:** Vedha's `AssistantText` renderer previously stripped `**bold**` to plain text; rendering it inline lets the assistant's emphasised host/severity/action stand out, and avoids adding a `react-markdown` dependency to the frontend.

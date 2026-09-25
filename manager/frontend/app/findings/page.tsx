@@ -50,6 +50,7 @@ import { useToast } from "../../hooks/useToast";
 import { errorMessage, isUnauthorized } from "../../lib/fetcher";
 import {
   createFindingsWorkspaceApi,
+  type FindingAssetOption,
   portalFindingAssistantHref,
   type FindingsWorkspaceSurface,
 } from "../../lib/findings-workspace-api";
@@ -69,6 +70,8 @@ type Priority = "P0" | "P1" | "P2" | "P3" | "P4" | "P5";
 const FINDINGS_PER_PAGE = 20;
 const AGENT_REFRESH_FEEDBACK_MS = 2_000;
 type FindingsWorkspaceApi = ReturnType<typeof createFindingsWorkspaceApi>;
+// Exact IP or an IP prefix ("192.168.1."); mirrors the backend's asset_ip rule.
+const IP_FILTER = /^[0-9A-Fa-f:.]{1,45}$/;
 
 /* Lifecycle audit-trail event (backend /api/findings/{id}/events, snake_case). */
 type TimelineEvent = {
@@ -155,6 +158,7 @@ interface KillChainStep {
 interface Finding {
   id: string; title: string; severity: Severity; cvss: string; cvssVector: string;
   category: string; status: FindingStatus; affectedHost: string; discoveredAt: string;
+  assetIp?: string | null; assetHostname?: string | null;
   description: string; technicalDetails: string; attackPath: string;
   evidence: EvidenceArtifact[];
   evidenceSummary?: EvidenceFact[];
@@ -1657,7 +1661,7 @@ const REASON_TEMPLATES: Partial<Record<FindingStatus, string[]>> = {
 
 function FindingDetail({
   f, allFindings, sla, now, onStatusChange, statusUpdating, onReopen, reopening, onClose,
-  onExplain, api, surface,
+  onExplain, api, surface, onFilterIp,
 }: {
   f: Finding;
   allFindings: Finding[];
@@ -1671,6 +1675,7 @@ function FindingDetail({
   onExplain: (id: string) => void;
   api: FindingsWorkspaceApi;
   surface: FindingsWorkspaceSurface;
+  onFilterIp: (ip: string) => void;
 }) {
   const [tab, setTab] = useState<DetailTab>("overview");
   const [pendingAction, setPendingAction] = useState<FindingStatus | null>(null);
@@ -1774,7 +1779,13 @@ function FindingDetail({
         <div className="finding-detail-meta">
           <code>{f.id}</code>
           <span>{f.category}</span>
-          <span>{f.affectedHost}</span>
+          {f.assetIp ? (
+            <button type="button" className="findings-inline-action finding-detail-ip"
+              onClick={() => onFilterIp(f.assetIp!)}
+              title={`Show every finding on ${f.assetIp}`}>
+              <code>{f.assetIp}</code>{f.assetHostname ? ` · ${f.assetHostname}` : ""} — all findings on this IP
+            </button>
+          ) : <span>{f.affectedHost}</span>}
           {f.assignee && <b>@{f.assignee}</b>}
         </div>
 
@@ -2191,7 +2202,7 @@ const FindingRow = React.memo(function FindingRow({
       tabIndex={0}
       aria-current={selected || undefined}
       aria-expanded={selected}
-      aria-label={`${f.title}. ${f.severity}. ${f.aiTriage.priority} ${PRIORITY_LABEL[f.aiTriage.priority]}. Risk ${f.riskScore} of 1000.`}
+      aria-label={`${f.title}. ${f.affectedHost}. ${f.severity}. ${f.aiTriage.priority} ${PRIORITY_LABEL[f.aiTriage.priority]}. Risk ${f.riskScore} of 1000.`}
       onClick={() => onSelect(f.id)}
       onKeyDown={(event) => {
         if (event.key === "Enter" || event.key === " ") {
@@ -2216,7 +2227,9 @@ const FindingRow = React.memo(function FindingRow({
       <h3 className="finding-card-title">{f.title}</h3>
 
       <div className="finding-card-context">
-        <span className="finding-card-host" title={f.affectedHost}>{f.affectedHost}</span>
+        <span className="finding-card-host" title={f.assetHostname ? `${f.affectedHost} · ${f.assetHostname}` : f.affectedHost}>
+          <code>{f.affectedHost}</code>{f.assetHostname && f.assetHostname !== f.affectedHost ? ` · ${f.assetHostname}` : ""}
+        </span>
         <div className="finding-card-signals">
           <DetectionPill cov={f.detectionCoverage} />
           {f.exploitMaturityRecorded && (
@@ -3121,6 +3134,8 @@ export function FindingsWorkspace({ surface = "manager" }: { surface?: FindingsW
   const [filterNeedsReview, setFilterNeedsReview] = useState(false);
   const [filterVerification, setFilterVerification] = useState<string>("ALL");
   const [filterAgentId, setFilterAgentId] = useState<string>("");
+  const [filterIp, setFilterIp] = useState<string>("");
+  const deferredIp = useDeferredValue(filterIp.trim());
   const [agentsRefreshing, setAgentsRefreshing] = useState(false);
   const [agentRefreshFeedback, setAgentRefreshFeedback] = useState<string | null>(null);
   const [page, setPage] = useState(1);
@@ -3148,12 +3163,13 @@ export function FindingsWorkspace({ surface = "manager" }: { surface?: FindingsW
   if (filterVerification !== "ALL") queryString.set("verification_state", filterVerification);
   if (engagementId) queryString.set("engagement_id", engagementId);
   if (filterAgentId) queryString.set("agent_id", filterAgentId);
+  if (deferredIp) queryString.set("asset_ip", deferredIp);
 
   const { data, isLoading, isFetching, error, refetch } = useQuery({
     queryKey: [
       "findings-page", surface, page, deferredSearch, filterSev, filterStatus,
       filterBlind, filterExploited, filterSlaBreached, sortBy, engagementId,
-      filterNeedsReview, filterVerification, filterAgentId,
+      filterNeedsReview, filterVerification, filterAgentId, deferredIp,
     ],
     queryFn: () => api.list<FindingPage>(queryString.toString()),
     refetchInterval: 30_000,
@@ -3168,6 +3184,15 @@ export function FindingsWorkspace({ surface = "manager" }: { surface?: FindingsW
     queryKey: ["findings-summary", surface, engagementId, filterAgentId],
     queryFn: () => api.summary<FindingSummary>(summarySuffix),
     refetchInterval: 30_000,
+    retry: (count, err) => !isUnauthorized(err) && count < 2,
+  });
+
+  const assetOptionsQuery = useQuery({
+    queryKey: ["finding-assets", surface, engagementId],
+    queryFn: () => api.assets<FindingAssetOption[]>(
+      engagementId ? new URLSearchParams({ engagement_id: engagementId }).toString() : "",
+    ),
+    refetchInterval: 60_000,
     retry: (count, err) => !isUnauthorized(err) && count < 2,
   });
 
@@ -3369,7 +3394,7 @@ export function FindingsWorkspace({ surface = "manager" }: { surface?: FindingsW
   const hasActiveFilters = Boolean(
     search.trim() || filterSev !== "ALL" || filterStatus !== "ALL" || filterBlind || filterExploited
     || filterSlaBreached || filterNeedsReview || filterVerification !== "ALL"
-    || (surface === "manager" && Boolean(engagementId)) || filterAgentId,
+    || (surface === "manager" && Boolean(engagementId)) || filterAgentId || filterIp.trim(),
   );
   const summaryUnavailable = summaryQuery.isLoading || Boolean(summaryQuery.error);
   const summaryValue = (value: number) => summaryUnavailable ? "—" : value.toLocaleString();
@@ -3384,6 +3409,7 @@ export function FindingsWorkspace({ surface = "manager" }: { surface?: FindingsW
     setFilterNeedsReview(false);
     setFilterVerification("ALL");
     setFilterAgentId("");
+    setFilterIp("");
     if (surface === "manager") setEngagementId(null);
     setSortBy("risk");
     setPage(1);
@@ -3577,6 +3603,30 @@ export function FindingsWorkspace({ surface = "manager" }: { surface?: FindingsW
                   ))}
                 </select>
               </label>
+
+              <label className="findings-filter-group">
+                <span className="findings-filter-label">Asset IP</span>
+                <input
+                  className="findings-filter-control"
+                  type="text"
+                  inputMode="decimal"
+                  list="finding-asset-ips"
+                  placeholder="All assets — or 192.168.1."
+                  value={filterIp}
+                  maxLength={45}
+                  spellCheck={false}
+                  autoComplete="off"
+                  aria-invalid={Boolean(filterIp.trim()) && !IP_FILTER.test(filterIp.trim())}
+                  onChange={(event) => applyFilter(() => setFilterIp(event.target.value.replace(/[^0-9A-Fa-f:.]/g, "")))}
+                />
+                <datalist id="finding-asset-ips">
+                  {(assetOptionsQuery.data ?? []).map((a) => (
+                    <option key={a.assetId} value={a.ip}>
+                      {`${a.hostname ? `${a.hostname} · ` : ""}${a.findings} finding${a.findings === 1 ? "" : "s"}`}
+                    </option>
+                  ))}
+                </datalist>
+              </label>
             </div>
 
             <div className="findings-filter-grid">
@@ -3745,6 +3795,7 @@ export function FindingsWorkspace({ surface = "manager" }: { surface?: FindingsW
                 onExplain={explainFinding}
                 api={api}
                 surface={surface}
+                onFilterIp={(ip) => applyFilter(() => setFilterIp(ip))}
               />
             ) : detailFailed ? (
               <div className="finding-detail-panel" style={{ padding: 18 }}>

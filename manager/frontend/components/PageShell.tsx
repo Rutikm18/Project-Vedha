@@ -51,11 +51,11 @@ export function PageShell({
 
   const handleLogout = useCallback(async () => {
     if (surface === "portal") {
-      await fetch("/api/portal/logout", { method: "POST" }).catch(() => {});
+      await fetch("/api/portal/login", { method: "DELETE" }).catch(() => {});
       window.location.href = "/portal/login";
       return;
     }
-    await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
+    await fetch("/api/auth/login", { method: "DELETE" }).catch(() => {});
     clearAuth(true);
   }, [surface]);
 
