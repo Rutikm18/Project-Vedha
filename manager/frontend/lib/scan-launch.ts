@@ -27,6 +27,7 @@ const JOB_TYPE_MAP: Record<string, string> = {
   uc_snmp_exposure: "discovery",
   uc_full_port_audit: "discovery",
   uc_exposure_matrix: "discovery",
+  uc_deep_port_sweep: "discovery",
 };
 
 /** Convert the UI launcher contract into the manager's canonical enqueue

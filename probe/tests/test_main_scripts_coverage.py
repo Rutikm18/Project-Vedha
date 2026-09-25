@@ -61,6 +61,26 @@ class TestProfiles:
         for p in (2179, 7680, 5040, 47001, 49664, 445, 3389):
             assert p in t, f"top1000 missing high-value port {p}"
 
+    def test_enterprise_is_bounded_and_extends_top1000(self):
+        ent = resolve_profile("enterprise")
+        t1k = resolve_profile("top1000")
+        # Wider than the standard catalog, but bounded so a /24 fits the ceiling
+        # (2500 x 254 / 150pps ~ 70min < 2h) — NOT the full 65,535 space.
+        assert 2000 <= len(ent) <= 2700, len(ent)
+        assert len(ent) == len(set(ent))                 # unique
+        assert set(t1k).issubset(set(ent))               # superset of top1000
+        # Representative high-value enterprise services companies actually run.
+        for p in (8443, 5985, 6443, 27017, 3389, 9092, 5432, 9200, 2375, 1883,
+                  15672, 10250):
+            assert p in ent, f"enterprise missing high-value port {p}"
+
+    def test_enterprise_fits_a_slash24_in_the_two_hour_ceiling(self):
+        # Guards the whole point of the redesign: aggressive breadth must admit a
+        # /24 at the deep rate (150 pps) inside 7200s, unlike the 65,535 sweep.
+        ports = len(resolve_profile("enterprise"))
+        floor_seconds = 254 * ports / 150.0
+        assert floor_seconds < 7200, floor_seconds
+
     def test_custom_dedups_and_requires_ports(self):
         assert resolve_profile("custom", [80, 443, 80]) == [80, 443]
         with pytest.raises(ValueError):

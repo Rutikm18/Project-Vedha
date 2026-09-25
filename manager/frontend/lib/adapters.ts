@@ -185,7 +185,10 @@ export function toUiFinding(api: any): any {
     cvssVector: api.cvss_vector ?? "",
     category: api.category ?? api.finding_type ?? "General",
     status: FIND_STATUS_TO_UI[String(api.status ?? "open").toLowerCase()] ?? "OPEN",
-    affectedHost: api.affected_host ?? api.asset_ip ?? api.asset_id ?? "—",
+    // IP first; never fall back to the opaque asset UUID.
+    affectedHost: api.affected_host ?? api.asset_ip ?? api.asset_hostname ?? "—",
+    assetIp: api.asset_ip ?? api.asset_context?.ip_address ?? null,
+    assetHostname: api.asset_hostname ?? api.asset_context?.hostname ?? null,
     discoveredAt: api.first_seen ?? api.created_at ?? api.discovered_at ?? "",
     description: api.description ?? "",
     technicalDetails: api.technical_details ?? "",
@@ -336,4 +339,23 @@ function normalizeList(v: unknown): string[] {
   if (Array.isArray(v)) return v.map((x) => String(x).trim()).filter(Boolean);
   if (typeof v === "string") return v.split(/[\n,]/).map((x) => x.trim()).filter(Boolean);
   return [];
+}
+
+/** Affected-asset option for the findings IP filter (backend /findings/assets). */
+export interface ApiFindingAsset {
+  asset_id: string;
+  ip_address: string;
+  hostname?: string | null;
+  findings: number;
+}
+
+export interface FindingAssetOption {
+  assetId: string;
+  ip: string;
+  hostname: string | null;
+  findings: number;
+}
+
+export function mapAsset(a: ApiFindingAsset): FindingAssetOption {
+  return { assetId: a.asset_id, ip: a.ip_address, hostname: a.hostname ?? null, findings: a.findings };
 }

@@ -215,6 +215,41 @@ _QUICK = [21, 22, 23, 25, 53, 80, 110, 135, 139, 143, 443, 445, 993, 995, 3389]
 # Optimization), WinRM (5985/5986/47001), and the 49664+ dynamic RPC block.
 _WINDOWS_EXTRA = [2179, 5040, 5985, 5986, 7680, 8443, 47001, *range(49664, 49700)]
 
+# High-value ports ABOVE 1024 that real enterprises expose but top1000 (1-1024 +
+# nmap top-100 + Windows extras) misses: alt/dev web and app servers, databases,
+# container/orchestration control planes, message brokers, VPN/remote-access, and
+# directory/mail services. This is the "ports companies actually run services on"
+# set that the aggressive `enterprise` profile unions on top of top1000 — broad
+# enough to catch the long tail, bounded so a /24 still finishes in the ceiling.
+_ENTERPRISE_EXTRA = sorted(set(
+    # Dev / app / alt-HTTP server bands (Rails, Node, Flask, Tomcat, JBoss, …).
+    list(range(3000, 3101)) + list(range(4000, 4101)) + list(range(5000, 5101))
+    + list(range(6000, 6101)) + list(range(7000, 7101)) + list(range(8000, 8201))
+    + list(range(9000, 9201)) + list(range(10000, 10101))
+    # Kubernetes NodePort sample, Windows/RPC dynamic sample, DB2/app high band.
+    + list(range(30000, 30051)) + list(range(49152, 49201)) + list(range(50000, 50101))
+    # VNC / remote framebuffer.
+    + list(range(5800, 5811)) + list(range(5900, 5911))
+    + [
+        # Databases & caches.
+        1433, 1434, 1521, 1522, 1830, 2483, 2484, 3050, 3306, 3351, 5432, 5433,
+        5984, 6379, 7199, 7473, 7474, 7687, 8086, 8087, 9042, 9160, 9200, 9300,
+        11211, 27017, 27018, 27019, 28017, 50070,
+        # Container / orchestration / CI-CD control planes.
+        2375, 2376, 2377, 2379, 2380, 4243, 6443, 8081, 8500, 8983, 9990,
+        10250, 10251, 10252, 10255, 10256, 10257, 10259,
+        # Message brokers / queues / coordination.
+        1883, 2181, 4369, 5671, 5672, 5683, 8883, 9092, 9093, 15672, 15692,
+        61613, 61614, 61616,
+        # VPN / remote access / management.
+        1194, 1701, 1723, 4500, 8291, 20000,
+        # Directory / auth / mail admin, search, observability.
+        3268, 3269, 5601, 8089, 8200, 8222, 9389, 9443, 9999,
+        # IoT / OT-adjacent (present on mixed enterprise networks).
+        102, 502, 1911, 20547, 44818, 47808,
+    ]
+))
+
 
 def resolve_profile(name: str, custom: list[int] | None = None) -> list[int]:
     """Resolve a named scan profile to a concrete, de-duplicated port list.
@@ -232,6 +267,14 @@ def resolve_profile(name: str, custom: list[int] | None = None) -> list[int]:
         # top-1000 (documented, so no false precision) — it is tuned for the
         # enterprise/Windows exposure this ground truth exhibits.
         return sorted(set(range(1, 1025)) | set(_NMAP_TOP_100) | set(_WINDOWS_EXTRA))
+    if name == "enterprise":
+        # top1000 plus the high-value ports above 1024 that enterprises expose
+        # (see _ENTERPRISE_EXTRA). The aggressive breadth: far wider than the
+        # standard catalog, but bounded so a /24 finishes inside the job ceiling —
+        # deliberately NOT the full 65,535 space (that is the deep_port_sweep
+        # use-case, capped to a few hosts).
+        return sorted(set(range(1, 1025)) | set(_NMAP_TOP_100)
+                      | set(_WINDOWS_EXTRA) | set(_ENTERPRISE_EXTRA))
     if name == "full":
         return list(ALL_TCP_PORTS)
     if name == "custom":

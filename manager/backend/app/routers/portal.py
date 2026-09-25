@@ -594,7 +594,11 @@ async def portal_assistant_chat(body: ClientAssistantAsk, user: ClientUser, db: 
         task="client_assistant",
         messages=[AiMessage(role=m.role, content=m.content) for m in body.messages],
         context=context,
-        max_tokens=900,
+        # Adaptive-depth answers: simple questions stay short, but a full
+        # structured finding brief (impact / what-we-found / what-to-do / verify)
+        # needs headroom so it is never truncated mid-remediation. Ceiling only —
+        # short answers still cost only what they generate.
+        max_tokens=1600,
         provider=body.provider,
         model=body.model,
     )
@@ -653,6 +657,7 @@ async def portal_workspace_findings(
     status_filter: FindingStatus | None = Query(default=None, alias="status"),
     active_only: bool = Query(default=False),
     asset_id: uuid.UUID | None = Query(default=None),
+    asset_ip: str | None = Query(default=None, min_length=1, max_length=45),
     agent_id: uuid.UUID | None = Query(default=None),
     mitre_technique: str | None = Query(default=None),
     search: str | None = Query(default=None, min_length=1, max_length=200),
@@ -673,6 +678,7 @@ async def portal_workspace_findings(
         status_filter=status_filter,
         active_only=active_only,
         asset_id=asset_id,
+        asset_ip=asset_ip,
         mitre_technique=mitre_technique,
         engagement_id=assert_client(user),
         agent_id=agent_id,
@@ -685,6 +691,19 @@ async def portal_workspace_findings(
         sort=sort,
         page=page,
         page_size=page_size,
+    )
+
+
+@router.get("/workspace/findings/assets",
+            summary="Affected assets (IP filter options) for the assigned engagement")
+async def portal_workspace_finding_assets(
+    user: ClientUser,
+    db: DB,
+    active_only: bool = Query(default=False),
+):
+    from app.routers.findings import finding_assets as operator_finding_assets
+    return await operator_finding_assets(
+        db=db, current_user=user, engagement_id=assert_client(user), active_only=active_only,
     )
 
 

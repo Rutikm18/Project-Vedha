@@ -99,8 +99,10 @@ class _GenAI:
 # ── wiring ───────────────────────────────────────────────────────────────────────
 
 def test_remediation_router_is_mounted():
+    # Via the app's OpenAPI schema: FastAPI >=0.13x keeps included routers as
+    # wrappers in app.routes, so a flat path scan no longer sees nested routes.
     from app.main import app
-    paths = {getattr(r, "path", None) for r in app.routes}
+    paths = set(app.openapi()["paths"])
     assert "/findings/{finding_id}/remediation" in paths
     assert "/findings/{finding_id}/remediation/generate" in paths
 

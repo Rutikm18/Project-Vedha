@@ -188,4 +188,4 @@ class TestResume:
                             facts=[], fact_count=0),
         ])
 
-        assert await committed_hosts(db, JOB) == ["10.20.0.8", "10.20.0.9"]
+        assert await committed_hosts(db, JOB, agent_id=AGENT) == ["10.20.0.8", "10.20.0.9"]

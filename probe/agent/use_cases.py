@@ -216,6 +216,19 @@ USE_CASES: dict[str, dict] = {
         "intensity": "standard",
         "expected_runtime_hint": "5–15 min per /24",
     },
+    "uc_deep_port_sweep": {
+        "display_name": "Deep Port Sweep (all 65,535, few hosts)",
+        "description": (
+            "The thorough single-host scan: every TCP port PLUS the full "
+            "assessment (banners, OS, TLS/SMB/DB/RDP and the rest) on up to a few "
+            "critical hosts. Full-port coverage is capped to a small host count so "
+            "it always finishes; use Aggressive network_va for a whole subnet."
+        ),
+        "scan_type": "deep_port_sweep",
+        "profile": "it",
+        "intensity": "deep",
+        "expected_runtime_hint": "20–90 min per host (≤3 hosts)",
+    },
 }
 
 
@@ -245,6 +258,7 @@ USE_CASE_CODES: dict[int, str] = {
     70: "uc_ot_passive",
     80: "uc_full_port_audit",
     81: "uc_exposure_matrix",
+    82: "uc_deep_port_sweep",
 }
 
 # Intensity as a number: 1 light, 2 standard, 3 deep (workflow/intensity.py).

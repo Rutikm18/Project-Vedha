@@ -53,6 +53,8 @@ INTENSITY_PRESETS: dict[str, dict] = {
         "max_host_seconds": None,
         # Nothing to bring forward: the whole sweep IS the fast set.
         "first_pass_profile": None,
+        # Stealth samples only the common UDP services, like standard.
+        "udp_profile": "narrow",
     },
     "standard": {
         "port_profile": None,        # defer to the profile's own catalog
@@ -63,30 +65,28 @@ INTENSITY_PRESETS: dict[str, dict] = {
         "retries": 1,
         "max_host_seconds": None,      # bounded by the profile's port catalog
         "first_pass_profile": None,    # the catalog is already the high-signal set
+        # Standard samples the common UDP services (DNS/SNMP/NetBIOS/NTP/memcached).
+        "udp_profile": "narrow",
     },
     "deep": {
-        "port_profile": "full",      # the entire 1–65535 TCP space
+        # Aggressive breadth: the curated ~2,500-port enterprise set (top1000 +
+        # the high-value ports companies actually expose), NOT the whole 65,535
+        # space. That keeps a /24 inside the job's time ceiling (~70 min at this
+        # rate) while probing far wider than standard. Full 65,535-port coverage
+        # is the deep_port_sweep use-case, which caps the host count instead.
+        "port_profile": "enterprise",
         "rate": 150.0,
         "concurrency": 80,
         "timeout": 4.0,
         "disc_timeout": 2.0,
         "retries": 2,
-        # The ONLY preset that needs a ceiling: port_profile="full" is all 65,535
-        # ports, and against a host that rate-limits its RSTs that measured an
-        # 11.9-hour ETA for a single host while other jobs queued behind it.
-        # 30 min comfortably exceeds a healthy full sweep (~21 min at the ~51
-        # ports/sec measured after the congestion fixes), so this stops the
-        # pathological case without touching a scan that is working. Ports not
-        # reached are reported not_scanned, never "filtered".
-        "max_host_seconds": 1800,
-        # PHASE THE SWEEP. Banner, OS and the deep branches all wait on the port
-        # stage, so a single 65,535-port pass meant no host was ASSESSED for
-        # hours (109s/host of pure sending at best; 280-2,728s measured). This
-        # names the high-signal ports to sweep FIRST; the engine unions it with
-        # the branch catalogs, assesses that, then takes the rest as a budgeted
-        # tail. Same coverage, and an interrupted job loses the tail rather than
-        # the assessment.
-        "first_pass_profile": "top1000",
+        # Bounded by breadth now — the enterprise set is small enough that a
+        # single sweep finishes without a per-host clock or a phased tail.
+        "max_host_seconds": None,
+        "first_pass_profile": None,
+        # Aggressive probes UDP wide (all catalogued services), where standard
+        # samples only the common few. See workflow/gates.py.
+        "udp_profile": "wide",
     },
 }
 
@@ -126,6 +126,27 @@ def intensity_first_pass(
     if profile_name is None:
         return None
     return resolve_profile(profile_name)
+
+
+#: The common UDP services standard/light sample (mirrors gates.UDP_PORTS). The
+#: wide set is every service the UDP scanner has a probe for.
+_UDP_NARROW = (53, 123, 137, 161, 11211)
+
+
+def intensity_udp_ports(name: str | None) -> list[int] | None:
+    """UDP ports this intensity probes, or None to leave the engine default.
+
+    `wide` (aggressive) probes every catalogued UDP service; `narrow`
+    (standard/stealth) samples the common few. Returns None only when a preset
+    omits the knob, so the engine keeps its existing UDP behaviour.
+    """
+    from scanner.udp_scanner import UDP_PROBES
+    profile = resolve_intensity(name).get("udp_profile")
+    if profile == "wide":
+        return sorted(UDP_PROBES)
+    if profile == "narrow":
+        return sorted(set(_UDP_NARROW) & set(UDP_PROBES))
+    return None
 
 
 def intensity_port_override(

@@ -70,3 +70,15 @@ class TestOperatorOverrideStillWins:
     def test_explicit_override_is_still_clamped(self):
         t = _tuning_from_params({"rate": 1e9}, resolve_intensity("light"))
         assert t["rate"] == 2000
+
+
+def test_udp_breadth_scales_with_intensity():
+    """Aggressive probes UDP wide (every catalogued service); standard/stealth
+    sample only the common few."""
+    from workflow.intensity import intensity_udp_ports
+    from scanner.udp_scanner import UDP_PROBES
+    assert intensity_udp_ports("deep") == sorted(UDP_PROBES)          # wide
+    narrow = intensity_udp_ports("standard")
+    assert set(narrow) == {53, 123, 137, 161, 11211}                 # common few
+    assert intensity_udp_ports("light") == narrow
+    assert len(intensity_udp_ports("deep")) > len(narrow)

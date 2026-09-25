@@ -229,6 +229,9 @@ async def scan_status(
     db: DB,
     current_user: AuthUser,
 ):
+    # Tenant gate first: without it a caller could read another tenant's job
+    # (result included) by supplying that tenant's engagement + job ids.
+    await get_or_404(db, Engagement, engagement_id, current_user.tenant_id)
     result = await db.execute(
         select(ScanJob).where(
             ScanJob.id == job_id,

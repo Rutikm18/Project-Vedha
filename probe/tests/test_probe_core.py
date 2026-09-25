@@ -999,7 +999,7 @@ class TestUseCasesResolve:
         assert st == "discovery"
 
     def test_use_cases_count(self):
-        assert len(USE_CASES) == 16
+        assert len(USE_CASES) == 17
 
     def test_network_va_resolves(self):
         # The full-campaign use-case dispatches the collection-only network_va

@@ -520,8 +520,11 @@ class TestTheEstimateSaysWhatItCovers:
         assert fz.as_run_stats(est)["scope"] == "full_sweep"
 
     def test_a_phased_job_records_a_first_pass_estimate(self):
-        result = engine.run_scan("network_va", {
-            "targets": ["10.77.0.1"],
+        # deep_port_sweep phases the full 65,535-port range: admission is sized by
+        # the first pass, so the estimate records scope="first_pass". (network_va
+        # aggressive is the bounded enterprise set now — a single full_sweep.)
+        result = engine.run_scan("deep_port_sweep", {
+            "targets": ["10.77.0.1", "10.77.0.2", "10.77.0.3"],
             "scope_cidrs": ["10.77.0.0/24"],
             "intensity": "deep",
             "max_runtime_seconds": 1,

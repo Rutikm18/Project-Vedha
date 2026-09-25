@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import inspect
 
+from scanner.port_scanner import resolve_profile
 from workflow.intensity import (
     INTENSITY_PRESETS,
     intensity_first_pass,
@@ -19,8 +20,10 @@ from workflow.workflow_engine import run_engagement
 
 
 class TestPresets:
-    def test_deep_names_a_first_pass(self):
-        assert INTENSITY_PRESETS["deep"]["first_pass_profile"] is not None
+    def test_deep_does_not_phase_now_that_breadth_is_bounded(self):
+        # Aggressive is the ~2,500-port enterprise set — small enough to sweep
+        # once. The phased full-range machinery belongs to deep_port_sweep now.
+        assert INTENSITY_PRESETS["deep"]["first_pass_profile"] is None
 
     def test_breadth_bounded_presets_do_not_phase(self):
         """light (~15 ports) and standard (the catalog) are already small; a
@@ -34,18 +37,17 @@ class TestPresets:
 
 
 class TestFirstPassResolution:
-    def test_deep_first_pass_is_a_small_high_signal_set(self):
-        first = intensity_first_pass("deep")
-        full = intensity_port_override("deep")
-
-        assert first is not None
+    def test_the_phased_first_pass_is_a_small_high_signal_set(self):
+        # deep_port_sweep phases the full 65,535 range by top1000 (engine.py).
+        first = resolve_profile("top1000")
+        full = resolve_profile("full")
         assert 0 < len(first) < len(full) / 10, (
             "a first pass that is not much smaller than the full range does not "
             "bring the assessment forward")
         assert {22, 80, 443, 445, 3389} <= set(first)
 
     def test_the_first_pass_is_inside_the_requested_coverage(self):
-        assert set(intensity_first_pass("deep")) <= set(intensity_port_override("deep"))
+        assert set(resolve_profile("top1000")) <= set(resolve_profile("full"))
 
     def test_standard_and_light_have_no_first_pass(self):
         assert intensity_first_pass("standard") is None

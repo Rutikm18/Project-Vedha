@@ -314,6 +314,7 @@ _USE_CASE_CODES: dict[int, str] = {
     70: "uc_ot_passive",
     80: "uc_full_port_audit",
     81: "uc_exposure_matrix",
+    82: "uc_deep_port_sweep",
 }
 _INTENSITY_CODES: dict[int, str] = {1: "light", 2: "standard", 3: "deep"}
 _USE_CASE_ID_TO_CODE: dict[str, int] = {v: k for k, v in _USE_CASE_CODES.items()}
@@ -585,6 +586,19 @@ _USE_CASES = {
         "profile": "it",
         "intensity": "standard",
         "expected_runtime_hint": "5–15 min per /24",
+    },
+    "uc_deep_port_sweep": {
+        "display_name": "Deep Port Sweep (all 65,535, few hosts)",
+        "description": (
+            "The thorough single-host scan: every TCP port PLUS the full "
+            "assessment (banners, OS, TLS/SMB/DB/RDP and the rest) on up to a few "
+            "critical hosts. Full-port coverage is capped to a small host count so "
+            "it always finishes; use Aggressive network_va for a whole subnet."
+        ),
+        "scan_type": "deep_port_sweep",
+        "profile": "it",
+        "intensity": "deep",
+        "expected_runtime_hint": "20–90 min per host (≤3 hosts)",
     },
 }
 
@@ -1702,7 +1716,7 @@ async def list_result_chunks(
     _agent_ownership_check(request, str(agent_id))
 
     from app.services import result_chunk_service
-    hosts = await result_chunk_service.committed_hosts(db, job_id)
+    hosts = await result_chunk_service.committed_hosts(db, job_id, agent_id=agent_id)
     return {"job_id": str(job_id), "hosts": hosts, "count": len(hosts)}
 
 

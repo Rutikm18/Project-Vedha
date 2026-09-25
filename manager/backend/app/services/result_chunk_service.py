@@ -142,8 +142,15 @@ async def process_result_chunk(
     return {"ok": True, "stored": True}
 
 
-async def committed_hosts(db: AsyncSession, job_id: uuid.UUID) -> list[str]:
+async def committed_hosts(
+    db: AsyncSession, job_id: uuid.UUID, *, agent_id: uuid.UUID,
+) -> list[str]:
     """Hosts this job has FINISHED — what a retrying probe skips.
+
+    Scoped to the calling agent's own job (joined through ScanJob.agent_id, as
+    process_result_chunk is): filtering by job_id alone let any enrolled probe
+    list the finished-host IPs of any job in any tenant. A job the agent does
+    not own yields [] — nothing leaks, and no job's existence is confirmed.
 
     Complete chunks only. Mid-pipeline evidence is committed for durability
     (a probe killed during the port sweep must not lose hours of work), but a
@@ -152,8 +159,10 @@ async def committed_hosts(db: AsyncSession, job_id: uuid.UUID) -> list[str]:
     """
     rows = (await db.execute(
         select(ScanResultChunk)
+        .join(ScanJob, ScanJob.id == ScanResultChunk.job_id)
         .where(
             ScanResultChunk.job_id == job_id,
+            ScanJob.agent_id == str(agent_id),
             ScanResultChunk.complete.is_(True),
         )
         .order_by(ScanResultChunk.host)

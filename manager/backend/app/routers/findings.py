@@ -1,3 +1,5 @@
+import ipaddress
+import re
 import uuid
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Literal
@@ -15,7 +17,7 @@ from app.models.finding import Finding
 from app.models.enums import DetectionStatus, FindingSeverity, FindingStatus
 from app.schemas.common import PaginatedResponse, paginate
 from app.schemas.finding import (
-    FindingAssetContext, FindingEventOut, FindingOut, FindingPatch, FindingReopen,
+    FindingAssetContext, FindingAssetOption, FindingEventOut, FindingOut, FindingPatch, FindingReopen,
     FindingSummary, FindingTimeline, SlaSummary,
 )
 from app.services import finding_events as events_service
@@ -50,6 +52,43 @@ async def _tenant_finding(db: AsyncSession, finding_id: uuid.UUID, tenant_id: uu
     return finding
 
 
+_IP_PREFIX = re.compile(r"^[0-9A-Fa-f:.]{1,45}$")
+
+
+def asset_ip_clause(value: str):
+    """Filter on the affected asset's IP: a complete address matches exactly;
+    a partial one ("192.168.1.") matches as a prefix. Anything that is not
+    IP-shaped is a 422 — the charset excludes LIKE wildcards, so a prefix
+    cannot widen into a pattern."""
+    value = value.strip()
+    try:
+        return Asset.ip_address == str(ipaddress.ip_address(value))
+    except ValueError:
+        pass
+    if not _IP_PREFIX.match(value):
+        raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                            detail="asset_ip must be an IP address or an IP prefix")
+    return Asset.ip_address.startswith(value)
+
+
+async def _with_asset_identity(db: AsyncSession, findings: list[Finding]) -> list[FindingOut]:
+    """Serialize a page with each finding's asset IP/hostname — ONE query for
+    the page, never one per row."""
+    ids = {f.asset_id for f in findings if f.asset_id is not None}
+    identity: dict = {}
+    if ids:
+        rows = (await db.execute(
+            select(Asset.id, Asset.ip_address, Asset.hostname).where(Asset.id.in_(ids))
+        )).all()
+        identity = {aid: (ip, host) for aid, ip, host in rows}
+    out = []
+    for f in findings:
+        ip, host = identity.get(f.asset_id, (None, None))
+        out.append(FindingOut.model_validate(f).model_copy(
+            update={"asset_ip": ip, "asset_hostname": host}))
+    return out
+
+
 async def _finding_detail_out(db: AsyncSession, finding: Finding) -> FindingOut:
     """Build the detail contract with bounded asset context.
 
@@ -78,7 +117,11 @@ async def _finding_detail_out(db: AsyncSession, finding: Finding) -> FindingOut:
                 owner=asset.owner,
                 environment=asset.environment,
             )
-    update: dict = {"asset_context": asset_context}
+    update: dict = {
+        "asset_context": asset_context,
+        "asset_ip": asset_context.ip_address if asset_context else None,
+        "asset_hostname": asset_context.hostname if asset_context else None,
+    }
     # On the detail read we know the asset, so recompute the explainable rank WITH
     # real criticality/exposure instead of the neutral defaults the list path uses.
     # Exposure (internet_facing/auth_enforced) is only honoured if the engine
@@ -196,6 +239,10 @@ async def list_findings(
         ),
     ),
     asset_id: uuid.UUID | None = Query(default=None),
+    asset_ip: str | None = Query(
+        default=None, min_length=1, max_length=45,
+        description="Affected asset IP — exact address, or a prefix such as 192.168.1.",
+    ),
     mitre_technique: str | None = Query(default=None),
     engagement_id: uuid.UUID | None = Query(default=None),
     agent_id: uuid.UUID | None = Query(default=None),
@@ -224,6 +271,8 @@ async def list_findings(
         q = q.where(Finding.status.in_([FindingStatus.open, FindingStatus.confirmed]))
     if asset_id:
         q = q.where(Finding.asset_id == asset_id)
+    if asset_ip:
+        q = q.join(Asset, Asset.id == Finding.asset_id).where(asset_ip_clause(asset_ip))
     if engagement_id:
         q = q.where(Finding.engagement_id == engagement_id)
     if agent_id:
@@ -288,7 +337,36 @@ async def list_findings(
     }[sort]
     q = q.order_by(*order_by, Finding.created_at.desc(), Finding.id)
     items, total = await paginate_query(db, q, page, page_size)
-    return paginate(items, total, page, page_size)
+    return paginate(await _with_asset_identity(db, items), total, page, page_size)
+
+
+@router.get("/assets", response_model=list[FindingAssetOption],
+            summary="Assets that have findings — feeds the IP filter")
+async def finding_assets(
+    db: ReadDB,
+    current_user: AuthUser,
+    engagement_id: uuid.UUID | None = Query(default=None),
+    active_only: bool = Query(default=False),
+):
+    """Distinct affected assets with their finding counts, most-affected first,
+    tenant-scoped through the engagement. Bounded to 500 rows."""
+    q = (
+        select(Asset.id, Asset.ip_address, Asset.hostname, func.count(Finding.id))
+        .join(Finding, Finding.asset_id == Asset.id)
+        .join(Engagement, Finding.engagement_id == Engagement.id)
+        .where(Engagement.tenant_id == current_user.tenant_id)
+        .where(Asset.ip_address.isnot(None))
+    )
+    if engagement_id:
+        q = q.where(Finding.engagement_id == engagement_id)
+    if active_only:
+        q = q.where(Finding.status.in_([FindingStatus.open, FindingStatus.confirmed]))
+    q = (q.group_by(Asset.id, Asset.ip_address, Asset.hostname)
+         .order_by(func.count(Finding.id).desc(), Asset.ip_address)
+         .limit(500))
+    rows = (await db.execute(q)).all()
+    return [FindingAssetOption(asset_id=aid, ip_address=ip, hostname=host, findings=n)
+            for aid, ip, host, n in rows]
 
 
 @router.get("/summary", response_model=FindingSummary, summary="Tenant finding aggregates")

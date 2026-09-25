@@ -56,8 +56,8 @@ export async function fetchJson<T = unknown>(url: string, init?: RequestInit): P
         }
       } catch { /* fall through to error */ }
     }
-    await fetch("/api/auth/logout", {
-      method: "POST",
+    await fetch("/api/auth/login", {
+      method: "DELETE",
       credentials: "same-origin",
       keepalive: true,
     }).catch(() => {});

@@ -27,6 +27,7 @@ from app.models.audit_log import AuditLog
 from app.models.probe_enrollment import AgentCredential, ProbeEnrollmentRequest, ProbeEnrollmentToken
 from app.models.probe_site import ProbeSite
 from app.models.tenant import Tenant
+from app.ratelimit import client_ip
 from app.schemas.engagement import validate_scope_entries
 
 router = APIRouter(prefix="/probe-enrollment", tags=["probe-enrollment"])
@@ -97,7 +98,8 @@ def _verify_signature(public_key_b64: str, message: str, signature_b64: str) -> 
 
 
 async def _rate_limit(redis, request: Request, bucket: str, limit: int) -> None:
-    source = request.client.host if request.client else "unknown"
+    # Proxy-aware: behind Caddy the socket peer is Caddy for every probe.
+    source = client_ip(request)
     key = f"probe-enrollment:{bucket}:{source}"
     try:
         count = await redis.incr(key)

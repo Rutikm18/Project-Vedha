@@ -1,4 +1,4 @@
-fastapi==0.115.5
+fastapi==0.141.1
 uvicorn[standard]==0.32.1
 sqlalchemy[asyncio]==2.0.36
 asyncpg==0.30.0
@@ -6,23 +6,23 @@ alembic==1.14.0
 pydantic==2.10.3
 pydantic-settings==2.6.1
 email-validator==2.2.0
-PyJWT==2.10.1
+PyJWT==2.14.0
 passlib[bcrypt]==1.7.4
 bcrypt==4.0.1  # pinned: passlib 1.7.4 trips on bcrypt >= 4.1 backend detection
 redis[asyncio]==5.2.0
 structlog==24.4.0
-python-multipart==0.0.12
+python-multipart==0.0.32
 python-dateutil==2.9.0.post0
 # Prompt 3 — vuln scanner + enrichment
 httpx[asyncio]==0.28.1
 aiofiles==24.1.0
 # Prompt 4 — exploit engine
-msgpack==1.1.0
+msgpack==1.2.2
 pyyaml==6.0.2
 minio==7.2.11
 # Prompt 5 — Active Directory assessment
 ldap3==2.9.1
-impacket==0.12.0
+impacket==0.13.1
 neo4j==5.27.0
 bloodhound==1.7.2
 # Prompt 6 — attack path analysis
@@ -35,6 +35,6 @@ shap==0.46.0
 pandas==2.2.3
 numpy==2.2.1
 # Testing
-pytest==8.3.4
-pytest-asyncio==0.24.0
-pytest-mock==3.14.0
+pytest==9.1.1
+pytest-asyncio==1.4.0
+pytest-mock==3.15.1

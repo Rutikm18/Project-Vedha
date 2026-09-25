@@ -13,7 +13,7 @@
  */
 import { NextResponse } from "next/server";
 import jwt from "jsonwebtoken";
-import { backend, BackendError, cookieFrom } from "../../../../lib/backend";
+import { backend, BackendError, cookieFrom, forwardedFor } from "../../../../lib/backend";
 
 const secureCookie =
   process.env.AUTH_COOKIE_SECURE === "true" ||
@@ -67,6 +67,7 @@ export async function POST(req: Request) {
     const d = await backend<{ access_token: string; refresh_token: string }>("/auth/login", {
       method: "POST",
       body: { email, password },
+      headers: forwardedFor(req),
     });
 
     // Read claims without verifying signature (FastAPI already signed it) purely
@@ -109,7 +110,7 @@ export async function PUT(req: Request) {
   try {
     const d = await backend<{ access_token: string; refresh_token: string }>(
       "/auth/refresh",
-      { method: "POST", query: { refresh_token: refreshToken } },
+      { method: "POST", body: { refresh_token: refreshToken } },
     );
     if (!isClientToken(d.access_token)) {
       return NextResponse.json({ error: "not a customer portal account" }, { status: 403 });
@@ -121,4 +122,25 @@ export async function PUT(req: Request) {
     const status = e instanceof BackendError ? e.status : 401;
     return NextResponse.json({ error: (e as Error).message }, { status });
   }
+}
+
+/**
+ * Sign-out — revokes the refresh token server-side, then clears both cookies.
+ * Must live on REFRESH_PATH: the path-scoped refresh cookie reaches no other
+ * route. Revocation is best-effort; the cookies are cleared regardless.
+ */
+export async function DELETE(req: Request) {
+  const refreshToken = cookieFrom(req, REFRESH_COOKIE);
+  if (refreshToken) {
+    await backend("/auth/logout", { method: "POST", body: { refresh_token: refreshToken } })
+      .catch(() => {});
+  }
+  const res = NextResponse.json({ ok: true });
+  res.cookies.set(ACCESS_COOKIE, "", {
+    httpOnly: true, secure: secureCookie, sameSite: "strict", path: "/", maxAge: 0,
+  });
+  res.cookies.set(REFRESH_COOKIE, "", {
+    httpOnly: true, secure: secureCookie, sameSite: "strict", path: REFRESH_PATH, maxAge: 0,
+  });
+  return res;
 }
