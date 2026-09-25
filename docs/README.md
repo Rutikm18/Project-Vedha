@@ -43,8 +43,9 @@ Central docs map. All documentation now lives here — the repo root is clean.
 - [Main Scripts Function Reference](probe/main-scripts-function-run.md)
 
 ### Testing
-- [Testing Plan](testing/TESTING_PLAN.md)
-- [Probe Testing Guide](testing/probe-testing.md)
+- [Master Test Plan & Checklist](testing/MASTER_TEST_PLAN.md) — umbrella: every test type (project + platform lens), tools, gates
+- [Testing Plan](testing/TESTING_PLAN.md) — probe+manager layered plan, safety gate, new-feature TDD matrix
+- [Probe Testing Guide](testing/probe-testing.md) — two-machine lab (Mac + Windows) e2e procedure
 
 ### Planning
 - [Pending Work (Aug 30)](planning/pending-work-aug30.md)
