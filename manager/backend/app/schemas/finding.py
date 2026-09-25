@@ -64,6 +64,19 @@ class FindingAssetOption(BaseModel):
     findings: int
 
 
+class ScanOption(BaseModel):
+    """One scan that produced findings — feeds the findings 'filter by scan'
+    control and the compare picker. `findings` counts distinct findings the scan
+    touched (new + reaffirmed + resolved), across all its detection runs."""
+    job_id: uuid.UUID
+    reference: str | None = None
+    use_case_id: str | None = None
+    intensity: str | None = None
+    scanned_at: datetime | None = None
+    status: str | None = None
+    findings: int
+
+
 class FindingAssetContext(BaseModel):
     id: uuid.UUID
     ip_address: str | None = None

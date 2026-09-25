@@ -15,12 +15,13 @@ from app.models.asset import Asset
 from app.models.engagement import Engagement
 from app.models.finding import Finding
 from app.models.detection_run import DetectionRun
+from app.models.detection_run_finding import DetectionRunFinding
 from app.models.scan_job import ScanJob
 from app.models.enums import DetectionStatus, FindingSeverity, FindingStatus
 from app.schemas.common import PaginatedResponse, paginate
 from app.schemas.finding import (
     FindingAssetContext, FindingAssetOption, FindingEventOut, FindingOut, FindingPatch, FindingReopen,
-    FindingScanRef, FindingSummary, FindingTimeline, SlaSummary,
+    FindingScanRef, FindingSummary, FindingTimeline, ScanOption, SlaSummary,
 )
 from app.services import finding_events as events_service
 from app.services.finding_metrics import compute_mttr
@@ -99,6 +100,39 @@ async def _scan_refs(db: AsyncSession, findings: list[Finding]) -> dict[uuid.UUI
             scanned_at=job_done or job_started or run_started,
         )
     return refs
+
+
+async def _resolve_scan_run_ids(
+    db: AsyncSession, scan: str, tenant_id: uuid.UUID) -> set[uuid.UUID]:
+    """Map a scan selector — an SCN-YYMMDD-XXXXXX reference, a scan-job id, or a
+    detection-run id — to the detection-run ids it covers, tenant-scoped. One scan
+    (job) can have more than one run (e.g. chunked submissions), so the membership
+    filter must union them. Unknown selector → empty set (caller shows an empty
+    page rather than erroring, matching every other findings filter)."""
+    scan = scan.strip()
+    try:
+        as_uuid: uuid.UUID | None = uuid.UUID(scan)
+    except ValueError:
+        as_uuid = None
+    if as_uuid is not None:
+        # A UUID is either a run id or a job id; the two spaces don't collide, so
+        # accept whichever matches without asking the caller which they meant.
+        rows = (await db.execute(
+            select(DetectionRun.id)
+            .join(Engagement, DetectionRun.engagement_id == Engagement.id)
+            .where(Engagement.tenant_id == tenant_id,
+                   or_(DetectionRun.id == as_uuid, DetectionRun.job_id == as_uuid))
+        )).scalars().all()
+        return set(rows)
+    # Otherwise a human reference (SCN-…). References are stored upper-case; fold
+    # so the filter is case-insensitive.
+    rows = (await db.execute(
+        select(DetectionRun.id)
+        .join(ScanJob, ScanJob.id == DetectionRun.job_id)
+        .join(Engagement, ScanJob.engagement_id == Engagement.id)
+        .where(Engagement.tenant_id == tenant_id, ScanJob.reference == scan.upper())
+    )).scalars().all()
+    return set(rows)
 
 
 async def _with_asset_identity(db: AsyncSession, findings: list[Finding]) -> list[FindingOut]:
@@ -280,6 +314,15 @@ async def list_findings(
     mitre_technique: str | None = Query(default=None),
     engagement_id: uuid.UUID | None = Query(default=None),
     agent_id: uuid.UUID | None = Query(default=None),
+    scan: str | None = Query(
+        default=None, min_length=1, max_length=64,
+        description=(
+            "Restrict to findings a single scan TOUCHED — new, reaffirmed or "
+            "resolved — via the per-run membership table. Accepts an "
+            "SCN-YYMMDD-XXXXXX reference, a scan-job id, or a detection-run id. "
+            "An unknown scan returns an empty page."
+        ),
+    ),
     search: str | None = Query(default=None, min_length=1, max_length=200),
     detection_status: DetectionStatus | None = Query(default=None),
     exploit_validated: bool | None = Query(default=None),
@@ -311,6 +354,14 @@ async def list_findings(
         q = q.where(Finding.engagement_id == engagement_id)
     if agent_id:
         q = q.where(Engagement.assigned_agent_id == agent_id)
+    if scan:
+        run_ids = await _resolve_scan_run_ids(db, scan, current_user.tenant_id)
+        if not run_ids:
+            return paginate([], 0, page, page_size)
+        q = q.where(Finding.id.in_(
+            select(DetectionRunFinding.finding_id)
+            .where(DetectionRunFinding.run_id.in_(run_ids))
+        ))
     if mitre_technique:
         q = q.where(Finding.mitre_techniques.any(mitre_technique))
     if search:
@@ -401,6 +452,46 @@ async def finding_assets(
     rows = (await db.execute(q)).all()
     return [FindingAssetOption(asset_id=aid, ip_address=ip, hostname=host, findings=n)
             for aid, ip, host, n in rows]
+
+
+@router.get("/scans", response_model=list[ScanOption],
+            summary="Scans that produced findings — feeds the scan filter & compare")
+async def finding_scans(
+    db: ReadDB,
+    current_user: AuthUser,
+    engagement_id: uuid.UUID | None = Query(default=None),
+):
+    """Distinct scans (jobs) that have at least one detection run, each with the
+    count of findings it touched, newest first, tenant-scoped through the
+    engagement. Bounded to 200 rows. Feeds the findings 'filter by scan' control
+    and the two-scan compare picker."""
+    scanned_at = func.coalesce(
+        ScanJob.completed_at, ScanJob.started_at, func.max(DetectionRun.started_at))
+    q = (
+        select(
+            ScanJob.id, ScanJob.reference, ScanJob.use_case_id, ScanJob.intensity,
+            scanned_at.label("scanned_at"), ScanJob.status,
+            func.count(func.distinct(DetectionRunFinding.finding_id)),
+        )
+        .select_from(ScanJob)
+        .join(DetectionRun, DetectionRun.job_id == ScanJob.id)
+        .join(Engagement, ScanJob.engagement_id == Engagement.id)
+        .outerjoin(DetectionRunFinding, DetectionRunFinding.run_id == DetectionRun.id)
+        .where(Engagement.tenant_id == current_user.tenant_id)
+    )
+    if engagement_id:
+        q = q.where(ScanJob.engagement_id == engagement_id)
+    q = (q.group_by(ScanJob.id)
+         .order_by(scanned_at.desc().nullslast(), ScanJob.id)
+         .limit(200))
+    rows = (await db.execute(q)).all()
+    return [
+        ScanOption(
+            job_id=jid, reference=ref, use_case_id=uc, intensity=inten,
+            scanned_at=at, status=getattr(st, "value", st), findings=int(n or 0),
+        )
+        for jid, ref, uc, inten, at, st, n in rows
+    ]
 
 
 @router.get("/summary", response_model=FindingSummary, summary="Tenant finding aggregates")

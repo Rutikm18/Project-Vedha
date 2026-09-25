@@ -96,9 +96,10 @@ async def test_list_findings_applies_asset_ip_filter():
         await findings_router.list_findings(
             db=MagicMock(), current_user=user, severity=None, status_filter=None,
             active_only=False, asset_id=None, asset_ip="192.168.1.78",
-            mitre_technique=None, engagement_id=None, agent_id=None, search=None,
-            detection_status=None, exploit_validated=None, verification_state=None,
-            needs_review=None, sla_breached=False, sort="risk", page=1, page_size=20)
+            mitre_technique=None, engagement_id=None, agent_id=None, scan=None,
+            search=None, detection_status=None, exploit_validated=None,
+            verification_state=None, needs_review=None, sla_breached=False,
+            sort="risk", page=1, page_size=20)
 
     assert "JOIN assets ON assets.id = findings.asset_id" in captured["sql"]
     assert "assets.ip_address = '192.168.1.78'" in captured["sql"]
