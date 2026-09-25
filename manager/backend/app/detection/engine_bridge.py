@@ -35,6 +35,10 @@ from app.models.finding import Finding
 from app.models.detection_run import (
     DetectionRun, RUN_COMPLETED, RUN_FAILED, TRIGGER_FACTS_READY,
 )
+from app.models.detection_run_finding import (
+    DetectionRunFinding, RUN_FINDING_NEW, RUN_FINDING_REAFFIRMED,
+    RUN_FINDING_RESOLVED,
+)
 from app.discovery.finding_translator import _resolve_asset, _find_open_duplicate
 from app.detection.attack_paths import attack_path_findings
 from app.detection.prioritization import _posture_risk_on_manager_scale
@@ -611,6 +615,34 @@ async def _lock_engagement_for_detection(db: AsyncSession, engagement_id: uuid.U
     await db.execute(text("SELECT pg_advisory_xact_lock(:k)"), {"k": key})
 
 
+async def _record_run_membership(db: AsyncSession, run: DetectionRun) -> None:
+    """One membership row per finding this run touched, so a scan's exact finding
+    set — and a diff between two scans (new / fixed / still-present) — is later
+    recoverable. Run-level counts (findings_new/reaffirmed/current) can't do that.
+
+    Derived from the finding rows' own run pointers AFTER every write and the
+    auto-resolution pass, so it is exactly as consistent as the run itself:
+      - detection_run_id == run.id → created or reaffirmed this run; first_seen ==
+        last_seen distinguishes the two (a reaffirm only advances last_seen, and a
+        finding created this run is deduped, so it is never re-touched within it).
+      - resolution_run_id == run.id → this run's coverage closed it. Disjoint from
+        the set above: evaluate_resolutions only considers detection_run_id != run.id.
+    Best-effort — membership bookkeeping must never sink an otherwise-good run."""
+    touched = (await db.execute(
+        select(Finding.id, Finding.first_seen, Finding.last_seen).where(
+            Finding.detection_run_id == run.id)
+    )).all()
+    for fid, first_seen, last_seen in touched:
+        outcome = RUN_FINDING_NEW if first_seen == last_seen else RUN_FINDING_REAFFIRMED
+        db.add(DetectionRunFinding(run_id=run.id, finding_id=fid, outcome=outcome))
+    resolved_ids = (await db.execute(
+        select(Finding.id).where(Finding.resolution_run_id == run.id)
+    )).scalars().all()
+    for fid in resolved_ids:
+        db.add(DetectionRunFinding(
+            run_id=run.id, finding_id=fid, outcome=RUN_FINDING_RESOLVED))
+
+
 async def create_findings_from_facts(
     db: AsyncSession, engagement_id: uuid.UUID, result: dict,
     *, scan_result_id: uuid.UUID | None = None, job_id: uuid.UUID | None = None,
@@ -809,6 +841,14 @@ async def create_findings_from_facts(
                 Finding.status.in_(_CURRENT_STATUSES),
             )
         )).scalar_one()
+
+        # Record which findings this run touched (new/reaffirmed/resolved) so a
+        # scan's exact finding set and a scan-to-scan diff are recoverable later.
+        try:
+            await _record_run_membership(db, run)
+            await db.flush()
+        except Exception as exc:  # noqa: BLE001 — membership must not fail the run
+            logger.warning("detection_run.membership_failed", error=str(exc))
 
         run.status = RUN_COMPLETED
         run.finished_at = datetime.now(timezone.utc)
