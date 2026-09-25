@@ -53,8 +53,21 @@ _LAUNCHD = """\
   <key>RunAtLoad</key><true/>
   <key>KeepAlive</key><dict><key>SuccessfulExit</key><false/></dict>
   <key>ThrottleInterval</key><integer>10</integer>
+  <key>StandardOutPath</key><string>{log_path}</string>
+  <key>StandardErrorPath</key><string>{log_path}</string>
 </dict></plist>
 """
+
+
+def macos_log_path(state_dir: str) -> str:
+    """launchd stdout/stderr sink for the macOS agent.
+
+    Without StandardOutPath/StandardErrorPath launchd discards the daemon's
+    output, so a launchd-installed macOS probe was un-debuggable. Kept under the
+    state dir so logs/state/spool live together — mirrors the Windows
+    ProgramData\\vedha-agent\\logs\\agent.log layout. Absolute (launchd does not
+    expand ~)."""
+    return os.path.expanduser(os.path.join(state_dir, "logs", "agent.log"))
 
 
 def render_unit(os_name: str, values: dict, python_exe: str, probe_dir: str,
@@ -71,7 +84,7 @@ def render_unit(os_name: str, values: dict, python_exe: str, probe_dir: str,
         return "/etc/systemd/system/vedha-agent.service", body
     if os_name == "macos":
         body = _LAUNCHD.format(python=python_exe, probe_dir=probe_dir, manager=manager,
-                               scope=scope, name=name)
+                               scope=scope, name=name, log_path=macos_log_path(state_dir))
         return os.path.expanduser("~/Library/LaunchAgents/com.vedha.agent.plist"), body
     if os_name == "windows":
         cmd = (
@@ -111,6 +124,9 @@ def install(os_name: str, values: dict, python_exe: str, probe_dir: str, state_d
             runner=_default_runner, path_override: str | None = None) -> int:
     path, body = render_unit(os_name, values, python_exe, probe_dir, state_dir)
     target = path_override or path
+    if os_name == "macos":
+        # launchd refuses to spawn a job whose StandardErrorPath parent is missing.
+        os.makedirs(os.path.dirname(macos_log_path(state_dir)), exist_ok=True)
     if os_name != "windows":
         os.makedirs(os.path.dirname(target), exist_ok=True)
         with open(target, "w", encoding="utf-8") as fh:

@@ -28,6 +28,16 @@ def test_launchd_plist_restart_on_failure_only():
     assert "agent.agent" in body
 
 
+def test_launchd_plist_persists_logs_to_a_file():
+    # Regression: without StandardOutPath/StandardErrorPath launchd discards the
+    # daemon's output and a macOS probe is un-debuggable.
+    _, body = svc.render_unit("macos", VALUES, "/opt/p/.venv/bin/python", "/opt/p", "/x")
+    assert "<key>StandardErrorPath</key>" in body
+    assert "<key>StandardOutPath</key>" in body
+    assert svc.macos_log_path("/x") == "/x/logs/agent.log"
+    assert "/x/logs/agent.log" in body
+
+
 def test_windows_task_is_a_schtasks_command():
     path, body = svc.render_unit("windows", VALUES, r"C:\p\.venv\Scripts\python.exe", r"C:\p", r"C:\state")
     assert path == "SCHTASKS"
@@ -62,3 +72,18 @@ def test_install_writes_unit_then_uninstall_removes_it(tmp_path):
     rc2 = svc.uninstall("linux", str(unit), runner=runner)
     assert rc2 == 0 and not unit.exists()
     assert any("disable" in " ".join(c) for c in calls)
+
+
+def test_macos_install_creates_log_dir_and_plist(tmp_path):
+    # launchd refuses to spawn a job whose StandardErrorPath parent is missing,
+    # so install() must create the log dir up front.
+    calls = []
+    runner = lambda cmd: calls.append(cmd) or 0
+    state_dir = tmp_path / "state"
+    plist = tmp_path / "com.vedha.agent.plist"
+
+    rc = svc.install("macos", VALUES, "/py", "/probe", str(state_dir),
+                     runner=runner, path_override=str(plist))
+    assert rc == 0 and plist.exists()
+    assert (state_dir / "logs").is_dir()                 # log sink parent exists
+    assert any("load" in " ".join(c) for c in calls)
