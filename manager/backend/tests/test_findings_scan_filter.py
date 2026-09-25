@@ -98,6 +98,27 @@ class TestScanFilterOnList:
         assert "detection_run_findings" in captured["sql"]
 
 
+class TestScanOutcomes:
+    @pytest.mark.asyncio
+    async def test_collapses_to_most_significant_outcome(self):
+        f_new, f_res, f_reaff = uuid.uuid4(), uuid.uuid4(), uuid.uuid4()
+        # f_new appears as BOTH reaffirmed and new across a job's runs → new wins.
+        rows = [(f_new, "reaffirmed"), (f_new, "new"),
+                (f_res, "resolved"), (f_reaff, "reaffirmed")]
+        r = MagicMock(); r.all.return_value = rows
+        db = MagicMock(); db.execute = AsyncMock(return_value=r)
+        out = await findings_router._scan_outcomes(
+            db, {uuid.uuid4()}, [f_new, f_res, f_reaff])
+        assert out == {f_new: "new", f_res: "resolved", f_reaff: "reaffirmed"}
+
+    @pytest.mark.asyncio
+    async def test_empty_page_asks_nothing(self):
+        db = MagicMock(); db.execute = AsyncMock()
+        out = await findings_router._scan_outcomes(db, {uuid.uuid4()}, [])
+        assert out == {}
+        assert db.execute.await_count == 0
+
+
 class TestScansListEndpoint:
     @pytest.mark.asyncio
     async def test_lists_scans_with_finding_counts(self):

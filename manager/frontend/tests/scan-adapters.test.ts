@@ -27,6 +27,12 @@ test("toUiFinding surfaces the scan block (snake → camel)", () => {
 test("a finding with no scan link maps to scan: null", () => {
   const ui = toUiFinding({ id: "f", title: "t", severity: "low", status: "open" });
   assert.equal(ui.scan, null);
+  assert.equal(ui.scanOutcome, null);
+});
+
+test("toUiFinding surfaces the filtered scan's outcome", () => {
+  const ui = toUiFinding({ id: "f", title: "t", severity: "high", status: "open", scan_outcome: "new" });
+  assert.equal(ui.scanOutcome, "new");
 });
 
 test("mapScanOption carries the finding count and identity", () => {

@@ -224,6 +224,8 @@ interface Finding {
     jobId: string | null;
     runId: string | null;
   } | null;
+  // What the currently-filtered scan did to this finding (set only under ?scan=).
+  scanOutcome?: string | null;
 }
 
 interface FindingPage {
@@ -296,6 +298,11 @@ const tint = (color: string, strength: number) =>
 const SLA_HOURS: Partial<Record<Severity, number>> = { CRITICAL: 24, HIGH: 72, MEDIUM: 168, LOW: 720 };
 
 interface Sla { color: string; label: string; pct: number; breached: boolean; tracked: boolean; }
+
+/** Per-scan membership outcome → a short badge label (shown under ?scan= filter). */
+const SCAN_OUTCOME_LABEL: Record<string, string> = {
+  new: "New", reaffirmed: "Still present", resolved: "Resolved",
+};
 
 /** "uc_deep_port_sweep" → "Deep Port Sweep". Falls back to the raw id. */
 function prettyUseCase(id: string): string {
@@ -2254,6 +2261,12 @@ const FindingRow = React.memo(function FindingRow({
           <SevBadge s={f.severity} />
           <StatusBadge s={f.status} />
           <PriorityBadge priority={f.aiTriage.priority} compact />
+          {f.scanOutcome && (
+            <span className="chip finding-scan-outcome" data-outcome={f.scanOutcome}
+                  title={`In this scan: ${SCAN_OUTCOME_LABEL[f.scanOutcome] ?? f.scanOutcome}`}>
+              {SCAN_OUTCOME_LABEL[f.scanOutcome] ?? f.scanOutcome}
+            </span>
+          )}
           <ChipRow chips={chips} max={3} />
         </div>
         <div className="finding-card-risk">
@@ -2348,6 +2361,11 @@ const FINDINGS_CSS = `
 .chip-priority[data-compact] { height: 19px; font-size: 9.5px; }
 .chip-overflow { color: var(--text-secondary); background: var(--bg-app); border-color: var(--border-subtle); cursor: default; }
 .chip-current { color: var(--accent); background: var(--accent-ghost); border-color: var(--border-accent); }
+/* Per-scan outcome badge — shown on cards when the queue is filtered by one scan. */
+.finding-scan-outcome { text-transform: uppercase; letter-spacing: .04em; }
+.finding-scan-outcome[data-outcome="new"] { color: var(--sev-high-color); background: var(--bg-app); border-color: var(--sev-high-color); }
+.finding-scan-outcome[data-outcome="reaffirmed"] { color: var(--text-secondary); background: var(--bg-app); border-color: var(--border-subtle); }
+.finding-scan-outcome[data-outcome="resolved"] { color: var(--nominal-color); background: var(--bg-app); border-color: var(--nominal-color); }
 
 .finding-copy-btn {
   display: inline-grid; place-items: center; width: 24px; height: 24px; flex: 0 0 auto;
@@ -3295,11 +3313,27 @@ export function FindingsWorkspace({ surface = "manager" }: { surface?: FindingsW
     retry: (count, err) => !isUnauthorized(err) && count < 2,
   });
   const scanOptions = useMemo(() => scanOptionsQuery.data ?? [], [scanOptionsQuery.data]);
+  // Only scans that actually produced findings are worth filtering to (an empty
+  // scan → an empty page); the compare picker keeps every scan (a clean scan is a
+  // valid baseline). scans arrive newest-first from the backend.
+  const filterScanOptions = useMemo(() => scanOptions.filter((s) => s.findings > 0), [scanOptions]);
   const scanLabel = useCallback((s: ScanOption) => {
     const when = s.scannedAt ? new Date(s.scannedAt).toLocaleDateString() : "";
     const bits = [s.reference ?? s.jobId.slice(0, 8), s.intensity, when].filter(Boolean);
     return `${bits.join(" · ")} — ${s.findings} finding${s.findings === 1 ? "" : "s"}`;
   }, []);
+  const scanValue = useCallback((s: ScanOption) => s.reference ?? s.jobId, []);
+
+  // Opening Compare with nothing chosen pre-selects the two most recent scans
+  // (newest = target B, previous = baseline A) — the "latest vs previous" diff an
+  // operator wants by default. Only fires when both are empty, so it never fights
+  // a manual pick.
+  useEffect(() => {
+    if (compareOpen && !compareA && !compareB && scanOptions.length >= 2) {
+      setCompareB(scanValue(scanOptions[0]));
+      setCompareA(scanValue(scanOptions[1]));
+    }
+  }, [compareOpen, compareA, compareB, scanOptions, scanValue]);
 
   const compareParams = new URLSearchParams();
   if (compareA) compareParams.set("a", compareA);
@@ -3755,8 +3789,8 @@ export function FindingsWorkspace({ surface = "manager" }: { surface?: FindingsW
                   aria-label="Filter to findings a single scan touched"
                 >
                   <option value="">All scans</option>
-                  {scanOptions.map((s) => (
-                    <option key={s.jobId} value={s.reference ?? s.jobId}>{scanLabel(s)}</option>
+                  {filterScanOptions.map((s) => (
+                    <option key={s.jobId} value={scanValue(s)}>{scanLabel(s)}</option>
                   ))}
                 </select>
               </label>
@@ -3876,7 +3910,7 @@ export function FindingsWorkspace({ surface = "manager" }: { surface?: FindingsW
                   >
                     <option value="">Select a scan…</option>
                     {scanOptions.map((s) => (
-                      <option key={s.jobId} value={s.reference ?? s.jobId}>{scanLabel(s)}</option>
+                      <option key={s.jobId} value={scanValue(s)}>{scanLabel(s)}</option>
                     ))}
                   </select>
                 </label>
@@ -3890,7 +3924,7 @@ export function FindingsWorkspace({ surface = "manager" }: { surface?: FindingsW
                   >
                     <option value="">Select a scan…</option>
                     {scanOptions.map((s) => (
-                      <option key={s.jobId} value={s.reference ?? s.jobId}>{scanLabel(s)}</option>
+                      <option key={s.jobId} value={scanValue(s)}>{scanLabel(s)}</option>
                     ))}
                   </select>
                 </label>

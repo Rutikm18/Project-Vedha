@@ -16,7 +16,7 @@ from app.models.engagement import Engagement
 from app.models.finding import Finding
 from app.models.detection_run import DetectionRun
 from app.models.detection_run_finding import (
-    DetectionRunFinding, RUN_FINDING_NEW, RUN_FINDING_REAFFIRMED,
+    DetectionRunFinding, RUN_FINDING_NEW, RUN_FINDING_REAFFIRMED, RUN_FINDING_RESOLVED,
 )
 from app.models.scan_job import ScanJob
 from app.models.enums import DetectionStatus, FindingSeverity, FindingStatus
@@ -177,6 +177,31 @@ def _present_finding_ids(run_ids: set[uuid.UUID]):
         .where(DetectionRunFinding.run_id.in_(run_ids),
                DetectionRunFinding.outcome.in_((RUN_FINDING_NEW, RUN_FINDING_REAFFIRMED)))
     )
+
+
+# When a scan (job) spans several runs, a finding can carry more than one outcome;
+# surface the most significant. new (first appearance) outranks reaffirmed
+# (still there) outranks resolved (this scan closed it).
+_OUTCOME_RANK = {RUN_FINDING_NEW: 3, RUN_FINDING_REAFFIRMED: 2, RUN_FINDING_RESOLVED: 1}
+
+
+async def _scan_outcomes(
+    db: AsyncSession, run_ids: set[uuid.UUID], finding_ids: list[uuid.UUID],
+) -> dict[uuid.UUID, str]:
+    """What a scan's runs did to each of `finding_ids` — new / reaffirmed / resolved
+    — collapsed to the most significant outcome per finding. One query for the page."""
+    if not finding_ids:
+        return {}
+    rows = (await db.execute(
+        select(DetectionRunFinding.finding_id, DetectionRunFinding.outcome)
+        .where(DetectionRunFinding.run_id.in_(run_ids),
+               DetectionRunFinding.finding_id.in_(finding_ids))
+    )).all()
+    best: dict[uuid.UUID, str] = {}
+    for fid, outcome in rows:
+        if _OUTCOME_RANK.get(outcome, 0) > _OUTCOME_RANK.get(best.get(fid, ""), 0):
+            best[fid] = outcome
+    return best
 
 
 async def _with_asset_identity(db: AsyncSession, findings: list[Finding]) -> list[FindingOut]:
@@ -398,14 +423,15 @@ async def list_findings(
         q = q.where(Finding.engagement_id == engagement_id)
     if agent_id:
         q = q.where(Engagement.assigned_agent_id == agent_id)
+    scan_run_ids: set[uuid.UUID] | None = None
     if scan:
-        run_ids = await _resolve_scan_run_ids(
+        scan_run_ids = await _resolve_scan_run_ids(
             db, scan, current_user.tenant_id, engagement_id=engagement_id)
-        if not run_ids:
+        if not scan_run_ids:
             return paginate([], 0, page, page_size)
         q = q.where(Finding.id.in_(
             select(DetectionRunFinding.finding_id)
-            .where(DetectionRunFinding.run_id.in_(run_ids))
+            .where(DetectionRunFinding.run_id.in_(scan_run_ids))
         ))
     if mitre_technique:
         q = q.where(Finding.mitre_techniques.any(mitre_technique))
@@ -467,7 +493,14 @@ async def list_findings(
     }[sort]
     q = q.order_by(*order_by, Finding.created_at.desc(), Finding.id)
     items, total = await paginate_query(db, q, page, page_size)
-    return paginate(await _with_asset_identity(db, items), total, page, page_size)
+    page_out = await _with_asset_identity(db, items)
+    if scan_run_ids:
+        # Filtering by scan → tell each finding what THIS scan did to it (new /
+        # reaffirmed / resolved), so the filtered view answers "what did scan X find"
+        # rather than just narrowing the list.
+        outcomes = await _scan_outcomes(db, scan_run_ids, [f.id for f in page_out])
+        page_out = [f.model_copy(update={"scan_outcome": outcomes.get(f.id)}) for f in page_out]
+    return paginate(page_out, total, page, page_size)
 
 
 @router.get("/assets", response_model=list[FindingAssetOption],

@@ -192,6 +192,10 @@ class FindingOut(BaseModel):
     # by the router from detection_run_id → detection_runs → scan_jobs; left null for
     # legacy/self-assessed findings with no run link. See FindingScanRef.
     scan: FindingScanRef | None = None
+    # What the FILTERED scan did to this finding (new | reaffirmed | resolved). Set
+    # only on the list when ?scan= is applied; null otherwise. Lets "filter by scan"
+    # answer "what did that scan find" rather than merely narrowing the list.
+    scan_outcome: str | None = None
     # P4 unified priority (computed; see services/risk_rank.py).
     risk_rank: int | None = None
     # Populated on the detail endpoint. List responses intentionally leave this

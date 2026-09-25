@@ -284,6 +284,9 @@ export function toUiFinding(api: any): any {
       jobId: api.scan.job_id ?? null,
       runId: api.scan.run_id ?? null,
     } : null,
+    // What the FILTERED scan did to this finding (new|reaffirmed|resolved); set only
+    // when the list is filtered by ?scan=.
+    scanOutcome: api.scan_outcome ?? null,
   };
 }
 
