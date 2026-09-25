@@ -57,3 +57,33 @@ A **`detection_run_finding`** table (run_id, finding_id, outcome ∈ new|reaffir
 
 ### Task 8 — verify
 - Full manager suite green; frontend tests green; live e2e: run two scans (e.g. Normal then Aggressive) on the same scope, confirm each finding shows its scan, filter isolates each, and compare shows what Aggressive added.
+
+---
+
+## Status — SHIPPED (2026-09-25, branch feat/per-scan-findings)
+
+All 8 tasks landed as incremental commits. Deviations from the plan above, and why:
+
+- **Membership (Task 2) is derived from DB state at run end**, not written inline at each
+  create/reaffirm/regress/resolve branch. `_record_run_membership(db, run)` reads the
+  finding rows' own run pointers after every write + auto-resolution:
+  `detection_run_id == run.id` → new (first_seen == last_seen) or reaffirmed; a regression
+  reopen keeps its older first_seen so it reads as reaffirmed; `resolution_run_id == run.id`
+  → resolved (disjoint set — `evaluate_resolutions` only touches `detection_run_id != run.id`).
+  This is one code site instead of five across three helpers, and is exactly as consistent
+  as the run because it reads what was actually persisted. Best-effort — never sinks a run.
+- **Unknown scan is a 404 on compare, and an empty page on the list filter** (not 422). The
+  filter matches every other findings filter (unknown → empty); compare needs two real scans.
+- **compare/filter accept SCN ref *or* job id *or* run id**; a scan (job) can span several
+  runs (chunked submissions), so resolution unions them.
+- **engagement_id threading** added to `compare_scans` + `_resolve_scan_run_ids` so the portal
+  pins both scan resolution and the finding load to the client's engagement (a tenant can hold
+  several engagements). Operator stays tenant-wide (`engagement_id=None`).
+- **UI is one shared workspace** (console-source seam): scan chip on every card, a Scan filter
+  dropdown, and a Compare panel — identical on operator + portal. Portal transport delegates to
+  `/workspace/findings/scans` + `/compare` (operator handlers, engagement pinned).
+
+Verification: manager backend 1581 passed / 4 skipped; frontend 242 passed; `tsc --noEmit`
+clean; full alembic chain 0001→0047 applied on a throwaway Postgres — `detection_run_findings`
+verified (PK, ix on finding_id, ON DELETE CASCADE FKs), head 0047. Live browser e2e (two scans →
+diff) is a post-deploy check: Turbopack can't build inside this symlinked worktree.
