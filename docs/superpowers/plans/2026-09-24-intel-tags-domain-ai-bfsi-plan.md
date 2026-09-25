@@ -13,7 +13,7 @@ others depend on; P1 = customer-visible value; P2 = hardening/scale.
 | T4 ✅ | P0 | `merge_tags(existing, auto)` keeps manual tags; hook into `_promote_assets` (zero extra queries) | promote test asserts tags |
 | T5 ✅ | P1 | Asset API: tags in response, `?tag=` filter, `PUT /assets/{id}/tags` (audited), `POST /engagements/{id}/assets/retag` | router tests |
 | T6 ✅ | P1 | Frontend: tag chips on assets/findings, tag filter | UI check |
-| T7 | P2 | Migration: GIN index on `assets.tags` | alembic up/down |
+| T7 ✅ | P2 | Migration: GIN index on `assets.tags` | alembic up/down |
 | T8 ✅ | P1 | Fragile-asset guard: `sector_fn:hsm/atm/swift`, `role:ics` → non-intrusive only unless approved | policy tests |
 
 ## Phase 2 — Domain-expert AI + compliance
@@ -38,7 +38,7 @@ others depend on; P1 = customer-visible value; P2 = hardening/scale.
 | G3 ✅ | P1 | Hash-chained AI audit record | tests |
 | G4 ✅ | P1 | ADR-0003 BFSI deployment + deployment guide (agent zoning, mTLS, CMK, retention, change windows) | doc review |
 | G5 ✅ | P2 | Offline signed intel bundle (export/import, Ed25519) for sovereign | tests |
-| G6 | P2 | Sovereign local-model profile hardening (vLLM/Ollama, no cloud fallback) | tests |
+| G6 ✅ | P2 | Sovereign local-model profile hardening (vLLM/Ollama, no cloud fallback) | tests |
 
 ## Build order
 T1→T2→T3→T4 → A1→A2→A3→A5→A6→A7 → G1→G2 → T5 → A8→A9 → A4 → G3→G4 → rest.
@@ -47,4 +47,4 @@ T1→T2→T3→T4 → A1→A2→A3→A5→A6→A7 → G1→G2 → T5 → A8→A9
 Done ✅: backend for tags, compliance packs (all 4 regions), domain skills + brief, AI gateway, ADR-0003.
 Frontend (T6/A10) ✅ and fragile-asset guard (T8) ✅ — enforced at operator enqueue (incl. schedules), portal-approved scans (no override), Nuclei and Nessus; admin/manager override needs a reason and is audited.
 A9 citation grounding ✅, G3 AI audit chain ✅, findings Compliance tab + compliance_brief ✅, G5 signed offline intel bundles ✅.
-Remaining (P2, not started): T7 GIN index on assets.tags, G6 sovereign local-model hardening (vLLM profile).
+T7 GIN index (migration 0045) ✅, G6 sovereign local-model runtime (local_openai + internal-endpoint guard) ✅. All plan items complete.

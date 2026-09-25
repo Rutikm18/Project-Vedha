@@ -56,7 +56,7 @@ export async function POST(req: Request) {
   const body = await req.json().catch(() => null) as {
     messages?: unknown;
     engagementId?: string;
-    provider?: "ollama" | "openrouter" | "anthropic" | "openai" | "gemini";
+    provider?: "ollama" | "local_openai" | "openrouter" | "anthropic" | "openai" | "gemini";
     model?: string;
   } | null;
   if (!body || !validMessages(body.messages)) {

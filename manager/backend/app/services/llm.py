@@ -122,6 +122,34 @@ class AiRuntimeError(RuntimeError):
         self.status_code = status_code
 
 
+_INTERNAL_SUFFIXES = (".local", ".internal", ".lan", ".corp", ".intranet", ".home.arpa",
+                      ".svc", ".cluster.local")
+
+
+def is_internal_endpoint(url: str) -> bool:
+    """True when ``url`` points inside the organisation: a private/loopback/
+    link-local IP, ``localhost``, a single-label service name (compose/k8s) or an
+    internal DNS suffix. A sovereign deployment only ever sends raw data to such
+    an endpoint — a public URL mislabelled "local" is refused, fail closed."""
+    import ipaddress
+    from urllib.parse import urlparse
+    try:
+        parsed = urlparse(url.strip())
+    except ValueError:
+        return False
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+        return False
+    host = parsed.hostname.lower().rstrip(".")
+    try:
+        return not ipaddress.ip_address(host).is_global
+    except ValueError:
+        pass
+    return host == "localhost" or "." not in host or host.endswith(_INTERNAL_SUFFIXES)
+
+
+_LOCAL_PROVIDERS = {"ollama", "local_openai"}
+
+
 @dataclass(frozen=True)
 class Runtime:
     provider: str
@@ -322,8 +350,19 @@ class ManagerLlmService:
             return "openrouter"
         return None
 
+    def _sovereign(self) -> bool:
+        return (self.settings.deployment_profile or "").strip().lower() == "sovereign"
+
     def _default_runtime(self) -> Runtime:
         provider = self.settings.llm_provider.strip().lower()
+        if self._sovereign() and provider not in _LOCAL_PROVIDERS:
+            raise AiRuntimeError(
+                "sovereign deployment requires an in-bank model: set LLM_PROVIDER=local_openai "
+                "(vLLM/TGI, LOCAL_LLM_BASE_URL + LOCAL_LLM_MODEL) or LLM_PROVIDER=ollama",
+                503,
+            )
+        if provider == "local_openai":
+            return self._runtime("local_openai", None)
         # Empty/"auto"/unknown → resolve a configured cloud provider. Ollama is
         # only ever used when an operator sets it explicitly (local dev).
         if provider not in {"ollama", "openrouter", "anthropic", "openai", "gemini"}:
@@ -345,6 +384,20 @@ class ManagerLlmService:
         return Runtime("ollama", self.settings.ollama_model, "local")
 
     def _runtime(self, provider: str, model: str | None) -> Runtime:
+        if provider == "local_openai":
+            base = self.settings.local_llm_base_url.strip()
+            if not base or not self.settings.local_llm_model.strip():
+                raise AiRuntimeError(
+                    "local_openai is not configured (set LOCAL_LLM_BASE_URL and LOCAL_LLM_MODEL)", 503)
+            if not is_internal_endpoint(base):
+                raise AiRuntimeError(
+                    "LOCAL_LLM_BASE_URL must be an internal address (private IP, localhost, "
+                    "service name or internal DNS suffix); refusing to treat a public endpoint as local",
+                    503)
+            selected = model or self.settings.local_llm_model
+            if selected != self.settings.local_llm_model:
+                raise AiRuntimeError("Local model is not enabled by the Manager deployment", 403)
+            return Runtime("local_openai", selected, "local")
         if provider == "openrouter":
             if not _usable_key(self.settings.openrouter_api_key):
                 raise AiRuntimeError("OpenRouter is not configured in Manager (missing or invalid API key)", 503)
@@ -465,6 +518,27 @@ class ManagerLlmService:
             ),
         ]
 
+        local_base = self.settings.local_llm_base_url.strip()
+        local_reason = None
+        if not local_base or not self.settings.local_llm_model.strip():
+            local_reason = "LOCAL_LLM_BASE_URL / LOCAL_LLM_MODEL are not set"
+        elif not is_internal_endpoint(local_base):
+            local_reason = "LOCAL_LLM_BASE_URL is not an internal address"
+        providers.append(AiProviderStatus(
+            id="local_openai",
+            label="In-house model (OpenAI-compatible)",
+            configured=local_reason is None,
+            privacy="local",
+            default_model=self.settings.local_llm_model,
+            models=[self.settings.local_llm_model] if self.settings.local_llm_model else [],
+            reason=local_reason,
+        ))
+        if self._sovereign():
+            providers = [
+                p if p.privacy == "local" else p.model_copy(update={
+                    "configured": False, "reason": "disabled by the sovereign deployment profile"})
+                for p in providers
+            ]
         try:
             default = self._default_runtime()
             selected = next((p for p in providers if p.id == default.provider), None)
@@ -573,6 +647,8 @@ class ManagerLlmService:
         try:
             if runtime.provider == "ollama":
                 content = await self._ollama(runtime, system, messages, max_tokens, json_mode)
+            elif runtime.provider == "local_openai":
+                content = await self._local_openai(runtime, system, messages, max_tokens, json_mode)
             elif runtime.provider == "openrouter":
                 content = await self._openrouter(runtime, system, messages, max_tokens, json_mode)
             elif runtime.provider == "openai":
@@ -653,6 +729,13 @@ class ManagerLlmService:
         except AiRuntimeError:
             # Requested/default provider is not configured — skip straight to free.
             pass
+        if self._sovereign():
+            # Sovereign: never a cloud candidate, even one the caller asked for by
+            # name — substitute the in-bank default instead.
+            local = [c for c in candidates if c.privacy == "local"]
+            # No usable local runtime: surface the real configuration error (e.g. a
+            # public LOCAL_LLM_BASE_URL) instead of a generic "not configured".
+            return local or [self._default_runtime()]
         have = {(c.provider, c.model) for c in candidates}
         # Free cloud fallback: OpenRouter free tier (needs a free key). Uses the
         # configured OPENROUTER_MODEL — set it to a live ':free' model id, because
@@ -803,6 +886,30 @@ class ManagerLlmService:
                 f"{self.settings.openai_base_url.rstrip('/')}/chat/completions",
                 headers={"Authorization": f"Bearer {self.settings.openai_api_key}"},
                 json=body,
+            )
+            response.raise_for_status()
+            return str(response.json()["choices"][0]["message"]["content"])
+
+    async def _local_openai(
+        self, runtime: Runtime, system: str, messages: list[dict[str, str]], max_tokens: int,
+        json_mode: bool = False,
+    ) -> str:
+        """OpenAI-compatible in-bank server (vLLM, TGI, LM Studio, Ollama /v1)."""
+        body: dict = {
+            "model": runtime.model,
+            "messages": [{"role": "system", "content": system}, *messages],
+            "max_tokens": max_tokens,
+            "temperature": 0.15,
+        }
+        if json_mode:
+            body["response_format"] = {"type": "json_object"}
+        headers = {}
+        if self.settings.local_llm_api_key:
+            headers["Authorization"] = f"Bearer {self.settings.local_llm_api_key}"
+        async with self._client() as client:
+            response = await client.post(
+                f"{self.settings.local_llm_base_url.rstrip('/')}/chat/completions",
+                headers=headers, json=body,
             )
             response.raise_for_status()
             return str(response.json()["choices"][0]["message"]["content"])

@@ -20,7 +20,7 @@ import {
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 interface AiStatus {
-  provider: "ollama" | "openrouter" | "anthropic" | "openai" | "gemini";
+  provider: "ollama" | "local_openai" | "openrouter" | "anthropic" | "openai" | "gemini";
   model: string;
   configured: boolean;
   privacy: "local" | "cloud";

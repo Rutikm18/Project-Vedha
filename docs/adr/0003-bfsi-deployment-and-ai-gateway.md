@@ -1,6 +1,6 @@
 # ADR-0003 — BFSI deployment architecture and the AI egress gateway
 
-Status: accepted (gateway + profiles implemented; items marked *planned* below are tracked in
+Status: accepted and implemented (items still marked *planned* below are tracked in
 `docs/superpowers/plans/2026-09-24-intel-tags-domain-ai-bfsi-plan.md`)
 Date: 2026-09-24
 
@@ -30,7 +30,7 @@ in the two direct-SDK callers (report generator, advisor agent).
 
 | Profile | Typical buyer | Manager and data | AI | Threat-intel / updates |
 |---|---|---|---|---|
-| `sovereign` | Tier-1 banks, central-bank-regulated entities, air-gapped sites | Bank data centre, no internet egress | Open-weight model on bank GPUs (`LLM_PROVIDER=ollama`, or vLLM behind the same API). **Cloud providers are refused (fail closed).** | Signed offline bundles carried in one way (`python -m app.intel.bundle`, `POST /admin/intel-bundle`) |
+| `sovereign` | Tier-1 banks, central-bank-regulated entities, air-gapped sites | Bank data centre, no internet egress | Open-weight model on bank GPUs: `LLM_PROVIDER=local_openai` (vLLM/TGI/any OpenAI-compatible server at an internal `LOCAL_LLM_BASE_URL`) or `ollama`. **Cloud providers are refused (fail closed).** | Signed offline bundles carried in one way (`python -m app.intel.bundle`, `POST /admin/intel-bundle`) |
 | `hybrid` (BFSI default) | Most banks, NBFCs, insurers, brokers | Bank data centre or the bank's private cloud tenancy | Cloud model in the bank's region, **after pseudonymization**. Local models receive raw data. | Outbound-only pull from an allow-listed endpoint |
 | `cloud` | Fintechs and startups | Vedha single-tenant, in-region, customer-managed keys | Cloud, raw (or `AI_PSEUDONYMIZE=true`) | Automatic |
 
@@ -148,3 +148,11 @@ import`. The manager checks the Ed25519 signature against `INTEL_BUNDLE_PUBLIC_K
 set, per-file size + SHA-256, and refuses bundles older than the installed one; files are replaced
 atomically in `VEDHA_INTEL_DIR` and picked up by the next detection run (no restart). Accepted and
 rejected imports are both audited.
+
+## 7. Sovereign model runtime
+`DEPLOYMENT_PROFILE=sovereign` requires `LLM_PROVIDER=local_openai` or `ollama`; any other
+default is a startup-visible 503. Cloud providers show as "disabled by the sovereign deployment
+profile" in `/ai/status`, are never used as fallbacks, and a request naming one is served by the
+in-bank model instead. `LOCAL_LLM_BASE_URL` must resolve to an internal address (private/loopback
+IP, `localhost`, a single-label service name, or `.local/.internal/.lan/.corp/.svc` suffixes) — a
+public URL labelled "local" is refused, because the gateway sends raw context to local runtimes.

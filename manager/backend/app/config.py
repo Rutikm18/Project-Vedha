@@ -65,6 +65,12 @@ class Settings(BaseSettings):
     intel_bundle_public_keys: str = ""
     vedha_intel_dir: str = ""
     llm_request_timeout_seconds: float = 180.0
+    # In-bank OpenAI-compatible model server (vLLM / TGI / LM Studio / Ollama /v1)
+    # for sovereign deployments: LLM_PROVIDER=local_openai. The base URL must be a
+    # private/internal address — a public URL labelled "local" is refused.
+    local_llm_base_url: str = ""
+    local_llm_model: str = ""
+    local_llm_api_key: str = ""
     ollama_base_url: str = "http://host.docker.internal:11434"
     ollama_model: str = "llama3.2:3b"
     openrouter_api_key: str = ""
