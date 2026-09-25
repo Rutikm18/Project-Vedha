@@ -175,6 +175,7 @@ async def _handle_facts_ready(event: Event) -> None:
             db, sr.engagement_id,
             {"facts": sr.facts, "scanner_runs": scanner_runs},
             scan_result_id=sr.id,
+            job_id=sr.job_id,
         )
         # All finding-producing paths for this scan have now run (engine here,
         # service_vuln/finding_translator at submit); stamp the unified

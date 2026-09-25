@@ -613,7 +613,8 @@ async def _lock_engagement_for_detection(db: AsyncSession, engagement_id: uuid.U
 
 async def create_findings_from_facts(
     db: AsyncSession, engagement_id: uuid.UUID, result: dict,
-    *, scan_result_id: uuid.UUID | None = None, trigger: str = TRIGGER_FACTS_READY,
+    *, scan_result_id: uuid.UUID | None = None, job_id: uuid.UUID | None = None,
+    trigger: str = TRIGGER_FACTS_READY,
 ) -> int:
     """New raw-facts path: detect CVE findings from result['facts'] and persist
     them as Finding rows, wrapped in a DetectionRun so the outcome is a temporal
@@ -637,6 +638,7 @@ async def create_findings_from_facts(
     run = DetectionRun(
         engagement_id=engagement_id,
         scan_result_id=scan_result_id,
+        job_id=job_id,
         trigger=trigger,
         vuln_db_version=db_version,
         vuln_db_fetched_at=db_fetched,

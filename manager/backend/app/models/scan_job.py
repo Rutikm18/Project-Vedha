@@ -30,6 +30,12 @@ class ScanJob(Base, TimestampMixin):
     # sets it.
     reference: Mapped[str | None] = mapped_column(
         String(24), nullable=True, unique=True, index=True)
+    # What this scan was, captured as clean columns instead of dug out of the
+    # result JSON each read: the use-case id (uc_network_va, uc_deep_port_sweep…)
+    # and the resolved intensity (light/standard/deep). Stamped at enqueue; used
+    # to label and filter findings by the scan that produced them.
+    use_case_id: Mapped[str | None] = mapped_column(String(64), nullable=True)
+    intensity: Mapped[str | None] = mapped_column(String(16), nullable=True)
     agent_id: Mapped[str | None] = mapped_column(String(255), nullable=True)
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)

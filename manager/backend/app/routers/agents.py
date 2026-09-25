@@ -1571,6 +1571,10 @@ async def enqueue_agent_job(
         engagement_id=body.engagement_id,
         job_type=body.job_type,
         status=ScanJobStatus.pending,
+        # Clean columns for labelling/filtering findings by their scan, so no
+        # reader has to dig them out of the result JSON.
+        use_case_id=resolved_use_case_id,
+        intensity=intensity_name,
         result=job_params,  # params travel in `result` until the probe overwrites it
     )
     db.add(job)

@@ -49,6 +49,10 @@ class DetectionRun(Base, TimestampMixin):
     )
     # Provenance: the raw facts this run consumed (append-only scan_results row).
     scan_result_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True)
+    # Direct link to the scan job this run processed, so a finding resolves its
+    # originating scan (reference/use-case/intensity) in one hop instead of
+    # run→scan_result→job. Nullable for legacy runs and non-scan triggers.
+    job_id: Mapped[uuid.UUID | None] = mapped_column(UUID(as_uuid=True), nullable=True, index=True)
     trigger: Mapped[str] = mapped_column(String(32), nullable=False, server_default=TRIGGER_FACTS_READY)
     status: Mapped[str] = mapped_column(String(16), nullable=False, server_default=RUN_RUNNING)
 
