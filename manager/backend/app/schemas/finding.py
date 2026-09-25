@@ -130,6 +130,20 @@ class FindingSummary(BaseModel):
     average_risk: int
 
 
+class FindingScanRef(BaseModel):
+    """The scan that most recently produced or confirmed this finding — its human
+    reference (SCN-YYMMDD-XXXXXX), use-case, intensity, and when it ran. Lets the
+    UI label and group findings by scan without exposing run/job UUIDs. Resolved by
+    the router from detection_run_id → detection_runs → scan_jobs; every field is
+    optional because legacy findings and probe-self-assessed rows have no run link."""
+    run_id: uuid.UUID | None = None
+    job_id: uuid.UUID | None = None
+    reference: str | None = None
+    use_case_id: str | None = None
+    intensity: str | None = None
+    scanned_at: datetime | None = None
+
+
 class FindingOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -161,6 +175,10 @@ class FindingOut(BaseModel):
     reopened_count: int = 0
     resolved_at: datetime | None = None
     first_seen: datetime | None = None
+    # The scan that most recently produced/confirmed this finding (task 3). Resolved
+    # by the router from detection_run_id → detection_runs → scan_jobs; left null for
+    # legacy/self-assessed findings with no run link. See FindingScanRef.
+    scan: FindingScanRef | None = None
     # P4 unified priority (computed; see services/risk_rank.py).
     risk_rank: int | None = None
     # Populated on the detail endpoint. List responses intentionally leave this

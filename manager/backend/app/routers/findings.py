@@ -14,11 +14,13 @@ from app.dependencies import DB, ReadDB, AuthUser
 from app.models.asset import Asset
 from app.models.engagement import Engagement
 from app.models.finding import Finding
+from app.models.detection_run import DetectionRun
+from app.models.scan_job import ScanJob
 from app.models.enums import DetectionStatus, FindingSeverity, FindingStatus
 from app.schemas.common import PaginatedResponse, paginate
 from app.schemas.finding import (
     FindingAssetContext, FindingAssetOption, FindingEventOut, FindingOut, FindingPatch, FindingReopen,
-    FindingSummary, FindingTimeline, SlaSummary,
+    FindingScanRef, FindingSummary, FindingTimeline, SlaSummary,
 )
 from app.services import finding_events as events_service
 from app.services.finding_metrics import compute_mttr
@@ -71,9 +73,37 @@ def asset_ip_clause(value: str):
     return Asset.ip_address.startswith(value)
 
 
+async def _scan_refs(db: AsyncSession, findings: list[Finding]) -> dict[uuid.UUID, FindingScanRef]:
+    """Resolve each finding's scan — detection_run_id → detection_runs → scan_jobs —
+    in ONE query for the whole page, never one per row. Keyed by run id. Findings
+    with no detection_run_id (legacy / probe self-assessed) are simply absent."""
+    run_ids = {f.detection_run_id for f in findings if f.detection_run_id is not None}
+    if not run_ids:
+        return {}
+    rows = (await db.execute(
+        select(
+            DetectionRun.id, DetectionRun.started_at, DetectionRun.job_id,
+            ScanJob.reference, ScanJob.use_case_id, ScanJob.intensity,
+            ScanJob.completed_at, ScanJob.started_at,
+        )
+        .join(ScanJob, ScanJob.id == DetectionRun.job_id, isouter=True)
+        .where(DetectionRun.id.in_(run_ids))
+    )).all()
+    refs: dict[uuid.UUID, FindingScanRef] = {}
+    for run_id, run_started, job_id, reference, use_case_id, intensity, job_done, job_started in rows:
+        refs[run_id] = FindingScanRef(
+            run_id=run_id, job_id=job_id, reference=reference,
+            use_case_id=use_case_id, intensity=intensity,
+            # When the scan produced this data: prefer the scan's own completion,
+            # then its start, then the detection run's start as a last resort.
+            scanned_at=job_done or job_started or run_started,
+        )
+    return refs
+
+
 async def _with_asset_identity(db: AsyncSession, findings: list[Finding]) -> list[FindingOut]:
-    """Serialize a page with each finding's asset IP/hostname — ONE query for
-    the page, never one per row."""
+    """Serialize a page with each finding's asset IP/hostname and originating scan
+    — ONE query each for the page, never one per row."""
     ids = {f.asset_id for f in findings if f.asset_id is not None}
     identity: dict = {}
     if ids:
@@ -81,11 +111,13 @@ async def _with_asset_identity(db: AsyncSession, findings: list[Finding]) -> lis
             select(Asset.id, Asset.ip_address, Asset.hostname).where(Asset.id.in_(ids))
         )).all()
         identity = {aid: (ip, host) for aid, ip, host in rows}
+    scan_refs = await _scan_refs(db, findings)
     out = []
     for f in findings:
         ip, host = identity.get(f.asset_id, (None, None))
         out.append(FindingOut.model_validate(f).model_copy(
-            update={"asset_ip": ip, "asset_hostname": host}))
+            update={"asset_ip": ip, "asset_hostname": host,
+                    "scan": scan_refs.get(f.detection_run_id)}))
     return out
 
 
@@ -117,10 +149,12 @@ async def _finding_detail_out(db: AsyncSession, finding: Finding) -> FindingOut:
                 owner=asset.owner,
                 environment=asset.environment,
             )
+    scan_refs = await _scan_refs(db, [finding])
     update: dict = {
         "asset_context": asset_context,
         "asset_ip": asset_context.ip_address if asset_context else None,
         "asset_hostname": asset_context.hostname if asset_context else None,
+        "scan": scan_refs.get(finding.detection_run_id),
     }
     # On the detail read we know the asset, so recompute the explainable rank WITH
     # real criticality/exposure instead of the neutral defaults the list path uses.
