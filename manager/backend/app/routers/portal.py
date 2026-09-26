@@ -701,6 +701,53 @@ async def portal_workspace_findings(
     )
 
 
+@router.get("/workspace/findings/groups",
+            summary="Similar findings grouped into one-fix units for the assigned engagement")
+async def portal_workspace_finding_groups(
+    user: ClientUser,
+    db: DB,
+    severity: FindingSeverity | None = Query(default=None),
+    status_filter: FindingStatus | None = Query(default=None, alias="status"),
+    active_only: bool = Query(default=False),
+    asset_id: uuid.UUID | None = Query(default=None),
+    asset_ip: str | None = Query(default=None, min_length=1, max_length=45),
+    agent_id: uuid.UUID | None = Query(default=None),
+    mitre_technique: str | None = Query(default=None),
+    scan: str | None = Query(default=None, min_length=1, max_length=64),
+    search: str | None = Query(default=None, min_length=1, max_length=200),
+    detection_status: DetectionStatus | None = Query(default=None),
+    exploit_validated: bool | None = Query(default=None),
+    verification_state: str | None = Query(default=None),
+    needs_review: bool | None = Query(default=None),
+    sla_breached: bool = Query(default=False),
+    page: int = Query(default=1, ge=1),
+    page_size: int = Query(default=20, ge=1, le=100),
+):
+    # Pinned to the client's own engagement, exactly like the list delegate.
+    from app.routers.findings import list_finding_groups as operator_groups
+    return await operator_groups(
+        db=db,
+        current_user=user,
+        severity=severity,
+        status_filter=status_filter,
+        active_only=active_only,
+        asset_id=asset_id,
+        asset_ip=asset_ip,
+        mitre_technique=mitre_technique,
+        engagement_id=assert_client(user),
+        agent_id=agent_id,
+        scan=scan,
+        search=search,
+        detection_status=detection_status,
+        exploit_validated=exploit_validated,
+        verification_state=verification_state,
+        needs_review=needs_review,
+        sla_breached=sla_breached,
+        page=page,
+        page_size=page_size,
+    )
+
+
 @router.get("/workspace/findings/assets",
             summary="Affected assets (IP filter options) for the assigned engagement")
 async def portal_workspace_finding_assets(
