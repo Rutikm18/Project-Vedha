@@ -281,6 +281,16 @@ async def portal_remediation_bundles(user: ClientUser, db: DB,
     return remediation_service.view_payload(data["bundles"], view, data["sla_source"])
 
 
+@router.get("/remediation/export", summary="Download your remediation tracker (XLSX or CSV zip)")
+async def portal_remediation_export(user: ClientUser, db: DB,
+                                    format: str = Query(default="xlsx", pattern="^(xlsx|csv)$")):
+    from fastapi import Response
+    eng = await _client_engagement(user, db)
+    content, media, filename = await remediation_service.export_tracker(db, eng, user.tenant_id, format)
+    return Response(content=content, media_type=media,
+                    headers={"Content-Disposition": f'attachment; filename="{filename}"'})
+
+
 @router.get("/remediation/bundles/{fix_key}", summary="One fix bundle in your engagement")
 async def portal_remediation_bundle(fix_key: str, user: ClientUser, db: DB):
     eng = await _client_engagement(user, db)

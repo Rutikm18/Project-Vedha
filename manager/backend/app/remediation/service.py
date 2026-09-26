@@ -52,3 +52,26 @@ def view_payload(bundles: list[dict], view: str, sla_source: str) -> dict:
 
 def find_bundle(bundles: list[dict], fix_key: str) -> dict | None:
     return next((b for b in bundles if b["fix_key"] == fix_key), None)
+
+
+async def export_tracker(db: AsyncSession, engagement: Any, tenant_id: uuid.UUID, fmt: str) -> tuple[bytes, str, str]:
+    """(content, media_type, filename) for the XLSX/CSV remediation tracker."""
+    import re as _re
+
+    from sqlalchemy import select
+
+    from app.models.deadline_extension import DeadlineExtensionRequest
+    from app.remediation.export import build_rows, to_csv_zip, to_xlsx
+    from app.services.project_time import project_file_stamp
+
+    data = await engagement_bundles(db, engagement, tenant_id)
+    extensions = list((await db.execute(
+        select(DeadlineExtensionRequest).where(DeadlineExtensionRequest.engagement_id == engagement.id)
+    )).scalars().all())
+    sheets = build_rows(data["bundles"], data["items"], extensions)
+    slug = _re.sub(r"[^A-Za-z0-9]+", "-", str(getattr(engagement, "name", "engagement"))).strip("-")[:40] or "engagement"
+    stem = f"vedha-remediation-{slug}-{project_file_stamp()}"
+    if fmt == "csv":
+        return to_csv_zip(sheets), "application/zip", f"{stem}.zip"
+    return (to_xlsx(sheets, title=f"Remediation tracker — {getattr(engagement, 'name', '')}"),
+            "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", f"{stem}.xlsx")

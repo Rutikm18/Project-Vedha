@@ -24,7 +24,7 @@ import uuid
 from typing import Annotated, Any
 
 import structlog
-from fastapi import APIRouter, HTTPException, Query, status
+from fastapi import APIRouter, HTTPException, Query, Response, status
 from sqlalchemy import func, select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -387,3 +387,16 @@ async def refine_bundle(
         publish=publish, facts_fingerprint=fingerprint,
     ))).one()
     return _bundle_payload(bundle, key, plan, row, False)
+
+
+@bundles_router.get("/{engagement_id}/remediation/export",
+                    summary="Download the remediation tracker (XLSX workbook or CSV zip)")
+async def export_remediation(
+    engagement_id: uuid.UUID, db: DB,
+    current_user: Annotated[AuthUser, _REMEDIATION_READER],
+    format: str = Query(default="xlsx", pattern="^(xlsx|csv)$"),
+):
+    eng = await _tenant_engagement(db, engagement_id, current_user.tenant_id)
+    content, media, filename = await remediation_service.export_tracker(db, eng, current_user.tenant_id, format)
+    return Response(content=content, media_type=media,
+                    headers={"Content-Disposition": f'attachment; filename="{filename}"'})
