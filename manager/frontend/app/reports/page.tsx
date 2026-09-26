@@ -25,7 +25,8 @@ import {
 } from "../../lib/prompts/report";
 import { type ReportResult } from "../../lib/ai-engine";
 import { FindingsSection } from "../../components/report/FindingReport";
-import { toRawFinding } from "../../lib/report/adapt";
+import { applyBundles, toRawFinding } from "../../lib/report/adapt";
+import { DUE_SOURCE_LABEL, URGENCY_LABEL, createRemediationApi, fmtIst } from "../../lib/remediation";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -404,10 +405,9 @@ function AiReportPanel({ eng, findings, surface }: { eng: Engagement; findings: 
   const [report, setReport] = useState<ReportResult | null>(null);
   const api = useMemo(() => createReportsWorkspaceApi(surface), [surface]);
   const genMut = useMutation({
-    mutationFn: () => api.generate<ReportResult>({
-        engagement: { id: eng.id, name: eng.name, client: eng.client, scopeCidrs: eng.scopeCidrs },
-        findings,
-      }),
+    // The backend loads the engagement's findings itself (no browser payload,
+    // no 100-finding cap) and routes every model call through the AI gateway.
+    mutationFn: () => api.generate<ReportResult>({ engagement: { id: eng.id } }),
     onSuccess: setReport,
   });
   const err = genMut.error instanceof Error ? genMut.error.message : genMut.error ? String(genMut.error) : null;
@@ -422,7 +422,9 @@ function AiReportPanel({ eng, findings, surface }: { eng: Engagement; findings: 
         <div style={{ display: "flex", alignItems: "center", gap: 7 }}>
           <Sparkles size={14} style={{ color: "var(--accent)" }} />
           <span style={{ fontSize: 13, fontWeight: 700 }}>AI Report Generation</span>
-          <span style={{ fontSize: 10.5, color: "var(--text-muted)" }}>Claude Sonnet 4.6 · deterministic scorecard · injection-fenced</span>
+          <span style={{ fontSize: 10.5, color: "var(--text-muted)" }}>
+            {report?.generation?.model ? `${report.generation.model} · ` : ""}AI gateway + audit chain · deterministic scorecard &amp; fix-bundle roadmap
+          </span>
         </div>
         <button className="btn btn-primary no-print" style={{ fontSize: 11, padding: "5px 12px", display: "flex", alignItems: "center", gap: 5 }}
           onClick={() => genMut.mutate()} disabled={genMut.isPending || findings.length === 0}>
@@ -433,7 +435,7 @@ function AiReportPanel({ eng, findings, surface }: { eng: Engagement; findings: 
 
       {genMut.isPending && (
         <p style={{ marginTop: 10, fontSize: 11.5, color: "var(--text-secondary)" }}>
-          Composing a client-ready draft from {findings.length} finding{findings.length !== 1 ? "s" : ""} — scorecard is computed locally; the narrative is written by the model.
+          Composing a client-ready draft from {findings.length} finding{findings.length !== 1 ? "s" : ""} — the scorecard and the fix-bundle roadmap are computed; only the narrative is written by the model.
         </p>
       )}
       {err && !genMut.isPending && (
@@ -445,6 +447,15 @@ function AiReportPanel({ eng, findings, surface }: { eng: Engagement; findings: 
 
       {report && (
         <div style={{ marginTop: 14 }}>
+          {(report.generation?.issues?.length ?? 0) > 0 && (
+            <div className="rm-banner" data-tone="warn" style={{ marginBottom: 12 }}>
+              <AlertTriangle size={15} aria-hidden />
+              <div>
+                <strong>Some sections fell back to computed text</strong>
+                <span>{report.generation!.issues.join(" · ")}</span>
+              </div>
+            </div>
+          )}
           {/* Verdict */}
           <div style={{ display: "flex", gap: 10, alignItems: "flex-start", marginBottom: 14 }}>
             <Target size={16} style={{ color: "var(--accent)", flexShrink: 0, marginTop: 3 }} />
@@ -534,6 +545,12 @@ function AiReportPanel({ eng, findings, surface }: { eng: Engagement; findings: 
                       <span style={{ fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 800, color: "var(--text-faint)" }}>{g.fix_id}</span>
                       <span style={{ fontSize: 9.5, fontWeight: 800, letterSpacing: "0.04em", padding: "2px 7px", borderRadius: 4, color: w.color, background: `${w.color}16`, border: `1px solid ${w.color}33` }}>{w.label.toUpperCase()}</span>
                       <strong style={{ fontSize: 13, color: "var(--text-primary)" }}>{g.title}</strong>
+                      {g.urgency && <span className="rm-urgency" data-level={g.urgency}>{URGENCY_LABEL[g.urgency]}</span>}
+                      {g.due_at && (
+                        <span className="rm-due" style={{ marginLeft: "auto" }}>
+                          Due {fmtIst(g.due_at)}{g.due_source && <em>{DUE_SOURCE_LABEL[g.due_source] ?? g.due_source}</em>}
+                        </span>
+                      )}
                     </div>
                     <p style={{ margin: "0 0 8px", fontSize: 12.5, color: "var(--text-secondary)", lineHeight: 1.6 }}>{g.description}</p>
                     <div style={{ display: "flex", gap: 14, flexWrap: "wrap", alignItems: "center", marginBottom: 6 }}>
@@ -811,7 +828,19 @@ export function ReportsWorkspace({ surface = "manager" }: { surface?: ReportsWor
   const findQ = useQuery({ queryKey: ["reports", surface, "findings", engId], queryFn: () => api.findings<FindingPage>(engId), enabled: Boolean(engId), retry: (c, e) => !isUnauthorized(e) && c < 2 });
   const sumQ  = useQuery({ queryKey: ["reports", surface, "summary",  engId], queryFn: () => api.summary<FindingSummary>(engId), enabled: Boolean(engId), retry: (c, e) => !isUnauthorized(e) && c < 2 });
   const findings = useMemo(() => findQ.data?.items ?? [], [findQ.data?.items]);
-  const reportFindings = useMemo(() => findings.map(toRawFinding), [findings]);
+  const remediation = useMemo(() => createRemediationApi(surface), [surface]);
+  const bundleQ = useQuery({
+    queryKey: ["reports", surface, "bundles", engId],
+    queryFn: () => remediation.bundles(engId, "fix"),
+    enabled: Boolean(engId),
+    retry: (c, e) => !isUnauthorized(e) && c < 2,
+  });
+  // Each finding's Remediation/Verification/Due come from its fix bundle — the
+  // same live data as the Remediation page and the Excel tracker.
+  const reportFindings = useMemo(
+    () => applyBundles(findings.map(toRawFinding), bundleQ.data?.bundles ?? []),
+    [findings, bundleQ.data?.bundles],
+  );
   const summary: FindingSummary = sumQ.data ?? { total: eng?.findingCount ?? 0, criticalOpen: 0, validated: 0, blind: 0, averageRisk: 0, slaBreached: 0 };
   const loading  = engQ.isLoading || (Boolean(engId) && (findQ.isLoading || sumQ.isLoading));
   const loadErr  = engQ.error || findQ.error || sumQ.error;

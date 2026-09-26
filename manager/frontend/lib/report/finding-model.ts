@@ -118,6 +118,9 @@ export interface RawFinding {
   assignedTo?: string;
   dueAt?: string;
   retestedAt?: string;
+  /** The fix bundle this finding belongs to (app/remediation/bundles.py). */
+  fixRef?: string;
+  fixTarget?: string;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
@@ -435,13 +438,11 @@ export function priorityOf(f: RawFinding): Priority {
 }
 
 /* ═══════════════════════════════════════════════════════════════════════════
- * 5. Remediation clock. Default policy, stated as policy — not dressed up as
- *    a regulatory requirement it isn't.
+ * 5. Remediation clock. The due date is decided ONCE, on the backend
+ *    (services/deadlines.py: approved extension > engagement SLA > tenant SLA >
+ *    default) and arrives here as `dueAt`. The report never computes its own —
+ *    a second clock is how a report and the dashboard end up disagreeing.
  * ═══════════════════════════════════════════════════════════════════════════ */
-
-export const SLA_DAYS: Record<PriorityCode, number | null> = {
-  P0: 3, P1: 7, P2: 30, P3: 90, P4: null,
-};
 
 export type SlaState = "breached" | "due-soon" | "on-track" | "no-target" | "closed";
 
@@ -452,24 +453,17 @@ export interface Sla {
   note: string;
 }
 
-export function slaOf(f: RawFinding, priority: PriorityCode, now = new Date()): Sla {
+export function slaOf(f: RawFinding, _priority: PriorityCode, now = new Date()): Sla {
+  void _priority;   // priority explains urgency; it no longer sets the date
   const closed = /remediated|false_positive|closed/i.test(f.status);
   if (closed) return { state: "closed", dueAt: null, daysRemaining: null, note: "Closed — no target date applies." };
 
-  const days = SLA_DAYS[priority];
   const explicit = f.dueAt ? new Date(f.dueAt) : null;
-  const discovered = f.discoveredAt ? new Date(f.discoveredAt) : null;
-
-  let due: Date | null = explicit && !isNaN(explicit.getTime()) ? explicit : null;
-  if (!due && days !== null && discovered && !isNaN(discovered.getTime())) {
-    due = new Date(discovered.getTime() + days * 86_400_000);
-  }
+  const due: Date | null = explicit && !isNaN(explicit.getTime()) ? explicit : null;
   if (!due) {
     return {
-      state: "no-target",
-      dueAt: null,
-      daysRemaining: null,
-      note: days === null ? "No remediation target — tracked for awareness." : "Discovery date not recorded, so no target could be set.",
+      state: "no-target", dueAt: null, daysRemaining: null,
+      note: "No due date from the SLA policy (no window for this severity, or not yet assessed).",
     };
   }
 
@@ -479,9 +473,9 @@ export function slaOf(f: RawFinding, priority: PriorityCode, now = new Date()): 
   const remaining = diff < 0 ? Math.floor(diff) : Math.ceil(diff);
   const state: SlaState = remaining < 0 ? "breached" : remaining <= 2 ? "due-soon" : "on-track";
   const note =
-    state === "breached" ? `Past the ${days ?? "agreed"}-day target by ${Math.abs(remaining)} day${Math.abs(remaining) === 1 ? "" : "s"}.`
+    state === "breached" ? `Past the due date by ${Math.abs(remaining)} day${Math.abs(remaining) === 1 ? "" : "s"}.`
     : state === "due-soon" ? `Due in ${remaining} day${remaining === 1 ? "" : "s"}.`
-    : `${remaining} days remaining against a ${days}-day target.`;
+    : `${remaining} days remaining.`;
   return { state, dueAt: due, daysRemaining: remaining, note };
 }
 

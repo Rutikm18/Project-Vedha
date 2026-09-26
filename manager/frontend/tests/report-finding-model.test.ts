@@ -56,18 +56,20 @@ ok("dampeners are listed too",
 
 /* ── SLA ──────────────────────────────────────────────────────────────────── */
 group("remediation clock");
-const p0sla = slaOf(F({}), "P0", NOW); // found 20 Aug, 3-day target, now 6 Sep
-ok("P0 found 17 days ago is breached", p0sla.state === "breached", p0sla.state);
-ok("breach note counts the days", /by 14 days/.test(p0sla.note), p0sla.note);
-ok("a finding hours past target is breached, not -0 days",
-  slaOf(F({ discoveredAt: "2026-09-02T12:00:00Z" }), "P0", NOW).state === "breached",
-  slaOf(F({ discoveredAt: "2026-09-02T12:00:00Z" }), "P0", NOW));
-ok("P3 (90 days) is still on track", slaOf(F({}), "P3", NOW).state === "on-track");
+// Due dates come from the backend resolver (services/deadlines.py); the report
+// never computes its own from priority.
+const breached = slaOf(F({ dueAt: "2026-08-23T00:00:00Z" }), "P0", NOW); // due 23 Aug, now 6 Sep
+ok("past its due date is breached", breached.state === "breached", breached.state);
+ok("breach note counts the days", /by 14 days/.test(breached.note), breached.note);
+ok("a finding hours past its due date is breached, not -0 days",
+  slaOf(F({ dueAt: "2026-09-05T12:00:00Z" }), "P0", NOW).state === "breached",
+  slaOf(F({ dueAt: "2026-09-05T12:00:00Z" }), "P0", NOW));
+ok("far-off due date is on track", slaOf(F({ dueAt: "2026-12-01T00:00:00Z" }), "P3", NOW).state === "on-track");
 ok("closed findings get no target",
-  slaOf(F({ status: "REMEDIATED" }), "P0", NOW).state === "closed");
-ok("no discovery date ⇒ no invented target",
-  slaOf(F({ discoveredAt: "" }), "P1", NOW).state === "no-target");
-ok("an explicit dueAt overrides policy",
+  slaOf(F({ status: "REMEDIATED", dueAt: "2026-08-23T00:00:00Z" }), "P0", NOW).state === "closed");
+ok("no backend due date ⇒ no invented target (priority never sets a date)",
+  slaOf(F({}), "P0", NOW).state === "no-target");
+ok("the backend due date is used as-is",
   slaOf(F({ dueAt: "2026-09-30T00:00:00Z" }), "P0", NOW).state === "on-track");
 
 /* ── CVSS ─────────────────────────────────────────────────────────────────── */

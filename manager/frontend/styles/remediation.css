@@ -204,3 +204,6 @@ a.rm-ref { color: var(--accent); font-family: var(--font-mono); }
   .rm-command { background: #fff; color: #000; border-color: #999; }
   .rm-step, .rm-bundle { break-inside: avoid; }
 }
+
+/* Report findings grounded in fix bundles: keep step detail / commands on their own lines. */
+.vf-steps li > p { white-space: pre-line; }

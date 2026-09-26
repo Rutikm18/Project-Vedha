@@ -5,7 +5,8 @@
  * consume the UI shape. Backend enrichment (Phase 3) later supplies real values
  * for the fields derived here, at which point the derivations become pass-throughs.
  */
-import type { RawFinding, RawAsset, DetectionMethod } from "./finding-model";
+import type { RawFinding, RawAsset, RawRemediation, DetectionMethod } from "./finding-model";
+import type { Bundle } from "../remediation";
 import type { PortalFinding } from "../portal-client";
 
 /** Best-effort exposure read from the asset's environment label. */
@@ -53,6 +54,15 @@ export function toRawFinding(f: any): RawFinding {
   return {
     ...f,
     cve: f?.cve ?? f?.cves ?? undefined,
+    // The API sends compliance as {framework, controls[], rationale}; the report
+    // renders strings. Normalise here so an enriched payload can never crash it.
+    compliance: Array.isArray(f?.compliance)
+      ? f.compliance.flatMap((c: unknown) => {
+          if (typeof c === "string") return [c];
+          const o = c as { framework?: string; controls?: string[] };
+          return o?.framework ? (o.controls ?? []).map((ctl) => `${o.framework}: ${ctl}`) : [];
+        })
+      : undefined,
     dueAt: f?.slaDeadline ?? f?.dueAt ?? undefined,
     epss: f?.epssRecorded && typeof f.epssScore === "number" ? f.epssScore : undefined,
     epssPercentile: f?.epssPercentile || undefined,
@@ -96,4 +106,52 @@ export function portalToRawFinding(pf: PortalFinding): RawFinding {
     activelyExploited: false,
     detectionCoverage: "",
   };
+}
+
+/**
+ * Ground each report finding in its fix bundle (app/remediation/bundles.py).
+ * One bundles request covers the whole report: the finding's host row gives its
+ * OS and live due date (engagement SLA / approved extension); the bundle gives
+ * the contain → fix → prevent steps for that OS and the scanner check that
+ * proves closure. Findings outside any bundle are returned unchanged.
+ */
+export function applyBundles(findings: RawFinding[], bundles: Bundle[]): RawFinding[] {
+  const byFinding = new Map<string, { bundle: Bundle; host: Bundle["hosts"][number] }>();
+  for (const bundle of bundles) {
+    for (const host of bundle.hosts) {
+      for (const id of host.finding_ids) byFinding.set(id, { bundle, host });
+    }
+  }
+  const osKey = (family: string) =>
+    family === "windows" || family === "linux" || family === "macos" ? family : "generic";
+
+  return findings.map((f) => {
+    const hit = byFinding.get(f.id);
+    if (!hit) return f;
+    const { bundle, host } = hit;
+    const steps = bundle.steps_by_os[osKey(host.os_family)] ?? Object.values(bundle.steps_by_os)[0] ?? [];
+    const remediation: RawRemediation[] = steps.map((s) => ({
+      tier: s.tier,
+      // The report renders `action`; keep the step title with its detail and commands.
+      action: [`${s.title} — ${s.description}`,
+        s.pre_checks?.length ? `Before: ${s.pre_checks.join(" ")}` : "",
+        s.commands_for_os.length ? `Commands: ${s.commands_for_os.join(" ; ")}` : ""]
+        .filter(Boolean).join("\n"),
+      downtime: s.downtime || undefined,
+      rollback: s.rollback || undefined,
+    }));
+    const v = bundle.verification_check;
+    return {
+      ...f,
+      remediation: remediation.length ? remediation : f.remediation,
+      verification: {
+        method: `${v.scanner} — ${v.check}`,
+        command: v.manual_command || undefined,
+        expected: v.expected,
+      },
+      dueAt: host.status === "open" || host.status === "extension_approved" ? host.due_at ?? undefined : f.dueAt,
+      fixRef: bundle.ref,
+      fixTarget: bundle.target_state,
+    } as RawFinding;
+  });
 }

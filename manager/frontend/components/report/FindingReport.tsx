@@ -469,6 +469,12 @@ export function FindingReport({ finding, ordinal, open, onToggle, mode = "assess
 
         {/* 7 — the fix, in the order it actually gets done */}
         <Section index={`${n}.7`} title="Remediation" icon={Wrench} tone="fix">
+          {f.fixRef && (
+            <p className="vf-note">
+              Fix bundle <strong>{f.fixRef}</strong>{f.fixTarget ? <> — target state: <strong>{f.fixTarget}</strong></> : null}.
+              One change may close this finding on other hosts too.
+            </p>
+          )}
           {a.remediation.length ? (
             (["containment", "fix", "hardening"] as RemediationTier[]).map(tier => {
               const steps = byTier(tier);
