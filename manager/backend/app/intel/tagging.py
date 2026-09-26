@@ -108,7 +108,8 @@ def _host_type(f: AssetFacts) -> Iterable[Tag]:
 
 _OS_PATTERNS: tuple[tuple[str, re.Pattern], ...] = (
     ("windows", re.compile(r"windows|microsoft")),
-    ("macos", re.compile(r"mac ?os|os x|darwin")),
+    # Word-bounded: a bare "os x" matched inside "Cisco IOS XE" and tagged routers macOS.
+    ("macos", re.compile(r"\bmac ?os\b|\bos x\b|\bdarwin\b")),
     ("network_os", re.compile(r"cisco|ios[- ]xe|nx-os|junos|fortios|pan-os|routeros|mikrotik|arista|eos\b")),
     ("linux", re.compile(r"linux|ubuntu|debian|centos|red ?hat|rhel|fedora|suse|alpine|rocky|alma")),
     ("bsd", re.compile(r"freebsd|openbsd|netbsd|pfsense|opnsense")),
@@ -135,6 +136,12 @@ def _os_family(f: AssetFacts) -> Iterable[Tag]:
                 yield Tag("os_family", family, "os.banner", 0.6,
                           f"{svc.describe()} banner names {family}")
                 return
+
+
+def os_family_tag(facts: AssetFacts) -> Tag | None:
+    """The single os_family tag the evidence supports, or None. Public so the
+    remediation planner resolves a platform with the SAME rule the tags use."""
+    return next(iter(_os_family(facts)), None)
 
 
 # ── role (from services) ─────────────────────────────────────────────────────

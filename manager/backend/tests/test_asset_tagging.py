@@ -60,6 +60,14 @@ def test_os_family_detection():
     assert "os_family:linux" in _tags(AssetFacts(ip="10.0.0.1", os="Ubuntu 22.04"))
     assert "os_family:network_os" in _tags(AssetFacts(ip="10.0.0.1", os="Cisco IOS 15.2"))
     assert "os_family:macos" in _tags(AssetFacts(ip="10.0.0.1", os="macOS 14"))
+    assert "os_family:macos" in _tags(AssetFacts(ip="10.0.0.1", os="Mac OS X 10.15"))
+
+
+def test_cisco_ios_xe_is_network_os_not_macos():
+    # "IOS XE" contains the substring "os x"; an unbounded macOS pattern matched it.
+    tags = _tags(AssetFacts(ip="10.0.0.1", os="Cisco IOS XE 17.3"))
+    assert "os_family:network_os" in tags
+    assert "os_family:macos" not in tags
 
 
 def test_os_family_falls_back_to_banner_with_lower_confidence():
