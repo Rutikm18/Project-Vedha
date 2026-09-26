@@ -39,7 +39,7 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import {
   Activity, AlertTriangle, ArrowLeft, BadgeCheck, Brain, Check, CheckCircle,
   ChevronDown, ChevronLeft, ChevronRight, Copy, ExternalLink, EyeOff, FileText, Flag,
-  GitCompare, Keyboard, Link2, ListChecks, LoaderCircle, Radar, RefreshCw, RotateCcw,
+  GitCompare, Keyboard, Link2, ListChecks, LoaderCircle, Monitor, Radar, RefreshCw, RotateCcw,
   Search, Server, Shield, SlidersHorizontal, Tag, Terminal, Wrench, X,
 } from "lucide-react";
 import { PageShell } from "../../components/PageShell";
@@ -120,6 +120,15 @@ interface ExploitationView {
 }
 interface EvidenceFact { label: string; value: string; }
 type RemediationOs = "generic" | "linux" | "windows" | "macos";
+/** What the manager resolved the plan's platform to, and from what evidence. */
+interface RemediationPlatform {
+  requested: string;
+  os: RemediationOs;
+  family: string | null;
+  source: "manual_tag" | "asset_os" | "service_banner" | "not_detected" | "no_asset" | "requested" | string;
+  evidence: string | null;
+  confidence: number | null;
+}
 interface RemediationPlanStep {
   step: number;
   title: string;
@@ -138,6 +147,7 @@ interface RemediationPlanResponse {
   cached: boolean;
   generated_at: string | null;
   model: string | null;
+  platform?: RemediationPlatform | null;
   plan: {
     category: string;
     os: RemediationOs;
@@ -818,14 +828,37 @@ function EvidenceView({ finding }: { finding: Finding }) {
 }
 
 /* ─── Remediation ─────────────────────────────────────────────────────────
- * The OS selector defaults to the asset's own platform, so the common case
- * needs no interaction at all. */
-function remediationOsFor(finding: Finding): RemediationOs {
-  const value = (finding.assetContext?.os ?? "").toLowerCase();
-  if (value.includes("windows")) return "windows";
-  if (value.includes("mac") || value.includes("darwin")) return "macos";
-  if (value.includes("linux") || value.includes("unix")) return "linux";
-  return "generic";
+ * The manager picks the platform from the asset's own evidence (operator tag,
+ * OS string, or a service banner), so the plan needs no interaction at all.
+ * The operator can still override it when detection is wrong. */
+const REM_OS_LABEL: Record<RemediationOs, string> = {
+  windows: "Windows", linux: "Linux", macos: "macOS", generic: "Platform-neutral",
+};
+const REM_FAMILY_LABEL: Record<string, string> = {
+  bsd: "BSD", network_os: "Network device OS",
+};
+
+function platformExplanation(p: RemediationPlatform | null | undefined): string {
+  if (!p) return "Platform-neutral steps.";
+  switch (p.source) {
+    case "manual_tag": return "Set by an operator tag on the asset.";
+    case "asset_os": return `Detected from the asset's OS${p.evidence ? ` (${p.evidence.replace(/^os:\s*/, "")})` : ""}.`;
+    case "service_banner": return `Detected from a service banner${p.evidence ? ` — ${p.evidence}` : ""}.`;
+    case "requested": return "Chosen manually for this view.";
+    case "no_asset": return "This finding is not linked to an asset, so vendor-neutral steps are shown.";
+    default: return "The asset's operating system has not been detected, so vendor-neutral steps are shown.";
+  }
+}
+
+function platformChipLabel(p: RemediationPlatform | null | undefined): string {
+  if (!p) return REM_OS_LABEL.generic;
+  if (p.os === "generic" && p.family && REM_FAMILY_LABEL[p.family]) {
+    return `${REM_FAMILY_LABEL[p.family]} — vendor-neutral steps`;
+  }
+  if (p.os === "generic" && (p.source === "not_detected" || p.source === "no_asset")) {
+    return "Platform not detected";
+  }
+  return REM_OS_LABEL[p.os] ?? p.os;
 }
 
 // Fix-plan colour language: change-risk is a hazard scale (green→amber→red);
@@ -857,10 +890,13 @@ function RemediationPlanView({
   api: FindingsWorkspaceApi;
   surface: FindingsWorkspaceSurface;
 }) {
-  const [os, setOs] = useState<RemediationOs>(() => remediationOsFor(finding));
+  // null = let the manager auto-detect (the default); a value is an operator override.
+  const [override, setOverride] = useState<RemediationOs | null>(null);
+  const [changingPlatform, setChangingPlatform] = useState(false);
+  const requestedOs = override ?? "auto";
   const { data, isLoading, isFetching, error, refetch } = useQuery({
-    queryKey: ["finding-remediation", surface, finding.id, os],
-    queryFn: () => api.remediation<RemediationPlanResponse>(finding.id, os),
+    queryKey: ["finding-remediation", surface, finding.id, requestedOs],
+    queryFn: () => api.remediation<RemediationPlanResponse>(finding.id, requestedOs),
     staleTime: 60_000,
   });
 
@@ -904,15 +940,38 @@ function RemediationPlanView({
             {data.generated_at && <span>Generated {fmtEventDay(data.generated_at)}</span>}
           </div>
         </div>
-        <label className="finding-remediation-os">
+        <div className="finding-remediation-os">
           <span>Target platform</span>
-          <select value={os} onChange={(event) => setOs(event.target.value as RemediationOs)}>
-            <option value="generic">Generic or appliance</option>
-            <option value="linux">Linux</option>
-            <option value="windows">Windows</option>
-            <option value="macos">macOS</option>
-          </select>
-        </label>
+          <div className="finding-remediation-platform" data-source={data.platform?.source ?? "unknown"}>
+            <Monitor size={13} aria-hidden />
+            <strong>{platformChipLabel(data.platform)}</strong>
+            {override === null && data.platform?.source !== "not_detected" && data.platform?.source !== "no_asset" && (
+              <span className="finding-remediation-auto">Auto</span>
+            )}
+          </div>
+          <p className="finding-remediation-platform-why">{platformExplanation(data.platform)}</p>
+          {changingPlatform ? (
+            <select
+              aria-label="Override target platform"
+              value={override ?? "auto"}
+              onChange={(event) => {
+                const next = event.target.value;
+                setOverride(next === "auto" ? null : next as RemediationOs);
+                setChangingPlatform(false);
+              }}
+            >
+              <option value="auto">Auto-detect</option>
+              <option value="linux">Linux</option>
+              <option value="windows">Windows</option>
+              <option value="macos">macOS</option>
+              <option value="generic">Generic or appliance</option>
+            </select>
+          ) : (
+            <button type="button" className="findings-inline-action" onClick={() => setChangingPlatform(true)}>
+              {override === null ? "Change" : "Change (manual override)"}
+            </button>
+          )}
+        </div>
       </header>
 
       {recordedNotes.length > 0 && (
@@ -3020,6 +3079,11 @@ button.findings-triage-metric:hover { background: var(--bg-hover); }
 .finding-remediation-meta { display: flex; flex-wrap: wrap; gap: 6px 12px; margin-top: 9px; color: var(--text-muted); font: 500 9.5px/1.3 var(--font-mono); }
 .finding-remediation-os { display: grid; min-width: 168px; gap: 5px; }
 .finding-remediation-os span { color: var(--text-muted); font: 650 10px/1.2 var(--font-ui); }
+.finding-remediation-platform { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding: 0 10px; border: var(--hairline) solid var(--border-default); border-radius: 8px; color: var(--text-primary); background: var(--bg-app); font: 600 11.5px/1.2 var(--font-ui); }
+.finding-remediation-platform[data-source="not_detected"], .finding-remediation-platform[data-source="no_asset"] { color: var(--text-secondary); border-style: dashed; }
+.finding-remediation-auto { padding: 1px 6px; border-radius: 999px; color: var(--accent); background: var(--accent-ghost); font: 650 9.5px/1.4 var(--font-ui); text-transform: uppercase; letter-spacing: .04em; }
+.finding-remediation-platform-why { margin: 0; max-width: 260px; color: var(--text-muted); font: 500 10.5px/1.4 var(--font-ui); }
+.finding-remediation-os .findings-inline-action { justify-self: start; }
 .finding-remediation-os select { min-height: 36px; border: var(--hairline) solid var(--border-default); border-radius: 8px; padding: 0 9px; color: var(--text-primary); background: var(--bg-app); font: 500 11.5px/1.2 var(--font-ui); }
 .finding-remediation-note { border-radius: 9px; padding: 13px 14px; background: var(--bg-surface); }
 .finding-remediation-note h3 { font-size: 12.5px; }

@@ -80,4 +80,13 @@ describe("findings detail layout", () => {
     assert.match(findingsPage, /Copy includes all masked lines\./);
     assert.doesNotMatch(findingsPage, /\{false && tab === "evidence"/);
   });
+
+  test("remediation plan auto-detects the platform instead of asking for an OS", () => {
+    // The manager resolves the platform; the request defaults to "auto".
+    assert.match(findingsPage, /const requestedOs = override \?\? "auto";/);
+    assert.match(findingsPage, /api\.remediation<RemediationPlanResponse>\(finding\.id, requestedOs\)/);
+    // The OS select only renders after the operator explicitly asks to change it.
+    assert.match(findingsPage, /\{changingPlatform \? \(\s*<select/);
+    assert.doesNotMatch(findingsPage, /function remediationOsFor/);
+  });
 });
