@@ -48,6 +48,10 @@ _LABELS: dict[str, str] = {
     "verification_changed": "VERIFICATION UPDATED",
     "risk_changed": "RISK RESCORED",
     "note": "NOTE",
+    "extension_requested": "EXTENSION REQUESTED",
+    "extension_approved": "EXTENSION APPROVED",
+    "extension_rejected": "EXTENSION REJECTED",
+    "extension_withdrawn": "EXTENSION WITHDRAWN",
 }
 
 

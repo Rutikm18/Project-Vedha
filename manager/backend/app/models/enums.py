@@ -86,6 +86,10 @@ class FindingEventType(str, enum.Enum):
     verification_changed = "verification_changed"  # verdict changed (confirmed/inferred/…)
     risk_changed = "risk_changed"            # CVSS / risk score revised
     note = "note"                            # free-text operator annotation
+    extension_requested = "extension_requested"  # customer asked for a later due date
+    extension_approved = "extension_approved"    # operator approved (due date moved)
+    extension_rejected = "extension_rejected"    # operator rejected (due date unchanged)
+    extension_withdrawn = "extension_withdrawn"  # customer withdrew a pending request
 
 
 class ScanJobType(str, enum.Enum):

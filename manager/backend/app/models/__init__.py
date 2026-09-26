@@ -29,6 +29,7 @@ from app.models.probe_enrollment import ProbeEnrollmentRequest, AgentCredential,
 from app.models.validation_request import ValidationRequest
 from app.models.scan_request import ScanRequest
 from app.models.remediation_plan import RemediationPlan
+from app.models.deadline_extension import DeadlineExtensionRequest
 from app.models.sla_policy import SlaPolicy
 from app.models.integration import Integration
 from app.models.worker_heartbeat import WorkerHeartbeat
@@ -42,6 +43,6 @@ __all__ = [
     "AttackTimeline", "DetectionConfig", "LLMOutput", "OutboxEvent",
     "DetectionRun", "DetectionRunFinding", "AgentRecommendation", "PersonalAccessToken",
     "ProbeSite", "ProbeEnrollmentRequest", "AgentCredential", "ProbeEnrollmentToken",
-    "ValidationRequest", "ScanRequest", "RemediationPlan", "SlaPolicy", "Integration",
+    "ValidationRequest", "ScanRequest", "RemediationPlan", "DeadlineExtensionRequest", "SlaPolicy", "Integration",
     "WorkerHeartbeat",
 ]

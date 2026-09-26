@@ -13,7 +13,7 @@ import uuid
 from datetime import datetime
 
 from sqlalchemy import (
-    Boolean, DateTime, ForeignKey, String, UniqueConstraint, func,
+    Boolean, DateTime, ForeignKey, Index, String, UniqueConstraint, func, text,
 )
 from sqlalchemy.dialects.postgresql import JSONB, UUID
 from sqlalchemy.orm import Mapped, mapped_column
@@ -25,6 +25,8 @@ class RemediationPlan(Base, TimestampMixin):
     __tablename__ = "remediation_plans"
     __table_args__ = (
         UniqueConstraint("finding_id", "os", name="uq_remediation_finding_os"),
+        Index("uq_remediation_bundle_os", "engagement_id", "fix_key", "os", unique=True,
+              postgresql_where=text("subject_type = 'bundle'")),
     )
 
     id: Mapped[uuid.UUID] = mapped_column(
@@ -38,10 +40,17 @@ class RemediationPlan(Base, TimestampMixin):
         UUID(as_uuid=True), ForeignKey("engagements.id", ondelete="CASCADE"),
         nullable=False, index=True,
     )
-    finding_id: Mapped[uuid.UUID] = mapped_column(
+    # Null for bundle rows (subject_type="bundle", keyed by fix_key instead).
+    finding_id: Mapped[uuid.UUID | None] = mapped_column(
         UUID(as_uuid=True), ForeignKey("findings.id", ondelete="CASCADE"),
-        nullable=False, index=True,
+        nullable=True, index=True,
     )
+    # "finding" | "bundle" — a bundle refinement covers every finding a fix closes.
+    subject_type: Mapped[str] = mapped_column(String(8), nullable=False, server_default="finding")
+    fix_key: Mapped[str | None] = mapped_column(String(12), nullable=True)
+    # sha256 of the asset/service facts the refinement was generated from; a
+    # mismatch with the live facts marks the cached plan stale.
+    facts_fingerprint: Mapped[str | None] = mapped_column(String(64), nullable=True)
     # "linux" | "windows" | "macos" | "generic"
     os: Mapped[str] = mapped_column(String(16), nullable=False)
     plan: Mapped[dict] = mapped_column(JSONB, nullable=False)

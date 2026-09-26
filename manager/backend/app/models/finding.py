@@ -90,6 +90,11 @@ class Finding(Base, TimestampMixin):
         UUID(as_uuid=True), ForeignKey("detection_runs.id", ondelete="SET NULL"), nullable=True
     )
     reopened_count: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    # Remediation due date set by an APPROVED deadline extension (source
+    # "extension"). Null = compute from the SLA policy (engagement → tenant → env);
+    # see services/deadlines.py, the single due-date resolver.
+    due_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    due_at_source: Mapped[str | None] = mapped_column(String(16), nullable=True)
     detected_db_version: Mapped[str | None] = mapped_column(String(128), nullable=True)
 
     # ── Verification (P2 passive; P3 adds active) ──────────────────────────────
