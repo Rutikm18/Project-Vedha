@@ -188,6 +188,8 @@ export function toUiFinding(api: any): any {
     // IP first; never fall back to the opaque asset UUID.
     affectedHost: api.affected_host ?? api.asset_ip ?? api.asset_hostname ?? "—",
     assetIp: api.asset_ip ?? api.asset_context?.ip_address ?? null,
+    // Needed by engagement-scoped panels (fix bundles, deadline extensions).
+    engagementId: api.engagement_id ?? null,
     assetHostname: api.asset_hostname ?? api.asset_context?.hostname ?? null,
     discoveredAt: api.first_seen ?? api.created_at ?? api.discovered_at ?? "",
     description: api.description ?? "",

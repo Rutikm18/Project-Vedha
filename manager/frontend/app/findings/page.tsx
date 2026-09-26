@@ -56,6 +56,7 @@ import {
   type FindingsWorkspaceSurface,
 } from "../../lib/findings-workspace-api";
 import { DataState, SkeletonRows, EmptyState } from "../../components/states/DataState";
+import { FindingRemediation } from "../../components/remediation/FindingRemediation";
 import { FindingObligations } from "../../components/intel/FindingObligations";
 import { presentEvidence, type EvidenceArtifact } from "../../lib/evidence-presentation";
 import {
@@ -118,38 +119,6 @@ interface ExploitationView {
   signals?: Record<string, unknown>;
 }
 interface EvidenceFact { label: string; value: string; }
-type RemediationOs = "generic" | "linux" | "windows" | "macos";
-interface RemediationPlanStep {
-  step: number;
-  title: string;
-  description: string;
-  commands?: Record<string, string[]>;
-  commands_for_os: string[];
-  verification: string;
-  risk: "low" | "medium" | "high";
-  unsafe_commands_removed?: boolean;
-}
-interface RemediationPlanResponse {
-  finding_id: string;
-  os: RemediationOs;
-  source: string;
-  reviewed: boolean;
-  cached: boolean;
-  generated_at: string | null;
-  model: string | null;
-  plan: {
-    category: string;
-    os: RemediationOs;
-    source: string;
-    summary: string;
-    effort: "low" | "medium" | "high";
-    remediation_risk: "low" | "medium" | "high";
-    steps: RemediationPlanStep[];
-    verification: string[];
-    long_term_recommendations: string[];
-    compensating_controls: string;
-  };
-}
 interface RiskBreakdown {
   cvss: number; epss: number; kev: number;
   exploit: number; asset: number; lateral: number;
@@ -161,6 +130,7 @@ interface Finding {
   id: string; title: string; severity: Severity; cvss: string; cvssVector: string;
   category: string; status: FindingStatus; affectedHost: string; discoveredAt: string;
   assetIp?: string | null; assetHostname?: string | null;
+  engagementId?: string | null;
   description: string; technicalDetails: string; attackPath: string;
   evidence: EvidenceArtifact[];
   evidenceSummary?: EvidenceFact[];
@@ -817,171 +787,6 @@ function EvidenceView({ finding }: { finding: Finding }) {
           <EvidenceGallery evidence={finding.evidence} />
         </details>
       )}
-    </div>
-  );
-}
-
-/* ─── Remediation ─────────────────────────────────────────────────────────
- * The OS selector defaults to the asset's own platform, so the common case
- * needs no interaction at all. */
-function remediationOsFor(finding: Finding): RemediationOs {
-  const value = (finding.assetContext?.os ?? "").toLowerCase();
-  if (value.includes("windows")) return "windows";
-  if (value.includes("mac") || value.includes("darwin")) return "macos";
-  if (value.includes("linux") || value.includes("unix")) return "linux";
-  return "generic";
-}
-
-// Fix-plan colour language: change-risk is a hazard scale (green→amber→red);
-// effort is an ease scale (low effort reads positive/green). Both resolve to the
-// same WCAG-AA palette + tint helpers every other chip in this file uses.
-const REM_RISK_COLOR: Record<string, string> = {
-  high: SEV_PALETTE.RED,
-  medium: SEV_PALETTE.AMBER,
-  low: SEV_PALETTE.GREEN,
-};
-const remRiskColor = (v: string | undefined) =>
-  REM_RISK_COLOR[(v ?? "").toLowerCase()] ?? SEV_PALETTE.SLATE;
-const effortColor = (v: string | undefined) => {
-  const k = (v ?? "").toLowerCase();
-  return k === "high" ? SEV_PALETTE.RED : k === "medium" ? SEV_PALETTE.AMBER : SEV_PALETTE.GREEN;
-};
-const pillStyle = (color: string) => ({
-  color,
-  background: tint(color, TINT.fill),
-  borderColor: tint(color, TINT.hairline),
-});
-
-function RemediationPlanView({
-  finding,
-  api,
-  surface,
-}: {
-  finding: Finding;
-  api: FindingsWorkspaceApi;
-  surface: FindingsWorkspaceSurface;
-}) {
-  const [os, setOs] = useState<RemediationOs>(() => remediationOsFor(finding));
-  const { data, isLoading, isFetching, error, refetch } = useQuery({
-    queryKey: ["finding-remediation", surface, finding.id, os],
-    queryFn: () => api.remediation<RemediationPlanResponse>(finding.id, os),
-    staleTime: 60_000,
-  });
-
-  if (isLoading) {
-    return (
-      <div className="finding-plan-loading" aria-busy="true">
-        <SkeletonRows rows={4} height={72} />
-      </div>
-    );
-  }
-  if (error || !data) {
-    return (
-      <div className="finding-blank" data-tone="error">
-        <AlertTriangle size={17} aria-hidden />
-        <div>
-          <strong>The remediation plan did not load</strong>
-          <p>The finding record itself is unchanged.</p>
-          <button type="button" className="findings-inline-action" onClick={() => { void refetch(); }}>
-            <RotateCcw size={13} aria-hidden /> Try again
-          </button>
-        </div>
-      </div>
-    );
-  }
-
-  const plan = data.plan;
-  const recordedNotes = finding.remediation
-    .map((step) => typeof step === "string" ? step : step.description || step.title)
-    .filter(Boolean);
-
-  return (
-    <div className="finding-remediation-view" data-refreshing={isFetching || undefined}>
-      <header className="finding-remediation-header">
-        <div>
-          <div className="finding-remediation-title"><Wrench size={16} aria-hidden /><h3>Fix plan</h3></div>
-          <p>{plan.summary}</p>
-          <div className="finding-remediation-meta">
-            <span>{data.source === "ai" ? "AI-generated operator plan" : "Vedha remediation knowledge base"}</span>
-            <span className="finding-rem-pill" style={pillStyle(effortColor(plan.effort))}>Effort: {plan.effort}</span>
-            <span className="finding-rem-pill" style={pillStyle(remRiskColor(plan.remediation_risk))}>Change risk: {plan.remediation_risk}</span>
-            {data.generated_at && <span>Generated {fmtEventDay(data.generated_at)}</span>}
-          </div>
-        </div>
-        <label className="finding-remediation-os">
-          <span>Target platform</span>
-          <select value={os} onChange={(event) => setOs(event.target.value as RemediationOs)}>
-            <option value="generic">Generic or appliance</option>
-            <option value="linux">Linux</option>
-            <option value="windows">Windows</option>
-            <option value="macos">macOS</option>
-          </select>
-        </label>
-      </header>
-
-      {recordedNotes.length > 0 && (
-        <section className="finding-remediation-note">
-          <h3>Guidance recorded on the finding</h3>
-          {recordedNotes.map((note, index) => <p key={index}>{note}</p>)}
-        </section>
-      )}
-
-      <section>
-        <div className="finding-section-heading">
-          <div><Terminal size={15} aria-hidden /><h3>Actions</h3></div>
-          <span>{plan.steps.length} ordered step{plan.steps.length === 1 ? "" : "s"}</span>
-        </div>
-        <ol className="finding-remediation-steps">
-          {plan.steps.map((step) => (
-            <li key={step.step}>
-              <div className="finding-remediation-step-number" aria-hidden>{step.step}</div>
-              <div>
-                <header>
-                  <h4>{step.title}</h4>
-                  <span className="finding-rem-pill" style={pillStyle(remRiskColor(step.risk))}>{step.risk} change risk</span>
-                </header>
-                <p>{step.description}</p>
-                {step.commands_for_os.length > 0 && (
-                  <div className="finding-remediation-commands">
-                    {step.commands_for_os.map((command, index) => (
-                      <div key={index}><code>{command}</code><CopyBtn text={command} /></div>
-                    ))}
-                  </div>
-                )}
-                {step.unsafe_commands_removed && (
-                  <p className="finding-remediation-warning">
-                    <AlertTriangle size={13} aria-hidden /> Unsafe generated commands were stripped before this plan was stored.
-                  </p>
-                )}
-                {step.verification && (
-                  <p className="finding-remediation-verify">
-                    <CheckCircle size={13} aria-hidden /> <span><b>Verify:</b> {step.verification}</span>
-                  </p>
-                )}
-              </div>
-            </li>
-          ))}
-        </ol>
-      </section>
-
-      <div className="finding-remediation-closeout">
-        <section>
-          <h3>Verify and close</h3>
-          {plan.verification.length ? (
-            <ol>{plan.verification.map((item, index) => <li key={index}>{item}</li>)}</ol>
-          ) : <p>No separate closeout check is recorded. Re-scan the asset and attach the result before closing.</p>}
-        </section>
-        <section>
-          <h3>Compensating control</h3>
-          <p>{plan.compensating_controls || "No compensating control is recorded for this plan."}</p>
-        </section>
-        <section>
-          <h3>Further hardening</h3>
-          {plan.long_term_recommendations.length ? (
-            <ul>{plan.long_term_recommendations.map((item, index) => <li key={index}>{item}</li>)}</ul>
-          ) : <p>No further hardening recommendation is recorded.</p>}
-        </section>
-      </div>
     </div>
   );
 }
@@ -1979,7 +1784,17 @@ function FindingDetail({
         )}
         {tab === "intel" && <IntelPanel finding={f} />}
         {tab === "evidence" && <EvidenceView finding={f} />}
-        {tab === "remediation" && <RemediationPlanView finding={f} api={api} surface={surface} />}
+        {tab === "remediation" && (
+          <FindingRemediation
+            findingId={f.id}
+            engagementId={f.engagementId ?? null}
+            surface={surface}
+            serious={f.severity === "CRITICAL" || f.severity === "HIGH" || Boolean(f.kevListed)}
+            recordedNotes={f.remediation
+              .map((step) => typeof step === "string" ? step : step.description || step.title)
+              .filter((n): n is string => Boolean(n))}
+          />
+        )}
         {tab === "compliance" && (
           <>
             <FindingObligations findingId={f.id} api={api} surface={surface} />

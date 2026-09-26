@@ -1,30 +1,10 @@
-/** Structured, OS-aware remediation plan — authenticated BFF proxy. */
-import { NextResponse } from "next/server";
-import { backend, bearerFrom, BackendError } from "../../../../../lib/backend";
+/** Contextual remediation plan (asset-grounded KB or cached AI refinement) — BFF proxy.
+ *  `os` is optional: the backend defaults to the OS the scan detected. */
+import { enc, forward } from "../../../../../lib/operator-proxy";
 
-const SUPPORTED_OS = new Set(["generic", "linux", "windows", "macos"]);
+type Ctx = { params: Promise<{ id: string }> };
 
-function fail(error: unknown) {
-  const status = error instanceof BackendError ? error.status : 500;
-  return NextResponse.json(
-    { error: (error as Error)?.message ?? "backend error" },
-    { status },
-  );
-}
-
-export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
-  const token = bearerFrom(req);
-  if (!token) return NextResponse.json({ error: "Not authenticated" }, { status: 401 });
+export async function GET(req: Request, { params }: Ctx) {
   const { id } = await params;
-  const requestedOs = new URL(req.url).searchParams.get("os")?.toLowerCase() ?? "generic";
-  const os = SUPPORTED_OS.has(requestedOs) ? requestedOs : "generic";
-  try {
-    const plan = await backend<unknown>(`/findings/${id}/remediation`, {
-      token,
-      query: { os },
-    });
-    return NextResponse.json(plan);
-  } catch (error) {
-    return fail(error);
-  }
+  return forward(req, `/findings/${enc(id)}/remediation`);
 }
