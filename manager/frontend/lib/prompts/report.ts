@@ -119,6 +119,14 @@ export interface RemediationGroup {
   verification: string;
   /** Fix IDs that must complete before this one (report-sections.ts §4, G8). */
   depends_on?: string[];
+  // ── Backend roadmap (app/ai/engagement_report.py): groups ARE the fix bundles ──
+  /** Stable bundle key; fix_id is its display ref (FIX-3A9F2C). */
+  fix_key?: string;
+  /** Earliest open due date among the findings it closes (ISO), and its source. */
+  due_at?: string | null;
+  due_source?: "extension" | "engagement" | "tenant" | "default" | null;
+  remediation_type?: string;
+  urgency?: "act" | "attend" | "track_star" | "track";
 }
 
 /** §1 board decision — a call only a decision-maker can make, derived from the
@@ -164,6 +172,15 @@ export interface ReportResult {
   method?: string;
   /** How many findings were written up in full vs. tabulated (bounded per-finding gen). */
   findings_detailed?: number;
+  /** Backend generation metadata: provider/model, per-section status, validation issues. */
+  generation?: {
+    provider: string | null;
+    model: string | null;
+    sections: Record<string, "ok" | "fallback">;
+    issues: string[];
+    sla_source?: string;
+    generated_at?: string;
+  };
 }
 
 // ── Per-section output shapes (report-sections.ts). The orchestrator parses each
