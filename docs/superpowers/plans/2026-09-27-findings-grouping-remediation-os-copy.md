@@ -322,3 +322,16 @@ Priority order (mirrors the list's "critical always on top"): groups with open f
 
 - Spec coverage: OS auto (Tasks 2–4), copy everywhere (Task 1, grep guard), grouping for prioritisation (Tasks 5–7), accuracy (verification Task 8, BSD/network → generic, versions kept separate, identical filters via shared helper).
 - Names consistent: `copyText`, `PlatformResolution`, `resolve_platform`, `resolve_finding_platform`, `platform_for_request`, `os_family_tag`, `GroupRow`, `group_identity`, `build_groups`, `_filtered_findings`, `backendFindingFilters`, `mapFindingGroupPage`, `FindingGroupRow`.
+
+---
+
+## Outcome (2026-09-27) — shipped on `feat/findings-grouping-os-copy`, deviations from the plan
+
+Verified live (branch API on :18080 against the seeded dev DB, Next dev server, and a real non-secure `http://<LAN-IP>` page):
+
+- **Grouping — no "same CVE set" tier.** Live data had one issue where enrichment put a CVE id on 1 of 3 rows; keying on CVEs split it. Identity is now rule → product+version → normalised title.
+- **Grouping — never across engagements.** The same IP/issue appeared in three engagements (different networks); a merged group claimed "one fix closes 3 findings". `engagement_id` is part of every identity; the UI labels groups with their engagement when the queue spans several.
+- **Tagging bug fixed:** the macOS OS regex matched "os x" inside "Cisco IOS XE" (routers tagged macOS). Word-bounded.
+- **KB accuracy:** the OpenSSH recipe gave RHEL hosts `apt-get`; now lists `dnf` too, with a test that every Linux package command covers both families.
+- **Pre-existing filter bugs fixed while sharing the filter mapping:** operator "Detection blind" / "Exploit confirmed" were ignored by the BFF (param-name mismatch); portal severity/status filters sent UI enums to FastAPI (422).
+- Live results: 10 seed findings → 4 groups per title tenant-wide before the engagement fix, 10 single-finding groups after (each issue lives in a different engagement); a single engagement's view matches the list count exactly. Remediation `os=auto`: Windows Server 2019/2022 → windows, Ubuntu/RHEL → linux, Cisco IOS → generic (network_os). Copy: on `http://192.168.x.x` (`isSecureContext=false`, `navigator.clipboard` undefined) the shipped `copyText` wrote to the OS clipboard.
