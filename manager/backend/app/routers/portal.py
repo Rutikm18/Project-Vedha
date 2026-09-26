@@ -59,7 +59,9 @@ from app.services.domain_context import domain_brief_for
 from app.services.llm import AiRuntimeError, ManagerLlmService
 from app.services import posture as posture_service
 from app.services.audit import record_audit
-from app.services.remediation_kb import os_key, recipe_for_finding
+from app.remediation.loader import load_finding_context
+from app.remediation.plan import build_plan, os_for_context
+from app.services.remediation_kb import os_key
 from app.services.scope_targets import validate_targets_in_scope
 from app.routers.agents import EnqueueJobRequest
 
@@ -222,11 +224,11 @@ async def reopen_portal_finding(
             summary="Structured remediation plan (KB always; AI only once reviewed)")
 async def portal_finding_remediation(
     finding_id: uuid.UUID, user: ClientUser, db: DB,
-    os: str = Query(default="generic"),
+    os: str | None = Query(default=None),
 ):
     """Customer-facing structured remediation, replacing the plain `remediation`
-    string. The deterministic KB recipe is served ALWAYS; a stored AI plan reaches
-    the customer only once an operator has reviewed it — the same approval gate the
+    string. The contextual KB plan is served ALWAYS; a stored AI plan reaches the
+    customer only once an operator has reviewed it — the same approval gate the
     reports route uses, so an unreviewed AI plan never leaks."""
     finding = (await db.execute(
         client_scoped(select(Finding).where(Finding.id == finding_id),
@@ -235,7 +237,8 @@ async def portal_finding_remediation(
     if finding is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Finding not found")
 
-    key = os_key(os)
+    ctx = await load_finding_context(db, finding)
+    key = os_key(os) if os else os_for_context(ctx)
     row = (await db.execute(
         select(RemediationPlan).where(
             RemediationPlan.finding_id == finding_id,
@@ -248,7 +251,7 @@ async def portal_finding_remediation(
         plan = {k: v for k, v in row.plan.items() if k != "model"}
         source = plan.get("source", row.source)
     else:
-        plan = recipe_for_finding(finding, key)
+        plan = build_plan(finding, ctx, os=key)
         source = plan["source"]
     return {"finding_id": str(finding_id), "os": key, "source": source, "plan": plan}
 

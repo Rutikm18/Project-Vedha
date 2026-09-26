@@ -29,7 +29,9 @@ from app.models.engagement import Engagement
 from app.models.finding import Finding
 from app.models.remediation_plan import RemediationPlan
 from app.schemas.remediation import RemediationPlanOut
-from app.services.remediation_kb import os_key, recipe_for_finding
+from app.remediation.loader import load_finding_context
+from app.remediation.plan import build_plan, os_for_context
+from app.services.remediation_kb import os_key
 
 router = APIRouter(prefix="/findings", tags=["remediation"])
 logger = structlog.get_logger()
@@ -123,14 +125,15 @@ async def get_remediation(
     finding_id: uuid.UUID,
     db: DB,
     current_user: Annotated[AuthUser, _REMEDIATION_READER],
-    os: str = Query(default="generic"),
+    os: str | None = Query(default=None, description="omit to use the OS the scan detected"),
 ):
     finding = await _tenant_finding(db, finding_id, current_user.tenant_id)
-    key = os_key(os)
+    ctx = await load_finding_context(db, finding)
+    key = os_key(os) if os else os_for_context(ctx)
     row = await _cached_plan(db, finding_id, key)
     if row is not None:
         return _serialize(finding_id, key, row.plan, row=row)
-    return _serialize(finding_id, key, recipe_for_finding(finding, key))
+    return _serialize(finding_id, key, build_plan(finding, ctx, os=key))
 
 
 @router.post("/{finding_id}/remediation/generate",
@@ -140,13 +143,14 @@ async def generate_remediation(
     finding_id: uuid.UUID,
     db: DB,
     current_user: Annotated[AuthUser, _REMEDIATION_GENERATOR],
-    os: str = Query(default="generic"),
+    os: str | None = Query(default=None, description="omit to use the OS the scan detected"),
     force: bool = Query(default=False),
     publish: bool = Query(default=False,
                           description="mark reviewed so the customer portal may show it"),
 ):
     finding = await _tenant_finding(db, finding_id, current_user.tenant_id)
-    key = os_key(os)
+    ctx = await load_finding_context(db, finding)
+    key = os_key(os) if os else os_for_context(ctx)
 
     if not force:
         row = await _cached_plan(db, finding_id, key)
@@ -166,7 +170,7 @@ async def generate_remediation(
         except (LLMUnavailableError, ValueError) as exc:
             logger.warning("remediation.ai_unavailable", finding=str(finding_id), error=str(exc))
     if plan is None:
-        plan = recipe_for_finding(finding, key)
+        plan = build_plan(finding, ctx, os=key)
 
     # Atomic insert-or-update — no read-then-write race under concurrent generates.
     row = await _upsert_plan(

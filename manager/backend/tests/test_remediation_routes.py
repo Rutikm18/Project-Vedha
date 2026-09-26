@@ -211,3 +211,47 @@ class TestUpsertStatement:
 
     def test_refreshes_generated_at_on_conflict(self):
         assert "generated_at = now()" in self._sql(True)
+
+
+# ── v2 contextual plans ──────────────────────────────────────────────────────────
+
+def _scalars_result(vals):
+    r = MagicMock()
+    r.scalars = MagicMock(return_value=MagicMock(all=MagicMock(return_value=list(vals))))
+    return r
+
+
+class TestContextualGet:
+    def _grounded(self):
+        f = SimpleNamespace(id=uuid.uuid4(), engagement_id=uuid.uuid4(), asset_id=uuid.uuid4(),
+                            title="SMBv1 enabled (wormable, deprecated)", description="",
+                            remediation="", cve_ids=[], severity=SimpleNamespace(value="critical"),
+                            evidence={"rule_id": "POSTURE-SMB-V1-ENABLED", "port": 445},
+                            epss_score=None, exploit_validated=False)
+        asset = SimpleNamespace(ip_address="10.0.0.5", hostname="FS01", fqdn=None, os="Windows",
+                                os_version="Windows Server 2012 R2",
+                                asset_type=SimpleNamespace(value="server"),
+                                criticality=SimpleNamespace(value="high"), environment=None, tags=None)
+        svc = SimpleNamespace(port=445, protocol="tcp", service_name="microsoft-ds", product="SMB",
+                              version=None, cpe=None, banner=None, exposure="internal_only")
+        return f, asset, svc
+
+    def test_os_defaults_to_scanned_os_and_v2_fields_survive_schema(self):
+        f, asset, svc = self._grounded()
+        db = _FakeDB([_scalar_result(f), _scalar_result(asset), _scalars_result([svc]),
+                      _scalar_result(None)])
+        res = asyncio.run(remediation.get_remediation(f.id, db, _operator(), os=None))
+        assert res["os"] == "windows"
+        out = RemediationPlanOut.model_validate(res)
+        assert out.plan.recipe_id == "POSTURE-SMB-V1-ENABLED"
+        assert out.plan.context["host"]["value"] == "FS01"
+        assert out.plan.verification_check["scanner"] == "smb_scan"
+        assert out.plan.steps[0].tier == "containment"
+        assert out.plan.exposure == "internal"
+
+    def test_explicit_os_is_respected(self):
+        f, asset, svc = self._grounded()
+        db = _FakeDB([_scalar_result(f), _scalar_result(asset), _scalars_result([svc]),
+                      _scalar_result(None)])
+        res = asyncio.run(remediation.get_remediation(f.id, db, _operator(), os="linux"))
+        assert res["os"] == "linux"

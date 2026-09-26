@@ -114,6 +114,11 @@ def urgency_for(ctx: RemediationContext, severity: str) -> dict:
     return {"label": label, "drivers": drivers, "framework": "CISA SSVC (informational)"}
 
 
+def os_for_context(ctx: RemediationContext) -> str:
+    """The command set to show by default: the OS family the scan saw."""
+    return _OS_FOR_FAMILY.get(ctx.os_family, "generic")
+
+
 def _commands_for(step_cmds: dict[str, tuple[str, ...]], os: str, family: str) -> list[str]:
     order = [os]
     if family == "network":
@@ -133,7 +138,7 @@ def build_plan(finding: Any, ctx: RemediationContext, *, due: dict | None = None
     target = _fmt(target_raw, values)
     values["target"] = target
 
-    os_auto = _OS_FOR_FAMILY.get(ctx.os_family, "generic")
+    os_auto = os_for_context(ctx)
     selected = os if os in ("windows", "linux", "macos", "generic") else os_auto
 
     prefix = FRAGILE_PREFIX.format(reason=ctx.fragile_reason) if ctx.fragile else ""
