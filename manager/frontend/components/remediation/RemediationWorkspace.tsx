@@ -21,6 +21,7 @@ import {
   type Bundle, type PlanOs, type RemediationApi, type RemediationPlan, type RemediationSurface,
 } from "../../lib/remediation";
 import { ExtensionPanel, ExtensionQueue } from "./ExtensionPanel";
+import { SlaPolicyEditor } from "./SlaPolicyEditor";
 import { DueBadge, PlanView, StepsByTier, UrgencyChip } from "./PlanView";
 
 const OS_NAME: Record<string, string> = { windows: "Windows", linux: "Linux", macos: "macOS", generic: "Appliance / generic" };
@@ -191,6 +192,7 @@ export function RemediationWorkspace({ surface = "manager" }: { surface?: Remedi
           </div>
         </div>
 
+        {surface === "manager" && engId && <SlaPolicyEditor engagementId={engId} />}
         {surface === "manager" && engId && <ExtensionQueue api={api} engagementId={engId} />}
 
         <DataState
