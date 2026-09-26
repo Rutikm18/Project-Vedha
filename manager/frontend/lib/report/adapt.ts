@@ -129,7 +129,15 @@ export function applyBundles(findings: RawFinding[], bundles: Bundle[]): RawFind
     const hit = byFinding.get(f.id);
     if (!hit) return f;
     const { bundle, host } = hit;
-    const steps = bundle.steps_by_os[osKey(host.os_family)] ?? Object.values(bundle.steps_by_os)[0] ?? [];
+    // Bundle steps shared across hosts use fixed placeholder phrases (backend
+    // bundles.MULTI_HOST_FIELDS); a per-finding card speaks about its own host.
+    const own = (text: string) => text
+      .split("each host in the checklist").join(host.host)
+      .split("each host's IP").join(host.ip)
+      .split("the OS listed per host").join(host.os);
+    const steps = (bundle.steps_by_os[osKey(host.os_family)] ?? Object.values(bundle.steps_by_os)[0] ?? [])
+      .map((s) => ({ ...s, title: own(s.title), description: own(s.description),
+                     commands_for_os: s.commands_for_os.map(own), pre_checks: (s.pre_checks ?? []).map(own) }));
     const remediation: RawRemediation[] = steps.map((s) => ({
       tier: s.tier,
       // The report renders `action`; keep the step title with its detail and commands.
@@ -140,7 +148,8 @@ export function applyBundles(findings: RawFinding[], bundles: Bundle[]): RawFind
       downtime: s.downtime || undefined,
       rollback: s.rollback || undefined,
     }));
-    const v = bundle.verification_check;
+    const v = { ...bundle.verification_check, check: own(bundle.verification_check.check),
+                manual_command: own(bundle.verification_check.manual_command ?? "") };
     return {
       ...f,
       remediation: remediation.length ? remediation : f.remediation,

@@ -124,3 +124,12 @@ test("toRawFinding: compliance objects are flattened to strings (no render crash
   const raw = toRawFinding(U({ compliance: [{ framework: "PCI DSS 4.0", controls: ["Req 2.2.1", "Req 4.2.1"], rationale: "x" }] }));
   assert.deepEqual(raw.compliance, ["PCI DSS 4.0: Req 2.2.1", "PCI DSS 4.0: Req 4.2.1"]);
 });
+
+test("applyBundles: shared multi-host wording is rewritten for the finding's own host", () => {
+  const multi = JSON.parse(JSON.stringify(bundle)) as Bundle;
+  multi.steps_by_os.windows[1].description = "Disable SMBv1 on each host in the checklist (the OS listed per host).";
+  multi.verification_check.check = "no NT1 dialect on each host's IP:445";
+  const [f] = applyBundles([toRawFinding(U({}))], [multi]);
+  assert.match(String((f.remediation[1] as { action?: string }).action), /on fs1 \(Windows Server 2019\)/);
+  assert.match(String(f.verification?.method), /10\.0\.0\.1:445/);
+});

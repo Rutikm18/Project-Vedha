@@ -207,3 +207,5 @@ a.rm-ref { color: var(--accent); font-family: var(--font-mono); }
 
 /* Report findings grounded in fix bundles: keep step detail / commands on their own lines. */
 .vf-steps li > p { white-space: pre-line; }
+/* Step metadata can hold commands (rollback) — never re-case it. */
+.vf-steps .vf-step-meta dd { text-transform: none; }
