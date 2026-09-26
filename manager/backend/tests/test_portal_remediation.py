@@ -25,8 +25,14 @@ def _client(engagement: uuid.UUID | None = None) -> CurrentUser:
 
 
 def _finding(title="SSLv3 supported (POODLE)"):
-    return SimpleNamespace(id=uuid.uuid4(), title=title, description="",
-                           remediation="", cve_ids=[])
+    from datetime import datetime, timezone
+
+    from app.models.enums import FindingSeverity, FindingStatus
+    now = datetime.now(timezone.utc)
+    return SimpleNamespace(id=uuid.uuid4(), engagement_id=uuid.uuid4(), title=title,
+                           description="", remediation="", cve_ids=[],
+                           severity=FindingSeverity.high, status=FindingStatus.open,
+                           first_seen=now, created_at=now, due_at=None)
 
 
 def _db_scalar(*vals):
@@ -43,7 +49,7 @@ def _db_scalar(*vals):
 
 class TestPortalRemediation:
     def test_serves_kb_when_no_stored_plan(self):
-        db = _db_scalar(_finding(), None)          # finding, then no plan row
+        db = _db_scalar(_finding(), None, None, None)   # finding, no plan row, no engagement/tenant SLA
         res = asyncio.run(portal.portal_finding_remediation(
             uuid.uuid4(), _client(), db, os="linux"))
         assert res["source"] == "deterministic_kb"
@@ -54,10 +60,11 @@ class TestPortalRemediation:
         ai_plan = {"source": "ai", "summary": "patch it", "model": "claude-x",
                    "steps": [{"step": 1}]}
         row = SimpleNamespace(reviewed=True, source="ai", plan=ai_plan)
-        db = _db_scalar(_finding(), row)
+        db = _db_scalar(_finding(), row, None, None)
         res = asyncio.run(portal.portal_finding_remediation(
             uuid.uuid4(), _client(), db, os="linux"))
         assert res["source"] == "ai"
+        assert res["plan"]["due"]["source"] == "default"
         assert res["plan"]["summary"] == "patch it"
         assert "model" not in res["plan"]      # operator-only metadata not leaked to customer
 
@@ -66,7 +73,7 @@ class TestPortalRemediation:
         # the KB recipe is served instead.
         ai_plan = {"source": "ai", "summary": "secret", "steps": [{"step": 1}]}
         row = SimpleNamespace(reviewed=False, source="ai", plan=ai_plan)
-        db = _db_scalar(_finding(), row)
+        db = _db_scalar(_finding(), row, None, None)
         res = asyncio.run(portal.portal_finding_remediation(
             uuid.uuid4(), _client(), db, os="linux"))
         assert res["source"] == "deterministic_kb"

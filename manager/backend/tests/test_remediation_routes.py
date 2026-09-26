@@ -29,8 +29,12 @@ def _operator() -> CurrentUser:
 
 
 def _finding(title="SSLv3 supported (POODLE)"):
+    from app.models.enums import FindingSeverity, FindingStatus
+    now = datetime.now(timezone.utc)
     return SimpleNamespace(id=uuid.uuid4(), engagement_id=uuid.uuid4(), title=title,
-                           description="", remediation="", cve_ids=[])
+                           description="", remediation="", cve_ids=[],
+                           severity=FindingSeverity.high, status=FindingStatus.open,
+                           first_seen=now, created_at=now, due_at=None)
 
 
 def _db_scalar(*vals):
@@ -111,7 +115,7 @@ def test_remediation_router_is_mounted():
 
 class TestGetRemediation:
     def test_kb_on_cache_miss(self):
-        db = _db_scalar(_finding(), None)          # finding, then no cached row
+        db = _db_scalar(_finding(), None, None, None)   # finding, no cache, no engagement/tenant SLA
         res = asyncio.run(remediation.get_remediation(uuid.uuid4(), db, _operator(), os="linux"))
         assert res["source"] == "deterministic_kb"
         assert res["cached"] is False
@@ -124,9 +128,10 @@ class TestGetRemediation:
         row = SimpleNamespace(reviewed=True, source="ai", model="claude-x",
                               plan={"source": "ai", "steps": [{"step": 1}]},
                               generated_at=datetime.now(timezone.utc))
-        db = _db_scalar(_finding(), row)
+        db = _db_scalar(_finding(), row, None, None)
         res = asyncio.run(remediation.get_remediation(uuid.uuid4(), db, _operator(), os="linux"))
         assert res["source"] == "ai"
+        assert res["plan"]["due"]["source"] == "default"
         assert res["cached"] is True
         assert res["reviewed"] is True
         assert res["model"] == "claude-x"
@@ -225,9 +230,12 @@ class TestContextualGet:
     def _grounded(self):
         f = SimpleNamespace(id=uuid.uuid4(), engagement_id=uuid.uuid4(), asset_id=uuid.uuid4(),
                             title="SMBv1 enabled (wormable, deprecated)", description="",
-                            remediation="", cve_ids=[], severity=SimpleNamespace(value="critical"),
+                            remediation="", cve_ids=[], severity=__import__("app.models.enums", fromlist=["x"]).FindingSeverity.critical,
                             evidence={"rule_id": "POSTURE-SMB-V1-ENABLED", "port": 445},
-                            epss_score=None, exploit_validated=False)
+                            epss_score=None, exploit_validated=False,
+                            status=__import__("app.models.enums", fromlist=["x"]).FindingStatus.open,
+                            first_seen=datetime.now(timezone.utc), created_at=datetime.now(timezone.utc),
+                            due_at=None)
         asset = SimpleNamespace(ip_address="10.0.0.5", hostname="FS01", fqdn=None, os="Windows",
                                 os_version="Windows Server 2012 R2",
                                 asset_type=SimpleNamespace(value="server"),
@@ -248,6 +256,7 @@ class TestContextualGet:
         assert out.plan.verification_check["scanner"] == "smb_scan"
         assert out.plan.steps[0].tier == "containment"
         assert out.plan.exposure == "internal"
+        assert out.plan.due["source"] == "default" and out.plan.due["at"]
 
     def test_explicit_os_is_respected(self):
         f, asset, svc = self._grounded()

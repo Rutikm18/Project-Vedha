@@ -29,7 +29,7 @@ from app.models.engagement import Engagement
 from app.models.finding import Finding
 from app.models.remediation_plan import RemediationPlan
 from app.schemas.remediation import RemediationPlanOut
-from app.remediation.loader import load_finding_context
+from app.remediation.loader import load_finding_context, resolve_due
 from app.remediation.plan import build_plan, os_for_context
 from app.services.remediation_kb import os_key
 
@@ -131,9 +131,11 @@ async def get_remediation(
     ctx = await load_finding_context(db, finding)
     key = os_key(os) if os else os_for_context(ctx)
     row = await _cached_plan(db, finding_id, key)
+    due = await resolve_due(db, finding, current_user.tenant_id)
     if row is not None:
-        return _serialize(finding_id, key, row.plan, row=row)
-    return _serialize(finding_id, key, build_plan(finding, ctx, os=key))
+        # The due date is live (extensions/policy changes), never the cached one.
+        return _serialize(finding_id, key, {**row.plan, "due": due}, row=row)
+    return _serialize(finding_id, key, build_plan(finding, ctx, os=key, due=due))
 
 
 @router.post("/{finding_id}/remediation/generate",

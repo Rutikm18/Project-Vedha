@@ -11,15 +11,16 @@ from __future__ import annotations
 import uuid
 from typing import Annotated
 
-from fastapi import APIRouter
+from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.auth.rbac import require_role
 from app.dependencies import DB, AuthUser
+from app.models.engagement import Engagement
 from app.models.sla_policy import SlaPolicy
-from app.services import sla
+from app.services import deadlines, sla
 
 router = APIRouter(prefix="/sla-policy", tags=["sla"])
 _OPERATOR = require_role(["admin", "manager"])
@@ -57,9 +58,9 @@ def _windows_of(row: SlaPolicy) -> dict[str, int]:
 
 async def resolve_windows(db: AsyncSession, tenant_id: uuid.UUID) -> dict[str, int]:
     """The tenant's custom SLA windows if set, else the env defaults. Shared by any
-    router that renders SLA so custom policies apply consistently."""
-    row = await _row(db, tenant_id)
-    return _windows_of(row) if row is not None else sla.default_windows()
+    router that renders SLA so custom policies apply consistently. Per-engagement
+    policies layer on top via services/deadlines.py."""
+    return await deadlines.tenant_windows(db, tenant_id) or sla.default_windows()
 
 
 def _out(row: SlaPolicy | None) -> SlaPolicyOut:
@@ -94,3 +95,67 @@ async def put_sla_policy(body: SlaPolicyIn, db: DB,
             setattr(row, key, value)
     await db.flush()
     return _out(row)
+
+
+# ── per-engagement policy (overrides the tenant policy for one engagement) ─────
+# Stored in engagements.rules_of_engagement["sla_policy"], next to the regulatory
+# profile — customer contracts differ, so each engagement may set its own clock.
+
+engagement_router = APIRouter(prefix="/engagements", tags=["sla"])
+_READER = require_role(["admin", "manager", "tester", "analyst", "auditor"])
+
+
+class EngagementSlaPolicyOut(BaseModel):
+    critical_hours: int
+    high_hours: int
+    medium_hours: int
+    low_hours: int
+    info_hours: int
+    source: str          # engagement | tenant | default — where these windows come from
+
+
+async def _engagement(db: AsyncSession, engagement_id: uuid.UUID, tenant_id: uuid.UUID) -> Engagement:
+    eng = (await db.execute(
+        select(Engagement).where(Engagement.id == engagement_id, Engagement.tenant_id == tenant_id)
+    )).scalar_one_or_none()
+    if eng is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Engagement not found")
+    return eng
+
+
+def _eng_out(windows: dict[str, int], source: str) -> EngagementSlaPolicyOut:
+    return EngagementSlaPolicyOut(**{f"{k}_hours": v for k, v in windows.items()}, source=source)
+
+
+@engagement_router.get("/{engagement_id}/sla-policy", response_model=EngagementSlaPolicyOut,
+                       summary="Effective SLA windows for an engagement")
+async def get_engagement_sla_policy(engagement_id: uuid.UUID, db: DB,
+                                    current_user: Annotated[AuthUser, _READER]):
+    eng = await _engagement(db, engagement_id, current_user.tenant_id)
+    windows, source = await deadlines.windows_for(db, current_user.tenant_id, eng)
+    return _eng_out(windows, source)
+
+
+@engagement_router.put("/{engagement_id}/sla-policy", response_model=EngagementSlaPolicyOut,
+                       summary="Set this engagement's SLA windows (overrides the tenant policy)")
+async def put_engagement_sla_policy(engagement_id: uuid.UUID, body: SlaPolicyIn, db: DB,
+                                    current_user: Annotated[AuthUser, _OPERATOR]):
+    eng = await _engagement(db, engagement_id, current_user.tenant_id)
+    roe = dict(eng.rules_of_engagement or {})       # reassign → JSONB change is detected
+    roe["sla_policy"] = body.model_dump()
+    eng.rules_of_engagement = roe
+    await db.flush()
+    return _eng_out(deadlines.engagement_windows(eng) or sla.default_windows(), "engagement")
+
+
+@engagement_router.delete("/{engagement_id}/sla-policy", response_model=EngagementSlaPolicyOut,
+                          summary="Remove this engagement's SLA override (fall back to tenant)")
+async def delete_engagement_sla_policy(engagement_id: uuid.UUID, db: DB,
+                                       current_user: Annotated[AuthUser, _OPERATOR]):
+    eng = await _engagement(db, engagement_id, current_user.tenant_id)
+    roe = dict(eng.rules_of_engagement or {})
+    roe.pop("sla_policy", None)
+    eng.rules_of_engagement = roe
+    await db.flush()
+    windows, source = await deadlines.windows_for(db, current_user.tenant_id, eng)
+    return _eng_out(windows, source)

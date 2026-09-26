@@ -1,6 +1,7 @@
 import ipaddress
 import re
 import uuid
+from types import SimpleNamespace
 from datetime import datetime, timedelta, timezone
 from typing import Annotated, Literal
 
@@ -34,6 +35,7 @@ from app.services.finding_enrichment import detail_enrichment
 from app.services.finding_priority import severity_order_case
 from app.services.risk_rank import compute_risk_rank
 from app.routers.sla_policy import resolve_windows
+from app.services.deadlines import engagement_windows
 from app.utils.pagination import paginate_query
 
 router = APIRouter(prefix="/findings", tags=["findings"])
@@ -312,7 +314,17 @@ async def sla_summary(
 
     findings = (await db.execute(q)).scalars().all()
     windows = await resolve_windows(db, current_user.tenant_id)   # tenant custom policy or env
-    return sla_service.summarize(list(findings), windows=windows)
+    # Per-engagement SLA overrides (rules_of_engagement["sla_policy"]) layer on top.
+    eng_q = select(Engagement.id, Engagement.rules_of_engagement).where(
+        Engagement.tenant_id == current_user.tenant_id)
+    if engagement_id:
+        eng_q = eng_q.where(Engagement.id == engagement_id)
+    per_engagement = {}
+    for eid, roe in (await db.execute(eng_q)).all():
+        own = engagement_windows(SimpleNamespace(rules_of_engagement=roe))
+        if own is not None:
+            per_engagement[eid] = own
+    return sla_service.summarize(list(findings), windows=windows, engagement_windows=per_engagement)
 
 
 @router.get("/metrics", summary="MTTR + ownership metrics")

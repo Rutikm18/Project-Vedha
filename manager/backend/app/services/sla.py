@@ -70,9 +70,11 @@ def compute(finding: Finding, now: datetime | None = None,
 
     window_hours = (windows if windows is not None else _windows()).get(severity, 0)
     started = finding.first_seen or finding.created_at
+    # An approved deadline extension (services/deadlines.py) overrides the policy.
+    override = getattr(finding, "due_at", None)
 
-    # Untracked: closed finding, no SLA window for this severity, or no start time.
-    if status not in _TRACKED_STATUSES or window_hours <= 0 or started is None:
+    # Untracked: closed finding, no SLA window (and no override), or no start time.
+    if status not in _TRACKED_STATUSES or started is None or (window_hours <= 0 and override is None):
         return SlaResult(
             finding_id=str(finding.id), title=finding.title, severity=severity,
             deadline=None, hours_remaining=None, hours_total=None, state="untracked",
@@ -81,10 +83,13 @@ def compute(finding: Finding, now: datetime | None = None,
     # Normalize naive timestamps to UTC so arithmetic is always tz-aware.
     if started.tzinfo is None:
         started = started.replace(tzinfo=timezone.utc)
+    if override is not None and override.tzinfo is None:
+        override = override.replace(tzinfo=timezone.utc)
 
-    deadline = started + timedelta(hours=window_hours)
+    deadline = override if override is not None else started + timedelta(hours=window_hours)
+    total_hours = ((deadline - started).total_seconds() / 3600.0) if override is not None else window_hours
     hours_remaining = (deadline - now).total_seconds() / 3600.0
-    fraction_left = hours_remaining / window_hours
+    fraction_left = hours_remaining / total_hours if total_hours > 0 else 0.0
 
     if hours_remaining <= 0:
         state = "breached"
@@ -98,7 +103,7 @@ def compute(finding: Finding, now: datetime | None = None,
     return SlaResult(
         finding_id=str(finding.id), title=finding.title, severity=severity,
         deadline=deadline, hours_remaining=round(hours_remaining, 2),
-        hours_total=window_hours, state=state,
+        hours_total=round(total_hours) if override is not None else window_hours, state=state,
     )
 
 
@@ -111,16 +116,20 @@ def default_windows() -> dict[str, int]:
 
 
 def summarize(findings: list[Finding], now: datetime | None = None, item_limit: int = 25,
-              windows: dict[str, int] | None = None) -> dict:
+              windows: dict[str, int] | None = None,
+              engagement_windows: dict | None = None) -> dict:
     """
     Aggregate SLA states across a set of findings.
 
     Returns counts per state plus the most urgent `item_limit` tracked findings
     (breached first, then by soonest deadline) for the dashboard's SLA rows.
-    `windows` overrides the env defaults with a tenant's custom policy.
+    `windows` overrides the env defaults with a tenant's custom policy;
+    `engagement_windows` ({engagement_id: windows}) overrides that per engagement.
     """
     now = now or datetime.now(timezone.utc)
-    results = [compute(f, now, windows) for f in findings]
+    per_eng = engagement_windows or {}
+    results = [compute(f, now, per_eng.get(getattr(f, "engagement_id", None), windows))
+               for f in findings]
     tracked = [r for r in results if r.is_tracked]
 
     counts = {"breached": 0, "at_risk": 0, "due_soon": 0, "on_track": 0}

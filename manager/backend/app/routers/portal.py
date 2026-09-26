@@ -59,7 +59,7 @@ from app.services.domain_context import domain_brief_for
 from app.services.llm import AiRuntimeError, ManagerLlmService
 from app.services import posture as posture_service
 from app.services.audit import record_audit
-from app.remediation.loader import load_finding_context
+from app.remediation.loader import load_finding_context, resolve_due
 from app.remediation.plan import build_plan, os_for_context
 from app.services.remediation_kb import os_key
 from app.services.scope_targets import validate_targets_in_scope
@@ -245,13 +245,15 @@ async def portal_finding_remediation(
             RemediationPlan.os == key,
         )
     )).scalar_one_or_none()
+    due = await resolve_due(db, finding, user.tenant_id)
     if row is not None and row.reviewed:
         # Strip operator-only metadata (e.g. the AI model name) from the
         # customer payload — the reviewed plan content is what's approved for them.
         plan = {k: v for k, v in row.plan.items() if k != "model"}
+        plan["due"] = due
         source = plan.get("source", row.source)
     else:
-        plan = build_plan(finding, ctx, os=key)
+        plan = build_plan(finding, ctx, os=key, due=due)
         source = plan["source"]
     return {"finding_id": str(finding_id), "os": key, "source": source, "plan": plan}
 

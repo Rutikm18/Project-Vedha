@@ -15,9 +15,11 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.asset import Asset
+from app.models.engagement import Engagement
 from app.models.finding import Finding
 from app.models.service import Service
 from app.remediation.context import RemediationContext, build_context, pick_service
+from app.services.deadlines import due_for, iso, windows_for
 
 
 async def load_finding_context(db: AsyncSession, finding: Any) -> RemediationContext:
@@ -32,6 +34,16 @@ async def load_finding_context(db: AsyncSession, finding: Any) -> RemediationCon
                 select(Service).where(Service.asset_id == asset_id)
             )).scalars().all())
     return build_context(finding, asset, pick_service(finding, services))
+
+
+async def resolve_due(db: AsyncSession, finding: Any, tenant_id: uuid.UUID) -> dict:
+    """The finding's live due date ``{"at": iso, "source"}`` (services/deadlines)."""
+    eng = (await db.execute(
+        select(Engagement).where(Engagement.id == finding.engagement_id)
+    )).scalar_one_or_none()
+    windows, source = await windows_for(db, tenant_id, eng)
+    due = due_for(finding, windows, source)
+    return {"at": iso(due["at"]), "source": due["source"]}
 
 
 async def load_engagement_items(db: AsyncSession, engagement_id: uuid.UUID,
