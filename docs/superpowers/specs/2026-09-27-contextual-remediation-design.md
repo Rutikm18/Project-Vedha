@@ -215,3 +215,22 @@ Engagement SLA policy uses the existing `rules_of_engagement` JSONB (no column).
 - Any new LLM caller goes through `app/ai/gateway.py` and persists `audit_records`.
 - Timestamps are timezone-aware IST via `project_time` helpers.
 - Probe scanner trees are untouched (no `scanner/` or `main_scripts/` changes). The only `manager/detection_engine/` change is the additive `fixed_version` field on the match result.
+
+## 11. Implementation notes & deviations (2026-09-27)
+
+Shipped on `feat/contextual-remediation`; verified against a live stack (Postgres 16 + Redis + API + Next.js dev) with a seeded banking engagement.
+
+| Spec | As built | Why |
+|---|---|---|
+| §4.4 `fix_key = recipe | family | target` for every recipe | CVE-PATCH keys on the product only; the bundle target is the highest `fixed_version` among members. GENERIC keys on the finding id | One upgrade closes every CVE on that product; unrelated generic findings must never merge |
+| §4.4 shared bundle steps | Multi-host bundles render steps/closure check with "each host in the checklist"; the report rewrites them to the finding's own host | Live check showed single-host wording on a 2-host bundle |
+| §5 replace finding uniqueness | Kept `UNIQUE(finding_id, os)`; bundle rows (NULL finding_id) use a partial unique index | NULLs never conflict in Postgres; no change to the existing upsert |
+| §4.5 engagement SLA "edited in engagement settings" | Editor lives on the operator Remediation page | Next to the due dates it drives |
+| §4.7 AI report as a job (generate → status → draft → approve) | Synchronous backend endpoint `POST /engagements/{id}/ai-report/engagement` (+ portal), same UX as before | Keeps the existing Reports UX; sections run in parallel and are bounded; the existing job pipeline is unchanged |
+| §4.3 plan commands | CVE-PATCH commands name the real package (openssh → openssh-server …); unknown products keep an explicit placeholder | Live check showed `<package>` |
+| §4.2 legacy `remediation_kb` | Kept (compliance/content still classify with it); routes no longer serve it | Avoids touching compliance mapping in this project |
+| — | Bundles carry `max_severity` + `kev` of open members | The portal form shows the compensating-control rule accurately |
+
+Out of scope, flagged as a follow-up task: `triageFindings` and `chat` in `manager/frontend/lib/ai-engine.ts` still call Anthropic directly from Next.js.
+
+Environment note (not a product bug): several local Vedha instances on `localhost` share the host-scoped `vedha_token` cookie, so a token signed by another instance's secret logs the session out. Use one instance per hostname when testing side by side.

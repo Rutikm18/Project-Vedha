@@ -3,8 +3,6 @@ from __future__ import annotations
 
 from types import SimpleNamespace
 
-import pytest
-
 from app.remediation import plan as P
 from app.remediation.context import build_context
 
