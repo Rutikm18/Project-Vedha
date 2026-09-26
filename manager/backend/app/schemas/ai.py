@@ -18,7 +18,8 @@ class AiMessage(BaseModel):
 
 class AiGenerateRequest(BaseModel):
     task: Literal["advisor", "security_brief", "security_followup", "advisor_flow",
-                  "client_assistant", "compliance_brief"]
+                  "client_assistant", "compliance_brief", "remediation_refine",
+                  "engagement_report"]
     messages: list[AiMessage] = Field(min_length=1, max_length=24)
     context: dict[str, Any] = Field(default_factory=dict)
     provider: Literal["ollama", "local_openai", "openrouter", "anthropic", "openai", "gemini"] | None = None

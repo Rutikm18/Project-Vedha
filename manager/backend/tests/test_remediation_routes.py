@@ -81,25 +81,6 @@ class _FakeDB:
         self.flushed += 1
 
 
-class _GenUnavailable:
-    def __init__(self, db, **kw):
-        self.available = False
-
-
-class _GenAI:
-    def __init__(self, db, **kw):
-        self.available = True
-
-    async def generate_remediation_plan(self, finding, os):
-        return {"category": "ai", "os": os, "source": "ai", "model": "claude-test",
-                "summary": "Patch and harden.", "effort": "low", "remediation_risk": "low",
-                "steps": [{"step": 1, "title": "Patch", "description": "",
-                           "commands_for_os": ["sudo apt-get upgrade"], "verification": "",
-                           "risk": "low"}],
-                "verification": [], "long_term_recommendations": [],
-                "compensating_controls": ""}
-
-
 # ── wiring ───────────────────────────────────────────────────────────────────────
 
 def test_remediation_router_is_mounted():
@@ -147,49 +128,100 @@ class TestGetRemediation:
         assert e.value.status_code == 404
 
 
-# ── POST /generate ─────────────────────────────────────────────────────────────────
+# ── POST /refine (and the /generate alias) ─────────────────────────────────────────
 
-class TestGenerateRemediation:
-    def test_ai_unavailable_falls_back_to_kb_and_publish_sets_reviewed(self, monkeypatch):
-        monkeypatch.setattr(remediation, "LLMReportGenerator", _GenUnavailable)
-        # finding lookup, then the atomic upsert RETURNING row (reviewed=True).
-        db = _FakeDB([_scalar_result(_finding()), _one_result(_returning_row(True))])
-        res = asyncio.run(remediation.generate_remediation(
-            uuid.uuid4(), db, _operator(), os="linux", force=True, publish=True))
-        assert res["source"] == "deterministic_kb"
-        assert res["reviewed"] is True
-        assert db.executed == 2                     # tenant finding + single upsert
+def _ai_plan(kb_plan):
+    return {**kb_plan, "source": "ai", "model": "claude-test", "summary": "Refined."}
 
-    def test_ai_available_caches_ai_plan(self, monkeypatch):
-        monkeypatch.setattr(remediation, "LLMReportGenerator", _GenAI)
-        db = _FakeDB([_scalar_result(_finding()),
+
+class TestRefineRemediation:
+    def _patch(self, monkeypatch, *, fail=False):
+        calls = {}
+
+        async def fake_refine(db, *, engagement, kb_plan, contexts, findings, actor_id, svc=None):
+            calls["kb"] = kb_plan
+            calls["contexts"] = contexts
+            if fail:
+                from app.services.llm import AiRuntimeError
+                raise AiRuntimeError("no AI provider is configured", 503)
+            return _ai_plan(kb_plan)
+
+        monkeypatch.setattr(remediation.ai_refine, "refine", fake_refine)
+        return calls
+
+    def test_refine_overlays_kb_and_caches_unreviewed(self, monkeypatch):
+        calls = self._patch(monkeypatch)
+        # finding, cache miss, engagement(SLA) , tenant SLA, engagement(refine), upsert
+        db = _FakeDB([_scalar_result(_finding()), _scalar_result(None), _scalar_result(None),
+                      _scalar_result(None), _scalar_result(None),
                       _one_result(_returning_row(False, model="claude-test"))])
-        res = asyncio.run(remediation.generate_remediation(
-            uuid.uuid4(), db, _operator(), os="linux", force=True, publish=False))
-        assert res["source"] == "ai"
-        assert res["model"] == "claude-test"
-        assert res["reviewed"] is False
+        res = asyncio.run(remediation.refine_remediation(
+            uuid.uuid4(), db, _operator(), os="linux", force=False, publish=False))
+        assert res["source"] == "ai" and res["reviewed"] is False
+        assert calls["kb"]["source"] == "deterministic_kb"      # started from the KB floor
 
-    def test_cached_hit_without_force_returns_cached_and_publish_flips_reviewed(self, monkeypatch):
-        monkeypatch.setattr(remediation, "LLMReportGenerator", _GenUnavailable)
-        row = SimpleNamespace(reviewed=False, source="ai", model="claude-x",
+    def test_unavailable_is_503_and_nothing_cached(self, monkeypatch):
+        self._patch(monkeypatch, fail=True)
+        db = _FakeDB([_scalar_result(_finding()), _scalar_result(None)])
+        with pytest.raises(HTTPException) as e:
+            asyncio.run(remediation.refine_remediation(
+                uuid.uuid4(), db, _operator(), os="linux", force=False, publish=False))
+        assert e.value.status_code == 503
+        assert db.executed == 5                                  # no upsert ran
+
+    def test_cached_fresh_ai_returned_and_publish_flips(self, monkeypatch):
+        self._patch(monkeypatch)
+        row = SimpleNamespace(reviewed=False, source="ai", model="claude-x", facts_fingerprint=None,
                               plan={"source": "ai", "steps": [{"step": 1}]},
                               generated_at=datetime.now(timezone.utc))
-        db = _FakeDB([_scalar_result(_finding()), _scalar_result(row)])  # finding, cache hit
+        db = _FakeDB([_scalar_result(_finding()), _scalar_result(row)])
+        res = asyncio.run(remediation.refine_remediation(
+            uuid.uuid4(), db, _operator(), os="linux", force=False, publish=True))
+        assert res["source"] == "ai" and row.reviewed is True
+        assert db.executed == 2
+
+    def test_generate_is_an_alias(self, monkeypatch):
+        self._patch(monkeypatch)
+        db = _FakeDB([_scalar_result(_finding()), _scalar_result(None), _scalar_result(None),
+                      _scalar_result(None), _scalar_result(None),
+                      _one_result(_returning_row(True, model="claude-test"))])
         res = asyncio.run(remediation.generate_remediation(
             uuid.uuid4(), db, _operator(), os="linux", force=False, publish=True))
-        assert res["source"] == "ai"
-        assert row.reviewed is True                 # publish flipped it
-        assert db.flushed >= 1
-        assert db.executed == 2                     # no third query — early return
+        assert res["source"] == "ai" and res["reviewed"] is True
 
     def test_cross_tenant_is_404(self, monkeypatch):
-        monkeypatch.setattr(remediation, "LLMReportGenerator", _GenUnavailable)
-        db = _FakeDB([_scalar_result(None)])
+        self._patch(monkeypatch)
         with pytest.raises(HTTPException) as e:
-            asyncio.run(remediation.generate_remediation(
-                uuid.uuid4(), db, _operator(), os="linux"))
+            asyncio.run(remediation.refine_remediation(
+                uuid.uuid4(), _FakeDB([_scalar_result(None)]), _operator(), os="linux"))
         assert e.value.status_code == 404
+
+
+class TestStaleAndPublish:
+    def test_stale_when_fingerprint_differs(self):
+        row = SimpleNamespace(reviewed=True, source="ai", model="m", facts_fingerprint="old",
+                              plan={"source": "ai", "steps": [{"step": 1}]},
+                              generated_at=datetime.now(timezone.utc))
+        db = _FakeDB([_scalar_result(_finding()), _scalar_result(row)])
+        res = asyncio.run(remediation.get_remediation(uuid.uuid4(), db, _operator(), os="linux"))
+        assert res["stale"] is True
+
+    def test_publish_stale_is_409(self):
+        row = SimpleNamespace(reviewed=False, source="ai", model="m", facts_fingerprint="old",
+                              plan={"source": "ai"}, generated_at=datetime.now(timezone.utc))
+        db = _FakeDB([_scalar_result(_finding()), _scalar_result(row)])
+        with pytest.raises(HTTPException) as e:
+            asyncio.run(remediation.publish_remediation(uuid.uuid4(), db, _operator(), os="linux"))
+        assert e.value.status_code == 409
+
+    def test_publish_fresh(self):
+        row = SimpleNamespace(reviewed=False, source="ai", model="m", facts_fingerprint=None,
+                              plan={"source": "ai", "steps": [{"step": 1}]},
+                              generated_at=datetime.now(timezone.utc))
+        db = _FakeDB([_scalar_result(_finding()), _scalar_result(row)])
+        db.add = lambda obj: None
+        res = asyncio.run(remediation.publish_remediation(uuid.uuid4(), db, _operator(), os="linux"))
+        assert row.reviewed is True and res["reviewed"] is True
 
 
 class TestUpsertStatement:
@@ -216,6 +248,15 @@ class TestUpsertStatement:
 
     def test_refreshes_generated_at_on_conflict(self):
         assert "generated_at = now()" in self._sql(True)
+
+    def test_bundle_upsert_targets_partial_index(self):
+        from sqlalchemy.dialects.postgresql import dialect
+        stmt = remediation._build_bundle_upsert_stmt(
+            tenant_id=uuid.uuid4(), engagement_id=uuid.uuid4(), fix_key="abcdef123456", os="linux",
+            plan={"source": "ai"}, publish=False, facts_fingerprint="f")
+        sql = str(stmt.compile(dialect=dialect())).lower()
+        assert "on conflict (engagement_id, fix_key, os) where subject_type = 'bundle'" in sql
+        assert "reviewed = excluded.reviewed" in sql
 
 
 # ── v2 contextual plans ──────────────────────────────────────────────────────────

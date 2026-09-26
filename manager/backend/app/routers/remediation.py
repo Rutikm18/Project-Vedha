@@ -1,38 +1,45 @@
 """
-remediation.py — per-finding remediation plans (operator-facing).
+remediation.py — contextual remediation plans and fix bundles (operator-facing).
 
-Two routes on top of a finding:
-  * GET  …/remediation?os=      — the cached AI plan if one exists, else the
-    deterministic KB recipe. NEVER empty (there is always a KB fallback).
-  * POST …/remediation/generate — generate an AI plan (structured, OS-specific,
-    command-safety-validated), cache it per (finding, os), optionally publish it
-    (reviewed=true) so the customer portal may show it.
+Per finding:
+  * GET  …/remediation?os=        — the asset-grounded KB plan (app/remediation),
+    or the cached AI refinement when one exists (flagged ``stale`` when the facts
+    it was generated from no longer match). OS defaults to the scanned OS.
+  * POST …/remediation/refine     — AI refinement ON TOP of the KB plan, through
+    the AI gateway + audit chain; cached per (finding, os); unreviewed until
+    published. ``/generate`` is kept as an alias for older clients.
+  * POST …/remediation/publish    — approve the cached refinement for customers.
 
-Reuses LLMReportGenerator (transport/retry/safety) + services/remediation_kb.
+Per engagement (fix bundles, see app/remediation/bundles.py):
+  * GET  /engagements/{id}/remediation/bundles?view=fix|host
+  * GET  /engagements/{id}/remediation/bundles/{fix_key}
+  * POST /engagements/{id}/remediation/bundles/{fix_key}/refine
+  * GET  /engagements/{id}/remediation/bundles/{fix_key}/refinement
+
 Tenant-scoped through the engagement join (findings carry no tenant_id).
 """
 from __future__ import annotations
 
 import uuid
-from typing import Annotated
+from typing import Annotated, Any
 
 import structlog
 from fastapi import APIRouter, HTTPException, Query, status
-from sqlalchemy import func, select
+from sqlalchemy import func, select, text
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.ai.llm_report import LLMReportGenerator, LLMUnavailableError
 from app.auth.rbac import require_role
 from app.dependencies import DB, AuthUser
 from app.models.engagement import Engagement
 from app.models.finding import Finding
 from app.models.remediation_plan import RemediationPlan
-from app.schemas.remediation import RemediationPlanOut
+from app.remediation import ai_refine
 from app.remediation import service as remediation_service
 from app.remediation.bundles import bundle_link
 from app.remediation.loader import load_finding_context, resolve_due
 from app.remediation.plan import build_plan, os_for_context
+from app.schemas.remediation import RemediationPlanOut
 from app.services.remediation_kb import os_key
 
 router = APIRouter(prefix="/findings", tags=["remediation"])
@@ -67,7 +74,8 @@ async def _cached_plan(db: AsyncSession, finding_id: uuid.UUID,
 
 
 def _build_upsert_stmt(*, tenant_id: uuid.UUID, engagement_id: uuid.UUID,
-                       finding_id: uuid.UUID, os: str, plan: dict, publish: bool):
+                       finding_id: uuid.UUID, os: str, plan: dict, publish: bool,
+                       facts_fingerprint: str | None = None):
     """Build the atomic INSERT … ON CONFLICT DO UPDATE for a cached plan.
 
     Pure (no IO) so the SQL semantics can be unit-tested. A single statement
@@ -80,7 +88,8 @@ def _build_upsert_stmt(*, tenant_id: uuid.UUID, engagement_id: uuid.UUID,
     source = plan.get("source", "deterministic_kb")
     stmt = pg_insert(RemediationPlan).values(
         tenant_id=tenant_id, engagement_id=engagement_id, finding_id=finding_id,
-        os=os, plan=plan, source=source, model=plan.get("model"), reviewed=publish,
+        subject_type="finding", os=os, plan=plan, source=source, model=plan.get("model"),
+        reviewed=publish, facts_fingerprint=facts_fingerprint,
     )
     return stmt.on_conflict_do_update(
         constraint="uq_remediation_finding_os",
@@ -89,6 +98,7 @@ def _build_upsert_stmt(*, tenant_id: uuid.UUID, engagement_id: uuid.UUID,
             "source": stmt.excluded.source,
             "model": stmt.excluded.model,
             "reviewed": stmt.excluded.reviewed,   # = publish; regeneration re-gates review
+            "facts_fingerprint": stmt.excluded.facts_fingerprint,
             "generated_at": func.now(),
             "updated_at": func.now(),
         },
@@ -96,19 +106,28 @@ def _build_upsert_stmt(*, tenant_id: uuid.UUID, engagement_id: uuid.UUID,
                 RemediationPlan.model)
 
 
-async def _upsert_plan(db: AsyncSession, *, tenant_id: uuid.UUID,
-                       engagement_id: uuid.UUID, finding_id: uuid.UUID,
-                       os: str, plan: dict, publish: bool):
-    """Execute the atomic upsert and return the RETURNING row for serialization."""
-    stmt = _build_upsert_stmt(
-        tenant_id=tenant_id, engagement_id=engagement_id, finding_id=finding_id,
-        os=os, plan=plan, publish=publish,
+def _build_bundle_upsert_stmt(*, tenant_id: uuid.UUID, engagement_id: uuid.UUID, fix_key: str,
+                              os: str, plan: dict, publish: bool, facts_fingerprint: str):
+    """Bundle rows: same semantics, keyed by the partial unique index
+    uq_remediation_bundle_os (engagement_id, fix_key, os) WHERE subject_type='bundle'."""
+    stmt = pg_insert(RemediationPlan).values(
+        tenant_id=tenant_id, engagement_id=engagement_id, finding_id=None, subject_type="bundle",
+        fix_key=fix_key, os=os, plan=plan, source=plan.get("source", "ai"), model=plan.get("model"),
+        reviewed=publish, facts_fingerprint=facts_fingerprint,
     )
-    return (await db.execute(stmt)).one()
+    return stmt.on_conflict_do_update(
+        index_elements=["engagement_id", "fix_key", "os"],
+        index_where=text("subject_type = 'bundle'"),
+        set_={
+            "plan": stmt.excluded.plan, "source": stmt.excluded.source, "model": stmt.excluded.model,
+            "reviewed": stmt.excluded.reviewed, "facts_fingerprint": stmt.excluded.facts_fingerprint,
+            "generated_at": func.now(), "updated_at": func.now(),
+        },
+    ).returning(RemediationPlan.reviewed, RemediationPlan.generated_at, RemediationPlan.model)
 
 
 def _serialize(finding_id: uuid.UUID, os: str, plan: dict, *,
-               row: RemediationPlan | None = None, bundle: dict | None = None) -> dict:
+               row: Any = None, bundle: dict | None = None, stale: bool = False) -> dict:
     return {
         "bundle": bundle,
         "finding_id": str(finding_id),
@@ -118,13 +137,25 @@ def _serialize(finding_id: uuid.UUID, os: str, plan: dict, *,
         "cached": row is not None,
         "generated_at": row.generated_at.isoformat() if row is not None else None,
         "model": (row.model if row is not None else plan.get("model")),
+        "stale": stale,
         "plan": plan,
     }
 
 
+def _is_stale(row: Any, fingerprint: str) -> bool:
+    stored = getattr(row, "facts_fingerprint", None)
+    return bool(stored) and stored != fingerprint
+
+
+def _ai_error(exc: Exception) -> HTTPException:
+    code = getattr(exc, "status_code", 503)
+    code = code if code in (409, 429, 502, 503, 504) else 503
+    return HTTPException(code, f"AI refinement unavailable: {exc}")
+
+
 @router.get("/{finding_id}/remediation",
             response_model=RemediationPlanOut,
-            summary="Remediation plan for a finding (cached AI or KB fallback)")
+            summary="Remediation plan for a finding (asset-grounded KB, or cached AI refinement)")
 async def get_remediation(
     finding_id: uuid.UUID,
     db: DB,
@@ -139,14 +170,15 @@ async def get_remediation(
     link = bundle_link(finding, ctx)
     if row is not None:
         # The due date is live (extensions/policy changes), never the cached one.
-        return _serialize(finding_id, key, {**row.plan, "due": due}, row=row, bundle=link)
+        return _serialize(finding_id, key, {**row.plan, "due": due}, row=row, bundle=link,
+                          stale=_is_stale(row, ai_refine.facts_fingerprint([ctx])))
     return _serialize(finding_id, key, build_plan(finding, ctx, os=key, due=due), bundle=link)
 
 
-@router.post("/{finding_id}/remediation/generate",
+@router.post("/{finding_id}/remediation/refine",
              response_model=RemediationPlanOut,
-             summary="Generate (and cache) an AI remediation plan for a finding")
-async def generate_remediation(
+             summary="Refine the plan with AI (gateway-routed, cached, unreviewed until published)")
+async def refine_remediation(
     finding_id: uuid.UUID,
     db: DB,
     current_user: Annotated[AuthUser, _REMEDIATION_GENERATOR],
@@ -158,35 +190,77 @@ async def generate_remediation(
     finding = await _tenant_finding(db, finding_id, current_user.tenant_id)
     ctx = await load_finding_context(db, finding)
     key = os_key(os) if os else os_for_context(ctx)
+    fingerprint = ai_refine.facts_fingerprint([ctx])
+    link = bundle_link(finding, ctx)
 
     if not force:
         row = await _cached_plan(db, finding_id, key)
-        if row is not None:
+        if row is not None and not _is_stale(row, fingerprint) and row.source == "ai":
             if publish and not row.reviewed:
                 row.reviewed = True
                 await db.flush()
-            return _serialize(finding_id, key, row.plan, row=row)
+            return _serialize(finding_id, key, row.plan, row=row, bundle=link)
 
-    # Try the AI; on any unavailability fall back to the KB so we always cache a
-    # usable plan. The KB result is deterministic and safe.
-    plan: dict | None = None
-    gen = LLMReportGenerator(db)
-    if gen.available:
-        try:
-            plan = await gen.generate_remediation_plan(finding, key)
-        except (LLMUnavailableError, ValueError) as exc:
-            logger.warning("remediation.ai_unavailable", finding=str(finding_id), error=str(exc))
-    if plan is None:
-        plan = build_plan(finding, ctx, os=key)
+    due = await resolve_due(db, finding, current_user.tenant_id)
+    kb = build_plan(finding, ctx, os=key, due=due)
+    engagement = (await db.execute(
+        select(Engagement).where(Engagement.id == finding.engagement_id)
+    )).scalar_one_or_none()
+    from app.services.llm import AiRuntimeError
+    try:
+        plan = await ai_refine.refine(db, engagement=engagement, kb_plan=kb, contexts=[ctx],
+                                      findings=[finding], actor_id=current_user.user_id)
+    except AiRuntimeError as exc:
+        logger.warning("remediation.refine_unavailable", finding=str(finding_id), error=str(exc))
+        raise _ai_error(exc) from exc
 
-    # Atomic insert-or-update — no read-then-write race under concurrent generates.
-    row = await _upsert_plan(
-        db, tenant_id=current_user.tenant_id, engagement_id=finding.engagement_id,
-        finding_id=finding.id, os=key, plan=plan, publish=publish,
-    )
-    logger.info("remediation.generated", finding=str(finding_id), os=key,
-                source=plan.get("source"), reviewed=row.reviewed)
-    return _serialize(finding_id, key, plan, row=row)
+    row = (await db.execute(_build_upsert_stmt(
+        tenant_id=current_user.tenant_id, engagement_id=finding.engagement_id, finding_id=finding.id,
+        os=key, plan=plan, publish=publish, facts_fingerprint=fingerprint,
+    ))).one()
+    logger.info("remediation.refine_cached", finding=str(finding_id), os=key, reviewed=row.reviewed)
+    return _serialize(finding_id, key, plan, row=row, bundle=link)
+
+
+@router.post("/{finding_id}/remediation/generate",
+             response_model=RemediationPlanOut,
+             summary="Deprecated alias of /remediation/refine")
+async def generate_remediation(
+    finding_id: uuid.UUID,
+    db: DB,
+    current_user: Annotated[AuthUser, _REMEDIATION_GENERATOR],
+    os: str | None = Query(default=None),
+    force: bool = Query(default=False),
+    publish: bool = Query(default=False),
+):
+    return await refine_remediation(finding_id, db, current_user, os=os, force=force, publish=publish)
+
+
+@router.post("/{finding_id}/remediation/publish",
+             response_model=RemediationPlanOut,
+             summary="Approve the cached AI refinement for the customer portal")
+async def publish_remediation(
+    finding_id: uuid.UUID,
+    db: DB,
+    current_user: Annotated[AuthUser, _REMEDIATION_GENERATOR],
+    os: str | None = Query(default=None),
+):
+    finding = await _tenant_finding(db, finding_id, current_user.tenant_id)
+    ctx = await load_finding_context(db, finding)
+    key = os_key(os) if os else os_for_context(ctx)
+    row = await _cached_plan(db, finding_id, key)
+    if row is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "No AI refinement to publish for this OS")
+    if _is_stale(row, ai_refine.facts_fingerprint([ctx])):
+        raise HTTPException(status.HTTP_409_CONFLICT,
+                            "The refinement is stale (the asset changed) — regenerate before publishing")
+    row.reviewed = True
+    await db.flush()
+    from app.services.audit import record_audit
+    record_audit(db, actor_id=current_user.user_id, action="remediation.published",
+                 engagement_id=finding.engagement_id, resource_type="finding", resource_id=finding.id,
+                 detail={"os": key, "model": row.model})
+    return _serialize(finding_id, key, row.plan, row=row, bundle=bundle_link(finding, ctx))
 
 
 # ── fix bundles (engagement-level) ───────────────────────────────────────────
@@ -228,3 +302,88 @@ async def get_engagement_bundle(
     if bundle is None:
         raise HTTPException(status.HTTP_404_NOT_FOUND, "Bundle not found")
     return bundle
+
+
+def _bundle_members(data: dict, bundle: dict) -> tuple[list[Any], list[Any]]:
+    ids = set(bundle["open_finding_ids"] or bundle["resolves"])
+    members = [(f, ctx) for f, ctx, _due in data["items"] if str(f.id) in ids]
+    return [f for f, _ in members], [ctx for _, ctx in members]
+
+
+def _bundle_kb_plan(bundle: dict, members: list[Any], contexts: list[Any], os: str) -> dict:
+    """The KB plan a bundle refinement starts from: the representative plan for
+    the OS, carrying the bundle's own target, title and verification."""
+    rep = next((i for i, c in enumerate(contexts) if os_for_context(c) == os), 0)
+    plan = build_plan(members[rep], contexts[rep], os=os)
+    plan.update({"title": bundle["title"], "target_state": bundle["target_state"],
+                 "summary": f"{bundle['title']}. Target: {bundle['target_state']}."})
+    return plan
+
+
+async def _cached_bundle_plan(db: AsyncSession, engagement_id: uuid.UUID, fix_key: str,
+                              os: str) -> RemediationPlan | None:
+    return (await db.execute(
+        select(RemediationPlan).where(
+            RemediationPlan.engagement_id == engagement_id, RemediationPlan.subject_type == "bundle",
+            RemediationPlan.fix_key == fix_key, RemediationPlan.os == os)
+    )).scalar_one_or_none()
+
+
+def _bundle_payload(bundle: dict, os: str, plan: dict, row: Any, stale: bool) -> dict:
+    return {"fix_key": bundle["fix_key"], "ref": bundle["ref"], "os": os, "source": plan.get("source"),
+            "reviewed": bool(getattr(row, "reviewed", False)),
+            "generated_at": row.generated_at.isoformat() if row is not None else None,
+            "model": getattr(row, "model", None) or plan.get("model"), "stale": stale, "plan": plan}
+
+
+@bundles_router.get("/{engagement_id}/remediation/bundles/{fix_key}/refinement",
+                    summary="The cached AI refinement of a fix bundle, if any")
+async def get_bundle_refinement(
+    engagement_id: uuid.UUID, fix_key: str, db: DB,
+    current_user: Annotated[AuthUser, _REMEDIATION_READER],
+    os: str = Query(default="generic"),
+):
+    eng = await _tenant_engagement(db, engagement_id, current_user.tenant_id)
+    key = os_key(os)
+    data = await remediation_service.engagement_bundles(db, eng, current_user.tenant_id)
+    bundle = remediation_service.find_bundle(data["bundles"], fix_key)
+    if bundle is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Bundle not found")
+    row = await _cached_bundle_plan(db, eng.id, fix_key, key)
+    if row is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "No AI refinement for this bundle and OS")
+    _members, contexts = _bundle_members(data, bundle)
+    return _bundle_payload(bundle, key, row.plan, row, _is_stale(row, ai_refine.facts_fingerprint(contexts)))
+
+
+@bundles_router.post("/{engagement_id}/remediation/bundles/{fix_key}/refine",
+                     summary="Refine a fix bundle with AI (all hosts it covers)")
+async def refine_bundle(
+    engagement_id: uuid.UUID, fix_key: str, db: DB,
+    current_user: Annotated[AuthUser, _REMEDIATION_GENERATOR],
+    os: str = Query(default="generic"),
+    publish: bool = Query(default=False),
+):
+    eng = await _tenant_engagement(db, engagement_id, current_user.tenant_id)
+    key = os_key(os)
+    data = await remediation_service.engagement_bundles(db, eng, current_user.tenant_id)
+    bundle = remediation_service.find_bundle(data["bundles"], fix_key)
+    if bundle is None:
+        raise HTTPException(status.HTTP_404_NOT_FOUND, "Bundle not found")
+    members, contexts = _bundle_members(data, bundle)
+    if not members:
+        raise HTTPException(status.HTTP_409_CONFLICT, "This bundle has no findings to refine")
+    kb = _bundle_kb_plan(bundle, members, contexts, key)
+    fingerprint = ai_refine.facts_fingerprint(contexts)
+    from app.services.llm import AiRuntimeError
+    try:
+        plan = await ai_refine.refine(db, engagement=eng, kb_plan=kb, contexts=contexts,
+                                      findings=members, actor_id=current_user.user_id)
+    except AiRuntimeError as exc:
+        logger.warning("remediation.bundle_refine_unavailable", fix_key=fix_key, error=str(exc))
+        raise _ai_error(exc) from exc
+    row = (await db.execute(_build_bundle_upsert_stmt(
+        tenant_id=current_user.tenant_id, engagement_id=eng.id, fix_key=fix_key, os=key, plan=plan,
+        publish=publish, facts_fingerprint=fingerprint,
+    ))).one()
+    return _bundle_payload(bundle, key, plan, row, False)
